@@ -230,7 +230,7 @@ function createWindow(options: { preview?: boolean; title?: string } = {}): Brow
     show: false,
     title: options.title ?? PRODUCT_NAME,
     ...(process.platform === 'darwin'
-      ? { titleBarStyle: 'hiddenInset' as const, trafficLightPosition: { x: 16, y: 16 } }
+      ? { titleBarStyle: 'hidden' as const, trafficLightPosition: { x: 16, y: 12 } }
       : {}),
     ...(icon === undefined ? {} : { icon }),
     backgroundColor: nativeTheme.shouldUseDarkColors ? '#202020' : '#f7f7f5',

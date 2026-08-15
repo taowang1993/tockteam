@@ -65,10 +65,17 @@ html[data-oh-dsh-desktop-sidebar-open='true'] #oh-dsh-sidebar-root {
 
 .oh-dsh-titlebar-leading {
   display: flex;
-  align-items: center;
-  min-width: 0;
+  width: 240px;
   height: 100%;
-  padding-left: max(76px, env(safe-area-inset-left));
+  align-items: center;
+  justify-content: flex-end;
+  margin-left: var(--oh-dsh-rail-width);
+  padding-right: 4px;
+  box-sizing: border-box;
+}
+
+body:has([data-sidebar-collapsed]) .oh-dsh-titlebar-leading {
+  width: 84px;
 }
 
 .oh-dsh-window-title {
@@ -114,6 +121,11 @@ html[data-oh-dsh-desktop-sidebar-open='true'] #oh-dsh-sidebar-root {
   -webkit-app-region: no-drag;
 }
 
+.oh-dsh-titlebar-leading button {
+  width: 36px;
+  height: 36px;
+}
+
 .oh-dsh-titlebar-leading button:hover,
 .oh-dsh-panel-toolbar button:hover,
 .oh-dsh-panel-toolbar button[aria-pressed='true'] {
@@ -134,6 +146,11 @@ html[data-oh-dsh-desktop-sidebar-open='true'] #oh-dsh-sidebar-root {
   stroke-linecap: round;
   stroke-linejoin: round;
   stroke-width: 1.7;
+}
+
+.oh-dsh-titlebar-leading svg {
+  width: 20px;
+  height: 20px;
 }
 
 .oh-dsh-workspace-panel {

@@ -35,7 +35,8 @@ test('desktop shell keeps the navigation rail without duplicate tool buttons', (
   )
 })
 
-test('desktop titlebar stays draggable while panel controls float at the top right', () => {
+test('desktop titlebar matches Tockbot chrome and stays draggable', () => {
+  const main = readFileSync(join(root, 'src/main.ts'), 'utf8')
   const workspace = readFileSync(
     join(root, 'plugins/sidebar/src/client/plugin.tsx'),
     'utf8',
@@ -45,6 +46,10 @@ test('desktop titlebar stays draggable while panel controls float at the top rig
     'utf8',
   )
 
+  assert.match(
+    main,
+    /titleBarStyle: 'hidden' as const, trafficLightPosition: \{ x: 16, y: 12 \}/,
+  )
   assert.match(workspace, /<header className="oh-dsh-window-titlebar">/)
   assert.match(workspace, /className="oh-dsh-window-title"/)
   assert.match(workspace, /panels\.toggleSidebar\(\)/)
@@ -58,7 +63,19 @@ test('desktop titlebar stays draggable while panel controls float at the top rig
   )
   assert.match(
     css,
-    /\.oh-dsh-titlebar-leading\s*\{[^}]*align-items: center;[^}]*height: 100%;[^}]*padding-left: max\(76px, env\(safe-area-inset-left\)\);/s,
+    /\.oh-dsh-titlebar-leading\s*\{[^}]*width: 240px;[^}]*height: 100%;[^}]*align-items: center;[^}]*justify-content: flex-end;[^}]*margin-left: var\(--oh-dsh-rail-width\);[^}]*padding-right: 4px;/s,
+  )
+  assert.match(
+    css,
+    /body:has\(\[data-sidebar-collapsed\]\) \.oh-dsh-titlebar-leading\s*\{[^}]*width: 84px;/s,
+  )
+  assert.match(
+    css,
+    /\.oh-dsh-titlebar-leading button\s*\{[^}]*width: 36px;[^}]*height: 36px;/s,
+  )
+  assert.match(
+    css,
+    /\.oh-dsh-titlebar-leading svg\s*\{[^}]*width: 20px;[^}]*height: 20px;/s,
   )
   assert.doesNotMatch(
     css,
