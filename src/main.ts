@@ -693,7 +693,7 @@ async function bootstrap(): Promise<void> {
   app.setName(PRODUCT_NAME)
   // The visible product name changed in 0.1.x. Keep the existing data path so
   // an in-place upgrade retains sessions, profiles, skins, and credentials.
-  app.setPath('userData', join(app.getPath('appData'), LEGACY_DATA_DIRECTORY))
+  app.setPath('userData', join(app.getPath('appData'), app.isPackaged ? LEGACY_DATA_DIRECTORY : `${LEGACY_DATA_DIRECTORY}-Dev`))
   app.setAboutPanelOptions({
     applicationName: PRODUCT_NAME,
     applicationVersion: PRODUCT_VERSION,
