@@ -98,11 +98,10 @@ body:has([data-sidebar-collapsed]) .oh-dsh-titlebar-leading {
   display: flex;
   align-items: center;
   gap: 3px;
-  padding: 2px;
-  border: 1px solid var(--dsw-alias-border-l1, rgb(0 0 0 / 8%));
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--dsw-alias-bg-base, #fff) 92%, transparent);
-  box-shadow: 0 1px 5px rgb(0 0 0 / 5%);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
   -webkit-app-region: no-drag;
 }
 
@@ -126,15 +125,14 @@ body:has([data-sidebar-collapsed]) .oh-dsh-titlebar-leading {
   height: 36px;
 }
 
-.oh-dsh-titlebar-leading button:hover,
-.oh-dsh-panel-toolbar button:hover,
-.oh-dsh-panel-toolbar button[aria-pressed='true'] {
+.oh-dsh-titlebar-leading button:hover {
   background: var(--dsw-alias-interactive-bg-hover, rgb(0 0 0 / 6%));
   color: var(--dsw-alias-label-primary, #1f2328);
 }
 
+.oh-dsh-panel-toolbar button:hover,
 .oh-dsh-panel-toolbar button[aria-pressed='true'] {
-  background: var(--dsw-alias-interactive-bg-active, rgb(0 0 0 / 9%));
+  color: var(--dsw-alias-label-primary, #1f2328);
 }
 
 .oh-dsh-titlebar-leading svg,

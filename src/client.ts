@@ -47,6 +47,20 @@ html[data-oh-dsh-desktop='true'] body {
   padding-top: var(--oh-dsh-titlebar-height);
 }
 
+html[data-oh-dsh-desktop='true'] [data-slot='sidebar'] button:is(
+  [aria-label='Collapse sidebar'],
+  [aria-label='收起侧边栏']
+) {
+  display: none !important;
+}
+
+html[data-oh-dsh-desktop='true'] [data-slot='sidebar'] button:is(
+  [aria-label='Open sidebar'],
+  [aria-label='打开侧边栏']
+) > svg:last-child {
+  display: none !important;
+}
+
 html[data-oh-dsh-desktop='true'] body::before {
   content: '';
   position: fixed;

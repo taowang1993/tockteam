@@ -37,6 +37,7 @@ test('desktop shell keeps the navigation rail without duplicate tool buttons', (
 
 test('desktop titlebar matches Tockbot chrome and stays draggable', () => {
   const main = readFileSync(join(root, 'src/main.ts'), 'utf8')
+  const desktopShell = readFileSync(join(root, 'src/client.ts'), 'utf8')
   const workspace = readFileSync(
     join(root, 'plugins/sidebar/src/client/plugin.tsx'),
     'utf8',
@@ -52,6 +53,14 @@ test('desktop titlebar matches Tockbot chrome and stays draggable', () => {
   )
   assert.match(workspace, /<header className="oh-dsh-window-titlebar">/)
   assert.match(workspace, /className="oh-dsh-window-title"/)
+  assert.match(
+    desktopShell,
+    /\[data-slot='sidebar'\] button:is\([\s\S]*?aria-label='Collapse sidebar'[\s\S]*?aria-label='收起侧边栏'[\s\S]*?\)\s*\{[^}]*display: none !important;/s,
+  )
+  assert.match(
+    desktopShell,
+    /\[data-slot='sidebar'\] button:is\([\s\S]*?aria-label='Open sidebar'[\s\S]*?aria-label='打开侧边栏'[\s\S]*?\) > svg:last-child\s*\{[^}]*display: none !important;/s,
+  )
   assert.match(workspace, /panels\.toggleSidebar\(\)/)
   assert.match(
     workspace,
@@ -87,7 +96,11 @@ test('desktop titlebar matches Tockbot chrome and stays draggable', () => {
   )
   assert.match(
     css,
-    /\.oh-dsh-panel-toolbar\s*\{[^}]*position: fixed;[^}]*top: 5px;[^}]*right: 14px;/s,
+    /\.oh-dsh-panel-toolbar\s*\{[^}]*position: fixed;[^}]*top: 5px;[^}]*right: 14px;[^}]*padding: 0;[^}]*border: 0;[^}]*background: transparent;[^}]*box-shadow: none;/s,
+  )
+  assert.doesNotMatch(
+    css,
+    /\.oh-dsh-panel-toolbar button(?:\[[^\]]+\])?[^,{]*\{[^}]*background: (?!transparent)/s,
   )
 })
 
