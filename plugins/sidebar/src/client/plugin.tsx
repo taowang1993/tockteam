@@ -74,7 +74,6 @@ interface ObservableSnapshot<T> {
 interface SessionSummary {
   blank?: boolean
   cwd?: string
-  displayTitle?: string
 }
 
 interface SessionListState {
@@ -612,11 +611,9 @@ function DesktopPanelToolbar({
 function DesktopWindowTitlebar({
   panels,
   t,
-  title,
 }: {
   panels: DesktopPanels
   t: Translate<WorkspaceMessage>
-  title: string
 }): ReactNode {
   return (
     <header className="tockteam-window-titlebar">
@@ -628,7 +625,7 @@ function DesktopWindowTitlebar({
           onClick={() => { panels.toggleSidebar() }}
         ><PanelIcon kind="sidebar" /></button>
       </div>
-      <strong className="tockteam-window-title" title={title}>{title}</strong>
+      <strong className="tockteam-window-title">TockTeam</strong>
     </header>
   )
 }
@@ -1214,11 +1211,9 @@ function WorkspaceToolsSurface(props: {
   const t = useTranslate(props.locale, props.t)
   const panelState = useSyncExternalStore(props.service.subscribe, props.service.getSnapshot)
   const sessionList = useSyncExternalStore(props.sessions.list.subscribe, props.sessions.list.getSnapshot)
-  const session = sessionList.current === undefined
+  const cwd = sessionList.current === undefined
     ? undefined
-    : sessionList.byId[sessionList.current]
-  const cwd = session?.cwd
-  const title = session?.displayTitle?.trim() || 'TockTeam Desktop'
+    : sessionList.byId[sessionList.current]?.cwd
   return (
     <>
       {props.showDesktopChrome && createPortal(
@@ -1226,7 +1221,6 @@ function WorkspaceToolsSurface(props: {
           <DesktopWindowTitlebar
             panels={props.panels}
             t={t}
-            title={title}
           />
           <DesktopPanelToolbar
             service={props.service}

@@ -342,7 +342,7 @@ function handleRuntimeExit(exit: RuntimeExit): void {
   if (quitting || transitioning) return
   void showSplash({
     error: true,
-    message: 'DeepSeek Harness 已停止。可从“DSH”菜单重新启动。',
+    message: 'TockTeam 已停止。可从“DSH”菜单重新启动。',
     detail: logTail.slice(-12).join('\n'),
   })
 }
@@ -429,7 +429,7 @@ async function startLiveForMarketplace(): Promise<void> {
   }
 }
 
-async function restartRuntime(message = '正在重新启动 DeepSeek Harness…'): Promise<void> {
+async function restartRuntime(message = '正在重新启动 TockTeam…'): Promise<void> {
   if (transitioning) return
   transitioning = true
   try {
@@ -706,7 +706,7 @@ async function bootstrap(): Promise<void> {
   app.setAboutPanelOptions({
     applicationName: PRODUCT_NAME,
     applicationVersion: PRODUCT_VERSION,
-    version: `DeepSeek Harness plugin distribution ${PRODUCT_VERSION}`,
+    version: `TockTeam plugin distribution ${PRODUCT_VERSION}`,
   })
   const gotLock = app.requestSingleInstanceLock()
   if (!gotLock) {
@@ -780,7 +780,7 @@ async function bootstrap(): Promise<void> {
     }
     mainWindow = createWindow()
     if (runtimeUrl !== undefined) void mainWindow.loadURL(runtimeUrl.href).then(flushQueuedPaths)
-    else void showSplash({ error: true, message: 'DeepSeek Harness 未运行，请从“DSH”菜单重新启动。' })
+    else void showSplash({ error: true, message: 'TockTeam 未运行，请从“DSH”菜单重新启动。' })
   })
   app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') app.quit()

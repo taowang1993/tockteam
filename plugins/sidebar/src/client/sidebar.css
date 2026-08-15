@@ -84,7 +84,7 @@ body:has([data-sidebar-collapsed]) .tockteam-titlebar-leading {
   min-width: 0;
   overflow: hidden;
   color: var(--dsw-alias-label-primary, #1f2328);
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 550;
   line-height: 1;
   text-align: center;

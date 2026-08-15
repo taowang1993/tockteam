@@ -59,7 +59,8 @@ test('desktop titlebar matches Tockbot chrome and stays draggable', () => {
   )
   assert.match(main, /if \(options\.preview !== true\) window\.maximize\(\)/)
   assert.match(workspace, /<header className="tockteam-window-titlebar">/)
-  assert.match(workspace, /className="tockteam-window-title"/)
+  assert.match(workspace, /<strong className="tockteam-window-title">TockTeam<\/strong>/)
+  assert.doesNotMatch(workspace, /displayTitle/)
   assert.match(workspace, /props\.showDesktopChrome && createPortal\(/)
   assert.match(workspace, /surface\.kind === 'desktop'/)
   assert.match(
@@ -78,6 +79,10 @@ test('desktop titlebar matches Tockbot chrome and stays draggable', () => {
   assert.match(
     css,
     /\.tockteam-window-titlebar\s*\{[^}]*position: fixed;[^}]*height: var\(--tockteam-titlebar-height, 40px\);[^}]*-webkit-app-region: drag;/s,
+  )
+  assert.match(
+    css,
+    /\.tockteam-window-title\s*\{[^}]*font-size: 14px;/s,
   )
   assert.match(
     css,

@@ -7,11 +7,21 @@ import {
   requireHealthyMarketplaceSnapshot,
 } from '../src/marketplace-tools.ts'
 
-test('desktop client replaces the hero title and keeps the Preview badge', () => {
+test('desktop client replaces upstream branding with TockTeam', () => {
   const client = readFileSync(new URL('../src/client.ts', import.meta.url), 'utf8')
+  const main = readFileSync(new URL('../src/main.ts', import.meta.url), 'utf8')
+  const splash = readFileSync(new URL('../src/splash.html', import.meta.url), 'utf8')
+
   assert.match(client, /element\.textContent = 'TockTeam Desktop'/)
   assert.match(client, /\['Into the Unknown', '探索未知之境', '探索未至之境'\]/)
+  assert.match(client, /data-tockteam-sidebar-brand/)
+  assert.match(client, /viewBox="0 0 20 20"/)
+  assert.match(client, /M10 5\.5C6\.96243 5\.5 4\.5 7\.96243 4\.5 11/)
+  assert.match(client, /aria-hidden="true"/)
+  assert.match(client, />TockTeam<\/span>/)
+  assert.match(client, /if \(brand\.isConnected\) brand\.replaceWith\(original\)/)
   assert.doesNotMatch(client, /data-tockteam-hero-preview/)
+  assert.doesNotMatch(`${main}\n${splash}`, /DeepSeek Harness/)
 })
 
 test('desktop Settings stays below portaled menus and above desktop surfaces', () => {
