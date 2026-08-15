@@ -19,6 +19,20 @@ test('desktop client replaces upstream branding with TockTeam', () => {
   assert.match(client, /M10 5\.5C6\.96243 5\.5 4\.5 7\.96243 4\.5 11/)
   assert.match(client, /aria-hidden="true"/)
   assert.match(client, />TockTeam<\/span>/)
+  assert.match(
+    client,
+    /button:is\(\[aria-label='Open sidebar'\],\[aria-label='打开侧边栏'\]\) > svg\[viewBox='0 0 23\.16 17\.04'\]:not\(\[data-tockteam-sidebar-fish\]\)/,
+  )
+  assert.match(client, /logo\.innerHTML = TOCKBOT_LOGO_MARK/)
+  assert.match(client, /fish\.parentElement\?\.querySelector<SVGSVGElement>\([\s\S]*':scope > \[data-tockteam-sidebar-logo\]'/)
+  assert.match(client, /fish\.before\(mark\)/)
+  assert.match(client, /if \(logo\.isConnected\) logo\.remove\(\)/)
+  assert.match(client, /delete fish\.dataset\.tockteamSidebarFish/)
+  assert.match(client, /observer\.observe\(document\.body, \{ childList: true, characterData: true, subtree: true \}\)/)
+  assert.equal(client.match(/new MutationObserver/g)?.length, 1)
+  assert.match(client, /viewBox="0 0 20 20" width="20" height="20"/)
+  assert.match(client, /data-tockteam-sidebar-fish\] \{\s*display: none !important;/)
+  assert.equal(client.match(/M10 5\.5C6\.96243 5\.5 4\.5 7\.96243 4\.5 11/g)?.length, 1)
   assert.match(client, /if \(brand\.isConnected\) brand\.replaceWith\(original\)/)
   assert.doesNotMatch(client, /data-tockteam-hero-preview/)
   assert.doesNotMatch(`${main}\n${splash}`, /DeepSeek Harness/)
