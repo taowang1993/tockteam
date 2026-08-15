@@ -2,6 +2,7 @@ node_modules/
 dist/
 .stage/
 .cache/
+/.local/
 release/
 tmp/
 *.log
