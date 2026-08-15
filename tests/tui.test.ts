@@ -23,6 +23,12 @@ import {
   type TuiSpawner,
 } from '../src/tui.ts'
 
+test('packaged TUI launchers expose only the TUI surface', () => {
+  const build = readFileSync(new URL('../scripts/build-tui.mjs', import.meta.url), 'utf8')
+  assert.match(build, /export TOCKTEAM_SURFACES=tui/)
+  assert.match(build, /SET "TOCKTEAM_SURFACES=tui"/)
+})
+
 function output(isTTY = false): { stream: NodeJS.WriteStream; text: () => string } {
   let value = ''
   return {

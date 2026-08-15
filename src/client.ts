@@ -145,7 +145,7 @@ html[data-tockteam-desktop='true']:has(
 `
 
 /** Wait for the DSH services used by native menu commands. */
-export const inject = ['locale', 'workspaces', 'desktopPanels', 'pinnedSummary', 'workspaceTools']
+export const inject = ['locale', 'workspaces', 'desktopPanels', 'pinnedSummary']
 
 type DesktopShellMessage = 'preview.label'
 
@@ -306,7 +306,6 @@ export function apply(ctx: ClientContext): void {
   const t: Translate<DesktopShellMessage> = locale.bind('tockteam.desktop')
   const panels = ctx.get('desktopPanels') as DesktopPanels
   const pinnedSummary = ctx.get('pinnedSummary') as PinnedSummary
-  const workspaceTools = ctx.get('workspaceTools') as WorkspaceTools
   ctx.effect(
     () => locale.register('tockteam.desktop', DESKTOP_SHELL_MESSAGES),
     'tockteam-desktop: shell dictionaries',
@@ -337,7 +336,13 @@ export function apply(ctx: ClientContext): void {
       console.error('tockteam-desktop: failed to read preview identity', error)
     })
     const unsubscribe = bridge.onCommand((command) => {
-      dispatch(command, workspaces, panels, pinnedSummary, workspaceTools)
+      dispatch(
+        command,
+        workspaces,
+        panels,
+        pinnedSummary,
+        ctx.get('workspaceTools') as WorkspaceTools,
+      )
     })
     return () => {
       disposed = true

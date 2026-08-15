@@ -56,9 +56,8 @@ sudo apt install ./TockTeam-Desktop-*.deb
 
 ### Windows
 
-Extract the Windows package and start **TockTeam Desktop**. The unified CLI is
-`bin\tockteam.cmd` under the application resources directory; add that directory
-to `PATH` if desired.
+Windows artifacts are not currently published in GitHub Releases. The
+`pnpm run dist:win` command remains available for source builds.
 
 ## Install Web-only
 
@@ -66,12 +65,6 @@ to `PATH` if desired.
 tar -xzf tockteam-web-*.tar.gz
 cd tockteam-web-*/
 ./bin/tockteam web
-```
-
-Windows:
-
-```bat
-bin\tockteam.cmd web
 ```
 
 Common options:
@@ -99,9 +92,9 @@ cd tockteam-tui-*/
 ./bin/tockteam tui
 ```
 
-Use `bin\tockteam.cmd tui` on Windows. TUI requires a real interactive terminal.
-It uses the alternate screen by default; upstream `dsh-TUI` owns fullscreen
-selection, scrolling, and copy behavior.
+TUI requires a real interactive terminal. It uses the alternate screen by
+default; upstream `dsh-TUI` owns fullscreen selection, scrolling, and copy
+behavior.
 
 ## Unified commands
 

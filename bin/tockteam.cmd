@@ -5,6 +5,7 @@ SET "ROOT=%~dp0.."
 IF EXIST "%ROOT%\node-runtime\node.exe" IF EXIST "%ROOT%\lib\tockteam\cli.js" (
   SET "TOCKTEAM_WEB_ROOT=%ROOT%"
   SET "TOCKTEAM_TUI_ROOT=%ROOT%"
+  IF EXIST "%ROOT%\..\TockTeam Desktop.exe" SET "TOCKTEAM_DESKTOP_APP=%ROOT%\..\TockTeam Desktop.exe"
   "%ROOT%\node-runtime\node.exe" "%ROOT%\lib\tockteam\cli.js" %*
   EXIT /B %ERRORLEVEL%
 )

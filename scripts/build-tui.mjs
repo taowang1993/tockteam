@@ -5,6 +5,7 @@ import {
   cpSync,
   existsSync,
   mkdirSync,
+  readFileSync,
   rmSync,
   writeFileSync,
 } from 'node:fs'
@@ -67,9 +68,24 @@ cpSync(join(stage, 'node-runtime'), join(packageDir, 'node-runtime'), {
 
 const launcher = join(packageDir, 'bin', 'tockteam')
 copyFileSync(join(root, 'bin', 'tockteam'), launcher)
+writeFileSync(
+  launcher,
+  readFileSync(launcher, 'utf8').replace(
+    'set -eu\n',
+    'set -eu\nexport TOCKTEAM_SURFACES=tui\n',
+  ),
+)
 chmodSync(launcher, 0o755)
 if (isWindowsTarget) {
-  copyFileSync(join(root, 'bin', 'tockteam.cmd'), join(packageDir, 'bin', 'tockteam.cmd'))
+  const windowsLauncher = join(packageDir, 'bin', 'tockteam.cmd')
+  copyFileSync(join(root, 'bin', 'tockteam.cmd'), windowsLauncher)
+  writeFileSync(
+    windowsLauncher,
+    readFileSync(windowsLauncher, 'utf8').replace(
+      'SETLOCAL\n',
+      'SETLOCAL\nSET "TOCKTEAM_SURFACES=tui"\n',
+    ),
+  )
 }
 
 writeFileSync(join(packageDir, 'README.md'), `# TockTeam TUI

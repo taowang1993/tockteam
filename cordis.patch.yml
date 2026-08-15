@@ -14,23 +14,23 @@
     trustedHosts: []
 
 - insert:
-    - id: oh-desktop
+    - id: tockteam-desktop
       name: '@tockteam/desktop'
 
-    - id: oh-better-sidebar-runtime
+    - id: tockteam-better-sidebar-runtime
       name: '@tockteam/better-sidebar-runtime'
 
-    - id: oh-skins
+    - id: tockteam-skins
       name: '@tockteam/skins'
 
-    - id: oh-sidebar
+    - id: tockteam-sidebar
       name: '@tockteam/sidebar'
 
-    - id: oh-panel-controls
+    - id: tockteam-panel-controls
       name: '@tockteam/panel-controls'
 
-    - id: oh-pinned-summary
+    - id: tockteam-pinned-summary
       name: '@tockteam/pinned-summary'
 
-    - id: oh-plugin-marketplace
+    - id: tockteam-plugin-marketplace
       name: '@tockteam/plugin-marketplace'

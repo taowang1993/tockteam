@@ -36,9 +36,10 @@ Choose a distribution from the
 | Web-only | **TockTeam Web**, Node runtime, and bundled Web plugins; no Electron | Small installs, browser, or remote access |
 | TUI-only | **TockTeam TUI**, Node runtime, and terminal plugins; no Electron | Terminal-only environments |
 
-The full distribution is available as DMG/ZIP, AppImage/deb, and a Windows
-package. On macOS, open the DMG and drag **TockTeam Desktop** into Applications.
-On Linux, run the AppImage or install the deb with `apt`.
+The full distribution is currently published as DMG/ZIP for macOS and
+AppImage/deb for Linux. Windows artifacts are not currently published. On
+macOS, open the DMG and drag **TockTeam Desktop** into Applications. On Linux,
+run the AppImage or install the deb with `apt`.
 
 Extract and start the Web-only package directly:
 
@@ -48,11 +49,7 @@ cd tockteam-web-*/
 ./bin/tockteam web
 ```
 
-The default URL is <http://127.0.0.1:3080>. On Windows, run:
-
-```bat
-bin\tockteam.cmd web
-```
+The default URL is <http://127.0.0.1:3080>.
 
 The TUI-only package is also ready after extraction:
 

@@ -6,13 +6,13 @@
   disabled: true
 
 - insert:
-  - id: oh-tui
+  - id: tockteam-tui
     name: '@tockteam/tui'
 
-  - id: oh-skins
+  - id: tockteam-skins
     name: '@tockteam/skins'
 
-  - id: oh-tui-renderer
+  - id: tockteam-tui-renderer
     name: 'dsh-cc-tui'
     config:
       sessionId: !!js process.env.TOCKTEAM_TUI_SESSION_ID ?? undefined

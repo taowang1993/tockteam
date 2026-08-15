@@ -140,7 +140,7 @@ function settingsDialogOpen(): boolean {
 }
 
 function marketplaceFooter(settings: HTMLElement): HTMLElement | null {
-  const navigation = document.querySelector<HTMLElement>('.oh-marketplace-nav')
+  const navigation = document.querySelector<HTMLElement>('.tockteam-marketplace-nav')
   if (navigation === null) return null
   let candidate = navigation.parentElement
   while (candidate !== null && candidate !== document.body) {
@@ -210,7 +210,7 @@ function MarketplaceNavigationEntry({
   return (
     <button
       aria-label={label}
-      className="oh-marketplace-nav"
+      className="tockteam-marketplace-nav"
       data-active={String(state.open)}
       data-collapsed={String(!wide)}
       onClick={() => { view.toggle() }}
@@ -337,7 +337,7 @@ class PluginMarketplaceViewService implements PluginMarketplaceView {
     this.#state = { available: false, open: false }
     for (const listener of this.#listeners) listener()
     delete document.documentElement.dataset.tockTeamMarketplaceOpen
-    document.documentElement.style.removeProperty('--oh-marketplace-left')
+    document.documentElement.style.removeProperty('--tockteam-marketplace-left')
   }
 
   private applyOpenState(): void {
@@ -364,7 +364,7 @@ class PluginMarketplaceViewService implements PluginMarketplaceView {
     }
     const sidebar = declared ?? (settings === null ? null : sidebarFor(settings))
     if (sidebar === null) {
-      document.documentElement.style.setProperty('--oh-marketplace-left', '0px')
+      document.documentElement.style.setProperty('--tockteam-marketplace-left', '0px')
       return
     }
     const box = sidebarBox(sidebar) ?? sidebar
@@ -372,7 +372,7 @@ class PluginMarketplaceViewService implements PluginMarketplaceView {
     this.#resizeObserver?.observe(box)
     const rect = box.getBoundingClientRect()
     const left = rect.right > 0 && rect.right < window.innerWidth * 0.55 ? rect.right : 0
-    document.documentElement.style.setProperty('--oh-marketplace-left', `${String(Math.round(left))}px`)
+    document.documentElement.style.setProperty('--tockteam-marketplace-left', `${String(Math.round(left))}px`)
   }
 }
 
@@ -427,43 +427,43 @@ function PluginCard({
 }): JSX.Element {
   return (
     <button
-      className="oh-marketplace-card"
+      className="tockteam-marketplace-card"
       data-selected={String(selected)}
       onClick={select}
       type="button"
     >
-      <div className="oh-marketplace-card-top">
-        <span className="oh-marketplace-card-icon">{plugin.title.slice(0, 1)}</span>
+      <div className="tockteam-marketplace-card-top">
+        <span className="tockteam-marketplace-card-icon">{plugin.title.slice(0, 1)}</span>
         <div style={{ minWidth: 0 }}>
           <h2>{plugin.title}</h2>
-          <div className="oh-marketplace-card-category">{plugin.category}</div>
+          <div className="tockteam-marketplace-card-category">{plugin.category}</div>
         </div>
       </div>
-      <p className="oh-marketplace-card-description">{plugin.description}</p>
-      <div className="oh-marketplace-card-footer">
+      <p className="tockteam-marketplace-card-description">{plugin.description}</p>
+      <div className="tockteam-marketplace-card-footer">
         <span
-          className="oh-marketplace-pill"
+          className="tockteam-marketplace-pill"
           data-unsupported={String(plugin.mechanism === 'unsupported')}
         >
           {mechanismLabel(plugin, t)}
         </span>
         {plugin.installed && (
-          <span className="oh-marketplace-pill" data-installed="true">
+          <span className="tockteam-marketplace-pill" data-installed="true">
             {t('installed')}
           </span>
         )}
         {plugin.installed && (
-          <span className="oh-marketplace-pill" data-installed={String(plugin.enabled)}>
+          <span className="tockteam-marketplace-pill" data-installed={String(plugin.enabled)}>
             {plugin.enabled ? t('enabled') : t('disabled')}
           </span>
         )}
         {plugin.updateAvailable && (
-          <span className="oh-marketplace-pill" data-update="true">
+          <span className="tockteam-marketplace-pill" data-update="true">
             {t('update-available')}
           </span>
         )}
         {plugin.protected && (
-          <span className="oh-marketplace-pill" data-protected="true">
+          <span className="tockteam-marketplace-pill" data-protected="true">
             {t('managed')}
           </span>
         )}
@@ -507,17 +507,17 @@ function PluginDetail({
   }
   return (
     <aside
-      className="oh-marketplace-detail"
+      className="tockteam-marketplace-detail"
       aria-label={t('details', { plugin: plugin.title })}
     >
-      <div className="oh-marketplace-detail-inner">
-        <button className="oh-marketplace-icon-button oh-marketplace-detail-close" onClick={close} type="button">×</button>
+      <div className="tockteam-marketplace-detail-inner">
+        <button className="tockteam-marketplace-icon-button tockteam-marketplace-detail-close" onClick={close} type="button">×</button>
         <h2>{plugin.title}</h2>
-        <span className="oh-marketplace-pill" data-installed={String(plugin.installed)}>
+        <span className="tockteam-marketplace-pill" data-installed={String(plugin.installed)}>
           {plugin.installed ? t('installed') : mechanismLabel(plugin, t)}
         </span>
-        <p className="oh-marketplace-detail-description">{plugin.description}</p>
-        <dl className="oh-marketplace-facts">
+        <p className="tockteam-marketplace-detail-description">{plugin.description}</p>
+        <dl className="tockteam-marketplace-facts">
           <dt>{t('category')}</dt><dd>{plugin.category}</dd>
           <dt>{t('mechanism')}</dt><dd>{mechanismLabel(plugin, t)}</dd>
           <dt>{t('updated')}</dt>
@@ -538,19 +538,19 @@ function PluginDetail({
         </dl>
 
         {plan !== null && (
-          <section className="oh-marketplace-plan">
-            <div className="oh-marketplace-flow" aria-label={t('prepared-plan', { action: t(`action.${plan.action}`) })}>
+          <section className="tockteam-marketplace-plan">
+            <div className="tockteam-marketplace-flow" aria-label={t('prepared-plan', { action: t(`action.${plan.action}`) })}>
               <span data-active="true">1 · {t('flow.review')}</span>
               <span data-active={String(snapshot.preview !== null)}>2 · {t('flow.preview')}</span>
               <span>3 · {t('flow.apply')}</span>
             </div>
             <h3>{t('prepared-plan', { action: t(`action.${plan.action}`) })}</h3>
-            <div className="oh-marketplace-plan-risk" data-risk={plan.riskLevel}>
+            <div className="tockteam-marketplace-plan-risk" data-risk={plan.riskLevel}>
               <strong>{t('risk-level')}: {t(`risk-level.${plan.riskLevel}`)}</strong>
               <span>{t('source-review')}: {t(`source-review.${plan.sourceReview}`)}</span>
             </div>
             {plan.riskReasons.length > 0 && (
-              <ul className="oh-marketplace-risk-reasons">
+              <ul className="tockteam-marketplace-risk-reasons">
                 {plan.riskReasons.map(reason => (
                   <li key={reason}>{riskReasonLabel(reason, t)}</li>
                 ))}
@@ -565,7 +565,7 @@ function PluginDetail({
               <code>{Object.entries(plan.buildScripts).map(([name, script]) => `${name}: ${script}`).join('\n')}</code>
             )}
             {plan.requirements.map(requirement => (
-              <label className="oh-marketplace-confirm" key={requirement}>
+              <label className="tockteam-marketplace-confirm" key={requirement}>
                   <input
                     checked={confirmations.includes(requirement)}
                     onChange={event => { setConfirmed(requirement, event.target.checked) }}
@@ -574,20 +574,20 @@ function PluginDetail({
                   <span>{confirmationLabel(requirement, t)}</span>
               </label>
             ))}
-            <p className="oh-marketplace-recovery-note">{t('recovery-note')}</p>
+            <p className="tockteam-marketplace-recovery-note">{t('recovery-note')}</p>
           </section>
         )}
 
-        <div className="oh-marketplace-detail-actions">
+        <div className="tockteam-marketplace-detail-actions">
           {plugin.mechanism === 'unsupported' || plugin.protected ? (
-            <button className="oh-marketplace-button" onClick={() => { void bridge.openExternal(plugin.url) }} type="button">
+            <button className="tockteam-marketplace-button" onClick={() => { void bridge.openExternal(plugin.url) }} type="button">
               {t('open-repository')}
             </button>
           ) : plan === null ? (
             <>
               {!plugin.installed && (
                 <button
-                  className="oh-marketplace-button"
+                  className="tockteam-marketplace-button"
                   data-primary="true"
                   disabled={pending}
                   onClick={() => { void run({
@@ -602,7 +602,7 @@ function PluginDetail({
               )}
               {plugin.installed && plugin.updateAvailable && (
                 <button
-                  className="oh-marketplace-button"
+                  className="tockteam-marketplace-button"
                   data-primary="true"
                   disabled={pending}
                   onClick={() => { void run({
@@ -617,7 +617,7 @@ function PluginDetail({
               )}
               {plugin.installed && (
                 <button
-                  className="oh-marketplace-button"
+                  className="tockteam-marketplace-button"
                   disabled={pending}
                   onClick={() => { void run({
                     type: 'prepare',
@@ -631,7 +631,7 @@ function PluginDetail({
               )}
               {plugin.installed && (
                 <button
-                  className="oh-marketplace-button"
+                  className="tockteam-marketplace-button"
                   data-danger="true"
                   disabled={pending}
                   onClick={() => { void run({
@@ -647,7 +647,7 @@ function PluginDetail({
             </>
           ) : snapshot.preview === null ? (
             <button
-              className="oh-marketplace-button"
+              className="tockteam-marketplace-button"
               data-primary="true"
               disabled={pending || !readyToPreview}
               onClick={() => { void run({ type: 'preview', confirmations }) }}
@@ -656,7 +656,7 @@ function PluginDetail({
               {t('preview.launch')}
             </button>
           ) : null}
-          <button className="oh-marketplace-button" onClick={() => { void bridge.openExternal(plugin.url) }} type="button">
+          <button className="tockteam-marketplace-button" onClick={() => { void bridge.openExternal(plugin.url) }} type="button">
             {t('view-source')}
           </button>
         </div>
@@ -781,25 +781,25 @@ function MarketplaceSurface({ bridge, locale, translate, view }: {
   }, [viewState.open])
 
   return (
-    <div className="oh-marketplace-surface" data-open={String(viewState.open)} aria-hidden={!viewState.open}>
-      <div className="oh-marketplace-app">
+    <div className="tockteam-marketplace-surface" data-open={String(viewState.open)} aria-hidden={!viewState.open}>
+      <div className="tockteam-marketplace-app">
         <div>
-          <header className="oh-marketplace-header">
-            <div className="oh-marketplace-heading">
+          <header className="tockteam-marketplace-header">
+            <div className="tockteam-marketplace-heading">
               <h1>{t('plugins')}</h1>
               <p>{t('subtitle')}</p>
             </div>
-            <div className="oh-marketplace-header-actions">
+            <div className="tockteam-marketplace-header-actions">
               {snapshot?.undoAvailable === true && (
-                <button className="oh-marketplace-button" disabled={pending} onClick={() => { void run({ type: 'undo' }) }} type="button">
+                <button className="tockteam-marketplace-button" disabled={pending} onClick={() => { void run({ type: 'undo' }) }} type="button">
                   {t('undo-last-apply')}
                 </button>
               )}
-              <button className="oh-marketplace-button" disabled={pending} onClick={() => { void run({ type: 'refresh' }) }} type="button">
+              <button className="tockteam-marketplace-button" disabled={pending} onClick={() => { void run({ type: 'refresh' }) }} type="button">
                 {pending ? t('working') : t('refresh')}
               </button>
               <button
-                className="oh-marketplace-icon-button"
+                className="tockteam-marketplace-icon-button"
                 onClick={() => { view.setOpen(false) }}
                 title={t('close')}
                 type="button"
@@ -807,21 +807,21 @@ function MarketplaceSurface({ bridge, locale, translate, view }: {
             </div>
           </header>
           {snapshot?.preview !== null && snapshot?.preview !== undefined && (
-            <div className="oh-marketplace-preview-banner">
+            <div className="tockteam-marketplace-preview-banner">
               <strong>{t('preview.running', { plugin: snapshot.preview.pluginId })}</strong>
-              <button className="oh-marketplace-button" disabled={pending} onClick={() => { void run({ type: 'discard' }) }} type="button">
+              <button className="tockteam-marketplace-button" disabled={pending} onClick={() => { void run({ type: 'discard' }) }} type="button">
                 {t('discard')}
               </button>
-              <button className="oh-marketplace-button" data-primary="true" disabled={pending} onClick={() => { void run({ type: 'apply' }) }} type="button">
+              <button className="tockteam-marketplace-button" data-primary="true" disabled={pending} onClick={() => { void run({ type: 'apply' }) }} type="button">
                 {t('apply-action', { action: t(`action.${snapshot.preview.action}`) })}
               </button>
             </div>
           )}
           {error !== null && (
-            <div className="oh-marketplace-error">
+            <div className="tockteam-marketplace-error">
               <span>{error}</span>
               <button
-                className="oh-marketplace-button"
+                className="tockteam-marketplace-button"
                 disabled={pending}
                 onClick={() => { resetView(); void run({ type: 'refresh' }) }}
                 type="button"
@@ -831,15 +831,15 @@ function MarketplaceSurface({ bridge, locale, translate, view }: {
             </div>
           )}
           {snapshot?.lastAction !== null && snapshot?.lastAction !== undefined && error === null && (
-            <div className="oh-marketplace-notice">
+            <div className="tockteam-marketplace-notice">
               {localizedHostMessage(snapshot.lastAction, t)}
             </div>
           )}
         </div>
-        <div className="oh-marketplace-layout" data-detail={String(selected !== null)}>
-          <main className="oh-marketplace-main">
-            <div className="oh-marketplace-toolbar">
-              <div className="oh-marketplace-search">
+        <div className="tockteam-marketplace-layout" data-detail={String(selected !== null)}>
+          <main className="tockteam-marketplace-main">
+            <div className="tockteam-marketplace-toolbar">
+              <div className="tockteam-marketplace-search">
                 <SearchIcon />
                 <input
                   aria-label={t('search.label')}
@@ -851,7 +851,7 @@ function MarketplaceSurface({ bridge, locale, translate, view }: {
                   <button aria-label={t('search.clear')} onClick={() => { setSearch('') }} type="button">×</button>
                 )}
               </div>
-              <div className="oh-marketplace-status-tabs" role="group" aria-label={t('installation-status')}>
+              <div className="tockteam-marketplace-status-tabs" role="group" aria-label={t('installation-status')}>
                 {([
                   ['all', t('all')],
                   ['installed', t('installed')],
@@ -871,30 +871,30 @@ function MarketplaceSurface({ bridge, locale, translate, view }: {
               </div>
               <select
                 aria-label={t('plugin-category')}
-                className="oh-marketplace-filter"
+                className="tockteam-marketplace-filter"
                 onChange={event => { setCategoryFilter(event.target.value) }}
                 value={categoryFilter}
               >
                 <option value="all">{t('all-categories')}</option>
                 {categories.map(category => <option key={category} value={category}>{category}</option>)}
               </select>
-              <span className="oh-marketplace-count">
+              <span className="tockteam-marketplace-count">
                 {t('plugin-count', { count: plugins.length })}
               </span>
             </div>
             {snapshot === null || pending && snapshot.catalog.length === 0 ? (
-              <div className="oh-marketplace-empty">{t('loading-catalog')}</div>
+              <div className="tockteam-marketplace-empty">{t('loading-catalog')}</div>
             ) : snapshot.auth.status !== 'ready' && snapshot.catalog.length === 0 ? (
-              <div className="oh-marketplace-empty">
+              <div className="tockteam-marketplace-empty">
                 <div>
                   <strong>{t('github-auth-required')}</strong><br />
                   {localizedAuthDetail(snapshot.auth.detail, t)}
                 </div>
               </div>
             ) : plugins.length === 0 ? (
-              <div className="oh-marketplace-empty">{t('no-match')}</div>
+              <div className="tockteam-marketplace-empty">{t('no-match')}</div>
             ) : (
-              <div className="oh-marketplace-grid">
+              <div className="tockteam-marketplace-grid">
                 {plugins.map(plugin => (
                   <PluginCard
                     key={plugin.id}

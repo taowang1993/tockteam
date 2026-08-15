@@ -35,9 +35,9 @@ Git Review、浏览器、窗口集成和插件生命周期。
 | Web-only | **TockTeam Web**、Node runtime 和内置 Web 插件，不含 Electron | 轻量安装、浏览器或远程使用 |
 | TUI-only | **TockTeam TUI**、Node runtime 和终端插件，不含 Electron | 纯终端环境 |
 
-完整版按平台提供 DMG/ZIP、AppImage/deb 和 Windows 包。macOS 打开 DMG 后，
-将 **TockTeam Desktop** 拖入 Applications；Linux 可直接运行 AppImage，或用
-`apt` 安装 deb。
+完整版目前提供 macOS 的 DMG/ZIP 和 Linux 的 AppImage/deb；暂不发布
+Windows 构件。macOS 打开 DMG 后，将 **TockTeam Desktop** 拖入 Applications；
+Linux 可直接运行 AppImage，或用 `apt` 安装 deb。
 
 Web-only 包解压后即可启动：
 
@@ -47,11 +47,7 @@ cd tockteam-web-*/
 ./bin/tockteam web
 ```
 
-默认地址是 <http://127.0.0.1:3080>。Windows 使用：
-
-```bat
-bin\tockteam.cmd web
-```
+默认地址是 <http://127.0.0.1:3080>。
 
 TUI-only 包同样解压即用：
 

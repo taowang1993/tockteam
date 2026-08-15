@@ -94,16 +94,16 @@ const dump = spawnSync(nodeBinary, [cliEntry, '--profile', WEB_PROFILE, '--dump-
 })
 assert.equal(dump.status, 0, dump.stderr || dump.stdout)
 for (const row of [
-  'oh-web',
-  'oh-better-sidebar-runtime',
-  'oh-skins',
-  'oh-pinned-summary',
-  'oh-sidebar',
-  'oh-panel-controls',
+  'tockteam-web',
+  'tockteam-better-sidebar-runtime',
+  'tockteam-skins',
+  'tockteam-pinned-summary',
+  'tockteam-sidebar',
+  'tockteam-panel-controls',
 ]) {
   assert.match(dump.stdout, new RegExp(`\\b${row}\\b`), `composed web profile is missing row ${row}`)
 }
-for (const row of ['oh-desktop', 'oh-plugin-marketplace']) {
+for (const row of ['tockteam-desktop', 'tockteam-plugin-marketplace']) {
   assert.doesNotMatch(dump.stdout, new RegExp(`\\b${row}\\b`), `composed web profile must not mount desktop row ${row}`)
 }
 

@@ -5,6 +5,7 @@ import {
   cpSync,
   existsSync,
   mkdirSync,
+  readFileSync,
   rmSync,
   writeFileSync,
 } from 'node:fs'
@@ -71,6 +72,13 @@ cpSync(join(stage, 'node-runtime'), join(packageDir, 'node-runtime'), {
 
 const launcher = join(packageDir, 'bin', 'tockteam')
 copyFileSync(join(root, 'bin', 'tockteam'), launcher)
+writeFileSync(
+  launcher,
+  readFileSync(launcher, 'utf8').replace(
+    'set -eu\n',
+    'set -eu\nexport TOCKTEAM_SURFACES=web\n',
+  ),
+)
 chmodSync(launcher, 0o755)
 
 const legacyLauncher = join(packageDir, 'bin', 'tockteam-web')
@@ -82,7 +90,15 @@ exec "$ROOT/bin/tockteam" web "$@"
 `)
 chmodSync(legacyLauncher, 0o755)
 if (isWindowsTarget) {
-  copyFileSync(join(root, 'bin', 'tockteam.cmd'), join(packageDir, 'bin', 'tockteam.cmd'))
+  const windowsLauncher = join(packageDir, 'bin', 'tockteam.cmd')
+  copyFileSync(join(root, 'bin', 'tockteam.cmd'), windowsLauncher)
+  writeFileSync(
+    windowsLauncher,
+    readFileSync(windowsLauncher, 'utf8').replace(
+      'SETLOCAL\n',
+      'SETLOCAL\nSET "TOCKTEAM_SURFACES=web"\n',
+    ),
+  )
   writeFileSync(join(packageDir, 'bin', 'tockteam-web.cmd'), [
     '@ECHO off',
     'SETLOCAL',

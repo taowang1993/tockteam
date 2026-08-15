@@ -73,6 +73,8 @@ test('packaged web distribution exposes the unified tockteam command', () => {
   const build = readFileSync(new URL('../scripts/build-web.mjs', import.meta.url), 'utf8')
   assert.match(build, /join\(packageDir, 'bin', 'tockteam'\)/)
   assert.match(build, /join\(packageDir, 'lib', 'tockteam', 'cli\.js'\)/)
+  assert.match(build, /export TOCKTEAM_SURFACES=web/)
+  assert.match(build, /SET "TOCKTEAM_SURFACES=web"/)
   assert.match(build, /exec "\$ROOT\/bin\/tockteam" web "\$@"/)
 })
 
@@ -107,17 +109,17 @@ test('web bundle patch mounts the web-capable TockTeam plugins', () => {
   const root = join(dirname(fileURLToPath(import.meta.url)), '..')
   const patch = readFileSync(join(root, 'web', 'cordis.patch.yml'), 'utf8')
   for (const row of [
-    'oh-web',
-    'oh-better-sidebar-runtime',
-    'oh-skins',
-    'oh-pinned-summary',
-    'oh-sidebar',
-    'oh-panel-controls',
+    'tockteam-web',
+    'tockteam-better-sidebar-runtime',
+    'tockteam-skins',
+    'tockteam-pinned-summary',
+    'tockteam-sidebar',
+    'tockteam-panel-controls',
   ]) {
     assert.match(patch, new RegExp(`- id: ${row}`))
   }
   // Electron-bound surfaces stay out of the web composition.
-  for (const desktopRow of ['oh-desktop', 'oh-plugin-marketplace']) {
+  for (const desktopRow of ['tockteam-desktop', 'tockteam-plugin-marketplace']) {
     assert.doesNotMatch(patch, new RegExp(`- id: ${desktopRow}\\b`))
   }
 })

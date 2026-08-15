@@ -37,6 +37,10 @@ import type { LocaleService, Translate } from '../../../shared/i18n.ts'
 import { useTranslate } from '../../../shared/use-i18n.ts'
 import { WORKSPACE_MESSAGES, type WorkspaceMessage } from './i18n.ts'
 import {
+  TOCKTEAM_SURFACE_VIEW_SERVICE,
+  type TockTeamSurfaceView,
+} from '../../../shared/surface.ts'
+import {
   DesktopSidebarService,
   type DesktopSidebar,
   type DesktopSidebarSnapshot,
@@ -202,6 +206,7 @@ export const inject = [
   'sessions',
   'inputTriggers',
   'slots',
+  TOCKTEAM_SURFACE_VIEW_SERVICE,
   'workspaces',
 ]
 
@@ -322,6 +327,7 @@ class WorkspaceToolsService implements WorkspaceTools {
     private readonly pinnedSummary: PinnedSummary,
     private readonly sessions: SessionsService,
     private readonly workspaces: WorkspacesService,
+    private readonly showDesktopChrome: boolean,
   ) {
     this.state = this.project(sidebar.getSnapshot())
   }
@@ -447,6 +453,7 @@ class WorkspaceToolsService implements WorkspaceTools {
         sessions={this.sessions}
         workspaces={this.workspaces}
         sidebar={this.sidebar}
+        showDesktopChrome={this.showDesktopChrome}
       />,
     )
     this.narrowViewport.addEventListener('change', this.handleViewportChange)
@@ -1202,6 +1209,7 @@ function WorkspaceToolsSurface(props: {
   pinnedSummary: PinnedSummary
   sessions: SessionsService
   workspaces: WorkspacesService
+  showDesktopChrome: boolean
 }): ReactNode {
   const t = useTranslate(props.locale, props.t)
   const panelState = useSyncExternalStore(props.service.subscribe, props.service.getSnapshot)
@@ -1213,7 +1221,7 @@ function WorkspaceToolsSurface(props: {
   const title = session?.displayTitle?.trim() || 'TockTeam Desktop'
   return (
     <>
-      {createPortal(
+      {props.showDesktopChrome && createPortal(
         <>
           <DesktopWindowTitlebar
             panels={props.panels}
@@ -1693,6 +1701,7 @@ function pathBelongsToActiveWorkspace(
 export function apply(ctx: ClientContext): void {
   const locale = ctx.get('locale') as LocaleService
   const slots = ctx.get('slots') as SlotsService
+  const surface = ctx.get(TOCKTEAM_SURFACE_VIEW_SERVICE) as TockTeamSurfaceView
   const t: Translate<WorkspaceMessage> = locale.bind('tockteam.sidebar')
   ctx.effect(
     () => locale.register('tockteam.sidebar', WORKSPACE_MESSAGES),
@@ -1724,6 +1733,7 @@ export function apply(ctx: ClientContext): void {
     pinnedSummary,
     sessions,
     workspaces,
+    surface.kind === 'desktop',
   )
   const unregisterBuiltins = registerBuiltinSidebarTools({
     openExternalPath,

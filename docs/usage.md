@@ -53,8 +53,8 @@ sudo apt install ./TockTeam-Desktop-*.deb
 
 ### Windows
 
-解压 Release 中的 Windows 包并启动 **TockTeam Desktop**。统一 CLI 位于应用
-资源目录的 `bin\tockteam.cmd`，可以将该目录加入 `PATH`。
+GitHub Releases 目前不发布 Windows 构件。源码构建仍可使用
+`pnpm run dist:win`。
 
 ## 安装 Web-only
 
@@ -62,12 +62,6 @@ sudo apt install ./TockTeam-Desktop-*.deb
 tar -xzf tockteam-web-*.tar.gz
 cd tockteam-web-*/
 ./bin/tockteam web
-```
-
-Windows：
-
-```bat
-bin\tockteam.cmd web
 ```
 
 常用选项：
@@ -94,8 +88,8 @@ cd tockteam-tui-*/
 ./bin/tockteam tui
 ```
 
-Windows 使用 `bin\tockteam.cmd tui`。TUI 需要真实交互终端；默认使用 alternate
-screen，全屏选择、滚动和复制由上游 `dsh-TUI` 处理。
+TUI 需要真实交互终端；默认使用 alternate screen，全屏选择、滚动和复制由上游
+`dsh-TUI` 处理。
 
 ## 统一启动命令
 

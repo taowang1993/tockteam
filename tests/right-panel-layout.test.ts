@@ -58,6 +58,8 @@ test('desktop titlebar matches Tockbot chrome and stays draggable', () => {
   assert.match(main, /if \(options\.preview !== true\) window\.maximize\(\)/)
   assert.match(workspace, /<header className="tockteam-window-titlebar">/)
   assert.match(workspace, /className="tockteam-window-title"/)
+  assert.match(workspace, /props\.showDesktopChrome && createPortal\(/)
+  assert.match(workspace, /surface\.kind === 'desktop'/)
   assert.match(
     desktopShell,
     /\[data-slot='sidebar'\] button:is\([\s\S]*?aria-label='Collapse sidebar'[\s\S]*?aria-label='收起侧边栏'[\s\S]*?\)\s*\{[^}]*display: none !important;/s,
