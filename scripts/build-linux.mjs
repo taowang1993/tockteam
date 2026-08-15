@@ -3,6 +3,7 @@ import { existsSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { resolveProductVersion } from '../src/version.ts'
+import { ensureElectronInstalled } from './electron-runtime.mjs'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const version = resolveProductVersion(root)
@@ -11,16 +12,7 @@ const arch = requestedArch ?? { arm64: 'arm64', x64: 'x64' }[process.arch] ?? pr
 if (arch !== 'arm64' && arch !== 'x64') {
   throw new Error(`unsupported Linux architecture: ${arch}`)
 }
-const electronPackage = join(root, 'node_modules', 'electron')
-const electronBinary = join(electronPackage, 'dist', 'electron')
-if (!existsSync(electronBinary)) {
-  const installResult = spawnSync(process.execPath, [join(electronPackage, 'install.js')], {
-    cwd: root,
-    stdio: 'inherit',
-  })
-  if (installResult.error !== undefined) throw installResult.error
-  if (installResult.status !== 0) process.exit(installResult.status ?? 1)
-}
+ensureElectronInstalled()
 
 const iconSet = join(root, 'assets', 'icons', '512x512.png')
 if (!existsSync(iconSet)) {
