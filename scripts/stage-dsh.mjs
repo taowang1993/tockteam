@@ -651,8 +651,8 @@ function installCompiledPackageHostDependencies(sourceManifestPath, packageDir) 
   }
 }
 
-function installDesktopPackages() {
-  const packages = [
+function installDesktopPackages({ desktopOnly = false } = {}) {
+  const desktopPackages = [
     {
       manifest: join(root, 'package.json'),
       files: [
@@ -685,6 +685,9 @@ function installDesktopPackages() {
         [join(root, 'dist', 'plugins', directory, 'client.js.map'), 'dist/client.js.map'],
       ],
     })),
+  ]
+  const packages = desktopOnly ? desktopPackages : [
+    ...desktopPackages,
     {
       manifest: join(root, 'web', 'package.json'),
       files: [
@@ -836,6 +839,17 @@ for (const required of [
   }
 }
 
+const stagedNode = join(nodeRuntime, isWindowsNode ? 'node.exe' : join('bin', 'node'))
+if (process.argv.includes('--quick')
+  && existsSync(join(runtime, 'lib', 'bin.js'))
+  && existsSync(stagedNode)) {
+  // ponytail: refresh compiled desktop bundles only; use start:fresh after dependency or pinned DSH changes.
+  console.log('Refreshing staged desktop bundles')
+  installDesktopPackages({ desktopOnly: true })
+  console.log(`Refreshed staged DSH runtime: ${runtime}`)
+  process.exit(0)
+}
+
 rmSync(stage, { recursive: true, force: true })
 mkdirSync(stage, { recursive: true })
 const pnpm = resolvePinnedPnpm(dshSource)
@@ -871,7 +885,6 @@ ensureNodeRuntime()
 assertSelfContained(nodeRuntime, 'Node runtime')
 ensureLinuxPtyBuild()
 
-const stagedNode = join(nodeRuntime, isWindowsNode ? 'node.exe' : join('bin', 'node'))
 const hostPlatform = { darwin: 'darwin', linux: 'linux', win: 'win32' }[nodePlatform]
 if (hostPlatform === process.platform) {
   run(stagedNode, [join(runtime, 'lib', 'bin.js'), '--version'], {

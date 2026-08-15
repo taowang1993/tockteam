@@ -5,6 +5,20 @@ import { dirname, join } from 'node:path'
 import test from 'node:test'
 import { ensureElectronInstalled } from '../scripts/electron-runtime.mjs'
 
+test('development launch refreshes the existing stage instead of redeploying it', () => {
+  const manifest = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as {
+    scripts: Record<string, string>
+  }
+
+  const start = manifest.scripts.start
+  const freshStart = manifest.scripts['start:fresh']
+  assert.ok(start)
+  assert.ok(freshStart)
+  assert.match(start, /stage-dsh\.mjs --quick/)
+  assert.doesNotMatch(start, /pnpm run stage:dsh/)
+  assert.match(freshStart, /pnpm run stage:dsh/)
+})
+
 test('desktop launch repairs a partial Electron install', () => {
   const root = mkdtempSync(join(tmpdir(), 'oh-dsh-electron-'))
   const electron = join(root, 'node_modules', 'electron')
