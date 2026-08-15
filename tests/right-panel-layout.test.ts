@@ -6,7 +6,11 @@ import { test } from 'node:test'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 
-test('embedded tools keep the application root inside the window row', () => {
+test('desktop shell keeps a Tockbot-style rail, app column, and optional panel', () => {
+  const workspace = readFileSync(
+    join(root, 'plugins/sidebar/src/client/plugin.tsx'),
+    'utf8',
+  )
   const css = readFileSync(
     join(root, 'plugins/sidebar/src/client/sidebar.css'),
     'utf8',
@@ -14,11 +18,48 @@ test('embedded tools keep the application root inside the window row', () => {
 
   assert.match(
     css,
-    /#oh-dsh-embedded-layout\s*\{[^}]*grid-template-rows: minmax\(0, 1fr\);/s,
+    /--oh-dsh-rail-width: 40px;/,
+  )
+  assert.match(
+    css,
+    /#oh-dsh-embedded-layout\s*\{[^}]*grid-template-columns:\s*var\(--oh-dsh-rail-width\) minmax\(0, 1fr\) 0;[^}]*grid-template-rows: minmax\(0, 1fr\);/s,
   )
   assert.match(
     css,
     /#oh-dsh-embedded-layout > #root\s*\{[^}]*min-height: 0;[^}]*overflow: hidden;/s,
+  )
+  assert.match(
+    css,
+    /#oh-dsh-rail-root\s*\{[^}]*width: var\(--oh-dsh-rail-width\);/s,
+  )
+  assert.match(workspace, /layout\.append\(rail, appRoot, this\.element\)/)
+  assert.match(workspace, /<DesktopToolRail/)
+  assert.match(
+    workspace,
+    /`var\(--oh-dsh-rail-width\) minmax\(0, 1fr\) \$\{String\(track\)\}px`/,
+  )
+})
+
+test('desktop shell renders a real titlebar instead of floating panel controls', () => {
+  const workspace = readFileSync(
+    join(root, 'plugins/sidebar/src/client/plugin.tsx'),
+    'utf8',
+  )
+  const css = readFileSync(
+    join(root, 'plugins/sidebar/src/client/sidebar.css'),
+    'utf8',
+  )
+
+  assert.match(workspace, /<header className="oh-dsh-window-titlebar">/)
+  assert.match(workspace, /className="oh-dsh-window-title"/)
+  assert.match(workspace, /panels\.toggleSidebar\(\)/)
+  assert.match(
+    css,
+    /\.oh-dsh-window-titlebar\s*\{[^}]*position: fixed;[^}]*height: var\(--oh-dsh-titlebar-height, 40px\);/s,
+  )
+  assert.doesNotMatch(
+    css,
+    /\.oh-dsh-panel-toolbar\s*\{[^}]*position: fixed;/s,
   )
 })
 

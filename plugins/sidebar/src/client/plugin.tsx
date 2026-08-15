@@ -24,6 +24,7 @@ import {
 } from '../sidebar-preferences.ts'
 import {
   BrowserView,
+  DesktopToolRail,
   FilesView,
   FileView,
   SideToolsPanel,
@@ -68,6 +69,7 @@ interface ObservableSnapshot<T> {
 interface SessionSummary {
   blank?: boolean
   cwd?: string
+  displayTitle?: string
 }
 
 interface SessionListState {
@@ -281,9 +283,11 @@ class WorkspaceToolsService implements WorkspaceTools {
   private readonly listeners = new Set<() => void>()
   private style: HTMLStyleElement | undefined
   private element: HTMLDivElement | undefined
+  private railElement: HTMLDivElement | undefined
   private layout: HTMLDivElement | undefined
   private appRoot: HTMLElement | undefined
   private root: Root | undefined
+  private railRoot: Root | undefined
   private stopSidebar: (() => void) | undefined
   private readonly narrowViewport = window.matchMedia('(max-width: 900px)')
   private readonly handleViewportChange = (): void => { this.applyLayout() }
@@ -423,15 +427,19 @@ class WorkspaceToolsService implements WorkspaceTools {
     document.head.append(this.style)
     this.element = document.createElement('div')
     this.element.id = 'oh-dsh-sidebar-root'
+    const rail = document.createElement('div')
+    rail.id = 'oh-dsh-rail-root'
     const appRoot = document.getElementById('root')
     if (appRoot === null) throw new Error('sidebar: app root is unavailable')
     const layout = document.createElement('div')
     layout.id = 'oh-dsh-embedded-layout'
     appRoot.before(layout)
-    layout.append(appRoot, this.element)
+    layout.append(rail, appRoot, this.element)
     this.appRoot = appRoot
+    this.railElement = rail
     this.layout = layout
     this.root = createRoot(this.element)
+    this.railRoot = createRoot(rail)
     this.root.render(
       <WorkspaceToolsSurface
         locale={this.locale}
@@ -441,6 +449,15 @@ class WorkspaceToolsService implements WorkspaceTools {
         pinnedSummary={this.pinnedSummary}
         sessions={this.sessions}
         workspaces={this.workspaces}
+        sidebar={this.sidebar}
+      />,
+    )
+    this.railRoot.render(
+      <WorkspaceToolRailSurface
+        locale={this.locale}
+        t={this.t}
+        panels={this.panels}
+        sessions={this.sessions}
         sidebar={this.sidebar}
       />,
     )
@@ -454,7 +471,9 @@ class WorkspaceToolsService implements WorkspaceTools {
     window.removeEventListener('keydown', this.handleShortcut, true)
     this.narrowViewport.removeEventListener('change', this.handleViewportChange)
     this.root?.unmount()
+    this.railRoot?.unmount()
     this.element?.remove()
+    this.railElement?.remove()
     if (this.layout !== undefined && this.appRoot !== undefined) {
       this.layout.before(this.appRoot)
       this.layout.remove()
@@ -522,17 +541,18 @@ class WorkspaceToolsService implements WorkspaceTools {
     }
     if (this.layout !== undefined) {
       if (this.state.open && this.state.maximized) {
-        this.layout.style.gridTemplateColumns = '0 minmax(0, 1fr)'
+        this.layout.style.gridTemplateColumns = 'var(--oh-dsh-rail-width) 0 minmax(0, 1fr)'
       } else {
         const track = this.state.open && !this.narrowViewport.matches ? this.state.width : 0
-        this.layout.style.gridTemplateColumns = `minmax(0, 1fr) ${String(track)}px`
+        this.layout.style.gridTemplateColumns = `var(--oh-dsh-rail-width) minmax(0, 1fr) ${String(track)}px`
       }
     }
   }
 }
 
-function PanelIcon({ kind }: { kind: 'expand' | 'summary' | 'terminal' | 'side' }): JSX.Element {
+function PanelIcon({ kind }: { kind: 'expand' | 'sidebar' | 'summary' | 'terminal' | 'side' }): JSX.Element {
   if (kind === 'expand') return <svg viewBox="0 0 20 20"><path d="M7 3H3v4M13 3h4v4M17 13v4h-4M7 17H3v-4" /></svg>
+  if (kind === 'sidebar') return <svg viewBox="0 0 20 20"><rect x="3" y="3" width="14" height="14" rx="2.5" /><path d="M7.5 3.5v13" /></svg>
   if (kind === 'summary') {
     return <svg viewBox="0 0 20 20"><circle cx="5" cy="5" r="1.5" /><path d="M9 5h7M4 10h12" /><circle cx="15" cy="15" r="1.5" /><path d="M4 15h7" /></svg>
   }
@@ -593,6 +613,40 @@ function DesktopPanelToolbar({
         onClick={() => { service.toggleSidePanel() }}
       ><PanelIcon kind="side" /></button>
     </nav>
+  )
+}
+
+function DesktopWindowTitlebar({
+  panels,
+  pinnedSummary,
+  service,
+  t,
+  title,
+}: {
+  panels: DesktopPanels
+  pinnedSummary: PinnedSummary
+  service: WorkspaceToolsService
+  t: Translate<WorkspaceMessage>
+  title: string
+}): JSX.Element {
+  return (
+    <header className="oh-dsh-window-titlebar">
+      <div className="oh-dsh-titlebar-leading">
+        <button
+          type="button"
+          aria-label={t('sidebar.toggle')}
+          title={t('sidebar.toggle')}
+          onClick={() => { panels.toggleSidebar() }}
+        ><PanelIcon kind="sidebar" /></button>
+      </div>
+      <strong className="oh-dsh-window-title" title={title}>{title}</strong>
+      <DesktopPanelToolbar
+        service={service}
+        panels={panels}
+        pinnedSummary={pinnedSummary}
+        t={t}
+      />
+    </header>
   )
 }
 
@@ -1163,6 +1217,35 @@ function WorkspacePanel({
   )
 }
 
+function WorkspaceToolRailSurface(props: {
+  locale: LocaleService
+  t: Translate<WorkspaceMessage>
+  panels: DesktopPanels
+  sessions: SessionsService
+  sidebar: DesktopSidebar
+}): JSX.Element {
+  const t = useTranslate(props.locale, props.t)
+  const sessionList = useSyncExternalStore(
+    props.sessions.list.subscribe,
+    props.sessions.list.getSnapshot,
+  )
+  const terminalOpen = useSyncExternalStore(
+    props.panels.subscribe,
+    () => props.panels.isBottomPanelOpen(),
+  )
+  const cwd = sessionList.current === undefined
+    ? undefined
+    : sessionList.byId[sessionList.current]?.cwd
+  return (
+    <DesktopToolRail
+      cwd={cwd}
+      sidebar={props.sidebar}
+      t={t}
+      terminalOpen={terminalOpen}
+    />
+  )
+}
+
 function WorkspaceToolsSurface(props: {
   locale: LocaleService
   t: Translate<WorkspaceMessage>
@@ -1176,14 +1259,19 @@ function WorkspaceToolsSurface(props: {
   const t = useTranslate(props.locale, props.t)
   const panelState = useSyncExternalStore(props.service.subscribe, props.service.getSnapshot)
   const sessionList = useSyncExternalStore(props.sessions.list.subscribe, props.sessions.list.getSnapshot)
-  const cwd = sessionList.current === undefined ? undefined : sessionList.byId[sessionList.current]?.cwd
+  const session = sessionList.current === undefined
+    ? undefined
+    : sessionList.byId[sessionList.current]
+  const cwd = session?.cwd
+  const title = session?.displayTitle?.trim() || 'Oh-DSH Desktop'
   return (
     <>
-      <DesktopPanelToolbar
-        service={props.service}
+      <DesktopWindowTitlebar
         panels={props.panels}
         pinnedSummary={props.pinnedSummary}
+        service={props.service}
         t={t}
+        title={title}
       />
       <SideToolsPanel
         cwd={cwd}

@@ -112,6 +112,9 @@ html[data-oh-dsh-desktop='true']:has(
 ) #oh-dsh-sidebar-root,
 html[data-oh-dsh-desktop='true']:has(
   #root [role='presentation'] > [role='dialog']
+) #oh-dsh-rail-root,
+html[data-oh-dsh-desktop='true']:has(
+  #root [role='presentation'] > [role='dialog']
 ) [data-oh-dsh-pinned-summary],
 html[data-oh-dsh-desktop='true']:has(
   #root [role='presentation'] > [role='dialog']
