@@ -51,6 +51,11 @@ test('desktop titlebar matches Tockbot chrome and stays draggable', () => {
     main,
     /titleBarStyle: 'hidden' as const, trafficLightPosition: \{ x: 16, y: 12 \}/,
   )
+  assert.match(
+    main,
+    /screen\.getAllDisplays\(\)[\s\S]*?display\.internal === false[\s\S]*?display\.id !== primaryDisplay\.id[\s\S]*?x: targetDisplay\.bounds\.x,[\s\S]*?y: targetDisplay\.bounds\.y,/s,
+  )
+  assert.match(main, /if \(options\.preview !== true\) window\.maximize\(\)/)
   assert.match(workspace, /<header className="oh-dsh-window-titlebar">/)
   assert.match(workspace, /className="oh-dsh-window-title"/)
   assert.match(
@@ -72,11 +77,11 @@ test('desktop titlebar matches Tockbot chrome and stays draggable', () => {
   )
   assert.match(
     css,
-    /\.oh-dsh-titlebar-leading\s*\{[^}]*width: 240px;[^}]*height: 100%;[^}]*align-items: center;[^}]*justify-content: flex-end;[^}]*margin-left: var\(--oh-dsh-rail-width\);[^}]*padding-right: 4px;/s,
+    /\.oh-dsh-titlebar-leading\s*\{[^}]*width: 280px;[^}]*height: 100%;[^}]*align-items: center;[^}]*justify-content: flex-end;[^}]*margin-left: var\(--oh-dsh-rail-width\);[^}]*padding-right: 4px;[^}]*border-right: 1px solid/s,
   )
   assert.match(
     css,
-    /body:has\(\[data-sidebar-collapsed\]\) \.oh-dsh-titlebar-leading\s*\{[^}]*width: 84px;/s,
+    /body:has\(\[data-sidebar-collapsed\]\) \.oh-dsh-titlebar-leading\s*\{[^}]*width: 56px;[^}]*border-right: 0;/s,
   )
   assert.match(
     css,

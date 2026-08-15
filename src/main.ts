@@ -6,6 +6,7 @@ import {
   ipcMain,
   Menu,
   nativeTheme,
+  screen,
   session,
   shell,
   type MenuItemConstructorOptions,
@@ -222,7 +223,14 @@ function windowIconPath(): string | undefined {
 
 function createWindow(options: { preview?: boolean; title?: string } = {}): BrowserWindow {
   const icon = windowIconPath()
+  const displays = screen.getAllDisplays()
+  const primaryDisplay = screen.getPrimaryDisplay()
+  const targetDisplay = displays.find(display => display.internal === false)
+    ?? displays.find(display => display.id !== primaryDisplay.id)
+    ?? primaryDisplay
   const window = new BrowserWindow({
+    x: targetDisplay.bounds.x,
+    y: targetDisplay.bounds.y,
     width: options.preview === true ? 1160 : 1280,
     height: options.preview === true ? 760 : 840,
     minWidth: 900,
@@ -244,6 +252,7 @@ function createWindow(options: { preview?: boolean; title?: string } = {}): Brow
     },
   })
   window.webContents.setZoomFactor(DEFAULT_UI_ZOOM_FACTOR)
+  if (options.preview !== true) window.maximize()
   window.once('ready-to-show', () => { window.show() })
   window.on('closed', () => {
     if (mainWindow === window) mainWindow = undefined

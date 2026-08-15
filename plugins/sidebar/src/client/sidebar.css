@@ -65,17 +65,19 @@ html[data-oh-dsh-desktop-sidebar-open='true'] #oh-dsh-sidebar-root {
 
 .oh-dsh-titlebar-leading {
   display: flex;
-  width: 240px;
+  width: 280px;
   height: 100%;
   align-items: center;
   justify-content: flex-end;
   margin-left: var(--oh-dsh-rail-width);
   padding-right: 4px;
+  border-right: 1px solid var(--dsw-alias-border-l1, rgb(0 0 0 / 8%));
   box-sizing: border-box;
 }
 
 body:has([data-sidebar-collapsed]) .oh-dsh-titlebar-leading {
-  width: 84px;
+  width: 56px;
+  border-right: 0;
 }
 
 .oh-dsh-window-title {
