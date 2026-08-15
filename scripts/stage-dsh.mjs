@@ -382,7 +382,7 @@ function walk(rootPath, visit) {
 
 /**
  * fetch-blob 3 imports the deprecated node-domexception shim for Node 12.
- * Oh-DSH ships Node 26 and supports Node 24+, both of which expose the same
+ * TockTeam ships Node 26 and supports Node 24+, both of which expose the same
  * Web-standard DOMException globally. Patch only this reviewed import, then
  * remove the now-unreferenced shim from the portable runtime.
  */
@@ -558,7 +558,7 @@ function resolveDependencyManifest(requireFromPackage, dependency) {
 
 function installCompiledPackageDependencies(sourceManifestPath, packageDir) {
   const installRoot = join(packageDir, 'node_modules')
-  const storeRoot = join(installRoot, '.oh-dsh-store')
+  const storeRoot = join(installRoot, '.tockteam-store')
   const installed = new Map()
 
   const instanceName = (manifestPath, manifest) => {
@@ -639,7 +639,7 @@ function installCompiledPackageDependencies(sourceManifestPath, packageDir) {
 function installCompiledPackageHostDependencies(sourceManifestPath, packageDir) {
   const manifest = JSON.parse(readFileSync(sourceManifestPath, 'utf8'))
   const sourcePackages = discoverSourcePackages()
-  for (const dependency of manifest.ohDsh?.hostDependencies ?? []) {
+  for (const dependency of manifest.tockTeam?.hostDependencies ?? []) {
     const source = sourcePackages.get(dependency)
     if (source === undefined) {
       throw new Error(`${manifest.name} cannot resolve DSH peer ${dependency}`)

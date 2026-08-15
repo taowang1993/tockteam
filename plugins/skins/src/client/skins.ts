@@ -2,11 +2,11 @@
 
 export {
   DESKTOP_SKINS,
-  OH_DSH_SKINS,
+  TOCKTEAM_SKINS,
   desktopSkin,
-  ohDshSkin,
+  tockTeamSkin,
   type DesktopSkin,
-  type OhDshSkin,
+  type TockTeamSkin,
   type SkinColorScheme,
   type TuiSkinColors,
 } from '../skins.ts'

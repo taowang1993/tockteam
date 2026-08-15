@@ -65,8 +65,8 @@ interface SkinOption {
 
 export const inject = ['locale', 'slots', 'theme']
 
-const SETTINGS_NAMESPACE = 'oh-dsh.skins'
-const SETTINGS_STYLE_ATTRIBUTE = 'data-oh-dsh-skins'
+const SETTINGS_NAMESPACE = 'tockteam.skins'
+const SETTINGS_STYLE_ATTRIBUTE = 'data-tockteam-skins'
 
 const DEFAULT_OPTION: SkinOption = {
   id: null,
@@ -92,19 +92,19 @@ function SkinSettingsRow({ setSkin, t, useStore }: SkinRowProps): JSX.Element {
   const activeId = useStore(state => state.activeId)
   const ready = useStore(state => state.ready)
   return (
-    <div className="oh-dsh-skins-group">
-      <div className="oh-dsh-skins-heading">
-        <div className="oh-dsh-skins-title">{t('skins.title')}</div>
-        <div className="oh-dsh-skins-description">{t('skins.description')}</div>
+    <div className="tockteam-skins-group">
+      <div className="tockteam-skins-heading">
+        <div className="tockteam-skins-title">{t('skins.title')}</div>
+        <div className="tockteam-skins-description">{t('skins.description')}</div>
       </div>
-      <div className="oh-dsh-skins-grid">
+      <div className="tockteam-skins-grid">
         {OPTIONS.map(option => {
           const selected = activeId === (option.id ?? '')
           return (
             <button
               key={option.id ?? 'default'}
               type="button"
-              className="oh-dsh-skins-tile"
+              className="tockteam-skins-tile"
               data-selected={selected}
               aria-label={t(option.label)}
               aria-pressed={selected}
@@ -112,17 +112,17 @@ function SkinSettingsRow({ setSkin, t, useStore }: SkinRowProps): JSX.Element {
               onClick={() => { setSkin(option.id) }}
             >
               <span
-                className="oh-dsh-skins-preview"
+                className="tockteam-skins-preview"
                 style={{ background: option.preview }}
               />
-              <span className="oh-dsh-skins-meta">
-                <span className="oh-dsh-skins-swatch" style={{ background: option.accent }} />
-                <span className="oh-dsh-skins-copy">
-                  <span className="oh-dsh-skins-name">{t(option.label)}</span>
-                  <span className="oh-dsh-skins-mode">{t(option.mode)}</span>
+              <span className="tockteam-skins-meta">
+                <span className="tockteam-skins-swatch" style={{ background: option.accent }} />
+                <span className="tockteam-skins-copy">
+                  <span className="tockteam-skins-name">{t(option.label)}</span>
+                  <span className="tockteam-skins-mode">{t(option.mode)}</span>
                 </span>
                 {selected && (
-                  <span className="oh-dsh-skins-check" title={t('skins.selected')}>✓</span>
+                  <span className="tockteam-skins-check" title={t('skins.selected')}>✓</span>
                 )}
               </span>
             </button>
@@ -155,12 +155,12 @@ export function apply(ctx: ClientContext): void {
   const theme = ctx.get('theme') as ThemeService
 
   ctx.effect(
-    () => locale.register('oh-dsh.skins', DESKTOP_SKINS_MESSAGES),
-    'oh-dsh-skins: dictionaries',
+    () => locale.register('tockteam.skins', DESKTOP_SKINS_MESSAGES),
+    'tockteam-skins: dictionaries',
   )
   ctx.effect(
     () => typeof document === 'undefined' ? undefined : installSettingsStyles(),
-    'oh-dsh-skins: settings styles',
+    'tockteam-skins: settings styles',
   )
 
   const storage = typeof fetch === 'undefined'
@@ -219,11 +219,11 @@ export function apply(ctx: ClientContext): void {
       if (started) controller.dispose()
       void removeService?.()
     }
-  }, 'oh-dsh-skins: controller')
+  }, 'tockteam-skins: controller')
 
   slots.inject('settings.general.item', () => slots.register({
     name: 'settings.general.item',
-    id: 'oh-dsh-skins',
+    id: 'tockteam-skins',
     order: 20,
     store,
     locale: SETTINGS_NAMESPACE,

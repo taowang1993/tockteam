@@ -20,7 +20,7 @@ test('development launch refreshes the existing stage instead of redeploying it'
 })
 
 test('desktop launch repairs a partial Electron install', () => {
-  const root = mkdtempSync(join(tmpdir(), 'oh-dsh-electron-'))
+  const root = mkdtempSync(join(tmpdir(), 'tockteam-electron-'))
   const electron = join(root, 'node_modules', 'electron')
   const executable = process.platform === 'darwin'
     ? 'Electron.app/Contents/MacOS/Electron'

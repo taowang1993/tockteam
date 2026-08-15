@@ -41,8 +41,8 @@ import {
 } from './runtime-paths.ts'
 import { resolveProductVersion } from './version.ts'
 
-const PRODUCT_NAME = 'Oh-DSH Desktop'
-const LEGACY_DATA_DIRECTORY = 'Oh-DSH-Desktop'
+const PRODUCT_NAME = 'TockTeam Desktop'
+const DATA_DIRECTORY = 'TockTeam-Desktop'
 const DEFAULT_UI_ZOOM_FACTOR = 1.12
 const currentDir = dirname(fileURLToPath(import.meta.url))
 const PRODUCT_VERSION = resolveProductVersion(join(currentDir, '..'))
@@ -215,7 +215,7 @@ function isAllowedBrowserNavigation(target: string): boolean {
 function windowIconPath(): string | undefined {
   // Packaged builds carry the icon beside resources/; dev falls back to the
   // rendered set so the window shows the app icon instead of Electron's.
-  const packaged = join(process.resourcesPath, 'oh-dsh-desktop.png')
+  const packaged = join(process.resourcesPath, 'tockteam-desktop.png')
   if (existsSync(packaged)) return packaged
   const development = join(currentDir, '..', 'assets', 'icons', '512x512.png')
   return existsSync(development) ? development : undefined
@@ -443,7 +443,7 @@ async function restartRuntime(message = '正在重新启动 DeepSeek Harness…'
     appendLog('desktop', error instanceof Error ? error.stack ?? error.message : String(error))
     await showSplash({
       error: true,
-      message: 'Oh-DSH Desktop 启动失败。',
+      message: 'TockTeam Desktop 启动失败。',
       detail: error instanceof Error ? error.message : String(error),
     })
   } finally {
@@ -702,7 +702,7 @@ async function bootstrap(): Promise<void> {
   app.setName(PRODUCT_NAME)
   // The visible product name changed in 0.1.x. Keep the existing data path so
   // an in-place upgrade retains sessions, profiles, skins, and credentials.
-  app.setPath('userData', join(app.getPath('appData'), app.isPackaged ? LEGACY_DATA_DIRECTORY : `${LEGACY_DATA_DIRECTORY}-Dev`))
+  app.setPath('userData', join(app.getPath('appData'), app.isPackaged ? DATA_DIRECTORY : `${DATA_DIRECTORY}-Dev`))
   app.setAboutPanelOptions({
     applicationName: PRODUCT_NAME,
     applicationVersion: PRODUCT_VERSION,
@@ -763,7 +763,7 @@ async function bootstrap(): Promise<void> {
       webContentsIsMainWindow: webContents === mainWindow?.webContents,
     })
   })
-  const browserSession = session.fromPartition('persist:oh-dsh-browser')
+  const browserSession = session.fromPartition('persist:tockteam-browser')
   browserSession.setPermissionRequestHandler((_webContents, _permission, callback) => { callback(false) })
   browserSession.setPermissionCheckHandler(() => false)
   buildMenu()
@@ -809,9 +809,9 @@ async function bootstrap(): Promise<void> {
 void bootstrap().catch(async (error: unknown) => {
   const detail = error instanceof Error ? error.stack ?? error.message : String(error)
   appendLog('desktop', detail)
-  if (app.isReady()) await showSplash({ error: true, message: 'Oh-DSH Desktop 启动失败。', detail })
+  if (app.isReady()) await showSplash({ error: true, message: 'TockTeam Desktop 启动失败。', detail })
   else {
     await app.whenReady()
-    await showSplash({ error: true, message: 'Oh-DSH Desktop 启动失败。', detail })
+    await showSplash({ error: true, message: 'TockTeam Desktop 启动失败。', detail })
   }
 })

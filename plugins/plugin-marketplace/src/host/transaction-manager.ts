@@ -31,12 +31,12 @@ import {
 import type { MarketplacePlatform } from './platform.ts'
 
 const STATE_VERSION = 2
-const MANAGED_DIRECTORY = '.oh-dsh'
+const MANAGED_DIRECTORY = '.tockteam'
 const STATE_FILE = 'marketplace.json'
-const PATCH_BEGIN = '# >>> Oh-DSH-Desktop plugin marketplace'
-const PATCH_END = '# <<< Oh-DSH-Desktop plugin marketplace'
-const BUILD_BEGIN = '# >>> Oh-DSH-Desktop allowed plugin builds'
-const BUILD_END = '# <<< Oh-DSH-Desktop allowed plugin builds'
+const PATCH_BEGIN = '# >>> TockTeam-Desktop plugin marketplace'
+const PATCH_END = '# <<< TockTeam-Desktop plugin marketplace'
+const BUILD_BEGIN = '# >>> TockTeam-Desktop allowed plugin builds'
+const BUILD_END = '# <<< TockTeam-Desktop allowed plugin builds'
 
 interface MarketplaceStateFile {
   entries: MarketplaceInstalledPlugin[]

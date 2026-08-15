@@ -1,4 +1,4 @@
-export const WORKSPACE_API_PATH = '/oh-dsh/workspace'
+export const WORKSPACE_API_PATH = '/tockteam/workspace'
 export type WorkspaceFileKind = 'directory' | 'file' | 'symlink'
 
 export interface WorkspaceFileEntry {

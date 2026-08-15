@@ -88,7 +88,7 @@ function ToolRow(props: {
 }): JSX.Element {
   return (
     <button
-      className="oh-dsh-side-tool-row"
+      className="tockteam-side-tool-row"
       type="button"
       disabled={props.disabled}
       onClick={props.onClick}
@@ -124,7 +124,7 @@ function SideMenu(props: SideToolsPanelProps): JSX.Element {
     descriptor.hidden !== true && props.sidebar.isTabEnabled(descriptor.id),
   )
   return (
-    <div className="oh-dsh-side-menu">
+    <div className="tockteam-side-menu">
       {descriptors.map(descriptor => (
         <ToolRow
           key={descriptor.id}
@@ -134,7 +134,7 @@ function SideMenu(props: SideToolsPanelProps): JSX.Element {
           onClick={() => { void open(descriptor) }}
         />
       ))}
-      {error !== '' && <div className="oh-dsh-side-error" role="alert">{error}</div>}
+      {error !== '' && <div className="tockteam-side-error" role="alert">{error}</div>}
     </div>
   )
 }
@@ -171,8 +171,8 @@ export function BrowserView({
     const host = container.current
     if (host === null) return
     const element = document.createElement('webview') as unknown as ElectronWebviewElement
-    element.className = 'oh-dsh-browser-webview'
-    element.setAttribute('partition', 'persist:oh-dsh-browser')
+    element.className = 'tockteam-browser-webview'
+    element.setAttribute('partition', 'persist:tockteam-browser')
     element.setAttribute('src', tab.resource ?? 'about:blank')
     const update = (event: Event): void => {
       const next = 'url' in event && typeof event.url === 'string'
@@ -229,9 +229,9 @@ export function BrowserView({
   }
 
   return (
-    <div className="oh-dsh-browser-view">
+    <div className="tockteam-browser-view">
       <form
-        className="oh-dsh-browser-bar"
+        className="tockteam-browser-bar"
         onSubmit={event => { event.preventDefault(); void navigate() }}
       >
         <button
@@ -253,8 +253,8 @@ export function BrowserView({
         />
         <button type="submit">{t('browser.go')}</button>
       </form>
-      {error !== '' && <div className="oh-dsh-browser-error" role="alert">{error}</div>}
-      <div ref={container} className="oh-dsh-browser-host" />
+      {error !== '' && <div className="tockteam-browser-error" role="alert">{error}</div>}
+      <div ref={container} className="tockteam-browser-host" />
     </div>
   )
 }
@@ -317,11 +317,11 @@ export function FilesView({
     patch({ resource: next })
   }
   if (cwd === undefined) {
-    return <div className="oh-dsh-side-empty">{t('files.select-workspace')}</div>
+    return <div className="tockteam-side-empty">{t('files.select-workspace')}</div>
   }
   return (
-    <div className="oh-dsh-files-view">
-      <div className="oh-dsh-files-path" title={snapshot?.path ?? cwd}>
+    <div className="tockteam-files-view">
+      <div className="tockteam-files-path" title={snapshot?.path ?? cwd}>
         <button
           type="button"
           disabled={snapshot?.parent == null}
@@ -337,10 +337,10 @@ export function FilesView({
           onClick={() => { setRefreshKey(value => value + 1) }}
         >↻</button>
       </div>
-      {loading && <div className="oh-dsh-side-muted">{t('files.loading')}</div>}
-      {error !== '' && <div className="oh-dsh-side-error" role="alert">{error}</div>}
+      {loading && <div className="tockteam-side-muted">{t('files.loading')}</div>}
+      {error !== '' && <div className="tockteam-side-error" role="alert">{error}</div>}
       {snapshot?.kind === 'directory' && (
-        <div className="oh-dsh-file-list">
+        <div className="tockteam-file-list">
           {snapshot.entries.map(entry => (
             <button
               key={entry.path}
@@ -362,10 +362,10 @@ export function FilesView({
             </button>
           ))}
           {snapshot.entries.length === 0 && (
-            <div className="oh-dsh-side-muted">{t('files.empty-directory')}</div>
+            <div className="tockteam-side-muted">{t('files.empty-directory')}</div>
           )}
           {snapshot.truncated && (
-            <div className="oh-dsh-side-muted">{t('files.showing-first')}</div>
+            <div className="tockteam-side-muted">{t('files.showing-first')}</div>
           )}
         </div>
       )}
@@ -407,12 +407,12 @@ export function FileView({
   }, [cwd, path, scope?.sessionId])
 
   if (cwd === undefined || path === undefined) {
-    return <div className="oh-dsh-side-empty">{t('files.select-workspace')}</div>
+    return <div className="tockteam-side-empty">{t('files.select-workspace')}</div>
   }
-  if (error !== '') return <div className="oh-dsh-side-error" role="alert">{error}</div>
-  if (snapshot === null) return <div className="oh-dsh-side-muted">{t('files.loading')}</div>
+  if (error !== '') return <div className="tockteam-side-error" role="alert">{error}</div>
+  if (snapshot === null) return <div className="tockteam-side-muted">{t('files.loading')}</div>
   if (snapshot.kind !== 'file') {
-    return <div className="oh-dsh-side-muted">{t('files.not-file')}</div>
+    return <div className="tockteam-side-muted">{t('files.not-file')}</div>
   }
   const head = snapshot.binary
     ? new Uint8Array([0])
@@ -426,14 +426,14 @@ export function FileView({
     })}</>
   }
   return (
-    <div className="oh-dsh-file-preview">
+    <div className="tockteam-file-preview">
       <div>
         <strong>{tab.title}</strong>
         <button type="button" onClick={() => { void onOpenPath(path) }}>
           {t('files.open')}
         </button>
       </div>
-      <div className="oh-dsh-side-muted">
+      <div className="tockteam-side-muted">
         {t('files.no-viewer', { size: formatSize(snapshot.size) })}
       </div>
     </div>
@@ -445,7 +445,7 @@ function OrphanedTab({ title, t }: {
   title: string
 }): JSX.Element {
   return (
-    <div className="oh-dsh-side-empty">
+    <div className="tockteam-side-empty">
       <strong>{title}</strong>
       <p>{t('side.orphaned-tab')}</p>
     </div>
@@ -459,7 +459,7 @@ function TabStrip({ sidebar, t }: {
   const snapshot = useSyncExternalStore(sidebar.subscribe, sidebar.getSnapshot)
   if (snapshot.tabs.length < 2) return null
   return (
-    <div className="oh-dsh-side-tabs" role="tablist">
+    <div className="tockteam-side-tabs" role="tablist">
       {snapshot.tabs.map(tab => (
         <div key={tab.id} data-active={tab.id === snapshot.activeId || undefined}>
           <button
@@ -521,7 +521,7 @@ export function SideToolsPanel(props: SideToolsPanelProps): JSX.Element {
       : descriptor.render(renderProps)
   return (
     <aside
-      className="oh-dsh-workspace-panel oh-dsh-side-panel"
+      className="tockteam-workspace-panel tockteam-side-panel"
       data-open={String(props.open)}
       data-maximized={String(props.maximized)}
       aria-hidden={!props.open}
@@ -530,14 +530,14 @@ export function SideToolsPanel(props: SideToolsPanelProps): JSX.Element {
     >
       {!props.maximized && (
         <div
-          className="oh-dsh-workspace-resize"
+          className="tockteam-workspace-resize"
           onPointerDown={beginResize}
           aria-hidden="true"
         />
       )}
       <TabStrip sidebar={props.sidebar} t={props.t} />
       {activeTab !== undefined && descriptor?.chrome !== 'custom' && (
-        <header className="oh-dsh-workspace-header oh-dsh-side-header">
+        <header className="tockteam-workspace-header tockteam-side-header">
           <div>
             <button
               type="button"

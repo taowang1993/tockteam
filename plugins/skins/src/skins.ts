@@ -6,8 +6,8 @@ export type SkinColorScheme = 'light' | 'dark'
 /** Semantic colors consumed by the pinned terminal renderer. */
 export type TuiSkinColors = Readonly<Record<string, string>>
 
-/** One surface-neutral Oh-DSH skin with browser and terminal adapters. */
-export interface OhDshSkin {
+/** One surface-neutral TockTeam skin with browser and terminal adapters. */
+export interface TockTeamSkin {
   id: DesktopSkinId
   colorScheme: SkinColorScheme
   tokens: Readonly<Record<string, string>>
@@ -20,7 +20,7 @@ export interface OhDshSkin {
 }
 
 /** Compatibility name retained for the browser controller API. */
-export type DesktopSkin = OhDshSkin
+export type DesktopSkin = TockTeamSkin
 
 function tuiColors(
   tokens: Readonly<Record<string, string>>,
@@ -215,9 +215,9 @@ const EMBER_DUSK_TOKENS = {
   '--dsw-specific-sidebar-nav-item-hover': '#301e2b',
 } as const
 
-export const OH_DSH_SKINS: readonly OhDshSkin[] = Object.freeze([
+export const TOCKTEAM_SKINS: readonly TockTeamSkin[] = Object.freeze([
   Object.freeze({
-    id: 'oh-dsh-skin-deep-current',
+    id: 'tockteam-skin-deep-current',
     colorScheme: 'dark',
     tokens: DEEP_CURRENT_TOKENS,
     tui: tuiColors(DEEP_CURRENT_TOKENS, '#b995f5'),
@@ -227,7 +227,7 @@ export const OH_DSH_SKINS: readonly OhDshSkin[] = Object.freeze([
     label: 'skins.name.deep-current',
   }),
   Object.freeze({
-    id: 'oh-dsh-skin-jade-circuit',
+    id: 'tockteam-skin-jade-circuit',
     colorScheme: 'dark',
     tokens: JADE_CIRCUIT_TOKENS,
     tui: tuiColors(JADE_CIRCUIT_TOKENS, '#a78bfa'),
@@ -237,7 +237,7 @@ export const OH_DSH_SKINS: readonly OhDshSkin[] = Object.freeze([
     label: 'skins.name.jade-circuit',
   }),
   Object.freeze({
-    id: 'oh-dsh-skin-porcelain',
+    id: 'tockteam-skin-porcelain',
     colorScheme: 'light',
     tokens: PORCELAIN_TOKENS,
     tui: tuiColors(PORCELAIN_TOKENS, '#8a6faf'),
@@ -247,7 +247,7 @@ export const OH_DSH_SKINS: readonly OhDshSkin[] = Object.freeze([
     label: 'skins.name.porcelain',
   }),
   Object.freeze({
-    id: 'oh-dsh-skin-ember-dusk',
+    id: 'tockteam-skin-ember-dusk',
     colorScheme: 'dark',
     tokens: EMBER_DUSK_TOKENS,
     tui: tuiColors(EMBER_DUSK_TOKENS, '#c79cff'),
@@ -259,12 +259,12 @@ export const OH_DSH_SKINS: readonly OhDshSkin[] = Object.freeze([
 ])
 
 /** Compatibility alias used by the browser-facing controller. */
-export const DESKTOP_SKINS = OH_DSH_SKINS
+export const DESKTOP_SKINS = TOCKTEAM_SKINS
 
-export function ohDshSkin(id: string): OhDshSkin | undefined {
-  return OH_DSH_SKINS.find(skin => skin.id === id)
+export function tockTeamSkin(id: string): TockTeamSkin | undefined {
+  return TOCKTEAM_SKINS.find(skin => skin.id === id)
 }
 
 export function desktopSkin(id: string): DesktopSkin | undefined {
-  return ohDshSkin(id)
+  return tockTeamSkin(id)
 }

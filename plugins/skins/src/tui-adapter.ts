@@ -1,4 +1,4 @@
-/** TUI adapter for the shared Oh-DSH skin catalog. */
+/** TUI adapter for the shared TockTeam skin catalog. */
 
 import {
   copyFileSync,
@@ -17,7 +17,7 @@ import {
   type FallbackTheme,
   type SkinPreferences,
 } from './preferences.ts'
-import { OH_DSH_SKINS } from './skins.ts'
+import { TOCKTEAM_SKINS } from './skins.ts'
 
 const BUILTIN_TUI_THEMES = new Set(['light', 'dark', 'dark-ansi'])
 
@@ -35,7 +35,7 @@ export interface TuiSkinActivation {
 /** Resolve the two stores joined by the TUI adapter. */
 export function tuiSkinPaths(
   dataRoot: string,
-  tuiConfigRoot: string = join(homedir(), '.ohdsh', 'tui'),
+  tuiConfigRoot: string = join(homedir(), '.tockteam', 'tui'),
 ): TuiSkinPaths {
   return Object.freeze({
     preferences: join(dataRoot, 'skins.json'),
@@ -97,10 +97,10 @@ function samePreferences(left: SkinPreferences, right: SkinPreferences): boolean
 
 function installThemeFiles(directory: string): void {
   mkdirSync(directory, { recursive: true, mode: 0o700 })
-  for (const skin of OH_DSH_SKINS) {
+  for (const skin of TOCKTEAM_SKINS) {
     writeJsonAtomic(join(directory, `${skin.id}.json`), {
       name: skin.id,
-      displayName: `Oh-DSH · ${skin.displayName}`,
+      displayName: `TockTeam · ${skin.displayName}`,
       base: skin.colorScheme,
       colors: skin.tui,
     })

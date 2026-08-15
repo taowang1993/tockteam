@@ -21,7 +21,7 @@ export function resolveRuntimeResourcesRoot(
   isPackaged: boolean,
   environment: NodeJS.ProcessEnv = process.env,
 ): string {
-  const explicit = environment.OH_DSH_RESOURCES_ROOT ?? environment.DSH_OH_WEB_ROOT
+  const explicit = environment.TOCKTEAM_RESOURCES_ROOT ?? environment.TOCKTEAM_WEB_ROOT
   if (explicit !== undefined && explicit !== '') return explicit
   return isPackaged ? packagedRoot : developmentRoot
 }

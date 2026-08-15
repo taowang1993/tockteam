@@ -8,8 +8,8 @@ import {
 } from './preferences-server.ts'
 import {
   hasBrowserSurface,
-  OH_DSH_SURFACE_SERVICE,
-  type OhDshSurface,
+  TOCKTEAM_SURFACE_SERVICE,
+  type TockTeamSurface,
 } from '../../shared/surface.ts'
 
 interface HostContext {
@@ -27,7 +27,7 @@ interface HostContext {
   }
 }
 
-export const name = 'oh-dsh-sidebar'
+export const name = 'tockteam-sidebar'
 export const inject = ['webServer']
 
 function sendJson(response: ServerResponse, status: number, payload: unknown): void {
@@ -72,17 +72,17 @@ export function apply(ctx: HostContext): void {
   // Three-surface adaptation: the sidebar host is pure Node (workspace facts,
   // Git, preferences), so desktop and web both mount it. The TUI shell has no
   // webServer and no browser, so this row never activates there.
-  const surface = ctx.get(OH_DSH_SURFACE_SERVICE) as OhDshSurface | undefined
+  const surface = ctx.get(TOCKTEAM_SURFACE_SERVICE) as TockTeamSurface | undefined
   const legacy = ctx.get('desktop') as SidebarDesktopCapability | undefined
   if (!hasBrowserSurface(surface?.kind) && legacy === undefined) {
-    ctx.logger.warn('oh-dsh-sidebar: no browser surface; sidebar host disabled')
+    ctx.logger.warn('tockteam-sidebar: no browser surface; sidebar host disabled')
     return
   }
   const dataRoot = surface?.dataRoot ?? legacy?.appDataPath ?? ''
   if (dataRoot !== '') {
     ctx.effect(
       () => mountSidebarPreferences(ctx, { appDataPath: dataRoot }),
-      'oh-dsh-sidebar: sidebar preferences',
+      'tockteam-sidebar: sidebar preferences',
     )
   }
   ctx.effect(() => ctx.webServer.register({
@@ -90,7 +90,7 @@ export function apply(ctx: HostContext): void {
     path: WORKSPACE_API_PATH,
     handler: async (request, response) => {
       try {
-        const url = new URL(request.url ?? '/', 'http://oh-dsh.internal')
+        const url = new URL(request.url ?? '/', 'http://tockteam.internal')
         const cwd = url.searchParams.get('cwd') ?? undefined
         if (request.method === 'GET') {
           sendJson(response, 200, await readWorkspaceFacts(cwd))
@@ -114,5 +114,5 @@ export function apply(ctx: HostContext): void {
         sendJson(response, 400, { error: message })
       }
     },
-  }), 'oh-dsh-sidebar: workspace Git API')
+  }), 'tockteam-sidebar: workspace Git API')
 }

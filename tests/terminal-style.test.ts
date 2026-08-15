@@ -8,9 +8,9 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 
 test('terminal viewport cannot expose xterm default black behind the themed screen', () => {
   const css = readFileSync(join(root, 'plugins/panel-controls/src/terminal/terminal.css'), 'utf8')
-  assert.match(css, /\.oh-dsh-terminal-view \.xterm-viewport[\s\S]*background-color:[^;]+!important/)
-  assert.match(css, /\.oh-dsh-terminal-view \{[\s\S]*padding: 9px 12px;/)
-  assert.doesNotMatch(css, /\.oh-dsh-terminal-view \.xterm \{[^}]*padding:/)
+  assert.match(css, /\.tockteam-terminal-view \.xterm-viewport[\s\S]*background-color:[^;]+!important/)
+  assert.match(css, /\.tockteam-terminal-view \{[\s\S]*padding: 9px 12px;/)
+  assert.doesNotMatch(css, /\.tockteam-terminal-view \.xterm \{[^}]*padding:/)
 })
 
 test('terminal is controlled only by the shared desktop toolbar', () => {
@@ -29,5 +29,5 @@ test('terminal is controlled only by the shared desktop toolbar', () => {
 
   assert.doesNotMatch(plugin, /TerminalTrigger|terminal-trigger-root/)
   assert.doesNotMatch(mounts, /terminal-trigger-root/)
-  assert.doesNotMatch(css, /oh-dsh-terminal-trigger/)
+  assert.doesNotMatch(css, /tockteam-terminal-trigger/)
 })

@@ -4,11 +4,11 @@
   <a href="../README.en.md">Back to README</a>
 </p>
 
-# Oh-DSH design and plugin boundaries
+# TockTeam design and plugin boundaries
 
 ## Goals
 
-Oh-DSH provides Desktop, Web, and TUI over one pinned DSH runtime.
+TockTeam provides Desktop, Web, and TUI over one pinned DSH runtime.
 The surfaces share sessions, Profiles, plugin contracts, and local
 capabilities, while each package carries only the interaction layer it needs.
 Lightweight deployments do not have to install Electron.
@@ -19,13 +19,13 @@ Design principles:
 - Desktop is the full distribution; Web and TUI can be packaged separately.
 - Keep one Host and one permission boundary for each capability.
 - Human and Agent plugin actions share the same preview and commit transaction.
-- Synchronize upstream features without replacing the Oh-DSH UI or themes.
+- Synchronize upstream features without replacing the TockTeam UI or themes.
 
 ## Surface architecture
 
 ```mermaid
 flowchart TB
-  CLI["ohdsh"] --> Desktop["desktop\nElectron + Web runtime"]
+  CLI["tockteam"] --> Desktop["desktop\nElectron + Web runtime"]
   CLI --> Web["web\nHTTP + Web runtime"]
   CLI --> TUI["tui\ndsh-TUI renderer"]
 
@@ -33,11 +33,11 @@ flowchart TB
   Web --> Core
   TUI --> Core
   Core --> Profiles["Profile + Loader"]
-  Profiles --> Plugins["Oh-DSH and third-party plugins"]
+  Profiles --> Plugins["TockTeam and third-party plugins"]
   Plugins --> Host["Workspace · PTY · Git · Browser"]
 ```
 
-`ohdsh` only selects an interaction surface. Runtime capabilities remain
+`tockteam` only selects an interaction surface. Runtime capabilities remain
 under DSH Profile and Loader management, so separate packages never create a
 second plugin system.
 
@@ -49,29 +49,29 @@ second plugin system.
 | Web-only | HTTP/Web runtime, Node, Web-compatible plugins, unified CLI | Electron and native window features |
 | TUI-only | dsh-TUI renderer, Node, TUI-compatible plugins, unified CLI | Electron and browser UI |
 
-Desktop itself uses the Web UI, so Oh-DSH does not ship a degraded
+Desktop itself uses the Web UI, so TockTeam does not ship a degraded
 "Desktop-only" package. Web-only and TUI-only remove Electron; TUI-only is
 the smallest supported distribution.
 
 ## Bundled plugins and upstreams
 
-| Plugin | Relationship | Oh-DSH boundary |
+| Plugin | Relationship | TockTeam boundary |
 | --- | --- | --- |
-| `@oh-dsh/desktop` | Native | Unified entry, window, menu, bridge, and bundled-plugin registration |
-| `@oh-dsh/better-sidebar-runtime` | Pins [`DSH-better-sidebar`](https://github.com/omdsh-dev/DSH-better-sidebar) | Builds the upstream Host for PTY, Files, Git, history, and commit diff |
-| `@oh-dsh/sidebar` | Downstream Better Sidebar UI adapter | Reuses the Host while retaining Oh-DSH layout, icons, themes, Review, and comments |
-| `@oh-dsh/panel-controls` | Downstream implementation of the `dsh-web-panel` interaction model | Unified Terminal dock without a separate Web Terminal install |
-| `@oh-dsh/pinned-summary` | Native | Session summary, half-height card, and content-gutter management |
-| `@oh-dsh/plugin-marketplace` | Adopts lifecycle ideas from `plugin-registry` and `dsh-hub` | One Loader, isolated preview, risk approval, TOFU source lock, and recovery |
-| `@oh-dsh/skins` | Downstream implementation of the `dsh-skins` ThemeService model | One skin id set, Host persistence, Web/Desktop CSS, and TUI palette adapters |
+| `@tockteam/desktop` | Native | Unified entry, window, menu, bridge, and bundled-plugin registration |
+| `@tockteam/better-sidebar-runtime` | Pins [`DSH-better-sidebar`](https://github.com/omdsh-dev/DSH-better-sidebar) | Builds the upstream Host for PTY, Files, Git, history, and commit diff |
+| `@tockteam/sidebar` | Downstream Better Sidebar UI adapter | Reuses the Host while retaining TockTeam layout, icons, themes, Review, and comments |
+| `@tockteam/panel-controls` | Downstream implementation of the `dsh-web-panel` interaction model | Unified Terminal dock without a separate Web Terminal install |
+| `@tockteam/pinned-summary` | Native | Session summary, half-height card, and content-gutter management |
+| `@tockteam/plugin-marketplace` | Adopts lifecycle ideas from `plugin-registry` and `dsh-hub` | One Loader, isolated preview, risk approval, TOFU source lock, and recovery |
+| `@tockteam/skins` | Downstream implementation of the `dsh-skins` ThemeService model | One skin id set, Host persistence, Web/Desktop CSS, and TUI palette adapters |
 | `dsh-cc-tui` | Pins [`dsh-TUI`](https://github.com/ccch1mneyyy/dsh-TUI) | Upstream owns terminal rendering, session interaction, commands, and terminal compatibility |
-| `@oh-dsh/tui` | Downstream Profile adapter for `dsh-TUI` | Unified `ohdsh tui`, Oh-DSH TUI identity, defaults, packaging, and DSH data boundary |
+| `@tockteam/tui` | Downstream Profile adapter for `dsh-TUI` | Unified `tockteam tui`, TockTeam TUI identity, defaults, packaging, and DSH data boundary |
 
 Downstream plugins periodically inspect upstream features and adapt them to
-the current DSH contracts. Upstream code, the Oh-DSH UI, and final permission
+the current DSH contracts. Upstream code, the TockTeam UI, and final permission
 boundaries remain separate layers.
 
-`@oh-dsh/skins` is the only skin-definition module for all three surfaces.
+`@tockteam/skins` is the only skin-definition module for all three surfaces.
 Web and Desktop adapt the catalog to DSH CSS tokens; TUI adapts the same ids
 to the upstream native `/theme` palettes. TUI retains upstream hot switching
 and its picker, then mirrors the choice into the shared `skins.json` on the
@@ -110,7 +110,7 @@ same transaction and risk approval and cannot bypass the Loader.
 
 ## Naming and data compatibility
 
-User-facing names are **Oh-DSH Desktop**, **Oh-DSH Web**, and **Oh-DSH TUI**.
+User-facing names are **TockTeam Desktop**, **TockTeam Web**, and **TockTeam TUI**.
 Internal package ids, the bundle id, and existing data directories remain
 stable so upgrades preserve sessions, settings, and credentials.
 

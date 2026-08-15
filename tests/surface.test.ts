@@ -5,17 +5,17 @@ import { fileURLToPath } from 'node:url'
 import { test } from 'node:test'
 import {
   hasBrowserSurface,
-  OH_DSH_SURFACE_SERVICE,
-  OH_DSH_SURFACE_VIEW_SERVICE,
-  type OhDshSurface,
+  TOCKTEAM_SURFACE_SERVICE,
+  TOCKTEAM_SURFACE_VIEW_SERVICE,
+  type TockTeamSurface,
 } from '../plugins/shared/surface.ts'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 
-test('surface contract defines exactly the three Oh-DSH forms', () => {
-  assert.equal(OH_DSH_SURFACE_SERVICE, 'ohDshSurface')
-  assert.equal(OH_DSH_SURFACE_VIEW_SERVICE, 'ohDshSurface')
-  const surface: OhDshSurface = {
+test('surface contract defines exactly the three TockTeam forms', () => {
+  assert.equal(TOCKTEAM_SURFACE_SERVICE, 'tockTeamSurface')
+  assert.equal(TOCKTEAM_SURFACE_VIEW_SERVICE, 'tockTeamSurface')
+  const surface: TockTeamSurface = {
     dataRoot: '/data',
     kind: 'desktop',
     platform: 'darwin',
@@ -32,17 +32,17 @@ test('surface contract defines exactly the three Oh-DSH forms', () => {
 
 test('every bundled plugin adapts explicitly per surface', () => {
   const skins = readFileSync(join(root, 'plugins/skins/src/index.ts'), 'utf8')
-  assert.match(skins, /OH_DSH_SURFACE_SERVICE/)
+  assert.match(skins, /TOCKTEAM_SURFACE_SERVICE/)
   assert.match(skins, /hasBrowserSurface/)
   assert.match(skins, /surface\?\.kind === 'tui'/)
   assert.match(skins, /mountTuiSkins/)
-  assert.match(skins, /ctx\.inject\(\[OH_DSH_SURFACE_SERVICE\], mountSurface\)/)
+  assert.match(skins, /ctx\.inject\(\[TOCKTEAM_SURFACE_SERVICE\], mountSurface\)/)
   assert.match(skins, /ctx\.inject\(\['webServer'\]/)
 
   const sidebar = readFileSync(join(root, 'plugins/sidebar/src/index.ts'), 'utf8')
   assert.match(sidebar, /export const inject = \['webServer'\]/)
   assert.doesNotMatch(sidebar, /inject = \['desktop', 'webServer'\]/)
-  assert.match(sidebar, /OH_DSH_SURFACE_SERVICE/)
+  assert.match(sidebar, /TOCKTEAM_SURFACE_SERVICE/)
   assert.match(sidebar, /hasBrowserSurface/)
   assert.match(sidebar, /no browser surface; sidebar host disabled/)
 
@@ -55,18 +55,18 @@ test('every bundled plugin adapts explicitly per surface', () => {
 
   const desktopHost = readFileSync(join(root, 'src/plugin.ts'), 'utf8')
   assert.match(desktopHost, /kind: 'desktop'/)
-  assert.match(desktopHost, /OH_DSH_SURFACE_SERVICE/)
+  assert.match(desktopHost, /TOCKTEAM_SURFACE_SERVICE/)
 
   const webHost = readFileSync(join(root, 'web/src/index.ts'), 'utf8')
   assert.match(webHost, /kind: 'web'/)
-  assert.match(webHost, /OH_DSH_SURFACE_SERVICE/)
+  assert.match(webHost, /TOCKTEAM_SURFACE_SERVICE/)
 
   const webClient = readFileSync(join(root, 'web/src/client.ts'), 'utf8')
   assert.match(webClient, /kind: 'web'/)
-  assert.match(webClient, /OH_DSH_SURFACE_VIEW_SERVICE/)
+  assert.match(webClient, /TOCKTEAM_SURFACE_VIEW_SERVICE/)
 
   const tuiHost = readFileSync(join(root, 'plugins/tui/src/index.ts'), 'utf8')
   assert.match(tuiHost, /kind: 'tui'/)
-  assert.match(tuiHost, /OH_DSH_SURFACE_SERVICE/)
-  assert.match(tuiHost, /Oh-DSH TUI/)
+  assert.match(tuiHost, /TOCKTEAM_SURFACE_SERVICE/)
+  assert.match(tuiHost, /TockTeam TUI/)
 })

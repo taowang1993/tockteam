@@ -1,4 +1,4 @@
-/** Oh-DSH Web launcher: boot the packaged web profile and expose its URL. */
+/** TockTeam Web launcher: boot the packaged web profile and expose its URL. */
 
 import { spawn } from 'node:child_process'
 import { existsSync, mkdirSync } from 'node:fs'
@@ -20,7 +20,7 @@ export const DEFAULT_WEB_PORT = 3080
 /** Default bind host: loopback only. Use 0.0.0.0 to expose the UI on the LAN. */
 export const DEFAULT_WEB_HOST = '127.0.0.1'
 /** Default writable data root. */
-export const DEFAULT_DATA_DIR_NAME = '.oh-dsh-web'
+export const DEFAULT_DATA_DIR_NAME = '.tockteam-web'
 
 /** Launch options resolved from argv and environment. */
 export interface LaunchOptions {
@@ -34,7 +34,7 @@ export interface LaunchOptions {
 
 export { UsageError } from './errors.ts'
 
-const USAGE = `usage: ohdsh web [options]
+const USAGE = `usage: tockteam web [options]
 
 Options:
   --host <host>           bind host (default ${DEFAULT_WEB_HOST}; use 0.0.0.0 to expose the UI on the LAN)
@@ -45,7 +45,7 @@ Options:
   --help                  show this help
 
 Environment:
-  DSH_OH_WEB_HOST, DSH_OH_WEB_PORT, DSH_OH_WEB_HOME, DSH_OH_WEB_OPEN
+  TOCKTEAM_WEB_HOST, TOCKTEAM_WEB_PORT, TOCKTEAM_WEB_HOME, TOCKTEAM_WEB_OPEN
 `
 
 function parsePort(value: string): number {
@@ -58,7 +58,7 @@ function parsePort(value: string): number {
 function parseOpen(value: string): boolean {
   if (value === '1' || value.toLowerCase() === 'true') return true
   if (value === '0' || value.toLowerCase() === 'false') return false
-  throw new UsageError(`invalid DSH_OH_WEB_OPEN value: ${value}`)
+  throw new UsageError(`invalid TOCKTEAM_WEB_OPEN value: ${value}`)
 }
 
 function envBoolean(env: NodeJS.ProcessEnv, name: string): boolean | undefined {
@@ -78,11 +78,11 @@ export function parseLaunchArgs(
   defaultDataRoot: string,
 ): LaunchOptions {
   const options: LaunchOptions = {
-    dataRoot: env.DSH_OH_WEB_HOME ?? defaultDataRoot,
+    dataRoot: env.TOCKTEAM_WEB_HOME ?? defaultDataRoot,
     help: false,
-    host: env.DSH_OH_WEB_HOST ?? DEFAULT_WEB_HOST,
-    open: envBoolean(env, 'DSH_OH_WEB_OPEN') ?? interactive,
-    port: env.DSH_OH_WEB_PORT === undefined ? DEFAULT_WEB_PORT : parsePort(env.DSH_OH_WEB_PORT),
+    host: env.TOCKTEAM_WEB_HOST ?? DEFAULT_WEB_HOST,
+    open: envBoolean(env, 'TOCKTEAM_WEB_OPEN') ?? interactive,
+    port: env.TOCKTEAM_WEB_PORT === undefined ? DEFAULT_WEB_PORT : parsePort(env.TOCKTEAM_WEB_PORT),
     trustedHosts: [],
   }
   for (let index = 0; index < args.length; index += 1) {
@@ -136,7 +136,7 @@ export function parseLaunchArgs(
 
 /** Resolve the distribution root: the packaged install root or the repo stage. */
 export function resolveWebRoot(env: NodeJS.ProcessEnv = process.env): string {
-  const packaged = env.DSH_OH_WEB_ROOT
+  const packaged = env.TOCKTEAM_WEB_ROOT
   if (packaged !== undefined && packaged !== '') return packaged
   // Development layout: dist/web.js lives directly under the repository root.
   return dirname(dirname(fileURLToPath(import.meta.url)))
@@ -167,7 +167,7 @@ function printLine(ring: string[], line: string): void {
 }
 
 /**
- * Boot the Oh-DSH Web distribution and keep it running until a signal
+ * Boot the TockTeam Web distribution and keep it running until a signal
  * arrives. Exits 0 on a clean stop, 1 on runtime failure.
  */
 export async function main(
@@ -193,13 +193,13 @@ export async function main(
     || options.host === '::1'
   if (!loopback && options.trustedHosts.length === 0) {
     throw new UsageError(
-      'exposing Oh-DSH Web on a non-loopback host requires --trusted-host: '
+      'exposing TockTeam Web on a non-loopback host requires --trusted-host: '
       + 'the terminal and workspace APIs are guarded only by the browser trust fence',
     )
   }
 
   // The runtime child runs with cwd set to the data root, so a relative
-  // --data/DSH_OH_WEB_HOME would resolve DSH_HOME from a nested directory.
+  // --data/TOCKTEAM_WEB_HOME would resolve DSH_HOME from a nested directory.
   // Normalize once and derive every runtime path from the absolute root.
   const dataRoot = resolve(options.dataRoot)
   const root = resolveWebRoot(env)
@@ -209,7 +209,7 @@ export async function main(
   const stagedNode = process.platform === 'win32'
     ? join(root, '.stage', 'node-runtime', 'node.exe')
     : join(root, '.stage', 'node-runtime', 'bin', 'node')
-  const resourcesRoot = env.DSH_OH_WEB_ROOT !== undefined
+  const resourcesRoot = env.TOCKTEAM_WEB_ROOT !== undefined
     ? root
     : existsSync(stagedNode)
       ? join(root, '.stage')
@@ -239,10 +239,10 @@ export async function main(
     env: {
       ...env,
       DSH_HOME: dshHome,
-      DSH_OH_WEB: '1',
-      DSH_OH_WEB_DATA: dataRoot,
-      DSH_OH_WEB_PROFILE: WEB_PROFILE,
-      DSH_OH_WEB_VERSION: version,
+      TOCKTEAM_WEB: '1',
+      TOCKTEAM_WEB_DATA: dataRoot,
+      TOCKTEAM_WEB_PROFILE: WEB_PROFILE,
+      TOCKTEAM_WEB_VERSION: version,
       NODE_USE_ENV_PROXY: '1',
       PATH: runtimeSearchPath(paths, env),
     },
@@ -265,7 +265,7 @@ export async function main(
   runtime.on('exit', (exit: RuntimeExit) => {
     if (stopping) return
     process.stderr.write(
-      `Oh-DSH Web stopped (code=${String(exit.code)}, signal=${String(exit.signal)})\n`
+      `TockTeam Web stopped (code=${String(exit.code)}, signal=${String(exit.signal)})\n`
       + `${logTail.slice(-20).join('\n')}\n`,
     )
     process.exit(1)
@@ -273,7 +273,7 @@ export async function main(
 
   try {
     const url = await runtime.start()
-    stdout.write(`Oh-DSH Web ${version} is running at ${url.href}\n`)
+    stdout.write(`TockTeam Web ${version} is running at ${url.href}\n`)
     if (options.open) openBrowser(url.href, process.platform)
     await new Promise<void>(() => {})
     return 0

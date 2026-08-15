@@ -1,15 +1,15 @@
 {
-  "name": "@oh-dsh/desktop",
-  "productName": "Oh-DSH Desktop",
+  "name": "@tockteam/desktop",
+  "productName": "TockTeam Desktop",
   "version": "0.1.4",
-  "description": "Oh-DSH: installable Desktop, Web, and TUI surfaces over DeepSeek Harness",
+  "description": "TockTeam: installable Desktop, Web, and TUI surfaces over DeepSeek Harness",
   "author": "dsh-external",
-  "desktopName": "oh-dsh-desktop.desktop",
+  "desktopName": "tockteam-desktop.desktop",
   "private": true,
   "type": "module",
   "main": "dist/main.js",
   "bin": {
-    "ohdsh": "bin/ohdsh"
+    "tockteam": "bin/tockteam"
   },
   "exports": {
     ".": {
@@ -24,9 +24,9 @@
     "dist/client.js",
     "dist/client.js.map",
     "dist/cordis.patch.yml",
-    "dist/ohdsh.js",
-    "bin/ohdsh",
-    "bin/ohdsh.cmd"
+    "dist/tockteam.js",
+    "bin/tockteam",
+    "bin/tockteam.cmd"
   ],
   "dsh": {
     "bundle": {
@@ -36,10 +36,10 @@
       "inject": [
         "@deepseek-ai/dsh-client-runtime",
         "@deepseek-ai/dsh-client-ui-layout",
-        "@oh-dsh/panel-controls",
-        "@oh-dsh/pinned-summary",
-        "@oh-dsh/sidebar",
-        "@oh-dsh/plugin-marketplace"
+        "@tockteam/panel-controls",
+        "@tockteam/pinned-summary",
+        "@tockteam/sidebar",
+        "@tockteam/plugin-marketplace"
       ],
       "platform": "web",
       "immediately": true
@@ -51,18 +51,18 @@
     "stage:dsh": "node scripts/stage-dsh.mjs",
     "check:plugins": "node scripts/smoke-runtime.mjs",
     "smoke:runtime": "node scripts/smoke-runtime.mjs",
-    "smoke:app": "node scripts/smoke-runtime.mjs \"release/mac-arm64/Oh-DSH Desktop.app/Contents/Resources\"",
+    "smoke:app": "node scripts/smoke-runtime.mjs \"release/mac-arm64/TockTeam Desktop.app/Contents/Resources\"",
     "smoke:app:linux": "node scripts/smoke-runtime.mjs \"release/linux-unpacked/resources\"",
     "smoke:web": "node scripts/smoke-web.mjs",
     "smoke:web:package": "node scripts/smoke-web.mjs release",
     "install:mac": "node scripts/install-mac.mjs",
-    "ohdsh": "pnpm run build && pnpm run stage:dsh && node dist/ohdsh.js",
+    "tockteam": "pnpm run build && pnpm run stage:dsh && node dist/tockteam.js",
     "web": "pnpm run build && pnpm run stage:dsh && node dist/web.js",
-    "tui": "pnpm run build && pnpm run stage:dsh && node dist/ohdsh.js tui",
+    "tui": "pnpm run build && pnpm run stage:dsh && node dist/tockteam.js tui",
     "dev:desktop": "pnpm run start",
     "start": "pnpm run build && node scripts/stage-dsh.mjs --quick && node scripts/electron-runtime.mjs && electron .",
     "start:fresh": "pnpm run build && pnpm run stage:dsh && node scripts/electron-runtime.mjs && electron .",
-    "check:screenshot": "electron scripts/check-screenshot-corners.cjs assets/oh-dsh-desktop-ui.png",
+    "check:screenshot": "electron scripts/check-screenshot-corners.cjs assets/tockteam-desktop-ui.png",
     "test": "node --test tests/*.test.ts",
     "typecheck": "tsc --noEmit",
     "dist:mac": "pnpm run build && pnpm run build:dsh && pnpm run stage:dsh && node scripts/build-mac.mjs",
@@ -89,8 +89,8 @@
     "node": ">=24"
   },
   "build": {
-    "appId": "ai.deepseek.oh-dsh-desktop",
-    "productName": "Oh-DSH Desktop",
+    "appId": "ai.deepseek.tockteam-desktop",
+    "productName": "TockTeam Desktop",
     "asar": true,
     "afterPack": "scripts/after-pack.cjs",
     "directories": {
@@ -116,22 +116,22 @@
       },
       {
         "from": "assets/icons/512x512.png",
-        "to": "oh-dsh-desktop.png"
+        "to": "tockteam-desktop.png"
       },
       {
-        "from": "dist/ohdsh.js",
-        "to": "lib/oh-dsh/cli.js"
+        "from": "dist/tockteam.js",
+        "to": "lib/tockteam/cli.js"
       },
       {
         "from": "dist/release-package.json",
-        "to": "lib/oh-dsh/package.json"
+        "to": "lib/tockteam/package.json"
       },
       {
         "from": "bin",
         "to": "bin",
         "filter": [
-          "ohdsh",
-          "ohdsh.cmd"
+          "tockteam",
+          "tockteam.cmd"
         ]
       }
     ],
@@ -141,22 +141,22 @@
         "dmg",
         "zip"
       ],
-      "icon": "assets/Oh-DSH-Desktop.icns",
+      "icon": "assets/TockTeam-Desktop.icns",
       "identity": null,
       "darkModeSupport": true,
       "minimumSystemVersion": "12.0.0",
       "extendInfo": {
-        "NSAppleEventsUsageDescription": "Oh-DSH Desktop uses Apple Events only when a DeepSeek Harness tool needs to interact with a Mac app.",
-        "NSDesktopFolderUsageDescription": "Oh-DSH Desktop needs access to workspaces you select on the Desktop.",
-        "NSDocumentsFolderUsageDescription": "Oh-DSH Desktop needs access to workspaces you select in Documents.",
-        "NSDownloadsFolderUsageDescription": "Oh-DSH Desktop needs access to workspaces you select in Downloads."
+        "NSAppleEventsUsageDescription": "TockTeam Desktop uses Apple Events only when a DeepSeek Harness tool needs to interact with a Mac app.",
+        "NSDesktopFolderUsageDescription": "TockTeam Desktop needs access to workspaces you select on the Desktop.",
+        "NSDocumentsFolderUsageDescription": "TockTeam Desktop needs access to workspaces you select in Documents.",
+        "NSDownloadsFolderUsageDescription": "TockTeam Desktop needs access to workspaces you select in Downloads."
       }
     },
     "linux": {
       "category": "Development",
       "icon": "assets/icons",
       "maintainer": "dsh-external",
-      "executableName": "oh-dsh-desktop",
+      "executableName": "tockteam-desktop",
       "syncDesktopName": true,
       "synopsis": "An extensible DeepSeek Harness desktop workbench",
       "target": [
@@ -171,8 +171,8 @@
       "icon": "assets/icons/512x512.png"
     },
     "dmg": {
-      "title": "Oh-DSH Desktop ${version}",
-      "artifactName": "Oh-DSH-Desktop-${version}-${arch}.${ext}",
+      "title": "TockTeam Desktop ${version}",
+      "artifactName": "TockTeam-Desktop-${version}-${arch}.${ext}",
       "window": {
         "width": 540,
         "height": 380
@@ -191,6 +191,6 @@
         }
       ]
     },
-    "artifactName": "Oh-DSH-Desktop-${version}-${arch}.${ext}"
+    "artifactName": "TockTeam-Desktop-${version}-${arch}.${ext}"
   }
 }

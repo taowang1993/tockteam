@@ -1,12 +1,12 @@
-/** Host face for the native Oh-DSH Desktop surface. */
+/** Host face for the native TockTeam Desktop surface. */
 
 import {
   mountMarketplaceAgentTools,
   type MarketplaceToolContext,
 } from './marketplace-tools.ts'
 import {
-  OH_DSH_SURFACE_SERVICE,
-  type OhDshSurface,
+  TOCKTEAM_SURFACE_SERVICE,
+  type TockTeamSurface,
 } from '../plugins/shared/surface.ts'
 
 interface SystemPromptService {
@@ -37,7 +37,7 @@ interface HostContext extends MarketplaceToolContext {
 }
 
 /** Stable Cordis plugin name. */
-export const name = 'oh-dsh-desktop'
+export const name = 'tockteam-desktop'
 
 /** Desktop facts and guarded marketplace tools are the only Host concerns. */
 export const inject = ['tools']
@@ -62,12 +62,12 @@ function environmentCapability(): DesktopHostCapability {
 }
 
 function desktopPrompt(capability: DesktopHostCapability): string {
-  return `You are interacting with the user through Oh-DSH Desktop ${capability.version} on ${capability.platform}. `
-    + 'Oh-DSH Desktop is an Electron distribution backed by DeepSeek Harness. '
+  return `You are interacting with the user through TockTeam Desktop ${capability.version} on ${capability.platform}. `
+    + 'TockTeam Desktop is an Electron distribution backed by DeepSeek Harness. '
     + 'Native window actions, workspaces, panels, files, tools, skills, subagents, and other agent capabilities are composed through DSH plugins. '
     + 'Manage desktop plugins only with desktop_plugin_* tools: prepare every change, inspect risk, use the isolated preview, and apply only after approval. '
-    + 'When the user says “this app” without naming another target, they mean Oh-DSH Desktop. '
-    + 'Identify this surface as Oh-DSH Desktop backed by DeepSeek Harness.'
+    + 'When the user says “this app” without naming another target, they mean TockTeam Desktop. '
+    + 'Identify this surface as TockTeam Desktop backed by DeepSeek Harness.'
 }
 
 /** Mount the native desktop capability in the DSH graph. */
@@ -77,18 +77,18 @@ export function apply(ctx: HostContext): void {
   // The unified three-surface contract: desktop shell (see
   // plugins/shared/surface.ts). The `desktop` service above stays for
   // third-party plugins written against the desktop distribution.
-  ctx.provide(OH_DSH_SURFACE_SERVICE, Object.freeze({
+  ctx.provide(TOCKTEAM_SURFACE_SERVICE, Object.freeze({
     dataRoot: capability.appDataPath,
     kind: 'desktop',
     platform: capability.platform,
     profile: capability.profile,
     version: capability.version,
-  } satisfies OhDshSurface))
+  } satisfies TockTeamSurface))
   mountMarketplaceAgentTools(ctx)
 
   ctx.inject(['systemPrompt'], (promptCtx) => {
     promptCtx.systemPrompt.section({
-      name: 'app:oh-dsh-desktop-surface',
+      name: 'app:tockteam-desktop-surface',
       order: -98,
       text: () => desktopPrompt(capability),
     })
@@ -96,12 +96,12 @@ export function apply(ctx: HostContext): void {
 
   ctx.inject(['bashEnv'], (runtimeCtx) => {
     runtimeCtx.bashEnv.register({
-      name: 'oh-dsh-desktop-runtime',
+      name: 'tockteam-desktop-runtime',
       variables: {
-        DSH_DESKTOP: { description: 'Set to 1 inside the Oh-DSH Desktop distribution.' },
-        DSH_DESKTOP_APP_DATA: { description: 'Writable application-data root owned by Oh-DSH Desktop.' },
-        DSH_DESKTOP_PROFILE: { description: 'DSH profile mounted by Oh-DSH Desktop.' },
-        DSH_DESKTOP_VERSION: { description: 'Installed Oh-DSH Desktop version.' },
+        DSH_DESKTOP: { description: 'Set to 1 inside the TockTeam Desktop distribution.' },
+        DSH_DESKTOP_APP_DATA: { description: 'Writable application-data root owned by TockTeam Desktop.' },
+        DSH_DESKTOP_PROFILE: { description: 'DSH profile mounted by TockTeam Desktop.' },
+        DSH_DESKTOP_VERSION: { description: 'Installed TockTeam Desktop version.' },
       },
       resolve: () => ({
         DSH_DESKTOP: '1',

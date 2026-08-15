@@ -14,7 +14,7 @@ if (arch !== 'arm64' && arch !== 'x64') {
 }
 ensureElectronInstalled()
 
-const icon = join(root, 'assets', 'Oh-DSH-Desktop.icns')
+const icon = join(root, 'assets', 'TockTeam-Desktop.icns')
 if (!existsSync(icon)) {
   const iconResult = spawnSync('sh', [join(root, 'scripts', 'generate-icon.sh')], {
     cwd: root,

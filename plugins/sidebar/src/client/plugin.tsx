@@ -338,7 +338,7 @@ class WorkspaceToolsService implements WorkspaceTools {
   setOpen(open: boolean): void {
     if (open) this.pinnedSummary.setOpen(false)
     this.sidebar.setOpen(open)
-    if (!open) delete document.documentElement.dataset.ohDshPanelMaximized
+    if (!open) delete document.documentElement.dataset.tockTeamPanelMaximized
   }
 
   toggle(): void {
@@ -409,8 +409,8 @@ class WorkspaceToolsService implements WorkspaceTools {
     if (!this.state.open) return
     const maximized = !this.state.maximized
     this.sidebar.setMaximized(maximized)
-    if (maximized) document.documentElement.dataset.ohDshPanelMaximized = 'true'
-    else delete document.documentElement.dataset.ohDshPanelMaximized
+    if (maximized) document.documentElement.dataset.tockTeamPanelMaximized = 'true'
+    else delete document.documentElement.dataset.tockTeamPanelMaximized
   }
 
   setWidth(width: number): void {
@@ -421,17 +421,17 @@ class WorkspaceToolsService implements WorkspaceTools {
     if (this.state.open) this.pinnedSummary.setOpen(false)
     this.stopSidebar = this.sidebar.subscribe(() => { this.syncSidebar() })
     this.style = document.createElement('style')
-    this.style.dataset.ohDshDesktopSidebarStyles = 'true'
+    this.style.dataset.tockTeamDesktopSidebarStyles = 'true'
     this.style.textContent = `${workspaceCss}\n${sideToolsCss}`
     document.head.append(this.style)
     this.element = document.createElement('div')
-    this.element.id = 'oh-dsh-sidebar-root'
+    this.element.id = 'tockteam-sidebar-root'
     const rail = document.createElement('div')
-    rail.id = 'oh-dsh-rail-root'
+    rail.id = 'tockteam-rail-root'
     const appRoot = document.getElementById('root')
     if (appRoot === null) throw new Error('sidebar: app root is unavailable')
     const layout = document.createElement('div')
-    layout.id = 'oh-dsh-embedded-layout'
+    layout.id = 'tockteam-embedded-layout'
     appRoot.before(layout)
     layout.append(rail, appRoot, this.element)
     this.appRoot = appRoot
@@ -465,11 +465,11 @@ class WorkspaceToolsService implements WorkspaceTools {
       this.layout.remove()
     }
     this.style?.remove()
-    delete document.documentElement.dataset.ohDshDesktopSidebarOpen
-    delete document.documentElement.dataset.ohDshPanelMaximized
-    document.documentElement.style.removeProperty('--oh-dsh-sidebar-width')
-    if (document.documentElement.dataset.ohDshRightPanelOwner === 'sidebar') {
-      delete document.documentElement.dataset.ohDshRightPanelOwner
+    delete document.documentElement.dataset.tockTeamDesktopSidebarOpen
+    delete document.documentElement.dataset.tockTeamPanelMaximized
+    document.documentElement.style.removeProperty('--tockteam-sidebar-width')
+    if (document.documentElement.dataset.tockTeamRightPanelOwner === 'sidebar') {
+      delete document.documentElement.dataset.tockTeamRightPanelOwner
       document.getElementById('root')?.style.removeProperty('padding-right')
     }
   }
@@ -503,34 +503,34 @@ class WorkspaceToolsService implements WorkspaceTools {
     if (next.open) this.pinnedSummary.setOpen(false)
     this.publish(next)
     if (next.maximized) {
-      document.documentElement.dataset.ohDshPanelMaximized = 'true'
+      document.documentElement.dataset.tockTeamPanelMaximized = 'true'
     } else {
-      delete document.documentElement.dataset.ohDshPanelMaximized
+      delete document.documentElement.dataset.tockTeamPanelMaximized
     }
     this.applyLayout()
   }
 
   private applyLayout(): void {
-    document.documentElement.style.setProperty('--oh-dsh-sidebar-width', `${String(this.state.width)}px`)
+    document.documentElement.style.setProperty('--tockteam-sidebar-width', `${String(this.state.width)}px`)
     const html = document.documentElement
     const appRoot = document.getElementById('root')
     if (this.state.open) {
-      html.dataset.ohDshDesktopSidebarOpen = 'true'
-      html.dataset.ohDshRightPanelOwner = 'sidebar'
+      html.dataset.tockTeamDesktopSidebarOpen = 'true'
+      html.dataset.tockTeamRightPanelOwner = 'sidebar'
       appRoot?.style.removeProperty('padding-right')
     } else {
-      delete html.dataset.ohDshDesktopSidebarOpen
-      if (html.dataset.ohDshRightPanelOwner === 'sidebar') {
-        delete html.dataset.ohDshRightPanelOwner
+      delete html.dataset.tockTeamDesktopSidebarOpen
+      if (html.dataset.tockTeamRightPanelOwner === 'sidebar') {
+        delete html.dataset.tockTeamRightPanelOwner
         appRoot?.style.removeProperty('padding-right')
       }
     }
     if (this.layout !== undefined) {
       if (this.state.open && this.state.maximized) {
-        this.layout.style.gridTemplateColumns = 'var(--oh-dsh-rail-width) 0 minmax(0, 1fr)'
+        this.layout.style.gridTemplateColumns = 'var(--tockteam-rail-width) 0 minmax(0, 1fr)'
       } else {
         const track = this.state.open && !this.narrowViewport.matches ? this.state.width : 0
-        this.layout.style.gridTemplateColumns = `var(--oh-dsh-rail-width) minmax(0, 1fr) ${String(track)}px`
+        this.layout.style.gridTemplateColumns = `var(--tockteam-rail-width) minmax(0, 1fr) ${String(track)}px`
       }
     }
   }
@@ -564,7 +564,7 @@ function DesktopPanelToolbar({
   const summaryOpen = useSyncExternalStore(pinnedSummary.subscribe, () => pinnedSummary.isOpen())
   const sideOpen = workspaceState.open
   return (
-    <nav className="oh-dsh-panel-toolbar" aria-label={t('panels.label')}>
+    <nav className="tockteam-panel-toolbar" aria-label={t('panels.label')}>
       {sideOpen
         ? (
           <button
@@ -612,8 +612,8 @@ function DesktopWindowTitlebar({
   title: string
 }): ReactNode {
   return (
-    <header className="oh-dsh-window-titlebar">
-      <div className="oh-dsh-titlebar-leading">
+    <header className="tockteam-window-titlebar">
+      <div className="tockteam-titlebar-leading">
         <button
           type="button"
           aria-label={t('sidebar.toggle')}
@@ -621,7 +621,7 @@ function DesktopWindowTitlebar({
           onClick={() => { panels.toggleSidebar() }}
         ><PanelIcon kind="sidebar" /></button>
       </div>
-      <strong className="oh-dsh-window-title" title={title}>{title}</strong>
+      <strong className="tockteam-window-title" title={title}>{title}</strong>
     </header>
   )
 }
@@ -879,8 +879,8 @@ function WorkspacePanel({
   }
 
   return (
-    <div className="oh-dsh-review-view" aria-label={t('workspace.changes')}>
-      <header className="oh-dsh-workspace-header">
+    <div className="tockteam-review-view" aria-label={t('workspace.changes')}>
+      <header className="tockteam-workspace-header">
         <div>
           <button type="button" aria-label={t('side.back')} onClick={() => { service.openMenu() }}>‹</button>
           <strong>{snapshot?.name ?? (cwd?.split(/[\\/]/).filter(Boolean).pop() || t('workspace.title'))}</strong>
@@ -895,61 +895,61 @@ function WorkspacePanel({
       </header>
 
       {cwd === undefined
-        ? <div className="oh-dsh-workspace-empty">{t('workspace.select')}</div>
+        ? <div className="tockteam-workspace-empty">{t('workspace.select')}</div>
         : (
-          <div className="oh-dsh-workspace-content">
-            {error !== '' && <div className="oh-dsh-workspace-error" role="alert">{error}</div>}
+          <div className="tockteam-workspace-content">
+            {error !== '' && <div className="tockteam-workspace-error" role="alert">{error}</div>}
             <section>
-              <div className="oh-dsh-workspace-section-title">
-                <span className="oh-dsh-workspace-section-icon">▣</span>
+              <div className="tockteam-workspace-section-title">
+                <span className="tockteam-workspace-section-icon">▣</span>
                 <strong>{t('workspace.changes')}</strong>
-                <span className="oh-dsh-workspace-count">{snapshot?.changes.length ?? 0}</span>
+                <span className="tockteam-workspace-count">{snapshot?.changes.length ?? 0}</span>
               </div>
-              <div className="oh-dsh-change-list">
+              <div className="tockteam-change-list">
                 {visibleChanges.map(change => (
                   <div key={`${change.path}:${change.oldPath ?? ''}`}>
                     <button
                       type="button"
-                      className="oh-dsh-change-row"
+                      className="tockteam-change-row"
                       data-selected={selectedPath === change.path || undefined}
                       onClick={() => { void showDiff(change) }}
                     >
-                      <span className={`oh-dsh-change-status is-${change.status}`}>{statusLabel(change.status)}</span>
+                      <span className={`tockteam-change-status is-${change.status}`}>{statusLabel(change.status)}</span>
                       <span title={change.path}>{change.path}</span>
                       {change.staged && <small>{t('workspace.staged')}</small>}
                     </button>
-                    {selectedPath === change.path && <pre className="oh-dsh-change-diff">{diff}</pre>}
+                    {selectedPath === change.path && <pre className="tockteam-change-diff">{diff}</pre>}
                   </div>
                 ))}
                 {(snapshot?.changes.length ?? 0) > visibleChanges.length && (
-                  <div className="oh-dsh-workspace-muted">
+                  <div className="tockteam-workspace-muted">
                     {t('workspace.more-changes', {
                       count: (snapshot?.changes.length ?? 0) - visibleChanges.length,
                     })}
                   </div>
                 )}
                 {snapshot?.kind === 'repository' && snapshot.changes.length === 0 && (
-                  <div className="oh-dsh-workspace-muted">{t('workspace.clean')}</div>
+                  <div className="tockteam-workspace-muted">{t('workspace.clean')}</div>
                 )}
                 {snapshot?.kind === 'directory' && (
-                  <div className="oh-dsh-workspace-muted">{t('workspace.not-git')}</div>
+                  <div className="tockteam-workspace-muted">{t('workspace.not-git')}</div>
                 )}
               </div>
             </section>
 
             {snapshot?.kind === 'repository' && (
-              <section className="oh-dsh-review-history">
-                <div className="oh-dsh-workspace-section-title">
-                  <span className="oh-dsh-workspace-section-icon">◷</span>
+              <section className="tockteam-review-history">
+                <div className="tockteam-workspace-section-title">
+                  <span className="tockteam-workspace-section-icon">◷</span>
                   <strong>{t('workspace.review-history')}</strong>
-                  <span className="oh-dsh-workspace-count">{history.length}</span>
+                  <span className="tockteam-workspace-count">{history.length}</span>
                 </div>
-                <div className="oh-dsh-review-commit-list">
+                <div className="tockteam-review-commit-list">
                   {history.map(entry => (
                     <button
                       type="button"
                       key={entry.hashFull}
-                      className="oh-dsh-review-commit-row"
+                      className="tockteam-review-commit-row"
                       data-selected={selectedCommit?.id === entry.hashFull || undefined}
                       disabled={reviewLoading}
                       onClick={() => { void showCommit(entry) }}
@@ -960,14 +960,14 @@ function WorkspacePanel({
                     </button>
                   ))}
                   {history.length === 0 && (
-                    <div className="oh-dsh-workspace-muted">
+                    <div className="tockteam-workspace-muted">
                       {t('workspace.no-commits')}
                     </div>
                   )}
                 </div>
 
                 {selectedCommit !== null && (
-                  <div className="oh-dsh-review-commit-detail">
+                  <div className="tockteam-review-commit-detail">
                     <header>
                       <div>
                         <code>{selectedCommit.shortId}</code>
@@ -986,7 +986,7 @@ function WorkspacePanel({
                     </header>
 
                     {selectedComments.length > 0 && (
-                      <div className="oh-dsh-review-comments">
+                      <div className="tockteam-review-comments">
                         <strong>{t('workspace.pending-comments')}</strong>
                         {selectedComments.map(comment => (
                           <div key={comment.id}>
@@ -1015,7 +1015,7 @@ function WorkspacePanel({
                             <b>+{file.additions}</b> −{file.deletions}
                           </small>
                         </summary>
-                        <div className="oh-dsh-review-diff-lines">
+                        <div className="tockteam-review-diff-lines">
                           {file.lines.slice(0, 400).map(line => {
                             const lineNumber = reviewLineNumber(
                               line.oldLine,
@@ -1046,7 +1046,7 @@ function WorkspacePanel({
                             )
                           })}
                           {file.lines.length > 400 && (
-                            <div className="oh-dsh-workspace-muted">
+                            <div className="tockteam-workspace-muted">
                               {t('workspace.diff-truncated', {
                                 count: file.lines.length - 400,
                               })}
@@ -1057,7 +1057,7 @@ function WorkspacePanel({
                     ))}
 
                     {commentTarget !== null && (
-                      <div className="oh-dsh-review-comment-form">
+                      <div className="tockteam-review-comment-form">
                         <strong>
                           {commentTarget.kind === 'commit'
                             ? t('workspace.comment-commit')
@@ -1086,7 +1086,7 @@ function WorkspacePanel({
                       </div>
                     )}
                     {commentNotice !== '' && (
-                      <p className="oh-dsh-review-comment-notice">
+                      <p className="tockteam-review-comment-notice">
                         {commentNotice}
                       </p>
                     )}
@@ -1095,16 +1095,16 @@ function WorkspacePanel({
               </section>
             )}
 
-            <section className="oh-dsh-workspace-facts">
-              <label className="oh-dsh-workspace-fact">
-                <span className="oh-dsh-workspace-fact-icon">▱</span>
+            <section className="tockteam-workspace-facts">
+              <label className="tockteam-workspace-fact">
+                <span className="tockteam-workspace-fact-icon">▱</span>
                 <select aria-label={t('workspace.execution-environment')} value="local" onChange={() => {}}>
                   <option value="local">{t('workspace.local')}</option>
                 </select>
-                <span className="oh-dsh-workspace-chevron">⌄</span>
+                <span className="tockteam-workspace-chevron">⌄</span>
               </label>
-              <label className="oh-dsh-workspace-fact">
-                <span className="oh-dsh-workspace-fact-icon">⑂</span>
+              <label className="tockteam-workspace-fact">
+                <span className="tockteam-workspace-fact-icon">⑂</span>
                 <select
                   value={snapshot?.branch ?? ''}
                   disabled={snapshot?.kind !== 'repository' || busy}
@@ -1113,10 +1113,10 @@ function WorkspacePanel({
                 >
                   {(snapshot?.branches ?? []).map(branch => <option key={branch} value={branch}>{branch}</option>)}
                 </select>
-                <span className="oh-dsh-workspace-chevron">⌄</span>
+                <span className="tockteam-workspace-chevron">⌄</span>
               </label>
               {snapshot?.kind === 'repository' && (
-                <div className="oh-dsh-new-branch">
+                <div className="tockteam-new-branch">
                   <input
                     value={newBranch}
                     placeholder={t('workspace.new-branch')}
@@ -1132,16 +1132,16 @@ function WorkspacePanel({
               )}
               <button
                 type="button"
-                className="oh-dsh-workspace-fact oh-dsh-commit-toggle"
+                className="tockteam-workspace-fact tockteam-commit-toggle"
                 onClick={() => { setCommitOpen(open => !open) }}
                 aria-expanded={commitOpen}
               >
-                <span className="oh-dsh-workspace-fact-icon">—◯—</span>
+                <span className="tockteam-workspace-fact-icon">—◯—</span>
                 <span>{t('workspace.commit-or-push')}</span>
-                <span className="oh-dsh-workspace-chevron">{commitOpen ? '⌃' : '⌄'}</span>
+                <span className="tockteam-workspace-chevron">{commitOpen ? '⌃' : '⌄'}</span>
               </button>
               {commitOpen && snapshot?.kind === 'repository' && (
-                <div className="oh-dsh-commit-box">
+                <div className="tockteam-commit-box">
                   <textarea
                     value={commitMessage}
                     placeholder={t('workspace.commit-message')}
@@ -1167,7 +1167,7 @@ function WorkspacePanel({
               )}
             </section>
 
-            <section className="oh-dsh-workspace-directory">
+            <section className="tockteam-workspace-directory">
               <span>{snapshot?.name ?? cwd.split(/[\\/]/).filter(Boolean).pop()}</span>
               <small title={cwd}>{cwd}</small>
               {window.dshDesktop?.chooseWorkspace !== undefined && (
@@ -1175,16 +1175,16 @@ function WorkspacePanel({
               )}
             </section>
 
-            <section className="oh-dsh-processes">
+            <section className="tockteam-processes">
               <h3>{t('workspace.background-processes')}</h3>
               {processes.map(process => (
-                <div key={process.callId} className="oh-dsh-process-row">
+                <div key={process.callId} className="tockteam-process-row">
                   <span>›_</span>
                   <code title={processTitle(process)}>{processTitle(process)}</code>
                 </div>
               ))}
               {processes.length === 0 && (
-                <div className="oh-dsh-workspace-muted">{t('workspace.no-background-processes')}</div>
+                <div className="tockteam-workspace-muted">{t('workspace.no-background-processes')}</div>
               )}
             </section>
           </div>
@@ -1210,7 +1210,7 @@ function WorkspaceToolsSurface(props: {
     ? undefined
     : sessionList.byId[sessionList.current]
   const cwd = session?.cwd
-  const title = session?.displayTitle?.trim() || 'Oh-DSH Desktop'
+  const title = session?.displayTitle?.trim() || 'TockTeam Desktop'
   return (
     <>
       {createPortal(
@@ -1253,7 +1253,7 @@ function TextFileViewer({
   title: string
 }): JSX.Element {
   return (
-    <div className="oh-dsh-file-preview">
+    <div className="tockteam-file-preview">
       <div><strong title={path}>{title}</strong></div>
       <pre>{content}</pre>
     </div>
@@ -1272,14 +1272,14 @@ function BinaryFileViewer({
   t: Translate<WorkspaceMessage>
 }): JSX.Element {
   return (
-    <div className="oh-dsh-file-preview">
+    <div className="tockteam-file-preview">
       <div>
         <strong title={path}>{title}</strong>
         <button type="button" onClick={() => { void onOpen() }}>
           {t('files.open')}
         </button>
       </div>
-      <div className="oh-dsh-side-muted">{t('files.viewer.binary')}</div>
+      <div className="tockteam-side-muted">{t('files.viewer.binary')}</div>
     </div>
   )
 }
@@ -1294,7 +1294,7 @@ function HtmlFileViewer({
   title: string
 }): JSX.Element {
   return (
-    <div className="oh-dsh-file-preview oh-dsh-html-preview">
+    <div className="tockteam-file-preview tockteam-html-preview">
       <div><strong title={path}>{title}</strong></div>
       <iframe title={title} sandbox="" srcDoc={content} />
     </div>
@@ -1519,15 +1519,15 @@ function SidebarSettingsRow({
     void runtime.update({ [key]: enabled })
   }
   return (
-    <div className="oh-dsh-sidebar-settings">
-      <div className="oh-dsh-sidebar-settings-heading">
+    <div className="tockteam-sidebar-settings">
+      <div className="tockteam-sidebar-settings-heading">
         <div>
           <strong>{t('settings.title')}</strong>
           <p>{t('settings.description')}</p>
         </div>
         <button type="button" onClick={reset}>{t('settings.reset')}</button>
       </div>
-      <label className="oh-dsh-sidebar-settings-row">
+      <label className="tockteam-sidebar-settings-row">
         <span>
           <strong>{t('settings.open-by-default')}</strong>
           <small>{t('settings.open-by-default-description')}</small>
@@ -1538,7 +1538,7 @@ function SidebarSettingsRow({
           onChange={event => { setOpenByDefault(event.currentTarget.checked) }}
         />
       </label>
-      <label className="oh-dsh-sidebar-settings-size">
+      <label className="tockteam-sidebar-settings-size">
         <span>
           <strong>{t('settings.width')}</strong>
           <small>{t('settings.width-value', { width: state.width })}</small>
@@ -1555,7 +1555,7 @@ function SidebarSettingsRow({
       <section>
         <h4>{t('settings.runtime')}</h4>
         <p>{t('settings.runtime-description')}</p>
-        <label className="oh-dsh-sidebar-settings-row">
+        <label className="tockteam-sidebar-settings-row">
           <span>
             <strong>{t('settings.agent-terminal-tools')}</strong>
             <small>{t('settings.agent-terminal-tools-description')}</small>
@@ -1569,7 +1569,7 @@ function SidebarSettingsRow({
             }}
           />
         </label>
-        <label className="oh-dsh-sidebar-settings-row">
+        <label className="tockteam-sidebar-settings-row">
           <span>
             <strong>{t('settings.bottom-terminal')}</strong>
             <small>{t('settings.bottom-terminal-description')}</small>
@@ -1586,7 +1586,7 @@ function SidebarSettingsRow({
             }}
           />
         </label>
-        <label className="oh-dsh-sidebar-settings-row">
+        <label className="tockteam-sidebar-settings-row">
           <span>
             <strong>{t('settings.open-files')}</strong>
             <small>{t('settings.open-files-description')}</small>
@@ -1600,7 +1600,7 @@ function SidebarSettingsRow({
             }}
           />
         </label>
-        <label className="oh-dsh-sidebar-settings-row">
+        <label className="tockteam-sidebar-settings-row">
           <span>
             <strong>{t('settings.open-links')}</strong>
             <small>{t('settings.open-links-description')}</small>
@@ -1618,7 +1618,7 @@ function SidebarSettingsRow({
           />
         </label>
         {runtimeState.error !== null && (
-          <p className="oh-dsh-sidebar-settings-error" role="alert">
+          <p className="tockteam-sidebar-settings-error" role="alert">
             {t(runtimeState.error === 'load'
               ? 'settings.runtime-load-failed'
               : 'settings.runtime-save-failed')}
@@ -1628,7 +1628,7 @@ function SidebarSettingsRow({
       <section>
         <h4>{t('settings.tools')}</h4>
         <p>{t('settings.tools-description')}</p>
-        <div className="oh-dsh-sidebar-settings-list">
+        <div className="tockteam-sidebar-settings-list">
           {tabs.map(descriptor => (
             <label key={descriptor.id}>
               <span>{sidebarLabel(descriptor.title)}</span>
@@ -1646,7 +1646,7 @@ function SidebarSettingsRow({
       <section>
         <h4>{t('settings.viewers')}</h4>
         <p>{t('settings.viewers-description')}</p>
-        <div className="oh-dsh-sidebar-settings-list">
+        <div className="tockteam-sidebar-settings-list">
           {viewers.map(descriptor => (
             <label key={descriptor.id}>
               <span>{sidebarLabel(descriptor.title)}</span>
@@ -1693,10 +1693,10 @@ function pathBelongsToActiveWorkspace(
 export function apply(ctx: ClientContext): void {
   const locale = ctx.get('locale') as LocaleService
   const slots = ctx.get('slots') as SlotsService
-  const t: Translate<WorkspaceMessage> = locale.bind('oh-dsh.sidebar')
+  const t: Translate<WorkspaceMessage> = locale.bind('tockteam.sidebar')
   ctx.effect(
-    () => locale.register('oh-dsh.sidebar', WORKSPACE_MESSAGES),
-    'oh-dsh-sidebar: workspace tools dictionaries',
+    () => locale.register('tockteam.sidebar', WORKSPACE_MESSAGES),
+    'tockteam-sidebar: workspace tools dictionaries',
   )
   const panels = ctx.get('desktopPanels') as DesktopPanels
   const pinnedSummary = ctx.get('pinnedSummary') as PinnedSummary
@@ -1840,10 +1840,10 @@ export function apply(ctx: ClientContext): void {
       void removeSidebar?.()
       void removeService?.()
     }
-  }, 'oh-dsh-sidebar: workspace tools and panel toolbar')
+  }, 'tockteam-sidebar: workspace tools and panel toolbar')
 
   slots.inject('settings.section', () => slots.register({
-    id: 'oh-dsh-sidebar',
+    id: 'tockteam-sidebar',
     inject: actions => {
       settingsActions = actions
       syncSidebarSettings(settingsActions, desktopSidebar.getSnapshot())
@@ -1874,7 +1874,7 @@ export function apply(ctx: ClientContext): void {
       }
     },
     label: () => t('settings.title'),
-    locale: 'oh-dsh.sidebar',
+    locale: 'tockteam.sidebar',
     name: 'settings.section',
     order: 40,
     store: settingsStore,

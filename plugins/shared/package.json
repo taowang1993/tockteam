@@ -1,7 +1,7 @@
 {
-  "name": "@oh-dsh/shared",
+  "name": "@tockteam/shared",
   "version": "0.1.4",
-  "description": "Shared client contracts for bundled Oh-DSH plugins",
+  "description": "Shared client contracts for bundled TockTeam plugins",
   "private": true,
   "type": "module",
   "devDependencies": {

@@ -1,4 +1,4 @@
-# Oh-DSH-Desktop is a bundle layer over dsh-base + dsh-web-app. The Electron
+# TockTeam-Desktop is a bundle layer over dsh-base + dsh-web-app. The Electron
 # distribution keeps DSH's browser UI and mounts each desktop behavior as an
 # independently registered Host/Client plugin.
 
@@ -15,22 +15,22 @@
 
 - insert:
     - id: oh-desktop
-      name: '@oh-dsh/desktop'
+      name: '@tockteam/desktop'
 
     - id: oh-better-sidebar-runtime
-      name: '@oh-dsh/better-sidebar-runtime'
+      name: '@tockteam/better-sidebar-runtime'
 
     - id: oh-skins
-      name: '@oh-dsh/skins'
+      name: '@tockteam/skins'
 
     - id: oh-sidebar
-      name: '@oh-dsh/sidebar'
+      name: '@tockteam/sidebar'
 
     - id: oh-panel-controls
-      name: '@oh-dsh/panel-controls'
+      name: '@tockteam/panel-controls'
 
     - id: oh-pinned-summary
-      name: '@oh-dsh/pinned-summary'
+      name: '@tockteam/pinned-summary'
 
     - id: oh-plugin-marketplace
-      name: '@oh-dsh/plugin-marketplace'
+      name: '@tockteam/plugin-marketplace'

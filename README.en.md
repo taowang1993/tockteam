@@ -4,8 +4,8 @@
 </p>
 
 <div align="center">
-  <img src="./assets/dsh-whale.png" width="136" alt="Oh-DSH whale">
-  <h1>Oh-DSH</h1>
+  <img src="./assets/dsh-whale.png" width="136" alt="TockTeam whale">
+  <h1>TockTeam</h1>
   <p><strong>One DSH runtime, independently installable interaction surfaces.</strong></p>
 </div>
 
@@ -17,60 +17,49 @@
 </p>
 
 <p align="center">
-  <img src="./assets/oh-dsh-desktop-overview.png" alt="Oh-DSH Desktop" width="100%">
+  <img src="./assets/tockteam-desktop-overview.png" alt="TockTeam Desktop" width="100%">
 </p>
 
-Oh-DSH packages DeepSeek Harness, Node.js, and local capabilities as
+TockTeam packages DeepSeek Harness, Node.js, and local capabilities as
 installable Desktop, Web, and TUI distributions. Models still run in the
-cloud; Oh-DSH owns workspaces, terminals, Git review, browser and window
+cloud; TockTeam owns workspaces, terminals, Git review, browser and window
 integration, and the plugin lifecycle.
-
-## 🎉 Official showcase
-
-Oh-DSH has been included in the official DeepSeek Harness community showcase.
-Its terminal surface builds on the similarly recognized
-[dsh-TUI](https://github.com/ccch1mneyyy/dsh-TUI) upstream plugin with full
-attribution preserved.
-
-<p align="center">
-  <img src="./assets/oh-dsh-official-showcase.png" alt="Official DeepSeek Harness community showcase" width="100%">
-</p>
 
 ## Download and install
 
 Choose a distribution from the
-[latest GitHub Release](https://github.com/hust-open-atom-club/oh-dsh/releases/latest):
+[latest GitHub Release](https://github.com/taowang1993/tockteam/releases/latest):
 
 | Distribution | Includes | Best for |
 | --- | --- | --- |
-| Full | **Oh-DSH Desktop**, Web, TUI, Node runtime, and bundled plugins | Local development workbench |
-| Web-only | **Oh-DSH Web**, Node runtime, and bundled Web plugins; no Electron | Small installs, browser, or remote access |
-| TUI-only | **Oh-DSH TUI**, Node runtime, and terminal plugins; no Electron | Terminal-only environments |
+| Full | **TockTeam Desktop**, Web, TUI, Node runtime, and bundled plugins | Local development workbench |
+| Web-only | **TockTeam Web**, Node runtime, and bundled Web plugins; no Electron | Small installs, browser, or remote access |
+| TUI-only | **TockTeam TUI**, Node runtime, and terminal plugins; no Electron | Terminal-only environments |
 
 The full distribution is available as DMG/ZIP, AppImage/deb, and a Windows
-package. On macOS, open the DMG and drag **Oh-DSH Desktop** into Applications.
+package. On macOS, open the DMG and drag **TockTeam Desktop** into Applications.
 On Linux, run the AppImage or install the deb with `apt`.
 
 Extract and start the Web-only package directly:
 
 ```sh
-tar -xzf oh-dsh-web-*.tar.gz
-cd oh-dsh-web-*/
-./bin/ohdsh web
+tar -xzf tockteam-web-*.tar.gz
+cd tockteam-web-*/
+./bin/tockteam web
 ```
 
 The default URL is <http://127.0.0.1:3080>. On Windows, run:
 
 ```bat
-bin\ohdsh.cmd web
+bin\tockteam.cmd web
 ```
 
 The TUI-only package is also ready after extraction:
 
 ```sh
-tar -xzf oh-dsh-tui-*.tar.gz
-cd oh-dsh-tui-*/
-./bin/ohdsh tui
+tar -xzf tockteam-tui-*.tar.gz
+cd tockteam-tui-*/
+./bin/tockteam tui
 ```
 
 ### Install the unified command
@@ -79,21 +68,21 @@ The macOS full distribution contains a CLI that can be added to `PATH`:
 
 ```sh
 sudo ln -sf \
-  "/Applications/Oh-DSH Desktop.app/Contents/Resources/bin/ohdsh" \
-  /usr/local/bin/ohdsh
+  "/Applications/TockTeam Desktop.app/Contents/Resources/bin/tockteam" \
+  /usr/local/bin/tockteam
 ```
 
-Use `./bin/ohdsh` from a Web-only or TUI-only package, or add it to `PATH`.
+Use `./bin/tockteam` from a Web-only or TUI-only package, or add it to `PATH`.
 
 ## Start a surface
 
 ```sh
-ohdsh desktop   # Start Oh-DSH Desktop
-ohdsh web       # Start Oh-DSH Web
-ohdsh tui       # Start Oh-DSH TUI
+tockteam desktop   # Start TockTeam Desktop
+tockteam web       # Start TockTeam Web
+tockteam tui       # Start TockTeam TUI
 ```
 
-Run `ohdsh web --help` or `ohdsh tui --help` for surface-specific options.
+Run `tockteam web --help` or `tockteam tui --help` for surface-specific options.
 
 ## Run from source
 
@@ -107,9 +96,9 @@ pnpm run build
 pnpm run stage:dsh
 export PATH="$PWD/bin:$PATH"
 
-ohdsh desktop
-ohdsh web
-ohdsh tui
+tockteam desktop
+tockteam web
+tockteam tui
 ```
 
 Build the full distribution with the platform-specific `dist:mac`,
@@ -121,11 +110,11 @@ or only TUI with `pnpm run dist:tui`.
 
 ### Plugin marketplace
 
-![Oh-DSH plugin marketplace](./assets/oh-dsh-plugin-marketplace.png)
+![TockTeam plugin marketplace](./assets/tockteam-plugin-marketplace.png)
 
-### Oh-DSH skins
+### TockTeam skins
 
-![Oh-DSH cross-surface skins](./assets/oh-dsh-desktop-skins.png)
+![TockTeam cross-surface skins](./assets/tockteam-desktop-skins.png)
 
 </details>
 
@@ -136,15 +125,15 @@ or only TUI with `pnpm run dist:tui`.
 
 ## Upstream dependencies
 
-| Upstream repository | Role in Oh-DSH |
+| Upstream repository | Role in TockTeam |
 | --- | --- |
 | [DeepSeek Harness](https://github.com/deepseek-harness/deepseek-harness) | DSH runtime, sessions, and plugin loader |
-| [dsh-TUI](https://github.com/ccch1mneyyy/dsh-TUI) | **Direct upstream plugin for Oh-DSH TUI**, providing terminal rendering, interaction, and commands |
+| [dsh-TUI](https://github.com/ccch1mneyyy/dsh-TUI) | **Direct upstream plugin for TockTeam TUI**, providing terminal rendering, interaction, and commands |
 | [DSH-better-sidebar](https://github.com/omdsh-dev/DSH-better-sidebar) | Git review, files, and PTY host capabilities |
 
-`dsh-TUI` is pinned as a Git submodule at `upstream/dsh-TUI`. Oh-DSH keeps
-the upstream implementation and attribution, while owning the `ohdsh tui`
-launcher, isolated `~/.ohdsh` data, unified title, cross-surface skins, and
+`dsh-TUI` is pinned as a Git submodule at `upstream/dsh-TUI`. TockTeam keeps
+the upstream implementation and attribution, while owning the `tockteam tui`
+launcher, isolated `~/.tockteam` data, unified title, cross-surface skins, and
 distribution packaging. See the design guide for the exact boundary.
 
 ## License

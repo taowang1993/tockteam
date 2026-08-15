@@ -98,7 +98,7 @@ class DesktopPanelService implements DesktopPanels {
 
   mount(): void {
     this.style = document.createElement('style')
-    this.style.dataset.ohDshTerminalStyles = 'true'
+    this.style.dataset.tockTeamTerminalStyles = 'true'
     this.style.textContent = `${xtermCss}\n${terminalCss}`
     document.head.append(this.style)
     this.scheduler = createMountScheduler(() => { this.mountAll() })
@@ -200,7 +200,7 @@ class DesktopPanelService implements DesktopPanels {
   private mountDock(column: HTMLElement): void {
     if (this.dock.element === null) {
       const element = document.createElement('div')
-      element.id = 'oh-dsh-terminal-root'
+      element.id = 'tockteam-terminal-root'
       element.style.display = 'contents'
       this.dock.element = element
       this.dock.root = createRoot(element)
@@ -238,10 +238,10 @@ class DesktopPanelService implements DesktopPanels {
 
 export function apply(ctx: ClientContext): void {
   const locale = ctx.get('locale') as LocaleService
-  const t: Translate<TerminalMessage> = locale.bind('oh-dsh.terminal')
+  const t: Translate<TerminalMessage> = locale.bind('tockteam.terminal')
   ctx.effect(
-    () => locale.register('oh-dsh.terminal', TERMINAL_MESSAGES),
-    'oh-dsh-desktop: terminal dictionaries',
+    () => locale.register('tockteam.terminal', TERMINAL_MESSAGES),
+    'tockteam-desktop: terminal dictionaries',
   )
   const service = new DesktopPanelService(
     ctx.get('layout') as LayoutService,
@@ -256,5 +256,5 @@ export function apply(ctx: ClientContext): void {
       service.dispose()
       void removeService?.()
     }
-  }, 'oh-dsh-desktop: terminal panel controls')
+  }, 'tockteam-desktop: terminal panel controls')
 }

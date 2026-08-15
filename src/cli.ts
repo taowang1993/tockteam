@@ -1,4 +1,4 @@
-/** Unified launcher for the Oh-DSH interaction surfaces. */
+/** Unified launcher for the TockTeam interaction surfaces. */
 
 import { spawn } from 'node:child_process'
 import { existsSync } from 'node:fs'
@@ -12,7 +12,7 @@ const SURFACE_NAMES = ['desktop', 'web', 'tui'] as const
 type SurfaceName = typeof SURFACE_NAMES[number]
 
 export function availableSurfaces(env: NodeJS.ProcessEnv = process.env): readonly SurfaceName[] {
-  const configured = env.OH_DSH_SURFACES
+  const configured = env.TOCKTEAM_SURFACES
   if (configured === undefined || configured === '') return SURFACE_NAMES
   const requested = new Set(configured.split(',').map(value => value.trim()))
   return SURFACE_NAMES.filter(surface => requested.has(surface))
@@ -21,19 +21,19 @@ export function availableSurfaces(env: NodeJS.ProcessEnv = process.env): readonl
 export function cliHelp(env: NodeJS.ProcessEnv = process.env): string {
   const surfaces = availableSurfaces(env)
   const descriptions: Record<SurfaceName, string> = {
-    desktop: 'Start Oh-DSH Desktop',
-    web: 'Start Oh-DSH Web',
-    tui: 'Start Oh-DSH TUI',
+    desktop: 'Start TockTeam Desktop',
+    web: 'Start TockTeam Web',
+    tui: 'Start TockTeam TUI',
   }
-  return `Oh-DSH launcher
+  return `TockTeam launcher
 
 Usage:
-  ohdsh <surface> [options]
+  tockteam <surface> [options]
 
 Surfaces:
 ${surfaces.map(surface => `  ${surface.padEnd(9)} ${descriptions[surface]}`).join('\n')}
 
-Run "ohdsh <surface> --help" for surface options.
+Run "tockteam <surface> --help" for surface options.
 `
 }
 
@@ -86,7 +86,7 @@ export function desktopLaunchSpec(
   pathExists: (path: string) => boolean = existsSync,
 ): DesktopLaunchSpec {
   const paths = platform === 'win32' ? win32 : posix
-  const explicitApp = env.OH_DSH_DESKTOP_APP
+  const explicitApp = env.TOCKTEAM_DESKTOP_APP
   if (explicitApp !== undefined && explicitApp !== '') {
     if (platform === 'darwin') {
       return {
@@ -97,7 +97,7 @@ export function desktopLaunchSpec(
     return { args: [...args], command: paths.resolve(explicitApp) }
   }
 
-  const sourceRoot = env.OH_DSH_SOURCE_ROOT
+  const sourceRoot = env.TOCKTEAM_SOURCE_ROOT
   if (sourceRoot !== undefined && sourceRoot !== '') {
     const root = paths.resolve(sourceRoot)
     const electron = sourceElectron(root, platform)
@@ -112,17 +112,17 @@ export function desktopLaunchSpec(
 
   if (platform === 'darwin') {
     return {
-      args: ['-a', 'Oh-DSH Desktop', ...(args.length === 0 ? [] : ['--args', ...args])],
+      args: ['-a', 'TockTeam Desktop', ...(args.length === 0 ? [] : ['--args', ...args])],
       command: '/usr/bin/open',
     }
   }
   if (platform === 'win32') {
     return {
-      args: ['/d', '/s', '/c', 'start', '""', 'Oh-DSH Desktop.exe', ...args],
+      args: ['/d', '/s', '/c', 'start', '""', 'TockTeam Desktop.exe', ...args],
       command: env.ComSpec ?? 'cmd.exe',
     }
   }
-  return { args: [...args], command: 'oh-dsh-desktop' }
+  return { args: [...args], command: 'tockteam-desktop' }
 }
 
 /** Start the desktop surface and detach the launcher. */
@@ -164,7 +164,7 @@ export async function main(
   }
   if (SURFACE_NAMES.includes(surface as SurfaceName)
     && !availableSurfaces(env).includes(surface as SurfaceName)) {
-    stderr.write(`Surface '${surface}' is not included in this Oh-DSH distribution.\n\n${help}`)
+    stderr.write(`Surface '${surface}' is not included in this TockTeam distribution.\n\n${help}`)
     return 2
   }
   if (surface === 'desktop') return await desktopRunner(args, env)

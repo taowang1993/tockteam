@@ -70,16 +70,16 @@ void app.whenReady().then(async () => {
         if (onboardingButton !== undefined) onboardingButton.click()
         const marketplaceButton = document.querySelector('.oh-marketplace-nav')
         const collapsed = marketplaceButton?.dataset.collapsed === 'true'
-        if (document.documentElement.dataset.ohDshDesktop === 'true'
+        if (document.documentElement.dataset.tockTeamDesktop === 'true'
           && marketplaceButton instanceof HTMLButtonElement
           && !collapsed
-          && window.__OH_DSH_SMOKE_COLLAPSE_REQUESTED__ !== true) {
+          && window.__TOCKTEAM_SMOKE_COLLAPSE_REQUESTED__ !== true) {
           const toggle = [...document.querySelectorAll('button')]
             .find(button => /^(collapse sidebar|收起侧边栏)$/i.test(
               button.getAttribute('aria-label') ?? '',
             ))
           if (toggle instanceof HTMLButtonElement) {
-            window.__OH_DSH_SMOKE_COLLAPSE_REQUESTED__ = true
+            window.__TOCKTEAM_SMOKE_COLLAPSE_REQUESTED__ = true
             toggle.click()
           }
         }
@@ -152,7 +152,7 @@ void app.whenReady().then(async () => {
             viewportHeight: window.innerHeight,
           }
         })(),
-        ready: document.documentElement.dataset.ohDshDesktop === 'true',
+        ready: document.documentElement.dataset.tockTeamDesktop === 'true',
       }
     })()`)
       if (state.ready === true

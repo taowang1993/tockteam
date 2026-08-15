@@ -8,9 +8,9 @@
 
 ## Choose a distribution
 
-- Install **Oh-DSH Desktop** for the complete local workbench.
-- Install **Oh-DSH Web** for browser-only use without Electron.
-- Install **Oh-DSH TUI** for terminal-only use without Electron or browser UI.
+- Install **TockTeam Desktop** for the complete local workbench.
+- Install **TockTeam Web** for browser-only use without Electron.
+- Install **TockTeam TUI** for terminal-only use without Electron or browser UI.
 
 The full distribution includes all three surfaces, so one installation
 supports `desktop`, `web`, and `tui`.
@@ -20,7 +20,7 @@ supports `desktop`, `web`, and `tui`.
 ### macOS
 
 1. Download the DMG from the latest Release.
-2. Drag **Oh-DSH Desktop** into Applications.
+2. Drag **TockTeam Desktop** into Applications.
 3. For an unnotarized test build, right-click the app in Finder and choose
    **Open** on first launch.
 
@@ -28,15 +28,15 @@ If a verified Release download remains quarantined, apply this to the actual
 downloaded file:
 
 ```sh
-xattr -d com.apple.quarantine ~/Downloads/Oh-DSH-Desktop-*.dmg
+xattr -d com.apple.quarantine ~/Downloads/TockTeam-Desktop-*.dmg
 ```
 
 Install the unified command:
 
 ```sh
 sudo ln -sf \
-  "/Applications/Oh-DSH Desktop.app/Contents/Resources/bin/ohdsh" \
-  /usr/local/bin/ohdsh
+  "/Applications/TockTeam Desktop.app/Contents/Resources/bin/tockteam" \
+  /usr/local/bin/tockteam
 ```
 
 ### Linux
@@ -44,34 +44,34 @@ sudo ln -sf \
 AppImage:
 
 ```sh
-chmod +x Oh-DSH-Desktop-*.AppImage
-./Oh-DSH-Desktop-*.AppImage
+chmod +x TockTeam-Desktop-*.AppImage
+./TockTeam-Desktop-*.AppImage
 ```
 
 deb:
 
 ```sh
-sudo apt install ./Oh-DSH-Desktop-*.deb
+sudo apt install ./TockTeam-Desktop-*.deb
 ```
 
 ### Windows
 
-Extract the Windows package and start **Oh-DSH Desktop**. The unified CLI is
-`bin\ohdsh.cmd` under the application resources directory; add that directory
+Extract the Windows package and start **TockTeam Desktop**. The unified CLI is
+`bin\tockteam.cmd` under the application resources directory; add that directory
 to `PATH` if desired.
 
 ## Install Web-only
 
 ```sh
-tar -xzf oh-dsh-web-*.tar.gz
-cd oh-dsh-web-*/
-./bin/ohdsh web
+tar -xzf tockteam-web-*.tar.gz
+cd tockteam-web-*/
+./bin/tockteam web
 ```
 
 Windows:
 
 ```bat
-bin\ohdsh.cmd web
+bin\tockteam.cmd web
 ```
 
 Common options:
@@ -80,12 +80,12 @@ Common options:
 | --- | --- | --- |
 | `--host` | `127.0.0.1` | Bind address |
 | `--port` | `3080` | Listen port; `0` selects a random port |
-| `--data` | `~/.oh-dsh-web` | Writable Web data root |
+| `--data` | `~/.tockteam-web` | Writable Web data root |
 | `--no-open` | off | Do not open the browser automatically |
 | `--trusted-host` | none | Add a trusted authority; repeatable |
 
-Equivalent environment variables include `DSH_OH_WEB_HOST`,
-`DSH_OH_WEB_PORT`, `DSH_OH_WEB_HOME`, and `DSH_OH_WEB_OPEN`. Press `Ctrl+C`
+Equivalent environment variables include `TOCKTEAM_WEB_HOST`,
+`TOCKTEAM_WEB_PORT`, `TOCKTEAM_WEB_HOME`, and `TOCKTEAM_WEB_OPEN`. Press `Ctrl+C`
 for a graceful shutdown.
 
 Do not bind to `0.0.0.0` without an access boundary. For LAN exposure, add
@@ -94,21 +94,21 @@ Do not bind to `0.0.0.0` without an access boundary. For LAN exposure, add
 ## Install TUI-only
 
 ```sh
-tar -xzf oh-dsh-tui-*.tar.gz
-cd oh-dsh-tui-*/
-./bin/ohdsh tui
+tar -xzf tockteam-tui-*.tar.gz
+cd tockteam-tui-*/
+./bin/tockteam tui
 ```
 
-Use `bin\ohdsh.cmd tui` on Windows. TUI requires a real interactive terminal.
+Use `bin\tockteam.cmd tui` on Windows. TUI requires a real interactive terminal.
 It uses the alternate screen by default; upstream `dsh-TUI` owns fullscreen
 selection, scrolling, and copy behavior.
 
 ## Unified commands
 
 ```sh
-ohdsh desktop
-ohdsh web
-ohdsh tui
+tockteam desktop
+tockteam web
+tockteam tui
 ```
 
 - `desktop` opens the installed app and falls back to the Electron development
@@ -122,7 +122,7 @@ Common TUI options:
 | Option | Default | Description |
 | --- | --- | --- |
 | `--cwd` | Current directory | Workspace |
-| `--data` | `~/.ohdsh` | Oh-DSH TUI Profile, session, and configuration root |
+| `--data` | `~/.tockteam` | TockTeam TUI Profile, session, and configuration root |
 | `--resume` | New session | Resume a Session id |
 | `--lang` | Upstream preference | `zh` or `en` |
 | `--preset` | `standard` | Initial Agent preset |
@@ -142,7 +142,7 @@ Common TUI options:
 | Leave sidebar focus mode | `Esc` |
 
 Settings covers language, models, permissions, Agent presets, plugin config,
-and Oh-DSH skins. Its modal covers and blurs every workspace and sidebar.
+and TockTeam skins. Its modal covers and blurs every workspace and sidebar.
 
 Choose a skin from Settings on Web or Desktop. In TUI, run `/theme` to select
 the same Deep Current, Jade Circuit, Porcelain, or Ember Dusk palette. The
@@ -173,9 +173,9 @@ pnpm run build
 pnpm run stage:dsh
 export PATH="$PWD/bin:$PATH"
 
-ohdsh desktop
-ohdsh web --port 3080
-ohdsh tui
+tockteam desktop
+tockteam web --port 3080
+tockteam tui
 ```
 
 Packaging commands:
@@ -191,20 +191,20 @@ pnpm run dist:tui       # TUI-only terminal distribution
 ## Data and troubleshooting
 
 Desktop retains the existing internal data directory to preserve state across
-the visible-name migration. Web stores data in `~/.oh-dsh-web` by default.
-TUI uses its own `~/.ohdsh` root and does not load global plugin configuration
+the visible-name migration. Web stores data in `~/.tockteam-web` by default.
+TUI uses its own `~/.tockteam` root and does not load global plugin configuration
 from `~/.dsh`. Configure the DeepSeek API key in Models settings or in `.env`
 under the matching DSH data directory.
 
 Troubleshooting order:
 
-1. Run `ohdsh --help` to confirm the CLI source.
-2. Run `ohdsh web --help` to inspect options.
-3. Run `ohdsh tui --help`, then use `ohdsh tui --inline` to isolate
+1. Run `tockteam --help` to confirm the CLI source.
+2. Run `tockteam web --help` to inspect options.
+3. Run `tockteam tui --help`, then use `tockteam tui --inline` to isolate
    alternate-screen terminal compatibility.
-4. Test a random port with `ohdsh web --port 0 --no-open`.
+4. Test a random port with `tockteam web --port 0 --no-open`.
 5. Confirm that required plugins are both installed and enabled in the Profile.
-6. If Desktop does not start, run its bundled `bin/ohdsh desktop` in a terminal
+6. If Desktop does not start, run its bundled `bin/tockteam desktop` in a terminal
    to capture logs.
 
 See [design and plugin boundaries](./design.en.md) for architecture and

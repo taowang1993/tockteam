@@ -41,7 +41,7 @@ if (result.status !== 0) process.exit(result.status ?? 1)
 // electron-builder's NSIS/zip targets crash on the size of the bundled DSH
 // runtime; the unpacked app is already complete, so zip it with the system
 // bsdtar, which streams instead of materializing one giant argument string.
-const archive = join(root, 'release', `Oh-DSH-Desktop-${version}-x64.zip`)
+const archive = join(root, 'release', `TockTeam-Desktop-${version}-x64.zip`)
 const zip = spawnSync('tar', ['-a', '-cf', archive, 'win-unpacked'], {
   cwd: join(root, 'release'),
   stdio: 'inherit',
@@ -49,4 +49,4 @@ const zip = spawnSync('tar', ['-a', '-cf', archive, 'win-unpacked'], {
 if (zip.error !== undefined) throw zip.error
 if (zip.status !== 0) process.exit(zip.status ?? 1)
 if (!existsSync(archive)) throw new Error(`Windows archive was not produced: ${archive}`)
-console.log(`Packaged Oh-DSH Desktop ${version}: ${archive}`)
+console.log(`Packaged TockTeam Desktop ${version}: ${archive}`)

@@ -73,10 +73,10 @@ jobs:
       - name: Package desktop distribution
         run: pnpm run ${{ matrix.dist_script }}
 
-      - name: Package Oh-DSH-Web distribution
+      - name: Package TockTeam-Web distribution
         run: node scripts/build-web.mjs
 
-      - name: Package Oh-DSH TUI distribution
+      - name: Package TockTeam TUI distribution
         run: node scripts/build-tui.mjs
 
       - name: Upload release artifacts
@@ -85,11 +85,11 @@ jobs:
           name: release-${{ matrix.id }}
           compression-level: 0
           path: |
-            release/Oh-DSH-Desktop-*
-            release/oh-dsh-web-*.tar.gz
-            release/oh-dsh-web-*.zip
-            release/oh-dsh-tui-*.tar.gz
-            release/oh-dsh-tui-*.zip
+            release/TockTeam-Desktop-*
+            release/tockteam-web-*.tar.gz
+            release/tockteam-web-*.zip
+            release/tockteam-tui-*.tar.gz
+            release/tockteam-tui-*.zip
           if-no-files-found: error
 
   publish:

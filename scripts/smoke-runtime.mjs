@@ -24,7 +24,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const resources = resolve(process.argv[2] ?? join(root, '.stage'))
 const paths = bundledRuntimePaths(resources)
 const { cliEntry, nodeBinary } = paths
-const smokeRoot = mkdtempSync(join(tmpdir(), 'oh-dsh-desktop-smoke-'))
+const smokeRoot = mkdtempSync(join(tmpdir(), 'tockteam-desktop-smoke-'))
 const dshHome = join(smokeRoot, 'dsh-home')
 const lines = []
 
@@ -91,8 +91,8 @@ const git = (...args) => {
   return result.stdout
 }
 git('init', '-b', 'main')
-git('config', 'user.name', 'Oh DSH Smoke')
-git('config', 'user.email', 'oh-dsh-smoke@example.test')
+git('config', 'user.name', 'TockTeam Smoke')
+git('config', 'user.email', 'tockteam-smoke@example.test')
 writeFileSync(join(smokeRoot, 'review-smoke.txt'), 'before\n')
 git('add', 'review-smoke.txt')
 git('commit', '-m', 'review smoke baseline')
@@ -203,7 +203,7 @@ try {
   for (const legacyPackage of [
     'dsh-web-terminal',
     '@dsh-external/dsh-web-panel',
-    '@oh-dsh/desktop-shell',
+    '@tockteam/desktop-shell',
   ]) {
     assert.equal(
       existsSync(join(resources, 'dsh-runtime', 'node_modules', ...legacyPackage.split('/'))),
@@ -246,7 +246,7 @@ try {
   assert.match(commitDiff.diff, /review-smoke\.txt/)
 
   const workspaceFactsResponse = await fetch(new URL(
-    `/oh-dsh/workspace?cwd=${encodeURIComponent(smokeRoot)}`,
+    `/tockteam/workspace?cwd=${encodeURIComponent(smokeRoot)}`,
     base,
   ))
   const workspaceFacts = await workspaceFactsResponse.json()
@@ -276,11 +276,11 @@ try {
     }
     socket.addEventListener('open', () => {
       socket.send(JSON.stringify({ type: 'resize', cols: 80, rows: 24 }))
-      socket.send("printf 'OH_DSH_TERMINAL_SMOKE\\n'; exit\r")
+      socket.send("printf 'TOCKTEAM_TERMINAL_SMOKE\\n'; exit\r")
     })
     socket.addEventListener('message', (event) => {
       output += String(event.data)
-      if (output.includes('OH_DSH_TERMINAL_SMOKE')) {
+      if (output.includes('TOCKTEAM_TERMINAL_SMOKE')) {
         socket.send(JSON.stringify({ type: 'close' }))
         finish()
       }
@@ -291,9 +291,9 @@ try {
     })
   })
 
-  console.log(`Oh-DSH Desktop profile ready on DSH ${dshVersion}: ${base.href}`)
+  console.log(`TockTeam Desktop profile ready on DSH ${dshVersion}: ${base.href}`)
   process.stdout.write(client.stdout)
-  console.log('Plugin compatible: @oh-dsh/desktop (bundle profile active)')
+  console.log('Plugin compatible: @tockteam/desktop (bundle profile active)')
   for (const plugin of loaded) {
     console.log(
       `Plugin compatible: ${plugin.id} (Host active, Client ${String(plugin.bytes)} bytes)`,

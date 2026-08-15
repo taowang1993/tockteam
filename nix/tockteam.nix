@@ -1,4 +1,4 @@
-# Oh-DSH package builder.
+# TockTeam package builder.
 #
 # dshSource selects where the pinned DeepSeek Harness runtime comes from:
 #   "llm-agents"  (default) — numtide/llm-agents.nix, pre-built npm package
@@ -39,7 +39,7 @@ let
       throw "unknown dshSource: ${dshSource}";
 
   # ---------------------------------------------------------------------------
-  # Oh-DSH front-end bundle. The same build produces all surface adapters;
+  # TockTeam front-end bundle. The same build produces all surface adapters;
   # the outer derivation controls which launchers and renderers are exposed.
   cleanSource = lib.cleanSourceWith {
     src = ../.;
@@ -68,7 +68,7 @@ let
   };
 
   # fetchPnpmDeps and the real build MUST see the same workspace graph.
-  source = pkgs.runCommand "oh-dsh-source" { } ''
+  source = pkgs.runCommand "tockteam-source" { } ''
     cp -r ${cleanSource} $out
     chmod -R u+w $out
     rm -rf $out/upstream/DSH-better-sidebar $out/upstream/dsh-TUI
@@ -76,8 +76,8 @@ let
     cp -r ${tuiSrc} $out/upstream/dsh-TUI
   '';
 
-  ohDshBundle = pkgs.stdenv.mkDerivation rec {
-    pname = "oh-dsh-${surface}-bundle";
+  tockTeamBundle = pkgs.stdenv.mkDerivation rec {
+    pname = "tockteam-${surface}-bundle";
     version = (builtins.fromJSON (builtins.readFile ../package.json)).version;
 
     src = source;
@@ -108,39 +108,39 @@ let
     installPhase = ''
       runHook preInstall
 
-      mkdir -p $out/lib/oh-dsh
-      cp -r dist $out/lib/oh-dsh/
-      cp -r bin $out/lib/oh-dsh/
-      cp package.json $out/lib/oh-dsh/
+      mkdir -p $out/lib/tockteam
+      cp -r dist $out/lib/tockteam/
+      cp -r bin $out/lib/tockteam/
+      cp package.json $out/lib/tockteam/
 
       # Carry package manifests so the final package can register the selected
       # surfaces into dsh-runtime/node_modules (mirrors stage-dsh.mjs).
-      mkdir -p $out/lib/oh-dsh/manifests
-      cp package.json $out/lib/oh-dsh/manifests/desktop.json
+      mkdir -p $out/lib/tockteam/manifests
+      cp package.json $out/lib/tockteam/manifests/desktop.json
       for p in plugins/*/package.json; do
         name=$(basename $(dirname "$p"))
-        cp "$p" "$out/lib/oh-dsh/manifests/$name.json"
+        cp "$p" "$out/lib/tockteam/manifests/$name.json"
       done
-      cp web/package.json $out/lib/oh-dsh/manifests/web.json
-      cp upstream/dsh-TUI/package.json $out/lib/oh-dsh/manifests/tui-renderer.json
+      cp web/package.json $out/lib/tockteam/manifests/web.json
+      cp upstream/dsh-TUI/package.json $out/lib/tockteam/manifests/tui-renderer.json
 
-      # Copy the pinned renderer and apply the guarded Oh-DSH adaptation.
-      mkdir -p $out/lib/oh-dsh/tui-renderer
+      # Copy the pinned renderer and apply the guarded TockTeam adaptation.
+      mkdir -p $out/lib/tockteam/tui-renderer
       cp -r upstream/dsh-TUI/lib upstream/dsh-TUI/skills \
         upstream/dsh-TUI/cordis.patch.yml upstream/dsh-TUI/cordis.yml \
-        upstream/dsh-TUI/LICENSE $out/lib/oh-dsh/tui-renderer/
-      node -e "import('./scripts/tui-upstream-adapter.mjs').then(({ adaptTuiRendererPackage }) => adaptTuiRendererPackage('$out/lib/oh-dsh/tui-renderer'))"
+        upstream/dsh-TUI/LICENSE $out/lib/tockteam/tui-renderer/
+      node -e "import('./scripts/tui-upstream-adapter.mjs').then(({ adaptTuiRendererPackage }) => adaptTuiRendererPackage('$out/lib/tockteam/tui-renderer'))"
 
       # Collect runtime dependency closures that the DSH runtime may not ship.
-      mkdir -p $out/lib/oh-dsh/extra-deps
+      mkdir -p $out/lib/tockteam/extra-deps
       ${pkgs.python3}/bin/python3 ${./collect-deps.py} \
         node_modules/.pnpm \
         plugins/better-sidebar-runtime/package.json \
-        $out/lib/oh-dsh/extra-deps
+        $out/lib/tockteam/extra-deps
       ${pkgs.python3}/bin/python3 ${./collect-deps.py} \
         node_modules/.pnpm \
         upstream/dsh-TUI/package.json \
-        $out/lib/oh-dsh/extra-deps
+        $out/lib/tockteam/extra-deps
 
       runHook postInstall
     '';
@@ -151,8 +151,8 @@ let
 
 in
 pkgs.stdenv.mkDerivation {
-  pname = "oh-dsh-${if isFull then "desktop" else surface}${lib.optionalString (dshSource != "llm-agents") "-${dshSource}"}";
-  version = ohDshBundle.version;
+  pname = "tockteam-${if isFull then "desktop" else surface}${lib.optionalString (dshSource != "llm-agents") "-${dshSource}"}";
+  version = tockTeamBundle.version;
 
   dontUnpack = true;
 
@@ -161,11 +161,11 @@ pkgs.stdenv.mkDerivation {
   installPhase = ''
     runHook preInstall
 
-    mkdir -p $out/lib/oh-dsh $out/bin
+    mkdir -p $out/lib/tockteam $out/bin
 
-    # Oh-DSH built assets
-    cp -r ${ohDshBundle}/lib/oh-dsh/dist $out/lib/oh-dsh/dist
-    cp ${ohDshBundle}/lib/oh-dsh/package.json $out/lib/oh-dsh/package.json
+    # TockTeam built assets
+    cp -r ${tockTeamBundle}/lib/tockteam/dist $out/lib/tockteam/dist
+    cp ${tockTeamBundle}/lib/tockteam/package.json $out/lib/tockteam/package.json
 
     # DSH runtime
     mkdir -p $out/dsh-runtime
@@ -180,19 +180,19 @@ pkgs.stdenv.mkDerivation {
     makeWrapper ${pkgs.nodejs_24}/bin/node $out/node-runtime/bin/node \
       --add-flags "--expose-internals"
 
-    # Register Oh-DSH packages into dsh-runtime/node_modules so the DSH
+    # Register TockTeam packages into dsh-runtime/node_modules so the DSH
     # profile loader can resolve them (mirrors installDesktopPackages in
     # scripts/stage-dsh.mjs).
     ${pkgs.python3}/bin/python3 ${./register-plugins.py} \
-      ${ohDshBundle}/lib/oh-dsh \
-      $out/lib/oh-dsh/dist \
+      ${tockTeamBundle}/lib/tockteam \
+      $out/lib/tockteam/dist \
       $out/dsh-runtime \
       ${surface}
 
     # Copy plugin runtime dependencies that the DSH runtime does not ship
     # (e.g. schemastery for better-sidebar-runtime).
-    if [ -d "${ohDshBundle}/lib/oh-dsh/extra-deps" ]; then
-      for dep in ${ohDshBundle}/lib/oh-dsh/extra-deps/*/; do
+    if [ -d "${tockTeamBundle}/lib/tockteam/extra-deps" ]; then
+      for dep in ${tockTeamBundle}/lib/tockteam/extra-deps/*/; do
         name=$(basename "$dep")
         if [ ! -d "$out/dsh-runtime/node_modules/$name" ]; then
           cp -r "$dep" "$out/dsh-runtime/node_modules/$name"
@@ -204,29 +204,29 @@ pkgs.stdenv.mkDerivation {
     # HMR is a development-time feature that requires --expose-internals;
     # the packaged runtime keeps it enabled (matching upstream releases).
 
-    # ohdsh launcher
-    makeWrapper ${pkgs.nodejs_24}/bin/node $out/bin/ohdsh \
-      --add-flags "$out/lib/oh-dsh/dist/ohdsh.js" \
-      --set DSH_OH_WEB_ROOT "$out" \
-      --set DSH_OH_TUI_ROOT "$out" \
-      --set OH_DSH_SURFACES "${if isFull then "desktop,web,tui" else surface}" \
+    # tockteam launcher
+    makeWrapper ${pkgs.nodejs_24}/bin/node $out/bin/tockteam \
+      --add-flags "$out/lib/tockteam/dist/tockteam.js" \
+      --set TOCKTEAM_WEB_ROOT "$out" \
+      --set TOCKTEAM_TUI_ROOT "$out" \
+      --set TOCKTEAM_SURFACES "${if isFull then "desktop,web,tui" else surface}" \
       ${lib.optionalString isFull ''
-        --set OH_DSH_DESKTOP_APP "$out/bin/oh-dsh-desktop" \
+        --set TOCKTEAM_DESKTOP_APP "$out/bin/tockteam-desktop" \
       ''}
 
     ${lib.optionalString isFull ''
-      # Electron wrapper. OH_DSH_RESOURCES_ROOT is required because loading
+      # Electron wrapper. TOCKTEAM_RESOURCES_ROOT is required because loading
       # dist/main.js directly keeps app.isPackaged false under Nix.
-      makeWrapper ${pkgs.electron_42}/bin/electron $out/bin/oh-dsh-desktop \
-        --add-flags "$out/lib/oh-dsh/dist/main.js" \
-        --set OH_DSH_RESOURCES_ROOT "$out" \
-        --set DSH_OH_WEB_ROOT "$out"
+      makeWrapper ${pkgs.electron_42}/bin/electron $out/bin/tockteam-desktop \
+        --add-flags "$out/lib/tockteam/dist/main.js" \
+        --set TOCKTEAM_RESOURCES_ROOT "$out" \
+        --set TOCKTEAM_WEB_ROOT "$out"
 
       mkdir -p $out/share/applications
-      cat > $out/share/applications/oh-dsh-desktop.desktop <<EOF
+      cat > $out/share/applications/tockteam-desktop.desktop <<EOF
       [Desktop Entry]
-      Name=Oh-DSH Desktop
-      Exec=$out/bin/oh-dsh-desktop
+      Name=TockTeam Desktop
+      Exec=$out/bin/tockteam-desktop
       Type=Application
       Categories=Development;
       EOF
@@ -236,10 +236,10 @@ pkgs.stdenv.mkDerivation {
   '';
 
   meta = with lib; {
-    description = "Oh-DSH ${if isFull then "full Desktop/Web/TUI" else if includesWeb then "Web" else "TUI"} distribution";
-    homepage = "https://github.com/hust-open-atom-club/oh-dsh";
+    description = "TockTeam ${if isFull then "full Desktop/Web/TUI" else if includesWeb then "Web" else "TUI"} distribution";
+    homepage = "https://github.com/taowang1993/tockteam";
     license = licenses.mit;
     platforms = platforms.linux;
-    mainProgram = "ohdsh";
+    mainProgram = "tockteam";
   };
 }

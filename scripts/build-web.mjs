@@ -23,16 +23,16 @@ const arch = process.env.DSH_DESKTOP_NODE_ARCH ?? process.arch
 const isWindowsHost = process.platform === 'win32'
 const isWindowsTarget = platform === 'win'
 const stagedNode = join(stage, 'node-runtime', isWindowsTarget ? 'node.exe' : join('bin', 'node'))
-const dirName = `oh-dsh-web-${version}-${platform}-${arch}`
+const dirName = `tockteam-web-${version}-${platform}-${arch}`
 const packageDir = join(release, dirName)
 
 for (const required of [
   join(root, 'dist', 'web.js'),
-  join(root, 'dist', 'ohdsh.js'),
+  join(root, 'dist', 'tockteam.js'),
   join(stage, 'dsh-runtime', 'lib', 'bin.js'),
   stagedNode,
-  join(stage, 'dsh-runtime', 'node_modules', '@oh-dsh', 'web', 'dist', 'index.js'),
-  join(stage, 'dsh-runtime', 'node_modules', '@oh-dsh', 'web', 'dist', 'cordis.patch.yml'),
+  join(stage, 'dsh-runtime', 'node_modules', '@tockteam', 'web', 'dist', 'index.js'),
+  join(stage, 'dsh-runtime', 'node_modules', '@tockteam', 'web', 'dist', 'cordis.patch.yml'),
 ]) {
   if (!existsSync(required)) {
     throw new Error(`web distribution artifact missing: ${required}; run pnpm run build && pnpm run stage:dsh first`)
@@ -49,11 +49,11 @@ function run(command, args, options = {}) {
 
 rmSync(packageDir, { recursive: true, force: true })
 mkdirSync(join(packageDir, 'bin'), { recursive: true })
-mkdirSync(join(packageDir, 'lib', 'oh-dsh-web'), { recursive: true })
-mkdirSync(join(packageDir, 'lib', 'oh-dsh'), { recursive: true })
+mkdirSync(join(packageDir, 'lib', 'tockteam-web'), { recursive: true })
+mkdirSync(join(packageDir, 'lib', 'tockteam'), { recursive: true })
 
-copyFileSync(join(root, 'dist', 'web.js'), join(packageDir, 'lib', 'oh-dsh-web', 'main.js'))
-copyFileSync(join(root, 'dist', 'ohdsh.js'), join(packageDir, 'lib', 'oh-dsh', 'cli.js'))
+copyFileSync(join(root, 'dist', 'web.js'), join(packageDir, 'lib', 'tockteam-web', 'main.js'))
+copyFileSync(join(root, 'dist', 'tockteam.js'), join(packageDir, 'lib', 'tockteam', 'cli.js'))
 copyFileSync(join(root, 'dist', 'release-package.json'), join(packageDir, 'package.json'))
 copyFileSync(join(root, 'LICENSE'), join(packageDir, 'LICENSE'))
 copyFileSync(join(root, 'THIRD_PARTY_NOTICES.md'), join(packageDir, 'THIRD_PARTY_NOTICES.md'))
@@ -69,63 +69,63 @@ cpSync(join(stage, 'node-runtime'), join(packageDir, 'node-runtime'), {
   verbatimSymlinks: true,
 })
 
-const launcher = join(packageDir, 'bin', 'ohdsh')
-copyFileSync(join(root, 'bin', 'ohdsh'), launcher)
+const launcher = join(packageDir, 'bin', 'tockteam')
+copyFileSync(join(root, 'bin', 'tockteam'), launcher)
 chmodSync(launcher, 0o755)
 
-const legacyLauncher = join(packageDir, 'bin', 'oh-dsh-web')
+const legacyLauncher = join(packageDir, 'bin', 'tockteam-web')
 writeFileSync(legacyLauncher, `#!/usr/bin/env sh
-# Compatibility launcher. Prefer: ohdsh web
+# Compatibility launcher. Prefer: tockteam web
 set -eu
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-exec "$ROOT/bin/ohdsh" web "$@"
+exec "$ROOT/bin/tockteam" web "$@"
 `)
 chmodSync(legacyLauncher, 0o755)
 if (isWindowsTarget) {
-  copyFileSync(join(root, 'bin', 'ohdsh.cmd'), join(packageDir, 'bin', 'ohdsh.cmd'))
-  writeFileSync(join(packageDir, 'bin', 'oh-dsh-web.cmd'), [
+  copyFileSync(join(root, 'bin', 'tockteam.cmd'), join(packageDir, 'bin', 'tockteam.cmd'))
+  writeFileSync(join(packageDir, 'bin', 'tockteam-web.cmd'), [
     '@ECHO off',
     'SETLOCAL',
     'SET "ROOT=%~dp0.."',
-    'CALL "%ROOT%\\bin\\ohdsh.cmd" web %*',
+    'CALL "%ROOT%\\bin\\tockteam.cmd" web %*',
     '',
   ].join('\r\n'))
 }
 
-writeFileSync(join(packageDir, 'README.md'), `# Oh-DSH Web
+writeFileSync(join(packageDir, 'README.md'), `# TockTeam Web
 
-Oh-DSH 的轻量浏览器发行版，不包含 Electron。它携带 Web runtime、Node.js
-和 Web 可用的内置插件，数据默认保存在 \`~/.oh-dsh-web\`。
+TockTeam 的轻量浏览器发行版，不包含 Electron。它携带 Web runtime、Node.js
+和 Web 可用的内置插件，数据默认保存在 \`~/.tockteam-web\`。
 
 ## 启动
 
 \`\`\`sh
-./bin/ohdsh web
+./bin/tockteam web
 \`\`\`
 
 Windows：
 
 \`\`\`bat
-bin\\ohdsh.cmd web
+bin\\tockteam.cmd web
 \`\`\`
 
 默认地址是 \`http://127.0.0.1:3080\`。运行
-\`./bin/ohdsh web --help\` 查看监听地址、端口、数据目录和可信主机选项。
+\`./bin/tockteam web --help\` 查看监听地址、端口、数据目录和可信主机选项。
 按 \`Ctrl+C\` 优雅退出。
 
 默认只监听 loopback。向局域网开放前，请配置 \`--trusted-host\`、鉴权和 TLS。
 
 ## English
 
-This is the lightweight Oh-DSH browser distribution without Electron. It
+This is the lightweight TockTeam browser distribution without Electron. It
 includes the Web runtime, Node.js, and Web-compatible bundled plugins.
 
-Start it with \`./bin/ohdsh web\` (or \`bin\\ohdsh.cmd web\` on Windows).
+Start it with \`./bin/tockteam web\` (or \`bin\\tockteam.cmd web\` on Windows).
 The default URL is \`http://127.0.0.1:3080\`. Run
-\`./bin/ohdsh web --help\` for host, port, data-directory, and trusted-host
+\`./bin/tockteam web --help\` for host, port, data-directory, and trusted-host
 options. Press \`Ctrl+C\` for a graceful shutdown.
 
-Documentation: https://github.com/hust-open-atom-club/oh-dsh/tree/main/docs
+Documentation: https://github.com/taowang1993/tockteam/tree/main/docs
 `)
 
 const tarball = join(release, `${dirName}.tar.gz`)
@@ -140,7 +140,7 @@ if (isWindowsHost) {
   run('zip', portableZipArguments(zip, dirName), { cwd: release })
 }
 
-console.log(`Packaged Oh-DSH Web ${version}: ${packageDir}`)
+console.log(`Packaged TockTeam Web ${version}: ${packageDir}`)
 console.log(`  ${tarball}`)
 console.log(`  ${zip}`)
 

@@ -71,7 +71,7 @@ function catalogDocument(): unknown {
       },
       { name: 'legacy-demo', category: 'plugin', bundle: false, repository: false },
       { name: 'hidden-demo', category: 'plugin', bundle: true, hide: true },
-      { name: 'oh-dsh-desktop', category: 'infra', bundle: true },
+      { name: 'tockteam-desktop', category: 'infra', bundle: true },
       { name: '../escape', category: 'plugin', bundle: true },
     ],
   }
@@ -125,9 +125,9 @@ class FakePlatform implements MarketplacePlatform {
         dsh: { bundle: { patch: './cordis.patch.yml' } },
       })
     }
-    if (pluginId === 'oh-dsh-desktop' && path === 'package.json') {
+    if (pluginId === 'tockteam-desktop' && path === 'package.json') {
       return JSON.stringify({
-        name: '@oh-dsh/desktop',
+        name: '@tockteam/desktop',
         dsh: { bundle: { patch: './cordis.patch.yml' } },
       })
     }
@@ -185,7 +185,7 @@ function fixture(): {
   profileDir: string
   runtime: FakeRuntime
 } {
-  const appDataPath = mkdtempSync(join(tmpdir(), 'oh-dsh-marketplace-'))
+  const appDataPath = mkdtempSync(join(tmpdir(), 'tockteam-marketplace-'))
   const dshHome = join(appDataPath, 'dsh')
   const profileDir = join(dshHome, 'profiles', 'desktop')
   mkdirSync(profileDir, { recursive: true })
@@ -193,7 +193,7 @@ function fixture(): {
     name: 'desktop',
     private: true,
     dependencies: {},
-    dsh: { profile: { bundles: ['@oh-dsh/desktop'] } },
+    dsh: { profile: { bundles: ['@tockteam/desktop'] } },
   }, undefined, 2) + '\n')
   writeFileSync(join(profileDir, 'cordis.patch.yml'), '[]\n')
   writeFileSync(join(profileDir, 'pnpm-workspace.yaml'), 'packages:\n  - .\n')
@@ -223,9 +223,9 @@ test('catalog parser keeps safe entries and labels unsupported managers', () => 
   assert.deepEqual(catalog.plugins.map(plugin => [plugin.id, plugin.mechanism]), [
     ['bundle-demo', 'bundle'],
     ['hybrid-demo', 'bundle'],
-    ['oh-dsh-desktop', 'bundle'],
     ['repository-demo', 'repository'],
     ['safe-demo', 'bundle'],
+    ['tockteam-desktop', 'bundle'],
     ['legacy-demo', 'unsupported'],
   ])
   assert.equal(
@@ -269,7 +269,7 @@ test('community and registry catalogs preserve repositories across owners', () =
 })
 
 test('GitHub credentials use an app-owned config without command-line pairs', () => {
-  const appDataPath = mkdtempSync(join(tmpdir(), 'oh-dsh-git-config-'))
+  const appDataPath = mkdtempSync(join(tmpdir(), 'tockteam-git-config-'))
   try {
     const environment = withGitHubCredentials({
       DSH_DESKTOP_APP_DATA: appDataPath,
@@ -294,7 +294,7 @@ test('GitHub credentials use an app-owned config without command-line pairs', ()
 })
 
 test('GitHub CLI discovery follows Windows PATH syntax and executable names', () => {
-  const root = mkdtempSync(join(tmpdir(), 'oh-dsh-gh-path-'))
+  const root = mkdtempSync(join(tmpdir(), 'tockteam-gh-path-'))
   try {
     const expected = win32.join(root, 'gh.exe')
     assert.equal(findGitHubCli({
@@ -311,7 +311,7 @@ test('public catalogs load anonymously without GitHub CLI', async () => {
     cliEntry: '/unused/dsh.mjs',
     cwd: tmpdir(),
     env: {
-      OH_DSH_MARKETPLACE_CATALOG: 'public-owner/public-catalog/data/plugins.json',
+      TOCKTEAM_MARKETPLACE_CATALOG: 'public-owner/public-catalog/data/plugins.json',
       PATH: '',
     },
     fetch: async (input): Promise<Response> => {
@@ -338,7 +338,7 @@ test('production bundle build runs approved hooks in its own workspace', {
     ? 'requires macOS Seatbelt'
     : false,
 }, async () => {
-  const sandboxRoot = mkdtempSync(join(tmpdir(), 'oh-dsh-bundle-build-'))
+  const sandboxRoot = mkdtempSync(join(tmpdir(), 'tockteam-bundle-build-'))
   const candidateProfile = join(sandboxRoot, 'dsh-home', 'profiles', 'desktop')
   const checkout = join(sandboxRoot, 'bundle-builds', 'prepare-fixture')
   const helper = join(checkout, 'packages', 'helper')
@@ -536,11 +536,11 @@ test('marketplace navigation preserves the Settings footer geometry', () => {
   ), 'utf8')
   assert.doesNotMatch(client, /--oh-marketplace-sidebar-height/)
   assert.doesNotMatch(client, /SIDEBAR_BOTTOM_INSET/)
-  assert.doesNotMatch(css, /data-oh-dsh-marketplace-sidebar-root/)
+  assert.doesNotMatch(css, /data-tockteam-marketplace-sidebar-root/)
   assert.match(css, /\.oh-marketplace-nav \{[\s\S]*gap: 8px;/)
   assert.match(css, /\.oh-marketplace-nav \{[\s\S]*padding: 6px 2px 6px 10px;/)
   assert.match(css, /\.oh-marketplace-nav svg \{[\s\S]*width: 16px;[\s\S]*height: 16px;/)
-  assert.match(css, /data-oh-dsh-marketplace-footer-stack='true'/)
+  assert.match(css, /data-tockteam-marketplace-footer-stack='true'/)
   assert.match(css, /flex-direction: column !important;/)
   assert.match(client, /marketplaceFooter\(settings\)/)
   assert.match(client, /removeAttribute\(FOOTER_STACK_ATTRIBUTE\)/)
@@ -548,7 +548,7 @@ test('marketplace navigation preserves the Settings footer geometry', () => {
   assert.match(client, /ctx\.get\('sessions'\) as SessionsService/)
   assert.match(client, /this\.#sessions\.list\.subscribe\(syncSessionNavigation\)/)
   assert.match(client, /this\.#unsubscribeSessions\?\.\(\)/)
-  assert.match(client, /locale\.register\('oh-dsh\.plugin-marketplace'/)
+  assert.match(client, /locale\.register\('tockteam\.plugin-marketplace'/)
   assert.match(client, /\['installed', t\('installed'\)\]/)
   assert.match(client, /\['available', t\('not-installed'\)\]/)
   assert.match(client, /\['updates', t\('updates'\)\]/)
@@ -666,7 +666,7 @@ test('bundle preview remains isolated until apply and supports undo', async () =
     const liveAfter = JSON.parse(readFileSync(join(setup.profileDir, 'package.json'), 'utf8'))
     assert.match(
       liveAfter.dependencies['@example/bundle-demo'],
-      /^link:\.oh-dsh\/sources\/bundle-demo-/,
+      /^link:\.tockteam\/sources\/bundle-demo-/,
     )
     assert.doesNotMatch(
       liveAfter.dependencies['@example/bundle-demo'],
@@ -849,12 +849,12 @@ test('the marketplace refuses to modify protected desktop plugins', async () => 
     const snapshot = await setup.manager.dispatch({
       type: 'prepare',
       action: 'install',
-      pluginId: 'oh-dsh-desktop',
+      pluginId: 'tockteam-desktop',
     })
     assert.match(snapshot.error ?? '', /protected by the desktop/)
     assert.equal(snapshot.preview, null)
     assert.equal(
-      snapshot.catalog.find(plugin => plugin.id === 'oh-dsh-desktop')?.protected,
+      snapshot.catalog.find(plugin => plugin.id === 'tockteam-desktop')?.protected,
       true,
     )
   } finally {
@@ -1046,8 +1046,8 @@ test('legacy dsh-external repository receipts remain manageable', async () => {
   const setup = fixture()
   try {
     const source = `github:dsh-external/legacy-plugin#${COMMIT}&path:/.dsh-plugin`
-    mkdirSync(join(setup.profileDir, '.oh-dsh'), { recursive: true })
-    writeFileSync(join(setup.profileDir, '.oh-dsh', 'marketplace.json'), JSON.stringify({
+    mkdirSync(join(setup.profileDir, '.tockteam'), { recursive: true })
+    writeFileSync(join(setup.profileDir, '.tockteam', 'marketplace.json'), JSON.stringify({
       version: 1,
       entries: [{
         installedAt: '2026-08-12T00:00:00Z',
@@ -1059,12 +1059,12 @@ test('legacy dsh-external repository receipts remain manageable', async () => {
       }],
     }))
     writeFileSync(join(setup.profileDir, 'cordis.patch.yml'), [
-      '# >>> Oh-DSH-Desktop plugin marketplace',
+      '# >>> TockTeam-Desktop plugin marketplace',
       '- id: repository-plugins',
       '  config:',
       '    repositories:',
       `      - '${source}'`,
-      '# <<< Oh-DSH-Desktop plugin marketplace',
+      '# <<< TockTeam-Desktop plugin marketplace',
       '',
     ].join('\n'))
 
@@ -1089,8 +1089,8 @@ test('legacy receipts require confirmation before changing repository identity',
   const setup = fixture()
   try {
     const source = `github:dsh-external/legacy-plugin#${COMMIT}&path:/.dsh-plugin`
-    mkdirSync(join(setup.profileDir, '.oh-dsh'), { recursive: true })
-    writeFileSync(join(setup.profileDir, '.oh-dsh', 'marketplace.json'), JSON.stringify({
+    mkdirSync(join(setup.profileDir, '.tockteam'), { recursive: true })
+    writeFileSync(join(setup.profileDir, '.tockteam', 'marketplace.json'), JSON.stringify({
       version: 1,
       entries: [{
         installedAt: '2026-08-12T00:00:00Z',
@@ -1102,12 +1102,12 @@ test('legacy receipts require confirmation before changing repository identity',
       }],
     }))
     writeFileSync(join(setup.profileDir, 'cordis.patch.yml'), [
-      '# >>> Oh-DSH-Desktop plugin marketplace',
+      '# >>> TockTeam-Desktop plugin marketplace',
       '- id: repository-plugins',
       '  config:',
       '    repositories:',
       `      - '${source}'`,
-      '# <<< Oh-DSH-Desktop plugin marketplace',
+      '# <<< TockTeam-Desktop plugin marketplace',
       '',
     ].join('\n'))
     setup.platform.latestCommit = UPDATED_COMMIT

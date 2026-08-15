@@ -55,25 +55,25 @@ export interface PinnedSummary {
 
 export const inject = ['locale', 'sessions']
 
-const OPEN_KEY = 'oh-dsh-desktop.pinned-summary.open'
+const OPEN_KEY = 'tockteam-desktop.pinned-summary.open'
 
 const SUMMARY_CSS = `
 html {
-  --oh-dsh-pinned-summary-width: 288px;
+  --tockteam-pinned-summary-width: 288px;
 }
 
-html[data-oh-dsh-summary-pinned='true'] #root {
+html[data-tockteam-summary-pinned='true'] #root {
   box-sizing: border-box;
-  padding-right: calc(var(--oh-dsh-pinned-summary-width) + 24px);
+  padding-right: calc(var(--tockteam-pinned-summary-width) + 24px);
 }
 
-[data-oh-dsh-pinned-summary] {
+[data-tockteam-pinned-summary] {
   position: fixed;
   z-index: 9000;
-  top: calc(var(--oh-dsh-titlebar-height, 40px) + 12px);
+  top: calc(var(--tockteam-titlebar-height, 40px) + 12px);
   right: 12px;
-  height: calc((100vh - var(--oh-dsh-titlebar-height, 40px) - 24px) / 2);
-  width: var(--oh-dsh-pinned-summary-width);
+  height: calc((100vh - var(--tockteam-titlebar-height, 40px) - 24px) / 2);
+  width: var(--tockteam-pinned-summary-width);
   box-sizing: border-box;
   overflow: hidden;
   border: 1px solid var(--dsw-alias-border-l1);
@@ -92,7 +92,7 @@ html[data-oh-dsh-summary-pinned='true'] #root {
   -webkit-app-region: no-drag;
 }
 
-[data-oh-dsh-pinned-summary][data-open='true'] {
+[data-tockteam-pinned-summary][data-open='true'] {
   opacity: 1;
   pointer-events: auto;
   transform: translateX(0);
@@ -100,7 +100,7 @@ html[data-oh-dsh-summary-pinned='true'] #root {
   transition-delay: 0s;
 }
 
-[data-oh-dsh-summary-header] {
+[data-tockteam-summary-header] {
   display: flex;
   align-items: center;
   height: 48px;
@@ -111,7 +111,7 @@ html[data-oh-dsh-summary-pinned='true'] #root {
   font-weight: 600;
 }
 
-[data-oh-dsh-summary-close] {
+[data-tockteam-summary-close] {
   display: grid;
   place-items: center;
   width: 28px;
@@ -126,24 +126,24 @@ html[data-oh-dsh-summary-pinned='true'] #root {
   font-size: 18px;
 }
 
-[data-oh-dsh-summary-close]:hover {
+[data-tockteam-summary-close]:hover {
   background: var(--dsw-alias-interactive-bg-hover);
 }
 
-[data-oh-dsh-summary-body] {
+[data-tockteam-summary-body] {
   height: calc(100% - 48px);
   padding: 14px 15px 16px;
   box-sizing: border-box;
   overflow: auto;
 }
 
-[data-oh-dsh-summary-title] {
+[data-tockteam-summary-title] {
   margin: 0;
   font-size: 14px;
   line-height: 1.35;
 }
 
-[data-oh-dsh-summary-meta] {
+[data-tockteam-summary-meta] {
   margin: 6px 0 12px;
   color: var(--dsw-alias-label-tertiary);
   font-size: 11px;
@@ -151,7 +151,7 @@ html[data-oh-dsh-summary-pinned='true'] #root {
   overflow-wrap: anywhere;
 }
 
-[data-oh-dsh-summary-source] {
+[data-tockteam-summary-source] {
   display: inline-flex;
   margin-bottom: 10px;
   padding: 3px 8px;
@@ -162,7 +162,7 @@ html[data-oh-dsh-summary-pinned='true'] #root {
   font-weight: 600;
 }
 
-[data-oh-dsh-summary-text] {
+[data-tockteam-summary-text] {
   margin: 0;
   color: var(--dsw-alias-label-secondary);
   font-size: 12px;
@@ -172,12 +172,12 @@ html[data-oh-dsh-summary-pinned='true'] #root {
 }
 
 @media (max-width: 900px) {
-  html[data-oh-dsh-summary-pinned='true'] #root { padding-right: 0; }
-  [data-oh-dsh-pinned-summary] { box-shadow: -20px 0 48px rgb(0 0 0 / 14%); }
+  html[data-tockteam-summary-pinned='true'] #root { padding-right: 0; }
+  [data-tockteam-pinned-summary] { box-shadow: -20px 0 48px rgb(0 0 0 / 14%); }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  [data-oh-dsh-pinned-summary] { transition: none; }
+  [data-tockteam-pinned-summary] { transition: none; }
 }
 `
 
@@ -264,33 +264,33 @@ class PinnedSummaryService implements PinnedSummary {
 
   mount(): void {
     this.#style = document.createElement('style')
-    this.#style.dataset.ohDshPinnedSummaryStyles = 'true'
+    this.#style.dataset.tockTeamPinnedSummaryStyles = 'true'
     this.#style.textContent = SUMMARY_CSS
     document.head.append(this.#style)
 
     const panel = document.createElement('aside')
-    panel.dataset.ohDshPinnedSummary = 'true'
+    panel.dataset.tockTeamPinnedSummary = 'true'
     panel.setAttribute('aria-label', this.#t('summary.label'))
     panel.innerHTML = `
-      <header data-oh-dsh-summary-header>
+      <header data-tockteam-summary-header>
         <span></span>
-        <button data-oh-dsh-summary-close type="button">×</button>
+        <button data-tockteam-summary-close type="button">×</button>
       </header>
-      <div data-oh-dsh-summary-body>
-        <h2 data-oh-dsh-summary-title></h2>
-        <div data-oh-dsh-summary-meta></div>
-        <span data-oh-dsh-summary-source></span>
-        <p data-oh-dsh-summary-text></p>
+      <div data-tockteam-summary-body>
+        <h2 data-tockteam-summary-title></h2>
+        <div data-tockteam-summary-meta></div>
+        <span data-tockteam-summary-source></span>
+        <p data-tockteam-summary-text></p>
       </div>
     `
     document.body.append(panel)
     this.#panel = panel
-    this.#title = required(panel, '[data-oh-dsh-summary-title]')
-    this.#headerTitle = required(panel, '[data-oh-dsh-summary-header] span')
-    this.#close = required(panel, '[data-oh-dsh-summary-close]')
-    this.#meta = required(panel, '[data-oh-dsh-summary-meta]')
-    this.#source = required(panel, '[data-oh-dsh-summary-source]')
-    this.#text = required(panel, '[data-oh-dsh-summary-text]')
+    this.#title = required(panel, '[data-tockteam-summary-title]')
+    this.#headerTitle = required(panel, '[data-tockteam-summary-header] span')
+    this.#close = required(panel, '[data-tockteam-summary-close]')
+    this.#meta = required(panel, '[data-tockteam-summary-meta]')
+    this.#source = required(panel, '[data-tockteam-summary-source]')
+    this.#text = required(panel, '[data-tockteam-summary-text]')
     this.#close.addEventListener('click', () => { this.setOpen(false) })
     this.#narrowViewport.addEventListener('change', this.#handleViewportChange)
     this.#unsubscribeList = this.#sessions.list.subscribe(() => { this.bindAndRender() })
@@ -310,9 +310,9 @@ class PinnedSummaryService implements PinnedSummary {
     this.#narrowViewport.removeEventListener('change', this.#handleViewportChange)
     this.#panel?.remove()
     this.#style?.remove()
-    delete document.documentElement.dataset.ohDshSummaryPinned
-    if (document.documentElement.dataset.ohDshRightPanelOwner === 'pinned-summary') {
-      delete document.documentElement.dataset.ohDshRightPanelOwner
+    delete document.documentElement.dataset.tockTeamSummaryPinned
+    if (document.documentElement.dataset.tockTeamRightPanelOwner === 'pinned-summary') {
+      delete document.documentElement.dataset.tockTeamRightPanelOwner
       document.getElementById('root')?.style.removeProperty('padding-right')
     }
   }
@@ -345,18 +345,18 @@ class PinnedSummaryService implements PinnedSummary {
       this.#panel.setAttribute('aria-hidden', String(!this.#open))
     }
     if (this.#open) {
-      html.dataset.ohDshSummaryPinned = 'true'
-      html.dataset.ohDshRightPanelOwner = 'pinned-summary'
+      html.dataset.tockTeamSummaryPinned = 'true'
+      html.dataset.tockTeamRightPanelOwner = 'pinned-summary'
       const appRoot = document.getElementById('root')
       if (appRoot !== null) {
         appRoot.style.paddingRight = this.#narrowViewport.matches
           ? '0px'
-          : 'calc(var(--oh-dsh-pinned-summary-width) + 24px)'
+          : 'calc(var(--tockteam-pinned-summary-width) + 24px)'
       }
     } else {
-      delete html.dataset.ohDshSummaryPinned
-      if (html.dataset.ohDshRightPanelOwner === 'pinned-summary') {
-        delete html.dataset.ohDshRightPanelOwner
+      delete html.dataset.tockTeamSummaryPinned
+      if (html.dataset.tockTeamRightPanelOwner === 'pinned-summary') {
+        delete html.dataset.tockTeamRightPanelOwner
         document.getElementById('root')?.style.removeProperty('padding-right')
       }
     }
@@ -428,10 +428,10 @@ class PinnedSummaryService implements PinnedSummary {
 /** Provide the pinned-summary service and its layout-reserving DOM surface. */
 export function apply(ctx: ClientContext): void {
   const locale = ctx.get('locale') as LocaleService
-  const t: Translate<PinnedSummaryMessage> = locale.bind('oh-dsh.pinned-summary')
+  const t: Translate<PinnedSummaryMessage> = locale.bind('tockteam.pinned-summary')
   ctx.effect(
-    () => locale.register('oh-dsh.pinned-summary', PINNED_SUMMARY_MESSAGES),
-    'oh-dsh-desktop: pinned summary dictionaries',
+    () => locale.register('tockteam.pinned-summary', PINNED_SUMMARY_MESSAGES),
+    'tockteam-desktop: pinned summary dictionaries',
   )
   const service = new PinnedSummaryService(
     ctx.get('sessions') as SessionsService,
@@ -445,5 +445,5 @@ export function apply(ctx: ClientContext): void {
       service.dispose()
       void disposeService()
     }
-  }, 'oh-dsh-desktop: pinned summary')
+  }, 'tockteam-desktop: pinned summary')
 }

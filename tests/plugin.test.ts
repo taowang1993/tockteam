@@ -9,9 +9,9 @@ import {
 
 test('desktop client replaces the hero title and keeps the Preview badge', () => {
   const client = readFileSync(new URL('../src/client.ts', import.meta.url), 'utf8')
-  assert.match(client, /element\.textContent = 'Oh-DSH Desktop'/)
+  assert.match(client, /element\.textContent = 'TockTeam Desktop'/)
   assert.match(client, /\['Into the Unknown', '探索未知之境', '探索未至之境'\]/)
-  assert.doesNotMatch(client, /data-oh-dsh-hero-preview/)
+  assert.doesNotMatch(client, /data-tockteam-hero-preview/)
 })
 
 test('desktop Settings stays below portaled menus and above desktop surfaces', () => {
@@ -30,11 +30,11 @@ test('desktop Settings stays below portaled menus and above desktop surfaces', (
   )
   assert.match(
     client,
-    /:has\(\s*#root \[role='presentation'\] > \[role='dialog'\]\s*\) \.oh-dsh-panel-toolbar,[\s\S]*#oh-dsh-sidebar-root,[\s\S]*\[data-oh-dsh-pinned-summary\],[\s\S]*#oh-dsh-plugin-marketplace-root[^}]*\{[^}]*z-index: 999 !important;/s,
+    /:has\(\s*#root \[role='presentation'\] > \[role='dialog'\]\s*\) \.tockteam-panel-toolbar,[\s\S]*#tockteam-sidebar-root,[\s\S]*\[data-tockteam-pinned-summary\],[\s\S]*#tockteam-plugin-marketplace-root[^}]*\{[^}]*z-index: 999 !important;/s,
   )
 })
 
-test('every bundled Oh-DSH client follows the native locale service', () => {
+test('every bundled TockTeam client follows the native locale service', () => {
   const clients = [
     '../plugins/skins/src/client/plugin.tsx',
     '../src/client.ts',
@@ -46,7 +46,7 @@ test('every bundled Oh-DSH client follows the native locale service', () => {
   for (const path of clients) {
     const source = readFileSync(new URL(path, import.meta.url), 'utf8')
     assert.match(source, /export const inject = \[[^\]]*'locale'/)
-    assert.match(source, /locale\.register\('oh-dsh\./)
+    assert.match(source, /locale\.register\('tockteam\./)
   }
 
   const dictionaries = [
@@ -145,7 +145,7 @@ test('desktop Host plugin publishes capability, prompt, and bash environment', (
       profile: 'desktop',
       version: '9.8.7',
     })
-    assert.match(prompt, /Oh-DSH Desktop/)
+    assert.match(prompt, /TockTeam Desktop/)
     assert.doesNotMatch(prompt, /ChatGPT|OpenAI/)
     assert.deepEqual(resolvedEnvironment, {
       DSH_DESKTOP: '1',
@@ -169,8 +169,8 @@ test('desktop Agent tools share the guarded marketplace transaction owner', asyn
   type AgentPolicy = Parameters<Parameters<typeof mountMarketplaceAgentTools>[0]['on']>[1]
   let policy: AgentPolicy | undefined
   const environment: NodeJS.ProcessEnv = {
-    OH_DSH_MARKETPLACE_AGENT_TOKEN: 'secret-token',
-    OH_DSH_MARKETPLACE_AGENT_URL: 'http://127.0.0.1:43210/v1/marketplace',
+    TOCKTEAM_MARKETPLACE_AGENT_TOKEN: 'secret-token',
+    TOCKTEAM_MARKETPLACE_AGENT_URL: 'http://127.0.0.1:43210/v1/marketplace',
   }
   mountMarketplaceAgentTools({
     on: (_name, listener) => { policy = listener },
@@ -190,8 +190,8 @@ test('desktop Agent tools share the guarded marketplace transaction owner', asyn
     'desktop_plugin_apply',
     'desktop_plugin_recover',
   ])
-  assert.equal(environment.OH_DSH_MARKETPLACE_AGENT_TOKEN, undefined)
-  assert.equal(environment.OH_DSH_MARKETPLACE_AGENT_URL, undefined)
+  assert.equal(environment.TOCKTEAM_MARKETPLACE_AGENT_TOKEN, undefined)
+  assert.equal(environment.TOCKTEAM_MARKETPLACE_AGENT_URL, undefined)
   const first = definitions[0] as {
     output: { schema: { properties: Record<string, Record<string, unknown>>; required: string[] } }
     parameters: { properties: Record<string, Record<string, unknown>>; type: string }
@@ -205,7 +205,7 @@ test('desktop Agent tools share the guarded marketplace transaction owner', asyn
     await policy({ name: 'desktop_plugin_apply' }, async () => ({ kind: 'allow' })),
     {
       kind: 'ask',
-      reason: 'Apply the tested plugin preview to Oh-DSH Desktop?',
+      reason: 'Apply the tested plugin preview to TockTeam Desktop?',
     },
   )
   assert.deepEqual(

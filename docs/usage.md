@@ -8,9 +8,9 @@
 
 ## 选择发行形态
 
-- 需要完整本地工作台：安装 **Oh-DSH Desktop**。
-- 只需要浏览器交互：安装 **Oh-DSH Web**，不携带 Electron。
-- 纯终端交互：安装 **Oh-DSH TUI**，不携带 Electron 或浏览器 UI。
+- 需要完整本地工作台：安装 **TockTeam Desktop**。
+- 只需要浏览器交互：安装 **TockTeam Web**，不携带 Electron。
+- 纯终端交互：安装 **TockTeam TUI**，不携带 Electron 或浏览器 UI。
 
 完整版已经包含三种形态，因此安装一次后可以使用 `desktop`、`web` 和 `tui`。
 
@@ -19,21 +19,21 @@
 ### macOS
 
 1. 从最新 Release 下载 DMG。
-2. 将 **Oh-DSH Desktop** 拖入 Applications。
+2. 将 **TockTeam Desktop** 拖入 Applications。
 3. 未公证的测试构建首次运行时，在 Finder 中右键应用并选择“打开”。
 
 如确认文件来自项目 Release，但仍被 quarantine 阻止，可对实际下载文件执行：
 
 ```sh
-xattr -d com.apple.quarantine ~/Downloads/Oh-DSH-Desktop-*.dmg
+xattr -d com.apple.quarantine ~/Downloads/TockTeam-Desktop-*.dmg
 ```
 
 安装统一命令：
 
 ```sh
 sudo ln -sf \
-  "/Applications/Oh-DSH Desktop.app/Contents/Resources/bin/ohdsh" \
-  /usr/local/bin/ohdsh
+  "/Applications/TockTeam Desktop.app/Contents/Resources/bin/tockteam" \
+  /usr/local/bin/tockteam
 ```
 
 ### Linux
@@ -41,33 +41,33 @@ sudo ln -sf \
 AppImage：
 
 ```sh
-chmod +x Oh-DSH-Desktop-*.AppImage
-./Oh-DSH-Desktop-*.AppImage
+chmod +x TockTeam-Desktop-*.AppImage
+./TockTeam-Desktop-*.AppImage
 ```
 
 deb：
 
 ```sh
-sudo apt install ./Oh-DSH-Desktop-*.deb
+sudo apt install ./TockTeam-Desktop-*.deb
 ```
 
 ### Windows
 
-解压 Release 中的 Windows 包并启动 **Oh-DSH Desktop**。统一 CLI 位于应用
-资源目录的 `bin\ohdsh.cmd`，可以将该目录加入 `PATH`。
+解压 Release 中的 Windows 包并启动 **TockTeam Desktop**。统一 CLI 位于应用
+资源目录的 `bin\tockteam.cmd`，可以将该目录加入 `PATH`。
 
 ## 安装 Web-only
 
 ```sh
-tar -xzf oh-dsh-web-*.tar.gz
-cd oh-dsh-web-*/
-./bin/ohdsh web
+tar -xzf tockteam-web-*.tar.gz
+cd tockteam-web-*/
+./bin/tockteam web
 ```
 
 Windows：
 
 ```bat
-bin\ohdsh.cmd web
+bin\tockteam.cmd web
 ```
 
 常用选项：
@@ -76,12 +76,12 @@ bin\ohdsh.cmd web
 | --- | --- | --- |
 | `--host` | `127.0.0.1` | 监听地址 |
 | `--port` | `3080` | 监听端口；`0` 使用随机端口 |
-| `--data` | `~/.oh-dsh-web` | Web 可写数据根目录 |
+| `--data` | `~/.tockteam-web` | Web 可写数据根目录 |
 | `--no-open` | 关闭 | 不自动打开浏览器 |
 | `--trusted-host` | 无 | 增加可信 authority，可重复 |
 
-等价环境变量包括 `DSH_OH_WEB_HOST`、`DSH_OH_WEB_PORT`、
-`DSH_OH_WEB_HOME` 和 `DSH_OH_WEB_OPEN`。按 `Ctrl+C` 优雅退出。
+等价环境变量包括 `TOCKTEAM_WEB_HOST`、`TOCKTEAM_WEB_PORT`、
+`TOCKTEAM_WEB_HOME` 和 `TOCKTEAM_WEB_OPEN`。按 `Ctrl+C` 优雅退出。
 
 不要在未配置访问边界时直接监听 `0.0.0.0`。对局域网开放时，应同时配置
 `--trusted-host`，并由可信反向代理提供鉴权和 TLS。
@@ -89,20 +89,20 @@ bin\ohdsh.cmd web
 ## 安装 TUI-only
 
 ```sh
-tar -xzf oh-dsh-tui-*.tar.gz
-cd oh-dsh-tui-*/
-./bin/ohdsh tui
+tar -xzf tockteam-tui-*.tar.gz
+cd tockteam-tui-*/
+./bin/tockteam tui
 ```
 
-Windows 使用 `bin\ohdsh.cmd tui`。TUI 需要真实交互终端；默认使用 alternate
+Windows 使用 `bin\tockteam.cmd tui`。TUI 需要真实交互终端；默认使用 alternate
 screen，全屏选择、滚动和复制由上游 `dsh-TUI` 处理。
 
 ## 统一启动命令
 
 ```sh
-ohdsh desktop
-ohdsh web
-ohdsh tui
+tockteam desktop
+tockteam web
+tockteam tui
 ```
 
 - `desktop` 启动已安装应用；源码仓库中回退到 Electron 开发入口。
@@ -114,7 +114,7 @@ TUI 常用选项：
 | 选项 | 默认值 | 说明 |
 | --- | --- | --- |
 | `--cwd` | 当前目录 | Workspace |
-| `--data` | `~/.ohdsh` | Oh-DSH TUI Profile、会话和配置目录 |
+| `--data` | `~/.tockteam` | TockTeam TUI Profile、会话和配置目录 |
 | `--resume` | 新会话 | 恢复指定 Session id |
 | `--lang` | 上游设置 | `zh` 或 `en` |
 | `--preset` | `standard` | 初始 Agent preset |
@@ -133,7 +133,7 @@ TUI 常用选项：
 | 新建 Side chat | `⌥⌘S` |
 | 退出侧栏专注模式 | `Esc` |
 
-设置页支持中英文、模型、权限、Agent preset、插件配置和 Oh-DSH 皮肤。
+设置页支持中英文、模型、权限、Agent preset、插件配置和 TockTeam 皮肤。
 设置弹窗会覆盖并虚化所有工作区和侧栏内容。
 
 Web 与 Desktop 可在设置页选择皮肤。TUI 输入 `/theme` 可选择相同的 Deep
@@ -163,9 +163,9 @@ pnpm run build
 pnpm run stage:dsh
 export PATH="$PWD/bin:$PATH"
 
-ohdsh desktop
-ohdsh web --port 3080
-ohdsh tui
+tockteam desktop
+tockteam web --port 3080
+tockteam tui
 ```
 
 打包命令：
@@ -181,17 +181,17 @@ pnpm run dist:tui       # TUI-only 终端版
 ## 数据与排错
 
 Desktop 保留既有内部数据目录，以保证更名升级兼容。Web 默认数据目录是
-`~/.oh-dsh-web`，TUI 使用独立的 `~/.ohdsh`，不会加载 `~/.dsh` 中的全局
+`~/.tockteam-web`，TUI 使用独立的 `~/.tockteam`，不会加载 `~/.dsh` 中的全局
 插件配置。DeepSeek API key 可以在 Models 设置中配置，也可以放入对应
 DSH 数据目录的 `.env`。
 
 排查顺序：
 
-1. 运行 `ohdsh --help` 确认 CLI 来源。
-2. 运行 `ohdsh web --help` 检查参数。
-3. 运行 `ohdsh tui --help`，再用 `ohdsh tui --inline` 排除终端全屏兼容问题。
-4. 使用随机端口验证：`ohdsh web --port 0 --no-open`。
+1. 运行 `tockteam --help` 确认 CLI 来源。
+2. 运行 `tockteam web --help` 检查参数。
+3. 运行 `tockteam tui --help`，再用 `tockteam tui --inline` 排除终端全屏兼容问题。
+4. 使用随机端口验证：`tockteam web --port 0 --no-open`。
 5. 检查 Profile 是否同时安装并启用了所需插件。
-6. Desktop 启动失败时，从终端运行应用内 `bin/ohdsh desktop` 获取日志。
+6. Desktop 启动失败时，从终端运行应用内 `bin/tockteam desktop` 获取日志。
 
 架构与上游关系见[设计与插件边界](./design.md)。

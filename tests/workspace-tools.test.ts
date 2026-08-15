@@ -21,11 +21,11 @@ function git(cwd: string, args: string[]): string {
 }
 
 test('workspace extension provides repository facts and branch creation', async () => {
-  const workspace = mkdtempSync(join(tmpdir(), 'oh-dsh-workspace-tools-'))
+  const workspace = mkdtempSync(join(tmpdir(), 'tockteam-workspace-tools-'))
   try {
     git(workspace, ['init', '-b', 'main'])
-    git(workspace, ['config', 'user.name', 'Oh DSH Test'])
-    git(workspace, ['config', 'user.email', 'oh-dsh@example.test'])
+    git(workspace, ['config', 'user.name', 'TockTeam Test'])
+    git(workspace, ['config', 'user.email', 'tockteam@example.test'])
     writeFileSync(join(workspace, 'README.md'), 'first\n')
     git(workspace, ['add', 'README.md'])
     git(workspace, ['commit', '-m', 'initial'])
@@ -42,7 +42,7 @@ test('workspace extension provides repository facts and branch creation', async 
   }
 })
 
-test('Better Sidebar status maps into the Oh-DSH workspace model', () => {
+test('Better Sidebar status maps into the TockTeam workspace model', () => {
   assert.deepEqual(workspaceChangesFromBetterSidebar([
     { path: 'staged.ts', xy: 'M ' },
     { path: 'renamed.ts', xy: 'R ' },
@@ -54,7 +54,7 @@ test('Better Sidebar status maps into the Oh-DSH workspace model', () => {
   ])
 })
 
-test('workspace files adapt Better Sidebar responses to the Oh-DSH UI', () => {
+test('workspace files adapt Better Sidebar responses to the TockTeam UI', () => {
   const root = mapBetterSidebarTree('/workspace', {
     path: '/workspace/src',
     entries: [

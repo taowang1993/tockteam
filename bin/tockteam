@@ -1,0 +1,23 @@
+#!/usr/bin/env sh
+set -eu
+
+ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+
+if [ -x "$ROOT/node-runtime/bin/node" ] && [ -f "$ROOT/lib/tockteam/cli.js" ]; then
+  export TOCKTEAM_WEB_ROOT="$ROOT"
+  export TOCKTEAM_TUI_ROOT="$ROOT"
+  case "$ROOT" in
+    */Contents/Resources)
+      export TOCKTEAM_DESKTOP_APP="${ROOT%/Contents/Resources}"
+      ;;
+  esac
+  exec "$ROOT/node-runtime/bin/node" "$ROOT/lib/tockteam/cli.js" "$@"
+fi
+
+if [ ! -f "$ROOT/dist/tockteam.js" ]; then
+  printf '%s\n' 'TockTeam is not built. Run pnpm run build first.' >&2
+  exit 1
+fi
+
+export TOCKTEAM_SOURCE_ROOT="$ROOT"
+exec node "$ROOT/dist/tockteam.js" "$@"

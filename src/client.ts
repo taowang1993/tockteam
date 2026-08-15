@@ -1,4 +1,4 @@
-/** Browser face for the native Oh-DSH Desktop bridge. */
+/** Browser face for the native TockTeam Desktop bridge. */
 
 import type { DesktopBridge, DesktopCommand } from './contracts.ts'
 import type { DesktopPanels } from '../plugins/panel-controls/src/client.ts'
@@ -10,8 +10,8 @@ import type {
   Translate,
 } from '../plugins/shared/i18n.ts'
 import {
-  OH_DSH_SURFACE_VIEW_SERVICE,
-  type OhDshSurfaceView,
+  TOCKTEAM_SURFACE_VIEW_SERVICE,
+  type TockTeamSurfaceView,
 } from '../plugins/shared/surface.ts'
 
 interface WorkspaceView {
@@ -38,44 +38,44 @@ declare global {
 const DESKTOP_TITLEBAR_HEIGHT = 40
 
 const DESKTOP_CHROME_CSS = `
-html[data-oh-dsh-desktop='true'] {
-  --oh-dsh-titlebar-height: ${DESKTOP_TITLEBAR_HEIGHT}px;
+html[data-tockteam-desktop='true'] {
+  --tockteam-titlebar-height: ${DESKTOP_TITLEBAR_HEIGHT}px;
 }
 
-html[data-oh-dsh-desktop='true'] body {
+html[data-tockteam-desktop='true'] body {
   box-sizing: border-box;
-  padding-top: var(--oh-dsh-titlebar-height);
+  padding-top: var(--tockteam-titlebar-height);
 }
 
-html[data-oh-dsh-desktop='true'] [data-slot='sidebar'] button:is(
+html[data-tockteam-desktop='true'] [data-slot='sidebar'] button:is(
   [aria-label='Collapse sidebar'],
   [aria-label='收起侧边栏']
 ) {
   display: none !important;
 }
 
-html[data-oh-dsh-desktop='true'] [data-slot='sidebar'] button:is(
+html[data-tockteam-desktop='true'] [data-slot='sidebar'] button:is(
   [aria-label='Open sidebar'],
   [aria-label='打开侧边栏']
 ) > svg:last-child {
   display: none !important;
 }
 
-html[data-oh-dsh-desktop='true'] body::before {
+html[data-tockteam-desktop='true'] body::before {
   content: '';
   position: fixed;
   z-index: 2147483647;
   top: 0;
   right: 0;
   left: 0;
-  height: var(--oh-dsh-titlebar-height);
+  height: var(--tockteam-titlebar-height);
   background: var(--dsw-alias-bg-base);
   -webkit-app-region: drag;
   user-select: none;
 }
 
-html[data-oh-dsh-preview='true'] body::after {
-  content: attr(data-oh-dsh-preview-label);
+html[data-tockteam-preview='true'] body::after {
+  content: attr(data-tockteam-preview-label);
   position: fixed;
   z-index: 2147483647;
   top: 7px;
@@ -96,14 +96,14 @@ html[data-oh-dsh-preview='true'] body::after {
   white-space: nowrap;
 }
 
-html[data-oh-dsh-desktop='true'] #root:has(
+html[data-tockteam-desktop='true'] #root:has(
   [role='presentation'] > [role='dialog']
 ) {
   z-index: 1000 !important;
   overflow: visible !important;
 }
 
-html[data-oh-dsh-desktop='true'] #root [role='presentation']:has(
+html[data-tockteam-desktop='true'] #root [role='presentation']:has(
   > [role='dialog']
 ) {
   z-index: 1000 !important;
@@ -112,33 +112,33 @@ html[data-oh-dsh-desktop='true'] #root [role='presentation']:has(
   backdrop-filter: blur(6px) saturate(0.9);
 }
 
-html[data-oh-dsh-desktop='true']:has(
+html[data-tockteam-desktop='true']:has(
   #root [role='presentation'] > [role='dialog']
 ) body::before,
-html[data-oh-dsh-desktop='true']:has(
+html[data-tockteam-desktop='true']:has(
   #root [role='presentation'] > [role='dialog']
 ) body::after,
-html[data-oh-dsh-desktop='true']:has(
+html[data-tockteam-desktop='true']:has(
   #root [role='presentation'] > [role='dialog']
-) .oh-dsh-panel-toolbar,
-html[data-oh-dsh-desktop='true']:has(
+) .tockteam-panel-toolbar,
+html[data-tockteam-desktop='true']:has(
   #root [role='presentation'] > [role='dialog']
-) #oh-dsh-sidebar-root,
-html[data-oh-dsh-desktop='true']:has(
+) #tockteam-sidebar-root,
+html[data-tockteam-desktop='true']:has(
   #root [role='presentation'] > [role='dialog']
-) #oh-dsh-rail-root,
-html[data-oh-dsh-desktop='true']:has(
+) #tockteam-rail-root,
+html[data-tockteam-desktop='true']:has(
   #root [role='presentation'] > [role='dialog']
-) [data-oh-dsh-pinned-summary],
-html[data-oh-dsh-desktop='true']:has(
+) [data-tockteam-pinned-summary],
+html[data-tockteam-desktop='true']:has(
   #root [role='presentation'] > [role='dialog']
-) #oh-dsh-plugin-marketplace-root {
+) #tockteam-plugin-marketplace-root {
   z-index: 999 !important;
 }
 
-html[data-oh-dsh-desktop='true']:has(
+html[data-tockteam-desktop='true']:has(
   #root [role='presentation'] > [role='dialog']
-) #oh-dsh-plugin-marketplace-root {
+) #tockteam-plugin-marketplace-root {
   position: relative;
 }
 
@@ -161,14 +161,14 @@ const DESKTOP_SHELL_MESSAGES: LocaleMessages<DesktopShellMessage> = {
 function installDesktopChrome(): () => void {
   const originalTitle = document.title
   const style = document.createElement('style')
-  style.dataset.ohDshDesktopChrome = 'true'
+  style.dataset.tockTeamDesktopChrome = 'true'
   style.textContent = DESKTOP_CHROME_CSS
   document.head.append(style)
-  document.documentElement.dataset.ohDshDesktop = 'true'
-  document.title = 'Oh-DSH Desktop'
+  document.documentElement.dataset.tockTeamDesktop = 'true'
+  document.title = 'TockTeam Desktop'
   return () => {
     style.remove()
-    delete document.documentElement.dataset.ohDshDesktop
+    delete document.documentElement.dataset.tockTeamDesktop
     document.title = originalTitle
   }
 }
@@ -181,8 +181,8 @@ function installHeroBranding(): () => void {
       const text = element.textContent?.trim() ?? ''
       if (!headlineCopy.has(text)) continue
       if (!originalHeadlines.has(element)) originalHeadlines.set(element, text)
-      element.textContent = 'Oh-DSH Desktop'
-      element.dataset.ohDshHeroHeadline = 'true'
+      element.textContent = 'TockTeam Desktop'
+      element.dataset.tockTeamHeroHeadline = 'true'
     }
   }
   const observer = new MutationObserver(synchronize)
@@ -191,8 +191,8 @@ function installHeroBranding(): () => void {
   return () => {
     observer.disconnect()
     for (const [element, original] of originalHeadlines) {
-      if (element.isConnected && element.textContent === 'Oh-DSH Desktop') element.textContent = original
-      delete element.dataset.ohDshHeroHeadline
+      if (element.isConnected && element.textContent === 'TockTeam Desktop') element.textContent = original
+      delete element.dataset.tockTeamHeroHeadline
     }
   }
 }
@@ -248,7 +248,7 @@ function dispatch(
       return
     case 'open-paths':
       void openPaths(workspaces, command.paths).catch((error: unknown) => {
-        console.error('oh-dsh-desktop: failed to open workspace', error)
+        console.error('tockteam-desktop: failed to open workspace', error)
       })
       return
     case 'show-settings':
@@ -284,7 +284,7 @@ function dispatch(
       return
     case 'open-side-chat':
       void workspaceTools.openSideChat().catch((error: unknown) => {
-        console.error('oh-dsh-desktop: failed to open side chat', error)
+        console.error('tockteam-desktop: failed to open side chat', error)
       })
       return
     case 'open-trajectory':
@@ -299,29 +299,29 @@ function dispatch(
 export function apply(ctx: ClientContext): void {
   const bridge = window.dshDesktop
   if (bridge === undefined) {
-    throw new Error('oh-dsh-desktop: preload bridge is unavailable outside Oh-DSH Desktop')
+    throw new Error('tockteam-desktop: preload bridge is unavailable outside TockTeam Desktop')
   }
   const workspaces = ctx.get('workspaces') as WorkspacesService
   const locale = ctx.get('locale') as LocaleService
-  const t: Translate<DesktopShellMessage> = locale.bind('oh-dsh.desktop')
+  const t: Translate<DesktopShellMessage> = locale.bind('tockteam.desktop')
   const panels = ctx.get('desktopPanels') as DesktopPanels
   const pinnedSummary = ctx.get('pinnedSummary') as PinnedSummary
   const workspaceTools = ctx.get('workspaceTools') as WorkspaceTools
   ctx.effect(
-    () => locale.register('oh-dsh.desktop', DESKTOP_SHELL_MESSAGES),
-    'oh-dsh-desktop: shell dictionaries',
+    () => locale.register('tockteam.desktop', DESKTOP_SHELL_MESSAGES),
+    'tockteam-desktop: shell dictionaries',
   )
   ctx.reflect.provide('desktopShell', bridge, undefined)
   // The unified three-surface contract, client plane: the desktop shell.
-  ctx.reflect.provide(OH_DSH_SURFACE_VIEW_SERVICE, Object.freeze({
+  ctx.reflect.provide(TOCKTEAM_SURFACE_VIEW_SERVICE, Object.freeze({
     kind: 'desktop',
-  } satisfies OhDshSurfaceView), undefined)
+  } satisfies TockTeamSurfaceView), undefined)
   ctx.effect(() => {
     let disposed = false
     let previewPluginId: string | null = null
     const renderPreviewLabel = (): void => {
       if (previewPluginId === null) return
-      document.body.dataset.ohDshPreviewLabel = t('preview.label', {
+      document.body.dataset.tockTeamPreviewLabel = t('preview.label', {
         plugin: previewPluginId,
       })
     }
@@ -331,10 +331,10 @@ export function apply(ctx: ClientContext): void {
     void bridge.getInfo().then(info => {
       if (disposed || info.preview === null) return
       previewPluginId = info.preview.pluginId
-      document.documentElement.dataset.ohDshPreview = 'true'
+      document.documentElement.dataset.tockTeamPreview = 'true'
       renderPreviewLabel()
     }).catch((error: unknown) => {
-      console.error('oh-dsh-desktop: failed to read preview identity', error)
+      console.error('tockteam-desktop: failed to read preview identity', error)
     })
     const unsubscribe = bridge.onCommand((command) => {
       dispatch(command, workspaces, panels, pinnedSummary, workspaceTools)
@@ -345,8 +345,8 @@ export function apply(ctx: ClientContext): void {
       unsubscribeLocale()
       removeHeroBranding()
       removeDesktopChrome()
-      delete document.documentElement.dataset.ohDshPreview
-      delete document.body.dataset.ohDshPreviewLabel
+      delete document.documentElement.dataset.tockTeamPreview
+      delete document.body.dataset.tockTeamPreviewLabel
     }
-  }, 'oh-dsh-desktop: native command bridge')
+  }, 'tockteam-desktop: native command bridge')
 }

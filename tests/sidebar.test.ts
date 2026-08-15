@@ -189,7 +189,7 @@ test('desktop sidebar persists bounded per-session state outside Web storage', a
 })
 
 test('desktop sidebar preferences migrate from the pre-rename durable file', async () => {
-  const directory = await mkdtemp(join(tmpdir(), 'oh-dsh-sidebar-legacy-'))
+  const directory = await mkdtemp(join(tmpdir(), 'tockteam-sidebar-legacy-'))
   const path = join(directory, 'sidebar.json')
   const legacy = join(directory, 'desktop-sidebar.json')
   const preferences: DesktopSidebarPreferences = {

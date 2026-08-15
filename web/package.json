@@ -1,7 +1,7 @@
 {
-  "name": "@oh-dsh/web",
+  "name": "@tockteam/web",
   "version": "0.1.4",
-  "description": "Oh-DSH Web: a packaged DeepSeek Harness browser runtime with Oh-DSH plugin capabilities",
+  "description": "TockTeam Web: a packaged DeepSeek Harness browser runtime with TockTeam plugin capabilities",
   "private": true,
   "type": "module",
   "exports": {
@@ -26,10 +26,10 @@
       "inject": [
         "@deepseek-ai/dsh-client-runtime",
         "@deepseek-ai/dsh-client-ui-layout",
-        "@oh-dsh/skins",
-        "@oh-dsh/pinned-summary",
-        "@oh-dsh/sidebar",
-        "@oh-dsh/panel-controls"
+        "@tockteam/skins",
+        "@tockteam/pinned-summary",
+        "@tockteam/sidebar",
+        "@tockteam/panel-controls"
       ],
       "platform": "web",
       "immediately": true

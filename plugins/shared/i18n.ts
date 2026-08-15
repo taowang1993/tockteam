@@ -1,7 +1,7 @@
-export type OhDshLocale = 'en' | 'zh'
+export type TockTeamLocale = 'en' | 'zh'
 
 export interface LocaleSnapshot {
-  active: OhDshLocale
+  active: TockTeamLocale
   revision: number
 }
 
@@ -11,11 +11,11 @@ export type Translate<Key extends string = string> = (
 ) => string
 
 export type LocaleMessages<Key extends string> = Record<
-  OhDshLocale,
+  TockTeamLocale,
   Record<Key, string>
 >
 
-/** Narrow face of the native DSH locale service used by Oh-DSH plugins. */
+/** Narrow face of the native DSH locale service used by TockTeam plugins. */
 export interface LocaleService {
   bind<Key extends string = string>(namespace: string): Translate<Key>
   getSnapshot(): LocaleSnapshot

@@ -1,8 +1,8 @@
 export const SKIN_IDS = [
-  'oh-dsh-skin-deep-current',
-  'oh-dsh-skin-jade-circuit',
-  'oh-dsh-skin-porcelain',
-  'oh-dsh-skin-ember-dusk',
+  'tockteam-skin-deep-current',
+  'tockteam-skin-jade-circuit',
+  'tockteam-skin-porcelain',
+  'tockteam-skin-ember-dusk',
 ] as const
 
 export type SkinId = typeof SKIN_IDS[number]
@@ -19,9 +19,9 @@ export type DesktopSkinId = SkinId
 export type DesktopFallbackTheme = FallbackTheme
 export type DesktopSkinPreferences = SkinPreferences
 
-export const ACTIVE_SKIN_KEY = 'oh-dsh.skins.active'
-export const FALLBACK_THEME_KEY = 'oh-dsh.skins.fallback'
-export const PREFERENCES_API_PATH = '/oh-dsh/skins/preferences'
+export const ACTIVE_SKIN_KEY = 'tockteam.skins.active'
+export const FALLBACK_THEME_KEY = 'tockteam.skins.fallback'
+export const PREFERENCES_API_PATH = '/tockteam/skins/preferences'
 export const DEFAULT_SKIN_PREFERENCES: SkinPreferences = Object.freeze({
   activeId: null,
   fallbackTheme: 'system',

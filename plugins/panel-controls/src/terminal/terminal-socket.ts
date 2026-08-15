@@ -22,7 +22,7 @@ export function terminalWebSocketUrl(scope: TerminalSocketScope): string {
   return url.href
 }
 
-/** Oh-DSH terminal UI adapter for Better Sidebar's raw PTY protocol. */
+/** TockTeam terminal UI adapter for Better Sidebar's raw PTY protocol. */
 export class TerminalSocket {
   private readonly url: string | undefined
   private socket: WebSocket | undefined

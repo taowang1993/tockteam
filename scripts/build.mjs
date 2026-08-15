@@ -8,7 +8,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const dist = join(root, 'dist')
 const productVersion = resolveProductVersion(root)
 const versionDefine = {
-  __OH_DSH_BUILD_VERSION__: JSON.stringify(productVersion),
+  __TOCKTEAM_BUILD_VERSION__: JSON.stringify(productVersion),
 }
 rmSync(dist, { recursive: true, force: true })
 mkdirSync(dist, { recursive: true })
@@ -16,11 +16,11 @@ mkdirSync(dist, { recursive: true })
 const pluginPackages = [
   { directory: 'better-sidebar-runtime', hostOnly: true },
   { directory: 'tui', hostOnly: true },
-  { directory: 'skins', id: '@oh-dsh/skins' },
-  { directory: 'sidebar', id: '@oh-dsh/sidebar' },
-  { directory: 'panel-controls', id: '@oh-dsh/panel-controls' },
-  { directory: 'pinned-summary', id: '@oh-dsh/pinned-summary' },
-  { directory: 'plugin-marketplace', id: '@oh-dsh/plugin-marketplace' },
+  { directory: 'skins', id: '@tockteam/skins' },
+  { directory: 'sidebar', id: '@tockteam/sidebar' },
+  { directory: 'panel-controls', id: '@tockteam/panel-controls' },
+  { directory: 'pinned-summary', id: '@tockteam/pinned-summary' },
+  { directory: 'plugin-marketplace', id: '@tockteam/plugin-marketplace' },
 ]
 
 const shared = {
@@ -65,7 +65,7 @@ const builds = [
   build({
     ...shared,
     entryPoints: [join(root, 'src', 'cli.ts')],
-    outfile: join(dist, 'ohdsh.js'),
+    outfile: join(dist, 'tockteam.js'),
     platform: 'node',
     format: 'esm',
   }),
@@ -87,7 +87,7 @@ const builds = [
     sourcemap: true,
     logLevel: 'info',
     banner: {
-      js: 'window.__ModuleLoader__.load({ id: "@oh-dsh/web", factory: (require) => { var module = { exports: {} }; var exports = module.exports;',
+      js: 'window.__ModuleLoader__.load({ id: "@tockteam/web", factory: (require) => { var module = { exports: {} }; var exports = module.exports;',
     },
     footer: { js: 'return module.exports; } });' },
   }),
@@ -102,7 +102,7 @@ const builds = [
     sourcemap: true,
     logLevel: 'info',
     banner: {
-      js: 'window.__ModuleLoader__.load({ id: "@oh-dsh/desktop", factory: (require) => { var module = { exports: {} }; var exports = module.exports;',
+      js: 'window.__ModuleLoader__.load({ id: "@tockteam/desktop", factory: (require) => { var module = { exports: {} }; var exports = module.exports;',
     },
     footer: { js: 'return module.exports; } });' },
   }),

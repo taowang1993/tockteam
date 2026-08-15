@@ -1,11 +1,11 @@
-# Oh-DSH Web is a bundle layer over dsh-base + dsh-web-app. The browser
-# distribution keeps DSH's web UI and mounts each web-capable Oh-DSH behavior
+# TockTeam Web is a bundle layer over dsh-base + dsh-web-app. The browser
+# distribution keeps DSH's web UI and mounts each web-capable TockTeam behavior
 # as an independently registered Host/Client plugin.
 #
 # The dsh-web-app bundle already binds the webserver (default
-# 127.0.0.1:3080) and prints the readiness URL; the oh-dsh-web launcher
+# 127.0.0.1:3080) and prints the readiness URL; the tockteam-web launcher
 # passes --host/--port over the same webStartup seam. This layer adds the
-# Oh-DSH surface: the web identity plugin and the web-capable Oh-DSH plugins.
+# TockTeam surface: the web identity plugin and the web-capable TockTeam plugins.
 #
 # Web keeps the same browser client graph as the desktop distribution
 # wherever the host services exist: skins, pinned summary, the sidebar
@@ -16,19 +16,19 @@
 
 - insert:
     - id: oh-web
-      name: '@oh-dsh/web'
+      name: '@tockteam/web'
 
     - id: oh-better-sidebar-runtime
-      name: '@oh-dsh/better-sidebar-runtime'
+      name: '@tockteam/better-sidebar-runtime'
 
     - id: oh-skins
-      name: '@oh-dsh/skins'
+      name: '@tockteam/skins'
 
     - id: oh-pinned-summary
-      name: '@oh-dsh/pinned-summary'
+      name: '@tockteam/pinned-summary'
 
     - id: oh-sidebar
-      name: '@oh-dsh/sidebar'
+      name: '@tockteam/sidebar'
 
     - id: oh-panel-controls
-      name: '@oh-dsh/panel-controls'
+      name: '@tockteam/panel-controls'

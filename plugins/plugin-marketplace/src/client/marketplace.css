@@ -50,7 +50,7 @@
   display: none;
 }
 
-[data-oh-dsh-marketplace-footer-stack='true']:has(
+[data-tockteam-marketplace-footer-stack='true']:has(
   .oh-marketplace-nav[data-collapsed='true']
 ) {
   display: flex !important;
@@ -61,7 +61,7 @@
 .oh-marketplace-surface {
   position: fixed;
   z-index: 8800;
-  top: var(--oh-dsh-titlebar-height, 40px);
+  top: var(--tockteam-titlebar-height, 40px);
   right: 0;
   bottom: 0;
   left: var(--oh-marketplace-left, 0px);
@@ -86,8 +86,8 @@
   transition-delay: 0s;
 }
 
-html[data-oh-dsh-marketplace-open='true'] [data-oh-dsh-pinned-summary],
-html[data-oh-dsh-marketplace-open='true'] #oh-dsh-sidebar-root {
+html[data-tockteam-marketplace-open='true'] [data-tockteam-pinned-summary],
+html[data-tockteam-marketplace-open='true'] #tockteam-sidebar-root {
   display: none !important;
 }
 

@@ -366,11 +366,11 @@ export class ProductionMarketplacePlatform implements MarketplacePlatform {
   }
 
   async loadCatalog(): Promise<unknown> {
-    const locator = this.#options.env.OH_DSH_MARKETPLACE_CATALOG
+    const locator = this.#options.env.TOCKTEAM_MARKETPLACE_CATALOG
       ?? `${MARKETPLACE_CATALOG_REPOSITORY}/${MARKETPLACE_CATALOG_PATH}`
     const match = /^([A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+)\/(.+)$/.exec(locator)
     if (match === null) {
-      throw new Error('OH_DSH_MARKETPLACE_CATALOG must be owner/repository/path')
+      throw new Error('TOCKTEAM_MARKETPLACE_CATALOG must be owner/repository/path')
     }
     validateRepository(match[1] ?? '')
     const path = match[2] ?? ''
@@ -381,7 +381,7 @@ export class ProductionMarketplacePlatform implements MarketplacePlatform {
       const response = await request(`https://api.github.com/${contentPath}`, {
         headers: {
           accept: 'application/vnd.github.raw+json',
-          'user-agent': 'oh-dsh-desktop',
+          'user-agent': 'tockteam-desktop',
         },
         signal: AbortSignal.timeout(30_000),
       })
@@ -493,5 +493,5 @@ export class ProductionMarketplacePlatform implements MarketplacePlatform {
 
 /** Stable preview temp root used by tests and UI diagnostics. */
 export function defaultPreviewTemporaryRoot(): string {
-  return join(tmpdir(), 'oh-dsh-plugin-preview')
+  return join(tmpdir(), 'tockteam-plugin-preview')
 }

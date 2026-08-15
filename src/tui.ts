@@ -1,4 +1,4 @@
-/** Oh-DSH TUI launcher over the pinned upstream dsh-TUI bundle. */
+/** TockTeam TUI launcher over the pinned upstream dsh-TUI bundle. */
 
 import { spawn, type SpawnOptions } from 'node:child_process'
 import { existsSync, mkdirSync } from 'node:fs'
@@ -15,8 +15,8 @@ import {
 } from './runtime-paths.ts'
 import { resolveProductVersion } from './version.ts'
 
-/** Default Oh-DSH-owned home, isolated from the upstream DSH CLI. */
-export const DEFAULT_TUI_HOME = join(homedir(), '.ohdsh')
+/** Default TockTeam-owned home, isolated from the upstream DSH CLI. */
+export const DEFAULT_TUI_HOME = join(homedir(), '.tockteam')
 
 /** TUI launch options resolved from command-line flags and environment. */
 export interface TuiLaunchOptions {
@@ -40,11 +40,11 @@ export interface TuiLaunchSpec {
 
 export type TuiSpawner = typeof spawn
 
-const USAGE = `usage: ohdsh tui [options]
+const USAGE = `usage: tockteam tui [options]
 
 Options:
   --cwd <dir>            workspace directory (default: current directory)
-  --data <dir>           DSH home and session store (default: ~/.ohdsh)
+  --data <dir>           DSH home and session store (default: ~/.tockteam)
   --resume <session>     resume an existing session id
   --lang <zh|en>         initial interface language
   --preset <name>        initial agent preset
@@ -53,8 +53,8 @@ Options:
   --help                 show this help
 
 Environment:
-  DSH_OH_TUI_HOME, DSH_OH_TUI_CWD, DSH_OH_TUI_FULLSCREEN,
-  DSH_OH_TUI_LANG, DSH_OH_TUI_PRESET, DSH_OH_TUI_SESSION_ID
+  TOCKTEAM_TUI_HOME, TOCKTEAM_TUI_CWD, TOCKTEAM_TUI_FULLSCREEN,
+  TOCKTEAM_TUI_LANG, TOCKTEAM_TUI_PRESET, TOCKTEAM_TUI_SESSION_ID
 `
 
 function parseBoolean(value: string, name: string): boolean {
@@ -80,16 +80,16 @@ export function parseTuiArgs(
   defaultCwd: string = process.cwd(),
   defaultDataRoot: string = DEFAULT_TUI_HOME,
 ): TuiLaunchOptions {
-  const envFullscreen = optionalEnv(env, 'DSH_OH_TUI_FULLSCREEN')
-  const envLang = optionalEnv(env, 'DSH_OH_TUI_LANG')
-  const envPreset = optionalEnv(env, 'DSH_OH_TUI_PRESET')
-  const envSessionId = optionalEnv(env, 'DSH_OH_TUI_SESSION_ID')
+  const envFullscreen = optionalEnv(env, 'TOCKTEAM_TUI_FULLSCREEN')
+  const envLang = optionalEnv(env, 'TOCKTEAM_TUI_LANG')
+  const envPreset = optionalEnv(env, 'TOCKTEAM_TUI_PRESET')
+  const envSessionId = optionalEnv(env, 'TOCKTEAM_TUI_SESSION_ID')
   const options: TuiLaunchOptions = {
-    cwd: optionalEnv(env, 'DSH_OH_TUI_CWD') ?? defaultCwd,
-    dataRoot: optionalEnv(env, 'DSH_OH_TUI_HOME') ?? defaultDataRoot,
+    cwd: optionalEnv(env, 'TOCKTEAM_TUI_CWD') ?? defaultCwd,
+    dataRoot: optionalEnv(env, 'TOCKTEAM_TUI_HOME') ?? defaultDataRoot,
     fullscreen: envFullscreen === undefined
       ? true
-      : parseBoolean(envFullscreen, 'DSH_OH_TUI_FULLSCREEN'),
+      : parseBoolean(envFullscreen, 'TOCKTEAM_TUI_FULLSCREEN'),
     help: false,
     ...(envLang === undefined ? {} : { lang: language(envLang) }),
     ...(envPreset === undefined ? {} : { preset: envPreset }),
@@ -156,7 +156,7 @@ export function parseTuiArgs(
 
 /** Resolve the installed distribution root or the repository root. */
 export function resolveTuiRoot(env: NodeJS.ProcessEnv = process.env): string {
-  for (const name of ['DSH_OH_TUI_ROOT', 'OH_DSH_SOURCE_ROOT'] as const) {
+  for (const name of ['TOCKTEAM_TUI_ROOT', 'TOCKTEAM_SOURCE_ROOT'] as const) {
     const value = env[name]
     if (value !== undefined && value !== '') return resolve(value)
   }
@@ -183,17 +183,17 @@ export function tuiLaunchSpec(
     CC_TUI_PRESET: options.preset,
     DSH_CC_RESUME_SESSION: options.sessionId,
     DSH_HOME: dataRoot,
-    DSH_OH_TUI: '1',
-    DSH_OH_TUI_HOME: dataRoot,
-    DSH_OH_TUI_PROFILE: TUI_PROFILE,
-    DSH_OH_TUI_VERSION: version,
-    OH_DSH_TUI_CONFIG_HOME: join(dataRoot, 'tui'),
-    OH_DSH_TUI_CWD: cwd,
-    OH_DSH_TUI_FULLSCREEN: options.fullscreen ? '1' : '0',
-    OH_DSH_TUI_LANG: options.lang,
-    OH_DSH_TUI_PRESET: options.preset,
-    OH_DSH_TUI_SESSION_ID: options.sessionId,
-    OH_DSH_TUI_TITLE: 'Oh-DSH TUI',
+    TOCKTEAM_TUI: '1',
+    TOCKTEAM_TUI_HOME: dataRoot,
+    TOCKTEAM_TUI_PROFILE: TUI_PROFILE,
+    TOCKTEAM_TUI_VERSION: version,
+    TOCKTEAM_TUI_CONFIG_HOME: join(dataRoot, 'tui'),
+    TOCKTEAM_TUI_CWD: cwd,
+    TOCKTEAM_TUI_FULLSCREEN: options.fullscreen ? '1' : '0',
+    TOCKTEAM_TUI_LANG: options.lang,
+    TOCKTEAM_TUI_PRESET: options.preset,
+    TOCKTEAM_TUI_SESSION_ID: options.sessionId,
+    TOCKTEAM_TUI_TITLE: 'TockTeam TUI',
     PATH: runtimeSearchPath(paths, env),
   }
   return {
@@ -224,7 +224,7 @@ export async function main(
     return 0
   }
   if (stdin.isTTY !== true || stdout.isTTY !== true) {
-    stderr.write('Oh-DSH TUI requires an interactive terminal.\n')
+    stderr.write('TockTeam TUI requires an interactive terminal.\n')
     return 2
   }
 
@@ -232,7 +232,7 @@ export async function main(
   const stagedNode = process.platform === 'win32'
     ? join(root, '.stage', 'node-runtime', 'node.exe')
     : join(root, '.stage', 'node-runtime', 'bin', 'node')
-  const resourcesRoot = env.DSH_OH_TUI_ROOT !== undefined
+  const resourcesRoot = env.TOCKTEAM_TUI_ROOT !== undefined
     ? root
     : existsSync(stagedNode)
       ? join(root, '.stage')

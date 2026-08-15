@@ -18,7 +18,7 @@ import {
 import type { SkinDomPort } from '../plugins/skins/src/client/skin-dom.ts'
 import {
   DESKTOP_SKINS,
-  OH_DSH_SKINS,
+  TOCKTEAM_SKINS,
   type DesktopSkin,
 } from '../plugins/skins/src/client/skins.ts'
 import {
@@ -117,7 +117,7 @@ test('desktop skins are namespaced and keep every app surface on one opaque base
   assert.equal(DESKTOP_SKINS.length, 4)
   assert.equal(new Set(DESKTOP_SKINS.map(skin => skin.id)).size, DESKTOP_SKINS.length)
   for (const skin of DESKTOP_SKINS) {
-    assert.match(skin.id, /^oh-dsh-skin-/)
+    assert.match(skin.id, /^tockteam-skin-/)
     assert.ok(Object.keys(skin.tokens).length >= 30)
     assert.match(skin.tokens['--dsw-alias-bg-base'] ?? '', /^#[0-9a-f]{6}$/i)
     assert.equal(skin.tokens['--dsw-alias-bg-base'], skin.tokens['--dsw-specific-sidebar-fill'])
@@ -126,8 +126,8 @@ test('desktop skins are namespaced and keep every app surface on one opaque base
 })
 
 test('one skin catalog supplies browser tokens and TUI semantic palettes', () => {
-  assert.equal(DESKTOP_SKINS, OH_DSH_SKINS)
-  for (const skin of OH_DSH_SKINS) {
+  assert.equal(DESKTOP_SKINS, TOCKTEAM_SKINS)
+  for (const skin of TOCKTEAM_SKINS) {
     assert.ok(Object.keys(skin.tui).length >= 30)
     assert.equal(skin.tui.claude, skin.tokens['--dsw-alias-brand-primary'])
     assert.equal(skin.tui.text, skin.tokens['--dsw-alias-label-primary'])
@@ -138,23 +138,23 @@ test('one skin catalog supplies browser tokens and TUI semantic palettes', () =>
 })
 
 test('TUI adapter materializes skins and reconciles the native theme picker', async () => {
-  const directory = await mkdtemp(join(tmpdir(), 'oh-dsh-tui-skins-'))
+  const directory = await mkdtemp(join(tmpdir(), 'tockteam-tui-skins-'))
   const dataRoot = join(directory, 'data')
   const configRoot = join(directory, 'config')
   const paths = tuiSkinPaths(dataRoot, configRoot)
   try {
     await mkdir(dataRoot, { recursive: true })
     await writeFile(paths.preferences, JSON.stringify({
-      activeId: 'oh-dsh-skin-jade-circuit',
+      activeId: 'tockteam-skin-jade-circuit',
       fallbackTheme: 'system',
     }))
 
     const seeded = mountTuiSkins(dataRoot, configRoot)
-    assert.equal(seeded.theme, 'oh-dsh-skin-jade-circuit')
+    assert.equal(seeded.theme, 'tockteam-skin-jade-circuit')
     assert.deepEqual(JSON.parse(await readFile(paths.themePreference, 'utf8')), {
-      theme: 'oh-dsh-skin-jade-circuit',
+      theme: 'tockteam-skin-jade-circuit',
     })
-    for (const skin of OH_DSH_SKINS) {
+    for (const skin of TOCKTEAM_SKINS) {
       const theme = JSON.parse(await readFile(
         join(paths.themes, `${skin.id}.json`),
         'utf8',
@@ -164,11 +164,11 @@ test('TUI adapter materializes skins and reconciles the native theme picker', as
       assert.deepEqual(theme.colors, skin.tui)
     }
 
-    await writeFile(paths.themePreference, JSON.stringify({ theme: 'oh-dsh-skin-porcelain' }))
+    await writeFile(paths.themePreference, JSON.stringify({ theme: 'tockteam-skin-porcelain' }))
     mountTuiSkins(dataRoot, configRoot)
     assert.equal(
       JSON.parse(await readFile(paths.preferences, 'utf8')).activeId,
-      'oh-dsh-skin-porcelain',
+      'tockteam-skin-porcelain',
     )
 
     await writeFile(paths.themePreference, JSON.stringify({ theme: 'light' }))
@@ -184,7 +184,7 @@ test('TUI adapter materializes skins and reconciles the native theme picker', as
 
 test('desktop skins restore a persisted choice after theme registration', () => {
   const storage = new MemoryStorage()
-  storage.setItem(ACTIVE_SKIN_KEY, 'oh-dsh-skin-porcelain')
+  storage.setItem(ACTIVE_SKIN_KEY, 'tockteam-skin-porcelain')
   const theme = new FakeThemeService('dark')
   const dom = new FakeSkinDom()
   const controller = new DesktopSkinsController(theme, storage, dom)
@@ -192,10 +192,10 @@ test('desktop skins restore a persisted choice after theme registration', () => 
   controller.start()
 
   assert.equal(theme.custom.size, DESKTOP_SKINS.length)
-  assert.equal(theme.getTheme().active.id, 'oh-dsh-skin-porcelain')
-  assert.equal(controller.getSnapshot().activeId, 'oh-dsh-skin-porcelain')
+  assert.equal(theme.getTheme().active.id, 'tockteam-skin-porcelain')
+  assert.equal(controller.getSnapshot().activeId, 'tockteam-skin-porcelain')
   assert.equal(storage.getItem(FALLBACK_THEME_KEY), 'dark')
-  assert.equal(dom.active, 'oh-dsh-skin-porcelain')
+  assert.equal(dom.active, 'tockteam-skin-porcelain')
 })
 
 test('choosing Original restores the appearance used before a skin', () => {
@@ -205,8 +205,8 @@ test('choosing Original restores the appearance used before a skin', () => {
   const controller = new DesktopSkinsController(theme, storage, dom)
   controller.start()
 
-  controller.setSkin('oh-dsh-skin-jade-circuit')
-  assert.equal(storage.getItem(ACTIVE_SKIN_KEY), 'oh-dsh-skin-jade-circuit')
+  controller.setSkin('tockteam-skin-jade-circuit')
+  assert.equal(storage.getItem(ACTIVE_SKIN_KEY), 'tockteam-skin-jade-circuit')
   assert.equal(storage.getItem(FALLBACK_THEME_KEY), 'dark')
 
   controller.setSkin(null)
@@ -222,7 +222,7 @@ test('an official appearance change safely takes over from desktop skins', () =>
   const dom = new FakeSkinDom()
   const controller = new DesktopSkinsController(theme, storage, dom)
   controller.start()
-  controller.setSkin('oh-dsh-skin-ember-dusk')
+  controller.setSkin('tockteam-skin-ember-dusk')
 
   theme.setTheme('light')
   controller.adopt(theme.getTheme())
@@ -241,7 +241,7 @@ test('desktop skins reject unknown choices and release theme registrations', () 
   controller.start()
 
   assert.throws(
-    () => { controller.setSkin('oh-dsh-skin-missing') },
+    () => { controller.setSkin('tockteam-skin-missing') },
     /unknown desktop skin/,
   )
   controller.dispose()
@@ -255,21 +255,21 @@ test('runtime teardown preserves the selected skin for the next launch', () => {
   const dom = new FakeSkinDom()
   const controller = new DesktopSkinsController(theme, storage, dom)
   controller.start()
-  controller.setSkin('oh-dsh-skin-porcelain')
+  controller.setSkin('tockteam-skin-porcelain')
 
   controller.dispose()
   controller.adopt(theme.getTheme())
 
-  assert.equal(storage.getItem(ACTIVE_SKIN_KEY), 'oh-dsh-skin-porcelain')
+  assert.equal(storage.getItem(ACTIVE_SKIN_KEY), 'tockteam-skin-porcelain')
   assert.equal(theme.getTheme().preference, 'dark')
   assert.equal(theme.custom.size, 0)
 })
 
 test('desktop skin preferences survive outside the changing Web origin', async () => {
-  const directory = await mkdtemp(join(tmpdir(), 'oh-dsh-skins-'))
+  const directory = await mkdtemp(join(tmpdir(), 'tockteam-skins-'))
   const path = join(directory, 'skins.json')
   const preferences: DesktopSkinPreferences = {
-    activeId: 'oh-dsh-skin-porcelain',
+    activeId: 'tockteam-skin-porcelain',
     fallbackTheme: 'dark',
   }
   try {
@@ -282,11 +282,11 @@ test('desktop skin preferences survive outside the changing Web origin', async (
 })
 
 test('desktop skin preferences migrate from the pre-rename durable file', async () => {
-  const directory = await mkdtemp(join(tmpdir(), 'oh-dsh-skins-legacy-'))
+  const directory = await mkdtemp(join(tmpdir(), 'tockteam-skins-legacy-'))
   const path = join(directory, 'skins.json')
   const legacy = join(directory, 'desktop-skins.json')
   const preferences: DesktopSkinPreferences = {
-    activeId: 'oh-dsh-skin-porcelain',
+    activeId: 'tockteam-skin-porcelain',
     fallbackTheme: 'dark',
   }
   try {
@@ -323,12 +323,12 @@ test('client preference writes are coalesced and validated', async () => {
   const storage = new DesktopSkinPreferencesStorage(request)
   await storage.load()
 
-  storage.setItem(ACTIVE_SKIN_KEY, 'oh-dsh-skin-deep-current')
+  storage.setItem(ACTIVE_SKIN_KEY, 'tockteam-skin-deep-current')
   storage.setItem(FALLBACK_THEME_KEY, 'dark')
   await storage.settle()
 
   assert.deepEqual(persisted, {
-    activeId: 'oh-dsh-skin-deep-current',
+    activeId: 'tockteam-skin-deep-current',
     fallbackTheme: 'dark',
   })
   assert.equal(writes.length, 1)

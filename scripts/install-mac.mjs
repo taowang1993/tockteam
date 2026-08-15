@@ -12,10 +12,10 @@ import { promisify } from 'node:util'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
 const execFileAsync = promisify(execFile)
-const APP_NAME = 'Oh-DSH Desktop.app'
-const EXECUTABLE_NAME = 'Oh-DSH Desktop'
-const LEGACY_APP_NAME = 'Oh-DSH-Desktop.app'
-const BUNDLE_ID = 'ai.deepseek.oh-dsh-desktop'
+const APP_NAME = 'TockTeam Desktop.app'
+const EXECUTABLE_NAME = 'TockTeam Desktop'
+const LEGACY_APP_NAME = 'TockTeam-Desktop.app'
+const BUNDLE_ID = 'ai.deepseek.tockteam-desktop'
 
 async function exists(path) {
   try {
@@ -65,13 +65,13 @@ function timestamp(date = new Date()) {
 }
 
 async function availableBackupPath(directory) {
-  const stem = `Oh-DSH Desktop-before-${timestamp()}`
+  const stem = `TockTeam Desktop-before-${timestamp()}`
   for (let suffix = 0; suffix < 100; suffix += 1) {
     const name = suffix === 0 ? `${stem}.app` : `${stem}-${String(suffix)}.app`
     const candidate = join(directory, name)
     if (!await exists(candidate)) return candidate
   }
-  throw new Error('unable to reserve an Oh-DSH Desktop backup path')
+  throw new Error('unable to reserve an TockTeam Desktop backup path')
 }
 
 export async function replaceMacBundle(options) {
@@ -121,12 +121,12 @@ async function quitInstalledApp() {
   for (let attempt = 0; attempt < 50; attempt += 1) {
     const { stdout } = await execFileAsync('/usr/bin/pgrep', [
       '-f',
-      '/Applications/Oh-DSH( Desktop|-Desktop).app/',
+      '/Applications/TockTeam( Desktop|-Desktop).app/',
     ]).catch(() => ({ stdout: '' }))
     if (stdout.trim() === '') return
     await new Promise(resolveDelay => setTimeout(resolveDelay, 100))
   }
-  throw new Error('Oh-DSH Desktop did not quit cleanly')
+  throw new Error('TockTeam Desktop did not quit cleanly')
 }
 
 async function main() {

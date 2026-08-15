@@ -124,5 +124,5 @@ export function TerminalView(props: TerminalViewProps): JSX.Element {
     }
   }, [props.fontFamily, props.fontSize])
 
-  return <div ref={containerRef} className="oh-dsh-terminal-view" data-terminal-view={props.tabId} />
+  return <div ref={containerRef} className="tockteam-terminal-view" data-terminal-view={props.tabId} />
 }

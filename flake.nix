@@ -1,5 +1,5 @@
 {
-  description = "Oh-DSH: installable Desktop, Web, and TUI distributions";
+  description = "TockTeam: installable Desktop, Web, and TUI distributions";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -33,7 +33,7 @@
 
             # pnpm install fetches its own electron; no nixpkgs electron here.
             shellHook = ''
-              export OH_DSH_SOURCE_ROOT="$PWD"
+              export TOCKTEAM_SOURCE_ROOT="$PWD"
             '';
           };
         });
@@ -41,29 +41,29 @@
       packages = forAllSystems (system:
         let
           pkgs = nixpkgs.legacyPackages.${system};
-          mkOhDsh = import ./nix/oh-dsh.nix {
+          mkTockTeam = import ./nix/tockteam.nix {
             inherit pkgs system llm-agents dshSourceSpec;
           };
         in
         rec {
           # Full distribution: Desktop, Web, and TUI through one launcher.
-          oh-dsh = mkOhDsh { surface = "full"; dshSource = "llm-agents"; };
-          oh-dsh-desktop = oh-dsh;
+          tockteam = mkTockTeam { surface = "full"; dshSource = "llm-agents"; };
+          tockteam-desktop = tockteam;
 
           # Layered distributions without Electron.
-          oh-dsh-web = mkOhDsh { surface = "web"; dshSource = "llm-agents"; };
-          oh-dsh-tui = mkOhDsh { surface = "tui"; dshSource = "llm-agents"; };
+          tockteam-web = mkTockTeam { surface = "web"; dshSource = "llm-agents"; };
+          tockteam-tui = mkTockTeam { surface = "tui"; dshSource = "llm-agents"; };
 
           # Variants pinning the DSH runtime to this repo's dsh-source.json.
-          oh-dsh-pinned = mkOhDsh { surface = "full"; dshSource = "pinned"; };
-          oh-dsh-desktop-pinned = oh-dsh-pinned;
-          oh-dsh-web-pinned = mkOhDsh { surface = "web"; dshSource = "pinned"; };
-          oh-dsh-tui-pinned = mkOhDsh { surface = "tui"; dshSource = "pinned"; };
+          tockteam-pinned = mkTockTeam { surface = "full"; dshSource = "pinned"; };
+          tockteam-desktop-pinned = tockteam-pinned;
+          tockteam-web-pinned = mkTockTeam { surface = "web"; dshSource = "pinned"; };
+          tockteam-tui-pinned = mkTockTeam { surface = "tui"; dshSource = "pinned"; };
 
-          # "nixpkgs" variants remain available through mkOhDsh once
+          # "nixpkgs" variants remain available through mkTockTeam once
           # pkgs.deepseek-harness lands (NixOS/nixpkgs#552467).
 
-          default = oh-dsh;
+          default = tockteam;
         });
     };
 }

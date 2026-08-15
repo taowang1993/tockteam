@@ -4,25 +4,25 @@ import { dirname, join } from 'node:path'
 /** Profile name reserved for the packaged desktop surface. */
 export const DESKTOP_PROFILE = 'desktop'
 
-/** Profile name reserved for the packaged Oh-DSH Web browser surface. */
+/** Profile name reserved for the packaged TockTeam Web browser surface. */
 export const WEB_PROFILE = 'web'
 
-/** Profile name reserved for the packaged Oh-DSH terminal surface. */
+/** Profile name reserved for the packaged TockTeam terminal surface. */
 export const TUI_PROFILE = 'tui'
 
 /** Plugins that enroll a browser-side entry in the desktop client graph. */
 export const BUNDLED_DESKTOP_CLIENT_PLUGINS = [
-  '@oh-dsh/desktop',
-  '@oh-dsh/skins',
-  '@oh-dsh/sidebar',
-  '@oh-dsh/panel-controls',
-  '@oh-dsh/pinned-summary',
-  '@oh-dsh/plugin-marketplace',
+  '@tockteam/desktop',
+  '@tockteam/skins',
+  '@tockteam/sidebar',
+  '@tockteam/panel-controls',
+  '@tockteam/pinned-summary',
+  '@tockteam/plugin-marketplace',
 ] as const
 
 /** Host-only capability providers shipped inside the desktop runtime. */
 export const BUNDLED_DESKTOP_HOST_PLUGINS = [
-  '@oh-dsh/better-sidebar-runtime',
+  '@tockteam/better-sidebar-runtime',
 ] as const
 
 /** Every protected plugin shipped inside the desktop distribution. */
@@ -35,21 +35,21 @@ export const BUNDLED_DESKTOP_PLUGINS = [
 export const DESKTOP_BUNDLES = [
   '@deepseek-ai/dsh-base',
   '@deepseek-ai/dsh-web-app',
-  '@oh-dsh/desktop',
+  '@tockteam/desktop',
 ] as const
 
-/** Bundle order owned by the Oh-DSH Web browser distribution. */
+/** Bundle order owned by the TockTeam Web browser distribution. */
 export const WEB_BUNDLES = [
   '@deepseek-ai/dsh-base',
   '@deepseek-ai/dsh-web-app',
-  '@oh-dsh/web',
+  '@tockteam/web',
 ] as const
 
-/** Bundle order owned by the Oh-DSH terminal distribution. */
+/** Bundle order owned by the TockTeam terminal distribution. */
 export const TUI_BUNDLES = [
   '@deepseek-ai/dsh-base',
   'dsh-cc-tui',
-  '@oh-dsh/tui',
+  '@tockteam/tui',
 ] as const
 
 interface ProfileManifest {
@@ -69,11 +69,11 @@ export interface DesktopProfilePaths {
 const PNPM_WORKSPACE = `packages:\n  - .\n\nnodeLinker: hoisted\nautoInstallPeers: false\n`
 
 function rootConfig(spec: ProfileSpec): string {
-  return `# Oh-DSH ${spec.name} profile root. Composition lives in bundle patch layers.\n[]\n`
+  return `# TockTeam ${spec.name} profile root. Composition lives in bundle patch layers.\n[]\n`
 }
 
 function userPatch(spec: ProfileSpec): string {
-  return `# User patch layer for Oh-DSH ${spec.name}. It is applied after the packaged bundles.\n[]\n`
+  return `# User patch layer for TockTeam ${spec.name}. It is applied after the packaged bundles.\n[]\n`
 }
 
 function readManifest(path: string): ProfileManifest {
@@ -109,14 +109,14 @@ export const DESKTOP_PROFILE_SPEC: ProfileSpec = Object.freeze({
   name: DESKTOP_PROFILE,
 })
 
-/** Profile facts for the packaged Oh-DSH Web browser surface. */
+/** Profile facts for the packaged TockTeam Web browser surface. */
 export const WEB_PROFILE_SPEC: ProfileSpec = Object.freeze({
   bundles: WEB_BUNDLES,
   manifestName: 'dsh-profile-web',
   name: WEB_PROFILE,
 })
 
-/** Profile facts for the packaged Oh-DSH terminal surface. */
+/** Profile facts for the packaged TockTeam terminal surface. */
 export const TUI_PROFILE_SPEC: ProfileSpec = Object.freeze({
   bundles: TUI_BUNDLES,
   manifestName: 'dsh-profile-tui',
@@ -179,7 +179,7 @@ export function ensureDesktopProfile(dshHome: string): DesktopProfilePaths {
 }
 
 /**
- * Initialize or upgrade the writable Oh-DSH Web profile without replacing
+ * Initialize or upgrade the writable TockTeam Web profile without replacing
  * user patches or third-party bundle entries.
  * @param dshHome - application-owned DSH home directory.
  * @returns resolved profile paths.
@@ -189,7 +189,7 @@ export function ensureWebProfile(dshHome: string): DesktopProfilePaths {
 }
 
 /**
- * Initialize or upgrade the writable Oh-DSH TUI profile without replacing
+ * Initialize or upgrade the writable TockTeam TUI profile without replacing
  * user patches or third-party bundle entries.
  * @param dshHome - application-owned DSH home directory.
  * @returns resolved profile paths.

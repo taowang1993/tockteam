@@ -25,7 +25,7 @@ const PROTECTED_PLUGIN_IDS = new Set([
   'desktop-sidebar',
   'dsh-better-sidebar',
   'sidebar',
-  'oh-dsh-desktop',
+  'tockteam-desktop',
   'panel-controls',
   'pinned-summary',
   'plugin-marketplace',
@@ -33,11 +33,11 @@ const PROTECTED_PLUGIN_IDS = new Set([
 ])
 
 const PROTECTED_PLUGIN_PACKAGES = new Set([
-  '@oh-dsh/better-sidebar-runtime',
-  '@oh-dsh/desktop',
-  '@oh-dsh/desktop-sidebar',
-  '@oh-dsh/panel-controls',
-  '@oh-dsh/sidebar',
+  '@tockteam/better-sidebar-runtime',
+  '@tockteam/desktop',
+  '@tockteam/desktop-sidebar',
+  '@tockteam/panel-controls',
+  '@tockteam/sidebar',
   'dsh-better-sidebar',
 ])
 

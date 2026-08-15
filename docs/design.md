@@ -4,11 +4,11 @@
   <a href="../README.md">返回 README</a>
 </p>
 
-# Oh-DSH 设计与插件边界
+# TockTeam 设计与插件边界
 
 ## 目标
 
-Oh-DSH 在同一份固定 DSH runtime 上提供 Desktop、Web 和 TUI。
+TockTeam 在同一份固定 DSH runtime 上提供 Desktop、Web 和 TUI。
 各形态共享会话、Profile、插件契约和本地能力，但只携带自身需要的交互层，
 避免为轻量部署强制安装 Electron。
 
@@ -18,13 +18,13 @@ Oh-DSH 在同一份固定 DSH runtime 上提供 Desktop、Web 和 TUI。
 - Desktop 是完整发行版，Web/TUI 可以独立打包。
 - 同一种能力只有一个 Host 和一套权限边界。
 - 人类 UI 与 Agent 安装插件时共用同一套预览与提交事务。
-- 上游能力按 feature 同步，不直接覆盖 Oh-DSH 的 UI 与主题。
+- 上游能力按 feature 同步，不直接覆盖 TockTeam 的 UI 与主题。
 
 ## 形态架构
 
 ```mermaid
 flowchart TB
-  CLI["ohdsh"] --> Desktop["desktop\nElectron + Web runtime"]
+  CLI["tockteam"] --> Desktop["desktop\nElectron + Web runtime"]
   CLI --> Web["web\nHTTP + Web runtime"]
   CLI --> TUI["tui\ndsh-TUI renderer"]
 
@@ -32,11 +32,11 @@ flowchart TB
   Web --> Core
   TUI --> Core
   Core --> Profiles["Profile + Loader"]
-  Profiles --> Plugins["Oh-DSH and third-party plugins"]
+  Profiles --> Plugins["TockTeam and third-party plugins"]
   Plugins --> Host["Workspace · PTY · Git · Browser"]
 ```
 
-`ohdsh` 只负责选择交互形态。运行时能力继续由 DSH Profile 和 Loader 管理，
+`tockteam` 只负责选择交互形态。运行时能力继续由 DSH Profile 和 Loader 管理，
 因此独立安装不会引入第二套插件系统。
 
 ## 发行边界
@@ -52,22 +52,22 @@ Web-only 与 TUI-only 都去掉 Electron；TUI-only 是容量最小的发行形�
 
 ## 内置插件与上游关系
 
-| Plugin | 来源关系 | Oh-DSH 边界 |
+| Plugin | 来源关系 | TockTeam 边界 |
 | --- | --- | --- |
-| `@oh-dsh/desktop` | 自研 | 统一入口、窗口、菜单、bridge 和内置插件注册 |
-| `@oh-dsh/better-sidebar-runtime` | 固定跟踪 [`DSH-better-sidebar`](https://github.com/omdsh-dev/DSH-better-sidebar) | 编译上游 Host；提供 PTY、Files、Git、历史和 commit diff |
-| `@oh-dsh/sidebar` | Better Sidebar 的下游 UI 适配 | 复用 Host，保留 Oh-DSH 布局、图标、主题、Review 与评论交互 |
-| `@oh-dsh/panel-controls` | 对 `dsh-web-panel` 交互模型的下游实现 | 提供统一 Terminal dock，不要求单独安装 Web Terminal |
-| `@oh-dsh/pinned-summary` | 自研 | 会话摘要、半高卡片和正文 gutter 管理 |
-| `@oh-dsh/plugin-marketplace` | 吸收 `plugin-registry` 与 `dsh-hub` 的生命周期设计 | 单一 Loader、隔离预览、风险确认、TOFU 来源锁与恢复 |
-| `@oh-dsh/skins` | 对 `dsh-skins` ThemeService 扩展模型的下游实现 | 一套皮肤 ID、Host 持久化，以及 Web/Desktop CSS 与 TUI 调色板适配器 |
+| `@tockteam/desktop` | 自研 | 统一入口、窗口、菜单、bridge 和内置插件注册 |
+| `@tockteam/better-sidebar-runtime` | 固定跟踪 [`DSH-better-sidebar`](https://github.com/omdsh-dev/DSH-better-sidebar) | 编译上游 Host；提供 PTY、Files、Git、历史和 commit diff |
+| `@tockteam/sidebar` | Better Sidebar 的下游 UI 适配 | 复用 Host，保留 TockTeam 布局、图标、主题、Review 与评论交互 |
+| `@tockteam/panel-controls` | 对 `dsh-web-panel` 交互模型的下游实现 | 提供统一 Terminal dock，不要求单独安装 Web Terminal |
+| `@tockteam/pinned-summary` | 自研 | 会话摘要、半高卡片和正文 gutter 管理 |
+| `@tockteam/plugin-marketplace` | 吸收 `plugin-registry` 与 `dsh-hub` 的生命周期设计 | 单一 Loader、隔离预览、风险确认、TOFU 来源锁与恢复 |
+| `@tockteam/skins` | 对 `dsh-skins` ThemeService 扩展模型的下游实现 | 一套皮肤 ID、Host 持久化，以及 Web/Desktop CSS 与 TUI 调色板适配器 |
 | `dsh-cc-tui` | 固定跟踪 [`dsh-TUI`](https://github.com/ccch1mneyyy/dsh-TUI) | 上游拥有终端渲染、会话交互、命令与终端兼容性 |
-| `@oh-dsh/tui` | `dsh-TUI` 的下游 Profile 适配 | 统一 `ohdsh tui`、Oh-DSH TUI 标题、默认值、发行打包和 DSH 数据边界 |
+| `@tockteam/tui` | `dsh-TUI` 的下游 Profile 适配 | 统一 `tockteam tui`、TockTeam TUI 标题、默认值、发行打包和 DSH 数据边界 |
 
 下游插件会定期检查上游 feature，并在当前 DSH 契约上重新适配。上游代码、
-Oh-DSH UI 和最终权限边界不会混为一层。
+TockTeam UI 和最终权限边界不会混为一层。
 
-`@oh-dsh/skins` 是三个交互面的唯一皮肤定义模块。Web 与 Desktop 把定义
+`@tockteam/skins` 是三个交互面的唯一皮肤定义模块。Web 与 Desktop 把定义
 适配为 DSH CSS token；TUI 把同一组 ID 适配为上游原生 `/theme` 调色板。
 TUI 仍使用上游的热切换与选择器，选择会在下一次启动时回写统一的
 `skins.json`，没有第二套主题 Loader。
@@ -103,8 +103,8 @@ stateDiagram-v2
 
 ## 名称与数据兼容
 
-面向用户的名称是 **Oh-DSH Desktop**、**Oh-DSH Web** 和
-**Oh-DSH TUI**。内部 package id、bundle id 和既有数据目录保持稳定，
+面向用户的名称是 **TockTeam Desktop**、**TockTeam Web** 和
+**TockTeam TUI**。内部 package id、bundle id 和既有数据目录保持稳定，
 避免升级后丢失会话、配置或凭据。
 
 相关操作见[安装、操作与排错](./usage.md)。

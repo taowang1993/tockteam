@@ -82,8 +82,8 @@ declare global {
 
 export const inject = ['locale', 'sessions', 'slots']
 
-const OPEN_KEY = 'oh-dsh-desktop.plugin-marketplace.open'
-const FOOTER_STACK_ATTRIBUTE = 'data-oh-dsh-marketplace-footer-stack'
+const OPEN_KEY = 'tockteam-desktop.plugin-marketplace.open'
+const FOOTER_STACK_ATTRIBUTE = 'data-tockteam-marketplace-footer-stack'
 
 function readOpen(): boolean {
   try { return localStorage.getItem(OPEN_KEY) === 'true' } catch { return false }
@@ -109,7 +109,7 @@ function settingsButton(): HTMLButtonElement | null {
   if (slotted !== undefined) return slotted
   const labeled = [...document.querySelectorAll<HTMLButtonElement>('button')]
     .filter(button => {
-      if (button.closest('#oh-dsh-plugin-marketplace-root') !== null) return false
+      if (button.closest('#tockteam-plugin-marketplace-root') !== null) return false
       if (!visible(button)) return false
       const label = [
         button.textContent,
@@ -279,12 +279,12 @@ class PluginMarketplaceViewService implements PluginMarketplaceView {
   mount(): void {
     this.#sessionNavigationState = initialSessionNavigationState()
     this.#style = document.createElement('style')
-    this.#style.dataset.ohDshPluginMarketplaceStyles = 'true'
+    this.#style.dataset.tockTeamPluginMarketplaceStyles = 'true'
     this.#style.textContent = marketplaceCss
     document.head.append(this.#style)
 
     this.#element = document.createElement('div')
-    this.#element.id = 'oh-dsh-plugin-marketplace-root'
+    this.#element.id = 'tockteam-plugin-marketplace-root'
     document.body.append(this.#element)
     this.#root = createRoot(this.#element)
     this.#root.render(
@@ -336,13 +336,13 @@ class PluginMarketplaceViewService implements PluginMarketplaceView {
     this.#style?.remove()
     this.#state = { available: false, open: false }
     for (const listener of this.#listeners) listener()
-    delete document.documentElement.dataset.ohDshMarketplaceOpen
+    delete document.documentElement.dataset.tockTeamMarketplaceOpen
     document.documentElement.style.removeProperty('--oh-marketplace-left')
   }
 
   private applyOpenState(): void {
-    if (this.#state.open) document.documentElement.dataset.ohDshMarketplaceOpen = 'true'
-    else delete document.documentElement.dataset.ohDshMarketplaceOpen
+    if (this.#state.open) document.documentElement.dataset.tockTeamMarketplaceOpen = 'true'
+    else delete document.documentElement.dataset.tockTeamMarketplaceOpen
   }
 
   private scheduleGeometry(): void {
@@ -940,17 +940,17 @@ export function apply(ctx: ClientContext): void {
   const locale = ctx.get('locale') as LocaleService
   const sessions = ctx.get('sessions') as SessionsService
   const slots = ctx.get('slots') as SlotsService
-  const t: Translate<MarketplaceMessage> = locale.bind('oh-dsh.plugin-marketplace')
+  const t: Translate<MarketplaceMessage> = locale.bind('tockteam.plugin-marketplace')
   const view = new PluginMarketplaceViewService(bridge, locale, t, sessions)
   ctx.effect(
-    () => locale.register('oh-dsh.plugin-marketplace', MARKETPLACE_MESSAGES),
-    'oh-dsh-desktop: marketplace dictionaries',
+    () => locale.register('tockteam.plugin-marketplace', MARKETPLACE_MESSAGES),
+    'tockteam-desktop: marketplace dictionaries',
   )
   slots.inject('sidebar.footer.action', () => slots.register({
     name: 'sidebar.footer.action',
-    id: 'oh-dsh-plugin-marketplace',
+    id: 'tockteam-plugin-marketplace',
     order: 80,
-    locale: 'oh-dsh.plugin-marketplace',
+    locale: 'tockteam.plugin-marketplace',
     inject: () => ({ locale, t, view }),
   }, MarketplaceNavigationEntry))
   ctx.effect(() => {
@@ -968,5 +968,5 @@ export function apply(ctx: ClientContext): void {
       view.dispose()
       if (typeof disposeProvider === 'function') void disposeProvider()
     }
-  }, 'oh-dsh-desktop: plugin marketplace')
+  }, 'tockteam-desktop: plugin marketplace')
 }

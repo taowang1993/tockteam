@@ -27,11 +27,11 @@ function resolveResources(candidate) {
     const release = join(
       root,
       'release',
-      `oh-dsh-web-${resolveProductVersion(root)}-${platform}-${arch}`,
+      `tockteam-web-${resolveProductVersion(root)}-${platform}-${arch}`,
     )
     assert.ok(
       existsSync(join(release, 'dsh-runtime')),
-      `packaged oh-dsh-web release not found: ${release}`,
+      `packaged tockteam-web release not found: ${release}`,
     )
     return release
   }
@@ -41,7 +41,7 @@ function resolveResources(candidate) {
 const resources = resolveResources(process.argv[2] ?? join(root, '.stage'))
 const paths = bundledRuntimePaths(resources)
 const { cliEntry, nodeBinary } = paths
-const smokeRoot = mkdtempSync(join(tmpdir(), 'oh-dsh-web-smoke-'))
+const smokeRoot = mkdtempSync(join(tmpdir(), 'tockteam-web-smoke-'))
 const dshHome = join(smokeRoot, 'dsh-home')
 const webData = join(smokeRoot, 'web-data')
 const lines = []
@@ -78,14 +78,14 @@ ensureWebProfile(dshHome)
 const runtimeEnvironment = {
   ...process.env,
   DSH_HOME: dshHome,
-  DSH_OH_WEB: '1',
-  DSH_OH_WEB_DATA: webData,
-  DSH_OH_WEB_PROFILE: WEB_PROFILE,
-  DSH_OH_WEB_VERSION: 'smoke',
+  TOCKTEAM_WEB: '1',
+  TOCKTEAM_WEB_DATA: webData,
+  TOCKTEAM_WEB_PROFILE: WEB_PROFILE,
+  TOCKTEAM_WEB_VERSION: 'smoke',
   PATH: runtimeSearchPath(paths),
 }
 
-// 1. The composed web profile tree mounts the web-capable Oh-DSH rows and
+// 1. The composed web profile tree mounts the web-capable TockTeam rows and
 // keeps the desktop-only rows out.
 const dump = spawnSync(nodeBinary, [cliEntry, '--profile', WEB_PROFILE, '--dump-config'], {
   cwd: smokeRoot,
@@ -161,15 +161,15 @@ try {
   assert.equal(indexResponse.status, 200)
   assert.match(index, /<div id="root"><\/div>/)
 
-  // The Oh-DSH web plugins enroll their browser entries in the client graph.
+  // The TockTeam web plugins enroll their browser entries in the client graph.
   const bootEntries = parseBootEntries(index)
   const loaded = []
   for (const pluginId of [
-    '@oh-dsh/web',
-    '@oh-dsh/skins',
-    '@oh-dsh/pinned-summary',
-    '@oh-dsh/sidebar',
-    '@oh-dsh/panel-controls',
+    '@tockteam/web',
+    '@tockteam/skins',
+    '@tockteam/pinned-summary',
+    '@tockteam/sidebar',
+    '@tockteam/panel-controls',
   ]) {
     const row = bootEntries.find(entry => entry.id === pluginId)
     assert.ok(row, `${pluginId} Host entry did not activate in the DSH client graph`)
@@ -199,23 +199,23 @@ try {
     resources,
     'dsh-runtime',
     'node_modules',
-    '@oh-dsh',
+    '@tockteam',
     'better-sidebar-runtime',
     'dist',
     'index.js',
-  )), '@oh-dsh/better-sidebar-runtime Host bundle is missing')
+  )), '@tockteam/better-sidebar-runtime Host bundle is missing')
 
   // Electron-bound surfaces must stay out of the web client graph.
-  for (const pluginId of ['@oh-dsh/desktop', '@oh-dsh/plugin-marketplace']) {
+  for (const pluginId of ['@tockteam/desktop', '@tockteam/plugin-marketplace']) {
     assert.equal(
       bootEntries.some(entry => entry.id === pluginId),
       false,
-      `${pluginId} must not enroll in the Oh-DSH Web client graph`,
+      `${pluginId} must not enroll in the TockTeam Web client graph`,
     )
   }
 
   // The skins preferences server mounts on the web server.
-  const preferencesUrl = new URL('/oh-dsh/skins/preferences', base)
+  const preferencesUrl = new URL('/tockteam/skins/preferences', base)
   const initialResponse = await fetch(preferencesUrl)
   const initial = await initialResponse.json()
   assert.equal(initialResponse.status, 200)
@@ -227,12 +227,12 @@ try {
       'content-type': 'application/json',
       origin: base.origin,
     },
-    body: JSON.stringify({ activeId: 'oh-dsh-skin-porcelain', fallbackTheme: 'dark' }),
+    body: JSON.stringify({ activeId: 'tockteam-skin-porcelain', fallbackTheme: 'dark' }),
   })
   assert.equal(saveResponse.status, 200, await saveResponse.text())
   const saved = await fetch(preferencesUrl)
   const persisted = await saved.json()
-  assert.equal(persisted.activeId, 'oh-dsh-skin-porcelain')
+  assert.equal(persisted.activeId, 'tockteam-skin-porcelain')
   assert.equal(persisted.fallbackTheme, 'dark')
 
   // The sidebar host serves the workspace Git API on the web server.
@@ -245,15 +245,15 @@ try {
     return result.stdout
   }
   git('init', '-b', 'main')
-  git('config', 'user.name', 'Oh DSH Web Smoke')
-  git('config', 'user.email', 'oh-dsh-web-smoke@example.test')
+  git('config', 'user.name', 'TockTeam Web Smoke')
+  git('config', 'user.email', 'tockteam-web-smoke@example.test')
   writeFileSync(join(smokeRoot, 'web-smoke.txt'), 'before\n')
   git('add', 'web-smoke.txt')
   git('commit', '-m', 'web smoke baseline')
   writeFileSync(join(smokeRoot, 'web-smoke.txt'), 'after\n')
 
   const workspaceFactsResponse = await fetch(new URL(
-    `/oh-dsh/workspace?cwd=${encodeURIComponent(smokeRoot)}`,
+    `/tockteam/workspace?cwd=${encodeURIComponent(smokeRoot)}`,
     base,
   ))
   const workspaceFacts = await workspaceFactsResponse.json()
@@ -315,12 +315,12 @@ try {
     socket.addEventListener('open', () => {
       socket.send(JSON.stringify({ type: 'resize', cols: 80, rows: 24 }))
       // Split the marker so the echoed command line never contains it; only
-      // real execution produces `OH_DSH_WEB_TERMINAL_SMOKE`.
-      socket.send("printf '%s%s\\n' OH_DSH_WEB_TERMINAL_ SMOKE; exit\r")
+      // real execution produces `TOCKTEAM_WEB_TERMINAL_SMOKE`.
+      socket.send("printf '%s%s\\n' TOCKTEAM_WEB_TERMINAL_ SMOKE; exit\r")
     })
     socket.addEventListener('message', (event) => {
       output += String(event.data)
-      if (output.includes('OH_DSH_WEB_TERMINAL_SMOKE')) {
+      if (output.includes('TOCKTEAM_WEB_TERMINAL_SMOKE')) {
         socket.send(JSON.stringify({ type: 'close' }))
         finish()
       }
@@ -331,7 +331,7 @@ try {
     })
   })
 
-  console.log(`Oh-DSH Web profile ready: ${base.href}`)
+  console.log(`TockTeam Web profile ready: ${base.href}`)
   console.log(`Web composition verified: ${dump.stdout.split('\n').length} dump lines`)
   for (const plugin of loaded) {
     console.log(

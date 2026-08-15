@@ -13,8 +13,8 @@ test('tagged releases build and upload both TUI archive formats', () => {
   ).replace(/\r\n?/g, '\n')
 
   assert.match(workflow, /run: node scripts\/build-tui\.mjs/)
-  assert.match(workflow, /release\/oh-dsh-tui-\*\.tar\.gz/)
-  assert.match(workflow, /release\/oh-dsh-tui-\*\.zip/)
+  assert.match(workflow, /release\/tockteam-tui-\*\.tar\.gz/)
+  assert.match(workflow, /release\/tockteam-tui-\*\.zip/)
   assert.match(workflow, /fetch-depth: 0/)
   assert.match(workflow, /fetch-tags: true/)
 })

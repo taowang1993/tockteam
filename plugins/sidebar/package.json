@@ -1,7 +1,7 @@
 {
-  "name": "@oh-dsh/sidebar",
+  "name": "@tockteam/sidebar",
   "version": "0.1.4",
-  "description": "Extensible Oh-DSH side panel with workspace and desktop tools",
+  "description": "Extensible TockTeam side panel with workspace and desktop tools",
   "private": true,
   "type": "module",
   "main": "dist/index.js",
@@ -18,8 +18,8 @@
         "@deepseek-ai/dsh-client-ui-settings",
         "@deepseek-ai/dsh-client-ui-input-trigger",
         "@deepseek-ai/dsh-client-ui-slots",
-        "@oh-dsh/panel-controls",
-        "@oh-dsh/pinned-summary"
+        "@tockteam/panel-controls",
+        "@tockteam/pinned-summary"
       ],
       "platform": "web",
       "immediately": true

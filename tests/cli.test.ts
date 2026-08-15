@@ -19,7 +19,7 @@ function output(): { stream: NodeJS.WriteStream; text: () => string } {
   }
 }
 
-test('ohdsh dispatches desktop, web, and TUI through one surface command', async () => {
+test('tockteam dispatches desktop, web, and TUI through one surface command', async () => {
   const stdout = output()
   const stderr = output()
   const calls: Array<{ args: readonly string[]; surface: string }> = []
@@ -73,17 +73,17 @@ test('layered distributions list and reject unavailable surfaces', async () => {
   const stderr = output()
   assert.equal(await main(
     ['--help'],
-    { OH_DSH_SURFACES: 'web' },
+    { TOCKTEAM_SURFACES: 'web' },
     stdout.stream,
     stderr.stream,
   ), 0)
-  assert.match(stdout.text(), /web\s+Start Oh-DSH Web/)
-  assert.doesNotMatch(stdout.text(), /Start Oh-DSH Desktop/)
-  assert.doesNotMatch(stdout.text(), /Start Oh-DSH TUI/)
+  assert.match(stdout.text(), /web\s+Start TockTeam Web/)
+  assert.doesNotMatch(stdout.text(), /Start TockTeam Desktop/)
+  assert.doesNotMatch(stdout.text(), /Start TockTeam TUI/)
 
   assert.equal(await main(
     ['desktop'],
-    { OH_DSH_SURFACES: 'web' },
+    { TOCKTEAM_SURFACES: 'web' },
     stdout.stream,
     stderr.stream,
   ), 2)
@@ -92,22 +92,22 @@ test('layered distributions list and reject unavailable surfaces', async () => {
 
 test('desktop launch keeps source and installed macOS paths distinct', () => {
   assert.deepEqual(desktopLaunchSpec([], {
-    OH_DSH_DESKTOP_APP: '/Applications/Oh-DSH Desktop.app',
+    TOCKTEAM_DESKTOP_APP: '/Applications/TockTeam Desktop.app',
   }, 'darwin'), {
-    args: ['/Applications/Oh-DSH Desktop.app'],
+    args: ['/Applications/TockTeam Desktop.app'],
     command: '/usr/bin/open',
   })
   assert.deepEqual(desktopLaunchSpec([], {}, 'darwin'), {
-    args: ['-a', 'Oh-DSH Desktop'],
+    args: ['-a', 'TockTeam Desktop'],
     command: '/usr/bin/open',
   })
 })
 
 test('desktop launch resolves paths with target platform semantics', () => {
   assert.deepEqual(desktopLaunchSpec(['--inspect'], {
-    OH_DSH_DESKTOP_APP: 'C:\\Tools\\Oh-DSH Desktop.exe',
+    TOCKTEAM_DESKTOP_APP: 'C:\\Tools\\TockTeam Desktop.exe',
   }, 'win32'), {
     args: ['--inspect'],
-    command: 'C:\\Tools\\Oh-DSH Desktop.exe',
+    command: 'C:\\Tools\\TockTeam Desktop.exe',
   })
 })

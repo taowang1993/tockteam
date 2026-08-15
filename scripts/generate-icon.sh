@@ -3,7 +3,7 @@ set -eu
 
 root=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
 source_png="$root/assets/dsh-whale.png"
-target="$root/assets/Oh-DSH-Desktop.icns"
+target="$root/assets/TockTeam-Desktop.icns"
 work=$(mktemp -d /tmp/dsh-desktop-icon.XXXXXX)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
@@ -12,7 +12,7 @@ if [ ! -f "$source_png" ]; then
   exit 1
 fi
 
-iconset="$work/Oh-DSH-Desktop.iconset"
+iconset="$work/TockTeam-Desktop.iconset"
 mkdir -p "$iconset"
 for spec in \
   '16 icon_16x16.png' \

@@ -1,8 +1,8 @@
-/** Browser face of the Oh-DSH Web shell. */
+/** Browser face of the TockTeam Web shell. */
 
 import {
-  OH_DSH_SURFACE_VIEW_SERVICE,
-  type OhDshSurfaceView,
+  TOCKTEAM_SURFACE_VIEW_SERVICE,
+  type TockTeamSurfaceView,
 } from '../../plugins/shared/surface.ts'
 
 interface ClientContext {
@@ -15,14 +15,14 @@ interface ClientContext {
 /** Enroll the web shell identity and the client-plane surface contract. */
 export function apply(ctx: ClientContext): void {
   // The unified three-surface contract, client plane: the web shell.
-  ctx.reflect.provide(OH_DSH_SURFACE_VIEW_SERVICE, Object.freeze({
+  ctx.reflect.provide(TOCKTEAM_SURFACE_VIEW_SERVICE, Object.freeze({
     kind: 'web',
-  } satisfies OhDshSurfaceView), undefined)
+  } satisfies TockTeamSurfaceView), undefined)
   ctx.effect(() => {
     const originalTitle = document.title
-    document.title = 'Oh-DSH Web'
+    document.title = 'TockTeam Web'
     return () => { document.title = originalTitle }
-  }, 'oh-dsh-web: shell identity')
+  }, 'tockteam-web: shell identity')
   ctx.effect(() => {
     const headlineCopy = new Set([
       'Into the Unknown',
@@ -35,8 +35,8 @@ export function apply(ctx: ClientContext): void {
         const text = element.textContent?.trim() ?? ''
         if (!headlineCopy.has(text)) continue
         if (!originalHeadlines.has(element)) originalHeadlines.set(element, text)
-        element.textContent = 'Oh-DSH Web'
-        element.dataset.ohDshWebHeroHeadline = 'true'
+        element.textContent = 'TockTeam Web'
+        element.dataset.tockTeamWebHeroHeadline = 'true'
       }
     }
     const observer = new MutationObserver(synchronize)
@@ -49,11 +49,11 @@ export function apply(ctx: ClientContext): void {
     return () => {
       observer.disconnect()
       for (const [element, original] of originalHeadlines) {
-        if (element.isConnected && element.textContent === 'Oh-DSH Web') {
+        if (element.isConnected && element.textContent === 'TockTeam Web') {
           element.textContent = original
         }
-        delete element.dataset.ohDshWebHeroHeadline
+        delete element.dataset.tockTeamWebHeroHeadline
       }
     }
-  }, 'oh-dsh-web: hero identity')
+  }, 'tockteam-web: hero identity')
 }

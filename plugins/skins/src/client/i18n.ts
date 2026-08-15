@@ -13,7 +13,7 @@ export type DesktopSkinsMessage =
 
 export const DESKTOP_SKINS_MESSAGES: Record<'en' | 'zh', Record<DesktopSkinsMessage, string>> = {
   en: {
-    'skins.title': 'Oh-DSH skin',
+    'skins.title': 'TockTeam skin',
     'skins.description': 'Choose a skin shared by Web, Desktop, and TUI.',
     'skins.name.default': 'Original',
     'skins.name.deep-current': 'Deep Current',
@@ -26,7 +26,7 @@ export const DESKTOP_SKINS_MESSAGES: Record<'en' | 'zh', Record<DesktopSkinsMess
     'skins.selected': 'Selected',
   },
   zh: {
-    'skins.title': 'Oh-DSH 皮肤',
+    'skins.title': 'TockTeam 皮肤',
     'skins.description': '选择 Web、桌面端和 TUI 共用的皮肤。',
     'skins.name.default': '原始外观',
     'skins.name.deep-current': '深海流光',

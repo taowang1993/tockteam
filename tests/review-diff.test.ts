@@ -36,7 +36,7 @@ test('Better Sidebar commit patches become line-addressable reviews', () => {
     hash: 'abc1234',
     hashFull: 'abc1234567890',
     subject: 'fix value',
-    author: 'Oh DSH Test',
+    author: 'TockTeam Test',
     date: '2026-08-12 10:00:00 +0800',
     refs: 'HEAD -> main',
   }, diff)
