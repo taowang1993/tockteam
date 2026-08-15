@@ -51,6 +51,8 @@ test('desktop titlebar matches Tockbot chrome and stays draggable', () => {
     main,
     /titleBarStyle: 'hidden' as const, trafficLightPosition: \{ x: 16, y: 12 \}/,
   )
+  assert.match(desktopShell, /document\.documentElement\.dataset\.tockteamDesktop = 'true'/)
+  assert.doesNotMatch(desktopShell, /dataset\.tockTeamDesktop/)
   assert.match(
     main,
     /screen\.getAllDisplays\(\)[\s\S]*?display\.internal === false[\s\S]*?display\.id !== primaryDisplay\.id[\s\S]*?x: targetDisplay\.bounds\.x,[\s\S]*?y: targetDisplay\.bounds\.y,/s,
@@ -120,8 +122,8 @@ test('review, pinned summary, and embedded side tools keep distinct layouts', ()
 
   assert.match(workspace, /if \(open\) this\.pinnedSummary\.setOpen\(false\)/)
   assert.match(workspace, /if \(this\.state\.open\) this\.pinnedSummary\.setOpen\(false\)/)
-  assert.match(workspace, /tockTeamRightPanelOwner = 'sidebar'/)
-  assert.match(summary, /tockTeamRightPanelOwner = 'pinned-summary'/)
+  assert.match(workspace, /tockteamRightPanelOwner = 'sidebar'/)
+  assert.match(summary, /tockteamRightPanelOwner = 'pinned-summary'/)
   assert.match(summary, /calc\(var\(--tockteam-pinned-summary-width\) \+ 24px\)/)
   assert.match(summary, /height: calc\(\(100vh - var\(--tockteam-titlebar-height, 40px\) - 24px\) \/ 2\);/)
   assert.doesNotMatch(summary, /height: min\(360px/)

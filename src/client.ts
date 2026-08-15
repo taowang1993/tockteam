@@ -161,14 +161,14 @@ const DESKTOP_SHELL_MESSAGES: LocaleMessages<DesktopShellMessage> = {
 function installDesktopChrome(): () => void {
   const originalTitle = document.title
   const style = document.createElement('style')
-  style.dataset.tockTeamDesktopChrome = 'true'
+  style.dataset.tockteamDesktopChrome = 'true'
   style.textContent = DESKTOP_CHROME_CSS
   document.head.append(style)
-  document.documentElement.dataset.tockTeamDesktop = 'true'
+  document.documentElement.dataset.tockteamDesktop = 'true'
   document.title = 'TockTeam Desktop'
   return () => {
     style.remove()
-    delete document.documentElement.dataset.tockTeamDesktop
+    delete document.documentElement.dataset.tockteamDesktop
     document.title = originalTitle
   }
 }
@@ -182,7 +182,7 @@ function installHeroBranding(): () => void {
       if (!headlineCopy.has(text)) continue
       if (!originalHeadlines.has(element)) originalHeadlines.set(element, text)
       element.textContent = 'TockTeam Desktop'
-      element.dataset.tockTeamHeroHeadline = 'true'
+      element.dataset.tockteamHeroHeadline = 'true'
     }
   }
   const observer = new MutationObserver(synchronize)
@@ -192,7 +192,7 @@ function installHeroBranding(): () => void {
     observer.disconnect()
     for (const [element, original] of originalHeadlines) {
       if (element.isConnected && element.textContent === 'TockTeam Desktop') element.textContent = original
-      delete element.dataset.tockTeamHeroHeadline
+      delete element.dataset.tockteamHeroHeadline
     }
   }
 }
@@ -320,7 +320,7 @@ export function apply(ctx: ClientContext): void {
     let previewPluginId: string | null = null
     const renderPreviewLabel = (): void => {
       if (previewPluginId === null) return
-      document.body.dataset.tockTeamPreviewLabel = t('preview.label', {
+      document.body.dataset.tockteamPreviewLabel = t('preview.label', {
         plugin: previewPluginId,
       })
     }
@@ -330,7 +330,7 @@ export function apply(ctx: ClientContext): void {
     void bridge.getInfo().then(info => {
       if (disposed || info.preview === null) return
       previewPluginId = info.preview.pluginId
-      document.documentElement.dataset.tockTeamPreview = 'true'
+      document.documentElement.dataset.tockteamPreview = 'true'
       renderPreviewLabel()
     }).catch((error: unknown) => {
       console.error('tockteam-desktop: failed to read preview identity', error)
@@ -350,8 +350,8 @@ export function apply(ctx: ClientContext): void {
       unsubscribeLocale()
       removeHeroBranding()
       removeDesktopChrome()
-      delete document.documentElement.dataset.tockTeamPreview
-      delete document.body.dataset.tockTeamPreviewLabel
+      delete document.documentElement.dataset.tockteamPreview
+      delete document.body.dataset.tockteamPreviewLabel
     }
   }, 'tockteam-desktop: native command bridge')
 }

@@ -279,7 +279,7 @@ class PluginMarketplaceViewService implements PluginMarketplaceView {
   mount(): void {
     this.#sessionNavigationState = initialSessionNavigationState()
     this.#style = document.createElement('style')
-    this.#style.dataset.tockTeamPluginMarketplaceStyles = 'true'
+    this.#style.dataset.tockteamPluginMarketplaceStyles = 'true'
     this.#style.textContent = marketplaceCss
     document.head.append(this.#style)
 
@@ -336,13 +336,13 @@ class PluginMarketplaceViewService implements PluginMarketplaceView {
     this.#style?.remove()
     this.#state = { available: false, open: false }
     for (const listener of this.#listeners) listener()
-    delete document.documentElement.dataset.tockTeamMarketplaceOpen
+    delete document.documentElement.dataset.tockteamMarketplaceOpen
     document.documentElement.style.removeProperty('--tockteam-marketplace-left')
   }
 
   private applyOpenState(): void {
-    if (this.#state.open) document.documentElement.dataset.tockTeamMarketplaceOpen = 'true'
-    else delete document.documentElement.dataset.tockTeamMarketplaceOpen
+    if (this.#state.open) document.documentElement.dataset.tockteamMarketplaceOpen = 'true'
+    else delete document.documentElement.dataset.tockteamMarketplaceOpen
   }
 
   private scheduleGeometry(): void {

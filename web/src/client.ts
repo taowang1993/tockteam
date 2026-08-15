@@ -36,7 +36,7 @@ export function apply(ctx: ClientContext): void {
         if (!headlineCopy.has(text)) continue
         if (!originalHeadlines.has(element)) originalHeadlines.set(element, text)
         element.textContent = 'TockTeam Web'
-        element.dataset.tockTeamWebHeroHeadline = 'true'
+        element.dataset.tockteamWebHeroHeadline = 'true'
       }
     }
     const observer = new MutationObserver(synchronize)
@@ -52,7 +52,7 @@ export function apply(ctx: ClientContext): void {
         if (element.isConnected && element.textContent === 'TockTeam Web') {
           element.textContent = original
         }
-        delete element.dataset.tockTeamWebHeroHeadline
+        delete element.dataset.tockteamWebHeroHeadline
       }
     }
   }, 'tockteam-web: hero identity')

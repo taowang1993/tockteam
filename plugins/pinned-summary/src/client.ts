@@ -264,12 +264,12 @@ class PinnedSummaryService implements PinnedSummary {
 
   mount(): void {
     this.#style = document.createElement('style')
-    this.#style.dataset.tockTeamPinnedSummaryStyles = 'true'
+    this.#style.dataset.tockteamPinnedSummaryStyles = 'true'
     this.#style.textContent = SUMMARY_CSS
     document.head.append(this.#style)
 
     const panel = document.createElement('aside')
-    panel.dataset.tockTeamPinnedSummary = 'true'
+    panel.dataset.tockteamPinnedSummary = 'true'
     panel.setAttribute('aria-label', this.#t('summary.label'))
     panel.innerHTML = `
       <header data-tockteam-summary-header>
@@ -310,9 +310,9 @@ class PinnedSummaryService implements PinnedSummary {
     this.#narrowViewport.removeEventListener('change', this.#handleViewportChange)
     this.#panel?.remove()
     this.#style?.remove()
-    delete document.documentElement.dataset.tockTeamSummaryPinned
-    if (document.documentElement.dataset.tockTeamRightPanelOwner === 'pinned-summary') {
-      delete document.documentElement.dataset.tockTeamRightPanelOwner
+    delete document.documentElement.dataset.tockteamSummaryPinned
+    if (document.documentElement.dataset.tockteamRightPanelOwner === 'pinned-summary') {
+      delete document.documentElement.dataset.tockteamRightPanelOwner
       document.getElementById('root')?.style.removeProperty('padding-right')
     }
   }
@@ -345,8 +345,8 @@ class PinnedSummaryService implements PinnedSummary {
       this.#panel.setAttribute('aria-hidden', String(!this.#open))
     }
     if (this.#open) {
-      html.dataset.tockTeamSummaryPinned = 'true'
-      html.dataset.tockTeamRightPanelOwner = 'pinned-summary'
+      html.dataset.tockteamSummaryPinned = 'true'
+      html.dataset.tockteamRightPanelOwner = 'pinned-summary'
       const appRoot = document.getElementById('root')
       if (appRoot !== null) {
         appRoot.style.paddingRight = this.#narrowViewport.matches
@@ -354,9 +354,9 @@ class PinnedSummaryService implements PinnedSummary {
           : 'calc(var(--tockteam-pinned-summary-width) + 24px)'
       }
     } else {
-      delete html.dataset.tockTeamSummaryPinned
-      if (html.dataset.tockTeamRightPanelOwner === 'pinned-summary') {
-        delete html.dataset.tockTeamRightPanelOwner
+      delete html.dataset.tockteamSummaryPinned
+      if (html.dataset.tockteamRightPanelOwner === 'pinned-summary') {
+        delete html.dataset.tockteamRightPanelOwner
         document.getElementById('root')?.style.removeProperty('padding-right')
       }
     }

@@ -32,7 +32,7 @@ export class SkinDomPresenter implements SkinDomPort {
     }
     const style = existing ?? this.target.createElement('style')
     style.id = ATMOSPHERE_STYLE_ID
-    style.dataset.tockTeamDesktopSkins = 'atmosphere'
+    style.dataset.tockteamDesktopSkins = 'atmosphere'
     if (style.textContent !== skin.css) style.textContent = skin.css
     if (style.parentElement === null) this.target.head.append(style)
   }

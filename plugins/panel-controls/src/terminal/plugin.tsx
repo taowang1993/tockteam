@@ -98,7 +98,7 @@ class DesktopPanelService implements DesktopPanels {
 
   mount(): void {
     this.style = document.createElement('style')
-    this.style.dataset.tockTeamTerminalStyles = 'true'
+    this.style.dataset.tockteamTerminalStyles = 'true'
     this.style.textContent = `${xtermCss}\n${terminalCss}`
     document.head.append(this.style)
     this.scheduler = createMountScheduler(() => { this.mountAll() })

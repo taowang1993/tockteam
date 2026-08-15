@@ -344,7 +344,7 @@ class WorkspaceToolsService implements WorkspaceTools {
   setOpen(open: boolean): void {
     if (open) this.pinnedSummary.setOpen(false)
     this.sidebar.setOpen(open)
-    if (!open) delete document.documentElement.dataset.tockTeamPanelMaximized
+    if (!open) delete document.documentElement.dataset.tockteamPanelMaximized
   }
 
   toggle(): void {
@@ -415,8 +415,8 @@ class WorkspaceToolsService implements WorkspaceTools {
     if (!this.state.open) return
     const maximized = !this.state.maximized
     this.sidebar.setMaximized(maximized)
-    if (maximized) document.documentElement.dataset.tockTeamPanelMaximized = 'true'
-    else delete document.documentElement.dataset.tockTeamPanelMaximized
+    if (maximized) document.documentElement.dataset.tockteamPanelMaximized = 'true'
+    else delete document.documentElement.dataset.tockteamPanelMaximized
   }
 
   setWidth(width: number): void {
@@ -427,7 +427,7 @@ class WorkspaceToolsService implements WorkspaceTools {
     if (this.state.open) this.pinnedSummary.setOpen(false)
     this.stopSidebar = this.sidebar.subscribe(() => { this.syncSidebar() })
     this.style = document.createElement('style')
-    this.style.dataset.tockTeamDesktopSidebarStyles = 'true'
+    this.style.dataset.tockteamDesktopSidebarStyles = 'true'
     this.style.textContent = `${workspaceCss}\n${sideToolsCss}`
     document.head.append(this.style)
     this.element = document.createElement('div')
@@ -472,11 +472,11 @@ class WorkspaceToolsService implements WorkspaceTools {
       this.layout.remove()
     }
     this.style?.remove()
-    delete document.documentElement.dataset.tockTeamDesktopSidebarOpen
-    delete document.documentElement.dataset.tockTeamPanelMaximized
+    delete document.documentElement.dataset.tockteamDesktopSidebarOpen
+    delete document.documentElement.dataset.tockteamPanelMaximized
     document.documentElement.style.removeProperty('--tockteam-sidebar-width')
-    if (document.documentElement.dataset.tockTeamRightPanelOwner === 'sidebar') {
-      delete document.documentElement.dataset.tockTeamRightPanelOwner
+    if (document.documentElement.dataset.tockteamRightPanelOwner === 'sidebar') {
+      delete document.documentElement.dataset.tockteamRightPanelOwner
       document.getElementById('root')?.style.removeProperty('padding-right')
     }
   }
@@ -510,9 +510,9 @@ class WorkspaceToolsService implements WorkspaceTools {
     if (next.open) this.pinnedSummary.setOpen(false)
     this.publish(next)
     if (next.maximized) {
-      document.documentElement.dataset.tockTeamPanelMaximized = 'true'
+      document.documentElement.dataset.tockteamPanelMaximized = 'true'
     } else {
-      delete document.documentElement.dataset.tockTeamPanelMaximized
+      delete document.documentElement.dataset.tockteamPanelMaximized
     }
     this.applyLayout()
   }
@@ -522,13 +522,13 @@ class WorkspaceToolsService implements WorkspaceTools {
     const html = document.documentElement
     const appRoot = document.getElementById('root')
     if (this.state.open) {
-      html.dataset.tockTeamDesktopSidebarOpen = 'true'
-      html.dataset.tockTeamRightPanelOwner = 'sidebar'
+      html.dataset.tockteamDesktopSidebarOpen = 'true'
+      html.dataset.tockteamRightPanelOwner = 'sidebar'
       appRoot?.style.removeProperty('padding-right')
     } else {
-      delete html.dataset.tockTeamDesktopSidebarOpen
-      if (html.dataset.tockTeamRightPanelOwner === 'sidebar') {
-        delete html.dataset.tockTeamRightPanelOwner
+      delete html.dataset.tockteamDesktopSidebarOpen
+      if (html.dataset.tockteamRightPanelOwner === 'sidebar') {
+        delete html.dataset.tockteamRightPanelOwner
         appRoot?.style.removeProperty('padding-right')
       }
     }
