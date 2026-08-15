@@ -81,7 +81,7 @@ test('desktop titlebar matches Tockbot chrome and stays draggable', () => {
   )
   assert.match(
     css,
-    /body:has\(\[data-sidebar-collapsed\]\) \.oh-dsh-titlebar-leading\s*\{[^}]*width: 56px;[^}]*border-right: 0;/s,
+    /body:has\(\[data-sidebar-collapsed\]\) \.oh-dsh-titlebar-leading\s*\{[^}]*width: 84px;[^}]*border-right: 0;/s,
   )
   assert.match(
     css,

@@ -76,7 +76,7 @@ html[data-oh-dsh-desktop-sidebar-open='true'] #oh-dsh-sidebar-root {
 }
 
 body:has([data-sidebar-collapsed]) .oh-dsh-titlebar-leading {
-  width: 56px;
+  width: 84px;
   border-right: 0;
 }
 
