@@ -26,7 +26,6 @@ import {
 } from '../sidebar-preferences.ts'
 import {
   BrowserView,
-  DesktopToolRail,
   FilesView,
   FileView,
   SideToolsPanel,
@@ -285,11 +284,9 @@ class WorkspaceToolsService implements WorkspaceTools {
   private readonly listeners = new Set<() => void>()
   private style: HTMLStyleElement | undefined
   private element: HTMLDivElement | undefined
-  private railElement: HTMLDivElement | undefined
   private layout: HTMLDivElement | undefined
   private appRoot: HTMLElement | undefined
   private root: Root | undefined
-  private railRoot: Root | undefined
   private stopSidebar: (() => void) | undefined
   private readonly narrowViewport = window.matchMedia('(max-width: 900px)')
   private readonly handleViewportChange = (): void => { this.applyLayout() }
@@ -438,10 +435,8 @@ class WorkspaceToolsService implements WorkspaceTools {
     appRoot.before(layout)
     layout.append(rail, appRoot, this.element)
     this.appRoot = appRoot
-    this.railElement = rail
     this.layout = layout
     this.root = createRoot(this.element)
-    this.railRoot = createRoot(rail)
     this.root.render(
       <WorkspaceToolsSurface
         locale={this.locale}
@@ -451,15 +446,6 @@ class WorkspaceToolsService implements WorkspaceTools {
         pinnedSummary={this.pinnedSummary}
         sessions={this.sessions}
         workspaces={this.workspaces}
-        sidebar={this.sidebar}
-      />,
-    )
-    this.railRoot.render(
-      <WorkspaceToolRailSurface
-        locale={this.locale}
-        t={this.t}
-        panels={this.panels}
-        sessions={this.sessions}
         sidebar={this.sidebar}
       />,
     )
@@ -473,9 +459,7 @@ class WorkspaceToolsService implements WorkspaceTools {
     window.removeEventListener('keydown', this.handleShortcut, true)
     this.narrowViewport.removeEventListener('change', this.handleViewportChange)
     this.root?.unmount()
-    this.railRoot?.unmount()
     this.element?.remove()
-    this.railElement?.remove()
     if (this.layout !== undefined && this.appRoot !== undefined) {
       this.layout.before(this.appRoot)
       this.layout.remove()
@@ -1206,35 +1190,6 @@ function WorkspacePanel({
           </div>
         )}
     </div>
-  )
-}
-
-function WorkspaceToolRailSurface(props: {
-  locale: LocaleService
-  t: Translate<WorkspaceMessage>
-  panels: DesktopPanels
-  sessions: SessionsService
-  sidebar: DesktopSidebar
-}): ReactNode {
-  const t = useTranslate(props.locale, props.t)
-  const sessionList = useSyncExternalStore(
-    props.sessions.list.subscribe,
-    props.sessions.list.getSnapshot,
-  )
-  const terminalOpen = useSyncExternalStore(
-    props.panels.subscribe,
-    () => props.panels.isBottomPanelOpen(),
-  )
-  const cwd = sessionList.current === undefined
-    ? undefined
-    : sessionList.byId[sessionList.current]?.cwd
-  return (
-    <DesktopToolRail
-      cwd={cwd}
-      sidebar={props.sidebar}
-      t={t}
-      terminalOpen={terminalOpen}
-    />
   )
 }
 

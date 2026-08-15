@@ -2,7 +2,6 @@ import type { LocaleMessages } from '../../../shared/i18n.ts'
 
 export type WorkspaceMessage =
   | 'panels.label'
-  | 'rail.label'
   | 'sidebar.toggle'
   | 'side.expand'
   | 'side.restore'
@@ -114,7 +113,6 @@ export type WorkspaceMessage =
 export const WORKSPACE_MESSAGES: LocaleMessages<WorkspaceMessage> = {
   en: {
     'panels.label': 'Desktop Panels',
-    'rail.label': 'Workspace Tools',
     'sidebar.toggle': 'Toggle Sidebar',
     'side.expand': 'Expand Side Panel',
     'side.restore': 'Restore side panel',
@@ -225,7 +223,6 @@ export const WORKSPACE_MESSAGES: LocaleMessages<WorkspaceMessage> = {
   },
   zh: {
     'panels.label': '桌面面板',
-    'rail.label': '工作区工具',
     'sidebar.toggle': '切换侧边栏',
     'side.expand': '展开侧边栏',
     'side.restore': '恢复侧边栏',

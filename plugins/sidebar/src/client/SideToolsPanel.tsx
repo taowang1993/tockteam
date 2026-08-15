@@ -40,13 +40,6 @@ interface SideToolsPanelProps {
   width: number
 }
 
-interface DesktopToolRailProps {
-  cwd: string | undefined
-  sidebar: DesktopSidebar
-  t: Translate<WorkspaceMessage>
-  terminalOpen: boolean
-}
-
 type ToolIconKind =
   | 'browser'
   | 'chat'
@@ -143,64 +136,6 @@ function SideMenu(props: SideToolsPanelProps): JSX.Element {
       ))}
       {error !== '' && <div className="oh-dsh-side-error" role="alert">{error}</div>}
     </div>
-  )
-}
-
-export function DesktopToolRail(props: DesktopToolRailProps): ReactNode {
-  const snapshot = useSyncExternalStore(
-    props.sidebar.subscribe,
-    props.sidebar.getSnapshot,
-  )
-  const [error, setError] = useState('')
-  const activeType = snapshot.tabs.find(tab => tab.id === snapshot.activeId)?.type
-  const descriptors = props.sidebar.getTabs().filter(descriptor =>
-    descriptor.hidden !== true && props.sidebar.isTabEnabled(descriptor.id),
-  )
-  const open = async (descriptor: DesktopSidebarTabDescriptor): Promise<void> => {
-    try {
-      setError('')
-      if (descriptor.action !== undefined && descriptor.render === undefined) {
-        await descriptor.action()
-        return
-      }
-      const result = props.sidebar.openTab({ type: descriptor.id })
-      if (result.kind === 'limit') throw new Error(props.t('side.tab-limit'))
-      if (result.kind === 'disabled') throw new Error(props.t('side.tool-disabled'))
-      if (result.kind === 'missing') throw new Error(props.t('side.tool-missing'))
-      if (result.kind === 'not-ready') throw new Error(props.t('side.not-ready'))
-      props.sidebar.setOpen(true)
-    } catch (next) {
-      setError(next instanceof Error ? next.message : String(next))
-    }
-  }
-  return (
-    <nav className="oh-dsh-tool-rail" aria-label={props.t('rail.label')}>
-      <div>
-        {descriptors.map(descriptor => {
-          const title = descriptorTitle(descriptor)
-          const active = descriptor.id === 'terminal'
-            ? props.terminalOpen
-            : snapshot.open && activeType === descriptor.id
-          return (
-            <button
-              key={descriptor.id}
-              type="button"
-              aria-label={title}
-              aria-pressed={active}
-              title={descriptor.shortcut === undefined
-                ? title
-                : `${title} (${descriptor.shortcut})`}
-              disabled={(descriptor.requiresWorkspace === true && props.cwd === undefined)
-                || descriptor.available?.() === false}
-              onClick={() => { void open(descriptor) }}
-            >
-              <DescriptorIcon descriptor={descriptor} />
-            </button>
-          )
-        })}
-      </div>
-      {error !== '' && <div className="oh-dsh-rail-error" role="alert">{error}</div>}
-    </nav>
   )
 }
 

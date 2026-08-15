@@ -6,7 +6,7 @@ import { test } from 'node:test'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 
-test('desktop shell keeps a Tockbot-style rail, app column, and optional panel', () => {
+test('desktop shell keeps the navigation rail without duplicate tool buttons', () => {
   const workspace = readFileSync(
     join(root, 'plugins/sidebar/src/client/plugin.tsx'),
     'utf8',
@@ -16,10 +16,7 @@ test('desktop shell keeps a Tockbot-style rail, app column, and optional panel',
     'utf8',
   )
 
-  assert.match(
-    css,
-    /--oh-dsh-rail-width: 40px;/,
-  )
+  assert.match(css, /--oh-dsh-rail-width: 40px;/)
   assert.match(
     css,
     /#oh-dsh-embedded-layout\s*\{[^}]*grid-template-columns:\s*var\(--oh-dsh-rail-width\) minmax\(0, 1fr\) 0;[^}]*grid-template-rows: minmax\(0, 1fr\);/s,
@@ -28,12 +25,10 @@ test('desktop shell keeps a Tockbot-style rail, app column, and optional panel',
     css,
     /#oh-dsh-embedded-layout > #root\s*\{[^}]*min-height: 0;[^}]*overflow: hidden;/s,
   )
-  assert.match(
-    css,
-    /#oh-dsh-rail-root\s*\{[^}]*width: var\(--oh-dsh-rail-width\);/s,
-  )
+  assert.match(css, /#oh-dsh-rail-root\s*\{[^}]*width: var\(--oh-dsh-rail-width\);/s)
+  assert.match(workspace, /rail\.id = 'oh-dsh-rail-root'/)
   assert.match(workspace, /layout\.append\(rail, appRoot, this\.element\)/)
-  assert.match(workspace, /<DesktopToolRail/)
+  assert.doesNotMatch(workspace, /createRoot\(rail\)|DesktopToolRail/)
   assert.match(
     workspace,
     /`var\(--oh-dsh-rail-width\) minmax\(0, 1fr\) \$\{String\(track\)\}px`/,
@@ -60,6 +55,10 @@ test('desktop titlebar stays draggable while panel controls float at the top rig
   assert.match(
     css,
     /\.oh-dsh-window-titlebar\s*\{[^}]*position: fixed;[^}]*height: var\(--oh-dsh-titlebar-height, 40px\);[^}]*-webkit-app-region: drag;/s,
+  )
+  assert.match(
+    css,
+    /\.oh-dsh-titlebar-leading\s*\{[^}]*align-items: center;[^}]*height: 100%;[^}]*padding-left: max\(76px, env\(safe-area-inset-left\)\);/s,
   )
   assert.doesNotMatch(
     css,
