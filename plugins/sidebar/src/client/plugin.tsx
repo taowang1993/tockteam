@@ -4,6 +4,7 @@ import {
   useMemo,
   useState,
   useSyncExternalStore,
+  type ReactNode,
 } from 'react'
 import { defineStore } from '@deepseek-ai/dsh-client-runtime/client'
 import { createRoot, type Root } from 'react-dom/client'
@@ -550,7 +551,7 @@ class WorkspaceToolsService implements WorkspaceTools {
   }
 }
 
-function PanelIcon({ kind }: { kind: 'expand' | 'sidebar' | 'summary' | 'terminal' | 'side' }): JSX.Element {
+function PanelIcon({ kind }: { kind: 'expand' | 'sidebar' | 'summary' | 'terminal' | 'side' }): ReactNode {
   if (kind === 'expand') return <svg viewBox="0 0 20 20"><path d="M7 3H3v4M13 3h4v4M17 13v4h-4M7 17H3v-4" /></svg>
   if (kind === 'sidebar') return <svg viewBox="0 0 20 20"><rect x="3" y="3" width="14" height="14" rx="2.5" /><path d="M7.5 3.5v13" /></svg>
   if (kind === 'summary') {
@@ -628,7 +629,7 @@ function DesktopWindowTitlebar({
   service: WorkspaceToolsService
   t: Translate<WorkspaceMessage>
   title: string
-}): JSX.Element {
+}): ReactNode {
   return (
     <header className="oh-dsh-window-titlebar">
       <div className="oh-dsh-titlebar-leading">
@@ -1223,7 +1224,7 @@ function WorkspaceToolRailSurface(props: {
   panels: DesktopPanels
   sessions: SessionsService
   sidebar: DesktopSidebar
-}): JSX.Element {
+}): ReactNode {
   const t = useTranslate(props.locale, props.t)
   const sessionList = useSyncExternalStore(
     props.sessions.list.subscribe,
@@ -1255,7 +1256,7 @@ function WorkspaceToolsSurface(props: {
   pinnedSummary: PinnedSummary
   sessions: SessionsService
   workspaces: WorkspacesService
-}): JSX.Element {
+}): ReactNode {
   const t = useTranslate(props.locale, props.t)
   const panelState = useSyncExternalStore(props.service.subscribe, props.service.getSnapshot)
   const sessionList = useSyncExternalStore(props.sessions.list.subscribe, props.sessions.list.getSnapshot)

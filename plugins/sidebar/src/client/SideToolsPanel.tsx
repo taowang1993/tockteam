@@ -146,7 +146,7 @@ function SideMenu(props: SideToolsPanelProps): JSX.Element {
   )
 }
 
-export function DesktopToolRail(props: DesktopToolRailProps): JSX.Element {
+export function DesktopToolRail(props: DesktopToolRailProps): ReactNode {
   const snapshot = useSyncExternalStore(
     props.sidebar.subscribe,
     props.sidebar.getSnapshot,
