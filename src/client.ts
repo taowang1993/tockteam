@@ -210,8 +210,6 @@ function installBranding(): () => void {
   const headlineCopy = new Set(['Into the Unknown', '探索未知之境', '探索未至之境'])
   const originalHeadlines = new Map<HTMLElement, string>()
   const originalSidebarBrands = new Map<HTMLElement, SVGSVGElement>()
-  const collapsedSidebarFish = new Set<SVGSVGElement>()
-  const collapsedSidebarLogos = new Set<SVGSVGElement>()
   const synchronize = (): void => {
     for (const element of document.querySelectorAll<HTMLElement>('span')) {
       const text = element.textContent?.trim() ?? ''
@@ -233,7 +231,6 @@ function installBranding(): () => void {
       "[data-slot='sidebar'] button:is([aria-label='Open sidebar'],[aria-label='打开侧边栏']) > svg[viewBox='0 0 23.16 17.04']:not([data-tockteam-sidebar-fish])",
     )) {
       fish.dataset.tockteamSidebarFish = 'true'
-      collapsedSidebarFish.add(fish)
       if (fish.parentElement?.querySelector<SVGSVGElement>(
         ':scope > [data-tockteam-sidebar-logo]',
       ) !== null) continue
@@ -242,7 +239,6 @@ function installBranding(): () => void {
       const mark = logo.querySelector<SVGSVGElement>('svg')
       if (mark === null) continue
       mark.dataset.tockteamSidebarLogo = 'true'
-      collapsedSidebarLogos.add(mark)
       fish.before(mark)
     }
   }
@@ -258,10 +254,10 @@ function installBranding(): () => void {
     for (const [brand, original] of originalSidebarBrands) {
       if (brand.isConnected) brand.replaceWith(original)
     }
-    for (const logo of collapsedSidebarLogos) {
-      if (logo.isConnected) logo.remove()
+    for (const logo of document.querySelectorAll('[data-tockteam-sidebar-logo]')) logo.remove()
+    for (const fish of document.querySelectorAll<SVGSVGElement>('[data-tockteam-sidebar-fish]')) {
+      delete fish.dataset.tockteamSidebarFish
     }
-    for (const fish of collapsedSidebarFish) delete fish.dataset.tockteamSidebarFish
   }
 }
 
