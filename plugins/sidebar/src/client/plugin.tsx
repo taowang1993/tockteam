@@ -7,6 +7,7 @@ import {
   type ReactNode,
 } from 'react'
 import { defineStore } from '@deepseek-ai/dsh-client-runtime/client'
+import { createPortal } from 'react-dom'
 import { createRoot, type Root } from 'react-dom/client'
 import type { DesktopBridge } from '../../../../src/contracts.ts'
 import type { DesktopPanels } from '../../../panel-controls/src/client.ts'
@@ -619,14 +620,10 @@ function DesktopPanelToolbar({
 
 function DesktopWindowTitlebar({
   panels,
-  pinnedSummary,
-  service,
   t,
   title,
 }: {
   panels: DesktopPanels
-  pinnedSummary: PinnedSummary
-  service: WorkspaceToolsService
   t: Translate<WorkspaceMessage>
   title: string
 }): ReactNode {
@@ -641,12 +638,6 @@ function DesktopWindowTitlebar({
         ><PanelIcon kind="sidebar" /></button>
       </div>
       <strong className="oh-dsh-window-title" title={title}>{title}</strong>
-      <DesktopPanelToolbar
-        service={service}
-        panels={panels}
-        pinnedSummary={pinnedSummary}
-        t={t}
-      />
     </header>
   )
 }
@@ -1267,13 +1258,22 @@ function WorkspaceToolsSurface(props: {
   const title = session?.displayTitle?.trim() || 'Oh-DSH Desktop'
   return (
     <>
-      <DesktopWindowTitlebar
-        panels={props.panels}
-        pinnedSummary={props.pinnedSummary}
-        service={props.service}
-        t={t}
-        title={title}
-      />
+      {createPortal(
+        <>
+          <DesktopWindowTitlebar
+            panels={props.panels}
+            t={t}
+            title={title}
+          />
+          <DesktopPanelToolbar
+            service={props.service}
+            panels={props.panels}
+            pinnedSummary={props.pinnedSummary}
+            t={t}
+          />
+        </>,
+        document.body,
+      )}
       <SideToolsPanel
         cwd={cwd}
         open={panelState.open}

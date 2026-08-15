@@ -40,7 +40,7 @@ test('desktop shell keeps a Tockbot-style rail, app column, and optional panel',
   )
 })
 
-test('desktop shell renders a real titlebar instead of floating panel controls', () => {
+test('desktop titlebar stays draggable while panel controls float at the top right', () => {
   const workspace = readFileSync(
     join(root, 'plugins/sidebar/src/client/plugin.tsx'),
     'utf8',
@@ -54,12 +54,24 @@ test('desktop shell renders a real titlebar instead of floating panel controls',
   assert.match(workspace, /className="oh-dsh-window-title"/)
   assert.match(workspace, /panels\.toggleSidebar\(\)/)
   assert.match(
+    workspace,
+    /createPortal\(\s*<>\s*<DesktopWindowTitlebar[\s\S]*?\/>\s*<DesktopPanelToolbar[\s\S]*?<\/>,\s*document\.body/,
+  )
+  assert.match(
     css,
-    /\.oh-dsh-window-titlebar\s*\{[^}]*position: fixed;[^}]*height: var\(--oh-dsh-titlebar-height, 40px\);/s,
+    /\.oh-dsh-window-titlebar\s*\{[^}]*position: fixed;[^}]*height: var\(--oh-dsh-titlebar-height, 40px\);[^}]*-webkit-app-region: drag;/s,
   )
   assert.doesNotMatch(
     css,
-    /\.oh-dsh-panel-toolbar\s*\{[^}]*position: fixed;/s,
+    /\.oh-dsh-titlebar-leading\s*\{[^}]*-webkit-app-region: no-drag;/s,
+  )
+  assert.match(
+    css,
+    /\.oh-dsh-titlebar-leading button,[\s\S]*?\{[^}]*-webkit-app-region: no-drag;/,
+  )
+  assert.match(
+    css,
+    /\.oh-dsh-panel-toolbar\s*\{[^}]*position: fixed;[^}]*top: 5px;[^}]*right: 14px;/s,
   )
 })
 
