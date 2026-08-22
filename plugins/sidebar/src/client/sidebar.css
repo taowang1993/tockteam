@@ -108,7 +108,7 @@ body:has([data-sidebar-collapsed]) .tockteam-titlebar-leading {
   overflow: hidden;
   color: var(--dsw-alias-label-primary, #1f2328);
   font-size: 14px;
-  font-weight: 550;
+  font-weight: 400;
   line-height: 1;
   text-align: center;
   text-overflow: ellipsis;

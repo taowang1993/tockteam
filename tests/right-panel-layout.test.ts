@@ -102,7 +102,7 @@ test('desktop titlebar matches Tockbot chrome and stays draggable', () => {
   )
   assert.match(
     css,
-    /\.tockteam-window-title\s*\{[^}]*font-size: 14px;/s,
+    /\.tockteam-window-title\s*\{[^}]*font-size: 14px;[^}]*font-weight: 400;/s,
   )
   assert.match(css, /#tockteam-rail-root\s*\{[^}]*border-right: 1px solid var\(--tockteam-shell-divider\);/s)
   assert.match(css, /\.tockteam-window-titlebar\s*\{[^}]*border-bottom: 1px solid var\(--tockteam-shell-divider\);[^}]*background: var\(--tockteam-shell-chrome\);/s)
