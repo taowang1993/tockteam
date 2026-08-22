@@ -23,7 +23,7 @@ test('desktop shell keeps the navigation rail without duplicate tool buttons', (
   )
   assert.match(
     css,
-    /#tockteam-embedded-layout > #root\s*\{[^}]*min-height: 0;[^}]*overflow: hidden;/s,
+    /#tockteam-embedded-layout > #root\s*\{[^}]*--dsw-specific-sidebar-fill: var\(--dsw-alias-bg-base\);[^}]*min-height: 0;[^}]*overflow: hidden;/s,
   )
   assert.match(css, /#tockteam-rail-root\s*\{[^}]*width: var\(--tockteam-rail-width\);/s)
   assert.match(
