@@ -11,6 +11,7 @@ import {
   ACTIVE_SKIN_KEY,
   DesktopSkinsController,
   FALLBACK_THEME_KEY,
+  matchesThemeHotkey,
   type StorageLike,
   type ThemeService,
   type ThemeSnapshot,
@@ -214,6 +215,34 @@ test('choosing Original restores the appearance used before a skin', () => {
   assert.equal(storage.getItem(ACTIVE_SKIN_KEY), null)
   assert.equal(controller.getSnapshot().activeId, null)
   assert.equal(dom.active, undefined)
+})
+
+test('theme hotkey toggles the active appearance between dark and light', () => {
+  const theme = new FakeThemeService('dark')
+  const controller = new DesktopSkinsController(theme, new MemoryStorage(), new FakeSkinDom())
+  controller.start()
+
+  controller.toggleTheme()
+  assert.equal(theme.getTheme().preference, 'light')
+
+  controller.toggleTheme()
+  assert.equal(theme.getTheme().preference, 'dark')
+})
+
+test('theme hotkey matches Command/Ctrl + Shift + Period only', () => {
+  const event = {
+    altKey: false,
+    code: 'Period',
+    ctrlKey: false,
+    key: '>',
+    metaKey: true,
+    shiftKey: true,
+  }
+  assert.equal(matchesThemeHotkey(event), true)
+  assert.equal(matchesThemeHotkey({ ...event, metaKey: false, ctrlKey: true }), true)
+  assert.equal(matchesThemeHotkey({ ...event, shiftKey: false }), false)
+  assert.equal(matchesThemeHotkey({ ...event, altKey: true }), false)
+  assert.equal(matchesThemeHotkey({ ...event, code: 'KeyT', key: 't' }), false)
 })
 
 test('an official appearance change safely takes over from desktop skins', () => {

@@ -38,9 +38,19 @@ export interface DesktopSkins {
   getSnapshot(): DesktopSkinsSnapshot
   setSkin(id: string | null): void
   subscribe(listener: () => void): () => void
+  toggleTheme(): void
 }
 
 const BUILTIN_PREFERENCES = new Set(['light', 'dark', 'system'])
+
+export function matchesThemeHotkey(
+  event: Pick<KeyboardEvent, 'altKey' | 'code' | 'ctrlKey' | 'key' | 'metaKey' | 'shiftKey'>,
+): boolean {
+  return (event.metaKey || event.ctrlKey)
+    && event.shiftKey
+    && !event.altKey
+    && (event.key.toLowerCase() === '.' || event.code === 'Period')
+}
 
 function builtinPreference(value: string | null): value is 'light' | 'dark' | 'system' {
   return value !== null && BUILTIN_PREFERENCES.has(value)
@@ -146,6 +156,13 @@ export class DesktopSkinsController implements DesktopSkins {
   subscribe(listener: () => void): () => void {
     this.listeners.add(listener)
     return () => { this.listeners.delete(listener) }
+  }
+
+  toggleTheme(): void {
+    if (!this.started) throw new Error('desktop skins controller is not started')
+    const next = this.theme.getTheme().active.colorScheme === 'dark' ? 'light' : 'dark'
+    this.theme.setTheme(next)
+    this.adopt(this.theme.getTheme())
   }
 
   private disposeRegistrations(): void {

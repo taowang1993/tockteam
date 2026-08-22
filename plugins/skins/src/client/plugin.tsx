@@ -7,6 +7,7 @@ import {
 } from './i18n.ts'
 import {
   DesktopSkinsController,
+  matchesThemeHotkey,
   type DesktopSkinsSnapshot,
   type ThemeService,
   type ThemeSnapshot,
@@ -191,6 +192,13 @@ export function apply(ctx: ClientContext): void {
     let stopTheme: (() => void) | void
     let stopController: (() => void) | undefined
     let removeService: (() => Promise<void> | void) | void
+    const handleKeyDown = (event: KeyboardEvent): void => {
+      if (!ready || !matchesThemeHotkey(event)) return
+      event.preventDefault()
+      event.stopPropagation()
+      controller.toggleTheme()
+    }
+    if (typeof window !== 'undefined') window.addEventListener('keydown', handleKeyDown, true)
     const boot = async (): Promise<void> => {
       if (storage instanceof DesktopSkinPreferencesStorage) {
         try {
@@ -214,6 +222,7 @@ export function apply(ctx: ClientContext): void {
     return () => {
       disposed = true
       ready = false
+      if (typeof window !== 'undefined') window.removeEventListener('keydown', handleKeyDown, true)
       stopTheme?.()
       stopController?.()
       if (started) controller.dispose()
