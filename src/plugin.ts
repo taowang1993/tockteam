@@ -63,11 +63,11 @@ function environmentCapability(): DesktopHostCapability {
 
 function desktopPrompt(capability: DesktopHostCapability): string {
   return `You are interacting with the user through TockTeam Desktop ${capability.version} on ${capability.platform}. `
-    + 'TockTeam Desktop is an Electron distribution backed by DeepSeek Harness. '
+    + "TockTeam Desktop is an Electron distribution backed by TockTeam's DSH runtime. "
     + 'Native window actions, workspaces, panels, files, tools, skills, subagents, and other agent capabilities are composed through DSH plugins. '
     + 'Manage desktop plugins only with desktop_plugin_* tools: prepare every change, inspect risk, use the isolated preview, and apply only after approval. '
     + 'When the user says “this app” without naming another target, they mean TockTeam Desktop. '
-    + 'Identify this surface as TockTeam Desktop backed by DeepSeek Harness.'
+    + "Identify this surface as TockTeam Desktop backed by TockTeam's DSH runtime."
 }
 
 /** Mount the native desktop capability in the DSH graph. */

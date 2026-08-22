@@ -2,7 +2,7 @@
   "name": "@tockteam/desktop",
   "productName": "TockTeam Desktop",
   "version": "0.1.4",
-  "description": "TockTeam: installable Desktop, Web, and TUI surfaces over DeepSeek Harness",
+  "description": "TockTeam: installable Desktop, Web, and TUI surfaces over its DSH runtime",
   "author": "dsh-external",
   "desktopName": "tockteam-desktop.desktop",
   "private": true,
@@ -145,7 +145,7 @@
       "darkModeSupport": true,
       "minimumSystemVersion": "12.0.0",
       "extendInfo": {
-        "NSAppleEventsUsageDescription": "TockTeam Desktop uses Apple Events only when a DeepSeek Harness tool needs to interact with a Mac app.",
+        "NSAppleEventsUsageDescription": "TockTeam Desktop uses Apple Events only when a TockTeam tool needs to interact with a Mac app.",
         "NSDesktopFolderUsageDescription": "TockTeam Desktop needs access to workspaces you select on the Desktop.",
         "NSDocumentsFolderUsageDescription": "TockTeam Desktop needs access to workspaces you select in Documents.",
         "NSDownloadsFolderUsageDescription": "TockTeam Desktop needs access to workspaces you select in Downloads."
@@ -157,7 +157,7 @@
       "maintainer": "dsh-external",
       "executableName": "tockteam-desktop",
       "syncDesktopName": true,
-      "synopsis": "An extensible DeepSeek Harness desktop workbench",
+      "synopsis": "An extensible TockTeam desktop workbench",
       "target": [
         "AppImage",
         "deb"

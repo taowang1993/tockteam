@@ -1,7 +1,7 @@
 {
   "name": "@tockteam/web",
   "version": "0.1.4",
-  "description": "TockTeam Web: a packaged DeepSeek Harness browser runtime with TockTeam plugin capabilities",
+  "description": "TockTeam Web: a packaged browser runtime with TockTeam plugin capabilities",
   "private": true,
   "type": "module",
   "exports": {

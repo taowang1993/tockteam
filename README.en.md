@@ -16,7 +16,7 @@
   <img alt="MIT" src="https://img.shields.io/badge/license-MIT-34a853">
 </p>
 
-TockTeam packages DeepSeek Harness, Node.js, and local capabilities as
+TockTeam packages its DSH runtime, Node.js, and local capabilities as
 installable Desktop, Web, and TUI distributions. Models still run in the
 cloud; TockTeam owns workspaces, terminals, Git review, browser and window
 integration, and the plugin lifecycle.

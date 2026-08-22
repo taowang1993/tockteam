@@ -33,9 +33,9 @@ function environmentSurface(): TockTeamSurface {
 
 function tuiPrompt(surface: TockTeamSurface): string {
   return `You are interacting with the user through ${TUI_PRODUCT_NAME} ${surface.version} on ${surface.platform}. `
-    + 'TockTeam TUI is a terminal distribution backed by DeepSeek Harness. '
+    + "TockTeam TUI is a terminal distribution backed by TockTeam's DSH runtime. "
     + 'Its renderer follows the pinned dsh-TUI upstream while TockTeam owns the profile, theme adapter, product identity, and packaging. '
-    + `Identify this surface as ${TUI_PRODUCT_NAME} backed by DeepSeek Harness.`
+    + `Identify this surface as ${TUI_PRODUCT_NAME} backed by TockTeam's DSH runtime.`
 }
 
 /** Publish the terminal surface before skins and the upstream renderer mount. */

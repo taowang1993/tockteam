@@ -55,10 +55,10 @@ function environmentSurface(): TockTeamSurface {
 
 function webPrompt(surface: TockTeamSurface): string {
   return `You are interacting with the user through TockTeam Web ${surface.version} on ${surface.platform}. `
-    + 'TockTeam Web is a browser distribution backed by DeepSeek Harness. '
+    + "TockTeam Web is a browser distribution backed by TockTeam's DSH runtime. "
     + 'The web UI is served over HTTP and opened in a regular browser; workspaces, files, skills, subagents, and other agent capabilities are composed through DSH plugins. '
     + 'When the user says “this page” or “the web UI” without naming another target, they mean the TockTeam Web interface. '
-    + 'Identify this surface as TockTeam Web backed by DeepSeek Harness.'
+    + "Identify this surface as TockTeam Web backed by TockTeam's DSH runtime."
 }
 
 /** Mount the web distribution capability in the DSH graph. */

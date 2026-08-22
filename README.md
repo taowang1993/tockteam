@@ -16,7 +16,7 @@
   <img alt="MIT" src="https://img.shields.io/badge/license-MIT-34a853">
 </p>
 
-TockTeam 把 DeepSeek Harness、Node.js 和本地能力打包成可安装的 Desktop、
+TockTeam 把 DSH runtime、Node.js 和本地能力打包成可安装的 Desktop、
 Web 与 TUI 发行版。模型仍运行在云端；TockTeam 负责 Workspace、终端、
 Git Review、浏览器、窗口集成和插件生命周期。
 

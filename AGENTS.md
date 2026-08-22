@@ -2,7 +2,7 @@
 
 ## Product Contract
 
-TockTeam is an installable distribution over one pinned DeepSeek Harness (DSH) runtime. The unified `tockteam` launcher selects Desktop, Web, or TUI; it does not create a second agent loop or plugin system.
+TockTeam is an installable distribution over one pinned DSH runtime. The unified `tockteam` launcher selects Desktop, Web, or TUI; it does not create a second agent loop or plugin system.
 
 Preserve these boundaries:
 
