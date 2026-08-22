@@ -6,7 +6,7 @@ html {
 body {
   --tockteam-main-pane: var(--dsw-alias-bg-layer-1, var(--dsw-alias-bg-base, #fff));
   --tockteam-shell-chrome: color-mix(in srgb, var(--dsw-alias-bg-base, #fff) 96%, var(--dsw-alias-label-primary, #1f2328));
-  --tockteam-shell-divider: color-mix(in srgb, var(--dsw-alias-label-primary, #1f2328) 17%, transparent);
+  --tockteam-shell-divider: color-mix(in srgb, var(--dsw-alias-label-primary, #1f2328) 9%, transparent);
 }
 
 body[data-ds-dark-theme] {

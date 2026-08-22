@@ -19,7 +19,7 @@ test('desktop shell keeps the navigation rail without duplicate tool buttons', (
   assert.match(css, /--tockteam-rail-width: 40px;/)
   assert.match(
     css,
-    /body\s*\{[^}]*--tockteam-main-pane: var\(--dsw-alias-bg-layer-1, var\(--dsw-alias-bg-base, #fff\)\);[^}]*--tockteam-shell-chrome: color-mix\(in srgb, var\(--dsw-alias-bg-base, #fff\) 96%, var\(--dsw-alias-label-primary, #1f2328\)\);[^}]*--tockteam-shell-divider: color-mix\(in srgb, var\(--dsw-alias-label-primary, #1f2328\) 17%, transparent\);/s,
+    /body\s*\{[^}]*--tockteam-main-pane: var\(--dsw-alias-bg-layer-1, var\(--dsw-alias-bg-base, #fff\)\);[^}]*--tockteam-shell-chrome: color-mix\(in srgb, var\(--dsw-alias-bg-base, #fff\) 96%, var\(--dsw-alias-label-primary, #1f2328\)\);[^}]*--tockteam-shell-divider: color-mix\(in srgb, var\(--dsw-alias-label-primary, #1f2328\) 9%, transparent\);/s,
   )
   assert.match(
     css,
