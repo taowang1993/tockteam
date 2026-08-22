@@ -79,7 +79,7 @@ test('desktop titlebar matches Tockbot chrome and stays draggable', () => {
   )
   assert.match(main, /if \(options\.preview !== true\) window\.maximize\(\)/)
   assert.match(workspace, /<header className="tockteam-window-titlebar">/)
-  assert.match(workspace, /<strong className="tockteam-window-title">TockTeam<\/strong>/)
+  assert.match(workspace, /<span className="tockteam-window-title">TockTeam<\/span>/)
   assert.doesNotMatch(workspace, /displayTitle/)
   assert.match(workspace, /props\.showDesktopChrome && createPortal\(/)
   assert.match(workspace, /surface\.kind === 'desktop'/)
@@ -102,7 +102,7 @@ test('desktop titlebar matches Tockbot chrome and stays draggable', () => {
   )
   assert.match(
     css,
-    /\.tockteam-window-title\s*\{[^}]*font-size: 14px;[^}]*font-weight: 400;/s,
+    /\.tockteam-window-title\s*\{[^}]*color: color-mix\(in srgb, var\(--dsw-alias-label-primary, #1f2328\) 90%, var\(--tockteam-shell-chrome, #fff\) 10%\);[^}]*font-size: 14px;[^}]*font-weight: 400;/s,
   )
   assert.match(css, /#tockteam-rail-root\s*\{[^}]*border-right: 1px solid var\(--tockteam-shell-divider\);/s)
   assert.match(css, /\.tockteam-window-titlebar\s*\{[^}]*border-bottom: 1px solid var\(--tockteam-shell-divider\);[^}]*background: var\(--tockteam-shell-chrome\);/s)

@@ -625,7 +625,7 @@ function DesktopWindowTitlebar({
           onClick={() => { panels.toggleSidebar() }}
         ><PanelIcon kind="sidebar" /></button>
       </div>
-      <strong className="tockteam-window-title">TockTeam</strong>
+      <span className="tockteam-window-title">TockTeam</span>
     </header>
   )
 }
