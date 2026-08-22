@@ -210,6 +210,7 @@ function installBranding(): () => void {
   const headlineCopy = new Set(['Into the Unknown', '探索未知之境', '探索未至之境'])
   const originalHeadlines = new Map<HTMLElement, string>()
   const originalSidebarBrands = new Map<HTMLElement, SVGSVGElement>()
+  const originalHeroLogos = new Map<HTMLSpanElement, SVGSVGElement>()
   const synchronize = (): void => {
     for (const element of document.querySelectorAll<HTMLElement>('span')) {
       const text = element.textContent?.trim() ?? ''
@@ -217,6 +218,19 @@ function installBranding(): () => void {
       if (!originalHeadlines.has(element)) originalHeadlines.set(element, text)
       element.textContent = 'TockTeam Desktop'
       element.dataset.tockteamHeroHeadline = 'true'
+    }
+    for (const headline of document.querySelectorAll<HTMLElement>('[data-tockteam-hero-headline]')) {
+      const fish = headline.parentElement?.querySelector<SVGSVGElement>(':scope > span > svg')
+      if (fish === null || fish === undefined || fish.dataset.tockteamHeroLogo !== undefined) continue
+      const logo = document.createElement('span')
+      logo.innerHTML = TOCKBOT_LOGO_MARK
+      const mark = logo.querySelector<SVGSVGElement>('svg')
+      if (mark === null) continue
+      mark.dataset.tockteamHeroLogo = 'true'
+      mark.setAttribute('width', '34')
+      mark.setAttribute('height', '34')
+      originalHeroLogos.set(logo, fish)
+      fish.replaceWith(logo)
     }
     for (const wordmark of document.querySelectorAll<SVGSVGElement>(
       "[data-slot='sidebar'] button > svg[viewBox='0 0 182 24']",
@@ -253,6 +267,9 @@ function installBranding(): () => void {
     }
     for (const [brand, original] of originalSidebarBrands) {
       if (brand.isConnected) brand.replaceWith(original)
+    }
+    for (const [logo, original] of originalHeroLogos) {
+      if (logo.isConnected) logo.replaceWith(original)
     }
     for (const logo of document.querySelectorAll('[data-tockteam-sidebar-logo]')) logo.remove()
     for (const fish of document.querySelectorAll<SVGSVGElement>('[data-tockteam-sidebar-fish]')) {
