@@ -23,10 +23,17 @@ test('desktop profile pins the released TockTutor runtime and peer package', () 
   assert.equal(vault.version, '0.6.0')
   assert.deepEqual(DESKTOP_BUNDLES.slice(0, 4), [
     '@deepseek-ai/dsh-base',
-    'tockbot-note-vault',
     'tockbot-note-runtime',
     '@deepseek-ai/dsh-web-app',
+    '@tockteam/desktop',
   ])
+  assert.equal((DESKTOP_BUNDLES as readonly string[]).includes('tockbot-note-vault'), false)
+})
+
+test('desktop retains the vault inspection package without enrolling its bundle', async () => {
+  const inspection = await import('tockbot-note-vault/inspection')
+  assert.equal(typeof inspection.createVaultInspection, 'function')
+  assert.equal((DESKTOP_BUNDLES as readonly string[]).includes('tockbot-note-vault'), false)
 })
 
 test('desktop profile initializes required bundles and preserves user plugins', () => {
@@ -38,7 +45,12 @@ test('desktop profile initializes required bundles and preserves user plugins', 
     assert.deepEqual(manifest.dsh.profile.bundles, DESKTOP_BUNDLES)
 
     manifest.dependencies['example-plugin'] = '1.0.0'
-    manifest.dsh.profile.bundles = ['example-plugin', '@tockteam/desktop']
+    manifest.dependencies['tockbot-note-vault'] = '0.6.0'
+    manifest.dsh.profile.bundles = [
+      'tockbot-note-vault',
+      'example-plugin',
+      '@tockteam/desktop',
+    ]
     writeFileSync(manifestPath, JSON.stringify(manifest, undefined, 2) + '\n')
     writeFileSync(join(first.profileDir, 'cordis.patch.yml'), '- id: custom\n  disabled: true\n')
 
@@ -46,6 +58,8 @@ test('desktop profile initializes required bundles and preserves user plugins', 
     const upgraded = JSON.parse(readFileSync(join(second.profileDir, 'package.json'), 'utf8'))
     assert.deepEqual(upgraded.dsh.profile.bundles, [...DESKTOP_BUNDLES, 'example-plugin'])
     assert.equal(upgraded.dependencies['example-plugin'], '1.0.0')
+    assert.equal(upgraded.dependencies['tockbot-note-vault'], undefined)
+    assert.equal(upgraded.dsh.profile.bundles.includes('tockbot-note-vault'), false)
     assert.match(readFileSync(join(second.profileDir, 'cordis.patch.yml'), 'utf8'), /custom/)
   } finally {
     rmSync(root, { recursive: true, force: true })

@@ -1,6 +1,6 @@
 {
   "name": "@tockteam/skins",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Built-in TockTeam skin gallery for TUI, Web, and Desktop",
   "private": true,
   "type": "module",

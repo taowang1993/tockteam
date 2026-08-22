@@ -1,6 +1,6 @@
 {
   "name": "@tockteam/panel-controls",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Sidebar and resizable bottom-panel controls for TockTeam Desktop",
   "private": true,
   "type": "module",

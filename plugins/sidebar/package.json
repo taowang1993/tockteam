@@ -1,6 +1,6 @@
 {
   "name": "@tockteam/sidebar",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Extensible TockTeam side panel with workspace and desktop tools",
   "private": true,
   "type": "module",

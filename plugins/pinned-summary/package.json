@@ -1,6 +1,6 @@
 {
   "name": "@tockteam/pinned-summary",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Layout-reserving current-session summary panel for TockTeam Desktop",
   "private": true,
   "type": "module",

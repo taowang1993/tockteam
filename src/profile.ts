@@ -34,7 +34,6 @@ export const BUNDLED_DESKTOP_PLUGINS = [
 /** Bundle order owned by the desktop distribution. */
 export const DESKTOP_BUNDLES = [
   '@deepseek-ai/dsh-base',
-  'tockbot-note-vault',
   'tockbot-note-runtime',
   '@deepseek-ai/dsh-web-app',
   '@tockteam/desktop',
@@ -92,9 +91,14 @@ function writeJsonAtomic(path: string, value: unknown): void {
   renameSync(temporary, path)
 }
 
-function requiredBundles(existing: readonly string[], owned: readonly string[]): string[] {
+function requiredBundles(
+  existing: readonly string[],
+  owned: readonly string[],
+  retired: readonly string[] = [],
+): string[] {
   const required = new Set<string>(owned)
-  return [...owned, ...existing.filter(bundle => !required.has(bundle))]
+  const retiredSet = new Set(retired)
+  return [...owned, ...existing.filter(bundle => !required.has(bundle) && !retiredSet.has(bundle))]
 }
 
 /** One packaged distribution surface: its profile name, bundles, and manifest identity. */
@@ -102,6 +106,8 @@ export interface ProfileSpec {
   bundles: readonly string[]
   manifestName: string
   name: string
+  retiredBundles?: readonly string[]
+  retiredDependencies?: readonly string[]
 }
 
 /** Profile facts for the packaged desktop surface. */
@@ -109,6 +115,8 @@ export const DESKTOP_PROFILE_SPEC: ProfileSpec = Object.freeze({
   bundles: DESKTOP_BUNDLES,
   manifestName: 'dsh-profile-desktop',
   name: DESKTOP_PROFILE,
+  retiredBundles: ['tockbot-note-vault'],
+  retiredDependencies: ['tockbot-note-vault'],
 })
 
 /** Profile facts for the packaged TockTeam Web browser surface. */
@@ -144,12 +152,15 @@ export function ensureProfile(spec: ProfileSpec, dshHome: string): DesktopProfil
     ...manifest,
     name: manifest.name ?? spec.manifestName,
     private: true,
-    dependencies: manifest.dependencies ?? {},
+    dependencies: Object.fromEntries(
+      Object.entries(manifest.dependencies ?? {}).filter(([name]) =>
+        !spec.retiredDependencies?.includes(name)),
+    ),
     dsh: {
       ...manifest.dsh,
       profile: {
         ...manifest.dsh?.profile,
-        bundles: requiredBundles(currentBundles, spec.bundles),
+        bundles: requiredBundles(currentBundles, spec.bundles, spec.retiredBundles),
       },
     },
   }

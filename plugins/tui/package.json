@@ -1,6 +1,6 @@
 {
   "name": "@tockteam/tui",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "TockTeam defaults and profile adapter for the upstream dsh-TUI renderer",
   "private": true,
   "type": "module",

@@ -1,6 +1,6 @@
 {
   "name": "@tockteam/web",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "TockTeam Web: a packaged browser runtime with TockTeam plugin capabilities",
   "private": true,
   "type": "module",

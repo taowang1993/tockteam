@@ -1,6 +1,6 @@
 {
   "name": "@tockteam/better-sidebar-runtime",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Host-only Better Sidebar capability provider for TockTeam Desktop",
   "private": true,
   "type": "module",

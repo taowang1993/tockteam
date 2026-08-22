@@ -136,8 +136,6 @@ function runtimeEnvironment(
   overrides: { appDataPath?: string; dshHome?: string; preview?: { pluginId: string; transactionId: string } } = {},
 ): NodeJS.ProcessEnv {
   const info = desktopInfo(overrides.preview ?? null)
-  const noteVaultRoot = join(info.appDataPath, 'note-vault')
-  mkdirSync(noteVaultRoot, { recursive: true, mode: 0o700 })
   const environment: NodeJS.ProcessEnv = {
     ...process.env,
     DSH_DESKTOP: '1',
@@ -147,7 +145,6 @@ function runtimeEnvironment(
     DSH_HOME: overrides.dshHome ?? info.dshHome,
     NODE_USE_ENV_PROXY: '1',
     PATH: runtimeSearchPath(paths),
-    TOCKBOT_NOTE_VAULT_PATH: noteVaultRoot,
   }
   const reveal = overrides.preview === undefined ? desktopRevealChannel.environment : undefined
   if (reveal !== undefined) {

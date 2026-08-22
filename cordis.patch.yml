@@ -35,14 +35,8 @@
     - id: tockteam-plugin-marketplace
       name: '@tockteam/plugin-marketplace'
 
-# TockTutor runtime rows are Desktop-only. The runtime starts with no active
-# user vault; note-vault gets an app-owned empty root until the workbench
-# activates a real vault through the runtime contract.
-- id: tockbot-note-vault
-  name: tockbot-note-vault
-  config:
-    root: !!js process.env.TOCKBOT_NOTE_VAULT_PATH
-
+# The Runtime bundle owns this entry. Desktop supplies both empty roots because
+# the loader replaces the package patch config as one object.
 - id: note-vault-runtime
   name: tockbot-note-runtime
   config:

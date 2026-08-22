@@ -26,8 +26,6 @@ const paths = bundledRuntimePaths(resources)
 const { cliEntry, nodeBinary } = paths
 const smokeRoot = mkdtempSync(join(tmpdir(), 'tockteam-desktop-smoke-'))
 const dshHome = join(smokeRoot, 'dsh-home')
-const noteVaultRoot = join(smokeRoot, 'note-vault')
-mkdirSync(noteVaultRoot, { recursive: true, mode: 0o700 })
 const lines = []
 
 function parseBootEntries(index) {
@@ -52,8 +50,30 @@ const runtimeEnvironment = {
   DSH_DESKTOP_VERSION: 'smoke',
   DSH_HOME: dshHome,
   PATH: runtimeSearchPath(paths),
-  TOCKBOT_NOTE_VAULT_PATH: noteVaultRoot,
 }
+
+const dump = spawnSync(nodeBinary, [cliEntry, '--profile', 'desktop', '--dump-config'], {
+  cwd: smokeRoot,
+  encoding: 'utf8',
+  env: runtimeEnvironment,
+})
+assert.equal(dump.status, 0, dump.stderr || dump.stdout)
+const dumpOutput = `${dump.stdout}\n${dump.stderr}`
+assert.match(dumpOutput, /note-vault-runtime/)
+assert.match(dumpOutput, /dsh-tools|Tools/i)
+assert.doesNotMatch(dumpOutput, /tockbot-note-vault/)
+assert.doesNotMatch(dumpOutput, /patch:\s*entry ["']tockbot-note-vault["'] not found/)
+
+const inspection = spawnSync(nodeBinary, [
+  '--input-type=module',
+  '-e',
+  "import { createVaultInspection } from 'tockbot-note-vault/inspection'; if (typeof createVaultInspection !== 'function') process.exit(1)",
+], {
+  cwd: join(resources, 'dsh-runtime'),
+  encoding: 'utf8',
+  env: runtimeEnvironment,
+})
+assert.equal(inspection.status, 0, inspection.stderr || inspection.stdout)
 
 const pluginRoot = join(smokeRoot, 'smoke-plugin')
 mkdirSync(pluginRoot)

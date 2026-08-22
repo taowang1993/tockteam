@@ -13,6 +13,9 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 
 test('desktop bundle registers every packaged DSH plugin', () => {
   const patch = readFileSync(join(root, 'cordis.patch.yml'), 'utf8')
+  assert.doesNotMatch(patch, /tockbot-note-vault/)
+  assert.equal((patch.match(/id: note-vault-runtime/g) ?? []).length, 1)
+  assert.match(patch, /id: note-vault-runtime[\s\S]*stateRoot: null/)
   for (const plugin of BUNDLED_DESKTOP_PLUGINS) {
     assert.match(patch, new RegExp(`name: ['"]${plugin.replace('/', '\\/')}['"]`))
   }
