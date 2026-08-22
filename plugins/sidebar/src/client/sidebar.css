@@ -29,7 +29,7 @@ html {
   min-height: 0;
   border-right: 1px solid var(--dsw-alias-border-l1, rgb(0 0 0 / 8%));
   box-sizing: border-box;
-  background: var(--dsw-alias-bg-layer-1, #f7f8fa);
+  background: var(--dsw-alias-bg-base, #fff);
 }
 
 #tockteam-sidebar-root {

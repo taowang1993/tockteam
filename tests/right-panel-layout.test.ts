@@ -26,6 +26,10 @@ test('desktop shell keeps the navigation rail without duplicate tool buttons', (
     /#tockteam-embedded-layout > #root\s*\{[^}]*min-height: 0;[^}]*overflow: hidden;/s,
   )
   assert.match(css, /#tockteam-rail-root\s*\{[^}]*width: var\(--tockteam-rail-width\);/s)
+  assert.match(
+    css,
+    /#tockteam-rail-root\s*\{[^}]*background: var\(--dsw-alias-bg-base, #fff\);/s,
+  )
   assert.match(workspace, /rail\.id = 'tockteam-rail-root'/)
   assert.match(workspace, /layout\.append\(rail, appRoot, this\.element\)/)
   assert.doesNotMatch(workspace, /createRoot\(rail\)|DesktopToolRail/)
