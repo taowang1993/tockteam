@@ -4,7 +4,13 @@ html {
 }
 
 body {
+  --tockteam-main-pane: var(--dsw-alias-bg-layer-1, var(--dsw-alias-bg-base, #fff));
+  --tockteam-shell-chrome: color-mix(in srgb, var(--dsw-alias-bg-base, #fff) 96%, var(--dsw-alias-label-primary, #1f2328));
   --tockteam-shell-divider: color-mix(in srgb, var(--dsw-alias-label-primary, #1f2328) 17%, transparent);
+}
+
+body[data-ds-dark-theme] {
+  --tockteam-shell-chrome: var(--dsw-alias-bg-base);
 }
 
 #tockteam-embedded-layout {
@@ -19,13 +25,23 @@ body {
 }
 
 #tockteam-embedded-layout > #root {
-  --dsw-specific-sidebar-fill: var(--dsw-alias-bg-base);
+  --dsw-specific-sidebar-fill: var(--tockteam-shell-chrome);
   --dsw-alias-border-l1: var(--tockteam-shell-divider);
 
   min-width: 0;
   min-height: 0;
   height: 100%;
   overflow: hidden;
+}
+
+#tockteam-embedded-layout > #root [data-phase] {
+  --dsw-alias-bg-base: var(--tockteam-main-pane);
+
+  background: var(--tockteam-main-pane);
+}
+
+#tockteam-embedded-layout > #root [data-phase='hero'] [data-composer-seat] svg[viewBox='0 0 1051 468'] {
+  display: none;
 }
 
 #tockteam-rail-root {
@@ -36,7 +52,7 @@ body {
   min-height: 0;
   border-right: 1px solid var(--tockteam-shell-divider);
   box-sizing: border-box;
-  background: var(--dsw-alias-bg-base, #fff);
+  background: var(--tockteam-shell-chrome);
 }
 
 #tockteam-sidebar-root {
@@ -64,7 +80,7 @@ html[data-tockteam-desktop-sidebar-open='true'] #tockteam-sidebar-root {
   height: var(--tockteam-titlebar-height, 40px);
   border-bottom: 1px solid var(--tockteam-shell-divider);
   box-sizing: border-box;
-  background: var(--dsw-alias-bg-base, #fff);
+  background: var(--tockteam-shell-chrome);
   box-shadow: 0 1px 0 rgb(0 0 0 / 2%);
   -webkit-app-region: drag;
   user-select: none;

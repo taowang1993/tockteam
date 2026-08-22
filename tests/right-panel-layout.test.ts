@@ -19,7 +19,11 @@ test('desktop shell keeps the navigation rail without duplicate tool buttons', (
   assert.match(css, /--tockteam-rail-width: 40px;/)
   assert.match(
     css,
-    /body\s*\{[^}]*--tockteam-shell-divider: color-mix\(in srgb, var\(--dsw-alias-label-primary, #1f2328\) 17%, transparent\);/s,
+    /body\s*\{[^}]*--tockteam-main-pane: var\(--dsw-alias-bg-layer-1, var\(--dsw-alias-bg-base, #fff\)\);[^}]*--tockteam-shell-chrome: color-mix\(in srgb, var\(--dsw-alias-bg-base, #fff\) 96%, var\(--dsw-alias-label-primary, #1f2328\)\);[^}]*--tockteam-shell-divider: color-mix\(in srgb, var\(--dsw-alias-label-primary, #1f2328\) 17%, transparent\);/s,
+  )
+  assert.match(
+    css,
+    /body\[data-ds-dark-theme\]\s*\{[^}]*--tockteam-shell-chrome: var\(--dsw-alias-bg-base\);/s,
   )
   assert.match(
     css,
@@ -27,12 +31,20 @@ test('desktop shell keeps the navigation rail without duplicate tool buttons', (
   )
   assert.match(
     css,
-    /#tockteam-embedded-layout > #root\s*\{[^}]*--dsw-specific-sidebar-fill: var\(--dsw-alias-bg-base\);[^}]*--dsw-alias-border-l1: var\(--tockteam-shell-divider\);[^}]*min-height: 0;[^}]*overflow: hidden;/s,
+    /#tockteam-embedded-layout > #root\s*\{[^}]*--dsw-specific-sidebar-fill: var\(--tockteam-shell-chrome\);[^}]*--dsw-alias-border-l1: var\(--tockteam-shell-divider\);[^}]*min-height: 0;[^}]*overflow: hidden;/s,
   )
   assert.match(css, /#tockteam-rail-root\s*\{[^}]*width: var\(--tockteam-rail-width\);/s)
   assert.match(
     css,
-    /#tockteam-rail-root\s*\{[^}]*background: var\(--dsw-alias-bg-base, #fff\);/s,
+    /#tockteam-rail-root\s*\{[^}]*background: var\(--tockteam-shell-chrome\);/s,
+  )
+  assert.match(
+    css,
+    /#tockteam-embedded-layout > #root \[data-phase\]\s*\{[^}]*--dsw-alias-bg-base: var\(--tockteam-main-pane\);[^}]*background: var\(--tockteam-main-pane\);/s,
+  )
+  assert.match(
+    css,
+    /#tockteam-embedded-layout > #root \[data-phase='hero'\] \[data-composer-seat\] svg\[viewBox='0 0 1051 468'\]\s*\{[^}]*display: none;/s,
   )
   assert.match(workspace, /rail\.id = 'tockteam-rail-root'/)
   assert.match(workspace, /layout\.append\(rail, appRoot, this\.element\)/)
@@ -93,7 +105,7 @@ test('desktop titlebar matches Tockbot chrome and stays draggable', () => {
     /\.tockteam-window-title\s*\{[^}]*font-size: 14px;/s,
   )
   assert.match(css, /#tockteam-rail-root\s*\{[^}]*border-right: 1px solid var\(--tockteam-shell-divider\);/s)
-  assert.match(css, /\.tockteam-window-titlebar\s*\{[^}]*border-bottom: 1px solid var\(--tockteam-shell-divider\);/s)
+  assert.match(css, /\.tockteam-window-titlebar\s*\{[^}]*border-bottom: 1px solid var\(--tockteam-shell-divider\);[^}]*background: var\(--tockteam-shell-chrome\);/s)
   assert.match(css, /\.tockteam-titlebar-leading\s*\{[^}]*border-right: 1px solid var\(--tockteam-shell-divider\);/s)
   assert.match(
     css,
