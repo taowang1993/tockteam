@@ -15,7 +15,10 @@
     ".": {
       "default": "./dist/plugin.js"
     },
-    "./client": "./dist/client.js",
+    "./client": {
+      "types": "./client.d.ts",
+      "default": "./dist/client.js"
+    },
     "./cordis.patch.yml": "./dist/cordis.patch.yml",
     "./package.json": "./package.json"
   },
@@ -23,6 +26,7 @@
     "dist/plugin.js",
     "dist/client.js",
     "dist/client.js.map",
+    "client.d.ts",
     "dist/cordis.patch.yml",
     "dist/tockteam.js",
     "bin/tockteam",

@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import test from 'node:test'
 import {
   isTockTutorPath,
@@ -32,7 +33,14 @@ test.afterEach(() => {
   })
 })
 
-test('locks the Desktop TockTutor route seat and recognizes nested paths', () => {
+test('locks the Desktop TockTutor route seat and publishes its package type entry', () => {
+  const packageJson = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as {
+    exports: { './client': { types?: string; default?: string } }
+    files: string[]
+  }
+  assert.equal(packageJson.exports['./client'].types, './client.d.ts')
+  assert.equal(packageJson.exports['./client'].default, './dist/client.js')
+  assert.ok(packageJson.files.includes('client.d.ts'))
   assert.equal(TOCKTUTOR_ROUTE_SLOT, 'tockteam.tocktutor.route')
   assert.equal(isTockTutorPath('/tocktutor'), true)
   assert.equal(isTockTutorPath('/tocktutor/notes/Plan.md'), true)
