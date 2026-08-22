@@ -1,5 +1,11 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { DesktopBridge, DesktopCommand, DesktopInfo, DesktopRuntimeSnapshot } from './contracts.ts'
+import type {
+  DesktopBridge,
+  DesktopCommand,
+  DesktopInfo,
+  DesktopRuntimeSnapshot,
+  WebClipBlockedNavigation,
+} from './contracts.ts'
 import type { MarketplaceCommand, MarketplaceSnapshot } from '../plugins/plugin-marketplace/src/protocol.ts'
 
 const bridge: DesktopBridge = Object.freeze({
@@ -24,6 +30,21 @@ const bridge: DesktopBridge = Object.freeze({
     },
     getSnapshot: async (): Promise<MarketplaceSnapshot> => {
       return await ipcRenderer.invoke('desktop:plugin-marketplace-snapshot') as MarketplaceSnapshot
+    },
+  }),
+  webClip: Object.freeze({
+    authorizeDocument: async (frameId: number, html: string): Promise<string> => {
+      return await ipcRenderer.invoke('desktop:web-clip-authorize-document', { frameId, html }) as string
+    },
+    onNavigationBlocked: (listener: (navigation: WebClipBlockedNavigation) => void): (() => void) => {
+      const wrapped = (_event: Electron.IpcRendererEvent, raw: unknown): void => {
+        if (typeof raw !== 'object' || raw === null) return
+        const value = raw as Record<string, unknown>
+        if (!Number.isSafeInteger(value.frameId) || typeof value.url !== 'string') return
+        listener({ frameId: value.frameId as number, url: value.url })
+      }
+      ipcRenderer.on('desktop:web-clip-navigation-blocked', wrapped)
+      return () => { ipcRenderer.removeListener('desktop:web-clip-navigation-blocked', wrapped) }
     },
   }),
 })

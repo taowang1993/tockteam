@@ -10,6 +10,8 @@ import {
   session,
   shell,
   type MenuItemConstructorOptions,
+  type Session,
+  type WebContents,
 } from 'electron'
 import { createWriteStream, existsSync, mkdirSync, statSync, type WriteStream } from 'node:fs'
 import { homedir } from 'node:os'
@@ -32,6 +34,13 @@ import { parseMarketplaceCommand } from '../plugins/plugin-marketplace/src/proto
 import type { DesktopCommand, DesktopInfo, DesktopRuntimeSnapshot } from './contracts.ts'
 import { allowsRuntimeClipboardWrite, originOf } from './permissions.ts'
 import { BUNDLED_DESKTOP_PLUGINS, DESKTOP_PROFILE, ensureDesktopProfile } from './profile.ts'
+import {
+  WEB_CLIP_GUEST_ARGUMENT,
+  WebClipFrameAuthorizations,
+  isWebClipPartition,
+  stripWebClipRequestHeaders,
+  stripWebClipResponseHeaders,
+} from './web-clip-frame.ts'
 import { DshRuntimeSupervisor, runDshCommand, type DshRuntimeOptions, type RuntimeExit } from './runtime.ts'
 import {
   bundledRuntimePaths,
@@ -65,6 +74,8 @@ let quitting = false
 let transitioning = false
 let queuedPaths: string[] = []
 const logTail: string[] = []
+const webClipFrames = new WebClipFrameAuthorizations()
+const webClipSessions = new WeakSet<Session>()
 
 function appendLog(stream: 'desktop' | 'stderr' | 'stdout', line: string): void {
   const rendered = `${new Date().toISOString()} [${stream}] ${line}`
@@ -212,6 +223,62 @@ function isAllowedBrowserNavigation(target: string): boolean {
   }
 }
 
+function configureWebClipGuest(embedder: WebContents, contents: WebContents): void {
+  const frameId = contents.id
+  const guestSession = contents.session
+  webClipFrames.attach(frameId, embedder.id)
+  guestSession.setPermissionRequestHandler((_webContents, _permission, callback) => { callback(false) })
+  guestSession.setPermissionCheckHandler(() => false)
+  guestSession.webRequest.onBeforeRequest({
+    urls: [
+      'file://*/*',
+      'ftp://*/*',
+      'http://*/*',
+      'https://*/*',
+      'ws://*/*',
+      'wss://*/*',
+    ],
+  }, (_details, callback) => { callback({ cancel: true }) })
+  guestSession.webRequest.onBeforeSendHeaders((details, callback) => {
+    callback({ requestHeaders: stripWebClipRequestHeaders(details.requestHeaders) })
+  })
+  guestSession.webRequest.onHeadersReceived((details, callback) => {
+    callback({
+      ...(details.responseHeaders === undefined
+        ? {}
+        : { responseHeaders: stripWebClipResponseHeaders(details.responseHeaders) }),
+    })
+  })
+  guestSession.on('will-download', (event, item) => {
+    event.preventDefault()
+    item.cancel()
+  })
+  contents.setWindowOpenHandler(() => ({ action: 'deny' }))
+  contents.on('login', (event, _details, _authInfo, callback) => {
+    event.preventDefault()
+    callback()
+  })
+  const guard = (event: Electron.Event, url: string): void => {
+    if (webClipFrames.allows(frameId, url)) return
+    event.preventDefault()
+    if (url !== 'about:blank') {
+      embedder.send('desktop:web-clip-navigation-blocked', { frameId, url })
+    }
+  }
+  contents.on('will-navigate', details => { guard(details, details.url) })
+  contents.on('will-redirect', details => { guard(details, details.url) })
+  contents.on('did-navigate', (_event, url) => {
+    if (webClipFrames.allows(frameId, url)) webClipFrames.commit(frameId)
+  })
+  contents.once('destroyed', () => {
+    webClipFrames.detach(frameId)
+    void Promise.allSettled([
+      guestSession.clearCache(),
+      guestSession.clearStorageData(),
+    ])
+  })
+}
+
 function windowIconPath(): string | undefined {
   // Packaged builds carry the icon beside resources/; dev falls back to the
   // rendered set so the window shows the app icon instead of Electron's.
@@ -273,7 +340,10 @@ function createWindow(options: { preview?: boolean; title?: string } = {}): Brow
     return { action: 'deny' }
   })
   window.webContents.on('will-attach-webview', (event, webPreferences, params) => {
-    if (!isAllowedBrowserNavigation(params.src ?? 'about:blank')) {
+    const webClipGuest = isWebClipPartition(params.partition)
+    if (webClipGuest
+      ? params.src !== undefined && params.src !== '' && params.src !== 'about:blank'
+      : !isAllowedBrowserNavigation(params.src ?? 'about:blank')) {
       event.preventDefault()
       return
     }
@@ -284,8 +354,24 @@ function createWindow(options: { preview?: boolean; title?: string } = {}): Brow
     webPreferences.sandbox = true
     webPreferences.webSecurity = true
     webPreferences.allowRunningInsecureContent = false
+    if (webClipGuest) {
+      webClipSessions.add(session.fromPartition(params.partition ?? ''))
+      webPreferences.additionalArguments = [
+        ...(webPreferences.additionalArguments ?? []),
+        WEB_CLIP_GUEST_ARGUMENT,
+      ]
+      webPreferences.disableDialogs = true
+      webPreferences.javascript = false
+      webPreferences.navigateOnDragDrop = false
+      webPreferences.spellcheck = false
+      webPreferences.webviewTag = false
+    }
   })
   window.webContents.on('did-attach-webview', (_event, contents) => {
+    if (webClipSessions.has(contents.session)) {
+      configureWebClipGuest(window.webContents, contents)
+      return
+    }
     contents.setWindowOpenHandler(({ url }) => {
       if (url.startsWith('https:') || url.startsWith('http:')) void shell.openExternal(url)
       return { action: 'deny' }
@@ -687,6 +773,14 @@ function installIpc(): void {
   ipcMain.handle('desktop:plugin-marketplace-dispatch', async (_event, raw: unknown) => {
     if (marketplace === undefined) throw new Error('plugin marketplace is not initialized')
     return await marketplace.dispatch(parseMarketplaceCommand(raw))
+  })
+  ipcMain.handle('desktop:web-clip-authorize-document', (event, raw: unknown) => {
+    if (typeof raw !== 'object' || raw === null) throw new Error('Web Clip document request is invalid')
+    const input = raw as Record<string, unknown>
+    if (!Number.isSafeInteger(input.frameId) || typeof input.html !== 'string') {
+      throw new Error('Web Clip document request is invalid')
+    }
+    return webClipFrames.authorize(input.frameId as number, event.sender.id, input.html)
   })
   ipcMain.handle('desktop:open-external', async (_event, raw: unknown) => {
     if (typeof raw !== 'string') throw new Error('external URL must be a string')

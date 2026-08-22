@@ -37,6 +37,16 @@ export interface DesktopRuntimeSnapshot {
   status: 'ready' | 'restarting' | 'stopped'
 }
 
+export interface WebClipBlockedNavigation {
+  frameId: number
+  url: string
+}
+
+export interface WebClipDesktopBridge {
+  authorizeDocument(frameId: number, html: string): Promise<string>
+  onNavigationBlocked(listener: (navigation: WebClipBlockedNavigation) => void): () => void
+}
+
 /** Browser-safe desktop bridge made available through contextBridge. */
 export interface DesktopBridge {
   chooseWorkspace(): Promise<string[]>
@@ -45,4 +55,5 @@ export interface DesktopBridge {
   onCommand(listener: (command: DesktopCommand) => void): () => void
   openExternal(url: string): Promise<void>
   pluginMarketplace: PluginMarketplaceBridge
+  webClip: WebClipDesktopBridge
 }
