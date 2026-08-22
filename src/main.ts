@@ -14,6 +14,7 @@ import {
   type WebContents,
 } from 'electron'
 import { createWriteStream, existsSync, mkdirSync, statSync, type WriteStream } from 'node:fs'
+import { lstat, realpath } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -43,6 +44,8 @@ import {
   stripWebClipResponseHeaders,
 } from './web-clip-frame.ts'
 import { DshRuntimeSupervisor, runDshCommand, type DshRuntimeOptions, type RuntimeExit } from './runtime.ts'
+import { DesktopRevealChannel } from './desktop-reveal-channel.ts'
+import { performDesktopReveal } from './desktop-reveal-native.ts'
 import {
   bundledRuntimePaths,
   resolveRuntimeResourcesRoot,
@@ -77,6 +80,15 @@ let queuedPaths: string[] = []
 const logTail: string[] = []
 const webClipFrames = new WebClipFrameAuthorizations()
 const webClipSessions = new WeakSet<Session>()
+const desktopRevealChannel = new DesktopRevealChannel({
+  isAvailable: () => isEligibleDesktopRevealWindow(),
+  onReveal: async input => await performDesktopReveal(input, {
+    isAvailable: () => isEligibleDesktopRevealWindow(),
+    lstat: async path => await lstat(path, { bigint: true }),
+    realpath: async path => await realpath(path),
+    reveal: path => { shell.showItemInFolder(path) },
+  }),
+})
 
 function appendLog(stream: 'desktop' | 'stderr' | 'stdout', line: string): void {
   const rendered = `${new Date().toISOString()} [${stream}] ${line}`
@@ -133,6 +145,11 @@ function runtimeEnvironment(
     DSH_HOME: overrides.dshHome ?? info.dshHome,
     NODE_USE_ENV_PROXY: '1',
     PATH: runtimeSearchPath(paths),
+  }
+  const reveal = overrides.preview === undefined ? desktopRevealChannel.environment : undefined
+  if (reveal !== undefined) {
+    environment.DSH_DESKTOP_REVEAL_ENDPOINT = reveal.endpoint
+    environment.DSH_DESKTOP_REVEAL_TOKEN = reveal.token
   }
   if (overrides.preview !== undefined) {
     environment.DSH_DESKTOP_PREVIEW = '1'
@@ -201,6 +218,12 @@ function previewRuntimeOptions(input: {
     onLog: (stream, line) => { appendLog(stream, `[preview:${input.pluginId}] ${line}`) },
     readyTimeoutMs: 90_000,
   }
+}
+
+function isEligibleDesktopRevealWindow(): boolean {
+  if (mainWindow === undefined || mainWindow.isDestroyed() || mainWindow.webContents.isDestroyed()) return false
+  if (runtimeOrigin === undefined) return false
+  return originOf(mainWindow.webContents.getURL()) === runtimeOrigin
 }
 
 function isAllowedRuntimeNavigation(target: string, allowedOrigin: string | undefined): boolean {
@@ -433,6 +456,7 @@ function flushQueuedPaths(): void {
 
 function handleRuntimeExit(exit: RuntimeExit): void {
   appendLog('desktop', `DSH runtime exited: code=${String(exit.code)} signal=${String(exit.signal)}`)
+  void desktopRevealChannel.stop()
   runtimeUrl = undefined
   runtimeOrigin = undefined
   if (quitting || transitioning) return
@@ -446,15 +470,21 @@ function handleRuntimeExit(exit: RuntimeExit): void {
 async function startRuntime(): Promise<void> {
   const info = desktopInfo()
   ensureDesktopProfile(info.dshHome)
-  const supervisor = new DshRuntimeSupervisor(runtimeOptions())
-  runtime = supervisor
-  supervisor.on('exit', handleRuntimeExit)
-  const url = await supervisor.start()
-  runtimeUrl = url
-  runtimeOrigin = url.origin
-  if (mainWindow === undefined || mainWindow.isDestroyed()) mainWindow = createWindow()
-  await mainWindow.loadURL(url.href)
-  flushQueuedPaths()
+  await desktopRevealChannel.start()
+  try {
+    const supervisor = new DshRuntimeSupervisor(runtimeOptions())
+    runtime = supervisor
+    supervisor.on('exit', handleRuntimeExit)
+    const url = await supervisor.start()
+    runtimeUrl = url
+    runtimeOrigin = url.origin
+    if (mainWindow === undefined || mainWindow.isDestroyed()) mainWindow = createWindow()
+    await mainWindow.loadURL(url.href)
+    flushQueuedPaths()
+  } catch (error) {
+    await desktopRevealChannel.stop()
+    throw error
+  }
 }
 
 async function stopPreviewSurface(): Promise<void> {
@@ -512,6 +542,7 @@ async function stopLiveForMarketplace(): Promise<void> {
   transitioning = true
   await showSplash({ message: '正在应用插件 Profile…' })
   await runtime?.stop()
+  await desktopRevealChannel.stop()
   runtime = undefined
   runtimeUrl = undefined
   runtimeOrigin = undefined
@@ -531,6 +562,7 @@ async function restartRuntime(message = '正在重新启动 TockTeam…'): Promi
   try {
     await showSplash({ message })
     await runtime?.stop()
+    await desktopRevealChannel.stop()
     runtime = undefined
     runtimeUrl = undefined
     runtimeOrigin = undefined
@@ -580,6 +612,7 @@ async function installLocalPlugin(): Promise<void> {
   try {
     await showSplash({ message: '正在安装 DSH 插件…' })
     await runtime?.stop()
+    await desktopRevealChannel.stop()
     runtime = undefined
     const options = runtimeOptions()
     await runDshCommand(options, ['plugin', '--profile', DESKTOP_PROFILE, 'add', pluginPath])
@@ -895,6 +928,7 @@ async function bootstrap(): Promise<void> {
     quitting = true
     void Promise.allSettled([
       runtime?.stop() ?? Promise.resolve(),
+      desktopRevealChannel.stop(),
       stopPreviewSurface(),
       marketplaceAgentGateway?.close() ?? Promise.resolve(),
     ]).then(results => {

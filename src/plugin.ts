@@ -8,6 +8,10 @@ import {
   TOCKTEAM_SURFACE_SERVICE,
   type TockTeamSurface,
 } from '../plugins/shared/surface.ts'
+import {
+  createDesktopRevealProvider,
+} from './desktop-reveal-provider.ts'
+import { TOCKTEAM_DESKTOP_REVEAL_SERVICE } from './desktop-reveal.ts'
 
 interface SystemPromptService {
   section(entry: {
@@ -73,6 +77,9 @@ function desktopPrompt(capability: DesktopHostCapability): string {
 /** Mount the native desktop capability in the DSH graph. */
 export function apply(ctx: HostContext): void {
   const capability = environmentCapability()
+  const revealProvider = createDesktopRevealProvider()
+  ctx.provide(TOCKTEAM_DESKTOP_REVEAL_SERVICE, revealProvider)
+  ctx.effect(() => () => { revealProvider.dispose() }, 'tockteam-desktop: reveal owner')
   ctx.provide('desktop', capability)
   // The unified three-surface contract: desktop shell (see
   // plugins/shared/surface.ts). The `desktop` service above stays for
