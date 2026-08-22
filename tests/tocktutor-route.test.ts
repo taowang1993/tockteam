@@ -35,10 +35,12 @@ test.afterEach(() => {
 
 test('locks the Desktop TockTutor route seat and publishes its package type entry', () => {
   const packageJson = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as {
-    exports: { './client': { types?: string; default?: string } }
+    exports: { './client': { browser?: string; node?: string; types?: string; default?: string } }
     files: string[]
   }
   assert.equal(packageJson.exports['./client'].types, './client.d.ts')
+  assert.equal(packageJson.exports['./client'].node, './dist/client-api.js')
+  assert.equal(packageJson.exports['./client'].browser, './dist/client-api.js')
   assert.equal(packageJson.exports['./client'].default, './dist/client.js')
   assert.ok(packageJson.files.includes('client.d.ts'))
   assert.equal(TOCKTUTOR_ROUTE_SLOT, 'tockteam.tocktutor.route')

@@ -82,12 +82,12 @@ const webClipFrames = new WebClipFrameAuthorizations()
 const webClipSessions = new WeakSet<Session>()
 const desktopRevealChannel = new DesktopRevealChannel({
   isAvailable: () => isEligibleDesktopRevealWindow(),
-  onReveal: async input => await performDesktopReveal(input, {
+  onReveal: async (input, signal) => await performDesktopReveal(input, {
     isAvailable: () => isEligibleDesktopRevealWindow(),
     lstat: async path => await lstat(path, { bigint: true }),
     realpath: async path => await realpath(path),
     reveal: path => { shell.showItemInFolder(path) },
-  }),
+  }, signal),
 })
 
 function appendLog(stream: 'desktop' | 'stderr' | 'stdout', line: string): void {

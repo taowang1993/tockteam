@@ -8,9 +8,7 @@ import {
   TOCKTEAM_SURFACE_SERVICE,
   type TockTeamSurface,
 } from '../plugins/shared/surface.ts'
-import {
-  createDesktopRevealProvider,
-} from './desktop-reveal-provider.ts'
+import { createDesktopRevealProvider } from './desktop-reveal-provider.ts'
 import { TOCKTEAM_DESKTOP_REVEAL_SERVICE } from './desktop-reveal.ts'
 
 interface SystemPromptService {

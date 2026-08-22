@@ -103,6 +103,86 @@ test('Host provider forwards the locked operation and fails closed on disposal',
   cancelled.dispose()
 })
 
+test('channel stop aborts an in-flight reveal before the native effect', async () => {
+  let started!: () => void
+  let release!: () => void
+  const began = new Promise<void>(resolve => { started = resolve })
+  const gate = new Promise<void>(resolve => { release = resolve })
+  let effects = 0
+  const channel = new DesktopRevealChannel({
+    isAvailable: () => true,
+    onReveal: async (value, signal) => {
+      started()
+      await gate
+      signal.throwIfAborted()
+      effects += 1
+      return { operationId: value.operationId, status: 'revealed' }
+    },
+  })
+  const environment = await channel.start()
+  const request = fetch(environment.endpoint, {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${environment.token}`,
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify(input()),
+  })
+  await began
+  const stopping = channel.stop()
+  release()
+  await stopping
+  assert.equal(effects, 0)
+  assert.deepEqual(await (await request).json(), {
+    operationId: 'operation-1',
+    status: 'cancelled',
+  })
+})
+
+test('client cancellation aborts the pending native reveal', async () => {
+  let started!: () => void
+  let release!: () => void
+  let observedAbort!: () => void
+  const began = new Promise<void>(resolve => { started = resolve })
+  const gate = new Promise<void>(resolve => { release = resolve })
+  const aborted = new Promise<void>(resolve => { observedAbort = resolve })
+  let effects = 0
+  const channel = new DesktopRevealChannel({
+    isAvailable: () => true,
+    onReveal: async (value, signal) => {
+      started()
+      signal.addEventListener('abort', observedAbort, { once: true })
+      await gate
+      signal.throwIfAborted()
+      effects += 1
+      return { operationId: value.operationId, status: 'revealed' }
+    },
+  })
+  const environment = await channel.start()
+  const controller = new AbortController()
+  const request = fetch(environment.endpoint, {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${environment.token}`,
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify(input()),
+    signal: controller.signal,
+  })
+  const settled = request.then(
+    value => ({ error: undefined, value }),
+    error => ({ error, value: undefined }),
+  )
+  await began
+  controller.abort()
+  await aborted
+  release()
+  const result = await settled
+  assert.notEqual(result.error, undefined)
+  await channel.stop()
+  assert.equal(effects, 0)
+})
+
 test('child-to-main reveal channel authenticates and consumes each operation once', async () => {
   const requests: DesktopRevealInput[] = []
   const channel = new DesktopRevealChannel({

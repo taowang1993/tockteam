@@ -17,7 +17,7 @@ export interface DesktopRevealChannelEnvironment {
 
 export interface DesktopRevealChannelOptions {
   isAvailable(): boolean
-  onReveal(input: DesktopRevealInput): Promise<DesktopRevealResult>
+  onReveal(input: DesktopRevealInput, signal: AbortSignal): Promise<DesktopRevealResult>
 }
 
 function authorized(value: string | undefined, expected: string): boolean {
@@ -59,6 +59,7 @@ export class DesktopRevealChannel {
   private environmentValue: DesktopRevealChannelEnvironment | undefined
   private readonly consumed = new Set<string>()
   private readonly pending = new Set<Promise<void>>()
+  private lifetime = new AbortController()
   private stopping = false
 
   constructor(options: DesktopRevealChannelOptions) {
@@ -72,6 +73,7 @@ export class DesktopRevealChannel {
   async start(): Promise<DesktopRevealChannelEnvironment> {
     if (this.server !== undefined) throw new Error('Desktop reveal channel is already running')
     this.stopping = false
+    this.lifetime = new AbortController()
     const token = randomBytes(32).toString('base64url')
     const server = createServer((request, response) => {
       const work = this.handle(request, response, token)
@@ -109,6 +111,7 @@ export class DesktopRevealChannel {
 
   async stop(): Promise<void> {
     this.stopping = true
+    this.lifetime.abort()
     const server = this.server
     this.server = undefined
     this.environmentValue = undefined
@@ -135,6 +138,32 @@ export class DesktopRevealChannel {
       response.writeHead(401).end()
       return
     }
+    const requestLifetime = new AbortController()
+    const abortRequest = (): void => { requestLifetime.abort() }
+    const onRequestClose = (): void => {
+      if (!request.complete) abortRequest()
+    }
+    const onResponseClose = (): void => {
+      if (!response.writableEnded) abortRequest()
+    }
+    request.once('aborted', abortRequest)
+    request.once('close', onRequestClose)
+    response.once('close', onResponseClose)
+    const signal = AbortSignal.any([this.lifetime.signal, requestLifetime.signal])
+    try {
+      await this.handleAuthorized(request, response, signal)
+    } finally {
+      request.removeListener('aborted', abortRequest)
+      request.removeListener('close', onRequestClose)
+      response.removeListener('close', onResponseClose)
+    }
+  }
+
+  private async handleAuthorized(
+    request: IncomingMessage,
+    response: ServerResponse,
+    signal: AbortSignal,
+  ): Promise<void> {
     const body = await bodyOf(request)
     if (body === undefined) {
       response.writeHead(413).end()
@@ -152,8 +181,8 @@ export class DesktopRevealChannel {
       response.writeHead(400).end()
       return
     }
-    if (this.stopping || !this.options.isAvailable()) {
-      jsonResponse(response, 200, { operationId: input.operationId, status: 'unavailable' })
+    if (signal.aborted || this.stopping || !this.options.isAvailable()) {
+      jsonResponse(response, 200, { operationId: input.operationId, status: 'cancelled' })
       return
     }
     if (this.consumed.has(input.operationId)) {
@@ -163,9 +192,11 @@ export class DesktopRevealChannel {
     this.consumed.add(input.operationId)
     let result: DesktopRevealResult
     try {
-      result = await this.options.onReveal(input)
+      result = await this.options.onReveal(input, signal)
     } catch {
-      result = { operationId: input.operationId, status: 'unavailable' }
+      result = signal.aborted
+        ? { operationId: input.operationId, status: 'cancelled' }
+        : { operationId: input.operationId, status: 'unavailable' }
     }
     const validated = validateDesktopRevealResult(result)
     if (validated === undefined || validated.operationId !== input.operationId) {
@@ -180,4 +211,3 @@ export class DesktopRevealChannel {
     jsonResponse(response, 200, validated)
   }
 }
-

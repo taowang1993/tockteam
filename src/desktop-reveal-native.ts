@@ -39,6 +39,7 @@ function stale(input: DesktopRevealInput): DesktopRevealResult {
 export async function performDesktopReveal(
   rawInput: unknown,
   operations: Partial<DesktopRevealNativeOperations> = {},
+  signal: AbortSignal = new AbortController().signal,
 ): Promise<DesktopRevealResult> {
   const input = validateDesktopRevealInput(rawInput)
   if (input === undefined) {
@@ -48,23 +49,27 @@ export async function performDesktopReveal(
       : ''
     return { operationId, status: 'denied' }
   }
-  if (!operations.isAvailable?.() && operations.isAvailable !== undefined) {
-    return { operationId: input.operationId, status: 'unavailable' }
-  }
+  if (signal.aborted) return cancelledReveal(input.operationId)
   const effect = { ...defaultOperations, ...operations }
   try {
+    if (!effect.isAvailable()) return { operationId: input.operationId, status: 'unavailable' }
     const canonicalPath = await effect.realpath(input.canonicalPath)
+    if (signal.aborted) return cancelledReveal(input.operationId)
     if (canonicalPath !== input.canonicalPath) return stale(input)
     const stats = await effect.lstat(canonicalPath)
+    if (signal.aborted) return cancelledReveal(input.operationId)
     const kind = stats.isDirectory() ? 'directory' : stats.isFile() ? 'file' : undefined
     if (kind !== input.kind
       || String(stats.dev) !== input.identity.dev
       || String(stats.ino) !== input.identity.ino) return stale(input)
     if (!effect.isAvailable()) return { operationId: input.operationId, status: 'unavailable' }
+    signal.throwIfAborted()
     effect.reveal(canonicalPath)
     return { operationId: input.operationId, status: 'revealed' }
   } catch {
-    return { operationId: input.operationId, status: 'unavailable' }
+    return signal.aborted
+      ? cancelledReveal(input.operationId)
+      : { operationId: input.operationId, status: 'unavailable' }
   }
 }
 

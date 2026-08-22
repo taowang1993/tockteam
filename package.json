@@ -17,6 +17,8 @@
     },
     "./client": {
       "types": "./client.d.ts",
+      "node": "./dist/client-api.js",
+      "browser": "./dist/client-api.js",
       "default": "./dist/client.js"
     },
     "./cordis.patch.yml": "./dist/cordis.patch.yml",
@@ -26,6 +28,7 @@
     "dist/plugin.js",
     "dist/client.js",
     "dist/client.js.map",
+    "dist/client-api.js",
     "client.d.ts",
     "dist/cordis.patch.yml",
     "dist/tockteam.js",
