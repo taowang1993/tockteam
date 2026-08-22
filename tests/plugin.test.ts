@@ -26,7 +26,7 @@ test('desktop client replaces upstream branding with TockTeam', () => {
     client,
     /button:is\(\[aria-label='Open sidebar'\],\[aria-label='打开侧边栏'\]\) > svg\[viewBox='0 0 23\.16 17\.04'\]:not\(\[data-tockteam-sidebar-fish\]\)/,
   )
-  assert.match(client, /logo\.innerHTML = TOCKBOT_LOGO_MARK/)
+  assert.match(client, /logo\.innerHTML = TOCKTEAM_LOGO_MARK/)
   assert.match(client, /fish\.parentElement\?\.querySelector<SVGSVGElement>\([\s\S]*':scope > \[data-tockteam-sidebar-logo\]'/)
   assert.match(client, /fish\.before\(mark\)/)
   assert.match(client, /document\.querySelectorAll\('\[data-tockteam-sidebar-logo\]'\)/)

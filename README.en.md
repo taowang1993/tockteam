@@ -4,7 +4,7 @@
 </p>
 
 <div align="center">
-  <img src="./assets/dsh-whale.png" width="136" alt="TockTeam whale">
+  <img src="./assets/tockteam-logo.svg" width="136" alt="TockTeam logo">
   <h1>TockTeam</h1>
   <p><strong>One DSH runtime, independently installable interaction surfaces.</strong></p>
 </div>

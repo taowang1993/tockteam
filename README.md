@@ -4,7 +4,7 @@
 </p>
 
 <div align="center">
-  <img src="./assets/dsh-whale.png" width="136" alt="TockTeam whale">
+  <img src="./assets/tockteam-logo.svg" width="136" alt="TockTeam logo">
   <h1>TockTeam</h1>
   <p><strong>一套 DSH runtime，多种可独立安装的交互方式。</strong></p>
 </div>

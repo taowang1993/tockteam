@@ -1,5 +1,5 @@
 #!/bin/sh
-# Render the Linux app icon set from the dsh-whale.png master.
+# Render the Linux app icon set from the TockTeam/Tockbot logo master.
 #
 # electron-builder treats a single PNG as a one-size icon set, so desktop
 # environments looking up small sizes (taskbars, menus) fall back to a
@@ -9,7 +9,7 @@
 set -eu
 
 root="$(cd "$(dirname "$0")/.." && pwd)"
-source_png="$root/assets/dsh-whale.png"
+source_png="$root/assets/tockteam-logo.png"
 set_dir="$root/assets/icons"
 mkdir -p "$set_dir"
 

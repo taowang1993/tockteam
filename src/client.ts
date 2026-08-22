@@ -195,7 +195,8 @@ function installDesktopChrome(): () => void {
   }
 }
 
-const TOCKBOT_LOGO_MARK = `
+// Mirrors Tockbot's inline LogoMark component, with currentColor for theme-aware UI use.
+const TOCKTEAM_LOGO_MARK = `
   <svg viewBox="0 0 20 20" width="20" height="20" fill="none" aria-hidden="true">
     <path fill-rule="evenodd" clip-rule="evenodd" d="M10 5.5C6.96243 5.5 4.5 7.96243 4.5 11C4.5 14.0376 6.96243 16.5 10 16.5C13.0376 16.5 15.5 14.0376 15.5 11C15.5 7.96243 13.0376 5.5 10 5.5ZM2.5 11C2.5 6.85786 5.85786 3.5 10 3.5C14.1421 3.5 17.5 6.85786 17.5 11C17.5 15.1421 14.1421 18.5 10 18.5C5.85786 18.5 2.5 15.1421 2.5 11Z" fill="currentColor" />
     <path fill-rule="evenodd" clip-rule="evenodd" d="M2.79289 18.2071C3.18342 18.5976 3.81658 18.5976 4.20711 18.2071L5.70711 16.7071C6.09763 16.3166 6.09763 15.6834 5.70711 15.2929C5.31658 14.9023 4.68342 14.9023 4.29289 15.2929L2.79289 16.7929C2.40237 17.1834 2.40237 17.8166 2.79289 18.2071Z" fill="currentColor" />
@@ -223,7 +224,7 @@ function installBranding(): () => void {
       const fish = headline.parentElement?.querySelector<SVGSVGElement>(':scope > span > svg')
       if (fish === null || fish === undefined || fish.dataset.tockteamHeroLogo !== undefined) continue
       const logo = document.createElement('span')
-      logo.innerHTML = TOCKBOT_LOGO_MARK
+      logo.innerHTML = TOCKTEAM_LOGO_MARK
       const mark = logo.querySelector<SVGSVGElement>('svg')
       if (mark === null) continue
       mark.dataset.tockteamHeroLogo = 'true'
@@ -237,7 +238,7 @@ function installBranding(): () => void {
     )) {
       const brand = document.createElement('span')
       brand.dataset.tockteamSidebarBrand = 'true'
-      brand.innerHTML = `${TOCKBOT_LOGO_MARK}<span>TockTeam</span>`
+      brand.innerHTML = `${TOCKTEAM_LOGO_MARK}<span>TockTeam</span>`
       originalSidebarBrands.set(brand, wordmark)
       wordmark.replaceWith(brand)
     }
@@ -249,7 +250,7 @@ function installBranding(): () => void {
         ':scope > [data-tockteam-sidebar-logo]',
       ) !== null) continue
       const logo = document.createElement('span')
-      logo.innerHTML = TOCKBOT_LOGO_MARK
+      logo.innerHTML = TOCKTEAM_LOGO_MARK
       const mark = logo.querySelector<SVGSVGElement>('svg')
       if (mark === null) continue
       mark.dataset.tockteamSidebarLogo = 'true'

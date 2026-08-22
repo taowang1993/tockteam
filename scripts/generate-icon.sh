@@ -2,7 +2,7 @@
 set -eu
 
 root=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
-source_png="$root/assets/dsh-whale.png"
+source_png="$root/assets/tockteam-logo.png"
 target="$root/assets/TockTeam-Desktop.icns"
 work=$(mktemp -d /tmp/dsh-desktop-icon.XXXXXX)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
