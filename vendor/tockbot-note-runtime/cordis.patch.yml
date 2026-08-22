@@ -1,0 +1,5 @@
+- insert:
+    - id: note-vault-runtime
+      name: tockbot-note-runtime
+      config:
+        vaultRoot: null

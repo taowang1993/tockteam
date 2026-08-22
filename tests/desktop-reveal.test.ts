@@ -1,11 +1,15 @@
 import assert from 'node:assert/strict'
+import { TockTeamDesktopReveal } from 'tockbot-note-runtime'
 import { lstat, mkdtemp, realpath, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
 import { DesktopRevealChannel } from '../src/desktop-reveal-channel.ts'
 import { performDesktopReveal } from '../src/desktop-reveal-native.ts'
-import { createDesktopRevealProvider } from '../src/desktop-reveal-provider.ts'
+import {
+  createDesktopRevealProvider,
+  DesktopRevealProvider,
+} from '../src/desktop-reveal-provider.ts'
 import {
   validateDesktopRevealInput,
   type DesktopRevealInput,
@@ -22,6 +26,10 @@ function input(overrides: Partial<DesktopRevealInput> = {}): DesktopRevealInput 
     ...overrides,
   }
 }
+
+test('extends the pinned runtime reveal service instead of duplicating its key', () => {
+  assert.equal(Object.getPrototypeOf(DesktopRevealProvider.prototype), TockTeamDesktopReveal.prototype)
+})
 
 test('validates the locked reveal transport shape and rejects path/control abuse', () => {
   assert.deepEqual(validateDesktopRevealInput(input()), input())

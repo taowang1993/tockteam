@@ -7,6 +7,13 @@ settings:
 importers:
 
   .:
+    dependencies:
+      tockbot-note-runtime:
+        specifier: file:vendor/tockbot-note-runtime-0.1.1.tgz
+        version: file:vendor/tockbot-note-runtime-0.1.1.tgz(@deepseek-ai/cordis@4.0.1)(tockbot-note-vault@file:vendor/tockbot-note-vault-0.6.0.tgz)
+      tockbot-note-vault:
+        specifier: file:vendor/tockbot-note-vault-0.6.0.tgz
+        version: file:vendor/tockbot-note-vault-0.6.0.tgz
     devDependencies:
       '@types/node':
         specifier: ^24.10.0
@@ -2248,6 +2255,19 @@ packages:
     resolution: {integrity: sha512-e0votIpp4Uo2AJYSzVHV6xCcawuiez3DzqDAbrTc3YxBkplN6e+dM13ZeIcZnDg/QpSuU2zfZ3rzwY8ukEnaXw==}
     engines: {node: '>=14.14'}
 
+  tockbot-note-runtime@file:vendor/tockbot-note-runtime-0.1.1.tgz:
+    resolution: {integrity: sha512-9OaBB4CIFnKS6Qo8YagJZk4a8C+zU7vvpr4Dv9pde8pTZ28+KV2dvzWtj2FBR5Yq902ABRJ/vFhKO8s0ndPxpg==, tarball: file:vendor/tockbot-note-runtime-0.1.1.tgz}
+    version: 0.1.1
+    engines: {node: ^22.19.0 || >=24.0.0}
+    peerDependencies:
+      '@deepseek-ai/cordis': 4.0.1
+      tockbot-note-vault: 0.6.0
+
+  tockbot-note-vault@file:vendor/tockbot-note-vault-0.6.0.tgz:
+    resolution: {integrity: sha512-ij0Jv3yE4+AThPXizcA4jJWwm9R3NdFmoRrOsEgLrPRLAERgg/5/2IicSShTWyPmUOQ4eImkKBwNeFH98IPzOQ==, tarball: file:vendor/tockbot-note-vault-0.6.0.tgz}
+    version: 0.6.0
+    engines: {node: '>=20'}
+
   truncate-utf8-bytes@1.0.2:
     resolution: {integrity: sha512-95Pu1QXQvruGEhv62XCMO3Mm90GscOCClvrIUwCM0PYOXK3kaF3l3sIHxx71ThJfcbM2O5Au6SO3AWCSEfW4mQ==}
 
@@ -4322,6 +4342,16 @@ snapshots:
       tmp: 0.2.7
 
   tmp@0.2.7: {}
+
+  tockbot-note-runtime@file:vendor/tockbot-note-runtime-0.1.1.tgz(@deepseek-ai/cordis@4.0.1)(tockbot-note-vault@file:vendor/tockbot-note-vault-0.6.0.tgz):
+    dependencies:
+      '@deepseek-ai/cordis': 4.0.1(@deepseek-ai/cordis-plugin-include@1.0.6)(@deepseek-ai/cordis-plugin-loader@1.0.2)
+      '@deepseek-ai/schemastery': 3.18.1
+      tockbot-note-vault: file:vendor/tockbot-note-vault-0.6.0.tgz
+
+  tockbot-note-vault@file:vendor/tockbot-note-vault-0.6.0.tgz:
+    dependencies:
+      schemastery: 3.18.0
 
   truncate-utf8-bytes@1.0.2:
     dependencies:

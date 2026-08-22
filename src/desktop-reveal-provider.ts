@@ -1,3 +1,4 @@
+import { TockTeamDesktopReveal } from 'tockbot-note-runtime'
 import {
   cancelledReveal,
   MAX_DESKTOP_REVEAL_RESULT_BYTES,
@@ -13,7 +14,7 @@ export interface DesktopRevealProviderEnvironment {
   token?: string | undefined
 }
 
-export interface DesktopRevealProvider extends TockTeamDesktopRevealService {
+export interface DesktopRevealProviderTransport extends TockTeamDesktopRevealService {
   dispose(): void
 }
 
@@ -39,14 +40,14 @@ function endpointOf(environment: DesktopRevealProviderEnvironment): URL | undefi
   }
 }
 
-/** Host-side service that forwards only the locked reveal operation to Electron. */
+/** Host-side transport that forwards only the locked reveal operation to Electron. */
 export function createDesktopRevealProvider(
   environment: DesktopRevealProviderEnvironment = {
     endpoint: process.env.DSH_DESKTOP_REVEAL_ENDPOINT,
     token: process.env.DSH_DESKTOP_REVEAL_TOKEN,
   },
   fetcher: typeof fetch = fetch,
-): DesktopRevealProvider {
+): DesktopRevealProviderTransport {
   const endpoint = endpointOf(environment)
   const token = environment.token
   const lifetime = new AbortController()
@@ -96,5 +97,23 @@ export function createDesktopRevealProvider(
       disposed = true
       lifetime.abort()
     },
+  }
+}
+
+/** Runtime service adapter; the composed profile supplies this exact base. */
+export class DesktopRevealProvider extends TockTeamDesktopReveal {
+  private readonly transport: DesktopRevealProviderTransport
+
+  constructor(ctx: unknown, environment?: DesktopRevealProviderEnvironment, fetcher?: typeof fetch) {
+    super(ctx as never)
+    this.transport = createDesktopRevealProvider(environment, fetcher)
+  }
+
+  async reveal(input: DesktopRevealInput, signal: AbortSignal): Promise<DesktopRevealResult> {
+    return await this.transport.reveal(input, signal)
+  }
+
+  close(): void {
+    this.transport.dispose()
   }
 }

@@ -538,10 +538,31 @@ function runtimePackageDirectory(name) {
   return join(runtime, 'node_modules', ...name.split('/'))
 }
 
+function installedDependencyManifest(root, dependency) {
+  const direct = join(root, 'node_modules', ...dependency.split('/'), 'package.json')
+  if (existsSync(direct)) return direct
+  for (const store of [
+    join(root, 'node_modules', '.pnpm'),
+    join(root, 'node_modules', '.tockteam-store'),
+  ]) {
+    if (!existsSync(store)) continue
+    for (const entry of readdirSync(store, { withFileTypes: true })) {
+      if (!entry.isDirectory()) continue
+      const candidate = join(store, entry.name, 'node_modules', ...dependency.split('/'), 'package.json')
+      if (existsSync(candidate)) return candidate
+    }
+  }
+  return undefined
+}
+
 function resolveDependencyManifest(requireFromPackage, dependency) {
   try {
     return requireFromPackage.resolve(`${dependency}/package.json`)
   } catch (packageJsonError) {
+    for (const root of [dirname(requireFromPackage.resolve('./package.json')), runtime, dshSource, process.cwd()]) {
+      const candidate = installedDependencyManifest(root, dependency)
+      if (candidate !== undefined) return candidate
+    }
     let directory = dirname(requireFromPackage.resolve(dependency))
     for (;;) {
       const manifestPath = join(directory, 'package.json')
@@ -653,6 +674,22 @@ function installCompiledPackageHostDependencies(sourceManifestPath, packageDir) 
 
 function installDesktopPackages({ desktopOnly = false } = {}) {
   const desktopPackages = [
+    {
+      manifest: join(root, 'vendor', 'tockbot-note-vault', 'package.json'),
+      files: [
+        [join(root, 'vendor', 'tockbot-note-vault', 'index.js'), 'index.js'],
+        [join(root, 'vendor', 'tockbot-note-vault', 'inspection.js'), 'inspection.js'],
+        [join(root, 'vendor', 'tockbot-note-vault', 'inspection.d.ts'), 'inspection.d.ts'],
+        [join(root, 'vendor', 'tockbot-note-vault', 'cordis.patch.yml'), 'cordis.patch.yml'],
+      ],
+    },
+    {
+      manifest: join(root, 'vendor', 'tockbot-note-runtime', 'package.json'),
+      files: [
+        [join(root, 'vendor', 'tockbot-note-runtime', 'lib'), 'lib'],
+        [join(root, 'vendor', 'tockbot-note-runtime', 'cordis.patch.yml'), 'cordis.patch.yml'],
+      ],
+    },
     {
       manifest: join(root, 'package.json'),
       files: [

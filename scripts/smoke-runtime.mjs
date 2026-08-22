@@ -26,6 +26,8 @@ const paths = bundledRuntimePaths(resources)
 const { cliEntry, nodeBinary } = paths
 const smokeRoot = mkdtempSync(join(tmpdir(), 'tockteam-desktop-smoke-'))
 const dshHome = join(smokeRoot, 'dsh-home')
+const noteVaultRoot = join(smokeRoot, 'note-vault')
+mkdirSync(noteVaultRoot, { recursive: true, mode: 0o700 })
 const lines = []
 
 function parseBootEntries(index) {
@@ -50,6 +52,7 @@ const runtimeEnvironment = {
   DSH_DESKTOP_VERSION: 'smoke',
   DSH_HOME: dshHome,
   PATH: runtimeSearchPath(paths),
+  TOCKBOT_NOTE_VAULT_PATH: noteVaultRoot,
 }
 
 const pluginRoot = join(smokeRoot, 'smoke-plugin')

@@ -60,6 +60,8 @@ test('web profile is a separate surface from the desktop profile', () => {
   assert.notEqual(WEB_PROFILE, DESKTOP_PROFILE)
   assert.deepEqual(WEB_BUNDLES, ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app', '@tockteam/web'])
   assert.equal(WEB_BUNDLES.includes('@tockteam/desktop'), false)
+  assert.equal(WEB_BUNDLES.includes('tockbot-note-vault'), false)
+  assert.equal(WEB_BUNDLES.includes('tockbot-note-runtime'), false)
 })
 
 test('web client uses the TockTeam Web surface name', () => {

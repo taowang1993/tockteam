@@ -1,0 +1,5 @@
+- insert:
+    - id: tockbot-note-vault
+      name: tockbot-note-vault
+      config:
+        root: !!js process.env.TOCKBOT_NOTE_VAULT_PATH ?? process.env.DSH_NOTE_VAULT_PATH

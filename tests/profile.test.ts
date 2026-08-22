@@ -5,6 +5,30 @@ import { join } from 'node:path'
 import { test } from 'node:test'
 import { DESKTOP_BUNDLES, ensureDesktopProfile } from '../src/profile.ts'
 
+test('desktop profile pins the released TockTutor runtime and peer package', () => {
+  const packageJson = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as {
+    dependencies: Record<string, string>
+  }
+  const runtime = JSON.parse(readFileSync(new URL('../vendor/tockbot-note-runtime/package.json', import.meta.url), 'utf8')) as {
+    peerDependencies: Record<string, string>
+    version: string
+  }
+  const vault = JSON.parse(readFileSync(new URL('../vendor/tockbot-note-vault/package.json', import.meta.url), 'utf8')) as {
+    version: string
+  }
+  assert.equal(packageJson.dependencies['tockbot-note-runtime'], 'file:vendor/tockbot-note-runtime-0.1.1.tgz')
+  assert.equal(packageJson.dependencies['tockbot-note-vault'], 'file:vendor/tockbot-note-vault-0.6.0.tgz')
+  assert.equal(runtime.version, '0.1.1')
+  assert.equal(runtime.peerDependencies['tockbot-note-vault'], '0.6.0')
+  assert.equal(vault.version, '0.6.0')
+  assert.deepEqual(DESKTOP_BUNDLES.slice(0, 4), [
+    '@deepseek-ai/dsh-base',
+    'tockbot-note-vault',
+    'tockbot-note-runtime',
+    '@deepseek-ai/dsh-web-app',
+  ])
+})
+
 test('desktop profile initializes required bundles and preserves user plugins', () => {
   const root = mkdtempSync(join(tmpdir(), 'dsh-desktop-profile-'))
   try {

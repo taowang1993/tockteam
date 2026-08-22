@@ -54,6 +54,7 @@ const builds = [
     outfile: join(dist, 'plugin.js'),
     platform: 'node',
     format: 'esm',
+    external: ['tockbot-note-runtime'],
   }),
   build({
     ...shared,

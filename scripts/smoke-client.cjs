@@ -70,7 +70,7 @@ void app.whenReady().then(async () => {
         if (onboardingButton !== undefined) onboardingButton.click()
         const marketplaceButton = document.querySelector('.tockteam-marketplace-nav')
         const collapsed = marketplaceButton?.dataset.collapsed === 'true'
-        if (document.documentElement.dataset.tockTeamDesktop === 'true'
+        if (document.documentElement.dataset.tockteamDesktop === 'true'
           && marketplaceButton instanceof HTMLButtonElement
           && !collapsed
           && window.__TOCKTEAM_SMOKE_COLLAPSE_REQUESTED__ !== true) {
@@ -152,7 +152,7 @@ void app.whenReady().then(async () => {
             viewportHeight: window.innerHeight,
           }
         })(),
-        ready: document.documentElement.dataset.tockTeamDesktop === 'true',
+        ready: document.documentElement.dataset.tockteamDesktop === 'true',
       }
     })()`)
       if (state.ready === true

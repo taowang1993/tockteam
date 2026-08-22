@@ -7,6 +7,10 @@
   "desktopName": "tockteam-desktop.desktop",
   "private": true,
   "type": "module",
+  "dependencies": {
+    "tockbot-note-runtime": "file:vendor/tockbot-note-runtime-0.1.1.tgz",
+    "tockbot-note-vault": "file:vendor/tockbot-note-vault-0.6.0.tgz"
+  },
   "main": "dist/main.js",
   "bin": {
     "tockteam": "bin/tockteam"
@@ -31,6 +35,8 @@
     "dist/client-api.js",
     "client.d.ts",
     "dist/cordis.patch.yml",
+    "vendor/tockbot-note-runtime-0.1.1.tgz",
+    "vendor/tockbot-note-vault-0.6.0.tgz",
     "dist/tockteam.js",
     "bin/tockteam",
     "bin/tockteam.cmd"

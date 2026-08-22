@@ -159,6 +159,8 @@ test('TUI bundle mounts its surface and skins before the upstream renderer', () 
   const skins = patch.indexOf("name: '@tockteam/skins'")
   const renderer = patch.indexOf("name: 'dsh-cc-tui'")
   assert.ok(surface >= 0 && surface < skins && skins < renderer)
+  assert.equal((TUI_BUNDLES as readonly string[]).includes('tockbot-note-vault'), false)
+  assert.equal((TUI_BUNDLES as readonly string[]).includes('tockbot-note-runtime'), false)
 })
 
 test('TUI upstream adapter removes legacy terminal branding and scopes storage', () => {
