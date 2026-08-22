@@ -16,10 +16,6 @@
   <img alt="MIT" src="https://img.shields.io/badge/license-MIT-34a853">
 </p>
 
-<p align="center">
-  <img src="./assets/tockteam-desktop-overview.png" alt="TockTeam Desktop" width="100%">
-</p>
-
 TockTeam 把 DeepSeek Harness、Node.js 和本地能力打包成可安装的 Desktop、
 Web 与 TUI 发行版。模型仍运行在云端；TockTeam 负责 Workspace、终端、
 Git Review、浏览器、窗口集成和插件生命周期。
@@ -98,19 +94,6 @@ tockteam tui
 
 打包完整版使用对应平台的 `dist:mac`、`dist:linux` 或 `dist:win`；只打包
 Web 使用 `pnpm run dist:web`；只打包 TUI 使用 `pnpm run dist:tui`。
-
-<details>
-<summary><strong>更多界面</strong></summary>
-
-### 插件市场
-
-![TockTeam 插件市场](./assets/tockteam-plugin-marketplace.png)
-
-### TockTeam 皮肤
-
-![TockTeam 跨界面皮肤](./assets/tockteam-desktop-skins.png)
-
-</details>
 
 ## 文档
 

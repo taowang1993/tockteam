@@ -16,10 +16,6 @@
   <img alt="MIT" src="https://img.shields.io/badge/license-MIT-34a853">
 </p>
 
-<p align="center">
-  <img src="./assets/tockteam-desktop-overview.png" alt="TockTeam Desktop" width="100%">
-</p>
-
 TockTeam packages DeepSeek Harness, Node.js, and local capabilities as
 installable Desktop, Web, and TUI distributions. Models still run in the
 cloud; TockTeam owns workspaces, terminals, Git review, browser and window
@@ -101,19 +97,6 @@ tockteam tui
 Build the full distribution with the platform-specific `dist:mac`,
 `dist:linux`, or `dist:win` script. Build only Web with `pnpm run dist:web`,
 or only TUI with `pnpm run dist:tui`.
-
-<details>
-<summary><strong>More interfaces</strong></summary>
-
-### Plugin marketplace
-
-![TockTeam plugin marketplace](./assets/tockteam-plugin-marketplace.png)
-
-### TockTeam skins
-
-![TockTeam cross-surface skins](./assets/tockteam-desktop-skins.png)
-
-</details>
 
 ## Documentation
 

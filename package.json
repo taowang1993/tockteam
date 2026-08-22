@@ -62,7 +62,6 @@
     "dev:desktop": "pnpm run start",
     "start": "pnpm run build && node scripts/stage-dsh.mjs --quick && node scripts/electron-runtime.mjs && electron .",
     "start:fresh": "pnpm run build && pnpm run stage:dsh && node scripts/electron-runtime.mjs && electron .",
-    "check:screenshot": "electron scripts/check-screenshot-corners.cjs assets/tockteam-desktop-ui.png",
     "test": "node --test tests/*.test.ts",
     "typecheck": "tsc --noEmit",
     "dist:mac": "pnpm run build && pnpm run build:dsh && pnpm run stage:dsh && node scripts/build-mac.mjs",
