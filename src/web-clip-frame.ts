@@ -28,6 +28,10 @@ function withoutHeaders<T>(headers: Record<string, T>, blocked: ReadonlySet<stri
   return Object.fromEntries(Object.entries(headers).filter(([name]) => !blocked.has(name.toLowerCase())))
 }
 
+export function shouldReportBlockedWebClipRequest(resourceType: string): boolean {
+  return resourceType === 'mainFrame'
+}
+
 export function stripWebClipRequestHeaders<T>(headers: Record<string, T>): Record<string, T> {
   return withoutHeaders(headers, requestCredentialHeaders)
 }

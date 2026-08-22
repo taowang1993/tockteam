@@ -7,6 +7,7 @@ import {
   WEB_CLIP_PARTITION_PREFIX,
   WebClipFrameAuthorizations,
   isWebClipPartition,
+  shouldReportBlockedWebClipRequest,
   stripWebClipRequestHeaders,
   stripWebClipResponseHeaders,
 } from '../src/web-clip-frame.ts'
@@ -52,6 +53,12 @@ test('detaching a frame removes all navigation authority', () => {
   frames.detach(3)
   assert.equal(frames.allows(3, documentUrl), false)
   assert.throws(() => frames.authorize(3, 4, html), /frame/i)
+})
+
+test('reports blocked main-frame requests without surfacing subresource noise', () => {
+  assert.equal(shouldReportBlockedWebClipRequest('mainFrame'), true)
+  assert.equal(shouldReportBlockedWebClipRequest('subFrame'), false)
+  assert.equal(shouldReportBlockedWebClipRequest('image'), false)
 })
 
 test('strips request credentials and response authentication state', () => {

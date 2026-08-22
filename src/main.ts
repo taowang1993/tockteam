@@ -38,6 +38,7 @@ import {
   WEB_CLIP_GUEST_ARGUMENT,
   WebClipFrameAuthorizations,
   isWebClipPartition,
+  shouldReportBlockedWebClipRequest,
   stripWebClipRequestHeaders,
   stripWebClipResponseHeaders,
 } from './web-clip-frame.ts'
@@ -227,6 +228,14 @@ function configureWebClipGuest(embedder: WebContents, contents: WebContents): vo
   const frameId = contents.id
   const guestSession = contents.session
   webClipFrames.attach(frameId, embedder.id)
+  let lastBlocked = { at: 0, url: '' }
+  const reportBlocked = (url: string): void => {
+    if (url.length > 4096 || (!url.startsWith('http:') && !url.startsWith('https:'))) return
+    const now = Date.now()
+    if (lastBlocked.url === url && now - lastBlocked.at < 250) return
+    lastBlocked = { at: now, url }
+    embedder.send('desktop:web-clip-navigation-blocked', { frameId, url })
+  }
   guestSession.setPermissionRequestHandler((_webContents, _permission, callback) => { callback(false) })
   guestSession.setPermissionCheckHandler(() => false)
   guestSession.webRequest.onBeforeRequest({
@@ -238,7 +247,10 @@ function configureWebClipGuest(embedder: WebContents, contents: WebContents): vo
       'ws://*/*',
       'wss://*/*',
     ],
-  }, (_details, callback) => { callback({ cancel: true }) })
+  }, (details, callback) => {
+    if (shouldReportBlockedWebClipRequest(details.resourceType)) reportBlocked(details.url)
+    callback({ cancel: true })
+  })
   guestSession.webRequest.onBeforeSendHeaders((details, callback) => {
     callback({ requestHeaders: stripWebClipRequestHeaders(details.requestHeaders) })
   })
@@ -261,9 +273,7 @@ function configureWebClipGuest(embedder: WebContents, contents: WebContents): vo
   const guard = (event: Electron.Event, url: string): void => {
     if (webClipFrames.allows(frameId, url)) return
     event.preventDefault()
-    if (url !== 'about:blank') {
-      embedder.send('desktop:web-clip-navigation-blocked', { frameId, url })
-    }
+    if (url !== 'about:blank') reportBlocked(url)
   }
   contents.on('will-navigate', details => { guard(details, details.url) })
   contents.on('will-redirect', details => { guard(details, details.url) })
