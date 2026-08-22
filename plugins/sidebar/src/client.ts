@@ -1,5 +1,17 @@
 export { apply, inject } from './client/plugin.tsx'
 export type { WorkspaceTools } from './client/plugin.tsx'
+export {
+  isTockTutorPath,
+  readTockTutorRouteLocation,
+  resolveTockTutorNavigation,
+  TOCKTUTOR_ROUTE_PREFIX,
+  TOCKTUTOR_ROUTE_SLOT,
+} from './client/tocktutor-route.ts'
+export type {
+  TockTutorNavigationMode,
+  TockTutorRouteLocation,
+  TockTutorRouteOwnerProps,
+} from './client/tocktutor-route.ts'
 export { DesktopSidebarService } from './client/sidebar-service.ts'
 export type {
   DesktopSidebar,

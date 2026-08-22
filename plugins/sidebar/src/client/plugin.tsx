@@ -65,6 +65,15 @@ import {
   SidebarRuntimeSettingsService,
   type SidebarRuntimePreferences,
 } from './runtime-settings.ts'
+import {
+  isTockTutorPath,
+  readTockTutorRouteLocation,
+  resolveTockTutorNavigation,
+  TOCKTUTOR_ROUTE_PREFIX,
+  TOCKTUTOR_ROUTE_SLOT,
+  type TockTutorRouteLocation,
+  type TockTutorRouteOwnerProps,
+} from './tocktutor-route.ts'
 
 interface ObservableSnapshot<T> {
   getSnapshot(): T
@@ -165,6 +174,33 @@ interface SlotsService {
     order: number
     store: unknown
   }, component: (props: SidebarSettingsProps) => JSX.Element): unknown
+}
+
+interface RouteState {
+  location: TockTutorRouteLocation
+}
+
+interface RouteActions {
+  setLocation(location: TockTutorRouteLocation): void
+}
+
+interface RouteHostProps {
+  actions: RouteActions
+  renderSlot(name: string, owner: TockTutorRouteOwnerProps): ReactNode
+  useStore<T>(selector: (state: RouteState) => T): T
+}
+
+interface RouteSlotsService {
+  entries(name: string): readonly unknown[]
+  inject(name: string, register: () => unknown): unknown
+  register(options: {
+    children: Record<string, { kind: 'single'; scope: 'root' }>
+    id: string
+    name: string
+    order: number
+    store: unknown
+  }, component: (props: RouteHostProps) => ReactNode): unknown
+  subscribe(name: string, listener: () => void): () => void
 }
 
 interface WorkspaceToolsState {
@@ -1692,10 +1728,83 @@ function pathBelongsToActiveWorkspace(
     || normalizedPath.startsWith(`${normalizedRoot}/`)
 }
 
+function registerTockTutorRoute(slots: RouteSlotsService): void {
+  const routeStore = defineStore<RouteState>({
+    init: () => ({ location: readTockTutorRouteLocation() }),
+    actions: {
+      setLocation: (draft, location: TockTutorRouteLocation) => {
+        draft.location = location
+      },
+    },
+  })
+  slots.inject('shell.overlay', () => slots.register({
+    children: {
+      [TOCKTUTOR_ROUTE_SLOT]: { kind: 'single', scope: 'root' },
+    },
+    id: 'tockteam-tocktutor-route',
+    name: 'shell.overlay',
+    order: -1000,
+    store: routeStore,
+  }, (props: RouteHostProps): ReactNode => TockTutorRouteHost(props, slots)))
+}
+
+function TockTutorRouteHost(props: RouteHostProps, routeSlots: RouteSlotsService): ReactNode {
+  const routeEntries = useSyncExternalStore(
+    listener => routeSlots.subscribe(TOCKTUTOR_ROUTE_SLOT, listener),
+    () => routeSlots.entries(TOCKTUTOR_ROUTE_SLOT).length,
+    () => 0,
+  )
+  const location = props.useStore(state => state.location)
+  const navigate = useCallback((path: string, mode: 'push' | 'replace' = 'push'): void => {
+    const target = resolveTockTutorNavigation(path)
+    if (target === undefined) return
+    const current = readTockTutorRouteLocation()
+    if (target.pathname === current.pathname
+      && target.search === current.search
+      && target.hash === current.hash) return
+    window.history[mode === 'replace' ? 'replaceState' : 'pushState'](
+      window.history.state,
+      '',
+      target.href,
+    )
+    props.actions.setLocation(readTockTutorRouteLocation())
+  }, [props.actions])
+  useEffect(() => {
+    const onPopState = (): void => { props.actions.setLocation(readTockTutorRouteLocation()) }
+    window.addEventListener('popstate', onPopState)
+    return () => { window.removeEventListener('popstate', onPopState) }
+  }, [props.actions])
+  useEffect(() => {
+    if (routeEntries === 0 || location.pathname !== '/') return
+    window.history.replaceState(
+      window.history.state,
+      '',
+      `${TOCKTUTOR_ROUTE_PREFIX}${location.search}${location.hash}`,
+    )
+    props.actions.setLocation(readTockTutorRouteLocation())
+  }, [location.hash, location.pathname, location.search, props.actions, routeEntries])
+  if (routeEntries === 0 || !isTockTutorPath(location.pathname)) return null
+  return (
+    <div
+      data-tockteam-tocktutor-route="true"
+      style={{
+        background: 'var(--dsw-alias-bg-base, #fff)',
+        inset: 0,
+        pointerEvents: 'auto',
+        position: 'fixed',
+        zIndex: 1001,
+      }}
+    >
+      {props.renderSlot(TOCKTUTOR_ROUTE_SLOT, { location, navigate })}
+    </div>
+  )
+}
+
 export function apply(ctx: ClientContext): void {
   const locale = ctx.get('locale') as LocaleService
   const slots = ctx.get('slots') as SlotsService
   const surface = ctx.get(TOCKTEAM_SURFACE_VIEW_SERVICE) as TockTeamSurfaceView
+  if (surface.kind === 'desktop') registerTockTutorRoute(slots as unknown as RouteSlotsService)
   const t: Translate<WorkspaceMessage> = locale.bind('tockteam.sidebar')
   ctx.effect(
     () => locale.register('tockteam.sidebar', WORKSPACE_MESSAGES),
