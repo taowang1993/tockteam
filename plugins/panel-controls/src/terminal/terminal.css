@@ -5,7 +5,7 @@
   flex-direction: column;
   min-width: 0;
   box-sizing: border-box;
-  border-top: 1px solid var(--dsw-alias-border-l2, rgb(0 0 0 / 10%));
+  border-top: 1px solid var(--tockteam-shell-divider, var(--dsw-alias-border-l2, rgb(0 0 0 / 10%)));
   background: var(--dsw-alias-bg-layer-1, var(--dsw-alias-bg-base, #fff));
   color: var(--dsw-alias-label-primary, #1f2328);
   -webkit-app-region: no-drag;

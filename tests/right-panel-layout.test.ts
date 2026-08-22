@@ -19,11 +19,15 @@ test('desktop shell keeps the navigation rail without duplicate tool buttons', (
   assert.match(css, /--tockteam-rail-width: 40px;/)
   assert.match(
     css,
+    /body\s*\{[^}]*--tockteam-shell-divider: color-mix\(in srgb, var\(--dsw-alias-label-primary, #1f2328\) 17%, transparent\);/s,
+  )
+  assert.match(
+    css,
     /#tockteam-embedded-layout\s*\{[^}]*grid-template-columns:\s*var\(--tockteam-rail-width\) minmax\(0, 1fr\) 0;[^}]*grid-template-rows: minmax\(0, 1fr\);/s,
   )
   assert.match(
     css,
-    /#tockteam-embedded-layout > #root\s*\{[^}]*--dsw-specific-sidebar-fill: var\(--dsw-alias-bg-base\);[^}]*min-height: 0;[^}]*overflow: hidden;/s,
+    /#tockteam-embedded-layout > #root\s*\{[^}]*--dsw-specific-sidebar-fill: var\(--dsw-alias-bg-base\);[^}]*--dsw-alias-border-l1: var\(--tockteam-shell-divider\);[^}]*min-height: 0;[^}]*overflow: hidden;/s,
   )
   assert.match(css, /#tockteam-rail-root\s*\{[^}]*width: var\(--tockteam-rail-width\);/s)
   assert.match(
@@ -88,6 +92,9 @@ test('desktop titlebar matches Tockbot chrome and stays draggable', () => {
     css,
     /\.tockteam-window-title\s*\{[^}]*font-size: 14px;/s,
   )
+  assert.match(css, /#tockteam-rail-root\s*\{[^}]*border-right: 1px solid var\(--tockteam-shell-divider\);/s)
+  assert.match(css, /\.tockteam-window-titlebar\s*\{[^}]*border-bottom: 1px solid var\(--tockteam-shell-divider\);/s)
+  assert.match(css, /\.tockteam-titlebar-leading\s*\{[^}]*border-right: 1px solid var\(--tockteam-shell-divider\);/s)
   assert.match(
     css,
     /\.tockteam-titlebar-leading\s*\{[^}]*width: 280px;[^}]*height: 100%;[^}]*align-items: center;[^}]*justify-content: flex-end;[^}]*margin-left: var\(--tockteam-rail-width\);[^}]*padding-right: 4px;[^}]*border-right: 1px solid/s,

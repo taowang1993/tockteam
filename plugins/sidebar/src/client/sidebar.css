@@ -3,6 +3,10 @@ html {
   --tockteam-sidebar-width: 300px;
 }
 
+body {
+  --tockteam-shell-divider: color-mix(in srgb, var(--dsw-alias-label-primary, #1f2328) 17%, transparent);
+}
+
 #tockteam-embedded-layout {
   display: grid;
   grid-template-columns: var(--tockteam-rail-width) minmax(0, 1fr) 0;
@@ -16,6 +20,7 @@ html {
 
 #tockteam-embedded-layout > #root {
   --dsw-specific-sidebar-fill: var(--dsw-alias-bg-base);
+  --dsw-alias-border-l1: var(--tockteam-shell-divider);
 
   min-width: 0;
   min-height: 0;
@@ -29,7 +34,7 @@ html {
   width: var(--tockteam-rail-width);
   height: 100%;
   min-height: 0;
-  border-right: 1px solid var(--dsw-alias-border-l1, rgb(0 0 0 / 8%));
+  border-right: 1px solid var(--tockteam-shell-divider);
   box-sizing: border-box;
   background: var(--dsw-alias-bg-base, #fff);
 }
@@ -57,7 +62,7 @@ html[data-tockteam-desktop-sidebar-open='true'] #tockteam-sidebar-root {
   grid-template-columns: minmax(120px, 1fr) minmax(0, auto) minmax(120px, 1fr);
   align-items: center;
   height: var(--tockteam-titlebar-height, 40px);
-  border-bottom: 1px solid var(--dsw-alias-border-l1, rgb(0 0 0 / 8%));
+  border-bottom: 1px solid var(--tockteam-shell-divider);
   box-sizing: border-box;
   background: var(--dsw-alias-bg-base, #fff);
   box-shadow: 0 1px 0 rgb(0 0 0 / 2%);
@@ -73,7 +78,7 @@ html[data-tockteam-desktop-sidebar-open='true'] #tockteam-sidebar-root {
   justify-content: flex-end;
   margin-left: var(--tockteam-rail-width);
   padding-right: 4px;
-  border-right: 1px solid var(--dsw-alias-border-l1, rgb(0 0 0 / 8%));
+  border-right: 1px solid var(--tockteam-shell-divider);
   box-sizing: border-box;
 }
 
