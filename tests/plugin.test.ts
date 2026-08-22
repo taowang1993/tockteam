@@ -160,6 +160,9 @@ test('desktop Host plugin publishes capability, prompt, and bash environment', (
     provide: (name: string, value: unknown): void => {
       if (name === 'desktop') capability = value
     },
+    reflect: {
+      provide: (_name: string, _value: unknown): void => {},
+    },
     tools: {
       register: () => {},
     },
