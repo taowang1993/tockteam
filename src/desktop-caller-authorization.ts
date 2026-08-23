@@ -1,29 +1,24 @@
 import { randomBytes } from 'node:crypto'
-import type { NativeOperationIdentity } from './host-contract.ts'
+import type { DesktopCallerClaimRequest, DesktopCallerOperation, NativeOperationIdentity } from './host-contract.ts'
+export type { DesktopCallerOperation } from './host-contract.ts'
 
 export const DESKTOP_CALLER_OPERATIONS = [
-  'activate',
-  'reveal',
+  'activate-vault',
+  'reveal-entry',
   'popout-open',
   'popout-close',
+  'popout-close-all',
   'microphone',
   'print',
   'export-html',
   'export-pdf',
-] as const
-
-export type DesktopCallerOperation = typeof DESKTOP_CALLER_OPERATIONS[number]
+  'import-source',
+  'backup',
+  'restore-backup',
+] as const satisfies readonly DesktopCallerOperation[]
 
 export interface DesktopCallerAuthorization {
   authorization: string
-}
-
-export interface DesktopCallerClaimRequest {
-  authorization: string
-  operation: DesktopCallerOperation
-  sessionId: string
-  vaultGeneration: number
-  vaultId: string | null
 }
 
 interface AuthorizationRecord {
@@ -45,7 +40,6 @@ type IdentityFactory = (
   operationId: string,
   requestId: string,
   windowId: string,
-  sessionId: string,
 ) => NativeOperationIdentity
 
 const MAX_FIELD_BYTES = 256
@@ -107,14 +101,17 @@ export class DesktopCallerAuthorizations {
     const record = this.authorizations.get(authorization)
     if (record !== undefined) this.authorizations.delete(authorization)
     if (this.disposed || record === undefined || record.expiresAt < this.now()) return undefined
-    if (!operation(request.operation) || request.operation !== record.operation || !bounded(request.sessionId)
-      || !Number.isSafeInteger(request.vaultGeneration) || request.vaultGeneration < 0
-      || (request.vaultId !== null && !bounded(request.vaultId))) return undefined
-    const identity = createIdentity(record.operationId, record.requestId, record.windowId, request.sessionId)
-    if (identity.vaultGeneration !== request.vaultGeneration || identity.vaultId !== request.vaultId
-      || identity.windowId !== record.windowId || identity.operationId !== record.operationId
-      || identity.requestId !== record.requestId || identity.sessionId !== request.sessionId) return undefined
+    if (!operation(request.operation) || request.operation !== record.operation) return undefined
+    const identity = createIdentity(record.operationId, record.requestId, record.windowId)
+    if (identity.windowId !== record.windowId || identity.operationId !== record.operationId
+      || identity.requestId !== record.requestId || !bounded(identity.sessionId)
+      || !Number.isSafeInteger(identity.vaultGeneration) || identity.vaultGeneration < 0
+      || (identity.vaultId !== null && !bounded(identity.vaultId))) return undefined
     return identity
+  }
+
+  clear(): void {
+    this.authorizations.clear()
   }
 
   revokeWindow(windowId: string): void {
