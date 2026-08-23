@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto'
 import {
   app,
   BrowserWindow,
@@ -48,6 +49,8 @@ import { DshRuntimeSupervisor, runDshCommand, type DshRuntimeOptions, type Runti
 import { DesktopDispatchChannel } from './desktop-dispatch-channel.ts'
 import { DesktopMicrophoneChannel } from './desktop-microphone-channel.ts'
 import { DesktopPopOutChannel } from './desktop-popout-channel.ts'
+import { DesktopPrintExportChannel } from './desktop-print-export-channel.ts'
+import { DesktopPrintExportOwner } from './desktop-print-export-owner.ts'
 import { DesktopPopOutOwner } from './desktop-popout-owner.ts'
 import { DesktopMicrophoneOwner } from './desktop-microphone-owner.ts'
 import { DesktopPickerChannel } from './desktop-picker-channel.ts'
@@ -112,6 +115,41 @@ function pickerDialogFilters(options: DesktopPickerDialogOptions): Electron.File
     : [{ name: options.extensions.map(extension => `.${extension}`).join(', '), extensions: options.extensions }]
 }
 
+function printDocument(title: string, html: string): string {
+  const escapedTitle = title.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
+  return `<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; style-src 'none'; media-src 'none'; connect-src 'none'; frame-src 'none'; object-src 'none'"><title>${escapedTitle}</title></head><body>${html}</body></html>`
+}
+
+async function withPrintRenderer<Result>(
+  title: string,
+  html: string,
+  render: (window: BrowserWindow) => Promise<Result>,
+): Promise<Result> {
+  const partition = `tockteam-print-${randomBytes(18).toString('base64url')}`
+  const window = new BrowserWindow({
+    show: false,
+    webPreferences: {
+      contextIsolation: true,
+      nodeIntegration: false,
+      partition,
+      sandbox: true,
+    },
+  })
+  const rendererSession = window.webContents.session
+  rendererSession.setPermissionRequestHandler((_contents, _permission, callback) => callback(false))
+  rendererSession.setPermissionCheckHandler(() => false)
+  rendererSession.webRequest.onBeforeRequest({ urls: ['http://*/*', 'https://*/*', 'file://*/*', 'blob:*', 'ws://*/*', 'wss://*/*'] }, (_details, callback) => callback({ cancel: true }))
+  window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
+  try {
+    const document = Buffer.from(printDocument(title, html), 'utf8').toString('base64')
+    await window.loadURL(`data:text/html;base64,${document}`)
+    return await render(window)
+  } finally {
+    if (!window.isDestroyed()) window.destroy()
+    await Promise.allSettled([rendererSession.clearCache(), rendererSession.clearStorageData()])
+  }
+}
+
 let desktopPickerOwner!: DesktopPickerOwner
 let desktopPickerChannel!: DesktopPickerChannel
 let desktopDispatchChannel!: DesktopDispatchChannel
@@ -119,6 +157,8 @@ let desktopMicrophoneOwner!: DesktopMicrophoneOwner
 let desktopMicrophoneChannel!: DesktopMicrophoneChannel
 let desktopPopOutOwner!: DesktopPopOutOwner
 let desktopPopOutChannel!: DesktopPopOutChannel
+let desktopPrintExportOwner!: DesktopPrintExportOwner
+let desktopPrintExportChannel!: DesktopPrintExportChannel
 const popOutWindows = new Map<string, BrowserWindow>()
 
 function initializeDesktopPicker(): void {
@@ -234,6 +274,26 @@ function initializeDesktopPicker(): void {
     },
   })
   desktopPopOutChannel = new DesktopPopOutChannel(desktopPopOutOwner)
+  desktopPrintExportOwner = new DesktopPrintExportOwner({
+    isAvailable: () => isEligibleDesktopRevealWindow(),
+    isCurrent: identity => desktopPickerOwner.matchesActiveIdentity(identity),
+    native: {
+      print: async (html, title, signal) => await withPrintRenderer(title, html, async window => {
+        if (signal.aborted) return false
+        return await new Promise<boolean>(resolve => {
+          window.webContents.print({ printBackground: true }, success => resolve(success))
+        })
+      }),
+      renderPdf: async (html, title, signal) => await withPrintRenderer(title, html, async window => {
+        signal.throwIfAborted()
+        const output = await window.webContents.printToPDF({ printBackground: true })
+        signal.throwIfAborted()
+        return new Uint8Array(output)
+      }),
+    },
+    picker: desktopPickerOwner,
+  })
+  desktopPrintExportChannel = new DesktopPrintExportChannel(desktopPrintExportOwner)
 }
 
 function appendLog(stream: 'desktop' | 'stderr' | 'stdout', line: string): void {
@@ -316,6 +376,11 @@ function runtimeEnvironment(
   if (popOut !== undefined) {
     environment.DSH_DESKTOP_POPOUT_ENDPOINT = popOut.endpoint
     environment.DSH_DESKTOP_POPOUT_TOKEN = popOut.token
+  }
+  const printExport = overrides.preview === undefined ? desktopPrintExportChannel.environment : undefined
+  if (printExport !== undefined) {
+    environment.DSH_DESKTOP_PRINT_EXPORT_ENDPOINT = printExport.endpoint
+    environment.DSH_DESKTOP_PRINT_EXPORT_TOKEN = printExport.token
   }
   if (overrides.preview !== undefined) {
     environment.DSH_DESKTOP_PREVIEW = '1'
@@ -638,6 +703,7 @@ function handleRuntimeExit(exit: RuntimeExit): void {
     desktopDispatchChannel.stop(),
     desktopMicrophoneChannel.stop(),
     desktopPopOutChannel.stop(),
+    desktopPrintExportChannel.stop(),
   ]).then(async () => {
     await showSplash({
       error: true,
@@ -655,6 +721,7 @@ async function startRuntime(): Promise<void> {
   await desktopDispatchChannel.start()
   await desktopMicrophoneChannel.start()
   await desktopPopOutChannel.start()
+  await desktopPrintExportChannel.start()
   try {
     const supervisor = new DshRuntimeSupervisor(runtimeOptions())
     runtime = supervisor
@@ -667,6 +734,7 @@ async function startRuntime(): Promise<void> {
     flushQueuedPaths()
     flushQueuedProtocols()
   } catch (error) {
+    await desktopPrintExportChannel.stop()
     await desktopPopOutChannel.stop()
     await desktopMicrophoneChannel.stop()
     await desktopDispatchChannel.stop()
@@ -731,6 +799,7 @@ async function stopLiveForMarketplace(): Promise<void> {
   transitioning = true
   await showSplash({ message: '正在应用插件 Profile…' })
   await runtime?.stop()
+  await desktopPrintExportChannel.stop()
   await desktopPopOutChannel.stop()
   await desktopMicrophoneChannel.stop()
   await desktopDispatchChannel.stop()
@@ -755,6 +824,7 @@ async function restartRuntime(message = '正在重新启动 TockTeam…'): Promi
   try {
     await showSplash({ message })
     await runtime?.stop()
+    await desktopPrintExportChannel.stop()
     await desktopPopOutChannel.stop()
     await desktopMicrophoneChannel.stop()
     await desktopDispatchChannel.stop()
@@ -809,6 +879,7 @@ async function installLocalPlugin(): Promise<void> {
   try {
     await showSplash({ message: '正在安装 DSH 插件…' })
     await runtime?.stop()
+    await desktopPrintExportChannel.stop()
     await desktopPopOutChannel.stop()
     await desktopMicrophoneChannel.stop()
     await desktopDispatchChannel.stop()
@@ -1169,6 +1240,7 @@ async function bootstrap(): Promise<void> {
     quitting = true
     void Promise.allSettled([
       runtime?.stop() ?? Promise.resolve(),
+      desktopPrintExportChannel.stop(),
       desktopPopOutChannel.stop(),
       desktopMicrophoneChannel.stop(),
       desktopDispatchChannel.stop(),

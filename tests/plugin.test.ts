@@ -182,6 +182,7 @@ test('desktop Host plugin publishes capability, prompt, and bash environment', (
     assert.ok(provided.has('tockTeamDesktopDispatch'))
     assert.ok(provided.has('tockTeamDesktopMicrophone'))
     assert.ok(provided.has('tockTeamDesktopPopOut'))
+    assert.ok(provided.has('tockTeamDesktopPrintExport'))
     assert.match(prompt, /TockTeam Desktop/)
     assert.doesNotMatch(prompt, /ChatGPT|OpenAI/)
     assert.deepEqual(resolvedEnvironment, {
