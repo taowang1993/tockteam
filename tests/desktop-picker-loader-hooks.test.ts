@@ -65,7 +65,7 @@ test('loader hook proves normal publication invokes no destructive managed-path 
   assert.equal(await readFile(destination, 'utf8'), 'reviewed-output')
 })
 
-test('startup journal-open swap preserves both files and blocks the current process', async () => {
+test('startup never opens journals and globally blocks the current process', async () => {
   const root = await temp('tockteam-hook-journal-swap-')
   const recoveryRoot = await temp('tockteam-hook-recovery-')
   const vault = await temp('tockteam-hook-vault-')
@@ -87,11 +87,11 @@ test('startup journal-open swap preserves both files and blocks the current proc
   const child = runHook('startup-journal-open-swap', destination, recoveryRoot, vault, result, foreign)
   assert.equal(child.status, 0, child.stderr || child.stdout)
   assert.equal(JSON.parse(await readFile(result, 'utf8')).outcome, 'error:recovery-required')
-  assert.equal(await readFile(journal, 'utf8'), foreign)
-  assert.equal(JSON.parse(await readFile(`${journal}-recorded-owner`, 'utf8')).resolution, 'scrubbed')
+  assert.equal(JSON.parse(await readFile(journal, 'utf8')).resolution, 'scrubbed')
+  await assert.rejects(readFile(`${journal}-recorded-owner`), { code: 'ENOENT' })
 })
 
-test('startup loader hook preserves a foreign stage replacement and blocks automatic scrub', async () => {
+test('startup never opens residue paths named by disk journals', async () => {
   const root = await temp('tockteam-hook-startup-')
   const recoveryRoot = await temp('tockteam-hook-recovery-')
   const vault = await temp('tockteam-hook-vault-')
@@ -119,7 +119,7 @@ test('startup loader hook preserves a foreign stage replacement and blocks autom
   }), { mode: 0o600 })
   const child = runHook('startup-stage-swap', destination, recoveryRoot, vault, result, foreign, stage)
   assert.equal(child.status, 0, child.stderr || child.stdout)
-  assert.equal(await readFile(stage, 'utf8'), foreign)
-  assert.equal(await readFile(`${stage}-recorded-owner`, 'utf8'), secret)
+  assert.equal(await readFile(stage, 'utf8'), secret)
+  await assert.rejects(readFile(`${stage}-recorded-owner`), { code: 'ENOENT' })
   await assert.rejects(readFile(destination), { code: 'ENOENT' })
 })

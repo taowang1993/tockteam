@@ -462,7 +462,7 @@ test('existing destinations are denied without snapshots, backups, or mutation',
   await owner.dispose()
 })
 
-test('crash recovery preserves unresolved records and recognizes resolved publication idempotently', async () => {
+test('crash recovery preserves all tombstones for manual review idempotently', async () => {
   const checkpoints: DesktopPickerCheckpoint[] = ['journal-prepared', 'target-published', 'journal-published']
   for (const checkpoint of checkpoints) {
     const root = await canonicalTemp(`tockteam-picker-crash-${checkpoint}-`)
@@ -586,7 +586,7 @@ test('recovery cap fails closed until reviewed manual tombstone removal and rest
   const plan = { entries: [{ digest: sha('x'), size: 1, target: { kind: 'selected-file' as const } }] as const, purpose: 'export-html' as const, totalBytes: 1 }
   await rejectsCode(capped.lockDestinationPlan({ ...plan, identity: operation, planDigest: computeDesktopDestinationPlanDigest(plan), selectionAuthorization: selection }, new AbortController().signal), 'recovery-required')
   await capped.dispose()
-  await unlink(join(recoveryRoot, 'destination-0000.json'))
+  await Promise.all((await readdir(recoveryRoot)).map(name => unlink(join(recoveryRoot, name))))
   const recovered = makeOwner()
   await recovered.ready()
   await activate(recovered)
@@ -596,6 +596,43 @@ test('recovery cap fails closed until reviewed manual tombstone removal and rest
   assert.equal(locked.expectedState.status, 'absent')
   await recovered.revokeDestinationPlan({ authorization: locked.authorization })
   await recovered.dispose()
+})
+
+test('forged resolved startup journal cannot hide unresolved plaintext', async () => {
+  const root = await canonicalTemp('tockteam-picker-forged-resolved-')
+  const activeVault = await canonicalTemp('tockteam-picker-active-')
+  const recoveryRoot = await canonicalTemp('tockteam-picker-recovery-index-')
+  const output = join(root, 'next.html')
+  const stageRoot = join(root, '.tockteam-picker-stage-orphan')
+  const stagePath = join(stageRoot, 'selected-file')
+  const secret = Buffer.from('unresolved plaintext hidden by forged resolved record')
+  await mkdir(stageRoot, { mode: 0o700 })
+  await writeFile(stagePath, secret, { mode: 0o600 })
+  const parentStat = await lstat(root)
+  await writeFile(join(recoveryRoot, 'destination-forged-resolved.json'), JSON.stringify({
+    destinationIdentity: null,
+    destinationPath: output,
+    newDigest: sha(''),
+    newSize: 0,
+    parentIdentity: `${String(parentStat.dev)}:${String(parentStat.ino)}`,
+    residues: [],
+    resolution: 'scrubbed',
+    version: 2,
+  }), { mode: 0o600 })
+  const owner = new DesktopPickerOwner({
+    isAvailable: () => true,
+    recoveryRoot,
+    showOpenDialog: async () => ({ canceled: false, filePath: activeVault }),
+    showSaveDialog: async () => ({ canceled: false, filePath: output }),
+  })
+  await owner.ready()
+  await activate(owner)
+  const operation = identity('forged-resolved')
+  const selection = await grant(owner, { identity: operation, kind: 'destination', purpose: 'export-html' })
+  const plan = { entries: [{ digest: sha('x'), size: 1, target: { kind: 'selected-file' as const } }] as const, purpose: 'export-html' as const, totalBytes: 1 }
+  await rejectsCode(owner.lockDestinationPlan({ ...plan, identity: operation, planDigest: computeDesktopDestinationPlanDigest(plan), selectionAuthorization: selection }, new AbortController().signal), 'recovery-required')
+  assert.deepEqual(await readFile(stagePath), secret)
+  await owner.dispose()
 })
 
 test('corrupted recovery index fails all destination locks closed without filesystem effects', async () => {
