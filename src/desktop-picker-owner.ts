@@ -334,6 +334,7 @@ export class DesktopPickerOwner {
       ? await this.options.showSaveDialog({ kind: 'save', purpose, directory: false, extensions })
       : await this.options.showOpenDialog({ kind: 'open', purpose, directory, extensions })
     if (signal.aborted) return { operationId: request.identity.operationId, status: 'cancelled' }
+    if (this.disposed || !this.options.isAvailable()) return { operationId: request.identity.operationId, status: 'unavailable' }
     if (result.canceled || result.filePath === undefined) return { operationId: request.identity.operationId, status: 'cancelled' }
     const selected = purpose === 'export-html' || purpose === 'export-pdf'
       ? await this.destinationPath(result.filePath, purpose)
