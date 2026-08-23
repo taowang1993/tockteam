@@ -170,7 +170,7 @@ test('checked-in Host declarations expose only the single-archive backup seam', 
 })
 
 test('publishes the canonical Desktop Host subpath metadata', () => {
-  assert.equal(packageJson.version, '0.1.8')
+  assert.equal(packageJson.version, '0.1.9')
   assert.deepEqual(packageJson.exports['./host'], {
     types: './host.d.ts',
     browser: null,
