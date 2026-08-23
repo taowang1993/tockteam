@@ -217,6 +217,9 @@ interface DestinationRecoveryRecord {
 }
 
 interface DestinationJournal {
+  expectedDigest: string
+  expectedRevision: string
+  expectedSize: number
   handle: Awaited<ReturnType<typeof open>>
   identity: string
   path: string
@@ -2042,13 +2045,16 @@ export class DesktopPickerOwner {
       if (!rootStat.isDirectory() || rootStat.isSymbolicLink()
         || realpathSync(this.recoveryRoot) !== this.recoveryRoot) return error('recovery-required')
       destination.journal = {
+        expectedDigest: '',
+        expectedRevision: '',
+        expectedSize: 0,
         handle,
         identity: ownedIdentityOf(stat),
         path,
         rootIdentity: ownedIdentityOf(rootStat),
       }
       await this.rewriteJournalHandle(
-        handle,
+        destination.journal,
         this.recoveryRecord(destination, 'unresolved'),
       )
       await this.syncDirectory(this.recoveryRoot)
@@ -2065,7 +2071,7 @@ export class DesktopPickerOwner {
     const journal = destination.journal
     if (journal === undefined) return error('recovery-required')
     await this.rewriteJournalHandle(
-      journal.handle,
+      journal,
       this.recoveryRecord(destination, resolution),
     )
   }
@@ -2077,28 +2083,45 @@ export class DesktopPickerOwner {
       const rootStat = lstatSync(this.recoveryRoot)
       const canonicalPath = realpathSync(journal.path)
       const pathStat = lstatSync(journal.path)
+      const hash = createHash('sha256')
+      const buffer = Buffer.alloc(MAX_RECOVERY_JOURNAL_BYTES)
+      if (journal.expectedSize > buffer.length
+        || readSync(journal.handle.fd, buffer, 0, journal.expectedSize, 0) !== journal.expectedSize) return false
+      hash.update(buffer.subarray(0, journal.expectedSize))
       return handleStat.isFile() && pathStat.isFile() && !pathStat.isSymbolicLink()
         && canonicalRoot === this.recoveryRoot && rootStat.isDirectory() && !rootStat.isSymbolicLink()
         && ownedIdentityOf(rootStat) === journal.rootIdentity
         && canonicalPath === journal.path
         && ownedIdentityOf(handleStat) === journal.identity
         && ownedIdentityOf(pathStat) === journal.identity
+        && Number(handleStat.size) === journal.expectedSize
+        && Number(pathStat.size) === journal.expectedSize
+        && revisionOf(handleStat) === journal.expectedRevision
+        && revisionOf(pathStat) === journal.expectedRevision
+        && hash.digest('hex') === journal.expectedDigest
     } catch {
       return false
     }
   }
 
   private async rewriteJournalHandle(
-    handle: Awaited<ReturnType<typeof open>>,
+    journal: DestinationJournal,
     record: DestinationRecoveryRecord,
   ): Promise<void> {
+    const handle = journal.handle
     const bytes = Buffer.from(JSON.stringify(record), 'utf8')
     if (bytes.length > MAX_RECOVERY_JOURNAL_BYTES)
       return error('recovery-required')
     await handle.truncate(0)
-    await handle.write(bytes, 0, bytes.length, 0)
+    const written = await handle.write(bytes, 0, bytes.length, 0)
+    if (written.bytesWritten !== bytes.length) return error('recovery-required')
     await handle.truncate(bytes.length)
     await handle.sync()
+    const stat = await handle.stat()
+    if (!stat.isFile() || Number(stat.size) !== bytes.length) return error('recovery-required')
+    journal.expectedDigest = createHash('sha256').update(bytes).digest('hex')
+    journal.expectedRevision = revisionOf(stat)
+    journal.expectedSize = bytes.length
   }
 
   private async verifyPublishedAlias(
@@ -2222,6 +2245,9 @@ export class DesktopPickerOwner {
       const destinationStat = fstatSync(destinationFd)
       const journalStat = fstatSync(journalFd)
       const rootStat = lstatSync(this.recoveryRoot)
+      const stagePathStat = lstatSync(entry.stagedPath)
+      const destinationPathStat = lstatSync(destination.path)
+      const journalPathStat = lstatSync(journal.path)
       const hash = createHash('sha256')
       const buffer = Buffer.alloc(MAX_DESKTOP_DESTINATION_CHUNK_BYTES)
       for (let offset = 0; offset < entry.entry.size;) {
@@ -2230,13 +2256,26 @@ export class DesktopPickerOwner {
         hash.update(buffer.subarray(0, length))
         offset += length
       }
+      const journalBuffer = Buffer.alloc(journal.expectedSize)
+      if (journal.expectedSize > MAX_RECOVERY_JOURNAL_BYTES
+        || readSync(journalFd, journalBuffer, 0, journal.expectedSize, 0) !== journal.expectedSize) return error('changed')
+      const journalDigest = createHash('sha256').update(journalBuffer).digest('hex')
       if (hash.digest('hex') !== entry.digest || !stageStat.isFile() || !destinationStat.isFile()
         || Number(stageStat.size) !== entry.entry.size || Number(destinationStat.size) !== entry.entry.size
         || ownedIdentityOf(stageStat) !== entry.stagedIdentity
+        || ownedIdentityOf(stagePathStat) !== entry.stagedIdentity
         || ownedIdentityOf(destinationStat) !== entry.stagedIdentity
+        || ownedIdentityOf(destinationPathStat) !== entry.stagedIdentity
         || realpathSync(entry.stagedPath) !== entry.stagedPath
         || realpathSync(destination.path) !== destination.path
-        || !journalStat.isFile() || ownedIdentityOf(journalStat) !== journal.identity
+        || !journalStat.isFile() || !journalPathStat.isFile()
+        || ownedIdentityOf(journalStat) !== journal.identity
+        || ownedIdentityOf(journalPathStat) !== journal.identity
+        || Number(journalStat.size) !== journal.expectedSize
+        || Number(journalPathStat.size) !== journal.expectedSize
+        || revisionOf(journalStat) !== journal.expectedRevision
+        || revisionOf(journalPathStat) !== journal.expectedRevision
+        || journalDigest !== journal.expectedDigest
         || realpathSync(journal.path) !== journal.path
         || !rootStat.isDirectory() || rootStat.isSymbolicLink()
         || realpathSync(this.recoveryRoot) !== this.recoveryRoot
