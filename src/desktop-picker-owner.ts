@@ -1268,6 +1268,11 @@ export class DesktopPickerOwner {
         stagedEntries: 0,
         status: 'aborted',
       })
+      try {
+        this.assertAuthority(destination.identity)
+      } catch {
+        return error('changed')
+      }
       return {
         bytes: destination.entries.reduce(
           (sum, entry) => sum + entry.entry.size,
@@ -1280,6 +1285,11 @@ export class DesktopPickerOwner {
         status: 'published',
       }
     } catch (cause) {
+      if (this.destinations.get(request.session) !== destination) throw cause
+      if (destination.publicationLinked) {
+        await this.failPublishedDestination(request.session, destination)
+        return error('recovery-required')
+      }
       if (blocksRecovery(cause)) this.recoveryBlockedDestinations.add(destination.path)
       const closed = await this.closeDestination(request.session, destination)
       if (blocksRecovery(cause)) return error('recovery-required')
@@ -1293,8 +1303,9 @@ export class DesktopPickerOwner {
         status: 'partial',
       }
     } finally {
-      if (this.destinations.get(request.session) === destination)
+      if (!destination.publicationLinked && this.destinations.get(request.session) === destination) {
         await this.closeDestination(request.session, destination)
+      }
     }
   }
 
@@ -1478,7 +1489,7 @@ export class DesktopPickerOwner {
       ...[...this.grants.values()].map(value => value.expiresAt),
       ...[...this.sources.values()].map(value => value.expiresAt),
       ...[...this.destinationPlans.values()].map(value => value.expiresAt),
-      ...[...this.destinations.values()].map(value => value.expiresAt),
+      ...[...this.destinations.values()].filter(value => !value.publicationLinked).map(value => value.expiresAt),
       ...[...this.vaultSelectionClaims.values()].map(value => value.expiresAt),
     ]
     if (expiries.length === 0) {
@@ -1503,7 +1514,7 @@ export class DesktopPickerOwner {
     }
     for (const [claim, selection] of this.vaultSelectionClaims) if (selection.expiresAt <= now) this.vaultSelectionClaims.delete(claim)
     for (const [session, destination] of this.destinations) {
-      if (destination.expiresAt <= now) await this.closeDestination(session, destination)
+      if (destination.expiresAt <= now && !destination.publicationLinked) await this.closeDestination(session, destination)
     }
     this.scheduleExpiry()
   }
@@ -1520,7 +1531,7 @@ export class DesktopPickerOwner {
     }
     for (const [claim, selection] of this.vaultSelectionClaims) if (selection.expiresAt <= now) this.vaultSelectionClaims.delete(claim)
     for (const [session, destination] of this.destinations) {
-      if (destination.expiresAt <= now) {
+      if (destination.expiresAt <= now && !destination.publicationLinked) {
         this.scheduleCleanup(destination)
         this.destinations.delete(session)
       }
@@ -2330,12 +2341,51 @@ export class DesktopPickerOwner {
     void task.finally(() => { this.cleanupTasks.delete(task) })
   }
 
+  private async failPublishedDestination(
+    session: string,
+    destination: DestinationSession,
+  ): Promise<void> {
+    const cleanup = this.cleanupEvidence(destination, 'residual')
+    for (const entry of destination.entries) {
+      if (entry.handle !== undefined) {
+        try {
+          if (Number((await entry.handle.stat()).nlink) <= 1) {
+            await entry.handle.truncate(0)
+            await entry.handle.sync()
+          }
+        } catch {}
+        await entry.handle.close().catch(() => undefined)
+        entry.handle = undefined
+      }
+    }
+    if (destination.journal !== undefined) {
+      await destination.journal.handle.close().catch(() => undefined)
+      destination.journal = undefined
+    }
+    this.recoveryBlockedDestinations.add(destination.path)
+    this.destinations.delete(session)
+    this.rememberClosedDestination(session, {
+      cleanup,
+      stagedBytes: destination.entries.reduce((sum, entry) => sum + entry.offset, 0),
+      stagedEntries: destination.entries.filter(entry => entry.offset > 0).length,
+      status: 'aborted',
+    })
+  }
+
   private async closeDestination(
     session: string,
     destination: DestinationSession,
   ): Promise<AbortDesktopDestinationResult> {
     const stagedBytes = destination.entries.reduce((sum, entry) => sum + entry.offset, 0)
     const stagedEntries = destination.entries.filter(entry => entry.offset > 0).length
+    if (destination.publicationLinked) {
+      return {
+        cleanup: this.cleanupEvidence(destination, 'retained'),
+        stagedBytes,
+        stagedEntries,
+        status: 'aborted',
+      }
+    }
     const cleanup = await this.cleanupDestination(destination)
     this.destinations.delete(session)
     const result: AbortDesktopDestinationResult = { cleanup, stagedBytes, stagedEntries, status: 'aborted' }
