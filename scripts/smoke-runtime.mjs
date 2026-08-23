@@ -62,10 +62,12 @@ const dumpOutput = `${dump.stdout}\n${dump.stderr}`
 assert.match(dumpOutput, /note-vault-runtime/)
 assert.match(dumpOutput, /note-vault-tools/)
 assert.match(dumpOutput, /tocktutor-workbench/)
+assert.match(dumpOutput, /tocktutor-assistant/)
 assert.match(dumpOutput, /web-clip/)
 assert.equal((dumpOutput.match(/\bid:\s*note-vault-runtime\b/g) ?? []).length, 1)
 assert.equal((dumpOutput.match(/\bid:\s*note-vault-tools\b/g) ?? []).length, 1)
 assert.equal((dumpOutput.match(/\bid:\s*tocktutor-workbench\b/g) ?? []).length, 1)
+assert.equal((dumpOutput.match(/\bid:\s*tocktutor-assistant\b/g) ?? []).length, 1)
 assert.equal((dumpOutput.match(/\bid:\s*web-clip\b/g) ?? []).length, 1)
 assert.doesNotMatch(dumpOutput, /tockbot-note-vault/)
 assert.doesNotMatch(dumpOutput, /patch:\s*entry ["']tockbot-note-vault["'] not found/)
@@ -147,6 +149,27 @@ const workbenchClientImport = spawnSync(nodeBinary, [
   env: runtimeEnvironment,
 })
 assert.equal(workbenchClientImport.status, 0, workbenchClientImport.stderr || workbenchClientImport.stdout)
+const assistantManifest = JSON.parse(readFileSync(join(
+  resources,
+  'dsh-runtime',
+  'node_modules',
+  '@tockteam',
+  'tocktutor-assistant',
+  'package.json',
+), 'utf8'))
+assert.equal(assistantManifest.version, '0.1.2')
+assert.equal(assistantManifest.peerDependencies['@tockteam/tocktutor-workbench'], '0.1.4')
+assert.equal(assistantManifest.peerDependencies['tockbot-note-runtime'], '0.1.2')
+const assistantImport = spawnSync(nodeBinary, [
+  '--input-type=module',
+  '-e',
+  "import NoteAssistant from '@tockteam/tocktutor-assistant'; if (typeof NoteAssistant !== 'function') process.exit(1)",
+], {
+  cwd: join(resources, 'dsh-runtime'),
+  encoding: 'utf8',
+  env: runtimeEnvironment,
+})
+assert.equal(assistantImport.status, 0, assistantImport.stderr || assistantImport.stdout)
 const webClipManifest = JSON.parse(readFileSync(join(
   resources,
   'dsh-runtime',

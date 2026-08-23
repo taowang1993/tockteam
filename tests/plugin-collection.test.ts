@@ -12,6 +12,7 @@ import {
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const ownedBundleDirectories = new Map<string, string>([
   ['@tockteam/tocktutor-workbench', 'tockteam-tocktutor-workbench'],
+  ['@tockteam/tocktutor-assistant', 'tockteam-tocktutor-assistant'],
   ['tockbot-web-clip', 'tockbot-web-clip'],
 ])
 
@@ -38,6 +39,15 @@ test('desktop bundle registers every packaged DSH plugin', () => {
     assert.equal(manifest.name, plugin)
     assert.equal(manifest.dsh.client.platform, 'web')
     assert.equal(manifest.dshClient, undefined)
+    if (ownedBundleDirectories.has(plugin)) {
+      const clientExport = manifest.exports['./client'] as { browser?: string; default: string }
+      const bundledPath = (clientExport.browser ?? clientExport.default)
+        .replace(/^\.\/dist\//u, 'lib/')
+        .replace(/^\.\//u, '')
+      const clientBundle = readFileSync(join(packageDirectory(plugin), bundledPath), 'utf8')
+      assert.match(clientBundle, /__ModuleLoader__\.load/u)
+      assert.match(clientBundle, new RegExp(plugin.replace('/', '\\/')))
+    }
   }
   for (const plugin of BUNDLED_DESKTOP_HOST_PLUGINS) {
     const manifest = JSON.parse(readFileSync(join(packageDirectory(plugin), 'package.json'), 'utf8'))

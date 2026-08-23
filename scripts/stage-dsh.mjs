@@ -557,7 +557,12 @@ function installedDependencyManifest(root, dependency) {
 
 function resolveDependencyManifest(requireFromPackage, dependency) {
   try {
-    return requireFromPackage.resolve(`${dependency}/package.json`)
+    const manifestPath = requireFromPackage.resolve(`${dependency}/package.json`)
+    const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'))
+    if (manifest.name !== dependency) {
+      throw new Error(`${dependency}/package.json resolved to a nested package boundary`)
+    }
+    return manifestPath
   } catch (packageJsonError) {
     for (const root of [dirname(requireFromPackage.resolve('./package.json')), runtime, dshSource, process.cwd()]) {
       const candidate = installedDependencyManifest(root, dependency)
@@ -702,6 +707,15 @@ function installDesktopPackages({ desktopOnly = false } = {}) {
       files: [
         [join(root, 'vendor', 'tockteam-tocktutor-workbench', 'lib'), 'dist'],
         [join(root, 'vendor', 'tockteam-tocktutor-workbench', 'cordis.patch.yml'), 'cordis.patch.yml'],
+      ],
+    },
+    {
+      manifest: join(root, 'vendor', 'tockteam-tocktutor-assistant', 'package.json'),
+      files: [
+        [join(root, 'vendor', 'tockteam-tocktutor-assistant', 'lib'), 'lib'],
+        [join(root, 'vendor', 'tockteam-tocktutor-assistant', 'cordis.patch.yml'), 'cordis.patch.yml'],
+        [join(root, 'vendor', 'tockteam-tocktutor-assistant', 'PENNIVO_PROVENANCE.md'), 'PENNIVO_PROVENANCE.md'],
+        [join(root, 'vendor', 'tockteam-tocktutor-assistant', 'THIRD_PARTY_NOTICES'), 'THIRD_PARTY_NOTICES'],
       ],
     },
     {

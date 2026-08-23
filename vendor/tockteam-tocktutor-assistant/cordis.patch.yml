@@ -1,0 +1,4 @@
+- insert:
+    - id: tocktutor-assistant
+      name: '@tockteam/tocktutor-assistant'
+      config: {}
