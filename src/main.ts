@@ -184,6 +184,7 @@ function initializeDesktopPicker(): void {
       ? { canceled: result.canceled }
       : { canceled: result.canceled, filePath }
   },
+  onVaultTransition: () => { desktopPopOutOwner?.disposeProvider() },
   showSaveDialog: async options => {
     const electronOptions: Electron.SaveDialogOptions = {
       title: pickerDialogTitle(options),
@@ -1114,8 +1115,8 @@ function installIpc(): void {
     return await selectWorkspacePaths()
   })
   ipcMain.handle('desktop:get-info', event => {
-    const preview = previewWindow?.webContents.id === event.sender.id ? previewIdentity ?? null : null
-    return desktopInfo(preview)
+    assertTrustedMainIpc(event)
+    return desktopInfo(null)
   })
   ipcMain.handle('desktop:get-runtime-snapshot', event => {
     assertTrustedMainIpc(event)

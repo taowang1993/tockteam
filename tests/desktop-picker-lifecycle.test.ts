@@ -777,18 +777,18 @@ test('vault backup publishes its complete staged directory as one destination', 
   const { begun, planDigest } = await lockAndBegin(owner, authorization, operation, {
     entries: [
       { digest: sha(manifest), size: manifest.length, target: { kind: 'relative-file', relativePath: 'manifest.json' as never } },
-      { digest: sha(note), size: note.length, target: { kind: 'relative-file', relativePath: 'note.md' as never } },
+      { digest: sha(note), size: note.length, target: { kind: 'relative-file', relativePath: 'notes/note.md' as never } },
     ],
     publicationName: 'backup' as never,
     purpose: 'vault-backup',
     totalBytes: manifest.length + note.length,
   })
   await owner.writeDestinationChunk({ bytes: manifest, offset: 0, planDigest, session: begun.session, target: { kind: 'relative-file', relativePath: 'manifest.json' as never } }, new AbortController().signal)
-  await owner.writeDestinationChunk({ bytes: note, offset: 0, planDigest, session: begun.session, target: { kind: 'relative-file', relativePath: 'note.md' as never } }, new AbortController().signal)
+  await owner.writeDestinationChunk({ bytes: note, offset: 0, planDigest, session: begun.session, target: { kind: 'relative-file', relativePath: 'notes/note.md' as never } }, new AbortController().signal)
   const finalized = await owner.finalizeDestination({ expectedState: begun.expectedState, planDigest, session: begun.session }, new AbortController().signal)
   assert.equal(finalized.status, 'published')
   assert.equal(await readFile(join(root, 'backup', 'manifest.json'), 'utf8'), '{"version":1}')
-  assert.equal(await readFile(join(root, 'backup', 'note.md'), 'utf8'), 'note')
+  assert.equal(await readFile(join(root, 'backup', 'notes', 'note.md'), 'utf8'), 'note')
   assert.equal(noStaging(await readdir(root)), true)
   await owner.dispose()
 })
