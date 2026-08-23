@@ -451,7 +451,7 @@ export class DesktopPickerOwner {
     }
     this.recoveryRoot = resolve(options.recoveryRoot
       ?? process.env.DSH_DESKTOP_PICKER_RECOVERY_ROOT
-      ?? join(tmpdir(), 'tockteam-desktop-picker-recovery'))
+      ?? join(realpathSync(tmpdir()), `tockteam-desktop-picker-recovery-${randomBytes(12).toString('base64url')}`))
     this.recoveryReady = this.recoverRegistered()
   }
 
