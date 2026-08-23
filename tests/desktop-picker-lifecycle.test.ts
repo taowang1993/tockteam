@@ -462,7 +462,7 @@ test('existing destinations are denied without snapshots, backups, or mutation',
   await owner.dispose()
 })
 
-test('crash recovery settles pre-publication scrub and atomic retained publication idempotently', async () => {
+test('crash recovery preserves unresolved records and recognizes resolved publication idempotently', async () => {
   const checkpoints: DesktopPickerCheckpoint[] = ['journal-prepared', 'target-published', 'journal-published']
   for (const checkpoint of checkpoints) {
     const root = await canonicalTemp(`tockteam-picker-crash-${checkpoint}-`)
@@ -480,13 +480,20 @@ test('crash recovery settles pre-publication scrub and atomic retained publicati
     const owner = new DesktopPickerOwner({
       isAvailable: () => true,
       recoveryRoot,
-      showOpenDialog: async () => ({ canceled: true }),
-      showSaveDialog: async () => ({ canceled: true }),
+      showOpenDialog: async () => ({ canceled: false, filePath: activeVault }),
+      showSaveDialog: async () => ({ canceled: false, filePath: join(root, 'next.html') }),
     })
     await owner.ready()
     if (checkpoint === 'journal-prepared') await assert.rejects(readFile(destinationPath), { code: 'ENOENT' })
     else assert.equal(await readFile(destinationPath, 'utf8'), 'new')
     assert.equal((await readdir(recoveryRoot)).filter(name => name.startsWith('destination-')).length, 1)
+    if (checkpoint === 'journal-prepared') {
+      await activate(owner)
+      const operation = identity('unresolved-blocked')
+      const selection = await grant(owner, { identity: operation, kind: 'destination', purpose: 'export-html' })
+      const plan = { entries: [{ digest: sha('x'), size: 1, target: { kind: 'selected-file' as const } }] as const, purpose: 'export-html' as const, totalBytes: 1 }
+      await rejectsCode(owner.lockDestinationPlan({ ...plan, identity: operation, planDigest: computeDesktopDestinationPlanDigest(plan), selectionAuthorization: selection }, new AbortController().signal), 'recovery-required')
+    }
     await owner.dispose()
     const restarted = new DesktopPickerOwner({
       isAvailable: () => true,

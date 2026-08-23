@@ -1834,17 +1834,15 @@ export class DesktopPickerOwner {
 
   private async recoverJournal(path: string): Promise<void> {
     let handle: Awaited<ReturnType<typeof open>> | undefined
+    let journalIdentity = ''
     let value: DestinationRecoveryRecord
     try {
-      handle = await open(path, fsConstants.O_RDWR | fsConstants.O_NOFOLLOW)
+      handle = await open(path, fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW)
       const stat = await handle.stat()
-      if (
-        !stat.isFile() ||
-        Number(stat.size) > MAX_RECOVERY_JOURNAL_BYTES ||
-        (Number(stat.mode) & 0o777) !== 0o600 ||
-        (typeof process.getuid === 'function' && stat.uid !== process.getuid())
-      )
-        throw new Error('invalid journal')
+      if (!stat.isFile() || Number(stat.size) > MAX_RECOVERY_JOURNAL_BYTES
+        || (Number(stat.mode) & 0o777) !== 0o600
+        || typeof process.getuid === 'function' && stat.uid !== process.getuid()) throw new Error('invalid journal')
+      journalIdentity = ownedIdentityOf(stat)
       const parsed = JSON.parse(await handle.readFile('utf8')) as unknown
       if (!this.validRecoveryRecord(parsed)) throw new Error('invalid journal')
       value = parsed
@@ -1855,13 +1853,15 @@ export class DesktopPickerOwner {
       return
     }
     try {
-      const settled = await this.settleRecoveryRecord(value)
-      if (settled === undefined) {
+      const settled = value.resolution !== 'unresolved' && await this.recoveryRecordSettled(value)
+      const pathStat = await this.safeLstat(path)
+      if (pathStat === undefined || !pathStat.isFile() || pathStat.isSymbolicLink()
+        || ownedIdentityOf(pathStat) !== journalIdentity) {
+        this.recoveryCorrupt = true
         this.recoveryBlockedDestinations.add(value.destinationPath)
-        return
+      } else if (!settled) {
+        this.recoveryBlockedDestinations.add(value.destinationPath)
       }
-      if (value.resolution === 'unresolved')
-        await this.rewriteJournalHandle(handle, settled)
     } catch {
       this.recoveryBlockedDestinations.add(value.destinationPath)
     } finally {
@@ -1869,110 +1869,21 @@ export class DesktopPickerOwner {
     }
   }
 
-  private async settleRecoveryRecord(
-    value: DestinationRecoveryRecord,
-  ): Promise<DestinationRecoveryRecord | undefined> {
-    if (value.resolution === 'retained') {
-      for (const residue of value.residues) {
-        if (residue.kind === 'directory') {
-          if (await this.verifyResidue(residue, true) === 'mismatch') return undefined
-          continue
-        }
+  private async recoveryRecordSettled(value: DestinationRecoveryRecord): Promise<boolean> {
+    for (const residue of value.residues) {
+      if (value.resolution === 'retained' && residue.kind === 'file') {
         const handle = await this.openOwnedFile(residue.path, residue.identity)
-        if (handle === 'mismatch') return undefined
-        if (handle === undefined) continue
-        try {
-          if (!await this.verifyHandleDigest(handle, Number((await handle.stat()).size), undefined)) return undefined
-        } finally {
-          await handle.close()
-        }
+        if (handle === 'mismatch') return false
+        await handle?.close()
+        continue
       }
-      return value
+      if (await this.verifyResidue(residue) === 'mismatch') return false
     }
-    if (value.resolution === 'scrubbed') {
-      for (const residue of value.residues) {
-        const state = await this.verifyResidue(residue, false)
-        if (state === 'mismatch') return undefined
-      }
-      return value
-    }
-    const fileResidue = value.residues.find(
-      (residue) => residue.kind === 'file',
-    )
-    let published = false
-    if (fileResidue !== undefined) {
-      const stage = await this.openOwnedFile(
-        fileResidue.path,
-        fileResidue.identity,
-      )
-      if (stage === 'mismatch') return undefined
-      if (stage !== undefined) {
-        try {
-          published = await this.verifyPublishedFile(
-            value.destinationPath,
-            stage,
-            value.newSize,
-            value.newDigest,
-          )
-          if (!published) {
-            await stage.truncate(0)
-            await stage.sync()
-          }
-        } finally {
-          await stage.close()
-        }
-      } else if ((await this.safeLstat(value.destinationPath)) !== undefined) {
-        return undefined
-      }
-    }
-    for (const residue of value.residues.filter(
-      (residue) => residue.kind === 'directory',
-    )) {
-      if ((await this.verifyResidue(residue, false)) === 'mismatch')
-        return undefined
-    }
-    if (published) {
-      const destination = await this.safeLstat(value.destinationPath)
-      if (destination === undefined) return undefined
-      return {
-        ...value,
-        destinationIdentity: ownedIdentityOf(destination),
-        residues: value.residues.map((residue) =>
-          residue.kind === 'file'
-            ? {
-                ...residue,
-                disposition: 'published-alias',
-                size: value.newSize,
-              }
-            : residue,
-        ),
-        resolution: 'retained',
-      }
-    }
-    const destination = await this.safeLstat(value.destinationPath)
-    if (destination !== undefined) {
-      if (
-        fileResidue === undefined ||
-        ownedIdentityOf(destination) !== fileResidue.identity ||
-        Number(destination.size) !== 0
-      )
-        return undefined
-    }
-    return {
-      ...value,
-      destinationIdentity: null,
-      residues: value.residues.map((residue) => ({
-        ...residue,
-        disposition: 'scrubbed',
-        size: 0,
-      })),
-      resolution: 'scrubbed',
-    }
+    return value.resolution === 'retained' || value.resolution === 'scrubbed'
   }
 
   private async verifyResidue(
     residue: DestinationResidueRecord,
-    retained: boolean,
   ): Promise<'absent' | 'match' | 'mismatch'> {
     const stat = await this.safeLstat(residue.path)
     if (stat === undefined) return 'absent'
@@ -1989,10 +1900,7 @@ export class DesktopPickerOwner {
     try {
       const fileStat = await handle.stat()
       if (Number(fileStat.size) !== residue.size) return 'mismatch'
-      if (!retained) return residue.size === 0 ? 'match' : 'mismatch'
-      return (await this.verifyHandleDigest(handle, residue.size, undefined))
-        ? 'match'
-        : 'mismatch'
+      return residue.size === 0 ? 'match' : 'mismatch'
     } finally {
       await handle.close()
     }
@@ -2005,7 +1913,7 @@ export class DesktopPickerOwner {
     try {
       const handle = await open(
         path,
-        fsConstants.O_RDWR | fsConstants.O_NOFOLLOW,
+        fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW,
       )
       const stat = await handle.stat()
       if (!stat.isFile() || ownedIdentityOf(stat) !== expectedIdentity) {
@@ -2408,6 +2316,7 @@ export class DesktopPickerOwner {
         unresolved = true
       }
     }
+    if (unresolved) this.recoveryBlockedDestinations.add(destination.path)
     const evidence = this.cleanupEvidence(destination, unresolved ? 'residual' : 'scrubbed')
     destination.journal = undefined
     return evidence

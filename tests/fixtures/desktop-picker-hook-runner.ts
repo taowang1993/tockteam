@@ -28,7 +28,15 @@ if (selected.status !== 'selected') throw new Error(`destination selection ${sel
 const bytes = Buffer.from('reviewed-output')
 const plan = { entries: [{ digest: createHash('sha256').update(bytes).digest('hex') as never, size: bytes.length, target: { kind: 'selected-file' as const } }] as const, purpose: 'export-html' as const, totalBytes: bytes.length }
 const planDigest = computeDesktopDestinationPlanDigest(plan)
-const locked = await owner.lockDestinationPlan({ ...plan, identity, planDigest, selectionAuthorization: selected.authorization }, new AbortController().signal)
+let locked
+try {
+  locked = await owner.lockDestinationPlan({ ...plan, identity, planDigest, selectionAuthorization: selected.authorization }, new AbortController().signal)
+} catch (cause) {
+  if (mode !== 'startup-journal-open-swap') throw cause
+  await writeFile(resultPath, JSON.stringify({ outcome: `error:${String((cause as { code?: string }).code ?? 'unknown')}` }))
+  await owner.dispose().catch(() => undefined)
+  process.exit(0)
+}
 const begun = await owner.beginDestination({ ...plan, authorization: locked.authorization, identity, planDigest }, new AbortController().signal)
 await owner.writeDestinationChunk({ bytes, offset: 0, planDigest, session: begun.session, target: { kind: 'selected-file' } }, new AbortController().signal)
 let outcome: string

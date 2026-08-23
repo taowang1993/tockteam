@@ -18,14 +18,14 @@ test('managed picker production has no path deletion, replacement, or obsolete r
   assert.doesNotMatch(source, /snapshotPath|backupPath|commitPath|replaceAuthorized/u)
 })
 
-function runHook(mode: string, destination: string, recoveryRoot: string, vault: string, result: string, foreign: string) {
+function runHook(mode: string, destination: string, recoveryRoot: string, vault: string, result: string, foreign: string, stage?: string) {
   return spawnSync(process.execPath, [
     '--import', new URL('./fixtures/desktop-picker-no-delete-hook.mjs', import.meta.url).pathname,
     new URL('./fixtures/desktop-picker-hook-runner.ts', import.meta.url).pathname,
     mode, destination, recoveryRoot, vault, result,
   ], {
     encoding: 'utf8',
-    env: { ...process.env, TOCKTEAM_HOOK_FOREIGN: foreign, TOCKTEAM_HOOK_MODE: mode },
+    env: { ...process.env, TOCKTEAM_HOOK_FOREIGN: foreign, TOCKTEAM_HOOK_MODE: mode, ...(stage === undefined ? {} : { TOCKTEAM_HOOK_STAGE: stage }) },
     timeout: 30_000,
   })
 }
@@ -65,6 +65,32 @@ test('loader hook proves normal publication invokes no destructive managed-path 
   assert.equal(await readFile(destination, 'utf8'), 'reviewed-output')
 })
 
+test('startup journal-open swap preserves both files and blocks the current process', async () => {
+  const root = await temp('tockteam-hook-journal-swap-')
+  const recoveryRoot = await temp('tockteam-hook-recovery-')
+  const vault = await temp('tockteam-hook-vault-')
+  const result = join(await temp('tockteam-hook-result-'), 'result.json')
+  const destination = join(root, 'output.html')
+  const parentStat = await lstat(root)
+  const journal = join(recoveryRoot, 'destination-swap.json')
+  await writeFile(journal, JSON.stringify({
+    destinationIdentity: null,
+    destinationPath: destination,
+    newDigest: sha(''),
+    newSize: 0,
+    parentIdentity: `${String(parentStat.dev)}:${String(parentStat.ino)}`,
+    residues: [],
+    resolution: 'scrubbed',
+    version: 2,
+  }), { mode: 0o600 })
+  const foreign = 'foreign-journal-occupant'
+  const child = runHook('startup-journal-open-swap', destination, recoveryRoot, vault, result, foreign)
+  assert.equal(child.status, 0, child.stderr || child.stdout)
+  assert.equal(JSON.parse(await readFile(result, 'utf8')).outcome, 'error:recovery-required')
+  assert.equal(await readFile(journal, 'utf8'), foreign)
+  assert.equal(JSON.parse(await readFile(`${journal}-recorded-owner`, 'utf8')).resolution, 'scrubbed')
+})
+
 test('startup loader hook preserves a foreign stage replacement and blocks automatic scrub', async () => {
   const root = await temp('tockteam-hook-startup-')
   const recoveryRoot = await temp('tockteam-hook-recovery-')
@@ -91,7 +117,7 @@ test('startup loader hook preserves a foreign stage replacement and blocks autom
     resolution: 'unresolved',
     version: 2,
   }), { mode: 0o600 })
-  const child = runHook('startup-stage-swap', destination, recoveryRoot, vault, result, foreign)
+  const child = runHook('startup-stage-swap', destination, recoveryRoot, vault, result, foreign, stage)
   assert.equal(child.status, 0, child.stderr || child.stdout)
   assert.equal(await readFile(stage, 'utf8'), foreign)
   assert.equal(await readFile(`${stage}-recorded-owner`, 'utf8'), secret)

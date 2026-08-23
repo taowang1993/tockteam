@@ -27,14 +27,21 @@ if (mode === 'link-source-swap' || mode === 'link-destination-occupy') {
   }
 }
 
-if (mode === 'startup-stage-swap') {
+if (mode === 'startup-stage-swap' || mode === 'startup-journal-open-swap') {
   fs.promises.open = async (path, ...args) => {
-    if (!attacked && String(path).includes('.tockteam-picker-stage-') && String(path).endsWith('selected-file')) {
+    const stage = process.env.TOCKTEAM_HOOK_STAGE
+    if (mode === 'startup-stage-swap' && !attacked && stage !== undefined && String(path).includes('destination-') && String(path).endsWith('.json')) {
+      attacked = true
+      original.renameSync(stage, `${stage}-recorded-owner`)
+      original.writeFileSync(stage, foreign, { mode: 0o600 })
+    }
+    const handle = await original.open(path, ...args)
+    if (mode === 'startup-journal-open-swap' && !attacked && String(path).includes('destination-') && String(path).endsWith('.json')) {
       attacked = true
       original.renameSync(path, `${String(path)}-recorded-owner`)
       original.writeFileSync(path, foreign, { mode: 0o600 })
     }
-    return await original.open(path, ...args)
+    return handle
   }
 }
 
