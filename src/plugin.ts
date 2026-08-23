@@ -8,12 +8,14 @@ import {
   TOCKTEAM_SURFACE_SERVICE,
   type TockTeamSurface,
 } from '../plugins/shared/surface.ts'
+import { DesktopCallerProvider } from './desktop-caller-provider.ts'
 import { DesktopDispatchProvider } from './desktop-dispatch-provider.ts'
 import { DesktopMicrophoneProvider } from './desktop-microphone-provider.ts'
 import { DesktopPopOutProvider } from './desktop-popout-provider.ts'
 import { DesktopPrintExportProvider } from './desktop-print-export-provider.ts'
 import { DesktopPickerProvider, DesktopVaultSelectionProvider } from './desktop-picker-provider.ts'
 import {
+  TOCKTEAM_DESKTOP_CALLER_SERVICE,
   TOCKTEAM_DESKTOP_DISPATCH_SERVICE,
   TOCKTEAM_DESKTOP_MICROPHONE_SERVICE,
   TOCKTEAM_DESKTOP_PICKER_SERVICE,
@@ -101,6 +103,7 @@ export function apply(ctx: HostContext): void {
   const currentVault = (): NoteVaultStateService['state'] | undefined => {
     return (ctx.get('noteVault') as NoteVaultStateService | undefined)?.state
   }
+  const callerProvider = new DesktopCallerProvider(undefined, fetch, currentVault)
   const dispatchProvider = new DesktopDispatchProvider(undefined, fetch, currentVault)
   const microphoneProvider = new DesktopMicrophoneProvider(undefined, fetch, currentVault)
   const popOutProvider = new DesktopPopOutProvider(undefined, fetch, currentVault)
@@ -111,12 +114,14 @@ export function apply(ctx: HostContext): void {
     await Promise.all([
       pickerProvider.dispose(),
       vaultSelectionProvider.close(),
+      callerProvider.dispose(),
       dispatchProvider.dispose(),
       Promise.resolve(microphoneProvider.dispose()),
       Promise.resolve(popOutProvider.dispose()),
       Promise.resolve(printExportProvider.dispose()),
     ])
   }, 'tockteam-desktop: native owners')
+  ctx.provide(TOCKTEAM_DESKTOP_CALLER_SERVICE, callerProvider)
   ctx.provide(TOCKTEAM_DESKTOP_PICKER_SERVICE, pickerProvider)
   ctx.provide(TOCKTEAM_DESKTOP_DISPATCH_SERVICE, dispatchProvider)
   ctx.provide(TOCKTEAM_DESKTOP_MICROPHONE_SERVICE, microphoneProvider)

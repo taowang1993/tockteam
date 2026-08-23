@@ -19,6 +19,7 @@ export type TockTutorProtocolRequest = {
     xSuccess?: string;
     xError?: string;
 };
+export declare const TOCKTEAM_DESKTOP_CALLER_SERVICE: "tockTeamDesktopCaller";
 export declare const TOCKTEAM_DESKTOP_PICKER_SERVICE: "tockTeamDesktopPicker";
 export declare const TOCKTEAM_DESKTOP_DISPATCH_SERVICE: "tockTeamDesktopDispatch";
 export declare const TOCKTEAM_DESKTOP_POPOUT_SERVICE: "tockTeamDesktopPopOut";
@@ -47,6 +48,14 @@ export type NativeFailureResult = {
     operationId: string;
     status: NativeFailureStatus;
 };
+export type DesktopCallerOperation = 'activate-vault' | 'reveal-entry' | 'popout-open' | 'popout-close' | 'popout-close-all' | 'microphone' | 'print' | 'export-html' | 'export-pdf' | 'import-source' | 'backup' | 'restore-backup';
+export interface DesktopCallerClaimRequest {
+    authorization: string;
+    operation: DesktopCallerOperation;
+}
+export interface TockTeamDesktopCaller {
+    claim(request: DesktopCallerClaimRequest, signal: AbortSignal): Promise<NativeOperationIdentity>;
+}
 export type DesktopPickerIdentity = NativeOperationIdentity;
 export type DesktopPickerAuthorization = string & {
     readonly __desktopPickerAuthorization: unique symbol;
@@ -492,6 +501,7 @@ export interface TockTeamDesktopPrintExport {
     render(request: DesktopPrintExportRequest, signal: AbortSignal): Promise<DesktopPrintExportResult>;
 }
 export interface NativeOwnerServices {
+    caller: TockTeamDesktopCaller;
     dispatch: TockTeamDesktopDispatch;
     microphone: TockTeamDesktopMicrophone;
     picker: TockTeamDesktopPickerService;

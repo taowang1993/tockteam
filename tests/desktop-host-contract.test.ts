@@ -14,6 +14,7 @@ import type {
   NativeOperationIdentity,
 } from '../src/host-contract.ts'
 import {
+  TOCKTEAM_DESKTOP_CALLER_SERVICE,
   TOCKTEAM_DESKTOP_DISPATCH_SERVICE,
   TOCKTEAM_DESKTOP_MICROPHONE_SERVICE,
   TOCKTEAM_DESKTOP_PICKER_SERVICE,
@@ -209,6 +210,7 @@ test('publishes the canonical Desktop Host subpath metadata', () => {
 
 test('exports one stable service key for each native owner', () => {
   assert.deepEqual([
+    TOCKTEAM_DESKTOP_CALLER_SERVICE,
     TOCKTEAM_DESKTOP_PICKER_SERVICE,
     TOCKTEAM_DESKTOP_DISPATCH_SERVICE,
     TOCKTEAM_DESKTOP_POPOUT_SERVICE,
@@ -216,6 +218,7 @@ test('exports one stable service key for each native owner', () => {
     TOCKTEAM_DESKTOP_PRINT_EXPORT_SERVICE,
     TOCKTEAM_DESKTOP_VAULT_SELECTION_SERVICE,
   ], [
+    'tockTeamDesktopCaller',
     'tockTeamDesktopPicker',
     'tockTeamDesktopDispatch',
     'tockTeamDesktopPopOut',

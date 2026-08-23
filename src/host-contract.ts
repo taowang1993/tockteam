@@ -775,6 +775,7 @@ export interface TockTeamDesktopPrintExport {
 }
 
 export interface NativeOwnerServices {
+  caller: TockTeamDesktopCaller
   dispatch: TockTeamDesktopDispatch
   microphone: TockTeamDesktopMicrophone
   picker: TockTeamDesktopPickerService

@@ -1,4 +1,5 @@
 import type { PluginMarketplaceBridge } from '../plugins/plugin-marketplace/src/protocol.ts'
+import type { DesktopCallerOperation } from './host-contract.ts'
 
 /** Commands sent from Electron's native chrome to the DSH client plugin. */
 export type DesktopCommand =
@@ -42,6 +43,10 @@ export interface WebClipBlockedNavigation {
   url: string
 }
 
+export interface TockTutorDesktopCallerBridge {
+  authorize(operation: DesktopCallerOperation): Promise<{ authorization: string }>
+}
+
 export interface WebClipDesktopBridge {
   authorizeDocument(frameId: number, html: string): Promise<string>
   onNavigationBlocked(listener: (navigation: WebClipBlockedNavigation) => void): () => void
@@ -55,5 +60,6 @@ export interface DesktopBridge {
   onCommand(listener: (command: DesktopCommand) => void): () => void
   openExternal(url: string): Promise<void>
   pluginMarketplace: PluginMarketplaceBridge
+  tockTutor: TockTutorDesktopCallerBridge
   webClip: WebClipDesktopBridge
 }

@@ -35,6 +35,9 @@ import {
 } from '../plugins/plugin-marketplace/src/host/platform.ts'
 import { parseMarketplaceCommand } from '../plugins/plugin-marketplace/src/protocol.ts'
 import type { DesktopCommand, DesktopInfo, DesktopRuntimeSnapshot } from './contracts.ts'
+import { DesktopCallerAuthorizations } from './desktop-caller-authorization.ts'
+import { DesktopCallerChannel } from './desktop-caller-channel.ts'
+import type { DesktopCallerOperation } from './host-contract.ts'
 import { allowsRuntimeClipboardWrite, allowsRuntimeMicrophone, allowsTrustedMainIpc, originOf } from './permissions.ts'
 import { BUNDLED_DESKTOP_PLUGINS, DESKTOP_PROFILE, ensureDesktopProfile } from './profile.ts'
 import {
@@ -90,6 +93,7 @@ let transitioning = false
 let queuedPaths: string[] = []
 let queuedProtocolUrls: string[] = []
 const logTail: string[] = []
+const desktopCallerAuthorizations = new DesktopCallerAuthorizations()
 const webClipFrames = new WebClipFrameAuthorizations()
 const webClipSessions = new WeakSet<Session>()
 const desktopRevealChannel = new DesktopRevealChannel({
@@ -152,6 +156,7 @@ async function withPrintRenderer<Result>(
 
 let desktopPickerOwner!: DesktopPickerOwner
 let desktopPickerChannel!: DesktopPickerChannel
+let desktopCallerChannel!: DesktopCallerChannel
 let desktopDispatchChannel!: DesktopDispatchChannel
 let desktopMicrophoneOwner!: DesktopMicrophoneOwner
 let desktopMicrophoneChannel!: DesktopMicrophoneChannel
@@ -200,6 +205,12 @@ function initializeDesktopPicker(): void {
   },
   })
   desktopPickerChannel = new DesktopPickerChannel(desktopPickerOwner)
+  desktopCallerChannel = new DesktopCallerChannel({
+    authorizations: desktopCallerAuthorizations,
+    identity: (operationId, requestId, windowId, channelSessionId) => {
+      return desktopPickerOwner.nativeIdentity(operationId, requestId, windowId, channelSessionId)
+    },
+  })
   desktopDispatchChannel = new DesktopDispatchChannel({
     identity: (operationId, requestId, channelSessionId) => {
       if (mainWindow === undefined || mainWindow.isDestroyed()) return undefined
@@ -367,6 +378,11 @@ function runtimeEnvironment(
   if (picker !== undefined) {
     environment.DSH_DESKTOP_PICKER_ENDPOINT = picker.endpoint
     environment.DSH_DESKTOP_PICKER_TOKEN = picker.token
+  }
+  const caller = overrides.preview === undefined ? desktopCallerChannel.environment : undefined
+  if (caller !== undefined) {
+    environment.DSH_DESKTOP_CALLER_ENDPOINT = caller.endpoint
+    environment.DSH_DESKTOP_CALLER_TOKEN = caller.token
   }
   const dispatch = overrides.preview === undefined ? desktopDispatchChannel.environment : undefined
   if (dispatch !== undefined) {
@@ -592,7 +608,10 @@ function createWindow(options: { preview?: boolean; title?: string } = {}): Brow
   if (options.preview !== true) window.maximize()
   window.once('ready-to-show', () => { window.show() })
   window.on('closed', () => {
-    if (mainWindow === window) mainWindow = undefined
+    if (mainWindow === window) {
+      desktopCallerAuthorizations.revokeWindow(String(window.webContents.id))
+      mainWindow = undefined
+    }
     if (previewWindow === window) {
       previewWindow = undefined
       previewUrl = undefined
@@ -706,6 +725,7 @@ function handleRuntimeExit(exit: RuntimeExit): void {
   void Promise.allSettled([
     desktopRevealChannel.stop(),
     desktopPickerChannel.stop(),
+    desktopCallerChannel.stop(),
     desktopDispatchChannel.stop(),
     desktopMicrophoneChannel.stop(),
     desktopPopOutChannel.stop(),
@@ -724,6 +744,7 @@ async function startRuntime(): Promise<void> {
   ensureDesktopProfile(info.dshHome)
   await desktopRevealChannel.start()
   await desktopPickerChannel.start()
+  await desktopCallerChannel.start()
   await desktopDispatchChannel.start()
   await desktopMicrophoneChannel.start()
   await desktopPopOutChannel.start()
@@ -744,6 +765,7 @@ async function startRuntime(): Promise<void> {
     await desktopPopOutChannel.stop()
     await desktopMicrophoneChannel.stop()
     await desktopDispatchChannel.stop()
+    await desktopCallerChannel.stop()
     await desktopPickerChannel.stop()
     await desktopRevealChannel.stop()
     throw error
@@ -809,6 +831,7 @@ async function stopLiveForMarketplace(): Promise<void> {
   await desktopPopOutChannel.stop()
   await desktopMicrophoneChannel.stop()
   await desktopDispatchChannel.stop()
+  await desktopCallerChannel.stop()
   await desktopPickerChannel.stop()
   await desktopRevealChannel.stop()
   runtime = undefined
@@ -834,6 +857,7 @@ async function restartRuntime(message = '正在重新启动 TockTeam…'): Promi
     await desktopPopOutChannel.stop()
     await desktopMicrophoneChannel.stop()
     await desktopDispatchChannel.stop()
+    await desktopCallerChannel.stop()
     await desktopPickerChannel.stop()
     await desktopRevealChannel.stop()
     runtime = undefined
@@ -889,6 +913,7 @@ async function installLocalPlugin(): Promise<void> {
     await desktopPopOutChannel.stop()
     await desktopMicrophoneChannel.stop()
     await desktopDispatchChannel.stop()
+    await desktopCallerChannel.stop()
     await desktopPickerChannel.stop()
     await desktopRevealChannel.stop()
     runtime = undefined
@@ -1122,6 +1147,10 @@ function installIpc(): void {
     assertTrustedMainIpc(event)
     return desktopRuntimeSnapshot()
   })
+  ipcMain.handle('desktop:tocktutor-authorize', (event, raw: unknown) => {
+    assertTrustedMainIpc(event)
+    return desktopCallerAuthorizations.issue(raw as DesktopCallerOperation, String(event.sender.id))
+  })
   ipcMain.handle('desktop:plugin-marketplace-snapshot', event => {
     assertTrustedMainIpc(event)
     if (marketplace === undefined) throw new Error('plugin marketplace is not initialized')
@@ -1274,6 +1303,7 @@ async function bootstrap(): Promise<void> {
       desktopPopOutChannel.stop(),
       desktopMicrophoneChannel.stop(),
       desktopDispatchChannel.stop(),
+      desktopCallerChannel.stop(),
       desktopPickerChannel.stop(),
       desktopRevealChannel.stop(),
       stopPreviewSurface(),

@@ -7,6 +7,7 @@ import type {
   WebClipBlockedNavigation,
 } from './contracts.ts'
 import type { MarketplaceCommand, MarketplaceSnapshot } from '../plugins/plugin-marketplace/src/protocol.ts'
+import type { DesktopCallerOperation } from './host-contract.ts'
 
 const bridge: DesktopBridge = Object.freeze({
   chooseWorkspace: async (): Promise<string[]> => {
@@ -30,6 +31,11 @@ const bridge: DesktopBridge = Object.freeze({
     },
     getSnapshot: async (): Promise<MarketplaceSnapshot> => {
       return await ipcRenderer.invoke('desktop:plugin-marketplace-snapshot') as MarketplaceSnapshot
+    },
+  }),
+  tockTutor: Object.freeze({
+    authorize: async (operation: DesktopCallerOperation) => {
+      return await ipcRenderer.invoke('desktop:tocktutor-authorize', operation) as { authorization: string }
     },
   }),
   webClip: Object.freeze({
