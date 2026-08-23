@@ -7,7 +7,6 @@ import type {
   DesktopDestinationPlanAuthorization,
   DesktopPickerAuthorization,
   DesktopPrintExportRequest,
-  DesktopRelativeFilePlanEntry,
   DesktopSelectedFilePlanEntry,
   DesktopSourceRoot,
   DesktopMicrophoneRequest,
@@ -76,7 +75,7 @@ const typeRelativeEntry = {
   digest: '' as never,
   size: 0,
   target: { kind: 'relative-file' as const, relativePath: '' as never },
-} satisfies DesktopRelativeFilePlanEntry
+}
 const typeHtmlDestination: BeginDesktopDestinationRequest = {
   authorization: typePlanAuthorization,
   entries: [typeSelectedEntry],
@@ -87,10 +86,9 @@ const typeHtmlDestination: BeginDesktopDestinationRequest = {
 }
 const typeVaultDestination: BeginDesktopDestinationRequest = {
   authorization: typePlanAuthorization,
-  entries: [typeRelativeEntry],
+  entries: [typeSelectedEntry],
   identity: typeIdentity,
   planDigest: '' as never,
-  publicationName: '' as never,
   purpose: 'vault-backup',
   totalBytes: 0,
 }
@@ -111,15 +109,20 @@ const invalidDirectoryRoot: DesktopSourceRoot = {
   kind: 'directory',
   revision: typeRevision,
 }
-// @ts-expect-error HTML export cannot publish a relative-file plan
 const invalidHtmlDestination: BeginDesktopDestinationRequest = {
   ...typeHtmlDestination,
+  // @ts-expect-error HTML export cannot publish a relative-file plan
   entries: [typeRelativeEntry],
 }
-// @ts-expect-error vault backup requires a publication name
 const invalidVaultDestination: BeginDesktopDestinationRequest = {
   ...typeVaultDestination,
-  publicationName: undefined,
+  // @ts-expect-error vault backup never exposes archive member paths
+  entries: [typeRelativeEntry],
+}
+const invalidVaultPublication: BeginDesktopDestinationRequest = {
+  ...typeVaultDestination,
+  // @ts-expect-error vault backup never carries publicationName
+  publicationName: 'invalid',
 }
 void [
   typeFileRoot,
@@ -134,9 +137,24 @@ void [
   invalidDirectoryRoot,
   invalidHtmlDestination,
   invalidVaultDestination,
+  invalidVaultPublication,
 ]
 
- test('publishes the canonical Desktop Host subpath metadata', () => {
+ test('vault backup digest binds one opaque selected-file archive', () => {
+  assert.equal(computeDesktopDestinationPlanDigest({
+    entries: [{ digest: 'b'.repeat(64) as never, size: 7, target: { kind: 'selected-file' } }],
+    purpose: 'vault-backup',
+    totalBytes: 7,
+  }), '8bde99389b0f98d3ad4a033c6b695c65f1ae9c92d427984d1aef68912412fc7e')
+  assert.throws(() => computeDesktopDestinationPlanDigest({
+    entries: [{ digest: 'b'.repeat(64), size: 7, target: { kind: 'relative-file', relativePath: 'files/Plan.md' } }],
+    publicationName: 'backup',
+    purpose: 'vault-backup',
+    totalBytes: 7,
+  } as never), (cause: unknown) => cause instanceof TockTeamDesktopGrantError && cause.code === 'unsafe-target')
+})
+
+test('publishes the canonical Desktop Host subpath metadata', () => {
   assert.equal(packageJson.version, '0.1.5')
   assert.deepEqual(packageJson.exports['./host'], {
     types: './host.d.ts',

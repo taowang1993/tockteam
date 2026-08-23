@@ -5,7 +5,6 @@ import {
   lstatSync,
   mkdirSync,
   realpathSync,
-  readdirSync,
   renameSync,
   rmdirSync,
   unlinkSync,
@@ -53,10 +52,7 @@ import {
   type DesktopPickerRequest,
   type DesktopPickerResult,
   type DesktopPrintExportRequest,
-  type DesktopRelativeFilePlanEntry,
-  type DesktopSafeName,
   type DesktopSafeRelativePath,
-  type DesktopSelectedFilePlanEntry,
   type DesktopSourceEntry,
   type DesktopSourceFileEntry,
   type DesktopSourceLimits,
@@ -210,7 +206,6 @@ interface LockedDestinationPlan {
   parentIdentity: string
   path: string
   planDigest: string
-  publicationName: string | undefined
   purpose: DesktopExportPurpose
   snapshot: ExistingDestinationSnapshot | undefined
   totalBytes: number
@@ -252,7 +247,6 @@ interface DestinationSession {
   entries: DestinationEntry[]
   parentIdentity: string
   path: string
-  publicationName: string | undefined
   purpose: DesktopExportPurpose
   recoveryPaths: string[]
   snapshot: ExistingDestinationSnapshot | undefined
@@ -424,23 +418,12 @@ function sourceEntryKeys(value: unknown): value is Exclude<DesktopSourceEntry, {
     && text(value.revision)
 }
 
-function targetKey(target: DesktopDestinationTarget): string {
-  return target.kind === 'selected-file' ? 'selected-file' : target.relativePath
+function targetKey(_target: DesktopDestinationTarget): string {
+  return 'selected-file'
 }
 
 function destinationPlanOf(input: DesktopDestinationPlan): DesktopDestinationPlan {
-  return (Object.hasOwn(input, 'publicationName')
-    ? {
-        entries: input.entries,
-        publicationName: input.publicationName,
-        purpose: input.purpose,
-        totalBytes: input.totalBytes,
-      }
-    : {
-        entries: input.entries,
-        purpose: input.purpose,
-        totalBytes: input.totalBytes,
-      }) as DesktopDestinationPlan
+  return { entries: input.entries, purpose: input.purpose, totalBytes: input.totalBytes }
 }
 
 function stateValid(value: unknown): value is DesktopDestinationState {
@@ -453,9 +436,7 @@ function stateValid(value: unknown): value is DesktopDestinationState {
 }
 
 function targetValid(value: unknown): value is DesktopDestinationTarget {
-  return object(value) && (value.kind === 'selected-file'
-    ? exact(value, ['kind'])
-    : value.kind === 'relative-file' && exact(value, ['kind', 'relativePath']) && safeRelative(value.relativePath))
+  return object(value) && value.kind === 'selected-file' && exact(value, ['kind'])
 }
 
 function stateEqual(left: DesktopDestinationState, right: DesktopDestinationState): boolean {
@@ -553,14 +534,12 @@ export class DesktopPickerOwner {
     const directory = purpose === 'activate'
       || purpose === 'markdown-folder'
       || purpose === 'restore-backup'
-      || purpose === 'vault-backup'
       || purpose === 'html'
       || purpose === 'apple-journal'
       || purpose === 'textbundle'
     const file = purpose !== 'activate'
       && purpose !== 'markdown-folder'
       && purpose !== 'restore-backup'
-      && purpose !== 'vault-backup'
     const extensions = purpose === 'export-html' ? ['html']
       : purpose === 'export-pdf' ? ['pdf']
         : purpose === 'markdown-zip' ? ['zip']
@@ -572,7 +551,7 @@ export class DesktopPickerOwner {
                     : purpose === 'textbundle' ? ['textpack', 'textbundle', 'zip']
                       : []
     const result = await abortableDialog(
-      purpose === 'export-html' || purpose === 'export-pdf'
+      purpose === 'export-html' || purpose === 'export-pdf' || purpose === 'vault-backup'
         ? this.options.showSaveDialog({ kind: 'save', purpose, directory: false, file: true, extensions })
         : this.options.showOpenDialog({ kind: 'open', purpose, directory, file, extensions }),
       signal,
@@ -581,7 +560,7 @@ export class DesktopPickerOwner {
     if (signal.aborted) return { operationId: request.identity.operationId, status: 'cancelled' }
     if (this.disposed || !this.options.isAvailable()) return { operationId: request.identity.operationId, status: 'unavailable' }
     if (result === undefined || result.canceled || result.filePath === undefined) return { operationId: request.identity.operationId, status: 'cancelled' }
-    const selected = purpose === 'export-html' || purpose === 'export-pdf'
+    const selected = purpose === 'export-html' || purpose === 'export-pdf' || purpose === 'vault-backup'
       ? await this.destinationPath(result.filePath, purpose)
       : await this.selectedPath(result.filePath, { directory, file }, purpose)
     if (selected === undefined) return { operationId: request.identity.operationId, status: 'denied' }
@@ -881,7 +860,7 @@ export class DesktopPickerOwner {
     signal: AbortSignal,
   ): Promise<LockDesktopDestinationPlanResult> {
     if (signal.aborted) return error('aborted')
-    if (!noExtra(request, ['entries', 'identity', 'planDigest', 'publicationName', 'purpose', 'selectionAuthorization', 'totalBytes'])
+    if (!noExtra(request, ['entries', 'identity', 'planDigest', 'purpose', 'selectionAuthorization', 'totalBytes'])
       || !identity(request.identity) || !text(request.selectionAuthorization) || !digest(request.planDigest)) return error('unsafe-target')
     this.assertAuthority(request.identity)
     const grant = this.consumeGrant(request.selectionAuthorization, request.identity, request.purpose)
@@ -890,9 +869,7 @@ export class DesktopPickerOwner {
     if (computed !== request.planDigest) return error('digest-mismatch')
     if (this.activeVault !== undefined && pathOverlaps(grant.path, this.activeVault.path)) return error('unsafe-target')
     this.validateDestinationPlan(request, grant.path)
-    const path = request.purpose === 'vault-backup'
-      ? join(grant.path, request.publicationName as string)
-      : grant.path
+    const path = grant.path
     const selectedEntry = request.entries[0]
     if (selectedEntry === undefined) return error('invalid-entry')
     const parent = dirname(path)
@@ -922,7 +899,6 @@ export class DesktopPickerOwner {
       parentIdentity,
       path,
       planDigest: request.planDigest,
-      publicationName: request.publicationName,
       purpose: request.purpose,
       snapshot: captured.snapshot,
       totalBytes: request.totalBytes,
@@ -945,7 +921,7 @@ export class DesktopPickerOwner {
 
   async beginDestination(request: BeginDesktopDestinationRequest, signal: AbortSignal): Promise<BeginDesktopDestinationResult> {
     if (signal.aborted) return error('aborted')
-    if (!noExtra(request, ['authorization', 'entries', 'identity', 'planDigest', 'publicationName', 'purpose', 'totalBytes'])
+    if (!noExtra(request, ['authorization', 'entries', 'identity', 'planDigest', 'purpose', 'totalBytes'])
       || !identity(request.identity) || !text(request.authorization) || !digest(request.planDigest)) return error('unsafe-target')
     this.assertAuthority(request.identity)
     const locked = this.destinationPlans.get(request.authorization)
@@ -967,8 +943,7 @@ export class DesktopPickerOwner {
       return error('expired')
     }
     if (!sameIdentity(locked.identity, request.identity) || locked.planDigest !== request.planDigest
-      || locked.purpose !== request.purpose || locked.publicationName !== request.publicationName
-      || locked.totalBytes !== request.totalBytes) {
+      || locked.purpose !== request.purpose || locked.totalBytes !== request.totalBytes) {
       await this.closeLockedPlan(request.authorization, locked)
       return error('stale')
     }
@@ -1002,9 +977,7 @@ export class DesktopPickerOwner {
       label: locked.label,
       planDigest: locked.planDigest,
       entries: locked.entries.map(entry => ({
-        absolutePath: entry.target.kind === 'selected-file'
-          ? locked.path
-          : join(locked.path, entry.target.relativePath),
+        absolutePath: locked.path,
         digest: entry.digest,
         entry,
         handle: undefined,
@@ -1013,7 +986,6 @@ export class DesktopPickerOwner {
       })),
       parentIdentity: locked.parentIdentity,
       path: locked.path,
-      publicationName: locked.publicationName,
       purpose: locked.purpose,
       recoveryPaths: [],
       snapshot: locked.snapshot,
@@ -1066,8 +1038,7 @@ export class DesktopPickerOwner {
       await this.closeDestination(request.session, destination)
       throw cause
     }
-    const entryIndex = destination.entries.indexOf(entry)
-    const staged = entry.stagedPath ?? join(destination.stagingRoot as string, request.target.kind === 'selected-file' ? 'selected-file' : `relative-${entryIndex}`)
+    const staged = entry.stagedPath ?? join(destination.stagingRoot as string, 'selected-file')
     entry.stagedPath = staged
     const ancestors = await this.ensureStagedParent(destination, staged)
     if (entry.stagedAncestors.length === 0) entry.stagedAncestors = ancestors
@@ -1108,18 +1079,11 @@ export class DesktopPickerOwner {
       return error('stale')
     }
     const planEntries = destination.entries.map(entry => entry.entry)
-    const recomputed = computeDesktopDestinationPlanDigest((destination.publicationName === undefined
-      ? {
-          entries: planEntries,
-          purpose: destination.purpose,
-          totalBytes: destination.totalBytes,
-        }
-      : {
-          entries: planEntries,
-          publicationName: destination.publicationName,
-          purpose: destination.purpose,
-          totalBytes: destination.totalBytes,
-        }) as unknown as DesktopDestinationPlan)
+    const recomputed = computeDesktopDestinationPlanDigest({
+      entries: planEntries as [DesktopDestinationPlanEntry],
+      purpose: destination.purpose,
+      totalBytes: destination.totalBytes,
+    })
     if (recomputed !== destination.planDigest) {
       await this.closeDestination(request.session, destination)
       return error('digest-mismatch')
@@ -1146,17 +1110,7 @@ export class DesktopPickerOwner {
       if (!stateEqual(commitState, destination.expectedState)) return error('changed')
       this.assertDestinationParent(destination.path, destination.parentIdentity)
       await this.assertStagingStable(destination)
-      if (destination.purpose === 'vault-backup') {
-        this.materializeBackupTree(destination)
-        this.assertAuthority(destination.identity)
-        if (signal.aborted) return error('aborted')
-        this.assertDestinationParent(destination.path, destination.parentIdentity)
-        this.assertBackupTree(destination)
-        renameSync(destination.stagingRoot as string, destination.path)
-        destination.stagingRoot = undefined
-        destination.stagingRevision = undefined
-      } else {
-        const selectedEntry = destination.entries[0]
+      const selectedEntry = destination.entries[0]
         if (selectedEntry === undefined || selectedEntry.stagedPath === undefined) return error('invalid-entry')
         this.assertDestinationParent(destination.path, destination.parentIdentity)
         const commitPath = join(dirname(destination.path), `.tockteam-picker-commit-${this.options.randomId()}`)
@@ -1238,8 +1192,7 @@ export class DesktopPickerOwner {
           destination.journalPath = undefined
           destination.snapshot = undefined
         }
-        destination.stagingRoot = undefined
-      }
+      destination.stagingRoot = undefined
       await this.syncDirectory(dirname(destination.path))
       for (const entry of destination.entries) {
         const handle = entry.handle
@@ -1335,7 +1288,7 @@ export class DesktopPickerOwner {
     if (cleanup.status !== 'complete') throw new Error('TockTeam Desktop picker cleanup was incomplete')
   }
 
-  private async destinationPath(rawPath: string, purpose: 'export-html' | 'export-pdf'): Promise<{ path: string; label: string } | undefined> {
+  private async destinationPath(rawPath: string, purpose: 'export-html' | 'export-pdf' | 'vault-backup'): Promise<{ path: string; label: string } | undefined> {
     const selected = resolve(rawPath)
     if (await this.hasUnsafeSymlinkAncestor(dirname(selected))) return undefined
     const parent = await this.safeRealpath(dirname(selected))
@@ -1344,7 +1297,7 @@ export class DesktopPickerOwner {
     const existing = await this.safeLstat(path)
     if (existing !== undefined && (!existing.isFile() || existing.isSymbolicLink())) return undefined
     const extension = extname(path).slice(1).toLowerCase()
-    if (extension !== purpose.slice('export-'.length) || !safeName(basename(path))) return undefined
+    if (purpose !== 'vault-backup' && extension !== purpose.slice('export-'.length) || !safeName(basename(path))) return undefined
     return { path, label: labelOf(path) }
   }
 
@@ -1949,7 +1902,7 @@ export class DesktopPickerOwner {
   }> {
     const stat = await this.safeLstat(path)
     if (stat === undefined) return { expectedState: { status: 'absent' }, journalPath: undefined, snapshot: undefined }
-    if (purpose === 'vault-backup' || !stat.isFile() || stat.isSymbolicLink()
+    if (!stat.isFile() || stat.isSymbolicLink()
       || await this.hasUnsafeSymlinkAncestor(path)) return error('exists')
     if (Number(stat.size) > MAX_DESKTOP_SOURCE_TOTAL_BYTES) return error('limit-exceeded')
     const source = await open(path, fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW)
@@ -2040,7 +1993,7 @@ export class DesktopPickerOwner {
   private async destinationState(path: string, purpose: DesktopExportPurpose): Promise<DesktopDestinationState> {
     const stat = await this.safeLstat(path)
     if (stat === undefined) return { status: 'absent' }
-    if (purpose === 'vault-backup' || !stat.isFile()) return error('exists')
+    if (!stat.isFile()) return error('exists')
     return { replaceAuthorized: true, revision: cast(revisionOf(stat)), status: 'existing' }
   }
 
@@ -2073,60 +2026,6 @@ export class DesktopPickerOwner {
     const stat = await this.safeLstat(destination.stagingRoot)
     if (canonical !== destination.stagingRoot || stat === undefined || !stat.isDirectory()
       || identityOf(stat) !== destination.stagingRevision) return error('unsafe-target')
-  }
-
-  private materializeBackupTree(destination: DestinationSession): void {
-    const stagingRoot = destination.stagingRoot
-    if (stagingRoot === undefined) return error('closed')
-    for (const entry of destination.entries) {
-      if (entry.entry.target.kind !== 'relative-file' || entry.stagedPath === undefined) return error('invalid-entry')
-      let parent = stagingRoot
-      entry.stagedAncestors = []
-      for (const segment of dirname(entry.entry.target.relativePath).split('/').filter(segment => segment !== '.')) {
-        parent = join(parent, segment)
-        try { mkdirSync(parent, { recursive: false, mode: 0o700 }) } catch (cause) {
-          if ((cause as NodeJS.ErrnoException).code !== 'EEXIST') throw cause
-        }
-        const stat = lstatSync(parent)
-        if (!stat.isDirectory() || stat.isSymbolicLink() || realpathSync(parent) !== parent) return error('unsafe-target')
-        entry.stagedAncestors.push({ identity: identityOf(stat), path: parent })
-      }
-      const target = join(stagingRoot, entry.entry.target.relativePath)
-      renameSync(entry.stagedPath, target)
-      entry.stagedPath = target
-    }
-  }
-
-  private assertBackupTree(destination: DestinationSession): void {
-    const stagingRoot = destination.stagingRoot
-    if (stagingRoot === undefined) return error('closed')
-    const expectedFiles = new Map(destination.entries.map(entry => [entry.entry.target.kind === 'relative-file' ? entry.entry.target.relativePath : '', entry]))
-    const expectedDirectories = new Set<string>()
-    for (const relativePath of expectedFiles.keys()) {
-      for (let directory = dirname(relativePath); directory !== '.'; directory = dirname(directory)) expectedDirectories.add(directory)
-    }
-    const seenFiles = new Set<string>()
-    const seenDirectories = new Set<string>()
-    const walk = (directory: string, relativeRoot: string): void => {
-      for (const child of readdirSync(directory, { withFileTypes: true })) {
-        const relativePath = relativeRoot === '' ? child.name : `${relativeRoot}/${child.name}`
-        const path = join(directory, child.name)
-        const stat = lstatSync(path)
-        if (stat.isSymbolicLink()) return error('unsafe-target')
-        if (stat.isDirectory()) {
-          seenDirectories.add(relativePath)
-          walk(path, relativePath)
-        } else if (stat.isFile()) {
-          const entry = expectedFiles.get(relativePath)
-          if (entry === undefined || entry.stagedIdentity !== identityOf(stat)) return error('unsafe-target')
-          seenFiles.add(relativePath)
-        } else return error('unsafe-target')
-      }
-    }
-    walk(stagingRoot, '')
-    if (seenFiles.size !== expectedFiles.size || seenDirectories.size !== expectedDirectories.size
-      || [...expectedFiles.keys()].some(path => !seenFiles.has(path))
-      || [...expectedDirectories].some(path => !seenDirectories.has(path))) return error('unsafe-target')
   }
 
   private async assertStagedAncestors(entry: DestinationEntry): Promise<void> {

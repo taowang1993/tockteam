@@ -761,34 +761,28 @@ test('destination plan authorization rotates once, revokes idempotently, and tom
   await owner.dispose()
 })
 
-test('vault backup publishes its complete staged directory as one destination', async () => {
+test('vault backup publishes one opaque selected-file archive', async () => {
   const root = await canonicalTemp('tockteam-picker-backup-')
   const activeVault = await canonicalTemp('tockteam-picker-active-')
+  const output = join(root, 'vault-backup')
   const owner = new DesktopPickerOwner({
     isAvailable: () => true,
-    showOpenDialog: async options => ({ canceled: false, filePath: options.purpose === 'activate' ? activeVault : root }),
-    showSaveDialog: async () => ({ canceled: true }),
+    showOpenDialog: async () => ({ canceled: false, filePath: activeVault }),
+    showSaveDialog: async () => ({ canceled: false, filePath: output }),
   })
   await activate(owner)
   const operation = identity('vault-backup')
   const authorization = await grant(owner, { identity: operation, kind: 'destination', purpose: 'vault-backup' })
-  const manifest = new TextEncoder().encode('{"version":1}')
-  const note = new TextEncoder().encode('note')
+  const archive = new TextEncoder().encode('opaque archive bytes')
   const { begun, planDigest } = await lockAndBegin(owner, authorization, operation, {
-    entries: [
-      { digest: sha(manifest), size: manifest.length, target: { kind: 'relative-file', relativePath: 'manifest.json' as never } },
-      { digest: sha(note), size: note.length, target: { kind: 'relative-file', relativePath: 'notes/note.md' as never } },
-    ],
-    publicationName: 'backup' as never,
+    entries: [{ digest: sha(archive), size: archive.length, target: { kind: 'selected-file' } }],
     purpose: 'vault-backup',
-    totalBytes: manifest.length + note.length,
+    totalBytes: archive.length,
   })
-  await owner.writeDestinationChunk({ bytes: manifest, offset: 0, planDigest, session: begun.session, target: { kind: 'relative-file', relativePath: 'manifest.json' as never } }, new AbortController().signal)
-  await owner.writeDestinationChunk({ bytes: note, offset: 0, planDigest, session: begun.session, target: { kind: 'relative-file', relativePath: 'notes/note.md' as never } }, new AbortController().signal)
+  await owner.writeDestinationChunk({ bytes: archive, offset: 0, planDigest, session: begun.session, target: { kind: 'selected-file' } }, new AbortController().signal)
   const finalized = await owner.finalizeDestination({ expectedState: begun.expectedState, planDigest, session: begun.session }, new AbortController().signal)
   assert.equal(finalized.status, 'published')
-  assert.equal(await readFile(join(root, 'backup', 'manifest.json'), 'utf8'), '{"version":1}')
-  assert.equal(await readFile(join(root, 'backup', 'notes', 'note.md'), 'utf8'), 'note')
+  assert.deepEqual(await readFile(output), Buffer.from(archive))
   assert.equal(noStaging(await readdir(root)), true)
   await owner.dispose()
 })

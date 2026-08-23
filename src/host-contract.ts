@@ -87,9 +87,6 @@ export type DesktopOpaqueRevision = string & {
 export type DesktopSafeRelativePath = string & {
   readonly __desktopSafeRelativePath: unique symbol
 }
-export type DesktopSafeName = string & {
-  readonly __desktopSafeName: unique symbol
-}
 export type TockTeamDesktopVaultSelectionClaim = string & {
   readonly __tockTeamDesktopVaultSelectionClaim: unique symbol
 }
@@ -244,9 +241,7 @@ export interface ReleaseDesktopSourceResult {
   status: 'released' | 'already-released'
 }
 
-export type DesktopDestinationTarget =
-  | { kind: 'selected-file' }
-  | { kind: 'relative-file'; relativePath: DesktopSafeRelativePath }
+export type DesktopDestinationTarget = { kind: 'selected-file' }
 
 export interface DesktopDestinationPlanEntry {
   digest: DesktopSha256
@@ -258,32 +253,21 @@ export type DesktopSelectedFilePlanEntry = Omit<DesktopDestinationPlanEntry, 'ta
   target: Extract<DesktopDestinationTarget, { kind: 'selected-file' }>
 }
 
-export type DesktopRelativeFilePlanEntry = Omit<DesktopDestinationPlanEntry, 'target'> & {
-  target: Extract<DesktopDestinationTarget, { kind: 'relative-file' }>
-}
-
 export type DesktopDestinationState =
   | { status: 'absent' }
   | { replaceAuthorized: true; revision: DesktopOpaqueRevision; status: 'existing' }
 
 /**
- * Destination policy is purpose-owned, not caller-configurable:
- * export-html/export-pdf each have exactly one selected-file entry, the matching
- * extension, and no publicationName. vault-backup has 1..100,000 normalized,
- * case-fold-unique relative-file entries, a required single-segment
- * publicationName, exactly one manifest.json, and exact entry/total sizes.
+ * Destination policy is purpose-owned, not caller-configurable. Every purpose
+ * publishes one opaque selected file with an exact digest and size. The
+ * Import/Export owner, not Desktop, owns the versioned vault-backup archive
+ * codec and its normalized nested manifest.
  */
 export type DesktopDestinationPlan =
   | {
       entries: readonly [DesktopSelectedFilePlanEntry]
       publicationName?: never
-      purpose: 'export-html' | 'export-pdf'
-      totalBytes: number
-    }
-  | {
-      entries: readonly [DesktopRelativeFilePlanEntry, ...DesktopRelativeFilePlanEntry[]]
-      publicationName: DesktopSafeName
-      purpose: 'vault-backup'
+      purpose: 'export-html' | 'export-pdf' | 'vault-backup'
       totalBytes: number
     }
 
@@ -301,32 +285,6 @@ function isSafeInteger(value: unknown, maximum: number): value is number {
     && value <= maximum
 }
 
-function isSafeRelativePath(value: unknown): value is DesktopSafeRelativePath {
-  if (typeof value !== 'string'
-    || value !== value.normalize('NFC')
-    || Buffer.byteLength(value, 'utf8') > MAX_DESKTOP_SOURCE_RELATIVE_PATH_BYTES
-    || value.length === 0
-    || value.startsWith('/')
-    || value.includes('\\')
-    || /[\u0000-\u001f\u007f]/u.test(value)
-    || /^[A-Za-z]:/u.test(value)) return false
-  const segments = value.split('/')
-  return segments.every(segment => segment.length > 0 && segment !== '.' && segment !== '..')
-}
-
-function isSafePublicationName(value: unknown): value is DesktopSafeName {
-  return typeof value === 'string'
-    && value === value.normalize('NFC')
-    && Buffer.byteLength(value, 'utf8') <= MAX_DESKTOP_SOURCE_RELATIVE_PATH_BYTES
-    && value.length > 0
-    && value !== '.'
-    && value !== '..'
-    && !value.includes('/')
-    && !value.includes('\\')
-    && !/[\u0000-\u001f\u007f]/u.test(value)
-    && !/^[A-Za-z]:/u.test(value)
-}
-
 /** Validate and hash the exact ordered destination plan reviewed by the user. */
 export function computeDesktopDestinationPlanDigest(input: DesktopDestinationPlan): DesktopSha256 {
   if (typeof input !== 'object' || input === null
@@ -335,16 +293,16 @@ export function computeDesktopDestinationPlanDigest(input: DesktopDestinationPla
   if (input.purpose !== 'export-html' && input.purpose !== 'export-pdf' && input.purpose !== 'vault-backup') {
     throw new TockTeamDesktopGrantError('purpose-mismatch')
   }
-  if (input.entries.length === 0 || input.entries.length > MAX_DESKTOP_SOURCE_ENTRIES) {
+  const entries = input.entries as readonly DesktopDestinationPlanEntry[]
+  if (entries.length === 0 || entries.length > MAX_DESKTOP_SOURCE_ENTRIES) {
     throw new TockTeamDesktopGrantError('limit-exceeded')
   }
   if (!isSafeInteger(input.totalBytes, MAX_DESKTOP_SOURCE_TOTAL_BYTES)) {
     throw new TockTeamDesktopGrantError('limit-exceeded')
   }
 
-  const relativePaths: string[] = []
   let totalBytes = 0
-  for (const entry of input.entries) {
+  for (const entry of entries) {
     if (typeof entry !== 'object' || entry === null
       || !hasExactKeys(entry, ['digest', 'size', 'target'])) {
       throw new TockTeamDesktopGrantError('invalid-entry')
@@ -362,36 +320,16 @@ export function computeDesktopDestinationPlanDigest(input: DesktopDestinationPla
     if (typeof entry.target !== 'object' || entry.target === null) {
       throw new TockTeamDesktopGrantError('unsafe-target')
     }
-    if (entry.target.kind === 'selected-file') {
-      if (!hasExactKeys(entry.target, ['kind'])) throw new TockTeamDesktopGrantError('unsafe-target')
-    } else if (entry.target.kind === 'relative-file') {
-      if (!hasExactKeys(entry.target, ['kind', 'relativePath'])
-        || !isSafeRelativePath(entry.target.relativePath)) {
-        throw new TockTeamDesktopGrantError('unsafe-target')
-      }
-      relativePaths.push(entry.target.relativePath)
-    } else {
+    if (entry.target.kind !== 'selected-file' || !hasExactKeys(entry.target, ['kind'])) {
       throw new TockTeamDesktopGrantError('unsafe-target')
     }
   }
   if (totalBytes !== input.totalBytes) throw new TockTeamDesktopGrantError('size-mismatch')
 
-  if (input.purpose === 'export-html' || input.purpose === 'export-pdf') {
-    if (input.entries.length !== 1
-      || input.entries[0]?.target.kind !== 'selected-file'
-      || Object.hasOwn(input, 'publicationName')) {
-      throw new TockTeamDesktopGrantError('purpose-mismatch')
-    }
-  } else {
-    if (!isSafePublicationName(input.publicationName)
-      || relativePaths.length !== input.entries.length) {
-      throw new TockTeamDesktopGrantError('purpose-mismatch')
-    }
-    const folded = relativePaths.map(path => path.normalize('NFKC').toLowerCase())
-    if (new Set(folded).size !== folded.length) throw new TockTeamDesktopGrantError('unsafe-target')
-    if (folded.filter(path => path === 'manifest.json').length !== 1) {
-      throw new TockTeamDesktopGrantError('invalid-entry')
-    }
+  if (entries.length !== 1
+    || entries[0]?.target.kind !== 'selected-file'
+    || Object.hasOwn(input, 'publicationName')) {
+    throw new TockTeamDesktopGrantError('purpose-mismatch')
   }
 
   const canonical = [
@@ -400,9 +338,9 @@ export function computeDesktopDestinationPlanDigest(input: DesktopDestinationPla
     input.purpose,
     input.publicationName ?? null,
     input.totalBytes,
-    input.entries.map(entry => [
+    entries.map(entry => [
       entry.target.kind,
-      entry.target.kind === 'relative-file' ? entry.target.relativePath : null,
+      null,
       entry.size,
       entry.digest,
     ]),
