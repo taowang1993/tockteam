@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["../src/client.ts", "../src/guard.ts", "../src/client-api.ts"],
+  "sourcesContent": ["export * from './client-api.ts'\n", "export interface TockTeamSurfaceView {\n  kind: 'desktop' | 'web' | 'tui'\n}\n\nexport const TOCKTEAM_SURFACE_SERVICE = 'tockTeamSurface'\n\n/** Refuse every profile except the surface explicitly reported by TockTeam. */\nexport function assertDesktopSurface(value: unknown): asserts value is TockTeamSurfaceView & { kind: 'desktop' } {\n  if (typeof value !== 'object' || value === null\n    || (value as { kind?: unknown }).kind !== 'desktop') {\n    throw new Error('tockbot-note-desktop: TockTeam Desktop surface is required')\n  }\n}\n", "import type { Context } from '@deepseek-ai/cordis'\nimport { assertDesktopSurface, TOCKTEAM_SURFACE_SERVICE } from './guard.ts'\n\nexport const name = 'tockbot-note-desktop'\nexport const inject = [TOCKTEAM_SURFACE_SERVICE]\n\n/** Browser-side composition guard; native methods remain owned by Desktop. */\nexport function apply(ctx: Context): void {\n  assertDesktopSurface(ctx.get(TOCKTEAM_SURFACE_SERVICE))\n}\n\nexport { assertDesktopSurface, TOCKTEAM_SURFACE_SERVICE } from './guard.ts'\n"],
+  "mappings": ";;;;;;;;;;;;;;;;;;;;;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;;;ACIO,IAAM,2BAA2B;AAGjC,SAAS,qBAAqB,OAA4E;AAC/G,MAAI,OAAO,UAAU,YAAY,UAAU,QACrC,MAA6B,SAAS,WAAW;AACrD,UAAM,IAAI,MAAM,4DAA4D;AAAA,EAC9E;AACF;;;ACTO,IAAM,OAAO;AACb,IAAM,SAAS,CAAC,wBAAwB;AAGxC,SAAS,MAAM,KAAoB;AACxC,uBAAqB,IAAI,IAAI,wBAAwB,CAAC;AACxD;",
+  "names": []
+}

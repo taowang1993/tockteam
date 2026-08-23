@@ -39,6 +39,7 @@
     "dist/host.js",
     "host.d.ts",
     "dist/cordis.patch.yml",
+    "vendor/tockbot-note-desktop-0.1.0.tgz",
     "vendor/tockbot-note-runtime-0.1.2.tgz",
     "vendor/tockbot-note-vault-0.6.0.tgz",
     "vendor/tockbot-web-clip-0.1.2.tgz",

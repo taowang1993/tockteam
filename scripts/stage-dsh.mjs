@@ -710,6 +710,13 @@ function installDesktopPackages({ desktopOnly = false } = {}) {
       ],
     },
     {
+      manifest: join(root, 'vendor', 'tockbot-note-desktop', 'package.json'),
+      files: [
+        [join(root, 'vendor', 'tockbot-note-desktop', 'lib'), 'dist'],
+        [join(root, 'vendor', 'tockbot-note-desktop', 'cordis.patch.yml'), 'cordis.patch.yml'],
+      ],
+    },
+    {
       manifest: join(root, 'vendor', 'tockteam-tocktutor-assistant', 'package.json'),
       files: [
         [join(root, 'vendor', 'tockteam-tocktutor-assistant', 'lib'), 'lib'],

@@ -62,12 +62,14 @@ const dumpOutput = `${dump.stdout}\n${dump.stderr}`
 assert.match(dumpOutput, /note-vault-runtime/)
 assert.match(dumpOutput, /note-vault-tools/)
 assert.match(dumpOutput, /tocktutor-workbench/)
+assert.match(dumpOutput, /tockbot-note-desktop/)
 assert.match(dumpOutput, /tocktutor-assistant/)
 assert.match(dumpOutput, /tocktutor-import-export/)
 assert.match(dumpOutput, /web-clip/)
 assert.equal((dumpOutput.match(/\bid:\s*note-vault-runtime\b/g) ?? []).length, 1)
 assert.equal((dumpOutput.match(/\bid:\s*note-vault-tools\b/g) ?? []).length, 1)
 assert.equal((dumpOutput.match(/\bid:\s*tocktutor-workbench\b/g) ?? []).length, 1)
+assert.equal((dumpOutput.match(/\bid:\s*tockbot-note-desktop\b/g) ?? []).length, 1)
 assert.equal((dumpOutput.match(/\bid:\s*tocktutor-assistant\b/g) ?? []).length, 1)
 assert.equal((dumpOutput.match(/\bid:\s*tocktutor-import-export\b/g) ?? []).length, 1)
 assert.equal((dumpOutput.match(/\bid:\s*web-clip\b/g) ?? []).length, 1)
@@ -151,6 +153,25 @@ const workbenchClientImport = spawnSync(nodeBinary, [
   env: runtimeEnvironment,
 })
 assert.equal(workbenchClientImport.status, 0, workbenchClientImport.stderr || workbenchClientImport.stdout)
+const desktopAdapterManifest = JSON.parse(readFileSync(join(
+  resources,
+  'dsh-runtime',
+  'node_modules',
+  'tockbot-note-desktop',
+  'package.json',
+), 'utf8'))
+assert.equal(desktopAdapterManifest.version, '0.1.0')
+assert.equal(desktopAdapterManifest.peerDependencies['@tockteam/desktop'], '>=0.1.6 <0.2.0')
+const desktopAdapterImport = spawnSync(nodeBinary, [
+  '--input-type=module',
+  '-e',
+  "import { name } from 'tockbot-note-desktop'; if (name !== 'tockbot-note-desktop') process.exit(1)",
+], {
+  cwd: join(resources, 'dsh-runtime'),
+  encoding: 'utf8',
+  env: runtimeEnvironment,
+})
+assert.equal(desktopAdapterImport.status, 0, desktopAdapterImport.stderr || desktopAdapterImport.stdout)
 const assistantManifest = JSON.parse(readFileSync(join(
   resources,
   'dsh-runtime',
