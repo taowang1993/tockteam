@@ -1134,8 +1134,10 @@ export class DesktopPickerOwner {
         if (destination.expectedState.status === 'absent') {
           try {
             this.assertDestinationParent(destination.path, destination.parentIdentity)
-            renameSync(commitPath, destination.path)
-            delete selectedEntry.stagedPath
+            linkSync(commitPath, destination.path)
+            const handle = selectedEntry.handle
+            selectedEntry.handle = undefined
+            await handle?.close()
           } catch (cause) {
             if ((cause as NodeJS.ErrnoException).code === 'EEXIST') return error('changed')
             throw cause
@@ -1170,8 +1172,10 @@ export class DesktopPickerOwner {
           }
           try {
             this.assertDestinationParent(destination.path, destination.parentIdentity)
-            renameSync(commitPath, destination.path)
-            delete selectedEntry.stagedPath
+            linkSync(commitPath, destination.path)
+            const handle = selectedEntry.handle
+            selectedEntry.handle = undefined
+            await handle?.close()
             await this.options.onCheckpoint?.('target-published', signal)
           } catch (cause) {
             await this.restoreBackup(destination, backupPath)
@@ -1698,9 +1702,10 @@ export class DesktopPickerOwner {
   private unlinkRecoveryRecordArtifacts(
     value: DestinationRecoveryRecord,
     includeBackup: boolean,
+    includeCommit = true,
   ): void {
     if (includeBackup && value.backupPath !== null) this.unlinkRecordedArtifact(value.backupPath, '.tockteam-picker-backup-', value.backupIdentity)
-    if (value.commitPath !== null) this.unlinkRecordedArtifact(value.commitPath, '.tockteam-picker-commit-', value.commitIdentity)
+    if (includeCommit && value.commitPath !== null) this.unlinkRecordedArtifact(value.commitPath, '.tockteam-picker-commit-', value.commitIdentity)
     if (value.snapshotPath !== null) this.unlinkRecordedArtifact(value.snapshotPath, '.tockteam-picker-snapshot-', value.snapshotIdentity)
   }
 
@@ -1774,10 +1779,10 @@ export class DesktopPickerOwner {
       const snapshotSafe = !snapshotExists || snapshotOld
 
       if (destinationNew && backupOld && snapshotOld && commitSafe) {
-        this.unlinkRecoveryRecordArtifacts(value, true)
+        this.unlinkRecoveryRecordArtifacts(value, true, false)
         await this.syncDirectory(parent)
       } else if (destinationNew && !backupExists && snapshotSafe && commitSafe) {
-        this.unlinkRecoveryRecordArtifacts(value, false)
+        this.unlinkRecoveryRecordArtifacts(value, false, false)
         await this.syncDirectory(parent)
       } else if (!destinationExists && backupOld && snapshotOld && commitSafe && value.backupPath !== null) {
         this.assertDestinationParent(value.destinationPath, value.parentIdentity)

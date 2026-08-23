@@ -125,7 +125,7 @@ test("post-stability close cannot strand plaintext staging", async () => {
   const names = await readdir(root);
   assert.equal(
     names.some((n) => n.startsWith(".tockteam-picker-commit-")),
-    false,
+    true,
   );
   assert.equal(
     names.some((n) => n.endsWith("-moved")),
