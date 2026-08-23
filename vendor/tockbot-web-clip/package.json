@@ -1,0 +1,61 @@
+{
+  "name": "tockbot-web-clip",
+  "version": "0.1.2",
+  "description": "Hardened Web Viewer, Reader View, and reviewed clipping for TockTutor",
+  "type": "module",
+  "main": "./lib/index.js",
+  "types": "./lib/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./client": {
+      "types": "./lib/client.d.ts",
+      "default": "./lib/client.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "cordis.patch.yml"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "inject": [
+        "@tockteam/desktop",
+        "@tockteam/sidebar"
+      ],
+      "platform": "web"
+    }
+  },
+  "engines": {
+    "node": "^22.19.0 || >=24.0.0"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "4.0.1",
+    "react": "^18.2.0",
+    "tockbot-note-runtime": "0.1.2"
+  },
+  "dependencies": {
+    "@deepseek-ai/schemastery": "3.18.1"
+  },
+  "devDependencies": {
+    "@deepseek-ai/cordis": "4.0.1",
+    "@deepseek-ai/cordis-plugin-include": "1.0.6",
+    "@deepseek-ai/cordis-plugin-loader": "1.0.2",
+    "@types/node": "22.20.0",
+    "@types/react": "18.3.1",
+    "react": "18.3.1",
+    "tockbot-note-runtime": "0.1.2",
+    "typescript": "6.0.3"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json && node scripts/build-client.mjs",
+    "test": "node --test tests/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  }
+}

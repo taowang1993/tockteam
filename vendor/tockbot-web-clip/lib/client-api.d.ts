@@ -1,0 +1,14 @@
+import type { WriteDocumentResult } from 'tockbot-note-runtime';
+import type { ReaderViewResult } from './reader.ts';
+import type { ClipApproval, ClipPreview } from './review.ts';
+import type { ViewerPageResult } from './server.ts';
+export declare function viewerInputUrl(raw: string): string;
+export declare function parseReaderViewResult(value: unknown): ReaderViewResult;
+export declare function parseViewerPageResult(value: unknown): ViewerPageResult;
+export declare function parseClipPreview(value: unknown): ClipPreview;
+export declare function parseClipApplyResult(value: unknown): WriteDocumentResult;
+export declare function requestViewerPage(url: string, signal: AbortSignal): Promise<ViewerPageResult>;
+export declare function requestReaderView(url: string, signal: AbortSignal): Promise<ReaderViewResult>;
+export declare function requestClipPreview(url: string, destination: string | undefined, signal: AbortSignal): Promise<ClipPreview>;
+export declare function requestClipApply(approval: ClipApproval, signal: AbortSignal): Promise<WriteDocumentResult>;
+export declare function requestClipCancel(reviewId: string, signal: AbortSignal): Promise<boolean>;

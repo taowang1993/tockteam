@@ -19,6 +19,7 @@ export const BUNDLED_DESKTOP_CLIENT_PLUGINS = [
   '@tockteam/pinned-summary',
   '@tockteam/plugin-marketplace',
   '@tockteam/tocktutor-workbench',
+  'tockbot-web-clip',
 ] as const
 
 /** Host-only capability providers shipped inside the desktop runtime. */
@@ -38,6 +39,7 @@ export const DESKTOP_BUNDLES = [
   'tockbot-note-runtime',
   '@tockteam/note-vault-tools',
   '@tockteam/tocktutor-workbench',
+  'tockbot-web-clip',
   '@deepseek-ai/dsh-web-app',
   '@tockteam/desktop',
 ] as const

@@ -26,11 +26,16 @@ test('desktop profile pins the released TockTutor runtime and peer package', () 
     peerDependencies: Record<string, string>
     version: string
   }
+  const webClip = JSON.parse(readFileSync(new URL('../vendor/tockbot-web-clip/package.json', import.meta.url), 'utf8')) as {
+    peerDependencies: Record<string, string>
+    version: string
+  }
   assert.equal(packageJson.dependencies, undefined)
   assert.equal(packageJson.devDependencies['tockbot-note-runtime'], 'file:vendor/tockbot-note-runtime-0.1.2.tgz')
   assert.equal(packageJson.devDependencies['tockbot-note-vault'], 'file:vendor/tockbot-note-vault-0.6.0.tgz')
   assert.equal(packageJson.devDependencies['@tockteam/note-vault-tools'], 'file:vendor/tockteam-note-vault-tools-0.1.2.tgz')
   assert.ok(packageJson.files.includes('vendor/tockteam-tocktutor-workbench-0.1.4.tgz'))
+  assert.ok(packageJson.files.includes('vendor/tockbot-web-clip-0.1.2.tgz'))
   assert.equal(runtime.version, '0.1.2')
   assert.equal(runtime.peerDependencies['tockbot-note-vault'], '0.6.0')
   assert.equal(vault.version, '0.6.0')
@@ -39,11 +44,14 @@ test('desktop profile pins the released TockTutor runtime and peer package', () 
   assert.equal(workbench.version, '0.1.4')
   assert.equal(workbench.peerDependencies['@tockteam/desktop'], '>=0.1.6 <0.2.0')
   assert.equal(workbench.peerDependencies['tockbot-note-runtime'], '0.1.2')
-  assert.deepEqual(DESKTOP_BUNDLES.slice(0, 6), [
+  assert.equal(webClip.version, '0.1.2')
+  assert.equal(webClip.peerDependencies['tockbot-note-runtime'], '0.1.2')
+  assert.deepEqual(DESKTOP_BUNDLES.slice(0, 7), [
     '@deepseek-ai/dsh-base',
     'tockbot-note-runtime',
     '@tockteam/note-vault-tools',
     '@tockteam/tocktutor-workbench',
+    'tockbot-web-clip',
     '@deepseek-ai/dsh-web-app',
     '@tockteam/desktop',
   ])

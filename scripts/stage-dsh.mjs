@@ -705,6 +705,13 @@ function installDesktopPackages({ desktopOnly = false } = {}) {
       ],
     },
     {
+      manifest: join(root, 'vendor', 'tockbot-web-clip', 'package.json'),
+      files: [
+        [join(root, 'vendor', 'tockbot-web-clip', 'lib'), 'lib'],
+        [join(root, 'vendor', 'tockbot-web-clip', 'cordis.patch.yml'), 'cordis.patch.yml'],
+      ],
+    },
+    {
       manifest: join(root, 'package.json'),
       files: [
         [join(root, 'dist', 'plugin.js'), 'dist/plugin.js'],

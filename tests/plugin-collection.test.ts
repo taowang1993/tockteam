@@ -12,6 +12,7 @@ import {
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const ownedBundleDirectories = new Map<string, string>([
   ['@tockteam/tocktutor-workbench', 'tockteam-tocktutor-workbench'],
+  ['tockbot-web-clip', 'tockbot-web-clip'],
 ])
 
 function packageDirectory(plugin: string): string {
@@ -30,7 +31,7 @@ test('desktop bundle registers every packaged DSH plugin', () => {
     const ownedPatch = ownedBundleDirectories.has(plugin)
       ? readFileSync(join(packageDirectory(plugin), 'cordis.patch.yml'), 'utf8')
       : patch
-    assert.match(ownedPatch, new RegExp(`name: ['"]${plugin.replace('/', '\\/')}['"]`))
+    assert.match(ownedPatch, new RegExp(`name: ['"]?${plugin.replace('/', '\\/')}['"]?`))
   }
   for (const plugin of BUNDLED_DESKTOP_CLIENT_PLUGINS) {
     const manifest = JSON.parse(readFileSync(join(packageDirectory(plugin), 'package.json'), 'utf8'))

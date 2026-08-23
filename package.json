@@ -41,6 +41,7 @@
     "dist/cordis.patch.yml",
     "vendor/tockbot-note-runtime-0.1.2.tgz",
     "vendor/tockbot-note-vault-0.6.0.tgz",
+    "vendor/tockbot-web-clip-0.1.2.tgz",
     "vendor/tockteam-note-vault-tools-0.1.2.tgz",
     "vendor/tockteam-tocktutor-workbench-0.1.4.tgz",
     "dist/tockteam.js",
