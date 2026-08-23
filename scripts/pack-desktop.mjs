@@ -12,15 +12,23 @@ if (!output || output === root || existsSync(output)) {
 
 const work = mkdtempSync(join(tmpdir(), 'tockteam-desktop-pack-'))
 try {
+  execFileSync('pnpm', ['run', 'build'], {
+    cwd: root,
+    stdio: 'inherit',
+  })
   execFileSync('pnpm', ['pack', '--pack-destination', work], {
     cwd: root,
     stdio: 'inherit',
   })
-  const packed = join(work, 'tockteam-desktop-0.1.5.tgz')
+  const sourceManifest = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'))
+  const packed = join(work, `tockteam-desktop-${String(sourceManifest.version)}.tgz`)
   if (!existsSync(packed)) throw new Error(`pnpm pack did not create ${packed}`)
 
   execFileSync('tar', ['-xzf', packed, '-C', work])
   const packageDir = join(work, 'package')
+  for (const required of ['dist/client-api.js', 'dist/host.js', 'client.d.ts', 'host.d.ts']) {
+    if (!existsSync(join(packageDir, required))) throw new Error(`packed Desktop is missing ${required}`)
+  }
   const manifestPath = join(packageDir, 'package.json')
   const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'))
   // Runtime/vault pins are app-staging inputs, not installable package

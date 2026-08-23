@@ -12,6 +12,7 @@ import {
   MAX_DESKTOP_SOURCE_RELATIVE_PATH_BYTES,
   MAX_DESKTOP_SOURCE_TOTAL_BYTES,
   TockTeamDesktopGrantError,
+  computeDesktopDestinationPlanDigest,
   type NativeOperationIdentity,
 } from '../src/host-contract.ts'
 import {
@@ -62,8 +63,13 @@ async function activate(owner: DesktopPickerOwner): Promise<void> {
   const picked = await owner.pick({ identity: activationIdentity, kind: 'vault', purpose: 'activate' }, new AbortController().signal)
   assert.equal(picked.status, 'selected')
   if (picked.status !== 'selected') return
-  const activation = await owner.beginVaultActivation({ authorization: picked.authorization, identity: activationIdentity }, new AbortController().signal)
-  await owner.commitVaultActivation({ activationId: activation.activationId, generation: 1, vaultId: 'vault-1' }, new AbortController().signal)
+  const consumed = await owner.consumeVaultSelection({ authorization: picked.authorization, identity: activationIdentity }, new AbortController().signal)
+  assert.equal(consumed.status, 'consumed')
+  if (consumed.status !== 'consumed') return
+  assert.deepEqual(await owner.bindVaultSelection({ claim: consumed.claim, operationId: activationIdentity.operationId, vaultGeneration: 1, vaultId: 'vault-1' }, new AbortController().signal), {
+    operationId: activationIdentity.operationId,
+    status: 'bound',
+  })
 }
 
 test('picker owner consumes opaque source grants and reads bounded path-free sessions', async () => {
@@ -126,16 +132,21 @@ test('picker owner enforces destination plan purpose and publishes atomically', 
   const picked = await owner.pick({ identity: operation, kind: 'destination', purpose: 'export-html' }, new AbortController().signal)
   assert.equal(picked.status, 'selected')
   if (picked.status !== 'selected') return
-  const begun = await owner.beginDestination({
-    authorization: picked.authorization,
-    entries: [{ digest: digest(content) as never, size: content.byteLength, target: { kind: 'selected-file' } }],
-    identity: operation,
-    planDigest: digest(new TextEncoder().encode('plan')) as never,
-    purpose: 'export-html',
+  const plan = {
+    entries: [{ digest: digest(content) as never, size: content.byteLength, target: { kind: 'selected-file' as const } }] as const,
+    purpose: 'export-html' as const,
     totalBytes: content.byteLength,
+  }
+  const planDigest = computeDesktopDestinationPlanDigest(plan)
+  const locked = await owner.lockDestinationPlan({
+    ...plan,
+    identity: operation,
+    planDigest,
+    selectionAuthorization: picked.authorization,
   }, new AbortController().signal)
-  await owner.writeDestinationChunk({ bytes: content, offset: 0, session: begun.session, target: { kind: 'selected-file' } }, new AbortController().signal)
-  const finalized = await owner.finalizeDestination({ expectedState: begun.expectedState, planDigest: digest(new TextEncoder().encode('plan')) as never, session: begun.session }, new AbortController().signal)
+  const begun = await owner.beginDestination({ ...plan, authorization: locked.authorization, identity: operation, planDigest }, new AbortController().signal)
+  await owner.writeDestinationChunk({ bytes: content, offset: 0, planDigest, session: begun.session, target: { kind: 'selected-file' } }, new AbortController().signal)
+  const finalized = await owner.finalizeDestination({ expectedState: begun.expectedState, planDigest, session: begun.session }, new AbortController().signal)
   assert.equal(finalized.status, 'published')
   assert.equal(await readFile(output, 'utf8'), '<p>ok</p>')
   await owner.dispose()

@@ -1,4 +1,12 @@
 import {
+  TockTeamDesktopVaultSelection,
+  type TockTeamDesktopVaultSelectionBindInput,
+  type TockTeamDesktopVaultSelectionBindResult,
+  type TockTeamDesktopVaultSelectionConsumeInput,
+  type TockTeamDesktopVaultSelectionConsumeResult,
+  type TockTeamDesktopVaultSelectionReleaseInput,
+} from 'tockbot-note-runtime'
+import {
   TockTeamDesktopGrantError,
   type AbortDesktopDestinationRequest,
   type AbortDesktopDestinationResult,
@@ -12,10 +20,14 @@ import {
   type FinalizeDesktopDestinationResult,
   type ListDesktopSourceRequest,
   type ListDesktopSourceResult,
+  type LockDesktopDestinationPlanRequest,
+  type LockDesktopDestinationPlanResult,
   type ReadDesktopSourceRequest,
   type ReadDesktopSourceResult,
   type ReleaseDesktopSourceRequest,
   type ReleaseDesktopSourceResult,
+  type RevokeDesktopDestinationPlanRequest,
+  type RevokeDesktopDestinationPlanResult,
   type RevalidateDesktopSourceRequest,
   type RevalidateDesktopSourceResult,
   type StatDesktopSourceRequest,
@@ -29,17 +41,6 @@ export interface DesktopPickerProviderEnvironment {
   endpoint?: string | undefined
   token?: string | undefined
 }
-
-export interface DesktopPickerVaultActivationResult {
-  active: true
-  generation: number
-  id: string
-}
-
-export type DesktopPickerVaultActivator = (
-  canonicalRoot: string,
-  expectedGeneration: number,
-) => DesktopPickerVaultActivationResult
 
 const MAX_ERROR_TEXT = 256
 
@@ -76,7 +77,8 @@ export class DesktopPickerProvider implements TockTeamDesktopPickerService {
   private readonly token: string | undefined
   private readonly lifetime = new AbortController()
   private readonly fetcher: typeof fetch
-  private readonly activateVault: DesktopPickerVaultActivator | undefined
+  private readonly sourceSessions = new Set<ReleaseDesktopSourceRequest['session']>()
+  private readonly destinationSessions = new Set<AbortDesktopDestinationRequest['session']>()
   private disposed = false
 
   constructor(
@@ -85,41 +87,21 @@ export class DesktopPickerProvider implements TockTeamDesktopPickerService {
       token: process.env.DSH_DESKTOP_PICKER_TOKEN,
     },
     fetcher: typeof fetch = fetch,
-    activateVault?: DesktopPickerVaultActivator,
   ) {
     this.endpoint = endpointOf(environment)
     this.token = environment.token
     this.fetcher = fetcher
-    this.activateVault = activateVault
   }
 
   async pick(request: DesktopPickerRequest, signal: AbortSignal): Promise<DesktopPickerResult> {
     if (signal.aborted) return { operationId: request.identity.operationId, status: 'cancelled' }
-    const result = await this.call('pick', request, signal) as DesktopPickerResult
-    if (request.kind !== 'vault' || result.status !== 'selected') return result
-    if (this.activateVault === undefined) throw new TockTeamDesktopGrantError('owner-lost')
-    const activation = await this.call('beginVaultActivation', {
-      authorization: result.authorization,
-      identity: request.identity,
-    }, signal) as { activationId: string; canonicalPath: string }
-    try {
-      const state = this.activateVault(activation.canonicalPath, request.identity.vaultGeneration)
-      if (state.active !== true || !Number.isSafeInteger(state.generation) || state.generation <= 0
-        || typeof state.id !== 'string' || state.id.length === 0) throw new TockTeamDesktopGrantError('stale')
-      await this.call('commitVaultActivation', {
-        activationId: activation.activationId,
-        generation: state.generation,
-        vaultId: state.id,
-      }, signal)
-      return result
-    } catch (cause) {
-      await this.call('abortVaultActivation', { activationId: activation.activationId }).catch(() => {})
-      throw cause
-    }
+    return await this.call('pick', request, signal) as DesktopPickerResult
   }
 
   async beginSource(request: BeginDesktopSourceRequest, signal: AbortSignal): Promise<BeginDesktopSourceResult> {
-    return await this.call('beginSource', request, signal) as BeginDesktopSourceResult
+    const result = await this.call('beginSource', request, signal) as BeginDesktopSourceResult
+    this.sourceSessions.add(result.session)
+    return result
   }
 
   async listSource(request: ListDesktopSourceRequest, signal: AbortSignal): Promise<ListDesktopSourceResult> {
@@ -140,11 +122,31 @@ export class DesktopPickerProvider implements TockTeamDesktopPickerService {
 
   async releaseSource(request: ReleaseDesktopSourceRequest): Promise<ReleaseDesktopSourceResult> {
     if (this.disposed) return { status: 'already-released' }
-    return await this.call('releaseSource', request) as ReleaseDesktopSourceResult
+    try {
+      return await this.call('releaseSource', request) as ReleaseDesktopSourceResult
+    } finally {
+      this.sourceSessions.delete(request.session)
+    }
+  }
+
+  async lockDestinationPlan(
+    request: LockDesktopDestinationPlanRequest,
+    signal: AbortSignal,
+  ): Promise<LockDesktopDestinationPlanResult> {
+    return await this.call('lockDestinationPlan', request, signal) as LockDesktopDestinationPlanResult
+  }
+
+  async revokeDestinationPlan(
+    request: RevokeDesktopDestinationPlanRequest,
+  ): Promise<RevokeDesktopDestinationPlanResult> {
+    if (this.disposed) return { status: 'already-closed' }
+    return await this.call('revokeDestinationPlan', request) as RevokeDesktopDestinationPlanResult
   }
 
   async beginDestination(request: BeginDesktopDestinationRequest, signal: AbortSignal): Promise<BeginDesktopDestinationResult> {
-    return await this.call('beginDestination', request, signal) as BeginDesktopDestinationResult
+    const result = await this.call('beginDestination', request, signal) as BeginDesktopDestinationResult
+    this.destinationSessions.add(result.session)
+    return result
   }
 
   async writeDestinationChunk(request: WriteDesktopDestinationChunkRequest, signal: AbortSignal): Promise<WriteDesktopDestinationChunkResult> {
@@ -155,21 +157,35 @@ export class DesktopPickerProvider implements TockTeamDesktopPickerService {
   }
 
   async finalizeDestination(request: FinalizeDesktopDestinationRequest, signal: AbortSignal): Promise<FinalizeDesktopDestinationResult> {
-    return await this.call('finalizeDestination', request, signal) as FinalizeDesktopDestinationResult
+    try {
+      return await this.call('finalizeDestination', request, signal) as FinalizeDesktopDestinationResult
+    } finally {
+      this.destinationSessions.delete(request.session)
+    }
   }
 
   async abortDestination(request: AbortDesktopDestinationRequest): Promise<AbortDesktopDestinationResult> {
     if (this.disposed) return { cleanup: { status: 'complete' }, stagedBytes: 0, stagedEntries: 0, status: 'already-closed' }
-    return await this.call('abortDestination', request) as AbortDesktopDestinationResult
+    try {
+      return await this.call('abortDestination', request) as AbortDesktopDestinationResult
+    } finally {
+      this.destinationSessions.delete(request.session)
+    }
   }
 
-  dispose(): void {
+  async dispose(): Promise<void> {
     if (this.disposed) return
+    await Promise.allSettled([
+      ...[...this.sourceSessions].map(session => this.call('releaseSource', { session })),
+      ...[...this.destinationSessions].map(session => this.call('abortDestination', { session })),
+    ])
+    this.sourceSessions.clear()
+    this.destinationSessions.clear()
     this.disposed = true
     this.lifetime.abort()
   }
 
-  private async call(method: string, request: unknown, signal?: AbortSignal): Promise<unknown> {
+  async nativeRequest(method: string, request: unknown, signal?: AbortSignal): Promise<unknown> {
     if (this.disposed || this.endpoint === undefined || this.token === undefined) {
       throw new Error('TockTeam Desktop picker owner is unavailable')
     }
@@ -202,5 +218,45 @@ export class DesktopPickerProvider implements TockTeamDesktopPickerService {
       if (isAbort(error) || signal?.aborted === true) throw new TockTeamDesktopGrantError('aborted')
       throw new Error(`TockTeam Desktop picker owner failed: ${errorText(error)}`, { cause: error })
     }
+  }
+
+  private async call(method: string, request: unknown, signal?: AbortSignal): Promise<unknown> {
+    return await this.nativeRequest(method, request, signal)
+  }
+}
+
+/** Runtime 0.1.2 Host-only adapter for two-phase vault selection authority. */
+export class DesktopVaultSelectionProvider extends TockTeamDesktopVaultSelection {
+  private readonly transport: DesktopPickerProvider
+
+  constructor(
+    ctx: unknown,
+    environment?: DesktopPickerProviderEnvironment,
+    fetcher?: typeof fetch,
+  ) {
+    super(ctx as never)
+    this.transport = new DesktopPickerProvider(environment, fetcher)
+  }
+
+  async consume(
+    input: TockTeamDesktopVaultSelectionConsumeInput,
+    signal: AbortSignal,
+  ): Promise<TockTeamDesktopVaultSelectionConsumeResult> {
+    return await this.transport.nativeRequest('consumeVaultSelection', input, signal) as TockTeamDesktopVaultSelectionConsumeResult
+  }
+
+  async bind(
+    input: TockTeamDesktopVaultSelectionBindInput,
+    signal: AbortSignal,
+  ): Promise<TockTeamDesktopVaultSelectionBindResult> {
+    return await this.transport.nativeRequest('bindVaultSelection', input, signal) as TockTeamDesktopVaultSelectionBindResult
+  }
+
+  async release(input: TockTeamDesktopVaultSelectionReleaseInput): Promise<void> {
+    await this.transport.nativeRequest('releaseVaultSelection', input)
+  }
+
+  async close(): Promise<void> {
+    await this.transport.dispose()
   }
 }

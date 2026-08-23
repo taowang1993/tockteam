@@ -1,4 +1,6 @@
-import { copyFileSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { execFileSync } from 'node:child_process'
+import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { build } from 'esbuild'
@@ -168,6 +170,27 @@ for (const plugin of pluginPackages) {
 }
 
 await Promise.all(builds)
+
+const declarationRoot = mkdtempSync(join(tmpdir(), 'tockteam-host-declarations-'))
+try {
+  execFileSync(process.execPath, [
+    join(root, 'node_modules', 'typescript', 'bin', 'tsc'),
+    '--ignoreConfig',
+    '--target', 'ES2024',
+    '--module', 'NodeNext',
+    '--moduleResolution', 'NodeNext',
+    '--strict',
+    '--skipLibCheck',
+    '--types', 'node',
+    '--declaration',
+    '--emitDeclarationOnly',
+    '--outDir', declarationRoot,
+    join(root, 'src', 'host-contract.ts'),
+  ], { cwd: root, stdio: 'inherit' })
+  copyFileSync(join(declarationRoot, 'host-contract.d.ts'), join(root, 'host.d.ts'))
+} finally {
+  rmSync(declarationRoot, { recursive: true, force: true })
+}
 
 copyFileSync(join(root, 'src', 'splash.html'), join(dist, 'splash.html'))
 copyFileSync(join(root, 'cordis.patch.yml'), join(dist, 'cordis.patch.yml'))

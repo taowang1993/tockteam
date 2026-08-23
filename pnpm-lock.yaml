@@ -8,6 +8,15 @@ importers:
 
   .:
     devDependencies:
+      '@deepseek-ai/cordis':
+        specifier: 4.0.1
+        version: 4.0.1(@deepseek-ai/cordis-plugin-include@1.0.6)(@deepseek-ai/cordis-plugin-loader@1.0.2)
+      '@deepseek-ai/cordis-plugin-include':
+        specifier: 1.0.6
+        version: 1.0.6(@deepseek-ai/cordis-plugin-loader@1.0.2)(@deepseek-ai/cordis@4.0.1)
+      '@deepseek-ai/cordis-plugin-loader':
+        specifier: 1.0.2
+        version: 1.0.2(@deepseek-ai/cordis@4.0.1)
       '@types/node':
         specifier: ^24.10.0
         version: 24.13.3
@@ -24,8 +33,8 @@ importers:
         specifier: 11.20.0
         version: 11.20.0
       tockbot-note-runtime:
-        specifier: file:vendor/tockbot-note-runtime-0.1.1.tgz
-        version: file:vendor/tockbot-note-runtime-0.1.1.tgz(@deepseek-ai/cordis@4.0.1)(tockbot-note-vault@file:vendor/tockbot-note-vault-0.6.0.tgz)
+        specifier: file:vendor/tockbot-note-runtime-0.1.2.tgz
+        version: file:vendor/tockbot-note-runtime-0.1.2.tgz(@deepseek-ai/cordis@4.0.1)(tockbot-note-vault@file:vendor/tockbot-note-vault-0.6.0.tgz)
       tockbot-note-vault:
         specifier: file:vendor/tockbot-note-vault-0.6.0.tgz
         version: file:vendor/tockbot-note-vault-0.6.0.tgz
@@ -2255,9 +2264,9 @@ packages:
     resolution: {integrity: sha512-e0votIpp4Uo2AJYSzVHV6xCcawuiez3DzqDAbrTc3YxBkplN6e+dM13ZeIcZnDg/QpSuU2zfZ3rzwY8ukEnaXw==}
     engines: {node: '>=14.14'}
 
-  tockbot-note-runtime@file:vendor/tockbot-note-runtime-0.1.1.tgz:
-    resolution: {integrity: sha512-9OaBB4CIFnKS6Qo8YagJZk4a8C+zU7vvpr4Dv9pde8pTZ28+KV2dvzWtj2FBR5Yq902ABRJ/vFhKO8s0ndPxpg==, tarball: file:vendor/tockbot-note-runtime-0.1.1.tgz}
-    version: 0.1.1
+  tockbot-note-runtime@file:vendor/tockbot-note-runtime-0.1.2.tgz:
+    resolution: {integrity: sha512-xUKlar4MfvrmBXNAZK1fjmSILpVU/c8DBkVb93VxCiRw/oZty9vK3+6gxFBh4TMmoTZSE7guXBxEWBYg+oSmEw==, tarball: file:vendor/tockbot-note-runtime-0.1.2.tgz}
+    version: 0.1.2
     engines: {node: ^22.19.0 || >=24.0.0}
     peerDependencies:
       '@deepseek-ai/cordis': 4.0.1
@@ -4343,7 +4352,7 @@ snapshots:
 
   tmp@0.2.7: {}
 
-  tockbot-note-runtime@file:vendor/tockbot-note-runtime-0.1.1.tgz(@deepseek-ai/cordis@4.0.1)(tockbot-note-vault@file:vendor/tockbot-note-vault-0.6.0.tgz):
+  tockbot-note-runtime@file:vendor/tockbot-note-runtime-0.1.2.tgz(@deepseek-ai/cordis@4.0.1)(tockbot-note-vault@file:vendor/tockbot-note-vault-0.6.0.tgz):
     dependencies:
       '@deepseek-ai/cordis': 4.0.1(@deepseek-ai/cordis-plugin-include@1.0.6)(@deepseek-ai/cordis-plugin-loader@1.0.2)
       '@deepseek-ai/schemastery': 3.18.1

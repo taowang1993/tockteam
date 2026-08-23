@@ -1,6 +1,6 @@
 {
   "name": "tockbot-note-runtime",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Host-only Cordis service for one active local TockTutor vault",
   "type": "module",
   "main": "./lib/index.js",

@@ -1,24 +1,4 @@
-export const TOCKTEAM_DESKTOP_PICKER_SERVICE = 'tockTeamDesktopPicker' as const
-export const TOCKTEAM_DESKTOP_DISPATCH_SERVICE = 'tockTeamDesktopDispatch' as const
-export const TOCKTEAM_DESKTOP_POPOUT_SERVICE = 'tockTeamDesktopPopOut' as const
-export const TOCKTEAM_DESKTOP_MICROPHONE_SERVICE = 'tockTeamDesktopMicrophone' as const
-export const TOCKTEAM_DESKTOP_PRINT_EXPORT_SERVICE = 'tockTeamDesktopPrintExport' as const
-
-/** Hard ceilings; a source request may only choose stricter positive limits. */
-export const MAX_DESKTOP_SOURCE_ENTRIES = 100_000
-export const MAX_DESKTOP_SOURCE_DEPTH = 128
-export const MAX_DESKTOP_SOURCE_ENTRY_BYTES = 1024 * 1024 * 1024
-export const MAX_DESKTOP_SOURCE_TOTAL_BYTES = 1024 * 1024 * 1024
-export const MAX_DESKTOP_SOURCE_RELATIVE_PATH_BYTES = 4096
-export const MAX_DESKTOP_SOURCE_PAGE_ENTRIES = 256
-export const MAX_DESKTOP_DESTINATION_CHUNK_BYTES = 1024 * 1024
-export const MAX_DESKTOP_GRANT_SESSION_MS = 15 * 60 * 1000
-export const MAX_PRINT_EXPORT_HTML_BYTES = 8 * 1024 * 1024
-export const MAX_PRINT_EXPORT_TITLE_BYTES = 512
-export const MAX_PRINT_EXPORT_RESOURCE_REFERENCES = 256
-export const MAX_PRINT_EXPORT_RESOURCE_URL_BYTES = 2 * 1024 * 1024
-
-export type NativeFailureStatus = 'cancelled' | 'denied' | 'stale' | 'unavailable'
+import { createHash } from 'node:crypto'
 
 export interface NativeRequestIdentity {
   requestId: string
@@ -26,27 +6,6 @@ export interface NativeRequestIdentity {
   sessionId: string
   vaultId: string | null
   vaultGeneration: number
-}
-
-export type NativeOperationIdentity = NativeRequestIdentity & {
-  operationId: string
-}
-
-export type DesktopPickerIdentity = NativeOperationIdentity
-export type DesktopPickerAuthorization = string & { readonly __desktopPickerAuthorization: unique symbol }
-export type DesktopPickerLabel = string & { readonly __desktopPickerLabel: unique symbol }
-export type DesktopSha256 = string & { readonly __desktopSha256: unique symbol }
-export type DesktopSourceSession = string & { readonly __desktopSourceSession: unique symbol }
-export type DesktopDestinationSession = string & { readonly __desktopDestinationSession: unique symbol }
-export type DesktopSourceEntryId = string & { readonly __desktopSourceEntryId: unique symbol }
-export type DesktopSourceCursor = string & { readonly __desktopSourceCursor: unique symbol }
-export type DesktopOpaqueRevision = string & { readonly __desktopOpaqueRevision: unique symbol }
-export type DesktopSafeRelativePath = string & { readonly __desktopSafeRelativePath: unique symbol }
-export type DesktopSafeName = string & { readonly __desktopSafeName: unique symbol }
-
-export type NativeFailureResult = {
-  operationId: string
-  status: NativeFailureStatus
 }
 
 export type TockTutorProtocolRequest = {
@@ -62,6 +21,77 @@ export type TockTutorProtocolRequest = {
   paneType?: 'tab' | 'split' | 'window'
   xSuccess?: string
   xError?: string
+}
+
+export const TOCKTEAM_DESKTOP_PICKER_SERVICE = 'tockTeamDesktopPicker' as const
+export const TOCKTEAM_DESKTOP_DISPATCH_SERVICE = 'tockTeamDesktopDispatch' as const
+export const TOCKTEAM_DESKTOP_POPOUT_SERVICE = 'tockTeamDesktopPopOut' as const
+export const TOCKTEAM_DESKTOP_MICROPHONE_SERVICE = 'tockTeamDesktopMicrophone' as const
+export const TOCKTEAM_DESKTOP_PRINT_EXPORT_SERVICE = 'tockTeamDesktopPrintExport' as const
+export const TOCKTEAM_DESKTOP_VAULT_SELECTION_SERVICE = 'tockTeamDesktopVaultSelection' as const
+
+/** Hard ceilings; a source request may only choose stricter positive limits. */
+export const MAX_DESKTOP_SOURCE_ENTRIES = 100_000
+export const MAX_DESKTOP_SOURCE_DEPTH = 128
+export const MAX_DESKTOP_SOURCE_ENTRY_BYTES = 1024 * 1024 * 1024
+export const MAX_DESKTOP_SOURCE_TOTAL_BYTES = 1024 * 1024 * 1024
+export const MAX_DESKTOP_SOURCE_RELATIVE_PATH_BYTES = 4096
+export const MAX_DESKTOP_SOURCE_PAGE_ENTRIES = 256
+export const MAX_DESKTOP_DESTINATION_CHUNK_BYTES = 1024 * 1024
+export const MAX_DESKTOP_GRANT_SESSION_MS = 15 * 60 * 1000
+export const DESKTOP_DESTINATION_PLAN_VERSION = 1 as const
+export const MAX_PRINT_EXPORT_HTML_BYTES = 8 * 1024 * 1024
+export const MAX_PRINT_EXPORT_TITLE_BYTES = 512
+export const MAX_PRINT_EXPORT_RESOURCE_REFERENCES = 256
+export const MAX_PRINT_EXPORT_RESOURCE_URL_BYTES = 2 * 1024 * 1024
+
+export type NativeFailureStatus = 'cancelled' | 'denied' | 'stale' | 'unavailable'
+
+export type NativeOperationIdentity = NativeRequestIdentity & {
+  operationId: string
+}
+
+export type NativeFailureResult = {
+  operationId: string
+  status: NativeFailureStatus
+}
+
+export type DesktopPickerIdentity = NativeOperationIdentity
+export type DesktopPickerAuthorization = string & {
+  readonly __desktopPickerAuthorization: unique symbol
+}
+export type DesktopPickerLabel = string & {
+  readonly __desktopPickerLabel: unique symbol
+}
+export type DesktopSha256 = string & {
+  readonly __desktopSha256: unique symbol
+}
+export type DesktopDestinationPlanAuthorization = string & {
+  readonly __desktopDestinationPlanAuthorization: unique symbol
+}
+export type DesktopSourceSession = string & {
+  readonly __desktopSourceSession: unique symbol
+}
+export type DesktopDestinationSession = string & {
+  readonly __desktopDestinationSession: unique symbol
+}
+export type DesktopSourceEntryId = string & {
+  readonly __desktopSourceEntryId: unique symbol
+}
+export type DesktopSourceCursor = string & {
+  readonly __desktopSourceCursor: unique symbol
+}
+export type DesktopOpaqueRevision = string & {
+  readonly __desktopOpaqueRevision: unique symbol
+}
+export type DesktopSafeRelativePath = string & {
+  readonly __desktopSafeRelativePath: unique symbol
+}
+export type DesktopSafeName = string & {
+  readonly __desktopSafeName: unique symbol
+}
+export type TockTeamDesktopVaultSelectionClaim = string & {
+  readonly __tockTeamDesktopVaultSelectionClaim: unique symbol
 }
 
 export type DesktopSourcePurpose =
@@ -243,25 +273,169 @@ export type DesktopDestinationState =
  * case-fold-unique relative-file entries, a required single-segment
  * publicationName, exactly one manifest.json, and exact entry/total sizes.
  */
-type BeginDesktopDestinationBaseRequest = {
-  authorization: DesktopPickerAuthorization
-  identity: DesktopPickerIdentity
-  planDigest: DesktopSha256
-  totalBytes: number
-}
-
-export type BeginDesktopDestinationRequest = BeginDesktopDestinationBaseRequest & (
+export type DesktopDestinationPlan =
   | {
-      entries: [DesktopSelectedFilePlanEntry]
+      entries: readonly [DesktopSelectedFilePlanEntry]
       publicationName?: never
       purpose: 'export-html' | 'export-pdf'
+      totalBytes: number
     }
   | {
-      entries: [DesktopRelativeFilePlanEntry, ...DesktopRelativeFilePlanEntry[]]
+      entries: readonly [DesktopRelativeFilePlanEntry, ...DesktopRelativeFilePlanEntry[]]
       publicationName: DesktopSafeName
       purpose: 'vault-backup'
+      totalBytes: number
     }
-)
+
+function hasExactKeys(value: object, required: readonly string[], optional: readonly string[] = []): boolean {
+  const keys = Object.keys(value)
+  return required.every(key => Object.hasOwn(value, key))
+    && keys.every(key => required.includes(key) || optional.includes(key))
+}
+
+function isSafeInteger(value: unknown, maximum: number): value is number {
+  return typeof value === 'number'
+    && Number.isSafeInteger(value)
+    && !Object.is(value, -0)
+    && value >= 0
+    && value <= maximum
+}
+
+function isSafeRelativePath(value: unknown): value is DesktopSafeRelativePath {
+  if (typeof value !== 'string'
+    || value !== value.normalize('NFC')
+    || Buffer.byteLength(value, 'utf8') > MAX_DESKTOP_SOURCE_RELATIVE_PATH_BYTES
+    || value.length === 0
+    || value.startsWith('/')
+    || value.includes('\\')
+    || /[\u0000-\u001f\u007f]/u.test(value)
+    || /^[A-Za-z]:/u.test(value)) return false
+  const segments = value.split('/')
+  return segments.every(segment => segment.length > 0 && segment !== '.' && segment !== '..')
+}
+
+function isSafePublicationName(value: unknown): value is DesktopSafeName {
+  return typeof value === 'string'
+    && value === value.normalize('NFC')
+    && Buffer.byteLength(value, 'utf8') <= MAX_DESKTOP_SOURCE_RELATIVE_PATH_BYTES
+    && value.length > 0
+    && value !== '.'
+    && value !== '..'
+    && !value.includes('/')
+    && !value.includes('\\')
+    && !/[\u0000-\u001f\u007f]/u.test(value)
+    && !/^[A-Za-z]:/u.test(value)
+}
+
+/** Validate and hash the exact ordered destination plan reviewed by the user. */
+export function computeDesktopDestinationPlanDigest(input: DesktopDestinationPlan): DesktopSha256 {
+  if (typeof input !== 'object' || input === null
+    || !hasExactKeys(input, ['entries', 'purpose', 'totalBytes'], ['publicationName'])
+    || !Array.isArray(input.entries)) throw new TockTeamDesktopGrantError('invalid-entry')
+  if (input.purpose !== 'export-html' && input.purpose !== 'export-pdf' && input.purpose !== 'vault-backup') {
+    throw new TockTeamDesktopGrantError('purpose-mismatch')
+  }
+  if (input.entries.length === 0 || input.entries.length > MAX_DESKTOP_SOURCE_ENTRIES) {
+    throw new TockTeamDesktopGrantError('limit-exceeded')
+  }
+  if (!isSafeInteger(input.totalBytes, MAX_DESKTOP_SOURCE_TOTAL_BYTES)) {
+    throw new TockTeamDesktopGrantError('limit-exceeded')
+  }
+
+  const relativePaths: string[] = []
+  let totalBytes = 0
+  for (const entry of input.entries) {
+    if (typeof entry !== 'object' || entry === null
+      || !hasExactKeys(entry, ['digest', 'size', 'target'])) {
+      throw new TockTeamDesktopGrantError('invalid-entry')
+    }
+    if (!/^[0-9a-f]{64}$/u.test(entry.digest)) {
+      throw new TockTeamDesktopGrantError('digest-mismatch')
+    }
+    if (!isSafeInteger(entry.size, MAX_DESKTOP_SOURCE_ENTRY_BYTES)) {
+      throw new TockTeamDesktopGrantError('limit-exceeded')
+    }
+    totalBytes += entry.size
+    if (totalBytes > MAX_DESKTOP_SOURCE_TOTAL_BYTES) {
+      throw new TockTeamDesktopGrantError('limit-exceeded')
+    }
+    if (typeof entry.target !== 'object' || entry.target === null) {
+      throw new TockTeamDesktopGrantError('unsafe-target')
+    }
+    if (entry.target.kind === 'selected-file') {
+      if (!hasExactKeys(entry.target, ['kind'])) throw new TockTeamDesktopGrantError('unsafe-target')
+    } else if (entry.target.kind === 'relative-file') {
+      if (!hasExactKeys(entry.target, ['kind', 'relativePath'])
+        || !isSafeRelativePath(entry.target.relativePath)) {
+        throw new TockTeamDesktopGrantError('unsafe-target')
+      }
+      relativePaths.push(entry.target.relativePath)
+    } else {
+      throw new TockTeamDesktopGrantError('unsafe-target')
+    }
+  }
+  if (totalBytes !== input.totalBytes) throw new TockTeamDesktopGrantError('size-mismatch')
+
+  if (input.purpose === 'export-html' || input.purpose === 'export-pdf') {
+    if (input.entries.length !== 1
+      || input.entries[0]?.target.kind !== 'selected-file'
+      || Object.hasOwn(input, 'publicationName')) {
+      throw new TockTeamDesktopGrantError('purpose-mismatch')
+    }
+  } else {
+    if (!isSafePublicationName(input.publicationName)
+      || relativePaths.length !== input.entries.length) {
+      throw new TockTeamDesktopGrantError('purpose-mismatch')
+    }
+    const folded = relativePaths.map(path => path.normalize('NFKC').toLowerCase())
+    if (new Set(folded).size !== folded.length) throw new TockTeamDesktopGrantError('unsafe-target')
+    if (folded.filter(path => path === 'manifest.json').length !== 1) {
+      throw new TockTeamDesktopGrantError('invalid-entry')
+    }
+  }
+
+  const canonical = [
+    'tockteam-destination-plan',
+    DESKTOP_DESTINATION_PLAN_VERSION,
+    input.purpose,
+    input.publicationName ?? null,
+    input.totalBytes,
+    input.entries.map(entry => [
+      entry.target.kind,
+      entry.target.kind === 'relative-file' ? entry.target.relativePath : null,
+      entry.size,
+      entry.digest,
+    ]),
+  ]
+  return createHash('sha256').update(JSON.stringify(canonical), 'utf8').digest('hex') as DesktopSha256
+}
+
+type DesktopDestinationPlanRequestBase = {
+  identity: DesktopPickerIdentity
+  planDigest: DesktopSha256
+}
+
+export type LockDesktopDestinationPlanRequest = DesktopDestinationPlan & DesktopDestinationPlanRequestBase & {
+  selectionAuthorization: DesktopPickerAuthorization
+}
+
+export interface LockDesktopDestinationPlanResult {
+  authorization: DesktopDestinationPlanAuthorization
+  expectedState: DesktopDestinationState
+  expiresAt: number
+}
+
+export interface RevokeDesktopDestinationPlanRequest {
+  authorization: DesktopDestinationPlanAuthorization
+}
+
+export interface RevokeDesktopDestinationPlanResult {
+  status: 'revoked' | 'already-closed'
+}
+
+export type BeginDesktopDestinationRequest = DesktopDestinationPlan & DesktopDestinationPlanRequestBase & {
+  authorization: DesktopDestinationPlanAuthorization
+}
 
 export interface BeginDesktopDestinationResult {
   expiresAt: number
@@ -272,6 +446,7 @@ export interface BeginDesktopDestinationResult {
 export interface WriteDesktopDestinationChunkRequest {
   bytes: Uint8Array
   offset: number
+  planDigest: DesktopSha256
   session: DesktopDestinationSession
   target: DesktopDestinationTarget
 }
@@ -314,6 +489,10 @@ export interface AbortDesktopDestinationRequest {
   session: DesktopDestinationSession
 }
 
+/**
+ * Owners retain a bounded closed-session tombstone after drift or failed cleanup
+ * so a later idempotent abort can return staging and residual-cleanup evidence.
+ */
 export interface AbortDesktopDestinationResult {
   cleanup: DesktopCleanupEvidence
   stagedBytes: number
@@ -372,12 +551,15 @@ export class TockTeamDesktopGrantError extends Error {
 
 /**
  * A successful pick returns one use of purpose/identity-bound authorization.
- * beginSource/beginDestination consumes it into one opaque 15-minute session.
- * Sessions, cursors, entry IDs, and revisions never resolve to native paths.
- * Source reads are sequential <=1 MiB chunks and check size/revision; destination
- * chunks stage beside the target and finalize only after plan/digest/state checks.
- * releaseSource/abortDestination deliberately remain non-cancellable so bounded,
- * idempotent cleanup runs after cancellation, window loss, owner loss, or unload.
+ * beginSource consumes a source grant directly. Destinations first consume their
+ * selection through lockDestinationPlan, bind the exact reviewed plan and target
+ * state to a fresh Host-private authorization, then begin staging after approval.
+ * Sessions, cursors, entry IDs, revisions, and plan authorizations never resolve
+ * to native paths. Source reads are sequential <=1 MiB chunks and check
+ * size/revision; destination chunks repeat the plan digest and finalize only after
+ * plan/digest/state checks. releaseSource, revokeDestinationPlan, and
+ * abortDestination deliberately remain non-cancellable so bounded, idempotent
+ * cleanup runs after cancellation, window loss, owner loss, or unload.
  */
 export interface TockTeamDesktopPickerService {
   abortDestination(request: AbortDesktopDestinationRequest): Promise<AbortDesktopDestinationResult>
@@ -397,12 +579,19 @@ export interface TockTeamDesktopPickerService {
     request: ListDesktopSourceRequest,
     signal: AbortSignal,
   ): Promise<ListDesktopSourceResult>
+  lockDestinationPlan(
+    request: LockDesktopDestinationPlanRequest,
+    signal: AbortSignal,
+  ): Promise<LockDesktopDestinationPlanResult>
   pick(request: DesktopPickerRequest, signal: AbortSignal): Promise<DesktopPickerResult>
   readSource(
     request: ReadDesktopSourceRequest,
     signal: AbortSignal,
   ): Promise<ReadDesktopSourceResult>
   releaseSource(request: ReleaseDesktopSourceRequest): Promise<ReleaseDesktopSourceResult>
+  revokeDestinationPlan(
+    request: RevokeDesktopDestinationPlanRequest,
+  ): Promise<RevokeDesktopDestinationPlanResult>
   revalidateSource(
     request: RevalidateDesktopSourceRequest,
     signal: AbortSignal,
@@ -418,6 +607,69 @@ export interface TockTeamDesktopPickerService {
 }
 
 export type TockTeamDesktopPicker = TockTeamDesktopPickerService
+
+export type TockTeamDesktopVaultSelectionIdentity = DesktopPickerIdentity
+
+/** Unsigned base-10 bigint strings captured from the selected directory. */
+export interface TockTeamDesktopVaultSelectionFileIdentity {
+  dev: string
+  ino: string
+}
+
+export type TockTeamDesktopVaultSelectionFailureStatus = NativeFailureStatus
+
+export interface TockTeamDesktopVaultSelectionConsumeInput {
+  authorization: string
+  identity: TockTeamDesktopVaultSelectionIdentity
+}
+
+export type TockTeamDesktopVaultSelectionConsumeResult = {
+  operationId: string
+  status: TockTeamDesktopVaultSelectionFailureStatus
+} | {
+  canonicalPath: string
+  claim: TockTeamDesktopVaultSelectionClaim
+  identity: TockTeamDesktopVaultSelectionFileIdentity
+  operationId: string
+  status: 'consumed'
+}
+
+export interface TockTeamDesktopVaultSelectionBindInput {
+  claim: TockTeamDesktopVaultSelectionClaim
+  operationId: string
+  vaultGeneration: number
+  vaultId: string
+}
+
+export type TockTeamDesktopVaultSelectionBindResult = {
+  operationId: string
+  status: TockTeamDesktopVaultSelectionFailureStatus
+} | {
+  operationId: string
+  status: 'bound'
+}
+
+export interface TockTeamDesktopVaultSelectionReleaseInput {
+  claim: TockTeamDesktopVaultSelectionClaim
+  operationId: string
+}
+
+/**
+ * Host-only two-phase handoff consumed by Runtime 0.1.2. canonicalPath must
+ * never cross a browser/preload boundary. release is deliberately no-signal,
+ * bounded, idempotent best-effort cleanup and has no result to branch on.
+ */
+export interface TockTeamDesktopVaultSelection {
+  bind(
+    input: TockTeamDesktopVaultSelectionBindInput,
+    signal: AbortSignal,
+  ): Promise<TockTeamDesktopVaultSelectionBindResult>
+  consume(
+    input: TockTeamDesktopVaultSelectionConsumeInput,
+    signal: AbortSignal,
+  ): Promise<TockTeamDesktopVaultSelectionConsumeResult>
+  release(input: TockTeamDesktopVaultSelectionReleaseInput): Promise<void>
+}
 
 export type DesktopQuickAction = 'new' | 'daily' | 'capture' | 'search'
 
@@ -475,9 +727,18 @@ export type DesktopPopOutCloseResult = NativeFailureResult | {
 }
 
 export interface TockTeamDesktopPopOut {
-  close(request: DesktopPopOutWindowRequest, signal: AbortSignal): Promise<DesktopPopOutCloseResult>
-  closeAll(request: DesktopPopOutCloseAllRequest, signal: AbortSignal): Promise<DesktopPopOutCloseResult>
-  open(request: DesktopPopOutOpenRequest, signal: AbortSignal): Promise<DesktopPopOutOpenResult>
+  close(
+    request: DesktopPopOutWindowRequest,
+    signal: AbortSignal,
+  ): Promise<DesktopPopOutCloseResult>
+  closeAll(
+    request: DesktopPopOutCloseAllRequest,
+    signal: AbortSignal,
+  ): Promise<DesktopPopOutCloseResult>
+  open(
+    request: DesktopPopOutOpenRequest,
+    signal: AbortSignal,
+  ): Promise<DesktopPopOutOpenResult>
 }
 
 export interface DesktopMicrophoneRequest {
@@ -490,7 +751,10 @@ export type DesktopMicrophoneResult = NativeFailureResult | {
 }
 
 export interface TockTeamDesktopMicrophone {
-  request(request: DesktopMicrophoneRequest, signal: AbortSignal): Promise<DesktopMicrophoneResult>
+  request(
+    request: DesktopMicrophoneRequest,
+    signal: AbortSignal,
+  ): Promise<DesktopMicrophoneResult>
 }
 
 type DesktopPrintExportBaseRequest = {
@@ -526,7 +790,10 @@ export type DesktopPrintExportResult = NativeFailureResult | {
 }
 
 export interface TockTeamDesktopPrintExport {
-  render(request: DesktopPrintExportRequest, signal: AbortSignal): Promise<DesktopPrintExportResult>
+  render(
+    request: DesktopPrintExportRequest,
+    signal: AbortSignal,
+  ): Promise<DesktopPrintExportResult>
 }
 
 export interface NativeOwnerServices {
@@ -535,6 +802,7 @@ export interface NativeOwnerServices {
   picker: TockTeamDesktopPickerService
   popOut: TockTeamDesktopPopOut
   printExport: TockTeamDesktopPrintExport
+  vaultSelection: TockTeamDesktopVaultSelection
 }
 
 export interface NativeOwnerLifetime {

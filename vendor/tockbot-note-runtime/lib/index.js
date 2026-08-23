@@ -53,6 +53,12 @@ export class TockTeamDesktopReveal extends Service {
         super(ctx, 'tockTeamDesktopReveal');
     }
 }
+export const TOCKTEAM_DESKTOP_VAULT_SELECTION_SERVICE = 'tockTeamDesktopVaultSelection';
+export class TockTeamDesktopVaultSelection extends Service {
+    constructor(ctx) {
+        super(ctx, TOCKTEAM_DESKTOP_VAULT_SELECTION_SERVICE);
+    }
+}
 export class NoteVaultError extends Error {
     code;
     constructor(code, message) {
@@ -237,6 +243,46 @@ async function assertClaimedEntryConfined(root, candidate, claimed) {
         throw new NoteVaultError('changed', 'Vault destination changed after its exclusive claim');
     }
     assertInside(root, await realpath(candidate));
+}
+function boundedDesktopText(value, maxBytes) {
+    return typeof value === 'string'
+        && value.length > 0
+        && value.length <= maxBytes
+        && !value.includes('\0')
+        && Buffer.byteLength(value, 'utf8') <= maxBytes;
+}
+async function resolveDesktopVaultSelectionTarget(canonicalPath, expected) {
+    try {
+        if (!boundedDesktopText(canonicalPath, MAX_REVEAL_PATH_BYTES)
+            || !path.isAbsolute(canonicalPath))
+            throw new Error();
+        const resolved = await realpath(canonicalPath);
+        const entry = await lstat(canonicalPath, { bigint: true });
+        if (resolved !== canonicalPath
+            || !entry.isDirectory()
+            || entry.isSymbolicLink()
+            || entry.dev.toString(10) !== expected?.dev
+            || entry.ino.toString(10) !== expected?.ino)
+            throw new Error();
+        return { canonicalPath: resolved, identity: { dev: entry.dev, ino: entry.ino } };
+    }
+    catch {
+        throw new NoteVaultError('invalid-vault', 'The selected Desktop vault is not a safe directory');
+    }
+}
+async function assertDesktopVaultSelectionTargetBound(target) {
+    try {
+        const entry = await lstat(target.canonicalPath, { bigint: true });
+        if (!entry.isDirectory()
+            || entry.isSymbolicLink()
+            || entry.dev !== target.identity.dev
+            || entry.ino !== target.identity.ino
+            || await realpath(target.canonicalPath) !== target.canonicalPath)
+            throw new Error();
+    }
+    catch {
+        throw new NoteVaultError('changed', 'The selected Desktop vault changed during activation');
+    }
 }
 async function resolveRevealTarget(root, requestedPath) {
     const relativePath = normalizeEntryPath(requestedPath);
@@ -1627,6 +1673,7 @@ function activeVaultState(vaultRoot, generation) {
 }
 export class NoteVaultRuntime extends Service {
     static Config = Config;
+    activeDesktopSelectionOperations = new Set();
     activeRevealOperations = new Set();
     context;
     currentState;
@@ -1695,11 +1742,16 @@ export class NoteVaultRuntime extends Service {
             }
         }
         ctx.on('internal/service', (name) => {
-            if (name !== 'tockTeamDesktopReveal')
+            const operations = name === 'tockTeamDesktopReveal'
+                ? this.activeRevealOperations
+                : name === 'tockTeamDesktopVaultSelection'
+                    ? this.activeDesktopSelectionOperations
+                    : null;
+            if (operations === null)
                 return;
-            for (const operation of this.activeRevealOperations) {
+            for (const operation of operations) {
                 if (!operation.controller.signal.aborted) {
-                    operation.controller.abort(new NoteVaultError('unavailable', 'The Desktop reveal provider became unavailable'));
+                    operation.controller.abort(new NoteVaultError('unavailable', `The Desktop ${name === 'tockTeamDesktopReveal' ? 'reveal' : 'vault selection'} provider became unavailable`));
                 }
             }
         });
@@ -1711,7 +1763,10 @@ export class NoteVaultRuntime extends Service {
                 this.watcherToken = token;
             }
             return async () => {
-                for (const operation of this.activeRevealOperations) {
+                for (const operation of [
+                    ...this.activeDesktopSelectionOperations,
+                    ...this.activeRevealOperations,
+                ]) {
                     if (!operation.controller.signal.aborted) {
                         operation.controller.abort(new NoteVaultError('unavailable', 'The note vault runtime became unavailable'));
                     }
@@ -1816,6 +1871,137 @@ export class NoteVaultRuntime extends Service {
             throw new NoteVaultError('stale-vault', 'The active vault changed before the operation could finish');
         }
     }
+    async activateDesktopSelection(request, signal) {
+        const identity = request?.identity;
+        if (!boundedDesktopText(request?.authorization, 1024)
+            || identity === null
+            || typeof identity !== 'object'
+            || !Number.isSafeInteger(identity.vaultGeneration)
+            || identity.vaultGeneration < 0
+            || [identity.operationId, identity.requestId, identity.sessionId, identity.windowId]
+                .some(value => !boundedDesktopText(value, 512))
+            || (identity.vaultId !== null && !boundedDesktopText(identity.vaultId, 512))) {
+            throw new NoteVaultError('denied', 'The Desktop vault selection request is invalid');
+        }
+        const assertExpectedState = () => {
+            const state = this.currentState;
+            if (state.generation !== identity.vaultGeneration
+                || (state.active ? state.id : null) !== identity.vaultId)
+                throw new NoteVaultError('stale-vault', 'The active vault changed before Desktop activation');
+            return state;
+        };
+        assertExpectedState();
+        signal.throwIfAborted();
+        const controller = new AbortController();
+        const operation = { controller };
+        const operationSignal = AbortSignal.any([signal, controller.signal]);
+        this.activeDesktopSelectionOperations.add(operation);
+        const provider = this.context.get('tockTeamDesktopVaultSelection');
+        let claim;
+        let activated = false;
+        try {
+            if (provider === undefined) {
+                throw new NoteVaultError('unavailable', 'Desktop vault selection is unavailable in this runtime');
+            }
+            let consumed;
+            try {
+                consumed = await awaitWithAbort(provider.consume({
+                    authorization: request.authorization,
+                    identity,
+                }, operationSignal), operationSignal);
+            }
+            catch {
+                operationSignal.throwIfAborted();
+                assertExpectedState();
+                throw new NoteVaultError('unavailable', 'The Desktop vault selection provider failed');
+            }
+            operationSignal.throwIfAborted();
+            assertExpectedState();
+            if (consumed?.status === 'consumed') {
+                claim = consumed.claim;
+                if (!boundedDesktopText(claim, 1024)) {
+                    throw new NoteVaultError('unavailable', 'Desktop vault selection returned an invalid claim');
+                }
+            }
+            if (consumed?.operationId !== identity.operationId) {
+                throw new NoteVaultError('unavailable', 'Desktop vault selection returned an invalid operation');
+            }
+            if (consumed.status !== 'consumed') {
+                const status = consumed.status === 'stale' ? 'stale-vault'
+                    : consumed.status === 'cancelled' || consumed.status === 'denied' || consumed.status === 'unavailable'
+                        ? consumed.status
+                        : 'unavailable';
+                throw new NoteVaultError(status, 'Desktop vault selection could not be consumed');
+            }
+            if (claim === undefined)
+                throw new Error('unreachable missing Desktop vault selection claim');
+            const target = await resolveDesktopVaultSelectionTarget(consumed.canonicalPath, consumed.identity);
+            operationSignal.throwIfAborted();
+            const state = assertExpectedState();
+            const nextGeneration = target.canonicalPath === this.vaultRoot
+                ? state.generation
+                : state.generation + 1;
+            const nextState = activeVaultState(target.canonicalPath, nextGeneration);
+            if (!nextState.active)
+                throw new Error('unreachable inactive vault state');
+            let bound;
+            try {
+                bound = await awaitWithAbort(provider.bind({
+                    claim,
+                    operationId: identity.operationId,
+                    vaultGeneration: nextState.generation,
+                    vaultId: nextState.id,
+                }, operationSignal), operationSignal);
+            }
+            catch {
+                operationSignal.throwIfAborted();
+                assertExpectedState();
+                throw new NoteVaultError('unavailable', 'The Desktop vault selection provider failed');
+            }
+            operationSignal.throwIfAborted();
+            assertExpectedState();
+            if (bound?.operationId !== identity.operationId) {
+                throw new NoteVaultError('unavailable', 'Desktop vault selection returned an invalid operation');
+            }
+            if (bound.status !== 'bound') {
+                const status = bound.status === 'stale' ? 'stale-vault'
+                    : bound.status === 'cancelled' || bound.status === 'denied' || bound.status === 'unavailable'
+                        ? bound.status
+                        : 'unavailable';
+                throw new NoteVaultError(status, 'Desktop vault selection could not be bound');
+            }
+            await assertDesktopVaultSelectionTargetBound(target);
+            operationSignal.throwIfAborted();
+            this.activeDesktopSelectionOperations.delete(operation);
+            const result = this.activate(target.canonicalPath, identity.vaultGeneration);
+            if (!result.active)
+                throw new Error('unreachable inactive vault state');
+            activated = true;
+            return {
+                operationId: identity.operationId,
+                status: 'activated',
+                vaultGeneration: result.generation,
+                vaultId: result.id,
+            };
+        }
+        catch (error) {
+            operationSignal.throwIfAborted();
+            if (error instanceof NoteVaultError)
+                throw error;
+            throw new NoteVaultError('unavailable', 'Desktop vault selection failed safely');
+        }
+        finally {
+            this.activeDesktopSelectionOperations.delete(operation);
+            if (provider !== undefined && claim !== undefined && !activated) {
+                try {
+                    await provider.release({ claim, operationId: identity.operationId });
+                }
+                catch {
+                    // The provider also clears bounded claims on owner loss; cleanup cannot override the activation result.
+                }
+            }
+        }
+    }
     activate(vaultRoot, expectedGeneration) {
         if (expectedGeneration !== this.currentState.generation) {
             throw new NoteVaultError('stale-vault', 'The active vault generation changed before activation');
@@ -1842,6 +2028,11 @@ export class NoteVaultRuntime extends Service {
         catch {
             nextWatcher?.close();
             throw new NoteVaultError('recovery-unavailable', 'Could not persist the active vault selection');
+        }
+        for (const operation of this.activeDesktopSelectionOperations) {
+            if (!operation.controller.signal.aborted) {
+                operation.controller.abort(new NoteVaultError('stale-vault', 'The active vault changed before Desktop activation could finish'));
+            }
         }
         for (const operation of this.activeRevealOperations) {
             if (!operation.controller.signal.aborted) {

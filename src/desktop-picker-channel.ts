@@ -15,12 +15,14 @@ type PickerMethod =
   | 'revalidateSource'
   | 'releaseSource'
   | 'beginDestination'
+  | 'lockDestinationPlan'
+  | 'revokeDestinationPlan'
   | 'writeDestinationChunk'
   | 'finalizeDestination'
   | 'abortDestination'
-  | 'beginVaultActivation'
-  | 'commitVaultActivation'
-  | 'abortVaultActivation'
+  | 'consumeVaultSelection'
+  | 'bindVaultSelection'
+  | 'releaseVaultSelection'
 
 export interface DesktopPickerChannelEnvironment {
   endpoint: string
@@ -75,7 +77,6 @@ export class DesktopPickerChannel {
   private lifetime = new AbortController()
   private stopping = false
   private readonly pending = new Set<Promise<void>>()
-  private readonly consumedPickOperations = new Set<string>()
 
   constructor(owner: DesktopPickerOwner) {
     this.owner = owner
@@ -131,7 +132,6 @@ export class DesktopPickerChannel {
     const server = this.server
     this.server = undefined
     this.environmentValue = undefined
-    this.consumedPickOperations.clear()
     if (server !== undefined) {
       await new Promise<void>(resolve => {
         server.close(() => { resolve() })
@@ -159,9 +159,12 @@ export class DesktopPickerChannel {
     request.once('close', onRequestClose)
     response.once('close', onResponseClose)
     const signal = AbortSignal.any([this.lifetime.signal, requestLifetime.signal])
+    const destroyOnAbort = (): void => { request.destroy() }
+    signal.addEventListener('abort', destroyOnAbort, { once: true })
     try {
       await this.handleAuthorized(request, response, signal)
     } finally {
+      signal.removeEventListener('abort', destroyOnAbort)
       request.removeListener('aborted', abortRequest)
       request.removeListener('close', onRequestClose)
       response.removeListener('close', onResponseClose)
@@ -195,13 +198,6 @@ export class DesktopPickerChannel {
       return
     }
     const operationId = operationIdOf(requestValue)
-    if (method === 'pick') {
-      if (this.consumedPickOperations.has(operationId)) {
-        responseJson(response, 200, { ok: true, value: { operationId, status: 'denied' } })
-        return
-      }
-      this.consumedPickOperations.add(operationId)
-    }
     if (this.stopping || signal.aborted) {
       responseJson(response, 200, { ok: true, value: { operationId, status: 'cancelled' } })
       return
@@ -233,9 +229,10 @@ export class DesktopPickerChannel {
     return value === 'pick' || value === 'beginSource' || value === 'listSource'
       || value === 'statSource' || value === 'readSource' || value === 'revalidateSource'
       || value === 'releaseSource' || value === 'beginDestination'
+      || value === 'lockDestinationPlan' || value === 'revokeDestinationPlan'
       || value === 'writeDestinationChunk' || value === 'finalizeDestination'
-      || value === 'abortDestination' || value === 'beginVaultActivation'
-      || value === 'commitVaultActivation' || value === 'abortVaultActivation'
+      || value === 'abortDestination' || value === 'consumeVaultSelection'
+      || value === 'bindVaultSelection' || value === 'releaseVaultSelection'
   }
 
   private async call(method: PickerMethod, value: Record<string, unknown>, signal: AbortSignal): Promise<unknown> {
@@ -247,13 +244,15 @@ export class DesktopPickerChannel {
       case 'readSource': return await this.owner.readSource(value as never, signal)
       case 'revalidateSource': return await this.owner.revalidateSource(value as never, signal)
       case 'releaseSource': return await this.owner.releaseSource(value as never)
+      case 'lockDestinationPlan': return await this.owner.lockDestinationPlan(value as never, signal)
+      case 'revokeDestinationPlan': return await this.owner.revokeDestinationPlan(value as never)
       case 'beginDestination': return await this.owner.beginDestination(value as never, signal)
       case 'writeDestinationChunk': return await this.owner.writeDestinationChunk(value as never, signal)
       case 'finalizeDestination': return await this.owner.finalizeDestination(value as never, signal)
       case 'abortDestination': return await this.owner.abortDestination(value as never)
-      case 'beginVaultActivation': return await this.owner.beginVaultActivation(value as never, signal)
-      case 'commitVaultActivation': return await this.owner.commitVaultActivation(value as never, signal)
-      case 'abortVaultActivation': return await this.owner.abortVaultActivation(String(value.activationId ?? ''))
+      case 'consumeVaultSelection': return await this.owner.consumeVaultSelection(value as never, signal)
+      case 'bindVaultSelection': return await this.owner.bindVaultSelection(value as never, signal)
+      case 'releaseVaultSelection': return await this.owner.releaseVaultSelection(value as never)
     }
   }
 }

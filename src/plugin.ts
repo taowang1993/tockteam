@@ -8,7 +8,7 @@ import {
   TOCKTEAM_SURFACE_SERVICE,
   type TockTeamSurface,
 } from '../plugins/shared/surface.ts'
-import { DesktopPickerProvider } from './desktop-picker-provider.ts'
+import { DesktopPickerProvider, DesktopVaultSelectionProvider } from './desktop-picker-provider.ts'
 import { TOCKTEAM_DESKTOP_PICKER_SERVICE } from './host-contract.ts'
 import { DesktopRevealProvider } from './desktop-reveal-provider.ts'
 
@@ -37,13 +37,7 @@ interface HostContext extends MarketplaceToolContext {
   inject(names: string[], callback: (ctx: HostContext & HostServices) => void): void
   get(name: string): unknown
   provide(name: string, value: unknown): void
-  effect(effect: () => (() => void) | void, label?: string): void
-}
-
-interface NoteVaultActivationService {
-  activate(vaultRoot: string, expectedGeneration: number):
-    | { active: false; generation: number }
-    | { active: true; generation: number; id: string }
+  effect(effect: () => (() => Promise<void> | void) | void, label?: string): void
 }
 
 /** Stable Cordis plugin name. */
@@ -84,16 +78,12 @@ function desktopPrompt(capability: DesktopHostCapability): string {
 export function apply(ctx: HostContext): void {
   const capability = environmentCapability()
   const revealProvider = new DesktopRevealProvider(ctx)
-  const pickerProvider = new DesktopPickerProvider(undefined, fetch, (canonicalRoot, expectedGeneration) => {
-    const noteVault = ctx.get('noteVault') as NoteVaultActivationService | undefined
-    const state = noteVault?.activate(canonicalRoot, expectedGeneration)
-    if (state?.active !== true) throw new Error('TockTeam note vault activation owner is unavailable')
-    return state
-  })
+  const pickerProvider = new DesktopPickerProvider()
+  const vaultSelectionProvider = new DesktopVaultSelectionProvider(ctx)
   // The runtime Service base registers the exact `tockTeamDesktopReveal` key.
-  ctx.effect(() => () => {
+  ctx.effect(() => async () => {
     revealProvider.close()
-    pickerProvider.dispose()
+    await Promise.all([pickerProvider.dispose(), vaultSelectionProvider.close()])
   }, 'tockteam-desktop: native owners')
   ctx.provide(TOCKTEAM_DESKTOP_PICKER_SERVICE, pickerProvider)
   ctx.provide('desktop', capability)

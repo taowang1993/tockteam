@@ -5,6 +5,7 @@ declare module '@deepseek-ai/cordis' {
     interface Context {
         noteVault: NoteVaultRuntime;
         tockTeamDesktopReveal: TockTeamDesktopReveal;
+        tockTeamDesktopVaultSelection: TockTeamDesktopVaultSelection;
     }
     interface Events {
         'note-vault/change': (event: NoteVaultChangeEvent) => void;
@@ -58,6 +59,70 @@ export interface TockTeamDesktopRevealResult {
 export declare abstract class TockTeamDesktopReveal extends Service {
     constructor(ctx: Context);
     abstract reveal(input: TockTeamDesktopRevealInput, signal: AbortSignal): Promise<TockTeamDesktopRevealResult>;
+}
+export declare const TOCKTEAM_DESKTOP_VAULT_SELECTION_SERVICE: "tockTeamDesktopVaultSelection";
+export type TockTeamDesktopVaultSelectionClaim = string & {
+    readonly __tockTeamDesktopVaultSelectionClaim: unique symbol;
+};
+export interface TockTeamDesktopVaultSelectionIdentity {
+    operationId: string;
+    requestId: string;
+    sessionId: string;
+    vaultGeneration: number;
+    vaultId: string | null;
+    windowId: string;
+}
+export interface TockTeamDesktopVaultSelectionFileIdentity {
+    dev: string;
+    ino: string;
+}
+export type TockTeamDesktopVaultSelectionFailureStatus = 'cancelled' | 'denied' | 'stale' | 'unavailable';
+export interface TockTeamDesktopVaultSelectionConsumeInput {
+    authorization: string;
+    identity: TockTeamDesktopVaultSelectionIdentity;
+}
+export type TockTeamDesktopVaultSelectionConsumeResult = {
+    operationId: string;
+    status: TockTeamDesktopVaultSelectionFailureStatus;
+} | {
+    canonicalPath: string;
+    claim: TockTeamDesktopVaultSelectionClaim;
+    identity: TockTeamDesktopVaultSelectionFileIdentity;
+    operationId: string;
+    status: 'consumed';
+};
+export interface TockTeamDesktopVaultSelectionBindInput {
+    claim: TockTeamDesktopVaultSelectionClaim;
+    operationId: string;
+    vaultGeneration: number;
+    vaultId: string;
+}
+export type TockTeamDesktopVaultSelectionBindResult = {
+    operationId: string;
+    status: TockTeamDesktopVaultSelectionFailureStatus;
+} | {
+    operationId: string;
+    status: 'bound';
+};
+export interface TockTeamDesktopVaultSelectionReleaseInput {
+    claim: TockTeamDesktopVaultSelectionClaim;
+    operationId: string;
+}
+export declare abstract class TockTeamDesktopVaultSelection extends Service {
+    constructor(ctx: Context);
+    abstract bind(input: TockTeamDesktopVaultSelectionBindInput, signal: AbortSignal): Promise<TockTeamDesktopVaultSelectionBindResult>;
+    abstract consume(input: TockTeamDesktopVaultSelectionConsumeInput, signal: AbortSignal): Promise<TockTeamDesktopVaultSelectionConsumeResult>;
+    abstract release(input: TockTeamDesktopVaultSelectionReleaseInput): Promise<void>;
+}
+export interface ActivateDesktopSelectionRequest {
+    authorization: string;
+    identity: TockTeamDesktopVaultSelectionIdentity;
+}
+export interface ActivateDesktopSelectionResult {
+    operationId: string;
+    status: 'activated';
+    vaultGeneration: number;
+    vaultId: string;
 }
 export interface RevealEntryRequest {
     expectedVault: VaultReference;
@@ -299,6 +364,7 @@ export declare class NoteVaultError extends Error {
 }
 export declare class NoteVaultRuntime extends Service {
     static Config: Schema<Config>;
+    private readonly activeDesktopSelectionOperations;
     private readonly activeRevealOperations;
     private readonly context;
     private currentState;
@@ -326,6 +392,7 @@ export declare class NoteVaultRuntime extends Service {
     get state(): NoteVaultState;
     private captureExpectedVault;
     private assertCapturedVault;
+    activateDesktopSelection(request: ActivateDesktopSelectionRequest, signal: AbortSignal): Promise<ActivateDesktopSelectionResult>;
     activate(vaultRoot: string, expectedGeneration: number): NoteVaultState;
     listRecentVaults(): RecentVaultInfo[];
     revealEntry(request: RevealEntryRequest, signal: AbortSignal): Promise<RevealEntryResult>;

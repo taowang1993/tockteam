@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 import type {
   BeginDesktopDestinationRequest,
+  DesktopDestinationPlanAuthorization,
   DesktopPickerAuthorization,
   DesktopPrintExportRequest,
   DesktopRelativeFilePlanEntry,
@@ -18,11 +19,14 @@ import {
   TOCKTEAM_DESKTOP_PICKER_SERVICE,
   TOCKTEAM_DESKTOP_POPOUT_SERVICE,
   TOCKTEAM_DESKTOP_PRINT_EXPORT_SERVICE,
+  TOCKTEAM_DESKTOP_VAULT_SELECTION_SERVICE,
   MAX_PRINT_EXPORT_HTML_BYTES,
   MAX_PRINT_EXPORT_RESOURCE_REFERENCES,
   MAX_PRINT_EXPORT_RESOURCE_URL_BYTES,
   MAX_PRINT_EXPORT_TITLE_BYTES,
+  DESKTOP_DESTINATION_PLAN_VERSION,
   TockTeamDesktopGrantError,
+  computeDesktopDestinationPlanDigest,
   createNativeOwnerLifetime,
 } from '../src/host-contract.ts'
 
@@ -34,6 +38,7 @@ const packageJson = JSON.parse(readFileSync(new URL('../package.json', import.me
 const declarations = readFileSync(new URL('../host.d.ts', import.meta.url), 'utf8')
 const typeIdentity = {} as NativeOperationIdentity
 const typeAuthorization = '' as DesktopPickerAuthorization
+const typePlanAuthorization = '' as DesktopDestinationPlanAuthorization
 const typeRevision = '' as DesktopSourceRoot['revision']
 const typeFileRoot: DesktopSourceRoot = {
   entry: {
@@ -73,7 +78,7 @@ const typeRelativeEntry = {
   target: { kind: 'relative-file' as const, relativePath: '' as never },
 } satisfies DesktopRelativeFilePlanEntry
 const typeHtmlDestination: BeginDesktopDestinationRequest = {
-  authorization: typeAuthorization,
+  authorization: typePlanAuthorization,
   entries: [typeSelectedEntry],
   identity: typeIdentity,
   planDigest: '' as never,
@@ -81,7 +86,7 @@ const typeHtmlDestination: BeginDesktopDestinationRequest = {
   totalBytes: 0,
 }
 const typeVaultDestination: BeginDesktopDestinationRequest = {
-  authorization: typeAuthorization,
+  authorization: typePlanAuthorization,
   entries: [typeRelativeEntry],
   identity: typeIdentity,
   planDigest: '' as never,
@@ -151,6 +156,15 @@ void [
   assert.equal(MAX_PRINT_EXPORT_TITLE_BYTES, 512)
   assert.equal(MAX_PRINT_EXPORT_RESOURCE_REFERENCES, 256)
   assert.equal(MAX_PRINT_EXPORT_RESOURCE_URL_BYTES, 2 * 1024 * 1024)
+  assert.equal(DESKTOP_DESTINATION_PLAN_VERSION, 1)
+  assert.equal(
+    computeDesktopDestinationPlanDigest({
+      entries: [{ digest: '0'.repeat(64) as never, size: 0, target: { kind: 'selected-file' } }],
+      purpose: 'export-html',
+      totalBytes: 0,
+    }),
+    '2fa676825d6fa51d61b64769f316431e7381b8c0fd42e5e513612a144ea3ca76',
+  )
   const browserImport = spawnSync(process.execPath, [
     '--conditions=browser',
     '--input-type=module',
@@ -168,12 +182,14 @@ test('exports one stable service key for each native owner', () => {
     TOCKTEAM_DESKTOP_POPOUT_SERVICE,
     TOCKTEAM_DESKTOP_MICROPHONE_SERVICE,
     TOCKTEAM_DESKTOP_PRINT_EXPORT_SERVICE,
+    TOCKTEAM_DESKTOP_VAULT_SELECTION_SERVICE,
   ], [
     'tockTeamDesktopPicker',
     'tockTeamDesktopDispatch',
     'tockTeamDesktopPopOut',
     'tockTeamDesktopMicrophone',
     'tockTeamDesktopPrintExport',
+    'tockTeamDesktopVaultSelection',
   ])
 })
 

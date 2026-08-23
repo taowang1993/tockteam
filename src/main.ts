@@ -512,16 +512,20 @@ function flushQueuedPaths(): void {
 
 function handleRuntimeExit(exit: RuntimeExit): void {
   appendLog('desktop', `DSH runtime exited: code=${String(exit.code)} signal=${String(exit.signal)}`)
-  void desktopRevealChannel.stop()
-  void desktopPickerChannel.stop()
+  if (quitting || transitioning) return
+  transitioning = true
   runtimeUrl = undefined
   runtimeOrigin = undefined
-  if (quitting || transitioning) return
-  void showSplash({
-    error: true,
-    message: 'TockTeam 已停止。可从“DSH”菜单重新启动。',
-    detail: logTail.slice(-12).join('\n'),
-  })
+  void Promise.allSettled([
+    desktopRevealChannel.stop(),
+    desktopPickerChannel.stop(),
+  ]).then(async () => {
+    await showSplash({
+      error: true,
+      message: 'TockTeam 已停止。可从“DSH”菜单重新启动。',
+      detail: logTail.slice(-12).join('\n'),
+    })
+  }).finally(() => { transitioning = false })
 }
 
 async function startRuntime(): Promise<void> {

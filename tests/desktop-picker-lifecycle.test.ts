@@ -12,6 +12,9 @@ import {
   MAX_DESKTOP_SOURCE_RELATIVE_PATH_BYTES,
   MAX_DESKTOP_SOURCE_TOTAL_BYTES,
   TockTeamDesktopGrantError,
+  computeDesktopDestinationPlanDigest,
+  type BeginDesktopDestinationResult,
+  type DesktopDestinationPlan,
   type DesktopGrantErrorCode,
   type DesktopPickerAuthorization,
   type DesktopSha256,
@@ -43,8 +46,13 @@ async function activate(owner: DesktopPickerOwner): Promise<void> {
   const picked = await owner.pick({ identity: activationIdentity, kind: 'vault', purpose: 'activate' }, new AbortController().signal)
   assert.equal(picked.status, 'selected')
   if (picked.status !== 'selected') return
-  const activation = await owner.beginVaultActivation({ authorization: picked.authorization, identity: activationIdentity }, new AbortController().signal)
-  await owner.commitVaultActivation({ activationId: activation.activationId, generation: 1, vaultId: 'vault-1' }, new AbortController().signal)
+  const consumed = await owner.consumeVaultSelection({ authorization: picked.authorization, identity: activationIdentity }, new AbortController().signal)
+  assert.equal(consumed.status, 'consumed')
+  if (consumed.status !== 'consumed') return
+  assert.deepEqual(await owner.bindVaultSelection({ claim: consumed.claim, operationId: activationIdentity.operationId, vaultGeneration: 1, vaultId: 'vault-1' }, new AbortController().signal), {
+    operationId: activationIdentity.operationId,
+    status: 'bound',
+  })
 }
 
 function sha(value: string | Uint8Array): DesktopSha256 {
@@ -70,6 +78,28 @@ async function rejectsCode(promise: Promise<unknown>, code: DesktopGrantErrorCod
 
 function noStaging(entries: string[]): boolean {
   return entries.every(entry => !entry.startsWith('.tockteam-picker-stage-'))
+}
+
+async function lockAndBegin(
+  owner: DesktopPickerOwner,
+  selectionAuthorization: DesktopPickerAuthorization,
+  operation: NativeOperationIdentity,
+  plan: DesktopDestinationPlan,
+): Promise<{ begun: BeginDesktopDestinationResult; planDigest: DesktopSha256 }> {
+  const planDigest = computeDesktopDestinationPlanDigest(plan)
+  const locked = await owner.lockDestinationPlan({
+    ...plan,
+    identity: operation,
+    planDigest,
+    selectionAuthorization,
+  } as Parameters<DesktopPickerOwner['lockDestinationPlan']>[0], new AbortController().signal)
+  const begun = await owner.beginDestination({
+    ...plan,
+    authorization: locked.authorization,
+    identity: operation,
+    planDigest,
+  } as Parameters<DesktopPickerOwner['beginDestination']>[0], new AbortController().signal)
+  return { begun, planDigest }
 }
 
 test('single-file source supports stat, sequential read, and root revalidation', async () => {
@@ -238,31 +268,108 @@ test('destination mismatches and TOCTOU fail closed with staging cleanup', async
   const begin = async (name: string, expectedDigest = sha(content)) => {
     const operation = identity(name)
     const authorization = await grant(owner, { identity: operation, kind: 'destination', purpose: 'export-html' })
-    return await owner.beginDestination({
-      authorization,
+    return await lockAndBegin(owner, authorization, operation, {
       entries: [{ digest: expectedDigest, size: content.length, target: { kind: 'selected-file' } }],
-      identity: operation,
-      planDigest: sha(`plan-${name}`),
       purpose: 'export-html',
       totalBytes: content.length,
-    }, new AbortController().signal)
+    })
   }
 
   const size = await begin('size')
-  await owner.writeDestinationChunk({ bytes: content.subarray(0, 2), offset: 0, session: size.session, target: { kind: 'selected-file' } }, new AbortController().signal)
-  await rejectsCode(owner.finalizeDestination({ expectedState: size.expectedState, planDigest: sha('plan-size'), session: size.session }, new AbortController().signal), 'size-mismatch')
+  await owner.writeDestinationChunk({ bytes: content.subarray(0, 2), offset: 0, planDigest: size.planDigest, session: size.begun.session, target: { kind: 'selected-file' } }, new AbortController().signal)
+  await rejectsCode(owner.finalizeDestination({ expectedState: size.begun.expectedState, planDigest: size.planDigest, session: size.begun.session }, new AbortController().signal), 'size-mismatch')
   assert.equal(noStaging(await readdir(root)), true)
 
   const digestSession = await begin('digest', sha('different'))
-  await owner.writeDestinationChunk({ bytes: content, offset: 0, session: digestSession.session, target: { kind: 'selected-file' } }, new AbortController().signal)
-  await rejectsCode(owner.finalizeDestination({ expectedState: digestSession.expectedState, planDigest: sha('plan-digest'), session: digestSession.session }, new AbortController().signal), 'digest-mismatch')
+  await owner.writeDestinationChunk({ bytes: content, offset: 0, planDigest: digestSession.planDigest, session: digestSession.begun.session, target: { kind: 'selected-file' } }, new AbortController().signal)
+  await rejectsCode(owner.finalizeDestination({ expectedState: digestSession.begun.expectedState, planDigest: digestSession.planDigest, session: digestSession.begun.session }, new AbortController().signal), 'digest-mismatch')
   assert.equal(noStaging(await readdir(root)), true)
 
   const race = await begin('race')
-  await owner.writeDestinationChunk({ bytes: content, offset: 0, session: race.session, target: { kind: 'selected-file' } }, new AbortController().signal)
+  await owner.writeDestinationChunk({ bytes: content, offset: 0, planDigest: race.planDigest, session: race.begun.session, target: { kind: 'selected-file' } }, new AbortController().signal)
   await writeFile(join(root, 'race.html'), 'intruder')
-  await rejectsCode(owner.finalizeDestination({ expectedState: race.expectedState, planDigest: sha('plan-race'), session: race.session }, new AbortController().signal), 'changed')
+  await rejectsCode(owner.finalizeDestination({ expectedState: race.begun.expectedState, planDigest: race.planDigest, session: race.begun.session }, new AbortController().signal), 'changed')
   assert.equal(await readFile(join(root, 'race.html'), 'utf8'), 'intruder')
+  assert.equal(noStaging(await readdir(root)), true)
+  await owner.dispose()
+})
+
+test('destination plan authorization rotates once, revokes idempotently, and tombstones drift', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'tockteam-picker-plan-lock-'))
+  const activeVault = await mkdtemp(join(tmpdir(), 'tockteam-picker-active-'))
+  const paths = ['revoke.html', 'drift.html'].map(name => join(root, name))
+  const owner = new DesktopPickerOwner({
+    isAvailable: () => true,
+    showOpenDialog: async options => options.purpose === 'activate'
+      ? { canceled: false, filePath: activeVault }
+      : { canceled: true },
+    showSaveDialog: async () => {
+      const filePath = paths.shift()
+      return filePath === undefined ? { canceled: true } : { canceled: false, filePath }
+    },
+  })
+  await activate(owner)
+  const content = new TextEncoder().encode('plan')
+  const plan = {
+    entries: [{ digest: sha(content), size: content.length, target: { kind: 'selected-file' as const } }] as const,
+    purpose: 'export-html' as const,
+    totalBytes: content.length,
+  }
+  const planDigest = computeDesktopDestinationPlanDigest(plan)
+
+  const revokeIdentity = identity('plan-revoke')
+  const selection = await grant(owner, { identity: revokeIdentity, kind: 'destination', purpose: 'export-html' })
+  const locked = await owner.lockDestinationPlan({ ...plan, identity: revokeIdentity, planDigest, selectionAuthorization: selection }, new AbortController().signal)
+  await rejectsCode(owner.lockDestinationPlan({ ...plan, identity: revokeIdentity, planDigest, selectionAuthorization: selection }, new AbortController().signal), 'replayed')
+  assert.deepEqual(await owner.revokeDestinationPlan({ authorization: locked.authorization }), { status: 'revoked' })
+  assert.deepEqual(await owner.revokeDestinationPlan({ authorization: locked.authorization }), { status: 'already-closed' })
+  await rejectsCode(owner.beginDestination({ ...plan, authorization: locked.authorization, identity: revokeIdentity, planDigest }, new AbortController().signal), 'replayed')
+
+  const driftIdentity = identity('plan-drift')
+  const driftSelection = await grant(owner, { identity: driftIdentity, kind: 'destination', purpose: 'export-html' })
+  const driftLocked = await owner.lockDestinationPlan({ ...plan, identity: driftIdentity, planDigest, selectionAuthorization: driftSelection }, new AbortController().signal)
+  const begun = await owner.beginDestination({ ...plan, authorization: driftLocked.authorization, identity: driftIdentity, planDigest }, new AbortController().signal)
+  await rejectsCode(owner.writeDestinationChunk({
+    bytes: content,
+    offset: 0,
+    planDigest: sha('wrong-plan'),
+    session: begun.session,
+    target: { kind: 'selected-file' },
+  }, new AbortController().signal), 'digest-mismatch')
+  const tombstone = await owner.abortDestination({ session: begun.session })
+  assert.equal(tombstone.status, 'already-closed')
+  assert.equal(tombstone.cleanup.status, 'complete')
+  await owner.dispose()
+})
+
+test('vault backup publishes its complete staged directory as one destination', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'tockteam-picker-backup-'))
+  const activeVault = await mkdtemp(join(tmpdir(), 'tockteam-picker-active-'))
+  const owner = new DesktopPickerOwner({
+    isAvailable: () => true,
+    showOpenDialog: async options => ({ canceled: false, filePath: options.purpose === 'activate' ? activeVault : root }),
+    showSaveDialog: async () => ({ canceled: true }),
+  })
+  await activate(owner)
+  const operation = identity('vault-backup')
+  const authorization = await grant(owner, { identity: operation, kind: 'destination', purpose: 'vault-backup' })
+  const manifest = new TextEncoder().encode('{"version":1}')
+  const note = new TextEncoder().encode('note')
+  const { begun, planDigest } = await lockAndBegin(owner, authorization, operation, {
+    entries: [
+      { digest: sha(manifest), size: manifest.length, target: { kind: 'relative-file', relativePath: 'manifest.json' as never } },
+      { digest: sha(note), size: note.length, target: { kind: 'relative-file', relativePath: 'notes/note.md' as never } },
+    ],
+    publicationName: 'backup' as never,
+    purpose: 'vault-backup',
+    totalBytes: manifest.length + note.length,
+  })
+  await owner.writeDestinationChunk({ bytes: manifest, offset: 0, planDigest, session: begun.session, target: { kind: 'relative-file', relativePath: 'manifest.json' as never } }, new AbortController().signal)
+  await owner.writeDestinationChunk({ bytes: note, offset: 0, planDigest, session: begun.session, target: { kind: 'relative-file', relativePath: 'notes/note.md' as never } }, new AbortController().signal)
+  const finalized = await owner.finalizeDestination({ expectedState: begun.expectedState, planDigest, session: begun.session }, new AbortController().signal)
+  assert.equal(finalized.status, 'published')
+  assert.equal(await readFile(join(root, 'backup', 'manifest.json'), 'utf8'), '{"version":1}')
+  assert.equal(await readFile(join(root, 'backup', 'notes', 'note.md'), 'utf8'), 'note')
   assert.equal(noStaging(await readdir(root)), true)
   await owner.dispose()
 })
@@ -365,33 +472,29 @@ test('abort checkpoints and owner disposal settle sessions and staging idempoten
   const destinationIdentity = identity('abort-destination')
   const authorization = await grant(owner, { identity: destinationIdentity, kind: 'destination', purpose: 'export-html' })
   const content = new TextEncoder().encode('data')
-  const begunDestination = await owner.beginDestination({
-    authorization,
+  const destination = await lockAndBegin(owner, authorization, destinationIdentity, {
     entries: [{ digest: sha(content), size: content.length, target: { kind: 'selected-file' } }],
-    identity: destinationIdentity,
-    planDigest: sha('abort-plan'),
     purpose: 'export-html',
     totalBytes: content.length,
-  }, new AbortController().signal)
+  })
+  const begunDestination = destination.begun
   checkpoint = 'write'
   controller = new AbortController()
-  await rejectsCode(owner.writeDestinationChunk({ bytes: content, offset: 0, session: begunDestination.session, target: { kind: 'selected-file' } }, controller.signal), 'aborted')
-  assert.equal((await owner.abortDestination({ session: begunDestination.session })).status, 'aborted')
+  await rejectsCode(owner.writeDestinationChunk({ bytes: content, offset: 0, planDigest: destination.planDigest, session: begunDestination.session, target: { kind: 'selected-file' } }, controller.signal), 'aborted')
+  assert.equal((await owner.abortDestination({ session: begunDestination.session })).status, 'already-closed')
   assert.equal((await owner.abortDestination({ session: begunDestination.session })).status, 'already-closed')
   assert.equal(noStaging(await readdir(root)), true)
 
   checkpoint = undefined
   const disposeIdentity = identity('dispose-destination')
   const disposeAuthorization = await grant(owner, { identity: disposeIdentity, kind: 'destination', purpose: 'export-html' })
-  const disposable = await owner.beginDestination({
-    authorization: disposeAuthorization,
+  const disposeDestination = await lockAndBegin(owner, disposeAuthorization, disposeIdentity, {
     entries: [{ digest: sha(content), size: content.length, target: { kind: 'selected-file' } }],
-    identity: disposeIdentity,
-    planDigest: sha('dispose-plan'),
     purpose: 'export-html',
     totalBytes: content.length,
-  }, new AbortController().signal)
-  await owner.writeDestinationChunk({ bytes: content, offset: 0, session: disposable.session, target: { kind: 'selected-file' } }, new AbortController().signal)
+  })
+  const disposable = disposeDestination.begun
+  await owner.writeDestinationChunk({ bytes: content, offset: 0, planDigest: disposeDestination.planDigest, session: disposable.session, target: { kind: 'selected-file' } }, new AbortController().signal)
   await owner.dispose()
   assert.equal(noStaging(await readdir(root)), true)
   await rejectsCode(owner.listSource({ limit: 1, session: begunSource.session }, new AbortController().signal), 'closed')

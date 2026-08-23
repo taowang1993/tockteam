@@ -33,9 +33,17 @@ test('picker channel authenticates, forwards opaque sessions, and rejects replay
     showOpenDialog: async options => ({ canceled: false, filePath: options.purpose === 'activate' ? activeVault : root }),
     showSaveDialog: async () => ({ canceled: true }),
   })
+  const activationIdentity = identity('activate', false)
+  const activationPick = await owner.pick({ identity: activationIdentity, kind: 'vault', purpose: 'activate' }, new AbortController().signal)
+  assert.equal(activationPick.status, 'selected')
+  if (activationPick.status !== 'selected') return
+  const consumed = await owner.consumeVaultSelection({ authorization: activationPick.authorization, identity: activationIdentity }, new AbortController().signal)
+  assert.equal(consumed.status, 'consumed')
+  if (consumed.status !== 'consumed') return
+  assert.equal((await owner.bindVaultSelection({ claim: consumed.claim, operationId: activationIdentity.operationId, vaultGeneration: 1, vaultId: 'vault-1' }, new AbortController().signal)).status, 'bound')
   const channel = new DesktopPickerChannel(owner)
   const environment = await channel.start()
-  const provider = new DesktopPickerProvider(environment, fetch, () => ({ active: true, generation: 1, id: 'vault-1' }))
+  const provider = new DesktopPickerProvider(environment)
   const unauthorized = await fetch(environment.endpoint, {
     method: 'POST',
     headers: { authorization: 'Bearer wrong', 'content-type': 'application/json' },
@@ -43,7 +51,6 @@ test('picker channel authenticates, forwards opaque sessions, and rejects replay
   })
   assert.equal(unauthorized.status, 401)
 
-  await provider.pick({ identity: identity('activate', false), kind: 'vault', purpose: 'activate' }, new AbortController().signal)
   const operation = identity('channel-operation')
   const picked = await provider.pick({ identity: operation, kind: 'source', purpose: 'markdown-folder' }, new AbortController().signal)
   assert.equal(picked.status, 'selected')
@@ -70,7 +77,7 @@ test('picker channel authenticates, forwards opaque sessions, and rejects replay
   )
 })
 
-test('vault activation publishes main authority only after Runtime success and trust recheck', async () => {
+test('vault selection binding publishes authority only after identity and trust recheck', async () => {
   const activeVault = await mkdtemp(join(tmpdir(), 'tockteam-picker-activation-race-'))
   let available = true
   const owner = new DesktopPickerOwner({
@@ -78,22 +85,21 @@ test('vault activation publishes main authority only after Runtime success and t
     showOpenDialog: async () => ({ canceled: false, filePath: activeVault }),
     showSaveDialog: async () => ({ canceled: true }),
   })
-  const channel = new DesktopPickerChannel(owner)
-  const environment = await channel.start()
-  const provider = new DesktopPickerProvider(environment, fetch, () => {
-    available = false
-    return { active: true, generation: 1, id: 'vault-1' }
-  })
-  await assert.rejects(
-    provider.pick({ identity: identity('activation-race', false), kind: 'vault', purpose: 'activate' }, new AbortController().signal),
-    (error: unknown) => error instanceof Error && 'code' in error && error.code === 'stale',
-  )
+  const activationIdentity = identity('activation-race', false)
+  const picked = await owner.pick({ identity: activationIdentity, kind: 'vault', purpose: 'activate' }, new AbortController().signal)
+  assert.equal(picked.status, 'selected')
+  if (picked.status !== 'selected') return
+  const consumed = await owner.consumeVaultSelection({ authorization: picked.authorization, identity: activationIdentity }, new AbortController().signal)
+  assert.equal(consumed.status, 'consumed')
+  if (consumed.status !== 'consumed') return
+  available = false
+  assert.equal((await owner.bindVaultSelection({ claim: consumed.claim, operationId: activationIdentity.operationId, vaultGeneration: 1, vaultId: 'vault-1' }, new AbortController().signal)).status, 'unavailable')
   available = true
   assert.deepEqual(
-    await provider.pick({ identity: identity('after-race'), kind: 'source', purpose: 'markdown-folder' }, new AbortController().signal),
+    await owner.pick({ identity: identity('after-race'), kind: 'source', purpose: 'markdown-folder' }, new AbortController().signal),
     { operationId: 'after-race', status: 'stale' },
   )
-  await channel.stop()
+  await owner.dispose()
 })
 
 test('picker provider cancellation fails closed before native dialog publication', async () => {
