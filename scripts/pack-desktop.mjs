@@ -29,6 +29,9 @@ try {
   for (const required of ['dist/client-api.js', 'dist/host.js', 'client.d.ts', 'host.d.ts']) {
     if (!existsSync(join(packageDir, required))) throw new Error(`packed Desktop is missing ${required}`)
   }
+  if (/\bfrom\s+['"][^./]/u.test(readFileSync(join(packageDir, 'client.d.ts'), 'utf8'))) {
+    throw new Error('packed Desktop client declarations must be dependency-free')
+  }
   const manifestPath = join(packageDir, 'package.json')
   const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'))
   // Runtime/vault pins are app-staging inputs, not installable package
