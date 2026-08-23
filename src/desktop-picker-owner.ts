@@ -6,10 +6,12 @@ import {
   readFile,
   rename,
   rm,
+  link,
   lstat,
   realpath,
+  unlink,
 } from 'node:fs/promises'
-import { basename, dirname, extname, join, relative, resolve } from 'node:path'
+import { basename, dirname, extname, isAbsolute, join, relative, resolve, sep } from 'node:path'
 import {
   MAX_DESKTOP_DESTINATION_CHUNK_BYTES,
   MAX_DESKTOP_GRANT_SESSION_MS,
@@ -78,6 +80,7 @@ export interface DesktopPickerDialogOptions {
   kind: DialogKind
   purpose: DesktopPickerRequest['purpose']
   directory: boolean
+  file: boolean
   extensions: string[]
 }
 
@@ -86,12 +89,43 @@ export interface DesktopPickerDialogResult {
   filePath?: string
 }
 
+export type DesktopPickerCheckpoint = 'dialog' | 'read' | 'write' | 'finalize'
+
 export interface DesktopPickerOwnerOptions {
   isAvailable(): boolean
   showOpenDialog(options: DesktopPickerDialogOptions): Promise<DesktopPickerDialogResult>
   showSaveDialog(options: DesktopPickerDialogOptions): Promise<DesktopPickerDialogResult>
   now?: () => number
   randomId?: () => string
+  onCheckpoint?: (checkpoint: DesktopPickerCheckpoint, signal: AbortSignal) => Promise<void>
+}
+
+interface ActiveVaultBoundary {
+  generation: number
+  id: string
+  path: string
+}
+
+interface PendingVaultActivation {
+  expiresAt: number
+  identity: NativeOperationIdentity
+  path: string
+}
+
+export interface BeginDesktopVaultActivationRequest {
+  authorization: string
+  identity: NativeOperationIdentity
+}
+
+export interface BeginDesktopVaultActivationResult {
+  activationId: string
+  canonicalPath: string
+}
+
+export interface CommitDesktopVaultActivationRequest {
+  activationId: string
+  generation: number
+  vaultId: string
 }
 
 interface Grant {
@@ -165,7 +199,7 @@ function text(value: unknown, max = MAX_ID_BYTES): value is string {
 }
 
 function safeRelative(value: unknown, max = MAX_SOURCE_LIMIT): value is string {
-  if (!text(value, max) || value.startsWith('/') || value.includes('\\')) return false
+  if (!text(value, max) || value.startsWith('/') || /^[A-Za-z]:/u.test(value) || value.includes('\\')) return false
   const parts = value.split('/')
   return parts.every(part => part.length > 0 && part !== '.' && part !== '..')
     && Buffer.byteLength(value, 'utf8') <= MAX_DESKTOP_SOURCE_RELATIVE_PATH_BYTES
@@ -195,6 +229,19 @@ function sameIdentity(left: NativeOperationIdentity, right: NativeOperationIdent
     && left.sessionId === right.sessionId
     && left.vaultId === right.vaultId
     && left.vaultGeneration === right.vaultGeneration
+}
+
+function sameVaultBoundary(identity: NativeOperationIdentity, boundary: ActiveVaultBoundary): boolean {
+  return identity.vaultGeneration === boundary.generation && identity.vaultId === boundary.id
+}
+
+function within(parent: string, candidate: string): boolean {
+  const value = relative(parent, candidate)
+  return value === '' || value !== '..' && !value.startsWith(`..${sep}`) && !isAbsolute(value)
+}
+
+function pathOverlaps(left: string, right: string): boolean {
+  return within(left, right) || within(right, left)
 }
 
 function safePurpose(value: unknown): value is DesktopPickerRequest['purpose'] {
@@ -286,6 +333,9 @@ export class DesktopPickerOwner {
   private readonly sources = new Map<string, SourceSession>()
   private readonly destinations = new Map<string, DestinationSession>()
   private readonly consumedPickOperations = new Set<string>()
+  private readonly pendingVaultActivations = new Map<string, PendingVaultActivation>()
+  private readonly cleanupTasks = new Set<Promise<DesktopCleanupEvidence>>()
+  private activeVault: ActiveVaultBoundary | undefined
   private disposed = false
 
   constructor(options: DesktopPickerOwnerOptions) {
@@ -312,6 +362,9 @@ export class DesktopPickerOwner {
           ? request.purpose === 'export-html' || request.purpose === 'export-pdf' || request.purpose === 'vault-backup'
           : false
     if (!validKind) return error('purpose-mismatch')
+    if (request.kind !== 'vault' && (this.activeVault === undefined || !sameVaultBoundary(request.identity, this.activeVault))) {
+      return { operationId: request.identity.operationId, status: 'stale' }
+    }
     if (this.consumedPickOperations.has(request.identity.operationId)) {
       return { operationId: request.identity.operationId, status: 'denied' }
     }
@@ -319,7 +372,17 @@ export class DesktopPickerOwner {
     if (this.disposed || !this.options.isAvailable()) return { operationId: request.identity.operationId, status: 'unavailable' }
     if (signal.aborted) return { operationId: request.identity.operationId, status: 'cancelled' }
     const purpose = request.purpose
-    const directory = purpose === 'activate' || purpose === 'markdown-folder' || purpose === 'vault-backup'
+    const directory = purpose === 'activate'
+      || purpose === 'markdown-folder'
+      || purpose === 'restore-backup'
+      || purpose === 'vault-backup'
+      || purpose === 'html'
+      || purpose === 'apple-journal'
+      || purpose === 'textbundle'
+    const file = purpose !== 'activate'
+      && purpose !== 'markdown-folder'
+      && purpose !== 'restore-backup'
+      && purpose !== 'vault-backup'
     const extensions = purpose === 'export-html' ? ['html']
       : purpose === 'export-pdf' ? ['pdf']
         : purpose === 'markdown-zip' ? ['zip']
@@ -331,14 +394,15 @@ export class DesktopPickerOwner {
                     : purpose === 'textbundle' ? ['textpack', 'textbundle', 'zip']
                       : []
     const result = purpose === 'export-html' || purpose === 'export-pdf'
-      ? await this.options.showSaveDialog({ kind: 'save', purpose, directory: false, extensions })
-      : await this.options.showOpenDialog({ kind: 'open', purpose, directory, extensions })
+      ? await this.options.showSaveDialog({ kind: 'save', purpose, directory: false, file: true, extensions })
+      : await this.options.showOpenDialog({ kind: 'open', purpose, directory, file, extensions })
+    await this.options.onCheckpoint?.('dialog', signal)
     if (signal.aborted) return { operationId: request.identity.operationId, status: 'cancelled' }
     if (this.disposed || !this.options.isAvailable()) return { operationId: request.identity.operationId, status: 'unavailable' }
     if (result.canceled || result.filePath === undefined) return { operationId: request.identity.operationId, status: 'cancelled' }
     const selected = purpose === 'export-html' || purpose === 'export-pdf'
       ? await this.destinationPath(result.filePath, purpose)
-      : await this.selectedPath(result.filePath, directory, purpose)
+      : await this.selectedPath(result.filePath, { directory, file }, purpose)
     if (selected === undefined) return { operationId: request.identity.operationId, status: 'denied' }
     const authorization = this.options.randomId()
     const expiresAt = this.options.now() + MAX_DESKTOP_GRANT_SESSION_MS
@@ -357,16 +421,60 @@ export class DesktopPickerOwner {
     }
   }
 
+  async beginVaultActivation(
+    request: BeginDesktopVaultActivationRequest,
+    signal: AbortSignal,
+  ): Promise<BeginDesktopVaultActivationResult> {
+    if (signal.aborted) return error('aborted')
+    if (!exact(request, ['authorization', 'identity']) || !identity(request.identity) || !text(request.authorization)) return error('invalid-entry')
+    this.assertAvailable()
+    const grant = this.consumeGrant(request.authorization, request.identity, 'activate')
+    const activationId = this.options.randomId()
+    this.pendingVaultActivations.set(activationId, {
+      expiresAt: this.options.now() + MAX_DESKTOP_GRANT_SESSION_MS,
+      identity: request.identity,
+      path: grant.path,
+    })
+    return { activationId, canonicalPath: grant.path }
+  }
+
+  async commitVaultActivation(request: CommitDesktopVaultActivationRequest, signal: AbortSignal): Promise<void> {
+    if (signal.aborted) return error('aborted')
+    if (!exact(request, ['activationId', 'generation', 'vaultId'])
+      || !text(request.activationId) || !text(request.vaultId)
+      || !Number.isSafeInteger(request.generation) || request.generation <= 0) return error('invalid-entry')
+    this.assertAvailable()
+    const pending = this.pendingVaultActivations.get(request.activationId)
+    if (pending === undefined) return error('replayed')
+    if (pending.expiresAt <= this.options.now()) {
+      this.pendingVaultActivations.delete(request.activationId)
+      return error('expired')
+    }
+    if (request.generation <= pending.identity.vaultGeneration) return error('stale')
+    await this.clearSessions()
+    if (signal.aborted || !this.options.isAvailable()) return error('aborted')
+    this.activeVault = { generation: request.generation, id: request.vaultId, path: pending.path }
+    this.pendingVaultActivations.delete(request.activationId)
+  }
+
+  async abortVaultActivation(activationId: string): Promise<void> {
+    this.pendingVaultActivations.delete(activationId)
+  }
+
   async beginSource(request: BeginDesktopSourceRequest, signal: AbortSignal): Promise<BeginDesktopSourceResult> {
     if (signal.aborted) return error('aborted')
     if (!exact(request, ['authorization', 'identity', 'limits', 'purpose']) || !identity(request.identity) || !text(request.authorization) || !sourcePurpose(request.purpose)) return error('unsafe-source')
     const limits = limitsOf(request.limits)
+    this.assertAuthority(request.identity)
     const grant = this.consumeGrant(request.authorization, request.identity, request.purpose)
+    if (this.activeVault !== undefined && pathOverlaps(grant.path, this.activeVault.path)) return error('unsafe-source')
     if (signal.aborted) return error('aborted')
     const stat = await this.safeLstat(grant.path)
     if (stat === undefined) return error('unsafe-source')
     const kind = kindOf(stat)
     if (kind === undefined) return error('unsafe-source')
+    const rootSize = Number(stat.size)
+    if (kind === 'file' && (rootSize > limits.maxEntryBytes || rootSize > limits.maxTotalBytes)) return error('limit-exceeded')
     const rootRevision = revisionOf(stat)
     const session = cast<DesktopSourceSession>(this.options.randomId())
     const source: SourceSession = {
@@ -396,6 +504,12 @@ export class DesktopPickerOwner {
     this.sources.set(session, source)
     try {
       await this.scan(source, kind === 'file' && source.root.kind === 'file' ? source.root.entry.entryId : undefined)
+      const fingerprint = await this.sourceRevision(source.path, source.limits)
+      if (fingerprint === undefined) return error('unsafe-source')
+      source.rootRevision = fingerprint
+      source.root = source.root.kind === 'file'
+        ? { ...source.root, revision: cast(fingerprint) }
+        : { kind: 'directory', revision: cast(fingerprint) }
     } catch (cause) {
       this.sources.delete(session)
       if (cause instanceof TockTeamDesktopGrantError) throw cause
@@ -458,6 +572,8 @@ export class DesktopPickerOwner {
     const nextOffset = source.reads.get(request.entryId) ?? 0
     if (request.offset !== nextOffset) return error('stale')
     await this.assertUnchanged(source, entry)
+    await this.options.onCheckpoint?.('read', signal)
+    if (signal.aborted) return error('aborted')
     const handle = await open(entry.absolutePath, 'r')
     const chunk = Buffer.alloc(Math.min(request.length, entry.entry.size - request.offset))
     let read = 0
@@ -467,6 +583,7 @@ export class DesktopPickerOwner {
     } finally {
       await handle.close()
     }
+    if (signal.aborted) return error('aborted')
     if (read !== chunk.length) return error('changed')
     const next = request.offset + read
     source.reads.set(request.entryId, next)
@@ -483,8 +600,9 @@ export class DesktopPickerOwner {
     if (signal.aborted) return error('aborted')
     if (!exact(request, ['expectedRootRevision', 'session'])) return error('invalid-entry')
     const source = this.source(request.session)
-    const stat = await this.safeLstat(source.path)
-    if (stat === undefined || revisionOf(stat) !== request.expectedRootRevision || revisionOf(stat) !== source.rootRevision) return error('changed')
+    const revision = await this.sourceRevision(source.path, source.limits)
+    if (signal.aborted) return error('aborted')
+    if (revision === undefined || revision !== request.expectedRootRevision || revision !== source.rootRevision) return error('changed')
     return { revision: cast(source.rootRevision), status: 'unchanged' }
   }
 
@@ -500,7 +618,9 @@ export class DesktopPickerOwner {
     if (!noExtra(request, ['authorization', 'entries', 'identity', 'planDigest', 'publicationName', 'purpose', 'totalBytes']) || !identity(request.identity) || !text(request.authorization)) return error('unsafe-target')
     const purpose = request.purpose
     if (purpose !== 'export-html' && purpose !== 'export-pdf' && purpose !== 'vault-backup') return error('purpose-mismatch')
+    this.assertAuthority(request.identity)
     const grant = this.consumeGrant(request.authorization, request.identity, purpose)
+    if (this.activeVault !== undefined && pathOverlaps(grant.path, this.activeVault.path)) return error('unsafe-target')
     this.validateDestinationPlan(request, grant.path)
     const publishPath = purpose === 'vault-backup'
       ? join(grant.path, request.publicationName as string)
@@ -539,6 +659,8 @@ export class DesktopPickerOwner {
     if (!Number.isSafeInteger(request.offset) || request.offset !== entry.offset) return error('stale')
     if (entry.offset + request.bytes.length > entry.entry.size) return error('size-mismatch')
     await this.ensureStaging(destination)
+    await this.options.onCheckpoint?.('write', signal)
+    if (signal.aborted) return error('aborted')
     const staged = entry.stagedPath ?? join(destination.stagingRoot as string, request.target.kind === 'selected-file' ? 'selected-file' : request.target.relativePath)
     entry.stagedPath = staged
     await mkdir(dirname(staged), { recursive: true, mode: 0o700 })
@@ -548,6 +670,7 @@ export class DesktopPickerOwner {
     } finally {
       await handle.close()
     }
+    if (signal.aborted) return error('aborted')
     entry.offset += request.bytes.length
     return { acceptedBytes: request.bytes.length, nextOffset: entry.offset }
   }
@@ -561,11 +684,14 @@ export class DesktopPickerOwner {
       for (const entry of destination.entries) {
         if (entry.offset !== entry.entry.size || entry.stagedPath === undefined) return error('size-mismatch')
         const bytes = await readFile(entry.stagedPath)
+        if (signal.aborted) return error('aborted')
         if (bytes.length !== entry.entry.size || createHash('sha256').update(bytes).digest('hex') !== entry.digest) return error('digest-mismatch')
       }
       const current = await this.destinationState(destination.path, destination.purpose)
       if (!stateEqual(current, destination.expectedState)) return error('changed')
       const replaced = destination.expectedState.status === 'existing'
+      await this.options.onCheckpoint?.('finalize', signal)
+      if (signal.aborted) return error('aborted')
       if (destination.purpose === 'vault-backup') {
         await mkdir(destination.path, { recursive: false, mode: 0o700 })
         for (const entry of destination.entries) {
@@ -577,7 +703,17 @@ export class DesktopPickerOwner {
         const selectedEntry = destination.entries[0]
         if (selectedEntry === undefined || selectedEntry.stagedPath === undefined) return error('invalid-entry')
         await mkdir(dirname(destination.path), { recursive: true, mode: 0o700 })
-        await rename(selectedEntry.stagedPath, destination.path)
+        if (destination.expectedState.status === 'absent') {
+          try {
+            await link(selectedEntry.stagedPath, destination.path)
+            await unlink(selectedEntry.stagedPath)
+          } catch (cause) {
+            if ((cause as NodeJS.ErrnoException).code === 'EEXIST') return error('changed')
+            throw cause
+          }
+        } else {
+          await rename(selectedEntry.stagedPath, destination.path)
+        }
       }
       await this.cleanupDestination(destination)
       this.destinations.delete(request.session)
@@ -618,11 +754,12 @@ export class DesktopPickerOwner {
 
   async dispose(): Promise<void> {
     this.disposed = true
-    for (const session of this.destinations.values()) await this.cleanupDestination(session)
+    await this.clearSessions()
+    await Promise.allSettled([...this.cleanupTasks])
     this.grants.clear()
-    this.sources.clear()
+    this.pendingVaultActivations.clear()
     this.consumedPickOperations.clear()
-    this.destinations.clear()
+    this.activeVault = undefined
   }
 
   private async destinationPath(rawPath: string, purpose: 'export-html' | 'export-pdf'): Promise<{ path: string; label: string } | undefined> {
@@ -637,18 +774,52 @@ export class DesktopPickerOwner {
     return { path, label: labelOf(path) }
   }
 
-  private async selectedPath(rawPath: string, directory: boolean, purpose: DesktopPickerRequest['purpose']): Promise<{ path: string; label: string } | undefined> {
+  private async selectedPath(
+    rawPath: string,
+    allowed: { directory: boolean; file: boolean },
+    purpose: DesktopPickerRequest['purpose'],
+  ): Promise<{ path: string; label: string } | undefined> {
     const selected = resolve(rawPath)
     const stat = await this.safeLstat(selected)
-    if (stat === undefined) return undefined
+    if (stat === undefined || stat.isSymbolicLink()) return undefined
     const kind = kindOf(stat)
-    if (kind === undefined || directory && kind !== 'directory' || !directory && purpose !== 'html' && purpose !== 'apple-journal' && purpose !== 'textbundle' && purpose !== 'markdown-folder' && kind !== 'file') return undefined
+    if (kind === undefined || kind === 'directory' && !allowed.directory || kind === 'file' && !allowed.file) return undefined
+    if (kind === 'file' && !this.sourceExtensionAllowed(selected, purpose)) return undefined
     const canonical = await this.safeRealpath(selected)
     if (canonical === undefined) return undefined
     return { path: canonical, label: labelOf(canonical) }
   }
 
+  private sourceExtensionAllowed(path: string, purpose: DesktopPickerRequest['purpose']): boolean {
+    const extension = extname(path).slice(1).toLowerCase()
+    if (purpose === 'markdown-zip' || purpose === 'google-keep') return extension === 'zip'
+    if (purpose === 'csv') return extension === 'csv'
+    if (purpose === 'bear-backup') return extension === 'bear2bk'
+    if (purpose === 'evernote') return extension === 'enex'
+    if (purpose === 'roam-research') return extension === 'json'
+    if (purpose === 'html' || purpose === 'apple-journal') return extension === 'html' || extension === 'htm' || purpose === 'html' && extension === 'zip'
+    if (purpose === 'textbundle') return extension === 'textpack' || extension === 'textbundle' || extension === 'zip'
+    return true
+  }
+
+  private assertAvailable(): void {
+    if (this.disposed) return error('owner-lost')
+    if (!this.options.isAvailable()) return error('stale')
+  }
+
+  private assertAuthority(identity: NativeOperationIdentity): void {
+    this.assertAvailable()
+    if (this.activeVault === undefined || !sameVaultBoundary(identity, this.activeVault)) return error('stale')
+  }
+
+  private async clearSessions(): Promise<void> {
+    for (const session of this.destinations.values()) await this.cleanupDestination(session)
+    this.sources.clear()
+    this.destinations.clear()
+  }
+
   private consumeGrant(raw: string, expectedIdentity: NativeOperationIdentity, expectedPurpose: DesktopPickerRequest['purpose']): Grant {
+    this.assertAvailable()
     const grant = this.grants.get(raw)
     if (grant === undefined) return error('replayed')
     if (grant.expiresAt <= this.options.now()) {
@@ -670,7 +841,7 @@ export class DesktopPickerOwner {
       return error('expired')
     }
     this.sweep()
-    if (this.disposed) return error('owner-lost')
+    this.assertAuthority(source.identity)
     return source
   }
 
@@ -678,12 +849,12 @@ export class DesktopPickerOwner {
     const destination = this.destinations.get(session)
     if (destination === undefined) return error('closed')
     if (destination.expiresAt <= this.options.now()) {
-      void this.cleanupDestination(destination)
+      this.scheduleCleanup(destination)
       this.destinations.delete(session)
       return error('expired')
     }
     this.sweep()
-    if (this.disposed) return error('owner-lost')
+    this.assertAuthority(destination.identity)
     return destination
   }
 
@@ -693,7 +864,7 @@ export class DesktopPickerOwner {
     for (const [session, source] of this.sources) if (source.expiresAt <= now) this.sources.delete(session)
     for (const [session, destination] of this.destinations) {
       if (destination.expiresAt <= now) {
-        void this.cleanupDestination(destination)
+        this.scheduleCleanup(destination)
         this.destinations.delete(session)
       }
     }
@@ -710,6 +881,39 @@ export class DesktopPickerOwner {
   private async assertUnchanged(source: SourceSession, entry: InternalSourceEntry): Promise<void> {
     const stat = await this.safeLstat(entry.absolutePath)
     if (stat === undefined || kindOf(stat) !== entry.entry.kind || revisionOf(stat) !== entry.revision) return error('changed')
+  }
+
+  private async sourceRevision(path: string, limits: DesktopSourceLimits): Promise<string | undefined> {
+    const root = await this.safeLstat(path)
+    if (root === undefined || kindOf(root) === undefined || root.isSymbolicLink()) return undefined
+    const hash = createHash('sha256')
+    hash.update(`root:${kindOf(root)}:${revisionOf(root)}\n`)
+    if (root.isFile()) return hash.digest('hex')
+    let entries = 0
+    let bytes = 0
+    const walk = async (directory: string, relativeRoot: string, depth: number): Promise<boolean> => {
+      if (depth > limits.maxDepth) return false
+      const children = await readdir(directory, { withFileTypes: true })
+      children.sort((left, right) => left.name.localeCompare(right.name))
+      for (const child of children) {
+        entries += 1
+        if (entries > limits.maxEntries) return false
+        const relativePath = relativeRoot === '' ? child.name : `${relativeRoot}/${child.name}`
+        if (!safeRelative(relativePath, limits.maxRelativePathBytes)) return false
+        const stat = await this.safeLstat(join(directory, child.name))
+        if (stat === undefined) return false
+        const kind = stat.isSymbolicLink() ? 'symlink' : kindOf(stat) ?? 'special'
+        hash.update(`${relativePath}:${kind}:${revisionOf(stat)}\n`)
+        if (stat.isFile()) {
+          bytes += Number(stat.size)
+          if (Number(stat.size) > limits.maxEntryBytes || bytes > limits.maxTotalBytes) return false
+        } else if (stat.isDirectory() && !stat.isSymbolicLink()) {
+          if (!await walk(join(directory, child.name), relativePath, depth + 1)) return false
+        }
+      }
+      return true
+    }
+    return await walk(path, '', 0) ? hash.digest('hex') : undefined
   }
 
   private async scan(source: SourceSession, rootEntryId?: string): Promise<void> {
@@ -754,7 +958,7 @@ export class DesktopPickerOwner {
           rejected('symlink')
           continue
         }
-        if (stat.nlink > 1) {
+        if (stat.isFile() && stat.nlink > 1) {
           rejected('hardlink')
           continue
         }
@@ -831,6 +1035,12 @@ export class DesktopPickerOwner {
     const stagingRoot = join(dirname(destination.path), `.tockteam-picker-stage-${this.options.randomId()}`)
     await mkdir(stagingRoot, { recursive: false, mode: 0o700 })
     destination.stagingRoot = stagingRoot
+  }
+
+  private scheduleCleanup(destination: DestinationSession): void {
+    const task = this.cleanupDestination(destination)
+    this.cleanupTasks.add(task)
+    void task.finally(() => { this.cleanupTasks.delete(task) })
   }
 
   private async cleanupDestination(destination: DestinationSession): Promise<DesktopCleanupEvidence> {

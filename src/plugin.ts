@@ -35,8 +35,15 @@ interface HostServices {
 
 interface HostContext extends MarketplaceToolContext {
   inject(names: string[], callback: (ctx: HostContext & HostServices) => void): void
+  get(name: string): unknown
   provide(name: string, value: unknown): void
   effect(effect: () => (() => void) | void, label?: string): void
+}
+
+interface NoteVaultActivationService {
+  activate(vaultRoot: string, expectedGeneration: number):
+    | { active: false; generation: number }
+    | { active: true; generation: number; id: string }
 }
 
 /** Stable Cordis plugin name. */
@@ -77,7 +84,12 @@ function desktopPrompt(capability: DesktopHostCapability): string {
 export function apply(ctx: HostContext): void {
   const capability = environmentCapability()
   const revealProvider = new DesktopRevealProvider(ctx)
-  const pickerProvider = new DesktopPickerProvider()
+  const pickerProvider = new DesktopPickerProvider(undefined, fetch, (canonicalRoot, expectedGeneration) => {
+    const noteVault = ctx.get('noteVault') as NoteVaultActivationService | undefined
+    const state = noteVault?.activate(canonicalRoot, expectedGeneration)
+    if (state?.active !== true) throw new Error('TockTeam note vault activation owner is unavailable')
+    return state
+  })
   // The runtime Service base registers the exact `tockTeamDesktopReveal` key.
   ctx.effect(() => () => {
     revealProvider.close()

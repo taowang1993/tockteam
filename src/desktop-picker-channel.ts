@@ -18,6 +18,9 @@ type PickerMethod =
   | 'writeDestinationChunk'
   | 'finalizeDestination'
   | 'abortDestination'
+  | 'beginVaultActivation'
+  | 'commitVaultActivation'
+  | 'abortVaultActivation'
 
 export interface DesktopPickerChannelEnvironment {
   endpoint: string
@@ -212,7 +215,7 @@ export class DesktopPickerChannel {
     }
     try {
       const value = await this.call(method, decoded, signal)
-      const rendered = JSON.stringify(value, (_key, item) => item instanceof Uint8Array
+      const rendered = JSON.stringify(value ?? null, (_key, item) => item instanceof Uint8Array
         ? { __desktopBytes: Buffer.from(item).toString('base64') }
         : item)
       if (Buffer.byteLength(rendered) > MAX_RESULT_BYTES) {
@@ -231,7 +234,8 @@ export class DesktopPickerChannel {
       || value === 'statSource' || value === 'readSource' || value === 'revalidateSource'
       || value === 'releaseSource' || value === 'beginDestination'
       || value === 'writeDestinationChunk' || value === 'finalizeDestination'
-      || value === 'abortDestination'
+      || value === 'abortDestination' || value === 'beginVaultActivation'
+      || value === 'commitVaultActivation' || value === 'abortVaultActivation'
   }
 
   private async call(method: PickerMethod, value: Record<string, unknown>, signal: AbortSignal): Promise<unknown> {
@@ -247,6 +251,9 @@ export class DesktopPickerChannel {
       case 'writeDestinationChunk': return await this.owner.writeDestinationChunk(value as never, signal)
       case 'finalizeDestination': return await this.owner.finalizeDestination(value as never, signal)
       case 'abortDestination': return await this.owner.abortDestination(value as never)
+      case 'beginVaultActivation': return await this.owner.beginVaultActivation(value as never, signal)
+      case 'commitVaultActivation': return await this.owner.commitVaultActivation(value as never, signal)
+      case 'abortVaultActivation': return await this.owner.abortVaultActivation(String(value.activationId ?? ''))
     }
   }
 }

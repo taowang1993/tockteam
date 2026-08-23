@@ -111,7 +111,10 @@ const desktopPickerOwner = new DesktopPickerOwner({
     const electronOptions: Electron.OpenDialogOptions = {
       title: pickerDialogTitle(options),
       filters: pickerDialogFilters(options),
-      properties: options.directory ? ['openDirectory', 'createDirectory'] : ['openFile'],
+      properties: [
+        ...(options.file ? ['openFile' as const] : []),
+        ...(options.directory ? ['openDirectory' as const, 'createDirectory' as const] : []),
+      ],
     }
     const parent = mainWindow
     const result = parent === undefined || parent.isDestroyed()

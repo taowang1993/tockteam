@@ -30,6 +30,17 @@ export interface DesktopPickerProviderEnvironment {
   token?: string | undefined
 }
 
+export interface DesktopPickerVaultActivationResult {
+  active: true
+  generation: number
+  id: string
+}
+
+export type DesktopPickerVaultActivator = (
+  canonicalRoot: string,
+  expectedGeneration: number,
+) => DesktopPickerVaultActivationResult
+
 const MAX_ERROR_TEXT = 256
 
 function endpointOf(environment: DesktopPickerProviderEnvironment): URL | undefined {
@@ -65,6 +76,7 @@ export class DesktopPickerProvider implements TockTeamDesktopPickerService {
   private readonly token: string | undefined
   private readonly lifetime = new AbortController()
   private readonly fetcher: typeof fetch
+  private readonly activateVault: DesktopPickerVaultActivator | undefined
   private disposed = false
 
   constructor(
@@ -73,15 +85,37 @@ export class DesktopPickerProvider implements TockTeamDesktopPickerService {
       token: process.env.DSH_DESKTOP_PICKER_TOKEN,
     },
     fetcher: typeof fetch = fetch,
+    activateVault?: DesktopPickerVaultActivator,
   ) {
     this.endpoint = endpointOf(environment)
     this.token = environment.token
     this.fetcher = fetcher
+    this.activateVault = activateVault
   }
 
   async pick(request: DesktopPickerRequest, signal: AbortSignal): Promise<DesktopPickerResult> {
     if (signal.aborted) return { operationId: request.identity.operationId, status: 'cancelled' }
-    return await this.call('pick', request, signal) as DesktopPickerResult
+    const result = await this.call('pick', request, signal) as DesktopPickerResult
+    if (request.kind !== 'vault' || result.status !== 'selected') return result
+    if (this.activateVault === undefined) throw new TockTeamDesktopGrantError('owner-lost')
+    const activation = await this.call('beginVaultActivation', {
+      authorization: result.authorization,
+      identity: request.identity,
+    }, signal) as { activationId: string; canonicalPath: string }
+    try {
+      const state = this.activateVault(activation.canonicalPath, request.identity.vaultGeneration)
+      if (state.active !== true || !Number.isSafeInteger(state.generation) || state.generation <= 0
+        || typeof state.id !== 'string' || state.id.length === 0) throw new TockTeamDesktopGrantError('stale')
+      await this.call('commitVaultActivation', {
+        activationId: activation.activationId,
+        generation: state.generation,
+        vaultId: state.id,
+      }, signal)
+      return result
+    } catch (cause) {
+      await this.call('abortVaultActivation', { activationId: activation.activationId }).catch(() => {})
+      throw cause
+    }
   }
 
   async beginSource(request: BeginDesktopSourceRequest, signal: AbortSignal): Promise<BeginDesktopSourceResult> {
@@ -105,6 +139,7 @@ export class DesktopPickerProvider implements TockTeamDesktopPickerService {
   }
 
   async releaseSource(request: ReleaseDesktopSourceRequest): Promise<ReleaseDesktopSourceResult> {
+    if (this.disposed) return { status: 'already-released' }
     return await this.call('releaseSource', request) as ReleaseDesktopSourceResult
   }
 
@@ -124,6 +159,7 @@ export class DesktopPickerProvider implements TockTeamDesktopPickerService {
   }
 
   async abortDestination(request: AbortDesktopDestinationRequest): Promise<AbortDesktopDestinationResult> {
+    if (this.disposed) return { cleanup: { status: 'complete' }, stagedBytes: 0, stagedEntries: 0, status: 'already-closed' }
     return await this.call('abortDestination', request) as AbortDesktopDestinationResult
   }
 

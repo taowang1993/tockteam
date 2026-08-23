@@ -8,13 +8,15 @@ import { DesktopPickerOwner } from '../src/desktop-picker-owner.ts'
 import { DesktopPickerProvider } from '../src/desktop-picker-provider.ts'
 import type { NativeOperationIdentity } from '../src/host-contract.ts'
 
-const identity: NativeOperationIdentity = {
-  operationId: 'channel-operation',
-  requestId: 'channel-request',
-  sessionId: 'channel-session',
-  vaultGeneration: 0,
-  vaultId: null,
-  windowId: 'channel-window',
+function identity(operationId: string, active = true): NativeOperationIdentity {
+  return {
+    operationId,
+    requestId: `request-${operationId}`,
+    sessionId: 'channel-session',
+    vaultGeneration: active ? 1 : 0,
+    vaultId: active ? 'vault-1' : null,
+    windowId: 'channel-window',
+  }
 }
 
 function providerFor(owner: DesktopPickerOwner): { channel: DesktopPickerChannel; provider: DesktopPickerProvider } {
@@ -24,15 +26,16 @@ function providerFor(owner: DesktopPickerOwner): { channel: DesktopPickerChannel
 
 test('picker channel authenticates, forwards opaque sessions, and rejects replay', async () => {
   const root = await mkdtemp(join(tmpdir(), 'tockteam-picker-channel-'))
+  const activeVault = await mkdtemp(join(tmpdir(), 'tockteam-picker-active-'))
   await writeFile(join(root, 'note.md'), 'channel note')
   const owner = new DesktopPickerOwner({
     isAvailable: () => true,
-    showOpenDialog: async () => ({ canceled: false, filePath: root }),
+    showOpenDialog: async options => ({ canceled: false, filePath: options.purpose === 'activate' ? activeVault : root }),
     showSaveDialog: async () => ({ canceled: true }),
   })
   const channel = new DesktopPickerChannel(owner)
   const environment = await channel.start()
-  const provider = new DesktopPickerProvider(environment)
+  const provider = new DesktopPickerProvider(environment, fetch, () => ({ active: true, generation: 1, id: 'vault-1' }))
   const unauthorized = await fetch(environment.endpoint, {
     method: 'POST',
     headers: { authorization: 'Bearer wrong', 'content-type': 'application/json' },
@@ -40,14 +43,16 @@ test('picker channel authenticates, forwards opaque sessions, and rejects replay
   })
   assert.equal(unauthorized.status, 401)
 
-  const picked = await provider.pick({ identity, kind: 'source', purpose: 'markdown-folder' }, new AbortController().signal)
+  await provider.pick({ identity: identity('activate', false), kind: 'vault', purpose: 'activate' }, new AbortController().signal)
+  const operation = identity('channel-operation')
+  const picked = await provider.pick({ identity: operation, kind: 'source', purpose: 'markdown-folder' }, new AbortController().signal)
   assert.equal(picked.status, 'selected')
   if (picked.status !== 'selected') return
-  const replay = await provider.pick({ identity, kind: 'source', purpose: 'markdown-folder' }, new AbortController().signal)
-  assert.deepEqual(replay, { operationId: identity.operationId, status: 'denied' })
+  const replay = await provider.pick({ identity: operation, kind: 'source', purpose: 'markdown-folder' }, new AbortController().signal)
+  assert.deepEqual(replay, { operationId: operation.operationId, status: 'denied' })
   const begun = await provider.beginSource({
     authorization: picked.authorization,
-    identity,
+    identity: operation,
     limits: {
       maxDepth: 128,
       maxEntries: 100_000,
@@ -76,7 +81,8 @@ test('picker provider cancellation fails closed before native dialog publication
   const provider = new DesktopPickerProvider(environment)
   const controller = new AbortController()
   controller.abort()
-  const result = await provider.pick({ identity, kind: 'source', purpose: 'markdown-folder' }, controller.signal)
-  assert.deepEqual(result, { operationId: identity.operationId, status: 'cancelled' })
+  const operation = identity('cancelled')
+  const result = await provider.pick({ identity: operation, kind: 'source', purpose: 'markdown-folder' }, controller.signal)
+  assert.deepEqual(result, { operationId: operation.operationId, status: 'cancelled' })
   await channel.stop()
 })
