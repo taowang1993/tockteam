@@ -10,11 +10,13 @@ import {
 } from '../plugins/shared/surface.ts'
 import { DesktopDispatchProvider } from './desktop-dispatch-provider.ts'
 import { DesktopMicrophoneProvider } from './desktop-microphone-provider.ts'
+import { DesktopPopOutProvider } from './desktop-popout-provider.ts'
 import { DesktopPickerProvider, DesktopVaultSelectionProvider } from './desktop-picker-provider.ts'
 import {
   TOCKTEAM_DESKTOP_DISPATCH_SERVICE,
   TOCKTEAM_DESKTOP_MICROPHONE_SERVICE,
   TOCKTEAM_DESKTOP_PICKER_SERVICE,
+  TOCKTEAM_DESKTOP_POPOUT_SERVICE,
 } from './host-contract.ts'
 import { DesktopRevealProvider } from './desktop-reveal-provider.ts'
 
@@ -99,6 +101,7 @@ export function apply(ctx: HostContext): void {
   }
   const dispatchProvider = new DesktopDispatchProvider(undefined, fetch, currentVault)
   const microphoneProvider = new DesktopMicrophoneProvider(undefined, fetch, currentVault)
+  const popOutProvider = new DesktopPopOutProvider(undefined, fetch, currentVault)
   // The runtime Service base registers the exact `tockTeamDesktopReveal` key.
   ctx.effect(() => async () => {
     revealProvider.close()
@@ -107,11 +110,13 @@ export function apply(ctx: HostContext): void {
       vaultSelectionProvider.close(),
       dispatchProvider.dispose(),
       Promise.resolve(microphoneProvider.dispose()),
+      Promise.resolve(popOutProvider.dispose()),
     ])
   }, 'tockteam-desktop: native owners')
   ctx.provide(TOCKTEAM_DESKTOP_PICKER_SERVICE, pickerProvider)
   ctx.provide(TOCKTEAM_DESKTOP_DISPATCH_SERVICE, dispatchProvider)
   ctx.provide(TOCKTEAM_DESKTOP_MICROPHONE_SERVICE, microphoneProvider)
+  ctx.provide(TOCKTEAM_DESKTOP_POPOUT_SERVICE, popOutProvider)
   ctx.provide('desktop', capability)
   // The unified three-surface contract: desktop shell (see
   // plugins/shared/surface.ts). The `desktop` service above stays for

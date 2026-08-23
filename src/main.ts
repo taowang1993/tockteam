@@ -47,6 +47,8 @@ import {
 import { DshRuntimeSupervisor, runDshCommand, type DshRuntimeOptions, type RuntimeExit } from './runtime.ts'
 import { DesktopDispatchChannel } from './desktop-dispatch-channel.ts'
 import { DesktopMicrophoneChannel } from './desktop-microphone-channel.ts'
+import { DesktopPopOutChannel } from './desktop-popout-channel.ts'
+import { DesktopPopOutOwner } from './desktop-popout-owner.ts'
 import { DesktopMicrophoneOwner } from './desktop-microphone-owner.ts'
 import { DesktopPickerChannel } from './desktop-picker-channel.ts'
 import { DesktopPickerOwner, type DesktopPickerDialogOptions } from './desktop-picker-owner.ts'
@@ -115,6 +117,9 @@ let desktopPickerChannel!: DesktopPickerChannel
 let desktopDispatchChannel!: DesktopDispatchChannel
 let desktopMicrophoneOwner!: DesktopMicrophoneOwner
 let desktopMicrophoneChannel!: DesktopMicrophoneChannel
+let desktopPopOutOwner!: DesktopPopOutOwner
+let desktopPopOutChannel!: DesktopPopOutChannel
+const popOutWindows = new Map<string, BrowserWindow>()
 
 function initializeDesktopPicker(): void {
   desktopPickerOwner = new DesktopPickerOwner({
@@ -175,6 +180,60 @@ function initializeDesktopPicker(): void {
     },
   })
   desktopMicrophoneChannel = new DesktopMicrophoneChannel(desktopMicrophoneOwner)
+  desktopPopOutOwner = new DesktopPopOutOwner({
+    isAvailable: () => isEligibleDesktopRevealWindow(),
+    isCurrent: identity => desktopPickerOwner.matchesActiveIdentity(identity),
+    native: {
+      close(windowId) {
+        const window = popOutWindows.get(windowId)
+        if (window !== undefined && !window.isDestroyed()) window.destroy()
+      },
+      focus(windowId) {
+        const window = popOutWindows.get(windowId)
+        if (window === undefined || window.isDestroyed()) return false
+        window.show()
+        window.focus()
+        return true
+      },
+      isOpen(windowId) {
+        const window = popOutWindows.get(windowId)
+        return window !== undefined && !window.isDestroyed()
+      },
+      async open(relativePath, routeToken, onClosed) {
+        if (runtimeUrl === undefined || runtimeOrigin === undefined) throw new Error('Desktop runtime is unavailable')
+        const target = new URL('/tocktutor', runtimeUrl)
+        target.searchParams.set('note', relativePath)
+        target.searchParams.set('popout', routeToken)
+        const window = new BrowserWindow({
+          width: 840,
+          height: 720,
+          minWidth: 480,
+          minHeight: 360,
+          show: false,
+          title: relativePath,
+          webPreferences: {
+            contextIsolation: true,
+            nodeIntegration: false,
+            sandbox: true,
+          },
+        })
+        const windowId = String(window.webContents.id)
+        popOutWindows.set(windowId, window)
+        window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
+        window.webContents.on('will-navigate', (event, url) => {
+          if (originOf(url) !== runtimeOrigin) event.preventDefault()
+        })
+        window.once('closed', () => {
+          popOutWindows.delete(windowId)
+          onClosed()
+        })
+        await window.loadURL(target.href)
+        window.show()
+        return windowId
+      },
+    },
+  })
+  desktopPopOutChannel = new DesktopPopOutChannel(desktopPopOutOwner)
 }
 
 function appendLog(stream: 'desktop' | 'stderr' | 'stdout', line: string): void {
@@ -252,6 +311,11 @@ function runtimeEnvironment(
   if (microphone !== undefined) {
     environment.DSH_DESKTOP_MICROPHONE_ENDPOINT = microphone.endpoint
     environment.DSH_DESKTOP_MICROPHONE_TOKEN = microphone.token
+  }
+  const popOut = overrides.preview === undefined ? desktopPopOutChannel.environment : undefined
+  if (popOut !== undefined) {
+    environment.DSH_DESKTOP_POPOUT_ENDPOINT = popOut.endpoint
+    environment.DSH_DESKTOP_POPOUT_TOKEN = popOut.token
   }
   if (overrides.preview !== undefined) {
     environment.DSH_DESKTOP_PREVIEW = '1'
@@ -573,6 +637,7 @@ function handleRuntimeExit(exit: RuntimeExit): void {
     desktopPickerChannel.stop(),
     desktopDispatchChannel.stop(),
     desktopMicrophoneChannel.stop(),
+    desktopPopOutChannel.stop(),
   ]).then(async () => {
     await showSplash({
       error: true,
@@ -589,6 +654,7 @@ async function startRuntime(): Promise<void> {
   await desktopPickerChannel.start()
   await desktopDispatchChannel.start()
   await desktopMicrophoneChannel.start()
+  await desktopPopOutChannel.start()
   try {
     const supervisor = new DshRuntimeSupervisor(runtimeOptions())
     runtime = supervisor
@@ -601,6 +667,7 @@ async function startRuntime(): Promise<void> {
     flushQueuedPaths()
     flushQueuedProtocols()
   } catch (error) {
+    await desktopPopOutChannel.stop()
     await desktopMicrophoneChannel.stop()
     await desktopDispatchChannel.stop()
     await desktopPickerChannel.stop()
@@ -664,6 +731,7 @@ async function stopLiveForMarketplace(): Promise<void> {
   transitioning = true
   await showSplash({ message: '正在应用插件 Profile…' })
   await runtime?.stop()
+  await desktopPopOutChannel.stop()
   await desktopMicrophoneChannel.stop()
   await desktopDispatchChannel.stop()
   await desktopPickerChannel.stop()
@@ -687,6 +755,7 @@ async function restartRuntime(message = '正在重新启动 TockTeam…'): Promi
   try {
     await showSplash({ message })
     await runtime?.stop()
+    await desktopPopOutChannel.stop()
     await desktopMicrophoneChannel.stop()
     await desktopDispatchChannel.stop()
     await desktopPickerChannel.stop()
@@ -740,6 +809,7 @@ async function installLocalPlugin(): Promise<void> {
   try {
     await showSplash({ message: '正在安装 DSH 插件…' })
     await runtime?.stop()
+    await desktopPopOutChannel.stop()
     await desktopMicrophoneChannel.stop()
     await desktopDispatchChannel.stop()
     await desktopPickerChannel.stop()
@@ -1099,6 +1169,7 @@ async function bootstrap(): Promise<void> {
     quitting = true
     void Promise.allSettled([
       runtime?.stop() ?? Promise.resolve(),
+      desktopPopOutChannel.stop(),
       desktopMicrophoneChannel.stop(),
       desktopDispatchChannel.stop(),
       desktopPickerChannel.stop(),
