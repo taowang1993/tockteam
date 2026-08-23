@@ -1145,7 +1145,7 @@ export class DesktopPickerOwner {
         selectedEntry.stagedPath = commitPath
         const stagedDirectory = destination.stagingRoot
         if (stagedDirectory === undefined) return error('closed')
-        await rm(stagedDirectory, { recursive: true, force: true })
+        await rmdir(stagedDirectory)
         destination.stagingRoot = commitPath
         destination.stagingRevision = undefined
         if (destination.expectedState.status === 'absent') {
@@ -2049,7 +2049,18 @@ export class DesktopPickerOwner {
       const stagingRoot = destination.stagingRoot
       try {
         this.assertDestinationParent(destination.path, destination.parentIdentity)
-        await rm(stagingRoot, { recursive: true, force: true })
+        await this.assertStagingStable(destination)
+        const stagedDirectories = new Set<string>()
+        for (const entry of destination.entries) {
+          if (entry.stagedPath === undefined) continue
+          this.unlinkArtifact(entry.stagedPath, basename(entry.stagedPath))
+          for (let directory = dirname(entry.stagedPath); directory !== stagingRoot; directory = dirname(directory)) {
+            if (!directory.startsWith(`${stagingRoot}${sep}`)) throw new TockTeamDesktopGrantError('recovery-required')
+            stagedDirectories.add(directory)
+          }
+        }
+        for (const directory of [...stagedDirectories].sort((left, right) => right.length - left.length)) await rmdir(directory)
+        await rmdir(stagingRoot)
         await this.syncDirectory(dirname(stagingRoot))
         destination.stagingRoot = undefined
         destination.stagingRevision = undefined

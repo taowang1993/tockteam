@@ -310,6 +310,44 @@ test('moved destination parent reports residual staging instead of false complet
   await owner.dispose()
 })
 
+test('replaced staging directory is never recursively removed and retained bytes are scrubbed', async () => {
+  const root = await canonicalTemp('tockteam-picker-replaced-stage-')
+  const activeVault = await canonicalTemp('tockteam-picker-active-')
+  const output = join(root, 'output.html')
+  const owner = new DesktopPickerOwner({
+    isAvailable: () => true,
+    showOpenDialog: async options => options.purpose === 'activate'
+      ? { canceled: false, filePath: activeVault }
+      : { canceled: true },
+    showSaveDialog: async () => ({ canceled: false, filePath: output }),
+  })
+  await activate(owner)
+  const operation = identity('replaced-stage')
+  const selection = await grant(owner, { identity: operation, kind: 'destination', purpose: 'export-html' })
+  const bytes = new TextEncoder().encode('new')
+  const plan = {
+    entries: [{ digest: sha(bytes), size: bytes.length, target: { kind: 'selected-file' as const } }] as const,
+    purpose: 'export-html' as const,
+    totalBytes: bytes.length,
+  }
+  const planDigest = computeDesktopDestinationPlanDigest(plan)
+  const locked = await owner.lockDestinationPlan({ ...plan, identity: operation, planDigest, selectionAuthorization: selection }, new AbortController().signal)
+  const begun = await owner.beginDestination({ ...plan, authorization: locked.authorization, identity: operation, planDigest }, new AbortController().signal)
+  await owner.writeDestinationChunk({ bytes, offset: 0, planDigest, session: begun.session, target: { kind: 'selected-file' } }, new AbortController().signal)
+  const stageName = (await readdir(root)).find(name => name.startsWith('.tockteam-picker-stage-'))
+  assert.ok(stageName)
+  const stage = join(root, stageName)
+  const moved = `${stage}-moved`
+  await rename(stage, moved)
+  await mkdir(stage)
+  await writeFile(join(stage, 'sentinel'), 'keep')
+  const aborted = await owner.abortDestination({ session: begun.session })
+  assert.equal(aborted.cleanup.status, 'residual')
+  assert.equal(await readFile(join(stage, 'sentinel'), 'utf8'), 'keep')
+  assert.equal((await readFile(join(moved, 'selected-file'))).byteLength, 0)
+  await owner.dispose()
+})
+
 test('destination mismatches and TOCTOU fail closed with staging cleanup', async () => {
   const root = await canonicalTemp('tockteam-picker-destination-fail-')
   const activeVault = await canonicalTemp('tockteam-picker-active-')
