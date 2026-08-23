@@ -1,0 +1,253 @@
+var __runInitializers = (this && this.__runInitializers) || function (thisArg, initializers, value) {
+    var useValue = arguments.length > 2;
+    for (var i = 0; i < initializers.length; i++) {
+        value = useValue ? initializers[i].call(thisArg, value) : initializers[i].call(thisArg);
+    }
+    return useValue ? value : void 0;
+};
+var __esDecorate = (this && this.__esDecorate) || function (ctor, descriptorIn, decorators, contextIn, initializers, extraInitializers) {
+    function accept(f) { if (f !== void 0 && typeof f !== "function") throw new TypeError("Function expected"); return f; }
+    var kind = contextIn.kind, key = kind === "getter" ? "get" : kind === "setter" ? "set" : "value";
+    var target = !descriptorIn && ctor ? contextIn["static"] ? ctor : ctor.prototype : null;
+    var descriptor = descriptorIn || (target ? Object.getOwnPropertyDescriptor(target, contextIn.name) : {});
+    var _, done = false;
+    for (var i = decorators.length - 1; i >= 0; i--) {
+        var context = {};
+        for (var p in contextIn) context[p] = p === "access" ? {} : contextIn[p];
+        for (var p in contextIn.access) context.access[p] = contextIn.access[p];
+        context.addInitializer = function (f) { if (done) throw new TypeError("Cannot add initializers after decoration has completed"); extraInitializers.push(accept(f || null)); };
+        var result = (0, decorators[i])(kind === "accessor" ? { get: descriptor.get, set: descriptor.set } : descriptor[key], context);
+        if (kind === "accessor") {
+            if (result === void 0) continue;
+            if (result === null || typeof result !== "object") throw new TypeError("Object expected");
+            if (_ = accept(result.get)) descriptor.get = _;
+            if (_ = accept(result.set)) descriptor.set = _;
+            if (_ = accept(result.init)) initializers.unshift(_);
+        }
+        else if (_ = accept(result)) {
+            if (kind === "field") initializers.unshift(_);
+            else descriptor[key] = _;
+        }
+    }
+    if (target) Object.defineProperty(target, contextIn.name, descriptor);
+    done = true;
+};
+import { Remote, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol';
+import { isSafeVaultRelativePath } from "./session.js";
+export const MAX_DOCUMENT_CONTENT_BYTES = 2_000_000;
+export const MAX_TREE_CURSOR_LENGTH = 512;
+export const MAX_TREE_PAGE_SIZE = 200;
+function assertRecord(value, label) {
+    if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+        throw new TypeError(`${label} must be a bounded record.`);
+    }
+}
+function assertVaultReference(value) {
+    if (value === null
+        || typeof value !== 'object'
+        || !Number.isSafeInteger(value.generation)
+        || value.generation < 0
+        || typeof value.id !== 'string'
+        || !/^vault:[0-9a-f]{64}$/u.test(value.id)) {
+        throw new TypeError('Vault reference must identify one bounded active vault generation.');
+    }
+}
+function assertEntryPath(value) {
+    if (!isSafeVaultRelativePath(value)) {
+        throw new TypeError('Entry path must be a canonical vault-relative path.');
+    }
+}
+function assertDocumentPath(value) {
+    if (!isSafeVaultRelativePath(value) || !/\.(?:base|canvas|markdown|md)$/iu.test(value)) {
+        throw new TypeError('Document path must be a canonical supported vault-relative path.');
+    }
+}
+function assertRevision(value) {
+    if (typeof value !== 'string' || !/^file:[0-9a-f]{64}$/u.test(value)) {
+        throw new TypeError('Expected revision must be one bounded file revision.');
+    }
+}
+function assertContent(value) {
+    if (typeof value !== 'string'
+        || new TextEncoder().encode(value).byteLength > MAX_DOCUMENT_CONTENT_BYTES) {
+        throw new TypeError(`Document content must not exceed ${String(MAX_DOCUMENT_CONTENT_BYTES)} bytes.`);
+    }
+}
+function assertSnapshotId(value) {
+    if (typeof value !== 'string'
+        || !/^\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z-[0-9a-f]{8}$/iu.test(value)) {
+        throw new TypeError('Snapshot id must be one bounded recovery identifier.');
+    }
+}
+function assertTrashId(value) {
+    if (typeof value !== 'string'
+        || !/^trash-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(value)) {
+        throw new TypeError('Trash id must be one bounded recovery identifier.');
+    }
+}
+function assertTreeRequest(value) {
+    assertRecord(value, 'Tree request');
+    assertVaultReference(value.expectedVault);
+    if (value.cursor !== undefined
+        && value.cursor !== null
+        && (typeof value.cursor !== 'string'
+            || value.cursor.length === 0
+            || value.cursor.length > MAX_TREE_CURSOR_LENGTH)) {
+        throw new TypeError('Tree cursor must be null or a bounded non-empty string.');
+    }
+    if (value.limit !== undefined
+        && (!Number.isSafeInteger(value.limit) || value.limit < 1 || value.limit > MAX_TREE_PAGE_SIZE)) {
+        throw new TypeError(`Tree limit must be an integer from 1 through ${String(MAX_TREE_PAGE_SIZE)}.`);
+    }
+}
+function assertCreateRequest(value) {
+    assertRecord(value, 'Create request');
+    assertVaultReference(value.expectedVault);
+    assertDocumentPath(value.path);
+    assertContent(value.content);
+}
+function assertSaveRequest(value) {
+    assertCreateRequest(value);
+    assertRevision(value.expectedRevision);
+}
+function assertSnapshotListRequest(value) {
+    assertRecord(value, 'Snapshot request');
+    assertVaultReference(value.expectedVault);
+    assertDocumentPath(value.path);
+}
+function assertReadSnapshotRequest(value) {
+    assertSnapshotListRequest(value);
+    assertSnapshotId(value.snapshotId);
+}
+function assertRestoreSnapshotRequest(value) {
+    assertReadSnapshotRequest(value);
+    assertDocumentPath(value.toPath);
+}
+function assertTrashEntryRequest(value) {
+    assertRecord(value, 'Trash request');
+    assertVaultReference(value.expectedVault);
+    assertEntryPath(value.path);
+    assertRevision(value.expectedRevision);
+}
+function assertListTrashRequest(value) {
+    assertRecord(value, 'Trash list request');
+    assertVaultReference(value.expectedVault);
+}
+function assertRestoreTrashRequest(value) {
+    assertRecord(value, 'Trash restore request');
+    assertVaultReference(value.expectedVault);
+    assertTrashId(value.id);
+    if (value.toPath !== undefined)
+        assertEntryPath(value.toPath);
+}
+/** Host-only projection of accepted note-vault workbench capabilities. */
+let TockTutorWorkbenchGateway = (() => {
+    let _classSuper = TypertRemoteService;
+    let _instanceExtraInitializers = [];
+    let _currentVault_decorators;
+    let _openDocument_decorators;
+    let _listTree_decorators;
+    let _createDocument_decorators;
+    let _saveDocument_decorators;
+    let _listSnapshots_decorators;
+    let _readSnapshot_decorators;
+    let _restoreSnapshotAsNew_decorators;
+    let _trashEntry_decorators;
+    let _listTrash_decorators;
+    let _restoreTrash_decorators;
+    return class TockTutorWorkbenchGateway extends _classSuper {
+        static {
+            const _metadata = typeof Symbol === "function" && Symbol.metadata ? Object.create(_classSuper[Symbol.metadata] ?? null) : void 0;
+            _currentVault_decorators = [Remote];
+            _openDocument_decorators = [Remote];
+            _listTree_decorators = [Remote];
+            _createDocument_decorators = [Remote];
+            _saveDocument_decorators = [Remote];
+            _listSnapshots_decorators = [Remote];
+            _readSnapshot_decorators = [Remote];
+            _restoreSnapshotAsNew_decorators = [Remote];
+            _trashEntry_decorators = [Remote];
+            _listTrash_decorators = [Remote];
+            _restoreTrash_decorators = [Remote];
+            __esDecorate(this, null, _currentVault_decorators, { kind: "method", name: "currentVault", static: false, private: false, access: { has: obj => "currentVault" in obj, get: obj => obj.currentVault }, metadata: _metadata }, null, _instanceExtraInitializers);
+            __esDecorate(this, null, _openDocument_decorators, { kind: "method", name: "openDocument", static: false, private: false, access: { has: obj => "openDocument" in obj, get: obj => obj.openDocument }, metadata: _metadata }, null, _instanceExtraInitializers);
+            __esDecorate(this, null, _listTree_decorators, { kind: "method", name: "listTree", static: false, private: false, access: { has: obj => "listTree" in obj, get: obj => obj.listTree }, metadata: _metadata }, null, _instanceExtraInitializers);
+            __esDecorate(this, null, _createDocument_decorators, { kind: "method", name: "createDocument", static: false, private: false, access: { has: obj => "createDocument" in obj, get: obj => obj.createDocument }, metadata: _metadata }, null, _instanceExtraInitializers);
+            __esDecorate(this, null, _saveDocument_decorators, { kind: "method", name: "saveDocument", static: false, private: false, access: { has: obj => "saveDocument" in obj, get: obj => obj.saveDocument }, metadata: _metadata }, null, _instanceExtraInitializers);
+            __esDecorate(this, null, _listSnapshots_decorators, { kind: "method", name: "listSnapshots", static: false, private: false, access: { has: obj => "listSnapshots" in obj, get: obj => obj.listSnapshots }, metadata: _metadata }, null, _instanceExtraInitializers);
+            __esDecorate(this, null, _readSnapshot_decorators, { kind: "method", name: "readSnapshot", static: false, private: false, access: { has: obj => "readSnapshot" in obj, get: obj => obj.readSnapshot }, metadata: _metadata }, null, _instanceExtraInitializers);
+            __esDecorate(this, null, _restoreSnapshotAsNew_decorators, { kind: "method", name: "restoreSnapshotAsNew", static: false, private: false, access: { has: obj => "restoreSnapshotAsNew" in obj, get: obj => obj.restoreSnapshotAsNew }, metadata: _metadata }, null, _instanceExtraInitializers);
+            __esDecorate(this, null, _trashEntry_decorators, { kind: "method", name: "trashEntry", static: false, private: false, access: { has: obj => "trashEntry" in obj, get: obj => obj.trashEntry }, metadata: _metadata }, null, _instanceExtraInitializers);
+            __esDecorate(this, null, _listTrash_decorators, { kind: "method", name: "listTrash", static: false, private: false, access: { has: obj => "listTrash" in obj, get: obj => obj.listTrash }, metadata: _metadata }, null, _instanceExtraInitializers);
+            __esDecorate(this, null, _restoreTrash_decorators, { kind: "method", name: "restoreTrash", static: false, private: false, access: { has: obj => "restoreTrash" in obj, get: obj => obj.restoreTrash }, metadata: _metadata }, null, _instanceExtraInitializers);
+            if (_metadata) Object.defineProperty(this, Symbol.metadata, { enumerable: true, configurable: true, writable: true, value: _metadata });
+        }
+        static inject = ['noteVault'];
+        constructor(ctx) {
+            super(ctx, 'tocktutorWorkbench');
+            __runInitializers(this, _instanceExtraInitializers);
+        }
+        async currentVault(signal) {
+            signal.throwIfAborted();
+            const state = this.ctx.noteVault.state;
+            if (!state.active)
+                return null;
+            const vault = { generation: state.generation, id: state.id };
+            assertVaultReference(vault);
+            return vault;
+        }
+        async openDocument(path, expectedVault, signal) {
+            assertDocumentPath(path);
+            assertVaultReference(expectedVault);
+            signal.throwIfAborted();
+            return this.ctx.noteVault.openDocument(path, expectedVault, signal);
+        }
+        async listTree(request, signal) {
+            assertTreeRequest(request);
+            signal.throwIfAborted();
+            return this.ctx.noteVault.listTree(request, signal);
+        }
+        async createDocument(request, signal) {
+            assertCreateRequest(request);
+            signal.throwIfAborted();
+            return this.ctx.noteVault.createDocument(request, signal);
+        }
+        async saveDocument(request, signal) {
+            assertSaveRequest(request);
+            signal.throwIfAborted();
+            return this.ctx.noteVault.saveDocument(request, signal);
+        }
+        async listSnapshots(request, signal) {
+            assertSnapshotListRequest(request);
+            signal.throwIfAborted();
+            return this.ctx.noteVault.listSnapshots(request, signal);
+        }
+        async readSnapshot(request, signal) {
+            assertReadSnapshotRequest(request);
+            signal.throwIfAborted();
+            return this.ctx.noteVault.readSnapshot(request, signal);
+        }
+        async restoreSnapshotAsNew(request, signal) {
+            assertRestoreSnapshotRequest(request);
+            signal.throwIfAborted();
+            return this.ctx.noteVault.restoreSnapshotAsNew(request, signal);
+        }
+        async trashEntry(request, signal) {
+            assertTrashEntryRequest(request);
+            signal.throwIfAborted();
+            return this.ctx.noteVault.trashEntry(request, signal);
+        }
+        async listTrash(request, signal) {
+            assertListTrashRequest(request);
+            signal.throwIfAborted();
+            return this.ctx.noteVault.listTrash(request, signal);
+        }
+        async restoreTrash(request, signal) {
+            assertRestoreTrashRequest(request);
+            signal.throwIfAborted();
+            return this.ctx.noteVault.restoreTrash(request, signal);
+        }
+    };
+})();
+export { TockTutorWorkbenchGateway };
+//# sourceMappingURL=host-read.js.map
