@@ -168,6 +168,66 @@ test('provider unload closes admission before its cleanup snapshot', async () =>
   assert.equal(reported, undefined)
 })
 
+test('provider unload waits admitted writes and scrubs their plaintext', async () => {
+  const root = await canonicalTemp('tockteam-picker-unload-write-')
+  const activeVault = await canonicalTemp('tockteam-picker-unload-write-vault-')
+  const output = join(root, 'export.html')
+  const bytes = new Uint8Array(37).fill(83)
+  const owner = new DesktopPickerOwner({
+    isAvailable: () => true,
+    showOpenDialog: async () => ({ canceled: false, filePath: activeVault }),
+    showSaveDialog: async () => ({ canceled: false, filePath: output }),
+  })
+  await activate(owner)
+  const channel = new DesktopPickerChannel(owner)
+  const environment = await channel.start()
+  let writeStarted!: () => void
+  const started = new Promise<void>(resolve => { writeStarted = resolve })
+  let unblockWrite!: () => void
+  const blocked = new Promise<void>(resolve => { unblockWrite = resolve })
+  let blockFirstWrite = true
+  const fetcher: typeof fetch = async (input, init) => {
+    const response = await fetch(input, init)
+    const body = await response.text()
+    const settled = new Response(body, { headers: response.headers, status: response.status })
+    const method = JSON.parse(String(init?.body)) as { method?: string }
+    if (method.method === 'writeDestinationChunk' && blockFirstWrite) {
+      blockFirstWrite = false
+      writeStarted()
+      await blocked
+    }
+    return settled
+  }
+  const provider = new DesktopPickerProvider(environment, fetcher, () => ({ active: true, generation: 1, id: 'vault-1' }))
+  const operation = identity('unload-write')
+  const selected = await provider.pick({ identity: operation, kind: 'destination', purpose: 'export-html' }, new AbortController().signal)
+  assert.equal(selected.status, 'selected')
+  if (selected.status !== 'selected') return
+  const plan = {
+    entries: [{ digest: createHash('sha256').update(bytes).digest('hex') as never, size: bytes.byteLength, target: { kind: 'selected-file' as const } }] as const,
+    purpose: 'export-html' as const,
+    totalBytes: bytes.byteLength,
+  }
+  const planDigest = computeDesktopDestinationPlanDigest(plan)
+  const locked = await provider.lockDestinationPlan({ ...plan, identity: operation, planDigest, selectionAuthorization: selected.authorization }, new AbortController().signal)
+  const begun = await provider.beginDestination({ ...plan, authorization: locked.authorization, identity: operation, planDigest }, new AbortController().signal)
+  const writing = provider.writeDestinationChunk({ bytes, offset: 0, planDigest, session: begun.session, target: { kind: 'selected-file' } }, new AbortController().signal)
+  await started
+  let disposeSettled = false
+  const disposing = provider.dispose().then(() => { disposeSettled = true })
+  await new Promise<void>(resolve => { setImmediate(resolve) })
+  assert.equal(disposeSettled, false)
+  unblockWrite()
+  await writing
+  await disposing
+
+  assert.deepEqual((await readdir(root)).filter(name => name.startsWith('.tockteam-picker-stage-')), [])
+  const reported = await provider.abortDestination({ session: begun.session })
+  assert.deepEqual(reported, { cleanup: { status: 'complete' }, stagedBytes: 37, stagedEntries: 1, status: 'already-closed' })
+  await assert.rejects(provider.pick({ identity: identity('after-unload'), kind: 'destination', purpose: 'export-html' }, new AbortController().signal), /unavailable/)
+  await channel.stop()
+})
+
 test('provider unload propagates residual destination cleanup evidence', async () => {
   const root = await canonicalTemp('tockteam-picker-unload-residual-')
   const activeVault = await canonicalTemp('tockteam-picker-unload-residual-vault-')
