@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
-import { link, mkdir, mkdtemp, readFile, readdir, rename, symlink, writeFile } from 'node:fs/promises'
+import { link, mkdir, mkdtemp, readFile, readdir, rename, symlink, writeFile, realpath } from 'node:fs/promises'
 import { createServer } from 'node:net'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -21,6 +21,10 @@ import {
   type NativeOperationIdentity,
 } from '../src/host-contract.ts'
 import { DesktopPickerOwner, type DesktopPickerCheckpoint } from '../src/desktop-picker-owner.ts'
+
+async function canonicalTemp(prefix: string): Promise<string> {
+  return await realpath(await mkdtemp(join(tmpdir(), prefix)))
+}
 
 const limits = {
   maxDepth: MAX_DESKTOP_SOURCE_DEPTH,
@@ -103,8 +107,8 @@ async function lockAndBegin(
 }
 
 test('single-file source supports stat, sequential read, and root revalidation', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'tockteam-picker-single-'))
-  const activeVault = await mkdtemp(join(tmpdir(), 'tockteam-picker-active-'))
+  const root = await canonicalTemp('tockteam-picker-single-')
+  const activeVault = await canonicalTemp('tockteam-picker-active-')
   const sourcePath = join(root, 'notes.zip')
   await writeFile(sourcePath, 'zip bytes')
   const owner = new DesktopPickerOwner({
@@ -138,8 +142,8 @@ test('single-file source supports stat, sequential read, and root revalidation',
 })
 
 test('directory cursors page deterministic bounded entries and detect source TOCTOU', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'tockteam-picker-pages-'))
-  const activeVault = await mkdtemp(join(tmpdir(), 'tockteam-picker-active-'))
+  const root = await canonicalTemp('tockteam-picker-pages-')
+  const activeVault = await canonicalTemp('tockteam-picker-active-')
   await writeFile(join(root, 'b.md'), 'b')
   await writeFile(join(root, 'a.md'), 'a')
   const owner = new DesktopPickerOwner({
@@ -179,8 +183,8 @@ test('directory cursors page deterministic bounded entries and detect source TOC
 })
 
 test('nested symlink, hardlink, and socket entries are rejected and never followed', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'tockteam-picker-unsafe-'))
-  const activeVault = await mkdtemp(join(tmpdir(), 'tockteam-picker-active-'))
+  const root = await canonicalTemp('tockteam-picker-unsafe-')
+  const activeVault = await canonicalTemp('tockteam-picker-active-')
   const file = join(root, 'safe.md')
   const hard = join(root, 'hard.md')
   const symbolic = join(root, 'symbolic.md')
@@ -215,10 +219,31 @@ test('nested symlink, hardlink, and socket entries are rejected and never follow
   }
 })
 
+test('pre-existing lexical symlink ancestors are denied before canonical selection', async () => {
+  const realRoot = await canonicalTemp('tockteam-picker-real-root-')
+  const aliasParent = await canonicalTemp('tockteam-picker-alias-parent-')
+  const activeVault = await canonicalTemp('tockteam-picker-active-')
+  const alias = join(aliasParent, 'alias-dir')
+  await writeFile(join(realRoot, 'notes.zip'), 'source')
+  await symlink(realRoot, alias)
+  const owner = new DesktopPickerOwner({
+    isAvailable: () => true,
+    showOpenDialog: async options => ({
+      canceled: false,
+      filePath: options.purpose === 'activate' ? activeVault : join(alias, 'notes.zip'),
+    }),
+    showSaveDialog: async () => ({ canceled: false, filePath: join(alias, 'export.html') }),
+  })
+  await activate(owner)
+  assert.equal((await owner.pick({ identity: identity('alias-source'), kind: 'source', purpose: 'markdown-zip' }, new AbortController().signal)).status, 'denied')
+  assert.equal((await owner.pick({ identity: identity('alias-destination'), kind: 'destination', purpose: 'export-html' }, new AbortController().signal)).status, 'denied')
+  await owner.dispose()
+})
+
 test('ancestor replacement between listing and read cannot redirect file bytes', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'tockteam-picker-ancestor-'))
-  const activeVault = await mkdtemp(join(tmpdir(), 'tockteam-picker-active-'))
-  const outside = await mkdtemp(join(tmpdir(), 'tockteam-picker-outside-'))
+  const root = await canonicalTemp('tockteam-picker-ancestor-')
+  const activeVault = await canonicalTemp('tockteam-picker-active-')
+  const outside = await canonicalTemp('tockteam-picker-outside-')
   await mkdir(join(root, 'nested'))
   await writeFile(join(root, 'nested', 'note.md'), 'inside')
   await writeFile(join(outside, 'note.md'), 'outside secret')
@@ -249,8 +274,8 @@ test('ancestor replacement between listing and read cannot redirect file bytes',
 })
 
 test('destination mismatches and TOCTOU fail closed with staging cleanup', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'tockteam-picker-destination-fail-'))
-  const activeVault = await mkdtemp(join(tmpdir(), 'tockteam-picker-active-'))
+  const root = await canonicalTemp('tockteam-picker-destination-fail-')
+  const activeVault = await canonicalTemp('tockteam-picker-active-')
   const paths = ['size.html', 'digest.html', 'race.html'].map(name => join(root, name))
   const owner = new DesktopPickerOwner({
     isAvailable: () => true,
@@ -294,9 +319,115 @@ test('destination mismatches and TOCTOU fail closed with staging cleanup', async
   await owner.dispose()
 })
 
+test('reviewed existing-file snapshots reject swaps and replace only the verified inode', async () => {
+  const root = await canonicalTemp('tockteam-picker-replace-')
+  const activeVault = await canonicalTemp('tockteam-picker-active-')
+  const beforeBegin = join(root, 'before-begin.html')
+  const beforeCommit = join(root, 'before-commit.html')
+  const normal = join(root, 'normal.html')
+  await Promise.all([beforeBegin, beforeCommit, normal].map(path => writeFile(path, 'old')))
+  const paths = [beforeBegin, beforeCommit, normal]
+  let swapAtFinalize: string | undefined
+  const owner = new DesktopPickerOwner({
+    isAvailable: () => true,
+    showOpenDialog: async options => options.purpose === 'activate'
+      ? { canceled: false, filePath: activeVault }
+      : { canceled: true },
+    showSaveDialog: async () => {
+      const filePath = paths.shift()
+      return filePath === undefined ? { canceled: true } : { canceled: false, filePath }
+    },
+    onCheckpoint: async checkpoint => {
+      if (checkpoint === 'finalize' && swapAtFinalize !== undefined) {
+        await writeFile(swapAtFinalize, 'racer')
+        swapAtFinalize = undefined
+      }
+    },
+  })
+  await activate(owner)
+  const bytes = new TextEncoder().encode('new')
+  const plan = {
+    entries: [{ digest: sha(bytes), size: bytes.length, target: { kind: 'selected-file' as const } }] as const,
+    purpose: 'export-html' as const,
+    totalBytes: bytes.length,
+  }
+  const planDigest = computeDesktopDestinationPlanDigest(plan)
+
+  const lockOnly = async (name: string) => {
+    const operation = identity(name)
+    const selection = await grant(owner, { identity: operation, kind: 'destination', purpose: 'export-html' })
+    const locked = await owner.lockDestinationPlan({ ...plan, identity: operation, planDigest, selectionAuthorization: selection }, new AbortController().signal)
+    return { locked, operation }
+  }
+
+  const first = await lockOnly('replace-before-begin')
+  await writeFile(beforeBegin, 'changed-before-begin')
+  await rejectsCode(owner.beginDestination({ ...plan, authorization: first.locked.authorization, identity: first.operation, planDigest }, new AbortController().signal), 'changed')
+  assert.equal(await readFile(beforeBegin, 'utf8'), 'changed-before-begin')
+
+  const second = await lockOnly('replace-before-commit')
+  const secondSession = await owner.beginDestination({ ...plan, authorization: second.locked.authorization, identity: second.operation, planDigest }, new AbortController().signal)
+  await owner.writeDestinationChunk({ bytes, offset: 0, planDigest, session: secondSession.session, target: { kind: 'selected-file' } }, new AbortController().signal)
+  swapAtFinalize = beforeCommit
+  await rejectsCode(owner.finalizeDestination({ expectedState: secondSession.expectedState, planDigest, session: secondSession.session }, new AbortController().signal), 'changed')
+  assert.equal(await readFile(beforeCommit, 'utf8'), 'racer')
+
+  const third = await lockOnly('replace-normal')
+  const thirdSession = await owner.beginDestination({ ...plan, authorization: third.locked.authorization, identity: third.operation, planDigest }, new AbortController().signal)
+  await owner.writeDestinationChunk({ bytes, offset: 0, planDigest, session: thirdSession.session, target: { kind: 'selected-file' } }, new AbortController().signal)
+  assert.equal((await owner.finalizeDestination({ expectedState: thirdSession.expectedState, planDigest, session: thirdSession.session }, new AbortController().signal)).status, 'published')
+  assert.equal(await readFile(normal, 'utf8'), 'new')
+  assert.equal((await readdir(root)).some(name => name.startsWith('.tockteam-picker-')), false)
+  await owner.dispose()
+})
+
+test('replacement recovery journal restores a moved target before the next plan lock', async () => {
+  const root = await canonicalTemp('tockteam-picker-recovery-')
+  const activeVault = await canonicalTemp('tockteam-picker-active-')
+  const destinationPath = join(root, 'crashed.html')
+  const backupPath = join(root, '.tockteam-picker-backup-crash')
+  const commitPath = join(root, '.tockteam-picker-commit-crash')
+  const snapshotPath = join(root, '.tockteam-picker-snapshot-crash')
+  const journalPath = join(root, '.tockteam-picker-journal-crash.json')
+  await writeFile(backupPath, 'old')
+  await writeFile(commitPath, 'new')
+  await writeFile(snapshotPath, 'old')
+  await writeFile(journalPath, JSON.stringify({
+    backupPath,
+    commitPath,
+    destinationPath,
+    snapshotPath,
+    state: 'moved',
+    version: 1,
+  }))
+  const nextPath = join(root, 'next.html')
+  const owner = new DesktopPickerOwner({
+    isAvailable: () => true,
+    showOpenDialog: async options => options.purpose === 'activate'
+      ? { canceled: false, filePath: activeVault }
+      : { canceled: true },
+    showSaveDialog: async () => ({ canceled: false, filePath: nextPath }),
+  })
+  await activate(owner)
+  const operation = identity('recover-plan')
+  const selection = await grant(owner, { identity: operation, kind: 'destination', purpose: 'export-html' })
+  const bytes = new TextEncoder().encode('next')
+  const plan = {
+    entries: [{ digest: sha(bytes), size: bytes.length, target: { kind: 'selected-file' as const } }] as const,
+    purpose: 'export-html' as const,
+    totalBytes: bytes.length,
+  }
+  const planDigest = computeDesktopDestinationPlanDigest(plan)
+  const locked = await owner.lockDestinationPlan({ ...plan, identity: operation, planDigest, selectionAuthorization: selection }, new AbortController().signal)
+  assert.equal(await readFile(destinationPath, 'utf8'), 'old')
+  assert.equal((await readdir(root)).some(name => name.startsWith('.tockteam-picker-') && name.includes('crash')), false)
+  await owner.revokeDestinationPlan({ authorization: locked.authorization })
+  await owner.dispose()
+})
+
 test('destination plan authorization rotates once, revokes idempotently, and tombstones drift', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'tockteam-picker-plan-lock-'))
-  const activeVault = await mkdtemp(join(tmpdir(), 'tockteam-picker-active-'))
+  const root = await canonicalTemp('tockteam-picker-plan-lock-')
+  const activeVault = await canonicalTemp('tockteam-picker-active-')
   const paths = ['revoke.html', 'drift.html'].map(name => join(root, name))
   const owner = new DesktopPickerOwner({
     isAvailable: () => true,
@@ -343,8 +474,8 @@ test('destination plan authorization rotates once, revokes idempotently, and tom
 })
 
 test('vault backup publishes its complete staged directory as one destination', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'tockteam-picker-backup-'))
-  const activeVault = await mkdtemp(join(tmpdir(), 'tockteam-picker-active-'))
+  const root = await canonicalTemp('tockteam-picker-backup-')
+  const activeVault = await canonicalTemp('tockteam-picker-active-')
   const owner = new DesktopPickerOwner({
     isAvailable: () => true,
     showOpenDialog: async options => ({ canceled: false, filePath: options.purpose === 'activate' ? activeVault : root }),
@@ -375,8 +506,8 @@ test('vault backup publishes its complete staged directory as one destination', 
 })
 
 test('root caps, purpose filters, trust revocation, and active-vault overlap fail closed', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'tockteam-picker-policy-'))
-  const activeVault = await mkdtemp(join(tmpdir(), 'tockteam-picker-active-'))
+  const root = await canonicalTemp('tockteam-picker-policy-')
+  const activeVault = await canonicalTemp('tockteam-picker-active-')
   const oversized = join(root, 'oversized.zip')
   const wrongCsv = join(root, 'wrong.txt')
   const restoreFile = join(root, 'restore.zip')
@@ -428,8 +559,8 @@ test('root caps, purpose filters, trust revocation, and active-vault overlap fai
 })
 
 test('abort checkpoints and owner disposal settle sessions and staging idempotently', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'tockteam-picker-abort-'))
-  const activeVault = await mkdtemp(join(tmpdir(), 'tockteam-picker-active-'))
+  const root = await canonicalTemp('tockteam-picker-abort-')
+  const activeVault = await canonicalTemp('tockteam-picker-active-')
   const source = join(root, 'source.zip')
   const output = join(root, 'output.html')
   await writeFile(source, 'source')

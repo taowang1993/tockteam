@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdtemp, writeFile } from 'node:fs/promises'
+import { mkdtemp, realpath, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
@@ -7,6 +7,10 @@ import { DesktopPickerChannel } from '../src/desktop-picker-channel.ts'
 import { DesktopPickerOwner } from '../src/desktop-picker-owner.ts'
 import { DesktopPickerProvider } from '../src/desktop-picker-provider.ts'
 import type { NativeOperationIdentity } from '../src/host-contract.ts'
+
+async function canonicalTemp(prefix: string): Promise<string> {
+  return await realpath(await mkdtemp(join(tmpdir(), prefix)))
+}
 
 function identity(operationId: string, active = true): NativeOperationIdentity {
   return {
@@ -25,8 +29,8 @@ function providerFor(owner: DesktopPickerOwner): { channel: DesktopPickerChannel
 }
 
 test('picker channel authenticates, forwards opaque sessions, and rejects replay', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'tockteam-picker-channel-'))
-  const activeVault = await mkdtemp(join(tmpdir(), 'tockteam-picker-active-'))
+  const root = await canonicalTemp('tockteam-picker-channel-')
+  const activeVault = await canonicalTemp('tockteam-picker-active-')
   await writeFile(join(root, 'note.md'), 'channel note')
   const owner = new DesktopPickerOwner({
     isAvailable: () => true,
@@ -78,7 +82,7 @@ test('picker channel authenticates, forwards opaque sessions, and rejects replay
 })
 
 test('vault selection binding publishes authority only after identity and trust recheck', async () => {
-  const activeVault = await mkdtemp(join(tmpdir(), 'tockteam-picker-activation-race-'))
+  const activeVault = await canonicalTemp('tockteam-picker-activation-race-')
   let available = true
   const owner = new DesktopPickerOwner({
     isAvailable: () => available,

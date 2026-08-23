@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
-import { mkdtemp, mkdir, readFile, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, realpath, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
@@ -30,6 +30,10 @@ function identity(operationId: string, active = true): NativeOperationIdentity {
     vaultId: active ? 'vault-1' : null,
     windowId: 'window-1',
   }
+}
+
+async function canonicalTemp(prefix: string): Promise<string> {
+  return await realpath(await mkdtemp(join(tmpdir(), prefix)))
 }
 
 const limits = {
@@ -73,8 +77,8 @@ async function activate(owner: DesktopPickerOwner): Promise<void> {
 }
 
 test('picker owner consumes opaque source grants and reads bounded path-free sessions', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'tockteam-picker-source-'))
-  const activeVault = await mkdtemp(join(tmpdir(), 'tockteam-picker-active-'))
+  const root = await canonicalTemp('tockteam-picker-source-')
+  const activeVault = await canonicalTemp('tockteam-picker-active-')
   await mkdir(join(root, 'nested'))
   await writeFile(join(root, 'note.md'), 'hello world')
   await writeFile(join(root, 'nested', 'other.md'), 'nested')
@@ -115,8 +119,8 @@ test('picker owner consumes opaque source grants and reads bounded path-free ses
 })
 
 test('picker owner enforces destination plan purpose and publishes atomically', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'tockteam-picker-destination-'))
-  const activeVault = await mkdtemp(join(tmpdir(), 'tockteam-picker-active-'))
+  const root = await canonicalTemp('tockteam-picker-destination-')
+  const activeVault = await canonicalTemp('tockteam-picker-active-')
   const output = join(root, 'export.html')
   const content = new TextEncoder().encode('<p>ok</p>')
   const dialogs = dialogQueue([output])
@@ -153,8 +157,8 @@ test('picker owner enforces destination plan purpose and publishes atomically', 
 })
 
 test('picker owner aborts and expires sessions without retaining grants', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'tockteam-picker-expiry-'))
-  const activeVault = await mkdtemp(join(tmpdir(), 'tockteam-picker-active-'))
+  const root = await canonicalTemp('tockteam-picker-expiry-')
+  const activeVault = await canonicalTemp('tockteam-picker-active-')
   let now = 1_000
   const dialogs = dialogQueue([root])
   const owner = new DesktopPickerOwner({

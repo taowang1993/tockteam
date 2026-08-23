@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdir, mkdtemp, rename, rm, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, rename, rm, writeFile, realpath } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
@@ -12,8 +12,12 @@ import { DesktopPickerChannel } from '../src/desktop-picker-channel.ts'
 import { DesktopPickerOwner } from '../src/desktop-picker-owner.ts'
 import { DesktopPickerProvider, DesktopVaultSelectionProvider } from '../src/desktop-picker-provider.ts'
 
+async function canonicalTemp(prefix: string): Promise<string> {
+  return await realpath(await mkdtemp(join(tmpdir(), prefix)))
+}
+
 async function loadRuntime(): Promise<{ context: Context; root: string }> {
-  const root = await mkdtemp(join(tmpdir(), 'tockteam-picker-runtime-'))
+  const root = await canonicalTemp('tockteam-picker-runtime-')
   const configPath = join(root, 'cordis.yml')
   await writeFile(configPath, [
     "- name: 'tockbot-note-runtime'",
@@ -39,8 +43,8 @@ async function loadRuntime(): Promise<{ context: Context; root: string }> {
 }
 
 test('Runtime 0.1.2 activates a Desktop selection through consume-bind authority without public paths', async () => {
-  const vault = await mkdtemp(join(tmpdir(), 'tockteam-selected-vault-'))
-  const source = await mkdtemp(join(tmpdir(), 'tockteam-external-source-'))
+  const vault = await canonicalTemp('tockteam-selected-vault-')
+  const source = await canonicalTemp('tockteam-external-source-')
   await writeFile(join(vault, 'vault.md'), 'vault')
   await writeFile(join(source, 'source.md'), 'source')
   const owner = new DesktopPickerOwner({
@@ -107,9 +111,9 @@ test('Runtime 0.1.2 activates a Desktop selection through consume-bind authority
 })
 
 test('selected vault inode replacement invalidates Runtime and exact main mapping', async () => {
-  const vault = await mkdtemp(join(tmpdir(), 'tockteam-replaced-vault-'))
+  const vault = await canonicalTemp('tockteam-replaced-vault-')
   const moved = `${vault}-moved`
-  const source = await mkdtemp(join(tmpdir(), 'tockteam-replaced-source-'))
+  const source = await canonicalTemp('tockteam-replaced-source-')
   const owner = new DesktopPickerOwner({
     isAvailable: () => true,
     showOpenDialog: async options => ({ canceled: false, filePath: options.purpose === 'activate' ? vault : source }),
@@ -159,8 +163,8 @@ test('selected vault inode replacement invalidates Runtime and exact main mappin
 })
 
 test('reserved main mapping stays unusable until Runtime state matches exactly', async () => {
-  const vault = await mkdtemp(join(tmpdir(), 'tockteam-reserved-vault-'))
-  const source = await mkdtemp(join(tmpdir(), 'tockteam-reserved-source-'))
+  const vault = await canonicalTemp('tockteam-reserved-vault-')
+  const source = await canonicalTemp('tockteam-reserved-source-')
   const owner = new DesktopPickerOwner({
     isAvailable: () => true,
     showOpenDialog: async options => ({ canceled: false, filePath: options.purpose === 'activate' ? vault : source }),
@@ -205,7 +209,7 @@ test('reserved main mapping stays unusable until Runtime state matches exactly',
 })
 
 test('Runtime unload waits a delayed release after a post-bind activation failure', async () => {
-  const vault = await mkdtemp(join(tmpdir(), 'tockteam-failed-vault-'))
+  const vault = await canonicalTemp('tockteam-failed-vault-')
   const owner = new DesktopPickerOwner({
     isAvailable: () => true,
     showOpenDialog: async () => ({ canceled: false, filePath: vault }),
@@ -277,10 +281,10 @@ test('Runtime unload waits a delayed release after a post-bind activation failur
 })
 
 test('Runtime supersession and direct switch release only the exact bound Desktop claim', async () => {
-  const firstVault = await mkdtemp(join(tmpdir(), 'tockteam-selected-vault-one-'))
-  const secondVault = await mkdtemp(join(tmpdir(), 'tockteam-selected-vault-two-'))
-  const directVault = await mkdtemp(join(tmpdir(), 'tockteam-direct-vault-'))
-  const source = await mkdtemp(join(tmpdir(), 'tockteam-external-source-'))
+  const firstVault = await canonicalTemp('tockteam-selected-vault-one-')
+  const secondVault = await canonicalTemp('tockteam-selected-vault-two-')
+  const directVault = await canonicalTemp('tockteam-direct-vault-')
+  const source = await canonicalTemp('tockteam-external-source-')
   const selections = [firstVault, secondVault]
   const owner = new DesktopPickerOwner({
     isAvailable: () => true,

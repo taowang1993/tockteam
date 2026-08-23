@@ -13,7 +13,7 @@ import {
   realpath,
   unlink,
 } from 'node:fs/promises'
-import { basename, dirname, extname, isAbsolute, join, relative, resolve, sep } from 'node:path'
+import { basename, dirname, extname, isAbsolute, join, parse, relative, resolve, sep } from 'node:path'
 import {
   MAX_DESKTOP_DESTINATION_CHUNK_BYTES,
   MAX_DESKTOP_GRANT_SESSION_MS,
@@ -37,6 +37,7 @@ import {
   type DesktopDestinationTarget,
   type DesktopExportPurpose,
   type DesktopGrantErrorCode,
+  type DesktopPickerLabel,
   type DesktopPickerRequest,
   type DesktopPickerResult,
   type DesktopPrintExportRequest,
@@ -162,6 +163,14 @@ interface SourceSession {
   reads: Map<string, number>
 }
 
+interface ExistingDestinationSnapshot {
+  contentDigest: string
+  identity: string
+  path: string
+  revision: string
+  size: number
+}
+
 interface LockedDestinationPlan {
   entries: DesktopDestinationPlanEntry[]
   expectedState: DesktopDestinationState
@@ -172,6 +181,7 @@ interface LockedDestinationPlan {
   planDigest: string
   publicationName: string | undefined
   purpose: DesktopExportPurpose
+  snapshot: ExistingDestinationSnapshot | undefined
   totalBytes: number
 }
 
@@ -187,12 +197,15 @@ interface DestinationSession {
   expiresAt: number
   expectedState: DesktopDestinationState
   identity: NativeOperationIdentity
+  journalPath: string | undefined
   label: string
   planDigest: string
   entries: DestinationEntry[]
   path: string
   publicationName: string | undefined
   purpose: DesktopExportPurpose
+  recoveryPaths: string[]
+  snapshot: ExistingDestinationSnapshot | undefined
   totalBytes: number
   stagingRevision: string | undefined
   stagingRoot: string | undefined
@@ -407,7 +420,7 @@ export class DesktopPickerOwner {
   private readonly destinationPlans = new Map<string, LockedDestinationPlan>()
   private readonly consumedPickOperations = new Set<string>()
   private readonly vaultSelectionClaims = new Map<string, PendingVaultSelectionClaim>()
-  private readonly cleanupTasks = new Set<Promise<DesktopCleanupEvidence>>()
+  private readonly cleanupTasks = new Set<Promise<unknown>>()
   private readonly closedDestinations = new Map<string, AbortDesktopDestinationResult>()
   private activeVault: ActiveVaultBoundary | undefined
   private disposed = false
@@ -773,6 +786,7 @@ export class DesktopPickerOwner {
       || !identity(request.identity) || !text(request.selectionAuthorization) || !digest(request.planDigest)) return error('unsafe-target')
     this.assertAuthority(request.identity)
     const grant = this.consumeGrant(request.selectionAuthorization, request.identity, request.purpose)
+    await this.recoverParent(dirname(grant.path))
     const computed = computeDesktopDestinationPlanDigest(destinationPlanOf(request))
     if (computed !== request.planDigest) return error('digest-mismatch')
     if (this.activeVault !== undefined && pathOverlaps(grant.path, this.activeVault.path)) return error('unsafe-target')
@@ -780,7 +794,8 @@ export class DesktopPickerOwner {
     const path = request.purpose === 'vault-backup'
       ? join(grant.path, request.publicationName as string)
       : grant.path
-    const expectedState = await this.destinationState(path, request.purpose)
+    const captured = await this.captureDestination(path, request.purpose)
+    const expectedState = captured.expectedState
     const authorization = cast<DesktopDestinationPlanAuthorization>(this.options.randomId())
     const expiresAt = this.options.now() + MAX_DESKTOP_GRANT_SESSION_MS
     this.destinationPlans.set(authorization, {
@@ -793,6 +808,7 @@ export class DesktopPickerOwner {
       planDigest: request.planDigest,
       publicationName: request.publicationName,
       purpose: request.purpose,
+      snapshot: captured.snapshot,
       totalBytes: request.totalBytes,
     })
     this.scheduleExpiry()
@@ -803,7 +819,11 @@ export class DesktopPickerOwner {
     request: RevokeDesktopDestinationPlanRequest,
   ): Promise<RevokeDesktopDestinationPlanResult> {
     if (!exact(request, ['authorization']) || !text(request.authorization)) return error('invalid-entry')
-    return { status: this.destinationPlans.delete(request.authorization) ? 'revoked' : 'already-closed' }
+    const plan = this.destinationPlans.get(request.authorization)
+    if (plan === undefined) return { status: 'already-closed' }
+    this.destinationPlans.delete(request.authorization)
+    await this.cleanupLockedPlan(plan)
+    return { status: 'revoked' }
   }
 
   async beginDestination(request: BeginDesktopDestinationRequest, signal: AbortSignal): Promise<BeginDesktopDestinationResult> {
@@ -818,10 +838,12 @@ export class DesktopPickerOwner {
       computed = computeDesktopDestinationPlanDigest(destinationPlanOf(request))
     } catch (cause) {
       this.destinationPlans.delete(request.authorization)
+      await this.cleanupLockedPlan(locked)
       throw cause
     }
     if (computed !== request.planDigest) {
       this.destinationPlans.delete(request.authorization)
+      await this.cleanupLockedPlan(locked)
       return error('digest-mismatch')
     }
     if (locked.expiresAt <= this.options.now()) {
@@ -832,17 +854,31 @@ export class DesktopPickerOwner {
       || locked.purpose !== request.purpose || locked.publicationName !== request.publicationName
       || locked.totalBytes !== request.totalBytes) {
       this.destinationPlans.delete(request.authorization)
+      await this.cleanupLockedPlan(locked)
       return error('stale')
     }
     this.destinationPlans.delete(request.authorization)
-    const currentState = await this.destinationState(locked.path, locked.purpose)
-    if (signal.aborted) return error('aborted')
-    if (!stateEqual(currentState, locked.expectedState)) return error('changed')
+    let currentState: DesktopDestinationState
+    try {
+      currentState = await this.destinationState(locked.path, locked.purpose)
+    } catch (cause) {
+      await this.cleanupLockedPlan(locked)
+      throw cause
+    }
+    if (signal.aborted) {
+      await this.cleanupLockedPlan(locked)
+      return error('aborted')
+    }
+    if (!stateEqual(currentState, locked.expectedState)) {
+      await this.cleanupLockedPlan(locked)
+      return error('changed')
+    }
     const session = cast<DesktopDestinationSession>(this.options.randomId())
     const destination: DestinationSession = {
       expiresAt: this.options.now() + MAX_DESKTOP_GRANT_SESSION_MS,
       expectedState: locked.expectedState,
       identity: request.identity,
+      journalPath: undefined,
       label: locked.label,
       planDigest: locked.planDigest,
       entries: locked.entries.map(entry => ({
@@ -856,6 +892,8 @@ export class DesktopPickerOwner {
       path: locked.path,
       publicationName: locked.publicationName,
       purpose: locked.purpose,
+      recoveryPaths: [],
+      snapshot: locked.snapshot,
       totalBytes: locked.totalBytes,
       stagingRevision: undefined,
       stagingRoot: undefined,
@@ -997,8 +1035,9 @@ export class DesktopPickerOwner {
         const commitPath = join(dirname(destination.path), `.tockteam-picker-commit-${this.options.randomId()}`)
         await rename(selectedEntry.stagedPath, commitPath)
         selectedEntry.stagedPath = commitPath
-        const stagingCleanup = await this.cleanupDestination(destination)
-        if (stagingCleanup.status !== 'complete') return error('owner-lost')
+        const stagedDirectory = destination.stagingRoot
+        if (stagedDirectory === undefined) return error('closed')
+        await rm(stagedDirectory, { recursive: true, force: true })
         destination.stagingRoot = commitPath
         destination.stagingRevision = undefined
         if (destination.expectedState.status === 'absent') {
@@ -1010,7 +1049,32 @@ export class DesktopPickerOwner {
             throw cause
           }
         } else {
-          await rename(commitPath, destination.path)
+          const snapshot = destination.snapshot
+          if (snapshot === undefined) return error('stale')
+          const backupPath = join(dirname(destination.path), `.tockteam-picker-backup-${this.options.randomId()}`)
+          await this.writeRecoveryJournal(destination, backupPath, commitPath, 'prepared')
+          await rename(destination.path, backupPath)
+          await this.writeRecoveryJournal(destination, backupPath, commitPath, 'moved')
+          destination.recoveryPaths.push(backupPath)
+          if (!await this.verifySnapshot(backupPath, snapshot)) {
+            await this.restoreBackup(destination, backupPath)
+            return error('changed')
+          }
+          try {
+            await link(commitPath, destination.path)
+            await unlink(commitPath)
+          } catch (cause) {
+            await this.restoreBackup(destination, backupPath)
+            if ((cause as NodeJS.ErrnoException).code === 'EEXIST') return error('changed')
+            throw cause
+          }
+          await this.writeRecoveryJournal(destination, backupPath, commitPath, 'published')
+          await unlink(backupPath)
+          destination.recoveryPaths = destination.recoveryPaths.filter(path => path !== backupPath)
+          await rm(snapshot.path, { force: true })
+          if (destination.journalPath !== undefined) await rm(destination.journalPath, { force: true })
+          destination.journalPath = undefined
+          destination.snapshot = undefined
         }
         destination.stagingRoot = undefined
       }
@@ -1055,6 +1119,7 @@ export class DesktopPickerOwner {
     if (this.expiryTimer !== undefined) clearTimeout(this.expiryTimer)
     this.expiryTimer = undefined
     await this.clearSessions()
+    await Promise.allSettled([...this.destinationPlans.values()].map(plan => this.cleanupLockedPlan(plan)))
     await Promise.allSettled([...this.cleanupTasks])
     this.grants.clear()
     this.destinationPlans.clear()
@@ -1065,6 +1130,7 @@ export class DesktopPickerOwner {
 
   private async destinationPath(rawPath: string, purpose: 'export-html' | 'export-pdf'): Promise<{ path: string; label: string } | undefined> {
     const selected = resolve(rawPath)
+    if (await this.hasUnsafeSymlinkAncestor(dirname(selected))) return undefined
     const parent = await this.safeRealpath(dirname(selected))
     if (parent === undefined) return undefined
     const path = join(parent, basename(selected))
@@ -1081,6 +1147,7 @@ export class DesktopPickerOwner {
     purpose: DesktopPickerRequest['purpose'],
   ): Promise<{ path: string; label: string } | undefined> {
     const selected = resolve(rawPath)
+    if (await this.hasUnsafeSymlinkAncestor(selected)) return undefined
     const stat = await this.safeLstat(selected)
     if (stat === undefined || stat.isSymbolicLink()) return undefined
     const kind = kindOf(stat)
@@ -1197,7 +1264,12 @@ export class DesktopPickerOwner {
     const now = this.options.now()
     for (const [authorization, grant] of this.grants) if (grant.expiresAt <= now) this.grants.delete(authorization)
     for (const [session, source] of this.sources) if (source.expiresAt <= now) this.sources.delete(session)
-    for (const [authorization, plan] of this.destinationPlans) if (plan.expiresAt <= now) this.destinationPlans.delete(authorization)
+    for (const [authorization, plan] of this.destinationPlans) {
+      if (plan.expiresAt <= now) {
+        this.destinationPlans.delete(authorization)
+        await this.cleanupLockedPlan(plan)
+      }
+    }
     for (const [claim, selection] of this.vaultSelectionClaims) if (selection.expiresAt <= now) this.vaultSelectionClaims.delete(claim)
     for (const [session, destination] of this.destinations) {
       if (destination.expiresAt <= now) await this.closeDestination(session, destination)
@@ -1209,7 +1281,12 @@ export class DesktopPickerOwner {
     const now = this.options.now()
     for (const [authorization, grant] of this.grants) if (grant.expiresAt <= now) this.grants.delete(authorization)
     for (const [session, source] of this.sources) if (source.expiresAt <= now) this.sources.delete(session)
-    for (const [authorization, plan] of this.destinationPlans) if (plan.expiresAt <= now) this.destinationPlans.delete(authorization)
+    for (const [authorization, plan] of this.destinationPlans) {
+      if (plan.expiresAt <= now) {
+        this.destinationPlans.delete(authorization)
+        this.scheduleLockedPlanCleanup(plan)
+      }
+    }
     for (const [claim, selection] of this.vaultSelectionClaims) if (selection.expiresAt <= now) this.vaultSelectionClaims.delete(claim)
     for (const [session, destination] of this.destinations) {
       if (destination.expiresAt <= now) {
@@ -1217,6 +1294,19 @@ export class DesktopPickerOwner {
         this.destinations.delete(session)
       }
     }
+  }
+
+  private async hasUnsafeSymlinkAncestor(path: string): Promise<boolean> {
+    const absolute = resolve(path)
+    const { root } = parse(absolute)
+    const segments = absolute.slice(root.length).split(sep).filter(Boolean)
+    let current = root
+    for (const segment of segments) {
+      current = join(current, segment)
+      const stat = await this.safeLstat(current)
+      if (stat?.isSymbolicLink()) return true
+    }
+    return false
   }
 
   private async safeLstat(path: string): Promise<Stat | undefined> {
@@ -1370,6 +1460,177 @@ export class DesktopPickerOwner {
     await walk(source.path, '', 0, [])
   }
 
+  private async recoverParent(parent: string): Promise<void> {
+    const entries = await readdir(parent, { withFileTypes: true })
+    for (const entry of entries) {
+      if (!entry.isFile() || !entry.name.startsWith('.tockteam-picker-journal-') || !entry.name.endsWith('.json')) continue
+      const journalPath = join(parent, entry.name)
+      let value: unknown
+      try { value = JSON.parse(await readFile(journalPath, 'utf8')) } catch { return error('owner-lost') }
+      if (!object(value) || value.version !== 1
+        || typeof value.backupPath !== 'string' || typeof value.commitPath !== 'string'
+        || typeof value.destinationPath !== 'string'
+        || value.snapshotPath !== null && typeof value.snapshotPath !== 'string'
+        || value.state !== 'prepared' && value.state !== 'moved' && value.state !== 'published') return error('owner-lost')
+      const paths = [value.backupPath, value.commitPath, value.destinationPath, journalPath,
+        ...(value.snapshotPath === null ? [] : [value.snapshotPath])]
+      if (paths.some(path => dirname(path) !== parent)) return error('owner-lost')
+      if (value.state === 'published') {
+        await Promise.allSettled(paths.filter(path => path !== value.destinationPath).map(path => rm(path, { recursive: true, force: true })))
+        continue
+      }
+      const backup = await this.safeLstat(value.backupPath)
+      const destination = await this.safeLstat(value.destinationPath)
+      if (backup !== undefined && destination === undefined) {
+        await link(value.backupPath, value.destinationPath)
+        await unlink(value.backupPath)
+      } else if (backup !== undefined) {
+        return error('owner-lost')
+      }
+      await Promise.allSettled([
+        rm(value.commitPath, { recursive: true, force: true }),
+        ...(value.snapshotPath === null ? [] : [rm(value.snapshotPath, { force: true })]),
+        rm(journalPath, { force: true }),
+      ])
+    }
+    const retainedSnapshots = new Set([
+      ...[...this.destinationPlans.values()].flatMap(plan => plan.snapshot === undefined ? [] : [plan.snapshot.path]),
+      ...[...this.destinations.values()].flatMap(session => session.snapshot === undefined ? [] : [session.snapshot.path]),
+    ])
+    for (const entry of entries) {
+      const path = join(parent, entry.name)
+      if (entry.isFile() && entry.name.startsWith('.tockteam-picker-snapshot-')
+        && !retainedSnapshots.has(path)) await rm(path, { force: true })
+    }
+  }
+
+  private async writeRecoveryJournal(
+    destination: DestinationSession,
+    backupPath: string,
+    commitPath: string,
+    state: 'prepared' | 'moved' | 'published',
+  ): Promise<void> {
+    const journalPath = destination.journalPath
+      ?? join(dirname(destination.path), `.tockteam-picker-journal-${this.options.randomId()}.json`)
+    const temporary = `${journalPath}.tmp`
+    const payload = JSON.stringify({
+      backupPath,
+      commitPath,
+      destinationPath: destination.path,
+      snapshotPath: destination.snapshot?.path ?? null,
+      state,
+      version: 1,
+    })
+    const handle = await open(
+      temporary,
+      fsConstants.O_WRONLY | fsConstants.O_CREAT | fsConstants.O_EXCL | fsConstants.O_NOFOLLOW,
+      0o600,
+    )
+    try {
+      await handle.writeFile(payload, 'utf8')
+      await handle.sync()
+    } finally {
+      await handle.close()
+    }
+    await rename(temporary, journalPath)
+    destination.journalPath = journalPath
+  }
+
+  private async verifySnapshot(path: string, snapshot: ExistingDestinationSnapshot): Promise<boolean> {
+    try {
+      const handle = await open(path, fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW)
+      try {
+        const stat = await handle.stat()
+        if (!stat.isFile() || identityOf(stat) !== snapshot.identity
+          || revisionOf(stat) !== snapshot.revision || Number(stat.size) !== snapshot.size) return false
+        const hash = createHash('sha256')
+        const buffer = Buffer.alloc(MAX_DESKTOP_DESTINATION_CHUNK_BYTES)
+        let offset = 0
+        while (offset < snapshot.size) {
+          const length = Math.min(buffer.length, snapshot.size - offset)
+          const result = await handle.read(buffer, 0, length, offset)
+          if (result.bytesRead !== length) return false
+          hash.update(buffer.subarray(0, length))
+          offset += length
+        }
+        return hash.digest('hex') === snapshot.contentDigest
+      } finally {
+        await handle.close()
+      }
+    } catch {
+      return false
+    }
+  }
+
+  private async restoreBackup(
+    destination: DestinationSession,
+    backupPath: string,
+  ): Promise<boolean> {
+    try {
+      await link(backupPath, destination.path)
+      await unlink(backupPath)
+      destination.recoveryPaths = destination.recoveryPaths.filter(path => path !== backupPath)
+      return true
+    } catch {
+      if (!destination.recoveryPaths.includes(backupPath)) destination.recoveryPaths.push(backupPath)
+      return false
+    }
+  }
+
+  private async captureDestination(
+    path: string,
+    purpose: DesktopExportPurpose,
+  ): Promise<{ expectedState: DesktopDestinationState; snapshot: ExistingDestinationSnapshot | undefined }> {
+    const stat = await this.safeLstat(path)
+    if (stat === undefined) return { expectedState: { status: 'absent' }, snapshot: undefined }
+    if (purpose === 'vault-backup' || !stat.isFile() || stat.isSymbolicLink()
+      || await this.hasUnsafeSymlinkAncestor(path)) return error('exists')
+    if (Number(stat.size) > MAX_DESKTOP_SOURCE_TOTAL_BYTES) return error('limit-exceeded')
+    const source = await open(path, fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW)
+    const snapshotPath = join(dirname(path), `.tockteam-picker-snapshot-${this.options.randomId()}`)
+    const snapshot = await open(
+      snapshotPath,
+      fsConstants.O_WRONLY | fsConstants.O_CREAT | fsConstants.O_EXCL | fsConstants.O_NOFOLLOW,
+      0o600,
+    )
+    try {
+      const before = await source.stat()
+      if (!before.isFile() || identityOf(before) !== identityOf(stat)) return error('changed')
+      const hash = createHash('sha256')
+      const buffer = Buffer.alloc(MAX_DESKTOP_DESTINATION_CHUNK_BYTES)
+      let offset = 0
+      while (offset < Number(before.size)) {
+        const length = Math.min(buffer.length, Number(before.size) - offset)
+        const read = await source.read(buffer, 0, length, offset)
+        if (read.bytesRead !== length) return error('changed')
+        await snapshot.write(buffer, 0, length, offset)
+        hash.update(buffer.subarray(0, length))
+        offset += length
+      }
+      await snapshot.sync()
+      const after = await source.stat()
+      const current = await this.safeLstat(path)
+      if (revisionOf(after) !== revisionOf(before) || current === undefined
+        || identityOf(current) !== identityOf(before) || revisionOf(current) !== revisionOf(before)) return error('changed')
+      const revision = revisionOf(before)
+      return {
+        expectedState: { replaceAuthorized: true, revision: cast(revision), status: 'existing' },
+        snapshot: {
+          contentDigest: hash.digest('hex'),
+          identity: identityOf(before),
+          path: snapshotPath,
+          revision,
+          size: Number(before.size),
+        },
+      }
+    } catch (cause) {
+      await rm(snapshotPath, { force: true }).catch(() => {})
+      throw cause
+    } finally {
+      await Promise.allSettled([source.close(), snapshot.close()])
+    }
+  }
+
   private async destinationState(path: string, purpose: DesktopExportPurpose): Promise<DesktopDestinationState> {
     const stat = await this.safeLstat(path)
     if (stat === undefined) return { status: 'absent' }
@@ -1412,6 +1673,16 @@ export class DesktopPickerOwner {
     destination.stagingRevision = identityOf(stat)
   }
 
+  private async cleanupLockedPlan(plan: LockedDestinationPlan): Promise<void> {
+    if (plan.snapshot !== undefined) await rm(plan.snapshot.path, { force: true })
+  }
+
+  private scheduleLockedPlanCleanup(plan: LockedDestinationPlan): void {
+    const task = this.cleanupLockedPlan(plan)
+    this.cleanupTasks.add(task)
+    void task.finally(() => { this.cleanupTasks.delete(task) })
+  }
+
   private async closeDestination(
     session: string,
     destination: DestinationSession,
@@ -1436,14 +1707,25 @@ export class DesktopPickerOwner {
   }
 
   private async cleanupDestination(destination: DestinationSession): Promise<DesktopCleanupEvidence> {
-    if (destination.stagingRoot === undefined) return { status: 'complete' }
-    try {
-      await rm(destination.stagingRoot, { recursive: true, force: true })
-      destination.stagingRoot = undefined
-      destination.stagingRevision = undefined
-      return { status: 'complete' }
-    } catch {
-      return { residualLabels: destination.entries.map(entry => cast(labelOf(entry.absolutePath))), status: 'residual' }
+    const paths = [
+      destination.stagingRoot,
+      ...(destination.recoveryPaths.length === 0
+        ? [destination.snapshot?.path, destination.journalPath]
+        : []),
+    ].filter((path): path is string => path !== undefined)
+    const residualLabels: DesktopPickerLabel[] = destination.recoveryPaths.map(path => cast(labelOf(path)))
+    for (const path of paths) {
+      try {
+        await rm(path, { recursive: true, force: true })
+      } catch {
+        residualLabels.push(cast(labelOf(path)))
+      }
     }
+    if (residualLabels.length > 0) return { residualLabels, status: 'residual' }
+    destination.stagingRoot = undefined
+    destination.stagingRevision = undefined
+    destination.snapshot = undefined
+    destination.journalPath = undefined
+    return { status: 'complete' }
   }
 }
