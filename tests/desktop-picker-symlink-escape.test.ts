@@ -115,49 +115,19 @@ test("vault-backup rejects a nested staging symlink without writing outside", as
     totalBytes: manifest.length + secret.length,
   };
   const planDigest = computeDesktopDestinationPlanDigest(plan);
-  const locked = await owner.lockDestinationPlan(
-    {
-      ...plan,
-      identity: id,
-      planDigest,
-      selectionAuthorization: picked.authorization,
-    },
-    new AbortController().signal,
-  );
-  const begun = await owner.beginDestination(
-    { ...plan, authorization: locked.authorization, identity: id, planDigest },
-    new AbortController().signal,
-  );
-  await owner.writeDestinationChunk(
-    {
-      bytes: manifest,
-      offset: 0,
-      planDigest,
-      session: begun.session,
-      target: { kind: "relative-file", relativePath: "manifest.json" as never },
-    },
-    new AbortController().signal,
-  );
   await assert.rejects(
-    owner.writeDestinationChunk(
+    owner.lockDestinationPlan(
       {
-        bytes: secret,
-        offset: 0,
+        ...plan,
+        identity: id,
         planDigest,
-        session: begun.session,
-        target: {
-          kind: "relative-file",
-          relativePath: "notes/secret.md" as never,
-        },
+        selectionAuthorization: picked.authorization,
       },
       new AbortController().signal,
     ),
-    (cause: unknown) =>
-      ["unsafe-target", "changed"].includes(
-        (cause as { code?: string }).code ?? "",
-      ),
+    (cause: unknown) => (cause as { code?: string }).code === "unsafe-target",
   );
+  assert.equal(linked, false);
   await assert.rejects(readFile(join(outside, "secret.md")));
-  await owner.abortDestination({ session: begun.session });
   await owner.dispose();
 });

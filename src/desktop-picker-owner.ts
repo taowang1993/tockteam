@@ -197,6 +197,7 @@ interface ExistingDestinationSnapshot {
 }
 
 interface LockedDestinationPlan {
+  consuming: boolean
   entries: DesktopDestinationPlanEntry[]
   expectedState: DesktopDestinationState
   expiresAt: number
@@ -904,6 +905,7 @@ export class DesktopPickerOwner {
     const authorization = cast<DesktopDestinationPlanAuthorization>(this.options.randomId())
     const expiresAt = this.options.now() + MAX_DESKTOP_GRANT_SESSION_MS
     this.destinationPlans.set(authorization, {
+      consuming: false,
       entries: request.entries.map(entry => structuredClone(entry)),
       expectedState,
       expiresAt,
@@ -928,8 +930,7 @@ export class DesktopPickerOwner {
     if (!exact(request, ['authorization']) || !text(request.authorization)) return error('invalid-entry')
     const plan = this.destinationPlans.get(request.authorization)
     if (plan === undefined) return { status: 'already-closed' }
-    this.destinationPlans.delete(request.authorization)
-    await this.cleanupLockedPlan(plan)
+    await this.closeLockedPlan(request.authorization, plan)
     return { status: 'revoked' }
   }
 
@@ -939,52 +940,48 @@ export class DesktopPickerOwner {
       || !identity(request.identity) || !text(request.authorization) || !digest(request.planDigest)) return error('unsafe-target')
     this.assertAuthority(request.identity)
     const locked = this.destinationPlans.get(request.authorization)
-    if (locked === undefined) return error('replayed')
+    if (locked === undefined || locked.consuming) return error('replayed')
+    locked.consuming = true
     let computed: string
     try {
       computed = computeDesktopDestinationPlanDigest(destinationPlanOf(request))
     } catch (cause) {
-      this.destinationPlans.delete(request.authorization)
-      await this.cleanupLockedPlan(locked)
+      await this.closeLockedPlan(request.authorization, locked)
       throw cause
     }
     if (computed !== request.planDigest) {
-      this.destinationPlans.delete(request.authorization)
-      await this.cleanupLockedPlan(locked)
+      await this.closeLockedPlan(request.authorization, locked)
       return error('digest-mismatch')
     }
     if (locked.expiresAt <= this.options.now()) {
-      this.destinationPlans.delete(request.authorization)
-      await this.cleanupLockedPlan(locked)
+      await this.closeLockedPlan(request.authorization, locked)
       return error('expired')
     }
     if (!sameIdentity(locked.identity, request.identity) || locked.planDigest !== request.planDigest
       || locked.purpose !== request.purpose || locked.publicationName !== request.publicationName
       || locked.totalBytes !== request.totalBytes) {
-      this.destinationPlans.delete(request.authorization)
-      await this.cleanupLockedPlan(locked)
+      await this.closeLockedPlan(request.authorization, locked)
       return error('stale')
     }
-    this.destinationPlans.delete(request.authorization)
     try {
       this.assertDestinationParent(locked.path, locked.parentIdentity)
     } catch (cause) {
-      await this.cleanupLockedPlan(locked)
+      await this.closeLockedPlan(request.authorization, locked)
       throw cause
     }
     let currentState: DesktopDestinationState
     try {
       currentState = await this.destinationState(locked.path, locked.purpose)
     } catch (cause) {
-      await this.cleanupLockedPlan(locked)
+      await this.closeLockedPlan(request.authorization, locked)
       throw cause
     }
     if (signal.aborted) {
-      await this.cleanupLockedPlan(locked)
+      await this.closeLockedPlan(request.authorization, locked)
       return error('aborted')
     }
     if (!stateEqual(currentState, locked.expectedState)) {
-      await this.cleanupLockedPlan(locked)
+      await this.closeLockedPlan(request.authorization, locked)
       return error('changed')
     }
     const session = cast<DesktopDestinationSession>(this.options.randomId())
@@ -1015,6 +1012,7 @@ export class DesktopPickerOwner {
       stagingRevision: undefined,
       stagingRoot: undefined,
     }
+    this.destinationPlans.delete(request.authorization)
     this.destinations.set(session, destination)
     this.scheduleExpiry()
     return { expiresAt: destination.expiresAt, expectedState: destination.expectedState, session }
@@ -1059,7 +1057,8 @@ export class DesktopPickerOwner {
       await this.closeDestination(request.session, destination)
       throw cause
     }
-    const staged = entry.stagedPath ?? join(destination.stagingRoot as string, request.target.kind === 'selected-file' ? 'selected-file' : request.target.relativePath)
+    const entryIndex = destination.entries.indexOf(entry)
+    const staged = entry.stagedPath ?? join(destination.stagingRoot as string, request.target.kind === 'selected-file' ? 'selected-file' : `relative-${entryIndex}`)
     entry.stagedPath = staged
     const ancestors = await this.ensureStagedParent(destination, staged)
     if (entry.stagedAncestors.length === 0) entry.stagedAncestors = ancestors
@@ -1137,6 +1136,7 @@ export class DesktopPickerOwner {
       this.assertDestinationParent(destination.path, destination.parentIdentity)
       await this.assertStagingStable(destination)
       if (destination.purpose === 'vault-backup') {
+        this.materializeBackupTree(destination)
         this.assertDestinationParent(destination.path, destination.parentIdentity)
         mkdirSync(destination.path, { recursive: false, mode: 0o700 })
         if (signal.aborted || !this.options.isAvailable()) {
@@ -1475,9 +1475,9 @@ export class DesktopPickerOwner {
     for (const [authorization, grant] of this.grants) if (grant.expiresAt <= now) this.grants.delete(authorization)
     for (const [session, source] of this.sources) if (source.expiresAt <= now) this.sources.delete(session)
     for (const [authorization, plan] of this.destinationPlans) {
-      if (plan.expiresAt <= now) {
-        this.destinationPlans.delete(authorization)
-        await this.cleanupLockedPlan(plan)
+      if (plan.expiresAt <= now && !plan.consuming) {
+        plan.consuming = true
+        await this.closeLockedPlan(authorization, plan)
       }
     }
     for (const [claim, selection] of this.vaultSelectionClaims) if (selection.expiresAt <= now) this.vaultSelectionClaims.delete(claim)
@@ -1492,9 +1492,9 @@ export class DesktopPickerOwner {
     for (const [authorization, grant] of this.grants) if (grant.expiresAt <= now) this.grants.delete(authorization)
     for (const [session, source] of this.sources) if (source.expiresAt <= now) this.sources.delete(session)
     for (const [authorization, plan] of this.destinationPlans) {
-      if (plan.expiresAt <= now) {
-        this.destinationPlans.delete(authorization)
-        this.scheduleLockedPlanCleanup(plan)
+      if (plan.expiresAt <= now && !plan.consuming) {
+        plan.consuming = true
+        this.scheduleLockedPlanCleanup(authorization, plan)
       }
     }
     for (const [claim, selection] of this.vaultSelectionClaims) if (selection.expiresAt <= now) this.vaultSelectionClaims.delete(claim)
@@ -2045,6 +2045,9 @@ export class DesktopPickerOwner {
     selectedPath: string,
   ): void {
     if (computeDesktopDestinationPlanDigest(destinationPlanOf(request)) !== request.planDigest) return error('digest-mismatch')
+    if (request.purpose === 'vault-backup' && request.entries.some(entry => entry.target.kind === 'relative-file' && entry.target.relativePath.includes('/'))) {
+      return error('unsafe-target')
+    }
     if (request.purpose === 'export-html' || request.purpose === 'export-pdf') {
       const extension = extname(selectedPath).slice(1).toLowerCase()
       if (extension !== request.purpose.slice('export-'.length)) return error('purpose-mismatch')
@@ -2069,6 +2072,26 @@ export class DesktopPickerOwner {
     const stat = await this.safeLstat(destination.stagingRoot)
     if (canonical !== destination.stagingRoot || stat === undefined || !stat.isDirectory()
       || identityOf(stat) !== destination.stagingRevision) return error('unsafe-target')
+  }
+
+  private materializeBackupTree(destination: DestinationSession): void {
+    const stagingRoot = destination.stagingRoot
+    if (stagingRoot === undefined) return error('closed')
+    for (const entry of destination.entries) {
+      if (entry.entry.target.kind !== 'relative-file' || entry.stagedPath === undefined) return error('invalid-entry')
+      let parent = stagingRoot
+      for (const segment of dirname(entry.entry.target.relativePath).split('/').filter(segment => segment !== '.')) {
+        parent = join(parent, segment)
+        try { mkdirSync(parent, { recursive: false, mode: 0o700 }) } catch (cause) {
+          if ((cause as NodeJS.ErrnoException).code !== 'EEXIST') throw cause
+        }
+        const stat = lstatSync(parent)
+        if (!stat.isDirectory() || stat.isSymbolicLink() || realpathSync(parent) !== parent) return error('unsafe-target')
+      }
+      const target = join(stagingRoot, entry.entry.target.relativePath)
+      renameSync(entry.stagedPath, target)
+      entry.stagedPath = target
+    }
   }
 
   private async assertStagedAncestors(entry: DestinationEntry): Promise<void> {
@@ -2110,27 +2133,38 @@ export class DesktopPickerOwner {
     destination.stagingRevision = identityOf(stat)
   }
 
-  private async cleanupLockedPlan(plan: LockedDestinationPlan): Promise<void> {
-    if (plan.snapshot !== undefined) {
-      if (plan.snapshot.handle !== undefined) {
-        await plan.snapshot.handle.truncate(0)
-        await plan.snapshot.handle.sync()
-        await plan.snapshot.handle.close()
-        plan.snapshot.handle = undefined
-      }
-      const stat = await this.safeLstat(plan.snapshot.path)
-      if (stat !== undefined && identityOf(stat) !== plan.snapshot.artifactIdentity) return error('changed')
-      this.unlinkArtifact(plan.snapshot.path, '.tockteam-picker-snapshot-')
-      await this.syncDirectory(dirname(plan.snapshot.path))
-    }
-    if (plan.journalPath !== undefined) {
-      this.unlinkArtifact(plan.journalPath, 'destination-')
-      await this.syncDirectory(this.recoveryRoot)
-    }
+  private async closeLockedPlan(authorization: string, plan: LockedDestinationPlan): Promise<void> {
+    await this.cleanupLockedPlan(plan)
+    this.destinationPlans.delete(authorization)
   }
 
-  private scheduleLockedPlanCleanup(plan: LockedDestinationPlan): void {
-    const task = this.cleanupLockedPlan(plan)
+  private async cleanupLockedPlan(plan: LockedDestinationPlan): Promise<void> {
+    let failed = false
+    if (plan.snapshot !== undefined) {
+      try {
+        if (plan.snapshot.handle !== undefined) {
+          await plan.snapshot.handle.truncate(0)
+          await plan.snapshot.handle.sync()
+          await plan.snapshot.handle.close()
+          plan.snapshot.handle = undefined
+        }
+        const stat = await this.safeLstat(plan.snapshot.path)
+        if (stat !== undefined && identityOf(stat) !== plan.snapshot.artifactIdentity) return error('changed')
+        this.unlinkArtifact(plan.snapshot.path, '.tockteam-picker-snapshot-')
+        await this.syncDirectory(dirname(plan.snapshot.path))
+      } catch { failed = true }
+    }
+    if (plan.journalPath !== undefined) {
+      try {
+        this.unlinkArtifact(plan.journalPath, 'destination-')
+        await this.syncDirectory(this.recoveryRoot)
+      } catch { failed = true }
+    }
+    if (failed) return error('recovery-required')
+  }
+
+  private scheduleLockedPlanCleanup(authorization: string, plan: LockedDestinationPlan): void {
+    const task = this.closeLockedPlan(authorization, plan)
     this.cleanupTasks.add(task)
     void task.finally(() => { this.cleanupTasks.delete(task) })
   }

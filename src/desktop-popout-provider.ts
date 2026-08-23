@@ -91,7 +91,7 @@ export class DesktopPopOutProvider implements TockTeamDesktopPopOut {
         if (method === 'open' && typeof result === 'object' && result !== null
           && (result as Record<string, unknown>).status === 'opened'
           && typeof (result as Record<string, unknown>).windowId === 'string') {
-          await this.request('close', { identity: request.identity, windowId: (result as Record<string, unknown>).windowId })
+          await this.request('disposeProvider', {})
         }
         return { operationId: request.identity.operationId, status: 'cancelled' }
       }

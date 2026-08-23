@@ -143,3 +143,60 @@ test("admitted print returns its committed result despite caller abort", async (
   await channel.stop();
   await picker.dispose();
 });
+
+test("caller abort closes a response-gated pop-out after a vault transition", async () => {
+  let generation = 1;
+  const windows = new Set<string>();
+  const owner = new DesktopPopOutOwner({
+    isAvailable: () => true,
+    isCurrent: (request) =>
+      request.vaultId === "v" && request.vaultGeneration === generation,
+    native: {
+      close: (windowId) => {
+        windows.delete(windowId);
+      },
+      focus: () => true,
+      isOpen: (windowId) => windows.has(windowId),
+      open: async () => {
+        windows.add("pop");
+        return "pop";
+      },
+    },
+  });
+  const channel = new DesktopPopOutChannel(owner);
+  const environment = await channel.start();
+  let announce!: () => void;
+  const responseReady = new Promise<void>((resolve) => {
+    announce = resolve;
+  });
+  let release!: () => void;
+  const blocked = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let calls = 0;
+  const provider = new DesktopPopOutProvider(
+    environment,
+    async (input, init) => {
+      const response = await fetch(input, init);
+      if (++calls === 1) {
+        announce();
+        await blocked;
+      }
+      return response;
+    },
+    () => ({ active: true, generation, id: "v" }),
+  );
+  const controller = new AbortController();
+  const opening = provider.open(
+    { identity, relativePath: "note.md" as never },
+    controller.signal,
+  );
+  await responseReady;
+  generation = 2;
+  controller.abort();
+  release();
+  assert.equal((await opening).status, "cancelled");
+  assert.deepEqual([...windows], []);
+  await provider.dispose();
+  await channel.stop();
+});
