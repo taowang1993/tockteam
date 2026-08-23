@@ -154,6 +154,12 @@ void [
   } as never), (cause: unknown) => cause instanceof TockTeamDesktopGrantError && cause.code === 'unsafe-target')
 })
 
+test('checked-in Host declarations expose only the single-archive backup seam', () => {
+  assert.doesNotMatch(declarations, /DesktopRelativeFilePlanEntry|relative-file/)
+  assert.match(declarations, /purpose: 'export-html' \| 'export-pdf' \| 'vault-backup'/)
+  assert.match(declarations, /publicationName\?: never/)
+})
+
 test('publishes the canonical Desktop Host subpath metadata', () => {
   assert.equal(packageJson.version, '0.1.5')
   assert.deepEqual(packageJson.exports['./host'], {

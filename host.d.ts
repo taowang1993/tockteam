@@ -78,9 +78,6 @@ export type DesktopOpaqueRevision = string & {
 export type DesktopSafeRelativePath = string & {
     readonly __desktopSafeRelativePath: unique symbol;
 };
-export type DesktopSafeName = string & {
-    readonly __desktopSafeName: unique symbol;
-};
 export type TockTeamDesktopVaultSelectionClaim = string & {
     readonly __tockTeamDesktopVaultSelectionClaim: unique symbol;
 };
@@ -203,9 +200,6 @@ export interface ReleaseDesktopSourceResult {
 }
 export type DesktopDestinationTarget = {
     kind: 'selected-file';
-} | {
-    kind: 'relative-file';
-    relativePath: DesktopSafeRelativePath;
 };
 export interface DesktopDestinationPlanEntry {
     digest: DesktopSha256;
@@ -217,11 +211,6 @@ export type DesktopSelectedFilePlanEntry = Omit<DesktopDestinationPlanEntry, 'ta
         kind: 'selected-file';
     }>;
 };
-export type DesktopRelativeFilePlanEntry = Omit<DesktopDestinationPlanEntry, 'target'> & {
-    target: Extract<DesktopDestinationTarget, {
-        kind: 'relative-file';
-    }>;
-};
 export type DesktopDestinationState = {
     status: 'absent';
 } | {
@@ -230,21 +219,15 @@ export type DesktopDestinationState = {
     status: 'existing';
 };
 /**
- * Destination policy is purpose-owned, not caller-configurable:
- * export-html/export-pdf each have exactly one selected-file entry, the matching
- * extension, and no publicationName. vault-backup has 1..100,000 normalized,
- * case-fold-unique relative-file entries, a required single-segment
- * publicationName, exactly one manifest.json, and exact entry/total sizes.
+ * Destination policy is purpose-owned, not caller-configurable. Every purpose
+ * publishes one opaque selected file with an exact digest and size. The
+ * Import/Export owner, not Desktop, owns the versioned vault-backup archive
+ * codec and its normalized nested manifest.
  */
 export type DesktopDestinationPlan = {
     entries: readonly [DesktopSelectedFilePlanEntry];
     publicationName?: never;
-    purpose: 'export-html' | 'export-pdf';
-    totalBytes: number;
-} | {
-    entries: readonly [DesktopRelativeFilePlanEntry, ...DesktopRelativeFilePlanEntry[]];
-    publicationName: DesktopSafeName;
-    purpose: 'vault-backup';
+    purpose: 'export-html' | 'export-pdf' | 'vault-backup';
     totalBytes: number;
 };
 /** Validate and hash the exact ordered destination plan reviewed by the user. */
