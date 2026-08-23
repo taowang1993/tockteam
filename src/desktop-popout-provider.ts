@@ -83,10 +83,19 @@ export class DesktopPopOutProvider implements TockTeamDesktopPopOut {
     if (!this.current(request.identity)) return { operationId: request.identity.operationId, status: 'stale' }
     if (signal.aborted) return { operationId: request.identity.operationId, status: 'cancelled' }
     if (this.disposed || this.endpoint === undefined || this.token === undefined) return { operationId: request.identity.operationId, status: 'unavailable' }
-    const work = this.request(method, request, AbortSignal.any([signal, this.lifetime.signal]))
+    const work = this.request(method, request, this.lifetime.signal)
     this.pending.add(work)
     try {
-      return await work
+      const result = await work
+      if (signal.aborted) {
+        if (method === 'open' && typeof result === 'object' && result !== null
+          && (result as Record<string, unknown>).status === 'opened'
+          && typeof (result as Record<string, unknown>).windowId === 'string') {
+          await this.request('close', { identity: request.identity, windowId: (result as Record<string, unknown>).windowId })
+        }
+        return { operationId: request.identity.operationId, status: 'cancelled' }
+      }
+      return result
     } catch {
       return signal.aborted
         ? { operationId: request.identity.operationId, status: 'cancelled' }

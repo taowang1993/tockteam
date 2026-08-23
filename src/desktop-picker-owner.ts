@@ -187,7 +187,9 @@ interface SourceSession {
 }
 
 interface ExistingDestinationSnapshot {
+  artifactIdentity: string
   contentDigest: string
+  handle: Awaited<ReturnType<typeof open>> | undefined
   identity: string
   path: string
   revision: string
@@ -231,6 +233,7 @@ interface DestinationEntry {
   entry: DesktopDestinationPlanEntry
   handle: Awaited<ReturnType<typeof open>> | undefined
   offset: number
+  stagedAncestors: Array<{ identity: string; path: string }>
   stagedPath?: string
 }
 
@@ -952,6 +955,7 @@ export class DesktopPickerOwner {
     }
     if (locked.expiresAt <= this.options.now()) {
       this.destinationPlans.delete(request.authorization)
+      await this.cleanupLockedPlan(locked)
       return error('expired')
     }
     if (!sameIdentity(locked.identity, request.identity) || locked.planDigest !== request.planDigest
@@ -962,7 +966,12 @@ export class DesktopPickerOwner {
       return error('stale')
     }
     this.destinationPlans.delete(request.authorization)
-    this.assertDestinationParent(locked.path, locked.parentIdentity)
+    try {
+      this.assertDestinationParent(locked.path, locked.parentIdentity)
+    } catch (cause) {
+      await this.cleanupLockedPlan(locked)
+      throw cause
+    }
     let currentState: DesktopDestinationState
     try {
       currentState = await this.destinationState(locked.path, locked.purpose)
@@ -994,6 +1003,7 @@ export class DesktopPickerOwner {
         entry,
         handle: undefined,
         offset: 0,
+        stagedAncestors: [],
       })),
       parentIdentity: locked.parentIdentity,
       path: locked.path,
@@ -1051,7 +1061,9 @@ export class DesktopPickerOwner {
     }
     const staged = entry.stagedPath ?? join(destination.stagingRoot as string, request.target.kind === 'selected-file' ? 'selected-file' : request.target.relativePath)
     entry.stagedPath = staged
-    await mkdir(dirname(staged), { recursive: true, mode: 0o700 })
+    const ancestors = await this.ensureStagedParent(destination, staged)
+    if (entry.stagedAncestors.length === 0) entry.stagedAncestors = ancestors
+    else await this.assertStagedAncestors(entry)
     try {
       const handle = entry.handle ?? await open(
         staged,
@@ -1105,6 +1117,7 @@ export class DesktopPickerOwner {
     try {
       for (const entry of destination.entries) {
         if (entry.offset !== entry.entry.size || entry.stagedPath === undefined || entry.handle === undefined) return error('size-mismatch')
+        await this.assertStagedAncestors(entry)
         await entry.handle.sync()
         const stagedStat = await entry.handle.stat()
         if (!stagedStat.isFile() || Number(stagedStat.size) !== entry.entry.size) return error('size-mismatch')
@@ -1123,10 +1136,6 @@ export class DesktopPickerOwner {
       if (!stateEqual(commitState, destination.expectedState)) return error('changed')
       this.assertDestinationParent(destination.path, destination.parentIdentity)
       await this.assertStagingStable(destination)
-      for (const entry of destination.entries) {
-        await entry.handle?.close()
-        entry.handle = undefined
-      }
       if (destination.purpose === 'vault-backup') {
         this.assertDestinationParent(destination.path, destination.parentIdentity)
         mkdirSync(destination.path, { recursive: false, mode: 0o700 })
@@ -1149,13 +1158,14 @@ export class DesktopPickerOwner {
         this.assertDestinationParent(destination.path, destination.parentIdentity)
         const commitPath = join(dirname(destination.path), `.tockteam-picker-commit-${this.options.randomId()}`)
         this.assertDestinationParent(destination.path, destination.parentIdentity)
-        renameSync(selectedEntry.stagedPath, commitPath)
-        selectedEntry.stagedPath = commitPath
         const stagedDirectory = destination.stagingRoot
         if (stagedDirectory === undefined) return error('closed')
-        await rmdir(stagedDirectory)
+        renameSync(selectedEntry.stagedPath, commitPath)
+        selectedEntry.stagedPath = commitPath
+        rmdirSync(stagedDirectory)
+        const commitStat = lstatSync(commitPath)
         destination.stagingRoot = commitPath
-        destination.stagingRevision = undefined
+        destination.stagingRevision = identityOf(commitStat)
         if (destination.expectedState.status === 'absent') {
           try {
             this.assertDestinationParent(destination.path, destination.parentIdentity)
@@ -1171,16 +1181,28 @@ export class DesktopPickerOwner {
           const backupPath = join(dirname(destination.path), `.tockteam-picker-backup-${this.options.randomId()}`)
           await this.writeRecoveryJournal(destination, backupPath, commitPath, 'prepared')
           await this.options.onCheckpoint?.('journal-prepared', signal)
+          this.assertAuthority(destination.identity)
+          if (signal.aborted) return error('aborted')
           this.assertDestinationParent(destination.path, destination.parentIdentity)
           renameSync(destination.path, backupPath)
+          destination.recoveryPaths.push(backupPath)
           await this.writeRecoveryJournal(destination, backupPath, commitPath, 'moved')
           await this.options.onCheckpoint?.('backup-moved', signal)
-          destination.recoveryPaths.push(backupPath)
+          this.assertAuthority(destination.identity)
+          if (signal.aborted) {
+            await this.restoreBackup(destination, backupPath)
+            return error('aborted')
+          }
           if (!await this.verifySnapshot(backupPath, snapshot)) {
             await this.restoreBackup(destination, backupPath)
             return error('changed')
           }
           await this.options.onCheckpoint?.('backup-verified', signal)
+          this.assertAuthority(destination.identity)
+          if (signal.aborted) {
+            await this.restoreBackup(destination, backupPath)
+            return error('aborted')
+          }
           try {
             this.assertDestinationParent(destination.path, destination.parentIdentity)
             linkSync(commitPath, destination.path)
@@ -1197,6 +1219,11 @@ export class DesktopPickerOwner {
           this.assertDestinationParent(destination.path, destination.parentIdentity)
           unlinkSync(backupPath)
           destination.recoveryPaths = destination.recoveryPaths.filter(path => path !== backupPath)
+          const snapshotHandle = snapshot.handle
+          snapshot.handle = undefined
+          await snapshotHandle?.close()
+          const snapshotStat = await this.safeLstat(snapshot.path)
+          if (snapshotStat === undefined || identityOf(snapshotStat) !== snapshot.artifactIdentity) return error('changed')
           this.unlinkArtifact(snapshot.path, '.tockteam-picker-snapshot-')
           await this.syncDirectory(dirname(destination.path))
           await this.options.onCheckpoint?.('backup-removed', signal)
@@ -1211,9 +1238,20 @@ export class DesktopPickerOwner {
         destination.stagingRoot = undefined
       }
       await this.syncDirectory(dirname(destination.path))
+      for (const entry of destination.entries) {
+        const handle = entry.handle
+        entry.handle = undefined
+        await handle?.close()
+      }
       const cleanup = await this.cleanupDestination(destination)
       if (cleanup.status !== 'complete') return error('owner-lost')
       this.destinations.delete(request.session)
+      this.rememberClosedDestination(request.session, {
+        cleanup: { status: 'complete' },
+        stagedBytes: 0,
+        stagedEntries: 0,
+        status: 'aborted',
+      })
       return {
         bytes: destination.entries.reduce((sum, entry) => sum + entry.entry.size, 0),
         cleanup: { status: 'complete' },
@@ -1966,11 +2004,16 @@ export class DesktopPickerOwner {
         || identityOf(currentAfterCopy) !== identityOf(before)
         || revisionOf(currentAfterCopy) !== revisionOf(before)) return error('changed')
       const revision = revisionOf(before)
+      const snapshotStat = await snapshot.stat()
+      const retainedSnapshot = snapshot
+      snapshot = undefined
       return {
         expectedState: { replaceAuthorized: true, revision: cast(revision), status: 'existing' },
         journalPath,
         snapshot: {
+          artifactIdentity: identityOf(snapshotStat),
           contentDigest,
+          handle: retainedSnapshot,
           identity: identityOf(before),
           path: snapshotPath,
           revision,
@@ -2028,6 +2071,35 @@ export class DesktopPickerOwner {
       || identityOf(stat) !== destination.stagingRevision) return error('unsafe-target')
   }
 
+  private async assertStagedAncestors(entry: DestinationEntry): Promise<void> {
+    for (const ancestor of entry.stagedAncestors) {
+      const stat = await this.safeLstat(ancestor.path)
+      if (stat === undefined || !stat.isDirectory() || stat.isSymbolicLink()
+        || identityOf(stat) !== ancestor.identity || await this.safeRealpath(ancestor.path) !== ancestor.path) return error('changed')
+    }
+  }
+
+  private async ensureStagedParent(destination: DestinationSession, stagedPath: string): Promise<Array<{ identity: string; path: string }>> {
+    const stagingRoot = destination.stagingRoot
+    if (stagingRoot === undefined) return error('closed')
+    const parent = dirname(stagedPath)
+    const relativeParent = relative(stagingRoot, parent)
+    if (relativeParent === '..' || relativeParent.startsWith(`..${sep}`) || isAbsolute(relativeParent)) return error('unsafe-target')
+    const ancestors: Array<{ identity: string; path: string }> = []
+    let current = stagingRoot
+    for (const segment of relativeParent.split(sep).filter(Boolean)) {
+      current = join(current, segment)
+      try { await mkdir(current, { recursive: false, mode: 0o700 }) } catch (cause) {
+        if ((cause as NodeJS.ErrnoException).code !== 'EEXIST') throw cause
+      }
+      const stat = await this.safeLstat(current)
+      if (stat === undefined || !stat.isDirectory() || stat.isSymbolicLink()
+        || await this.safeRealpath(current) !== current) return error('unsafe-target')
+      ancestors.push({ identity: identityOf(stat), path: current })
+    }
+    return ancestors
+  }
+
   private async ensureStaging(destination: DestinationSession): Promise<void> {
     if (destination.stagingRoot !== undefined) return
     const stagingRoot = join(dirname(destination.path), `.tockteam-picker-stage-${this.options.randomId()}`)
@@ -2040,6 +2112,14 @@ export class DesktopPickerOwner {
 
   private async cleanupLockedPlan(plan: LockedDestinationPlan): Promise<void> {
     if (plan.snapshot !== undefined) {
+      if (plan.snapshot.handle !== undefined) {
+        await plan.snapshot.handle.truncate(0)
+        await plan.snapshot.handle.sync()
+        await plan.snapshot.handle.close()
+        plan.snapshot.handle = undefined
+      }
+      const stat = await this.safeLstat(plan.snapshot.path)
+      if (stat !== undefined && identityOf(stat) !== plan.snapshot.artifactIdentity) return error('changed')
       this.unlinkArtifact(plan.snapshot.path, '.tockteam-picker-snapshot-')
       await this.syncDirectory(dirname(plan.snapshot.path))
     }
@@ -2064,12 +2144,16 @@ export class DesktopPickerOwner {
     const cleanup = await this.cleanupDestination(destination)
     this.destinations.delete(session)
     const result: AbortDesktopDestinationResult = { cleanup, stagedBytes, stagedEntries, status: 'aborted' }
+    this.rememberClosedDestination(session, result)
+    return result
+  }
+
+  private rememberClosedDestination(session: string, result: AbortDesktopDestinationResult): void {
     this.closedDestinations.set(session, result)
     if (this.closedDestinations.size > 1024) {
       const oldest = this.closedDestinations.keys().next().value as string | undefined
       if (oldest !== undefined) this.closedDestinations.delete(oldest)
     }
-    return result
   }
 
   private scheduleCleanup(destination: DestinationSession): void {
@@ -2091,25 +2175,46 @@ export class DesktopPickerOwner {
         residualLabels.push(cast(labelOf(entry.absolutePath)))
       }
     }
+    if (destination.snapshot?.handle !== undefined) {
+      try {
+        await destination.snapshot.handle.truncate(0)
+        await destination.snapshot.handle.sync()
+        await destination.snapshot.handle.close()
+        destination.snapshot.handle = undefined
+      } catch {
+        residualLabels.push(cast(labelOf(destination.snapshot.path)))
+      }
+    }
     if (destination.stagingRoot !== undefined) {
       const stagingRoot = destination.stagingRoot
       try {
         this.assertDestinationParent(destination.path, destination.parentIdentity)
-        await this.assertStagingStable(destination)
-        const stagedDirectories = new Set<string>()
-        for (const entry of destination.entries) {
-          if (entry.stagedPath === undefined) continue
-          this.unlinkArtifact(entry.stagedPath, basename(entry.stagedPath))
-          for (let directory = dirname(entry.stagedPath); directory !== stagingRoot; directory = dirname(directory)) {
-            if (!directory.startsWith(`${stagingRoot}${sep}`)) throw new TockTeamDesktopGrantError('recovery-required')
-            stagedDirectories.add(directory)
+        if (basename(stagingRoot).startsWith('.tockteam-picker-commit-')) {
+          const stat = await this.safeLstat(stagingRoot)
+          if (stat === undefined || !stat.isFile() || identityOf(stat) !== destination.stagingRevision) return error('changed')
+          this.unlinkArtifact(stagingRoot, '.tockteam-picker-commit-')
+          await this.syncDirectory(dirname(stagingRoot))
+          destination.stagingRoot = undefined
+          destination.stagingRevision = undefined
+          for (const entry of destination.entries) delete entry.stagedPath
+        } else {
+          await this.assertStagingStable(destination)
+          const stagedDirectories = new Set<string>()
+          for (const entry of destination.entries) {
+            if (entry.stagedPath === undefined) continue
+            await this.assertStagedAncestors(entry)
+            this.unlinkArtifact(entry.stagedPath, basename(entry.stagedPath))
+            for (let directory = dirname(entry.stagedPath); directory !== stagingRoot; directory = dirname(directory)) {
+              if (!directory.startsWith(`${stagingRoot}${sep}`)) throw new TockTeamDesktopGrantError('recovery-required')
+              stagedDirectories.add(directory)
+            }
           }
+          for (const directory of [...stagedDirectories].sort((left, right) => right.length - left.length)) await rmdir(directory)
+          await rmdir(stagingRoot)
+          await this.syncDirectory(dirname(stagingRoot))
+          destination.stagingRoot = undefined
+          destination.stagingRevision = undefined
         }
-        for (const directory of [...stagedDirectories].sort((left, right) => right.length - left.length)) await rmdir(directory)
-        await rmdir(stagingRoot)
-        await this.syncDirectory(dirname(stagingRoot))
-        destination.stagingRoot = undefined
-        destination.stagingRevision = undefined
       } catch {
         residualLabels.push(cast(labelOf(stagingRoot)))
       }
@@ -2117,6 +2222,8 @@ export class DesktopPickerOwner {
     if (residualLabels.length === 0 && destination.snapshot !== undefined) {
       const snapshotPath = destination.snapshot.path
       try {
+        const stat = await this.safeLstat(snapshotPath)
+        if (stat !== undefined && identityOf(stat) !== destination.snapshot.artifactIdentity) return error('changed')
         this.unlinkArtifact(snapshotPath, '.tockteam-picker-snapshot-')
         await this.syncDirectory(dirname(snapshotPath))
         destination.snapshot = undefined

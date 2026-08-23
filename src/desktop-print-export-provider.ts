@@ -32,7 +32,7 @@ export class DesktopPrintExportProvider implements TockTeamDesktopPrintExport {
     const work = (async () => {
       const response = await this.fetcher(this.endpoint as URL, {
         method: 'POST', headers: { authorization: `Bearer ${this.token}`, 'content-type': 'application/json' },
-        body: JSON.stringify(request), signal: AbortSignal.any([signal, this.lifetime.signal]),
+        body: JSON.stringify(request), signal: this.lifetime.signal,
       })
       return response.ok ? await response.json() as DesktopPrintExportResult : { operationId: request.identity.operationId, status: 'unavailable' as const }
     })()

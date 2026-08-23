@@ -88,6 +88,8 @@ export class DesktopPopOutChannel {
     const abort = (): void => { controller.abort(); request.destroy() }
     this.lifetime.signal.addEventListener('abort', abort, { once: true })
     request.once('aborted', abort)
+    const onResponseClose = (): void => { if (!response.writableEnded) abort() }
+    response.once('close', onResponseClose)
     const signal = AbortSignal.any([this.lifetime.signal, controller.signal])
     try {
       const input = await body(request)
@@ -110,6 +112,7 @@ export class DesktopPopOutChannel {
     } finally {
       this.lifetime.signal.removeEventListener('abort', abort)
       request.removeListener('aborted', abort)
+      response.removeListener('close', onResponseClose)
     }
   }
 }

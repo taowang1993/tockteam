@@ -114,6 +114,8 @@ export class DesktopMicrophoneChannel {
     const abort = (): void => { requestController.abort(); request.destroy() }
     this.lifetime.signal.addEventListener('abort', abort, { once: true })
     request.once('aborted', abort)
+    const onResponseClose = (): void => { if (!response.writableEnded) abort() }
+    response.once('close', onResponseClose)
     const signal = AbortSignal.any([this.lifetime.signal, requestController.signal])
     try {
       const input = await body(request)
@@ -133,6 +135,7 @@ export class DesktopMicrophoneChannel {
     } finally {
       this.lifetime.signal.removeEventListener('abort', abort)
       request.removeListener('aborted', abort)
+      response.removeListener('close', onResponseClose)
     }
   }
 }

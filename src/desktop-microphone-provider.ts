@@ -56,10 +56,15 @@ export class DesktopMicrophoneProvider implements TockTeamDesktopMicrophone {
       return { operationId: request.identity.operationId, status: 'unavailable' }
     }
     this.admitted = true
-    const work = this.nativeRequest(request, AbortSignal.any([signal, this.lifetime.signal]))
+    const work = this.nativeRequest(request, this.lifetime.signal)
     this.pending.add(work)
     try {
-      return await work as DesktopMicrophoneResult
+      const result = await work as DesktopMicrophoneResult
+      if (signal.aborted) {
+        if (result.status === 'granted') await this.nativeRequest({ disposeProvider: true })
+        return { operationId: request.identity.operationId, status: 'cancelled' }
+      }
+      return result
     } catch {
       return signal.aborted
         ? { operationId: request.identity.operationId, status: 'cancelled' }

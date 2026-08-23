@@ -55,6 +55,8 @@ export class DesktopPrintExportChannel {
     if (!authorized(request.headers.authorization, `Bearer ${token}`)) { response.writeHead(401).end(); return }
     const controller = new AbortController(); const abort = (): void => { controller.abort(); request.destroy() }
     this.lifetime.signal.addEventListener('abort', abort, { once: true }); request.once('aborted', abort)
+    const onResponseClose = (): void => { if (!response.writableEnded) abort() }
+    response.once('close', onResponseClose)
     try {
       let size = 0; const chunks: Buffer[] = []
       for await (const chunk of request) { const value = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk); size += value.length; if (size > MAX_BODY_BYTES) throw new Error('large'); chunks.push(value) }
@@ -63,6 +65,6 @@ export class DesktopPrintExportChannel {
       const rendered = JSON.stringify(value)
       response.writeHead(200, { 'cache-control': 'no-store', 'content-type': 'application/json', 'content-length': Buffer.byteLength(rendered) }); response.end(rendered)
     } catch { if (!response.headersSent && !response.destroyed) response.writeHead(400).end() }
-    finally { this.lifetime.signal.removeEventListener('abort', abort); request.removeListener('aborted', abort) }
+    finally { this.lifetime.signal.removeEventListener('abort', abort); request.removeListener('aborted', abort); response.removeListener('close', onResponseClose) }
   }
 }
