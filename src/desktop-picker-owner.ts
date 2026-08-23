@@ -229,6 +229,7 @@ interface DestinationEntry {
   absolutePath: string
   digest: string
   entry: DesktopDestinationPlanEntry
+  handle: Awaited<ReturnType<typeof open>> | undefined
   offset: number
   stagedPath?: string
 }
@@ -986,6 +987,7 @@ export class DesktopPickerOwner {
           : join(locked.path, entry.target.relativePath),
         digest: entry.digest,
         entry,
+        handle: undefined,
         offset: 0,
       })),
       parentIdentity: locked.parentIdentity,
@@ -1046,17 +1048,15 @@ export class DesktopPickerOwner {
     entry.stagedPath = staged
     await mkdir(dirname(staged), { recursive: true, mode: 0o700 })
     try {
-      const handle = await open(
+      const handle = entry.handle ?? await open(
         staged,
-        (entry.offset === 0 ? fsConstants.O_WRONLY | fsConstants.O_CREAT | fsConstants.O_EXCL : fsConstants.O_WRONLY | fsConstants.O_APPEND)
-          | fsConstants.O_NOFOLLOW,
+        fsConstants.O_RDWR | fsConstants.O_CREAT | fsConstants.O_EXCL | fsConstants.O_NOFOLLOW,
         0o600,
       )
-      try {
-        await handle.write(request.bytes)
-      } finally {
-        await handle.close()
-      }
+      entry.handle = handle
+      const stat = await handle.stat()
+      if (!stat.isFile() || Number(stat.size) !== entry.offset) return error('changed')
+      await handle.write(request.bytes, 0, request.bytes.length, entry.offset)
     } catch (cause) {
       await this.closeDestination(request.session, destination)
       throw cause
@@ -1099,7 +1099,12 @@ export class DesktopPickerOwner {
     }
     try {
       for (const entry of destination.entries) {
-        if (entry.offset !== entry.entry.size || entry.stagedPath === undefined) return error('size-mismatch')
+        if (entry.offset !== entry.entry.size || entry.stagedPath === undefined || entry.handle === undefined) return error('size-mismatch')
+        await entry.handle.sync()
+        const stagedStat = await entry.handle.stat()
+        if (!stagedStat.isFile() || Number(stagedStat.size) !== entry.entry.size) return error('size-mismatch')
+        await entry.handle.close()
+        entry.handle = undefined
         const bytes = await readFile(entry.stagedPath)
         if (signal.aborted) return error('aborted')
         if (bytes.length !== entry.entry.size || createHash('sha256').update(bytes).digest('hex') !== entry.digest) return error('digest-mismatch')
@@ -1606,12 +1611,12 @@ export class DesktopPickerOwner {
       'oldDigest', 'oldIdentity', 'oldSize', 'parentIdentity', 'snapshotPath', 'state', 'version',
     ]) || value.version !== 1 || typeof value.destinationPath !== 'string'
       || !isAbsolute(value.destinationPath) || resolve(value.destinationPath) !== value.destinationPath
-      || !/^[0-9a-f]{64}$/u.test(String(value.newDigest))
+      || typeof value.newDigest !== 'string' || !/^[0-9a-f]{64}$/u.test(value.newDigest)
       || !Number.isSafeInteger(value.newSize) || Number(value.newSize) < 0
       || value.backupPath !== null && typeof value.backupPath !== 'string'
       || value.commitPath !== null && typeof value.commitPath !== 'string'
       || value.snapshotPath !== null && typeof value.snapshotPath !== 'string'
-      || value.oldDigest !== null && !/^[0-9a-f]{64}$/u.test(String(value.oldDigest))
+      || value.oldDigest !== null && (typeof value.oldDigest !== 'string' || !/^[0-9a-f]{64}$/u.test(value.oldDigest))
       || value.oldIdentity !== null && typeof value.oldIdentity !== 'string'
       || typeof value.parentIdentity !== 'string' || value.parentIdentity.length === 0
       || value.oldSize !== null && (!Number.isSafeInteger(value.oldSize) || Number(value.oldSize) < 0)
@@ -1989,11 +1994,11 @@ export class DesktopPickerOwner {
 
   private async cleanupLockedPlan(plan: LockedDestinationPlan): Promise<void> {
     if (plan.snapshot !== undefined) {
-      await rm(plan.snapshot.path, { force: true })
+      this.unlinkArtifact(plan.snapshot.path, '.tockteam-picker-snapshot-')
       await this.syncDirectory(dirname(plan.snapshot.path))
     }
     if (plan.journalPath !== undefined) {
-      await rm(plan.journalPath, { force: true })
+      this.unlinkArtifact(plan.journalPath, 'destination-')
       await this.syncDirectory(this.recoveryRoot)
     }
   }
@@ -2029,9 +2034,21 @@ export class DesktopPickerOwner {
 
   private async cleanupDestination(destination: DestinationSession): Promise<DesktopCleanupEvidence> {
     const residualLabels: DesktopPickerLabel[] = destination.recoveryPaths.map(path => cast(labelOf(path)))
+    for (const entry of destination.entries) {
+      if (entry.handle === undefined) continue
+      try {
+        await entry.handle.truncate(0)
+        await entry.handle.sync()
+        await entry.handle.close()
+        entry.handle = undefined
+      } catch {
+        residualLabels.push(cast(labelOf(entry.absolutePath)))
+      }
+    }
     if (destination.stagingRoot !== undefined) {
       const stagingRoot = destination.stagingRoot
       try {
+        this.assertDestinationParent(destination.path, destination.parentIdentity)
         await rm(stagingRoot, { recursive: true, force: true })
         await this.syncDirectory(dirname(stagingRoot))
         destination.stagingRoot = undefined
@@ -2043,7 +2060,7 @@ export class DesktopPickerOwner {
     if (residualLabels.length === 0 && destination.snapshot !== undefined) {
       const snapshotPath = destination.snapshot.path
       try {
-        await rm(snapshotPath, { force: true })
+        this.unlinkArtifact(snapshotPath, '.tockteam-picker-snapshot-')
         await this.syncDirectory(dirname(snapshotPath))
         destination.snapshot = undefined
       } catch {
@@ -2053,7 +2070,7 @@ export class DesktopPickerOwner {
     if (residualLabels.length === 0 && destination.journalPath !== undefined) {
       const journalPath = destination.journalPath
       try {
-        await rm(journalPath, { force: true })
+        this.unlinkArtifact(journalPath, 'destination-')
         await this.syncDirectory(this.recoveryRoot)
         destination.journalPath = undefined
       } catch {
