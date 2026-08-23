@@ -25,7 +25,9 @@ export class DesktopPopOutProvider implements TockTeamDesktopPopOut {
   private readonly fetcher: typeof fetch
   private readonly currentVault: DesktopPickerCurrentVault
   private readonly lifetime = new AbortController()
+  private readonly pending = new Set<Promise<unknown>>()
   private disposed = false
+  private disposal: Promise<void> | undefined
 
   constructor(
     environment: DesktopPopOutProviderEnvironment = {
@@ -53,10 +55,23 @@ export class DesktopPopOutProvider implements TockTeamDesktopPopOut {
     return await this.call('closeAll', request, signal) as DesktopPopOutCloseResult
   }
 
-  dispose(): void {
-    if (this.disposed) return
+  dispose(): Promise<void> {
+    if (this.disposal !== undefined) return this.disposal
     this.disposed = true
-    this.lifetime.abort()
+    this.disposal = this.finishDispose()
+    return this.disposal
+  }
+
+  private async finishDispose(): Promise<void> {
+    await Promise.allSettled([...this.pending])
+    try {
+      if (this.endpoint !== undefined && this.token !== undefined) {
+        const result = await this.request('disposeProvider', {}) as { status?: string }
+        if (result.status !== 'closed') throw new Error('TockTeam Desktop pop-out cleanup was incomplete')
+      }
+    } finally {
+      this.lifetime.abort()
+    }
   }
 
   private current(identity: DesktopPopOutOpenRequest['identity']): boolean {
@@ -68,19 +83,28 @@ export class DesktopPopOutProvider implements TockTeamDesktopPopOut {
     if (!this.current(request.identity)) return { operationId: request.identity.operationId, status: 'stale' }
     if (signal.aborted) return { operationId: request.identity.operationId, status: 'cancelled' }
     if (this.disposed || this.endpoint === undefined || this.token === undefined) return { operationId: request.identity.operationId, status: 'unavailable' }
+    const work = this.request(method, request, AbortSignal.any([signal, this.lifetime.signal]))
+    this.pending.add(work)
     try {
-      const response = await this.fetcher(this.endpoint, {
-        method: 'POST',
-        headers: { authorization: `Bearer ${this.token}`, 'content-type': 'application/json' },
-        body: JSON.stringify({ method, request }),
-        signal: AbortSignal.any([signal, this.lifetime.signal]),
-      })
-      if (!response.ok) throw new TockTeamDesktopGrantError('owner-lost')
-      return await response.json()
+      return await work
     } catch {
       return signal.aborted
         ? { operationId: request.identity.operationId, status: 'cancelled' }
         : { operationId: request.identity.operationId, status: 'unavailable' }
+    } finally {
+      this.pending.delete(work)
     }
+  }
+
+  private async request(method: string, request: unknown, signal?: AbortSignal): Promise<unknown> {
+    if (this.endpoint === undefined || this.token === undefined) throw new TockTeamDesktopGrantError('owner-lost')
+    const response = await this.fetcher(this.endpoint, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${this.token}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ method, request }),
+      signal: signal ?? null,
+    })
+    if (!response.ok) throw new TockTeamDesktopGrantError('owner-lost')
+    return await response.json()
   }
 }

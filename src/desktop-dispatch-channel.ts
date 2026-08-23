@@ -56,6 +56,7 @@ export class DesktopDispatchChannel {
   private server: Server | undefined
   private environmentValue: DesktopDispatchChannelEnvironment | undefined
   private lifetime = new AbortController()
+  private generation = 0
   private readonly pending = new Set<Promise<void>>()
 
   constructor(options: DesktopDispatchChannelOptions) {
@@ -76,6 +77,7 @@ export class DesktopDispatchChannel {
 
   async start(): Promise<DesktopDispatchChannelEnvironment> {
     if (this.server !== undefined) throw new Error('Desktop dispatch channel is already running')
+    const generation = ++this.generation
     this.lifetime = new AbortController()
     const token = randomBytes(32).toString('base64url')
     const channelSessionId = randomBytes(24).toString('base64url')
@@ -92,6 +94,10 @@ export class DesktopDispatchChannel {
       server.once('error', reject)
       server.listen(0, '127.0.0.1', resolve)
     })
+    if (generation !== this.generation) {
+      await new Promise<void>(resolve => server.close(() => resolve()))
+      throw new Error('Desktop dispatch channel start was cancelled')
+    }
     const address = server.address()
     if (address === null || typeof address === 'string') throw new Error('Desktop dispatch channel has no address')
     this.server = server
@@ -103,6 +109,7 @@ export class DesktopDispatchChannel {
   }
 
   async stop(): Promise<void> {
+    this.generation += 1
     this.lifetime.abort()
     const server = this.server
     this.server = undefined
@@ -138,12 +145,22 @@ export class DesktopDispatchChannel {
       if (typeof input !== 'object' || input === null) throw new Error('invalid request')
       const record = input as Record<string, unknown>
       if (record.method === 'next' && Object.keys(record).length === 1) {
-        json(response, 200, { event: await this.owner?.next(signal) ?? null })
+        const event = await this.owner?.next(signal)
+        if (signal.aborted && event !== undefined) {
+          this.owner?.rollbackDelivery(event.identity.operationId)
+          return
+        }
+        json(response, 200, { event: event ?? null })
         return
       }
       if (record.method === 'complete' && Object.keys(record).length === 2
         && typeof record.request === 'object' && record.request !== null) {
         json(response, 200, { result: await this.owner?.complete(record.request as DesktopDispatchCompletionRequest, signal) })
+        return
+      }
+      if (record.method === 'disposeProvider' && Object.keys(record).length === 1) {
+        this.owner?.disposeProvider()
+        json(response, 200, { status: 'closed' })
         return
       }
       throw new Error('invalid request')

@@ -10,11 +10,18 @@ import { parseTockTutorProtocol } from './desktop-native-policy.ts'
 
 const MAX_PENDING_EVENTS = 64
 const MAX_ID_BYTES = 256
+const DELIVERY_LIFETIME_MS = 5 * 60 * 1000
 
 export interface DesktopDispatchOwnerOptions {
   identity(operationId: string, requestId: string): NativeOperationIdentity | undefined
   isAvailable(): boolean
   randomId?: () => string
+  now?: () => number
+}
+
+interface DeliveredEvent {
+  event: DesktopDispatchEvent
+  expiresAt: number
 }
 
 interface Waiter {
@@ -31,15 +38,16 @@ function text(value: unknown): value is string {
 /** Main-owned bounded queue for native menu and protocol dispatch. */
 export class DesktopDispatchOwner {
   private readonly queue: DesktopDispatchEvent[] = []
-  private readonly delivered = new Map<string, DesktopDispatchEvent>()
+  private readonly delivered = new Map<string, DeliveredEvent>()
   private readonly superseded = new Set<string>()
   private readonly waiters = new Set<Waiter>()
-  private readonly options: DesktopDispatchOwnerOptions & { randomId: () => string }
+  private readonly options: DesktopDispatchOwnerOptions & { now: () => number; randomId: () => string }
   private disposed = false
 
   constructor(options: DesktopDispatchOwnerOptions) {
     this.options = {
       ...options,
+      now: options.now ?? (() => Date.now()),
       randomId: options.randomId ?? (() => randomBytes(24).toString('base64url')),
     }
   }
@@ -64,10 +72,11 @@ export class DesktopDispatchOwner {
   }
 
   async next(signal: AbortSignal): Promise<DesktopDispatchEvent | undefined> {
+    this.sweep()
     if (signal.aborted || this.disposed || !this.options.isAvailable()) return undefined
     const queued = this.queue.shift()
     if (queued !== undefined) {
-      this.delivered.set(queued.identity.operationId, queued)
+      this.rememberDelivered(queued)
       return queued
     }
     return await new Promise(resolve => {
@@ -80,7 +89,7 @@ export class DesktopDispatchOwner {
       waiter.resolve = event => {
         signal.removeEventListener('abort', abort)
         this.waiters.delete(waiter)
-        if (event !== undefined) this.delivered.set(event.identity.operationId, event)
+        if (event !== undefined) this.rememberDelivered(event)
         resolve(event)
       }
       this.waiters.add(waiter)
@@ -88,6 +97,7 @@ export class DesktopDispatchOwner {
   }
 
   async complete(request: DesktopDispatchCompletionRequest, signal: AbortSignal): Promise<DesktopDispatchCompletionResult> {
+    this.sweep()
     if (signal.aborted) return { operationId: text(request?.operationId) ? request.operationId : '', status: 'cancelled' }
     if (typeof request !== 'object' || request === null
       || Object.keys(request).some(key => key !== 'operationId' && key !== 'status')
@@ -95,14 +105,36 @@ export class DesktopDispatchOwner {
       || request.status !== 'handled' && request.status !== 'failed' && request.status !== 'stale') {
       return { operationId: text(request?.operationId) ? request.operationId : '', status: 'denied' }
     }
-    const event = this.delivered.get(request.operationId)
-    if (event === undefined) return { operationId: request.operationId, status: 'stale' }
+    const delivered = this.delivered.get(request.operationId)
+    if (delivered === undefined) return { operationId: request.operationId, status: 'stale' }
     this.delivered.delete(request.operationId)
+    const event = delivered.event
+    const current = this.options.identity(event.identity.operationId, event.identity.requestId)
+    if (current === undefined || current.vaultId !== event.identity.vaultId
+      || current.vaultGeneration !== event.identity.vaultGeneration
+      || current.sessionId !== event.identity.sessionId || current.windowId !== event.identity.windowId) {
+      this.superseded.delete(request.operationId)
+      return { operationId: request.operationId, status: 'stale' }
+    }
     if (this.superseded.delete(request.operationId) || request.status === 'stale') {
       return { operationId: request.operationId, status: 'stale' }
     }
     if (request.status === 'failed') return { operationId: request.operationId, status: 'unavailable' }
     return { operationId: request.operationId, status: 'handled' }
+  }
+
+  rollbackDelivery(operationId: string): void {
+    const delivered = this.delivered.get(operationId)
+    if (delivered === undefined) return
+    this.delivered.delete(operationId)
+    if (!this.superseded.delete(operationId)) this.queue.unshift(delivered.event)
+  }
+
+  disposeProvider(): void {
+    this.queue.unshift(...[...this.delivered.values()].map(value => value.event))
+    this.delivered.clear()
+    while (this.queue.length > MAX_PENDING_EVENTS) this.queue.pop()
+    for (const waiter of [...this.waiters]) waiter.resolve(undefined)
   }
 
   dispose(): void {
@@ -112,6 +144,35 @@ export class DesktopDispatchOwner {
     this.delivered.clear()
     this.superseded.clear()
     for (const waiter of [...this.waiters]) waiter.resolve(undefined)
+  }
+
+  private rememberDelivered(event: DesktopDispatchEvent): void {
+    this.delivered.set(event.identity.operationId, { event, expiresAt: this.options.now() + DELIVERY_LIFETIME_MS })
+    while (this.delivered.size > MAX_PENDING_EVENTS) {
+      const oldest = this.delivered.keys().next().value as string | undefined
+      if (oldest === undefined) break
+      this.delivered.delete(oldest)
+      this.superseded.delete(oldest)
+    }
+  }
+
+  private rememberSuperseded(operationId: string): void {
+    this.superseded.add(operationId)
+    while (this.superseded.size > MAX_PENDING_EVENTS) {
+      const oldest = this.superseded.values().next().value as string | undefined
+      if (oldest === undefined) break
+      this.superseded.delete(oldest)
+    }
+  }
+
+  private sweep(): void {
+    const now = this.options.now()
+    for (const [operationId, delivered] of this.delivered) {
+      if (delivered.expiresAt <= now) {
+        this.delivered.delete(operationId)
+        this.superseded.delete(operationId)
+      }
+    }
   }
 
   private identity(operationId: string): NativeOperationIdentity {
@@ -129,14 +190,14 @@ export class DesktopDispatchOwner {
     if (supersedable) {
       for (const queued of this.queue.splice(0, this.queue.length)) {
         if (queued.kind === 'protocol' && queued.request.action === 'choose-vault') {
-          this.superseded.add(queued.identity.operationId)
+          this.rememberSuperseded(queued.identity.operationId)
         } else {
           this.queue.push(queued)
         }
       }
-      for (const delivered of this.delivered.values()) {
+      for (const { event: delivered } of this.delivered.values()) {
         if (delivered.kind === 'protocol' && delivered.request.action === 'choose-vault') {
-          this.superseded.add(delivered.identity.operationId)
+          this.rememberSuperseded(delivered.identity.operationId)
         }
       }
     }

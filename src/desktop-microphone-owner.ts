@@ -86,10 +86,14 @@ export class DesktopMicrophoneOwner {
     return true
   }
 
+  disposeProvider(): void {
+    this.grant = undefined
+  }
+
   dispose(): void {
     if (this.disposed) return
     this.disposed = true
-    this.grant = undefined
+    this.disposeProvider()
     this.lifetime.abort()
   }
 

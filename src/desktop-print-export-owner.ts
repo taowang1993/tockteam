@@ -16,6 +16,8 @@ import {
 const FORBIDDEN_MARKUP = /<(?:script|iframe|object|embed|link|meta|base|style|form)\b|\son[a-z]+\s*=|\s(?:style|srcset|poster)\s*=/iu
 const RESOURCE_PATTERN = /\b(?:src|href)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/giu
 const ALLOWED_DATA_IMAGE = /^data:image\/(?:avif|gif|jpeg|png|webp);base64,[a-z0-9+/=]+$/iu
+const RESULT_LIFETIME_MS = 5 * 60 * 1000
+const MAX_RESULTS = 128
 
 export interface DesktopPrintExportNative {
   print(html: string, title: string, signal: AbortSignal): Promise<boolean>
@@ -27,6 +29,7 @@ export interface DesktopPrintExportOwnerOptions {
   isCurrent(identity: NativeOperationIdentity): boolean
   native: DesktopPrintExportNative
   picker: TockTeamDesktopPickerService
+  now?: () => number
 }
 
 function bytes(value: string): number { return Buffer.byteLength(value, 'utf8') }
@@ -51,12 +54,30 @@ function exactRequest(request: DesktopPrintExportRequest): boolean {
 }
 
 export class DesktopPrintExportOwner {
-  private readonly options: DesktopPrintExportOwnerOptions
+  private readonly options: DesktopPrintExportOwnerOptions & { now: () => number }
+  private readonly results = new Map<string, { expiresAt: number; fingerprint: string; promise: Promise<DesktopPrintExportResult> }>()
   private disposed = false
 
-  constructor(options: DesktopPrintExportOwnerOptions) { this.options = options }
+  constructor(options: DesktopPrintExportOwnerOptions) { this.options = { ...options, now: options.now ?? (() => Date.now()) } }
 
   async render(request: DesktopPrintExportRequest, signal: AbortSignal): Promise<DesktopPrintExportResult> {
+    const operationId = typeof request?.identity?.operationId === 'string' ? request.identity.operationId : ''
+    if (signal.aborted) return { operationId, status: 'cancelled' }
+    if (!exactRequest(request) || !validDocument(request.html, request.title)) return { operationId, status: 'denied' }
+    const fingerprint = createHash('sha256').update(JSON.stringify(request)).digest('hex')
+    const now = this.options.now()
+    for (const [key, result] of this.results) if (result.expiresAt <= now) this.results.delete(key)
+    const existing = this.results.get(operationId)
+    if (existing !== undefined) return existing.fingerprint === fingerprint
+      ? await existing.promise
+      : { operationId, status: 'denied' }
+    const promise = this.renderOnce(request, signal)
+    this.results.set(operationId, { expiresAt: now + RESULT_LIFETIME_MS, fingerprint, promise })
+    while (this.results.size > MAX_RESULTS) this.results.delete(this.results.keys().next().value as string)
+    return await promise
+  }
+
+  private async renderOnce(request: DesktopPrintExportRequest, signal: AbortSignal): Promise<DesktopPrintExportResult> {
     const operationId = typeof request?.identity?.operationId === 'string' ? request.identity.operationId : ''
     if (signal.aborted) return { operationId, status: 'cancelled' }
     if (this.disposed || !this.options.isAvailable()) return { operationId, status: 'unavailable' }
@@ -91,12 +112,18 @@ export class DesktopPrintExportOwner {
         await this.options.picker.revokeDestinationPlan({ authorization: locked.authorization })
         return { operationId, status: 'cancelled' }
       }
-      const begun = await this.options.picker.beginDestination({
-        ...plan,
-        authorization: locked.authorization,
-        identity: request.identity,
-        planDigest,
-      }, signal)
+      let begun
+      try {
+        begun = await this.options.picker.beginDestination({
+          ...plan,
+          authorization: locked.authorization,
+          identity: request.identity,
+          planDigest,
+        }, signal)
+      } catch (cause) {
+        await this.options.picker.revokeDestinationPlan({ authorization: locked.authorization }).catch(() => undefined)
+        throw cause
+      }
       let offset = 0
       try {
         while (offset < output.byteLength) {
@@ -132,6 +159,6 @@ export class DesktopPrintExportOwner {
     }
   }
 
-  dispose(): void { this.disposed = true }
-  reopen(): void { this.disposed = false }
+  dispose(): void { this.disposed = true; this.results.clear() }
+  reopen(): void { this.disposed = false; this.results.clear() }
 }

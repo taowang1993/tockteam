@@ -40,6 +40,8 @@ test('Electron pop-out route matches Workbench pathname ownership and keeps toke
   assert.doesNotMatch(main, /searchParams\.set\('note'/)
   assert.doesNotMatch(main, /searchParams\.set\('popout'/)
   assert.match(main, /popOutRouteTokens\.set\(windowId, routeToken\)/)
+  assert.match(main, /popOutRouteTokens\.get\(windowId\) === routeToken/)
+  assert.match(main, /title: relativePath,[\s\S]{0,200}preload: preloadPath/)
   assert.match(main, /popOutRouteTokens\.delete\(windowId\)/)
 })
 
@@ -52,6 +54,30 @@ test('pop-out owner opens, focuses, and closes one bounded relative note route',
   assert.deepEqual(focused, ['popout-1'])
   assert.equal((await owner.close({ identity: { ...identity, operationId: 'close' }, windowId: 'popout-1' }, new AbortController().signal)).status, 'closed')
   assert.deepEqual(closed, ['popout-1'])
+  owner.dispose()
+})
+
+test('same-path pop-out never focuses a window from an older vault boundary', async () => {
+  let active = { generation: 1, id: 'vault' }
+  let opens = 0
+  let focuses = 0
+  const windows = new Set<string>()
+  const owner = new DesktopPopOutOwner({
+    isAvailable: () => true,
+    isCurrent: candidate => candidate.vaultId === active.id && candidate.vaultGeneration === active.generation,
+    native: {
+      close: windowId => { windows.delete(windowId) },
+      focus: windowId => { focuses += 1; return windows.has(windowId) },
+      isOpen: windowId => windows.has(windowId),
+      open: async () => { const windowId = `popout-${++opens}`; windows.add(windowId); return windowId },
+    },
+  })
+  assert.equal((await owner.open({ identity, relativePath: 'same.md' }, new AbortController().signal)).status, 'opened')
+  active = { generation: 2, id: 'vault-b' }
+  assert.equal((await owner.open({ identity: { ...identity, operationId: 'new-vault', vaultGeneration: 2, vaultId: 'vault-b' }, relativePath: 'same.md' }, new AbortController().signal)).status, 'opened')
+  assert.equal(opens, 2)
+  assert.equal(focuses, 0)
+  assert.deepEqual([...windows], ['popout-2'])
   owner.dispose()
 })
 

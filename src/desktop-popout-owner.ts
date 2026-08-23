@@ -39,6 +39,11 @@ function validIdentity(value: unknown): value is NativeOperationIdentity {
     && (record.vaultId === null || typeof record.vaultId === 'string')
 }
 
+function sameOwner(left: NativeOperationIdentity, right: NativeOperationIdentity): boolean {
+  return left.vaultId === right.vaultId && left.vaultGeneration === right.vaultGeneration
+    && left.sessionId === right.sessionId && left.windowId === right.windowId
+}
+
 interface WindowRecord {
   identity: NativeOperationIdentity
   relativePath: string
@@ -67,7 +72,10 @@ export class DesktopPopOutOwner {
       || !validIdentity(request.identity) || !safeRelativePath(request.relativePath)) return { operationId, status: 'denied' }
     if (!this.options.isCurrent(request.identity)) return { operationId, status: 'stale' }
     const existing = this.byPath.get(request.relativePath)
-    if (existing !== undefined && this.options.native.isOpen(existing.windowId)) {
+    if (existing !== undefined && !sameOwner(existing.identity, request.identity)) {
+      this.options.native.close(existing.windowId)
+      this.remove(existing.windowId)
+    } else if (existing !== undefined && this.options.native.isOpen(existing.windowId)) {
       if (!this.options.native.focus(existing.windowId)) return { operationId, status: 'unavailable' }
       return { operationId, status: 'focused', windowId: existing.windowId }
     }
@@ -104,11 +112,26 @@ export class DesktopPopOutOwner {
     return this.closeRequest(request, signal, true)
   }
 
+  rollbackOpen(windowId: string): void {
+    this.options.native.close(windowId)
+    if (!this.options.native.isOpen(windowId)) this.remove(windowId)
+  }
+
+  disposeProvider(): { status: 'closed' | 'unavailable' } {
+    let complete = true
+    for (const windowId of [...this.byWindow.keys()]) {
+      this.options.native.close(windowId)
+      if (this.options.native.isOpen(windowId)) complete = false
+      else this.remove(windowId)
+    }
+    return { status: complete ? 'closed' : 'unavailable' }
+  }
+
   dispose(): void {
     if (this.disposed) return
     this.disposed = true
     this.lifetime.abort()
-    for (const windowId of [...this.byWindow.keys()]) this.options.native.close(windowId)
+    this.disposeProvider()
     this.byPath.clear()
     this.byWindow.clear()
   }
@@ -127,8 +150,11 @@ export class DesktopPopOutOwner {
     if (signal.aborted) return { operationId, status: 'cancelled' }
     if (this.disposed || !this.options.isAvailable()) return { operationId, status: 'unavailable' }
     if (!validIdentity(request?.identity) || !this.options.isCurrent(request.identity)) return { operationId, status: 'stale' }
-    const ids = all ? [...this.byWindow.keys()] : ['windowId' in request ? request.windowId : '']
-    if (!all && (ids[0] === '' || !this.byWindow.has(ids[0] as string))) return { operationId, status: 'denied' }
+    const ids = all
+      ? [...this.byWindow.values()].filter(record => sameOwner(record.identity, request.identity)).map(record => record.windowId)
+      : ['windowId' in request ? request.windowId : '']
+    const record = this.byWindow.get(ids[0] as string)
+    if (!all && (ids[0] === '' || record === undefined || !sameOwner(record.identity, request.identity))) return { operationId, status: 'denied' }
     for (const windowId of ids) {
       this.options.native.close(windowId)
       this.remove(windowId)

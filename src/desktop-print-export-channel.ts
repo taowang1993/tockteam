@@ -18,18 +18,24 @@ export class DesktopPrintExportChannel {
   private server: Server | undefined
   private environmentValue: DesktopPrintExportChannelEnvironment | undefined
   private lifetime = new AbortController()
+  private generation = 0
   private readonly pending = new Set<Promise<void>>()
   constructor(owner: DesktopPrintExportOwner) { this.owner = owner }
   get environment(): DesktopPrintExportChannelEnvironment | undefined { return this.environmentValue }
 
   async start(): Promise<DesktopPrintExportChannelEnvironment> {
     if (this.server !== undefined) throw new Error('Desktop print/export channel is already running')
+    const generation = ++this.generation
     this.owner.reopen(); this.lifetime = new AbortController()
     const token = randomBytes(32).toString('base64url')
     const server = createServer((request, response) => {
       const work = this.handle(request, response, token); this.pending.add(work); void work.finally(() => this.pending.delete(work))
     })
     await new Promise<void>((resolve, reject) => { server.once('error', reject); server.listen(0, '127.0.0.1', resolve) })
+    if (generation !== this.generation) {
+      await new Promise<void>(resolve => server.close(() => resolve()))
+      throw new Error('Desktop print/export channel start was cancelled')
+    }
     const address = server.address(); if (address === null || typeof address === 'string') throw new Error('no address')
     this.server = server
     this.environmentValue = { endpoint: `http://127.0.0.1:${String(address.port)}${DESKTOP_PRINT_EXPORT_CHANNEL_PATH}`, token }
@@ -37,6 +43,7 @@ export class DesktopPrintExportChannel {
   }
 
   async stop(): Promise<void> {
+    this.generation += 1
     this.lifetime.abort(); this.owner.dispose()
     const server = this.server; this.server = undefined; this.environmentValue = undefined
     if (server !== undefined) await new Promise<void>(resolve => { server.close(() => resolve()); if (!server.listening) resolve() })

@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { DesktopDispatchChannel } from '../src/desktop-dispatch-channel.ts'
+import { DesktopDispatchOwner } from '../src/desktop-dispatch-owner.ts'
 import { DesktopDispatchProvider } from '../src/desktop-dispatch-provider.ts'
+import type { DesktopDispatchEvent } from '../src/host-contract.ts'
 
 function channel(): DesktopDispatchChannel {
   return new DesktopDispatchChannel({
@@ -39,6 +41,42 @@ test('dispatch channel authenticates and provider subscribes without listener in
   await native.stop()
 })
 
+test('dispatch provider unload requeues an event whose poll reply was gated', async () => {
+  const native = channel()
+  const environment = await native.start()
+  const owner = (native as unknown as { owner: DesktopDispatchOwner }).owner
+  let delivered!: () => void
+  const eventDelivered = new Promise<void>(resolve => { delivered = resolve })
+  let releaseReply!: () => void
+  const replyBlocked = new Promise<void>(resolve => { releaseReply = resolve })
+  let captured: DesktopDispatchEvent | undefined
+  const originalNext = owner.next.bind(owner)
+  owner.next = (async signal => {
+    const event = await originalNext(signal)
+    if (event !== undefined) {
+      captured = event
+      delivered()
+      await replyBlocked
+    }
+    return event
+  }) as typeof owner.next
+  const provider = new DesktopDispatchProvider(environment, fetch, () => ({ active: true, generation: 1, id: 'vault' }))
+  let listenerCalls = 0
+  provider.subscribe(() => { listenerCalls += 1 })
+  assert.equal(native.publishQuickAction('daily'), true)
+  await eventDelivered
+  const disposing = provider.dispose()
+  releaseReply()
+  await disposing
+  assert.equal(listenerCalls, 0)
+  assert.ok(captured)
+  assert.equal((await owner.complete({ operationId: captured.identity.operationId, status: 'handled' }, new AbortController().signal)).status, 'stale')
+  const redelivered = await owner.next(new AbortController().signal)
+  assert.equal(redelivered?.identity.operationId, captured.identity.operationId)
+  if (redelivered !== undefined) await owner.complete({ operationId: redelivered.identity.operationId, status: 'handled' }, new AbortController().signal)
+  await native.stop()
+})
+
 test('dispatch provider drops stale Runtime identities and channel stop settles long polls', async () => {
   const native = channel()
   const environment = await native.start()
@@ -48,6 +86,6 @@ test('dispatch provider drops stale Runtime identities and channel stop settles 
   assert.equal(native.publishQuickAction('daily'), true)
   await new Promise(resolve => setTimeout(resolve, 30))
   assert.equal(delivered, false)
-  await native.stop()
   await provider.dispose()
+  await native.stop()
 })

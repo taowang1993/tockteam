@@ -7,7 +7,7 @@ const MAX_BODY_BYTES = 16 * 1024
 
 export interface DesktopPopOutChannelEnvironment { endpoint: string; token: string }
 
-type PopOutMethod = 'open' | 'close' | 'closeAll'
+type PopOutMethod = 'open' | 'close' | 'closeAll' | 'disposeProvider'
 
 function authorized(value: string | undefined, expected: string): boolean {
   if (value === undefined) return false
@@ -41,6 +41,7 @@ export class DesktopPopOutChannel {
   private server: Server | undefined
   private environmentValue: DesktopPopOutChannelEnvironment | undefined
   private lifetime = new AbortController()
+  private generation = 0
   private readonly pending = new Set<Promise<void>>()
 
   constructor(owner: DesktopPopOutOwner) { this.owner = owner }
@@ -48,6 +49,7 @@ export class DesktopPopOutChannel {
 
   async start(): Promise<DesktopPopOutChannelEnvironment> {
     if (this.server !== undefined) throw new Error('Desktop pop-out channel is already running')
+    const generation = ++this.generation
     this.owner.reopen()
     this.lifetime = new AbortController()
     const token = randomBytes(32).toString('base64url')
@@ -57,6 +59,10 @@ export class DesktopPopOutChannel {
       void work.finally(() => this.pending.delete(work))
     })
     await new Promise<void>((resolve, reject) => { server.once('error', reject); server.listen(0, '127.0.0.1', resolve) })
+    if (generation !== this.generation) {
+      await new Promise<void>(resolve => server.close(() => resolve()))
+      throw new Error('Desktop pop-out channel start was cancelled')
+    }
     const address = server.address()
     if (address === null || typeof address === 'string') throw new Error('Desktop pop-out channel has no address')
     this.server = server
@@ -65,6 +71,7 @@ export class DesktopPopOutChannel {
   }
 
   async stop(): Promise<void> {
+    this.generation += 1
     this.lifetime.abort()
     this.owner.dispose()
     const server = this.server
@@ -85,12 +92,18 @@ export class DesktopPopOutChannel {
     try {
       const input = await body(request)
       const method = input.method
-      if ((method !== 'open' && method !== 'close' && method !== 'closeAll') || typeof input.request !== 'object' || input.request === null) throw new Error('invalid')
+      if ((method !== 'open' && method !== 'close' && method !== 'closeAll' && method !== 'disposeProvider') || typeof input.request !== 'object' || input.request === null) throw new Error('invalid')
       const value = method === 'open'
         ? await this.owner.open(input.request as never, signal)
         : method === 'close'
           ? await this.owner.close(input.request as never, signal)
-          : await this.owner.closeAll(input.request as never, signal)
+          : method === 'closeAll'
+            ? await this.owner.closeAll(input.request as never, signal)
+            : this.owner.disposeProvider()
+      if (signal.aborted && method === 'open' && value.status === 'opened' && 'windowId' in value) {
+        this.owner.rollbackOpen(value.windowId)
+        return
+      }
       json(response, value)
     } catch {
       if (!response.headersSent && !response.destroyed) response.writeHead(400).end()

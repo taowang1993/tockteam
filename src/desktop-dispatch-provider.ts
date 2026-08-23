@@ -44,6 +44,7 @@ export class DesktopDispatchProvider implements TockTeamDesktopDispatch {
   private readonly listeners = new Set<(event: DesktopDispatchEvent) => void>()
   private polling: Promise<void> | undefined
   private disposed = false
+  private disposal: Promise<void> | undefined
 
   constructor(
     environment: DesktopDispatchProviderEnvironment = {
@@ -77,12 +78,20 @@ export class DesktopDispatchProvider implements TockTeamDesktopDispatch {
     return (value as { result: DesktopDispatchCompletionResult }).result
   }
 
-  async dispose(): Promise<void> {
-    if (this.disposed) return
+  dispose(): Promise<void> {
+    if (this.disposal !== undefined) return this.disposal
     this.disposed = true
     this.listeners.clear()
     this.lifetime.abort()
+    this.disposal = this.finishDispose()
+    return this.disposal
+  }
+
+  private async finishDispose(): Promise<void> {
     await Promise.allSettled(this.polling === undefined ? [] : [this.polling])
+    if (this.endpoint === undefined || this.token === undefined) return
+    const result = await this.request({ method: 'disposeProvider' }) as { status?: string }
+    if (result.status !== 'closed') throw new Error('TockTeam Desktop dispatch cleanup was incomplete')
   }
 
   private current(event: DesktopDispatchEvent): boolean {
@@ -123,12 +132,16 @@ export class DesktopDispatchProvider implements TockTeamDesktopDispatch {
     if (this.disposed || this.endpoint === undefined || this.token === undefined) {
       throw new TockTeamDesktopGrantError('owner-lost')
     }
-    const combined = AbortSignal.any([signal, this.lifetime.signal])
+    return await this.request(input, AbortSignal.any([signal, this.lifetime.signal]))
+  }
+
+  private async request(input: unknown, signal?: AbortSignal): Promise<unknown> {
+    if (this.endpoint === undefined || this.token === undefined) throw new TockTeamDesktopGrantError('owner-lost')
     const response = await this.fetcher(this.endpoint, {
       method: 'POST',
       headers: { authorization: `Bearer ${this.token}`, 'content-type': 'application/json' },
       body: JSON.stringify(input),
-      signal: combined,
+      signal: signal ?? null,
     })
     if (!response.ok) throw new TockTeamDesktopGrantError('owner-lost')
     return await response.json()

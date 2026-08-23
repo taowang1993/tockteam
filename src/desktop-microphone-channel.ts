@@ -45,6 +45,7 @@ export class DesktopMicrophoneChannel {
   private readonly owner: DesktopMicrophoneOwner
   private environmentValue: DesktopMicrophoneChannelEnvironment | undefined
   private lifetime = new AbortController()
+  private generation = 0
   private readonly pending = new Set<Promise<void>>()
 
   constructor(owner: DesktopMicrophoneOwner) {
@@ -57,6 +58,7 @@ export class DesktopMicrophoneChannel {
 
   async start(): Promise<DesktopMicrophoneChannelEnvironment> {
     if (this.server !== undefined) throw new Error('Desktop microphone channel is already running')
+    const generation = ++this.generation
     this.owner.reopen()
     this.lifetime = new AbortController()
     const token = randomBytes(32).toString('base64url')
@@ -69,6 +71,10 @@ export class DesktopMicrophoneChannel {
       server.once('error', reject)
       server.listen(0, '127.0.0.1', resolve)
     })
+    if (generation !== this.generation) {
+      await new Promise<void>(resolve => server.close(() => resolve()))
+      throw new Error('Desktop microphone channel start was cancelled')
+    }
     const address = server.address()
     if (address === null || typeof address === 'string') throw new Error('Desktop microphone channel has no address')
     this.server = server
@@ -80,6 +86,7 @@ export class DesktopMicrophoneChannel {
   }
 
   async stop(): Promise<void> {
+    this.generation += 1
     this.lifetime.abort()
     this.owner.dispose()
     const server = this.server
@@ -110,7 +117,17 @@ export class DesktopMicrophoneChannel {
     const signal = AbortSignal.any([this.lifetime.signal, requestController.signal])
     try {
       const input = await body(request)
-      json(response, 200, await this.owner.request(input as DesktopMicrophoneRequest, signal))
+      if (typeof input === 'object' && input !== null && (input as Record<string, unknown>).disposeProvider === true) {
+        this.owner.disposeProvider()
+        json(response, 200, { status: 'closed' })
+      } else {
+        const result = await this.owner.request(input as DesktopMicrophoneRequest, signal)
+        if (signal.aborted && result.status === 'granted') {
+          this.owner.disposeProvider()
+          return
+        }
+        json(response, 200, result)
+      }
     } catch {
       if (!response.headersSent && !response.destroyed) response.writeHead(400).end()
     } finally {

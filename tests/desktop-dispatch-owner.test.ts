@@ -49,6 +49,29 @@ test('dispatch owner delivers typed quick actions and matches one completion', a
   dispatch.dispose()
 })
 
+test('dispatch completion expires and rejects an older vault boundary', async () => {
+  let now = 0
+  let vault = { generation: 1, id: 'vault-a' }
+  let id = 0
+  const dispatch = new DesktopDispatchOwner({
+    identity: (operationId, requestId) => ({ operationId, requestId, sessionId: 'session', vaultGeneration: vault.generation, vaultId: vault.id, windowId: 'window' }),
+    isAvailable: () => true,
+    now: () => now,
+    randomId: () => `id-${++id}`,
+  })
+  assert.equal(dispatch.publishQuickAction('daily'), true)
+  const oldVault = await dispatch.next(new AbortController().signal)
+  assert.ok(oldVault)
+  vault = { generation: 2, id: 'vault-b' }
+  assert.equal((await dispatch.complete({ operationId: oldVault.identity.operationId, status: 'handled' }, new AbortController().signal)).status, 'stale')
+  assert.equal(dispatch.publishQuickAction('daily'), true)
+  const expiring = await dispatch.next(new AbortController().signal)
+  assert.ok(expiring)
+  now = 5 * 60 * 1000 + 1
+  assert.equal((await dispatch.complete({ operationId: expiring.identity.operationId, status: 'handled' }, new AbortController().signal)).status, 'stale')
+  dispatch.dispose()
+})
+
 test('new choose-vault protocol supersedes delivered older transitions and disposal settles waiters', async () => {
   const dispatch = owner()
   assert.equal(dispatch.publishProtocol('tocktutor://choose-vault?'), true)
