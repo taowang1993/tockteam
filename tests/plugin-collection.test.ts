@@ -27,14 +27,15 @@ function packageDirectory(plugin: string): string {
 
 test('desktop bundle registers every packaged DSH plugin', () => {
   const patch = readFileSync(join(root, 'cordis.patch.yml'), 'utf8')
+  const aggregatePatch = readFileSync(join(root, 'vendor', 'tockteam-tocktutor', 'cordis.patch.yml'), 'utf8')
   assert.doesNotMatch(patch, /tockbot-note-vault/)
+  assert.doesNotMatch(aggregatePatch, /tockbot-note-vault/)
   assert.equal((patch.match(/id: note-vault-runtime/g) ?? []).length, 1)
   assert.match(patch, /id: note-vault-runtime[\s\S]*stateRoot: null/)
   for (const plugin of BUNDLED_DESKTOP_PLUGINS) {
-    const ownedPatch = ownedBundleDirectories.has(plugin)
-      ? readFileSync(join(packageDirectory(plugin), 'cordis.patch.yml'), 'utf8')
-      : patch
-    assert.match(ownedPatch, new RegExp(`name: ['"]?${plugin.replace('/', '\\/')}['"]?`))
+    const ownedPatch = ownedBundleDirectories.has(plugin) ? aggregatePatch : patch
+    const registration = new RegExp(`name: ['"]?${plugin.replace('/', '\\/')}['"]?`, 'g')
+    assert.equal((ownedPatch.match(registration) ?? []).length, 1)
   }
   for (const plugin of BUNDLED_DESKTOP_CLIENT_PLUGINS) {
     const manifest = JSON.parse(readFileSync(join(packageDirectory(plugin), 'package.json'), 'utf8'))

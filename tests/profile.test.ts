@@ -11,6 +11,10 @@ test('desktop profile pins the released TockTutor runtime and peer package', () 
     devDependencies: Record<string, string>
     files: string[]
   }
+  const bundle = JSON.parse(readFileSync(new URL('../vendor/tockteam-tocktutor/package.json', import.meta.url), 'utf8')) as {
+    dependencies: Record<string, string>
+    version: string
+  }
   const runtime = JSON.parse(readFileSync(new URL('../vendor/tockbot-note-runtime/package.json', import.meta.url), 'utf8')) as {
     peerDependencies: Record<string, string>
     version: string
@@ -46,11 +50,20 @@ test('desktop profile pins the released TockTutor runtime and peer package', () 
   assert.equal(packageJson.devDependencies['tockbot-note-runtime'], 'file:vendor/tockbot-note-runtime-0.1.2.tgz')
   assert.equal(packageJson.devDependencies['tockbot-note-vault'], 'file:vendor/tockbot-note-vault-0.6.0.tgz')
   assert.equal(packageJson.devDependencies['@tockteam/note-vault-tools'], 'file:vendor/tockteam-note-vault-tools-0.1.2.tgz')
+  assert.ok(packageJson.files.includes('vendor/tockteam-tocktutor-0.1.0.tgz'))
   assert.ok(packageJson.files.includes('vendor/tockteam-tocktutor-workbench-0.1.4.tgz'))
   assert.ok(packageJson.files.includes('vendor/tockbot-note-desktop-0.1.0.tgz'))
   assert.ok(packageJson.files.includes('vendor/tockteam-tocktutor-assistant-0.1.2.tgz'))
   assert.ok(packageJson.files.includes('vendor/tockteam-tocktutor-import-export-0.1.0.tgz'))
   assert.ok(packageJson.files.includes('vendor/tockbot-web-clip-0.1.2.tgz'))
+  assert.equal(bundle.version, '0.1.0')
+  assert.equal(bundle.dependencies['tockbot-note-runtime'], '0.1.2')
+  assert.equal(bundle.dependencies['tockbot-note-vault'], '0.6.0')
+  assert.equal(bundle.dependencies['@tockteam/tocktutor-workbench'], '0.1.4')
+  assert.equal(bundle.dependencies['tockbot-note-desktop'], '0.1.0')
+  assert.equal(bundle.dependencies['@tockteam/tocktutor-assistant'], '0.1.2')
+  assert.equal(bundle.dependencies['@tockteam/tocktutor-import-export'], '0.1.0')
+  assert.equal(bundle.dependencies['tockbot-web-clip'], '0.1.2')
   assert.equal(runtime.version, '0.1.2')
   assert.equal(runtime.peerDependencies['tockbot-note-vault'], '0.6.0')
   assert.equal(vault.version, '0.6.0')
@@ -72,15 +85,9 @@ test('desktop profile pins the released TockTutor runtime and peer package', () 
   assert.equal(importExport.peerDependencies['tockbot-note-runtime'], '0.1.2')
   assert.equal(webClip.version, '0.1.2')
   assert.equal(webClip.peerDependencies['tockbot-note-runtime'], '0.1.2')
-  assert.deepEqual(DESKTOP_BUNDLES.slice(0, 10), [
+  assert.deepEqual(DESKTOP_BUNDLES, [
     '@deepseek-ai/dsh-base',
-    'tockbot-note-runtime',
-    '@tockteam/note-vault-tools',
-    '@tockteam/tocktutor-workbench',
-    'tockbot-note-desktop',
-    '@tockteam/tocktutor-assistant',
-    '@tockteam/tocktutor-import-export',
-    'tockbot-web-clip',
+    '@tockteam/tocktutor',
     '@deepseek-ai/dsh-web-app',
     '@tockteam/desktop',
   ])
@@ -103,8 +110,10 @@ test('desktop profile initializes required bundles and preserves user plugins', 
 
     manifest.dependencies['example-plugin'] = '1.0.0'
     manifest.dependencies['tockbot-note-vault'] = '0.6.0'
+    manifest.dependencies['@tockteam/tocktutor-workbench'] = '0.1.4'
     manifest.dsh.profile.bundles = [
       'tockbot-note-vault',
+      '@tockteam/tocktutor-workbench',
       'example-plugin',
       '@tockteam/desktop',
     ]
@@ -116,7 +125,9 @@ test('desktop profile initializes required bundles and preserves user plugins', 
     assert.deepEqual(upgraded.dsh.profile.bundles, [...DESKTOP_BUNDLES, 'example-plugin'])
     assert.equal(upgraded.dependencies['example-plugin'], '1.0.0')
     assert.equal(upgraded.dependencies['tockbot-note-vault'], undefined)
+    assert.equal(upgraded.dependencies['@tockteam/tocktutor-workbench'], undefined)
     assert.equal(upgraded.dsh.profile.bundles.includes('tockbot-note-vault'), false)
+    assert.equal(upgraded.dsh.profile.bundles.includes('@tockteam/tocktutor-workbench'), false)
     assert.match(readFileSync(join(second.profileDir, 'cordis.patch.yml'), 'utf8'), /custom/)
   } finally {
     rmSync(root, { recursive: true, force: true })

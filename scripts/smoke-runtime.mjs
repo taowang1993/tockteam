@@ -122,6 +122,17 @@ const toolsManifest = JSON.parse(readFileSync(join(
 ), 'utf8'))
 assert.equal(toolsManifest.version, '0.1.2')
 assert.equal(toolsManifest.peerDependencies['tockbot-note-runtime'], '0.1.2')
+const aggregateManifest = JSON.parse(readFileSync(join(
+  resources,
+  'dsh-runtime',
+  'node_modules',
+  '@tockteam',
+  'tocktutor',
+  'package.json',
+), 'utf8'))
+assert.equal(aggregateManifest.version, '0.1.0')
+assert.equal(aggregateManifest.dependencies['tockbot-note-runtime'], '0.1.2')
+assert.equal(aggregateManifest.dependencies['tockbot-note-vault'], '0.6.0')
 const workbenchManifest = JSON.parse(readFileSync(join(
   resources,
   'dsh-runtime',

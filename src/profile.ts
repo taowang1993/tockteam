@@ -39,6 +39,13 @@ export const BUNDLED_DESKTOP_PLUGINS = [
 /** Bundle order owned by the desktop distribution. */
 export const DESKTOP_BUNDLES = [
   '@deepseek-ai/dsh-base',
+  '@tockteam/tocktutor',
+  '@deepseek-ai/dsh-web-app',
+  '@tockteam/desktop',
+] as const
+
+const RETIRED_DESKTOP_BUNDLES = [
+  'tockbot-note-vault',
   'tockbot-note-runtime',
   '@tockteam/note-vault-tools',
   '@tockteam/tocktutor-workbench',
@@ -46,8 +53,6 @@ export const DESKTOP_BUNDLES = [
   '@tockteam/tocktutor-assistant',
   '@tockteam/tocktutor-import-export',
   'tockbot-web-clip',
-  '@deepseek-ai/dsh-web-app',
-  '@tockteam/desktop',
 ] as const
 
 /** Bundle order owned by the TockTeam Web browser distribution. */
@@ -126,8 +131,8 @@ export const DESKTOP_PROFILE_SPEC: ProfileSpec = Object.freeze({
   bundles: DESKTOP_BUNDLES,
   manifestName: 'dsh-profile-desktop',
   name: DESKTOP_PROFILE,
-  retiredBundles: ['tockbot-note-vault'],
-  retiredDependencies: ['tockbot-note-vault'],
+  retiredBundles: RETIRED_DESKTOP_BUNDLES,
+  retiredDependencies: RETIRED_DESKTOP_BUNDLES,
 })
 
 /** Profile facts for the packaged TockTeam Web browser surface. */
