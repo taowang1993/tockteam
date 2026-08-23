@@ -9,9 +9,12 @@ let attacked = false
 const original = {
   appendFileSync: fs.appendFileSync.bind(fs),
   linkSync: fs.linkSync.bind(fs),
+  mkdirSync: fs.mkdirSync.bind(fs),
   open: fs.promises.open.bind(fs.promises),
+  opendir: fs.promises.opendir.bind(fs.promises),
   readFileSync: fs.readFileSync.bind(fs),
   renameSync: fs.renameSync.bind(fs),
+  rmdirSync: fs.rmdirSync.bind(fs),
   symlinkSync: fs.symlinkSync.bind(fs),
   truncateSync: fs.truncateSync.bind(fs),
   writeFileSync: fs.writeFileSync.bind(fs),
@@ -71,6 +74,34 @@ if (mode === 'startup-stage-swap' || mode === 'startup-journal-open-swap' || mod
       original.writeFileSync(path, foreign, { mode: 0o600 })
     }
     return handle
+  }
+}
+
+if (mode === 'startup-recovery-root-opendir-swap') {
+  fs.promises.opendir = async (target, ...args) => {
+    if (!attacked && fs.readdirSync(target).some(name => name.startsWith('destination-'))) {
+      attacked = true
+      const moved = `${String(target)}-opendir-moved`
+      original.renameSync(target, moved)
+      original.mkdirSync(target, { mode: 0o700 })
+      const directory = await original.opendir(target, ...args)
+      const iterator = directory[Symbol.asyncIterator]()
+      return {
+        [Symbol.asyncIterator]() {
+          return {
+            async next() {
+              const result = await iterator.next()
+              if (result.done) {
+                original.rmdirSync(target)
+                original.renameSync(moved, target)
+              }
+              return result
+            },
+          }
+        },
+      }
+    }
+    return await original.opendir(target, ...args)
   }
 }
 

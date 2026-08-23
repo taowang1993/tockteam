@@ -463,6 +463,7 @@ test('finalize stage replacement scrubs confidential bytes through the retained 
   await owner.dispose()
   assert.equal((await readFile(movedStage)).byteLength, 0)
   assert.equal(await readFile(replacementStage as string, 'utf8'), 'sentinel')
+  await assert.rejects(readFile(output), { code: 'ENOENT' })
 })
 
 test('destination mismatches and TOCTOU fail closed with staging cleanup', async () => {

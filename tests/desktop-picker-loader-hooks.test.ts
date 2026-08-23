@@ -83,6 +83,23 @@ test('loader hook proves normal publication invokes no destructive managed-path 
   assert.equal(await readFile(destination, 'utf8'), 'reviewed-output')
 })
 
+test('startup recovery-root opendir swap cannot hide a flat unresolved journal', async () => {
+  const root = await temp('tockteam-hook-recovery-root-swap-')
+  const recoveryRoot = await temp('tockteam-hook-recovery-')
+  const vault = await temp('tockteam-hook-vault-')
+  const result = join(await temp('tockteam-hook-result-'), 'result.json')
+  const destination = join(root, 'next.html')
+  const { journal, stage } = await writeScrubbedJournal(root, recoveryRoot, 'root-swap')
+  const record = JSON.parse(await readFile(journal, 'utf8'))
+  record.resolution = 'unresolved'
+  await writeFile(journal, JSON.stringify(record), { mode: 0o600 })
+  const child = runHook('startup-recovery-root-opendir-swap', destination, recoveryRoot, vault, result, 'foreign')
+  assert.equal(child.status, 0, child.stderr || child.stdout)
+  assert.equal(JSON.parse(await readFile(result, 'utf8')).outcome, 'error:recovery-required')
+  assert.equal((await readFile(stage)).byteLength, 0)
+  assert.equal(JSON.parse(await readFile(journal, 'utf8')).resolution, 'unresolved')
+})
+
 test('startup journal growth, same-size rewrite, and shrink block globally', async () => {
   for (const mode of ['startup-journal-growth', 'startup-journal-same-size', 'startup-journal-shrink']) {
     const root = await temp(`tockteam-hook-${mode}-`)

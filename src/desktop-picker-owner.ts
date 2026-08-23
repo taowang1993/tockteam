@@ -1113,10 +1113,10 @@ export class DesktopPickerOwner {
         await this.createRecoveryJournal(destination)
         await this.options.onCheckpoint?.('journal-prepared', signal)
       }
-      await this.assertStagedEntryStable(entry, entry.offset)
+      this.assertLiveStageAuthority(destination, entry, entry.offset)
       this.assertDestinationParent(destination.path, destination.parentIdentity)
       await handle.write(request.bytes, 0, request.bytes.length, entry.offset)
-      await this.assertStagedEntryStable(entry, entry.offset + request.bytes.length)
+      this.assertLiveStageAuthority(destination, entry, entry.offset + request.bytes.length)
       this.assertDestinationParent(destination.path, destination.parentIdentity)
     } catch (cause) {
       if (blocksRecovery(cause)) this.recoveryBlockedDestinations.add(destination.path)
@@ -1189,6 +1189,10 @@ export class DesktopPickerOwner {
         )
           return error('digest-mismatch')
       }
+      const selectedEntry = destination.entries[0]
+      if (selectedEntry?.stagedPath === undefined || selectedEntry.stagedIdentity === undefined
+        || selectedEntry.handle === undefined || destination.journal === undefined) return error('invalid-entry')
+      this.assertLiveStageAuthority(destination, selectedEntry, selectedEntry.entry.size)
       const current = await this.destinationState(
         destination.path,
         destination.purpose,
@@ -1196,6 +1200,7 @@ export class DesktopPickerOwner {
       if (!stateEqual(current, destination.expectedState))
         return error('changed')
       await this.options.onCheckpoint?.('finalize', signal)
+      this.assertLiveStageAuthority(destination, selectedEntry, selectedEntry.entry.size)
       this.assertAuthority(destination.identity)
       if (signal.aborted) return error('aborted')
       if (
@@ -1205,15 +1210,9 @@ export class DesktopPickerOwner {
         )
       )
         return error('changed')
-      this.assertDestinationParent(destination.path, destination.parentIdentity)
-      const selectedEntry = destination.entries[0]
-      if (
-        selectedEntry?.stagedPath === undefined ||
-        selectedEntry.stagedIdentity === undefined ||
-        selectedEntry.handle === undefined ||
-        destination.journal === undefined
-      )
-        return error('invalid-entry')
+      this.assertLiveStageAuthority(destination, selectedEntry, selectedEntry.entry.size)
+      if (!await this.verifyHandleDigest(selectedEntry.handle, selectedEntry.entry.size, selectedEntry.digest)) return error('digest-mismatch')
+      this.assertLiveStageAuthority(destination, selectedEntry, selectedEntry.entry.size)
       try {
         linkSync(selectedEntry.stagedPath, destination.path)
       } catch (cause) {
@@ -1762,34 +1761,38 @@ export class DesktopPickerOwner {
     Array<{ name: string; path: string; size: number }>
   > {
     await this.ensureRecoveryRoot()
-    const result: Array<{ name: string; path: string; size: number }> = []
-    let aggregateBytes = 0
-    const directory = await opendir(this.recoveryRoot)
-    for await (const entry of directory) {
-      if (
-        !entry.name.startsWith('destination-') ||
-        !entry.name.endsWith('.json')
+    let rootHandle: Awaited<ReturnType<typeof open>> | undefined
+    try {
+      rootHandle = await open(
+        this.recoveryRoot,
+        fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW | fsConstants.O_NONBLOCK | fsConstants.O_DIRECTORY,
       )
-        return error('recovery-required')
-      const path = join(this.recoveryRoot, entry.name)
-      const stat = await this.safeLstat(path)
-      if (
-        !entry.isFile() ||
-        stat === undefined ||
-        !stat.isFile() ||
-        stat.isSymbolicLink() ||
-        Number(stat.size) > MAX_RECOVERY_JOURNAL_BYTES
-      )
-        return error('recovery-required')
-      aggregateBytes += Number(stat.size)
-      result.push({ name: entry.name, path, size: Number(stat.size) })
-      if (
-        result.length > MAX_RECOVERY_JOURNALS ||
-        aggregateBytes > MAX_RECOVERY_TOTAL_BYTES
-      )
-        return error('recovery-required')
+      const rootStat = await rootHandle.stat()
+      if (!rootStat.isDirectory()) return error('recovery-required')
+      const result: Array<{ name: string; path: string; size: number }> = []
+      let aggregateBytes = 0
+      const directory = await opendir(this.recoveryRoot)
+      for await (const entry of directory) {
+        if (!entry.name.startsWith('destination-') || !entry.name.endsWith('.json')) return error('recovery-required')
+        const path = join(this.recoveryRoot, entry.name)
+        const stat = await this.safeLstat(path)
+        if (!entry.isFile() || stat === undefined || !stat.isFile() || stat.isSymbolicLink()
+          || Number(stat.size) > MAX_RECOVERY_JOURNAL_BYTES) return error('recovery-required')
+        aggregateBytes += Number(stat.size)
+        result.push({ name: entry.name, path, size: Number(stat.size) })
+        if (result.length > MAX_RECOVERY_JOURNALS
+          || aggregateBytes > MAX_RECOVERY_TOTAL_BYTES) return error('recovery-required')
+      }
+      const finalRootStat = fstatSync(rootHandle.fd)
+      const canonicalRoot = realpathSync(this.recoveryRoot)
+      const pathRootStat = lstatSync(this.recoveryRoot)
+      if (canonicalRoot !== this.recoveryRoot || pathRootStat.isSymbolicLink()
+        || revisionOf(finalRootStat) !== revisionOf(rootStat)
+        || revisionOf(pathRootStat) !== revisionOf(rootStat)) return error('recovery-required')
+      return result
+    } finally {
+      if (rootHandle !== undefined) void rootHandle.close().catch(() => undefined)
     }
-    return result
   }
 
   private async recoverRegistered(): Promise<void> {
@@ -2117,18 +2120,26 @@ export class DesktopPickerOwner {
     }
   }
 
-  private async assertStagedEntryStable(entry: DestinationEntry, expectedSize: number): Promise<void> {
+  private assertLiveStageAuthority(
+    destination: DestinationSession,
+    entry: DestinationEntry,
+    expectedSize: number,
+  ): void {
     if (entry.handle === undefined || entry.stagedIdentity === undefined || entry.stagedPath === undefined) return error('closed')
-    const [handleStat, canonical, pathStat] = await Promise.all([
-      entry.handle.stat(),
-      this.safeRealpath(entry.stagedPath),
-      this.safeLstat(entry.stagedPath),
-    ])
-    if (!handleStat.isFile() || Number(handleStat.size) !== expectedSize
-      || ownedIdentityOf(handleStat) !== entry.stagedIdentity
-      || canonical !== entry.stagedPath || pathStat === undefined || !pathStat.isFile()
-      || pathStat.isSymbolicLink() || ownedIdentityOf(pathStat) !== entry.stagedIdentity
-      || Number(pathStat.size) !== expectedSize) return error('changed')
+    this.assertDestinationParent(destination.path, destination.parentIdentity)
+    try {
+      const handleStat = fstatSync(entry.handle.fd)
+      const canonical = realpathSync(entry.stagedPath)
+      const pathStat = lstatSync(entry.stagedPath)
+      if (!handleStat.isFile() || Number(handleStat.size) !== expectedSize
+        || ownedIdentityOf(handleStat) !== entry.stagedIdentity
+        || canonical !== entry.stagedPath || !pathStat.isFile() || pathStat.isSymbolicLink()
+        || ownedIdentityOf(pathStat) !== entry.stagedIdentity
+        || Number(pathStat.size) !== expectedSize) return error('changed')
+    } catch (cause) {
+      if (cause instanceof TockTeamDesktopGrantError) throw cause
+      return error('changed')
+    }
   }
 
   private assertDestinationParent(path: string, expectedIdentity: string): void {

@@ -32,7 +32,7 @@ let locked
 try {
   locked = await owner.lockDestinationPlan({ ...plan, identity, planDigest, selectionAuthorization: selected.authorization }, new AbortController().signal)
 } catch (cause) {
-  if (mode !== 'startup-journal-open-swap' && mode !== 'startup-resolved-stage-open-swap' && mode !== 'startup-residue-ancestor-swap' && mode !== 'startup-journal-growth' && mode !== 'startup-journal-same-size' && mode !== 'startup-journal-shrink') throw cause
+  if (mode !== 'startup-journal-open-swap' && mode !== 'startup-resolved-stage-open-swap' && mode !== 'startup-residue-ancestor-swap' && mode !== 'startup-recovery-root-opendir-swap' && mode !== 'startup-journal-growth' && mode !== 'startup-journal-same-size' && mode !== 'startup-journal-shrink') throw cause
   await writeFile(resultPath, JSON.stringify({ outcome: `error:${String((cause as { code?: string }).code ?? 'unknown')}` }))
   await owner.dispose().catch(() => undefined)
   process.exit(0)
