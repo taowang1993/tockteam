@@ -1,5 +1,6 @@
 import fs from 'node:fs'
 import { syncBuiltinESMExports } from 'node:module'
+import { dirname } from 'node:path'
 
 const mode = process.env.TOCKTEAM_HOOK_MODE
 const foreign = process.env.TOCKTEAM_HOOK_FOREIGN ?? 'foreign-occupant'
@@ -9,7 +10,10 @@ const original = {
   appendFileSync: fs.appendFileSync.bind(fs),
   linkSync: fs.linkSync.bind(fs),
   open: fs.promises.open.bind(fs.promises),
+  readFileSync: fs.readFileSync.bind(fs),
   renameSync: fs.renameSync.bind(fs),
+  symlinkSync: fs.symlinkSync.bind(fs),
+  truncateSync: fs.truncateSync.bind(fs),
   writeFileSync: fs.writeFileSync.bind(fs),
 }
 
@@ -28,7 +32,7 @@ if (mode === 'link-source-swap' || mode === 'link-destination-occupy') {
   }
 }
 
-if (mode === 'startup-stage-swap' || mode === 'startup-journal-open-swap' || mode === 'startup-resolved-stage-open-swap' || mode === 'startup-journal-growth') {
+if (mode === 'startup-stage-swap' || mode === 'startup-journal-open-swap' || mode === 'startup-resolved-stage-open-swap' || mode === 'startup-residue-ancestor-swap' || mode === 'startup-journal-growth' || mode === 'startup-journal-same-size' || mode === 'startup-journal-shrink') {
   fs.promises.open = async (path, ...args) => {
     const stage = process.env.TOCKTEAM_HOOK_STAGE
     if (mode === 'startup-stage-swap' && !attacked && stage !== undefined && String(path).includes('destination-') && String(path).endsWith('.json')) {
@@ -36,13 +40,22 @@ if (mode === 'startup-stage-swap' || mode === 'startup-journal-open-swap' || mod
       original.renameSync(stage, `${stage}-recorded-owner`)
       original.writeFileSync(stage, foreign, { mode: 0o600 })
     }
+    if (mode === 'startup-residue-ancestor-swap' && !attacked && stage !== undefined && String(path) === stage) {
+      attacked = true
+      const root = dirname(stage)
+      const moved = `${root}-recorded-owner`
+      original.renameSync(root, moved)
+      original.symlinkSync(moved, root, 'dir')
+    }
     const handle = await original.open(path, ...args)
-    if (mode === 'startup-journal-growth' && !attacked && String(path).includes('destination-') && String(path).endsWith('.json')) {
+    if ((mode === 'startup-journal-growth' || mode === 'startup-journal-same-size' || mode === 'startup-journal-shrink') && !attacked && String(path).includes('destination-') && String(path).endsWith('.json')) {
       const read = handle.read.bind(handle)
       handle.read = async (...readArgs) => {
         if (!attacked) {
           attacked = true
-          original.appendFileSync(path, ' '.repeat(128 * 1024))
+          if (mode === 'startup-journal-growth') original.appendFileSync(path, ' '.repeat(128 * 1024))
+          else if (mode === 'startup-journal-shrink') original.truncateSync(path, Math.floor(original.readFileSync(path).length / 2))
+          else original.writeFileSync(path, original.readFileSync(path))
         }
         return await read(...readArgs)
       }

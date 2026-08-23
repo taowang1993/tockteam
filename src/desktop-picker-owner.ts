@@ -1839,30 +1839,35 @@ export class DesktopPickerOwner {
   }
 
   private async recoverJournal(path: string): Promise<void> {
-    let handle: Awaited<ReturnType<typeof open>> | undefined
+    let journalHandle: Awaited<ReturnType<typeof open>> | undefined
+    let residues: Array<{
+      handle: Awaited<ReturnType<typeof open>>
+      residue: DestinationResidueRecord
+      stat: Stat
+    }> = []
     try {
-      handle = await open(path, fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW | fsConstants.O_NONBLOCK)
-      const journalStat = await handle.stat()
+      journalHandle = await open(path, fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW | fsConstants.O_NONBLOCK)
+      const journalStat = await journalHandle.stat()
       if (!journalStat.isFile() || Number(journalStat.size) > MAX_RECOVERY_JOURNAL_BYTES
         || (Number(journalStat.mode) & 0o777) !== 0o600
         || typeof process.getuid === 'function' && journalStat.uid !== process.getuid()) return this.markRecoveryCorrupt()
       const journalBytes = Buffer.alloc(Number(journalStat.size))
-      const read = await handle.read(journalBytes, 0, journalBytes.length, 0)
+      const read = await journalHandle.read(journalBytes, 0, journalBytes.length, 0)
       const extra = Buffer.alloc(1)
       if (read.bytesRead !== journalBytes.length
-        || (await handle.read(extra, 0, 1, journalBytes.length)).bytesRead !== 0) return this.markRecoveryCorrupt()
+        || (await journalHandle.read(extra, 0, 1, journalBytes.length)).bytesRead !== 0) return this.markRecoveryCorrupt()
       const parsed = JSON.parse(journalBytes.toString('utf8')) as unknown
       if (!this.validRecoveryRecord(parsed) || parsed.resolution === 'unresolved') return this.markRecoveryCorrupt()
       this.assertDestinationParent(parsed.destinationPath, parsed.parentIdentity)
-      if (!await this.validateResolvedResidues(parsed)) return this.markRecoveryCorrupt()
-      const [finalJournalStat, pathStat] = await Promise.all([handle.stat(), this.safeLstat(path)])
-      if (pathStat === undefined || !pathStat.isFile() || pathStat.isSymbolicLink()
-        || revisionOf(finalJournalStat) !== revisionOf(journalStat)
-        || revisionOf(pathStat) !== revisionOf(journalStat)) this.markRecoveryCorrupt()
+      const inspected = await this.inspectResolvedResidues(parsed)
+      if (inspected === undefined) return this.markRecoveryCorrupt()
+      residues = inspected
+      if (!this.finalRecoveryBinding(journalHandle, journalStat, path, residues)) this.markRecoveryCorrupt()
     } catch {
       this.markRecoveryCorrupt()
     } finally {
-      await handle?.close().catch(() => undefined)
+      for (const item of residues) void item.handle.close().catch(() => undefined)
+      if (journalHandle !== undefined) void journalHandle.close().catch(() => undefined)
     }
   }
 
@@ -1870,39 +1875,68 @@ export class DesktopPickerOwner {
     this.recoveryCorrupt = true
   }
 
-  private async validateResolvedResidues(value: DestinationRecoveryRecord): Promise<boolean> {
-    for (const residue of value.residues) {
-      if (!await this.validateResolvedResidue(residue, value.resolution === 'retained' ? value.newDigest : undefined)) return false
+  private async inspectResolvedResidues(
+    value: DestinationRecoveryRecord,
+  ): Promise<Array<{
+    handle: Awaited<ReturnType<typeof open>>
+    residue: DestinationResidueRecord
+    stat: Stat
+  }> | undefined> {
+    const opened: Array<{
+      handle: Awaited<ReturnType<typeof open>>
+      residue: DestinationResidueRecord
+      stat: Stat
+    }> = []
+    try {
+      const ordered = [...value.residues].sort((left, right) => left.kind === right.kind ? 0 : left.kind === 'directory' ? -1 : 1)
+      for (const residue of ordered) {
+        const handle = await open(
+          residue.path,
+          fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW | fsConstants.O_NONBLOCK
+            | (residue.kind === 'directory' ? fsConstants.O_DIRECTORY : 0),
+        )
+        const stat = await handle.stat()
+        opened.push({ handle, residue, stat })
+        if (ownedIdentityOf(stat) !== residue.identity
+          || residue.kind === 'file' && (!stat.isFile() || Number(stat.size) !== residue.size)
+          || residue.kind === 'directory' && !stat.isDirectory()) throw new Error('invalid residue')
+        if (value.resolution === 'retained' && residue.kind === 'file'
+          && !await this.verifyHandleDigest(handle, residue.size, value.newDigest)) throw new Error('invalid residue')
+      }
+      return opened
+    } catch {
+      for (const item of opened) void item.handle.close().catch(() => undefined)
+      return undefined
     }
-    return true
   }
 
-  private async validateResolvedResidue(
-    residue: DestinationResidueRecord,
-    digest: string | undefined,
-  ): Promise<boolean> {
-    let handle: Awaited<ReturnType<typeof open>> | undefined
+  private finalRecoveryBinding(
+    journalHandle: Awaited<ReturnType<typeof open>>,
+    journalStat: Stat,
+    journalPath: string,
+    residues: Array<{
+      handle: Awaited<ReturnType<typeof open>>
+      residue: DestinationResidueRecord
+      stat: Stat
+    }>,
+  ): boolean {
     try {
-      handle = await open(
-        residue.path,
-        fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW | fsConstants.O_NONBLOCK
-          | (residue.kind === 'directory' ? fsConstants.O_DIRECTORY : 0),
-      )
-      const stat = await handle.stat()
-      if (ownedIdentityOf(stat) !== residue.identity
-        || residue.kind === 'file' && (!stat.isFile() || Number(stat.size) !== residue.size)
-        || residue.kind === 'directory' && !stat.isDirectory()) return false
-      if (digest !== undefined && residue.kind === 'file'
-        && !await this.verifyHandleDigest(handle, residue.size, digest)) return false
-      const [finalStat, pathStat] = await Promise.all([handle.stat(), this.safeLstat(residue.path)])
-      return pathStat !== undefined && !pathStat.isSymbolicLink()
-        && revisionOf(finalStat) === revisionOf(stat)
-        && revisionOf(pathStat) === revisionOf(stat)
-        && (residue.kind === 'file' ? pathStat.isFile() : pathStat.isDirectory())
+      const rebound = [...residues].sort((left, right) => left.residue.kind === right.residue.kind ? 0 : left.residue.kind === 'file' ? -1 : 1)
+      for (const item of rebound) {
+        const finalStat = fstatSync(item.handle.fd)
+        const pathStat = lstatSync(item.residue.path)
+        if (pathStat.isSymbolicLink() || realpathSync(item.residue.path) !== item.residue.path
+          || revisionOf(finalStat) !== revisionOf(item.stat)
+          || revisionOf(pathStat) !== revisionOf(item.stat)
+          || (item.residue.kind === 'file' ? !pathStat.isFile() : !pathStat.isDirectory())) return false
+      }
+      const finalJournalStat = fstatSync(journalHandle.fd)
+      const journalPathStat = lstatSync(journalPath)
+      return !journalPathStat.isSymbolicLink() && realpathSync(journalPath) === journalPath
+        && revisionOf(finalJournalStat) === revisionOf(journalStat)
+        && revisionOf(journalPathStat) === revisionOf(journalStat)
     } catch {
       return false
-    } finally {
-      await handle?.close().catch(() => undefined)
     }
   }
 
