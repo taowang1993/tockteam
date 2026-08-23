@@ -189,6 +189,7 @@ interface ExistingDestinationSnapshot {
   contentDigest: string
   handle: Awaited<ReturnType<typeof open>> | undefined
   identity: string
+  originalHandle: Awaited<ReturnType<typeof open>> | undefined
   path: string
   revision: string
   size: number
@@ -1186,11 +1187,16 @@ export class DesktopPickerOwner {
           await this.writeRecoveryJournal(destination, backupPath, commitPath, 'published')
           await this.options.onCheckpoint?.('journal-published', signal)
           this.assertDestinationParent(destination.path, destination.parentIdentity)
+          const originalHandle = snapshot.originalHandle
+          await originalHandle?.truncate(0)
+          await originalHandle?.sync()
+          await originalHandle?.close()
+          snapshot.originalHandle = undefined
           const snapshotHandle = snapshot.handle
-          snapshot.handle = undefined
           await snapshotHandle?.truncate(0)
           await snapshotHandle?.sync()
           await snapshotHandle?.close()
+          snapshot.handle = undefined
           await this.options.onCheckpoint?.('backup-removed', signal)
           await this.options.onCheckpoint?.('journal-removed', signal)
         }
@@ -1942,10 +1948,11 @@ export class DesktopPickerOwner {
     if (!stat.isFile() || stat.isSymbolicLink()
       || await this.hasUnsafeSymlinkAncestor(path)) return error('exists')
     if (Number(stat.size) > MAX_DESKTOP_SOURCE_TOTAL_BYTES) return error('limit-exceeded')
-    const source = await open(path, fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW)
+    const source = await open(path, fsConstants.O_RDWR | fsConstants.O_NOFOLLOW)
     const snapshotPath = join(dirname(path), `.tockteam-picker-snapshot-${this.options.randomId()}`)
     let journalPath: string | undefined
     let snapshot: Awaited<ReturnType<typeof open>> | undefined
+    let retainSource = false
     try {
       const before = await source.stat()
       if (!before.isFile() || identityOf(before) !== identityOf(stat)) return error('changed')
@@ -2023,6 +2030,7 @@ export class DesktopPickerOwner {
       })
       const retainedSnapshot = snapshot
       snapshot = undefined
+      retainSource = true
       return {
         expectedState: { replaceAuthorized: true, revision: cast(revision), status: 'existing' },
         journalPath,
@@ -2031,6 +2039,7 @@ export class DesktopPickerOwner {
           contentDigest,
           handle: retainedSnapshot,
           identity: identityOf(before),
+          originalHandle: source,
           path: snapshotPath,
           revision,
           size: Number(before.size),
@@ -2043,7 +2052,7 @@ export class DesktopPickerOwner {
       if (journalPath !== undefined || await this.safeLstat(snapshotPath) !== undefined) return error('recovery-required')
       throw cause
     } finally {
-      await Promise.allSettled([source.close(), ...(snapshot === undefined ? [] : [snapshot.close()])])
+      await Promise.allSettled([...(retainSource ? [] : [source.close()]), ...(snapshot === undefined ? [] : [snapshot.close()])])
     }
   }
 
@@ -2138,6 +2147,10 @@ export class DesktopPickerOwner {
     let failed = false
     if (plan.snapshot !== undefined) {
       try {
+        if (plan.snapshot.originalHandle !== undefined) {
+          await plan.snapshot.originalHandle.close()
+          plan.snapshot.originalHandle = undefined
+        }
         if (plan.snapshot.handle !== undefined) {
           await plan.snapshot.handle.truncate(0)
           await plan.snapshot.handle.sync()
@@ -2195,6 +2208,14 @@ export class DesktopPickerOwner {
         entry.handle = undefined
       } catch {
         residualLabels.push(cast(labelOf(entry.absolutePath)))
+      }
+    }
+    if (destination.snapshot?.originalHandle !== undefined) {
+      try {
+        await destination.snapshot.originalHandle.close()
+        destination.snapshot.originalHandle = undefined
+      } catch {
+        residualLabels.push(cast(labelOf(destination.snapshot.path)))
       }
     }
     if (destination.snapshot?.handle !== undefined) {

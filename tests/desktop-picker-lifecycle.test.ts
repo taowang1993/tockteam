@@ -507,7 +507,11 @@ test('reviewed existing-file snapshots reject swaps and replace only the verifie
   await owner.writeDestinationChunk({ bytes, offset: 0, planDigest, session: thirdSession.session, target: { kind: 'selected-file' } }, new AbortController().signal)
   assert.equal((await owner.finalizeDestination({ expectedState: thirdSession.expectedState, planDigest, session: thirdSession.session }, new AbortController().signal)).status, 'published')
   assert.equal(await readFile(normal, 'utf8'), 'new')
-  assert.equal((await readdir(root)).some(name => name.startsWith('.tockteam-picker-')), true)
+  const retainedArtifacts = (await readdir(root)).filter(name => name.startsWith('.tockteam-picker-'))
+  assert.ok(retainedArtifacts.length > 0)
+  for (const name of retainedArtifacts.filter(name => name.includes('-backup-') || name.includes('-snapshot-'))) {
+    assert.equal((await readFile(join(root, name))).byteLength, 0)
+  }
   await assert.rejects(owner.dispose(), /recovery|cleanup/i)
 })
 
