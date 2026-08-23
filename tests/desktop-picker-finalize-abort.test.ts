@@ -52,13 +52,11 @@ async function activate(o: DesktopPickerOwner) {
   );
 }
 
-test("finalize honors abort at journal-prepared before replacement", async () => {
+test("finalize honors abort after journal preparation without publishing", async () => {
   const root = await temp("c13-finalize-abort-root-");
   const vault = await temp("c13-finalize-abort-vault-");
   const output = join(root, "out.html");
-  const old = Buffer.from("old");
   const next = Buffer.from("new confidential");
-  await writeFile(output, old);
   const controller = new AbortController();
   const owner = new DesktopPickerOwner({
     isAvailable: () => true,
@@ -123,6 +121,6 @@ test("finalize honors abort at journal-prepared before replacement", async () =>
     (cause: unknown) => (cause as { code?: string }).code === "aborted",
   );
   assert.equal(controller.signal.aborted, true);
-  assert.deepEqual(await readFile(output), old);
+  await assert.rejects(readFile(output), { code: "ENOENT" });
   await owner.dispose();
 });

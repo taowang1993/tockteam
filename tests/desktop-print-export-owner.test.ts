@@ -18,7 +18,7 @@ function picker() {
     async lockDestinationPlan() { calls.push('lock'); return { authorization: 'plan' as never, expectedState: { status: 'absent' as const }, expiresAt: Date.now() + 1000 } },
     async beginDestination() { calls.push('begin'); return { expectedState: { status: 'absent' as const }, expiresAt: Date.now() + 1000, session: 'session' as never } },
     async writeDestinationChunk(request: { bytes: Uint8Array; offset: number }) { calls.push('write'); return { acceptedBytes: request.bytes.length, nextOffset: request.offset + request.bytes.length } },
-    async finalizeDestination(request: { planDigest: string }) { calls.push('finalize'); return { bytes: 1, cleanup: { status: 'complete' as const }, entries: 1, label: 'export.html' as never, planDigest: request.planDigest as never, replaced: false, status: 'published' as const } },
+    async finalizeDestination(request: { planDigest: string }) { calls.push('finalize'); return { bytes: 1, cleanup: { status: 'complete' as const }, entries: 1, label: 'export.html' as never, planDigest: request.planDigest as never, status: 'published' as const } },
     async abortDestination() { calls.push('abort'); return { cleanup: { status: 'complete' as const }, stagedBytes: 0, stagedEntries: 0, status: 'aborted' as const } },
     async revokeDestinationPlan() { calls.push('revoke'); return { status: 'revoked' as const } },
   } as unknown as TockTeamDesktopPickerService

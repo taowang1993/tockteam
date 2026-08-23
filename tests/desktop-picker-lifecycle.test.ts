@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { link, lstat, mkdir, mkdtemp, readFile, readdir, rename, symlink, writeFile, realpath } from 'node:fs/promises'
+import { link, lstat, mkdir, mkdtemp, readFile, readdir, realpath, rename, rmdir, symlink, unlink, writeFile } from 'node:fs/promises'
 import { createServer } from 'node:net'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -64,11 +64,6 @@ function sha(value: string | Uint8Array): DesktopSha256 {
   return createHash('sha256').update(value).digest('hex') as DesktopSha256
 }
 
-function artifactIdentity(stat: Awaited<ReturnType<typeof lstat>>): string {
-  return createHash('sha256').update([
-    String(stat.dev), String(stat.ino), String(stat.size), String(stat.mode), String(stat.birthtimeMs),
-  ].join(':')).digest('hex')
-}
 
 async function grant(
   owner: DesktopPickerOwner,
@@ -280,7 +275,7 @@ test('ancestor replacement between listing and read cannot redirect file bytes',
   await owner.dispose()
 })
 
-test('moved destination parent reports residual staging instead of false complete cleanup', async () => {
+test('moved destination parent reports scrubbed residue instead of false complete cleanup', async () => {
   const root = await canonicalTemp('tockteam-picker-moved-parent-')
   const moved = `${root}-moved`
   const activeVault = await canonicalTemp('tockteam-picker-active-')
@@ -308,7 +303,7 @@ test('moved destination parent reports residual staging instead of false complet
   await rename(root, moved)
   await mkdir(root)
   const aborted = await owner.abortDestination({ session: begun.session })
-  assert.equal(aborted.cleanup.status, 'residual')
+  assert.equal(aborted.cleanup.status, 'scrubbed')
   assert.equal(aborted.stagedBytes, bytes.length)
   const stage = (await readdir(moved)).find(name => name.startsWith('.tockteam-picker-stage-'))
   assert.ok(stage)
@@ -443,94 +438,37 @@ test('destination mismatches and TOCTOU fail closed with staging cleanup', async
   const race = await begin('race')
   await owner.writeDestinationChunk({ bytes: content, offset: 0, planDigest: race.planDigest, session: race.begun.session, target: { kind: 'selected-file' } }, new AbortController().signal)
   await writeFile(join(root, 'race.html'), 'intruder')
-  await rejectsCode(owner.finalizeDestination({ expectedState: race.begun.expectedState, planDigest: race.planDigest, session: race.begun.session }, new AbortController().signal), 'changed')
+  await rejectsCode(owner.finalizeDestination({ expectedState: race.begun.expectedState, planDigest: race.planDigest, session: race.begun.session }, new AbortController().signal), 'exists')
   assert.equal(await readFile(join(root, 'race.html'), 'utf8'), 'intruder')
   assert.equal(noStaging(await readdir(root)), false)
   await owner.dispose()
 })
 
-test('reviewed existing-file snapshots reject swaps and replace only the verified inode', async () => {
-  const root = await canonicalTemp('tockteam-picker-replace-')
+test('existing destinations are denied without snapshots, backups, or mutation', async () => {
+  const root = await canonicalTemp('tockteam-picker-existing-denied-')
   const activeVault = await canonicalTemp('tockteam-picker-active-')
-  const beforeBegin = join(root, 'before-begin.html')
-  const beforeCommit = join(root, 'before-commit.html')
-  const normal = join(root, 'normal.html')
-  await Promise.all([beforeBegin, beforeCommit, normal].map(path => writeFile(path, 'old')))
-  const paths = [beforeBegin, beforeCommit, normal]
-  let swapAtFinalize: string | undefined
+  const output = join(root, 'existing.html')
+  await writeFile(output, 'original')
   const owner = new DesktopPickerOwner({
     isAvailable: () => true,
-    showOpenDialog: async options => options.purpose === 'activate'
-      ? { canceled: false, filePath: activeVault }
-      : { canceled: true },
-    showSaveDialog: async () => {
-      const filePath = paths.shift()
-      return filePath === undefined ? { canceled: true } : { canceled: false, filePath }
-    },
-    onCheckpoint: async checkpoint => {
-      if (checkpoint === 'finalize' && swapAtFinalize !== undefined) {
-        await writeFile(swapAtFinalize, 'racer')
-        swapAtFinalize = undefined
-      }
-    },
+    showOpenDialog: async () => ({ canceled: false, filePath: activeVault }),
+    showSaveDialog: async () => ({ canceled: false, filePath: output }),
   })
   await activate(owner)
-  const bytes = new TextEncoder().encode('new')
-  const plan = {
-    entries: [{ digest: sha(bytes), size: bytes.length, target: { kind: 'selected-file' as const } }] as const,
-    purpose: 'export-html' as const,
-    totalBytes: bytes.length,
-  }
-  const planDigest = computeDesktopDestinationPlanDigest(plan)
-
-  const lockOnly = async (name: string) => {
-    const operation = identity(name)
-    const selection = await grant(owner, { identity: operation, kind: 'destination', purpose: 'export-html' })
-    const locked = await owner.lockDestinationPlan({ ...plan, identity: operation, planDigest, selectionAuthorization: selection }, new AbortController().signal)
-    return { locked, operation }
-  }
-
-  const first = await lockOnly('replace-before-begin')
-  await writeFile(beforeBegin, 'changed-before-begin')
-  await rejectsCode(owner.beginDestination({ ...plan, authorization: first.locked.authorization, identity: first.operation, planDigest }, new AbortController().signal), 'recovery-required')
-  assert.equal(await readFile(beforeBegin, 'utf8'), 'changed-before-begin')
-
-  const second = await lockOnly('replace-before-commit')
-  const secondSession = await owner.beginDestination({ ...plan, authorization: second.locked.authorization, identity: second.operation, planDigest }, new AbortController().signal)
-  await owner.writeDestinationChunk({ bytes, offset: 0, planDigest, session: secondSession.session, target: { kind: 'selected-file' } }, new AbortController().signal)
-  swapAtFinalize = beforeCommit
-  await rejectsCode(owner.finalizeDestination({ expectedState: secondSession.expectedState, planDigest, session: secondSession.session }, new AbortController().signal), 'changed')
-  assert.equal(await readFile(beforeCommit, 'utf8'), 'racer')
-
-  const third = await lockOnly('replace-normal')
-  const thirdSession = await owner.beginDestination({ ...plan, authorization: third.locked.authorization, identity: third.operation, planDigest }, new AbortController().signal)
-  await owner.writeDestinationChunk({ bytes, offset: 0, planDigest, session: thirdSession.session, target: { kind: 'selected-file' } }, new AbortController().signal)
-  assert.equal((await owner.finalizeDestination({ expectedState: thirdSession.expectedState, planDigest, session: thirdSession.session }, new AbortController().signal)).status, 'published')
-  assert.equal(await readFile(normal, 'utf8'), 'new')
-  const retainedArtifacts = (await readdir(root)).filter(name => name.startsWith('.tockteam-picker-'))
-  assert.ok(retainedArtifacts.length > 0)
-  for (const name of retainedArtifacts.filter(name => name.includes('-backup-') || name.includes('-snapshot-'))) {
-    assert.equal((await readFile(join(root, name))).byteLength, 0)
-  }
-  await assert.rejects(owner.dispose(), /recovery|cleanup/i)
+  const result = await owner.pick({ identity: identity('existing-denied'), kind: 'destination', purpose: 'export-html' }, new AbortController().signal)
+  assert.equal(result.status, 'denied')
+  assert.equal(await readFile(output, 'utf8'), 'original')
+  assert.equal((await readdir(root)).some(name => /snapshot|backup|commit/u.test(name)), false)
+  await owner.dispose()
 })
 
-test('subprocess crashes at every replacement boundary recover to old or new, never absent', async () => {
-  const checkpoints: DesktopPickerCheckpoint[] = [
-    'journal-prepared',
-    'backup-moved',
-    'backup-verified',
-    'target-published',
-    'journal-published',
-    'backup-removed',
-    'journal-removed',
-  ]
+test('crash recovery settles pre-publication scrub and atomic retained publication idempotently', async () => {
+  const checkpoints: DesktopPickerCheckpoint[] = ['journal-prepared', 'target-published', 'journal-published']
   for (const checkpoint of checkpoints) {
     const root = await canonicalTemp(`tockteam-picker-crash-${checkpoint}-`)
     const recoveryRoot = await canonicalTemp('tockteam-picker-recovery-index-')
     const activeVault = await canonicalTemp('tockteam-picker-active-')
     const destinationPath = join(root, 'output.html')
-    await writeFile(destinationPath, 'old')
     const child = spawnSync(process.execPath, [
       new URL('./fixtures/desktop-picker-crash.ts', import.meta.url).pathname,
       checkpoint,
@@ -546,167 +484,111 @@ test('subprocess crashes at every replacement boundary recover to old or new, ne
       showSaveDialog: async () => ({ canceled: true }),
     })
     await owner.ready()
-    const content = await readFile(destinationPath, 'utf8')
-    assert.ok(content === 'old' || content === 'new', `${checkpoint}: ${content}`)
-    const journals = (await readdir(recoveryRoot)).filter(name => name.startsWith('destination-')).length
-    assert.ok(journals >= 1 && journals <= 5, `${checkpoint}: ${journals}`)
+    if (checkpoint === 'journal-prepared') await assert.rejects(readFile(destinationPath), { code: 'ENOENT' })
+    else assert.equal(await readFile(destinationPath, 'utf8'), 'new')
+    assert.equal((await readdir(recoveryRoot)).filter(name => name.startsWith('destination-')).length, 1)
     await owner.dispose()
+    const restarted = new DesktopPickerOwner({
+      isAvailable: () => true,
+      recoveryRoot,
+      showOpenDialog: async () => ({ canceled: true }),
+      showSaveDialog: async () => ({ canceled: true }),
+    })
+    await restarted.ready()
+    await restarted.dispose()
   }
 })
 
-test('startup recovery index restores a moved target without another plan lock', async () => {
-  const root = await canonicalTemp('tockteam-picker-recovery-')
-  const recoveryRoot = await canonicalTemp('tockteam-picker-recovery-index-')
-  const destinationPath = join(root, 'crashed.html')
-  const backupPath = join(root, '.tockteam-picker-backup-crash')
-  const commitPath = join(root, '.tockteam-picker-commit-crash')
-  const snapshotPath = join(root, '.tockteam-picker-snapshot-crash')
-  const journalPath = join(recoveryRoot, 'destination-crash.json')
-  await writeFile(backupPath, 'old')
-  await writeFile(commitPath, 'new')
-  await writeFile(snapshotPath, 'old')
-  const backupStat = await lstat(backupPath)
-  const commitStat = await lstat(commitPath)
-  const snapshotStat = await lstat(snapshotPath)
-  const parentStat = await lstat(root)
-  await writeFile(journalPath, JSON.stringify({
-    backupIdentity: artifactIdentity(backupStat),
-    backupPath,
-    commitIdentity: artifactIdentity(commitStat),
-    commitPath,
-    destinationPath,
-    newDigest: sha('new'),
-    newIdentity: artifactIdentity(commitStat),
-    newSize: 3,
-    oldDigest: sha('old'),
-    oldIdentity: `${String(backupStat.dev)}:${String(backupStat.ino)}`,
-    oldSize: 3,
-    parentIdentity: `${String(parentStat.dev)}:${String(parentStat.ino)}`,
-    snapshotIdentity: artifactIdentity(snapshotStat),
-    snapshotPath,
-    state: 'moved',
-    version: 1,
-  }), { mode: 0o600 })
-  const owner = new DesktopPickerOwner({
-    isAvailable: () => true,
-    recoveryRoot,
-    showOpenDialog: async () => ({ canceled: true }),
-    showSaveDialog: async () => ({ canceled: true }),
-  })
-  await owner.ready()
-  assert.equal(await readFile(destinationPath, 'utf8'), 'old')
-  assert.equal(await readFile(backupPath, 'utf8'), 'old')
-  for (const path of [commitPath, snapshotPath]) assert.equal((await readFile(path)).byteLength, 0)
-  assert.deepEqual(await readdir(recoveryRoot), ['destination-crash.json'])
-  await owner.dispose()
-})
-
-test('published journal with a missing target restores the exact reviewed backup', async () => {
-  const root = await canonicalTemp('tockteam-picker-recovery-published-')
-  const recoveryRoot = await canonicalTemp('tockteam-picker-recovery-index-')
-  const destinationPath = join(root, 'published.html')
-  const backupPath = join(root, '.tockteam-picker-backup-published')
-  const snapshotPath = join(root, '.tockteam-picker-snapshot-published')
-  const old = 'reviewed-old'
-  const next = 'reviewed-new'
-  await writeFile(backupPath, old)
-  await writeFile(snapshotPath, old)
-  const backupStat = await lstat(backupPath)
-  const snapshotStat = await lstat(snapshotPath)
-  const parentStat = await lstat(root)
-  await writeFile(join(recoveryRoot, 'destination-published.json'), JSON.stringify({
-    backupIdentity: artifactIdentity(backupStat),
-    backupPath,
-    commitIdentity: null,
-    commitPath: null,
-    destinationPath,
-    newDigest: sha(next),
-    newIdentity: null,
-    newSize: next.length,
-    oldDigest: sha(old),
-    oldIdentity: `${String(backupStat.dev)}:${String(backupStat.ino)}`,
-    oldSize: old.length,
-    parentIdentity: `${String(parentStat.dev)}:${String(parentStat.ino)}`,
-    snapshotIdentity: artifactIdentity(snapshotStat),
-    snapshotPath,
-    state: 'published',
-    version: 1,
-  }), { mode: 0o600 })
-  const owner = new DesktopPickerOwner({
-    isAvailable: () => true,
-    recoveryRoot,
-    showOpenDialog: async () => ({ canceled: true }),
-    showSaveDialog: async () => ({ canceled: true }),
-  })
-  await owner.ready()
-  assert.equal(await readFile(destinationPath, 'utf8'), old)
-  assert.equal((await readdir(recoveryRoot)).filter(name => name.startsWith('destination-')).length, 1)
-  assert.equal(await readFile(backupPath, 'utf8'), old)
-  assert.equal((await readFile(snapshotPath)).byteLength, 0)
-  await owner.dispose()
-})
-
-test('startup recovery never overwrites an unknown occupied target and blocks the destination parent', async () => {
-  const root = await canonicalTemp('tockteam-picker-recovery-blocked-')
+test('resolved retained tombstones tolerate later target edits and reviewed manual removal', async () => {
+  const root = await canonicalTemp('tockteam-picker-retained-restart-')
+  const recoveryRoot = await canonicalTemp('tockteam-picker-retained-index-')
   const activeVault = await canonicalTemp('tockteam-picker-active-')
-  const recoveryRoot = await canonicalTemp('tockteam-picker-recovery-index-')
-  const destinationPath = join(root, 'occupied.html')
-  const backupPath = join(root, '.tockteam-picker-backup-occupied')
-  const commitPath = join(root, '.tockteam-picker-commit-occupied')
-  const snapshotPath = join(root, '.tockteam-picker-snapshot-occupied')
-  await writeFile(destinationPath, 'unknown-racer')
-  await writeFile(backupPath, 'reviewed-old')
-  await writeFile(commitPath, 'reviewed-new')
-  await writeFile(snapshotPath, 'reviewed-old')
-  const backupStat = await lstat(backupPath)
-  const commitStat = await lstat(commitPath)
-  const snapshotStat = await lstat(snapshotPath)
-  const parentStat = await lstat(root)
-  await writeFile(join(recoveryRoot, 'destination-occupied.json'), JSON.stringify({
-    backupIdentity: artifactIdentity(backupStat),
-    backupPath,
-    commitIdentity: artifactIdentity(commitStat),
-    commitPath,
-    destinationPath,
-    newDigest: sha('reviewed-new'),
-    newIdentity: artifactIdentity(commitStat),
-    newSize: 'reviewed-new'.length,
-    oldDigest: sha('reviewed-old'),
-    oldIdentity: `${String(backupStat.dev)}:${String(backupStat.ino)}`,
-    oldSize: 'reviewed-old'.length,
-    parentIdentity: `${String(parentStat.dev)}:${String(parentStat.ino)}`,
-    snapshotIdentity: artifactIdentity(snapshotStat),
-    snapshotPath,
-    state: 'moved',
-    version: 1,
-  }), { mode: 0o600 })
+  const output = join(root, 'output.html')
   const owner = new DesktopPickerOwner({
     isAvailable: () => true,
     recoveryRoot,
-    showOpenDialog: async options => options.purpose === 'activate'
-      ? { canceled: false, filePath: activeVault }
-      : { canceled: true },
-    showSaveDialog: async () => ({ canceled: false, filePath: join(root, 'next.html') }),
+    showOpenDialog: async () => ({ canceled: false, filePath: activeVault }),
+    showSaveDialog: async () => ({ canceled: false, filePath: output }),
   })
-  await owner.ready()
-  assert.equal(await readFile(destinationPath, 'utf8'), 'unknown-racer')
-  assert.equal(await readFile(backupPath, 'utf8'), 'reviewed-old')
   await activate(owner)
-  const operation = identity('blocked-recovery')
-  const selection = await grant(owner, { identity: operation, kind: 'destination', purpose: 'export-html' })
-  const bytes = new TextEncoder().encode('next')
-  const plan = {
-    entries: [{ digest: sha(bytes), size: bytes.length, target: { kind: 'selected-file' as const } }] as const,
-    purpose: 'export-html' as const,
+  const operation = identity('retained-restart')
+  const authorization = await grant(owner, { identity: operation, kind: 'destination', purpose: 'export-html' })
+  const bytes = new TextEncoder().encode('published')
+  const { begun, planDigest } = await lockAndBegin(owner, authorization, operation, {
+    entries: [{ digest: sha(bytes), size: bytes.length, target: { kind: 'selected-file' } }],
+    purpose: 'export-html',
     totalBytes: bytes.length,
-  }
-  await rejectsCode(owner.lockDestinationPlan({
-    ...plan,
-    identity: operation,
-    planDigest: computeDesktopDestinationPlanDigest(plan),
-    selectionAuthorization: selection,
-  }, new AbortController().signal), 'recovery-required')
+  })
+  await owner.writeDestinationChunk({ bytes, offset: 0, planDigest, session: begun.session, target: { kind: 'selected-file' } }, new AbortController().signal)
+  const published = await owner.finalizeDestination({ expectedState: begun.expectedState, planDigest, session: begun.session }, new AbortController().signal)
+  assert.equal(published.status, 'published')
+  if (published.status === 'published') assert.equal(published.cleanup.status, 'retained')
   await owner.dispose()
+  await writeFile(output, 'edited-after-publication')
+  const stageName = (await readdir(root)).find(name => name.startsWith('.tockteam-picker-stage-'))
+  assert.ok(stageName)
+  const journalName = (await readdir(recoveryRoot)).find(name => name.startsWith('destination-'))
+  assert.ok(journalName)
+  const restarted = new DesktopPickerOwner({ isAvailable: () => true, recoveryRoot, showOpenDialog: async () => ({ canceled: true }), showSaveDialog: async () => ({ canceled: true }) })
+  await restarted.ready()
+  await restarted.dispose()
+  await unlink(join(root, stageName, 'selected-file'))
+  await rmdir(join(root, stageName))
+  const aliasRemoved = new DesktopPickerOwner({ isAvailable: () => true, recoveryRoot, showOpenDialog: async () => ({ canceled: true }), showSaveDialog: async () => ({ canceled: true }) })
+  await aliasRemoved.ready()
+  await aliasRemoved.dispose()
+  await unlink(join(recoveryRoot, journalName))
+  const tombstoneRemoved = new DesktopPickerOwner({ isAvailable: () => true, recoveryRoot, showOpenDialog: async () => ({ canceled: true }), showSaveDialog: async () => ({ canceled: true }) })
+  await tombstoneRemoved.ready()
+  await tombstoneRemoved.dispose()
+  assert.deepEqual(await readdir(recoveryRoot), [])
+})
+
+test('recovery cap fails closed until reviewed manual tombstone removal and restart', async () => {
+  const root = await canonicalTemp('tockteam-picker-cap-root-')
+  const recoveryRoot = await canonicalTemp('tockteam-picker-cap-index-')
+  const activeVault = await canonicalTemp('tockteam-picker-active-')
+  const parentStat = await lstat(root)
+  const record = (index: number) => JSON.stringify({
+    destinationIdentity: null,
+    destinationPath: join(root, `old-${index}.html`),
+    newDigest: sha(''),
+    newSize: 0,
+    parentIdentity: `${String(parentStat.dev)}:${String(parentStat.ino)}`,
+    residues: [],
+    resolution: 'scrubbed',
+    version: 2,
+  })
+  await Promise.all(Array.from({ length: 1024 }, (_, index) => writeFile(
+    join(recoveryRoot, `destination-${String(index).padStart(4, '0')}.json`),
+    record(index),
+    { mode: 0o600 },
+  )))
+  const output = join(root, 'next.html')
+  const makeOwner = () => new DesktopPickerOwner({
+    isAvailable: () => true,
+    recoveryRoot,
+    showOpenDialog: async () => ({ canceled: false, filePath: activeVault }),
+    showSaveDialog: async () => ({ canceled: false, filePath: output }),
+  })
+  const capped = makeOwner()
+  await capped.ready()
+  await activate(capped)
+  const operation = identity('cap-blocked')
+  const selection = await grant(capped, { identity: operation, kind: 'destination', purpose: 'export-html' })
+  const plan = { entries: [{ digest: sha('x'), size: 1, target: { kind: 'selected-file' as const } }] as const, purpose: 'export-html' as const, totalBytes: 1 }
+  await rejectsCode(capped.lockDestinationPlan({ ...plan, identity: operation, planDigest: computeDesktopDestinationPlanDigest(plan), selectionAuthorization: selection }, new AbortController().signal), 'recovery-required')
+  await capped.dispose()
+  await unlink(join(recoveryRoot, 'destination-0000.json'))
+  const recovered = makeOwner()
+  await recovered.ready()
+  await activate(recovered)
+  const nextOperation = identity('cap-recovered')
+  const nextSelection = await grant(recovered, { identity: nextOperation, kind: 'destination', purpose: 'export-html' })
+  const locked = await recovered.lockDestinationPlan({ ...plan, identity: nextOperation, planDigest: computeDesktopDestinationPlanDigest(plan), selectionAuthorization: nextSelection }, new AbortController().signal)
+  assert.equal(locked.expectedState.status, 'absent')
+  await recovered.revokeDestinationPlan({ authorization: locked.authorization })
+  await recovered.dispose()
 })
 
 test('corrupted recovery index fails all destination locks closed without filesystem effects', async () => {
@@ -938,7 +820,7 @@ test('abort checkpoints and owner disposal settle sessions and staging idempoten
   })
   const disposable = disposeDestination.begun
   await owner.writeDestinationChunk({ bytes: content, offset: 0, planDigest: disposeDestination.planDigest, session: disposable.session, target: { kind: 'selected-file' } }, new AbortController().signal)
-  await assert.rejects(owner.dispose(), /cleanup was incomplete/)
+  await owner.dispose()
   assert.equal(noStaging(await readdir(root)), false)
   await rejectsCode(owner.listSource({ limit: 1, session: begunSource.session }, new AbortController().signal), 'closed')
   assert.equal((await owner.abortDestination({ session: disposable.session })).status, 'already-closed')

@@ -83,8 +83,6 @@ async function existingFixture(prefix: string, now?: () => number) {
   const recoveryRoot = await temp(`${prefix}-recovery-`);
   const vault = await temp(`${prefix}-vault-`);
   const output = join(root, "out.html");
-  const oldSecret = Buffer.from("existing confidential bytes");
-  await writeFile(output, oldSecret);
   const owner = new DesktopPickerOwner({
     isAvailable: () => true,
     recoveryRoot,
@@ -115,7 +113,6 @@ async function existingFixture(prefix: string, now?: () => number) {
     root,
     recoveryRoot,
     output,
-    oldSecret,
     owner,
     id,
     bytes,
@@ -125,83 +122,32 @@ async function existingFixture(prefix: string, now?: () => number) {
   };
 }
 
-test("expired destination plan scrubs its confidential snapshot and journal", async () => {
+test("expired destination plan creates no artifacts", async () => {
   let now = 0;
-  const f = await existingFixture("c13-expired-plan", () => now);
+  const f = await existingFixture("c16-expired-plan", () => now);
   now = f.locked.expiresAt + 1;
   await assert.rejects(
-    f.owner.beginDestination(
-      {
-        ...f.plan,
-        authorization: f.locked.authorization,
-        identity: f.id,
-        planDigest: f.planDigest,
-      },
-      new AbortController().signal,
-    ),
-    (cause: unknown) =>
-      (cause as { code?: string }).code === "recovery-required",
+    f.owner.beginDestination({ ...f.plan, authorization: f.locked.authorization, identity: f.id, planDigest: f.planDigest }, new AbortController().signal),
+    (cause: unknown) => (cause as { code?: string }).code === "expired",
   );
-  const snapshots = (await readdir(f.root)).filter((name) =>
-    name.startsWith(".tockteam-picker-snapshot-"),
-  );
-  assert.equal(snapshots.length, 1);
-  assert.equal(
-    (await readFile(join(f.root, snapshots[0] as string))).byteLength,
-    0,
-  );
-  assert.equal(
-    (await readdir(f.recoveryRoot)).some((name) =>
-      name.startsWith("destination-"),
-    ),
-    true,
-  );
-  await assert.rejects(
-    f.owner.revokeDestinationPlan({ authorization: f.locked.authorization }),
-    (cause: unknown) =>
-      (cause as { code?: string }).code === "recovery-required",
-  );
-  await assert.rejects(f.owner.dispose(), /recovery|cleanup/i);
+  assert.equal((await readdir(f.root)).some(name => name.startsWith(".tockteam-picker-")), false);
+  assert.deepEqual(await readdir(f.recoveryRoot), []);
+  assert.equal((await f.owner.revokeDestinationPlan({ authorization: f.locked.authorization })).status, "already-closed");
+  await f.owner.dispose();
 });
 
-test("parent replacement at begin scrubs moved confidential plan artifacts", async () => {
-  const f = await existingFixture("c13-parent-begin");
+test("parent replacement at begin creates no confidential artifacts", async () => {
+  const f = await existingFixture("c16-parent-begin");
   const moved = `${f.root}-moved`;
   await rename(f.root, moved);
   await mkdir(f.root);
   await assert.rejects(
-    f.owner.beginDestination(
-      {
-        ...f.plan,
-        authorization: f.locked.authorization,
-        identity: f.id,
-        planDigest: f.planDigest,
-      },
-      new AbortController().signal,
-    ),
-    (cause: unknown) =>
-      (cause as { code?: string }).code === "recovery-required",
+    f.owner.beginDestination({ ...f.plan, authorization: f.locked.authorization, identity: f.id, planDigest: f.planDigest }, new AbortController().signal),
+    (cause: unknown) => (cause as { code?: string }).code === "unsafe-target",
   );
-  const snapshots = (await readdir(moved)).filter((name) =>
-    name.startsWith(".tockteam-picker-snapshot-"),
-  );
-  assert.equal(snapshots.length, 1);
-  const snapshot = snapshots[0];
-  assert.ok(snapshot);
-  assert.equal((await readFile(join(moved, snapshot))).byteLength, 0);
-  assert.equal(
-    (await readdir(f.recoveryRoot)).some((name) =>
-      name.startsWith("destination-"),
-    ),
-    true,
-  );
-  await assert.rejects(
-    f.owner.revokeDestinationPlan({ authorization: f.locked.authorization }),
-    (cause: unknown) =>
-      (cause as { code?: string }).code === "recovery-required",
-  );
-  await assert.rejects(f.owner.dispose(), /recovery|cleanup/i);
-  assert.equal((await readFile(join(moved, snapshot))).byteLength, 0);
+  assert.deepEqual(await readdir(moved), []);
+  assert.deepEqual(await readdir(f.recoveryRoot), []);
+  await f.owner.dispose();
 });
 
 test("lost finalize response uses the published success tombstone during disposal", async () => {
@@ -278,6 +224,6 @@ test("lost finalize response uses the published success tombstone during disposa
   release();
   await assert.rejects(finalizing);
   assert.deepEqual(await readFile(output), bytes);
-  await assert.rejects(provider.dispose(), /cleanup was incomplete/);
+  await provider.dispose();
   await channel.stop().catch(() => undefined);
 });

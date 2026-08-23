@@ -14,6 +14,7 @@ import {
   type BeginDesktopDestinationResult,
   type BeginDesktopSourceRequest,
   type BeginDesktopSourceResult,
+  type DesktopCleanupEvidence,
   type DesktopDestinationPlanAuthorization,
   type DesktopPickerIdentity,
   type DesktopPickerRequest,
@@ -215,8 +216,8 @@ export class DesktopPickerProvider implements TockTeamDesktopPickerService {
     await Promise.allSettled([...this.pending])
     let cleanupFailed = false
     try {
-      const result = await this.request('disposeProvider', {}) as { cleanup: { status: 'complete' | 'residual' } }
-      if (result.cleanup.status !== 'complete') cleanupFailed = true
+      const result = await this.request('disposeProvider', {}) as { cleanup: DesktopCleanupEvidence }
+      if (result.cleanup.status === 'residual') cleanupFailed = true
     } catch { cleanupFailed = true }
     let remaining = Number.POSITIVE_INFINITY
     while (this.sourceSessions.size + this.destinationSessions.size + this.destinationPlans.size < remaining) {
@@ -233,7 +234,7 @@ export class DesktopPickerProvider implements TockTeamDesktopPickerService {
             const result = await this.request('abortDestination', { session }) as AbortDesktopDestinationResult
             this.destinationSessions.delete(session)
             this.rememberDestination(session, result)
-            if (result.cleanup.status !== 'complete') cleanupFailed = true
+            if (result.cleanup.status === 'residual') cleanupFailed = true
           } catch { cleanupFailed = true }
         }),
         ...[...this.destinationPlans.keys()].map(async authorization => {

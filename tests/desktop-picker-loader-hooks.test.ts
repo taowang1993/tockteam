@@ -1,0 +1,99 @@
+import assert from 'node:assert/strict'
+import { spawnSync } from 'node:child_process'
+import { createHash } from 'node:crypto'
+import { lstat, mkdir, mkdtemp, readFile, readdir, realpath, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { test } from 'node:test'
+
+const temp = async (prefix: string) => await realpath(await mkdtemp(join(tmpdir(), prefix)))
+const sha = (value: string | Uint8Array) => createHash('sha256').update(value).digest('hex')
+const ownedIdentity = (stat: Awaited<ReturnType<typeof lstat>>) => createHash('sha256').update([
+  String(stat.dev), String(stat.ino), String(stat.mode), String(stat.birthtimeMs),
+].join(':')).digest('hex')
+
+test('managed picker production has no path deletion, replacement, or obsolete replacement artifacts', async () => {
+  const source = await readFile(new URL('../src/desktop-picker-owner.ts', import.meta.url), 'utf8')
+  assert.doesNotMatch(source, /\b(?:unlinkSync|rmSync|rmdirSync|renameSync)\b|\b(?:unlink|rm|rmdir|rename)\s*\(/u)
+  assert.doesNotMatch(source, /snapshotPath|backupPath|commitPath|replaceAuthorized/u)
+})
+
+function runHook(mode: string, destination: string, recoveryRoot: string, vault: string, result: string, foreign: string) {
+  return spawnSync(process.execPath, [
+    '--import', new URL('./fixtures/desktop-picker-no-delete-hook.mjs', import.meta.url).pathname,
+    new URL('./fixtures/desktop-picker-hook-runner.ts', import.meta.url).pathname,
+    mode, destination, recoveryRoot, vault, result,
+  ], {
+    encoding: 'utf8',
+    env: { ...process.env, TOCKTEAM_HOOK_FOREIGN: foreign, TOCKTEAM_HOOK_MODE: mode },
+    timeout: 30_000,
+  })
+}
+
+test('loader hooks preserve late occupants and source swaps at the final no-clobber link', async () => {
+  for (const mode of ['link-source-swap', 'link-destination-occupy']) {
+    const root = await temp(`tockteam-hook-${mode}-`)
+    const recoveryRoot = await temp('tockteam-hook-recovery-')
+    const vault = await temp('tockteam-hook-vault-')
+    const result = join(await temp('tockteam-hook-result-'), 'result.json')
+    const destination = join(root, 'output.html')
+    const foreign = `foreign-${mode}`
+    const child = runHook(mode, destination, recoveryRoot, vault, result, foreign)
+    assert.equal(child.status, 0, child.stderr || child.stdout)
+    assert.equal(JSON.parse(await readFile(result, 'utf8')).outcome, 'error:changed')
+    assert.equal(await readFile(destination, 'utf8'), foreign)
+    const stage = (await readdir(root)).find(name => name.startsWith('.tockteam-picker-stage-'))
+    assert.ok(stage)
+    if (mode === 'link-source-swap') {
+      assert.equal((await readFile(join(root, stage, 'selected-file-recorded-owner'))).byteLength, 0)
+      assert.equal(await readFile(join(root, stage, 'selected-file'), 'utf8'), foreign)
+    } else {
+      assert.equal((await readFile(join(root, stage, 'selected-file'))).byteLength, 0)
+    }
+  }
+})
+
+test('loader hook proves normal publication invokes no destructive managed-path primitive', async () => {
+  const root = await temp('tockteam-hook-forbid-')
+  const recoveryRoot = await temp('tockteam-hook-recovery-')
+  const vault = await temp('tockteam-hook-vault-')
+  const result = join(await temp('tockteam-hook-result-'), 'result.json')
+  const destination = join(root, 'output.html')
+  const child = runHook('forbid-destructive', destination, recoveryRoot, vault, result, 'foreign')
+  assert.equal(child.status, 0, child.stderr || child.stdout)
+  assert.equal(JSON.parse(await readFile(result, 'utf8')).outcome, 'published:retained')
+  assert.equal(await readFile(destination, 'utf8'), 'reviewed-output')
+})
+
+test('startup loader hook preserves a foreign stage replacement and blocks automatic scrub', async () => {
+  const root = await temp('tockteam-hook-startup-')
+  const recoveryRoot = await temp('tockteam-hook-recovery-')
+  const vault = await temp('tockteam-hook-vault-')
+  const result = join(await temp('tockteam-hook-result-'), 'result.json')
+  const destination = join(root, 'output.html')
+  const stageRoot = join(root, '.tockteam-picker-stage-startup')
+  const stage = join(stageRoot, 'selected-file')
+  const secret = 'unresolved-confidential-stage'
+  const foreign = 'foreign-startup-stage'
+  await mkdir(stageRoot, { mode: 0o700 })
+  await writeFile(stage, secret, { mode: 0o600 })
+  const [parentStat, stageRootStat, stageStat] = await Promise.all([lstat(root), lstat(stageRoot), lstat(stage)])
+  await writeFile(join(recoveryRoot, 'destination-startup.json'), JSON.stringify({
+    destinationIdentity: null,
+    destinationPath: destination,
+    newDigest: sha(secret),
+    newSize: secret.length,
+    parentIdentity: `${String(parentStat.dev)}:${String(parentStat.ino)}`,
+    residues: [
+      { disposition: 'scrubbed', identity: ownedIdentity(stageRootStat), kind: 'directory', path: stageRoot, size: 0 },
+      { disposition: 'scrubbed', identity: ownedIdentity(stageStat), kind: 'file', path: stage, size: 0 },
+    ],
+    resolution: 'unresolved',
+    version: 2,
+  }), { mode: 0o600 })
+  const child = runHook('startup-stage-swap', destination, recoveryRoot, vault, result, foreign)
+  assert.equal(child.status, 0, child.stderr || child.stdout)
+  assert.equal(await readFile(stage, 'utf8'), foreign)
+  assert.equal(await readFile(`${stage}-recorded-owner`, 'utf8'), secret)
+  await assert.rejects(readFile(destination), { code: 'ENOENT' })
+})

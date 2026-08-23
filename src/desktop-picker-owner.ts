@@ -10,11 +10,11 @@ import {
   mkdirSync,
   openSync,
   realpathSync,
-  renameSync,
 } from 'node:fs'
 import {
   mkdir,
   open,
+  opendir,
   readdir,
   readFile,
   chmod,
@@ -96,6 +96,7 @@ const MAX_PUBLICATION_NAME_BYTES = 256
 const MAX_SOURCE_LIMIT = 1_024 * 1024 * 1024
 const MAX_RECOVERY_JOURNALS = 1024
 const MAX_RECOVERY_JOURNAL_BYTES = 64 * 1024
+const MAX_RECOVERY_TOTAL_BYTES = 64 * 1024 * 1024
 
 type Stat = Awaited<ReturnType<typeof lstat>>
 type DialogKind = 'open' | 'save'
@@ -119,12 +120,8 @@ export type DesktopPickerCheckpoint =
   | 'write'
   | 'finalize'
   | 'journal-prepared'
-  | 'backup-moved'
-  | 'backup-verified'
   | 'target-published'
   | 'journal-published'
-  | 'backup-removed'
-  | 'journal-removed'
 
 export interface DesktopPickerOwnerOptions {
   isAvailable(): boolean
@@ -184,17 +181,6 @@ interface SourceSession {
   reads: Map<string, number>
 }
 
-interface ExistingDestinationSnapshot {
-  artifactIdentity: string
-  contentDigest: string
-  handle: Awaited<ReturnType<typeof open>> | undefined
-  identity: string
-  originalHandle: Awaited<ReturnType<typeof open>> | undefined
-  path: string
-  revision: string
-  size: number
-}
-
 interface LockedDestinationPlan {
   cleanupFailed: boolean
   consuming: boolean
@@ -202,33 +188,37 @@ interface LockedDestinationPlan {
   expectedState: DesktopDestinationState
   expiresAt: number
   identity: NativeOperationIdentity
-  journalPath: string | undefined
   label: string
   parentIdentity: string
   path: string
   planDigest: string
   purpose: DesktopExportPurpose
-  snapshot: ExistingDestinationSnapshot | undefined
   totalBytes: number
 }
 
+interface DestinationResidueRecord {
+  disposition: 'published-alias' | 'scrubbed'
+  identity: string
+  kind: 'directory' | 'file'
+  path: string
+  size: number
+}
+
 interface DestinationRecoveryRecord {
-  backupIdentity: string | null
-  backupPath: string | null
-  commitIdentity: string | null
-  commitPath: string | null
+  destinationIdentity: string | null
   destinationPath: string
   newDigest: string
-  newIdentity: string | null
   newSize: number
-  oldDigest: string | null
-  oldIdentity: string | null
-  oldSize: number | null
   parentIdentity: string
-  snapshotIdentity: string | null
-  snapshotPath: string | null
-  state: 'locked' | 'prepared' | 'moved' | 'published'
-  version: 1
+  residues: DestinationResidueRecord[]
+  resolution: 'retained' | 'scrubbed' | 'unresolved'
+  version: 2
+}
+
+interface DestinationJournal {
+  handle: Awaited<ReturnType<typeof open>>
+  identity: string
+  path: string
 }
 
 interface DestinationEntry {
@@ -246,15 +236,13 @@ interface DestinationSession {
   expiresAt: number
   expectedState: DesktopDestinationState
   identity: NativeOperationIdentity
-  journalPath: string | undefined
+  journal: DestinationJournal | undefined
   label: string
   planDigest: string
   entries: DestinationEntry[]
   parentIdentity: string
   path: string
   purpose: DesktopExportPurpose
-  recoveryPaths: string[]
-  snapshot: ExistingDestinationSnapshot | undefined
   totalBytes: number
   stagingRevision: string | undefined
   stagingRoot: string | undefined
@@ -378,9 +366,9 @@ function identityOf(stat: Stat): string {
   return `${String(stat.dev)}:${String(stat.ino)}`
 }
 
-function artifactIdentityOf(stat: Stat): string {
+function ownedIdentityOf(stat: Stat): string {
   return createHash('sha256')
-    .update([String(stat.dev), String(stat.ino), String(stat.size), String(stat.mode), String(stat.birthtimeMs)].join(':'))
+    .update([String(stat.dev), String(stat.ino), String(stat.mode), String(stat.birthtimeMs)].join(':'))
     .digest('hex')
 }
 
@@ -438,23 +426,29 @@ function destinationPlanOf(input: DesktopDestinationPlan): DesktopDestinationPla
 }
 
 function stateValid(value: unknown): value is DesktopDestinationState {
-  if (!object(value)) return false
-  if (value.status === 'absent') return exact(value, ['status'])
-  return value.status === 'existing'
-    && exact(value, ['replaceAuthorized', 'revision', 'status'])
-    && value.replaceAuthorized === true
-    && text(value.revision)
+  return object(value) && value.status === 'absent' && exact(value, ['status'])
 }
 
 function targetValid(value: unknown): value is DesktopDestinationTarget {
   return object(value) && value.kind === 'selected-file' && exact(value, ['kind'])
 }
 
-function stateEqual(left: DesktopDestinationState, right: DesktopDestinationState): boolean {
-  if (left.status !== right.status) return false
-  return left.status === 'absent' || right.status === 'absent'
-    ? left.status === right.status
-    : left.replaceAuthorized === right.replaceAuthorized && left.revision === right.revision
+function stateEqual(
+  left: DesktopDestinationState,
+  right: DesktopDestinationState,
+): boolean {
+  return left.status === right.status
+}
+
+function mergeCleanupEvidence(evidence: DesktopCleanupEvidence[]): DesktopCleanupEvidence {
+  const rank = { complete: 0, scrubbed: 1, retained: 2, residual: 3 } as const
+  const status = evidence.reduce<DesktopCleanupEvidence['status']>(
+    (highest, item) => rank[item.status] > rank[highest] ? item.status : highest,
+    'complete',
+  )
+  if (status === 'complete') return { status }
+  const residualLabels = [...new Set(evidence.flatMap(item => item.status === 'complete' ? [] : item.residualLabels))]
+  return { residualLabels, status }
 }
 
 export class DesktopPickerOwner {
@@ -473,6 +467,7 @@ export class DesktopPickerOwner {
   private readonly recoveryRoot: string
   private readonly recoveryReady: Promise<void>
   private readonly recoveryBlockedDestinations = new Set<string>()
+  private recoveryAtCapacity = false
   private recoveryCorrupt = false
 
   constructor(options: DesktopPickerOwnerOptions) {
@@ -871,47 +866,67 @@ export class DesktopPickerOwner {
     signal: AbortSignal,
   ): Promise<LockDesktopDestinationPlanResult> {
     if (signal.aborted) return error('aborted')
-    if (!noExtra(request, ['entries', 'identity', 'planDigest', 'purpose', 'selectionAuthorization', 'totalBytes'])
-      || !identity(request.identity) || !text(request.selectionAuthorization) || !digest(request.planDigest)) return error('unsafe-target')
+    if (
+      !noExtra(request, [
+        'entries',
+        'identity',
+        'planDigest',
+        'purpose',
+        'selectionAuthorization',
+        'totalBytes',
+      ]) ||
+      !identity(request.identity) ||
+      !text(request.selectionAuthorization) ||
+      !digest(request.planDigest)
+    )
+      return error('unsafe-target')
     this.assertAuthority(request.identity)
-    const grant = this.consumeGrant(request.selectionAuthorization, request.identity, request.purpose)
+    const grant = this.consumeGrant(
+      request.selectionAuthorization,
+      request.identity,
+      request.purpose,
+    )
     await this.recoverParent(dirname(grant.path))
-    const computed = computeDesktopDestinationPlanDigest(destinationPlanOf(request))
+    const computed = computeDesktopDestinationPlanDigest(
+      destinationPlanOf(request),
+    )
     if (computed !== request.planDigest) return error('digest-mismatch')
-    if (this.activeVault !== undefined && pathOverlaps(grant.path, this.activeVault.path)) return error('unsafe-target')
+    if (
+      this.activeVault !== undefined &&
+      pathOverlaps(grant.path, this.activeVault.path)
+    )
+      return error('unsafe-target')
     this.validateDestinationPlan(request, grant.path)
     const path = grant.path
     const selectedEntry = request.entries[0]
     if (selectedEntry === undefined) return error('invalid-entry')
     const parent = dirname(path)
     const parentStat = await this.safeLstat(parent)
-    if (parentStat === undefined || !parentStat.isDirectory() || parentStat.isSymbolicLink()
-      || await this.safeRealpath(parent) !== parent) return error('unsafe-target')
-    const parentIdentity = identityOf(parentStat)
-    const captured = await this.captureDestination(
-      path,
-      request.purpose,
-      selectedEntry.digest,
-      request.totalBytes,
-      parentIdentity,
+    if (
+      parentStat === undefined ||
+      !parentStat.isDirectory() ||
+      parentStat.isSymbolicLink() ||
+      (await this.safeRealpath(parent)) !== parent
     )
-    const expectedState = captured.expectedState
-    const authorization = cast<DesktopDestinationPlanAuthorization>(this.options.randomId())
+      return error('unsafe-target')
+    const parentIdentity = identityOf(parentStat)
+    const expectedState = await this.captureDestination(path)
+    const authorization = cast<DesktopDestinationPlanAuthorization>(
+      this.options.randomId(),
+    )
     const expiresAt = this.options.now() + MAX_DESKTOP_GRANT_SESSION_MS
     this.destinationPlans.set(authorization, {
       cleanupFailed: false,
       consuming: false,
-      entries: request.entries.map(entry => structuredClone(entry)),
+      entries: request.entries.map((entry) => structuredClone(entry)),
       expectedState,
       expiresAt,
       identity: request.identity,
-      journalPath: captured.journalPath,
       label: labelOf(path),
       parentIdentity,
       path,
       planDigest: request.planDigest,
       purpose: request.purpose,
-      snapshot: captured.snapshot,
       totalBytes: request.totalBytes,
     })
     this.scheduleExpiry()
@@ -930,10 +945,25 @@ export class DesktopPickerOwner {
     return { status: 'revoked' }
   }
 
-  async beginDestination(request: BeginDesktopDestinationRequest, signal: AbortSignal): Promise<BeginDesktopDestinationResult> {
+  async beginDestination(
+    request: BeginDesktopDestinationRequest,
+    signal: AbortSignal,
+  ): Promise<BeginDesktopDestinationResult> {
     if (signal.aborted) return error('aborted')
-    if (!noExtra(request, ['authorization', 'entries', 'identity', 'planDigest', 'purpose', 'totalBytes'])
-      || !identity(request.identity) || !text(request.authorization) || !digest(request.planDigest)) return error('unsafe-target')
+    if (
+      !noExtra(request, [
+        'authorization',
+        'entries',
+        'identity',
+        'planDigest',
+        'purpose',
+        'totalBytes',
+      ]) ||
+      !identity(request.identity) ||
+      !text(request.authorization) ||
+      !digest(request.planDigest)
+    )
+      return error('unsafe-target')
     this.assertAuthority(request.identity)
     const locked = this.destinationPlans.get(request.authorization)
     if (locked === undefined || locked.consuming) return error('replayed')
@@ -953,8 +983,12 @@ export class DesktopPickerOwner {
       await this.closeLockedPlan(request.authorization, locked)
       return error('expired')
     }
-    if (!sameIdentity(locked.identity, request.identity) || locked.planDigest !== request.planDigest
-      || locked.purpose !== request.purpose || locked.totalBytes !== request.totalBytes) {
+    if (
+      !sameIdentity(locked.identity, request.identity) ||
+      locked.planDigest !== request.planDigest ||
+      locked.purpose !== request.purpose ||
+      locked.totalBytes !== request.totalBytes
+    ) {
       await this.closeLockedPlan(request.authorization, locked)
       return error('stale')
     }
@@ -984,10 +1018,10 @@ export class DesktopPickerOwner {
       expiresAt: this.options.now() + MAX_DESKTOP_GRANT_SESSION_MS,
       expectedState: locked.expectedState,
       identity: request.identity,
-      journalPath: locked.journalPath,
+      journal: undefined,
       label: locked.label,
       planDigest: locked.planDigest,
-      entries: locked.entries.map(entry => ({
+      entries: locked.entries.map((entry) => ({
         absolutePath: locked.path,
         digest: entry.digest,
         entry,
@@ -998,8 +1032,6 @@ export class DesktopPickerOwner {
       parentIdentity: locked.parentIdentity,
       path: locked.path,
       purpose: locked.purpose,
-      recoveryPaths: [],
-      snapshot: locked.snapshot,
       totalBytes: locked.totalBytes,
       stagingRevision: undefined,
       stagingRoot: undefined,
@@ -1007,12 +1039,24 @@ export class DesktopPickerOwner {
     this.destinationPlans.delete(request.authorization)
     this.destinations.set(session, destination)
     this.scheduleExpiry()
-    return { expiresAt: destination.expiresAt, expectedState: destination.expectedState, session }
+    return {
+      expiresAt: destination.expiresAt,
+      expectedState: destination.expectedState,
+      session,
+    }
   }
 
-  async writeDestinationChunk(request: WriteDesktopDestinationChunkRequest, signal: AbortSignal): Promise<WriteDesktopDestinationChunkResult> {
-    if (!exact(request, ['bytes', 'offset', 'planDigest', 'session', 'target']) || !text(request.session)
-      || !digest(request.planDigest) || !targetValid(request.target)) return error('invalid-entry')
+  async writeDestinationChunk(
+    request: WriteDesktopDestinationChunkRequest,
+    signal: AbortSignal,
+  ): Promise<WriteDesktopDestinationChunkResult> {
+    if (
+      !exact(request, ['bytes', 'offset', 'planDigest', 'session', 'target']) ||
+      !text(request.session) ||
+      !digest(request.planDigest) ||
+      !targetValid(request.target)
+    )
+      return error('invalid-entry')
     const destination = this.destination(request.session)
     if (signal.aborted) {
       await this.closeDestination(request.session, destination)
@@ -1022,16 +1066,24 @@ export class DesktopPickerOwner {
       await this.closeDestination(request.session, destination)
       return error('digest-mismatch')
     }
-    if (!(request.bytes instanceof Uint8Array) || request.bytes.length > MAX_DESKTOP_DESTINATION_CHUNK_BYTES) {
+    if (
+      !(request.bytes instanceof Uint8Array) ||
+      request.bytes.length > MAX_DESKTOP_DESTINATION_CHUNK_BYTES
+    ) {
       await this.closeDestination(request.session, destination)
       return error('limit-exceeded')
     }
-    const entry = destination.entries.find(item => targetKey(item.entry.target) === targetKey(request.target))
+    const entry = destination.entries.find(
+      (item) => targetKey(item.entry.target) === targetKey(request.target),
+    )
     if (entry === undefined) {
       await this.closeDestination(request.session, destination)
       return error('invalid-entry')
     }
-    if (!Number.isSafeInteger(request.offset) || request.offset !== entry.offset) {
+    if (
+      !Number.isSafeInteger(request.offset) ||
+      request.offset !== entry.offset
+    ) {
       await this.closeDestination(request.session, destination)
       return error('stale')
     }
@@ -1049,22 +1101,38 @@ export class DesktopPickerOwner {
       await this.closeDestination(request.session, destination)
       throw cause
     }
-    const staged = entry.stagedPath ?? join(destination.stagingRoot as string, 'selected-file')
+    const staged =
+      entry.stagedPath ??
+      join(destination.stagingRoot as string, 'selected-file')
     entry.stagedPath = staged
     const ancestors = await this.ensureStagedParent(destination, staged)
     if (entry.stagedAncestors.length === 0) entry.stagedAncestors = ancestors
     else await this.assertStagedAncestors(entry)
     try {
-      const handle = entry.handle ?? await open(
-        staged,
-        fsConstants.O_RDWR | fsConstants.O_CREAT | fsConstants.O_EXCL | fsConstants.O_NOFOLLOW,
-        0o600,
-      )
+      const handle =
+        entry.handle ??
+        (await open(
+          staged,
+          fsConstants.O_RDWR |
+            fsConstants.O_CREAT |
+            fsConstants.O_EXCL |
+            fsConstants.O_NOFOLLOW,
+          0o600,
+        ))
       entry.handle = handle
       const stat = await handle.stat()
-      if (!stat.isFile() || Number(stat.size) !== entry.offset
-        || entry.stagedIdentity !== undefined && entry.stagedIdentity !== artifactIdentityOf(stat)) return error('changed')
-      entry.stagedIdentity ??= artifactIdentityOf(stat)
+      if (
+        !stat.isFile() ||
+        Number(stat.size) !== entry.offset ||
+        (entry.stagedIdentity !== undefined &&
+          entry.stagedIdentity !== ownedIdentityOf(stat))
+      )
+        return error('changed')
+      entry.stagedIdentity ??= ownedIdentityOf(stat)
+      if (destination.journal === undefined) {
+        await this.createRecoveryJournal(destination)
+        await this.options.onCheckpoint?.('journal-prepared', signal)
+      }
       await handle.write(request.bytes, 0, request.bytes.length, entry.offset)
     } catch (cause) {
       await this.closeDestination(request.session, destination)
@@ -1078,18 +1146,30 @@ export class DesktopPickerOwner {
     return { acceptedBytes: request.bytes.length, nextOffset: entry.offset }
   }
 
-  async finalizeDestination(request: FinalizeDesktopDestinationRequest, signal: AbortSignal): Promise<FinalizeDesktopDestinationResult> {
-    if (!exact(request, ['expectedState', 'planDigest', 'session']) || !stateValid(request.expectedState) || !digest(request.planDigest) || !text(request.session)) return error('invalid-entry')
+  async finalizeDestination(
+    request: FinalizeDesktopDestinationRequest,
+    signal: AbortSignal,
+  ): Promise<FinalizeDesktopDestinationResult> {
+    if (
+      !exact(request, ['expectedState', 'planDigest', 'session']) ||
+      !stateValid(request.expectedState) ||
+      !digest(request.planDigest) ||
+      !text(request.session)
+    )
+      return error('invalid-entry')
     const destination = this.destination(request.session)
     if (signal.aborted) {
       await this.closeDestination(request.session, destination)
       return error('aborted')
     }
-    if (request.planDigest !== destination.planDigest || !stateEqual(request.expectedState, destination.expectedState)) {
+    if (
+      request.planDigest !== destination.planDigest ||
+      !stateEqual(request.expectedState, destination.expectedState)
+    ) {
       await this.closeDestination(request.session, destination)
       return error('stale')
     }
-    const planEntries = destination.entries.map(entry => entry.entry)
+    const planEntries = destination.entries.map((entry) => entry.entry)
     const recomputed = computeDesktopDestinationPlanDigest({
       entries: planEntries as [DesktopDestinationPlanEntry],
       purpose: destination.purpose,
@@ -1101,112 +1181,77 @@ export class DesktopPickerOwner {
     }
     try {
       for (const entry of destination.entries) {
-        if (entry.offset !== entry.entry.size || entry.stagedPath === undefined || entry.handle === undefined) return error('size-mismatch')
+        if (
+          entry.offset !== entry.entry.size ||
+          entry.stagedPath === undefined ||
+          entry.handle === undefined
+        )
+          return error('size-mismatch')
         await this.assertStagedAncestors(entry)
         await entry.handle.sync()
         const stagedStat = await entry.handle.stat()
-        if (!stagedStat.isFile() || Number(stagedStat.size) !== entry.entry.size) return error('size-mismatch')
-        entry.stagedIdentity = artifactIdentityOf(stagedStat)
+        if (
+          !stagedStat.isFile() ||
+          Number(stagedStat.size) !== entry.entry.size
+        )
+          return error('size-mismatch')
+        entry.stagedIdentity = ownedIdentityOf(stagedStat)
         const bytes = Buffer.alloc(entry.entry.size)
         const { bytesRead } = await entry.handle.read(bytes, 0, bytes.length, 0)
         if (signal.aborted) return error('aborted')
-        if (bytesRead !== entry.entry.size || createHash('sha256').update(bytes).digest('hex') !== entry.digest) return error('digest-mismatch')
+        if (
+          bytesRead !== entry.entry.size ||
+          createHash('sha256').update(bytes).digest('hex') !== entry.digest
+        )
+          return error('digest-mismatch')
       }
-      const current = await this.destinationState(destination.path, destination.purpose)
-      if (!stateEqual(current, destination.expectedState)) return error('changed')
-      const replaced = destination.expectedState.status === 'existing'
+      const current = await this.destinationState(
+        destination.path,
+        destination.purpose,
+      )
+      if (!stateEqual(current, destination.expectedState))
+        return error('changed')
       await this.options.onCheckpoint?.('finalize', signal)
       this.assertAuthority(destination.identity)
       if (signal.aborted) return error('aborted')
-      const commitState = await this.destinationState(destination.path, destination.purpose)
-      if (!stateEqual(commitState, destination.expectedState)) return error('changed')
+      if (
+        !stateEqual(
+          await this.destinationState(destination.path, destination.purpose),
+          destination.expectedState,
+        )
+      )
+        return error('changed')
       this.assertDestinationParent(destination.path, destination.parentIdentity)
       await this.assertStagingStable(destination)
       const selectedEntry = destination.entries[0]
-        if (selectedEntry === undefined || selectedEntry.stagedPath === undefined) return error('invalid-entry')
-        this.assertDestinationParent(destination.path, destination.parentIdentity)
-        const commitPath = join(dirname(destination.path), `.tockteam-picker-commit-${this.options.randomId()}`)
-        this.assertDestinationParent(destination.path, destination.parentIdentity)
-        const stagedDirectory = destination.stagingRoot
-        if (stagedDirectory === undefined) return error('closed')
-        renameSync(selectedEntry.stagedPath, commitPath)
-        selectedEntry.stagedPath = commitPath
-        destination.stagingRoot = stagedDirectory
-        if (destination.expectedState.status === 'absent') {
-          try {
-            this.assertDestinationParent(destination.path, destination.parentIdentity)
-            linkSync(commitPath, destination.path)
-            const handle = selectedEntry.handle
-            selectedEntry.handle = undefined
-            await handle?.close()
-          } catch (cause) {
-            if ((cause as NodeJS.ErrnoException).code === 'EEXIST') return error('changed')
-            throw cause
-          }
-        } else {
-          const snapshot = destination.snapshot
-          if (snapshot === undefined) return error('stale')
-          const backupPath = join(dirname(destination.path), `.tockteam-picker-backup-${this.options.randomId()}`)
-          await this.writeRecoveryJournal(destination, backupPath, commitPath, 'prepared')
-          await this.options.onCheckpoint?.('journal-prepared', signal)
-          this.assertAuthority(destination.identity)
-          if (signal.aborted) return error('aborted')
-          this.assertDestinationParent(destination.path, destination.parentIdentity)
-          renameSync(destination.path, backupPath)
-          destination.recoveryPaths.push(backupPath)
-          await this.writeRecoveryJournal(destination, backupPath, commitPath, 'moved')
-          await this.options.onCheckpoint?.('backup-moved', signal)
-          this.assertAuthority(destination.identity)
-          if (signal.aborted) {
-            await this.restoreBackup(destination, backupPath)
-            return error('aborted')
-          }
-          if (!await this.verifySnapshot(backupPath, snapshot)) {
-            await this.restoreBackup(destination, backupPath)
-            return error('changed')
-          }
-          await this.options.onCheckpoint?.('backup-verified', signal)
-          this.assertAuthority(destination.identity)
-          if (signal.aborted) {
-            await this.restoreBackup(destination, backupPath)
-            return error('aborted')
-          }
-          try {
-            this.assertDestinationParent(destination.path, destination.parentIdentity)
-            linkSync(commitPath, destination.path)
-            const handle = selectedEntry.handle
-            selectedEntry.handle = undefined
-            await handle?.close()
-            await this.options.onCheckpoint?.('target-published', signal)
-          } catch (cause) {
-            await this.restoreBackup(destination, backupPath)
-            if ((cause as NodeJS.ErrnoException).code === 'EEXIST') return error('changed')
-            throw cause
-          }
-          await this.syncDirectory(dirname(destination.path))
-          await this.writeRecoveryJournal(destination, backupPath, commitPath, 'published')
-          await this.options.onCheckpoint?.('journal-published', signal)
-          this.assertDestinationParent(destination.path, destination.parentIdentity)
-          const originalHandle = snapshot.originalHandle
-          await originalHandle?.truncate(0)
-          await originalHandle?.sync()
-          await originalHandle?.close()
-          snapshot.originalHandle = undefined
-          const snapshotHandle = snapshot.handle
-          await snapshotHandle?.truncate(0)
-          await snapshotHandle?.sync()
-          await snapshotHandle?.close()
-          snapshot.handle = undefined
-          await this.options.onCheckpoint?.('backup-removed', signal)
-          await this.options.onCheckpoint?.('journal-removed', signal)
-        }
-      await this.syncDirectory(dirname(destination.path))
-      for (const entry of destination.entries) {
-        const handle = entry.handle
-        entry.handle = undefined
-        await handle?.close()
+      if (
+        selectedEntry?.stagedPath === undefined ||
+        selectedEntry.stagedIdentity === undefined ||
+        selectedEntry.handle === undefined ||
+        destination.journal === undefined
+      )
+        return error('invalid-entry')
+      try {
+        linkSync(selectedEntry.stagedPath, destination.path)
+      } catch (cause) {
+        if ((cause as NodeJS.ErrnoException).code === 'EEXIST')
+          return error('changed')
+        throw cause
       }
-      const cleanup = await this.cleanupDestination(destination)
+      await this.options.onCheckpoint?.('target-published', signal)
+      await this.syncDirectory(dirname(destination.path))
+      if (!(await this.verifyPublishedAlias(destination, selectedEntry)))
+        return error('changed')
+      await this.resolveRecoveryJournal(destination, 'retained')
+      await this.options.onCheckpoint?.('journal-published', signal)
+      if (!await this.verifyPublishedAlias(destination, selectedEntry)
+        || !await this.verifyJournalPath(destination.journal)) return error('changed')
+      const handle = selectedEntry.handle
+      selectedEntry.handle = undefined
+      await handle.close()
+      const cleanup = this.cleanupEvidence(destination, 'retained')
+      await destination.journal.handle.close()
+      destination.journal = undefined
       this.destinations.delete(request.session)
       this.rememberClosedDestination(request.session, {
         cleanup,
@@ -1215,12 +1260,14 @@ export class DesktopPickerOwner {
         status: 'aborted',
       })
       return {
-        bytes: destination.entries.reduce((sum, entry) => sum + entry.entry.size, 0),
+        bytes: destination.entries.reduce(
+          (sum, entry) => sum + entry.entry.size,
+          0,
+        ),
         cleanup,
         entries: destination.entries.length,
         label: cast(destination.label),
         planDigest: destination.planDigest as never,
-        replaced,
         status: 'published',
       }
     } catch (cause) {
@@ -1234,6 +1281,9 @@ export class DesktopPickerOwner {
         stagedEntries: closed.stagedEntries,
         status: 'partial',
       }
+    } finally {
+      if (this.destinations.get(request.session) === destination)
+        await this.closeDestination(request.session, destination)
     }
   }
 
@@ -1248,25 +1298,24 @@ export class DesktopPickerOwner {
 
   async disposeProvider(): Promise<{ cleanup: DesktopCleanupEvidence }> {
     await this.recoveryReady
-    const residualLabels: DesktopPickerLabel[] = []
+    const cleanupEvidence: DesktopCleanupEvidence[] = []
     for (const [session, destination] of [...this.destinations]) {
-      const result = await this.closeDestination(session, destination)
-      if (result.cleanup.status === 'residual') residualLabels.push(...result.cleanup.residualLabels)
+      cleanupEvidence.push((await this.closeDestination(session, destination)).cleanup)
     }
     for (const [authorization, plan] of [...this.destinationPlans]) {
       try {
         await this.cleanupLockedPlan(plan)
         this.destinationPlans.delete(authorization)
       } catch {
-        residualLabels.push(cast(plan.label))
+        cleanupEvidence.push({ residualLabels: [cast(plan.label)], status: 'residual' })
       }
     }
     for (const result of await Promise.allSettled([...this.cleanupTasks])) {
-      if (result.status === 'rejected') residualLabels.push(cast(labelOf(this.recoveryRoot)))
-      else if (typeof result.value === 'object' && result.value !== null
-        && 'status' in result.value && result.value.status === 'residual'
-        && 'residualLabels' in result.value && Array.isArray(result.value.residualLabels)) {
-        residualLabels.push(...result.value.residualLabels as DesktopPickerLabel[])
+      if (result.status === 'rejected') {
+        cleanupEvidence.push({ residualLabels: [cast(labelOf(this.recoveryRoot))], status: 'residual' })
+      } else if (typeof result.value === 'object' && result.value !== null && 'status' in result.value) {
+        const value = result.value as DesktopCleanupEvidence
+        if (value.status === 'complete' || Array.isArray(value.residualLabels)) cleanupEvidence.push(value)
       }
     }
     this.grants.clear()
@@ -1275,7 +1324,7 @@ export class DesktopPickerOwner {
     this.consumedPickOperations.clear()
     this.activeVault = undefined
     this.options.onVaultTransition?.()
-    return { cleanup: residualLabels.length === 0 ? { status: 'complete' } : { residualLabels, status: 'residual' } }
+    return { cleanup: mergeCleanupEvidence(cleanupEvidence) }
   }
 
   async dispose(): Promise<void> {
@@ -1291,7 +1340,7 @@ export class DesktopPickerOwner {
     this.vaultSelectionClaims.clear()
     this.consumedPickOperations.clear()
     this.activeVault = undefined
-    if (cleanup.status !== 'complete') throw new Error('TockTeam Desktop picker cleanup was incomplete')
+    if (cleanup.status === 'residual') throw new Error('TockTeam Desktop picker cleanup was incomplete')
   }
 
   private async destinationPath(rawPath: string, purpose: 'export-html' | 'export-pdf' | 'vault-backup'): Promise<{ path: string; label: string } | undefined> {
@@ -1300,8 +1349,7 @@ export class DesktopPickerOwner {
     const parent = await this.safeRealpath(dirname(selected))
     if (parent === undefined) return undefined
     const path = join(parent, basename(selected))
-    const existing = await this.safeLstat(path)
-    if (existing !== undefined && (!existing.isFile() || existing.isSymbolicLink())) return undefined
+    if (await this.safeLstat(path) !== undefined) return undefined
     const extension = extname(path).slice(1).toLowerCase()
     if (purpose !== 'vault-backup' && extension !== purpose.slice('export-'.length) || !safeName(basename(path))) return undefined
     return { path, label: labelOf(path) }
@@ -1360,17 +1408,16 @@ export class DesktopPickerOwner {
   }
 
   private async clearSessions(): Promise<DesktopCleanupEvidence> {
-    const residualLabels: DesktopPickerLabel[] = []
+    const cleanupEvidence: DesktopCleanupEvidence[] = []
     for (const [session, destination] of [...this.destinations]) {
-      const result = await this.closeDestination(session, destination)
-      if (result.cleanup.status === 'residual') residualLabels.push(...result.cleanup.residualLabels)
+      cleanupEvidence.push((await this.closeDestination(session, destination)).cleanup)
     }
     for (const [authorization, plan] of [...this.destinationPlans]) {
       await this.cleanupLockedPlan(plan)
       this.destinationPlans.delete(authorization)
     }
     this.sources.clear()
-    return residualLabels.length === 0 ? { status: 'complete' } : { residualLabels, status: 'residual' }
+    return mergeCleanupEvidence(cleanupEvidence)
   }
 
   private consumeGrant(raw: string, expectedIdentity: NativeOperationIdentity, expectedPurpose: DesktopPickerRequest['purpose']): Grant {
@@ -1638,429 +1685,560 @@ export class DesktopPickerOwner {
     try { await handle.sync() } finally { await handle.close() }
   }
 
-  private validRecoveryRecord(value: unknown): value is DestinationRecoveryRecord {
-    if (!exact(value, [
-      'backupIdentity', 'backupPath', 'commitIdentity', 'commitPath', 'destinationPath', 'newDigest', 'newIdentity', 'newSize',
-      'oldDigest', 'oldIdentity', 'oldSize', 'parentIdentity', 'snapshotIdentity', 'snapshotPath', 'state', 'version',
-    ]) || value.version !== 1 || typeof value.destinationPath !== 'string'
-      || !isAbsolute(value.destinationPath) || resolve(value.destinationPath) !== value.destinationPath
-      || typeof value.newDigest !== 'string' || !/^[0-9a-f]{64}$/u.test(value.newDigest)
-      || value.newIdentity !== null && typeof value.newIdentity !== 'string'
-      || !Number.isSafeInteger(value.newSize) || Number(value.newSize) < 0
-      || value.backupIdentity !== null && typeof value.backupIdentity !== 'string'
-      || value.backupPath !== null && typeof value.backupPath !== 'string'
-      || value.commitIdentity !== null && typeof value.commitIdentity !== 'string'
-      || value.commitPath !== null && typeof value.commitPath !== 'string'
-      || value.snapshotIdentity !== null && typeof value.snapshotIdentity !== 'string'
-      || value.snapshotPath !== null && typeof value.snapshotPath !== 'string'
-      || value.backupPath === null && value.backupIdentity !== null
-      || value.commitPath === null && value.commitIdentity !== null
-      || value.snapshotPath === null && value.snapshotIdentity !== null
-      || value.oldDigest !== null && (typeof value.oldDigest !== 'string' || !/^[0-9a-f]{64}$/u.test(value.oldDigest))
-      || value.oldIdentity !== null && typeof value.oldIdentity !== 'string'
-      || typeof value.parentIdentity !== 'string' || value.parentIdentity.length === 0
-      || value.oldSize !== null && (!Number.isSafeInteger(value.oldSize) || Number(value.oldSize) < 0)
-      || [value.oldDigest, value.oldIdentity, value.oldSize].some(item => item === null)
-        && [value.oldDigest, value.oldIdentity, value.oldSize].some(item => item !== null)
-      || value.state !== 'locked' && value.state !== 'prepared'
-        && value.state !== 'moved' && value.state !== 'published') return false
+  private validRecoveryRecord(
+    value: unknown,
+  ): value is DestinationRecoveryRecord {
+    if (
+      !exact(value, [
+        'destinationIdentity',
+        'destinationPath',
+        'newDigest',
+        'newSize',
+        'parentIdentity',
+        'residues',
+        'resolution',
+        'version',
+      ]) ||
+      value.version !== 2 ||
+      typeof value.destinationPath !== 'string' ||
+      !isAbsolute(value.destinationPath) ||
+      resolve(value.destinationPath) !== value.destinationPath ||
+      typeof value.newDigest !== 'string' ||
+      !/^[0-9a-f]{64}$/u.test(value.newDigest) ||
+      !Number.isSafeInteger(value.newSize) ||
+      Number(value.newSize) < 0 ||
+      (value.destinationIdentity !== null &&
+        typeof value.destinationIdentity !== 'string') ||
+      typeof value.parentIdentity !== 'string' ||
+      value.parentIdentity.length === 0 ||
+      !Array.isArray(value.residues) ||
+      value.residues.length > 3 ||
+      (value.resolution !== 'retained' &&
+        value.resolution !== 'scrubbed' &&
+        value.resolution !== 'unresolved')
+    )
+      return false
     const parent = dirname(value.destinationPath)
-    const roles: Array<[string | null, string]> = [
-      [value.backupPath, '.tockteam-picker-backup-'],
-      [value.commitPath, '.tockteam-picker-commit-'],
-      [value.snapshotPath, '.tockteam-picker-snapshot-'],
-    ]
-    const paths = roles.flatMap(([path]) => path === null ? [] : [path])
-    return !basename(value.destinationPath).startsWith('.tockteam-picker-')
-      && new Set([value.destinationPath, ...paths]).size === 1 + paths.length
-      && roles.every(([path, prefix]) => path === null
-        || isAbsolute(path) && resolve(path) === path && dirname(path) === parent && basename(path).startsWith(prefix))
+    if (basename(value.destinationPath).startsWith('.tockteam-picker-'))
+      return false
+    const paths = new Set<string>()
+    for (const residue of value.residues) {
+      if (
+        !exact(residue, ['disposition', 'identity', 'kind', 'path', 'size']) ||
+        (residue.disposition !== 'published-alias' &&
+          residue.disposition !== 'scrubbed') ||
+        typeof residue.identity !== 'string' ||
+        residue.identity.length === 0 ||
+        (residue.kind !== 'directory' && residue.kind !== 'file') ||
+        typeof residue.path !== 'string' ||
+        !isAbsolute(residue.path) ||
+        resolve(residue.path) !== residue.path ||
+        !Number.isSafeInteger(residue.size) ||
+        Number(residue.size) < 0 ||
+        paths.has(residue.path)
+      )
+        return false
+      paths.add(residue.path)
+      const relativePath = relative(parent, residue.path)
+      const first = relativePath.split(sep)[0]
+      if (
+        relativePath === '' ||
+        relativePath === '..' ||
+        relativePath.startsWith(`..${sep}`) ||
+        isAbsolute(relativePath) ||
+        !first?.startsWith('.tockteam-picker-stage-')
+      )
+        return false
+      if (
+        residue.kind === 'directory' &&
+        (dirname(residue.path) !== parent || residue.size !== 0)
+      )
+        return false
+      if (
+        value.resolution === 'scrubbed' &&
+        (residue.disposition !== 'scrubbed' ||
+          (residue.kind === 'file' && residue.size !== 0))
+      )
+        return false
+      if (
+        value.resolution === 'retained' &&
+        residue.kind === 'file' &&
+        (residue.disposition !== 'published-alias' ||
+          residue.size !== value.newSize)
+      )
+        return false
+    }
+    return value.resolution !== 'retained' || value.destinationIdentity !== null
   }
 
   private async ensureRecoveryRoot(): Promise<void> {
     await mkdir(this.recoveryRoot, { recursive: true, mode: 0o700 })
     const canonical = await this.safeRealpath(this.recoveryRoot)
     const stat = await this.safeLstat(this.recoveryRoot)
-    if (canonical !== this.recoveryRoot || stat === undefined || !stat.isDirectory() || stat.isSymbolicLink()
-      || typeof process.getuid === 'function' && stat.uid !== process.getuid()) {
+    if (
+      canonical !== this.recoveryRoot ||
+      stat === undefined ||
+      !stat.isDirectory() ||
+      stat.isSymbolicLink() ||
+      (typeof process.getuid === 'function' && stat.uid !== process.getuid())
+    )
       return error('recovery-required')
-    }
     await chmod(this.recoveryRoot, 0o700)
   }
 
-  private unlinkRecordedArtifact(path: string, prefix: string, expectedIdentity: string | null): void {
-    if (!basename(path).startsWith(prefix)) return
-    let fd: number | undefined
-    try {
-      fd = openSync(path, fsConstants.O_RDWR | fsConstants.O_NOFOLLOW)
-      const stat = fstatSync(fd, { bigint: false })
-      if (!stat.isFile() || expectedIdentity === null || artifactIdentityOf(stat) !== expectedIdentity) return
-      ftruncateSync(fd, 0)
-      fsyncSync(fd)
-      return
-    } catch {
-      return
-    } finally {
-      if (fd !== undefined) closeSync(fd)
+  private async recoveryEntries(): Promise<
+    Array<{ name: string; path: string; size: number }>
+  > {
+    await this.ensureRecoveryRoot()
+    const result: Array<{ name: string; path: string; size: number }> = []
+    let aggregateBytes = 0
+    const directory = await opendir(this.recoveryRoot)
+    for await (const entry of directory) {
+      if (
+        !entry.name.startsWith('destination-') ||
+        !entry.name.endsWith('.json')
+      )
+        return error('recovery-required')
+      const path = join(this.recoveryRoot, entry.name)
+      const stat = await this.safeLstat(path)
+      if (
+        !entry.isFile() ||
+        stat === undefined ||
+        !stat.isFile() ||
+        stat.isSymbolicLink() ||
+        Number(stat.size) > MAX_RECOVERY_JOURNAL_BYTES
+      )
+        return error('recovery-required')
+      aggregateBytes += Number(stat.size)
+      result.push({ name: entry.name, path, size: Number(stat.size) })
+      if (
+        result.length > MAX_RECOVERY_JOURNALS ||
+        aggregateBytes > MAX_RECOVERY_TOTAL_BYTES
+      )
+        return error('recovery-required')
     }
-  }
-
-  private unlinkRecoveryRecordArtifacts(
-    value: DestinationRecoveryRecord,
-    includeBackup: boolean,
-    includeCommit = true,
-  ): void {
-    if (includeBackup && value.backupPath !== null) this.unlinkRecordedArtifact(value.backupPath, '.tockteam-picker-backup-', value.backupIdentity)
-    if (includeCommit && value.commitPath !== null) this.unlinkRecordedArtifact(value.commitPath, '.tockteam-picker-commit-', value.commitIdentity)
-    if (value.snapshotPath !== null) this.unlinkRecordedArtifact(value.snapshotPath, '.tockteam-picker-snapshot-', value.snapshotIdentity)
+    return result
   }
 
   private async recoverRegistered(): Promise<void> {
-    await this.ensureRecoveryRoot()
-    const entries = (await readdir(this.recoveryRoot, { withFileTypes: true }))
-      .filter(entry => entry.name.startsWith('destination-') && entry.name.endsWith('.json'))
-    if (entries.length > MAX_RECOVERY_JOURNALS) {
+    let entries: Array<{ name: string; path: string; size: number }>
+    try {
+      entries = await this.recoveryEntries()
+    } catch {
       this.recoveryCorrupt = true
       return
     }
-    let aggregateBytes = 0
-    for (const entry of entries) {
-      const stat = await this.safeLstat(join(this.recoveryRoot, entry.name))
-      aggregateBytes += Number(stat?.size ?? 0)
-      if (!entry.isFile() || stat === undefined || !stat.isFile() || stat.isSymbolicLink()
-        || Number(stat.size) > MAX_RECOVERY_JOURNAL_BYTES
-        || aggregateBytes > MAX_RECOVERY_JOURNALS * MAX_RECOVERY_JOURNAL_BYTES) {
-        this.recoveryCorrupt = true
+    this.recoveryAtCapacity = entries.length >= MAX_RECOVERY_JOURNALS
+    for (const entry of entries) await this.recoverJournal(entry.path)
+  }
+
+  private async recoverJournal(path: string): Promise<void> {
+    let handle: Awaited<ReturnType<typeof open>> | undefined
+    let value: DestinationRecoveryRecord
+    try {
+      handle = await open(path, fsConstants.O_RDWR | fsConstants.O_NOFOLLOW)
+      const stat = await handle.stat()
+      if (
+        !stat.isFile() ||
+        Number(stat.size) > MAX_RECOVERY_JOURNAL_BYTES ||
+        (Number(stat.mode) & 0o777) !== 0o600 ||
+        (typeof process.getuid === 'function' && stat.uid !== process.getuid())
+      )
+        throw new Error('invalid journal')
+      const parsed = JSON.parse(await handle.readFile('utf8')) as unknown
+      if (!this.validRecoveryRecord(parsed)) throw new Error('invalid journal')
+      value = parsed
+      this.assertDestinationParent(value.destinationPath, value.parentIdentity)
+    } catch {
+      this.recoveryCorrupt = true
+      await handle?.close().catch(() => undefined)
+      return
+    }
+    try {
+      const settled = await this.settleRecoveryRecord(value)
+      if (settled === undefined) {
+        this.recoveryBlockedDestinations.add(value.destinationPath)
         return
       }
+      if (value.resolution === 'unresolved')
+        await this.rewriteJournalHandle(handle, settled)
+    } catch {
+      this.recoveryBlockedDestinations.add(value.destinationPath)
+    } finally {
+      await handle.close().catch(() => undefined)
     }
-    for (const entry of entries) {
-      const journalPath = join(this.recoveryRoot, entry.name)
-      let value: unknown
-      try {
-        const handle = await open(journalPath, fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW)
+  }
+
+  private async settleRecoveryRecord(
+    value: DestinationRecoveryRecord,
+  ): Promise<DestinationRecoveryRecord | undefined> {
+    if (value.resolution === 'retained') {
+      for (const residue of value.residues) {
+        if (residue.kind === 'directory') {
+          if (await this.verifyResidue(residue, true) === 'mismatch') return undefined
+          continue
+        }
+        const handle = await this.openOwnedFile(residue.path, residue.identity)
+        if (handle === 'mismatch') return undefined
+        if (handle === undefined) continue
         try {
-          const journalStat = await handle.stat()
-          if (!journalStat.isFile() || Number(journalStat.size) > MAX_RECOVERY_JOURNAL_BYTES
-            || (Number(journalStat.mode) & 0o777) !== 0o600
-            || typeof process.getuid === 'function' && journalStat.uid !== process.getuid()) {
-            this.recoveryCorrupt = true
-            continue
-          }
-          value = JSON.parse(await handle.readFile('utf8')) as unknown
+          if (!await this.verifyHandleDigest(handle, Number((await handle.stat()).size), undefined)) return undefined
         } finally {
           await handle.close()
         }
-      } catch {
-        this.recoveryCorrupt = true
-        continue
       }
-      if (!this.validRecoveryRecord(value)) {
-        this.recoveryCorrupt = true
-        continue
+      return value
+    }
+    if (value.resolution === 'scrubbed') {
+      for (const residue of value.residues) {
+        const state = await this.verifyResidue(residue, false)
+        if (state === 'mismatch') return undefined
       }
-      const parent = dirname(value.destinationPath)
-      try {
-        this.assertDestinationParent(value.destinationPath, value.parentIdentity)
-      } catch {
-        this.recoveryBlockedDestinations.add(value.destinationPath)
-        continue
-      }
-      const hasOld = value.oldDigest !== null && value.oldIdentity !== null && value.oldSize !== null
-      const destinationNew = value.newIdentity !== null
-        && await this.verifyRecordedFile(value.destinationPath, value.newSize, value.newDigest, undefined, value.newIdentity)
-      const destinationOld = hasOld
-        && await this.verifyRecordedFile(value.destinationPath, value.oldSize as number, value.oldDigest as string, value.oldIdentity as string)
-      const backupOld = hasOld && value.backupPath !== null && value.backupIdentity !== null
-        && await this.verifyRecordedFile(value.backupPath, value.oldSize as number, value.oldDigest as string, value.oldIdentity as string, value.backupIdentity)
-      const snapshotOld = hasOld && value.snapshotPath !== null && value.snapshotIdentity !== null
-        && await this.verifyRecordedFile(value.snapshotPath, value.oldSize as number, value.oldDigest as string, undefined, value.snapshotIdentity)
-      const commitNew = value.commitPath !== null && value.commitIdentity !== null
-        && await this.verifyRecordedFile(value.commitPath, value.newSize, value.newDigest, undefined, value.commitIdentity)
-      const destinationExists = await this.safeLstat(value.destinationPath) !== undefined
-      const backupExists = value.backupPath !== null && await this.safeLstat(value.backupPath) !== undefined
-      const commitExists = value.commitPath !== null && await this.safeLstat(value.commitPath) !== undefined
-      const snapshotExists = value.snapshotPath !== null && await this.safeLstat(value.snapshotPath) !== undefined
-      const commitSafe = !commitExists || commitNew
-      const snapshotSafe = !snapshotExists || snapshotOld
-
-      if (destinationNew && backupOld && snapshotOld && commitSafe) {
-        this.unlinkRecoveryRecordArtifacts(value, true, false)
-        await this.syncDirectory(parent)
-      } else if (destinationNew && !backupExists && snapshotSafe && commitSafe) {
-        this.unlinkRecoveryRecordArtifacts(value, false, false)
-        await this.syncDirectory(parent)
-      } else if (!destinationExists && backupOld && snapshotOld && commitSafe && value.backupPath !== null) {
-        this.assertDestinationParent(value.destinationPath, value.parentIdentity)
-        linkSync(value.backupPath, value.destinationPath)
-        await this.syncDirectory(parent)
-        if (!await this.verifyRecordedFile(value.destinationPath, value.oldSize as number, value.oldDigest as string, value.oldIdentity as string)) {
-          this.recoveryBlockedDestinations.add(value.destinationPath)
-          continue
+      return value
+    }
+    const fileResidue = value.residues.find(
+      (residue) => residue.kind === 'file',
+    )
+    let published = false
+    if (fileResidue !== undefined) {
+      const stage = await this.openOwnedFile(
+        fileResidue.path,
+        fileResidue.identity,
+      )
+      if (stage === 'mismatch') return undefined
+      if (stage !== undefined) {
+        try {
+          published = await this.verifyPublishedFile(
+            value.destinationPath,
+            stage,
+            value.newSize,
+            value.newDigest,
+          )
+          if (!published) {
+            await stage.truncate(0)
+            await stage.sync()
+          }
+        } finally {
+          await stage.close()
         }
-        this.unlinkRecoveryRecordArtifacts(value, false)
-        await this.syncDirectory(parent)
-      } else if ((destinationOld && snapshotOld && !backupExists
-          && (value.commitPath === null || commitNew))
-        || (!hasOld && value.state === 'locked' && value.backupPath === null && value.commitPath === null)) {
-        this.unlinkRecoveryRecordArtifacts(value, false)
-        await this.syncDirectory(parent)
-      } else {
-        this.recoveryBlockedDestinations.add(value.destinationPath)
-        continue
+      } else if ((await this.safeLstat(value.destinationPath)) !== undefined) {
+        return undefined
       }
-      this.recoveryBlockedDestinations.add(value.destinationPath)
-      continue
+    }
+    for (const residue of value.residues.filter(
+      (residue) => residue.kind === 'directory',
+    )) {
+      if ((await this.verifyResidue(residue, false)) === 'mismatch')
+        return undefined
+    }
+    if (published) {
+      const destination = await this.safeLstat(value.destinationPath)
+      if (destination === undefined) return undefined
+      return {
+        ...value,
+        destinationIdentity: ownedIdentityOf(destination),
+        residues: value.residues.map((residue) =>
+          residue.kind === 'file'
+            ? {
+                ...residue,
+                disposition: 'published-alias',
+                size: value.newSize,
+              }
+            : residue,
+        ),
+        resolution: 'retained',
+      }
+    }
+    const destination = await this.safeLstat(value.destinationPath)
+    if (destination !== undefined) {
+      if (
+        fileResidue === undefined ||
+        ownedIdentityOf(destination) !== fileResidue.identity ||
+        Number(destination.size) !== 0
+      )
+        return undefined
+    }
+    return {
+      ...value,
+      destinationIdentity: null,
+      residues: value.residues.map((residue) => ({
+        ...residue,
+        disposition: 'scrubbed',
+        size: 0,
+      })),
+      resolution: 'scrubbed',
+    }
+  }
+
+  private async verifyResidue(
+    residue: DestinationResidueRecord,
+    retained: boolean,
+  ): Promise<'absent' | 'match' | 'mismatch'> {
+    const stat = await this.safeLstat(residue.path)
+    if (stat === undefined) return 'absent'
+    if (residue.kind === 'directory') {
+      return stat.isDirectory() &&
+        !stat.isSymbolicLink() &&
+        ownedIdentityOf(stat) === residue.identity
+        ? 'match'
+        : 'mismatch'
+    }
+    const handle = await this.openOwnedFile(residue.path, residue.identity)
+    if (handle === 'mismatch') return 'mismatch'
+    if (handle === undefined) return 'absent'
+    try {
+      const fileStat = await handle.stat()
+      if (Number(fileStat.size) !== residue.size) return 'mismatch'
+      if (!retained) return residue.size === 0 ? 'match' : 'mismatch'
+      return (await this.verifyHandleDigest(handle, residue.size, undefined))
+        ? 'match'
+        : 'mismatch'
+    } finally {
+      await handle.close()
+    }
+  }
+
+  private async openOwnedFile(
+    path: string,
+    expectedIdentity: string,
+  ): Promise<Awaited<ReturnType<typeof open>> | 'mismatch' | undefined> {
+    try {
+      const handle = await open(
+        path,
+        fsConstants.O_RDWR | fsConstants.O_NOFOLLOW,
+      )
+      const stat = await handle.stat()
+      if (!stat.isFile() || ownedIdentityOf(stat) !== expectedIdentity) {
+        await handle.close()
+        return 'mismatch'
+      }
+      return handle
+    } catch (cause) {
+      return (cause as NodeJS.ErrnoException).code === 'ENOENT'
+        ? undefined
+        : 'mismatch'
+    }
+  }
+
+  private async verifyHandleDigest(
+    handle: Awaited<ReturnType<typeof open>>,
+    size: number,
+    digest: string | undefined,
+  ): Promise<boolean> {
+    const stat = await handle.stat()
+    if (!stat.isFile() || Number(stat.size) !== size) return false
+    if (digest === undefined) return true
+    const hash = createHash('sha256')
+    const buffer = Buffer.alloc(MAX_DESKTOP_DESTINATION_CHUNK_BYTES)
+    for (let offset = 0; offset < size; ) {
+      const length = Math.min(buffer.length, size - offset)
+      const result = await handle.read(buffer, 0, length, offset)
+      if (result.bytesRead !== length) return false
+      hash.update(buffer.subarray(0, length))
+      offset += length
+    }
+    return hash.digest('hex') === digest
+  }
+
+  private async verifyPublishedFile(
+    path: string,
+    stage: Awaited<ReturnType<typeof open>>,
+    size: number,
+    digest: string,
+  ): Promise<boolean> {
+    try {
+      const destination = await open(
+        path,
+        fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW,
+      )
+      try {
+        const [stageStat, destinationStat] = await Promise.all([
+          stage.stat(),
+          destination.stat(),
+        ])
+        return (
+          ownedIdentityOf(stageStat) === ownedIdentityOf(destinationStat) &&
+          (await this.verifyHandleDigest(destination, size, digest))
+        )
+      } finally {
+        await destination.close()
+      }
+    } catch {
+      return false
     }
   }
 
   private async recoverParent(parent: string): Promise<void> {
     await this.recoveryReady
-    if (this.recoveryCorrupt) return error('recovery-required')
-    if ([...this.recoveryBlockedDestinations].some(path => dirname(path) === parent)) return error('recovery-required')
+    if (this.recoveryCorrupt || this.recoveryAtCapacity)
+      return error('recovery-required')
+    if (
+      [...this.recoveryBlockedDestinations].some(
+        (path) => dirname(path) === parent,
+      )
+    )
+      return error('recovery-required')
   }
 
-  private async writeRecoveryRecord(
-    journalPath: string | undefined,
-    record: DestinationRecoveryRecord,
-  ): Promise<string> {
-    await this.ensureRecoveryRoot()
-    void journalPath
-    const path = join(this.recoveryRoot, `destination-${this.options.randomId()}.json`)
+  private async assertRecoveryCapacity(): Promise<void> {
+    const entries = await this.recoveryEntries().catch(() =>
+      error('recovery-required'),
+    )
+    if (entries.length >= MAX_RECOVERY_JOURNALS) {
+      this.recoveryAtCapacity = true
+      return error('recovery-required')
+    }
+  }
+
+  private recoveryRecord(
+    destination: DestinationSession,
+    resolution: DestinationRecoveryRecord['resolution'],
+  ): DestinationRecoveryRecord {
+    const residues: DestinationResidueRecord[] = []
+    if (
+      destination.stagingRoot !== undefined &&
+      destination.stagingRevision !== undefined
+    ) {
+      residues.push({
+        disposition: 'scrubbed',
+        identity: destination.stagingRevision,
+        kind: 'directory',
+        path: destination.stagingRoot,
+        size: 0,
+      })
+    }
+    const entry = destination.entries[0]
+    if (entry?.stagedPath !== undefined && entry.stagedIdentity !== undefined) {
+      residues.push({
+        disposition: resolution === 'retained' ? 'published-alias' : 'scrubbed',
+        identity: entry.stagedIdentity,
+        kind: 'file',
+        path: entry.stagedPath,
+        size: resolution === 'retained' ? entry.entry.size : 0,
+      })
+    }
+    let destinationIdentity: string | null = null
+    if (resolution === 'retained') {
+      const stat = lstatSync(destination.path)
+      destinationIdentity = ownedIdentityOf(stat as Stat)
+    }
+    return {
+      destinationIdentity,
+      destinationPath: destination.path,
+      newDigest: entry?.digest ?? '',
+      newSize: destination.totalBytes,
+      parentIdentity: destination.parentIdentity,
+      residues,
+      resolution,
+      version: 2,
+    }
+  }
+
+  private async createRecoveryJournal(
+    destination: DestinationSession,
+  ): Promise<void> {
+    await this.assertRecoveryCapacity()
+    const path = join(
+      this.recoveryRoot,
+      `destination-${this.options.randomId()}.json`,
+    )
     const handle = await open(
       path,
-      fsConstants.O_WRONLY | fsConstants.O_CREAT | fsConstants.O_EXCL | fsConstants.O_NOFOLLOW,
+      fsConstants.O_RDWR |
+        fsConstants.O_CREAT |
+        fsConstants.O_EXCL |
+        fsConstants.O_NOFOLLOW,
       0o600,
     )
     try {
-      await handle.writeFile(JSON.stringify(record), 'utf8')
-      await handle.sync()
-    } finally {
-      await handle.close()
+      const stat = await handle.stat()
+      destination.journal = { handle, identity: ownedIdentityOf(stat), path }
+      await this.rewriteJournalHandle(
+        handle,
+        this.recoveryRecord(destination, 'unresolved'),
+      )
+      await this.syncDirectory(this.recoveryRoot)
+    } catch (cause) {
+      await handle.close().catch(() => undefined)
+      throw cause
     }
-    await this.syncDirectory(this.recoveryRoot)
-    return path
   }
 
-  private async writeRecoveryJournal(
+  private async resolveRecoveryJournal(
     destination: DestinationSession,
-    backupPath: string,
-    commitPath: string,
-    state: 'prepared' | 'moved' | 'published',
+    resolution: 'retained' | 'scrubbed',
   ): Promise<void> {
-    const backupStat = await this.safeLstat(backupPath)
-    const commitStat = await this.safeLstat(commitPath)
-    const destinationStat = await this.safeLstat(destination.path)
-    destination.journalPath = await this.writeRecoveryRecord(destination.journalPath, {
-      backupIdentity: backupStat === undefined ? null : artifactIdentityOf(backupStat),
-      backupPath,
-      commitIdentity: commitStat === undefined ? null : artifactIdentityOf(commitStat),
-      commitPath,
-      destinationPath: destination.path,
-      newDigest: destination.entries[0]?.digest ?? '',
-      newIdentity: state === 'published' && destinationStat?.isFile() === true
-        ? artifactIdentityOf(destinationStat)
-        : destination.entries[0]?.stagedIdentity ?? null,
-      newSize: destination.totalBytes,
-      oldDigest: destination.snapshot?.contentDigest ?? null,
-      oldIdentity: destination.snapshot?.identity ?? null,
-      oldSize: destination.snapshot?.size ?? null,
-      parentIdentity: destination.parentIdentity,
-      snapshotIdentity: destination.snapshot?.artifactIdentity ?? null,
-      snapshotPath: destination.snapshot?.path ?? null,
-      state,
-      version: 1,
-    })
+    const journal = destination.journal
+    if (journal === undefined) return error('recovery-required')
+    await this.rewriteJournalHandle(
+      journal.handle,
+      this.recoveryRecord(destination, resolution),
+    )
   }
 
-  private async verifyRecordedFile(
-    path: string,
-    size: number,
-    digest: string,
-    identity?: string,
-    artifactRevision?: string,
-  ): Promise<boolean> {
-    try {
-      const handle = await open(path, fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW)
-      try {
-        const stat = await handle.stat()
-        if (!stat.isFile() || Number(stat.size) !== size
-          || identity !== undefined && identityOf(stat) !== identity
-          || artifactRevision !== undefined && artifactIdentityOf(stat) !== artifactRevision) return false
-        const hash = createHash('sha256')
-        const buffer = Buffer.alloc(MAX_DESKTOP_DESTINATION_CHUNK_BYTES)
-        let offset = 0
-        while (offset < size) {
-          const length = Math.min(buffer.length, size - offset)
-          const result = await handle.read(buffer, 0, length, offset)
-          if (result.bytesRead !== length) return false
-          hash.update(buffer.subarray(0, length))
-          offset += length
-        }
-        return hash.digest('hex') === digest
-      } finally {
-        await handle.close()
-      }
-    } catch {
-      return false
-    }
+  private async verifyJournalPath(journal: DestinationJournal): Promise<boolean> {
+    const [handleStat, pathStat] = await Promise.all([journal.handle.stat(), this.safeLstat(journal.path)])
+    return handleStat.isFile() && pathStat?.isFile() === true && !pathStat.isSymbolicLink()
+      && ownedIdentityOf(handleStat) === journal.identity && ownedIdentityOf(pathStat) === journal.identity
   }
 
-  private async verifySnapshot(path: string, snapshot: ExistingDestinationSnapshot): Promise<boolean> {
-    return await this.verifyRecordedFile(path, snapshot.size, snapshot.contentDigest, snapshot.identity)
-      && (await this.safeLstat(path))?.isFile() === true
+  private async rewriteJournalHandle(
+    handle: Awaited<ReturnType<typeof open>>,
+    record: DestinationRecoveryRecord,
+  ): Promise<void> {
+    const bytes = Buffer.from(JSON.stringify(record), 'utf8')
+    if (bytes.length > MAX_RECOVERY_JOURNAL_BYTES)
+      return error('recovery-required')
+    await handle.truncate(0)
+    await handle.write(bytes, 0, bytes.length, 0)
+    await handle.truncate(bytes.length)
+    await handle.sync()
   }
 
-  private async restoreBackup(
+  private async verifyPublishedAlias(
     destination: DestinationSession,
-    backupPath: string,
+    entry: DestinationEntry,
   ): Promise<boolean> {
-    try {
-      this.assertDestinationParent(destination.path, destination.parentIdentity)
-      linkSync(backupPath, destination.path)
-      await this.syncDirectory(dirname(destination.path))
-      if (destination.snapshot === undefined
-        || !await this.verifySnapshot(destination.path, destination.snapshot)) {
-        if (!destination.recoveryPaths.includes(backupPath)) destination.recoveryPaths.push(backupPath)
-        return false
-      }
-      if (!destination.recoveryPaths.includes(backupPath)) destination.recoveryPaths.push(backupPath)
-      return true
-    } catch {
-      if (!destination.recoveryPaths.includes(backupPath)) destination.recoveryPaths.push(backupPath)
+    if (entry.handle === undefined || entry.stagedIdentity === undefined)
       return false
-    }
+    const stageStat = await entry.handle.stat()
+    if (ownedIdentityOf(stageStat) !== entry.stagedIdentity) return false
+    return await this.verifyPublishedFile(
+      destination.path,
+      entry.handle,
+      entry.entry.size,
+      entry.digest,
+    )
+  }
+
+  private cleanupEvidence(
+    destination: DestinationSession,
+    status: 'retained' | 'scrubbed' | 'residual',
+  ): DesktopCleanupEvidence {
+    const labels = new Set<DesktopPickerLabel>()
+    if (destination.journal !== undefined)
+      labels.add(cast(labelOf(destination.journal.path)))
+    if (destination.stagingRoot !== undefined)
+      labels.add(cast(labelOf(destination.stagingRoot)))
+    for (const entry of destination.entries)
+      if (entry.stagedPath !== undefined)
+        labels.add(cast(labelOf(entry.stagedPath)))
+    return labels.size === 0
+      ? { status: 'complete' }
+      : { residualLabels: [...labels], status }
   }
 
   private async captureDestination(
     path: string,
-    purpose: DesktopExportPurpose,
-    newDigest: string,
-    newSize: number,
-    parentIdentity: string,
-  ): Promise<{
-    expectedState: DesktopDestinationState
-    journalPath: string | undefined
-    snapshot: ExistingDestinationSnapshot | undefined
-  }> {
-    const stat = await this.safeLstat(path)
-    if (stat === undefined) return { expectedState: { status: 'absent' }, journalPath: undefined, snapshot: undefined }
-    if (!stat.isFile() || stat.isSymbolicLink()
-      || await this.hasUnsafeSymlinkAncestor(path)) return error('exists')
-    if (Number(stat.size) > MAX_DESKTOP_SOURCE_TOTAL_BYTES) return error('limit-exceeded')
-    const source = await open(path, fsConstants.O_RDWR | fsConstants.O_NOFOLLOW)
-    const snapshotPath = join(dirname(path), `.tockteam-picker-snapshot-${this.options.randomId()}`)
-    let journalPath: string | undefined
-    let snapshot: Awaited<ReturnType<typeof open>> | undefined
-    let retainSource = false
-    try {
-      const before = await source.stat()
-      if (!before.isFile() || identityOf(before) !== identityOf(stat)) return error('changed')
-      const oldHash = createHash('sha256')
-      const buffer = Buffer.alloc(MAX_DESKTOP_DESTINATION_CHUNK_BYTES)
-      let offset = 0
-      while (offset < Number(before.size)) {
-        const length = Math.min(buffer.length, Number(before.size) - offset)
-        const read = await source.read(buffer, 0, length, offset)
-        if (read.bytesRead !== length) return error('changed')
-        oldHash.update(buffer.subarray(0, length))
-        offset += length
-      }
-      const contentDigest = oldHash.digest('hex')
-      const afterHash = await source.stat()
-      const current = await this.safeLstat(path)
-      if (revisionOf(afterHash) !== revisionOf(before) || current === undefined
-        || identityOf(current) !== identityOf(before) || revisionOf(current) !== revisionOf(before)) return error('changed')
-      journalPath = await this.writeRecoveryRecord(undefined, {
-        backupIdentity: null,
-        backupPath: null,
-        commitIdentity: null,
-        commitPath: null,
-        destinationPath: path,
-        newDigest,
-        newIdentity: null,
-        newSize,
-        oldDigest: contentDigest,
-        oldIdentity: identityOf(before),
-        oldSize: Number(before.size),
-        parentIdentity,
-        snapshotIdentity: null,
-        snapshotPath,
-        state: 'locked',
-        version: 1,
-      })
-      snapshot = await open(
-        snapshotPath,
-        fsConstants.O_WRONLY | fsConstants.O_CREAT | fsConstants.O_EXCL | fsConstants.O_NOFOLLOW,
-        0o600,
-      )
-      offset = 0
-      while (offset < Number(before.size)) {
-        const length = Math.min(buffer.length, Number(before.size) - offset)
-        const read = await source.read(buffer, 0, length, offset)
-        if (read.bytesRead !== length) return error('changed')
-        await snapshot.write(buffer, 0, length, offset)
-        offset += length
-      }
-      await snapshot.sync()
-      const afterCopy = await source.stat()
-      const currentAfterCopy = await this.safeLstat(path)
-      if (revisionOf(afterCopy) !== revisionOf(before) || currentAfterCopy === undefined
-        || identityOf(currentAfterCopy) !== identityOf(before)
-        || revisionOf(currentAfterCopy) !== revisionOf(before)) return error('changed')
-      const revision = revisionOf(before)
-      const snapshotStat = await snapshot.stat()
-      journalPath = await this.writeRecoveryRecord(journalPath, {
-        backupIdentity: null,
-        backupPath: null,
-        commitIdentity: null,
-        commitPath: null,
-        destinationPath: path,
-        newDigest,
-        newIdentity: null,
-        newSize,
-        oldDigest: contentDigest,
-        oldIdentity: identityOf(before),
-        oldSize: Number(before.size),
-        parentIdentity,
-        snapshotIdentity: artifactIdentityOf(snapshotStat),
-        snapshotPath,
-        state: 'locked',
-        version: 1,
-      })
-      const retainedSnapshot = snapshot
-      snapshot = undefined
-      retainSource = true
-      return {
-        expectedState: { replaceAuthorized: true, revision: cast(revision), status: 'existing' },
-        journalPath,
-        snapshot: {
-          artifactIdentity: artifactIdentityOf(snapshotStat),
-          contentDigest,
-          handle: retainedSnapshot,
-          identity: identityOf(before),
-          originalHandle: source,
-          path: snapshotPath,
-          revision,
-          size: Number(before.size),
-        },
-      }
-    } catch (cause) {
-      if (snapshot !== undefined) {
-        await Promise.allSettled([snapshot.truncate(0), snapshot.sync()])
-      }
-      if (journalPath !== undefined || await this.safeLstat(snapshotPath) !== undefined) return error('recovery-required')
-      throw cause
-    } finally {
-      await Promise.allSettled([...(retainSource ? [] : [source.close()]), ...(snapshot === undefined ? [] : [snapshot.close()])])
-    }
-  }
-
-  private async destinationState(path: string, purpose: DesktopExportPurpose): Promise<DesktopDestinationState> {
+  ): Promise<DesktopDestinationState> {
     const stat = await this.safeLstat(path)
     if (stat === undefined) return { status: 'absent' }
-    if (!stat.isFile()) return error('exists')
-    return { replaceAuthorized: true, revision: cast(revisionOf(stat)), status: 'existing' }
+    return error('exists')
+  }
+
+  private async destinationState(path: string, _purpose: DesktopExportPurpose): Promise<DesktopDestinationState> {
+    if (await this.safeLstat(path) === undefined) return { status: 'absent' }
+    return error('exists')
   }
 
   private validateDestinationPlan(
@@ -2086,12 +2264,23 @@ export class DesktopPickerOwner {
     }
   }
 
-  private async assertStagingStable(destination: DestinationSession): Promise<void> {
-    if (destination.stagingRoot === undefined || destination.stagingRevision === undefined) return error('closed')
+  private async assertStagingStable(
+    destination: DestinationSession,
+  ): Promise<void> {
+    if (
+      destination.stagingRoot === undefined ||
+      destination.stagingRevision === undefined
+    )
+      return error('closed')
     const canonical = await this.safeRealpath(destination.stagingRoot)
     const stat = await this.safeLstat(destination.stagingRoot)
-    if (canonical !== destination.stagingRoot || stat === undefined || !stat.isDirectory()
-      || identityOf(stat) !== destination.stagingRevision) return error('unsafe-target')
+    if (
+      canonical !== destination.stagingRoot ||
+      stat === undefined ||
+      !stat.isDirectory() ||
+      ownedIdentityOf(stat) !== destination.stagingRevision
+    )
+      return error('unsafe-target')
   }
 
   private async assertStagedAncestors(entry: DestinationEntry): Promise<void> {
@@ -2125,12 +2314,16 @@ export class DesktopPickerOwner {
 
   private async ensureStaging(destination: DestinationSession): Promise<void> {
     if (destination.stagingRoot !== undefined) return
-    const stagingRoot = join(dirname(destination.path), `.tockteam-picker-stage-${this.options.randomId()}`)
+    const stagingRoot = join(
+      dirname(destination.path),
+      `.tockteam-picker-stage-${this.options.randomId()}`,
+    )
     await mkdir(stagingRoot, { recursive: false, mode: 0o700 })
     const stat = await this.safeLstat(stagingRoot)
-    if (stat === undefined || !stat.isDirectory() || stat.isSymbolicLink()) return error('unsafe-target')
+    if (stat === undefined || !stat.isDirectory() || stat.isSymbolicLink())
+      return error('unsafe-target')
     destination.stagingRoot = stagingRoot
-    destination.stagingRevision = identityOf(stat)
+    destination.stagingRevision = ownedIdentityOf(stat)
   }
 
   private async closeLockedPlan(authorization: string, plan: LockedDestinationPlan): Promise<void> {
@@ -2143,26 +2336,7 @@ export class DesktopPickerOwner {
     }
   }
 
-  private async cleanupLockedPlan(plan: LockedDestinationPlan): Promise<void> {
-    let failed = false
-    if (plan.snapshot !== undefined) {
-      try {
-        if (plan.snapshot.originalHandle !== undefined) {
-          await plan.snapshot.originalHandle.close()
-          plan.snapshot.originalHandle = undefined
-        }
-        if (plan.snapshot.handle !== undefined) {
-          await plan.snapshot.handle.truncate(0)
-          await plan.snapshot.handle.sync()
-          await plan.snapshot.handle.close()
-          plan.snapshot.handle = undefined
-        }
-      } catch { failed = true }
-      if (await this.safeLstat(plan.snapshot.path) !== undefined) failed = true
-    }
-    if (plan.journalPath !== undefined && await this.safeLstat(plan.journalPath) !== undefined) failed = true
-    if (failed) return error('recovery-required')
-  }
+  private async cleanupLockedPlan(_plan: LockedDestinationPlan): Promise<void> {}
 
   private scheduleLockedPlanCleanup(authorization: string, plan: LockedDestinationPlan): void {
     const task = this.closeLockedPlan(authorization, plan)
@@ -2198,44 +2372,44 @@ export class DesktopPickerOwner {
   }
 
   private async cleanupDestination(destination: DestinationSession): Promise<DesktopCleanupEvidence> {
-    const residualLabels: DesktopPickerLabel[] = destination.recoveryPaths.map(path => cast(labelOf(path)))
+    let unresolved = false
     for (const entry of destination.entries) {
-      if (entry.handle === undefined) continue
-      try {
-        await entry.handle.truncate(0)
-        await entry.handle.sync()
-        await entry.handle.close()
-        entry.handle = undefined
-      } catch {
-        residualLabels.push(cast(labelOf(entry.absolutePath)))
+      if (entry.handle !== undefined) {
+        try {
+          await entry.handle.truncate(0)
+          await entry.handle.sync()
+          await entry.handle.close()
+          entry.handle = undefined
+        } catch {
+          unresolved = true
+        }
+      }
+      if (entry.stagedPath !== undefined && entry.stagedIdentity !== undefined) {
+        const stat = await this.safeLstat(entry.stagedPath)
+        if (stat !== undefined && (!stat.isFile() || ownedIdentityOf(stat) !== entry.stagedIdentity || Number(stat.size) !== 0)) unresolved = true
       }
     }
-    if (destination.snapshot?.originalHandle !== undefined) {
+    if (destination.stagingRoot !== undefined && destination.stagingRevision !== undefined) {
+      const stat = await this.safeLstat(destination.stagingRoot)
+      if (stat !== undefined && (!stat.isDirectory() || ownedIdentityOf(stat) !== destination.stagingRevision)) unresolved = true
+    }
+    if (!unresolved && destination.journal !== undefined) {
       try {
-        await destination.snapshot.originalHandle.close()
-        destination.snapshot.originalHandle = undefined
+        await this.resolveRecoveryJournal(destination, 'scrubbed')
+        if (!await this.verifyJournalPath(destination.journal)) unresolved = true
       } catch {
-        residualLabels.push(cast(labelOf(destination.snapshot.path)))
+        unresolved = true
       }
     }
-    if (destination.snapshot?.handle !== undefined) {
+    if (destination.journal !== undefined) {
       try {
-        await destination.snapshot.handle.truncate(0)
-        await destination.snapshot.handle.sync()
-        await destination.snapshot.handle.close()
-        destination.snapshot.handle = undefined
+        await destination.journal.handle.close()
       } catch {
-        residualLabels.push(cast(labelOf(destination.snapshot.path)))
+        unresolved = true
       }
     }
-    for (const entry of destination.entries) {
-      if (entry.stagedPath !== undefined) residualLabels.push(cast(labelOf(entry.stagedPath)))
-    }
-    if (destination.stagingRoot !== undefined) residualLabels.push(cast(labelOf(destination.stagingRoot)))
-    if (destination.snapshot !== undefined) residualLabels.push(cast(labelOf(destination.snapshot.path)))
-    if (destination.journalPath !== undefined) residualLabels.push(cast(labelOf(destination.journalPath)))
-    return residualLabels.length === 0
-      ? { status: 'complete' }
-      : { residualLabels, status: 'residual' }
+    const evidence = this.cleanupEvidence(destination, unresolved ? 'residual' : 'scrubbed')
+    destination.journal = undefined
+    return evidence
   }
 }

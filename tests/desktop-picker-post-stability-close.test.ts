@@ -120,12 +120,12 @@ test("post-stability close cannot strand plaintext staging", async () => {
     new AbortController().signal,
   );
   assert.equal(result.status, "published");
-  if (result.status === "published") assert.equal(result.cleanup.status, "residual");
+  if (result.status === "published") assert.equal(result.cleanup.status, "retained");
   assert.deepEqual(await readFile(output), secret);
   const names = await readdir(root);
   assert.equal(
     names.some((n) => n.startsWith(".tockteam-picker-commit-")),
-    true,
+    false,
   );
   assert.equal(
     names.some((n) => n.endsWith("-moved")),
