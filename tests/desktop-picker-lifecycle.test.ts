@@ -275,7 +275,38 @@ test('ancestor replacement between listing and read cannot redirect file bytes',
   await owner.dispose()
 })
 
-test('moved destination parent reports scrubbed residue instead of false complete cleanup', async () => {
+test('first destination write rechecks a replaced parent before accepting payload bytes', async () => {
+  const root = await canonicalTemp('tockteam-picker-first-write-parent-')
+  const moved = `${root}-moved`
+  const activeVault = await canonicalTemp('tockteam-picker-active-')
+  const output = join(root, 'output.html')
+  const owner = new DesktopPickerOwner({
+    isAvailable: () => true,
+    showOpenDialog: async () => ({ canceled: false, filePath: activeVault }),
+    showSaveDialog: async () => ({ canceled: false, filePath: output }),
+  })
+  await activate(owner)
+  const operation = identity('first-write-parent')
+  const selection = await grant(owner, { identity: operation, kind: 'destination', purpose: 'export-html' })
+  const secret = new TextEncoder().encode('must never enter replacement parent')
+  const { begun, planDigest } = await lockAndBegin(owner, selection, operation, {
+    entries: [{ digest: sha(secret), size: secret.length, target: { kind: 'selected-file' } }],
+    purpose: 'export-html',
+    totalBytes: secret.length,
+  })
+  await rename(root, moved)
+  await mkdir(root)
+  await rejectsCode(owner.writeDestinationChunk({ bytes: secret, offset: 0, planDigest, session: begun.session, target: { kind: 'selected-file' } }, new AbortController().signal), 'unsafe-target')
+  const replacementEntries = await readdir(root, { recursive: true })
+  for (const path of replacementEntries) {
+    const bytes = await readFile(join(root, path)).catch(() => Buffer.alloc(0))
+    assert.notDeepEqual(bytes, Buffer.from(secret))
+  }
+  assert.equal((await owner.abortDestination({ session: begun.session })).status, 'already-closed')
+  await owner.dispose()
+})
+
+test('moved destination parent reports unresolved residue instead of false scrubbed cleanup', async () => {
   const root = await canonicalTemp('tockteam-picker-moved-parent-')
   const moved = `${root}-moved`
   const activeVault = await canonicalTemp('tockteam-picker-active-')
@@ -303,7 +334,7 @@ test('moved destination parent reports scrubbed residue instead of false complet
   await rename(root, moved)
   await mkdir(root)
   const aborted = await owner.abortDestination({ session: begun.session })
-  assert.equal(aborted.cleanup.status, 'scrubbed')
+  assert.equal(aborted.cleanup.status, 'residual')
   assert.equal(aborted.stagedBytes, bytes.length)
   const stage = (await readdir(moved)).find(name => name.startsWith('.tockteam-picker-stage-'))
   assert.ok(stage)
@@ -581,9 +612,24 @@ test('valid retained tombstone is nonblocking before later mismatch and manual r
   const nextLocked = await validRestart.lockDestinationPlan({ ...nextPlan, identity: nextOperation, planDigest: computeDesktopDestinationPlanDigest(nextPlan), selectionAuthorization: nextSelection }, new AbortController().signal)
   await validRestart.revokeDestinationPlan({ authorization: nextLocked.authorization })
   await validRestart.dispose()
-  await writeFile(output, 'edited-after-publication')
   const stageName = (await readdir(root)).find(name => name.startsWith('.tockteam-picker-stage-'))
   assert.ok(stageName)
+  const undeclared = join(root, stageName, 'undeclared-child')
+  await writeFile(undeclared, 'unexpected')
+  const undeclaredOwner = new DesktopPickerOwner({
+    isAvailable: () => true,
+    recoveryRoot,
+    showOpenDialog: async () => ({ canceled: false, filePath: activeVault }),
+    showSaveDialog: async () => ({ canceled: false, filePath: join(root, 'undeclared-next.html') }),
+  })
+  await undeclaredOwner.ready()
+  await activate(undeclaredOwner)
+  const undeclaredOperation = identity('undeclared-residue')
+  const undeclaredSelection = await grant(undeclaredOwner, { identity: undeclaredOperation, kind: 'destination', purpose: 'export-html' })
+  await rejectsCode(undeclaredOwner.lockDestinationPlan({ ...nextPlan, identity: undeclaredOperation, planDigest: computeDesktopDestinationPlanDigest(nextPlan), selectionAuthorization: undeclaredSelection }, new AbortController().signal), 'recovery-required')
+  await undeclaredOwner.dispose()
+  await unlink(undeclared)
+  await writeFile(output, 'edited-after-publication')
   const journalName = (await readdir(recoveryRoot)).find(name => name.startsWith('destination-'))
   assert.ok(journalName)
   const restarted = new DesktopPickerOwner({ isAvailable: () => true, recoveryRoot, showOpenDialog: async () => ({ canceled: true }), showSaveDialog: async () => ({ canceled: true }) })
