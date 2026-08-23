@@ -107,7 +107,18 @@ export interface DesktopPickerDialogResult {
   filePath?: string
 }
 
-export type DesktopPickerCheckpoint = 'dialog' | 'read' | 'write' | 'finalize'
+export type DesktopPickerCheckpoint =
+  | 'dialog'
+  | 'read'
+  | 'write'
+  | 'finalize'
+  | 'journal-prepared'
+  | 'backup-moved'
+  | 'backup-verified'
+  | 'target-published'
+  | 'journal-published'
+  | 'backup-removed'
+  | 'journal-removed'
 
 export interface DesktopPickerOwnerOptions {
   isAvailable(): boolean
@@ -193,6 +204,11 @@ interface DestinationRecoveryRecord {
   backupPath: string | null
   commitPath: string | null
   destinationPath: string
+  newDigest: string
+  newSize: number
+  oldDigest: string | null
+  oldIdentity: string | null
+  oldSize: number | null
   snapshotPath: string | null
   state: 'locked' | 'prepared' | 'moved' | 'published'
   version: 1
@@ -844,7 +860,14 @@ export class DesktopPickerOwner {
     const path = request.purpose === 'vault-backup'
       ? join(grant.path, request.publicationName as string)
       : grant.path
-    const captured = await this.captureDestination(path, request.purpose)
+    const selectedEntry = request.entries[0]
+    if (selectedEntry === undefined) return error('invalid-entry')
+    const captured = await this.captureDestination(
+      path,
+      request.purpose,
+      selectedEntry.digest,
+      request.totalBytes,
+    )
     const expectedState = captured.expectedState
     const authorization = cast<DesktopDestinationPlanAuthorization>(this.options.randomId())
     const expiresAt = this.options.now() + MAX_DESKTOP_GRANT_SESSION_MS
@@ -1104,28 +1127,37 @@ export class DesktopPickerOwner {
           if (snapshot === undefined) return error('stale')
           const backupPath = join(dirname(destination.path), `.tockteam-picker-backup-${this.options.randomId()}`)
           await this.writeRecoveryJournal(destination, backupPath, commitPath, 'prepared')
+          await this.options.onCheckpoint?.('journal-prepared', signal)
           await rename(destination.path, backupPath)
           await this.writeRecoveryJournal(destination, backupPath, commitPath, 'moved')
+          await this.options.onCheckpoint?.('backup-moved', signal)
           destination.recoveryPaths.push(backupPath)
           if (!await this.verifySnapshot(backupPath, snapshot)) {
             await this.restoreBackup(destination, backupPath)
             return error('changed')
           }
+          await this.options.onCheckpoint?.('backup-verified', signal)
           try {
             await link(commitPath, destination.path)
             await unlink(commitPath)
+            await this.options.onCheckpoint?.('target-published', signal)
           } catch (cause) {
             await this.restoreBackup(destination, backupPath)
             if ((cause as NodeJS.ErrnoException).code === 'EEXIST') return error('changed')
             throw cause
           }
+          await this.syncDirectory(dirname(destination.path))
           await this.writeRecoveryJournal(destination, backupPath, commitPath, 'published')
+          await this.options.onCheckpoint?.('journal-published', signal)
           await unlink(backupPath)
           destination.recoveryPaths = destination.recoveryPaths.filter(path => path !== backupPath)
           await rm(snapshot.path, { force: true })
+          await this.syncDirectory(dirname(destination.path))
+          await this.options.onCheckpoint?.('backup-removed', signal)
           if (destination.journalPath !== undefined) {
             await rm(destination.journalPath, { force: true })
             await this.syncDirectory(this.recoveryRoot)
+            await this.options.onCheckpoint?.('journal-removed', signal)
           }
           destination.journalPath = undefined
           destination.snapshot = undefined
@@ -1522,24 +1554,42 @@ export class DesktopPickerOwner {
   }
 
   private validRecoveryRecord(value: unknown): value is DestinationRecoveryRecord {
-    if (!exact(value, ['backupPath', 'commitPath', 'destinationPath', 'snapshotPath', 'state', 'version'])
-      || value.version !== 1 || typeof value.destinationPath !== 'string'
+    if (!exact(value, [
+      'backupPath', 'commitPath', 'destinationPath', 'newDigest', 'newSize',
+      'oldDigest', 'oldIdentity', 'oldSize', 'snapshotPath', 'state', 'version',
+    ]) || value.version !== 1 || typeof value.destinationPath !== 'string'
+      || !isAbsolute(value.destinationPath) || resolve(value.destinationPath) !== value.destinationPath
+      || !/^[0-9a-f]{64}$/u.test(String(value.newDigest))
+      || !Number.isSafeInteger(value.newSize) || Number(value.newSize) < 0
       || value.backupPath !== null && typeof value.backupPath !== 'string'
       || value.commitPath !== null && typeof value.commitPath !== 'string'
       || value.snapshotPath !== null && typeof value.snapshotPath !== 'string'
+      || value.oldDigest !== null && !/^[0-9a-f]{64}$/u.test(String(value.oldDigest))
+      || value.oldIdentity !== null && typeof value.oldIdentity !== 'string'
+      || value.oldSize !== null && (!Number.isSafeInteger(value.oldSize) || Number(value.oldSize) < 0)
+      || [value.oldDigest, value.oldIdentity, value.oldSize].some(item => item === null)
+        && [value.oldDigest, value.oldIdentity, value.oldSize].some(item => item !== null)
       || value.state !== 'locked' && value.state !== 'prepared'
         && value.state !== 'moved' && value.state !== 'published') return false
     const parent = dirname(value.destinationPath)
-    return [value.backupPath, value.commitPath, value.snapshotPath]
-      .filter((path): path is string => path !== null)
-      .every(path => dirname(path) === parent && basename(path).startsWith('.tockteam-picker-'))
+    const roles: Array<[string | null, string]> = [
+      [value.backupPath, '.tockteam-picker-backup-'],
+      [value.commitPath, '.tockteam-picker-commit-'],
+      [value.snapshotPath, '.tockteam-picker-snapshot-'],
+    ]
+    const paths = roles.flatMap(([path]) => path === null ? [] : [path])
+    return !basename(value.destinationPath).startsWith('.tockteam-picker-')
+      && new Set([value.destinationPath, ...paths]).size === 1 + paths.length
+      && roles.every(([path, prefix]) => path === null
+        || isAbsolute(path) && resolve(path) === path && dirname(path) === parent && basename(path).startsWith(prefix))
   }
 
   private async ensureRecoveryRoot(): Promise<void> {
     await mkdir(this.recoveryRoot, { recursive: true, mode: 0o700 })
     const canonical = await this.safeRealpath(this.recoveryRoot)
     const stat = await this.safeLstat(this.recoveryRoot)
-    if (canonical !== this.recoveryRoot || stat === undefined || !stat.isDirectory() || stat.isSymbolicLink()) {
+    if (canonical !== this.recoveryRoot || stat === undefined || !stat.isDirectory() || stat.isSymbolicLink()
+      || typeof process.getuid === 'function' && stat.uid !== process.getuid()) {
       return error('recovery-required')
     }
     await chmod(this.recoveryRoot, 0o700)
@@ -1553,7 +1603,8 @@ export class DesktopPickerOwner {
       const journalPath = join(this.recoveryRoot, entry.name)
       const journalStat = await this.safeLstat(journalPath)
       if (journalStat === undefined || journalStat.isSymbolicLink() || !journalStat.isFile()
-        || Number(journalStat.size) > 64 * 1024) {
+        || Number(journalStat.size) > 64 * 1024 || (Number(journalStat.mode) & 0o777) !== 0o600
+        || typeof process.getuid === 'function' && journalStat.uid !== process.getuid()) {
         this.recoveryCorrupt = true
         continue
       }
@@ -1567,26 +1618,51 @@ export class DesktopPickerOwner {
         continue
       }
       const parent = dirname(value.destinationPath)
-      const destination = await this.safeLstat(value.destinationPath)
-      const backup = value.backupPath === null ? undefined : await this.safeLstat(value.backupPath)
-      if (value.state === 'published') {
-        await Promise.allSettled([value.backupPath, value.commitPath, value.snapshotPath]
+      const hasOld = value.oldDigest !== null && value.oldIdentity !== null && value.oldSize !== null
+      const destinationNew = await this.verifyRecordedFile(value.destinationPath, value.newSize, value.newDigest)
+      const destinationOld = hasOld
+        && await this.verifyRecordedFile(value.destinationPath, value.oldSize as number, value.oldDigest as string, value.oldIdentity as string)
+      const backupOld = hasOld && value.backupPath !== null
+        && await this.verifyRecordedFile(value.backupPath, value.oldSize as number, value.oldDigest as string, value.oldIdentity as string)
+      const snapshotOld = hasOld && value.snapshotPath !== null
+        && await this.verifyRecordedFile(value.snapshotPath, value.oldSize as number, value.oldDigest as string)
+      const commitNew = value.commitPath !== null
+        && await this.verifyRecordedFile(value.commitPath, value.newSize, value.newDigest)
+      const destinationExists = await this.safeLstat(value.destinationPath) !== undefined
+      const backupExists = value.backupPath !== null && await this.safeLstat(value.backupPath) !== undefined
+
+      if (destinationNew && backupOld && snapshotOld) {
+        await Promise.all([value.backupPath, value.commitPath, value.snapshotPath]
           .filter((path): path is string => path !== null)
           .map(path => rm(path, { recursive: true, force: true })))
-      } else if (backup !== undefined && destination === undefined && value.backupPath !== null) {
-        await link(value.backupPath, value.destinationPath)
-        await unlink(value.backupPath)
         await this.syncDirectory(parent)
-        await Promise.allSettled([value.commitPath, value.snapshotPath]
+      } else if (destinationNew && !backupExists) {
+        await Promise.all([value.commitPath, value.snapshotPath]
           .filter((path): path is string => path !== null)
           .map(path => rm(path, { recursive: true, force: true })))
-      } else if (backup !== undefined || value.state === 'moved') {
+        await this.syncDirectory(parent)
+      } else if (!destinationExists && backupOld && snapshotOld && value.backupPath !== null) {
+        await link(value.backupPath, value.destinationPath)
+        await this.syncDirectory(parent)
+        if (!await this.verifyRecordedFile(value.destinationPath, value.oldSize as number, value.oldDigest as string, value.oldIdentity as string)) {
+          this.recoveryBlockedDestinations.add(value.destinationPath)
+          continue
+        }
+        await unlink(value.backupPath)
+        await Promise.all([value.commitPath, value.snapshotPath]
+          .filter((path): path is string => path !== null)
+          .map(path => rm(path, { recursive: true, force: true })))
+        await this.syncDirectory(parent)
+      } else if ((destinationOld && snapshotOld && !backupExists
+          && (value.commitPath === null || commitNew))
+        || (!hasOld && value.state === 'locked' && value.backupPath === null && value.commitPath === null)) {
+        await Promise.all([value.commitPath, value.snapshotPath]
+          .filter((path): path is string => path !== null)
+          .map(path => rm(path, { recursive: true, force: true })))
+        await this.syncDirectory(parent)
+      } else {
         this.recoveryBlockedDestinations.add(value.destinationPath)
         continue
-      } else {
-        await Promise.allSettled([value.commitPath, value.snapshotPath]
-          .filter((path): path is string => path !== null)
-          .map(path => rm(path, { recursive: true, force: true })))
       }
       await rm(journalPath, { force: true })
       await this.syncDirectory(this.recoveryRoot)
@@ -1632,30 +1708,40 @@ export class DesktopPickerOwner {
       backupPath,
       commitPath,
       destinationPath: destination.path,
+      newDigest: destination.entries[0]?.digest ?? '',
+      newSize: destination.totalBytes,
+      oldDigest: destination.snapshot?.contentDigest ?? null,
+      oldIdentity: destination.snapshot?.identity ?? null,
+      oldSize: destination.snapshot?.size ?? null,
       snapshotPath: destination.snapshot?.path ?? null,
       state,
       version: 1,
     })
   }
 
-  private async verifySnapshot(path: string, snapshot: ExistingDestinationSnapshot): Promise<boolean> {
+  private async verifyRecordedFile(
+    path: string,
+    size: number,
+    digest: string,
+    identity?: string,
+  ): Promise<boolean> {
     try {
       const handle = await open(path, fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW)
       try {
         const stat = await handle.stat()
-        if (!stat.isFile() || identityOf(stat) !== snapshot.identity
-          || revisionOf(stat) !== snapshot.revision || Number(stat.size) !== snapshot.size) return false
+        if (!stat.isFile() || Number(stat.size) !== size
+          || identity !== undefined && identityOf(stat) !== identity) return false
         const hash = createHash('sha256')
         const buffer = Buffer.alloc(MAX_DESKTOP_DESTINATION_CHUNK_BYTES)
         let offset = 0
-        while (offset < snapshot.size) {
-          const length = Math.min(buffer.length, snapshot.size - offset)
+        while (offset < size) {
+          const length = Math.min(buffer.length, size - offset)
           const result = await handle.read(buffer, 0, length, offset)
           if (result.bytesRead !== length) return false
           hash.update(buffer.subarray(0, length))
           offset += length
         }
-        return hash.digest('hex') === snapshot.contentDigest
+        return hash.digest('hex') === digest
       } finally {
         await handle.close()
       }
@@ -1664,13 +1750,25 @@ export class DesktopPickerOwner {
     }
   }
 
+  private async verifySnapshot(path: string, snapshot: ExistingDestinationSnapshot): Promise<boolean> {
+    return await this.verifyRecordedFile(path, snapshot.size, snapshot.contentDigest, snapshot.identity)
+      && (await this.safeLstat(path))?.isFile() === true
+  }
+
   private async restoreBackup(
     destination: DestinationSession,
     backupPath: string,
   ): Promise<boolean> {
     try {
       await link(backupPath, destination.path)
+      await this.syncDirectory(dirname(destination.path))
+      if (destination.snapshot === undefined
+        || !await this.verifySnapshot(destination.path, destination.snapshot)) {
+        if (!destination.recoveryPaths.includes(backupPath)) destination.recoveryPaths.push(backupPath)
+        return false
+      }
       await unlink(backupPath)
+      await this.syncDirectory(dirname(destination.path))
       destination.recoveryPaths = destination.recoveryPaths.filter(path => path !== backupPath)
       return true
     } catch {
@@ -1682,6 +1780,8 @@ export class DesktopPickerOwner {
   private async captureDestination(
     path: string,
     purpose: DesktopExportPurpose,
+    newDigest: string,
+    newSize: number,
   ): Promise<{
     expectedState: DesktopDestinationState
     journalPath: string | undefined
@@ -1694,44 +1794,64 @@ export class DesktopPickerOwner {
     if (Number(stat.size) > MAX_DESKTOP_SOURCE_TOTAL_BYTES) return error('limit-exceeded')
     const source = await open(path, fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW)
     const snapshotPath = join(dirname(path), `.tockteam-picker-snapshot-${this.options.randomId()}`)
-    const journalPath = await this.writeRecoveryRecord(undefined, {
-      backupPath: null,
-      commitPath: null,
-      destinationPath: path,
-      snapshotPath,
-      state: 'locked',
-      version: 1,
-    })
-    const snapshot = await open(
-      snapshotPath,
-      fsConstants.O_WRONLY | fsConstants.O_CREAT | fsConstants.O_EXCL | fsConstants.O_NOFOLLOW,
-      0o600,
-    )
+    let journalPath: string | undefined
+    let snapshot: Awaited<ReturnType<typeof open>> | undefined
     try {
       const before = await source.stat()
       if (!before.isFile() || identityOf(before) !== identityOf(stat)) return error('changed')
-      const hash = createHash('sha256')
+      const oldHash = createHash('sha256')
       const buffer = Buffer.alloc(MAX_DESKTOP_DESTINATION_CHUNK_BYTES)
       let offset = 0
       while (offset < Number(before.size)) {
         const length = Math.min(buffer.length, Number(before.size) - offset)
         const read = await source.read(buffer, 0, length, offset)
         if (read.bytesRead !== length) return error('changed')
+        oldHash.update(buffer.subarray(0, length))
+        offset += length
+      }
+      const contentDigest = oldHash.digest('hex')
+      const afterHash = await source.stat()
+      const current = await this.safeLstat(path)
+      if (revisionOf(afterHash) !== revisionOf(before) || current === undefined
+        || identityOf(current) !== identityOf(before) || revisionOf(current) !== revisionOf(before)) return error('changed')
+      journalPath = await this.writeRecoveryRecord(undefined, {
+        backupPath: null,
+        commitPath: null,
+        destinationPath: path,
+        newDigest,
+        newSize,
+        oldDigest: contentDigest,
+        oldIdentity: identityOf(before),
+        oldSize: Number(before.size),
+        snapshotPath,
+        state: 'locked',
+        version: 1,
+      })
+      snapshot = await open(
+        snapshotPath,
+        fsConstants.O_WRONLY | fsConstants.O_CREAT | fsConstants.O_EXCL | fsConstants.O_NOFOLLOW,
+        0o600,
+      )
+      offset = 0
+      while (offset < Number(before.size)) {
+        const length = Math.min(buffer.length, Number(before.size) - offset)
+        const read = await source.read(buffer, 0, length, offset)
+        if (read.bytesRead !== length) return error('changed')
         await snapshot.write(buffer, 0, length, offset)
-        hash.update(buffer.subarray(0, length))
         offset += length
       }
       await snapshot.sync()
-      const after = await source.stat()
-      const current = await this.safeLstat(path)
-      if (revisionOf(after) !== revisionOf(before) || current === undefined
-        || identityOf(current) !== identityOf(before) || revisionOf(current) !== revisionOf(before)) return error('changed')
+      const afterCopy = await source.stat()
+      const currentAfterCopy = await this.safeLstat(path)
+      if (revisionOf(afterCopy) !== revisionOf(before) || currentAfterCopy === undefined
+        || identityOf(currentAfterCopy) !== identityOf(before)
+        || revisionOf(currentAfterCopy) !== revisionOf(before)) return error('changed')
       const revision = revisionOf(before)
       return {
         expectedState: { replaceAuthorized: true, revision: cast(revision), status: 'existing' },
         journalPath,
         snapshot: {
-          contentDigest: hash.digest('hex'),
+          contentDigest,
           identity: identityOf(before),
           path: snapshotPath,
           revision,
@@ -1739,10 +1859,15 @@ export class DesktopPickerOwner {
         },
       }
     } catch (cause) {
-      await Promise.allSettled([rm(snapshotPath, { force: true }), rm(journalPath, { force: true })])
+      await Promise.allSettled([
+        rm(snapshotPath, { force: true }),
+        ...(journalPath === undefined ? [] : [rm(journalPath, { force: true })]),
+      ])
+      await this.syncDirectory(dirname(path)).catch(() => {})
+      if (journalPath !== undefined) await this.syncDirectory(this.recoveryRoot).catch(() => {})
       throw cause
     } finally {
-      await Promise.allSettled([source.close(), snapshot.close()])
+      await Promise.allSettled([source.close(), ...(snapshot === undefined ? [] : [snapshot.close()])])
     }
   }
 
@@ -1789,11 +1914,14 @@ export class DesktopPickerOwner {
   }
 
   private async cleanupLockedPlan(plan: LockedDestinationPlan): Promise<void> {
-    await Promise.allSettled([
-      ...(plan.snapshot === undefined ? [] : [rm(plan.snapshot.path, { force: true })]),
-      ...(plan.journalPath === undefined ? [] : [rm(plan.journalPath, { force: true })]),
-    ])
-    await this.syncDirectory(this.recoveryRoot)
+    if (plan.snapshot !== undefined) {
+      await rm(plan.snapshot.path, { force: true })
+      await this.syncDirectory(dirname(plan.snapshot.path))
+    }
+    if (plan.journalPath !== undefined) {
+      await rm(plan.journalPath, { force: true })
+      await this.syncDirectory(this.recoveryRoot)
+    }
   }
 
   private scheduleLockedPlanCleanup(plan: LockedDestinationPlan): void {
@@ -1826,25 +1954,40 @@ export class DesktopPickerOwner {
   }
 
   private async cleanupDestination(destination: DestinationSession): Promise<DesktopCleanupEvidence> {
-    const paths = [
-      destination.stagingRoot,
-      ...(destination.recoveryPaths.length === 0
-        ? [destination.snapshot?.path, destination.journalPath]
-        : []),
-    ].filter((path): path is string => path !== undefined)
     const residualLabels: DesktopPickerLabel[] = destination.recoveryPaths.map(path => cast(labelOf(path)))
-    for (const path of paths) {
+    if (destination.stagingRoot !== undefined) {
+      const stagingRoot = destination.stagingRoot
       try {
-        await rm(path, { recursive: true, force: true })
+        await rm(stagingRoot, { recursive: true, force: true })
+        await this.syncDirectory(dirname(stagingRoot))
+        destination.stagingRoot = undefined
+        destination.stagingRevision = undefined
       } catch {
-        residualLabels.push(cast(labelOf(path)))
+        residualLabels.push(cast(labelOf(stagingRoot)))
       }
     }
-    if (residualLabels.length > 0) return { residualLabels, status: 'residual' }
-    destination.stagingRoot = undefined
-    destination.stagingRevision = undefined
-    destination.snapshot = undefined
-    destination.journalPath = undefined
-    return { status: 'complete' }
+    if (residualLabels.length === 0 && destination.snapshot !== undefined) {
+      const snapshotPath = destination.snapshot.path
+      try {
+        await rm(snapshotPath, { force: true })
+        await this.syncDirectory(dirname(snapshotPath))
+        destination.snapshot = undefined
+      } catch {
+        residualLabels.push(cast(labelOf(snapshotPath)))
+      }
+    }
+    if (residualLabels.length === 0 && destination.journalPath !== undefined) {
+      const journalPath = destination.journalPath
+      try {
+        await rm(journalPath, { force: true })
+        await this.syncDirectory(this.recoveryRoot)
+        destination.journalPath = undefined
+      } catch {
+        residualLabels.push(cast(labelOf(journalPath)))
+      }
+    }
+    return residualLabels.length === 0
+      ? { status: 'complete' }
+      : { residualLabels, status: 'residual' }
   }
 }

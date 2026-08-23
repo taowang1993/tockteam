@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
+import { spawnSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { link, mkdir, mkdtemp, readFile, readdir, rename, symlink, writeFile, realpath } from 'node:fs/promises'
+import { link, lstat, mkdir, mkdtemp, readFile, readdir, rename, symlink, writeFile, realpath } from 'node:fs/promises'
 import { createServer } from 'node:net'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -381,6 +382,44 @@ test('reviewed existing-file snapshots reject swaps and replace only the verifie
   await owner.dispose()
 })
 
+test('subprocess crashes at every replacement boundary recover to old or new, never absent', async () => {
+  const checkpoints: DesktopPickerCheckpoint[] = [
+    'journal-prepared',
+    'backup-moved',
+    'backup-verified',
+    'target-published',
+    'journal-published',
+    'backup-removed',
+    'journal-removed',
+  ]
+  for (const checkpoint of checkpoints) {
+    const root = await canonicalTemp(`tockteam-picker-crash-${checkpoint}-`)
+    const recoveryRoot = await canonicalTemp('tockteam-picker-recovery-index-')
+    const activeVault = await canonicalTemp('tockteam-picker-active-')
+    const destinationPath = join(root, 'output.html')
+    await writeFile(destinationPath, 'old')
+    const child = spawnSync(process.execPath, [
+      new URL('./fixtures/desktop-picker-crash.ts', import.meta.url).pathname,
+      checkpoint,
+      destinationPath,
+      recoveryRoot,
+      activeVault,
+    ], { encoding: 'utf8', timeout: 30_000 })
+    assert.equal(child.status, 77, child.stderr || child.stdout)
+    const owner = new DesktopPickerOwner({
+      isAvailable: () => true,
+      recoveryRoot,
+      showOpenDialog: async () => ({ canceled: true }),
+      showSaveDialog: async () => ({ canceled: true }),
+    })
+    await owner.ready()
+    const content = await readFile(destinationPath, 'utf8')
+    assert.ok(content === 'old' || content === 'new', `${checkpoint}: ${content}`)
+    assert.deepEqual(await readdir(recoveryRoot), [], checkpoint)
+    await owner.dispose()
+  }
+})
+
 test('startup recovery index restores a moved target without another plan lock', async () => {
   const root = await canonicalTemp('tockteam-picker-recovery-')
   const recoveryRoot = await canonicalTemp('tockteam-picker-recovery-index-')
@@ -392,14 +431,20 @@ test('startup recovery index restores a moved target without another plan lock',
   await writeFile(backupPath, 'old')
   await writeFile(commitPath, 'new')
   await writeFile(snapshotPath, 'old')
+  const backupStat = await lstat(backupPath)
   await writeFile(journalPath, JSON.stringify({
     backupPath,
     commitPath,
     destinationPath,
+    newDigest: sha('new'),
+    newSize: 3,
+    oldDigest: sha('old'),
+    oldIdentity: `${String(backupStat.dev)}:${String(backupStat.ino)}`,
+    oldSize: 3,
     snapshotPath,
     state: 'moved',
     version: 1,
-  }))
+  }), { mode: 0o600 })
   const owner = new DesktopPickerOwner({
     isAvailable: () => true,
     recoveryRoot,
@@ -410,6 +455,43 @@ test('startup recovery index restores a moved target without another plan lock',
   assert.equal(await readFile(destinationPath, 'utf8'), 'old')
   assert.equal((await readdir(root)).some(name => name.startsWith('.tockteam-picker-') && name.includes('crash')), false)
   assert.deepEqual(await readdir(recoveryRoot), [])
+  await owner.dispose()
+})
+
+test('published journal with a missing target restores the exact reviewed backup', async () => {
+  const root = await canonicalTemp('tockteam-picker-recovery-published-')
+  const recoveryRoot = await canonicalTemp('tockteam-picker-recovery-index-')
+  const destinationPath = join(root, 'published.html')
+  const backupPath = join(root, '.tockteam-picker-backup-published')
+  const snapshotPath = join(root, '.tockteam-picker-snapshot-published')
+  const old = 'reviewed-old'
+  const next = 'reviewed-new'
+  await writeFile(backupPath, old)
+  await writeFile(snapshotPath, old)
+  const backupStat = await lstat(backupPath)
+  await writeFile(join(recoveryRoot, 'destination-published.json'), JSON.stringify({
+    backupPath,
+    commitPath: null,
+    destinationPath,
+    newDigest: sha(next),
+    newSize: next.length,
+    oldDigest: sha(old),
+    oldIdentity: `${String(backupStat.dev)}:${String(backupStat.ino)}`,
+    oldSize: old.length,
+    snapshotPath,
+    state: 'published',
+    version: 1,
+  }), { mode: 0o600 })
+  const owner = new DesktopPickerOwner({
+    isAvailable: () => true,
+    recoveryRoot,
+    showOpenDialog: async () => ({ canceled: true }),
+    showSaveDialog: async () => ({ canceled: true }),
+  })
+  await owner.ready()
+  assert.equal(await readFile(destinationPath, 'utf8'), old)
+  assert.deepEqual(await readdir(recoveryRoot), [])
+  assert.equal((await readdir(root)).some(name => name.startsWith('.tockteam-picker-')), false)
   await owner.dispose()
 })
 
@@ -425,14 +507,20 @@ test('startup recovery never overwrites an unknown occupied target and blocks th
   await writeFile(backupPath, 'reviewed-old')
   await writeFile(commitPath, 'reviewed-new')
   await writeFile(snapshotPath, 'reviewed-old')
+  const backupStat = await lstat(backupPath)
   await writeFile(join(recoveryRoot, 'destination-occupied.json'), JSON.stringify({
     backupPath,
     commitPath,
     destinationPath,
+    newDigest: sha('reviewed-new'),
+    newSize: 'reviewed-new'.length,
+    oldDigest: sha('reviewed-old'),
+    oldIdentity: `${String(backupStat.dev)}:${String(backupStat.ino)}`,
+    oldSize: 'reviewed-old'.length,
     snapshotPath,
     state: 'moved',
     version: 1,
-  }))
+  }), { mode: 0o600 })
   const owner = new DesktopPickerOwner({
     isAvailable: () => true,
     recoveryRoot,
@@ -466,7 +554,7 @@ test('corrupted recovery index fails all destination locks closed without filesy
   const root = await canonicalTemp('tockteam-picker-recovery-corrupt-')
   const activeVault = await canonicalTemp('tockteam-picker-active-')
   const recoveryRoot = await canonicalTemp('tockteam-picker-recovery-index-')
-  await writeFile(join(recoveryRoot, 'destination-corrupt.json'), '{"version":1,"destinationPath":"/escape"}')
+  await writeFile(join(recoveryRoot, 'destination-corrupt.json'), '{"version":1,"destinationPath":"/escape"}', { mode: 0o600 })
   const output = join(root, 'next.html')
   const owner = new DesktopPickerOwner({
     isAvailable: () => true,

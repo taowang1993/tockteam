@@ -328,7 +328,7 @@ export interface AbortDesktopDestinationResult {
     stagedEntries: number;
     status: 'aborted' | 'already-closed';
 }
-export type DesktopGrantErrorCode = 'aborted' | 'changed' | 'closed' | 'digest-mismatch' | 'exists' | 'expired' | 'invalid-entry' | 'limit-exceeded' | 'owner-lost' | 'purpose-mismatch' | 'replayed' | 'size-mismatch' | 'stale' | 'unsafe-source' | 'unsafe-target';
+export type DesktopGrantErrorCode = 'aborted' | 'changed' | 'closed' | 'digest-mismatch' | 'exists' | 'expired' | 'invalid-entry' | 'limit-exceeded' | 'owner-lost' | 'purpose-mismatch' | 'recovery-required' | 'replayed' | 'size-mismatch' | 'stale' | 'unsafe-source' | 'unsafe-target';
 /** A code-only path-free rejection from a picker grant/session operation. */
 export declare class TockTeamDesktopGrantError extends Error {
     readonly code: DesktopGrantErrorCode;
