@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { link, lstat, mkdir, mkdtemp, readFile, readdir, realpath, writeFile } from 'node:fs/promises'
+import { link, lstat, mkdtemp, readFile, readdir, realpath, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
@@ -12,10 +12,28 @@ const ownedIdentity = (stat: Awaited<ReturnType<typeof lstat>>) => createHash('s
   String(stat.dev), String(stat.ino), String(stat.mode), String(stat.birthtimeMs),
 ].join(':')).digest('hex')
 
+async function writeScrubbedJournal(root: string, recoveryRoot: string, suffix: string) {
+  const stage = join(root, `.tockteam-picker-stage-${suffix}`)
+  await writeFile(stage, '', { mode: 0o600 })
+  const [parentStat, stageStat] = await Promise.all([lstat(root), lstat(stage)])
+  const journal = join(recoveryRoot, `destination-${suffix}.json`)
+  await writeFile(journal, JSON.stringify({
+    destinationIdentity: null,
+    destinationPath: join(root, `${suffix}.html`),
+    newDigest: sha(''),
+    newSize: 0,
+    parentIdentity: `${String(parentStat.dev)}:${String(parentStat.ino)}`,
+    residues: [{ disposition: 'scrubbed', identity: ownedIdentity(stageStat), kind: 'file', path: stage, size: 0 }],
+    resolution: 'scrubbed',
+    version: 2,
+  }), { mode: 0o600 })
+  return { journal, stage }
+}
+
 test('managed picker production has no path deletion, replacement, or obsolete replacement artifacts', async () => {
   const source = await readFile(new URL('../src/desktop-picker-owner.ts', import.meta.url), 'utf8')
   assert.doesNotMatch(source, /\b(?:unlinkSync|rmSync|rmdirSync|renameSync)\b|\b(?:unlink|rm|rmdir|rename)\s*\(/u)
-  assert.doesNotMatch(source, /snapshotPath|backupPath|commitPath|replaceAuthorized/u)
+  assert.doesNotMatch(source, /snapshotPath|backupPath|commitPath|replaceAuthorized|stagingRoot|opendir\(directoryResidue/u)
 })
 
 function runHook(mode: string, destination: string, recoveryRoot: string, vault: string, result: string, foreign: string, stage?: string) {
@@ -30,7 +48,7 @@ function runHook(mode: string, destination: string, recoveryRoot: string, vault:
   })
 }
 
-test('loader hooks preserve late occupants and source swaps at the final no-clobber link', async () => {
+test('loader hooks preserve late occupants and flat-stage source swaps at final link', async () => {
   for (const mode of ['link-source-swap', 'link-destination-occupy']) {
     const root = await temp(`tockteam-hook-${mode}-`)
     const recoveryRoot = await temp('tockteam-hook-recovery-')
@@ -45,10 +63,10 @@ test('loader hooks preserve late occupants and source swaps at the final no-clob
     const stage = (await readdir(root)).find(name => name.startsWith('.tockteam-picker-stage-'))
     assert.ok(stage)
     if (mode === 'link-source-swap') {
-      assert.equal((await readFile(join(root, stage, 'selected-file-recorded-owner'))).byteLength, 0)
-      assert.equal(await readFile(join(root, stage, 'selected-file'), 'utf8'), foreign)
+      assert.equal((await readFile(join(root, `${stage}-recorded-owner`))).byteLength, 0)
+      assert.equal(await readFile(join(root, stage), 'utf8'), foreign)
     } else {
-      assert.equal((await readFile(join(root, stage, 'selected-file'))).byteLength, 0)
+      assert.equal((await readFile(join(root, stage))).byteLength, 0)
     }
   }
 })
@@ -65,88 +83,29 @@ test('loader hook proves normal publication invokes no destructive managed-path 
   assert.equal(await readFile(destination, 'utf8'), 'reviewed-output')
 })
 
-test('startup journal growth after fstat exceeds the bound and blocks globally', async () => {
-  const root = await temp('tockteam-hook-journal-growth-')
-  const recoveryRoot = await temp('tockteam-hook-recovery-')
-  const vault = await temp('tockteam-hook-vault-')
-  const result = join(await temp('tockteam-hook-result-'), 'result.json')
-  const destination = join(root, 'next.html')
-  const stageRoot = join(root, '.tockteam-picker-stage-growth')
-  const stage = join(stageRoot, 'selected-file')
-  await mkdir(stageRoot, { mode: 0o700 })
-  await writeFile(stage, '', { mode: 0o600 })
-  const [parentStat, stageRootStat, stageStat] = await Promise.all([lstat(root), lstat(stageRoot), lstat(stage)])
-  const journal = join(recoveryRoot, 'destination-growth.json')
-  await writeFile(journal, JSON.stringify({
-    destinationIdentity: null,
-    destinationPath: join(root, 'aborted.html'),
-    newDigest: sha(''),
-    newSize: 0,
-    parentIdentity: `${String(parentStat.dev)}:${String(parentStat.ino)}`,
-    residues: [
-      { disposition: 'scrubbed', identity: ownedIdentity(stageRootStat), kind: 'directory', path: stageRoot, size: 0 },
-      { disposition: 'scrubbed', identity: ownedIdentity(stageStat), kind: 'file', path: stage, size: 0 },
-    ],
-    resolution: 'scrubbed',
-    version: 2,
-  }), { mode: 0o600 })
-  const child = runHook('startup-journal-growth', destination, recoveryRoot, vault, result, 'foreign')
-  assert.equal(child.status, 0, child.stderr || child.stdout)
-  assert.equal(JSON.parse(await readFile(result, 'utf8')).outcome, 'error:recovery-required')
-  assert.ok((await lstat(journal)).size > 64 * 1024)
-  assert.equal((await readFile(stage)).byteLength, 0)
-})
-
-test('startup same-size journal rewrite and shrink both block globally', async () => {
-  for (const mode of ['startup-journal-same-size', 'startup-journal-shrink']) {
+test('startup journal growth, same-size rewrite, and shrink block globally', async () => {
+  for (const mode of ['startup-journal-growth', 'startup-journal-same-size', 'startup-journal-shrink']) {
     const root = await temp(`tockteam-hook-${mode}-`)
     const recoveryRoot = await temp('tockteam-hook-recovery-')
     const vault = await temp('tockteam-hook-vault-')
     const result = join(await temp('tockteam-hook-result-'), 'result.json')
     const destination = join(root, 'next.html')
-    const stageRoot = join(root, '.tockteam-picker-stage-journal-mutation')
-    const stage = join(stageRoot, 'selected-file')
-    await mkdir(stageRoot, { mode: 0o700 })
-    await writeFile(stage, '', { mode: 0o600 })
-    const [parentStat, stageRootStat, stageStat] = await Promise.all([lstat(root), lstat(stageRoot), lstat(stage)])
-    await writeFile(join(recoveryRoot, 'destination-mutation.json'), JSON.stringify({
-      destinationIdentity: null,
-      destinationPath: join(root, 'aborted.html'),
-      newDigest: sha(''),
-      newSize: 0,
-      parentIdentity: `${String(parentStat.dev)}:${String(parentStat.ino)}`,
-      residues: [
-        { disposition: 'scrubbed', identity: ownedIdentity(stageRootStat), kind: 'directory', path: stageRoot, size: 0 },
-        { disposition: 'scrubbed', identity: ownedIdentity(stageStat), kind: 'file', path: stage, size: 0 },
-      ],
-      resolution: 'scrubbed',
-      version: 2,
-    }), { mode: 0o600 })
+    const { journal, stage } = await writeScrubbedJournal(root, recoveryRoot, mode)
     const child = runHook(mode, destination, recoveryRoot, vault, result, 'foreign')
     assert.equal(child.status, 0, child.stderr || child.stdout)
     assert.equal(JSON.parse(await readFile(result, 'utf8')).outcome, 'error:recovery-required')
     assert.equal((await readFile(stage)).byteLength, 0)
+    if (mode === 'startup-journal-growth') assert.ok((await lstat(journal)).size > 64 * 1024)
   }
 })
 
-test('startup journal-open swap preserves both files and blocks the current process', async () => {
+test('startup journal-open swap preserves both files and blocks current process', async () => {
   const root = await temp('tockteam-hook-journal-swap-')
   const recoveryRoot = await temp('tockteam-hook-recovery-')
   const vault = await temp('tockteam-hook-vault-')
   const result = join(await temp('tockteam-hook-result-'), 'result.json')
-  const destination = join(root, 'output.html')
-  const parentStat = await lstat(root)
-  const journal = join(recoveryRoot, 'destination-swap.json')
-  await writeFile(journal, JSON.stringify({
-    destinationIdentity: null,
-    destinationPath: destination,
-    newDigest: sha(''),
-    newSize: 0,
-    parentIdentity: `${String(parentStat.dev)}:${String(parentStat.ino)}`,
-    residues: [],
-    resolution: 'scrubbed',
-    version: 2,
-  }), { mode: 0o600 })
+  const destination = join(root, 'next.html')
+  const { journal } = await writeScrubbedJournal(root, recoveryRoot, 'swap')
   const foreign = 'foreign-journal-occupant'
   const child = runHook('startup-journal-open-swap', destination, recoveryRoot, vault, result, foreign)
   assert.equal(child.status, 0, child.stderr || child.stdout)
@@ -155,66 +114,26 @@ test('startup journal-open swap preserves both files and blocks the current proc
   assert.equal(JSON.parse(await readFile(`${journal}-recorded-owner`, 'utf8')).resolution, 'scrubbed')
 })
 
-test('startup residue ancestor swap is caught by final child-then-directory rebind', async () => {
-  const root = await temp('tockteam-hook-residue-ancestor-')
-  const recoveryRoot = await temp('tockteam-hook-recovery-')
-  const vault = await temp('tockteam-hook-vault-')
-  const result = join(await temp('tockteam-hook-result-'), 'result.json')
-  const nextDestination = join(root, 'next.html')
-  const publishedDestination = join(root, 'published.html')
-  const stageRoot = join(root, '.tockteam-picker-stage-ancestor')
-  const stage = join(stageRoot, 'selected-file')
-  const secret = 'resolved-ancestor-content'
-  await mkdir(stageRoot, { mode: 0o700 })
-  await writeFile(stage, secret, { mode: 0o600 })
-  await link(stage, publishedDestination)
-  const [parentStat, stageRootStat, stageStat, destinationStat] = await Promise.all([lstat(root), lstat(stageRoot), lstat(stage), lstat(publishedDestination)])
-  await writeFile(join(recoveryRoot, 'destination-ancestor.json'), JSON.stringify({
-    destinationIdentity: ownedIdentity(destinationStat),
-    destinationPath: publishedDestination,
-    newDigest: sha(secret),
-    newSize: secret.length,
-    parentIdentity: `${String(parentStat.dev)}:${String(parentStat.ino)}`,
-    residues: [
-      { disposition: 'scrubbed', identity: ownedIdentity(stageRootStat), kind: 'directory', path: stageRoot, size: 0 },
-      { disposition: 'published-alias', identity: ownedIdentity(stageStat), kind: 'file', path: stage, size: secret.length },
-    ],
-    resolution: 'retained',
-    version: 2,
-  }), { mode: 0o600 })
-  const child = runHook('startup-residue-ancestor-swap', nextDestination, recoveryRoot, vault, result, 'foreign', stage)
-  assert.equal(child.status, 0, child.stderr || child.stdout)
-  assert.equal(JSON.parse(await readFile(result, 'utf8')).outcome, 'error:recovery-required')
-  assert.equal((await lstat(stageRoot)).isSymbolicLink(), true)
-  assert.equal(await readFile(`${stageRoot}-recorded-owner/selected-file`, 'utf8'), secret)
-  assert.equal(await readFile(publishedDestination, 'utf8'), secret)
-})
-
-test('startup post-open resolved stage swap rebinds the path and blocks globally', async () => {
+test('startup post-open resolved flat-stage swap rebinds path and blocks globally', async () => {
   const root = await temp('tockteam-hook-resolved-stage-swap-')
   const recoveryRoot = await temp('tockteam-hook-recovery-')
   const vault = await temp('tockteam-hook-vault-')
   const result = join(await temp('tockteam-hook-result-'), 'result.json')
   const nextDestination = join(root, 'next.html')
   const publishedDestination = join(root, 'published.html')
-  const stageRoot = join(root, '.tockteam-picker-stage-resolved')
-  const stage = join(stageRoot, 'selected-file')
+  const stage = join(root, '.tockteam-picker-stage-resolved')
   const secret = 'resolved-published-content'
   const foreign = 'foreign-resolved-stage'
-  await mkdir(stageRoot, { mode: 0o700 })
   await writeFile(stage, secret, { mode: 0o600 })
   await link(stage, publishedDestination)
-  const [parentStat, stageRootStat, stageStat, destinationStat] = await Promise.all([lstat(root), lstat(stageRoot), lstat(stage), lstat(publishedDestination)])
+  const [parentStat, stageStat, destinationStat] = await Promise.all([lstat(root), lstat(stage), lstat(publishedDestination)])
   await writeFile(join(recoveryRoot, 'destination-resolved.json'), JSON.stringify({
     destinationIdentity: ownedIdentity(destinationStat),
     destinationPath: publishedDestination,
     newDigest: sha(secret),
     newSize: secret.length,
     parentIdentity: `${String(parentStat.dev)}:${String(parentStat.ino)}`,
-    residues: [
-      { disposition: 'scrubbed', identity: ownedIdentity(stageRootStat), kind: 'directory', path: stageRoot, size: 0 },
-      { disposition: 'published-alias', identity: ownedIdentity(stageStat), kind: 'file', path: stage, size: secret.length },
-    ],
+    residues: [{ disposition: 'published-alias', identity: ownedIdentity(stageStat), kind: 'file', path: stage, size: secret.length }],
     resolution: 'retained',
     version: 2,
   }), { mode: 0o600 })
@@ -226,29 +145,24 @@ test('startup post-open resolved stage swap rebinds the path and blocks globally
   assert.equal(await readFile(publishedDestination, 'utf8'), secret)
 })
 
-test('startup unresolved stage swap preserves both occupants and blocks', async () => {
+test('startup unresolved flat-stage swap preserves both occupants and blocks', async () => {
   const root = await temp('tockteam-hook-startup-')
   const recoveryRoot = await temp('tockteam-hook-recovery-')
   const vault = await temp('tockteam-hook-vault-')
   const result = join(await temp('tockteam-hook-result-'), 'result.json')
   const destination = join(root, 'output.html')
-  const stageRoot = join(root, '.tockteam-picker-stage-startup')
-  const stage = join(stageRoot, 'selected-file')
+  const stage = join(root, '.tockteam-picker-stage-startup')
   const secret = 'unresolved-confidential-stage'
   const foreign = 'foreign-startup-stage'
-  await mkdir(stageRoot, { mode: 0o700 })
   await writeFile(stage, secret, { mode: 0o600 })
-  const [parentStat, stageRootStat, stageStat] = await Promise.all([lstat(root), lstat(stageRoot), lstat(stage)])
+  const [parentStat, stageStat] = await Promise.all([lstat(root), lstat(stage)])
   await writeFile(join(recoveryRoot, 'destination-startup.json'), JSON.stringify({
     destinationIdentity: null,
     destinationPath: destination,
     newDigest: sha(secret),
     newSize: secret.length,
     parentIdentity: `${String(parentStat.dev)}:${String(parentStat.ino)}`,
-    residues: [
-      { disposition: 'scrubbed', identity: ownedIdentity(stageRootStat), kind: 'directory', path: stageRoot, size: 0 },
-      { disposition: 'scrubbed', identity: ownedIdentity(stageStat), kind: 'file', path: stage, size: 0 },
-    ],
+    residues: [{ disposition: 'scrubbed', identity: ownedIdentity(stageStat), kind: 'file', path: stage, size: 0 }],
     resolution: 'unresolved',
     version: 2,
   }), { mode: 0o600 })

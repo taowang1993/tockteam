@@ -112,8 +112,7 @@ test("post-stability close cannot strand plaintext staging", async () => {
   entry.handle.close = async () => {
     await original();
     await rename(stage, moved);
-    await mkdir(stage);
-    await writeFile(join(stage, "attacker-sentinel"), "keep");
+    await writeFile(stage, "keep");
   };
   const result = await o.finalizeDestination(
     { expectedState: begun.expectedState, planDigest, session: begun.session },

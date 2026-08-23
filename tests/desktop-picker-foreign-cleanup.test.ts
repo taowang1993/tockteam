@@ -49,6 +49,6 @@ test('late destination occupant is preserved and the retained stage fd is scrubb
   assert.deepEqual(await readFile(output), foreign)
   const stage = (await readdir(root)).find(name => name.startsWith('.tockteam-picker-stage-'))
   assert.ok(stage)
-  assert.equal((await readFile(join(root, stage, 'selected-file'))).byteLength, 0)
+  assert.equal((await readFile(join(root, stage))).byteLength, 0)
   await owner.dispose()
 })

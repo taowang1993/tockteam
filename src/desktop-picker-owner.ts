@@ -199,7 +199,7 @@ interface LockedDestinationPlan {
 interface DestinationResidueRecord {
   disposition: 'published-alias' | 'scrubbed'
   identity: string
-  kind: 'directory' | 'file'
+  kind: 'file'
   path: string
   size: number
 }
@@ -227,7 +227,6 @@ interface DestinationEntry {
   entry: DesktopDestinationPlanEntry
   handle: Awaited<ReturnType<typeof open>> | undefined
   offset: number
-  stagedAncestors: Array<{ identity: string; path: string }>
   stagedIdentity?: string
   stagedPath?: string
 }
@@ -244,8 +243,6 @@ interface DestinationSession {
   path: string
   purpose: DesktopExportPurpose
   totalBytes: number
-  stagingRevision: string | undefined
-  stagingRoot: string | undefined
 }
 
 function object(value: unknown): value is Record<string, unknown> {
@@ -1032,14 +1029,11 @@ export class DesktopPickerOwner {
         entry,
         handle: undefined,
         offset: 0,
-        stagedAncestors: [],
       })),
       parentIdentity: locked.parentIdentity,
       path: locked.path,
       purpose: locked.purpose,
       totalBytes: locked.totalBytes,
-      stagingRevision: undefined,
-      stagingRoot: undefined,
     }
     this.destinationPlans.delete(request.authorization)
     this.destinations.set(session, destination)
@@ -1096,63 +1090,31 @@ export class DesktopPickerOwner {
       await this.closeDestination(request.session, destination)
       return error('size-mismatch')
     }
+    const staged = entry.stagedPath
+      ?? join(dirname(destination.path), `.tockteam-picker-stage-${this.options.randomId()}`)
+    entry.stagedPath = staged
     try {
-      this.assertDestinationParent(destination.path, destination.parentIdentity)
-      await this.ensureStaging(destination)
       this.assertDestinationParent(destination.path, destination.parentIdentity)
       await this.options.onCheckpoint?.('write', signal)
       this.assertAuthority(destination.identity)
       if (signal.aborted) return error('aborted')
-      await this.assertStagingStable(destination)
-      this.assertDestinationParent(destination.path, destination.parentIdentity)
-    } catch (cause) {
-      if (blocksRecovery(cause)) this.recoveryBlockedDestinations.add(destination.path)
-      await this.closeDestination(request.session, destination)
-      throw cause
-    }
-    const staged =
-      entry.stagedPath ??
-      join(destination.stagingRoot as string, 'selected-file')
-    entry.stagedPath = staged
-    try {
-      const ancestors = await this.ensureStagedParent(destination, staged)
-      if (entry.stagedAncestors.length === 0) entry.stagedAncestors = ancestors
-      else await this.assertStagedAncestors(entry)
-      this.assertDestinationParent(destination.path, destination.parentIdentity)
-    } catch (cause) {
-      if (blocksRecovery(cause)) this.recoveryBlockedDestinations.add(destination.path)
-      await this.closeDestination(request.session, destination)
-      throw cause
-    }
-    try {
-      const handle =
-        entry.handle ??
-        (await open(
-          staged,
-          fsConstants.O_RDWR |
-            fsConstants.O_CREAT |
-            fsConstants.O_EXCL |
-            fsConstants.O_NOFOLLOW,
-          0o600,
-        ))
+      const handle = entry.handle ?? await open(
+        staged,
+        fsConstants.O_RDWR | fsConstants.O_CREAT | fsConstants.O_EXCL | fsConstants.O_NOFOLLOW,
+        0o600,
+      )
       entry.handle = handle
       const stat = await handle.stat()
-      if (
-        !stat.isFile() ||
-        Number(stat.size) !== entry.offset ||
-        (entry.stagedIdentity !== undefined &&
-          entry.stagedIdentity !== ownedIdentityOf(stat))
-      )
-        return error('changed')
+      if (!stat.isFile() || Number(stat.size) !== entry.offset
+        || entry.stagedIdentity !== undefined && entry.stagedIdentity !== ownedIdentityOf(stat)) return error('changed')
       entry.stagedIdentity ??= ownedIdentityOf(stat)
+      this.assertDestinationParent(destination.path, destination.parentIdentity)
       if (destination.journal === undefined) {
         await this.createRecoveryJournal(destination)
         await this.options.onCheckpoint?.('journal-prepared', signal)
       }
-      await this.assertStagingStable(destination)
       this.assertDestinationParent(destination.path, destination.parentIdentity)
       await handle.write(request.bytes, 0, request.bytes.length, entry.offset)
-      await this.assertStagingStable(destination)
       this.assertDestinationParent(destination.path, destination.parentIdentity)
     } catch (cause) {
       if (blocksRecovery(cause)) this.recoveryBlockedDestinations.add(destination.path)
@@ -1208,7 +1170,6 @@ export class DesktopPickerOwner {
           entry.handle === undefined
         )
           return error('size-mismatch')
-        await this.assertStagedAncestors(entry)
         await entry.handle.sync()
         const stagedStat = await entry.handle.stat()
         if (
@@ -1243,7 +1204,6 @@ export class DesktopPickerOwner {
       )
         return error('changed')
       this.assertDestinationParent(destination.path, destination.parentIdentity)
-      await this.assertStagingStable(destination)
       const selectedEntry = destination.entries[0]
       if (
         selectedEntry?.stagedPath === undefined ||
@@ -1733,7 +1693,7 @@ export class DesktopPickerOwner {
       typeof value.parentIdentity !== 'string' ||
       value.parentIdentity.length === 0 ||
       !Array.isArray(value.residues) ||
-      value.residues.length !== 2 ||
+      value.residues.length !== 1 ||
       (value.resolution !== 'retained' &&
         value.resolution !== 'scrubbed' &&
         value.resolution !== 'unresolved')
@@ -1750,7 +1710,7 @@ export class DesktopPickerOwner {
           residue.disposition !== 'scrubbed') ||
         typeof residue.identity !== 'string' ||
         residue.identity.length === 0 ||
-        (residue.kind !== 'directory' && residue.kind !== 'file') ||
+        residue.kind !== 'file' ||
         typeof residue.path !== 'string' ||
         !isAbsolute(residue.path) ||
         resolve(residue.path) !== residue.path ||
@@ -1760,39 +1720,22 @@ export class DesktopPickerOwner {
       )
         return false
       paths.add(residue.path)
-      const relativePath = relative(parent, residue.path)
-      const first = relativePath.split(sep)[0]
-      if (
-        relativePath === '' ||
-        relativePath === '..' ||
-        relativePath.startsWith(`..${sep}`) ||
-        isAbsolute(relativePath) ||
-        !first?.startsWith('.tockteam-picker-stage-')
-      )
-        return false
-      if (
-        residue.kind === 'directory' &&
-        (dirname(residue.path) !== parent || residue.size !== 0)
-      )
-        return false
+      if (dirname(residue.path) !== parent
+        || !basename(residue.path).startsWith('.tockteam-picker-stage-')) return false
       if (
         value.resolution === 'scrubbed' &&
         (residue.disposition !== 'scrubbed' ||
-          (residue.kind === 'file' && residue.size !== 0))
+          residue.size !== 0)
       )
         return false
       if (
         value.resolution === 'retained' &&
-        residue.kind === 'file' &&
         (residue.disposition !== 'published-alias' ||
           residue.size !== value.newSize)
       )
         return false
     }
-    const directoryResidue = value.residues.find(residue => residue.kind === 'directory')
-    const fileResidue = value.residues.find(residue => residue.kind === 'file')
-    return directoryResidue !== undefined && fileResidue !== undefined
-      && dirname(fileResidue.path) === directoryResidue.path
+    return value.residues[0]?.kind === 'file'
       && (value.resolution === 'retained'
         ? value.destinationIdentity !== null
         : value.destinationIdentity === null)
@@ -1903,41 +1846,22 @@ export class DesktopPickerOwner {
     residue: DestinationResidueRecord
     stat: Stat
   }> | undefined> {
-    const opened: Array<{
-      handle: Awaited<ReturnType<typeof open>>
-      residue: DestinationResidueRecord
-      stat: Stat
-    }> = []
+    const residue = value.residues[0]
+    if (residue === undefined) return undefined
+    let handle: Awaited<ReturnType<typeof open>> | undefined
     try {
-      const ordered = [...value.residues].sort((left, right) => left.kind === right.kind ? 0 : left.kind === 'directory' ? -1 : 1)
-      for (const residue of ordered) {
-        const handle = await open(
-          residue.path,
-          fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW | fsConstants.O_NONBLOCK
-            | (residue.kind === 'directory' ? fsConstants.O_DIRECTORY : 0),
-        )
-        const stat = await handle.stat()
-        opened.push({ handle, residue, stat })
-        if (ownedIdentityOf(stat) !== residue.identity
-          || residue.kind === 'file' && (!stat.isFile() || Number(stat.size) !== residue.size)
-          || residue.kind === 'directory' && !stat.isDirectory()) throw new Error('invalid residue')
-        if (value.resolution === 'retained' && residue.kind === 'file'
-          && !await this.verifyHandleDigest(handle, residue.size, value.newDigest)) throw new Error('invalid residue')
-      }
-      const directoryResidue = value.residues.find(residue => residue.kind === 'directory')
-      if (directoryResidue === undefined) throw new Error('invalid residue')
-      const directory = await opendir(directoryResidue.path)
-      const children: Array<{ file: boolean; name: string }> = []
-      for await (const child of directory) {
-        children.push({ file: child.isFile(), name: child.name })
-        if (children.length > 1) break
-      }
-      if (children.length !== 1 || children[0]?.name !== 'selected-file' || children[0].file !== true) {
-        throw new Error('invalid residue')
-      }
-      return opened
+      handle = await open(
+        residue.path,
+        fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW | fsConstants.O_NONBLOCK,
+      )
+      const stat = await handle.stat()
+      if (!stat.isFile() || ownedIdentityOf(stat) !== residue.identity
+        || Number(stat.size) !== residue.size) throw new Error('invalid residue')
+      if (value.resolution === 'retained'
+        && !await this.verifyHandleDigest(handle, residue.size, value.newDigest)) throw new Error('invalid residue')
+      return [{ handle, residue, stat }]
     } catch {
-      for (const item of opened) void item.handle.close().catch(() => undefined)
+      if (handle !== undefined) void handle.close().catch(() => undefined)
       return undefined
     }
   }
@@ -1953,15 +1877,14 @@ export class DesktopPickerOwner {
     }>,
   ): boolean {
     try {
-      const rebound = [...residues].sort((left, right) => left.residue.kind === right.residue.kind ? 0 : left.residue.kind === 'file' ? -1 : 1)
-      for (const item of rebound) {
+      for (const item of residues) {
         const finalStat = fstatSync(item.handle.fd)
         const canonicalPath = realpathSync(item.residue.path)
         const pathStat = lstatSync(item.residue.path)
         if (pathStat.isSymbolicLink() || canonicalPath !== item.residue.path
           || revisionOf(finalStat) !== revisionOf(item.stat)
           || revisionOf(pathStat) !== revisionOf(item.stat)
-          || (item.residue.kind === 'file' ? !pathStat.isFile() : !pathStat.isDirectory())) return false
+          || !pathStat.isFile()) return false
       }
       const finalJournalStat = fstatSync(journalHandle.fd)
       const canonicalJournalPath = realpathSync(journalPath)
@@ -2049,18 +1972,6 @@ export class DesktopPickerOwner {
     resolution: DestinationRecoveryRecord['resolution'],
   ): DestinationRecoveryRecord {
     const residues: DestinationResidueRecord[] = []
-    if (
-      destination.stagingRoot !== undefined &&
-      destination.stagingRevision !== undefined
-    ) {
-      residues.push({
-        disposition: 'scrubbed',
-        identity: destination.stagingRevision,
-        kind: 'directory',
-        path: destination.stagingRoot,
-        size: 0,
-      })
-    }
     const entry = destination.entries[0]
     if (entry?.stagedPath !== undefined && entry.stagedIdentity !== undefined) {
       residues.push({
@@ -2172,8 +2083,6 @@ export class DesktopPickerOwner {
     const labels = new Set<DesktopPickerLabel>()
     if (destination.journal !== undefined)
       labels.add(cast(labelOf(destination.journal.path)))
-    if (destination.stagingRoot !== undefined)
-      labels.add(cast(labelOf(destination.stagingRoot)))
     for (const entry of destination.entries)
       if (entry.stagedPath !== undefined)
         labels.add(cast(labelOf(entry.stagedPath)))
@@ -2216,68 +2125,6 @@ export class DesktopPickerOwner {
       if (cause instanceof TockTeamDesktopGrantError) throw cause
       return error('unsafe-target')
     }
-  }
-
-  private async assertStagingStable(
-    destination: DestinationSession,
-  ): Promise<void> {
-    if (
-      destination.stagingRoot === undefined ||
-      destination.stagingRevision === undefined
-    )
-      return error('closed')
-    const canonical = await this.safeRealpath(destination.stagingRoot)
-    const stat = await this.safeLstat(destination.stagingRoot)
-    if (
-      canonical !== destination.stagingRoot ||
-      stat === undefined ||
-      !stat.isDirectory() ||
-      ownedIdentityOf(stat) !== destination.stagingRevision
-    )
-      return error('unsafe-target')
-  }
-
-  private async assertStagedAncestors(entry: DestinationEntry): Promise<void> {
-    for (const ancestor of entry.stagedAncestors) {
-      const stat = await this.safeLstat(ancestor.path)
-      if (stat === undefined || !stat.isDirectory() || stat.isSymbolicLink()
-        || identityOf(stat) !== ancestor.identity || await this.safeRealpath(ancestor.path) !== ancestor.path) return error('changed')
-    }
-  }
-
-  private async ensureStagedParent(destination: DestinationSession, stagedPath: string): Promise<Array<{ identity: string; path: string }>> {
-    const stagingRoot = destination.stagingRoot
-    if (stagingRoot === undefined) return error('closed')
-    const parent = dirname(stagedPath)
-    const relativeParent = relative(stagingRoot, parent)
-    if (relativeParent === '..' || relativeParent.startsWith(`..${sep}`) || isAbsolute(relativeParent)) return error('unsafe-target')
-    const ancestors: Array<{ identity: string; path: string }> = []
-    let current = stagingRoot
-    for (const segment of relativeParent.split(sep).filter(Boolean)) {
-      current = join(current, segment)
-      try { await mkdir(current, { recursive: false, mode: 0o700 }) } catch (cause) {
-        if ((cause as NodeJS.ErrnoException).code !== 'EEXIST') throw cause
-      }
-      const stat = await this.safeLstat(current)
-      if (stat === undefined || !stat.isDirectory() || stat.isSymbolicLink()
-        || await this.safeRealpath(current) !== current) return error('unsafe-target')
-      ancestors.push({ identity: identityOf(stat), path: current })
-    }
-    return ancestors
-  }
-
-  private async ensureStaging(destination: DestinationSession): Promise<void> {
-    if (destination.stagingRoot !== undefined) return
-    const stagingRoot = join(
-      dirname(destination.path),
-      `.tockteam-picker-stage-${this.options.randomId()}`,
-    )
-    await mkdir(stagingRoot, { recursive: false, mode: 0o700 })
-    const stat = await this.safeLstat(stagingRoot)
-    if (stat === undefined || !stat.isDirectory() || stat.isSymbolicLink())
-      return error('unsafe-target')
-    destination.stagingRoot = stagingRoot
-    destination.stagingRevision = ownedIdentityOf(stat)
   }
 
   private async closeLockedPlan(authorization: string, plan: LockedDestinationPlan): Promise<void> {
@@ -2342,10 +2189,6 @@ export class DesktopPickerOwner {
         const stat = await this.safeLstat(entry.stagedPath)
         if (stat === undefined || !stat.isFile() || ownedIdentityOf(stat) !== entry.stagedIdentity || Number(stat.size) !== 0) unresolved = true
       }
-    }
-    if (destination.stagingRoot !== undefined && destination.stagingRevision !== undefined) {
-      const stat = await this.safeLstat(destination.stagingRoot)
-      if (stat === undefined || !stat.isDirectory() || ownedIdentityOf(stat) !== destination.stagingRevision) unresolved = true
     }
     if (!unresolved && destination.journal !== undefined) {
       try {

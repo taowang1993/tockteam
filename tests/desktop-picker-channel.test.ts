@@ -284,7 +284,7 @@ test('provider unload waits admitted writes and scrubs their plaintext', async (
 
   const stages = (await readdir(root)).filter(name => name.startsWith('.tockteam-picker-stage-'))
   assert.equal(stages.length, 1)
-  assert.equal((await readFile(join(root, stages[0] as string, 'selected-file'))).byteLength, 0)
+  assert.equal((await readFile(join(root, stages[0] as string))).byteLength, 0)
   const reported = await provider.abortDestination({ session: begun.session })
   assert.equal(reported.status, 'already-closed')
   assert.equal(reported.cleanup.status, 'scrubbed')

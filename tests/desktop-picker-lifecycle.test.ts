@@ -338,11 +338,11 @@ test('moved destination parent reports unresolved residue instead of false scrub
   assert.equal(aborted.stagedBytes, bytes.length)
   const stage = (await readdir(moved)).find(name => name.startsWith('.tockteam-picker-stage-'))
   assert.ok(stage)
-  assert.equal((await readFile(join(moved, stage, 'selected-file'))).byteLength, 0)
+  assert.equal((await readFile(join(moved, stage))).byteLength, 0)
   await owner.dispose()
 })
 
-test('replaced staging directory is never recursively removed and retained bytes are scrubbed', async () => {
+test('replaced staging leaf is preserved while retained bytes are scrubbed', async () => {
   const root = await canonicalTemp('tockteam-picker-replaced-stage-')
   const activeVault = await canonicalTemp('tockteam-picker-active-')
   const output = join(root, 'output.html')
@@ -371,15 +371,14 @@ test('replaced staging directory is never recursively removed and retained bytes
   const stage = join(root, stageName)
   const moved = `${stage}-moved`
   await rename(stage, moved)
-  await mkdir(stage)
-  await writeFile(join(stage, 'sentinel'), 'keep')
+  await writeFile(stage, 'sentinel')
   await assert.rejects(owner.dispose(), /cleanup was incomplete/)
   const aborted = await owner.abortDestination({ session: begun.session })
   assert.equal(aborted.status, 'already-closed')
   assert.equal(aborted.cleanup.status, 'residual')
   assert.equal(aborted.stagedBytes, bytes.length)
-  assert.equal(await readFile(join(stage, 'sentinel'), 'utf8'), 'keep')
-  assert.equal((await readFile(join(moved, 'selected-file'))).byteLength, 0)
+  assert.equal(await readFile(stage, 'utf8'), 'sentinel')
+  assert.equal((await readFile(moved)).byteLength, 0)
 })
 
 test('finalize stage replacement scrubs confidential bytes through the retained handle', async () => {
@@ -402,8 +401,7 @@ test('finalize stage replacement scrubs confidential bytes through the retained 
       replacementStage = join(root, stageName)
       movedStage = `${replacementStage}-moved`
       await rename(replacementStage, movedStage)
-      await mkdir(replacementStage)
-      await writeFile(join(replacementStage, 'sentinel'), 'keep')
+      await writeFile(replacementStage, 'sentinel')
     },
   })
   await activate(owner)
@@ -418,15 +416,15 @@ test('finalize stage replacement scrubs confidential bytes through the retained 
   const locked = await owner.lockDestinationPlan({ ...plan, identity: operation, planDigest, selectionAuthorization: selection }, new AbortController().signal)
   const begun = await owner.beginDestination({ ...plan, authorization: locked.authorization, identity: operation, planDigest }, new AbortController().signal)
   await owner.writeDestinationChunk({ bytes: secret, offset: 0, planDigest, session: begun.session, target: { kind: 'selected-file' } }, new AbortController().signal)
-  await rejectsCode(owner.finalizeDestination({ expectedState: begun.expectedState, planDigest, session: begun.session }, new AbortController().signal), 'unsafe-target')
+  await rejectsCode(owner.finalizeDestination({ expectedState: begun.expectedState, planDigest, session: begun.session }, new AbortController().signal), 'changed')
   const closed = await owner.abortDestination({ session: begun.session })
   assert.equal(closed.status, 'already-closed')
   assert.equal(closed.cleanup.status, 'residual')
   assert.ok(movedStage)
-  assert.equal((await readFile(join(movedStage, 'selected-file'))).byteLength, 0)
+  assert.equal((await readFile(movedStage)).byteLength, 0)
   await owner.dispose()
-  assert.equal((await readFile(join(movedStage, 'selected-file'))).byteLength, 0)
-  assert.equal(await readFile(join(replacementStage as string, 'sentinel'), 'utf8'), 'keep')
+  assert.equal((await readFile(movedStage)).byteLength, 0)
+  assert.equal(await readFile(replacementStage as string, 'utf8'), 'sentinel')
 })
 
 test('destination mismatches and TOCTOU fail closed with staging cleanup', async () => {
@@ -614,29 +612,13 @@ test('valid retained tombstone is nonblocking before later mismatch and manual r
   await validRestart.dispose()
   const stageName = (await readdir(root)).find(name => name.startsWith('.tockteam-picker-stage-'))
   assert.ok(stageName)
-  const undeclared = join(root, stageName, 'undeclared-child')
-  await writeFile(undeclared, 'unexpected')
-  const undeclaredOwner = new DesktopPickerOwner({
-    isAvailable: () => true,
-    recoveryRoot,
-    showOpenDialog: async () => ({ canceled: false, filePath: activeVault }),
-    showSaveDialog: async () => ({ canceled: false, filePath: join(root, 'undeclared-next.html') }),
-  })
-  await undeclaredOwner.ready()
-  await activate(undeclaredOwner)
-  const undeclaredOperation = identity('undeclared-residue')
-  const undeclaredSelection = await grant(undeclaredOwner, { identity: undeclaredOperation, kind: 'destination', purpose: 'export-html' })
-  await rejectsCode(undeclaredOwner.lockDestinationPlan({ ...nextPlan, identity: undeclaredOperation, planDigest: computeDesktopDestinationPlanDigest(nextPlan), selectionAuthorization: undeclaredSelection }, new AbortController().signal), 'recovery-required')
-  await undeclaredOwner.dispose()
-  await unlink(undeclared)
   await writeFile(output, 'edited-after-publication')
   const journalName = (await readdir(recoveryRoot)).find(name => name.startsWith('destination-'))
   assert.ok(journalName)
   const restarted = new DesktopPickerOwner({ isAvailable: () => true, recoveryRoot, showOpenDialog: async () => ({ canceled: true }), showSaveDialog: async () => ({ canceled: true }) })
   await restarted.ready()
   await restarted.dispose()
-  await unlink(join(root, stageName, 'selected-file'))
-  await rmdir(join(root, stageName))
+  await unlink(join(root, stageName))
   const manualOptions = {
     isAvailable: () => true,
     recoveryRoot,
@@ -715,10 +697,8 @@ test('forged resolved startup journal cannot hide unresolved plaintext', async (
   const activeVault = await canonicalTemp('tockteam-picker-active-')
   const recoveryRoot = await canonicalTemp('tockteam-picker-recovery-index-')
   const output = join(root, 'next.html')
-  const stageRoot = join(root, '.tockteam-picker-stage-orphan')
-  const stagePath = join(stageRoot, 'selected-file')
+  const stagePath = join(root, '.tockteam-picker-stage-orphan')
   const secret = Buffer.from('unresolved plaintext hidden by forged resolved record')
-  await mkdir(stageRoot, { mode: 0o700 })
   await writeFile(stagePath, secret, { mode: 0o600 })
   const parentStat = await lstat(root)
   await writeFile(join(recoveryRoot, 'destination-forged-resolved.json'), JSON.stringify({
@@ -964,7 +944,7 @@ test('abort checkpoints and owner disposal settle sessions and staging idempoten
   await rejectsCode(owner.writeDestinationChunk({ bytes: content, offset: 0, planDigest: destination.planDigest, session: begunDestination.session, target: { kind: 'selected-file' } }, controller.signal), 'aborted')
   assert.equal((await owner.abortDestination({ session: begunDestination.session })).status, 'already-closed')
   assert.equal((await owner.abortDestination({ session: begunDestination.session })).status, 'already-closed')
-  assert.equal(noStaging(await readdir(root)), false)
+  assert.equal(noStaging(await readdir(root)), true)
 
   checkpoint = undefined
   const disposeIdentity = identity('dispose-destination')

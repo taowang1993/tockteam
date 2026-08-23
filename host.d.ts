@@ -219,7 +219,9 @@ export type DesktopDestinationState = {
  * Destination policy is purpose-owned, not caller-configurable. Every purpose
  * publishes one opaque selected file with an exact digest and size. The
  * Import/Export owner, not Desktop, owns the versioned vault-backup archive
- * codec and its normalized nested manifest.
+ * codec and its normalized nested manifest. Deliberate same-user relocation or
+ * observation at the exact retained-fd write syscall is outside the Desktop
+ * Host threat model; ordinary parent drift still fails closed.
  */
 export type DesktopDestinationPlan = {
     entries: readonly [DesktopSelectedFilePlanEntry];
