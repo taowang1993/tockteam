@@ -696,6 +696,8 @@ function installDesktopPackages({ desktopOnly = false } = {}) {
         [join(root, 'dist', 'plugin.js'), 'dist/plugin.js'],
         [join(root, 'dist', 'client.js'), 'dist/client.js'],
         [join(root, 'dist', 'client.js.map'), 'dist/client.js.map'],
+        [join(root, 'dist', 'host.js'), 'dist/host.js'],
+        [join(root, 'host.d.ts'), 'host.d.ts'],
         [join(root, 'dist', 'cordis.patch.yml'), 'dist/cordis.patch.yml'],
       ],
     },

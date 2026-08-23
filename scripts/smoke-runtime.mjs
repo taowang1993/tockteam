@@ -75,6 +75,20 @@ const inspection = spawnSync(nodeBinary, [
 })
 assert.equal(inspection.status, 0, inspection.stderr || inspection.stdout)
 
+const stagedDesktopPackage = join(resources, 'dsh-runtime', 'node_modules', '@tockteam', 'desktop')
+assert.ok(existsSync(join(stagedDesktopPackage, 'dist', 'host.js')))
+assert.ok(existsSync(join(stagedDesktopPackage, 'host.d.ts')))
+const hostImport = spawnSync(nodeBinary, [
+  '--input-type=module',
+  '-e',
+  "import { TOCKTEAM_DESKTOP_PICKER_SERVICE } from '@tockteam/desktop/host'; if (TOCKTEAM_DESKTOP_PICKER_SERVICE !== 'tockTeamDesktopPicker') process.exit(1)",
+], {
+  cwd: join(resources, 'dsh-runtime'),
+  encoding: 'utf8',
+  env: runtimeEnvironment,
+})
+assert.equal(hostImport.status, 0, hostImport.stderr || hostImport.stdout)
+
 const pluginRoot = join(smokeRoot, 'smoke-plugin')
 mkdirSync(pluginRoot)
 writeFileSync(join(pluginRoot, 'package.json'), JSON.stringify({
