@@ -239,6 +239,7 @@ interface DestinationEntry {
 interface DestinationSession {
   expiresAt: number
   expectedState: DesktopDestinationState
+  finalizing: boolean
   identity: NativeOperationIdentity
   journal: DestinationJournal | undefined
   label: string
@@ -247,6 +248,8 @@ interface DestinationSession {
   parentIdentity: string
   path: string
   publicationLinked: boolean
+  resolveSettlement: (() => void) | undefined
+  settlement: Promise<void> | undefined
   purpose: DesktopExportPurpose
   totalBytes: number
 }
@@ -1025,6 +1028,7 @@ export class DesktopPickerOwner {
     const destination: DestinationSession = {
       expiresAt: this.options.now() + MAX_DESKTOP_GRANT_SESSION_MS,
       expectedState: locked.expectedState,
+      finalizing: false,
       identity: request.identity,
       journal: undefined,
       label: locked.label,
@@ -1039,6 +1043,8 @@ export class DesktopPickerOwner {
       parentIdentity: locked.parentIdentity,
       path: locked.path,
       publicationLinked: false,
+      resolveSettlement: undefined,
+      settlement: undefined,
       purpose: locked.purpose,
       totalBytes: locked.totalBytes,
     }
@@ -1150,6 +1156,8 @@ export class DesktopPickerOwner {
     )
       return error('invalid-entry')
     const destination = this.destination(request.session)
+    if (destination.finalizing) return error('replayed')
+    destination.finalizing = true
     if (signal.aborted) {
       await this.closeDestination(request.session, destination)
       return error('aborted')
@@ -1230,6 +1238,9 @@ export class DesktopPickerOwner {
       try {
         linkSync(selectedEntry.stagedPath, destination.path)
         destination.publicationLinked = true
+        destination.settlement = new Promise<void>(resolve => {
+          destination.resolveSettlement = resolve
+        })
       } catch (cause) {
         if ((cause as NodeJS.ErrnoException).code === 'EEXIST')
           return error('changed')
@@ -1303,6 +1314,8 @@ export class DesktopPickerOwner {
         status: 'partial',
       }
     } finally {
+      destination.resolveSettlement?.()
+      destination.resolveSettlement = undefined
       if (!destination.publicationLinked && this.destinations.get(request.session) === destination) {
         await this.closeDestination(request.session, destination)
       }
@@ -2379,12 +2392,11 @@ export class DesktopPickerOwner {
     const stagedBytes = destination.entries.reduce((sum, entry) => sum + entry.offset, 0)
     const stagedEntries = destination.entries.filter(entry => entry.offset > 0).length
     if (destination.publicationLinked) {
-      return {
-        cleanup: this.cleanupEvidence(destination, 'retained'),
-        stagedBytes,
-        stagedEntries,
-        status: 'aborted',
-      }
+      await destination.settlement
+      const settled = this.closedDestinations.get(session)
+      return settled === undefined
+        ? { cleanup: this.cleanupEvidence(destination, 'residual'), stagedBytes, stagedEntries, status: 'aborted' }
+        : { ...settled, status: 'already-closed' }
     }
     const cleanup = await this.cleanupDestination(destination)
     this.destinations.delete(session)
