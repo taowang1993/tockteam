@@ -43,7 +43,7 @@ test('picker channel authenticates, forwards opaque sessions, and rejects replay
   assert.equal((await owner.bindVaultSelection({ claim: consumed.claim, operationId: activationIdentity.operationId, vaultGeneration: 1, vaultId: 'vault-1' }, new AbortController().signal)).status, 'bound')
   const channel = new DesktopPickerChannel(owner)
   const environment = await channel.start()
-  const provider = new DesktopPickerProvider(environment)
+  const provider = new DesktopPickerProvider(environment, fetch, () => ({ active: true, generation: 1, id: 'vault-1' }))
   const unauthorized = await fetch(environment.endpoint, {
     method: 'POST',
     headers: { authorization: 'Bearer wrong', 'content-type': 'application/json' },

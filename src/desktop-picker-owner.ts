@@ -116,6 +116,7 @@ export interface DesktopPickerOwnerOptions {
 }
 
 interface ActiveVaultBoundary {
+  claim: string
   dev: string
   generation: number
   id: string
@@ -240,7 +241,7 @@ function identity(value: unknown): value is NativeOperationIdentity {
   if (value.vaultId !== null && !text(value.vaultId)) return false
   const generation = value.vaultGeneration
   if (typeof generation !== 'number' || !Number.isSafeInteger(generation) || generation < 0) return false
-  return generation === 0 ? value.vaultId === null : value.vaultId !== null
+  return value.vaultId === null || generation > 0
 }
 
 function sameIdentity(left: NativeOperationIdentity, right: NativeOperationIdentity): boolean {
@@ -566,6 +567,7 @@ export class DesktopPickerOwner {
       await this.clearSessions()
       if (signal.aborted || !this.options.isAvailable()) return { operationId, status: 'cancelled' }
       this.activeVault = {
+        claim: request.claim,
         dev: claim.dev,
         generation: request.vaultGeneration,
         id: request.vaultId,
@@ -584,9 +586,12 @@ export class DesktopPickerOwner {
     const claim = this.vaultSelectionClaims.get(request.claim)
     if (claim === undefined || claim.identity.operationId !== request.operationId) return
     this.vaultSelectionClaims.delete(request.claim)
-    if (claim.bound !== undefined && this.activeVault?.id === claim.bound.id
+    if (claim.bound !== undefined && this.activeVault?.claim === request.claim
+      && this.activeVault.id === claim.bound.id
       && this.activeVault.generation === claim.bound.generation) {
       await this.clearSessions()
+      this.grants.clear()
+      this.destinationPlans.clear()
       this.activeVault = undefined
     }
   }

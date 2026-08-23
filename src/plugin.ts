@@ -33,6 +33,12 @@ interface HostServices {
   bashEnv: BashEnvService
 }
 
+interface NoteVaultStateService {
+  readonly state:
+    | { active: false; generation: number }
+    | { active: true; generation: number; id: string }
+}
+
 interface HostContext extends MarketplaceToolContext {
   inject(names: string[], callback: (ctx: HostContext & HostServices) => void): void
   get(name: string): unknown
@@ -78,7 +84,9 @@ function desktopPrompt(capability: DesktopHostCapability): string {
 export function apply(ctx: HostContext): void {
   const capability = environmentCapability()
   const revealProvider = new DesktopRevealProvider(ctx)
-  const pickerProvider = new DesktopPickerProvider()
+  const pickerProvider = new DesktopPickerProvider(undefined, fetch, () => {
+    return (ctx.get('noteVault') as NoteVaultStateService | undefined)?.state
+  })
   const vaultSelectionProvider = new DesktopVaultSelectionProvider(ctx)
   // The runtime Service base registers the exact `tockTeamDesktopReveal` key.
   ctx.effect(() => async () => {

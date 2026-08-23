@@ -364,8 +364,10 @@ export declare class NoteVaultError extends Error {
 }
 export declare class NoteVaultRuntime extends Service {
     static Config: Schema<Config>;
+    private activeDesktopSelectionClaim;
     private readonly activeDesktopSelectionOperations;
     private readonly activeRevealOperations;
+    private readonly desktopSelectionCleanupOperations;
     private readonly context;
     private currentState;
     private readonly draftOperations;
@@ -380,20 +382,26 @@ export declare class NoteVaultRuntime extends Service {
     private readonly snapshotRetentionDays;
     private readonly stateRoot;
     private readonly treeConfig;
+    private vaultIdentity;
     private vaultRoot;
     private watcher;
     private watcherActive;
     private watcherToken;
     constructor(ctx: Context, config: Config);
+    private emitVaultActivation;
+    private queueDesktopSelectionClaimRelease;
     private openWatcher;
     private emitWatcherChange;
     private emitEntryChange;
     private emitFileMutation;
     get state(): NoteVaultState;
+    private invalidateActiveVault;
+    private assertActiveVaultBound;
     private captureExpectedVault;
     private assertCapturedVault;
     activateDesktopSelection(request: ActivateDesktopSelectionRequest, signal: AbortSignal): Promise<ActivateDesktopSelectionResult>;
     activate(vaultRoot: string, expectedGeneration: number): NoteVaultState;
+    private activateVault;
     listRecentVaults(): RecentVaultInfo[];
     revealEntry(request: RevealEntryRequest, signal: AbortSignal): Promise<RevealEntryResult>;
     activateRecentVault(id: string, expectedGeneration: number): NoteVaultState;

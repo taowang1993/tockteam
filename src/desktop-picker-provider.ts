@@ -14,6 +14,8 @@ import {
   type BeginDesktopDestinationResult,
   type BeginDesktopSourceRequest,
   type BeginDesktopSourceResult,
+  type DesktopDestinationPlanAuthorization,
+  type DesktopPickerIdentity,
   type DesktopPickerRequest,
   type DesktopPickerResult,
   type FinalizeDesktopDestinationRequest,
@@ -41,6 +43,11 @@ export interface DesktopPickerProviderEnvironment {
   endpoint?: string | undefined
   token?: string | undefined
 }
+
+export type DesktopPickerCurrentVault = () =>
+  | { active: false; generation: number }
+  | { active: true; generation: number; id: string }
+  | undefined
 
 const MAX_ERROR_TEXT = 256
 
@@ -77,8 +84,10 @@ export class DesktopPickerProvider implements TockTeamDesktopPickerService {
   private readonly token: string | undefined
   private readonly lifetime = new AbortController()
   private readonly fetcher: typeof fetch
-  private readonly sourceSessions = new Set<ReleaseDesktopSourceRequest['session']>()
-  private readonly destinationSessions = new Set<AbortDesktopDestinationRequest['session']>()
+  private readonly sourceSessions = new Map<ReleaseDesktopSourceRequest['session'], DesktopPickerIdentity>()
+  private readonly destinationSessions = new Map<AbortDesktopDestinationRequest['session'], DesktopPickerIdentity>()
+  private readonly destinationPlans = new Map<DesktopDestinationPlanAuthorization, DesktopPickerIdentity>()
+  private readonly currentVault: DesktopPickerCurrentVault | undefined
   private disposed = false
 
   constructor(
@@ -87,36 +96,44 @@ export class DesktopPickerProvider implements TockTeamDesktopPickerService {
       token: process.env.DSH_DESKTOP_PICKER_TOKEN,
     },
     fetcher: typeof fetch = fetch,
+    currentVault?: DesktopPickerCurrentVault,
   ) {
     this.endpoint = endpointOf(environment)
     this.token = environment.token
     this.fetcher = fetcher
+    this.currentVault = currentVault
   }
 
   async pick(request: DesktopPickerRequest, signal: AbortSignal): Promise<DesktopPickerResult> {
     if (signal.aborted) return { operationId: request.identity.operationId, status: 'cancelled' }
+    if (request.kind !== 'vault') this.assertCurrentVault(request.identity)
     return await this.call('pick', request, signal) as DesktopPickerResult
   }
 
   async beginSource(request: BeginDesktopSourceRequest, signal: AbortSignal): Promise<BeginDesktopSourceResult> {
+    this.assertCurrentVault(request.identity)
     const result = await this.call('beginSource', request, signal) as BeginDesktopSourceResult
-    this.sourceSessions.add(result.session)
+    this.sourceSessions.set(result.session, request.identity)
     return result
   }
 
   async listSource(request: ListDesktopSourceRequest, signal: AbortSignal): Promise<ListDesktopSourceResult> {
+    await this.assertSourceSession(request.session)
     return await this.call('listSource', request, signal) as ListDesktopSourceResult
   }
 
   async statSource(request: StatDesktopSourceRequest, signal: AbortSignal): Promise<StatDesktopSourceResult> {
+    await this.assertSourceSession(request.session)
     return await this.call('statSource', request, signal) as StatDesktopSourceResult
   }
 
   async readSource(request: ReadDesktopSourceRequest, signal: AbortSignal): Promise<ReadDesktopSourceResult> {
+    await this.assertSourceSession(request.session)
     return await this.call('readSource', request, signal) as ReadDesktopSourceResult
   }
 
   async revalidateSource(request: RevalidateDesktopSourceRequest, signal: AbortSignal): Promise<RevalidateDesktopSourceResult> {
+    await this.assertSourceSession(request.session)
     return await this.call('revalidateSource', request, signal) as RevalidateDesktopSourceResult
   }
 
@@ -133,23 +150,36 @@ export class DesktopPickerProvider implements TockTeamDesktopPickerService {
     request: LockDesktopDestinationPlanRequest,
     signal: AbortSignal,
   ): Promise<LockDesktopDestinationPlanResult> {
-    return await this.call('lockDestinationPlan', request, signal) as LockDesktopDestinationPlanResult
+    this.assertCurrentVault(request.identity)
+    const result = await this.call('lockDestinationPlan', request, signal) as LockDesktopDestinationPlanResult
+    this.destinationPlans.set(result.authorization, request.identity)
+    return result
   }
 
   async revokeDestinationPlan(
     request: RevokeDesktopDestinationPlanRequest,
   ): Promise<RevokeDesktopDestinationPlanResult> {
     if (this.disposed) return { status: 'already-closed' }
-    return await this.call('revokeDestinationPlan', request) as RevokeDesktopDestinationPlanResult
+    try {
+      return await this.call('revokeDestinationPlan', request) as RevokeDesktopDestinationPlanResult
+    } finally {
+      this.destinationPlans.delete(request.authorization)
+    }
   }
 
   async beginDestination(request: BeginDesktopDestinationRequest, signal: AbortSignal): Promise<BeginDesktopDestinationResult> {
+    this.assertCurrentVault(request.identity)
+    const planIdentity = this.destinationPlans.get(request.authorization)
+    if (planIdentity === undefined || planIdentity.vaultId !== request.identity.vaultId
+      || planIdentity.vaultGeneration !== request.identity.vaultGeneration) throw new TockTeamDesktopGrantError('stale')
     const result = await this.call('beginDestination', request, signal) as BeginDesktopDestinationResult
-    this.destinationSessions.add(result.session)
+    this.destinationPlans.delete(request.authorization)
+    this.destinationSessions.set(result.session, request.identity)
     return result
   }
 
   async writeDestinationChunk(request: WriteDesktopDestinationChunkRequest, signal: AbortSignal): Promise<WriteDesktopDestinationChunkResult> {
+    await this.assertDestinationSession(request.session)
     return await this.call('writeDestinationChunk', {
       ...request,
       bytes: Buffer.from(request.bytes).toString('base64'),
@@ -157,6 +187,7 @@ export class DesktopPickerProvider implements TockTeamDesktopPickerService {
   }
 
   async finalizeDestination(request: FinalizeDesktopDestinationRequest, signal: AbortSignal): Promise<FinalizeDesktopDestinationResult> {
+    await this.assertDestinationSession(request.session)
     try {
       return await this.call('finalizeDestination', request, signal) as FinalizeDesktopDestinationResult
     } finally {
@@ -176,13 +207,47 @@ export class DesktopPickerProvider implements TockTeamDesktopPickerService {
   async dispose(): Promise<void> {
     if (this.disposed) return
     await Promise.allSettled([
-      ...[...this.sourceSessions].map(session => this.call('releaseSource', { session })),
-      ...[...this.destinationSessions].map(session => this.call('abortDestination', { session })),
+      ...[...this.sourceSessions.keys()].map(session => this.call('releaseSource', { session })),
+      ...[...this.destinationSessions.keys()].map(session => this.call('abortDestination', { session })),
+      ...[...this.destinationPlans.keys()].map(authorization => this.call('revokeDestinationPlan', { authorization })),
     ])
     this.sourceSessions.clear()
     this.destinationSessions.clear()
+    this.destinationPlans.clear()
     this.disposed = true
     this.lifetime.abort()
+  }
+
+  private assertCurrentVault(identity: DesktopPickerIdentity): void {
+    const state = this.currentVault?.()
+    if (state === undefined) throw new TockTeamDesktopGrantError('owner-lost')
+    if (!state.active || state.id !== identity.vaultId || state.generation !== identity.vaultGeneration) {
+      throw new TockTeamDesktopGrantError('stale')
+    }
+  }
+
+  private async assertSourceSession(session: ReleaseDesktopSourceRequest['session']): Promise<void> {
+    const identity = this.sourceSessions.get(session)
+    if (identity === undefined) throw new TockTeamDesktopGrantError('closed')
+    try {
+      this.assertCurrentVault(identity)
+    } catch (cause) {
+      await this.call('releaseSource', { session }).catch(() => undefined)
+      this.sourceSessions.delete(session)
+      throw cause
+    }
+  }
+
+  private async assertDestinationSession(session: AbortDesktopDestinationRequest['session']): Promise<void> {
+    const identity = this.destinationSessions.get(session)
+    if (identity === undefined) throw new TockTeamDesktopGrantError('closed')
+    try {
+      this.assertCurrentVault(identity)
+    } catch (cause) {
+      await this.call('abortDestination', { session }).catch(() => undefined)
+      this.destinationSessions.delete(session)
+      throw cause
+    }
   }
 
   async nativeRequest(method: string, request: unknown, signal?: AbortSignal): Promise<unknown> {

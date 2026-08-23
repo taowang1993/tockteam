@@ -2265,7 +2265,7 @@ packages:
     engines: {node: '>=14.14'}
 
   tockbot-note-runtime@file:vendor/tockbot-note-runtime-0.1.2.tgz:
-    resolution: {integrity: sha512-xUKlar4MfvrmBXNAZK1fjmSILpVU/c8DBkVb93VxCiRw/oZty9vK3+6gxFBh4TMmoTZSE7guXBxEWBYg+oSmEw==, tarball: file:vendor/tockbot-note-runtime-0.1.2.tgz}
+    resolution: {integrity: sha512-pulRr47yJFB1QpBgpzEvIRQguMPPd1d4VnBksCTDaO+g5B0l9KZBOlx22J9rdY4Sv0Q19mjgIaqwSVGZihW+1g==, tarball: file:vendor/tockbot-note-runtime-0.1.2.tgz}
     version: 0.1.2
     engines: {node: ^22.19.0 || >=24.0.0}
     peerDependencies:
