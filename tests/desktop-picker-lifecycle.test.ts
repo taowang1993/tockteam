@@ -21,7 +21,7 @@ import {
   type DesktopSha256,
   type NativeOperationIdentity,
 } from '../src/host-contract.ts'
-import { DesktopPickerOwner, type DesktopPickerCheckpoint } from '../src/desktop-picker-owner.ts'
+import { DesktopPickerOwner, type DesktopPickerCheckpoint, type DesktopPickerDialogOptions } from '../src/desktop-picker-owner.ts'
 
 async function canonicalTemp(prefix: string): Promise<string> {
   return await realpath(await mkdtemp(join(tmpdir(), prefix)))
@@ -884,6 +884,7 @@ test('root caps, purpose filters, trust revocation, and active-vault overlap fai
   await writeFile(wrongCsv, 'csv')
   await writeFile(restoreFile, 'restore')
   let available = true
+  let restoreDialog: DesktopPickerDialogOptions | undefined
   const selections = new Map<string, string>([
     ['activate', activeVault],
     ['markdown-zip', oversized],
@@ -894,6 +895,7 @@ test('root caps, purpose filters, trust revocation, and active-vault overlap fai
   const owner = new DesktopPickerOwner({
     isAvailable: () => available,
     showOpenDialog: async options => {
+      if (options.purpose === 'restore-backup') restoreDialog = options
       const filePath = selections.get(options.purpose)
       return filePath === undefined ? { canceled: true } : { canceled: false, filePath }
     },
@@ -912,8 +914,26 @@ test('root caps, purpose filters, trust revocation, and active-vault overlap fai
 
   const wrong = await owner.pick({ identity: identity('wrong-csv'), kind: 'source', purpose: 'csv' }, new AbortController().signal)
   assert.equal(wrong.status, 'denied')
-  const restore = await owner.pick({ identity: identity('restore-file'), kind: 'source', purpose: 'restore-backup' }, new AbortController().signal)
-  assert.equal(restore.status, 'denied')
+  const restoreIdentity = identity('restore-file')
+  const restore = await owner.pick({ identity: restoreIdentity, kind: 'source', purpose: 'restore-backup' }, new AbortController().signal)
+  assert.equal(restore.status, 'selected')
+  assert.deepEqual(restoreDialog, {
+    directory: false,
+    extensions: ['zip'],
+    file: true,
+    kind: 'open',
+    purpose: 'restore-backup',
+  })
+  if (restore.status === 'selected') {
+    const source = await owner.beginSource({
+      authorization: restore.authorization,
+      identity: restoreIdentity,
+      limits,
+      purpose: 'restore-backup',
+    }, new AbortController().signal)
+    assert.equal(source.root.kind, 'file')
+    assert.equal((await owner.releaseSource({ session: source.session })).status, 'released')
+  }
 
   const trustIdentity = identity('trust-loss')
   const trustAuthorization = await grant(owner, { identity: trustIdentity, kind: 'source', purpose: 'markdown-zip' })

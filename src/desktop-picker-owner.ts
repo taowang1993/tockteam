@@ -551,13 +551,11 @@ export class DesktopPickerOwner {
     const purpose = request.purpose
     const directory = purpose === 'activate'
       || purpose === 'markdown-folder'
-      || purpose === 'restore-backup'
       || purpose === 'html'
       || purpose === 'apple-journal'
       || purpose === 'textbundle'
     const file = purpose !== 'activate'
       && purpose !== 'markdown-folder'
-      && purpose !== 'restore-backup'
     const extensions = purpose === 'export-html' ? ['html']
       : purpose === 'export-pdf' ? ['pdf']
         : purpose === 'markdown-zip' ? ['zip']
@@ -567,7 +565,8 @@ export class DesktopPickerOwner {
                 : purpose === 'google-keep' ? ['zip']
                   : purpose === 'roam-research' ? ['json']
                     : purpose === 'textbundle' ? ['textpack', 'textbundle', 'zip']
-                      : []
+                      : purpose === 'restore-backup' ? ['zip']
+                        : []
     const result = await abortableDialog(
       purpose === 'export-html' || purpose === 'export-pdf' || purpose === 'vault-backup'
         ? this.options.showSaveDialog({ kind: 'save', purpose, directory: false, file: true, extensions })
@@ -1416,7 +1415,7 @@ export class DesktopPickerOwner {
 
   private sourceExtensionAllowed(path: string, purpose: DesktopPickerRequest['purpose']): boolean {
     const extension = extname(path).slice(1).toLowerCase()
-    if (purpose === 'markdown-zip' || purpose === 'google-keep') return extension === 'zip'
+    if (purpose === 'markdown-zip' || purpose === 'google-keep' || purpose === 'restore-backup') return extension === 'zip'
     if (purpose === 'csv') return extension === 'csv'
     if (purpose === 'bear-backup') return extension === 'bear2bk'
     if (purpose === 'evernote') return extension === 'enex'
