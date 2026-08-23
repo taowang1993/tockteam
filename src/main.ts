@@ -9,6 +9,7 @@ import {
   screen,
   session,
   shell,
+  systemPreferences,
   type MenuItemConstructorOptions,
   type Session,
   type WebContents,
@@ -45,6 +46,8 @@ import {
 } from './web-clip-frame.ts'
 import { DshRuntimeSupervisor, runDshCommand, type DshRuntimeOptions, type RuntimeExit } from './runtime.ts'
 import { DesktopDispatchChannel } from './desktop-dispatch-channel.ts'
+import { DesktopMicrophoneChannel } from './desktop-microphone-channel.ts'
+import { DesktopMicrophoneOwner } from './desktop-microphone-owner.ts'
 import { DesktopPickerChannel } from './desktop-picker-channel.ts'
 import { DesktopPickerOwner, type DesktopPickerDialogOptions } from './desktop-picker-owner.ts'
 import { DesktopRevealChannel } from './desktop-reveal-channel.ts'
@@ -110,6 +113,8 @@ function pickerDialogFilters(options: DesktopPickerDialogOptions): Electron.File
 let desktopPickerOwner!: DesktopPickerOwner
 let desktopPickerChannel!: DesktopPickerChannel
 let desktopDispatchChannel!: DesktopDispatchChannel
+let desktopMicrophoneOwner!: DesktopMicrophoneOwner
+let desktopMicrophoneChannel!: DesktopMicrophoneChannel
 
 function initializeDesktopPicker(): void {
   desktopPickerOwner = new DesktopPickerOwner({
@@ -160,6 +165,16 @@ function initializeDesktopPicker(): void {
     },
     isAvailable: () => isEligibleDesktopRevealWindow(),
   })
+  desktopMicrophoneOwner = new DesktopMicrophoneOwner({
+    isAvailable: () => isEligibleDesktopRevealWindow(),
+    isCurrent: identity => desktopPickerOwner.matchesActiveIdentity(identity),
+    requestAccess: async signal => {
+      if (signal.aborted) return false
+      if (process.platform !== 'darwin') return true
+      return await systemPreferences.askForMediaAccess('microphone')
+    },
+  })
+  desktopMicrophoneChannel = new DesktopMicrophoneChannel(desktopMicrophoneOwner)
 }
 
 function appendLog(stream: 'desktop' | 'stderr' | 'stdout', line: string): void {
@@ -232,6 +247,11 @@ function runtimeEnvironment(
   if (dispatch !== undefined) {
     environment.DSH_DESKTOP_DISPATCH_ENDPOINT = dispatch.endpoint
     environment.DSH_DESKTOP_DISPATCH_TOKEN = dispatch.token
+  }
+  const microphone = overrides.preview === undefined ? desktopMicrophoneChannel.environment : undefined
+  if (microphone !== undefined) {
+    environment.DSH_DESKTOP_MICROPHONE_ENDPOINT = microphone.endpoint
+    environment.DSH_DESKTOP_MICROPHONE_TOKEN = microphone.token
   }
   if (overrides.preview !== undefined) {
     environment.DSH_DESKTOP_PREVIEW = '1'
@@ -552,6 +572,7 @@ function handleRuntimeExit(exit: RuntimeExit): void {
     desktopRevealChannel.stop(),
     desktopPickerChannel.stop(),
     desktopDispatchChannel.stop(),
+    desktopMicrophoneChannel.stop(),
   ]).then(async () => {
     await showSplash({
       error: true,
@@ -567,6 +588,7 @@ async function startRuntime(): Promise<void> {
   await desktopRevealChannel.start()
   await desktopPickerChannel.start()
   await desktopDispatchChannel.start()
+  await desktopMicrophoneChannel.start()
   try {
     const supervisor = new DshRuntimeSupervisor(runtimeOptions())
     runtime = supervisor
@@ -579,6 +601,7 @@ async function startRuntime(): Promise<void> {
     flushQueuedPaths()
     flushQueuedProtocols()
   } catch (error) {
+    await desktopMicrophoneChannel.stop()
     await desktopDispatchChannel.stop()
     await desktopPickerChannel.stop()
     await desktopRevealChannel.stop()
@@ -641,6 +664,7 @@ async function stopLiveForMarketplace(): Promise<void> {
   transitioning = true
   await showSplash({ message: '正在应用插件 Profile…' })
   await runtime?.stop()
+  await desktopMicrophoneChannel.stop()
   await desktopDispatchChannel.stop()
   await desktopPickerChannel.stop()
   await desktopRevealChannel.stop()
@@ -663,6 +687,7 @@ async function restartRuntime(message = '正在重新启动 TockTeam…'): Promi
   try {
     await showSplash({ message })
     await runtime?.stop()
+    await desktopMicrophoneChannel.stop()
     await desktopDispatchChannel.stop()
     await desktopPickerChannel.stop()
     await desktopRevealChannel.stop()
@@ -715,6 +740,7 @@ async function installLocalPlugin(): Promise<void> {
   try {
     await showSplash({ message: '正在安装 DSH 插件…' })
     await runtime?.stop()
+    await desktopMicrophoneChannel.stop()
     await desktopDispatchChannel.stop()
     await desktopPickerChannel.stop()
     await desktopRevealChannel.stop()
@@ -1011,6 +1037,13 @@ async function bootstrap(): Promise<void> {
   })
   installIpc()
   session.defaultSession.setPermissionRequestHandler((webContents, permission, callback, details) => {
+    if (permission === 'media' && 'mediaTypes' in details && details.mediaTypes.includes('audio')
+      && details.isMainFrame
+      && webContents === mainWindow?.webContents
+      && originOf(details.requestingUrl ?? webContents.getURL()) === runtimeOrigin) {
+      callback(desktopMicrophoneOwner.consumePermission())
+      return
+    }
     callback(allowsRuntimeClipboardWrite({
       isMainFrame: details.isMainFrame,
       permission,
@@ -1023,6 +1056,10 @@ async function bootstrap(): Promise<void> {
     }))
   })
   session.defaultSession.setPermissionCheckHandler((webContents, permission, requestingOrigin, details) => {
+    if (permission === 'media' && details.mediaType === 'audio'
+      && details.isMainFrame
+      && webContents === mainWindow?.webContents
+      && requestingOrigin === runtimeOrigin) return desktopMicrophoneOwner.checkPermission()
     return allowsRuntimeClipboardWrite({
       isMainFrame: details.isMainFrame,
       permission,
@@ -1062,6 +1099,7 @@ async function bootstrap(): Promise<void> {
     quitting = true
     void Promise.allSettled([
       runtime?.stop() ?? Promise.resolve(),
+      desktopMicrophoneChannel.stop(),
       desktopDispatchChannel.stop(),
       desktopPickerChannel.stop(),
       desktopRevealChannel.stop(),
