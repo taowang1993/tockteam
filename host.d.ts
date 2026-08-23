@@ -287,9 +287,7 @@ export type DesktopCleanupEvidence = {
 };
 export type FinalizeDesktopDestinationResult = {
     bytes: number;
-    cleanup: {
-        status: 'complete';
-    };
+    cleanup: DesktopCleanupEvidence;
     entries: number;
     label: DesktopPickerLabel;
     planDigest: DesktopSha256;
