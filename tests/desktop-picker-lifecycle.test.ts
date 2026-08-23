@@ -432,6 +432,7 @@ test('startup recovery index restores a moved target without another plan lock',
   await writeFile(commitPath, 'new')
   await writeFile(snapshotPath, 'old')
   const backupStat = await lstat(backupPath)
+  const parentStat = await lstat(root)
   await writeFile(journalPath, JSON.stringify({
     backupPath,
     commitPath,
@@ -441,6 +442,7 @@ test('startup recovery index restores a moved target without another plan lock',
     oldDigest: sha('old'),
     oldIdentity: `${String(backupStat.dev)}:${String(backupStat.ino)}`,
     oldSize: 3,
+    parentIdentity: `${String(parentStat.dev)}:${String(parentStat.ino)}`,
     snapshotPath,
     state: 'moved',
     version: 1,
@@ -469,6 +471,7 @@ test('published journal with a missing target restores the exact reviewed backup
   await writeFile(backupPath, old)
   await writeFile(snapshotPath, old)
   const backupStat = await lstat(backupPath)
+  const parentStat = await lstat(root)
   await writeFile(join(recoveryRoot, 'destination-published.json'), JSON.stringify({
     backupPath,
     commitPath: null,
@@ -478,6 +481,7 @@ test('published journal with a missing target restores the exact reviewed backup
     oldDigest: sha(old),
     oldIdentity: `${String(backupStat.dev)}:${String(backupStat.ino)}`,
     oldSize: old.length,
+    parentIdentity: `${String(parentStat.dev)}:${String(parentStat.ino)}`,
     snapshotPath,
     state: 'published',
     version: 1,
@@ -508,6 +512,7 @@ test('startup recovery never overwrites an unknown occupied target and blocks th
   await writeFile(commitPath, 'reviewed-new')
   await writeFile(snapshotPath, 'reviewed-old')
   const backupStat = await lstat(backupPath)
+  const parentStat = await lstat(root)
   await writeFile(join(recoveryRoot, 'destination-occupied.json'), JSON.stringify({
     backupPath,
     commitPath,
@@ -517,6 +522,7 @@ test('startup recovery never overwrites an unknown occupied target and blocks th
     oldDigest: sha('reviewed-old'),
     oldIdentity: `${String(backupStat.dev)}:${String(backupStat.ino)}`,
     oldSize: 'reviewed-old'.length,
+    parentIdentity: `${String(parentStat.dev)}:${String(parentStat.ino)}`,
     snapshotPath,
     state: 'moved',
     version: 1,
