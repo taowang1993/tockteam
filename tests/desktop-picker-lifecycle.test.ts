@@ -306,6 +306,44 @@ test('first destination write rechecks a replaced parent before accepting payloa
   await owner.dispose()
 })
 
+test('journal checkpoint stage drift is rebound before any payload write', async () => {
+  const root = await canonicalTemp('tockteam-picker-journal-stage-drift-')
+  const activeVault = await canonicalTemp('tockteam-picker-active-')
+  const output = join(root, 'output.html')
+  let movedStage: string | undefined
+  let foreignStage: string | undefined
+  const owner = new DesktopPickerOwner({
+    isAvailable: () => true,
+    showOpenDialog: async () => ({ canceled: false, filePath: activeVault }),
+    showSaveDialog: async () => ({ canceled: false, filePath: output }),
+    onCheckpoint: async checkpoint => {
+      if (checkpoint !== 'journal-prepared') return
+      const stageName = (await readdir(root)).find(name => name.startsWith('.tockteam-picker-stage-'))
+      assert.ok(stageName)
+      foreignStage = join(root, stageName)
+      movedStage = `${foreignStage}-recorded-owner`
+      await rename(foreignStage, movedStage)
+      await writeFile(foreignStage, 'foreign-sentinel')
+    },
+  })
+  await activate(owner)
+  const operation = identity('journal-stage-drift')
+  const selection = await grant(owner, { identity: operation, kind: 'destination', purpose: 'export-html' })
+  const secret = new TextEncoder().encode('must not be written after checkpoint drift')
+  const { begun, planDigest } = await lockAndBegin(owner, selection, operation, {
+    entries: [{ digest: sha(secret), size: secret.length, target: { kind: 'selected-file' } }],
+    purpose: 'export-html',
+    totalBytes: secret.length,
+  })
+  await rejectsCode(owner.writeDestinationChunk({ bytes: secret, offset: 0, planDigest, session: begun.session, target: { kind: 'selected-file' } }, new AbortController().signal), 'changed')
+  assert.ok(movedStage)
+  assert.ok(foreignStage)
+  assert.equal((await readFile(movedStage)).byteLength, 0)
+  assert.equal(await readFile(foreignStage, 'utf8'), 'foreign-sentinel')
+  assert.equal((await owner.abortDestination({ session: begun.session })).cleanup.status, 'residual')
+  await owner.dispose()
+})
+
 test('moved destination parent reports unresolved residue instead of false scrubbed cleanup', async () => {
   const root = await canonicalTemp('tockteam-picker-moved-parent-')
   const moved = `${root}-moved`

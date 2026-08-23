@@ -1113,8 +1113,10 @@ export class DesktopPickerOwner {
         await this.createRecoveryJournal(destination)
         await this.options.onCheckpoint?.('journal-prepared', signal)
       }
+      await this.assertStagedEntryStable(entry, entry.offset)
       this.assertDestinationParent(destination.path, destination.parentIdentity)
       await handle.write(request.bytes, 0, request.bytes.length, entry.offset)
+      await this.assertStagedEntryStable(entry, entry.offset + request.bytes.length)
       this.assertDestinationParent(destination.path, destination.parentIdentity)
     } catch (cause) {
       if (blocksRecovery(cause)) this.recoveryBlockedDestinations.add(destination.path)
@@ -2113,6 +2115,20 @@ export class DesktopPickerOwner {
       const extension = extname(selectedPath).slice(1).toLowerCase()
       if (extension !== request.purpose.slice('export-'.length)) return error('purpose-mismatch')
     }
+  }
+
+  private async assertStagedEntryStable(entry: DestinationEntry, expectedSize: number): Promise<void> {
+    if (entry.handle === undefined || entry.stagedIdentity === undefined || entry.stagedPath === undefined) return error('closed')
+    const [handleStat, canonical, pathStat] = await Promise.all([
+      entry.handle.stat(),
+      this.safeRealpath(entry.stagedPath),
+      this.safeLstat(entry.stagedPath),
+    ])
+    if (!handleStat.isFile() || Number(handleStat.size) !== expectedSize
+      || ownedIdentityOf(handleStat) !== entry.stagedIdentity
+      || canonical !== entry.stagedPath || pathStat === undefined || !pathStat.isFile()
+      || pathStat.isSymbolicLink() || ownedIdentityOf(pathStat) !== entry.stagedIdentity
+      || Number(pathStat.size) !== expectedSize) return error('changed')
   }
 
   private assertDestinationParent(path: string, expectedIdentity: string): void {
