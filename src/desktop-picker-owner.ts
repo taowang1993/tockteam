@@ -1218,9 +1218,13 @@ export class DesktopPickerOwner {
         )
       )
         return error('changed')
+      this.assertAuthority(destination.identity)
+      if (signal.aborted) return error('aborted')
       this.assertLiveStageAuthority(destination, selectedEntry, selectedEntry.entry.size)
       if (!this.verifyJournalPath(destination.journal)) return error('changed')
       if (!await this.verifyHandleDigest(selectedEntry.handle, selectedEntry.entry.size, selectedEntry.digest)) return error('digest-mismatch')
+      this.assertAuthority(destination.identity)
+      if (signal.aborted) return error('aborted')
       this.assertLiveStageAuthority(destination, selectedEntry, selectedEntry.entry.size)
       if (!this.verifyJournalPath(destination.journal)) return error('changed')
       try {
