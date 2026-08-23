@@ -160,6 +160,7 @@ let desktopPopOutChannel!: DesktopPopOutChannel
 let desktopPrintExportOwner!: DesktopPrintExportOwner
 let desktopPrintExportChannel!: DesktopPrintExportChannel
 const popOutWindows = new Map<string, BrowserWindow>()
+const popOutRouteTokens = new Map<string, string>()
 
 function initializeDesktopPicker(): void {
   desktopPickerOwner = new DesktopPickerOwner({
@@ -226,6 +227,7 @@ function initializeDesktopPicker(): void {
     native: {
       close(windowId) {
         const window = popOutWindows.get(windowId)
+        popOutRouteTokens.delete(windowId)
         if (window !== undefined && !window.isDestroyed()) window.destroy()
       },
       focus(windowId) {
@@ -241,9 +243,8 @@ function initializeDesktopPicker(): void {
       },
       async open(relativePath, routeToken, onClosed) {
         if (runtimeUrl === undefined || runtimeOrigin === undefined) throw new Error('Desktop runtime is unavailable')
-        const target = new URL('/tocktutor', runtimeUrl)
-        target.searchParams.set('note', relativePath)
-        target.searchParams.set('popout', routeToken)
+        const encodedPath = relativePath.split('/').map(encodeURIComponent).join('/')
+        const target = new URL(`/tocktutor/${encodedPath}`, runtimeUrl)
         const window = new BrowserWindow({
           width: 840,
           height: 720,
@@ -259,12 +260,14 @@ function initializeDesktopPicker(): void {
         })
         const windowId = String(window.webContents.id)
         popOutWindows.set(windowId, window)
+        popOutRouteTokens.set(windowId, routeToken)
         window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
         window.webContents.on('will-navigate', (event, url) => {
           if (originOf(url) !== runtimeOrigin) event.preventDefault()
         })
         window.once('closed', () => {
           popOutWindows.delete(windowId)
+          popOutRouteTokens.delete(windowId)
           onClosed()
         })
         await window.loadURL(target.href)

@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 import { DesktopPopOutOwner } from '../src/desktop-popout-owner.ts'
 
@@ -32,6 +33,15 @@ function fixture() {
   })
   return { closed, focused, owner }
 }
+
+test('Electron pop-out route matches Workbench pathname ownership and keeps token main-only', () => {
+  const main = readFileSync(new URL('../src/main.ts', import.meta.url), 'utf8')
+  assert.equal(main.includes('new URL(`/tocktutor/${encodedPath}`, runtimeUrl)'), true)
+  assert.doesNotMatch(main, /searchParams\.set\('note'/)
+  assert.doesNotMatch(main, /searchParams\.set\('popout'/)
+  assert.match(main, /popOutRouteTokens\.set\(windowId, routeToken\)/)
+  assert.match(main, /popOutRouteTokens\.delete\(windowId\)/)
+})
 
 test('pop-out owner opens, focuses, and closes one bounded relative note route', async () => {
   const { closed, focused, owner } = fixture()
