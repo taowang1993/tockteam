@@ -544,7 +544,11 @@ test('subprocess crashes at every replacement boundary recover to old or new, ne
     await owner.ready()
     const content = await readFile(destinationPath, 'utf8')
     assert.ok(content === 'old' || content === 'new', `${checkpoint}: ${content}`)
-    assert.deepEqual(await readdir(recoveryRoot), [], checkpoint)
+    assert.equal(
+      (await readdir(recoveryRoot)).filter(name => name.startsWith('destination-')).length,
+      checkpoint === 'journal-removed' ? 0 : 1,
+      checkpoint,
+    )
     await owner.dispose()
   }
 })
@@ -590,8 +594,9 @@ test('startup recovery index restores a moved target without another plan lock',
   })
   await owner.ready()
   assert.equal(await readFile(destinationPath, 'utf8'), 'old')
-  assert.equal((await readdir(root)).some(name => name.startsWith('.tockteam-picker-') && name.includes('crash')), false)
-  assert.deepEqual(await readdir(recoveryRoot), [])
+  assert.equal(await readFile(backupPath, 'utf8'), 'old')
+  for (const path of [commitPath, snapshotPath]) assert.equal((await readFile(path)).byteLength, 0)
+  assert.deepEqual(await readdir(recoveryRoot), ['destination-crash.json'])
   await owner.dispose()
 })
 
@@ -634,8 +639,9 @@ test('published journal with a missing target restores the exact reviewed backup
   })
   await owner.ready()
   assert.equal(await readFile(destinationPath, 'utf8'), old)
-  assert.deepEqual(await readdir(recoveryRoot), [])
-  assert.equal((await readdir(root)).some(name => name.startsWith('.tockteam-picker-')), false)
+  assert.equal((await readdir(recoveryRoot)).filter(name => name.startsWith('destination-')).length, 1)
+  assert.equal(await readFile(backupPath, 'utf8'), old)
+  assert.equal((await readFile(snapshotPath)).byteLength, 0)
   await owner.dispose()
 })
 

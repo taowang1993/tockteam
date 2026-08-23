@@ -1,9 +1,14 @@
 import { createHash, randomBytes } from 'node:crypto'
 import {
+  closeSync,
   constants as fsConstants,
+  fstatSync,
+  fsyncSync,
+  ftruncateSync,
   linkSync,
   lstatSync,
   mkdirSync,
+  openSync,
   realpathSync,
   renameSync,
   rmdirSync,
@@ -1708,13 +1713,19 @@ export class DesktopPickerOwner {
   }
 
   private unlinkRecordedArtifact(path: string, prefix: string, expectedIdentity: string | null): void {
+    if (!basename(path).startsWith(prefix)) return
+    let fd: number | undefined
     try {
-      const stat = lstatSync(path)
-      if (expectedIdentity === null || artifactIdentityOf(stat) !== expectedIdentity) return error('recovery-required')
-      this.unlinkArtifact(path, prefix)
-    } catch (cause) {
-      if ((cause as NodeJS.ErrnoException).code === 'ENOENT') return
-      throw cause
+      fd = openSync(path, fsConstants.O_RDWR | fsConstants.O_NOFOLLOW)
+      const stat = fstatSync(fd, { bigint: false })
+      if (!stat.isFile() || expectedIdentity === null || artifactIdentityOf(stat) !== expectedIdentity) return
+      ftruncateSync(fd, 0)
+      fsyncSync(fd)
+      return
+    } catch {
+      return
+    } finally {
+      if (fd !== undefined) closeSync(fd)
     }
   }
 
@@ -1734,7 +1745,6 @@ export class DesktopPickerOwner {
       if (!entry.isFile() || !entry.name.startsWith('destination-') || !entry.name.endsWith('.json')) continue
       const journalPath = join(this.recoveryRoot, entry.name)
       let value: unknown
-      let journalIdentity = ''
       try {
         const handle = await open(journalPath, fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW)
         try {
@@ -1745,7 +1755,6 @@ export class DesktopPickerOwner {
             this.recoveryCorrupt = true
             continue
           }
-          journalIdentity = artifactIdentityOf(journalStat)
           value = JSON.parse(await handle.readFile('utf8')) as unknown
         } finally {
           await handle.close()
@@ -1797,7 +1806,6 @@ export class DesktopPickerOwner {
           this.recoveryBlockedDestinations.add(value.destinationPath)
           continue
         }
-        this.unlinkRecordedArtifact(value.backupPath, '.tockteam-picker-backup-', value.backupIdentity)
         this.unlinkRecoveryRecordArtifacts(value, false)
         await this.syncDirectory(parent)
       } else if ((destinationOld && snapshotOld && !backupExists
@@ -1809,8 +1817,8 @@ export class DesktopPickerOwner {
         this.recoveryBlockedDestinations.add(value.destinationPath)
         continue
       }
-      this.unlinkRecordedArtifact(journalPath, 'destination-', journalIdentity)
-      await this.syncDirectory(this.recoveryRoot)
+      this.recoveryBlockedDestinations.add(value.destinationPath)
+      continue
     }
   }
 
