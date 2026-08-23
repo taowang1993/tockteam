@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 import type {
   BeginDesktopDestinationRequest,
+  DesktopDestinationPlan,
   DesktopDestinationPlanAuthorization,
   DesktopPickerAuthorization,
   DesktopPrintExportRequest,
@@ -76,6 +77,10 @@ const typeRelativeEntry = {
   size: 0,
   target: { kind: 'relative-file' as const, relativePath: '' as never },
 }
+type HtmlDestinationPlan = Extract<DesktopDestinationPlan, { purpose: 'export-html' | 'export-pdf' }>
+type VaultBackupPlan = Extract<DesktopDestinationPlan, { purpose: 'vault-backup' }>
+const typeHtmlPlan: HtmlDestinationPlan = { entries: [typeSelectedEntry], purpose: 'export-html', totalBytes: 0 }
+const typeVaultPlan: VaultBackupPlan = { entries: [typeSelectedEntry], purpose: 'vault-backup', totalBytes: 0 }
 const typeHtmlDestination: BeginDesktopDestinationRequest = {
   authorization: typePlanAuthorization,
   entries: [typeSelectedEntry],
@@ -130,6 +135,8 @@ void [
   typePrint,
   typeHtmlExport,
   typeMicrophone,
+  typeHtmlPlan,
+  typeVaultPlan,
   typeHtmlDestination,
   typeVaultDestination,
   invalidPrint,
@@ -156,7 +163,8 @@ void [
 
 test('checked-in Host declarations expose only the single-archive backup seam', () => {
   assert.doesNotMatch(declarations, /DesktopRelativeFilePlanEntry|relative-file/)
-  assert.match(declarations, /purpose: 'export-html' \| 'export-pdf' \| 'vault-backup'/)
+  assert.match(declarations, /purpose: 'export-html' \| 'export-pdf'/)
+  assert.match(declarations, /purpose: 'vault-backup'/)
   assert.match(declarations, /publicationName\?: never/)
 })
 

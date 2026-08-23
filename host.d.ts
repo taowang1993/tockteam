@@ -227,7 +227,12 @@ export type DesktopDestinationState = {
 export type DesktopDestinationPlan = {
     entries: readonly [DesktopSelectedFilePlanEntry];
     publicationName?: never;
-    purpose: 'export-html' | 'export-pdf' | 'vault-backup';
+    purpose: 'export-html' | 'export-pdf';
+    totalBytes: number;
+} | {
+    entries: readonly [DesktopSelectedFilePlanEntry];
+    publicationName?: never;
+    purpose: 'vault-backup';
     totalBytes: number;
 };
 /** Validate and hash the exact ordered destination plan reviewed by the user. */
