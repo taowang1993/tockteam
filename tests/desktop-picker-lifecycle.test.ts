@@ -64,6 +64,12 @@ function sha(value: string | Uint8Array): DesktopSha256 {
   return createHash('sha256').update(value).digest('hex') as DesktopSha256
 }
 
+function artifactIdentity(stat: Awaited<ReturnType<typeof lstat>>): string {
+  return createHash('sha256').update([
+    String(stat.dev), String(stat.ino), String(stat.size), String(stat.mode), String(stat.birthtimeMs),
+  ].join(':')).digest('hex')
+}
+
 async function grant(
   owner: DesktopPickerOwner,
   request: Parameters<DesktopPickerOwner['pick']>[0],
@@ -555,17 +561,23 @@ test('startup recovery index restores a moved target without another plan lock',
   await writeFile(commitPath, 'new')
   await writeFile(snapshotPath, 'old')
   const backupStat = await lstat(backupPath)
+  const commitStat = await lstat(commitPath)
+  const snapshotStat = await lstat(snapshotPath)
   const parentStat = await lstat(root)
   await writeFile(journalPath, JSON.stringify({
+    backupIdentity: artifactIdentity(backupStat),
     backupPath,
+    commitIdentity: artifactIdentity(commitStat),
     commitPath,
     destinationPath,
     newDigest: sha('new'),
+    newIdentity: artifactIdentity(commitStat),
     newSize: 3,
     oldDigest: sha('old'),
     oldIdentity: `${String(backupStat.dev)}:${String(backupStat.ino)}`,
     oldSize: 3,
     parentIdentity: `${String(parentStat.dev)}:${String(parentStat.ino)}`,
+    snapshotIdentity: artifactIdentity(snapshotStat),
     snapshotPath,
     state: 'moved',
     version: 1,
@@ -594,17 +606,22 @@ test('published journal with a missing target restores the exact reviewed backup
   await writeFile(backupPath, old)
   await writeFile(snapshotPath, old)
   const backupStat = await lstat(backupPath)
+  const snapshotStat = await lstat(snapshotPath)
   const parentStat = await lstat(root)
   await writeFile(join(recoveryRoot, 'destination-published.json'), JSON.stringify({
+    backupIdentity: artifactIdentity(backupStat),
     backupPath,
+    commitIdentity: null,
     commitPath: null,
     destinationPath,
     newDigest: sha(next),
+    newIdentity: null,
     newSize: next.length,
     oldDigest: sha(old),
     oldIdentity: `${String(backupStat.dev)}:${String(backupStat.ino)}`,
     oldSize: old.length,
     parentIdentity: `${String(parentStat.dev)}:${String(parentStat.ino)}`,
+    snapshotIdentity: artifactIdentity(snapshotStat),
     snapshotPath,
     state: 'published',
     version: 1,
@@ -635,17 +652,23 @@ test('startup recovery never overwrites an unknown occupied target and blocks th
   await writeFile(commitPath, 'reviewed-new')
   await writeFile(snapshotPath, 'reviewed-old')
   const backupStat = await lstat(backupPath)
+  const commitStat = await lstat(commitPath)
+  const snapshotStat = await lstat(snapshotPath)
   const parentStat = await lstat(root)
   await writeFile(join(recoveryRoot, 'destination-occupied.json'), JSON.stringify({
+    backupIdentity: artifactIdentity(backupStat),
     backupPath,
+    commitIdentity: artifactIdentity(commitStat),
     commitPath,
     destinationPath,
     newDigest: sha('reviewed-new'),
+    newIdentity: artifactIdentity(commitStat),
     newSize: 'reviewed-new'.length,
     oldDigest: sha('reviewed-old'),
     oldIdentity: `${String(backupStat.dev)}:${String(backupStat.ino)}`,
     oldSize: 'reviewed-old'.length,
     parentIdentity: `${String(parentStat.dev)}:${String(parentStat.ino)}`,
+    snapshotIdentity: artifactIdentity(snapshotStat),
     snapshotPath,
     state: 'moved',
     version: 1,

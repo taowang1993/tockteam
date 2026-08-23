@@ -212,15 +212,19 @@ interface LockedDestinationPlan {
 }
 
 interface DestinationRecoveryRecord {
+  backupIdentity: string | null
   backupPath: string | null
+  commitIdentity: string | null
   commitPath: string | null
   destinationPath: string
   newDigest: string
+  newIdentity: string | null
   newSize: number
   oldDigest: string | null
   oldIdentity: string | null
   oldSize: number | null
   parentIdentity: string
+  snapshotIdentity: string | null
   snapshotPath: string | null
   state: 'locked' | 'prepared' | 'moved' | 'published'
   version: 1
@@ -371,6 +375,12 @@ async function abortableDialog(
 
 function identityOf(stat: Stat): string {
   return `${String(stat.dev)}:${String(stat.ino)}`
+}
+
+function artifactIdentityOf(stat: Stat): string {
+  return createHash('sha256')
+    .update([String(stat.dev), String(stat.ino), String(stat.size), String(stat.mode), String(stat.birthtimeMs)].join(':'))
+    .digest('hex')
 }
 
 function revisionOf(stat: Stat): string {
@@ -1052,8 +1062,8 @@ export class DesktopPickerOwner {
       entry.handle = handle
       const stat = await handle.stat()
       if (!stat.isFile() || Number(stat.size) !== entry.offset
-        || entry.stagedIdentity !== undefined && entry.stagedIdentity !== identityOf(stat)) return error('changed')
-      entry.stagedIdentity ??= identityOf(stat)
+        || entry.stagedIdentity !== undefined && entry.stagedIdentity !== artifactIdentityOf(stat)) return error('changed')
+      entry.stagedIdentity ??= artifactIdentityOf(stat)
       await handle.write(request.bytes, 0, request.bytes.length, entry.offset)
     } catch (cause) {
       await this.closeDestination(request.session, destination)
@@ -1095,6 +1105,7 @@ export class DesktopPickerOwner {
         await entry.handle.sync()
         const stagedStat = await entry.handle.stat()
         if (!stagedStat.isFile() || Number(stagedStat.size) !== entry.entry.size) return error('size-mismatch')
+        entry.stagedIdentity = artifactIdentityOf(stagedStat)
         const bytes = Buffer.alloc(entry.entry.size)
         const { bytesRead } = await entry.handle.read(bytes, 0, bytes.length, 0)
         if (signal.aborted) return error('aborted')
@@ -1180,7 +1191,7 @@ export class DesktopPickerOwner {
           snapshot.handle = undefined
           await snapshotHandle?.close()
           const snapshotStat = await this.safeLstat(snapshot.path)
-          if (snapshotStat === undefined || identityOf(snapshotStat) !== snapshot.artifactIdentity) return error('changed')
+          if (snapshotStat === undefined || artifactIdentityOf(snapshotStat) !== snapshot.artifactIdentity) return error('changed')
           this.unlinkArtifact(snapshot.path, '.tockteam-picker-snapshot-')
           await this.syncDirectory(dirname(destination.path))
           await this.options.onCheckpoint?.('backup-removed', signal)
@@ -1648,15 +1659,22 @@ export class DesktopPickerOwner {
 
   private validRecoveryRecord(value: unknown): value is DestinationRecoveryRecord {
     if (!exact(value, [
-      'backupPath', 'commitPath', 'destinationPath', 'newDigest', 'newSize',
-      'oldDigest', 'oldIdentity', 'oldSize', 'parentIdentity', 'snapshotPath', 'state', 'version',
+      'backupIdentity', 'backupPath', 'commitIdentity', 'commitPath', 'destinationPath', 'newDigest', 'newIdentity', 'newSize',
+      'oldDigest', 'oldIdentity', 'oldSize', 'parentIdentity', 'snapshotIdentity', 'snapshotPath', 'state', 'version',
     ]) || value.version !== 1 || typeof value.destinationPath !== 'string'
       || !isAbsolute(value.destinationPath) || resolve(value.destinationPath) !== value.destinationPath
       || typeof value.newDigest !== 'string' || !/^[0-9a-f]{64}$/u.test(value.newDigest)
+      || value.newIdentity !== null && typeof value.newIdentity !== 'string'
       || !Number.isSafeInteger(value.newSize) || Number(value.newSize) < 0
+      || value.backupIdentity !== null && typeof value.backupIdentity !== 'string'
       || value.backupPath !== null && typeof value.backupPath !== 'string'
+      || value.commitIdentity !== null && typeof value.commitIdentity !== 'string'
       || value.commitPath !== null && typeof value.commitPath !== 'string'
+      || value.snapshotIdentity !== null && typeof value.snapshotIdentity !== 'string'
       || value.snapshotPath !== null && typeof value.snapshotPath !== 'string'
+      || value.backupPath === null && value.backupIdentity !== null
+      || value.commitPath === null && value.commitIdentity !== null
+      || value.snapshotPath === null && value.snapshotIdentity !== null
       || value.oldDigest !== null && (typeof value.oldDigest !== 'string' || !/^[0-9a-f]{64}$/u.test(value.oldDigest))
       || value.oldIdentity !== null && typeof value.oldIdentity !== 'string'
       || typeof value.parentIdentity !== 'string' || value.parentIdentity.length === 0
@@ -1689,13 +1707,24 @@ export class DesktopPickerOwner {
     await chmod(this.recoveryRoot, 0o700)
   }
 
+  private unlinkRecordedArtifact(path: string, prefix: string, expectedIdentity: string | null): void {
+    try {
+      const stat = lstatSync(path)
+      if (expectedIdentity === null || artifactIdentityOf(stat) !== expectedIdentity) return error('recovery-required')
+      this.unlinkArtifact(path, prefix)
+    } catch (cause) {
+      if ((cause as NodeJS.ErrnoException).code === 'ENOENT') return
+      throw cause
+    }
+  }
+
   private unlinkRecoveryRecordArtifacts(
     value: DestinationRecoveryRecord,
     includeBackup: boolean,
   ): void {
-    if (includeBackup && value.backupPath !== null) this.unlinkArtifact(value.backupPath, '.tockteam-picker-backup-')
-    if (value.commitPath !== null) this.unlinkArtifact(value.commitPath, '.tockteam-picker-commit-')
-    if (value.snapshotPath !== null) this.unlinkArtifact(value.snapshotPath, '.tockteam-picker-snapshot-')
+    if (includeBackup && value.backupPath !== null) this.unlinkRecordedArtifact(value.backupPath, '.tockteam-picker-backup-', value.backupIdentity)
+    if (value.commitPath !== null) this.unlinkRecordedArtifact(value.commitPath, '.tockteam-picker-commit-', value.commitIdentity)
+    if (value.snapshotPath !== null) this.unlinkRecordedArtifact(value.snapshotPath, '.tockteam-picker-snapshot-', value.snapshotIdentity)
   }
 
   private async recoverRegistered(): Promise<void> {
@@ -1705,6 +1734,7 @@ export class DesktopPickerOwner {
       if (!entry.isFile() || !entry.name.startsWith('destination-') || !entry.name.endsWith('.json')) continue
       const journalPath = join(this.recoveryRoot, entry.name)
       let value: unknown
+      let journalIdentity = ''
       try {
         const handle = await open(journalPath, fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW)
         try {
@@ -1715,6 +1745,7 @@ export class DesktopPickerOwner {
             this.recoveryCorrupt = true
             continue
           }
+          journalIdentity = artifactIdentityOf(journalStat)
           value = JSON.parse(await handle.readFile('utf8')) as unknown
         } finally {
           await handle.close()
@@ -1735,25 +1766,30 @@ export class DesktopPickerOwner {
         continue
       }
       const hasOld = value.oldDigest !== null && value.oldIdentity !== null && value.oldSize !== null
-      const destinationNew = await this.verifyRecordedFile(value.destinationPath, value.newSize, value.newDigest)
+      const destinationNew = value.newIdentity !== null
+        && await this.verifyRecordedFile(value.destinationPath, value.newSize, value.newDigest, undefined, value.newIdentity)
       const destinationOld = hasOld
         && await this.verifyRecordedFile(value.destinationPath, value.oldSize as number, value.oldDigest as string, value.oldIdentity as string)
-      const backupOld = hasOld && value.backupPath !== null
-        && await this.verifyRecordedFile(value.backupPath, value.oldSize as number, value.oldDigest as string, value.oldIdentity as string)
-      const snapshotOld = hasOld && value.snapshotPath !== null
-        && await this.verifyRecordedFile(value.snapshotPath, value.oldSize as number, value.oldDigest as string)
-      const commitNew = value.commitPath !== null
-        && await this.verifyRecordedFile(value.commitPath, value.newSize, value.newDigest)
+      const backupOld = hasOld && value.backupPath !== null && value.backupIdentity !== null
+        && await this.verifyRecordedFile(value.backupPath, value.oldSize as number, value.oldDigest as string, value.oldIdentity as string, value.backupIdentity)
+      const snapshotOld = hasOld && value.snapshotPath !== null && value.snapshotIdentity !== null
+        && await this.verifyRecordedFile(value.snapshotPath, value.oldSize as number, value.oldDigest as string, undefined, value.snapshotIdentity)
+      const commitNew = value.commitPath !== null && value.commitIdentity !== null
+        && await this.verifyRecordedFile(value.commitPath, value.newSize, value.newDigest, undefined, value.commitIdentity)
       const destinationExists = await this.safeLstat(value.destinationPath) !== undefined
       const backupExists = value.backupPath !== null && await this.safeLstat(value.backupPath) !== undefined
+      const commitExists = value.commitPath !== null && await this.safeLstat(value.commitPath) !== undefined
+      const snapshotExists = value.snapshotPath !== null && await this.safeLstat(value.snapshotPath) !== undefined
+      const commitSafe = !commitExists || commitNew
+      const snapshotSafe = !snapshotExists || snapshotOld
 
-      if (destinationNew && backupOld && snapshotOld) {
+      if (destinationNew && backupOld && snapshotOld && commitSafe) {
         this.unlinkRecoveryRecordArtifacts(value, true)
         await this.syncDirectory(parent)
-      } else if (destinationNew && !backupExists) {
+      } else if (destinationNew && !backupExists && snapshotSafe && commitSafe) {
         this.unlinkRecoveryRecordArtifacts(value, false)
         await this.syncDirectory(parent)
-      } else if (!destinationExists && backupOld && snapshotOld && value.backupPath !== null) {
+      } else if (!destinationExists && backupOld && snapshotOld && commitSafe && value.backupPath !== null) {
         this.assertDestinationParent(value.destinationPath, value.parentIdentity)
         linkSync(value.backupPath, value.destinationPath)
         await this.syncDirectory(parent)
@@ -1761,7 +1797,7 @@ export class DesktopPickerOwner {
           this.recoveryBlockedDestinations.add(value.destinationPath)
           continue
         }
-        this.unlinkArtifact(value.backupPath, '.tockteam-picker-backup-')
+        this.unlinkRecordedArtifact(value.backupPath, '.tockteam-picker-backup-', value.backupIdentity)
         this.unlinkRecoveryRecordArtifacts(value, false)
         await this.syncDirectory(parent)
       } else if ((destinationOld && snapshotOld && !backupExists
@@ -1773,7 +1809,7 @@ export class DesktopPickerOwner {
         this.recoveryBlockedDestinations.add(value.destinationPath)
         continue
       }
-      this.unlinkArtifact(journalPath, 'destination-')
+      this.unlinkRecordedArtifact(journalPath, 'destination-', journalIdentity)
       await this.syncDirectory(this.recoveryRoot)
     }
   }
@@ -1813,16 +1849,25 @@ export class DesktopPickerOwner {
     commitPath: string,
     state: 'prepared' | 'moved' | 'published',
   ): Promise<void> {
+    const backupStat = await this.safeLstat(backupPath)
+    const commitStat = await this.safeLstat(commitPath)
+    const destinationStat = await this.safeLstat(destination.path)
     destination.journalPath = await this.writeRecoveryRecord(destination.journalPath, {
+      backupIdentity: backupStat === undefined ? null : artifactIdentityOf(backupStat),
       backupPath,
+      commitIdentity: commitStat === undefined ? null : artifactIdentityOf(commitStat),
       commitPath,
       destinationPath: destination.path,
       newDigest: destination.entries[0]?.digest ?? '',
+      newIdentity: state === 'published' && destinationStat?.isFile() === true
+        ? artifactIdentityOf(destinationStat)
+        : destination.entries[0]?.stagedIdentity ?? null,
       newSize: destination.totalBytes,
       oldDigest: destination.snapshot?.contentDigest ?? null,
       oldIdentity: destination.snapshot?.identity ?? null,
       oldSize: destination.snapshot?.size ?? null,
       parentIdentity: destination.parentIdentity,
+      snapshotIdentity: destination.snapshot?.artifactIdentity ?? null,
       snapshotPath: destination.snapshot?.path ?? null,
       state,
       version: 1,
@@ -1834,13 +1879,15 @@ export class DesktopPickerOwner {
     size: number,
     digest: string,
     identity?: string,
+    artifactRevision?: string,
   ): Promise<boolean> {
     try {
       const handle = await open(path, fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW)
       try {
         const stat = await handle.stat()
         if (!stat.isFile() || Number(stat.size) !== size
-          || identity !== undefined && identityOf(stat) !== identity) return false
+          || identity !== undefined && identityOf(stat) !== identity
+          || artifactRevision !== undefined && artifactIdentityOf(stat) !== artifactRevision) return false
         const hash = createHash('sha256')
         const buffer = Buffer.alloc(MAX_DESKTOP_DESTINATION_CHUNK_BYTES)
         let offset = 0
@@ -1928,15 +1975,19 @@ export class DesktopPickerOwner {
       if (revisionOf(afterHash) !== revisionOf(before) || current === undefined
         || identityOf(current) !== identityOf(before) || revisionOf(current) !== revisionOf(before)) return error('changed')
       journalPath = await this.writeRecoveryRecord(undefined, {
+        backupIdentity: null,
         backupPath: null,
+        commitIdentity: null,
         commitPath: null,
         destinationPath: path,
         newDigest,
+        newIdentity: null,
         newSize,
         oldDigest: contentDigest,
         oldIdentity: identityOf(before),
         oldSize: Number(before.size),
         parentIdentity,
+        snapshotIdentity: null,
         snapshotPath,
         state: 'locked',
         version: 1,
@@ -1962,13 +2013,31 @@ export class DesktopPickerOwner {
         || revisionOf(currentAfterCopy) !== revisionOf(before)) return error('changed')
       const revision = revisionOf(before)
       const snapshotStat = await snapshot.stat()
+      journalPath = await this.writeRecoveryRecord(journalPath, {
+        backupIdentity: null,
+        backupPath: null,
+        commitIdentity: null,
+        commitPath: null,
+        destinationPath: path,
+        newDigest,
+        newIdentity: null,
+        newSize,
+        oldDigest: contentDigest,
+        oldIdentity: identityOf(before),
+        oldSize: Number(before.size),
+        parentIdentity,
+        snapshotIdentity: artifactIdentityOf(snapshotStat),
+        snapshotPath,
+        state: 'locked',
+        version: 1,
+      })
       const retainedSnapshot = snapshot
       snapshot = undefined
       return {
         expectedState: { replaceAuthorized: true, revision: cast(revision), status: 'existing' },
         journalPath,
         snapshot: {
-          artifactIdentity: identityOf(snapshotStat),
+          artifactIdentity: artifactIdentityOf(snapshotStat),
           contentDigest,
           handle: retainedSnapshot,
           identity: identityOf(before),
@@ -2081,14 +2150,15 @@ export class DesktopPickerOwner {
     let failed = false
     if (plan.snapshot !== undefined) {
       try {
+        const stat = await this.safeLstat(plan.snapshot.path)
+        const pathMatches = stat === undefined || artifactIdentityOf(stat) === plan.snapshot.artifactIdentity
         if (plan.snapshot.handle !== undefined) {
           await plan.snapshot.handle.truncate(0)
           await plan.snapshot.handle.sync()
           await plan.snapshot.handle.close()
           plan.snapshot.handle = undefined
         }
-        const stat = await this.safeLstat(plan.snapshot.path)
-        if (stat !== undefined && identityOf(stat) !== plan.snapshot.artifactIdentity) return error('changed')
+        if (!pathMatches) return error('changed')
         this.unlinkArtifact(plan.snapshot.path, '.tockteam-picker-snapshot-')
         await this.syncDirectory(dirname(plan.snapshot.path))
       } catch { failed = true }
@@ -2148,6 +2218,11 @@ export class DesktopPickerOwner {
         residualLabels.push(cast(labelOf(entry.absolutePath)))
       }
     }
+    let snapshotPathMatches = true
+    if (destination.snapshot !== undefined) {
+      const stat = await this.safeLstat(destination.snapshot.path)
+      snapshotPathMatches = stat === undefined || artifactIdentityOf(stat) === destination.snapshot.artifactIdentity
+    }
     if (destination.snapshot?.handle !== undefined) {
       try {
         await destination.snapshot.handle.truncate(0)
@@ -2195,8 +2270,7 @@ export class DesktopPickerOwner {
     if (residualLabels.length === 0 && destination.snapshot !== undefined) {
       const snapshotPath = destination.snapshot.path
       try {
-        const stat = await this.safeLstat(snapshotPath)
-        if (stat !== undefined && identityOf(stat) !== destination.snapshot.artifactIdentity) return error('changed')
+        if (!snapshotPathMatches) return error('changed')
         this.unlinkArtifact(snapshotPath, '.tockteam-picker-snapshot-')
         await this.syncDirectory(dirname(snapshotPath))
         destination.snapshot = undefined
