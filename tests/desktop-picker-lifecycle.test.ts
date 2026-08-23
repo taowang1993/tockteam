@@ -381,14 +381,14 @@ test('reviewed existing-file snapshots reject swaps and replace only the verifie
   await owner.dispose()
 })
 
-test('replacement recovery journal restores a moved target before the next plan lock', async () => {
+test('startup recovery index restores a moved target without another plan lock', async () => {
   const root = await canonicalTemp('tockteam-picker-recovery-')
-  const activeVault = await canonicalTemp('tockteam-picker-active-')
+  const recoveryRoot = await canonicalTemp('tockteam-picker-recovery-index-')
   const destinationPath = join(root, 'crashed.html')
   const backupPath = join(root, '.tockteam-picker-backup-crash')
   const commitPath = join(root, '.tockteam-picker-commit-crash')
   const snapshotPath = join(root, '.tockteam-picker-snapshot-crash')
-  const journalPath = join(root, '.tockteam-picker-journal-crash.json')
+  const journalPath = join(recoveryRoot, 'destination-crash.json')
   await writeFile(backupPath, 'old')
   await writeFile(commitPath, 'new')
   await writeFile(snapshotPath, 'old')
@@ -400,16 +400,52 @@ test('replacement recovery journal restores a moved target before the next plan 
     state: 'moved',
     version: 1,
   }))
-  const nextPath = join(root, 'next.html')
   const owner = new DesktopPickerOwner({
     isAvailable: () => true,
+    recoveryRoot,
+    showOpenDialog: async () => ({ canceled: true }),
+    showSaveDialog: async () => ({ canceled: true }),
+  })
+  await owner.ready()
+  assert.equal(await readFile(destinationPath, 'utf8'), 'old')
+  assert.equal((await readdir(root)).some(name => name.startsWith('.tockteam-picker-') && name.includes('crash')), false)
+  assert.deepEqual(await readdir(recoveryRoot), [])
+  await owner.dispose()
+})
+
+test('startup recovery never overwrites an unknown occupied target and blocks the destination parent', async () => {
+  const root = await canonicalTemp('tockteam-picker-recovery-blocked-')
+  const activeVault = await canonicalTemp('tockteam-picker-active-')
+  const recoveryRoot = await canonicalTemp('tockteam-picker-recovery-index-')
+  const destinationPath = join(root, 'occupied.html')
+  const backupPath = join(root, '.tockteam-picker-backup-occupied')
+  const commitPath = join(root, '.tockteam-picker-commit-occupied')
+  const snapshotPath = join(root, '.tockteam-picker-snapshot-occupied')
+  await writeFile(destinationPath, 'unknown-racer')
+  await writeFile(backupPath, 'reviewed-old')
+  await writeFile(commitPath, 'reviewed-new')
+  await writeFile(snapshotPath, 'reviewed-old')
+  await writeFile(join(recoveryRoot, 'destination-occupied.json'), JSON.stringify({
+    backupPath,
+    commitPath,
+    destinationPath,
+    snapshotPath,
+    state: 'moved',
+    version: 1,
+  }))
+  const owner = new DesktopPickerOwner({
+    isAvailable: () => true,
+    recoveryRoot,
     showOpenDialog: async options => options.purpose === 'activate'
       ? { canceled: false, filePath: activeVault }
       : { canceled: true },
-    showSaveDialog: async () => ({ canceled: false, filePath: nextPath }),
+    showSaveDialog: async () => ({ canceled: false, filePath: join(root, 'next.html') }),
   })
+  await owner.ready()
+  assert.equal(await readFile(destinationPath, 'utf8'), 'unknown-racer')
+  assert.equal(await readFile(backupPath, 'utf8'), 'reviewed-old')
   await activate(owner)
-  const operation = identity('recover-plan')
+  const operation = identity('blocked-recovery')
   const selection = await grant(owner, { identity: operation, kind: 'destination', purpose: 'export-html' })
   const bytes = new TextEncoder().encode('next')
   const plan = {
@@ -417,11 +453,46 @@ test('replacement recovery journal restores a moved target before the next plan 
     purpose: 'export-html' as const,
     totalBytes: bytes.length,
   }
-  const planDigest = computeDesktopDestinationPlanDigest(plan)
-  const locked = await owner.lockDestinationPlan({ ...plan, identity: operation, planDigest, selectionAuthorization: selection }, new AbortController().signal)
-  assert.equal(await readFile(destinationPath, 'utf8'), 'old')
-  assert.equal((await readdir(root)).some(name => name.startsWith('.tockteam-picker-') && name.includes('crash')), false)
-  await owner.revokeDestinationPlan({ authorization: locked.authorization })
+  await rejectsCode(owner.lockDestinationPlan({
+    ...plan,
+    identity: operation,
+    planDigest: computeDesktopDestinationPlanDigest(plan),
+    selectionAuthorization: selection,
+  }, new AbortController().signal), 'owner-lost')
+  await owner.dispose()
+})
+
+test('corrupted recovery index fails all destination locks closed without filesystem effects', async () => {
+  const root = await canonicalTemp('tockteam-picker-recovery-corrupt-')
+  const activeVault = await canonicalTemp('tockteam-picker-active-')
+  const recoveryRoot = await canonicalTemp('tockteam-picker-recovery-index-')
+  await writeFile(join(recoveryRoot, 'destination-corrupt.json'), '{"version":1,"destinationPath":"/escape"}')
+  const output = join(root, 'next.html')
+  const owner = new DesktopPickerOwner({
+    isAvailable: () => true,
+    recoveryRoot,
+    showOpenDialog: async options => options.purpose === 'activate'
+      ? { canceled: false, filePath: activeVault }
+      : { canceled: true },
+    showSaveDialog: async () => ({ canceled: false, filePath: output }),
+  })
+  await owner.ready()
+  await activate(owner)
+  const operation = identity('corrupt-recovery')
+  const selection = await grant(owner, { identity: operation, kind: 'destination', purpose: 'export-html' })
+  const bytes = new TextEncoder().encode('next')
+  const plan = {
+    entries: [{ digest: sha(bytes), size: bytes.length, target: { kind: 'selected-file' as const } }] as const,
+    purpose: 'export-html' as const,
+    totalBytes: bytes.length,
+  }
+  await rejectsCode(owner.lockDestinationPlan({
+    ...plan,
+    identity: operation,
+    planDigest: computeDesktopDestinationPlanDigest(plan),
+    selectionAuthorization: selection,
+  }, new AbortController().signal), 'owner-lost')
+  await assert.rejects(readFile(output), { code: 'ENOENT' })
   await owner.dispose()
 })
 

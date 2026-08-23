@@ -17,6 +17,9 @@ importers:
       '@deepseek-ai/cordis-plugin-loader':
         specifier: 1.0.2
         version: 1.0.2(@deepseek-ai/cordis@4.0.1)
+      '@tockteam/note-vault-tools':
+        specifier: file:vendor/tockteam-note-vault-tools-0.1.2.tgz
+        version: file:vendor/tockteam-note-vault-tools-0.1.2.tgz(@deepseek-ai/cordis@4.0.1)(tockbot-note-runtime@file:vendor/tockbot-note-runtime-0.1.2.tgz(@deepseek-ai/cordis@4.0.1)(tockbot-note-vault@file:vendor/tockbot-note-vault-0.6.0.tgz))
       '@types/node':
         specifier: ^24.10.0
         version: 24.13.3
@@ -1130,6 +1133,14 @@ packages:
   '@szmarczak/http-timer@4.0.6':
     resolution: {integrity: sha512-4BAffykYOgO+5nzBWYwE3W90sBgLJoUPRWWcL8wlyiM8IB8ipJz3UMJ9KXQd1RKQXpKp8Tutn80HZtWsu2u76w==}
     engines: {node: '>=10'}
+
+  '@tockteam/note-vault-tools@file:vendor/tockteam-note-vault-tools-0.1.2.tgz':
+    resolution: {integrity: sha512-lO4tNJF/oV8V2bstQ6KsND0lC2YNnVxzSLc2A+Eanj4WTQxWKQCKj+h7Yo2q4QxLgu/JD6L+7r+283kKfrEhhQ==, tarball: file:vendor/tockteam-note-vault-tools-0.1.2.tgz}
+    version: 0.1.2
+    engines: {node: ^22.19.0 || >=24.0.0}
+    peerDependencies:
+      '@deepseek-ai/cordis': 4.0.1
+      tockbot-note-runtime: 0.1.2
 
   '@types/cacheable-request@6.0.3':
     resolution: {integrity: sha512-IQ3EbTzGxIigb1I3qPZc1rWJnH0BmSKv5QYTalEwweFvyBDLSAe24zP0le/hyi7ecGfZVlIVAg4BZqb8WBwKqw==}
@@ -3097,6 +3108,11 @@ snapshots:
   '@szmarczak/http-timer@4.0.6':
     dependencies:
       defer-to-connect: 2.0.1
+
+  '@tockteam/note-vault-tools@file:vendor/tockteam-note-vault-tools-0.1.2.tgz(@deepseek-ai/cordis@4.0.1)(tockbot-note-runtime@file:vendor/tockbot-note-runtime-0.1.2.tgz(@deepseek-ai/cordis@4.0.1)(tockbot-note-vault@file:vendor/tockbot-note-vault-0.6.0.tgz))':
+    dependencies:
+      '@deepseek-ai/cordis': 4.0.1(@deepseek-ai/cordis-plugin-include@1.0.6)(@deepseek-ai/cordis-plugin-loader@1.0.2)
+      tockbot-note-runtime: file:vendor/tockbot-note-runtime-0.1.2.tgz(@deepseek-ai/cordis@4.0.1)(tockbot-note-vault@file:vendor/tockbot-note-vault-0.6.0.tgz)
 
   '@types/cacheable-request@6.0.3':
     dependencies:

@@ -35,6 +35,7 @@ export const BUNDLED_DESKTOP_PLUGINS = [
 export const DESKTOP_BUNDLES = [
   '@deepseek-ai/dsh-base',
   'tockbot-note-runtime',
+  '@tockteam/note-vault-tools',
   '@deepseek-ai/dsh-web-app',
   '@tockteam/desktop',
 ] as const

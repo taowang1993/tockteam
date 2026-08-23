@@ -13,6 +13,7 @@ import {
   realpath,
   unlink,
 } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
 import { basename, dirname, extname, isAbsolute, join, parse, relative, resolve, sep } from 'node:path'
 import {
   MAX_DESKTOP_DESTINATION_CHUNK_BYTES,
@@ -114,6 +115,7 @@ export interface DesktopPickerOwnerOptions {
   now?: () => number
   randomId?: () => string
   onCheckpoint?: (checkpoint: DesktopPickerCheckpoint, signal: AbortSignal) => Promise<void>
+  recoveryRoot?: string
 }
 
 interface ActiveVaultBoundary {
@@ -176,6 +178,7 @@ interface LockedDestinationPlan {
   expectedState: DesktopDestinationState
   expiresAt: number
   identity: NativeOperationIdentity
+  journalPath: string | undefined
   label: string
   path: string
   planDigest: string
@@ -183,6 +186,15 @@ interface LockedDestinationPlan {
   purpose: DesktopExportPurpose
   snapshot: ExistingDestinationSnapshot | undefined
   totalBytes: number
+}
+
+interface DestinationRecoveryRecord {
+  backupPath: string | null
+  commitPath: string | null
+  destinationPath: string
+  snapshotPath: string | null
+  state: 'locked' | 'prepared' | 'moved' | 'published'
+  version: 1
 }
 
 interface DestinationEntry {
@@ -425,6 +437,10 @@ export class DesktopPickerOwner {
   private activeVault: ActiveVaultBoundary | undefined
   private disposed = false
   private expiryTimer: NodeJS.Timeout | undefined
+  private readonly recoveryRoot: string
+  private readonly recoveryReady: Promise<void>
+  private readonly recoveryBlockedDestinations = new Set<string>()
+  private recoveryCorrupt = false
 
   constructor(options: DesktopPickerOwnerOptions) {
     this.options = {
@@ -432,6 +448,14 @@ export class DesktopPickerOwner {
       now: options.now ?? (() => Date.now()),
       randomId: options.randomId ?? (() => randomBytes(24).toString('base64url')),
     }
+    this.recoveryRoot = resolve(options.recoveryRoot
+      ?? process.env.DSH_DESKTOP_PICKER_RECOVERY_ROOT
+      ?? join(tmpdir(), 'tockteam-desktop-picker-recovery'))
+    this.recoveryReady = this.recoverRegistered()
+  }
+
+  async ready(): Promise<void> {
+    await this.recoveryReady
   }
 
   reopen(): void {
@@ -803,6 +827,7 @@ export class DesktopPickerOwner {
       expectedState,
       expiresAt,
       identity: request.identity,
+      journalPath: captured.journalPath,
       label: labelOf(path),
       path,
       planDigest: request.planDigest,
@@ -878,7 +903,7 @@ export class DesktopPickerOwner {
       expiresAt: this.options.now() + MAX_DESKTOP_GRANT_SESSION_MS,
       expectedState: locked.expectedState,
       identity: request.identity,
-      journalPath: undefined,
+      journalPath: locked.journalPath,
       label: locked.label,
       planDigest: locked.planDigest,
       entries: locked.entries.map(entry => ({
@@ -1072,12 +1097,16 @@ export class DesktopPickerOwner {
           await unlink(backupPath)
           destination.recoveryPaths = destination.recoveryPaths.filter(path => path !== backupPath)
           await rm(snapshot.path, { force: true })
-          if (destination.journalPath !== undefined) await rm(destination.journalPath, { force: true })
+          if (destination.journalPath !== undefined) {
+            await rm(destination.journalPath, { force: true })
+            await this.syncDirectory(this.recoveryRoot)
+          }
           destination.journalPath = undefined
           destination.snapshot = undefined
         }
         destination.stagingRoot = undefined
       }
+      await this.syncDirectory(dirname(destination.path))
       const cleanup = await this.cleanupDestination(destination)
       if (cleanup.status !== 'complete') return error('owner-lost')
       this.destinations.delete(request.session)
@@ -1115,6 +1144,7 @@ export class DesktopPickerOwner {
   }
 
   async dispose(): Promise<void> {
+    await this.recoveryReady
     this.disposed = true
     if (this.expiryTimer !== undefined) clearTimeout(this.expiryTimer)
     this.expiryTimer = undefined
@@ -1460,48 +1490,94 @@ export class DesktopPickerOwner {
     await walk(source.path, '', 0, [])
   }
 
-  private async recoverParent(parent: string): Promise<void> {
-    const entries = await readdir(parent, { withFileTypes: true })
+  private async syncDirectory(path: string): Promise<void> {
+    const handle = await open(path, fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW)
+    try { await handle.sync() } finally { await handle.close() }
+  }
+
+  private validRecoveryRecord(value: unknown): value is DestinationRecoveryRecord {
+    if (!exact(value, ['backupPath', 'commitPath', 'destinationPath', 'snapshotPath', 'state', 'version'])
+      || value.version !== 1 || typeof value.destinationPath !== 'string'
+      || value.backupPath !== null && typeof value.backupPath !== 'string'
+      || value.commitPath !== null && typeof value.commitPath !== 'string'
+      || value.snapshotPath !== null && typeof value.snapshotPath !== 'string'
+      || value.state !== 'locked' && value.state !== 'prepared'
+        && value.state !== 'moved' && value.state !== 'published') return false
+    const parent = dirname(value.destinationPath)
+    return [value.backupPath, value.commitPath, value.snapshotPath]
+      .filter((path): path is string => path !== null)
+      .every(path => dirname(path) === parent && basename(path).startsWith('.tockteam-picker-'))
+  }
+
+  private async recoverRegistered(): Promise<void> {
+    await mkdir(this.recoveryRoot, { recursive: true, mode: 0o700 })
+    const entries = await readdir(this.recoveryRoot, { withFileTypes: true })
     for (const entry of entries) {
-      if (!entry.isFile() || !entry.name.startsWith('.tockteam-picker-journal-') || !entry.name.endsWith('.json')) continue
-      const journalPath = join(parent, entry.name)
+      if (!entry.isFile() || !entry.name.startsWith('destination-') || !entry.name.endsWith('.json')) continue
+      const journalPath = join(this.recoveryRoot, entry.name)
       let value: unknown
-      try { value = JSON.parse(await readFile(journalPath, 'utf8')) } catch { return error('owner-lost') }
-      if (!object(value) || value.version !== 1
-        || typeof value.backupPath !== 'string' || typeof value.commitPath !== 'string'
-        || typeof value.destinationPath !== 'string'
-        || value.snapshotPath !== null && typeof value.snapshotPath !== 'string'
-        || value.state !== 'prepared' && value.state !== 'moved' && value.state !== 'published') return error('owner-lost')
-      const paths = [value.backupPath, value.commitPath, value.destinationPath, journalPath,
-        ...(value.snapshotPath === null ? [] : [value.snapshotPath])]
-      if (paths.some(path => dirname(path) !== parent)) return error('owner-lost')
-      if (value.state === 'published') {
-        await Promise.allSettled(paths.filter(path => path !== value.destinationPath).map(path => rm(path, { recursive: true, force: true })))
+      try { value = JSON.parse(await readFile(journalPath, 'utf8')) } catch {
+        this.recoveryCorrupt = true
         continue
       }
-      const backup = await this.safeLstat(value.backupPath)
+      if (!this.validRecoveryRecord(value)) {
+        this.recoveryCorrupt = true
+        continue
+      }
+      const parent = dirname(value.destinationPath)
       const destination = await this.safeLstat(value.destinationPath)
-      if (backup !== undefined && destination === undefined) {
+      const backup = value.backupPath === null ? undefined : await this.safeLstat(value.backupPath)
+      if (value.state === 'published') {
+        await Promise.allSettled([value.backupPath, value.commitPath, value.snapshotPath]
+          .filter((path): path is string => path !== null)
+          .map(path => rm(path, { recursive: true, force: true })))
+      } else if (backup !== undefined && destination === undefined && value.backupPath !== null) {
         await link(value.backupPath, value.destinationPath)
         await unlink(value.backupPath)
-      } else if (backup !== undefined) {
-        return error('owner-lost')
+        await this.syncDirectory(parent)
+        await Promise.allSettled([value.commitPath, value.snapshotPath]
+          .filter((path): path is string => path !== null)
+          .map(path => rm(path, { recursive: true, force: true })))
+      } else if (backup !== undefined || value.state === 'moved') {
+        this.recoveryBlockedDestinations.add(value.destinationPath)
+        continue
+      } else {
+        await Promise.allSettled([value.commitPath, value.snapshotPath]
+          .filter((path): path is string => path !== null)
+          .map(path => rm(path, { recursive: true, force: true })))
       }
-      await Promise.allSettled([
-        rm(value.commitPath, { recursive: true, force: true }),
-        ...(value.snapshotPath === null ? [] : [rm(value.snapshotPath, { force: true })]),
-        rm(journalPath, { force: true }),
-      ])
+      await rm(journalPath, { force: true })
+      await this.syncDirectory(this.recoveryRoot)
     }
-    const retainedSnapshots = new Set([
-      ...[...this.destinationPlans.values()].flatMap(plan => plan.snapshot === undefined ? [] : [plan.snapshot.path]),
-      ...[...this.destinations.values()].flatMap(session => session.snapshot === undefined ? [] : [session.snapshot.path]),
-    ])
-    for (const entry of entries) {
-      const path = join(parent, entry.name)
-      if (entry.isFile() && entry.name.startsWith('.tockteam-picker-snapshot-')
-        && !retainedSnapshots.has(path)) await rm(path, { force: true })
+  }
+
+  private async recoverParent(parent: string): Promise<void> {
+    await this.recoveryReady
+    if (this.recoveryCorrupt) return error('owner-lost')
+    if ([...this.recoveryBlockedDestinations].some(path => dirname(path) === parent)) return error('owner-lost')
+  }
+
+  private async writeRecoveryRecord(
+    journalPath: string | undefined,
+    record: DestinationRecoveryRecord,
+  ): Promise<string> {
+    await mkdir(this.recoveryRoot, { recursive: true, mode: 0o700 })
+    const path = journalPath ?? join(this.recoveryRoot, `destination-${this.options.randomId()}.json`)
+    const temporary = `${path}.tmp-${this.options.randomId()}`
+    const handle = await open(
+      temporary,
+      fsConstants.O_WRONLY | fsConstants.O_CREAT | fsConstants.O_EXCL | fsConstants.O_NOFOLLOW,
+      0o600,
+    )
+    try {
+      await handle.writeFile(JSON.stringify(record), 'utf8')
+      await handle.sync()
+    } finally {
+      await handle.close()
     }
+    await rename(temporary, path)
+    await this.syncDirectory(this.recoveryRoot)
+    return path
   }
 
   private async writeRecoveryJournal(
@@ -1510,10 +1586,7 @@ export class DesktopPickerOwner {
     commitPath: string,
     state: 'prepared' | 'moved' | 'published',
   ): Promise<void> {
-    const journalPath = destination.journalPath
-      ?? join(dirname(destination.path), `.tockteam-picker-journal-${this.options.randomId()}.json`)
-    const temporary = `${journalPath}.tmp`
-    const payload = JSON.stringify({
+    destination.journalPath = await this.writeRecoveryRecord(destination.journalPath, {
       backupPath,
       commitPath,
       destinationPath: destination.path,
@@ -1521,19 +1594,6 @@ export class DesktopPickerOwner {
       state,
       version: 1,
     })
-    const handle = await open(
-      temporary,
-      fsConstants.O_WRONLY | fsConstants.O_CREAT | fsConstants.O_EXCL | fsConstants.O_NOFOLLOW,
-      0o600,
-    )
-    try {
-      await handle.writeFile(payload, 'utf8')
-      await handle.sync()
-    } finally {
-      await handle.close()
-    }
-    await rename(temporary, journalPath)
-    destination.journalPath = journalPath
   }
 
   private async verifySnapshot(path: string, snapshot: ExistingDestinationSnapshot): Promise<boolean> {
@@ -1580,14 +1640,26 @@ export class DesktopPickerOwner {
   private async captureDestination(
     path: string,
     purpose: DesktopExportPurpose,
-  ): Promise<{ expectedState: DesktopDestinationState; snapshot: ExistingDestinationSnapshot | undefined }> {
+  ): Promise<{
+    expectedState: DesktopDestinationState
+    journalPath: string | undefined
+    snapshot: ExistingDestinationSnapshot | undefined
+  }> {
     const stat = await this.safeLstat(path)
-    if (stat === undefined) return { expectedState: { status: 'absent' }, snapshot: undefined }
+    if (stat === undefined) return { expectedState: { status: 'absent' }, journalPath: undefined, snapshot: undefined }
     if (purpose === 'vault-backup' || !stat.isFile() || stat.isSymbolicLink()
       || await this.hasUnsafeSymlinkAncestor(path)) return error('exists')
     if (Number(stat.size) > MAX_DESKTOP_SOURCE_TOTAL_BYTES) return error('limit-exceeded')
     const source = await open(path, fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW)
     const snapshotPath = join(dirname(path), `.tockteam-picker-snapshot-${this.options.randomId()}`)
+    const journalPath = await this.writeRecoveryRecord(undefined, {
+      backupPath: null,
+      commitPath: null,
+      destinationPath: path,
+      snapshotPath,
+      state: 'locked',
+      version: 1,
+    })
     const snapshot = await open(
       snapshotPath,
       fsConstants.O_WRONLY | fsConstants.O_CREAT | fsConstants.O_EXCL | fsConstants.O_NOFOLLOW,
@@ -1615,6 +1687,7 @@ export class DesktopPickerOwner {
       const revision = revisionOf(before)
       return {
         expectedState: { replaceAuthorized: true, revision: cast(revision), status: 'existing' },
+        journalPath,
         snapshot: {
           contentDigest: hash.digest('hex'),
           identity: identityOf(before),
@@ -1624,7 +1697,7 @@ export class DesktopPickerOwner {
         },
       }
     } catch (cause) {
-      await rm(snapshotPath, { force: true }).catch(() => {})
+      await Promise.allSettled([rm(snapshotPath, { force: true }), rm(journalPath, { force: true })])
       throw cause
     } finally {
       await Promise.allSettled([source.close(), snapshot.close()])
@@ -1674,7 +1747,11 @@ export class DesktopPickerOwner {
   }
 
   private async cleanupLockedPlan(plan: LockedDestinationPlan): Promise<void> {
-    if (plan.snapshot !== undefined) await rm(plan.snapshot.path, { force: true })
+    await Promise.allSettled([
+      ...(plan.snapshot === undefined ? [] : [rm(plan.snapshot.path, { force: true })]),
+      ...(plan.journalPath === undefined ? [] : [rm(plan.journalPath, { force: true })]),
+    ])
+    await this.syncDirectory(this.recoveryRoot)
   }
 
   private scheduleLockedPlanCleanup(plan: LockedDestinationPlan): void {

@@ -60,7 +60,9 @@ const dump = spawnSync(nodeBinary, [cliEntry, '--profile', 'desktop', '--dump-co
 assert.equal(dump.status, 0, dump.stderr || dump.stdout)
 const dumpOutput = `${dump.stdout}\n${dump.stderr}`
 assert.match(dumpOutput, /note-vault-runtime/)
-assert.match(dumpOutput, /dsh-tools|Tools/i)
+assert.match(dumpOutput, /note-vault-tools/)
+assert.equal((dumpOutput.match(/\bid:\s*note-vault-runtime\b/g) ?? []).length, 1)
+assert.equal((dumpOutput.match(/\bid:\s*note-vault-tools\b/g) ?? []).length, 1)
 assert.doesNotMatch(dumpOutput, /tockbot-note-vault/)
 assert.doesNotMatch(dumpOutput, /patch:\s*entry ["']tockbot-note-vault["'] not found/)
 
@@ -88,6 +90,16 @@ const hostImport = spawnSync(nodeBinary, [
   env: runtimeEnvironment,
 })
 assert.equal(hostImport.status, 0, hostImport.stderr || hostImport.stdout)
+const toolsManifest = JSON.parse(readFileSync(join(
+  resources,
+  'dsh-runtime',
+  'node_modules',
+  '@tockteam',
+  'note-vault-tools',
+  'package.json',
+), 'utf8'))
+assert.equal(toolsManifest.version, '0.1.2')
+assert.equal(toolsManifest.peerDependencies['tockbot-note-runtime'], '0.1.2')
 
 const pluginRoot = join(smokeRoot, 'smoke-plugin')
 mkdirSync(pluginRoot)

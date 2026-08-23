@@ -88,6 +88,7 @@ export class DesktopPickerChannel {
 
   async start(): Promise<DesktopPickerChannelEnvironment> {
     if (this.server !== undefined) throw new Error('Desktop picker channel is already running')
+    await this.owner.ready()
     this.owner.reopen()
     this.stopping = false
     this.lifetime = new AbortController()

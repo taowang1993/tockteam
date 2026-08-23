@@ -691,6 +691,13 @@ function installDesktopPackages({ desktopOnly = false } = {}) {
       ],
     },
     {
+      manifest: join(root, 'vendor', 'tockteam-note-vault-tools', 'package.json'),
+      files: [
+        [join(root, 'vendor', 'tockteam-note-vault-tools', 'lib'), 'lib'],
+        [join(root, 'vendor', 'tockteam-note-vault-tools', 'cordis.patch.yml'), 'cordis.patch.yml'],
+      ],
+    },
+    {
       manifest: join(root, 'package.json'),
       files: [
         [join(root, 'dist', 'plugin.js'), 'dist/plugin.js'],

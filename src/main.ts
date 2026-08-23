@@ -105,7 +105,12 @@ function pickerDialogFilters(options: DesktopPickerDialogOptions): Electron.File
     : [{ name: options.extensions.map(extension => `.${extension}`).join(', '), extensions: options.extensions }]
 }
 
-const desktopPickerOwner = new DesktopPickerOwner({
+let desktopPickerOwner!: DesktopPickerOwner
+let desktopPickerChannel!: DesktopPickerChannel
+
+function initializeDesktopPicker(): void {
+  desktopPickerOwner = new DesktopPickerOwner({
+    recoveryRoot: join(app.getPath('userData'), 'picker-recovery'),
   isAvailable: () => isEligibleDesktopRevealWindow(),
   showOpenDialog: async options => {
     const electronOptions: Electron.OpenDialogOptions = {
@@ -138,8 +143,9 @@ const desktopPickerOwner = new DesktopPickerOwner({
       ? { canceled: result.canceled }
       : { canceled: result.canceled, filePath: result.filePath }
   },
-})
-const desktopPickerChannel = new DesktopPickerChannel(desktopPickerOwner)
+  })
+  desktopPickerChannel = new DesktopPickerChannel(desktopPickerOwner)
+}
 
 function appendLog(stream: 'desktop' | 'stderr' | 'stdout', line: string): void {
   const rendered = `${new Date().toISOString()} [${stream}] ${line}`
@@ -906,6 +912,7 @@ async function bootstrap(): Promise<void> {
   // The visible product name changed in 0.1.x. Keep the existing data path so
   // an in-place upgrade retains sessions, profiles, skins, and credentials.
   app.setPath('userData', join(app.getPath('appData'), app.isPackaged ? DATA_DIRECTORY : `${DATA_DIRECTORY}-Dev`))
+  initializeDesktopPicker()
   app.setAboutPanelOptions({
     applicationName: PRODUCT_NAME,
     applicationVersion: PRODUCT_VERSION,

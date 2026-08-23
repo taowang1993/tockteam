@@ -41,6 +41,7 @@
     "dist/cordis.patch.yml",
     "vendor/tockbot-note-runtime-0.1.2.tgz",
     "vendor/tockbot-note-vault-0.6.0.tgz",
+    "vendor/tockteam-note-vault-tools-0.1.2.tgz",
     "dist/tockteam.js",
     "bin/tockteam",
     "bin/tockteam.cmd"
@@ -100,6 +101,7 @@
     "@deepseek-ai/cordis-plugin-loader": "1.0.2",
     "tockbot-note-runtime": "file:vendor/tockbot-note-runtime-0.1.2.tgz",
     "tockbot-note-vault": "file:vendor/tockbot-note-vault-0.6.0.tgz",
+    "@tockteam/note-vault-tools": "file:vendor/tockteam-note-vault-tools-0.1.2.tgz",
     "@types/node": "^24.10.0",
     "electron": "42.3.0",
     "electron-builder": "^26.0.12",
