@@ -511,6 +511,7 @@ export type DesktopGrantErrorCode =
   | 'limit-exceeded'
   | 'owner-lost'
   | 'purpose-mismatch'
+  | 'recovery-required'
   | 'replayed'
   | 'size-mismatch'
   | 'stale'
@@ -528,6 +529,7 @@ const DESKTOP_GRANT_ERROR_MESSAGES: Record<DesktopGrantErrorCode, string> = {
   'limit-exceeded': 'A Desktop grant limit was exceeded.',
   'owner-lost': 'The Desktop owner is unavailable.',
   'purpose-mismatch': 'The Desktop grant purpose did not match.',
+  'recovery-required': 'Desktop destination recovery requires user action.',
   replayed: 'The Desktop grant was already consumed.',
   'size-mismatch': 'The content size did not match.',
   stale: 'The Desktop grant is stale.',

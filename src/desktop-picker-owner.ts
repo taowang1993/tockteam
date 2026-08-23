@@ -459,6 +459,15 @@ export class DesktopPickerOwner {
     await this.recoveryReady
   }
 
+  matchesActiveIdentity(identity: NativeOperationIdentity): boolean {
+    try {
+      this.assertAuthority(identity)
+      return true
+    } catch {
+      return false
+    }
+  }
+
   nativeIdentity(
     operationId: string,
     requestId: string,
@@ -1531,7 +1540,7 @@ export class DesktopPickerOwner {
     const canonical = await this.safeRealpath(this.recoveryRoot)
     const stat = await this.safeLstat(this.recoveryRoot)
     if (canonical !== this.recoveryRoot || stat === undefined || !stat.isDirectory() || stat.isSymbolicLink()) {
-      return error('owner-lost')
+      return error('recovery-required')
     }
     await chmod(this.recoveryRoot, 0o700)
   }
@@ -1586,8 +1595,8 @@ export class DesktopPickerOwner {
 
   private async recoverParent(parent: string): Promise<void> {
     await this.recoveryReady
-    if (this.recoveryCorrupt) return error('owner-lost')
-    if ([...this.recoveryBlockedDestinations].some(path => dirname(path) === parent)) return error('owner-lost')
+    if (this.recoveryCorrupt) return error('recovery-required')
+    if ([...this.recoveryBlockedDestinations].some(path => dirname(path) === parent)) return error('recovery-required')
   }
 
   private async writeRecoveryRecord(

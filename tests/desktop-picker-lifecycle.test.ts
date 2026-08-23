@@ -458,7 +458,7 @@ test('startup recovery never overwrites an unknown occupied target and blocks th
     identity: operation,
     planDigest: computeDesktopDestinationPlanDigest(plan),
     selectionAuthorization: selection,
-  }, new AbortController().signal), 'owner-lost')
+  }, new AbortController().signal), 'recovery-required')
   await owner.dispose()
 })
 
@@ -491,7 +491,7 @@ test('corrupted recovery index fails all destination locks closed without filesy
     identity: operation,
     planDigest: computeDesktopDestinationPlanDigest(plan),
     selectionAuthorization: selection,
-  }, new AbortController().signal), 'owner-lost')
+  }, new AbortController().signal), 'recovery-required')
   await assert.rejects(readFile(output), { code: 'ENOENT' })
   await owner.dispose()
 })

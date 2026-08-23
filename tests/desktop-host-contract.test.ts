@@ -198,6 +198,7 @@ test('uses typed grant errors and closes pending owner work on disposal', async 
   assert.equal(error.name, 'TockTeamDesktopGrantError')
   assert.equal(error.code, 'purpose-mismatch')
   assert.equal(error.message, 'The Desktop grant purpose did not match.')
+  assert.equal(new TockTeamDesktopGrantError('recovery-required').message, 'Desktop destination recovery requires user action.')
   assert.equal(new TockTeamDesktopGrantError('not-a-real-code' as never).code, 'owner-lost')
 
   const lifetime = createNativeOwnerLifetime()
