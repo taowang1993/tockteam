@@ -87,8 +87,11 @@ export class DesktopPickerProvider implements TockTeamDesktopPickerService {
   private readonly sourceSessions = new Map<ReleaseDesktopSourceRequest['session'], DesktopPickerIdentity>()
   private readonly destinationSessions = new Map<AbortDesktopDestinationRequest['session'], DesktopPickerIdentity>()
   private readonly destinationPlans = new Map<DesktopDestinationPlanAuthorization, DesktopPickerIdentity>()
+  private readonly closedDestinations = new Map<AbortDesktopDestinationRequest['session'], AbortDesktopDestinationResult>()
+  private readonly pending = new Set<Promise<unknown>>()
   private readonly currentVault: DesktopPickerCurrentVault | undefined
   private disposed = false
+  private disposal: Promise<void> | undefined
 
   constructor(
     environment: DesktopPickerProviderEnvironment = {
@@ -138,12 +141,10 @@ export class DesktopPickerProvider implements TockTeamDesktopPickerService {
   }
 
   async releaseSource(request: ReleaseDesktopSourceRequest): Promise<ReleaseDesktopSourceResult> {
-    if (this.disposed) return { status: 'already-released' }
-    try {
-      return await this.call('releaseSource', request) as ReleaseDesktopSourceResult
-    } finally {
-      this.sourceSessions.delete(request.session)
-    }
+    if (this.disposed) throw new TockTeamDesktopGrantError('owner-lost')
+    const result = await this.call('releaseSource', request) as ReleaseDesktopSourceResult
+    this.sourceSessions.delete(request.session)
+    return result
   }
 
   async lockDestinationPlan(
@@ -159,12 +160,10 @@ export class DesktopPickerProvider implements TockTeamDesktopPickerService {
   async revokeDestinationPlan(
     request: RevokeDesktopDestinationPlanRequest,
   ): Promise<RevokeDesktopDestinationPlanResult> {
-    if (this.disposed) return { status: 'already-closed' }
-    try {
-      return await this.call('revokeDestinationPlan', request) as RevokeDesktopDestinationPlanResult
-    } finally {
-      this.destinationPlans.delete(request.authorization)
-    }
+    if (this.disposed) throw new TockTeamDesktopGrantError('owner-lost')
+    const result = await this.call('revokeDestinationPlan', request) as RevokeDesktopDestinationPlanResult
+    this.destinationPlans.delete(request.authorization)
+    return result
   }
 
   async beginDestination(request: BeginDesktopDestinationRequest, signal: AbortSignal): Promise<BeginDesktopDestinationResult> {
@@ -188,34 +187,63 @@ export class DesktopPickerProvider implements TockTeamDesktopPickerService {
 
   async finalizeDestination(request: FinalizeDesktopDestinationRequest, signal: AbortSignal): Promise<FinalizeDesktopDestinationResult> {
     await this.assertDestinationSession(request.session)
-    try {
-      return await this.call('finalizeDestination', request, signal) as FinalizeDesktopDestinationResult
-    } finally {
-      this.destinationSessions.delete(request.session)
-    }
+    const result = await this.call('finalizeDestination', request, signal) as FinalizeDesktopDestinationResult
+    this.destinationSessions.delete(request.session)
+    return result
   }
 
   async abortDestination(request: AbortDesktopDestinationRequest): Promise<AbortDesktopDestinationResult> {
-    if (this.disposed) return { cleanup: { status: 'complete' }, stagedBytes: 0, stagedEntries: 0, status: 'already-closed' }
-    try {
-      return await this.call('abortDestination', request) as AbortDesktopDestinationResult
-    } finally {
-      this.destinationSessions.delete(request.session)
+    if (this.disposed) {
+      const closed = this.closedDestinations.get(request.session)
+      if (closed === undefined) throw new TockTeamDesktopGrantError('owner-lost')
+      return { ...closed, status: 'already-closed' }
     }
+    const result = await this.call('abortDestination', request) as AbortDesktopDestinationResult
+    this.destinationSessions.delete(request.session)
+    this.rememberDestination(request.session, result)
+    return result
   }
 
-  async dispose(): Promise<void> {
-    if (this.disposed) return
-    await Promise.allSettled([
-      ...[...this.sourceSessions.keys()].map(session => this.call('releaseSource', { session })),
-      ...[...this.destinationSessions.keys()].map(session => this.call('abortDestination', { session })),
-      ...[...this.destinationPlans.keys()].map(authorization => this.call('revokeDestinationPlan', { authorization })),
-    ])
-    this.sourceSessions.clear()
-    this.destinationSessions.clear()
-    this.destinationPlans.clear()
+  dispose(): Promise<void> {
+    if (this.disposal !== undefined) return this.disposal
     this.disposed = true
     this.lifetime.abort()
+    this.disposal = this.finishDispose()
+    return this.disposal
+  }
+
+  private async finishDispose(): Promise<void> {
+    await Promise.allSettled([...this.pending])
+    let cleanupFailed = false
+    let remaining = Number.POSITIVE_INFINITY
+    while (this.sourceSessions.size + this.destinationSessions.size + this.destinationPlans.size < remaining) {
+      remaining = this.sourceSessions.size + this.destinationSessions.size + this.destinationPlans.size
+      await Promise.all([
+        ...[...this.sourceSessions.keys()].map(async session => {
+          try {
+            await this.request('releaseSource', { session })
+            this.sourceSessions.delete(session)
+          } catch { cleanupFailed = true }
+        }),
+        ...[...this.destinationSessions.keys()].map(async session => {
+          try {
+            const result = await this.request('abortDestination', { session }) as AbortDesktopDestinationResult
+            this.destinationSessions.delete(session)
+            this.rememberDestination(session, result)
+            if (result.cleanup.status !== 'complete') cleanupFailed = true
+          } catch { cleanupFailed = true }
+        }),
+        ...[...this.destinationPlans.keys()].map(async authorization => {
+          try {
+            await this.request('revokeDestinationPlan', { authorization })
+            this.destinationPlans.delete(authorization)
+          } catch { cleanupFailed = true }
+        }),
+      ])
+    }
+    if (this.sourceSessions.size !== 0 || this.destinationSessions.size !== 0 || this.destinationPlans.size !== 0 || cleanupFailed) {
+      throw new Error('TockTeam Desktop picker cleanup was incomplete')
+    }
   }
 
   private assertCurrentVault(identity: DesktopPickerIdentity): void {
@@ -232,8 +260,10 @@ export class DesktopPickerProvider implements TockTeamDesktopPickerService {
     try {
       this.assertCurrentVault(identity)
     } catch (cause) {
-      await this.call('releaseSource', { session }).catch(() => undefined)
-      this.sourceSessions.delete(session)
+      try {
+        await this.call('releaseSource', { session })
+        this.sourceSessions.delete(session)
+      } catch {}
       throw cause
     }
   }
@@ -244,18 +274,38 @@ export class DesktopPickerProvider implements TockTeamDesktopPickerService {
     try {
       this.assertCurrentVault(identity)
     } catch (cause) {
-      await this.call('abortDestination', { session }).catch(() => undefined)
-      this.destinationSessions.delete(session)
+      try {
+        const result = await this.call('abortDestination', { session }) as AbortDesktopDestinationResult
+        this.destinationSessions.delete(session)
+        this.rememberDestination(session, result)
+      } catch {}
       throw cause
     }
   }
 
-  async nativeRequest(method: string, request: unknown, signal?: AbortSignal): Promise<unknown> {
-    if (this.disposed || this.endpoint === undefined || this.token === undefined) {
-      throw new Error('TockTeam Desktop picker owner is unavailable')
+  private rememberDestination(session: AbortDesktopDestinationRequest['session'], result: AbortDesktopDestinationResult): void {
+    this.closedDestinations.set(session, result)
+    if (this.closedDestinations.size > 1024) {
+      const oldest = this.closedDestinations.keys().next().value
+      if (oldest !== undefined) this.closedDestinations.delete(oldest)
     }
+  }
+
+  async nativeRequest(method: string, request: unknown, signal?: AbortSignal): Promise<unknown> {
+    if (this.disposed) throw new Error('TockTeam Desktop picker owner is unavailable')
     const combined = signal === undefined ? this.lifetime.signal : AbortSignal.any([this.lifetime.signal, signal])
     combined.throwIfAborted()
+    const work = this.request(method, request, combined)
+    this.pending.add(work)
+    try {
+      return await work
+    } finally {
+      this.pending.delete(work)
+    }
+  }
+
+  private async request(method: string, request: unknown, signal?: AbortSignal): Promise<unknown> {
+    if (this.endpoint === undefined || this.token === undefined) throw new Error('TockTeam Desktop picker owner is unavailable')
     try {
       const response = await this.fetcher(this.endpoint, {
         method: 'POST',
@@ -264,7 +314,7 @@ export class DesktopPickerProvider implements TockTeamDesktopPickerService {
           'content-type': 'application/json',
         },
         body: JSON.stringify({ method, request }),
-        signal: combined,
+        signal: signal ?? null,
       })
       if (!response.ok) throw new Error(`Desktop picker owner rejected request (${String(response.status)})`)
       const payload = await response.json() as unknown
