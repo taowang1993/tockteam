@@ -211,12 +211,9 @@ export type DesktopSelectedFilePlanEntry = Omit<DesktopDestinationPlanEntry, 'ta
         kind: 'selected-file';
     }>;
 };
+/** Desktop destinations are create-only; callers must choose a new filename. */
 export type DesktopDestinationState = {
     status: 'absent';
-} | {
-    replaceAuthorized: true;
-    revision: DesktopOpaqueRevision;
-    status: 'existing';
 };
 /**
  * Destination policy is purpose-owned, not caller-configurable. Every purpose
@@ -279,11 +276,17 @@ export interface FinalizeDesktopDestinationRequest {
     planDigest: DesktopSha256;
     session: DesktopDestinationSession;
 }
+/**
+ * `complete` means no managed artifact was created. `scrubbed` retains only
+ * exact-fd-zeroed payload residue and a resolved tombstone. `retained` also
+ * retains the verified published staging alias. `residual` requires reviewed
+ * recovery. No status claims namespace deletion.
+ */
 export type DesktopCleanupEvidence = {
     status: 'complete';
 } | {
     residualLabels: DesktopPickerLabel[];
-    status: 'residual';
+    status: 'scrubbed' | 'retained' | 'residual';
 };
 export type FinalizeDesktopDestinationResult = {
     bytes: number;
@@ -291,7 +294,6 @@ export type FinalizeDesktopDestinationResult = {
     entries: number;
     label: DesktopPickerLabel;
     planDigest: DesktopSha256;
-    replaced: boolean;
     status: 'published';
 } | {
     cleanup: DesktopCleanupEvidence;
