@@ -65,6 +65,38 @@ test('loader hook proves normal publication invokes no destructive managed-path 
   assert.equal(await readFile(destination, 'utf8'), 'reviewed-output')
 })
 
+test('startup journal growth after fstat exceeds the bound and blocks globally', async () => {
+  const root = await temp('tockteam-hook-journal-growth-')
+  const recoveryRoot = await temp('tockteam-hook-recovery-')
+  const vault = await temp('tockteam-hook-vault-')
+  const result = join(await temp('tockteam-hook-result-'), 'result.json')
+  const destination = join(root, 'next.html')
+  const stageRoot = join(root, '.tockteam-picker-stage-growth')
+  const stage = join(stageRoot, 'selected-file')
+  await mkdir(stageRoot, { mode: 0o700 })
+  await writeFile(stage, '', { mode: 0o600 })
+  const [parentStat, stageRootStat, stageStat] = await Promise.all([lstat(root), lstat(stageRoot), lstat(stage)])
+  const journal = join(recoveryRoot, 'destination-growth.json')
+  await writeFile(journal, JSON.stringify({
+    destinationIdentity: null,
+    destinationPath: join(root, 'aborted.html'),
+    newDigest: sha(''),
+    newSize: 0,
+    parentIdentity: `${String(parentStat.dev)}:${String(parentStat.ino)}`,
+    residues: [
+      { disposition: 'scrubbed', identity: ownedIdentity(stageRootStat), kind: 'directory', path: stageRoot, size: 0 },
+      { disposition: 'scrubbed', identity: ownedIdentity(stageStat), kind: 'file', path: stage, size: 0 },
+    ],
+    resolution: 'scrubbed',
+    version: 2,
+  }), { mode: 0o600 })
+  const child = runHook('startup-journal-growth', destination, recoveryRoot, vault, result, 'foreign')
+  assert.equal(child.status, 0, child.stderr || child.stdout)
+  assert.equal(JSON.parse(await readFile(result, 'utf8')).outcome, 'error:recovery-required')
+  assert.ok((await lstat(journal)).size > 64 * 1024)
+  assert.equal((await readFile(stage)).byteLength, 0)
+})
+
 test('startup journal-open swap preserves both files and blocks the current process', async () => {
   const root = await temp('tockteam-hook-journal-swap-')
   const recoveryRoot = await temp('tockteam-hook-recovery-')

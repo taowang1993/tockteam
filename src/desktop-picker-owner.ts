@@ -1843,17 +1843,22 @@ export class DesktopPickerOwner {
     try {
       handle = await open(path, fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW | fsConstants.O_NONBLOCK)
       const journalStat = await handle.stat()
-      const journalIdentity = ownedIdentityOf(journalStat)
       if (!journalStat.isFile() || Number(journalStat.size) > MAX_RECOVERY_JOURNAL_BYTES
         || (Number(journalStat.mode) & 0o777) !== 0o600
         || typeof process.getuid === 'function' && journalStat.uid !== process.getuid()) return this.markRecoveryCorrupt()
-      const parsed = JSON.parse(await handle.readFile('utf8')) as unknown
+      const journalBytes = Buffer.alloc(Number(journalStat.size))
+      const read = await handle.read(journalBytes, 0, journalBytes.length, 0)
+      const extra = Buffer.alloc(1)
+      if (read.bytesRead !== journalBytes.length
+        || (await handle.read(extra, 0, 1, journalBytes.length)).bytesRead !== 0) return this.markRecoveryCorrupt()
+      const parsed = JSON.parse(journalBytes.toString('utf8')) as unknown
       if (!this.validRecoveryRecord(parsed) || parsed.resolution === 'unresolved') return this.markRecoveryCorrupt()
       this.assertDestinationParent(parsed.destinationPath, parsed.parentIdentity)
       if (!await this.validateResolvedResidues(parsed)) return this.markRecoveryCorrupt()
-      const pathStat = await this.safeLstat(path)
+      const [finalJournalStat, pathStat] = await Promise.all([handle.stat(), this.safeLstat(path)])
       if (pathStat === undefined || !pathStat.isFile() || pathStat.isSymbolicLink()
-        || ownedIdentityOf(pathStat) !== journalIdentity) this.markRecoveryCorrupt()
+        || revisionOf(finalJournalStat) !== revisionOf(journalStat)
+        || revisionOf(pathStat) !== revisionOf(journalStat)) this.markRecoveryCorrupt()
     } catch {
       this.markRecoveryCorrupt()
     } finally {
@@ -1889,12 +1894,13 @@ export class DesktopPickerOwner {
         || residue.kind === 'directory' && !stat.isDirectory()) return false
       if (digest !== undefined && residue.kind === 'file'
         && !await this.verifyHandleDigest(handle, residue.size, digest)) return false
-      const pathStat = await this.safeLstat(residue.path)
+      const [finalStat, pathStat] = await Promise.all([handle.stat(), this.safeLstat(residue.path)])
       return pathStat !== undefined && !pathStat.isSymbolicLink()
-        && ownedIdentityOf(pathStat) === residue.identity
+        && revisionOf(finalStat) === revisionOf(stat)
+        && revisionOf(pathStat) === revisionOf(stat)
         && (residue.kind === 'file' ? pathStat.isFile() : pathStat.isDirectory())
-    } catch (cause) {
-      return (cause as NodeJS.ErrnoException).code === 'ENOENT'
+    } catch {
+      return false
     } finally {
       await handle?.close().catch(() => undefined)
     }

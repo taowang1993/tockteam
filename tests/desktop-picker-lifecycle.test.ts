@@ -462,7 +462,7 @@ test('existing destinations are denied without snapshots, backups, or mutation',
   await owner.dispose()
 })
 
-test('crash recovery preserves all tombstones for manual review idempotently', async () => {
+test('crash recovery preserves evidence and validates resolved tombstones idempotently', async () => {
   const checkpoints: DesktopPickerCheckpoint[] = ['journal-prepared', 'target-published', 'journal-published']
   for (const checkpoint of checkpoints) {
     const root = await canonicalTemp(`tockteam-picker-crash-${checkpoint}-`)
@@ -591,12 +591,28 @@ test('valid retained tombstone is nonblocking before later mismatch and manual r
   await restarted.dispose()
   await unlink(join(root, stageName, 'selected-file'))
   await rmdir(join(root, stageName))
-  const aliasRemoved = new DesktopPickerOwner({ isAvailable: () => true, recoveryRoot, showOpenDialog: async () => ({ canceled: true }), showSaveDialog: async () => ({ canceled: true }) })
+  const manualOptions = {
+    isAvailable: () => true,
+    recoveryRoot,
+    showOpenDialog: async () => ({ canceled: false, filePath: activeVault }),
+    showSaveDialog: async () => ({ canceled: false, filePath: join(root, 'manual-next.html') }),
+  }
+  const aliasRemoved = new DesktopPickerOwner(manualOptions)
   await aliasRemoved.ready()
+  await activate(aliasRemoved)
+  const blockedOperation = identity('alias-first-blocked')
+  const blockedSelection = await grant(aliasRemoved, { identity: blockedOperation, kind: 'destination', purpose: 'export-html' })
+  const blockedPlan = { entries: [{ digest: sha('x'), size: 1, target: { kind: 'selected-file' as const } }] as const, purpose: 'export-html' as const, totalBytes: 1 }
+  await rejectsCode(aliasRemoved.lockDestinationPlan({ ...blockedPlan, identity: blockedOperation, planDigest: computeDesktopDestinationPlanDigest(blockedPlan), selectionAuthorization: blockedSelection }, new AbortController().signal), 'recovery-required')
   await aliasRemoved.dispose()
   await unlink(join(recoveryRoot, journalName))
-  const tombstoneRemoved = new DesktopPickerOwner({ isAvailable: () => true, recoveryRoot, showOpenDialog: async () => ({ canceled: true }), showSaveDialog: async () => ({ canceled: true }) })
+  const tombstoneRemoved = new DesktopPickerOwner(manualOptions)
   await tombstoneRemoved.ready()
+  await activate(tombstoneRemoved)
+  const clearedOperation = identity('manual-cleared')
+  const clearedSelection = await grant(tombstoneRemoved, { identity: clearedOperation, kind: 'destination', purpose: 'export-html' })
+  const cleared = await tombstoneRemoved.lockDestinationPlan({ ...blockedPlan, identity: clearedOperation, planDigest: computeDesktopDestinationPlanDigest(blockedPlan), selectionAuthorization: clearedSelection }, new AbortController().signal)
+  await tombstoneRemoved.revokeDestinationPlan({ authorization: cleared.authorization })
   await tombstoneRemoved.dispose()
   assert.deepEqual(await readdir(recoveryRoot), [])
 })

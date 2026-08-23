@@ -6,6 +6,7 @@ const foreign = process.env.TOCKTEAM_HOOK_FOREIGN ?? 'foreign-occupant'
 let attacked = false
 
 const original = {
+  appendFileSync: fs.appendFileSync.bind(fs),
   linkSync: fs.linkSync.bind(fs),
   open: fs.promises.open.bind(fs.promises),
   renameSync: fs.renameSync.bind(fs),
@@ -27,7 +28,7 @@ if (mode === 'link-source-swap' || mode === 'link-destination-occupy') {
   }
 }
 
-if (mode === 'startup-stage-swap' || mode === 'startup-journal-open-swap' || mode === 'startup-resolved-stage-open-swap') {
+if (mode === 'startup-stage-swap' || mode === 'startup-journal-open-swap' || mode === 'startup-resolved-stage-open-swap' || mode === 'startup-journal-growth') {
   fs.promises.open = async (path, ...args) => {
     const stage = process.env.TOCKTEAM_HOOK_STAGE
     if (mode === 'startup-stage-swap' && !attacked && stage !== undefined && String(path).includes('destination-') && String(path).endsWith('.json')) {
@@ -36,6 +37,16 @@ if (mode === 'startup-stage-swap' || mode === 'startup-journal-open-swap' || mod
       original.writeFileSync(stage, foreign, { mode: 0o600 })
     }
     const handle = await original.open(path, ...args)
+    if (mode === 'startup-journal-growth' && !attacked && String(path).includes('destination-') && String(path).endsWith('.json')) {
+      const read = handle.read.bind(handle)
+      handle.read = async (...readArgs) => {
+        if (!attacked) {
+          attacked = true
+          original.appendFileSync(path, ' '.repeat(128 * 1024))
+        }
+        return await read(...readArgs)
+      }
+    }
     if (mode === 'startup-resolved-stage-open-swap' && !attacked && stage !== undefined && String(path) === stage) {
       attacked = true
       original.renameSync(stage, `${stage}-recorded-owner`)
