@@ -327,6 +327,21 @@ function targetKey(target: DesktopDestinationTarget): string {
   return target.kind === 'selected-file' ? 'selected-file' : target.relativePath
 }
 
+function stateValid(value: unknown): value is DesktopDestinationState {
+  if (!object(value)) return false
+  if (value.status === 'absent') return exact(value, ['status'])
+  return value.status === 'existing'
+    && exact(value, ['replaceAuthorized', 'revision', 'status'])
+    && value.replaceAuthorized === true
+    && text(value.revision)
+}
+
+function targetValid(value: unknown): value is DesktopDestinationTarget {
+  return object(value) && (value.kind === 'selected-file'
+    ? exact(value, ['kind'])
+    : value.kind === 'relative-file' && exact(value, ['kind', 'relativePath']) && safeRelative(value.relativePath))
+}
+
 function stateEqual(left: DesktopDestinationState, right: DesktopDestinationState): boolean {
   if (left.status !== right.status) return false
   return left.status === 'absent' || right.status === 'absent'
@@ -531,7 +546,9 @@ export class DesktopPickerOwner {
 
   async listSource(request: ListDesktopSourceRequest, signal: AbortSignal): Promise<ListDesktopSourceResult> {
     if (signal.aborted) return error('aborted')
-    if (!noExtra(request, ['cursor', 'limit', 'session']) || !Number.isSafeInteger(request.limit) || request.limit <= 0 || request.limit > MAX_DESKTOP_SOURCE_PAGE_ENTRIES) return error('limit-exceeded')
+    if (!noExtra(request, ['cursor', 'limit', 'session']) || !text(request.session)
+      || request.cursor !== undefined && request.cursor !== null && !text(request.cursor)
+      || !Number.isSafeInteger(request.limit) || request.limit <= 0 || request.limit > MAX_DESKTOP_SOURCE_PAGE_ENTRIES) return error('limit-exceeded')
     const source = this.source(request.session)
     let index = 0
     if (request.cursor !== undefined && request.cursor !== null) {
@@ -558,7 +575,7 @@ export class DesktopPickerOwner {
 
   async statSource(request: StatDesktopSourceRequest, signal: AbortSignal): Promise<StatDesktopSourceResult> {
     if (signal.aborted) return error('aborted')
-    if (!exact(request, ['entryId', 'session'])) return error('invalid-entry')
+    if (!exact(request, ['entryId', 'session']) || !text(request.entryId) || !text(request.session)) return error('invalid-entry')
     const source = this.source(request.session)
     const entry = source.ordered.find(item => sourceEntryKeys(item.entry) && item.entry.entryId === request.entryId)
     if (entry === undefined || !sourceEntryKeys(entry.entry)) return error('invalid-entry')
@@ -568,7 +585,9 @@ export class DesktopPickerOwner {
 
   async readSource(request: ReadDesktopSourceRequest, signal: AbortSignal): Promise<ReadDesktopSourceResult> {
     if (signal.aborted) return error('aborted')
-    if (!exact(request, ['entryId', 'expectedRevision', 'expectedSize', 'length', 'offset', 'session'])) return error('invalid-entry')
+    if (!exact(request, ['entryId', 'expectedRevision', 'expectedSize', 'length', 'offset', 'session'])
+      || !text(request.entryId) || !text(request.expectedRevision) || !text(request.session)
+      || !Number.isSafeInteger(request.expectedSize) || request.expectedSize < 0) return error('invalid-entry')
     const source = this.source(request.session)
     if (!Number.isSafeInteger(request.offset) || request.offset < 0
       || !Number.isSafeInteger(request.length) || request.length <= 0
@@ -611,7 +630,7 @@ export class DesktopPickerOwner {
 
   async revalidateSource(request: RevalidateDesktopSourceRequest, signal: AbortSignal): Promise<RevalidateDesktopSourceResult> {
     if (signal.aborted) return error('aborted')
-    if (!exact(request, ['expectedRootRevision', 'session'])) return error('invalid-entry')
+    if (!exact(request, ['expectedRootRevision', 'session']) || !text(request.expectedRootRevision) || !text(request.session)) return error('invalid-entry')
     const source = this.source(request.session)
     const revision = await this.sourceRevision(source.path, source.limits)
     if (signal.aborted) return error('aborted')
@@ -620,7 +639,7 @@ export class DesktopPickerOwner {
   }
 
   async releaseSource(request: ReleaseDesktopSourceRequest): Promise<ReleaseDesktopSourceResult> {
-    if (!exact(request, ['session'])) return error('invalid-entry')
+    if (!exact(request, ['session']) || !text(request.session)) return error('invalid-entry')
     this.sweep()
     if (!this.sources.delete(request.session)) return { status: 'already-released' }
     return { status: 'released' }
@@ -665,7 +684,7 @@ export class DesktopPickerOwner {
 
   async writeDestinationChunk(request: WriteDesktopDestinationChunkRequest, signal: AbortSignal): Promise<WriteDesktopDestinationChunkResult> {
     if (signal.aborted) return error('aborted')
-    if (!exact(request, ['bytes', 'offset', 'session', 'target'])) return error('invalid-entry')
+    if (!exact(request, ['bytes', 'offset', 'session', 'target']) || !text(request.session) || !targetValid(request.target)) return error('invalid-entry')
     const destination = this.destination(request.session)
     if (!(request.bytes instanceof Uint8Array) || request.bytes.length > MAX_DESKTOP_DESTINATION_CHUNK_BYTES) return error('limit-exceeded')
     const entry = destination.entries.find(item => targetKey(item.entry.target) === targetKey(request.target))
@@ -698,7 +717,7 @@ export class DesktopPickerOwner {
 
   async finalizeDestination(request: FinalizeDesktopDestinationRequest, signal: AbortSignal): Promise<FinalizeDesktopDestinationResult> {
     if (signal.aborted) return error('aborted')
-    if (!exact(request, ['expectedState', 'planDigest', 'session'])) return error('invalid-entry')
+    if (!exact(request, ['expectedState', 'planDigest', 'session']) || !stateValid(request.expectedState) || !digest(request.planDigest) || !text(request.session)) return error('invalid-entry')
     const destination = this.destination(request.session)
     if (request.planDigest !== destination.planDigest || !stateEqual(request.expectedState, destination.expectedState)) return error('stale')
     try {
@@ -773,7 +792,7 @@ export class DesktopPickerOwner {
   }
 
   async abortDestination(request: AbortDesktopDestinationRequest): Promise<AbortDesktopDestinationResult> {
-    if (!exact(request, ['session'])) return error('invalid-entry')
+    if (!exact(request, ['session']) || !text(request.session)) return error('invalid-entry')
     const destination = this.destinations.get(request.session)
     if (destination === undefined) return { cleanup: { status: 'complete' }, stagedBytes: 0, stagedEntries: 0, status: 'already-closed' }
     const stagedBytes = destination.entries.reduce((sum, entry) => sum + entry.offset, 0)

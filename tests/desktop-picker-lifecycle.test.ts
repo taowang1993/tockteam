@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
-import { link, mkdir, mkdtemp, readFile, readdir, symlink, writeFile } from 'node:fs/promises'
+import { link, mkdir, mkdtemp, readFile, readdir, rename, symlink, writeFile } from 'node:fs/promises'
 import { createServer } from 'node:net'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -183,6 +183,39 @@ test('nested symlink, hardlink, and socket entries are rejected and never follow
   } finally {
     await new Promise<void>(resolve => server.close(() => resolve()))
   }
+})
+
+test('ancestor replacement between listing and read cannot redirect file bytes', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'tockteam-picker-ancestor-'))
+  const activeVault = await mkdtemp(join(tmpdir(), 'tockteam-picker-active-'))
+  const outside = await mkdtemp(join(tmpdir(), 'tockteam-picker-outside-'))
+  await mkdir(join(root, 'nested'))
+  await writeFile(join(root, 'nested', 'note.md'), 'inside')
+  await writeFile(join(outside, 'note.md'), 'outside secret')
+  const owner = new DesktopPickerOwner({
+    isAvailable: () => true,
+    showOpenDialog: async options => ({ canceled: false, filePath: options.purpose === 'activate' ? activeVault : root }),
+    showSaveDialog: async () => ({ canceled: true }),
+  })
+  await activate(owner)
+  const operation = identity('ancestor-swap')
+  const authorization = await grant(owner, { identity: operation, kind: 'source', purpose: 'markdown-folder' })
+  const begun = await owner.beginSource({ authorization, identity: operation, limits, purpose: 'markdown-folder' }, new AbortController().signal)
+  const listed = await owner.listSource({ limit: 256, session: begun.session }, new AbortController().signal)
+  const entry = listed.entries.find(value => value.kind === 'file' && value.relativePath === 'nested/note.md')
+  assert.ok(entry?.kind === 'file')
+  if (entry?.kind !== 'file') return
+  await rename(join(root, 'nested'), join(root, 'original-nested'))
+  await symlink(outside, join(root, 'nested'))
+  await rejectsCode(owner.readSource({
+    entryId: entry.entryId,
+    expectedRevision: entry.revision,
+    expectedSize: entry.size,
+    length: 1024,
+    offset: 0,
+    session: begun.session,
+  }, new AbortController().signal), 'changed')
+  await owner.dispose()
 })
 
 test('destination mismatches and TOCTOU fail closed with staging cleanup', async () => {
