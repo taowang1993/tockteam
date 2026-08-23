@@ -13,8 +13,8 @@ import {
   type TockTeamDesktopPickerService,
 } from './host-contract.ts'
 
-const FORBIDDEN_MARKUP = /<(?:script|iframe|object|embed|link|meta|base|style|form)\b|\son[a-z]+\s*=|\sstyle\s*=/iu
-const RESOURCE_PATTERN = /\b(?:src|href)\s*=\s*(["'])(.*?)\1/giu
+const FORBIDDEN_MARKUP = /<(?:script|iframe|object|embed|link|meta|base|style|form)\b|\son[a-z]+\s*=|\s(?:style|srcset|poster)\s*=/iu
+const RESOURCE_PATTERN = /\b(?:src|href)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/giu
 const ALLOWED_DATA_IMAGE = /^data:image\/(?:avif|gif|jpeg|png|webp);base64,[a-z0-9+/=]+$/iu
 
 export interface DesktopPrintExportNative {
@@ -35,7 +35,7 @@ function validDocument(html: unknown, title: unknown): html is string {
   if (typeof html !== 'string' || html.length === 0 || typeof title !== 'string'
     || bytes(html) > MAX_PRINT_EXPORT_HTML_BYTES || bytes(title) > MAX_PRINT_EXPORT_TITLE_BYTES
     || FORBIDDEN_MARKUP.test(html)) return false
-  const resources = [...html.matchAll(RESOURCE_PATTERN)].map(match => match[2] ?? '')
+  const resources = [...html.matchAll(RESOURCE_PATTERN)].map(match => match[1] ?? match[2] ?? match[3] ?? '')
   return resources.length <= MAX_PRINT_EXPORT_RESOURCE_REFERENCES
     && resources.every(resource => bytes(resource) <= MAX_PRINT_EXPORT_RESOURCE_URL_BYTES && ALLOWED_DATA_IMAGE.test(resource))
 }
