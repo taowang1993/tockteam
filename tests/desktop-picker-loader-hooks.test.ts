@@ -58,7 +58,7 @@ test('loader hooks preserve late occupants and flat-stage source swaps at final 
     const foreign = `foreign-${mode}`
     const child = runHook(mode, destination, recoveryRoot, vault, result, foreign)
     assert.equal(child.status, 0, child.stderr || child.stdout)
-    assert.equal(JSON.parse(await readFile(result, 'utf8')).outcome, 'error:changed')
+    assert.equal(JSON.parse(await readFile(result, 'utf8')).outcome, 'error:recovery-required')
     assert.equal(await readFile(destination, 'utf8'), foreign)
     const stage = (await readdir(root)).find(name => name.startsWith('.tockteam-picker-stage-'))
     assert.ok(stage)

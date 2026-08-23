@@ -114,12 +114,13 @@ test("post-stability close cannot strand plaintext staging", async () => {
     await rename(stage, moved);
     await writeFile(stage, "keep");
   };
-  const result = await o.finalizeDestination(
-    { expectedState: begun.expectedState, planDigest, session: begun.session },
-    new AbortController().signal,
+  await assert.rejects(
+    o.finalizeDestination(
+      { expectedState: begun.expectedState, planDigest, session: begun.session },
+      new AbortController().signal,
+    ),
+    (cause: unknown) => (cause as { code?: string }).code === "recovery-required",
   );
-  assert.equal(result.status, "published");
-  if (result.status === "published") assert.equal(result.cleanup.status, "retained");
   assert.deepEqual(await readFile(output), secret);
   const names = await readdir(root);
   assert.equal(

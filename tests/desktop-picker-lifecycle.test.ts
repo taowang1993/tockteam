@@ -454,7 +454,7 @@ test('finalize stage replacement scrubs confidential bytes through the retained 
   const locked = await owner.lockDestinationPlan({ ...plan, identity: operation, planDigest, selectionAuthorization: selection }, new AbortController().signal)
   const begun = await owner.beginDestination({ ...plan, authorization: locked.authorization, identity: operation, planDigest }, new AbortController().signal)
   await owner.writeDestinationChunk({ bytes: secret, offset: 0, planDigest, session: begun.session, target: { kind: 'selected-file' } }, new AbortController().signal)
-  await rejectsCode(owner.finalizeDestination({ expectedState: begun.expectedState, planDigest, session: begun.session }, new AbortController().signal), 'changed')
+  await rejectsCode(owner.finalizeDestination({ expectedState: begun.expectedState, planDigest, session: begun.session }, new AbortController().signal), 'recovery-required')
   const closed = await owner.abortDestination({ session: begun.session })
   assert.equal(closed.status, 'already-closed')
   assert.equal(closed.cleanup.status, 'residual')

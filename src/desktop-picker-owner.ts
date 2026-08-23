@@ -9,6 +9,7 @@ import {
   lstatSync,
   mkdirSync,
   openSync,
+  readSync,
   realpathSync,
 } from 'node:fs'
 import {
@@ -1237,14 +1238,16 @@ export class DesktopPickerOwner {
       this.assertLiveStageAuthority(destination, selectedEntry, selectedEntry.entry.size)
       if (!this.verifyJournalPath(destination.journal)
         || !await this.verifyPublishedAlias(destination, selectedEntry)) return error('changed')
-      this.assertLiveStageAuthority(destination, selectedEntry, selectedEntry.entry.size)
+      this.assertPublishedAuthority(destination, selectedEntry)
       if (!this.verifyJournalPath(destination.journal)) return error('changed')
       const handle = selectedEntry.handle
-      selectedEntry.handle = undefined
-      await handle.close()
+      const journal = destination.journal
       const cleanup = this.cleanupEvidence(destination, 'retained')
-      await destination.journal.handle.close()
+      await handle.close()
+      selectedEntry.handle = undefined
+      await journal.handle.close()
       destination.journal = undefined
+      this.assertClosedPublicationAuthority(destination, selectedEntry, journal)
       this.destinations.delete(request.session)
       this.rememberClosedDestination(request.session, {
         cleanup,
@@ -1264,7 +1267,9 @@ export class DesktopPickerOwner {
         status: 'published',
       }
     } catch (cause) {
+      if (blocksRecovery(cause)) this.recoveryBlockedDestinations.add(destination.path)
       const closed = await this.closeDestination(request.session, destination)
+      if (blocksRecovery(cause)) return error('recovery-required')
       if (cause instanceof TockTeamDesktopGrantError) throw cause
       return {
         cleanup: closed.cleanup,
@@ -2170,6 +2175,79 @@ export class DesktopPickerOwner {
     } catch (cause) {
       if (cause instanceof TockTeamDesktopGrantError) throw cause
       return error('changed')
+    }
+  }
+
+  private assertPublishedAuthority(destination: DestinationSession, entry: DestinationEntry): void {
+    this.assertLiveStageAuthority(destination, entry, entry.entry.size)
+    if (entry.handle === undefined || entry.stagedIdentity === undefined) return error('closed')
+    try {
+      const before = fstatSync(entry.handle.fd)
+      const hash = createHash('sha256')
+      const buffer = Buffer.alloc(MAX_DESKTOP_DESTINATION_CHUNK_BYTES)
+      for (let offset = 0; offset < entry.entry.size;) {
+        const length = Math.min(buffer.length, entry.entry.size - offset)
+        if (readSync(entry.handle.fd, buffer, 0, length, offset) !== length) return error('changed')
+        hash.update(buffer.subarray(0, length))
+        offset += length
+      }
+      const after = fstatSync(entry.handle.fd)
+      const canonicalDestination = realpathSync(destination.path)
+      const destinationStat = lstatSync(destination.path)
+      if (hash.digest('hex') !== entry.digest || revisionOf(after) !== revisionOf(before)
+        || canonicalDestination !== destination.path || !destinationStat.isFile()
+        || destinationStat.isSymbolicLink() || ownedIdentityOf(destinationStat) !== entry.stagedIdentity
+        || Number(destinationStat.size) !== entry.entry.size) return error('changed')
+    } catch (cause) {
+      if (cause instanceof TockTeamDesktopGrantError) throw cause
+      return error('changed')
+    }
+  }
+
+  private assertClosedPublicationAuthority(
+    destination: DestinationSession,
+    entry: DestinationEntry,
+    journal: DestinationJournal,
+  ): void {
+    let stageFd: number | undefined
+    let destinationFd: number | undefined
+    let journalFd: number | undefined
+    try {
+      this.assertDestinationParent(destination.path, destination.parentIdentity)
+      if (entry.stagedPath === undefined || entry.stagedIdentity === undefined) return error('closed')
+      stageFd = openSync(entry.stagedPath, fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW)
+      destinationFd = openSync(destination.path, fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW)
+      journalFd = openSync(journal.path, fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW)
+      const stageStat = fstatSync(stageFd)
+      const destinationStat = fstatSync(destinationFd)
+      const journalStat = fstatSync(journalFd)
+      const rootStat = lstatSync(this.recoveryRoot)
+      const hash = createHash('sha256')
+      const buffer = Buffer.alloc(MAX_DESKTOP_DESTINATION_CHUNK_BYTES)
+      for (let offset = 0; offset < entry.entry.size;) {
+        const length = Math.min(buffer.length, entry.entry.size - offset)
+        if (readSync(stageFd, buffer, 0, length, offset) !== length) return error('changed')
+        hash.update(buffer.subarray(0, length))
+        offset += length
+      }
+      if (hash.digest('hex') !== entry.digest || !stageStat.isFile() || !destinationStat.isFile()
+        || Number(stageStat.size) !== entry.entry.size || Number(destinationStat.size) !== entry.entry.size
+        || ownedIdentityOf(stageStat) !== entry.stagedIdentity
+        || ownedIdentityOf(destinationStat) !== entry.stagedIdentity
+        || realpathSync(entry.stagedPath) !== entry.stagedPath
+        || realpathSync(destination.path) !== destination.path
+        || !journalStat.isFile() || ownedIdentityOf(journalStat) !== journal.identity
+        || realpathSync(journal.path) !== journal.path
+        || !rootStat.isDirectory() || rootStat.isSymbolicLink()
+        || realpathSync(this.recoveryRoot) !== this.recoveryRoot
+        || ownedIdentityOf(rootStat) !== journal.rootIdentity) return error('changed')
+    } catch (cause) {
+      if (cause instanceof TockTeamDesktopGrantError) throw cause
+      return error('changed')
+    } finally {
+      if (stageFd !== undefined) closeSync(stageFd)
+      if (destinationFd !== undefined) closeSync(destinationFd)
+      if (journalFd !== undefined) closeSync(journalFd)
     }
   }
 
