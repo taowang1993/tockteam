@@ -246,6 +246,7 @@ interface DestinationSession {
   entries: DestinationEntry[]
   parentIdentity: string
   path: string
+  publicationLinked: boolean
   purpose: DesktopExportPurpose
   totalBytes: number
 }
@@ -1037,6 +1038,7 @@ export class DesktopPickerOwner {
       })),
       parentIdentity: locked.parentIdentity,
       path: locked.path,
+      publicationLinked: false,
       purpose: locked.purpose,
       totalBytes: locked.totalBytes,
     }
@@ -1206,6 +1208,7 @@ export class DesktopPickerOwner {
         return error('changed')
       await this.options.onCheckpoint?.('finalize', signal)
       this.assertLiveStageAuthority(destination, selectedEntry, selectedEntry.entry.size)
+      if (!this.verifyJournalPath(destination.journal)) return error('changed')
       this.assertAuthority(destination.identity)
       if (signal.aborted) return error('aborted')
       if (
@@ -1216,10 +1219,13 @@ export class DesktopPickerOwner {
       )
         return error('changed')
       this.assertLiveStageAuthority(destination, selectedEntry, selectedEntry.entry.size)
+      if (!this.verifyJournalPath(destination.journal)) return error('changed')
       if (!await this.verifyHandleDigest(selectedEntry.handle, selectedEntry.entry.size, selectedEntry.digest)) return error('digest-mismatch')
       this.assertLiveStageAuthority(destination, selectedEntry, selectedEntry.entry.size)
+      if (!this.verifyJournalPath(destination.journal)) return error('changed')
       try {
         linkSync(selectedEntry.stagedPath, destination.path)
+        destination.publicationLinked = true
       } catch (cause) {
         if ((cause as NodeJS.ErrnoException).code === 'EEXIST')
           return error('changed')
@@ -2348,12 +2354,16 @@ export class DesktopPickerOwner {
   }
 
   private async cleanupDestination(destination: DestinationSession): Promise<DesktopCleanupEvidence> {
-    let unresolved = false
+    let unresolved = destination.publicationLinked
     for (const entry of destination.entries) {
       if (entry.handle !== undefined) {
         try {
-          await entry.handle.truncate(0)
-          await entry.handle.sync()
+          const handleStat = await entry.handle.stat()
+          const sharesPublishedInode = destination.publicationLinked && Number(handleStat.nlink) > 1
+          if (!sharesPublishedInode) {
+            await entry.handle.truncate(0)
+            await entry.handle.sync()
+          }
           await entry.handle.close()
           entry.handle = undefined
         } catch {
@@ -2362,7 +2372,9 @@ export class DesktopPickerOwner {
       }
       if (entry.stagedPath !== undefined && entry.stagedIdentity !== undefined) {
         const stat = await this.safeLstat(entry.stagedPath)
-        if (stat === undefined || !stat.isFile() || ownedIdentityOf(stat) !== entry.stagedIdentity || Number(stat.size) !== 0) unresolved = true
+        const expectedSize = destination.publicationLinked ? entry.entry.size : 0
+        if (stat === undefined || !stat.isFile() || ownedIdentityOf(stat) !== entry.stagedIdentity
+          || Number(stat.size) !== expectedSize) unresolved = true
       }
     }
     if (!unresolved && destination.journal !== undefined) {
