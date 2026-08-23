@@ -97,7 +97,7 @@ export function apply(ctx: HostContext): void {
   const pickerProvider = new DesktopPickerProvider(undefined, fetch, () => {
     return (ctx.get('noteVault') as NoteVaultStateService | undefined)?.state
   })
-  const vaultSelectionProvider = new DesktopVaultSelectionProvider(ctx)
+  const vaultSelectionProvider = new DesktopVaultSelectionProvider(ctx, undefined, undefined, pickerProvider)
   const currentVault = (): NoteVaultStateService['state'] | undefined => {
     return (ctx.get('noteVault') as NoteVaultStateService | undefined)?.state
   }

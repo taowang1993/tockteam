@@ -341,11 +341,60 @@ test('replaced staging directory is never recursively removed and retained bytes
   await rename(stage, moved)
   await mkdir(stage)
   await writeFile(join(stage, 'sentinel'), 'keep')
+  await assert.rejects(owner.dispose(), /cleanup was incomplete/)
   const aborted = await owner.abortDestination({ session: begun.session })
+  assert.equal(aborted.status, 'already-closed')
   assert.equal(aborted.cleanup.status, 'residual')
+  assert.equal(aborted.stagedBytes, bytes.length)
   assert.equal(await readFile(join(stage, 'sentinel'), 'utf8'), 'keep')
   assert.equal((await readFile(join(moved, 'selected-file'))).byteLength, 0)
+})
+
+test('finalize stage replacement scrubs confidential bytes through the retained handle', async () => {
+  const root = await canonicalTemp('tockteam-picker-finalize-stage-swap-')
+  const activeVault = await canonicalTemp('tockteam-picker-active-')
+  const output = join(root, 'output.html')
+  const secret = new TextEncoder().encode('finalize-race confidential bytes')
+  let movedStage: string | undefined
+  let replacementStage: string | undefined
+  const owner = new DesktopPickerOwner({
+    isAvailable: () => true,
+    showOpenDialog: async options => options.purpose === 'activate'
+      ? { canceled: false, filePath: activeVault }
+      : { canceled: true },
+    showSaveDialog: async () => ({ canceled: false, filePath: output }),
+    onCheckpoint: async checkpoint => {
+      if (checkpoint !== 'finalize') return
+      const stageName = (await readdir(root)).find(name => name.startsWith('.tockteam-picker-stage-'))
+      assert.ok(stageName)
+      replacementStage = join(root, stageName)
+      movedStage = `${replacementStage}-moved`
+      await rename(replacementStage, movedStage)
+      await mkdir(replacementStage)
+      await writeFile(join(replacementStage, 'sentinel'), 'keep')
+    },
+  })
+  await activate(owner)
+  const operation = identity('finalize-stage-swap')
+  const selection = await grant(owner, { identity: operation, kind: 'destination', purpose: 'export-html' })
+  const plan = {
+    entries: [{ digest: sha(secret), size: secret.length, target: { kind: 'selected-file' as const } }] as const,
+    purpose: 'export-html' as const,
+    totalBytes: secret.length,
+  }
+  const planDigest = computeDesktopDestinationPlanDigest(plan)
+  const locked = await owner.lockDestinationPlan({ ...plan, identity: operation, planDigest, selectionAuthorization: selection }, new AbortController().signal)
+  const begun = await owner.beginDestination({ ...plan, authorization: locked.authorization, identity: operation, planDigest }, new AbortController().signal)
+  await owner.writeDestinationChunk({ bytes: secret, offset: 0, planDigest, session: begun.session, target: { kind: 'selected-file' } }, new AbortController().signal)
+  await rejectsCode(owner.finalizeDestination({ expectedState: begun.expectedState, planDigest, session: begun.session }, new AbortController().signal), 'unsafe-target')
+  const closed = await owner.abortDestination({ session: begun.session })
+  assert.equal(closed.status, 'already-closed')
+  assert.equal(closed.cleanup.status, 'residual')
+  assert.ok(movedStage)
+  assert.equal((await readFile(join(movedStage, 'selected-file'))).byteLength, 0)
   await owner.dispose()
+  assert.equal((await readFile(join(movedStage, 'selected-file'))).byteLength, 0)
+  assert.equal(await readFile(join(replacementStage as string, 'sentinel'), 'utf8'), 'keep')
 })
 
 test('destination mismatches and TOCTOU fail closed with staging cleanup', async () => {

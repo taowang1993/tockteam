@@ -207,7 +207,6 @@ export class DesktopPickerProvider implements TockTeamDesktopPickerService {
   dispose(): Promise<void> {
     if (this.disposal !== undefined) return this.disposal
     this.disposed = true
-    this.lifetime.abort()
     this.disposal = this.finishDispose()
     return this.disposal
   }
@@ -215,6 +214,10 @@ export class DesktopPickerProvider implements TockTeamDesktopPickerService {
   private async finishDispose(): Promise<void> {
     await Promise.allSettled([...this.pending])
     let cleanupFailed = false
+    try {
+      const result = await this.request('disposeProvider', {}) as { cleanup: { status: 'complete' | 'residual' } }
+      if (result.cleanup.status !== 'complete') cleanupFailed = true
+    } catch { cleanupFailed = true }
     let remaining = Number.POSITIVE_INFINITY
     while (this.sourceSessions.size + this.destinationSessions.size + this.destinationPlans.size < remaining) {
       remaining = this.sourceSessions.size + this.destinationSessions.size + this.destinationPlans.size
@@ -241,6 +244,7 @@ export class DesktopPickerProvider implements TockTeamDesktopPickerService {
         }),
       ])
     }
+    this.lifetime.abort()
     if (this.sourceSessions.size !== 0 || this.destinationSessions.size !== 0 || this.destinationPlans.size !== 0 || cleanupFailed) {
       throw new Error('TockTeam Desktop picker cleanup was incomplete')
     }
@@ -358,9 +362,10 @@ export class DesktopVaultSelectionProvider extends TockTeamDesktopVaultSelection
     ctx: unknown,
     environment?: DesktopPickerProviderEnvironment,
     fetcher?: typeof fetch,
+    transport?: DesktopPickerProvider,
   ) {
     super(ctx as never)
-    this.transport = new DesktopPickerProvider(environment, fetcher)
+    this.transport = transport ?? new DesktopPickerProvider(environment, fetcher)
   }
 
   async consume(

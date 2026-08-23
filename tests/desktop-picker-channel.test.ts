@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
-import { mkdir, mkdtemp, readdir, realpath, rename, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, readdir, realpath, rename, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
@@ -166,6 +166,73 @@ test('provider unload closes admission before its cleanup snapshot', async () =>
   assert.equal(lateSession, undefined)
   assert.deepEqual(staged, [])
   assert.equal(reported, undefined)
+})
+
+test('provider unload reclaims a destination created before its reply arrives', async () => {
+  const root = await canonicalTemp('tockteam-picker-response-race-')
+  const recoveryRoot = await canonicalTemp('tockteam-picker-response-race-recovery-')
+  const activeVault = await canonicalTemp('tockteam-picker-response-race-vault-')
+  const output = join(root, 'export.html')
+  const oldBytes = Buffer.from('old confidential destination bytes')
+  await writeFile(output, oldBytes)
+  const owner = new DesktopPickerOwner({
+    isAvailable: () => true,
+    recoveryRoot,
+    showOpenDialog: async () => ({ canceled: false, filePath: activeVault }),
+    showSaveDialog: async () => ({ canceled: false, filePath: output }),
+  })
+  await activate(owner)
+  let created!: () => void
+  const destinationCreated = new Promise<void>(resolve => { created = resolve })
+  let releaseReply!: () => void
+  const replyBlocked = new Promise<void>(resolve => { releaseReply = resolve })
+  let ownerSession: string | undefined
+  const originalBegin = owner.beginDestination.bind(owner)
+  owner.beginDestination = (async (request, signal) => {
+    const result = await originalBegin(request, signal)
+    ownerSession = result.session
+    created()
+    await replyBlocked
+    return result
+  }) as typeof owner.beginDestination
+  const channel = new DesktopPickerChannel(owner)
+  const provider = new DesktopPickerProvider(await channel.start(), fetch, () => ({ active: true, generation: 1, id: 'vault-1' }))
+  const operation = identity('response-race')
+  const selected = await provider.pick({ identity: operation, kind: 'destination', purpose: 'export-html' }, new AbortController().signal)
+  assert.equal(selected.status, 'selected')
+  if (selected.status !== 'selected') return
+  const replacement = Buffer.from('new bytes')
+  const plan = {
+    entries: [{ digest: createHash('sha256').update(replacement).digest('hex') as never, size: replacement.byteLength, target: { kind: 'selected-file' as const } }] as const,
+    purpose: 'export-html' as const,
+    totalBytes: replacement.byteLength,
+  }
+  const planDigest = computeDesktopDestinationPlanDigest(plan)
+  const locked = await provider.lockDestinationPlan({ ...plan, identity: operation, planDigest, selectionAuthorization: selected.authorization }, new AbortController().signal)
+  const beginning = provider.beginDestination({ ...plan, authorization: locked.authorization, identity: operation, planDigest }, new AbortController().signal).then(
+    value => ({ status: 'fulfilled' as const, value }),
+    reason => ({ status: 'rejected' as const, reason }),
+  )
+  await destinationCreated
+  let disposeSettled = false
+  const disposing = provider.dispose().then(() => { disposeSettled = true })
+  await new Promise<void>(resolve => { setImmediate(resolve) })
+  const settledBeforeReply = disposeSettled
+  releaseReply()
+  const outcome = await beginning
+  await disposing
+  const snapshots = (await readdir(root)).filter(name => name.startsWith('.tockteam-picker-snapshot-'))
+  const journals = (await readdir(recoveryRoot)).filter(name => name.startsWith('destination-'))
+  const ownerResult = await owner.abortDestination({ session: ownerSession as never })
+  await channel.stop()
+
+  assert.equal(settledBeforeReply, false)
+  assert.equal(outcome.status, 'fulfilled')
+  assert.deepEqual(snapshots, [])
+  assert.deepEqual(journals, [])
+  assert.deepEqual(await readFile(output), oldBytes)
+  assert.equal(ownerResult.status, 'already-closed')
+  assert.equal(ownerResult.cleanup.status, 'complete')
 })
 
 test('provider unload waits admitted writes and scrubs their plaintext', async () => {

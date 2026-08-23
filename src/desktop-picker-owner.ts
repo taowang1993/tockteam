@@ -659,7 +659,8 @@ export class DesktopPickerOwner {
       if (signal.aborted) return { operationId, status: 'cancelled' }
       if (canonicalPath !== claim.path || stat === undefined || !stat.isDirectory()
         || String(stat.dev) !== claim.dev || String(stat.ino) !== claim.ino) return { operationId, status: 'stale' }
-      await this.clearSessions()
+      const cleanup = await this.clearSessions()
+      if (cleanup.status !== 'complete') return { operationId, status: 'unavailable' }
       if (signal.aborted || !this.options.isAvailable()) return { operationId, status: 'cancelled' }
       this.activeVault = {
         claim: request.claim,
@@ -852,6 +853,10 @@ export class DesktopPickerOwner {
     if (signal.aborted) return error('aborted')
     if (revision === undefined || revision !== request.expectedRootRevision || revision !== source.rootRevision) return error('changed')
     return { revision: cast(source.rootRevision), status: 'unchanged' }
+  }
+
+  revokeGrant(authorization: string): void {
+    this.grants.delete(authorization)
   }
 
   async releaseSource(request: ReleaseDesktopSourceRequest): Promise<ReleaseDesktopSourceResult> {
@@ -1103,11 +1108,10 @@ export class DesktopPickerOwner {
         await entry.handle.sync()
         const stagedStat = await entry.handle.stat()
         if (!stagedStat.isFile() || Number(stagedStat.size) !== entry.entry.size) return error('size-mismatch')
-        await entry.handle.close()
-        entry.handle = undefined
-        const bytes = await readFile(entry.stagedPath)
+        const bytes = Buffer.alloc(entry.entry.size)
+        const { bytesRead } = await entry.handle.read(bytes, 0, bytes.length, 0)
         if (signal.aborted) return error('aborted')
-        if (bytes.length !== entry.entry.size || createHash('sha256').update(bytes).digest('hex') !== entry.digest) return error('digest-mismatch')
+        if (bytesRead !== entry.entry.size || createHash('sha256').update(bytes).digest('hex') !== entry.digest) return error('digest-mismatch')
       }
       const current = await this.destinationState(destination.path, destination.purpose)
       if (!stateEqual(current, destination.expectedState)) return error('changed')
@@ -1119,6 +1123,10 @@ export class DesktopPickerOwner {
       if (!stateEqual(commitState, destination.expectedState)) return error('changed')
       this.assertDestinationParent(destination.path, destination.parentIdentity)
       await this.assertStagingStable(destination)
+      for (const entry of destination.entries) {
+        await entry.handle?.close()
+        entry.handle = undefined
+      }
       if (destination.purpose === 'vault-backup') {
         this.assertDestinationParent(destination.path, destination.parentIdentity)
         mkdirSync(destination.path, { recursive: false, mode: 0o700 })
@@ -1234,9 +1242,39 @@ export class DesktopPickerOwner {
     const destination = this.destinations.get(request.session)
     if (destination !== undefined) return await this.closeDestination(request.session, destination)
     const closed = this.closedDestinations.get(request.session)
-    return closed === undefined
-      ? { cleanup: { status: 'complete' }, stagedBytes: 0, stagedEntries: 0, status: 'already-closed' }
-      : { ...closed, status: 'already-closed' }
+    if (closed === undefined) return error('closed')
+    return { ...closed, status: 'already-closed' }
+  }
+
+  async disposeProvider(): Promise<{ cleanup: DesktopCleanupEvidence }> {
+    await this.recoveryReady
+    const residualLabels: DesktopPickerLabel[] = []
+    for (const [session, destination] of [...this.destinations]) {
+      const result = await this.closeDestination(session, destination)
+      if (result.cleanup.status === 'residual') residualLabels.push(...result.cleanup.residualLabels)
+    }
+    for (const [authorization, plan] of [...this.destinationPlans]) {
+      try {
+        await this.cleanupLockedPlan(plan)
+        this.destinationPlans.delete(authorization)
+      } catch {
+        residualLabels.push(cast(plan.label))
+      }
+    }
+    for (const result of await Promise.allSettled([...this.cleanupTasks])) {
+      if (result.status === 'rejected') residualLabels.push(cast(labelOf(this.recoveryRoot)))
+      else if (typeof result.value === 'object' && result.value !== null
+        && 'status' in result.value && result.value.status === 'residual'
+        && 'residualLabels' in result.value && Array.isArray(result.value.residualLabels)) {
+        residualLabels.push(...result.value.residualLabels as DesktopPickerLabel[])
+      }
+    }
+    this.grants.clear()
+    this.sources.clear()
+    this.vaultSelectionClaims.clear()
+    this.consumedPickOperations.clear()
+    this.activeVault = undefined
+    return { cleanup: residualLabels.length === 0 ? { status: 'complete' } : { residualLabels, status: 'residual' } }
   }
 
   async dispose(): Promise<void> {
@@ -1244,7 +1282,7 @@ export class DesktopPickerOwner {
     this.disposed = true
     if (this.expiryTimer !== undefined) clearTimeout(this.expiryTimer)
     this.expiryTimer = undefined
-    await this.clearSessions()
+    const cleanup = await this.clearSessions()
     await Promise.allSettled([...this.destinationPlans.values()].map(plan => this.cleanupLockedPlan(plan)))
     await Promise.allSettled([...this.cleanupTasks])
     this.grants.clear()
@@ -1252,6 +1290,7 @@ export class DesktopPickerOwner {
     this.vaultSelectionClaims.clear()
     this.consumedPickOperations.clear()
     this.activeVault = undefined
+    if (cleanup.status !== 'complete') throw new Error('TockTeam Desktop picker cleanup was incomplete')
   }
 
   private async destinationPath(rawPath: string, purpose: 'export-html' | 'export-pdf'): Promise<{ path: string; label: string } | undefined> {
@@ -1319,11 +1358,18 @@ export class DesktopPickerOwner {
     }
   }
 
-  private async clearSessions(): Promise<void> {
-    for (const session of this.destinations.values()) await this.cleanupDestination(session)
+  private async clearSessions(): Promise<DesktopCleanupEvidence> {
+    const residualLabels: DesktopPickerLabel[] = []
+    for (const [session, destination] of [...this.destinations]) {
+      const result = await this.closeDestination(session, destination)
+      if (result.cleanup.status === 'residual') residualLabels.push(...result.cleanup.residualLabels)
+    }
+    for (const [authorization, plan] of [...this.destinationPlans]) {
+      await this.cleanupLockedPlan(plan)
+      this.destinationPlans.delete(authorization)
+    }
     this.sources.clear()
-    this.destinations.clear()
-    this.destinationPlans.clear()
+    return residualLabels.length === 0 ? { status: 'complete' } : { residualLabels, status: 'residual' }
   }
 
   private consumeGrant(raw: string, expectedIdentity: NativeOperationIdentity, expectedPurpose: DesktopPickerRequest['purpose']): Grant {

@@ -23,6 +23,7 @@ type PickerMethod =
   | 'consumeVaultSelection'
   | 'bindVaultSelection'
   | 'releaseVaultSelection'
+  | 'disposeProvider'
 
 export interface DesktopPickerChannelEnvironment {
   endpoint: string
@@ -76,6 +77,7 @@ export class DesktopPickerChannel {
   private environmentValue: DesktopPickerChannelEnvironment | undefined
   private lifetime = new AbortController()
   private stopping = false
+  private generation = 0
   private readonly pending = new Set<Promise<void>>()
 
   constructor(owner: DesktopPickerOwner) {
@@ -88,7 +90,9 @@ export class DesktopPickerChannel {
 
   async start(): Promise<DesktopPickerChannelEnvironment> {
     if (this.server !== undefined) throw new Error('Desktop picker channel is already running')
+    const generation = ++this.generation
     await this.owner.ready()
+    if (generation !== this.generation) throw new Error('Desktop picker channel start was cancelled')
     this.owner.reopen()
     this.stopping = false
     this.lifetime = new AbortController()
@@ -114,6 +118,10 @@ export class DesktopPickerChannel {
       server.once('listening', onListening)
       server.listen(0, '127.0.0.1')
     })
+    if (generation !== this.generation) {
+      await new Promise<void>(resolve => server.close(() => resolve()))
+      throw new Error('Desktop picker channel start was cancelled')
+    }
     const address = server.address()
     if (address === null || typeof address === 'string') {
       server.close()
@@ -128,6 +136,7 @@ export class DesktopPickerChannel {
   }
 
   async stop(): Promise<void> {
+    this.generation += 1
     this.stopping = true
     this.lifetime.abort()
     const server = this.server
@@ -212,6 +221,10 @@ export class DesktopPickerChannel {
     }
     try {
       const value = await this.call(method, decoded, signal)
+      if (signal.aborted) {
+        await this.compensate(method, decoded, value)
+        return
+      }
       const rendered = JSON.stringify(value ?? null, (_key, item) => item instanceof Uint8Array
         ? { __desktopBytes: Buffer.from(item).toString('base64') }
         : item)
@@ -226,6 +239,26 @@ export class DesktopPickerChannel {
     }
   }
 
+  private async compensate(method: PickerMethod, request: Record<string, unknown>, value: unknown): Promise<void> {
+    if (typeof value !== 'object' || value === null) return
+    const result = value as Record<string, unknown>
+    if (method === 'pick' && result.status === 'selected' && typeof result.authorization === 'string') {
+      this.owner.revokeGrant(result.authorization)
+    } else if (method === 'beginSource' && typeof result.session === 'string') {
+      await this.owner.releaseSource({ session: result.session as never })
+    } else if (method === 'lockDestinationPlan' && typeof result.authorization === 'string') {
+      await this.owner.revokeDestinationPlan({ authorization: result.authorization as never })
+    } else if (method === 'beginDestination' && typeof result.session === 'string') {
+      await this.owner.abortDestination({ session: result.session as never })
+    } else if (method === 'consumeVaultSelection' && result.status === 'consumed' && typeof result.claim === 'string'
+      && typeof result.operationId === 'string') {
+      await this.owner.releaseVaultSelection({ claim: result.claim as never, operationId: result.operationId })
+    } else if (method === 'bindVaultSelection' && result.status === 'bound' && typeof request.claim === 'string'
+      && typeof request.operationId === 'string') {
+      await this.owner.releaseVaultSelection({ claim: request.claim as never, operationId: request.operationId })
+    }
+  }
+
   private isMethod(value: string): value is PickerMethod {
     return value === 'pick' || value === 'beginSource' || value === 'listSource'
       || value === 'statSource' || value === 'readSource' || value === 'revalidateSource'
@@ -234,6 +267,7 @@ export class DesktopPickerChannel {
       || value === 'writeDestinationChunk' || value === 'finalizeDestination'
       || value === 'abortDestination' || value === 'consumeVaultSelection'
       || value === 'bindVaultSelection' || value === 'releaseVaultSelection'
+      || value === 'disposeProvider'
   }
 
   private async call(method: PickerMethod, value: Record<string, unknown>, signal: AbortSignal): Promise<unknown> {
@@ -254,6 +288,7 @@ export class DesktopPickerChannel {
       case 'consumeVaultSelection': return await this.owner.consumeVaultSelection(value as never, signal)
       case 'bindVaultSelection': return await this.owner.bindVaultSelection(value as never, signal)
       case 'releaseVaultSelection': return await this.owner.releaseVaultSelection(value as never)
+      case 'disposeProvider': return await this.owner.disposeProvider()
     }
   }
 }
