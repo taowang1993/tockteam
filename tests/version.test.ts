@@ -14,7 +14,7 @@ function git(root: string, ...args: string[]): void {
   execFileSync('git', ['-C', root, ...args], { stdio: 'ignore' })
 }
 
-test('product version follows the nearest reachable release tag', () => {
+test('product version follows the release manifest while tags remain discoverable', () => {
   const root = mkdtempSync(join(tmpdir(), 'tockteam-version-'))
   try {
     git(root, 'init', '--quiet')
@@ -29,7 +29,7 @@ test('product version follows the nearest reachable release tag', () => {
     git(root, 'commit', '--quiet', '-m', 'next')
 
     assert.equal(nearestVersionTag(root), '1.2.3')
-    assert.equal(resolveProductVersion(root), '1.2.3')
+    assert.equal(resolveProductVersion(root), '9.9.9')
   } finally {
     rmSync(root, { recursive: true, force: true })
   }

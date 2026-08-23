@@ -57,13 +57,13 @@ function manifestVersion(root: string): string | undefined {
 /**
  * Resolve one product version for Desktop, Web, and TUI.
  *
- * Builds inject the nearest tag so packaged applications do not need Git.
- * Source launches calculate it directly. Package metadata is only a fallback
- * for source archives produced without the repository history.
+ * Builds and source launches prefer the release manifest so a reserved patch
+ * version cannot be rolled back by an older reachable tag. Injected packaging
+ * values remain authoritative; tags are a fallback for manifest-less trees.
  */
 export function resolveProductVersion(root: string): string {
   return injectedVersion()
-    ?? nearestVersionTag(root)
     ?? manifestVersion(root)
+    ?? nearestVersionTag(root)
     ?? '0.0.0'
 }
