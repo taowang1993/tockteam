@@ -35,7 +35,7 @@ import {
 } from '../plugins/plugin-marketplace/src/host/platform.ts'
 import { parseMarketplaceCommand } from '../plugins/plugin-marketplace/src/protocol.ts'
 import type { DesktopCommand, DesktopInfo, DesktopRuntimeSnapshot } from './contracts.ts'
-import { allowsRuntimeClipboardWrite, originOf } from './permissions.ts'
+import { allowsRuntimeClipboardWrite, allowsRuntimeMicrophone, allowsTrustedMainIpc, originOf } from './permissions.ts'
 import { BUNDLED_DESKTOP_PLUGINS, DESKTOP_PROFILE, ensureDesktopProfile } from './profile.ts'
 import {
   WEB_CLIP_GUEST_ARGUMENT,
@@ -255,6 +255,7 @@ function initializeDesktopPicker(): void {
           webPreferences: {
             contextIsolation: true,
             nodeIntegration: false,
+            preload: preloadPath,
             sandbox: true,
           },
         })
@@ -267,8 +268,9 @@ function initializeDesktopPicker(): void {
         })
         window.once('closed', () => {
           popOutWindows.delete(windowId)
+          const ownsRoute = popOutRouteTokens.get(windowId) === routeToken
           popOutRouteTokens.delete(windowId)
-          onClosed()
+          if (ownsRoute) onClosed()
         })
         await window.loadURL(target.href)
         window.show()
@@ -1095,22 +1097,42 @@ function buildMenu(): void {
   Menu.setApplicationMenu(Menu.buildFromTemplate(template))
 }
 
+function assertTrustedMainIpc(event: Electron.IpcMainInvokeEvent): void {
+  if (!allowsTrustedMainIpc({
+    isMainFrame: event.senderFrame !== null && event.senderFrame === event.sender.mainFrame,
+    mainWindowId: mainWindow?.webContents.id,
+    runtimeOrigin,
+    senderDestroyed: event.sender.isDestroyed(),
+    senderId: event.sender.id,
+    senderOrigin: originOf(event.senderFrame?.url),
+  })) throw new Error('Desktop IPC sender is unavailable')
+}
+
 function installIpc(): void {
-  ipcMain.handle('desktop:choose-workspace', async () => await selectWorkspacePaths())
+  ipcMain.handle('desktop:choose-workspace', async event => {
+    assertTrustedMainIpc(event)
+    return await selectWorkspacePaths()
+  })
   ipcMain.handle('desktop:get-info', event => {
     const preview = previewWindow?.webContents.id === event.sender.id ? previewIdentity ?? null : null
     return desktopInfo(preview)
   })
-  ipcMain.handle('desktop:get-runtime-snapshot', () => desktopRuntimeSnapshot())
-  ipcMain.handle('desktop:plugin-marketplace-snapshot', () => {
+  ipcMain.handle('desktop:get-runtime-snapshot', event => {
+    assertTrustedMainIpc(event)
+    return desktopRuntimeSnapshot()
+  })
+  ipcMain.handle('desktop:plugin-marketplace-snapshot', event => {
+    assertTrustedMainIpc(event)
     if (marketplace === undefined) throw new Error('plugin marketplace is not initialized')
     return marketplace.getSnapshot()
   })
-  ipcMain.handle('desktop:plugin-marketplace-dispatch', async (_event, raw: unknown) => {
+  ipcMain.handle('desktop:plugin-marketplace-dispatch', async (event, raw: unknown) => {
+    assertTrustedMainIpc(event)
     if (marketplace === undefined) throw new Error('plugin marketplace is not initialized')
     return await marketplace.dispatch(parseMarketplaceCommand(raw))
   })
   ipcMain.handle('desktop:web-clip-authorize-document', (event, raw: unknown) => {
+    assertTrustedMainIpc(event)
     if (typeof raw !== 'object' || raw === null) throw new Error('Web Clip document request is invalid')
     const input = raw as Record<string, unknown>
     if (!Number.isSafeInteger(input.frameId) || typeof input.html !== 'string') {
@@ -1118,7 +1140,8 @@ function installIpc(): void {
     }
     return webClipFrames.authorize(input.frameId as number, event.sender.id, input.html)
   })
-  ipcMain.handle('desktop:open-external', async (_event, raw: unknown) => {
+  ipcMain.handle('desktop:open-external', async (event, raw: unknown) => {
+    assertTrustedMainIpc(event)
     if (typeof raw !== 'string') throw new Error('external URL must be a string')
     const url = new URL(raw)
     if (url.protocol !== 'https:' && url.protocol !== 'http:') {
@@ -1181,10 +1204,13 @@ async function bootstrap(): Promise<void> {
   })
   installIpc()
   session.defaultSession.setPermissionRequestHandler((webContents, permission, callback, details) => {
-    if (permission === 'media' && 'mediaTypes' in details && details.mediaTypes.includes('audio')
-      && details.isMainFrame
-      && webContents === mainWindow?.webContents
-      && originOf(details.requestingUrl ?? webContents.getURL()) === runtimeOrigin) {
+    if (permission === 'media' && 'mediaTypes' in details && allowsRuntimeMicrophone({
+      isMainFrame: details.isMainFrame,
+      mediaTypes: details.mediaTypes,
+      requestingOrigin: originOf(details.requestingUrl ?? webContents.getURL()),
+      runtimeOrigin,
+      webContentsIsMainWindow: webContents === mainWindow?.webContents,
+    })) {
       callback(desktopMicrophoneOwner.consumePermission())
       return
     }

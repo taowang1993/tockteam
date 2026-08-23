@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { allowsRuntimeClipboardWrite, originOf } from '../src/permissions.ts'
+import { allowsRuntimeClipboardWrite, allowsRuntimeMicrophone, allowsTrustedMainIpc, originOf } from '../src/permissions.ts'
 
 const runtimeOrigin = 'http://127.0.0.1:43210'
 
@@ -14,6 +14,37 @@ function request(overrides: Partial<Parameters<typeof allowsRuntimeClipboardWrit
     ...overrides,
   }
 }
+
+test('privileged IPC accepts only the live runtime main frame', () => {
+  const trusted = {
+    isMainFrame: true,
+    mainWindowId: 1,
+    runtimeOrigin: 'http://127.0.0.1:3000',
+    senderDestroyed: false,
+    senderId: 1,
+    senderOrigin: 'http://127.0.0.1:3000',
+  }
+  assert.equal(allowsTrustedMainIpc(trusted), true)
+  assert.equal(allowsTrustedMainIpc({ ...trusted, isMainFrame: false }), false)
+  assert.equal(allowsTrustedMainIpc({ ...trusted, senderId: 2 }), false)
+  assert.equal(allowsTrustedMainIpc({ ...trusted, senderOrigin: 'file://' }), false)
+  assert.equal(allowsTrustedMainIpc({ ...trusted, senderDestroyed: true }), false)
+  assert.equal(allowsTrustedMainIpc({ ...trusted, runtimeOrigin: undefined }), false)
+})
+
+test('allows only audio-only microphone requests from the live DSH main frame', () => {
+  const request = {
+    isMainFrame: true,
+    mediaTypes: ['audio'],
+    requestingOrigin: 'http://127.0.0.1:3000',
+    runtimeOrigin: 'http://127.0.0.1:3000',
+    webContentsIsMainWindow: true,
+  }
+  assert.equal(allowsRuntimeMicrophone(request), true)
+  assert.equal(allowsRuntimeMicrophone({ ...request, mediaTypes: ['audio', 'video'] }), false)
+  assert.equal(allowsRuntimeMicrophone({ ...request, mediaTypes: ['video'] }), false)
+  assert.equal(allowsRuntimeMicrophone({ ...request, webContentsIsMainWindow: false }), false)
+})
 
 test('allows clipboard writes from the live DSH main frame', () => {
   assert.equal(allowsRuntimeClipboardWrite(request({
