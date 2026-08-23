@@ -1837,7 +1837,7 @@ export class DesktopPickerOwner {
     let journalIdentity = ''
     let value: DestinationRecoveryRecord
     try {
-      handle = await open(path, fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW)
+      handle = await open(path, fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW | fsConstants.O_NONBLOCK)
       const stat = await handle.stat()
       if (!stat.isFile() || Number(stat.size) > MAX_RECOVERY_JOURNAL_BYTES
         || (Number(stat.mode) & 0o777) !== 0o600
@@ -1913,7 +1913,7 @@ export class DesktopPickerOwner {
     try {
       const handle = await open(
         path,
-        fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW,
+        fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW | fsConstants.O_NONBLOCK,
       )
       const stat = await handle.stat()
       if (!stat.isFile() || ownedIdentityOf(stat) !== expectedIdentity) {
@@ -1957,7 +1957,7 @@ export class DesktopPickerOwner {
     try {
       const destination = await open(
         path,
-        fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW,
+        fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW | fsConstants.O_NONBLOCK,
       )
       try {
         const [stageStat, destinationStat] = await Promise.all([
