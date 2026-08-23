@@ -1,0 +1,68 @@
+import assert from 'node:assert/strict'
+import { test } from 'node:test'
+import { DesktopDispatchOwner } from '../src/desktop-dispatch-owner.ts'
+import { parseTockTutorProtocol } from '../src/desktop-native-policy.ts'
+
+function owner(): DesktopDispatchOwner {
+  let id = 0
+  return new DesktopDispatchOwner({
+    identity: (operationId, requestId) => ({
+      operationId,
+      requestId,
+      sessionId: 'session',
+      vaultGeneration: 1,
+      vaultId: 'vault',
+      windowId: 'window',
+    }),
+    isAvailable: () => true,
+    randomId: () => `id-${++id}`,
+  })
+}
+
+test('protocol parser accepts bounded TockTutor requests and rejects credentials or unsafe callbacks', () => {
+  assert.deepEqual(parseTockTutorProtocol('tocktutor://open?vault=Notes&file=Plan.md'), {
+    action: 'open',
+    file: 'Plan.md',
+    vault: 'Notes',
+  })
+  assert.equal(parseTockTutorProtocol('tocktutor://user:password@open?vault=Notes'), null)
+  assert.equal(parseTockTutorProtocol('tocktutor://new?file=Plan.md&x-success=file%3A%2F%2Funsafe'), null)
+  assert.equal(parseTockTutorProtocol(`tocktutor://search?query=${'x'.repeat(4097)}`), null)
+  assert.equal(parseTockTutorProtocol('https://example.com'), null)
+})
+
+test('dispatch owner delivers typed quick actions and matches one completion', async () => {
+  const dispatch = owner()
+  assert.equal(dispatch.publishQuickAction('daily'), true)
+  const event = await dispatch.next(new AbortController().signal)
+  assert.equal(event?.kind, 'quick-action')
+  if (event === undefined) return
+  assert.equal(event.identity.operationId, 'id-1')
+  assert.deepEqual(await dispatch.complete({ operationId: event.identity.operationId, status: 'handled' }, new AbortController().signal), {
+    operationId: event.identity.operationId,
+    status: 'handled',
+  })
+  assert.deepEqual(await dispatch.complete({ operationId: event.identity.operationId, status: 'handled' }, new AbortController().signal), {
+    operationId: event.identity.operationId,
+    status: 'stale',
+  })
+  dispatch.dispose()
+})
+
+test('new choose-vault protocol supersedes delivered older transitions and disposal settles waiters', async () => {
+  const dispatch = owner()
+  assert.equal(dispatch.publishProtocol('tocktutor://choose-vault?'), true)
+  const old = await dispatch.next(new AbortController().signal)
+  assert.equal(old?.kind, 'protocol')
+  assert.equal(dispatch.publishProtocol('tocktutor://choose-vault?'), true)
+  const next = await dispatch.next(new AbortController().signal)
+  assert.equal(next?.kind, 'protocol')
+  if (old === undefined || next === undefined) return
+  assert.deepEqual(await dispatch.complete({ operationId: old.identity.operationId, status: 'handled' }, new AbortController().signal), {
+    operationId: old.identity.operationId,
+    status: 'stale',
+  })
+  const waiting = dispatch.next(new AbortController().signal)
+  dispatch.dispose()
+  assert.equal(await waiting, undefined)
+})

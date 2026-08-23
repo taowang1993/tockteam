@@ -129,6 +129,7 @@ test('desktop Host plugin publishes capability, prompt, and bash environment', (
   process.env.DSH_DESKTOP_PROFILE = 'desktop'
   process.env.DSH_DESKTOP_VERSION = '9.8.7'
   let capability: unknown
+  const provided = new Set<string>()
   let prompt = ''
   let resolvedEnvironment: Record<string, string> = {}
   const context = {
@@ -158,6 +159,7 @@ test('desktop Host plugin publishes capability, prompt, and bash environment', (
       }
     },
     provide: (name: string, value: unknown): void => {
+      provided.add(name)
       if (name === 'desktop') capability = value
     },
     reflect: {
@@ -176,6 +178,8 @@ test('desktop Host plugin publishes capability, prompt, and bash environment', (
       profile: 'desktop',
       version: '9.8.7',
     })
+    assert.ok(provided.has('tockTeamDesktopPicker'))
+    assert.ok(provided.has('tockTeamDesktopDispatch'))
     assert.match(prompt, /TockTeam Desktop/)
     assert.doesNotMatch(prompt, /ChatGPT|OpenAI/)
     assert.deepEqual(resolvedEnvironment, {

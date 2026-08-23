@@ -8,8 +8,12 @@ import {
   TOCKTEAM_SURFACE_SERVICE,
   type TockTeamSurface,
 } from '../plugins/shared/surface.ts'
+import { DesktopDispatchProvider } from './desktop-dispatch-provider.ts'
 import { DesktopPickerProvider, DesktopVaultSelectionProvider } from './desktop-picker-provider.ts'
-import { TOCKTEAM_DESKTOP_PICKER_SERVICE } from './host-contract.ts'
+import {
+  TOCKTEAM_DESKTOP_DISPATCH_SERVICE,
+  TOCKTEAM_DESKTOP_PICKER_SERVICE,
+} from './host-contract.ts'
 import { DesktopRevealProvider } from './desktop-reveal-provider.ts'
 
 interface SystemPromptService {
@@ -88,12 +92,20 @@ export function apply(ctx: HostContext): void {
     return (ctx.get('noteVault') as NoteVaultStateService | undefined)?.state
   })
   const vaultSelectionProvider = new DesktopVaultSelectionProvider(ctx)
+  const dispatchProvider = new DesktopDispatchProvider(undefined, fetch, () => {
+    return (ctx.get('noteVault') as NoteVaultStateService | undefined)?.state
+  })
   // The runtime Service base registers the exact `tockTeamDesktopReveal` key.
   ctx.effect(() => async () => {
     revealProvider.close()
-    await Promise.all([pickerProvider.dispose(), vaultSelectionProvider.close()])
+    await Promise.all([
+      pickerProvider.dispose(),
+      vaultSelectionProvider.close(),
+      dispatchProvider.dispose(),
+    ])
   }, 'tockteam-desktop: native owners')
   ctx.provide(TOCKTEAM_DESKTOP_PICKER_SERVICE, pickerProvider)
+  ctx.provide(TOCKTEAM_DESKTOP_DISPATCH_SERVICE, dispatchProvider)
   ctx.provide('desktop', capability)
   // The unified three-surface contract: desktop shell (see
   // plugins/shared/surface.ts). The `desktop` service above stays for

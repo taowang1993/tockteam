@@ -44,6 +44,7 @@ import {
   stripWebClipResponseHeaders,
 } from './web-clip-frame.ts'
 import { DshRuntimeSupervisor, runDshCommand, type DshRuntimeOptions, type RuntimeExit } from './runtime.ts'
+import { DesktopDispatchChannel } from './desktop-dispatch-channel.ts'
 import { DesktopPickerChannel } from './desktop-picker-channel.ts'
 import { DesktopPickerOwner, type DesktopPickerDialogOptions } from './desktop-picker-owner.ts'
 import { DesktopRevealChannel } from './desktop-reveal-channel.ts'
@@ -79,6 +80,7 @@ let logStream: WriteStream | undefined
 let quitting = false
 let transitioning = false
 let queuedPaths: string[] = []
+let queuedProtocolUrls: string[] = []
 const logTail: string[] = []
 const webClipFrames = new WebClipFrameAuthorizations()
 const webClipSessions = new WeakSet<Session>()
@@ -107,6 +109,7 @@ function pickerDialogFilters(options: DesktopPickerDialogOptions): Electron.File
 
 let desktopPickerOwner!: DesktopPickerOwner
 let desktopPickerChannel!: DesktopPickerChannel
+let desktopDispatchChannel!: DesktopDispatchChannel
 
 function initializeDesktopPicker(): void {
   desktopPickerOwner = new DesktopPickerOwner({
@@ -145,6 +148,18 @@ function initializeDesktopPicker(): void {
   },
   })
   desktopPickerChannel = new DesktopPickerChannel(desktopPickerOwner)
+  desktopDispatchChannel = new DesktopDispatchChannel({
+    identity: (operationId, requestId, channelSessionId) => {
+      if (mainWindow === undefined || mainWindow.isDestroyed()) return undefined
+      return desktopPickerOwner.nativeIdentity(
+        operationId,
+        requestId,
+        String(mainWindow.webContents.id),
+        channelSessionId,
+      )
+    },
+    isAvailable: () => isEligibleDesktopRevealWindow(),
+  })
 }
 
 function appendLog(stream: 'desktop' | 'stderr' | 'stdout', line: string): void {
@@ -212,6 +227,11 @@ function runtimeEnvironment(
   if (picker !== undefined) {
     environment.DSH_DESKTOP_PICKER_ENDPOINT = picker.endpoint
     environment.DSH_DESKTOP_PICKER_TOKEN = picker.token
+  }
+  const dispatch = overrides.preview === undefined ? desktopDispatchChannel.environment : undefined
+  if (dispatch !== undefined) {
+    environment.DSH_DESKTOP_DISPATCH_ENDPOINT = dispatch.endpoint
+    environment.DSH_DESKTOP_DISPATCH_TOKEN = dispatch.token
   }
   if (overrides.preview !== undefined) {
     environment.DSH_DESKTOP_PREVIEW = '1'
@@ -510,6 +530,12 @@ function normalizeWorkspacePaths(paths: readonly string[]): string[] {
   return normalized
 }
 
+function flushQueuedProtocols(): void {
+  const pending = queuedProtocolUrls
+  queuedProtocolUrls = []
+  for (const raw of pending) desktopDispatchChannel.publishProtocol(raw)
+}
+
 function flushQueuedPaths(): void {
   const paths = normalizeWorkspacePaths(queuedPaths)
   queuedPaths = []
@@ -525,6 +551,7 @@ function handleRuntimeExit(exit: RuntimeExit): void {
   void Promise.allSettled([
     desktopRevealChannel.stop(),
     desktopPickerChannel.stop(),
+    desktopDispatchChannel.stop(),
   ]).then(async () => {
     await showSplash({
       error: true,
@@ -539,6 +566,7 @@ async function startRuntime(): Promise<void> {
   ensureDesktopProfile(info.dshHome)
   await desktopRevealChannel.start()
   await desktopPickerChannel.start()
+  await desktopDispatchChannel.start()
   try {
     const supervisor = new DshRuntimeSupervisor(runtimeOptions())
     runtime = supervisor
@@ -549,7 +577,9 @@ async function startRuntime(): Promise<void> {
     if (mainWindow === undefined || mainWindow.isDestroyed()) mainWindow = createWindow()
     await mainWindow.loadURL(url.href)
     flushQueuedPaths()
+    flushQueuedProtocols()
   } catch (error) {
+    await desktopDispatchChannel.stop()
     await desktopPickerChannel.stop()
     await desktopRevealChannel.stop()
     throw error
@@ -611,6 +641,7 @@ async function stopLiveForMarketplace(): Promise<void> {
   transitioning = true
   await showSplash({ message: '正在应用插件 Profile…' })
   await runtime?.stop()
+  await desktopDispatchChannel.stop()
   await desktopPickerChannel.stop()
   await desktopRevealChannel.stop()
   runtime = undefined
@@ -632,6 +663,7 @@ async function restartRuntime(message = '正在重新启动 TockTeam…'): Promi
   try {
     await showSplash({ message })
     await runtime?.stop()
+    await desktopDispatchChannel.stop()
     await desktopPickerChannel.stop()
     await desktopRevealChannel.stop()
     runtime = undefined
@@ -683,6 +715,7 @@ async function installLocalPlugin(): Promise<void> {
   try {
     await showSplash({ message: '正在安装 DSH 插件…' })
     await runtime?.stop()
+    await desktopDispatchChannel.stop()
     await desktopPickerChannel.stop()
     await desktopRevealChannel.stop()
     runtime = undefined
@@ -737,6 +770,10 @@ function labels() {
     focus: '聚焦输入框',
     installPlugin: '从文件夹安装插件…',
     newChat: '新建会话',
+    dailyNote: '今日日记',
+    quickCapture: '快速记录',
+    searchNotes: '搜索笔记',
+    tockTutor: 'TockTutor',
     openData: '打开 DSH 数据目录',
     openLogs: '打开日志目录',
     openPluginProfile: '打开插件配置目录',
@@ -759,6 +796,10 @@ function labels() {
     focus: 'Focus Composer',
     installPlugin: 'Install Plugin from Folder…',
     newChat: 'New Chat',
+    dailyNote: 'Daily Note',
+    quickCapture: 'Quick Capture',
+    searchNotes: 'Search Notes',
+    tockTutor: 'TockTutor',
     openData: 'Open DSH Data Folder',
     openLogs: 'Open Logs Folder',
     openPluginProfile: 'Open Plugin Profile Folder',
@@ -809,6 +850,16 @@ function buildMenu(): void {
       submenu: [
         { label: text.newChat, accelerator: 'CmdOrCtrl+N', click: () => { sendCommand({ type: 'new-session' }) } },
         { label: text.openWorkspace, accelerator: 'CmdOrCtrl+O', click: () => { void chooseWorkspace() } },
+        { type: 'separator' },
+        {
+          label: text.tockTutor,
+          submenu: [
+            { label: text.newChat, click: () => { desktopDispatchChannel.publishQuickAction('new') } },
+            { label: text.dailyNote, click: () => { desktopDispatchChannel.publishQuickAction('daily') } },
+            { label: text.quickCapture, click: () => { desktopDispatchChannel.publishQuickAction('capture') } },
+            { label: text.searchNotes, click: () => { desktopDispatchChannel.publishQuickAction('search') } },
+          ],
+        },
         { type: 'separator' },
         { role: 'close' },
       ],
@@ -909,6 +960,7 @@ function installIpc(): void {
 
 async function bootstrap(): Promise<void> {
   app.setName(PRODUCT_NAME)
+  if (app.isPackaged) app.setAsDefaultProtocolClient('tocktutor')
   // The visible product name changed in 0.1.x. Keep the existing data path so
   // an in-place upgrade retains sessions, profiles, skins, and credentials.
   app.setPath('userData', join(app.getPath('appData'), app.isPackaged ? DATA_DIRECTORY : `${DATA_DIRECTORY}-Dev`))
@@ -924,7 +976,9 @@ async function bootstrap(): Promise<void> {
     return
   }
   app.on('second-instance', (_event, argv) => {
-    queuedPaths.push(...argv.slice(1).filter(argument => !argument.startsWith('-')))
+    const arguments_ = argv.slice(1).filter(argument => !argument.startsWith('-'))
+    queuedProtocolUrls.push(...arguments_.filter(argument => argument.startsWith('tocktutor:')))
+    queuedPaths.push(...arguments_.filter(argument => !argument.startsWith('tocktutor:')))
     if (mainWindow === undefined || mainWindow.isDestroyed()) {
       mainWindow = createWindow()
       if (runtimeUrl !== undefined) void mainWindow.loadURL(runtimeUrl.href).then(flushQueuedPaths)
@@ -933,6 +987,11 @@ async function bootstrap(): Promise<void> {
       mainWindow.focus()
       flushQueuedPaths()
     }
+  })
+  app.on('open-url', (event, url) => {
+    event.preventDefault()
+    if (url.startsWith('tocktutor:')) queuedProtocolUrls.push(url)
+    if (app.isReady() && runtimeUrl !== undefined) flushQueuedProtocols()
   })
   app.on('open-file', (event, path) => {
     event.preventDefault()
@@ -980,7 +1039,9 @@ async function bootstrap(): Promise<void> {
   mainWindow = createWindow()
   await showSplash()
   const initialArguments = process.argv.slice(app.isPackaged ? 1 : 2)
-  queuedPaths.push(...initialArguments.filter(argument => !argument.startsWith('-')))
+    .filter(argument => !argument.startsWith('-'))
+  queuedProtocolUrls.push(...initialArguments.filter(argument => argument.startsWith('tocktutor:')))
+  queuedPaths.push(...initialArguments.filter(argument => !argument.startsWith('tocktutor:')))
   await restartRuntime()
 
   app.on('activate', () => {
@@ -1001,6 +1062,7 @@ async function bootstrap(): Promise<void> {
     quitting = true
     void Promise.allSettled([
       runtime?.stop() ?? Promise.resolve(),
+      desktopDispatchChannel.stop(),
       desktopPickerChannel.stop(),
       desktopRevealChannel.stop(),
       stopPreviewSurface(),

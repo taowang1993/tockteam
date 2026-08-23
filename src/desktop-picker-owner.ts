@@ -459,6 +459,22 @@ export class DesktopPickerOwner {
     await this.recoveryReady
   }
 
+  nativeIdentity(
+    operationId: string,
+    requestId: string,
+    windowId: string,
+    sessionId: string,
+  ): NativeOperationIdentity {
+    return {
+      operationId,
+      requestId,
+      sessionId,
+      vaultGeneration: this.activeVault?.generation ?? 0,
+      vaultId: this.activeVault?.id ?? null,
+      windowId,
+    }
+  }
+
   reopen(): void {
     this.disposed = false
     this.consumedPickOperations.clear()
