@@ -61,8 +61,10 @@ assert.equal(dump.status, 0, dump.stderr || dump.stdout)
 const dumpOutput = `${dump.stdout}\n${dump.stderr}`
 assert.match(dumpOutput, /note-vault-runtime/)
 assert.match(dumpOutput, /note-vault-tools/)
+assert.match(dumpOutput, /tocktutor-workbench/)
 assert.equal((dumpOutput.match(/\bid:\s*note-vault-runtime\b/g) ?? []).length, 1)
 assert.equal((dumpOutput.match(/\bid:\s*note-vault-tools\b/g) ?? []).length, 1)
+assert.equal((dumpOutput.match(/\bid:\s*tocktutor-workbench\b/g) ?? []).length, 1)
 assert.doesNotMatch(dumpOutput, /tockbot-note-vault/)
 assert.doesNotMatch(dumpOutput, /patch:\s*entry ["']tockbot-note-vault["'] not found/)
 
@@ -112,6 +114,37 @@ const toolsManifest = JSON.parse(readFileSync(join(
 ), 'utf8'))
 assert.equal(toolsManifest.version, '0.1.2')
 assert.equal(toolsManifest.peerDependencies['tockbot-note-runtime'], '0.1.2')
+const workbenchManifest = JSON.parse(readFileSync(join(
+  resources,
+  'dsh-runtime',
+  'node_modules',
+  '@tockteam',
+  'tocktutor-workbench',
+  'package.json',
+), 'utf8'))
+assert.equal(workbenchManifest.version, '0.1.4')
+assert.equal(workbenchManifest.peerDependencies['@tockteam/desktop'], '>=0.1.6 <0.2.0')
+assert.equal(workbenchManifest.peerDependencies['tockbot-note-runtime'], '0.1.2')
+const workbenchImport = spawnSync(nodeBinary, [
+  '--input-type=module',
+  '-e',
+  "import { name } from '@tockteam/tocktutor-workbench'; if (name !== '@tockteam/tocktutor-workbench') process.exit(1)",
+], {
+  cwd: join(resources, 'dsh-runtime'),
+  encoding: 'utf8',
+  env: runtimeEnvironment,
+})
+assert.equal(workbenchImport.status, 0, workbenchImport.stderr || workbenchImport.stdout)
+const workbenchClientImport = spawnSync(nodeBinary, [
+  '--input-type=module',
+  '-e',
+  "import { TOCKTUTOR_ASSISTANT_PANEL_SLOT, TOCKTUTOR_REVIEW_PANEL_SLOT } from '@tockteam/tocktutor-workbench/client'; if (TOCKTUTOR_ASSISTANT_PANEL_SLOT !== 'tockteam.tocktutor.workbench.assistant' || TOCKTUTOR_REVIEW_PANEL_SLOT !== 'tockteam.tocktutor.workbench.review') process.exit(1)",
+], {
+  cwd: join(resources, 'dsh-runtime'),
+  encoding: 'utf8',
+  env: runtimeEnvironment,
+})
+assert.equal(workbenchClientImport.status, 0, workbenchClientImport.stderr || workbenchClientImport.stdout)
 
 const pluginRoot = join(smokeRoot, 'smoke-plugin')
 mkdirSync(pluginRoot)

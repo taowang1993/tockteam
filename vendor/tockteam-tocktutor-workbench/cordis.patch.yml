@@ -1,0 +1,3 @@
+- insert:
+    - id: tocktutor-workbench
+      name: '@tockteam/tocktutor-workbench'

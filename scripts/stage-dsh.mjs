@@ -698,6 +698,13 @@ function installDesktopPackages({ desktopOnly = false } = {}) {
       ],
     },
     {
+      manifest: join(root, 'vendor', 'tockteam-tocktutor-workbench', 'package.json'),
+      files: [
+        [join(root, 'vendor', 'tockteam-tocktutor-workbench', 'dist'), 'dist'],
+        [join(root, 'vendor', 'tockteam-tocktutor-workbench', 'cordis.patch.yml'), 'cordis.patch.yml'],
+      ],
+    },
+    {
       manifest: join(root, 'package.json'),
       files: [
         [join(root, 'dist', 'plugin.js'), 'dist/plugin.js'],

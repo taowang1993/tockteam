@@ -9,6 +9,7 @@ test('desktop profile pins the released TockTutor runtime and peer package', () 
   const packageJson = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as {
     dependencies?: Record<string, string>
     devDependencies: Record<string, string>
+    files: string[]
   }
   const runtime = JSON.parse(readFileSync(new URL('../vendor/tockbot-note-runtime/package.json', import.meta.url), 'utf8')) as {
     peerDependencies: Record<string, string>
@@ -21,19 +22,28 @@ test('desktop profile pins the released TockTutor runtime and peer package', () 
     peerDependencies: Record<string, string>
     version: string
   }
+  const workbench = JSON.parse(readFileSync(new URL('../vendor/tockteam-tocktutor-workbench/package.json', import.meta.url), 'utf8')) as {
+    peerDependencies: Record<string, string>
+    version: string
+  }
   assert.equal(packageJson.dependencies, undefined)
   assert.equal(packageJson.devDependencies['tockbot-note-runtime'], 'file:vendor/tockbot-note-runtime-0.1.2.tgz')
   assert.equal(packageJson.devDependencies['tockbot-note-vault'], 'file:vendor/tockbot-note-vault-0.6.0.tgz')
   assert.equal(packageJson.devDependencies['@tockteam/note-vault-tools'], 'file:vendor/tockteam-note-vault-tools-0.1.2.tgz')
+  assert.ok(packageJson.files.includes('vendor/tockteam-tocktutor-workbench-0.1.4.tgz'))
   assert.equal(runtime.version, '0.1.2')
   assert.equal(runtime.peerDependencies['tockbot-note-vault'], '0.6.0')
   assert.equal(vault.version, '0.6.0')
   assert.equal(tools.version, '0.1.2')
   assert.equal(tools.peerDependencies['tockbot-note-runtime'], '0.1.2')
-  assert.deepEqual(DESKTOP_BUNDLES.slice(0, 5), [
+  assert.equal(workbench.version, '0.1.4')
+  assert.equal(workbench.peerDependencies['@tockteam/desktop'], '>=0.1.6 <0.2.0')
+  assert.equal(workbench.peerDependencies['tockbot-note-runtime'], '0.1.2')
+  assert.deepEqual(DESKTOP_BUNDLES.slice(0, 6), [
     '@deepseek-ai/dsh-base',
     'tockbot-note-runtime',
     '@tockteam/note-vault-tools',
+    '@tockteam/tocktutor-workbench',
     '@deepseek-ai/dsh-web-app',
     '@tockteam/desktop',
   ])
