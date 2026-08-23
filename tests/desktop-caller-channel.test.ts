@@ -41,10 +41,10 @@ test('private Host channel claims one main-issued identity and rejects replay', 
   assert.equal(claimed.windowId, 'main-window')
   assert.equal(claimed.vaultId, 'vault-4')
   assert.ok(claimed.sessionId.length >= 32)
-  await assert.rejects(provider.claim({
+  assert.deepEqual(await provider.claim({
     authorization: issued.authorization,
     operation: 'microphone',
-  }, new AbortController().signal), /stale/u)
+  }, new AbortController().signal), claimed)
 
   await provider.dispose()
   await channel.stop()

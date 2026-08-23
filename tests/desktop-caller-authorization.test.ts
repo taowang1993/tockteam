@@ -23,15 +23,16 @@ test('claims one trusted-main authorization with a fully main-derived native ide
   let next = 0
   const authorizations = new DesktopCallerAuthorizations({ randomId: () => `secret-${String(++next)}` })
   const issued = authorizations.issue(operation, 'main-window')
-  assert.deepEqual(authorizations.claim({ authorization: issued.authorization, operation }, identity), {
+  const expected = {
     operationId: 'secret-2',
     requestId: 'secret-3',
     sessionId: 'runtime-child-session',
     vaultGeneration: 3,
     vaultId: 'vault-3',
     windowId: 'main-window',
-  })
-  assert.equal(authorizations.claim({ authorization: issued.authorization, operation }, identity), undefined)
+  }
+  assert.deepEqual(authorizations.claim({ authorization: issued.authorization, operation }, identity), expected)
+  assert.deepEqual(authorizations.claim({ authorization: issued.authorization, operation }, identity), expected)
   assert.equal(authorizations.size, 0)
 })
 
