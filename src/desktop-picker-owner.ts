@@ -239,6 +239,7 @@ interface DestinationEntry {
 interface DestinationSession {
   expiresAt: number
   expectedState: DesktopDestinationState
+  finalizeCancelled: boolean
   finalizing: boolean
   identity: NativeOperationIdentity
   journal: DestinationJournal | undefined
@@ -1028,6 +1029,7 @@ export class DesktopPickerOwner {
     const destination: DestinationSession = {
       expiresAt: this.options.now() + MAX_DESKTOP_GRANT_SESSION_MS,
       expectedState: locked.expectedState,
+      finalizeCancelled: false,
       finalizing: false,
       identity: request.identity,
       journal: undefined,
@@ -1233,6 +1235,7 @@ export class DesktopPickerOwner {
       if (!await this.verifyHandleDigest(selectedEntry.handle, selectedEntry.entry.size, selectedEntry.digest)) return error('digest-mismatch')
       this.assertAuthority(destination.identity)
       if (signal.aborted) return error('aborted')
+      if (destination.finalizeCancelled || destination.expiresAt <= this.options.now()) return error('expired')
       this.assertLiveStageAuthority(destination, selectedEntry, selectedEntry.entry.size)
       if (!this.verifyJournalPath(destination.journal)) return error('changed')
       try {
@@ -1486,7 +1489,10 @@ export class DesktopPickerOwner {
     const destination = this.destinations.get(session)
     if (destination === undefined) return error('closed')
     if (destination.expiresAt <= this.options.now()) {
-      if (destination.finalizing) return destination
+      if (destination.finalizing) {
+        if (!destination.publicationLinked) destination.finalizeCancelled = true
+        return destination
+      }
       this.scheduleCleanup(destination)
       this.destinations.delete(session)
       return error('expired')
@@ -1528,7 +1534,10 @@ export class DesktopPickerOwner {
     }
     for (const [claim, selection] of this.vaultSelectionClaims) if (selection.expiresAt <= now) this.vaultSelectionClaims.delete(claim)
     for (const [session, destination] of this.destinations) {
-      if (destination.expiresAt <= now && !destination.publicationLinked) await this.closeDestination(session, destination)
+      if (destination.expiresAt <= now && !destination.publicationLinked) {
+        if (destination.finalizing) destination.finalizeCancelled = true
+        else await this.closeDestination(session, destination)
+      }
     }
     this.scheduleExpiry()
   }
@@ -1546,8 +1555,11 @@ export class DesktopPickerOwner {
     for (const [claim, selection] of this.vaultSelectionClaims) if (selection.expiresAt <= now) this.vaultSelectionClaims.delete(claim)
     for (const [session, destination] of this.destinations) {
       if (destination.expiresAt <= now && !destination.publicationLinked) {
-        this.scheduleCleanup(destination)
-        this.destinations.delete(session)
+        if (destination.finalizing) destination.finalizeCancelled = true
+        else {
+          this.scheduleCleanup(destination)
+          this.destinations.delete(session)
+        }
       }
     }
   }
