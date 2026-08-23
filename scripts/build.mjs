@@ -65,6 +65,13 @@ const builds = [
   }),
   build({
     ...shared,
+    entryPoints: [join(root, 'src', 'host-contract.ts')],
+    outfile: join(dist, 'host.js'),
+    platform: 'node',
+    format: 'esm',
+  }),
+  build({
+    ...shared,
     entryPoints: [join(root, 'src', 'web-entry.ts')],
     outfile: join(dist, 'web.js'),
     platform: 'node',

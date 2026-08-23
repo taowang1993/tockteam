@@ -25,6 +25,11 @@
       "browser": "./dist/client-api.js",
       "default": "./dist/client.js"
     },
+    "./host": {
+      "types": "./host.d.ts",
+      "node": "./dist/host.js",
+      "default": "./dist/host.js"
+    },
     "./cordis.patch.yml": "./dist/cordis.patch.yml",
     "./package.json": "./package.json"
   },
@@ -34,6 +39,8 @@
     "dist/client.js.map",
     "dist/client-api.js",
     "client.d.ts",
+    "dist/host.js",
+    "host.d.ts",
     "dist/cordis.patch.yml",
     "vendor/tockbot-note-runtime-0.1.1.tgz",
     "vendor/tockbot-note-vault-0.6.0.tgz",
