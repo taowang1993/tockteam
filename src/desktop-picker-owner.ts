@@ -1,4 +1,5 @@
 import { createHash, randomBytes } from 'node:crypto'
+import { constants as fsConstants } from 'node:fs'
 import {
   mkdir,
   open,
@@ -6,6 +7,7 @@ import {
   readFile,
   rename,
   rm,
+  rmdir,
   link,
   lstat,
   realpath,
@@ -173,6 +175,7 @@ interface DestinationSession {
   entries: DestinationEntry[]
   path: string
   purpose: DesktopExportPurpose
+  stagingRevision: string | undefined
   stagingRoot: string | undefined
 }
 
@@ -272,6 +275,10 @@ function error(code: DesktopGrantErrorCode): never {
 
 function cast<T>(value: string): T {
   return value as T
+}
+
+function identityOf(stat: Stat): string {
+  return `${String(stat.dev)}:${String(stat.ino)}`
 }
 
 function revisionOf(stat: Stat): string {
@@ -574,7 +581,13 @@ export class DesktopPickerOwner {
     await this.assertUnchanged(source, entry)
     await this.options.onCheckpoint?.('read', signal)
     if (signal.aborted) return error('aborted')
-    const handle = await open(entry.absolutePath, 'r')
+    this.assertAuthority(source.identity)
+    const handle = await open(entry.absolutePath, fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW)
+    const opened = await handle.stat()
+    if (revisionOf(opened) !== entry.revision || !opened.isFile()) {
+      await handle.close()
+      return error('changed')
+    }
     const chunk = Buffer.alloc(Math.min(request.length, entry.entry.size - request.offset))
     let read = 0
     try {
@@ -643,6 +656,7 @@ export class DesktopPickerOwner {
       })),
       path: publishPath,
       purpose,
+      stagingRevision: undefined,
       stagingRoot: undefined,
     }
     this.destinations.set(session, destination)
@@ -660,11 +674,18 @@ export class DesktopPickerOwner {
     if (entry.offset + request.bytes.length > entry.entry.size) return error('size-mismatch')
     await this.ensureStaging(destination)
     await this.options.onCheckpoint?.('write', signal)
+    this.assertAuthority(destination.identity)
     if (signal.aborted) return error('aborted')
+    await this.assertStagingStable(destination)
     const staged = entry.stagedPath ?? join(destination.stagingRoot as string, request.target.kind === 'selected-file' ? 'selected-file' : request.target.relativePath)
     entry.stagedPath = staged
     await mkdir(dirname(staged), { recursive: true, mode: 0o700 })
-    const handle = await open(staged, entry.offset === 0 ? 'w' : 'a', 0o600)
+    const handle = await open(
+      staged,
+      (entry.offset === 0 ? fsConstants.O_WRONLY | fsConstants.O_CREAT | fsConstants.O_EXCL : fsConstants.O_WRONLY | fsConstants.O_APPEND)
+        | fsConstants.O_NOFOLLOW,
+      0o600,
+    )
     try {
       await handle.write(request.bytes)
     } finally {
@@ -691,13 +712,23 @@ export class DesktopPickerOwner {
       if (!stateEqual(current, destination.expectedState)) return error('changed')
       const replaced = destination.expectedState.status === 'existing'
       await this.options.onCheckpoint?.('finalize', signal)
+      this.assertAuthority(destination.identity)
       if (signal.aborted) return error('aborted')
+      await this.assertParentStable(destination.path)
+      await this.assertStagingStable(destination)
       if (destination.purpose === 'vault-backup') {
         await mkdir(destination.path, { recursive: false, mode: 0o700 })
-        for (const entry of destination.entries) {
-          const target = join(destination.path, entry.entry.target.kind === 'relative-file' ? entry.entry.target.relativePath : '')
-          await mkdir(dirname(target), { recursive: true, mode: 0o700 })
-          await rename(entry.stagedPath as string, target)
+        if (signal.aborted || !this.options.isAvailable()) {
+          await rmdir(destination.path).catch(() => {})
+          return error('aborted')
+        }
+        try {
+          await rename(destination.stagingRoot as string, destination.path)
+          destination.stagingRoot = undefined
+          destination.stagingRevision = undefined
+        } catch (cause) {
+          await rmdir(destination.path).catch(() => {})
+          throw cause
         }
       } else {
         const selectedEntry = destination.entries[0]
@@ -893,6 +924,8 @@ export class DesktopPickerOwner {
     let bytes = 0
     const walk = async (directory: string, relativeRoot: string, depth: number): Promise<boolean> => {
       if (depth > limits.maxDepth) return false
+      const canonical = await this.safeRealpath(directory)
+      if (canonical === undefined || !within(path, canonical)) return false
       const children = await readdir(directory, { withFileTypes: true })
       children.sort((left, right) => left.name.localeCompare(right.name))
       for (const child of children) {
@@ -934,6 +967,8 @@ export class DesktopPickerOwner {
     let scannedBytes = 0
     const walk = async (directory: string, relativeRoot: string, depth: number): Promise<void> => {
       if (depth > source.limits.maxDepth) return
+      const canonical = await this.safeRealpath(directory)
+      if (canonical === undefined || !within(source.path, canonical)) return error('unsafe-source')
       const children = await readdir(directory, { withFileTypes: true })
       children.sort((left, right) => left.name.localeCompare(right.name))
       for (const child of children) {
@@ -1030,11 +1065,28 @@ export class DesktopPickerOwner {
     }
   }
 
+  private async assertParentStable(path: string): Promise<void> {
+    const parent = dirname(path)
+    const canonical = await this.safeRealpath(parent)
+    if (canonical === undefined || canonical !== parent) return error('unsafe-target')
+  }
+
+  private async assertStagingStable(destination: DestinationSession): Promise<void> {
+    if (destination.stagingRoot === undefined || destination.stagingRevision === undefined) return error('closed')
+    const canonical = await this.safeRealpath(destination.stagingRoot)
+    const stat = await this.safeLstat(destination.stagingRoot)
+    if (canonical !== destination.stagingRoot || stat === undefined || !stat.isDirectory()
+      || identityOf(stat) !== destination.stagingRevision) return error('unsafe-target')
+  }
+
   private async ensureStaging(destination: DestinationSession): Promise<void> {
     if (destination.stagingRoot !== undefined) return
     const stagingRoot = join(dirname(destination.path), `.tockteam-picker-stage-${this.options.randomId()}`)
     await mkdir(stagingRoot, { recursive: false, mode: 0o700 })
+    const stat = await this.safeLstat(stagingRoot)
+    if (stat === undefined || !stat.isDirectory() || stat.isSymbolicLink()) return error('unsafe-target')
     destination.stagingRoot = stagingRoot
+    destination.stagingRevision = identityOf(stat)
   }
 
   private scheduleCleanup(destination: DestinationSession): void {
@@ -1048,6 +1100,7 @@ export class DesktopPickerOwner {
     try {
       await rm(destination.stagingRoot, { recursive: true, force: true })
       destination.stagingRoot = undefined
+      destination.stagingRevision = undefined
       return { status: 'complete' }
     } catch {
       return { residualLabels: destination.entries.map(entry => cast(labelOf(entry.absolutePath))), status: 'residual' }

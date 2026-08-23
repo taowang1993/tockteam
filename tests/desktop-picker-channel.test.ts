@@ -70,6 +70,32 @@ test('picker channel authenticates, forwards opaque sessions, and rejects replay
   )
 })
 
+test('vault activation publishes main authority only after Runtime success and trust recheck', async () => {
+  const activeVault = await mkdtemp(join(tmpdir(), 'tockteam-picker-activation-race-'))
+  let available = true
+  const owner = new DesktopPickerOwner({
+    isAvailable: () => available,
+    showOpenDialog: async () => ({ canceled: false, filePath: activeVault }),
+    showSaveDialog: async () => ({ canceled: true }),
+  })
+  const channel = new DesktopPickerChannel(owner)
+  const environment = await channel.start()
+  const provider = new DesktopPickerProvider(environment, fetch, () => {
+    available = false
+    return { active: true, generation: 1, id: 'vault-1' }
+  })
+  await assert.rejects(
+    provider.pick({ identity: identity('activation-race', false), kind: 'vault', purpose: 'activate' }, new AbortController().signal),
+    (error: unknown) => error instanceof Error && 'code' in error && error.code === 'stale',
+  )
+  available = true
+  assert.deepEqual(
+    await provider.pick({ identity: identity('after-race'), kind: 'source', purpose: 'markdown-folder' }, new AbortController().signal),
+    { operationId: 'after-race', status: 'stale' },
+  )
+  await channel.stop()
+})
+
 test('picker provider cancellation fails closed before native dialog publication', async () => {
   const owner = new DesktopPickerOwner({
     isAvailable: () => true,

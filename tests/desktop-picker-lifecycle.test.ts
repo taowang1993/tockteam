@@ -234,6 +234,59 @@ test('destination mismatches and TOCTOU fail closed with staging cleanup', async
   await owner.dispose()
 })
 
+test('root caps, purpose filters, trust revocation, and active-vault overlap fail closed', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'tockteam-picker-policy-'))
+  const activeVault = await mkdtemp(join(tmpdir(), 'tockteam-picker-active-'))
+  const oversized = join(root, 'oversized.zip')
+  const wrongCsv = join(root, 'wrong.txt')
+  const restoreFile = join(root, 'restore.zip')
+  await writeFile(oversized, 'ninebytes')
+  await writeFile(wrongCsv, 'csv')
+  await writeFile(restoreFile, 'restore')
+  let available = true
+  const selections = new Map<string, string>([
+    ['activate', activeVault],
+    ['markdown-zip', oversized],
+    ['csv', wrongCsv],
+    ['restore-backup', restoreFile],
+    ['markdown-folder', activeVault],
+  ])
+  const owner = new DesktopPickerOwner({
+    isAvailable: () => available,
+    showOpenDialog: async options => {
+      const filePath = selections.get(options.purpose)
+      return filePath === undefined ? { canceled: true } : { canceled: false, filePath }
+    },
+    showSaveDialog: async () => ({ canceled: true }),
+  })
+  await activate(owner)
+
+  const zipIdentity = identity('root-cap')
+  const zipAuthorization = await grant(owner, { identity: zipIdentity, kind: 'source', purpose: 'markdown-zip' })
+  await rejectsCode(owner.beginSource({
+    authorization: zipAuthorization,
+    identity: zipIdentity,
+    limits: { ...limits, maxEntryBytes: 1, maxTotalBytes: 1 },
+    purpose: 'markdown-zip',
+  }, new AbortController().signal), 'limit-exceeded')
+
+  const wrong = await owner.pick({ identity: identity('wrong-csv'), kind: 'source', purpose: 'csv' }, new AbortController().signal)
+  assert.equal(wrong.status, 'denied')
+  const restore = await owner.pick({ identity: identity('restore-file'), kind: 'source', purpose: 'restore-backup' }, new AbortController().signal)
+  assert.equal(restore.status, 'denied')
+
+  const trustIdentity = identity('trust-loss')
+  const trustAuthorization = await grant(owner, { identity: trustIdentity, kind: 'source', purpose: 'markdown-zip' })
+  available = false
+  await rejectsCode(owner.beginSource({ authorization: trustAuthorization, identity: trustIdentity, limits, purpose: 'markdown-zip' }, new AbortController().signal), 'stale')
+  available = true
+
+  const overlapIdentity = identity('overlap')
+  const overlapAuthorization = await grant(owner, { identity: overlapIdentity, kind: 'source', purpose: 'markdown-folder' })
+  await rejectsCode(owner.beginSource({ authorization: overlapAuthorization, identity: overlapIdentity, limits, purpose: 'markdown-folder' }, new AbortController().signal), 'unsafe-source')
+  await owner.dispose()
+})
+
 test('abort checkpoints and owner disposal settle sessions and staging idempotently', async () => {
   const root = await mkdtemp(join(tmpdir(), 'tockteam-picker-abort-'))
   const activeVault = await mkdtemp(join(tmpdir(), 'tockteam-picker-active-'))
