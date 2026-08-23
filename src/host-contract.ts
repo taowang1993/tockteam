@@ -224,6 +224,14 @@ export interface DesktopDestinationPlanEntry {
   target: DesktopDestinationTarget
 }
 
+export type DesktopSelectedFilePlanEntry = Omit<DesktopDestinationPlanEntry, 'target'> & {
+  target: Extract<DesktopDestinationTarget, { kind: 'selected-file' }>
+}
+
+export type DesktopRelativeFilePlanEntry = Omit<DesktopDestinationPlanEntry, 'target'> & {
+  target: Extract<DesktopDestinationTarget, { kind: 'relative-file' }>
+}
+
 export type DesktopDestinationState =
   | { status: 'absent' }
   | { replaceAuthorized: true; revision: DesktopOpaqueRevision; status: 'existing' }
@@ -235,15 +243,25 @@ export type DesktopDestinationState =
  * case-fold-unique relative-file entries, a required single-segment
  * publicationName, exactly one manifest.json, and exact entry/total sizes.
  */
-export interface BeginDesktopDestinationRequest {
+type BeginDesktopDestinationBaseRequest = {
   authorization: DesktopPickerAuthorization
-  entries: DesktopDestinationPlanEntry[]
   identity: DesktopPickerIdentity
   planDigest: DesktopSha256
-  publicationName?: DesktopSafeName
-  purpose: DesktopExportPurpose
   totalBytes: number
 }
+
+export type BeginDesktopDestinationRequest = BeginDesktopDestinationBaseRequest & (
+  | {
+      entries: [DesktopSelectedFilePlanEntry]
+      publicationName?: never
+      purpose: 'export-html' | 'export-pdf'
+    }
+  | {
+      entries: [DesktopRelativeFilePlanEntry, ...DesktopRelativeFilePlanEntry[]]
+      publicationName: DesktopSafeName
+      purpose: 'vault-backup'
+    }
+)
 
 export interface BeginDesktopDestinationResult {
   expiresAt: number
@@ -320,17 +338,35 @@ export type DesktopGrantErrorCode =
   | 'unsafe-source'
   | 'unsafe-target'
 
-/**
- * A bounded path-free rejection from a picker grant/session operation.
- * Messages and other observable evidence must never contain a native path.
- */
+const DESKTOP_GRANT_ERROR_MESSAGES: Record<DesktopGrantErrorCode, string> = {
+  aborted: 'The Desktop grant operation was aborted.',
+  changed: 'The selected item changed.',
+  closed: 'The Desktop grant session is closed.',
+  'digest-mismatch': 'The content digest did not match.',
+  exists: 'The destination already exists.',
+  expired: 'The Desktop grant expired.',
+  'invalid-entry': 'The selected entry is invalid.',
+  'limit-exceeded': 'A Desktop grant limit was exceeded.',
+  'owner-lost': 'The Desktop owner is unavailable.',
+  'purpose-mismatch': 'The Desktop grant purpose did not match.',
+  replayed: 'The Desktop grant was already consumed.',
+  'size-mismatch': 'The content size did not match.',
+  stale: 'The Desktop grant is stale.',
+  'unsafe-source': 'The selected source is unsafe.',
+  'unsafe-target': 'The selected destination is unsafe.',
+}
+
+/** A code-only path-free rejection from a picker grant/session operation. */
 export class TockTeamDesktopGrantError extends Error {
   readonly code: DesktopGrantErrorCode
 
-  constructor(code: DesktopGrantErrorCode, message: string) {
-    super(message)
+  constructor(code: DesktopGrantErrorCode) {
+    const normalized = Object.hasOwn(DESKTOP_GRANT_ERROR_MESSAGES, code)
+      ? code
+      : 'owner-lost'
+    super(DESKTOP_GRANT_ERROR_MESSAGES[normalized])
     this.name = 'TockTeamDesktopGrantError'
-    this.code = code
+    this.code = normalized
   }
 }
 
@@ -470,7 +506,7 @@ type DesktopPrintExportBaseRequest = {
  * isolated no-network/no-file/no-blob document before any native effect.
  */
 export type DesktopPrintExportRequest = DesktopPrintExportBaseRequest & (
-  | { format: 'print' }
+  | { authorization?: never; format: 'print'; purpose?: never }
   | {
       authorization: DesktopPickerAuthorization
       format: 'html'

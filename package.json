@@ -7,10 +7,6 @@
   "desktopName": "tockteam-desktop.desktop",
   "private": true,
   "type": "module",
-  "dependencies": {
-    "tockbot-note-runtime": "file:vendor/tockbot-note-runtime-0.1.1.tgz",
-    "tockbot-note-vault": "file:vendor/tockbot-note-vault-0.6.0.tgz"
-  },
   "main": "dist/main.js",
   "bin": {
     "tockteam": "bin/tockteam"
@@ -27,6 +23,7 @@
     },
     "./host": {
       "types": "./host.d.ts",
+      "browser": null,
       "node": "./dist/host.js",
       "default": "./dist/host.js"
     },
@@ -69,6 +66,7 @@
     "build": "node scripts/build.mjs",
     "build:dsh": "node scripts/build-dsh.mjs",
     "stage:dsh": "node scripts/stage-dsh.mjs",
+    "pack:desktop": "node scripts/pack-desktop.mjs",
     "check:plugins": "node scripts/smoke-runtime.mjs",
     "smoke:runtime": "node scripts/smoke-runtime.mjs",
     "smoke:app": "node scripts/smoke-runtime.mjs \"release/mac-arm64/TockTeam Desktop.app/Contents/Resources\"",
@@ -97,6 +95,8 @@
     "dist:tui:quick": "pnpm run build && pnpm run stage:dsh && node scripts/build-tui.mjs"
   },
   "devDependencies": {
+    "tockbot-note-runtime": "file:vendor/tockbot-note-runtime-0.1.1.tgz",
+    "tockbot-note-vault": "file:vendor/tockbot-note-vault-0.6.0.tgz",
     "@types/node": "^24.10.0",
     "electron": "42.3.0",
     "electron-builder": "^26.0.12",

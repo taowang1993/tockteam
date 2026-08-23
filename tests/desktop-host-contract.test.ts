@@ -1,9 +1,13 @@
 import assert from 'node:assert/strict'
+import { spawnSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 import type {
+  BeginDesktopDestinationRequest,
   DesktopPickerAuthorization,
   DesktopPrintExportRequest,
+  DesktopRelativeFilePlanEntry,
+  DesktopSelectedFilePlanEntry,
   DesktopSourceRoot,
   DesktopMicrophoneRequest,
   NativeOperationIdentity,
@@ -58,8 +62,35 @@ const typeHtmlExport: DesktopPrintExportRequest = {
   title: '',
 }
 const typeMicrophone: DesktopMicrophoneRequest = { identity: typeIdentity }
+const typeSelectedEntry = {
+  digest: '' as never,
+  size: 0,
+  target: { kind: 'selected-file' as const },
+} satisfies DesktopSelectedFilePlanEntry
+const typeRelativeEntry = {
+  digest: '' as never,
+  size: 0,
+  target: { kind: 'relative-file' as const, relativePath: '' as never },
+} satisfies DesktopRelativeFilePlanEntry
+const typeHtmlDestination: BeginDesktopDestinationRequest = {
+  authorization: typeAuthorization,
+  entries: [typeSelectedEntry],
+  identity: typeIdentity,
+  planDigest: '' as never,
+  purpose: 'export-html',
+  totalBytes: 0,
+}
+const typeVaultDestination: BeginDesktopDestinationRequest = {
+  authorization: typeAuthorization,
+  entries: [typeRelativeEntry],
+  identity: typeIdentity,
+  planDigest: '' as never,
+  publicationName: '' as never,
+  purpose: 'vault-backup',
+  totalBytes: 0,
+}
+// @ts-expect-error print must not carry destination authorization or purpose
 const invalidPrint: DesktopPrintExportRequest = {
-  // @ts-expect-error print must not carry destination authorization
   authorization: typeAuthorization,
   format: 'print',
   html: '',
@@ -75,12 +106,36 @@ const invalidDirectoryRoot: DesktopSourceRoot = {
   kind: 'directory',
   revision: typeRevision,
 }
-void [typeFileRoot, typeDirectoryRoot, typePrint, typeHtmlExport, typeMicrophone, invalidPrint, invalidMicrophone, invalidDirectoryRoot]
+// @ts-expect-error HTML export cannot publish a relative-file plan
+const invalidHtmlDestination: BeginDesktopDestinationRequest = {
+  ...typeHtmlDestination,
+  entries: [typeRelativeEntry],
+}
+// @ts-expect-error vault backup requires a publication name
+const invalidVaultDestination: BeginDesktopDestinationRequest = {
+  ...typeVaultDestination,
+  publicationName: undefined,
+}
+void [
+  typeFileRoot,
+  typeDirectoryRoot,
+  typePrint,
+  typeHtmlExport,
+  typeMicrophone,
+  typeHtmlDestination,
+  typeVaultDestination,
+  invalidPrint,
+  invalidMicrophone,
+  invalidDirectoryRoot,
+  invalidHtmlDestination,
+  invalidVaultDestination,
+]
 
  test('publishes the canonical Desktop Host subpath metadata', () => {
   assert.equal(packageJson.version, '0.1.5')
   assert.deepEqual(packageJson.exports['./host'], {
     types: './host.d.ts',
+    browser: null,
     node: './dist/host.js',
     default: './dist/host.js',
   })
@@ -96,6 +151,14 @@ void [typeFileRoot, typeDirectoryRoot, typePrint, typeHtmlExport, typeMicrophone
   assert.equal(MAX_PRINT_EXPORT_TITLE_BYTES, 512)
   assert.equal(MAX_PRINT_EXPORT_RESOURCE_REFERENCES, 256)
   assert.equal(MAX_PRINT_EXPORT_RESOURCE_URL_BYTES, 2 * 1024 * 1024)
+  const browserImport = spawnSync(process.execPath, [
+    '--conditions=browser',
+    '--input-type=module',
+    '-e',
+    "await import('@tockteam/desktop/host')",
+  ], { cwd: process.cwd(), encoding: 'utf8' })
+  assert.notEqual(browserImport.status, 0)
+  assert.match(browserImport.stderr, /ERR_PACKAGE_PATH_NOT_EXPORTED/)
 })
 
 test('exports one stable service key for each native owner', () => {
@@ -115,9 +178,11 @@ test('exports one stable service key for each native owner', () => {
 })
 
 test('uses typed grant errors and closes pending owner work on disposal', async () => {
-  const error = new TockTeamDesktopGrantError('purpose-mismatch', 'purpose mismatch')
+  const error = new TockTeamDesktopGrantError('purpose-mismatch')
   assert.equal(error.name, 'TockTeamDesktopGrantError')
   assert.equal(error.code, 'purpose-mismatch')
+  assert.equal(error.message, 'The Desktop grant purpose did not match.')
+  assert.equal(new TockTeamDesktopGrantError('not-a-real-code' as never).code, 'owner-lost')
 
   const lifetime = createNativeOwnerLifetime()
   let release!: () => void

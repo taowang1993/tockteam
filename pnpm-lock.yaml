@@ -7,13 +7,6 @@ settings:
 importers:
 
   .:
-    dependencies:
-      tockbot-note-runtime:
-        specifier: file:vendor/tockbot-note-runtime-0.1.1.tgz
-        version: file:vendor/tockbot-note-runtime-0.1.1.tgz(@deepseek-ai/cordis@4.0.1)(tockbot-note-vault@file:vendor/tockbot-note-vault-0.6.0.tgz)
-      tockbot-note-vault:
-        specifier: file:vendor/tockbot-note-vault-0.6.0.tgz
-        version: file:vendor/tockbot-note-vault-0.6.0.tgz
     devDependencies:
       '@types/node':
         specifier: ^24.10.0
@@ -30,6 +23,12 @@ importers:
       pnpm:
         specifier: 11.20.0
         version: 11.20.0
+      tockbot-note-runtime:
+        specifier: file:vendor/tockbot-note-runtime-0.1.1.tgz
+        version: file:vendor/tockbot-note-runtime-0.1.1.tgz(@deepseek-ai/cordis@4.0.1)(tockbot-note-vault@file:vendor/tockbot-note-vault-0.6.0.tgz)
+      tockbot-note-vault:
+        specifier: file:vendor/tockbot-note-vault-0.6.0.tgz
+        version: file:vendor/tockbot-note-vault-0.6.0.tgz
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
@@ -1825,6 +1824,7 @@ packages:
 
   koffi@3.1.4:
     resolution: {integrity: sha512-KHX39XIg7afe8ds+0MHPoLiKR9dCzsVK4oAmBUSaeJlcX0xur22f15C2DILbZ6GJ9eyqC+e6Sb1cTG7M17z+Tg==}
+    deprecated: Unstable Windows builds
 
   lazy-val@1.0.5:
     resolution: {integrity: sha512-0/BnGCCfyUMkBpeDgWihanIAF9JmZhHBgUhEqzvf+adhNGLoP6TaiI5oF8oyb3I45P+PcnrqihSf01M0l0G5+Q==}
