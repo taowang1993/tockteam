@@ -8,6 +8,8 @@ import {
   TOCKTEAM_SURFACE_SERVICE,
   type TockTeamSurface,
 } from '../plugins/shared/surface.ts'
+import { DesktopPickerProvider } from './desktop-picker-provider.ts'
+import { TOCKTEAM_DESKTOP_PICKER_SERVICE } from './host-contract.ts'
 import { DesktopRevealProvider } from './desktop-reveal-provider.ts'
 
 interface SystemPromptService {
@@ -75,8 +77,13 @@ function desktopPrompt(capability: DesktopHostCapability): string {
 export function apply(ctx: HostContext): void {
   const capability = environmentCapability()
   const revealProvider = new DesktopRevealProvider(ctx)
+  const pickerProvider = new DesktopPickerProvider()
   // The runtime Service base registers the exact `tockTeamDesktopReveal` key.
-  ctx.effect(() => () => { revealProvider.close() }, 'tockteam-desktop: reveal owner')
+  ctx.effect(() => () => {
+    revealProvider.close()
+    pickerProvider.dispose()
+  }, 'tockteam-desktop: native owners')
+  ctx.provide(TOCKTEAM_DESKTOP_PICKER_SERVICE, pickerProvider)
   ctx.provide('desktop', capability)
   // The unified three-surface contract: desktop shell (see
   // plugins/shared/surface.ts). The `desktop` service above stays for

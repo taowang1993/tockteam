@@ -44,6 +44,8 @@ import {
   stripWebClipResponseHeaders,
 } from './web-clip-frame.ts'
 import { DshRuntimeSupervisor, runDshCommand, type DshRuntimeOptions, type RuntimeExit } from './runtime.ts'
+import { DesktopPickerChannel } from './desktop-picker-channel.ts'
+import { DesktopPickerOwner, type DesktopPickerDialogOptions } from './desktop-picker-owner.ts'
 import { DesktopRevealChannel } from './desktop-reveal-channel.ts'
 import { performDesktopReveal } from './desktop-reveal-native.ts'
 import {
@@ -89,6 +91,52 @@ const desktopRevealChannel = new DesktopRevealChannel({
     reveal: path => { shell.showItemInFolder(path) },
   }, signal),
 })
+
+function pickerDialogTitle(options: DesktopPickerDialogOptions): string {
+  if (options.kind === 'save') return options.purpose === 'export-pdf' ? '导出 PDF' : '导出 HTML'
+  if (options.purpose === 'activate') return '选择笔记库'
+  if (options.purpose === 'vault-backup') return '选择备份目录'
+  return '选择导入源'
+}
+
+function pickerDialogFilters(options: DesktopPickerDialogOptions): Electron.FileFilter[] {
+  return options.extensions.length === 0
+    ? []
+    : [{ name: options.extensions.map(extension => `.${extension}`).join(', '), extensions: options.extensions }]
+}
+
+const desktopPickerOwner = new DesktopPickerOwner({
+  isAvailable: () => isEligibleDesktopRevealWindow(),
+  showOpenDialog: async options => {
+    const electronOptions: Electron.OpenDialogOptions = {
+      title: pickerDialogTitle(options),
+      filters: pickerDialogFilters(options),
+      properties: options.directory ? ['openDirectory', 'createDirectory'] : ['openFile'],
+    }
+    const parent = mainWindow
+    const result = parent === undefined || parent.isDestroyed()
+      ? await dialog.showOpenDialog(electronOptions)
+      : await dialog.showOpenDialog(parent, electronOptions)
+    const filePath = result.filePaths[0]
+    return filePath === undefined
+      ? { canceled: result.canceled }
+      : { canceled: result.canceled, filePath }
+  },
+  showSaveDialog: async options => {
+    const electronOptions: Electron.SaveDialogOptions = {
+      title: pickerDialogTitle(options),
+      filters: pickerDialogFilters(options),
+    }
+    const parent = mainWindow
+    const result = parent === undefined || parent.isDestroyed()
+      ? await dialog.showSaveDialog(electronOptions)
+      : await dialog.showSaveDialog(parent, electronOptions)
+    return result.filePath === undefined
+      ? { canceled: result.canceled }
+      : { canceled: result.canceled, filePath: result.filePath }
+  },
+})
+const desktopPickerChannel = new DesktopPickerChannel(desktopPickerOwner)
 
 function appendLog(stream: 'desktop' | 'stderr' | 'stdout', line: string): void {
   const rendered = `${new Date().toISOString()} [${stream}] ${line}`
@@ -150,6 +198,11 @@ function runtimeEnvironment(
   if (reveal !== undefined) {
     environment.DSH_DESKTOP_REVEAL_ENDPOINT = reveal.endpoint
     environment.DSH_DESKTOP_REVEAL_TOKEN = reveal.token
+  }
+  const picker = overrides.preview === undefined ? desktopPickerChannel.environment : undefined
+  if (picker !== undefined) {
+    environment.DSH_DESKTOP_PICKER_ENDPOINT = picker.endpoint
+    environment.DSH_DESKTOP_PICKER_TOKEN = picker.token
   }
   if (overrides.preview !== undefined) {
     environment.DSH_DESKTOP_PREVIEW = '1'
@@ -457,6 +510,7 @@ function flushQueuedPaths(): void {
 function handleRuntimeExit(exit: RuntimeExit): void {
   appendLog('desktop', `DSH runtime exited: code=${String(exit.code)} signal=${String(exit.signal)}`)
   void desktopRevealChannel.stop()
+  void desktopPickerChannel.stop()
   runtimeUrl = undefined
   runtimeOrigin = undefined
   if (quitting || transitioning) return
@@ -471,6 +525,7 @@ async function startRuntime(): Promise<void> {
   const info = desktopInfo()
   ensureDesktopProfile(info.dshHome)
   await desktopRevealChannel.start()
+  await desktopPickerChannel.start()
   try {
     const supervisor = new DshRuntimeSupervisor(runtimeOptions())
     runtime = supervisor
@@ -482,6 +537,7 @@ async function startRuntime(): Promise<void> {
     await mainWindow.loadURL(url.href)
     flushQueuedPaths()
   } catch (error) {
+    await desktopPickerChannel.stop()
     await desktopRevealChannel.stop()
     throw error
   }
@@ -542,6 +598,7 @@ async function stopLiveForMarketplace(): Promise<void> {
   transitioning = true
   await showSplash({ message: '正在应用插件 Profile…' })
   await runtime?.stop()
+  await desktopPickerChannel.stop()
   await desktopRevealChannel.stop()
   runtime = undefined
   runtimeUrl = undefined
@@ -562,6 +619,7 @@ async function restartRuntime(message = '正在重新启动 TockTeam…'): Promi
   try {
     await showSplash({ message })
     await runtime?.stop()
+    await desktopPickerChannel.stop()
     await desktopRevealChannel.stop()
     runtime = undefined
     runtimeUrl = undefined
@@ -612,6 +670,7 @@ async function installLocalPlugin(): Promise<void> {
   try {
     await showSplash({ message: '正在安装 DSH 插件…' })
     await runtime?.stop()
+    await desktopPickerChannel.stop()
     await desktopRevealChannel.stop()
     runtime = undefined
     const options = runtimeOptions()
@@ -928,6 +987,7 @@ async function bootstrap(): Promise<void> {
     quitting = true
     void Promise.allSettled([
       runtime?.stop() ?? Promise.resolve(),
+      desktopPickerChannel.stop(),
       desktopRevealChannel.stop(),
       stopPreviewSurface(),
       marketplaceAgentGateway?.close() ?? Promise.resolve(),

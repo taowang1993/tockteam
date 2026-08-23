@@ -173,6 +173,11 @@ copyFileSync(join(root, 'src', 'splash.html'), join(dist, 'splash.html'))
 copyFileSync(join(root, 'cordis.patch.yml'), join(dist, 'cordis.patch.yml'))
 const releaseManifest = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'))
 releaseManifest.version = productVersion
+// Runtime/vault pins are app-staging inputs, not dependencies of an
+// independently installable release package.
+delete releaseManifest.dependencies
+delete releaseManifest.devDependencies
+delete releaseManifest.peerDependencies
 writeFileSync(
   join(dist, 'release-package.json'),
   `${JSON.stringify(releaseManifest, undefined, 2)}\n`,

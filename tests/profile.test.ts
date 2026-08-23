@@ -7,7 +7,8 @@ import { DESKTOP_BUNDLES, ensureDesktopProfile } from '../src/profile.ts'
 
 test('desktop profile pins the released TockTutor runtime and peer package', () => {
   const packageJson = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as {
-    dependencies: Record<string, string>
+    dependencies?: Record<string, string>
+    devDependencies: Record<string, string>
   }
   const runtime = JSON.parse(readFileSync(new URL('../vendor/tockbot-note-runtime/package.json', import.meta.url), 'utf8')) as {
     peerDependencies: Record<string, string>
@@ -16,8 +17,9 @@ test('desktop profile pins the released TockTutor runtime and peer package', () 
   const vault = JSON.parse(readFileSync(new URL('../vendor/tockbot-note-vault/package.json', import.meta.url), 'utf8')) as {
     version: string
   }
-  assert.equal(packageJson.dependencies['tockbot-note-runtime'], 'file:vendor/tockbot-note-runtime-0.1.1.tgz')
-  assert.equal(packageJson.dependencies['tockbot-note-vault'], 'file:vendor/tockbot-note-vault-0.6.0.tgz')
+  assert.equal(packageJson.dependencies, undefined)
+  assert.equal(packageJson.devDependencies['tockbot-note-runtime'], 'file:vendor/tockbot-note-runtime-0.1.1.tgz')
+  assert.equal(packageJson.devDependencies['tockbot-note-vault'], 'file:vendor/tockbot-note-vault-0.6.0.tgz')
   assert.equal(runtime.version, '0.1.1')
   assert.equal(runtime.peerDependencies['tockbot-note-vault'], '0.6.0')
   assert.equal(vault.version, '0.6.0')
