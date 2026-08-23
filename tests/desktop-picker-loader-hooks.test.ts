@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { lstat, mkdir, mkdtemp, readFile, readdir, realpath, writeFile } from 'node:fs/promises'
+import { link, lstat, mkdir, mkdtemp, readFile, readdir, realpath, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
@@ -65,7 +65,7 @@ test('loader hook proves normal publication invokes no destructive managed-path 
   assert.equal(await readFile(destination, 'utf8'), 'reviewed-output')
 })
 
-test('startup never opens journals and globally blocks the current process', async () => {
+test('startup journal-open swap preserves both files and blocks the current process', async () => {
   const root = await temp('tockteam-hook-journal-swap-')
   const recoveryRoot = await temp('tockteam-hook-recovery-')
   const vault = await temp('tockteam-hook-vault-')
@@ -87,11 +87,47 @@ test('startup never opens journals and globally blocks the current process', asy
   const child = runHook('startup-journal-open-swap', destination, recoveryRoot, vault, result, foreign)
   assert.equal(child.status, 0, child.stderr || child.stdout)
   assert.equal(JSON.parse(await readFile(result, 'utf8')).outcome, 'error:recovery-required')
-  assert.equal(JSON.parse(await readFile(journal, 'utf8')).resolution, 'scrubbed')
-  await assert.rejects(readFile(`${journal}-recorded-owner`), { code: 'ENOENT' })
+  assert.equal(await readFile(journal, 'utf8'), foreign)
+  assert.equal(JSON.parse(await readFile(`${journal}-recorded-owner`, 'utf8')).resolution, 'scrubbed')
 })
 
-test('startup never opens residue paths named by disk journals', async () => {
+test('startup post-open resolved stage swap rebinds the path and blocks globally', async () => {
+  const root = await temp('tockteam-hook-resolved-stage-swap-')
+  const recoveryRoot = await temp('tockteam-hook-recovery-')
+  const vault = await temp('tockteam-hook-vault-')
+  const result = join(await temp('tockteam-hook-result-'), 'result.json')
+  const nextDestination = join(root, 'next.html')
+  const publishedDestination = join(root, 'published.html')
+  const stageRoot = join(root, '.tockteam-picker-stage-resolved')
+  const stage = join(stageRoot, 'selected-file')
+  const secret = 'resolved-published-content'
+  const foreign = 'foreign-resolved-stage'
+  await mkdir(stageRoot, { mode: 0o700 })
+  await writeFile(stage, secret, { mode: 0o600 })
+  await link(stage, publishedDestination)
+  const [parentStat, stageRootStat, stageStat, destinationStat] = await Promise.all([lstat(root), lstat(stageRoot), lstat(stage), lstat(publishedDestination)])
+  await writeFile(join(recoveryRoot, 'destination-resolved.json'), JSON.stringify({
+    destinationIdentity: ownedIdentity(destinationStat),
+    destinationPath: publishedDestination,
+    newDigest: sha(secret),
+    newSize: secret.length,
+    parentIdentity: `${String(parentStat.dev)}:${String(parentStat.ino)}`,
+    residues: [
+      { disposition: 'scrubbed', identity: ownedIdentity(stageRootStat), kind: 'directory', path: stageRoot, size: 0 },
+      { disposition: 'published-alias', identity: ownedIdentity(stageStat), kind: 'file', path: stage, size: secret.length },
+    ],
+    resolution: 'retained',
+    version: 2,
+  }), { mode: 0o600 })
+  const child = runHook('startup-resolved-stage-open-swap', nextDestination, recoveryRoot, vault, result, foreign, stage)
+  assert.equal(child.status, 0, child.stderr || child.stdout)
+  assert.equal(JSON.parse(await readFile(result, 'utf8')).outcome, 'error:recovery-required')
+  assert.equal(await readFile(stage, 'utf8'), foreign)
+  assert.equal(await readFile(`${stage}-recorded-owner`, 'utf8'), secret)
+  assert.equal(await readFile(publishedDestination, 'utf8'), secret)
+})
+
+test('startup unresolved stage swap preserves both occupants and blocks', async () => {
   const root = await temp('tockteam-hook-startup-')
   const recoveryRoot = await temp('tockteam-hook-recovery-')
   const vault = await temp('tockteam-hook-vault-')
@@ -119,7 +155,7 @@ test('startup never opens residue paths named by disk journals', async () => {
   }), { mode: 0o600 })
   const child = runHook('startup-stage-swap', destination, recoveryRoot, vault, result, foreign, stage)
   assert.equal(child.status, 0, child.stderr || child.stdout)
-  assert.equal(await readFile(stage, 'utf8'), secret)
-  await assert.rejects(readFile(`${stage}-recorded-owner`), { code: 'ENOENT' })
+  assert.equal(await readFile(stage, 'utf8'), foreign)
+  assert.equal(await readFile(`${stage}-recorded-owner`, 'utf8'), secret)
   await assert.rejects(readFile(destination), { code: 'ENOENT' })
 })

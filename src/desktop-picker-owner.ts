@@ -1712,7 +1712,7 @@ export class DesktopPickerOwner {
       typeof value.parentIdentity !== 'string' ||
       value.parentIdentity.length === 0 ||
       !Array.isArray(value.residues) ||
-      value.residues.length > 3 ||
+      value.residues.length !== 2 ||
       (value.resolution !== 'retained' &&
         value.resolution !== 'scrubbed' &&
         value.resolution !== 'unresolved')
@@ -1768,7 +1768,13 @@ export class DesktopPickerOwner {
       )
         return false
     }
-    return value.resolution !== 'retained' || value.destinationIdentity !== null
+    const directoryResidue = value.residues.find(residue => residue.kind === 'directory')
+    const fileResidue = value.residues.find(residue => residue.kind === 'file')
+    return directoryResidue !== undefined && fileResidue !== undefined
+      && dirname(fileResidue.path) === directoryResidue.path
+      && (value.resolution === 'retained'
+        ? value.destinationIdentity !== null
+        : value.destinationIdentity === null)
   }
 
   private async ensureRecoveryRoot(): Promise<void> {
@@ -1829,7 +1835,69 @@ export class DesktopPickerOwner {
       return
     }
     this.recoveryAtCapacity = entries.length >= MAX_RECOVERY_JOURNALS
-    if (entries.length > 0) this.recoveryCorrupt = true
+    for (const entry of entries) await this.recoverJournal(entry.path)
+  }
+
+  private async recoverJournal(path: string): Promise<void> {
+    let handle: Awaited<ReturnType<typeof open>> | undefined
+    try {
+      handle = await open(path, fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW | fsConstants.O_NONBLOCK)
+      const journalStat = await handle.stat()
+      const journalIdentity = ownedIdentityOf(journalStat)
+      if (!journalStat.isFile() || Number(journalStat.size) > MAX_RECOVERY_JOURNAL_BYTES
+        || (Number(journalStat.mode) & 0o777) !== 0o600
+        || typeof process.getuid === 'function' && journalStat.uid !== process.getuid()) return this.markRecoveryCorrupt()
+      const parsed = JSON.parse(await handle.readFile('utf8')) as unknown
+      if (!this.validRecoveryRecord(parsed) || parsed.resolution === 'unresolved') return this.markRecoveryCorrupt()
+      this.assertDestinationParent(parsed.destinationPath, parsed.parentIdentity)
+      if (!await this.validateResolvedResidues(parsed)) return this.markRecoveryCorrupt()
+      const pathStat = await this.safeLstat(path)
+      if (pathStat === undefined || !pathStat.isFile() || pathStat.isSymbolicLink()
+        || ownedIdentityOf(pathStat) !== journalIdentity) this.markRecoveryCorrupt()
+    } catch {
+      this.markRecoveryCorrupt()
+    } finally {
+      await handle?.close().catch(() => undefined)
+    }
+  }
+
+  private markRecoveryCorrupt(): void {
+    this.recoveryCorrupt = true
+  }
+
+  private async validateResolvedResidues(value: DestinationRecoveryRecord): Promise<boolean> {
+    for (const residue of value.residues) {
+      if (!await this.validateResolvedResidue(residue, value.resolution === 'retained' ? value.newDigest : undefined)) return false
+    }
+    return true
+  }
+
+  private async validateResolvedResidue(
+    residue: DestinationResidueRecord,
+    digest: string | undefined,
+  ): Promise<boolean> {
+    let handle: Awaited<ReturnType<typeof open>> | undefined
+    try {
+      handle = await open(
+        residue.path,
+        fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW | fsConstants.O_NONBLOCK
+          | (residue.kind === 'directory' ? fsConstants.O_DIRECTORY : 0),
+      )
+      const stat = await handle.stat()
+      if (ownedIdentityOf(stat) !== residue.identity
+        || residue.kind === 'file' && (!stat.isFile() || Number(stat.size) !== residue.size)
+        || residue.kind === 'directory' && !stat.isDirectory()) return false
+      if (digest !== undefined && residue.kind === 'file'
+        && !await this.verifyHandleDigest(handle, residue.size, digest)) return false
+      const pathStat = await this.safeLstat(residue.path)
+      return pathStat !== undefined && !pathStat.isSymbolicLink()
+        && ownedIdentityOf(pathStat) === residue.identity
+        && (residue.kind === 'file' ? pathStat.isFile() : pathStat.isDirectory())
+    } catch (cause) {
+      return (cause as NodeJS.ErrnoException).code === 'ENOENT'
+    } finally {
+      await handle?.close().catch(() => undefined)
+    }
   }
 
   private async verifyHandleDigest(

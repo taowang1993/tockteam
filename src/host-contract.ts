@@ -409,9 +409,9 @@ export interface FinalizeDesktopDestinationRequest {
  * `complete` means no managed artifact was created. `scrubbed` retains only
  * exact-fd-zeroed payload residue and a resolved tombstone. `retained` also
  * retains the verified published staging alias. `residual` requires reviewed
- * recovery. No status claims namespace deletion. After restart, every retained
- * tombstone is untrusted and blocks new destination locks until reviewed
- * manual removal.
+ * recovery. No status claims namespace deletion. After restart, only a stable,
+ * strictly valid resolved tombstone is nonblocking; unresolved or mismatched
+ * evidence requires reviewed manual recovery.
  */
 export type DesktopCleanupEvidence =
   | { status: 'complete' }

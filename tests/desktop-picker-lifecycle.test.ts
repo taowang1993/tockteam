@@ -506,7 +506,43 @@ test('crash recovery preserves all tombstones for manual review idempotently', a
   }
 })
 
-test('resolved retained tombstones tolerate later target edits and reviewed manual removal', async () => {
+test('valid resolved scrubbed tombstone is read-only validated and nonblocking', async () => {
+  const root = await canonicalTemp('tockteam-picker-scrubbed-restart-')
+  const recoveryRoot = await canonicalTemp('tockteam-picker-scrubbed-index-')
+  const activeVault = await canonicalTemp('tockteam-picker-active-')
+  const outputs = [join(root, 'aborted.html'), join(root, 'next.html')]
+  const options = {
+    isAvailable: () => true,
+    recoveryRoot,
+    showOpenDialog: async () => ({ canceled: false, filePath: activeVault }),
+    showSaveDialog: async () => ({ canceled: false, filePath: outputs[0] as string }),
+  }
+  const owner = new DesktopPickerOwner(options)
+  await activate(owner)
+  const operation = identity('scrubbed-create')
+  const selection = await grant(owner, { identity: operation, kind: 'destination', purpose: 'export-html' })
+  const bytes = new TextEncoder().encode('abort me')
+  const { begun, planDigest } = await lockAndBegin(owner, selection, operation, {
+    entries: [{ digest: sha(bytes), size: bytes.length, target: { kind: 'selected-file' } }],
+    purpose: 'export-html',
+    totalBytes: bytes.length,
+  })
+  await owner.writeDestinationChunk({ bytes, offset: 0, planDigest, session: begun.session, target: { kind: 'selected-file' } }, new AbortController().signal)
+  assert.equal((await owner.abortDestination({ session: begun.session })).cleanup.status, 'scrubbed')
+  await owner.dispose()
+  outputs.shift()
+  const restarted = new DesktopPickerOwner(options)
+  await restarted.ready()
+  await activate(restarted)
+  const nextOperation = identity('scrubbed-next')
+  const nextSelection = await grant(restarted, { identity: nextOperation, kind: 'destination', purpose: 'export-html' })
+  const plan = { entries: [{ digest: sha('x'), size: 1, target: { kind: 'selected-file' as const } }] as const, purpose: 'export-html' as const, totalBytes: 1 }
+  const locked = await restarted.lockDestinationPlan({ ...plan, identity: nextOperation, planDigest: computeDesktopDestinationPlanDigest(plan), selectionAuthorization: nextSelection }, new AbortController().signal)
+  await restarted.revokeDestinationPlan({ authorization: locked.authorization })
+  await restarted.dispose()
+})
+
+test('valid retained tombstone is nonblocking before later mismatch and manual removal', async () => {
   const root = await canonicalTemp('tockteam-picker-retained-restart-')
   const recoveryRoot = await canonicalTemp('tockteam-picker-retained-index-')
   const activeVault = await canonicalTemp('tockteam-picker-active-')
@@ -531,6 +567,20 @@ test('resolved retained tombstones tolerate later target edits and reviewed manu
   assert.equal(published.status, 'published')
   if (published.status === 'published') assert.equal(published.cleanup.status, 'retained')
   await owner.dispose()
+  const validRestart = new DesktopPickerOwner({
+    isAvailable: () => true,
+    recoveryRoot,
+    showOpenDialog: async () => ({ canceled: false, filePath: activeVault }),
+    showSaveDialog: async () => ({ canceled: false, filePath: join(root, 'next.html') }),
+  })
+  await validRestart.ready()
+  await activate(validRestart)
+  const nextOperation = identity('retained-next')
+  const nextSelection = await grant(validRestart, { identity: nextOperation, kind: 'destination', purpose: 'export-html' })
+  const nextPlan = { entries: [{ digest: sha('x'), size: 1, target: { kind: 'selected-file' as const } }] as const, purpose: 'export-html' as const, totalBytes: 1 }
+  const nextLocked = await validRestart.lockDestinationPlan({ ...nextPlan, identity: nextOperation, planDigest: computeDesktopDestinationPlanDigest(nextPlan), selectionAuthorization: nextSelection }, new AbortController().signal)
+  await validRestart.revokeDestinationPlan({ authorization: nextLocked.authorization })
+  await validRestart.dispose()
   await writeFile(output, 'edited-after-publication')
   const stageName = (await readdir(root)).find(name => name.startsWith('.tockteam-picker-stage-'))
   assert.ok(stageName)
