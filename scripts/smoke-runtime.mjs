@@ -63,11 +63,13 @@ assert.match(dumpOutput, /note-vault-runtime/)
 assert.match(dumpOutput, /note-vault-tools/)
 assert.match(dumpOutput, /tocktutor-workbench/)
 assert.match(dumpOutput, /tocktutor-assistant/)
+assert.match(dumpOutput, /tocktutor-import-export/)
 assert.match(dumpOutput, /web-clip/)
 assert.equal((dumpOutput.match(/\bid:\s*note-vault-runtime\b/g) ?? []).length, 1)
 assert.equal((dumpOutput.match(/\bid:\s*note-vault-tools\b/g) ?? []).length, 1)
 assert.equal((dumpOutput.match(/\bid:\s*tocktutor-workbench\b/g) ?? []).length, 1)
 assert.equal((dumpOutput.match(/\bid:\s*tocktutor-assistant\b/g) ?? []).length, 1)
+assert.equal((dumpOutput.match(/\bid:\s*tocktutor-import-export\b/g) ?? []).length, 1)
 assert.equal((dumpOutput.match(/\bid:\s*web-clip\b/g) ?? []).length, 1)
 assert.doesNotMatch(dumpOutput, /tockbot-note-vault/)
 assert.doesNotMatch(dumpOutput, /patch:\s*entry ["']tockbot-note-vault["'] not found/)
@@ -170,6 +172,28 @@ const assistantImport = spawnSync(nodeBinary, [
   env: runtimeEnvironment,
 })
 assert.equal(assistantImport.status, 0, assistantImport.stderr || assistantImport.stdout)
+const importExportManifest = JSON.parse(readFileSync(join(
+  resources,
+  'dsh-runtime',
+  'node_modules',
+  '@tockteam',
+  'tocktutor-import-export',
+  'package.json',
+), 'utf8'))
+assert.equal(importExportManifest.version, '0.1.0')
+assert.equal(importExportManifest.peerDependencies['@tockteam/desktop'], '>=0.1.6 <0.2.0')
+assert.equal(importExportManifest.peerDependencies['@tockteam/tocktutor-workbench'], '>=0.1.4 <0.2.0')
+assert.equal(importExportManifest.peerDependencies['tockbot-note-runtime'], '0.1.2')
+const importExportImport = spawnSync(nodeBinary, [
+  '--input-type=module',
+  '-e',
+  "import { TockTutorImportExportGateway, name } from '@tockteam/tocktutor-import-export'; if (typeof TockTutorImportExportGateway !== 'function' || name !== '@tockteam/tocktutor-import-export') process.exit(1)",
+], {
+  cwd: join(resources, 'dsh-runtime'),
+  encoding: 'utf8',
+  env: runtimeEnvironment,
+})
+assert.equal(importExportImport.status, 0, importExportImport.stderr || importExportImport.stdout)
 const webClipManifest = JSON.parse(readFileSync(join(
   resources,
   'dsh-runtime',

@@ -30,6 +30,10 @@ test('desktop profile pins the released TockTutor runtime and peer package', () 
     peerDependencies: Record<string, string>
     version: string
   }
+  const importExport = JSON.parse(readFileSync(new URL('../vendor/tockteam-tocktutor-import-export/package.json', import.meta.url), 'utf8')) as {
+    peerDependencies: Record<string, string>
+    version: string
+  }
   const webClip = JSON.parse(readFileSync(new URL('../vendor/tockbot-web-clip/package.json', import.meta.url), 'utf8')) as {
     peerDependencies: Record<string, string>
     version: string
@@ -40,6 +44,7 @@ test('desktop profile pins the released TockTutor runtime and peer package', () 
   assert.equal(packageJson.devDependencies['@tockteam/note-vault-tools'], 'file:vendor/tockteam-note-vault-tools-0.1.2.tgz')
   assert.ok(packageJson.files.includes('vendor/tockteam-tocktutor-workbench-0.1.4.tgz'))
   assert.ok(packageJson.files.includes('vendor/tockteam-tocktutor-assistant-0.1.2.tgz'))
+  assert.ok(packageJson.files.includes('vendor/tockteam-tocktutor-import-export-0.1.0.tgz'))
   assert.ok(packageJson.files.includes('vendor/tockbot-web-clip-0.1.2.tgz'))
   assert.equal(runtime.version, '0.1.2')
   assert.equal(runtime.peerDependencies['tockbot-note-vault'], '0.6.0')
@@ -52,14 +57,19 @@ test('desktop profile pins the released TockTutor runtime and peer package', () 
   assert.equal(assistant.version, '0.1.2')
   assert.equal(assistant.peerDependencies['@tockteam/tocktutor-workbench'], '0.1.4')
   assert.equal(assistant.peerDependencies['tockbot-note-runtime'], '0.1.2')
+  assert.equal(importExport.version, '0.1.0')
+  assert.equal(importExport.peerDependencies['@tockteam/desktop'], '>=0.1.6 <0.2.0')
+  assert.equal(importExport.peerDependencies['@tockteam/tocktutor-workbench'], '>=0.1.4 <0.2.0')
+  assert.equal(importExport.peerDependencies['tockbot-note-runtime'], '0.1.2')
   assert.equal(webClip.version, '0.1.2')
   assert.equal(webClip.peerDependencies['tockbot-note-runtime'], '0.1.2')
-  assert.deepEqual(DESKTOP_BUNDLES.slice(0, 8), [
+  assert.deepEqual(DESKTOP_BUNDLES.slice(0, 9), [
     '@deepseek-ai/dsh-base',
     'tockbot-note-runtime',
     '@tockteam/note-vault-tools',
     '@tockteam/tocktutor-workbench',
     '@tockteam/tocktutor-assistant',
+    '@tockteam/tocktutor-import-export',
     'tockbot-web-clip',
     '@deepseek-ai/dsh-web-app',
     '@tockteam/desktop',

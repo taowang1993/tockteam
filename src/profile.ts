@@ -20,6 +20,7 @@ export const BUNDLED_DESKTOP_CLIENT_PLUGINS = [
   '@tockteam/plugin-marketplace',
   '@tockteam/tocktutor-workbench',
   '@tockteam/tocktutor-assistant',
+  '@tockteam/tocktutor-import-export',
   'tockbot-web-clip',
 ] as const
 
@@ -41,6 +42,7 @@ export const DESKTOP_BUNDLES = [
   '@tockteam/note-vault-tools',
   '@tockteam/tocktutor-workbench',
   '@tockteam/tocktutor-assistant',
+  '@tockteam/tocktutor-import-export',
   'tockbot-web-clip',
   '@deepseek-ai/dsh-web-app',
   '@tockteam/desktop',

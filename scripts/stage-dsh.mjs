@@ -719,6 +719,14 @@ function installDesktopPackages({ desktopOnly = false } = {}) {
       ],
     },
     {
+      manifest: join(root, 'vendor', 'tockteam-tocktutor-import-export', 'package.json'),
+      files: [
+        [join(root, 'vendor', 'tockteam-tocktutor-import-export', 'lib'), 'dist'],
+        [join(root, 'vendor', 'tockteam-tocktutor-import-export', 'cordis.patch.yml'), 'cordis.patch.yml'],
+        [join(root, 'vendor', 'tockteam-tocktutor-import-export', 'README.md'), 'README.md'],
+      ],
+    },
+    {
       manifest: join(root, 'vendor', 'tockbot-web-clip', 'package.json'),
       files: [
         [join(root, 'vendor', 'tockbot-web-clip', 'lib'), 'lib'],

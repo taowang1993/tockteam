@@ -13,6 +13,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const ownedBundleDirectories = new Map<string, string>([
   ['@tockteam/tocktutor-workbench', 'tockteam-tocktutor-workbench'],
   ['@tockteam/tocktutor-assistant', 'tockteam-tocktutor-assistant'],
+  ['@tockteam/tocktutor-import-export', 'tockteam-tocktutor-import-export'],
   ['tockbot-web-clip', 'tockbot-web-clip'],
 ])
 
