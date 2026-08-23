@@ -1924,15 +1924,17 @@ export class DesktopPickerOwner {
       const rebound = [...residues].sort((left, right) => left.residue.kind === right.residue.kind ? 0 : left.residue.kind === 'file' ? -1 : 1)
       for (const item of rebound) {
         const finalStat = fstatSync(item.handle.fd)
+        const canonicalPath = realpathSync(item.residue.path)
         const pathStat = lstatSync(item.residue.path)
-        if (pathStat.isSymbolicLink() || realpathSync(item.residue.path) !== item.residue.path
+        if (pathStat.isSymbolicLink() || canonicalPath !== item.residue.path
           || revisionOf(finalStat) !== revisionOf(item.stat)
           || revisionOf(pathStat) !== revisionOf(item.stat)
           || (item.residue.kind === 'file' ? !pathStat.isFile() : !pathStat.isDirectory())) return false
       }
       const finalJournalStat = fstatSync(journalHandle.fd)
+      const canonicalJournalPath = realpathSync(journalPath)
       const journalPathStat = lstatSync(journalPath)
-      return !journalPathStat.isSymbolicLink() && realpathSync(journalPath) === journalPath
+      return !journalPathStat.isSymbolicLink() && canonicalJournalPath === journalPath
         && revisionOf(finalJournalStat) === revisionOf(journalStat)
         && revisionOf(journalPathStat) === revisionOf(journalStat)
     } catch {
