@@ -1486,6 +1486,7 @@ export class DesktopPickerOwner {
     const destination = this.destinations.get(session)
     if (destination === undefined) return error('closed')
     if (destination.expiresAt <= this.options.now()) {
+      if (destination.finalizing) return destination
       this.scheduleCleanup(destination)
       this.destinations.delete(session)
       return error('expired')
