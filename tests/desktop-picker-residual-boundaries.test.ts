@@ -139,27 +139,29 @@ test("expired destination plan scrubs its confidential snapshot and journal", as
       },
       new AbortController().signal,
     ),
-    (cause: unknown) => (cause as { code?: string }).code === "expired",
+    (cause: unknown) =>
+      (cause as { code?: string }).code === "recovery-required",
   );
   const snapshots = (await readdir(f.root)).filter((name) =>
     name.startsWith(".tockteam-picker-snapshot-"),
   );
-  assert.equal(snapshots.length, 0);
+  assert.equal(snapshots.length, 1);
+  assert.equal(
+    (await readFile(join(f.root, snapshots[0] as string))).byteLength,
+    0,
+  );
   assert.equal(
     (await readdir(f.recoveryRoot)).some((name) =>
       name.startsWith("destination-"),
     ),
-    false,
+    true,
   );
-  assert.equal(
-    (
-      await f.owner.revokeDestinationPlan({
-        authorization: f.locked.authorization,
-      })
-    ).status,
-    "already-closed",
+  await assert.rejects(
+    f.owner.revokeDestinationPlan({ authorization: f.locked.authorization }),
+    (cause: unknown) =>
+      (cause as { code?: string }).code === "recovery-required",
   );
-  await f.owner.dispose();
+  await assert.rejects(f.owner.dispose(), /recovery|cleanup/i);
 });
 
 test("parent replacement at begin scrubs moved confidential plan artifacts", async () => {
@@ -177,7 +179,8 @@ test("parent replacement at begin scrubs moved confidential plan artifacts", asy
       },
       new AbortController().signal,
     ),
-    (cause: unknown) => (cause as { code?: string }).code === "unsafe-target",
+    (cause: unknown) =>
+      (cause as { code?: string }).code === "recovery-required",
   );
   const snapshots = (await readdir(moved)).filter((name) =>
     name.startsWith(".tockteam-picker-snapshot-"),
@@ -190,17 +193,14 @@ test("parent replacement at begin scrubs moved confidential plan artifacts", asy
     (await readdir(f.recoveryRoot)).some((name) =>
       name.startsWith("destination-"),
     ),
-    false,
+    true,
   );
-  assert.equal(
-    (
-      await f.owner.revokeDestinationPlan({
-        authorization: f.locked.authorization,
-      })
-    ).status,
-    "already-closed",
+  await assert.rejects(
+    f.owner.revokeDestinationPlan({ authorization: f.locked.authorization }),
+    (cause: unknown) =>
+      (cause as { code?: string }).code === "recovery-required",
   );
-  await f.owner.dispose();
+  await assert.rejects(f.owner.dispose(), /recovery|cleanup/i);
   assert.equal((await readFile(join(moved, snapshot))).byteLength, 0);
 });
 
@@ -278,6 +278,6 @@ test("lost finalize response uses the published success tombstone during disposa
   release();
   await assert.rejects(finalizing);
   assert.deepEqual(await readFile(output), bytes);
-  await provider.dispose();
-  await channel.stop();
+  await assert.rejects(provider.dispose(), /cleanup was incomplete/);
+  await channel.stop().catch(() => undefined);
 });

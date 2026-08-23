@@ -21,7 +21,7 @@ async function activate(owner: DesktopPickerOwner): Promise<void> {
   assert.equal((await owner.bindVaultSelection({ claim: consumed.claim, operationId: operation.operationId, vaultGeneration: 1, vaultId: 'v' }, new AbortController().signal)).status, 'bound')
 }
 
-test('foreign snapshot replacement preserves cleanup ownership and removes its journal', async () => {
+test('foreign snapshot replacement preserves cleanup ownership and its journal', async () => {
   const root = await temp('tockteam-foreign-cleanup-root-')
   const vault = await temp('tockteam-foreign-cleanup-vault-')
   const recoveryRoot = await temp('tockteam-foreign-cleanup-recovery-')
@@ -51,7 +51,7 @@ test('foreign snapshot replacement preserves cleanup ownership and removes its j
   assert.equal(await readFile(retained.snapshot.path, 'utf8'), 'foreign-sentinel')
   const movedSnapshot = join(movedRoot, retained.snapshot.path.slice(dirname(retained.snapshot.path).length + 1))
   assert.equal((await readFile(movedSnapshot)).byteLength, 0)
-  await assert.rejects(readFile(retained.journalPath))
+  await readFile(retained.journalPath)
   await assert.rejects(owner.revokeDestinationPlan({ authorization: locked.authorization }), (cause: unknown) => (cause as { code?: string }).code === 'recovery-required')
   await assert.rejects(owner.dispose(), /cleanup|recovery/i)
 })

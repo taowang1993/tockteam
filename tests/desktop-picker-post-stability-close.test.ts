@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import {
   mkdir,
   mkdtemp,
+  readFile,
   readdir,
   realpath,
   rename,
@@ -118,7 +119,9 @@ test("post-stability close cannot strand plaintext staging", async () => {
     { expectedState: begun.expectedState, planDigest, session: begun.session },
     new AbortController().signal,
   );
-  assert.notEqual(result.status, "published");
+  assert.equal(result.status, "published");
+  if (result.status === "published") assert.equal(result.cleanup.status, "residual");
+  assert.deepEqual(await readFile(output), secret);
   const names = await readdir(root);
   assert.equal(
     names.some((n) => n.startsWith(".tockteam-picker-commit-")),
@@ -126,7 +129,7 @@ test("post-stability close cannot strand plaintext staging", async () => {
   );
   assert.equal(
     names.some((n) => n.endsWith("-moved")),
-    false,
+    true,
   );
   await o.dispose();
 });

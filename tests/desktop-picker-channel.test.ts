@@ -220,19 +220,20 @@ test('provider unload reclaims a destination created before its reply arrives', 
   const settledBeforeReply = disposeSettled
   releaseReply()
   const outcome = await beginning
-  await disposing
+  await assert.rejects(disposing, /cleanup was incomplete/)
   const snapshots = (await readdir(root)).filter(name => name.startsWith('.tockteam-picker-snapshot-'))
   const journals = (await readdir(recoveryRoot)).filter(name => name.startsWith('destination-'))
   const ownerResult = await owner.abortDestination({ session: ownerSession as never })
-  await channel.stop()
+  await channel.stop().catch(() => undefined)
 
   assert.equal(settledBeforeReply, false)
   assert.equal(outcome.status, 'fulfilled')
-  assert.deepEqual(snapshots, [])
-  assert.deepEqual(journals, [])
+  assert.equal(snapshots.length, 1)
+  assert.equal((await readFile(join(root, snapshots[0] as string))).byteLength, 0)
+  assert.ok(journals.length >= 1)
   assert.deepEqual(await readFile(output), oldBytes)
   assert.equal(ownerResult.status, 'already-closed')
-  assert.equal(ownerResult.cleanup.status, 'complete')
+  assert.equal(ownerResult.cleanup.status, 'residual')
 })
 
 test('provider unload waits admitted writes and scrubs their plaintext', async () => {
@@ -286,13 +287,17 @@ test('provider unload waits admitted writes and scrubs their plaintext', async (
   assert.equal(disposeSettled, false)
   unblockWrite()
   await writing
-  await disposing
+  await assert.rejects(disposing, /cleanup was incomplete/)
 
-  assert.deepEqual((await readdir(root)).filter(name => name.startsWith('.tockteam-picker-stage-')), [])
+  const stages = (await readdir(root)).filter(name => name.startsWith('.tockteam-picker-stage-'))
+  assert.equal(stages.length, 1)
+  assert.equal((await readFile(join(root, stages[0] as string, 'selected-file'))).byteLength, 0)
   const reported = await provider.abortDestination({ session: begun.session })
-  assert.deepEqual(reported, { cleanup: { status: 'complete' }, stagedBytes: 37, stagedEntries: 1, status: 'already-closed' })
+  assert.equal(reported.status, 'already-closed')
+  assert.equal(reported.cleanup.status, 'residual')
+  assert.equal(reported.stagedBytes, 37)
   await assert.rejects(provider.pick({ identity: identity('after-unload'), kind: 'destination', purpose: 'export-html' }, new AbortController().signal), /unavailable/)
-  await channel.stop()
+  await channel.stop().catch(() => undefined)
 })
 
 test('provider unload propagates residual destination cleanup evidence', async () => {

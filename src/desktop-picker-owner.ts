@@ -11,22 +11,15 @@ import {
   openSync,
   realpathSync,
   renameSync,
-  rmdirSync,
-  unlinkSync,
 } from 'node:fs'
 import {
   mkdir,
   open,
   readdir,
   readFile,
-  rename,
-  rm,
-  rmdir,
   chmod,
-  link,
   lstat,
   realpath,
-  unlink,
 } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { basename, dirname, extname, isAbsolute, join, parse, relative, resolve, sep } from 'node:path'
@@ -101,6 +94,8 @@ const MAX_ID_BYTES = 256
 const MAX_LABEL_BYTES = 512
 const MAX_PUBLICATION_NAME_BYTES = 256
 const MAX_SOURCE_LIMIT = 1_024 * 1024 * 1024
+const MAX_RECOVERY_JOURNALS = 1024
+const MAX_RECOVERY_JOURNAL_BYTES = 64 * 1024
 
 type Stat = Awaited<ReturnType<typeof lstat>>
 type DialogKind = 'open' | 'save'
@@ -1135,15 +1130,12 @@ export class DesktopPickerOwner {
         if (stagedDirectory === undefined) return error('closed')
         renameSync(selectedEntry.stagedPath, commitPath)
         selectedEntry.stagedPath = commitPath
-        rmdirSync(stagedDirectory)
-        const commitStat = lstatSync(commitPath)
-        destination.stagingRoot = commitPath
-        destination.stagingRevision = identityOf(commitStat)
+        destination.stagingRoot = stagedDirectory
         if (destination.expectedState.status === 'absent') {
           try {
             this.assertDestinationParent(destination.path, destination.parentIdentity)
-            linkSync(commitPath, destination.path)
-            unlinkSync(commitPath)
+            renameSync(commitPath, destination.path)
+            delete selectedEntry.stagedPath
           } catch (cause) {
             if ((cause as NodeJS.ErrnoException).code === 'EEXIST') return error('changed')
             throw cause
@@ -1178,8 +1170,8 @@ export class DesktopPickerOwner {
           }
           try {
             this.assertDestinationParent(destination.path, destination.parentIdentity)
-            linkSync(commitPath, destination.path)
-            unlinkSync(commitPath)
+            renameSync(commitPath, destination.path)
+            delete selectedEntry.stagedPath
             await this.options.onCheckpoint?.('target-published', signal)
           } catch (cause) {
             await this.restoreBackup(destination, backupPath)
@@ -1190,25 +1182,14 @@ export class DesktopPickerOwner {
           await this.writeRecoveryJournal(destination, backupPath, commitPath, 'published')
           await this.options.onCheckpoint?.('journal-published', signal)
           this.assertDestinationParent(destination.path, destination.parentIdentity)
-          unlinkSync(backupPath)
-          destination.recoveryPaths = destination.recoveryPaths.filter(path => path !== backupPath)
           const snapshotHandle = snapshot.handle
           snapshot.handle = undefined
+          await snapshotHandle?.truncate(0)
+          await snapshotHandle?.sync()
           await snapshotHandle?.close()
-          const snapshotStat = await this.safeLstat(snapshot.path)
-          if (snapshotStat === undefined || artifactIdentityOf(snapshotStat) !== snapshot.artifactIdentity) return error('changed')
-          this.unlinkArtifact(snapshot.path, '.tockteam-picker-snapshot-')
-          await this.syncDirectory(dirname(destination.path))
           await this.options.onCheckpoint?.('backup-removed', signal)
-          if (destination.journalPath !== undefined) {
-            this.unlinkArtifact(destination.journalPath, 'destination-')
-            await this.syncDirectory(this.recoveryRoot)
-            await this.options.onCheckpoint?.('journal-removed', signal)
-          }
-          destination.journalPath = undefined
-          destination.snapshot = undefined
+          await this.options.onCheckpoint?.('journal-removed', signal)
         }
-      destination.stagingRoot = undefined
       await this.syncDirectory(dirname(destination.path))
       for (const entry of destination.entries) {
         const handle = entry.handle
@@ -1216,17 +1197,16 @@ export class DesktopPickerOwner {
         await handle?.close()
       }
       const cleanup = await this.cleanupDestination(destination)
-      if (cleanup.status !== 'complete') return error('owner-lost')
       this.destinations.delete(request.session)
       this.rememberClosedDestination(request.session, {
-        cleanup: { status: 'complete' },
+        cleanup,
         stagedBytes: 0,
         stagedEntries: 0,
         status: 'aborted',
       })
       return {
         bytes: destination.entries.reduce((sum, entry) => sum + entry.entry.size, 0),
-        cleanup: { status: 'complete' },
+        cleanup,
         entries: destination.entries.length,
         label: cast(destination.label),
         planDigest: destination.planDigest as never,
@@ -1643,20 +1623,6 @@ export class DesktopPickerOwner {
     await walk(source.path, '', 0, [])
   }
 
-  private unlinkArtifact(path: string, prefix: string): void {
-    try {
-      const stat = lstatSync(path)
-      if (!stat.isFile() || stat.isSymbolicLink() || !basename(path).startsWith(prefix)) {
-        return error('recovery-required')
-      }
-      unlinkSync(path)
-    } catch (cause) {
-      if ((cause as NodeJS.ErrnoException).code === 'ENOENT') return
-      if (cause instanceof TockTeamDesktopGrantError) throw cause
-      return error('recovery-required')
-    }
-  }
-
   private async syncDirectory(path: string): Promise<void> {
     const handle = await open(path, fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW)
     try { await handle.sync() } finally { await handle.close() }
@@ -1740,16 +1706,31 @@ export class DesktopPickerOwner {
 
   private async recoverRegistered(): Promise<void> {
     await this.ensureRecoveryRoot()
-    const entries = await readdir(this.recoveryRoot, { withFileTypes: true })
+    const entries = (await readdir(this.recoveryRoot, { withFileTypes: true }))
+      .filter(entry => entry.name.startsWith('destination-') && entry.name.endsWith('.json'))
+    if (entries.length > MAX_RECOVERY_JOURNALS) {
+      this.recoveryCorrupt = true
+      return
+    }
+    let aggregateBytes = 0
     for (const entry of entries) {
-      if (!entry.isFile() || !entry.name.startsWith('destination-') || !entry.name.endsWith('.json')) continue
+      const stat = await this.safeLstat(join(this.recoveryRoot, entry.name))
+      aggregateBytes += Number(stat?.size ?? 0)
+      if (!entry.isFile() || stat === undefined || !stat.isFile() || stat.isSymbolicLink()
+        || Number(stat.size) > MAX_RECOVERY_JOURNAL_BYTES
+        || aggregateBytes > MAX_RECOVERY_JOURNALS * MAX_RECOVERY_JOURNAL_BYTES) {
+        this.recoveryCorrupt = true
+        return
+      }
+    }
+    for (const entry of entries) {
       const journalPath = join(this.recoveryRoot, entry.name)
       let value: unknown
       try {
         const handle = await open(journalPath, fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW)
         try {
           const journalStat = await handle.stat()
-          if (!journalStat.isFile() || Number(journalStat.size) > 64 * 1024
+          if (!journalStat.isFile() || Number(journalStat.size) > MAX_RECOVERY_JOURNAL_BYTES
             || (Number(journalStat.mode) & 0o777) !== 0o600
             || typeof process.getuid === 'function' && journalStat.uid !== process.getuid()) {
             this.recoveryCorrupt = true
@@ -1833,10 +1814,10 @@ export class DesktopPickerOwner {
     record: DestinationRecoveryRecord,
   ): Promise<string> {
     await this.ensureRecoveryRoot()
-    const path = journalPath ?? join(this.recoveryRoot, `destination-${this.options.randomId()}.json`)
-    const temporary = `${path}.tmp-${this.options.randomId()}`
+    void journalPath
+    const path = join(this.recoveryRoot, `destination-${this.options.randomId()}.json`)
     const handle = await open(
-      temporary,
+      path,
       fsConstants.O_WRONLY | fsConstants.O_CREAT | fsConstants.O_EXCL | fsConstants.O_NOFOLLOW,
       0o600,
     )
@@ -1846,7 +1827,6 @@ export class DesktopPickerOwner {
     } finally {
       await handle.close()
     }
-    await rename(temporary, path)
     await this.syncDirectory(this.recoveryRoot)
     return path
   }
@@ -1933,10 +1913,7 @@ export class DesktopPickerOwner {
         if (!destination.recoveryPaths.includes(backupPath)) destination.recoveryPaths.push(backupPath)
         return false
       }
-      this.assertDestinationParent(destination.path, destination.parentIdentity)
-      unlinkSync(backupPath)
-      await this.syncDirectory(dirname(destination.path))
-      destination.recoveryPaths = destination.recoveryPaths.filter(path => path !== backupPath)
+      if (!destination.recoveryPaths.includes(backupPath)) destination.recoveryPaths.push(backupPath)
       return true
     } catch {
       if (!destination.recoveryPaths.includes(backupPath)) destination.recoveryPaths.push(backupPath)
@@ -2055,12 +2032,10 @@ export class DesktopPickerOwner {
         },
       }
     } catch (cause) {
-      await Promise.allSettled([
-        rm(snapshotPath, { force: true }),
-        ...(journalPath === undefined ? [] : [rm(journalPath, { force: true })]),
-      ])
-      await this.syncDirectory(dirname(path)).catch(() => {})
-      if (journalPath !== undefined) await this.syncDirectory(this.recoveryRoot).catch(() => {})
+      if (snapshot !== undefined) {
+        await Promise.allSettled([snapshot.truncate(0), snapshot.sync()])
+      }
+      if (journalPath !== undefined || await this.safeLstat(snapshotPath) !== undefined) return error('recovery-required')
       throw cause
     } finally {
       await Promise.allSettled([source.close(), ...(snapshot === undefined ? [] : [snapshot.close()])])
@@ -2158,25 +2133,16 @@ export class DesktopPickerOwner {
     let failed = false
     if (plan.snapshot !== undefined) {
       try {
-        const stat = await this.safeLstat(plan.snapshot.path)
-        const pathMatches = stat === undefined || artifactIdentityOf(stat) === plan.snapshot.artifactIdentity
         if (plan.snapshot.handle !== undefined) {
           await plan.snapshot.handle.truncate(0)
           await plan.snapshot.handle.sync()
           await plan.snapshot.handle.close()
           plan.snapshot.handle = undefined
         }
-        if (!pathMatches) return error('changed')
-        this.unlinkArtifact(plan.snapshot.path, '.tockteam-picker-snapshot-')
-        await this.syncDirectory(dirname(plan.snapshot.path))
       } catch { failed = true }
+      if (await this.safeLstat(plan.snapshot.path) !== undefined) failed = true
     }
-    if (plan.journalPath !== undefined) {
-      try {
-        this.unlinkArtifact(plan.journalPath, 'destination-')
-        await this.syncDirectory(this.recoveryRoot)
-      } catch { failed = true }
-    }
+    if (plan.journalPath !== undefined && await this.safeLstat(plan.journalPath) !== undefined) failed = true
     if (failed) return error('recovery-required')
   }
 
@@ -2226,11 +2192,6 @@ export class DesktopPickerOwner {
         residualLabels.push(cast(labelOf(entry.absolutePath)))
       }
     }
-    let snapshotPathMatches = true
-    if (destination.snapshot !== undefined) {
-      const stat = await this.safeLstat(destination.snapshot.path)
-      snapshotPathMatches = stat === undefined || artifactIdentityOf(stat) === destination.snapshot.artifactIdentity
-    }
     if (destination.snapshot?.handle !== undefined) {
       try {
         await destination.snapshot.handle.truncate(0)
@@ -2241,61 +2202,12 @@ export class DesktopPickerOwner {
         residualLabels.push(cast(labelOf(destination.snapshot.path)))
       }
     }
-    if (destination.stagingRoot !== undefined) {
-      const stagingRoot = destination.stagingRoot
-      try {
-        this.assertDestinationParent(destination.path, destination.parentIdentity)
-        if (basename(stagingRoot).startsWith('.tockteam-picker-commit-')) {
-          const stat = await this.safeLstat(stagingRoot)
-          if (stat === undefined || !stat.isFile() || identityOf(stat) !== destination.stagingRevision) return error('changed')
-          this.unlinkArtifact(stagingRoot, '.tockteam-picker-commit-')
-          await this.syncDirectory(dirname(stagingRoot))
-          destination.stagingRoot = undefined
-          destination.stagingRevision = undefined
-          for (const entry of destination.entries) delete entry.stagedPath
-        } else {
-          await this.assertStagingStable(destination)
-          const stagedDirectories = new Set<string>()
-          for (const entry of destination.entries) {
-            if (entry.stagedPath === undefined) continue
-            await this.assertStagedAncestors(entry)
-            this.unlinkArtifact(entry.stagedPath, basename(entry.stagedPath))
-            for (let directory = dirname(entry.stagedPath); directory !== stagingRoot; directory = dirname(directory)) {
-              if (!directory.startsWith(`${stagingRoot}${sep}`)) throw new TockTeamDesktopGrantError('recovery-required')
-              stagedDirectories.add(directory)
-            }
-          }
-          for (const directory of [...stagedDirectories].sort((left, right) => right.length - left.length)) await rmdir(directory)
-          await rmdir(stagingRoot)
-          await this.syncDirectory(dirname(stagingRoot))
-          destination.stagingRoot = undefined
-          destination.stagingRevision = undefined
-        }
-      } catch {
-        residualLabels.push(cast(labelOf(stagingRoot)))
-      }
+    for (const entry of destination.entries) {
+      if (entry.stagedPath !== undefined) residualLabels.push(cast(labelOf(entry.stagedPath)))
     }
-    if (residualLabels.length === 0 && destination.snapshot !== undefined) {
-      const snapshotPath = destination.snapshot.path
-      try {
-        if (!snapshotPathMatches) return error('changed')
-        this.unlinkArtifact(snapshotPath, '.tockteam-picker-snapshot-')
-        await this.syncDirectory(dirname(snapshotPath))
-        destination.snapshot = undefined
-      } catch {
-        residualLabels.push(cast(labelOf(snapshotPath)))
-      }
-    }
-    if (residualLabels.length === 0 && destination.journalPath !== undefined) {
-      const journalPath = destination.journalPath
-      try {
-        this.unlinkArtifact(journalPath, 'destination-')
-        await this.syncDirectory(this.recoveryRoot)
-        destination.journalPath = undefined
-      } catch {
-        residualLabels.push(cast(labelOf(journalPath)))
-      }
-    }
+    if (destination.stagingRoot !== undefined) residualLabels.push(cast(labelOf(destination.stagingRoot)))
+    if (destination.snapshot !== undefined) residualLabels.push(cast(labelOf(destination.snapshot.path)))
+    if (destination.journalPath !== undefined) residualLabels.push(cast(labelOf(destination.journalPath)))
     return residualLabels.length === 0
       ? { status: 'complete' }
       : { residualLabels, status: 'residual' }
