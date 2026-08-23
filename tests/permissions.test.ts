@@ -18,7 +18,7 @@ function request(overrides: Partial<Parameters<typeof allowsRuntimeClipboardWrit
 
 test('every info and privileged IPC handler invokes the trusted-main guard', () => {
   const main = readFileSync(new URL('../src/main.ts', import.meta.url), 'utf8')
-  for (const channel of ['choose-workspace', 'get-info', 'get-runtime-snapshot', 'plugin-marketplace-snapshot', 'plugin-marketplace-dispatch', 'web-clip-authorize-document', 'open-external']) {
+  for (const channel of ['choose-workspace', 'get-info', 'get-runtime-snapshot', 'tocktutor-authorize', 'plugin-marketplace-snapshot', 'plugin-marketplace-dispatch', 'web-clip-authorize-document', 'open-external']) {
     assert.match(main, new RegExp(`ipcMain\\.handle\\('desktop:${channel}'[\\s\\S]{0,180}assertTrustedMainIpc\\(event\\)`))
   }
 })
