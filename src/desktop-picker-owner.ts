@@ -8,6 +8,7 @@ import {
   rename,
   rm,
   rmdir,
+  chmod,
   link,
   lstat,
   realpath,
@@ -1509,12 +1510,28 @@ export class DesktopPickerOwner {
       .every(path => dirname(path) === parent && basename(path).startsWith('.tockteam-picker-'))
   }
 
-  private async recoverRegistered(): Promise<void> {
+  private async ensureRecoveryRoot(): Promise<void> {
     await mkdir(this.recoveryRoot, { recursive: true, mode: 0o700 })
+    const canonical = await this.safeRealpath(this.recoveryRoot)
+    const stat = await this.safeLstat(this.recoveryRoot)
+    if (canonical !== this.recoveryRoot || stat === undefined || !stat.isDirectory() || stat.isSymbolicLink()) {
+      return error('owner-lost')
+    }
+    await chmod(this.recoveryRoot, 0o700)
+  }
+
+  private async recoverRegistered(): Promise<void> {
+    await this.ensureRecoveryRoot()
     const entries = await readdir(this.recoveryRoot, { withFileTypes: true })
     for (const entry of entries) {
       if (!entry.isFile() || !entry.name.startsWith('destination-') || !entry.name.endsWith('.json')) continue
       const journalPath = join(this.recoveryRoot, entry.name)
+      const journalStat = await this.safeLstat(journalPath)
+      if (journalStat === undefined || journalStat.isSymbolicLink() || !journalStat.isFile()
+        || Number(journalStat.size) > 64 * 1024) {
+        this.recoveryCorrupt = true
+        continue
+      }
       let value: unknown
       try { value = JSON.parse(await readFile(journalPath, 'utf8')) } catch {
         this.recoveryCorrupt = true
@@ -1561,7 +1578,7 @@ export class DesktopPickerOwner {
     journalPath: string | undefined,
     record: DestinationRecoveryRecord,
   ): Promise<string> {
-    await mkdir(this.recoveryRoot, { recursive: true, mode: 0o700 })
+    await this.ensureRecoveryRoot()
     const path = journalPath ?? join(this.recoveryRoot, `destination-${this.options.randomId()}.json`)
     const temporary = `${path}.tmp-${this.options.randomId()}`
     const handle = await open(
