@@ -219,6 +219,7 @@ interface DestinationJournal {
   handle: Awaited<ReturnType<typeof open>>
   identity: string
   path: string
+  rootIdentity: string
 }
 
 interface DestinationEntry {
@@ -1221,13 +1222,23 @@ export class DesktopPickerOwner {
         throw cause
       }
       await this.options.onCheckpoint?.('target-published', signal)
+      this.assertLiveStageAuthority(destination, selectedEntry, selectedEntry.entry.size)
+      if (!this.verifyJournalPath(destination.journal)) return error('changed')
       await this.syncDirectory(dirname(destination.path))
-      if (!(await this.verifyPublishedAlias(destination, selectedEntry)))
-        return error('changed')
+      this.assertLiveStageAuthority(destination, selectedEntry, selectedEntry.entry.size)
+      if (!this.verifyJournalPath(destination.journal)
+        || !(await this.verifyPublishedAlias(destination, selectedEntry))) return error('changed')
+      this.assertLiveStageAuthority(destination, selectedEntry, selectedEntry.entry.size)
+      if (!this.verifyJournalPath(destination.journal)) return error('changed')
       await this.resolveRecoveryJournal(destination, 'retained')
+      this.assertLiveStageAuthority(destination, selectedEntry, selectedEntry.entry.size)
+      if (!this.verifyJournalPath(destination.journal)) return error('changed')
       await this.options.onCheckpoint?.('journal-published', signal)
-      if (!await this.verifyPublishedAlias(destination, selectedEntry)
-        || !await this.verifyJournalPath(destination.journal)) return error('changed')
+      this.assertLiveStageAuthority(destination, selectedEntry, selectedEntry.entry.size)
+      if (!this.verifyJournalPath(destination.journal)
+        || !await this.verifyPublishedAlias(destination, selectedEntry)) return error('changed')
+      this.assertLiveStageAuthority(destination, selectedEntry, selectedEntry.entry.size)
+      if (!this.verifyJournalPath(destination.journal)) return error('changed')
       const handle = selectedEntry.handle
       selectedEntry.handle = undefined
       await handle.close()
@@ -2022,7 +2033,15 @@ export class DesktopPickerOwner {
     )
     try {
       const stat = await handle.stat()
-      destination.journal = { handle, identity: ownedIdentityOf(stat), path }
+      const rootStat = lstatSync(this.recoveryRoot)
+      if (!rootStat.isDirectory() || rootStat.isSymbolicLink()
+        || realpathSync(this.recoveryRoot) !== this.recoveryRoot) return error('recovery-required')
+      destination.journal = {
+        handle,
+        identity: ownedIdentityOf(stat),
+        path,
+        rootIdentity: ownedIdentityOf(rootStat),
+      }
       await this.rewriteJournalHandle(
         handle,
         this.recoveryRecord(destination, 'unresolved'),
@@ -2046,10 +2065,22 @@ export class DesktopPickerOwner {
     )
   }
 
-  private async verifyJournalPath(journal: DestinationJournal): Promise<boolean> {
-    const [handleStat, pathStat] = await Promise.all([journal.handle.stat(), this.safeLstat(journal.path)])
-    return handleStat.isFile() && pathStat?.isFile() === true && !pathStat.isSymbolicLink()
-      && ownedIdentityOf(handleStat) === journal.identity && ownedIdentityOf(pathStat) === journal.identity
+  private verifyJournalPath(journal: DestinationJournal): boolean {
+    try {
+      const handleStat = fstatSync(journal.handle.fd)
+      const canonicalRoot = realpathSync(this.recoveryRoot)
+      const rootStat = lstatSync(this.recoveryRoot)
+      const canonicalPath = realpathSync(journal.path)
+      const pathStat = lstatSync(journal.path)
+      return handleStat.isFile() && pathStat.isFile() && !pathStat.isSymbolicLink()
+        && canonicalRoot === this.recoveryRoot && rootStat.isDirectory() && !rootStat.isSymbolicLink()
+        && ownedIdentityOf(rootStat) === journal.rootIdentity
+        && canonicalPath === journal.path
+        && ownedIdentityOf(handleStat) === journal.identity
+        && ownedIdentityOf(pathStat) === journal.identity
+    } catch {
+      return false
+    }
   }
 
   private async rewriteJournalHandle(
@@ -2220,7 +2251,7 @@ export class DesktopPickerOwner {
     if (!unresolved && destination.journal !== undefined) {
       try {
         await this.resolveRecoveryJournal(destination, 'scrubbed')
-        if (!await this.verifyJournalPath(destination.journal)) unresolved = true
+        if (!this.verifyJournalPath(destination.journal)) unresolved = true
       } catch {
         unresolved = true
       }
