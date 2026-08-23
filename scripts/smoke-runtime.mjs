@@ -80,6 +80,18 @@ assert.equal(inspection.status, 0, inspection.stderr || inspection.stdout)
 const stagedDesktopPackage = join(resources, 'dsh-runtime', 'node_modules', '@tockteam', 'desktop')
 assert.ok(existsSync(join(stagedDesktopPackage, 'dist', 'host.js')))
 assert.ok(existsSync(join(stagedDesktopPackage, 'host.d.ts')))
+assert.ok(existsSync(join(stagedDesktopPackage, 'dist', 'client-api.js')))
+assert.ok(existsSync(join(stagedDesktopPackage, 'client.d.ts')))
+const clientImport = spawnSync(nodeBinary, [
+  '--input-type=module',
+  '-e',
+  "import { TOCKTUTOR_ROUTE_PREFIX } from '@tockteam/desktop/client'; if (TOCKTUTOR_ROUTE_PREFIX !== '/tocktutor') process.exit(1)",
+], {
+  cwd: join(resources, 'dsh-runtime'),
+  encoding: 'utf8',
+  env: runtimeEnvironment,
+})
+assert.equal(clientImport.status, 0, clientImport.stderr || clientImport.stdout)
 const hostImport = spawnSync(nodeBinary, [
   '--input-type=module',
   '-e',
