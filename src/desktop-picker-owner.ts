@@ -1072,6 +1072,7 @@ export class DesktopPickerOwner {
     )
       return error('invalid-entry')
     const destination = this.destination(request.session)
+    if (destination.finalizing) return error('replayed')
     if (signal.aborted) {
       await this.closeDestination(request.session, destination)
       return error('aborted')
@@ -1509,7 +1510,9 @@ export class DesktopPickerOwner {
       ...[...this.grants.values()].map(value => value.expiresAt),
       ...[...this.sources.values()].map(value => value.expiresAt),
       ...[...this.destinationPlans.values()].map(value => value.expiresAt),
-      ...[...this.destinations.values()].filter(value => !value.publicationLinked).map(value => value.expiresAt),
+      ...[...this.destinations.values()]
+        .filter(value => !value.publicationLinked && !value.finalizing)
+        .map(value => value.expiresAt),
       ...[...this.vaultSelectionClaims.values()].map(value => value.expiresAt),
     ]
     if (expiries.length === 0) {
