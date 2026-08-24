@@ -53,7 +53,8 @@ export function TerminalPanel({ locale, t: translate, store, scopeKey, cwd, acti
   useEffect(() => {
     if (!active) return
     const handleShortcut = (event: KeyboardEvent): void => {
-      if (!event.ctrlKey || event.key !== '`') return
+      if (document.documentElement.dataset.tockteamTocktutorActive === 'true'
+        || !event.ctrlKey || event.key !== '`') return
       event.preventDefault()
       openOrToggleTerminal(store)
     }

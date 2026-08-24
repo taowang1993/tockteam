@@ -6,7 +6,7 @@ import { test } from 'node:test'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 
-test('desktop shell keeps the navigation rail without duplicate tool buttons', () => {
+test('desktop shell rail switches between DeepSeek Harness and TockTutor', () => {
   const workspace = readFileSync(
     join(root, 'plugins/sidebar/src/client/plugin.tsx'),
     'utf8',
@@ -48,10 +48,31 @@ test('desktop shell keeps the navigation rail without duplicate tool buttons', (
   )
   assert.match(workspace, /rail\.id = 'tockteam-rail-root'/)
   assert.match(workspace, /layout\.append\(rail, appRoot, this\.element\)/)
-  assert.doesNotMatch(workspace, /createRoot\(rail\)|DesktopToolRail/)
+  assert.doesNotMatch(workspace, /createRoot\(rail\)/)
+  assert.match(workspace, /function DesktopAppRail/)
+  assert.match(workspace, /<nav className="tockteam-app-rail" aria-label="App Navigation">/)
+  assert.match(workspace, /aria-label="DeepSeek Harness"/)
+  assert.match(workspace, /aria-label="TockTutor"/)
+  assert.match(workspace, /<AppRailIcon kind="clock" \/>/)
+  assert.match(workspace, /<AppRailIcon kind="notebook" \/>/)
+  assert.doesNotMatch(workspace, /location\.pathname !== '\/'/)
+  assert.match(workspace, /appRoot\.inert = true/)
+  assert.match(workspace, /sidebarRoot\.inert = true/)
+  assert.match(workspace, /appRoot\.inert = appRootWasInert/)
+  assert.match(workspace, /sidebarRoot\.inert = sidebarRootWasInert/)
+  assert.match(workspace, /dataset\.tockteamTocktutorActive === 'true'/)
+  assert.match(workspace, /createPortal\(\s*<div className="tockteam-tocktutor-route"[\s\S]*?document\.body,/)
+  assert.match(
+    css,
+    /\.tockteam-tocktutor-route\s*\{[^}]*inset: var\(--tockteam-titlebar-height, 0\) 0 0 var\(--tockteam-rail-width\);/s,
+  )
   assert.match(
     workspace,
     /`var\(--tockteam-rail-width\) minmax\(0, 1fr\) \$\{String\(track\)\}px`/,
+  )
+  assert.match(
+    css,
+    /\.tockteam-app-rail button\[aria-current='page'\]\s*\{[^}]*background:/s,
   )
 })
 

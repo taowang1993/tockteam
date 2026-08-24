@@ -331,6 +331,7 @@ class WorkspaceToolsService implements WorkspaceTools {
   private readonly narrowViewport = window.matchMedia('(max-width: 900px)')
   private readonly handleViewportChange = (): void => { this.applyLayout() }
   private readonly handleShortcut = (event: KeyboardEvent): void => {
+    if (document.documentElement.dataset.tockteamTocktutorActive === 'true') return
     const key = event.key.toLowerCase()
     const primary = event.metaKey || event.ctrlKey
     if (event.key === 'Escape' && this.state.maximized) {
@@ -1728,6 +1729,41 @@ function pathBelongsToActiveWorkspace(
     || normalizedPath.startsWith(`${normalizedRoot}/`)
 }
 
+function AppRailIcon({ kind }: { kind: 'clock' | 'notebook' }): ReactNode {
+  if (kind === 'clock') {
+    return <svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
+  }
+  return <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 4.5A2.5 2.5 0 0 1 7.5 2H19v18H7.5A2.5 2.5 0 0 0 5 22z" /><path d="M5 4.5v15M9 6h6M9 10h6" /></svg>
+}
+
+function DesktopAppRail({
+  location,
+  navigate,
+}: {
+  location: TockTutorRouteLocation
+  navigate: (path: string) => void
+}): ReactNode {
+  const tockTutorActive = isTockTutorPath(location.pathname)
+  return (
+    <nav className="tockteam-app-rail" aria-label="App Navigation">
+      <button
+        type="button"
+        aria-label="DeepSeek Harness"
+        aria-current={tockTutorActive ? undefined : 'page'}
+        title="DeepSeek Harness"
+        onClick={() => { navigate('/') }}
+      ><AppRailIcon kind="clock" /></button>
+      <button
+        type="button"
+        aria-label="TockTutor"
+        aria-current={tockTutorActive ? 'page' : undefined}
+        title="TockTutor"
+        onClick={() => { navigate(TOCKTUTOR_ROUTE_PREFIX) }}
+      ><AppRailIcon kind="notebook" /></button>
+    </nav>
+  )
+}
+
 function registerTockTutorRoute(slots: RouteSlotsService): void {
   const routeStore = defineStore<RouteState>({
     init: () => ({ location: readTockTutorRouteLocation() }),
@@ -1774,30 +1810,42 @@ function TockTutorRouteHost(props: RouteHostProps, routeSlots: RouteSlotsService
     window.addEventListener('popstate', onPopState)
     return () => { window.removeEventListener('popstate', onPopState) }
   }, [props.actions])
+  const active = routeEntries > 0 && isTockTutorPath(location.pathname)
   useEffect(() => {
-    if (routeEntries === 0 || location.pathname !== '/') return
-    window.history.replaceState(
-      window.history.state,
-      '',
-      `${TOCKTUTOR_ROUTE_PREFIX}${location.search}${location.hash}`,
-    )
-    props.actions.setLocation(readTockTutorRouteLocation())
-  }, [location.hash, location.pathname, location.search, props.actions, routeEntries])
-  if (routeEntries === 0 || !isTockTutorPath(location.pathname)) return null
-  return (
-    <div
-      data-tockteam-tocktutor-route="true"
-      style={{
-        background: 'var(--dsw-alias-bg-base, #fff)',
-        inset: 0,
-        pointerEvents: 'auto',
-        position: 'fixed',
-        zIndex: 1001,
-      }}
-    >
-      {props.renderSlot(TOCKTUTOR_ROUTE_SLOT, { location, navigate })}
-    </div>
-  )
+    const appRoot = document.getElementById('root')
+    const sidebarRoot = document.getElementById('tockteam-sidebar-root')
+    if (!active || appRoot === null) return
+    const appRootWasInert = appRoot.inert
+    const sidebarRootWasInert = sidebarRoot?.inert
+    const routeState = document.documentElement.dataset.tockteamTocktutorActive
+    appRoot.inert = true
+    if (sidebarRoot !== null) sidebarRoot.inert = true
+    document.documentElement.dataset.tockteamTocktutorActive = 'true'
+    return () => {
+      appRoot.inert = appRootWasInert
+      if (sidebarRoot !== null && sidebarRootWasInert !== undefined) {
+        sidebarRoot.inert = sidebarRootWasInert
+      }
+      if (routeState === undefined) {
+        delete document.documentElement.dataset.tockteamTocktutorActive
+      } else {
+        document.documentElement.dataset.tockteamTocktutorActive = routeState
+      }
+    }
+  }, [active])
+  const rail = document.getElementById('tockteam-rail-root')
+  const navigation = routeEntries > 0 && rail !== null
+    ? createPortal(<DesktopAppRail location={location} navigate={navigate} />, rail)
+    : null
+  const workbench = active
+    ? createPortal(
+        <div className="tockteam-tocktutor-route" data-tockteam-tocktutor-route="true">
+          {props.renderSlot(TOCKTUTOR_ROUTE_SLOT, { location, navigate })}
+        </div>,
+        document.body,
+      )
+    : null
+  return <>{navigation}{workbench}</>
 }
 
 export function apply(ctx: ClientContext): void {

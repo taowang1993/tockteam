@@ -14,6 +14,18 @@ test('terminal viewport cannot expose xterm default black behind the themed scre
   assert.doesNotMatch(css, /\.tockteam-terminal-view \.xterm \{[^}]*padding:/)
 })
 
+test('TockTutor owns keyboard focus while its route is active', () => {
+  const panel = readFileSync(
+    join(root, 'plugins/panel-controls/src/terminal/TerminalPanel.tsx'),
+    'utf8',
+  )
+
+  assert.match(
+    panel,
+    /dataset\.tockteamTocktutorActive === 'true'[\s\S]*?\|\| !event\.ctrlKey \|\| event\.key !== '`'/,
+  )
+})
+
 test('terminal is controlled only by the shared desktop toolbar', () => {
   const plugin = readFileSync(
     join(root, 'plugins/panel-controls/src/terminal/plugin.tsx'),
