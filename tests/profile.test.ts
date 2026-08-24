@@ -10,7 +10,15 @@ test('desktop profile pins the released TockTutor runtime and peer package', () 
     dependencies?: Record<string, string>
     devDependencies: Record<string, string>
     files: string[]
+    scripts: Record<string, string>
   }
+  const sourcePin = JSON.parse(readFileSync(new URL('../dsh-source.json', import.meta.url), 'utf8')) as {
+    revision: string
+  }
+  const pluginWorkspace = readFileSync(
+    new URL('../plugins/tocktutor/pnpm-workspace.yaml', import.meta.url),
+    'utf8',
+  )
   const bundle = JSON.parse(readFileSync(new URL('../plugins/tocktutor/packages/tockteam-tocktutor/package.json', import.meta.url), 'utf8')) as {
     dependencies: Record<string, string>
     peerDependencies: Record<string, string>
@@ -48,6 +56,14 @@ test('desktop profile pins the released TockTutor runtime and peer package', () 
     version: string
   }
   assert.equal(packageJson.dependencies, undefined)
+  assert.equal(
+    packageJson.scripts['install:tocktutor'],
+    'pnpm run build:dsh && pnpm -C plugins/tocktutor install',
+  )
+  assert.deepEqual(
+    new Set([...pluginWorkspace.matchAll(/dsh-source\/([0-9a-f]{12})\//gu)].map(match => match[1])),
+    new Set([sourcePin.revision.slice(0, 12)]),
+  )
   assert.equal(packageJson.devDependencies['tockbot-note-runtime'], 'file:plugins/tocktutor/packages/tockbot-note-runtime')
   assert.equal(packageJson.devDependencies['tockbot-note-vault'], 'file:plugins/tocktutor/packages/tockbot-note-vault')
   assert.equal(packageJson.devDependencies['@tockteam/note-vault-tools'], 'file:plugins/tocktutor/packages/tockteam-note-vault-tools')

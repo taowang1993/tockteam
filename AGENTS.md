@@ -78,6 +78,7 @@ Do not simplify away these controls:
 - Follow existing formatting: two spaces, single quotes, no semicolons, trailing commas in multiline constructs.
 - Prefer Node/platform APIs and existing helpers over new dependencies. Native dependency build permissions in `pnpm-workspace.yaml` are a security boundary.
 - Tests use `node:test` and `node:assert/strict` in top-level `tests/*.test.ts`. Add the smallest focused regression test and import source directly.
+- TockTutor packages share `plugins/tocktutor/pnpm-lock.yaml`. Run `install:tocktutor` once after dependency or DSH-pin changes, then `typecheck:tocktutor`, `test:tocktutor`, and `build:tocktutor` before the root gate. Their tracked `lib/` and `dist/` directories are release payloads: rebuild them, never hand-edit them.
 - Keep parsers and launch-spec builders pure where practical so tests do not need Electron, a browser, a TTY, or a real DSH process.
 - Use temporary directories for filesystem tests and remove them in `finally`/test cleanup.
 - User-facing standalone labels use Title Case; descriptions and complete sentences use sentence case. Preserve the exact product names **TockTeam Desktop**, **TockTeam Web**, and **TockTeam TUI**.

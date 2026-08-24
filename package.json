@@ -86,7 +86,7 @@
     "smoke:web": "node scripts/smoke-web.mjs",
     "smoke:web:package": "node scripts/smoke-web.mjs release",
     "install:mac": "node scripts/install-mac.mjs",
-    "install:tocktutor": "node --input-type=module -e \"import('./scripts/dsh-source.mjs').then(({ resolveDshSource }) => resolveDshSource())\" && pnpm -C plugins/tocktutor install",
+    "install:tocktutor": "pnpm run build:dsh && pnpm -C plugins/tocktutor install",
     "tockteam": "pnpm run build && pnpm run stage:dsh && node dist/tockteam.js",
     "web": "pnpm run build && pnpm run stage:dsh && node dist/web.js",
     "tui": "pnpm run build && pnpm run stage:dsh && node dist/tockteam.js tui",
