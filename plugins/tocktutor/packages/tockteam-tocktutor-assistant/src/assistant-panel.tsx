@@ -760,6 +760,7 @@ const PANEL_CSS = `
 .tocktutor-assistant-icon-button { background: transparent; border-radius: 7px; color: inherit; }
 .tocktutor-assistant-send { background: var(--tta-accent); border-radius: 999px; color: white; }
 .tocktutor-assistant-icon-button svg, .tocktutor-assistant-send svg { height: 14px; width: 14px; }
+.tocktutor-assistant-send svg { color: white; stroke: white; }
 .tocktutor-assistant-add-menu { background: var(--tta-panel); border: 1px solid var(--tta-border); border-radius: 10px; bottom: calc(100% + 8px); box-shadow: 0 8px 24px rgb(0 0 0 / 12%); display: grid; gap: 4px; left: 12px; max-height: min(520px, calc(100vh - 180px)); overflow: auto; padding: 8px; position: absolute; width: min(304px, calc(100% - 24px)); z-index: 3; }
 .tocktutor-assistant-add-menu[hidden] { display: none; }
 .tocktutor-assistant-add-menu details { border-top: 1px solid var(--tta-border); padding-top: 4px; }
@@ -770,6 +771,7 @@ const PANEL_CSS = `
 .tocktutor-assistant-status:empty { display: none; }
 .tocktutor-assistant-status:not(:empty) { background: color-mix(in srgb, var(--tta-accent) 9%, var(--tta-panel)); border-radius: 7px; bottom: 120px; color: var(--tta-muted); font-size: 12px; left: 12px; padding: 8px 10px; position: absolute; right: 12px; z-index: 2; }
 .tocktutor-assistant-panel button:focus-visible, .tocktutor-assistant-panel input:focus-visible, .tocktutor-assistant-panel select:focus-visible, .tocktutor-assistant-panel textarea:focus-visible, .tocktutor-assistant-panel [role="status"]:focus-visible { outline: 2px solid var(--tta-accent); outline-offset: 2px; }
+.tocktutor-assistant-composer textarea:focus-visible { outline: none; box-shadow: none; }
 @media (prefers-reduced-motion: reduce) {
   .tocktutor-assistant-panel *, .tocktutor-assistant-panel *::before, .tocktutor-assistant-panel *::after { scroll-behavior: auto !important; transition-duration: 0s !important; }
 }

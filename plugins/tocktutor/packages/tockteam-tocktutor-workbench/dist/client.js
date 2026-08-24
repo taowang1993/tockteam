@@ -17347,7 +17347,7 @@ var ROUTE_CSS = `
 .tocktutor-empty { left: 50%; max-width: 420px; padding: 32px; position: absolute; text-align: center; top: 45%; transform: translate(-50%, -50%); width: 100%; }
 .tocktutor-empty h2 { font-size: 20px; margin: 0; }
 .tocktutor-empty > p:last-child { color: var(--tt-muted); }
-.tocktutor-right-panel { background: var(--tt-panel); border-left: 1px solid var(--tt-border); box-shadow: -8px 0 24px rgb(0 0 0 / 6%); display: grid; grid-template-rows: 40px minmax(0, 1fr); min-width: 0; opacity: 0; overflow: auto; pointer-events: none; transform: translateX(24px); transition: width 420ms cubic-bezier(.16, 1, .3, 1), opacity 300ms cubic-bezier(.16, 1, .3, 1), transform 460ms cubic-bezier(.16, 1, .3, 1), visibility 0s linear 420ms; visibility: hidden; width: 0; }
+.tocktutor-right-panel { background: var(--tt-panel); border-left: 1px solid var(--tt-border); box-shadow: none; display: grid; grid-template-rows: 40px minmax(0, 1fr); min-width: 0; opacity: 0; overflow: auto; pointer-events: none; transform: translateX(24px); transition: width 420ms cubic-bezier(.16, 1, .3, 1), opacity 300ms cubic-bezier(.16, 1, .3, 1), transform 460ms cubic-bezier(.16, 1, .3, 1), visibility 0s linear 420ms; visibility: hidden; width: 0; }
 .tocktutor-right-panel[data-open="true"] { opacity: 1; pointer-events: auto; transform: translateX(0); transition-delay: 0s; visibility: visible; width: min(360px, calc(100vw - 262px)); }
 .tocktutor-right-panel > :not(.tocktutor-assistant-resize) { min-width: min(360px, calc(100vw - 262px)); }
 .tocktutor-right-panel-assistant { grid-template-rows: minmax(0, 1fr); overflow: hidden; position: relative; }
