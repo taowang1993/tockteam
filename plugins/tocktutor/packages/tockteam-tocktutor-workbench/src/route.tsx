@@ -11,6 +11,21 @@ import {
   type ReactNode,
 } from 'react'
 import { createPortal } from 'react-dom'
+import {
+  Bookmark,
+  ChevronLeft,
+  ChevronRight,
+  Ellipsis,
+  FileText,
+  Folder,
+  MessageSquare,
+  PanelLeft,
+  Pencil,
+  Plus,
+  Search,
+  X,
+  type LucideIcon,
+} from 'lucide-react'
 import type { TockTutorRouteOwnerProps } from '@tockteam/desktop/client'
 import type { PropsRenderSlots } from '@deepseek-ai/dsh-client-ui-slots'
 import type { RemoteResult } from '@deepseek-ai/dsh-typert-protocol'
@@ -1012,27 +1027,25 @@ type WorkbenchGlyphKind =
   | 'pencil'
   | 'search'
 
+const WORKBENCH_GLYPHS: Record<WorkbenchGlyphKind, LucideIcon> = {
+  back: ChevronLeft,
+  bookmark: Bookmark,
+  chat: MessageSquare,
+  close: X,
+  collapse: ChevronRight,
+  document: FileText,
+  folder: Folder,
+  forward: ChevronRight,
+  more: Ellipsis,
+  new: Plus,
+  panel: PanelLeft,
+  pencil: Pencil,
+  search: Search,
+}
+
 function WorkbenchGlyph({ kind }: { kind: WorkbenchGlyphKind }): ReactNode {
-  const paths: Record<WorkbenchGlyphKind, ReactNode> = {
-    back: <path d="m15 18-6-6 6-6" />,
-    bookmark: <path d="M6 3h12v18l-6-4-6 4Z" />,
-    chat: <><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4Z" /></>,
-    close: <><path d="m8 8 8 8" /><path d="m16 8-8 8" /></>,
-    collapse: <path d="m9 18 6-6-6-6" />,
-    document: <><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z" /><path d="M14 2v6h6" /><path d="M9 13h6" /></>,
-    folder: <path d="M3 6h6l2 2h10v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z" />,
-    forward: <path d="m9 18 6-6-6-6" />,
-    more: <><circle cx="5" cy="12" r="1" fill="currentColor" stroke="none" /><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none" /><circle cx="19" cy="12" r="1" fill="currentColor" stroke="none" /></>,
-    new: <><path d="M12 5v14" /><path d="M5 12h14" /></>,
-    panel: <><rect height="18" rx="2" width="18" x="3" y="3" /><path d="M15 3v18" /></>,
-    pencil: <><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" /></>,
-    search: <><circle cx="11" cy="11" r="7" /><path d="m20 20-4-4" /></>,
-  }
-  return (
-    <svg aria-hidden="true" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.7" viewBox="0 0 24 24">
-      {paths[kind]}
-    </svg>
-  )
+  const Glyph = WORKBENCH_GLYPHS[kind]
+  return <Glyph aria-hidden="true" />
 }
 
 function fileName(path: string): string {
@@ -1532,7 +1545,7 @@ const ROUTE_CSS = `
   z-index: 2147483647;
 }
 .tocktutor-titlebar *, .tocktutor-titlebar *::before, .tocktutor-titlebar *::after { box-sizing: border-box; }
-.tocktutor-titlebar svg { display: block; height: 14px; width: 14px; }
+.tocktutor-titlebar svg { display: block; height: 20px; width: 20px; }
 .tocktutor-titlebar button { -webkit-app-region: no-drag; color: inherit; font: inherit; }
 .tocktutor-titlebar-sidebar, .tocktutor-titlebar-main { align-items: center; display: flex; min-width: 0; }
 .tocktutor-titlebar-sidebar { border-right: 1px solid var(--tt-border); gap: 8px; justify-content: flex-start; padding: 0 8px 0 46px; }
