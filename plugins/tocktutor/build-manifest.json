@@ -1339,7 +1339,7 @@
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/package.json",
-      "sha256": "17dd103caab6bc3720d336798b993a53d208daee626243fa9fc92ee279e0d0f3"
+      "sha256": "fbdc167e12fb156b1a867ab0e1a80a96d94a2e394300263be351858573f378f2"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/scripts/build-client.mjs",
@@ -1419,11 +1419,11 @@
     },
     {
       "path": "packages/tockteam-tocktutor/package.json",
-      "sha256": "9028f1dc92c506deb838dd1dae97701db1eead76277a329876ba2410aff32336"
+      "sha256": "f06f0477ee817a33d13d1365e3442c95d05558c9a279b8c375cb6243871b6be0"
     },
     {
       "path": "pnpm-lock.yaml",
-      "sha256": "c112e5ae64e36f23af6b70ba1a8a0006c1999e2d2819e4ee812a1b042ccd506f"
+      "sha256": "99cc7864fca507ec7b1fba419129ab779ec79fa1f58d69aecdff41e2824770bb"
     },
     {
       "path": "pnpm-workspace.yaml",

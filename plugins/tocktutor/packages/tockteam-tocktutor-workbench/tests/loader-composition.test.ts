@@ -162,6 +162,7 @@ async function verifyPackedClient(
       modules: [{ id: packageName, rev: 'packed', url: pathToFileURL(clientPath).href }],
       staticModules: {
         react,
+        'react-dom': await import(pathToFileURL(consumerRequire.resolve('react-dom')).href),
         'react/jsx-runtime': await import(pathToFileURL(consumerRequire.resolve('react/jsx-runtime')).href),
         '@tockteam/desktop/client': await import(
           pathToFileURL(consumerRequire.resolve('@tockteam/desktop/client')).href

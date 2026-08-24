@@ -46,6 +46,7 @@ test('binds the shared Desktop and runtime workspace identities without local ar
   const lockfile = await readFile(new URL('../../../pnpm-lock.yaml', import.meta.url), 'utf8')
   assert.equal(packageJson.peerDependencies?.['tockbot-note-runtime'], '0.1.2')
   assert.equal(packageJson.peerDependencies?.['@tockteam/desktop'], '>=0.1.6 <0.2.0')
+  assert.equal(packageJson.peerDependencies?.['react-dom'], '^18.2.0')
   assert.equal(packageJson.devDependencies?.['tockbot-note-runtime'], 'workspace:0.1.2')
   assert.equal(packageJson.devDependencies?.['@tockteam/desktop'], 'workspace:*')
   assert.match(lockfile, /packages\/tockteam-tocktutor-workbench:/u)

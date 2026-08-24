@@ -39,6 +39,7 @@ async function installPacked(consumer: string, tarball: string, artifacts: strin
     '@tockteam/desktop': `file:${desktopArtifact}`,
     '@tockteam/tocktutor-workbench': `file:${workbenchArtifact}`,
     react: manifest.devDependencies.react!,
+    'react-dom': manifest.devDependencies['react-dom']!,
     [runtimeName]: `file:${runtimeArtifact}`,
     'tockbot-note-vault': `file:${vaultArtifact}`,
     zod: manifest.dependencies.zod!,
