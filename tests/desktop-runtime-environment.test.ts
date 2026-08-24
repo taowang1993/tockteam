@@ -33,4 +33,5 @@ test('Runtime environment scrubs inherited authority before selecting owned live
   assert.ok(scrub > 0)
   assert.ok(reveal > scrub)
   assert.match(main, /scrubDesktopAuthorityEnvironment\(environment, \[MARKETPLACE_AGENT_URL_ENV, MARKETPLACE_AGENT_TOKEN_ENV\]\)/u)
+  assert.match(main, /return overrides\.preview === undefined\s+\? withGitHubCredentials[\s\S]*?: environment/u)
 })

@@ -489,7 +489,9 @@ function runtimeEnvironment(
     environment[MARKETPLACE_AGENT_URL_ENV] = marketplaceAgentGateway.url
     environment[MARKETPLACE_AGENT_TOKEN_ENV] = marketplaceAgentGateway.token
   }
-  return withGitHubCredentials(environment, findGitHubCli(environment))
+  return overrides.preview === undefined
+    ? withGitHubCredentials(environment, findGitHubCli(environment))
+    : environment
 }
 
 function runtimeOptions(): DshRuntimeOptions {
