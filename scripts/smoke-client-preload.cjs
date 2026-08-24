@@ -1,5 +1,7 @@
 const { contextBridge } = require('electron')
 
+let pendingDispatch
+
 const emptyMarketplaceSnapshot = Object.freeze({
   auth: { detail: 'client smoke', status: 'ready' },
   busy: false,
@@ -41,5 +43,14 @@ contextBridge.exposeInMainWorld('dshDesktop', Object.freeze({
   pluginMarketplace: Object.freeze({
     dispatch: async () => emptyMarketplaceSnapshot,
     getSnapshot: async () => emptyMarketplaceSnapshot,
+  }),
+  tockTutor: Object.freeze({
+    authorize: async () => ({ authorization: 'smoke-opaque' }),
+    cancelDispatch: async () => {
+      pendingDispatch?.(null)
+      pendingDispatch = undefined
+    },
+    completeDispatch: async () => 'stale',
+    nextDispatch: async () => await new Promise(resolve => { pendingDispatch = resolve }),
   }),
 }))
