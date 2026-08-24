@@ -1,0 +1,11 @@
+[mcp_servers.codegraph]
+command = "codegraph"
+args = [
+    "serve",
+    "--mcp",
+    "--path",
+    "/Users/max/dsh/tockteam",
+]
+
+[mcp_servers.codegraph.tools.codegraph_explore]
+approval_mode = "approve"
