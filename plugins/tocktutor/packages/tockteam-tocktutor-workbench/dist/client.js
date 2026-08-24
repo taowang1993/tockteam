@@ -16504,7 +16504,6 @@ function TockTutorRouteView(props) {
       )) }),
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { "aria-label": "New Note", className: "tocktutor-new-tab", disabled: props.onNewNote === void 0, onClick: props.onNewNote, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "new" }) }),
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "tocktutor-titlebar-spacer" }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "tocktutor-launcher", children: "\u2315 TockLauncher" }),
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "tocktutor-panel-icon", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "panel" }) })
     ] })
   ] });
@@ -16872,7 +16871,7 @@ var ROUTE_CSS = `
   font: 14px/1.45 ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   height: 100%;
   min-height: 0;
-  padding-top: 36px;
+  padding-top: var(--tockteam-titlebar-height, 40px);
 }
 .tocktutor-workbench *, .tocktutor-workbench *::before, .tocktutor-workbench *::after { box-sizing: border-box; }
 .tocktutor-workbench svg { display: block; height: 16px; width: 16px; }
@@ -16893,7 +16892,7 @@ var ROUTE_CSS = `
   border-bottom: 1px solid var(--tt-tab-border);
   display: grid;
   grid-template-columns: 225px minmax(0, 1fr);
-  height: 36px;
+  height: var(--tockteam-titlebar-height, 40px);
   left: var(--tockteam-rail-width, 40px);
   position: fixed;
   right: 0;
@@ -16919,7 +16918,6 @@ var ROUTE_CSS = `
 .tocktutor-tabs button svg { height: 14px; margin-left: auto; width: 14px; }
 .tocktutor-new-tab, .tocktutor-panel-icon { background: transparent; border: 0; color: var(--tt-muted); padding: 6px; }
 .tocktutor-titlebar-spacer { flex: 1; }
-.tocktutor-launcher { color: var(--tt-muted); font-size: 12px; white-space: nowrap; }
 .tocktutor-grid { display: grid; grid-template-columns: 225px minmax(0, 1fr); height: 100%; min-height: 0; position: relative; }
 .tocktutor-sidebar { background: var(--tt-panel); border-right: 1px solid var(--tt-border); display: grid; grid-template-rows: 40px minmax(0, 1fr) 32px; min-height: 0; overflow: hidden; }
 .tocktutor-sidebar-header { align-items: center; border-bottom: 1px solid var(--tt-border); display: flex; gap: 10px; padding: 0 10px; }
