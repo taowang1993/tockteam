@@ -3,28 +3,32 @@ import type {
   RemoteResult,
   TypertRemoteContribution,
 } from '@deepseek-ai/dsh-typert-protocol'
-import type { BackupPlanView, BackupPublishResult, BrowserOperationIdentity, CommitResult, InspectRequest, ReviewBindingRequest, ReviewPlanView } from '@tockteam/tocktutor-import-export/client'
+import type { BackupPlanView, BackupPrepareRequest, BackupPublishResult, CommitResult, InspectRequest, ReviewBindingRequest, ReviewCancellationRequest, ReviewPlanView } from '@tockteam/tocktutor-import-export/client'
 
 declare module '@deepseek-ai/dsh-typert-protocol' {
   interface TypertRemoteNamespace$746f636b7475746f722d696d706f72742d6578706f7274 {
+    'abandon-backup': (request: BackupPrepareRequest, signal?: AbortSignal) => Promise<RemoteResult<{ status: 'cancelled'; }>>
+    'abandon-import': (request: InspectRequest, signal?: AbortSignal) => Promise<RemoteResult<{ status: 'cancelled'; }>>
     'approve-backup': (request: ReviewBindingRequest) => Promise<RemoteResult<{ status: 'approved'; }>>
     'approve-import': (request: ReviewBindingRequest) => Promise<RemoteResult<{ status: 'approved'; }>>
-    'cancel-backup': (operationId: string, sessionId: string) => Promise<RemoteResult<{ status: 'cancelled'; }>>
-    'cancel-import': (operationId: string, sessionId: string) => Promise<RemoteResult<{ status: 'cancelled'; }>>
+    'cancel-backup': (request: ReviewCancellationRequest) => Promise<RemoteResult<{ status: 'cancelled'; }>>
+    'cancel-import': (request: ReviewCancellationRequest) => Promise<RemoteResult<{ status: 'cancelled'; }>>
     'commit-backup': (request: ReviewBindingRequest, signal?: AbortSignal) => Promise<RemoteResult<BackupPublishResult>>
     'commit-import': (request: ReviewBindingRequest, signal?: AbortSignal) => Promise<RemoteResult<CommitResult>>
     inspect: (request: InspectRequest, signal?: AbortSignal) => Promise<RemoteResult<ReviewPlanView>>
-    'prepare-backup': (identity: BrowserOperationIdentity, signal?: AbortSignal) => Promise<RemoteResult<BackupPlanView>>
+    'prepare-backup': (request: BackupPrepareRequest, signal?: AbortSignal) => Promise<RemoteResult<BackupPlanView>>
   }
   interface TypertRemoteMap {
+    'tocktutor-import-export/abandon-backup': (request: BackupPrepareRequest, signal?: AbortSignal) => Promise<RemoteResult<{ status: 'cancelled'; }>>
+    'tocktutor-import-export/abandon-import': (request: InspectRequest, signal?: AbortSignal) => Promise<RemoteResult<{ status: 'cancelled'; }>>
     'tocktutor-import-export/approve-backup': (request: ReviewBindingRequest) => Promise<RemoteResult<{ status: 'approved'; }>>
     'tocktutor-import-export/approve-import': (request: ReviewBindingRequest) => Promise<RemoteResult<{ status: 'approved'; }>>
-    'tocktutor-import-export/cancel-backup': (operationId: string, sessionId: string) => Promise<RemoteResult<{ status: 'cancelled'; }>>
-    'tocktutor-import-export/cancel-import': (operationId: string, sessionId: string) => Promise<RemoteResult<{ status: 'cancelled'; }>>
+    'tocktutor-import-export/cancel-backup': (request: ReviewCancellationRequest) => Promise<RemoteResult<{ status: 'cancelled'; }>>
+    'tocktutor-import-export/cancel-import': (request: ReviewCancellationRequest) => Promise<RemoteResult<{ status: 'cancelled'; }>>
     'tocktutor-import-export/commit-backup': (request: ReviewBindingRequest, signal?: AbortSignal) => Promise<RemoteResult<BackupPublishResult>>
     'tocktutor-import-export/commit-import': (request: ReviewBindingRequest, signal?: AbortSignal) => Promise<RemoteResult<CommitResult>>
     'tocktutor-import-export/inspect': (request: InspectRequest, signal?: AbortSignal) => Promise<RemoteResult<ReviewPlanView>>
-    'tocktutor-import-export/prepare-backup': (identity: BrowserOperationIdentity, signal?: AbortSignal) => Promise<RemoteResult<BackupPlanView>>
+    'tocktutor-import-export/prepare-backup': (request: BackupPrepareRequest, signal?: AbortSignal) => Promise<RemoteResult<BackupPlanView>>
   }
   interface TypertRemoteNamespaceMap {
     'tocktutor-import-export': TypertRemoteNamespace$746f636b7475746f722d696d706f72742d6578706f7274

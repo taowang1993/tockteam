@@ -1,22 +1,29 @@
 import { type ReactNode } from 'react';
 import type { RemoteResult } from '@deepseek-ai/dsh-typert-protocol';
+import type { TockTutorDesktopCallerBridge } from '@tockteam/desktop/client';
 import type { TockTutorReviewPanelOwnerProps } from '@tockteam/tocktutor-workbench/client';
-import type { BackupPlanView, BackupPublishResult, BrowserOperationIdentity, CommitResult, ImportInspectFormat, InspectRequest, ReviewBindingRequest, ReviewPlanView } from './types.ts';
+import type { BackupPlanView, BackupPrepareRequest, BackupPublishResult, CommitResult, ImportInspectFormat, InspectRequest, ReviewBindingRequest, ReviewCancellationRequest, ReviewPlanView } from './types.ts';
 export interface ReviewPanelNamespace {
     inspect(request: InspectRequest, signal?: AbortSignal): Promise<RemoteResult<ReviewPlanView>>;
+    'abandon-import'(request: InspectRequest, signal?: AbortSignal): Promise<RemoteResult<{
+        status: 'cancelled';
+    }>>;
     'approve-import'(request: ReviewBindingRequest): Promise<RemoteResult<{
         status: 'approved';
     }>>;
     'commit-import'(request: ReviewBindingRequest, signal?: AbortSignal): Promise<RemoteResult<CommitResult>>;
-    'cancel-import'(operationId: string, sessionId: string): Promise<RemoteResult<{
+    'cancel-import'(request: ReviewCancellationRequest): Promise<RemoteResult<{
         status: 'cancelled';
     }>>;
-    'prepare-backup'(identity: BrowserOperationIdentity, signal?: AbortSignal): Promise<RemoteResult<BackupPlanView>>;
+    'prepare-backup'(request: BackupPrepareRequest, signal?: AbortSignal): Promise<RemoteResult<BackupPlanView>>;
+    'abandon-backup'(request: BackupPrepareRequest, signal?: AbortSignal): Promise<RemoteResult<{
+        status: 'cancelled';
+    }>>;
     'approve-backup'(request: ReviewBindingRequest): Promise<RemoteResult<{
         status: 'approved';
     }>>;
     'commit-backup'(request: ReviewBindingRequest, signal?: AbortSignal): Promise<RemoteResult<BackupPublishResult>>;
-    'cancel-backup'(operationId: string, sessionId: string): Promise<RemoteResult<{
+    'cancel-backup'(request: ReviewCancellationRequest): Promise<RemoteResult<{
         status: 'cancelled';
     }>>;
 }
@@ -32,26 +39,35 @@ export interface ReviewPanelSnapshot {
     preview: BackupPlanView | ReviewPlanView | null;
     result: BackupPublishResult | CommitResult | null;
 }
+type DesktopCallerAuthorizer = Pick<TockTutorDesktopCallerBridge, 'authorize'>;
 export declare class ImportExportReviewController {
-    private active;
     private abort;
+    private approvedOperationId;
+    private authoritativeCommit;
+    private readonly bridge;
     private disposed;
-    private readonly identity;
     private readonly listeners;
     private readonly remote;
+    private retryStart;
     private revision;
     private snapshot;
-    constructor(remote: ReviewPanelRemote, vault: BrowserOperationIdentity['vault'], identity?: () => BrowserOperationIdentity);
+    constructor(remote: ReviewPanelRemote, bridge?: DesktopCallerAuthorizer);
     readonly getSnapshot: () => ReviewPanelSnapshot;
     readonly subscribe: (listener: () => void) => (() => void);
     setFormat(format: ImportInspectFormat): void;
-    startImport(format?: import("@tockteam/desktop/host").DesktopSourcePurpose): Promise<void>;
+    startImport(format?: "apple-journal" | "bear-backup" | "csv" | "evernote" | "google-keep" | "html" | "markdown-folder" | "markdown-zip" | "restore-backup" | "roam-research" | "textbundle"): Promise<void>;
     startBackup(): Promise<void>;
     approveAndCommit(): Promise<void>;
     cancel(): Promise<void>;
     dispose(): void;
+    private authorize;
+    private canStart;
+    private abandonRetry;
+    private cancelPreview;
+    private commitReviewed;
     private begin;
     private current;
+    private startAuthorization;
     private fail;
     private update;
 }
@@ -66,4 +82,5 @@ export declare function ImportExportReviewPanelView(props: {
 export declare function ImportExportReviewPanel(props: TockTutorReviewPanelOwnerProps & {
     remote: ReviewPanelRemote;
 }): ReactNode;
+export {};
 //# sourceMappingURL=review-panel.d.ts.map

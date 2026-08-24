@@ -1,23 +1,22 @@
-import type { DesktopSourcePurpose } from '@tockteam/desktop/host';
 import type { ReviewedPlanSummary, VaultBinding } from './core.ts';
-export interface BrowserOperationIdentity {
-    operationId: string;
-    requestId: string;
-    sessionId: string;
-    vault: VaultBinding;
-    windowId: string;
-}
-export type ImportInspectFormat = DesktopSourcePurpose;
+export declare const IMPORT_INSPECT_FORMATS: readonly ["markdown-folder", "markdown-zip", "html", "csv", "apple-journal", "bear-backup", "evernote", "google-keep", "roam-research", "textbundle", "restore-backup"];
+export type ImportInspectFormat = (typeof IMPORT_INSPECT_FORMATS)[number];
+export declare function isImportInspectFormat(value: unknown): value is ImportInspectFormat;
 export interface InspectRequest {
+    authorization: string;
     format: ImportInspectFormat;
-    identity: BrowserOperationIdentity;
+}
+export interface BackupPrepareRequest {
+    authorization: string;
 }
 export interface ReviewBindingRequest {
     operationId: string;
     planDigest: string;
     reviewToken: string;
-    sessionId: string;
-    vault: VaultBinding;
+}
+export interface ReviewCancellationRequest {
+    operationId: string;
+    reviewToken: string;
 }
 export type ReviewPlanView = ReviewedPlanSummary & {
     reviewToken: string;

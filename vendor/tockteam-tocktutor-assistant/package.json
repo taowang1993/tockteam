@@ -1,6 +1,6 @@
 {
   "name": "@tockteam/tocktutor-assistant",
-  "version": "0.1.2",
+  "version": "0.1.5",
   "description": "Inline TockTutor assistant with runtime-backed reads and staged writes",
   "type": "module",
   "main": "./lib/index.js",
@@ -58,7 +58,7 @@
     "@deepseek-ai/dsh-subprocess": "0.1.0-rc.5",
     "@deepseek-ai/dsh-tools": "0.1.0-rc.5",
     "@deepseek-ai/dsh-typert-protocol": "0.1.0-rc.5",
-    "@tockteam/tocktutor-workbench": "0.1.4",
+    "@tockteam/tocktutor-workbench": "0.1.7",
     "react": "^18.2.0",
     "tockbot-note-runtime": "0.1.2"
   },
@@ -93,8 +93,8 @@
     "@deepseek-ai/cordis-plugin-include": "1.0.6",
     "@deepseek-ai/cordis-plugin-loader": "1.0.2",
     "@testing-library/react": "16.3.2",
-    "@tockteam/desktop": "0.1.6",
-    "@tockteam/tocktutor-workbench": "0.1.4",
+    "@tockteam/desktop": "0.1.8",
+    "@tockteam/tocktutor-workbench": "0.1.7",
     "@types/node": "22.20.0",
     "@types/react": "18.3.31",
     "@types/react-dom": "18.3.7",

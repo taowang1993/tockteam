@@ -21,11 +21,13 @@ var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: tru
 // src/client.ts
 var client_exports = {};
 __export(client_exports, {
+  IMPORT_INSPECT_FORMATS: () => IMPORT_INSPECT_FORMATS,
   ImportExportReviewController: () => ImportExportReviewController,
   ImportExportReviewPanel: () => ImportExportReviewPanel,
   ImportExportReviewPanelView: () => ImportExportReviewPanelView,
   apply: () => apply,
   inject: () => inject,
+  isImportInspectFormat: () => isImportInspectFormat,
   name: () => name
 });
 module.exports = __toCommonJS(client_exports);
@@ -14549,15 +14551,23 @@ function date4(params) {
 config(en_default());
 
 // dist/typert.remote-client.js
+var _tockteam_tocktutor_import_export_tocktutor_import_export_abandon_backup_parameter_0$schema = external_exports.object({
+  "authorization": external_exports.string()
+});
+var _tockteam_tocktutor_import_export_tocktutor_import_export_abandon_backup_result$schema = external_exports.object({
+  "status": external_exports.literal("cancelled")
+});
+var _tockteam_tocktutor_import_export_tocktutor_import_export_abandon_import_parameter_0$schema = external_exports.object({
+  "authorization": external_exports.string(),
+  "format": external_exports.union([external_exports.literal("markdown-folder"), external_exports.literal("markdown-zip"), external_exports.literal("html"), external_exports.literal("csv"), external_exports.literal("apple-journal"), external_exports.literal("bear-backup"), external_exports.literal("evernote"), external_exports.literal("google-keep"), external_exports.literal("roam-research"), external_exports.literal("textbundle"), external_exports.literal("restore-backup")])
+});
+var _tockteam_tocktutor_import_export_tocktutor_import_export_abandon_import_result$schema = external_exports.object({
+  "status": external_exports.literal("cancelled")
+});
 var _tockteam_tocktutor_import_export_tocktutor_import_export_approve_backup_parameter_0$schema = external_exports.object({
   "operationId": external_exports.string(),
   "planDigest": external_exports.string(),
-  "reviewToken": external_exports.string(),
-  "sessionId": external_exports.string(),
-  "vault": external_exports.object({
-    "generation": external_exports.number(),
-    "id": external_exports.string()
-  })
+  "reviewToken": external_exports.string()
 });
 var _tockteam_tocktutor_import_export_tocktutor_import_export_approve_backup_result$schema = external_exports.object({
   "status": external_exports.literal("approved")
@@ -14565,35 +14575,29 @@ var _tockteam_tocktutor_import_export_tocktutor_import_export_approve_backup_res
 var _tockteam_tocktutor_import_export_tocktutor_import_export_approve_import_parameter_0$schema = external_exports.object({
   "operationId": external_exports.string(),
   "planDigest": external_exports.string(),
-  "reviewToken": external_exports.string(),
-  "sessionId": external_exports.string(),
-  "vault": external_exports.object({
-    "generation": external_exports.number(),
-    "id": external_exports.string()
-  })
+  "reviewToken": external_exports.string()
 });
 var _tockteam_tocktutor_import_export_tocktutor_import_export_approve_import_result$schema = external_exports.object({
   "status": external_exports.literal("approved")
 });
-var _tockteam_tocktutor_import_export_tocktutor_import_export_cancel_backup_parameter_0$schema = external_exports.string();
-var _tockteam_tocktutor_import_export_tocktutor_import_export_cancel_backup_parameter_1$schema = external_exports.string();
+var _tockteam_tocktutor_import_export_tocktutor_import_export_cancel_backup_parameter_0$schema = external_exports.object({
+  "operationId": external_exports.string(),
+  "reviewToken": external_exports.string()
+});
 var _tockteam_tocktutor_import_export_tocktutor_import_export_cancel_backup_result$schema = external_exports.object({
   "status": external_exports.literal("cancelled")
 });
-var _tockteam_tocktutor_import_export_tocktutor_import_export_cancel_import_parameter_0$schema = external_exports.string();
-var _tockteam_tocktutor_import_export_tocktutor_import_export_cancel_import_parameter_1$schema = external_exports.string();
+var _tockteam_tocktutor_import_export_tocktutor_import_export_cancel_import_parameter_0$schema = external_exports.object({
+  "operationId": external_exports.string(),
+  "reviewToken": external_exports.string()
+});
 var _tockteam_tocktutor_import_export_tocktutor_import_export_cancel_import_result$schema = external_exports.object({
   "status": external_exports.literal("cancelled")
 });
 var _tockteam_tocktutor_import_export_tocktutor_import_export_commit_backup_parameter_0$schema = external_exports.object({
   "operationId": external_exports.string(),
   "planDigest": external_exports.string(),
-  "reviewToken": external_exports.string(),
-  "sessionId": external_exports.string(),
-  "vault": external_exports.object({
-    "generation": external_exports.number(),
-    "id": external_exports.string()
-  })
+  "reviewToken": external_exports.string()
 });
 var _tockteam_tocktutor_import_export_tocktutor_import_export_commit_backup_result$schema = external_exports.union([external_exports.object({
   "bytes": external_exports.number(),
@@ -14624,12 +14628,7 @@ var _tockteam_tocktutor_import_export_tocktutor_import_export_commit_backup_resu
 var _tockteam_tocktutor_import_export_tocktutor_import_export_commit_import_parameter_0$schema = external_exports.object({
   "operationId": external_exports.string(),
   "planDigest": external_exports.string(),
-  "reviewToken": external_exports.string(),
-  "sessionId": external_exports.string(),
-  "vault": external_exports.object({
-    "generation": external_exports.number(),
-    "id": external_exports.string()
-  })
+  "reviewToken": external_exports.string()
 });
 var _tockteam_tocktutor_import_export_tocktutor_import_export_commit_import_result$schema = external_exports.object({
   "committed": external_exports.array(external_exports.object({
@@ -14655,17 +14654,8 @@ var _tockteam_tocktutor_import_export_tocktutor_import_export_commit_import_resu
   "status": external_exports.union([external_exports.literal("committed"), external_exports.literal("partial")])
 });
 var _tockteam_tocktutor_import_export_tocktutor_import_export_inspect_parameter_0$schema = external_exports.object({
-  "format": external_exports.union([external_exports.literal("markdown-folder"), external_exports.literal("markdown-zip"), external_exports.literal("html"), external_exports.literal("csv"), external_exports.literal("apple-journal"), external_exports.literal("bear-backup"), external_exports.literal("evernote"), external_exports.literal("google-keep"), external_exports.literal("roam-research"), external_exports.literal("textbundle"), external_exports.literal("restore-backup")]),
-  "identity": external_exports.object({
-    "operationId": external_exports.string(),
-    "requestId": external_exports.string(),
-    "sessionId": external_exports.string(),
-    "vault": external_exports.object({
-      "generation": external_exports.number(),
-      "id": external_exports.string()
-    }),
-    "windowId": external_exports.string()
-  })
+  "authorization": external_exports.string(),
+  "format": external_exports.union([external_exports.literal("markdown-folder"), external_exports.literal("markdown-zip"), external_exports.literal("html"), external_exports.literal("csv"), external_exports.literal("apple-journal"), external_exports.literal("bear-backup"), external_exports.literal("evernote"), external_exports.literal("google-keep"), external_exports.literal("roam-research"), external_exports.literal("textbundle"), external_exports.literal("restore-backup")])
 });
 var _tockteam_tocktutor_import_export_tocktutor_import_export_inspect_result$schema = external_exports.intersection(external_exports.object({
   "collisionPolicy": external_exports.literal("preserve-existing"),
@@ -14702,14 +14692,7 @@ var _tockteam_tocktutor_import_export_tocktutor_import_export_inspect_result$sch
   "reviewToken": external_exports.string()
 }));
 var _tockteam_tocktutor_import_export_tocktutor_import_export_prepare_backup_parameter_0$schema = external_exports.object({
-  "operationId": external_exports.string(),
-  "requestId": external_exports.string(),
-  "sessionId": external_exports.string(),
-  "vault": external_exports.object({
-    "generation": external_exports.number(),
-    "id": external_exports.string()
-  }),
-  "windowId": external_exports.string()
+  "authorization": external_exports.string()
 });
 var _tockteam_tocktutor_import_export_tocktutor_import_export_prepare_backup_result$schema = external_exports.object({
   "archiveDigest": external_exports.string(),
@@ -14729,6 +14712,60 @@ var _tockteam_tocktutor_import_export_tocktutor_import_export_prepare_backup_res
 var TYPERT_REMOTE = {
   package: "@tockteam/tocktutor-import-export",
   descriptors: [
+    {
+      id: "@tockteam/tocktutor-import-export#tocktutor-import-export/abandon-backup",
+      service: "tocktutor-import-export",
+      namespace: "tocktutor-import-export",
+      method: "abandon-backup",
+      implementation: "abandonBackup",
+      invocation: { kind: "direct" },
+      parameters: [
+        {
+          name: "request",
+          wire: "request",
+          source: "json",
+          codec: {
+            mode: "strict",
+            typeSymbol: "@tockteam/tocktutor-import-export/client#BackupPrepareRequest",
+            schema: _tockteam_tocktutor_import_export_tocktutor_import_export_abandon_backup_parameter_0$schema
+          }
+        }
+      ],
+      cancellation: { parameter: "signal" },
+      result: {
+        mode: "strict",
+        typeSymbol: "@tockteam/tocktutor-import-export#tocktutor-import-export/abandon-backup:result",
+        schema: _tockteam_tocktutor_import_export_tocktutor_import_export_abandon_backup_result$schema
+      },
+      sourceLocation: { "file": "packages/import-export/src/index.ts", "line": 108, "column": 9 }
+    },
+    {
+      id: "@tockteam/tocktutor-import-export#tocktutor-import-export/abandon-import",
+      service: "tocktutor-import-export",
+      namespace: "tocktutor-import-export",
+      method: "abandon-import",
+      implementation: "abandonImport",
+      invocation: { kind: "direct" },
+      parameters: [
+        {
+          name: "request",
+          wire: "request",
+          source: "json",
+          codec: {
+            mode: "strict",
+            typeSymbol: "@tockteam/tocktutor-import-export/client#InspectRequest",
+            schema: _tockteam_tocktutor_import_export_tocktutor_import_export_abandon_import_parameter_0$schema
+          }
+        }
+      ],
+      cancellation: { parameter: "signal" },
+      result: {
+        mode: "strict",
+        typeSymbol: "@tockteam/tocktutor-import-export#tocktutor-import-export/abandon-import:result",
+        schema: _tockteam_tocktutor_import_export_tocktutor_import_export_abandon_import_result$schema
+      },
+      sourceLocation: { "file": "packages/import-export/src/index.ts", "line": 79, "column": 9 }
+    },
     {
       id: "@tockteam/tocktutor-import-export#tocktutor-import-export/approve-backup",
       service: "tocktutor-import-export",
@@ -14753,7 +14790,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "@tockteam/tocktutor-import-export#tocktutor-import-export/approve-backup:result",
         schema: _tockteam_tocktutor_import_export_tocktutor_import_export_approve_backup_result$schema
       },
-      sourceLocation: { "file": "packages/import-export/src/index.ts", "line": 83, "column": 9 }
+      sourceLocation: { "file": "packages/import-export/src/index.ts", "line": 114, "column": 9 }
     },
     {
       id: "@tockteam/tocktutor-import-export#tocktutor-import-export/approve-import",
@@ -14779,7 +14816,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "@tockteam/tocktutor-import-export#tocktutor-import-export/approve-import:result",
         schema: _tockteam_tocktutor_import_export_tocktutor_import_export_approve_import_result$schema
       },
-      sourceLocation: { "file": "packages/import-export/src/index.ts", "line": 63, "column": 9 }
+      sourceLocation: { "file": "packages/import-export/src/index.ts", "line": 87, "column": 9 }
     },
     {
       id: "@tockteam/tocktutor-import-export#tocktutor-import-export/cancel-backup",
@@ -14790,23 +14827,13 @@ var TYPERT_REMOTE = {
       invocation: { kind: "direct" },
       parameters: [
         {
-          name: "operationId",
-          wire: "operationId",
+          name: "request",
+          wire: "request",
           source: "json",
           codec: {
             mode: "strict",
-            typeSymbol: "@tockteam/tocktutor-import-export#tocktutor-import-export/cancel-backup:operationId",
+            typeSymbol: "@tockteam/tocktutor-import-export/client#ReviewCancellationRequest",
             schema: _tockteam_tocktutor_import_export_tocktutor_import_export_cancel_backup_parameter_0$schema
-          }
-        },
-        {
-          name: "sessionId",
-          wire: "sessionId",
-          source: "json",
-          codec: {
-            mode: "strict",
-            typeSymbol: "@tockteam/tocktutor-import-export#tocktutor-import-export/cancel-backup:sessionId",
-            schema: _tockteam_tocktutor_import_export_tocktutor_import_export_cancel_backup_parameter_1$schema
           }
         }
       ],
@@ -14815,7 +14842,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "@tockteam/tocktutor-import-export#tocktutor-import-export/cancel-backup:result",
         schema: _tockteam_tocktutor_import_export_tocktutor_import_export_cancel_backup_result$schema
       },
-      sourceLocation: { "file": "packages/import-export/src/index.ts", "line": 93, "column": 9 }
+      sourceLocation: { "file": "packages/import-export/src/index.ts", "line": 124, "column": 9 }
     },
     {
       id: "@tockteam/tocktutor-import-export#tocktutor-import-export/cancel-import",
@@ -14826,23 +14853,13 @@ var TYPERT_REMOTE = {
       invocation: { kind: "direct" },
       parameters: [
         {
-          name: "operationId",
-          wire: "operationId",
+          name: "request",
+          wire: "request",
           source: "json",
           codec: {
             mode: "strict",
-            typeSymbol: "@tockteam/tocktutor-import-export#tocktutor-import-export/cancel-import:operationId",
+            typeSymbol: "@tockteam/tocktutor-import-export/client#ReviewCancellationRequest",
             schema: _tockteam_tocktutor_import_export_tocktutor_import_export_cancel_import_parameter_0$schema
-          }
-        },
-        {
-          name: "sessionId",
-          wire: "sessionId",
-          source: "json",
-          codec: {
-            mode: "strict",
-            typeSymbol: "@tockteam/tocktutor-import-export#tocktutor-import-export/cancel-import:sessionId",
-            schema: _tockteam_tocktutor_import_export_tocktutor_import_export_cancel_import_parameter_1$schema
           }
         }
       ],
@@ -14851,7 +14868,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "@tockteam/tocktutor-import-export#tocktutor-import-export/cancel-import:result",
         schema: _tockteam_tocktutor_import_export_tocktutor_import_export_cancel_import_result$schema
       },
-      sourceLocation: { "file": "packages/import-export/src/index.ts", "line": 73, "column": 9 }
+      sourceLocation: { "file": "packages/import-export/src/index.ts", "line": 97, "column": 9 }
     },
     {
       id: "@tockteam/tocktutor-import-export#tocktutor-import-export/commit-backup",
@@ -14878,7 +14895,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "@tockteam/tocktutor-import-export/client#BackupPublishResult",
         schema: _tockteam_tocktutor_import_export_tocktutor_import_export_commit_backup_result$schema
       },
-      sourceLocation: { "file": "packages/import-export/src/index.ts", "line": 88, "column": 9 }
+      sourceLocation: { "file": "packages/import-export/src/index.ts", "line": 119, "column": 9 }
     },
     {
       id: "@tockteam/tocktutor-import-export#tocktutor-import-export/commit-import",
@@ -14905,7 +14922,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "@tockteam/tocktutor-import-export/client#CommitResult",
         schema: _tockteam_tocktutor_import_export_tocktutor_import_export_commit_import_result$schema
       },
-      sourceLocation: { "file": "packages/import-export/src/index.ts", "line": 68, "column": 9 }
+      sourceLocation: { "file": "packages/import-export/src/index.ts", "line": 92, "column": 9 }
     },
     {
       id: "@tockteam/tocktutor-import-export#tocktutor-import-export/inspect",
@@ -14931,7 +14948,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "@tockteam/tocktutor-import-export/client#ReviewPlanView",
         schema: _tockteam_tocktutor_import_export_tocktutor_import_export_inspect_result$schema
       },
-      sourceLocation: { "file": "packages/import-export/src/index.ts", "line": 58, "column": 9 }
+      sourceLocation: { "file": "packages/import-export/src/index.ts", "line": 71, "column": 9 }
     },
     {
       id: "@tockteam/tocktutor-import-export#tocktutor-import-export/prepare-backup",
@@ -14942,12 +14959,12 @@ var TYPERT_REMOTE = {
       invocation: { kind: "direct" },
       parameters: [
         {
-          name: "identity",
-          wire: "identity",
+          name: "request",
+          wire: "request",
           source: "json",
           codec: {
             mode: "strict",
-            typeSymbol: "@tockteam/tocktutor-import-export/client#BrowserOperationIdentity",
+            typeSymbol: "@tockteam/tocktutor-import-export/client#BackupPrepareRequest",
             schema: _tockteam_tocktutor_import_export_tocktutor_import_export_prepare_backup_parameter_0$schema
           }
         }
@@ -14958,7 +14975,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "@tockteam/tocktutor-import-export/client#BackupPlanView",
         schema: _tockteam_tocktutor_import_export_tocktutor_import_export_prepare_backup_result$schema
       },
-      sourceLocation: { "file": "packages/import-export/src/index.ts", "line": 78, "column": 9 }
+      sourceLocation: { "file": "packages/import-export/src/index.ts", "line": 102, "column": 9 }
     }
   ]
 };
@@ -14971,23 +14988,23 @@ function remoteValue(result) {
   if (result.ok) return result.value;
   throw new Error(result.error.message);
 }
-function defaultIdentity(vault) {
-  const random = () => globalThis.crypto?.randomUUID?.() ?? `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
-  return {
-    operationId: random(),
-    requestId: random(),
-    sessionId: random(),
-    vault,
-    windowId: random()
-  };
-}
+var callerBridge = {
+  async authorize(operation) {
+    const root = globalThis;
+    const bridge = root.window?.dshDesktop?.tockTutor;
+    if (bridge === void 0) throw new Error("This operation is available only in the trusted TockTeam Desktop window.");
+    return await bridge.authorize(operation);
+  }
+};
 var ImportExportReviewController = class {
-  active = null;
   abort = new AbortController();
+  approvedOperationId;
+  authoritativeCommit;
+  bridge;
   disposed = false;
-  identity;
   listeners = /* @__PURE__ */ new Set();
   remote;
+  retryStart;
   revision = 0;
   snapshot = {
     error: null,
@@ -14997,9 +15014,9 @@ var ImportExportReviewController = class {
     preview: null,
     result: null
   };
-  constructor(remote, vault, identity = () => defaultIdentity(vault)) {
+  constructor(remote, bridge = callerBridge) {
     this.remote = remote;
-    this.identity = identity;
+    this.bridge = bridge;
   }
   getSnapshot = () => this.snapshot;
   subscribe = (listener) => {
@@ -15010,99 +15027,177 @@ var ImportExportReviewController = class {
   };
   setFormat(format) {
     if (this.snapshot.phase !== "idle" && this.snapshot.phase !== "complete" && this.snapshot.phase !== "error") return;
+    if (this.retryStart !== void 0 && this.retryStart.format !== format) return;
     this.update({ ...this.snapshot, format });
   }
   async startImport(format = this.snapshot.format) {
-    const identity = this.identity();
-    const revision = this.begin(identity, "import", format);
+    if (!this.canStart("import", format)) return;
+    const revision = this.begin("import", format);
     try {
-      const preview = remoteValue(await this.remote["tocktutor-import-export"].inspect(
-        { format, identity },
+      const operation = format === "restore-backup" ? "restore-backup" : "import-source";
+      const authorization = await this.startAuthorization("import", format, operation);
+      if (!this.current(revision)) return;
+      const response = await this.remote["tocktutor-import-export"].inspect(
+        { authorization, format },
         this.abort.signal
-      ));
-      if (this.current(revision)) this.update({ ...this.snapshot, phase: "review", preview });
+      );
+      if (!response.ok) this.retryStart = void 0;
+      const preview = remoteValue(response);
+      if (this.current(revision)) {
+        this.approvedOperationId = void 0;
+        this.retryStart = void 0;
+        this.update({ ...this.snapshot, phase: "review", preview });
+      }
     } catch (error51) {
       this.fail(revision, error51);
     }
   }
   async startBackup() {
-    const identity = this.identity();
-    const revision = this.begin(identity, "backup", this.snapshot.format);
+    const format = this.snapshot.format;
+    if (!this.canStart("backup", format)) return;
+    const revision = this.begin("backup", format);
     try {
-      const preview = remoteValue(await this.remote["tocktutor-import-export"]["prepare-backup"](
-        identity,
+      const authorization = await this.startAuthorization("backup", format, "backup");
+      if (!this.current(revision)) return;
+      const response = await this.remote["tocktutor-import-export"]["prepare-backup"](
+        { authorization },
         this.abort.signal
-      ));
-      if (this.current(revision)) this.update({ ...this.snapshot, phase: "review", preview });
-    } catch (error51) {
-      this.fail(revision, error51);
-    }
-  }
-  async approveAndCommit() {
-    const identity = this.active;
-    const preview = this.snapshot.preview;
-    if (identity === null || preview === null || this.snapshot.phase !== "review") return;
-    const revision = this.revision;
-    const binding = {
-      operationId: preview.operationId,
-      planDigest: preview.planDigest,
-      reviewToken: preview.reviewToken,
-      sessionId: identity.sessionId,
-      vault: identity.vault
-    };
-    try {
-      this.update({ ...this.snapshot, phase: "approving" });
-      if (this.snapshot.kind === "backup") {
-        remoteValue(await this.remote["tocktutor-import-export"]["approve-backup"](binding));
-        if (!this.current(revision)) return;
-        this.update({ ...this.snapshot, phase: "committing" });
-        const result = remoteValue(await this.remote["tocktutor-import-export"]["commit-backup"](binding, this.abort.signal));
-        if (this.current(revision)) this.update({ ...this.snapshot, phase: "complete", result });
-      } else {
-        remoteValue(await this.remote["tocktutor-import-export"]["approve-import"](binding));
-        if (!this.current(revision)) return;
-        this.update({ ...this.snapshot, phase: "committing" });
-        const result = remoteValue(await this.remote["tocktutor-import-export"]["commit-import"](binding, this.abort.signal));
-        if (this.current(revision)) this.update({ ...this.snapshot, phase: "complete", result });
+      );
+      if (!response.ok) this.retryStart = void 0;
+      const preview = remoteValue(response);
+      if (this.current(revision)) {
+        this.approvedOperationId = void 0;
+        this.retryStart = void 0;
+        this.update({ ...this.snapshot, phase: "review", preview });
       }
     } catch (error51) {
       this.fail(revision, error51);
     }
+  }
+  approveAndCommit() {
+    if (this.authoritativeCommit !== void 0) return this.authoritativeCommit;
+    const run = this.commitReviewed();
+    this.authoritativeCommit = run;
+    return run.finally(() => {
+      if (this.authoritativeCommit === run) this.authoritativeCommit = void 0;
+    });
   }
   async cancel() {
-    const identity = this.active;
-    if (identity === null) return;
+    if (this.snapshot.phase === "approving" || this.snapshot.phase === "committing") {
+      await this.authoritativeCommit;
+      return;
+    }
     this.abort.abort();
     const kind = this.snapshot.kind;
+    const preview = this.snapshot.preview;
+    const retry = this.retryStart;
     const revision = ++this.revision;
     try {
-      if (kind === "backup") {
-        await this.remote["tocktutor-import-export"]["cancel-backup"](identity.operationId, identity.sessionId);
-      } else {
-        await this.remote["tocktutor-import-export"]["cancel-import"](identity.operationId, identity.sessionId);
-      }
+      if (preview !== null) await this.cancelPreview(kind, preview);
+      else if (retry !== void 0) await this.abandonRetry(retry);
     } catch {
     } finally {
       if (!this.disposed && this.revision === revision) {
-        this.active = null;
         this.abort = new AbortController();
+        this.approvedOperationId = void 0;
+        this.retryStart = void 0;
         this.update({ ...this.snapshot, error: null, phase: "idle", preview: null, result: null });
       }
     }
   }
   dispose() {
     if (this.disposed) return;
+    const { kind, phase, preview } = this.snapshot;
+    const retry = this.retryStart;
     this.disposed = true;
+    if (phase !== "committing") this.abort.abort();
+    if (phase === "committing") {
+      this.listeners.clear();
+      return;
+    }
     this.revision += 1;
-    this.abort.abort();
-    this.active = null;
+    if (preview !== null && phase !== "complete") {
+      void this.cancelPreview(kind, preview).catch(() => void 0);
+    } else if (preview === null && retry !== void 0) {
+      void this.abandonRetry(retry).catch(() => void 0);
+    }
     this.snapshot = { ...this.snapshot, error: null, phase: "idle", preview: null, result: null };
     this.listeners.clear();
   }
-  begin(identity, kind, format) {
+  async authorize(operation) {
+    const result = await this.bridge.authorize(operation);
+    if (typeof result?.authorization !== "string" || result.authorization === "" || new TextEncoder().encode(result.authorization).byteLength > 1024) {
+      throw new Error("Desktop authorization was rejected.");
+    }
+    return result.authorization;
+  }
+  canStart(kind, format) {
+    if (this.retryStart === void 0 || this.retryStart.kind === kind && this.retryStart.format === format) return true;
+    this.update({
+      ...this.snapshot,
+      error: `Retry the interrupted ${this.retryStart.kind} operation before starting another operation.`,
+      phase: "error"
+    });
+    return false;
+  }
+  async abandonRetry(retry) {
+    if (retry.kind === "backup") {
+      remoteValue(await this.remote["tocktutor-import-export"]["abandon-backup"]({ authorization: retry.authorization }));
+    } else {
+      remoteValue(await this.remote["tocktutor-import-export"]["abandon-import"]({
+        authorization: retry.authorization,
+        format: retry.format
+      }));
+    }
+  }
+  async cancelPreview(kind, preview) {
+    const request = { operationId: preview.operationId, reviewToken: preview.reviewToken };
+    if (kind === "backup") remoteValue(await this.remote["tocktutor-import-export"]["cancel-backup"](request));
+    else remoteValue(await this.remote["tocktutor-import-export"]["cancel-import"](request));
+  }
+  async commitReviewed() {
+    const preview = this.snapshot.preview;
+    if (preview === null || this.snapshot.phase !== "review" && this.snapshot.phase !== "error") return;
+    const revision = this.revision;
+    const binding = {
+      operationId: preview.operationId,
+      planDigest: preview.planDigest,
+      reviewToken: preview.reviewToken
+    };
+    try {
+      this.update({ ...this.snapshot, phase: "approving" });
+      if (this.snapshot.kind === "backup") {
+        if (this.approvedOperationId !== preview.operationId) {
+          remoteValue(await this.remote["tocktutor-import-export"]["approve-backup"](binding));
+          this.approvedOperationId = preview.operationId;
+        }
+        if (!this.current(revision)) return;
+        this.update({ ...this.snapshot, phase: "committing" });
+        const result = remoteValue(await this.remote["tocktutor-import-export"]["commit-backup"](binding, this.abort.signal));
+        if (this.revision === revision) {
+          this.approvedOperationId = void 0;
+          this.update({ ...this.snapshot, phase: "complete", result });
+        }
+      } else {
+        if (this.approvedOperationId !== preview.operationId) {
+          remoteValue(await this.remote["tocktutor-import-export"]["approve-import"](binding));
+          this.approvedOperationId = preview.operationId;
+        }
+        if (!this.current(revision)) return;
+        this.update({ ...this.snapshot, phase: "committing" });
+        const result = remoteValue(await this.remote["tocktutor-import-export"]["commit-import"](binding, this.abort.signal));
+        if (this.revision === revision) {
+          this.approvedOperationId = void 0;
+          this.update({ ...this.snapshot, phase: "complete", result });
+        }
+      }
+    } catch (error51) {
+      this.fail(revision, error51, true);
+    }
+  }
+  begin(kind, format) {
     this.abort.abort();
     this.abort = new AbortController();
-    this.active = identity;
     const revision = ++this.revision;
     this.update({ error: null, format, kind, phase: "inspecting", preview: null, result: null });
     return revision;
@@ -15110,8 +15205,14 @@ var ImportExportReviewController = class {
   current(revision) {
     return !this.disposed && this.revision === revision;
   }
-  fail(revision, error51) {
-    if (!this.current(revision)) return;
+  async startAuthorization(kind, format, operation) {
+    if (this.retryStart !== void 0) return this.retryStart.authorization;
+    const authorization = await this.authorize(operation);
+    this.retryStart = { authorization, format, kind };
+    return authorization;
+  }
+  fail(revision, error51, preserveDisposed = false) {
+    if (this.revision !== revision || this.disposed && !preserveDisposed) return;
     const message = error51 instanceof Error && error51.message.trim() !== "" ? error51.message.slice(0, 512) : "The reviewed operation failed.";
     this.update({ ...this.snapshot, error: message, phase: "error" });
   }
@@ -15147,7 +15248,7 @@ function ImportExportReviewPanelView(props) {
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h2", { children: "Import, Backup, and Restore" })
     ] }),
     /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { children: "Craft exports use the reviewed Markdown Folder or Markdown ZIP path; no Craft-specific parser changes your files." }),
-    (snapshot.phase === "idle" || snapshot.phase === "complete" || snapshot.phase === "error") && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "tocktutor-import-export-start", children: [
+    (snapshot.phase === "idle" || snapshot.phase === "complete" || snapshot.phase === "error" && preview === null) && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "tocktutor-import-export-start", children: [
       /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { children: [
         "Import Format",
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
@@ -15261,19 +15362,24 @@ function ImportExportReviewPanelView(props) {
         ] })
       ] })
     ] }),
-    snapshot.phase === "error" && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { role: "alert", children: snapshot.error ?? "The reviewed operation failed." })
+    snapshot.phase === "error" && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "tocktutor-import-export-actions", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { role: "alert", children: snapshot.error ?? "The reviewed operation failed." }),
+      preview !== null && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { onClick: props.onApprove, type: "button", children: "Retry Reviewed Commit" }),
+      preview !== null && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { onClick: props.onCancel, type: "button", children: "Cancel" })
+    ] })
   ] });
 }
-var INACTIVE_VAULT = { generation: 0, id: "inactive" };
 function ImportExportReviewPanel(props) {
-  const vault = props.vault ?? INACTIVE_VAULT;
-  const vaultGeneration = vault.generation;
-  const vaultId = vault.id;
+  const vaultGeneration = props.vault?.generation ?? null;
+  const vaultId = props.vault?.id ?? null;
   const controller = (0, import_react.useMemo)(
-    () => new ImportExportReviewController(props.remote, { generation: vaultGeneration, id: vaultId }),
-    [props.remote, vaultGeneration, vaultId]
+    () => new ImportExportReviewController(props.remote),
+    [props.remote]
   );
   const snapshot = (0, import_react.useSyncExternalStore)(controller.subscribe, controller.getSnapshot, controller.getSnapshot);
+  (0, import_react.useEffect)(() => {
+    void controller.cancel();
+  }, [controller, vaultGeneration, vaultId]);
   (0, import_react.useEffect)(() => () => {
     controller.dispose();
   }, [controller]);
@@ -15313,6 +15419,24 @@ var PANEL_CSS = `
 .tocktutor-import-export-plan dd { margin: 0; overflow-wrap: anywhere; text-align: right; }
 .tocktutor-import-export-plan ul { margin: 0; max-height: 180px; overflow: auto; padding-left: 18px; }
 `;
+
+// src/types.ts
+var IMPORT_INSPECT_FORMATS = [
+  "markdown-folder",
+  "markdown-zip",
+  "html",
+  "csv",
+  "apple-journal",
+  "bear-backup",
+  "evernote",
+  "google-keep",
+  "roam-research",
+  "textbundle",
+  "restore-backup"
+];
+function isImportInspectFormat(value) {
+  return typeof value === "string" && IMPORT_INSPECT_FORMATS.includes(value);
+}
 
 // src/client-api.ts
 var name = "@tockteam/tocktutor-import-export";

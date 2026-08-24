@@ -12,6 +12,7 @@ export declare class ImportExportError extends Error {
     readonly code: ImportExportErrorCode;
     constructor(code: ImportExportErrorCode);
 }
+export declare function normalizeAbort<Result>(promise: Promise<Result>, signal?: AbortSignal): Promise<Result>;
 export interface VaultBinding {
     generation: number;
     id: string;

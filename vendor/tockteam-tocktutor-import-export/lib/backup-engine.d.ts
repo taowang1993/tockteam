@@ -1,6 +1,6 @@
-import { type AbortDesktopDestinationRequest, type AbortDesktopDestinationResult, type BeginDesktopDestinationRequest, type BeginDesktopDestinationResult, type DesktopPickerRequest, type DesktopPickerResult, type FinalizeDesktopDestinationRequest, type FinalizeDesktopDestinationResult, type LockDesktopDestinationPlanRequest, type LockDesktopDestinationPlanResult, type RevokeDesktopDestinationPlanRequest, type RevokeDesktopDestinationPlanResult, type WriteDesktopDestinationChunkRequest, type WriteDesktopDestinationChunkResult } from '@tockteam/desktop/host';
+import { type AbortDesktopDestinationRequest, type AbortDesktopDestinationResult, type BeginDesktopDestinationRequest, type BeginDesktopDestinationResult, type DesktopPickerRequest, type NativeOperationIdentity, type DesktopPickerResult, type FinalizeDesktopDestinationRequest, type FinalizeDesktopDestinationResult, type LockDesktopDestinationPlanRequest, type LockDesktopDestinationPlanResult, type RevokeDesktopDestinationPlanRequest, type RevokeDesktopDestinationPlanResult, type WriteDesktopDestinationChunkRequest, type WriteDesktopDestinationChunkResult } from '@tockteam/desktop/host';
 import type { AttachmentPreviewResult, ListTreeRequest, NoteVaultState, OpenDocumentResult, VaultReference, VaultTreePage } from 'tockbot-note-runtime';
-import type { BackupPlanView, BackupPublishResult, BrowserOperationIdentity, ReviewBindingRequest } from './types.ts';
+import type { BackupPlanView, BackupPublishResult, ReviewBindingRequest, ReviewCancellationRequest } from './types.ts';
 export type { BackupPlanView, BackupPublishResult } from './types.ts';
 export interface BackupRuntimePort {
     readonly state: NoteVaultState;
@@ -23,25 +23,42 @@ export interface ReviewedBackupEngineOptions {
     randomToken(): string;
     runtime: BackupRuntimePort;
 }
+export interface ClaimedBackupRequest {
+    identity: NativeOperationIdentity;
+}
 export declare class ReviewedBackupEngine {
     private disposed;
+    private readonly cancelled;
+    private readonly completed;
+    private completedEvidenceBytes;
     private readonly lifetime;
+    private readonly pendingCommits;
+    private readonly pendingPreparations;
     private readonly operations;
     private readonly options;
     private readonly used;
     constructor(options: ReviewedBackupEngineOptions);
-    prepare(request: {
-        identity: BrowserOperationIdentity;
-    }, signal: AbortSignal): Promise<BackupPlanView>;
+    prepare(request: ClaimedBackupRequest, signal: AbortSignal): Promise<BackupPlanView>;
     approve(request: ReviewBindingRequest): Promise<{
         status: 'approved';
     }>;
     commit(request: ReviewBindingRequest, signal: AbortSignal): Promise<BackupPublishResult>;
-    cancel(operationId: string, sessionId: string): Promise<{
+    cancel(request: ReviewCancellationRequest): Promise<{
         status: 'cancelled';
     }>;
+    abandon(request: ClaimedBackupRequest): Promise<{
+        status: 'cancelled';
+    }>;
+    private prepareOwned;
+    private approveOwned;
+    private commitOwned;
+    private cancelOwned;
     dispose(): Promise<void>;
     private close;
+    private scheduleExpiry;
+    private rememberCancelled;
+    private rememberCompleted;
+    private forgetCompleted;
     private rememberUsed;
 }
 //# sourceMappingURL=backup-engine.d.ts.map

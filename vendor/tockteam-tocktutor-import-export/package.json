@@ -1,6 +1,6 @@
 {
   "name": "@tockteam/tocktutor-import-export",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Reviewed TockTutor import, backup, restore, conversion, and export Host/client package",
   "type": "module",
   "main": "./dist/index.js",
@@ -56,8 +56,10 @@
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "4.0.1",
-    "@tockteam/desktop": ">=0.1.6 <0.2.0",
-    "@tockteam/tocktutor-workbench": ">=0.1.4 <0.2.0",
+    "@deepseek-ai/dsh-typert-protocol": "0.1.0-rc.5",
+    "@tockteam/desktop": ">=0.1.11 <0.2.0",
+    "@tockteam/tocktutor-workbench": ">=0.1.7 <0.2.0",
+    "react": "^18.2.0",
     "tockbot-note-runtime": "0.1.2"
   },
   "devDependencies": {
@@ -68,8 +70,8 @@
     "@deepseek-ai/dsh-client-ui-slots": "link:/Users/max/dsh/tockteam/.cache/dsh-source/47f943859bef/packages/client/ui-slots",
     "@deepseek-ai/dsh-typert-generator": "link:/Users/max/dsh/tockteam/.cache/dsh-source/47f943859bef/packages/typert/generator",
     "@deepseek-ai/dsh-typert-protocol": "link:/Users/max/dsh/tockteam/.cache/dsh-source/47f943859bef/packages/typert/protocol",
-    "@tockteam/desktop": "file:/Users/max/dsh/tockteam/tockteam-desktop-0.1.6.tgz",
-    "@tockteam/tocktutor-workbench": "file:/Users/max/dsh/tockbot-note-workbench/tockteam-tocktutor-workbench-0.1.4.tgz",
+    "@tockteam/desktop": "file:/Users/max/dsh/tockteam/tockteam-desktop-0.1.11.tgz",
+    "@tockteam/tocktutor-workbench": "file:/Users/max/dsh/tockbot-note-workbench/tockteam-tocktutor-workbench-0.1.7.tgz",
     "@types/node": "22.20.0",
     "@types/react": "18.3.31",
     "@types/react-dom": "18.3.7",

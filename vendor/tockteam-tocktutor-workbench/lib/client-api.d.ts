@@ -16,6 +16,7 @@ export declare const inject: string[];
 /** Mount strict transport first, then contribute one lifecycle-owned Desktop route. */
 export declare function apply(ctx: Context): Promise<() => Promise<void>>;
 export * from './assistant-panel.ts';
+export * from './native-actions.ts';
 export * from './review-panel.ts';
 export * from './route.tsx';
 export * from './types.ts';

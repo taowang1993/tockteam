@@ -130,7 +130,8 @@ const aggregateManifest = JSON.parse(readFileSync(join(
   'tocktutor',
   'package.json',
 ), 'utf8'))
-assert.equal(aggregateManifest.version, '0.1.0')
+assert.equal(aggregateManifest.version, '0.1.1')
+assert.equal(aggregateManifest.peerDependencies['@tockteam/desktop'], '>=0.1.11 <0.2.0')
 assert.equal(aggregateManifest.dependencies['tockbot-note-runtime'], '0.1.2')
 assert.equal(aggregateManifest.dependencies['tockbot-note-vault'], '0.6.0')
 const workbenchManifest = JSON.parse(readFileSync(join(
@@ -141,7 +142,7 @@ const workbenchManifest = JSON.parse(readFileSync(join(
   'tocktutor-workbench',
   'package.json',
 ), 'utf8'))
-assert.equal(workbenchManifest.version, '0.1.4')
+assert.equal(workbenchManifest.version, '0.1.7')
 assert.equal(workbenchManifest.peerDependencies['@tockteam/desktop'], '>=0.1.6 <0.2.0')
 assert.equal(workbenchManifest.peerDependencies['tockbot-note-runtime'], '0.1.2')
 const workbenchImport = spawnSync(nodeBinary, [
@@ -171,8 +172,9 @@ const desktopAdapterManifest = JSON.parse(readFileSync(join(
   'tockbot-note-desktop',
   'package.json',
 ), 'utf8'))
-assert.equal(desktopAdapterManifest.version, '0.1.0')
-assert.equal(desktopAdapterManifest.peerDependencies['@tockteam/desktop'], '>=0.1.6 <0.2.0')
+assert.equal(desktopAdapterManifest.version, '0.1.2')
+assert.equal(desktopAdapterManifest.peerDependencies['@tockteam/desktop'], '>=0.1.11 <0.2.0')
+assert.equal(desktopAdapterManifest.peerDependencies['@tockteam/tocktutor-workbench'], '0.1.7')
 const desktopAdapterImport = spawnSync(nodeBinary, [
   '--input-type=module',
   '-e',
@@ -191,8 +193,8 @@ const assistantManifest = JSON.parse(readFileSync(join(
   'tocktutor-assistant',
   'package.json',
 ), 'utf8'))
-assert.equal(assistantManifest.version, '0.1.2')
-assert.equal(assistantManifest.peerDependencies['@tockteam/tocktutor-workbench'], '0.1.4')
+assert.equal(assistantManifest.version, '0.1.5')
+assert.equal(assistantManifest.peerDependencies['@tockteam/tocktutor-workbench'], '0.1.7')
 assert.equal(assistantManifest.peerDependencies['tockbot-note-runtime'], '0.1.2')
 const assistantImport = spawnSync(nodeBinary, [
   '--input-type=module',
@@ -212,9 +214,9 @@ const importExportManifest = JSON.parse(readFileSync(join(
   'tocktutor-import-export',
   'package.json',
 ), 'utf8'))
-assert.equal(importExportManifest.version, '0.1.0')
-assert.equal(importExportManifest.peerDependencies['@tockteam/desktop'], '>=0.1.6 <0.2.0')
-assert.equal(importExportManifest.peerDependencies['@tockteam/tocktutor-workbench'], '>=0.1.4 <0.2.0')
+assert.equal(importExportManifest.version, '0.1.1')
+assert.equal(importExportManifest.peerDependencies['@tockteam/desktop'], '>=0.1.11 <0.2.0')
+assert.equal(importExportManifest.peerDependencies['@tockteam/tocktutor-workbench'], '>=0.1.7 <0.2.0')
 assert.equal(importExportManifest.peerDependencies['tockbot-note-runtime'], '0.1.2')
 const importExportImport = spawnSync(nodeBinary, [
   '--input-type=module',

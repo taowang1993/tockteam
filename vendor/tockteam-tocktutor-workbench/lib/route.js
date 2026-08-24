@@ -2,6 +2,7 @@ import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-run
 import { useEffect, useMemo, useRef, useSyncExternalStore, } from 'react';
 import { TOCKTUTOR_ASSISTANT_PANEL_SLOT } from "./assistant-panel.js";
 import { projectBase } from "./base.js";
+import { TOCKTUTOR_NATIVE_ACTIONS_SLOT, } from "./native-actions.js";
 import { TOCKTUTOR_REVIEW_PANEL_SLOT } from "./review-panel.js";
 import { parseCanvasDocument, projectCanvas, updateCanvasNodePosition, } from "./canvas.js";
 import { editorStatusLabel, projectReading, resolveEditorShortcut, toggleMarkdownTask, } from "./markdown.js";
@@ -61,8 +62,18 @@ export function pathFromTockTutorLocation(pathname) {
 function routeForPath(path) {
     return `${ROUTE_PREFIX}/${path.split('/').map(segment => encodeURIComponent(segment)).join('/')}`;
 }
+function padded(value) {
+    return String(value).padStart(2, '0');
+}
+function dateStamp(value) {
+    return `${String(value.getFullYear())}-${padded(value.getMonth() + 1)}-${padded(value.getDate())}`;
+}
+function minuteStamp(value) {
+    return `${dateStamp(value).replaceAll('-', '')}${padded(value.getHours())}${padded(value.getMinutes())}`;
+}
 function initialSnapshot() {
     return Object.freeze({
+        dispatchDialog: null,
         documentKind: null,
         entries: Object.freeze([]),
         focusedPaneId: 'pane-1',
@@ -72,6 +83,8 @@ function initialSnapshot() {
         phase: 'loading',
         revision: null,
         saveStatus: 'saved',
+        searchOpen: false,
+        searchQuery: '',
         source: '',
         panes: Object.freeze([Object.freeze({
                 activePath: null,
@@ -86,21 +99,195 @@ function initialSnapshot() {
 export class WorkbenchRouteController {
     remote;
     navigate;
+    now;
     snapshot = initialSnapshot();
     listeners = new Set();
     operation = 0;
+    dispatchRevision = 0;
     operationAbort = null;
     saveAbort = null;
     saving = null;
     eventDispose = null;
+    pendingDispatch = null;
     pathname = ROUTE_PREFIX;
     started = false;
     disposed = false;
-    constructor(remote, navigate) {
+    constructor(remote, navigate, now = () => new Date()) {
         this.remote = remote;
         this.navigate = navigate;
+        this.now = now;
     }
     getSnapshot = () => this.snapshot;
+    async handleDispatch(event) {
+        const vault = this.snapshot.vault;
+        if (this.disposed || this.snapshot.phase !== 'ready' || vault === null)
+            return 'stale';
+        const revision = this.dispatchRevision;
+        if (event.operationId.length === 0 || event.operationId.length > 256
+            || /[\u0000-\u001f\u007f]/u.test(event.operationId))
+            return 'failed';
+        if (event.kind === 'quick-action') {
+            if (event.action === 'new' || event.action === 'capture') {
+                return await this.openDispatchDialog(event.action, event.operationId, revision, vault);
+            }
+            if (event.action === 'search') {
+                this.openSearch('');
+                return 'handled';
+            }
+        }
+        const request = event.kind === 'protocol'
+            ? event.request
+            : event.action === 'daily' ? { action: 'daily' } : undefined;
+        if (request === undefined)
+            return 'failed';
+        if (request.action === 'choose-vault' || request.paneType === 'window')
+            return 'failed';
+        if (request.action === 'search') {
+            if (request.query !== undefined && request.query.length > 1_000)
+                return 'failed';
+            this.openSearch(request.query ?? '');
+            return 'handled';
+        }
+        if (request.action === 'open') {
+            if (request.file === undefined) {
+                if (this.snapshot.saveStatus !== 'saved' && !await this.save())
+                    return 'failed';
+                if (!this.dispatchCurrent(revision, vault))
+                    return 'stale';
+                this.navigate(ROUTE_PREFIX);
+                return 'handled';
+            }
+            const opened = await this.select(request.file);
+            if (!this.dispatchCurrent(revision, vault))
+                return 'stale';
+            return opened ? 'handled' : 'failed';
+        }
+        if (request.action === 'daily') {
+            const day = dateStamp(this.now());
+            const path = `Journals/${day}.md`;
+            const exists = this.snapshot.path === path || this.snapshot.entries.some(entry => entry.path === path);
+            if (exists) {
+                if (request.content !== undefined || request.ifExists !== undefined)
+                    return 'failed';
+                if (request.silent === true)
+                    return 'handled';
+                const opened = await this.select(path);
+                if (!this.dispatchCurrent(revision, vault))
+                    return 'stale';
+                return opened ? 'handled' : 'failed';
+            }
+            return await this.createDispatchedDocument(path, request.content ?? `---\njournal-date: ${day}\n---\n# ${day}\n`, request.silent === true, revision, vault);
+        }
+        if (request.action === 'unique') {
+            return await this.createDispatchedDocument(`${minuteStamp(this.now())}.md`, request.content ?? '', request.silent === true, revision, vault);
+        }
+        if (request.action !== 'new')
+            return 'failed';
+        const path = request.file ?? (request.name === undefined
+            ? undefined
+            : /\.md$/iu.test(request.name) ? request.name : `${request.name}.md`);
+        if (path === undefined || !isSafeVaultRelativePath(path) || !/\.md$/iu.test(path))
+            return 'failed';
+        return await this.createDispatchedDocument(path, request.content ?? '', request.silent === true, revision, vault);
+    }
+    async createDispatchedDocument(path, content, silent, revision, vault) {
+        if (!isSafeVaultRelativePath(path) || !/\.md$/iu.test(path) || !boundedSource(content))
+            return 'failed';
+        if (this.snapshot.saveStatus !== 'saved' && !await this.save())
+            return 'failed';
+        if (!this.dispatchCurrent(revision, vault))
+            return 'stale';
+        try {
+            const created = remoteValue(await this.remote.tocktutorWorkbench.createDocument({
+                content,
+                expectedVault: vault,
+                path,
+            }));
+            if (!this.dispatchCurrent(revision, vault))
+                return 'stale';
+            if (created.generation !== vault.generation || created.path !== path || created.status !== 'created')
+                return 'failed';
+            if (silent)
+                return 'handled';
+            this.update({
+                documentKind: 'markdown',
+                message: `${path} created.`,
+                mode: 'source',
+                path,
+                revision: created.revision,
+                saveStatus: 'saved',
+                source: content,
+            });
+            this.recordOpen(path);
+            this.navigate(routeForPath(path));
+            return 'handled';
+        }
+        catch {
+            return this.dispatchCurrent(revision, vault) ? 'failed' : 'stale';
+        }
+    }
+    openDispatchDialog(kind, operationId, revision, vault) {
+        this.settlePendingDispatch('stale');
+        this.update({ dispatchDialog: kind });
+        return new Promise(resolve => {
+            this.pendingDispatch = { kind, operationId, resolve, revision, submitting: false, vault };
+        });
+    }
+    async submitDispatchDialog(draft) {
+        const pending = this.pendingDispatch;
+        if (pending === null || pending.submitting)
+            return;
+        pending.submitting = true;
+        let path;
+        let content;
+        if (pending.kind === 'new') {
+            path = draft.path?.trim() ?? '';
+            content = '';
+        }
+        else {
+            const title = draft.title?.trim() ?? '';
+            const text = draft.text?.trim() ?? '';
+            const slug = title.normalize('NFKD')
+                .replace(/[\u0300-\u036f]/gu, '')
+                .toLowerCase()
+                .replace(/[^a-z0-9]+/gu, '-')
+                .replace(/^-|-$/gu, '')
+                .slice(0, 80);
+            if (title.length === 0 || title.length > 200 || text.length > 100_000 || slug.length === 0) {
+                this.settlePendingDispatch('failed');
+                return;
+            }
+            path = `Inbox/${dateStamp(this.now())}-${slug}.md`;
+            content = `# ${title}\n\n${text}`;
+        }
+        const result = await this.createDispatchedDocument(path, content, false, pending.revision, pending.vault);
+        if (this.pendingDispatch === pending)
+            this.settlePendingDispatch(result);
+    }
+    cancelDispatchDialog() {
+        this.settlePendingDispatch('failed');
+    }
+    setSearchQuery(query) {
+        if (query.length <= 1_000)
+            this.update({ searchQuery: query });
+    }
+    closeSearch() {
+        this.update({ searchOpen: false, searchQuery: '' });
+    }
+    openSearch(query) {
+        this.update({ searchOpen: true, searchQuery: query });
+    }
+    settlePendingDispatch(result) {
+        const pending = this.pendingDispatch;
+        if (pending === null)
+            return;
+        this.pendingDispatch = null;
+        this.update({ dispatchDialog: null });
+        pending.resolve(result);
+    }
+    dispatchCurrent(revision, vault) {
+        return !this.disposed && revision === this.dispatchRevision && sameVault(this.snapshot.vault, vault);
+    }
     subscribe = (listener) => {
         this.listeners.add(listener);
         return () => { this.listeners.delete(listener); };
@@ -196,10 +383,13 @@ export class WorkbenchRouteController {
         this.clearDocument();
     }
     async reload() {
+        this.dispatchRevision += 1;
+        this.settlePendingDispatch('stale');
         const operation = this.nextOperation();
         this.eventDispose?.();
         this.eventDispose = null;
         this.update({
+            dispatchDialog: null,
             documentKind: null,
             entries: Object.freeze([]),
             focusedPaneId: 'pane-1',
@@ -208,6 +398,8 @@ export class WorkbenchRouteController {
             phase: 'loading',
             revision: null,
             saveStatus: 'saved',
+            searchOpen: false,
+            searchQuery: '',
             source: '',
             panes: Object.freeze([Object.freeze({
                     activePath: null,
@@ -500,7 +692,9 @@ export class WorkbenchRouteController {
     dispose() {
         if (this.disposed)
             return;
+        this.settlePendingDispatch('stale');
         this.disposed = true;
+        this.dispatchRevision += 1;
         this.operation += 1;
         this.operationAbort?.abort();
         this.saveAbort?.abort();
@@ -535,6 +729,20 @@ function BaseView(props) {
         return _jsx("p", { role: "alert", children: projection.reason });
     return (_jsxs("section", { "aria-label": "Base View", className: "tocktutor-projection", tabIndex: -1, children: [_jsxs("header", { children: [_jsx("p", { className: "tocktutor-kicker", children: "Base" }), _jsxs("h3", { children: [projection.views.length, " Views"] })] }), _jsx("div", { className: "tocktutor-base-grid", children: projection.views.map((view, index) => (_jsxs("article", { className: "tocktutor-base-view", children: [_jsx("p", { className: "tocktutor-kicker", children: view.type || 'Unknown Type' }), _jsx("h4", { children: view.name }), _jsx("dl", { children: Object.entries(view.fields).map(([field, value]) => (_jsxs("div", { children: [_jsx("dt", { children: field }), _jsx("dd", { children: value || '—' })] }, field))) }), view.warnings.map(warning => _jsx("p", { role: "note", children: warning }, warning))] }, `${view.name}-${String(index)}`))) })] }));
 }
+function NativeDispatchDialog(props) {
+    const submit = (event) => {
+        event.preventDefault();
+        const form = new FormData(event.currentTarget);
+        props.onSubmit(props.kind === 'new'
+            ? { path: String(form.get('path') ?? '') }
+            : {
+                text: String(form.get('text') ?? ''),
+                title: String(form.get('title') ?? ''),
+            });
+    };
+    const label = props.kind === 'new' ? 'New Note' : 'Quick Capture';
+    return (_jsx("dialog", { "aria-label": label, className: "tocktutor-dispatch-dialog", onCancel: event => { event.preventDefault(); props.onCancel(); }, open: true, children: _jsxs("form", { onSubmit: submit, children: [_jsx("header", { children: _jsx("h2", { children: label }) }), props.kind === 'new' ? (_jsxs("label", { children: ["Note Path", _jsx("input", { "aria-label": "New Note Path", autoFocus: true, maxLength: 1_000, name: "path", required: true })] })) : (_jsxs(_Fragment, { children: [_jsxs("label", { children: ["Title", _jsx("input", { "aria-label": "Capture Title", autoFocus: true, maxLength: 200, name: "title", required: true })] }), _jsxs("label", { children: ["Text", _jsx("textarea", { "aria-label": "Capture Text", maxLength: 100_000, name: "text" })] })] })), _jsxs("div", { className: "tocktutor-dialog-actions", children: [_jsx("button", { onClick: props.onCancel, type: "button", children: "Cancel" }), _jsx("button", { type: "submit", children: "Create" })] })] }) }));
+}
 /** Semantic, authority-free view for the route state machine. */
 export function TockTutorRouteView(props) {
     const { snapshot } = props;
@@ -549,9 +757,12 @@ export function TockTutorRouteView(props) {
     const sourceLabel = snapshot.documentKind === 'canvas'
         ? 'Canvas Source'
         : snapshot.documentKind === 'base' ? 'Base Source' : 'Markdown Source';
-    const documents = snapshot.entries.filter(entry => entry.kind === 'document' && supportedDocument(entry.path));
+    const query = snapshot.searchQuery.trim().toLocaleLowerCase();
+    const documents = snapshot.entries.filter(entry => entry.kind === 'document'
+        && supportedDocument(entry.path)
+        && (query === '' || entry.path.toLocaleLowerCase().includes(query)));
     const focusedPane = snapshot.panes.find(pane => pane.id === snapshot.focusedPaneId);
-    return (_jsxs("main", { "aria-label": "TockTutor Workbench", className: "tocktutor-workbench", "data-phase": snapshot.phase, tabIndex: -1, children: [_jsx("style", { children: ROUTE_CSS }), _jsxs("header", { className: "tocktutor-header", children: [_jsxs("div", { children: [_jsx("p", { className: "tocktutor-kicker", children: "Local Notes" }), _jsx("h1", { children: "TockTutor" })] }), _jsx("output", { "aria-live": "polite", className: "tocktutor-status", children: snapshot.path === null ? snapshot.message : editorStatusLabel(snapshot.saveStatus) })] }), _jsxs("div", { className: "tocktutor-grid", children: [_jsxs("aside", { className: "tocktutor-sidebar", children: [_jsxs("nav", { "aria-label": "Vault Notes", children: [_jsx("h2", { children: "Vault Notes" }), snapshot.phase === 'loading' && _jsx("p", { children: "Loading notes\u2026" }), snapshot.phase === 'inactive' && _jsx("p", { role: "alert", children: "No Active Vault" }), snapshot.phase === 'error' && _jsx("p", { role: "alert", children: snapshot.message }), snapshot.phase === 'ready' && documents.length === 0 && _jsx("p", { children: "No supported notes found." }), _jsx("ul", { children: documents.map(entry => (_jsx("li", { children: _jsx("button", { "aria-current": entry.path === snapshot.path ? 'page' : undefined, onClick: () => { props.onSelect(entry.path); }, title: entry.path, type: "button", children: entry.path }) }, entry.path))) })] }), _jsxs("section", { "aria-label": "Pane Groups", className: "tocktutor-pane-groups", children: [_jsxs("div", { className: "tocktutor-pane-heading", children: [_jsx("h2", { children: "Pane Groups" }), _jsx("button", { "aria-label": "Add Pane", disabled: snapshot.panes.length >= MAX_PANE_GROUPS, onClick: props.onAddPane, type: "button", children: "+" })] }), _jsx("div", { className: "tocktutor-pane-list", children: snapshot.panes.map((pane, index) => (_jsxs("button", { "aria-pressed": pane.id === snapshot.focusedPaneId, onClick: () => { props.onFocusPane(pane.id); }, title: pane.activePath ?? `Pane ${String(index + 1)}`, type: "button", children: [_jsxs("span", { children: ["Pane ", String(index + 1)] }), _jsx("small", { children: pane.activePath ?? 'Empty' })] }, pane.id))) }), focusedPane !== undefined && focusedPane.tabs.length > 0 && (_jsx("div", { "aria-label": "Note Tabs", className: "tocktutor-tab-list", role: "tablist", children: focusedPane.tabs.map((tab, index) => (_jsxs("button", { "aria-selected": tab.path === focusedPane.activePath, onClick: () => { props.onActivateTab(focusedPane.id, tab.path); }, onKeyDown: event => {
+    return (_jsxs("main", { "aria-label": "TockTutor Workbench", className: "tocktutor-workbench", "data-phase": snapshot.phase, tabIndex: -1, children: [_jsx("style", { children: ROUTE_CSS }), _jsxs("header", { className: "tocktutor-header", children: [_jsxs("div", { children: [_jsx("p", { className: "tocktutor-kicker", children: "Local Notes" }), _jsx("h1", { children: "TockTutor" })] }), _jsx("output", { "aria-live": "polite", className: "tocktutor-status", children: snapshot.path === null ? snapshot.message : editorStatusLabel(snapshot.saveStatus) })] }), snapshot.dispatchDialog !== null && (_jsx(NativeDispatchDialog, { kind: snapshot.dispatchDialog, onCancel: () => { props.onCancelDispatch?.(); }, onSubmit: draft => { props.onSubmitDispatch?.(draft); } })), _jsxs("div", { className: "tocktutor-grid", children: [_jsxs("aside", { className: "tocktutor-sidebar", children: [snapshot.searchOpen && (_jsxs("section", { "aria-label": "Search Notes", className: "tocktutor-search", children: [_jsx("label", { htmlFor: "tocktutor-search-query", children: "Search Notes" }), _jsxs("div", { children: [_jsx("input", { "aria-label": "Search Notes Query", autoFocus: true, id: "tocktutor-search-query", maxLength: 1_000, onChange: event => { props.onSearchChange?.(event.target.value); }, type: "search", value: snapshot.searchQuery }), _jsx("button", { "aria-label": "Close Search", onClick: () => { props.onCloseSearch?.(); }, type: "button", children: "\u00D7" })] }), _jsxs("p", { "aria-live": "polite", role: "status", children: [documents.length, " matching notes."] })] })), _jsxs("nav", { "aria-label": "Vault Notes", children: [_jsx("h2", { children: "Vault Notes" }), snapshot.phase === 'loading' && _jsx("p", { children: "Loading notes\u2026" }), snapshot.phase === 'inactive' && _jsx("p", { role: "alert", children: "No Active Vault" }), snapshot.phase === 'error' && _jsx("p", { role: "alert", children: snapshot.message }), snapshot.phase === 'ready' && documents.length === 0 && _jsx("p", { children: "No supported notes found." }), _jsx("ul", { children: documents.map(entry => (_jsx("li", { children: _jsx("button", { "aria-current": entry.path === snapshot.path ? 'page' : undefined, onClick: () => { props.onSelect(entry.path); }, title: entry.path, type: "button", children: entry.path }) }, entry.path))) })] }), _jsxs("section", { "aria-label": "Pane Groups", className: "tocktutor-pane-groups", children: [_jsxs("div", { className: "tocktutor-pane-heading", children: [_jsx("h2", { children: "Pane Groups" }), _jsx("button", { "aria-label": "Add Pane", disabled: snapshot.panes.length >= MAX_PANE_GROUPS, onClick: props.onAddPane, type: "button", children: "+" })] }), _jsx("div", { className: "tocktutor-pane-list", children: snapshot.panes.map((pane, index) => (_jsxs("button", { "aria-pressed": pane.id === snapshot.focusedPaneId, onClick: () => { props.onFocusPane(pane.id); }, title: pane.activePath ?? `Pane ${String(index + 1)}`, type: "button", children: [_jsxs("span", { children: ["Pane ", String(index + 1)] }), _jsx("small", { children: pane.activePath ?? 'Empty' })] }, pane.id))) }), focusedPane !== undefined && focusedPane.tabs.length > 0 && (_jsx("div", { "aria-label": "Note Tabs", className: "tocktutor-tab-list", role: "tablist", children: focusedPane.tabs.map((tab, index) => (_jsxs("button", { "aria-selected": tab.path === focusedPane.activePath, onClick: () => { props.onActivateTab(focusedPane.id, tab.path); }, onKeyDown: event => {
                                                 if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight')
                                                     return;
                                                 event.preventDefault();
@@ -559,7 +770,7 @@ export function TockTutorRouteView(props) {
                                                 const next = focusedPane.tabs[(index + offset + focusedPane.tabs.length) % focusedPane.tabs.length];
                                                 if (next !== undefined)
                                                     props.onActivateTab(focusedPane.id, next.path);
-                                            }, role: "tab", tabIndex: tab.path === focusedPane.activePath ? 0 : -1, title: tab.path, type: "button", children: [tab.dirty && _jsx("span", { "aria-label": "Unsaved", children: "\u2022" }), tab.path] }, tab.path))) }))] })] }), _jsx("section", { "aria-label": "Note Editor", className: "tocktutor-editor", children: snapshot.path === null ? (_jsxs("div", { className: "tocktutor-empty", children: [_jsx("p", { className: "tocktutor-kicker", children: "Ready When You Are" }), _jsx("h2", { children: "Select a Note" }), _jsx("p", { children: "Choose a Markdown note from the vault to read or edit its exact source." })] })) : (_jsxs(_Fragment, { children: [_jsxs("div", { className: "tocktutor-toolbar", children: [_jsxs("div", { className: "tocktutor-title", children: [_jsx("p", { className: "tocktutor-kicker", children: "Active Note" }), _jsx("h2", { children: snapshot.path })] }), _jsxs("fieldset", { className: "tocktutor-segment", children: [_jsx("legend", { className: "tocktutor-visually-hidden", children: "Editor Mode" }), _jsx("button", { "aria-pressed": snapshot.mode === 'source', onClick: () => { props.onMode('source'); }, type: "button", children: "Source" }), _jsx("button", { "aria-pressed": snapshot.mode === 'reading', onClick: () => { props.onMode('reading'); }, type: "button", children: previewLabel })] }), _jsx("button", { className: "tocktutor-save", disabled: snapshot.saveStatus === 'saved' || snapshot.saveStatus === 'saving', onClick: props.onSave, type: "button", children: snapshot.saveStatus === 'saving' ? 'Saving…' : 'Save' })] }), snapshot.mode === 'source' ? (_jsx("textarea", { "aria-label": sourceLabel, onChange: (event) => { props.onEdit(event.target.value); }, spellCheck: "true", value: snapshot.source })) : snapshot.documentKind === 'canvas' ? (_jsx(CanvasView, { onMove: props.onMoveCanvas, source: snapshot.source })) : snapshot.documentKind === 'base' ? (_jsx(BaseView, { source: snapshot.source })) : reading?.status === 'ready' ? (_jsxs("article", { "aria-label": "Reading View", className: "tocktutor-reading", tabIndex: -1, children: [reading.warnings.map(warning => _jsx("p", { className: "tocktutor-warning", role: "note", children: warning }, warning)), reading.blocks.map((block, index) => (_jsx(ReadingBlockView, { block: block, onToggleTask: props.onToggleTask }, `${block.kind}-${String(index)}`)))] })) : (_jsx("p", { role: "alert", children: reading?.reason ?? 'Reading view is unavailable.' })), _jsx("p", { "aria-live": "polite", className: "tocktutor-message", role: "status", children: snapshot.message })] })) }), _jsxs("div", { className: "tocktutor-right-rail", children: [_jsxs("aside", { "aria-label": "Assistant Panel", className: "tocktutor-assistant", children: [_jsx("header", { children: _jsx("h2", { children: "Assistant" }) }), _jsx("div", { className: "tocktutor-assistant-content", children: props.assistantPanel })] }), _jsxs("section", { "aria-label": "Shared Review Panel", className: "tocktutor-review", children: [_jsx("header", { children: _jsx("h2", { children: "Reviews" }) }), _jsx("div", { className: "tocktutor-review-content", children: props.reviewPanel ?? _jsx("p", { role: "status", children: "No review workflow is active." }) })] })] })] })] }));
+                                            }, role: "tab", tabIndex: tab.path === focusedPane.activePath ? 0 : -1, title: tab.path, type: "button", children: [tab.dirty && _jsx("span", { "aria-label": "Unsaved", children: "\u2022" }), tab.path] }, tab.path))) }))] })] }), _jsx("section", { "aria-label": "Note Editor", className: "tocktutor-editor", children: snapshot.path === null ? (_jsxs("div", { className: "tocktutor-empty", children: [_jsx("p", { className: "tocktutor-kicker", children: "Ready When You Are" }), _jsx("h2", { children: "Select a Note" }), _jsx("p", { children: "Choose a Markdown note from the vault to read or edit its exact source." })] })) : (_jsxs(_Fragment, { children: [_jsxs("div", { className: "tocktutor-toolbar", children: [_jsxs("div", { className: "tocktutor-title", children: [_jsx("p", { className: "tocktutor-kicker", children: "Active Note" }), _jsx("h2", { children: snapshot.path })] }), _jsxs("fieldset", { className: "tocktutor-segment", children: [_jsx("legend", { className: "tocktutor-visually-hidden", children: "Editor Mode" }), _jsx("button", { "aria-pressed": snapshot.mode === 'source', onClick: () => { props.onMode('source'); }, type: "button", children: "Source" }), _jsx("button", { "aria-pressed": snapshot.mode === 'reading', onClick: () => { props.onMode('reading'); }, type: "button", children: previewLabel })] }), _jsx("button", { className: "tocktutor-save", disabled: snapshot.saveStatus === 'saved' || snapshot.saveStatus === 'saving', onClick: props.onSave, type: "button", children: snapshot.saveStatus === 'saving' ? 'Saving…' : 'Save' })] }), snapshot.mode === 'source' ? (_jsx("textarea", { "aria-label": sourceLabel, onChange: (event) => { props.onEdit(event.target.value); }, spellCheck: "true", value: snapshot.source })) : snapshot.documentKind === 'canvas' ? (_jsx(CanvasView, { onMove: props.onMoveCanvas, source: snapshot.source })) : snapshot.documentKind === 'base' ? (_jsx(BaseView, { source: snapshot.source })) : reading?.status === 'ready' ? (_jsxs("article", { "aria-label": "Reading View", className: "tocktutor-reading", tabIndex: -1, children: [reading.warnings.map(warning => _jsx("p", { className: "tocktutor-warning", role: "note", children: warning }, warning)), reading.blocks.map((block, index) => (_jsx(ReadingBlockView, { block: block, onToggleTask: props.onToggleTask }, `${block.kind}-${String(index)}`)))] })) : (_jsx("p", { role: "alert", children: reading?.reason ?? 'Reading view is unavailable.' })), _jsx("p", { "aria-live": "polite", className: "tocktutor-message", role: "status", children: snapshot.message })] })) }), _jsxs("div", { className: "tocktutor-right-rail", children: [_jsxs("aside", { "aria-label": "Assistant Panel", className: "tocktutor-assistant", children: [_jsx("header", { children: _jsx("h2", { children: "Assistant" }) }), _jsx("div", { className: "tocktutor-assistant-content", children: props.assistantPanel })] }), _jsxs("section", { "aria-label": "Shared Review Panel", className: "tocktutor-review", children: [_jsx("header", { children: _jsx("h2", { children: "Reviews" }) }), _jsx("div", { className: "tocktutor-review-content", children: props.reviewPanel ?? _jsx("p", { role: "status", children: "No review workflow is active." }) })] }), _jsxs("section", { "aria-label": "Native Actions", className: "tocktutor-native-actions", children: [_jsx("header", { children: _jsx("h2", { children: "Native Actions" }) }), _jsx("div", { className: "tocktutor-native-actions-content", children: props.nativeActions ?? _jsx("p", { role: "status", children: "No native actions are available." }) })] })] })] })] }));
 }
 function TockTutorAssistantPanelOutlet(props) {
     return props.renderSlot(TOCKTUTOR_ASSISTANT_PANEL_SLOT, {
@@ -573,6 +784,15 @@ function TockTutorReviewPanelOutlet(props) {
         vault: props.vault,
     }, {
         fallback: _jsx("p", { role: "status", children: "No review workflow is active." }),
+    });
+}
+function TockTutorNativeActionsOutlet(props) {
+    return props.renderSlot(TOCKTUTOR_NATIVE_ACTIONS_SLOT, {
+        activePath: props.activePath,
+        handleDispatch: props.handleDispatch,
+        vault: props.vault,
+    }, {
+        fallback: _jsx("p", { role: "status", children: "No native actions are available." }),
     });
 }
 /** Root-scoped component contributed to TockTeam's exact Desktop route seat. */
@@ -590,6 +810,10 @@ export function TockTutorRoute(props) {
         root.current?.querySelector(snapshot.mode === 'source' ? 'textarea' : '[aria-label$="View"]')?.focus();
     }, [snapshot.mode, snapshot.path]);
     useEffect(() => {
+        if (snapshot.searchOpen)
+            root.current?.querySelector('[aria-label="Search Notes Query"]')?.focus();
+    }, [snapshot.searchOpen]);
+    useEffect(() => {
         const node = root.current;
         if (node === null)
             return;
@@ -603,7 +827,7 @@ export function TockTutorRoute(props) {
         node.addEventListener('keydown', onKeyDown);
         return () => { node.removeEventListener('keydown', onKeyDown); };
     }, [controller]);
-    return (_jsx("div", { className: "tocktutor-root", ref: root, children: _jsx(TockTutorRouteView, { assistantPanel: (_jsx(TockTutorAssistantPanelOutlet, { activePath: snapshot.path, renderSlot: props.renderSlot, vault: snapshot.vault })), onActivateTab: (paneId, path) => { void controller.activateTab(paneId, path); }, onAddPane: () => { void controller.addPane(); }, onEdit: source => { controller.edit(source); }, onFocusPane: paneId => { void controller.focusPane(paneId); }, onMode: mode => { controller.setMode(mode); }, onMoveCanvas: (nodeId, deltaX, deltaY) => { controller.moveCanvasNode(nodeId, deltaX, deltaY); }, onSave: () => { void controller.save(); }, onSelect: path => { void controller.select(path); }, onToggleTask: index => { controller.toggleTask(index); }, reviewPanel: (_jsx(TockTutorReviewPanelOutlet, { activePath: snapshot.path, renderSlot: props.renderSlot, vault: snapshot.vault })), snapshot: snapshot }) }));
+    return (_jsx("div", { className: "tocktutor-root", ref: root, children: _jsx(TockTutorRouteView, { assistantPanel: (_jsx(TockTutorAssistantPanelOutlet, { activePath: snapshot.path, renderSlot: props.renderSlot, vault: snapshot.vault })), nativeActions: (_jsx(TockTutorNativeActionsOutlet, { activePath: snapshot.path, handleDispatch: event => controller.handleDispatch(event), renderSlot: props.renderSlot, vault: snapshot.vault })), onActivateTab: (paneId, path) => { void controller.activateTab(paneId, path); }, onAddPane: () => { void controller.addPane(); }, onCancelDispatch: () => { controller.cancelDispatchDialog(); }, onCloseSearch: () => { controller.closeSearch(); }, onEdit: source => { controller.edit(source); }, onFocusPane: paneId => { void controller.focusPane(paneId); }, onMode: mode => { controller.setMode(mode); }, onMoveCanvas: (nodeId, deltaX, deltaY) => { controller.moveCanvasNode(nodeId, deltaX, deltaY); }, onSave: () => { void controller.save(); }, onSearchChange: query => { controller.setSearchQuery(query); }, onSelect: path => { void controller.select(path); }, onSubmitDispatch: draft => { void controller.submitDispatchDialog(draft); }, onToggleTask: index => { controller.toggleTask(index); }, reviewPanel: (_jsx(TockTutorReviewPanelOutlet, { activePath: snapshot.path, renderSlot: props.renderSlot, vault: snapshot.vault })), snapshot: snapshot }) }));
 }
 const ROUTE_CSS = `
 .tocktutor-root { height: 100%; min-height: 0; }
@@ -629,6 +853,12 @@ const ROUTE_CSS = `
 .tocktutor-status { background: color-mix(in srgb, var(--tt-accent) 10%, transparent); border-radius: 999px; color: var(--tt-accent); font-size: 12px; font-weight: 650; padding: 4px 9px; }
 .tocktutor-grid { display: grid; grid-template-columns: minmax(190px, 240px) minmax(0, 1fr) minmax(240px, 320px); min-height: 0; }
 .tocktutor-sidebar { background: var(--tt-panel); border-right: 1px solid var(--tt-border); min-height: 0; overflow: auto; padding: 18px 12px; }
+.tocktutor-search { border-bottom: 1px solid var(--tt-border); margin: 0 0 14px; padding: 0 8px 14px; }
+.tocktutor-search > label { display: block; font-size: 12px; font-weight: 650; margin-bottom: 6px; }
+.tocktutor-search > div { display: flex; gap: 4px; }
+.tocktutor-search input { border: 1px solid var(--tt-border); border-radius: 6px; font: inherit; min-width: 0; padding: 6px 8px; width: 100%; }
+.tocktutor-search button { border: 1px solid var(--tt-border); text-align: center; width: 32px; }
+.tocktutor-search p { color: var(--tt-muted); font-size: 11px; margin: 6px 0 0; }
 .tocktutor-sidebar h2 { font-size: 12px; letter-spacing: .04em; margin: 0 8px 10px; text-transform: uppercase; }
 .tocktutor-sidebar p { color: var(--tt-muted); margin: 10px 8px; }
 .tocktutor-sidebar ul { list-style: none; margin: 0; padding: 0; }
@@ -648,13 +878,13 @@ const ROUTE_CSS = `
 .tocktutor-tab-list button { align-items: center; display: flex; gap: 5px; }
 .tocktutor-tab-list button[aria-selected="true"] { background: color-mix(in srgb, var(--tt-accent) 10%, transparent); color: var(--tt-accent); font-weight: 650; }
 .tocktutor-editor { background: var(--tt-panel); display: grid; grid-template-rows: auto minmax(0, 1fr) auto; min-height: 0; overflow: hidden; }
-.tocktutor-right-rail { background: var(--tt-panel); border-left: 1px solid var(--tt-border); display: grid; grid-template-rows: minmax(0, 1fr) auto; min-height: 0; overflow: hidden; }
+.tocktutor-right-rail { background: var(--tt-panel); border-left: 1px solid var(--tt-border); display: grid; grid-template-rows: minmax(0, 1fr) auto auto; min-height: 0; overflow: hidden; }
 .tocktutor-assistant { display: grid; grid-template-rows: auto minmax(0, 1fr); min-height: 0; overflow: hidden; }
-.tocktutor-assistant > header, .tocktutor-review > header { border-bottom: 1px solid var(--tt-border); padding: 16px 18px; }
-.tocktutor-assistant h2, .tocktutor-review h2 { font-size: 14px; margin: 0; }
-.tocktutor-assistant-content, .tocktutor-review-content { min-height: 0; overflow: auto; }
-.tocktutor-review { border-top: 1px solid var(--tt-border); max-height: 40vh; min-height: 0; overflow: hidden; }
-.tocktutor-review-content > p[role="status"] { color: var(--tt-muted); margin: 0; padding: 14px 18px; }
+.tocktutor-assistant > header, .tocktutor-review > header, .tocktutor-native-actions > header { border-bottom: 1px solid var(--tt-border); padding: 16px 18px; }
+.tocktutor-assistant h2, .tocktutor-review h2, .tocktutor-native-actions h2 { font-size: 14px; margin: 0; }
+.tocktutor-assistant-content, .tocktutor-review-content, .tocktutor-native-actions-content { min-height: 0; overflow: auto; }
+.tocktutor-review, .tocktutor-native-actions { border-top: 1px solid var(--tt-border); max-height: 40vh; min-height: 0; overflow: hidden; }
+.tocktutor-review-content > p[role="status"], .tocktutor-native-actions-content > p[role="status"] { color: var(--tt-muted); margin: 0; padding: 14px 18px; }
 .tocktutor-toolbar { align-items: center; border-bottom: 1px solid var(--tt-border); display: grid; gap: 12px; grid-template-columns: minmax(0, 1fr) auto auto; padding: 12px 18px; }
 .tocktutor-title { min-width: 0; }
 .tocktutor-title h2 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -687,6 +917,14 @@ const ROUTE_CSS = `
 .tocktutor-message { border-top: 1px solid var(--tt-border); color: var(--tt-muted); font-size: 12px; margin: 0; padding: 7px 18px; }
 .tocktutor-empty { align-self: center; justify-self: center; max-width: 420px; padding: 32px; text-align: center; }
 .tocktutor-empty > p:last-child { color: var(--tt-muted); }
+.tocktutor-dispatch-dialog { align-items: center; background: rgb(0 0 0 / 35%); display: flex; inset: 0; justify-content: center; padding: 24px; position: fixed; z-index: 10; }
+.tocktutor-dispatch-dialog form { background: var(--tt-panel); border: 1px solid var(--tt-border); border-radius: 10px; display: grid; gap: 14px; max-width: 480px; padding: 20px; width: 100%; }
+.tocktutor-dispatch-dialog h2 { font-size: 17px; margin: 0; }
+.tocktutor-dispatch-dialog label { display: grid; font-weight: 650; gap: 5px; }
+.tocktutor-dispatch-dialog input, .tocktutor-dispatch-dialog textarea { border: 1px solid var(--tt-border); border-radius: 6px; font: inherit; padding: 8px; }
+.tocktutor-dispatch-dialog textarea { min-height: 120px; resize: vertical; }
+.tocktutor-dialog-actions { display: flex; gap: 8px; justify-content: flex-end; }
+.tocktutor-dialog-actions button { border: 1px solid var(--tt-border); border-radius: 6px; cursor: pointer; font: inherit; padding: 7px 12px; }
 .tocktutor-workbench button:focus-visible, .tocktutor-workbench input:focus-visible, .tocktutor-workbench textarea:focus-visible { outline: 2px solid var(--tt-accent); outline-offset: 2px; }
 @media (max-width: 1000px) {
   .tocktutor-grid { grid-template-columns: minmax(180px, 220px) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; }

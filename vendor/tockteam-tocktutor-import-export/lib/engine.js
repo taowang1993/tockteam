@@ -1,8 +1,13 @@
+import { createNativeOwnerLifetime } from '@tockteam/desktop/host';
 import { planVerifiedRestore } from "./backup.js";
-import { assertPlanContent, createReviewedPlan, destinationAliasKey, ImportExportError, sha256, stableJson, } from "./core.js";
+import { assertPlanContent, createReviewedPlan, destinationAliasKey, ImportExportError, normalizeAbort, sha256, stableJson, } from "./core.js";
 import { planAppleJournal, planBear, planCsv, planEvernote, planGoogleKeep, planHtml, planHtmlZip, planRoam, planTextbundle, planTextpack, } from "./formats/converters.js";
+import { isImportInspectFormat } from "./types.js";
 import { MARKDOWN_MAX_ENTRIES, MARKDOWN_MAX_ENTRY_BYTES, MARKDOWN_MAX_TOTAL_BYTES, planMarkdownFolder, planMarkdownZip, } from "./formats/markdown.js";
 const PLAN_LIFETIME_MS = 5 * 60 * 1_000;
+const MAX_ACTIVE_OPERATIONS = 1;
+const MAX_COMPLETED_OPERATIONS = 64;
+const MAX_COMPLETED_EVIDENCE_BYTES = 32 * 1024 * 1024;
 const SOURCE_PAGE_SIZE = 256;
 const SOURCE_CHUNK_SIZE = 1024 * 1024;
 const TREE_PAGE_SIZE = 1_000;
@@ -11,15 +16,10 @@ function assertVault(state, expected) {
         throw new ImportExportError('stale-vault');
     }
 }
-function desktopIdentity(identity) {
-    return {
-        operationId: identity.operationId,
-        requestId: identity.requestId,
-        sessionId: identity.sessionId,
-        vaultGeneration: identity.vault.generation,
-        vaultId: identity.vault.id,
-        windowId: identity.windowId,
-    };
+function vaultBinding(identity) {
+    if (identity.vaultId === null)
+        throw new ImportExportError('stale-vault');
+    return { generation: identity.vaultGeneration, id: identity.vaultId };
 }
 function sourceLimits(format) {
     const path = { maxRelativePathBytes: 4_096 };
@@ -40,6 +40,9 @@ function sourceLimits(format) {
 function sourceError(error) {
     if (error instanceof ImportExportError)
         throw error;
+    if (error instanceof Error && (error.name === 'AbortError' || error.name === 'TimeoutError')) {
+        throw new ImportExportError('aborted');
+    }
     if (error instanceof Error && 'code' in error) {
         const code = String(error.code);
         if (code === 'aborted')
@@ -57,9 +60,12 @@ function boundedPickerLabel(value) {
     return normalized || 'Selected Source';
 }
 async function inspectSource(picker, request, signal) {
-    const identity = desktopIdentity(request.identity);
+    const identity = request.identity;
     const limits = sourceLimits(request.format);
     const picked = await picker.pick({ identity, kind: 'source', purpose: request.format }, signal);
+    signal.throwIfAborted();
+    if (picked.operationId !== identity.operationId)
+        throw new ImportExportError('stale-source');
     if (picked.status !== 'selected') {
         if (picked.status === 'cancelled')
             throw new ImportExportError('aborted');
@@ -73,6 +79,7 @@ async function inspectSource(picker, request, signal) {
             limits,
             purpose: request.format,
         }, signal);
+        signal.throwIfAborted();
         const entries = [];
         let cursor = null;
         let scannedBytes = -1;
@@ -81,6 +88,7 @@ async function inspectSource(picker, request, signal) {
         for (;;) {
             signal.throwIfAborted();
             const page = await picker.listSource({ cursor, limit: SOURCE_PAGE_SIZE, session: begun.session }, signal);
+            signal.throwIfAborted();
             if (page.truncated || page.truncationReason !== null)
                 throw new ImportExportError('limit-exceeded');
             if (page.rootRevision !== fingerprint)
@@ -121,6 +129,7 @@ async function inspectSource(picker, request, signal) {
                     offset,
                     session: begun.session,
                 }, signal);
+                signal.throwIfAborted();
                 if (result.revision !== entry.revision || result.size !== entry.size
                     || result.nextOffset <= offset || result.nextOffset > entry.size
                     || result.bytes.byteLength !== result.nextOffset - offset) {
@@ -164,6 +173,7 @@ async function existingDestinations(runtime, vault, signal) {
     for (let pages = 0; pages <= 100; pages += 1) {
         signal.throwIfAborted();
         const page = await runtime.listTree({ cursor, expectedVault: vault, limit: TREE_PAGE_SIZE }, signal);
+        signal.throwIfAborted();
         if (page.generation !== vault.generation || page.truncated
             || page.truncationReason !== null || page.warnings.length > 0) {
             throw new ImportExportError('stale-vault');
@@ -220,12 +230,22 @@ function planSource(request, source) {
     }
 }
 function requestMatches(record, request) {
-    return record.browserSessionId === request.sessionId
-        && record.plan.token === request.reviewToken
+    return record.plan.token === request.reviewToken
         && record.plan.summary.operationId === request.operationId
-        && record.plan.summary.planDigest === request.planDigest
-        && record.plan.summary.vault.id === request.vault.id
-        && record.plan.summary.vault.generation === request.vault.generation;
+        && record.plan.summary.planDigest === request.planDigest;
+}
+function sameBinding(left, right) {
+    return left.operationId === right.operationId
+        && left.planDigest === right.planDigest
+        && left.reviewToken === right.reviewToken;
+}
+function sameIdentity(left, right) {
+    return left.operationId === right.operationId
+        && left.requestId === right.requestId
+        && left.sessionId === right.sessionId
+        && left.vaultGeneration === right.vaultGeneration
+        && left.vaultId === right.vaultId
+        && left.windowId === right.windowId;
 }
 function errorCode(error) {
     if (error instanceof Error && 'code' in error)
@@ -233,7 +253,12 @@ function errorCode(error) {
     return 'failed';
 }
 export class ReviewedOperationEngine {
-    lifetime = new AbortController();
+    cancelled = new Map();
+    completed = new Map();
+    completedEvidenceBytes = 0;
+    lifetime = createNativeOwnerLifetime();
+    pendingCommits = new Map();
+    pendingInspections = new Map();
     operations = new Map();
     options;
     used = new Set();
@@ -241,18 +266,101 @@ export class ReviewedOperationEngine {
     constructor(options) {
         this.options = options;
     }
-    async inspect(request, signal) {
+    inspect(request, signal) {
+        if (this.disposed)
+            return Promise.reject(new ImportExportError('aborted'));
+        const operationId = request.identity.operationId;
+        const pending = this.pendingInspections.get(operationId);
+        if (pending !== undefined) {
+            if (!sameIdentity(pending.identity, request.identity) || pending.format !== request.format) {
+                return Promise.reject(new ImportExportError('invalid-plan'));
+            }
+            return pending.promise;
+        }
+        const promise = normalizeAbort(this.lifetime.run(combined => this.inspectOwned(request, combined), signal), signal);
+        this.pendingInspections.set(operationId, { format: request.format, identity: request.identity, promise });
+        void promise.then(() => { if (this.pendingInspections.get(operationId)?.promise === promise)
+            this.pendingInspections.delete(operationId); }, () => { if (this.pendingInspections.get(operationId)?.promise === promise)
+            this.pendingInspections.delete(operationId); });
+        return promise;
+    }
+    approve(request) {
+        if (this.disposed)
+            return Promise.reject(new ImportExportError('not-found'));
+        return normalizeAbort(this.lifetime.run(() => this.approveOwned(request)));
+    }
+    commit(request, signal) {
+        if (this.disposed)
+            return Promise.reject(new ImportExportError('not-found'));
+        const pending = this.pendingCommits.get(request.operationId);
+        if (pending !== undefined) {
+            if (!sameBinding(pending.binding, request))
+                return Promise.reject(new ImportExportError('invalid-plan'));
+            return pending.promise;
+        }
+        const promise = normalizeAbort(this.lifetime.run(combined => this.commitOwned(request, combined), signal), signal);
+        this.pendingCommits.set(request.operationId, { binding: { ...request }, promise });
+        void promise.then(() => { if (this.pendingCommits.get(request.operationId)?.promise === promise)
+            this.pendingCommits.delete(request.operationId); }, () => { if (this.pendingCommits.get(request.operationId)?.promise === promise)
+            this.pendingCommits.delete(request.operationId); });
+        return promise;
+    }
+    cancel(request) {
+        if (this.disposed)
+            return Promise.reject(new ImportExportError('not-found'));
+        return normalizeAbort(this.lifetime.run(() => this.cancelOwned(request)));
+    }
+    abandon(request) {
+        if (this.disposed)
+            return Promise.reject(new ImportExportError('not-found'));
+        return normalizeAbort(this.lifetime.run(async () => {
+            const operationId = request.identity.operationId;
+            const pending = this.pendingInspections.get(operationId);
+            if (pending !== undefined) {
+                if (!sameIdentity(pending.identity, request.identity) || pending.format !== request.format) {
+                    throw new ImportExportError('invalid-plan');
+                }
+                await pending.promise.catch(() => undefined);
+            }
+            const record = this.operations.get(operationId);
+            if (record === undefined || record.state === 'used')
+                return { status: 'cancelled' };
+            if (!sameIdentity(record.identity, request.identity) || record.plan.summary.source.format !== request.format) {
+                throw new ImportExportError('invalid-plan');
+            }
+            await this.close(operationId, record);
+            this.rememberUsed(operationId);
+            return { status: 'cancelled' };
+        }));
+    }
+    async inspectOwned(request, combined) {
         if (this.disposed)
             throw new ImportExportError('aborted');
-        if (this.operations.has(request.identity.operationId) || this.used.has(request.identity.operationId)) {
+        if (!isImportInspectFormat(request.format))
+            throw new ImportExportError('unsupported-type');
+        const operationId = request.identity.operationId;
+        const active = this.operations.get(operationId);
+        if (active !== undefined) {
+            if (active.state === 'used')
+                throw new ImportExportError('replayed');
+            if (!sameIdentity(active.identity, request.identity) || active.plan.summary.source.format !== request.format) {
+                throw new ImportExportError('invalid-plan');
+            }
+            return { ...active.plan.summary, reviewToken: active.plan.token };
+        }
+        if (this.completed.has(operationId) || this.cancelled.has(operationId) || this.used.has(operationId)) {
             throw new ImportExportError('replayed');
         }
-        assertVault(this.options.runtime.state, request.identity.vault);
-        const combined = AbortSignal.any([signal, this.lifetime.signal]);
+        if (this.operations.size >= MAX_ACTIVE_OPERATIONS || this.pendingInspections.size >= MAX_ACTIVE_OPERATIONS) {
+            throw new ImportExportError('limit-exceeded');
+        }
+        const vault = vaultBinding(request.identity);
+        assertVault(this.options.runtime.state, vault);
         const source = await inspectSource(this.options.picker, request, combined);
         try {
             const planned = planSource(request, source);
-            const existing = await existingDestinations(this.options.runtime, request.identity.vault, combined);
+            const existing = await existingDestinations(this.options.runtime, vault, combined);
+            assertVault(this.options.runtime.state, vault);
             const files = [];
             const destinationSkips = [];
             for (const file of planned.files) {
@@ -268,7 +376,7 @@ export class ReviewedOperationEngine {
                 createdAt: now,
                 expiresAt: Math.min(source.expiresAt, now + PLAN_LIFETIME_MS),
                 files,
-                operationId: request.identity.operationId,
+                operationId,
                 skipped,
                 source: {
                     digest: sha256(stableJson(source.files.map(file => ({
@@ -282,15 +390,18 @@ export class ReviewedOperationEngine {
                     size: source.size,
                 },
                 token: this.options.randomToken(),
-                vault: request.identity.vault,
+                vault,
                 warnings: planned.warnings,
             });
-            this.operations.set(request.identity.operationId, {
-                browserSessionId: request.identity.sessionId,
+            const record = {
+                expiryTimer: undefined,
+                identity: request.identity,
                 plan,
                 source,
                 state: 'pending',
-            });
+            };
+            this.operations.set(operationId, record);
+            this.scheduleExpiry(operationId, record);
             return { ...plan.summary, reviewToken: plan.token };
         }
         catch (error) {
@@ -298,14 +409,16 @@ export class ReviewedOperationEngine {
             throw error;
         }
     }
-    async approve(request) {
+    async approveOwned(request) {
         const record = this.operations.get(request.operationId);
         if (record === undefined || this.disposed)
             throw new ImportExportError('not-found');
-        if (record.state !== 'pending')
-            throw new ImportExportError('replayed');
         if (!requestMatches(record, request))
             throw new ImportExportError('invalid-plan');
+        if (record.state === 'approved')
+            return { status: 'approved' };
+        if (record.state !== 'pending')
+            throw new ImportExportError('replayed');
         if (record.plan.summary.expiresAt <= this.options.now()) {
             await this.close(request.operationId, record);
             throw new ImportExportError('expired');
@@ -313,7 +426,13 @@ export class ReviewedOperationEngine {
         record.state = 'approved';
         return { status: 'approved' };
     }
-    async commit(request, signal) {
+    async commitOwned(request, combined) {
+        const completed = this.completed.get(request.operationId);
+        if (completed !== undefined) {
+            if (!sameBinding(completed.binding, request))
+                throw new ImportExportError('invalid-plan');
+            return completed.result;
+        }
         const record = this.operations.get(request.operationId);
         if (record === undefined || this.disposed) {
             if (this.used.has(request.operationId))
@@ -326,7 +445,9 @@ export class ReviewedOperationEngine {
             throw new ImportExportError('invalid-plan');
         }
         record.state = 'used';
-        const combined = AbortSignal.any([signal, this.lifetime.signal]);
+        if (record.expiryTimer !== undefined)
+            clearTimeout(record.expiryTimer);
+        record.expiryTimer = undefined;
         try {
             if (record.plan.summary.expiresAt <= this.options.now())
                 throw new ImportExportError('expired');
@@ -340,8 +461,10 @@ export class ReviewedOperationEngine {
             catch (error) {
                 return sourceError(error);
             }
-            assertVault(this.options.runtime.state, request.vault);
-            const existing = await existingDestinations(this.options.runtime, request.vault, combined);
+            combined.throwIfAborted();
+            const vault = record.plan.summary.vault;
+            assertVault(this.options.runtime.state, vault);
+            const existing = await existingDestinations(this.options.runtime, vault, combined);
             const committed = [];
             const failed = [];
             const skipped = [];
@@ -360,34 +483,48 @@ export class ReviewedOperationEngine {
                     break;
                 }
                 try {
+                    combined.throwIfAborted();
                     const result = file.kind === 'document'
                         ? await this.options.runtime.createDocument({
                             content: new TextDecoder('utf-8', { fatal: true }).decode(file.bytes),
-                            expectedVault: request.vault,
+                            expectedVault: vault,
                             path: file.destination,
                         }, combined)
                         : await this.options.runtime.storeAttachment({
                             data: file.bytes,
-                            expectedVault: request.vault,
+                            expectedVault: vault,
                             path: file.destination,
                         }, combined);
                     if (result.digest !== item.digest || result.path !== file.destination
-                        || result.generation !== request.vault.generation) {
+                        || result.generation !== vault.generation) {
                         failed.push({ destination: file.destination, reason: 'digest-mismatch' });
                         recoveryRequired = true;
+                        for (const remaining of record.plan.files.slice(index + 1)) {
+                            skipped.push({ destination: remaining.destination, reason: 'cancelled' });
+                        }
+                        break;
                     }
                     else {
                         committed.push({ destination: file.destination, digest: result.digest, id: item.id });
                     }
                 }
                 catch (error) {
-                    if (errorCode(error) === 'exists')
+                    const code = errorCode(error);
+                    if (code === 'exists')
                         skipped.push({ destination: file.destination, reason: 'exists' });
-                    else
-                        failed.push({ destination: file.destination, reason: errorCode(error) });
+                    else {
+                        failed.push({ destination: file.destination, reason: code });
+                        if (code === 'partial') {
+                            recoveryRequired = true;
+                            for (const remaining of record.plan.files.slice(index + 1)) {
+                                skipped.push({ destination: remaining.destination, reason: 'cancelled' });
+                            }
+                            break;
+                        }
+                    }
                 }
             }
-            return {
+            const result = {
                 committed,
                 failed,
                 operationId: request.operationId,
@@ -400,6 +537,8 @@ export class ReviewedOperationEngine {
                 skipped,
                 status: failed.length === 0 && skipped.length === 0 ? 'committed' : 'partial',
             };
+            this.rememberCompleted(request, result);
+            return result;
         }
         finally {
             await this.options.picker.releaseSource({ session: record.source.session }).catch(() => undefined);
@@ -407,26 +546,103 @@ export class ReviewedOperationEngine {
             this.rememberUsed(request.operationId);
         }
     }
-    async cancel(operationId, sessionId) {
-        const record = this.operations.get(operationId);
-        if (record === undefined || record.browserSessionId !== sessionId)
+    async cancelOwned(request) {
+        const cancelledToken = this.cancelled.get(request.operationId);
+        if (cancelledToken !== undefined) {
+            if (cancelledToken !== request.reviewToken)
+                throw new ImportExportError('invalid-plan');
+            return { status: 'cancelled' };
+        }
+        const record = this.operations.get(request.operationId);
+        if (record === undefined)
             throw new ImportExportError('not-found');
-        await this.close(operationId, record);
+        if (record.state === 'used')
+            throw new ImportExportError('replayed');
+        if (record.plan.token !== request.reviewToken)
+            throw new ImportExportError('invalid-plan');
+        await this.close(request.operationId, record);
+        this.rememberCancelled(request);
+        this.rememberUsed(request.operationId);
         return { status: 'cancelled' };
     }
     async dispose() {
         if (this.disposed)
             return;
         this.disposed = true;
-        this.lifetime.abort(new ImportExportError('aborted'));
+        for (const record of this.operations.values()) {
+            if (record.expiryTimer !== undefined)
+                clearTimeout(record.expiryTimer);
+            record.expiryTimer = undefined;
+        }
+        await this.lifetime.dispose();
         const records = [...this.operations.values()];
+        this.pendingCommits.clear();
+        this.pendingInspections.clear();
         this.operations.clear();
+        this.cancelled.clear();
+        for (const completed of this.completed.values()) {
+            if (completed.expiryTimer !== undefined)
+                clearTimeout(completed.expiryTimer);
+        }
+        this.completed.clear();
+        this.completedEvidenceBytes = 0;
         this.used.clear();
         await Promise.allSettled(records.map(record => (this.options.picker.releaseSource({ session: record.source.session }))));
     }
     async close(operationId, record) {
+        if (record.expiryTimer !== undefined)
+            clearTimeout(record.expiryTimer);
+        record.expiryTimer = undefined;
         this.operations.delete(operationId);
         await this.options.picker.releaseSource({ session: record.source.session }).catch(() => undefined);
+    }
+    scheduleExpiry(operationId, record) {
+        const delay = Math.max(0, record.plan.summary.expiresAt - this.options.now());
+        record.expiryTimer = setTimeout(() => {
+            if (this.disposed || this.operations.get(operationId) !== record || record.state === 'used')
+                return;
+            void normalizeAbort(this.lifetime.run(() => this.close(operationId, record))).catch(() => undefined);
+        }, delay);
+        record.expiryTimer.unref?.();
+    }
+    rememberCancelled(request) {
+        this.cancelled.set(request.operationId, request.reviewToken);
+        const oldest = this.cancelled.keys().next().value;
+        if (this.cancelled.size > 1_024 && oldest !== undefined)
+            this.cancelled.delete(oldest);
+    }
+    rememberCompleted(binding, result) {
+        const previous = this.completed.get(binding.operationId);
+        if (previous !== undefined)
+            this.forgetCompleted(binding.operationId, previous);
+        const bytes = new TextEncoder().encode(stableJson(result)).byteLength;
+        const completed = {
+            binding: { ...binding },
+            bytes,
+            expiryTimer: undefined,
+            result,
+        };
+        completed.expiryTimer = setTimeout(() => {
+            this.forgetCompleted(binding.operationId, completed);
+        }, PLAN_LIFETIME_MS);
+        completed.expiryTimer.unref?.();
+        this.completed.set(binding.operationId, completed);
+        this.completedEvidenceBytes += bytes;
+        while (this.completed.size > MAX_COMPLETED_OPERATIONS
+            || this.completedEvidenceBytes > MAX_COMPLETED_EVIDENCE_BYTES) {
+            const oldest = this.completed.entries().next().value;
+            if (oldest === undefined || (oldest[0] === binding.operationId && this.completed.size === 1))
+                break;
+            this.forgetCompleted(oldest[0], oldest[1]);
+        }
+    }
+    forgetCompleted(operationId, completed) {
+        if (this.completed.get(operationId) !== completed)
+            return;
+        if (completed.expiryTimer !== undefined)
+            clearTimeout(completed.expiryTimer);
+        this.completed.delete(operationId);
+        this.completedEvidenceBytes -= completed.bytes;
     }
     rememberUsed(operationId) {
         this.used.add(operationId);

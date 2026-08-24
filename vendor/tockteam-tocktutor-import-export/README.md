@@ -4,7 +4,7 @@ Host + browser client bundle for reviewed TockTutor imports, backup, restore, an
 
 ## Supported Release Scope
 
-Every operation is inspected, previewed, explicitly approved, revalidated, and then committed through `tockbot-note-runtime`. Existing vault files are never replaced.
+Every operation is inspected, previewed, explicitly approved, revalidated, and then committed through `tockbot-note-runtime`. Existing vault files are never replaced. Each import and backup engine holds at most one active reviewed plan; abandoned plans expire within five minutes and release their Desktop source or destination capability.
 
 - Markdown folders and ZIP files: Markdown, Canvas, Base, accepted image/audio/video files, and PDF files.
 - Craft: delegates Craft Markdown folder or ZIP exports to the Markdown workflow without a Craft-specific parser.
@@ -20,8 +20,10 @@ Every operation is inspected, previewed, explicitly approved, revalidated, and t
 
 ## Trust Boundaries
 
-The browser receives bounded labels, previews, warnings, item digests, relative destinations, progress, and result evidence. It never receives native paths, source handles, unrestricted bytes, or active-vault write authority.
+The browser receives bounded labels, previews, warnings, item digests, relative destinations, progress, and result evidence. It never receives native paths, source handles, unrestricted bytes, active-vault write authority, or caller-controlled session, window, or vault identity.
+
+The trusted main Desktop window mints a short-lived caller authorization before each import, restore, or backup. The Host claims that opaque authorization through `tockTeamDesktopCaller` and uses only Desktop-derived operation, request, session, window, vault, and generation identity. Auxiliary or pop-out windows cannot mint the authorization and cannot trigger native pickers through the Remote service.
 
 Desktop owns opaque external source/destination grants. This package owns bounded parsing, conversion, plans, review tokens, archive verification, and orchestration. `tockbot-note-runtime` remains the only active-vault filesystem authority and provides exclusive create operations. Partial multi-file results identify committed, skipped, failed, and recovery-required entries without claiming rollback.
 
-The release targets DSH revision `47f943859bef60e4160492346772ded9b24f765a`, Desktop `>=0.1.6 <0.2.0`, Workbench `>=0.1.4 <0.2.0`, and exact Runtime `0.1.2`.
+The release targets DSH revision `47f943859bef60e4160492346772ded9b24f765a`, Desktop `>=0.1.11 <0.2.0`, Workbench `>=0.1.7 <0.2.0`, and exact Runtime `0.1.2`.

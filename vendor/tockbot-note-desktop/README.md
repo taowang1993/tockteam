@@ -1,31 +1,59 @@
-# TockTutor Desktop Composition Guard
+# TockTutor Desktop Adapter
 
-`tockbot-note-desktop` is the installable Desktop-only DSH composition guard for Phase 11. It does not implement another native bridge. Immutable TockTeam Desktop 0.1.6 already owns dialogs, reveal transport, menu and protocol dispatch, pop-outs, microphone permission, print/export, restricted IPC, and trusted-window policy. Runtime 0.1.2 remains the only vault authority, and Workbench 0.1.4 remains the TockTutor route owner.
+`tockbot-note-desktop` is the Desktop-only Phase 11 adapter between TockTutor Workbench and TockTeam's native owners. Version 0.1.2 mounts:
 
-The single Host row waits for the complete upstream owner set and then requires `tockTeamSurface.kind === 'desktop'`. Its true DSH client bundle performs the same explicit surface check. Neither half registers a capability, imports Electron or filesystem APIs, accepts a path, or creates a Web/TUI fallback.
+- one caller-bound Host Remote for vault selection, reveal, note pop-outs, microphone permission, printing, and HTML/PDF export;
+- one accessible contribution in Workbench's **Native Actions** seat; and
+- one trusted-main dispatch loop for TockTutor menu and protocol requests.
 
-## Injected Owner Set
+TockTeam Desktop remains the native authority. Its isolated preload issues opaque, one-operation authorizations only to the current trusted main frame. The Host atomically claims each authorization to obtain main-derived window, runtime-session, and active-vault identity; browser input never supplies those facts. Runtime 0.1.2 remains the only vault filesystem authority, and Workbench 0.1.7 owns route, dirty-save, create, daily-note, capture, search, and ordinary protocol behavior.
 
-- `tockTeamSurface`
-- `tockTeamDesktopPicker`
-- `tockTeamDesktopDispatch`
-- `tockTeamDesktopPopOut`
-- `tockTeamDesktopMicrophone`
-- `tockTeamDesktopPrintExport`
-- `tockTeamDesktopVaultSelection`
-- `tockTeamDesktopReveal`
-- `noteVault`
+## Native Actions
 
-## Residual Workbench Consumer Seam
+The Workbench contribution provides keyboard-native controls for:
 
-Workbench 0.1.4 does not yet call the native owners. Do not expose them through a new DSH Remote: the current HTTP RPC trust fence binds an origin, while Desktop pop-outs share that origin, so it cannot prove that a request came from the current trusted main window.
+- **Choose Vault**
+- **Reveal Entry**
+- **Open Pop-Out** and **Close Pop-Out**
+- **Close All Pop-Outs**
+- **Request Microphone**
+- **Print Note**
+- **Export HTML** and **Export PDF**
 
-The minimal upstream fix belongs in `@tockteam/desktop`, not this package:
+Controls are disabled without their required active vault/note. Completion is reported through a polite status region. Microphone handoff rechecks the exact source note and vault before requesting audio-only media, then releases the verification stream.
 
-1. Add a typed `tockTutor` facade to `@tockteam/desktop/client` and the existing isolated preload bridge.
-2. Route each method through one Electron main IPC handler that derives, rather than accepts, the current main `webContents`, top-frame origin, runtime-child session, operation/request IDs, and active vault ID/generation.
-3. Reject preview, pop-out, loading, destroyed, stale, file-origin, foreign-origin, and non-top-frame callers before contacting any owner.
-4. Allow only bounded methods for vault activation, runtime-authorized reveal, dispatch subscription/completion, pop-out open/close, microphone permission, print, and HTML/PDF export. Renderer input stays vault-relative or opaque; no absolute path, canonical path, native handle, arbitrary channel, source-tree read, or destination write primitive crosses preload.
-5. Tie pending calls, dispatch leases, permission grants, and opened pop-outs to the exact caller/runtime session and abort or settle them before window close, runtime replacement, provider loss, or plugin unload completes.
+## Trust and Lifecycle
 
-Acceptance requires real Electron tests for trusted-main success and negative preview/pop-out/loading/destroyed/file/foreign/subframe callers; renderer-forged identity rejection; stale window/session/vault generation; response-loss idempotence; unload cancellation and cleanup; mixed audio/video denial; print/export subresource rejection; and complete Web/TUI absence.
+- Both Host and client refuse every surface except `tockTeamSurface.kind === 'desktop'`.
+- Every native call uses an opaque authorization minted by `window.dshDesktop.tockTutor.authorize(operation)` and claimed by the injected `tockTeamDesktopCaller` owner.
+- Browser payloads remain bounded and vault-relative. No absolute path, canonical path, Electron object, native handle, unrestricted IPC channel, source-tree primitive, or destination writer crosses the client boundary.
+- The Host rechecks the exact active vault generation before and after every owner await. Bounded recovery ledgers prevent response loss from repeating reveal, activation, or pop-out close effects.
+- Dispatch delivery keeps Desktop's private `deliveryId` attempt fence out of Workbench input and returns it only with exact completion. Response-loss retries reuse the same authorization or delivery fence.
+- Unload cancels the trusted dispatch consumer, disposes the slot and Remote, aborts pending Host work, and closes pop-outs opened by this adapter.
+- Desktop's print/export owner re-sanitizes bounded HTML and blocks network, local-file, blob, and unreviewed subresources.
+
+## Composition
+
+The package contributes one Host row through `cordis.patch.yml` and one real `window.__ModuleLoader__.load` client bundle. It belongs only in the TockTeam Desktop profile; Web and TUI must not contain or mount it.
+
+Pinned release dependencies:
+
+- `@tockteam/desktop >=0.1.11 <0.2.0`
+- `@tockteam/tocktutor-workbench 0.1.7`
+- `tockbot-note-runtime 0.1.2`
+- DSH `0.1.0-rc.5` at revision `47f943859bef60e4160492346772ded9b24f765a`
+
+## Verification
+
+```sh
+pnpm run typecheck
+pnpm test
+pnpm run build
+pnpm pack
+test ! -e .agents/skills
+bd lint
+git diff --check
+git status --short --branch
+```
+
+Release acceptance additionally requires the fresh packed Loader lifecycle and a disposable real TockTeam Desktop run proving trusted-main success, ineligible-window rejection, dispatch completion/redelivery, pop-out cleanup, microphone denial/stale-note handling, and print/export isolation.

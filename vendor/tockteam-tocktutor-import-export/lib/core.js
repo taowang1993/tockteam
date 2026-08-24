@@ -31,6 +31,15 @@ export class ImportExportError extends Error {
         this.code = code;
     }
 }
+export function normalizeAbort(promise, signal) {
+    return promise.catch((error) => {
+        if (signal?.aborted === true
+            || (error instanceof Error && (error.name === 'AbortError' || error.name === 'TimeoutError'))) {
+            throw new ImportExportError('aborted');
+        }
+        throw error;
+    });
+}
 export function sha256(bytes) {
     return `sha256:${createHash('sha256').update(bytes).digest('hex')}`;
 }

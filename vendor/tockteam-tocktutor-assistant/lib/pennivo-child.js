@@ -251,7 +251,7 @@ export class PennivoChildManager {
             const initialized = await this.request(state, 'initialize', {
                 protocolVersion: PROTOCOL_VERSION,
                 capabilities: {},
-                clientInfo: { name: 'tocktutor-assistant', version: '0.1.2' },
+                clientInfo: { name: 'tocktutor-assistant', version: '0.1.5' },
             });
             this.assertInitialized(initialized);
             this.notify(state, 'notifications/initialized', {});

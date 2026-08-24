@@ -35,9 +35,11 @@ var __esDecorate = (this && this.__esDecorate) || function (ctor, descriptorIn, 
 import { randomBytes } from 'node:crypto';
 import { Remote, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol';
 import { ReviewedBackupEngine } from "./backup-engine.js";
+import { ImportExportError } from "./core.js";
 import { ReviewedOperationEngine } from "./engine.js";
+import { isImportInspectFormat, } from "./types.js";
 export const name = '@tockteam/tocktutor-import-export';
-export const inject = ['noteVault', 'tockTeamDesktopPicker'];
+export const inject = ['noteVault', 'tockTeamDesktopCaller', 'tockTeamDesktopPicker'];
 function token() {
     return randomBytes(32).toString('base64url');
 }
@@ -46,10 +48,12 @@ let TockTutorImportExportGateway = (() => {
     let _classSuper = TypertRemoteService;
     let _instanceExtraInitializers = [];
     let _inspect_decorators;
+    let _abandonImport_decorators;
     let _approveImport_decorators;
     let _commitImport_decorators;
     let _cancelImport_decorators;
     let _prepareBackup_decorators;
+    let _abandonBackup_decorators;
     let _approveBackup_decorators;
     let _commitBackup_decorators;
     let _cancelBackup_decorators;
@@ -57,28 +61,36 @@ let TockTutorImportExportGateway = (() => {
         static {
             const _metadata = typeof Symbol === "function" && Symbol.metadata ? Object.create(_classSuper[Symbol.metadata] ?? null) : void 0;
             _inspect_decorators = [Remote('inspect')];
+            _abandonImport_decorators = [Remote('abandon-import')];
             _approveImport_decorators = [Remote('approve-import')];
             _commitImport_decorators = [Remote('commit-import')];
             _cancelImport_decorators = [Remote('cancel-import')];
             _prepareBackup_decorators = [Remote('prepare-backup')];
+            _abandonBackup_decorators = [Remote('abandon-backup')];
             _approveBackup_decorators = [Remote('approve-backup')];
             _commitBackup_decorators = [Remote('commit-backup')];
             _cancelBackup_decorators = [Remote('cancel-backup')];
             __esDecorate(this, null, _inspect_decorators, { kind: "method", name: "inspect", static: false, private: false, access: { has: obj => "inspect" in obj, get: obj => obj.inspect }, metadata: _metadata }, null, _instanceExtraInitializers);
+            __esDecorate(this, null, _abandonImport_decorators, { kind: "method", name: "abandonImport", static: false, private: false, access: { has: obj => "abandonImport" in obj, get: obj => obj.abandonImport }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _approveImport_decorators, { kind: "method", name: "approveImport", static: false, private: false, access: { has: obj => "approveImport" in obj, get: obj => obj.approveImport }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _commitImport_decorators, { kind: "method", name: "commitImport", static: false, private: false, access: { has: obj => "commitImport" in obj, get: obj => obj.commitImport }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _cancelImport_decorators, { kind: "method", name: "cancelImport", static: false, private: false, access: { has: obj => "cancelImport" in obj, get: obj => obj.cancelImport }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _prepareBackup_decorators, { kind: "method", name: "prepareBackup", static: false, private: false, access: { has: obj => "prepareBackup" in obj, get: obj => obj.prepareBackup }, metadata: _metadata }, null, _instanceExtraInitializers);
+            __esDecorate(this, null, _abandonBackup_decorators, { kind: "method", name: "abandonBackup", static: false, private: false, access: { has: obj => "abandonBackup" in obj, get: obj => obj.abandonBackup }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _approveBackup_decorators, { kind: "method", name: "approveBackup", static: false, private: false, access: { has: obj => "approveBackup" in obj, get: obj => obj.approveBackup }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _commitBackup_decorators, { kind: "method", name: "commitBackup", static: false, private: false, access: { has: obj => "commitBackup" in obj, get: obj => obj.commitBackup }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _cancelBackup_decorators, { kind: "method", name: "cancelBackup", static: false, private: false, access: { has: obj => "cancelBackup" in obj, get: obj => obj.cancelBackup }, metadata: _metadata }, null, _instanceExtraInitializers);
             if (_metadata) Object.defineProperty(this, Symbol.metadata, { enumerable: true, configurable: true, writable: true, value: _metadata });
         }
         backups = __runInitializers(this, _instanceExtraInitializers);
+        caller;
         imports;
+        runtime;
         constructor(ctx) {
             super(ctx, 'tocktutor-import-export');
             const runtime = ctx.noteVault;
+            this.caller = ctx.tockTeamDesktopCaller;
+            this.runtime = runtime;
             this.imports = new ReviewedOperationEngine({
                 now: Date.now,
                 picker: ctx.tockTeamDesktopPicker,
@@ -97,7 +109,18 @@ let TockTutorImportExportGateway = (() => {
             });
         }
         async inspect(request, signal) {
-            return await this.imports.inspect(request, signal);
+            if (!isImportInspectFormat(request.format))
+                throw new ImportExportError('unsupported-type');
+            const operation = request.format === 'restore-backup' ? 'restore-backup' : 'import-source';
+            const identity = await this.claim(request.authorization, operation, signal);
+            return await this.imports.inspect({ format: request.format, identity }, signal);
+        }
+        async abandonImport(request, signal) {
+            if (!isImportInspectFormat(request.format))
+                throw new ImportExportError('unsupported-type');
+            const operation = request.format === 'restore-backup' ? 'restore-backup' : 'import-source';
+            const identity = await this.claim(request.authorization, operation, signal, false);
+            return await this.imports.abandon({ format: request.format, identity });
         }
         async approveImport(request) {
             return await this.imports.approve(request);
@@ -105,11 +128,16 @@ let TockTutorImportExportGateway = (() => {
         async commitImport(request, signal) {
             return await this.imports.commit(request, signal);
         }
-        async cancelImport(operationId, sessionId) {
-            return await this.imports.cancel(operationId, sessionId);
+        async cancelImport(request) {
+            return await this.imports.cancel(request);
         }
-        async prepareBackup(identity, signal) {
+        async prepareBackup(request, signal) {
+            const identity = await this.claim(request.authorization, 'backup', signal);
             return await this.backups.prepare({ identity }, signal);
+        }
+        async abandonBackup(request, signal) {
+            const identity = await this.claim(request.authorization, 'backup', signal, false);
+            return await this.backups.abandon({ identity });
         }
         async approveBackup(request) {
             return await this.backups.approve(request);
@@ -117,8 +145,21 @@ let TockTutorImportExportGateway = (() => {
         async commitBackup(request, signal) {
             return await this.backups.commit(request, signal);
         }
-        async cancelBackup(operationId, sessionId) {
-            return await this.backups.cancel(operationId, sessionId);
+        async cancelBackup(request) {
+            return await this.backups.cancel(request);
+        }
+        async claim(authorization, operation, signal, revalidateRuntime = true) {
+            if (typeof authorization !== 'string' || authorization === '' || Buffer.byteLength(authorization, 'utf8') > 1_024) {
+                throw new ImportExportError('invalid-plan');
+            }
+            const identity = await this.caller.claim({ authorization, operation }, signal);
+            if (revalidateRuntime) {
+                const state = this.runtime.state;
+                if (!state.active || identity.vaultId !== state.id || identity.vaultGeneration !== state.generation) {
+                    throw new ImportExportError('stale-vault');
+                }
+            }
+            return identity;
         }
     };
 })();
