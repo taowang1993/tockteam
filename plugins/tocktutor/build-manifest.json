@@ -427,23 +427,23 @@
     },
     {
       "path": "packages/tockteam-tocktutor-assistant/lib/assistant-panel.d.ts.map",
-      "sha256": "8ad9c66e3d93a9fe471e6d0c1af6067b25cb6b698e46602375aedc8c26805e02"
+      "sha256": "e4ea5d83388a09f77c4797265fbb6cc5ff56cd83c985c6f54096f2cd23fdb39c"
     },
     {
       "path": "packages/tockteam-tocktutor-assistant/lib/assistant-panel.js",
-      "sha256": "89e6d1ac88116328e9e6d7f8c5023ca8c8927335624de517f3a185ecd584725e"
+      "sha256": "d1492a037ffdedf58e68364ff0fd082ea3b42cd9d2060d59824f9acb1fd1fd19"
     },
     {
       "path": "packages/tockteam-tocktutor-assistant/lib/assistant-panel.js.map",
-      "sha256": "b1cfce32fea0091a94a80492f8706c4e785477ad4695299969753efeaf832ca4"
+      "sha256": "7d3885bc47e134a91191488a8011e7d34ee1d6d05bf98fa8986d158b54f6ef46"
     },
     {
       "path": "packages/tockteam-tocktutor-assistant/lib/client-bundle.js",
-      "sha256": "1a766c01d10d46f8a15dc2c0d43a7e77bc7dad3d626a0aebb43ded9b9ae4d2e3"
+      "sha256": "aad6d3344f1224fc3bddf6ad68d8028b736fca466e244000c8004aec156aac41"
     },
     {
       "path": "packages/tockteam-tocktutor-assistant/lib/client-bundle.js.map",
-      "sha256": "8e08dced678b882b72ba22360cbf8772b967d06aae0e72a751ab616c2a2d208f"
+      "sha256": "aa4ecb7f00c615c779bf820c8518fdee7434d1afc1a57a86a64cc481557b5ae3"
     },
     {
       "path": "packages/tockteam-tocktutor-assistant/lib/client.d.ts",
@@ -707,7 +707,7 @@
     },
     {
       "path": "packages/tockteam-tocktutor-assistant/package.json",
-      "sha256": "53ff452662f5da0e71025f84ebd58051a37b8d94ad4776c45ad709c48c88751c"
+      "sha256": "4303691571932da0c8c1a46f4a93db7e3451ca94744cc2b3494b25e2aec312ad"
     },
     {
       "path": "packages/tockteam-tocktutor-assistant/scripts/build-client.mjs",
@@ -727,7 +727,7 @@
     },
     {
       "path": "packages/tockteam-tocktutor-assistant/src/assistant-panel.tsx",
-      "sha256": "68e5b81d25973ce7efd4c2cc6cc8ae1f8939990da4e23fb79e47dc33aac379eb"
+      "sha256": "04801a00d66c953d1abcaf34d0b438c002f97034774a1164512217b0f60504ae"
     },
     {
       "path": "packages/tockteam-tocktutor-assistant/src/client.ts",
@@ -1167,11 +1167,11 @@
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/client.js",
-      "sha256": "30b57272702acc648c9c4d5ace4916a70f1e657817d5c80bfe6956ef4e12f6aa"
+      "sha256": "dc5d0d4ad9409bd7ff576614384a124fc04eee75f7e39694bc85e7298dbcef46"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/client.js.map",
-      "sha256": "ab0e45e2ac39484f385b377ddec0110e29105acf632602fe1c81b2e84ec32771"
+      "sha256": "d54e91598e948b30403c816046bf7deae136699e9517f0cafaad13c80895adc4"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/host-read.d.ts",
@@ -1259,15 +1259,15 @@
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/route.d.ts.map",
-      "sha256": "a8a78d2f841d755286df4b1845906164407c501b0d35af91e9266c6ad3eb500d"
+      "sha256": "af31922a46220a1f1a24d2d849620cd164b07afb041fabc6ea67c279726b0768"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/route.js",
-      "sha256": "0f0a725e93ce50272c706d4f30581852d1a26be96b8a73cf9d70bda40da27e99"
+      "sha256": "f79c272771c6fc60ea5aa1fe94672543ba912d1a7508ca6bcae4efb47b430996"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/route.js.map",
-      "sha256": "b04daafefab2ddc9113ba3e6941541ca68384aa8981e2a7e0cc3b2d8433b8a27"
+      "sha256": "d0dbfaed8a5af73635092bcdb291eb9c7008c15ee77b0e02dfe28576a45658fe"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/session.d.ts",
@@ -1391,7 +1391,7 @@
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/src/route.tsx",
-      "sha256": "3383a4fa188b078d779bc889720b05d8e530ba664234862f28efff1f8cd961de"
+      "sha256": "4b450a44ed0a24b295292204f124032ea2c333eefcb02c99ad0534a630d3bbb8"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/src/session.ts",
@@ -1423,7 +1423,7 @@
     },
     {
       "path": "pnpm-lock.yaml",
-      "sha256": "6bc64d28725fdb61c0000662714a112370768144ee84352779116b34eef993dc"
+      "sha256": "305a7d3e1df458d97f85641dfaa3f124d94f04d8e1ad147be3da55570446ba10"
     },
     {
       "path": "pnpm-workspace.yaml",

@@ -74,6 +74,7 @@
   "dependencies": {
     "@deepseek-ai/schemastery": "3.18.1",
     "@pennivo/mcp-server": "1.4.0",
+    "lucide-react": "0.473.0",
     "zod": "4.4.3"
   },
   "devDependencies": {

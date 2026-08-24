@@ -73,6 +73,10 @@ describe('TockTutor titlebar panel controls', () => {
     expect(assistantButton.getAttribute('aria-expanded')).toBe('true')
     expect(assistant.getAttribute('data-open')).toBe('true')
     expect(assistant.hasAttribute('inert')).toBe(false)
+    const assistantResize = screen.getByRole('separator', { name: 'Resize Assistant Panel' })
+    expect(assistantResize.getAttribute('aria-valuenow')).toBe('420')
+    fireEvent.keyDown(assistantResize, { key: 'ArrowLeft' })
+    expect(assistantResize.getAttribute('aria-valuenow')).toBe('430')
 
     fireEvent.click(assistantButton)
     expect(assistantButton.getAttribute('aria-expanded')).toBe('false')

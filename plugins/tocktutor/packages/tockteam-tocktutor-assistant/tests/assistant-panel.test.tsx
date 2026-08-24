@@ -110,10 +110,19 @@ describe('TockTutorAssistantPanel', () => {
       vault={{ generation: 7, id: `vault:${'a'.repeat(64)}` }}
     />
     const mounted = render(view)
-    await screen.findByDisplayValue('safe-provider')
-    expect(screen.getByRole('region', { name: 'TockTutor Assistant' }).className).toBe('tocktutor-assistant-panel')
+    expect(screen.getByRole('complementary', { name: 'TockTutor Assistant' }).className).toBe('tocktutor-assistant-panel')
+    expect(screen.getByRole('heading', { name: 'What can I help you with?' })).toBeTruthy()
+    expect(screen.queryByRole('textbox', { name: 'Provider' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Summarize the current note' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Find related notes' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Complete writing with AI' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Freely communicate with AI' })).toBeTruthy()
+    const composer = screen.getByRole('textbox', { name: 'Assistant Message' }) as HTMLTextAreaElement
+    expect(composer.placeholder).toBe('What are your thoughts?')
+    fireEvent.click(screen.getByRole('button', { name: 'Summarize the current note' }))
+    expect(composer.value).toBe('Summarize the current note.')
 
-    fireEvent.change(screen.getByLabelText('Message'), { target: { value: 'Summarize this note.' } })
+    fireEvent.change(composer, { target: { value: 'Summarize this note.' } })
     fireEvent.click(screen.getByRole('button', { name: 'Send' }))
     await screen.findByText('Message accepted. Live output appears below.')
     expect(turnCalls).toHaveLength(1)
@@ -159,6 +168,8 @@ describe('TockTutorAssistantPanel', () => {
     }
     render(<TockTutorAssistantPanel activePath={null} remote={remote} sessions={sessions} vault={null} />)
     await screen.findByDisplayValue('provider-a')
+    fireEvent.click(screen.getByRole('button', { name: 'Add Context' }))
+    fireEvent.click(screen.getByText('Assistant Settings'))
 
     fireEvent.change(screen.getByLabelText('Provider'), { target: { value: 'provider-b' } })
     fireEvent.change(screen.getByLabelText('Model'), { target: { value: 'model-b' } })
@@ -338,6 +349,8 @@ describe('TockTutorAssistantPanel', () => {
       scope: () => undefined,
     }
     render(<TockTutorAssistantPanel activePath={null} remote={remote} sessions={sessions} vault={null} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Add Context' }))
+    fireEvent.click(screen.getByText('Audit History'))
 
     expect(await screen.findByRole('heading', { name: 'Applied Update Notes/File-0.md' })).toBeTruthy()
     expect(screen.getAllByRole('article', { name: /audit entry/iu })).toHaveLength(20)
@@ -611,7 +624,7 @@ describe('TockTutorAssistantPanel', () => {
     expect(listListeners.size).toBe(1)
     expect(session.listenerCount).toBe(1)
 
-    fireEvent.change(screen.getByLabelText('Message'), { target: { value: 'Pending request' } })
+    fireEvent.change(screen.getByLabelText('Assistant Message'), { target: { value: 'Pending request' } })
     fireEvent.click(screen.getByRole('button', { name: 'Send' }))
     await waitFor(() => { expect(signals).toHaveLength(4) })
     mounted.unmount()

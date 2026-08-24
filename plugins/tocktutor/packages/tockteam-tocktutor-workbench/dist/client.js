@@ -15831,6 +15831,9 @@ var DEFAULT_SIDEBAR_WIDTH = 280;
 var COLLAPSED_TITLEBAR_SIDEBAR_WIDTH = 84;
 var MIN_SIDEBAR_WIDTH = 180;
 var MAX_SIDEBAR_WIDTH = 480;
+var DEFAULT_ASSISTANT_PANEL_WIDTH = 420;
+var MIN_ASSISTANT_PANEL_WIDTH = 240;
+var MAX_ASSISTANT_PANEL_WIDTH = 720;
 var MAX_ROUTE_SOURCE_BYTES = 2e6;
 var RemoteCallError = class extends Error {
   constructor(code, message) {
@@ -16668,6 +16671,7 @@ function TockTutorRouteView(props) {
   const focusedPane = snapshot.panes.find((pane) => pane.id === snapshot.focusedPaneId);
   const visibleTreeEntries = query === "" ? snapshot.entries.filter((entry) => entry.kind === "directory" || entry.kind === "document" && supportedDocument(entry.path)) : snapshot.entries.filter((entry) => entry.kind === "directory" ? documents.some((document2) => document2.path.startsWith(`${entry.path}/`)) : documents.includes(entry));
   const [panel, setPanel] = (0, import_react3.useState)(null);
+  const [assistantPanelWidth, setAssistantPanelWidth] = (0, import_react3.useState)(DEFAULT_ASSISTANT_PANEL_WIDTH);
   const [sidebarOpen, setSidebarOpen] = (0, import_react3.useState)(true);
   const [sidebarWidth, setSidebarWidth] = (0, import_react3.useState)(DEFAULT_SIDEBAR_WIDTH);
   const previousSidebarOpen = (0, import_react3.useRef)(sidebarOpen);
@@ -16700,6 +16704,30 @@ function TockTutorRouteView(props) {
     if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
     event.preventDefault();
     resizeSidebar(sidebarWidth + (event.key === "ArrowLeft" ? -10 : 10));
+  };
+  const resizeAssistantPanel = (width) => {
+    setAssistantPanelWidth(Math.min(MAX_ASSISTANT_PANEL_WIDTH, Math.max(MIN_ASSISTANT_PANEL_WIDTH, width)));
+  };
+  const beginAssistantPanelResize = (event) => {
+    event.preventDefault();
+    const startX = event.clientX;
+    const startWidth = assistantPanelWidth;
+    const move = (next) => {
+      resizeAssistantPanel(startWidth + startX - next.clientX);
+    };
+    const finish = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", finish);
+      window.removeEventListener("pointercancel", finish);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", finish);
+    window.addEventListener("pointercancel", finish);
+  };
+  const resizeAssistantPanelWithKeyboard = (event) => {
+    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+    event.preventDefault();
+    resizeAssistantPanel(assistantPanelWidth + (event.key === "ArrowLeft" ? 10 : -10));
   };
   const words = snapshot.source.match(/[\p{L}\p{N}]+(?:['’][\p{L}\p{N}]+)*/gu)?.length ?? 0;
   const characters = snapshot.source.length;
@@ -16990,16 +17018,27 @@ function TockTutorRouteView(props) {
                 {
                   "aria-hidden": panel !== "assistant",
                   "aria-label": "Assistant Panel",
-                  className: "tocktutor-right-panel",
+                  className: "tocktutor-right-panel tocktutor-right-panel-assistant",
                   "data-open": panel === "assistant",
+                  style: { width: panel === "assistant" ? `${String(assistantPanelWidth)}px` : "0px" },
                   ...panel === "assistant" ? {} : { inert: "" },
                   children: [
-                    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("header", { children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h2", { children: "Assistant" }),
-                      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { "aria-label": "Close Assistant", onClick: () => {
-                        setPanel(null);
-                      }, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "close" }) })
-                    ] }),
+                    panel === "assistant" && /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+                      "button",
+                      {
+                        "aria-label": "Resize Assistant Panel",
+                        "aria-orientation": "vertical",
+                        "aria-valuemax": MAX_ASSISTANT_PANEL_WIDTH,
+                        "aria-valuemin": MIN_ASSISTANT_PANEL_WIDTH,
+                        "aria-valuenow": assistantPanelWidth,
+                        className: "tocktutor-assistant-resize",
+                        onKeyDown: resizeAssistantPanelWithKeyboard,
+                        onPointerDown: beginAssistantPanelResize,
+                        role: "separator",
+                        title: "Drag or Use Left and Right Arrow Keys",
+                        type: "button"
+                      }
+                    ),
                     /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "tocktutor-assistant-content", children: props.assistantPanel })
                   ]
                 }
@@ -17310,11 +17349,18 @@ var ROUTE_CSS = `
 .tocktutor-empty > p:last-child { color: var(--tt-muted); }
 .tocktutor-right-panel { background: var(--tt-panel); border-left: 1px solid var(--tt-border); box-shadow: -8px 0 24px rgb(0 0 0 / 6%); display: grid; grid-template-rows: 40px minmax(0, 1fr); min-width: 0; opacity: 0; overflow: auto; pointer-events: none; transform: translateX(24px); transition: width 420ms cubic-bezier(.16, 1, .3, 1), opacity 300ms cubic-bezier(.16, 1, .3, 1), transform 460ms cubic-bezier(.16, 1, .3, 1), visibility 0s linear 420ms; visibility: hidden; width: 0; }
 .tocktutor-right-panel[data-open="true"] { opacity: 1; pointer-events: auto; transform: translateX(0); transition-delay: 0s; visibility: visible; width: min(360px, calc(100vw - 262px)); }
-.tocktutor-right-panel > * { min-width: min(360px, calc(100vw - 262px)); }
+.tocktutor-right-panel > :not(.tocktutor-assistant-resize) { min-width: min(360px, calc(100vw - 262px)); }
+.tocktutor-right-panel-assistant { grid-template-rows: minmax(0, 1fr); overflow: hidden; position: relative; }
+.tocktutor-right-panel-assistant > .tocktutor-assistant-content { min-width: min(240px, calc(100vw - 262px)); }
+.tocktutor-assistant-resize { background: transparent; border: 0; bottom: 0; cursor: col-resize; left: 0; padding: 0; position: absolute; top: 0; width: 8px; z-index: 3; }
+.tocktutor-assistant-resize::after { background: var(--tt-border); border-radius: 999px; content: ''; height: 28px; left: 3px; position: absolute; top: calc(50% - 14px); width: 2px; }
+.tocktutor-assistant-resize:focus-visible { outline: none; }
+.tocktutor-assistant-resize:focus-visible::after { background: var(--tt-accent); }
 .tocktutor-right-panel > header { align-items: center; border-bottom: 1px solid var(--tt-border); display: flex; justify-content: space-between; padding: 0 12px; }
 .tocktutor-right-panel > header h2, .tocktutor-review h2, .tocktutor-native-actions h2, .tocktutor-pane-groups h2 { font-size: 14px; margin: 0; }
 .tocktutor-right-panel > header button { background: transparent; border: 0; padding: 5px; }
-.tocktutor-assistant-content, .tocktutor-review-content, .tocktutor-native-actions-content { min-height: 0; overflow: auto; }
+.tocktutor-assistant-content { min-height: 0; overflow: hidden; }
+.tocktutor-review-content, .tocktutor-native-actions-content { min-height: 0; overflow: auto; }
 .tocktutor-pane-groups, .tocktutor-review, .tocktutor-native-actions { border-top: 1px solid var(--tt-border); padding: 12px; }
 .tocktutor-pane-heading { align-items: center; display: flex; justify-content: space-between; }
 .tocktutor-pane-heading button { background: transparent; border: 1px solid var(--tt-border); border-radius: 4px; height: 26px; width: 26px; }

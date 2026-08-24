@@ -14820,7 +14820,143 @@ var typert_remote_client_default = TYPERT_REMOTE;
 var import_client = require("@tockteam/tocktutor-workbench/client");
 
 // src/assistant-panel.tsx
+var import_react3 = require("react");
+
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/createLucideIcon.js
+var import_react2 = require("react");
+
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/shared/src/utils.js
+var toKebabCase = (string4) => string4.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase();
+var mergeClasses = (...classes) => classes.filter((className, index, array2) => {
+  return Boolean(className) && className.trim() !== "" && array2.indexOf(className) === index;
+}).join(" ").trim();
+
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/Icon.js
 var import_react = require("react");
+
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/defaultAttributes.js
+var defaultAttributes = {
+  xmlns: "http://www.w3.org/2000/svg",
+  width: 24,
+  height: 24,
+  viewBox: "0 0 24 24",
+  fill: "none",
+  stroke: "currentColor",
+  strokeWidth: 2,
+  strokeLinecap: "round",
+  strokeLinejoin: "round"
+};
+
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/Icon.js
+var Icon = (0, import_react.forwardRef)(
+  ({
+    color = "currentColor",
+    size = 24,
+    strokeWidth = 2,
+    absoluteStrokeWidth,
+    className = "",
+    children,
+    iconNode,
+    ...rest
+  }, ref) => {
+    return (0, import_react.createElement)(
+      "svg",
+      {
+        ref,
+        ...defaultAttributes,
+        width: size,
+        height: size,
+        stroke: color,
+        strokeWidth: absoluteStrokeWidth ? Number(strokeWidth) * 24 / Number(size) : strokeWidth,
+        className: mergeClasses("lucide", className),
+        ...rest
+      },
+      [
+        ...iconNode.map(([tag, attrs]) => (0, import_react.createElement)(tag, attrs)),
+        ...Array.isArray(children) ? children : [children]
+      ]
+    );
+  }
+);
+
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/createLucideIcon.js
+var createLucideIcon = (iconName, iconNode) => {
+  const Component = (0, import_react2.forwardRef)(
+    ({ className, ...props }, ref) => (0, import_react2.createElement)(Icon, {
+      ref,
+      iconNode,
+      className: mergeClasses(`lucide-${toKebabCase(iconName)}`, className),
+      ...props
+    })
+  );
+  Component.displayName = `${iconName}`;
+  return Component;
+};
+
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/arrow-down.js
+var __iconNode = [
+  ["path", { d: "M12 5v14", key: "s699le" }],
+  ["path", { d: "m19 12-7 7-7-7", key: "1idqje" }]
+];
+var ArrowDown = createLucideIcon("ArrowDown", __iconNode);
+
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/arrow-up.js
+var __iconNode2 = [
+  ["path", { d: "m5 12 7-7 7 7", key: "hav0vg" }],
+  ["path", { d: "M12 19V5", key: "x0mq9r" }]
+];
+var ArrowUp = createLucideIcon("ArrowUp", __iconNode2);
+
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/file-text.js
+var __iconNode3 = [
+  ["path", { d: "M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z", key: "1rqfz7" }],
+  ["path", { d: "M14 2v4a2 2 0 0 0 2 2h4", key: "tnqrlb" }],
+  ["path", { d: "M10 9H8", key: "b1mrlr" }],
+  ["path", { d: "M16 13H8", key: "t4e002" }],
+  ["path", { d: "M16 17H8", key: "z1uh3a" }]
+];
+var FileText = createLucideIcon("FileText", __iconNode3);
+
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/list.js
+var __iconNode4 = [
+  ["path", { d: "M3 12h.01", key: "nlz23k" }],
+  ["path", { d: "M3 18h.01", key: "1tta3j" }],
+  ["path", { d: "M3 6h.01", key: "1rqtza" }],
+  ["path", { d: "M8 12h13", key: "1za7za" }],
+  ["path", { d: "M8 18h13", key: "1lx6n3" }],
+  ["path", { d: "M8 6h13", key: "ik3vkj" }]
+];
+var List = createLucideIcon("List", __iconNode4);
+
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/plus.js
+var __iconNode5 = [
+  ["path", { d: "M5 12h14", key: "1ays0h" }],
+  ["path", { d: "M12 5v14", key: "s699le" }]
+];
+var Plus = createLucideIcon("Plus", __iconNode5);
+
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/search.js
+var __iconNode6 = [
+  ["circle", { cx: "11", cy: "11", r: "8", key: "4ej97u" }],
+  ["path", { d: "m21 21-4.3-4.3", key: "1qie3q" }]
+];
+var Search = createLucideIcon("Search", __iconNode6);
+
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/sparkles.js
+var __iconNode7 = [
+  [
+    "path",
+    {
+      d: "M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z",
+      key: "4pj2yx"
+    }
+  ],
+  ["path", { d: "M20 3v4", key: "1olli1" }],
+  ["path", { d: "M22 5h-4", key: "1gvqau" }],
+  ["path", { d: "M4 17v2", key: "vumght" }],
+  ["path", { d: "M5 18H3", key: "zchphs" }]
+];
+var Sparkles = createLucideIcon("Sparkles", __iconNode7);
 
 // src/context.ts
 function redactBoundaryText(value) {
@@ -14848,6 +14984,12 @@ var emptySubscribe = () => () => {
 var MAX_TRANSCRIPT_ENTRIES = 20;
 var MAX_TRANSCRIPT_ENTRY_CHARS = 2e3;
 var MAX_TRANSCRIPT_CHARS = 16e3;
+var PROMPT_SUGGESTIONS = [
+  { icon: Search, label: "Summarize the current note", prompt: "Summarize the current note." },
+  { icon: List, label: "Find related notes", prompt: "Find related notes in this vault." },
+  { icon: FileText, label: "Complete writing with AI", prompt: "Help complete this note." },
+  { icon: Sparkles, label: "Freely communicate with AI", prompt: "I want to brainstorm about this note." }
+];
 function record2(value) {
   return value !== null && typeof value === "object" ? value : null;
 }
@@ -14894,6 +15036,11 @@ function auditTime(timestamp) {
   if (!Number.isFinite(date5.getTime())) return null;
   return { dateTime: date5.toISOString(), label: date5.toLocaleString() };
 }
+function submitOnEnter(event) {
+  if (event.key !== "Enter" || event.shiftKey) return;
+  event.preventDefault();
+  event.currentTarget.form?.requestSubmit();
+}
 function projectTranscript(nodes) {
   const entries = nodes.slice(-100).map(transcriptEntry).filter((entry) => entry !== null).slice(-MAX_TRANSCRIPT_ENTRIES);
   let remaining = MAX_TRANSCRIPT_CHARS;
@@ -14905,21 +15052,25 @@ function projectTranscript(nodes) {
   });
 }
 function TockTutorAssistantPanel(props) {
-  const [settings, setSettings] = (0, import_react.useState)(null);
-  const [audit, setAudit] = (0, import_react.useState)(null);
-  const [auditOffset, setAuditOffset] = (0, import_react.useState)(0);
-  const [message, setMessage] = (0, import_react.useState)("");
-  const [proposals, setProposals] = (0, import_react.useState)(null);
-  const [proposalOffset, setProposalOffset] = (0, import_react.useState)(0);
-  const [decision, setDecision] = (0, import_react.useState)(null);
-  const [settingsSaving, setSettingsSaving] = (0, import_react.useState)(false);
-  const [status, setStatus] = (0, import_react.useState)(null);
-  const pending = (0, import_react.useRef)(/* @__PURE__ */ new Set());
-  const reviewPending = (0, import_react.useRef)(/* @__PURE__ */ new Set());
+  const [settings, setSettings] = (0, import_react3.useState)(null);
+  const [audit, setAudit] = (0, import_react3.useState)(null);
+  const [auditOffset, setAuditOffset] = (0, import_react3.useState)(0);
+  const [message, setMessage] = (0, import_react3.useState)("");
+  const [menuOpen, setMenuOpen] = (0, import_react3.useState)(false);
+  const [proposals, setProposals] = (0, import_react3.useState)(null);
+  const [proposalOffset, setProposalOffset] = (0, import_react3.useState)(0);
+  const [decision, setDecision] = (0, import_react3.useState)(null);
+  const [settingsSaving, setSettingsSaving] = (0, import_react3.useState)(false);
+  const [status, setStatus] = (0, import_react3.useState)(null);
+  const pending = (0, import_react3.useRef)(/* @__PURE__ */ new Set());
+  const reviewPending = (0, import_react3.useRef)(/* @__PURE__ */ new Set());
   const reviewControllers = reviewPending.current;
-  const statusRef = (0, import_react.useRef)(null);
+  const followingRef = (0, import_react3.useRef)(true);
+  const scrollRef = (0, import_react3.useRef)(null);
+  const statusRef = (0, import_react3.useRef)(null);
+  const [showJumpToLatest, setShowJumpToLatest] = (0, import_react3.useState)(false);
   const reviewKey = `${props.vault?.id ?? "inactive"}:${String(props.vault?.generation ?? 0)}:${props.activePath ?? ""}`;
-  const routeRef = (0, import_react.useRef)(null);
+  const routeRef = (0, import_react3.useRef)(null);
   if (routeRef.current === null) routeRef.current = { epoch: 0, key: reviewKey };
   else if (routeRef.current.key !== reviewKey) {
     routeRef.current = { epoch: routeRef.current.epoch + 1, key: reviewKey };
@@ -14928,18 +15079,18 @@ function TockTutorAssistantPanel(props) {
   const auditPage = audit?.key === reviewKey ? audit.value : null;
   const proposalPage = proposals?.key === reviewKey ? proposals.value : null;
   const activeDecision = decision?.routeEpoch === routeEpoch ? decision : null;
-  const current = (0, import_react.useSyncExternalStore)(
+  const current = (0, import_react3.useSyncExternalStore)(
     (listener) => props.sessions.list.subscribe(listener),
     () => props.sessions.list.getSnapshot().current,
     () => void 0
   );
   const conversation = current === void 0 ? void 0 : props.sessions.binding(current)?.session;
-  const transcript = (0, import_react.useSyncExternalStore)(
+  const transcript = (0, import_react3.useSyncExternalStore)(
     (listener) => conversation?.subscribe(listener) ?? emptySubscribe(),
     () => conversation?.getSnapshot() ?? EMPTY_CONVERSATION,
     () => EMPTY_CONVERSATION
   );
-  const loadAudit = (0, import_react.useCallback)((offset = 0) => {
+  const loadAudit = (0, import_react3.useCallback)((offset = 0) => {
     const controller = new AbortController();
     pending.current.add(controller);
     reviewPending.current.add(controller);
@@ -14955,7 +15106,7 @@ function TockTutorAssistantPanel(props) {
       reviewPending.current.delete(controller);
     });
   }, [props.remote, reviewKey]);
-  const loadProposals = (0, import_react.useCallback)((offset = 0) => {
+  const loadProposals = (0, import_react3.useCallback)((offset = 0) => {
     const controller = new AbortController();
     pending.current.add(controller);
     reviewPending.current.add(controller);
@@ -14971,7 +15122,7 @@ function TockTutorAssistantPanel(props) {
       reviewPending.current.delete(controller);
     });
   }, [props.remote, reviewKey]);
-  (0, import_react.useEffect)(() => {
+  (0, import_react3.useEffect)(() => {
     const controller = new AbortController();
     pending.current.add(controller);
     void props.remote.tocktutorAssistant.currentSettings(controller.signal).then(remoteValue).then((value) => {
@@ -14987,7 +15138,7 @@ function TockTutorAssistantPanel(props) {
       controller.abort();
     };
   }, [props.remote]);
-  (0, import_react.useEffect)(() => {
+  (0, import_react3.useEffect)(() => {
     void loadAudit();
     void loadProposals();
     return () => {
@@ -14995,7 +15146,7 @@ function TockTutorAssistantPanel(props) {
       reviewControllers.clear();
     };
   }, [loadAudit, loadProposals, reviewControllers]);
-  (0, import_react.useEffect)(() => () => {
+  (0, import_react3.useEffect)(() => () => {
     for (const controller of pending.current) controller.abort();
     pending.current.clear();
   }, [pending]);
@@ -15088,276 +15239,403 @@ ${text}`;
   const transcriptEntries = projectTranscript(transcript.nodes);
   const transcriptError = transcript.promptError?.error.message ?? transcript.openError?.message ?? transcript.lastAgentError;
   const renderedAt = Date.now();
-  return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("section", { "aria-label": "TockTutor Assistant", className: "tocktutor-assistant-panel", children: [
+  const hasConversation = transcriptEntries.length > 0 || partial2 !== "" || transcript.runningCalls.length > 0 || transcriptError !== null;
+  const scrollToLatest = (0, import_react3.useCallback)(() => {
+    const scroll = scrollRef.current;
+    if (scroll === null) return;
+    scroll.scrollTop = scroll.scrollHeight;
+    followingRef.current = true;
+    setShowJumpToLatest(false);
+  }, []);
+  (0, import_react3.useEffect)(() => {
+    const scroll = scrollRef.current;
+    if (followingRef.current && scroll !== null) scroll.scrollTop = scroll.scrollHeight;
+  }, [partial2, proposalPage, transcript]);
+  return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("aside", { "aria-label": "TockTutor Assistant", className: "tocktutor-assistant-panel", children: [
     /* @__PURE__ */ (0, import_jsx_runtime.jsx)("style", { children: PANEL_CSS }),
-    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("header", { children: [
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { className: "tocktutor-assistant-kicker", children: "Assistant" }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h2", { children: "TockTutor" }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { children: props.activePath ?? "No active note" })
+    /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+      "div",
+      {
+        className: "tocktutor-assistant-scroll",
+        onScroll: (event) => {
+          const scroll = event.currentTarget;
+          const atBottom = scroll.scrollHeight - scroll.scrollTop - scroll.clientHeight <= 48;
+          followingRef.current = atBottom;
+          setShowJumpToLatest(!atBottom);
+        },
+        ref: scrollRef,
+        children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("section", { "aria-label": "Live Assistant Output", "aria-live": "polite", className: "tocktutor-assistant-transcript", children: [
+          !hasConversation && (proposalPage?.proposals.length ?? 0) === 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "tocktutor-assistant-empty", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "tocktutor-assistant-empty-icon", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Sparkles, { "aria-hidden": "true" }) }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h2", { children: "What can I help you with?" }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "tocktutor-assistant-suggestions", children: PROMPT_SUGGESTIONS.map((suggestion) => {
+              const Icon2 = suggestion.icon;
+              return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(
+                "button",
+                {
+                  onClick: () => {
+                    setMessage(suggestion.prompt);
+                  },
+                  type: "button",
+                  children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Icon2, { "aria-hidden": "true" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: suggestion.label })
+                  ]
+                },
+                suggestion.label
+              );
+            }) })
+          ] }),
+          transcriptEntries.map((entry) => entry.toolStatus === true ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { className: "tocktutor-assistant-tool-status", children: entry.text }, entry.key) : /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(
+            "article",
+            {
+              "aria-label": `${entry.label} transcript entry`,
+              className: entry.label === "You" || entry.label === "Steering" ? "tocktutor-assistant-user-message" : "tocktutor-assistant-answer",
+              children: [
+                entry.label !== "You" && entry.label !== "Steering" && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { className: "tocktutor-assistant-kicker", children: "TockTutor Assistant" }),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { children: entry.text })
+              ]
+            },
+            entry.key
+          )),
+          partial2 !== "" && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("article", { "aria-label": "Streaming assistant transcript entry", className: "tocktutor-assistant-answer", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { className: "tocktutor-assistant-kicker", children: "TockTutor Assistant" }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { children: partial2 })
+          ] }),
+          transcript.runningCalls.slice(0, 20).map((call) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("p", { className: "tocktutor-assistant-tool-status", children: [
+            boundedText(call.name, 127),
+            " \xB7 Reading\u2026"
+          ] }, call.callId)),
+          transcriptError !== null && transcriptError !== void 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { className: "tocktutor-assistant-error", role: "alert", children: boundedText(transcriptError, 500) }),
+          (proposalPage?.proposals.length ?? 0) > 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("section", { "aria-label": "Staged Proposals", className: "tocktutor-assistant-reviews", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h2", { children: "Staged Proposals" }),
+            proposalPage?.proposals.slice(0, 20).map((proposal) => {
+              const expired = proposal.expiresAt <= renderedAt;
+              const pendingDecision = activeDecision?.proposalId === proposal.proposalId;
+              const operation = proposal.operation === "create" ? "Create" : "Update";
+              return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("article", { children: [
+                /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("h3", { children: [
+                  operation,
+                  " ",
+                  proposal.destination
+                ] }),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("p", { children: [
+                  String(proposal.contentChars),
+                  " characters \xB7 ",
+                  String(proposal.contentBytes),
+                  " bytes"
+                ] }),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("pre", { children: boundedText(proposal.preview, 1e3) }),
+                proposal.warnings.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("ul", { "aria-label": `Warnings for ${proposal.destination}`, children: proposal.warnings.map((warning, index) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)("li", { children: boundedText(warning, 500) }, String(index))) }),
+                proposal.skippedEntryCount > 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("p", { children: [
+                  String(proposal.skippedEntryCount),
+                  " skipped ",
+                  proposal.skippedEntryCount === 1 ? "entry" : "entries",
+                  proposal.skippedEntries.length > 0 ? `: ${proposal.skippedEntries.join(", ")}` : ""
+                ] }),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+                    "button",
+                    {
+                      "aria-label": expired ? void 0 : `Approve ${operation} ${proposal.destination}`,
+                      disabled: expired || activeDecision !== null,
+                      onClick: () => {
+                        decideProposal(proposal, "approve");
+                      },
+                      type: "button",
+                      children: expired ? "Expired" : pendingDecision && activeDecision.action === "approve" ? "Approving\u2026" : "Approve"
+                    }
+                  ),
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+                    "button",
+                    {
+                      "aria-label": `Reject ${operation} ${proposal.destination}`,
+                      disabled: expired || activeDecision !== null,
+                      onClick: () => {
+                        decideProposal(proposal, "reject");
+                      },
+                      type: "button",
+                      children: pendingDecision && activeDecision.action === "reject" ? "Rejecting\u2026" : "Reject"
+                    }
+                  )
+                ] })
+              ] }, proposal.proposalId);
+            }),
+            proposalPage !== null && (proposalOffset > 0 || proposalPage.nextOffset !== null) && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("nav", { "aria-label": "Proposal Pages", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+                "button",
+                {
+                  "aria-label": "Previous Proposal Page",
+                  disabled: proposalOffset === 0,
+                  onClick: () => {
+                    void loadProposals(Math.max(0, proposalOffset - 20));
+                  },
+                  type: "button",
+                  children: "Previous"
+                }
+              ),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+                "button",
+                {
+                  "aria-label": "Next Proposal Page",
+                  disabled: proposalPage.nextOffset === null,
+                  onClick: () => {
+                    if (proposalPage.nextOffset !== null) void loadProposals(proposalPage.nextOffset);
+                  },
+                  type: "button",
+                  children: "Next"
+                }
+              )
+            ] })
+          ] })
+        ] })
+      }
+    ),
+    showJumpToLatest && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("button", { className: "tocktutor-assistant-jump", onClick: scrollToLatest, type: "button", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ArrowDown, { "aria-hidden": "true" }),
+      "Jump to Latest"
     ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("section", { "aria-label": "Provider Settings", children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("form", { onSubmit: saveSettings, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { children: [
-        "Provider",
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-          "input",
-          {
-            "aria-label": "Provider",
-            disabled: settings === null || settingsSaving,
-            maxLength: 127,
-            onChange: (event) => {
-              setSettings((currentSettings) => currentSettings === null ? null : { ...currentSettings, provider: event.target.value });
-            },
-            value: settings?.provider ?? ""
-          }
-        )
-      ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { children: [
-        "Model",
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-          "input",
-          {
-            "aria-label": "Model",
-            disabled: settings === null || settingsSaving,
-            maxLength: 127,
-            onChange: (event) => {
-              setSettings((currentSettings) => currentSettings === null ? null : { ...currentSettings, model: event.target.value });
-            },
-            value: settings?.model ?? ""
-          }
-        )
-      ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { children: [
-        "Write Permission",
+    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "tocktutor-assistant-composer-wrap", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "tocktutor-assistant-add-menu", hidden: !menuOpen, id: "tocktutor-assistant-add-menu", children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(
-          "select",
+          "button",
           {
-            "aria-label": "Write Permission",
-            disabled: settings === null || settingsSaving,
-            onChange: (event) => {
-              const writePermission = event.target.value === "propose" ? "propose" : "read-only";
-              setSettings((currentSettings) => currentSettings === null ? null : { ...currentSettings, writePermission });
+            disabled: props.activePath === null,
+            onClick: () => {
+              if (props.activePath !== null) setMessage((currentMessage) => [currentMessage.trim(), `Use ${props.activePath} as context.`].filter(Boolean).join("\n"));
+              setMenuOpen(false);
             },
-            value: settings?.writePermission ?? "read-only",
+            type: "button",
             children: [
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "read-only", children: "Read Only" }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "propose", children: "Propose Writes" })
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)(FileText, { "aria-hidden": "true" }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: props.activePath ?? "Current Note" })
             ]
           }
-        )
-      ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { disabled: settings === null || settingsSaving, type: "submit", children: settingsSaving ? "Saving\u2026" : "Save Settings" })
-    ] }) }),
-    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("section", { "aria-label": "Live Assistant Output", "aria-live": "polite", children: [
-      transcriptEntries.map((entry) => entry.toolStatus === true ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { children: entry.text }, entry.key) : /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("article", { "aria-label": `${entry.label} transcript entry`, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { className: "tocktutor-assistant-kicker", children: entry.label }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { children: entry.text })
-      ] }, entry.key)),
-      partial2 !== "" && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("article", { "aria-label": "Streaming assistant transcript entry", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { className: "tocktutor-assistant-kicker", children: "Assistant \xB7 Writing" }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { children: partial2 })
-      ] }),
-      transcript.runningCalls.slice(0, 20).map((call) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("p", { children: [
-        boundedText(call.name, 127),
-        " \xB7 Reading\u2026"
-      ] }, call.callId)),
-      transcriptError !== null && transcriptError !== void 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { role: "alert", children: boundedText(transcriptError, 500) })
-    ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("section", { "aria-label": "Staged Proposals", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h2", { children: "Staged Proposals" }),
-      proposalPage === null && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { children: "Loading staged proposals\u2026" }),
-      proposalPage !== null && proposalPage.proposals.length === 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { children: "No staged proposals." }),
-      proposalPage?.proposals.slice(0, 20).map((proposal) => {
-        const expired = proposal.expiresAt <= renderedAt;
-        const pendingDecision = activeDecision?.proposalId === proposal.proposalId;
-        const operation = proposal.operation === "create" ? "Create" : "Update";
-        return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("article", { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("h3", { children: [
-            operation,
-            " ",
-            proposal.destination
-          ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("p", { children: [
-            String(proposal.contentChars),
-            " characters \xB7 ",
-            String(proposal.contentBytes),
-            " bytes"
-          ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("pre", { children: boundedText(proposal.preview, 1e3) }),
-          proposal.warnings.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("ul", { "aria-label": `Warnings for ${proposal.destination}`, children: proposal.warnings.map((warning, index) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)("li", { children: boundedText(warning, 500) }, String(index))) }),
-          proposal.skippedEntryCount > 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("p", { children: [
-            String(proposal.skippedEntryCount),
-            " skipped ",
-            proposal.skippedEntryCount === 1 ? "entry" : "entries",
-            proposal.skippedEntries.length > 0 ? `: ${proposal.skippedEntries.join(", ")}` : ""
-          ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-              "button",
-              {
-                "aria-label": expired ? void 0 : `Approve ${operation} ${proposal.destination}`,
-                disabled: expired || activeDecision !== null,
-                onClick: () => {
-                  decideProposal(proposal, "approve");
-                },
-                type: "button",
-                children: expired ? "Expired" : pendingDecision && activeDecision.action === "approve" ? "Approving\u2026" : "Approve"
-              }
-            ),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-              "button",
-              {
-                "aria-label": `Reject ${operation} ${proposal.destination}`,
-                disabled: expired || activeDecision !== null,
-                onClick: () => {
-                  decideProposal(proposal, "reject");
-                },
-                type: "button",
-                children: pendingDecision && activeDecision.action === "reject" ? "Rejecting\u2026" : "Reject"
-              }
-            )
+        ),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("details", { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("summary", { children: "Assistant Settings" }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("form", { onSubmit: saveSettings, children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { children: [
+              "Provider",
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+                "input",
+                {
+                  "aria-label": "Provider",
+                  disabled: settings === null || settingsSaving,
+                  maxLength: 127,
+                  onChange: (event) => {
+                    setSettings((currentSettings) => currentSettings === null ? null : { ...currentSettings, provider: event.target.value });
+                  },
+                  value: settings?.provider ?? ""
+                }
+              )
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { children: [
+              "Model",
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+                "input",
+                {
+                  "aria-label": "Model",
+                  disabled: settings === null || settingsSaving,
+                  maxLength: 127,
+                  onChange: (event) => {
+                    setSettings((currentSettings) => currentSettings === null ? null : { ...currentSettings, model: event.target.value });
+                  },
+                  value: settings?.model ?? ""
+                }
+              )
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { children: [
+              "Write Permission",
+              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(
+                "select",
+                {
+                  "aria-label": "Write Permission",
+                  disabled: settings === null || settingsSaving,
+                  onChange: (event) => {
+                    const writePermission = event.target.value === "propose" ? "propose" : "read-only";
+                    setSettings((currentSettings) => currentSettings === null ? null : { ...currentSettings, writePermission });
+                  },
+                  value: settings?.writePermission ?? "read-only",
+                  children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "read-only", children: "Read Only" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "propose", children: "Propose Writes" })
+                  ]
+                }
+              )
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { disabled: settings === null || settingsSaving, type: "submit", children: settingsSaving ? "Saving\u2026" : "Save Settings" })
           ] })
-        ] }, proposal.proposalId);
-      }),
-      proposalPage !== null && (proposalOffset > 0 || proposalPage.nextOffset !== null) && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("nav", { "aria-label": "Proposal Pages", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-          "button",
-          {
-            "aria-label": "Previous Proposal Page",
-            disabled: proposalOffset === 0,
-            onClick: () => {
-              void loadProposals(Math.max(0, proposalOffset - 20));
-            },
-            type: "button",
-            children: "Previous"
-          }
-        ),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-          "button",
-          {
-            "aria-label": "Next Proposal Page",
-            disabled: proposalPage.nextOffset === null,
-            onClick: () => {
-              if (proposalPage.nextOffset !== null) void loadProposals(proposalPage.nextOffset);
-            },
-            type: "button",
-            children: "Next"
-          }
-        )
-      ] })
-    ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("section", { "aria-label": "Audit History", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h2", { children: "Audit History" }),
-      auditPage === null && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { children: "Loading audit history\u2026" }),
-      auditPage !== null && auditPage.entries.length === 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { children: "No audit entries." }),
-      auditPage?.dropped !== void 0 && auditPage.dropped > 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("p", { children: [
-        String(auditPage.dropped),
-        " older audit ",
-        auditPage.dropped === 1 ? "entry was" : "entries were",
-        " dropped by bounded retention."
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("details", { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("summary", { children: "Audit History" }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("section", { "aria-label": "Audit History", className: "tocktutor-assistant-audit", children: [
+            auditPage === null && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { children: "Loading audit history\u2026" }),
+            auditPage !== null && auditPage.entries.length === 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { children: "No audit entries." }),
+            auditPage?.dropped !== void 0 && auditPage.dropped > 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("p", { children: [
+              String(auditPage.dropped),
+              " older audit ",
+              auditPage.dropped === 1 ? "entry was" : "entries were",
+              " dropped by bounded retention."
+            ] }),
+            auditPage?.entries.slice(0, 20).map((entry) => {
+              const outcome = entry.outcome.split("-").map((part) => `${part.slice(0, 1).toUpperCase()}${part.slice(1)}`).join(" ");
+              const operation = entry.operation === "create" ? "Create" : "Update";
+              const time3 = auditTime(entry.timestamp);
+              return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("article", { "aria-label": `Audit entry ${entry.auditId}`, children: [
+                /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("h3", { children: [
+                  outcome,
+                  " ",
+                  operation,
+                  " ",
+                  entry.destination
+                ] }),
+                time3 === null ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "Time Unavailable" }) : /* @__PURE__ */ (0, import_jsx_runtime.jsx)("time", { dateTime: time3.dateTime, children: time3.label }),
+                entry.reason !== void 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { children: boundedText(entry.reason, 500) })
+              ] }, entry.auditId);
+            }),
+            auditPage !== null && (auditOffset > 0 || auditPage.nextOffset !== null) && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("nav", { "aria-label": "Audit Pages", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+                "button",
+                {
+                  "aria-label": "Previous Audit Page",
+                  disabled: auditOffset === 0,
+                  onClick: () => {
+                    void loadAudit(Math.max(0, auditOffset - 20));
+                  },
+                  type: "button",
+                  children: "Previous"
+                }
+              ),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+                "button",
+                {
+                  "aria-label": "Next Audit Page",
+                  disabled: auditPage.nextOffset === null,
+                  onClick: () => {
+                    if (auditPage.nextOffset !== null) void loadAudit(auditPage.nextOffset);
+                  },
+                  type: "button",
+                  children: "Next"
+                }
+              )
+            ] })
+          ] })
+        ] })
       ] }),
-      auditPage?.entries.slice(0, 20).map((entry) => {
-        const outcome = entry.outcome.split("-").map((part) => `${part.slice(0, 1).toUpperCase()}${part.slice(1)}`).join(" ");
-        const operation = entry.operation === "create" ? "Create" : "Update";
-        const time3 = auditTime(entry.timestamp);
-        return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("article", { "aria-label": `Audit entry ${entry.auditId}`, children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("h3", { children: [
-            outcome,
-            " ",
-            operation,
-            " ",
-            entry.destination
-          ] }),
-          time3 === null ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "Time Unavailable" }) : /* @__PURE__ */ (0, import_jsx_runtime.jsx)("time", { dateTime: time3.dateTime, children: time3.label }),
-          entry.reason !== void 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { children: boundedText(entry.reason, 500) })
-        ] }, entry.auditId);
-      }),
-      auditPage !== null && (auditOffset > 0 || auditPage.nextOffset !== null) && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("nav", { "aria-label": "Audit Pages", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("form", { className: "tocktutor-assistant-composer", onSubmit: send, children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-          "button",
+          "textarea",
           {
-            "aria-label": "Previous Audit Page",
-            disabled: auditOffset === 0,
-            onClick: () => {
-              void loadAudit(Math.max(0, auditOffset - 20));
+            "aria-label": "Assistant Message",
+            id: "tocktutor-assistant-message",
+            maxLength: 8e3,
+            onChange: (event) => {
+              setMessage(event.target.value);
             },
-            type: "button",
-            children: "Previous"
+            onKeyDown: submitOnEnter,
+            placeholder: "What are your thoughts?",
+            rows: 3,
+            value: message
           }
         ),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-          "button",
-          {
-            "aria-label": "Next Audit Page",
-            disabled: auditPage.nextOffset === null,
-            onClick: () => {
-              if (auditPage.nextOffset !== null) void loadAudit(auditPage.nextOffset);
-            },
-            type: "button",
-            children: "Next"
-          }
-        )
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+            "button",
+            {
+              "aria-controls": "tocktutor-assistant-add-menu",
+              "aria-expanded": menuOpen,
+              "aria-label": "Add Context",
+              className: "tocktutor-assistant-icon-button",
+              onClick: () => {
+                setMenuOpen((open) => !open);
+              },
+              type: "button",
+              children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Plus, { "aria-hidden": "true" })
+            }
+          ),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+            "button",
+            {
+              "aria-label": "Send",
+              className: "tocktutor-assistant-send",
+              disabled: message.trim() === "",
+              type: "submit",
+              children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ArrowUp, { "aria-hidden": "true" })
+            }
+          )
+        ] })
       ] })
     ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("form", { onSubmit: send, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { htmlFor: "tocktutor-assistant-message", children: "Message" }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-        "textarea",
-        {
-          id: "tocktutor-assistant-message",
-          maxLength: 8e3,
-          onChange: (event) => {
-            setMessage(event.target.value);
-          },
-          value: message
-        }
-      ),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { disabled: message.trim() === "", type: "submit", children: "Send" })
-    ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { "aria-live": "polite", ref: statusRef, role: "status", tabIndex: -1, children: boundedText(
-      status ?? (settings === null ? "Loading assistant settings." : "Assistant ready."),
-      500
-    ) })
+    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { "aria-live": "polite", className: "tocktutor-assistant-status", ref: statusRef, role: "status", tabIndex: -1, children: status === null ? "" : boundedText(status, 500) })
   ] });
 }
 var PANEL_CSS = `
 .tocktutor-assistant-panel {
-  --tta-accent: var(--tt-accent, #2457d6);
+  --tta-accent: var(--tt-accent, #4f46e5);
   --tta-bg: var(--tt-bg, #f7f8fa);
   --tta-border: var(--tt-border, #d9dde5);
   --tta-muted: var(--tt-muted, #667085);
   --tta-panel: var(--tt-panel, #fff);
-  color: inherit;
-  display: grid;
-  gap: 12px;
-  min-width: 0;
-  padding: 14px;
-}
-.tocktutor-assistant-panel h2, .tocktutor-assistant-panel h3, .tocktutor-assistant-panel p { margin: 0; }
-.tocktutor-assistant-panel > header { border: 0; padding: 2px 2px 4px; }
-.tocktutor-assistant-panel > header h2 { font-size: 16px; }
-.tocktutor-assistant-panel > header > p:last-child { color: var(--tta-muted); font-size: 12px; overflow-wrap: anywhere; }
-.tocktutor-assistant-panel > section, .tocktutor-assistant-panel > form {
   background: var(--tta-panel);
-  border: 1px solid var(--tta-border);
-  border-radius: 10px;
-  display: grid;
-  gap: 9px;
-  padding: 12px;
+  color: inherit;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+  position: relative;
+  width: 100%;
 }
-.tocktutor-assistant-panel section > h2 { font-size: 12px; letter-spacing: .04em; text-transform: uppercase; }
-.tocktutor-assistant-panel article { background: var(--tta-bg); border: 1px solid var(--tta-border); border-radius: 8px; display: grid; gap: 7px; padding: 10px; }
-.tocktutor-assistant-panel article h3 { font-size: 13px; overflow-wrap: anywhere; }
-.tocktutor-assistant-panel article > p, .tocktutor-assistant-panel article > time, .tocktutor-assistant-panel article > span { color: var(--tta-muted); font-size: 12px; }
-.tocktutor-assistant-panel pre { background: var(--tta-panel); border: 1px solid var(--tta-border); border-radius: 6px; font: 12px/1.5 ui-monospace, SFMono-Regular, Consolas, monospace; margin: 0; max-height: 180px; overflow: auto; padding: 8px; white-space: pre-wrap; }
-.tocktutor-assistant-kicker { color: var(--tta-muted); font-size: 10px; font-weight: 650; letter-spacing: .08em; text-transform: uppercase; }
-.tocktutor-assistant-panel label { display: grid; font-size: 12px; gap: 4px; }
-.tocktutor-assistant-panel input, .tocktutor-assistant-panel select, .tocktutor-assistant-panel textarea { background: var(--tta-panel); border: 1px solid var(--tta-border); border-radius: 7px; box-sizing: border-box; color: inherit; font: inherit; max-width: 100%; padding: 7px 8px; width: 100%; }
-.tocktutor-assistant-panel textarea { min-height: 88px; resize: vertical; }
-.tocktutor-assistant-panel article > div, .tocktutor-assistant-panel nav { display: flex; flex-wrap: wrap; gap: 6px; }
-.tocktutor-assistant-panel button { background: var(--tta-panel); border: 1px solid var(--tta-border); border-radius: 7px; color: inherit; cursor: pointer; font: inherit; font-weight: 600; padding: 6px 9px; }
-.tocktutor-assistant-panel button[type="submit"], .tocktutor-assistant-panel article button:first-child { background: var(--tta-accent); border-color: var(--tta-accent); color: white; }
+.tocktutor-assistant-panel *, .tocktutor-assistant-panel *::before, .tocktutor-assistant-panel *::after { box-sizing: border-box; }
+.tocktutor-assistant-panel h2, .tocktutor-assistant-panel h3, .tocktutor-assistant-panel p { margin: 0; }
+.tocktutor-assistant-scroll { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 0; overflow: auto; padding: 14px; }
+.tocktutor-assistant-transcript { display: flex; flex-direction: column; gap: 16px; min-height: 100%; min-width: 0; }
+.tocktutor-assistant-empty { align-items: center; display: flex; flex-direction: column; gap: 16px; justify-content: center; min-height: 100%; text-align: center; }
+.tocktutor-assistant-empty-icon { align-items: center; background: var(--tta-panel); border: 1px solid var(--tta-border); border-radius: 12px; box-shadow: 0 1px 2px rgb(0 0 0 / 7%); color: var(--tta-accent); display: flex; height: 40px; justify-content: center; width: 40px; }
+.tocktutor-assistant-empty-icon svg { height: 18px; width: 18px; }
+.tocktutor-assistant-empty h2 { font-size: 14px; line-height: 20px; max-width: 256px; }
+.tocktutor-assistant-suggestions { align-items: stretch; display: flex; flex-direction: column; gap: 6px; text-align: left; width: min(100%, 288px); }
+.tocktutor-assistant-suggestions button, .tocktutor-assistant-add-menu > button { align-items: center; background: transparent; border: 1px solid transparent; border-radius: 8px; color: inherit; cursor: pointer; display: flex; font: inherit; font-size: 13px; gap: 10px; line-height: 18px; min-width: 0; padding: 6px 8px; text-align: left; }
+.tocktutor-assistant-suggestions button:hover, .tocktutor-assistant-suggestions button:focus-visible, .tocktutor-assistant-add-menu > button:hover, .tocktutor-assistant-add-menu > button:focus-visible { background: var(--tta-bg); border-color: var(--tta-border); }
+.tocktutor-assistant-suggestions svg, .tocktutor-assistant-add-menu > button svg { flex: 0 0 auto; height: 14px; width: 14px; }
+.tocktutor-assistant-suggestions span, .tocktutor-assistant-add-menu > button span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tocktutor-assistant-answer { display: grid; gap: 8px; line-height: 1.55; overflow-wrap: anywhere; }
+.tocktutor-assistant-user-message { align-self: flex-end; background: var(--tta-bg); border-radius: 10px; line-height: 1.5; max-width: 88%; overflow-wrap: anywhere; padding: 8px 10px; }
+.tocktutor-assistant-kicker { color: var(--tta-muted); font-size: 11px; font-weight: 600; }
+.tocktutor-assistant-tool-status { color: var(--tta-muted); font-size: 12px; padding-block: 2px; }
+.tocktutor-assistant-error { border: 1px solid var(--tta-border); border-radius: 8px; color: #b42318; font-size: 12px; padding: 8px; }
+.tocktutor-assistant-reviews { display: grid; gap: 10px; }
+.tocktutor-assistant-reviews > h2 { font-size: 12px; letter-spacing: .04em; text-transform: uppercase; }
+.tocktutor-assistant-reviews article, .tocktutor-assistant-audit article { background: var(--tta-bg); border: 1px solid var(--tta-border); border-radius: 8px; display: grid; gap: 7px; padding: 10px; }
+.tocktutor-assistant-reviews article h3, .tocktutor-assistant-audit article h3 { font-size: 13px; overflow-wrap: anywhere; }
+.tocktutor-assistant-reviews article > p, .tocktutor-assistant-audit article > p, .tocktutor-assistant-audit article > time, .tocktutor-assistant-audit article > span { color: var(--tta-muted); font-size: 12px; }
+.tocktutor-assistant-reviews pre { background: var(--tta-panel); border: 1px solid var(--tta-border); border-radius: 6px; font: 12px/1.5 ui-monospace, SFMono-Regular, Consolas, monospace; margin: 0; max-height: 180px; overflow: auto; padding: 8px; white-space: pre-wrap; }
+.tocktutor-assistant-reviews article > div, .tocktutor-assistant-panel nav { display: flex; flex-wrap: wrap; gap: 6px; }
+.tocktutor-assistant-reviews button, .tocktutor-assistant-audit button, .tocktutor-assistant-add-menu form button { background: var(--tta-panel); border: 1px solid var(--tta-border); border-radius: 7px; color: inherit; cursor: pointer; font: inherit; font-weight: 600; padding: 6px 9px; }
+.tocktutor-assistant-reviews article button:first-child, .tocktutor-assistant-add-menu form button[type="submit"] { background: var(--tta-accent); border-color: var(--tta-accent); color: white; }
 .tocktutor-assistant-panel button:disabled { cursor: default; opacity: .5; }
-.tocktutor-assistant-panel > [role="status"] { background: color-mix(in srgb, var(--tta-accent) 9%, transparent); border-radius: 7px; color: var(--tta-muted); font-size: 12px; padding: 8px 10px; }
+.tocktutor-assistant-jump { align-items: center; background: var(--tta-panel); border: 1px solid var(--tta-border); border-radius: 8px; bottom: 112px; box-shadow: 0 1px 4px rgb(0 0 0 / 10%); display: flex; font: inherit; font-size: 12px; gap: 5px; padding: 5px 8px; position: absolute; right: 16px; z-index: 2; }
+.tocktutor-assistant-jump svg { height: 14px; width: 14px; }
+.tocktutor-assistant-composer-wrap { flex: 0 0 auto; padding: 0 12px 12px; position: relative; }
+.tocktutor-assistant-composer { background: var(--tta-panel); border: 1px solid var(--tta-border); border-radius: 16px; display: flex; flex-direction: column; gap: 8px; min-height: 96px; padding: 10px; }
+.tocktutor-assistant-composer:focus-within { border-color: var(--tta-accent); }
+.tocktutor-assistant-composer textarea { background: transparent; border: 0; color: inherit; font: inherit; font-size: 13px; line-height: 18px; min-height: 48px; outline: 0; padding: 0; resize: none; width: 100%; }
+.tocktutor-assistant-composer > div { align-items: center; display: flex; justify-content: space-between; }
+.tocktutor-assistant-icon-button, .tocktutor-assistant-send { align-items: center; border: 0; cursor: pointer; display: flex; height: 28px; justify-content: center; padding: 0; width: 28px; }
+.tocktutor-assistant-icon-button { background: transparent; border-radius: 7px; color: inherit; }
+.tocktutor-assistant-send { background: var(--tta-accent); border-radius: 999px; color: white; }
+.tocktutor-assistant-icon-button svg, .tocktutor-assistant-send svg { height: 14px; width: 14px; }
+.tocktutor-assistant-add-menu { background: var(--tta-panel); border: 1px solid var(--tta-border); border-radius: 10px; bottom: calc(100% + 8px); box-shadow: 0 8px 24px rgb(0 0 0 / 12%); display: grid; gap: 4px; left: 12px; max-height: min(520px, calc(100vh - 180px)); overflow: auto; padding: 8px; position: absolute; width: min(304px, calc(100% - 24px)); z-index: 3; }
+.tocktutor-assistant-add-menu[hidden] { display: none; }
+.tocktutor-assistant-add-menu details { border-top: 1px solid var(--tta-border); padding-top: 4px; }
+.tocktutor-assistant-add-menu summary { cursor: pointer; font-size: 13px; padding: 6px 8px; }
+.tocktutor-assistant-add-menu form, .tocktutor-assistant-audit { display: grid; gap: 8px; padding: 8px; }
+.tocktutor-assistant-add-menu label { display: grid; font-size: 12px; gap: 4px; }
+.tocktutor-assistant-add-menu input, .tocktutor-assistant-add-menu select { background: var(--tta-panel); border: 1px solid var(--tta-border); border-radius: 7px; color: inherit; font: inherit; padding: 7px 8px; width: 100%; }
+.tocktutor-assistant-status:empty { display: none; }
+.tocktutor-assistant-status:not(:empty) { background: color-mix(in srgb, var(--tta-accent) 9%, var(--tta-panel)); border-radius: 7px; bottom: 120px; color: var(--tta-muted); font-size: 12px; left: 12px; padding: 8px 10px; position: absolute; right: 12px; z-index: 2; }
 .tocktutor-assistant-panel button:focus-visible, .tocktutor-assistant-panel input:focus-visible, .tocktutor-assistant-panel select:focus-visible, .tocktutor-assistant-panel textarea:focus-visible, .tocktutor-assistant-panel [role="status"]:focus-visible { outline: 2px solid var(--tta-accent); outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce) {
   .tocktutor-assistant-panel *, .tocktutor-assistant-panel *::before, .tocktutor-assistant-panel *::after { scroll-behavior: auto !important; transition-duration: 0s !important; }
@@ -15400,5 +15678,26 @@ async function apply(ctx) {
     await disposeRemote();
   };
 }
+/*! Bundled license information:
+
+lucide-react/dist/esm/shared/src/utils.js:
+lucide-react/dist/esm/defaultAttributes.js:
+lucide-react/dist/esm/Icon.js:
+lucide-react/dist/esm/createLucideIcon.js:
+lucide-react/dist/esm/icons/arrow-down.js:
+lucide-react/dist/esm/icons/arrow-up.js:
+lucide-react/dist/esm/icons/file-text.js:
+lucide-react/dist/esm/icons/list.js:
+lucide-react/dist/esm/icons/plus.js:
+lucide-react/dist/esm/icons/search.js:
+lucide-react/dist/esm/icons/sparkles.js:
+lucide-react/dist/esm/lucide-react.js:
+  (**
+   * @license lucide-react v0.473.0 - ISC
+   *
+   * This source code is licensed under the ISC license.
+   * See the LICENSE file in the root directory of this source tree.
+   *)
+*/
 return module.exports; } });
 //# sourceMappingURL=client-bundle.js.map
