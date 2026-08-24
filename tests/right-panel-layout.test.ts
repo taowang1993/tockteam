@@ -33,14 +33,13 @@ test('desktop shell rail switches between DeepSeek Harness and TockTutor', () =>
     css,
     /#tockteam-embedded-layout > #root\s*\{[^}]*--dsw-specific-sidebar-fill: var\(--tockteam-shell-chrome\);[^}]*--dsw-alias-border-l1: var\(--tockteam-shell-divider\);[^}]*min-height: 0;[^}]*overflow: hidden;/s,
   )
-  assert.match(css, /#tockteam-rail-root\s*\{[^}]*width: var\(--tockteam-rail-width\);/s)
+  assert.match(css, /#tockteam-rail-root\s*\{[^}]*width: var\(--tockteam-rail-width\);[^}]*padding-top: 0;/s)
   assert.match(
     css,
     /#tockteam-rail-root\s*\{[^}]*background: var\(--tockteam-shell-chrome\);/s,
   )
   assert.doesNotMatch(css, /html\[data-tockteam-tocktutor-active='true'\]\s*\{[^}]*--tockteam-rail-width:/s)
   assert.doesNotMatch(css, /html\[data-tockteam-tocktutor-active='true'\] #tockteam-rail-root/)
-  assert.doesNotMatch(css, /html\[data-tockteam-tocktutor-active='true'\] \.tockteam-window-titlebar/)
   assert.match(
     css,
     /#tockteam-embedded-layout > #root \[data-phase\]\s*\{[^}]*--dsw-alias-bg-base: var\(--tockteam-main-pane\);[^}]*background: var\(--tockteam-main-pane\);/s,
@@ -110,6 +109,8 @@ test('desktop titlebar matches Tockbot chrome and stays draggable', () => {
   assert.match(main, /if \(options\.preview !== true\) window\.maximize\(\)/)
   assert.match(workspace, /<header className="tockteam-window-titlebar">/)
   assert.match(workspace, /<span className="tockteam-window-title">TockTeam<\/span>/)
+  assert.match(workspace, /<div id="tockteam-window-titlebar-slot" \/>/)
+  assert.match(tockTutor, /document\.getElementById\('tockteam-window-titlebar-slot'\) \?\? document\.body/)
   assert.doesNotMatch(workspace, /displayTitle/)
   assert.match(workspace, /props\.showDesktopChrome && createPortal\(/)
   assert.match(workspace, /surface\.kind === 'desktop'/)
@@ -136,11 +137,16 @@ test('desktop titlebar matches Tockbot chrome and stays draggable', () => {
   )
   assert.match(css, /#tockteam-rail-root\s*\{[^}]*border-right: 1px solid var\(--tockteam-shell-divider\);/s)
   assert.match(css, /\.tockteam-window-titlebar\s*\{[^}]*border-bottom: 1px solid var\(--tockteam-shell-divider\);[^}]*background: var\(--tockteam-shell-chrome\);/s)
-  assert.match(tockTutor, /\.tocktutor-titlebar\s*\{[^}]*top: var\(--tockteam-titlebar-height, 40px\);/s)
+  assert.match(css, /--tockteam-primary-sidebar-width: 280px;/)
+  assert.match(css, /#tockteam-window-titlebar-slot\s*\{[^}]*display: none;/s)
+  assert.match(css, /html\[data-tockteam-tocktutor-active='true'\] #tockteam-window-titlebar-slot\s*\{[^}]*display: block;/s)
+  assert.match(css, /html\[data-tockteam-tocktutor-active='true'\] \.tockteam-panel-toolbar\s*\{[^}]*display: none;/s)
+  assert.match(tockTutor, /\.tocktutor-titlebar\s*\{[^}]*top: 0;/s)
+  assert.match(tockTutor, /\.tocktutor-grid\s*\{[^}]*grid-template-columns: var\(--tockteam-primary-sidebar-width, 280px\) minmax\(0, 1fr\);/s)
   assert.match(css, /\.tockteam-titlebar-leading\s*\{[^}]*border-right: 1px solid var\(--tockteam-shell-divider\);/s)
   assert.match(
     css,
-    /\.tockteam-titlebar-leading\s*\{[^}]*width: 280px;[^}]*height: 100%;[^}]*align-items: center;[^}]*justify-content: flex-end;[^}]*margin-left: var\(--tockteam-rail-width\);[^}]*padding-right: 4px;[^}]*border-right: 1px solid/s,
+    /\.tockteam-titlebar-leading\s*\{[^}]*width: var\(--tockteam-primary-sidebar-width\);[^}]*height: 100%;[^}]*align-items: center;[^}]*justify-content: flex-end;[^}]*margin-left: var\(--tockteam-rail-width\);[^}]*padding-right: 4px;[^}]*border-right: 1px solid/s,
   )
   assert.match(
     css,

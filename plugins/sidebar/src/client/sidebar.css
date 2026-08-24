@@ -1,4 +1,5 @@
 html {
+  --tockteam-primary-sidebar-width: 280px;
   --tockteam-rail-width: 40px;
   --tockteam-sidebar-width: 300px;
 }
@@ -50,7 +51,7 @@ body[data-ds-dark-theme] {
   width: var(--tockteam-rail-width);
   height: 100%;
   min-height: 0;
-  padding-top: var(--tockteam-titlebar-height, 40px);
+  padding-top: 0;
   border-right: 1px solid var(--tockteam-shell-divider);
   box-sizing: border-box;
   background: var(--tockteam-shell-chrome);
@@ -139,9 +140,29 @@ html[data-tockteam-desktop-sidebar-open='true'] #tockteam-sidebar-root {
   user-select: none;
 }
 
+#tockteam-window-titlebar-slot {
+  display: none;
+}
+
+html[data-tockteam-tocktutor-active='true'] #tockteam-window-titlebar-slot {
+  position: absolute;
+  inset: 0 0 0 var(--tockteam-rail-width);
+  z-index: 1;
+  display: block;
+}
+
+html[data-tockteam-tocktutor-active='true'] .tockteam-titlebar-leading,
+html[data-tockteam-tocktutor-active='true'] .tockteam-window-title {
+  visibility: hidden;
+}
+
+html[data-tockteam-tocktutor-active='true'] .tockteam-panel-toolbar {
+  display: none;
+}
+
 .tockteam-titlebar-leading {
   display: flex;
-  width: 280px;
+  width: var(--tockteam-primary-sidebar-width);
   height: 100%;
   align-items: center;
   justify-content: flex-end;

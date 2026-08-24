@@ -1112,7 +1112,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
   const words = snapshot.source.match(/[\p{L}\p{N}]+(?:['’][\p{L}\p{N}]+)*/gu)?.length ?? 0
   const characters = snapshot.source.length
   const titlebar = (
-    <header aria-label="TockTutor Title Bar" className="tocktutor-titlebar">
+    <section aria-label="TockTutor Title Bar" className="tocktutor-titlebar">
       <div className="tocktutor-titlebar-sidebar">
         <span className="tocktutor-titlebar-document"><WorkbenchGlyph kind="document" /></span>
         <span><WorkbenchGlyph kind="document" /></span>
@@ -1150,7 +1150,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
         <span className="tocktutor-titlebar-spacer" />
         <span className="tocktutor-panel-icon"><WorkbenchGlyph kind="panel" /></span>
       </div>
-    </header>
+    </section>
   )
   return (
     <main
@@ -1441,7 +1441,9 @@ export function TockTutorRoute(props: TockTutorRouteProps): ReactNode {
           />
         )}
         snapshot={snapshot}
-        {...(typeof document === 'undefined' ? {} : { titlebarTarget: document.body })}
+        {...(typeof document === 'undefined'
+          ? {}
+          : { titlebarTarget: document.getElementById('tockteam-window-titlebar-slot') ?? document.body })}
       />
     </div>
   )
@@ -1463,7 +1465,7 @@ const ROUTE_CSS = `
   font: 14px/1.45 ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   height: 100%;
   min-height: 0;
-  padding-top: var(--tockteam-titlebar-height, 40px);
+  padding-top: 0;
 }
 .tocktutor-workbench *, .tocktutor-workbench *::before, .tocktutor-workbench *::after { box-sizing: border-box; }
 .tocktutor-workbench svg { display: block; height: 16px; width: 16px; }
@@ -1477,18 +1479,18 @@ const ROUTE_CSS = `
   --tt-tab-border: #d1d5db;
   --tt-text: var(--dsw-alias-fg-primary, #27272a);
   -webkit-app-region: drag;
-  background: var(--tt-panel);
+  background: var(--tockteam-shell-chrome, var(--tt-panel));
   box-sizing: border-box;
   color: var(--tt-text);
   font: 14px/1.45 ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   border-bottom: 1px solid var(--tt-tab-border);
   display: grid;
-  grid-template-columns: 225px minmax(0, 1fr);
+  grid-template-columns: var(--tockteam-primary-sidebar-width, 280px) minmax(0, 1fr);
   height: var(--tockteam-titlebar-height, 40px);
-  left: var(--tockteam-rail-width, 40px);
-  position: fixed;
+  left: 0;
+  position: absolute;
   right: 0;
-  top: var(--tockteam-titlebar-height, 40px);
+  top: 0;
   z-index: 2147483647;
 }
 .tocktutor-titlebar *, .tocktutor-titlebar *::before, .tocktutor-titlebar *::after { box-sizing: border-box; }
@@ -1510,7 +1512,7 @@ const ROUTE_CSS = `
 .tocktutor-tabs button svg { height: 14px; margin-left: auto; width: 14px; }
 .tocktutor-new-tab, .tocktutor-panel-icon { background: transparent; border: 0; color: var(--tt-muted); padding: 6px; }
 .tocktutor-titlebar-spacer { flex: 1; }
-.tocktutor-grid { display: grid; grid-template-columns: 225px minmax(0, 1fr); height: 100%; min-height: 0; position: relative; }
+.tocktutor-grid { display: grid; grid-template-columns: var(--tockteam-primary-sidebar-width, 280px) minmax(0, 1fr); height: 100%; min-height: 0; position: relative; }
 .tocktutor-sidebar { background: var(--tt-panel); border-right: 1px solid var(--tt-border); display: grid; grid-template-rows: 40px minmax(0, 1fr) 32px; min-height: 0; overflow: hidden; }
 .tocktutor-sidebar-header { align-items: center; border-bottom: 1px solid var(--tt-border); display: flex; gap: 10px; padding: 0 10px; }
 .tocktutor-sidebar-header h1 { font-size: 14px; font-weight: 600; margin: 0 auto 0 0; }
@@ -1560,7 +1562,7 @@ const ROUTE_CSS = `
 .tocktutor-empty { left: 50%; max-width: 420px; padding: 32px; position: absolute; text-align: center; top: 45%; transform: translate(-50%, -50%); width: 100%; }
 .tocktutor-empty h2 { font-size: 20px; margin: 0; }
 .tocktutor-empty > p:last-child { color: var(--tt-muted); }
-.tocktutor-right-panel { background: var(--tt-panel); border-left: 1px solid var(--tt-border); bottom: 0; box-shadow: -8px 0 24px rgb(0 0 0 / 6%); display: grid; grid-template-rows: 40px minmax(0, 1fr); overflow: auto; position: fixed; right: 0; top: 36px; width: min(360px, calc(100vw - 262px)); z-index: 20; }
+.tocktutor-right-panel { background: var(--tt-panel); border-left: 1px solid var(--tt-border); bottom: 0; box-shadow: -8px 0 24px rgb(0 0 0 / 6%); display: grid; grid-template-rows: 40px minmax(0, 1fr); overflow: auto; position: fixed; right: 0; top: var(--tockteam-titlebar-height, 40px); width: min(360px, calc(100vw - 262px)); z-index: 20; }
 .tocktutor-right-panel > header { align-items: center; border-bottom: 1px solid var(--tt-border); display: flex; justify-content: space-between; padding: 0 12px; }
 .tocktutor-right-panel > header h2, .tocktutor-review h2, .tocktutor-native-actions h2, .tocktutor-pane-groups h2 { font-size: 14px; margin: 0; }
 .tocktutor-right-panel > header button { background: transparent; border: 0; padding: 5px; }
@@ -1597,10 +1599,7 @@ const ROUTE_CSS = `
 .tocktutor-dialog-actions { display: flex; gap: 8px; justify-content: flex-end; }
 .tocktutor-workbench button:focus-visible, .tocktutor-workbench input:focus-visible, .tocktutor-workbench textarea:focus-visible { outline: 2px solid var(--tt-accent); outline-offset: 2px; }
 @media (max-width: 760px) {
-  .tocktutor-titlebar { grid-template-columns: 190px minmax(0, 1fr); }
-  .tocktutor-grid { grid-template-columns: 190px minmax(0, 1fr); }
   .tocktutor-statusbar > div { gap: 8px; }
-  .tocktutor-launcher { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {
   .tocktutor-workbench *, .tocktutor-workbench *::before, .tocktutor-workbench *::after { scroll-behavior: auto !important; transition-duration: 0s !important; }

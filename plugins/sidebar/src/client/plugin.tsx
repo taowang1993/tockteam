@@ -663,6 +663,7 @@ function DesktopWindowTitlebar({
         ><PanelIcon kind="sidebar" /></button>
       </div>
       <span className="tockteam-window-title">TockTeam</span>
+      <div id="tockteam-window-titlebar-slot" />
     </header>
   )
 }

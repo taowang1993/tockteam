@@ -109,28 +109,6 @@ html[data-tockteam-desktop='true'] body::before {
   user-select: none;
 }
 
-html[data-tockteam-preview='true'] body::after {
-  content: attr(data-tockteam-preview-label);
-  position: fixed;
-  z-index: 2147483647;
-  top: 7px;
-  left: 50%;
-  max-width: 52vw;
-  padding: 4px 11px;
-  overflow: hidden;
-  border: 1px solid #a9c2f5;
-  border-radius: 999px;
-  background: #edf3ff;
-  color: #28549f;
-  font-size: 10px;
-  font-weight: 600;
-  line-height: 16px;
-  pointer-events: none;
-  text-overflow: ellipsis;
-  transform: translateX(-50%);
-  white-space: nowrap;
-}
-
 html[data-tockteam-desktop='true'] #root:has(
   [role='presentation'] > [role='dialog']
 ) {
