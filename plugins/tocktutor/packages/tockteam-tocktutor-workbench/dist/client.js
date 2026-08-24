@@ -15550,18 +15550,6 @@ function resolveEditorShortcut(event, isMac) {
   }
   return null;
 }
-function editorStatusLabel(status) {
-  switch (status) {
-    case "saved":
-      return "Saved";
-    case "unsaved":
-      return "Unsaved";
-    case "saving":
-      return "Saving";
-    case "save-failed":
-      return "Save Failed";
-  }
-}
 
 // src/session.ts
 var MAX_PANE_GROUPS = 8;
@@ -16369,6 +16357,81 @@ function NativeDispatchDialog(props) {
     }
   );
 }
+function WorkbenchGlyph({ kind }) {
+  const paths = {
+    back: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("path", { d: "m15 18-6-6 6-6" }),
+    chat: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(import_jsx_runtime.Fragment, { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("path", { d: "M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4Z" }) }),
+    close: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("path", { d: "m8 8 8 8" }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("path", { d: "m16 8-8 8" })
+    ] }),
+    collapse: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("path", { d: "m9 18 6-6-6-6" }),
+    document: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("path", { d: "M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z" }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("path", { d: "M14 2v6h6" }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("path", { d: "M9 13h6" })
+    ] }),
+    folder: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("path", { d: "M3 6h6l2 2h10v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z" }),
+    forward: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("path", { d: "m9 18 6-6-6-6" }),
+    more: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("circle", { cx: "5", cy: "12", r: "1", fill: "currentColor", stroke: "none" }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("circle", { cx: "12", cy: "12", r: "1", fill: "currentColor", stroke: "none" }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("circle", { cx: "19", cy: "12", r: "1", fill: "currentColor", stroke: "none" })
+    ] }),
+    new: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("path", { d: "M12 5v14" }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("path", { d: "M5 12h14" })
+    ] }),
+    panel: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("rect", { height: "18", rx: "2", width: "18", x: "3", y: "3" }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("path", { d: "M15 3v18" })
+    ] }),
+    pencil: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("path", { d: "M12 20h9" }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("path", { d: "M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" })
+    ] })
+  };
+  return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("svg", { "aria-hidden": "true", fill: "none", stroke: "currentColor", strokeLinecap: "round", strokeLinejoin: "round", strokeWidth: "1.7", viewBox: "0 0 24 24", children: paths[kind] });
+}
+function fileName(path) {
+  return path.split("/").at(-1) ?? path;
+}
+function noteTitle(path) {
+  return path === null ? "TockTutor" : fileName(path).replace(/\.(?:base|canvas|markdown|md)$/iu, "");
+}
+function TreeEntries(props) {
+  const prefix = props.prefix ?? "";
+  const children = props.entries.filter((entry) => entry.path.startsWith(prefix) && !entry.path.slice(prefix.length).includes("/") && (entry.kind === "directory" || entry.kind === "document")).toSorted((left, right) => {
+    if (left.kind !== right.kind) return left.kind === "directory" ? -1 : 1;
+    return left.path.localeCompare(right.path, void 0, { sensitivity: "base" });
+  });
+  return children.map((entry) => entry.kind === "directory" ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("li", { className: "tocktutor-tree-directory", role: "treeitem", "aria-expanded": "true", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "tocktutor-tree-row", title: entry.path, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "collapse" }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "folder" }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: fileName(entry.path) }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "more" })
+    ] }),
+    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("ul", { role: "group", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(TreeEntries, { entries: props.entries, onSelect: props.onSelect, path: props.path, prefix: `${entry.path}/` }) })
+  ] }, entry.path) : /* @__PURE__ */ (0, import_jsx_runtime.jsx)("li", { role: "treeitem", "aria-selected": entry.path === props.path, children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(
+    "button",
+    {
+      "aria-current": entry.path === props.path ? "page" : void 0,
+      className: "tocktutor-tree-row",
+      onClick: () => {
+        props.onSelect(entry.path);
+      },
+      title: entry.path,
+      type: "button",
+      children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "tocktutor-tree-indent" }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "document" }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: fileName(entry.path) }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "more" })
+      ]
+    }
+  ) }, entry.path));
+}
 function TockTutorRouteView(props) {
   const { snapshot } = props;
   const reading = snapshot.path === null || snapshot.mode !== "reading" || snapshot.documentKind !== "markdown" ? null : projectReading(snapshot.source);
@@ -16377,6 +16440,10 @@ function TockTutorRouteView(props) {
   const query = snapshot.searchQuery.trim().toLocaleLowerCase();
   const documents = snapshot.entries.filter((entry) => entry.kind === "document" && supportedDocument(entry.path) && (query === "" || entry.path.toLocaleLowerCase().includes(query)));
   const focusedPane = snapshot.panes.find((pane) => pane.id === snapshot.focusedPaneId);
+  const visibleTreeEntries = query === "" ? snapshot.entries.filter((entry) => entry.kind === "directory" || entry.kind === "document" && supportedDocument(entry.path)) : snapshot.entries.filter((entry) => entry.kind === "directory" ? documents.some((document) => document.path.startsWith(`${entry.path}/`)) : documents.includes(entry));
+  const [panel, setPanel] = (0, import_react.useState)(null);
+  const words = snapshot.source.trim() === "" ? 0 : snapshot.source.trim().split(/\s+/u).length;
+  const characters = snapshot.source.length;
   return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(
     "main",
     {
@@ -16386,12 +16453,53 @@ function TockTutorRouteView(props) {
       tabIndex: -1,
       children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("style", { children: ROUTE_CSS }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("header", { className: "tocktutor-header", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { className: "tocktutor-kicker", children: "Local Notes" }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h1", { children: "TockTutor" })
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("header", { "aria-label": "TockTutor Title Bar", className: "tocktutor-titlebar", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "tocktutor-titlebar-sidebar", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "tocktutor-titlebar-document", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "document" }) }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { "aria-label": "Search Notes", onClick: () => {
+              props.onSearchChange?.(snapshot.searchQuery);
+            }, type: "button", children: "\u2315" }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "chat" }) }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "panel" }) })
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("output", { "aria-live": "polite", className: "tocktutor-status", children: snapshot.path === null ? snapshot.message : editorStatusLabel(snapshot.saveStatus) })
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "tocktutor-titlebar-main", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "tocktutor-history", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "back" }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "forward" })
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { "aria-label": "Note Tabs", className: "tocktutor-tabs", role: "tablist", children: focusedPane?.tabs.map((tab, index) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(
+              "button",
+              {
+                "aria-selected": tab.path === focusedPane.activePath,
+                onClick: () => {
+                  props.onActivateTab(focusedPane.id, tab.path);
+                },
+                onKeyDown: (event) => {
+                  if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+                  event.preventDefault();
+                  const offset = event.key === "ArrowLeft" ? -1 : 1;
+                  const next = focusedPane.tabs[(index + offset + focusedPane.tabs.length) % focusedPane.tabs.length];
+                  if (next !== void 0) props.onActivateTab(focusedPane.id, next.path);
+                },
+                role: "tab",
+                tabIndex: tab.path === focusedPane.activePath ? 0 : -1,
+                title: tab.path,
+                type: "button",
+                children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { children: [
+                    tab.dirty && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { "aria-label": "Unsaved", children: "\u2022" }),
+                    fileName(tab.path)
+                  ] }),
+                  tab.path === focusedPane.activePath && /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "close" })
+                ]
+              },
+              tab.path
+            )) }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "tocktutor-new-tab", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "new" }) }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "tocktutor-titlebar-spacer" }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "tocktutor-launcher", children: "\u2315 TockLauncher" }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "tocktutor-panel-icon", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "panel" }) })
+          ] })
         ] }),
         snapshot.dispatchDialog !== null && /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
           NativeDispatchDialog,
@@ -16406,159 +16514,103 @@ function TockTutorRouteView(props) {
           }
         ),
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "tocktutor-grid", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("aside", { className: "tocktutor-sidebar", children: [
-            snapshot.searchOpen && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("section", { "aria-label": "Search Notes", className: "tocktutor-search", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { htmlFor: "tocktutor-search-query", children: "Search Notes" }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
-                /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-                  "input",
-                  {
-                    "aria-label": "Search Notes Query",
-                    autoFocus: true,
-                    id: "tocktutor-search-query",
-                    maxLength: 1e3,
-                    onChange: (event) => {
-                      props.onSearchChange?.(event.target.value);
-                    },
-                    type: "search",
-                    value: snapshot.searchQuery
-                  }
-                ),
-                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { "aria-label": "Close Search", onClick: () => {
-                  props.onCloseSearch?.();
-                }, type: "button", children: "\xD7" })
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("aside", { "aria-label": "Files", className: "tocktutor-sidebar", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("header", { className: "tocktutor-sidebar-header", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h1", { children: "Files" }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "more" }) }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "panel" }) }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "\u21A5" }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "folder" }) }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "\u25AD" })
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "tocktutor-sidebar-content", children: [
+              snapshot.searchOpen && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("section", { "aria-label": "Search Notes", className: "tocktutor-search", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { htmlFor: "tocktutor-search-query", children: "Search Notes" }),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+                    "input",
+                    {
+                      "aria-label": "Search Notes Query",
+                      autoFocus: true,
+                      id: "tocktutor-search-query",
+                      maxLength: 1e3,
+                      onChange: (event) => {
+                        props.onSearchChange?.(event.target.value);
+                      },
+                      type: "search",
+                      value: snapshot.searchQuery
+                    }
+                  ),
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { "aria-label": "Close Search", onClick: () => {
+                    props.onCloseSearch?.();
+                  }, type: "button", children: "\xD7" })
+                ] }),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("p", { "aria-live": "polite", role: "status", children: [
+                  documents.length,
+                  " matching notes."
+                ] })
               ] }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("p", { "aria-live": "polite", role: "status", children: [
-                documents.length,
-                " matching notes."
+              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("nav", { "aria-label": "Vault Notes", children: [
+                snapshot.phase === "loading" && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { children: "Loading notes\u2026" }),
+                snapshot.phase === "inactive" && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { role: "alert", children: "No Active Vault" }),
+                snapshot.phase === "error" && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { role: "alert", children: snapshot.message }),
+                snapshot.phase === "ready" && documents.length === 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { children: "No supported notes found." }),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("ul", { className: "tocktutor-tree", role: "tree", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(TreeEntries, { entries: visibleTreeEntries, onSelect: props.onSelect, path: snapshot.path }) })
               ] })
             ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("nav", { "aria-label": "Vault Notes", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h2", { children: "Vault Notes" }),
-              snapshot.phase === "loading" && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { children: "Loading notes\u2026" }),
-              snapshot.phase === "inactive" && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { role: "alert", children: "No Active Vault" }),
-              snapshot.phase === "error" && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { role: "alert", children: snapshot.message }),
-              snapshot.phase === "ready" && documents.length === 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { children: "No supported notes found." }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("ul", { children: documents.map((entry) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)("li", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-                "button",
-                {
-                  "aria-current": entry.path === snapshot.path ? "page" : void 0,
-                  onClick: () => {
-                    props.onSelect(entry.path);
-                  },
-                  title: entry.path,
-                  type: "button",
-                  children: entry.path
-                }
-              ) }, entry.path)) })
-            ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("section", { "aria-label": "Pane Groups", className: "tocktutor-pane-groups", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "tocktutor-pane-heading", children: [
-                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h2", { children: "Pane Groups" }),
-                /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-                  "button",
-                  {
-                    "aria-label": "Add Pane",
-                    disabled: snapshot.panes.length >= MAX_PANE_GROUPS,
-                    onClick: props.onAddPane,
-                    type: "button",
-                    children: "+"
-                  }
-                )
-              ] }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "tocktutor-pane-list", children: snapshot.panes.map((pane, index) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(
-                "button",
-                {
-                  "aria-pressed": pane.id === snapshot.focusedPaneId,
-                  onClick: () => {
-                    props.onFocusPane(pane.id);
-                  },
-                  title: pane.activePath ?? `Pane ${String(index + 1)}`,
-                  type: "button",
-                  children: [
-                    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { children: [
-                      "Pane ",
-                      String(index + 1)
-                    ] }),
-                    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("small", { children: pane.activePath ?? "Empty" })
-                  ]
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(
+              "button",
+              {
+                "aria-expanded": panel === "utilities",
+                className: "tocktutor-vault-switcher",
+                onClick: () => {
+                  setPanel((current) => current === "utilities" ? null : "utilities");
                 },
-                pane.id
-              )) }),
-              focusedPane !== void 0 && focusedPane.tabs.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { "aria-label": "Note Tabs", className: "tocktutor-tab-list", role: "tablist", children: focusedPane.tabs.map((tab, index) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(
-                "button",
-                {
-                  "aria-selected": tab.path === focusedPane.activePath,
-                  onClick: () => {
-                    props.onActivateTab(focusedPane.id, tab.path);
-                  },
-                  onKeyDown: (event) => {
-                    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
-                    event.preventDefault();
-                    const offset = event.key === "ArrowLeft" ? -1 : 1;
-                    const next = focusedPane.tabs[(index + offset + focusedPane.tabs.length) % focusedPane.tabs.length];
-                    if (next !== void 0) props.onActivateTab(focusedPane.id, next.path);
-                  },
-                  role: "tab",
-                  tabIndex: tab.path === focusedPane.activePath ? 0 : -1,
-                  title: tab.path,
-                  type: "button",
-                  children: [
-                    tab.dirty && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { "aria-label": "Unsaved", children: "\u2022" }),
-                    tab.path
-                  ]
-                },
-                tab.path
-              )) })
-            ] })
+                type: "button",
+                children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "collapse" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: snapshot.vault === null ? "Choose Vault" : "TockTutor Vault" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "more" })
+                ]
+              }
+            )
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("section", { "aria-label": "Note Editor", className: "tocktutor-editor", children: snapshot.path === null ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "tocktutor-empty", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { className: "tocktutor-kicker", children: "Ready When You Are" }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h2", { children: "Select a Note" }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { children: "Choose a Markdown note from the vault to read or edit its exact source." })
-          ] }) : /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
-            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "tocktutor-toolbar", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "tocktutor-title", children: [
-                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { className: "tocktutor-kicker", children: "Active Note" }),
-                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h2", { children: snapshot.path })
-              ] }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("fieldset", { className: "tocktutor-segment", children: [
-                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("legend", { className: "tocktutor-visually-hidden", children: "Editor Mode" }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("section", { "aria-label": "Note Editor", className: "tocktutor-editor", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("header", { className: "tocktutor-editor-header", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h2", { children: noteTitle(snapshot.path) }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "tocktutor-editor-actions", children: [
                 /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
                   "button",
                   {
-                    "aria-pressed": snapshot.mode === "source",
+                    "aria-label": snapshot.mode === "source" ? previewLabel : sourceLabel,
                     onClick: () => {
-                      props.onMode("source");
+                      props.onMode(snapshot.mode === "source" ? "reading" : "source");
                     },
                     type: "button",
-                    children: "Source"
+                    children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "pencil" })
                   }
                 ),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { "aria-hidden": "true", children: "\u2669" }),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { "aria-hidden": "true", children: "\u25B1" }),
                 /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
                   "button",
                   {
-                    "aria-pressed": snapshot.mode === "reading",
+                    "aria-label": "More Note Actions",
+                    "aria-expanded": panel === "utilities",
                     onClick: () => {
-                      props.onMode("reading");
+                      setPanel((current) => current === "utilities" ? null : "utilities");
                     },
                     type: "button",
-                    children: previewLabel
+                    children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "more" })
                   }
                 )
-              ] }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-                "button",
-                {
-                  className: "tocktutor-save",
-                  disabled: snapshot.saveStatus === "saved" || snapshot.saveStatus === "saving",
-                  onClick: props.onSave,
-                  type: "button",
-                  children: snapshot.saveStatus === "saving" ? "Saving\u2026" : "Save"
-                }
-              )
+              ] })
             ] }),
-            snapshot.mode === "source" ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "tocktutor-editor-body", children: snapshot.path === null ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "tocktutor-empty", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { className: "tocktutor-kicker", children: "Ready When You Are" }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h2", { children: "Select a Note" }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { children: "Choose a Markdown note from the vault to read or edit its exact source." })
+            ] }) : snapshot.mode === "source" ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
               "textarea",
               {
                 "aria-label": sourceLabel,
@@ -16578,13 +16630,65 @@ function TockTutorRouteView(props) {
                 },
                 `${block.kind}-${String(index)}`
               ))
-            ] }) : /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { role: "alert", children: reading?.reason ?? "Reading view is unavailable." }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { "aria-live": "polite", className: "tocktutor-message", role: "status", children: snapshot.message })
-          ] }) }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "tocktutor-right-rail", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("aside", { "aria-label": "Assistant Panel", className: "tocktutor-assistant", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("header", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h2", { children: "Assistant" }) }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "tocktutor-assistant-content", children: props.assistantPanel })
+            ] }) : /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { role: "alert", children: reading?.reason ?? "Reading view is unavailable." }) }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("footer", { "aria-label": "TockTutor Status Bar", className: "tocktutor-statusbar", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("output", { "aria-live": "polite", className: "tocktutor-message", children: snapshot.message }),
+              snapshot.path !== null && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "0 Backlinks" }),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: snapshot.mode === "reading" ? "Live Preview" : "Source" }),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { children: [
+                  String(words),
+                  " Words"
+                ] }),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { children: [
+                  String(characters),
+                  " Characters"
+                ] }),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+                  "button",
+                  {
+                    "aria-label": "Open Assistant",
+                    "aria-expanded": panel === "assistant",
+                    onClick: () => {
+                      setPanel((current) => current === "assistant" ? null : "assistant");
+                    },
+                    type: "button",
+                    children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "chat" })
+                  }
+                )
+              ] })
+            ] })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("aside", { "aria-label": "Assistant Panel", className: "tocktutor-right-panel", hidden: panel !== "assistant", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("header", { children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h2", { children: "Assistant" }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { "aria-label": "Close Assistant", onClick: () => {
+                setPanel(null);
+              }, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "close" }) })
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "tocktutor-assistant-content", children: props.assistantPanel })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("aside", { "aria-label": "Workbench Utilities", className: "tocktutor-right-panel", hidden: panel !== "utilities", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("header", { children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h2", { children: "More Options" }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { "aria-label": "Close More Options", onClick: () => {
+                setPanel(null);
+              }, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "close" }) })
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("section", { "aria-label": "Pane Groups", className: "tocktutor-pane-groups", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "tocktutor-pane-heading", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h2", { children: "Pane Groups" }),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { "aria-label": "Add Pane", disabled: snapshot.panes.length >= MAX_PANE_GROUPS, onClick: props.onAddPane, type: "button", children: "+" })
+              ] }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "tocktutor-pane-list", children: snapshot.panes.map((pane, index) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("button", { "aria-pressed": pane.id === snapshot.focusedPaneId, onClick: () => {
+                props.onFocusPane(pane.id);
+              }, title: pane.activePath ?? `Pane ${String(index + 1)}`, type: "button", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { children: [
+                  "Pane ",
+                  String(index + 1)
+                ] }),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("small", { children: pane.activePath ?? "Empty" })
+              ] }, pane.id)) })
             ] }),
             /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("section", { "aria-label": "Shared Review Panel", className: "tocktutor-review", children: [
               /* @__PURE__ */ (0, import_jsx_runtime.jsx)("header", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h2", { children: "Reviews" }) }),
@@ -16731,110 +16835,139 @@ function TockTutorRoute(props) {
 var ROUTE_CSS = `
 .tocktutor-root { height: 100%; min-height: 0; }
 .tocktutor-workbench {
-  --tt-accent: var(--dsw-alias-accent-primary, #2457d6);
-  --tt-bg: var(--dsw-alias-bg-base, #f7f8fa);
-  --tt-border: var(--dsw-alias-border-subtle, #d9dde5);
-  --tt-muted: var(--dsw-alias-fg-muted, #667085);
+  --tt-accent: var(--dsw-alias-accent-primary, #533afd);
+  --tt-bg: var(--dsw-alias-bg-base, #fff);
+  --tt-border: var(--dsw-alias-border-l1, var(--dsw-alias-border-subtle, #e1e3e7));
+  --tt-muted: var(--dsw-alias-fg-muted, #71717a);
   --tt-panel: var(--dsw-alias-bg-elevated, #fff);
-  --tt-text: var(--dsw-alias-fg-primary, #18202c);
+  --tt-selected: color-mix(in srgb, var(--tt-accent) 14%, var(--tt-panel));
+  --tt-text: var(--dsw-alias-fg-primary, #27272a);
   background: var(--tt-bg);
   color: var(--tt-text);
-  display: grid;
-  font: 14px/1.5 ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  grid-template-rows: auto minmax(0, 1fr);
+  font: 14px/1.45 ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   height: 100%;
   min-height: 0;
 }
-.tocktutor-header { align-items: center; background: var(--tt-panel); border-bottom: 1px solid var(--tt-border); display: flex; justify-content: space-between; min-height: 64px; padding: 10px 20px; }
-.tocktutor-header h1, .tocktutor-toolbar h2, .tocktutor-empty h2 { font-size: 17px; line-height: 1.25; margin: 0; }
-.tocktutor-kicker { color: var(--tt-muted); font-size: 11px; font-weight: 650; letter-spacing: .08em; margin: 0 0 2px; text-transform: uppercase; }
-.tocktutor-visually-hidden { clip: rect(0 0 0 0); clip-path: inset(50%); height: 1px; overflow: hidden; position: absolute; white-space: nowrap; width: 1px; }
-.tocktutor-status { background: color-mix(in srgb, var(--tt-accent) 10%, transparent); border-radius: 999px; color: var(--tt-accent); font-size: 12px; font-weight: 650; padding: 4px 9px; }
-.tocktutor-grid { display: grid; grid-template-columns: minmax(190px, 240px) minmax(0, 1fr) minmax(240px, 320px); min-height: 0; }
-.tocktutor-sidebar { background: var(--tt-panel); border-right: 1px solid var(--tt-border); min-height: 0; overflow: auto; padding: 18px 12px; }
-.tocktutor-search { border-bottom: 1px solid var(--tt-border); margin: 0 0 14px; padding: 0 8px 14px; }
-.tocktutor-search > label { display: block; font-size: 12px; font-weight: 650; margin-bottom: 6px; }
+.tocktutor-workbench *, .tocktutor-workbench *::before, .tocktutor-workbench *::after { box-sizing: border-box; }
+.tocktutor-workbench svg { display: block; height: 16px; width: 16px; }
+.tocktutor-workbench button { color: inherit; font: inherit; }
+.tocktutor-workbench [hidden] { display: none !important; }
+.tocktutor-titlebar {
+  -webkit-app-region: drag;
+  background: var(--tt-panel);
+  border-bottom: 1px solid var(--tt-border);
+  display: grid;
+  grid-template-columns: 224px minmax(0, 1fr);
+  height: 40px;
+  left: var(--tockteam-rail-width, 40px);
+  position: fixed;
+  right: 0;
+  top: 0;
+  z-index: 2147483647;
+}
+.tocktutor-titlebar-sidebar, .tocktutor-titlebar-main { align-items: center; display: flex; min-width: 0; }
+.tocktutor-titlebar-sidebar { border-right: 1px solid var(--tt-border); gap: 10px; justify-content: flex-end; padding: 0 10px; }
+.tocktutor-titlebar-sidebar > span, .tocktutor-titlebar-sidebar > button { align-items: center; background: transparent; border: 0; color: var(--tt-muted); display: inline-flex; height: 28px; justify-content: center; padding: 0; width: 22px; }
+.tocktutor-titlebar-sidebar .tocktutor-titlebar-document { color: var(--tt-text); margin-right: auto; }
+.tocktutor-titlebar-main { gap: 4px; padding: 0 8px; }
+.tocktutor-history { color: color-mix(in srgb, var(--tt-muted) 45%, transparent); display: flex; gap: 5px; padding: 0 6px; }
+.tocktutor-tabs { align-items: flex-end; align-self: stretch; display: flex; gap: 4px; margin-bottom: -1px; min-width: 0; }
+.tocktutor-tabs button { align-items: center; background: transparent; border: 1px solid transparent; border-bottom: 0; display: flex; gap: 12px; height: 34px; max-width: 220px; min-width: 118px; padding: 0 10px; }
+.tocktutor-tabs button[aria-selected="true"] { background: var(--tt-panel); border-color: var(--tt-border); border-radius: 8px 8px 0 0; }
+.tocktutor-tabs button > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tocktutor-tabs button svg { height: 14px; margin-left: auto; width: 14px; }
+.tocktutor-new-tab, .tocktutor-panel-icon { color: var(--tt-muted); padding: 6px; }
+.tocktutor-titlebar-spacer { flex: 1; }
+.tocktutor-launcher { color: var(--tt-muted); font-size: 12px; white-space: nowrap; }
+.tocktutor-grid { display: grid; grid-template-columns: 224px minmax(0, 1fr); height: 100%; min-height: 0; position: relative; }
+.tocktutor-sidebar { background: var(--tt-panel); border-right: 1px solid var(--tt-border); display: grid; grid-template-rows: 40px minmax(0, 1fr) 32px; min-height: 0; overflow: hidden; }
+.tocktutor-sidebar-header { align-items: center; border-bottom: 1px solid var(--tt-border); display: flex; gap: 10px; padding: 0 10px; }
+.tocktutor-sidebar-header h1 { font-size: 14px; font-weight: 600; margin: 0 auto 0 0; }
+.tocktutor-sidebar-header span { align-items: center; color: var(--tt-muted); display: inline-flex; font-size: 14px; justify-content: center; }
+.tocktutor-sidebar-header svg { height: 14px; width: 14px; }
+.tocktutor-sidebar-content { min-height: 0; overflow: auto; padding: 8px 5px; }
+.tocktutor-search { border-bottom: 1px solid var(--tt-border); margin: 0 0 8px; padding: 0 3px 8px; }
+.tocktutor-search > label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 5px; }
 .tocktutor-search > div { display: flex; gap: 4px; }
-.tocktutor-search input { border: 1px solid var(--tt-border); border-radius: 6px; font: inherit; min-width: 0; padding: 6px 8px; width: 100%; }
-.tocktutor-search button { border: 1px solid var(--tt-border); text-align: center; width: 32px; }
-.tocktutor-search p { color: var(--tt-muted); font-size: 11px; margin: 6px 0 0; }
-.tocktutor-sidebar h2 { font-size: 12px; letter-spacing: .04em; margin: 0 8px 10px; text-transform: uppercase; }
-.tocktutor-sidebar p { color: var(--tt-muted); margin: 10px 8px; }
-.tocktutor-sidebar ul { list-style: none; margin: 0; padding: 0; }
-.tocktutor-sidebar button { background: transparent; border: 0; border-radius: 7px; color: inherit; cursor: pointer; display: block; overflow: hidden; padding: 7px 8px; text-align: left; text-overflow: ellipsis; transition: background-color 120ms ease; white-space: nowrap; width: 100%; }
-.tocktutor-sidebar button:hover { background: color-mix(in srgb, var(--tt-text) 6%, transparent); }
-.tocktutor-sidebar button[aria-current="page"] { background: color-mix(in srgb, var(--tt-accent) 12%, transparent); color: var(--tt-accent); font-weight: 650; }
-.tocktutor-pane-groups { border-top: 1px solid var(--tt-border); margin-top: 18px; padding-top: 14px; }
-.tocktutor-pane-heading { align-items: center; display: flex; justify-content: space-between; margin: 0 8px 8px; }
-.tocktutor-pane-heading h2 { margin: 0; }
-.tocktutor-pane-heading button { border: 1px solid var(--tt-border); font-size: 17px; height: 26px; padding: 0; text-align: center; width: 26px; }
-.tocktutor-pane-list { display: grid; gap: 5px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.tocktutor-pane-list button { border: 1px solid transparent; }
+.tocktutor-search input { border: 1px solid var(--tt-border); border-radius: 5px; font: inherit; min-width: 0; padding: 5px 7px; width: 100%; }
+.tocktutor-search button { background: transparent; border: 1px solid var(--tt-border); border-radius: 5px; width: 28px; }
+.tocktutor-search p, .tocktutor-sidebar nav > p { color: var(--tt-muted); font-size: 12px; margin: 7px 4px; }
+.tocktutor-tree, .tocktutor-tree ul { list-style: none; margin: 0; padding: 0; }
+.tocktutor-tree ul { padding-left: 16px; }
+.tocktutor-tree-row { align-items: center; background: transparent; border: 0; border-radius: 4px; color: inherit; display: grid; font-weight: 500; gap: 7px; grid-template-columns: 12px 16px minmax(0, 1fr) 16px; min-height: 34px; overflow: hidden; padding: 5px 5px; text-align: left; width: 100%; }
+.tocktutor-tree-row > span:not(.tocktutor-tree-indent) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tocktutor-tree-row > svg:first-child { height: 12px; width: 12px; }
+.tocktutor-tree-row > svg:last-child { color: var(--tt-muted); height: 14px; margin-left: auto; opacity: .8; width: 14px; }
+.tocktutor-tree-row:hover { background: color-mix(in srgb, var(--tt-text) 5%, transparent); }
+.tocktutor-tree-row[aria-current="page"] { background: var(--tt-selected); }
+.tocktutor-tree-row[aria-current="page"] > svg:last-child { color: var(--tt-text); }
+.tocktutor-tree-indent { width: 12px; }
+.tocktutor-vault-switcher { align-items: center; background: var(--tt-panel); border: 0; border-top: 1px solid var(--tt-border); display: grid; gap: 6px; grid-template-columns: 14px minmax(0, 1fr) 16px; padding: 0 10px; text-align: left; }
+.tocktutor-vault-switcher > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tocktutor-vault-switcher svg { height: 13px; width: 13px; }
+.tocktutor-editor { background: var(--tt-panel); display: grid; grid-template-rows: 40px minmax(0, 1fr) 28px; min-height: 0; overflow: hidden; }
+.tocktutor-editor-header { align-items: center; border-bottom: 1px solid var(--tt-border); display: flex; justify-content: center; min-width: 0; padding: 0 10px; position: relative; }
+.tocktutor-editor-header h2 { color: var(--tt-muted); font-size: 13px; font-weight: 500; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tocktutor-editor-actions { align-items: center; display: flex; gap: 4px; position: absolute; right: 10px; }
+.tocktutor-editor-actions button, .tocktutor-editor-actions span { align-items: center; background: transparent; border: 0; color: var(--tt-muted); display: inline-flex; height: 28px; justify-content: center; padding: 0; width: 26px; }
+.tocktutor-editor-body { min-height: 0; overflow: auto; position: relative; }
+.tocktutor-editor textarea { background: var(--tt-panel); border: 0; color: var(--tt-text); font: 14px/1.65 ui-monospace, SFMono-Regular, Consolas, monospace; height: 100%; min-height: 0; outline: none; padding: 36px max(28px, calc((100% - 768px) / 2)); resize: none; tab-size: 2; width: 100%; }
+.tocktutor-reading { margin: 0 auto; max-width: 768px; min-height: 100%; padding: 18px 0 72px; width: calc(100% - 48px); }
+.tocktutor-reading h1, .tocktutor-reading h2, .tocktutor-reading h3 { font-weight: 650; line-height: 1.25; margin: 0 0 16px; }
+.tocktutor-reading h1 { font-size: 30px; }
+.tocktutor-reading h1::before { color: color-mix(in srgb, var(--tt-muted) 45%, transparent); content: '\u2304'; display: inline-block; font-size: 12px; margin-left: -18px; margin-right: 6px; transform: translateY(-4px); }
+.tocktutor-reading h2 { font-size: 24px; }
+.tocktutor-reading h3 { font-size: 20px; }
+.tocktutor-reading p { font-size: 18px; margin: 0 0 16px; }
+.tocktutor-reading pre { background: color-mix(in srgb, var(--tt-text) 4%, var(--tt-panel)); border: 1px solid var(--tt-border); border-radius: 6px; overflow: auto; padding: 12px; }
+.tocktutor-statusbar { align-items: center; border-top: 1px solid var(--tt-border); color: var(--tt-muted); display: flex; font-size: 12px; min-width: 0; padding: 0 8px; }
+.tocktutor-statusbar > div { align-items: center; display: flex; gap: 18px; margin-left: auto; white-space: nowrap; }
+.tocktutor-statusbar button { background: transparent; border: 0; color: var(--tt-muted); padding: 2px 0; }
+.tocktutor-statusbar button svg { height: 17px; width: 17px; }
+.tocktutor-message, .tocktutor-visually-hidden { clip: rect(0 0 0 0); clip-path: inset(50%); height: 1px; overflow: hidden; position: absolute; white-space: nowrap; width: 1px; }
+.tocktutor-kicker { color: var(--tt-muted); font-size: 11px; font-weight: 650; letter-spacing: .08em; margin: 0 0 2px; text-transform: uppercase; }
+.tocktutor-empty { left: 50%; max-width: 420px; padding: 32px; position: absolute; text-align: center; top: 45%; transform: translate(-50%, -50%); width: 100%; }
+.tocktutor-empty h2 { font-size: 20px; margin: 0; }
+.tocktutor-empty > p:last-child { color: var(--tt-muted); }
+.tocktutor-right-panel { background: var(--tt-panel); border-left: 1px solid var(--tt-border); bottom: 0; box-shadow: -8px 0 24px rgb(0 0 0 / 6%); display: grid; grid-template-rows: 40px minmax(0, 1fr); overflow: auto; position: fixed; right: 0; top: 40px; width: min(360px, calc(100vw - 264px)); z-index: 20; }
+.tocktutor-right-panel > header { align-items: center; border-bottom: 1px solid var(--tt-border); display: flex; justify-content: space-between; padding: 0 12px; }
+.tocktutor-right-panel > header h2, .tocktutor-review h2, .tocktutor-native-actions h2, .tocktutor-pane-groups h2 { font-size: 14px; margin: 0; }
+.tocktutor-right-panel > header button { background: transparent; border: 0; padding: 5px; }
+.tocktutor-assistant-content, .tocktutor-review-content, .tocktutor-native-actions-content { min-height: 0; overflow: auto; }
+.tocktutor-pane-groups, .tocktutor-review, .tocktutor-native-actions { border-top: 1px solid var(--tt-border); padding: 12px; }
+.tocktutor-pane-heading { align-items: center; display: flex; justify-content: space-between; }
+.tocktutor-pane-heading button { background: transparent; border: 1px solid var(--tt-border); border-radius: 4px; height: 26px; width: 26px; }
+.tocktutor-pane-list { display: grid; gap: 6px; grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 8px; }
+.tocktutor-pane-list button { background: transparent; border: 1px solid var(--tt-border); border-radius: 5px; overflow: hidden; padding: 6px; text-align: left; }
 .tocktutor-pane-list button[aria-pressed="true"] { border-color: var(--tt-accent); }
 .tocktutor-pane-list span, .tocktutor-pane-list small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.tocktutor-pane-list small { color: var(--tt-muted); font-size: 10px; }
-.tocktutor-tab-list { border-top: 1px solid var(--tt-border); margin-top: 10px; padding-top: 8px; }
-.tocktutor-tab-list button { align-items: center; display: flex; gap: 5px; }
-.tocktutor-tab-list button[aria-selected="true"] { background: color-mix(in srgb, var(--tt-accent) 10%, transparent); color: var(--tt-accent); font-weight: 650; }
-.tocktutor-editor { background: var(--tt-panel); display: grid; grid-template-rows: auto minmax(0, 1fr) auto; min-height: 0; overflow: hidden; }
-.tocktutor-right-rail { background: var(--tt-panel); border-left: 1px solid var(--tt-border); display: grid; grid-template-rows: minmax(0, 1fr) auto auto; min-height: 0; overflow: hidden; }
-.tocktutor-assistant { display: grid; grid-template-rows: auto minmax(0, 1fr); min-height: 0; overflow: hidden; }
-.tocktutor-assistant > header, .tocktutor-review > header, .tocktutor-native-actions > header { border-bottom: 1px solid var(--tt-border); padding: 16px 18px; }
-.tocktutor-assistant h2, .tocktutor-review h2, .tocktutor-native-actions h2 { font-size: 14px; margin: 0; }
-.tocktutor-assistant-content, .tocktutor-review-content, .tocktutor-native-actions-content { min-height: 0; overflow: auto; }
-.tocktutor-review, .tocktutor-native-actions { border-top: 1px solid var(--tt-border); max-height: 40vh; min-height: 0; overflow: hidden; }
-.tocktutor-review-content > p[role="status"], .tocktutor-native-actions-content > p[role="status"] { color: var(--tt-muted); margin: 0; padding: 14px 18px; }
-.tocktutor-toolbar { align-items: center; border-bottom: 1px solid var(--tt-border); display: grid; gap: 12px; grid-template-columns: minmax(0, 1fr) auto auto; padding: 12px 18px; }
-.tocktutor-title { min-width: 0; }
-.tocktutor-title h2 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.tocktutor-segment { background: var(--tt-bg); border: 1px solid var(--tt-border); border-radius: 8px; display: flex; margin: 0; min-width: 0; padding: 2px; }
-.tocktutor-segment button, .tocktutor-save { border: 0; border-radius: 6px; cursor: pointer; font: inherit; font-weight: 600; padding: 6px 10px; }
-.tocktutor-segment button { background: transparent; color: var(--tt-muted); }
-.tocktutor-segment button[aria-pressed="true"] { background: var(--tt-panel); color: var(--tt-text); box-shadow: 0 1px 2px rgb(16 24 40 / 10%); }
-.tocktutor-save { background: var(--tt-accent); color: white; }
-.tocktutor-save:disabled { cursor: default; opacity: .45; }
-.tocktutor-editor textarea { background: var(--tt-panel); border: 0; color: var(--tt-text); font: 13px/1.65 ui-monospace, SFMono-Regular, Consolas, monospace; min-height: 0; outline: none; padding: 24px clamp(20px, 5vw, 72px); resize: none; tab-size: 2; }
-.tocktutor-reading { margin: 0 auto; max-width: 760px; min-height: 0; overflow: auto; padding: 32px clamp(20px, 5vw, 56px) 80px; width: 100%; }
+.tocktutor-pane-list small, .tocktutor-review-content, .tocktutor-native-actions-content { color: var(--tt-muted); font-size: 12px; }
 .tocktutor-projection { min-height: 0; overflow: auto; padding: 24px; }
 .tocktutor-projection > header h3 { font-size: 17px; margin: 0 0 18px; }
 .tocktutor-canvas-grid, .tocktutor-base-grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
-.tocktutor-canvas-node, .tocktutor-base-view { background: var(--tt-bg); border: 1px solid var(--tt-border); border-radius: 10px; min-width: 0; padding: 14px; }
+.tocktutor-canvas-node, .tocktutor-base-view { background: var(--tt-bg); border: 1px solid var(--tt-border); border-radius: 8px; min-width: 0; padding: 14px; }
 .tocktutor-canvas-node h4, .tocktutor-base-view h4 { font-size: 14px; margin: 0 0 8px; overflow-wrap: anywhere; }
 .tocktutor-canvas-node > p:not(.tocktutor-kicker), .tocktutor-base-view > p:not(.tocktutor-kicker) { color: var(--tt-muted); font-size: 12px; }
 .tocktutor-node-actions { border: 0; display: flex; gap: 4px; margin: 10px 0 0; padding: 0; }
-.tocktutor-node-actions button { background: var(--tt-panel); border: 1px solid var(--tt-border); border-radius: 6px; color: inherit; cursor: pointer; height: 30px; width: 30px; }
+.tocktutor-node-actions button, .tocktutor-dialog-actions button { background: var(--tt-panel); border: 1px solid var(--tt-border); border-radius: 5px; color: inherit; cursor: pointer; padding: 7px 10px; }
 .tocktutor-base-view dl { margin: 0; }
 .tocktutor-base-view dl > div { border-top: 1px solid var(--tt-border); display: grid; gap: 8px; grid-template-columns: minmax(72px, .35fr) minmax(0, 1fr); padding: 7px 0; }
 .tocktutor-base-view dt { color: var(--tt-muted); }
 .tocktutor-base-view dd { margin: 0; overflow-wrap: anywhere; }
-.tocktutor-reading h1, .tocktutor-reading h2, .tocktutor-reading h3 { line-height: 1.25; margin: 1.5em 0 .6em; }
-.tocktutor-reading p { margin: .8em 0; }
-.tocktutor-reading pre { background: var(--tt-bg); border: 1px solid var(--tt-border); border-radius: 8px; overflow: auto; padding: 14px; }
 .tocktutor-task { align-items: flex-start; display: flex; gap: 8px; margin: 8px 0; }
-.tocktutor-task input { margin-top: 4px; }
 .tocktutor-warning { border-left: 3px solid #b7791f; color: var(--tt-muted); padding-left: 10px; }
-.tocktutor-message { border-top: 1px solid var(--tt-border); color: var(--tt-muted); font-size: 12px; margin: 0; padding: 7px 18px; }
-.tocktutor-empty { align-self: center; justify-self: center; max-width: 420px; padding: 32px; text-align: center; }
-.tocktutor-empty > p:last-child { color: var(--tt-muted); }
-.tocktutor-dispatch-dialog { align-items: center; background: rgb(0 0 0 / 35%); display: flex; inset: 0; justify-content: center; padding: 24px; position: fixed; z-index: 10; }
-.tocktutor-dispatch-dialog form { background: var(--tt-panel); border: 1px solid var(--tt-border); border-radius: 10px; display: grid; gap: 14px; max-width: 480px; padding: 20px; width: 100%; }
+.tocktutor-dispatch-dialog { align-items: center; background: rgb(0 0 0 / 35%); display: flex; inset: 0; justify-content: center; padding: 24px; position: fixed; z-index: 100; }
+.tocktutor-dispatch-dialog form { background: var(--tt-panel); border: 1px solid var(--tt-border); border-radius: 8px; display: grid; gap: 14px; max-width: 480px; padding: 20px; width: 100%; }
 .tocktutor-dispatch-dialog h2 { font-size: 17px; margin: 0; }
 .tocktutor-dispatch-dialog label { display: grid; font-weight: 650; gap: 5px; }
-.tocktutor-dispatch-dialog input, .tocktutor-dispatch-dialog textarea { border: 1px solid var(--tt-border); border-radius: 6px; font: inherit; padding: 8px; }
-.tocktutor-dispatch-dialog textarea { min-height: 120px; resize: vertical; }
+.tocktutor-dispatch-dialog input, .tocktutor-dispatch-dialog textarea { border: 1px solid var(--tt-border); border-radius: 5px; font: inherit; padding: 8px; }
 .tocktutor-dialog-actions { display: flex; gap: 8px; justify-content: flex-end; }
-.tocktutor-dialog-actions button { border: 1px solid var(--tt-border); border-radius: 6px; cursor: pointer; font: inherit; padding: 7px 12px; }
 .tocktutor-workbench button:focus-visible, .tocktutor-workbench input:focus-visible, .tocktutor-workbench textarea:focus-visible { outline: 2px solid var(--tt-accent); outline-offset: 2px; }
-@media (max-width: 1000px) {
-  .tocktutor-grid { grid-template-columns: minmax(180px, 220px) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; }
-  .tocktutor-right-rail { border-left: 0; border-top: 1px solid var(--tt-border); grid-column: 2; max-height: 45vh; }
-}
-@media (max-width: 720px) {
-  .tocktutor-grid { grid-template-columns: 1fr; grid-template-rows: minmax(100px, 30vh) minmax(0, 1fr) auto; }
-  .tocktutor-sidebar { border-bottom: 1px solid var(--tt-border); border-right: 0; }
-  .tocktutor-assistant { grid-column: 1; max-height: 35vh; }
-  .tocktutor-toolbar { grid-template-columns: minmax(0, 1fr) auto; }
-  .tocktutor-title { grid-column: 1 / -1; }
+@media (max-width: 760px) {
+  .tocktutor-titlebar { grid-template-columns: 190px minmax(0, 1fr); }
+  .tocktutor-grid { grid-template-columns: 190px minmax(0, 1fr); }
+  .tocktutor-statusbar > div { gap: 8px; }
+  .tocktutor-launcher { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {
   .tocktutor-workbench *, .tocktutor-workbench *::before, .tocktutor-workbench *::after { scroll-behavior: auto !important; transition-duration: 0s !important; }

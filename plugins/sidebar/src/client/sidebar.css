@@ -108,6 +108,15 @@ body[data-ds-dark-theme] {
   pointer-events: auto;
 }
 
+html[data-tockteam-tocktutor-active='true'] #tockteam-rail-root {
+  padding-top: 0;
+}
+
+html[data-tockteam-tocktutor-active='true'] .tockteam-window-titlebar,
+html[data-tockteam-tocktutor-active='true'] .tockteam-panel-toolbar {
+  display: none;
+}
+
 #tockteam-sidebar-root {
   position: relative;
   z-index: 1;

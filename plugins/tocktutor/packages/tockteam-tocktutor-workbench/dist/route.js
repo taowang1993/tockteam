@@ -1,5 +1,5 @@
 import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-runtime";
-import { useEffect, useMemo, useRef, useSyncExternalStore, } from 'react';
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore, } from 'react';
 import { TOCKTUTOR_ASSISTANT_PANEL_SLOT } from "./assistant-panel.js";
 import { projectBase } from "./base.js";
 import { TOCKTUTOR_NATIVE_ACTIONS_SLOT, } from "./native-actions.js";
@@ -743,6 +743,41 @@ function NativeDispatchDialog(props) {
     const label = props.kind === 'new' ? 'New Note' : 'Quick Capture';
     return (_jsx("dialog", { "aria-label": label, className: "tocktutor-dispatch-dialog", onCancel: event => { event.preventDefault(); props.onCancel(); }, open: true, children: _jsxs("form", { onSubmit: submit, children: [_jsx("header", { children: _jsx("h2", { children: label }) }), props.kind === 'new' ? (_jsxs("label", { children: ["Note Path", _jsx("input", { "aria-label": "New Note Path", autoFocus: true, maxLength: 1_000, name: "path", required: true })] })) : (_jsxs(_Fragment, { children: [_jsxs("label", { children: ["Title", _jsx("input", { "aria-label": "Capture Title", autoFocus: true, maxLength: 200, name: "title", required: true })] }), _jsxs("label", { children: ["Text", _jsx("textarea", { "aria-label": "Capture Text", maxLength: 100_000, name: "text" })] })] })), _jsxs("div", { className: "tocktutor-dialog-actions", children: [_jsx("button", { onClick: props.onCancel, type: "button", children: "Cancel" }), _jsx("button", { type: "submit", children: "Create" })] })] }) }));
 }
+function WorkbenchGlyph({ kind }) {
+    const paths = {
+        back: _jsx("path", { d: "m15 18-6-6 6-6" }),
+        chat: _jsx(_Fragment, { children: _jsx("path", { d: "M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4Z" }) }),
+        close: _jsxs(_Fragment, { children: [_jsx("path", { d: "m8 8 8 8" }), _jsx("path", { d: "m16 8-8 8" })] }),
+        collapse: _jsx("path", { d: "m9 18 6-6-6-6" }),
+        document: _jsxs(_Fragment, { children: [_jsx("path", { d: "M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z" }), _jsx("path", { d: "M14 2v6h6" }), _jsx("path", { d: "M9 13h6" })] }),
+        folder: _jsx("path", { d: "M3 6h6l2 2h10v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z" }),
+        forward: _jsx("path", { d: "m9 18 6-6-6-6" }),
+        more: _jsxs(_Fragment, { children: [_jsx("circle", { cx: "5", cy: "12", r: "1", fill: "currentColor", stroke: "none" }), _jsx("circle", { cx: "12", cy: "12", r: "1", fill: "currentColor", stroke: "none" }), _jsx("circle", { cx: "19", cy: "12", r: "1", fill: "currentColor", stroke: "none" })] }),
+        new: _jsxs(_Fragment, { children: [_jsx("path", { d: "M12 5v14" }), _jsx("path", { d: "M5 12h14" })] }),
+        panel: _jsxs(_Fragment, { children: [_jsx("rect", { height: "18", rx: "2", width: "18", x: "3", y: "3" }), _jsx("path", { d: "M15 3v18" })] }),
+        pencil: _jsxs(_Fragment, { children: [_jsx("path", { d: "M12 20h9" }), _jsx("path", { d: "M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" })] }),
+    };
+    return (_jsx("svg", { "aria-hidden": "true", fill: "none", stroke: "currentColor", strokeLinecap: "round", strokeLinejoin: "round", strokeWidth: "1.7", viewBox: "0 0 24 24", children: paths[kind] }));
+}
+function fileName(path) {
+    return path.split('/').at(-1) ?? path;
+}
+function noteTitle(path) {
+    return path === null ? 'TockTutor' : fileName(path).replace(/\.(?:base|canvas|markdown|md)$/iu, '');
+}
+function TreeEntries(props) {
+    const prefix = props.prefix ?? '';
+    const children = props.entries
+        .filter(entry => entry.path.startsWith(prefix)
+        && !entry.path.slice(prefix.length).includes('/')
+        && (entry.kind === 'directory' || entry.kind === 'document'))
+        .toSorted((left, right) => {
+        if (left.kind !== right.kind)
+            return left.kind === 'directory' ? -1 : 1;
+        return left.path.localeCompare(right.path, undefined, { sensitivity: 'base' });
+    });
+    return children.map(entry => entry.kind === 'directory' ? (_jsxs("li", { className: "tocktutor-tree-directory", role: "treeitem", "aria-expanded": "true", children: [_jsxs("div", { className: "tocktutor-tree-row", title: entry.path, children: [_jsx(WorkbenchGlyph, { kind: "collapse" }), _jsx(WorkbenchGlyph, { kind: "folder" }), _jsx("span", { children: fileName(entry.path) }), _jsx(WorkbenchGlyph, { kind: "more" })] }), _jsx("ul", { role: "group", children: _jsx(TreeEntries, { entries: props.entries, onSelect: props.onSelect, path: props.path, prefix: `${entry.path}/` }) })] }, entry.path)) : (_jsx("li", { role: "treeitem", "aria-selected": entry.path === props.path, children: _jsxs("button", { "aria-current": entry.path === props.path ? 'page' : undefined, className: "tocktutor-tree-row", onClick: () => { props.onSelect(entry.path); }, title: entry.path, type: "button", children: [_jsx("span", { className: "tocktutor-tree-indent" }), _jsx(WorkbenchGlyph, { kind: "document" }), _jsx("span", { children: fileName(entry.path) }), _jsx(WorkbenchGlyph, { kind: "more" })] }) }, entry.path)));
+}
 /** Semantic, authority-free view for the route state machine. */
 export function TockTutorRouteView(props) {
     const { snapshot } = props;
@@ -762,15 +797,24 @@ export function TockTutorRouteView(props) {
         && supportedDocument(entry.path)
         && (query === '' || entry.path.toLocaleLowerCase().includes(query)));
     const focusedPane = snapshot.panes.find(pane => pane.id === snapshot.focusedPaneId);
-    return (_jsxs("main", { "aria-label": "TockTutor Workbench", className: "tocktutor-workbench", "data-phase": snapshot.phase, tabIndex: -1, children: [_jsx("style", { children: ROUTE_CSS }), _jsxs("header", { className: "tocktutor-header", children: [_jsxs("div", { children: [_jsx("p", { className: "tocktutor-kicker", children: "Local Notes" }), _jsx("h1", { children: "TockTutor" })] }), _jsx("output", { "aria-live": "polite", className: "tocktutor-status", children: snapshot.path === null ? snapshot.message : editorStatusLabel(snapshot.saveStatus) })] }), snapshot.dispatchDialog !== null && (_jsx(NativeDispatchDialog, { kind: snapshot.dispatchDialog, onCancel: () => { props.onCancelDispatch?.(); }, onSubmit: draft => { props.onSubmitDispatch?.(draft); } })), _jsxs("div", { className: "tocktutor-grid", children: [_jsxs("aside", { className: "tocktutor-sidebar", children: [snapshot.searchOpen && (_jsxs("section", { "aria-label": "Search Notes", className: "tocktutor-search", children: [_jsx("label", { htmlFor: "tocktutor-search-query", children: "Search Notes" }), _jsxs("div", { children: [_jsx("input", { "aria-label": "Search Notes Query", autoFocus: true, id: "tocktutor-search-query", maxLength: 1_000, onChange: event => { props.onSearchChange?.(event.target.value); }, type: "search", value: snapshot.searchQuery }), _jsx("button", { "aria-label": "Close Search", onClick: () => { props.onCloseSearch?.(); }, type: "button", children: "\u00D7" })] }), _jsxs("p", { "aria-live": "polite", role: "status", children: [documents.length, " matching notes."] })] })), _jsxs("nav", { "aria-label": "Vault Notes", children: [_jsx("h2", { children: "Vault Notes" }), snapshot.phase === 'loading' && _jsx("p", { children: "Loading notes\u2026" }), snapshot.phase === 'inactive' && _jsx("p", { role: "alert", children: "No Active Vault" }), snapshot.phase === 'error' && _jsx("p", { role: "alert", children: snapshot.message }), snapshot.phase === 'ready' && documents.length === 0 && _jsx("p", { children: "No supported notes found." }), _jsx("ul", { children: documents.map(entry => (_jsx("li", { children: _jsx("button", { "aria-current": entry.path === snapshot.path ? 'page' : undefined, onClick: () => { props.onSelect(entry.path); }, title: entry.path, type: "button", children: entry.path }) }, entry.path))) })] }), _jsxs("section", { "aria-label": "Pane Groups", className: "tocktutor-pane-groups", children: [_jsxs("div", { className: "tocktutor-pane-heading", children: [_jsx("h2", { children: "Pane Groups" }), _jsx("button", { "aria-label": "Add Pane", disabled: snapshot.panes.length >= MAX_PANE_GROUPS, onClick: props.onAddPane, type: "button", children: "+" })] }), _jsx("div", { className: "tocktutor-pane-list", children: snapshot.panes.map((pane, index) => (_jsxs("button", { "aria-pressed": pane.id === snapshot.focusedPaneId, onClick: () => { props.onFocusPane(pane.id); }, title: pane.activePath ?? `Pane ${String(index + 1)}`, type: "button", children: [_jsxs("span", { children: ["Pane ", String(index + 1)] }), _jsx("small", { children: pane.activePath ?? 'Empty' })] }, pane.id))) }), focusedPane !== undefined && focusedPane.tabs.length > 0 && (_jsx("div", { "aria-label": "Note Tabs", className: "tocktutor-tab-list", role: "tablist", children: focusedPane.tabs.map((tab, index) => (_jsxs("button", { "aria-selected": tab.path === focusedPane.activePath, onClick: () => { props.onActivateTab(focusedPane.id, tab.path); }, onKeyDown: event => {
-                                                if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight')
-                                                    return;
-                                                event.preventDefault();
-                                                const offset = event.key === 'ArrowLeft' ? -1 : 1;
-                                                const next = focusedPane.tabs[(index + offset + focusedPane.tabs.length) % focusedPane.tabs.length];
-                                                if (next !== undefined)
-                                                    props.onActivateTab(focusedPane.id, next.path);
-                                            }, role: "tab", tabIndex: tab.path === focusedPane.activePath ? 0 : -1, title: tab.path, type: "button", children: [tab.dirty && _jsx("span", { "aria-label": "Unsaved", children: "\u2022" }), tab.path] }, tab.path))) }))] })] }), _jsx("section", { "aria-label": "Note Editor", className: "tocktutor-editor", children: snapshot.path === null ? (_jsxs("div", { className: "tocktutor-empty", children: [_jsx("p", { className: "tocktutor-kicker", children: "Ready When You Are" }), _jsx("h2", { children: "Select a Note" }), _jsx("p", { children: "Choose a Markdown note from the vault to read or edit its exact source." })] })) : (_jsxs(_Fragment, { children: [_jsxs("div", { className: "tocktutor-toolbar", children: [_jsxs("div", { className: "tocktutor-title", children: [_jsx("p", { className: "tocktutor-kicker", children: "Active Note" }), _jsx("h2", { children: snapshot.path })] }), _jsxs("fieldset", { className: "tocktutor-segment", children: [_jsx("legend", { className: "tocktutor-visually-hidden", children: "Editor Mode" }), _jsx("button", { "aria-pressed": snapshot.mode === 'source', onClick: () => { props.onMode('source'); }, type: "button", children: "Source" }), _jsx("button", { "aria-pressed": snapshot.mode === 'reading', onClick: () => { props.onMode('reading'); }, type: "button", children: previewLabel })] }), _jsx("button", { className: "tocktutor-save", disabled: snapshot.saveStatus === 'saved' || snapshot.saveStatus === 'saving', onClick: props.onSave, type: "button", children: snapshot.saveStatus === 'saving' ? 'Saving…' : 'Save' })] }), snapshot.mode === 'source' ? (_jsx("textarea", { "aria-label": sourceLabel, onChange: (event) => { props.onEdit(event.target.value); }, spellCheck: "true", value: snapshot.source })) : snapshot.documentKind === 'canvas' ? (_jsx(CanvasView, { onMove: props.onMoveCanvas, source: snapshot.source })) : snapshot.documentKind === 'base' ? (_jsx(BaseView, { source: snapshot.source })) : reading?.status === 'ready' ? (_jsxs("article", { "aria-label": "Reading View", className: "tocktutor-reading", tabIndex: -1, children: [reading.warnings.map(warning => _jsx("p", { className: "tocktutor-warning", role: "note", children: warning }, warning)), reading.blocks.map((block, index) => (_jsx(ReadingBlockView, { block: block, onToggleTask: props.onToggleTask }, `${block.kind}-${String(index)}`)))] })) : (_jsx("p", { role: "alert", children: reading?.reason ?? 'Reading view is unavailable.' })), _jsx("p", { "aria-live": "polite", className: "tocktutor-message", role: "status", children: snapshot.message })] })) }), _jsxs("div", { className: "tocktutor-right-rail", children: [_jsxs("aside", { "aria-label": "Assistant Panel", className: "tocktutor-assistant", children: [_jsx("header", { children: _jsx("h2", { children: "Assistant" }) }), _jsx("div", { className: "tocktutor-assistant-content", children: props.assistantPanel })] }), _jsxs("section", { "aria-label": "Shared Review Panel", className: "tocktutor-review", children: [_jsx("header", { children: _jsx("h2", { children: "Reviews" }) }), _jsx("div", { className: "tocktutor-review-content", children: props.reviewPanel ?? _jsx("p", { role: "status", children: "No review workflow is active." }) })] }), _jsxs("section", { "aria-label": "Native Actions", className: "tocktutor-native-actions", children: [_jsx("header", { children: _jsx("h2", { children: "Native Actions" }) }), _jsx("div", { className: "tocktutor-native-actions-content", children: props.nativeActions ?? _jsx("p", { role: "status", children: "No native actions are available." }) })] })] })] })] }));
+    const visibleTreeEntries = query === ''
+        ? snapshot.entries.filter(entry => entry.kind === 'directory'
+            || (entry.kind === 'document' && supportedDocument(entry.path)))
+        : snapshot.entries.filter(entry => entry.kind === 'directory'
+            ? documents.some(document => document.path.startsWith(`${entry.path}/`))
+            : documents.includes(entry));
+    const [panel, setPanel] = useState(null);
+    const words = snapshot.source.trim() === '' ? 0 : snapshot.source.trim().split(/\s+/u).length;
+    const characters = snapshot.source.length;
+    return (_jsxs("main", { "aria-label": "TockTutor Workbench", className: "tocktutor-workbench", "data-phase": snapshot.phase, tabIndex: -1, children: [_jsx("style", { children: ROUTE_CSS }), _jsxs("header", { "aria-label": "TockTutor Title Bar", className: "tocktutor-titlebar", children: [_jsxs("div", { className: "tocktutor-titlebar-sidebar", children: [_jsx("span", { className: "tocktutor-titlebar-document", children: _jsx(WorkbenchGlyph, { kind: "document" }) }), _jsx("button", { "aria-label": "Search Notes", onClick: () => { props.onSearchChange?.(snapshot.searchQuery); }, type: "button", children: "\u2315" }), _jsx("span", { children: _jsx(WorkbenchGlyph, { kind: "chat" }) }), _jsx("span", { children: _jsx(WorkbenchGlyph, { kind: "panel" }) })] }), _jsxs("div", { className: "tocktutor-titlebar-main", children: [_jsxs("span", { className: "tocktutor-history", children: [_jsx(WorkbenchGlyph, { kind: "back" }), _jsx(WorkbenchGlyph, { kind: "forward" })] }), _jsx("div", { "aria-label": "Note Tabs", className: "tocktutor-tabs", role: "tablist", children: focusedPane?.tabs.map((tab, index) => (_jsxs("button", { "aria-selected": tab.path === focusedPane.activePath, onClick: () => { props.onActivateTab(focusedPane.id, tab.path); }, onKeyDown: event => {
+                                        if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight')
+                                            return;
+                                        event.preventDefault();
+                                        const offset = event.key === 'ArrowLeft' ? -1 : 1;
+                                        const next = focusedPane.tabs[(index + offset + focusedPane.tabs.length) % focusedPane.tabs.length];
+                                        if (next !== undefined)
+                                            props.onActivateTab(focusedPane.id, next.path);
+                                    }, role: "tab", tabIndex: tab.path === focusedPane.activePath ? 0 : -1, title: tab.path, type: "button", children: [_jsxs("span", { children: [tab.dirty && _jsx("span", { "aria-label": "Unsaved", children: "\u2022" }), fileName(tab.path)] }), tab.path === focusedPane.activePath && _jsx(WorkbenchGlyph, { kind: "close" })] }, tab.path))) }), _jsx("span", { className: "tocktutor-new-tab", children: _jsx(WorkbenchGlyph, { kind: "new" }) }), _jsx("span", { className: "tocktutor-titlebar-spacer" }), _jsx("span", { className: "tocktutor-launcher", children: "\u2315 TockLauncher" }), _jsx("span", { className: "tocktutor-panel-icon", children: _jsx(WorkbenchGlyph, { kind: "panel" }) })] })] }), snapshot.dispatchDialog !== null && (_jsx(NativeDispatchDialog, { kind: snapshot.dispatchDialog, onCancel: () => { props.onCancelDispatch?.(); }, onSubmit: draft => { props.onSubmitDispatch?.(draft); } })), _jsxs("div", { className: "tocktutor-grid", children: [_jsxs("aside", { "aria-label": "Files", className: "tocktutor-sidebar", children: [_jsxs("header", { className: "tocktutor-sidebar-header", children: [_jsx("h1", { children: "Files" }), _jsx("span", { children: _jsx(WorkbenchGlyph, { kind: "more" }) }), _jsx("span", { children: _jsx(WorkbenchGlyph, { kind: "panel" }) }), _jsx("span", { children: "\u21A5" }), _jsx("span", { children: _jsx(WorkbenchGlyph, { kind: "folder" }) }), _jsx("span", { children: "\u25AD" })] }), _jsxs("div", { className: "tocktutor-sidebar-content", children: [snapshot.searchOpen && (_jsxs("section", { "aria-label": "Search Notes", className: "tocktutor-search", children: [_jsx("label", { htmlFor: "tocktutor-search-query", children: "Search Notes" }), _jsxs("div", { children: [_jsx("input", { "aria-label": "Search Notes Query", autoFocus: true, id: "tocktutor-search-query", maxLength: 1_000, onChange: event => { props.onSearchChange?.(event.target.value); }, type: "search", value: snapshot.searchQuery }), _jsx("button", { "aria-label": "Close Search", onClick: () => { props.onCloseSearch?.(); }, type: "button", children: "\u00D7" })] }), _jsxs("p", { "aria-live": "polite", role: "status", children: [documents.length, " matching notes."] })] })), _jsxs("nav", { "aria-label": "Vault Notes", children: [snapshot.phase === 'loading' && _jsx("p", { children: "Loading notes\u2026" }), snapshot.phase === 'inactive' && _jsx("p", { role: "alert", children: "No Active Vault" }), snapshot.phase === 'error' && _jsx("p", { role: "alert", children: snapshot.message }), snapshot.phase === 'ready' && documents.length === 0 && _jsx("p", { children: "No supported notes found." }), _jsx("ul", { className: "tocktutor-tree", role: "tree", children: _jsx(TreeEntries, { entries: visibleTreeEntries, onSelect: props.onSelect, path: snapshot.path }) })] })] }), _jsxs("button", { "aria-expanded": panel === 'utilities', className: "tocktutor-vault-switcher", onClick: () => { setPanel(current => current === 'utilities' ? null : 'utilities'); }, type: "button", children: [_jsx(WorkbenchGlyph, { kind: "collapse" }), _jsx("span", { children: snapshot.vault === null ? 'Choose Vault' : 'TockTutor Vault' }), _jsx(WorkbenchGlyph, { kind: "more" })] })] }), _jsxs("section", { "aria-label": "Note Editor", className: "tocktutor-editor", children: [_jsxs("header", { className: "tocktutor-editor-header", children: [_jsx("h2", { children: noteTitle(snapshot.path) }), _jsxs("div", { className: "tocktutor-editor-actions", children: [_jsx("button", { "aria-label": snapshot.mode === 'source' ? previewLabel : sourceLabel, onClick: () => { props.onMode(snapshot.mode === 'source' ? 'reading' : 'source'); }, type: "button", children: _jsx(WorkbenchGlyph, { kind: "pencil" }) }), _jsx("span", { "aria-hidden": "true", children: "\u2669" }), _jsx("span", { "aria-hidden": "true", children: "\u25B1" }), _jsx("button", { "aria-label": "More Note Actions", "aria-expanded": panel === 'utilities', onClick: () => { setPanel(current => current === 'utilities' ? null : 'utilities'); }, type: "button", children: _jsx(WorkbenchGlyph, { kind: "more" }) })] })] }), _jsx("div", { className: "tocktutor-editor-body", children: snapshot.path === null ? (_jsxs("div", { className: "tocktutor-empty", children: [_jsx("p", { className: "tocktutor-kicker", children: "Ready When You Are" }), _jsx("h2", { children: "Select a Note" }), _jsx("p", { children: "Choose a Markdown note from the vault to read or edit its exact source." })] })) : snapshot.mode === 'source' ? (_jsx("textarea", { "aria-label": sourceLabel, onChange: (event) => { props.onEdit(event.target.value); }, spellCheck: "true", value: snapshot.source })) : snapshot.documentKind === 'canvas' ? (_jsx(CanvasView, { onMove: props.onMoveCanvas, source: snapshot.source })) : snapshot.documentKind === 'base' ? (_jsx(BaseView, { source: snapshot.source })) : reading?.status === 'ready' ? (_jsxs("article", { "aria-label": "Reading View", className: "tocktutor-reading", tabIndex: -1, children: [reading.warnings.map(warning => _jsx("p", { className: "tocktutor-warning", role: "note", children: warning }, warning)), reading.blocks.map((block, index) => (_jsx(ReadingBlockView, { block: block, onToggleTask: props.onToggleTask }, `${block.kind}-${String(index)}`)))] })) : (_jsx("p", { role: "alert", children: reading?.reason ?? 'Reading view is unavailable.' })) }), _jsxs("footer", { "aria-label": "TockTutor Status Bar", className: "tocktutor-statusbar", children: [_jsx("output", { "aria-live": "polite", className: "tocktutor-message", children: snapshot.message }), snapshot.path !== null && (_jsxs("div", { children: [_jsx("span", { children: "0 Backlinks" }), _jsx("span", { children: snapshot.mode === 'reading' ? 'Live Preview' : 'Source' }), _jsxs("span", { children: [String(words), " Words"] }), _jsxs("span", { children: [String(characters), " Characters"] }), _jsx("button", { "aria-label": "Open Assistant", "aria-expanded": panel === 'assistant', onClick: () => { setPanel(current => current === 'assistant' ? null : 'assistant'); }, type: "button", children: _jsx(WorkbenchGlyph, { kind: "chat" }) })] }))] })] }), _jsxs("aside", { "aria-label": "Assistant Panel", className: "tocktutor-right-panel", hidden: panel !== 'assistant', children: [_jsxs("header", { children: [_jsx("h2", { children: "Assistant" }), _jsx("button", { "aria-label": "Close Assistant", onClick: () => { setPanel(null); }, type: "button", children: _jsx(WorkbenchGlyph, { kind: "close" }) })] }), _jsx("div", { className: "tocktutor-assistant-content", children: props.assistantPanel })] }), _jsxs("aside", { "aria-label": "Workbench Utilities", className: "tocktutor-right-panel", hidden: panel !== 'utilities', children: [_jsxs("header", { children: [_jsx("h2", { children: "More Options" }), _jsx("button", { "aria-label": "Close More Options", onClick: () => { setPanel(null); }, type: "button", children: _jsx(WorkbenchGlyph, { kind: "close" }) })] }), _jsxs("section", { "aria-label": "Pane Groups", className: "tocktutor-pane-groups", children: [_jsxs("div", { className: "tocktutor-pane-heading", children: [_jsx("h2", { children: "Pane Groups" }), _jsx("button", { "aria-label": "Add Pane", disabled: snapshot.panes.length >= MAX_PANE_GROUPS, onClick: props.onAddPane, type: "button", children: "+" })] }), _jsx("div", { className: "tocktutor-pane-list", children: snapshot.panes.map((pane, index) => (_jsxs("button", { "aria-pressed": pane.id === snapshot.focusedPaneId, onClick: () => { props.onFocusPane(pane.id); }, title: pane.activePath ?? `Pane ${String(index + 1)}`, type: "button", children: [_jsxs("span", { children: ["Pane ", String(index + 1)] }), _jsx("small", { children: pane.activePath ?? 'Empty' })] }, pane.id))) })] }), _jsxs("section", { "aria-label": "Shared Review Panel", className: "tocktutor-review", children: [_jsx("header", { children: _jsx("h2", { children: "Reviews" }) }), _jsx("div", { className: "tocktutor-review-content", children: props.reviewPanel ?? _jsx("p", { role: "status", children: "No review workflow is active." }) })] }), _jsxs("section", { "aria-label": "Native Actions", className: "tocktutor-native-actions", children: [_jsx("header", { children: _jsx("h2", { children: "Native Actions" }) }), _jsx("div", { className: "tocktutor-native-actions-content", children: props.nativeActions ?? _jsx("p", { role: "status", children: "No native actions are available." }) })] })] })] })] }));
 }
 function TockTutorAssistantPanelOutlet(props) {
     return props.renderSlot(TOCKTUTOR_ASSISTANT_PANEL_SLOT, {
@@ -832,110 +876,139 @@ export function TockTutorRoute(props) {
 const ROUTE_CSS = `
 .tocktutor-root { height: 100%; min-height: 0; }
 .tocktutor-workbench {
-  --tt-accent: var(--dsw-alias-accent-primary, #2457d6);
-  --tt-bg: var(--dsw-alias-bg-base, #f7f8fa);
-  --tt-border: var(--dsw-alias-border-subtle, #d9dde5);
-  --tt-muted: var(--dsw-alias-fg-muted, #667085);
+  --tt-accent: var(--dsw-alias-accent-primary, #533afd);
+  --tt-bg: var(--dsw-alias-bg-base, #fff);
+  --tt-border: var(--dsw-alias-border-l1, var(--dsw-alias-border-subtle, #e1e3e7));
+  --tt-muted: var(--dsw-alias-fg-muted, #71717a);
   --tt-panel: var(--dsw-alias-bg-elevated, #fff);
-  --tt-text: var(--dsw-alias-fg-primary, #18202c);
+  --tt-selected: color-mix(in srgb, var(--tt-accent) 14%, var(--tt-panel));
+  --tt-text: var(--dsw-alias-fg-primary, #27272a);
   background: var(--tt-bg);
   color: var(--tt-text);
-  display: grid;
-  font: 14px/1.5 ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  grid-template-rows: auto minmax(0, 1fr);
+  font: 14px/1.45 ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   height: 100%;
   min-height: 0;
 }
-.tocktutor-header { align-items: center; background: var(--tt-panel); border-bottom: 1px solid var(--tt-border); display: flex; justify-content: space-between; min-height: 64px; padding: 10px 20px; }
-.tocktutor-header h1, .tocktutor-toolbar h2, .tocktutor-empty h2 { font-size: 17px; line-height: 1.25; margin: 0; }
-.tocktutor-kicker { color: var(--tt-muted); font-size: 11px; font-weight: 650; letter-spacing: .08em; margin: 0 0 2px; text-transform: uppercase; }
-.tocktutor-visually-hidden { clip: rect(0 0 0 0); clip-path: inset(50%); height: 1px; overflow: hidden; position: absolute; white-space: nowrap; width: 1px; }
-.tocktutor-status { background: color-mix(in srgb, var(--tt-accent) 10%, transparent); border-radius: 999px; color: var(--tt-accent); font-size: 12px; font-weight: 650; padding: 4px 9px; }
-.tocktutor-grid { display: grid; grid-template-columns: minmax(190px, 240px) minmax(0, 1fr) minmax(240px, 320px); min-height: 0; }
-.tocktutor-sidebar { background: var(--tt-panel); border-right: 1px solid var(--tt-border); min-height: 0; overflow: auto; padding: 18px 12px; }
-.tocktutor-search { border-bottom: 1px solid var(--tt-border); margin: 0 0 14px; padding: 0 8px 14px; }
-.tocktutor-search > label { display: block; font-size: 12px; font-weight: 650; margin-bottom: 6px; }
+.tocktutor-workbench *, .tocktutor-workbench *::before, .tocktutor-workbench *::after { box-sizing: border-box; }
+.tocktutor-workbench svg { display: block; height: 16px; width: 16px; }
+.tocktutor-workbench button { color: inherit; font: inherit; }
+.tocktutor-workbench [hidden] { display: none !important; }
+.tocktutor-titlebar {
+  -webkit-app-region: drag;
+  background: var(--tt-panel);
+  border-bottom: 1px solid var(--tt-border);
+  display: grid;
+  grid-template-columns: 224px minmax(0, 1fr);
+  height: 40px;
+  left: var(--tockteam-rail-width, 40px);
+  position: fixed;
+  right: 0;
+  top: 0;
+  z-index: 2147483647;
+}
+.tocktutor-titlebar-sidebar, .tocktutor-titlebar-main { align-items: center; display: flex; min-width: 0; }
+.tocktutor-titlebar-sidebar { border-right: 1px solid var(--tt-border); gap: 10px; justify-content: flex-end; padding: 0 10px; }
+.tocktutor-titlebar-sidebar > span, .tocktutor-titlebar-sidebar > button { align-items: center; background: transparent; border: 0; color: var(--tt-muted); display: inline-flex; height: 28px; justify-content: center; padding: 0; width: 22px; }
+.tocktutor-titlebar-sidebar .tocktutor-titlebar-document { color: var(--tt-text); margin-right: auto; }
+.tocktutor-titlebar-main { gap: 4px; padding: 0 8px; }
+.tocktutor-history { color: color-mix(in srgb, var(--tt-muted) 45%, transparent); display: flex; gap: 5px; padding: 0 6px; }
+.tocktutor-tabs { align-items: flex-end; align-self: stretch; display: flex; gap: 4px; margin-bottom: -1px; min-width: 0; }
+.tocktutor-tabs button { align-items: center; background: transparent; border: 1px solid transparent; border-bottom: 0; display: flex; gap: 12px; height: 34px; max-width: 220px; min-width: 118px; padding: 0 10px; }
+.tocktutor-tabs button[aria-selected="true"] { background: var(--tt-panel); border-color: var(--tt-border); border-radius: 8px 8px 0 0; }
+.tocktutor-tabs button > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tocktutor-tabs button svg { height: 14px; margin-left: auto; width: 14px; }
+.tocktutor-new-tab, .tocktutor-panel-icon { color: var(--tt-muted); padding: 6px; }
+.tocktutor-titlebar-spacer { flex: 1; }
+.tocktutor-launcher { color: var(--tt-muted); font-size: 12px; white-space: nowrap; }
+.tocktutor-grid { display: grid; grid-template-columns: 224px minmax(0, 1fr); height: 100%; min-height: 0; position: relative; }
+.tocktutor-sidebar { background: var(--tt-panel); border-right: 1px solid var(--tt-border); display: grid; grid-template-rows: 40px minmax(0, 1fr) 32px; min-height: 0; overflow: hidden; }
+.tocktutor-sidebar-header { align-items: center; border-bottom: 1px solid var(--tt-border); display: flex; gap: 10px; padding: 0 10px; }
+.tocktutor-sidebar-header h1 { font-size: 14px; font-weight: 600; margin: 0 auto 0 0; }
+.tocktutor-sidebar-header span { align-items: center; color: var(--tt-muted); display: inline-flex; font-size: 14px; justify-content: center; }
+.tocktutor-sidebar-header svg { height: 14px; width: 14px; }
+.tocktutor-sidebar-content { min-height: 0; overflow: auto; padding: 8px 5px; }
+.tocktutor-search { border-bottom: 1px solid var(--tt-border); margin: 0 0 8px; padding: 0 3px 8px; }
+.tocktutor-search > label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 5px; }
 .tocktutor-search > div { display: flex; gap: 4px; }
-.tocktutor-search input { border: 1px solid var(--tt-border); border-radius: 6px; font: inherit; min-width: 0; padding: 6px 8px; width: 100%; }
-.tocktutor-search button { border: 1px solid var(--tt-border); text-align: center; width: 32px; }
-.tocktutor-search p { color: var(--tt-muted); font-size: 11px; margin: 6px 0 0; }
-.tocktutor-sidebar h2 { font-size: 12px; letter-spacing: .04em; margin: 0 8px 10px; text-transform: uppercase; }
-.tocktutor-sidebar p { color: var(--tt-muted); margin: 10px 8px; }
-.tocktutor-sidebar ul { list-style: none; margin: 0; padding: 0; }
-.tocktutor-sidebar button { background: transparent; border: 0; border-radius: 7px; color: inherit; cursor: pointer; display: block; overflow: hidden; padding: 7px 8px; text-align: left; text-overflow: ellipsis; transition: background-color 120ms ease; white-space: nowrap; width: 100%; }
-.tocktutor-sidebar button:hover { background: color-mix(in srgb, var(--tt-text) 6%, transparent); }
-.tocktutor-sidebar button[aria-current="page"] { background: color-mix(in srgb, var(--tt-accent) 12%, transparent); color: var(--tt-accent); font-weight: 650; }
-.tocktutor-pane-groups { border-top: 1px solid var(--tt-border); margin-top: 18px; padding-top: 14px; }
-.tocktutor-pane-heading { align-items: center; display: flex; justify-content: space-between; margin: 0 8px 8px; }
-.tocktutor-pane-heading h2 { margin: 0; }
-.tocktutor-pane-heading button { border: 1px solid var(--tt-border); font-size: 17px; height: 26px; padding: 0; text-align: center; width: 26px; }
-.tocktutor-pane-list { display: grid; gap: 5px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.tocktutor-pane-list button { border: 1px solid transparent; }
+.tocktutor-search input { border: 1px solid var(--tt-border); border-radius: 5px; font: inherit; min-width: 0; padding: 5px 7px; width: 100%; }
+.tocktutor-search button { background: transparent; border: 1px solid var(--tt-border); border-radius: 5px; width: 28px; }
+.tocktutor-search p, .tocktutor-sidebar nav > p { color: var(--tt-muted); font-size: 12px; margin: 7px 4px; }
+.tocktutor-tree, .tocktutor-tree ul { list-style: none; margin: 0; padding: 0; }
+.tocktutor-tree ul { padding-left: 16px; }
+.tocktutor-tree-row { align-items: center; background: transparent; border: 0; border-radius: 4px; color: inherit; display: grid; font-weight: 500; gap: 7px; grid-template-columns: 12px 16px minmax(0, 1fr) 16px; min-height: 34px; overflow: hidden; padding: 5px 5px; text-align: left; width: 100%; }
+.tocktutor-tree-row > span:not(.tocktutor-tree-indent) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tocktutor-tree-row > svg:first-child { height: 12px; width: 12px; }
+.tocktutor-tree-row > svg:last-child { color: var(--tt-muted); height: 14px; margin-left: auto; opacity: .8; width: 14px; }
+.tocktutor-tree-row:hover { background: color-mix(in srgb, var(--tt-text) 5%, transparent); }
+.tocktutor-tree-row[aria-current="page"] { background: var(--tt-selected); }
+.tocktutor-tree-row[aria-current="page"] > svg:last-child { color: var(--tt-text); }
+.tocktutor-tree-indent { width: 12px; }
+.tocktutor-vault-switcher { align-items: center; background: var(--tt-panel); border: 0; border-top: 1px solid var(--tt-border); display: grid; gap: 6px; grid-template-columns: 14px minmax(0, 1fr) 16px; padding: 0 10px; text-align: left; }
+.tocktutor-vault-switcher > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tocktutor-vault-switcher svg { height: 13px; width: 13px; }
+.tocktutor-editor { background: var(--tt-panel); display: grid; grid-template-rows: 40px minmax(0, 1fr) 28px; min-height: 0; overflow: hidden; }
+.tocktutor-editor-header { align-items: center; border-bottom: 1px solid var(--tt-border); display: flex; justify-content: center; min-width: 0; padding: 0 10px; position: relative; }
+.tocktutor-editor-header h2 { color: var(--tt-muted); font-size: 13px; font-weight: 500; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tocktutor-editor-actions { align-items: center; display: flex; gap: 4px; position: absolute; right: 10px; }
+.tocktutor-editor-actions button, .tocktutor-editor-actions span { align-items: center; background: transparent; border: 0; color: var(--tt-muted); display: inline-flex; height: 28px; justify-content: center; padding: 0; width: 26px; }
+.tocktutor-editor-body { min-height: 0; overflow: auto; position: relative; }
+.tocktutor-editor textarea { background: var(--tt-panel); border: 0; color: var(--tt-text); font: 14px/1.65 ui-monospace, SFMono-Regular, Consolas, monospace; height: 100%; min-height: 0; outline: none; padding: 36px max(28px, calc((100% - 768px) / 2)); resize: none; tab-size: 2; width: 100%; }
+.tocktutor-reading { margin: 0 auto; max-width: 768px; min-height: 100%; padding: 18px 0 72px; width: calc(100% - 48px); }
+.tocktutor-reading h1, .tocktutor-reading h2, .tocktutor-reading h3 { font-weight: 650; line-height: 1.25; margin: 0 0 16px; }
+.tocktutor-reading h1 { font-size: 30px; }
+.tocktutor-reading h1::before { color: color-mix(in srgb, var(--tt-muted) 45%, transparent); content: '⌄'; display: inline-block; font-size: 12px; margin-left: -18px; margin-right: 6px; transform: translateY(-4px); }
+.tocktutor-reading h2 { font-size: 24px; }
+.tocktutor-reading h3 { font-size: 20px; }
+.tocktutor-reading p { font-size: 18px; margin: 0 0 16px; }
+.tocktutor-reading pre { background: color-mix(in srgb, var(--tt-text) 4%, var(--tt-panel)); border: 1px solid var(--tt-border); border-radius: 6px; overflow: auto; padding: 12px; }
+.tocktutor-statusbar { align-items: center; border-top: 1px solid var(--tt-border); color: var(--tt-muted); display: flex; font-size: 12px; min-width: 0; padding: 0 8px; }
+.tocktutor-statusbar > div { align-items: center; display: flex; gap: 18px; margin-left: auto; white-space: nowrap; }
+.tocktutor-statusbar button { background: transparent; border: 0; color: var(--tt-muted); padding: 2px 0; }
+.tocktutor-statusbar button svg { height: 17px; width: 17px; }
+.tocktutor-message, .tocktutor-visually-hidden { clip: rect(0 0 0 0); clip-path: inset(50%); height: 1px; overflow: hidden; position: absolute; white-space: nowrap; width: 1px; }
+.tocktutor-kicker { color: var(--tt-muted); font-size: 11px; font-weight: 650; letter-spacing: .08em; margin: 0 0 2px; text-transform: uppercase; }
+.tocktutor-empty { left: 50%; max-width: 420px; padding: 32px; position: absolute; text-align: center; top: 45%; transform: translate(-50%, -50%); width: 100%; }
+.tocktutor-empty h2 { font-size: 20px; margin: 0; }
+.tocktutor-empty > p:last-child { color: var(--tt-muted); }
+.tocktutor-right-panel { background: var(--tt-panel); border-left: 1px solid var(--tt-border); bottom: 0; box-shadow: -8px 0 24px rgb(0 0 0 / 6%); display: grid; grid-template-rows: 40px minmax(0, 1fr); overflow: auto; position: fixed; right: 0; top: 40px; width: min(360px, calc(100vw - 264px)); z-index: 20; }
+.tocktutor-right-panel > header { align-items: center; border-bottom: 1px solid var(--tt-border); display: flex; justify-content: space-between; padding: 0 12px; }
+.tocktutor-right-panel > header h2, .tocktutor-review h2, .tocktutor-native-actions h2, .tocktutor-pane-groups h2 { font-size: 14px; margin: 0; }
+.tocktutor-right-panel > header button { background: transparent; border: 0; padding: 5px; }
+.tocktutor-assistant-content, .tocktutor-review-content, .tocktutor-native-actions-content { min-height: 0; overflow: auto; }
+.tocktutor-pane-groups, .tocktutor-review, .tocktutor-native-actions { border-top: 1px solid var(--tt-border); padding: 12px; }
+.tocktutor-pane-heading { align-items: center; display: flex; justify-content: space-between; }
+.tocktutor-pane-heading button { background: transparent; border: 1px solid var(--tt-border); border-radius: 4px; height: 26px; width: 26px; }
+.tocktutor-pane-list { display: grid; gap: 6px; grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 8px; }
+.tocktutor-pane-list button { background: transparent; border: 1px solid var(--tt-border); border-radius: 5px; overflow: hidden; padding: 6px; text-align: left; }
 .tocktutor-pane-list button[aria-pressed="true"] { border-color: var(--tt-accent); }
 .tocktutor-pane-list span, .tocktutor-pane-list small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.tocktutor-pane-list small { color: var(--tt-muted); font-size: 10px; }
-.tocktutor-tab-list { border-top: 1px solid var(--tt-border); margin-top: 10px; padding-top: 8px; }
-.tocktutor-tab-list button { align-items: center; display: flex; gap: 5px; }
-.tocktutor-tab-list button[aria-selected="true"] { background: color-mix(in srgb, var(--tt-accent) 10%, transparent); color: var(--tt-accent); font-weight: 650; }
-.tocktutor-editor { background: var(--tt-panel); display: grid; grid-template-rows: auto minmax(0, 1fr) auto; min-height: 0; overflow: hidden; }
-.tocktutor-right-rail { background: var(--tt-panel); border-left: 1px solid var(--tt-border); display: grid; grid-template-rows: minmax(0, 1fr) auto auto; min-height: 0; overflow: hidden; }
-.tocktutor-assistant { display: grid; grid-template-rows: auto minmax(0, 1fr); min-height: 0; overflow: hidden; }
-.tocktutor-assistant > header, .tocktutor-review > header, .tocktutor-native-actions > header { border-bottom: 1px solid var(--tt-border); padding: 16px 18px; }
-.tocktutor-assistant h2, .tocktutor-review h2, .tocktutor-native-actions h2 { font-size: 14px; margin: 0; }
-.tocktutor-assistant-content, .tocktutor-review-content, .tocktutor-native-actions-content { min-height: 0; overflow: auto; }
-.tocktutor-review, .tocktutor-native-actions { border-top: 1px solid var(--tt-border); max-height: 40vh; min-height: 0; overflow: hidden; }
-.tocktutor-review-content > p[role="status"], .tocktutor-native-actions-content > p[role="status"] { color: var(--tt-muted); margin: 0; padding: 14px 18px; }
-.tocktutor-toolbar { align-items: center; border-bottom: 1px solid var(--tt-border); display: grid; gap: 12px; grid-template-columns: minmax(0, 1fr) auto auto; padding: 12px 18px; }
-.tocktutor-title { min-width: 0; }
-.tocktutor-title h2 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.tocktutor-segment { background: var(--tt-bg); border: 1px solid var(--tt-border); border-radius: 8px; display: flex; margin: 0; min-width: 0; padding: 2px; }
-.tocktutor-segment button, .tocktutor-save { border: 0; border-radius: 6px; cursor: pointer; font: inherit; font-weight: 600; padding: 6px 10px; }
-.tocktutor-segment button { background: transparent; color: var(--tt-muted); }
-.tocktutor-segment button[aria-pressed="true"] { background: var(--tt-panel); color: var(--tt-text); box-shadow: 0 1px 2px rgb(16 24 40 / 10%); }
-.tocktutor-save { background: var(--tt-accent); color: white; }
-.tocktutor-save:disabled { cursor: default; opacity: .45; }
-.tocktutor-editor textarea { background: var(--tt-panel); border: 0; color: var(--tt-text); font: 13px/1.65 ui-monospace, SFMono-Regular, Consolas, monospace; min-height: 0; outline: none; padding: 24px clamp(20px, 5vw, 72px); resize: none; tab-size: 2; }
-.tocktutor-reading { margin: 0 auto; max-width: 760px; min-height: 0; overflow: auto; padding: 32px clamp(20px, 5vw, 56px) 80px; width: 100%; }
+.tocktutor-pane-list small, .tocktutor-review-content, .tocktutor-native-actions-content { color: var(--tt-muted); font-size: 12px; }
 .tocktutor-projection { min-height: 0; overflow: auto; padding: 24px; }
 .tocktutor-projection > header h3 { font-size: 17px; margin: 0 0 18px; }
 .tocktutor-canvas-grid, .tocktutor-base-grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
-.tocktutor-canvas-node, .tocktutor-base-view { background: var(--tt-bg); border: 1px solid var(--tt-border); border-radius: 10px; min-width: 0; padding: 14px; }
+.tocktutor-canvas-node, .tocktutor-base-view { background: var(--tt-bg); border: 1px solid var(--tt-border); border-radius: 8px; min-width: 0; padding: 14px; }
 .tocktutor-canvas-node h4, .tocktutor-base-view h4 { font-size: 14px; margin: 0 0 8px; overflow-wrap: anywhere; }
 .tocktutor-canvas-node > p:not(.tocktutor-kicker), .tocktutor-base-view > p:not(.tocktutor-kicker) { color: var(--tt-muted); font-size: 12px; }
 .tocktutor-node-actions { border: 0; display: flex; gap: 4px; margin: 10px 0 0; padding: 0; }
-.tocktutor-node-actions button { background: var(--tt-panel); border: 1px solid var(--tt-border); border-radius: 6px; color: inherit; cursor: pointer; height: 30px; width: 30px; }
+.tocktutor-node-actions button, .tocktutor-dialog-actions button { background: var(--tt-panel); border: 1px solid var(--tt-border); border-radius: 5px; color: inherit; cursor: pointer; padding: 7px 10px; }
 .tocktutor-base-view dl { margin: 0; }
 .tocktutor-base-view dl > div { border-top: 1px solid var(--tt-border); display: grid; gap: 8px; grid-template-columns: minmax(72px, .35fr) minmax(0, 1fr); padding: 7px 0; }
 .tocktutor-base-view dt { color: var(--tt-muted); }
 .tocktutor-base-view dd { margin: 0; overflow-wrap: anywhere; }
-.tocktutor-reading h1, .tocktutor-reading h2, .tocktutor-reading h3 { line-height: 1.25; margin: 1.5em 0 .6em; }
-.tocktutor-reading p { margin: .8em 0; }
-.tocktutor-reading pre { background: var(--tt-bg); border: 1px solid var(--tt-border); border-radius: 8px; overflow: auto; padding: 14px; }
 .tocktutor-task { align-items: flex-start; display: flex; gap: 8px; margin: 8px 0; }
-.tocktutor-task input { margin-top: 4px; }
 .tocktutor-warning { border-left: 3px solid #b7791f; color: var(--tt-muted); padding-left: 10px; }
-.tocktutor-message { border-top: 1px solid var(--tt-border); color: var(--tt-muted); font-size: 12px; margin: 0; padding: 7px 18px; }
-.tocktutor-empty { align-self: center; justify-self: center; max-width: 420px; padding: 32px; text-align: center; }
-.tocktutor-empty > p:last-child { color: var(--tt-muted); }
-.tocktutor-dispatch-dialog { align-items: center; background: rgb(0 0 0 / 35%); display: flex; inset: 0; justify-content: center; padding: 24px; position: fixed; z-index: 10; }
-.tocktutor-dispatch-dialog form { background: var(--tt-panel); border: 1px solid var(--tt-border); border-radius: 10px; display: grid; gap: 14px; max-width: 480px; padding: 20px; width: 100%; }
+.tocktutor-dispatch-dialog { align-items: center; background: rgb(0 0 0 / 35%); display: flex; inset: 0; justify-content: center; padding: 24px; position: fixed; z-index: 100; }
+.tocktutor-dispatch-dialog form { background: var(--tt-panel); border: 1px solid var(--tt-border); border-radius: 8px; display: grid; gap: 14px; max-width: 480px; padding: 20px; width: 100%; }
 .tocktutor-dispatch-dialog h2 { font-size: 17px; margin: 0; }
 .tocktutor-dispatch-dialog label { display: grid; font-weight: 650; gap: 5px; }
-.tocktutor-dispatch-dialog input, .tocktutor-dispatch-dialog textarea { border: 1px solid var(--tt-border); border-radius: 6px; font: inherit; padding: 8px; }
-.tocktutor-dispatch-dialog textarea { min-height: 120px; resize: vertical; }
+.tocktutor-dispatch-dialog input, .tocktutor-dispatch-dialog textarea { border: 1px solid var(--tt-border); border-radius: 5px; font: inherit; padding: 8px; }
 .tocktutor-dialog-actions { display: flex; gap: 8px; justify-content: flex-end; }
-.tocktutor-dialog-actions button { border: 1px solid var(--tt-border); border-radius: 6px; cursor: pointer; font: inherit; padding: 7px 12px; }
 .tocktutor-workbench button:focus-visible, .tocktutor-workbench input:focus-visible, .tocktutor-workbench textarea:focus-visible { outline: 2px solid var(--tt-accent); outline-offset: 2px; }
-@media (max-width: 1000px) {
-  .tocktutor-grid { grid-template-columns: minmax(180px, 220px) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; }
-  .tocktutor-right-rail { border-left: 0; border-top: 1px solid var(--tt-border); grid-column: 2; max-height: 45vh; }
-}
-@media (max-width: 720px) {
-  .tocktutor-grid { grid-template-columns: 1fr; grid-template-rows: minmax(100px, 30vh) minmax(0, 1fr) auto; }
-  .tocktutor-sidebar { border-bottom: 1px solid var(--tt-border); border-right: 0; }
-  .tocktutor-assistant { grid-column: 1; max-height: 35vh; }
-  .tocktutor-toolbar { grid-template-columns: minmax(0, 1fr) auto; }
-  .tocktutor-title { grid-column: 1 / -1; }
+@media (max-width: 760px) {
+  .tocktutor-titlebar { grid-template-columns: 190px minmax(0, 1fr); }
+  .tocktutor-grid { grid-template-columns: 190px minmax(0, 1fr); }
+  .tocktutor-statusbar > div { gap: 8px; }
+  .tocktutor-launcher { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {
   .tocktutor-workbench *, .tocktutor-workbench *::before, .tocktutor-workbench *::after { scroll-behavior: auto !important; transition-duration: 0s !important; }
