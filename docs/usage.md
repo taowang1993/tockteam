@@ -1,34 +1,35 @@
 <p align="center">
-  <strong>简体中文</strong> ·
-  <a href="./usage.en.md">English</a> ·
-  <a href="../README.md">返回 README</a>
+  <a href="../README.en.md">Back to README</a>
 </p>
 
-# 安装、操作与排错
+# Installation, operations, and troubleshooting
 
-## 选择发行形态
+## Choose a distribution
 
-- 需要完整本地工作台：安装 **TockTeam Desktop**。
-- 只需要浏览器交互：安装 **TockTeam Web**，不携带 Electron。
-- 纯终端交互：安装 **TockTeam TUI**，不携带 Electron 或浏览器 UI。
+- Install **TockTeam Desktop** for the complete local workbench.
+- Install **TockTeam Web** for browser-only use without Electron.
+- Install **TockTeam TUI** for terminal-only use without Electron or browser UI.
 
-完整版已经包含三种形态，因此安装一次后可以使用 `desktop`、`web` 和 `tui`。
+The full distribution includes all three surfaces, so one installation
+supports `desktop`, `web`, and `tui`.
 
-## 安装完整版
+## Install the full distribution
 
 ### macOS
 
-1. 从最新 Release 下载 DMG。
-2. 将 **TockTeam Desktop** 拖入 Applications。
-3. 未公证的测试构建首次运行时，在 Finder 中右键应用并选择“打开”。
+1. Download the DMG from the latest Release.
+2. Drag **TockTeam Desktop** into Applications.
+3. For an unnotarized test build, right-click the app in Finder and choose
+   **Open** on first launch.
 
-如确认文件来自项目 Release，但仍被 quarantine 阻止，可对实际下载文件执行：
+If a verified Release download remains quarantined, apply this to the actual
+downloaded file:
 
 ```sh
 xattr -d com.apple.quarantine ~/Downloads/TockTeam-Desktop-*.dmg
 ```
 
-安装统一命令：
+Install the unified command:
 
 ```sh
 sudo ln -sf \
@@ -38,14 +39,14 @@ sudo ln -sf \
 
 ### Linux
 
-AppImage：
+AppImage:
 
 ```sh
 chmod +x TockTeam-Desktop-*.AppImage
 ./TockTeam-Desktop-*.AppImage
 ```
 
-deb：
+deb:
 
 ```sh
 sudo apt install ./TockTeam-Desktop-*.deb
@@ -53,10 +54,10 @@ sudo apt install ./TockTeam-Desktop-*.deb
 
 ### Windows
 
-GitHub Releases 目前不发布 Windows 构件。源码构建仍可使用
-`pnpm run dist:win`。
+Windows artifacts are not currently published in GitHub Releases. The
+`pnpm run dist:win` command remains available for source builds.
 
-## 安装 Web-only
+## Install Web-only
 
 ```sh
 tar -xzf tockteam-web-*.tar.gz
@@ -64,23 +65,24 @@ cd tockteam-web-*/
 ./bin/tockteam web
 ```
 
-常用选项：
+Common options:
 
-| 选项 | 默认值 | 说明 |
+| Option | Default | Description |
 | --- | --- | --- |
-| `--host` | `127.0.0.1` | 监听地址 |
-| `--port` | `3080` | 监听端口；`0` 使用随机端口 |
-| `--data` | `~/.tockteam-web` | Web 可写数据根目录 |
-| `--no-open` | 关闭 | 不自动打开浏览器 |
-| `--trusted-host` | 无 | 增加可信 authority，可重复 |
+| `--host` | `127.0.0.1` | Bind address |
+| `--port` | `3080` | Listen port; `0` selects a random port |
+| `--data` | `~/.tockteam-web` | Writable Web data root |
+| `--no-open` | off | Do not open the browser automatically |
+| `--trusted-host` | none | Add a trusted authority; repeatable |
 
-等价环境变量包括 `TOCKTEAM_WEB_HOST`、`TOCKTEAM_WEB_PORT`、
-`TOCKTEAM_WEB_HOME` 和 `TOCKTEAM_WEB_OPEN`。按 `Ctrl+C` 优雅退出。
+Equivalent environment variables include `TOCKTEAM_WEB_HOST`,
+`TOCKTEAM_WEB_PORT`, `TOCKTEAM_WEB_HOME`, and `TOCKTEAM_WEB_OPEN`. Press `Ctrl+C`
+for a graceful shutdown.
 
-不要在未配置访问边界时直接监听 `0.0.0.0`。对局域网开放时，应同时配置
-`--trusted-host`，并由可信反向代理提供鉴权和 TLS。
+Do not bind to `0.0.0.0` without an access boundary. For LAN exposure, add
+`--trusted-host` and put authentication and TLS in a trusted reverse proxy.
 
-## 安装 TUI-only
+## Install TUI-only
 
 ```sh
 tar -xzf tockteam-tui-*.tar.gz
@@ -88,10 +90,11 @@ cd tockteam-tui-*/
 ./bin/tockteam tui
 ```
 
-TUI 需要真实交互终端；默认使用 alternate screen，全屏选择、滚动和复制由上游
-`dsh-TUI` 处理。
+TUI requires a real interactive terminal. It uses the alternate screen by
+default; upstream `dsh-TUI` owns fullscreen selection, scrolling, and copy
+behavior.
 
-## 统一启动命令
+## Unified commands
 
 ```sh
 tockteam desktop
@@ -99,55 +102,59 @@ tockteam web
 tockteam tui
 ```
 
-- `desktop` 启动已安装应用；源码仓库中回退到 Electron 开发入口。
-- `web` 启动 HTTP 服务并打印访问地址。
-- `tui` 初始化独立 Profile，并在当前终端中附着运行上游 renderer。
+- `desktop` opens the installed app and falls back to the Electron development
+  entry when run from a source checkout.
+- `web` starts the HTTP service and prints its URL.
+- `tui` initializes its Profile and attaches the upstream renderer to the
+  current terminal.
 
-TUI 常用选项：
+Common TUI options:
 
-| 选项 | 默认值 | 说明 |
+| Option | Default | Description |
 | --- | --- | --- |
-| `--cwd` | 当前目录 | Workspace |
-| `--data` | `~/.tockteam` | TockTeam TUI Profile、会话和配置目录 |
-| `--resume` | 新会话 | 恢复指定 Session id |
-| `--lang` | 上游设置 | `zh` 或 `en` |
-| `--preset` | `standard` | 初始 Agent preset |
-| `--inline` | 关闭 | 保留终端 scrollback，不使用 alternate screen |
+| `--cwd` | Current directory | Workspace |
+| `--data` | `~/.tockteam` | TockTeam TUI Profile, session, and configuration root |
+| `--resume` | New session | Resume a Session id |
+| `--lang` | Upstream preference | `zh` or `en` |
+| `--preset` | `standard` | Initial Agent preset |
+| `--inline` | Off | Preserve terminal scrollback instead of alternate screen |
 
-## Desktop 操作
+## Desktop operations
 
-| 操作 | macOS 快捷键 |
+| Action | macOS shortcut |
 | --- | --- |
-| 切换左侧栏 | `⌘B` |
-| 切换底部 Terminal | `⌘J` |
-| 切换右侧栏 | `⌥⌘B` |
-| 打开 Review | `⌃⇧G` |
-| 打开 Browser | `⌘T` |
-| 打开 Files | `⌘P` |
-| 新建 Side chat | `⌥⌘S` |
-| 退出侧栏专注模式 | `Esc` |
+| Toggle the left sidebar | `⌘B` |
+| Toggle the bottom Terminal | `⌘J` |
+| Toggle the right sidebar | `⌥⌘B` |
+| Open Review | `⌃⇧G` |
+| Open Browser | `⌘T` |
+| Open Files | `⌘P` |
+| Start a Side chat | `⌥⌘S` |
+| Leave sidebar focus mode | `Esc` |
 
-设置页支持中英文、模型、权限、Agent preset、插件配置和 TockTeam 皮肤。
-设置弹窗会覆盖并虚化所有工作区和侧栏内容。
+Settings covers language, models, permissions, Agent presets, plugin config,
+and TockTeam skins. Its modal covers and blurs every workspace and sidebar.
 
-Web 与 Desktop 可在设置页选择皮肤。TUI 输入 `/theme` 可选择相同的 Deep
-Current、Jade Circuit、Porcelain 和 Ember Dusk；选择立即生效并在重启后保留。
+Choose a skin from Settings on Web or Desktop. In TUI, run `/theme` to select
+the same Deep Current, Jade Circuit, Porcelain, or Ember Dusk palette. The
+choice applies immediately and survives restarts.
 
-## 插件市场
+## Plugin marketplace
 
-推荐流程：
+Recommended flow:
 
-1. 在未安装分类中选择插件。
-2. 检查来源、commit、权限和风险等级。
-3. 创建 candidate 并在隔离 Profile 中预览。
-4. 效果不合适时选择放弃，当前桌面不发生变化。
-5. 确认后应用；需要时再单独启用。
-6. 更新失败时恢复 previous。
+1. Choose a plugin from Not installed.
+2. Inspect its source, commit, permissions, and risk level.
+3. Prepare a candidate and preview it in an isolated Profile.
+4. Discard it if the result is unsuitable; the current Desktop is unchanged.
+5. Apply it explicitly, then enable it separately when needed.
+6. Recover the previous state if an update fails.
 
-Agent 可以通过对话发起同样的安装操作，但仍需要经过预览、风险确认和应用，
-不会直接修改当前 Profile。
+An Agent can initiate the same operation through chat, but still passes
+through preview, risk approval, and apply. It cannot directly mutate the
+current Profile.
 
-## 从源码启动与打包
+## Run and package from source
 
 ```sh
 git submodule update --init --recursive
@@ -162,30 +169,34 @@ tockteam web --port 3080
 tockteam tui
 ```
 
-打包命令：
+Packaging commands:
 
 ```sh
-pnpm run dist:mac       # macOS 完整版
-pnpm run dist:linux     # Linux 完整版
-pnpm run dist:win       # Windows 完整版
-pnpm run dist:web       # Web-only 轻量版
-pnpm run dist:tui       # TUI-only 终端版
+pnpm run dist:mac       # macOS full distribution
+pnpm run dist:linux     # Linux full distribution
+pnpm run dist:win       # Windows full distribution
+pnpm run dist:web       # Web-only lightweight distribution
+pnpm run dist:tui       # TUI-only terminal distribution
 ```
 
-## 数据与排错
+## Data and troubleshooting
 
-Desktop 保留既有内部数据目录，以保证更名升级兼容。Web 默认数据目录是
-`~/.tockteam-web`，TUI 使用独立的 `~/.tockteam`，不会加载 `~/.dsh` 中的全局
-插件配置。DeepSeek API key 可以在 Models 设置中配置，也可以放入对应
-DSH 数据目录的 `.env`。
+Desktop retains the existing internal data directory to preserve state across
+the visible-name migration. Web stores data in `~/.tockteam-web` by default.
+TUI uses its own `~/.tockteam` root and does not load global plugin configuration
+from `~/.dsh`. Configure the DeepSeek API key in Models settings or in `.env`
+under the matching DSH data directory.
 
-排查顺序：
+Troubleshooting order:
 
-1. 运行 `tockteam --help` 确认 CLI 来源。
-2. 运行 `tockteam web --help` 检查参数。
-3. 运行 `tockteam tui --help`，再用 `tockteam tui --inline` 排除终端全屏兼容问题。
-4. 使用随机端口验证：`tockteam web --port 0 --no-open`。
-5. 检查 Profile 是否同时安装并启用了所需插件。
-6. Desktop 启动失败时，从终端运行应用内 `bin/tockteam desktop` 获取日志。
+1. Run `tockteam --help` to confirm the CLI source.
+2. Run `tockteam web --help` to inspect options.
+3. Run `tockteam tui --help`, then use `tockteam tui --inline` to isolate
+   alternate-screen terminal compatibility.
+4. Test a random port with `tockteam web --port 0 --no-open`.
+5. Confirm that required plugins are both installed and enabled in the Profile.
+6. If Desktop does not start, run its bundled `bin/tockteam desktop` in a terminal
+   to capture logs.
 
-架构与上游关系见[设计与插件边界](./design.md)。
+See [architecture and plugin boundaries](./architecture.md) for upstream
+relationships.

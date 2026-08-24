@@ -100,8 +100,8 @@ or only TUI with `pnpm run dist:tui`.
 
 ## Documentation
 
-- [Design and plugin boundaries](./docs/design.en.md)
-- [Installation, operations, and troubleshooting](./docs/usage.en.md)
+- [Architecture and plugin boundaries](./docs/architecture.md)
+- [Installation, operations, and troubleshooting](./docs/usage.md)
 
 ## Upstream dependencies
 

@@ -1,10 +1,8 @@
 <p align="center">
-  <a href="./design.md">简体中文</a> ·
-  <strong>English</strong> ·
   <a href="../README.en.md">Back to README</a>
 </p>
 
-# TockTeam design and plugin boundaries
+# TockTeam Architecture and Plugin Boundaries
 
 ## Goals
 
@@ -114,4 +112,4 @@ User-facing names are **TockTeam Desktop**, **TockTeam Web**, and **TockTeam TUI
 Internal package ids, the bundle id, and existing data directories remain
 stable so upgrades preserve sessions, settings, and credentials.
 
-See [installation, operations, and troubleshooting](./usage.en.md).
+See [installation, operations, and troubleshooting](./usage.md).

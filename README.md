@@ -97,7 +97,7 @@ Web 使用 `pnpm run dist:web`；只打包 TUI 使用 `pnpm run dist:tui`。
 
 ## 文档
 
-- [设计与插件边界](./docs/design.md)
+- [架构与插件边界](./docs/architecture.md)
 - [安装、操作与排错](./docs/usage.md)
 
 ## 上游依赖
