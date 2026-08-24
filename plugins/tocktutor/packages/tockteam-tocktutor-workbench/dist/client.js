@@ -16941,11 +16941,12 @@ var ROUTE_CSS = `
   z-index: 2147483647;
 }
 .tocktutor-titlebar *, .tocktutor-titlebar *::before, .tocktutor-titlebar *::after { box-sizing: border-box; }
-.tocktutor-titlebar svg { display: block; height: 16px; width: 16px; }
+.tocktutor-titlebar svg { display: block; height: 14px; width: 14px; }
 .tocktutor-titlebar button { -webkit-app-region: no-drag; color: inherit; font: inherit; }
 .tocktutor-titlebar-sidebar, .tocktutor-titlebar-main { align-items: center; display: flex; min-width: 0; }
 .tocktutor-titlebar-sidebar { border-right: 1px solid var(--tt-border); gap: 8px; justify-content: flex-start; padding: 0 8px 0 46px; }
 .tocktutor-titlebar-sidebar > span, .tocktutor-titlebar-sidebar > button { align-items: center; background: transparent; border: 0; color: var(--tt-muted); display: inline-flex; height: 28px; justify-content: center; padding: 0; width: 22px; }
+.tocktutor-titlebar-sidebar > span:last-child { margin-left: auto; }
 .tocktutor-titlebar-sidebar .tocktutor-titlebar-document { background: color-mix(in srgb, var(--tt-text) 8%, transparent); border-radius: 5px; color: var(--tt-text); }
 .tocktutor-titlebar-main { gap: 4px; padding: 0 8px; }
 .tocktutor-history { color: color-mix(in srgb, var(--tt-muted) 45%, transparent); display: flex; gap: 5px; margin-right: 18px; padding: 0 6px; }
@@ -16960,10 +16961,10 @@ var ROUTE_CSS = `
 .tocktutor-new-tab, .tocktutor-panel-icon { background: transparent; border: 0; color: var(--tt-muted); padding: 6px; }
 .tocktutor-titlebar-spacer { flex: 1; }
 .tocktutor-grid { display: grid; grid-template-columns: var(--tockteam-primary-sidebar-width, 280px) minmax(0, 1fr); height: 100%; min-height: 0; position: relative; }
-.tocktutor-sidebar { background: var(--tt-panel); border-right: 1px solid var(--tt-border); display: grid; grid-template-rows: 40px minmax(0, 1fr) var(--tt-footer-height); min-height: 0; overflow: hidden; }
+.tocktutor-sidebar { background: var(--tockteam-shell-chrome, var(--tt-panel)); border-right: 1px solid var(--tt-border); display: grid; grid-template-rows: 40px minmax(0, 1fr) var(--tt-footer-height); min-height: 0; overflow: hidden; }
 .tocktutor-sidebar-resize { background: transparent; border: 0; bottom: 0; cursor: ew-resize; margin: 0; padding: 0; position: absolute; top: 0; touch-action: none; width: 8px; z-index: 5; }
 .tocktutor-sidebar-resize::after { background: transparent; bottom: 0; content: ''; left: 3px; position: absolute; top: 0; width: 2px; }
-.tocktutor-sidebar-resize:hover::after, .tocktutor-sidebar-resize:focus-visible::after { background: var(--tt-accent); }
+.tocktutor-sidebar-resize:focus-visible::after { background: var(--tt-accent); }
 .tocktutor-sidebar-resize:focus-visible { outline: none; }
 .tocktutor-sidebar-header { align-items: center; border-bottom: 1px solid var(--tt-border); display: flex; gap: 10px; padding: 0 10px; }
 .tocktutor-sidebar-header h1 { font-size: 14px; font-weight: 600; margin: 0 auto 0 0; }
@@ -16986,7 +16987,7 @@ var ROUTE_CSS = `
 .tocktutor-tree-row[aria-current="page"] { background: var(--tt-selected); }
 .tocktutor-tree-row[aria-current="page"] > svg:last-child { color: var(--tt-text); }
 .tocktutor-tree-indent { width: 12px; }
-.tocktutor-vault-switcher { align-items: center; background: var(--tt-panel); border: 0; border-top: 1px solid var(--tt-border); display: grid; gap: 6px; grid-template-columns: 14px minmax(0, 1fr) 16px; padding: 0 10px; text-align: left; }
+.tocktutor-vault-switcher { align-items: center; background: var(--tockteam-shell-chrome, var(--tt-panel)); border: 0; border-top: 1px solid var(--tt-border); display: grid; gap: 6px; grid-template-columns: 14px minmax(0, 1fr) 16px; padding: 0 10px; text-align: left; }
 .tocktutor-vault-switcher > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tocktutor-vault-switcher svg { height: 13px; width: 13px; }
 .tocktutor-editor { background: var(--tt-panel); display: grid; grid-template-rows: 40px minmax(0, 1fr) var(--tt-footer-height); min-height: 0; overflow: hidden; }
