@@ -15,6 +15,7 @@ const DELIVERY_LIFETIME_MS = 5 * 60 * 1000
 export interface DesktopDispatchOwnerOptions {
   identity(operationId: string, requestId: string): NativeOperationIdentity | undefined
   isAvailable(): boolean
+  onDeliveryExpired?(operationId: string, consumerId: string): void
   randomId?: () => string
   now?: () => number
 }
@@ -173,6 +174,7 @@ export class DesktopDispatchOwner {
       if (oldest === undefined) break
       const removed = this.delivered.get(oldest)
       this.delivered.delete(oldest)
+      if (removed !== undefined) this.options.onDeliveryExpired?.(oldest, removed.consumerId)
       if (this.superseded.delete(oldest) || removed === undefined) continue
       this.queue.unshift(removed.event)
     }
@@ -193,6 +195,7 @@ export class DesktopDispatchOwner {
     for (const [operationId, delivered] of this.delivered) {
       if (delivered.expiresAt > now) continue
       this.delivered.delete(operationId)
+      this.options.onDeliveryExpired?.(operationId, delivered.consumerId)
       if (this.superseded.delete(operationId)) continue
       requeue.push(delivered.event)
     }

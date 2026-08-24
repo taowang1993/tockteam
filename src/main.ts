@@ -54,7 +54,10 @@ import {
 } from './web-clip-frame.ts'
 import { DshRuntimeSupervisor, runDshCommand, type DshRuntimeOptions, type RuntimeExit } from './runtime.ts'
 import { DesktopDispatchChannel } from './desktop-dispatch-channel.ts'
-import { scrubDesktopAuthorityEnvironment } from './desktop-runtime-environment.ts'
+import {
+  previewRuntimeBaseEnvironment,
+  scrubDesktopAuthorityEnvironment,
+} from './desktop-runtime-environment.ts'
 import { DesktopMicrophoneChannel } from './desktop-microphone-channel.ts'
 import { DesktopPopOutChannel } from './desktop-popout-channel.ts'
 import { DesktopPrintExportChannel } from './desktop-print-export-channel.ts'
@@ -175,6 +178,7 @@ const popOutRouteTokens = new Map<string, string>()
 interface MainDispatchLease {
   cleanup(): void
   consumerId: string
+  deliveryId: string
   frame: Electron.WebFrameMain
   sender: WebContents
 }
@@ -283,7 +287,10 @@ function initializeDesktopPicker(): void {
   desktopPickerChannel = new DesktopPickerChannel(desktopPickerOwner)
   desktopCallerChannel = new DesktopCallerChannel({
     authorizations: desktopCallerAuthorizations,
-    identity: (operationId, requestId, windowId, channelSessionId) => {
+    identity: (operationId, requestId, windowId, frameId, channelSessionId) => {
+      const window = mainWindow
+      if (window === undefined || window.isDestroyed() || String(window.webContents.id) !== windowId
+        || dispatchConsumerId(window.webContents, window.webContents.mainFrame) !== frameId) return undefined
       return desktopPickerOwner.nativeIdentity(operationId, requestId, windowId, channelSessionId)
     },
   })
@@ -298,6 +305,10 @@ function initializeDesktopPicker(): void {
       )
     },
     isAvailable: () => isEligibleDesktopRevealWindow(),
+    onDeliveryExpired: (operationId, consumerId) => {
+      const lease = mainDispatchLeases.get(operationId)
+      if (lease?.consumerId === consumerId) releaseMainDispatchLease(operationId, false)
+    },
   })
   desktopMicrophoneOwner = new DesktopMicrophoneOwner({
     isAvailable: () => isEligibleDesktopRevealWindow(),
@@ -436,7 +447,9 @@ function runtimeEnvironment(
 ): NodeJS.ProcessEnv {
   const info = desktopInfo(overrides.preview ?? null)
   const environment: NodeJS.ProcessEnv = {
-    ...process.env,
+    ...(overrides.preview === undefined
+      ? process.env
+      : previewRuntimeBaseEnvironment(process.env, overrides.appDataPath ?? info.appDataPath)),
     DSH_DESKTOP: '1',
     DSH_DESKTOP_APP_DATA: overrides.appDataPath ?? info.appDataPath,
     DSH_DESKTOP_PROFILE: info.profile,
@@ -749,6 +762,12 @@ function createWindow(options: { preview?: boolean; title?: string } = {}): Brow
       event.preventDefault()
     })
   })
+  window.webContents.on('did-start-navigation', (_event, _url, _inPlace, isMainFrame) => {
+    if (isMainFrame) desktopCallerAuthorizations.revokeWindow(String(window.webContents.id))
+  })
+  window.webContents.on('render-process-gone', () => {
+    desktopCallerAuthorizations.revokeWindow(String(window.webContents.id))
+  })
   window.webContents.on('will-navigate', (event, url) => {
     const allowedOrigin = options.preview === true ? previewOrigin : runtimeOrigin
     if (isAllowedRuntimeNavigation(url, allowedOrigin)) return
@@ -783,14 +802,19 @@ function normalizeWorkspacePaths(paths: readonly string[]): string[] {
   return normalized
 }
 
-function browserDispatchEvent(event: DesktopDispatchEvent): import('./contracts.ts').TockTutorDesktopDispatchEvent {
+function browserDispatchEvent(
+  event: DesktopDispatchEvent,
+  deliveryId: string,
+): import('./contracts.ts').TockTutorDesktopDispatchEvent {
   return event.kind === 'quick-action'
     ? {
         action: event.action,
+        deliveryId,
         kind: event.kind,
         operationId: event.identity.operationId,
       }
     : {
+        deliveryId,
         kind: event.kind,
         operationId: event.identity.operationId,
         request: event.request,
@@ -1242,9 +1266,12 @@ function installIpc(): void {
   })
   ipcMain.handle('desktop:tocktutor-authorize', (event, raw: unknown) => {
     assertTrustedMainIpc(event)
+    const frame = event.senderFrame
+    if (frame === null) throw new Error('Desktop IPC frame is unavailable')
     return desktopCallerAuthorizations.issue(
       raw as DesktopCallerOperation,
       String(event.sender.id),
+      dispatchConsumerId(event.sender, frame),
       desktopPickerOwner.nativeVaultSnapshot(),
     )
   })
@@ -1268,9 +1295,17 @@ function installIpc(): void {
         desktopDispatchChannel.rollback(operationId, consumerId)
         return null
       }
-      mainDispatchLeases.set(operationId, { cleanup, consumerId, frame, sender: event.sender })
+      releaseMainDispatchLease(operationId, false)
+      const deliveryId = randomBytes(24).toString('base64url')
+      mainDispatchLeases.set(operationId, {
+        cleanup,
+        consumerId,
+        deliveryId,
+        frame,
+        sender: event.sender,
+      })
       retained = true
-      return browserDispatchEvent(dispatched)
+      return browserDispatchEvent(dispatched, deliveryId)
     } finally {
       polls.delete(lifetime)
       if (polls.size === 0) mainDispatchPolls.delete(consumerId)
@@ -1289,14 +1324,20 @@ function installIpc(): void {
       && typeof (raw as Record<string, unknown>).operationId === 'string'
       ? (raw as { operationId: string }).operationId
       : ''
+    const input = typeof raw === 'object' && raw !== null ? raw as Record<string, unknown> : {}
+    const deliveryId = typeof input.deliveryId === 'string' ? input.deliveryId : ''
+    const status = input.status
+    if (Object.keys(input).some(key => key !== 'deliveryId' && key !== 'operationId' && key !== 'status')
+      || status !== 'handled' && status !== 'failed' && status !== 'stale') return 'unavailable'
     const lease = mainDispatchLeases.get(operationId)
-    if (lease === undefined) return 'stale'
+    if (lease === undefined || lease.deliveryId !== deliveryId) return 'stale'
     if (lease.sender !== event.sender || lease.frame !== event.senderFrame) {
       releaseMainDispatchLease(operationId, true)
       return 'stale'
     }
+    const completion: DesktopDispatchCompletionRequest = { operationId, status }
     const result = await desktopDispatchChannel.complete(
-      raw as DesktopDispatchCompletionRequest,
+      completion,
       new AbortController().signal,
       lease.consumerId,
     )

@@ -3,10 +3,34 @@ import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 import {
   DESKTOP_AUTHORITY_ENVIRONMENT_KEYS,
+  previewRuntimeBaseEnvironment,
   scrubDesktopAuthorityEnvironment,
 } from '../src/desktop-runtime-environment.ts'
 
 const main = readFileSync(new URL('../src/main.ts', import.meta.url), 'utf8')
+
+test('preview base environment withholds ambient Git, GitHub, SSH, and user-home authority', () => {
+  const preview = previewRuntimeBaseEnvironment({
+    GH_TOKEN: 'secret',
+    GITHUB_TOKEN: 'secret',
+    GH_CONFIG_DIR: '/user/gh',
+    GIT_CONFIG_GLOBAL: '/user/gitconfig',
+    GIT_CONFIG_COUNT: '1',
+    GIT_CONFIG_KEY_0: 'credential.helper',
+    GIT_CONFIG_VALUE_0: 'steal',
+    HOME: '/user',
+    LANG: 'en_US.UTF-8',
+    SSH_AUTH_SOCK: '/user/agent.sock',
+  }, '/preview-home')
+
+  assert.deepEqual(preview, {
+    HOME: '/preview-home',
+    LANG: 'en_US.UTF-8',
+    USERPROFILE: '/preview-home',
+    XDG_CACHE_HOME: '/preview-home/.cache',
+    XDG_CONFIG_HOME: '/preview-home/.config',
+  })
+})
 
 test('preview and live Runtime environments never inherit native or marketplace authority', () => {
   const environment: NodeJS.ProcessEnv = {
@@ -34,4 +58,5 @@ test('Runtime environment scrubs inherited authority before selecting owned live
   assert.ok(reveal > scrub)
   assert.match(main, /scrubDesktopAuthorityEnvironment\(environment, \[MARKETPLACE_AGENT_URL_ENV, MARKETPLACE_AGENT_TOKEN_ENV\]\)/u)
   assert.match(main, /return overrides\.preview === undefined\s+\? withGitHubCredentials[\s\S]*?: environment/u)
+  assert.match(main, /overrides\.preview === undefined\s+\? process\.env\s+: previewRuntimeBaseEnvironment/u)
 })

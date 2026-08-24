@@ -29,20 +29,24 @@ export type TockTutorProtocolRequest = {
 }
 export type TockTutorDesktopDispatchEvent = {
   action: DesktopQuickAction
+  deliveryId: string
   kind: 'quick-action'
   operationId: string
 } | {
+  deliveryId: string
   kind: 'protocol'
   operationId: string
   request: TockTutorProtocolRequest
 }
+export interface TockTutorDesktopDispatchCompletionRequest {
+  deliveryId: string
+  operationId: string
+  status: 'handled' | 'failed' | 'stale'
+}
 export interface TockTutorDesktopCallerBridge {
   authorize(operation: DesktopCallerOperation): Promise<{ authorization: string }>
   cancelDispatch(): Promise<void>
-  completeDispatch(request: {
-    operationId: string
-    status: 'handled' | 'failed' | 'stale'
-  }): Promise<'handled' | 'stale' | 'unavailable'>
+  completeDispatch(request: TockTutorDesktopDispatchCompletionRequest): Promise<'handled' | 'stale' | 'unavailable'>
   nextDispatch(): Promise<TockTutorDesktopDispatchEvent | null>
 }
 export declare const TOCKTUTOR_ROUTE_PREFIX: '/tocktutor'

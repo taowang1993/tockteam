@@ -14,7 +14,7 @@ test('private Host channel claims one main-issued identity and rejects replay', 
   const authorizations = registry()
   const channel = new DesktopCallerChannel({
     authorizations,
-    identity: (operationId, requestId, windowId, sessionId) => ({
+    identity: (operationId, requestId, windowId, _frameId, sessionId) => ({
       operationId,
       requestId,
       sessionId,
@@ -24,7 +24,7 @@ test('private Host channel claims one main-issued identity and rejects replay', 
     }),
   })
   const environment = await channel.start()
-  const issued = authorizations.issue('microphone', 'main-window', { generation: 4, id: 'vault-4' })
+  const issued = authorizations.issue('microphone', 'main-window', 'frame-1', { generation: 4, id: 'vault-4' })
   const unauthorized = await fetch(environment.endpoint, {
     method: 'POST',
     headers: { authorization: 'Bearer wrong', 'content-type': 'application/json' },
@@ -55,7 +55,7 @@ test('provider binds activation to inactive Runtime and rejects unavailable vaul
   const authorizations = registry()
   const channel = new DesktopCallerChannel({
     authorizations,
-    identity: (operationId, requestId, windowId, sessionId) => ({
+    identity: (operationId, requestId, windowId, _frameId, sessionId) => ({
       operationId,
       requestId,
       sessionId,
@@ -66,8 +66,8 @@ test('provider binds activation to inactive Runtime and rejects unavailable vaul
   })
   const provider = new DesktopCallerProvider(await channel.start(), fetch, () => ({ active: false, generation: 0 }))
   const inactiveVault = { generation: 0, id: null }
-  const activate = authorizations.issue('activate-vault', 'main-window', inactiveVault)
-  const microphone = authorizations.issue('microphone', 'main-window', inactiveVault)
+  const activate = authorizations.issue('activate-vault', 'main-window', 'frame-1', inactiveVault)
+  const microphone = authorizations.issue('microphone', 'main-window', 'frame-1', inactiveVault)
 
   assert.equal((await provider.claim({
     authorization: activate.authorization,
@@ -126,7 +126,7 @@ test('channel stop destroys an authenticated partial request without hanging', a
   const authorizations = registry()
   const channel = new DesktopCallerChannel({
     authorizations,
-    identity: (operationId, requestId, windowId, sessionId) => ({
+    identity: (operationId, requestId, windowId, _frameId, sessionId) => ({
       operationId,
       requestId,
       sessionId,
@@ -158,7 +158,7 @@ test('provider unload aborts pending claims and channel stop clears authorizatio
   const authorizations = registry()
   const channel = new DesktopCallerChannel({
     authorizations,
-    identity: (operationId, requestId, windowId, sessionId) => ({
+    identity: (operationId, requestId, windowId, _frameId, sessionId) => ({
       operationId,
       requestId,
       sessionId,
@@ -168,7 +168,7 @@ test('provider unload aborts pending claims and channel stop clears authorizatio
     }),
   })
   const environment = await channel.start()
-  const issued = authorizations.issue('activate-vault', 'main-window', { generation: 0, id: null })
+  const issued = authorizations.issue('activate-vault', 'main-window', 'frame-1', { generation: 0, id: null })
   let release!: () => void
   const blocked = new Promise<void>(resolve => { release = resolve })
   const provider = new DesktopCallerProvider(environment, async (input, init) => {

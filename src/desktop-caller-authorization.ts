@@ -28,6 +28,7 @@ export interface DesktopCallerVaultSnapshot {
 
 interface AuthorizationRecord {
   expiresAt: number
+  frameId: string
   operation: DesktopCallerOperation
   operationId: string
   requestId: string
@@ -38,6 +39,7 @@ interface AuthorizationRecord {
 
 interface ClaimedRecord {
   expiresAt: number
+  frameId: string
   identity: NativeOperationIdentity
   operation: DesktopCallerOperation
 }
@@ -53,7 +55,8 @@ type IdentityFactory = (
   operationId: string,
   requestId: string,
   windowId: string,
-) => NativeOperationIdentity
+  frameId: string,
+) => NativeOperationIdentity | undefined
 
 const MAX_FIELD_BYTES = 256
 
@@ -90,10 +93,11 @@ export class DesktopCallerAuthorizations {
   issue(
     kind: DesktopCallerOperation,
     windowId: string,
+    frameId: string,
     vault: DesktopCallerVaultSnapshot,
   ): DesktopCallerAuthorization {
     if (this.disposed) throw new Error('Desktop caller authorization is unavailable')
-    if (!operation(kind) || !bounded(windowId)
+    if (!operation(kind) || !bounded(windowId) || !bounded(frameId)
       || !Number.isSafeInteger(vault?.generation) || vault.generation < 0
       || (vault.id !== null && !bounded(vault.id))) {
       throw new Error('Desktop caller authorization request is invalid')
@@ -110,6 +114,7 @@ export class DesktopCallerAuthorizations {
     }
     this.authorizations.set(authorization, {
       expiresAt: this.now() + this.lifetimeMs,
+      frameId,
       operation: kind,
       operationId,
       requestId,
@@ -128,18 +133,32 @@ export class DesktopCallerAuthorizations {
     if (record === undefined) {
       const claimed = this.claimed.get(authorization)
       if (claimed === undefined || claimed.expiresAt < this.now() || claimed.operation !== request.operation) return undefined
+      const current = createIdentity(
+        claimed.identity.operationId,
+        claimed.identity.requestId,
+        claimed.identity.windowId,
+        claimed.frameId,
+      )
+      if (current === undefined || current.operationId !== claimed.identity.operationId
+        || current.requestId !== claimed.identity.requestId || current.sessionId !== claimed.identity.sessionId
+        || current.vaultGeneration !== claimed.identity.vaultGeneration
+        || current.vaultId !== claimed.identity.vaultId || current.windowId !== claimed.identity.windowId) {
+        this.claimed.delete(authorization)
+        return undefined
+      }
       return claimed.identity
     }
     if (record.expiresAt < this.now()) return undefined
     if (!operation(request.operation) || request.operation !== record.operation) return undefined
-    const identity = createIdentity(record.operationId, record.requestId, record.windowId)
-    if (identity.windowId !== record.windowId || identity.operationId !== record.operationId
+    const identity = createIdentity(record.operationId, record.requestId, record.windowId, record.frameId)
+    if (identity === undefined || identity.windowId !== record.windowId || identity.operationId !== record.operationId
       || identity.requestId !== record.requestId || identity.vaultGeneration !== record.vaultGeneration
       || identity.vaultId !== record.vaultId || !bounded(identity.sessionId)
       || !Number.isSafeInteger(identity.vaultGeneration) || identity.vaultGeneration < 0
       || (identity.vaultId !== null && !bounded(identity.vaultId))) return undefined
     this.claimed.set(authorization, {
       expiresAt: record.expiresAt,
+      frameId: record.frameId,
       identity: Object.freeze({ ...identity }),
       operation: record.operation,
     })
@@ -149,6 +168,15 @@ export class DesktopCallerAuthorizations {
   clear(): void {
     this.authorizations.clear()
     this.claimed.clear()
+  }
+
+  revokeFrame(frameId: string): void {
+    for (const [authorization, record] of this.authorizations) {
+      if (record.frameId === frameId) this.authorizations.delete(authorization)
+    }
+    for (const [authorization, record] of this.claimed) {
+      if (record.frameId === frameId) this.claimed.delete(authorization)
+    }
   }
 
   revokeWindow(windowId: string): void {

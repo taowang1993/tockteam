@@ -122,6 +122,7 @@ test('disposing one dispatch consumer cannot requeue another consumer delivery',
 test('expired delivery leases are redelivered but superseded vault work is not', async () => {
   let now = 1_000
   let next = 0
+  const expired: Array<{ consumerId: string; operationId: string }> = []
   const owner = new DesktopDispatchOwner({
     identity: (operationId, requestId) => ({
       operationId,
@@ -133,6 +134,7 @@ test('expired delivery leases are redelivered but superseded vault work is not',
     }),
     isAvailable: () => true,
     now: () => now,
+    onDeliveryExpired: (operationId, consumerId) => { expired.push({ consumerId, operationId }) },
     randomId: () => `dispatch-${String(++next)}`,
   })
   assert.equal(owner.publishQuickAction('daily'), true)
@@ -141,6 +143,7 @@ test('expired delivery leases are redelivered but superseded vault work is not',
   now += 5 * 60 * 1000 + 1
   const redelivered = await owner.next(AbortSignal.timeout(100), 'trusted-main')
   assert.equal(redelivered?.identity.operationId, first.identity.operationId)
+  assert.deepEqual(expired, [{ consumerId: 'host-provider', operationId: first.identity.operationId }])
   assert.equal((await owner.complete({
     operationId: redelivered?.identity.operationId ?? '',
     status: 'handled',

@@ -20,6 +20,7 @@ export interface DesktopDispatchChannelEnvironment {
 export interface DesktopDispatchChannelOptions {
   identity(operationId: string, requestId: string, channelSessionId: string): NativeOperationIdentity | undefined
   isAvailable(): boolean
+  onDeliveryExpired?(operationId: string, consumerId: string): void
 }
 
 function authorized(value: string | undefined, expected: string): boolean {
@@ -103,6 +104,9 @@ export class DesktopDispatchChannel {
     this.owner = new DesktopDispatchOwner({
       identity: (operationId, requestId) => this.options.identity(operationId, requestId, channelSessionId),
       isAvailable: this.options.isAvailable,
+      ...(this.options.onDeliveryExpired === undefined
+        ? {}
+        : { onDeliveryExpired: this.options.onDeliveryExpired }),
     })
     const server = createServer((request, response) => {
       const work = this.handle(request, response, token, providerConsumerId)

@@ -1,7 +1,6 @@
 import type { PluginMarketplaceBridge } from '../plugins/plugin-marketplace/src/protocol.ts'
 import type {
   DesktopCallerOperation,
-  DesktopDispatchCompletionRequest,
   DesktopQuickAction,
   TockTutorProtocolRequest,
 } from './host-contract.ts'
@@ -50,18 +49,26 @@ export interface WebClipBlockedNavigation {
 
 export type TockTutorDesktopDispatchEvent = {
   action: DesktopQuickAction
+  deliveryId: string
   kind: 'quick-action'
   operationId: string
 } | {
+  deliveryId: string
   kind: 'protocol'
   operationId: string
   request: TockTutorProtocolRequest
 }
 
+export interface TockTutorDesktopDispatchCompletionRequest {
+  deliveryId: string
+  operationId: string
+  status: 'handled' | 'failed' | 'stale'
+}
+
 export interface TockTutorDesktopCallerBridge {
   authorize(operation: DesktopCallerOperation): Promise<{ authorization: string }>
   cancelDispatch(): Promise<void>
-  completeDispatch(request: DesktopDispatchCompletionRequest): Promise<'handled' | 'stale' | 'unavailable'>
+  completeDispatch(request: TockTutorDesktopDispatchCompletionRequest): Promise<'handled' | 'stale' | 'unavailable'>
   nextDispatch(): Promise<TockTutorDesktopDispatchEvent | null>
 }
 

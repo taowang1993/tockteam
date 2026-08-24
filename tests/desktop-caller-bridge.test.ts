@@ -23,7 +23,9 @@ test('isolated preload exposes only bounded TockTutor caller and dispatch method
   assert.match(contract, /authorize\(operation: DesktopCallerOperation\)/u)
   assert.match(contract, /cancelDispatch\(\)/u)
   assert.match(contract, /nextDispatch\(\)/u)
-  assert.match(contract, /completeDispatch\(request: DesktopDispatchCompletionRequest\)/u)
+  assert.match(contract, /completeDispatch\(request: TockTutorDesktopDispatchCompletionRequest\)/u)
+  assert.match(contracts, /interface TockTutorDesktopDispatchCompletionRequest[\s\S]*deliveryId: string/u)
+  assert.match(contracts, /type TockTutorDesktopDispatchEvent[\s\S]*deliveryId: string/u)
   assert.doesNotMatch(contract, /invokeAny|sendAny|absolutePath|handle:/iu)
   assert.match(preload, /ipcRenderer\.invoke\('desktop:tocktutor-authorize', operation\)/u)
   assert.match(preload, /ipcRenderer\.invoke\('desktop:tocktutor-dispatch-cancel'\)/u)
@@ -36,6 +38,7 @@ test('main issues caller authorization only after the trusted-main IPC guard', (
   assert.ok(handler)
   assert.match(handler, /assertTrustedMainIpc\(event\)[\s\S]*desktopCallerAuthorizations\.issue/u)
   assert.match(handler, /String\(event\.sender\.id\)/u)
+  assert.match(handler, /dispatchConsumerId\(event\.sender, frame\)/u)
   assert.doesNotMatch(handler, /senderFrame\?\.url|sessionId|vaultId|vaultGeneration/u)
   const next = main.match(/ipcMain\.handle\('desktop:tocktutor-dispatch-next'[\s\S]*?\n  \}\)/u)?.[0]
   assert.ok(next)
@@ -46,6 +49,7 @@ test('main issues caller authorization only after the trusted-main IPC guard', (
   assert.doesNotMatch(next, /vaultId|vaultGeneration|sessionId/u)
   const complete = main.match(/ipcMain\.handle\('desktop:tocktutor-dispatch-complete'[\s\S]*?\n  \}\)/u)?.[0]
   assert.ok(complete)
+  assert.match(complete, /lease === undefined \|\| lease\.deliveryId !== deliveryId/u)
   assert.match(complete, /lease\.sender !== event\.sender \|\| lease\.frame !== event\.senderFrame/u)
   assert.match(main, /sender\.on\('did-start-navigation', navigation\)/u)
   assert.match(main, /sender\.once\('render-process-gone', abort\)/u)
@@ -57,7 +61,8 @@ test('main issues caller authorization only after the trusted-main IPC guard', (
 })
 
 test('runtime and window teardown revoke caller leases on every owned lifecycle', () => {
-  assert.match(main, /desktopCallerAuthorizations\.revokeWindow\(String\(window\.webContents\.id\)\)/u)
+  assert.ok((main.match(/desktopCallerAuthorizations\.revokeWindow\(String\(window\.webContents\.id\)\)/g) ?? []).length >= 3)
+  assert.match(main, /webContents\.on\('render-process-gone'[\s\S]*desktopCallerAuthorizations\.revokeWindow/u)
   assert.ok((main.match(/desktopCallerChannel\.stop\(\)/g) ?? []).length >= 6)
   assert.equal((main.match(/desktopCallerChannel\.start\(\)/g) ?? []).length, 1)
 })
