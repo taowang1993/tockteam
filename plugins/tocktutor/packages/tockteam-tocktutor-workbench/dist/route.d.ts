@@ -80,7 +80,7 @@ export declare class WorkbenchRouteController {
     cancelDispatchDialog(): void;
     setSearchQuery(query: string): void;
     closeSearch(): void;
-    private openSearch;
+    openSearch(query: string): void;
     private settlePendingDispatch;
     private dispatchCurrent;
     subscribe: (listener: () => void) => (() => void);
@@ -119,6 +119,8 @@ export interface TockTutorRouteViewProps {
     onFocusPane(paneId: string): void;
     onMoveCanvas(nodeId: string, deltaX: number, deltaY: number): void;
     onMode(mode: RouteEditorMode): void;
+    onNewNote?(): void;
+    onOpenSearch?(): void;
     onSave(): void;
     onSearchChange?(query: string): void;
     onSelect(path: string): void;

@@ -98,6 +98,7 @@ let quitting = false
 let transitioning = false
 let queuedPaths: string[] = []
 let queuedProtocolUrls: string[] = []
+let tockTutorPreviousThemeSource: 'system' | 'light' | 'dark' | undefined
 const logTail: string[] = []
 const desktopCallerAuthorizations = new DesktopCallerAuthorizations()
 const webClipFrames = new WebClipFrameAuthorizations()
@@ -1266,7 +1267,13 @@ function installIpc(): void {
   ipcMain.handle('desktop:set-tocktutor-active', (event, raw: unknown) => {
     assertTrustedMainIpc(event)
     if (typeof raw !== 'boolean') throw new Error('TockTutor window state must be a boolean')
-    nativeTheme.themeSource = raw ? 'light' : 'system'
+    if (raw) {
+      tockTutorPreviousThemeSource ??= nativeTheme.themeSource
+      nativeTheme.themeSource = 'light'
+    } else {
+      nativeTheme.themeSource = tockTutorPreviousThemeSource ?? 'system'
+      tockTutorPreviousThemeSource = undefined
+    }
     mainWindow?.setBackgroundColor(raw
       ? '#ffffff'
       : nativeTheme.shouldUseDarkColors ? '#202020' : '#f7f7f5')

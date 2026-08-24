@@ -411,7 +411,7 @@ export class WorkbenchRouteController {
     this.update({ searchOpen: false, searchQuery: '' })
   }
 
-  private openSearch(query: string): void {
+  openSearch(query: string): void {
     this.update({ searchOpen: true, searchQuery: query })
   }
 
@@ -921,6 +921,8 @@ export interface TockTutorRouteViewProps {
   onFocusPane(paneId: string): void
   onMoveCanvas(nodeId: string, deltaX: number, deltaY: number): void
   onMode(mode: RouteEditorMode): void
+  onNewNote?(): void
+  onOpenSearch?(): void
   onSave(): void
   onSearchChange?(query: string): void
   onSelect(path: string): void
@@ -1106,7 +1108,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
       <div className="tocktutor-titlebar-sidebar">
         <span className="tocktutor-titlebar-document"><WorkbenchGlyph kind="document" /></span>
         <span><WorkbenchGlyph kind="document" /></span>
-        <button aria-label="Search Notes" onClick={() => { props.onSearchChange?.(snapshot.searchQuery) }} type="button"><WorkbenchGlyph kind="search" /></button>
+        <button aria-label="Search Notes" disabled={props.onOpenSearch === undefined} onClick={props.onOpenSearch} type="button"><WorkbenchGlyph kind="search" /></button>
         <span><WorkbenchGlyph kind="bookmark" /></span>
         <span><WorkbenchGlyph kind="panel" /></span>
       </div>
@@ -1125,6 +1127,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
                 const next = focusedPane.tabs[(index + offset + focusedPane.tabs.length) % focusedPane.tabs.length]
                 if (next !== undefined) props.onActivateTab(focusedPane.id, next.path)
               }}
+              aria-controls="tocktutor-note-editor"
               role="tab"
               tabIndex={tab.path === focusedPane.activePath ? 0 : -1}
               title={tab.path}
@@ -1135,7 +1138,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
             </button>
           ))}
         </div>
-        <span className="tocktutor-new-tab"><WorkbenchGlyph kind="new" /></span>
+        <button aria-label="New Note" className="tocktutor-new-tab" disabled={props.onNewNote === undefined} onClick={props.onNewNote} type="button"><WorkbenchGlyph kind="new" /></button>
         <span className="tocktutor-titlebar-spacer" />
         <span className="tocktutor-launcher">⌕ TockLauncher</span>
         <span className="tocktutor-panel-icon"><WorkbenchGlyph kind="panel" /></span>
@@ -1208,7 +1211,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
             <WorkbenchGlyph kind="more" />
           </button>
         </aside>
-        <section aria-label="Note Editor" className="tocktutor-editor">
+        <section aria-label="Note Editor" className="tocktutor-editor" id="tocktutor-note-editor" role="tabpanel">
           <header className="tocktutor-editor-header">
             <h2>{noteTitle(snapshot.path)}</h2>
             <div className="tocktutor-editor-actions">
@@ -1416,6 +1419,8 @@ export function TockTutorRoute(props: TockTutorRouteProps): ReactNode {
         onFocusPane={paneId => { void controller.focusPane(paneId) }}
         onMode={mode => { controller.setMode(mode) }}
         onMoveCanvas={(nodeId, deltaX, deltaY) => { controller.moveCanvasNode(nodeId, deltaX, deltaY) }}
+        onNewNote={() => { void controller.handleDispatch({ action: 'new', kind: 'quick-action', operationId: crypto.randomUUID() }) }}
+        onOpenSearch={() => { controller.openSearch('') }}
         onSave={() => { void controller.save() }}
         onSearchChange={query => { controller.setSearchQuery(query) }}
         onSelect={path => { void controller.select(path) }}
@@ -1480,7 +1485,7 @@ const ROUTE_CSS = `
 }
 .tocktutor-titlebar *, .tocktutor-titlebar *::before, .tocktutor-titlebar *::after { box-sizing: border-box; }
 .tocktutor-titlebar svg { display: block; height: 16px; width: 16px; }
-.tocktutor-titlebar button { color: inherit; font: inherit; }
+.tocktutor-titlebar button { -webkit-app-region: no-drag; color: inherit; font: inherit; }
 .tocktutor-titlebar-sidebar, .tocktutor-titlebar-main { align-items: center; display: flex; min-width: 0; }
 .tocktutor-titlebar-sidebar { border-right: 1px solid var(--tt-border); gap: 8px; justify-content: flex-start; padding: 0 8px 0 46px; }
 .tocktutor-titlebar-sidebar > span, .tocktutor-titlebar-sidebar > button { align-items: center; background: transparent; border: 0; color: var(--tt-muted); display: inline-flex; height: 28px; justify-content: center; padding: 0; width: 22px; }
@@ -1492,7 +1497,7 @@ const ROUTE_CSS = `
 .tocktutor-tabs button[aria-selected="true"] { background: var(--tt-panel); border-color: var(--tt-border); border-radius: 8px 8px 0 0; }
 .tocktutor-tabs button > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tocktutor-tabs button svg { height: 14px; margin-left: auto; width: 14px; }
-.tocktutor-new-tab, .tocktutor-panel-icon { color: var(--tt-muted); padding: 6px; }
+.tocktutor-new-tab, .tocktutor-panel-icon { background: transparent; border: 0; color: var(--tt-muted); padding: 6px; }
 .tocktutor-titlebar-spacer { flex: 1; }
 .tocktutor-launcher { color: var(--tt-muted); font-size: 12px; white-space: nowrap; }
 .tocktutor-grid { display: grid; grid-template-columns: 225px minmax(0, 1fr); height: 100%; min-height: 0; position: relative; }

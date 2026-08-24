@@ -16454,9 +16454,7 @@ function TockTutorRouteView(props) {
     /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "tocktutor-titlebar-sidebar", children: [
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "tocktutor-titlebar-document", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "document" }) }),
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "document" }) }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { "aria-label": "Search Notes", onClick: () => {
-        props.onSearchChange?.(snapshot.searchQuery);
-      }, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "search" }) }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { "aria-label": "Search Notes", disabled: props.onOpenSearch === void 0, onClick: props.onOpenSearch, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "search" }) }),
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "bookmark" }) }),
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "panel" }) })
     ] }),
@@ -16479,6 +16477,7 @@ function TockTutorRouteView(props) {
             const next = focusedPane.tabs[(index + offset + focusedPane.tabs.length) % focusedPane.tabs.length];
             if (next !== void 0) props.onActivateTab(focusedPane.id, next.path);
           },
+          "aria-controls": "tocktutor-note-editor",
           role: "tab",
           tabIndex: tab.path === focusedPane.activePath ? 0 : -1,
           title: tab.path,
@@ -16493,7 +16492,7 @@ function TockTutorRouteView(props) {
         },
         tab.path
       )) }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "tocktutor-new-tab", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "new" }) }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { "aria-label": "New Note", className: "tocktutor-new-tab", disabled: props.onNewNote === void 0, onClick: props.onNewNote, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "new" }) }),
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "tocktutor-titlebar-spacer" }),
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "tocktutor-launcher", children: "\u2315 TockLauncher" }),
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "tocktutor-panel-icon", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "panel" }) })
@@ -16583,7 +16582,7 @@ function TockTutorRouteView(props) {
               }
             )
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("section", { "aria-label": "Note Editor", className: "tocktutor-editor", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("section", { "aria-label": "Note Editor", className: "tocktutor-editor", id: "tocktutor-note-editor", role: "tabpanel", children: [
             /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("header", { className: "tocktutor-editor-header", children: [
               /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h2", { children: noteTitle(snapshot.path) }),
               /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "tocktutor-editor-actions", children: [
@@ -16813,6 +16812,12 @@ function TockTutorRoute(props) {
       onMoveCanvas: (nodeId, deltaX, deltaY) => {
         controller.moveCanvasNode(nodeId, deltaX, deltaY);
       },
+      onNewNote: () => {
+        void controller.handleDispatch({ action: "new", kind: "quick-action", operationId: crypto.randomUUID() });
+      },
+      onOpenSearch: () => {
+        controller.openSearch("");
+      },
       onSave: () => {
         void controller.save();
       },
@@ -16886,7 +16891,7 @@ var ROUTE_CSS = `
 }
 .tocktutor-titlebar *, .tocktutor-titlebar *::before, .tocktutor-titlebar *::after { box-sizing: border-box; }
 .tocktutor-titlebar svg { display: block; height: 16px; width: 16px; }
-.tocktutor-titlebar button { color: inherit; font: inherit; }
+.tocktutor-titlebar button { -webkit-app-region: no-drag; color: inherit; font: inherit; }
 .tocktutor-titlebar-sidebar, .tocktutor-titlebar-main { align-items: center; display: flex; min-width: 0; }
 .tocktutor-titlebar-sidebar { border-right: 1px solid var(--tt-border); gap: 8px; justify-content: flex-start; padding: 0 8px 0 46px; }
 .tocktutor-titlebar-sidebar > span, .tocktutor-titlebar-sidebar > button { align-items: center; background: transparent; border: 0; color: var(--tt-muted); display: inline-flex; height: 28px; justify-content: center; padding: 0; width: 22px; }
@@ -16898,7 +16903,7 @@ var ROUTE_CSS = `
 .tocktutor-tabs button[aria-selected="true"] { background: var(--tt-panel); border-color: var(--tt-border); border-radius: 8px 8px 0 0; }
 .tocktutor-tabs button > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tocktutor-tabs button svg { height: 14px; margin-left: auto; width: 14px; }
-.tocktutor-new-tab, .tocktutor-panel-icon { color: var(--tt-muted); padding: 6px; }
+.tocktutor-new-tab, .tocktutor-panel-icon { background: transparent; border: 0; color: var(--tt-muted); padding: 6px; }
 .tocktutor-titlebar-spacer { flex: 1; }
 .tocktutor-launcher { color: var(--tt-muted); font-size: 12px; white-space: nowrap; }
 .tocktutor-grid { display: grid; grid-template-columns: 225px minmax(0, 1fr); height: 100%; min-height: 0; position: relative; }
