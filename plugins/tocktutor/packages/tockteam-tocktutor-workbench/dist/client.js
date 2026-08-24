@@ -15603,6 +15603,9 @@ function subscribeNoteVaultChanges(remote, currentVault, listener) {
 var import_jsx_runtime = require("react/jsx-runtime");
 var ROUTE_PREFIX = "/tocktutor";
 var TREE_LIMIT = 200;
+var DEFAULT_SIDEBAR_WIDTH = 280;
+var MIN_SIDEBAR_WIDTH = 180;
+var MAX_SIDEBAR_WIDTH = 480;
 var MAX_ROUTE_SOURCE_BYTES = 2e6;
 var RemoteCallError = class extends Error {
   constructor(code, message) {
@@ -16458,9 +16461,35 @@ function TockTutorRouteView(props) {
   const focusedPane = snapshot.panes.find((pane) => pane.id === snapshot.focusedPaneId);
   const visibleTreeEntries = query === "" ? snapshot.entries.filter((entry) => entry.kind === "directory" || entry.kind === "document" && supportedDocument(entry.path)) : snapshot.entries.filter((entry) => entry.kind === "directory" ? documents.some((document2) => document2.path.startsWith(`${entry.path}/`)) : documents.includes(entry));
   const [panel, setPanel] = (0, import_react.useState)(null);
+  const [sidebarWidth, setSidebarWidth] = (0, import_react.useState)(DEFAULT_SIDEBAR_WIDTH);
+  const sidebarColumns = `${String(sidebarWidth)}px minmax(0, 1fr)`;
+  const resizeSidebar = (width) => {
+    setSidebarWidth(Math.min(MAX_SIDEBAR_WIDTH, Math.max(MIN_SIDEBAR_WIDTH, width)));
+  };
+  const beginSidebarResize = (event) => {
+    event.preventDefault();
+    const startX = event.clientX;
+    const startWidth = sidebarWidth;
+    const move = (next) => {
+      resizeSidebar(startWidth + next.clientX - startX);
+    };
+    const finish = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", finish);
+      window.removeEventListener("pointercancel", finish);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", finish);
+    window.addEventListener("pointercancel", finish);
+  };
+  const resizeSidebarWithKeyboard = (event) => {
+    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+    event.preventDefault();
+    resizeSidebar(sidebarWidth + (event.key === "ArrowLeft" ? -10 : 10));
+  };
   const words = snapshot.source.match(/[\p{L}\p{N}]+(?:['’][\p{L}\p{N}]+)*/gu)?.length ?? 0;
   const characters = snapshot.source.length;
-  const titlebar = /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("section", { "aria-label": "TockTutor Title Bar", className: "tocktutor-titlebar", children: [
+  const titlebar = /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("section", { "aria-label": "TockTutor Title Bar", className: "tocktutor-titlebar", style: { gridTemplateColumns: sidebarColumns }, children: [
     /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "tocktutor-titlebar-sidebar", children: [
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "tocktutor-titlebar-document", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "document" }) }),
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "document" }) }),
@@ -16529,12 +16558,11 @@ function TockTutorRouteView(props) {
             }
           }
         ),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "tocktutor-grid", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "tocktutor-grid", style: { gridTemplateColumns: sidebarColumns }, children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("aside", { "aria-label": "Files", className: "tocktutor-sidebar", children: [
             /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("header", { className: "tocktutor-sidebar-header", children: [
               /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h1", { children: "Files" }),
               /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "more" }) }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "panel" }) }),
               /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "\u21A5" }),
               /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "folder" }) }),
               /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "\u25AD" })
@@ -16591,6 +16619,18 @@ function TockTutorRouteView(props) {
               }
             )
           ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+            "button",
+            {
+              "aria-label": `Resize Files Sidebar, ${String(sidebarWidth)} Pixels`,
+              className: "tocktutor-sidebar-resize",
+              onKeyDown: resizeSidebarWithKeyboard,
+              onPointerDown: beginSidebarResize,
+              style: { left: sidebarWidth - 4 },
+              title: "Drag or Use Left and Right Arrow Keys",
+              type: "button"
+            }
+          ),
           /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("section", { "aria-label": "Note Editor", className: "tocktutor-editor", id: "tocktutor-note-editor", role: "tabpanel", children: [
             /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("header", { className: "tocktutor-editor-header", children: [
               /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h2", { children: noteTitle(snapshot.path) }),
@@ -16862,6 +16902,7 @@ var ROUTE_CSS = `
   --tt-bg: var(--dsw-alias-bg-base, #fff);
   --tt-border: var(--dsw-alias-border-l1, var(--dsw-alias-border-subtle, #e1e3e7));
   --tt-muted: var(--dsw-alias-fg-muted, #71717a);
+  --tt-footer-height: 28px;
   --tt-panel: var(--dsw-alias-bg-elevated, #fff);
   --tt-selected: color-mix(in srgb, var(--tt-accent) 14%, var(--tt-panel));
   --tt-text: var(--dsw-alias-fg-primary, #27272a);
@@ -16919,7 +16960,11 @@ var ROUTE_CSS = `
 .tocktutor-new-tab, .tocktutor-panel-icon { background: transparent; border: 0; color: var(--tt-muted); padding: 6px; }
 .tocktutor-titlebar-spacer { flex: 1; }
 .tocktutor-grid { display: grid; grid-template-columns: var(--tockteam-primary-sidebar-width, 280px) minmax(0, 1fr); height: 100%; min-height: 0; position: relative; }
-.tocktutor-sidebar { background: var(--tt-panel); border-right: 1px solid var(--tt-border); display: grid; grid-template-rows: 40px minmax(0, 1fr) 32px; min-height: 0; overflow: hidden; }
+.tocktutor-sidebar { background: var(--tt-panel); border-right: 1px solid var(--tt-border); display: grid; grid-template-rows: 40px minmax(0, 1fr) var(--tt-footer-height); min-height: 0; overflow: hidden; }
+.tocktutor-sidebar-resize { background: transparent; border: 0; bottom: 0; cursor: ew-resize; margin: 0; padding: 0; position: absolute; top: 0; touch-action: none; width: 8px; z-index: 5; }
+.tocktutor-sidebar-resize::after { background: transparent; bottom: 0; content: ''; left: 3px; position: absolute; top: 0; width: 2px; }
+.tocktutor-sidebar-resize:hover::after, .tocktutor-sidebar-resize:focus-visible::after { background: var(--tt-accent); }
+.tocktutor-sidebar-resize:focus-visible { outline: none; }
 .tocktutor-sidebar-header { align-items: center; border-bottom: 1px solid var(--tt-border); display: flex; gap: 10px; padding: 0 10px; }
 .tocktutor-sidebar-header h1 { font-size: 14px; font-weight: 600; margin: 0 auto 0 0; }
 .tocktutor-sidebar-header span { align-items: center; color: var(--tt-muted); display: inline-flex; font-size: 14px; justify-content: center; }
@@ -16944,7 +16989,7 @@ var ROUTE_CSS = `
 .tocktutor-vault-switcher { align-items: center; background: var(--tt-panel); border: 0; border-top: 1px solid var(--tt-border); display: grid; gap: 6px; grid-template-columns: 14px minmax(0, 1fr) 16px; padding: 0 10px; text-align: left; }
 .tocktutor-vault-switcher > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tocktutor-vault-switcher svg { height: 13px; width: 13px; }
-.tocktutor-editor { background: var(--tt-panel); display: grid; grid-template-rows: 40px minmax(0, 1fr) 28px; min-height: 0; overflow: hidden; }
+.tocktutor-editor { background: var(--tt-panel); display: grid; grid-template-rows: 40px minmax(0, 1fr) var(--tt-footer-height); min-height: 0; overflow: hidden; }
 .tocktutor-editor-header { align-items: center; border-bottom: 1px solid var(--tt-border); display: flex; justify-content: center; min-width: 0; padding: 0 10px; position: relative; }
 .tocktutor-editor-header h2 { color: var(--tt-muted); font-size: 13px; font-weight: 500; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tocktutor-editor-actions { align-items: center; display: flex; gap: 4px; position: absolute; right: 10px; }

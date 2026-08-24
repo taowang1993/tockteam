@@ -6,6 +6,8 @@ import {
   useSyncExternalStore,
   type ChangeEvent,
   type FormEvent,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from 'react'
 import { createPortal } from 'react-dom'
@@ -55,6 +57,9 @@ import type {
 
 const ROUTE_PREFIX = '/tocktutor'
 const TREE_LIMIT = 200
+const DEFAULT_SIDEBAR_WIDTH = 280
+const MIN_SIDEBAR_WIDTH = 180
+const MAX_SIDEBAR_WIDTH = 480
 export const MAX_ROUTE_SOURCE_BYTES = 2_000_000
 
 export interface WorkbenchRouteRemote extends NoteVaultEventRemote {
@@ -1109,10 +1114,34 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
       ? documents.some(document => document.path.startsWith(`${entry.path}/`))
       : documents.includes(entry))
   const [panel, setPanel] = useState<'assistant' | 'utilities' | null>(null)
+  const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_SIDEBAR_WIDTH)
+  const sidebarColumns = `${String(sidebarWidth)}px minmax(0, 1fr)`
+  const resizeSidebar = (width: number): void => {
+    setSidebarWidth(Math.min(MAX_SIDEBAR_WIDTH, Math.max(MIN_SIDEBAR_WIDTH, width)))
+  }
+  const beginSidebarResize = (event: ReactPointerEvent<HTMLButtonElement>): void => {
+    event.preventDefault()
+    const startX = event.clientX
+    const startWidth = sidebarWidth
+    const move = (next: PointerEvent): void => { resizeSidebar(startWidth + next.clientX - startX) }
+    const finish = (): void => {
+      window.removeEventListener('pointermove', move)
+      window.removeEventListener('pointerup', finish)
+      window.removeEventListener('pointercancel', finish)
+    }
+    window.addEventListener('pointermove', move)
+    window.addEventListener('pointerup', finish)
+    window.addEventListener('pointercancel', finish)
+  }
+  const resizeSidebarWithKeyboard = (event: ReactKeyboardEvent<HTMLButtonElement>): void => {
+    if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
+    event.preventDefault()
+    resizeSidebar(sidebarWidth + (event.key === 'ArrowLeft' ? -10 : 10))
+  }
   const words = snapshot.source.match(/[\p{L}\p{N}]+(?:['’][\p{L}\p{N}]+)*/gu)?.length ?? 0
   const characters = snapshot.source.length
   const titlebar = (
-    <section aria-label="TockTutor Title Bar" className="tocktutor-titlebar">
+    <section aria-label="TockTutor Title Bar" className="tocktutor-titlebar" style={{ gridTemplateColumns: sidebarColumns }}>
       <div className="tocktutor-titlebar-sidebar">
         <span className="tocktutor-titlebar-document"><WorkbenchGlyph kind="document" /></span>
         <span><WorkbenchGlyph kind="document" /></span>
@@ -1168,12 +1197,11 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
           onSubmit={draft => { props.onSubmitDispatch?.(draft) }}
         />
       )}
-      <div className="tocktutor-grid">
+      <div className="tocktutor-grid" style={{ gridTemplateColumns: sidebarColumns }}>
         <aside aria-label="Files" className="tocktutor-sidebar">
           <header className="tocktutor-sidebar-header">
             <h1>Files</h1>
             <span><WorkbenchGlyph kind="more" /></span>
-            <span><WorkbenchGlyph kind="panel" /></span>
             <span>↥</span>
             <span><WorkbenchGlyph kind="folder" /></span>
             <span>▭</span>
@@ -1218,6 +1246,15 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
             <WorkbenchGlyph kind="more" />
           </button>
         </aside>
+        <button
+          aria-label={`Resize Files Sidebar, ${String(sidebarWidth)} Pixels`}
+          className="tocktutor-sidebar-resize"
+          onKeyDown={resizeSidebarWithKeyboard}
+          onPointerDown={beginSidebarResize}
+          style={{ left: sidebarWidth - 4 }}
+          title="Drag or Use Left and Right Arrow Keys"
+          type="button"
+        />
         <section aria-label="Note Editor" className="tocktutor-editor" id="tocktutor-note-editor" role="tabpanel">
           <header className="tocktutor-editor-header">
             <h2>{noteTitle(snapshot.path)}</h2>
@@ -1456,6 +1493,7 @@ const ROUTE_CSS = `
   --tt-bg: var(--dsw-alias-bg-base, #fff);
   --tt-border: var(--dsw-alias-border-l1, var(--dsw-alias-border-subtle, #e1e3e7));
   --tt-muted: var(--dsw-alias-fg-muted, #71717a);
+  --tt-footer-height: 28px;
   --tt-panel: var(--dsw-alias-bg-elevated, #fff);
   --tt-selected: color-mix(in srgb, var(--tt-accent) 14%, var(--tt-panel));
   --tt-text: var(--dsw-alias-fg-primary, #27272a);
@@ -1513,7 +1551,11 @@ const ROUTE_CSS = `
 .tocktutor-new-tab, .tocktutor-panel-icon { background: transparent; border: 0; color: var(--tt-muted); padding: 6px; }
 .tocktutor-titlebar-spacer { flex: 1; }
 .tocktutor-grid { display: grid; grid-template-columns: var(--tockteam-primary-sidebar-width, 280px) minmax(0, 1fr); height: 100%; min-height: 0; position: relative; }
-.tocktutor-sidebar { background: var(--tt-panel); border-right: 1px solid var(--tt-border); display: grid; grid-template-rows: 40px minmax(0, 1fr) 32px; min-height: 0; overflow: hidden; }
+.tocktutor-sidebar { background: var(--tt-panel); border-right: 1px solid var(--tt-border); display: grid; grid-template-rows: 40px minmax(0, 1fr) var(--tt-footer-height); min-height: 0; overflow: hidden; }
+.tocktutor-sidebar-resize { background: transparent; border: 0; bottom: 0; cursor: ew-resize; margin: 0; padding: 0; position: absolute; top: 0; touch-action: none; width: 8px; z-index: 5; }
+.tocktutor-sidebar-resize::after { background: transparent; bottom: 0; content: ''; left: 3px; position: absolute; top: 0; width: 2px; }
+.tocktutor-sidebar-resize:hover::after, .tocktutor-sidebar-resize:focus-visible::after { background: var(--tt-accent); }
+.tocktutor-sidebar-resize:focus-visible { outline: none; }
 .tocktutor-sidebar-header { align-items: center; border-bottom: 1px solid var(--tt-border); display: flex; gap: 10px; padding: 0 10px; }
 .tocktutor-sidebar-header h1 { font-size: 14px; font-weight: 600; margin: 0 auto 0 0; }
 .tocktutor-sidebar-header span { align-items: center; color: var(--tt-muted); display: inline-flex; font-size: 14px; justify-content: center; }
@@ -1538,7 +1580,7 @@ const ROUTE_CSS = `
 .tocktutor-vault-switcher { align-items: center; background: var(--tt-panel); border: 0; border-top: 1px solid var(--tt-border); display: grid; gap: 6px; grid-template-columns: 14px minmax(0, 1fr) 16px; padding: 0 10px; text-align: left; }
 .tocktutor-vault-switcher > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tocktutor-vault-switcher svg { height: 13px; width: 13px; }
-.tocktutor-editor { background: var(--tt-panel); display: grid; grid-template-rows: 40px minmax(0, 1fr) 28px; min-height: 0; overflow: hidden; }
+.tocktutor-editor { background: var(--tt-panel); display: grid; grid-template-rows: 40px minmax(0, 1fr) var(--tt-footer-height); min-height: 0; overflow: hidden; }
 .tocktutor-editor-header { align-items: center; border-bottom: 1px solid var(--tt-border); display: flex; justify-content: center; min-width: 0; padding: 0 10px; position: relative; }
 .tocktutor-editor-header h2 { color: var(--tt-muted); font-size: 13px; font-weight: 500; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tocktutor-editor-actions { align-items: center; display: flex; gap: 4px; position: absolute; right: 10px; }
