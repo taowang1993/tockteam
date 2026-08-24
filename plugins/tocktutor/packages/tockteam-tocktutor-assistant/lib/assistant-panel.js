@@ -115,9 +115,9 @@ export function TockTutorAssistantPanel(props) {
     const auditPage = audit?.key === reviewKey ? audit.value : null;
     const proposalPage = proposals?.key === reviewKey ? proposals.value : null;
     const activeDecision = decision?.routeEpoch === routeEpoch ? decision : null;
-    const current = useSyncExternalStore(props.sessions.list.subscribe, () => props.sessions.list.getSnapshot().current, () => undefined);
+    const current = useSyncExternalStore(listener => props.sessions.list.subscribe(listener), () => props.sessions.list.getSnapshot().current, () => undefined);
     const conversation = current === undefined ? undefined : props.sessions.binding(current)?.session;
-    const transcript = useSyncExternalStore(conversation?.subscribe ?? emptySubscribe, conversation?.getSnapshot ?? (() => EMPTY_CONVERSATION), () => EMPTY_CONVERSATION);
+    const transcript = useSyncExternalStore(listener => conversation?.subscribe(listener) ?? emptySubscribe(), () => conversation?.getSnapshot() ?? EMPTY_CONVERSATION, () => EMPTY_CONVERSATION);
     const loadAudit = useCallback((offset = 0) => {
         const controller = new AbortController();
         pending.current.add(controller);

@@ -14929,14 +14929,14 @@ function TockTutorAssistantPanel(props) {
   const proposalPage = proposals?.key === reviewKey ? proposals.value : null;
   const activeDecision = decision?.routeEpoch === routeEpoch ? decision : null;
   const current = (0, import_react.useSyncExternalStore)(
-    props.sessions.list.subscribe,
+    (listener) => props.sessions.list.subscribe(listener),
     () => props.sessions.list.getSnapshot().current,
     () => void 0
   );
   const conversation = current === void 0 ? void 0 : props.sessions.binding(current)?.session;
   const transcript = (0, import_react.useSyncExternalStore)(
-    conversation?.subscribe ?? emptySubscribe,
-    conversation?.getSnapshot ?? (() => EMPTY_CONVERSATION),
+    (listener) => conversation?.subscribe(listener) ?? emptySubscribe(),
+    () => conversation?.getSnapshot() ?? EMPTY_CONVERSATION,
     () => EMPTY_CONVERSATION
   );
   const loadAudit = (0, import_react.useCallback)((offset = 0) => {

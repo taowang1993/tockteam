@@ -1141,8 +1141,13 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
   const [panel, setPanel] = useState<'assistant' | 'utilities' | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_SIDEBAR_WIDTH)
-  const contentColumns = `${String(sidebarOpen ? sidebarWidth : 0)}px minmax(0, 1fr)`
+  const previousSidebarOpen = useRef(sidebarOpen)
+  const shouldAnimateSidebarColumns = previousSidebarOpen.current !== sidebarOpen
+  const contentColumns = `${String(sidebarOpen ? sidebarWidth : 0)}px minmax(0, 1fr) auto auto`
   const titlebarColumns = `${String(sidebarOpen ? sidebarWidth : COLLAPSED_TITLEBAR_SIDEBAR_WIDTH)}px minmax(0, 1fr)`
+  useEffect(() => {
+    previousSidebarOpen.current = sidebarOpen
+  }, [sidebarOpen])
   const resizeSidebar = (width: number): void => {
     setSidebarWidth(Math.min(MAX_SIDEBAR_WIDTH, Math.max(MIN_SIDEBAR_WIDTH, width)))
   }
@@ -1168,7 +1173,14 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
   const words = snapshot.source.match(/[\p{L}\p{N}]+(?:['’][\p{L}\p{N}]+)*/gu)?.length ?? 0
   const characters = snapshot.source.length
   const titlebar = (
-    <section aria-label="TockTutor Title Bar" className="tocktutor-titlebar" style={{ gridTemplateColumns: titlebarColumns }}>
+    <section
+      aria-label="TockTutor Title Bar"
+      className="tocktutor-titlebar"
+      style={{
+        gridTemplateColumns: titlebarColumns,
+        transitionDuration: shouldAnimateSidebarColumns ? undefined : '0ms',
+      }}
+    >
       <div className="tocktutor-titlebar-sidebar">
         {sidebarOpen && (
           <>
@@ -1240,8 +1252,20 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
           onSubmit={draft => { props.onSubmitDispatch?.(draft) }}
         />
       )}
-      <div className="tocktutor-grid" style={{ gridTemplateColumns: contentColumns }}>
-        <aside aria-label="Files" className="tocktutor-sidebar" hidden={!sidebarOpen}>
+      <div
+        className="tocktutor-grid"
+        style={{
+          gridTemplateColumns: contentColumns,
+          transitionDuration: shouldAnimateSidebarColumns ? undefined : '0ms',
+        }}
+      >
+        <aside
+          aria-hidden={!sidebarOpen}
+          aria-label="Files"
+          className="tocktutor-sidebar"
+          data-open={sidebarOpen}
+          {...(sidebarOpen ? {} : { inert: '' })}
+        >
           <header className="tocktutor-sidebar-header">
             <h1>Files</h1>
             <span><WorkbenchGlyph kind="more" /></span>
@@ -1369,11 +1393,23 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
             )}
           </footer>
         </section>
-        <aside aria-label="Assistant Panel" className="tocktutor-right-panel" hidden={panel !== 'assistant'}>
+        <aside
+          aria-hidden={panel !== 'assistant'}
+          aria-label="Assistant Panel"
+          className="tocktutor-right-panel"
+          data-open={panel === 'assistant'}
+          {...(panel === 'assistant' ? {} : { inert: '' })}
+        >
           <header><h2>Assistant</h2><button aria-label="Close Assistant" onClick={() => { setPanel(null) }} type="button"><WorkbenchGlyph kind="close" /></button></header>
           <div className="tocktutor-assistant-content">{props.assistantPanel}</div>
         </aside>
-        <aside aria-label="Workbench Utilities" className="tocktutor-right-panel" hidden={panel !== 'utilities'}>
+        <aside
+          aria-hidden={panel !== 'utilities'}
+          aria-label="Workbench Utilities"
+          className="tocktutor-right-panel"
+          data-open={panel === 'utilities'}
+          {...(panel === 'utilities' ? {} : { inert: '' })}
+        >
           <header><h2>More Options</h2><button aria-label="Close More Options" onClick={() => { setPanel(null) }} type="button"><WorkbenchGlyph kind="close" /></button></header>
           <section aria-label="Pane Groups" className="tocktutor-pane-groups">
             <div className="tocktutor-pane-heading">
@@ -1573,6 +1609,7 @@ const ROUTE_CSS = `
   position: absolute;
   right: 0;
   top: 0;
+  transition: grid-template-columns 300ms ease-out;
   z-index: 2147483647;
 }
 .tocktutor-titlebar *, .tocktutor-titlebar *::before, .tocktutor-titlebar *::after { box-sizing: border-box; }
@@ -1595,8 +1632,9 @@ const ROUTE_CSS = `
 .tocktutor-tabs button svg { height: 14px; margin-left: auto; width: 14px; }
 .tocktutor-new-tab, .tocktutor-panel-icon { background: transparent; border: 0; color: var(--tt-muted); padding: 6px; }
 .tocktutor-titlebar-spacer { flex: 1; }
-.tocktutor-grid { display: grid; grid-template-columns: var(--tockteam-primary-sidebar-width, 280px) minmax(0, 1fr); height: 100%; min-height: 0; position: relative; }
+.tocktutor-grid { display: grid; grid-template-columns: var(--tockteam-primary-sidebar-width, 280px) minmax(0, 1fr) auto auto; height: 100%; min-height: 0; position: relative; transition: grid-template-columns 300ms ease-out; }
 .tocktutor-sidebar { background: var(--tockteam-shell-chrome, var(--tt-panel)); border-right: 1px solid var(--tt-border); display: grid; grid-template-rows: 40px minmax(0, 1fr) var(--tt-footer-height); min-height: 0; overflow: hidden; }
+.tocktutor-sidebar[data-open="false"] { visibility: hidden; transition: visibility 0s linear 300ms; }
 .tocktutor-sidebar-resize { background: transparent; border: 0; bottom: 0; cursor: ew-resize; margin: 0; padding: 0; position: absolute; top: 0; touch-action: none; width: 8px; z-index: 5; }
 .tocktutor-sidebar-resize::after { background: transparent; bottom: 0; content: ''; left: 3px; position: absolute; top: 0; width: 2px; }
 .tocktutor-sidebar-resize:focus-visible::after { background: var(--tt-accent); }
@@ -1649,7 +1687,9 @@ const ROUTE_CSS = `
 .tocktutor-empty { left: 50%; max-width: 420px; padding: 32px; position: absolute; text-align: center; top: 45%; transform: translate(-50%, -50%); width: 100%; }
 .tocktutor-empty h2 { font-size: 20px; margin: 0; }
 .tocktutor-empty > p:last-child { color: var(--tt-muted); }
-.tocktutor-right-panel { background: var(--tt-panel); border-left: 1px solid var(--tt-border); bottom: 0; box-shadow: -8px 0 24px rgb(0 0 0 / 6%); display: grid; grid-template-rows: 40px minmax(0, 1fr); overflow: auto; position: fixed; right: 0; top: var(--tockteam-titlebar-height, 40px); width: min(360px, calc(100vw - 262px)); z-index: 20; }
+.tocktutor-right-panel { background: var(--tt-panel); border-left: 1px solid var(--tt-border); box-shadow: -8px 0 24px rgb(0 0 0 / 6%); display: grid; grid-template-rows: 40px minmax(0, 1fr); min-width: 0; opacity: 0; overflow: auto; pointer-events: none; transform: translateX(24px); transition: width 420ms cubic-bezier(.16, 1, .3, 1), opacity 300ms cubic-bezier(.16, 1, .3, 1), transform 460ms cubic-bezier(.16, 1, .3, 1), visibility 0s linear 420ms; visibility: hidden; width: 0; }
+.tocktutor-right-panel[data-open="true"] { opacity: 1; pointer-events: auto; transform: translateX(0); transition-delay: 0s; visibility: visible; width: min(360px, calc(100vw - 262px)); }
+.tocktutor-right-panel > * { min-width: min(360px, calc(100vw - 262px)); }
 .tocktutor-right-panel > header { align-items: center; border-bottom: 1px solid var(--tt-border); display: flex; justify-content: space-between; padding: 0 12px; }
 .tocktutor-right-panel > header h2, .tocktutor-review h2, .tocktutor-native-actions h2, .tocktutor-pane-groups h2 { font-size: 14px; margin: 0; }
 .tocktutor-right-panel > header button { background: transparent; border: 0; padding: 5px; }
@@ -1689,6 +1729,6 @@ const ROUTE_CSS = `
   .tocktutor-statusbar > div { gap: 8px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .tocktutor-workbench *, .tocktutor-workbench *::before, .tocktutor-workbench *::after { scroll-behavior: auto !important; transition-duration: 0s !important; }
+  .tocktutor-workbench *, .tocktutor-workbench *::before, .tocktutor-workbench *::after { scroll-behavior: auto !important; transition-delay: 0s !important; transition-duration: 0s !important; }
 }
 `

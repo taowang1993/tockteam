@@ -16670,8 +16670,13 @@ function TockTutorRouteView(props) {
   const [panel, setPanel] = (0, import_react3.useState)(null);
   const [sidebarOpen, setSidebarOpen] = (0, import_react3.useState)(true);
   const [sidebarWidth, setSidebarWidth] = (0, import_react3.useState)(DEFAULT_SIDEBAR_WIDTH);
-  const contentColumns = `${String(sidebarOpen ? sidebarWidth : 0)}px minmax(0, 1fr)`;
+  const previousSidebarOpen = (0, import_react3.useRef)(sidebarOpen);
+  const shouldAnimateSidebarColumns = previousSidebarOpen.current !== sidebarOpen;
+  const contentColumns = `${String(sidebarOpen ? sidebarWidth : 0)}px minmax(0, 1fr) auto auto`;
   const titlebarColumns = `${String(sidebarOpen ? sidebarWidth : COLLAPSED_TITLEBAR_SIDEBAR_WIDTH)}px minmax(0, 1fr)`;
+  (0, import_react3.useEffect)(() => {
+    previousSidebarOpen.current = sidebarOpen;
+  }, [sidebarOpen]);
   const resizeSidebar = (width) => {
     setSidebarWidth(Math.min(MAX_SIDEBAR_WIDTH, Math.max(MIN_SIDEBAR_WIDTH, width)));
   };
@@ -16698,79 +16703,90 @@ function TockTutorRouteView(props) {
   };
   const words = snapshot.source.match(/[\p{L}\p{N}]+(?:['’][\p{L}\p{N}]+)*/gu)?.length ?? 0;
   const characters = snapshot.source.length;
-  const titlebar = /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("section", { "aria-label": "TockTutor Title Bar", className: "tocktutor-titlebar", style: { gridTemplateColumns: titlebarColumns }, children: [
-    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "tocktutor-titlebar-sidebar", children: [
-      sidebarOpen && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "tocktutor-titlebar-document", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "document" }) }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "document" }) }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { "aria-label": "Search Notes", disabled: props.onOpenSearch === void 0, onClick: props.onOpenSearch, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "search" }) }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "bookmark" }) })
-      ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-        "button",
-        {
-          "aria-expanded": sidebarOpen,
-          "aria-label": "Toggle Files Sidebar",
-          className: "tocktutor-panel-icon",
-          onClick: () => {
-            setSidebarOpen((open) => !open);
-          },
-          type: "button",
-          children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "panel" })
-        }
-      )
-    ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "tocktutor-titlebar-main", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "tocktutor-history", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "back" }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "forward" })
-      ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { "aria-label": "Note Tabs", className: "tocktutor-tabs", role: "tablist", children: focusedPane?.tabs.map((tab, index) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(
-        "button",
-        {
-          "aria-selected": tab.path === focusedPane.activePath,
-          onClick: () => {
-            props.onActivateTab(focusedPane.id, tab.path);
-          },
-          onKeyDown: (event) => {
-            if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
-            event.preventDefault();
-            const offset = event.key === "ArrowLeft" ? -1 : 1;
-            const next = focusedPane.tabs[(index + offset + focusedPane.tabs.length) % focusedPane.tabs.length];
-            if (next !== void 0) props.onActivateTab(focusedPane.id, next.path);
-          },
-          "aria-controls": "tocktutor-note-editor",
-          role: "tab",
-          tabIndex: tab.path === focusedPane.activePath ? 0 : -1,
-          title: tab.path,
-          type: "button",
-          children: [
-            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { children: [
-              tab.dirty && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { "aria-label": "Unsaved", children: "\u2022" }),
-              fileName(tab.path)
-            ] }),
-            tab.path === focusedPane.activePath && /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "close" })
-          ]
-        },
-        tab.path
-      )) }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { "aria-label": "New Note", className: "tocktutor-new-tab", disabled: props.onNewNote === void 0, onClick: props.onNewNote, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "new" }) }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "tocktutor-titlebar-spacer" }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-        "button",
-        {
-          "aria-expanded": panel === "assistant",
-          "aria-label": "Toggle Assistant Panel",
-          className: "tocktutor-panel-icon",
-          onClick: () => {
-            setPanel((current) => current === "assistant" ? null : "assistant");
-          },
-          type: "button",
-          children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "panel-right" })
-        }
-      )
-    ] })
-  ] });
+  const titlebar = /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(
+    "section",
+    {
+      "aria-label": "TockTutor Title Bar",
+      className: "tocktutor-titlebar",
+      style: {
+        gridTemplateColumns: titlebarColumns,
+        transitionDuration: shouldAnimateSidebarColumns ? void 0 : "0ms"
+      },
+      children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "tocktutor-titlebar-sidebar", children: [
+          sidebarOpen && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "tocktutor-titlebar-document", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "document" }) }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "document" }) }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { "aria-label": "Search Notes", disabled: props.onOpenSearch === void 0, onClick: props.onOpenSearch, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "search" }) }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "bookmark" }) })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+            "button",
+            {
+              "aria-expanded": sidebarOpen,
+              "aria-label": "Toggle Files Sidebar",
+              className: "tocktutor-panel-icon",
+              onClick: () => {
+                setSidebarOpen((open) => !open);
+              },
+              type: "button",
+              children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "panel" })
+            }
+          )
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "tocktutor-titlebar-main", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "tocktutor-history", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "back" }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "forward" })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { "aria-label": "Note Tabs", className: "tocktutor-tabs", role: "tablist", children: focusedPane?.tabs.map((tab, index) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(
+            "button",
+            {
+              "aria-selected": tab.path === focusedPane.activePath,
+              onClick: () => {
+                props.onActivateTab(focusedPane.id, tab.path);
+              },
+              onKeyDown: (event) => {
+                if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+                event.preventDefault();
+                const offset = event.key === "ArrowLeft" ? -1 : 1;
+                const next = focusedPane.tabs[(index + offset + focusedPane.tabs.length) % focusedPane.tabs.length];
+                if (next !== void 0) props.onActivateTab(focusedPane.id, next.path);
+              },
+              "aria-controls": "tocktutor-note-editor",
+              role: "tab",
+              tabIndex: tab.path === focusedPane.activePath ? 0 : -1,
+              title: tab.path,
+              type: "button",
+              children: [
+                /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { children: [
+                  tab.dirty && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { "aria-label": "Unsaved", children: "\u2022" }),
+                  fileName(tab.path)
+                ] }),
+                tab.path === focusedPane.activePath && /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "close" })
+              ]
+            },
+            tab.path
+          )) }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { "aria-label": "New Note", className: "tocktutor-new-tab", disabled: props.onNewNote === void 0, onClick: props.onNewNote, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "new" }) }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "tocktutor-titlebar-spacer" }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+            "button",
+            {
+              "aria-expanded": panel === "assistant",
+              "aria-label": "Toggle Assistant Panel",
+              className: "tocktutor-panel-icon",
+              onClick: () => {
+                setPanel((current) => current === "assistant" ? null : "assistant");
+              },
+              type: "button",
+              children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "panel-right" })
+            }
+          )
+        ] })
+      ]
+    }
+  );
   return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(
     "main",
     {
@@ -16793,205 +16809,245 @@ function TockTutorRouteView(props) {
             }
           }
         ),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "tocktutor-grid", style: { gridTemplateColumns: contentColumns }, children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("aside", { "aria-label": "Files", className: "tocktutor-sidebar", hidden: !sidebarOpen, children: [
-            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("header", { className: "tocktutor-sidebar-header", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h1", { children: "Files" }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "more" }) }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Upload, { "aria-hidden": "true" }) }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "folder" }) }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(PanelTop, { "aria-hidden": "true" }) })
-            ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "tocktutor-sidebar-content", children: [
-              snapshot.searchOpen && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("section", { "aria-label": "Search Notes", className: "tocktutor-search", children: [
-                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { htmlFor: "tocktutor-search-query", children: "Search Notes" }),
-                /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-                    "input",
-                    {
-                      "aria-label": "Search Notes Query",
-                      autoFocus: true,
-                      id: "tocktutor-search-query",
-                      maxLength: 1e3,
-                      onChange: (event) => {
-                        props.onSearchChange?.(event.target.value);
-                      },
-                      type: "search",
-                      value: snapshot.searchQuery
-                    }
-                  ),
-                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { "aria-label": "Close Search", onClick: () => {
-                    props.onCloseSearch?.();
-                  }, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "close" }) })
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(
+          "div",
+          {
+            className: "tocktutor-grid",
+            style: {
+              gridTemplateColumns: contentColumns,
+              transitionDuration: shouldAnimateSidebarColumns ? void 0 : "0ms"
+            },
+            children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(
+                "aside",
+                {
+                  "aria-hidden": !sidebarOpen,
+                  "aria-label": "Files",
+                  className: "tocktutor-sidebar",
+                  "data-open": sidebarOpen,
+                  ...sidebarOpen ? {} : { inert: "" },
+                  children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("header", { className: "tocktutor-sidebar-header", children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h1", { children: "Files" }),
+                      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "more" }) }),
+                      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Upload, { "aria-hidden": "true" }) }),
+                      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "folder" }) }),
+                      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(PanelTop, { "aria-hidden": "true" }) })
+                    ] }),
+                    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "tocktutor-sidebar-content", children: [
+                      snapshot.searchOpen && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("section", { "aria-label": "Search Notes", className: "tocktutor-search", children: [
+                        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { htmlFor: "tocktutor-search-query", children: "Search Notes" }),
+                        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
+                          /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+                            "input",
+                            {
+                              "aria-label": "Search Notes Query",
+                              autoFocus: true,
+                              id: "tocktutor-search-query",
+                              maxLength: 1e3,
+                              onChange: (event) => {
+                                props.onSearchChange?.(event.target.value);
+                              },
+                              type: "search",
+                              value: snapshot.searchQuery
+                            }
+                          ),
+                          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { "aria-label": "Close Search", onClick: () => {
+                            props.onCloseSearch?.();
+                          }, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "close" }) })
+                        ] }),
+                        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("p", { "aria-live": "polite", role: "status", children: [
+                          documents.length,
+                          " matching notes."
+                        ] })
+                      ] }),
+                      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("nav", { "aria-label": "Vault Notes", children: [
+                        snapshot.phase === "loading" && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { children: "Loading notes\u2026" }),
+                        snapshot.phase === "inactive" && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { role: "alert", children: "No Active Vault" }),
+                        snapshot.phase === "error" && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { role: "alert", children: snapshot.message }),
+                        snapshot.phase === "ready" && documents.length === 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { children: "No supported notes found." }),
+                        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("ul", { className: "tocktutor-tree", role: "tree", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(TreeEntries, { entries: visibleTreeEntries, onSelect: props.onSelect, path: snapshot.path }) })
+                      ] })
+                    ] }),
+                    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(
+                      "button",
+                      {
+                        "aria-expanded": panel === "utilities",
+                        className: "tocktutor-vault-switcher",
+                        onClick: () => {
+                          setPanel((current) => current === "utilities" ? null : "utilities");
+                        },
+                        type: "button",
+                        children: [
+                          /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "collapse" }),
+                          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: snapshot.vault === null ? "Choose Vault" : "TockTutor Vault" }),
+                          /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "more" })
+                        ]
+                      }
+                    )
+                  ]
+                }
+              ),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+                "button",
+                {
+                  "aria-label": `Resize Files Sidebar, ${String(sidebarWidth)} Pixels`,
+                  className: "tocktutor-sidebar-resize",
+                  hidden: !sidebarOpen,
+                  onKeyDown: resizeSidebarWithKeyboard,
+                  onPointerDown: beginSidebarResize,
+                  style: { left: sidebarWidth - 4 },
+                  title: "Drag or Use Left and Right Arrow Keys",
+                  type: "button"
+                }
+              ),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("section", { "aria-label": "Note Editor", className: "tocktutor-editor", id: "tocktutor-note-editor", role: "tabpanel", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("header", { className: "tocktutor-editor-header", children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h2", { children: noteTitle(snapshot.path) }),
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "tocktutor-editor-actions", children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+                      "button",
+                      {
+                        "aria-label": snapshot.mode === "source" ? previewLabel : sourceLabel,
+                        onClick: () => {
+                          props.onMode(snapshot.mode === "source" ? "reading" : "source");
+                        },
+                        type: "button",
+                        children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "pencil" })
+                      }
+                    ),
+                    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Music, { "aria-hidden": "true" }) }),
+                    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Folder, { "aria-hidden": "true" }) }),
+                    /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+                      "button",
+                      {
+                        "aria-label": "More Note Actions",
+                        "aria-expanded": panel === "utilities",
+                        onClick: () => {
+                          setPanel((current) => current === "utilities" ? null : "utilities");
+                        },
+                        type: "button",
+                        children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "more" })
+                      }
+                    )
+                  ] })
                 ] }),
-                /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("p", { "aria-live": "polite", role: "status", children: [
-                  documents.length,
-                  " matching notes."
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "tocktutor-editor-body", children: snapshot.path === null ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "tocktutor-empty", children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { className: "tocktutor-kicker", children: "Ready When You Are" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h2", { children: "Select a Note" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { children: "Choose a Markdown note from the vault to read or edit its exact source." })
+                ] }) : snapshot.mode === "source" ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+                  "textarea",
+                  {
+                    "aria-label": sourceLabel,
+                    onChange: (event) => {
+                      props.onEdit(event.target.value);
+                    },
+                    spellCheck: "true",
+                    value: snapshot.source
+                  }
+                ) : snapshot.documentKind === "canvas" ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)(CanvasView, { onMove: props.onMoveCanvas, source: snapshot.source }) : snapshot.documentKind === "base" ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)(BaseView, { source: snapshot.source }) : reading?.status === "ready" ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("article", { "aria-label": "Reading View", className: "tocktutor-reading", tabIndex: -1, children: [
+                  reading.warnings.map((warning) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { className: "tocktutor-warning", role: "note", children: warning }, warning)),
+                  reading.blocks.map((block, index) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+                    ReadingBlockView,
+                    {
+                      block,
+                      onToggleTask: props.onToggleTask
+                    },
+                    `${block.kind}-${String(index)}`
+                  ))
+                ] }) : /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { role: "alert", children: reading?.reason ?? "Reading view is unavailable." }) }),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("footer", { "aria-label": "TockTutor Status Bar", className: "tocktutor-statusbar", children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("output", { "aria-live": "polite", className: "tocktutor-message", children: snapshot.message }),
+                  snapshot.path !== null && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "0 Backlinks" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: snapshot.mode === "reading" ? "Live Preview" : "Source" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { children: [
+                      String(words),
+                      " Words"
+                    ] }),
+                    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { children: [
+                      String(characters),
+                      " Characters"
+                    ] }),
+                    /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+                      "button",
+                      {
+                        "aria-label": "Open Assistant",
+                        "aria-expanded": panel === "assistant",
+                        onClick: () => {
+                          setPanel((current) => current === "assistant" ? null : "assistant");
+                        },
+                        type: "button",
+                        children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "chat" })
+                      }
+                    )
+                  ] })
                 ] })
               ] }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("nav", { "aria-label": "Vault Notes", children: [
-                snapshot.phase === "loading" && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { children: "Loading notes\u2026" }),
-                snapshot.phase === "inactive" && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { role: "alert", children: "No Active Vault" }),
-                snapshot.phase === "error" && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { role: "alert", children: snapshot.message }),
-                snapshot.phase === "ready" && documents.length === 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { children: "No supported notes found." }),
-                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("ul", { className: "tocktutor-tree", role: "tree", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(TreeEntries, { entries: visibleTreeEntries, onSelect: props.onSelect, path: snapshot.path }) })
-              ] })
-            ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(
-              "button",
-              {
-                "aria-expanded": panel === "utilities",
-                className: "tocktutor-vault-switcher",
-                onClick: () => {
-                  setPanel((current) => current === "utilities" ? null : "utilities");
-                },
-                type: "button",
-                children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "collapse" }),
-                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: snapshot.vault === null ? "Choose Vault" : "TockTutor Vault" }),
-                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "more" })
-                ]
-              }
-            )
-          ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-            "button",
-            {
-              "aria-label": `Resize Files Sidebar, ${String(sidebarWidth)} Pixels`,
-              className: "tocktutor-sidebar-resize",
-              hidden: !sidebarOpen,
-              onKeyDown: resizeSidebarWithKeyboard,
-              onPointerDown: beginSidebarResize,
-              style: { left: sidebarWidth - 4 },
-              title: "Drag or Use Left and Right Arrow Keys",
-              type: "button"
-            }
-          ),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("section", { "aria-label": "Note Editor", className: "tocktutor-editor", id: "tocktutor-note-editor", role: "tabpanel", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("header", { className: "tocktutor-editor-header", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h2", { children: noteTitle(snapshot.path) }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "tocktutor-editor-actions", children: [
-                /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-                  "button",
-                  {
-                    "aria-label": snapshot.mode === "source" ? previewLabel : sourceLabel,
-                    onClick: () => {
-                      props.onMode(snapshot.mode === "source" ? "reading" : "source");
-                    },
-                    type: "button",
-                    children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "pencil" })
-                  }
-                ),
-                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Music, { "aria-hidden": "true" }) }),
-                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Folder, { "aria-hidden": "true" }) }),
-                /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-                  "button",
-                  {
-                    "aria-label": "More Note Actions",
-                    "aria-expanded": panel === "utilities",
-                    onClick: () => {
-                      setPanel((current) => current === "utilities" ? null : "utilities");
-                    },
-                    type: "button",
-                    children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "more" })
-                  }
-                )
-              ] })
-            ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "tocktutor-editor-body", children: snapshot.path === null ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "tocktutor-empty", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { className: "tocktutor-kicker", children: "Ready When You Are" }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h2", { children: "Select a Note" }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { children: "Choose a Markdown note from the vault to read or edit its exact source." })
-            ] }) : snapshot.mode === "source" ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-              "textarea",
-              {
-                "aria-label": sourceLabel,
-                onChange: (event) => {
-                  props.onEdit(event.target.value);
-                },
-                spellCheck: "true",
-                value: snapshot.source
-              }
-            ) : snapshot.documentKind === "canvas" ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)(CanvasView, { onMove: props.onMoveCanvas, source: snapshot.source }) : snapshot.documentKind === "base" ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)(BaseView, { source: snapshot.source }) : reading?.status === "ready" ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("article", { "aria-label": "Reading View", className: "tocktutor-reading", tabIndex: -1, children: [
-              reading.warnings.map((warning) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { className: "tocktutor-warning", role: "note", children: warning }, warning)),
-              reading.blocks.map((block, index) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-                ReadingBlockView,
+              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(
+                "aside",
                 {
-                  block,
-                  onToggleTask: props.onToggleTask
-                },
-                `${block.kind}-${String(index)}`
-              ))
-            ] }) : /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { role: "alert", children: reading?.reason ?? "Reading view is unavailable." }) }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("footer", { "aria-label": "TockTutor Status Bar", className: "tocktutor-statusbar", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("output", { "aria-live": "polite", className: "tocktutor-message", children: snapshot.message }),
-              snapshot.path !== null && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
-                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "0 Backlinks" }),
-                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: snapshot.mode === "reading" ? "Live Preview" : "Source" }),
-                /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { children: [
-                  String(words),
-                  " Words"
-                ] }),
-                /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { children: [
-                  String(characters),
-                  " Characters"
-                ] }),
-                /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-                  "button",
-                  {
-                    "aria-label": "Open Assistant",
-                    "aria-expanded": panel === "assistant",
-                    onClick: () => {
-                      setPanel((current) => current === "assistant" ? null : "assistant");
-                    },
-                    type: "button",
-                    children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "chat" })
-                  }
-                )
-              ] })
-            ] })
-          ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("aside", { "aria-label": "Assistant Panel", className: "tocktutor-right-panel", hidden: panel !== "assistant", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("header", { children: [
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h2", { children: "Assistant" }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { "aria-label": "Close Assistant", onClick: () => {
-                setPanel(null);
-              }, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "close" }) })
-            ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "tocktutor-assistant-content", children: props.assistantPanel })
-          ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("aside", { "aria-label": "Workbench Utilities", className: "tocktutor-right-panel", hidden: panel !== "utilities", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("header", { children: [
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h2", { children: "More Options" }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { "aria-label": "Close More Options", onClick: () => {
-                setPanel(null);
-              }, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "close" }) })
-            ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("section", { "aria-label": "Pane Groups", className: "tocktutor-pane-groups", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "tocktutor-pane-heading", children: [
-                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h2", { children: "Pane Groups" }),
-                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { "aria-label": "Add Pane", disabled: snapshot.panes.length >= MAX_PANE_GROUPS, onClick: props.onAddPane, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "new" }) })
-              ] }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "tocktutor-pane-list", children: snapshot.panes.map((pane, index) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("button", { "aria-pressed": pane.id === snapshot.focusedPaneId, onClick: () => {
-                props.onFocusPane(pane.id);
-              }, title: pane.activePath ?? `Pane ${String(index + 1)}`, type: "button", children: [
-                /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { children: [
-                  "Pane ",
-                  String(index + 1)
-                ] }),
-                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("small", { children: pane.activePath ?? "Empty" })
-              ] }, pane.id)) })
-            ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("section", { "aria-label": "Shared Review Panel", className: "tocktutor-review", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("header", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h2", { children: "Reviews" }) }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "tocktutor-review-content", children: props.reviewPanel ?? /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { role: "status", children: "No review workflow is active." }) })
-            ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("section", { "aria-label": "Native Actions", className: "tocktutor-native-actions", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("header", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h2", { children: "Native Actions" }) }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "tocktutor-native-actions-content", children: props.nativeActions ?? /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { role: "status", children: "No native actions are available." }) })
-            ] })
-          ] })
-        ] })
+                  "aria-hidden": panel !== "assistant",
+                  "aria-label": "Assistant Panel",
+                  className: "tocktutor-right-panel",
+                  "data-open": panel === "assistant",
+                  ...panel === "assistant" ? {} : { inert: "" },
+                  children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("header", { children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h2", { children: "Assistant" }),
+                      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { "aria-label": "Close Assistant", onClick: () => {
+                        setPanel(null);
+                      }, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "close" }) })
+                    ] }),
+                    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "tocktutor-assistant-content", children: props.assistantPanel })
+                  ]
+                }
+              ),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(
+                "aside",
+                {
+                  "aria-hidden": panel !== "utilities",
+                  "aria-label": "Workbench Utilities",
+                  className: "tocktutor-right-panel",
+                  "data-open": panel === "utilities",
+                  ...panel === "utilities" ? {} : { inert: "" },
+                  children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("header", { children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h2", { children: "More Options" }),
+                      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { "aria-label": "Close More Options", onClick: () => {
+                        setPanel(null);
+                      }, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "close" }) })
+                    ] }),
+                    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("section", { "aria-label": "Pane Groups", className: "tocktutor-pane-groups", children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "tocktutor-pane-heading", children: [
+                        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h2", { children: "Pane Groups" }),
+                        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { "aria-label": "Add Pane", disabled: snapshot.panes.length >= MAX_PANE_GROUPS, onClick: props.onAddPane, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "new" }) })
+                      ] }),
+                      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "tocktutor-pane-list", children: snapshot.panes.map((pane, index) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("button", { "aria-pressed": pane.id === snapshot.focusedPaneId, onClick: () => {
+                        props.onFocusPane(pane.id);
+                      }, title: pane.activePath ?? `Pane ${String(index + 1)}`, type: "button", children: [
+                        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { children: [
+                          "Pane ",
+                          String(index + 1)
+                        ] }),
+                        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("small", { children: pane.activePath ?? "Empty" })
+                      ] }, pane.id)) })
+                    ] }),
+                    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("section", { "aria-label": "Shared Review Panel", className: "tocktutor-review", children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("header", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h2", { children: "Reviews" }) }),
+                      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "tocktutor-review-content", children: props.reviewPanel ?? /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { role: "status", children: "No review workflow is active." }) })
+                    ] }),
+                    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("section", { "aria-label": "Native Actions", className: "tocktutor-native-actions", children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("header", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h2", { children: "Native Actions" }) }),
+                      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "tocktutor-native-actions-content", children: props.nativeActions ?? /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { role: "status", children: "No native actions are available." }) })
+                    ] })
+                  ]
+                }
+              )
+            ]
+          }
+        )
       ]
     }
   );
@@ -17174,6 +17230,7 @@ var ROUTE_CSS = `
   position: absolute;
   right: 0;
   top: 0;
+  transition: grid-template-columns 300ms ease-out;
   z-index: 2147483647;
 }
 .tocktutor-titlebar *, .tocktutor-titlebar *::before, .tocktutor-titlebar *::after { box-sizing: border-box; }
@@ -17196,8 +17253,9 @@ var ROUTE_CSS = `
 .tocktutor-tabs button svg { height: 14px; margin-left: auto; width: 14px; }
 .tocktutor-new-tab, .tocktutor-panel-icon { background: transparent; border: 0; color: var(--tt-muted); padding: 6px; }
 .tocktutor-titlebar-spacer { flex: 1; }
-.tocktutor-grid { display: grid; grid-template-columns: var(--tockteam-primary-sidebar-width, 280px) minmax(0, 1fr); height: 100%; min-height: 0; position: relative; }
+.tocktutor-grid { display: grid; grid-template-columns: var(--tockteam-primary-sidebar-width, 280px) minmax(0, 1fr) auto auto; height: 100%; min-height: 0; position: relative; transition: grid-template-columns 300ms ease-out; }
 .tocktutor-sidebar { background: var(--tockteam-shell-chrome, var(--tt-panel)); border-right: 1px solid var(--tt-border); display: grid; grid-template-rows: 40px minmax(0, 1fr) var(--tt-footer-height); min-height: 0; overflow: hidden; }
+.tocktutor-sidebar[data-open="false"] { visibility: hidden; transition: visibility 0s linear 300ms; }
 .tocktutor-sidebar-resize { background: transparent; border: 0; bottom: 0; cursor: ew-resize; margin: 0; padding: 0; position: absolute; top: 0; touch-action: none; width: 8px; z-index: 5; }
 .tocktutor-sidebar-resize::after { background: transparent; bottom: 0; content: ''; left: 3px; position: absolute; top: 0; width: 2px; }
 .tocktutor-sidebar-resize:focus-visible::after { background: var(--tt-accent); }
@@ -17250,7 +17308,9 @@ var ROUTE_CSS = `
 .tocktutor-empty { left: 50%; max-width: 420px; padding: 32px; position: absolute; text-align: center; top: 45%; transform: translate(-50%, -50%); width: 100%; }
 .tocktutor-empty h2 { font-size: 20px; margin: 0; }
 .tocktutor-empty > p:last-child { color: var(--tt-muted); }
-.tocktutor-right-panel { background: var(--tt-panel); border-left: 1px solid var(--tt-border); bottom: 0; box-shadow: -8px 0 24px rgb(0 0 0 / 6%); display: grid; grid-template-rows: 40px minmax(0, 1fr); overflow: auto; position: fixed; right: 0; top: var(--tockteam-titlebar-height, 40px); width: min(360px, calc(100vw - 262px)); z-index: 20; }
+.tocktutor-right-panel { background: var(--tt-panel); border-left: 1px solid var(--tt-border); box-shadow: -8px 0 24px rgb(0 0 0 / 6%); display: grid; grid-template-rows: 40px minmax(0, 1fr); min-width: 0; opacity: 0; overflow: auto; pointer-events: none; transform: translateX(24px); transition: width 420ms cubic-bezier(.16, 1, .3, 1), opacity 300ms cubic-bezier(.16, 1, .3, 1), transform 460ms cubic-bezier(.16, 1, .3, 1), visibility 0s linear 420ms; visibility: hidden; width: 0; }
+.tocktutor-right-panel[data-open="true"] { opacity: 1; pointer-events: auto; transform: translateX(0); transition-delay: 0s; visibility: visible; width: min(360px, calc(100vw - 262px)); }
+.tocktutor-right-panel > * { min-width: min(360px, calc(100vw - 262px)); }
 .tocktutor-right-panel > header { align-items: center; border-bottom: 1px solid var(--tt-border); display: flex; justify-content: space-between; padding: 0 12px; }
 .tocktutor-right-panel > header h2, .tocktutor-review h2, .tocktutor-native-actions h2, .tocktutor-pane-groups h2 { font-size: 14px; margin: 0; }
 .tocktutor-right-panel > header button { background: transparent; border: 0; padding: 5px; }
@@ -17290,7 +17350,7 @@ var ROUTE_CSS = `
   .tocktutor-statusbar > div { gap: 8px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .tocktutor-workbench *, .tocktutor-workbench *::before, .tocktutor-workbench *::after { scroll-behavior: auto !important; transition-duration: 0s !important; }
+  .tocktutor-workbench *, .tocktutor-workbench *::before, .tocktutor-workbench *::after { scroll-behavior: auto !important; transition-delay: 0s !important; transition-duration: 0s !important; }
 }
 `;
 

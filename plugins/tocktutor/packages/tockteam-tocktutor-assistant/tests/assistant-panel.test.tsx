@@ -36,19 +36,33 @@ function emptyConversation(): AssistantConversationSnapshot {
 }
 
 class FakeSession {
-  private listeners = new Set<() => void>()
+  private notifier = new Set<() => void>()
   snapshot = emptyConversation()
 
-  get listenerCount(): number { return this.listeners.size }
+  get listenerCount(): number { return this.notifier.size }
 
-  getSnapshot = () => this.snapshot
-  subscribe = (listener: () => void) => {
-    this.listeners.add(listener)
-    return () => { this.listeners.delete(listener) }
+  getSnapshot(): AssistantConversationSnapshot {
+    return this.snapshot
+  }
+  subscribe(listener: () => void): () => void {
+    this.notifier.add(listener)
+    return () => { this.notifier.delete(listener) }
   }
   publish(snapshot: AssistantConversationSnapshot): void {
     this.snapshot = snapshot
-    for (const listener of this.listeners) listener()
+    for (const listener of this.notifier) listener()
+  }
+}
+
+class FakeSessionList {
+  readonly notifier = new Set<() => void>()
+
+  getSnapshot(): { current: string } {
+    return { current: 'selected-agent' }
+  }
+  subscribe(listener: () => void): () => void {
+    this.notifier.add(listener)
+    return () => { this.notifier.delete(listener) }
   }
 }
 
@@ -82,16 +96,10 @@ describe('TockTutorAssistantPanel', () => {
         saveSettings: settings => success(settings),
       },
     }
-    const listListeners = new Set<() => void>()
+    const list = new FakeSessionList()
     const sessions: AssistantPanelSessions = {
       binding: () => ({ session }),
-      list: {
-        getSnapshot: () => ({ current: 'selected-agent' }),
-        subscribe: listener => {
-          listListeners.add(listener)
-          return () => { listListeners.delete(listener) }
-        },
-      },
+      list,
       scope: () => ({ remote: scopedRemote }) as never,
     }
 
@@ -122,7 +130,7 @@ describe('TockTutorAssistantPanel', () => {
     expect(screen.getByText('read_note · Reading…')).toBeTruthy()
 
     mounted.unmount()
-    expect(listListeners.size).toBe(0)
+    expect(list.notifier.size).toBe(0)
   })
 
   it('edits and saves bounded provider settings with pending and committed feedback', async () => {

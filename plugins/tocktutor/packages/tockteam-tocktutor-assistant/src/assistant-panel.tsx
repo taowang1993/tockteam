@@ -202,14 +202,14 @@ export function TockTutorAssistantPanel(props: TockTutorAssistantPanelProps): Re
   const proposalPage = proposals?.key === reviewKey ? proposals.value : null
   const activeDecision = decision?.routeEpoch === routeEpoch ? decision : null
   const current = useSyncExternalStore(
-    props.sessions.list.subscribe,
+    listener => props.sessions.list.subscribe(listener),
     () => props.sessions.list.getSnapshot().current,
     () => undefined,
   )
   const conversation = current === undefined ? undefined : props.sessions.binding(current)?.session
   const transcript = useSyncExternalStore(
-    conversation?.subscribe ?? emptySubscribe,
-    conversation?.getSnapshot ?? (() => EMPTY_CONVERSATION),
+    listener => conversation?.subscribe(listener) ?? emptySubscribe(),
+    () => conversation?.getSnapshot() ?? EMPTY_CONVERSATION,
     () => EMPTY_CONVERSATION,
   )
 
