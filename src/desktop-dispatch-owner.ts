@@ -20,11 +20,13 @@ export interface DesktopDispatchOwnerOptions {
 }
 
 interface DeliveredEvent {
+  consumerId: string
   event: DesktopDispatchEvent
   expiresAt: number
 }
 
 interface Waiter {
+  consumerId: string
   resolve(event: DesktopDispatchEvent | undefined): void
   signal: AbortSignal
 }
@@ -71,16 +73,16 @@ export class DesktopDispatchOwner {
     }))
   }
 
-  async next(signal: AbortSignal): Promise<DesktopDispatchEvent | undefined> {
+  async next(signal: AbortSignal, consumerId = 'host-provider'): Promise<DesktopDispatchEvent | undefined> {
     this.sweep()
-    if (signal.aborted || this.disposed || !this.options.isAvailable()) return undefined
+    if (signal.aborted || this.disposed || !text(consumerId) || !this.options.isAvailable()) return undefined
     const queued = this.queue.shift()
     if (queued !== undefined) {
-      this.rememberDelivered(queued)
+      this.rememberDelivered(queued, consumerId)
       return queued
     }
     return await new Promise(resolve => {
-      const waiter: Waiter = { resolve, signal }
+      const waiter: Waiter = { consumerId, resolve, signal }
       const abort = (): void => {
         this.waiters.delete(waiter)
         resolve(undefined)
@@ -89,14 +91,18 @@ export class DesktopDispatchOwner {
       waiter.resolve = event => {
         signal.removeEventListener('abort', abort)
         this.waiters.delete(waiter)
-        if (event !== undefined) this.rememberDelivered(event)
+        if (event !== undefined) this.rememberDelivered(event, consumerId)
         resolve(event)
       }
       this.waiters.add(waiter)
     })
   }
 
-  async complete(request: DesktopDispatchCompletionRequest, signal: AbortSignal): Promise<DesktopDispatchCompletionResult> {
+  async complete(
+    request: DesktopDispatchCompletionRequest,
+    signal: AbortSignal,
+    consumerId = 'host-provider',
+  ): Promise<DesktopDispatchCompletionResult> {
     this.sweep()
     if (signal.aborted) return { operationId: text(request?.operationId) ? request.operationId : '', status: 'cancelled' }
     if (typeof request !== 'object' || request === null
@@ -106,7 +112,9 @@ export class DesktopDispatchOwner {
       return { operationId: text(request?.operationId) ? request.operationId : '', status: 'denied' }
     }
     const delivered = this.delivered.get(request.operationId)
-    if (delivered === undefined) return { operationId: request.operationId, status: 'stale' }
+    if (delivered === undefined || delivered.consumerId !== consumerId) {
+      return { operationId: request.operationId, status: 'stale' }
+    }
     this.delivered.delete(request.operationId)
     const event = delivered.event
     const current = this.options.identity(event.identity.operationId, event.identity.requestId)
@@ -123,18 +131,26 @@ export class DesktopDispatchOwner {
     return { operationId: request.operationId, status: 'handled' }
   }
 
-  rollbackDelivery(operationId: string): void {
+  rollbackDelivery(operationId: string, consumerId?: string): void {
     const delivered = this.delivered.get(operationId)
-    if (delivered === undefined) return
+    if (delivered === undefined || (consumerId !== undefined && delivered.consumerId !== consumerId)) return
     this.delivered.delete(operationId)
     if (!this.superseded.delete(operationId)) this.queue.unshift(delivered.event)
   }
 
-  disposeProvider(): void {
-    this.queue.unshift(...[...this.delivered.values()].map(value => value.event))
-    this.delivered.clear()
+  disposeConsumer(consumerId: string): void {
+    const requeue: DesktopDispatchEvent[] = []
+    for (const [operationId, delivered] of this.delivered) {
+      if (delivered.consumerId !== consumerId) continue
+      this.delivered.delete(operationId)
+      if (this.superseded.delete(operationId)) continue
+      requeue.push(delivered.event)
+    }
+    this.queue.unshift(...requeue)
     while (this.queue.length > MAX_PENDING_EVENTS) this.queue.pop()
-    for (const waiter of [...this.waiters]) waiter.resolve(undefined)
+    for (const waiter of [...this.waiters]) {
+      if (waiter.consumerId === consumerId) waiter.resolve(undefined)
+    }
   }
 
   dispose(): void {
@@ -146,13 +162,19 @@ export class DesktopDispatchOwner {
     for (const waiter of [...this.waiters]) waiter.resolve(undefined)
   }
 
-  private rememberDelivered(event: DesktopDispatchEvent): void {
-    this.delivered.set(event.identity.operationId, { event, expiresAt: this.options.now() + DELIVERY_LIFETIME_MS })
+  private rememberDelivered(event: DesktopDispatchEvent, consumerId: string): void {
+    this.delivered.set(event.identity.operationId, {
+      consumerId,
+      event,
+      expiresAt: this.options.now() + DELIVERY_LIFETIME_MS,
+    })
     while (this.delivered.size > MAX_PENDING_EVENTS) {
       const oldest = this.delivered.keys().next().value as string | undefined
       if (oldest === undefined) break
+      const removed = this.delivered.get(oldest)
       this.delivered.delete(oldest)
-      this.superseded.delete(oldest)
+      if (this.superseded.delete(oldest) || removed === undefined) continue
+      this.queue.unshift(removed.event)
     }
   }
 
@@ -167,12 +189,15 @@ export class DesktopDispatchOwner {
 
   private sweep(): void {
     const now = this.options.now()
+    const requeue: DesktopDispatchEvent[] = []
     for (const [operationId, delivered] of this.delivered) {
-      if (delivered.expiresAt <= now) {
-        this.delivered.delete(operationId)
-        this.superseded.delete(operationId)
-      }
+      if (delivered.expiresAt > now) continue
+      this.delivered.delete(operationId)
+      if (this.superseded.delete(operationId)) continue
+      requeue.push(delivered.event)
     }
+    this.queue.unshift(...requeue)
+    while (this.queue.length > MAX_PENDING_EVENTS) this.queue.pop()
   }
 
   private identity(operationId: string): NativeOperationIdentity {

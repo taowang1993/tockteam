@@ -10,6 +10,7 @@ const contracts = readFileSync(new URL('../src/contracts.ts', import.meta.url), 
 const bridge: Pick<DesktopBridge, 'tockTutor'> = {
   tockTutor: {
     authorize: async () => ({ authorization: 'opaque' }),
+    cancelDispatch: async () => {},
     completeDispatch: async () => 'handled',
     nextDispatch: async () => null,
   },
@@ -20,10 +21,12 @@ test('isolated preload exposes only bounded TockTutor caller and dispatch method
   const contract = contracts.match(/interface TockTutorDesktopCallerBridge[\s\S]*?\n\}/u)?.[0]
   assert.ok(contract)
   assert.match(contract, /authorize\(operation: DesktopCallerOperation\)/u)
+  assert.match(contract, /cancelDispatch\(\)/u)
   assert.match(contract, /nextDispatch\(\)/u)
   assert.match(contract, /completeDispatch\(request: DesktopDispatchCompletionRequest\)/u)
   assert.doesNotMatch(contract, /invokeAny|sendAny|absolutePath|handle:/iu)
   assert.match(preload, /ipcRenderer\.invoke\('desktop:tocktutor-authorize', operation\)/u)
+  assert.match(preload, /ipcRenderer\.invoke\('desktop:tocktutor-dispatch-cancel'\)/u)
   assert.match(preload, /ipcRenderer\.invoke\('desktop:tocktutor-dispatch-next'\)/u)
   assert.match(preload, /ipcRenderer\.invoke\('desktop:tocktutor-dispatch-complete', request\)/u)
 })
@@ -38,7 +41,18 @@ test('main issues caller authorization only after the trusted-main IPC guard', (
   assert.ok(next)
   assert.match(next, /assertTrustedMainIpc\(event\)[\s\S]*desktopDispatchChannel\.next/u)
   assert.match(next, /desktopDispatchChannel\.rollback/u)
+  assert.match(next, /dispatchConsumerId\(event\.sender, frame\)/u)
+  assert.match(next, /mainDispatchLeases\.set\(operationId/u)
   assert.doesNotMatch(next, /vaultId|vaultGeneration|sessionId/u)
+  const complete = main.match(/ipcMain\.handle\('desktop:tocktutor-dispatch-complete'[\s\S]*?\n  \}\)/u)?.[0]
+  assert.ok(complete)
+  assert.match(complete, /lease\.sender !== event\.sender \|\| lease\.frame !== event\.senderFrame/u)
+  assert.match(main, /sender\.on\('did-start-navigation', navigation\)/u)
+  assert.match(main, /sender\.once\('render-process-gone', abort\)/u)
+  const cancel = main.match(/ipcMain\.handle\('desktop:tocktutor-dispatch-cancel'[\s\S]*?\n  \}\)/u)?.[0]
+  assert.ok(cancel)
+  assert.match(cancel, /assertTrustedMainIpc\(event\)/u)
+  assert.match(cancel, /abortMainDispatchConsumer/u)
   assert.match(main, /overrides\.preview === undefined \? desktopCallerChannel\.environment : undefined/u)
 })
 

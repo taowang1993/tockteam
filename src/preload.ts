@@ -38,6 +38,9 @@ const bridge: DesktopBridge = Object.freeze({
     authorize: async (operation: DesktopCallerOperation) => {
       return await ipcRenderer.invoke('desktop:tocktutor-authorize', operation) as { authorization: string }
     },
+    cancelDispatch: async () => {
+      await ipcRenderer.invoke('desktop:tocktutor-dispatch-cancel')
+    },
     completeDispatch: async (request: DesktopDispatchCompletionRequest) => {
       return await ipcRenderer.invoke('desktop:tocktutor-dispatch-complete', request) as 'handled' | 'stale' | 'unavailable'
     },

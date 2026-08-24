@@ -65,29 +65,40 @@ export class DesktopCallerProvider implements TockTeamDesktopCaller {
     if (this.disposed || this.endpoint === undefined || this.token === undefined) {
       throw new TockTeamDesktopGrantError('owner-lost')
     }
+    const endpoint = this.endpoint
+    const token = this.token
     const before = this.currentVault()
-    if (before === undefined || (request.operation !== 'activate-vault' && !before.active)) {
+    if (endpoint === undefined || token === undefined || before === undefined
+      || (request.operation !== 'activate-vault' && !before.active)) {
       throw new TockTeamDesktopGrantError('stale')
     }
-    const work = this.fetcher(this.endpoint, {
-      method: 'POST',
-      headers: { authorization: `Bearer ${this.token}`, 'content-type': 'application/json' },
-      body: JSON.stringify(request),
-      signal: this.lifetime.signal,
-    })
-    this.pending.add(work)
-    try {
-      const response = await work
-      if (signal.aborted) throw new TockTeamDesktopGrantError('owner-lost')
+    const combined = AbortSignal.any([signal, this.lifetime.signal])
+    const work = (async (): Promise<NativeOperationIdentity> => {
+      const response = await this.fetcher(endpoint, {
+        method: 'POST',
+        headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+        body: JSON.stringify(request),
+        signal: combined,
+      })
+      if (combined.aborted) throw new TockTeamDesktopGrantError('owner-lost')
       if (response.status === 409) throw new TockTeamDesktopGrantError('stale')
       if (!response.ok) throw new TockTeamDesktopGrantError('owner-lost')
       const result: unknown = await response.json()
       if (!identity(result)) throw new TockTeamDesktopGrantError('owner-lost')
       const after = this.currentVault()
-      const matches = after !== undefined && after.generation === result.vaultGeneration
-        && (after.active ? after.id === result.vaultId : result.vaultId === null)
-      if (!matches) throw new TockTeamDesktopGrantError('stale')
+      const stable = after !== undefined
+        && before.generation === after.generation
+        && (before.active && after.active
+          ? before.id === after.id
+          : !before.active && !after.active)
+      const bound = result.vaultGeneration === before.generation
+        && (before.active ? result.vaultId === before.id : result.vaultId === null)
+      if (!stable || !bound) throw new TockTeamDesktopGrantError('stale')
       return result
+    })()
+    this.pending.add(work)
+    try {
+      return await work
     } catch (error) {
       if (error instanceof TockTeamDesktopGrantError) throw error
       throw new TockTeamDesktopGrantError('owner-lost')

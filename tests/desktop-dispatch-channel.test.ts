@@ -69,8 +69,8 @@ test('dispatch provider unload requeues an event whose poll reply was gated', as
   const replyBlocked = new Promise<void>(resolve => { releaseReply = resolve })
   let captured: DesktopDispatchEvent | undefined
   const originalNext = owner.next.bind(owner)
-  owner.next = (async signal => {
-    const event = await originalNext(signal)
+  owner.next = (async (signal, consumerId) => {
+    const event = await originalNext(signal, consumerId)
     if (event !== undefined) {
       captured = event
       delivered()
@@ -93,6 +93,68 @@ test('dispatch provider unload requeues an event whose poll reply was gated', as
   assert.equal(redelivered?.identity.operationId, captured.identity.operationId)
   if (redelivered !== undefined) await owner.complete({ operationId: redelivered.identity.operationId, status: 'handled' }, new AbortController().signal)
   await native.stop()
+})
+
+test('disposing one dispatch consumer cannot requeue another consumer delivery', async () => {
+  let next = 0
+  const owner = new DesktopDispatchOwner({
+    identity: (operationId, requestId) => ({
+      operationId,
+      requestId,
+      sessionId: 'session',
+      vaultGeneration: 1,
+      vaultId: 'vault',
+      windowId: 'window',
+    }),
+    isAvailable: () => true,
+    randomId: () => `dispatch-${String(++next)}`,
+  })
+  assert.equal(owner.publishQuickAction('search'), true)
+  const delivered = await owner.next(new AbortController().signal, 'trusted-main')
+  assert.ok(delivered)
+  owner.disposeConsumer('host-provider')
+  assert.equal((await owner.complete({
+    operationId: delivered.identity.operationId,
+    status: 'handled',
+  }, new AbortController().signal, 'trusted-main')).status, 'handled')
+})
+
+test('expired delivery leases are redelivered but superseded vault work is not', async () => {
+  let now = 1_000
+  let next = 0
+  const owner = new DesktopDispatchOwner({
+    identity: (operationId, requestId) => ({
+      operationId,
+      requestId,
+      sessionId: 'session',
+      vaultGeneration: 1,
+      vaultId: 'vault',
+      windowId: 'window',
+    }),
+    isAvailable: () => true,
+    now: () => now,
+    randomId: () => `dispatch-${String(++next)}`,
+  })
+  assert.equal(owner.publishQuickAction('daily'), true)
+  const first = await owner.next(new AbortController().signal, 'host-provider')
+  assert.ok(first)
+  now += 5 * 60 * 1000 + 1
+  const redelivered = await owner.next(AbortSignal.timeout(100), 'trusted-main')
+  assert.equal(redelivered?.identity.operationId, first.identity.operationId)
+  assert.equal((await owner.complete({
+    operationId: redelivered?.identity.operationId ?? '',
+    status: 'handled',
+  }, new AbortController().signal, 'trusted-main')).status, 'handled')
+
+  assert.equal(owner.publishProtocol('tocktutor://choose-vault?'), true)
+  const oldVault = await owner.next(new AbortController().signal, 'host-provider')
+  assert.ok(oldVault)
+  assert.equal(owner.publishProtocol('tocktutor://choose-vault?'), true)
+  owner.disposeConsumer('host-provider')
+  const currentVault = await owner.next(AbortSignal.timeout(100), 'trusted-main')
+  assert.notEqual(currentVault?.identity.operationId, oldVault.identity.operationId)
+  assert.equal(currentVault?.kind, 'protocol')
+  if (currentVault?.kind === 'protocol') assert.equal(currentVault.request.action, 'choose-vault')
 })
 
 test('dispatch provider drops stale Runtime identities and channel stop settles long polls', async () => {

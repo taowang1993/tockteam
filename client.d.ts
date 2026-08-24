@@ -38,6 +38,7 @@ export type TockTutorDesktopDispatchEvent = {
 }
 export interface TockTutorDesktopCallerBridge {
   authorize(operation: DesktopCallerOperation): Promise<{ authorization: string }>
+  cancelDispatch(): Promise<void>
   completeDispatch(request: {
     operationId: string
     status: 'handled' | 'failed' | 'stale'

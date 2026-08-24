@@ -35,6 +35,18 @@ async function body(request: IncomingMessage): Promise<unknown> {
   return JSON.parse(Buffer.concat(chunks).toString('utf8')) as unknown
 }
 
+async function settleWithin(work: Promise<unknown>, milliseconds: number): Promise<void> {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  try {
+    await Promise.race([
+      work,
+      new Promise<void>(resolve => { timer = setTimeout(resolve, milliseconds) }),
+    ])
+  } finally {
+    if (timer !== undefined) clearTimeout(timer)
+  }
+}
+
 function json(response: ServerResponse, status: number, value: unknown): void {
   const rendered = JSON.stringify(value)
   response.writeHead(status, {
@@ -102,12 +114,14 @@ export class DesktopCallerChannel {
     this.server = undefined
     this.environmentValue = undefined
     if (server !== undefined) {
-      await new Promise<void>(resolve => {
+      const closed = new Promise<void>(resolve => {
         server.close(() => resolve())
         if (!server.listening) resolve()
       })
+      server.closeAllConnections()
+      await settleWithin(closed, 1_000)
     }
-    await Promise.allSettled([...this.pending])
+    await settleWithin(Promise.allSettled([...this.pending]), 1_000)
   }
 
   private async handle(
@@ -124,8 +138,12 @@ export class DesktopCallerChannel {
       response.writeHead(401).end()
       return
     }
+    const abort = (): void => { request.destroy() }
+    this.lifetime.signal.addEventListener('abort', abort, { once: true })
     try {
+      if (this.lifetime.signal.aborted) throw new Error('caller channel stopped')
       const input = await body(request) as DesktopCallerClaimRequest
+      if (this.lifetime.signal.aborted) throw new Error('caller channel stopped')
       const identity = this.authorizations.claim(input, (operationId, requestId, windowId) => {
         return this.createIdentity(operationId, requestId, windowId, sessionId)
       })
@@ -133,6 +151,8 @@ export class DesktopCallerChannel {
       else json(response, 200, identity)
     } catch {
       if (!response.headersSent && !response.destroyed) response.writeHead(400).end()
+    } finally {
+      this.lifetime.signal.removeEventListener('abort', abort)
     }
   }
 }

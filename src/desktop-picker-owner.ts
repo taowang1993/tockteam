@@ -507,6 +507,13 @@ export class DesktopPickerOwner {
     }
   }
 
+  nativeVaultSnapshot(): { generation: number; id: string | null } {
+    return {
+      generation: this.activeVault?.generation ?? 0,
+      id: this.activeVault?.id ?? null,
+    }
+  }
+
   nativeIdentity(
     operationId: string,
     requestId: string,

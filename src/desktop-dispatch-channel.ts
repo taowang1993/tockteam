@@ -77,19 +77,20 @@ export class DesktopDispatchChannel {
     return this.owner?.publishProtocol(raw) ?? false
   }
 
-  async next(signal: AbortSignal): Promise<DesktopDispatchEvent | undefined> {
-    return await this.owner?.next(signal)
+  async next(signal: AbortSignal, consumerId = 'trusted-main'): Promise<DesktopDispatchEvent | undefined> {
+    return await this.owner?.next(signal, consumerId)
   }
 
   async complete(
     request: DesktopDispatchCompletionRequest,
     signal: AbortSignal,
+    consumerId = 'trusted-main',
   ): Promise<DesktopDispatchCompletionResult | undefined> {
-    return await this.owner?.complete(request, signal)
+    return await this.owner?.complete(request, signal, consumerId)
   }
 
-  rollback(operationId: string): void {
-    this.owner?.rollbackDelivery(operationId)
+  rollback(operationId: string, consumerId = 'trusted-main'): void {
+    this.owner?.rollbackDelivery(operationId, consumerId)
   }
 
   async start(): Promise<DesktopDispatchChannelEnvironment> {
@@ -98,12 +99,13 @@ export class DesktopDispatchChannel {
     this.lifetime = new AbortController()
     const token = randomBytes(32).toString('base64url')
     const channelSessionId = randomBytes(24).toString('base64url')
+    const providerConsumerId = `host-provider-${randomBytes(24).toString('base64url')}`
     this.owner = new DesktopDispatchOwner({
       identity: (operationId, requestId) => this.options.identity(operationId, requestId, channelSessionId),
       isAvailable: this.options.isAvailable,
     })
     const server = createServer((request, response) => {
-      const work = this.handle(request, response, token)
+      const work = this.handle(request, response, token, providerConsumerId)
       this.pending.add(work)
       void work.finally(() => { this.pending.delete(work) })
     })
@@ -142,7 +144,12 @@ export class DesktopDispatchChannel {
     await Promise.allSettled([...this.pending])
   }
 
-  private async handle(request: IncomingMessage, response: ServerResponse, token: string): Promise<void> {
+  private async handle(
+    request: IncomingMessage,
+    response: ServerResponse,
+    token: string,
+    providerConsumerId: string,
+  ): Promise<void> {
     if (request.method !== 'POST' || request.url !== DESKTOP_DISPATCH_CHANNEL_PATH) {
       response.writeHead(404).end()
       return
@@ -162,9 +169,9 @@ export class DesktopDispatchChannel {
       if (typeof input !== 'object' || input === null) throw new Error('invalid request')
       const record = input as Record<string, unknown>
       if (record.method === 'next' && Object.keys(record).length === 1) {
-        const event = await this.owner?.next(signal)
+        const event = await this.owner?.next(signal, providerConsumerId)
         if (signal.aborted && event !== undefined) {
-          this.owner?.rollbackDelivery(event.identity.operationId)
+          this.owner?.rollbackDelivery(event.identity.operationId, providerConsumerId)
           return
         }
         json(response, 200, { event: event ?? null })
@@ -172,11 +179,17 @@ export class DesktopDispatchChannel {
       }
       if (record.method === 'complete' && Object.keys(record).length === 2
         && typeof record.request === 'object' && record.request !== null) {
-        json(response, 200, { result: await this.owner?.complete(record.request as DesktopDispatchCompletionRequest, signal) })
+        json(response, 200, {
+          result: await this.owner?.complete(
+            record.request as DesktopDispatchCompletionRequest,
+            signal,
+            providerConsumerId,
+          ),
+        })
         return
       }
       if (record.method === 'disposeProvider' && Object.keys(record).length === 1) {
-        this.owner?.disposeProvider()
+        this.owner?.disposeConsumer(providerConsumerId)
         json(response, 200, { status: 'closed' })
         return
       }

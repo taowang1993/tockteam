@@ -54,6 +54,7 @@ import {
 } from './web-clip-frame.ts'
 import { DshRuntimeSupervisor, runDshCommand, type DshRuntimeOptions, type RuntimeExit } from './runtime.ts'
 import { DesktopDispatchChannel } from './desktop-dispatch-channel.ts'
+import { scrubDesktopAuthorityEnvironment } from './desktop-runtime-environment.ts'
 import { DesktopMicrophoneChannel } from './desktop-microphone-channel.ts'
 import { DesktopPopOutChannel } from './desktop-popout-channel.ts'
 import { DesktopPrintExportChannel } from './desktop-print-export-channel.ts'
@@ -170,6 +171,77 @@ let desktopPrintExportOwner!: DesktopPrintExportOwner
 let desktopPrintExportChannel!: DesktopPrintExportChannel
 const popOutWindows = new Map<string, BrowserWindow>()
 const popOutRouteTokens = new Map<string, string>()
+
+interface MainDispatchLease {
+  cleanup(): void
+  consumerId: string
+  frame: Electron.WebFrameMain
+  sender: WebContents
+}
+
+const mainDispatchLeases = new Map<string, MainDispatchLease>()
+const mainDispatchPolls = new Map<string, Set<AbortController>>()
+
+function dispatchConsumerId(sender: WebContents, frame: Electron.WebFrameMain): string {
+  return `trusted-main-${String(sender.id)}-${String(frame.processId)}-${String(frame.routingId)}`
+}
+
+function releaseMainDispatchLease(operationId: string, rollback: boolean): void {
+  const lease = mainDispatchLeases.get(operationId)
+  if (lease === undefined) return
+  mainDispatchLeases.delete(operationId)
+  lease.cleanup()
+  if (rollback) desktopDispatchChannel.rollback(operationId, lease.consumerId)
+}
+
+function abortMainDispatchConsumer(consumerId: string, rollback: boolean): void {
+  const polls = mainDispatchPolls.get(consumerId)
+  if (polls !== undefined) {
+    mainDispatchPolls.delete(consumerId)
+    for (const poll of polls) poll.abort()
+  }
+  for (const [operationId, lease] of mainDispatchLeases) {
+    if (lease.consumerId === consumerId) releaseMainDispatchLease(operationId, rollback)
+  }
+}
+
+function clearMainDispatchLeases(): void {
+  for (const consumerId of [...mainDispatchPolls.keys()]) abortMainDispatchConsumer(consumerId, false)
+  for (const operationId of [...mainDispatchLeases.keys()]) releaseMainDispatchLease(operationId, false)
+}
+
+function watchMainDispatch(
+  sender: WebContents,
+  frame: Electron.WebFrameMain,
+  lifetime: AbortController,
+  getOperationId: () => string | undefined,
+): () => void {
+  let cleaned = false
+  const abort = (): void => {
+    if (cleaned) return
+    lifetime.abort()
+    const operationId = getOperationId()
+    if (operationId !== undefined) releaseMainDispatchLease(operationId, true)
+  }
+  const navigation = (_event: Electron.Event, _url: string, _inPlace: boolean, isMainFrame: boolean): void => {
+    if (isMainFrame) abort()
+  }
+  sender.once('destroyed', abort)
+  sender.once('render-process-gone', abort)
+  sender.on('did-start-navigation', navigation)
+  return () => {
+    if (cleaned) return
+    cleaned = true
+    sender.removeListener('destroyed', abort)
+    sender.removeListener('render-process-gone', abort)
+    sender.removeListener('did-start-navigation', navigation)
+  }
+}
+
+async function stopDesktopDispatchChannel(): Promise<void> {
+  clearMainDispatchLeases()
+  await desktopDispatchChannel.stop()
+}
 
 function initializeDesktopPicker(): void {
   desktopPickerOwner = new DesktopPickerOwner({
@@ -373,6 +445,7 @@ function runtimeEnvironment(
     NODE_USE_ENV_PROXY: '1',
     PATH: runtimeSearchPath(paths),
   }
+  scrubDesktopAuthorityEnvironment(environment, [MARKETPLACE_AGENT_URL_ENV, MARKETPLACE_AGENT_TOKEN_ENV])
   const reveal = overrides.preview === undefined ? desktopRevealChannel.environment : undefined
   if (reveal !== undefined) {
     environment.DSH_DESKTOP_REVEAL_ENDPOINT = reveal.endpoint
@@ -744,7 +817,7 @@ function handleRuntimeExit(exit: RuntimeExit): void {
     desktopRevealChannel.stop(),
     desktopPickerChannel.stop(),
     desktopCallerChannel.stop(),
-    desktopDispatchChannel.stop(),
+    stopDesktopDispatchChannel(),
     desktopMicrophoneChannel.stop(),
     desktopPopOutChannel.stop(),
     desktopPrintExportChannel.stop(),
@@ -782,7 +855,7 @@ async function startRuntime(): Promise<void> {
     await desktopPrintExportChannel.stop()
     await desktopPopOutChannel.stop()
     await desktopMicrophoneChannel.stop()
-    await desktopDispatchChannel.stop()
+    await stopDesktopDispatchChannel()
     await desktopCallerChannel.stop()
     await desktopPickerChannel.stop()
     await desktopRevealChannel.stop()
@@ -848,7 +921,7 @@ async function stopLiveForMarketplace(): Promise<void> {
   await desktopPrintExportChannel.stop()
   await desktopPopOutChannel.stop()
   await desktopMicrophoneChannel.stop()
-  await desktopDispatchChannel.stop()
+  await stopDesktopDispatchChannel()
   await desktopCallerChannel.stop()
   await desktopPickerChannel.stop()
   await desktopRevealChannel.stop()
@@ -874,7 +947,7 @@ async function restartRuntime(message = '正在重新启动 TockTeam…'): Promi
     await desktopPrintExportChannel.stop()
     await desktopPopOutChannel.stop()
     await desktopMicrophoneChannel.stop()
-    await desktopDispatchChannel.stop()
+    await stopDesktopDispatchChannel()
     await desktopCallerChannel.stop()
     await desktopPickerChannel.stop()
     await desktopRevealChannel.stop()
@@ -930,7 +1003,7 @@ async function installLocalPlugin(): Promise<void> {
     await desktopPrintExportChannel.stop()
     await desktopPopOutChannel.stop()
     await desktopMicrophoneChannel.stop()
-    await desktopDispatchChannel.stop()
+    await stopDesktopDispatchChannel()
     await desktopCallerChannel.stop()
     await desktopPickerChannel.stop()
     await desktopRevealChannel.stop()
@@ -1167,31 +1240,67 @@ function installIpc(): void {
   })
   ipcMain.handle('desktop:tocktutor-authorize', (event, raw: unknown) => {
     assertTrustedMainIpc(event)
-    return desktopCallerAuthorizations.issue(raw as DesktopCallerOperation, String(event.sender.id))
+    return desktopCallerAuthorizations.issue(
+      raw as DesktopCallerOperation,
+      String(event.sender.id),
+      desktopPickerOwner.nativeVaultSnapshot(),
+    )
   })
   ipcMain.handle('desktop:tocktutor-dispatch-next', async event => {
     assertTrustedMainIpc(event)
+    const frame = event.senderFrame
+    if (frame === null) throw new Error('Desktop IPC frame is unavailable')
     const lifetime = new AbortController()
-    const abort = (): void => { lifetime.abort() }
-    event.sender.once('destroyed', abort)
+    const consumerId = dispatchConsumerId(event.sender, frame)
+    const polls = mainDispatchPolls.get(consumerId) ?? new Set<AbortController>()
+    polls.add(lifetime)
+    mainDispatchPolls.set(consumerId, polls)
+    let operationId: string | undefined
+    let retained = false
+    const cleanup = watchMainDispatch(event.sender, frame, lifetime, () => operationId)
     try {
-      const dispatched = await desktopDispatchChannel.next(lifetime.signal)
+      const dispatched = await desktopDispatchChannel.next(lifetime.signal, consumerId)
       if (dispatched === undefined) return null
-      if (lifetime.signal.aborted || event.sender.isDestroyed()) {
-        desktopDispatchChannel.rollback(dispatched.identity.operationId)
+      operationId = dispatched.identity.operationId
+      if (lifetime.signal.aborted || event.sender.isDestroyed() || event.senderFrame !== frame) {
+        desktopDispatchChannel.rollback(operationId, consumerId)
         return null
       }
+      mainDispatchLeases.set(operationId, { cleanup, consumerId, frame, sender: event.sender })
+      retained = true
       return browserDispatchEvent(dispatched)
     } finally {
-      event.sender.removeListener('destroyed', abort)
+      polls.delete(lifetime)
+      if (polls.size === 0) mainDispatchPolls.delete(consumerId)
+      if (!retained) cleanup()
     }
+  })
+  ipcMain.handle('desktop:tocktutor-dispatch-cancel', event => {
+    assertTrustedMainIpc(event)
+    const frame = event.senderFrame
+    if (frame === null) throw new Error('Desktop IPC frame is unavailable')
+    abortMainDispatchConsumer(dispatchConsumerId(event.sender, frame), true)
   })
   ipcMain.handle('desktop:tocktutor-dispatch-complete', async (event, raw: unknown) => {
     assertTrustedMainIpc(event)
+    const operationId = typeof raw === 'object' && raw !== null
+      && typeof (raw as Record<string, unknown>).operationId === 'string'
+      ? (raw as { operationId: string }).operationId
+      : ''
+    const lease = mainDispatchLeases.get(operationId)
+    if (lease === undefined) return 'stale'
+    if (lease.sender !== event.sender || lease.frame !== event.senderFrame) {
+      releaseMainDispatchLease(operationId, true)
+      return 'stale'
+    }
     const result = await desktopDispatchChannel.complete(
       raw as DesktopDispatchCompletionRequest,
       new AbortController().signal,
+      lease.consumerId,
     )
+    if (result !== undefined && result.status !== 'denied' && result.status !== 'cancelled') {
+      releaseMainDispatchLease(operationId, false)
+    }
     return result?.status === 'handled' || result?.status === 'stale'
       ? result.status
       : 'unavailable'
@@ -1347,7 +1456,7 @@ async function bootstrap(): Promise<void> {
       desktopPrintExportChannel.stop(),
       desktopPopOutChannel.stop(),
       desktopMicrophoneChannel.stop(),
-      desktopDispatchChannel.stop(),
+      stopDesktopDispatchChannel(),
       desktopCallerChannel.stop(),
       desktopPickerChannel.stop(),
       desktopRevealChannel.stop(),

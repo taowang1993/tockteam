@@ -21,11 +21,18 @@ export interface DesktopCallerAuthorization {
   authorization: string
 }
 
+export interface DesktopCallerVaultSnapshot {
+  generation: number
+  id: string | null
+}
+
 interface AuthorizationRecord {
   expiresAt: number
   operation: DesktopCallerOperation
   operationId: string
   requestId: string
+  vaultGeneration: number
+  vaultId: string | null
   windowId: string
 }
 
@@ -80,11 +87,19 @@ export class DesktopCallerAuthorizations {
     return this.authorizations.size
   }
 
-  issue(kind: DesktopCallerOperation, windowId: string): DesktopCallerAuthorization {
+  issue(
+    kind: DesktopCallerOperation,
+    windowId: string,
+    vault: DesktopCallerVaultSnapshot,
+  ): DesktopCallerAuthorization {
     if (this.disposed) throw new Error('Desktop caller authorization is unavailable')
-    if (!operation(kind) || !bounded(windowId)) throw new Error('Desktop caller authorization request is invalid')
+    if (!operation(kind) || !bounded(windowId)
+      || !Number.isSafeInteger(vault?.generation) || vault.generation < 0
+      || (vault.id !== null && !bounded(vault.id))) {
+      throw new Error('Desktop caller authorization request is invalid')
+    }
     this.sweep()
-    if (this.authorizations.size >= this.maxAuthorizations) {
+    if (this.authorizations.size + this.claimed.size >= this.maxAuthorizations) {
       throw new Error('Desktop caller authorization is unavailable')
     }
     const authorization = this.randomId()
@@ -98,6 +113,8 @@ export class DesktopCallerAuthorizations {
       operation: kind,
       operationId,
       requestId,
+      vaultGeneration: vault.generation,
+      vaultId: vault.id,
       windowId,
     })
     return { authorization }
@@ -117,7 +134,8 @@ export class DesktopCallerAuthorizations {
     if (!operation(request.operation) || request.operation !== record.operation) return undefined
     const identity = createIdentity(record.operationId, record.requestId, record.windowId)
     if (identity.windowId !== record.windowId || identity.operationId !== record.operationId
-      || identity.requestId !== record.requestId || !bounded(identity.sessionId)
+      || identity.requestId !== record.requestId || identity.vaultGeneration !== record.vaultGeneration
+      || identity.vaultId !== record.vaultId || !bounded(identity.sessionId)
       || !Number.isSafeInteger(identity.vaultGeneration) || identity.vaultGeneration < 0
       || (identity.vaultId !== null && !bounded(identity.vaultId))) return undefined
     this.claimed.set(authorization, {
