@@ -1,7 +1,7 @@
 {
   "name": "@tockteam/desktop",
   "productName": "TockTeam Desktop",
-  "version": "0.1.9",
+  "version": "0.1.10",
   "description": "TockTeam: installable Desktop, Web, and TUI surfaces over its DSH runtime",
   "author": "dsh-external",
   "desktopName": "tockteam-desktop.desktop",
