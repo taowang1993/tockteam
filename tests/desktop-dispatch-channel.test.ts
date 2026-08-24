@@ -41,6 +41,24 @@ test('dispatch channel authenticates and provider subscribes without listener in
   await native.stop()
 })
 
+test('trusted-main dispatch consumer receives normalized work and completes exact delivery', async () => {
+  const native = channel()
+  await native.start()
+  assert.equal(native.publishQuickAction('search'), true)
+  const event = await native.next(new AbortController().signal)
+  assert.equal(event?.kind, 'quick-action')
+  assert.equal(event?.identity.vaultId, 'vault')
+  assert.equal((await native.complete({
+    operationId: event?.identity.operationId ?? '',
+    status: 'handled',
+  }, new AbortController().signal))?.status, 'handled')
+  assert.equal((await native.complete({
+    operationId: event?.identity.operationId ?? '',
+    status: 'handled',
+  }, new AbortController().signal))?.status, 'stale')
+  await native.stop()
+})
+
 test('dispatch provider unload requeues an event whose poll reply was gated', async () => {
   const native = channel()
   const environment = await native.start()

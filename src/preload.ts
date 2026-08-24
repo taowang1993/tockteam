@@ -4,10 +4,11 @@ import type {
   DesktopCommand,
   DesktopInfo,
   DesktopRuntimeSnapshot,
+  TockTutorDesktopDispatchEvent,
   WebClipBlockedNavigation,
 } from './contracts.ts'
 import type { MarketplaceCommand, MarketplaceSnapshot } from '../plugins/plugin-marketplace/src/protocol.ts'
-import type { DesktopCallerOperation } from './host-contract.ts'
+import type { DesktopCallerOperation, DesktopDispatchCompletionRequest } from './host-contract.ts'
 
 const bridge: DesktopBridge = Object.freeze({
   chooseWorkspace: async (): Promise<string[]> => {
@@ -36,6 +37,12 @@ const bridge: DesktopBridge = Object.freeze({
   tockTutor: Object.freeze({
     authorize: async (operation: DesktopCallerOperation) => {
       return await ipcRenderer.invoke('desktop:tocktutor-authorize', operation) as { authorization: string }
+    },
+    completeDispatch: async (request: DesktopDispatchCompletionRequest) => {
+      return await ipcRenderer.invoke('desktop:tocktutor-dispatch-complete', request) as 'handled' | 'stale' | 'unavailable'
+    },
+    nextDispatch: async () => {
+      return await ipcRenderer.invoke('desktop:tocktutor-dispatch-next') as TockTutorDesktopDispatchEvent | null
     },
   }),
   webClip: Object.freeze({

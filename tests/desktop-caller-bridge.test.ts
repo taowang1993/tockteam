@@ -10,17 +10,22 @@ const contracts = readFileSync(new URL('../src/contracts.ts', import.meta.url), 
 const bridge: Pick<DesktopBridge, 'tockTutor'> = {
   tockTutor: {
     authorize: async () => ({ authorization: 'opaque' }),
+    completeDispatch: async () => 'handled',
+    nextDispatch: async () => null,
   },
 }
 void bridge
 
-test('isolated preload exposes only one bounded TockTutor caller authorization method', () => {
+test('isolated preload exposes only bounded TockTutor caller and dispatch methods', () => {
   const contract = contracts.match(/interface TockTutorDesktopCallerBridge[\s\S]*?\n\}/u)?.[0]
   assert.ok(contract)
   assert.match(contract, /authorize\(operation: DesktopCallerOperation\)/u)
-  assert.doesNotMatch(contract, /invoke|send|path|handle/iu)
+  assert.match(contract, /nextDispatch\(\)/u)
+  assert.match(contract, /completeDispatch\(request: DesktopDispatchCompletionRequest\)/u)
+  assert.doesNotMatch(contract, /invokeAny|sendAny|absolutePath|handle:/iu)
   assert.match(preload, /ipcRenderer\.invoke\('desktop:tocktutor-authorize', operation\)/u)
-  assert.equal((preload.match(/desktop:tocktutor-authorize/g) ?? []).length, 1)
+  assert.match(preload, /ipcRenderer\.invoke\('desktop:tocktutor-dispatch-next'\)/u)
+  assert.match(preload, /ipcRenderer\.invoke\('desktop:tocktutor-dispatch-complete', request\)/u)
 })
 
 test('main issues caller authorization only after the trusted-main IPC guard', () => {
@@ -29,6 +34,11 @@ test('main issues caller authorization only after the trusted-main IPC guard', (
   assert.match(handler, /assertTrustedMainIpc\(event\)[\s\S]*desktopCallerAuthorizations\.issue/u)
   assert.match(handler, /String\(event\.sender\.id\)/u)
   assert.doesNotMatch(handler, /senderFrame\?\.url|sessionId|vaultId|vaultGeneration/u)
+  const next = main.match(/ipcMain\.handle\('desktop:tocktutor-dispatch-next'[\s\S]*?\n  \}\)/u)?.[0]
+  assert.ok(next)
+  assert.match(next, /assertTrustedMainIpc\(event\)[\s\S]*desktopDispatchChannel\.next/u)
+  assert.match(next, /desktopDispatchChannel\.rollback/u)
+  assert.doesNotMatch(next, /vaultId|vaultGeneration|sessionId/u)
   assert.match(main, /overrides\.preview === undefined \? desktopCallerChannel\.environment : undefined/u)
 })
 

@@ -3,6 +3,8 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import { DesktopDispatchOwner } from './desktop-dispatch-owner.ts'
 import type {
   DesktopDispatchCompletionRequest,
+  DesktopDispatchCompletionResult,
+  DesktopDispatchEvent,
   DesktopQuickAction,
   NativeOperationIdentity,
 } from './host-contract.ts'
@@ -73,6 +75,21 @@ export class DesktopDispatchChannel {
 
   publishProtocol(raw: string): boolean {
     return this.owner?.publishProtocol(raw) ?? false
+  }
+
+  async next(signal: AbortSignal): Promise<DesktopDispatchEvent | undefined> {
+    return await this.owner?.next(signal)
+  }
+
+  async complete(
+    request: DesktopDispatchCompletionRequest,
+    signal: AbortSignal,
+  ): Promise<DesktopDispatchCompletionResult | undefined> {
+    return await this.owner?.complete(request, signal)
+  }
+
+  rollback(operationId: string): void {
+    this.owner?.rollbackDelivery(operationId)
   }
 
   async start(): Promise<DesktopDispatchChannelEnvironment> {

@@ -12,8 +12,37 @@ export type DesktopCallerOperation =
   | 'import-source'
   | 'backup'
   | 'restore-backup'
+export type DesktopQuickAction = 'new' | 'daily' | 'capture' | 'search'
+export type TockTutorProtocolRequest = {
+  action: 'open' | 'new' | 'daily' | 'unique' | 'search' | 'choose-vault'
+  vault?: string
+  file?: string
+  name?: string
+  content?: string
+  query?: string
+  clipboard?: true
+  ifExists?: 'prepend' | 'append' | 'overwrite'
+  silent?: true
+  paneType?: 'tab' | 'split' | 'window'
+  xSuccess?: string
+  xError?: string
+}
+export type TockTutorDesktopDispatchEvent = {
+  action: DesktopQuickAction
+  kind: 'quick-action'
+  operationId: string
+} | {
+  kind: 'protocol'
+  operationId: string
+  request: TockTutorProtocolRequest
+}
 export interface TockTutorDesktopCallerBridge {
   authorize(operation: DesktopCallerOperation): Promise<{ authorization: string }>
+  completeDispatch(request: {
+    operationId: string
+    status: 'handled' | 'failed' | 'stale'
+  }): Promise<'handled' | 'stale' | 'unavailable'>
+  nextDispatch(): Promise<TockTutorDesktopDispatchEvent | null>
 }
 export declare const TOCKTUTOR_ROUTE_PREFIX: '/tocktutor'
 export declare const TOCKTUTOR_ROUTE_SLOT: 'tockteam.tocktutor.route'

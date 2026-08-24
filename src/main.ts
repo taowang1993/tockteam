@@ -37,7 +37,11 @@ import { parseMarketplaceCommand } from '../plugins/plugin-marketplace/src/proto
 import type { DesktopCommand, DesktopInfo, DesktopRuntimeSnapshot } from './contracts.ts'
 import { DesktopCallerAuthorizations } from './desktop-caller-authorization.ts'
 import { DesktopCallerChannel } from './desktop-caller-channel.ts'
-import type { DesktopCallerOperation } from './host-contract.ts'
+import type {
+  DesktopCallerOperation,
+  DesktopDispatchCompletionRequest,
+  DesktopDispatchEvent,
+} from './host-contract.ts'
 import { allowsRuntimeClipboardWrite, allowsRuntimeMicrophone, allowsTrustedMainIpc, originOf } from './permissions.ts'
 import { BUNDLED_DESKTOP_PLUGINS, DESKTOP_PROFILE, ensureDesktopProfile } from './profile.ts'
 import {
@@ -704,6 +708,20 @@ function normalizeWorkspacePaths(paths: readonly string[]): string[] {
   return normalized
 }
 
+function browserDispatchEvent(event: DesktopDispatchEvent): import('./contracts.ts').TockTutorDesktopDispatchEvent {
+  return event.kind === 'quick-action'
+    ? {
+        action: event.action,
+        kind: event.kind,
+        operationId: event.identity.operationId,
+      }
+    : {
+        kind: event.kind,
+        operationId: event.identity.operationId,
+        request: event.request,
+      }
+}
+
 function flushQueuedProtocols(): void {
   const pending = queuedProtocolUrls
   queuedProtocolUrls = []
@@ -1150,6 +1168,33 @@ function installIpc(): void {
   ipcMain.handle('desktop:tocktutor-authorize', (event, raw: unknown) => {
     assertTrustedMainIpc(event)
     return desktopCallerAuthorizations.issue(raw as DesktopCallerOperation, String(event.sender.id))
+  })
+  ipcMain.handle('desktop:tocktutor-dispatch-next', async event => {
+    assertTrustedMainIpc(event)
+    const lifetime = new AbortController()
+    const abort = (): void => { lifetime.abort() }
+    event.sender.once('destroyed', abort)
+    try {
+      const dispatched = await desktopDispatchChannel.next(lifetime.signal)
+      if (dispatched === undefined) return null
+      if (lifetime.signal.aborted || event.sender.isDestroyed()) {
+        desktopDispatchChannel.rollback(dispatched.identity.operationId)
+        return null
+      }
+      return browserDispatchEvent(dispatched)
+    } finally {
+      event.sender.removeListener('destroyed', abort)
+    }
+  })
+  ipcMain.handle('desktop:tocktutor-dispatch-complete', async (event, raw: unknown) => {
+    assertTrustedMainIpc(event)
+    const result = await desktopDispatchChannel.complete(
+      raw as DesktopDispatchCompletionRequest,
+      new AbortController().signal,
+    )
+    return result?.status === 'handled' || result?.status === 'stale'
+      ? result.status
+      : 'unavailable'
   })
   ipcMain.handle('desktop:plugin-marketplace-snapshot', event => {
     assertTrustedMainIpc(event)

@@ -1,5 +1,10 @@
 import type { PluginMarketplaceBridge } from '../plugins/plugin-marketplace/src/protocol.ts'
-import type { DesktopCallerOperation } from './host-contract.ts'
+import type {
+  DesktopCallerOperation,
+  DesktopDispatchCompletionRequest,
+  DesktopQuickAction,
+  TockTutorProtocolRequest,
+} from './host-contract.ts'
 
 /** Commands sent from Electron's native chrome to the DSH client plugin. */
 export type DesktopCommand =
@@ -43,8 +48,20 @@ export interface WebClipBlockedNavigation {
   url: string
 }
 
+export type TockTutorDesktopDispatchEvent = {
+  action: DesktopQuickAction
+  kind: 'quick-action'
+  operationId: string
+} | {
+  kind: 'protocol'
+  operationId: string
+  request: TockTutorProtocolRequest
+}
+
 export interface TockTutorDesktopCallerBridge {
   authorize(operation: DesktopCallerOperation): Promise<{ authorization: string }>
+  completeDispatch(request: DesktopDispatchCompletionRequest): Promise<'handled' | 'stale' | 'unavailable'>
+  nextDispatch(): Promise<TockTutorDesktopDispatchEvent | null>
 }
 
 export interface WebClipDesktopBridge {
