@@ -12,17 +12,25 @@ import {
 } from 'react'
 import { createPortal } from 'react-dom'
 import {
+  ArrowDown,
+  ArrowLeft,
+  ArrowRight,
+  ArrowUp,
   Bookmark,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Ellipsis,
   FileText,
   Folder,
   MessageSquare,
+  Music,
   PanelLeft,
+  PanelTop,
   Pencil,
   Plus,
   Search,
+  Upload,
   X,
   type LucideIcon,
 } from 'lucide-react'
@@ -849,7 +857,7 @@ function ReadingBlockView(props: {
   switch (block.kind) {
     case 'heading': {
       const Tag = `h${String(block.level)}` as keyof JSX.IntrinsicElements
-      return <Tag>{block.text}</Tag>
+      return <Tag>{block.level === 1 && <ChevronDown aria-hidden="true" />}{block.text}</Tag>
     }
     case 'paragraph': return <p>{block.text}</p>
     case 'code': return <pre><code>{block.text}</code></pre>
@@ -890,10 +898,10 @@ function CanvasView(props: {
               {!node.supported && <p role="note">Unsupported node fields remain inert.</p>}
               <fieldset className="tocktutor-node-actions">
                 <legend className="tocktutor-visually-hidden">Move {label}</legend>
-                <button aria-label={`Move ${label} left`} onClick={() => { props.onMove(node.id, -20, 0) }} type="button">←</button>
-                <button aria-label={`Move ${label} up`} onClick={() => { props.onMove(node.id, 0, -20) }} type="button">↑</button>
-                <button aria-label={`Move ${label} down`} onClick={() => { props.onMove(node.id, 0, 20) }} type="button">↓</button>
-                <button aria-label={`Move ${label} right`} onClick={() => { props.onMove(node.id, 20, 0) }} type="button">→</button>
+                <button aria-label={`Move ${label} left`} onClick={() => { props.onMove(node.id, -20, 0) }} type="button"><ArrowLeft aria-hidden="true" /></button>
+                <button aria-label={`Move ${label} up`} onClick={() => { props.onMove(node.id, 0, -20) }} type="button"><ArrowUp aria-hidden="true" /></button>
+                <button aria-label={`Move ${label} down`} onClick={() => { props.onMove(node.id, 0, 20) }} type="button"><ArrowDown aria-hidden="true" /></button>
+                <button aria-label={`Move ${label} right`} onClick={() => { props.onMove(node.id, 20, 0) }} type="button"><ArrowRight aria-hidden="true" /></button>
               </fieldset>
             </article>
           )
@@ -1215,9 +1223,9 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
           <header className="tocktutor-sidebar-header">
             <h1>Files</h1>
             <span><WorkbenchGlyph kind="more" /></span>
-            <span>↥</span>
+            <span><Upload aria-hidden="true" /></span>
             <span><WorkbenchGlyph kind="folder" /></span>
-            <span>▭</span>
+            <span><PanelTop aria-hidden="true" /></span>
           </header>
           <div className="tocktutor-sidebar-content">
             {snapshot.searchOpen && (
@@ -1233,7 +1241,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
                     type="search"
                     value={snapshot.searchQuery}
                   />
-                  <button aria-label="Close Search" onClick={() => { props.onCloseSearch?.() }} type="button">×</button>
+                  <button aria-label="Close Search" onClick={() => { props.onCloseSearch?.() }} type="button"><WorkbenchGlyph kind="close" /></button>
                 </div>
                 <p aria-live="polite" role="status">{documents.length} matching notes.</p>
               </section>
@@ -1277,8 +1285,8 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
                 onClick={() => { props.onMode(snapshot.mode === 'source' ? 'reading' : 'source') }}
                 type="button"
               ><WorkbenchGlyph kind="pencil" /></button>
-              <span aria-hidden="true">♩</span>
-              <span aria-hidden="true">▱</span>
+              <span><Music aria-hidden="true" /></span>
+              <span><Folder aria-hidden="true" /></span>
               <button
                 aria-label="More Note Actions"
                 aria-expanded={panel === 'utilities'}
@@ -1347,7 +1355,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
           <section aria-label="Pane Groups" className="tocktutor-pane-groups">
             <div className="tocktutor-pane-heading">
               <h2>Pane Groups</h2>
-              <button aria-label="Add Pane" disabled={snapshot.panes.length >= MAX_PANE_GROUPS} onClick={props.onAddPane} type="button">+</button>
+              <button aria-label="Add Pane" disabled={snapshot.panes.length >= MAX_PANE_GROUPS} onClick={props.onAddPane} type="button"><WorkbenchGlyph kind="new" /></button>
             </div>
             <div className="tocktutor-pane-list">
               {snapshot.panes.map((pane, index) => (
@@ -1604,7 +1612,7 @@ const ROUTE_CSS = `
 .tocktutor-reading { margin: 0 auto; max-width: 768px; min-height: 100%; padding: 18px 0 72px; width: calc(100% - 48px); }
 .tocktutor-reading h1, .tocktutor-reading h2, .tocktutor-reading h3 { font-weight: 650; line-height: 1.25; margin: 0 0 16px; }
 .tocktutor-reading h1 { font-size: 30px; }
-.tocktutor-reading h1::before { color: color-mix(in srgb, var(--tt-muted) 45%, transparent); content: '⌄'; display: inline-block; font-size: 12px; margin-left: -18px; margin-right: 6px; transform: translateY(-4px); }
+.tocktutor-reading h1 > svg { color: color-mix(in srgb, var(--tt-muted) 45%, transparent); display: inline-block; height: 14px; margin-left: -20px; margin-right: 6px; transform: translateY(-3px); width: 14px; }
 .tocktutor-reading h2 { font-size: 24px; }
 .tocktutor-reading h3 { font-size: 20px; }
 .tocktutor-reading p { font-size: 18px; margin: 0 0 16px; }

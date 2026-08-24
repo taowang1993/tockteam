@@ -1,5 +1,6 @@
 /** Layout-reserving pinned summary derived from the active DSH session. */
 
+import { createElement as createIcon, X } from 'lucide'
 import type { LocaleService, Translate } from '../../shared/i18n.ts'
 import { localeTag } from '../../shared/i18n.ts'
 import {
@@ -123,7 +124,11 @@ html[data-tockteam-summary-pinned='true'] #root {
   background: transparent;
   color: var(--dsw-alias-label-secondary);
   cursor: pointer;
-  font-size: 18px;
+}
+
+[data-tockteam-summary-close] svg {
+  width: 16px;
+  height: 16px;
 }
 
 [data-tockteam-summary-close]:hover {
@@ -274,7 +279,7 @@ class PinnedSummaryService implements PinnedSummary {
     panel.innerHTML = `
       <header data-tockteam-summary-header>
         <span></span>
-        <button data-tockteam-summary-close type="button">×</button>
+        <button data-tockteam-summary-close type="button"></button>
       </header>
       <div data-tockteam-summary-body>
         <h2 data-tockteam-summary-title></h2>
@@ -288,6 +293,9 @@ class PinnedSummaryService implements PinnedSummary {
     this.#title = required(panel, '[data-tockteam-summary-title]')
     this.#headerTitle = required(panel, '[data-tockteam-summary-header] span')
     this.#close = required(panel, '[data-tockteam-summary-close]')
+    const closeIcon = createIcon(X)
+    closeIcon.setAttribute('aria-hidden', 'true')
+    this.#close.append(closeIcon)
     this.#meta = required(panel, '[data-tockteam-summary-meta]')
     this.#source = required(panel, '[data-tockteam-summary-source]')
     this.#text = required(panel, '[data-tockteam-summary-text]')

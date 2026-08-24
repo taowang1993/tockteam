@@ -15143,40 +15143,72 @@ var createLucideIcon = (iconName, iconNode) => {
   return Component;
 };
 
-// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/bookmark.js
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/arrow-down.js
 var __iconNode = [
+  ["path", { d: "M12 5v14", key: "s699le" }],
+  ["path", { d: "m19 12-7 7-7-7", key: "1idqje" }]
+];
+var ArrowDown = createLucideIcon("ArrowDown", __iconNode);
+
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/arrow-left.js
+var __iconNode2 = [
+  ["path", { d: "m12 19-7-7 7-7", key: "1l729n" }],
+  ["path", { d: "M19 12H5", key: "x3x0zl" }]
+];
+var ArrowLeft = createLucideIcon("ArrowLeft", __iconNode2);
+
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/arrow-right.js
+var __iconNode3 = [
+  ["path", { d: "M5 12h14", key: "1ays0h" }],
+  ["path", { d: "m12 5 7 7-7 7", key: "xquz4c" }]
+];
+var ArrowRight = createLucideIcon("ArrowRight", __iconNode3);
+
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/arrow-up.js
+var __iconNode4 = [
+  ["path", { d: "m5 12 7-7 7 7", key: "hav0vg" }],
+  ["path", { d: "M12 19V5", key: "x0mq9r" }]
+];
+var ArrowUp = createLucideIcon("ArrowUp", __iconNode4);
+
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/bookmark.js
+var __iconNode5 = [
   ["path", { d: "m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z", key: "1fy3hk" }]
 ];
-var Bookmark = createLucideIcon("Bookmark", __iconNode);
+var Bookmark = createLucideIcon("Bookmark", __iconNode5);
+
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/chevron-down.js
+var __iconNode6 = [["path", { d: "m6 9 6 6 6-6", key: "qrunsl" }]];
+var ChevronDown = createLucideIcon("ChevronDown", __iconNode6);
 
 // ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/chevron-left.js
-var __iconNode2 = [["path", { d: "m15 18-6-6 6-6", key: "1wnfg3" }]];
-var ChevronLeft = createLucideIcon("ChevronLeft", __iconNode2);
+var __iconNode7 = [["path", { d: "m15 18-6-6 6-6", key: "1wnfg3" }]];
+var ChevronLeft = createLucideIcon("ChevronLeft", __iconNode7);
 
 // ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/chevron-right.js
-var __iconNode3 = [["path", { d: "m9 18 6-6-6-6", key: "mthhwq" }]];
-var ChevronRight = createLucideIcon("ChevronRight", __iconNode3);
+var __iconNode8 = [["path", { d: "m9 18 6-6-6-6", key: "mthhwq" }]];
+var ChevronRight = createLucideIcon("ChevronRight", __iconNode8);
 
 // ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/ellipsis.js
-var __iconNode4 = [
+var __iconNode9 = [
   ["circle", { cx: "12", cy: "12", r: "1", key: "41hilf" }],
   ["circle", { cx: "19", cy: "12", r: "1", key: "1wjl8i" }],
   ["circle", { cx: "5", cy: "12", r: "1", key: "1pcz8c" }]
 ];
-var Ellipsis = createLucideIcon("Ellipsis", __iconNode4);
+var Ellipsis = createLucideIcon("Ellipsis", __iconNode9);
 
 // ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/file-text.js
-var __iconNode5 = [
+var __iconNode10 = [
   ["path", { d: "M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z", key: "1rqfz7" }],
   ["path", { d: "M14 2v4a2 2 0 0 0 2 2h4", key: "tnqrlb" }],
   ["path", { d: "M10 9H8", key: "b1mrlr" }],
   ["path", { d: "M16 13H8", key: "t4e002" }],
   ["path", { d: "M16 17H8", key: "z1uh3a" }]
 ];
-var FileText = createLucideIcon("FileText", __iconNode5);
+var FileText = createLucideIcon("FileText", __iconNode10);
 
 // ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/folder.js
-var __iconNode6 = [
+var __iconNode11 = [
   [
     "path",
     {
@@ -15185,23 +15217,38 @@ var __iconNode6 = [
     }
   ]
 ];
-var Folder = createLucideIcon("Folder", __iconNode6);
+var Folder = createLucideIcon("Folder", __iconNode11);
 
 // ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/message-square.js
-var __iconNode7 = [
+var __iconNode12 = [
   ["path", { d: "M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z", key: "1lielz" }]
 ];
-var MessageSquare = createLucideIcon("MessageSquare", __iconNode7);
+var MessageSquare = createLucideIcon("MessageSquare", __iconNode12);
+
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/music.js
+var __iconNode13 = [
+  ["path", { d: "M9 18V5l12-2v13", key: "1jmyc2" }],
+  ["circle", { cx: "6", cy: "18", r: "3", key: "fqmcym" }],
+  ["circle", { cx: "18", cy: "16", r: "3", key: "1hluhg" }]
+];
+var Music = createLucideIcon("Music", __iconNode13);
 
 // ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/panel-left.js
-var __iconNode8 = [
+var __iconNode14 = [
   ["rect", { width: "18", height: "18", x: "3", y: "3", rx: "2", key: "afitv7" }],
   ["path", { d: "M9 3v18", key: "fh3hqa" }]
 ];
-var PanelLeft = createLucideIcon("PanelLeft", __iconNode8);
+var PanelLeft = createLucideIcon("PanelLeft", __iconNode14);
+
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/panel-top.js
+var __iconNode15 = [
+  ["rect", { width: "18", height: "18", x: "3", y: "3", rx: "2", key: "afitv7" }],
+  ["path", { d: "M3 9h18", key: "1pudct" }]
+];
+var PanelTop = createLucideIcon("PanelTop", __iconNode15);
 
 // ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/pencil.js
-var __iconNode9 = [
+var __iconNode16 = [
   [
     "path",
     {
@@ -15211,28 +15258,36 @@ var __iconNode9 = [
   ],
   ["path", { d: "m15 5 4 4", key: "1mk7zo" }]
 ];
-var Pencil = createLucideIcon("Pencil", __iconNode9);
+var Pencil = createLucideIcon("Pencil", __iconNode16);
 
 // ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/plus.js
-var __iconNode10 = [
+var __iconNode17 = [
   ["path", { d: "M5 12h14", key: "1ays0h" }],
   ["path", { d: "M12 5v14", key: "s699le" }]
 ];
-var Plus = createLucideIcon("Plus", __iconNode10);
+var Plus = createLucideIcon("Plus", __iconNode17);
 
 // ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/search.js
-var __iconNode11 = [
+var __iconNode18 = [
   ["circle", { cx: "11", cy: "11", r: "8", key: "4ej97u" }],
   ["path", { d: "m21 21-4.3-4.3", key: "1qie3q" }]
 ];
-var Search = createLucideIcon("Search", __iconNode11);
+var Search = createLucideIcon("Search", __iconNode18);
+
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/upload.js
+var __iconNode19 = [
+  ["path", { d: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4", key: "ih7n3h" }],
+  ["polyline", { points: "17 8 12 3 7 8", key: "t8dd8p" }],
+  ["line", { x1: "12", x2: "12", y1: "3", y2: "15", key: "widbto" }]
+];
+var Upload = createLucideIcon("Upload", __iconNode19);
 
 // ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/x.js
-var __iconNode12 = [
+var __iconNode20 = [
   ["path", { d: "M18 6 6 18", key: "1bl5f8" }],
   ["path", { d: "m6 6 12 12", key: "d8bk6v" }]
 ];
-var X = createLucideIcon("X", __iconNode12);
+var X = createLucideIcon("X", __iconNode20);
 
 // src/base.ts
 var MAX_BASE_BYTES = 2e6;
@@ -16388,7 +16443,10 @@ function ReadingBlockView(props) {
   switch (block.kind) {
     case "heading": {
       const Tag = `h${String(block.level)}`;
-      return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Tag, { children: block.text });
+      return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(Tag, { children: [
+        block.level === 1 && /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ChevronDown, { "aria-hidden": "true" }),
+        block.text
+      ] });
     }
     case "paragraph":
       return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { children: block.text });
@@ -16443,16 +16501,16 @@ function CanvasView(props) {
           ] }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { "aria-label": `Move ${label} left`, onClick: () => {
             props.onMove(node.id, -20, 0);
-          }, type: "button", children: "\u2190" }),
+          }, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ArrowLeft, { "aria-hidden": "true" }) }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { "aria-label": `Move ${label} up`, onClick: () => {
             props.onMove(node.id, 0, -20);
-          }, type: "button", children: "\u2191" }),
+          }, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ArrowUp, { "aria-hidden": "true" }) }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { "aria-label": `Move ${label} down`, onClick: () => {
             props.onMove(node.id, 0, 20);
-          }, type: "button", children: "\u2193" }),
+          }, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ArrowDown, { "aria-hidden": "true" }) }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { "aria-label": `Move ${label} right`, onClick: () => {
             props.onMove(node.id, 20, 0);
-          }, type: "button", children: "\u2192" })
+          }, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ArrowRight, { "aria-hidden": "true" }) })
         ] })
       ] }, node.id);
     }) })
@@ -16703,9 +16761,9 @@ function TockTutorRouteView(props) {
             /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("header", { className: "tocktutor-sidebar-header", children: [
               /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h1", { children: "Files" }),
               /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "more" }) }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "\u21A5" }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Upload, { "aria-hidden": "true" }) }),
               /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "folder" }) }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "\u25AD" })
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(PanelTop, { "aria-hidden": "true" }) })
             ] }),
             /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "tocktutor-sidebar-content", children: [
               snapshot.searchOpen && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("section", { "aria-label": "Search Notes", className: "tocktutor-search", children: [
@@ -16727,7 +16785,7 @@ function TockTutorRouteView(props) {
                   ),
                   /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { "aria-label": "Close Search", onClick: () => {
                     props.onCloseSearch?.();
-                  }, type: "button", children: "\xD7" })
+                  }, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "close" }) })
                 ] }),
                 /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("p", { "aria-live": "polite", role: "status", children: [
                   documents.length,
@@ -16786,8 +16844,8 @@ function TockTutorRouteView(props) {
                     children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "pencil" })
                   }
                 ),
-                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { "aria-hidden": "true", children: "\u2669" }),
-                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { "aria-hidden": "true", children: "\u25B1" }),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Music, { "aria-hidden": "true" }) }),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Folder, { "aria-hidden": "true" }) }),
                 /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
                   "button",
                   {
@@ -16874,7 +16932,7 @@ function TockTutorRouteView(props) {
             /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("section", { "aria-label": "Pane Groups", className: "tocktutor-pane-groups", children: [
               /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "tocktutor-pane-heading", children: [
                 /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h2", { children: "Pane Groups" }),
-                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { "aria-label": "Add Pane", disabled: snapshot.panes.length >= MAX_PANE_GROUPS, onClick: props.onAddPane, type: "button", children: "+" })
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { "aria-label": "Add Pane", disabled: snapshot.panes.length >= MAX_PANE_GROUPS, onClick: props.onAddPane, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "new" }) })
               ] }),
               /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "tocktutor-pane-list", children: snapshot.panes.map((pane, index) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("button", { "aria-pressed": pane.id === snapshot.focusedPaneId, onClick: () => {
                 props.onFocusPane(pane.id);
@@ -17140,7 +17198,7 @@ var ROUTE_CSS = `
 .tocktutor-reading { margin: 0 auto; max-width: 768px; min-height: 100%; padding: 18px 0 72px; width: calc(100% - 48px); }
 .tocktutor-reading h1, .tocktutor-reading h2, .tocktutor-reading h3 { font-weight: 650; line-height: 1.25; margin: 0 0 16px; }
 .tocktutor-reading h1 { font-size: 30px; }
-.tocktutor-reading h1::before { color: color-mix(in srgb, var(--tt-muted) 45%, transparent); content: '\u2304'; display: inline-block; font-size: 12px; margin-left: -18px; margin-right: 6px; transform: translateY(-4px); }
+.tocktutor-reading h1 > svg { color: color-mix(in srgb, var(--tt-muted) 45%, transparent); display: inline-block; height: 14px; margin-left: -20px; margin-right: 6px; transform: translateY(-3px); width: 14px; }
 .tocktutor-reading h2 { font-size: 24px; }
 .tocktutor-reading h3 { font-size: 20px; }
 .tocktutor-reading p { font-size: 18px; margin: 0 0 16px; }
@@ -17244,17 +17302,25 @@ lucide-react/dist/esm/shared/src/utils.js:
 lucide-react/dist/esm/defaultAttributes.js:
 lucide-react/dist/esm/Icon.js:
 lucide-react/dist/esm/createLucideIcon.js:
+lucide-react/dist/esm/icons/arrow-down.js:
+lucide-react/dist/esm/icons/arrow-left.js:
+lucide-react/dist/esm/icons/arrow-right.js:
+lucide-react/dist/esm/icons/arrow-up.js:
 lucide-react/dist/esm/icons/bookmark.js:
+lucide-react/dist/esm/icons/chevron-down.js:
 lucide-react/dist/esm/icons/chevron-left.js:
 lucide-react/dist/esm/icons/chevron-right.js:
 lucide-react/dist/esm/icons/ellipsis.js:
 lucide-react/dist/esm/icons/file-text.js:
 lucide-react/dist/esm/icons/folder.js:
 lucide-react/dist/esm/icons/message-square.js:
+lucide-react/dist/esm/icons/music.js:
 lucide-react/dist/esm/icons/panel-left.js:
+lucide-react/dist/esm/icons/panel-top.js:
 lucide-react/dist/esm/icons/pencil.js:
 lucide-react/dist/esm/icons/plus.js:
 lucide-react/dist/esm/icons/search.js:
+lucide-react/dist/esm/icons/upload.js:
 lucide-react/dist/esm/icons/x.js:
 lucide-react/dist/esm/lucide-react.js:
   (**

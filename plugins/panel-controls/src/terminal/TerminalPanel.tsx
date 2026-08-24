@@ -5,6 +5,7 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
   type PointerEvent as ReactPointerEvent,
 } from 'react'
+import { ChevronDown, ChevronUp, Plus, Type, X } from 'lucide-react'
 import { TerminalView } from './TerminalView.tsx'
 import {
   DEFAULT_TERMINAL_FONT_FAMILY,
@@ -140,7 +141,7 @@ export function TerminalPanel({ locale, t: translate, store, scopeKey, cwd, acti
                   event.stopPropagation()
                   store.dispatch({ type: 'remove-tab', id: tab.id })
                 }}
-              >×</button>
+              ><X aria-hidden="true" /></button>
             </span>
           ))}
           <button
@@ -149,7 +150,7 @@ export function TerminalPanel({ locale, t: translate, store, scopeKey, cwd, acti
             onClick={addTab}
             title={t('terminal.new-shell')}
             aria-label={t('terminal.new-shell')}
-          >+</button>
+          ><Plus aria-hidden="true" /></button>
           {state.tabs.length === 0 && <span className="tockteam-terminal-hint">{t('terminal')}</span>}
         </div>
         <div className="tockteam-terminal-actions">
@@ -160,21 +161,23 @@ export function TerminalPanel({ locale, t: translate, store, scopeKey, cwd, acti
             title={t('terminal.font')}
             aria-label={t('terminal.font-settings')}
             aria-expanded={settingsOpen}
-          >Aa</button>
+          ><Type aria-hidden="true" /></button>
           <button
             type="button"
             className="tockteam-terminal-action"
             onClick={() => { store.dispatch({ type: 'toggle-collapsed' }) }}
             title={state.collapsed ? t('terminal.expand') : t('terminal.collapse')}
             aria-label={state.collapsed ? t('terminal.expand') : t('terminal.collapse')}
-          >{state.collapsed ? '⌃' : '⌄'}</button>
+          >{state.collapsed
+            ? <ChevronUp aria-hidden="true" />
+            : <ChevronDown aria-hidden="true" />}</button>
         </div>
       </div>
       {settingsOpen && (
         <div className="tockteam-terminal-settings" role="dialog" aria-label={t('terminal.font-settings')}>
           <div className="tockteam-terminal-settings-header">
             <strong>{t('terminal.font')}</strong>
-            <button type="button" onClick={() => { setSettingsOpen(false) }} aria-label={t('terminal.close-settings')}>×</button>
+            <button type="button" onClick={() => { setSettingsOpen(false) }} aria-label={t('terminal.close-settings')}><X aria-hidden="true" /></button>
           </div>
           <label>
             <span>{t('terminal.font-family')}</span>

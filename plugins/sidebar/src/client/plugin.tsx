@@ -7,6 +7,27 @@ import {
   type ReactNode,
 } from 'react'
 import { defineStore } from '@deepseek-ai/dsh-client-runtime/client'
+import {
+  ChevronDown,
+  ChevronLeft,
+  ChevronUp,
+  FileDiff,
+  GitBranch,
+  GitCommitHorizontal,
+  History,
+  ListFilter,
+  Maximize2,
+  Monitor,
+  Notebook,
+  PanelBottom,
+  PanelLeft,
+  PanelRight,
+  Plus,
+  RefreshCw,
+  SquareTerminal,
+  X,
+  type LucideIcon,
+} from 'lucide-react'
 import { createPortal } from 'react-dom'
 import { createRoot, type Root } from 'react-dom/client'
 import type { DesktopBridge } from '../../../../src/contracts.ts'
@@ -579,16 +600,19 @@ class WorkspaceToolsService implements WorkspaceTools {
   }
 }
 
-function PanelIcon({ kind }: { kind: 'expand' | 'sidebar' | 'summary' | 'terminal' | 'side' }): ReactNode {
-  if (kind === 'expand') return <svg viewBox="0 0 20 20"><path d="M7 3H3v4M13 3h4v4M17 13v4h-4M7 17H3v-4" /></svg>
-  if (kind === 'sidebar') return <svg viewBox="0 0 20 20"><rect x="3" y="3" width="14" height="14" rx="2.5" /><path d="M7.5 3.5v13" /></svg>
-  if (kind === 'summary') {
-    return <svg viewBox="0 0 20 20"><circle cx="5" cy="5" r="1.5" /><path d="M9 5h7M4 10h12" /><circle cx="15" cy="15" r="1.5" /><path d="M4 15h7" /></svg>
-  }
-  if (kind === 'terminal') {
-    return <svg viewBox="0 0 20 20"><rect x="3" y="3" width="14" height="14" rx="2.5" /><path d="M3.5 13.5h13" /></svg>
-  }
-  return <svg viewBox="0 0 20 20"><rect x="3" y="3" width="14" height="14" rx="2.5" /><path d="M12.5 3.5v13" /></svg>
+type PanelIconKind = 'expand' | 'sidebar' | 'summary' | 'terminal' | 'side'
+
+const PANEL_ICONS: Record<PanelIconKind, LucideIcon> = {
+  expand: Maximize2,
+  sidebar: PanelLeft,
+  side: PanelRight,
+  summary: ListFilter,
+  terminal: PanelBottom,
+}
+
+function PanelIcon({ kind }: { kind: PanelIconKind }) {
+  const Icon = PANEL_ICONS[kind]
+  return <Icon aria-hidden="true" />
 }
 
 function DesktopPanelToolbar({
@@ -924,15 +948,15 @@ function WorkspacePanel({
     <div className="tockteam-review-view" aria-label={t('workspace.changes')}>
       <header className="tockteam-workspace-header">
         <div>
-          <button type="button" aria-label={t('side.back')} onClick={() => { service.openMenu() }}>‹</button>
+          <button type="button" aria-label={t('side.back')} onClick={() => { service.openMenu() }}><ChevronLeft aria-hidden="true" /></button>
           <strong>{snapshot?.name ?? (cwd?.split(/[\\/]/).filter(Boolean).pop() || t('workspace.title'))}</strong>
         </div>
         <div>
-          <button type="button" onClick={() => { void refresh() }} aria-label={t('workspace.refresh')} title={t('workspace.refresh')}>↻</button>
+          <button type="button" onClick={() => { void refresh() }} aria-label={t('workspace.refresh')} title={t('workspace.refresh')}><RefreshCw aria-hidden="true" /></button>
           {window.dshDesktop?.chooseWorkspace !== undefined && (
-            <button type="button" onClick={() => { void chooseWorkspace() }} aria-label={t('workspace.add')} title={t('workspace.add')}>+</button>
+            <button type="button" onClick={() => { void chooseWorkspace() }} aria-label={t('workspace.add')} title={t('workspace.add')}><Plus aria-hidden="true" /></button>
           )}
-          <button type="button" onClick={() => { service.setOpen(false) }} aria-label={t('workspace.close-review')} title={t('workspace.close-review')}>×</button>
+          <button type="button" onClick={() => { service.setOpen(false) }} aria-label={t('workspace.close-review')} title={t('workspace.close-review')}><X aria-hidden="true" /></button>
         </div>
       </header>
 
@@ -943,7 +967,7 @@ function WorkspacePanel({
             {error !== '' && <div className="tockteam-workspace-error" role="alert">{error}</div>}
             <section>
               <div className="tockteam-workspace-section-title">
-                <span className="tockteam-workspace-section-icon">▣</span>
+                <span className="tockteam-workspace-section-icon"><FileDiff aria-hidden="true" /></span>
                 <strong>{t('workspace.changes')}</strong>
                 <span className="tockteam-workspace-count">{snapshot?.changes.length ?? 0}</span>
               </div>
@@ -982,7 +1006,7 @@ function WorkspacePanel({
             {snapshot?.kind === 'repository' && (
               <section className="tockteam-review-history">
                 <div className="tockteam-workspace-section-title">
-                  <span className="tockteam-workspace-section-icon">◷</span>
+                  <span className="tockteam-workspace-section-icon"><History aria-hidden="true" /></span>
                   <strong>{t('workspace.review-history')}</strong>
                   <span className="tockteam-workspace-count">{history.length}</span>
                 </div>
@@ -1043,7 +1067,7 @@ function WorkspacePanel({
                               aria-label={t('workspace.remove-comment')}
                               title={t('workspace.remove-comment')}
                               onClick={() => { reviewComments.remove(comment.id) }}
-                            >×</button>
+                            ><X aria-hidden="true" /></button>
                           </div>
                         ))}
                       </div>
@@ -1139,14 +1163,14 @@ function WorkspacePanel({
 
             <section className="tockteam-workspace-facts">
               <label className="tockteam-workspace-fact">
-                <span className="tockteam-workspace-fact-icon">▱</span>
+                <span className="tockteam-workspace-fact-icon"><Monitor aria-hidden="true" /></span>
                 <select aria-label={t('workspace.execution-environment')} value="local" onChange={() => {}}>
                   <option value="local">{t('workspace.local')}</option>
                 </select>
-                <span className="tockteam-workspace-chevron">⌄</span>
+                <span className="tockteam-workspace-chevron"><ChevronDown aria-hidden="true" /></span>
               </label>
               <label className="tockteam-workspace-fact">
-                <span className="tockteam-workspace-fact-icon">⑂</span>
+                <span className="tockteam-workspace-fact-icon"><GitBranch aria-hidden="true" /></span>
                 <select
                   value={snapshot?.branch ?? ''}
                   disabled={snapshot?.kind !== 'repository' || busy}
@@ -1155,7 +1179,7 @@ function WorkspacePanel({
                 >
                   {(snapshot?.branches ?? []).map(branch => <option key={branch} value={branch}>{branch}</option>)}
                 </select>
-                <span className="tockteam-workspace-chevron">⌄</span>
+                <span className="tockteam-workspace-chevron"><ChevronDown aria-hidden="true" /></span>
               </label>
               {snapshot?.kind === 'repository' && (
                 <div className="tockteam-new-branch">
@@ -1178,9 +1202,11 @@ function WorkspacePanel({
                 onClick={() => { setCommitOpen(open => !open) }}
                 aria-expanded={commitOpen}
               >
-                <span className="tockteam-workspace-fact-icon">—◯—</span>
+                <span className="tockteam-workspace-fact-icon"><GitCommitHorizontal aria-hidden="true" /></span>
                 <span>{t('workspace.commit-or-push')}</span>
-                <span className="tockteam-workspace-chevron">{commitOpen ? '⌃' : '⌄'}</span>
+                <span className="tockteam-workspace-chevron">
+                  {commitOpen ? <ChevronUp aria-hidden="true" /> : <ChevronDown aria-hidden="true" />}
+                </span>
               </button>
               {commitOpen && snapshot?.kind === 'repository' && (
                 <div className="tockteam-commit-box">
@@ -1213,7 +1239,7 @@ function WorkspacePanel({
               <span>{snapshot?.name ?? cwd.split(/[\\/]/).filter(Boolean).pop()}</span>
               <small title={cwd}>{cwd}</small>
               {window.dshDesktop?.chooseWorkspace !== undefined && (
-                <button type="button" onClick={() => { void chooseWorkspace() }} aria-label={t('workspace.add')}>+</button>
+                <button type="button" onClick={() => { void chooseWorkspace() }} aria-label={t('workspace.add')}><Plus aria-hidden="true" /></button>
               )}
             </section>
 
@@ -1221,7 +1247,7 @@ function WorkspacePanel({
               <h3>{t('workspace.background-processes')}</h3>
               {processes.map(process => (
                 <div key={process.callId} className="tockteam-process-row">
-                  <span>›_</span>
+                  <span><SquareTerminal aria-hidden="true" /></span>
                   <code title={processTitle(process)}>{processTitle(process)}</code>
                 </div>
               ))}
@@ -1744,17 +1770,7 @@ function AppRailIcon({ kind }: { kind: 'agent' | 'notebook' }): ReactNode {
       </svg>
     )
   }
-  // lucide-react NotebookIcon, matching tockbot WorkbenchNavigationMenu
-  return (
-    <svg aria-hidden="true" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24">
-      <path d="M2 6h4" />
-      <path d="M2 10h4" />
-      <path d="M2 14h4" />
-      <path d="M2 18h4" />
-      <rect height="20" rx="2" width="16" x="4" y="2" />
-      <path d="M16 2v20" />
-    </svg>
-  )
+  return <Notebook aria-hidden="true" />
 }
 
 function DesktopAppRail({

@@ -1,4 +1,5 @@
 import { defineStore } from '@deepseek-ai/dsh-client-runtime/client'
+import { Check } from 'lucide-react'
 import type { LocaleService, Translate } from '../../../shared/i18n.ts'
 import desktopSkinsCss from './skins.css'
 import {
@@ -123,7 +124,7 @@ function SkinSettingsRow({ setSkin, t, useStore }: SkinRowProps): JSX.Element {
                   <span className="tockteam-skins-mode">{t(option.mode)}</span>
                 </span>
                 {selected && (
-                  <span className="tockteam-skins-check" title={t('skins.selected')}>✓</span>
+                  <span className="tockteam-skins-check" title={t('skins.selected')}><Check aria-hidden="true" /></span>
                 )}
               </span>
             </button>

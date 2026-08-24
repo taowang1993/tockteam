@@ -98,6 +98,10 @@
   line-height: 1;
 }
 
+.tockteam-terminal-tab-close svg { width: 11px; height: 11px; }
+.tockteam-terminal-add svg { width: 15px; height: 15px; }
+.tockteam-terminal-action svg { width: 15px; height: 15px; }
+
 .tockteam-terminal-tab-close:hover,
 .tockteam-terminal-add:hover,
 .tockteam-terminal-action:hover {
@@ -138,8 +142,9 @@
   border-radius: 6px;
   background: transparent;
   color: var(--dsw-alias-label-secondary, #57606a);
-  font-size: 11px;
 }
+
+.tockteam-terminal-settings-header button svg { width: 15px; height: 15px; }
 
 .tockteam-terminal-settings {
   position: absolute;

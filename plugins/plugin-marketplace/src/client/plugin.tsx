@@ -6,6 +6,7 @@ import {
   useSyncExternalStore,
 } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
+import { Blocks, Search, X } from 'lucide-react'
 import type { DesktopBridge } from '../../../../src/contracts.ts'
 import type { LocaleService, Translate } from '../../../shared/i18n.ts'
 import { localeTag } from '../../../shared/i18n.ts'
@@ -186,17 +187,6 @@ function sidebarBox(sidebar: HTMLElement): HTMLElement | null {
   return null
 }
 
-function PluginIcon(): JSX.Element {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M8.2 5.3a7.5 7.5 0 1 0 9.9 2.1" />
-      <path d="M15.7 3.4v4.8h4.8" />
-      <circle cx="10" cy="11" r="1.7" />
-      <path d="M11.5 12.2l2.8 2.3M7.8 15.8l2.3-2.9" />
-    </svg>
-  )
-}
-
 function MarketplaceNavigationEntry({
   locale,
   t,
@@ -216,7 +206,7 @@ function MarketplaceNavigationEntry({
       onClick={() => { view.toggle() }}
       type="button"
     >
-      <PluginIcon />
+      <Blocks aria-hidden="true" />
       {wide && <span>{label}</span>}
     </button>
   )
@@ -376,10 +366,6 @@ class PluginMarketplaceViewService implements PluginMarketplaceView {
   }
 }
 
-function SearchIcon(): JSX.Element {
-  return <svg viewBox="0 0 20 20"><circle cx="8.5" cy="8.5" r="5.5" /><path d="m13 13 4 4" /></svg>
-}
-
 function shortCommit(commit: string): string {
   return commit.slice(0, 10)
 }
@@ -511,7 +497,7 @@ function PluginDetail({
       aria-label={t('details', { plugin: plugin.title })}
     >
       <div className="tockteam-marketplace-detail-inner">
-        <button className="tockteam-marketplace-icon-button tockteam-marketplace-detail-close" onClick={close} type="button">×</button>
+        <button className="tockteam-marketplace-icon-button tockteam-marketplace-detail-close" onClick={close} type="button"><X aria-hidden="true" /></button>
         <h2>{plugin.title}</h2>
         <span className="tockteam-marketplace-pill" data-installed={String(plugin.installed)}>
           {plugin.installed ? t('installed') : mechanismLabel(plugin, t)}
@@ -803,7 +789,7 @@ function MarketplaceSurface({ bridge, locale, translate, view }: {
                 onClick={() => { view.setOpen(false) }}
                 title={t('close')}
                 type="button"
-              >×</button>
+              ><X aria-hidden="true" /></button>
             </div>
           </header>
           {snapshot?.preview !== null && snapshot?.preview !== undefined && (
@@ -840,7 +826,7 @@ function MarketplaceSurface({ bridge, locale, translate, view }: {
           <main className="tockteam-marketplace-main">
             <div className="tockteam-marketplace-toolbar">
               <div className="tockteam-marketplace-search">
-                <SearchIcon />
+                <Search aria-hidden="true" />
                 <input
                   aria-label={t('search.label')}
                   onChange={event => { setSearch(event.target.value) }}
@@ -848,7 +834,7 @@ function MarketplaceSurface({ bridge, locale, translate, view }: {
                   value={search}
                 />
                 {search !== '' && (
-                  <button aria-label={t('search.clear')} onClick={() => { setSearch('') }} type="button">×</button>
+                  <button aria-label={t('search.clear')} onClick={() => { setSearch('') }} type="button"><X aria-hidden="true" /></button>
                 )}
               </div>
               <div className="tockteam-marketplace-status-tabs" role="group" aria-label={t('installation-status')}>

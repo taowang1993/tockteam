@@ -344,6 +344,13 @@ body:has([data-sidebar-collapsed]) .tockteam-titlebar-leading {
   line-height: 1;
 }
 
+.tockteam-workspace-header button svg {
+  display: block;
+  width: 16px;
+  height: 16px;
+  margin: auto;
+}
+
 .tockteam-workspace-header button:hover,
 .tockteam-workspace-directory button:hover {
   background: var(--dsw-alias-interactive-bg-hover, rgb(0 0 0 / 6%));
@@ -382,7 +389,12 @@ body:has([data-sidebar-collapsed]) .tockteam-titlebar-leading {
   display: grid;
   place-items: center;
   color: var(--dsw-alias-label-secondary, #57606a);
-  font-size: 15px;
+}
+
+.tockteam-workspace-section-icon svg,
+.tockteam-workspace-fact-icon svg {
+  width: 16px;
+  height: 16px;
 }
 
 .tockteam-workspace-count {
@@ -671,7 +683,12 @@ body:has([data-sidebar-collapsed]) .tockteam-titlebar-leading {
 
 .tockteam-workspace-chevron {
   color: var(--dsw-alias-label-dimmed, #8c959f);
-  font-size: 13px;
+}
+
+.tockteam-workspace-chevron svg {
+  display: block;
+  width: 14px;
+  height: 14px;
 }
 
 .tockteam-new-branch {
@@ -786,10 +803,12 @@ body:has([data-sidebar-collapsed]) .tockteam-titlebar-leading {
   place-items: center;
   width: 20px;
   height: 20px;
-  border: 1px solid currentColor;
-  border-radius: 4px;
   color: var(--dsw-alias-label-secondary, #57606a);
-  font: 10px/1 var(--ds-font-family-code, monospace);
+}
+
+.tockteam-process-row > span svg {
+  width: 17px;
+  height: 17px;
 }
 
 .tockteam-process-row code {

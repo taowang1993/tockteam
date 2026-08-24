@@ -5,6 +5,7 @@ import {
   useState,
   type ReactNode,
 } from 'react'
+import { ArrowLeft, ArrowRight, X } from 'lucide-react'
 import {
   requestClipApply,
   requestClipCancel,
@@ -376,19 +377,19 @@ function WebViewer(): ReactNode {
               disabled={clipApplying}
               onClick={() => { close(tab.id) }}
               type="button"
-            >×</button>
+            ><X aria-hidden="true" size={16} /></button>
             <button
               aria-label={`Move ${tab.title} Left`}
               disabled={index === 0}
               onClick={() => { setViewer(current => moveViewerTab(current, tab.id, index - 1)) }}
               type="button"
-            >←</button>
+            ><ArrowLeft aria-hidden="true" size={16} /></button>
             <button
               aria-label={`Move ${tab.title} Right`}
               disabled={index === viewer.tabs.length - 1}
               onClick={() => { setViewer(current => moveViewerTab(current, tab.id, index + 1)) }}
               type="button"
-            >→</button>
+            ><ArrowRight aria-hidden="true" size={16} /></button>
           </span>
         ))}
         <button
@@ -441,7 +442,7 @@ function WebViewer(): ReactNode {
                 aria-label={`Remove ${bookmark.title}`}
                 onClick={() => { setViewer(current => removeViewerBookmark(current, bookmark.id)) }}
                 type="button"
-              >×</button>
+              ><X aria-hidden="true" size={16} /></button>
             </span>
           ))}
         </details>

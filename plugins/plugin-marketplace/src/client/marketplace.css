@@ -25,15 +25,9 @@
 
 .tockteam-marketplace-nav svg {
   flex: 0 0 auto;
-  width: 16px;
-  height: 16px;
-  fill: none;
-  stroke: currentColor;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  stroke-width: 1.6;
-  transform: scale(1.36);
-  transform-origin: center;
+  width: 20px;
+  height: 20px;
+  stroke-width: 1.7;
 }
 
 .tockteam-marketplace-nav[data-collapsed='true'] {
@@ -176,7 +170,11 @@ html[data-tockteam-marketplace-open='true'] #tockteam-sidebar-root {
   height: 36px;
   padding: 0;
   border-radius: 10px;
-  font-size: 18px;
+}
+
+.tockteam-marketplace-icon-button svg {
+  width: 18px;
+  height: 18px;
 }
 
 .tockteam-marketplace-layout {
@@ -247,6 +245,12 @@ html[data-tockteam-marketplace-open='true'] #tockteam-sidebar-root {
   color: var(--dsw-alias-label-tertiary, #92959a);
   cursor: pointer;
   font: 15px/1 system-ui, sans-serif;
+}
+
+.tockteam-marketplace-search button svg {
+  width: 14px;
+  height: 14px;
+  margin: 0;
 }
 
 .tockteam-marketplace-search button:hover {

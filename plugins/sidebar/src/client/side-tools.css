@@ -40,7 +40,8 @@
 .tockteam-side-tabs > div[data-active='true'] { background: var(--dsw-alias-interactive-bg-hover, rgb(0 0 0 / 6%)); color: var(--dsw-alias-label-primary, #1f2328); }
 .tockteam-side-tabs button { height: 27px; padding: 0 7px; border: 0; background: transparent; color: inherit; cursor: pointer; font: 11px system-ui; }
 .tockteam-side-tabs > div > button:first-child { max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.tockteam-side-tabs > div > button:last-child { width: 23px; padding: 0; opacity: 0.55; }
+.tockteam-side-tabs > div > button:last-child { display: grid; width: 23px; padding: 0; place-items: center; opacity: 0.55; }
+.tockteam-side-tabs > div > button:last-child svg { width: 13px; height: 13px; }
 
 .tockteam-side-menu {
   display: grid;
@@ -112,6 +113,8 @@
 
 .tockteam-browser-bar button:disabled,
 .tockteam-files-path button:disabled { opacity: 0.35; cursor: default; }
+.tockteam-browser-bar button svg,
+.tockteam-files-path button svg { display: block; width: 15px; height: 15px; margin: auto; }
 
 .tockteam-browser-bar input {
   flex: 1;
@@ -134,6 +137,8 @@
 .tockteam-file-list { flex: 1; min-height: 0; overflow: auto; padding: 6px 9px 20px; }
 .tockteam-file-list > button { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; align-items: center; gap: 6px; width: 100%; min-height: 32px; padding: 0 7px; border: 0; border-radius: 7px; background: transparent; color: inherit; cursor: pointer; font: inherit; text-align: left; }
 .tockteam-file-list > button:hover { background: var(--dsw-alias-interactive-bg-hover, rgb(0 0 0 / 5%)); }
+.tockteam-file-list > button span:first-child { display: grid; place-items: center; }
+.tockteam-file-list > button span:first-child svg { width: 16px; height: 16px; }
 .tockteam-file-list > button span:nth-child(2) { overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
 .tockteam-file-list small { color: var(--dsw-alias-label-tertiary, #8c959f); font-size: 10px; }
 .tockteam-file-preview { flex: 1; min-height: 0; overflow: auto; padding: 12px; }

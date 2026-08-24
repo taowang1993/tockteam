@@ -84,7 +84,7 @@ Object.assign(globalThis, {
 await import('tockbot-web-clip/client')
 assert.equal(clientRegistration?.id, 'tockbot-web-clip')
 const clientPlugin = clientRegistration.factory(id => {
-  if (id === 'react') return { useCallback() {}, useEffect() {}, useRef() {}, useState() {} }
+  if (id === 'react') return { forwardRef(render) { return render }, useCallback() {}, useEffect() {}, useRef() {}, useState() {} }
   if (id === 'react/jsx-runtime') return { jsx() {}, jsxs() {} }
   throw new Error('unexpected client import: ' + id)
 })
