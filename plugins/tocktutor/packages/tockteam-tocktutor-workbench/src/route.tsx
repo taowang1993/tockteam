@@ -26,6 +26,7 @@ import {
   MessageSquare,
   Music,
   PanelLeft,
+  PanelRight,
   PanelTop,
   Pencil,
   Plus,
@@ -81,6 +82,7 @@ import type {
 const ROUTE_PREFIX = '/tocktutor'
 const TREE_LIMIT = 200
 const DEFAULT_SIDEBAR_WIDTH = 280
+const COLLAPSED_TITLEBAR_SIDEBAR_WIDTH = 84
 const MIN_SIDEBAR_WIDTH = 180
 const MAX_SIDEBAR_WIDTH = 480
 export const MAX_ROUTE_SOURCE_BYTES = 2_000_000
@@ -1032,6 +1034,7 @@ type WorkbenchGlyphKind =
   | 'more'
   | 'new'
   | 'panel'
+  | 'panel-right'
   | 'pencil'
   | 'search'
 
@@ -1047,6 +1050,7 @@ const WORKBENCH_GLYPHS: Record<WorkbenchGlyphKind, LucideIcon> = {
   more: Ellipsis,
   new: Plus,
   panel: PanelLeft,
+  'panel-right': PanelRight,
   pencil: Pencil,
   search: Search,
 }
@@ -1135,8 +1139,10 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
       ? documents.some(document => document.path.startsWith(`${entry.path}/`))
       : documents.includes(entry))
   const [panel, setPanel] = useState<'assistant' | 'utilities' | null>(null)
+  const [sidebarOpen, setSidebarOpen] = useState(true)
   const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_SIDEBAR_WIDTH)
-  const sidebarColumns = `${String(sidebarWidth)}px minmax(0, 1fr)`
+  const contentColumns = `${String(sidebarOpen ? sidebarWidth : 0)}px minmax(0, 1fr)`
+  const titlebarColumns = `${String(sidebarOpen ? sidebarWidth : COLLAPSED_TITLEBAR_SIDEBAR_WIDTH)}px minmax(0, 1fr)`
   const resizeSidebar = (width: number): void => {
     setSidebarWidth(Math.min(MAX_SIDEBAR_WIDTH, Math.max(MIN_SIDEBAR_WIDTH, width)))
   }
@@ -1162,13 +1168,23 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
   const words = snapshot.source.match(/[\p{L}\p{N}]+(?:['’][\p{L}\p{N}]+)*/gu)?.length ?? 0
   const characters = snapshot.source.length
   const titlebar = (
-    <section aria-label="TockTutor Title Bar" className="tocktutor-titlebar" style={{ gridTemplateColumns: sidebarColumns }}>
+    <section aria-label="TockTutor Title Bar" className="tocktutor-titlebar" style={{ gridTemplateColumns: titlebarColumns }}>
       <div className="tocktutor-titlebar-sidebar">
-        <span className="tocktutor-titlebar-document"><WorkbenchGlyph kind="document" /></span>
-        <span><WorkbenchGlyph kind="document" /></span>
-        <button aria-label="Search Notes" disabled={props.onOpenSearch === undefined} onClick={props.onOpenSearch} type="button"><WorkbenchGlyph kind="search" /></button>
-        <span><WorkbenchGlyph kind="bookmark" /></span>
-        <span><WorkbenchGlyph kind="panel" /></span>
+        {sidebarOpen && (
+          <>
+            <span className="tocktutor-titlebar-document"><WorkbenchGlyph kind="document" /></span>
+            <span><WorkbenchGlyph kind="document" /></span>
+            <button aria-label="Search Notes" disabled={props.onOpenSearch === undefined} onClick={props.onOpenSearch} type="button"><WorkbenchGlyph kind="search" /></button>
+            <span><WorkbenchGlyph kind="bookmark" /></span>
+          </>
+        )}
+        <button
+          aria-expanded={sidebarOpen}
+          aria-label="Toggle Files Sidebar"
+          className="tocktutor-panel-icon"
+          onClick={() => { setSidebarOpen(open => !open) }}
+          type="button"
+        ><WorkbenchGlyph kind="panel" /></button>
       </div>
       <div className="tocktutor-titlebar-main">
         <span className="tocktutor-history"><WorkbenchGlyph kind="back" /><WorkbenchGlyph kind="forward" /></span>
@@ -1198,7 +1214,13 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
         </div>
         <button aria-label="New Note" className="tocktutor-new-tab" disabled={props.onNewNote === undefined} onClick={props.onNewNote} type="button"><WorkbenchGlyph kind="new" /></button>
         <span className="tocktutor-titlebar-spacer" />
-        <span className="tocktutor-panel-icon"><WorkbenchGlyph kind="panel" /></span>
+        <button
+          aria-expanded={panel === 'assistant'}
+          aria-label="Toggle Assistant Panel"
+          className="tocktutor-panel-icon"
+          onClick={() => { setPanel(current => current === 'assistant' ? null : 'assistant') }}
+          type="button"
+        ><WorkbenchGlyph kind="panel-right" /></button>
       </div>
     </section>
   )
@@ -1218,8 +1240,8 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
           onSubmit={draft => { props.onSubmitDispatch?.(draft) }}
         />
       )}
-      <div className="tocktutor-grid" style={{ gridTemplateColumns: sidebarColumns }}>
-        <aside aria-label="Files" className="tocktutor-sidebar">
+      <div className="tocktutor-grid" style={{ gridTemplateColumns: contentColumns }}>
+        <aside aria-label="Files" className="tocktutor-sidebar" hidden={!sidebarOpen}>
           <header className="tocktutor-sidebar-header">
             <h1>Files</h1>
             <span><WorkbenchGlyph kind="more" /></span>
@@ -1270,6 +1292,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
         <button
           aria-label={`Resize Files Sidebar, ${String(sidebarWidth)} Pixels`}
           className="tocktutor-sidebar-resize"
+          hidden={!sidebarOpen}
           onKeyDown={resizeSidebarWithKeyboard}
           onPointerDown={beginSidebarResize}
           style={{ left: sidebarWidth - 4 }}
@@ -1558,7 +1581,7 @@ const ROUTE_CSS = `
 .tocktutor-titlebar-sidebar, .tocktutor-titlebar-main { align-items: center; display: flex; min-width: 0; }
 .tocktutor-titlebar-sidebar { border-right: 1px solid var(--tt-border); gap: 8px; justify-content: flex-start; padding: 0 8px 0 46px; }
 .tocktutor-titlebar-sidebar > span, .tocktutor-titlebar-sidebar > button { align-items: center; background: transparent; border: 0; color: var(--tt-muted); display: inline-flex; height: 28px; justify-content: center; padding: 0; width: 22px; }
-.tocktutor-titlebar-sidebar > span:last-child { margin-left: auto; }
+.tocktutor-titlebar-sidebar .tocktutor-panel-icon { margin-left: auto; }
 .tocktutor-titlebar-sidebar .tocktutor-titlebar-document { background: color-mix(in srgb, var(--tt-text) 8%, transparent); border-radius: 5px; color: var(--tt-text); }
 .tocktutor-titlebar-main { gap: 4px; padding: 0 8px; }
 .tocktutor-history { color: color-mix(in srgb, var(--tt-muted) 45%, transparent); display: flex; gap: 5px; margin-right: 18px; padding: 0 6px; }

@@ -15240,15 +15240,22 @@ var __iconNode14 = [
 ];
 var PanelLeft = createLucideIcon("PanelLeft", __iconNode14);
 
-// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/panel-top.js
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/panel-right.js
 var __iconNode15 = [
+  ["rect", { width: "18", height: "18", x: "3", y: "3", rx: "2", key: "afitv7" }],
+  ["path", { d: "M15 3v18", key: "14nvp0" }]
+];
+var PanelRight = createLucideIcon("PanelRight", __iconNode15);
+
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/panel-top.js
+var __iconNode16 = [
   ["rect", { width: "18", height: "18", x: "3", y: "3", rx: "2", key: "afitv7" }],
   ["path", { d: "M3 9h18", key: "1pudct" }]
 ];
-var PanelTop = createLucideIcon("PanelTop", __iconNode15);
+var PanelTop = createLucideIcon("PanelTop", __iconNode16);
 
 // ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/pencil.js
-var __iconNode16 = [
+var __iconNode17 = [
   [
     "path",
     {
@@ -15258,36 +15265,36 @@ var __iconNode16 = [
   ],
   ["path", { d: "m15 5 4 4", key: "1mk7zo" }]
 ];
-var Pencil = createLucideIcon("Pencil", __iconNode16);
+var Pencil = createLucideIcon("Pencil", __iconNode17);
 
 // ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/plus.js
-var __iconNode17 = [
+var __iconNode18 = [
   ["path", { d: "M5 12h14", key: "1ays0h" }],
   ["path", { d: "M12 5v14", key: "s699le" }]
 ];
-var Plus = createLucideIcon("Plus", __iconNode17);
+var Plus = createLucideIcon("Plus", __iconNode18);
 
 // ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/search.js
-var __iconNode18 = [
+var __iconNode19 = [
   ["circle", { cx: "11", cy: "11", r: "8", key: "4ej97u" }],
   ["path", { d: "m21 21-4.3-4.3", key: "1qie3q" }]
 ];
-var Search = createLucideIcon("Search", __iconNode18);
+var Search = createLucideIcon("Search", __iconNode19);
 
 // ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/upload.js
-var __iconNode19 = [
+var __iconNode20 = [
   ["path", { d: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4", key: "ih7n3h" }],
   ["polyline", { points: "17 8 12 3 7 8", key: "t8dd8p" }],
   ["line", { x1: "12", x2: "12", y1: "3", y2: "15", key: "widbto" }]
 ];
-var Upload = createLucideIcon("Upload", __iconNode19);
+var Upload = createLucideIcon("Upload", __iconNode20);
 
 // ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/x.js
-var __iconNode20 = [
+var __iconNode21 = [
   ["path", { d: "M18 6 6 18", key: "1bl5f8" }],
   ["path", { d: "m6 6 12 12", key: "d8bk6v" }]
 ];
-var X = createLucideIcon("X", __iconNode20);
+var X = createLucideIcon("X", __iconNode21);
 
 // src/base.ts
 var MAX_BASE_BYTES = 2e6;
@@ -15821,6 +15828,7 @@ var import_jsx_runtime = require("react/jsx-runtime");
 var ROUTE_PREFIX = "/tocktutor";
 var TREE_LIMIT = 200;
 var DEFAULT_SIDEBAR_WIDTH = 280;
+var COLLAPSED_TITLEBAR_SIDEBAR_WIDTH = 84;
 var MIN_SIDEBAR_WIDTH = 180;
 var MAX_SIDEBAR_WIDTH = 480;
 var MAX_ROUTE_SOURCE_BYTES = 2e6;
@@ -16603,6 +16611,7 @@ var WORKBENCH_GLYPHS = {
   more: Ellipsis,
   new: Plus,
   panel: PanelLeft,
+  "panel-right": PanelRight,
   pencil: Pencil,
   search: Search
 };
@@ -16659,8 +16668,10 @@ function TockTutorRouteView(props) {
   const focusedPane = snapshot.panes.find((pane) => pane.id === snapshot.focusedPaneId);
   const visibleTreeEntries = query === "" ? snapshot.entries.filter((entry) => entry.kind === "directory" || entry.kind === "document" && supportedDocument(entry.path)) : snapshot.entries.filter((entry) => entry.kind === "directory" ? documents.some((document2) => document2.path.startsWith(`${entry.path}/`)) : documents.includes(entry));
   const [panel, setPanel] = (0, import_react3.useState)(null);
+  const [sidebarOpen, setSidebarOpen] = (0, import_react3.useState)(true);
   const [sidebarWidth, setSidebarWidth] = (0, import_react3.useState)(DEFAULT_SIDEBAR_WIDTH);
-  const sidebarColumns = `${String(sidebarWidth)}px minmax(0, 1fr)`;
+  const contentColumns = `${String(sidebarOpen ? sidebarWidth : 0)}px minmax(0, 1fr)`;
+  const titlebarColumns = `${String(sidebarOpen ? sidebarWidth : COLLAPSED_TITLEBAR_SIDEBAR_WIDTH)}px minmax(0, 1fr)`;
   const resizeSidebar = (width) => {
     setSidebarWidth(Math.min(MAX_SIDEBAR_WIDTH, Math.max(MIN_SIDEBAR_WIDTH, width)));
   };
@@ -16687,13 +16698,27 @@ function TockTutorRouteView(props) {
   };
   const words = snapshot.source.match(/[\p{L}\p{N}]+(?:['’][\p{L}\p{N}]+)*/gu)?.length ?? 0;
   const characters = snapshot.source.length;
-  const titlebar = /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("section", { "aria-label": "TockTutor Title Bar", className: "tocktutor-titlebar", style: { gridTemplateColumns: sidebarColumns }, children: [
+  const titlebar = /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("section", { "aria-label": "TockTutor Title Bar", className: "tocktutor-titlebar", style: { gridTemplateColumns: titlebarColumns }, children: [
     /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "tocktutor-titlebar-sidebar", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "tocktutor-titlebar-document", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "document" }) }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "document" }) }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { "aria-label": "Search Notes", disabled: props.onOpenSearch === void 0, onClick: props.onOpenSearch, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "search" }) }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "bookmark" }) }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "panel" }) })
+      sidebarOpen && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "tocktutor-titlebar-document", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "document" }) }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "document" }) }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { "aria-label": "Search Notes", disabled: props.onOpenSearch === void 0, onClick: props.onOpenSearch, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "search" }) }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "bookmark" }) })
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+        "button",
+        {
+          "aria-expanded": sidebarOpen,
+          "aria-label": "Toggle Files Sidebar",
+          className: "tocktutor-panel-icon",
+          onClick: () => {
+            setSidebarOpen((open) => !open);
+          },
+          type: "button",
+          children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "panel" })
+        }
+      )
     ] }),
     /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "tocktutor-titlebar-main", children: [
       /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "tocktutor-history", children: [
@@ -16731,7 +16756,19 @@ function TockTutorRouteView(props) {
       )) }),
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { "aria-label": "New Note", className: "tocktutor-new-tab", disabled: props.onNewNote === void 0, onClick: props.onNewNote, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "new" }) }),
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "tocktutor-titlebar-spacer" }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "tocktutor-panel-icon", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "panel" }) })
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+        "button",
+        {
+          "aria-expanded": panel === "assistant",
+          "aria-label": "Toggle Assistant Panel",
+          className: "tocktutor-panel-icon",
+          onClick: () => {
+            setPanel((current) => current === "assistant" ? null : "assistant");
+          },
+          type: "button",
+          children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "panel-right" })
+        }
+      )
     ] })
   ] });
   return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(
@@ -16756,8 +16793,8 @@ function TockTutorRouteView(props) {
             }
           }
         ),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "tocktutor-grid", style: { gridTemplateColumns: sidebarColumns }, children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("aside", { "aria-label": "Files", className: "tocktutor-sidebar", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "tocktutor-grid", style: { gridTemplateColumns: contentColumns }, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("aside", { "aria-label": "Files", className: "tocktutor-sidebar", hidden: !sidebarOpen, children: [
             /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("header", { className: "tocktutor-sidebar-header", children: [
               /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h1", { children: "Files" }),
               /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkbenchGlyph, { kind: "more" }) }),
@@ -16822,6 +16859,7 @@ function TockTutorRouteView(props) {
             {
               "aria-label": `Resize Files Sidebar, ${String(sidebarWidth)} Pixels`,
               className: "tocktutor-sidebar-resize",
+              hidden: !sidebarOpen,
               onKeyDown: resizeSidebarWithKeyboard,
               onPointerDown: beginSidebarResize,
               style: { left: sidebarWidth - 4 },
@@ -17144,7 +17182,7 @@ var ROUTE_CSS = `
 .tocktutor-titlebar-sidebar, .tocktutor-titlebar-main { align-items: center; display: flex; min-width: 0; }
 .tocktutor-titlebar-sidebar { border-right: 1px solid var(--tt-border); gap: 8px; justify-content: flex-start; padding: 0 8px 0 46px; }
 .tocktutor-titlebar-sidebar > span, .tocktutor-titlebar-sidebar > button { align-items: center; background: transparent; border: 0; color: var(--tt-muted); display: inline-flex; height: 28px; justify-content: center; padding: 0; width: 22px; }
-.tocktutor-titlebar-sidebar > span:last-child { margin-left: auto; }
+.tocktutor-titlebar-sidebar .tocktutor-panel-icon { margin-left: auto; }
 .tocktutor-titlebar-sidebar .tocktutor-titlebar-document { background: color-mix(in srgb, var(--tt-text) 8%, transparent); border-radius: 5px; color: var(--tt-text); }
 .tocktutor-titlebar-main { gap: 4px; padding: 0 8px; }
 .tocktutor-history { color: color-mix(in srgb, var(--tt-muted) 45%, transparent); display: flex; gap: 5px; margin-right: 18px; padding: 0 6px; }
@@ -17316,6 +17354,7 @@ lucide-react/dist/esm/icons/folder.js:
 lucide-react/dist/esm/icons/message-square.js:
 lucide-react/dist/esm/icons/music.js:
 lucide-react/dist/esm/icons/panel-left.js:
+lucide-react/dist/esm/icons/panel-right.js:
 lucide-react/dist/esm/icons/panel-top.js:
 lucide-react/dist/esm/icons/pencil.js:
 lucide-react/dist/esm/icons/plus.js:
