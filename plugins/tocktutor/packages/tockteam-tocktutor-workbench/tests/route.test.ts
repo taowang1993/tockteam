@@ -297,7 +297,8 @@ test('owns bounded quick New, Capture, and Search route interactions', async () 
     onToggleTask() {},
     snapshot: controller.getSnapshot(),
   }))
-  assert.match(newDialog, /<dialog[^>]+aria-label="New Note"[^>]+open=""/u)
+  assert.match(newDialog, /<dialog[^>]+aria-label="New Note"[^>]+aria-modal="true"/u)
+  assert.doesNotMatch(newDialog, /<dialog[^>]+open=""/u)
   assert.match(newDialog, /<input[^>]+aria-label="New Note Path"[^>]+required=""/u)
   await controller.submitDispatchDialog({ path: 'Notes/Quick.md' })
   assert.equal(await pendingNew, 'handled')
@@ -324,7 +325,8 @@ test('owns bounded quick New, Capture, and Search route interactions', async () 
     onToggleTask() {},
     snapshot: controller.getSnapshot(),
   }))
-  assert.match(captureDialog, /<dialog[^>]+aria-label="Quick Capture"[^>]+open=""/u)
+  assert.match(captureDialog, /<dialog[^>]+aria-label="Quick Capture"[^>]+aria-modal="true"/u)
+  assert.doesNotMatch(captureDialog, /<dialog[^>]+open=""/u)
   assert.match(captureDialog, /<input[^>]+aria-label="Capture Title"[^>]+required=""/u)
   assert.match(captureDialog, /<textarea[^>]+aria-label="Capture Text"/u)
   const captureDraft = { title: 'Plan Today!', text: 'Review the migration.' }

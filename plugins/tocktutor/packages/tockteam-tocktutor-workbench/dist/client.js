@@ -16316,6 +16316,15 @@ function BaseView(props) {
   ] });
 }
 function NativeDispatchDialog(props) {
+  const dialog = (0, import_react.useRef)(null);
+  (0, import_react.useEffect)(() => {
+    const node = dialog.current;
+    if (node === null) return;
+    node.showModal();
+    return () => {
+      if (node.open) node.close();
+    };
+  }, []);
   const submit = (event) => {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
@@ -16329,12 +16338,13 @@ function NativeDispatchDialog(props) {
     "dialog",
     {
       "aria-label": label,
+      "aria-modal": "true",
       className: "tocktutor-dispatch-dialog",
       onCancel: (event) => {
         event.preventDefault();
         props.onCancel();
       },
-      open: true,
+      ref: dialog,
       children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("form", { onSubmit: submit, children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("header", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h2", { children: label }) }),
         props.kind === "new" ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { children: [
@@ -16983,7 +16993,9 @@ var ROUTE_CSS = `
 .tocktutor-base-view dd { margin: 0; overflow-wrap: anywhere; }
 .tocktutor-task { align-items: flex-start; display: flex; gap: 8px; margin: 8px 0; }
 .tocktutor-warning { border-left: 3px solid #b7791f; color: var(--tt-muted); padding-left: 10px; }
-.tocktutor-dispatch-dialog { align-items: center; background: rgb(0 0 0 / 35%); display: flex; inset: 0; justify-content: center; padding: 24px; position: fixed; z-index: 100; }
+.tocktutor-dispatch-dialog { align-items: center; background: transparent; border: 0; height: 100%; inset: 0; justify-content: center; max-height: none; max-width: none; padding: 24px; position: fixed; width: 100%; }
+.tocktutor-dispatch-dialog::backdrop { background: rgb(0 0 0 / 35%); }
+.tocktutor-dispatch-dialog[open] { display: flex; }
 .tocktutor-dispatch-dialog form { background: var(--tt-panel); border: 1px solid var(--tt-border); border-radius: 8px; display: grid; gap: 14px; max-width: 480px; padding: 20px; width: 100%; }
 .tocktutor-dispatch-dialog h2 { font-size: 17px; margin: 0; }
 .tocktutor-dispatch-dialog label { display: grid; font-weight: 650; gap: 5px; }
