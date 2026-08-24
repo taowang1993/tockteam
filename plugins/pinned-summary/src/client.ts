@@ -295,6 +295,7 @@ class PinnedSummaryService implements PinnedSummary {
     this.#close = required(panel, '[data-tockteam-summary-close]')
     const closeIcon = createIcon(X)
     closeIcon.setAttribute('aria-hidden', 'true')
+    closeIcon.setAttribute('class', 'lucide lucide-x')
     this.#close.append(closeIcon)
     this.#meta = required(panel, '[data-tockteam-summary-meta]')
     this.#source = required(panel, '[data-tockteam-summary-source]')
