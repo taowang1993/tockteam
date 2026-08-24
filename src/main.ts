@@ -29,6 +29,7 @@ import {
 } from '../plugins/plugin-marketplace/src/host/agent-gateway.ts'
 import {
   findGitHubCli,
+  previewRuntimeBaseEnvironment,
   previewSandboxPolicy,
   ProductionMarketplacePlatform,
   withGitHubCredentials,
@@ -54,10 +55,7 @@ import {
 } from './web-clip-frame.ts'
 import { DshRuntimeSupervisor, runDshCommand, type DshRuntimeOptions, type RuntimeExit } from './runtime.ts'
 import { DesktopDispatchChannel } from './desktop-dispatch-channel.ts'
-import {
-  previewRuntimeBaseEnvironment,
-  scrubDesktopAuthorityEnvironment,
-} from './desktop-runtime-environment.ts'
+import { scrubDesktopAuthorityEnvironment } from './desktop-runtime-environment.ts'
 import { DesktopMicrophoneChannel } from './desktop-microphone-channel.ts'
 import { DesktopPopOutChannel } from './desktop-popout-channel.ts'
 import { DesktopPrintExportChannel } from './desktop-print-export-channel.ts'

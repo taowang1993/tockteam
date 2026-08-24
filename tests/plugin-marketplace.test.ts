@@ -369,6 +369,8 @@ test('production bundle build runs approved hooks in its own workspace', {
   writeFileSync(join(checkout, 'build.mjs'), [
     "import value from '@example/workspace-helper'",
     "import { mkdirSync, writeFileSync } from 'node:fs'",
+    "for (const key of ['GH_TOKEN', 'GITHUB_TOKEN', 'GH_CONFIG_DIR', 'GIT_CONFIG_GLOBAL', 'SSH_AUTH_SOCK']) if (process.env[key]) throw new Error(`ambient authority leaked: ${key}`)",
+    "if (process.env.HOME !== process.env.DSH_DESKTOP_APP_DATA || process.env.USERPROFILE !== process.env.HOME) throw new Error('preview home escaped sandbox')",
     "mkdirSync(new URL('./lib/', import.meta.url), { recursive: true })",
     "writeFileSync(new URL('./lib/index.js', import.meta.url), `${value}\\n`)",
     '',
@@ -400,7 +402,14 @@ test('production bundle build runs approved hooks in its own workspace', {
     const platform = new ProductionMarketplacePlatform({
       cliEntry: '/unused/dsh.mjs',
       cwd: checkout,
-      env: process.env,
+      env: {
+        ...process.env,
+        GH_CONFIG_DIR: '/user/gh',
+        GH_TOKEN: 'secret',
+        GITHUB_TOKEN: 'secret',
+        GIT_CONFIG_GLOBAL: '/user/gitconfig',
+        SSH_AUTH_SOCK: '/user/agent.sock',
+      },
       nodeBinary: process.execPath,
       pnpmEntry: fileURLToPath(new URL('../node_modules/pnpm/bin/pnpm.mjs', import.meta.url)),
     })

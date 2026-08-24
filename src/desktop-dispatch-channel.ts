@@ -101,15 +101,17 @@ export class DesktopDispatchChannel {
     const token = randomBytes(32).toString('base64url')
     const channelSessionId = randomBytes(24).toString('base64url')
     const providerConsumerId = `host-provider-${randomBytes(24).toString('base64url')}`
-    this.owner = new DesktopDispatchOwner({
+    const owner = new DesktopDispatchOwner({
       identity: (operationId, requestId) => this.options.identity(operationId, requestId, channelSessionId),
       isAvailable: this.options.isAvailable,
       ...(this.options.onDeliveryExpired === undefined
         ? {}
         : { onDeliveryExpired: this.options.onDeliveryExpired }),
     })
+    this.owner = owner
+    const lifetime = this.lifetime.signal
     const server = createServer((request, response) => {
-      const work = this.handle(request, response, token, providerConsumerId)
+      const work = this.handle(request, response, token, providerConsumerId, owner, lifetime)
       this.pending.add(work)
       void work.finally(() => { this.pending.delete(work) })
     })
@@ -153,6 +155,8 @@ export class DesktopDispatchChannel {
     response: ServerResponse,
     token: string,
     providerConsumerId: string,
+    owner: DesktopDispatchOwner,
+    lifetime: AbortSignal,
   ): Promise<void> {
     if (request.method !== 'POST' || request.url !== DESKTOP_DISPATCH_CHANNEL_PATH) {
       response.writeHead(404).end()
@@ -164,18 +168,18 @@ export class DesktopDispatchChannel {
     }
     const requestLifetime = new AbortController()
     const abort = (): void => { requestLifetime.abort(); request.destroy() }
-    this.lifetime.signal.addEventListener('abort', abort, { once: true })
+    lifetime.addEventListener('abort', abort, { once: true })
     request.once('aborted', abort)
     response.once('close', abort)
-    const signal = AbortSignal.any([this.lifetime.signal, requestLifetime.signal])
+    const signal = AbortSignal.any([lifetime, requestLifetime.signal])
     try {
       const input = await body(request)
       if (typeof input !== 'object' || input === null) throw new Error('invalid request')
       const record = input as Record<string, unknown>
       if (record.method === 'next' && Object.keys(record).length === 1) {
-        const event = await this.owner?.next(signal, providerConsumerId)
+        const event = await owner.next(signal, providerConsumerId)
         if (signal.aborted && event !== undefined) {
-          this.owner?.rollbackDelivery(event.identity.operationId, providerConsumerId)
+          owner.rollbackDelivery(event.identity.operationId, providerConsumerId)
           return
         }
         json(response, 200, { event: event ?? null })
@@ -184,7 +188,7 @@ export class DesktopDispatchChannel {
       if (record.method === 'complete' && Object.keys(record).length === 2
         && typeof record.request === 'object' && record.request !== null) {
         json(response, 200, {
-          result: await this.owner?.complete(
+          result: await owner.complete(
             record.request as DesktopDispatchCompletionRequest,
             signal,
             providerConsumerId,
@@ -193,7 +197,7 @@ export class DesktopDispatchChannel {
         return
       }
       if (record.method === 'disposeProvider' && Object.keys(record).length === 1) {
-        this.owner?.disposeConsumer(providerConsumerId)
+        owner.disposeConsumer(providerConsumerId)
         json(response, 200, { status: 'closed' })
         return
       }
@@ -201,7 +205,7 @@ export class DesktopDispatchChannel {
     } catch {
       if (!response.headersSent && !response.destroyed) response.writeHead(400).end()
     } finally {
-      this.lifetime.signal.removeEventListener('abort', abort)
+      lifetime.removeEventListener('abort', abort)
       request.removeListener('aborted', abort)
       response.removeListener('close', abort)
     }

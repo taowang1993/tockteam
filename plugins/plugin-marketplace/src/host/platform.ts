@@ -187,6 +187,34 @@ function withoutCommandLineGitConfig(environment: NodeJS.ProcessEnv): NodeJS.Pro
   return clean
 }
 
+const PREVIEW_INHERITED_ENVIRONMENT_KEYS = [
+  'COMSPEC',
+  'LANG',
+  'LC_ALL',
+  'LC_CTYPE',
+  'PATHEXT',
+  'SYSTEMROOT',
+  'TEMP',
+  'TMP',
+  'WINDIR',
+] as const
+
+/** Give untrusted preview code only non-secret process facts and sandbox-local user roots. */
+export function previewRuntimeBaseEnvironment(
+  source: NodeJS.ProcessEnv,
+  home: string,
+): NodeJS.ProcessEnv {
+  const environment: NodeJS.ProcessEnv = {}
+  for (const key of PREVIEW_INHERITED_ENVIRONMENT_KEYS) {
+    if (source[key] !== undefined) environment[key] = source[key]
+  }
+  environment.HOME = home
+  environment.USERPROFILE = home
+  environment.XDG_CACHE_HOME = join(home, '.cache')
+  environment.XDG_CONFIG_HOME = join(home, '.config')
+  return environment
+}
+
 function gitConfigString(value: string): string {
   return `"${value.replaceAll('\\', '\\\\').replaceAll('"', '\\"')}"`
 }
@@ -313,14 +341,14 @@ export class ProductionMarketplacePlatform implements MarketplacePlatform {
     const store = join(input.sandboxRoot, '.pnpm-store')
     mkdirSync(temporary, { recursive: true, mode: 0o700 })
     mkdirSync(store, { recursive: true, mode: 0o700 })
-    const env = withGitHubCredentials({
-      ...this.#options.env,
+    const env: NodeJS.ProcessEnv = {
+      ...previewRuntimeBaseEnvironment(this.#options.env, input.sandboxRoot),
       CI: 'true',
       DSH_DESKTOP_APP_DATA: input.sandboxRoot,
       DSH_DESKTOP_PREVIEW: '1',
-      HOME: input.sandboxRoot,
+      PATH: this.#options.env.PATH,
       TMPDIR: temporary,
-    }, this.#ghPath)
+    }
     const requested = new Set(input.scripts)
     const commands = [
       {
@@ -462,13 +490,14 @@ export class ProductionMarketplacePlatform implements MarketplacePlatform {
   async runDsh(input: DshCommandInput): Promise<void> {
     const temporary = join(input.sandboxRoot, '.tmp')
     mkdirSync(temporary, { recursive: true, mode: 0o700 })
-    const env = withGitHubCredentials({
-      ...this.#options.env,
+    const env: NodeJS.ProcessEnv = {
+      ...previewRuntimeBaseEnvironment(this.#options.env, input.sandboxRoot),
       DSH_DESKTOP_APP_DATA: input.sandboxRoot,
       DSH_DESKTOP_PREVIEW: '1',
       DSH_HOME: input.dshHome,
+      PATH: this.#options.env.PATH,
       TMPDIR: temporary,
-    }, this.#ghPath)
+    }
     const nodeArguments = [this.#options.cliEntry, ...input.args]
     const sandbox = '/usr/bin/sandbox-exec'
     const command = process.platform === 'darwin' && existsSync(sandbox) ? sandbox : this.#options.nodeBinary

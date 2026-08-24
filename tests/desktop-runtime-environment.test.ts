@@ -1,13 +1,17 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
+import { previewRuntimeBaseEnvironment } from '../plugins/plugin-marketplace/src/host/platform.ts'
 import {
   DESKTOP_AUTHORITY_ENVIRONMENT_KEYS,
-  previewRuntimeBaseEnvironment,
   scrubDesktopAuthorityEnvironment,
 } from '../src/desktop-runtime-environment.ts'
 
 const main = readFileSync(new URL('../src/main.ts', import.meta.url), 'utf8')
+const marketplacePlatform = readFileSync(
+  new URL('../plugins/plugin-marketplace/src/host/platform.ts', import.meta.url),
+  'utf8',
+)
 
 test('preview base environment withholds ambient Git, GitHub, SSH, and user-home authority', () => {
   const preview = previewRuntimeBaseEnvironment({
@@ -59,4 +63,5 @@ test('Runtime environment scrubs inherited authority before selecting owned live
   assert.match(main, /scrubDesktopAuthorityEnvironment\(environment, \[MARKETPLACE_AGENT_URL_ENV, MARKETPLACE_AGENT_TOKEN_ENV\]\)/u)
   assert.match(main, /return overrides\.preview === undefined\s+\? withGitHubCredentials[\s\S]*?: environment/u)
   assert.match(main, /overrides\.preview === undefined\s+\? process\.env\s+: previewRuntimeBaseEnvironment/u)
+  assert.equal((marketplacePlatform.match(/\.\.\.previewRuntimeBaseEnvironment\(this\.#options\.env, input\.sandboxRoot\)/g) ?? []).length, 2)
 })
