@@ -20,7 +20,7 @@ test('surface contract defines exactly the three TockTeam forms', () => {
     kind: 'desktop',
     platform: 'darwin',
     profile: 'desktop',
-    version: '0.1.12',
+    version: '0.1.13',
   }
   assert.equal(surface.kind, 'desktop')
   assert.deepEqual(
