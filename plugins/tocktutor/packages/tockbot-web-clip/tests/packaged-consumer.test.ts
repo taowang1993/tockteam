@@ -7,11 +7,10 @@ import { dirname, join } from 'node:path'
 import test from 'node:test'
 import { fileURLToPath } from 'node:url'
 import { promisify } from 'node:util'
-import { packPlugin, repositoryRoot } from '../../../test-utils.ts'
+import { desktopArtifact, packPlugin, repositoryRoot } from '../../../test-utils.ts'
 
 const execFile = promisify(execFileCallback)
 const root = dirname(dirname(fileURLToPath(import.meta.url)))
-const desktopArtifact = join(repositoryRoot, 'tockteam-desktop-0.1.13.tgz')
 
 async function run(command: string, args: string[], cwd: string): Promise<string> {
   const result = await execFile(command, args, { cwd, maxBuffer: 10 * 1024 * 1024 })

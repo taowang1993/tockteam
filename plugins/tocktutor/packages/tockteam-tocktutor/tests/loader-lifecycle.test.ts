@@ -7,7 +7,7 @@ import test from 'node:test'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { promisify } from 'node:util'
 import { Service } from '@deepseek-ai/cordis'
-import { dshRoot, repositoryRoot } from '../../../test-utils.ts'
+import { desktopArtifact, dshRoot } from '../../../test-utils.ts'
 
 const run = promisify(execFile)
 const root = dirname(dirname(fileURLToPath(import.meta.url)))
@@ -130,7 +130,6 @@ test('pinned Loader fails closed when one required package cannot resolve', asyn
 test('real Desktop and user layers replace Runtime config without mutating the aggregate', async () => {
   const fixture = await fixtureRoot()
   try {
-    const desktopArtifact = join(repositoryRoot, 'tockteam-desktop-0.1.13.tgz')
     const desktopPatch = join(dirname(fixture.config), 'desktop.patch.yml')
     const extracted = await run('tar', [
       '-xOf',

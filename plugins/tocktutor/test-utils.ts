@@ -9,6 +9,10 @@ const execFile = promisify(execFileCallback)
 export const workspaceRoot = dirname(fileURLToPath(import.meta.url))
 export const repositoryRoot = join(workspaceRoot, '..', '..')
 export const dshRoot = join(repositoryRoot, '.cache', 'dsh-source', '47f943859bef')
+const desktopPackage = JSON.parse(await readFile(join(repositoryRoot, 'package.json'), 'utf8')) as {
+  version: string
+}
+export const desktopArtifact = join(repositoryRoot, `tockteam-desktop-${desktopPackage.version}.tgz`)
 
 export function pluginRoot(directory: string): string {
   return join(workspaceRoot, 'packages', directory)

@@ -1,7 +1,7 @@
 {
   "name": "@tockteam/desktop",
   "productName": "TockTeam Desktop",
-  "version": "0.1.13",
+  "version": "0.1.14",
   "description": "TockTeam: installable Desktop, Web, and TUI surfaces over its DSH runtime",
   "author": "dsh-external",
   "desktopName": "tockteam-desktop.desktop",
@@ -75,7 +75,7 @@
   },
   "scripts": {
     "build": "node scripts/build.mjs",
-    "build:tocktutor": "pnpm -C plugins/tocktutor run build",
+    "build:tocktutor": "pnpm -C plugins/tocktutor run build && node scripts/tocktutor-build-manifest.mjs --write",
     "build:dsh": "node scripts/build-dsh.mjs",
     "stage:dsh": "node scripts/stage-dsh.mjs",
     "pack:desktop": "node scripts/pack-desktop.mjs",
@@ -86,7 +86,7 @@
     "smoke:web": "node scripts/smoke-web.mjs",
     "smoke:web:package": "node scripts/smoke-web.mjs release",
     "install:mac": "node scripts/install-mac.mjs",
-    "install:tocktutor": "pnpm run build:dsh && pnpm -C plugins/tocktutor install",
+    "install:tocktutor": "node scripts/install-tocktutor.mjs",
     "tockteam": "pnpm run build && pnpm run stage:dsh && node dist/tockteam.js",
     "web": "pnpm run build && pnpm run stage:dsh && node dist/web.js",
     "tui": "pnpm run build && pnpm run stage:dsh && node dist/tockteam.js tui",

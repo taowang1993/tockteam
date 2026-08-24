@@ -9,11 +9,10 @@ import test from 'node:test'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { promisify } from 'node:util'
 import { runInThisContext } from 'node:vm'
-import { dshRoot, packPlugin, repositoryRoot } from '../../../test-utils.ts'
+import { desktopArtifact, dshRoot, packPlugin } from '../../../test-utils.ts'
 
 const run = promisify(execFile)
 const root = dirname(dirname(fileURLToPath(import.meta.url)))
-const desktopArtifact = join(repositoryRoot, 'tockteam-desktop-0.1.13.tgz')
 const { loadOverlayPatches } = await import(pathToFileURL(
   join(dshRoot, 'packages/boot/app-boot/lib/index.js'),
 ).href)

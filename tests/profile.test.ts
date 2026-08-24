@@ -58,7 +58,7 @@ test('desktop profile pins the released TockTutor runtime and peer package', () 
   assert.equal(packageJson.dependencies, undefined)
   assert.equal(
     packageJson.scripts['install:tocktutor'],
-    'pnpm run build:dsh && pnpm -C plugins/tocktutor install',
+    'node scripts/install-tocktutor.mjs',
   )
   assert.deepEqual(
     new Set([...pluginWorkspace.matchAll(/dsh-source\/([0-9a-f]{12})\//gu)].map(match => match[1])),

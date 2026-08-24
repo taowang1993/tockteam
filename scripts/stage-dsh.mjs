@@ -29,8 +29,10 @@ import { fileURLToPath } from 'node:url'
 import { resolveDshSource, resolvePinnedPnpm } from './dsh-source.mjs'
 import { resolveNodeDistributionPlatform } from '../src/node-platform.ts'
 import { adaptTuiRendererPackage } from './tui-upstream-adapter.mjs'
+import { verifyTockTutorBuildManifest } from './tocktutor-build-manifest.mjs'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
+verifyTockTutorBuildManifest()
 const dshSource = resolveDshSource()
 const stage = join(root, '.stage')
 const runtime = join(stage, 'dsh-runtime')
@@ -584,6 +586,8 @@ function resolveDependencyManifest(requireFromPackage, dependency) {
 
 function installCompiledPackageDependencies(sourceManifestPath, packageDir) {
   const installRoot = join(packageDir, 'node_modules')
+  const isInBoxPeer = (dependency, optional) =>
+    optional && dependency === '@tockteam/desktop'
   const storeRoot = join(installRoot, '.tockteam-store')
   const installed = new Map()
 
@@ -632,6 +636,9 @@ function installCompiledPackageDependencies(sourceManifestPath, packageDir) {
 
     const requireFromPackage = createRequire(canonicalManifest)
     for (const [dependency, optional] of dependencyNames(manifest)) {
+      // Desktop is installed once at the runtime root; nested packages resolve
+      // this peer through ordinary parent lookup instead of copying the repo.
+      if (isInBoxPeer(dependency, optional)) continue
       try {
         const dependencyTarget = installManifest(
           resolveDependencyManifest(requireFromPackage, dependency),
@@ -648,6 +655,7 @@ function installCompiledPackageDependencies(sourceManifestPath, packageDir) {
   const sourceManifest = JSON.parse(readFileSync(sourceManifestPath, 'utf8'))
   const requireFromSource = createRequire(sourceManifestPath)
   for (const [dependency, optional] of dependencyNames(sourceManifest)) {
+    if (isInBoxPeer(dependency, optional)) continue
     try {
       const dependencyTarget = installManifest(
         resolveDependencyManifest(requireFromSource, dependency),

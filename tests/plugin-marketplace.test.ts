@@ -5,6 +5,7 @@ import { join, win32 } from 'node:path'
 import { test } from 'node:test'
 import { fileURLToPath } from 'node:url'
 import { parseMarketplaceCatalog } from '../plugins/plugin-marketplace/src/catalog.ts'
+import { isProtectedMarketplacePlugin } from '../plugins/plugin-marketplace/src/protocol.ts'
 import type {
   BundleBuildInput,
   DshCommandInput,
@@ -30,6 +31,31 @@ import {
 
 const COMMIT = '0123456789abcdef0123456789abcdef01234567'
 const UPDATED_COMMIT = 'fedcba9876543210fedcba9876543210fedcba98'
+
+test('the marketplace protects every in-box TockTutor package and row', () => {
+  for (const packageName of [
+    '@tockteam/note-vault-tools',
+    '@tockteam/tocktutor',
+    '@tockteam/tocktutor-assistant',
+    '@tockteam/tocktutor-import-export',
+    '@tockteam/tocktutor-workbench',
+    'tockbot-note-desktop',
+    'tockbot-note-runtime',
+    'tockbot-note-vault',
+    'tockbot-web-clip',
+  ]) assert.equal(isProtectedMarketplacePlugin('catalog-entry', undefined, packageName), true)
+
+  for (const pluginId of [
+    'note-vault-runtime',
+    'note-vault-tools',
+    'tockbot-note-desktop',
+    'tocktutor',
+    'tocktutor-assistant',
+    'tocktutor-import-export',
+    'tocktutor-workbench',
+    'web-clip',
+  ]) assert.equal(isProtectedMarketplacePlugin(pluginId), true)
+})
 
 function catalogDocument(): unknown {
   return {

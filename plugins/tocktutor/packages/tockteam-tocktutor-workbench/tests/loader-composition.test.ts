@@ -12,13 +12,12 @@ import { Context } from '@deepseek-ai/cordis'
 import Include from '@deepseek-ai/cordis-plugin-include'
 import Loader from '@deepseek-ai/cordis-plugin-loader'
 import { SlotCore } from '@deepseek-ai/dsh-client-ui-slots'
-import { dshRoot, packPlugin, repositoryRoot as teamRoot } from '../../../test-utils.ts'
+import { desktopArtifact, dshRoot, packPlugin } from '../../../test-utils.ts'
 
 const execFileAsync = promisify(execFile)
 const packageName = '@tockteam/tocktutor-workbench'
 const runtimeName = 'tockbot-note-runtime'
 const repositoryRoot = fileURLToPath(new URL('..', import.meta.url))
-const desktopArtifact = join(teamRoot, 'tockteam-desktop-0.1.13.tgz')
 
 interface InstalledPackage {
   dsh?: {

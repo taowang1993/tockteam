@@ -12,7 +12,7 @@ import test from 'node:test'
 import { Context } from '@deepseek-ai/cordis'
 import Include from '@deepseek-ai/cordis-plugin-include'
 import Loader from '@deepseek-ai/cordis-plugin-loader'
-import { dshRoot, packPlugin, repositoryRoot as teamRoot } from '../../../test-utils.ts'
+import { desktopArtifact, dshRoot, packPlugin } from '../../../test-utils.ts'
 
 const exec = promisify(execFile)
 const repositoryRoot = fileURLToPath(new URL('..', import.meta.url))
@@ -36,7 +36,7 @@ async function installPacked(consumer: string, tarball: string, artifacts: strin
     '@deepseek-ai/dsh-client-runtime': `link:${join(dshRoot, 'packages/client/runtime')}`,
     '@deepseek-ai/dsh-client-ui-slots': `link:${join(dshRoot, 'packages/client/ui-slots')}`,
     '@deepseek-ai/dsh-typert-protocol': `link:${join(dshRoot, 'packages/typert/protocol')}`,
-    '@tockteam/desktop': `file:${join(teamRoot, 'tockteam-desktop-0.1.13.tgz')}`,
+    '@tockteam/desktop': `file:${desktopArtifact}`,
     '@tockteam/tocktutor-workbench': `file:${workbenchArtifact}`,
     react: manifest.devDependencies.react!,
     [runtimeName]: `file:${runtimeArtifact}`,
