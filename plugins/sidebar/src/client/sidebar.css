@@ -97,8 +97,8 @@ body[data-ds-dark-theme] {
 }
 
 .tockteam-app-rail svg {
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
 }
 
 .tockteam-tocktutor-route {
@@ -236,8 +236,8 @@ body:has([data-sidebar-collapsed]) .tockteam-titlebar-leading {
 
 .tockteam-titlebar-leading svg,
 .tockteam-panel-toolbar svg {
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
   fill: none;
   stroke: currentColor;
   stroke-linecap: round;

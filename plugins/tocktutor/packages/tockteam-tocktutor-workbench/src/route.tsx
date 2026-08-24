@@ -1553,7 +1553,7 @@ const ROUTE_CSS = `
   z-index: 2147483647;
 }
 .tocktutor-titlebar *, .tocktutor-titlebar *::before, .tocktutor-titlebar *::after { box-sizing: border-box; }
-.tocktutor-titlebar svg { display: block; height: 20px; width: 20px; }
+.tocktutor-titlebar svg { display: block; height: 18px; width: 18px; }
 .tocktutor-titlebar button { -webkit-app-region: no-drag; color: inherit; font: inherit; }
 .tocktutor-titlebar-sidebar, .tocktutor-titlebar-main { align-items: center; display: flex; min-width: 0; }
 .tocktutor-titlebar-sidebar { border-right: 1px solid var(--tt-border); gap: 8px; justify-content: flex-start; padding: 0 8px 0 46px; }
