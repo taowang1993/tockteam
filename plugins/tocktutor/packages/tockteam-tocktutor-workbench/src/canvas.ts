@@ -1,0 +1,210 @@
+export const MAX_CANVAS_BYTES = 2_000_000
+export const MAX_CANVAS_NODES = 2_000
+export const MAX_CANVAS_EDGES = 4_000
+export const MAX_CANVAS_ID_LENGTH = 256
+export const MAX_CANVAS_LABEL_LENGTH = 32_768
+export const MAX_CANVAS_COORDINATE = 1_000_000_000
+
+export interface CanvasNode extends Record<string, unknown> {
+  id: string
+  type: string
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
+export interface CanvasEdge extends Record<string, unknown> {
+  id: string
+  fromNode: string
+  toNode: string
+}
+
+export interface CanvasDocument extends Record<string, unknown> {
+  nodes: CanvasNode[]
+  edges?: CanvasEdge[]
+}
+
+export type CanvasParseResult =
+  | { status: 'ready'; document: CanvasDocument }
+  | { status: 'unsupported'; reason: string }
+
+export interface CanvasNodeProjection {
+  id: string
+  type: string
+  x: number
+  y: number
+  width: number
+  height: number
+  supported: boolean
+  text: string | null
+  file: string | null
+  linkSafe: boolean
+}
+
+export interface CanvasEdgeProjection {
+  id: string
+  fromNode: string
+  toNode: string
+  label: string | null
+}
+
+export type CanvasProjection =
+  | {
+      status: 'ready'
+      nodes: CanvasNodeProjection[]
+      edges: CanvasEdgeProjection[]
+      document: CanvasDocument
+    }
+  | { status: 'unsupported'; reason: string }
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function isSafeId(value: unknown): value is string {
+  return typeof value === 'string'
+    && value.length > 0
+    && value.length <= MAX_CANVAS_ID_LENGTH
+    && !/[\0\r\n]/u.test(value)
+}
+
+function isFiniteCoordinate(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value) && Math.abs(value) <= MAX_CANVAS_COORDINATE
+}
+
+function isSafeLabel(value: unknown): value is string {
+  return typeof value === 'string' && value.length <= MAX_CANVAS_LABEL_LENGTH
+}
+
+function byteLength(value: string): number {
+  return new TextEncoder().encode(value).byteLength
+}
+
+function unsupported(reason: string): CanvasParseResult {
+  return { status: 'unsupported', reason }
+}
+
+function parseNode(value: unknown): CanvasNode | null {
+  if (!isRecord(value)
+    || !isSafeId(value.id)
+    || typeof value.type !== 'string'
+    || value.type.length === 0
+    || value.type.length > 64
+    || !isFiniteCoordinate(value.x)
+    || !isFiniteCoordinate(value.y)
+    || !isFiniteCoordinate(value.width)
+    || !isFiniteCoordinate(value.height)
+    || value.width <= 0
+    || value.height <= 0) return null
+  if (value.text !== undefined && !isSafeLabel(value.text)) return null
+  if (value.file !== undefined && !isSafeLabel(value.file)) return null
+  if (value.url !== undefined && !isSafeLabel(value.url)) return null
+  return value as CanvasNode
+}
+
+function parseEdge(value: unknown): CanvasEdge | null {
+  if (!isRecord(value)
+    || !isSafeId(value.id)
+    || !isSafeId(value.fromNode)
+    || !isSafeId(value.toNode)) return null
+  if (value.label !== undefined && !isSafeLabel(value.label)) return null
+  return value as CanvasEdge
+}
+
+export function parseCanvasDocument(content: string): CanvasParseResult {
+  if (byteLength(content) > MAX_CANVAS_BYTES) return unsupported('Canvas document exceeds the byte limit.')
+  let value: unknown
+  try {
+    value = JSON.parse(content)
+  } catch {
+    return unsupported('Canvas document is not valid JSON.')
+  }
+  if (!isRecord(value) || !Array.isArray(value.nodes)) return unsupported('Canvas document must contain a nodes array.')
+  if (value.nodes.length > MAX_CANVAS_NODES) return unsupported('Canvas document exceeds the node limit.')
+  if (value.edges !== undefined && !Array.isArray(value.edges)) return unsupported('Canvas edges must be an array.')
+  if (Array.isArray(value.edges) && value.edges.length > MAX_CANVAS_EDGES) return unsupported('Canvas document exceeds the edge limit.')
+
+  const ids = new Set<string>()
+  const nodes: CanvasNode[] = []
+  for (const entry of value.nodes) {
+    const node = parseNode(entry)
+    if (node === null || ids.has(node.id)) return unsupported('Canvas document contains an invalid or duplicate node.')
+    ids.add(node.id)
+    nodes.push(node)
+  }
+
+  const edges: CanvasEdge[] = []
+  if (Array.isArray(value.edges)) {
+    for (const entry of value.edges) {
+      const edge = parseEdge(entry)
+      if (edge === null || ids.has(edge.id) || !ids.has(edge.fromNode) || !ids.has(edge.toNode)) {
+        return unsupported('Canvas document contains an invalid, duplicate, or dangling edge.')
+      }
+      ids.add(edge.id)
+      edges.push(edge)
+    }
+  }
+
+  return {
+    status: 'ready',
+    document: {
+      ...value,
+      nodes,
+      ...(value.edges === undefined ? {} : { edges }),
+    } as CanvasDocument,
+  }
+}
+
+const SUPPORTED_NODE_TYPES = new Set(['text', 'file', 'link', 'group'])
+
+export function isCredentialFreeCanvasLink(value: unknown): boolean {
+  if (typeof value !== 'string' || value.length > MAX_CANVAS_LABEL_LENGTH) return false
+  try {
+    const url = new URL(value)
+    return (url.protocol === 'http:' || url.protocol === 'https:')
+      && url.username === ''
+      && url.password === ''
+  } catch {
+    return false
+  }
+}
+
+export function projectCanvas(parsed: { status: 'ready'; document: CanvasDocument }): Extract<CanvasProjection, { status: 'ready' }>
+export function projectCanvas(parsed: CanvasParseResult): CanvasProjection
+export function projectCanvas(parsed: CanvasParseResult): CanvasProjection {
+  if (parsed.status !== 'ready') return parsed
+  const { document } = parsed
+  const nodes = document.nodes.map(node => ({
+    id: node.id,
+    type: node.type,
+    x: node.x,
+    y: node.y,
+    width: node.width,
+    height: node.height,
+    supported: SUPPORTED_NODE_TYPES.has(node.type),
+    text: typeof node.text === 'string' ? node.text : null,
+    file: typeof node.file === 'string' ? node.file : null,
+    linkSafe: node.type === 'link' && isCredentialFreeCanvasLink(node.url),
+  }))
+  const edges = (document.edges ?? []).map(edge => ({
+    id: edge.id,
+    fromNode: edge.fromNode,
+    toNode: edge.toNode,
+    label: typeof edge.label === 'string' ? edge.label : null,
+  }))
+  return { status: 'ready', nodes, edges, document }
+}
+
+export function updateCanvasNodePosition(content: string, nodeId: string, x: number, y: number): string {
+  if (!isSafeId(nodeId) || !isFiniteCoordinate(x) || !isFiniteCoordinate(y)) {
+    throw new Error('Canvas node position is invalid.')
+  }
+  const parsed = parseCanvasDocument(content)
+  if (parsed.status !== 'ready') throw new Error(parsed.reason)
+  const node = parsed.document.nodes.find(candidate => candidate.id === nodeId)
+  if (node === undefined) throw new Error('Canvas node no longer exists.')
+  node.x = x
+  node.y = y
+  return `${JSON.stringify(parsed.document, null, 2)}\n`
+}

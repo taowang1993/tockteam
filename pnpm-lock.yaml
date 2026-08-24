@@ -21,8 +21,8 @@ importers:
         specifier: 1.4.0
         version: 1.4.0(supports-color@7.2.0)
       '@tockteam/note-vault-tools':
-        specifier: file:vendor/tockteam-note-vault-tools-0.1.2.tgz
-        version: file:vendor/tockteam-note-vault-tools-0.1.2.tgz(@deepseek-ai/cordis@4.0.1)(tockbot-note-runtime@file:vendor/tockbot-note-runtime-0.1.2.tgz(@deepseek-ai/cordis@4.0.1)(tockbot-note-vault@file:vendor/tockbot-note-vault-0.6.0.tgz))
+        specifier: file:plugins/tocktutor/packages/tockteam-note-vault-tools
+        version: file:plugins/tocktutor/packages/tockteam-note-vault-tools(@deepseek-ai/cordis@4.0.1)(tockbot-note-runtime@file:plugins/tocktutor/packages/tockbot-note-runtime(@deepseek-ai/cordis@4.0.1)(tockbot-note-vault@file:plugins/tocktutor/packages/tockbot-note-vault))
       '@types/node':
         specifier: ^24.10.0
         version: 24.13.3
@@ -31,7 +31,7 @@ importers:
         version: 42.3.0(supports-color@7.2.0)
       electron-builder:
         specifier: ^26.0.12
-        version: 26.15.3(electron-builder-squirrel-windows@26.15.3)(supports-color@7.2.0)
+        version: 26.15.3(electron-builder-squirrel-windows@26.15.3)
       esbuild:
         specifier: ^0.25.12
         version: 0.25.12
@@ -39,11 +39,11 @@ importers:
         specifier: 11.20.0
         version: 11.20.0
       tockbot-note-runtime:
-        specifier: file:vendor/tockbot-note-runtime-0.1.2.tgz
-        version: file:vendor/tockbot-note-runtime-0.1.2.tgz(@deepseek-ai/cordis@4.0.1)(tockbot-note-vault@file:vendor/tockbot-note-vault-0.6.0.tgz)
+        specifier: file:plugins/tocktutor/packages/tockbot-note-runtime
+        version: file:plugins/tocktutor/packages/tockbot-note-runtime(@deepseek-ai/cordis@4.0.1)(tockbot-note-vault@file:plugins/tocktutor/packages/tockbot-note-vault)
       tockbot-note-vault:
-        specifier: file:vendor/tockbot-note-vault-0.6.0.tgz
-        version: file:vendor/tockbot-note-vault-0.6.0.tgz
+        specifier: file:plugins/tocktutor/packages/tockbot-note-vault
+        version: file:plugins/tocktutor/packages/tockbot-note-vault
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
@@ -1157,9 +1157,8 @@ packages:
     resolution: {integrity: sha512-4BAffykYOgO+5nzBWYwE3W90sBgLJoUPRWWcL8wlyiM8IB8ipJz3UMJ9KXQd1RKQXpKp8Tutn80HZtWsu2u76w==}
     engines: {node: '>=10'}
 
-  '@tockteam/note-vault-tools@file:vendor/tockteam-note-vault-tools-0.1.2.tgz':
-    resolution: {integrity: sha512-lO4tNJF/oV8V2bstQ6KsND0lC2YNnVxzSLc2A+Eanj4WTQxWKQCKj+h7Yo2q4QxLgu/JD6L+7r+283kKfrEhhQ==, tarball: file:vendor/tockteam-note-vault-tools-0.1.2.tgz}
-    version: 0.1.2
+  '@tockteam/note-vault-tools@file:plugins/tocktutor/packages/tockteam-note-vault-tools':
+    resolution: {directory: plugins/tocktutor/packages/tockteam-note-vault-tools, type: directory}
     engines: {node: ^22.19.0 || >=24.0.0}
     peerDependencies:
       '@deepseek-ai/cordis': 4.0.1
@@ -2516,17 +2515,15 @@ packages:
     resolution: {integrity: sha512-e0votIpp4Uo2AJYSzVHV6xCcawuiez3DzqDAbrTc3YxBkplN6e+dM13ZeIcZnDg/QpSuU2zfZ3rzwY8ukEnaXw==}
     engines: {node: '>=14.14'}
 
-  tockbot-note-runtime@file:vendor/tockbot-note-runtime-0.1.2.tgz:
-    resolution: {integrity: sha512-pulRr47yJFB1QpBgpzEvIRQguMPPd1d4VnBksCTDaO+g5B0l9KZBOlx22J9rdY4Sv0Q19mjgIaqwSVGZihW+1g==, tarball: file:vendor/tockbot-note-runtime-0.1.2.tgz}
-    version: 0.1.2
+  tockbot-note-runtime@file:plugins/tocktutor/packages/tockbot-note-runtime:
+    resolution: {directory: plugins/tocktutor/packages/tockbot-note-runtime, type: directory}
     engines: {node: ^22.19.0 || >=24.0.0}
     peerDependencies:
       '@deepseek-ai/cordis': 4.0.1
       tockbot-note-vault: 0.6.0
 
-  tockbot-note-vault@file:vendor/tockbot-note-vault-0.6.0.tgz:
-    resolution: {integrity: sha512-ij0Jv3yE4+AThPXizcA4jJWwm9R3NdFmoRrOsEgLrPRLAERgg/5/2IicSShTWyPmUOQ4eImkKBwNeFH98IPzOQ==, tarball: file:vendor/tockbot-note-vault-0.6.0.tgz}
-    version: 0.6.0
+  tockbot-note-vault@file:plugins/tocktutor/packages/tockbot-note-vault:
+    resolution: {directory: plugins/tocktutor/packages/tockbot-note-vault, type: directory}
     engines: {node: '>=20'}
 
   toidentifier@1.0.1:
@@ -3039,7 +3036,7 @@ snapshots:
       fs-extra: 9.1.0
       minimist: 1.2.8
 
-  '@electron/get@3.1.0(supports-color@7.2.0)':
+  '@electron/get@3.1.0':
     dependencies:
       debug: 4.4.3(supports-color@7.2.0)
       env-paths: 2.2.1
@@ -3047,7 +3044,7 @@ snapshots:
       got: 11.8.6
       progress: 2.0.3
       semver: 6.3.1
-      sumchecker: 3.0.1(supports-color@7.2.0)
+      sumchecker: 3.0.1
     optionalDependencies:
       global-agent: 3.0.0
     transitivePeerDependencies:
@@ -3060,13 +3057,13 @@ snapshots:
       graceful-fs: 4.2.11
       progress: 2.0.3
       semver: 7.8.5
-      sumchecker: 3.0.1(supports-color@7.2.0)
+      sumchecker: 3.0.1
     optionalDependencies:
       undici: 7.29.0
     transitivePeerDependencies:
       - supports-color
 
-  '@electron/notarize@2.5.0(supports-color@7.2.0)':
+  '@electron/notarize@2.5.0':
     dependencies:
       debug: 4.4.3(supports-color@7.2.0)
       fs-extra: 9.1.0
@@ -3074,7 +3071,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@electron/osx-sign@1.3.3(supports-color@7.2.0)':
+  '@electron/osx-sign@1.3.3':
     dependencies:
       compare-version: 0.1.2
       debug: 4.4.3(supports-color@7.2.0)
@@ -3085,18 +3082,18 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@electron/rebuild@4.2.0(supports-color@7.2.0)':
+  '@electron/rebuild@4.2.0':
     dependencies:
       '@malept/cross-spawn-promise': 2.0.0
       debug: 4.4.3(supports-color@7.2.0)
       node-abi: 4.33.0
       node-api-version: 0.2.1
       node-gyp: 12.4.0
-      read-binary-file-arch: 1.0.6(supports-color@7.2.0)
+      read-binary-file-arch: 1.0.6
     transitivePeerDependencies:
       - supports-color
 
-  '@electron/universal@2.0.3(supports-color@7.2.0)':
+  '@electron/universal@2.0.3':
     dependencies:
       '@electron/asar': 3.4.1
       '@malept/cross-spawn-promise': 2.0.0
@@ -3108,7 +3105,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@electron/windows-sign@1.2.2(supports-color@7.2.0)':
+  '@electron/windows-sign@1.2.2':
     dependencies:
       cross-dirname: 0.1.0
       debug: 4.4.3(supports-color@7.2.0)
@@ -3332,7 +3329,7 @@ snapshots:
     dependencies:
       cross-spawn: 7.0.6
 
-  '@malept/flatpak-bundler@0.4.0(supports-color@7.2.0)':
+  '@malept/flatpak-bundler@0.4.0':
     dependencies:
       debug: 4.4.3(supports-color@7.2.0)
       fs-extra: 9.1.0
@@ -3405,10 +3402,10 @@ snapshots:
     dependencies:
       defer-to-connect: 2.0.1
 
-  '@tockteam/note-vault-tools@file:vendor/tockteam-note-vault-tools-0.1.2.tgz(@deepseek-ai/cordis@4.0.1)(tockbot-note-runtime@file:vendor/tockbot-note-runtime-0.1.2.tgz(@deepseek-ai/cordis@4.0.1)(tockbot-note-vault@file:vendor/tockbot-note-vault-0.6.0.tgz))':
+  '@tockteam/note-vault-tools@file:plugins/tocktutor/packages/tockteam-note-vault-tools(@deepseek-ai/cordis@4.0.1)(tockbot-note-runtime@file:plugins/tocktutor/packages/tockbot-note-runtime(@deepseek-ai/cordis@4.0.1)(tockbot-note-vault@file:plugins/tocktutor/packages/tockbot-note-vault))':
     dependencies:
       '@deepseek-ai/cordis': 4.0.1(@deepseek-ai/cordis-plugin-include@1.0.6)(@deepseek-ai/cordis-plugin-loader@1.0.2)
-      tockbot-note-runtime: file:vendor/tockbot-note-runtime-0.1.2.tgz(@deepseek-ai/cordis@4.0.1)(tockbot-note-vault@file:vendor/tockbot-note-vault-0.6.0.tgz)
+      tockbot-note-runtime: file:plugins/tocktutor/packages/tockbot-note-runtime(@deepseek-ai/cordis@4.0.1)(tockbot-note-vault@file:plugins/tocktutor/packages/tockbot-note-vault)
 
   '@types/cacheable-request@6.0.3':
     dependencies:
@@ -3519,33 +3516,33 @@ snapshots:
 
   any-promise@1.3.0: {}
 
-  app-builder-lib@26.15.3(dmg-builder@26.15.3)(electron-builder-squirrel-windows@26.15.3)(supports-color@7.2.0):
+  app-builder-lib@26.15.3(dmg-builder@26.15.3)(electron-builder-squirrel-windows@26.15.3):
     dependencies:
       '@electron/asar': 3.4.1
       '@electron/fuses': 1.8.0
-      '@electron/get': 3.1.0(supports-color@7.2.0)
-      '@electron/notarize': 2.5.0(supports-color@7.2.0)
-      '@electron/osx-sign': 1.3.3(supports-color@7.2.0)
-      '@electron/rebuild': 4.2.0(supports-color@7.2.0)
-      '@electron/universal': 2.0.3(supports-color@7.2.0)
-      '@malept/flatpak-bundler': 0.4.0(supports-color@7.2.0)
+      '@electron/get': 3.1.0
+      '@electron/notarize': 2.5.0
+      '@electron/osx-sign': 1.3.3
+      '@electron/rebuild': 4.2.0
+      '@electron/universal': 2.0.3
+      '@malept/flatpak-bundler': 0.4.0
       '@noble/hashes': 2.3.0
       '@peculiar/webcrypto': 1.7.1
       '@types/fs-extra': 9.0.13
       ajv: 8.20.0
       asn1js: 3.0.10
       async-exit-hook: 2.0.1
-      builder-util: 26.15.3(supports-color@7.2.0)
-      builder-util-runtime: 9.7.0(supports-color@7.2.0)
+      builder-util: 26.15.3
+      builder-util-runtime: 9.7.0
       chromium-pickle-js: 0.2.0
       ci-info: 4.3.1
       debug: 4.4.3(supports-color@7.2.0)
-      dmg-builder: 26.15.3(electron-builder-squirrel-windows@26.15.3)(supports-color@7.2.0)
+      dmg-builder: 26.15.3(electron-builder-squirrel-windows@26.15.3)
       dotenv: 16.6.1
       dotenv-expand: 11.0.7
       ejs: 3.1.10
-      electron-builder-squirrel-windows: 26.15.3(dmg-builder@26.15.3)(supports-color@7.2.0)
-      electron-publish: 26.15.3(supports-color@7.2.0)
+      electron-builder-squirrel-windows: 26.15.3(dmg-builder@26.15.3)
+      electron-publish: 26.15.3
       fs-extra: 10.1.0
       hosted-git-info: 4.1.0
       isbinaryfile: 5.0.7
@@ -3633,23 +3630,23 @@ snapshots:
 
   buffer-from@1.1.2: {}
 
-  builder-util-runtime@9.7.0(supports-color@7.2.0):
+  builder-util-runtime@9.7.0:
     dependencies:
       debug: 4.4.3(supports-color@7.2.0)
       sax: 1.6.1
     transitivePeerDependencies:
       - supports-color
 
-  builder-util@26.15.3(supports-color@7.2.0):
+  builder-util@26.15.3:
     dependencies:
       '@types/debug': 4.1.13
-      builder-util-runtime: 9.7.0(supports-color@7.2.0)
+      builder-util-runtime: 9.7.0
       chalk: 4.1.2
       cross-spawn: 7.0.6
       debug: 4.4.3(supports-color@7.2.0)
       fs-extra: 10.1.0
-      http-proxy-agent: 7.0.2(supports-color@7.2.0)
-      https-proxy-agent: 7.0.6(supports-color@7.2.0)
+      http-proxy-agent: 7.0.2
+      https-proxy-agent: 7.0.6
       js-yaml: 4.3.1
       sanitize-filename: 1.6.4
       source-map-support: 0.5.21
@@ -3820,10 +3817,10 @@ snapshots:
       minimatch: 3.1.5
       p-limit: 3.1.0
 
-  dmg-builder@26.15.3(electron-builder-squirrel-windows@26.15.3)(supports-color@7.2.0):
+  dmg-builder@26.15.3(electron-builder-squirrel-windows@26.15.3):
     dependencies:
-      app-builder-lib: 26.15.3(dmg-builder@26.15.3)(electron-builder-squirrel-windows@26.15.3)(supports-color@7.2.0)
-      builder-util: 26.15.3(supports-color@7.2.0)
+      app-builder-lib: 26.15.3(dmg-builder@26.15.3)(electron-builder-squirrel-windows@26.15.3)
+      builder-util: 26.15.3
       fs-extra: 10.1.0
       js-yaml: 4.3.1
     transitivePeerDependencies:
@@ -3863,23 +3860,23 @@ snapshots:
     dependencies:
       jake: 10.9.4
 
-  electron-builder-squirrel-windows@26.15.3(dmg-builder@26.15.3)(supports-color@7.2.0):
+  electron-builder-squirrel-windows@26.15.3(dmg-builder@26.15.3):
     dependencies:
-      app-builder-lib: 26.15.3(dmg-builder@26.15.3)(electron-builder-squirrel-windows@26.15.3)(supports-color@7.2.0)
-      builder-util: 26.15.3(supports-color@7.2.0)
-      electron-winstaller: 5.4.0(supports-color@7.2.0)
+      app-builder-lib: 26.15.3(dmg-builder@26.15.3)(electron-builder-squirrel-windows@26.15.3)
+      builder-util: 26.15.3
+      electron-winstaller: 5.4.0
     transitivePeerDependencies:
       - dmg-builder
       - supports-color
 
-  electron-builder@26.15.3(electron-builder-squirrel-windows@26.15.3)(supports-color@7.2.0):
+  electron-builder@26.15.3(electron-builder-squirrel-windows@26.15.3):
     dependencies:
-      app-builder-lib: 26.15.3(dmg-builder@26.15.3)(electron-builder-squirrel-windows@26.15.3)(supports-color@7.2.0)
-      builder-util: 26.15.3(supports-color@7.2.0)
-      builder-util-runtime: 9.7.0(supports-color@7.2.0)
+      app-builder-lib: 26.15.3(dmg-builder@26.15.3)(electron-builder-squirrel-windows@26.15.3)
+      builder-util: 26.15.3
+      builder-util-runtime: 9.7.0
       chalk: 4.1.2
       ci-info: 4.4.0
-      dmg-builder: 26.15.3(electron-builder-squirrel-windows@26.15.3)(supports-color@7.2.0)
+      dmg-builder: 26.15.3(electron-builder-squirrel-windows@26.15.3)
       fs-extra: 10.1.0
       lazy-val: 1.0.5
       simple-update-notifier: 2.0.0
@@ -3888,12 +3885,12 @@ snapshots:
       - electron-builder-squirrel-windows
       - supports-color
 
-  electron-publish@26.15.3(supports-color@7.2.0):
+  electron-publish@26.15.3:
     dependencies:
       '@types/fs-extra': 9.0.13
       aws4: 1.13.2
-      builder-util: 26.15.3(supports-color@7.2.0)
-      builder-util-runtime: 9.7.0(supports-color@7.2.0)
+      builder-util: 26.15.3
+      builder-util-runtime: 9.7.0
       chalk: 4.1.2
       form-data: 4.0.6
       fs-extra: 10.1.0
@@ -3902,7 +3899,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  electron-winstaller@5.4.0(supports-color@7.2.0):
+  electron-winstaller@5.4.0:
     dependencies:
       '@electron/asar': 3.4.1
       debug: 4.4.3(supports-color@7.2.0)
@@ -3910,7 +3907,7 @@ snapshots:
       lodash: 4.18.1
       temp: 0.9.4
     optionalDependencies:
-      '@electron/windows-sign': 1.2.2(supports-color@7.2.0)
+      '@electron/windows-sign': 1.2.2
     transitivePeerDependencies:
       - supports-color
 
@@ -4067,7 +4064,7 @@ snapshots:
       range-parser: 1.3.0
       router: 2.2.0(supports-color@7.2.0)
       send: 1.2.1(supports-color@7.2.0)
-      serve-static: 2.2.1(supports-color@7.2.0)
+      serve-static: 2.2.1
       statuses: 2.0.2
       type-is: 2.1.0
       vary: 1.1.2
@@ -4277,7 +4274,7 @@ snapshots:
       statuses: 2.0.2
       toidentifier: 1.0.1
 
-  http-proxy-agent@7.0.2(supports-color@7.2.0):
+  http-proxy-agent@7.0.2:
     dependencies:
       agent-base: 7.1.4
       debug: 4.4.3(supports-color@7.2.0)
@@ -4289,7 +4286,7 @@ snapshots:
       quick-lru: 5.1.1
       resolve-alpn: 1.2.1
 
-  https-proxy-agent@7.0.6(supports-color@7.2.0):
+  https-proxy-agent@7.0.6:
     dependencies:
       agent-base: 7.1.4
       debug: 4.4.3(supports-color@7.2.0)
@@ -4659,7 +4656,7 @@ snapshots:
 
   react@19.2.8: {}
 
-  read-binary-file-arch@1.0.6(supports-color@7.2.0):
+  read-binary-file-arch@1.0.6:
     dependencies:
       debug: 4.4.3(supports-color@7.2.0)
     transitivePeerDependencies:
@@ -4768,7 +4765,7 @@ snapshots:
       type-fest: 0.13.1
     optional: true
 
-  serve-static@2.2.1(supports-color@7.2.0):
+  serve-static@2.2.1:
     dependencies:
       encodeurl: 2.0.0
       escape-html: 1.0.3
@@ -4863,7 +4860,7 @@ snapshots:
     dependencies:
       ansi-regex: 6.3.0
 
-  sumchecker@3.0.1(supports-color@7.2.0):
+  sumchecker@3.0.1:
     dependencies:
       debug: 4.4.3(supports-color@7.2.0)
     transitivePeerDependencies:
@@ -4919,13 +4916,13 @@ snapshots:
 
   tmp@0.2.7: {}
 
-  tockbot-note-runtime@file:vendor/tockbot-note-runtime-0.1.2.tgz(@deepseek-ai/cordis@4.0.1)(tockbot-note-vault@file:vendor/tockbot-note-vault-0.6.0.tgz):
+  tockbot-note-runtime@file:plugins/tocktutor/packages/tockbot-note-runtime(@deepseek-ai/cordis@4.0.1)(tockbot-note-vault@file:plugins/tocktutor/packages/tockbot-note-vault):
     dependencies:
       '@deepseek-ai/cordis': 4.0.1(@deepseek-ai/cordis-plugin-include@1.0.6)(@deepseek-ai/cordis-plugin-loader@1.0.2)
       '@deepseek-ai/schemastery': 3.18.1
-      tockbot-note-vault: file:vendor/tockbot-note-vault-0.6.0.tgz
+      tockbot-note-vault: file:plugins/tocktutor/packages/tockbot-note-vault
 
-  tockbot-note-vault@file:vendor/tockbot-note-vault-0.6.0.tgz:
+  tockbot-note-vault@file:plugins/tocktutor/packages/tockbot-note-vault:
     dependencies:
       schemastery: 3.18.0
 

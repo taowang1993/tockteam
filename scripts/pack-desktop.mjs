@@ -35,8 +35,8 @@ try {
   const manifestPath = join(packageDir, 'package.json')
   const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'))
   // Runtime/vault pins are app-staging inputs, not installable package
-  // dependencies. The staged Desktop profile installs the retained vendor
-  // artifacts explicitly; consumer installs must not resolve internal paths.
+  // dependencies. The staged Desktop profile installs the in-repo plugin
+  // packages explicitly; consumer installs must not resolve workspace paths.
   delete manifest.dependencies
   delete manifest.devDependencies
   delete manifest.peerDependencies

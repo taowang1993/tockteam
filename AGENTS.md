@@ -23,6 +23,7 @@ Preserve these boundaries:
 | `src/profile.ts` | Surface profile names, owned bundle order, upgrade-safe initialization |
 | `src/runtime*.ts` | Staged DSH process supervision and packaged runtime paths |
 | `plugins/*/src` | First-party Host and browser-client plugins |
+| `plugins/tocktutor/packages/*` | In-repo TockTutor packages, aggregate bundle, tests, and shared plugin-stack workspace |
 | `plugins/shared/` | Cross-surface contracts, especially `tockTeamSurface` |
 | `plugins/plugin-marketplace/` | Prepare, preview, approval, apply, enable, update, and recovery transaction |
 | `cordis.patch.yml` | Desktop bundle layer |

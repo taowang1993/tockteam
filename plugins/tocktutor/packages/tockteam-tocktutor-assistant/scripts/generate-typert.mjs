@@ -1,0 +1,129 @@
+import { cp, mkdir, mkdtemp, readFile, realpath, rm, symlink, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { dirname, join, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { FaceModelEmitter, WorkspaceAnalyzer } from '@deepseek-ai/dsh-typert-generator'
+
+const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
+const packageName = '@tockteam/tocktutor-assistant'
+const workspace = await mkdtemp(join(tmpdir(), 'tocktutor-assistant-typert-'))
+const packageRoot = join(workspace, 'packages', 'assistant')
+
+try {
+  const protocolRoot = join(workspace, 'packages', 'typert-protocol')
+  const sessionRoot = join(workspace, 'packages', 'session')
+  const modulesRoot = join(workspace, 'node_modules')
+  await mkdir(join(modulesRoot, '@deepseek-ai'), { recursive: true })
+  await mkdir(packageRoot, { recursive: true })
+  await mkdir(protocolRoot, { recursive: true })
+  await mkdir(sessionRoot, { recursive: true })
+  await cp(join(root, 'src'), join(packageRoot, 'src'), { recursive: true })
+  const pinnedProtocol = await realpath(join(root, 'node_modules', '@deepseek-ai', 'dsh-typert-protocol'))
+  await cp(join(pinnedProtocol, 'src'), join(protocolRoot, 'src'), { recursive: true })
+  await symlink(
+    await realpath(join(root, 'node_modules', '@deepseek-ai', 'cordis')),
+    join(modulesRoot, '@deepseek-ai', 'cordis'),
+    'dir',
+  )
+  await symlink(protocolRoot, join(modulesRoot, '@deepseek-ai', 'dsh-typert-protocol'), 'dir')
+  await symlink(sessionRoot, join(modulesRoot, '@deepseek-ai', 'dsh-session'), 'dir')
+  await symlink(join(root, 'node_modules', '@types'), join(modulesRoot, '@types'), 'dir')
+  await symlink(join(root, 'node_modules', 'undici-types'), join(modulesRoot, 'undici-types'), 'dir')
+
+  const manifest = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'))
+  manifest.exports = {
+    '.': './src/remote-model.ts',
+    './client': './src/remote-types.ts',
+    './remote': './remote-stub.d.ts',
+    './package.json': './package.json',
+  }
+  await writeFile(join(packageRoot, 'package.json'), `${JSON.stringify(manifest, null, 2)}\n`)
+  await writeFile(join(protocolRoot, 'package.json'), JSON.stringify({
+    name: '@deepseek-ai/dsh-typert-protocol',
+    type: 'module',
+    exports: { '.': './src/index.ts' },
+  }, null, 2))
+  await writeFile(join(sessionRoot, 'package.json'), JSON.stringify({
+    name: '@deepseek-ai/dsh-session',
+    type: 'module',
+    exports: { './types': './types.ts' },
+  }, null, 2))
+  await writeFile(join(sessionRoot, 'types.ts'), 'export type SessionId = string\n')
+  await writeFile(join(packageRoot, 'src', 'agent-context.d.ts'), [
+    "import type { SessionId } from '@deepseek-ai/dsh-session/types'",
+    "import type { TypertContext } from '@deepseek-ai/dsh-typert-protocol'",
+    "declare module '@deepseek-ai/dsh-typert-protocol' {",
+    '  interface TypertContextMap {',
+    '    agent: TypertContext<SessionId>',
+    '  }',
+    '}',
+    '',
+  ].join('\n'))
+  await writeFile(join(packageRoot, 'remote-stub.d.ts'), [
+    "import type { TypertRemoteContribution } from '@deepseek-ai/dsh-typert-protocol'",
+    'declare const contribution: TypertRemoteContribution',
+    'export default contribution',
+    '',
+  ].join('\n'))
+  const compilerOptions = {
+    allowImportingTsExtensions: true,
+    composite: true,
+    exactOptionalPropertyTypes: true,
+    lib: ['ES2024'],
+    module: 'NodeNext',
+    moduleResolution: 'NodeNext',
+    noEmit: true,
+    noUncheckedIndexedAccess: true,
+    skipLibCheck: true,
+    strict: true,
+    target: 'ES2024',
+    types: ['node'],
+    verbatimModuleSyntax: true,
+  }
+  await writeFile(join(packageRoot, 'tsconfig.json'), JSON.stringify({
+    compilerOptions,
+    files: [
+      'src/agent-context.d.ts',
+      'src/remote-types.ts',
+      'src/remote-model.ts',
+    ],
+  }, null, 2))
+  await writeFile(join(protocolRoot, 'tsconfig.json'), JSON.stringify({
+    compilerOptions,
+    include: ['src/**/*.ts'],
+  }, null, 2))
+  await writeFile(join(sessionRoot, 'tsconfig.json'), JSON.stringify({
+    compilerOptions,
+    files: ['types.ts'],
+  }, null, 2))
+  await writeFile(join(workspace, 'tsconfig.host.json'), JSON.stringify({
+    files: [],
+    references: [
+      { path: './packages/typert-protocol' },
+      { path: './packages/session' },
+      { path: './packages/assistant' },
+    ],
+  }, null, 2))
+
+  const model = new WorkspaceAnalyzer({
+    faces: ['host'],
+    packages: [packageName, '@deepseek-ai/dsh-session'],
+    root: workspace,
+  }).analyze()
+  const host = model.faces.find(face => face.face === 'host')
+  if (host === undefined) throw new Error('Typert did not discover the Host face')
+  const artifact = new FaceModelEmitter(host).emit(packageName)
+  if (artifact.remote === undefined) throw new Error('Typert did not emit the assistant Remote contribution')
+
+  const output = join(root, 'lib')
+  await mkdir(output, { recursive: true })
+  await Promise.all([
+    writeFile(join(output, 'typert.host.js'), artifact.js),
+    writeFile(join(output, 'typert.host.d.ts'), artifact.dts),
+    writeFile(join(output, 'typert.remote-client.js'), artifact.remote.js),
+    writeFile(join(output, 'typert.remote-client.d.ts'), artifact.remote.dts),
+    writeFile(join(output, 'typert.remote-client.d.ts.map'), artifact.remote.dtsMap),
+  ])
+} finally {
+  await rm(workspace, { force: true, recursive: true })
+}

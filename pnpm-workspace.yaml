@@ -1,6 +1,7 @@
 packages:
   - .
   - plugins/*
+  - '!plugins/tocktutor'
   - upstream/dsh-TUI
   - web
 

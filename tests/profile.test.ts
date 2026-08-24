@@ -11,52 +11,51 @@ test('desktop profile pins the released TockTutor runtime and peer package', () 
     devDependencies: Record<string, string>
     files: string[]
   }
-  const bundle = JSON.parse(readFileSync(new URL('../vendor/tockteam-tocktutor/package.json', import.meta.url), 'utf8')) as {
+  const bundle = JSON.parse(readFileSync(new URL('../plugins/tocktutor/packages/tockteam-tocktutor/package.json', import.meta.url), 'utf8')) as {
     dependencies: Record<string, string>
     peerDependencies: Record<string, string>
     version: string
   }
-  const runtime = JSON.parse(readFileSync(new URL('../vendor/tockbot-note-runtime/package.json', import.meta.url), 'utf8')) as {
+  const runtime = JSON.parse(readFileSync(new URL('../plugins/tocktutor/packages/tockbot-note-runtime/package.json', import.meta.url), 'utf8')) as {
     peerDependencies: Record<string, string>
     version: string
   }
-  const vault = JSON.parse(readFileSync(new URL('../vendor/tockbot-note-vault/package.json', import.meta.url), 'utf8')) as {
+  const vault = JSON.parse(readFileSync(new URL('../plugins/tocktutor/packages/tockbot-note-vault/package.json', import.meta.url), 'utf8')) as {
     version: string
   }
-  const tools = JSON.parse(readFileSync(new URL('../vendor/tockteam-note-vault-tools/package.json', import.meta.url), 'utf8')) as {
+  const tools = JSON.parse(readFileSync(new URL('../plugins/tocktutor/packages/tockteam-note-vault-tools/package.json', import.meta.url), 'utf8')) as {
     peerDependencies: Record<string, string>
     version: string
   }
-  const workbench = JSON.parse(readFileSync(new URL('../vendor/tockteam-tocktutor-workbench/package.json', import.meta.url), 'utf8')) as {
+  const workbench = JSON.parse(readFileSync(new URL('../plugins/tocktutor/packages/tockteam-tocktutor-workbench/package.json', import.meta.url), 'utf8')) as {
     peerDependencies: Record<string, string>
     version: string
   }
-  const desktopAdapter = JSON.parse(readFileSync(new URL('../vendor/tockbot-note-desktop/package.json', import.meta.url), 'utf8')) as {
+  const desktopAdapter = JSON.parse(readFileSync(new URL('../plugins/tocktutor/packages/tockbot-note-desktop/package.json', import.meta.url), 'utf8')) as {
     peerDependencies: Record<string, string>
     version: string
   }
-  const assistant = JSON.parse(readFileSync(new URL('../vendor/tockteam-tocktutor-assistant/package.json', import.meta.url), 'utf8')) as {
+  const assistant = JSON.parse(readFileSync(new URL('../plugins/tocktutor/packages/tockteam-tocktutor-assistant/package.json', import.meta.url), 'utf8')) as {
     peerDependencies: Record<string, string>
     version: string
   }
-  const importExport = JSON.parse(readFileSync(new URL('../vendor/tockteam-tocktutor-import-export/package.json', import.meta.url), 'utf8')) as {
+  const importExport = JSON.parse(readFileSync(new URL('../plugins/tocktutor/packages/tockteam-tocktutor-import-export/package.json', import.meta.url), 'utf8')) as {
     peerDependencies: Record<string, string>
     version: string
   }
-  const webClip = JSON.parse(readFileSync(new URL('../vendor/tockbot-web-clip/package.json', import.meta.url), 'utf8')) as {
+  const webClip = JSON.parse(readFileSync(new URL('../plugins/tocktutor/packages/tockbot-web-clip/package.json', import.meta.url), 'utf8')) as {
     peerDependencies: Record<string, string>
     version: string
   }
   assert.equal(packageJson.dependencies, undefined)
-  assert.equal(packageJson.devDependencies['tockbot-note-runtime'], 'file:vendor/tockbot-note-runtime-0.1.2.tgz')
-  assert.equal(packageJson.devDependencies['tockbot-note-vault'], 'file:vendor/tockbot-note-vault-0.6.0.tgz')
-  assert.equal(packageJson.devDependencies['@tockteam/note-vault-tools'], 'file:vendor/tockteam-note-vault-tools-0.1.2.tgz')
-  assert.ok(packageJson.files.includes('vendor/tockteam-tocktutor-0.1.1.tgz'))
-  assert.ok(packageJson.files.includes('vendor/tockteam-tocktutor-workbench-0.1.7.tgz'))
-  assert.ok(packageJson.files.includes('vendor/tockbot-note-desktop-0.1.2.tgz'))
-  assert.ok(packageJson.files.includes('vendor/tockteam-tocktutor-assistant-0.1.5.tgz'))
-  assert.ok(packageJson.files.includes('vendor/tockteam-tocktutor-import-export-0.1.1.tgz'))
-  assert.ok(packageJson.files.includes('vendor/tockbot-web-clip-0.1.2.tgz'))
+  assert.equal(packageJson.devDependencies['tockbot-note-runtime'], 'file:plugins/tocktutor/packages/tockbot-note-runtime')
+  assert.equal(packageJson.devDependencies['tockbot-note-vault'], 'file:plugins/tocktutor/packages/tockbot-note-vault')
+  assert.equal(packageJson.devDependencies['@tockteam/note-vault-tools'], 'file:plugins/tocktutor/packages/tockteam-note-vault-tools')
+  assert.ok(packageJson.files.includes('plugins/tocktutor/packages/*/package.json'))
+  assert.ok(packageJson.files.includes('plugins/tocktutor/packages/*/cordis.patch.yml'))
+  assert.ok(packageJson.files.includes('plugins/tocktutor/packages/*/lib/**'))
+  assert.ok(packageJson.files.includes('plugins/tocktutor/packages/*/dist/**'))
+  assert.equal(packageJson.files.some(path => path.startsWith('vendor/')), false)
   assert.equal(bundle.version, '0.1.1')
   assert.equal(bundle.peerDependencies['@tockteam/desktop'], '>=0.1.11 <0.2.0')
   assert.equal(bundle.dependencies['tockbot-note-runtime'], '0.1.2')

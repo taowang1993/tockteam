@@ -680,70 +680,70 @@ function installCompiledPackageHostDependencies(sourceManifestPath, packageDir) 
 function installDesktopPackages({ desktopOnly = false } = {}) {
   const desktopPackages = [
     {
-      manifest: join(root, 'vendor', 'tockbot-note-vault', 'package.json'),
+      manifest: join(root, 'plugins', 'tocktutor', 'packages', 'tockbot-note-vault', 'package.json'),
       files: [
-        [join(root, 'vendor', 'tockbot-note-vault', 'index.js'), 'index.js'],
-        [join(root, 'vendor', 'tockbot-note-vault', 'inspection.js'), 'inspection.js'],
-        [join(root, 'vendor', 'tockbot-note-vault', 'inspection.d.ts'), 'inspection.d.ts'],
-        [join(root, 'vendor', 'tockbot-note-vault', 'cordis.patch.yml'), 'cordis.patch.yml'],
+        [join(root, 'plugins', 'tocktutor', 'packages', 'tockbot-note-vault', 'index.js'), 'index.js'],
+        [join(root, 'plugins', 'tocktutor', 'packages', 'tockbot-note-vault', 'inspection.js'), 'inspection.js'],
+        [join(root, 'plugins', 'tocktutor', 'packages', 'tockbot-note-vault', 'inspection.d.ts'), 'inspection.d.ts'],
+        [join(root, 'plugins', 'tocktutor', 'packages', 'tockbot-note-vault', 'cordis.patch.yml'), 'cordis.patch.yml'],
       ],
     },
     {
-      manifest: join(root, 'vendor', 'tockbot-note-runtime', 'package.json'),
+      manifest: join(root, 'plugins', 'tocktutor', 'packages', 'tockbot-note-runtime', 'package.json'),
       files: [
-        [join(root, 'vendor', 'tockbot-note-runtime', 'lib'), 'lib'],
-        [join(root, 'vendor', 'tockbot-note-runtime', 'cordis.patch.yml'), 'cordis.patch.yml'],
+        [join(root, 'plugins', 'tocktutor', 'packages', 'tockbot-note-runtime', 'lib'), 'lib'],
+        [join(root, 'plugins', 'tocktutor', 'packages', 'tockbot-note-runtime', 'cordis.patch.yml'), 'cordis.patch.yml'],
       ],
     },
     {
-      manifest: join(root, 'vendor', 'tockteam-note-vault-tools', 'package.json'),
+      manifest: join(root, 'plugins', 'tocktutor', 'packages', 'tockteam-note-vault-tools', 'package.json'),
       files: [
-        [join(root, 'vendor', 'tockteam-note-vault-tools', 'lib'), 'lib'],
-        [join(root, 'vendor', 'tockteam-note-vault-tools', 'cordis.patch.yml'), 'cordis.patch.yml'],
+        [join(root, 'plugins', 'tocktutor', 'packages', 'tockteam-note-vault-tools', 'lib'), 'lib'],
+        [join(root, 'plugins', 'tocktutor', 'packages', 'tockteam-note-vault-tools', 'cordis.patch.yml'), 'cordis.patch.yml'],
       ],
     },
     {
-      manifest: join(root, 'vendor', 'tockteam-tocktutor-workbench', 'package.json'),
+      manifest: join(root, 'plugins', 'tocktutor', 'packages', 'tockteam-tocktutor-workbench', 'package.json'),
       files: [
-        [join(root, 'vendor', 'tockteam-tocktutor-workbench', 'lib'), 'dist'],
-        [join(root, 'vendor', 'tockteam-tocktutor-workbench', 'cordis.patch.yml'), 'cordis.patch.yml'],
+        [join(root, 'plugins', 'tocktutor', 'packages', 'tockteam-tocktutor-workbench', 'dist'), 'dist'],
+        [join(root, 'plugins', 'tocktutor', 'packages', 'tockteam-tocktutor-workbench', 'cordis.patch.yml'), 'cordis.patch.yml'],
       ],
     },
     {
-      manifest: join(root, 'vendor', 'tockbot-note-desktop', 'package.json'),
+      manifest: join(root, 'plugins', 'tocktutor', 'packages', 'tockbot-note-desktop', 'package.json'),
       files: [
-        [join(root, 'vendor', 'tockbot-note-desktop', 'lib'), 'dist'],
-        [join(root, 'vendor', 'tockbot-note-desktop', 'cordis.patch.yml'), 'cordis.patch.yml'],
+        [join(root, 'plugins', 'tocktutor', 'packages', 'tockbot-note-desktop', 'dist'), 'dist'],
+        [join(root, 'plugins', 'tocktutor', 'packages', 'tockbot-note-desktop', 'cordis.patch.yml'), 'cordis.patch.yml'],
       ],
     },
     {
-      manifest: join(root, 'vendor', 'tockteam-tocktutor-assistant', 'package.json'),
+      manifest: join(root, 'plugins', 'tocktutor', 'packages', 'tockteam-tocktutor-assistant', 'package.json'),
       files: [
-        [join(root, 'vendor', 'tockteam-tocktutor-assistant', 'lib'), 'lib'],
-        [join(root, 'vendor', 'tockteam-tocktutor-assistant', 'cordis.patch.yml'), 'cordis.patch.yml'],
-        [join(root, 'vendor', 'tockteam-tocktutor-assistant', 'PENNIVO_PROVENANCE.md'), 'PENNIVO_PROVENANCE.md'],
-        [join(root, 'vendor', 'tockteam-tocktutor-assistant', 'THIRD_PARTY_NOTICES'), 'THIRD_PARTY_NOTICES'],
+        [join(root, 'plugins', 'tocktutor', 'packages', 'tockteam-tocktutor-assistant', 'lib'), 'lib'],
+        [join(root, 'plugins', 'tocktutor', 'packages', 'tockteam-tocktutor-assistant', 'cordis.patch.yml'), 'cordis.patch.yml'],
+        [join(root, 'plugins', 'tocktutor', 'packages', 'tockteam-tocktutor-assistant', 'PENNIVO_PROVENANCE.md'), 'PENNIVO_PROVENANCE.md'],
+        [join(root, 'plugins', 'tocktutor', 'packages', 'tockteam-tocktutor-assistant', 'THIRD_PARTY_NOTICES'), 'THIRD_PARTY_NOTICES'],
       ],
     },
     {
-      manifest: join(root, 'vendor', 'tockteam-tocktutor-import-export', 'package.json'),
+      manifest: join(root, 'plugins', 'tocktutor', 'packages', 'tockteam-tocktutor-import-export', 'package.json'),
       files: [
-        [join(root, 'vendor', 'tockteam-tocktutor-import-export', 'lib'), 'dist'],
-        [join(root, 'vendor', 'tockteam-tocktutor-import-export', 'cordis.patch.yml'), 'cordis.patch.yml'],
-        [join(root, 'vendor', 'tockteam-tocktutor-import-export', 'README.md'), 'README.md'],
+        [join(root, 'plugins', 'tocktutor', 'packages', 'tockteam-tocktutor-import-export', 'dist'), 'dist'],
+        [join(root, 'plugins', 'tocktutor', 'packages', 'tockteam-tocktutor-import-export', 'cordis.patch.yml'), 'cordis.patch.yml'],
+        [join(root, 'plugins', 'tocktutor', 'packages', 'tockteam-tocktutor-import-export', 'README.md'), 'README.md'],
       ],
     },
     {
-      manifest: join(root, 'vendor', 'tockbot-web-clip', 'package.json'),
+      manifest: join(root, 'plugins', 'tocktutor', 'packages', 'tockbot-web-clip', 'package.json'),
       files: [
-        [join(root, 'vendor', 'tockbot-web-clip', 'lib'), 'lib'],
-        [join(root, 'vendor', 'tockbot-web-clip', 'cordis.patch.yml'), 'cordis.patch.yml'],
+        [join(root, 'plugins', 'tocktutor', 'packages', 'tockbot-web-clip', 'lib'), 'lib'],
+        [join(root, 'plugins', 'tocktutor', 'packages', 'tockbot-web-clip', 'cordis.patch.yml'), 'cordis.patch.yml'],
       ],
     },
     {
-      manifest: join(root, 'vendor', 'tockteam-tocktutor', 'package.json'),
+      manifest: join(root, 'plugins', 'tocktutor', 'packages', 'tockteam-tocktutor', 'package.json'),
       files: [
-        [join(root, 'vendor', 'tockteam-tocktutor', 'cordis.patch.yml'), 'cordis.patch.yml'],
+        [join(root, 'plugins', 'tocktutor', 'packages', 'tockteam-tocktutor', 'cordis.patch.yml'), 'cordis.patch.yml'],
       ],
     },
     {

@@ -1,5 +1,8 @@
 node_modules/
 dist/
+!plugins/tocktutor/packages/*/dist/
+!plugins/tocktutor/packages/*/dist/**
+plugins/tocktutor/packages/*/*.tgz
 .stage/
 .cache/
 /.local/

@@ -20,14 +20,19 @@ const ownedBundleDirectories = new Map<string, string>([
 
 function packageDirectory(plugin: string): string {
   const ownedBundle = ownedBundleDirectories.get(plugin)
-  if (ownedBundle !== undefined) return join(root, 'vendor', ownedBundle)
+  if (ownedBundle !== undefined) {
+    return join(root, 'plugins', 'tocktutor', 'packages', ownedBundle)
+  }
   if (plugin === '@tockteam/desktop') return root
   return join(root, 'plugins', plugin.slice(plugin.lastIndexOf('/') + 1))
 }
 
 test('desktop bundle registers every packaged DSH plugin', () => {
   const patch = readFileSync(join(root, 'cordis.patch.yml'), 'utf8')
-  const aggregatePatch = readFileSync(join(root, 'vendor', 'tockteam-tocktutor', 'cordis.patch.yml'), 'utf8')
+  const aggregatePatch = readFileSync(
+    join(root, 'plugins', 'tocktutor', 'packages', 'tockteam-tocktutor', 'cordis.patch.yml'),
+    'utf8',
+  )
   assert.doesNotMatch(patch, /tockbot-note-vault/)
   assert.doesNotMatch(aggregatePatch, /tockbot-note-vault/)
   assert.equal((patch.match(/id: note-vault-runtime/g) ?? []).length, 1)
@@ -44,9 +49,7 @@ test('desktop bundle registers every packaged DSH plugin', () => {
     assert.equal(manifest.dshClient, undefined)
     if (ownedBundleDirectories.has(plugin)) {
       const clientExport = manifest.exports['./client'] as { browser?: string; default: string }
-      const bundledPath = (clientExport.browser ?? clientExport.default)
-        .replace(/^\.\/dist\//u, 'lib/')
-        .replace(/^\.\//u, '')
+      const bundledPath = (clientExport.browser ?? clientExport.default).replace(/^\.\//u, '')
       const clientBundle = readFileSync(join(packageDirectory(plugin), bundledPath), 'utf8')
       assert.match(clientBundle, /__ModuleLoader__\.load/u)
       assert.match(clientBundle, new RegExp(plugin.replace('/', '\\/')))
