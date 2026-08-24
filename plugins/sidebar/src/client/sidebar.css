@@ -236,18 +236,13 @@ body:has([data-sidebar-collapsed]) .tockteam-titlebar-leading {
 
 .tockteam-titlebar-leading svg,
 .tockteam-panel-toolbar svg {
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
   fill: none;
   stroke: currentColor;
   stroke-linecap: round;
   stroke-linejoin: round;
   stroke-width: 1.7;
-}
-
-.tockteam-titlebar-leading svg {
-  width: 20px;
-  height: 20px;
 }
 
 .tockteam-workspace-panel {

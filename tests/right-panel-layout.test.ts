@@ -158,7 +158,7 @@ test('desktop titlebar matches Tockbot chrome and stays draggable', () => {
   )
   assert.match(
     css,
-    /\.tockteam-titlebar-leading svg\s*\{[^}]*width: 20px;[^}]*height: 20px;/s,
+    /\.tockteam-titlebar-leading svg,\s*\.tockteam-panel-toolbar svg\s*\{[^}]*width: 20px;[^}]*height: 20px;/s,
   )
   assert.doesNotMatch(
     css,
