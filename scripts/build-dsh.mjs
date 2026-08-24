@@ -2,6 +2,7 @@ import { spawnSync } from 'node:child_process'
 import { chmodSync, mkdirSync, writeFileSync } from 'node:fs'
 import { delimiter, join } from 'node:path'
 import { resolveDshSource, resolvePinnedPnpm } from './dsh-source.mjs'
+import { acquireDshLucideIconLock, adaptDshLucideIcons } from './dsh-lucide-icons.mjs'
 
 const dshSource = resolveDshSource()
 const pnpm = resolvePinnedPnpm(dshSource)
@@ -39,9 +40,19 @@ function run(args) {
     stdio: 'inherit',
   })
   if (result.error !== undefined) throw result.error
-  if (result.status !== 0) process.exit(result.status ?? 1)
+  if (result.status !== 0) throw new Error(`pnpm ${args.join(' ')} exited with ${String(result.status)}`)
 }
 
-run(['install', '--frozen-lockfile'])
-pinInnerPnpm()
-run(['run', 'build'])
+const releaseDshIconLock = acquireDshLucideIconLock(dshSource)
+try {
+  run(['install', '--frozen-lockfile'])
+  pinInnerPnpm()
+  const restoreDshIcons = adaptDshLucideIcons(dshSource)
+  try {
+    run(['run', 'build'])
+  } finally {
+    restoreDshIcons()
+  }
+} finally {
+  releaseDshIconLock()
+}

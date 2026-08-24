@@ -85,6 +85,15 @@ void app.whenReady().then(async () => {
         }
         return {
         body: document.body?.innerText ?? '',
+        customIcons: [...document.querySelectorAll('svg:not(.lucide):not([data-tockteam-product-mark])')]
+          .filter(svg => {
+            const rect = svg.getBoundingClientRect()
+            return rect.width > 0 && rect.height > 0
+          })
+          .map(svg => ({
+            className: svg.getAttribute('class'),
+            viewBox: svg.getAttribute('viewBox'),
+          })),
         navigation: (() => {
           const pluginsIcon = document.querySelector('.tockteam-marketplace-nav svg')
           const slotted = [...document.querySelectorAll('button')]
@@ -155,6 +164,13 @@ void app.whenReady().then(async () => {
         ready: document.documentElement.dataset.tockteamDesktop === 'true',
       }
     })()`)
+      if (state.ready === true && state.customIcons.length > 0) {
+        settle(new Error(
+          'Visible interface icons are not Lucide: '
+          + JSON.stringify(state.customIcons),
+        ))
+        return
+      }
       if (state.ready === true
         && state.navigation !== null
         && state.navigation.collapsed === false

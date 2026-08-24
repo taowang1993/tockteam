@@ -35,6 +35,9 @@ importers:
       esbuild:
         specifier: ^0.25.12
         version: 0.25.12
+      lucide:
+        specifier: 0.473.0
+        version: 0.473.0
       pnpm:
         specifier: 11.20.0
         version: 11.20.0

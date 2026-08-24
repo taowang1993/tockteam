@@ -8,6 +8,15 @@ compatible features to its own persistence, layout, localization, and theme
 contracts. Direct upstream sources are tracked as pinned submodules. Upstream
 releases and features are reviewed regularly.
 
+## Lucide
+
+- Project: <https://lucide.dev>
+- Version: `0.473.0`
+- Declared license: ISC
+
+TockTeam uses Lucide icons throughout its Desktop, Web, TockTutor, and adapted
+DSH interfaces. Product marks and non-icon data visualizations remain original.
+
 ## dsh-web-panel
 
 - Historical project: dsh-web-panel (its previous public locator is no longer available)

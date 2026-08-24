@@ -121,6 +121,7 @@
     "electron": "42.3.0",
     "electron-builder": "^26.0.12",
     "esbuild": "^0.25.12",
+    "lucide": "0.473.0",
     "pnpm": "11.20.0",
     "typescript": "^6.0.3"
   },

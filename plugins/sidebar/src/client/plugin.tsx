@@ -1760,7 +1760,7 @@ function AppRailIcon({ kind }: { kind: 'agent' | 'notebook' }): ReactNode {
   if (kind === 'agent') {
     // TockbotLogoMark, matching tockbot apps/web/src/components/brand/TockbotLogoMark.tsx
     return (
-      <svg aria-hidden="true" fill="none" viewBox="0 0 20 20">
+      <svg aria-hidden="true" data-tockteam-product-mark="true" fill="none" viewBox="0 0 20 20">
         <path clipRule="evenodd" d="M10 5.5C6.96243 5.5 4.5 7.96243 4.5 11C4.5 14.0376 6.96243 16.5 10 16.5C13.0376 16.5 15.5 14.0376 15.5 11C15.5 7.96243 13.0376 5.5 10 5.5ZM2.5 11C2.5 6.85786 5.85786 3.5 10 3.5C14.1421 3.5 17.5 6.85786 17.5 11C17.5 15.1421 14.1421 18.5 10 18.5C5.85786 18.5 2.5 15.1421 2.5 11Z" fill="currentColor" fillRule="evenodd" />
         <path clipRule="evenodd" d="M2.79289 18.2071C3.18342 18.5976 3.81658 18.5976 4.20711 18.2071L5.70711 16.7071C6.09763 16.3166 6.09763 15.6834 5.70711 15.2929C5.31658 14.9023 4.68342 14.9023 4.29289 15.2929L2.79289 16.7929C2.40237 17.1834 2.40237 17.8166 2.79289 18.2071Z" fill="currentColor" fillRule="evenodd" />
         <path clipRule="evenodd" d="M14.2929 15.2929C14.6834 14.9024 15.3166 14.9024 15.70711 15.2929L17.2071 16.7929C17.5976 17.1834 17.5976 17.8166 17.2071 18.2071C16.8166 18.5977 16.1834 18.5977 15.7929 18.2071L14.2929 16.7071C13.9024 16.3166 13.9024 15.6834 14.2929 15.2929Z" fill="currentColor" fillRule="evenodd" />
