@@ -6,6 +6,20 @@ import { fileURLToPath } from 'node:url'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 
+test('runtime CI verifies the nested TockTutor workspace before staging', () => {
+  const workflow = readFileSync(
+    join(root, '.github', 'workflows', 'ci.yml'),
+    'utf8',
+  ).replace(/\r\n?/g, '\n')
+
+  assert.match(workflow, /plugins\/tocktutor\/pnpm-lock\.yaml/u)
+  assert.match(workflow, /pnpm -C plugins\/tocktutor install --frozen-lockfile/u)
+  assert.match(workflow, /pnpm run typecheck:tocktutor/u)
+  assert.match(workflow, /pnpm run test:tocktutor/u)
+  assert.match(workflow, /pnpm run build:tocktutor/u)
+  assert.ok(workflow.indexOf('pnpm run build:tocktutor') < workflow.indexOf('pnpm run stage:dsh'))
+})
+
 test('tagged releases build and upload both TUI archive formats', () => {
   const workflow = readFileSync(
     join(root, '.github', 'workflows', 'release.yml'),

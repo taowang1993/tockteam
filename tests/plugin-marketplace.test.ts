@@ -32,8 +32,11 @@ import {
 const COMMIT = '0123456789abcdef0123456789abcdef01234567'
 const UPDATED_COMMIT = 'fedcba9876543210fedcba9876543210fedcba98'
 
-test('the marketplace protects every in-box TockTutor package and row', () => {
+test('the marketplace protects every in-box Desktop and TockTutor package and row', () => {
   for (const packageName of [
+    '@tockteam/skins',
+    '@tockteam/pinned-summary',
+    '@tockteam/plugin-marketplace',
     '@tockteam/note-vault-tools',
     '@tockteam/tocktutor',
     '@tockteam/tocktutor-assistant',
@@ -49,6 +52,7 @@ test('the marketplace protects every in-box TockTutor package and row', () => {
     'note-vault-runtime',
     'note-vault-tools',
     'tockbot-note-desktop',
+    'tockteam-skins',
     'tocktutor',
     'tocktutor-assistant',
     'tocktutor-import-export',
@@ -892,6 +896,36 @@ test('the marketplace refuses to modify protected desktop plugins', async () => 
       snapshot.catalog.find(plugin => plugin.id === 'tockteam-desktop')?.protected,
       true,
     )
+  } finally {
+    setup.cleanup()
+  }
+})
+
+test('the marketplace protects legacy alias receipts by installed package name', async () => {
+  const setup = fixture()
+  try {
+    const managed = join(setup.profileDir, '.tockteam')
+    mkdirSync(managed, { recursive: true })
+    writeFileSync(join(managed, 'marketplace.json'), JSON.stringify({
+      entries: [{
+        installedAt: '2026-08-24T00:00:00Z',
+        mechanism: 'bundle',
+        packageName: '@tockteam/skins',
+        pluginId: 'legacy-skin-alias',
+        resolvedCommit: COMMIT,
+        source: 'github:example/legacy-skin-alias',
+      }],
+      locks: [],
+      version: 2,
+    }, undefined, 2) + '\n')
+
+    const snapshot = await setup.manager.dispatch({
+      type: 'prepare',
+      action: 'uninstall',
+      pluginId: 'legacy-skin-alias',
+    })
+    assert.match(snapshot.error ?? '', /protected by the desktop/u)
+    assert.equal(snapshot.preview, null)
   } finally {
     setup.cleanup()
   }

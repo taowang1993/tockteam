@@ -93,7 +93,9 @@ jobs:
         with:
           node-version: 24
           cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
+          cache-dependency-path: |
+            pnpm-lock.yaml
+            plugins/tocktutor/pnpm-lock.yaml
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -101,8 +103,18 @@ jobs:
       - name: Install xvfb
         run: sudo apt-get update && sudo apt-get install -y xvfb
 
-      - name: Build and stage the pinned runtime
-        run: pnpm run build && pnpm run build:dsh && pnpm run stage:dsh
+      - name: Build the pinned runtime
+        run: pnpm run build && pnpm run build:dsh
+
+      - name: Check the TockTutor plugin workspace
+        run: |
+          pnpm -C plugins/tocktutor install --frozen-lockfile
+          pnpm run typecheck:tocktutor
+          pnpm run test:tocktutor
+          pnpm run build:tocktutor
+
+      - name: Stage the pinned runtime
+        run: pnpm run stage:dsh
 
       - name: Smoke the web profile
         run: pnpm run smoke:web

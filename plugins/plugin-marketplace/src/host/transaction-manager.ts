@@ -675,7 +675,7 @@ export class PluginMarketplaceManager {
     const installed = state.entries
     const current = installed.find(entry => entry.pluginId === pluginId)
     const catalogPlugin = this.#catalog.find(plugin => plugin.id === pluginId)
-    if (isProtectedMarketplacePlugin(pluginId, catalogPlugin?.repository)
+    if (isProtectedMarketplacePlugin(pluginId, catalogPlugin?.repository, current?.packageName ?? undefined)
       || catalogPlugin?.protected === true) {
       throw new Error(`${pluginId} is protected by the desktop and cannot be modified by its own marketplace`)
     }
