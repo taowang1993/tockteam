@@ -40,6 +40,9 @@ test('desktop client replaces upstream branding with TockTeam', () => {
   assert.match(client, /if \(brand\.isConnected\) brand\.replaceWith\(original\)/)
   assert.doesNotMatch(client, /data-tockteam-hero-preview/)
   assert.doesNotMatch(`${main}\n${splash}`, /DeepSeek Harness/)
+  assert.doesNotMatch(splash, />DSH</)
+  assert.match(splash, /aria-label="TockTeam Clock"/)
+  assert.match(splash, /M10 5\.5C6\.96243 5\.5 4\.5 7\.96243 4\.5 11/)
 })
 
 test('desktop Settings stays below portaled menus and above desktop surfaces', () => {

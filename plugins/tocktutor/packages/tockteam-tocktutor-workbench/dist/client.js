@@ -16896,7 +16896,7 @@ var ROUTE_CSS = `
   left: var(--tockteam-rail-width, 40px);
   position: fixed;
   right: 0;
-  top: 0;
+  top: var(--tockteam-titlebar-height, 40px);
   z-index: 2147483647;
 }
 .tocktutor-titlebar *, .tocktutor-titlebar *::before, .tocktutor-titlebar *::after { box-sizing: border-box; }

@@ -38,6 +38,9 @@ test('desktop shell rail switches between DeepSeek Harness and TockTutor', () =>
     css,
     /#tockteam-rail-root\s*\{[^}]*background: var\(--tockteam-shell-chrome\);/s,
   )
+  assert.doesNotMatch(css, /html\[data-tockteam-tocktutor-active='true'\]\s*\{[^}]*--tockteam-rail-width:/s)
+  assert.doesNotMatch(css, /html\[data-tockteam-tocktutor-active='true'\] #tockteam-rail-root/)
+  assert.doesNotMatch(css, /html\[data-tockteam-tocktutor-active='true'\] \.tockteam-window-titlebar/)
   assert.match(
     css,
     /#tockteam-embedded-layout > #root \[data-phase\]\s*\{[^}]*--dsw-alias-bg-base: var\(--tockteam-main-pane\);[^}]*background: var\(--tockteam-main-pane\);/s,
@@ -89,6 +92,10 @@ test('desktop titlebar matches Tockbot chrome and stays draggable', () => {
     join(root, 'plugins/sidebar/src/client/sidebar.css'),
     'utf8',
   )
+  const tockTutor = readFileSync(
+    join(root, 'plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/route.tsx'),
+    'utf8',
+  )
 
   assert.match(
     main,
@@ -129,6 +136,7 @@ test('desktop titlebar matches Tockbot chrome and stays draggable', () => {
   )
   assert.match(css, /#tockteam-rail-root\s*\{[^}]*border-right: 1px solid var\(--tockteam-shell-divider\);/s)
   assert.match(css, /\.tockteam-window-titlebar\s*\{[^}]*border-bottom: 1px solid var\(--tockteam-shell-divider\);[^}]*background: var\(--tockteam-shell-chrome\);/s)
+  assert.match(tockTutor, /\.tocktutor-titlebar\s*\{[^}]*top: var\(--tockteam-titlebar-height, 40px\);/s)
   assert.match(css, /\.tockteam-titlebar-leading\s*\{[^}]*border-right: 1px solid var\(--tockteam-shell-divider\);/s)
   assert.match(
     css,
