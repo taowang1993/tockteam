@@ -84,6 +84,7 @@ export interface DesktopBridge {
   getRuntimeSnapshot(): Promise<DesktopRuntimeSnapshot>
   onCommand(listener: (command: DesktopCommand) => void): () => void
   openExternal(url: string): Promise<void>
+  setTockTutorActive(active: boolean): Promise<void>
   pluginMarketplace: PluginMarketplaceBridge
   tockTutor: TockTutorDesktopCallerBridge
   webClip: WebClipDesktopBridge

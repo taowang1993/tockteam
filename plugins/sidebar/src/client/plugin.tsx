@@ -1832,6 +1832,13 @@ function TockTutorRouteHost(props: RouteHostProps, routeSlots: RouteSlotsService
   }, [props.actions])
   const active = routeEntries > 0 && isTockTutorPath(location.pathname)
   useEffect(() => {
+    const bridge = window.dshDesktop
+    void bridge?.setTockTutorActive(active).catch(() => undefined)
+    return () => {
+      if (active) void bridge?.setTockTutorActive(false).catch(() => undefined)
+    }
+  }, [active])
+  useEffect(() => {
     const appRoot = document.getElementById('root')
     const sidebarRoot = document.getElementById('tockteam-sidebar-root')
     if (!active || appRoot === null) return

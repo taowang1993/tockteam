@@ -126,6 +126,7 @@ export interface TockTutorRouteViewProps {
     onToggleTask(index: number): void;
     reviewPanel?: ReactNode;
     snapshot: WorkbenchRouteSnapshot;
+    titlebarTarget?: Element;
 }
 /** Semantic, authority-free view for the route state machine. */
 export declare function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode;

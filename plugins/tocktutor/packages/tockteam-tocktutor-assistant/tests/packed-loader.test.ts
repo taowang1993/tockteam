@@ -299,7 +299,9 @@ test('a fresh packed artifact loads through pinned Host and web ClientModule loa
     let remoteDisposed = 0
     let slotDisposed = 0
     let panelDisposed = 0
+    const assistantRemote = {}
     const remote = {
+      tocktutorAssistant: assistantRemote,
       async $mount(contribution: { package?: string }) {
         assert.equal(contribution.package, packageName)
         return async () => { remoteDisposed += 1 }
@@ -314,7 +316,7 @@ test('a fresh packed artifact loads through pinned Host and web ClientModule loa
       assert.equal(client.name, packageName)
       let declaration: (() => () => void) | undefined
       const registered: Array<{ component: unknown; options: Record<string, unknown> }> = []
-      const disposeClient = await client.apply({
+      const clientContext = {
         remote,
         sessions,
         slots: {
@@ -328,14 +330,23 @@ test('a fresh packed artifact loads through pinned Host and web ClientModule loa
             return () => { panelDisposed += 1 }
           },
         },
-      })
+      } as Record<string, unknown> & { inject?: unknown }
+      clientContext.inject = (services: string[], callback: (child: typeof clientContext) => () => void) => {
+        assert.deepEqual(services, ['remote', 'remote.tocktutorAssistant', 'sessions', 'slots'])
+        const disposePanel = callback(clientContext)
+        return Object.assign(Promise.resolve(), { dispose: async () => { disposePanel() } })
+      }
+      const disposeClient = await client.apply(clientContext)
       assert.ok(declaration)
       const disposePanel = declaration()
       assert.equal(registered.length, 1)
       assert.equal(registered[0]?.options.name, 'tockteam.tocktutor.workbench.assistant')
       assert.equal(registered[0]?.options.registrant, packageName)
       const injectPanel = registered[0]?.options.inject as (() => unknown)
-      assert.deepEqual(injectPanel(), { remote, sessions })
+      assert.deepEqual(injectPanel(), {
+        remote: { tocktutorAssistant: assistantRemote },
+        sessions,
+      })
       return async () => {
         disposePanel()
         await disposeClient()

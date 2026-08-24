@@ -16,5 +16,5 @@ test('browser entry graph imports no vault authority, filesystem, process, or cr
   assert.doesNotMatch(browser, /(?:from\s*|import\s*\()\s*['"](?:tockbot-note-runtime|node:|fs(?:\/promises)?|child_process|process)['"]/u)
   assert.doesNotMatch(browser, /(?:process\.(?:env|cwd)|childInstanceId|absolutePath|vaultRoot|credential|apiKey)/u)
   assert.match(sources[0]!, /TOCKTUTOR_ASSISTANT_PANEL_SLOT/u)
-  assert.match(sources[0]!, /ctx\.sessions/u)
+  assert.match(sources[0]!, /child\.sessions/u)
 })

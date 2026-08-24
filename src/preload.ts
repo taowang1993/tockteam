@@ -27,6 +27,9 @@ const bridge: DesktopBridge = Object.freeze({
   openExternal: async (url: string): Promise<void> => {
     await ipcRenderer.invoke('desktop:open-external', url)
   },
+  setTockTutorActive: async (active: boolean): Promise<void> => {
+    await ipcRenderer.invoke('desktop:set-tocktutor-active', active)
+  },
   pluginMarketplace: Object.freeze({
     dispatch: async (command: MarketplaceCommand): Promise<MarketplaceSnapshot> => {
       return await ipcRenderer.invoke('desktop:plugin-marketplace-dispatch', command) as MarketplaceSnapshot

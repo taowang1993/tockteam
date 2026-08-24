@@ -671,6 +671,7 @@ function createWindow(options: { preview?: boolean; title?: string } = {}): Brow
   const targetDisplay = displays.find(display => display.internal === false)
     ?? displays.find(display => display.id !== primaryDisplay.id)
     ?? primaryDisplay
+  const defaultBackgroundColor = nativeTheme.shouldUseDarkColors ? '#202020' : '#f7f7f5'
   const window = new BrowserWindow({
     x: targetDisplay.bounds.x,
     y: targetDisplay.bounds.y,
@@ -684,7 +685,7 @@ function createWindow(options: { preview?: boolean; title?: string } = {}): Brow
       ? { titleBarStyle: 'hidden' as const, trafficLightPosition: { x: 16, y: 12 } }
       : {}),
     ...(icon === undefined ? {} : { icon }),
-    backgroundColor: nativeTheme.shouldUseDarkColors ? '#202020' : '#f7f7f5',
+    backgroundColor: defaultBackgroundColor,
     webPreferences: {
       preload: preloadPath,
       contextIsolation: true,
@@ -1261,6 +1262,14 @@ function installIpc(): void {
   ipcMain.handle('desktop:get-runtime-snapshot', event => {
     assertTrustedMainIpc(event)
     return desktopRuntimeSnapshot()
+  })
+  ipcMain.handle('desktop:set-tocktutor-active', (event, raw: unknown) => {
+    assertTrustedMainIpc(event)
+    if (typeof raw !== 'boolean') throw new Error('TockTutor window state must be a boolean')
+    nativeTheme.themeSource = raw ? 'light' : 'system'
+    mainWindow?.setBackgroundColor(raw
+      ? '#ffffff'
+      : nativeTheme.shouldUseDarkColors ? '#202020' : '#f7f7f5')
   })
   ipcMain.handle('desktop:tocktutor-authorize', (event, raw: unknown) => {
     assertTrustedMainIpc(event)

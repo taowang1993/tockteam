@@ -15369,25 +15369,34 @@ var name = "@tockteam/tocktutor-assistant";
 var inject = ["remote", "sessions", "slots"];
 async function apply(ctx) {
   const disposeRemote = await ctx.remote.$mount(typert_remote_client_default);
-  let disposePanel;
+  let panelFiber;
   try {
-    disposePanel = ctx.slots.inject(
-      import_client.TOCKTUTOR_ASSISTANT_PANEL_SLOT,
-      () => ctx.slots.register({
-        inject: () => ({
-          remote: ctx.remote,
-          sessions: ctx.sessions
-        }),
-        name: import_client.TOCKTUTOR_ASSISTANT_PANEL_SLOT,
-        registrant: name
-      }, TockTutorAssistantPanel)
+    panelFiber = ctx.inject(
+      ["remote", "remote.tocktutorAssistant", "sessions", "slots"],
+      (child) => {
+        const mountedRemote = child.remote;
+        const remote = {
+          tocktutorAssistant: mountedRemote.tocktutorAssistant
+        };
+        const sessions = child.sessions;
+        return child.slots.inject(
+          import_client.TOCKTUTOR_ASSISTANT_PANEL_SLOT,
+          () => child.slots.register({
+            inject: () => ({ remote, sessions }),
+            name: import_client.TOCKTUTOR_ASSISTANT_PANEL_SLOT,
+            registrant: name
+          }, TockTutorAssistantPanel)
+        );
+      }
     );
+    await panelFiber;
   } catch (error51) {
+    await panelFiber?.dispose();
     await disposeRemote();
     throw error51;
   }
   return async () => {
-    disposePanel?.();
+    await panelFiber.dispose();
     await disposeRemote();
   };
 }

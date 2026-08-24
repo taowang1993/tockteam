@@ -50,6 +50,18 @@ test('locks the Desktop TockTutor route seat and publishes its package type entr
   assert.equal(isTockTutorPath('/'), false)
 })
 
+test('TockTutor route synchronizes the trusted native frame without widening IPC', () => {
+  const main = readFileSync(new URL('../src/main.ts', import.meta.url), 'utf8')
+  const preload = readFileSync(new URL('../src/preload.ts', import.meta.url), 'utf8')
+  const sidebar = readFileSync(new URL('../plugins/sidebar/src/client/plugin.tsx', import.meta.url), 'utf8')
+
+  assert.match(preload, /ipcRenderer\.invoke\('desktop:set-tocktutor-active', active\)/u)
+  assert.match(main, /ipcMain\.handle\('desktop:set-tocktutor-active',[\s\S]+assertTrustedMainIpc\(event\)[\s\S]+typeof raw !== 'boolean'/u)
+  assert.match(main, /setBackgroundColor\(raw[\s\S]+\? '#ffffff'/u)
+  assert.match(sidebar, /setTockTutorActive\(active\)/u)
+  assert.match(sidebar, /setTockTutorActive\(false\)/u)
+})
+
 test('resolves bounded same-origin navigation and preserves query/hash', () => {
   installWindow('http://127.0.0.1:3080/tocktutor')
   assert.deepEqual(readTockTutorRouteLocation(), {

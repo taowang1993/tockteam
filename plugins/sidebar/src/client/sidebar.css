@@ -108,8 +108,36 @@ body[data-ds-dark-theme] {
   pointer-events: auto;
 }
 
+html[data-tockteam-tocktutor-active='true'] {
+  --tockteam-rail-width: 37px;
+}
+
+html[data-tockteam-tocktutor-active='true'] body {
+  background: #fff;
+}
+
 html[data-tockteam-tocktutor-active='true'] #tockteam-rail-root {
+  position: fixed;
+  top: 36px;
+  bottom: 0;
+  left: 0;
+  height: auto;
   padding-top: 0;
+  border-color: #e1e3e7;
+  background: #fff;
+}
+
+html[data-tockteam-tocktutor-active='true'] .tockteam-app-rail button {
+  color: color-mix(in srgb, #27272a 62%, transparent);
+}
+
+html[data-tockteam-tocktutor-active='true'] .tockteam-app-rail button[aria-current='page'] {
+  background: color-mix(in srgb, #533afd 14%, #fff);
+  color: #27272a;
+}
+
+html[data-tockteam-tocktutor-active='true'] .tockteam-tocktutor-route {
+  top: 0;
 }
 
 html[data-tockteam-tocktutor-active='true'] .tockteam-window-titlebar,

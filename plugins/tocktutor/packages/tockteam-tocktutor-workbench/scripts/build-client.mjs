@@ -14,6 +14,7 @@ await build({
   external: [
     '@tockteam/desktop/client',
     'react',
+    'react-dom',
     'react/jsx-runtime',
   ],
   footer: { js: 'return module.exports; } });' },

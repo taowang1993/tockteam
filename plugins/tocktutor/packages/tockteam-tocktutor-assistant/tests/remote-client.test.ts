@@ -128,12 +128,15 @@ test('client mounts Remote and the exact lifecycle-owned Workbench assistant sea
   const { default: remote } = await import('../lib/typert.remote-client.js')
   const mounted: TypertRemoteContribution[] = []
   const injected: string[] = []
+  const injectedServices: string[][] = []
   const registered: Array<{ component: unknown; options: Record<string, unknown> }> = []
   const disposed: string[] = []
   const sessions = { marker: 'selected-session-runtime' }
   let declaration: (() => () => void) | undefined
+  const assistantRemote = {}
   const context = {
     remote: {
+      tocktutorAssistant: assistantRemote,
       async $mount(contribution: TypertRemoteContribution) {
         mounted.push(contribution)
         return async () => { disposed.push('remote') }
@@ -151,11 +154,19 @@ test('client mounts Remote and the exact lifecycle-owned Workbench assistant sea
         return () => { disposed.push('panel') }
       },
     },
+  } as Record<string, unknown> & { inject?: unknown }
+  context.inject = (services: string[], callback: (child: typeof context) => () => void) => {
+    injectedServices.push(services)
+    const disposeInjection = callback(context)
+    return Object.assign(Promise.resolve(), {
+      dispose: async () => { disposeInjection() },
+    })
   }
 
   const dispose = await client.apply(context as never)
   assert.deepEqual(client.inject, ['remote', 'sessions', 'slots'])
   assert.deepEqual(mounted, [remote])
+  assert.deepEqual(injectedServices, [['remote', 'remote.tocktutorAssistant', 'sessions', 'slots']])
   assert.deepEqual(injected, ['tockteam.tocktutor.workbench.assistant'])
   assert.ok(declaration)
   const disposePanel = declaration()
@@ -167,7 +178,7 @@ test('client mounts Remote and the exact lifecycle-owned Workbench assistant sea
     registrant: '@tockteam/tocktutor-assistant',
   })
   const inject = registered[0]?.options.inject as (() => unknown)
-  assert.deepEqual(inject(), { remote: context.remote, sessions })
+  assert.deepEqual(inject(), { remote: { tocktutorAssistant: assistantRemote }, sessions })
   disposePanel()
   await dispose()
   assert.deepEqual(disposed, ['panel', 'inject', 'remote'])

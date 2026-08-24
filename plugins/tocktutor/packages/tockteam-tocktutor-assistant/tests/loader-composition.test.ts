@@ -727,15 +727,21 @@ test('restart hydration preserves terminal audit and cannot revive consumed or s
 test('the package publishes a browser client contribution without Host behavior', async () => {
   assert.ok(Config)
   let disposed = 0
-  const dispose = await applyClient({
+  const context = {
     remote: {
+      tocktutorAssistant: {},
       async $mount() {
         return async () => { disposed += 1 }
       },
     },
     sessions: {},
     slots: { inject: () => () => {} },
-  } as never)
+  } as Record<string, unknown> & { inject?: unknown }
+  context.inject = (_services: string[], callback: (child: typeof context) => () => void) => {
+    const disposePanel = callback(context)
+    return Object.assign(Promise.resolve(), { dispose: async () => { disposePanel() } })
+  }
+  const dispose = await applyClient(context as never)
   await dispose()
   assert.equal(disposed, 1)
   const manifest = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8')) as {
