@@ -56,7 +56,7 @@ export class DesktopMicrophoneProvider implements TockTeamDesktopMicrophone {
       return { operationId: request.identity.operationId, status: 'unavailable' }
     }
     this.admitted = true
-    const work = this.nativeRequest(request, this.lifetime.signal)
+    const work = this.nativeRequest(request, AbortSignal.any([signal, this.lifetime.signal]))
     this.pending.add(work)
     try {
       const result = await work as DesktopMicrophoneResult
@@ -82,14 +82,11 @@ export class DesktopMicrophoneProvider implements TockTeamDesktopMicrophone {
   }
 
   private async finishDispose(): Promise<void> {
+    this.lifetime.abort()
     await Promise.allSettled([...this.pending])
-    try {
-      if (this.admitted && this.endpoint !== undefined && this.token !== undefined) {
-        const result = await this.nativeRequest({ disposeProvider: true }) as { status?: string }
-        if (result.status !== 'closed') throw new Error('TockTeam Desktop microphone cleanup was incomplete')
-      }
-    } finally {
-      this.lifetime.abort()
+    if (this.admitted && this.endpoint !== undefined && this.token !== undefined) {
+      const result = await this.nativeRequest({ disposeProvider: true }) as { status?: string }
+      if (result.status !== 'closed') throw new Error('TockTeam Desktop microphone cleanup was incomplete')
     }
   }
 
