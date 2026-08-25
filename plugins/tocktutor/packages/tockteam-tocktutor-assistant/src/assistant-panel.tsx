@@ -1,4 +1,10 @@
-import { Alert, Button, Empty, EmptyContent, EmptyHeader, EmptyMedia, EmptyTitle, Input, NativeSelect, NativeSelectOption, Textarea } from '@tockteam/ui'
+import { Alert } from '@tockteam/ui/alert'
+import { Button } from '@tockteam/ui/button'
+import { Empty, EmptyContent, EmptyHeader, EmptyMedia, EmptyTitle } from '@tockteam/ui/empty'
+import { Input } from '@tockteam/ui/input'
+import { Label } from '@tockteam/ui/label'
+import { NativeSelect, NativeSelectOption } from '@tockteam/ui/native-select'
+import { Textarea } from '@tockteam/ui/textarea'
 import {
   useCallback,
   useEffect,
@@ -208,7 +214,7 @@ export function TockTutorAssistantPanel(props: TockTutorAssistantPanelProps): Re
   const reviewControllers = reviewPending.current
   const followingRef = useRef(true)
   const scrollRef = useRef<HTMLDivElement>(null)
-  const statusRef = useRef<HTMLParagraphElement>(null)
+  const statusRef = useRef<HTMLDivElement>(null)
   const [showJumpToLatest, setShowJumpToLatest] = useState(false)
   const reviewKey = `${props.vault?.id ?? 'inactive'}:${String(props.vault?.generation ?? 0)}:${props.activePath ?? ''}`
   const routeRef = useRef<{ epoch: number; key: string } | null>(null)
@@ -589,7 +595,7 @@ export function TockTutorAssistantPanel(props: TockTutorAssistantPanelProps): Re
           <details className="border-t border-[var(--tta-border)] pt-1">
             <summary className="cursor-pointer px-2 py-1.5 text-[13px]">Assistant Settings</summary>
             <form className="grid gap-2 p-2" onSubmit={saveSettings}>
-              <label className="grid gap-1 text-xs">
+              <Label unstyled className="grid gap-1 text-xs">
                 Provider
                 <Input unstyled
                   aria-label="Provider"
@@ -603,8 +609,8 @@ export function TockTutorAssistantPanel(props: TockTutorAssistantPanelProps): Re
                   }}
                   value={settings?.provider ?? ''}
                 />
-              </label>
-              <label className="grid gap-1 text-xs">
+              </Label>
+              <Label unstyled className="grid gap-1 text-xs">
                 Model
                 <Input unstyled
                   aria-label="Model"
@@ -618,8 +624,8 @@ export function TockTutorAssistantPanel(props: TockTutorAssistantPanelProps): Re
                   }}
                   value={settings?.model ?? ''}
                 />
-              </label>
-              <label className="grid gap-1 text-xs">
+              </Label>
+              <Label unstyled className="grid gap-1 text-xs">
                 Write Permission
                 <NativeSelect unstyled
                   aria-label="Write Permission"
@@ -636,7 +642,7 @@ export function TockTutorAssistantPanel(props: TockTutorAssistantPanelProps): Re
                   <NativeSelectOption value="read-only">Read Only</NativeSelectOption>
                   <NativeSelectOption value="propose">Propose Writes</NativeSelectOption>
                 </NativeSelect>
-              </label>
+              </Label>
               <Button unstyled className="cursor-pointer rounded-[7px] border border-[var(--tta-accent)] bg-[var(--tta-accent)] px-[9px] py-1.5 font-semibold text-white disabled:cursor-default disabled:opacity-50" disabled={settings === null || settingsSaving} type="submit">
                 {settingsSaving ? 'Saving…' : 'Save Settings'}
               </Button>
@@ -715,9 +721,9 @@ export function TockTutorAssistantPanel(props: TockTutorAssistantPanelProps): Re
           </div>
         </form>
       </div>
-      <p aria-live="polite" className="tocktutor-assistant-status absolute right-3 bottom-[120px] left-3 z-2 rounded-[7px] bg-[color-mix(in_srgb,var(--tta-accent)_9%,var(--tta-panel))] px-2.5 py-2 text-xs text-[var(--tta-muted)] empty:hidden" ref={statusRef} role="status" tabIndex={-1}>
+      <Alert unstyled aria-live="polite" className="tocktutor-assistant-status absolute right-3 bottom-[120px] left-3 z-2 rounded-[7px] bg-[color-mix(in_srgb,var(--tta-accent)_9%,var(--tta-panel))] px-2.5 py-2 text-xs text-[var(--tta-muted)] empty:hidden" ref={statusRef} role="status" tabIndex={-1}>
         {status === null ? '' : boundedText(status, 500)}
-      </p>
+      </Alert>
     </aside>
   )
 }

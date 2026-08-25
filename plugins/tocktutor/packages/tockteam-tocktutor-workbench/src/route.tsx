@@ -1,4 +1,11 @@
-import { Button, Dialog, DialogContent, DialogTitle, Empty, EmptyDescription, EmptyHeader, EmptyTitle, Input, Textarea } from '@tockteam/ui'
+import { Alert } from '@tockteam/ui/alert'
+import { Button } from '@tockteam/ui/button'
+import { Checkbox } from '@tockteam/ui/checkbox'
+import { Dialog, DialogContent, DialogTitle } from '@tockteam/ui/dialog'
+import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@tockteam/ui/empty'
+import { Input } from '@tockteam/ui/input'
+import { Label } from '@tockteam/ui/label'
+import { Textarea } from '@tockteam/ui/textarea'
 import {
   useEffect,
   useMemo,
@@ -893,15 +900,14 @@ function ReadingBlockView(props: {
     case 'paragraph': return <p>{block.text}</p>
     case 'code': return <pre><code>{block.text}</code></pre>
     case 'task': return (
-      <label className="tocktutor-task my-2 flex items-start gap-2">
-        <Input unstyled
+      <Label unstyled className="tocktutor-task my-2 flex items-start gap-2">
+        <Checkbox
           aria-label={`Mark ${block.text} as ${block.checked ? 'incomplete' : 'complete'}`}
           checked={block.checked}
-          onChange={() => { props.onToggleTask(block.index) }}
-          type="checkbox"
+          onCheckedChange={() => { props.onToggleTask(block.index) }}
         />
         <span>{block.text}</span>
-      </label>
+      </Label>
     )
   }
 }
@@ -911,7 +917,7 @@ function CanvasView(props: {
   source: string
 }): ReactNode {
   const projection = projectCanvas(parseCanvasDocument(props.source))
-  if (projection.status !== 'ready') return <p role="alert">{projection.reason}</p>
+  if (projection.status !== 'ready') return <Alert unstyled>{projection.reason}</Alert>
   return (
     <section aria-label="Canvas View" className="tocktutor-projection min-h-0 overflow-auto p-6" tabIndex={-1}>
       <header>
@@ -944,7 +950,7 @@ function CanvasView(props: {
 
 function BaseView(props: { source: string }): ReactNode {
   const projection = projectBase(props.source)
-  if (projection.status !== 'ready') return <p role="alert">{projection.reason}</p>
+  if (projection.status !== 'ready') return <Alert unstyled>{projection.reason}</Alert>
   return (
     <section aria-label="Base View" className="tocktutor-projection min-h-0 overflow-auto p-6" tabIndex={-1}>
       <header>
@@ -1018,20 +1024,20 @@ function NativeDispatchDialog(props: {
         <form className="grid w-full gap-3.5 rounded-lg border border-[var(--tt-border)] bg-[var(--tt-panel)] p-5 [&_input]:rounded-[5px] [&_input]:border [&_input]:border-[var(--tt-border)] [&_input]:p-2 [&_input]:[font:inherit] [&_label]:grid [&_label]:gap-[5px] [&_label]:font-[650] [&_textarea]:rounded-[5px] [&_textarea]:border [&_textarea]:border-[var(--tt-border)] [&_textarea]:p-2 [&_textarea]:[font:inherit]" onSubmit={submit}>
           <header><DialogTitle className="m-0 text-[17px]">{label}</DialogTitle></header>
           {props.kind === 'new' ? (
-            <label>
+            <Label unstyled>
               Note Path
               <Input unstyled aria-label="New Note Path" autoFocus maxLength={1_000} name="path" required />
-            </label>
+            </Label>
           ) : (
             <>
-              <label>
+              <Label unstyled>
                 Title
                 <Input unstyled aria-label="Capture Title" autoFocus maxLength={200} name="title" required />
-              </label>
-              <label>
+              </Label>
+              <Label unstyled>
                 Text
                 <Textarea unstyled aria-label="Capture Text" maxLength={100_000} name="text" />
-              </label>
+              </Label>
             </>
           )}
           <div className="tocktutor-dialog-actions flex justify-end gap-2 [&_button]:cursor-pointer [&_button]:rounded-[5px] [&_button]:border [&_button]:border-[var(--tt-border)] [&_button]:bg-[var(--tt-panel)] [&_button]:px-2.5 [&_button]:py-[7px] [&_button]:text-inherit">
@@ -1321,7 +1327,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
           <div className="tocktutor-sidebar-content min-h-0 overflow-auto px-[5px] py-[3px]">
             {snapshot.searchOpen && (
               <section aria-label="Search Notes" className="tocktutor-search mb-2 border-b border-[var(--tt-border)] px-[3px] pb-2">
-                <label className="mb-[5px] block text-xs font-semibold" htmlFor="tocktutor-search-query">Search Notes</label>
+                <Label unstyled className="mb-[5px] block text-xs font-semibold" htmlFor="tocktutor-search-query">Search Notes</Label>
                 <div className="flex gap-1">
                   <Input unstyled
                     aria-label="Search Notes Query"
@@ -1335,13 +1341,13 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
                   />
                   <Button unstyled aria-label="Close Search" className="w-7 rounded-[5px] border border-[var(--tt-border)] bg-transparent" onClick={() => { props.onCloseSearch?.() }} type="button"><WorkbenchGlyph kind="close" /></Button>
                 </div>
-                <p aria-live="polite" className="mx-1 my-[7px] text-xs text-[var(--tt-muted)]" role="status">{documents.length} matching notes.</p>
+                <Alert unstyled aria-live="polite" className="mx-1 my-[7px] text-xs text-[var(--tt-muted)]" role="status">{documents.length} matching notes.</Alert>
               </section>
             )}
             <nav aria-label="Vault Notes">
               {snapshot.phase === 'loading' && <p className="mx-1 my-[7px] text-xs text-[var(--tt-muted)]">Loading notes…</p>}
-              {snapshot.phase === 'inactive' && <p className="mx-1 my-[7px] text-xs text-[var(--tt-muted)]" role="alert">No Active Vault</p>}
-              {snapshot.phase === 'error' && <p className="mx-1 my-[7px] text-xs text-[var(--tt-muted)]" role="alert">{snapshot.message}</p>}
+              {snapshot.phase === 'inactive' && <Alert unstyled className="mx-1 my-[7px] text-xs text-[var(--tt-muted)]">No Active Vault</Alert>}
+              {snapshot.phase === 'error' && <Alert unstyled className="mx-1 my-[7px] text-xs text-[var(--tt-muted)]">{snapshot.message}</Alert>}
               {snapshot.phase === 'ready' && documents.length === 0 && <p className="mx-1 my-[7px] text-xs text-[var(--tt-muted)]">No supported notes found.</p>}
               <ul className="tocktutor-tree m-0 list-none p-0" role="tree">
                 <TreeEntries entries={visibleTreeEntries} onSelect={props.onSelect} path={snapshot.path} />
@@ -1421,7 +1427,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
                 ))}
               </article>
             ) : (
-              <p role="alert">{reading?.reason ?? 'Reading view is unavailable.'}</p>
+              <Alert unstyled>{reading?.reason ?? 'Reading view is unavailable.'}</Alert>
             )}
           </div>
           <footer aria-label="TockTutor Status Bar" className="tocktutor-statusbar flex min-w-0 items-center border-t border-[var(--tt-border)] px-2 text-xs text-[var(--tt-muted)]">
@@ -1491,11 +1497,11 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
           </section>
           <section aria-label="Shared Review Panel" className="tocktutor-review border-t border-[var(--tt-border)] p-3">
             <header><h2 className="m-0 text-sm">Reviews</h2></header>
-            <div className="tocktutor-review-content min-h-0 overflow-auto text-xs text-[var(--tt-muted)]">{props.reviewPanel ?? <p role="status">No review workflow is active.</p>}</div>
+            <div className="tocktutor-review-content min-h-0 overflow-auto text-xs text-[var(--tt-muted)]">{props.reviewPanel ?? <Alert unstyled role="status">No review workflow is active.</Alert>}</div>
           </section>
           <section aria-label="Native Actions" className="tocktutor-native-actions border-t border-[var(--tt-border)] p-3">
             <header><h2 className="m-0 text-sm">Native Actions</h2></header>
-            <div className="tocktutor-native-actions-content min-h-0 overflow-auto text-xs text-[var(--tt-muted)]">{props.nativeActions ?? <p role="status">No native actions are available.</p>}</div>
+            <div className="tocktutor-native-actions-content min-h-0 overflow-auto text-xs text-[var(--tt-muted)]">{props.nativeActions ?? <Alert unstyled role="status">No native actions are available.</Alert>}</div>
           </section>
         </aside>
       </div>
@@ -1532,7 +1538,7 @@ function TockTutorReviewPanelOutlet(props: {
     activePath: props.activePath,
     vault: props.vault,
   }, {
-    fallback: <p role="status">No review workflow is active.</p>,
+    fallback: <Alert unstyled role="status">No review workflow is active.</Alert>,
   })
 }
 
@@ -1547,7 +1553,7 @@ function TockTutorNativeActionsOutlet(props: {
     handleDispatch: props.handleDispatch,
     vault: props.vault,
   }, {
-    fallback: <p role="status">No native actions are available.</p>,
+    fallback: <Alert unstyled role="status">No native actions are available.</Alert>,
   })
 }
 

@@ -1,4 +1,6 @@
-import { Button, Input } from '@tockteam/ui'
+import { Alert } from '@tockteam/ui/alert'
+import { Button } from '@tockteam/ui/button'
+import { Input } from '@tockteam/ui/input'
 import {
   useEffect,
   useRef,
@@ -156,7 +158,7 @@ function SideMenu(props: SideToolsPanelProps): JSX.Element {
           onClick={() => { void open(descriptor) }}
         />
       ))}
-      {error !== '' && <div className="tockteam-side-error mx-3 my-2 rounded-[7px] bg-[color-mix(in_srgb,#cf222e_10%,transparent)] px-[9px] py-[7px] text-[11px] text-[#cf222e]" role="alert">{error}</div>}
+      {error !== '' && <Alert unstyled className="tockteam-side-error mx-3 my-2 rounded-[7px] bg-[color-mix(in_srgb,#cf222e_10%,transparent)] px-[9px] py-[7px] text-[11px] text-[#cf222e]">{error}</Alert>}
     </div>
   )
 }
@@ -276,7 +278,7 @@ export function BrowserView({
         />
         <Button unstyled type="submit">{t('browser.go')}</Button>
       </form>
-      {error !== '' && <div className="tockteam-browser-error mx-3 my-2 rounded-[7px] bg-[color-mix(in_srgb,#cf222e_10%,transparent)] px-[9px] py-[7px] text-[11px] text-[#cf222e]" role="alert">{error}</div>}
+      {error !== '' && <Alert unstyled className="tockteam-browser-error mx-3 my-2 rounded-[7px] bg-[color-mix(in_srgb,#cf222e_10%,transparent)] px-[9px] py-[7px] text-[11px] text-[#cf222e]">{error}</Alert>}
       <div ref={container} className="tockteam-browser-host min-h-0 flex-1" />
     </div>
   )
@@ -362,7 +364,7 @@ export function FilesView({
         ><RefreshCw aria-hidden="true" /></Button>
       </div>
       {loading && <div className="tockteam-side-muted p-[18px] text-[11px] text-[var(--dsw-alias-label-tertiary,#8c959f)]">{t('files.loading')}</div>}
-      {error !== '' && <div className="tockteam-side-error mx-3 my-2 rounded-[7px] bg-[color-mix(in_srgb,#cf222e_10%,transparent)] px-[9px] py-[7px] text-[11px] text-[#cf222e]" role="alert">{error}</div>}
+      {error !== '' && <Alert unstyled className="tockteam-side-error mx-3 my-2 rounded-[7px] bg-[color-mix(in_srgb,#cf222e_10%,transparent)] px-[9px] py-[7px] text-[11px] text-[#cf222e]">{error}</Alert>}
       {snapshot?.kind === 'directory' && (
         <div className="tockteam-file-list min-h-0 flex-1 overflow-auto px-[9px] pt-1.5 pb-5">
           {snapshot.entries.map(entry => (
@@ -434,7 +436,7 @@ export function FileView({
   if (cwd === undefined || path === undefined) {
     return <div className="tockteam-side-empty p-[18px] text-[11px] text-[var(--dsw-alias-label-tertiary,#8c959f)]">{t('files.select-workspace')}</div>
   }
-  if (error !== '') return <div className="tockteam-side-error mx-3 my-2 rounded-[7px] bg-[color-mix(in_srgb,#cf222e_10%,transparent)] px-[9px] py-[7px] text-[11px] text-[#cf222e]" role="alert">{error}</div>
+  if (error !== '') return <Alert unstyled className="tockteam-side-error mx-3 my-2 rounded-[7px] bg-[color-mix(in_srgb,#cf222e_10%,transparent)] px-[9px] py-[7px] text-[11px] text-[#cf222e]">{error}</Alert>
   if (snapshot === null) return <div className="tockteam-side-muted p-[18px] text-[11px] text-[var(--dsw-alias-label-tertiary,#8c959f)]">{t('files.loading')}</div>
   if (snapshot.kind !== 'file') {
     return <div className="tockteam-side-muted p-[18px] text-[11px] text-[var(--dsw-alias-label-tertiary,#8c959f)]">{t('files.not-file')}</div>

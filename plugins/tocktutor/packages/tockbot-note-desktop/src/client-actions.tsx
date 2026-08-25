@@ -1,4 +1,5 @@
-import { Alert, Button } from '@tockteam/ui'
+import { Alert } from '@tockteam/ui/alert'
+import { Button } from '@tockteam/ui/button'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import type { RemoteResult } from '@deepseek-ai/dsh-typert-protocol'
 import type {

@@ -1,4 +1,10 @@
-import { Button, Input, NativeSelect, NativeSelectOption, Textarea } from '@tockteam/ui'
+import { Alert } from '@tockteam/ui/alert'
+import { Button } from '@tockteam/ui/button'
+import { Input } from '@tockteam/ui/input'
+import { Label } from '@tockteam/ui/label'
+import { NativeSelect, NativeSelectOption } from '@tockteam/ui/native-select'
+import { Switch } from '@tockteam/ui/switch'
+import { Textarea } from '@tockteam/ui/textarea'
 import {
   useCallback,
   useEffect,
@@ -962,7 +968,7 @@ function WorkspacePanel({
         ? <div className="tockteam-workspace-empty m-auto max-w-[220px] p-[18px] text-center text-xs leading-normal text-[var(--dsw-alias-label-dimmed,#8c959f)]">{t('workspace.select')}</div>
         : (
           <div className="tockteam-workspace-content min-h-0 flex-1 overflow-auto px-4 pt-2 pb-6 [&>section]:border-b [&>section]:border-[var(--dsw-alias-border-l1,rgb(0_0_0_/_8%))] [&>section]:py-2">
-            {error !== '' && <div className="tockteam-workspace-error mt-1 mb-2 rounded-[7px] bg-[color-mix(in_srgb,#cf222e_10%,transparent)] px-2.5 py-2 text-[10px] leading-[1.45] text-[#cf222e] [overflow-wrap:anywhere]" role="alert">{error}</div>}
+            {error !== '' && <Alert unstyled className="tockteam-workspace-error mt-1 mb-2 rounded-[7px] bg-[color-mix(in_srgb,#cf222e_10%,transparent)] px-2.5 py-2 text-[10px] leading-[1.45] text-[#cf222e] [overflow-wrap:anywhere]">{error}</Alert>}
             <section>
               <div className="tockteam-workspace-section-title grid min-h-[38px] grid-cols-[26px_minmax(0,1fr)_auto] items-center gap-2 px-1.5 text-[13px] [&_strong]:font-[550]">
                 <span className="tockteam-workspace-section-icon grid place-items-center text-[var(--dsw-alias-label-secondary,#57606a)] [&_svg]:size-4"><FileDiff aria-hidden="true" /></span>
@@ -1160,14 +1166,14 @@ function WorkspacePanel({
             )}
 
             <section className="tockteam-workspace-facts grid gap-px">
-              <label className="tockteam-workspace-fact grid min-h-[38px] grid-cols-[26px_minmax(0,1fr)_auto] items-center gap-2 px-1.5 text-[13px] [&_select]:w-full [&_select]:min-w-0 [&_select]:cursor-pointer [&_select]:appearance-none [&_select]:border-0 [&_select]:bg-transparent [&_select]:p-0 [&_select]:text-inherit [&_select]:outline-0 [&_select]:[font:inherit]">
+              <Label unstyled className="tockteam-workspace-fact grid min-h-[38px] grid-cols-[26px_minmax(0,1fr)_auto] items-center gap-2 px-1.5 text-[13px] [&_select]:w-full [&_select]:min-w-0 [&_select]:cursor-pointer [&_select]:appearance-none [&_select]:border-0 [&_select]:bg-transparent [&_select]:p-0 [&_select]:text-inherit [&_select]:outline-0 [&_select]:[font:inherit]">
                 <span className="tockteam-workspace-fact-icon grid place-items-center text-[var(--dsw-alias-label-secondary,#57606a)] [&_svg]:size-4"><Monitor aria-hidden="true" /></span>
                 <NativeSelect unstyled aria-label={t('workspace.execution-environment')} value="local" onChange={() => {}}>
                   <NativeSelectOption value="local">{t('workspace.local')}</NativeSelectOption>
                 </NativeSelect>
                 <span className="tockteam-workspace-chevron text-[var(--dsw-alias-label-dimmed,#8c959f)] [&_svg]:block [&_svg]:size-3.5"><ChevronDown aria-hidden="true" /></span>
-              </label>
-              <label className="tockteam-workspace-fact grid min-h-[38px] grid-cols-[26px_minmax(0,1fr)_auto] items-center gap-2 px-1.5 text-[13px] [&_select]:w-full [&_select]:min-w-0 [&_select]:cursor-pointer [&_select]:appearance-none [&_select]:border-0 [&_select]:bg-transparent [&_select]:p-0 [&_select]:text-inherit [&_select]:outline-0 [&_select]:[font:inherit]">
+              </Label>
+              <Label unstyled className="tockteam-workspace-fact grid min-h-[38px] grid-cols-[26px_minmax(0,1fr)_auto] items-center gap-2 px-1.5 text-[13px] [&_select]:w-full [&_select]:min-w-0 [&_select]:cursor-pointer [&_select]:appearance-none [&_select]:border-0 [&_select]:bg-transparent [&_select]:p-0 [&_select]:text-inherit [&_select]:outline-0 [&_select]:[font:inherit]">
                 <span className="tockteam-workspace-fact-icon grid place-items-center text-[var(--dsw-alias-label-secondary,#57606a)] [&_svg]:size-4"><GitBranch aria-hidden="true" /></span>
                 <NativeSelect unstyled
                   value={snapshot?.branch ?? ''}
@@ -1178,7 +1184,7 @@ function WorkspacePanel({
                   {(snapshot?.branches ?? []).map(branch => <NativeSelectOption key={branch} value={branch}>{branch}</NativeSelectOption>)}
                 </NativeSelect>
                 <span className="tockteam-workspace-chevron text-[var(--dsw-alias-label-dimmed,#8c959f)] [&_svg]:block [&_svg]:size-3.5"><ChevronDown aria-hidden="true" /></span>
-              </label>
+              </Label>
               {snapshot?.kind === 'repository' && (
                 <div className="tockteam-new-branch flex gap-1.5 pt-[3px] pr-1.5 pb-[5px] pl-10 [&_input]:h-7 [&_input]:min-w-0 [&_input]:flex-1 [&_input]:rounded-md [&_input]:border [&_input]:border-[var(--dsw-alias-border-l2,rgb(0_0_0_/_13%))] [&_input]:bg-[var(--dsw-alias-bg-layer-1,#fff)] [&_input]:px-[7px] [&_input]:text-[11px] [&_input]:text-inherit [&_button]:cursor-pointer [&_button]:rounded-md [&_button]:border [&_button]:border-[var(--dsw-alias-border-l2,rgb(0_0_0_/_13%))] [&_button]:bg-transparent [&_button]:px-[9px] [&_button]:py-1 [&_button]:text-[11px] [&_button]:leading-tight [&_button]:text-inherit [&_button:disabled]:cursor-default [&_button:disabled]:opacity-45">
                   <Input unstyled
@@ -1583,7 +1589,7 @@ function SidebarSettingsRow({
     void runtime.update({ [key]: enabled })
   }
   return (
-    <div className="tockteam-sidebar-settings grid w-full gap-[18px] px-0 pt-1 pb-3 text-[var(--dsw-alias-label-primary,#1f2328)] [&_.tockteam-sidebar-settings-heading]:flex [&_.tockteam-sidebar-settings-heading]:items-center [&_.tockteam-sidebar-settings-heading]:justify-between [&_.tockteam-sidebar-settings-heading]:gap-5 [&_.tockteam-sidebar-settings-heading>div]:grid [&_.tockteam-sidebar-settings-heading>div]:gap-1 [&_.tockteam-sidebar-settings-heading>button]:cursor-pointer [&_.tockteam-sidebar-settings-heading>button]:rounded-lg [&_.tockteam-sidebar-settings-heading>button]:border [&_.tockteam-sidebar-settings-heading>button]:border-[var(--dsw-alias-border-l1,rgb(0_0_0_/_9%))] [&_.tockteam-sidebar-settings-heading>button]:bg-transparent [&_.tockteam-sidebar-settings-heading>button]:px-2.5 [&_.tockteam-sidebar-settings-heading>button]:py-1.5 [&_.tockteam-sidebar-settings-row]:flex [&_.tockteam-sidebar-settings-row]:items-center [&_.tockteam-sidebar-settings-row]:justify-between [&_.tockteam-sidebar-settings-row]:gap-5 [&_.tockteam-sidebar-settings-row>span]:grid [&_.tockteam-sidebar-settings-row>span]:gap-1 [&_.tockteam-sidebar-settings-size]:flex [&_.tockteam-sidebar-settings-size]:items-center [&_.tockteam-sidebar-settings-size]:justify-between [&_.tockteam-sidebar-settings-size]:gap-5 max-[760px]:[&_.tockteam-sidebar-settings-size]:flex-col max-[760px]:[&_.tockteam-sidebar-settings-size]:items-start [&_.tockteam-sidebar-settings-size>span]:grid [&_.tockteam-sidebar-settings-size>span]:gap-1 [&_strong]:text-[13px] [&_p]:m-0 [&_p]:text-[11px] [&_p]:leading-[1.45] [&_p]:text-[var(--dsw-alias-label-secondary,#656d76)] [&_small]:m-0 [&_small]:text-[11px] [&_small]:leading-[1.45] [&_small]:text-[var(--dsw-alias-label-secondary,#656d76)] [&>section]:grid [&>section]:gap-2 [&>section>h4]:m-0 [&>section>h4]:text-xs [&_input[type='range']]:w-[min(210px,40%)] [&_input[type='range']]:accent-[var(--dsw-alias-interactive-primary,#4f7de8)] max-[760px]:[&_input[type='range']]:w-full [&_input[type='checkbox']]:relative [&_input[type='checkbox']]:m-0 [&_input[type='checkbox']]:h-[18px] [&_input[type='checkbox']]:w-8 [&_input[type='checkbox']]:flex-none [&_input[type='checkbox']]:cursor-pointer [&_input[type='checkbox']]:appearance-none [&_input[type='checkbox']]:rounded-full [&_input[type='checkbox']]:border [&_input[type='checkbox']]:border-[var(--dsw-alias-border-l1,rgb(0_0_0_/_14%))] [&_input[type='checkbox']]:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_8%))] [&_input[type='checkbox']]:transition-colors [&_input[type='checkbox']]:duration-140 [&_input[type='checkbox']]:after:absolute [&_input[type='checkbox']]:after:top-0.5 [&_input[type='checkbox']]:after:left-0.5 [&_input[type='checkbox']]:after:size-3 [&_input[type='checkbox']]:after:rounded-full [&_input[type='checkbox']]:after:bg-[var(--dsw-alias-bg-base,#fff)] [&_input[type='checkbox']]:after:shadow-[0_1px_3px_rgb(0_0_0_/_20%)] [&_input[type='checkbox']]:after:transition-transform [&_input[type='checkbox']]:after:duration-140 [&_input[type='checkbox']]:after:content-[''] [&_input[type='checkbox']:checked]:border-transparent [&_input[type='checkbox']:checked]:bg-[var(--dsw-alias-interactive-primary,#4f7de8)] [&_input[type='checkbox']:checked]:after:translate-x-3.5">
+    <div className="tockteam-sidebar-settings grid w-full gap-[18px] px-0 pt-1 pb-3 text-[var(--dsw-alias-label-primary,#1f2328)] [&_.tockteam-sidebar-settings-heading]:flex [&_.tockteam-sidebar-settings-heading]:items-center [&_.tockteam-sidebar-settings-heading]:justify-between [&_.tockteam-sidebar-settings-heading]:gap-5 [&_.tockteam-sidebar-settings-heading>div]:grid [&_.tockteam-sidebar-settings-heading>div]:gap-1 [&_.tockteam-sidebar-settings-heading>button]:cursor-pointer [&_.tockteam-sidebar-settings-heading>button]:rounded-lg [&_.tockteam-sidebar-settings-heading>button]:border [&_.tockteam-sidebar-settings-heading>button]:border-[var(--dsw-alias-border-l1,rgb(0_0_0_/_9%))] [&_.tockteam-sidebar-settings-heading>button]:bg-transparent [&_.tockteam-sidebar-settings-heading>button]:px-2.5 [&_.tockteam-sidebar-settings-heading>button]:py-1.5 [&_.tockteam-sidebar-settings-row]:flex [&_.tockteam-sidebar-settings-row]:items-center [&_.tockteam-sidebar-settings-row]:justify-between [&_.tockteam-sidebar-settings-row]:gap-5 [&_.tockteam-sidebar-settings-row>span]:grid [&_.tockteam-sidebar-settings-row>span]:gap-1 [&_.tockteam-sidebar-settings-size]:flex [&_.tockteam-sidebar-settings-size]:items-center [&_.tockteam-sidebar-settings-size]:justify-between [&_.tockteam-sidebar-settings-size]:gap-5 max-[760px]:[&_.tockteam-sidebar-settings-size]:flex-col max-[760px]:[&_.tockteam-sidebar-settings-size]:items-start [&_.tockteam-sidebar-settings-size>span]:grid [&_.tockteam-sidebar-settings-size>span]:gap-1 [&_strong]:text-[13px] [&_p]:m-0 [&_p]:text-[11px] [&_p]:leading-[1.45] [&_p]:text-[var(--dsw-alias-label-secondary,#656d76)] [&_small]:m-0 [&_small]:text-[11px] [&_small]:leading-[1.45] [&_small]:text-[var(--dsw-alias-label-secondary,#656d76)] [&>section]:grid [&>section]:gap-2 [&>section>h4]:m-0 [&>section>h4]:text-xs [&_input[type='range']]:w-[min(210px,40%)] [&_input[type='range']]:accent-[var(--dsw-alias-interactive-primary,#4f7de8)] max-[760px]:[&_input[type='range']]:w-full">
       <div className="tockteam-sidebar-settings-heading">
         <div>
           <strong>{t('settings.title')}</strong>
@@ -1591,18 +1597,17 @@ function SidebarSettingsRow({
         </div>
         <Button unstyled type="button" onClick={reset}>{t('settings.reset')}</Button>
       </div>
-      <label className="tockteam-sidebar-settings-row">
+      <Label unstyled className="tockteam-sidebar-settings-row">
         <span>
           <strong>{t('settings.open-by-default')}</strong>
           <small>{t('settings.open-by-default-description')}</small>
         </span>
-        <Input unstyled
-          type="checkbox"
+        <Switch
           checked={state.openByDefault}
-          onChange={event => { setOpenByDefault(event.currentTarget.checked) }}
+          onCheckedChange={setOpenByDefault}
         />
-      </label>
-      <label className="tockteam-sidebar-settings-size">
+      </Label>
+      <Label unstyled className="tockteam-sidebar-settings-size">
         <span>
           <strong>{t('settings.width')}</strong>
           <small>{t('settings.width-value', { width: state.width })}</small>
@@ -1615,78 +1620,74 @@ function SidebarSettingsRow({
           value={state.width}
           onChange={event => { setWidth(Number(event.currentTarget.value)) }}
         />
-      </label>
+      </Label>
       <section>
         <h4>{t('settings.runtime')}</h4>
         <p>{t('settings.runtime-description')}</p>
-        <label className="tockteam-sidebar-settings-row">
+        <Label unstyled className="tockteam-sidebar-settings-row">
           <span>
             <strong>{t('settings.agent-terminal-tools')}</strong>
             <small>{t('settings.agent-terminal-tools-description')}</small>
           </span>
-          <Input unstyled
-            type="checkbox"
+          <Switch
             checked={runtimeState.preferences.agentTerminalTools}
             disabled={runtimeState.busy}
-            onChange={event => {
-              updateRuntime('agentTerminalTools', event.currentTarget.checked)
+            onCheckedChange={enabled => {
+              updateRuntime('agentTerminalTools', enabled)
             }}
           />
-        </label>
-        <label className="tockteam-sidebar-settings-row">
+        </Label>
+        <Label unstyled className="tockteam-sidebar-settings-row">
           <span>
             <strong>{t('settings.bottom-terminal')}</strong>
             <small>{t('settings.bottom-terminal-description')}</small>
           </span>
-          <Input unstyled
-            type="checkbox"
+          <Switch
             checked={runtimeState.preferences.bottomPanelAutoTerminal}
             disabled={runtimeState.busy}
-            onChange={event => {
+            onCheckedChange={enabled => {
               updateRuntime(
                 'bottomPanelAutoTerminal',
-                event.currentTarget.checked,
+                enabled,
               )
             }}
           />
-        </label>
-        <label className="tockteam-sidebar-settings-row">
+        </Label>
+        <Label unstyled className="tockteam-sidebar-settings-row">
           <span>
             <strong>{t('settings.open-files')}</strong>
             <small>{t('settings.open-files-description')}</small>
           </span>
-          <Input unstyled
-            type="checkbox"
+          <Switch
             checked={runtimeState.preferences.interceptOpenPath}
             disabled={runtimeState.busy}
-            onChange={event => {
-              updateRuntime('interceptOpenPath', event.currentTarget.checked)
+            onCheckedChange={enabled => {
+              updateRuntime('interceptOpenPath', enabled)
             }}
           />
-        </label>
-        <label className="tockteam-sidebar-settings-row">
+        </Label>
+        <Label unstyled className="tockteam-sidebar-settings-row">
           <span>
             <strong>{t('settings.open-links')}</strong>
             <small>{t('settings.open-links-description')}</small>
           </span>
-          <Input unstyled
-            type="checkbox"
+          <Switch
             checked={runtimeState.preferences.browserInterceptLinks}
             disabled={runtimeState.busy}
-            onChange={event => {
+            onCheckedChange={enabled => {
               updateRuntime(
                 'browserInterceptLinks',
-                event.currentTarget.checked,
+                enabled,
               )
             }}
           />
-        </label>
+        </Label>
         {runtimeState.error !== null && (
-          <p className="tockteam-sidebar-settings-error text-[#cf222e]!" role="alert">
+          <Alert unstyled className="tockteam-sidebar-settings-error text-[#cf222e]!">
             {t(runtimeState.error === 'load'
               ? 'settings.runtime-load-failed'
               : 'settings.runtime-save-failed')}
-          </p>
+          </Alert>
         )}
       </section>
       <section>
@@ -1694,16 +1695,15 @@ function SidebarSettingsRow({
         <p>{t('settings.tools-description')}</p>
         <div className="tockteam-sidebar-settings-list grid grid-cols-2 gap-1.5 max-[760px]:grid-cols-1 [&_label]:flex [&_label]:min-h-9 [&_label]:items-center [&_label]:justify-between [&_label]:gap-2.5 [&_label]:rounded-[9px] [&_label]:border [&_label]:border-[var(--dsw-alias-border-l1,rgb(0_0_0_/_8%))] [&_label]:bg-[var(--dsw-alias-bg-base,transparent)] [&_label]:px-2.5 [&_label]:text-xs">
           {tabs.map(descriptor => (
-            <label key={descriptor.id}>
+            <Label unstyled key={descriptor.id}>
               <span>{sidebarLabel(descriptor.title)}</span>
-              <Input unstyled
-                type="checkbox"
+              <Switch
                 checked={state.tabsEnabled[descriptor.id] !== false}
-                onChange={event => {
-                  setTabEnabled(descriptor.id, event.currentTarget.checked)
+                onCheckedChange={enabled => {
+                  setTabEnabled(descriptor.id, enabled)
                 }}
               />
-            </label>
+            </Label>
           ))}
         </div>
       </section>
@@ -1712,16 +1712,15 @@ function SidebarSettingsRow({
         <p>{t('settings.viewers-description')}</p>
         <div className="tockteam-sidebar-settings-list grid grid-cols-2 gap-1.5 max-[760px]:grid-cols-1 [&_label]:flex [&_label]:min-h-9 [&_label]:items-center [&_label]:justify-between [&_label]:gap-2.5 [&_label]:rounded-[9px] [&_label]:border [&_label]:border-[var(--dsw-alias-border-l1,rgb(0_0_0_/_8%))] [&_label]:bg-[var(--dsw-alias-bg-base,transparent)] [&_label]:px-2.5 [&_label]:text-xs">
           {viewers.map(descriptor => (
-            <label key={descriptor.id}>
+            <Label unstyled key={descriptor.id}>
               <span>{sidebarLabel(descriptor.title)}</span>
-              <Input unstyled
-                type="checkbox"
+              <Switch
                 checked={state.viewersEnabled[descriptor.id] !== false}
-                onChange={event => {
-                  setViewerEnabled(descriptor.id, event.currentTarget.checked)
+                onCheckedChange={enabled => {
+                  setViewerEnabled(descriptor.id, enabled)
                 }}
               />
-            </label>
+            </Label>
           ))}
         </div>
       </section>

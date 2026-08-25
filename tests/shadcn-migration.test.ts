@@ -24,8 +24,8 @@ function read(path: string): string {
 test('browser React controls use the shared shadcn source components', () => {
   for (const path of migratedReactFiles) {
     const source = read(path)
-    assert.doesNotMatch(source, /<(?:button|dialog|input|option|select|textarea)\b/, path)
-    assert.match(source, /from '@tockteam\/ui'/, path)
+    assert.doesNotMatch(source, /<(?:button|dialog|input|label|option|select|textarea)\b/, path)
+    assert.match(source, /from '@tockteam\/ui\//, path)
   }
 })
 
@@ -34,11 +34,14 @@ test('shared controls retain native semantics for parity migrations', () => {
   assert.match(read('plugins/ui/src/badge.tsx'), /data-slot="badge"/)
   assert.match(read('plugins/ui/src/button.tsx'), /data-slot="button"/)
   assert.match(read('plugins/ui/src/card.tsx'), /data-slot="card"/)
+  assert.match(read('plugins/ui/src/checkbox.tsx'), /data-slot="checkbox"/)
   assert.match(read('plugins/ui/src/dialog.tsx'), /data-slot="dialog-content"/)
   assert.match(read('plugins/ui/src/empty.tsx'), /data-slot="empty"/)
   assert.match(read('plugins/ui/src/input.tsx'), /data-slot="input"/)
+  assert.match(read('plugins/ui/src/label.tsx'), /data-slot="label"/)
   assert.match(read('plugins/ui/src/textarea.tsx'), /data-slot="textarea"/)
   assert.match(read('plugins/ui/src/native-select.tsx'), /data-slot="native-select"/)
   assert.match(read('plugins/ui/src/skeleton.tsx'), /data-slot="skeleton"/)
   assert.match(read('plugins/ui/src/spinner.tsx'), /data-slot="spinner"/)
+  assert.match(read('plugins/ui/src/switch.tsx'), /data-slot="switch"/)
 })

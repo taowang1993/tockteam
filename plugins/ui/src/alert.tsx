@@ -19,16 +19,20 @@ type AlertProps = React.ComponentProps<'div'> & VariantProps<typeof alertVariant
   unstyled?: boolean
 }
 
-function Alert({ className, variant = 'default', unstyled = false, ...props }: AlertProps): JSX.Element {
+const Alert = React.forwardRef<HTMLDivElement, AlertProps>(function Alert(
+  { className, variant = 'default', unstyled = false, ...props },
+  ref,
+): JSX.Element {
   return (
     <div
       data-slot="alert"
       role="alert"
       className={unstyled ? className : cn(alertVariants({ variant, className }))}
+      ref={ref}
       {...props}
     />
   )
-}
+})
 
 function AlertTitle({ className, ...props }: React.ComponentProps<'div'>): JSX.Element {
   return <div data-slot="alert-title" className={cn('col-start-2 font-medium', className)} {...props} />

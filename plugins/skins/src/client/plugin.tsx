@@ -1,4 +1,4 @@
-import { Button } from '@tockteam/ui'
+import { Button } from '@tockteam/ui/button'
 import { defineStore } from '@deepseek-ai/dsh-client-runtime/client'
 import { Check } from 'lucide-react'
 import type { LocaleService, Translate } from '../../../shared/i18n.ts'

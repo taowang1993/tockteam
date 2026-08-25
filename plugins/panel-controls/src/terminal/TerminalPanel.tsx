@@ -1,4 +1,7 @@
-import { Button, Input, NativeSelectOption } from '@tockteam/ui'
+import { Button } from '@tockteam/ui/button'
+import { Input } from '@tockteam/ui/input'
+import { Label } from '@tockteam/ui/label'
+import { NativeSelectOption } from '@tockteam/ui/native-select'
 import {
   useEffect,
   useState,
@@ -180,7 +183,7 @@ export function TerminalPanel({ locale, t: translate, store, scopeKey, cwd, acti
             <strong>{t('terminal.font')}</strong>
             <Button unstyled className="cursor-pointer border-0 bg-transparent px-[5px] py-0.5 font-[inherit] text-base text-muted-foreground [&_svg]:size-[15px]" type="button" onClick={() => { setSettingsOpen(false) }} aria-label={t('terminal.close-settings')}><X aria-hidden="true" /></Button>
           </div>
-          <label className="grid grid-cols-[78px_minmax(0,1fr)] items-center gap-2.5 text-muted-foreground">
+          <Label unstyled className="grid grid-cols-[78px_minmax(0,1fr)] items-center gap-2.5 text-muted-foreground">
             <span>{t('terminal.font-family')}</span>
             <Input unstyled
               className="h-7 min-w-0 box-border rounded-md border border-border bg-surface px-2 font-[inherit] text-foreground"
@@ -201,8 +204,8 @@ export function TerminalPanel({ locale, t: translate, store, scopeKey, cwd, acti
               <NativeSelectOption value="'Maple Mono', ui-monospace, monospace" />
               <NativeSelectOption value="'Fira Code', ui-monospace, monospace" />
             </datalist>
-          </label>
-          <label className="grid grid-cols-[78px_minmax(0,1fr)] items-center gap-2.5 text-muted-foreground">
+          </Label>
+          <Label unstyled className="grid grid-cols-[78px_minmax(0,1fr)] items-center gap-2.5 text-muted-foreground">
             <span>{t('terminal.font-size')}</span>
             <Input unstyled
               className="h-7 min-w-0 box-border rounded-md border border-border bg-surface px-2 font-[inherit] text-foreground"
@@ -212,7 +215,7 @@ export function TerminalPanel({ locale, t: translate, store, scopeKey, cwd, acti
               value={state.fontSize}
               onChange={event => { store.dispatch({ type: 'set-font-size', fontSize: event.currentTarget.valueAsNumber }) }}
             />
-          </label>
+          </Label>
           <div className="flex items-center justify-between gap-2.5 text-[var(--dsw-alias-label-dimmed,#8c959f)]">
             <span>{MIN_TERMINAL_FONT_SIZE}–{MAX_TERMINAL_FONT_SIZE}px</span>
             <Button unstyled className="cursor-pointer rounded-md border border-border bg-transparent px-[9px] py-1 font-[inherit] text-foreground" type="button" onClick={() => { store.dispatch({ type: 'reset-font' }) }}>{t('terminal.reset')}</Button>

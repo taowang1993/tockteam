@@ -1,4 +1,9 @@
-import { Alert, Button, Card, NativeSelect, NativeSelectOption, Spinner } from '@tockteam/ui'
+import { Alert } from '@tockteam/ui/alert'
+import { Button } from '@tockteam/ui/button'
+import { Card } from '@tockteam/ui/card'
+import { Label } from '@tockteam/ui/label'
+import { NativeSelect, NativeSelectOption } from '@tockteam/ui/native-select'
+import { Spinner } from '@tockteam/ui/spinner'
 import {
   useEffect,
   useMemo,
@@ -377,7 +382,7 @@ export function ImportExportReviewPanelView(props: {
       <p>Craft exports use the reviewed Markdown Folder or Markdown ZIP path; no Craft-specific parser changes your files.</p>
       {(snapshot.phase === 'idle' || snapshot.phase === 'complete' || (snapshot.phase === 'error' && preview === null)) && (
         <div className="tocktutor-import-export-start flex flex-wrap gap-2">
-          <label className="grid flex-[1_1_220px] gap-1 text-xs">
+          <Label unstyled className="grid flex-[1_1_220px] gap-1 text-xs">
             Import Format
             <NativeSelect unstyled
               onChange={event => { props.onFormat(event.currentTarget.value as ImportInspectFormat) }}
@@ -385,7 +390,7 @@ export function ImportExportReviewPanelView(props: {
             >
               {FORMAT_LABELS.map(([format, label]) => <NativeSelectOption key={format} value={format}>{label}</NativeSelectOption>)}
             </NativeSelect>
-          </label>
+          </Label>
           <Button unstyled onClick={props.onStart} type="button">Inspect Import</Button>
           <Button unstyled onClick={props.onStartBackup} type="button">Create Vault Backup</Button>
         </div>
@@ -414,7 +419,7 @@ export function ImportExportReviewPanelView(props: {
         </div>
       )}
       {snapshot.phase === 'complete' && snapshot.result !== null && (
-        <div aria-live="polite" className="tocktutor-import-export-result" role="status">
+        <Alert unstyled aria-live="polite" className="tocktutor-import-export-result" role="status">
           <h3>Operation Result</h3>
           {'committed' in snapshot.result ? (
             <>
@@ -431,7 +436,7 @@ export function ImportExportReviewPanelView(props: {
               {'residualLabels' in snapshot.result.cleanup && <p>{String(snapshot.result.cleanup.residualLabels.length)} bounded recovery labels require review.</p>}
             </>
           )}
-        </div>
+        </Alert>
       )}
       {snapshot.phase === 'error' && (
         <div className="tocktutor-import-export-actions flex flex-wrap gap-2">

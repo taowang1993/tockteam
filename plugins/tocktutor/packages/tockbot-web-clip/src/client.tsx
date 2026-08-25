@@ -1,4 +1,9 @@
-import { Alert, Button, Card, Input, NativeSelect, NativeSelectOption } from '@tockteam/ui'
+import { Alert } from '@tockteam/ui/alert'
+import { Button } from '@tockteam/ui/button'
+import { Card } from '@tockteam/ui/card'
+import { Input } from '@tockteam/ui/input'
+import { Label } from '@tockteam/ui/label'
+import { NativeSelect, NativeSelectOption } from '@tockteam/ui/native-select'
 import {
   useCallback,
   useEffect,
@@ -446,26 +451,26 @@ function WebViewer(): ReactNode {
           }}
         >
           <div aria-label="Reader Settings">
-            <label>Text Size <NativeSelect unstyled
+            <Label unstyled>Text Size <NativeSelect unstyled
               onChange={event => { setReaderPreference('textSize', event.currentTarget.value as ReaderPreferences['textSize']) }}
               value={viewer.readerPreferences.textSize}
-            ><NativeSelectOption value="sm">Small</NativeSelectOption><NativeSelectOption value="md">Medium</NativeSelectOption><NativeSelectOption value="lg">Large</NativeSelectOption></NativeSelect></label>
-            <label>Line Width <NativeSelect unstyled
+            ><NativeSelectOption value="sm">Small</NativeSelectOption><NativeSelectOption value="md">Medium</NativeSelectOption><NativeSelectOption value="lg">Large</NativeSelectOption></NativeSelect></Label>
+            <Label unstyled>Line Width <NativeSelect unstyled
               onChange={event => { setReaderPreference('width', event.currentTarget.value as ReaderPreferences['width']) }}
               value={viewer.readerPreferences.width}
-            ><NativeSelectOption value="narrow">Narrow</NativeSelectOption><NativeSelectOption value="md">Medium</NativeSelectOption><NativeSelectOption value="wide">Wide</NativeSelectOption></NativeSelect></label>
-            <label>Line Spacing <NativeSelect unstyled
+            ><NativeSelectOption value="narrow">Narrow</NativeSelectOption><NativeSelectOption value="md">Medium</NativeSelectOption><NativeSelectOption value="wide">Wide</NativeSelectOption></NativeSelect></Label>
+            <Label unstyled>Line Spacing <NativeSelect unstyled
               onChange={event => { setReaderPreference('spacing', event.currentTarget.value as ReaderPreferences['spacing']) }}
               value={viewer.readerPreferences.spacing}
-            ><NativeSelectOption value="compact">Compact</NativeSelectOption><NativeSelectOption value="md">Default</NativeSelectOption><NativeSelectOption value="relaxed">Relaxed</NativeSelectOption></NativeSelect></label>
-            <label>Appearance <NativeSelect unstyled
+            ><NativeSelectOption value="compact">Compact</NativeSelectOption><NativeSelectOption value="md">Default</NativeSelectOption><NativeSelectOption value="relaxed">Relaxed</NativeSelectOption></NativeSelect></Label>
+            <Label unstyled>Appearance <NativeSelect unstyled
               onChange={event => { setReaderPreference('appearance', event.currentTarget.value as ReaderPreferences['appearance']) }}
               value={viewer.readerPreferences.appearance}
-            ><NativeSelectOption value="system">System</NativeSelectOption><NativeSelectOption value="light">Light</NativeSelectOption><NativeSelectOption value="dark">Dark</NativeSelectOption></NativeSelect></label>
+            ><NativeSelectOption value="system">System</NativeSelectOption><NativeSelectOption value="light">Light</NativeSelectOption><NativeSelectOption value="dark">Dark</NativeSelectOption></NativeSelect></Label>
           </div>
           <h2>{reader.title}</h2>
           <section aria-label="Clip Web Page">
-            <label>
+            <Label unstyled>
               Clip Destination
               <Input unstyled
                 disabled={clipLoading || clipPreview !== null}
@@ -473,7 +478,7 @@ function WebViewer(): ReactNode {
                 placeholder="example.md"
                 value={clipDestination}
               />
-            </label>
+            </Label>
             <Button unstyled
               disabled={clipLoading || clipPreview !== null}
               onClick={createClipPreview}
@@ -488,9 +493,9 @@ function WebViewer(): ReactNode {
                 <Button unstyled disabled={clipLoading} onClick={invalidateClip} type="button">Cancel</Button>
               </Card>
             )}
-            {clipSavedPath && <p role="status">Saved clip to {clipSavedPath}.</p>}
+            {clipSavedPath && <Alert unstyled role="status">Saved clip to {clipSavedPath}.</Alert>}
           </section>
-          {reader.warnings.map(warning => <p key={warning} role="status">{warning}</p>)}
+          {reader.warnings.map(warning => <Alert unstyled key={warning} role="status">{warning}</Alert>)}
           <pre className="whitespace-pre-wrap font-[inherit]">{reader.content}</pre>
         </article>
       )}

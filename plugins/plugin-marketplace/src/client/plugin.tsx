@@ -1,17 +1,13 @@
-import {
-  Alert,
-  Badge,
-  Button,
-  Card,
-  Empty,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyTitle,
-  Input,
-  NativeSelect,
-  NativeSelectOption,
-  Spinner,
-} from '@tockteam/ui'
+import { Alert } from '@tockteam/ui/alert'
+import { Badge } from '@tockteam/ui/badge'
+import { Button } from '@tockteam/ui/button'
+import { Card } from '@tockteam/ui/card'
+import { Checkbox } from '@tockteam/ui/checkbox'
+import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@tockteam/ui/empty'
+import { Input } from '@tockteam/ui/input'
+import { Label } from '@tockteam/ui/label'
+import { NativeSelect, NativeSelectOption } from '@tockteam/ui/native-select'
+import { Spinner } from '@tockteam/ui/spinner'
 import {
   useCallback,
   useEffect,
@@ -564,14 +560,13 @@ function PluginDetail({
               <code>{Object.entries(plan.buildScripts).map(([name, script]) => `${name}: ${script}`).join('\n')}</code>
             )}
             {plan.requirements.map(requirement => (
-              <label className="my-3 flex items-start gap-2 text-[10px] leading-[1.45] text-[#7d5412] [&_input]:mt-0.5 [&_input]:flex-none [&_input]:accent-[#315fae]" key={requirement}>
-                  <Input unstyled
+              <Label unstyled className="my-3 flex items-start gap-2 text-[10px] leading-[1.45] text-[#7d5412] [&_[data-slot=checkbox]]:mt-0.5 [&_[data-slot=checkbox]]:flex-none" key={requirement}>
+                  <Checkbox
                     checked={confirmations.includes(requirement)}
-                    onChange={event => { setConfirmed(requirement, event.target.checked) }}
-                    type="checkbox"
+                    onCheckedChange={checked => { setConfirmed(requirement, checked === true) }}
                   />
                   <span>{confirmationLabel(requirement, t)}</span>
-              </label>
+              </Label>
             ))}
             <p className="mt-3 mb-0 border-t border-[rgba(53,85,147,0.14)] pt-2.5 text-[9px] leading-normal text-subtle-foreground">{t('recovery-note')}</p>
           </Card>
