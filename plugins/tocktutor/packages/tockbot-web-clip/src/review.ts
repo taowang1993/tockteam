@@ -177,7 +177,7 @@ export function buildClipMarkdown(input: {
     '',
     `# ${title}`,
     '',
-    `Source: [Source](${sourceUrl})`,
+    `Source: [Source](<${sourceUrl}>)`,
     '',
     content,
     '',

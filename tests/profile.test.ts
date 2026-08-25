@@ -19,6 +19,10 @@ test('desktop profile pins the released TockTutor runtime and peer package', () 
     new URL('../plugins/tocktutor/pnpm-workspace.yaml', import.meta.url),
     'utf8',
   )
+  const workspacePackage = JSON.parse(readFileSync(
+    new URL('../plugins/tocktutor/package.json', import.meta.url),
+    'utf8',
+  )) as { scripts: Record<string, string> }
   const bundle = JSON.parse(readFileSync(new URL('../plugins/tocktutor/packages/tockteam-tocktutor/package.json', import.meta.url), 'utf8')) as {
     dependencies: Record<string, string>
     peerDependencies: Record<string, string>
@@ -60,6 +64,9 @@ test('desktop profile pins the released TockTutor runtime and peer package', () 
     packageJson.scripts['install:tocktutor'],
     'node scripts/install-tocktutor.mjs',
   )
+  for (const name of ['build', 'test', 'typecheck']) {
+    assert.match(workspacePackage.scripts[name] ?? '', /--filter='!@tockteam\/tocktutor-workspace'/u)
+  }
   assert.deepEqual(
     new Set([...pluginWorkspace.matchAll(/dsh-source\/([0-9a-f]{12})\//gu)].map(match => match[1])),
     new Set([sourcePin.revision.slice(0, 12)]),
@@ -85,6 +92,7 @@ test('desktop profile pins the released TockTutor runtime and peer package', () 
   assert.equal(runtime.peerDependencies['tockbot-note-vault'], '0.6.0')
   assert.equal(vault.version, '0.6.0')
   assert.equal(tools.version, '0.1.2')
+  assert.equal(tools.peerDependencies['@deepseek-ai/dsh-tools'], '0.1.0-rc.5')
   assert.equal(tools.peerDependencies['tockbot-note-runtime'], '0.1.2')
   assert.equal(workbench.version, '0.1.7')
   assert.equal(workbench.peerDependencies['@tockteam/desktop'], '>=0.1.6 <0.2.0')

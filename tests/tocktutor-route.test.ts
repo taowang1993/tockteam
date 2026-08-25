@@ -57,7 +57,12 @@ test('TockTutor route synchronizes the trusted native frame without widening IPC
 
   assert.match(preload, /ipcRenderer\.invoke\('desktop:set-tocktutor-active', active\)/u)
   assert.match(main, /ipcMain\.handle\('desktop:set-tocktutor-active',[\s\S]+assertTrustedMainIpc\(event\)[\s\S]+typeof raw !== 'boolean'/u)
-  assert.match(main, /setBackgroundColor\(raw[\s\S]+\? '#ffffff'/u)
+  assert.match(main, /function setTockTutorThemeActive\(active: boolean\)[\s\S]+setBackgroundColor\(active[\s\S]+\? '#ffffff'/u)
+  assert.match(main, /if \(mainWindow === window\)[\s\S]+resetTockTutorTheme\(window\)[\s\S]+mainWindow = undefined/u)
+  assert.match(main, /did-start-navigation[\s\S]+if \(isMainFrame\)[\s\S]+resetTockTutorTheme\(window\)/u)
+  assert.match(main, /render-process-gone[\s\S]+resetTockTutorTheme\(window\)/u)
+  assert.match(main, /function flushQueuedOpenRequests\(\)[\s\S]+flushQueuedPaths\(\)[\s\S]+flushQueuedProtocols\(\)/u)
+  assert.match(main, /mainWindow\.loadURL\(runtimeUrl\.href\)\.then\(flushQueuedOpenRequests\)/u)
   assert.match(sidebar, /setTockTutorActive\(active\)/u)
   assert.match(sidebar, /setTockTutorActive\(false\)/u)
 })

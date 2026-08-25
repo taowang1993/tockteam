@@ -351,7 +351,7 @@ export function planAppleJournal(files) {
     const used = new Set();
     const output = [];
     const skipped = [];
-    for (const file of files.slice(0, 500)) {
+    for (const file of files) {
         if (!/\.html?$/iu.test(file.path))
             continue;
         const html = decode(file.bytes, 10 * 1024 * 1024);

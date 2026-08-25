@@ -36,6 +36,17 @@ test('creates a deterministic complete nested backup and independently verifies 
   ])
 })
 
+test('round-trips highly compressible backup members', () => {
+  const repetitive: BackupSnapshotEntry[] = [{
+    bytes: encode('x'.repeat(1024 * 1024)),
+    kind: 'document',
+    path: 'Repetitive.md',
+    revision: 'rev-repetitive',
+  }]
+  const archive = createBackupArchive({ createdAt: 1_000, entries: repetitive, vault })
+  assert.deepEqual(verifyBackupArchive(archive).entries, repetitive)
+})
+
 test('rejects missing, extra, duplicate, changed, malformed, and incompatible members', () => {
   const archive = createBackupArchive({ createdAt: 1_000, entries, vault })
   const parsed = parseZip(archive, BACKUP_ARCHIVE_LIMITS, { allowNestedArchives: true })

@@ -98,10 +98,10 @@ function WebViewer(): ReactNode {
   const clipRequest = useRef<AbortController | null>(null)
   const clipPreviewRef = useRef<ClipPreview | null>(null)
   const clipApplyingRef = useRef(false)
-  const activeId = useRef('tab-1')
   const navigateRef = useRef<(url: string, tabId?: string) => void>(() => {})
   const [viewer, setViewer] = useState(storedViewerState)
   const viewerRef = useRef(viewer)
+  const activeId = useRef(viewer.activeId)
   const [readerGuard] = useState(() => new ViewerResultGuard(crypto.randomUUID()))
   const [draft, setDraft] = useState(() => viewer.tabs.find(tab => tab.id === viewer.activeId)?.url ?? '')
   const [error, setError] = useState('')
@@ -113,10 +113,12 @@ function WebViewer(): ReactNode {
   const [clipLoading, setClipLoading] = useState(false)
   const [clipApplying, setClipApplying] = useState(false)
   const [clipSavedPath, setClipSavedPath] = useState('')
-  clipPreviewRef.current = clipPreview
-  activeId.current = viewer.activeId
-  viewerRef.current = viewer
   const active = viewer.tabs.find(tab => tab.id === viewer.activeId)
+  const applyViewer = useCallback((next: ViewerState): void => {
+    viewerRef.current = next
+    activeId.current = next.activeId
+    setViewer(next)
+  }, [])
 
   const navigate = useCallback((raw: string, tabId = activeId.current): void => {
     if (clipApplyingRef.current) return
@@ -155,11 +157,7 @@ function WebViewer(): ReactNode {
       if (controller.signal.aborted) return
       await element.loadURL(documentUrl)
       if (controller.signal.aborted) return
-      setViewer(current => {
-        const next = navigateViewerTab(current, tabId, page)
-        viewerRef.current = next
-        return next
-      })
+      applyViewer(navigateViewerTab(viewerRef.current, tabId, page))
       if (activeId.current === tabId) setDraft(page.url)
     }).catch(nextError => {
       if (!controller.signal.aborted) {
@@ -171,8 +169,11 @@ function WebViewer(): ReactNode {
         setLoading(false)
       }
     })
-  }, [bridge, readerGuard])
-  navigateRef.current = navigate
+  }, [applyViewer, bridge, readerGuard])
+
+  useEffect(() => {
+    navigateRef.current = navigate
+  }, [navigate])
 
   useEffect(() => {
     const container = host.current
@@ -191,7 +192,7 @@ function WebViewer(): ReactNode {
         setError('The isolated page frame failed to start.')
       }
     }
-    element.addEventListener('dom-ready', ready)
+    element.addEventListener('dom-ready', ready, { once: true })
     container.append(element)
     webview.current = element
     return () => {
@@ -241,8 +242,7 @@ function WebViewer(): ReactNode {
   const activate = (tab: ViewerTab): void => {
     if (clipApplyingRef.current) return
     const next = selectViewerTab(viewer, tab.id)
-    viewerRef.current = next
-    setViewer(next)
+    applyViewer(next)
     setDraft(tab.url ?? '')
     request.current?.abort()
     invalidateReader()
@@ -251,8 +251,7 @@ function WebViewer(): ReactNode {
   const close = (id: string): void => {
     if (clipApplyingRef.current) return
     const next = closeViewerTab(viewer, id)
-    viewerRef.current = next
-    setViewer(next)
+    applyViewer(next)
     const nextActive = next.tabs.find(tab => tab.id === next.activeId)
     setDraft(nextActive?.url ?? '')
     request.current?.abort()
@@ -351,13 +350,10 @@ function WebViewer(): ReactNode {
     })
   }
   const setReaderPreference = <K extends keyof ReaderPreferences>(key: K, value: ReaderPreferences[K]): void => {
-    setViewer(current => {
-      const next = {
-        ...current,
-        readerPreferences: { ...current.readerPreferences, [key]: value },
-      }
-      viewerRef.current = next
-      return next
+    const current = viewerRef.current
+    applyViewer({
+      ...current,
+      readerPreferences: { ...current.readerPreferences, [key]: value },
     })
   }
 
@@ -381,13 +377,13 @@ function WebViewer(): ReactNode {
             <button
               aria-label={`Move ${tab.title} Left`}
               disabled={index === 0}
-              onClick={() => { setViewer(current => moveViewerTab(current, tab.id, index - 1)) }}
+              onClick={() => { applyViewer(moveViewerTab(viewerRef.current, tab.id, index - 1)) }}
               type="button"
             ><ArrowLeft aria-hidden="true" size={16} /></button>
             <button
               aria-label={`Move ${tab.title} Right`}
               disabled={index === viewer.tabs.length - 1}
-              onClick={() => { setViewer(current => moveViewerTab(current, tab.id, index + 1)) }}
+              onClick={() => { applyViewer(moveViewerTab(viewerRef.current, tab.id, index + 1)) }}
               type="button"
             ><ArrowRight aria-hidden="true" size={16} /></button>
           </span>
@@ -398,11 +394,7 @@ function WebViewer(): ReactNode {
             if (clipApplyingRef.current) return
             request.current?.abort()
             invalidateReader()
-            setViewer(current => {
-              const next = addViewerTab(current)
-              viewerRef.current = next
-              return next
-            })
+            applyViewer(addViewerTab(viewerRef.current))
             setDraft('')
           }}
           type="button"
@@ -423,7 +415,7 @@ function WebViewer(): ReactNode {
         <button disabled={loading || clipApplying} type="submit">{loading ? 'Loading…' : 'Go'}</button>
         <button
           disabled={!active?.url}
-          onClick={() => { setViewer(current => addViewerBookmark(current)) }}
+          onClick={() => { applyViewer(addViewerBookmark(viewerRef.current)) }}
           type="button"
         >Bookmark</button>
         <button
@@ -440,7 +432,7 @@ function WebViewer(): ReactNode {
               <button disabled={clipApplying} onClick={() => { navigate(bookmark.url) }} type="button">{bookmark.title}</button>
               <button
                 aria-label={`Remove ${bookmark.title}`}
-                onClick={() => { setViewer(current => removeViewerBookmark(current, bookmark.id)) }}
+                onClick={() => { applyViewer(removeViewerBookmark(viewerRef.current, bookmark.id)) }}
                 type="button"
               ><X aria-hidden="true" size={16} /></button>
             </span>

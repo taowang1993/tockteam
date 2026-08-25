@@ -83,6 +83,7 @@ export declare class WorkbenchRouteController {
     openSearch(query: string): void;
     private settlePendingDispatch;
     private dispatchCurrent;
+    private invalidateDispatch;
     subscribe: (listener: () => void) => (() => void);
     private update;
     private pane;
@@ -99,7 +100,7 @@ export declare class WorkbenchRouteController {
     addPane(): Promise<boolean>;
     focusPane(id: string, pathOverride?: string): Promise<boolean>;
     activateTab(paneId: string, path: string): Promise<boolean>;
-    select(path: string, navigate?: boolean): Promise<boolean>;
+    select(path: string, navigate?: boolean, dispatchRevision?: number): Promise<boolean>;
     edit(source: string): void;
     setMode(mode: RouteEditorMode): void;
     toggleTask(index: number): void;

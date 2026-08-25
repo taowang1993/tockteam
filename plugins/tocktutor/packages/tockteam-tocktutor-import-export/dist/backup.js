@@ -90,7 +90,7 @@ export function createBackupArchive(input) {
             bytes: byPath.get(entry.path).bytes,
             path: `backup/files/${entry.path}`,
         })),
-    ]);
+    ], BACKUP_ARCHIVE_LIMITS.maxCompressionRatio);
 }
 function parseManifest(bytes) {
     if (bytes.byteLength > MAX_MANIFEST_BYTES)
@@ -185,9 +185,6 @@ export function verifyBackupArchive(bytes, signal) {
             path: declared.path,
             revision: declared.revision,
         });
-    }
-    if ([...members.keys()].some(path => !manifest.entries.some(entry => `backup/files/${entry.path}` === path))) {
-        invalidManifest();
     }
     return {
         entries,

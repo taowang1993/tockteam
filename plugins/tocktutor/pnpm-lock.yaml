@@ -162,6 +162,9 @@ importers:
       '@deepseek-ai/cordis':
         specifier: link:../../../../.cache/dsh-source/47f943859bef/vendor/cordis
         version: link:../../../../.cache/dsh-source/47f943859bef/vendor/cordis
+      '@deepseek-ai/dsh-tools':
+        specifier: link:../../../../.cache/dsh-source/47f943859bef/packages/core/tools
+        version: link:../../../../.cache/dsh-source/47f943859bef/packages/core/tools
     devDependencies:
       '@types/node':
         specifier: 22.20.0

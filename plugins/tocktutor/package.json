@@ -3,8 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "pnpm -r --if-present run build",
-    "test": "pnpm -r --if-present run test",
-    "typecheck": "pnpm -r --if-present run typecheck"
+    "build": "pnpm -r --filter='!@tockteam/tocktutor-workspace' --if-present run build",
+    "test": "pnpm -r --filter='!@tockteam/tocktutor-workspace' --if-present run test",
+    "typecheck": "pnpm -r --filter='!@tockteam/tocktutor-workspace' --if-present run typecheck"
   }
 }

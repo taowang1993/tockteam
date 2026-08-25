@@ -59,7 +59,13 @@ test('builds a bounded source-attributed Markdown preview and safe default desti
     sourceUrl: 'https://example.com/article',
     title: 'Example Article',
   }))
-  assert.match(value.markdown, /^---\nsource: https:\/\/example\.com\/article\ncaptured: 2026-01-02T03:04:05\.000Z\nkind: web-clip\n---\n\n# Example Article\n\nSource: \[Source\]\(https:\/\/example\.com\/article\)\n\nReadable body\.\n$/u)
+  assert.match(value.markdown, /^---\nsource: https:\/\/example\.com\/article\ncaptured: 2026-01-02T03:04:05\.000Z\nkind: web-clip\n---\n\n# Example Article\n\nSource: \[Source\]\(<https:\/\/example\.com\/article>\)\n\nReadable body\.\n$/u)
+  assert.match(buildClipMarkdown({
+    capturedAt: new Date('2026-01-02T03:04:05.000Z'),
+    content: 'Readable body.',
+    sourceUrl: 'https://example.com/a_(b)',
+    title: 'Parenthesized URL',
+  }), /\[Source\]\(<https:\/\/example\.com\/a_\(b\)>\)/u)
   assert.equal(value.expiresAt, 1_700_000_060_000)
 })
 

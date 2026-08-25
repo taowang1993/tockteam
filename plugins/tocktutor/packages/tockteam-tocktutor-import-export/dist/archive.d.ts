@@ -22,5 +22,5 @@ export declare function parseZip(input: Uint8Array, limits: ArchiveLimits, optio
     allowNestedArchives?: boolean;
     signal?: AbortSignal;
 }): ArchiveEntry[];
-export declare function createDeterministicZip(entries: CreateArchiveEntry[]): Uint8Array;
+export declare function createDeterministicZip(entries: CreateArchiveEntry[], maxCompressionRatio?: number): Uint8Array;
 //# sourceMappingURL=archive.d.ts.map

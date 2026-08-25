@@ -304,8 +304,13 @@ function centralHeader(
   return Buffer.concat([header, name])
 }
 
-export function createDeterministicZip(entries: CreateArchiveEntry[]): Uint8Array {
-  if (!Array.isArray(entries) || entries.length === 0 || entries.length > 65_535) return invalidArchive()
+export function createDeterministicZip(
+  entries: CreateArchiveEntry[],
+  maxCompressionRatio = Number.POSITIVE_INFINITY,
+): Uint8Array {
+  if (!Array.isArray(entries) || entries.length === 0 || entries.length > 65_535
+    || (maxCompressionRatio !== Number.POSITIVE_INFINITY
+      && (!Number.isFinite(maxCompressionRatio) || maxCompressionRatio < 1))) return invalidArchive()
   const aliases = new Set<string>()
   const normalized = entries.map(entry => {
     if (!(entry.bytes instanceof Uint8Array)) return invalidArchive()
@@ -321,10 +326,12 @@ export function createDeterministicZip(entries: CreateArchiveEntry[]): Uint8Arra
     const bytes = Buffer.from(entry.bytes.buffer, entry.bytes.byteOffset, entry.bytes.byteLength)
     if (bytes.byteLength > 0xffffffff) limitExceeded()
     const deflated = deflateRawSync(bytes, { level: 9 })
+    const useDeflate = deflated.byteLength < bytes.byteLength
+      && bytes.byteLength / Math.max(1, deflated.byteLength) <= maxCompressionRatio
     return {
       bytes: Buffer.from(bytes),
-      compressed: deflated.byteLength < bytes.byteLength ? deflated : Buffer.from(bytes),
-      method: deflated.byteLength < bytes.byteLength ? 8 : 0,
+      compressed: useDeflate ? deflated : Buffer.from(bytes),
+      method: useDeflate ? 8 : 0,
       name: Buffer.from(path, 'utf8'),
       path,
     }

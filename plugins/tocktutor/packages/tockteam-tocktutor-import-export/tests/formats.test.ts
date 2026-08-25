@@ -69,6 +69,15 @@ test('converts Apple Journal HTML while making ignored media visible', () => {
   assert.deepEqual(result.skipped, [{ label: 'Day One.html media', reason: 'unsupported-media' }])
 })
 
+test('does not silently drop Apple Journal entries after the first 500', () => {
+  const files = Array.from({ length: 501 }, (_, index) => (
+    file(`Journal ${String(index).padStart(3, '0')}.html`, '<p class="p2">Entry</p>')
+  ))
+  const result = planAppleJournal(files)
+  assert.equal(result.files.length, files.length)
+  assert.equal(result.sourceEntries, files.length)
+})
+
 test('converts Roam pages and rejects excessive block depth', () => {
   const source = [{ title: 'Project', children: [{ string: '{{[[TODO]]}} Ship #[[Now]]', children: [{ string: 'Nested' }] }] }]
   const result = planRoam(encode(JSON.stringify(source)))

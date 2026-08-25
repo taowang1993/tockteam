@@ -365,7 +365,7 @@ export function planAppleJournal(files: InspectedSourceFile[]): PlannedSourceRes
   const used = new Set<string>()
   const output: PlannedFile[] = []
   const skipped: SkippedEntry[] = []
-  for (const file of files.slice(0, 500)) {
+  for (const file of files) {
     if (!/\.html?$/iu.test(file.path)) continue
     const html = decode(file.bytes, 10 * 1024 * 1024)
     const date = classText(html, 'pageHeader')[0]

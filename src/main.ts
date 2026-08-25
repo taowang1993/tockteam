@@ -55,6 +55,7 @@ import {
 } from './web-clip-frame.ts'
 import { DshRuntimeSupervisor, runDshCommand, type DshRuntimeOptions, type RuntimeExit } from './runtime.ts'
 import { DesktopDispatchChannel } from './desktop-dispatch-channel.ts'
+import { isTockTutorProtocol } from './desktop-native-policy.ts'
 import { scrubDesktopAuthorityEnvironment } from './desktop-runtime-environment.ts'
 import { DesktopMicrophoneChannel } from './desktop-microphone-channel.ts'
 import { DesktopPopOutChannel } from './desktop-popout-channel.ts'
@@ -656,6 +657,28 @@ function configureWebClipGuest(embedder: WebContents, contents: WebContents): vo
   })
 }
 
+function setTockTutorThemeActive(active: boolean): void {
+  if (active) {
+    tockTutorPreviousThemeSource ??= nativeTheme.themeSource
+    nativeTheme.themeSource = 'light'
+  } else if (tockTutorPreviousThemeSource !== undefined) {
+    nativeTheme.themeSource = tockTutorPreviousThemeSource
+    tockTutorPreviousThemeSource = undefined
+  }
+  mainWindow?.setBackgroundColor(active
+    ? '#ffffff'
+    : nativeTheme.shouldUseDarkColors ? '#202020' : '#f7f7f5')
+}
+
+function resetTockTutorTheme(window: BrowserWindow): void {
+  if (tockTutorPreviousThemeSource === undefined) return
+  nativeTheme.themeSource = tockTutorPreviousThemeSource
+  tockTutorPreviousThemeSource = undefined
+  if (!window.isDestroyed()) {
+    window.setBackgroundColor(nativeTheme.shouldUseDarkColors ? '#202020' : '#f7f7f5')
+  }
+}
+
 function windowIconPath(): string | undefined {
   // Packaged builds carry the icon beside resources/; dev falls back to the
   // rendered set so the window shows the app icon instead of Electron's.
@@ -702,6 +725,7 @@ function createWindow(options: { preview?: boolean; title?: string } = {}): Brow
   window.on('closed', () => {
     if (mainWindow === window) {
       desktopCallerAuthorizations.revokeWindow(String(window.webContents.id))
+      resetTockTutorTheme(window)
       mainWindow = undefined
     }
     if (previewWindow === window) {
@@ -763,10 +787,14 @@ function createWindow(options: { preview?: boolean; title?: string } = {}): Brow
     })
   })
   window.webContents.on('did-start-navigation', (_event, _url, _inPlace, isMainFrame) => {
-    if (isMainFrame) desktopCallerAuthorizations.revokeWindow(String(window.webContents.id))
+    if (isMainFrame) {
+      desktopCallerAuthorizations.revokeWindow(String(window.webContents.id))
+      if (mainWindow === window) resetTockTutorTheme(window)
+    }
   })
   window.webContents.on('render-process-gone', () => {
     desktopCallerAuthorizations.revokeWindow(String(window.webContents.id))
+    if (mainWindow === window) resetTockTutorTheme(window)
   })
   window.webContents.on('will-navigate', (event, url) => {
     const allowedOrigin = options.preview === true ? previewOrigin : runtimeOrigin
@@ -833,6 +861,11 @@ function flushQueuedPaths(): void {
   if (paths.length > 0) sendCommand({ type: 'open-paths', paths })
 }
 
+function flushQueuedOpenRequests(): void {
+  flushQueuedPaths()
+  flushQueuedProtocols()
+}
+
 function handleRuntimeExit(exit: RuntimeExit): void {
   appendLog('desktop', `DSH runtime exited: code=${String(exit.code)} signal=${String(exit.signal)}`)
   if (quitting || transitioning) return
@@ -875,8 +908,7 @@ async function startRuntime(): Promise<void> {
     runtimeOrigin = url.origin
     if (mainWindow === undefined || mainWindow.isDestroyed()) mainWindow = createWindow()
     await mainWindow.loadURL(url.href)
-    flushQueuedPaths()
-    flushQueuedProtocols()
+    flushQueuedOpenRequests()
   } catch (error) {
     await desktopPrintExportChannel.stop()
     await desktopPopOutChannel.stop()
@@ -1267,16 +1299,7 @@ function installIpc(): void {
   ipcMain.handle('desktop:set-tocktutor-active', (event, raw: unknown) => {
     assertTrustedMainIpc(event)
     if (typeof raw !== 'boolean') throw new Error('TockTutor window state must be a boolean')
-    if (raw) {
-      tockTutorPreviousThemeSource ??= nativeTheme.themeSource
-      nativeTheme.themeSource = 'light'
-    } else {
-      nativeTheme.themeSource = tockTutorPreviousThemeSource ?? 'system'
-      tockTutorPreviousThemeSource = undefined
-    }
-    mainWindow?.setBackgroundColor(raw
-      ? '#ffffff'
-      : nativeTheme.shouldUseDarkColors ? '#202020' : '#f7f7f5')
+    setTockTutorThemeActive(raw)
   })
   ipcMain.handle('desktop:tocktutor-authorize', (event, raw: unknown) => {
     assertTrustedMainIpc(event)
@@ -1411,20 +1434,20 @@ async function bootstrap(): Promise<void> {
   }
   app.on('second-instance', (_event, argv) => {
     const arguments_ = argv.slice(1).filter(argument => !argument.startsWith('-'))
-    queuedProtocolUrls.push(...arguments_.filter(argument => argument.startsWith('tocktutor:')))
-    queuedPaths.push(...arguments_.filter(argument => !argument.startsWith('tocktutor:')))
+    queuedProtocolUrls.push(...arguments_.filter(isTockTutorProtocol))
+    queuedPaths.push(...arguments_.filter(argument => !isTockTutorProtocol(argument)))
     if (mainWindow === undefined || mainWindow.isDestroyed()) {
       mainWindow = createWindow()
-      if (runtimeUrl !== undefined) void mainWindow.loadURL(runtimeUrl.href).then(flushQueuedPaths)
+      if (runtimeUrl !== undefined) void mainWindow.loadURL(runtimeUrl.href).then(flushQueuedOpenRequests)
     } else {
       mainWindow.show()
       mainWindow.focus()
-      flushQueuedPaths()
+      flushQueuedOpenRequests()
     }
   })
   app.on('open-url', (event, url) => {
     event.preventDefault()
-    if (url.startsWith('tocktutor:')) queuedProtocolUrls.push(url)
+    if (isTockTutorProtocol(url)) queuedProtocolUrls.push(url)
     if (app.isReady() && runtimeUrl !== undefined) flushQueuedProtocols()
   })
   app.on('open-file', (event, path) => {
@@ -1488,8 +1511,8 @@ async function bootstrap(): Promise<void> {
   await showSplash()
   const initialArguments = process.argv.slice(app.isPackaged ? 1 : 2)
     .filter(argument => !argument.startsWith('-'))
-  queuedProtocolUrls.push(...initialArguments.filter(argument => argument.startsWith('tocktutor:')))
-  queuedPaths.push(...initialArguments.filter(argument => !argument.startsWith('tocktutor:')))
+  queuedProtocolUrls.push(...initialArguments.filter(isTockTutorProtocol))
+  queuedPaths.push(...initialArguments.filter(argument => !isTockTutorProtocol(argument)))
   await restartRuntime()
 
   app.on('activate', () => {
@@ -1498,7 +1521,7 @@ async function bootstrap(): Promise<void> {
       return
     }
     mainWindow = createWindow()
-    if (runtimeUrl !== undefined) void mainWindow.loadURL(runtimeUrl.href).then(flushQueuedPaths)
+    if (runtimeUrl !== undefined) void mainWindow.loadURL(runtimeUrl.href).then(flushQueuedOpenRequests)
     else void showSplash({ error: true, message: 'TockTeam 未运行，请从“DSH”菜单重新启动。' })
   })
   app.on('window-all-closed', () => {

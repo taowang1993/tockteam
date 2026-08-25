@@ -149,7 +149,7 @@ export class WorkbenchRouteController {
             : event.action === 'daily' ? { action: 'daily' } : undefined;
         if (request === undefined)
             return 'failed';
-        if (request.action === 'choose-vault' || request.paneType === 'window')
+        if (request.action === 'choose-vault' || request.vault !== undefined || request.paneType === 'window')
             return 'failed';
         if (request.action === 'search') {
             if (request.query !== undefined && request.query.length > 1_000)
@@ -166,7 +166,7 @@ export class WorkbenchRouteController {
                 this.navigate(ROUTE_PREFIX);
                 return 'handled';
             }
-            const opened = await this.select(request.file);
+            const opened = await this.select(request.file, true, revision);
             if (!this.dispatchCurrent(revision, vault))
                 return 'stale';
             return opened ? 'handled' : 'failed';
@@ -180,7 +180,7 @@ export class WorkbenchRouteController {
                     return 'failed';
                 if (request.silent === true)
                     return 'handled';
-                const opened = await this.select(path);
+                const opened = await this.select(path, true, revision);
                 if (!this.dispatchCurrent(revision, vault))
                     return 'stale';
                 return opened ? 'handled' : 'failed';
@@ -188,7 +188,7 @@ export class WorkbenchRouteController {
             return await this.createDispatchedDocument(path, request.content ?? `---\njournal-date: ${day}\n---\n# ${day}\n`, request.silent === true, revision, vault);
         }
         if (request.action === 'unique') {
-            return await this.createDispatchedDocument(`${minuteStamp(this.now())}.md`, request.content ?? '', request.silent === true, revision, vault);
+            return await this.createDispatchedDocument(`${minuteStamp(this.now())}-${crypto.randomUUID()}.md`, request.content ?? '', request.silent === true, revision, vault);
         }
         if (request.action !== 'new')
             return 'failed';
@@ -297,6 +297,10 @@ export class WorkbenchRouteController {
     dispatchCurrent(revision, vault) {
         return !this.disposed && revision === this.dispatchRevision && sameVault(this.snapshot.vault, vault);
     }
+    invalidateDispatch() {
+        this.dispatchRevision += 1;
+        this.settlePendingDispatch('stale');
+    }
     subscribe = (listener) => {
         this.listeners.add(listener);
         return () => { this.listeners.delete(listener); };
@@ -345,6 +349,7 @@ export class WorkbenchRouteController {
         }));
     }
     clearDocument() {
+        this.invalidateDispatch();
         this.nextOperation();
         this.update({
             documentKind: null,
@@ -392,8 +397,7 @@ export class WorkbenchRouteController {
         this.clearDocument();
     }
     async reload() {
-        this.dispatchRevision += 1;
-        this.settlePendingDispatch('stale');
+        this.invalidateDispatch();
         const operation = this.nextOperation();
         this.eventDispose?.();
         this.eventDispose = null;
@@ -468,7 +472,23 @@ export class WorkbenchRouteController {
         if (selected !== null
             && this.snapshot.saveStatus === 'saved'
             && (value.path === selected || ('fromPath' in value && value.fromPath === selected))) {
-            void this.select(value.path === selected ? selected : value.path, false);
+            const nextPath = value.path === selected ? selected : value.path;
+            if (supportedDocument(nextPath)) {
+                void this.select(nextPath, false);
+            }
+            else {
+                const pane = this.pane();
+                if (pane !== undefined) {
+                    this.replacePane(pane.id, current => ({
+                        ...current,
+                        activePath: null,
+                        tabs: Object.freeze(current.tabs.filter(tab => tab.path !== selected)),
+                    }));
+                }
+                this.clearDocument();
+                this.navigate(ROUTE_PREFIX, 'replace');
+                void this.refreshTree(value.vault);
+            }
         }
         else {
             void this.refreshTree(value.vault);
@@ -545,8 +565,13 @@ export class WorkbenchRouteController {
             return false;
         return this.focusPane(paneId, path);
     }
-    async select(path, navigate = true) {
-        if (!supportedDocument(path) || this.snapshot.vault === null || this.snapshot.phase !== 'ready')
+    async select(path, navigate = true, dispatchRevision) {
+        const activeVault = this.snapshot.vault;
+        if (!supportedDocument(path) || activeVault === null || this.snapshot.phase !== 'ready')
+            return false;
+        if (dispatchRevision === undefined)
+            this.invalidateDispatch();
+        else if (!this.dispatchCurrent(dispatchRevision, activeVault))
             return false;
         if (path === this.snapshot.path)
             return true;
@@ -561,7 +586,7 @@ export class WorkbenchRouteController {
                 this.navigate(routeForPath(this.snapshot.path), 'replace');
             return false;
         }
-        const vault = this.snapshot.vault;
+        const vault = activeVault;
         const operation = this.nextOperation();
         this.update({ message: `Opening ${path}.` });
         try {
@@ -601,8 +626,11 @@ export class WorkbenchRouteController {
             this.update({ message: 'The edit exceeds the bounded source limit.' });
             return;
         }
+        if (source === this.snapshot.source)
+            return;
+        this.invalidateDispatch();
         this.update({
-            message: source === this.snapshot.source ? this.snapshot.message : 'Unsaved changes.',
+            message: 'Unsaved changes.',
             saveStatus: 'unsaved',
             source,
         });

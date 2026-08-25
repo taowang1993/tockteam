@@ -57,7 +57,7 @@ export const maximumPublicFetchLimits: Readonly<PublicFetchLimits> = {
   maxResponseBytes: 10_000_000,
   maxResponseHeadersBytes: 65_536,
   maxTextChars: 2_000_000,
-  maxUrlBytes: 8_192,
+  maxUrlBytes: 4096,
   timeoutMs: 60_000,
 }
 

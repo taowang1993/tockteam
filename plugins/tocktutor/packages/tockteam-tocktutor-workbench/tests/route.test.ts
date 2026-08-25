@@ -225,6 +225,75 @@ test('dirty-gates protocol open and exclusive create dispatch', async () => {
   controller.dispose()
 })
 
+test('does not let a delayed native create steal newer same-vault navigation', async () => {
+  const remote = new FakeRemote()
+  const controller = new WorkbenchRouteController(remote, () => {})
+  await controller.syncLocation('/tocktutor')
+  const create = deferred<{ ok: true; value: WriteDocumentResult }>()
+  remote.createOverride = () => create.promise
+  const pending = controller.handleDispatch({
+    kind: 'protocol',
+    operationId: 'delayed-create',
+    request: { action: 'new', file: 'Delayed.md' },
+  })
+  assert.equal(await controller.select('Second.md'), true)
+  create.resolve({
+    ok: true,
+    value: {
+      digest: `sha256:${'e'.repeat(64)}`,
+      generation: firstVault.generation,
+      path: 'Delayed.md',
+      revision: secondRevision,
+      status: 'created',
+    },
+  })
+  assert.equal(await pending, 'stale')
+  assert.equal(controller.getSnapshot().path, 'Second.md')
+  controller.dispose()
+})
+
+test('does not let a delayed native create erase a newer edit', async () => {
+  const remote = new FakeRemote()
+  const controller = new WorkbenchRouteController(remote, () => {})
+  await controller.syncLocation('/tocktutor')
+  assert.equal(await controller.select('Folder/Note.md'), true)
+  const create = deferred<{ ok: true; value: WriteDocumentResult }>()
+  remote.createOverride = () => create.promise
+  const pending = controller.handleDispatch({
+    kind: 'protocol',
+    operationId: 'delayed-create-after-edit',
+    request: { action: 'new', file: 'Delayed.md' },
+  })
+  controller.edit('# Newer edit\n')
+  create.resolve({
+    ok: true,
+    value: {
+      digest: `sha256:${'e'.repeat(64)}`,
+      generation: firstVault.generation,
+      path: 'Delayed.md',
+      revision: secondRevision,
+      status: 'created',
+    },
+  })
+  assert.equal(await pending, 'stale')
+  assert.equal(controller.getSnapshot().path, 'Folder/Note.md')
+  assert.equal(controller.getSnapshot().source, '# Newer edit\n')
+  controller.dispose()
+})
+
+test('rejects protocol requests targeting an unverified vault name', async () => {
+  const remote = new FakeRemote()
+  const controller = new WorkbenchRouteController(remote, () => {})
+  await controller.syncLocation('/tocktutor')
+  assert.equal(await controller.handleDispatch({
+    kind: 'protocol',
+    operationId: 'foreign-vault',
+    request: { action: 'new', file: 'Wrong.md', vault: 'Other Notes' },
+  }), 'failed')
+  assert.equal(remote.calls.some(call => call.method === 'createDocument'), false)
+  controller.dispose()
+})
+
 test('dispatches approved daily and unique note defaults without inventing settings', async () => {
   const remote = new FakeRemote()
   const controller = new WorkbenchRouteController(
@@ -253,10 +322,16 @@ test('dispatches approved daily and unique note defaults without inventing setti
     operationId: 'unique',
     request: { action: 'unique' },
   }), 'handled')
-  assert.deepEqual(
-    remote.calls.filter(call => call.method === 'createDocument').at(-1)?.parameters[0],
-    { content: '', expectedVault: firstVault, path: '202608241405.md' },
-  )
+  const firstUnique = remote.calls.filter(call => call.method === 'createDocument').at(-1)?.parameters[0] as CreateDocumentRequest
+  assert.match(firstUnique.path, /^202608241405-[0-9a-f-]{36}\.md$/u)
+  assert.equal(await controller.handleDispatch({
+    kind: 'protocol',
+    operationId: 'unique-again',
+    request: { action: 'unique' },
+  }), 'handled')
+  const secondUnique = remote.calls.filter(call => call.method === 'createDocument').at(-1)?.parameters[0] as CreateDocumentRequest
+  assert.match(secondUnique.path, /^202608241405-[0-9a-f-]{36}\.md$/u)
+  assert.notEqual(secondUnique.path, firstUnique.path)
   assert.equal(await controller.handleDispatch({
     kind: 'protocol',
     operationId: 'choose',
@@ -704,6 +779,25 @@ test('a late save advances the revision without erasing newer editor input', asy
   assert.equal(controller.getSnapshot().source, '# Newer edit\n')
   assert.equal(controller.getSnapshot().saveStatus, 'unsaved')
   assert.equal(controller.getSnapshot().revision, secondRevision)
+  controller.dispose()
+})
+
+test('clears a selected note moved to an unsupported entry type', async () => {
+  const remote = new FakeRemote()
+  const navigation: string[] = []
+  const controller = new WorkbenchRouteController(remote, path => { navigation.push(path) })
+  await controller.syncLocation('/tocktutor')
+  assert.equal(await controller.select('Folder/Note.md'), true)
+  remote.emit({
+    action: 'moved',
+    fromPath: 'Folder/Note.md',
+    kind: 'entry',
+    path: 'Folder/Note.png',
+    vault: firstVault,
+  })
+  await new Promise(resolve => setImmediate(resolve))
+  assert.equal(controller.getSnapshot().path, null)
+  assert.equal(navigation.at(-1), '/tocktutor')
   controller.dispose()
 })
 

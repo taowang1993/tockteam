@@ -527,11 +527,11 @@ function WebViewer() {
   const clipRequest = (0, import_react3.useRef)(null);
   const clipPreviewRef = (0, import_react3.useRef)(null);
   const clipApplyingRef = (0, import_react3.useRef)(false);
-  const activeId = (0, import_react3.useRef)("tab-1");
   const navigateRef = (0, import_react3.useRef)(() => {
   });
   const [viewer, setViewer] = (0, import_react3.useState)(storedViewerState);
   const viewerRef = (0, import_react3.useRef)(viewer);
+  const activeId = (0, import_react3.useRef)(viewer.activeId);
   const [readerGuard] = (0, import_react3.useState)(() => new ViewerResultGuard(crypto.randomUUID()));
   const [draft, setDraft] = (0, import_react3.useState)(() => viewer.tabs.find((tab2) => tab2.id === viewer.activeId)?.url ?? "");
   const [error, setError] = (0, import_react3.useState)("");
@@ -543,10 +543,12 @@ function WebViewer() {
   const [clipLoading, setClipLoading] = (0, import_react3.useState)(false);
   const [clipApplying, setClipApplying] = (0, import_react3.useState)(false);
   const [clipSavedPath, setClipSavedPath] = (0, import_react3.useState)("");
-  clipPreviewRef.current = clipPreview;
-  activeId.current = viewer.activeId;
-  viewerRef.current = viewer;
   const active = viewer.tabs.find((tab2) => tab2.id === viewer.activeId);
+  const applyViewer = (0, import_react3.useCallback)((next) => {
+    viewerRef.current = next;
+    activeId.current = next.activeId;
+    setViewer(next);
+  }, []);
   const navigate = (0, import_react3.useCallback)((raw, tabId = activeId.current) => {
     if (clipApplyingRef.current) return;
     if (!bridge) {
@@ -584,11 +586,7 @@ function WebViewer() {
       if (controller.signal.aborted) return;
       await element.loadURL(documentUrl);
       if (controller.signal.aborted) return;
-      setViewer((current) => {
-        const next = navigateViewerTab(current, tabId, page);
-        viewerRef.current = next;
-        return next;
-      });
+      applyViewer(navigateViewerTab(viewerRef.current, tabId, page));
       if (activeId.current === tabId) setDraft(page.url);
     }).catch((nextError) => {
       if (!controller.signal.aborted) {
@@ -600,8 +598,10 @@ function WebViewer() {
         setLoading(false);
       }
     });
-  }, [bridge, readerGuard]);
-  navigateRef.current = navigate;
+  }, [applyViewer, bridge, readerGuard]);
+  (0, import_react3.useEffect)(() => {
+    navigateRef.current = navigate;
+  }, [navigate]);
   (0, import_react3.useEffect)(() => {
     const container = host.current;
     if (!container || !bridge) return;
@@ -619,7 +619,7 @@ function WebViewer() {
         setError("The isolated page frame failed to start.");
       }
     };
-    element.addEventListener("dom-ready", ready);
+    element.addEventListener("dom-ready", ready, { once: true });
     container.append(element);
     webview.current = element;
     return () => {
@@ -666,8 +666,7 @@ function WebViewer() {
   const activate = (tab2) => {
     if (clipApplyingRef.current) return;
     const next = selectViewerTab(viewer, tab2.id);
-    viewerRef.current = next;
-    setViewer(next);
+    applyViewer(next);
     setDraft(tab2.url ?? "");
     request.current?.abort();
     invalidateReader();
@@ -676,8 +675,7 @@ function WebViewer() {
   const close = (id) => {
     if (clipApplyingRef.current) return;
     const next = closeViewerTab(viewer, id);
-    viewerRef.current = next;
-    setViewer(next);
+    applyViewer(next);
     const nextActive = next.tabs.find((tab2) => tab2.id === next.activeId);
     setDraft(nextActive?.url ?? "");
     request.current?.abort();
@@ -776,13 +774,10 @@ function WebViewer() {
     });
   };
   const setReaderPreference = (key, value) => {
-    setViewer((current) => {
-      const next = {
-        ...current,
-        readerPreferences: { ...current.readerPreferences, [key]: value }
-      };
-      viewerRef.current = next;
-      return next;
+    const current = viewerRef.current;
+    applyViewer({
+      ...current,
+      readerPreferences: { ...current.readerPreferences, [key]: value }
     });
   };
   return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("section", { "aria-label": "Web Viewer", style: { display: "flex", flex: 1, flexDirection: "column", minHeight: 0 }, children: [
@@ -818,7 +813,7 @@ function WebViewer() {
             "aria-label": `Move ${tab2.title} Left`,
             disabled: index === 0,
             onClick: () => {
-              setViewer((current) => moveViewerTab(current, tab2.id, index - 1));
+              applyViewer(moveViewerTab(viewerRef.current, tab2.id, index - 1));
             },
             type: "button",
             children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ArrowLeft, { "aria-hidden": "true", size: 16 })
@@ -830,7 +825,7 @@ function WebViewer() {
             "aria-label": `Move ${tab2.title} Right`,
             disabled: index === viewer.tabs.length - 1,
             onClick: () => {
-              setViewer((current) => moveViewerTab(current, tab2.id, index + 1));
+              applyViewer(moveViewerTab(viewerRef.current, tab2.id, index + 1));
             },
             type: "button",
             children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ArrowRight, { "aria-hidden": "true", size: 16 })
@@ -845,11 +840,7 @@ function WebViewer() {
             if (clipApplyingRef.current) return;
             request.current?.abort();
             invalidateReader();
-            setViewer((current) => {
-              const next = addViewerTab(current);
-              viewerRef.current = next;
-              return next;
-            });
+            applyViewer(addViewerTab(viewerRef.current));
             setDraft("");
           },
           type: "button",
@@ -885,7 +876,7 @@ function WebViewer() {
             {
               disabled: !active?.url,
               onClick: () => {
-                setViewer((current) => addViewerBookmark(current));
+                applyViewer(addViewerBookmark(viewerRef.current));
               },
               type: "button",
               children: "Bookmark"
@@ -916,7 +907,7 @@ function WebViewer() {
           {
             "aria-label": `Remove ${bookmark.title}`,
             onClick: () => {
-              setViewer((current) => removeViewerBookmark(current, bookmark.id));
+              applyViewer(removeViewerBookmark(viewerRef.current, bookmark.id));
             },
             type: "button",
             children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(X, { "aria-hidden": "true", size: 16 })

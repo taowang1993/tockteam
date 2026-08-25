@@ -6,6 +6,7 @@ import {
   createPinnedLookup,
   fetchPublicText,
   isPublicAddress,
+  maximumPublicFetchLimits,
   normalizePublicHttpUrl,
   type PublicFetchRequest,
 } from '../src/fetch.ts'
@@ -20,6 +21,7 @@ async function rejectsCode(run: () => Promise<unknown>, code: string) {
 }
 
 test('normalizes only bounded credential-free HTTP(S) URLs', () => {
+  assert.equal(maximumPublicFetchLimits.maxUrlBytes, 4096)
   assert.equal(normalizePublicHttpUrl('HTTPS://Example.COM:443/a?b=1#part'), 'https://example.com/a?b=1')
   for (const value of [
     '',

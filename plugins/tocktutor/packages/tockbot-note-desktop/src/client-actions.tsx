@@ -260,10 +260,13 @@ const ACTIONS_CSS = `
 export function TockTutorNativeActions(props: TockTutorNativeActionsProps): ReactNode {
   const owner = useRef<TockTutorNativeActionsOwnerProps>(props)
   const lifetime = useRef<AbortController>()
-  owner.current = props
   const [busy, setBusy] = useState<string | null>(null)
   const [message, setMessage] = useState('Ready.')
   const hasNote = props.activePath !== null && props.vault !== null
+
+  useEffect(() => {
+    owner.current = props
+  }, [props])
 
   useEffect(() => {
     let active = true

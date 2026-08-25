@@ -146,10 +146,12 @@ const ACTIONS_CSS = `
 export function TockTutorNativeActions(props) {
     const owner = useRef(props);
     const lifetime = useRef();
-    owner.current = props;
     const [busy, setBusy] = useState(null);
     const [message, setMessage] = useState('Ready.');
     const hasNote = props.activePath !== null && props.vault !== null;
+    useEffect(() => {
+        owner.current = props;
+    }, [props]);
     useEffect(() => {
         let active = true;
         const controller = replaceActionController(lifetime.current, () => { setBusy(null); });

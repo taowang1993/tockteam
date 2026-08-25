@@ -1,3 +1,7 @@
+import type { TockTutorProtocolRequest } from './host-contract.ts'
+
+export type { TockTutorProtocolRequest } from './host-contract.ts'
+
 export const MAX_PROTOCOL_URI_LENGTH = 16_384
 export const MAX_PROTOCOL_VALUE_LENGTH = 4_096
 export const MAX_PROTOCOL_CALLBACK_LENGTH = 4_096
@@ -27,21 +31,6 @@ const EXPORT_DATA_ASSET_PATTERN = /^data:(?:(?:image|audio|video|font)\/|applica
 type ProtocolAction = 'open' | 'new' | 'daily' | 'unique' | 'search' | 'choose-vault'
 type PaneType = 'tab' | 'split' | 'window'
 type ExistingFilePolicy = 'prepend' | 'append' | 'overwrite'
-
-export type TockTutorProtocolRequest = {
-  action: ProtocolAction
-  vault?: string
-  file?: string
-  name?: string
-  content?: string
-  query?: string
-  clipboard?: true
-  ifExists?: ExistingFilePolicy
-  silent?: true
-  paneType?: PaneType
-  xSuccess?: string
-  xError?: string
-}
 
 export type NativeFailureStatus = 'cancelled' | 'denied' | 'stale' | 'unavailable' | 'invalid'
 
@@ -225,6 +214,10 @@ function parseCreationOptions(entries: Map<string, string>, allowPolicy: boolean
     ...(ifExists === undefined ? {} : { ifExists }),
     ...(silent === undefined ? {} : { silent }),
   }
+}
+
+export function isTockTutorProtocol(value: string): boolean {
+  return value.slice(0, PROTOCOL_SCHEME.length).toLowerCase() === PROTOCOL_SCHEME
 }
 
 export function parseTockTutorProtocol(raw: string): TockTutorProtocolRequest | null {

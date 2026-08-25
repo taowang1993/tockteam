@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { DesktopDispatchOwner } from '../src/desktop-dispatch-owner.ts'
-import { parseTockTutorProtocol } from '../src/desktop-native-policy.ts'
+import { isTockTutorProtocol, parseTockTutorProtocol } from '../src/desktop-native-policy.ts'
 
 function owner(): DesktopDispatchOwner {
   let id = 0
@@ -29,6 +29,12 @@ test('protocol parser accepts bounded TockTutor requests and rejects credentials
   assert.equal(parseTockTutorProtocol('tocktutor://new?file=Plan.md&x-success=file%3A%2F%2Funsafe'), null)
   assert.equal(parseTockTutorProtocol(`tocktutor://search?query=${'x'.repeat(4097)}`), null)
   assert.equal(parseTockTutorProtocol('https://example.com'), null)
+})
+
+test('classifies protocol arguments case-insensitively', () => {
+  assert.equal(isTockTutorProtocol('tocktutor://open?vault=Notes'), true)
+  assert.equal(isTockTutorProtocol('TockTutor://open?vault=Notes'), true)
+  assert.equal(isTockTutorProtocol('/tmp/tocktutor:notes'), false)
 })
 
 test('dispatch owner delivers typed quick actions and matches one completion', async () => {
