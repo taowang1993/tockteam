@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { TockTeamDesktopReveal } from 'tockbot-note-runtime'
 import { lstat, mkdtemp, realpath, rm, writeFile } from 'node:fs/promises'
+import { request as httpRequest } from 'node:http'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
@@ -11,6 +12,7 @@ import {
   DesktopRevealProvider,
 } from '../src/desktop-reveal-provider.ts'
 import {
+  MAX_DESKTOP_REVEAL_BODY_BYTES,
   validateDesktopRevealInput,
   type DesktopRevealInput,
 } from '../src/desktop-reveal.ts'
@@ -189,6 +191,60 @@ test('client cancellation aborts the pending native reveal', async () => {
   assert.notEqual(result.error, undefined)
   await channel.stop()
   assert.equal(effects, 0)
+})
+
+test('reveal channel bounds request bodies and shutdown during body ingestion', async () => {
+  const channel = new DesktopRevealChannel({
+    isAvailable: () => true,
+    onReveal: async value => ({ operationId: value.operationId, status: 'revealed' }),
+  })
+  const environment = await channel.start()
+  const oversized = await fetch(environment.endpoint, {
+    body: Buffer.alloc(MAX_DESKTOP_REVEAL_BODY_BYTES + 1),
+    headers: { authorization: `Bearer ${environment.token}` },
+    method: 'POST',
+  })
+  assert.equal(oversized.status, 413)
+
+  const partial = httpRequest(environment.endpoint, {
+    headers: {
+      authorization: `Bearer ${environment.token}`,
+      'content-length': '1024',
+    },
+    method: 'POST',
+  })
+  partial.on('error', () => {})
+  const connected = new Promise<void>(resolve => { partial.once('socket', () => { resolve() }) })
+  partial.write('{')
+  await connected
+  await Promise.race([
+    channel.stop(),
+    new Promise<never>((_resolve, reject) => {
+      setTimeout(() => { reject(new Error('channel stop timed out')) }, 500)
+    }),
+  ])
+  partial.destroy()
+})
+
+test('reveal channel serializes starts and terminates unexpected handler errors', async () => {
+  const channel = new DesktopRevealChannel({
+    isAvailable: () => { throw new Error('availability failed') },
+    onReveal: async value => ({ operationId: value.operationId, status: 'revealed' }),
+  })
+  const [first, second] = await Promise.allSettled([channel.start(), channel.start()])
+  assert.equal(first.status, 'fulfilled')
+  assert.equal(second.status, 'rejected')
+  if (first.status !== 'fulfilled') return
+  const response = await fetch(first.value.endpoint, {
+    body: JSON.stringify(input()),
+    headers: {
+      authorization: `Bearer ${first.value.token}`,
+      'content-type': 'application/json',
+    },
+    method: 'POST',
+  })
+  assert.equal(response.status, 500)
+  await channel.stop()
 })
 
 test('child-to-main reveal channel authenticates and consumes each operation once', async () => {
