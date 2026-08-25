@@ -37,6 +37,12 @@ test('splash Tailwind build scans only the standalone loading document', async (
   assert.doesNotMatch(css, /\.tockteam-sidebar-styles/)
 })
 
+test('owned browser components use Tailwind utilities in markup', () => {
+  const tailwind = readFileSync(join(root, 'plugins', 'skins', 'src', 'client', 'tailwind.css'), 'utf8')
+
+  assert.doesNotMatch(tailwind, /@utility tocktutor-(?:assistant|import-export|native-actions)-styles/u)
+})
+
 test('Tailwind is the only first-party browser stylesheet', () => {
   const files = [
     ...sourceFiles(join(root, 'src')),

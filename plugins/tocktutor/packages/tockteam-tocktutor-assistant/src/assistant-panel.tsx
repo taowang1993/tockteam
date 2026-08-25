@@ -433,9 +433,12 @@ export function TockTutorAssistantPanel(props: TockTutorAssistantPanelProps): Re
   }, [partial, proposalPage, transcript])
 
   return (
-    <aside aria-label="TockTutor Assistant" className="tocktutor-assistant-panel tocktutor-assistant-styles">
+    <aside
+      aria-label="TockTutor Assistant"
+      className="tocktutor-assistant-panel relative flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden bg-[var(--tta-panel)] text-inherit [--tta-accent:var(--tt-accent,#4f46e5)] [--tta-bg:var(--tt-bg,#f7f8fa)] [--tta-border:var(--tt-border,#d9dde5)] [--tta-muted:var(--tt-muted,#667085)] [--tta-panel:var(--tt-panel,#fff)] [&_*]:box-border [&_*::after]:box-border [&_*::before]:box-border [&_button:focus-visible]:outline-2 [&_button:focus-visible]:outline-offset-2 [&_button:focus-visible]:outline-[var(--tta-accent)] [&_h2]:m-0 [&_h3]:m-0 [&_input:focus-visible]:outline-2 [&_input:focus-visible]:outline-offset-2 [&_input:focus-visible]:outline-[var(--tta-accent)] [&_p]:m-0 [&_select:focus-visible]:outline-2 [&_select:focus-visible]:outline-offset-2 [&_select:focus-visible]:outline-[var(--tta-accent)] [&_textarea:focus-visible]:outline-2 [&_textarea:focus-visible]:outline-offset-2 [&_textarea:focus-visible]:outline-[var(--tta-accent)] motion-reduce:[&_*]:!scroll-auto motion-reduce:[&_*]:!duration-0 motion-reduce:[&_*::after]:!duration-0 motion-reduce:[&_*::before]:!duration-0"
+    >
       <div
-        className="tocktutor-assistant-scroll"
+        className="tocktutor-assistant-scroll flex min-h-0 flex-[1_1_auto] flex-col overflow-auto p-3.5"
         onScroll={event => {
           const scroll = event.currentTarget
           const atBottom = scroll.scrollHeight - scroll.scrollTop - scroll.clientHeight <= 48
@@ -444,16 +447,17 @@ export function TockTutorAssistantPanel(props: TockTutorAssistantPanelProps): Re
         }}
         ref={scrollRef}
       >
-        <section aria-label="Live Assistant Output" aria-live="polite" className="tocktutor-assistant-transcript">
+        <section aria-label="Live Assistant Output" aria-live="polite" className="tocktutor-assistant-transcript flex min-h-full min-w-0 flex-col gap-4">
           {!hasConversation && (proposalPage?.proposals.length ?? 0) === 0 && (
-            <div className="tocktutor-assistant-empty">
-              <div className="tocktutor-assistant-empty-icon"><Sparkles aria-hidden="true" /></div>
-              <h2>What can I help you with?</h2>
-              <div className="tocktutor-assistant-suggestions">
+            <div className="tocktutor-assistant-empty flex min-h-full flex-col items-center justify-center gap-4 text-center">
+              <div className="tocktutor-assistant-empty-icon flex size-10 items-center justify-center rounded-xl border border-[var(--tta-border)] bg-[var(--tta-panel)] text-[var(--tta-accent)] shadow-[0_1px_2px_rgb(0_0_0_/_7%)] [&_svg]:size-[18px]"><Sparkles aria-hidden="true" /></div>
+              <h2 className="max-w-64 text-sm leading-5">What can I help you with?</h2>
+              <div className="tocktutor-assistant-suggestions flex w-[min(100%,288px)] flex-col items-stretch gap-1.5 text-left">
                 {PROMPT_SUGGESTIONS.map(suggestion => {
                   const Icon = suggestion.icon
                   return (
                     <button
+                      className="flex min-w-0 cursor-pointer items-center gap-2.5 rounded-lg border border-transparent bg-transparent px-2 py-1.5 text-left text-[13px] leading-[18px] text-inherit hover:border-[var(--tta-border)] hover:bg-[var(--tta-bg)] focus-visible:border-[var(--tta-border)] focus-visible:bg-[var(--tta-bg)] [&_span]:min-w-0 [&_span]:truncate [&_svg]:size-3.5 [&_svg]:flex-none"
                       key={suggestion.label}
                       onClick={() => { setMessage(suggestion.prompt) }}
                       type="button"
@@ -467,41 +471,43 @@ export function TockTutorAssistantPanel(props: TockTutorAssistantPanelProps): Re
             </div>
           )}
           {transcriptEntries.map(entry => entry.toolStatus === true
-            ? <p className="tocktutor-assistant-tool-status" key={entry.key}>{entry.text}</p>
+            ? <p className="tocktutor-assistant-tool-status py-0.5 text-xs text-[var(--tta-muted)]" key={entry.key}>{entry.text}</p>
             : (
                 <article
                   aria-label={`${entry.label} transcript entry`}
-                  className={entry.label === 'You' || entry.label === 'Steering' ? 'tocktutor-assistant-user-message' : 'tocktutor-assistant-answer'}
+                  className={entry.label === 'You' || entry.label === 'Steering'
+                    ? 'tocktutor-assistant-user-message max-w-[88%] self-end rounded-[10px] bg-[var(--tta-bg)] px-2.5 py-2 leading-normal [overflow-wrap:anywhere]'
+                    : 'tocktutor-assistant-answer grid gap-2 leading-[1.55] [overflow-wrap:anywhere]'}
                   key={entry.key}
                 >
-                  {entry.label !== 'You' && entry.label !== 'Steering' && <p className="tocktutor-assistant-kicker">TockTutor Assistant</p>}
+                  {entry.label !== 'You' && entry.label !== 'Steering' && <p className="tocktutor-assistant-kicker text-[11px] font-semibold text-[var(--tta-muted)]">TockTutor Assistant</p>}
                   <p>{entry.text}</p>
                 </article>
               ))}
           {partial !== '' && (
-            <article aria-label="Streaming assistant transcript entry" className="tocktutor-assistant-answer">
-              <p className="tocktutor-assistant-kicker">TockTutor Assistant</p>
+            <article aria-label="Streaming assistant transcript entry" className="tocktutor-assistant-answer grid gap-2 leading-[1.55] [overflow-wrap:anywhere]">
+              <p className="tocktutor-assistant-kicker text-[11px] font-semibold text-[var(--tta-muted)]">TockTutor Assistant</p>
               <p>{partial}</p>
             </article>
           )}
           {transcript.runningCalls.slice(0, 20).map(call => (
-            <p className="tocktutor-assistant-tool-status" key={call.callId}>{boundedText(call.name, 127)} · Reading…</p>
+            <p className="tocktutor-assistant-tool-status py-0.5 text-xs text-[var(--tta-muted)]" key={call.callId}>{boundedText(call.name, 127)} · Reading…</p>
           ))}
           {transcriptError !== null && transcriptError !== undefined && (
-            <p className="tocktutor-assistant-error" role="alert">{boundedText(transcriptError, 500)}</p>
+            <p className="tocktutor-assistant-error rounded-lg border border-[var(--tta-border)] p-2 text-xs text-[#b42318]" role="alert">{boundedText(transcriptError, 500)}</p>
           )}
           {(proposalPage?.proposals.length ?? 0) > 0 && (
-            <section aria-label="Staged Proposals" className="tocktutor-assistant-reviews">
-              <h2>Staged Proposals</h2>
+            <section aria-label="Staged Proposals" className="tocktutor-assistant-reviews grid gap-2.5">
+              <h2 className="text-xs tracking-[.04em] uppercase">Staged Proposals</h2>
               {proposalPage?.proposals.slice(0, 20).map(proposal => {
                 const expired = proposal.expiresAt <= renderedAt
                 const pendingDecision = activeDecision?.proposalId === proposal.proposalId
                 const operation = proposal.operation === 'create' ? 'Create' : 'Update'
                 return (
-                  <article key={proposal.proposalId}>
-                    <h3>{operation} {proposal.destination}</h3>
-                    <p>{String(proposal.contentChars)} characters · {String(proposal.contentBytes)} bytes</p>
-                    <pre>{boundedText(proposal.preview, 1_000)}</pre>
+                  <article className="grid gap-[7px] rounded-lg border border-[var(--tta-border)] bg-[var(--tta-bg)] p-2.5" key={proposal.proposalId}>
+                    <h3 className="text-[13px] [overflow-wrap:anywhere]">{operation} {proposal.destination}</h3>
+                    <p className="text-xs text-[var(--tta-muted)]">{String(proposal.contentChars)} characters · {String(proposal.contentBytes)} bytes</p>
+                    <pre className="m-0 max-h-[180px] overflow-auto whitespace-pre-wrap rounded-md border border-[var(--tta-border)] bg-[var(--tta-panel)] p-2 font-mono text-xs leading-normal">{boundedText(proposal.preview, 1_000)}</pre>
                     {proposal.warnings.length > 0 && (
                       <ul aria-label={`Warnings for ${proposal.destination}`}>
                         {proposal.warnings.map((warning, index) => (
@@ -512,9 +518,10 @@ export function TockTutorAssistantPanel(props: TockTutorAssistantPanelProps): Re
                     {proposal.skippedEntryCount > 0 && (
                       <p>{String(proposal.skippedEntryCount)} skipped {proposal.skippedEntryCount === 1 ? 'entry' : 'entries'}{proposal.skippedEntries.length > 0 ? `: ${proposal.skippedEntries.join(', ')}` : ''}</p>
                     )}
-                    <div>
+                    <div className="flex flex-wrap gap-1.5">
                       <button
                         aria-label={expired ? undefined : `Approve ${operation} ${proposal.destination}`}
+                        className="cursor-pointer rounded-[7px] border border-[var(--tta-accent)] bg-[var(--tta-accent)] px-[9px] py-1.5 font-semibold text-white disabled:cursor-default disabled:opacity-50"
                         disabled={expired || activeDecision !== null}
                         onClick={() => { decideProposal(proposal, 'approve') }}
                         type="button"
@@ -523,6 +530,7 @@ export function TockTutorAssistantPanel(props: TockTutorAssistantPanelProps): Re
                       </button>
                       <button
                         aria-label={`Reject ${operation} ${proposal.destination}`}
+                        className="cursor-pointer rounded-[7px] border border-[var(--tta-border)] bg-[var(--tta-panel)] px-[9px] py-1.5 font-semibold text-inherit disabled:cursor-default disabled:opacity-50"
                         disabled={expired || activeDecision !== null}
                         onClick={() => { decideProposal(proposal, 'reject') }}
                         type="button"
@@ -534,15 +542,17 @@ export function TockTutorAssistantPanel(props: TockTutorAssistantPanelProps): Re
                 )
               })}
               {proposalPage !== null && (proposalOffset > 0 || proposalPage.nextOffset !== null) && (
-                <nav aria-label="Proposal Pages">
+                <nav aria-label="Proposal Pages" className="flex flex-wrap gap-1.5">
                   <button
                     aria-label="Previous Proposal Page"
+                    className="cursor-pointer rounded-[7px] border border-[var(--tta-border)] bg-[var(--tta-panel)] px-[9px] py-1.5 font-semibold text-inherit disabled:cursor-default disabled:opacity-50"
                     disabled={proposalOffset === 0}
                     onClick={() => { void loadProposals(Math.max(0, proposalOffset - 20)) }}
                     type="button"
                   >Previous</button>
                   <button
                     aria-label="Next Proposal Page"
+                    className="cursor-pointer rounded-[7px] border border-[var(--tta-border)] bg-[var(--tta-panel)] px-[9px] py-1.5 font-semibold text-inherit disabled:cursor-default disabled:opacity-50"
                     disabled={proposalPage.nextOffset === null}
                     onClick={() => { if (proposalPage.nextOffset !== null) void loadProposals(proposalPage.nextOffset) }}
                     type="button"
@@ -554,14 +564,15 @@ export function TockTutorAssistantPanel(props: TockTutorAssistantPanelProps): Re
         </section>
       </div>
       {showJumpToLatest && (
-        <button className="tocktutor-assistant-jump" onClick={scrollToLatest} type="button">
+        <button className="tocktutor-assistant-jump absolute right-4 bottom-28 z-2 flex items-center gap-[5px] rounded-lg border border-[var(--tta-border)] bg-[var(--tta-panel)] px-2 py-[5px] text-xs shadow-[0_1px_4px_rgb(0_0_0_/_10%)] [&_svg]:size-3.5" onClick={scrollToLatest} type="button">
           <ArrowDown aria-hidden="true" />
           Jump to Latest
         </button>
       )}
-      <div className="tocktutor-assistant-composer-wrap">
-        <div className="tocktutor-assistant-add-menu" hidden={!menuOpen} id="tocktutor-assistant-add-menu">
+      <div className="tocktutor-assistant-composer-wrap relative flex-none px-3 pb-3">
+        <div className="tocktutor-assistant-add-menu absolute bottom-[calc(100%+8px)] left-3 z-3 grid max-h-[min(520px,calc(100vh-180px))] w-[min(304px,calc(100%-24px))] gap-1 overflow-auto rounded-[10px] border border-[var(--tta-border)] bg-[var(--tta-panel)] p-2 shadow-[0_8px_24px_rgb(0_0_0_/_12%)]" hidden={!menuOpen} id="tocktutor-assistant-add-menu">
           <button
+            className="flex min-w-0 cursor-pointer items-center gap-2.5 rounded-lg border border-transparent bg-transparent px-2 py-1.5 text-left text-[13px] leading-[18px] text-inherit hover:border-[var(--tta-border)] hover:bg-[var(--tta-bg)] focus-visible:border-[var(--tta-border)] focus-visible:bg-[var(--tta-bg)] disabled:cursor-default disabled:opacity-50 [&_span]:min-w-0 [&_span]:truncate [&_svg]:size-3.5 [&_svg]:flex-none"
             disabled={props.activePath === null}
             onClick={() => {
               if (props.activePath !== null) setMessage(currentMessage => [currentMessage.trim(), `Use ${props.activePath} as context.`].filter(Boolean).join('\n'))
@@ -572,13 +583,14 @@ export function TockTutorAssistantPanel(props: TockTutorAssistantPanelProps): Re
             <FileText aria-hidden="true" />
             <span>{props.activePath ?? 'Current Note'}</span>
           </button>
-          <details>
-            <summary>Assistant Settings</summary>
-            <form onSubmit={saveSettings}>
-              <label>
+          <details className="border-t border-[var(--tta-border)] pt-1">
+            <summary className="cursor-pointer px-2 py-1.5 text-[13px]">Assistant Settings</summary>
+            <form className="grid gap-2 p-2" onSubmit={saveSettings}>
+              <label className="grid gap-1 text-xs">
                 Provider
                 <input
                   aria-label="Provider"
+                  className="w-full rounded-[7px] border border-[var(--tta-border)] bg-[var(--tta-panel)] px-2 py-[7px] text-inherit"
                   disabled={settings === null || settingsSaving}
                   maxLength={127}
                   onChange={event => {
@@ -589,10 +601,11 @@ export function TockTutorAssistantPanel(props: TockTutorAssistantPanelProps): Re
                   value={settings?.provider ?? ''}
                 />
               </label>
-              <label>
+              <label className="grid gap-1 text-xs">
                 Model
                 <input
                   aria-label="Model"
+                  className="w-full rounded-[7px] border border-[var(--tta-border)] bg-[var(--tta-panel)] px-2 py-[7px] text-inherit"
                   disabled={settings === null || settingsSaving}
                   maxLength={127}
                   onChange={event => {
@@ -603,10 +616,11 @@ export function TockTutorAssistantPanel(props: TockTutorAssistantPanelProps): Re
                   value={settings?.model ?? ''}
                 />
               </label>
-              <label>
+              <label className="grid gap-1 text-xs">
                 Write Permission
                 <select
                   aria-label="Write Permission"
+                  className="w-full rounded-[7px] border border-[var(--tta-border)] bg-[var(--tta-panel)] px-2 py-[7px] text-inherit"
                   disabled={settings === null || settingsSaving}
                   onChange={event => {
                     const writePermission = event.target.value === 'propose' ? 'propose' : 'read-only'
@@ -620,14 +634,14 @@ export function TockTutorAssistantPanel(props: TockTutorAssistantPanelProps): Re
                   <option value="propose">Propose Writes</option>
                 </select>
               </label>
-              <button disabled={settings === null || settingsSaving} type="submit">
+              <button className="cursor-pointer rounded-[7px] border border-[var(--tta-accent)] bg-[var(--tta-accent)] px-[9px] py-1.5 font-semibold text-white disabled:cursor-default disabled:opacity-50" disabled={settings === null || settingsSaving} type="submit">
                 {settingsSaving ? 'Saving…' : 'Save Settings'}
               </button>
             </form>
           </details>
-          <details>
-            <summary>Audit History</summary>
-            <section aria-label="Audit History" className="tocktutor-assistant-audit">
+          <details className="border-t border-[var(--tta-border)] pt-1">
+            <summary className="cursor-pointer px-2 py-1.5 text-[13px]">Audit History</summary>
+            <section aria-label="Audit History" className="tocktutor-assistant-audit grid gap-2 p-2">
               {auditPage === null && <p>Loading audit history…</p>}
               {auditPage !== null && auditPage.entries.length === 0 && <p>No audit entries.</p>}
               {auditPage?.dropped !== undefined && auditPage.dropped > 0 && (
@@ -638,7 +652,7 @@ export function TockTutorAssistantPanel(props: TockTutorAssistantPanelProps): Re
                 const operation = entry.operation === 'create' ? 'Create' : 'Update'
                 const time = auditTime(entry.timestamp)
                 return (
-                  <article aria-label={`Audit entry ${entry.auditId}`} key={entry.auditId}>
+                  <article aria-label={`Audit entry ${entry.auditId}`} className="grid gap-[7px] rounded-lg border border-[var(--tta-border)] bg-[var(--tta-bg)] p-2.5 [&>h3]:text-[13px] [&>h3]:[overflow-wrap:anywhere] [&>p]:text-xs [&>p]:text-[var(--tta-muted)] [&>span]:text-xs [&>span]:text-[var(--tta-muted)] [&>time]:text-xs [&>time]:text-[var(--tta-muted)]" key={entry.auditId}>
                     <h3>{outcome} {operation} {entry.destination}</h3>
                     {time === null
                       ? <span>Time Unavailable</span>
@@ -648,15 +662,17 @@ export function TockTutorAssistantPanel(props: TockTutorAssistantPanelProps): Re
                 )
               })}
               {auditPage !== null && (auditOffset > 0 || auditPage.nextOffset !== null) && (
-                <nav aria-label="Audit Pages">
+                <nav aria-label="Audit Pages" className="flex flex-wrap gap-1.5">
                   <button
                     aria-label="Previous Audit Page"
+                    className="cursor-pointer rounded-[7px] border border-[var(--tta-border)] bg-[var(--tta-panel)] px-[9px] py-1.5 font-semibold text-inherit disabled:cursor-default disabled:opacity-50"
                     disabled={auditOffset === 0}
                     onClick={() => { void loadAudit(Math.max(0, auditOffset - 20)) }}
                     type="button"
                   >Previous</button>
                   <button
                     aria-label="Next Audit Page"
+                    className="cursor-pointer rounded-[7px] border border-[var(--tta-border)] bg-[var(--tta-panel)] px-[9px] py-1.5 font-semibold text-inherit disabled:cursor-default disabled:opacity-50"
                     disabled={auditPage.nextOffset === null}
                     onClick={() => { if (auditPage.nextOffset !== null) void loadAudit(auditPage.nextOffset) }}
                     type="button"
@@ -666,9 +682,10 @@ export function TockTutorAssistantPanel(props: TockTutorAssistantPanelProps): Re
             </section>
           </details>
         </div>
-        <form className="tocktutor-assistant-composer" onSubmit={send}>
+        <form className="tocktutor-assistant-composer flex min-h-24 flex-col gap-2 rounded-2xl border border-[var(--tta-border)] bg-[var(--tta-panel)] p-2.5 focus-within:border-[var(--tta-accent)]" onSubmit={send}>
           <textarea
             aria-label="Assistant Message"
+            className="min-h-12 w-full resize-none border-0 bg-transparent p-0 text-[13px] leading-[18px] text-inherit outline-0 focus-visible:shadow-none focus-visible:outline-none"
             id="tocktutor-assistant-message"
             maxLength={8_000}
             onChange={event => { setMessage(event.target.value) }}
@@ -677,25 +694,25 @@ export function TockTutorAssistantPanel(props: TockTutorAssistantPanelProps): Re
             rows={3}
             value={message}
           />
-          <div>
+          <div className="flex items-center justify-between">
             <button
               aria-controls="tocktutor-assistant-add-menu"
               aria-expanded={menuOpen}
               aria-label="Add Context"
-              className="tocktutor-assistant-icon-button"
+              className="tocktutor-assistant-icon-button flex size-7 cursor-pointer items-center justify-center rounded-[7px] border-0 bg-transparent p-0 text-inherit [&_svg]:size-3.5"
               onClick={() => { setMenuOpen(open => !open) }}
               type="button"
             ><Plus aria-hidden="true" /></button>
             <button
               aria-label="Send"
-              className="tocktutor-assistant-send"
+              className="tocktutor-assistant-send flex size-7 cursor-pointer items-center justify-center rounded-full border-0 bg-[var(--tta-accent)] p-0 text-white disabled:cursor-default disabled:opacity-50 [&_svg]:size-3.5 [&_svg]:stroke-white [&_svg]:text-white"
               disabled={message.trim() === ''}
               type="submit"
             ><ArrowUp aria-hidden="true" /></button>
           </div>
         </form>
       </div>
-      <p aria-live="polite" className="tocktutor-assistant-status" ref={statusRef} role="status" tabIndex={-1}>
+      <p aria-live="polite" className="tocktutor-assistant-status absolute right-3 bottom-[120px] left-3 z-2 rounded-[7px] bg-[color-mix(in_srgb,var(--tta-accent)_9%,var(--tta-panel))] px-2.5 py-2 text-xs text-[var(--tta-muted)] empty:hidden" ref={statusRef} role="status" tabIndex={-1}>
         {status === null ? '' : boundedText(status, 500)}
       </p>
     </aside>

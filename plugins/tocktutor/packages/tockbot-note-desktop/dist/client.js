@@ -15148,11 +15148,21 @@ function TockTutorNativeActions(props) {
     if (props.activePath === null || props.vault === null) return;
     await run(label, operation, (authorization, signal) => call(authorization, props.activePath, props.vault, signal));
   };
-  const button = (label, action, enabled = true) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { disabled: !enabled || busy !== null, onClick: () => {
-    void action();
-  }, type: "button", children: busy === label ? `${label}\u2026` : label }, label);
-  return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { "aria-label": "Desktop Note Actions", className: "tocktutor-desktop-actions tocktutor-native-actions-styles", role: "group", children: [
-    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "tocktutor-desktop-actions-grid", children: [
+  const button = (label, action, enabled = true) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+    "button",
+    {
+      className: "min-h-9 cursor-pointer rounded-lg border border-[var(--tt-border,#d9dde5)] bg-[var(--tt-bg,#f7f8fa)] px-2.5 py-[7px] text-left text-inherit enabled:hover:border-[var(--tt-accent,#2457d6)] focus-visible:border-[var(--tt-accent,#2457d6)] focus-visible:outline-none focus-visible:shadow-[0_0_0_2px_color-mix(in_srgb,var(--tt-accent,#2457d6)_28%,transparent)] disabled:cursor-not-allowed disabled:opacity-50",
+      disabled: !enabled || busy !== null,
+      onClick: () => {
+        void action();
+      },
+      type: "button",
+      children: busy === label ? `${label}\u2026` : label
+    },
+    label
+  );
+  return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { "aria-label": "Desktop Note Actions", className: "tocktutor-desktop-actions grid gap-2 px-[18px] pt-3.5 pb-[18px]", role: "group", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "tocktutor-desktop-actions-grid grid grid-cols-2 gap-2", children: [
       button("Choose Vault", async () => {
         await run("Choosing Vault", "activate-vault", (authorization, signal) => props.remote.tocktutorDesktop.activateVault(authorization, signal));
       }),
@@ -15179,7 +15189,7 @@ function TockTutorNativeActions(props) {
       button("Export HTML", withNote("Exporting HTML", "export-html", (authorization, path, vault, signal) => props.remote.tocktutorDesktop.exportNote(authorization, "html", path, vault, signal)), hasNote),
       button("Export PDF", withNote("Exporting PDF", "export-pdf", (authorization, path, vault, signal) => props.remote.tocktutorDesktop.exportNote(authorization, "pdf", path, vault, signal)), hasNote)
     ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { "aria-live": "polite", role: "status", children: message })
+    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { "aria-live": "polite", className: "mt-1 mb-0 text-[var(--tt-muted,#667085)]", role: "status", children: message })
   ] });
 }
 

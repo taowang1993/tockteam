@@ -15241,14 +15241,14 @@ function ImportExportReviewPanelView(props) {
   const skipped = preview !== null && "skipped" in preview ? preview.skipped : [];
   const warnings = preview !== null && "warnings" in preview ? preview.warnings : [];
   const busy = snapshot.phase === "inspecting" || snapshot.phase === "approving" || snapshot.phase === "committing";
-  return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("section", { "aria-label": "Import, Backup, and Restore", className: "tocktutor-import-export-review tocktutor-import-export-styles", children: [
+  return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("section", { "aria-label": "Import, Backup, and Restore", className: "tocktutor-import-export-review grid gap-3 rounded-[10px] border border-[var(--tt-border)] p-3.5 [&_h2]:m-0 [&_h3]:m-0 [&_p]:m-0 [&_button]:min-h-8 [&_button]:rounded-md [&_button]:border [&_button]:border-[var(--tt-border)] [&_button]:bg-[var(--tt-panel)] [&_button]:px-[9px] [&_button]:py-[5px] [&_button]:text-inherit [&_select]:min-h-8 [&_select]:rounded-md [&_select]:border [&_select]:border-[var(--tt-border)] [&_select]:bg-[var(--tt-panel)] [&_select]:px-[9px] [&_select]:py-[5px] [&_select]:text-inherit", children: [
     /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("header", { children: [
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { className: "tocktutor-import-export-kicker", children: "Reviewed Operations" }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { className: "tocktutor-import-export-kicker text-[11px] font-bold tracking-[.08em] text-[var(--tt-muted)] uppercase", children: "Reviewed Operations" }),
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h2", { children: "Import, Backup, and Restore" })
     ] }),
     /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { children: "Craft exports use the reviewed Markdown Folder or Markdown ZIP path; no Craft-specific parser changes your files." }),
-    (snapshot.phase === "idle" || snapshot.phase === "complete" || snapshot.phase === "error" && preview === null) && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "tocktutor-import-export-start", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { children: [
+    (snapshot.phase === "idle" || snapshot.phase === "complete" || snapshot.phase === "error" && preview === null) && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "tocktutor-import-export-start flex flex-wrap gap-2", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { className: "grid flex-[1_1_220px] gap-1 text-xs", children: [
         "Import Format",
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
           "select",
@@ -15264,35 +15264,35 @@ function ImportExportReviewPanelView(props) {
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { onClick: props.onStart, type: "button", children: "Inspect Import" }),
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { onClick: props.onStartBackup, type: "button", children: "Create Vault Backup" })
     ] }),
-    busy && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "tocktutor-import-export-actions", children: [
+    busy && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "tocktutor-import-export-actions flex flex-wrap gap-2", children: [
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { "aria-live": "polite", role: "status", children: snapshot.phase === "inspecting" ? "Inspecting the selected source\u2026" : snapshot.phase === "approving" ? "Approving the reviewed plan\u2026" : "Committing through the vault runtime\u2026" }),
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { onClick: props.onCancel, type: "button", children: "Cancel" })
     ] }),
-    snapshot.phase === "review" && preview !== null && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "tocktutor-import-export-plan", children: [
+    snapshot.phase === "review" && preview !== null && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "tocktutor-import-export-plan grid gap-2.5", children: [
       /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("h3", { children: [
         "Review ",
         String("entries" in preview ? preview.entries : items.length),
         " Planned ",
         "entries" in preview ? "Backup Entries" : items.length === 1 ? "Item" : "Items"
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("dl", { children: [
-        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("dl", { className: "m-0 grid gap-1", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "flex justify-between gap-2", children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("dt", { children: "Source" }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("dd", { children: "source" in preview ? preview.source.label : "Active Vault Snapshot" })
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("dd", { className: "m-0 text-right [overflow-wrap:anywhere]", children: "source" in preview ? preview.source.label : "Active Vault Snapshot" })
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "flex justify-between gap-2", children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("dt", { children: "Total Bytes" }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("dd", { children: String(preview.totalBytes) })
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("dd", { className: "m-0 text-right [overflow-wrap:anywhere]", children: String(preview.totalBytes) })
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "flex justify-between gap-2", children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("dt", { children: "Plan Digest" }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("dd", { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("dd", { className: "m-0 text-right [overflow-wrap:anywhere]", children: [
             preview.planDigest.slice(0, 23),
             "\u2026"
           ] })
         ] })
       ] }),
-      items.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("ul", { children: items.slice(0, 100).map((item) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("li", { children: [
+      items.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("ul", { className: "m-0 max-h-[180px] overflow-auto pl-[18px]", children: items.slice(0, 100).map((item) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("li", { children: [
         item.destination,
         " \u2014 ",
         String(item.size),
@@ -15304,13 +15304,13 @@ function ImportExportReviewPanelView(props) {
           String(skipped.length),
           " Skipped Entries"
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("ul", { children: skipped.slice(0, 100).map((entry) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("li", { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("ul", { className: "m-0 max-h-[180px] overflow-auto pl-[18px]", children: skipped.slice(0, 100).map((entry) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("li", { children: [
           entry.label,
           ": ",
           entry.reason
         ] }, `${entry.label}:${entry.reason}`)) })
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "tocktutor-import-export-actions", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "tocktutor-import-export-actions flex flex-wrap gap-2", children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { onClick: props.onApprove, type: "button", children: "Approve and Commit" }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { onClick: props.onCancel, type: "button", children: "Cancel" })
       ] })
@@ -15361,7 +15361,7 @@ function ImportExportReviewPanelView(props) {
         ] })
       ] })
     ] }),
-    snapshot.phase === "error" && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "tocktutor-import-export-actions", children: [
+    snapshot.phase === "error" && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "tocktutor-import-export-actions flex flex-wrap gap-2", children: [
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { role: "alert", children: snapshot.error ?? "The reviewed operation failed." }),
       preview !== null && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { onClick: props.onApprove, type: "button", children: "Retry Reviewed Commit" }),
       preview !== null && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { onClick: props.onCancel, type: "button", children: "Cancel" })

@@ -319,14 +319,20 @@ export function TockTutorNativeActions(props: TockTutorNativeActionsProps): Reac
   }
 
   const button = (label: string, action: () => Promise<void>, enabled = true): ReactNode => (
-    <button disabled={!enabled || busy !== null} key={label} onClick={() => { void action() }} type="button">
+    <button
+      className="min-h-9 cursor-pointer rounded-lg border border-[var(--tt-border,#d9dde5)] bg-[var(--tt-bg,#f7f8fa)] px-2.5 py-[7px] text-left text-inherit enabled:hover:border-[var(--tt-accent,#2457d6)] focus-visible:border-[var(--tt-accent,#2457d6)] focus-visible:outline-none focus-visible:shadow-[0_0_0_2px_color-mix(in_srgb,var(--tt-accent,#2457d6)_28%,transparent)] disabled:cursor-not-allowed disabled:opacity-50"
+      disabled={!enabled || busy !== null}
+      key={label}
+      onClick={() => { void action() }}
+      type="button"
+    >
       {busy === label ? `${label}…` : label}
     </button>
   )
 
   return (
-    <div aria-label="Desktop Note Actions" className="tocktutor-desktop-actions tocktutor-native-actions-styles" role="group">
-      <div className="tocktutor-desktop-actions-grid">
+    <div aria-label="Desktop Note Actions" className="tocktutor-desktop-actions grid gap-2 px-[18px] pt-3.5 pb-[18px]" role="group">
+      <div className="tocktutor-desktop-actions-grid grid grid-cols-2 gap-2">
         {button('Choose Vault', async () => {
           await run('Choosing Vault', 'activate-vault', (authorization, signal) => (
             props.remote.tocktutorDesktop.activateVault(authorization, signal)
@@ -374,7 +380,7 @@ export function TockTutorNativeActions(props: TockTutorNativeActionsProps): Reac
           props.remote.tocktutorDesktop.exportNote(authorization, 'pdf', path, vault, signal)
         )), hasNote)}
       </div>
-      <p aria-live="polite" role="status">{message}</p>
+      <p aria-live="polite" className="mt-1 mb-0 text-[var(--tt-muted,#667085)]" role="status">{message}</p>
     </div>
   )
 }

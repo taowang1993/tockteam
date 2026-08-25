@@ -15251,323 +15251,342 @@ ${text}`;
     const scroll = scrollRef.current;
     if (followingRef.current && scroll !== null) scroll.scrollTop = scroll.scrollHeight;
   }, [partial2, proposalPage, transcript]);
-  return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("aside", { "aria-label": "TockTutor Assistant", className: "tocktutor-assistant-panel tocktutor-assistant-styles", children: [
-    /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-      "div",
-      {
-        className: "tocktutor-assistant-scroll",
-        onScroll: (event) => {
-          const scroll = event.currentTarget;
-          const atBottom = scroll.scrollHeight - scroll.scrollTop - scroll.clientHeight <= 48;
-          followingRef.current = atBottom;
-          setShowJumpToLatest(!atBottom);
-        },
-        ref: scrollRef,
-        children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("section", { "aria-label": "Live Assistant Output", "aria-live": "polite", className: "tocktutor-assistant-transcript", children: [
-          !hasConversation && (proposalPage?.proposals.length ?? 0) === 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "tocktutor-assistant-empty", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "tocktutor-assistant-empty-icon", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Sparkles, { "aria-hidden": "true" }) }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h2", { children: "What can I help you with?" }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "tocktutor-assistant-suggestions", children: PROMPT_SUGGESTIONS.map((suggestion) => {
-              const Icon2 = suggestion.icon;
-              return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(
-                "button",
+  return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(
+    "aside",
+    {
+      "aria-label": "TockTutor Assistant",
+      className: "tocktutor-assistant-panel relative flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden bg-[var(--tta-panel)] text-inherit [--tta-accent:var(--tt-accent,#4f46e5)] [--tta-bg:var(--tt-bg,#f7f8fa)] [--tta-border:var(--tt-border,#d9dde5)] [--tta-muted:var(--tt-muted,#667085)] [--tta-panel:var(--tt-panel,#fff)] [&_*]:box-border [&_*::after]:box-border [&_*::before]:box-border [&_button:focus-visible]:outline-2 [&_button:focus-visible]:outline-offset-2 [&_button:focus-visible]:outline-[var(--tta-accent)] [&_h2]:m-0 [&_h3]:m-0 [&_input:focus-visible]:outline-2 [&_input:focus-visible]:outline-offset-2 [&_input:focus-visible]:outline-[var(--tta-accent)] [&_p]:m-0 [&_select:focus-visible]:outline-2 [&_select:focus-visible]:outline-offset-2 [&_select:focus-visible]:outline-[var(--tta-accent)] [&_textarea:focus-visible]:outline-2 [&_textarea:focus-visible]:outline-offset-2 [&_textarea:focus-visible]:outline-[var(--tta-accent)] motion-reduce:[&_*]:!scroll-auto motion-reduce:[&_*]:!duration-0 motion-reduce:[&_*::after]:!duration-0 motion-reduce:[&_*::before]:!duration-0",
+      children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+          "div",
+          {
+            className: "tocktutor-assistant-scroll flex min-h-0 flex-[1_1_auto] flex-col overflow-auto p-3.5",
+            onScroll: (event) => {
+              const scroll = event.currentTarget;
+              const atBottom = scroll.scrollHeight - scroll.scrollTop - scroll.clientHeight <= 48;
+              followingRef.current = atBottom;
+              setShowJumpToLatest(!atBottom);
+            },
+            ref: scrollRef,
+            children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("section", { "aria-label": "Live Assistant Output", "aria-live": "polite", className: "tocktutor-assistant-transcript flex min-h-full min-w-0 flex-col gap-4", children: [
+              !hasConversation && (proposalPage?.proposals.length ?? 0) === 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "tocktutor-assistant-empty flex min-h-full flex-col items-center justify-center gap-4 text-center", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "tocktutor-assistant-empty-icon flex size-10 items-center justify-center rounded-xl border border-[var(--tta-border)] bg-[var(--tta-panel)] text-[var(--tta-accent)] shadow-[0_1px_2px_rgb(0_0_0_/_7%)] [&_svg]:size-[18px]", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Sparkles, { "aria-hidden": "true" }) }),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h2", { className: "max-w-64 text-sm leading-5", children: "What can I help you with?" }),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "tocktutor-assistant-suggestions flex w-[min(100%,288px)] flex-col items-stretch gap-1.5 text-left", children: PROMPT_SUGGESTIONS.map((suggestion) => {
+                  const Icon2 = suggestion.icon;
+                  return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(
+                    "button",
+                    {
+                      className: "flex min-w-0 cursor-pointer items-center gap-2.5 rounded-lg border border-transparent bg-transparent px-2 py-1.5 text-left text-[13px] leading-[18px] text-inherit hover:border-[var(--tta-border)] hover:bg-[var(--tta-bg)] focus-visible:border-[var(--tta-border)] focus-visible:bg-[var(--tta-bg)] [&_span]:min-w-0 [&_span]:truncate [&_svg]:size-3.5 [&_svg]:flex-none",
+                      onClick: () => {
+                        setMessage(suggestion.prompt);
+                      },
+                      type: "button",
+                      children: [
+                        /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Icon2, { "aria-hidden": "true" }),
+                        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: suggestion.label })
+                      ]
+                    },
+                    suggestion.label
+                  );
+                }) })
+              ] }),
+              transcriptEntries.map((entry) => entry.toolStatus === true ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { className: "tocktutor-assistant-tool-status py-0.5 text-xs text-[var(--tta-muted)]", children: entry.text }, entry.key) : /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(
+                "article",
                 {
-                  onClick: () => {
-                    setMessage(suggestion.prompt);
-                  },
-                  type: "button",
+                  "aria-label": `${entry.label} transcript entry`,
+                  className: entry.label === "You" || entry.label === "Steering" ? "tocktutor-assistant-user-message max-w-[88%] self-end rounded-[10px] bg-[var(--tta-bg)] px-2.5 py-2 leading-normal [overflow-wrap:anywhere]" : "tocktutor-assistant-answer grid gap-2 leading-[1.55] [overflow-wrap:anywhere]",
                   children: [
-                    /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Icon2, { "aria-hidden": "true" }),
-                    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: suggestion.label })
+                    entry.label !== "You" && entry.label !== "Steering" && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { className: "tocktutor-assistant-kicker text-[11px] font-semibold text-[var(--tta-muted)]", children: "TockTutor Assistant" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { children: entry.text })
                   ]
                 },
-                suggestion.label
-              );
-            }) })
-          ] }),
-          transcriptEntries.map((entry) => entry.toolStatus === true ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { className: "tocktutor-assistant-tool-status", children: entry.text }, entry.key) : /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(
-            "article",
-            {
-              "aria-label": `${entry.label} transcript entry`,
-              className: entry.label === "You" || entry.label === "Steering" ? "tocktutor-assistant-user-message" : "tocktutor-assistant-answer",
-              children: [
-                entry.label !== "You" && entry.label !== "Steering" && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { className: "tocktutor-assistant-kicker", children: "TockTutor Assistant" }),
-                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { children: entry.text })
-              ]
-            },
-            entry.key
-          )),
-          partial2 !== "" && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("article", { "aria-label": "Streaming assistant transcript entry", className: "tocktutor-assistant-answer", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { className: "tocktutor-assistant-kicker", children: "TockTutor Assistant" }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { children: partial2 })
-          ] }),
-          transcript.runningCalls.slice(0, 20).map((call) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("p", { className: "tocktutor-assistant-tool-status", children: [
-            boundedText(call.name, 127),
-            " \xB7 Reading\u2026"
-          ] }, call.callId)),
-          transcriptError !== null && transcriptError !== void 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { className: "tocktutor-assistant-error", role: "alert", children: boundedText(transcriptError, 500) }),
-          (proposalPage?.proposals.length ?? 0) > 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("section", { "aria-label": "Staged Proposals", className: "tocktutor-assistant-reviews", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h2", { children: "Staged Proposals" }),
-            proposalPage?.proposals.slice(0, 20).map((proposal) => {
-              const expired = proposal.expiresAt <= renderedAt;
-              const pendingDecision = activeDecision?.proposalId === proposal.proposalId;
-              const operation = proposal.operation === "create" ? "Create" : "Update";
-              return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("article", { children: [
-                /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("h3", { children: [
-                  operation,
-                  " ",
-                  proposal.destination
-                ] }),
-                /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("p", { children: [
-                  String(proposal.contentChars),
-                  " characters \xB7 ",
-                  String(proposal.contentBytes),
-                  " bytes"
-                ] }),
-                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("pre", { children: boundedText(proposal.preview, 1e3) }),
-                proposal.warnings.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("ul", { "aria-label": `Warnings for ${proposal.destination}`, children: proposal.warnings.map((warning, index) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)("li", { children: boundedText(warning, 500) }, String(index))) }),
-                proposal.skippedEntryCount > 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("p", { children: [
-                  String(proposal.skippedEntryCount),
-                  " skipped ",
-                  proposal.skippedEntryCount === 1 ? "entry" : "entries",
-                  proposal.skippedEntries.length > 0 ? `: ${proposal.skippedEntries.join(", ")}` : ""
-                ] }),
-                /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
+                entry.key
+              )),
+              partial2 !== "" && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("article", { "aria-label": "Streaming assistant transcript entry", className: "tocktutor-assistant-answer grid gap-2 leading-[1.55] [overflow-wrap:anywhere]", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { className: "tocktutor-assistant-kicker text-[11px] font-semibold text-[var(--tta-muted)]", children: "TockTutor Assistant" }),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { children: partial2 })
+              ] }),
+              transcript.runningCalls.slice(0, 20).map((call) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("p", { className: "tocktutor-assistant-tool-status py-0.5 text-xs text-[var(--tta-muted)]", children: [
+                boundedText(call.name, 127),
+                " \xB7 Reading\u2026"
+              ] }, call.callId)),
+              transcriptError !== null && transcriptError !== void 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { className: "tocktutor-assistant-error rounded-lg border border-[var(--tta-border)] p-2 text-xs text-[#b42318]", role: "alert", children: boundedText(transcriptError, 500) }),
+              (proposalPage?.proposals.length ?? 0) > 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("section", { "aria-label": "Staged Proposals", className: "tocktutor-assistant-reviews grid gap-2.5", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h2", { className: "text-xs tracking-[.04em] uppercase", children: "Staged Proposals" }),
+                proposalPage?.proposals.slice(0, 20).map((proposal) => {
+                  const expired = proposal.expiresAt <= renderedAt;
+                  const pendingDecision = activeDecision?.proposalId === proposal.proposalId;
+                  const operation = proposal.operation === "create" ? "Create" : "Update";
+                  return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("article", { className: "grid gap-[7px] rounded-lg border border-[var(--tta-border)] bg-[var(--tta-bg)] p-2.5", children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("h3", { className: "text-[13px] [overflow-wrap:anywhere]", children: [
+                      operation,
+                      " ",
+                      proposal.destination
+                    ] }),
+                    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("p", { className: "text-xs text-[var(--tta-muted)]", children: [
+                      String(proposal.contentChars),
+                      " characters \xB7 ",
+                      String(proposal.contentBytes),
+                      " bytes"
+                    ] }),
+                    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("pre", { className: "m-0 max-h-[180px] overflow-auto whitespace-pre-wrap rounded-md border border-[var(--tta-border)] bg-[var(--tta-panel)] p-2 font-mono text-xs leading-normal", children: boundedText(proposal.preview, 1e3) }),
+                    proposal.warnings.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("ul", { "aria-label": `Warnings for ${proposal.destination}`, children: proposal.warnings.map((warning, index) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)("li", { children: boundedText(warning, 500) }, String(index))) }),
+                    proposal.skippedEntryCount > 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("p", { children: [
+                      String(proposal.skippedEntryCount),
+                      " skipped ",
+                      proposal.skippedEntryCount === 1 ? "entry" : "entries",
+                      proposal.skippedEntries.length > 0 ? `: ${proposal.skippedEntries.join(", ")}` : ""
+                    ] }),
+                    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "flex flex-wrap gap-1.5", children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+                        "button",
+                        {
+                          "aria-label": expired ? void 0 : `Approve ${operation} ${proposal.destination}`,
+                          className: "cursor-pointer rounded-[7px] border border-[var(--tta-accent)] bg-[var(--tta-accent)] px-[9px] py-1.5 font-semibold text-white disabled:cursor-default disabled:opacity-50",
+                          disabled: expired || activeDecision !== null,
+                          onClick: () => {
+                            decideProposal(proposal, "approve");
+                          },
+                          type: "button",
+                          children: expired ? "Expired" : pendingDecision && activeDecision.action === "approve" ? "Approving\u2026" : "Approve"
+                        }
+                      ),
+                      /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+                        "button",
+                        {
+                          "aria-label": `Reject ${operation} ${proposal.destination}`,
+                          className: "cursor-pointer rounded-[7px] border border-[var(--tta-border)] bg-[var(--tta-panel)] px-[9px] py-1.5 font-semibold text-inherit disabled:cursor-default disabled:opacity-50",
+                          disabled: expired || activeDecision !== null,
+                          onClick: () => {
+                            decideProposal(proposal, "reject");
+                          },
+                          type: "button",
+                          children: pendingDecision && activeDecision.action === "reject" ? "Rejecting\u2026" : "Reject"
+                        }
+                      )
+                    ] })
+                  ] }, proposal.proposalId);
+                }),
+                proposalPage !== null && (proposalOffset > 0 || proposalPage.nextOffset !== null) && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("nav", { "aria-label": "Proposal Pages", className: "flex flex-wrap gap-1.5", children: [
                   /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
                     "button",
                     {
-                      "aria-label": expired ? void 0 : `Approve ${operation} ${proposal.destination}`,
-                      disabled: expired || activeDecision !== null,
+                      "aria-label": "Previous Proposal Page",
+                      className: "cursor-pointer rounded-[7px] border border-[var(--tta-border)] bg-[var(--tta-panel)] px-[9px] py-1.5 font-semibold text-inherit disabled:cursor-default disabled:opacity-50",
+                      disabled: proposalOffset === 0,
                       onClick: () => {
-                        decideProposal(proposal, "approve");
+                        void loadProposals(Math.max(0, proposalOffset - 20));
                       },
                       type: "button",
-                      children: expired ? "Expired" : pendingDecision && activeDecision.action === "approve" ? "Approving\u2026" : "Approve"
+                      children: "Previous"
                     }
                   ),
                   /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
                     "button",
                     {
-                      "aria-label": `Reject ${operation} ${proposal.destination}`,
-                      disabled: expired || activeDecision !== null,
+                      "aria-label": "Next Proposal Page",
+                      className: "cursor-pointer rounded-[7px] border border-[var(--tta-border)] bg-[var(--tta-panel)] px-[9px] py-1.5 font-semibold text-inherit disabled:cursor-default disabled:opacity-50",
+                      disabled: proposalPage.nextOffset === null,
                       onClick: () => {
-                        decideProposal(proposal, "reject");
+                        if (proposalPage.nextOffset !== null) void loadProposals(proposalPage.nextOffset);
                       },
                       type: "button",
-                      children: pendingDecision && activeDecision.action === "reject" ? "Rejecting\u2026" : "Reject"
+                      children: "Next"
                     }
                   )
                 ] })
-              ] }, proposal.proposalId);
-            }),
-            proposalPage !== null && (proposalOffset > 0 || proposalPage.nextOffset !== null) && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("nav", { "aria-label": "Proposal Pages", children: [
+              ] })
+            ] })
+          }
+        ),
+        showJumpToLatest && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("button", { className: "tocktutor-assistant-jump absolute right-4 bottom-28 z-2 flex items-center gap-[5px] rounded-lg border border-[var(--tta-border)] bg-[var(--tta-panel)] px-2 py-[5px] text-xs shadow-[0_1px_4px_rgb(0_0_0_/_10%)] [&_svg]:size-3.5", onClick: scrollToLatest, type: "button", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ArrowDown, { "aria-hidden": "true" }),
+          "Jump to Latest"
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "tocktutor-assistant-composer-wrap relative flex-none px-3 pb-3", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "tocktutor-assistant-add-menu absolute bottom-[calc(100%+8px)] left-3 z-3 grid max-h-[min(520px,calc(100vh-180px))] w-[min(304px,calc(100%-24px))] gap-1 overflow-auto rounded-[10px] border border-[var(--tta-border)] bg-[var(--tta-panel)] p-2 shadow-[0_8px_24px_rgb(0_0_0_/_12%)]", hidden: !menuOpen, id: "tocktutor-assistant-add-menu", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(
+              "button",
+              {
+                className: "flex min-w-0 cursor-pointer items-center gap-2.5 rounded-lg border border-transparent bg-transparent px-2 py-1.5 text-left text-[13px] leading-[18px] text-inherit hover:border-[var(--tta-border)] hover:bg-[var(--tta-bg)] focus-visible:border-[var(--tta-border)] focus-visible:bg-[var(--tta-bg)] disabled:cursor-default disabled:opacity-50 [&_span]:min-w-0 [&_span]:truncate [&_svg]:size-3.5 [&_svg]:flex-none",
+                disabled: props.activePath === null,
+                onClick: () => {
+                  if (props.activePath !== null) setMessage((currentMessage) => [currentMessage.trim(), `Use ${props.activePath} as context.`].filter(Boolean).join("\n"));
+                  setMenuOpen(false);
+                },
+                type: "button",
+                children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)(FileText, { "aria-hidden": "true" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: props.activePath ?? "Current Note" })
+                ]
+              }
+            ),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("details", { className: "border-t border-[var(--tta-border)] pt-1", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("summary", { className: "cursor-pointer px-2 py-1.5 text-[13px]", children: "Assistant Settings" }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("form", { className: "grid gap-2 p-2", onSubmit: saveSettings, children: [
+                /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { className: "grid gap-1 text-xs", children: [
+                  "Provider",
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+                    "input",
+                    {
+                      "aria-label": "Provider",
+                      className: "w-full rounded-[7px] border border-[var(--tta-border)] bg-[var(--tta-panel)] px-2 py-[7px] text-inherit",
+                      disabled: settings === null || settingsSaving,
+                      maxLength: 127,
+                      onChange: (event) => {
+                        setSettings((currentSettings) => currentSettings === null ? null : { ...currentSettings, provider: event.target.value });
+                      },
+                      value: settings?.provider ?? ""
+                    }
+                  )
+                ] }),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { className: "grid gap-1 text-xs", children: [
+                  "Model",
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+                    "input",
+                    {
+                      "aria-label": "Model",
+                      className: "w-full rounded-[7px] border border-[var(--tta-border)] bg-[var(--tta-panel)] px-2 py-[7px] text-inherit",
+                      disabled: settings === null || settingsSaving,
+                      maxLength: 127,
+                      onChange: (event) => {
+                        setSettings((currentSettings) => currentSettings === null ? null : { ...currentSettings, model: event.target.value });
+                      },
+                      value: settings?.model ?? ""
+                    }
+                  )
+                ] }),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { className: "grid gap-1 text-xs", children: [
+                  "Write Permission",
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(
+                    "select",
+                    {
+                      "aria-label": "Write Permission",
+                      className: "w-full rounded-[7px] border border-[var(--tta-border)] bg-[var(--tta-panel)] px-2 py-[7px] text-inherit",
+                      disabled: settings === null || settingsSaving,
+                      onChange: (event) => {
+                        const writePermission = event.target.value === "propose" ? "propose" : "read-only";
+                        setSettings((currentSettings) => currentSettings === null ? null : { ...currentSettings, writePermission });
+                      },
+                      value: settings?.writePermission ?? "read-only",
+                      children: [
+                        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "read-only", children: "Read Only" }),
+                        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "propose", children: "Propose Writes" })
+                      ]
+                    }
+                  )
+                ] }),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "cursor-pointer rounded-[7px] border border-[var(--tta-accent)] bg-[var(--tta-accent)] px-[9px] py-1.5 font-semibold text-white disabled:cursor-default disabled:opacity-50", disabled: settings === null || settingsSaving, type: "submit", children: settingsSaving ? "Saving\u2026" : "Save Settings" })
+              ] })
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("details", { className: "border-t border-[var(--tta-border)] pt-1", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("summary", { className: "cursor-pointer px-2 py-1.5 text-[13px]", children: "Audit History" }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("section", { "aria-label": "Audit History", className: "tocktutor-assistant-audit grid gap-2 p-2", children: [
+                auditPage === null && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { children: "Loading audit history\u2026" }),
+                auditPage !== null && auditPage.entries.length === 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { children: "No audit entries." }),
+                auditPage?.dropped !== void 0 && auditPage.dropped > 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("p", { children: [
+                  String(auditPage.dropped),
+                  " older audit ",
+                  auditPage.dropped === 1 ? "entry was" : "entries were",
+                  " dropped by bounded retention."
+                ] }),
+                auditPage?.entries.slice(0, 20).map((entry) => {
+                  const outcome = entry.outcome.split("-").map((part) => `${part.slice(0, 1).toUpperCase()}${part.slice(1)}`).join(" ");
+                  const operation = entry.operation === "create" ? "Create" : "Update";
+                  const time3 = auditTime(entry.timestamp);
+                  return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("article", { "aria-label": `Audit entry ${entry.auditId}`, className: "grid gap-[7px] rounded-lg border border-[var(--tta-border)] bg-[var(--tta-bg)] p-2.5 [&>h3]:text-[13px] [&>h3]:[overflow-wrap:anywhere] [&>p]:text-xs [&>p]:text-[var(--tta-muted)] [&>span]:text-xs [&>span]:text-[var(--tta-muted)] [&>time]:text-xs [&>time]:text-[var(--tta-muted)]", children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("h3", { children: [
+                      outcome,
+                      " ",
+                      operation,
+                      " ",
+                      entry.destination
+                    ] }),
+                    time3 === null ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "Time Unavailable" }) : /* @__PURE__ */ (0, import_jsx_runtime.jsx)("time", { dateTime: time3.dateTime, children: time3.label }),
+                    entry.reason !== void 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { children: boundedText(entry.reason, 500) })
+                  ] }, entry.auditId);
+                }),
+                auditPage !== null && (auditOffset > 0 || auditPage.nextOffset !== null) && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("nav", { "aria-label": "Audit Pages", className: "flex flex-wrap gap-1.5", children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+                    "button",
+                    {
+                      "aria-label": "Previous Audit Page",
+                      className: "cursor-pointer rounded-[7px] border border-[var(--tta-border)] bg-[var(--tta-panel)] px-[9px] py-1.5 font-semibold text-inherit disabled:cursor-default disabled:opacity-50",
+                      disabled: auditOffset === 0,
+                      onClick: () => {
+                        void loadAudit(Math.max(0, auditOffset - 20));
+                      },
+                      type: "button",
+                      children: "Previous"
+                    }
+                  ),
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+                    "button",
+                    {
+                      "aria-label": "Next Audit Page",
+                      className: "cursor-pointer rounded-[7px] border border-[var(--tta-border)] bg-[var(--tta-panel)] px-[9px] py-1.5 font-semibold text-inherit disabled:cursor-default disabled:opacity-50",
+                      disabled: auditPage.nextOffset === null,
+                      onClick: () => {
+                        if (auditPage.nextOffset !== null) void loadAudit(auditPage.nextOffset);
+                      },
+                      type: "button",
+                      children: "Next"
+                    }
+                  )
+                ] })
+              ] })
+            ] })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("form", { className: "tocktutor-assistant-composer flex min-h-24 flex-col gap-2 rounded-2xl border border-[var(--tta-border)] bg-[var(--tta-panel)] p-2.5 focus-within:border-[var(--tta-accent)]", onSubmit: send, children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+              "textarea",
+              {
+                "aria-label": "Assistant Message",
+                className: "min-h-12 w-full resize-none border-0 bg-transparent p-0 text-[13px] leading-[18px] text-inherit outline-0 focus-visible:shadow-none focus-visible:outline-none",
+                id: "tocktutor-assistant-message",
+                maxLength: 8e3,
+                onChange: (event) => {
+                  setMessage(event.target.value);
+                },
+                onKeyDown: submitOnEnter,
+                placeholder: "What are your thoughts?",
+                rows: 3,
+                value: message
+              }
+            ),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "flex items-center justify-between", children: [
               /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
                 "button",
                 {
-                  "aria-label": "Previous Proposal Page",
-                  disabled: proposalOffset === 0,
+                  "aria-controls": "tocktutor-assistant-add-menu",
+                  "aria-expanded": menuOpen,
+                  "aria-label": "Add Context",
+                  className: "tocktutor-assistant-icon-button flex size-7 cursor-pointer items-center justify-center rounded-[7px] border-0 bg-transparent p-0 text-inherit [&_svg]:size-3.5",
                   onClick: () => {
-                    void loadProposals(Math.max(0, proposalOffset - 20));
+                    setMenuOpen((open) => !open);
                   },
                   type: "button",
-                  children: "Previous"
+                  children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Plus, { "aria-hidden": "true" })
                 }
               ),
               /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
                 "button",
                 {
-                  "aria-label": "Next Proposal Page",
-                  disabled: proposalPage.nextOffset === null,
-                  onClick: () => {
-                    if (proposalPage.nextOffset !== null) void loadProposals(proposalPage.nextOffset);
-                  },
-                  type: "button",
-                  children: "Next"
+                  "aria-label": "Send",
+                  className: "tocktutor-assistant-send flex size-7 cursor-pointer items-center justify-center rounded-full border-0 bg-[var(--tta-accent)] p-0 text-white disabled:cursor-default disabled:opacity-50 [&_svg]:size-3.5 [&_svg]:stroke-white [&_svg]:text-white",
+                  disabled: message.trim() === "",
+                  type: "submit",
+                  children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ArrowUp, { "aria-hidden": "true" })
                 }
               )
             ] })
-          ] })
-        ] })
-      }
-    ),
-    showJumpToLatest && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("button", { className: "tocktutor-assistant-jump", onClick: scrollToLatest, type: "button", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ArrowDown, { "aria-hidden": "true" }),
-      "Jump to Latest"
-    ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "tocktutor-assistant-composer-wrap", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "tocktutor-assistant-add-menu", hidden: !menuOpen, id: "tocktutor-assistant-add-menu", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(
-          "button",
-          {
-            disabled: props.activePath === null,
-            onClick: () => {
-              if (props.activePath !== null) setMessage((currentMessage) => [currentMessage.trim(), `Use ${props.activePath} as context.`].filter(Boolean).join("\n"));
-              setMenuOpen(false);
-            },
-            type: "button",
-            children: [
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)(FileText, { "aria-hidden": "true" }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: props.activePath ?? "Current Note" })
-            ]
-          }
-        ),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("details", { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("summary", { children: "Assistant Settings" }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("form", { onSubmit: saveSettings, children: [
-            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { children: [
-              "Provider",
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-                "input",
-                {
-                  "aria-label": "Provider",
-                  disabled: settings === null || settingsSaving,
-                  maxLength: 127,
-                  onChange: (event) => {
-                    setSettings((currentSettings) => currentSettings === null ? null : { ...currentSettings, provider: event.target.value });
-                  },
-                  value: settings?.provider ?? ""
-                }
-              )
-            ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { children: [
-              "Model",
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-                "input",
-                {
-                  "aria-label": "Model",
-                  disabled: settings === null || settingsSaving,
-                  maxLength: 127,
-                  onChange: (event) => {
-                    setSettings((currentSettings) => currentSettings === null ? null : { ...currentSettings, model: event.target.value });
-                  },
-                  value: settings?.model ?? ""
-                }
-              )
-            ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { children: [
-              "Write Permission",
-              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(
-                "select",
-                {
-                  "aria-label": "Write Permission",
-                  disabled: settings === null || settingsSaving,
-                  onChange: (event) => {
-                    const writePermission = event.target.value === "propose" ? "propose" : "read-only";
-                    setSettings((currentSettings) => currentSettings === null ? null : { ...currentSettings, writePermission });
-                  },
-                  value: settings?.writePermission ?? "read-only",
-                  children: [
-                    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "read-only", children: "Read Only" }),
-                    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "propose", children: "Propose Writes" })
-                  ]
-                }
-              )
-            ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { disabled: settings === null || settingsSaving, type: "submit", children: settingsSaving ? "Saving\u2026" : "Save Settings" })
           ] })
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("details", { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("summary", { children: "Audit History" }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("section", { "aria-label": "Audit History", className: "tocktutor-assistant-audit", children: [
-            auditPage === null && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { children: "Loading audit history\u2026" }),
-            auditPage !== null && auditPage.entries.length === 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { children: "No audit entries." }),
-            auditPage?.dropped !== void 0 && auditPage.dropped > 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("p", { children: [
-              String(auditPage.dropped),
-              " older audit ",
-              auditPage.dropped === 1 ? "entry was" : "entries were",
-              " dropped by bounded retention."
-            ] }),
-            auditPage?.entries.slice(0, 20).map((entry) => {
-              const outcome = entry.outcome.split("-").map((part) => `${part.slice(0, 1).toUpperCase()}${part.slice(1)}`).join(" ");
-              const operation = entry.operation === "create" ? "Create" : "Update";
-              const time3 = auditTime(entry.timestamp);
-              return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("article", { "aria-label": `Audit entry ${entry.auditId}`, children: [
-                /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("h3", { children: [
-                  outcome,
-                  " ",
-                  operation,
-                  " ",
-                  entry.destination
-                ] }),
-                time3 === null ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "Time Unavailable" }) : /* @__PURE__ */ (0, import_jsx_runtime.jsx)("time", { dateTime: time3.dateTime, children: time3.label }),
-                entry.reason !== void 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { children: boundedText(entry.reason, 500) })
-              ] }, entry.auditId);
-            }),
-            auditPage !== null && (auditOffset > 0 || auditPage.nextOffset !== null) && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("nav", { "aria-label": "Audit Pages", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-                "button",
-                {
-                  "aria-label": "Previous Audit Page",
-                  disabled: auditOffset === 0,
-                  onClick: () => {
-                    void loadAudit(Math.max(0, auditOffset - 20));
-                  },
-                  type: "button",
-                  children: "Previous"
-                }
-              ),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-                "button",
-                {
-                  "aria-label": "Next Audit Page",
-                  disabled: auditPage.nextOffset === null,
-                  onClick: () => {
-                    if (auditPage.nextOffset !== null) void loadAudit(auditPage.nextOffset);
-                  },
-                  type: "button",
-                  children: "Next"
-                }
-              )
-            ] })
-          ] })
-        ] })
-      ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("form", { className: "tocktutor-assistant-composer", onSubmit: send, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-          "textarea",
-          {
-            "aria-label": "Assistant Message",
-            id: "tocktutor-assistant-message",
-            maxLength: 8e3,
-            onChange: (event) => {
-              setMessage(event.target.value);
-            },
-            onKeyDown: submitOnEnter,
-            placeholder: "What are your thoughts?",
-            rows: 3,
-            value: message
-          }
-        ),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-            "button",
-            {
-              "aria-controls": "tocktutor-assistant-add-menu",
-              "aria-expanded": menuOpen,
-              "aria-label": "Add Context",
-              className: "tocktutor-assistant-icon-button",
-              onClick: () => {
-                setMenuOpen((open) => !open);
-              },
-              type: "button",
-              children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Plus, { "aria-hidden": "true" })
-            }
-          ),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-            "button",
-            {
-              "aria-label": "Send",
-              className: "tocktutor-assistant-send",
-              disabled: message.trim() === "",
-              type: "submit",
-              children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ArrowUp, { "aria-hidden": "true" })
-            }
-          )
-        ] })
-      ] })
-    ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { "aria-live": "polite", className: "tocktutor-assistant-status", ref: statusRef, role: "status", tabIndex: -1, children: status === null ? "" : boundedText(status, 500) })
-  ] });
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { "aria-live": "polite", className: "tocktutor-assistant-status absolute right-3 bottom-[120px] left-3 z-2 rounded-[7px] bg-[color-mix(in_srgb,var(--tta-accent)_9%,var(--tta-panel))] px-2.5 py-2 text-xs text-[var(--tta-muted)] empty:hidden", ref: statusRef, role: "status", tabIndex: -1, children: status === null ? "" : boundedText(status, 500) })
+      ]
+    }
+  );
 }
 
 // src/client.ts

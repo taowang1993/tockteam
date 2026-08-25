@@ -22,7 +22,7 @@ test('renders keyboard-native actions with bounded availability and polite statu
   }))
   assert.match(active, /aria-label="Desktop Note Actions"/u)
   assert.match(active, /role="group"/u)
-  assert.match(active, /aria-live="polite" role="status">Ready\.<\/p>/u)
+  assert.match(active, /aria-live="polite"[^>]*role="status">Ready\.<\/p>/u)
   for (const label of [
     'Choose Vault',
     'Reveal Entry',
@@ -43,6 +43,6 @@ test('renders keyboard-native actions with bounded availability and polite statu
     remote,
     vault: null,
   }))
-  assert.match(inactive, /<button type="button">Choose Vault<\/button>/u)
+  assert.match(inactive, /<button[^>]*type="button">Choose Vault<\/button>/u)
   assert.equal([...inactive.matchAll(/<button[^>]*disabled=""/gu)].length, 8)
 })

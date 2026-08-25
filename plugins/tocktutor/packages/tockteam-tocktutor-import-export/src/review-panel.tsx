@@ -368,15 +368,15 @@ export function ImportExportReviewPanelView(props: {
   const warnings = preview !== null && 'warnings' in preview ? preview.warnings : []
   const busy = snapshot.phase === 'inspecting' || snapshot.phase === 'approving' || snapshot.phase === 'committing'
   return (
-    <section aria-label="Import, Backup, and Restore" className="tocktutor-import-export-review tocktutor-import-export-styles">
+    <section aria-label="Import, Backup, and Restore" className="tocktutor-import-export-review grid gap-3 rounded-[10px] border border-[var(--tt-border)] p-3.5 [&_h2]:m-0 [&_h3]:m-0 [&_p]:m-0 [&_button]:min-h-8 [&_button]:rounded-md [&_button]:border [&_button]:border-[var(--tt-border)] [&_button]:bg-[var(--tt-panel)] [&_button]:px-[9px] [&_button]:py-[5px] [&_button]:text-inherit [&_select]:min-h-8 [&_select]:rounded-md [&_select]:border [&_select]:border-[var(--tt-border)] [&_select]:bg-[var(--tt-panel)] [&_select]:px-[9px] [&_select]:py-[5px] [&_select]:text-inherit">
       <header>
-        <p className="tocktutor-import-export-kicker">Reviewed Operations</p>
+        <p className="tocktutor-import-export-kicker text-[11px] font-bold tracking-[.08em] text-[var(--tt-muted)] uppercase">Reviewed Operations</p>
         <h2>Import, Backup, and Restore</h2>
       </header>
       <p>Craft exports use the reviewed Markdown Folder or Markdown ZIP path; no Craft-specific parser changes your files.</p>
       {(snapshot.phase === 'idle' || snapshot.phase === 'complete' || (snapshot.phase === 'error' && preview === null)) && (
-        <div className="tocktutor-import-export-start">
-          <label>
+        <div className="tocktutor-import-export-start flex flex-wrap gap-2">
+          <label className="grid flex-[1_1_220px] gap-1 text-xs">
             Import Format
             <select
               onChange={event => { props.onFormat(event.currentTarget.value as ImportInspectFormat) }}
@@ -390,23 +390,23 @@ export function ImportExportReviewPanelView(props: {
         </div>
       )}
       {busy && (
-        <div className="tocktutor-import-export-actions">
+        <div className="tocktutor-import-export-actions flex flex-wrap gap-2">
           <p aria-live="polite" role="status">{snapshot.phase === 'inspecting' ? 'Inspecting the selected source…' : snapshot.phase === 'approving' ? 'Approving the reviewed plan…' : 'Committing through the vault runtime…'}</p>
           <button onClick={props.onCancel} type="button">Cancel</button>
         </div>
       )}
       {snapshot.phase === 'review' && preview !== null && (
-        <div className="tocktutor-import-export-plan">
+        <div className="tocktutor-import-export-plan grid gap-2.5">
           <h3>Review {String('entries' in preview ? preview.entries : items.length)} Planned {'entries' in preview ? 'Backup Entries' : items.length === 1 ? 'Item' : 'Items'}</h3>
-          <dl>
-            <div><dt>Source</dt><dd>{'source' in preview ? preview.source.label : 'Active Vault Snapshot'}</dd></div>
-            <div><dt>Total Bytes</dt><dd>{String(preview.totalBytes)}</dd></div>
-            <div><dt>Plan Digest</dt><dd>{preview.planDigest.slice(0, 23)}…</dd></div>
+          <dl className="m-0 grid gap-1">
+            <div className="flex justify-between gap-2"><dt>Source</dt><dd className="m-0 text-right [overflow-wrap:anywhere]">{'source' in preview ? preview.source.label : 'Active Vault Snapshot'}</dd></div>
+            <div className="flex justify-between gap-2"><dt>Total Bytes</dt><dd className="m-0 text-right [overflow-wrap:anywhere]">{String(preview.totalBytes)}</dd></div>
+            <div className="flex justify-between gap-2"><dt>Plan Digest</dt><dd className="m-0 text-right [overflow-wrap:anywhere]">{preview.planDigest.slice(0, 23)}…</dd></div>
           </dl>
-          {items.length > 0 && <ul>{items.slice(0, 100).map(item => <li key={item.id}>{item.destination} — {String(item.size)} bytes</li>)}</ul>}
+          {items.length > 0 && <ul className="m-0 max-h-[180px] overflow-auto pl-[18px]">{items.slice(0, 100).map(item => <li key={item.id}>{item.destination} — {String(item.size)} bytes</li>)}</ul>}
           {warnings.map(warning => <p key={warning} role="note">{warning}</p>)}
-          {skipped.length > 0 && <details><summary>{String(skipped.length)} Skipped Entries</summary><ul>{skipped.slice(0, 100).map(entry => <li key={`${entry.label}:${entry.reason}`}>{entry.label}: {entry.reason}</li>)}</ul></details>}
-          <div className="tocktutor-import-export-actions">
+          {skipped.length > 0 && <details><summary>{String(skipped.length)} Skipped Entries</summary><ul className="m-0 max-h-[180px] overflow-auto pl-[18px]">{skipped.slice(0, 100).map(entry => <li key={`${entry.label}:${entry.reason}`}>{entry.label}: {entry.reason}</li>)}</ul></details>}
+          <div className="tocktutor-import-export-actions flex flex-wrap gap-2">
             <button onClick={props.onApprove} type="button">Approve and Commit</button>
             <button onClick={props.onCancel} type="button">Cancel</button>
           </div>
@@ -433,7 +433,7 @@ export function ImportExportReviewPanelView(props: {
         </div>
       )}
       {snapshot.phase === 'error' && (
-        <div className="tocktutor-import-export-actions">
+        <div className="tocktutor-import-export-actions flex flex-wrap gap-2">
           <p role="alert">{snapshot.error ?? 'The reviewed operation failed.'}</p>
           {preview !== null && <button onClick={props.onApprove} type="button">Retry Reviewed Commit</button>}
           {preview !== null && <button onClick={props.onCancel} type="button">Cancel</button>}
