@@ -6,15 +6,18 @@ import { test } from 'node:test'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 
+function sidebarTailwindSource(): string {
+  return readFileSync(join(root, 'plugins/skins/src/client/tailwind.css'), 'utf8')
+    .replaceAll('&[', 'html[')
+    .replaceAll('& ', '')
+}
+
 test('desktop shell rail switches between DeepSeek Harness and TockTutor', () => {
   const workspace = readFileSync(
     join(root, 'plugins/sidebar/src/client/plugin.tsx'),
     'utf8',
   )
-  const css = readFileSync(
-    join(root, 'plugins/sidebar/src/client/sidebar.css'),
-    'utf8',
-  )
+  const css = sidebarTailwindSource()
 
   assert.match(css, /--tockteam-rail-width: 40px;/)
   assert.match(
@@ -88,10 +91,7 @@ test('desktop titlebar matches Tockbot chrome and stays draggable', () => {
     join(root, 'plugins/sidebar/src/client/plugin.tsx'),
     'utf8',
   )
-  const css = readFileSync(
-    join(root, 'plugins/sidebar/src/client/sidebar.css'),
-    'utf8',
-  )
+  const css = sidebarTailwindSource()
   const tockTutor = readFileSync(
     join(root, 'plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/route.tsx'),
     'utf8',
@@ -188,9 +188,9 @@ test('desktop titlebar matches Tockbot chrome and stays draggable', () => {
 test('review, pinned summary, and embedded side tools keep distinct layouts', () => {
   const summary = readFileSync(join(root, 'plugins/pinned-summary/src/client.ts'), 'utf8')
   const workspace = readFileSync(join(root, 'plugins/sidebar/src/client/plugin.tsx'), 'utf8')
-  const workspaceCss = readFileSync(join(root, 'plugins/sidebar/src/client/sidebar.css'), 'utf8')
+  const workspaceCss = sidebarTailwindSource()
   const sideTools = readFileSync(join(root, 'plugins/sidebar/src/client/SideToolsPanel.tsx'), 'utf8')
-  const sideToolsCss = readFileSync(join(root, 'plugins/sidebar/src/client/side-tools.css'), 'utf8')
+  const sideToolsCss = workspaceCss
 
   assert.match(workspace, /if \(open\) this\.pinnedSummary\.setOpen\(false\)/)
   assert.match(workspace, /if \(this\.state\.open\) this\.pinnedSummary\.setOpen\(false\)/)

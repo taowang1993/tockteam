@@ -52,8 +52,6 @@ import {
   SideToolsPanel,
   ToolIcon,
 } from './SideToolsPanel.tsx'
-import sideToolsCss from './side-tools.css'
-import workspaceCss from './sidebar.css'
 import type { LocaleService, Translate } from '../../../shared/i18n.ts'
 import { useTranslate } from '../../../shared/use-i18n.ts'
 import { WORKSPACE_MESSAGES, type WorkspaceMessage } from './i18n.ts'
@@ -343,7 +341,6 @@ function flattenRunningCalls(calls: readonly RunningToolCall[]): RunningToolCall
 class WorkspaceToolsService implements WorkspaceTools {
   private state: WorkspaceToolsState
   private readonly listeners = new Set<() => void>()
-  private style: HTMLStyleElement | undefined
   private element: HTMLDivElement | undefined
   private layout: HTMLDivElement | undefined
   private appRoot: HTMLElement | undefined
@@ -483,10 +480,7 @@ class WorkspaceToolsService implements WorkspaceTools {
   mount(): void {
     if (this.state.open) this.pinnedSummary.setOpen(false)
     this.stopSidebar = this.sidebar.subscribe(() => { this.syncSidebar() })
-    this.style = document.createElement('style')
-    this.style.dataset.tockteamDesktopSidebarStyles = 'true'
-    this.style.textContent = `${workspaceCss}\n${sideToolsCss}`
-    document.head.append(this.style)
+    document.documentElement.classList.add('tockteam-sidebar-styles')
     this.element = document.createElement('div')
     this.element.id = 'tockteam-sidebar-root'
     const rail = document.createElement('div')
@@ -528,7 +522,7 @@ class WorkspaceToolsService implements WorkspaceTools {
       this.layout.before(this.appRoot)
       this.layout.remove()
     }
-    this.style?.remove()
+    document.documentElement.classList.remove('tockteam-sidebar-styles')
     delete document.documentElement.dataset.tockteamDesktopSidebarOpen
     delete document.documentElement.dataset.tockteamPanelMaximized
     document.documentElement.style.removeProperty('--tockteam-sidebar-width')
