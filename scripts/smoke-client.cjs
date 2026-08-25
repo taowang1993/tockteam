@@ -68,7 +68,7 @@ void app.whenReady().then(async () => {
         const onboardingButton = [...document.querySelectorAll('button')]
           .find(button => /^(继续|continue|start using|开始使用|稍后配置|configure later|skip|later)$/i.test((button.textContent ?? '').trim()))
         if (onboardingButton !== undefined) onboardingButton.click()
-        const marketplaceButton = document.querySelector('.tockteam-marketplace-nav')
+        const marketplaceButton = document.querySelector('[data-tockteam-marketplace-nav]')
         const collapsed = marketplaceButton?.dataset.collapsed === 'true'
         if (document.documentElement.dataset.tockteamDesktop === 'true'
           && marketplaceButton instanceof HTMLButtonElement
@@ -116,7 +116,7 @@ void app.whenReady().then(async () => {
           return result
         })(),
         navigation: (() => {
-          const pluginsIcon = document.querySelector('.tockteam-marketplace-nav svg')
+          const pluginsIcon = document.querySelector('[data-tockteam-marketplace-nav] svg')
           const slotted = [...document.querySelectorAll('button')]
             .find(button => button.querySelector('[data-slot="settings.trigger"]') !== null
               && button.closest('[data-slot="sidebar"]') !== null)
@@ -241,7 +241,7 @@ void app.whenReady().then(async () => {
       }
       if (Date.now() - startedAt >= timeoutMs) {
         settle(new Error(
-          `DSH Chromium client graph timed out:\n${state.body.trim()}\nTailwind: ${JSON.stringify(state.tailwind)}`,
+          `DSH Chromium client graph timed out:\n${state.body.trim()}\nTailwind: ${JSON.stringify(state.tailwind)}\nNavigation: ${JSON.stringify(state.navigation)}`,
         ))
         return
       }

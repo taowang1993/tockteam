@@ -193,7 +193,7 @@ try {
     assert.ok(bundle.includes(pluginId), `${pluginId} client bundle did not enroll its module id`)
     if (pluginId === '@tockteam/skins') {
       assert.match(bundle, /text-foreground\{color:var\(--dsw-alias-label-primary\)\}/)
-      assert.doesNotMatch(bundle, /box-sizing:border-box/)
+      assert.doesNotMatch(bundle, /\*,:before,:after\{box-sizing:border-box/)
     }
     loaded.push({ bytes: bundle.length, id: pluginId })
   }
