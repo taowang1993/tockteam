@@ -11,6 +11,58 @@ interface MutableReviewFile extends GitReviewFile {
   newCursor: number | null
 }
 
+function decodeGitPath(value: string): string {
+  const quoted = value.startsWith('"') && value.endsWith('"')
+  if (!quoted) return value
+  const source = value.slice(1, -1)
+  const chunks: Buffer[] = []
+  let text = ''
+  const escapes: Record<string, string> = {
+    a: '\u0007', b: '\b', f: '\f', n: '\n', r: '\r', t: '\t', v: '\u000b',
+    '"': '"', '\\': '\\',
+  }
+  const flush = (): void => {
+    if (text !== '') chunks.push(Buffer.from(text))
+    text = ''
+  }
+  for (let index = 0; index < source.length; index += 1) {
+    const character = source[index]!
+    if (character !== '\\') {
+      text += character
+      continue
+    }
+    const escaped = source[index + 1]
+    if (escaped === undefined) {
+      text += '\\'
+      continue
+    }
+    const octal = /^[0-7]{1,3}/u.exec(source.slice(index + 1))?.[0]
+    if (octal !== undefined) {
+      flush()
+      chunks.push(Buffer.from([Number.parseInt(octal, 8)]))
+      index += octal.length
+      continue
+    }
+    text += escapes[escaped] ?? escaped
+    index += 1
+  }
+  flush()
+  return Buffer.concat(chunks).toString('utf8')
+}
+
+function headerPaths(line: string): { oldPath: string; path: string } | null {
+  const quoted = /^diff --git ("(?:\\.|[^"])*") ("(?:\\.|[^"])*")$/u.exec(line)
+  const plain = /^diff --git (a\/.+) (b\/.+)$/u.exec(line)
+  const match = quoted ?? plain
+  if (match?.[1] === undefined || match[2] === undefined) return null
+  const oldPath = decodeGitPath(match[1])
+  const path = decodeGitPath(match[2])
+  return {
+    oldPath: oldPath.startsWith('a/') ? oldPath.slice(2) : oldPath,
+    path: path.startsWith('b/') ? path.slice(2) : path,
+  }
+}
+
 function fileStatus(line: string): GitReviewFileStatus | null {
   if (line.startsWith('new file mode ')) return 'added'
   if (line.startsWith('deleted file mode ')) return 'deleted'
@@ -64,12 +116,12 @@ export function parseGitReviewDiff(output: string): GitReviewFile[] {
   }
 
   for (const rawLine of output.split(/\r?\n/)) {
-    const header = /^diff --git a\/(.+) b\/(.+)$/.exec(rawLine)
+    const header = headerPaths(rawLine)
     if (header !== null) {
       finish()
       current = {
-        path: header[2] ?? header[1] ?? 'unknown',
-        oldPath: header[1] ?? null,
+        path: header.path,
+        oldPath: header.oldPath,
         status: 'modified',
         additions: 0,
         deletions: 0,
@@ -87,19 +139,19 @@ export function parseGitReviewDiff(output: string): GitReviewFile[] {
       continue
     }
     if (rawLine.startsWith('rename to ')) {
-      current.path = rawLine.slice('rename to '.length)
+      current.path = decodeGitPath(rawLine.slice('rename to '.length))
       current.status = 'renamed'
       continue
     }
     if (rawLine.startsWith('--- ')) {
-      const path = rawLine.slice(4)
+      const path = decodeGitPath(rawLine.slice(4))
       if (path !== '/dev/null') {
         current.oldPath = path.startsWith('a/') ? path.slice(2) : path
       }
       continue
     }
     if (rawLine.startsWith('+++ ')) {
-      const path = rawLine.slice(4)
+      const path = decodeGitPath(rawLine.slice(4))
       if (path !== '/dev/null') {
         current.path = path.startsWith('b/') ? path.slice(2) : path
       }
