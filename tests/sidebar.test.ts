@@ -188,6 +188,34 @@ test('desktop sidebar persists bounded per-session state outside Web storage', a
   assert.equal(storage.writes.length, 1)
 })
 
+test('desktop sidebar retries newer preferences after an in-flight save fails', async () => {
+  let rejectFirst!: (error: Error) => void
+  const firstSave = new Promise<void>((_resolve, reject) => { rejectFirst = reject })
+  class FailingSidebarStorage extends MemorySidebarStorage {
+    attempts = 0
+
+    override async save(preferences: DesktopSidebarPreferences): Promise<void> {
+      this.attempts += 1
+      if (this.attempts === 1) return await firstSave
+      await super.save(preferences)
+    }
+  }
+  const storage = new FailingSidebarStorage()
+  const sidebar = new DesktopSidebarService(storage)
+  await sidebar.start()
+  sidebar.setWidth(400)
+  await new Promise<void>(resolve => { setImmediate(resolve) })
+  sidebar.setOpenByDefault(true)
+  rejectFirst(new Error('disk unavailable'))
+  await assert.rejects(sidebar.settle(), /disk unavailable/u)
+  await new Promise<void>(resolve => { setImmediate(resolve) })
+  await sidebar.settle()
+
+  assert.equal(storage.attempts, 2)
+  assert.equal(storage.value.defaultWidth, 400)
+  assert.equal(storage.value.openByDefault, true)
+})
+
 test('desktop sidebar preferences migrate from the pre-rename durable file', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'tockteam-sidebar-legacy-'))
   const path = join(directory, 'sidebar.json')

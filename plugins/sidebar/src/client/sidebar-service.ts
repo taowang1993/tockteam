@@ -506,13 +506,17 @@ export class DesktopSidebarService implements DesktopSidebar {
     if (!this.snapshot.ready || this.disposed) return
     this.dirty = true
     if (this.flushing === undefined) {
-      this.flushing = this.flush().finally(() => { this.flushing = undefined })
-      void this.flushing.catch(error => {
+      const flushing = this.flush()
+      this.flushing = flushing
+      void flushing.catch(error => {
         this.publish({
           ...this.snapshot,
           error: messageOf(error),
           revision: this.snapshot.revision + 1,
         })
+      }).finally(() => {
+        if (this.flushing === flushing) this.flushing = undefined
+        if (this.dirty) this.schedulePersist()
       })
     }
   }
