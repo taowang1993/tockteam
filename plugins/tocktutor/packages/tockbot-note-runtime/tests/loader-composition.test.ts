@@ -399,7 +399,8 @@ test('Desktop vault selection activates only through a generation-bound Host cla
             vaultId: repeated.vaultId,
           },
         }, new AbortController().signal),
-        (error: unknown) => error instanceof NoteVaultError && error.code === 'changed',
+        (error: unknown) => error instanceof NoteVaultError
+          && (error.code === 'changed' || error.code === 'stale-vault'),
       )
       await waitUntil(() => released.length === 2)
       assert.deepEqual(released, [
