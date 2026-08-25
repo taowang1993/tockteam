@@ -29,6 +29,7 @@ import {
 } from 'lucide-react'
 import type { Translate } from '../../../shared/i18n.ts'
 import type { WorkspaceFilesResponse, WorkspaceFileKind } from '../protocol.ts'
+import { initialBrowserUrl, normalizeBrowserUrl } from './browser-url.ts'
 import {
   betterSidebarApi,
   mapBetterSidebarFile,
@@ -165,21 +166,6 @@ function SideMenu(props: SideToolsPanelProps): JSX.Element {
   )
 }
 
-function normalizeBrowserUrl(
-  raw: string,
-  t: Translate<WorkspaceMessage>,
-): string {
-  const value = raw.trim()
-  if (value === '') throw new Error(t('browser.enter-url'))
-  const url = new URL(/^[a-z][a-z\d+.-]*:/i.test(value)
-    ? value
-    : `https://${value}`)
-  if (url.protocol !== 'https:' && url.protocol !== 'http:') {
-    throw new Error(t('browser.http-only'))
-  }
-  return url.href
-}
-
 export function BrowserView({
   patch,
   t,
@@ -199,7 +185,9 @@ export function BrowserView({
     const element = document.createElement('webview') as unknown as ElectronWebviewElement
     element.className = 'tockteam-browser-webview flex h-full w-full'
     element.setAttribute('partition', 'persist:tockteam-browser')
-    element.setAttribute('src', tab.resource ?? 'about:blank')
+    const initial = initialBrowserUrl(tab.resource, t)
+    element.setAttribute('src', initial.url)
+    if (initial.error !== undefined) setError(initial.error)
     const update = (event: Event): void => {
       const next = 'url' in event && typeof event.url === 'string'
         ? event.url
