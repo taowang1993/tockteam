@@ -58,133 +58,7 @@ export const inject = ['locale', 'sessions']
 
 const OPEN_KEY = 'tockteam-desktop.pinned-summary.open'
 
-const SUMMARY_CSS = `
-html {
-  --tockteam-pinned-summary-width: 288px;
-}
-
-html[data-tockteam-summary-pinned='true'] #root {
-  box-sizing: border-box;
-  padding-right: calc(var(--tockteam-pinned-summary-width) + 24px);
-}
-
-[data-tockteam-pinned-summary] {
-  position: fixed;
-  z-index: 9000;
-  top: calc(var(--tockteam-titlebar-height, 40px) + 12px);
-  right: 12px;
-  height: calc((100vh - var(--tockteam-titlebar-height, 40px) - 24px) / 2);
-  width: var(--tockteam-pinned-summary-width);
-  box-sizing: border-box;
-  overflow: hidden;
-  border: 1px solid var(--dsw-alias-border-l1);
-  border-radius: 22px;
-  background: var(--dsw-alias-bg-base);
-  color: var(--dsw-alias-label-primary);
-  box-shadow: 0 14px 42px rgb(0 0 0 / 9%);
-  opacity: 0;
-  pointer-events: none;
-  transform: translateX(calc(100% + 24px));
-  visibility: hidden;
-  transition:
-    opacity 140ms var(--ds-ease-in-out, ease),
-    transform 180ms var(--ds-ease-in-out, ease),
-    visibility 0s linear 180ms;
-  -webkit-app-region: no-drag;
-}
-
-[data-tockteam-pinned-summary][data-open='true'] {
-  opacity: 1;
-  pointer-events: auto;
-  transform: translateX(0);
-  visibility: visible;
-  transition-delay: 0s;
-}
-
-[data-tockteam-summary-header] {
-  display: flex;
-  align-items: center;
-  height: 48px;
-  padding: 0 10px 0 15px;
-  border-bottom: 1px solid var(--dsw-alias-border-l2);
-  box-sizing: border-box;
-  font-size: 13px;
-  font-weight: 600;
-}
-
-[data-tockteam-summary-close] {
-  display: grid;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  margin-left: auto;
-  padding: 0;
-  border: 0;
-  border-radius: 7px;
-  background: transparent;
-  color: var(--dsw-alias-label-secondary);
-  cursor: pointer;
-}
-
-[data-tockteam-summary-close] svg {
-  width: 16px;
-  height: 16px;
-}
-
-[data-tockteam-summary-close]:hover {
-  background: var(--dsw-alias-interactive-bg-hover);
-}
-
-[data-tockteam-summary-body] {
-  height: calc(100% - 48px);
-  padding: 14px 15px 16px;
-  box-sizing: border-box;
-  overflow: auto;
-}
-
-[data-tockteam-summary-title] {
-  margin: 0;
-  font-size: 14px;
-  line-height: 1.35;
-}
-
-[data-tockteam-summary-meta] {
-  margin: 6px 0 12px;
-  color: var(--dsw-alias-label-tertiary);
-  font-size: 11px;
-  line-height: 1.55;
-  overflow-wrap: anywhere;
-}
-
-[data-tockteam-summary-source] {
-  display: inline-flex;
-  margin-bottom: 10px;
-  padding: 3px 8px;
-  border-radius: 999px;
-  background: var(--dsw-alias-interactive-bg-hover);
-  color: var(--dsw-alias-label-secondary);
-  font-size: 10px;
-  font-weight: 600;
-}
-
-[data-tockteam-summary-text] {
-  margin: 0;
-  color: var(--dsw-alias-label-secondary);
-  font-size: 12px;
-  line-height: 1.55;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
-
-@media (max-width: 900px) {
-  html[data-tockteam-summary-pinned='true'] #root { padding-right: 0; }
-  [data-tockteam-pinned-summary] { box-shadow: -20px 0 48px rgb(0 0 0 / 14%); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  [data-tockteam-pinned-summary] { transition: none; }
-}
-`
+const SUMMARY_ROOT_CLASSES = ['box-border', 'pr-[312px]', 'max-[900px]:pr-0'] as const
 
 function readOpen(): boolean {
   try {
@@ -243,7 +117,6 @@ class PinnedSummaryService implements PinnedSummary {
   readonly #listeners = new Set<() => void>()
   #open = readOpen()
   #panel: HTMLElement | undefined
-  #style: HTMLStyleElement | undefined
   #title: HTMLElement | undefined
   #headerTitle: HTMLElement | undefined
   #close: HTMLButtonElement | undefined
@@ -254,8 +127,6 @@ class PinnedSummaryService implements PinnedSummary {
   #unsubscribeList: (() => void) | undefined
   #unsubscribeSession: (() => void) | undefined
   #unsubscribeLocale: (() => void) | undefined
-  readonly #narrowViewport = window.matchMedia('(max-width: 900px)')
-  readonly #handleViewportChange = (): void => { this.applyState() }
 
   constructor(
     sessions: SessionsService,
@@ -268,24 +139,20 @@ class PinnedSummaryService implements PinnedSummary {
   }
 
   mount(): void {
-    this.#style = document.createElement('style')
-    this.#style.dataset.tockteamPinnedSummaryStyles = 'true'
-    this.#style.textContent = SUMMARY_CSS
-    document.head.append(this.#style)
-
     const panel = document.createElement('aside')
     panel.dataset.tockteamPinnedSummary = 'true'
     panel.setAttribute('aria-label', this.#t('summary.label'))
+    panel.className = 'fixed right-3 top-[calc(var(--tockteam-titlebar-height,40px)+12px)] z-[9000] h-[calc((100vh-var(--tockteam-titlebar-height,40px)-24px)/2)] w-72 box-border translate-x-[calc(100%+24px)] overflow-hidden invisible pointer-events-none rounded-[22px] border border-[var(--dsw-alias-border-l1)] bg-background text-foreground opacity-0 shadow-[0_14px_42px_rgba(0,0,0,0.09)] transition-[opacity,transform,visibility] [transition-duration:140ms,180ms,0s] [transition-timing-function:var(--ds-ease-in-out,ease),var(--ds-ease-in-out,ease),linear] [transition-delay:0s,0s,180ms] [-webkit-app-region:no-drag] data-[open=true]:visible data-[open=true]:pointer-events-auto data-[open=true]:translate-x-0 data-[open=true]:opacity-100 data-[open=true]:[transition-delay:0s] max-[900px]:shadow-[-20px_0_48px_rgba(0,0,0,0.14)] motion-reduce:transition-none'
     panel.innerHTML = `
-      <header data-tockteam-summary-header>
+      <header data-tockteam-summary-header class="flex h-12 box-border items-center border-b border-border pr-2.5 pl-[15px] text-[13px] font-semibold">
         <span></span>
-        <button data-tockteam-summary-close type="button"></button>
+        <button data-tockteam-summary-close class="ml-auto grid size-7 cursor-pointer place-items-center rounded-[7px] border-0 bg-transparent p-0 text-muted-foreground hover:bg-[var(--dsw-alias-interactive-bg-hover)] [&_svg]:size-4" type="button"></button>
       </header>
-      <div data-tockteam-summary-body>
-        <h2 data-tockteam-summary-title></h2>
-        <div data-tockteam-summary-meta></div>
-        <span data-tockteam-summary-source></span>
-        <p data-tockteam-summary-text></p>
+      <div data-tockteam-summary-body class="h-[calc(100%-48px)] box-border overflow-auto px-[15px] pt-3.5 pb-4">
+        <h2 data-tockteam-summary-title class="m-0 text-sm leading-[1.35]"></h2>
+        <div data-tockteam-summary-meta class="mt-1.5 mb-3 text-[11px] leading-[1.55] text-subtle-foreground [overflow-wrap:anywhere]"></div>
+        <span data-tockteam-summary-source class="mb-2.5 inline-flex rounded-full bg-[var(--dsw-alias-interactive-bg-hover)] px-2 py-[3px] text-[10px] font-semibold text-muted-foreground"></span>
+        <p data-tockteam-summary-text class="m-0 whitespace-pre-wrap text-xs leading-[1.55] text-muted-foreground [overflow-wrap:anywhere]"></p>
       </div>
     `
     document.body.append(panel)
@@ -301,7 +168,6 @@ class PinnedSummaryService implements PinnedSummary {
     this.#source = required(panel, '[data-tockteam-summary-source]')
     this.#text = required(panel, '[data-tockteam-summary-text]')
     this.#close.addEventListener('click', () => { this.setOpen(false) })
-    this.#narrowViewport.addEventListener('change', this.#handleViewportChange)
     this.#unsubscribeList = this.#sessions.list.subscribe(() => { this.bindAndRender() })
     this.#unsubscribeLocale = this.#locale.subscribe(() => {
       this.renderChrome()
@@ -316,13 +182,11 @@ class PinnedSummaryService implements PinnedSummary {
     this.#unsubscribeList?.()
     this.#unsubscribeSession?.()
     this.#unsubscribeLocale?.()
-    this.#narrowViewport.removeEventListener('change', this.#handleViewportChange)
     this.#panel?.remove()
-    this.#style?.remove()
     delete document.documentElement.dataset.tockteamSummaryPinned
     if (document.documentElement.dataset.tockteamRightPanelOwner === 'pinned-summary') {
       delete document.documentElement.dataset.tockteamRightPanelOwner
-      document.getElementById('root')?.style.removeProperty('padding-right')
+      document.getElementById('root')?.classList.remove(...SUMMARY_ROOT_CLASSES)
     }
   }
 
@@ -356,17 +220,12 @@ class PinnedSummaryService implements PinnedSummary {
     if (this.#open) {
       html.dataset.tockteamSummaryPinned = 'true'
       html.dataset.tockteamRightPanelOwner = 'pinned-summary'
-      const appRoot = document.getElementById('root')
-      if (appRoot !== null) {
-        appRoot.style.paddingRight = this.#narrowViewport.matches
-          ? '0px'
-          : 'calc(var(--tockteam-pinned-summary-width) + 24px)'
-      }
+      document.getElementById('root')?.classList.add(...SUMMARY_ROOT_CLASSES)
     } else {
       delete html.dataset.tockteamSummaryPinned
       if (html.dataset.tockteamRightPanelOwner === 'pinned-summary') {
         delete html.dataset.tockteamRightPanelOwner
-        document.getElementById('root')?.style.removeProperty('padding-right')
+        document.getElementById('root')?.classList.remove(...SUMMARY_ROOT_CLASSES)
       }
     }
   }

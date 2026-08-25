@@ -83,6 +83,7 @@ test('desktop shell rail switches between DeepSeek Harness and TockTutor', () =>
 test('desktop titlebar matches Tockbot chrome and stays draggable', () => {
   const main = readFileSync(join(root, 'src/main.ts'), 'utf8')
   const desktopShell = readFileSync(join(root, 'src/client.ts'), 'utf8')
+  const tailwind = readFileSync(join(root, 'plugins/skins/src/client/tailwind.css'), 'utf8')
   const workspace = readFileSync(
     join(root, 'plugins/sidebar/src/client/plugin.tsx'),
     'utf8',
@@ -115,12 +116,12 @@ test('desktop titlebar matches Tockbot chrome and stays draggable', () => {
   assert.match(workspace, /props\.showDesktopChrome && createPortal\(/)
   assert.match(workspace, /surface\.kind === 'desktop'/)
   assert.match(
-    desktopShell,
+    tailwind,
     /\[data-slot='sidebar'\] button:is\([\s\S]*?aria-label='Collapse sidebar'[\s\S]*?aria-label='收起侧边栏'[\s\S]*?\)\s*\{[^}]*display: none !important;/s,
   )
   assert.match(
-    desktopShell,
-    /\[data-slot='sidebar'\] button:is\([\s\S]*?aria-label='Open sidebar'[\s\S]*?aria-label='打开侧边栏'[\s\S]*?\) > svg:last-child\s*\{[^}]*display: none !important;/s,
+    tailwind,
+    /\[data-slot='sidebar'\] button:is\([\s\S]*?aria-label='Open sidebar'[\s\S]*?aria-label='打开侧边栏'[\s\S]*?\) > svg:last-child,[\s\S]*?\{[^}]*display: none !important;/s,
   )
   assert.match(workspace, /panels\.toggleSidebar\(\)/)
   assert.match(
@@ -195,8 +196,8 @@ test('review, pinned summary, and embedded side tools keep distinct layouts', ()
   assert.match(workspace, /if \(this\.state\.open\) this\.pinnedSummary\.setOpen\(false\)/)
   assert.match(workspace, /tockteamRightPanelOwner = 'sidebar'/)
   assert.match(summary, /tockteamRightPanelOwner = 'pinned-summary'/)
-  assert.match(summary, /calc\(var\(--tockteam-pinned-summary-width\) \+ 24px\)/)
-  assert.match(summary, /height: calc\(\(100vh - var\(--tockteam-titlebar-height, 40px\) - 24px\) \/ 2\);/)
+  assert.match(summary, /'pr-\[312px\]'/)
+  assert.match(summary, /h-\[calc\(\(100vh-var\(--tockteam-titlebar-height,40px\)-24px\)\/2\)\]/)
   assert.doesNotMatch(summary, /height: min\(360px/)
   assert.doesNotMatch(workspace, /aria-label="Toggle review panel"/)
   assert.match(workspace, /className="tockteam-review-view"/)
@@ -219,5 +220,5 @@ test('review, pinned summary, and embedded side tools keep distinct layouts', ()
   assert.match(workspace, /service\.setOpen\(false\); pinnedSummary\.toggle\(\)/)
   assert.match(workspace, /summary: ListFilter/)
   assert.match(workspaceCss, /\.tockteam-workspace-panel\[data-open='true'\]/)
-  assert.match(summary, /\[data-tockteam-pinned-summary\]\[data-open='true'\]/)
+  assert.match(summary, /data-\[open=true\]:visible/)
 })
