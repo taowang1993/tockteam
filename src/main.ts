@@ -372,9 +372,16 @@ function initializeDesktopPicker(): void {
           popOutRouteTokens.delete(windowId)
           if (ownsRoute) onClosed()
         })
-        await window.loadURL(target.href)
-        window.show()
-        return windowId
+        try {
+          await window.loadURL(target.href)
+          window.show()
+          return windowId
+        } catch (error) {
+          popOutWindows.delete(windowId)
+          popOutRouteTokens.delete(windowId)
+          if (!window.isDestroyed()) window.destroy()
+          throw error
+        }
       },
     },
   })
