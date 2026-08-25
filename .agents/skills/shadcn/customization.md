@@ -1,72 +1,209 @@
 # Customization & Theming
 
-## TockTeam Theme Authority
+Components reference semantic CSS variable tokens. Change the variables to change every component.
 
-Extend `plugins/skins/src/client/tailwind.css`; do not create `globals.css` or another browser stylesheet. Keep Tailwind preflight disabled and preserve the `--dsw-*` variables supplied by the pinned DSH runtime.
+## Contents
 
-Map shadcn semantic utilities directly to DSH tokens inside the existing `@theme inline` block. Add only tokens required by installed components. Typical mappings include:
+- How it works (CSS variables → Tailwind utilities → components)
+- Color variables and OKLCH format
+- Dark mode setup
+- Changing the theme (presets, CSS variables)
+- Adding custom colors (Tailwind v3 and v4)
+- Border radius
+- Customizing components (variants, className, wrappers)
+- Checking for updates
 
-| shadcn utility token | DSH source |
-| --- | --- |
-| `background` / `foreground` | Base background / primary label |
-| `card` / `card-foreground` | Layer-one background / primary label |
-| `popover` / `popover-foreground` | Raised or overlay background / primary label |
-| `primary` / `primary-foreground` | Brand primary / brand inverse |
-| `secondary` / `secondary-foreground` | Layer-two background / primary label |
-| `muted` / `muted-foreground` | Layer-two background / secondary label |
-| `accent` / `accent-foreground` | Layer-three background / primary label |
-| `destructive` | Error-state primary |
-| `border` / `input` | Level-two border |
-| `ring` | Brand primary |
+---
 
-Confirm the exact `--dsw-*` variables against the pinned DSH source before editing. Do not copy a generated standalone `:root` and `.dark` palette into TockTeam.
+## How It Works
+
+1. CSS variables defined in `:root` (light) and `.dark` (dark mode).
+2. Tailwind maps them to utilities: `bg-primary`, `text-muted-foreground`, etc.
+3. Components use these utilities — changing a variable changes all components that reference it.
+
+---
+
+## Color Variables
+
+Every color follows the `name` / `name-foreground` convention. The base variable is for backgrounds, `-foreground` is for text/icons on that background.
+
+| Variable                                     | Purpose                          |
+| -------------------------------------------- | -------------------------------- |
+| `--background` / `--foreground`              | Page background and default text |
+| `--card` / `--card-foreground`               | Card surfaces                    |
+| `--primary` / `--primary-foreground`         | Primary buttons and actions      |
+| `--secondary` / `--secondary-foreground`     | Secondary actions                |
+| `--muted` / `--muted-foreground`             | Muted/disabled states            |
+| `--accent` / `--accent-foreground`           | Hover and accent states          |
+| `--destructive` / `--destructive-foreground` | Error and destructive actions    |
+| `--border`                                   | Default border color             |
+| `--input`                                    | Form input borders               |
+| `--ring`                                     | Focus ring color                 |
+| `--chart-1` through `--chart-5`              | Chart/data visualization         |
+| `--sidebar-*`                                | Sidebar-specific colors          |
+| `--surface` / `--surface-foreground`         | Secondary surface                |
+
+Colors use OKLCH: `--primary: oklch(0.205 0 0)` where values are lightness (0–1), chroma (0 = gray), and hue (0–360).
+
+---
 
 ## Dark Mode
 
-Let DSH own light and dark mode. Its semantic variables change with the active DSH theme, so shadcn mappings should update automatically. Do not add `next-themes`, a separate `.dark` toggle, or manual `dark:` color overrides.
+Class-based toggle via `.dark` on the root element. In Next.js, use `next-themes`:
 
-## Adding a Semantic Token
+```tsx
+import { ThemeProvider } from "next-themes"
 
-Add the smallest mapping to the existing Tailwind block:
+<ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+  {children}
+</ThemeProvider>
+```
+
+---
+
+## Changing the Theme
+
+```bash
+# Apply a preset code from ui.shadcn.com.
+npx shadcn@latest apply --preset a2r6bw
+
+# Positional shorthand also works.
+npx shadcn@latest apply a2r6bw
+
+# Switch to a named preset and overwrite existing components.
+npx shadcn@latest apply --preset nova
+
+# Preserve existing components instead.
+npx shadcn@latest init --preset nova --force --no-reinstall
+
+# Use a custom theme URL.
+npx shadcn@latest apply --preset "https://ui.shadcn.com/init?base=radix&style=nova&theme=blue&..."
+```
+
+Or edit CSS variables directly in `globals.css`.
+
+---
+
+## Adding Custom Colors
+
+Add variables to the file at `tailwindCssFile` from `npx shadcn@latest info` (typically `globals.css`). Never create a new CSS file for this.
 
 ```css
-@theme inline {
-  --color-primary: var(--dsw-alias-brand-primary);
-  --color-primary-foreground: var(--dsw-alias-brand-primary-invert);
+/* 1. Define in the global CSS file. */
+:root {
+  --warning: oklch(0.84 0.16 84);
+  --warning-foreground: oklch(0.28 0.07 46);
+}
+.dark {
+  --warning: oklch(0.41 0.11 46);
+  --warning-foreground: oklch(0.99 0.02 95);
 }
 ```
 
-Use the mapped utility in components:
-
-```tsx
-<div className="bg-primary text-primary-foreground">Branded Surface</div>
+```css
+/* 2a. Register with Tailwind v4 (@theme inline). */
+@theme inline {
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+}
 ```
 
-Prefer a built-in component variant when it already provides the intended appearance.
+When `tailwindVersion` is `"v3"` (check via `npx shadcn@latest info`), register in `tailwind.config.js` instead:
+
+```js
+// 2b. Register with Tailwind v3 (tailwind.config.js).
+module.exports = {
+  theme: {
+    extend: {
+      colors: {
+        warning: "oklch(var(--warning) / <alpha-value>)",
+        "warning-foreground":
+          "oklch(var(--warning-foreground) / <alpha-value>)",
+      },
+    },
+  },
+}
+```
+
+```tsx
+// 3. Use in components.
+<div className="bg-warning text-warning-foreground">Warning</div>
+```
+
+---
 
 ## Border Radius
 
-Add or map radius tokens only when an installed component requires them. Preserve TockTeam's existing shape language rather than accepting preset defaults blindly.
+`--radius` controls border radius globally. Components derive values from it (`rounded-lg` = `var(--radius)`, `rounded-md` = `calc(var(--radius) - 2px)`).
+
+---
 
 ## Customizing Components
 
-Use these approaches in order:
+See also: [rules/styling.md](./rules/styling.md) for Incorrect/Correct examples.
 
-1. Use an existing variant such as `variant="outline"` or `size="sm"`.
-2. Use `className` for layout only.
-3. Add a semantic DSH-backed token when the design needs a missing role.
-4. Add a component variant when the behavior repeats.
-5. Compose a local wrapper only when several call sites share the same behavior.
+Prefer these approaches in order:
 
-Do not fork a component merely to adjust one call site.
+### 1. Built-in variants
+
+```tsx
+<Button variant="outline" size="sm">
+  Click
+</Button>
+```
+
+### 2. Tailwind classes via `className`
+
+```tsx
+<Card className="mx-auto max-w-md">...</Card>
+```
+
+### 3. Add a new variant
+
+Edit the component source to add a variant via `cva`:
+
+```tsx
+// components/ui/button.tsx
+warning: "bg-warning text-warning-foreground hover:bg-warning/90",
+```
+
+### 4. Wrapper components
+
+Compose shadcn/ui primitives into higher-level components:
+
+```tsx
+export function ConfirmDialog({ title, description, onConfirm, children }) {
+  return (
+    <AlertDialog>
+      <AlertDialogTrigger asChild>{children}</AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{title}</AlertDialogTitle>
+          <AlertDialogDescription>{description}</AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction onClick={onConfirm}>Confirm</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  )
+}
+```
+
+---
 
 ## Checking for Updates
 
-Preview upstream changes before touching local source:
-
 ```bash
-pnpm dlx shadcn@latest add button --cwd <owner-directory> --dry-run
-pnpm dlx shadcn@latest add button --cwd <owner-directory> --diff button.tsx
+npx shadcn@latest add button --diff
 ```
 
-Merge upstream changes into customized files manually. Use `--overwrite` only after explicit user approval.
+To preview exactly what would change before updating, use `--dry-run` and `--diff`:
+
+```bash
+npx shadcn@latest add button --dry-run        # see all affected files
+npx shadcn@latest add button --diff button.tsx # see the diff for a specific file
+```
+
+See [Updating Components in SKILL.md](./SKILL.md#updating-components) for the full smart merge workflow.

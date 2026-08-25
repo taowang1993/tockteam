@@ -2,9 +2,9 @@
 
 Configuration is read from `components.json`.
 
-> **IMPORTANT:** In TockTeam, substitute `pnpm dlx shadcn@latest` for the `npx shadcn@latest` examples below. Pass `--cwd` for the approved browser-client owner; never initialize the repository root.
+> **IMPORTANT:** Always run commands using the project's package runner: `npx shadcn@latest`, `pnpm dlx shadcn@latest`, or `bunx --bun shadcn@latest`. Check `packageManager` from project context to choose the right one. Examples below use `npx shadcn@latest` but substitute the correct runner for the project.
 
-> **IMPORTANT:** Only use documented flags. Preview writes with `--dry-run` or `--diff`, and do not use `--force` or `--overwrite` without explicit user approval.
+> **IMPORTANT:** Only use the flags documented below. Do not invent or guess flags — if a flag isn't listed here, it doesn't exist. The CLI auto-detects the package manager from the project's lockfile; there is no `--package-manager` flag.
 
 ## Contents
 
@@ -29,7 +29,9 @@ Initializes shadcn/ui in an existing project or creates a new project (when `--n
 | ----------------------- | ----- | --------------------------------------------------------- | ------- |
 | `--template <template>` | `-t`  | Template (next, start, vite, next-monorepo, react-router) | —       |
 | `--preset [name]`       | `-p`  | Preset configuration (named, code, or URL)                | —       |
+| `--yes`                 | `-y`  | Skip confirmation prompt                                  | `true`  |
 | `--defaults`            | `-d`  | Use defaults (`--template=next --preset=base-nova`)       | `false` |
+| `--force`               | `-f`  | Force overwrite existing configuration                    | `false` |
 | `--cwd <cwd>`           | `-c`  | Working directory                                         | current |
 | `--name <name>`         | `-n`  | Name for new project                                      | —       |
 | `--silent`              | `-s`  | Mute output                                               | `false` |
@@ -51,6 +53,7 @@ Applies a preset to an existing project, overwriting preset-driven config, fonts
 | Flag                | Short | Description                                | Default |
 | ------------------- | ----- | ------------------------------------------ | ------- |
 | `--preset <preset>` | —     | Preset configuration (named, code, or URL) | —       |
+| `--yes`             | `-y`  | Skip confirmation prompt                   | `false` |
 | `--cwd <cwd>`       | `-c`  | Working directory                          | current |
 | `--silent`          | `-s`  | Mute output                                | `false` |
 
@@ -70,7 +73,10 @@ GitHub item addresses (`owner/repo/item`), URLs, or local paths.
 
 | Flag            | Short | Description                                                                                                          | Default |
 | --------------- | ----- | -------------------------------------------------------------------------------------------------------------------- | ------- |
+| `--yes`         | `-y`  | Skip confirmation prompt                                                                                             | `false` |
+| `--overwrite`   | `-o`  | Overwrite existing files                                                                                             | `false` |
 | `--cwd <cwd>`   | `-c`  | Working directory                                                                                                    | current |
+| `--all`         | `-a`  | Add all available components                                                                                         | `false` |
 | `--path <path>` | `-p`  | Target path for the component                                                                                        | —       |
 | `--silent`      | `-s`  | Mute output                                                                                                          | `false` |
 | `--dry-run`     |       | Preview all changes without writing files                                                                            | `false` |
@@ -97,7 +103,10 @@ npx shadcn@latest add button --view
 # Show the full content of a specific file.
 npx shadcn@latest add button --view button.tsx
 
-# Preview a user-approved public registry item before installation.
+# Works with URLs too.
+npx shadcn@latest add https://api.npoint.io/abc123 --dry-run
+
+# Works with public GitHub registries too.
 npx shadcn@latest add owner/repo/item --dry-run
 
 # CSS diffs.

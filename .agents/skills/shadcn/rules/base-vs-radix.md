@@ -1,6 +1,6 @@
 # Base vs Radix
 
-API differences between `base` and `radix`. Check `base` with `pnpm dlx shadcn@latest info --cwd <owner-directory>`.
+API differences between `base` and `radix`. Check the `base` field from `npx shadcn@latest info`.
 
 ## Contents
 

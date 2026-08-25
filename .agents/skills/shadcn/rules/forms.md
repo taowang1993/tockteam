@@ -1,7 +1,5 @@
 # Forms & Inputs
 
-The examples use conventional `@/components/ui` imports. In TockTeam, rewrite them to paths supported by the approved browser-client owner and include explicit `.ts` extensions.
-
 ## Contents
 
 - Forms use FieldGroup + Field

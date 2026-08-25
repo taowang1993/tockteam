@@ -3,8 +3,6 @@
 Use this reference when the user wants to create, fix, publish, or reason about
 a shadcn registry.
 
-For TockTeam, prefer official `@shadcn` items. Use a third-party registry only when the user names and approves it: preview its files, inspect dependencies and install hooks, pin GitHub sources to a commit when practical, and never send project data or credentials to an arbitrary registry URL.
-
 ## Mental Model
 
 A registry has two forms:
@@ -17,9 +15,9 @@ A registry has two forms:
 The CLI installer consumes registry item payloads. A source registry is a way to
 author those payloads from real files.
 
-Registry items can distribute React components and their supporting hooks,
-utilities, design tokens, pages, configuration, documentation, and templates.
-Treat every included file as executable project input during review.
+Registry items are not limited to React components. They can distribute
+components, hooks, utilities, design tokens, pages, config files, docs, rules,
+workflows, templates, MCP files, and other project files.
 
 ## Root `registry.json`
 

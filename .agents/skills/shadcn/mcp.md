@@ -4,15 +4,28 @@ The CLI includes an MCP server that lets AI assistants search, browse, view, and
 
 ---
 
-## TockTeam Usage
+## Setup
 
-Use `pnpm dlx shadcn@latest` by default. If the shadcn MCP server is already available through Pi's MCP gateway, use it for read-only registry discovery and previews. Do not initialize MCP or edit editor-wide configuration unless the user explicitly requests that separate setup.
+```bash
+shadcn mcp        # start the MCP server (stdio)
+shadcn mcp init   # write config for your editor
+```
+
+Editor config files:
+
+| Editor      | Config file                     |
+| ----------- | ------------------------------- |
+| Claude Code | `.mcp.json`                     |
+| Cursor      | `.cursor/mcp.json`              |
+| VS Code     | `.vscode/mcp.json`              |
+| OpenCode    | `opencode.json`                 |
+| Codex       | `~/.codex/config.toml` (manual) |
 
 ---
 
 ## Tools
 
-> **Tip:** Use MCP only for registry discovery and source previews. For project configuration, run `pnpm dlx shadcn@latest info --cwd <owner-directory>`.
+> **Tip:** MCP tools handle registry operations (search, view, install). For project configuration (aliases, framework, Tailwind version), use `npx shadcn@latest info` — there is no MCP equivalent.
 
 ### `shadcn:get_project_registries`
 
