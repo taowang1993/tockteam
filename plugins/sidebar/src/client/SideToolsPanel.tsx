@@ -543,12 +543,11 @@ export function SideToolsPanel(props: SideToolsPanelProps): JSX.Element {
       : descriptor.render(renderProps)
   return (
     <aside
-      className="tockteam-workspace-panel tockteam-side-panel"
+      className="tockteam-workspace-panel tockteam-side-panel w-full"
       data-open={String(props.open)}
       data-maximized={String(props.maximized)}
       aria-hidden={!props.open}
       aria-label={title}
-      style={{ width: '100%' }}
     >
       {!props.maximized && (
         <div

@@ -226,8 +226,7 @@ export function TerminalPanel({ locale, t: translate, store, scopeKey, cwd, acti
         {state.tabs.map(tab => (
           <div
             key={tab.id}
-            className="h-full min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden"
-            style={{ display: tab.id === state.activeTabId ? 'flex' : 'none' }}
+            className={`h-full min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden ${tab.id === state.activeTabId ? 'flex' : 'hidden'}`}
             aria-hidden={tab.id !== state.activeTabId}
           >
             <TerminalView
