@@ -40,7 +40,7 @@ test('splash Tailwind build scans only the standalone loading document', async (
 test('owned browser components use Tailwind utilities in markup', () => {
   const tailwind = readFileSync(join(root, 'plugins', 'skins', 'src', 'client', 'tailwind.css'), 'utf8')
 
-  assert.doesNotMatch(tailwind, /@utility tocktutor-(?:assistant|import-export|native-actions)-styles/u)
+  assert.doesNotMatch(tailwind, /@utility tocktutor-(?:assistant|import-export|native-actions|workbench)-styles/u)
 })
 
 test('Tailwind is the only first-party browser stylesheet', () => {

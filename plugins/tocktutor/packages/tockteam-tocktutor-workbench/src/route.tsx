@@ -892,7 +892,7 @@ function ReadingBlockView(props: {
     case 'paragraph': return <p>{block.text}</p>
     case 'code': return <pre><code>{block.text}</code></pre>
     case 'task': return (
-      <label className="tocktutor-task">
+      <label className="tocktutor-task my-2 flex items-start gap-2">
         <input
           aria-label={`Mark ${block.text} as ${block.checked ? 'incomplete' : 'complete'}`}
           checked={block.checked}
@@ -912,22 +912,22 @@ function CanvasView(props: {
   const projection = projectCanvas(parseCanvasDocument(props.source))
   if (projection.status !== 'ready') return <p role="alert">{projection.reason}</p>
   return (
-    <section aria-label="Canvas View" className="tocktutor-projection" tabIndex={-1}>
+    <section aria-label="Canvas View" className="tocktutor-projection min-h-0 overflow-auto p-6" tabIndex={-1}>
       <header>
-        <p className="tocktutor-kicker">Canvas</p>
-        <h3>{projection.nodes.length} Nodes · {projection.edges.length} Edges</h3>
+        <p className="tocktutor-kicker mb-0.5 text-[11px] font-[650] tracking-[.08em] text-[var(--tt-muted)] uppercase">Canvas</p>
+        <h3 className="mt-0 mb-[18px] text-[17px]">{projection.nodes.length} Nodes · {projection.edges.length} Edges</h3>
       </header>
-      <div className="tocktutor-canvas-grid">
+      <div className="tocktutor-canvas-grid grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-3">
         {projection.nodes.map(node => {
           const label = node.text ?? node.file ?? `${node.type} node`
           return (
-            <article className="tocktutor-canvas-node" key={node.id}>
-              <p className="tocktutor-kicker">{node.type}</p>
+            <article className="tocktutor-canvas-node min-w-0 rounded-lg border border-[var(--tt-border)] bg-[var(--tt-bg)] p-3.5 [&>h4]:mt-0 [&>h4]:mb-2 [&>h4]:text-sm [&>h4]:[overflow-wrap:anywhere] [&>p:not(.tocktutor-kicker)]:text-xs [&>p:not(.tocktutor-kicker)]:text-[var(--tt-muted)]" key={node.id}>
+              <p className="tocktutor-kicker mb-0.5 text-[11px] font-[650] tracking-[.08em] text-[var(--tt-muted)] uppercase">{node.type}</p>
               <h4>{label}</h4>
               <p>Position {String(node.x)}, {String(node.y)}</p>
               {!node.supported && <p role="note">Unsupported node fields remain inert.</p>}
-              <fieldset className="tocktutor-node-actions">
-                <legend className="tocktutor-visually-hidden">Move {label}</legend>
+              <fieldset className="tocktutor-node-actions mt-2.5 flex gap-1 border-0 p-0 [&_button]:cursor-pointer [&_button]:rounded-[5px] [&_button]:border [&_button]:border-[var(--tt-border)] [&_button]:bg-[var(--tt-panel)] [&_button]:px-2.5 [&_button]:py-[7px] [&_button]:text-inherit">
+                <legend className="tocktutor-visually-hidden absolute size-px overflow-hidden whitespace-nowrap [clip:rect(0_0_0_0)] [clip-path:inset(50%)]">Move {label}</legend>
                 <button aria-label={`Move ${label} left`} onClick={() => { props.onMove(node.id, -20, 0) }} type="button"><ArrowLeft aria-hidden="true" /></button>
                 <button aria-label={`Move ${label} up`} onClick={() => { props.onMove(node.id, 0, -20) }} type="button"><ArrowUp aria-hidden="true" /></button>
                 <button aria-label={`Move ${label} down`} onClick={() => { props.onMove(node.id, 0, 20) }} type="button"><ArrowDown aria-hidden="true" /></button>
@@ -945,19 +945,19 @@ function BaseView(props: { source: string }): ReactNode {
   const projection = projectBase(props.source)
   if (projection.status !== 'ready') return <p role="alert">{projection.reason}</p>
   return (
-    <section aria-label="Base View" className="tocktutor-projection" tabIndex={-1}>
+    <section aria-label="Base View" className="tocktutor-projection min-h-0 overflow-auto p-6" tabIndex={-1}>
       <header>
-        <p className="tocktutor-kicker">Base</p>
-        <h3>{projection.views.length} Views</h3>
+        <p className="tocktutor-kicker mb-0.5 text-[11px] font-[650] tracking-[.08em] text-[var(--tt-muted)] uppercase">Base</p>
+        <h3 className="mt-0 mb-[18px] text-[17px]">{projection.views.length} Views</h3>
       </header>
-      <div className="tocktutor-base-grid">
+      <div className="tocktutor-base-grid grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-3">
         {projection.views.map((view, index) => (
-          <article className="tocktutor-base-view" key={`${view.name}-${String(index)}`}>
-            <p className="tocktutor-kicker">{view.type || 'Unknown Type'}</p>
+          <article className="tocktutor-base-view min-w-0 rounded-lg border border-[var(--tt-border)] bg-[var(--tt-bg)] p-3.5 [&>h4]:mt-0 [&>h4]:mb-2 [&>h4]:text-sm [&>h4]:[overflow-wrap:anywhere] [&>p:not(.tocktutor-kicker)]:text-xs [&>p:not(.tocktutor-kicker)]:text-[var(--tt-muted)]" key={`${view.name}-${String(index)}`}>
+            <p className="tocktutor-kicker mb-0.5 text-[11px] font-[650] tracking-[.08em] text-[var(--tt-muted)] uppercase">{view.type || 'Unknown Type'}</p>
             <h4>{view.name}</h4>
-            <dl>
+            <dl className="m-0">
               {Object.entries(view.fields).map(([field, value]) => (
-                <div key={field}><dt>{field}</dt><dd>{value || '—'}</dd></div>
+                <div className="grid grid-cols-[minmax(72px,.35fr)_minmax(0,1fr)] gap-2 border-t border-[var(--tt-border)] py-[7px]" key={field}><dt className="text-[var(--tt-muted)]">{field}</dt><dd className="m-0 [overflow-wrap:anywhere]">{value || '—'}</dd></div>
               ))}
             </dl>
             {view.warnings.map(warning => <p key={warning} role="note">{warning}</p>)}
@@ -1018,12 +1018,12 @@ function NativeDispatchDialog(props: {
     <dialog
       aria-label={label}
       aria-modal="true"
-      className="tocktutor-dispatch-dialog"
+      className="tocktutor-dispatch-dialog fixed inset-0 h-full max-h-none w-full max-w-none items-center justify-center border-0 bg-transparent p-6 open:flex backdrop:bg-black/35"
       onCancel={event => { event.preventDefault(); props.onCancel() }}
       ref={dialog}
     >
-      <form onSubmit={submit}>
-        <header><h2>{label}</h2></header>
+      <form className="grid w-full max-w-[480px] gap-3.5 rounded-lg border border-[var(--tt-border)] bg-[var(--tt-panel)] p-5 [&_input]:rounded-[5px] [&_input]:border [&_input]:border-[var(--tt-border)] [&_input]:p-2 [&_input]:[font:inherit] [&_label]:grid [&_label]:gap-[5px] [&_label]:font-[650] [&_textarea]:rounded-[5px] [&_textarea]:border [&_textarea]:border-[var(--tt-border)] [&_textarea]:p-2 [&_textarea]:[font:inherit]" onSubmit={submit}>
+        <header><h2 className="m-0 text-[17px]">{label}</h2></header>
         {props.kind === 'new' ? (
           <label>
             Note Path
@@ -1041,7 +1041,7 @@ function NativeDispatchDialog(props: {
             </label>
           </>
         )}
-        <div className="tocktutor-dialog-actions">
+        <div className="tocktutor-dialog-actions flex justify-end gap-2 [&_button]:cursor-pointer [&_button]:rounded-[5px] [&_button]:border [&_button]:border-[var(--tt-border)] [&_button]:bg-[var(--tt-panel)] [&_button]:px-2.5 [&_button]:py-[7px] [&_button]:text-inherit">
           <button onClick={props.onCancel} type="button">Cancel</button>
           <button type="submit">Create</button>
         </div>
@@ -1113,13 +1113,13 @@ function TreeEntries(props: {
     })
   return children.map(entry => entry.kind === 'directory' ? (
     <li className="tocktutor-tree-directory" key={entry.path} role="treeitem" aria-expanded="true">
-      <div className="tocktutor-tree-row" title={entry.path}>
+      <div className="tocktutor-tree-row grid min-h-8 w-full grid-cols-[12px_16px_minmax(0,1fr)_16px] items-center gap-[7px] overflow-hidden rounded bg-transparent px-[5px] py-1 text-left font-medium text-inherit hover:bg-[color-mix(in_srgb,var(--tt-text)_5%,transparent)] [&>span:not(.tocktutor-tree-indent)]:truncate [&>svg:first-child]:size-3 [&>svg:last-child]:ml-auto [&>svg:last-child]:size-3.5 [&>svg:last-child]:text-[var(--tt-muted)] [&>svg:last-child]:opacity-80" title={entry.path}>
         <WorkbenchGlyph kind="collapse" />
         <WorkbenchGlyph kind="folder" />
         <span>{fileName(entry.path)}</span>
         <WorkbenchGlyph kind="more" />
       </div>
-      <ul role="group">
+      <ul className="m-0 list-none p-0 pl-4" role="group">
         <TreeEntries entries={props.entries} onSelect={props.onSelect} path={props.path} prefix={`${entry.path}/`} />
       </ul>
     </li>
@@ -1127,12 +1127,12 @@ function TreeEntries(props: {
     <li key={entry.path} role="treeitem" aria-selected={entry.path === props.path}>
       <button
         aria-current={entry.path === props.path ? 'page' : undefined}
-        className="tocktutor-tree-row"
+        className="tocktutor-tree-row grid min-h-8 w-full grid-cols-[12px_16px_minmax(0,1fr)_16px] items-center gap-[7px] overflow-hidden rounded border-0 bg-transparent px-[5px] py-1 text-left font-medium text-inherit hover:bg-[color-mix(in_srgb,var(--tt-text)_5%,transparent)] aria-current:bg-[var(--tt-selected)] aria-current:[&>svg:last-child]:text-[var(--tt-text)] [&>span:not(.tocktutor-tree-indent)]:truncate [&>svg:first-child]:size-3 [&>svg:last-child]:ml-auto [&>svg:last-child]:size-3.5 [&>svg:last-child]:text-[var(--tt-muted)] [&>svg:last-child]:opacity-80"
         onClick={() => { props.onSelect(entry.path) }}
         title={entry.path}
         type="button"
       >
-        <span className="tocktutor-tree-indent" />
+        <span className="tocktutor-tree-indent w-3" />
         <WorkbenchGlyph kind="document" />
         <span>{fileName(entry.path)}</span>
         <WorkbenchGlyph kind="more" />
@@ -1226,16 +1226,16 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
   const titlebar = (
     <section
       aria-label="TockTutor Title Bar"
-      className="tocktutor-titlebar tocktutor-workbench-styles"
+      className="tocktutor-titlebar absolute top-0 right-0 left-0 z-[2147483647] grid h-[var(--tockteam-titlebar-height,40px)] grid-cols-[var(--tockteam-primary-sidebar-width,280px)_minmax(0,1fr)] border-b border-[var(--tt-tab-border)] bg-[var(--tockteam-shell-chrome,var(--tt-panel))] text-[var(--tt-text)] transition-[grid-template-columns] duration-300 ease-out [--tt-accent:var(--dsw-alias-accent-primary,#533afd)] [--tt-border:var(--dsw-alias-border-l1,var(--dsw-alias-border-subtle,#e1e3e7))] [--tt-muted:var(--dsw-alias-fg-muted,#71717a)] [--tt-panel:var(--dsw-alias-bg-elevated,#fff)] [--tt-tab-border:#d1d5db] [--tt-text:var(--dsw-alias-fg-primary,#27272a)] [-webkit-app-region:drag] [font:14px/1.45_ui-sans-serif,-apple-system,BlinkMacSystemFont,'Segoe_UI',sans-serif] [&_*]:box-border [&_*::after]:box-border [&_*::before]:box-border [&_button]:text-inherit [&_button]:[font:inherit] [&_button]:[-webkit-app-region:no-drag] [&_svg]:block [&_svg]:size-[18px]"
       style={{
         gridTemplateColumns: titlebarColumns,
         transitionDuration: shouldAnimateSidebarColumns ? undefined : '0ms',
       }}
     >
-      <div className="tocktutor-titlebar-sidebar">
+      <div className="tocktutor-titlebar-sidebar flex min-w-0 items-center justify-start gap-2 border-r border-[var(--tt-border)] pr-2 pl-[46px] [&>button]:inline-flex [&>button]:h-7 [&>button]:w-[22px] [&>button]:items-center [&>button]:justify-center [&>button]:border-0 [&>button]:bg-transparent [&>button]:p-0 [&>button]:text-[var(--tt-muted)] [&>span]:inline-flex [&>span]:h-7 [&>span]:w-[22px] [&>span]:items-center [&>span]:justify-center [&>span]:border-0 [&>span]:bg-transparent [&>span]:p-0 [&>span]:text-[var(--tt-muted)]">
         {sidebarOpen && (
           <>
-            <span className="tocktutor-titlebar-document"><WorkbenchGlyph kind="document" /></span>
+            <span className="tocktutor-titlebar-document rounded-[5px] bg-[color-mix(in_srgb,var(--tt-text)_8%,transparent)] text-[var(--tt-text)]"><WorkbenchGlyph kind="document" /></span>
             <span><WorkbenchGlyph kind="document" /></span>
             <button aria-label="Search Notes" disabled={props.onOpenSearch === undefined} onClick={props.onOpenSearch} type="button"><WorkbenchGlyph kind="search" /></button>
             <span><WorkbenchGlyph kind="bookmark" /></span>
@@ -1244,17 +1244,18 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
         <button
           aria-expanded={sidebarOpen}
           aria-label="Toggle Files Sidebar"
-          className="tocktutor-panel-icon"
+          className="tocktutor-panel-icon ml-auto border-0 bg-transparent p-1.5 text-[var(--tt-muted)]"
           onClick={() => { setSidebarOpen(open => !open) }}
           type="button"
         ><WorkbenchGlyph kind="panel" /></button>
       </div>
-      <div className="tocktutor-titlebar-main">
-        <span className="tocktutor-history"><WorkbenchGlyph kind="back" /><WorkbenchGlyph kind="forward" /></span>
-        <div aria-label="Note Tabs" className="tocktutor-tabs" role="tablist">
+      <div className="tocktutor-titlebar-main flex min-w-0 items-center gap-1 px-2">
+        <span className="tocktutor-history mr-[18px] flex gap-[5px] px-1.5 text-[color-mix(in_srgb,var(--tt-muted)_45%,transparent)]"><WorkbenchGlyph kind="back" /><WorkbenchGlyph kind="forward" /></span>
+        <div aria-label="Note Tabs" className="tocktutor-tabs -mx-[calc(var(--tt-tab-curve)*2)] -mb-px flex min-w-0 self-stretch items-end gap-1 overflow-visible px-[calc(var(--tt-tab-curve)*2)] [--tt-tab-curve:10px]" role="tablist">
           {focusedPane?.tabs.map((tab, index) => (
             <button
               aria-selected={tab.path === focusedPane.activePath}
+              className="relative z-1 -mb-px flex h-[30px] min-w-[118px] max-w-[220px] items-center gap-3 rounded-t-[10px] border border-b-0 border-[var(--tt-tab-border)] bg-[var(--tt-panel)] px-2.5 shadow-[inset_0_1px_0_rgb(255_255_255_/_18%)] aria-[selected=false]:mb-0.5 aria-[selected=false]:border-b aria-[selected=false]:bg-[color-mix(in_srgb,var(--tt-panel)_70%,transparent)] aria-[selected=false]:text-[var(--tt-muted)] aria-[selected=false]:shadow-none aria-selected:before:pointer-events-none aria-selected:before:absolute aria-selected:before:bottom-[-1px] aria-selected:before:left-[calc(var(--tt-tab-curve)*-2)] aria-selected:before:h-[calc(var(--tt-tab-curve)*2)] aria-selected:before:w-[calc(var(--tt-tab-curve)*2)] aria-selected:before:rounded-full aria-selected:before:content-[''] aria-selected:before:[clip-path:inset(50%_calc(var(--tt-tab-curve)*-1)_0_50%)] aria-selected:before:[box-shadow:inset_0_0_0_1px_var(--tt-tab-border),0_0_0_calc(var(--tt-tab-curve)*4)_var(--tt-panel)] aria-selected:after:pointer-events-none aria-selected:after:absolute aria-selected:after:right-[calc(var(--tt-tab-curve)*-2)] aria-selected:after:bottom-[-1px] aria-selected:after:h-[calc(var(--tt-tab-curve)*2)] aria-selected:after:w-[calc(var(--tt-tab-curve)*2)] aria-selected:after:rounded-full aria-selected:after:content-[''] aria-selected:after:[clip-path:inset(50%_50%_0_calc(var(--tt-tab-curve)*-1))] aria-selected:after:[box-shadow:inset_0_0_0_1px_var(--tt-tab-border),0_0_0_calc(var(--tt-tab-curve)*4)_var(--tt-panel)] [&>span]:truncate [&_svg]:ml-auto [&_svg]:size-3.5"
               key={tab.path}
               onClick={() => { props.onActivateTab(focusedPane.id, tab.path) }}
               onKeyDown={event => {
@@ -1275,12 +1276,12 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
             </button>
           ))}
         </div>
-        <button aria-label="New Note" className="tocktutor-new-tab" disabled={props.onNewNote === undefined} onClick={props.onNewNote} type="button"><WorkbenchGlyph kind="new" /></button>
-        <span className="tocktutor-titlebar-spacer" />
+        <button aria-label="New Note" className="tocktutor-new-tab border-0 bg-transparent p-1.5 text-[var(--tt-muted)]" disabled={props.onNewNote === undefined} onClick={props.onNewNote} type="button"><WorkbenchGlyph kind="new" /></button>
+        <span className="tocktutor-titlebar-spacer flex-1" />
         <button
           aria-expanded={panel === 'assistant'}
           aria-label="Toggle Assistant Panel"
-          className="tocktutor-panel-icon"
+          className="tocktutor-panel-icon border-0 bg-transparent p-1.5 text-[var(--tt-muted)]"
           onClick={() => { setPanel(current => current === 'assistant' ? null : 'assistant') }}
           type="button"
         ><WorkbenchGlyph kind="panel-right" /></button>
@@ -1290,7 +1291,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
   return (
     <main
       aria-label="TockTutor Workbench"
-      className="tocktutor-workbench tocktutor-workbench-styles"
+      className="tocktutor-workbench h-full min-h-0 box-border bg-[var(--tt-bg)] pt-0 text-[var(--tt-text)] [--tt-accent:var(--dsw-alias-accent-primary,#533afd)] [--tt-bg:var(--dsw-alias-bg-base,#fff)] [--tt-border:var(--dsw-alias-border-l1,var(--dsw-alias-border-subtle,#e1e3e7))] [--tt-footer-height:28px] [--tt-muted:var(--dsw-alias-fg-muted,#71717a)] [--tt-panel:var(--dsw-alias-bg-elevated,#fff)] [--tt-selected:color-mix(in_srgb,var(--tt-accent)_14%,var(--tt-panel))] [--tt-text:var(--dsw-alias-fg-primary,#27272a)] [font:14px/1.45_ui-sans-serif,-apple-system,BlinkMacSystemFont,'Segoe_UI',sans-serif] [&_*]:box-border [&_*::after]:box-border [&_*::before]:box-border [&_[hidden]]:!hidden [&_button]:text-inherit [&_button]:[font:inherit] [&_button:focus-visible]:outline-2 [&_button:focus-visible]:outline-offset-2 [&_button:focus-visible]:outline-[var(--tt-accent)] [&_input:focus-visible]:outline-2 [&_input:focus-visible]:outline-offset-2 [&_input:focus-visible]:outline-[var(--tt-accent)] [&_svg]:block [&_svg]:size-4 [&_textarea:focus-visible]:outline-2 [&_textarea:focus-visible]:outline-offset-2 [&_textarea:focus-visible]:outline-[var(--tt-accent)] motion-reduce:[&_*]:!scroll-auto motion-reduce:[&_*]:!delay-0 motion-reduce:[&_*]:!duration-0 motion-reduce:[&_*::after]:!delay-0 motion-reduce:[&_*::after]:!duration-0 motion-reduce:[&_*::before]:!delay-0 motion-reduce:[&_*::before]:!duration-0"
       data-phase={snapshot.phase}
       tabIndex={-1}
     >
@@ -1303,7 +1304,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
         />
       )}
       <div
-        className="tocktutor-grid"
+        className="tocktutor-grid relative grid h-full min-h-0 grid-cols-[var(--tockteam-primary-sidebar-width,280px)_minmax(0,1fr)_auto_auto] transition-[grid-template-columns] duration-300 ease-out"
         style={{
           gridTemplateColumns: contentColumns,
           transitionDuration: shouldAnimateSidebarColumns ? undefined : '0ms',
@@ -1312,49 +1313,50 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
         <aside
           aria-hidden={!sidebarOpen}
           aria-label="Files"
-          className="tocktutor-sidebar"
+          className="tocktutor-sidebar grid min-h-0 grid-rows-[40px_minmax(0,1fr)_var(--tt-footer-height)] overflow-hidden border-r border-[var(--tt-border)] bg-[var(--tockteam-shell-chrome,var(--tt-panel))] data-[open=false]:invisible data-[open=false]:[transition:visibility_0s_linear_300ms]"
           data-open={sidebarOpen}
           {...(sidebarOpen ? {} : { inert: '' })}
         >
-          <header className="tocktutor-sidebar-header">
-            <h1>Files</h1>
-            <span><WorkbenchGlyph kind="more" /></span>
-            <span><Upload aria-hidden="true" /></span>
-            <span><WorkbenchGlyph kind="folder" /></span>
-            <span><PanelTop aria-hidden="true" /></span>
+          <header className="tocktutor-sidebar-header flex items-center gap-2.5 border-b border-[var(--tt-border)] px-2.5 [&_svg]:size-3.5">
+            <h1 className="mr-auto my-0 text-sm font-semibold">Files</h1>
+            <span className="inline-flex items-center justify-center text-sm text-[var(--tt-muted)]"><WorkbenchGlyph kind="more" /></span>
+            <span className="inline-flex items-center justify-center text-sm text-[var(--tt-muted)]"><Upload aria-hidden="true" /></span>
+            <span className="inline-flex items-center justify-center text-sm text-[var(--tt-muted)]"><WorkbenchGlyph kind="folder" /></span>
+            <span className="inline-flex items-center justify-center text-sm text-[var(--tt-muted)]"><PanelTop aria-hidden="true" /></span>
           </header>
-          <div className="tocktutor-sidebar-content">
+          <div className="tocktutor-sidebar-content min-h-0 overflow-auto px-[5px] py-[3px]">
             {snapshot.searchOpen && (
-              <section aria-label="Search Notes" className="tocktutor-search">
-                <label htmlFor="tocktutor-search-query">Search Notes</label>
-                <div>
+              <section aria-label="Search Notes" className="tocktutor-search mb-2 border-b border-[var(--tt-border)] px-[3px] pb-2">
+                <label className="mb-[5px] block text-xs font-semibold" htmlFor="tocktutor-search-query">Search Notes</label>
+                <div className="flex gap-1">
                   <input
                     aria-label="Search Notes Query"
                     autoFocus
+                    className="w-full min-w-0 rounded-[5px] border border-[var(--tt-border)] px-[7px] py-[5px] [font:inherit]"
                     id="tocktutor-search-query"
                     maxLength={1_000}
                     onChange={event => { props.onSearchChange?.(event.target.value) }}
                     type="search"
                     value={snapshot.searchQuery}
                   />
-                  <button aria-label="Close Search" onClick={() => { props.onCloseSearch?.() }} type="button"><WorkbenchGlyph kind="close" /></button>
+                  <button aria-label="Close Search" className="w-7 rounded-[5px] border border-[var(--tt-border)] bg-transparent" onClick={() => { props.onCloseSearch?.() }} type="button"><WorkbenchGlyph kind="close" /></button>
                 </div>
-                <p aria-live="polite" role="status">{documents.length} matching notes.</p>
+                <p aria-live="polite" className="mx-1 my-[7px] text-xs text-[var(--tt-muted)]" role="status">{documents.length} matching notes.</p>
               </section>
             )}
             <nav aria-label="Vault Notes">
-              {snapshot.phase === 'loading' && <p>Loading notes…</p>}
-              {snapshot.phase === 'inactive' && <p role="alert">No Active Vault</p>}
-              {snapshot.phase === 'error' && <p role="alert">{snapshot.message}</p>}
-              {snapshot.phase === 'ready' && documents.length === 0 && <p>No supported notes found.</p>}
-              <ul className="tocktutor-tree" role="tree">
+              {snapshot.phase === 'loading' && <p className="mx-1 my-[7px] text-xs text-[var(--tt-muted)]">Loading notes…</p>}
+              {snapshot.phase === 'inactive' && <p className="mx-1 my-[7px] text-xs text-[var(--tt-muted)]" role="alert">No Active Vault</p>}
+              {snapshot.phase === 'error' && <p className="mx-1 my-[7px] text-xs text-[var(--tt-muted)]" role="alert">{snapshot.message}</p>}
+              {snapshot.phase === 'ready' && documents.length === 0 && <p className="mx-1 my-[7px] text-xs text-[var(--tt-muted)]">No supported notes found.</p>}
+              <ul className="tocktutor-tree m-0 list-none p-0" role="tree">
                 <TreeEntries entries={visibleTreeEntries} onSelect={props.onSelect} path={snapshot.path} />
               </ul>
             </nav>
           </div>
           <button
             aria-expanded={panel === 'utilities'}
-            className="tocktutor-vault-switcher"
+            className="tocktutor-vault-switcher grid grid-cols-[14px_minmax(0,1fr)_16px] items-center gap-1.5 border-0 border-t border-[var(--tt-border)] bg-[var(--tockteam-shell-chrome,var(--tt-panel))] px-2.5 text-left [&>span]:truncate [&_svg]:size-[13px]"
             onClick={() => { setPanel(current => current === 'utilities' ? null : 'utilities') }}
             type="button"
           >
@@ -1365,7 +1367,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
         </aside>
         <button
           aria-label={`Resize Files Sidebar, ${String(sidebarWidth)} Pixels`}
-          className="tocktutor-sidebar-resize"
+          className="tocktutor-sidebar-resize absolute top-0 bottom-0 z-5 m-0 w-2 touch-none cursor-ew-resize border-0 bg-transparent p-0 outline-none after:absolute after:top-0 after:bottom-0 after:left-[3px] after:w-0.5 after:bg-transparent after:content-[''] focus-visible:after:bg-[var(--tt-accent)]"
           hidden={!sidebarOpen}
           onKeyDown={resizeSidebarWithKeyboard}
           onPointerDown={beginSidebarResize}
@@ -1373,10 +1375,10 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
           title="Drag or Use Left and Right Arrow Keys"
           type="button"
         />
-        <section aria-label="Note Editor" className="tocktutor-editor" id="tocktutor-note-editor" role="tabpanel">
-          <header className="tocktutor-editor-header">
-            <h2>{noteTitle(snapshot.path)}</h2>
-            <div className="tocktutor-editor-actions">
+        <section aria-label="Note Editor" className="tocktutor-editor grid min-h-0 grid-rows-[40px_minmax(0,1fr)_var(--tt-footer-height)] overflow-hidden bg-[var(--tt-panel)]" id="tocktutor-note-editor" role="tabpanel">
+          <header className="tocktutor-editor-header relative flex min-w-0 items-center justify-center border-b border-[var(--tt-border)] px-2.5">
+            <h2 className="m-0 truncate text-[13px] font-medium text-[var(--tt-muted)]">{noteTitle(snapshot.path)}</h2>
+            <div className="tocktutor-editor-actions absolute right-2.5 flex items-center gap-1 [&_button]:inline-flex [&_button]:h-7 [&_button]:w-[26px] [&_button]:items-center [&_button]:justify-center [&_button]:border-0 [&_button]:bg-transparent [&_button]:p-0 [&_button]:text-[var(--tt-muted)] [&_span]:inline-flex [&_span]:h-7 [&_span]:w-[26px] [&_span]:items-center [&_span]:justify-center [&_span]:border-0 [&_span]:bg-transparent [&_span]:p-0 [&_span]:text-[var(--tt-muted)]">
               <button
                 aria-label={snapshot.mode === 'source' ? previewLabel : sourceLabel}
                 onClick={() => { props.onMode(snapshot.mode === 'source' ? 'reading' : 'source') }}
@@ -1392,16 +1394,17 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
               ><WorkbenchGlyph kind="more" /></button>
             </div>
           </header>
-          <div className="tocktutor-editor-body">
+          <div className="tocktutor-editor-body relative min-h-0 overflow-auto">
             {snapshot.path === null ? (
-              <div className="tocktutor-empty">
-                <p className="tocktutor-kicker">Ready When You Are</p>
-                <h2>Select a Note</h2>
-                <p>Choose a Markdown note from the vault to read or edit its exact source.</p>
+              <div className="tocktutor-empty absolute top-[45%] left-1/2 w-full max-w-[420px] -translate-1/2 p-8 text-center">
+                <p className="tocktutor-kicker mb-0.5 text-[11px] font-[650] tracking-[.08em] text-[var(--tt-muted)] uppercase">Ready When You Are</p>
+                <h2 className="m-0 text-xl">Select a Note</h2>
+                <p className="text-[var(--tt-muted)]">Choose a Markdown note from the vault to read or edit its exact source.</p>
               </div>
             ) : snapshot.mode === 'source' ? (
               <textarea
                 aria-label={sourceLabel}
+                className="h-full min-h-0 w-full resize-none border-0 bg-[var(--tt-panel)] px-[max(28px,calc((100%-768px)/2))] py-9 text-[var(--tt-text)] outline-none [tab-size:2] [font:14px/1.65_ui-monospace,SFMono-Regular,Consolas,monospace]"
                 onChange={(event: ChangeEvent<HTMLTextAreaElement>) => { props.onEdit(event.target.value) }}
                 spellCheck="true"
                 value={snapshot.source}
@@ -1411,8 +1414,8 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
             ) : snapshot.documentKind === 'base' ? (
               <BaseView source={snapshot.source} />
             ) : reading?.status === 'ready' ? (
-              <article aria-label="Reading View" className="tocktutor-reading" tabIndex={-1}>
-                {reading.warnings.map(warning => <p className="tocktutor-warning" key={warning} role="note">{warning}</p>)}
+              <article aria-label="Reading View" className="tocktutor-reading mx-auto min-h-full w-[calc(100%-48px)] max-w-3xl pt-[18px] pb-[72px] [&_h1]:mt-0 [&_h1]:mb-4 [&_h1]:text-[30px] [&_h1]:leading-tight [&_h1]:font-[650] [&_h1>svg]:mr-1.5 [&_h1>svg]:ml-[-20px] [&_h1>svg]:inline-block [&_h1>svg]:size-3.5 [&_h1>svg]:-translate-y-[3px] [&_h1>svg]:text-[color-mix(in_srgb,var(--tt-muted)_45%,transparent)] [&_h2]:mt-0 [&_h2]:mb-4 [&_h2]:text-2xl [&_h2]:leading-tight [&_h2]:font-[650] [&_h3]:mt-0 [&_h3]:mb-4 [&_h3]:text-xl [&_h3]:leading-tight [&_h3]:font-[650] [&_p]:mt-0 [&_p]:mb-4 [&_p]:text-lg [&_pre]:overflow-auto [&_pre]:rounded-md [&_pre]:border [&_pre]:border-[var(--tt-border)] [&_pre]:bg-[color-mix(in_srgb,var(--tt-text)_4%,var(--tt-panel))] [&_pre]:p-3" tabIndex={-1}>
+                {reading.warnings.map(warning => <p className="tocktutor-warning border-l-[3px] border-[#b7791f] pl-2.5 text-[var(--tt-muted)]" key={warning} role="note">{warning}</p>)}
                 {reading.blocks.map((block, index) => (
                   <ReadingBlockView
                     block={block}
@@ -1425,10 +1428,10 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
               <p role="alert">{reading?.reason ?? 'Reading view is unavailable.'}</p>
             )}
           </div>
-          <footer aria-label="TockTutor Status Bar" className="tocktutor-statusbar">
-            <output aria-live="polite" className="tocktutor-message">{snapshot.message}</output>
+          <footer aria-label="TockTutor Status Bar" className="tocktutor-statusbar flex min-w-0 items-center border-t border-[var(--tt-border)] px-2 text-xs text-[var(--tt-muted)]">
+            <output aria-live="polite" className="tocktutor-message absolute size-px overflow-hidden whitespace-nowrap [clip:rect(0_0_0_0)] [clip-path:inset(50%)]">{snapshot.message}</output>
             {snapshot.path !== null && (
-              <div>
+              <div className="ml-auto flex items-center gap-[18px] whitespace-nowrap max-[760px]:gap-2">
                 <span>0 Backlinks</span>
                 <span>{snapshot.mode === 'reading' ? 'Live Preview' : 'Source'}</span>
                 <span>{String(words)} Words</span>
@@ -1438,6 +1441,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
                   aria-expanded={panel === 'assistant'}
                   onClick={() => { setPanel(current => current === 'assistant' ? null : 'assistant') }}
                   type="button"
+                className="border-0 bg-transparent px-0 py-0.5 text-[var(--tt-muted)] [&_svg]:size-[17px]"
                 ><WorkbenchGlyph kind="chat" /></button>
               </div>
             )}
@@ -1446,7 +1450,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
         <aside
           aria-hidden={panel !== 'assistant'}
           aria-label="Assistant Panel"
-          className="tocktutor-right-panel tocktutor-right-panel-assistant"
+          className="tocktutor-right-panel tocktutor-right-panel-assistant relative invisible grid min-w-0 w-0 translate-x-6 grid-rows-[minmax(0,1fr)] overflow-hidden border-l-0 bg-[var(--tt-panel)] opacity-0 shadow-none transition-[width,opacity,transform,visibility] [transition-duration:420ms,300ms,460ms,0s] [transition-timing-function:cubic-bezier(.16,1,.3,1),cubic-bezier(.16,1,.3,1),cubic-bezier(.16,1,.3,1),linear] [transition-delay:0s,0s,0s,420ms] pointer-events-none data-[open=true]:visible data-[open=true]:translate-x-0 data-[open=true]:overflow-visible data-[open=true]:opacity-100 data-[open=true]:[transition-delay:0s] data-[open=true]:pointer-events-auto [&>:not(.tocktutor-assistant-resize)]:min-w-[min(360px,calc(100vw-262px))]"
           data-open={panel === 'assistant'}
           style={{ width: panel === 'assistant' ? `${String(assistantPanelWidth)}px` : '0px' }}
           {...(panel === 'assistant' ? {} : { inert: '' })}
@@ -1458,7 +1462,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
               aria-valuemax={MAX_ASSISTANT_PANEL_WIDTH}
               aria-valuemin={MIN_ASSISTANT_PANEL_WIDTH}
               aria-valuenow={assistantPanelWidth}
-              className="tocktutor-assistant-resize"
+              className="tocktutor-assistant-resize absolute top-0 bottom-0 left-0 z-3 w-4 -translate-x-1/2 touch-none cursor-col-resize border-0 bg-transparent p-0 outline-none before:absolute before:top-1/2 before:left-1/2 before:h-10 before:w-2 before:-translate-1/2 before:rounded-full before:border before:border-[color-mix(in_srgb,var(--tt-text)_32%,var(--tt-border)_68%)] before:bg-[color-mix(in_srgb,var(--tt-text)_8%,var(--tt-panel))] before:shadow-[0_4px_12px_-7px_color-mix(in_srgb,var(--tt-text)_42%,transparent),0_0_0_1px_color-mix(in_srgb,var(--tt-panel)_82%,transparent)] before:transition-colors before:duration-140 before:ease-[cubic-bezier(.16,1,.3,1)] before:content-[''] hover:before:border-[color-mix(in_srgb,var(--tt-accent)_58%,var(--tt-border)_42%)] active:before:border-[color-mix(in_srgb,var(--tt-accent)_58%,var(--tt-border)_42%)] focus-visible:before:border-[color-mix(in_srgb,var(--tt-accent)_58%,var(--tt-border)_42%)] hover:[&+.tocktutor-assistant-content]:border-l-[var(--tt-accent)] active:[&+.tocktutor-assistant-content]:border-l-[var(--tt-accent)] focus-visible:[&+.tocktutor-assistant-content]:border-l-[var(--tt-accent)]"
               onKeyDown={resizeAssistantPanelWithKeyboard}
               onPointerDown={beginAssistantPanelResize}
               role="separator"
@@ -1466,36 +1470,36 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
               type="button"
             />
           )}
-          <div className="tocktutor-assistant-content">{props.assistantPanel}</div>
+          <div className="tocktutor-assistant-content min-h-0 min-w-[min(240px,calc(100vw-262px))] overflow-hidden border-l border-[color-mix(in_srgb,var(--tt-text)_8%,var(--tt-border)_92%)] transition-colors duration-140 ease-[cubic-bezier(.16,1,.3,1)]">{props.assistantPanel}</div>
         </aside>
         <aside
           aria-hidden={panel !== 'utilities'}
           aria-label="Workbench Utilities"
-          className="tocktutor-right-panel"
+          className="tocktutor-right-panel invisible grid min-w-0 w-0 translate-x-6 grid-rows-[40px_minmax(0,1fr)] overflow-auto border-l border-[var(--tt-border)] bg-[var(--tt-panel)] opacity-0 shadow-none transition-[width,opacity,transform,visibility] [transition-duration:420ms,300ms,460ms,0s] [transition-timing-function:cubic-bezier(.16,1,.3,1),cubic-bezier(.16,1,.3,1),cubic-bezier(.16,1,.3,1),linear] [transition-delay:0s,0s,0s,420ms] pointer-events-none data-[open=true]:visible data-[open=true]:w-[min(360px,calc(100vw-262px))] data-[open=true]:translate-x-0 data-[open=true]:opacity-100 data-[open=true]:[transition-delay:0s] data-[open=true]:pointer-events-auto [&>:not(.tocktutor-assistant-resize)]:min-w-[min(360px,calc(100vw-262px))]"
           data-open={panel === 'utilities'}
           {...(panel === 'utilities' ? {} : { inert: '' })}
         >
-          <header><h2>More Options</h2><button aria-label="Close More Options" onClick={() => { setPanel(null) }} type="button"><WorkbenchGlyph kind="close" /></button></header>
-          <section aria-label="Pane Groups" className="tocktutor-pane-groups">
-            <div className="tocktutor-pane-heading">
-              <h2>Pane Groups</h2>
-              <button aria-label="Add Pane" disabled={snapshot.panes.length >= MAX_PANE_GROUPS} onClick={props.onAddPane} type="button"><WorkbenchGlyph kind="new" /></button>
+          <header className="flex items-center justify-between border-b border-[var(--tt-border)] px-3"><h2 className="m-0 text-sm">More Options</h2><button aria-label="Close More Options" className="border-0 bg-transparent p-[5px]" onClick={() => { setPanel(null) }} type="button"><WorkbenchGlyph kind="close" /></button></header>
+          <section aria-label="Pane Groups" className="tocktutor-pane-groups border-t border-[var(--tt-border)] p-3">
+            <div className="tocktutor-pane-heading flex items-center justify-between">
+              <h2 className="m-0 text-sm">Pane Groups</h2>
+              <button aria-label="Add Pane" className="size-[26px] rounded border border-[var(--tt-border)] bg-transparent" disabled={snapshot.panes.length >= MAX_PANE_GROUPS} onClick={props.onAddPane} type="button"><WorkbenchGlyph kind="new" /></button>
             </div>
-            <div className="tocktutor-pane-list">
+            <div className="tocktutor-pane-list mt-2 grid grid-cols-2 gap-1.5">
               {snapshot.panes.map((pane, index) => (
-                <button aria-pressed={pane.id === snapshot.focusedPaneId} key={pane.id} onClick={() => { props.onFocusPane(pane.id) }} title={pane.activePath ?? `Pane ${String(index + 1)}`} type="button">
+                <button aria-pressed={pane.id === snapshot.focusedPaneId} className="overflow-hidden rounded-[5px] border border-[var(--tt-border)] bg-transparent p-1.5 text-left aria-pressed:border-[var(--tt-accent)] [&_small]:block [&_small]:truncate [&_small]:text-xs [&_small]:text-[var(--tt-muted)] [&_span]:block [&_span]:truncate" key={pane.id} onClick={() => { props.onFocusPane(pane.id) }} title={pane.activePath ?? `Pane ${String(index + 1)}`} type="button">
                   <span>Pane {String(index + 1)}</span><small>{pane.activePath ?? 'Empty'}</small>
                 </button>
               ))}
             </div>
           </section>
-          <section aria-label="Shared Review Panel" className="tocktutor-review">
-            <header><h2>Reviews</h2></header>
-            <div className="tocktutor-review-content">{props.reviewPanel ?? <p role="status">No review workflow is active.</p>}</div>
+          <section aria-label="Shared Review Panel" className="tocktutor-review border-t border-[var(--tt-border)] p-3">
+            <header><h2 className="m-0 text-sm">Reviews</h2></header>
+            <div className="tocktutor-review-content min-h-0 overflow-auto text-xs text-[var(--tt-muted)]">{props.reviewPanel ?? <p role="status">No review workflow is active.</p>}</div>
           </section>
-          <section aria-label="Native Actions" className="tocktutor-native-actions">
-            <header><h2>Native Actions</h2></header>
-            <div className="tocktutor-native-actions-content">{props.nativeActions ?? <p role="status">No native actions are available.</p>}</div>
+          <section aria-label="Native Actions" className="tocktutor-native-actions border-t border-[var(--tt-border)] p-3">
+            <header><h2 className="m-0 text-sm">Native Actions</h2></header>
+            <div className="tocktutor-native-actions-content min-h-0 overflow-auto text-xs text-[var(--tt-muted)]">{props.nativeActions ?? <p role="status">No native actions are available.</p>}</div>
           </section>
         </aside>
       </div>
@@ -1583,7 +1587,7 @@ export function TockTutorRoute(props: TockTutorRouteProps): ReactNode {
     return () => { node.removeEventListener('keydown', onKeyDown) }
   }, [controller])
   return (
-    <div className="tocktutor-root tocktutor-workbench-styles" ref={root}>
+    <div className="tocktutor-root h-full min-h-0" ref={root}>
       <TockTutorRouteView
         assistantPanel={(
           <TockTutorAssistantPanelOutlet

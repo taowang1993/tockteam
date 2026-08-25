@@ -142,10 +142,10 @@ test('desktop titlebar matches Tockbot chrome and stays draggable', () => {
   assert.match(css, /#tockteam-window-titlebar-slot\s*\{[^}]*display: none;/s)
   assert.match(css, /html\[data-tockteam-tocktutor-active='true'\] #tockteam-window-titlebar-slot\s*\{[^}]*display: block;/s)
   assert.match(css, /html\[data-tockteam-tocktutor-active='true'\] \.tockteam-panel-toolbar\s*\{[^}]*display: none;/s)
-  assert.match(tockTutor, /\.tocktutor-titlebar\s*\{[^}]*top: 0;/s)
-  assert.match(tockTutor, /\.tocktutor-grid\s*\{[^}]*grid-template-columns: var\(--tockteam-primary-sidebar-width, 280px\) minmax\(0, 1fr\) auto auto;[^}]*transition: grid-template-columns 300ms ease-out;/s)
-  assert.match(tockTutor, /\.tocktutor-right-panel\s*\{[^}]*transition: width 420ms cubic-bezier\(\.16, 1, \.3, 1\), opacity 300ms/s)
-  assert.doesNotMatch(tockTutor, /\.tocktutor-right-panel\s*\{[^}]*position: fixed;/s)
+  assert.match(tockTutor, /tocktutor-titlebar absolute top-0/u)
+  assert.match(tockTutor, /tocktutor-grid relative grid h-full min-h-0 grid-cols-\[var\(--tockteam-primary-sidebar-width,280px\)_minmax\(0,1fr\)_auto_auto\] transition-\[grid-template-columns\] duration-300 ease-out/u)
+  assert.match(tockTutor, /tocktutor-right-panel[^"\n]+transition-\[width,opacity,transform,visibility\][^"\n]+\[transition-duration:420ms,300ms,460ms,0s\]/u)
+  assert.doesNotMatch(tockTutor, /tocktutor-right-panel[^"\n]+fixed/u)
   assert.match(css, /\.tockteam-titlebar-leading\s*\{[^}]*border-right: 1px solid var\(--tockteam-shell-divider\);/s)
   assert.match(
     css,

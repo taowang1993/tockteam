@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
 import test from 'node:test'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
@@ -23,11 +22,6 @@ const firstVault = Object.freeze({ generation: 3, id: `vault:${'1'.repeat(64)}` 
 const secondVault = Object.freeze({ generation: 4, id: `vault:${'2'.repeat(64)}` })
 const firstRevision = `file:${'a'.repeat(64)}`
 const secondRevision = `file:${'b'.repeat(64)}`
-const TAILWIND_CSS = readFileSync(
-  new URL('../../../../skins/src/client/tailwind.css', import.meta.url),
-  'utf8',
-)
-
 function success<T>(value: T) {
   return Promise.resolve({ ok: true as const, value })
 }
@@ -563,53 +557,51 @@ test('loads, edits, reads, toggles, and snapshot-saves one exact note', async ()
     onToggleTask() {},
     snapshot: controller.getSnapshot(),
   }))
-  const html = `${markup}\n${TAILWIND_CSS}`
+  const html = markup
   assert.match(html, /aria-label="TockTutor Workbench"/u)
   assert.match(html, /<section[^>]+aria-label="TockTutor Title Bar"/u)
   assert.match(html, /<button[^>]+aria-label="Search Notes"/u)
   assert.match(html, /<button[^>]+aria-label="New Note"/u)
   assert.doesNotMatch(html, /TockLauncher/u)
-  assert.match(html, /padding-top: 0/u)
-  assert.match(html, /\.tocktutor-titlebar\s*\{[^}]*height: var\(--tockteam-titlebar-height, 40px\)/su)
-  assert.match(html, /\.tocktutor-titlebar\s*\{[^}]*top: 0/su)
+  assert.match(html, /pt-0/u)
+  assert.match(html, /h-\[var\(--tockteam-titlebar-height,40px\)\]/u)
+  assert.match(html, /tocktutor-titlebar absolute top-0/u)
   assert.match(html, /<button[^>]+aria-label="Resize Files Sidebar, 280 Pixels"/u)
   assert.match(html, /title="Drag or Use Left and Right Arrow Keys"/u)
   assert.match(html, /grid-template-columns:280px minmax\(0, 1fr\) auto auto/u)
-  assert.match(html, /transition: grid-template-columns 300ms ease-out/u)
-  assert.match(html, /\.tocktutor-titlebar svg \{[^}]*height: 18px; width: 18px/u)
+  assert.match(html, /transition-\[grid-template-columns\] duration-300 ease-out/u)
+  assert.match(html, /\[&amp;_svg\]:size-\[18px\]/u)
   assert.match(html, /<button[^>]+aria-expanded="true"[^>]+aria-label="Toggle Files Sidebar"/u)
   assert.match(html, /<button[^>]+aria-expanded="false"[^>]+aria-label="Toggle Assistant Panel"/u)
   assert.match(html, /class="lucide lucide-panel-left"/u)
   assert.match(html, /class="lucide lucide-panel-right"/u)
-  assert.match(html, /\.tocktutor-titlebar-sidebar \.tocktutor-panel-icon \{ margin-left: auto; \}/u)
-  assert.match(html, /\.tocktutor-sidebar \{ background: var\(--tockteam-shell-chrome, var\(--tt-panel\)\)/u)
-  assert.doesNotMatch(html, /\.tocktutor-sidebar-resize:hover::after[^}]*var\(--tt-accent\)/u)
-  const sidebarHeader = html.match(/<header class="tocktutor-sidebar-header">(?<content>.*?)<\/header>/u)?.groups?.content
+  assert.match(html, /tocktutor-panel-icon ml-auto/u)
+  assert.match(html, /tocktutor-sidebar[^>]+bg-\[var\(--tockteam-shell-chrome,var\(--tt-panel\)\)\]/u)
+  assert.doesNotMatch(html, /tocktutor-sidebar-resize[^>]+hover:after:bg-\[var\(--tt-accent\)\]/u)
+  const sidebarHeader = html.match(/<header class="tocktutor-sidebar-header[^>]*>(?<content>.*?)<\/header>/u)?.groups?.content
   assert.ok(sidebarHeader)
   assert.doesNotMatch(sidebarHeader, /M15 3v18/u)
-  assert.match(html, /--tt-footer-height: 28px/u)
-  assert.match(html, /grid-template-rows: 40px minmax\(0, 1fr\) var\(--tt-footer-height\)/u)
-  assert.match(html, /--tt-tab-border: #d1d5db/u)
-  assert.match(html, /--tt-tab-curve: 10px/u)
-  assert.match(html, /box-shadow: inset 0 0 0 1px var\(--tt-tab-border\)/u)
+  assert.match(html, /\[--tt-footer-height:28px\]/u)
+  assert.match(html, /grid-rows-\[40px_minmax\(0,1fr\)_var\(--tt-footer-height\)\]/u)
+  assert.match(html, /\[--tt-tab-border:#d1d5db\]/u)
+  assert.match(html, /\[--tt-tab-curve:10px\]/u)
+  assert.match(html, /box-shadow:inset_0_0_0_1px_var\(--tt-tab-border\)/u)
   assert.match(html, /<aside[^>]+aria-hidden="false"[^>]+aria-label="Files"[^>]+data-open="true"/u)
-  assert.match(html, /<aside[^>]+aria-hidden="true"[^>]+aria-label="Assistant Panel"[^>]+class="tocktutor-right-panel tocktutor-right-panel-assistant"[^>]+data-open="false"[^>]+inert=""/u)
+  assert.match(html, /<aside[^>]+aria-hidden="true"[^>]+aria-label="Assistant Panel"[^>]+class="tocktutor-right-panel tocktutor-right-panel-assistant[^>]+data-open="false"[^>]+inert=""/u)
   assert.doesNotMatch(html, /aria-label="Close Assistant"/u)
-  assert.match(html, /\.tocktutor-right-panel \{[^}]*border-left: 1px solid var\(--tt-border\);[^}]*box-shadow: none;/su)
-  assert.match(html, /\.tocktutor-right-panel \{[^}]*transition: width 420ms cubic-bezier\(\.16, 1, \.3, 1\), opacity 300ms/su)
-  assert.match(html, /\.tocktutor-right-panel-assistant \{[^}]*border-left: 0;[^}]*overflow: hidden;/su)
-  assert.match(html, /\.tocktutor-right-panel-assistant\[data-open=(?:&quot;|")true(?:&quot;|")\] \{ overflow: visible; \}/u)
-  assert.match(html, /\.tocktutor-right-panel-assistant (?:&gt;|>) \.tocktutor-assistant-content \{[^}]*border-left: 1px solid color-mix\(in srgb, var\(--tt-text\) 8%, var\(--tt-border\) 92%\);/su)
-  assert.match(html, /\.tocktutor-assistant-resize \{[^}]*touch-action: none;[^}]*transform: translateX\(-50%\);[^}]*width: 16px;/su)
-  assert.match(html, /\.tocktutor-assistant-resize::before \{[^}]*background: color-mix\(in srgb, var\(--tt-text\) 8%, var\(--tt-panel\)\);[^}]*height: 40px;[^}]*width: 8px;/su)
-  assert.match(html, /\.tocktutor-assistant-resize:hover \+ \.tocktutor-assistant-content,[^{]+\{ border-left-color: var\(--tt-accent\); \}/su)
-  assert.match(html, /\.tocktutor-right-panel\[data-open=(?:&quot;|")true(?:&quot;|")\][^}]*width: min\(360px, calc\(100vw - 262px\)\)/su)
+  assert.match(html, /tocktutor-right-panel[^>]+border-l[^>]+shadow-none/u)
+  assert.match(html, /transition-\[width,opacity,transform,visibility\]/u)
+  assert.match(html, /tocktutor-right-panel-assistant[^>]+overflow-hidden/u)
+  assert.match(html, /tocktutor-right-panel-assistant[^>]+border-l-0/u)
+  assert.match(html, /data-\[open=true\]:overflow-visible/u)
+  assert.match(html, /tocktutor-assistant-content[^>]+border-\[color-mix\(in_srgb,var\(--tt-text\)_8%,var\(--tt-border\)_92%\)\]/u)
+  assert.match(html, /data-\[open=true\]:w-\[min\(360px,calc\(100vw-262px\)\)\]/u)
   assert.match(html, /Assistant Surface/u)
   assert.match(html, /aria-label="Vault Notes"/u)
   assert.match(html, /aria-label="Reading View"/u)
   assert.match(html, /<section[^>]+aria-label="Note Editor"[^>]+role="tabpanel"/u)
   assert.match(html, /<footer[^>]+aria-label="TockTutor Status Bar"/u)
-  assert.match(html, /prefers-reduced-motion/u)
+  assert.match(html, /motion-reduce:/u)
   assert.doesNotMatch(html, /<script>unsafe\(\)<\/script>/u)
   assert.match(html, /Unsafe HTML is inert in Reading view\./u)
 
