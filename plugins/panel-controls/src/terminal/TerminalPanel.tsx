@@ -1,4 +1,4 @@
-import { Button, Input } from '@tockteam/ui'
+import { Button, Input, NativeSelectOption } from '@tockteam/ui'
 import {
   useEffect,
   useState,
@@ -196,10 +196,10 @@ export function TerminalPanel({ locale, t: translate, store, scopeKey, cwd, acti
               }}
             />
             <datalist id={fontPresetListId}>
-              <option value={DEFAULT_TERMINAL_FONT_FAMILY} />
-              <option value="'JetBrains Mono', ui-monospace, monospace" />
-              <option value="'Maple Mono', ui-monospace, monospace" />
-              <option value="'Fira Code', ui-monospace, monospace" />
+              <NativeSelectOption value={DEFAULT_TERMINAL_FONT_FAMILY} />
+              <NativeSelectOption value="'JetBrains Mono', ui-monospace, monospace" />
+              <NativeSelectOption value="'Maple Mono', ui-monospace, monospace" />
+              <NativeSelectOption value="'Fira Code', ui-monospace, monospace" />
             </datalist>
           </label>
           <label className="grid grid-cols-[78px_minmax(0,1fr)] items-center gap-2.5 text-muted-foreground">

@@ -1,4 +1,4 @@
-import { Button, Input, NativeSelect, Textarea } from '@tockteam/ui'
+import { Alert, Button, Empty, EmptyContent, EmptyHeader, EmptyMedia, EmptyTitle, Input, NativeSelect, NativeSelectOption, Textarea } from '@tockteam/ui'
 import {
   useCallback,
   useEffect,
@@ -450,10 +450,12 @@ export function TockTutorAssistantPanel(props: TockTutorAssistantPanelProps): Re
       >
         <section aria-label="Live Assistant Output" aria-live="polite" className="tocktutor-assistant-transcript flex min-h-full min-w-0 flex-col gap-4">
           {!hasConversation && (proposalPage?.proposals.length ?? 0) === 0 && (
-            <div className="tocktutor-assistant-empty flex min-h-full flex-col items-center justify-center gap-4 text-center">
-              <div className="tocktutor-assistant-empty-icon flex size-10 items-center justify-center rounded-xl border border-[var(--tta-border)] bg-[var(--tta-panel)] text-[var(--tta-accent)] shadow-[0_1px_2px_rgb(0_0_0_/_7%)] [&_svg]:size-[18px]"><Sparkles aria-hidden="true" /></div>
-              <h2 className="max-w-64 text-sm leading-5">What can I help you with?</h2>
-              <div className="tocktutor-assistant-suggestions flex w-[min(100%,288px)] flex-col items-stretch gap-1.5 text-left">
+            <Empty unstyled className="tocktutor-assistant-empty flex min-h-full flex-col items-center justify-center gap-4 text-center">
+              <EmptyHeader unstyled>
+                <EmptyMedia unstyled className="tocktutor-assistant-empty-icon flex size-10 items-center justify-center rounded-xl border border-[var(--tta-border)] bg-[var(--tta-panel)] text-[var(--tta-accent)] shadow-[0_1px_2px_rgb(0_0_0_/_7%)] [&_svg]:size-[18px]"><Sparkles aria-hidden="true" /></EmptyMedia>
+                <EmptyTitle unstyled aria-level={2} className="max-w-64 text-sm leading-5 font-bold" role="heading">What can I help you with?</EmptyTitle>
+              </EmptyHeader>
+              <EmptyContent unstyled className="tocktutor-assistant-suggestions flex w-[min(100%,288px)] flex-col items-stretch gap-1.5 text-left">
                 {PROMPT_SUGGESTIONS.map(suggestion => {
                   const Icon = suggestion.icon
                   return (
@@ -468,8 +470,8 @@ export function TockTutorAssistantPanel(props: TockTutorAssistantPanelProps): Re
                     </Button>
                   )
                 })}
-              </div>
-            </div>
+              </EmptyContent>
+            </Empty>
           )}
           {transcriptEntries.map(entry => entry.toolStatus === true
             ? <p className="tocktutor-assistant-tool-status py-0.5 text-xs text-[var(--tta-muted)]" key={entry.key}>{entry.text}</p>
@@ -495,7 +497,7 @@ export function TockTutorAssistantPanel(props: TockTutorAssistantPanelProps): Re
             <p className="tocktutor-assistant-tool-status py-0.5 text-xs text-[var(--tta-muted)]" key={call.callId}>{boundedText(call.name, 127)} · Reading…</p>
           ))}
           {transcriptError !== null && transcriptError !== undefined && (
-            <p className="tocktutor-assistant-error rounded-lg border border-[var(--tta-border)] p-2 text-xs text-[#b42318]" role="alert">{boundedText(transcriptError, 500)}</p>
+            <Alert unstyled className="tocktutor-assistant-error rounded-lg border border-[var(--tta-border)] p-2 text-xs text-[#b42318]">{boundedText(transcriptError, 500)}</Alert>
           )}
           {(proposalPage?.proposals.length ?? 0) > 0 && (
             <section aria-label="Staged Proposals" className="tocktutor-assistant-reviews grid gap-2.5">
@@ -631,8 +633,8 @@ export function TockTutorAssistantPanel(props: TockTutorAssistantPanelProps): Re
                   }}
                   value={settings?.writePermission ?? 'read-only'}
                 >
-                  <option value="read-only">Read Only</option>
-                  <option value="propose">Propose Writes</option>
+                  <NativeSelectOption value="read-only">Read Only</NativeSelectOption>
+                  <NativeSelectOption value="propose">Propose Writes</NativeSelectOption>
                 </NativeSelect>
               </label>
               <Button unstyled className="cursor-pointer rounded-[7px] border border-[var(--tta-accent)] bg-[var(--tta-accent)] px-[9px] py-1.5 font-semibold text-white disabled:cursor-default disabled:opacity-50" disabled={settings === null || settingsSaving} type="submit">

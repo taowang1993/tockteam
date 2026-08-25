@@ -1,4 +1,4 @@
-import { Button, Input, Textarea } from '@tockteam/ui'
+import { Button, Empty, EmptyDescription, EmptyHeader, EmptyTitle, Input, Textarea } from '@tockteam/ui'
 import {
   useEffect,
   useMemo,
@@ -1397,11 +1397,13 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
           </header>
           <div className="tocktutor-editor-body relative min-h-0 overflow-auto">
             {snapshot.path === null ? (
-              <div className="tocktutor-empty absolute top-[45%] left-1/2 w-full max-w-[420px] -translate-1/2 p-8 text-center">
-                <p className="tocktutor-kicker mb-0.5 text-[11px] font-[650] tracking-[.08em] text-[var(--tt-muted)] uppercase">Ready When You Are</p>
-                <h2 className="m-0 text-xl">Select a Note</h2>
-                <p className="text-[var(--tt-muted)]">Choose a Markdown note from the vault to read or edit its exact source.</p>
-              </div>
+              <Empty unstyled className="tocktutor-empty absolute top-[45%] left-1/2 w-full max-w-[420px] -translate-1/2 p-8 text-center">
+                <EmptyHeader unstyled>
+                  <p className="tocktutor-kicker mb-0.5 text-[11px] font-[650] tracking-[.08em] text-[var(--tt-muted)] uppercase">Ready When You Are</p>
+                  <EmptyTitle unstyled aria-level={2} className="text-xl font-bold" role="heading">Select a Note</EmptyTitle>
+                  <EmptyDescription unstyled className="text-[var(--tt-muted)]">Choose a Markdown note from the vault to read or edit its exact source.</EmptyDescription>
+                </EmptyHeader>
+              </Empty>
             ) : snapshot.mode === 'source' ? (
               <Textarea unstyled
                 aria-label={sourceLabel}

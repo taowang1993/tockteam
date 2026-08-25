@@ -1,4 +1,4 @@
-import { Button, NativeSelect } from '@tockteam/ui'
+import { Alert, Button, Card, NativeSelect, NativeSelectOption, Spinner } from '@tockteam/ui'
 import {
   useEffect,
   useMemo,
@@ -369,7 +369,7 @@ export function ImportExportReviewPanelView(props: {
   const warnings = preview !== null && 'warnings' in preview ? preview.warnings : []
   const busy = snapshot.phase === 'inspecting' || snapshot.phase === 'approving' || snapshot.phase === 'committing'
   return (
-    <section aria-label="Import, Backup, and Restore" className="tocktutor-import-export-review grid gap-3 rounded-[10px] border border-[var(--tt-border)] p-3.5 [&_h2]:m-0 [&_h3]:m-0 [&_p]:m-0 [&_button]:min-h-8 [&_button]:rounded-md [&_button]:border [&_button]:border-[var(--tt-border)] [&_button]:bg-[var(--tt-panel)] [&_button]:px-[9px] [&_button]:py-[5px] [&_button]:text-inherit [&_select]:min-h-8 [&_select]:rounded-md [&_select]:border [&_select]:border-[var(--tt-border)] [&_select]:bg-[var(--tt-panel)] [&_select]:px-[9px] [&_select]:py-[5px] [&_select]:text-inherit">
+    <Card unstyled aria-label="Import, Backup, and Restore" className="tocktutor-import-export-review grid gap-3 rounded-[10px] border border-[var(--tt-border)] p-3.5 [&_h2]:m-0 [&_h3]:m-0 [&_p]:m-0 [&_button]:min-h-8 [&_button]:rounded-md [&_button]:border [&_button]:border-[var(--tt-border)] [&_button]:bg-[var(--tt-panel)] [&_button]:px-[9px] [&_button]:py-[5px] [&_button]:text-inherit [&_select]:min-h-8 [&_select]:rounded-md [&_select]:border [&_select]:border-[var(--tt-border)] [&_select]:bg-[var(--tt-panel)] [&_select]:px-[9px] [&_select]:py-[5px] [&_select]:text-inherit" role="region">
       <header>
         <p className="tocktutor-import-export-kicker text-[11px] font-bold tracking-[.08em] text-[var(--tt-muted)] uppercase">Reviewed Operations</p>
         <h2>Import, Backup, and Restore</h2>
@@ -383,7 +383,7 @@ export function ImportExportReviewPanelView(props: {
               onChange={event => { props.onFormat(event.currentTarget.value as ImportInspectFormat) }}
               value={snapshot.format}
             >
-              {FORMAT_LABELS.map(([format, label]) => <option key={format} value={format}>{label}</option>)}
+              {FORMAT_LABELS.map(([format, label]) => <NativeSelectOption key={format} value={format}>{label}</NativeSelectOption>)}
             </NativeSelect>
           </label>
           <Button unstyled onClick={props.onStart} type="button">Inspect Import</Button>
@@ -392,7 +392,7 @@ export function ImportExportReviewPanelView(props: {
       )}
       {busy && (
         <div className="tocktutor-import-export-actions flex flex-wrap gap-2">
-          <p aria-live="polite" role="status">{snapshot.phase === 'inspecting' ? 'Inspecting the selected source…' : snapshot.phase === 'approving' ? 'Approving the reviewed plan…' : 'Committing through the vault runtime…'}</p>
+          <Alert unstyled aria-live="polite" className="flex items-center gap-2" role="status"><Spinner />{snapshot.phase === 'inspecting' ? 'Inspecting the selected source…' : snapshot.phase === 'approving' ? 'Approving the reviewed plan…' : 'Committing through the vault runtime…'}</Alert>
           <Button unstyled onClick={props.onCancel} type="button">Cancel</Button>
         </div>
       )}
@@ -435,12 +435,12 @@ export function ImportExportReviewPanelView(props: {
       )}
       {snapshot.phase === 'error' && (
         <div className="tocktutor-import-export-actions flex flex-wrap gap-2">
-          <p role="alert">{snapshot.error ?? 'The reviewed operation failed.'}</p>
+          <Alert unstyled>{snapshot.error ?? 'The reviewed operation failed.'}</Alert>
           {preview !== null && <Button unstyled onClick={props.onApprove} type="button">Retry Reviewed Commit</Button>}
           {preview !== null && <Button unstyled onClick={props.onCancel} type="button">Cancel</Button>}
         </div>
       )}
-    </section>
+    </Card>
   )
 }
 

@@ -1,4 +1,4 @@
-import { Button } from '@tockteam/ui'
+import { Alert, Button } from '@tockteam/ui'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import type { RemoteResult } from '@deepseek-ai/dsh-typert-protocol'
 import type {
@@ -381,7 +381,7 @@ export function TockTutorNativeActions(props: TockTutorNativeActionsProps): Reac
           props.remote.tocktutorDesktop.exportNote(authorization, 'pdf', path, vault, signal)
         )), hasNote)}
       </div>
-      <p aria-live="polite" className="mt-1 mb-0 text-[var(--tt-muted,#667085)]" role="status">{message}</p>
+      <Alert unstyled aria-live="polite" className="mt-1 mb-0 text-[var(--tt-muted,#667085)]" role="status">{message}</Alert>
     </div>
   )
 }

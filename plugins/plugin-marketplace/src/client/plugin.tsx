@@ -1,4 +1,17 @@
-import { Button, Input, NativeSelect } from '@tockteam/ui'
+import {
+  Alert,
+  Badge,
+  Button,
+  Card,
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+  Input,
+  NativeSelect,
+  NativeSelectOption,
+  Spinner,
+} from '@tockteam/ui'
 import {
   useCallback,
   useEffect,
@@ -426,31 +439,32 @@ function PluginCard({
       </div>
       <p className="my-[13px] line-clamp-3 text-[11px] leading-normal text-muted-foreground">{plugin.description}</p>
       <div className="mt-auto flex flex-wrap items-center gap-1.5">
-        <span
+        <Badge
+          unstyled
           className={PILL_CLASSES}
           data-unsupported={String(plugin.mechanism === 'unsupported')}
         >
           {mechanismLabel(plugin, t)}
-        </span>
+        </Badge>
         {plugin.installed && (
-          <span className={PILL_CLASSES} data-installed="true">
+          <Badge unstyled className={PILL_CLASSES} data-installed="true">
             {t('installed')}
-          </span>
+          </Badge>
         )}
         {plugin.installed && (
-          <span className={PILL_CLASSES} data-installed={String(plugin.enabled)}>
+          <Badge unstyled className={PILL_CLASSES} data-installed={String(plugin.enabled)}>
             {plugin.enabled ? t('enabled') : t('disabled')}
-          </span>
+          </Badge>
         )}
         {plugin.updateAvailable && (
-          <span className={PILL_CLASSES} data-update="true">
+          <Badge unstyled className={PILL_CLASSES} data-update="true">
             {t('update-available')}
-          </span>
+          </Badge>
         )}
         {plugin.protected && (
-          <span className={PILL_CLASSES} data-protected="true">
+          <Badge unstyled className={PILL_CLASSES} data-protected="true">
             {t('managed')}
-          </span>
+          </Badge>
         )}
       </div>
     </Button>
@@ -498,9 +512,9 @@ function PluginDetail({
       <div className="px-6 pt-[25px] pb-[38px]">
         <Button unstyled className={`${ICON_BUTTON_CLASSES} float-right`} onClick={close} type="button"><X aria-hidden="true" /></Button>
         <h2 className="mt-px mr-[42px] mb-1 text-[19px] leading-[1.3]">{plugin.title}</h2>
-        <span className={PILL_CLASSES} data-installed={String(plugin.installed)}>
+        <Badge unstyled className={PILL_CLASSES} data-installed={String(plugin.installed)}>
           {plugin.installed ? t('installed') : mechanismLabel(plugin, t)}
-        </span>
+        </Badge>
         <p className="my-[18px] text-xs leading-[1.6] text-muted-foreground">{plugin.description}</p>
         <dl className="grid grid-cols-[88px_minmax(0,1fr)] gap-x-2 gap-y-2.5 border-y border-border py-4 text-[10px] [&_dt]:text-subtle-foreground [&_dd]:m-0 [&_dd]:min-w-0 [&_dd]:[overflow-wrap:anywhere]">
           <dt>{t('category')}</dt><dd>{plugin.category}</dd>
@@ -523,7 +537,7 @@ function PluginDetail({
         </dl>
 
         {plan !== null && (
-          <section className="mt-[18px] rounded-xl border border-[#d7e3ff] bg-[#f7f9ff] p-3.5 text-[11px] dark:border-[#33466d] dark:bg-[#19233a] [&_code]:my-[5px] [&_code]:block [&_code]:text-[9px] [&_code]:leading-normal [&_code]:text-[#355593] [&_code]:[overflow-wrap:anywhere]">
+          <Card unstyled className="mt-[18px] rounded-xl border border-[#d7e3ff] bg-[#f7f9ff] p-3.5 text-[11px] dark:border-[#33466d] dark:bg-[#19233a] [&_code]:my-[5px] [&_code]:block [&_code]:text-[9px] [&_code]:leading-normal [&_code]:text-[#355593] [&_code]:[overflow-wrap:anywhere]">
             <div className="mb-[13px] grid grid-cols-3 gap-[5px] [&_span]:rounded-[7px] [&_span]:bg-[rgba(53,85,147,0.07)] [&_span]:px-1 [&_span]:py-1.5 [&_span]:text-center [&_span]:text-[9px] [&_span]:text-subtle-foreground [&_span[data-active=true]]:bg-[#e7efff] [&_span[data-active=true]]:font-[650] [&_span[data-active=true]]:text-[#315fae] dark:[&_span[data-active=true]]:bg-[#283d67] dark:[&_span[data-active=true]]:text-[#b8ceff]" aria-label={t('prepared-plan', { action: t(`action.${plan.action}`) })}>
               <span data-active="true">1 · {t('flow.review')}</span>
               <span data-active={String(snapshot.preview !== null)}>2 · {t('flow.preview')}</span>
@@ -560,7 +574,7 @@ function PluginDetail({
               </label>
             ))}
             <p className="mt-3 mb-0 border-t border-[rgba(53,85,147,0.14)] pt-2.5 text-[9px] leading-normal text-subtle-foreground">{t('recovery-note')}</p>
-          </section>
+          </Card>
         )}
 
         <div className="mt-[18px] flex flex-wrap gap-2">
@@ -792,7 +806,7 @@ function MarketplaceSurface({ bridge, locale, translate, view }: {
             </div>
           </header>
           {snapshot?.preview !== null && snapshot?.preview !== undefined && (
-            <div className="mx-7 mt-3.5 flex flex-wrap items-center gap-2.5 rounded-[11px] border border-[#bcd0fa] bg-[#f2f6ff] px-3.5 py-[11px] text-[11px] leading-[1.45] text-[#244f9e] dark:border-[#395993] dark:bg-[#182744] dark:text-[#a9c4ff] [&_strong]:mr-auto">
+            <Alert unstyled role="status" className="mx-7 mt-3.5 flex flex-wrap items-center gap-2.5 rounded-[11px] border border-[#bcd0fa] bg-[#f2f6ff] px-3.5 py-[11px] text-[11px] leading-[1.45] text-[#244f9e] dark:border-[#395993] dark:bg-[#182744] dark:text-[#a9c4ff] [&_strong]:mr-auto">
               <strong>{t('preview.running', { plugin: snapshot.preview.pluginId })}</strong>
               <Button unstyled className={BUTTON_CLASSES} disabled={pending} onClick={() => { void run({ type: 'discard' }) }} type="button">
                 {t('discard')}
@@ -800,10 +814,10 @@ function MarketplaceSurface({ bridge, locale, translate, view }: {
               <Button unstyled className={BUTTON_CLASSES} data-primary="true" disabled={pending} onClick={() => { void run({ type: 'apply' }) }} type="button">
                 {t('apply-action', { action: t(`action.${snapshot.preview.action}`) })}
               </Button>
-            </div>
+            </Alert>
           )}
           {error !== null && (
-            <div className="mx-7 mt-[18px] flex items-center gap-3 rounded-[11px] border border-[#f1c2bd] bg-[#fff5f4] px-3.5 py-[11px] text-[11px] leading-[1.45] text-[#9c2f24] [&_span]:mr-auto [&_span]:min-w-0 [&_span]:[overflow-wrap:anywhere]">
+            <Alert unstyled className="mx-7 mt-[18px] flex items-center gap-3 rounded-[11px] border border-[#f1c2bd] bg-[#fff5f4] px-3.5 py-[11px] text-[11px] leading-[1.45] text-[#9c2f24] [&_span]:mr-auto [&_span]:min-w-0 [&_span]:[overflow-wrap:anywhere]">
               <span>{error}</span>
               <Button unstyled
                 className={`${BUTTON_CLASSES} flex-none border-[#e8b4ae] bg-white text-[#9c2f24]`}
@@ -813,12 +827,12 @@ function MarketplaceSurface({ bridge, locale, translate, view }: {
               >
                 {t('reset-and-reload')}
               </Button>
-            </div>
+            </Alert>
           )}
           {snapshot?.lastAction !== null && snapshot?.lastAction !== undefined && error === null && (
-            <div className="mx-7 mt-[18px] rounded-[11px] border border-[#dedfe2] px-3.5 py-[11px] text-[11px] leading-[1.45] text-muted-foreground">
+            <Alert unstyled role="status" className="mx-7 mt-[18px] rounded-[11px] border border-[#dedfe2] px-3.5 py-[11px] text-[11px] leading-[1.45] text-muted-foreground">
               {localizedHostMessage(snapshot.lastAction, t)}
-            </div>
+            </Alert>
           )}
         </div>
         <div className="grid min-h-0 grid-cols-[minmax(0,1fr)_360px] data-[detail=false]:grid-cols-[minmax(0,1fr)] max-[1050px]:grid-cols-[minmax(0,1fr)_320px] max-[820px]:block max-[820px]:overflow-auto" data-detail={String(selected !== null)}>
@@ -861,24 +875,28 @@ function MarketplaceSurface({ bridge, locale, translate, view }: {
                 onChange={event => { setCategoryFilter(event.target.value) }}
                 value={categoryFilter}
               >
-                <option value="all">{t('all-categories')}</option>
-                {categories.map(category => <option key={category} value={category}>{category}</option>)}
+                <NativeSelectOption value="all">{t('all-categories')}</NativeSelectOption>
+                {categories.map(category => <NativeSelectOption key={category} value={category}>{category}</NativeSelectOption>)}
               </NativeSelect>
               <span className="ml-auto whitespace-nowrap text-[11px] text-subtle-foreground">
                 {t('plugin-count', { count: plugins.length })}
               </span>
             </div>
             {snapshot === null || pending && snapshot.catalog.length === 0 ? (
-              <div className="grid min-h-[340px] place-items-center text-center text-xs text-subtle-foreground">{t('loading-catalog')}</div>
+              <Empty unstyled className="grid min-h-[340px] place-items-center text-center text-xs text-subtle-foreground">
+                <EmptyHeader unstyled className="flex items-center gap-2"><Spinner />{t('loading-catalog')}</EmptyHeader>
+              </Empty>
             ) : snapshot.auth.status !== 'ready' && snapshot.catalog.length === 0 ? (
-              <div className="grid min-h-[340px] place-items-center text-center text-xs text-subtle-foreground">
-                <div>
-                  <strong>{t('github-auth-required')}</strong><br />
-                  {localizedAuthDetail(snapshot.auth.detail, t)}
-                </div>
-              </div>
+              <Empty unstyled className="grid min-h-[340px] place-items-center text-center text-xs text-subtle-foreground">
+                <EmptyHeader unstyled>
+                  <EmptyTitle unstyled><strong>{t('github-auth-required')}</strong></EmptyTitle>
+                  <EmptyDescription unstyled>{localizedAuthDetail(snapshot.auth.detail, t)}</EmptyDescription>
+                </EmptyHeader>
+              </Empty>
             ) : plugins.length === 0 ? (
-              <div className="grid min-h-[340px] place-items-center text-center text-xs text-subtle-foreground">{t('no-match')}</div>
+              <Empty unstyled className="grid min-h-[340px] place-items-center text-center text-xs text-subtle-foreground">
+                <EmptyHeader unstyled><EmptyTitle unstyled>{t('no-match')}</EmptyTitle></EmptyHeader>
+              </Empty>
             ) : (
               <div className="grid grid-cols-[repeat(auto-fill,minmax(235px,1fr))] gap-3">
                 {plugins.map(plugin => (

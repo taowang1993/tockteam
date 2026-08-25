@@ -1,4 +1,4 @@
-import { Button, Input, NativeSelect } from '@tockteam/ui'
+import { Alert, Button, Card, Input, NativeSelect, NativeSelectOption } from '@tockteam/ui'
 import {
   useCallback,
   useEffect,
@@ -432,7 +432,7 @@ function WebViewer(): ReactNode {
           ))}
         </details>
       )}
-      {error && <div role="alert">{error}</div>}
+      {error && <Alert unstyled>{error}</Alert>}
       {reader && (
         <article
           aria-label="Reader View"
@@ -449,19 +449,19 @@ function WebViewer(): ReactNode {
             <label>Text Size <NativeSelect unstyled
               onChange={event => { setReaderPreference('textSize', event.currentTarget.value as ReaderPreferences['textSize']) }}
               value={viewer.readerPreferences.textSize}
-            ><option value="sm">Small</option><option value="md">Medium</option><option value="lg">Large</option></NativeSelect></label>
+            ><NativeSelectOption value="sm">Small</NativeSelectOption><NativeSelectOption value="md">Medium</NativeSelectOption><NativeSelectOption value="lg">Large</NativeSelectOption></NativeSelect></label>
             <label>Line Width <NativeSelect unstyled
               onChange={event => { setReaderPreference('width', event.currentTarget.value as ReaderPreferences['width']) }}
               value={viewer.readerPreferences.width}
-            ><option value="narrow">Narrow</option><option value="md">Medium</option><option value="wide">Wide</option></NativeSelect></label>
+            ><NativeSelectOption value="narrow">Narrow</NativeSelectOption><NativeSelectOption value="md">Medium</NativeSelectOption><NativeSelectOption value="wide">Wide</NativeSelectOption></NativeSelect></label>
             <label>Line Spacing <NativeSelect unstyled
               onChange={event => { setReaderPreference('spacing', event.currentTarget.value as ReaderPreferences['spacing']) }}
               value={viewer.readerPreferences.spacing}
-            ><option value="compact">Compact</option><option value="md">Default</option><option value="relaxed">Relaxed</option></NativeSelect></label>
+            ><NativeSelectOption value="compact">Compact</NativeSelectOption><NativeSelectOption value="md">Default</NativeSelectOption><NativeSelectOption value="relaxed">Relaxed</NativeSelectOption></NativeSelect></label>
             <label>Appearance <NativeSelect unstyled
               onChange={event => { setReaderPreference('appearance', event.currentTarget.value as ReaderPreferences['appearance']) }}
               value={viewer.readerPreferences.appearance}
-            ><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></NativeSelect></label>
+            ><NativeSelectOption value="system">System</NativeSelectOption><NativeSelectOption value="light">Light</NativeSelectOption><NativeSelectOption value="dark">Dark</NativeSelectOption></NativeSelect></label>
           </div>
           <h2>{reader.title}</h2>
           <section aria-label="Clip Web Page">
@@ -480,13 +480,13 @@ function WebViewer(): ReactNode {
               type="button"
             >{clipLoading && !clipPreview ? 'Generating Preview…' : 'Generate Clip Preview'}</Button>
             {clipPreview && (
-              <div>
+              <Card unstyled>
                 <p>Review the exact Markdown and destination before saving.</p>
                 <p><strong>Destination:</strong> {clipPreview.destination}</p>
                 <pre aria-label="Clip Markdown Preview" className="max-h-80 overflow-auto whitespace-pre-wrap">{clipPreview.markdown}</pre>
                 <Button unstyled disabled={clipLoading} onClick={applyClip} type="button">{clipLoading ? 'Saving…' : 'Save Clip'}</Button>
                 <Button unstyled disabled={clipLoading} onClick={invalidateClip} type="button">Cancel</Button>
-              </div>
+              </Card>
             )}
             {clipSavedPath && <p role="status">Saved clip to {clipSavedPath}.</p>}
           </section>

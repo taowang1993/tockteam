@@ -1,4 +1,4 @@
-import { Button, Input, NativeSelect, Textarea } from '@tockteam/ui'
+import { Button, Input, NativeSelect, NativeSelectOption, Textarea } from '@tockteam/ui'
 import {
   useCallback,
   useEffect,
@@ -1163,7 +1163,7 @@ function WorkspacePanel({
               <label className="tockteam-workspace-fact grid min-h-[38px] grid-cols-[26px_minmax(0,1fr)_auto] items-center gap-2 px-1.5 text-[13px] [&_select]:w-full [&_select]:min-w-0 [&_select]:cursor-pointer [&_select]:appearance-none [&_select]:border-0 [&_select]:bg-transparent [&_select]:p-0 [&_select]:text-inherit [&_select]:outline-0 [&_select]:[font:inherit]">
                 <span className="tockteam-workspace-fact-icon grid place-items-center text-[var(--dsw-alias-label-secondary,#57606a)] [&_svg]:size-4"><Monitor aria-hidden="true" /></span>
                 <NativeSelect unstyled aria-label={t('workspace.execution-environment')} value="local" onChange={() => {}}>
-                  <option value="local">{t('workspace.local')}</option>
+                  <NativeSelectOption value="local">{t('workspace.local')}</NativeSelectOption>
                 </NativeSelect>
                 <span className="tockteam-workspace-chevron text-[var(--dsw-alias-label-dimmed,#8c959f)] [&_svg]:block [&_svg]:size-3.5"><ChevronDown aria-hidden="true" /></span>
               </label>
@@ -1175,7 +1175,7 @@ function WorkspacePanel({
                   aria-label={t('workspace.current-branch')}
                   onChange={event => { void mutate({ action: 'checkout', branch: event.currentTarget.value }) }}
                 >
-                  {(snapshot?.branches ?? []).map(branch => <option key={branch} value={branch}>{branch}</option>)}
+                  {(snapshot?.branches ?? []).map(branch => <NativeSelectOption key={branch} value={branch}>{branch}</NativeSelectOption>)}
                 </NativeSelect>
                 <span className="tockteam-workspace-chevron text-[var(--dsw-alias-label-dimmed,#8c959f)] [&_svg]:block [&_svg]:size-3.5"><ChevronDown aria-hidden="true" /></span>
               </label>
