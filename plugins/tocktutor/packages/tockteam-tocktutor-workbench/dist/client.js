@@ -20070,7 +20070,7 @@ function TockTutorRouteView(props) {
                     `${block.kind}-${String(index)}`
                   ))
                 ] }) : /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(Alert, { unstyled: true, children: reading?.reason ?? "Reading view is unavailable." }) }),
-                /* @__PURE__ */ (0, import_jsx_runtime16.jsxs)("footer", { className: "tocktutor-statusbar flex min-w-0 items-center border-t border-[var(--tt-border)] px-2 text-xs text-[var(--tt-muted)]", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime16.jsxs)("footer", { "aria-label": "TockTutor Status Bar", className: "tocktutor-statusbar flex min-w-0 items-center border-t border-[var(--tt-border)] px-2 text-xs text-[var(--tt-muted)]", role: "group", children: [
                   /* @__PURE__ */ (0, import_jsx_runtime16.jsx)("output", { "aria-live": "polite", className: "tocktutor-message absolute size-px overflow-hidden whitespace-nowrap [clip:rect(0_0_0_0)] [clip-path:inset(50%)]", children: snapshot.message }),
                   snapshot.path !== null && /* @__PURE__ */ (0, import_jsx_runtime16.jsxs)("div", { className: "ml-auto flex items-center gap-[18px] whitespace-nowrap max-[760px]:gap-2", children: [
                     /* @__PURE__ */ (0, import_jsx_runtime16.jsx)("span", { children: "0 Backlinks" }),

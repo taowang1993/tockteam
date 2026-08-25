@@ -1430,7 +1430,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
               <Alert unstyled>{reading?.reason ?? 'Reading view is unavailable.'}</Alert>
             )}
           </div>
-          <footer className="tocktutor-statusbar flex min-w-0 items-center border-t border-[var(--tt-border)] px-2 text-xs text-[var(--tt-muted)]">
+          <footer aria-label="TockTutor Status Bar" className="tocktutor-statusbar flex min-w-0 items-center border-t border-[var(--tt-border)] px-2 text-xs text-[var(--tt-muted)]" role="group">
             <output aria-live="polite" className="tocktutor-message absolute size-px overflow-hidden whitespace-nowrap [clip:rect(0_0_0_0)] [clip-path:inset(50%)]">{snapshot.message}</output>
             {snapshot.path !== null && (
               <div className="ml-auto flex items-center gap-[18px] whitespace-nowrap max-[760px]:gap-2">
