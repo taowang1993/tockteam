@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   TockTutorRouteView,
   type WorkbenchRouteSnapshot,
@@ -28,20 +28,28 @@ afterEach(() => {
   document.body.replaceChildren()
 })
 
+function renderRoute(overrides: Partial<WorkbenchRouteSnapshot> = {}, props: {
+  onCancelDispatch?(): void
+  onSubmitDispatch?(draft: { path: string } | { text: string; title: string }): void
+} = {}): void {
+  render(<TockTutorRouteView
+    onActivateTab={() => {}}
+    onAddPane={() => {}}
+    onEdit={() => {}}
+    onFocusPane={() => {}}
+    onMode={() => {}}
+    onMoveCanvas={() => {}}
+    onSave={() => {}}
+    onSelect={() => {}}
+    onToggleTask={() => {}}
+    snapshot={{ ...snapshot, ...overrides }}
+    {...props}
+  />)
+}
+
 describe('TockTutor titlebar panel controls', () => {
   it('opens and closes the Files sidebar and Assistant panel', () => {
-    render(<TockTutorRouteView
-      onActivateTab={() => {}}
-      onAddPane={() => {}}
-      onEdit={() => {}}
-      onFocusPane={() => {}}
-      onMode={() => {}}
-      onMoveCanvas={() => {}}
-      onSave={() => {}}
-      onSelect={() => {}}
-      onToggleTask={() => {}}
-      snapshot={snapshot}
-    />)
+    renderRoute()
 
     const sidebarButton = screen.getByRole('button', { name: 'Toggle Files Sidebar' })
     const sidebar = screen.getByRole('complementary', { name: 'Files' })
@@ -82,5 +90,26 @@ describe('TockTutor titlebar panel controls', () => {
     expect(assistantButton.getAttribute('aria-expanded')).toBe('false')
     expect(assistant.getAttribute('data-open')).toBe('false')
     expect(assistant.hasAttribute('inert')).toBe(true)
+  })
+
+  it('renders and submits the shadcn New Note dialog', () => {
+    const onSubmitDispatch = vi.fn()
+    renderRoute({ dispatchDialog: 'new' }, { onSubmitDispatch })
+
+    expect(screen.getByRole('dialog', { name: 'New Note' })).toBeTruthy()
+    fireEvent.change(screen.getByLabelText('New Note Path'), { target: { value: 'Notes/New.md' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Create' }))
+
+    expect(onSubmitDispatch).toHaveBeenCalledWith({ path: 'Notes/New.md' })
+  })
+
+  it('closes the shadcn dispatch dialog on Escape', () => {
+    const onCancelDispatch = vi.fn()
+    renderRoute({ dispatchDialog: 'capture' }, { onCancelDispatch })
+
+    expect(screen.getByRole('dialog', { name: 'Quick Capture' })).toBeTruthy()
+    fireEvent.keyDown(document, { key: 'Escape' })
+
+    expect(onCancelDispatch).toHaveBeenCalledOnce()
   })
 })

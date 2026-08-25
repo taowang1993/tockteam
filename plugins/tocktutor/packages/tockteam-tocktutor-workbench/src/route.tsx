@@ -1,4 +1,4 @@
-import { Button, Empty, EmptyDescription, EmptyHeader, EmptyTitle, Input, Textarea } from '@tockteam/ui'
+import { Button, Dialog, DialogContent, DialogTitle, Empty, EmptyDescription, EmptyHeader, EmptyTitle, Input, Textarea } from '@tockteam/ui'
 import {
   useEffect,
   useMemo,
@@ -997,13 +997,6 @@ function NativeDispatchDialog(props: {
   onCancel(): void
   onSubmit(draft: NativeDispatchDraft): void
 }): ReactNode {
-  const dialog = useRef<HTMLDialogElement>(null)
-  useEffect(() => {
-    const node = dialog.current
-    if (node === null) return
-    node.showModal()
-    return () => { if (node.open) node.close() }
-  }, [])
   const submit = (event: FormEvent<HTMLFormElement>): void => {
     event.preventDefault()
     const form = new FormData(event.currentTarget)
@@ -1016,38 +1009,38 @@ function NativeDispatchDialog(props: {
   }
   const label = props.kind === 'new' ? 'New Note' : 'Quick Capture'
   return (
-    <dialog
-      aria-label={label}
-      aria-modal="true"
-      className="tocktutor-dispatch-dialog fixed inset-0 h-full max-h-none w-full max-w-none items-center justify-center border-0 bg-transparent p-6 open:flex backdrop:bg-black/35"
-      onCancel={event => { event.preventDefault(); props.onCancel() }}
-      ref={dialog}
-    >
-      <form className="grid w-full max-w-[480px] gap-3.5 rounded-lg border border-[var(--tt-border)] bg-[var(--tt-panel)] p-5 [&_input]:rounded-[5px] [&_input]:border [&_input]:border-[var(--tt-border)] [&_input]:p-2 [&_input]:[font:inherit] [&_label]:grid [&_label]:gap-[5px] [&_label]:font-[650] [&_textarea]:rounded-[5px] [&_textarea]:border [&_textarea]:border-[var(--tt-border)] [&_textarea]:p-2 [&_textarea]:[font:inherit]" onSubmit={submit}>
-        <header><h2 className="m-0 text-[17px]">{label}</h2></header>
-        {props.kind === 'new' ? (
-          <label>
-            Note Path
-            <Input unstyled aria-label="New Note Path" autoFocus maxLength={1_000} name="path" required />
-          </label>
-        ) : (
-          <>
+    <Dialog open onOpenChange={open => { if (!open) props.onCancel() }}>
+      <DialogContent
+        unstyled
+        className="tocktutor-dispatch-dialog fixed top-1/2 left-1/2 z-50 w-[calc(100%-48px)] max-w-[480px] -translate-1/2"
+        showCloseButton={false}
+      >
+        <form className="grid w-full gap-3.5 rounded-lg border border-[var(--tt-border)] bg-[var(--tt-panel)] p-5 [&_input]:rounded-[5px] [&_input]:border [&_input]:border-[var(--tt-border)] [&_input]:p-2 [&_input]:[font:inherit] [&_label]:grid [&_label]:gap-[5px] [&_label]:font-[650] [&_textarea]:rounded-[5px] [&_textarea]:border [&_textarea]:border-[var(--tt-border)] [&_textarea]:p-2 [&_textarea]:[font:inherit]" onSubmit={submit}>
+          <header><DialogTitle className="m-0 text-[17px]">{label}</DialogTitle></header>
+          {props.kind === 'new' ? (
             <label>
-              Title
-              <Input unstyled aria-label="Capture Title" autoFocus maxLength={200} name="title" required />
+              Note Path
+              <Input unstyled aria-label="New Note Path" autoFocus maxLength={1_000} name="path" required />
             </label>
-            <label>
-              Text
-              <Textarea unstyled aria-label="Capture Text" maxLength={100_000} name="text" />
-            </label>
-          </>
-        )}
-        <div className="tocktutor-dialog-actions flex justify-end gap-2 [&_button]:cursor-pointer [&_button]:rounded-[5px] [&_button]:border [&_button]:border-[var(--tt-border)] [&_button]:bg-[var(--tt-panel)] [&_button]:px-2.5 [&_button]:py-[7px] [&_button]:text-inherit">
-          <Button unstyled onClick={props.onCancel} type="button">Cancel</Button>
-          <Button unstyled type="submit">Create</Button>
-        </div>
-      </form>
-    </dialog>
+          ) : (
+            <>
+              <label>
+                Title
+                <Input unstyled aria-label="Capture Title" autoFocus maxLength={200} name="title" required />
+              </label>
+              <label>
+                Text
+                <Textarea unstyled aria-label="Capture Text" maxLength={100_000} name="text" />
+              </label>
+            </>
+          )}
+          <div className="tocktutor-dialog-actions flex justify-end gap-2 [&_button]:cursor-pointer [&_button]:rounded-[5px] [&_button]:border [&_button]:border-[var(--tt-border)] [&_button]:bg-[var(--tt-panel)] [&_button]:px-2.5 [&_button]:py-[7px] [&_button]:text-inherit">
+            <Button unstyled onClick={props.onCancel} type="button">Cancel</Button>
+            <Button unstyled type="submit">Create</Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
   )
 }
 

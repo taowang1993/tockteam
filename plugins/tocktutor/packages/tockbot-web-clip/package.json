@@ -55,7 +55,7 @@
     "@deepseek-ai/cordis": "4.0.1",
     "@deepseek-ai/cordis-plugin-include": "1.0.6",
     "@deepseek-ai/cordis-plugin-loader": "1.0.2",
-    "@tockteam/ui": "link:../../../ui",
+    "@tockteam/ui": "workspace:*",
     "@types/node": "22.20.0",
     "@types/react": "18.3.1",
     "esbuild": "0.25.12",

@@ -106,7 +106,7 @@
     "@testing-library/react": "16.3.2",
     "@tockteam/desktop": "workspace:*",
     "@tockteam/tocktutor-workbench": "workspace:0.1.7",
-    "@tockteam/ui": "link:../../../ui",
+    "@tockteam/ui": "workspace:*",
     "@types/node": "22.20.0",
     "@types/react": "18.3.31",
     "@types/react-dom": "18.3.7",
