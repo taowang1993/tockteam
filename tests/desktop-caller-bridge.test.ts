@@ -61,8 +61,12 @@ test('main issues caller authorization only after the trusted-main IPC guard', (
 })
 
 test('runtime and window teardown revoke caller leases on every owned lifecycle', () => {
-  assert.ok((main.match(/desktopCallerAuthorizations\.revokeWindow\(String\(window\.webContents\.id\)\)/g) ?? []).length >= 3)
-  assert.match(main, /webContents\.on\('render-process-gone'[\s\S]*desktopCallerAuthorizations\.revokeWindow/u)
+  const createWindow = main.match(/function createWindow[\s\S]*?\n\}\n\nasync function showSplash/u)?.[0]
+  assert.ok(createWindow)
+  assert.match(createWindow, /const windowId = String\(window\.webContents\.id\)/u)
+  assert.match(createWindow, /window\.on\('closed'[\s\S]*desktopCallerAuthorizations\.revokeWindow\(windowId\)/u)
+  assert.ok((createWindow.match(/desktopCallerAuthorizations\.revokeWindow\(windowId\)/g) ?? []).length >= 3)
+  assert.match(createWindow, /webContents\.on\('render-process-gone'[\s\S]*desktopCallerAuthorizations\.revokeWindow\(windowId\)/u)
   assert.ok((main.match(/desktopCallerChannel\.stop\(\)/g) ?? []).length >= 6)
   assert.equal((main.match(/desktopCallerChannel\.start\(\)/g) ?? []).length, 1)
 })

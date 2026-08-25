@@ -719,12 +719,13 @@ function createWindow(options: { preview?: boolean; title?: string } = {}): Brow
       webviewTag: true,
     },
   })
+  const windowId = String(window.webContents.id)
   window.webContents.setZoomFactor(DEFAULT_UI_ZOOM_FACTOR)
   if (options.preview !== true) window.maximize()
   window.once('ready-to-show', () => { window.show() })
   window.on('closed', () => {
     if (mainWindow === window) {
-      desktopCallerAuthorizations.revokeWindow(String(window.webContents.id))
+      desktopCallerAuthorizations.revokeWindow(windowId)
       resetTockTutorTheme(window)
       mainWindow = undefined
     }
@@ -788,12 +789,12 @@ function createWindow(options: { preview?: boolean; title?: string } = {}): Brow
   })
   window.webContents.on('did-start-navigation', (_event, _url, _inPlace, isMainFrame) => {
     if (isMainFrame) {
-      desktopCallerAuthorizations.revokeWindow(String(window.webContents.id))
+      desktopCallerAuthorizations.revokeWindow(windowId)
       if (mainWindow === window) resetTockTutorTheme(window)
     }
   })
   window.webContents.on('render-process-gone', () => {
-    desktopCallerAuthorizations.revokeWindow(String(window.webContents.id))
+    desktopCallerAuthorizations.revokeWindow(windowId)
     if (mainWindow === window) resetTockTutorTheme(window)
   })
   window.webContents.on('will-navigate', (event, url) => {
