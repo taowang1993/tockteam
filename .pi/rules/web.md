@@ -22,7 +22,7 @@ This document is the canonical local design guidance for browser-rendered TockTe
 - Use Lucide for interface icons. Product marks are the only routine custom-SVG exception.
 - Use semantic HTML, preserve keyboard behavior, label icon-only controls, show keyboard focus, and honor `prefers-reduced-motion`.
 - Keep Host, browser-client, Electron, and TUI ownership separate. A visual change must not widen IPC, filesystem, process, workspace, or plugin authority.
-- Keep styling with its current owner. Tailwind CSS v4 is the shared browser utility layer, not a component library or a replacement for DSH semantics. Existing feature CSS remains valid and should migrate only when touched.
+- Tailwind CSS v4 is the only first-party browser styling layer. Use utilities in markup and keep the few inherited-shell compatibility rules as named custom utilities in `plugins/skins/src/client/tailwind.css`; do not add feature stylesheets or embedded CSS strings.
 - Run the smallest visual regression test first, then `pnpm run typecheck`, `pnpm test`, and `pnpm run build`.
 
 ## 1. Authority and Ownership
@@ -105,21 +105,22 @@ DSH owns the base browser font stack and global type behavior. TockTeam currentl
 - Custom SVG is reserved for product marks or unavoidable third-party/protocol identity. Do not use emoji, text glyphs, or hand-drawn SVG as interface-icon substitutes.
 - Keep `tests/icons.test.ts` and `tests/dsh-lucide-icons.test.ts` green.
 
-## 5. Components and Feature CSS
+## 5. Components and Tailwind
 
 TockTeam deliberately composes DSH instead of shipping a second Web component system. Tailwind provides browser utilities only; `plugins/skins/src/client/tailwind.css` maps its semantic color utilities to the inherited `--dsw-*` contract and `@tockteam/skins` owns lifecycle injection on Desktop and Web. Tailwind does not apply to TockTeam TUI.
 
 1. Reuse an inherited DSH component when it preserves the required behavior.
 2. Reuse the closest TockTeam feature recipe or component.
-3. Use Tailwind utilities for new or touched browser layout and styling when existing feature CSS is not the clearer owner.
-4. Use native HTML/CSS when it fully solves the interaction.
-5. Add the smallest namespaced feature rule only when utilities cannot express the behavior clearly.
+3. Express first-party browser presentation with Tailwind utilities in markup.
+4. Add a named custom utility only for an inherited DOM seam, coordinated pseudo-element behavior, or another rule that cannot live on the owning element clearly.
 
 Rules:
 
-- Prefix local classes with `tockteam-` or the established feature namespace such as `tocktutor-`.
-- Keep CSS in the existing owner: Tailwind classes in feature markup, a feature stylesheet, its lifecycle-owned inline stylesheet, or its downstream bundle adapter.
+- Prefix semantic hook classes with `tockteam-` or the established feature namespace such as `tocktutor-`; they are behavior and test seams, not separate style owners.
+- Keep all custom utilities in `plugins/skins/src/client/tailwind.css`. Do not add feature stylesheets, `<style>` blocks, or JavaScript CSS constants.
 - Keep Tailwind class names statically discoverable. Add new browser source roots to `plugins/skins/src/client/tailwind.css`; do not scan Host or TUI source and do not construct utility names dynamically.
+- Inline styles are limited to live measurements or intrinsic data such as resizable widths, skin previews, and Reader preferences. Move every static declaration into Tailwind.
+- Generated DSH skin atmosphere CSS and the third-party xterm stylesheet remain explicit compatibility exceptions; neither authorizes first-party feature CSS.
 - Do not add another CSS framework, component library, token layer, or styling runtime. Do not add shadcn merely because Tailwind is available.
 - Host-only packages must not acquire browser-client styling accidentally. Browser UI remains in client exports and client bundle metadata.
 - Register injected styles, slots, listeners, and DOM effects through Cordis lifecycle ownership so unload removes them.
@@ -147,9 +148,9 @@ The shared Desktop/Web shell uses these established metrics:
 | Metric                             | Value | Owner                                    |
 | ---------------------------------- | ----- | ---------------------------------------- |
 | Titlebar height                    | 40px  | `src/client.ts`, sidebar shell           |
-| App rail width                     | 40px  | `plugins/sidebar/src/client/sidebar.css` |
-| Primary sidebar width              | 280px | `plugins/sidebar/src/client/sidebar.css` |
-| Expanded sidebar composition width | 300px | `plugins/sidebar/src/client/sidebar.css` |
+| App rail width                     | 40px  | `tockteam-sidebar-styles` Tailwind utility |
+| Primary sidebar width              | 280px | `tockteam-sidebar-styles` Tailwind utility |
+| Expanded sidebar composition width | 300px | `tockteam-sidebar-styles` Tailwind utility |
 | Standard shell icon                | 18px  | shared titlebar/rail rules               |
 
 Treat these as compatibility metrics, not a general spacing scale.
@@ -187,7 +188,7 @@ Treat these as compatibility metrics, not a general spacing scale.
 These exceptions remain scoped; they are not general design precedent.
 
 - **Pinned DSH UI:** imperative selectors and downstream patches may be necessary where the pinned runtime exposes no component seam. Keep selectors exact, tested, reversible, and revision-bound.
-- **Better Sidebar:** TockTeam owns its adapter and CSS, while upstream owns Host behavior. Do not edit the submodule for TockTeam presentation.
+- **Better Sidebar:** TockTeam owns its adapter and scoped Tailwind utility, while upstream owns Host behavior. Do not edit the submodule for TockTeam presentation.
 - **Terminal:** xterm owns terminal rendering. ANSI colors, monospace preferences, and viewport synchronization stay inside the terminal adapter.
 - **TockTutor:** its workbench and assistant may carry precise parity geometry and local `--tt-*` aliases, but those aliases must resolve to DSH semantics and must not leak into other products.
 - **Marketplace:** trusted plugin execution and prepare → preview → approve/apply behavior are security contracts. Visual simplification must not merge or hide those states.
@@ -233,4 +234,4 @@ Use rendered browser or Electron verification for nontrivial visual changes when
 - Don't hardcode ordinary UI colors or assume one skin.
 - Don't patch generated output, installed dependencies, the pinned DSH checkout, or `upstream/*` directly.
 - Don't suppress focus, reduced-motion behavior, zoom, paste, or semantic controls.
-- Don't copy Tockbot's shadcn, route-template, or product-specific recipes into this repository; TockTeam's Tailwind setup remains a thin utility layer over DSH and its existing downstream plugins.
+- Don't copy Tockbot's shadcn, route-template, or product-specific recipes into this repository; TockTeam uses Tailwind directly over DSH and its existing downstream plugins.

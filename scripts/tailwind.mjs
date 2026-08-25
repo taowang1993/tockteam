@@ -14,7 +14,7 @@ async function tailwindModules(root) {
   return { compile, optimize, Scanner }
 }
 
-export async function buildTailwindCss(root = defaultRoot) {
+export async function buildTailwindCss(root = defaultRoot, sources) {
   const input = join(root, 'plugins', 'skins', 'src', 'client', 'tailwind.css')
   const { compile, optimize, Scanner } = await tailwindModules(root)
   const compiler = await compile(await readFile(input, 'utf8'), {
@@ -22,6 +22,6 @@ export async function buildTailwindCss(root = defaultRoot) {
     from: input,
     onDependency: () => {},
   })
-  const scanner = new Scanner({ sources: compiler.sources })
+  const scanner = new Scanner({ sources: sources ?? compiler.sources })
   return optimize(compiler.build(scanner.scan()), { file: input, minify: true }).code
 }

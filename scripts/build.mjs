@@ -15,9 +15,15 @@ const versionDefine = {
 }
 rmSync(dist, { recursive: true, force: true })
 mkdirSync(dist, { recursive: true })
+const tailwindCss = await buildTailwindCss(root)
+const splashTailwindCss = await buildTailwindCss(root, [{
+  base: root,
+  negated: false,
+  pattern: 'src/splash.html',
+}])
 const tailwindDefine = {
   ...versionDefine,
-  __TOCKTEAM_TAILWIND_CSS__: JSON.stringify(await buildTailwindCss(root)),
+  __TOCKTEAM_TAILWIND_CSS__: JSON.stringify(tailwindCss),
 }
 
 const pluginPackages = [
@@ -197,7 +203,15 @@ try {
   rmSync(declarationRoot, { recursive: true, force: true })
 }
 
-copyFileSync(join(root, 'src', 'splash.html'), join(dist, 'splash.html'))
+const splashMarker = '/* __TOCKTEAM_TAILWIND_CSS__ */'
+const splashSource = readFileSync(join(root, 'src', 'splash.html'), 'utf8')
+if (!splashSource.includes(splashMarker)) {
+  throw new Error('src/splash.html is missing its Tailwind CSS marker')
+}
+writeFileSync(
+  join(dist, 'splash.html'),
+  splashSource.replace(splashMarker, splashTailwindCss),
+)
 copyFileSync(join(root, 'cordis.patch.yml'), join(dist, 'cordis.patch.yml'))
 const releaseManifest = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'))
 releaseManifest.version = productVersion
