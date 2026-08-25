@@ -3,12 +3,22 @@ import { spawnSync } from 'node:child_process'
 import { dirname, join } from 'node:path'
 import { test } from 'node:test'
 import { fileURLToPath } from 'node:url'
-import { verifyTockTutorBuildManifest } from '../scripts/tocktutor-build-manifest.mjs'
+import {
+  createTockTutorBuildManifest,
+  verifyTockTutorBuildManifest,
+} from '../scripts/tocktutor-build-manifest.mjs'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 
 test('TockTutor tracked package outputs match their source workspace', () => {
   verifyTockTutorBuildManifest()
+})
+
+test('TockTutor build manifest ignores local analysis caches', () => {
+  assert.equal(
+    createTockTutorBuildManifest().files.some(({ path }) => path.startsWith('.fallow/')),
+    false,
+  )
 })
 
 test('TockTutor workspace setup rejects a different ambient DSH checkout', () => {

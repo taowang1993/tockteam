@@ -2,22 +2,6 @@
   "version": 1,
   "files": [
     {
-      "path": ".fallow/.gitignore",
-      "sha256": "cdbcae15105d6b781e620813c79c7e868740d4e9cc53ce6f5fcbbc12387adf4b"
-    },
-    {
-      "path": ".fallow/cache.bin",
-      "sha256": "8af1cb5233dde5f8fb5307ef2a8b8bf18cf6602ccbf2ba6d1e6b0a98617afc6d"
-    },
-    {
-      "path": ".fallow/churn.bin",
-      "sha256": "68dcf09def0f947b8d9263b0762a2b48ac470a3d6f56623990f7f30704f4e9db"
-    },
-    {
-      "path": ".fallow/graph-cache.bin",
-      "sha256": "3564ba4b61bea71aee4b72537c158cb7f9b0f9445cbc2d61ea0049d00d42af42"
-    },
-    {
       "path": "package.json",
       "sha256": "d1d6322ec6c28e26817187956af1c6b26b6e293dacd9013ecb6e25da0028b7c0"
     },

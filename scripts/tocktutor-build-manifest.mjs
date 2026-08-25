@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url'
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const workspace = join(root, 'plugins', 'tocktutor')
 const manifestPath = join(workspace, 'build-manifest.json')
-const excludedDirectories = new Set(['node_modules', 'test', 'tests', 'THIRD_PARTY_NOTICES'])
+const excludedDirectories = new Set(['.fallow', 'node_modules', 'test', 'tests', 'THIRD_PARTY_NOTICES'])
 const excludedFiles = new Set(['build-manifest.json', 'test-utils.ts'])
 
 function filesIn(directory) {
