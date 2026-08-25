@@ -48,115 +48,6 @@ declare global {
   }
 }
 
-const DESKTOP_TITLEBAR_HEIGHT = 40
-
-const DESKTOP_CHROME_CSS = `
-html[data-tockteam-desktop='true'] {
-  --tockteam-titlebar-height: ${DESKTOP_TITLEBAR_HEIGHT}px;
-}
-
-html[data-tockteam-desktop='true'] body {
-  box-sizing: border-box;
-  padding-top: var(--tockteam-titlebar-height);
-}
-
-html[data-tockteam-desktop='true'] [data-slot='sidebar'] button:is(
-  [aria-label='Collapse sidebar'],
-  [aria-label='收起侧边栏']
-) {
-  display: none !important;
-}
-
-html[data-tockteam-desktop='true'] [data-slot='sidebar'] button:is(
-  [aria-label='Open sidebar'],
-  [aria-label='打开侧边栏']
-) > svg:last-child {
-  display: none !important;
-}
-
-html[data-tockteam-desktop='true'] [data-tockteam-sidebar-fish] {
-  display: none !important;
-}
-
-html[data-tockteam-desktop='true'] [data-tockteam-sidebar-brand] {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  color: inherit;
-  font-size: 15px;
-  font-weight: 600;
-  line-height: 20px;
-  white-space: nowrap;
-}
-
-html[data-tockteam-desktop='true'] [data-tockteam-sidebar-brand] svg,
-html[data-tockteam-desktop='true'] [data-tockteam-sidebar-logo] {
-  flex: none;
-  width: 20px;
-  height: 20px;
-}
-
-html[data-tockteam-desktop='true'] body::before {
-  content: '';
-  position: fixed;
-  z-index: 2147483647;
-  top: 0;
-  right: 0;
-  left: 0;
-  height: var(--tockteam-titlebar-height);
-  background: var(--dsw-alias-bg-base);
-  -webkit-app-region: drag;
-  user-select: none;
-}
-
-html[data-tockteam-desktop='true'] #root:has(
-  [role='presentation'] > [role='dialog']
-) {
-  z-index: 1000 !important;
-  overflow: visible !important;
-}
-
-html[data-tockteam-desktop='true'] #root [role='presentation']:has(
-  > [role='dialog']
-) {
-  z-index: 1000 !important;
-  background: rgb(0 0 0 / 22%) !important;
-  -webkit-backdrop-filter: blur(6px) saturate(0.9);
-  backdrop-filter: blur(6px) saturate(0.9);
-}
-
-html[data-tockteam-desktop='true']:has(
-  #root [role='presentation'] > [role='dialog']
-) body::before,
-html[data-tockteam-desktop='true']:has(
-  #root [role='presentation'] > [role='dialog']
-) body::after,
-html[data-tockteam-desktop='true']:has(
-  #root [role='presentation'] > [role='dialog']
-) .tockteam-panel-toolbar,
-html[data-tockteam-desktop='true']:has(
-  #root [role='presentation'] > [role='dialog']
-) #tockteam-sidebar-root,
-html[data-tockteam-desktop='true']:has(
-  #root [role='presentation'] > [role='dialog']
-) #tockteam-rail-root,
-html[data-tockteam-desktop='true']:has(
-  #root [role='presentation'] > [role='dialog']
-) [data-tockteam-pinned-summary],
-html[data-tockteam-desktop='true']:has(
-  #root [role='presentation'] > [role='dialog']
-) #tockteam-plugin-marketplace-root {
-  z-index: 999 !important;
-}
-
-html[data-tockteam-desktop='true']:has(
-  #root [role='presentation'] > [role='dialog']
-) #tockteam-plugin-marketplace-root {
-  position: relative;
-}
-
-`
-
 /** Wait for the DSH services used by native menu commands. */
 export const inject = ['locale', 'workspaces', 'desktopPanels', 'pinnedSummary']
 
@@ -173,15 +64,12 @@ const DESKTOP_SHELL_MESSAGES: LocaleMessages<DesktopShellMessage> = {
 
 function installDesktopChrome(): () => void {
   const originalTitle = document.title
-  const style = document.createElement('style')
-  style.dataset.tockteamDesktopChrome = 'true'
-  style.textContent = DESKTOP_CHROME_CSS
-  document.head.append(style)
   document.documentElement.dataset.tockteamDesktop = 'true'
+  document.documentElement.classList.add('tockteam-desktop-shell')
   document.title = 'TockTeam Desktop'
   return () => {
-    style.remove()
     delete document.documentElement.dataset.tockteamDesktop
+    document.documentElement.classList.remove('tockteam-desktop-shell')
     document.title = originalTitle
   }
 }

@@ -11,10 +11,14 @@ test('desktop client replaces upstream branding with TockTeam', () => {
   const client = readFileSync(new URL('../src/client.ts', import.meta.url), 'utf8')
   const main = readFileSync(new URL('../src/main.ts', import.meta.url), 'utf8')
   const splash = readFileSync(new URL('../src/splash.html', import.meta.url), 'utf8')
+  const tailwind = readFileSync(
+    new URL('../plugins/skins/src/client/tailwind.css', import.meta.url),
+    'utf8',
+  )
 
   assert.match(client, /element\.textContent = 'TockTeam Desktop'/)
   assert.match(client, /\['Into the Unknown', '探索未知之境', '探索未至之境'\]/)
-  assert.match(client, /data-tockteam-sidebar-brand/)
+  assert.match(`${client}\n${tailwind}`, /data-tockteam-sidebar-brand/)
   assert.match(client, /data-tockteam-hero-headline/)
   assert.match(client, /tockteamHeroLogo/)
   assert.match(client, /originalHeroLogos/)
@@ -35,7 +39,7 @@ test('desktop client replaces upstream branding with TockTeam', () => {
   assert.match(client, /observer\.observe\(document\.body, \{ childList: true, characterData: true, subtree: true \}\)/)
   assert.equal(client.match(/new MutationObserver/g)?.length, 1)
   assert.match(client, /viewBox="0 0 20 20" width="20" height="20"/)
-  assert.match(client, /data-tockteam-sidebar-fish\] \{\s*display: none !important;/)
+  assert.match(tailwind, /\[data-tockteam-sidebar-fish\] \{\s*display: none !important;/)
   assert.equal(client.match(/M10 5\.5C6\.96243 5\.5 4\.5 7\.96243 4\.5 11/g)?.length, 1)
   assert.match(client, /if \(brand\.isConnected\) brand\.replaceWith\(original\)/)
   assert.doesNotMatch(client, /data-tockteam-hero-preview/)
@@ -47,21 +51,21 @@ test('desktop client replaces upstream branding with TockTeam', () => {
 })
 
 test('desktop Settings stays below portaled menus and above desktop surfaces', () => {
-  const client = readFileSync(
-    new URL('../src/client.ts', import.meta.url),
+  const tailwind = readFileSync(
+    new URL('../plugins/skins/src/client/tailwind.css', import.meta.url),
     'utf8',
   )
 
   assert.match(
-    client,
+    tailwind,
     /#root:has\(\s*\[role='presentation'\] > \[role='dialog'\]\s*\)[^{]*\{[^}]*z-index: 1000 !important;[^}]*overflow: visible !important;/s,
   )
   assert.match(
-    client,
+    tailwind,
     /\[role='presentation'\]:has\(\s*> \[role='dialog'\]\s*\)[^{]*\{[^}]*z-index: 1000 !important;[^}]*backdrop-filter: blur\(/s,
   )
   assert.match(
-    client,
+    tailwind,
     /:has\(\s*#root \[role='presentation'\] > \[role='dialog'\]\s*\) \.tockteam-panel-toolbar,[\s\S]*#tockteam-sidebar-root,[\s\S]*\[data-tockteam-pinned-summary\],[\s\S]*#tockteam-plugin-marketplace-root[^}]*\{[^}]*z-index: 999 !important;/s,
   )
 })

@@ -31,3 +31,77 @@
   --color-code-block: var(--dsw-alias-markdown-code-block);
   --color-inline-code: var(--dsw-alias-markdown-inline-code);
 }
+
+/* The Desktop bridge has no component seam for the inherited DSH shell. */
+@utility tockteam-desktop-shell {
+  --tockteam-titlebar-height: 40px;
+
+  & body {
+    box-sizing: border-box;
+    padding-top: var(--tockteam-titlebar-height);
+  }
+
+  & [data-slot='sidebar'] button:is([aria-label='Collapse sidebar'], [aria-label='收起侧边栏']) {
+    display: none !important;
+  }
+
+  & [data-slot='sidebar'] button:is([aria-label='Open sidebar'], [aria-label='打开侧边栏']) > svg:last-child,
+  & [data-tockteam-sidebar-fish] {
+    display: none !important;
+  }
+
+  & [data-tockteam-sidebar-brand] {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    color: inherit;
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 20px;
+    white-space: nowrap;
+  }
+
+  & [data-tockteam-sidebar-brand] svg,
+  & [data-tockteam-sidebar-logo] {
+    width: 20px;
+    height: 20px;
+    flex: none;
+  }
+
+  & body::before {
+    position: fixed;
+    z-index: 2147483647;
+    inset: 0 0 auto;
+    height: var(--tockteam-titlebar-height);
+    background: var(--dsw-alias-bg-base);
+    content: '';
+    user-select: none;
+    -webkit-app-region: drag;
+  }
+
+  & #root:has([role='presentation'] > [role='dialog']) {
+    z-index: 1000 !important;
+    overflow: visible !important;
+  }
+
+  & #root [role='presentation']:has(> [role='dialog']) {
+    z-index: 1000 !important;
+    background: rgb(0 0 0 / 22%) !important;
+    backdrop-filter: blur(6px) saturate(0.9);
+    -webkit-backdrop-filter: blur(6px) saturate(0.9);
+  }
+
+  &:has(#root [role='presentation'] > [role='dialog']) body::before,
+  &:has(#root [role='presentation'] > [role='dialog']) body::after,
+  &:has(#root [role='presentation'] > [role='dialog']) .tockteam-panel-toolbar,
+  &:has(#root [role='presentation'] > [role='dialog']) #tockteam-sidebar-root,
+  &:has(#root [role='presentation'] > [role='dialog']) #tockteam-rail-root,
+  &:has(#root [role='presentation'] > [role='dialog']) [data-tockteam-pinned-summary],
+  &:has(#root [role='presentation'] > [role='dialog']) #tockteam-plugin-marketplace-root {
+    z-index: 999 !important;
+  }
+
+  &:has(#root [role='presentation'] > [role='dialog']) #tockteam-plugin-marketplace-root {
+    position: relative;
+  }
+}

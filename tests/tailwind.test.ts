@@ -8,5 +8,5 @@ test('browser Tailwind utilities compile against DSH tokens without a global res
   assert.match(css, /\.flex\{/)
   assert.match(css, /\.flex-col\{/)
   assert.match(css, /\.text-foreground\{color:var\(--dsw-alias-label-primary\)\}/)
-  assert.doesNotMatch(css, /box-sizing:border-box/)
+  assert.doesNotMatch(css, /\*,:before,:after\{box-sizing:border-box/)
 })
