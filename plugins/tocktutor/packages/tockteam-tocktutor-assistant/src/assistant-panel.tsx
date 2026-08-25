@@ -4,7 +4,9 @@ import { Empty, EmptyContent, EmptyHeader, EmptyMedia, EmptyTitle } from '@tockt
 import { Input } from '@tockteam/ui/input'
 import { Label } from '@tockteam/ui/label'
 import { NativeSelect, NativeSelectOption } from '@tockteam/ui/native-select'
+import { Popover, PopoverContent, PopoverTrigger } from '@tockteam/ui/popover'
 import { Textarea } from '@tockteam/ui/textarea'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@tockteam/ui/tooltip'
 import {
   useCallback,
   useEffect,
@@ -440,7 +442,8 @@ export function TockTutorAssistantPanel(props: TockTutorAssistantPanelProps): Re
   }, [partial, proposalPage, transcript])
 
   return (
-    <aside
+    <TooltipProvider>
+      <aside
       aria-label="TockTutor Assistant"
       className="tocktutor-assistant-panel relative flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden bg-[var(--tta-panel)] text-inherit [--tta-accent:var(--tt-accent,#4f46e5)] [--tta-bg:var(--tt-bg,#f7f8fa)] [--tta-border:var(--tt-border,#d9dde5)] [--tta-muted:var(--tt-muted,#667085)] [--tta-panel:var(--tt-panel,#fff)] [&_*]:box-border [&_*::after]:box-border [&_*::before]:box-border [&_button:focus-visible]:outline-2 [&_button:focus-visible]:outline-offset-2 [&_button:focus-visible]:outline-[var(--tta-accent)] [&_h2]:m-0 [&_h3]:m-0 [&_input:focus-visible]:outline-2 [&_input:focus-visible]:outline-offset-2 [&_input:focus-visible]:outline-[var(--tta-accent)] [&_p]:m-0 [&_select:focus-visible]:outline-2 [&_select:focus-visible]:outline-offset-2 [&_select:focus-visible]:outline-[var(--tta-accent)] [&_textarea:focus-visible]:outline-2 [&_textarea:focus-visible]:outline-offset-2 [&_textarea:focus-visible]:outline-[var(--tta-accent)] motion-reduce:[&_*]:!scroll-auto motion-reduce:[&_*]:!duration-0 motion-reduce:[&_*::after]:!duration-0 motion-reduce:[&_*::before]:!duration-0"
     >
@@ -579,7 +582,16 @@ export function TockTutorAssistantPanel(props: TockTutorAssistantPanelProps): Re
         </Button>
       )}
       <div className="tocktutor-assistant-composer-wrap relative flex-none px-3 pb-3">
-        <div className="tocktutor-assistant-add-menu absolute bottom-[calc(100%+8px)] left-3 z-3 grid max-h-[min(520px,calc(100vh-180px))] w-[min(304px,calc(100%-24px))] gap-1 overflow-auto rounded-[10px] border border-[var(--tta-border)] bg-[var(--tta-panel)] p-2 shadow-[0_8px_24px_rgb(0_0_0_/_12%)]" hidden={!menuOpen} id="tocktutor-assistant-add-menu">
+        <Popover open={menuOpen} onOpenChange={setMenuOpen}>
+          <PopoverContent
+            unstyled
+            align="start"
+            aria-label="Assistant Options"
+            className="tocktutor-assistant-add-menu z-[2147483647] grid max-h-[min(520px,calc(100vh-180px))] w-[min(304px,calc(100vw-24px))] gap-1 overflow-auto rounded-[10px] border border-[var(--tta-border,#d9dde5)] bg-[var(--tta-panel,#fff)] p-2 text-inherit shadow-[0_8px_24px_rgb(0_0_0_/_12%)] outline-none [--tta-accent:var(--tt-accent,#4f46e5)] [--tta-bg:var(--tt-bg,#f7f8fa)] [--tta-border:var(--tt-border,#d9dde5)] [--tta-muted:var(--tt-muted,#667085)] [--tta-panel:var(--tt-panel,#fff)]"
+            id="tocktutor-assistant-add-menu"
+            side="top"
+            sideOffset={8}
+          >
           <Button unstyled
             className="flex min-w-0 cursor-pointer items-center gap-2.5 rounded-lg border border-transparent bg-transparent px-2 py-1.5 text-left text-[13px] leading-[18px] text-inherit hover:border-[var(--tta-border)] hover:bg-[var(--tta-bg)] focus-visible:border-[var(--tta-border)] focus-visible:bg-[var(--tta-bg)] disabled:cursor-default disabled:opacity-50 [&_span]:min-w-0 [&_span]:truncate [&_svg]:size-3.5 [&_svg]:flex-none"
             disabled={props.activePath === null}
@@ -690,8 +702,8 @@ export function TockTutorAssistantPanel(props: TockTutorAssistantPanelProps): Re
               )}
             </section>
           </details>
-        </div>
-        <form className="tocktutor-assistant-composer flex min-h-24 flex-col gap-2 rounded-2xl border border-[var(--tta-border)] bg-[var(--tta-panel)] p-2.5 focus-within:border-[var(--tta-accent)]" onSubmit={send}>
+          </PopoverContent>
+          <form className="tocktutor-assistant-composer flex min-h-24 flex-col gap-2 rounded-2xl border border-[var(--tta-border)] bg-[var(--tta-panel)] p-2.5 focus-within:border-[var(--tta-accent)]" onSubmit={send}>
           <Textarea unstyled
             aria-label="Assistant Message"
             className="min-h-12 w-full resize-none border-0 bg-transparent p-0 text-[13px] leading-[18px] text-inherit outline-0 focus-visible:shadow-none focus-visible:outline-none"
@@ -703,27 +715,38 @@ export function TockTutorAssistantPanel(props: TockTutorAssistantPanelProps): Re
             rows={3}
             value={message}
           />
-          <div className="flex items-center justify-between">
-            <Button unstyled
-              aria-controls="tocktutor-assistant-add-menu"
-              aria-expanded={menuOpen}
-              aria-label="Add Context"
-              className="tocktutor-assistant-icon-button flex size-7 cursor-pointer items-center justify-center rounded-[7px] border-0 bg-transparent p-0 text-inherit [&_svg]:size-3.5"
-              onClick={() => { setMenuOpen(open => !open) }}
-              type="button"
-            ><Plus aria-hidden="true" /></Button>
-            <Button unstyled
-              aria-label="Send"
-              className="tocktutor-assistant-send flex size-7 cursor-pointer items-center justify-center rounded-full border-0 bg-[var(--tta-accent)] p-0 text-white disabled:cursor-default disabled:opacity-50 [&_svg]:size-3.5 [&_svg]:stroke-white [&_svg]:text-white"
-              disabled={message.trim() === ''}
-              type="submit"
-            ><ArrowUp aria-hidden="true" /></Button>
-          </div>
-        </form>
+            <div className="flex items-center justify-between">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <PopoverTrigger asChild>
+                    <Button unstyled
+                      aria-label="Add Context"
+                      className="tocktutor-assistant-icon-button flex size-7 cursor-pointer items-center justify-center rounded-[7px] border-0 bg-transparent p-0 text-inherit [&_svg]:size-3.5"
+                      type="button"
+                    ><Plus aria-hidden="true" /></Button>
+                  </PopoverTrigger>
+                </TooltipTrigger>
+                <TooltipContent>Add Context</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button unstyled
+                    aria-label="Send"
+                    className="tocktutor-assistant-send flex size-7 cursor-pointer items-center justify-center rounded-full border-0 bg-[var(--tta-accent)] p-0 text-white disabled:cursor-default disabled:opacity-50 [&_svg]:size-3.5 [&_svg]:stroke-white [&_svg]:text-white"
+                    disabled={message.trim() === ''}
+                    type="submit"
+                  ><ArrowUp aria-hidden="true" /></Button>
+                </TooltipTrigger>
+                <TooltipContent>Send</TooltipContent>
+              </Tooltip>
+            </div>
+          </form>
+        </Popover>
       </div>
       <Alert unstyled aria-live="polite" className="tocktutor-assistant-status absolute right-3 bottom-[120px] left-3 z-2 rounded-[7px] bg-[color-mix(in_srgb,var(--tta-accent)_9%,var(--tta-panel))] px-2.5 py-2 text-xs text-[var(--tta-muted)] empty:hidden" ref={statusRef} role="status" tabIndex={-1}>
         {status === null ? '' : boundedText(status, 500)}
       </Alert>
-    </aside>
+      </aside>
+    </TooltipProvider>
   )
 }

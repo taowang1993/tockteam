@@ -8,6 +8,14 @@ import {
   type AssistantPanelSessions,
 } from '../src/assistant-panel.tsx'
 
+if (globalThis.ResizeObserver === undefined) {
+  globalThis.ResizeObserver = class {
+    disconnect(): void {}
+    observe(): void {}
+    unobserve(): void {}
+  }
+}
+
 function success<T>(value: T) {
   return Promise.resolve({ ok: true as const, value })
 }
@@ -169,8 +177,15 @@ describe('TockTutorAssistantPanel', () => {
       scope: () => undefined,
     }
     render(<TockTutorAssistantPanel activePath={null} remote={remote} sessions={sessions} vault={null} />)
-    await screen.findByDisplayValue('provider-a')
-    fireEvent.click(screen.getByRole('button', { name: 'Add Context' }))
+    const addContext = screen.getByRole('button', { name: 'Add Context' })
+    fireEvent.focus(addContext)
+    expect((await screen.findByRole('tooltip')).textContent).toContain('Add Context')
+    fireEvent.click(addContext)
+    expect(await screen.findByDisplayValue('provider-a')).toBeTruthy()
+    expect(screen.getByText('Assistant Settings')).toBeTruthy()
+    fireEvent.keyDown(document, { key: 'Escape' })
+    await waitFor(() => { expect(screen.queryByText('Assistant Settings')).toBeNull() })
+    fireEvent.click(addContext)
     fireEvent.click(screen.getByText('Assistant Settings'))
 
     fireEvent.change(screen.getByLabelText('Provider'), { target: { value: 'provider-b' } })

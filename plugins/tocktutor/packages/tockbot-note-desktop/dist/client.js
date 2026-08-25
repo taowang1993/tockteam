@@ -15062,6 +15062,7 @@ var Alert = React.forwardRef(function Alert2({ className, variant = "default", u
 });
 
 // ../../../ui/src/button.tsx
+var React2 = __toESM(require("react"), 1);
 var import_jsx_runtime2 = require("react/jsx-runtime");
 var buttonVariants = cva(
   "group/button inline-flex shrink-0 cursor-pointer select-none items-center justify-center whitespace-nowrap rounded-lg border border-transparent bg-clip-padding text-sm font-medium outline-none transition-[background-color,border-color,color,box-shadow,transform] focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:cursor-default disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
@@ -15092,16 +15093,17 @@ var buttonVariants = cva(
     }
   }
 );
-function Button({
+var Button = React2.forwardRef(function Button2({
   className,
   variant = "default",
   size = "default",
   unstyled = false,
   ...props
-}) {
+}, ref) {
   return /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
     "button",
     {
+      ref,
       "data-slot": "button",
       "data-variant": variant,
       "data-size": size,
@@ -15109,7 +15111,7 @@ function Button({
       ...props
     }
   );
-}
+});
 
 // src/client-actions.tsx
 var import_react = require("react");

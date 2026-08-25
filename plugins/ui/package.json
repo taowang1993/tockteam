@@ -25,10 +25,12 @@
     "./input": { "types": "./src/input.tsx", "browser": "./src/input.tsx", "node": "./lib/index.js", "default": "./src/input.tsx" },
     "./label": { "types": "./src/label.tsx", "browser": "./src/label.tsx", "node": "./lib/index.js", "default": "./src/label.tsx" },
     "./native-select": { "types": "./src/native-select.tsx", "browser": "./src/native-select.tsx", "node": "./lib/index.js", "default": "./src/native-select.tsx" },
+    "./popover": { "types": "./src/popover.tsx", "browser": "./src/popover.tsx", "node": "./lib/index.js", "default": "./src/popover.tsx" },
     "./skeleton": { "types": "./src/skeleton.tsx", "browser": "./src/skeleton.tsx", "node": "./lib/index.js", "default": "./src/skeleton.tsx" },
     "./spinner": { "types": "./src/spinner.tsx", "browser": "./src/spinner.tsx", "node": "./lib/index.js", "default": "./src/spinner.tsx" },
     "./switch": { "types": "./src/switch.tsx", "browser": "./src/switch.tsx", "node": "./lib/index.js", "default": "./src/switch.tsx" },
     "./textarea": { "types": "./src/textarea.tsx", "browser": "./src/textarea.tsx", "node": "./lib/index.js", "default": "./src/textarea.tsx" },
+    "./tooltip": { "types": "./src/tooltip.tsx", "browser": "./src/tooltip.tsx", "node": "./lib/index.js", "default": "./src/tooltip.tsx" },
     "./package.json": "./package.json"
   },
   "files": [
@@ -45,7 +47,9 @@
   "dependencies": {
     "@radix-ui/react-checkbox": "1.3.11",
     "@radix-ui/react-dialog": "1.1.23",
+    "@radix-ui/react-popover": "1.1.23",
     "@radix-ui/react-switch": "1.3.7",
+    "@radix-ui/react-tooltip": "1.2.16",
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",
     "lucide-react": "0.473.0"

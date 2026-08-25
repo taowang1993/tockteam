@@ -1,10 +1,13 @@
 import { Alert } from '@tockteam/ui/alert'
+import { Badge } from '@tockteam/ui/badge'
 import { Button } from '@tockteam/ui/button'
+import { Empty } from '@tockteam/ui/empty'
 import { Input } from '@tockteam/ui/input'
 import { Label } from '@tockteam/ui/label'
 import { NativeSelect, NativeSelectOption } from '@tockteam/ui/native-select'
 import { Switch } from '@tockteam/ui/switch'
 import { Textarea } from '@tockteam/ui/textarea'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@tockteam/ui/tooltip'
 import {
   useCallback,
   useEffect,
@@ -635,41 +638,59 @@ function DesktopPanelToolbar({
   const summaryOpen = useSyncExternalStore(pinnedSummary.subscribe, () => pinnedSummary.isOpen())
   const sideOpen = workspaceState.open
   return (
-    <nav className="tockteam-panel-toolbar fixed top-[5px] right-3.5 z-[2147483647] flex items-center gap-[3px] border-0 bg-transparent p-0 shadow-none [-webkit-app-region:no-drag] [html[data-tockteam-tocktutor-active='true']_&]:hidden [&_button]:grid [&_button]:size-[30px] [&_button]:cursor-pointer [&_button]:place-items-center [&_button]:rounded-lg [&_button]:border-0 [&_button]:bg-transparent [&_button]:p-0 [&_button]:text-[var(--dsw-alias-label-secondary,#57606a)] [&_button]:[-webkit-app-region:no-drag] [&_button:hover]:text-[var(--dsw-alias-label-primary,#1f2328)] [&_button[aria-pressed='true']]:text-[var(--dsw-alias-label-primary,#1f2328)] [&_svg]:size-[18px] [&_svg]:fill-none [&_svg]:stroke-current [&_svg]:stroke-[1.7] [&_svg]:[stroke-linecap:round] [&_svg]:[stroke-linejoin:round]" aria-label={t('panels.label')}>
-      {sideOpen
-        ? (
-          <Button unstyled
-            type="button"
-            aria-label={t('side.expand')}
-            aria-pressed={workspaceState.maximized}
-            title={workspaceState.maximized ? t('side.restore') : t('side.expand')}
-            onClick={() => { service.togglePanelMaximized() }}
-          ><PanelIcon kind="expand" /></Button>
-        )
-        : (
-          <Button unstyled
-            type="button"
-            aria-label={t('summary.toggle')}
-            aria-pressed={summaryOpen}
-            title={t('summary.title')}
-            onClick={() => { service.setOpen(false); pinnedSummary.toggle() }}
-          ><PanelIcon kind="summary" /></Button>
-        )}
-      <Button unstyled
-        type="button"
-        aria-label={t('terminal.toggle')}
-        aria-pressed={terminalOpen}
-        title={`${t('terminal.title')} (⌘J)`}
-        onClick={() => { panels.toggleBottomPanel() }}
-      ><PanelIcon kind="terminal" /></Button>
-      <Button unstyled
-        type="button"
-        aria-label={t('side.toggle')}
-        aria-pressed={sideOpen}
-        title={`${t('side.title')} (⌥⌘B)`}
-        onClick={() => { service.toggleSidePanel() }}
-      ><PanelIcon kind="side" /></Button>
-    </nav>
+    <TooltipProvider>
+      <nav className="tockteam-panel-toolbar fixed top-[5px] right-3.5 z-[2147483647] flex items-center gap-[3px] border-0 bg-transparent p-0 shadow-none [-webkit-app-region:no-drag] [html[data-tockteam-tocktutor-active='true']_&]:hidden [&_button]:grid [&_button]:size-[30px] [&_button]:cursor-pointer [&_button]:place-items-center [&_button]:rounded-lg [&_button]:border-0 [&_button]:bg-transparent [&_button]:p-0 [&_button]:text-[var(--dsw-alias-label-secondary,#57606a)] [&_button]:[-webkit-app-region:no-drag] [&_button:hover]:text-[var(--dsw-alias-label-primary,#1f2328)] [&_button[aria-pressed='true']]:text-[var(--dsw-alias-label-primary,#1f2328)] [&_svg]:size-[18px] [&_svg]:fill-none [&_svg]:stroke-current [&_svg]:stroke-[1.7] [&_svg]:[stroke-linecap:round] [&_svg]:[stroke-linejoin:round]" aria-label={t('panels.label')}>
+        {sideOpen
+          ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button unstyled
+                  type="button"
+                  aria-label={t('side.expand')}
+                  aria-pressed={workspaceState.maximized}
+                  onClick={() => { service.togglePanelMaximized() }}
+                ><PanelIcon kind="expand" /></Button>
+              </TooltipTrigger>
+              <TooltipContent>{workspaceState.maximized ? t('side.restore') : t('side.expand')}</TooltipContent>
+            </Tooltip>
+          )
+          : (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button unstyled
+                  type="button"
+                  aria-label={t('summary.toggle')}
+                  aria-pressed={summaryOpen}
+                  onClick={() => { service.setOpen(false); pinnedSummary.toggle() }}
+                ><PanelIcon kind="summary" /></Button>
+              </TooltipTrigger>
+              <TooltipContent>{t('summary.title')}</TooltipContent>
+            </Tooltip>
+          )}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button unstyled
+              type="button"
+              aria-label={t('terminal.toggle')}
+              aria-pressed={terminalOpen}
+              onClick={() => { panels.toggleBottomPanel() }}
+            ><PanelIcon kind="terminal" /></Button>
+          </TooltipTrigger>
+          <TooltipContent>{t('terminal.title')} (⌘J)</TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button unstyled
+              type="button"
+              aria-label={t('side.toggle')}
+              aria-pressed={sideOpen}
+              onClick={() => { service.toggleSidePanel() }}
+            ><PanelIcon kind="side" /></Button>
+          </TooltipTrigger>
+          <TooltipContent>{t('side.title')} (⌥⌘B)</TooltipContent>
+        </Tooltip>
+      </nav>
+    </TooltipProvider>
   )
 }
 
@@ -682,14 +703,20 @@ function DesktopWindowTitlebar({
 }): ReactNode {
   return (
     <header className="tockteam-window-titlebar fixed top-0 right-0 left-0 z-[2147483647] grid h-[var(--tockteam-titlebar-height,40px)] grid-cols-[minmax(120px,1fr)_minmax(0,auto)_minmax(120px,1fr)] items-center border-b border-[var(--tockteam-shell-divider)] bg-[var(--tockteam-shell-chrome)] shadow-[0_1px_0_rgb(0_0_0_/_2%)] select-none [-webkit-app-region:drag]">
-      <div className="tockteam-titlebar-leading ml-[var(--tockteam-rail-width)] flex h-full w-[var(--tockteam-primary-sidebar-width)] box-border items-center justify-end border-r border-[var(--tockteam-shell-divider)] pr-1 [body:has([data-sidebar-collapsed])_&]:w-[84px] [body:has([data-sidebar-collapsed])_&]:border-r-0 [html[data-tockteam-tocktutor-active='true']_&]:invisible [&_button]:grid [&_button]:size-9 [&_button]:cursor-pointer [&_button]:place-items-center [&_button]:rounded-lg [&_button]:border-0 [&_button]:bg-transparent [&_button]:p-0 [&_button]:text-[var(--dsw-alias-label-secondary,#57606a)] [&_button]:[-webkit-app-region:no-drag] [&_button:hover]:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))] [&_button:hover]:text-[var(--dsw-alias-label-primary,#1f2328)] [&_svg]:size-[18px] [&_svg]:fill-none [&_svg]:stroke-current [&_svg]:stroke-[1.7] [&_svg]:[stroke-linecap:round] [&_svg]:[stroke-linejoin:round]">
-        <Button unstyled
-          type="button"
-          aria-label={t('sidebar.toggle')}
-          title={t('sidebar.toggle')}
-          onClick={() => { panels.toggleSidebar() }}
-        ><PanelIcon kind="sidebar" /></Button>
-      </div>
+      <TooltipProvider>
+        <div className="tockteam-titlebar-leading ml-[var(--tockteam-rail-width)] flex h-full w-[var(--tockteam-primary-sidebar-width)] box-border items-center justify-end border-r border-[var(--tockteam-shell-divider)] pr-1 [body:has([data-sidebar-collapsed])_&]:w-[84px] [body:has([data-sidebar-collapsed])_&]:border-r-0 [html[data-tockteam-tocktutor-active='true']_&]:invisible [&_button]:grid [&_button]:size-9 [&_button]:cursor-pointer [&_button]:place-items-center [&_button]:rounded-lg [&_button]:border-0 [&_button]:bg-transparent [&_button]:p-0 [&_button]:text-[var(--dsw-alias-label-secondary,#57606a)] [&_button]:[-webkit-app-region:no-drag] [&_button:hover]:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))] [&_button:hover]:text-[var(--dsw-alias-label-primary,#1f2328)] [&_svg]:size-[18px] [&_svg]:fill-none [&_svg]:stroke-current [&_svg]:stroke-[1.7] [&_svg]:[stroke-linecap:round] [&_svg]:[stroke-linejoin:round]">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button unstyled
+                type="button"
+                aria-label={t('sidebar.toggle')}
+                onClick={() => { panels.toggleSidebar() }}
+              ><PanelIcon kind="sidebar" /></Button>
+            </TooltipTrigger>
+            <TooltipContent>{t('sidebar.toggle')}</TooltipContent>
+          </Tooltip>
+        </div>
+      </TooltipProvider>
       <span className="tockteam-window-title min-w-0 truncate text-center text-sm leading-none font-normal text-[color-mix(in_srgb,var(--dsw-alias-label-primary,#1f2328)_90%,var(--tockteam-shell-chrome,#fff)_10%)] [html[data-tockteam-tocktutor-active='true']_&]:invisible">TockTeam</span>
       <div className="hidden [html[data-tockteam-tocktutor-active='true']_&]:absolute [html[data-tockteam-tocktutor-active='true']_&]:inset-[0_0_0_var(--tockteam-rail-width)] [html[data-tockteam-tocktutor-active='true']_&]:z-1 [html[data-tockteam-tocktutor-active='true']_&]:block" id="tockteam-window-titlebar-slot" />
     </header>
@@ -965,7 +992,7 @@ function WorkspacePanel({
       </header>
 
       {cwd === undefined
-        ? <div className="tockteam-workspace-empty m-auto max-w-[220px] p-[18px] text-center text-xs leading-normal text-[var(--dsw-alias-label-dimmed,#8c959f)]">{t('workspace.select')}</div>
+        ? <Empty unstyled className="tockteam-workspace-empty m-auto max-w-[220px] p-[18px] text-center text-xs leading-normal text-[var(--dsw-alias-label-dimmed,#8c959f)]">{t('workspace.select')}</Empty>
         : (
           <div className="tockteam-workspace-content min-h-0 flex-1 overflow-auto px-4 pt-2 pb-6 [&>section]:border-b [&>section]:border-[var(--dsw-alias-border-l1,rgb(0_0_0_/_8%))] [&>section]:py-2">
             {error !== '' && <Alert unstyled className="tockteam-workspace-error mt-1 mb-2 rounded-[7px] bg-[color-mix(in_srgb,#cf222e_10%,transparent)] px-2.5 py-2 text-[10px] leading-[1.45] text-[#cf222e] [overflow-wrap:anywhere]">{error}</Alert>}
@@ -973,7 +1000,7 @@ function WorkspacePanel({
               <div className="tockteam-workspace-section-title grid min-h-[38px] grid-cols-[26px_minmax(0,1fr)_auto] items-center gap-2 px-1.5 text-[13px] [&_strong]:font-[550]">
                 <span className="tockteam-workspace-section-icon grid place-items-center text-[var(--dsw-alias-label-secondary,#57606a)] [&_svg]:size-4"><FileDiff aria-hidden="true" /></span>
                 <strong>{t('workspace.changes')}</strong>
-                <span className="tockteam-workspace-count min-w-5 rounded-full bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))] px-1.5 py-0.5 text-center text-[10px] text-[var(--dsw-alias-label-secondary,#57606a)]">{snapshot?.changes.length ?? 0}</span>
+                <Badge unstyled className="tockteam-workspace-count min-w-5 rounded-full bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))] px-1.5 py-0.5 text-center text-[10px] text-[var(--dsw-alias-label-secondary,#57606a)]">{snapshot?.changes.length ?? 0}</Badge>
               </div>
               <div className="tockteam-change-list pt-0 pr-0.5 pb-[5px] pl-[30px]">
                 {visibleChanges.map(change => (
@@ -992,17 +1019,17 @@ function WorkspacePanel({
                   </div>
                 ))}
                 {(snapshot?.changes.length ?? 0) > visibleChanges.length && (
-                  <div className="tockteam-workspace-muted p-[18px] text-center text-[11px] text-[var(--dsw-alias-label-dimmed,#8c959f)]">
+                  <Empty unstyled className="tockteam-workspace-muted p-[18px] text-center text-[11px] text-[var(--dsw-alias-label-dimmed,#8c959f)]">
                     {t('workspace.more-changes', {
                       count: (snapshot?.changes.length ?? 0) - visibleChanges.length,
                     })}
-                  </div>
+                  </Empty>
                 )}
                 {snapshot?.kind === 'repository' && snapshot.changes.length === 0 && (
-                  <div className="tockteam-workspace-muted p-[18px] text-center text-[11px] text-[var(--dsw-alias-label-dimmed,#8c959f)]">{t('workspace.clean')}</div>
+                  <Empty unstyled className="tockteam-workspace-muted p-[18px] text-center text-[11px] text-[var(--dsw-alias-label-dimmed,#8c959f)]">{t('workspace.clean')}</Empty>
                 )}
                 {snapshot?.kind === 'directory' && (
-                  <div className="tockteam-workspace-muted p-[18px] text-center text-[11px] text-[var(--dsw-alias-label-dimmed,#8c959f)]">{t('workspace.not-git')}</div>
+                  <Empty unstyled className="tockteam-workspace-muted p-[18px] text-center text-[11px] text-[var(--dsw-alias-label-dimmed,#8c959f)]">{t('workspace.not-git')}</Empty>
                 )}
               </div>
             </section>
@@ -1012,7 +1039,7 @@ function WorkspacePanel({
                 <div className="tockteam-workspace-section-title grid min-h-[38px] grid-cols-[26px_minmax(0,1fr)_auto] items-center gap-2 px-1.5 text-[13px] [&_strong]:font-[550]">
                   <span className="tockteam-workspace-section-icon grid place-items-center text-[var(--dsw-alias-label-secondary,#57606a)] [&_svg]:size-4"><History aria-hidden="true" /></span>
                   <strong>{t('workspace.review-history')}</strong>
-                  <span className="tockteam-workspace-count min-w-5 rounded-full bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))] px-1.5 py-0.5 text-center text-[10px] text-[var(--dsw-alias-label-secondary,#57606a)]">{history.length}</span>
+                  <Badge unstyled className="tockteam-workspace-count min-w-5 rounded-full bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))] px-1.5 py-0.5 text-center text-[10px] text-[var(--dsw-alias-label-secondary,#57606a)]">{history.length}</Badge>
                 </div>
                 <div className="tockteam-review-commit-list grid gap-0.5 pr-0.5 pb-2 pl-[30px]">
                   {history.map(entry => (
@@ -1030,9 +1057,9 @@ function WorkspacePanel({
                     </Button>
                   ))}
                   {history.length === 0 && (
-                    <div className="tockteam-workspace-muted p-[18px] text-center text-[11px] text-[var(--dsw-alias-label-dimmed,#8c959f)]">
+                    <Empty unstyled className="tockteam-workspace-muted p-[18px] text-center text-[11px] text-[var(--dsw-alias-label-dimmed,#8c959f)]">
                       {t('workspace.no-commits')}
-                    </div>
+                    </Empty>
                   )}
                 </div>
 
@@ -1116,11 +1143,11 @@ function WorkspacePanel({
                             )
                           })}
                           {file.lines.length > 400 && (
-                            <div className="tockteam-workspace-muted p-[18px] text-center text-[11px] text-[var(--dsw-alias-label-dimmed,#8c959f)]">
+                            <Empty unstyled className="tockteam-workspace-muted p-[18px] text-center text-[11px] text-[var(--dsw-alias-label-dimmed,#8c959f)]">
                               {t('workspace.diff-truncated', {
                                 count: file.lines.length - 400,
                               })}
-                            </div>
+                            </Empty>
                           )}
                         </div>
                       </details>
@@ -1256,7 +1283,7 @@ function WorkspacePanel({
                 </div>
               ))}
               {processes.length === 0 && (
-                <div className="tockteam-workspace-muted p-[18px] text-center text-[11px] text-[var(--dsw-alias-label-dimmed,#8c959f)]">{t('workspace.no-background-processes')}</div>
+                <Empty unstyled className="tockteam-workspace-muted p-[18px] text-center text-[11px] text-[var(--dsw-alias-label-dimmed,#8c959f)]">{t('workspace.no-background-processes')}</Empty>
               )}
             </section>
           </div>

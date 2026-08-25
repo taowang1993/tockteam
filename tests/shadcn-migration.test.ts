@@ -41,7 +41,31 @@ test('shared controls retain native semantics for parity migrations', () => {
   assert.match(read('plugins/ui/src/label.tsx'), /data-slot="label"/)
   assert.match(read('plugins/ui/src/textarea.tsx'), /data-slot="textarea"/)
   assert.match(read('plugins/ui/src/native-select.tsx'), /data-slot="native-select"/)
+  assert.match(read('plugins/ui/src/popover.tsx'), /data-slot="popover-content"/)
   assert.match(read('plugins/ui/src/skeleton.tsx'), /data-slot="skeleton"/)
   assert.match(read('plugins/ui/src/spinner.tsx'), /data-slot="spinner"/)
   assert.match(read('plugins/ui/src/switch.tsx'), /data-slot="switch"/)
+  assert.match(read('plugins/ui/src/tooltip.tsx'), /data-slot="tooltip-content"/)
+})
+
+test('remaining browser placeholders and counters use shared presentation components', () => {
+  const sidebar = read('plugins/sidebar/src/client/plugin.tsx')
+  const sideTools = read('plugins/sidebar/src/client/SideToolsPanel.tsx')
+
+  assert.doesNotMatch(sidebar, /<div className="tockteam-workspace-(?:empty|muted)/)
+  assert.doesNotMatch(sideTools, /<div className="tockteam-side-(?:empty|muted)/)
+  assert.doesNotMatch(sidebar, /<span className="tockteam-workspace-count/)
+  assert.match(sidebar, /<Badge unstyled className="tockteam-workspace-count/)
+})
+
+test('rich floating controls use shared popovers and tooltips', () => {
+  const assistant = read('plugins/tocktutor/packages/tockteam-tocktutor-assistant/src/assistant-panel.tsx')
+  const terminal = read('plugins/panel-controls/src/terminal/TerminalPanel.tsx')
+
+  assert.match(assistant, /from '@tockteam\/ui\/popover'/)
+  assert.match(assistant, /from '@tockteam\/ui\/tooltip'/)
+  assert.doesNotMatch(assistant, /tocktutor-assistant-add-menu absolute/)
+  assert.match(terminal, /from '@tockteam\/ui\/popover'/)
+  assert.match(terminal, /from '@tockteam\/ui\/tooltip'/)
+  assert.doesNotMatch(terminal, /role="dialog" aria-label=\{t\('terminal\.font-settings'\)\}/)
 })

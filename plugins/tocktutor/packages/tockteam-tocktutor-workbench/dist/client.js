@@ -15171,6 +15171,7 @@ var Alert = React.forwardRef(function Alert2({ className, variant = "default", u
 });
 
 // ../../../ui/src/button.tsx
+var React2 = __toESM(require("react"), 1);
 var import_jsx_runtime2 = require("react/jsx-runtime");
 var buttonVariants = cva(
   "group/button inline-flex shrink-0 cursor-pointer select-none items-center justify-center whitespace-nowrap rounded-lg border border-transparent bg-clip-padding text-sm font-medium outline-none transition-[background-color,border-color,color,box-shadow,transform] focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:cursor-default disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
@@ -15201,16 +15202,17 @@ var buttonVariants = cva(
     }
   }
 );
-function Button({
+var Button = React2.forwardRef(function Button2({
   className,
   variant = "default",
   size = "default",
   unstyled = false,
   ...props
-}) {
+}, ref) {
   return /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
     "button",
     {
+      ref,
       "data-slot": "button",
       "data-variant": variant,
       "data-size": size,
@@ -15218,13 +15220,13 @@ function Button({
       ...props
     }
   );
-}
+});
 
 // ../../node_modules/.pnpm/@radix-ui+react-checkbox@1.3.11_@types+react-dom@18.3.7_@types+react@18.3.31__@types+re_d2d3b056ba3fe73f123b9078be168b78/node_modules/@radix-ui/react-checkbox/dist/index.mjs
-var React11 = __toESM(require("react"), 1);
+var React12 = __toESM(require("react"), 1);
 
 // ../../node_modules/.pnpm/@radix-ui+react-compose-refs@1.1.5_@types+react@18.3.31_react@18.3.1/node_modules/@radix-ui/react-compose-refs/dist/index.mjs
-var React2 = __toESM(require("react"), 1);
+var React3 = __toESM(require("react"), 1);
 var __defProp2 = Object.defineProperty;
 var __name = (target, value) => __defProp2(target, "name", { value, configurable: true });
 function setRef(ref, value) {
@@ -15261,28 +15263,28 @@ function composeRefs(...refs) {
 }
 __name(composeRefs, "composeRefs");
 function useComposedRefs(...refs) {
-  return React2.useCallback(composeRefs(...refs), refs);
+  return React3.useCallback(composeRefs(...refs), refs);
 }
 __name(useComposedRefs, "useComposedRefs");
 
 // ../../node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.31_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.mjs
-var React3 = __toESM(require("react"), 1);
+var React4 = __toESM(require("react"), 1);
 var import_jsx_runtime3 = require("react/jsx-runtime");
 var __defProp3 = Object.defineProperty;
 var __name2 = (target, value) => __defProp3(target, "name", { value, configurable: true });
 // @__NO_SIDE_EFFECTS__
 function createContext2(rootComponentName, defaultContext) {
-  const Context = React3.createContext(defaultContext);
+  const Context = React4.createContext(defaultContext);
   Context.displayName = rootComponentName + "Context";
   const Provider = /* @__PURE__ */ __name2((props) => {
     const { children, ...context } = props;
-    const value = React3.useMemo(() => context, Object.values(context));
+    const value = React4.useMemo(() => context, Object.values(context));
     return /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(Context.Provider, { value, children });
   }, "Provider");
   Provider.displayName = rootComponentName + "Provider";
   function useContext22(consumerName, options = {}) {
     const { optional: optional2 = false } = options;
-    const context = React3.useContext(Context);
+    const context = React4.useContext(Context);
     if (context) return context;
     if (defaultContext !== void 0) return defaultContext;
     if (optional2) return void 0;
@@ -15296,21 +15298,21 @@ __name2(createContext2, "createContext");
 function createContextScope(scopeName, createContextScopeDeps = []) {
   let defaultContexts = [];
   function createContext32(rootComponentName, defaultContext) {
-    const BaseContext = React3.createContext(defaultContext);
+    const BaseContext = React4.createContext(defaultContext);
     BaseContext.displayName = rootComponentName + "Context";
     const index = defaultContexts.length;
     defaultContexts = [...defaultContexts, defaultContext];
     const Provider = /* @__PURE__ */ __name2((props) => {
       const { scope, children, ...context } = props;
       const Context = scope?.[scopeName]?.[index] || BaseContext;
-      const value = React3.useMemo(() => context, Object.values(context));
+      const value = React4.useMemo(() => context, Object.values(context));
       return /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(Context.Provider, { value, children });
     }, "Provider");
     Provider.displayName = rootComponentName + "Provider";
     function useContext22(consumerName, scope, options = {}) {
       const { optional: optional2 = false } = options;
       const Context = scope?.[scopeName]?.[index] || BaseContext;
-      const context = React3.useContext(Context);
+      const context = React4.useContext(Context);
       if (context) return context;
       if (defaultContext !== void 0) return defaultContext;
       if (optional2) return void 0;
@@ -15322,11 +15324,11 @@ function createContextScope(scopeName, createContextScopeDeps = []) {
   __name2(createContext32, "createContext");
   const createScope = /* @__PURE__ */ __name2(() => {
     const scopeContexts = defaultContexts.map((defaultContext) => {
-      return React3.createContext(defaultContext);
+      return React4.createContext(defaultContext);
     });
     return /* @__PURE__ */ __name2(function useScope(scope) {
       const contexts = scope?.[scopeName] || scopeContexts;
-      return React3.useMemo(
+      return React4.useMemo(
         () => ({ [`__scope${scopeName}`]: { ...scope, [scopeName]: contexts } }),
         [scope, contexts]
       );
@@ -15350,7 +15352,7 @@ function composeContextScopes(...scopes) {
         const currentScope = scopeProps[`__scope${scopeName}`];
         return { ...nextScopes2, ...currentScope };
       }, {});
-      return React3.useMemo(() => ({ [`__scope${baseScope.scopeName}`]: nextScopes }), [nextScopes]);
+      return React4.useMemo(() => ({ [`__scope${baseScope.scopeName}`]: nextScopes }), [nextScopes]);
     }, "useComposedScopes");
   }, "createScope");
   createScope.scopeName = baseScope.scopeName;
@@ -15411,30 +15413,30 @@ function isFrame(element) {
 __name3(isFrame, "isFrame");
 
 // ../../node_modules/.pnpm/@radix-ui+react-use-controllable-state@1.2.6_@types+react@18.3.31_react@18.3.1/node_modules/@radix-ui/react-use-controllable-state/dist/index.mjs
-var React6 = __toESM(require("react"), 1);
+var React7 = __toESM(require("react"), 1);
 
 // ../../node_modules/.pnpm/@radix-ui+primitive@1.1.7/node_modules/@radix-ui/primitive/dist/internal/is-development.false.mjs
 var IS_DEVELOPMENT = false;
 
 // ../../node_modules/.pnpm/@radix-ui+react-use-layout-effect@1.1.4_@types+react@18.3.31_react@18.3.1/node_modules/@radix-ui/react-use-layout-effect/dist/index.mjs
-var React4 = __toESM(require("react"), 1);
-var useLayoutEffect2 = globalThis?.document ? React4.useLayoutEffect : () => {
+var React5 = __toESM(require("react"), 1);
+var useLayoutEffect2 = globalThis?.document ? React5.useLayoutEffect : () => {
 };
 
 // ../../node_modules/.pnpm/@radix-ui+react-use-controllable-state@1.2.6_@types+react@18.3.31_react@18.3.1/node_modules/@radix-ui/react-use-controllable-state/dist/index.mjs
 var React22 = __toESM(require("react"), 1);
 
 // ../../node_modules/.pnpm/@radix-ui+react-use-effect-event@0.0.5_@types+react@18.3.31_react@18.3.1/node_modules/@radix-ui/react-use-effect-event/dist/index.mjs
-var React5 = __toESM(require("react"), 1);
+var React6 = __toESM(require("react"), 1);
 var __defProp5 = Object.defineProperty;
 var __name4 = (target, value) => __defProp5(target, "name", { value, configurable: true });
-var useReactEffectEvent = React5[" useEffectEvent ".trim().toString()];
-var useReactInsertionEffect = React5[" useInsertionEffect ".trim().toString()];
+var useReactEffectEvent = React6[" useEffectEvent ".trim().toString()];
+var useReactInsertionEffect = React6[" useInsertionEffect ".trim().toString()];
 function useEffectEvent(callback) {
   if (typeof useReactEffectEvent === "function") {
     return useReactEffectEvent(callback);
   }
-  const ref = React5.useRef(() => {
+  const ref = React6.useRef(() => {
     throw new Error("Cannot call an event handler while rendering.");
   });
   if (typeof useReactInsertionEffect === "function") {
@@ -15446,14 +15448,14 @@ function useEffectEvent(callback) {
       ref.current = callback;
     });
   }
-  return React5.useMemo(() => ((...args) => ref.current?.(...args)), []);
+  return React6.useMemo(() => ((...args) => ref.current?.(...args)), []);
 }
 __name4(useEffectEvent, "useEffectEvent");
 
 // ../../node_modules/.pnpm/@radix-ui+react-use-controllable-state@1.2.6_@types+react@18.3.31_react@18.3.1/node_modules/@radix-ui/react-use-controllable-state/dist/index.mjs
 var __defProp6 = Object.defineProperty;
 var __name5 = (target, value) => __defProp6(target, "name", { value, configurable: true });
-var useInsertionEffect = React6[" useInsertionEffect ".trim().toString()] || useLayoutEffect2;
+var useInsertionEffect = React7[" useInsertionEffect ".trim().toString()] || useLayoutEffect2;
 function useControllableState({
   prop,
   defaultProp,
@@ -15468,8 +15470,8 @@ function useControllableState({
   const isControlled = prop !== void 0;
   const value = isControlled ? prop : uncontrolledProp;
   if (IS_DEVELOPMENT) {
-    const isControlledRef = React6.useRef(prop !== void 0);
-    React6.useEffect(() => {
+    const isControlledRef = React7.useRef(prop !== void 0);
+    React7.useEffect(() => {
       const wasControlled = isControlledRef.current;
       if (wasControlled !== isControlled) {
         const from = wasControlled ? "controlled" : "uncontrolled";
@@ -15481,7 +15483,7 @@ function useControllableState({
       isControlledRef.current = isControlled;
     }, [isControlled, caller]);
   }
-  const setValue = React6.useCallback(
+  const setValue = React7.useCallback(
     (nextValue) => {
       if (isControlled) {
         const value2 = isFunction(nextValue) ? nextValue(prop) : nextValue;
@@ -15501,13 +15503,13 @@ function useUncontrolledState({
   defaultProp,
   onChange
 }) {
-  const [value, setValue] = React6.useState(defaultProp);
-  const prevValueRef = React6.useRef(value);
-  const onChangeRef = React6.useRef(onChange);
+  const [value, setValue] = React7.useState(defaultProp);
+  const prevValueRef = React7.useRef(value);
+  const onChangeRef = React7.useRef(onChange);
   useInsertionEffect(() => {
     onChangeRef.current = onChange;
   }, [onChange]);
-  React6.useEffect(() => {
+  React7.useEffect(() => {
     if (prevValueRef.current !== value) {
       onChangeRef.current?.(value);
       prevValueRef.current = value;
@@ -15583,11 +15585,11 @@ function useControllableStateReducer(reducer, userArgs, initialArg, init) {
 __name5(useControllableStateReducer, "useControllableStateReducer");
 
 // ../../node_modules/.pnpm/@radix-ui+react-use-size@1.1.4_@types+react@18.3.31_react@18.3.1/node_modules/@radix-ui/react-use-size/dist/index.mjs
-var React7 = __toESM(require("react"), 1);
+var React8 = __toESM(require("react"), 1);
 var __defProp7 = Object.defineProperty;
 var __name6 = (target, value) => __defProp7(target, "name", { value, configurable: true });
 function useSize(element) {
-  const [size, setSize] = React7.useState(void 0);
+  const [size, setSize] = React8.useState(void 0);
   useLayoutEffect2(() => {
     if (element) {
       setSize({ width: element.offsetWidth, height: element.offsetHeight });
@@ -15624,11 +15626,11 @@ __name6(useSize, "useSize");
 
 // ../../node_modules/.pnpm/@radix-ui+react-presence@1.1.10_@types+react-dom@18.3.7_@types+react@18.3.31__@types+re_62e566fb7823886e0e3d5565144169f1/node_modules/@radix-ui/react-presence/dist/index.mjs
 var React23 = __toESM(require("react"), 1);
-var React8 = __toESM(require("react"), 1);
+var React9 = __toESM(require("react"), 1);
 var __defProp8 = Object.defineProperty;
 var __name7 = (target, value) => __defProp8(target, "name", { value, configurable: true });
 function useStateMachine(initialState, machine) {
-  return React8.useReducer((state, event) => {
+  return React9.useReducer((state, event) => {
     const nextState = machine[state][event];
     return nextState ?? state;
   }, initialState);
@@ -15802,16 +15804,16 @@ function getElementRef(element) {
 __name7(getElementRef, "getElementRef");
 
 // ../../node_modules/.pnpm/@radix-ui+react-primitive@2.1.10_@types+react-dom@18.3.7_@types+react@18.3.31__@types+r_dba614f83980a1ab9805a3f12c0d2bc2/node_modules/@radix-ui/react-primitive/dist/index.mjs
-var React10 = __toESM(require("react"), 1);
+var React11 = __toESM(require("react"), 1);
 var ReactDOM = __toESM(require("react-dom"), 1);
 
 // ../../node_modules/.pnpm/@radix-ui+react-slot@1.3.3_@types+react@18.3.31_react@18.3.1/node_modules/@radix-ui/react-slot/dist/index.mjs
-var React9 = __toESM(require("react"), 1);
+var React10 = __toESM(require("react"), 1);
 var __defProp9 = Object.defineProperty;
 var __name8 = (target, value) => __defProp9(target, "name", { value, configurable: true });
 // @__NO_SIDE_EFFECTS__
 function createSlot(ownerName) {
-  const Slot2 = React9.forwardRef((props, forwardedRef) => {
+  const Slot2 = React10.forwardRef((props, forwardedRef) => {
     let { children, ...slotProps } = props;
     let slottableElement = null;
     let hasSlottable = false;
@@ -15819,7 +15821,7 @@ function createSlot(ownerName) {
     if (isLazyComponent(children) && typeof use === "function") {
       children = use(children._payload);
     }
-    React9.Children.forEach(children, (maybeSlottable) => {
+    React10.Children.forEach(children, (maybeSlottable) => {
       if (isSlottable(maybeSlottable)) {
         hasSlottable = true;
         const slottable = maybeSlottable;
@@ -15834,13 +15836,13 @@ function createSlot(ownerName) {
       }
     });
     if (slottableElement) {
-      slottableElement = React9.cloneElement(slottableElement, void 0, newChildren);
+      slottableElement = React10.cloneElement(slottableElement, void 0, newChildren);
     } else if (
       // A `Slottable` was found but it didn't resolve to a single element (e.g.
       // it wrapped multiple elements, text, or a render-prop `child` that
       // wasn't an element). Don't fall back to treating the `Slottable` wrapper
       // itself as the slot target — throw a descriptive error below instead.
-      !hasSlottable && React9.Children.count(children) === 1 && React9.isValidElement(children)
+      !hasSlottable && React10.Children.count(children) === 1 && React10.isValidElement(children)
     ) {
       slottableElement = children;
     }
@@ -15855,10 +15857,10 @@ function createSlot(ownerName) {
       return children;
     }
     const mergedProps = mergeProps(slotProps, slottableElement.props ?? {});
-    if (slottableElement.type !== React9.Fragment) {
+    if (slottableElement.type !== React10.Fragment) {
       mergedProps.ref = forwardedRef ? composedRef : slottableElementRef;
     }
-    return React9.cloneElement(slottableElement, mergedProps);
+    return React10.cloneElement(slottableElement, mergedProps);
   });
   Slot2.displayName = `${ownerName}.Slot`;
   return Slot2;
@@ -15876,10 +15878,10 @@ __name8(createSlottable, "createSlottable");
 var getSlottableElementFromSlottable = /* @__PURE__ */ __name8((slottable, child) => {
   if ("child" in slottable.props) {
     const child2 = slottable.props.child;
-    if (!React9.isValidElement(child2)) return null;
-    return React9.cloneElement(child2, void 0, slottable.props.children(child2.props.children));
+    if (!React10.isValidElement(child2)) return null;
+    return React10.cloneElement(child2, void 0, slottable.props.children(child2.props.children));
   }
-  return React9.isValidElement(child) ? child : null;
+  return React10.isValidElement(child) ? child : null;
 }, "getSlottableElementFromSlottable");
 function mergeProps(slotProps, childProps) {
   const overrideProps = { ...childProps };
@@ -15921,7 +15923,7 @@ function getElementRef2(element) {
 }
 __name8(getElementRef2, "getElementRef");
 function isSlottable(child) {
-  return React9.isValidElement(child) && typeof child.type === "function" && "__radixId" in child.type && child.type.__radixId === SLOTTABLE_IDENTIFIER;
+  return React10.isValidElement(child) && typeof child.type === "function" && "__radixId" in child.type && child.type.__radixId === SLOTTABLE_IDENTIFIER;
 }
 __name8(isSlottable, "isSlottable");
 var REACT_LAZY_TYPE = Symbol.for("react.lazy");
@@ -15939,7 +15941,7 @@ var createSlotError = /* @__PURE__ */ __name8((ownerName) => {
 var createSlottableError = /* @__PURE__ */ __name8((ownerName) => {
   return `${ownerName} failed to slot onto its \`Slottable\`. Expected \`Slottable\` to receive a single React element child.`;
 }, "createSlottableError");
-var use = React9[" use ".trim().toString()];
+var use = React10[" use ".trim().toString()];
 
 // ../../node_modules/.pnpm/@radix-ui+react-primitive@2.1.10_@types+react-dom@18.3.7_@types+react@18.3.31__@types+r_dba614f83980a1ab9805a3f12c0d2bc2/node_modules/@radix-ui/react-primitive/dist/index.mjs
 var import_jsx_runtime4 = require("react/jsx-runtime");
@@ -15966,7 +15968,7 @@ var NODES = [
 ];
 var Primitive = NODES.reduce((primitive, node) => {
   const Slot2 = createSlot(`Primitive.${node}`);
-  const Node2 = React10.forwardRef((props, forwardedRef) => {
+  const Node2 = React11.forwardRef((props, forwardedRef) => {
     const { asChild, ...primitiveProps } = props;
     const Comp = asChild ? Slot2 : node;
     if (typeof window !== "undefined") {
@@ -16010,10 +16012,10 @@ function CheckboxProvider(props) {
     onChange: onCheckedChange,
     caller: CHECKBOX_NAME
   });
-  const [control, setControl] = React11.useState(null);
-  const [bubbleInput, setBubbleInput] = React11.useState(null);
-  const hasConsumerStoppedPropagationRef = React11.useRef(false);
-  const [userInteractionCount, onUserInteraction] = React11.useReducer(
+  const [control, setControl] = React12.useState(null);
+  const [bubbleInput, setBubbleInput] = React12.useState(null);
+  const hasConsumerStoppedPropagationRef = React12.useRef(false);
+  const [userInteractionCount, onUserInteraction] = React12.useReducer(
     (count3) => count3 + 1,
     0
   );
@@ -16050,7 +16052,7 @@ function CheckboxProvider(props) {
 }
 __name10(CheckboxProvider, "CheckboxProvider");
 var TRIGGER_NAME = "CheckboxTrigger";
-var CheckboxTrigger = /* @__PURE__ */ React11.forwardRef(
+var CheckboxTrigger = /* @__PURE__ */ React12.forwardRef(
   /* @__PURE__ */ __name10(function CheckboxTrigger2({ __scopeCheckbox, onKeyDown, onClick, ...checkboxProps }, forwardedRef) {
     const {
       control,
@@ -16066,8 +16068,8 @@ var CheckboxTrigger = /* @__PURE__ */ React11.forwardRef(
       bubbleInput
     } = useCheckboxContext(TRIGGER_NAME, __scopeCheckbox);
     const composedRefs = useComposedRefs(forwardedRef, setControl);
-    const initialCheckedStateRef = React11.useRef(checked);
-    React11.useEffect(() => {
+    const initialCheckedStateRef = React12.useRef(checked);
+    React12.useEffect(() => {
       const form = control?.form;
       if (form) {
         const reset = /* @__PURE__ */ __name10(() => setChecked(initialCheckedStateRef.current), "reset");
@@ -16103,7 +16105,7 @@ var CheckboxTrigger = /* @__PURE__ */ React11.forwardRef(
     );
   }, "CheckboxTrigger")
 );
-var Checkbox = /* @__PURE__ */ React11.forwardRef(
+var Checkbox = /* @__PURE__ */ React12.forwardRef(
   // blank line to reduce diff noise
   /* @__PURE__ */ __name10(function Checkbox2(props, forwardedRef) {
     const {
@@ -16151,7 +16153,7 @@ var Checkbox = /* @__PURE__ */ React11.forwardRef(
   }, "Checkbox")
 );
 var INDICATOR_NAME = "CheckboxIndicator";
-var CheckboxIndicator = /* @__PURE__ */ React11.forwardRef(
+var CheckboxIndicator = /* @__PURE__ */ React12.forwardRef(
   // blank line to reduce diff noise
   /* @__PURE__ */ __name10(function CheckboxIndicator2(props, forwardedRef) {
     const { __scopeCheckbox, forceMount, ...indicatorProps } = props;
@@ -16175,7 +16177,7 @@ var CheckboxIndicator = /* @__PURE__ */ React11.forwardRef(
   }, "CheckboxIndicator")
 );
 var BUBBLE_INPUT_NAME = "CheckboxBubbleInput";
-var CheckboxBubbleInput = /* @__PURE__ */ React11.forwardRef(
+var CheckboxBubbleInput = /* @__PURE__ */ React12.forwardRef(
   // blank line to reduce diff noise
   /* @__PURE__ */ __name10(function CheckboxBubbleInput2({ __scopeCheckbox, onClick, ...props }, forwardedRef) {
     const {
@@ -16194,10 +16196,10 @@ var CheckboxBubbleInput = /* @__PURE__ */ React11.forwardRef(
     } = useCheckboxContext(BUBBLE_INPUT_NAME, __scopeCheckbox);
     const composedRefs = useComposedRefs(forwardedRef, setBubbleInput);
     const controlSize = useSize(control);
-    const shouldStopClickPropagationRef = React11.useRef(false);
-    const prevCheckedRef = React11.useRef(checked);
-    const prevUserInteractionCountRef = React11.useRef(userInteractionCount);
-    React11.useEffect(() => {
+    const shouldStopClickPropagationRef = React12.useRef(false);
+    const prevCheckedRef = React12.useRef(checked);
+    const prevUserInteractionCountRef = React12.useRef(userInteractionCount);
+    React12.useEffect(() => {
       const input = bubbleInput;
       if (!input) return;
       const inputProto = window.HTMLInputElement.prototype;
@@ -16220,7 +16222,7 @@ var CheckboxBubbleInput = /* @__PURE__ */ React11.forwardRef(
         shouldStopClickPropagationRef.current = false;
       }
     }, [bubbleInput, checked, hasConsumerStoppedPropagationRef, userInteractionCount]);
-    const defaultCheckedRef = React11.useRef(isIndeterminate(checked) ? false : checked);
+    const defaultCheckedRef = React12.useRef(isIndeterminate(checked) ? false : checked);
     return /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(
       Primitive.input,
       {
@@ -16512,16 +16514,16 @@ function Checkbox3({ className, ...props }) {
 }
 
 // ../../node_modules/.pnpm/@radix-ui+react-dialog@1.1.23_@types+react-dom@18.3.7_@types+react@18.3.31__@types+reac_89c2a39b94a39c3c4bfcbd95c00244cd/node_modules/@radix-ui/react-dialog/dist/index.mjs
-var React27 = __toESM(require("react"), 1);
+var React28 = __toESM(require("react"), 1);
 
 // ../../node_modules/.pnpm/@radix-ui+react-id@1.1.4_@types+react@18.3.31_react@18.3.1/node_modules/@radix-ui/react-id/dist/index.mjs
-var React12 = __toESM(require("react"), 1);
+var React13 = __toESM(require("react"), 1);
 var __defProp12 = Object.defineProperty;
 var __name11 = (target, value) => __defProp12(target, "name", { value, configurable: true });
-var useReactId = React12[" useId ".trim().toString()] || (() => void 0);
+var useReactId = React13[" useId ".trim().toString()] || (() => void 0);
 var count = 0;
 function useId(deterministicId) {
-  const [id, setId] = React12.useState(useReactId());
+  const [id, setId] = React13.useState(useReactId());
   useLayoutEffect2(() => {
     if (!deterministicId) setId((reactId) => reactId ?? String(count++));
   }, [deterministicId]);
@@ -16530,18 +16532,18 @@ function useId(deterministicId) {
 __name11(useId, "useId");
 
 // ../../node_modules/.pnpm/@radix-ui+react-dismissable-layer@1.1.19_@types+react-dom@18.3.7_@types+react@18.3.31___4f2024a88a120e800aa2287adeb24710/node_modules/@radix-ui/react-dismissable-layer/dist/index.mjs
-var React14 = __toESM(require("react"), 1);
+var React15 = __toESM(require("react"), 1);
 
 // ../../node_modules/.pnpm/@radix-ui+react-use-callback-ref@1.1.4_@types+react@18.3.31_react@18.3.1/node_modules/@radix-ui/react-use-callback-ref/dist/index.mjs
-var React13 = __toESM(require("react"), 1);
+var React14 = __toESM(require("react"), 1);
 var __defProp13 = Object.defineProperty;
 var __name12 = (target, value) => __defProp13(target, "name", { value, configurable: true });
 function useCallbackRef(callback) {
-  const callbackRef = React13.useRef(callback);
-  React13.useEffect(() => {
+  const callbackRef = React14.useRef(callback);
+  React14.useEffect(() => {
     callbackRef.current = callback;
   });
-  return React13.useMemo(() => ((...args) => callbackRef.current?.(...args)), []);
+  return React14.useMemo(() => ((...args) => callbackRef.current?.(...args)), []);
 }
 __name12(useCallbackRef, "useCallbackRef");
 
@@ -16553,7 +16555,7 @@ var CONTEXT_UPDATE = "dismissableLayer.update";
 var POINTER_DOWN_OUTSIDE = "dismissableLayer.pointerDownOutside";
 var FOCUS_OUTSIDE = "dismissableLayer.focusOutside";
 var originalBodyPointerEvents;
-var DismissableLayerContext = React14.createContext({
+var DismissableLayerContext = React15.createContext({
   layers: /* @__PURE__ */ new Set(),
   layersWithOutsidePointerEventsDisabled: /* @__PURE__ */ new Set(),
   branches: /* @__PURE__ */ new Set(),
@@ -16564,7 +16566,7 @@ var DismissableLayerContext = React14.createContext({
   // See https://github.com/radix-ui/primitives/issues/3346
   dismissableSurfaces: /* @__PURE__ */ new Set()
 });
-var DismissableLayer = /* @__PURE__ */ React14.forwardRef(
+var DismissableLayer = /* @__PURE__ */ React15.forwardRef(
   // blank line to reduce diff noise
   /* @__PURE__ */ __name13(function DismissableLayer2(props, forwardedRef) {
     const {
@@ -16577,10 +16579,10 @@ var DismissableLayer = /* @__PURE__ */ React14.forwardRef(
       onDismiss,
       ...layerProps
     } = props;
-    const context = React14.useContext(DismissableLayerContext);
-    const [node, setNode] = React14.useState(null);
+    const context = React15.useContext(DismissableLayerContext);
+    const [node, setNode] = React15.useState(null);
     const ownerDocument = node?.ownerDocument ?? globalThis?.document;
-    const [, force] = React14.useState({});
+    const [, force] = React15.useState({});
     const composedRefs = useComposedRefs(forwardedRef, setNode);
     const layers = Array.from(context.layers);
     const [highestLayerWithOutsidePointerEventsDisabled] = [
@@ -16590,7 +16592,7 @@ var DismissableLayer = /* @__PURE__ */ React14.forwardRef(
     const index = node ? layers.indexOf(node) : -1;
     const isBodyPointerEventsDisabled = context.layersWithOutsidePointerEventsDisabled.size > 0;
     const isPointerEventsEnabled = index >= highestLayerWithOutsidePointerEventsDisabledIndex;
-    const isDeferredPointerDownOutsideRef = React14.useRef(false);
+    const isDeferredPointerDownOutsideRef = React15.useRef(false);
     const pointerDownOutside = usePointerDownOutside(
       (event) => {
         onPointerDownOutside?.(event);
@@ -16602,7 +16604,7 @@ var DismissableLayer = /* @__PURE__ */ React14.forwardRef(
         deferPointerDownOutside,
         isDeferredPointerDownOutsideRef,
         dismissableSurfaces: context.dismissableSurfaces,
-        shouldHandlePointerDownOutside: React14.useCallback(
+        shouldHandlePointerDownOutside: React15.useCallback(
           (target) => {
             if (!(target instanceof Node)) {
               return false;
@@ -16638,14 +16640,14 @@ var DismissableLayer = /* @__PURE__ */ React14.forwardRef(
         onDismiss();
       }
     });
-    React14.useEffect(() => {
+    React15.useEffect(() => {
       if (!isHighestLayer) {
         return;
       }
       ownerDocument.addEventListener("keydown", handleKeyDown, { capture: true });
       return () => ownerDocument.removeEventListener("keydown", handleKeyDown, { capture: true });
     }, [ownerDocument, isHighestLayer, handleKeyDown]);
-    React14.useEffect(() => {
+    React15.useEffect(() => {
       if (!node) return;
       if (disableOutsidePointerEvents) {
         if (context.layersWithOutsidePointerEventsDisabled.size === 0) {
@@ -16665,7 +16667,7 @@ var DismissableLayer = /* @__PURE__ */ React14.forwardRef(
         }
       };
     }, [node, ownerDocument, disableOutsidePointerEvents, context]);
-    React14.useEffect(() => {
+    React15.useEffect(() => {
       return () => {
         if (!node) return;
         context.layers.delete(node);
@@ -16673,7 +16675,7 @@ var DismissableLayer = /* @__PURE__ */ React14.forwardRef(
         dispatchUpdate();
       };
     }, [node, context]);
-    React14.useEffect(() => {
+    React15.useEffect(() => {
       const handleUpdate = /* @__PURE__ */ __name13(() => force({}), "handleUpdate");
       document.addEventListener(CONTEXT_UPDATE, handleUpdate);
       return () => document.removeEventListener(CONTEXT_UPDATE, handleUpdate);
@@ -16698,9 +16700,9 @@ var DismissableLayer = /* @__PURE__ */ React14.forwardRef(
   }, "DismissableLayer")
 );
 function useDismissableLayerSurface() {
-  const context = React14.useContext(DismissableLayerContext);
-  const [node, setNode] = React14.useState(null);
-  React14.useEffect(() => {
+  const context = React15.useContext(DismissableLayerContext);
+  const [node, setNode] = React15.useState(null);
+  React15.useEffect(() => {
     if (!node) {
       return;
     }
@@ -16722,12 +16724,12 @@ function usePointerDownOutside(onPointerDownOutside, args) {
     shouldHandlePointerDownOutside = IS_TRUE
   } = args;
   const handlePointerDownOutside = useCallbackRef(onPointerDownOutside);
-  const isPointerInsideReactTreeRef = React14.useRef(false);
-  const isPointerDownOutsideRef = React14.useRef(false);
-  const interceptedOutsideInteractionEventsRef = React14.useRef(/* @__PURE__ */ new Map());
-  const handleClickRef = React14.useRef(() => {
+  const isPointerInsideReactTreeRef = React15.useRef(false);
+  const isPointerDownOutsideRef = React15.useRef(false);
+  const interceptedOutsideInteractionEventsRef = React15.useRef(/* @__PURE__ */ new Map());
+  const handleClickRef = React15.useRef(() => {
   });
-  React14.useEffect(() => {
+  React15.useEffect(() => {
     function resetOutsideInteraction() {
       isPointerDownOutsideRef.current = false;
       isDeferredPointerDownOutsideRef.current = false;
@@ -16842,8 +16844,8 @@ function usePointerDownOutside(onPointerDownOutside, args) {
 __name13(usePointerDownOutside, "usePointerDownOutside");
 function useFocusOutside(onFocusOutside, ownerDocument = globalThis?.document) {
   const handleFocusOutside = useCallbackRef(onFocusOutside);
-  const isFocusInsideReactTreeRef = React14.useRef(false);
-  React14.useEffect(() => {
+  const isFocusInsideReactTreeRef = React15.useRef(false);
+  React15.useEffect(() => {
     const handleFocus = /* @__PURE__ */ __name13((event) => {
       if (event.target && !isFocusInsideReactTreeRef.current) {
         const eventDetail = { originalEvent: event };
@@ -16879,14 +16881,14 @@ function handleAndDispatchCustomEvent(name2, handler, detail, { discrete }) {
 __name13(handleAndDispatchCustomEvent, "handleAndDispatchCustomEvent");
 
 // ../../node_modules/.pnpm/@radix-ui+react-focus-scope@1.1.16_@types+react-dom@18.3.7_@types+react@18.3.31__@types_161760c0d51338f080e5b66a9ea35f08/node_modules/@radix-ui/react-focus-scope/dist/index.mjs
-var React15 = __toESM(require("react"), 1);
+var React16 = __toESM(require("react"), 1);
 var import_jsx_runtime8 = require("react/jsx-runtime");
 var __defProp15 = Object.defineProperty;
 var __name14 = (target, value) => __defProp15(target, "name", { value, configurable: true });
 var AUTOFOCUS_ON_MOUNT = "focusScope.autoFocusOnMount";
 var AUTOFOCUS_ON_UNMOUNT = "focusScope.autoFocusOnUnmount";
 var EVENT_OPTIONS = { bubbles: false, cancelable: true };
-var FocusScope = /* @__PURE__ */ React15.forwardRef(
+var FocusScope = /* @__PURE__ */ React16.forwardRef(
   /* @__PURE__ */ __name14(function FocusScope2(props, forwardedRef) {
     const {
       loop = false,
@@ -16895,12 +16897,12 @@ var FocusScope = /* @__PURE__ */ React15.forwardRef(
       onUnmountAutoFocus: onUnmountAutoFocusProp,
       ...scopeProps
     } = props;
-    const [container, setContainer] = React15.useState(null);
+    const [container, setContainer] = React16.useState(null);
     const onMountAutoFocus = useCallbackRef(onMountAutoFocusProp);
     const onUnmountAutoFocus = useCallbackRef(onUnmountAutoFocusProp);
-    const lastFocusedElementRef = React15.useRef(null);
+    const lastFocusedElementRef = React16.useRef(null);
     const composedRefs = useComposedRefs(forwardedRef, setContainer);
-    const focusScope = React15.useRef({
+    const focusScope = React16.useRef({
       paused: false,
       pause() {
         this.paused = true;
@@ -16909,7 +16911,7 @@ var FocusScope = /* @__PURE__ */ React15.forwardRef(
         this.paused = false;
       }
     }).current;
-    React15.useEffect(() => {
+    React16.useEffect(() => {
       if (trapped) {
         let handleFocusIn2 = function(event) {
           if (focusScope.paused || !container) return;
@@ -16948,7 +16950,7 @@ var FocusScope = /* @__PURE__ */ React15.forwardRef(
         };
       }
     }, [trapped, container, focusScope.paused]);
-    React15.useEffect(() => {
+    React16.useEffect(() => {
       if (container) {
         focusScopesStack.add(focusScope);
         const previouslyFocusedElement = document.activeElement;
@@ -16979,7 +16981,7 @@ var FocusScope = /* @__PURE__ */ React15.forwardRef(
         };
       }
     }, [container, onMountAutoFocus, onUnmountAutoFocus, focusScope]);
-    const handleKeyDown = React15.useCallback(
+    const handleKeyDown = React16.useCallback(
       (event) => {
         if (!loop && !trapped) return;
         if (focusScope.paused) return;
@@ -17102,15 +17104,15 @@ function removeLinks(items) {
 __name14(removeLinks, "removeLinks");
 
 // ../../node_modules/.pnpm/@radix-ui+react-portal@1.1.17_@types+react-dom@18.3.7_@types+react@18.3.31__@types+reac_35c248e3d41b4a33144a8517e72175a4/node_modules/@radix-ui/react-portal/dist/index.mjs
-var React16 = __toESM(require("react"), 1);
+var React17 = __toESM(require("react"), 1);
 var ReactDOM2 = __toESM(require("react-dom"), 1);
 var import_jsx_runtime9 = require("react/jsx-runtime");
 var __defProp16 = Object.defineProperty;
 var __name15 = (target, value) => __defProp16(target, "name", { value, configurable: true });
-var Portal = /* @__PURE__ */ React16.forwardRef(
+var Portal = /* @__PURE__ */ React17.forwardRef(
   /* @__PURE__ */ __name15(function Portal2(props, forwardedRef) {
     const { container: containerProp, ...portalProps } = props;
-    const [mounted, setMounted] = React16.useState(false);
+    const [mounted, setMounted] = React17.useState(false);
     useLayoutEffect2(() => setMounted(true), []);
     const container = containerProp || mounted && globalThis?.document?.body;
     return container ? ReactDOM2.createPortal(/* @__PURE__ */ (0, import_jsx_runtime9.jsx)(Primitive.div, { ...portalProps, ref: forwardedRef }), container) : null;
@@ -17118,7 +17120,7 @@ var Portal = /* @__PURE__ */ React16.forwardRef(
 );
 
 // ../../node_modules/.pnpm/@radix-ui+react-focus-guards@1.1.6_@types+react@18.3.31_react@18.3.1/node_modules/@radix-ui/react-focus-guards/dist/index.mjs
-var React17 = __toESM(require("react"), 1);
+var React18 = __toESM(require("react"), 1);
 var __defProp17 = Object.defineProperty;
 var __name16 = (target, value) => __defProp17(target, "name", { value, configurable: true });
 var count2 = 0;
@@ -17129,7 +17131,7 @@ function FocusGuards(props) {
 }
 __name16(FocusGuards, "FocusGuards");
 function useFocusGuards() {
-  React17.useEffect(() => {
+  React18.useEffect(() => {
     if (!guards) {
       guards = { start: createFocusGuard(), end: createFocusGuard() };
     }
@@ -17197,10 +17199,10 @@ function __spreadArray(to, from, pack) {
 }
 
 // ../../node_modules/.pnpm/react-remove-scroll@2.7.2_@types+react@18.3.31_react@18.3.1/node_modules/react-remove-scroll/dist/es2015/Combination.js
-var React26 = __toESM(require("react"));
+var React27 = __toESM(require("react"));
 
 // ../../node_modules/.pnpm/react-remove-scroll@2.7.2_@types+react@18.3.31_react@18.3.1/node_modules/react-remove-scroll/dist/es2015/UI.js
-var React20 = __toESM(require("react"));
+var React21 = __toESM(require("react"));
 
 // ../../node_modules/.pnpm/react-remove-scroll-bar@2.3.8_@types+react@18.3.31_react@18.3.1/node_modules/react-remove-scroll-bar/dist/es2015/constants.js
 var zeroRightClassName = "right-scroll-bar-position";
@@ -17247,8 +17249,8 @@ function useCallbackRef2(initialValue, callback) {
 }
 
 // ../../node_modules/.pnpm/use-callback-ref@1.3.3_@types+react@18.3.31_react@18.3.1/node_modules/use-callback-ref/dist/es2015/useMergeRef.js
-var React18 = __toESM(require("react"));
-var useIsomorphicLayoutEffect = typeof window !== "undefined" ? React18.useLayoutEffect : React18.useEffect;
+var React19 = __toESM(require("react"));
+var useIsomorphicLayoutEffect = typeof window !== "undefined" ? React19.useLayoutEffect : React19.useEffect;
 var currentValues = /* @__PURE__ */ new WeakMap();
 function useMergeRefs(refs, defaultValue) {
   var callbackRef = useCallbackRef2(defaultValue || null, function(newValue) {
@@ -17365,7 +17367,7 @@ function createSidecarMedium(options) {
 }
 
 // ../../node_modules/.pnpm/use-sidecar@1.1.3_@types+react@18.3.31_react@18.3.1/node_modules/use-sidecar/dist/es2015/exports.js
-var React19 = __toESM(require("react"));
+var React20 = __toESM(require("react"));
 var SideCar = function(_a3) {
   var sideCar = _a3.sideCar, rest = __rest(_a3, ["sideCar"]);
   if (!sideCar) {
@@ -17375,7 +17377,7 @@ var SideCar = function(_a3) {
   if (!Target) {
     throw new Error("Sidecar medium not found");
   }
-  return React19.createElement(Target, __assign({}, rest));
+  return React20.createElement(Target, __assign({}, rest));
 };
 SideCar.isSideCarExport = true;
 function exportSidecar(medium, exported) {
@@ -17390,9 +17392,9 @@ var effectCar = createSidecarMedium();
 var nothing = function() {
   return;
 };
-var RemoveScroll = React20.forwardRef(function(props, parentRef) {
-  var ref = React20.useRef(null);
-  var _a3 = React20.useState({
+var RemoveScroll = React21.forwardRef(function(props, parentRef) {
+  var ref = React21.useRef(null);
+  var _a3 = React21.useState({
     onScrollCapture: nothing,
     onWheelCapture: nothing,
     onTouchMoveCapture: nothing
@@ -17401,11 +17403,11 @@ var RemoveScroll = React20.forwardRef(function(props, parentRef) {
   var SideCar2 = sideCar;
   var containerRef = useMergeRefs([ref, parentRef]);
   var containerProps = __assign(__assign({}, rest), callbacks);
-  return React20.createElement(
-    React20.Fragment,
+  return React21.createElement(
+    React21.Fragment,
     null,
-    enabled && React20.createElement(SideCar2, { sideCar: effectCar, removeScrollBar, shards, noRelative, noIsolation, inert, setCallbacks, allowPinchZoom: !!allowPinchZoom, lockRef: ref, gapMode }),
-    forwardProps ? React20.cloneElement(React20.Children.only(children), __assign(__assign({}, containerProps), { ref: containerRef })) : React20.createElement(Container, __assign({}, containerProps, { className, ref: containerRef }), children)
+    enabled && React21.createElement(SideCar2, { sideCar: effectCar, removeScrollBar, shards, noRelative, noIsolation, inert, setCallbacks, allowPinchZoom: !!allowPinchZoom, lockRef: ref, gapMode }),
+    forwardProps ? React21.cloneElement(React21.Children.only(children), __assign(__assign({}, containerProps), { ref: containerRef })) : React21.createElement(Container, __assign({}, containerProps, { className, ref: containerRef }), children)
   );
 });
 RemoveScroll.defaultProps = {
@@ -17419,13 +17421,13 @@ RemoveScroll.classNames = {
 };
 
 // ../../node_modules/.pnpm/react-remove-scroll@2.7.2_@types+react@18.3.31_react@18.3.1/node_modules/react-remove-scroll/dist/es2015/SideEffect.js
-var React25 = __toESM(require("react"));
+var React26 = __toESM(require("react"));
 
 // ../../node_modules/.pnpm/react-remove-scroll-bar@2.3.8_@types+react@18.3.31_react@18.3.1/node_modules/react-remove-scroll-bar/dist/es2015/component.js
-var React24 = __toESM(require("react"));
+var React25 = __toESM(require("react"));
 
 // ../../node_modules/.pnpm/react-style-singleton@2.2.3_@types+react@18.3.31_react@18.3.1/node_modules/react-style-singleton/dist/es2015/hook.js
-var React21 = __toESM(require("react"));
+var React24 = __toESM(require("react"));
 
 // ../../node_modules/.pnpm/get-nonce@1.0.1/node_modules/get-nonce/dist/es2015/index.js
 var currentNonce;
@@ -17489,7 +17491,7 @@ var stylesheetSingleton = function() {
 var styleHookSingleton = function() {
   var sheet = stylesheetSingleton();
   return function(styles, isDynamic) {
-    React21.useEffect(function() {
+    React24.useEffect(function() {
       sheet.add(styles);
       return function() {
         sheet.remove();
@@ -17563,7 +17565,7 @@ var getCurrentUseCounter = function() {
   return isFinite(counter) ? counter : 0;
 };
 var useLockAttribute = function() {
-  React24.useEffect(function() {
+  React25.useEffect(function() {
     document.body.setAttribute(lockAttribute, (getCurrentUseCounter() + 1).toString());
     return function() {
       var newCounter = getCurrentUseCounter() - 1;
@@ -17578,10 +17580,10 @@ var useLockAttribute = function() {
 var RemoveScrollBar = function(_a3) {
   var noRelative = _a3.noRelative, noImportant = _a3.noImportant, _b = _a3.gapMode, gapMode = _b === void 0 ? "margin" : _b;
   useLockAttribute();
-  var gap = React24.useMemo(function() {
+  var gap = React25.useMemo(function() {
     return getGapWidth(gapMode);
   }, [gapMode]);
-  return React24.createElement(Style, { styles: getStyles(gap, !noRelative, gapMode, !noImportant ? "!important" : "") });
+  return React25.createElement(Style, { styles: getStyles(gap, !noRelative, gapMode, !noImportant ? "!important" : "") });
 };
 
 // ../../node_modules/.pnpm/react-remove-scroll@2.7.2_@types+react@18.3.31_react@18.3.1/node_modules/react-remove-scroll/dist/es2015/aggresiveCapture.js
@@ -17722,16 +17724,16 @@ var generateStyle = function(id) {
 var idCounter = 0;
 var lockStack = [];
 function RemoveScrollSideCar(props) {
-  var shouldPreventQueue = React25.useRef([]);
-  var touchStartRef = React25.useRef([0, 0]);
-  var activeAxis = React25.useRef();
-  var id = React25.useState(idCounter++)[0];
-  var Style2 = React25.useState(styleSingleton)[0];
-  var lastProps = React25.useRef(props);
-  React25.useEffect(function() {
+  var shouldPreventQueue = React26.useRef([]);
+  var touchStartRef = React26.useRef([0, 0]);
+  var activeAxis = React26.useRef();
+  var id = React26.useState(idCounter++)[0];
+  var Style2 = React26.useState(styleSingleton)[0];
+  var lastProps = React26.useRef(props);
+  React26.useEffect(function() {
     lastProps.current = props;
   }, [props]);
-  React25.useEffect(function() {
+  React26.useEffect(function() {
     if (props.inert) {
       document.body.classList.add("block-interactivity-".concat(id));
       var allow_1 = __spreadArray([props.lockRef.current], (props.shards || []).map(extractRef), true).filter(Boolean);
@@ -17747,7 +17749,7 @@ function RemoveScrollSideCar(props) {
     }
     return;
   }, [props.inert, props.lockRef.current, props.shards]);
-  var shouldCancelEvent = React25.useCallback(function(event, parent) {
+  var shouldCancelEvent = React26.useCallback(function(event, parent) {
     if ("touches" in event && event.touches.length === 2 || event.type === "wheel" && event.ctrlKey) {
       return !lastProps.current.allowPinchZoom;
     }
@@ -17789,7 +17791,7 @@ function RemoveScrollSideCar(props) {
     var cancelingAxis = activeAxis.current || currentAxis;
     return handleScroll(cancelingAxis, parent, event, cancelingAxis === "h" ? deltaX : deltaY, true);
   }, []);
-  var shouldPrevent = React25.useCallback(function(_event) {
+  var shouldPrevent = React26.useCallback(function(_event) {
     var event = _event;
     if (!lockStack.length || lockStack[lockStack.length - 1] !== Style2) {
       return;
@@ -17816,7 +17818,7 @@ function RemoveScrollSideCar(props) {
       }
     }
   }, []);
-  var shouldCancel = React25.useCallback(function(name2, delta, target, should) {
+  var shouldCancel = React26.useCallback(function(name2, delta, target, should) {
     var event = { name: name2, delta, target, should, shadowParent: getOutermostShadowParent(target) };
     shouldPreventQueue.current.push(event);
     setTimeout(function() {
@@ -17825,17 +17827,17 @@ function RemoveScrollSideCar(props) {
       });
     }, 1);
   }, []);
-  var scrollTouchStart = React25.useCallback(function(event) {
+  var scrollTouchStart = React26.useCallback(function(event) {
     touchStartRef.current = getTouchXY(event);
     activeAxis.current = void 0;
   }, []);
-  var scrollWheel = React25.useCallback(function(event) {
+  var scrollWheel = React26.useCallback(function(event) {
     shouldCancel(event.type, getDeltaXY(event), event.target, shouldCancelEvent(event, props.lockRef.current));
   }, []);
-  var scrollTouchMove = React25.useCallback(function(event) {
+  var scrollTouchMove = React26.useCallback(function(event) {
     shouldCancel(event.type, getTouchXY(event), event.target, shouldCancelEvent(event, props.lockRef.current));
   }, []);
-  React25.useEffect(function() {
+  React26.useEffect(function() {
     lockStack.push(Style2);
     props.setCallbacks({
       onScrollCapture: scrollWheel,
@@ -17855,11 +17857,11 @@ function RemoveScrollSideCar(props) {
     };
   }, []);
   var removeScrollBar = props.removeScrollBar, inert = props.inert;
-  return React25.createElement(
-    React25.Fragment,
+  return React26.createElement(
+    React26.Fragment,
     null,
-    inert ? React25.createElement(Style2, { styles: generateStyle(id) }) : null,
-    removeScrollBar ? React25.createElement(RemoveScrollBar, { noRelative: props.noRelative, gapMode: props.gapMode }) : null
+    inert ? React26.createElement(Style2, { styles: generateStyle(id) }) : null,
+    removeScrollBar ? React26.createElement(RemoveScrollBar, { noRelative: props.noRelative, gapMode: props.gapMode }) : null
   );
 }
 function getOutermostShadowParent(node) {
@@ -17878,8 +17880,8 @@ function getOutermostShadowParent(node) {
 var sidecar_default = exportSidecar(effectCar, RemoveScrollSideCar);
 
 // ../../node_modules/.pnpm/react-remove-scroll@2.7.2_@types+react@18.3.31_react@18.3.1/node_modules/react-remove-scroll/dist/es2015/Combination.js
-var ReactRemoveScroll = React26.forwardRef(function(props, ref) {
-  return React26.createElement(RemoveScroll, __assign({}, props, { ref, sideCar: sidecar_default }));
+var ReactRemoveScroll = React27.forwardRef(function(props, ref) {
+  return React27.createElement(RemoveScroll, __assign({}, props, { ref, sideCar: sidecar_default }));
 });
 ReactRemoveScroll.classNames = RemoveScroll.classNames;
 var Combination_default = ReactRemoveScroll;
@@ -18021,16 +18023,16 @@ var Dialog = /* @__PURE__ */ __name17((props) => {
     onOpenChange,
     modal = true
   } = props;
-  const triggerRef = React27.useRef(null);
-  const contentRef = React27.useRef(null);
+  const triggerRef = React28.useRef(null);
+  const contentRef = React28.useRef(null);
   const [open, setOpen] = useControllableState({
     prop: openProp,
     defaultProp: defaultOpen ?? false,
     onChange: onOpenChange,
     caller: DIALOG_NAME
   });
-  const [titleCount, setTitleCount] = React27.useState(0);
-  const [descriptionCount, setDescriptionCount] = React27.useState(0);
+  const [titleCount, setTitleCount] = React28.useState(0);
+  const [descriptionCount, setDescriptionCount] = React28.useState(0);
   return /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(
     DialogProvider,
     {
@@ -18046,7 +18048,7 @@ var Dialog = /* @__PURE__ */ __name17((props) => {
       setDescriptionCount,
       open,
       onOpenChange: setOpen,
-      onOpenToggle: React27.useCallback(() => setOpen((prevOpen) => !prevOpen), [setOpen]),
+      onOpenToggle: React28.useCallback(() => setOpen((prevOpen) => !prevOpen), [setOpen]),
       modal,
       children
     }
@@ -18059,10 +18061,10 @@ var [PortalProvider, usePortalContext] = createDialogContext(PORTAL_NAME, {
 var DialogPortal = /* @__PURE__ */ __name17((props) => {
   const { __scopeDialog, forceMount, children, container } = props;
   const context = useDialogContext(PORTAL_NAME, __scopeDialog);
-  return /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(PortalProvider, { scope: __scopeDialog, forceMount, children: React27.Children.map(children, (child) => /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(Presence, { present: forceMount || context.open, children: /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(Portal, { asChild: true, container, children: child }) })) });
+  return /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(PortalProvider, { scope: __scopeDialog, forceMount, children: React28.Children.map(children, (child) => /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(Presence, { present: forceMount || context.open, children: /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(Portal, { asChild: true, container, children: child }) })) });
 }, "DialogPortal");
 var OVERLAY_NAME = "DialogOverlay";
-var DialogOverlay = /* @__PURE__ */ React27.forwardRef(
+var DialogOverlay = /* @__PURE__ */ React28.forwardRef(
   /* @__PURE__ */ __name17(function DialogOverlay2(props, forwardedRef) {
     const portalContext = usePortalContext(OVERLAY_NAME, props.__scopeDialog);
     const { forceMount = portalContext.forceMount, ...overlayProps } = props;
@@ -18071,7 +18073,7 @@ var DialogOverlay = /* @__PURE__ */ React27.forwardRef(
   }, "DialogOverlay")
 );
 var Slot = createSlot("DialogOverlay.RemoveScroll");
-var DialogOverlayImpl = /* @__PURE__ */ React27.forwardRef(
+var DialogOverlayImpl = /* @__PURE__ */ React28.forwardRef(
   // blank line to reduce diff noise
   /* @__PURE__ */ __name17(function DialogOverlayImpl2(props, forwardedRef) {
     const { __scopeDialog, ...overlayProps } = props;
@@ -18094,7 +18096,7 @@ var DialogOverlayImpl = /* @__PURE__ */ React27.forwardRef(
   }, "DialogOverlayImpl")
 );
 var CONTENT_NAME = "DialogContent";
-var DialogContent = /* @__PURE__ */ React27.forwardRef(
+var DialogContent = /* @__PURE__ */ React28.forwardRef(
   /* @__PURE__ */ __name17(function DialogContent2(props, forwardedRef) {
     const portalContext = usePortalContext(CONTENT_NAME, props.__scopeDialog);
     const { forceMount = portalContext.forceMount, ...contentProps } = props;
@@ -18102,13 +18104,13 @@ var DialogContent = /* @__PURE__ */ React27.forwardRef(
     return /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(Presence, { present: forceMount || context.open, children: context.modal ? /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(DialogContentModal, { ...contentProps, ref: forwardedRef }) : /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(DialogContentNonModal, { ...contentProps, ref: forwardedRef }) });
   }, "DialogContent")
 );
-var DialogContentModal = /* @__PURE__ */ React27.forwardRef(
+var DialogContentModal = /* @__PURE__ */ React28.forwardRef(
   // blank line to reduce diff noise
   /* @__PURE__ */ __name17(function DialogContentModal2(props, forwardedRef) {
     const context = useDialogContext(CONTENT_NAME, props.__scopeDialog);
-    const contentRef = React27.useRef(null);
+    const contentRef = React28.useRef(null);
     const composedRefs = useComposedRefs(forwardedRef, context.contentRef, contentRef);
-    React27.useEffect(() => {
+    React28.useEffect(() => {
       const content = contentRef.current;
       if (content) return hideOthers(content);
     }, []);
@@ -18137,12 +18139,12 @@ var DialogContentModal = /* @__PURE__ */ React27.forwardRef(
     );
   }, "DialogContentModal")
 );
-var DialogContentNonModal = /* @__PURE__ */ React27.forwardRef(
+var DialogContentNonModal = /* @__PURE__ */ React28.forwardRef(
   // blank line to reduce diff noise
   /* @__PURE__ */ __name17(function DialogContentNonModal2(props, forwardedRef) {
     const context = useDialogContext(CONTENT_NAME, props.__scopeDialog);
-    const hasInteractedOutsideRef = React27.useRef(false);
-    const hasPointerDownOutsideRef = React27.useRef(false);
+    const hasInteractedOutsideRef = React28.useRef(false);
+    const hasPointerDownOutsideRef = React28.useRef(false);
     return /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(
       DialogContentImpl,
       {
@@ -18178,7 +18180,7 @@ var DialogContentNonModal = /* @__PURE__ */ React27.forwardRef(
     );
   }, "DialogContentNonModal")
 );
-var DialogContentImpl = /* @__PURE__ */ React27.forwardRef(
+var DialogContentImpl = /* @__PURE__ */ React28.forwardRef(
   // blank line to reduce diff noise
   /* @__PURE__ */ __name17(function DialogContentImpl2(props, forwardedRef) {
     const { __scopeDialog, trapFocus, onOpenAutoFocus, onCloseAutoFocus, ...contentProps } = props;
@@ -18211,7 +18213,7 @@ var DialogContentImpl = /* @__PURE__ */ React27.forwardRef(
   }, "DialogContentImpl")
 );
 var TITLE_NAME = "DialogTitle";
-var DialogTitle = /* @__PURE__ */ React27.forwardRef(
+var DialogTitle = /* @__PURE__ */ React28.forwardRef(
   /* @__PURE__ */ __name17(function DialogTitle2(props, forwardedRef) {
     const { __scopeDialog, ...titleProps } = props;
     const context = useDialogContext(TITLE_NAME, __scopeDialog);
@@ -18224,7 +18226,7 @@ var DialogTitle = /* @__PURE__ */ React27.forwardRef(
   }, "DialogTitle")
 );
 var CLOSE_NAME = "DialogClose";
-var DialogClose = /* @__PURE__ */ React27.forwardRef(
+var DialogClose = /* @__PURE__ */ React28.forwardRef(
   /* @__PURE__ */ __name17(function DialogClose2(props, forwardedRef) {
     const { __scopeDialog, ...closeProps } = props;
     const context = useDialogContext(CLOSE_NAME, __scopeDialog);

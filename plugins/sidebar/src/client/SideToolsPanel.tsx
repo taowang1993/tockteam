@@ -1,5 +1,6 @@
 import { Alert } from '@tockteam/ui/alert'
 import { Button } from '@tockteam/ui/button'
+import { Empty } from '@tockteam/ui/empty'
 import { Input } from '@tockteam/ui/input'
 import {
   useEffect,
@@ -343,7 +344,7 @@ export function FilesView({
     patch({ resource: next })
   }
   if (cwd === undefined) {
-    return <div className="tockteam-side-empty p-[18px] text-[11px] text-[var(--dsw-alias-label-tertiary,#8c959f)]">{t('files.select-workspace')}</div>
+    return <Empty unstyled className="tockteam-side-empty p-[18px] text-[11px] text-[var(--dsw-alias-label-tertiary,#8c959f)]">{t('files.select-workspace')}</Empty>
   }
   return (
     <div className="tockteam-files-view flex min-h-0 flex-1 flex-col">
@@ -363,7 +364,7 @@ export function FilesView({
           onClick={() => { setRefreshKey(value => value + 1) }}
         ><RefreshCw aria-hidden="true" /></Button>
       </div>
-      {loading && <div className="tockteam-side-muted p-[18px] text-[11px] text-[var(--dsw-alias-label-tertiary,#8c959f)]">{t('files.loading')}</div>}
+      {loading && <Empty unstyled className="tockteam-side-muted p-[18px] text-[11px] text-[var(--dsw-alias-label-tertiary,#8c959f)]">{t('files.loading')}</Empty>}
       {error !== '' && <Alert unstyled className="tockteam-side-error mx-3 my-2 rounded-[7px] bg-[color-mix(in_srgb,#cf222e_10%,transparent)] px-[9px] py-[7px] text-[11px] text-[#cf222e]">{error}</Alert>}
       {snapshot?.kind === 'directory' && (
         <div className="tockteam-file-list min-h-0 flex-1 overflow-auto px-[9px] pt-1.5 pb-5">
@@ -389,10 +390,10 @@ export function FilesView({
             </Button>
           ))}
           {snapshot.entries.length === 0 && (
-            <div className="tockteam-side-muted p-[18px] text-[11px] text-[var(--dsw-alias-label-tertiary,#8c959f)]">{t('files.empty-directory')}</div>
+            <Empty unstyled className="tockteam-side-muted p-[18px] text-[11px] text-[var(--dsw-alias-label-tertiary,#8c959f)]">{t('files.empty-directory')}</Empty>
           )}
           {snapshot.truncated && (
-            <div className="tockteam-side-muted p-[18px] text-[11px] text-[var(--dsw-alias-label-tertiary,#8c959f)]">{t('files.showing-first')}</div>
+            <Empty unstyled className="tockteam-side-muted p-[18px] text-[11px] text-[var(--dsw-alias-label-tertiary,#8c959f)]">{t('files.showing-first')}</Empty>
           )}
         </div>
       )}
@@ -434,12 +435,12 @@ export function FileView({
   }, [cwd, path, scope?.sessionId])
 
   if (cwd === undefined || path === undefined) {
-    return <div className="tockteam-side-empty p-[18px] text-[11px] text-[var(--dsw-alias-label-tertiary,#8c959f)]">{t('files.select-workspace')}</div>
+    return <Empty unstyled className="tockteam-side-empty p-[18px] text-[11px] text-[var(--dsw-alias-label-tertiary,#8c959f)]">{t('files.select-workspace')}</Empty>
   }
   if (error !== '') return <Alert unstyled className="tockteam-side-error mx-3 my-2 rounded-[7px] bg-[color-mix(in_srgb,#cf222e_10%,transparent)] px-[9px] py-[7px] text-[11px] text-[#cf222e]">{error}</Alert>
-  if (snapshot === null) return <div className="tockteam-side-muted p-[18px] text-[11px] text-[var(--dsw-alias-label-tertiary,#8c959f)]">{t('files.loading')}</div>
+  if (snapshot === null) return <Empty unstyled className="tockteam-side-muted p-[18px] text-[11px] text-[var(--dsw-alias-label-tertiary,#8c959f)]">{t('files.loading')}</Empty>
   if (snapshot.kind !== 'file') {
-    return <div className="tockteam-side-muted p-[18px] text-[11px] text-[var(--dsw-alias-label-tertiary,#8c959f)]">{t('files.not-file')}</div>
+    return <Empty unstyled className="tockteam-side-muted p-[18px] text-[11px] text-[var(--dsw-alias-label-tertiary,#8c959f)]">{t('files.not-file')}</Empty>
   }
   const head = snapshot.binary
     ? new Uint8Array([0])
@@ -460,9 +461,9 @@ export function FileView({
           {t('files.open')}
         </Button>
       </div>
-      <div className="tockteam-side-muted p-[18px] text-[11px] text-[var(--dsw-alias-label-tertiary,#8c959f)]">
+      <Empty unstyled className="tockteam-side-muted p-[18px] text-[11px] text-[var(--dsw-alias-label-tertiary,#8c959f)]">
         {t('files.no-viewer', { size: formatSize(snapshot.size) })}
-      </div>
+      </Empty>
     </div>
   )
 }
@@ -472,10 +473,10 @@ function OrphanedTab({ title, t }: {
   title: string
 }): JSX.Element {
   return (
-    <div className="tockteam-side-empty p-[18px] text-[11px] text-[var(--dsw-alias-label-tertiary,#8c959f)]">
+    <Empty unstyled className="tockteam-side-empty p-[18px] text-[11px] text-[var(--dsw-alias-label-tertiary,#8c959f)]">
       <strong>{title}</strong>
       <p>{t('side.orphaned-tab')}</p>
-    </div>
+    </Empty>
   )
 }
 

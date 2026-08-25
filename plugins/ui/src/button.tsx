@@ -36,15 +36,16 @@ type ButtonProps = React.ComponentProps<'button'> & VariantProps<typeof buttonVa
   unstyled?: boolean
 }
 
-function Button({
+const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(function Button({
   className,
   variant = 'default',
   size = 'default',
   unstyled = false,
   ...props
-}: ButtonProps): React.ReactElement {
+}, ref) {
   return (
     <button
+      ref={ref}
       data-slot="button"
       data-variant={variant}
       data-size={size}
@@ -52,7 +53,7 @@ function Button({
       {...props}
     />
   )
-}
+})
 
 export { Button, buttonVariants }
 export type { ButtonProps }
