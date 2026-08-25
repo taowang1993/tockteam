@@ -1,6 +1,6 @@
-@layer theme, utilities;
+@layer theme;
 @import 'tailwindcss/theme.css' layer(theme);
-@import 'tailwindcss/utilities.css' layer(utilities) source(none);
+@import 'tailwindcss/utilities.css' source(none);
 
 @source '../../../../src/client.ts';
 @source '../../../../src/splash.html';
