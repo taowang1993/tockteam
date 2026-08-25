@@ -25,6 +25,7 @@ try {
   await symlink(protocolRoot, join(modulesRoot, '@deepseek-ai', 'dsh-typert-protocol'), 'dir')
   await symlink(await realpath(join(root, 'node_modules', '@tockteam', 'desktop')), join(modulesRoot, '@tockteam', 'desktop'), 'dir')
   await symlink(await realpath(join(root, 'node_modules', '@tockteam', 'tocktutor-workbench')), join(modulesRoot, '@tockteam', 'tocktutor-workbench'), 'dir')
+  await symlink(await realpath(join(root, 'node_modules', '@tockteam', 'ui')), join(modulesRoot, '@tockteam', 'ui'), 'dir')
   await symlink(join(root, 'node_modules', '@types'), join(modulesRoot, '@types'), 'dir')
   await symlink(await realpath(join(root, 'node_modules', 'react')), join(modulesRoot, 'react'), 'dir')
   await symlink(await realpath(join(root, 'node_modules', 'tockbot-note-runtime')), join(modulesRoot, 'tockbot-note-runtime'), 'dir')

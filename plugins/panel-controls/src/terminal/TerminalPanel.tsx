@@ -1,3 +1,4 @@
+import { Button, Input } from '@tockteam/ui'
 import {
   useEffect,
   useState,
@@ -133,7 +134,7 @@ export function TerminalPanel({ locale, t: translate, store, scopeKey, cwd, acti
                   ? ` · ${t('terminal.status.exited')}`
                   : tab.status === 'error' ? ` · ${t('terminal.status.error')}` : ''}
               </span>
-              <button
+              <Button unstyled
                 type="button"
                 className="grid size-[15px] cursor-pointer place-items-center rounded-sm border-0 bg-transparent p-0 font-[inherit] leading-none text-[var(--dsw-alias-label-dimmed,#8c959f)] hover:bg-[var(--dsw-alias-interactive-bg-hover,rgba(0,0,0,0.06))] hover:text-foreground [&_svg]:size-[11px]"
                 aria-label={t('terminal.close-tab', { tab: tab.label })}
@@ -141,28 +142,28 @@ export function TerminalPanel({ locale, t: translate, store, scopeKey, cwd, acti
                   event.stopPropagation()
                   store.dispatch({ type: 'remove-tab', id: tab.id })
                 }}
-              ><X aria-hidden="true" /></button>
+              ><X aria-hidden="true" /></Button>
             </span>
           ))}
-          <button
+          <Button unstyled
             type="button"
             className="size-[22px] flex-none cursor-pointer rounded-md border-0 bg-transparent p-0 font-[inherit] text-[15px] text-muted-foreground hover:bg-[var(--dsw-alias-interactive-bg-hover,rgba(0,0,0,0.06))] hover:text-foreground [&_svg]:size-[15px]"
             onClick={addTab}
             title={t('terminal.new-shell')}
             aria-label={t('terminal.new-shell')}
-          ><Plus aria-hidden="true" /></button>
+          ><Plus aria-hidden="true" /></Button>
           {state.tabs.length === 0 && <span className="select-none pl-0.5 text-[var(--dsw-alias-label-dimmed,#8c959f)]">{t('terminal')}</span>}
         </div>
         <div className="flex items-center gap-0.5">
-          <button
+          <Button unstyled
             type="button"
             className="h-6 w-[27px] cursor-pointer rounded-md border-0 bg-transparent p-0 font-[inherit] text-muted-foreground hover:bg-[var(--dsw-alias-interactive-bg-hover,rgba(0,0,0,0.06))] hover:text-foreground [&_svg]:size-[15px]"
             onClick={() => { setSettingsOpen(open => !open) }}
             title={t('terminal.font')}
             aria-label={t('terminal.font-settings')}
             aria-expanded={settingsOpen}
-          ><Type aria-hidden="true" /></button>
-          <button
+          ><Type aria-hidden="true" /></Button>
+          <Button unstyled
             type="button"
             className="h-6 w-[27px] cursor-pointer rounded-md border-0 bg-transparent p-0 font-[inherit] text-muted-foreground hover:bg-[var(--dsw-alias-interactive-bg-hover,rgba(0,0,0,0.06))] hover:text-foreground [&_svg]:size-[15px]"
             onClick={() => { store.dispatch({ type: 'toggle-collapsed' }) }}
@@ -170,18 +171,18 @@ export function TerminalPanel({ locale, t: translate, store, scopeKey, cwd, acti
             aria-label={state.collapsed ? t('terminal.expand') : t('terminal.collapse')}
           >{state.collapsed
             ? <ChevronUp aria-hidden="true" />
-            : <ChevronDown aria-hidden="true" />}</button>
+            : <ChevronDown aria-hidden="true" />}</Button>
         </div>
       </div>
       {settingsOpen && (
         <div className="absolute top-[46px] right-2 z-8 grid w-[min(360px,calc(100%-16px))] gap-3 box-border rounded-[9px] border border-border bg-surface-muted p-3.5 text-xs shadow-[0_10px_28px_rgba(0,0,0,0.16)] group-data-[collapsed]/terminal:top-auto group-data-[collapsed]/terminal:bottom-[38px]" role="dialog" aria-label={t('terminal.font-settings')}>
           <div className="flex items-center justify-between gap-2.5">
             <strong>{t('terminal.font')}</strong>
-            <button className="cursor-pointer border-0 bg-transparent px-[5px] py-0.5 font-[inherit] text-base text-muted-foreground [&_svg]:size-[15px]" type="button" onClick={() => { setSettingsOpen(false) }} aria-label={t('terminal.close-settings')}><X aria-hidden="true" /></button>
+            <Button unstyled className="cursor-pointer border-0 bg-transparent px-[5px] py-0.5 font-[inherit] text-base text-muted-foreground [&_svg]:size-[15px]" type="button" onClick={() => { setSettingsOpen(false) }} aria-label={t('terminal.close-settings')}><X aria-hidden="true" /></Button>
           </div>
           <label className="grid grid-cols-[78px_minmax(0,1fr)] items-center gap-2.5 text-muted-foreground">
             <span>{t('terminal.font-family')}</span>
-            <input
+            <Input unstyled
               className="h-7 min-w-0 box-border rounded-md border border-border bg-surface px-2 font-[inherit] text-foreground"
               type="text"
               list={fontPresetListId}
@@ -203,7 +204,7 @@ export function TerminalPanel({ locale, t: translate, store, scopeKey, cwd, acti
           </label>
           <label className="grid grid-cols-[78px_minmax(0,1fr)] items-center gap-2.5 text-muted-foreground">
             <span>{t('terminal.font-size')}</span>
-            <input
+            <Input unstyled
               className="h-7 min-w-0 box-border rounded-md border border-border bg-surface px-2 font-[inherit] text-foreground"
               type="number"
               min={MIN_TERMINAL_FONT_SIZE}
@@ -214,7 +215,7 @@ export function TerminalPanel({ locale, t: translate, store, scopeKey, cwd, acti
           </label>
           <div className="flex items-center justify-between gap-2.5 text-[var(--dsw-alias-label-dimmed,#8c959f)]">
             <span>{MIN_TERMINAL_FONT_SIZE}–{MAX_TERMINAL_FONT_SIZE}px</span>
-            <button className="cursor-pointer rounded-md border border-border bg-transparent px-[9px] py-1 font-[inherit] text-foreground" type="button" onClick={() => { store.dispatch({ type: 'reset-font' }) }}>{t('terminal.reset')}</button>
+            <Button unstyled className="cursor-pointer rounded-md border border-border bg-transparent px-[9px] py-1 font-[inherit] text-foreground" type="button" onClick={() => { store.dispatch({ type: 'reset-font' }) }}>{t('terminal.reset')}</Button>
           </div>
         </div>
       )}
@@ -253,7 +254,7 @@ export function TerminalPanel({ locale, t: translate, store, scopeKey, cwd, acti
         {state.tabs.length === 0 && (
           <div className="flex flex-1 items-center justify-center gap-2.5 text-xs text-[var(--dsw-alias-label-dimmed,#8c959f)]">
             <span>{t('terminal.empty')}</span>
-            <button className="cursor-pointer rounded-md border border-border bg-transparent px-[9px] py-1 font-[inherit] text-foreground" type="button" onClick={addTab}>{t('terminal.new-shell')}</button>
+            <Button unstyled className="cursor-pointer rounded-md border border-border bg-transparent px-[9px] py-1 font-[inherit] text-foreground" type="button" onClick={addTab}>{t('terminal.new-shell')}</Button>
           </div>
         )}
       </div>

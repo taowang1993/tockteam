@@ -29,6 +29,7 @@ try {
     link('@deepseek-ai/dsh-client-ui-slots'),
     link('@tockteam/desktop'),
     link('@tockteam/tocktutor-workbench'),
+    link('@tockteam/ui'),
     link('react'),
     link('tockbot-note-runtime'),
     link('tockbot-note-vault'),

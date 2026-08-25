@@ -73,6 +73,7 @@
     "@deepseek-ai/dsh-typert-protocol": "0.1.0-rc.5",
     "@tockteam/desktop": "workspace:*",
     "@tockteam/tocktutor-workbench": "workspace:0.1.7",
+    "@tockteam/ui": "link:../../../ui",
     "@types/node": "22.20.0",
     "@types/react": "18.3.31",
     "@types/react-dom": "18.3.7",

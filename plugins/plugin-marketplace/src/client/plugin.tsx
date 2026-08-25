@@ -1,3 +1,4 @@
+import { Button, Input, NativeSelect } from '@tockteam/ui'
 import {
   useCallback,
   useEffect,
@@ -200,7 +201,7 @@ function MarketplaceNavigationEntry({
   if (!state.available) return null
   const label = translate('plugins')
   return (
-    <button
+    <Button unstyled
       aria-label={label}
       className="box-border flex h-[34px] min-h-[34px] w-[calc(100%+8px)] cursor-pointer items-center gap-2 my-1 -mx-1 rounded-xl border-0 bg-transparent py-1.5 pr-0.5 pl-2.5 text-left font-[inherit] text-foreground [-webkit-app-region:no-drag] hover:bg-[var(--dsw-alias-interactive-bg-hover,rgba(0,0,0,0.05))] data-[active=true]:bg-[var(--dsw-alias-interactive-bg-hover,rgba(0,0,0,0.05))] data-[collapsed=true]:my-[8px] data-[collapsed=true]:mb-[10px] data-[collapsed=true]:size-9 data-[collapsed=true]:min-h-9 data-[collapsed=true]:justify-center data-[collapsed=true]:rounded-full data-[collapsed=true]:p-0 data-[collapsed=true]:[&_span]:hidden [&_svg]:size-5 [&_svg]:flex-none [&_svg]:stroke-[1.7]"
       data-tockteam-marketplace-nav=""
@@ -211,7 +212,7 @@ function MarketplaceNavigationEntry({
     >
       <Blocks aria-hidden="true" />
       {wide && <span>{label}</span>}
-    </button>
+    </Button>
   )
 }
 
@@ -410,7 +411,7 @@ function PluginCard({
   t: Translate<MarketplaceMessage>
 }): JSX.Element {
   return (
-    <button
+    <Button unstyled
       className="relative flex min-h-44 cursor-pointer flex-col rounded-2xl border border-border bg-background p-[17px] text-left text-inherit transition-[border-color,box-shadow,transform] duration-[120ms] ease-in-out hover:-translate-y-px hover:border-[#a8bff3] hover:shadow-[0_9px_28px_rgba(31,35,41,0.08)] data-[selected=true]:-translate-y-px data-[selected=true]:border-[#a8bff3] data-[selected=true]:shadow-[0_9px_28px_rgba(31,35,41,0.08)] motion-reduce:transition-none"
       data-selected={String(selected)}
       onClick={select}
@@ -452,7 +453,7 @@ function PluginCard({
           </span>
         )}
       </div>
-    </button>
+    </Button>
   )
 }
 
@@ -495,7 +496,7 @@ function PluginDetail({
       aria-label={t('details', { plugin: plugin.title })}
     >
       <div className="px-6 pt-[25px] pb-[38px]">
-        <button className={`${ICON_BUTTON_CLASSES} float-right`} onClick={close} type="button"><X aria-hidden="true" /></button>
+        <Button unstyled className={`${ICON_BUTTON_CLASSES} float-right`} onClick={close} type="button"><X aria-hidden="true" /></Button>
         <h2 className="mt-px mr-[42px] mb-1 text-[19px] leading-[1.3]">{plugin.title}</h2>
         <span className={PILL_CLASSES} data-installed={String(plugin.installed)}>
           {plugin.installed ? t('installed') : mechanismLabel(plugin, t)}
@@ -550,7 +551,7 @@ function PluginDetail({
             )}
             {plan.requirements.map(requirement => (
               <label className="my-3 flex items-start gap-2 text-[10px] leading-[1.45] text-[#7d5412] [&_input]:mt-0.5 [&_input]:flex-none [&_input]:accent-[#315fae]" key={requirement}>
-                  <input
+                  <Input unstyled
                     checked={confirmations.includes(requirement)}
                     onChange={event => { setConfirmed(requirement, event.target.checked) }}
                     type="checkbox"
@@ -564,13 +565,13 @@ function PluginDetail({
 
         <div className="mt-[18px] flex flex-wrap gap-2">
           {plugin.mechanism === 'unsupported' || plugin.protected ? (
-            <button className={BUTTON_CLASSES} onClick={() => { void bridge.openExternal(plugin.url) }} type="button">
+            <Button unstyled className={BUTTON_CLASSES} onClick={() => { void bridge.openExternal(plugin.url) }} type="button">
               {t('open-repository')}
-            </button>
+            </Button>
           ) : plan === null ? (
             <>
               {!plugin.installed && (
-                <button
+                <Button unstyled
                   className={BUTTON_CLASSES}
                   data-primary="true"
                   disabled={pending}
@@ -582,10 +583,10 @@ function PluginDetail({
                   type="button"
                 >
                   {t('preview.install')}
-                </button>
+                </Button>
               )}
               {plugin.installed && plugin.updateAvailable && (
-                <button
+                <Button unstyled
                   className={BUTTON_CLASSES}
                   data-primary="true"
                   disabled={pending}
@@ -597,10 +598,10 @@ function PluginDetail({
                   type="button"
                 >
                   {t('preview.update')}
-                </button>
+                </Button>
               )}
               {plugin.installed && (
-                <button
+                <Button unstyled
                   className={BUTTON_CLASSES}
                   disabled={pending}
                   onClick={() => { void run({
@@ -611,10 +612,10 @@ function PluginDetail({
                   type="button"
                 >
                   {plugin.enabled ? t('preview.disable') : t('preview.enable')}
-                </button>
+                </Button>
               )}
               {plugin.installed && (
-                <button
+                <Button unstyled
                   className={BUTTON_CLASSES}
                   data-danger="true"
                   disabled={pending}
@@ -626,11 +627,11 @@ function PluginDetail({
                   type="button"
                 >
                   {t('preview.uninstall')}
-                </button>
+                </Button>
               )}
             </>
           ) : snapshot.preview === null ? (
-            <button
+            <Button unstyled
               className={BUTTON_CLASSES}
               data-primary="true"
               disabled={pending || !readyToPreview}
@@ -638,11 +639,11 @@ function PluginDetail({
               type="button"
             >
               {t('preview.launch')}
-            </button>
+            </Button>
           ) : null}
-          <button className={BUTTON_CLASSES} onClick={() => { void bridge.openExternal(plugin.url) }} type="button">
+          <Button unstyled className={BUTTON_CLASSES} onClick={() => { void bridge.openExternal(plugin.url) }} type="button">
             {t('view-source')}
-          </button>
+          </Button>
         </div>
       </div>
     </aside>
@@ -775,43 +776,43 @@ function MarketplaceSurface({ bridge, locale, translate, view }: {
             </div>
             <div className="ml-auto flex items-center gap-2">
               {snapshot?.undoAvailable === true && (
-                <button className={BUTTON_CLASSES} disabled={pending} onClick={() => { void run({ type: 'undo' }) }} type="button">
+                <Button unstyled className={BUTTON_CLASSES} disabled={pending} onClick={() => { void run({ type: 'undo' }) }} type="button">
                   {t('undo-last-apply')}
-                </button>
+                </Button>
               )}
-              <button className={BUTTON_CLASSES} disabled={pending} onClick={() => { void run({ type: 'refresh' }) }} type="button">
+              <Button unstyled className={BUTTON_CLASSES} disabled={pending} onClick={() => { void run({ type: 'refresh' }) }} type="button">
                 {pending ? t('working') : t('refresh')}
-              </button>
-              <button
+              </Button>
+              <Button unstyled
                 className={ICON_BUTTON_CLASSES}
                 onClick={() => { view.setOpen(false) }}
                 title={t('close')}
                 type="button"
-              ><X aria-hidden="true" /></button>
+              ><X aria-hidden="true" /></Button>
             </div>
           </header>
           {snapshot?.preview !== null && snapshot?.preview !== undefined && (
             <div className="mx-7 mt-3.5 flex flex-wrap items-center gap-2.5 rounded-[11px] border border-[#bcd0fa] bg-[#f2f6ff] px-3.5 py-[11px] text-[11px] leading-[1.45] text-[#244f9e] dark:border-[#395993] dark:bg-[#182744] dark:text-[#a9c4ff] [&_strong]:mr-auto">
               <strong>{t('preview.running', { plugin: snapshot.preview.pluginId })}</strong>
-              <button className={BUTTON_CLASSES} disabled={pending} onClick={() => { void run({ type: 'discard' }) }} type="button">
+              <Button unstyled className={BUTTON_CLASSES} disabled={pending} onClick={() => { void run({ type: 'discard' }) }} type="button">
                 {t('discard')}
-              </button>
-              <button className={BUTTON_CLASSES} data-primary="true" disabled={pending} onClick={() => { void run({ type: 'apply' }) }} type="button">
+              </Button>
+              <Button unstyled className={BUTTON_CLASSES} data-primary="true" disabled={pending} onClick={() => { void run({ type: 'apply' }) }} type="button">
                 {t('apply-action', { action: t(`action.${snapshot.preview.action}`) })}
-              </button>
+              </Button>
             </div>
           )}
           {error !== null && (
             <div className="mx-7 mt-[18px] flex items-center gap-3 rounded-[11px] border border-[#f1c2bd] bg-[#fff5f4] px-3.5 py-[11px] text-[11px] leading-[1.45] text-[#9c2f24] [&_span]:mr-auto [&_span]:min-w-0 [&_span]:[overflow-wrap:anywhere]">
               <span>{error}</span>
-              <button
+              <Button unstyled
                 className={`${BUTTON_CLASSES} flex-none border-[#e8b4ae] bg-white text-[#9c2f24]`}
                 disabled={pending}
                 onClick={() => { resetView(); void run({ type: 'refresh' }) }}
                 type="button"
               >
                 {t('reset-and-reload')}
-              </button>
+              </Button>
             </div>
           )}
           {snapshot?.lastAction !== null && snapshot?.lastAction !== undefined && error === null && (
@@ -825,7 +826,7 @@ function MarketplaceSurface({ bridge, locale, translate, view }: {
             <div className="mb-5 flex flex-wrap items-center gap-2.5">
               <div className="flex h-[38px] max-w-[460px] flex-[1_1_280px] items-center rounded-[11px] border border-[var(--dsw-alias-border-l1,#ddd)] bg-background px-[13px] [&>svg]:mr-[9px] [&>svg]:size-4 [&>svg]:fill-none [&>svg]:stroke-[1.7] [&>svg]:stroke-subtle-foreground">
                 <Search aria-hidden="true" />
-                <input
+                <Input unstyled
                   aria-label={t('search.label')}
                   className="w-full border-0 bg-transparent font-[inherit] text-[13px] text-inherit outline-0"
                   onChange={event => { setSearch(event.target.value) }}
@@ -833,7 +834,7 @@ function MarketplaceSurface({ bridge, locale, translate, view }: {
                   value={search}
                 />
                 {search !== '' && (
-                  <button className="grid size-6 flex-none cursor-pointer place-items-center rounded-[7px] border-0 bg-transparent p-0 font-[15px/1_system-ui,sans-serif] text-subtle-foreground hover:bg-[var(--dsw-alias-interactive-bg-hover,#f1f2f3)] [&_svg]:m-0 [&_svg]:size-3.5" aria-label={t('search.clear')} onClick={() => { setSearch('') }} type="button"><X aria-hidden="true" /></button>
+                  <Button unstyled className="grid size-6 flex-none cursor-pointer place-items-center rounded-[7px] border-0 bg-transparent p-0 font-[15px/1_system-ui,sans-serif] text-subtle-foreground hover:bg-[var(--dsw-alias-interactive-bg-hover,#f1f2f3)] [&_svg]:m-0 [&_svg]:size-3.5" aria-label={t('search.clear')} onClick={() => { setSearch('') }} type="button"><X aria-hidden="true" /></Button>
                 )}
               </div>
               <div className="flex h-[38px] max-w-full items-center overflow-x-auto rounded-[11px] border border-[var(--dsw-alias-border-l1,#ddd)] bg-[var(--dsw-alias-interactive-bg-hover,#f3f4f5)] p-[3px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [&_button]:flex [&_button]:h-[30px] [&_button]:cursor-pointer [&_button]:items-center [&_button]:gap-[5px] [&_button]:whitespace-nowrap [&_button]:rounded-lg [&_button]:border-0 [&_button]:bg-transparent [&_button]:px-2.5 [&_button]:font-[inherit] [&_button]:text-[11px] [&_button]:text-muted-foreground [&_button[data-active=true]]:bg-background [&_button[data-active=true]]:font-semibold [&_button[data-active=true]]:text-foreground [&_button[data-active=true]]:shadow-[0_1px_4px_rgba(31,35,41,0.1)] [&_span]:text-[9px] [&_span]:text-subtle-foreground" role="group" aria-label={t('installation-status')}>
@@ -844,17 +845,17 @@ function MarketplaceSurface({ bridge, locale, translate, view }: {
                   ['updates', t('updates')],
                   ['disabled', t('disabled')],
                 ] as const).map(([value, label]) => (
-                  <button
+                  <Button unstyled
                     data-active={String(statusFilter === value)}
                     key={value}
                     onClick={() => { setStatusFilter(value) }}
                     type="button"
                   >
                     {label}<span>{statusCounts[value]}</span>
-                  </button>
+                  </Button>
                 ))}
               </div>
-              <select
+              <NativeSelect unstyled
                 aria-label={t('plugin-category')}
                 className="h-[38px] rounded-[10px] border border-[var(--dsw-alias-border-l1,#ddd)] bg-background px-[11px] font-[inherit] text-xs text-inherit"
                 onChange={event => { setCategoryFilter(event.target.value) }}
@@ -862,7 +863,7 @@ function MarketplaceSurface({ bridge, locale, translate, view }: {
               >
                 <option value="all">{t('all-categories')}</option>
                 {categories.map(category => <option key={category} value={category}>{category}</option>)}
-              </select>
+              </NativeSelect>
               <span className="ml-auto whitespace-nowrap text-[11px] text-subtle-foreground">
                 {t('plugin-count', { count: plugins.length })}
               </span>

@@ -1,3 +1,4 @@
+import { Button, Input, NativeSelect, Textarea } from '@tockteam/ui'
 import {
   useCallback,
   useEffect,
@@ -631,37 +632,37 @@ function DesktopPanelToolbar({
     <nav className="tockteam-panel-toolbar fixed top-[5px] right-3.5 z-[2147483647] flex items-center gap-[3px] border-0 bg-transparent p-0 shadow-none [-webkit-app-region:no-drag] [html[data-tockteam-tocktutor-active='true']_&]:hidden [&_button]:grid [&_button]:size-[30px] [&_button]:cursor-pointer [&_button]:place-items-center [&_button]:rounded-lg [&_button]:border-0 [&_button]:bg-transparent [&_button]:p-0 [&_button]:text-[var(--dsw-alias-label-secondary,#57606a)] [&_button]:[-webkit-app-region:no-drag] [&_button:hover]:text-[var(--dsw-alias-label-primary,#1f2328)] [&_button[aria-pressed='true']]:text-[var(--dsw-alias-label-primary,#1f2328)] [&_svg]:size-[18px] [&_svg]:fill-none [&_svg]:stroke-current [&_svg]:stroke-[1.7] [&_svg]:[stroke-linecap:round] [&_svg]:[stroke-linejoin:round]" aria-label={t('panels.label')}>
       {sideOpen
         ? (
-          <button
+          <Button unstyled
             type="button"
             aria-label={t('side.expand')}
             aria-pressed={workspaceState.maximized}
             title={workspaceState.maximized ? t('side.restore') : t('side.expand')}
             onClick={() => { service.togglePanelMaximized() }}
-          ><PanelIcon kind="expand" /></button>
+          ><PanelIcon kind="expand" /></Button>
         )
         : (
-          <button
+          <Button unstyled
             type="button"
             aria-label={t('summary.toggle')}
             aria-pressed={summaryOpen}
             title={t('summary.title')}
             onClick={() => { service.setOpen(false); pinnedSummary.toggle() }}
-          ><PanelIcon kind="summary" /></button>
+          ><PanelIcon kind="summary" /></Button>
         )}
-      <button
+      <Button unstyled
         type="button"
         aria-label={t('terminal.toggle')}
         aria-pressed={terminalOpen}
         title={`${t('terminal.title')} (⌘J)`}
         onClick={() => { panels.toggleBottomPanel() }}
-      ><PanelIcon kind="terminal" /></button>
-      <button
+      ><PanelIcon kind="terminal" /></Button>
+      <Button unstyled
         type="button"
         aria-label={t('side.toggle')}
         aria-pressed={sideOpen}
         title={`${t('side.title')} (⌥⌘B)`}
         onClick={() => { service.toggleSidePanel() }}
-      ><PanelIcon kind="side" /></button>
+      ><PanelIcon kind="side" /></Button>
     </nav>
   )
 }
@@ -676,12 +677,12 @@ function DesktopWindowTitlebar({
   return (
     <header className="tockteam-window-titlebar fixed top-0 right-0 left-0 z-[2147483647] grid h-[var(--tockteam-titlebar-height,40px)] grid-cols-[minmax(120px,1fr)_minmax(0,auto)_minmax(120px,1fr)] items-center border-b border-[var(--tockteam-shell-divider)] bg-[var(--tockteam-shell-chrome)] shadow-[0_1px_0_rgb(0_0_0_/_2%)] select-none [-webkit-app-region:drag]">
       <div className="tockteam-titlebar-leading ml-[var(--tockteam-rail-width)] flex h-full w-[var(--tockteam-primary-sidebar-width)] box-border items-center justify-end border-r border-[var(--tockteam-shell-divider)] pr-1 [body:has([data-sidebar-collapsed])_&]:w-[84px] [body:has([data-sidebar-collapsed])_&]:border-r-0 [html[data-tockteam-tocktutor-active='true']_&]:invisible [&_button]:grid [&_button]:size-9 [&_button]:cursor-pointer [&_button]:place-items-center [&_button]:rounded-lg [&_button]:border-0 [&_button]:bg-transparent [&_button]:p-0 [&_button]:text-[var(--dsw-alias-label-secondary,#57606a)] [&_button]:[-webkit-app-region:no-drag] [&_button:hover]:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))] [&_button:hover]:text-[var(--dsw-alias-label-primary,#1f2328)] [&_svg]:size-[18px] [&_svg]:fill-none [&_svg]:stroke-current [&_svg]:stroke-[1.7] [&_svg]:[stroke-linecap:round] [&_svg]:[stroke-linejoin:round]">
-        <button
+        <Button unstyled
           type="button"
           aria-label={t('sidebar.toggle')}
           title={t('sidebar.toggle')}
           onClick={() => { panels.toggleSidebar() }}
-        ><PanelIcon kind="sidebar" /></button>
+        ><PanelIcon kind="sidebar" /></Button>
       </div>
       <span className="tockteam-window-title min-w-0 truncate text-center text-sm leading-none font-normal text-[color-mix(in_srgb,var(--dsw-alias-label-primary,#1f2328)_90%,var(--tockteam-shell-chrome,#fff)_10%)] [html[data-tockteam-tocktutor-active='true']_&]:invisible">TockTeam</span>
       <div className="hidden [html[data-tockteam-tocktutor-active='true']_&]:absolute [html[data-tockteam-tocktutor-active='true']_&]:inset-[0_0_0_var(--tockteam-rail-width)] [html[data-tockteam-tocktutor-active='true']_&]:z-1 [html[data-tockteam-tocktutor-active='true']_&]:block" id="tockteam-window-titlebar-slot" />
@@ -945,15 +946,15 @@ function WorkspacePanel({
     <div className="tockteam-review-view flex min-h-0 flex-1 flex-col overflow-hidden" aria-label={t('workspace.changes')}>
       <header className="tockteam-workspace-header flex min-h-[58px] flex-none items-center justify-between border-b border-[var(--dsw-alias-border-l1,rgb(0_0_0_/_8%))] py-2.5 pr-3.5 pl-5 [&>div]:flex [&>div]:flex-none [&>div]:gap-0.5 [&_button]:size-7 [&_button]:cursor-pointer [&_button]:rounded-[7px] [&_button]:border-0 [&_button]:bg-transparent [&_button]:p-0 [&_button]:text-[var(--dsw-alias-label-secondary,#57606a)] [&_button:hover]:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))] [&_button:hover]:text-[var(--dsw-alias-label-primary,#1f2328)] [&_button_svg]:mx-auto [&_button_svg]:block [&_button_svg]:size-4 [&_strong]:min-w-0 [&_strong]:truncate [&_strong]:text-[15px] [&_strong]:font-medium">
         <div>
-          <button type="button" aria-label={t('side.back')} onClick={() => { service.openMenu() }}><ChevronLeft aria-hidden="true" /></button>
+          <Button unstyled type="button" aria-label={t('side.back')} onClick={() => { service.openMenu() }}><ChevronLeft aria-hidden="true" /></Button>
           <strong>{snapshot?.name ?? (cwd?.split(/[\\/]/).filter(Boolean).pop() || t('workspace.title'))}</strong>
         </div>
         <div>
-          <button type="button" onClick={() => { void refresh() }} aria-label={t('workspace.refresh')} title={t('workspace.refresh')}><RefreshCw aria-hidden="true" /></button>
+          <Button unstyled type="button" onClick={() => { void refresh() }} aria-label={t('workspace.refresh')} title={t('workspace.refresh')}><RefreshCw aria-hidden="true" /></Button>
           {window.dshDesktop?.chooseWorkspace !== undefined && (
-            <button type="button" onClick={() => { void chooseWorkspace() }} aria-label={t('workspace.add')} title={t('workspace.add')}><Plus aria-hidden="true" /></button>
+            <Button unstyled type="button" onClick={() => { void chooseWorkspace() }} aria-label={t('workspace.add')} title={t('workspace.add')}><Plus aria-hidden="true" /></Button>
           )}
-          <button type="button" onClick={() => { service.setOpen(false) }} aria-label={t('workspace.close-review')} title={t('workspace.close-review')}><X aria-hidden="true" /></button>
+          <Button unstyled type="button" onClick={() => { service.setOpen(false) }} aria-label={t('workspace.close-review')} title={t('workspace.close-review')}><X aria-hidden="true" /></Button>
         </div>
       </header>
 
@@ -971,7 +972,7 @@ function WorkspacePanel({
               <div className="tockteam-change-list pt-0 pr-0.5 pb-[5px] pl-[30px]">
                 {visibleChanges.map(change => (
                   <div key={`${change.path}:${change.oldPath ?? ''}`}>
-                    <button
+                    <Button unstyled
                       type="button"
                       className="tockteam-change-row grid min-h-[30px] w-full grid-cols-[18px_minmax(0,1fr)_auto] items-center gap-1.5 rounded-md border-0 bg-transparent px-1.5 py-[3px] text-left text-[11px] leading-[1.35] text-[var(--dsw-alias-label-primary,#1f2328)] hover:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))] data-[selected]:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))] [font-family:var(--ds-font-family-code,ui-monospace,monospace)] [&>span:nth-child(2)]:truncate [&_small]:text-[9px] [&_small]:leading-none [&_small]:text-[var(--dsw-alias-label-dimmed,#8c959f)]"
                       data-selected={selectedPath === change.path || undefined}
@@ -980,7 +981,7 @@ function WorkspacePanel({
                       <span className={`tockteam-change-status font-bold ${change.status === 'added' || change.status === 'untracked' ? 'text-[#2da44e]' : change.status === 'deleted' || change.status === 'conflicted' ? 'text-[#cf222e]' : 'text-[#9a6700]'}`}>{statusLabel(change.status)}</span>
                       <span title={change.path}>{change.path}</span>
                       {change.staged && <small>{t('workspace.staged')}</small>}
-                    </button>
+                    </Button>
                     {selectedPath === change.path && <pre className="tockteam-change-diff mt-[3px] mb-[7px] max-h-60 overflow-auto whitespace-pre rounded-md bg-[var(--dsw-alias-bg-layer-1,#f6f8fa)] p-[9px] text-[10px] leading-[1.45] text-[var(--dsw-alias-label-secondary,#57606a)] [font-family:var(--ds-font-family-code,ui-monospace,monospace)]">{diff}</pre>}
                   </div>
                 ))}
@@ -1009,7 +1010,7 @@ function WorkspacePanel({
                 </div>
                 <div className="tockteam-review-commit-list grid gap-0.5 pr-0.5 pb-2 pl-[30px]">
                   {history.map(entry => (
-                    <button
+                    <Button unstyled
                       type="button"
                       key={entry.hashFull}
                       className="tockteam-review-commit-row grid min-h-8 grid-cols-[58px_minmax(0,1fr)_auto] items-center gap-[7px] rounded-md border-0 bg-transparent px-[7px] py-1 text-left text-inherit hover:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))] data-[selected]:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))] disabled:cursor-default disabled:opacity-65 [&>span]:truncate [&>span]:text-[11px] [&_code]:text-[9px] [&_code]:leading-[1.3] [&_code]:text-[var(--dsw-alias-label-secondary,#57606a)] [&_code]:[font-family:var(--ds-font-family-code,ui-monospace,monospace)] [&_small]:max-w-[72px] [&_small]:truncate [&_small]:text-[9px] [&_small]:text-[var(--dsw-alias-label-dimmed,#8c959f)]"
@@ -1020,7 +1021,7 @@ function WorkspacePanel({
                       <code>{entry.hash}</code>
                       <span title={entry.subject}>{entry.subject}</span>
                       <small>{entry.author}</small>
-                    </button>
+                    </Button>
                   ))}
                   {history.length === 0 && (
                     <div className="tockteam-workspace-muted p-[18px] text-center text-[11px] text-[var(--dsw-alias-label-dimmed,#8c959f)]">
@@ -1039,13 +1040,13 @@ function WorkspacePanel({
                           {selectedCommit.author} · {selectedCommit.authoredAt}
                         </small>
                       </div>
-                      <button
+                      <Button unstyled
                         type="button"
                         onClick={() => {
                           setCommentTarget({ kind: 'commit' })
                           setCommentNotice('')
                         }}
-                      >{t('workspace.comment-commit')}</button>
+                      >{t('workspace.comment-commit')}</Button>
                     </header>
 
                     {selectedComments.length > 0 && (
@@ -1059,12 +1060,12 @@ function WorkspacePanel({
                                 : `${comment.filePath}:${String(comment.line)}`}
                             </span>
                             <p>{comment.body}</p>
-                            <button
+                            <Button unstyled
                               type="button"
                               aria-label={t('workspace.remove-comment')}
                               title={t('workspace.remove-comment')}
                               onClick={() => { reviewComments.remove(comment.id) }}
-                            ><X aria-hidden="true" /></button>
+                            ><X aria-hidden="true" /></Button>
                           </div>
                         ))}
                       </div>
@@ -1085,7 +1086,7 @@ function WorkspacePanel({
                               line.newLine,
                             )
                             return (
-                              <button
+                              <Button unstyled
                                 type="button"
                                 key={line.key}
                                 data-type={line.type}
@@ -1105,7 +1106,7 @@ function WorkspacePanel({
                                 <span>{line.oldLine ?? ''}</span>
                                 <span>{line.newLine ?? ''}</span>
                                 <code>{line.content || ' '}</code>
-                              </button>
+                              </Button>
                             )
                           })}
                           {file.lines.length > 400 && (
@@ -1126,25 +1127,25 @@ function WorkspacePanel({
                             ? t('workspace.comment-commit')
                             : `${commentTarget.filePath}:${String(commentTarget.line)}`}
                         </strong>
-                        <textarea
+                        <Textarea unstyled
                           autoFocus
                           value={commentBody}
                           placeholder={t('workspace.comment-placeholder')}
                           onChange={event => { setCommentBody(event.currentTarget.value) }}
                         />
                         <div>
-                          <button
+                          <Button unstyled
                             type="button"
                             onClick={() => {
                               setCommentTarget(null)
                               setCommentBody('')
                             }}
-                          >{t('workspace.cancel')}</button>
-                          <button
+                          >{t('workspace.cancel')}</Button>
+                          <Button unstyled
                             type="button"
                             disabled={commentBody.trim() === ''}
                             onClick={addReviewComment}
-                          >{t('workspace.add-comment')}</button>
+                          >{t('workspace.add-comment')}</Button>
                         </div>
                       </div>
                     )}
@@ -1161,39 +1162,39 @@ function WorkspacePanel({
             <section className="tockteam-workspace-facts grid gap-px">
               <label className="tockteam-workspace-fact grid min-h-[38px] grid-cols-[26px_minmax(0,1fr)_auto] items-center gap-2 px-1.5 text-[13px] [&_select]:w-full [&_select]:min-w-0 [&_select]:cursor-pointer [&_select]:appearance-none [&_select]:border-0 [&_select]:bg-transparent [&_select]:p-0 [&_select]:text-inherit [&_select]:outline-0 [&_select]:[font:inherit]">
                 <span className="tockteam-workspace-fact-icon grid place-items-center text-[var(--dsw-alias-label-secondary,#57606a)] [&_svg]:size-4"><Monitor aria-hidden="true" /></span>
-                <select aria-label={t('workspace.execution-environment')} value="local" onChange={() => {}}>
+                <NativeSelect unstyled aria-label={t('workspace.execution-environment')} value="local" onChange={() => {}}>
                   <option value="local">{t('workspace.local')}</option>
-                </select>
+                </NativeSelect>
                 <span className="tockteam-workspace-chevron text-[var(--dsw-alias-label-dimmed,#8c959f)] [&_svg]:block [&_svg]:size-3.5"><ChevronDown aria-hidden="true" /></span>
               </label>
               <label className="tockteam-workspace-fact grid min-h-[38px] grid-cols-[26px_minmax(0,1fr)_auto] items-center gap-2 px-1.5 text-[13px] [&_select]:w-full [&_select]:min-w-0 [&_select]:cursor-pointer [&_select]:appearance-none [&_select]:border-0 [&_select]:bg-transparent [&_select]:p-0 [&_select]:text-inherit [&_select]:outline-0 [&_select]:[font:inherit]">
                 <span className="tockteam-workspace-fact-icon grid place-items-center text-[var(--dsw-alias-label-secondary,#57606a)] [&_svg]:size-4"><GitBranch aria-hidden="true" /></span>
-                <select
+                <NativeSelect unstyled
                   value={snapshot?.branch ?? ''}
                   disabled={snapshot?.kind !== 'repository' || busy}
                   aria-label={t('workspace.current-branch')}
                   onChange={event => { void mutate({ action: 'checkout', branch: event.currentTarget.value }) }}
                 >
                   {(snapshot?.branches ?? []).map(branch => <option key={branch} value={branch}>{branch}</option>)}
-                </select>
+                </NativeSelect>
                 <span className="tockteam-workspace-chevron text-[var(--dsw-alias-label-dimmed,#8c959f)] [&_svg]:block [&_svg]:size-3.5"><ChevronDown aria-hidden="true" /></span>
               </label>
               {snapshot?.kind === 'repository' && (
                 <div className="tockteam-new-branch flex gap-1.5 pt-[3px] pr-1.5 pb-[5px] pl-10 [&_input]:h-7 [&_input]:min-w-0 [&_input]:flex-1 [&_input]:rounded-md [&_input]:border [&_input]:border-[var(--dsw-alias-border-l2,rgb(0_0_0_/_13%))] [&_input]:bg-[var(--dsw-alias-bg-layer-1,#fff)] [&_input]:px-[7px] [&_input]:text-[11px] [&_input]:text-inherit [&_button]:cursor-pointer [&_button]:rounded-md [&_button]:border [&_button]:border-[var(--dsw-alias-border-l2,rgb(0_0_0_/_13%))] [&_button]:bg-transparent [&_button]:px-[9px] [&_button]:py-1 [&_button]:text-[11px] [&_button]:leading-tight [&_button]:text-inherit [&_button:disabled]:cursor-default [&_button:disabled]:opacity-45">
-                  <input
+                  <Input unstyled
                     value={newBranch}
                     placeholder={t('workspace.new-branch')}
                     aria-label={t('workspace.new-branch-name')}
                     onChange={event => { setNewBranch(event.currentTarget.value) }}
                   />
-                  <button
+                  <Button unstyled
                     type="button"
                     disabled={busy || newBranch.trim() === ''}
                     onClick={() => { void mutate({ action: 'create-branch', branch: newBranch }).then(() => { setNewBranch('') }) }}
-                  >{t('workspace.create')}</button>
+                  >{t('workspace.create')}</Button>
                 </div>
               )}
-              <button
+              <Button unstyled
                 type="button"
                 className="tockteam-workspace-fact tockteam-commit-toggle grid min-h-[38px] w-full grid-cols-[26px_minmax(0,1fr)_auto] items-center gap-2 rounded-[7px] border-0 bg-transparent px-1.5 text-left text-[13px] text-inherit hover:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_5%))]"
                 onClick={() => { setCommitOpen(open => !open) }}
@@ -1204,26 +1205,26 @@ function WorkspacePanel({
                 <span className="tockteam-workspace-chevron text-[var(--dsw-alias-label-dimmed,#8c959f)] [&_svg]:block [&_svg]:size-3.5">
                   {commitOpen ? <ChevronUp aria-hidden="true" /> : <ChevronDown aria-hidden="true" />}
                 </span>
-              </button>
+              </Button>
               {commitOpen && snapshot?.kind === 'repository' && (
                 <div className="tockteam-commit-box grid gap-[7px] pt-[5px] pr-1.5 pb-2.5 pl-10 [&_textarea]:min-h-16 [&_textarea]:w-full [&_textarea]:resize-y [&_textarea]:rounded-md [&_textarea]:border [&_textarea]:border-[var(--dsw-alias-border-l2,rgb(0_0_0_/_13%))] [&_textarea]:bg-[var(--dsw-alias-bg-layer-1,#fff)] [&_textarea]:p-[7px] [&_textarea]:text-[11px] [&_textarea]:text-inherit [&>div]:flex [&>div]:gap-1.5 [&_button]:cursor-pointer [&_button]:rounded-md [&_button]:border [&_button]:border-[var(--dsw-alias-border-l2,rgb(0_0_0_/_13%))] [&_button]:bg-transparent [&_button]:px-[9px] [&_button]:py-1 [&_button]:text-[11px] [&_button]:leading-tight [&_button]:text-inherit [&_button:disabled]:cursor-default [&_button:disabled]:opacity-45 [&_small]:text-[10px] [&_small]:text-[var(--dsw-alias-label-dimmed,#8c959f)]">
-                  <textarea
+                  <Textarea unstyled
                     value={commitMessage}
                     placeholder={t('workspace.commit-message')}
                     aria-label={t('workspace.commit-message')}
                     onChange={event => { setCommitMessage(event.currentTarget.value) }}
                   />
                   <div>
-                    <button
+                    <Button unstyled
                       type="button"
                       disabled={busy || snapshot.changes.length === 0 || commitMessage.trim() === ''}
                       onClick={() => { void mutate({ action: 'commit', message: commitMessage }) }}
-                    >{t('workspace.commit-all')}</button>
-                    <button
+                    >{t('workspace.commit-all')}</Button>
+                    <Button unstyled
                       type="button"
                       disabled={busy || !snapshot.hasRemote}
                       onClick={() => { void mutate({ action: 'push' }) }}
-                    >{t('workspace.push')}{snapshot.ahead > 0 ? ` (${String(snapshot.ahead)})` : ''}</button>
+                    >{t('workspace.push')}{snapshot.ahead > 0 ? ` (${String(snapshot.ahead)})` : ''}</Button>
                   </div>
                   {snapshot.behind > 0 && (
                     <small>{t('workspace.behind', { count: snapshot.behind })}</small>
@@ -1236,7 +1237,7 @@ function WorkspacePanel({
               <span>{snapshot?.name ?? cwd.split(/[\\/]/).filter(Boolean).pop()}</span>
               <small title={cwd}>{cwd}</small>
               {window.dshDesktop?.chooseWorkspace !== undefined && (
-                <button type="button" onClick={() => { void chooseWorkspace() }} aria-label={t('workspace.add')}><Plus aria-hidden="true" /></button>
+                <Button unstyled type="button" onClick={() => { void chooseWorkspace() }} aria-label={t('workspace.add')}><Plus aria-hidden="true" /></Button>
               )}
             </section>
 
@@ -1338,9 +1339,9 @@ function BinaryFileViewer({
     <div className="tockteam-file-preview min-h-0 flex-1 overflow-auto p-3 [&>div:first-child]:mb-2.5 [&>div:first-child]:flex [&>div:first-child]:items-center [&>div:first-child]:justify-between [&>div:first-child]:gap-2 [&_button]:h-[27px] [&_button]:min-w-[27px] [&_button]:cursor-pointer [&_button]:rounded-[7px] [&_button]:border-0 [&_button]:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_5%))] [&_button]:px-2 [&_button]:text-inherit [&_strong]:truncate [&_strong]:text-xs">
       <div>
         <strong title={path}>{title}</strong>
-        <button type="button" onClick={() => { void onOpen() }}>
+        <Button unstyled type="button" onClick={() => { void onOpen() }}>
           {t('files.open')}
-        </button>
+        </Button>
       </div>
       <div className="tockteam-side-muted p-[18px] text-[11px] text-[var(--dsw-alias-label-tertiary,#8c959f)]">{t('files.viewer.binary')}</div>
     </div>
@@ -1588,14 +1589,14 @@ function SidebarSettingsRow({
           <strong>{t('settings.title')}</strong>
           <p>{t('settings.description')}</p>
         </div>
-        <button type="button" onClick={reset}>{t('settings.reset')}</button>
+        <Button unstyled type="button" onClick={reset}>{t('settings.reset')}</Button>
       </div>
       <label className="tockteam-sidebar-settings-row">
         <span>
           <strong>{t('settings.open-by-default')}</strong>
           <small>{t('settings.open-by-default-description')}</small>
         </span>
-        <input
+        <Input unstyled
           type="checkbox"
           checked={state.openByDefault}
           onChange={event => { setOpenByDefault(event.currentTarget.checked) }}
@@ -1606,7 +1607,7 @@ function SidebarSettingsRow({
           <strong>{t('settings.width')}</strong>
           <small>{t('settings.width-value', { width: state.width })}</small>
         </span>
-        <input
+        <Input unstyled
           type="range"
           min={SIDEBAR_MIN_WIDTH}
           max={SIDEBAR_MAX_WIDTH}
@@ -1623,7 +1624,7 @@ function SidebarSettingsRow({
             <strong>{t('settings.agent-terminal-tools')}</strong>
             <small>{t('settings.agent-terminal-tools-description')}</small>
           </span>
-          <input
+          <Input unstyled
             type="checkbox"
             checked={runtimeState.preferences.agentTerminalTools}
             disabled={runtimeState.busy}
@@ -1637,7 +1638,7 @@ function SidebarSettingsRow({
             <strong>{t('settings.bottom-terminal')}</strong>
             <small>{t('settings.bottom-terminal-description')}</small>
           </span>
-          <input
+          <Input unstyled
             type="checkbox"
             checked={runtimeState.preferences.bottomPanelAutoTerminal}
             disabled={runtimeState.busy}
@@ -1654,7 +1655,7 @@ function SidebarSettingsRow({
             <strong>{t('settings.open-files')}</strong>
             <small>{t('settings.open-files-description')}</small>
           </span>
-          <input
+          <Input unstyled
             type="checkbox"
             checked={runtimeState.preferences.interceptOpenPath}
             disabled={runtimeState.busy}
@@ -1668,7 +1669,7 @@ function SidebarSettingsRow({
             <strong>{t('settings.open-links')}</strong>
             <small>{t('settings.open-links-description')}</small>
           </span>
-          <input
+          <Input unstyled
             type="checkbox"
             checked={runtimeState.preferences.browserInterceptLinks}
             disabled={runtimeState.busy}
@@ -1695,7 +1696,7 @@ function SidebarSettingsRow({
           {tabs.map(descriptor => (
             <label key={descriptor.id}>
               <span>{sidebarLabel(descriptor.title)}</span>
-              <input
+              <Input unstyled
                 type="checkbox"
                 checked={state.tabsEnabled[descriptor.id] !== false}
                 onChange={event => {
@@ -1713,7 +1714,7 @@ function SidebarSettingsRow({
           {viewers.map(descriptor => (
             <label key={descriptor.id}>
               <span>{sidebarLabel(descriptor.title)}</span>
-              <input
+              <Input unstyled
                 type="checkbox"
                 checked={state.viewersEnabled[descriptor.id] !== false}
                 onChange={event => {
@@ -1780,20 +1781,20 @@ function DesktopAppRail({
   const tockTutorActive = isTockTutorPath(location.pathname)
   return (
     <nav className="tockteam-app-rail flex h-full flex-col items-center gap-1 px-1 py-2 [&_button]:grid [&_button]:size-8 [&_button]:flex-none [&_button]:cursor-pointer [&_button]:place-items-center [&_button]:rounded-[7px] [&_button]:border-0 [&_button]:bg-transparent [&_button]:p-0 [&_button]:text-[color-mix(in_srgb,var(--dsw-alias-label-primary,#1f2328)_62%,transparent)] [&_button:hover]:bg-[color-mix(in_srgb,var(--dsw-alias-label-primary,#1f2328)_7%,transparent)] [&_button:hover]:text-[var(--dsw-alias-label-primary,#1f2328)] [&_button[aria-current='page']]:bg-[color-mix(in_srgb,var(--dsw-alias-label-primary,#1f2328)_11%,transparent)] [&_button[aria-current='page']]:text-[var(--dsw-alias-label-primary,#1f2328)] [&_button:focus-visible]:outline-2 [&_button:focus-visible]:outline-offset-1 [&_button:focus-visible]:outline-[var(--dsw-alias-border-focus,#315efb)] [&_svg]:size-[18px]" aria-label="App Navigation">
-      <button
+      <Button unstyled
         type="button"
         aria-label="DeepSeek Harness"
         aria-current={tockTutorActive ? undefined : 'page'}
         title="DeepSeek Harness"
         onClick={() => { navigate('/') }}
-      ><AppRailIcon kind="agent" /></button>
-      <button
+      ><AppRailIcon kind="agent" /></Button>
+      <Button unstyled
         type="button"
         aria-label="TockTutor"
         aria-current={tockTutorActive ? 'page' : undefined}
         title="TockTutor"
         onClick={() => { navigate(TOCKTUTOR_ROUTE_PREFIX) }}
-      ><AppRailIcon kind="notebook" /></button>
+      ><AppRailIcon kind="notebook" /></Button>
     </nav>
   )
 }

@@ -11,6 +11,7 @@
 @source '../../../pinned-summary/src/**/*.{ts,tsx}';
 @source '../../../plugin-marketplace/src/**/*.{ts,tsx}';
 @source '../../../tocktutor/packages/*/src/**/*.{ts,tsx}';
+@source '../../../ui/src/**/*.{ts,tsx}';
 
 @theme inline {
   --color-*: initial;
@@ -24,13 +25,30 @@
   --color-subtle-foreground: var(--dsw-alias-label-tertiary);
   --color-border: var(--dsw-alias-border-l2);
   --color-border-strong: var(--dsw-alias-border-l3);
+  --color-input: var(--dsw-alias-border-l2);
+  --color-ring: var(--dsw-alias-brand-primary);
   --color-brand: var(--dsw-alias-brand-primary);
   --color-brand-foreground: var(--dsw-alias-brand-primary-invert);
+  --color-primary: var(--dsw-alias-brand-primary);
+  --color-primary-foreground: var(--dsw-alias-brand-primary-invert);
+  --color-secondary: var(--dsw-alias-bg-layer-2);
+  --color-secondary-foreground: var(--dsw-alias-label-primary);
+  --color-muted: var(--dsw-alias-bg-layer-2);
+  --color-accent: var(--dsw-alias-bg-layer-3);
+  --color-accent-foreground: var(--dsw-alias-label-primary);
+  --color-card: var(--dsw-alias-bg-layer-1);
+  --color-card-foreground: var(--dsw-alias-label-primary);
+  --color-popover: var(--dsw-alias-bg-overlay);
+  --color-popover-foreground: var(--dsw-alias-label-primary);
   --color-success: var(--dsw-alias-state-success-primary);
   --color-warning: var(--dsw-alias-state-warn-primary);
   --color-destructive: var(--dsw-alias-state-error-primary);
   --color-code-block: var(--dsw-alias-markdown-code-block);
   --color-inline-code: var(--dsw-alias-markdown-inline-code);
+  --radius-sm: 5px;
+  --radius-md: 7px;
+  --radius-lg: 9px;
+  --radius-xl: 12px;
 }
 
 /* The Desktop bridge has no component seam for the inherited DSH shell. */

@@ -39,6 +39,7 @@
   },
   "license": "MIT",
   "dependencies": {
+    "@tockteam/ui": "workspace:*",
     "lucide-react": "0.473.0"
   }
 }

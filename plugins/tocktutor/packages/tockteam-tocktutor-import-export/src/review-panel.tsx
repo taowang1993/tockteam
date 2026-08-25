@@ -1,3 +1,4 @@
+import { Button, NativeSelect } from '@tockteam/ui'
 import {
   useEffect,
   useMemo,
@@ -378,21 +379,21 @@ export function ImportExportReviewPanelView(props: {
         <div className="tocktutor-import-export-start flex flex-wrap gap-2">
           <label className="grid flex-[1_1_220px] gap-1 text-xs">
             Import Format
-            <select
+            <NativeSelect unstyled
               onChange={event => { props.onFormat(event.currentTarget.value as ImportInspectFormat) }}
               value={snapshot.format}
             >
               {FORMAT_LABELS.map(([format, label]) => <option key={format} value={format}>{label}</option>)}
-            </select>
+            </NativeSelect>
           </label>
-          <button onClick={props.onStart} type="button">Inspect Import</button>
-          <button onClick={props.onStartBackup} type="button">Create Vault Backup</button>
+          <Button unstyled onClick={props.onStart} type="button">Inspect Import</Button>
+          <Button unstyled onClick={props.onStartBackup} type="button">Create Vault Backup</Button>
         </div>
       )}
       {busy && (
         <div className="tocktutor-import-export-actions flex flex-wrap gap-2">
           <p aria-live="polite" role="status">{snapshot.phase === 'inspecting' ? 'Inspecting the selected source…' : snapshot.phase === 'approving' ? 'Approving the reviewed plan…' : 'Committing through the vault runtime…'}</p>
-          <button onClick={props.onCancel} type="button">Cancel</button>
+          <Button unstyled onClick={props.onCancel} type="button">Cancel</Button>
         </div>
       )}
       {snapshot.phase === 'review' && preview !== null && (
@@ -407,8 +408,8 @@ export function ImportExportReviewPanelView(props: {
           {warnings.map(warning => <p key={warning} role="note">{warning}</p>)}
           {skipped.length > 0 && <details><summary>{String(skipped.length)} Skipped Entries</summary><ul className="m-0 max-h-[180px] overflow-auto pl-[18px]">{skipped.slice(0, 100).map(entry => <li key={`${entry.label}:${entry.reason}`}>{entry.label}: {entry.reason}</li>)}</ul></details>}
           <div className="tocktutor-import-export-actions flex flex-wrap gap-2">
-            <button onClick={props.onApprove} type="button">Approve and Commit</button>
-            <button onClick={props.onCancel} type="button">Cancel</button>
+            <Button unstyled onClick={props.onApprove} type="button">Approve and Commit</Button>
+            <Button unstyled onClick={props.onCancel} type="button">Cancel</Button>
           </div>
         </div>
       )}
@@ -435,8 +436,8 @@ export function ImportExportReviewPanelView(props: {
       {snapshot.phase === 'error' && (
         <div className="tocktutor-import-export-actions flex flex-wrap gap-2">
           <p role="alert">{snapshot.error ?? 'The reviewed operation failed.'}</p>
-          {preview !== null && <button onClick={props.onApprove} type="button">Retry Reviewed Commit</button>}
-          {preview !== null && <button onClick={props.onCancel} type="button">Cancel</button>}
+          {preview !== null && <Button unstyled onClick={props.onApprove} type="button">Retry Reviewed Commit</Button>}
+          {preview !== null && <Button unstyled onClick={props.onCancel} type="button">Cancel</Button>}
         </div>
       )}
     </section>

@@ -24,6 +24,7 @@ try {
   await symlink(await realpath(join(root, 'node_modules', '@deepseek-ai', 'dsh-client-ui-slots')), join(modulesRoot, '@deepseek-ai', 'dsh-client-ui-slots'), 'dir')
   await symlink(protocolRoot, join(modulesRoot, '@deepseek-ai', 'dsh-typert-protocol'), 'dir')
   await symlink(await realpath(join(root, 'node_modules', '@tockteam', 'desktop')), join(modulesRoot, '@tockteam', 'desktop'), 'dir')
+  await symlink(await realpath(join(root, 'node_modules', '@tockteam', 'ui')), join(modulesRoot, '@tockteam', 'ui'), 'dir')
   await symlink(join(root, 'node_modules', '@types'), join(modulesRoot, '@types'), 'dir')
   await symlink(await realpath(join(root, 'node_modules', 'lucide-react')), join(modulesRoot, 'lucide-react'), 'dir')
   await symlink(await realpath(join(root, 'node_modules', 'react')), join(modulesRoot, 'react'), 'dir')

@@ -1,3 +1,4 @@
+import { Button, Input, NativeSelect, Textarea } from '@tockteam/ui'
 import {
   useCallback,
   useEffect,
@@ -456,7 +457,7 @@ export function TockTutorAssistantPanel(props: TockTutorAssistantPanelProps): Re
                 {PROMPT_SUGGESTIONS.map(suggestion => {
                   const Icon = suggestion.icon
                   return (
-                    <button
+                    <Button unstyled
                       className="flex min-w-0 cursor-pointer items-center gap-2.5 rounded-lg border border-transparent bg-transparent px-2 py-1.5 text-left text-[13px] leading-[18px] text-inherit hover:border-[var(--tta-border)] hover:bg-[var(--tta-bg)] focus-visible:border-[var(--tta-border)] focus-visible:bg-[var(--tta-bg)] [&_span]:min-w-0 [&_span]:truncate [&_svg]:size-3.5 [&_svg]:flex-none"
                       key={suggestion.label}
                       onClick={() => { setMessage(suggestion.prompt) }}
@@ -464,7 +465,7 @@ export function TockTutorAssistantPanel(props: TockTutorAssistantPanelProps): Re
                     >
                       <Icon aria-hidden="true" />
                       <span>{suggestion.label}</span>
-                    </button>
+                    </Button>
                   )
                 })}
               </div>
@@ -519,7 +520,7 @@ export function TockTutorAssistantPanel(props: TockTutorAssistantPanelProps): Re
                       <p>{String(proposal.skippedEntryCount)} skipped {proposal.skippedEntryCount === 1 ? 'entry' : 'entries'}{proposal.skippedEntries.length > 0 ? `: ${proposal.skippedEntries.join(', ')}` : ''}</p>
                     )}
                     <div className="flex flex-wrap gap-1.5">
-                      <button
+                      <Button unstyled
                         aria-label={expired ? undefined : `Approve ${operation} ${proposal.destination}`}
                         className="cursor-pointer rounded-[7px] border border-[var(--tta-accent)] bg-[var(--tta-accent)] px-[9px] py-1.5 font-semibold text-white disabled:cursor-default disabled:opacity-50"
                         disabled={expired || activeDecision !== null}
@@ -527,8 +528,8 @@ export function TockTutorAssistantPanel(props: TockTutorAssistantPanelProps): Re
                         type="button"
                       >
                         {expired ? 'Expired' : pendingDecision && activeDecision.action === 'approve' ? 'Approving…' : 'Approve'}
-                      </button>
-                      <button
+                      </Button>
+                      <Button unstyled
                         aria-label={`Reject ${operation} ${proposal.destination}`}
                         className="cursor-pointer rounded-[7px] border border-[var(--tta-border)] bg-[var(--tta-panel)] px-[9px] py-1.5 font-semibold text-inherit disabled:cursor-default disabled:opacity-50"
                         disabled={expired || activeDecision !== null}
@@ -536,27 +537,27 @@ export function TockTutorAssistantPanel(props: TockTutorAssistantPanelProps): Re
                         type="button"
                       >
                         {pendingDecision && activeDecision.action === 'reject' ? 'Rejecting…' : 'Reject'}
-                      </button>
+                      </Button>
                     </div>
                   </article>
                 )
               })}
               {proposalPage !== null && (proposalOffset > 0 || proposalPage.nextOffset !== null) && (
                 <nav aria-label="Proposal Pages" className="flex flex-wrap gap-1.5">
-                  <button
+                  <Button unstyled
                     aria-label="Previous Proposal Page"
                     className="cursor-pointer rounded-[7px] border border-[var(--tta-border)] bg-[var(--tta-panel)] px-[9px] py-1.5 font-semibold text-inherit disabled:cursor-default disabled:opacity-50"
                     disabled={proposalOffset === 0}
                     onClick={() => { void loadProposals(Math.max(0, proposalOffset - 20)) }}
                     type="button"
-                  >Previous</button>
-                  <button
+                  >Previous</Button>
+                  <Button unstyled
                     aria-label="Next Proposal Page"
                     className="cursor-pointer rounded-[7px] border border-[var(--tta-border)] bg-[var(--tta-panel)] px-[9px] py-1.5 font-semibold text-inherit disabled:cursor-default disabled:opacity-50"
                     disabled={proposalPage.nextOffset === null}
                     onClick={() => { if (proposalPage.nextOffset !== null) void loadProposals(proposalPage.nextOffset) }}
                     type="button"
-                  >Next</button>
+                  >Next</Button>
                 </nav>
               )}
             </section>
@@ -564,14 +565,14 @@ export function TockTutorAssistantPanel(props: TockTutorAssistantPanelProps): Re
         </section>
       </div>
       {showJumpToLatest && (
-        <button className="tocktutor-assistant-jump absolute right-4 bottom-28 z-2 flex items-center gap-[5px] rounded-lg border border-[var(--tta-border)] bg-[var(--tta-panel)] px-2 py-[5px] text-xs shadow-[0_1px_4px_rgb(0_0_0_/_10%)] [&_svg]:size-3.5" onClick={scrollToLatest} type="button">
+        <Button unstyled className="tocktutor-assistant-jump absolute right-4 bottom-28 z-2 flex items-center gap-[5px] rounded-lg border border-[var(--tta-border)] bg-[var(--tta-panel)] px-2 py-[5px] text-xs shadow-[0_1px_4px_rgb(0_0_0_/_10%)] [&_svg]:size-3.5" onClick={scrollToLatest} type="button">
           <ArrowDown aria-hidden="true" />
           Jump to Latest
-        </button>
+        </Button>
       )}
       <div className="tocktutor-assistant-composer-wrap relative flex-none px-3 pb-3">
         <div className="tocktutor-assistant-add-menu absolute bottom-[calc(100%+8px)] left-3 z-3 grid max-h-[min(520px,calc(100vh-180px))] w-[min(304px,calc(100%-24px))] gap-1 overflow-auto rounded-[10px] border border-[var(--tta-border)] bg-[var(--tta-panel)] p-2 shadow-[0_8px_24px_rgb(0_0_0_/_12%)]" hidden={!menuOpen} id="tocktutor-assistant-add-menu">
-          <button
+          <Button unstyled
             className="flex min-w-0 cursor-pointer items-center gap-2.5 rounded-lg border border-transparent bg-transparent px-2 py-1.5 text-left text-[13px] leading-[18px] text-inherit hover:border-[var(--tta-border)] hover:bg-[var(--tta-bg)] focus-visible:border-[var(--tta-border)] focus-visible:bg-[var(--tta-bg)] disabled:cursor-default disabled:opacity-50 [&_span]:min-w-0 [&_span]:truncate [&_svg]:size-3.5 [&_svg]:flex-none"
             disabled={props.activePath === null}
             onClick={() => {
@@ -582,13 +583,13 @@ export function TockTutorAssistantPanel(props: TockTutorAssistantPanelProps): Re
           >
             <FileText aria-hidden="true" />
             <span>{props.activePath ?? 'Current Note'}</span>
-          </button>
+          </Button>
           <details className="border-t border-[var(--tta-border)] pt-1">
             <summary className="cursor-pointer px-2 py-1.5 text-[13px]">Assistant Settings</summary>
             <form className="grid gap-2 p-2" onSubmit={saveSettings}>
               <label className="grid gap-1 text-xs">
                 Provider
-                <input
+                <Input unstyled
                   aria-label="Provider"
                   className="w-full rounded-[7px] border border-[var(--tta-border)] bg-[var(--tta-panel)] px-2 py-[7px] text-inherit"
                   disabled={settings === null || settingsSaving}
@@ -603,7 +604,7 @@ export function TockTutorAssistantPanel(props: TockTutorAssistantPanelProps): Re
               </label>
               <label className="grid gap-1 text-xs">
                 Model
-                <input
+                <Input unstyled
                   aria-label="Model"
                   className="w-full rounded-[7px] border border-[var(--tta-border)] bg-[var(--tta-panel)] px-2 py-[7px] text-inherit"
                   disabled={settings === null || settingsSaving}
@@ -618,7 +619,7 @@ export function TockTutorAssistantPanel(props: TockTutorAssistantPanelProps): Re
               </label>
               <label className="grid gap-1 text-xs">
                 Write Permission
-                <select
+                <NativeSelect unstyled
                   aria-label="Write Permission"
                   className="w-full rounded-[7px] border border-[var(--tta-border)] bg-[var(--tta-panel)] px-2 py-[7px] text-inherit"
                   disabled={settings === null || settingsSaving}
@@ -632,11 +633,11 @@ export function TockTutorAssistantPanel(props: TockTutorAssistantPanelProps): Re
                 >
                   <option value="read-only">Read Only</option>
                   <option value="propose">Propose Writes</option>
-                </select>
+                </NativeSelect>
               </label>
-              <button className="cursor-pointer rounded-[7px] border border-[var(--tta-accent)] bg-[var(--tta-accent)] px-[9px] py-1.5 font-semibold text-white disabled:cursor-default disabled:opacity-50" disabled={settings === null || settingsSaving} type="submit">
+              <Button unstyled className="cursor-pointer rounded-[7px] border border-[var(--tta-accent)] bg-[var(--tta-accent)] px-[9px] py-1.5 font-semibold text-white disabled:cursor-default disabled:opacity-50" disabled={settings === null || settingsSaving} type="submit">
                 {settingsSaving ? 'Saving…' : 'Save Settings'}
-              </button>
+              </Button>
             </form>
           </details>
           <details className="border-t border-[var(--tta-border)] pt-1">
@@ -663,27 +664,27 @@ export function TockTutorAssistantPanel(props: TockTutorAssistantPanelProps): Re
               })}
               {auditPage !== null && (auditOffset > 0 || auditPage.nextOffset !== null) && (
                 <nav aria-label="Audit Pages" className="flex flex-wrap gap-1.5">
-                  <button
+                  <Button unstyled
                     aria-label="Previous Audit Page"
                     className="cursor-pointer rounded-[7px] border border-[var(--tta-border)] bg-[var(--tta-panel)] px-[9px] py-1.5 font-semibold text-inherit disabled:cursor-default disabled:opacity-50"
                     disabled={auditOffset === 0}
                     onClick={() => { void loadAudit(Math.max(0, auditOffset - 20)) }}
                     type="button"
-                  >Previous</button>
-                  <button
+                  >Previous</Button>
+                  <Button unstyled
                     aria-label="Next Audit Page"
                     className="cursor-pointer rounded-[7px] border border-[var(--tta-border)] bg-[var(--tta-panel)] px-[9px] py-1.5 font-semibold text-inherit disabled:cursor-default disabled:opacity-50"
                     disabled={auditPage.nextOffset === null}
                     onClick={() => { if (auditPage.nextOffset !== null) void loadAudit(auditPage.nextOffset) }}
                     type="button"
-                  >Next</button>
+                  >Next</Button>
                 </nav>
               )}
             </section>
           </details>
         </div>
         <form className="tocktutor-assistant-composer flex min-h-24 flex-col gap-2 rounded-2xl border border-[var(--tta-border)] bg-[var(--tta-panel)] p-2.5 focus-within:border-[var(--tta-accent)]" onSubmit={send}>
-          <textarea
+          <Textarea unstyled
             aria-label="Assistant Message"
             className="min-h-12 w-full resize-none border-0 bg-transparent p-0 text-[13px] leading-[18px] text-inherit outline-0 focus-visible:shadow-none focus-visible:outline-none"
             id="tocktutor-assistant-message"
@@ -695,20 +696,20 @@ export function TockTutorAssistantPanel(props: TockTutorAssistantPanelProps): Re
             value={message}
           />
           <div className="flex items-center justify-between">
-            <button
+            <Button unstyled
               aria-controls="tocktutor-assistant-add-menu"
               aria-expanded={menuOpen}
               aria-label="Add Context"
               className="tocktutor-assistant-icon-button flex size-7 cursor-pointer items-center justify-center rounded-[7px] border-0 bg-transparent p-0 text-inherit [&_svg]:size-3.5"
               onClick={() => { setMenuOpen(open => !open) }}
               type="button"
-            ><Plus aria-hidden="true" /></button>
-            <button
+            ><Plus aria-hidden="true" /></Button>
+            <Button unstyled
               aria-label="Send"
               className="tocktutor-assistant-send flex size-7 cursor-pointer items-center justify-center rounded-full border-0 bg-[var(--tta-accent)] p-0 text-white disabled:cursor-default disabled:opacity-50 [&_svg]:size-3.5 [&_svg]:stroke-white [&_svg]:text-white"
               disabled={message.trim() === ''}
               type="submit"
-            ><ArrowUp aria-hidden="true" /></button>
+            ><ArrowUp aria-hidden="true" /></Button>
           </div>
         </form>
       </div>

@@ -67,6 +67,9 @@ importers:
       '@tockteam/tocktutor-workbench':
         specifier: workspace:0.1.7
         version: link:../tockteam-tocktutor-workbench
+      '@tockteam/ui':
+        specifier: link:../../../ui
+        version: link:../../../ui
       '@types/node':
         specifier: 22.20.0
         version: 22.20.0
@@ -138,6 +141,9 @@ importers:
       '@deepseek-ai/cordis-plugin-loader':
         specifier: 1.0.2
         version: 1.0.2(@deepseek-ai/cordis@..+.cache+dsh-source+47f943859bef+vendor+cordis)
+      '@tockteam/ui':
+        specifier: link:../../../ui
+        version: link:../../../ui
       '@types/node':
         specifier: 22.20.0
         version: 22.20.0
@@ -324,6 +330,9 @@ importers:
       '@tockteam/tocktutor-workbench':
         specifier: workspace:0.1.7
         version: link:../tockteam-tocktutor-workbench
+      '@tockteam/ui':
+        specifier: link:../../../ui
+        version: link:../../../ui
       '@types/node':
         specifier: 22.20.0
         version: 22.20.0
@@ -391,6 +400,9 @@ importers:
       '@tockteam/tocktutor-workbench':
         specifier: workspace:0.1.7
         version: link:../tockteam-tocktutor-workbench
+      '@tockteam/ui':
+        specifier: link:../../../ui
+        version: link:../../../ui
       '@types/node':
         specifier: 22.20.0
         version: 22.20.0
@@ -461,6 +473,9 @@ importers:
       '@testing-library/react':
         specifier: 16.3.2
         version: 16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@tockteam/ui':
+        specifier: link:../../../ui
+        version: link:../../../ui
       '@types/node':
         specifier: 22.20.0
         version: 22.20.0

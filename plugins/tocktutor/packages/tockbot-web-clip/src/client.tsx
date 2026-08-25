@@ -1,3 +1,4 @@
+import { Button, Input, NativeSelect } from '@tockteam/ui'
 import {
   useCallback,
   useEffect,
@@ -354,33 +355,33 @@ function WebViewer(): ReactNode {
       <div aria-label="Viewer Tabs" className="flex gap-1 overflow-x-auto">
         {viewer.tabs.map((tab, index) => (
           <span className="inline-flex" key={tab.id}>
-            <button
+            <Button unstyled
               aria-pressed={tab.id === viewer.activeId}
               disabled={clipApplying}
               onClick={() => { activate(tab) }}
               type="button"
-            >{tab.title}</button>
-            <button
+            >{tab.title}</Button>
+            <Button unstyled
               aria-label={`Close ${tab.title}`}
               disabled={clipApplying}
               onClick={() => { close(tab.id) }}
               type="button"
-            ><X aria-hidden="true" size={16} /></button>
-            <button
+            ><X aria-hidden="true" size={16} /></Button>
+            <Button unstyled
               aria-label={`Move ${tab.title} Left`}
               disabled={index === 0}
               onClick={() => { applyViewer(moveViewerTab(viewerRef.current, tab.id, index - 1)) }}
               type="button"
-            ><ArrowLeft aria-hidden="true" size={16} /></button>
-            <button
+            ><ArrowLeft aria-hidden="true" size={16} /></Button>
+            <Button unstyled
               aria-label={`Move ${tab.title} Right`}
               disabled={index === viewer.tabs.length - 1}
               onClick={() => { applyViewer(moveViewerTab(viewerRef.current, tab.id, index + 1)) }}
               type="button"
-            ><ArrowRight aria-hidden="true" size={16} /></button>
+            ><ArrowRight aria-hidden="true" size={16} /></Button>
           </span>
         ))}
-        <button
+        <Button unstyled
           disabled={clipApplying}
           onClick={() => {
             if (clipApplyingRef.current) return
@@ -390,43 +391,43 @@ function WebViewer(): ReactNode {
             setDraft('')
           }}
           type="button"
-        >New Tab</button>
+        >New Tab</Button>
       </div>
       <form
         aria-label="Web Viewer Address"
         onSubmit={event => { event.preventDefault(); navigate(draft) }}
         className="flex gap-1"
       >
-        <input
+        <Input unstyled
           aria-label="URL"
           disabled={clipApplying}
           onChange={event => { setDraft(event.currentTarget.value) }}
           placeholder="https://example.com"
           value={draft}
         />
-        <button disabled={loading || clipApplying} type="submit">{loading ? 'Loading…' : 'Go'}</button>
-        <button
+        <Button unstyled disabled={loading || clipApplying} type="submit">{loading ? 'Loading…' : 'Go'}</Button>
+        <Button unstyled
           disabled={!active?.url}
           onClick={() => { applyViewer(addViewerBookmark(viewerRef.current)) }}
           type="button"
-        >Bookmark</button>
-        <button
+        >Bookmark</Button>
+        <Button unstyled
           disabled={!active?.url || readerLoading || clipApplying}
           onClick={() => { reader ? invalidateReader() : loadReader() }}
           type="button"
-        >{reader ? 'Page View' : readerLoading ? 'Loading Reader…' : 'Reader View'}</button>
+        >{reader ? 'Page View' : readerLoading ? 'Loading Reader…' : 'Reader View'}</Button>
       </form>
       {viewer.bookmarks.length > 0 && (
         <details>
           <summary>Bookmarks</summary>
           {viewer.bookmarks.map(bookmark => (
             <span key={bookmark.id}>
-              <button disabled={clipApplying} onClick={() => { navigate(bookmark.url) }} type="button">{bookmark.title}</button>
-              <button
+              <Button unstyled disabled={clipApplying} onClick={() => { navigate(bookmark.url) }} type="button">{bookmark.title}</Button>
+              <Button unstyled
                 aria-label={`Remove ${bookmark.title}`}
                 onClick={() => { applyViewer(removeViewerBookmark(viewerRef.current, bookmark.id)) }}
                 type="button"
-              ><X aria-hidden="true" size={16} /></button>
+              ><X aria-hidden="true" size={16} /></Button>
             </span>
           ))}
         </details>
@@ -445,46 +446,46 @@ function WebViewer(): ReactNode {
           }}
         >
           <div aria-label="Reader Settings">
-            <label>Text Size <select
+            <label>Text Size <NativeSelect unstyled
               onChange={event => { setReaderPreference('textSize', event.currentTarget.value as ReaderPreferences['textSize']) }}
               value={viewer.readerPreferences.textSize}
-            ><option value="sm">Small</option><option value="md">Medium</option><option value="lg">Large</option></select></label>
-            <label>Line Width <select
+            ><option value="sm">Small</option><option value="md">Medium</option><option value="lg">Large</option></NativeSelect></label>
+            <label>Line Width <NativeSelect unstyled
               onChange={event => { setReaderPreference('width', event.currentTarget.value as ReaderPreferences['width']) }}
               value={viewer.readerPreferences.width}
-            ><option value="narrow">Narrow</option><option value="md">Medium</option><option value="wide">Wide</option></select></label>
-            <label>Line Spacing <select
+            ><option value="narrow">Narrow</option><option value="md">Medium</option><option value="wide">Wide</option></NativeSelect></label>
+            <label>Line Spacing <NativeSelect unstyled
               onChange={event => { setReaderPreference('spacing', event.currentTarget.value as ReaderPreferences['spacing']) }}
               value={viewer.readerPreferences.spacing}
-            ><option value="compact">Compact</option><option value="md">Default</option><option value="relaxed">Relaxed</option></select></label>
-            <label>Appearance <select
+            ><option value="compact">Compact</option><option value="md">Default</option><option value="relaxed">Relaxed</option></NativeSelect></label>
+            <label>Appearance <NativeSelect unstyled
               onChange={event => { setReaderPreference('appearance', event.currentTarget.value as ReaderPreferences['appearance']) }}
               value={viewer.readerPreferences.appearance}
-            ><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select></label>
+            ><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></NativeSelect></label>
           </div>
           <h2>{reader.title}</h2>
           <section aria-label="Clip Web Page">
             <label>
               Clip Destination
-              <input
+              <Input unstyled
                 disabled={clipLoading || clipPreview !== null}
                 onChange={event => { setClipDestination(event.currentTarget.value) }}
                 placeholder="example.md"
                 value={clipDestination}
               />
             </label>
-            <button
+            <Button unstyled
               disabled={clipLoading || clipPreview !== null}
               onClick={createClipPreview}
               type="button"
-            >{clipLoading && !clipPreview ? 'Generating Preview…' : 'Generate Clip Preview'}</button>
+            >{clipLoading && !clipPreview ? 'Generating Preview…' : 'Generate Clip Preview'}</Button>
             {clipPreview && (
               <div>
                 <p>Review the exact Markdown and destination before saving.</p>
                 <p><strong>Destination:</strong> {clipPreview.destination}</p>
                 <pre aria-label="Clip Markdown Preview" className="max-h-80 overflow-auto whitespace-pre-wrap">{clipPreview.markdown}</pre>
-                <button disabled={clipLoading} onClick={applyClip} type="button">{clipLoading ? 'Saving…' : 'Save Clip'}</button>
-                <button disabled={clipLoading} onClick={invalidateClip} type="button">Cancel</button>
+                <Button unstyled disabled={clipLoading} onClick={applyClip} type="button">{clipLoading ? 'Saving…' : 'Save Clip'}</Button>
+                <Button unstyled disabled={clipLoading} onClick={invalidateClip} type="button">Cancel</Button>
               </div>
             )}
             {clipSavedPath && <p role="status">Saved clip to {clipSavedPath}.</p>}

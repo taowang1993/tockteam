@@ -1,3 +1,4 @@
+import { Button } from '@tockteam/ui'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import type { RemoteResult } from '@deepseek-ai/dsh-typert-protocol'
 import type {
@@ -319,7 +320,7 @@ export function TockTutorNativeActions(props: TockTutorNativeActionsProps): Reac
   }
 
   const button = (label: string, action: () => Promise<void>, enabled = true): ReactNode => (
-    <button
+    <Button unstyled
       className="min-h-9 cursor-pointer rounded-lg border border-[var(--tt-border,#d9dde5)] bg-[var(--tt-bg,#f7f8fa)] px-2.5 py-[7px] text-left text-inherit enabled:hover:border-[var(--tt-accent,#2457d6)] focus-visible:border-[var(--tt-accent,#2457d6)] focus-visible:outline-none focus-visible:shadow-[0_0_0_2px_color-mix(in_srgb,var(--tt-accent,#2457d6)_28%,transparent)] disabled:cursor-not-allowed disabled:opacity-50"
       disabled={!enabled || busy !== null}
       key={label}
@@ -327,7 +328,7 @@ export function TockTutorNativeActions(props: TockTutorNativeActionsProps): Reac
       type="button"
     >
       {busy === label ? `${label}…` : label}
-    </button>
+    </Button>
   )
 
   return (

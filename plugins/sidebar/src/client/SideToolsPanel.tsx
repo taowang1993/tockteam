@@ -1,3 +1,4 @@
+import { Button, Input } from '@tockteam/ui'
 import {
   useEffect,
   useRef,
@@ -108,7 +109,7 @@ function ToolRow(props: {
   onClick(): void
 }): JSX.Element {
   return (
-    <button
+    <Button unstyled
       className="tockteam-side-tool-row grid min-h-12 grid-cols-[28px_minmax(0,1fr)_auto] items-center gap-2.5 rounded-[10px] border-0 bg-transparent px-3 text-left text-inherit hover:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_5%))] disabled:cursor-default disabled:opacity-40 [&>span]:text-sm [&_kbd]:rounded-full [&_kbd]:border-0 [&_kbd]:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))] [&_kbd]:px-[7px] [&_kbd]:py-0.5 [&_kbd]:text-[11px] [&_kbd]:text-[var(--dsw-alias-label-tertiary,#8c959f)] [&_kbd]:[font:11px_system-ui] [&_svg]:size-[21px] [&_svg]:fill-none [&_svg]:stroke-current [&_svg]:stroke-[1.7] [&_svg]:[stroke-linecap:round] [&_svg]:[stroke-linejoin:round]"
       type="button"
       disabled={props.disabled}
@@ -119,7 +120,7 @@ function ToolRow(props: {
       {props.descriptor.shortcut !== undefined && (
         <kbd>{props.descriptor.shortcut}</kbd>
       )}
-    </button>
+    </Button>
   )
 }
 
@@ -255,25 +256,25 @@ export function BrowserView({
         className="tockteam-browser-bar flex min-h-10 flex-none items-center gap-[5px] border-b border-[var(--dsw-alias-border-l1,rgb(0_0_0_/_8%))] px-2.5 py-1.5 [&_button]:h-[27px] [&_button]:min-w-[27px] [&_button]:cursor-pointer [&_button]:rounded-[7px] [&_button]:border-0 [&_button]:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_5%))] [&_button]:px-2 [&_button]:text-inherit [&_button:disabled]:cursor-default [&_button:disabled]:opacity-35 [&_button_svg]:mx-auto [&_button_svg]:block [&_button_svg]:size-[15px]"
         onSubmit={event => { event.preventDefault(); void navigate() }}
       >
-        <button
+        <Button unstyled
           type="button"
           disabled={!canGoBack}
           aria-label={t('browser.back')}
           onClick={() => { webview.current?.goBack() }}
-        ><ChevronLeft aria-hidden="true" /></button>
-        <button
+        ><ChevronLeft aria-hidden="true" /></Button>
+        <Button unstyled
           type="button"
           aria-label={t('browser.reload')}
           onClick={() => { webview.current?.reload() }}
-        ><RefreshCw aria-hidden="true" /></button>
-        <input
+        ><RefreshCw aria-hidden="true" /></Button>
+        <Input unstyled
           value={address}
           className="h-7 min-w-0 flex-1 rounded-[7px] border border-[var(--dsw-alias-border-l1,rgb(0_0_0_/_10%))] bg-[var(--dsw-alias-bg-base,#fff)] px-[9px] text-inherit outline-none"
           placeholder={t('browser.enter-url')}
           aria-label={t('browser.url')}
           onChange={event => { setAddress(event.currentTarget.value) }}
         />
-        <button type="submit">{t('browser.go')}</button>
+        <Button unstyled type="submit">{t('browser.go')}</Button>
       </form>
       {error !== '' && <div className="tockteam-browser-error mx-3 my-2 rounded-[7px] bg-[color-mix(in_srgb,#cf222e_10%,transparent)] px-[9px] py-[7px] text-[11px] text-[#cf222e]" role="alert">{error}</div>}
       <div ref={container} className="tockteam-browser-host min-h-0 flex-1" />
@@ -345,7 +346,7 @@ export function FilesView({
   return (
     <div className="tockteam-files-view flex min-h-0 flex-1 flex-col">
       <div className="tockteam-files-path flex min-h-10 flex-none items-center gap-[5px] border-b border-[var(--dsw-alias-border-l1,rgb(0_0_0_/_8%))] px-2.5 py-1.5 [&_button]:h-[27px] [&_button]:min-w-[27px] [&_button]:cursor-pointer [&_button]:rounded-[7px] [&_button]:border-0 [&_button]:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_5%))] [&_button]:px-2 [&_button]:text-inherit [&_button:disabled]:cursor-default [&_button:disabled]:opacity-35 [&_button_svg]:mx-auto [&_button_svg]:block [&_button_svg]:size-[15px]" title={snapshot?.path ?? cwd}>
-        <button
+        <Button unstyled
           type="button"
           disabled={snapshot?.parent == null}
           onClick={() => {
@@ -353,19 +354,19 @@ export function FilesView({
               browse(snapshot.parent)
             }
           }}
-        ><ChevronLeft aria-hidden="true" /></button>
+        ><ChevronLeft aria-hidden="true" /></Button>
         <span className="min-w-0 flex-1 truncate text-[11px] text-[var(--dsw-alias-label-secondary,#57606a)]">{(snapshot?.path ?? cwd).slice(cwd.length) || '/'}</span>
-        <button
+        <Button unstyled
           type="button"
           onClick={() => { setRefreshKey(value => value + 1) }}
-        ><RefreshCw aria-hidden="true" /></button>
+        ><RefreshCw aria-hidden="true" /></Button>
       </div>
       {loading && <div className="tockteam-side-muted p-[18px] text-[11px] text-[var(--dsw-alias-label-tertiary,#8c959f)]">{t('files.loading')}</div>}
       {error !== '' && <div className="tockteam-side-error mx-3 my-2 rounded-[7px] bg-[color-mix(in_srgb,#cf222e_10%,transparent)] px-[9px] py-[7px] text-[11px] text-[#cf222e]" role="alert">{error}</div>}
       {snapshot?.kind === 'directory' && (
         <div className="tockteam-file-list min-h-0 flex-1 overflow-auto px-[9px] pt-1.5 pb-5">
           {snapshot.entries.map(entry => (
-            <button
+            <Button unstyled
               className="grid min-h-8 w-full grid-cols-[22px_minmax(0,1fr)_auto] items-center gap-1.5 rounded-[7px] border-0 bg-transparent px-[7px] text-left text-inherit hover:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_5%))] [&>span:first-child]:grid [&>span:first-child]:place-items-center [&>span:first-child_svg]:size-4 [&>span:nth-child(2)]:truncate [&>span:nth-child(2)]:text-xs [&_small]:text-[10px] [&_small]:text-[var(--dsw-alias-label-tertiary,#8c959f)]"
               key={entry.path}
               type="button"
@@ -383,7 +384,7 @@ export function FilesView({
               <span><FileGlyph kind={entry.kind} /></span>
               <span title={entry.name}>{entry.name}</span>
               <small>{formatSize(entry.size)}</small>
-            </button>
+            </Button>
           ))}
           {snapshot.entries.length === 0 && (
             <div className="tockteam-side-muted p-[18px] text-[11px] text-[var(--dsw-alias-label-tertiary,#8c959f)]">{t('files.empty-directory')}</div>
@@ -453,9 +454,9 @@ export function FileView({
     <div className="tockteam-file-preview min-h-0 flex-1 overflow-auto p-3 [&>div:first-child]:mb-2.5 [&>div:first-child]:flex [&>div:first-child]:items-center [&>div:first-child]:justify-between [&>div:first-child]:gap-2 [&_button]:h-[27px] [&_button]:min-w-[27px] [&_button]:cursor-pointer [&_button]:rounded-[7px] [&_button]:border-0 [&_button]:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_5%))] [&_button]:px-2 [&_button]:text-inherit [&_strong]:truncate [&_strong]:text-xs">
       <div>
         <strong>{tab.title}</strong>
-        <button type="button" onClick={() => { void onOpenPath(path) }}>
+        <Button unstyled type="button" onClick={() => { void onOpenPath(path) }}>
           {t('files.open')}
-        </button>
+        </Button>
       </div>
       <div className="tockteam-side-muted p-[18px] text-[11px] text-[var(--dsw-alias-label-tertiary,#8c959f)]">
         {t('files.no-viewer', { size: formatSize(snapshot.size) })}
@@ -486,18 +487,18 @@ function TabStrip({ sidebar, t }: {
     <div className="tockteam-side-tabs flex min-h-[37px] flex-none gap-1 overflow-x-auto border-b border-[var(--dsw-alias-border-l1,rgb(0_0_0_/_8%))] px-2 py-[5px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [&>div]:flex [&>div]:flex-none [&>div]:items-center [&>div]:rounded-[7px] [&>div]:text-[var(--dsw-alias-label-secondary,#57606a)] [&>div[data-active='true']]:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))] [&>div[data-active='true']]:text-[var(--dsw-alias-label-primary,#1f2328)] [&_button]:h-[27px] [&_button]:border-0 [&_button]:bg-transparent [&_button]:px-[7px] [&_button]:text-[11px] [&_button]:text-inherit [&_button]:[font:11px_system-ui] [&>div>button:first-child]:max-w-[150px] [&>div>button:first-child]:truncate [&>div>button:last-child]:grid [&>div>button:last-child]:w-[23px] [&>div>button:last-child]:place-items-center [&>div>button:last-child]:p-0 [&>div>button:last-child]:opacity-55 [&>div>button:last-child_svg]:size-[13px]" role="tablist">
       {snapshot.tabs.map(tab => (
         <div key={tab.id} data-active={tab.id === snapshot.activeId || undefined}>
-          <button
+          <Button unstyled
             type="button"
             role="tab"
             aria-selected={tab.id === snapshot.activeId}
             title={tab.title}
             onClick={() => { sidebar.activateTab(tab.id) }}
-          >{tab.title}</button>
-          <button
+          >{tab.title}</Button>
+          <Button unstyled
             type="button"
             aria-label={t('side.close-named-tab', { title: tab.title })}
             onClick={() => { sidebar.closeTab(tab.id) }}
-          ><X aria-hidden="true" /></button>
+          ><X aria-hidden="true" /></Button>
         </div>
       ))}
     </div>
@@ -562,24 +563,24 @@ export function SideToolsPanel(props: SideToolsPanelProps): JSX.Element {
       {activeTab !== undefined && descriptor?.chrome !== 'custom' && (
         <header className="tockteam-workspace-header tockteam-side-header flex min-h-[58px] flex-none items-center justify-between border-b border-[var(--dsw-alias-border-l1,rgb(0_0_0_/_8%))] py-2.5 pr-3.5 pl-5 [&>div]:flex [&>div]:min-w-0 [&>div]:items-center [&>div]:gap-1 [&_button]:size-7 [&_button]:cursor-pointer [&_button]:rounded-[7px] [&_button]:border-0 [&_button]:bg-transparent [&_button]:p-0 [&_button]:text-[var(--dsw-alias-label-secondary,#57606a)] [&_button:hover]:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))] [&_button:hover]:text-[var(--dsw-alias-label-primary,#1f2328)] [&_button_svg]:mx-auto [&_button_svg]:block [&_button_svg]:size-4 [&_strong]:truncate [&_strong]:text-[15px] [&_strong]:font-medium">
           <div>
-            <button
+            <Button unstyled
               type="button"
               aria-label={props.t('side.back')}
               onClick={() => { props.sidebar.activateTab(null) }}
-            ><ChevronLeft aria-hidden="true" /></button>
+            ><ChevronLeft aria-hidden="true" /></Button>
             <strong>{title}</strong>
           </div>
           <div>
-            <button
+            <Button unstyled
               type="button"
               aria-label={props.t('side.close-tab')}
               onClick={() => { props.sidebar.closeTab(activeTab.id) }}
-            ><Minus aria-hidden="true" /></button>
-            <button
+            ><Minus aria-hidden="true" /></Button>
+            <Button unstyled
               type="button"
               aria-label={props.t('side.close')}
               onClick={props.onClose}
-            ><X aria-hidden="true" /></button>
+            ><X aria-hidden="true" /></Button>
           </div>
         </header>
       )}

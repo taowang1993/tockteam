@@ -1,0 +1,37 @@
+import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+import test from 'node:test'
+
+const root = join(import.meta.dirname, '..')
+const migratedReactFiles = [
+  'plugins/panel-controls/src/terminal/TerminalPanel.tsx',
+  'plugins/plugin-marketplace/src/client/plugin.tsx',
+  'plugins/sidebar/src/client/SideToolsPanel.tsx',
+  'plugins/sidebar/src/client/plugin.tsx',
+  'plugins/skins/src/client/plugin.tsx',
+  'plugins/tocktutor/packages/tockbot-note-desktop/src/client-actions.tsx',
+  'plugins/tocktutor/packages/tockbot-web-clip/src/client.tsx',
+  'plugins/tocktutor/packages/tockteam-tocktutor-assistant/src/assistant-panel.tsx',
+  'plugins/tocktutor/packages/tockteam-tocktutor-import-export/src/review-panel.tsx',
+  'plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/route.tsx',
+]
+
+function read(path: string): string {
+  return readFileSync(join(root, path), 'utf8')
+}
+
+test('browser React controls use the shared shadcn source components', () => {
+  for (const path of migratedReactFiles) {
+    const source = read(path)
+    assert.doesNotMatch(source, /<(?:button|input|select|textarea)\b/, path)
+    assert.match(source, /from '@tockteam\/ui'/, path)
+  }
+})
+
+test('shared controls retain native semantics for parity migrations', () => {
+  assert.match(read('plugins/ui/src/button.tsx'), /data-slot="button"/)
+  assert.match(read('plugins/ui/src/input.tsx'), /data-slot="input"/)
+  assert.match(read('plugins/ui/src/textarea.tsx'), /data-slot="textarea"/)
+  assert.match(read('plugins/ui/src/native-select.tsx'), /data-slot="native-select"/)
+})
