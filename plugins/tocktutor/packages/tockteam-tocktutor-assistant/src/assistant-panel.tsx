@@ -433,8 +433,7 @@ export function TockTutorAssistantPanel(props: TockTutorAssistantPanelProps): Re
   }, [partial, proposalPage, transcript])
 
   return (
-    <aside aria-label="TockTutor Assistant" className="tocktutor-assistant-panel">
-      <style>{PANEL_CSS}</style>
+    <aside aria-label="TockTutor Assistant" className="tocktutor-assistant-panel tocktutor-assistant-styles">
       <div
         className="tocktutor-assistant-scroll"
         onScroll={event => {
@@ -702,77 +701,3 @@ export function TockTutorAssistantPanel(props: TockTutorAssistantPanelProps): Re
     </aside>
   )
 }
-
-const PANEL_CSS = `
-.tocktutor-assistant-panel {
-  --tta-accent: var(--tt-accent, #4f46e5);
-  --tta-bg: var(--tt-bg, #f7f8fa);
-  --tta-border: var(--tt-border, #d9dde5);
-  --tta-muted: var(--tt-muted, #667085);
-  --tta-panel: var(--tt-panel, #fff);
-  background: var(--tta-panel);
-  color: inherit;
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  min-height: 0;
-  min-width: 0;
-  overflow: hidden;
-  position: relative;
-  width: 100%;
-}
-.tocktutor-assistant-panel *, .tocktutor-assistant-panel *::before, .tocktutor-assistant-panel *::after { box-sizing: border-box; }
-.tocktutor-assistant-panel h2, .tocktutor-assistant-panel h3, .tocktutor-assistant-panel p { margin: 0; }
-.tocktutor-assistant-scroll { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 0; overflow: auto; padding: 14px; }
-.tocktutor-assistant-transcript { display: flex; flex-direction: column; gap: 16px; min-height: 100%; min-width: 0; }
-.tocktutor-assistant-empty { align-items: center; display: flex; flex-direction: column; gap: 16px; justify-content: center; min-height: 100%; text-align: center; }
-.tocktutor-assistant-empty-icon { align-items: center; background: var(--tta-panel); border: 1px solid var(--tta-border); border-radius: 12px; box-shadow: 0 1px 2px rgb(0 0 0 / 7%); color: var(--tta-accent); display: flex; height: 40px; justify-content: center; width: 40px; }
-.tocktutor-assistant-empty-icon svg { height: 18px; width: 18px; }
-.tocktutor-assistant-empty h2 { font-size: 14px; line-height: 20px; max-width: 256px; }
-.tocktutor-assistant-suggestions { align-items: stretch; display: flex; flex-direction: column; gap: 6px; text-align: left; width: min(100%, 288px); }
-.tocktutor-assistant-suggestions button, .tocktutor-assistant-add-menu > button { align-items: center; background: transparent; border: 1px solid transparent; border-radius: 8px; color: inherit; cursor: pointer; display: flex; font: inherit; font-size: 13px; gap: 10px; line-height: 18px; min-width: 0; padding: 6px 8px; text-align: left; }
-.tocktutor-assistant-suggestions button:hover, .tocktutor-assistant-suggestions button:focus-visible, .tocktutor-assistant-add-menu > button:hover, .tocktutor-assistant-add-menu > button:focus-visible { background: var(--tta-bg); border-color: var(--tta-border); }
-.tocktutor-assistant-suggestions svg, .tocktutor-assistant-add-menu > button svg { flex: 0 0 auto; height: 14px; width: 14px; }
-.tocktutor-assistant-suggestions span, .tocktutor-assistant-add-menu > button span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.tocktutor-assistant-answer { display: grid; gap: 8px; line-height: 1.55; overflow-wrap: anywhere; }
-.tocktutor-assistant-user-message { align-self: flex-end; background: var(--tta-bg); border-radius: 10px; line-height: 1.5; max-width: 88%; overflow-wrap: anywhere; padding: 8px 10px; }
-.tocktutor-assistant-kicker { color: var(--tta-muted); font-size: 11px; font-weight: 600; }
-.tocktutor-assistant-tool-status { color: var(--tta-muted); font-size: 12px; padding-block: 2px; }
-.tocktutor-assistant-error { border: 1px solid var(--tta-border); border-radius: 8px; color: #b42318; font-size: 12px; padding: 8px; }
-.tocktutor-assistant-reviews { display: grid; gap: 10px; }
-.tocktutor-assistant-reviews > h2 { font-size: 12px; letter-spacing: .04em; text-transform: uppercase; }
-.tocktutor-assistant-reviews article, .tocktutor-assistant-audit article { background: var(--tta-bg); border: 1px solid var(--tta-border); border-radius: 8px; display: grid; gap: 7px; padding: 10px; }
-.tocktutor-assistant-reviews article h3, .tocktutor-assistant-audit article h3 { font-size: 13px; overflow-wrap: anywhere; }
-.tocktutor-assistant-reviews article > p, .tocktutor-assistant-audit article > p, .tocktutor-assistant-audit article > time, .tocktutor-assistant-audit article > span { color: var(--tta-muted); font-size: 12px; }
-.tocktutor-assistant-reviews pre { background: var(--tta-panel); border: 1px solid var(--tta-border); border-radius: 6px; font: 12px/1.5 ui-monospace, SFMono-Regular, Consolas, monospace; margin: 0; max-height: 180px; overflow: auto; padding: 8px; white-space: pre-wrap; }
-.tocktutor-assistant-reviews article > div, .tocktutor-assistant-panel nav { display: flex; flex-wrap: wrap; gap: 6px; }
-.tocktutor-assistant-reviews button, .tocktutor-assistant-audit button, .tocktutor-assistant-add-menu form button { background: var(--tta-panel); border: 1px solid var(--tta-border); border-radius: 7px; color: inherit; cursor: pointer; font: inherit; font-weight: 600; padding: 6px 9px; }
-.tocktutor-assistant-reviews article button:first-child, .tocktutor-assistant-add-menu form button[type="submit"] { background: var(--tta-accent); border-color: var(--tta-accent); color: white; }
-.tocktutor-assistant-panel button:disabled { cursor: default; opacity: .5; }
-.tocktutor-assistant-jump { align-items: center; background: var(--tta-panel); border: 1px solid var(--tta-border); border-radius: 8px; bottom: 112px; box-shadow: 0 1px 4px rgb(0 0 0 / 10%); display: flex; font: inherit; font-size: 12px; gap: 5px; padding: 5px 8px; position: absolute; right: 16px; z-index: 2; }
-.tocktutor-assistant-jump svg { height: 14px; width: 14px; }
-.tocktutor-assistant-composer-wrap { flex: 0 0 auto; padding: 0 12px 12px; position: relative; }
-.tocktutor-assistant-composer { background: var(--tta-panel); border: 1px solid var(--tta-border); border-radius: 16px; display: flex; flex-direction: column; gap: 8px; min-height: 96px; padding: 10px; }
-.tocktutor-assistant-composer:focus-within { border-color: var(--tta-accent); }
-.tocktutor-assistant-composer textarea { background: transparent; border: 0; color: inherit; font: inherit; font-size: 13px; line-height: 18px; min-height: 48px; outline: 0; padding: 0; resize: none; width: 100%; }
-.tocktutor-assistant-composer > div { align-items: center; display: flex; justify-content: space-between; }
-.tocktutor-assistant-icon-button, .tocktutor-assistant-send { align-items: center; border: 0; cursor: pointer; display: flex; height: 28px; justify-content: center; padding: 0; width: 28px; }
-.tocktutor-assistant-icon-button { background: transparent; border-radius: 7px; color: inherit; }
-.tocktutor-assistant-send { background: var(--tta-accent); border-radius: 999px; color: white; }
-.tocktutor-assistant-icon-button svg, .tocktutor-assistant-send svg { height: 14px; width: 14px; }
-.tocktutor-assistant-send svg { color: white; stroke: white; }
-.tocktutor-assistant-add-menu { background: var(--tta-panel); border: 1px solid var(--tta-border); border-radius: 10px; bottom: calc(100% + 8px); box-shadow: 0 8px 24px rgb(0 0 0 / 12%); display: grid; gap: 4px; left: 12px; max-height: min(520px, calc(100vh - 180px)); overflow: auto; padding: 8px; position: absolute; width: min(304px, calc(100% - 24px)); z-index: 3; }
-.tocktutor-assistant-add-menu[hidden] { display: none; }
-.tocktutor-assistant-add-menu details { border-top: 1px solid var(--tta-border); padding-top: 4px; }
-.tocktutor-assistant-add-menu summary { cursor: pointer; font-size: 13px; padding: 6px 8px; }
-.tocktutor-assistant-add-menu form, .tocktutor-assistant-audit { display: grid; gap: 8px; padding: 8px; }
-.tocktutor-assistant-add-menu label { display: grid; font-size: 12px; gap: 4px; }
-.tocktutor-assistant-add-menu input, .tocktutor-assistant-add-menu select { background: var(--tta-panel); border: 1px solid var(--tta-border); border-radius: 7px; color: inherit; font: inherit; padding: 7px 8px; width: 100%; }
-.tocktutor-assistant-status:empty { display: none; }
-.tocktutor-assistant-status:not(:empty) { background: color-mix(in srgb, var(--tta-accent) 9%, var(--tta-panel)); border-radius: 7px; bottom: 120px; color: var(--tta-muted); font-size: 12px; left: 12px; padding: 8px 10px; position: absolute; right: 12px; z-index: 2; }
-.tocktutor-assistant-panel button:focus-visible, .tocktutor-assistant-panel input:focus-visible, .tocktutor-assistant-panel select:focus-visible, .tocktutor-assistant-panel textarea:focus-visible, .tocktutor-assistant-panel [role="status"]:focus-visible { outline: 2px solid var(--tta-accent); outline-offset: 2px; }
-.tocktutor-assistant-composer textarea:focus-visible { outline: none; box-shadow: none; }
-@media (prefers-reduced-motion: reduce) {
-  .tocktutor-assistant-panel *, .tocktutor-assistant-panel *::before, .tocktutor-assistant-panel *::after { scroll-behavior: auto !important; transition-duration: 0s !important; }
-}
-`

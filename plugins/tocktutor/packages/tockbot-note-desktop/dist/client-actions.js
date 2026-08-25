@@ -133,15 +133,6 @@ function resultMessage(result) {
         case 'unavailable': return 'This native action is unavailable.';
     }
 }
-const ACTIONS_CSS = `
-.tocktutor-desktop-actions { display: grid; gap: 8px; padding: 14px 18px 18px; }
-.tocktutor-desktop-actions-grid { display: grid; gap: 8px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.tocktutor-desktop-actions button { background: var(--tt-bg, #f7f8fa); border: 1px solid var(--tt-border, #d9dde5); border-radius: 8px; color: inherit; cursor: pointer; min-height: 36px; padding: 7px 10px; text-align: left; }
-.tocktutor-desktop-actions button:hover:not(:disabled), .tocktutor-desktop-actions button:focus-visible { border-color: var(--tt-accent, #2457d6); outline: none; }
-.tocktutor-desktop-actions button:focus-visible { box-shadow: 0 0 0 2px color-mix(in srgb, var(--tt-accent, #2457d6) 28%, transparent); }
-.tocktutor-desktop-actions button:disabled { cursor: not-allowed; opacity: .5; }
-.tocktutor-desktop-actions [role="status"] { color: var(--tt-muted, #667085); margin: 4px 0 0; }
-`;
 /** Accessible contribution for Workbench's root-scoped Native Actions seat. */
 export function TockTutorNativeActions(props) {
     const owner = useRef(props);
@@ -204,7 +195,7 @@ export function TockTutorNativeActions(props) {
         await run(label, operation, (authorization, signal) => (call(authorization, props.activePath, props.vault, signal)));
     };
     const button = (label, action, enabled = true) => (_jsx("button", { disabled: !enabled || busy !== null, onClick: () => { void action(); }, type: "button", children: busy === label ? `${label}…` : label }, label));
-    return (_jsxs("div", { "aria-label": "Desktop Note Actions", className: "tocktutor-desktop-actions", role: "group", children: [_jsx("style", { children: ACTIONS_CSS }), _jsxs("div", { className: "tocktutor-desktop-actions-grid", children: [button('Choose Vault', async () => {
+    return (_jsxs("div", { "aria-label": "Desktop Note Actions", className: "tocktutor-desktop-actions tocktutor-native-actions-styles", role: "group", children: [_jsxs("div", { className: "tocktutor-desktop-actions-grid", children: [button('Choose Vault', async () => {
                         await run('Choosing Vault', 'activate-vault', (authorization, signal) => (props.remote.tocktutorDesktop.activateVault(authorization, signal)));
                     }), button('Reveal Entry', withNote('Revealing Entry', 'reveal-entry', (authorization, path, vault, signal) => (props.remote.tocktutorDesktop.revealEntry(authorization, path, vault, signal))), hasNote), button('Open Pop-Out', withNote('Opening Pop-Out', 'popout-open', (authorization, path, vault, signal) => (props.remote.tocktutorDesktop.openPopOut(authorization, path, vault, signal))), hasNote), button('Close Pop-Out', withNote('Closing Pop-Out', 'popout-close', (authorization, path, vault, signal) => (props.remote.tocktutorDesktop.closePopOut(authorization, path, vault, signal))), hasNote), button('Close All Pop-Outs', async () => {
                         if (props.vault === null)

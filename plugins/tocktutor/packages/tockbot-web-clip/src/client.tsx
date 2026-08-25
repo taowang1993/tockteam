@@ -358,10 +358,10 @@ function WebViewer(): ReactNode {
   }
 
   return (
-    <section aria-label="Web Viewer" style={{ display: 'flex', flex: 1, flexDirection: 'column', minHeight: 0 }}>
-      <div aria-label="Viewer Tabs" style={{ display: 'flex', gap: 4, overflowX: 'auto' }}>
+    <section aria-label="Web Viewer" className="flex min-h-0 flex-1 flex-col">
+      <div aria-label="Viewer Tabs" className="flex gap-1 overflow-x-auto">
         {viewer.tabs.map((tab, index) => (
-          <span key={tab.id} style={{ display: 'inline-flex' }}>
+          <span className="inline-flex" key={tab.id}>
             <button
               aria-pressed={tab.id === viewer.activeId}
               disabled={clipApplying}
@@ -403,7 +403,7 @@ function WebViewer(): ReactNode {
       <form
         aria-label="Web Viewer Address"
         onSubmit={event => { event.preventDefault(); navigate(draft) }}
-        style={{ display: 'flex', gap: 4 }}
+        className="flex gap-1"
       >
         <input
           aria-label="URL"
@@ -443,16 +443,13 @@ function WebViewer(): ReactNode {
       {reader && (
         <article
           aria-label="Reader View"
+          className="w-full self-center overflow-auto p-6"
           style={{
-            alignSelf: 'center',
             background: viewer.readerPreferences.appearance === 'dark' ? '#171717' : viewer.readerPreferences.appearance === 'light' ? '#fff' : undefined,
             color: viewer.readerPreferences.appearance === 'dark' ? '#f5f5f5' : viewer.readerPreferences.appearance === 'light' ? '#171717' : undefined,
             fontSize: viewer.readerPreferences.textSize === 'sm' ? 14 : viewer.readerPreferences.textSize === 'lg' ? 18 : 16,
             lineHeight: viewer.readerPreferences.spacing === 'compact' ? 1.4 : viewer.readerPreferences.spacing === 'relaxed' ? 1.9 : 1.65,
             maxWidth: viewer.readerPreferences.width === 'narrow' ? 640 : viewer.readerPreferences.width === 'wide' ? 1000 : 800,
-            overflow: 'auto',
-            padding: 24,
-            width: '100%',
           }}
         >
           <div aria-label="Reader Settings">
@@ -493,7 +490,7 @@ function WebViewer(): ReactNode {
               <div>
                 <p>Review the exact Markdown and destination before saving.</p>
                 <p><strong>Destination:</strong> {clipPreview.destination}</p>
-                <pre aria-label="Clip Markdown Preview" style={{ maxHeight: 320, overflow: 'auto', whiteSpace: 'pre-wrap' }}>{clipPreview.markdown}</pre>
+                <pre aria-label="Clip Markdown Preview" className="max-h-80 overflow-auto whitespace-pre-wrap">{clipPreview.markdown}</pre>
                 <button disabled={clipLoading} onClick={applyClip} type="button">{clipLoading ? 'Saving…' : 'Save Clip'}</button>
                 <button disabled={clipLoading} onClick={invalidateClip} type="button">Cancel</button>
               </div>
@@ -501,10 +498,10 @@ function WebViewer(): ReactNode {
             {clipSavedPath && <p role="status">Saved clip to {clipSavedPath}.</p>}
           </section>
           {reader.warnings.map(warning => <p key={warning} role="status">{warning}</p>)}
-          <pre style={{ font: 'inherit', whiteSpace: 'pre-wrap' }}>{reader.content}</pre>
+          <pre className="whitespace-pre-wrap font-[inherit]">{reader.content}</pre>
         </article>
       )}
-      <div ref={host} style={{ display: reader ? 'none' : 'flex', flex: 1, minHeight: 0 }} />
+      <div className={reader ? 'hidden' : 'flex min-h-0 flex-1'} ref={host} />
     </section>
   )
 }

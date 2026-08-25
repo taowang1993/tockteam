@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import test from 'node:test'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
@@ -22,6 +23,10 @@ const firstVault = Object.freeze({ generation: 3, id: `vault:${'1'.repeat(64)}` 
 const secondVault = Object.freeze({ generation: 4, id: `vault:${'2'.repeat(64)}` })
 const firstRevision = `file:${'a'.repeat(64)}`
 const secondRevision = `file:${'b'.repeat(64)}`
+const TAILWIND_CSS = readFileSync(
+  new URL('../../../../skins/src/client/tailwind.css', import.meta.url),
+  'utf8',
+)
 
 function success<T>(value: T) {
   return Promise.resolve({ ok: true as const, value })
@@ -545,7 +550,7 @@ test('loads, edits, reads, toggles, and snapshot-saves one exact note', async ()
     path: 'Folder/Note.md',
   })
 
-  const html = renderToStaticMarkup(createElement(TockTutorRouteView, {
+  const markup = renderToStaticMarkup(createElement(TockTutorRouteView, {
     assistantPanel: createElement('p', null, 'Assistant Surface'),
     onActivateTab() {},
     onAddPane() {},
@@ -558,6 +563,7 @@ test('loads, edits, reads, toggles, and snapshot-saves one exact note', async ()
     onToggleTask() {},
     snapshot: controller.getSnapshot(),
   }))
+  const html = `${markup}\n${TAILWIND_CSS}`
   assert.match(html, /aria-label="TockTutor Workbench"/u)
   assert.match(html, /<section[^>]+aria-label="TockTutor Title Bar"/u)
   assert.match(html, /<button[^>]+aria-label="Search Notes"/u)

@@ -368,8 +368,7 @@ export function ImportExportReviewPanelView(props: {
   const warnings = preview !== null && 'warnings' in preview ? preview.warnings : []
   const busy = snapshot.phase === 'inspecting' || snapshot.phase === 'approving' || snapshot.phase === 'committing'
   return (
-    <section aria-label="Import, Backup, and Restore" className="tocktutor-import-export-review">
-      <style>{PANEL_CSS}</style>
+    <section aria-label="Import, Backup, and Restore" className="tocktutor-import-export-review tocktutor-import-export-styles">
       <header>
         <p className="tocktutor-import-export-kicker">Reviewed Operations</p>
         <h2>Import, Backup, and Restore</h2>
@@ -468,17 +467,3 @@ export function ImportExportReviewPanel(
     />
   )
 }
-
-const PANEL_CSS = `
-.tocktutor-import-export-review { border: 1px solid var(--tt-border); border-radius: 10px; display: grid; gap: 12px; padding: 14px; }
-.tocktutor-import-export-review h2, .tocktutor-import-export-review h3, .tocktutor-import-export-review p { margin: 0; }
-.tocktutor-import-export-kicker { color: var(--tt-muted); font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
-.tocktutor-import-export-start, .tocktutor-import-export-actions { display: flex; flex-wrap: wrap; gap: 8px; }
-.tocktutor-import-export-start label { display: grid; flex: 1 1 220px; font-size: 12px; gap: 4px; }
-.tocktutor-import-export-review button, .tocktutor-import-export-review select { background: var(--tt-panel); border: 1px solid var(--tt-border); border-radius: 6px; color: inherit; min-height: 32px; padding: 5px 9px; }
-.tocktutor-import-export-plan { display: grid; gap: 10px; }
-.tocktutor-import-export-plan dl { display: grid; gap: 4px; margin: 0; }
-.tocktutor-import-export-plan dl div { display: flex; gap: 8px; justify-content: space-between; }
-.tocktutor-import-export-plan dd { margin: 0; overflow-wrap: anywhere; text-align: right; }
-.tocktutor-import-export-plan ul { margin: 0; max-height: 180px; overflow: auto; padding-left: 18px; }
-`

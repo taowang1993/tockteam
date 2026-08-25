@@ -780,9 +780,9 @@ function WebViewer() {
       readerPreferences: { ...current.readerPreferences, [key]: value }
     });
   };
-  return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("section", { "aria-label": "Web Viewer", style: { display: "flex", flex: 1, flexDirection: "column", minHeight: 0 }, children: [
-    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { "aria-label": "Viewer Tabs", style: { display: "flex", gap: 4, overflowX: "auto" }, children: [
-      viewer.tabs.map((tab2, index) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { style: { display: "inline-flex" }, children: [
+  return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("section", { "aria-label": "Web Viewer", className: "flex min-h-0 flex-1 flex-col", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { "aria-label": "Viewer Tabs", className: "flex gap-1 overflow-x-auto", children: [
+      viewer.tabs.map((tab2, index) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "inline-flex", children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
           "button",
           {
@@ -856,7 +856,7 @@ function WebViewer() {
           event.preventDefault();
           navigate(draft);
         },
-        style: { display: "flex", gap: 4 },
+        className: "flex gap-1",
         children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
             "input",
@@ -920,16 +920,13 @@ function WebViewer() {
       "article",
       {
         "aria-label": "Reader View",
+        className: "w-full self-center overflow-auto p-6",
         style: {
-          alignSelf: "center",
           background: viewer.readerPreferences.appearance === "dark" ? "#171717" : viewer.readerPreferences.appearance === "light" ? "#fff" : void 0,
           color: viewer.readerPreferences.appearance === "dark" ? "#f5f5f5" : viewer.readerPreferences.appearance === "light" ? "#171717" : void 0,
           fontSize: viewer.readerPreferences.textSize === "sm" ? 14 : viewer.readerPreferences.textSize === "lg" ? 18 : 16,
           lineHeight: viewer.readerPreferences.spacing === "compact" ? 1.4 : viewer.readerPreferences.spacing === "relaxed" ? 1.9 : 1.65,
-          maxWidth: viewer.readerPreferences.width === "narrow" ? 640 : viewer.readerPreferences.width === "wide" ? 1e3 : 800,
-          overflow: "auto",
-          padding: 24,
-          width: "100%"
+          maxWidth: viewer.readerPreferences.width === "narrow" ? 640 : viewer.readerPreferences.width === "wide" ? 1e3 : 800
         },
         children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { "aria-label": "Reader Settings", children: [
@@ -1034,7 +1031,7 @@ function WebViewer() {
                 " ",
                 clipPreview.destination
               ] }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("pre", { "aria-label": "Clip Markdown Preview", style: { maxHeight: 320, overflow: "auto", whiteSpace: "pre-wrap" }, children: clipPreview.markdown }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("pre", { "aria-label": "Clip Markdown Preview", className: "max-h-80 overflow-auto whitespace-pre-wrap", children: clipPreview.markdown }),
               /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { disabled: clipLoading, onClick: applyClip, type: "button", children: clipLoading ? "Saving\u2026" : "Save Clip" }),
               /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { disabled: clipLoading, onClick: invalidateClip, type: "button", children: "Cancel" })
             ] }),
@@ -1045,11 +1042,11 @@ function WebViewer() {
             ] })
           ] }),
           reader.warnings.map((warning) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { role: "status", children: warning }, warning)),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("pre", { style: { font: "inherit", whiteSpace: "pre-wrap" }, children: reader.content })
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("pre", { className: "whitespace-pre-wrap font-[inherit]", children: reader.content })
         ]
       }
     ),
-    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { ref: host, style: { display: reader ? "none" : "flex", flex: 1, minHeight: 0 } })
+    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: reader ? "hidden" : "flex min-h-0 flex-1", ref: host })
   ] });
 }
 var inject = ["desktopSidebar", "tockTeamSurface"];

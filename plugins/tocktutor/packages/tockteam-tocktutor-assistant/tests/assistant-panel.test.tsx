@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
@@ -7,6 +9,11 @@ import {
   type AssistantPanelRemote,
   type AssistantPanelSessions,
 } from '../src/assistant-panel.tsx'
+
+const TAILWIND_CSS = readFileSync(
+  join(process.cwd(), '../../../skins/src/client/tailwind.css'),
+  'utf8',
+)
 
 function success<T>(value: T) {
   return Promise.resolve({ ok: true as const, value })
@@ -110,7 +117,7 @@ describe('TockTutorAssistantPanel', () => {
       vault={{ generation: 7, id: `vault:${'a'.repeat(64)}` }}
     />
     const mounted = render(view)
-    expect(screen.getByRole('complementary', { name: 'TockTutor Assistant' }).className).toBe('tocktutor-assistant-panel')
+    expect(screen.getByRole('complementary', { name: 'TockTutor Assistant' }).className).toContain('tocktutor-assistant-styles')
     expect(screen.getByRole('heading', { name: 'What can I help you with?' })).toBeTruthy()
     expect(screen.queryByRole('textbox', { name: 'Provider' })).toBeNull()
     expect(screen.getByRole('button', { name: 'Summarize the current note' })).toBeTruthy()
@@ -119,9 +126,8 @@ describe('TockTutorAssistantPanel', () => {
     expect(screen.getByRole('button', { name: 'Freely communicate with AI' })).toBeTruthy()
     const composer = screen.getByRole('textbox', { name: 'Assistant Message' }) as HTMLTextAreaElement
     expect(composer.placeholder).toBe('What are your thoughts?')
-    const css = mounted.container.querySelector('style')?.textContent ?? ''
-    expect(css).toContain('.tocktutor-assistant-composer textarea:focus-visible { outline: none; box-shadow: none; }')
-    expect(css).toContain('.tocktutor-assistant-send svg { color: white; stroke: white; }')
+    expect(TAILWIND_CSS).toContain('& .tocktutor-assistant-composer textarea:focus-visible { outline: none; box-shadow: none; }')
+    expect(TAILWIND_CSS).toContain('& .tocktutor-assistant-send svg { color: white; stroke: white; }')
     fireEvent.click(screen.getByRole('button', { name: 'Summarize the current note' }))
     expect(composer.value).toBe('Summarize the current note.')
 

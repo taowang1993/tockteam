@@ -92,10 +92,10 @@ test('desktop titlebar matches Tockbot chrome and stays draggable', () => {
     'utf8',
   )
   const css = sidebarTailwindSource()
-  const tockTutor = readFileSync(
+  const tockTutor = `${readFileSync(
     join(root, 'plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/route.tsx'),
     'utf8',
-  )
+  )}\n${tailwind}`
 
   assert.match(
     main,
