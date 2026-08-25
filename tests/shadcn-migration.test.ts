@@ -69,3 +69,32 @@ test('rich floating controls use shared popovers and tooltips', () => {
   assert.match(terminal, /from '@tockteam\/ui\/tooltip'/)
   assert.doesNotMatch(terminal, /role="dialog" aria-label=\{t\('terminal\.font-settings'\)\}/)
 })
+
+test('icon-only actions use shared tooltips instead of native titles', () => {
+  const marketplace = read('plugins/plugin-marketplace/src/client/plugin.tsx')
+  const sidebar = read('plugins/sidebar/src/client/plugin.tsx')
+  const sideTools = read('plugins/sidebar/src/client/SideToolsPanel.tsx')
+  const workbench = read('plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/route.tsx')
+
+  for (const source of [marketplace, sidebar, sideTools, workbench]) {
+    assert.match(source, /from '@tockteam\/ui\/tooltip'/)
+    assert.match(source, /<TooltipProvider>/)
+  }
+  assert.match(marketplace, /<TooltipContent>\{t\('close'\)\}<\/TooltipContent>/)
+  assert.match(marketplace, /<TooltipContent>\{t\('search\.clear'\)\}<\/TooltipContent>/)
+  assert.doesNotMatch(marketplace, /title=\{t\('close'\)\}/)
+  for (const message of ['side.back', 'workspace.refresh', 'workspace.add', 'workspace.close-review', 'workspace.remove-comment']) {
+    assert.match(sidebar, new RegExp(`<TooltipContent>\\{t\\('${message.replace('.', '\\.')}'\\)\\}<\\/TooltipContent>`))
+  }
+  for (const label of ['DeepSeek Harness', 'TockTutor']) {
+    assert.match(sidebar, new RegExp(`<TooltipContent side="right">${label}<\\/TooltipContent>`))
+    assert.doesNotMatch(sidebar, new RegExp(`title="${label}"`))
+  }
+  assert.match(sideTools, /<TooltipContent>\{t\('side\.close-tab'\)\}<\/TooltipContent>/)
+  for (const label of ['Search Notes', 'Toggle Files Sidebar', 'New Note', 'Toggle Assistant Panel', 'Close Search', 'More Note Actions', 'Open Assistant', 'Close More Options', 'Add Pane']) {
+    assert.match(workbench, new RegExp(`<TooltipContent>${label}<\\/TooltipContent>`))
+  }
+  for (const label of ['Search Notes', 'New Note', 'Add Pane']) {
+    assert.match(workbench, new RegExp(`<span className="inline-flex">\\s*<Button unstyled aria-label="${label}"`))
+  }
+})

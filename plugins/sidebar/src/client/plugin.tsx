@@ -979,15 +979,35 @@ function WorkspacePanel({
     <div className="tockteam-review-view flex min-h-0 flex-1 flex-col overflow-hidden" aria-label={t('workspace.changes')}>
       <header className="tockteam-workspace-header flex min-h-[58px] flex-none items-center justify-between border-b border-[var(--dsw-alias-border-l1,rgb(0_0_0_/_8%))] py-2.5 pr-3.5 pl-5 [&>div]:flex [&>div]:flex-none [&>div]:gap-0.5 [&_button]:size-7 [&_button]:cursor-pointer [&_button]:rounded-[7px] [&_button]:border-0 [&_button]:bg-transparent [&_button]:p-0 [&_button]:text-[var(--dsw-alias-label-secondary,#57606a)] [&_button:hover]:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))] [&_button:hover]:text-[var(--dsw-alias-label-primary,#1f2328)] [&_button_svg]:mx-auto [&_button_svg]:block [&_button_svg]:size-4 [&_strong]:min-w-0 [&_strong]:truncate [&_strong]:text-[15px] [&_strong]:font-medium">
         <div>
-          <Button unstyled type="button" aria-label={t('side.back')} onClick={() => { service.openMenu() }}><ChevronLeft aria-hidden="true" /></Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button unstyled type="button" aria-label={t('side.back')} onClick={() => { service.openMenu() }}><ChevronLeft aria-hidden="true" /></Button>
+            </TooltipTrigger>
+            <TooltipContent>{t('side.back')}</TooltipContent>
+          </Tooltip>
           <strong>{snapshot?.name ?? (cwd?.split(/[\\/]/).filter(Boolean).pop() || t('workspace.title'))}</strong>
         </div>
         <div>
-          <Button unstyled type="button" onClick={() => { void refresh() }} aria-label={t('workspace.refresh')} title={t('workspace.refresh')}><RefreshCw aria-hidden="true" /></Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button unstyled type="button" onClick={() => { void refresh() }} aria-label={t('workspace.refresh')}><RefreshCw aria-hidden="true" /></Button>
+            </TooltipTrigger>
+            <TooltipContent>{t('workspace.refresh')}</TooltipContent>
+          </Tooltip>
           {window.dshDesktop?.chooseWorkspace !== undefined && (
-            <Button unstyled type="button" onClick={() => { void chooseWorkspace() }} aria-label={t('workspace.add')} title={t('workspace.add')}><Plus aria-hidden="true" /></Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button unstyled type="button" onClick={() => { void chooseWorkspace() }} aria-label={t('workspace.add')}><Plus aria-hidden="true" /></Button>
+              </TooltipTrigger>
+              <TooltipContent>{t('workspace.add')}</TooltipContent>
+            </Tooltip>
           )}
-          <Button unstyled type="button" onClick={() => { service.setOpen(false) }} aria-label={t('workspace.close-review')} title={t('workspace.close-review')}><X aria-hidden="true" /></Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button unstyled type="button" onClick={() => { service.setOpen(false) }} aria-label={t('workspace.close-review')}><X aria-hidden="true" /></Button>
+            </TooltipTrigger>
+            <TooltipContent>{t('workspace.close-review')}</TooltipContent>
+          </Tooltip>
         </div>
       </header>
 
@@ -1093,12 +1113,16 @@ function WorkspacePanel({
                                 : `${comment.filePath}:${String(comment.line)}`}
                             </span>
                             <p>{comment.body}</p>
-                            <Button unstyled
-                              type="button"
-                              aria-label={t('workspace.remove-comment')}
-                              title={t('workspace.remove-comment')}
-                              onClick={() => { reviewComments.remove(comment.id) }}
-                            ><X aria-hidden="true" /></Button>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button unstyled
+                                  type="button"
+                                  aria-label={t('workspace.remove-comment')}
+                                  onClick={() => { reviewComments.remove(comment.id) }}
+                                ><X aria-hidden="true" /></Button>
+                              </TooltipTrigger>
+                              <TooltipContent>{t('workspace.remove-comment')}</TooltipContent>
+                            </Tooltip>
                           </div>
                         ))}
                       </div>
@@ -1806,22 +1830,32 @@ function DesktopAppRail({
 }): ReactNode {
   const tockTutorActive = isTockTutorPath(location.pathname)
   return (
-    <nav className="tockteam-app-rail flex h-full flex-col items-center gap-1 px-1 py-2 [&_button]:grid [&_button]:size-8 [&_button]:flex-none [&_button]:cursor-pointer [&_button]:place-items-center [&_button]:rounded-[7px] [&_button]:border-0 [&_button]:bg-transparent [&_button]:p-0 [&_button]:text-[color-mix(in_srgb,var(--dsw-alias-label-primary,#1f2328)_62%,transparent)] [&_button:hover]:bg-[color-mix(in_srgb,var(--dsw-alias-label-primary,#1f2328)_7%,transparent)] [&_button:hover]:text-[var(--dsw-alias-label-primary,#1f2328)] [&_button[aria-current='page']]:bg-[color-mix(in_srgb,var(--dsw-alias-label-primary,#1f2328)_11%,transparent)] [&_button[aria-current='page']]:text-[var(--dsw-alias-label-primary,#1f2328)] [&_button:focus-visible]:outline-2 [&_button:focus-visible]:outline-offset-1 [&_button:focus-visible]:outline-[var(--dsw-alias-border-focus,#315efb)] [&_svg]:size-[18px]" aria-label="App Navigation">
-      <Button unstyled
-        type="button"
-        aria-label="DeepSeek Harness"
-        aria-current={tockTutorActive ? undefined : 'page'}
-        title="DeepSeek Harness"
-        onClick={() => { navigate('/') }}
-      ><AppRailIcon kind="agent" /></Button>
-      <Button unstyled
-        type="button"
-        aria-label="TockTutor"
-        aria-current={tockTutorActive ? 'page' : undefined}
-        title="TockTutor"
-        onClick={() => { navigate(TOCKTUTOR_ROUTE_PREFIX) }}
-      ><AppRailIcon kind="notebook" /></Button>
-    </nav>
+    <TooltipProvider>
+      <nav className="tockteam-app-rail flex h-full flex-col items-center gap-1 px-1 py-2 [&_button]:grid [&_button]:size-8 [&_button]:flex-none [&_button]:cursor-pointer [&_button]:place-items-center [&_button]:rounded-[7px] [&_button]:border-0 [&_button]:bg-transparent [&_button]:p-0 [&_button]:text-[color-mix(in_srgb,var(--dsw-alias-label-primary,#1f2328)_62%,transparent)] [&_button:hover]:bg-[color-mix(in_srgb,var(--dsw-alias-label-primary,#1f2328)_7%,transparent)] [&_button:hover]:text-[var(--dsw-alias-label-primary,#1f2328)] [&_button[aria-current='page']]:bg-[color-mix(in_srgb,var(--dsw-alias-label-primary,#1f2328)_11%,transparent)] [&_button[aria-current='page']]:text-[var(--dsw-alias-label-primary,#1f2328)] [&_button:focus-visible]:outline-2 [&_button:focus-visible]:outline-offset-1 [&_button:focus-visible]:outline-[var(--dsw-alias-border-focus,#315efb)] [&_svg]:size-[18px]" aria-label="App Navigation">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button unstyled
+              type="button"
+              aria-label="DeepSeek Harness"
+              aria-current={tockTutorActive ? undefined : 'page'}
+              onClick={() => { navigate('/') }}
+            ><AppRailIcon kind="agent" /></Button>
+          </TooltipTrigger>
+          <TooltipContent side="right">DeepSeek Harness</TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button unstyled
+              type="button"
+              aria-label="TockTutor"
+              aria-current={tockTutorActive ? 'page' : undefined}
+              onClick={() => { navigate(TOCKTUTOR_ROUTE_PREFIX) }}
+            ><AppRailIcon kind="notebook" /></Button>
+          </TooltipTrigger>
+          <TooltipContent side="right">TockTutor</TooltipContent>
+        </Tooltip>
+      </nav>
+    </TooltipProvider>
   )
 }
 

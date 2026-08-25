@@ -2,6 +2,7 @@ import { Alert } from '@tockteam/ui/alert'
 import { Button } from '@tockteam/ui/button'
 import { Empty } from '@tockteam/ui/empty'
 import { Input } from '@tockteam/ui/input'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@tockteam/ui/tooltip'
 import {
   useEffect,
   useRef,
@@ -509,6 +510,7 @@ function TabStrip({ sidebar, t }: {
 }
 
 export function SideToolsPanel(props: SideToolsPanelProps): JSX.Element {
+  const { t } = props
   const snapshot = useSyncExternalStore(
     props.sidebar.subscribe,
     props.sidebar.getSnapshot,
@@ -548,14 +550,15 @@ export function SideToolsPanel(props: SideToolsPanelProps): JSX.Element {
       ? <OrphanedTab title={title} t={props.t} />
       : descriptor.render(renderProps)
   return (
-    <aside
-      className="tockteam-workspace-panel tockteam-side-panel absolute top-0 right-0 bottom-0 z-[9100] flex min-h-0 w-full box-border translate-x-[calc(100%+24px)] flex-col overflow-hidden border-y-0 border-r-0 border-l border-[var(--dsw-alias-border-l1,rgb(0_0_0_/_9%))] bg-[var(--dsw-alias-bg-base,#fff)] text-[var(--dsw-alias-label-primary,#1f2328)] invisible opacity-0 shadow-none transition-[opacity,transform,visibility] [transition-duration:140ms,180ms,0s] [transition-timing-function:var(--ds-ease-in-out,ease),var(--ds-ease-in-out,ease),linear] [transition-delay:0s,0s,180ms] pointer-events-none [-webkit-app-region:no-drag] data-[open=true]:visible data-[open=true]:translate-x-0 data-[open=true]:opacity-100 data-[open=true]:[transition-delay:0s] data-[open=true]:pointer-events-auto motion-reduce:transition-none max-[900px]:fixed max-[900px]:top-[var(--tockteam-titlebar-height,40px)] max-[900px]:right-0 max-[900px]:bottom-0 max-[900px]:left-[var(--tockteam-rail-width)] max-[900px]:w-auto max-[900px]:shadow-[-20px_0_48px_rgb(0_0_0_/_14%)]"
-      data-open={String(props.open)}
-      data-maximized={String(props.maximized)}
-      aria-hidden={!props.open}
-      aria-label={title}
-    >
-      {!props.maximized && (
+    <TooltipProvider>
+      <aside
+        className="tockteam-workspace-panel tockteam-side-panel absolute top-0 right-0 bottom-0 z-[9100] flex min-h-0 w-full box-border translate-x-[calc(100%+24px)] flex-col overflow-hidden border-y-0 border-r-0 border-l border-[var(--dsw-alias-border-l1,rgb(0_0_0_/_9%))] bg-[var(--dsw-alias-bg-base,#fff)] text-[var(--dsw-alias-label-primary,#1f2328)] invisible opacity-0 shadow-none transition-[opacity,transform,visibility] [transition-duration:140ms,180ms,0s] [transition-timing-function:var(--ds-ease-in-out,ease),var(--ds-ease-in-out,ease),linear] [transition-delay:0s,0s,180ms] pointer-events-none [-webkit-app-region:no-drag] data-[open=true]:visible data-[open=true]:translate-x-0 data-[open=true]:opacity-100 data-[open=true]:[transition-delay:0s] data-[open=true]:pointer-events-auto motion-reduce:transition-none max-[900px]:fixed max-[900px]:top-[var(--tockteam-titlebar-height,40px)] max-[900px]:right-0 max-[900px]:bottom-0 max-[900px]:left-[var(--tockteam-rail-width)] max-[900px]:w-auto max-[900px]:shadow-[-20px_0_48px_rgb(0_0_0_/_14%)]"
+        data-open={String(props.open)}
+        data-maximized={String(props.maximized)}
+        aria-hidden={!props.open}
+        aria-label={title}
+      >
+        {!props.maximized && (
         <div
           className="tockteam-workspace-resize absolute top-0 bottom-0 left-[-4px] z-2 w-2 touch-none cursor-ew-resize"
           onPointerDown={beginResize}
@@ -574,11 +577,16 @@ export function SideToolsPanel(props: SideToolsPanelProps): JSX.Element {
             <strong>{title}</strong>
           </div>
           <div>
-            <Button unstyled
-              type="button"
-              aria-label={props.t('side.close-tab')}
-              onClick={() => { props.sidebar.closeTab(activeTab.id) }}
-            ><Minus aria-hidden="true" /></Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button unstyled
+                  type="button"
+                  aria-label={t('side.close-tab')}
+                  onClick={() => { props.sidebar.closeTab(activeTab.id) }}
+                ><Minus aria-hidden="true" /></Button>
+              </TooltipTrigger>
+              <TooltipContent>{t('side.close-tab')}</TooltipContent>
+            </Tooltip>
             <Button unstyled
               type="button"
               aria-label={props.t('side.close')}
@@ -587,7 +595,8 @@ export function SideToolsPanel(props: SideToolsPanelProps): JSX.Element {
           </div>
         </header>
       )}
-      {content}
-    </aside>
+        {content}
+      </aside>
+    </TooltipProvider>
   )
 }

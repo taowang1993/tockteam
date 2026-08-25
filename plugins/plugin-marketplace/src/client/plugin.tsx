@@ -8,6 +8,7 @@ import { Input } from '@tockteam/ui/input'
 import { Label } from '@tockteam/ui/label'
 import { NativeSelect, NativeSelectOption } from '@tockteam/ui/native-select'
 import { Spinner } from '@tockteam/ui/spinner'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@tockteam/ui/tooltip'
 import {
   useCallback,
   useEffect,
@@ -775,7 +776,8 @@ function MarketplaceSurface({ bridge, locale, translate, view }: {
   }, [viewState.open])
 
   return (
-    <div className="fixed inset-y-0 right-0 left-[var(--tockteam-marketplace-left,0px)] top-[var(--tockteam-titlebar-height,40px)] z-[8800] box-border translate-y-1 overflow-hidden invisible pointer-events-none border-l border-border bg-background text-foreground opacity-0 transition-[opacity,transform,visibility] [transition-duration:140ms,160ms,0s] [transition-timing-function:ease,ease,linear] [transition-delay:0s,0s,160ms] [-webkit-app-region:no-drag] data-[open=true]:visible data-[open=true]:pointer-events-auto data-[open=true]:translate-y-0 data-[open=true]:opacity-100 data-[open=true]:[transition-delay:0s] motion-reduce:transition-none" data-open={String(viewState.open)} aria-hidden={!viewState.open}>
+    <TooltipProvider>
+      <div className="fixed inset-y-0 right-0 left-[var(--tockteam-marketplace-left,0px)] top-[var(--tockteam-titlebar-height,40px)] z-[8800] box-border translate-y-1 overflow-hidden invisible pointer-events-none border-l border-border bg-background text-foreground opacity-0 transition-[opacity,transform,visibility] [transition-duration:140ms,160ms,0s] [transition-timing-function:ease,ease,linear] [transition-delay:0s,0s,160ms] [-webkit-app-region:no-drag] data-[open=true]:visible data-[open=true]:pointer-events-auto data-[open=true]:translate-y-0 data-[open=true]:opacity-100 data-[open=true]:[transition-delay:0s] motion-reduce:transition-none" data-open={String(viewState.open)} aria-hidden={!viewState.open}>
       <div className="grid h-full grid-rows-[auto_minmax(0,1fr)]">
         <div>
           <header className="flex min-h-[68px] items-center gap-3.5 border-b border-border px-7">
@@ -792,12 +794,17 @@ function MarketplaceSurface({ bridge, locale, translate, view }: {
               <Button unstyled className={BUTTON_CLASSES} disabled={pending} onClick={() => { void run({ type: 'refresh' }) }} type="button">
                 {pending ? t('working') : t('refresh')}
               </Button>
-              <Button unstyled
-                className={ICON_BUTTON_CLASSES}
-                onClick={() => { view.setOpen(false) }}
-                title={t('close')}
-                type="button"
-              ><X aria-hidden="true" /></Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button unstyled
+                    aria-label={t('close')}
+                    className={ICON_BUTTON_CLASSES}
+                    onClick={() => { view.setOpen(false) }}
+                    type="button"
+                  ><X aria-hidden="true" /></Button>
+                </TooltipTrigger>
+                <TooltipContent>{t('close')}</TooltipContent>
+              </Tooltip>
             </div>
           </header>
           {snapshot?.preview !== null && snapshot?.preview !== undefined && (
@@ -843,7 +850,12 @@ function MarketplaceSurface({ bridge, locale, translate, view }: {
                   value={search}
                 />
                 {search !== '' && (
-                  <Button unstyled className="grid size-6 flex-none cursor-pointer place-items-center rounded-[7px] border-0 bg-transparent p-0 font-[15px/1_system-ui,sans-serif] text-subtle-foreground hover:bg-[var(--dsw-alias-interactive-bg-hover,#f1f2f3)] [&_svg]:m-0 [&_svg]:size-3.5" aria-label={t('search.clear')} onClick={() => { setSearch('') }} type="button"><X aria-hidden="true" /></Button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button unstyled className="grid size-6 flex-none cursor-pointer place-items-center rounded-[7px] border-0 bg-transparent p-0 font-[15px/1_system-ui,sans-serif] text-subtle-foreground hover:bg-[var(--dsw-alias-interactive-bg-hover,#f1f2f3)] [&_svg]:m-0 [&_svg]:size-3.5" aria-label={t('search.clear')} onClick={() => { setSearch('') }} type="button"><X aria-hidden="true" /></Button>
+                    </TooltipTrigger>
+                    <TooltipContent>{t('search.clear')}</TooltipContent>
+                  </Tooltip>
                 )}
               </div>
               <div className="flex h-[38px] max-w-full items-center overflow-x-auto rounded-[11px] border border-[var(--dsw-alias-border-l1,#ddd)] bg-[var(--dsw-alias-interactive-bg-hover,#f3f4f5)] p-[3px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [&_button]:flex [&_button]:h-[30px] [&_button]:cursor-pointer [&_button]:items-center [&_button]:gap-[5px] [&_button]:whitespace-nowrap [&_button]:rounded-lg [&_button]:border-0 [&_button]:bg-transparent [&_button]:px-2.5 [&_button]:font-[inherit] [&_button]:text-[11px] [&_button]:text-muted-foreground [&_button[data-active=true]]:bg-background [&_button[data-active=true]]:font-semibold [&_button[data-active=true]]:text-foreground [&_button[data-active=true]]:shadow-[0_1px_4px_rgba(31,35,41,0.1)] [&_span]:text-[9px] [&_span]:text-subtle-foreground" role="group" aria-label={t('installation-status')}>
@@ -919,8 +931,9 @@ function MarketplaceSurface({ bridge, locale, translate, view }: {
             />
           )}
         </div>
+        </div>
       </div>
-    </div>
+    </TooltipProvider>
   )
 }
 

@@ -6,6 +6,7 @@ import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@tockteam/ui/e
 import { Input } from '@tockteam/ui/input'
 import { Label } from '@tockteam/ui/label'
 import { Textarea } from '@tockteam/ui/textarea'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@tockteam/ui/tooltip'
 import {
   useEffect,
   useMemo,
@@ -1237,17 +1238,29 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
           <>
             <span className="tocktutor-titlebar-document rounded-[5px] bg-[color-mix(in_srgb,var(--tt-text)_8%,transparent)] text-[var(--tt-text)]"><WorkbenchGlyph kind="document" /></span>
             <span><WorkbenchGlyph kind="document" /></span>
-            <Button unstyled aria-label="Search Notes" disabled={props.onOpenSearch === undefined} onClick={props.onOpenSearch} type="button"><WorkbenchGlyph kind="search" /></Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="inline-flex">
+                  <Button unstyled aria-label="Search Notes" disabled={props.onOpenSearch === undefined} onClick={props.onOpenSearch} type="button"><WorkbenchGlyph kind="search" /></Button>
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>Search Notes</TooltipContent>
+            </Tooltip>
             <span><WorkbenchGlyph kind="bookmark" /></span>
           </>
         )}
-        <Button unstyled
-          aria-expanded={sidebarOpen}
-          aria-label="Toggle Files Sidebar"
-          className="tocktutor-panel-icon ml-auto border-0 bg-transparent p-1.5 text-[var(--tt-muted)]"
-          onClick={() => { setSidebarOpen(open => !open) }}
-          type="button"
-        ><WorkbenchGlyph kind="panel" /></Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button unstyled
+              aria-expanded={sidebarOpen}
+              aria-label="Toggle Files Sidebar"
+              className="tocktutor-panel-icon ml-auto border-0 bg-transparent p-1.5 text-[var(--tt-muted)]"
+              onClick={() => { setSidebarOpen(open => !open) }}
+              type="button"
+            ><WorkbenchGlyph kind="panel" /></Button>
+          </TooltipTrigger>
+          <TooltipContent>Toggle Files Sidebar</TooltipContent>
+        </Tooltip>
       </div>
       <div className="tocktutor-titlebar-main flex min-w-0 items-center gap-1 px-2">
         <span className="tocktutor-history mr-[18px] flex gap-[5px] px-1.5 text-[color-mix(in_srgb,var(--tt-muted)_45%,transparent)]"><WorkbenchGlyph kind="back" /><WorkbenchGlyph kind="forward" /></span>
@@ -1276,21 +1289,34 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
             </Button>
           ))}
         </div>
-        <Button unstyled aria-label="New Note" className="tocktutor-new-tab border-0 bg-transparent p-1.5 text-[var(--tt-muted)]" disabled={props.onNewNote === undefined} onClick={props.onNewNote} type="button"><WorkbenchGlyph kind="new" /></Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="inline-flex">
+              <Button unstyled aria-label="New Note" className="tocktutor-new-tab border-0 bg-transparent p-1.5 text-[var(--tt-muted)]" disabled={props.onNewNote === undefined} onClick={props.onNewNote} type="button"><WorkbenchGlyph kind="new" /></Button>
+            </span>
+          </TooltipTrigger>
+          <TooltipContent>New Note</TooltipContent>
+        </Tooltip>
         <span className="tocktutor-titlebar-spacer flex-1" />
-        <Button unstyled
-          aria-expanded={panel === 'assistant'}
-          aria-label="Toggle Assistant Panel"
-          className="tocktutor-panel-icon border-0 bg-transparent p-1.5 text-[var(--tt-muted)]"
-          onClick={() => { setPanel(current => current === 'assistant' ? null : 'assistant') }}
-          type="button"
-        ><WorkbenchGlyph kind="panel-right" /></Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button unstyled
+              aria-expanded={panel === 'assistant'}
+              aria-label="Toggle Assistant Panel"
+              className="tocktutor-panel-icon border-0 bg-transparent p-1.5 text-[var(--tt-muted)]"
+              onClick={() => { setPanel(current => current === 'assistant' ? null : 'assistant') }}
+              type="button"
+            ><WorkbenchGlyph kind="panel-right" /></Button>
+          </TooltipTrigger>
+          <TooltipContent>Toggle Assistant Panel</TooltipContent>
+        </Tooltip>
       </div>
     </section>
   )
   return (
-    <main
-      aria-label="TockTutor Workbench"
+    <TooltipProvider>
+      <main
+        aria-label="TockTutor Workbench"
       className="tocktutor-workbench h-full min-h-0 box-border bg-[var(--tt-bg)] pt-0 text-[var(--tt-text)] [--tt-accent:var(--dsw-alias-accent-primary,#533afd)] [--tt-bg:var(--dsw-alias-bg-base,#fff)] [--tt-border:var(--dsw-alias-border-l1,var(--dsw-alias-border-subtle,#e1e3e7))] [--tt-footer-height:28px] [--tt-muted:var(--dsw-alias-fg-muted,#71717a)] [--tt-panel:var(--dsw-alias-bg-elevated,#fff)] [--tt-selected:color-mix(in_srgb,var(--tt-accent)_14%,var(--tt-panel))] [--tt-text:var(--dsw-alias-fg-primary,#27272a)] [font:14px/1.45_ui-sans-serif,-apple-system,BlinkMacSystemFont,'Segoe_UI',sans-serif] [&_*]:box-border [&_*::after]:box-border [&_*::before]:box-border [&_[hidden]]:!hidden [&_button]:text-inherit [&_button]:[font:inherit] [&_button:focus-visible]:outline-2 [&_button:focus-visible]:outline-offset-2 [&_button:focus-visible]:outline-[var(--tt-accent)] [&_input:focus-visible]:outline-2 [&_input:focus-visible]:outline-offset-2 [&_input:focus-visible]:outline-[var(--tt-accent)] [&_svg]:block [&_svg]:size-4 [&_textarea:focus-visible]:outline-2 [&_textarea:focus-visible]:outline-offset-2 [&_textarea:focus-visible]:outline-[var(--tt-accent)] motion-reduce:[&_*]:!scroll-auto motion-reduce:[&_*]:!delay-0 motion-reduce:[&_*]:!duration-0 motion-reduce:[&_*::after]:!delay-0 motion-reduce:[&_*::after]:!duration-0 motion-reduce:[&_*::before]:!delay-0 motion-reduce:[&_*::before]:!duration-0"
       data-phase={snapshot.phase}
       tabIndex={-1}
@@ -1339,7 +1365,12 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
                     type="search"
                     value={snapshot.searchQuery}
                   />
-                  <Button unstyled aria-label="Close Search" className="w-7 rounded-[5px] border border-[var(--tt-border)] bg-transparent" onClick={() => { props.onCloseSearch?.() }} type="button"><WorkbenchGlyph kind="close" /></Button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button unstyled aria-label="Close Search" className="w-7 rounded-[5px] border border-[var(--tt-border)] bg-transparent" onClick={() => { props.onCloseSearch?.() }} type="button"><WorkbenchGlyph kind="close" /></Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Close Search</TooltipContent>
+                  </Tooltip>
                 </div>
                 <Alert unstyled aria-live="polite" className="mx-1 my-[7px] text-xs text-[var(--tt-muted)]" role="status">{documents.length} matching notes.</Alert>
               </section>
@@ -1386,12 +1417,17 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
               ><WorkbenchGlyph kind="pencil" /></Button>
               <span><Music aria-hidden="true" /></span>
               <span><Folder aria-hidden="true" /></span>
-              <Button unstyled
-                aria-label="More Note Actions"
-                aria-expanded={panel === 'utilities'}
-                onClick={() => { setPanel(current => current === 'utilities' ? null : 'utilities') }}
-                type="button"
-              ><WorkbenchGlyph kind="more" /></Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button unstyled
+                    aria-label="More Note Actions"
+                    aria-expanded={panel === 'utilities'}
+                    onClick={() => { setPanel(current => current === 'utilities' ? null : 'utilities') }}
+                    type="button"
+                  ><WorkbenchGlyph kind="more" /></Button>
+                </TooltipTrigger>
+                <TooltipContent>More Note Actions</TooltipContent>
+              </Tooltip>
             </div>
           </header>
           <div className="tocktutor-editor-body relative min-h-0 overflow-auto">
@@ -1438,13 +1474,18 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
                 <span>{snapshot.mode === 'reading' ? 'Live Preview' : 'Source'}</span>
                 <span>{String(words)} Words</span>
                 <span>{String(characters)} Characters</span>
-                <Button unstyled
-                  aria-label="Open Assistant"
-                  aria-expanded={panel === 'assistant'}
-                  onClick={() => { setPanel(current => current === 'assistant' ? null : 'assistant') }}
-                  type="button"
-                className="border-0 bg-transparent px-0 py-0.5 text-[var(--tt-muted)] [&_svg]:size-[17px]"
-                ><WorkbenchGlyph kind="chat" /></Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button unstyled
+                      aria-label="Open Assistant"
+                      aria-expanded={panel === 'assistant'}
+                      onClick={() => { setPanel(current => current === 'assistant' ? null : 'assistant') }}
+                      type="button"
+                      className="border-0 bg-transparent px-0 py-0.5 text-[var(--tt-muted)] [&_svg]:size-[17px]"
+                    ><WorkbenchGlyph kind="chat" /></Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Open Assistant</TooltipContent>
+                </Tooltip>
               </div>
             )}
           </footer>
@@ -1481,11 +1522,26 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
           data-open={panel === 'utilities'}
           {...(panel === 'utilities' ? {} : { inert: '' })}
         >
-          <header className="flex items-center justify-between border-b border-[var(--tt-border)] px-3"><h2 className="m-0 text-sm">More Options</h2><Button unstyled aria-label="Close More Options" className="border-0 bg-transparent p-[5px]" onClick={() => { setPanel(null) }} type="button"><WorkbenchGlyph kind="close" /></Button></header>
+          <header className="flex items-center justify-between border-b border-[var(--tt-border)] px-3">
+            <h2 className="m-0 text-sm">More Options</h2>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button unstyled aria-label="Close More Options" className="border-0 bg-transparent p-[5px]" onClick={() => { setPanel(null) }} type="button"><WorkbenchGlyph kind="close" /></Button>
+              </TooltipTrigger>
+              <TooltipContent>Close More Options</TooltipContent>
+            </Tooltip>
+          </header>
           <section aria-label="Pane Groups" className="tocktutor-pane-groups border-t border-[var(--tt-border)] p-3">
             <div className="tocktutor-pane-heading flex items-center justify-between">
               <h2 className="m-0 text-sm">Pane Groups</h2>
-              <Button unstyled aria-label="Add Pane" className="size-[26px] rounded border border-[var(--tt-border)] bg-transparent" disabled={snapshot.panes.length >= MAX_PANE_GROUPS} onClick={props.onAddPane} type="button"><WorkbenchGlyph kind="new" /></Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="inline-flex">
+                    <Button unstyled aria-label="Add Pane" className="size-[26px] rounded border border-[var(--tt-border)] bg-transparent" disabled={snapshot.panes.length >= MAX_PANE_GROUPS} onClick={props.onAddPane} type="button"><WorkbenchGlyph kind="new" /></Button>
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>Add Pane</TooltipContent>
+              </Tooltip>
             </div>
             <div className="tocktutor-pane-list mt-2 grid grid-cols-2 gap-1.5">
               {snapshot.panes.map((pane, index) => (
@@ -1504,8 +1560,9 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
             <div className="tocktutor-native-actions-content min-h-0 overflow-auto text-xs text-[var(--tt-muted)]">{props.nativeActions ?? <Alert unstyled role="status">No native actions are available.</Alert>}</div>
           </section>
         </aside>
-      </div>
-    </main>
+        </div>
+      </main>
+    </TooltipProvider>
   )
 }
 
