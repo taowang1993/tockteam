@@ -57,14 +57,26 @@ let
   betterSidebarSrc = pkgs.fetchFromGitHub {
     owner = "omdsh-dev";
     repo = "DSH-better-sidebar";
-    rev = "2e9db44a71bb75c9fa1185330541dce2582deee3";
-    hash = "sha256-VQ8lyHNtcTHrOum21Z4dZyZgrxexmUY7yEN8kjao838=";
+    rev = "f0965e1d6157a3e06ed2f5c7775a64428d5d3c29";
+    hash = "sha256-4uu1StNBZTuM6BJV1498FReUWIKoTFla1OjBgIEJsnM=";
   };
   tuiSrc = pkgs.fetchFromGitHub {
     owner = "ccch1mneyyy";
     repo = "dsh-TUI";
-    rev = "6a8956678fc3746ed14b62bfee066ee8fc68f3cb";
-    hash = "sha256-dxR0MdhKY+HHbLOZscCpNaww1Clfxc781HxmBg8kpcg=";
+    rev = "bdff0afb028d50c304e4474fd40f83b0721d50fd";
+    hash = "sha256-N5jjAoHeABAM+rQMGuPtQasLEk9wmU/bSw2X2ilGg0U=";
+  };
+  tuiEcosystemSpecSrc = pkgs.fetchFromGitHub {
+    owner = "T-Auto";
+    repo = "dsh-ecosystem-spec";
+    rev = "e1b902b0f95f4280a8e68d414ec7a4d25d6ce106";
+    hash = "sha256-LVc7bMUJMI4GYW3IyBWYwFzkibayu6BgZxlO67FPtGk=";
+  };
+  tuiStdSrc = pkgs.fetchFromGitHub {
+    owner = "Yan-Zero";
+    repo = "dsh-std";
+    rev = "614dfa1ac168db79fcf4577cf0ebb34e2e3b944b";
+    hash = "sha256-aJEykWAXEKTUsNte51+ZEhFAgLT6QNNplNZTNPhgb00=";
   };
 
   # fetchPnpmDeps and the real build MUST see the same workspace graph.
@@ -74,6 +86,12 @@ let
     rm -rf $out/upstream/DSH-better-sidebar $out/upstream/dsh-TUI
     cp -r ${betterSidebarSrc} $out/upstream/DSH-better-sidebar
     cp -r ${tuiSrc} $out/upstream/dsh-TUI
+    chmod -R u+w $out/upstream/dsh-TUI
+    rm -rf $out/upstream/dsh-TUI/dsh-ecosystem-spec \
+      $out/upstream/dsh-TUI/vendor/dsh-std
+    mkdir -p $out/upstream/dsh-TUI/vendor
+    cp -r ${tuiEcosystemSpecSrc} $out/upstream/dsh-TUI/dsh-ecosystem-spec
+    cp -r ${tuiStdSrc} $out/upstream/dsh-TUI/vendor/dsh-std
   '';
 
   tockTeamBundle = pkgs.stdenv.mkDerivation rec {

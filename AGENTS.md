@@ -36,9 +36,9 @@ Preserve these boundaries:
 
 ## Sources of Truth
 
-- Target the DSH revision in `dsh-source.json`, currently `47f943859bef60e4160492346772ded9b24f765a` (`0.1.0-rc.5`). Inspect its source and docs through `scripts/dsh-source.mjs` or the matching `.cache/dsh-source/<revision-prefix>` checkout before using a DSH API.
+- Target the DSH revision in `dsh-source.json`, currently `b150a551b8d465e31e418e1b2eaf5e79bbb7d28e` (`0.1.1-rc.2`). Inspect its source and docs through `scripts/dsh-source.mjs` or the matching `.cache/dsh-source/<revision-prefix>` checkout before using a DSH API.
 - `src/profile.ts`, package `dsh` metadata, and the three tracked patch files jointly define surface composition.
-- `package.json` scripts and `.github/workflows/ci.yml` define supported checks. Node is `>=24`; CI uses Node 24 and pnpm 11.20.0.
+- `package.json` scripts and `.github/workflows/ci.yml` define supported checks. Node is `>=24`; CI uses Node 24 and pnpm 11.21.0.
 - `README.md` / `README.en.md` are a bilingual pair. Files under `docs/` are English-only.
 
 Do not hand-edit generated or installed paths: `dist/`, `.stage/`, `.cache/`, `.local/`, `release/`, `node_modules/`, `tmp/`, or Nix `result*`. Rebuild them.

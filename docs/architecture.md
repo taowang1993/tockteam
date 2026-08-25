@@ -62,7 +62,7 @@ the smallest supported distribution.
 | `@tockteam/pinned-summary` | Native | Session summary, half-height card, and content-gutter management |
 | `@tockteam/plugin-marketplace` | Adopts lifecycle ideas from `plugin-registry` and `dsh-hub` | One Loader, isolated preview, risk approval, TOFU source lock, and recovery |
 | `@tockteam/skins` | Downstream implementation of the `dsh-skins` ThemeService model | One skin id set, Host persistence, Web/Desktop CSS, and TUI palette adapters |
-| `dsh-cc-tui` | Pins [`dsh-TUI`](https://github.com/ccch1mneyyy/dsh-TUI) | Upstream owns terminal rendering, session interaction, commands, and terminal compatibility |
+| `@deepseek-harness-tui/dsh-tui` | Pins [`dsh-TUI`](https://github.com/ccch1mneyyy/dsh-TUI) | Upstream owns terminal rendering, session interaction, commands, and terminal compatibility |
 | `@tockteam/tui` | Downstream Profile adapter for `dsh-TUI` | Unified `tockteam tui`, TockTeam TUI identity, defaults, packaging, and DSH data boundary |
 
 Downstream plugins periodically inspect upstream features and adapt them to

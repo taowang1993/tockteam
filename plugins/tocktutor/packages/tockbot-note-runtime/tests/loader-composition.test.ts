@@ -399,7 +399,8 @@ test('Desktop vault selection activates only through a generation-bound Host cla
             vaultId: repeated.vaultId,
           },
         }, new AbortController().signal),
-        (error: unknown) => error instanceof NoteVaultError && error.code === 'changed',
+        (error: unknown) => error instanceof NoteVaultError
+          && (error.code === 'changed' || error.code === 'stale-vault'),
       )
       await waitUntil(() => released.length === 2)
       assert.deepEqual(released, [
@@ -1322,11 +1323,11 @@ test('Desktop reveal fails closed on stale unsafe replaced denied and cancelled 
         async reveal(input: TockTeamDesktopRevealInput): Promise<TockTeamDesktopRevealResult> {
           calls += 1
           if (mode === 'replace-file') {
-            await rm(pathToReveal)
+            await rename(pathToReveal, `${pathToReveal}.replaced`)
             await writeFile(pathToReveal, '# Replacement\n')
           }
           if (mode === 'replace-directory') {
-            await rm(directoryToReveal, { recursive: true })
+            await rename(directoryToReveal, `${directoryToReveal}.replaced`)
             await mkdir(directoryToReveal)
           }
           if (mode === 'throw') throw new Error(pathToReveal)

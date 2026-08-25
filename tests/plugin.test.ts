@@ -11,38 +11,34 @@ test('desktop client replaces upstream branding with TockTeam', () => {
   const client = readFileSync(new URL('../src/client.ts', import.meta.url), 'utf8')
   const main = readFileSync(new URL('../src/main.ts', import.meta.url), 'utf8')
   const splash = readFileSync(new URL('../src/splash.html', import.meta.url), 'utf8')
-  const tailwind = readFileSync(
-    new URL('../plugins/skins/src/client/tailwind.css', import.meta.url),
-    'utf8',
-  )
 
   assert.match(client, /element\.textContent = 'TockTeam Desktop'/)
   assert.match(client, /\['Into the Unknown', '探索未知之境', '探索未至之境'\]/)
   assert.match(client, /brand\.dataset\.tockteamSidebarBrand = 'true'/u)
-  assert.match(client, /data-tockteam-hero-headline/)
-  assert.match(client, /tockteamHeroLogo/)
-  assert.match(client, /originalHeroLogos/)
+  assert.match(client, /tockteamHeroHeadline/)
+  assert.match(client, /originalBrandMarks/)
+  assert.match(client, /originalSidebarNames/)
   assert.match(client, /viewBox="0 0 20 20"/)
   assert.match(client, /M10 5\.5C6\.96243 5\.5 4\.5 7\.96243 4\.5 11/)
   assert.match(client, /aria-hidden="true"/)
-  assert.match(client, />TockTeam<\/span>/)
   assert.match(
     client,
-    /button:is\(\[aria-label='Open sidebar'\],\[aria-label='打开侧边栏'\]\) > svg\[viewBox='0 0 23\.16 17\.04'\]:not\(\[data-tockteam-sidebar-fish\]\)/,
+    /\[data-slot='sidebar\.brand\.mark'\] > svg\[viewBox='0 0 23\.16 17\.04'\]/,
   )
-  assert.match(client, /logo\.innerHTML = TOCKTEAM_LOGO_MARK/)
-  assert.match(client, /fish\.parentElement\?\.querySelector<SVGSVGElement>\([\s\S]*':scope > \[data-tockteam-sidebar-logo\]'/)
-  assert.match(client, /fish\.before\(mark\)/)
-  assert.match(client, /document\.querySelectorAll\('\[data-tockteam-sidebar-logo\]'\)/)
-  assert.match(client, /document\.querySelectorAll<SVGSVGElement>\('\[data-tockteam-sidebar-fish\]'\)/)
-  assert.doesNotMatch(client, /collapsedSidebar(?:Fish|Logos)/)
+  assert.match(
+    client,
+    /\[data-slot='conversation\.hero\.brand\.mark'\] > svg\[viewBox='0 0 23\.16 17\.04'\]/,
+  )
+  assert.match(client, /brand\.replaceChildren\(document\.createTextNode\('TockTeam'\)\)/)
+  assert.match(client, /mark\.setAttribute\('class', className\)/)
+  assert.match(client, /fish\.replaceWith\(mark\)/)
+  assert.match(client, /if \(mark\.isConnected\) mark\.replaceWith\(original\)/)
   assert.match(client, /observer\.observe\(document\.body, \{ childList: true, characterData: true, subtree: true \}\)/)
-  assert.equal(client.match(/new MutationObserver/g)?.length, 1)
+  assert.match(client, /titleObserver\.observe\(document\.head/)
+  assert.equal(client.match(/new MutationObserver/g)?.length, 2)
   assert.match(client, /viewBox="0 0 20 20" width="20" height="20"/)
-  assert.match(client, /fish\.classList\.add\('hidden!'\)/u)
-  assert.doesNotMatch(tailwind, /data-tockteam-sidebar-fish/u)
+  assert.doesNotMatch(client, /tockteamSidebarFish|tockteamHeroLogo/)
   assert.equal(client.match(/M10 5\.5C6\.96243 5\.5 4\.5 7\.96243 4\.5 11/g)?.length, 1)
-  assert.match(client, /if \(brand\.isConnected\) brand\.replaceWith\(original\)/)
   assert.doesNotMatch(client, /data-tockteam-hero-preview/)
   assert.doesNotMatch(client, /html\[data-tockteam-preview='true'\] body::after/)
   assert.doesNotMatch(`${main}\n${splash}`, /DeepSeek Harness/)

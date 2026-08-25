@@ -66,7 +66,9 @@ test('web profile is a separate surface from the desktop profile', () => {
 
 test('web client uses the TockTeam Web surface name', () => {
   const client = readFileSync(new URL('../web/src/client.ts', import.meta.url), 'utf8')
-  assert.match(client, /document\.title = 'TockTeam Web'/)
+  assert.match(client, /if \(document\.title !== 'TockTeam Web'\) document\.title = 'TockTeam Web'/)
+  assert.match(client, /observer\.observe\(document\.head/)
+  assert.match(client, /observer\.disconnect\(\)/)
   assert.match(client, /element\.textContent = 'TockTeam Web'/)
   assert.doesNotMatch(client, /TockTeam-Web/)
 })

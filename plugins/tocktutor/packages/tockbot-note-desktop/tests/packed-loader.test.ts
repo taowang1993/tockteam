@@ -11,7 +11,13 @@ import { runInThisContext } from 'node:vm'
 import { Context } from '@deepseek-ai/cordis'
 import Include from '@deepseek-ai/cordis-plugin-include'
 import Loader from '@deepseek-ai/cordis-plugin-loader'
-import { desktopArtifact, dshRoot, packPlugin, packUi } from '../../../test-utils.ts'
+import {
+  desktopArtifact,
+  dshRoot,
+  packedClientModuleSystemOptions,
+  packPlugin,
+  packUi,
+} from '../../../test-utils.ts'
 
 const execFileAsync = promisify(execFile)
 const packageName = 'tockbot-note-desktop'
@@ -133,7 +139,7 @@ async function verifyClient(consumerRequire: NodeJS.Require): Promise<void> {
   Object.defineProperty(globalThis, 'window', { configurable: true, value: globalThis })
   try {
     const clientPath = join(packageRoot, 'dist/client.js')
-    const modules = new ClientModuleSystem({
+    const modules = new ClientModuleSystem(packedClientModuleSystemOptions({
       modules: [{ id: packageName, rev: 'packed', url: pathToFileURL(clientPath).href }],
       staticModules: {
         react: await import(pathToFileURL(consumerRequire.resolve('react')).href),
@@ -145,7 +151,7 @@ async function verifyClient(consumerRequire: NodeJS.Require): Promise<void> {
         const path = fileURLToPath(url)
         runInThisContext(await readFile(path, 'utf8'), { filename: path })
       },
-    })
+    }))
     const client = await modules.import(packageName) as {
       apply(ctx: unknown): Promise<() => Promise<void>>
       name: string

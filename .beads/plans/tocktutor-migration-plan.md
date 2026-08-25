@@ -32,8 +32,8 @@ The migration is complete when:
 | Field | Target |
 | --- | --- |
 | Distribution | `/Users/max/projects/tockteam` |
-| DSH revision | `47f943859bef60e4160492346772ded9b24f765a` |
-| DSH version | `0.1.0-rc.5` |
+| DSH revision | `b150a551b8d465e31e418e1b2eaf5e79bbb7d28e` |
+| DSH version | `0.1.1-rc.2` |
 | Primary surface | TockTeam Desktop |
 | Composition | DSH profiles, Cordis plugins, and bundle patches |
 | Vault storage | Ordinary local files |

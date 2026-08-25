@@ -64,10 +64,20 @@ const DESKTOP_SHELL_MESSAGES: LocaleMessages<DesktopShellMessage> = {
 
 function installDesktopChrome(): () => void {
   const originalTitle = document.title
+  const synchronizeTitle = (): void => {
+    if (document.title !== 'TockTeam Desktop') document.title = 'TockTeam Desktop'
+  }
+  const titleObserver = new MutationObserver(synchronizeTitle)
+  titleObserver.observe(document.head, {
+    childList: true,
+    characterData: true,
+    subtree: true,
+  })
   document.documentElement.dataset.tockteamDesktop = 'true'
   document.documentElement.classList.add('tockteam-desktop-shell')
-  document.title = 'TockTeam Desktop'
+  synchronizeTitle()
   return () => {
+    titleObserver.disconnect()
     delete document.documentElement.dataset.tockteamDesktop
     document.documentElement.classList.remove('tockteam-desktop-shell')
     document.title = originalTitle
@@ -89,8 +99,8 @@ const TOCKTEAM_LOGO_MARK = `
 function installBranding(): () => void {
   const headlineCopy = new Set(['Into the Unknown', '探索未知之境', '探索未至之境'])
   const originalHeadlines = new Map<HTMLElement, string>()
-  const originalSidebarBrands = new Map<HTMLElement, SVGSVGElement>()
-  const originalHeroLogos = new Map<HTMLSpanElement, SVGSVGElement>()
+  const originalBrandMarks = new Map<SVGSVGElement, SVGSVGElement>()
+  const originalSidebarNames = new Map<HTMLElement, string>()
   const synchronize = (): void => {
     for (const element of document.querySelectorAll<HTMLElement>('span')) {
       const text = element.textContent?.trim() ?? ''
@@ -99,44 +109,26 @@ function installBranding(): () => void {
       element.textContent = 'TockTeam Desktop'
       element.dataset.tockteamHeroHeadline = 'true'
     }
-    for (const headline of document.querySelectorAll<HTMLElement>('[data-tockteam-hero-headline]')) {
-      const fish = headline.parentElement?.querySelector<SVGSVGElement>(':scope > span > svg')
-      if (fish === null || fish === undefined || fish.dataset.tockteamHeroLogo !== undefined) continue
-      const logo = document.createElement('span')
-      logo.innerHTML = TOCKTEAM_LOGO_MARK
-      const mark = logo.querySelector<SVGSVGElement>('svg')
-      if (mark === null) continue
-      mark.dataset.tockteamHeroLogo = 'true'
-      mark.setAttribute('width', '34')
-      mark.setAttribute('height', '34')
-      originalHeroLogos.set(logo, fish)
-      fish.replaceWith(logo)
-    }
-    for (const wordmark of document.querySelectorAll<SVGSVGElement>(
-      "[data-slot='sidebar'] button > svg[viewBox='0 0 182 24']",
-    )) {
-      const brand = document.createElement('span')
+    for (const brand of document.querySelectorAll<HTMLElement>("[data-slot='sidebar.brand.name']")) {
+      if (!originalSidebarNames.has(brand)) originalSidebarNames.set(brand, brand.innerHTML)
+      if (brand.textContent !== 'TockTeam') brand.replaceChildren(document.createTextNode('TockTeam'))
       brand.dataset.tockteamSidebarBrand = 'true'
-      brand.className = 'inline-flex items-center gap-[7px] whitespace-nowrap text-[15px] leading-5 font-semibold text-inherit [&_svg]:size-5 [&_svg]:flex-none'
-      brand.innerHTML = `${TOCKTEAM_LOGO_MARK}<span>TockTeam</span>`
-      originalSidebarBrands.set(brand, wordmark)
-      wordmark.replaceWith(brand)
     }
-    for (const fish of document.querySelectorAll<SVGSVGElement>(
-      "[data-slot='sidebar'] button:is([aria-label='Open sidebar'],[aria-label='打开侧边栏']) > svg[viewBox='0 0 23.16 17.04']:not([data-tockteam-sidebar-fish])",
-    )) {
-      fish.dataset.tockteamSidebarFish = 'true'
-      fish.classList.add('hidden!')
-      if (fish.parentElement?.querySelector<SVGSVGElement>(
-        ':scope > [data-tockteam-sidebar-logo]',
-      ) !== null) continue
-      const logo = document.createElement('span')
-      logo.innerHTML = TOCKTEAM_LOGO_MARK
-      const mark = logo.querySelector<SVGSVGElement>('svg')
+    for (const fish of document.querySelectorAll<SVGSVGElement>([
+      "[data-slot='sidebar.brand.mark'] > svg[viewBox='0 0 23.16 17.04']",
+      "[data-slot='conversation.hero.brand.mark'] > svg[viewBox='0 0 23.16 17.04']",
+    ].join(','))) {
+      const container = document.createElement('span')
+      container.innerHTML = TOCKTEAM_LOGO_MARK
+      const mark = container.querySelector<SVGSVGElement>('svg')
       if (mark === null) continue
-      mark.dataset.tockteamSidebarLogo = 'true'
-      mark.classList.add('size-5', 'flex-none')
-      fish.before(mark)
+      const size = fish.getAttribute('width') ?? '20'
+      const className = fish.getAttribute('class')
+      mark.setAttribute('width', size)
+      mark.setAttribute('height', size)
+      if (className !== null) mark.setAttribute('class', className)
+      originalBrandMarks.set(mark, fish)
+      fish.replaceWith(mark)
     }
   }
   const observer = new MutationObserver(synchronize)
@@ -148,16 +140,12 @@ function installBranding(): () => void {
       if (element.isConnected && element.textContent === 'TockTeam Desktop') element.textContent = original
       delete element.dataset.tockteamHeroHeadline
     }
-    for (const [brand, original] of originalSidebarBrands) {
-      if (brand.isConnected) brand.replaceWith(original)
+    for (const [mark, original] of originalBrandMarks) {
+      if (mark.isConnected) mark.replaceWith(original)
     }
-    for (const [logo, original] of originalHeroLogos) {
-      if (logo.isConnected) logo.replaceWith(original)
-    }
-    for (const logo of document.querySelectorAll('[data-tockteam-sidebar-logo]')) logo.remove()
-    for (const fish of document.querySelectorAll<SVGSVGElement>('[data-tockteam-sidebar-fish]')) {
-      fish.classList.remove('hidden!')
-      delete fish.dataset.tockteamSidebarFish
+    for (const [brand, original] of originalSidebarNames) {
+      if (brand.isConnected && brand.textContent === 'TockTeam') brand.innerHTML = original
+      delete brand.dataset.tockteamSidebarBrand
     }
   }
 }

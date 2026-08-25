@@ -9,7 +9,12 @@ import test from 'node:test'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { promisify } from 'node:util'
 import { runInThisContext } from 'node:vm'
-import { desktopArtifact, dshRoot, packPlugin } from '../../../test-utils.ts'
+import {
+  desktopArtifact,
+  dshRoot,
+  packedClientModuleSystemOptions,
+  packPlugin,
+} from '../../../test-utils.ts'
 
 const run = promisify(execFile)
 const root = dirname(dirname(fileURLToPath(import.meta.url)))
@@ -215,7 +220,7 @@ test('every packed browser component activates exactly once through ClientModule
     })
     const loads = new Map<string, number>()
     Object.defineProperty(globalThis, 'window', { configurable: true, value: globalThis })
-    const system = new ClientModuleSystem({
+    const system = new ClientModuleSystem(packedClientModuleSystemOptions({
       modules,
       staticModules: {
         react: await import(pathToFileURL(packageRequire.resolve('react')).href),
@@ -230,7 +235,7 @@ test('every packed browser component activates exactly once through ClientModule
         const path = fileURLToPath(url)
         runInThisContext(await readFile(path, 'utf8'), { filename: path })
       },
-    })
+    }))
     for (const row of modules) await system.prefetch(row.id)
     const activated = new Map<string, unknown>()
     for (const row of modules) {
