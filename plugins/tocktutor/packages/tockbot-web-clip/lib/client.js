@@ -510,13 +510,6 @@ function storedViewerState() {
 function cancelClipPreview(preview) {
   if (preview) void requestClipCancel(preview.reviewId, AbortSignal.timeout(5e3)).catch(() => void 0);
 }
-var frameStyle = {
-  border: 0,
-  display: "flex",
-  flex: 1,
-  minHeight: 0,
-  width: "100%"
-};
 function WebViewer() {
   const bridge = window.dshDesktop?.webClip;
   const host = (0, import_react3.useRef)(null);
@@ -608,7 +601,7 @@ function WebViewer() {
     const element = document.createElement("webview");
     element.setAttribute("partition", `tockteam-web-clip-${crypto.randomUUID()}`);
     element.setAttribute("src", "about:blank");
-    Object.assign(element.style, frameStyle);
+    element.className = "flex min-h-0 w-full flex-1 border-0";
     const ready = () => {
       try {
         frameId.current = element.getWebContentsId();

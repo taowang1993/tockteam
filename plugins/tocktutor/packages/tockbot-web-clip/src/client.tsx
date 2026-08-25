@@ -80,14 +80,6 @@ function cancelClipPreview(preview: ClipPreview | null): void {
   if (preview) void requestClipCancel(preview.reviewId, AbortSignal.timeout(5_000)).catch(() => undefined)
 }
 
-const frameStyle = {
-  border: 0,
-  display: 'flex',
-  flex: 1,
-  minHeight: 0,
-  width: '100%',
-}
-
 function WebViewer(): ReactNode {
   const bridge = window.dshDesktop?.webClip
   const host = useRef<HTMLDivElement | null>(null)
@@ -181,7 +173,7 @@ function WebViewer(): ReactNode {
     const element = document.createElement('webview') as unknown as WebClipWebview
     element.setAttribute('partition', `tockteam-web-clip-${crypto.randomUUID()}`)
     element.setAttribute('src', 'about:blank')
-    Object.assign(element.style, frameStyle)
+    element.className = 'flex min-h-0 w-full flex-1 border-0'
     const ready = () => {
       try {
         frameId.current = element.getWebContentsId()

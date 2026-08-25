@@ -271,11 +271,11 @@
     },
     {
       "path": "packages/tockbot-web-clip/lib/client.js",
-      "sha256": "c27f14581c84fd955a0757cf7de64c871870483e6974899eaad0d1f964374327"
+      "sha256": "aeca96559005975ccb9e85a6926a35e37ea6657aec0551daa257122ec4ede130"
     },
     {
       "path": "packages/tockbot-web-clip/lib/client.js.map",
-      "sha256": "ce873cf6a5a1c66e790c5c4a6ec5e25bede34937594d6f1445a754c65fa5e6a2"
+      "sha256": "5d63514fc759cca0c36656ec99d97cf2d5c2b37d95f2db5761a993f115b914ac"
     },
     {
       "path": "packages/tockbot-web-clip/lib/fetch.d.ts",
@@ -339,7 +339,7 @@
     },
     {
       "path": "packages/tockbot-web-clip/src/client.tsx",
-      "sha256": "b224144a45038474e23d8963d390978f7e12504190161aab954aef2434313a25"
+      "sha256": "0f0d5a30d0c2bede1d00edf02b8c3be634c215d02168c3b96555f214f95604e8"
     },
     {
       "path": "packages/tockbot-web-clip/src/fetch.ts",
