@@ -17,6 +17,16 @@ releases and features are reviewed regularly.
 TockTeam uses Lucide icons throughout its Desktop, Web, TockTutor, and adapted
 DSH interfaces. Product marks and non-icon data visualizations remain original.
 
+## Tailwind CSS
+
+- Project: <https://tailwindcss.com>
+- Version: `4.3.3`
+- Declared license: MIT
+
+TockTeam uses Tailwind CSS at build time to generate a browser-only utility
+layer mapped to DSH semantic theme tokens. TockTeam TUI continues to use its
+native renderer and the shared TockTeam skin palette.
+
 ## dsh-web-panel
 
 - Historical project: dsh-web-panel (its previous public locator is no longer available)

@@ -387,7 +387,7 @@
     },
     {
       "path": "packages/tockteam-note-vault-tools/package.json",
-      "sha256": "3fb8468fecd18c454a98771d203d91c7b5a22a5c13904bc986ce509af128a760"
+      "sha256": "187f322343c4f52dacf153f230a0fa6e66dc909036a7f3f82ee8c82b3bdc3adc"
     },
     {
       "path": "packages/tockteam-note-vault-tools/src/index.ts",

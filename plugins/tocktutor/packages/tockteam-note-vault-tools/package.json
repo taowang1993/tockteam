@@ -36,6 +36,11 @@
     "@deepseek-ai/dsh-tools": "0.1.0-rc.5",
     "tockbot-note-runtime": "0.1.2"
   },
+  "peerDependenciesMeta": {
+    "@deepseek-ai/dsh-tools": {
+      "optional": true
+    }
+  },
   "devDependencies": {
     "@deepseek-ai/cordis": "4.0.1",
     "@deepseek-ai/dsh-tools": "0.1.0-rc.5",

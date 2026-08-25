@@ -95,8 +95,8 @@ function SkinSettingsRow({ setSkin, t, useStore }: SkinRowProps): JSX.Element {
   const ready = useStore(state => state.ready)
   return (
     <div className="tockteam-skins-group">
-      <div className="tockteam-skins-heading">
-        <div className="tockteam-skins-title">{t('skins.title')}</div>
+      <div className="flex flex-col gap-0.5">
+        <div className="tockteam-skins-title text-foreground">{t('skins.title')}</div>
         <div className="tockteam-skins-description">{t('skins.description')}</div>
       </div>
       <div className="tockteam-skins-grid">
@@ -138,7 +138,7 @@ function SkinSettingsRow({ setSkin, t, useStore }: SkinRowProps): JSX.Element {
 function installSettingsStyles(): () => void {
   const style = document.createElement('style')
   style.setAttribute(SETTINGS_STYLE_ATTRIBUTE, 'true')
-  style.textContent = desktopSkinsCss
+  style.textContent = `${desktopSkinsCss}\n${__TOCKTEAM_TAILWIND_CSS__}`
   document.head.append(style)
   return () => { style.remove() }
 }

@@ -1,0 +1,33 @@
+@layer theme, utilities;
+@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/utilities.css' layer(utilities) source(none);
+
+@source '../../../../src/client.ts';
+@source '../../../../web/src/client.ts';
+@source '../../../skins/src/**/*.{ts,tsx}';
+@source '../../../sidebar/src/**/*.{ts,tsx}';
+@source '../../../panel-controls/src/**/*.{ts,tsx}';
+@source '../../../pinned-summary/src/**/*.{ts,tsx}';
+@source '../../../plugin-marketplace/src/**/*.{ts,tsx}';
+@source '../../../tocktutor/packages/*/src/**/*.{ts,tsx}';
+
+@theme inline {
+  --color-*: initial;
+  --color-background: var(--dsw-alias-bg-base);
+  --color-surface: var(--dsw-alias-bg-layer-1);
+  --color-surface-muted: var(--dsw-alias-bg-layer-2);
+  --color-surface-raised: var(--dsw-alias-bg-layer-3);
+  --color-overlay: var(--dsw-alias-bg-overlay);
+  --color-foreground: var(--dsw-alias-label-primary);
+  --color-muted-foreground: var(--dsw-alias-label-secondary);
+  --color-subtle-foreground: var(--dsw-alias-label-tertiary);
+  --color-border: var(--dsw-alias-border-l2);
+  --color-border-strong: var(--dsw-alias-border-l3);
+  --color-brand: var(--dsw-alias-brand-primary);
+  --color-brand-foreground: var(--dsw-alias-brand-primary-invert);
+  --color-success: var(--dsw-alias-state-success-primary);
+  --color-warning: var(--dsw-alias-state-warn-primary);
+  --color-destructive: var(--dsw-alias-state-error-primary);
+  --color-code-block: var(--dsw-alias-markdown-code-block);
+  --color-inline-code: var(--dsw-alias-markdown-inline-code);
+}

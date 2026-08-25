@@ -15,7 +15,7 @@ app.commandLine.appendSwitch('disable-background-timer-throttling')
 
 function finish(window, error) {
   if (error === undefined) {
-    process.stdout.write('DSH Chromium client graph: ready\n')
+    process.stdout.write('DSH Chromium client graph and Tailwind utilities: ready\n')
   } else {
     process.stderr.write(`${error.stack ?? error.message}\n`)
   }
@@ -94,6 +94,27 @@ void app.whenReady().then(async () => {
             className: svg.getAttribute('class'),
             viewBox: svg.getAttribute('viewBox'),
           })),
+        tailwind: (() => {
+          const probe = document.createElement('div')
+          const reference = document.createElement('div')
+          probe.className = 'flex flex-col text-foreground'
+          reference.style.color = 'var(--dsw-alias-label-primary)'
+          document.body.append(probe, reference)
+          const probeStyle = getComputedStyle(probe)
+          const referenceColor = getComputedStyle(reference).color
+          const result = {
+            color: probeStyle.color,
+            display: probeStyle.display,
+            flexDirection: probeStyle.flexDirection,
+            ready: probeStyle.display === 'flex'
+              && probeStyle.flexDirection === 'column'
+              && probeStyle.color === referenceColor,
+            referenceColor,
+          }
+          probe.remove()
+          reference.remove()
+          return result
+        })(),
         navigation: (() => {
           const pluginsIcon = document.querySelector('.tockteam-marketplace-nav svg')
           const slotted = [...document.querySelectorAll('button')]
@@ -209,7 +230,7 @@ void app.whenReady().then(async () => {
           return
         }
         navigationReadyAt ??= Date.now()
-        if (Date.now() - navigationReadyAt >= 750) {
+        if (Date.now() - navigationReadyAt >= 750 && state.tailwind.ready === true) {
           settle()
           return
         }
@@ -219,7 +240,9 @@ void app.whenReady().then(async () => {
         return
       }
       if (Date.now() - startedAt >= timeoutMs) {
-        settle(new Error(`DSH Chromium client graph timed out:\n${state.body.trim()}`))
+        settle(new Error(
+          `DSH Chromium client graph timed out:\n${state.body.trim()}\nTailwind: ${JSON.stringify(state.tailwind)}`,
+        ))
         return
       }
     } catch (error) {

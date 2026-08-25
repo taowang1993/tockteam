@@ -22,7 +22,7 @@ This document is the canonical local design guidance for browser-rendered TockTe
 - Use Lucide for interface icons. Product marks are the only routine custom-SVG exception.
 - Use semantic HTML, preserve keyboard behavior, label icon-only controls, show keyboard focus, and honor `prefers-reduced-motion`.
 - Keep Host, browser-client, Electron, and TUI ownership separate. A visual change must not widen IPC, filesystem, process, workspace, or plugin authority.
-- Keep styling with its current owner. This repository has no separate TockTeam component library or global spacing/type scale; do not invent one for a single feature.
+- Keep styling with its current owner. Tailwind CSS v4 is the shared browser utility layer, not a component library or a replacement for DSH semantics. Existing feature CSS remains valid and should migrate only when touched.
 - Run the smallest visual regression test first, then `pnpm run typecheck`, `pnpm test`, and `pnpm run build`.
 
 ## 1. Authority and Ownership
@@ -76,7 +76,7 @@ Prefer these existing DSH roles:
 | Content              | `--dsw-alias-markdown-code-block`, `--dsw-alias-markdown-inline-code`                                                                   |
 | Specialized surfaces | `--dsw-specific-sidebar-*`, `--dsw-specific-bubble`, `--dsw-specific-input-major`, `--dsw-specific-menu`                                |
 
-Use semantic purpose, not a token that merely has the desired current color. Do not promote feature aliases such as `--tt-*` into a second global token system.
+Use semantic purpose, not a token that merely has the desired current color. Tailwind exposes these roles as `background`, `surface`, `surface-muted`, `surface-raised`, `overlay`, `foreground`, `muted-foreground`, `subtle-foreground`, `border`, `border-strong`, `brand`, `brand-foreground`, `success`, `warning`, `destructive`, `code-block`, and `inline-code`; combine them with utilities such as `bg-surface` or `text-foreground`. Do not promote feature aliases such as `--tt-*` into a second global token system.
 
 Raw colors are allowed only when they are intrinsic data or a documented boundary: skin catalog values and previews, terminal ANSI fallbacks, product marks, syntax/diff data, or a pinned upstream compatibility seam. Existing raw values are not automatically reusable tokens.
 
@@ -107,18 +107,20 @@ DSH owns the base browser font stack and global type behavior. TockTeam currentl
 
 ## 5. Components and Feature CSS
 
-TockTeam deliberately composes DSH instead of shipping a second Web component system.
+TockTeam deliberately composes DSH instead of shipping a second Web component system. Tailwind provides browser utilities only; `plugins/skins/src/client/tailwind.css` maps its semantic color utilities to the inherited `--dsw-*` contract and `@tockteam/skins` owns lifecycle injection on Desktop and Web. Tailwind does not apply to TockTeam TUI.
 
 1. Reuse an inherited DSH component when it preserves the required behavior.
 2. Reuse the closest TockTeam feature recipe or component.
-3. Use native HTML/CSS when it fully solves the interaction.
-4. Add the smallest namespaced feature rule only when no shared owner fits.
+3. Use Tailwind utilities for new or touched browser layout and styling when existing feature CSS is not the clearer owner.
+4. Use native HTML/CSS when it fully solves the interaction.
+5. Add the smallest namespaced feature rule only when utilities cannot express the behavior clearly.
 
 Rules:
 
 - Prefix local classes with `tockteam-` or the established feature namespace such as `tocktutor-`.
-- Keep CSS in the existing owner: a feature stylesheet, its lifecycle-owned inline stylesheet, or its downstream bundle adapter.
-- Do not add a new CSS framework, component library, token layer, or styling runtime.
+- Keep CSS in the existing owner: Tailwind classes in feature markup, a feature stylesheet, its lifecycle-owned inline stylesheet, or its downstream bundle adapter.
+- Keep Tailwind class names statically discoverable. Add new browser source roots to `plugins/skins/src/client/tailwind.css`; do not scan Host or TUI source and do not construct utility names dynamically.
+- Do not add another CSS framework, component library, token layer, or styling runtime. Do not add shadcn merely because Tailwind is available.
 - Host-only packages must not acquire browser-client styling accidentally. Browser UI remains in client exports and client bundle metadata.
 - Register injected styles, slots, listeners, and DOM effects through Cordis lifecycle ownership so unload removes them.
 - Do not edit `upstream/*` for TockTeam styling. Use the existing downstream adapter or bundle layer.
@@ -231,4 +233,4 @@ Use rendered browser or Electron verification for nontrivial visual changes when
 - Don't hardcode ordinary UI colors or assume one skin.
 - Don't patch generated output, installed dependencies, the pinned DSH checkout, or `upstream/*` directly.
 - Don't suppress focus, reduced-motion behavior, zoom, paste, or semantic controls.
-- Don't copy Tockbot's Tailwind, shadcn, route-template, or product-specific recipes into this repository; TockTeam uses DSH and its existing downstream plugins.
+- Don't copy Tockbot's shadcn, route-template, or product-specific recipes into this repository; TockTeam's Tailwind setup remains a thin utility layer over DSH and its existing downstream plugins.

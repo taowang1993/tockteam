@@ -5,6 +5,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { build } from 'esbuild'
 import { resolveProductVersion } from '../src/version.ts'
+import { buildTailwindCss } from './tailwind.mjs'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const dist = join(root, 'dist')
@@ -14,6 +15,10 @@ const versionDefine = {
 }
 rmSync(dist, { recursive: true, force: true })
 mkdirSync(dist, { recursive: true })
+const tailwindDefine = {
+  ...versionDefine,
+  __TOCKTEAM_TAILWIND_CSS__: JSON.stringify(await buildTailwindCss(root)),
+}
 
 const pluginPackages = [
   { directory: 'better-sidebar-runtime', hostOnly: true },
@@ -144,7 +149,7 @@ for (const plugin of pluginPackages) {
   if (plugin.hostOnly !== true) {
     builds.push(build({
       bundle: true,
-      define: versionDefine,
+      define: plugin.directory === 'skins' ? tailwindDefine : versionDefine,
       entryPoints: [join(source, 'client.ts')],
       outfile: join(output, 'client.js'),
       platform: 'browser',

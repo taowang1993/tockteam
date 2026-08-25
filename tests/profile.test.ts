@@ -37,6 +37,7 @@ test('desktop profile pins the released TockTutor runtime and peer package', () 
   }
   const tools = JSON.parse(readFileSync(new URL('../plugins/tocktutor/packages/tockteam-note-vault-tools/package.json', import.meta.url), 'utf8')) as {
     peerDependencies: Record<string, string>
+    peerDependenciesMeta: Record<string, { optional: boolean }>
     version: string
   }
   const workbench = JSON.parse(readFileSync(new URL('../plugins/tocktutor/packages/tockteam-tocktutor-workbench/package.json', import.meta.url), 'utf8')) as {
@@ -93,6 +94,7 @@ test('desktop profile pins the released TockTutor runtime and peer package', () 
   assert.equal(vault.version, '0.6.0')
   assert.equal(tools.version, '0.1.2')
   assert.equal(tools.peerDependencies['@deepseek-ai/dsh-tools'], '0.1.0-rc.5')
+  assert.equal(tools.peerDependenciesMeta['@deepseek-ai/dsh-tools']?.optional, true)
   assert.equal(tools.peerDependencies['tockbot-note-runtime'], '0.1.2')
   assert.equal(workbench.version, '0.1.7')
   assert.equal(workbench.peerDependencies['@tockteam/desktop'], '>=0.1.6 <0.2.0')
