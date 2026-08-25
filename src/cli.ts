@@ -117,10 +117,7 @@ export function desktopLaunchSpec(
     }
   }
   if (platform === 'win32') {
-    return {
-      args: ['/d', '/s', '/c', 'start', '""', 'TockTeam Desktop.exe', ...args],
-      command: env.ComSpec ?? 'cmd.exe',
-    }
+    return { args: [...args], command: 'TockTeam Desktop.exe' }
   }
   return { args: [...args], command: 'tockteam-desktop' }
 }
