@@ -1251,7 +1251,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
       </div>
       <div className="tocktutor-titlebar-main flex min-w-0 items-center gap-1 px-2">
         <span className="tocktutor-history mr-[18px] flex gap-[5px] px-1.5 text-[color-mix(in_srgb,var(--tt-muted)_45%,transparent)]"><WorkbenchGlyph kind="back" /><WorkbenchGlyph kind="forward" /></span>
-        <div aria-label="Note Tabs" className="tocktutor-tabs -mx-[calc(var(--tt-tab-curve)*2)] -mb-px flex min-w-0 self-stretch items-end gap-1 overflow-visible px-[calc(var(--tt-tab-curve)*2)] [--tt-tab-curve:10px]" role="tablist">
+        <div className="tocktutor-tabs -mx-[calc(var(--tt-tab-curve)*2)] -mb-px flex min-w-0 self-stretch items-end gap-1 overflow-visible px-[calc(var(--tt-tab-curve)*2)] [--tt-tab-curve:10px]" {...(focusedPane?.tabs.length ? { 'aria-label': 'Note Tabs', role: 'tablist' } : {})}>
           {focusedPane?.tabs.map((tab, index) => (
             <Button unstyled
               aria-selected={tab.path === focusedPane.activePath}
@@ -1346,10 +1346,10 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
             )}
             <nav aria-label="Vault Notes">
               {snapshot.phase === 'loading' && <p className="mx-1 my-[7px] text-xs text-[var(--tt-muted)]">Loading notes…</p>}
-              {snapshot.phase === 'inactive' && <Alert unstyled className="mx-1 my-[7px] text-xs text-[var(--tt-muted)]">No Active Vault</Alert>}
-              {snapshot.phase === 'error' && <Alert unstyled className="mx-1 my-[7px] text-xs text-[var(--tt-muted)]">{snapshot.message}</Alert>}
+              {snapshot.phase === 'inactive' && <Alert unstyled className="mx-1 my-[7px] text-xs text-[color-mix(in_srgb,var(--tt-muted)_90%,var(--tt-text))]">No Active Vault</Alert>}
+              {snapshot.phase === 'error' && <Alert unstyled className="mx-1 my-[7px] text-xs text-[color-mix(in_srgb,var(--tt-muted)_90%,var(--tt-text))]">{snapshot.message}</Alert>}
               {snapshot.phase === 'ready' && documents.length === 0 && <p className="mx-1 my-[7px] text-xs text-[var(--tt-muted)]">No supported notes found.</p>}
-              <ul className="tocktutor-tree m-0 list-none p-0" role="tree">
+              <ul className="tocktutor-tree m-0 list-none p-0" role={visibleTreeEntries.length > 0 ? 'tree' : undefined}>
                 <TreeEntries entries={visibleTreeEntries} onSelect={props.onSelect} path={snapshot.path} />
               </ul>
             </nav>
@@ -1430,7 +1430,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
               <Alert unstyled>{reading?.reason ?? 'Reading view is unavailable.'}</Alert>
             )}
           </div>
-          <footer aria-label="TockTutor Status Bar" className="tocktutor-statusbar flex min-w-0 items-center border-t border-[var(--tt-border)] px-2 text-xs text-[var(--tt-muted)]">
+          <footer className="tocktutor-statusbar flex min-w-0 items-center border-t border-[var(--tt-border)] px-2 text-xs text-[var(--tt-muted)]">
             <output aria-live="polite" className="tocktutor-message absolute size-px overflow-hidden whitespace-nowrap [clip:rect(0_0_0_0)] [clip-path:inset(50%)]">{snapshot.message}</output>
             {snapshot.path !== null && (
               <div className="ml-auto flex items-center gap-[18px] whitespace-nowrap max-[760px]:gap-2">

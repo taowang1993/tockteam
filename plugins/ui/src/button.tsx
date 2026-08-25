@@ -42,7 +42,7 @@ function Button({
   size = 'default',
   unstyled = false,
   ...props
-}: ButtonProps): JSX.Element {
+}: ButtonProps): React.ReactElement {
   return (
     <button
       data-slot="button"

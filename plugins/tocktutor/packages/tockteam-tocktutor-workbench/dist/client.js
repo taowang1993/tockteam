@@ -18328,47 +18328,23 @@ function Input({ className, type, unstyled = false, ...props }) {
   );
 }
 
-// ../../node_modules/.pnpm/@radix-ui+react-label@2.1.15_@types+react-dom@18.3.7_@types+react@18.3.31__@types+react_da1c8461c5aa9a0df92eac209c865a77/node_modules/@radix-ui/react-label/dist/index.mjs
-var React28 = __toESM(require("react"), 1);
-var import_jsx_runtime14 = require("react/jsx-runtime");
-var __defProp19 = Object.defineProperty;
-var __name18 = (target, value) => __defProp19(target, "name", { value, configurable: true });
-var Label = /* @__PURE__ */ React28.forwardRef(
-  /* @__PURE__ */ __name18(function Label2(props, forwardedRef) {
-    return /* @__PURE__ */ (0, import_jsx_runtime14.jsx)(
-      Primitive.label,
-      {
-        ...props,
-        ref: forwardedRef,
-        onMouseDown: (event) => {
-          const target = event.target;
-          if (target.closest("button, input, select, textarea")) return;
-          props.onMouseDown?.(event);
-          if (!event.defaultPrevented && event.detail > 1) event.preventDefault();
-        }
-      }
-    );
-  }, "Label")
-);
-var Root = Label;
-
 // ../../../ui/src/label.tsx
-var import_jsx_runtime15 = require("react/jsx-runtime");
-function Label3({ className, unstyled = false, ...props }) {
-  return /* @__PURE__ */ (0, import_jsx_runtime15.jsx)(
-    Root,
+var import_jsx_runtime14 = require("react/jsx-runtime");
+function Label({ className, unstyled = false, ...props }) {
+  return /* @__PURE__ */ (0, import_jsx_runtime14.jsx)(
+    "label",
     {
       "data-slot": "label",
-      className: unstyled ? className : cn("flex w-fit items-center gap-2 text-sm leading-none font-medium select-none group-data-[disabled=true]:pointer-events-none group-data-[disabled=true]:opacity-50 peer-disabled:cursor-not-allowed peer-disabled:opacity-50", className),
+      className: unstyled ? className : cn("flex w-fit items-center gap-2 text-sm leading-none font-medium select-none peer-disabled:cursor-not-allowed peer-disabled:opacity-50", className),
       ...props
     }
   );
 }
 
 // ../../../ui/src/textarea.tsx
-var import_jsx_runtime16 = require("react/jsx-runtime");
+var import_jsx_runtime15 = require("react/jsx-runtime");
 function Textarea({ className, unstyled = false, ...props }) {
-  return /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(
+  return /* @__PURE__ */ (0, import_jsx_runtime15.jsx)(
     "textarea",
     {
       "data-slot": "textarea",
@@ -18910,7 +18886,7 @@ function subscribeNoteVaultChanges(remote, currentVault, listener) {
 }
 
 // src/route.tsx
-var import_jsx_runtime17 = require("react/jsx-runtime");
+var import_jsx_runtime16 = require("react/jsx-runtime");
 var ROUTE_PREFIX = "/tocktutor";
 var TREE_LIMIT = 200;
 var DEFAULT_SIDEBAR_WIDTH = 280;
@@ -19564,18 +19540,18 @@ function ReadingBlockView(props) {
   switch (block.kind) {
     case "heading": {
       const Tag = `h${String(block.level)}`;
-      return /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)(Tag, { children: [
-        block.level === 1 && /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(ChevronDown, { "aria-hidden": "true" }),
+      return /* @__PURE__ */ (0, import_jsx_runtime16.jsxs)(Tag, { children: [
+        block.level === 1 && /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(ChevronDown, { "aria-hidden": "true" }),
         block.text
       ] });
     }
     case "paragraph":
-      return /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("p", { children: block.text });
+      return /* @__PURE__ */ (0, import_jsx_runtime16.jsx)("p", { children: block.text });
     case "code":
-      return /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("pre", { children: /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("code", { children: block.text }) });
+      return /* @__PURE__ */ (0, import_jsx_runtime16.jsx)("pre", { children: /* @__PURE__ */ (0, import_jsx_runtime16.jsx)("code", { children: block.text }) });
     case "task":
-      return /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)(Label3, { unstyled: true, className: "tocktutor-task my-2 flex items-start gap-2", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(
+      return /* @__PURE__ */ (0, import_jsx_runtime16.jsxs)(Label, { unstyled: true, className: "tocktutor-task my-2 flex items-start gap-2", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(
           Checkbox3,
           {
             "aria-label": `Mark ${block.text} as ${block.checked ? "incomplete" : "complete"}`,
@@ -19585,52 +19561,52 @@ function ReadingBlockView(props) {
             }
           }
         ),
-        /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("span", { children: block.text })
+        /* @__PURE__ */ (0, import_jsx_runtime16.jsx)("span", { children: block.text })
       ] });
   }
 }
 function CanvasView(props) {
   const projection = projectCanvas(parseCanvasDocument(props.source));
-  if (projection.status !== "ready") return /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(Alert, { unstyled: true, children: projection.reason });
-  return /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)("section", { "aria-label": "Canvas View", className: "tocktutor-projection min-h-0 overflow-auto p-6", tabIndex: -1, children: [
-    /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)("header", { children: [
-      /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("p", { className: "tocktutor-kicker mb-0.5 text-[11px] font-[650] tracking-[.08em] text-[var(--tt-muted)] uppercase", children: "Canvas" }),
-      /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)("h3", { className: "mt-0 mb-[18px] text-[17px]", children: [
+  if (projection.status !== "ready") return /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(Alert, { unstyled: true, children: projection.reason });
+  return /* @__PURE__ */ (0, import_jsx_runtime16.jsxs)("section", { "aria-label": "Canvas View", className: "tocktutor-projection min-h-0 overflow-auto p-6", tabIndex: -1, children: [
+    /* @__PURE__ */ (0, import_jsx_runtime16.jsxs)("header", { children: [
+      /* @__PURE__ */ (0, import_jsx_runtime16.jsx)("p", { className: "tocktutor-kicker mb-0.5 text-[11px] font-[650] tracking-[.08em] text-[var(--tt-muted)] uppercase", children: "Canvas" }),
+      /* @__PURE__ */ (0, import_jsx_runtime16.jsxs)("h3", { className: "mt-0 mb-[18px] text-[17px]", children: [
         projection.nodes.length,
         " Nodes \xB7 ",
         projection.edges.length,
         " Edges"
       ] })
     ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("div", { className: "tocktutor-canvas-grid grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-3", children: projection.nodes.map((node) => {
+    /* @__PURE__ */ (0, import_jsx_runtime16.jsx)("div", { className: "tocktutor-canvas-grid grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-3", children: projection.nodes.map((node) => {
       const label = node.text ?? node.file ?? `${node.type} node`;
-      return /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)("article", { className: "tocktutor-canvas-node min-w-0 rounded-lg border border-[var(--tt-border)] bg-[var(--tt-bg)] p-3.5 [&>h4]:mt-0 [&>h4]:mb-2 [&>h4]:text-sm [&>h4]:[overflow-wrap:anywhere] [&>p:not(.tocktutor-kicker)]:text-xs [&>p:not(.tocktutor-kicker)]:text-[var(--tt-muted)]", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("p", { className: "tocktutor-kicker mb-0.5 text-[11px] font-[650] tracking-[.08em] text-[var(--tt-muted)] uppercase", children: node.type }),
-        /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("h4", { children: label }),
-        /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)("p", { children: [
+      return /* @__PURE__ */ (0, import_jsx_runtime16.jsxs)("article", { className: "tocktutor-canvas-node min-w-0 rounded-lg border border-[var(--tt-border)] bg-[var(--tt-bg)] p-3.5 [&>h4]:mt-0 [&>h4]:mb-2 [&>h4]:text-sm [&>h4]:[overflow-wrap:anywhere] [&>p:not(.tocktutor-kicker)]:text-xs [&>p:not(.tocktutor-kicker)]:text-[var(--tt-muted)]", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime16.jsx)("p", { className: "tocktutor-kicker mb-0.5 text-[11px] font-[650] tracking-[.08em] text-[var(--tt-muted)] uppercase", children: node.type }),
+        /* @__PURE__ */ (0, import_jsx_runtime16.jsx)("h4", { children: label }),
+        /* @__PURE__ */ (0, import_jsx_runtime16.jsxs)("p", { children: [
           "Position ",
           String(node.x),
           ", ",
           String(node.y)
         ] }),
-        !node.supported && /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("p", { role: "note", children: "Unsupported node fields remain inert." }),
-        /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)("fieldset", { className: "tocktutor-node-actions mt-2.5 flex gap-1 border-0 p-0 [&_button]:cursor-pointer [&_button]:rounded-[5px] [&_button]:border [&_button]:border-[var(--tt-border)] [&_button]:bg-[var(--tt-panel)] [&_button]:px-2.5 [&_button]:py-[7px] [&_button]:text-inherit", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)("legend", { className: "tocktutor-visually-hidden absolute size-px overflow-hidden whitespace-nowrap [clip:rect(0_0_0_0)] [clip-path:inset(50%)]", children: [
+        !node.supported && /* @__PURE__ */ (0, import_jsx_runtime16.jsx)("p", { role: "note", children: "Unsupported node fields remain inert." }),
+        /* @__PURE__ */ (0, import_jsx_runtime16.jsxs)("fieldset", { className: "tocktutor-node-actions mt-2.5 flex gap-1 border-0 p-0 [&_button]:cursor-pointer [&_button]:rounded-[5px] [&_button]:border [&_button]:border-[var(--tt-border)] [&_button]:bg-[var(--tt-panel)] [&_button]:px-2.5 [&_button]:py-[7px] [&_button]:text-inherit", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime16.jsxs)("legend", { className: "tocktutor-visually-hidden absolute size-px overflow-hidden whitespace-nowrap [clip:rect(0_0_0_0)] [clip-path:inset(50%)]", children: [
             "Move ",
             label
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(Button, { unstyled: true, "aria-label": `Move ${label} left`, onClick: () => {
+          /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(Button, { unstyled: true, "aria-label": `Move ${label} left`, onClick: () => {
             props.onMove(node.id, -20, 0);
-          }, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(ArrowLeft, { "aria-hidden": "true" }) }),
-          /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(Button, { unstyled: true, "aria-label": `Move ${label} up`, onClick: () => {
+          }, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(ArrowLeft, { "aria-hidden": "true" }) }),
+          /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(Button, { unstyled: true, "aria-label": `Move ${label} up`, onClick: () => {
             props.onMove(node.id, 0, -20);
-          }, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(ArrowUp, { "aria-hidden": "true" }) }),
-          /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(Button, { unstyled: true, "aria-label": `Move ${label} down`, onClick: () => {
+          }, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(ArrowUp, { "aria-hidden": "true" }) }),
+          /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(Button, { unstyled: true, "aria-label": `Move ${label} down`, onClick: () => {
             props.onMove(node.id, 0, 20);
-          }, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(ArrowDown, { "aria-hidden": "true" }) }),
-          /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(Button, { unstyled: true, "aria-label": `Move ${label} right`, onClick: () => {
+          }, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(ArrowDown, { "aria-hidden": "true" }) }),
+          /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(Button, { unstyled: true, "aria-label": `Move ${label} right`, onClick: () => {
             props.onMove(node.id, 20, 0);
-          }, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(ArrowRight, { "aria-hidden": "true" }) })
+          }, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(ArrowRight, { "aria-hidden": "true" }) })
         ] })
       ] }, node.id);
     }) })
@@ -19638,23 +19614,23 @@ function CanvasView(props) {
 }
 function BaseView(props) {
   const projection = projectBase(props.source);
-  if (projection.status !== "ready") return /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(Alert, { unstyled: true, children: projection.reason });
-  return /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)("section", { "aria-label": "Base View", className: "tocktutor-projection min-h-0 overflow-auto p-6", tabIndex: -1, children: [
-    /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)("header", { children: [
-      /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("p", { className: "tocktutor-kicker mb-0.5 text-[11px] font-[650] tracking-[.08em] text-[var(--tt-muted)] uppercase", children: "Base" }),
-      /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)("h3", { className: "mt-0 mb-[18px] text-[17px]", children: [
+  if (projection.status !== "ready") return /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(Alert, { unstyled: true, children: projection.reason });
+  return /* @__PURE__ */ (0, import_jsx_runtime16.jsxs)("section", { "aria-label": "Base View", className: "tocktutor-projection min-h-0 overflow-auto p-6", tabIndex: -1, children: [
+    /* @__PURE__ */ (0, import_jsx_runtime16.jsxs)("header", { children: [
+      /* @__PURE__ */ (0, import_jsx_runtime16.jsx)("p", { className: "tocktutor-kicker mb-0.5 text-[11px] font-[650] tracking-[.08em] text-[var(--tt-muted)] uppercase", children: "Base" }),
+      /* @__PURE__ */ (0, import_jsx_runtime16.jsxs)("h3", { className: "mt-0 mb-[18px] text-[17px]", children: [
         projection.views.length,
         " Views"
       ] })
     ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("div", { className: "tocktutor-base-grid grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-3", children: projection.views.map((view, index) => /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)("article", { className: "tocktutor-base-view min-w-0 rounded-lg border border-[var(--tt-border)] bg-[var(--tt-bg)] p-3.5 [&>h4]:mt-0 [&>h4]:mb-2 [&>h4]:text-sm [&>h4]:[overflow-wrap:anywhere] [&>p:not(.tocktutor-kicker)]:text-xs [&>p:not(.tocktutor-kicker)]:text-[var(--tt-muted)]", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("p", { className: "tocktutor-kicker mb-0.5 text-[11px] font-[650] tracking-[.08em] text-[var(--tt-muted)] uppercase", children: view.type || "Unknown Type" }),
-      /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("h4", { children: view.name }),
-      /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("dl", { className: "m-0", children: Object.entries(view.fields).map(([field, value]) => /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)("div", { className: "grid grid-cols-[minmax(72px,.35fr)_minmax(0,1fr)] gap-2 border-t border-[var(--tt-border)] py-[7px]", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("dt", { className: "text-[var(--tt-muted)]", children: field }),
-        /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("dd", { className: "m-0 [overflow-wrap:anywhere]", children: value || "\u2014" })
+    /* @__PURE__ */ (0, import_jsx_runtime16.jsx)("div", { className: "tocktutor-base-grid grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-3", children: projection.views.map((view, index) => /* @__PURE__ */ (0, import_jsx_runtime16.jsxs)("article", { className: "tocktutor-base-view min-w-0 rounded-lg border border-[var(--tt-border)] bg-[var(--tt-bg)] p-3.5 [&>h4]:mt-0 [&>h4]:mb-2 [&>h4]:text-sm [&>h4]:[overflow-wrap:anywhere] [&>p:not(.tocktutor-kicker)]:text-xs [&>p:not(.tocktutor-kicker)]:text-[var(--tt-muted)]", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime16.jsx)("p", { className: "tocktutor-kicker mb-0.5 text-[11px] font-[650] tracking-[.08em] text-[var(--tt-muted)] uppercase", children: view.type || "Unknown Type" }),
+      /* @__PURE__ */ (0, import_jsx_runtime16.jsx)("h4", { children: view.name }),
+      /* @__PURE__ */ (0, import_jsx_runtime16.jsx)("dl", { className: "m-0", children: Object.entries(view.fields).map(([field, value]) => /* @__PURE__ */ (0, import_jsx_runtime16.jsxs)("div", { className: "grid grid-cols-[minmax(72px,.35fr)_minmax(0,1fr)] gap-2 border-t border-[var(--tt-border)] py-[7px]", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime16.jsx)("dt", { className: "text-[var(--tt-muted)]", children: field }),
+        /* @__PURE__ */ (0, import_jsx_runtime16.jsx)("dd", { className: "m-0 [overflow-wrap:anywhere]", children: value || "\u2014" })
       ] }, field)) }),
-      view.warnings.map((warning) => /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("p", { role: "note", children: warning }, warning))
+      view.warnings.map((warning) => /* @__PURE__ */ (0, import_jsx_runtime16.jsx)("p", { role: "note", children: warning }, warning))
     ] }, `${view.name}-${String(index)}`)) })
   ] });
 }
@@ -19668,32 +19644,32 @@ function NativeDispatchDialog(props) {
     });
   };
   const label = props.kind === "new" ? "New Note" : "Quick Capture";
-  return /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(Dialog2, { open: true, onOpenChange: (open) => {
+  return /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(Dialog2, { open: true, onOpenChange: (open) => {
     if (!open) props.onCancel();
-  }, children: /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(
+  }, children: /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(
     DialogContent3,
     {
       unstyled: true,
       className: "tocktutor-dispatch-dialog fixed top-1/2 left-1/2 z-50 w-[calc(100%-48px)] max-w-[480px] -translate-1/2",
       showCloseButton: false,
-      children: /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)("form", { className: "grid w-full gap-3.5 rounded-lg border border-[var(--tt-border)] bg-[var(--tt-panel)] p-5 [&_input]:rounded-[5px] [&_input]:border [&_input]:border-[var(--tt-border)] [&_input]:p-2 [&_input]:[font:inherit] [&_label]:grid [&_label]:gap-[5px] [&_label]:font-[650] [&_textarea]:rounded-[5px] [&_textarea]:border [&_textarea]:border-[var(--tt-border)] [&_textarea]:p-2 [&_textarea]:[font:inherit]", onSubmit: submit, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("header", { children: /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(DialogTitle3, { className: "m-0 text-[17px]", children: label }) }),
-        props.kind === "new" ? /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)(Label3, { unstyled: true, children: [
+      children: /* @__PURE__ */ (0, import_jsx_runtime16.jsxs)("form", { className: "grid w-full gap-3.5 rounded-lg border border-[var(--tt-border)] bg-[var(--tt-panel)] p-5 [&_input]:rounded-[5px] [&_input]:border [&_input]:border-[var(--tt-border)] [&_input]:p-2 [&_input]:[font:inherit] [&_label]:grid [&_label]:gap-[5px] [&_label]:font-[650] [&_textarea]:rounded-[5px] [&_textarea]:border [&_textarea]:border-[var(--tt-border)] [&_textarea]:p-2 [&_textarea]:[font:inherit]", onSubmit: submit, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime16.jsx)("header", { children: /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(DialogTitle3, { className: "m-0 text-[17px]", children: label }) }),
+        props.kind === "new" ? /* @__PURE__ */ (0, import_jsx_runtime16.jsxs)(Label, { unstyled: true, children: [
           "Note Path",
-          /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(Input, { unstyled: true, "aria-label": "New Note Path", autoFocus: true, maxLength: 1e3, name: "path", required: true })
-        ] }) : /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)(import_jsx_runtime17.Fragment, { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)(Label3, { unstyled: true, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(Input, { unstyled: true, "aria-label": "New Note Path", autoFocus: true, maxLength: 1e3, name: "path", required: true })
+        ] }) : /* @__PURE__ */ (0, import_jsx_runtime16.jsxs)(import_jsx_runtime16.Fragment, { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime16.jsxs)(Label, { unstyled: true, children: [
             "Title",
-            /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(Input, { unstyled: true, "aria-label": "Capture Title", autoFocus: true, maxLength: 200, name: "title", required: true })
+            /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(Input, { unstyled: true, "aria-label": "Capture Title", autoFocus: true, maxLength: 200, name: "title", required: true })
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)(Label3, { unstyled: true, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime16.jsxs)(Label, { unstyled: true, children: [
             "Text",
-            /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(Textarea, { unstyled: true, "aria-label": "Capture Text", maxLength: 1e5, name: "text" })
+            /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(Textarea, { unstyled: true, "aria-label": "Capture Text", maxLength: 1e5, name: "text" })
           ] })
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)("div", { className: "tocktutor-dialog-actions flex justify-end gap-2 [&_button]:cursor-pointer [&_button]:rounded-[5px] [&_button]:border [&_button]:border-[var(--tt-border)] [&_button]:bg-[var(--tt-panel)] [&_button]:px-2.5 [&_button]:py-[7px] [&_button]:text-inherit", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(Button, { unstyled: true, onClick: props.onCancel, type: "button", children: "Cancel" }),
-          /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(Button, { unstyled: true, type: "submit", children: "Create" })
+        /* @__PURE__ */ (0, import_jsx_runtime16.jsxs)("div", { className: "tocktutor-dialog-actions flex justify-end gap-2 [&_button]:cursor-pointer [&_button]:rounded-[5px] [&_button]:border [&_button]:border-[var(--tt-border)] [&_button]:bg-[var(--tt-panel)] [&_button]:px-2.5 [&_button]:py-[7px] [&_button]:text-inherit", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(Button, { unstyled: true, onClick: props.onCancel, type: "button", children: "Cancel" }),
+          /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(Button, { unstyled: true, type: "submit", children: "Create" })
         ] })
       ] })
     }
@@ -19717,7 +19693,7 @@ var WORKBENCH_GLYPHS = {
 };
 function WorkbenchGlyph({ kind }) {
   const Glyph = WORKBENCH_GLYPHS[kind];
-  return /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(Glyph, { "aria-hidden": "true" });
+  return /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(Glyph, { "aria-hidden": "true" });
 }
 function fileName(path) {
   return path.split("/").at(-1) ?? path;
@@ -19731,15 +19707,15 @@ function TreeEntries(props) {
     if (left.kind !== right.kind) return left.kind === "directory" ? -1 : 1;
     return left.path.localeCompare(right.path, void 0, { sensitivity: "base" });
   });
-  return children.map((entry) => entry.kind === "directory" ? /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)("li", { className: "tocktutor-tree-directory", role: "treeitem", "aria-expanded": "true", children: [
-    /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)("div", { className: "tocktutor-tree-row grid min-h-8 w-full grid-cols-[12px_16px_minmax(0,1fr)_16px] items-center gap-[7px] overflow-hidden rounded bg-transparent px-[5px] py-1 text-left font-medium text-inherit hover:bg-[color-mix(in_srgb,var(--tt-text)_5%,transparent)] [&>span:not(.tocktutor-tree-indent)]:truncate [&>svg:first-child]:size-3 [&>svg:last-child]:ml-auto [&>svg:last-child]:size-3.5 [&>svg:last-child]:text-[var(--tt-muted)] [&>svg:last-child]:opacity-80", title: entry.path, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(WorkbenchGlyph, { kind: "collapse" }),
-      /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(WorkbenchGlyph, { kind: "folder" }),
-      /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("span", { children: fileName(entry.path) }),
-      /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(WorkbenchGlyph, { kind: "more" })
+  return children.map((entry) => entry.kind === "directory" ? /* @__PURE__ */ (0, import_jsx_runtime16.jsxs)("li", { className: "tocktutor-tree-directory", role: "treeitem", "aria-expanded": "true", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime16.jsxs)("div", { className: "tocktutor-tree-row grid min-h-8 w-full grid-cols-[12px_16px_minmax(0,1fr)_16px] items-center gap-[7px] overflow-hidden rounded bg-transparent px-[5px] py-1 text-left font-medium text-inherit hover:bg-[color-mix(in_srgb,var(--tt-text)_5%,transparent)] [&>span:not(.tocktutor-tree-indent)]:truncate [&>svg:first-child]:size-3 [&>svg:last-child]:ml-auto [&>svg:last-child]:size-3.5 [&>svg:last-child]:text-[var(--tt-muted)] [&>svg:last-child]:opacity-80", title: entry.path, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(WorkbenchGlyph, { kind: "collapse" }),
+      /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(WorkbenchGlyph, { kind: "folder" }),
+      /* @__PURE__ */ (0, import_jsx_runtime16.jsx)("span", { children: fileName(entry.path) }),
+      /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(WorkbenchGlyph, { kind: "more" })
     ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("ul", { className: "m-0 list-none p-0 pl-4", role: "group", children: /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(TreeEntries, { entries: props.entries, onSelect: props.onSelect, path: props.path, prefix: `${entry.path}/` }) })
-  ] }, entry.path) : /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("li", { role: "treeitem", "aria-selected": entry.path === props.path, children: /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)(
+    /* @__PURE__ */ (0, import_jsx_runtime16.jsx)("ul", { className: "m-0 list-none p-0 pl-4", role: "group", children: /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(TreeEntries, { entries: props.entries, onSelect: props.onSelect, path: props.path, prefix: `${entry.path}/` }) })
+  ] }, entry.path) : /* @__PURE__ */ (0, import_jsx_runtime16.jsx)("li", { role: "treeitem", "aria-selected": entry.path === props.path, children: /* @__PURE__ */ (0, import_jsx_runtime16.jsxs)(
     Button,
     {
       unstyled: true,
@@ -19751,10 +19727,10 @@ function TreeEntries(props) {
       title: entry.path,
       type: "button",
       children: [
-        /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("span", { className: "tocktutor-tree-indent w-3" }),
-        /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(WorkbenchGlyph, { kind: "document" }),
-        /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("span", { children: fileName(entry.path) }),
-        /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(WorkbenchGlyph, { kind: "more" })
+        /* @__PURE__ */ (0, import_jsx_runtime16.jsx)("span", { className: "tocktutor-tree-indent w-3" }),
+        /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(WorkbenchGlyph, { kind: "document" }),
+        /* @__PURE__ */ (0, import_jsx_runtime16.jsx)("span", { children: fileName(entry.path) }),
+        /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(WorkbenchGlyph, { kind: "more" })
       ]
     }
   ) }, entry.path));
@@ -19829,7 +19805,7 @@ function TockTutorRouteView(props) {
   };
   const words = snapshot.source.match(/[\p{L}\p{N}]+(?:['’][\p{L}\p{N}]+)*/gu)?.length ?? 0;
   const characters = snapshot.source.length;
-  const titlebar = /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)(
+  const titlebar = /* @__PURE__ */ (0, import_jsx_runtime16.jsxs)(
     "section",
     {
       "aria-label": "TockTutor Title Bar",
@@ -19839,14 +19815,14 @@ function TockTutorRouteView(props) {
         transitionDuration: shouldAnimateSidebarColumns ? void 0 : "0ms"
       },
       children: [
-        /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)("div", { className: "tocktutor-titlebar-sidebar flex min-w-0 items-center justify-start gap-2 border-r border-[var(--tt-border)] pr-2 pl-[46px] [&>button]:inline-flex [&>button]:h-7 [&>button]:w-[22px] [&>button]:items-center [&>button]:justify-center [&>button]:border-0 [&>button]:bg-transparent [&>button]:p-0 [&>button]:text-[var(--tt-muted)] [&>span]:inline-flex [&>span]:h-7 [&>span]:w-[22px] [&>span]:items-center [&>span]:justify-center [&>span]:border-0 [&>span]:bg-transparent [&>span]:p-0 [&>span]:text-[var(--tt-muted)]", children: [
-          sidebarOpen && /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)(import_jsx_runtime17.Fragment, { children: [
-            /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("span", { className: "tocktutor-titlebar-document rounded-[5px] bg-[color-mix(in_srgb,var(--tt-text)_8%,transparent)] text-[var(--tt-text)]", children: /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(WorkbenchGlyph, { kind: "document" }) }),
-            /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("span", { children: /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(WorkbenchGlyph, { kind: "document" }) }),
-            /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(Button, { unstyled: true, "aria-label": "Search Notes", disabled: props.onOpenSearch === void 0, onClick: props.onOpenSearch, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(WorkbenchGlyph, { kind: "search" }) }),
-            /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("span", { children: /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(WorkbenchGlyph, { kind: "bookmark" }) })
+        /* @__PURE__ */ (0, import_jsx_runtime16.jsxs)("div", { className: "tocktutor-titlebar-sidebar flex min-w-0 items-center justify-start gap-2 border-r border-[var(--tt-border)] pr-2 pl-[46px] [&>button]:inline-flex [&>button]:h-7 [&>button]:w-[22px] [&>button]:items-center [&>button]:justify-center [&>button]:border-0 [&>button]:bg-transparent [&>button]:p-0 [&>button]:text-[var(--tt-muted)] [&>span]:inline-flex [&>span]:h-7 [&>span]:w-[22px] [&>span]:items-center [&>span]:justify-center [&>span]:border-0 [&>span]:bg-transparent [&>span]:p-0 [&>span]:text-[var(--tt-muted)]", children: [
+          sidebarOpen && /* @__PURE__ */ (0, import_jsx_runtime16.jsxs)(import_jsx_runtime16.Fragment, { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime16.jsx)("span", { className: "tocktutor-titlebar-document rounded-[5px] bg-[color-mix(in_srgb,var(--tt-text)_8%,transparent)] text-[var(--tt-text)]", children: /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(WorkbenchGlyph, { kind: "document" }) }),
+            /* @__PURE__ */ (0, import_jsx_runtime16.jsx)("span", { children: /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(WorkbenchGlyph, { kind: "document" }) }),
+            /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(Button, { unstyled: true, "aria-label": "Search Notes", disabled: props.onOpenSearch === void 0, onClick: props.onOpenSearch, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(WorkbenchGlyph, { kind: "search" }) }),
+            /* @__PURE__ */ (0, import_jsx_runtime16.jsx)("span", { children: /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(WorkbenchGlyph, { kind: "bookmark" }) })
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(
+          /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(
             Button,
             {
               unstyled: true,
@@ -19857,16 +19833,16 @@ function TockTutorRouteView(props) {
                 setSidebarOpen((open) => !open);
               },
               type: "button",
-              children: /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(WorkbenchGlyph, { kind: "panel" })
+              children: /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(WorkbenchGlyph, { kind: "panel" })
             }
           )
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)("div", { className: "tocktutor-titlebar-main flex min-w-0 items-center gap-1 px-2", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)("span", { className: "tocktutor-history mr-[18px] flex gap-[5px] px-1.5 text-[color-mix(in_srgb,var(--tt-muted)_45%,transparent)]", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(WorkbenchGlyph, { kind: "back" }),
-            /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(WorkbenchGlyph, { kind: "forward" })
+        /* @__PURE__ */ (0, import_jsx_runtime16.jsxs)("div", { className: "tocktutor-titlebar-main flex min-w-0 items-center gap-1 px-2", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime16.jsxs)("span", { className: "tocktutor-history mr-[18px] flex gap-[5px] px-1.5 text-[color-mix(in_srgb,var(--tt-muted)_45%,transparent)]", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(WorkbenchGlyph, { kind: "back" }),
+            /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(WorkbenchGlyph, { kind: "forward" })
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("div", { "aria-label": "Note Tabs", className: "tocktutor-tabs -mx-[calc(var(--tt-tab-curve)*2)] -mb-px flex min-w-0 self-stretch items-end gap-1 overflow-visible px-[calc(var(--tt-tab-curve)*2)] [--tt-tab-curve:10px]", role: "tablist", children: focusedPane?.tabs.map((tab, index) => /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)(
+          /* @__PURE__ */ (0, import_jsx_runtime16.jsx)("div", { className: "tocktutor-tabs -mx-[calc(var(--tt-tab-curve)*2)] -mb-px flex min-w-0 self-stretch items-end gap-1 overflow-visible px-[calc(var(--tt-tab-curve)*2)] [--tt-tab-curve:10px]", ...focusedPane?.tabs.length ? { "aria-label": "Note Tabs", role: "tablist" } : {}, children: focusedPane?.tabs.map((tab, index) => /* @__PURE__ */ (0, import_jsx_runtime16.jsxs)(
             Button,
             {
               unstyled: true,
@@ -19888,18 +19864,18 @@ function TockTutorRouteView(props) {
               title: tab.path,
               type: "button",
               children: [
-                /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)("span", { children: [
-                  tab.dirty && /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("span", { "aria-label": "Unsaved", children: "\u2022" }),
+                /* @__PURE__ */ (0, import_jsx_runtime16.jsxs)("span", { children: [
+                  tab.dirty && /* @__PURE__ */ (0, import_jsx_runtime16.jsx)("span", { "aria-label": "Unsaved", children: "\u2022" }),
                   fileName(tab.path)
                 ] }),
-                tab.path === focusedPane.activePath && /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(WorkbenchGlyph, { kind: "close" })
+                tab.path === focusedPane.activePath && /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(WorkbenchGlyph, { kind: "close" })
               ]
             },
             tab.path
           )) }),
-          /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(Button, { unstyled: true, "aria-label": "New Note", className: "tocktutor-new-tab border-0 bg-transparent p-1.5 text-[var(--tt-muted)]", disabled: props.onNewNote === void 0, onClick: props.onNewNote, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(WorkbenchGlyph, { kind: "new" }) }),
-          /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("span", { className: "tocktutor-titlebar-spacer flex-1" }),
-          /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(
+          /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(Button, { unstyled: true, "aria-label": "New Note", className: "tocktutor-new-tab border-0 bg-transparent p-1.5 text-[var(--tt-muted)]", disabled: props.onNewNote === void 0, onClick: props.onNewNote, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(WorkbenchGlyph, { kind: "new" }) }),
+          /* @__PURE__ */ (0, import_jsx_runtime16.jsx)("span", { className: "tocktutor-titlebar-spacer flex-1" }),
+          /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(
             Button,
             {
               unstyled: true,
@@ -19910,14 +19886,14 @@ function TockTutorRouteView(props) {
                 setPanel((current) => current === "assistant" ? null : "assistant");
               },
               type: "button",
-              children: /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(WorkbenchGlyph, { kind: "panel-right" })
+              children: /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(WorkbenchGlyph, { kind: "panel-right" })
             }
           )
         ] })
       ]
     }
   );
-  return /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)(
+  return /* @__PURE__ */ (0, import_jsx_runtime16.jsxs)(
     "main",
     {
       "aria-label": "TockTutor Workbench",
@@ -19926,7 +19902,7 @@ function TockTutorRouteView(props) {
       tabIndex: -1,
       children: [
         props.titlebarTarget === void 0 ? titlebar : (0, import_react_dom.createPortal)(titlebar, props.titlebarTarget),
-        snapshot.dispatchDialog !== null && /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(
+        snapshot.dispatchDialog !== null && /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(
           NativeDispatchDialog,
           {
             kind: snapshot.dispatchDialog,
@@ -19938,7 +19914,7 @@ function TockTutorRouteView(props) {
             }
           }
         ),
-        /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)(
+        /* @__PURE__ */ (0, import_jsx_runtime16.jsxs)(
           "div",
           {
             className: "tocktutor-grid relative grid h-full min-h-0 grid-cols-[var(--tockteam-primary-sidebar-width,280px)_minmax(0,1fr)_auto_auto] transition-[grid-template-columns] duration-300 ease-out",
@@ -19947,7 +19923,7 @@ function TockTutorRouteView(props) {
               transitionDuration: shouldAnimateSidebarColumns ? void 0 : "0ms"
             },
             children: [
-              /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)(
+              /* @__PURE__ */ (0, import_jsx_runtime16.jsxs)(
                 "aside",
                 {
                   "aria-hidden": !sidebarOpen,
@@ -19956,18 +19932,18 @@ function TockTutorRouteView(props) {
                   "data-open": sidebarOpen,
                   ...sidebarOpen ? {} : { inert: "" },
                   children: [
-                    /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)("header", { className: "tocktutor-sidebar-header flex items-center gap-2.5 border-b border-[var(--tt-border)] px-2.5 [&_svg]:size-3.5", children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("h1", { className: "mr-auto my-0 text-sm font-semibold", children: "Files" }),
-                      /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("span", { className: "inline-flex items-center justify-center text-sm text-[var(--tt-muted)]", children: /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(WorkbenchGlyph, { kind: "more" }) }),
-                      /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("span", { className: "inline-flex items-center justify-center text-sm text-[var(--tt-muted)]", children: /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(Upload, { "aria-hidden": "true" }) }),
-                      /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("span", { className: "inline-flex items-center justify-center text-sm text-[var(--tt-muted)]", children: /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(WorkbenchGlyph, { kind: "folder" }) }),
-                      /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("span", { className: "inline-flex items-center justify-center text-sm text-[var(--tt-muted)]", children: /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(PanelTop, { "aria-hidden": "true" }) })
+                    /* @__PURE__ */ (0, import_jsx_runtime16.jsxs)("header", { className: "tocktutor-sidebar-header flex items-center gap-2.5 border-b border-[var(--tt-border)] px-2.5 [&_svg]:size-3.5", children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime16.jsx)("h1", { className: "mr-auto my-0 text-sm font-semibold", children: "Files" }),
+                      /* @__PURE__ */ (0, import_jsx_runtime16.jsx)("span", { className: "inline-flex items-center justify-center text-sm text-[var(--tt-muted)]", children: /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(WorkbenchGlyph, { kind: "more" }) }),
+                      /* @__PURE__ */ (0, import_jsx_runtime16.jsx)("span", { className: "inline-flex items-center justify-center text-sm text-[var(--tt-muted)]", children: /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(Upload, { "aria-hidden": "true" }) }),
+                      /* @__PURE__ */ (0, import_jsx_runtime16.jsx)("span", { className: "inline-flex items-center justify-center text-sm text-[var(--tt-muted)]", children: /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(WorkbenchGlyph, { kind: "folder" }) }),
+                      /* @__PURE__ */ (0, import_jsx_runtime16.jsx)("span", { className: "inline-flex items-center justify-center text-sm text-[var(--tt-muted)]", children: /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(PanelTop, { "aria-hidden": "true" }) })
                     ] }),
-                    /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)("div", { className: "tocktutor-sidebar-content min-h-0 overflow-auto px-[5px] py-[3px]", children: [
-                      snapshot.searchOpen && /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)("section", { "aria-label": "Search Notes", className: "tocktutor-search mb-2 border-b border-[var(--tt-border)] px-[3px] pb-2", children: [
-                        /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(Label3, { unstyled: true, className: "mb-[5px] block text-xs font-semibold", htmlFor: "tocktutor-search-query", children: "Search Notes" }),
-                        /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)("div", { className: "flex gap-1", children: [
-                          /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(
+                    /* @__PURE__ */ (0, import_jsx_runtime16.jsxs)("div", { className: "tocktutor-sidebar-content min-h-0 overflow-auto px-[5px] py-[3px]", children: [
+                      snapshot.searchOpen && /* @__PURE__ */ (0, import_jsx_runtime16.jsxs)("section", { "aria-label": "Search Notes", className: "tocktutor-search mb-2 border-b border-[var(--tt-border)] px-[3px] pb-2", children: [
+                        /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(Label, { unstyled: true, className: "mb-[5px] block text-xs font-semibold", htmlFor: "tocktutor-search-query", children: "Search Notes" }),
+                        /* @__PURE__ */ (0, import_jsx_runtime16.jsxs)("div", { className: "flex gap-1", children: [
+                          /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(
                             Input,
                             {
                               unstyled: true,
@@ -19983,24 +19959,24 @@ function TockTutorRouteView(props) {
                               value: snapshot.searchQuery
                             }
                           ),
-                          /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(Button, { unstyled: true, "aria-label": "Close Search", className: "w-7 rounded-[5px] border border-[var(--tt-border)] bg-transparent", onClick: () => {
+                          /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(Button, { unstyled: true, "aria-label": "Close Search", className: "w-7 rounded-[5px] border border-[var(--tt-border)] bg-transparent", onClick: () => {
                             props.onCloseSearch?.();
-                          }, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(WorkbenchGlyph, { kind: "close" }) })
+                          }, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(WorkbenchGlyph, { kind: "close" }) })
                         ] }),
-                        /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)(Alert, { unstyled: true, "aria-live": "polite", className: "mx-1 my-[7px] text-xs text-[var(--tt-muted)]", role: "status", children: [
+                        /* @__PURE__ */ (0, import_jsx_runtime16.jsxs)(Alert, { unstyled: true, "aria-live": "polite", className: "mx-1 my-[7px] text-xs text-[var(--tt-muted)]", role: "status", children: [
                           documents.length,
                           " matching notes."
                         ] })
                       ] }),
-                      /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)("nav", { "aria-label": "Vault Notes", children: [
-                        snapshot.phase === "loading" && /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("p", { className: "mx-1 my-[7px] text-xs text-[var(--tt-muted)]", children: "Loading notes\u2026" }),
-                        snapshot.phase === "inactive" && /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(Alert, { unstyled: true, className: "mx-1 my-[7px] text-xs text-[var(--tt-muted)]", children: "No Active Vault" }),
-                        snapshot.phase === "error" && /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(Alert, { unstyled: true, className: "mx-1 my-[7px] text-xs text-[var(--tt-muted)]", children: snapshot.message }),
-                        snapshot.phase === "ready" && documents.length === 0 && /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("p", { className: "mx-1 my-[7px] text-xs text-[var(--tt-muted)]", children: "No supported notes found." }),
-                        /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("ul", { className: "tocktutor-tree m-0 list-none p-0", role: "tree", children: /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(TreeEntries, { entries: visibleTreeEntries, onSelect: props.onSelect, path: snapshot.path }) })
+                      /* @__PURE__ */ (0, import_jsx_runtime16.jsxs)("nav", { "aria-label": "Vault Notes", children: [
+                        snapshot.phase === "loading" && /* @__PURE__ */ (0, import_jsx_runtime16.jsx)("p", { className: "mx-1 my-[7px] text-xs text-[var(--tt-muted)]", children: "Loading notes\u2026" }),
+                        snapshot.phase === "inactive" && /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(Alert, { unstyled: true, className: "mx-1 my-[7px] text-xs text-[color-mix(in_srgb,var(--tt-muted)_90%,var(--tt-text))]", children: "No Active Vault" }),
+                        snapshot.phase === "error" && /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(Alert, { unstyled: true, className: "mx-1 my-[7px] text-xs text-[color-mix(in_srgb,var(--tt-muted)_90%,var(--tt-text))]", children: snapshot.message }),
+                        snapshot.phase === "ready" && documents.length === 0 && /* @__PURE__ */ (0, import_jsx_runtime16.jsx)("p", { className: "mx-1 my-[7px] text-xs text-[var(--tt-muted)]", children: "No supported notes found." }),
+                        /* @__PURE__ */ (0, import_jsx_runtime16.jsx)("ul", { className: "tocktutor-tree m-0 list-none p-0", role: visibleTreeEntries.length > 0 ? "tree" : void 0, children: /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(TreeEntries, { entries: visibleTreeEntries, onSelect: props.onSelect, path: snapshot.path }) })
                       ] })
                     ] }),
-                    /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)(
+                    /* @__PURE__ */ (0, import_jsx_runtime16.jsxs)(
                       Button,
                       {
                         unstyled: true,
@@ -20011,16 +19987,16 @@ function TockTutorRouteView(props) {
                         },
                         type: "button",
                         children: [
-                          /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(WorkbenchGlyph, { kind: "collapse" }),
-                          /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("span", { children: snapshot.vault === null ? "Choose Vault" : "TockTutor Vault" }),
-                          /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(WorkbenchGlyph, { kind: "more" })
+                          /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(WorkbenchGlyph, { kind: "collapse" }),
+                          /* @__PURE__ */ (0, import_jsx_runtime16.jsx)("span", { children: snapshot.vault === null ? "Choose Vault" : "TockTutor Vault" }),
+                          /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(WorkbenchGlyph, { kind: "more" })
                         ]
                       }
                     )
                   ]
                 }
               ),
-              /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(
+              /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(
                 Button,
                 {
                   unstyled: true,
@@ -20034,11 +20010,11 @@ function TockTutorRouteView(props) {
                   type: "button"
                 }
               ),
-              /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)("section", { "aria-label": "Note Editor", className: "tocktutor-editor grid min-h-0 grid-rows-[40px_minmax(0,1fr)_var(--tt-footer-height)] overflow-hidden bg-[var(--tt-panel)]", id: "tocktutor-note-editor", role: "tabpanel", children: [
-                /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)("header", { className: "tocktutor-editor-header relative flex min-w-0 items-center justify-center border-b border-[var(--tt-border)] px-2.5", children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("h2", { className: "m-0 truncate text-[13px] font-medium text-[var(--tt-muted)]", children: noteTitle(snapshot.path) }),
-                  /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)("div", { className: "tocktutor-editor-actions absolute right-2.5 flex items-center gap-1 [&_button]:inline-flex [&_button]:h-7 [&_button]:w-[26px] [&_button]:items-center [&_button]:justify-center [&_button]:border-0 [&_button]:bg-transparent [&_button]:p-0 [&_button]:text-[var(--tt-muted)] [&_span]:inline-flex [&_span]:h-7 [&_span]:w-[26px] [&_span]:items-center [&_span]:justify-center [&_span]:border-0 [&_span]:bg-transparent [&_span]:p-0 [&_span]:text-[var(--tt-muted)]", children: [
-                    /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(
+              /* @__PURE__ */ (0, import_jsx_runtime16.jsxs)("section", { "aria-label": "Note Editor", className: "tocktutor-editor grid min-h-0 grid-rows-[40px_minmax(0,1fr)_var(--tt-footer-height)] overflow-hidden bg-[var(--tt-panel)]", id: "tocktutor-note-editor", role: "tabpanel", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime16.jsxs)("header", { className: "tocktutor-editor-header relative flex min-w-0 items-center justify-center border-b border-[var(--tt-border)] px-2.5", children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime16.jsx)("h2", { className: "m-0 truncate text-[13px] font-medium text-[var(--tt-muted)]", children: noteTitle(snapshot.path) }),
+                  /* @__PURE__ */ (0, import_jsx_runtime16.jsxs)("div", { className: "tocktutor-editor-actions absolute right-2.5 flex items-center gap-1 [&_button]:inline-flex [&_button]:h-7 [&_button]:w-[26px] [&_button]:items-center [&_button]:justify-center [&_button]:border-0 [&_button]:bg-transparent [&_button]:p-0 [&_button]:text-[var(--tt-muted)] [&_span]:inline-flex [&_span]:h-7 [&_span]:w-[26px] [&_span]:items-center [&_span]:justify-center [&_span]:border-0 [&_span]:bg-transparent [&_span]:p-0 [&_span]:text-[var(--tt-muted)]", children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(
                       Button,
                       {
                         unstyled: true,
@@ -20047,12 +20023,12 @@ function TockTutorRouteView(props) {
                           props.onMode(snapshot.mode === "source" ? "reading" : "source");
                         },
                         type: "button",
-                        children: /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(WorkbenchGlyph, { kind: "pencil" })
+                        children: /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(WorkbenchGlyph, { kind: "pencil" })
                       }
                     ),
-                    /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("span", { children: /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(Music, { "aria-hidden": "true" }) }),
-                    /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("span", { children: /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(Folder, { "aria-hidden": "true" }) }),
-                    /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(
+                    /* @__PURE__ */ (0, import_jsx_runtime16.jsx)("span", { children: /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(Music, { "aria-hidden": "true" }) }),
+                    /* @__PURE__ */ (0, import_jsx_runtime16.jsx)("span", { children: /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(Folder, { "aria-hidden": "true" }) }),
+                    /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(
                       Button,
                       {
                         unstyled: true,
@@ -20062,16 +20038,16 @@ function TockTutorRouteView(props) {
                           setPanel((current) => current === "utilities" ? null : "utilities");
                         },
                         type: "button",
-                        children: /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(WorkbenchGlyph, { kind: "more" })
+                        children: /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(WorkbenchGlyph, { kind: "more" })
                       }
                     )
                   ] })
                 ] }),
-                /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("div", { className: "tocktutor-editor-body relative min-h-0 overflow-auto", children: snapshot.path === null ? /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(Empty, { unstyled: true, className: "tocktutor-empty absolute top-[45%] left-1/2 w-full max-w-[420px] -translate-1/2 p-8 text-center", children: /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)(EmptyHeader, { unstyled: true, children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("p", { className: "tocktutor-kicker mb-0.5 text-[11px] font-[650] tracking-[.08em] text-[var(--tt-muted)] uppercase", children: "Ready When You Are" }),
-                  /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(EmptyTitle, { unstyled: true, "aria-level": 2, className: "text-xl font-bold", role: "heading", children: "Select a Note" }),
-                  /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(EmptyDescription, { unstyled: true, className: "text-[var(--tt-muted)]", children: "Choose a Markdown note from the vault to read or edit its exact source." })
-                ] }) }) : snapshot.mode === "source" ? /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(
+                /* @__PURE__ */ (0, import_jsx_runtime16.jsx)("div", { className: "tocktutor-editor-body relative min-h-0 overflow-auto", children: snapshot.path === null ? /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(Empty, { unstyled: true, className: "tocktutor-empty absolute top-[45%] left-1/2 w-full max-w-[420px] -translate-1/2 p-8 text-center", children: /* @__PURE__ */ (0, import_jsx_runtime16.jsxs)(EmptyHeader, { unstyled: true, children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime16.jsx)("p", { className: "tocktutor-kicker mb-0.5 text-[11px] font-[650] tracking-[.08em] text-[var(--tt-muted)] uppercase", children: "Ready When You Are" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(EmptyTitle, { unstyled: true, "aria-level": 2, className: "text-xl font-bold", role: "heading", children: "Select a Note" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(EmptyDescription, { unstyled: true, className: "text-[var(--tt-muted)]", children: "Choose a Markdown note from the vault to read or edit its exact source." })
+                ] }) }) : snapshot.mode === "source" ? /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(
                   Textarea,
                   {
                     unstyled: true,
@@ -20083,9 +20059,9 @@ function TockTutorRouteView(props) {
                     spellCheck: "true",
                     value: snapshot.source
                   }
-                ) : snapshot.documentKind === "canvas" ? /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(CanvasView, { onMove: props.onMoveCanvas, source: snapshot.source }) : snapshot.documentKind === "base" ? /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(BaseView, { source: snapshot.source }) : reading?.status === "ready" ? /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)("article", { "aria-label": "Reading View", className: "tocktutor-reading mx-auto min-h-full w-[calc(100%-48px)] max-w-3xl pt-[18px] pb-[72px] [&_h1]:mt-0 [&_h1]:mb-4 [&_h1]:text-[30px] [&_h1]:leading-tight [&_h1]:font-[650] [&_h1>svg]:mr-1.5 [&_h1>svg]:ml-[-20px] [&_h1>svg]:inline-block [&_h1>svg]:size-3.5 [&_h1>svg]:-translate-y-[3px] [&_h1>svg]:text-[color-mix(in_srgb,var(--tt-muted)_45%,transparent)] [&_h2]:mt-0 [&_h2]:mb-4 [&_h2]:text-2xl [&_h2]:leading-tight [&_h2]:font-[650] [&_h3]:mt-0 [&_h3]:mb-4 [&_h3]:text-xl [&_h3]:leading-tight [&_h3]:font-[650] [&_p]:mt-0 [&_p]:mb-4 [&_p]:text-lg [&_pre]:overflow-auto [&_pre]:rounded-md [&_pre]:border [&_pre]:border-[var(--tt-border)] [&_pre]:bg-[color-mix(in_srgb,var(--tt-text)_4%,var(--tt-panel))] [&_pre]:p-3", tabIndex: -1, children: [
-                  reading.warnings.map((warning) => /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("p", { className: "tocktutor-warning border-l-[3px] border-[#b7791f] pl-2.5 text-[var(--tt-muted)]", role: "note", children: warning }, warning)),
-                  reading.blocks.map((block, index) => /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(
+                ) : snapshot.documentKind === "canvas" ? /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(CanvasView, { onMove: props.onMoveCanvas, source: snapshot.source }) : snapshot.documentKind === "base" ? /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(BaseView, { source: snapshot.source }) : reading?.status === "ready" ? /* @__PURE__ */ (0, import_jsx_runtime16.jsxs)("article", { "aria-label": "Reading View", className: "tocktutor-reading mx-auto min-h-full w-[calc(100%-48px)] max-w-3xl pt-[18px] pb-[72px] [&_h1]:mt-0 [&_h1]:mb-4 [&_h1]:text-[30px] [&_h1]:leading-tight [&_h1]:font-[650] [&_h1>svg]:mr-1.5 [&_h1>svg]:ml-[-20px] [&_h1>svg]:inline-block [&_h1>svg]:size-3.5 [&_h1>svg]:-translate-y-[3px] [&_h1>svg]:text-[color-mix(in_srgb,var(--tt-muted)_45%,transparent)] [&_h2]:mt-0 [&_h2]:mb-4 [&_h2]:text-2xl [&_h2]:leading-tight [&_h2]:font-[650] [&_h3]:mt-0 [&_h3]:mb-4 [&_h3]:text-xl [&_h3]:leading-tight [&_h3]:font-[650] [&_p]:mt-0 [&_p]:mb-4 [&_p]:text-lg [&_pre]:overflow-auto [&_pre]:rounded-md [&_pre]:border [&_pre]:border-[var(--tt-border)] [&_pre]:bg-[color-mix(in_srgb,var(--tt-text)_4%,var(--tt-panel))] [&_pre]:p-3", tabIndex: -1, children: [
+                  reading.warnings.map((warning) => /* @__PURE__ */ (0, import_jsx_runtime16.jsx)("p", { className: "tocktutor-warning border-l-[3px] border-[#b7791f] pl-2.5 text-[var(--tt-muted)]", role: "note", children: warning }, warning)),
+                  reading.blocks.map((block, index) => /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(
                     ReadingBlockView,
                     {
                       block,
@@ -20093,21 +20069,21 @@ function TockTutorRouteView(props) {
                     },
                     `${block.kind}-${String(index)}`
                   ))
-                ] }) : /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(Alert, { unstyled: true, children: reading?.reason ?? "Reading view is unavailable." }) }),
-                /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)("footer", { "aria-label": "TockTutor Status Bar", className: "tocktutor-statusbar flex min-w-0 items-center border-t border-[var(--tt-border)] px-2 text-xs text-[var(--tt-muted)]", children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("output", { "aria-live": "polite", className: "tocktutor-message absolute size-px overflow-hidden whitespace-nowrap [clip:rect(0_0_0_0)] [clip-path:inset(50%)]", children: snapshot.message }),
-                  snapshot.path !== null && /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)("div", { className: "ml-auto flex items-center gap-[18px] whitespace-nowrap max-[760px]:gap-2", children: [
-                    /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("span", { children: "0 Backlinks" }),
-                    /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("span", { children: snapshot.mode === "reading" ? "Live Preview" : "Source" }),
-                    /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)("span", { children: [
+                ] }) : /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(Alert, { unstyled: true, children: reading?.reason ?? "Reading view is unavailable." }) }),
+                /* @__PURE__ */ (0, import_jsx_runtime16.jsxs)("footer", { className: "tocktutor-statusbar flex min-w-0 items-center border-t border-[var(--tt-border)] px-2 text-xs text-[var(--tt-muted)]", children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime16.jsx)("output", { "aria-live": "polite", className: "tocktutor-message absolute size-px overflow-hidden whitespace-nowrap [clip:rect(0_0_0_0)] [clip-path:inset(50%)]", children: snapshot.message }),
+                  snapshot.path !== null && /* @__PURE__ */ (0, import_jsx_runtime16.jsxs)("div", { className: "ml-auto flex items-center gap-[18px] whitespace-nowrap max-[760px]:gap-2", children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime16.jsx)("span", { children: "0 Backlinks" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime16.jsx)("span", { children: snapshot.mode === "reading" ? "Live Preview" : "Source" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime16.jsxs)("span", { children: [
                       String(words),
                       " Words"
                     ] }),
-                    /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)("span", { children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime16.jsxs)("span", { children: [
                       String(characters),
                       " Characters"
                     ] }),
-                    /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(
+                    /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(
                       Button,
                       {
                         unstyled: true,
@@ -20118,13 +20094,13 @@ function TockTutorRouteView(props) {
                         },
                         type: "button",
                         className: "border-0 bg-transparent px-0 py-0.5 text-[var(--tt-muted)] [&_svg]:size-[17px]",
-                        children: /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(WorkbenchGlyph, { kind: "chat" })
+                        children: /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(WorkbenchGlyph, { kind: "chat" })
                       }
                     )
                   ] })
                 ] })
               ] }),
-              /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)(
+              /* @__PURE__ */ (0, import_jsx_runtime16.jsxs)(
                 "aside",
                 {
                   "aria-hidden": panel !== "assistant",
@@ -20134,7 +20110,7 @@ function TockTutorRouteView(props) {
                   style: { width: panel === "assistant" ? `${String(assistantPanelWidth)}px` : "0px" },
                   ...panel === "assistant" ? {} : { inert: "" },
                   children: [
-                    panel === "assistant" && /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(
+                    panel === "assistant" && /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(
                       Button,
                       {
                         unstyled: true,
@@ -20151,11 +20127,11 @@ function TockTutorRouteView(props) {
                         type: "button"
                       }
                     ),
-                    /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("div", { className: "tocktutor-assistant-content min-h-0 min-w-[min(240px,calc(100vw-262px))] overflow-hidden border-l border-[color-mix(in_srgb,var(--tt-text)_8%,var(--tt-border)_92%)] transition-colors duration-140 ease-[cubic-bezier(.16,1,.3,1)]", children: props.assistantPanel })
+                    /* @__PURE__ */ (0, import_jsx_runtime16.jsx)("div", { className: "tocktutor-assistant-content min-h-0 min-w-[min(240px,calc(100vw-262px))] overflow-hidden border-l border-[color-mix(in_srgb,var(--tt-text)_8%,var(--tt-border)_92%)] transition-colors duration-140 ease-[cubic-bezier(.16,1,.3,1)]", children: props.assistantPanel })
                   ]
                 }
               ),
-              /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)(
+              /* @__PURE__ */ (0, import_jsx_runtime16.jsxs)(
                 "aside",
                 {
                   "aria-hidden": panel !== "utilities",
@@ -20164,34 +20140,34 @@ function TockTutorRouteView(props) {
                   "data-open": panel === "utilities",
                   ...panel === "utilities" ? {} : { inert: "" },
                   children: [
-                    /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)("header", { className: "flex items-center justify-between border-b border-[var(--tt-border)] px-3", children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("h2", { className: "m-0 text-sm", children: "More Options" }),
-                      /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(Button, { unstyled: true, "aria-label": "Close More Options", className: "border-0 bg-transparent p-[5px]", onClick: () => {
+                    /* @__PURE__ */ (0, import_jsx_runtime16.jsxs)("header", { className: "flex items-center justify-between border-b border-[var(--tt-border)] px-3", children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime16.jsx)("h2", { className: "m-0 text-sm", children: "More Options" }),
+                      /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(Button, { unstyled: true, "aria-label": "Close More Options", className: "border-0 bg-transparent p-[5px]", onClick: () => {
                         setPanel(null);
-                      }, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(WorkbenchGlyph, { kind: "close" }) })
+                      }, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(WorkbenchGlyph, { kind: "close" }) })
                     ] }),
-                    /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)("section", { "aria-label": "Pane Groups", className: "tocktutor-pane-groups border-t border-[var(--tt-border)] p-3", children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)("div", { className: "tocktutor-pane-heading flex items-center justify-between", children: [
-                        /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("h2", { className: "m-0 text-sm", children: "Pane Groups" }),
-                        /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(Button, { unstyled: true, "aria-label": "Add Pane", className: "size-[26px] rounded border border-[var(--tt-border)] bg-transparent", disabled: snapshot.panes.length >= MAX_PANE_GROUPS, onClick: props.onAddPane, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(WorkbenchGlyph, { kind: "new" }) })
+                    /* @__PURE__ */ (0, import_jsx_runtime16.jsxs)("section", { "aria-label": "Pane Groups", className: "tocktutor-pane-groups border-t border-[var(--tt-border)] p-3", children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime16.jsxs)("div", { className: "tocktutor-pane-heading flex items-center justify-between", children: [
+                        /* @__PURE__ */ (0, import_jsx_runtime16.jsx)("h2", { className: "m-0 text-sm", children: "Pane Groups" }),
+                        /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(Button, { unstyled: true, "aria-label": "Add Pane", className: "size-[26px] rounded border border-[var(--tt-border)] bg-transparent", disabled: snapshot.panes.length >= MAX_PANE_GROUPS, onClick: props.onAddPane, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(WorkbenchGlyph, { kind: "new" }) })
                       ] }),
-                      /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("div", { className: "tocktutor-pane-list mt-2 grid grid-cols-2 gap-1.5", children: snapshot.panes.map((pane, index) => /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)(Button, { unstyled: true, "aria-pressed": pane.id === snapshot.focusedPaneId, className: "overflow-hidden rounded-[5px] border border-[var(--tt-border)] bg-transparent p-1.5 text-left aria-pressed:border-[var(--tt-accent)] [&_small]:block [&_small]:truncate [&_small]:text-xs [&_small]:text-[var(--tt-muted)] [&_span]:block [&_span]:truncate", onClick: () => {
+                      /* @__PURE__ */ (0, import_jsx_runtime16.jsx)("div", { className: "tocktutor-pane-list mt-2 grid grid-cols-2 gap-1.5", children: snapshot.panes.map((pane, index) => /* @__PURE__ */ (0, import_jsx_runtime16.jsxs)(Button, { unstyled: true, "aria-pressed": pane.id === snapshot.focusedPaneId, className: "overflow-hidden rounded-[5px] border border-[var(--tt-border)] bg-transparent p-1.5 text-left aria-pressed:border-[var(--tt-accent)] [&_small]:block [&_small]:truncate [&_small]:text-xs [&_small]:text-[var(--tt-muted)] [&_span]:block [&_span]:truncate", onClick: () => {
                         props.onFocusPane(pane.id);
                       }, title: pane.activePath ?? `Pane ${String(index + 1)}`, type: "button", children: [
-                        /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)("span", { children: [
+                        /* @__PURE__ */ (0, import_jsx_runtime16.jsxs)("span", { children: [
                           "Pane ",
                           String(index + 1)
                         ] }),
-                        /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("small", { children: pane.activePath ?? "Empty" })
+                        /* @__PURE__ */ (0, import_jsx_runtime16.jsx)("small", { children: pane.activePath ?? "Empty" })
                       ] }, pane.id)) })
                     ] }),
-                    /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)("section", { "aria-label": "Shared Review Panel", className: "tocktutor-review border-t border-[var(--tt-border)] p-3", children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("header", { children: /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("h2", { className: "m-0 text-sm", children: "Reviews" }) }),
-                      /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("div", { className: "tocktutor-review-content min-h-0 overflow-auto text-xs text-[var(--tt-muted)]", children: props.reviewPanel ?? /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(Alert, { unstyled: true, role: "status", children: "No review workflow is active." }) })
+                    /* @__PURE__ */ (0, import_jsx_runtime16.jsxs)("section", { "aria-label": "Shared Review Panel", className: "tocktutor-review border-t border-[var(--tt-border)] p-3", children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime16.jsx)("header", { children: /* @__PURE__ */ (0, import_jsx_runtime16.jsx)("h2", { className: "m-0 text-sm", children: "Reviews" }) }),
+                      /* @__PURE__ */ (0, import_jsx_runtime16.jsx)("div", { className: "tocktutor-review-content min-h-0 overflow-auto text-xs text-[var(--tt-muted)]", children: props.reviewPanel ?? /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(Alert, { unstyled: true, role: "status", children: "No review workflow is active." }) })
                     ] }),
-                    /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)("section", { "aria-label": "Native Actions", className: "tocktutor-native-actions border-t border-[var(--tt-border)] p-3", children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("header", { children: /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("h2", { className: "m-0 text-sm", children: "Native Actions" }) }),
-                      /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("div", { className: "tocktutor-native-actions-content min-h-0 overflow-auto text-xs text-[var(--tt-muted)]", children: props.nativeActions ?? /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(Alert, { unstyled: true, role: "status", children: "No native actions are available." }) })
+                    /* @__PURE__ */ (0, import_jsx_runtime16.jsxs)("section", { "aria-label": "Native Actions", className: "tocktutor-native-actions border-t border-[var(--tt-border)] p-3", children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime16.jsx)("header", { children: /* @__PURE__ */ (0, import_jsx_runtime16.jsx)("h2", { className: "m-0 text-sm", children: "Native Actions" }) }),
+                      /* @__PURE__ */ (0, import_jsx_runtime16.jsx)("div", { className: "tocktutor-native-actions-content min-h-0 overflow-auto text-xs text-[var(--tt-muted)]", children: props.nativeActions ?? /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(Alert, { unstyled: true, role: "status", children: "No native actions are available." }) })
                     ] })
                   ]
                 }
@@ -20214,7 +20190,7 @@ function TockTutorReviewPanelOutlet(props) {
     activePath: props.activePath,
     vault: props.vault
   }, {
-    fallback: /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(Alert, { unstyled: true, role: "status", children: "No review workflow is active." })
+    fallback: /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(Alert, { unstyled: true, role: "status", children: "No review workflow is active." })
   });
 }
 function TockTutorNativeActionsOutlet(props) {
@@ -20223,7 +20199,7 @@ function TockTutorNativeActionsOutlet(props) {
     handleDispatch: props.handleDispatch,
     vault: props.vault
   }, {
-    fallback: /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(Alert, { unstyled: true, role: "status", children: "No native actions are available." })
+    fallback: /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(Alert, { unstyled: true, role: "status", children: "No native actions are available." })
   });
 }
 function TockTutorRoute(props) {
@@ -20260,10 +20236,10 @@ function TockTutorRoute(props) {
       node.removeEventListener("keydown", onKeyDown);
     };
   }, [controller]);
-  return /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("div", { className: "tocktutor-root h-full min-h-0", ref: root, children: /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(
+  return /* @__PURE__ */ (0, import_jsx_runtime16.jsx)("div", { className: "tocktutor-root h-full min-h-0", ref: root, children: /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(
     TockTutorRouteView,
     {
-      assistantPanel: /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(
+      assistantPanel: /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(
         TockTutorAssistantPanelOutlet,
         {
           activePath: snapshot.path,
@@ -20271,7 +20247,7 @@ function TockTutorRoute(props) {
           vault: snapshot.vault
         }
       ),
-      nativeActions: /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(
+      nativeActions: /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(
         TockTutorNativeActionsOutlet,
         {
           activePath: snapshot.path,
@@ -20325,7 +20301,7 @@ function TockTutorRoute(props) {
       onToggleTask: (index) => {
         controller.toggleTask(index);
       },
-      reviewPanel: /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(
+      reviewPanel: /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(
         TockTutorReviewPanelOutlet,
         {
           activePath: snapshot.path,

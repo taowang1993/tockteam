@@ -166,6 +166,7 @@ for (const plugin of pluginPackages) {
       loader: { '.css': 'text' },
       external: [
         'react',
+        'react-dom',
         'react-dom/client',
         'react/jsx-runtime',
         ...(['skins', 'sidebar'].includes(plugin.directory)

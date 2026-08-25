@@ -18,8 +18,7 @@ export function pluginRoot(directory: string): string {
   return join(workspaceRoot, 'packages', directory)
 }
 
-export async function packPlugin(directory: string, output: string): Promise<string> {
-  const root = pluginRoot(directory)
+async function packPackage(root: string, output: string): Promise<string> {
   const manifest = JSON.parse(await readFile(join(root, 'package.json'), 'utf8')) as {
     name: string
     version: string
@@ -30,4 +29,12 @@ export async function packPlugin(directory: string, output: string): Promise<str
   })
   const filename = `${manifest.name.replace(/^@/u, '').replace('/', '-')}-${manifest.version}.tgz`
   return join(output, filename)
+}
+
+export async function packPlugin(directory: string, output: string): Promise<string> {
+  return packPackage(pluginRoot(directory), output)
+}
+
+export async function packUi(output: string): Promise<string> {
+  return packPackage(join(repositoryRoot, 'plugins', 'ui'), output)
 }

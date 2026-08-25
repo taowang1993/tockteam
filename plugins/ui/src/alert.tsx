@@ -22,7 +22,7 @@ type AlertProps = React.ComponentProps<'div'> & VariantProps<typeof alertVariant
 const Alert = React.forwardRef<HTMLDivElement, AlertProps>(function Alert(
   { className, variant = 'default', unstyled = false, ...props },
   ref,
-): JSX.Element {
+): React.ReactElement {
   return (
     <div
       data-slot="alert"
@@ -34,11 +34,11 @@ const Alert = React.forwardRef<HTMLDivElement, AlertProps>(function Alert(
   )
 })
 
-function AlertTitle({ className, ...props }: React.ComponentProps<'div'>): JSX.Element {
+function AlertTitle({ className, ...props }: React.ComponentProps<'div'>): React.ReactElement {
   return <div data-slot="alert-title" className={cn('col-start-2 font-medium', className)} {...props} />
 }
 
-function AlertDescription({ className, ...props }: React.ComponentProps<'div'>): JSX.Element {
+function AlertDescription({ className, ...props }: React.ComponentProps<'div'>): React.ReactElement {
   return <div data-slot="alert-description" className={cn('col-start-2 text-sm text-muted-foreground', className)} {...props} />
 }
 

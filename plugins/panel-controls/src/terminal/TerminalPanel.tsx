@@ -121,33 +121,37 @@ export function TerminalPanel({ locale, t: translate, store, scopeKey, cwd, acti
         />
       )}
       <div className="flex h-[34px] flex-none items-center justify-between gap-2 box-border border-b border-[var(--dsw-alias-border-l1,rgba(0,0,0,0.07))] bg-surface-muted px-2 text-[11px]">
-        <div className="flex min-w-0 items-center gap-[3px] overflow-x-auto [scrollbar-width:none]" role="tablist" aria-label={t('terminal.tabs')}>
-          {state.tabs.map(tab => (
-            <span
-              key={tab.id}
-              role="tab"
-              aria-selected={tab.id === state.activeTabId}
-              className={`inline-flex h-6 max-w-[180px] cursor-default select-none items-center gap-[5px] whitespace-nowrap rounded-md px-1.5 box-border text-muted-foreground hover:bg-[var(--dsw-alias-interactive-bg-hover,rgba(0,0,0,0.05))] ${tab.id === state.activeTabId ? 'bg-[var(--dsw-alias-interactive-bg-active,rgba(0,0,0,0.08))] text-foreground' : ''}`}
-              onClick={() => { store.dispatch({ type: 'activate-tab', id: tab.id }) }}
-            >
-              <span className={`size-[5px] flex-none rounded-full ${tab.status === 'ready' ? 'bg-[#2da44e]' : tab.status === 'error' ? 'bg-[#cf222e]' : 'bg-[#8c959f]'}`} aria-hidden="true" />
-              <span className="min-w-0 overflow-hidden text-ellipsis">
-                {tab.label === DEFAULT_TAB_LABEL ? t('terminal.shell') : tab.label}
-                {tab.status === 'exited'
-                  ? ` · ${t('terminal.status.exited')}`
-                  : tab.status === 'error' ? ` · ${t('terminal.status.error')}` : ''}
-              </span>
-              <Button unstyled
-                type="button"
-                className="grid size-[15px] cursor-pointer place-items-center rounded-sm border-0 bg-transparent p-0 font-[inherit] leading-none text-[var(--dsw-alias-label-dimmed,#8c959f)] hover:bg-[var(--dsw-alias-interactive-bg-hover,rgba(0,0,0,0.06))] hover:text-foreground [&_svg]:size-[11px]"
-                aria-label={t('terminal.close-tab', { tab: tab.label })}
-                onClick={(event) => {
-                  event.stopPropagation()
-                  store.dispatch({ type: 'remove-tab', id: tab.id })
-                }}
-              ><X aria-hidden="true" /></Button>
-            </span>
-          ))}
+        <div className="flex min-w-0 items-center gap-[3px] overflow-x-auto [scrollbar-width:none]">
+          {state.tabs.length > 0 && (
+            <div className="contents" role="tablist" aria-label={t('terminal.tabs')}>
+              {state.tabs.map(tab => (
+                <span
+                  key={tab.id}
+                  role="tab"
+                  aria-selected={tab.id === state.activeTabId}
+                  className={`inline-flex h-6 max-w-[180px] cursor-default select-none items-center gap-[5px] whitespace-nowrap rounded-md px-1.5 box-border text-muted-foreground hover:bg-[var(--dsw-alias-interactive-bg-hover,rgba(0,0,0,0.05))] ${tab.id === state.activeTabId ? 'bg-[var(--dsw-alias-interactive-bg-active,rgba(0,0,0,0.08))] text-foreground' : ''}`}
+                  onClick={() => { store.dispatch({ type: 'activate-tab', id: tab.id }) }}
+                >
+                  <span className={`size-[5px] flex-none rounded-full ${tab.status === 'ready' ? 'bg-[#2da44e]' : tab.status === 'error' ? 'bg-[#cf222e]' : 'bg-[#8c959f]'}`} aria-hidden="true" />
+                  <span className="min-w-0 overflow-hidden text-ellipsis">
+                    {tab.label === DEFAULT_TAB_LABEL ? t('terminal.shell') : tab.label}
+                    {tab.status === 'exited'
+                      ? ` · ${t('terminal.status.exited')}`
+                      : tab.status === 'error' ? ` · ${t('terminal.status.error')}` : ''}
+                  </span>
+                  <Button unstyled
+                    type="button"
+                    className="grid size-[15px] cursor-pointer place-items-center rounded-sm border-0 bg-transparent p-0 font-[inherit] leading-none text-[var(--dsw-alias-label-dimmed,#8c959f)] hover:bg-[var(--dsw-alias-interactive-bg-hover,rgba(0,0,0,0.06))] hover:text-foreground [&_svg]:size-[11px]"
+                    aria-label={t('terminal.close-tab', { tab: tab.label })}
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      store.dispatch({ type: 'remove-tab', id: tab.id })
+                    }}
+                  ><X aria-hidden="true" /></Button>
+                </span>
+              ))}
+            </div>
+          )}
           <Button unstyled
             type="button"
             className="size-[22px] flex-none cursor-pointer rounded-md border-0 bg-transparent p-0 font-[inherit] text-[15px] text-muted-foreground hover:bg-[var(--dsw-alias-interactive-bg-hover,rgba(0,0,0,0.06))] hover:text-foreground [&_svg]:size-[15px]"
@@ -226,6 +230,7 @@ export function TerminalPanel({ locale, t: translate, store, scopeKey, cwd, acti
         className={`flex max-h-[calc(100vh-190px)] min-h-0 flex-none flex-col overflow-hidden bg-surface transition-[height] duration-150 ease-in motion-reduce:transition-none ${resizing ? 'select-none transition-none' : ''}`}
         style={{ height: state.collapsed ? 0 : state.size }}
         aria-hidden={state.collapsed}
+        {...(state.collapsed ? { inert: '' } : {})}
       >
         {state.tabs.map(tab => (
           <div

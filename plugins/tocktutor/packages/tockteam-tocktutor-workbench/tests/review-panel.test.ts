@@ -68,7 +68,7 @@ test('route renders an accessible empty Review panel without using the Assistant
   assert.equal(JSON.stringify(dispatched).includes('content'), false)
   assert.match(html, /<aside[^>]+aria-label="Assistant Panel"/u)
   assert.match(html, /<section[^>]+aria-label="Shared Review Panel"/u)
-  assert.match(html, /<p[^>]+role="status">No review workflow is active\.<\/p>/u)
+  assert.match(html, /data-slot="alert"[^>]+role="status">No review workflow is active\.<\/div>/u)
 })
 
 test('Review panel preserves contribution order while inactive entries render nothing', () => {

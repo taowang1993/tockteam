@@ -62,6 +62,7 @@
     "prepack": "pnpm run build"
   },
   "dependencies": {
+    "@tockteam/ui": "0.1.0",
     "zod": "4.4.3"
   },
   "peerDependencies": {

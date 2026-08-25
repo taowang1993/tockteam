@@ -23,7 +23,7 @@ type BadgeProps = React.ComponentProps<'span'> & VariantProps<typeof badgeVarian
   unstyled?: boolean
 }
 
-function Badge({ className, variant = 'default', unstyled = false, ...props }: BadgeProps): JSX.Element {
+function Badge({ className, variant = 'default', unstyled = false, ...props }: BadgeProps): React.ReactElement {
   return (
     <span
       data-slot="badge"

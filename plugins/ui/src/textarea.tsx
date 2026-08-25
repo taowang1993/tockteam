@@ -5,7 +5,7 @@ type TextareaProps = React.ComponentProps<'textarea'> & {
   unstyled?: boolean
 }
 
-function Textarea({ className, unstyled = false, ...props }: TextareaProps): JSX.Element {
+function Textarea({ className, unstyled = false, ...props }: TextareaProps): React.ReactElement {
   return (
     <textarea
       data-slot="textarea"

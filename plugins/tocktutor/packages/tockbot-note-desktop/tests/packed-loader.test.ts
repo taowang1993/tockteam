@@ -11,7 +11,7 @@ import { runInThisContext } from 'node:vm'
 import { Context } from '@deepseek-ai/cordis'
 import Include from '@deepseek-ai/cordis-plugin-include'
 import Loader from '@deepseek-ai/cordis-plugin-loader'
-import { desktopArtifact, dshRoot, packPlugin } from '../../../test-utils.ts'
+import { desktopArtifact, dshRoot, packPlugin, packUi } from '../../../test-utils.ts'
 
 const execFileAsync = promisify(execFile)
 const packageName = 'tockbot-note-desktop'
@@ -36,6 +36,7 @@ async function installPacked(root: string): Promise<{
   const runtimeArtifact = await packPlugin('tockbot-note-runtime', artifacts)
   const vaultArtifact = await packPlugin('tockbot-note-vault', artifacts)
   const workbenchArtifact = await packPlugin('tockteam-tocktutor-workbench', artifacts)
+  const uiArtifact = await packUi(artifacts)
   await writeFile(join(consumerRoot, 'package.json'), `${JSON.stringify({
     name: 'tockbot-note-desktop-packed-consumer',
     private: true,
@@ -46,13 +47,22 @@ async function installPacked(root: string): Promise<{
       '@deepseek-ai/dsh-typert-protocol': `link:${join(dshRoot, 'packages/typert/protocol')}`,
       '@tockteam/desktop': `file:${desktopArtifact}`,
       '@tockteam/tocktutor-workbench': `file:${workbenchArtifact}`,
+      '@tockteam/ui': `file:${uiArtifact}`,
       [packageName]: `file:${artifact}`,
       react: '18.3.1',
       'tockbot-note-runtime': `file:${runtimeArtifact}`,
       'tockbot-note-vault': `file:${vaultArtifact}`,
     },
   }, undefined, 2)}\n`)
-  await writeFile(join(consumerRoot, 'pnpm-workspace.yaml'), 'packages:\n  - .\n\nautoInstallPeers: false\n')
+  await writeFile(join(consumerRoot, 'pnpm-workspace.yaml'), [
+    'packages:',
+    '  - .',
+    '',
+    'autoInstallPeers: false',
+    'overrides:',
+    `  '@tockteam/ui': file:${uiArtifact}`,
+    '',
+  ].join('\n'))
   await execFileAsync('pnpm', [
     'install', '--offline', '--ignore-scripts', '--no-frozen-lockfile', '--config.engine-strict=false',
   ], { cwd: consumerRoot, env: { ...process.env, PNPM_CONFIG_LOGLEVEL: 'warn' } })

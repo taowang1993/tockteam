@@ -7,7 +7,7 @@ type NativeSelectProps = Omit<React.ComponentProps<'select'>, 'size'> & {
   unstyled?: boolean
 }
 
-function NativeSelect({ className, size = 'default', unstyled = false, ...props }: NativeSelectProps): JSX.Element {
+function NativeSelect({ className, size = 'default', unstyled = false, ...props }: NativeSelectProps): React.ReactElement {
   if (unstyled) {
     return <select data-slot="native-select" className={className} {...props} />
   }
@@ -28,11 +28,11 @@ function NativeSelect({ className, size = 'default', unstyled = false, ...props 
   )
 }
 
-function NativeSelectOption({ className, ...props }: React.ComponentProps<'option'>): JSX.Element {
+function NativeSelectOption({ className, ...props }: React.ComponentProps<'option'>): React.ReactElement {
   return <option data-slot="native-select-option" className={className} {...props} />
 }
 
-function NativeSelectOptGroup({ className, ...props }: React.ComponentProps<'optgroup'>): JSX.Element {
+function NativeSelectOptGroup({ className, ...props }: React.ComponentProps<'optgroup'>): React.ReactElement {
   return <optgroup data-slot="native-select-optgroup" className={className} {...props} />
 }
 

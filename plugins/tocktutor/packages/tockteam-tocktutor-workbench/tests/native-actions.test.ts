@@ -104,7 +104,7 @@ test('route renders an accessible Native Actions area with bounded owner props',
   assert.equal(JSON.stringify(dispatched).includes('content'), false)
   assert.equal(JSON.stringify(dispatched).includes('session'), false)
   assert.match(html, /<section[^>]+aria-label="Native Actions"/u)
-  assert.match(html, /<p[^>]+role="status">No native actions are available\.<\/p>/u)
+  assert.match(html, /data-slot="alert"[^>]+role="status">No native actions are available\.<\/div>/u)
 })
 
 test('Native Actions preserves contribution order while inactive entries render nothing', () => {

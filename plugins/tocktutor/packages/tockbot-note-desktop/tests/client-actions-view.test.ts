@@ -22,7 +22,7 @@ test('renders keyboard-native actions with bounded availability and polite statu
   }))
   assert.match(active, /aria-label="Desktop Note Actions"/u)
   assert.match(active, /role="group"/u)
-  assert.match(active, /aria-live="polite"[^>]*role="status">Ready\.<\/p>/u)
+  assert.match(active, /data-slot="alert"[^>]*role="status"[^>]*aria-live="polite">Ready\.<\/div>/u)
   for (const label of [
     'Choose Vault',
     'Reveal Entry',

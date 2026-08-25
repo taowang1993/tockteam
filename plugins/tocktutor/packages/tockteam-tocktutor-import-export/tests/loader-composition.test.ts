@@ -12,7 +12,7 @@ import test from 'node:test'
 import { Context } from '@deepseek-ai/cordis'
 import Include from '@deepseek-ai/cordis-plugin-include'
 import Loader from '@deepseek-ai/cordis-plugin-loader'
-import { desktopArtifact, dshRoot, packPlugin } from '../../../test-utils.ts'
+import { desktopArtifact, dshRoot, packPlugin, packUi } from '../../../test-utils.ts'
 
 const exec = promisify(execFile)
 const repositoryRoot = fileURLToPath(new URL('..', import.meta.url))
@@ -26,6 +26,7 @@ const manifest = JSON.parse(await readFile(join(repositoryRoot, 'package.json'),
 
 async function installPacked(consumer: string, tarball: string, artifacts: string): Promise<NodeJS.Require> {
   const workbenchArtifact = await packPlugin('tockteam-tocktutor-workbench', artifacts)
+  const uiArtifact = await packUi(artifacts)
   const runtimeArtifact = await packPlugin('tockbot-note-runtime', artifacts)
   const vaultArtifact = await packPlugin('tockbot-note-vault', artifacts)
   const dependencies = {
@@ -38,6 +39,7 @@ async function installPacked(consumer: string, tarball: string, artifacts: strin
     '@deepseek-ai/dsh-typert-protocol': `link:${join(dshRoot, 'packages/typert/protocol')}`,
     '@tockteam/desktop': `file:${desktopArtifact}`,
     '@tockteam/tocktutor-workbench': `file:${workbenchArtifact}`,
+    '@tockteam/ui': `file:${uiArtifact}`,
     react: manifest.devDependencies.react!,
     'react-dom': manifest.devDependencies['react-dom']!,
     [runtimeName]: `file:${runtimeArtifact}`,

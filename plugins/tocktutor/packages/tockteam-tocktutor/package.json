@@ -22,13 +22,13 @@
     "@tockteam/desktop": ">=0.1.11 <0.2.0"
   },
   "dependencies": {
-    "tockbot-note-runtime": "0.1.2",
-    "tockbot-note-vault": "0.6.0",
     "@tockteam/note-vault-tools": "0.1.2",
-    "@tockteam/tocktutor-workbench": "0.1.7",
-    "tockbot-note-desktop": "0.1.2",
     "@tockteam/tocktutor-assistant": "0.1.5",
     "@tockteam/tocktutor-import-export": "0.1.1",
+    "@tockteam/tocktutor-workbench": "0.1.7",
+    "tockbot-note-desktop": "0.1.2",
+    "tockbot-note-runtime": "0.1.2",
+    "tockbot-note-vault": "0.6.0",
     "tockbot-web-clip": "0.1.2"
   },
   "devDependencies": {

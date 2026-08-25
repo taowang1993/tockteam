@@ -12,7 +12,7 @@ import { Context } from '@deepseek-ai/cordis'
 import Include from '@deepseek-ai/cordis-plugin-include'
 import Loader from '@deepseek-ai/cordis-plugin-loader'
 import { SlotCore } from '@deepseek-ai/dsh-client-ui-slots'
-import { desktopArtifact, dshRoot, packPlugin } from '../../../test-utils.ts'
+import { desktopArtifact, dshRoot, packPlugin, packUi } from '../../../test-utils.ts'
 
 const execFileAsync = promisify(execFile)
 const packageName = '@tockteam/tocktutor-workbench'
@@ -46,6 +46,7 @@ async function installFreshPackage(root: string): Promise<{
   const artifact = join(artifacts, names[0]!)
   const runtimeArtifact = await packPlugin('tockbot-note-runtime', artifacts)
   const vaultArtifact = await packPlugin('tockbot-note-vault', artifacts)
+  const uiArtifact = await packUi(artifacts)
   await writeFile(join(consumerRoot, 'package.json'), JSON.stringify({
     name: 'tocktutor-workbench-packed-consumer',
     private: true,
@@ -55,6 +56,7 @@ async function installFreshPackage(root: string): Promise<{
       '@deepseek-ai/dsh-client-ui-slots': `link:${join(dshRoot, 'packages/client/ui-slots')}`,
       '@deepseek-ai/dsh-typert-protocol': `link:${join(dshRoot, 'packages/typert/protocol')}`,
       '@tockteam/desktop': `file:${desktopArtifact}`,
+      '@tockteam/ui': `file:${uiArtifact}`,
       [packageName]: `file:${artifact}`,
       react: '18.3.1',
       'react-dom': '18.3.1',
@@ -67,6 +69,8 @@ async function installFreshPackage(root: string): Promise<{
     '  - .',
     '',
     'autoInstallPeers: false',
+    'overrides:',
+    `  '@tockteam/ui': file:${uiArtifact}`,
     '',
   ].join('\n'))
   await execFileAsync('pnpm', [

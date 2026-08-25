@@ -5,7 +5,7 @@ type InputProps = React.ComponentProps<'input'> & {
   unstyled?: boolean
 }
 
-function Input({ className, type, unstyled = false, ...props }: InputProps): JSX.Element {
+function Input({ className, type, unstyled = false, ...props }: InputProps): React.ReactElement {
   return (
     <input
       type={type}

@@ -95,6 +95,7 @@
   },
   "license": "MIT",
   "dependencies": {
+    "@tockteam/ui": "0.1.0",
     "lucide-react": "0.473.0",
     "zod": "4.4.3"
   }
