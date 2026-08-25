@@ -38,6 +38,7 @@ import { parseMarketplaceCommand } from '../plugins/plugin-marketplace/src/proto
 import type { DesktopCommand, DesktopInfo, DesktopRuntimeSnapshot } from './contracts.ts'
 import { DesktopCallerAuthorizations } from './desktop-caller-authorization.ts'
 import { DesktopCallerChannel } from './desktop-caller-channel.ts'
+import { isAllowedBrowserNavigation, isAllowedRuntimeNavigation } from './desktop-navigation.ts'
 import type {
   DesktopCallerOperation,
   DesktopDispatchCompletionRequest,
@@ -571,27 +572,6 @@ function isEligibleDesktopRevealWindow(): boolean {
   return originOf(mainWindow.webContents.getURL()) === runtimeOrigin
 }
 
-function isAllowedRuntimeNavigation(target: string, allowedOrigin: string | undefined): boolean {
-  if (target.startsWith('file:')) return true
-  if (allowedOrigin === undefined) return false
-  try {
-    return new URL(target).origin === allowedOrigin
-  } catch {
-    return false
-  }
-}
-
-function isAllowedBrowserNavigation(target: string): boolean {
-  if (target === 'about:blank') return true
-  try {
-    const url = new URL(target)
-    if (url.protocol !== 'https:' && url.protocol !== 'http:') return false
-    return url.origin !== runtimeOrigin && url.origin !== previewOrigin
-  } catch {
-    return false
-  }
-}
-
 function configureWebClipGuest(embedder: WebContents, contents: WebContents): void {
   const frameId = contents.id
   const guestSession = contents.session
@@ -749,7 +729,7 @@ function createWindow(options: { preview?: boolean; title?: string } = {}): Brow
     const webClipGuest = isWebClipPartition(params.partition)
     if (webClipGuest
       ? params.src !== undefined && params.src !== '' && params.src !== 'about:blank'
-      : !isAllowedBrowserNavigation(params.src ?? 'about:blank')) {
+      : !isAllowedBrowserNavigation(params.src ?? 'about:blank', runtimeOrigin, previewOrigin)) {
       event.preventDefault()
       return
     }
@@ -783,7 +763,7 @@ function createWindow(options: { preview?: boolean; title?: string } = {}): Brow
       return { action: 'deny' }
     })
     contents.on('will-navigate', (event, url) => {
-      if (isAllowedBrowserNavigation(url)) return
+      if (isAllowedBrowserNavigation(url, runtimeOrigin, previewOrigin)) return
       event.preventDefault()
     })
   })
@@ -799,7 +779,7 @@ function createWindow(options: { preview?: boolean; title?: string } = {}): Brow
   })
   window.webContents.on('will-navigate', (event, url) => {
     const allowedOrigin = options.preview === true ? previewOrigin : runtimeOrigin
-    if (isAllowedRuntimeNavigation(url, allowedOrigin)) return
+    if (isAllowedRuntimeNavigation(url, allowedOrigin, splashPath)) return
     event.preventDefault()
     if (url.startsWith('https:') || url.startsWith('http:')) void shell.openExternal(url)
   })
