@@ -565,8 +565,8 @@ test('marketplace navigation preserves the Settings footer geometry', () => {
     '../plugins/plugin-marketplace/src/client/plugin.tsx',
     import.meta.url,
   ), 'utf8')
-  const css = readFileSync(new URL(
-    '../plugins/plugin-marketplace/src/client/marketplace.css',
+  const tailwind = readFileSync(new URL(
+    '../plugins/skins/src/client/tailwind.css',
     import.meta.url,
   ), 'utf8')
   const messages = readFileSync(new URL(
@@ -575,12 +575,12 @@ test('marketplace navigation preserves the Settings footer geometry', () => {
   ), 'utf8')
   assert.doesNotMatch(client, /--tockteam-marketplace-sidebar-height/)
   assert.doesNotMatch(client, /SIDEBAR_BOTTOM_INSET/)
-  assert.doesNotMatch(css, /data-tockteam-marketplace-sidebar-root/)
-  assert.match(css, /\.tockteam-marketplace-nav \{[\s\S]*gap: 8px;/)
-  assert.match(css, /\.tockteam-marketplace-nav \{[\s\S]*padding: 6px 2px 6px 10px;/)
-  assert.match(css, /\.tockteam-marketplace-nav svg \{[\s\S]*width: 16px;[\s\S]*height: 16px;/)
-  assert.match(css, /data-tockteam-marketplace-footer-stack='true'/)
-  assert.match(css, /flex-direction: column !important;/)
+  assert.doesNotMatch(tailwind, /data-tockteam-marketplace-sidebar-root/)
+  assert.match(client, /items-center gap-2/)
+  assert.match(client, /py-1\.5 pr-0\.5 pl-2\.5/)
+  assert.match(client, /\[&_svg\]:size-5/)
+  assert.match(tailwind, /data-tockteam-marketplace-footer-stack='true'/)
+  assert.match(tailwind, /flex-direction: column !important;/)
   assert.match(client, /marketplaceFooter\(settings\)/)
   assert.match(client, /removeAttribute\(FOOTER_STACK_ATTRIBUTE\)/)
   assert.match(client, /export const inject = \['locale', 'sessions', 'slots'\]/)
@@ -601,8 +601,8 @@ test('marketplace navigation preserves the Settings footer geometry', () => {
   assert.match(messages, /'not-installed': '未安装'/)
   assert.match(messages, /'accept-high-risk': '我了解/)
   assert.match(messages, /'recovery-note': '应用时会原子替换/)
-  assert.match(css, /\.tockteam-marketplace-flow/)
-  assert.match(css, /data-risk='high'/)
+  assert.match(client, /grid-cols-3 gap-\[5px\]/)
+  assert.match(client, /data-\[risk=high\]:bg-/)
   assert.match(client, /settingsDialogOpen\(\)/)
   assert.match(client, /document\.addEventListener\('click', this\.#handleDocumentClick, true\)/)
   assert.match(client, /button === settingsButton\(\)/)

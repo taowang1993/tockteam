@@ -105,3 +105,17 @@
     position: relative;
   }
 }
+
+/* The marketplace navigation is contributed inside the inherited DSH sidebar. */
+@utility tockteam-marketplace-shell {
+  & [data-tockteam-marketplace-footer-stack='true']:has([data-tockteam-marketplace-nav][data-collapsed='true']) {
+    display: flex !important;
+    align-items: center !important;
+    flex-direction: column !important;
+  }
+
+  &[data-tockteam-marketplace-open='true'] [data-tockteam-pinned-summary],
+  &[data-tockteam-marketplace-open='true'] #tockteam-sidebar-root {
+    display: none !important;
+  }
+}

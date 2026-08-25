@@ -19,7 +19,6 @@ import type {
   MarketplaceSnapshot,
 } from '../protocol.ts'
 import { MARKETPLACE_MESSAGES, type MarketplaceMessage } from './i18n.ts'
-import marketplaceCss from './marketplace.css'
 import {
   initialSessionNavigationState,
   transitionSessionNavigation,
@@ -85,6 +84,9 @@ export const inject = ['locale', 'sessions', 'slots']
 
 const OPEN_KEY = 'tockteam-desktop.plugin-marketplace.open'
 const FOOTER_STACK_ATTRIBUTE = 'data-tockteam-marketplace-footer-stack'
+const BUTTON_CLASSES = 'min-h-9 cursor-pointer rounded-[10px] border border-[var(--dsw-alias-border-l1,#ddd)] bg-background px-[15px] font-[inherit] text-xs font-[570] text-inherit hover:bg-[var(--dsw-alias-interactive-bg-hover,#f4f4f4)] disabled:cursor-default disabled:opacity-45 data-[primary=true]:border-[#202124] data-[primary=true]:bg-[#202124] data-[primary=true]:text-white data-[danger=true]:border-[#e4b6b6] data-[danger=true]:text-[#b42318]'
+const ICON_BUTTON_CLASSES = 'grid size-9 cursor-pointer place-items-center rounded-[10px] border border-[var(--dsw-alias-border-l1,#ddd)] bg-background p-0 font-[inherit] text-inherit hover:bg-[var(--dsw-alias-interactive-bg-hover,#f4f4f4)] disabled:cursor-default disabled:opacity-45 [&_svg]:size-[18px]'
+const PILL_CLASSES = 'inline-flex min-h-[21px] items-center rounded-full bg-[var(--dsw-alias-interactive-bg-hover,#f1f2f3)] px-2 text-[9px] font-semibold text-muted-foreground data-[installed=true]:bg-[#e8f7ee] data-[installed=true]:text-[#147d3f] data-[update=true]:bg-[#e8f0ff] data-[update=true]:text-[#2f62bf] data-[unsupported=true]:bg-[#fff4df] data-[unsupported=true]:text-[#966211] data-[protected=true]:bg-[#f1eaff] data-[protected=true]:text-[#6741a5]'
 
 function readOpen(): boolean {
   try { return localStorage.getItem(OPEN_KEY) === 'true' } catch { return false }
@@ -141,7 +143,7 @@ function settingsDialogOpen(): boolean {
 }
 
 function marketplaceFooter(settings: HTMLElement): HTMLElement | null {
-  const navigation = document.querySelector<HTMLElement>('.tockteam-marketplace-nav')
+  const navigation = document.querySelector<HTMLElement>('[data-tockteam-marketplace-nav]')
   if (navigation === null) return null
   let candidate = navigation.parentElement
   while (candidate !== null && candidate !== document.body) {
@@ -200,7 +202,8 @@ function MarketplaceNavigationEntry({
   return (
     <button
       aria-label={label}
-      className="tockteam-marketplace-nav"
+      className="box-border flex h-[34px] min-h-[34px] w-[calc(100%+8px)] cursor-pointer items-center gap-2 my-1 -mx-1 rounded-xl border-0 bg-transparent py-1.5 pr-0.5 pl-2.5 text-left font-[inherit] text-foreground [-webkit-app-region:no-drag] hover:bg-[var(--dsw-alias-interactive-bg-hover,rgba(0,0,0,0.05))] data-[active=true]:bg-[var(--dsw-alias-interactive-bg-hover,rgba(0,0,0,0.05))] data-[collapsed=true]:my-[8px] data-[collapsed=true]:mb-[10px] data-[collapsed=true]:size-9 data-[collapsed=true]:min-h-9 data-[collapsed=true]:justify-center data-[collapsed=true]:rounded-full data-[collapsed=true]:p-0 data-[collapsed=true]:[&_span]:hidden [&_svg]:size-5 [&_svg]:flex-none [&_svg]:stroke-[1.7]"
+      data-tockteam-marketplace-nav=""
       data-active={String(state.open)}
       data-collapsed={String(!wide)}
       onClick={() => { view.toggle() }}
@@ -220,7 +223,6 @@ class PluginMarketplaceViewService implements PluginMarketplaceView {
   readonly #listeners = new Set<() => void>()
   #state: MarketplaceViewState = { available: false, open: readOpen() }
   #element: HTMLDivElement | null = null
-  #style: HTMLStyleElement | null = null
   #root: Root | null = null
   #observer: MutationObserver | null = null
   #resizeObserver: ResizeObserver | null = null
@@ -268,11 +270,7 @@ class PluginMarketplaceViewService implements PluginMarketplaceView {
 
   mount(): void {
     this.#sessionNavigationState = initialSessionNavigationState()
-    this.#style = document.createElement('style')
-    this.#style.dataset.tockteamPluginMarketplaceStyles = 'true'
-    this.#style.textContent = marketplaceCss
-    document.head.append(this.#style)
-
+    document.documentElement.classList.add('tockteam-marketplace-shell')
     this.#element = document.createElement('div')
     this.#element.id = 'tockteam-plugin-marketplace-root'
     document.body.append(this.#element)
@@ -323,7 +321,7 @@ class PluginMarketplaceViewService implements PluginMarketplaceView {
     this.#footerStack?.removeAttribute(FOOTER_STACK_ATTRIBUTE)
     this.#footerStack = null
     this.#element?.remove()
-    this.#style?.remove()
+    document.documentElement.classList.remove('tockteam-marketplace-shell')
     this.#state = { available: false, open: false }
     for (const listener of this.#listeners) listener()
     delete document.documentElement.dataset.tockteamMarketplaceOpen
@@ -413,43 +411,43 @@ function PluginCard({
 }): JSX.Element {
   return (
     <button
-      className="tockteam-marketplace-card"
+      className="relative flex min-h-44 cursor-pointer flex-col rounded-2xl border border-border bg-background p-[17px] text-left text-inherit transition-[border-color,box-shadow,transform] duration-[120ms] ease-in-out hover:-translate-y-px hover:border-[#a8bff3] hover:shadow-[0_9px_28px_rgba(31,35,41,0.08)] data-[selected=true]:-translate-y-px data-[selected=true]:border-[#a8bff3] data-[selected=true]:shadow-[0_9px_28px_rgba(31,35,41,0.08)] motion-reduce:transition-none"
       data-selected={String(selected)}
       onClick={select}
       type="button"
     >
-      <div className="tockteam-marketplace-card-top">
-        <span className="tockteam-marketplace-card-icon">{plugin.title.slice(0, 1)}</span>
-        <div style={{ minWidth: 0 }}>
-          <h2>{plugin.title}</h2>
-          <div className="tockteam-marketplace-card-category">{plugin.category}</div>
+      <div className="flex items-start gap-[11px]">
+        <span className="grid size-[34px] flex-none place-items-center rounded-[10px] bg-[#eef4ff] text-base font-bold text-[#3f74df] uppercase dark:bg-[#1d2c4c] dark:text-[#8eb4ff]">{plugin.title.slice(0, 1)}</span>
+        <div className="min-w-0">
+          <h2 className="mt-px mb-0 truncate text-sm font-[620]">{plugin.title}</h2>
+          <div className="mt-[3px] text-[10px] text-subtle-foreground capitalize">{plugin.category}</div>
         </div>
       </div>
-      <p className="tockteam-marketplace-card-description">{plugin.description}</p>
-      <div className="tockteam-marketplace-card-footer">
+      <p className="my-[13px] line-clamp-3 text-[11px] leading-normal text-muted-foreground">{plugin.description}</p>
+      <div className="mt-auto flex flex-wrap items-center gap-1.5">
         <span
-          className="tockteam-marketplace-pill"
+          className={PILL_CLASSES}
           data-unsupported={String(plugin.mechanism === 'unsupported')}
         >
           {mechanismLabel(plugin, t)}
         </span>
         {plugin.installed && (
-          <span className="tockteam-marketplace-pill" data-installed="true">
+          <span className={PILL_CLASSES} data-installed="true">
             {t('installed')}
           </span>
         )}
         {plugin.installed && (
-          <span className="tockteam-marketplace-pill" data-installed={String(plugin.enabled)}>
+          <span className={PILL_CLASSES} data-installed={String(plugin.enabled)}>
             {plugin.enabled ? t('enabled') : t('disabled')}
           </span>
         )}
         {plugin.updateAvailable && (
-          <span className="tockteam-marketplace-pill" data-update="true">
+          <span className={PILL_CLASSES} data-update="true">
             {t('update-available')}
           </span>
         )}
         {plugin.protected && (
-          <span className="tockteam-marketplace-pill" data-protected="true">
+          <span className={PILL_CLASSES} data-protected="true">
             {t('managed')}
           </span>
         )}
@@ -493,17 +491,17 @@ function PluginDetail({
   }
   return (
     <aside
-      className="tockteam-marketplace-detail"
+      className="min-w-0 overflow-auto border-l border-border bg-background max-[820px]:border-t max-[820px]:border-l-0"
       aria-label={t('details', { plugin: plugin.title })}
     >
-      <div className="tockteam-marketplace-detail-inner">
-        <button className="tockteam-marketplace-icon-button tockteam-marketplace-detail-close" onClick={close} type="button"><X aria-hidden="true" /></button>
-        <h2>{plugin.title}</h2>
-        <span className="tockteam-marketplace-pill" data-installed={String(plugin.installed)}>
+      <div className="px-6 pt-[25px] pb-[38px]">
+        <button className={`${ICON_BUTTON_CLASSES} float-right`} onClick={close} type="button"><X aria-hidden="true" /></button>
+        <h2 className="mt-px mr-[42px] mb-1 text-[19px] leading-[1.3]">{plugin.title}</h2>
+        <span className={PILL_CLASSES} data-installed={String(plugin.installed)}>
           {plugin.installed ? t('installed') : mechanismLabel(plugin, t)}
         </span>
-        <p className="tockteam-marketplace-detail-description">{plugin.description}</p>
-        <dl className="tockteam-marketplace-facts">
+        <p className="my-[18px] text-xs leading-[1.6] text-muted-foreground">{plugin.description}</p>
+        <dl className="grid grid-cols-[88px_minmax(0,1fr)] gap-x-2 gap-y-2.5 border-y border-border py-4 text-[10px] [&_dt]:text-subtle-foreground [&_dd]:m-0 [&_dd]:min-w-0 [&_dd]:[overflow-wrap:anywhere]">
           <dt>{t('category')}</dt><dd>{plugin.category}</dd>
           <dt>{t('mechanism')}</dt><dd>{mechanismLabel(plugin, t)}</dd>
           <dt>{t('updated')}</dt>
@@ -524,19 +522,19 @@ function PluginDetail({
         </dl>
 
         {plan !== null && (
-          <section className="tockteam-marketplace-plan">
-            <div className="tockteam-marketplace-flow" aria-label={t('prepared-plan', { action: t(`action.${plan.action}`) })}>
+          <section className="mt-[18px] rounded-xl border border-[#d7e3ff] bg-[#f7f9ff] p-3.5 text-[11px] dark:border-[#33466d] dark:bg-[#19233a] [&_code]:my-[5px] [&_code]:block [&_code]:text-[9px] [&_code]:leading-normal [&_code]:text-[#355593] [&_code]:[overflow-wrap:anywhere]">
+            <div className="mb-[13px] grid grid-cols-3 gap-[5px] [&_span]:rounded-[7px] [&_span]:bg-[rgba(53,85,147,0.07)] [&_span]:px-1 [&_span]:py-1.5 [&_span]:text-center [&_span]:text-[9px] [&_span]:text-subtle-foreground [&_span[data-active=true]]:bg-[#e7efff] [&_span[data-active=true]]:font-[650] [&_span[data-active=true]]:text-[#315fae] dark:[&_span[data-active=true]]:bg-[#283d67] dark:[&_span[data-active=true]]:text-[#b8ceff]" aria-label={t('prepared-plan', { action: t(`action.${plan.action}`) })}>
               <span data-active="true">1 · {t('flow.review')}</span>
               <span data-active={String(snapshot.preview !== null)}>2 · {t('flow.preview')}</span>
               <span>3 · {t('flow.apply')}</span>
             </div>
-            <h3>{t('prepared-plan', { action: t(`action.${plan.action}`) })}</h3>
-            <div className="tockteam-marketplace-plan-risk" data-risk={plan.riskLevel}>
+            <h3 className="mt-0 mb-[9px] text-xs">{t('prepared-plan', { action: t(`action.${plan.action}`) })}</h3>
+            <div className="my-2 grid gap-[3px] rounded-[9px] bg-[#ecf7f0] px-2.5 py-[9px] leading-[1.45] text-[#17663a] data-[risk=elevated]:bg-[#fff6e6] data-[risk=elevated]:text-[#83570b] data-[risk=high]:bg-[#fff0ef] data-[risk=high]:text-[#a33228] data-[risk=blocked]:bg-[#fff0ef] data-[risk=blocked]:text-[#a33228] dark:bg-[#193326] dark:text-[#94d5ae] dark:data-[risk=elevated]:bg-[#3b2e16] dark:data-[risk=elevated]:text-[#e5c27f] dark:data-[risk=high]:bg-[#40211e] dark:data-[risk=high]:text-[#f0aaa4] dark:data-[risk=blocked]:bg-[#40211e] dark:data-[risk=blocked]:text-[#f0aaa4]" data-risk={plan.riskLevel}>
               <strong>{t('risk-level')}: {t(`risk-level.${plan.riskLevel}`)}</strong>
               <span>{t('source-review')}: {t(`source-review.${plan.sourceReview}`)}</span>
             </div>
             {plan.riskReasons.length > 0 && (
-              <ul className="tockteam-marketplace-risk-reasons">
+              <ul className="mt-0 mb-2.5 pl-[18px] leading-[1.55] text-muted-foreground">
                 {plan.riskReasons.map(reason => (
                   <li key={reason}>{riskReasonLabel(reason, t)}</li>
                 ))}
@@ -551,7 +549,7 @@ function PluginDetail({
               <code>{Object.entries(plan.buildScripts).map(([name, script]) => `${name}: ${script}`).join('\n')}</code>
             )}
             {plan.requirements.map(requirement => (
-              <label className="tockteam-marketplace-confirm" key={requirement}>
+              <label className="my-3 flex items-start gap-2 text-[10px] leading-[1.45] text-[#7d5412] [&_input]:mt-0.5 [&_input]:flex-none [&_input]:accent-[#315fae]" key={requirement}>
                   <input
                     checked={confirmations.includes(requirement)}
                     onChange={event => { setConfirmed(requirement, event.target.checked) }}
@@ -560,20 +558,20 @@ function PluginDetail({
                   <span>{confirmationLabel(requirement, t)}</span>
               </label>
             ))}
-            <p className="tockteam-marketplace-recovery-note">{t('recovery-note')}</p>
+            <p className="mt-3 mb-0 border-t border-[rgba(53,85,147,0.14)] pt-2.5 text-[9px] leading-normal text-subtle-foreground">{t('recovery-note')}</p>
           </section>
         )}
 
-        <div className="tockteam-marketplace-detail-actions">
+        <div className="mt-[18px] flex flex-wrap gap-2">
           {plugin.mechanism === 'unsupported' || plugin.protected ? (
-            <button className="tockteam-marketplace-button" onClick={() => { void bridge.openExternal(plugin.url) }} type="button">
+            <button className={BUTTON_CLASSES} onClick={() => { void bridge.openExternal(plugin.url) }} type="button">
               {t('open-repository')}
             </button>
           ) : plan === null ? (
             <>
               {!plugin.installed && (
                 <button
-                  className="tockteam-marketplace-button"
+                  className={BUTTON_CLASSES}
                   data-primary="true"
                   disabled={pending}
                   onClick={() => { void run({
@@ -588,7 +586,7 @@ function PluginDetail({
               )}
               {plugin.installed && plugin.updateAvailable && (
                 <button
-                  className="tockteam-marketplace-button"
+                  className={BUTTON_CLASSES}
                   data-primary="true"
                   disabled={pending}
                   onClick={() => { void run({
@@ -603,7 +601,7 @@ function PluginDetail({
               )}
               {plugin.installed && (
                 <button
-                  className="tockteam-marketplace-button"
+                  className={BUTTON_CLASSES}
                   disabled={pending}
                   onClick={() => { void run({
                     type: 'prepare',
@@ -617,7 +615,7 @@ function PluginDetail({
               )}
               {plugin.installed && (
                 <button
-                  className="tockteam-marketplace-button"
+                  className={BUTTON_CLASSES}
                   data-danger="true"
                   disabled={pending}
                   onClick={() => { void run({
@@ -633,7 +631,7 @@ function PluginDetail({
             </>
           ) : snapshot.preview === null ? (
             <button
-              className="tockteam-marketplace-button"
+              className={BUTTON_CLASSES}
               data-primary="true"
               disabled={pending || !readyToPreview}
               onClick={() => { void run({ type: 'preview', confirmations }) }}
@@ -642,7 +640,7 @@ function PluginDetail({
               {t('preview.launch')}
             </button>
           ) : null}
-          <button className="tockteam-marketplace-button" onClick={() => { void bridge.openExternal(plugin.url) }} type="button">
+          <button className={BUTTON_CLASSES} onClick={() => { void bridge.openExternal(plugin.url) }} type="button">
             {t('view-source')}
           </button>
         </div>
@@ -767,25 +765,25 @@ function MarketplaceSurface({ bridge, locale, translate, view }: {
   }, [viewState.open])
 
   return (
-    <div className="tockteam-marketplace-surface" data-open={String(viewState.open)} aria-hidden={!viewState.open}>
-      <div className="tockteam-marketplace-app">
+    <div className="fixed inset-y-0 right-0 left-[var(--tockteam-marketplace-left,0px)] top-[var(--tockteam-titlebar-height,40px)] z-[8800] box-border translate-y-1 overflow-hidden invisible pointer-events-none border-l border-border bg-background text-foreground opacity-0 transition-[opacity,transform,visibility] [transition-duration:140ms,160ms,0s] [transition-timing-function:ease,ease,linear] [transition-delay:0s,0s,160ms] [-webkit-app-region:no-drag] data-[open=true]:visible data-[open=true]:pointer-events-auto data-[open=true]:translate-y-0 data-[open=true]:opacity-100 data-[open=true]:[transition-delay:0s] motion-reduce:transition-none" data-open={String(viewState.open)} aria-hidden={!viewState.open}>
+      <div className="grid h-full grid-rows-[auto_minmax(0,1fr)]">
         <div>
-          <header className="tockteam-marketplace-header">
-            <div className="tockteam-marketplace-heading">
-              <h1>{t('plugins')}</h1>
-              <p>{t('subtitle')}</p>
+          <header className="flex min-h-[68px] items-center gap-3.5 border-b border-border px-7">
+            <div className="min-w-0">
+              <h1 className="m-0 text-xl font-[650] tracking-[-0.02em]">{t('plugins')}</h1>
+              <p className="mt-0.5 mb-0 text-[11px] text-subtle-foreground">{t('subtitle')}</p>
             </div>
-            <div className="tockteam-marketplace-header-actions">
+            <div className="ml-auto flex items-center gap-2">
               {snapshot?.undoAvailable === true && (
-                <button className="tockteam-marketplace-button" disabled={pending} onClick={() => { void run({ type: 'undo' }) }} type="button">
+                <button className={BUTTON_CLASSES} disabled={pending} onClick={() => { void run({ type: 'undo' }) }} type="button">
                   {t('undo-last-apply')}
                 </button>
               )}
-              <button className="tockteam-marketplace-button" disabled={pending} onClick={() => { void run({ type: 'refresh' }) }} type="button">
+              <button className={BUTTON_CLASSES} disabled={pending} onClick={() => { void run({ type: 'refresh' }) }} type="button">
                 {pending ? t('working') : t('refresh')}
               </button>
               <button
-                className="tockteam-marketplace-icon-button"
+                className={ICON_BUTTON_CLASSES}
                 onClick={() => { view.setOpen(false) }}
                 title={t('close')}
                 type="button"
@@ -793,21 +791,21 @@ function MarketplaceSurface({ bridge, locale, translate, view }: {
             </div>
           </header>
           {snapshot?.preview !== null && snapshot?.preview !== undefined && (
-            <div className="tockteam-marketplace-preview-banner">
+            <div className="mx-7 mt-3.5 flex flex-wrap items-center gap-2.5 rounded-[11px] border border-[#bcd0fa] bg-[#f2f6ff] px-3.5 py-[11px] text-[11px] leading-[1.45] text-[#244f9e] dark:border-[#395993] dark:bg-[#182744] dark:text-[#a9c4ff] [&_strong]:mr-auto">
               <strong>{t('preview.running', { plugin: snapshot.preview.pluginId })}</strong>
-              <button className="tockteam-marketplace-button" disabled={pending} onClick={() => { void run({ type: 'discard' }) }} type="button">
+              <button className={BUTTON_CLASSES} disabled={pending} onClick={() => { void run({ type: 'discard' }) }} type="button">
                 {t('discard')}
               </button>
-              <button className="tockteam-marketplace-button" data-primary="true" disabled={pending} onClick={() => { void run({ type: 'apply' }) }} type="button">
+              <button className={BUTTON_CLASSES} data-primary="true" disabled={pending} onClick={() => { void run({ type: 'apply' }) }} type="button">
                 {t('apply-action', { action: t(`action.${snapshot.preview.action}`) })}
               </button>
             </div>
           )}
           {error !== null && (
-            <div className="tockteam-marketplace-error">
+            <div className="mx-7 mt-[18px] flex items-center gap-3 rounded-[11px] border border-[#f1c2bd] bg-[#fff5f4] px-3.5 py-[11px] text-[11px] leading-[1.45] text-[#9c2f24] [&_span]:mr-auto [&_span]:min-w-0 [&_span]:[overflow-wrap:anywhere]">
               <span>{error}</span>
               <button
-                className="tockteam-marketplace-button"
+                className={`${BUTTON_CLASSES} flex-none border-[#e8b4ae] bg-white text-[#9c2f24]`}
                 disabled={pending}
                 onClick={() => { resetView(); void run({ type: 'refresh' }) }}
                 type="button"
@@ -817,27 +815,28 @@ function MarketplaceSurface({ bridge, locale, translate, view }: {
             </div>
           )}
           {snapshot?.lastAction !== null && snapshot?.lastAction !== undefined && error === null && (
-            <div className="tockteam-marketplace-notice">
+            <div className="mx-7 mt-[18px] rounded-[11px] border border-[#dedfe2] px-3.5 py-[11px] text-[11px] leading-[1.45] text-muted-foreground">
               {localizedHostMessage(snapshot.lastAction, t)}
             </div>
           )}
         </div>
-        <div className="tockteam-marketplace-layout" data-detail={String(selected !== null)}>
-          <main className="tockteam-marketplace-main">
-            <div className="tockteam-marketplace-toolbar">
-              <div className="tockteam-marketplace-search">
+        <div className="grid min-h-0 grid-cols-[minmax(0,1fr)_360px] data-[detail=false]:grid-cols-[minmax(0,1fr)] max-[1050px]:grid-cols-[minmax(0,1fr)_320px] max-[820px]:block max-[820px]:overflow-auto" data-detail={String(selected !== null)}>
+          <main className="min-w-0 overflow-auto px-7 pt-6 pb-10 max-[820px]:overflow-visible">
+            <div className="mb-5 flex flex-wrap items-center gap-2.5">
+              <div className="flex h-[38px] max-w-[460px] flex-[1_1_280px] items-center rounded-[11px] border border-[var(--dsw-alias-border-l1,#ddd)] bg-background px-[13px] [&>svg]:mr-[9px] [&>svg]:size-4 [&>svg]:fill-none [&>svg]:stroke-[1.7] [&>svg]:stroke-subtle-foreground">
                 <Search aria-hidden="true" />
                 <input
                   aria-label={t('search.label')}
+                  className="w-full border-0 bg-transparent font-[inherit] text-[13px] text-inherit outline-0"
                   onChange={event => { setSearch(event.target.value) }}
                   placeholder={t('search.placeholder')}
                   value={search}
                 />
                 {search !== '' && (
-                  <button aria-label={t('search.clear')} onClick={() => { setSearch('') }} type="button"><X aria-hidden="true" /></button>
+                  <button className="grid size-6 flex-none cursor-pointer place-items-center rounded-[7px] border-0 bg-transparent p-0 font-[15px/1_system-ui,sans-serif] text-subtle-foreground hover:bg-[var(--dsw-alias-interactive-bg-hover,#f1f2f3)] [&_svg]:m-0 [&_svg]:size-3.5" aria-label={t('search.clear')} onClick={() => { setSearch('') }} type="button"><X aria-hidden="true" /></button>
                 )}
               </div>
-              <div className="tockteam-marketplace-status-tabs" role="group" aria-label={t('installation-status')}>
+              <div className="flex h-[38px] max-w-full items-center overflow-x-auto rounded-[11px] border border-[var(--dsw-alias-border-l1,#ddd)] bg-[var(--dsw-alias-interactive-bg-hover,#f3f4f5)] p-[3px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [&_button]:flex [&_button]:h-[30px] [&_button]:cursor-pointer [&_button]:items-center [&_button]:gap-[5px] [&_button]:whitespace-nowrap [&_button]:rounded-lg [&_button]:border-0 [&_button]:bg-transparent [&_button]:px-2.5 [&_button]:font-[inherit] [&_button]:text-[11px] [&_button]:text-muted-foreground [&_button[data-active=true]]:bg-background [&_button[data-active=true]]:font-semibold [&_button[data-active=true]]:text-foreground [&_button[data-active=true]]:shadow-[0_1px_4px_rgba(31,35,41,0.1)] [&_span]:text-[9px] [&_span]:text-subtle-foreground" role="group" aria-label={t('installation-status')}>
                 {([
                   ['all', t('all')],
                   ['installed', t('installed')],
@@ -857,30 +856,30 @@ function MarketplaceSurface({ bridge, locale, translate, view }: {
               </div>
               <select
                 aria-label={t('plugin-category')}
-                className="tockteam-marketplace-filter"
+                className="h-[38px] rounded-[10px] border border-[var(--dsw-alias-border-l1,#ddd)] bg-background px-[11px] font-[inherit] text-xs text-inherit"
                 onChange={event => { setCategoryFilter(event.target.value) }}
                 value={categoryFilter}
               >
                 <option value="all">{t('all-categories')}</option>
                 {categories.map(category => <option key={category} value={category}>{category}</option>)}
               </select>
-              <span className="tockteam-marketplace-count">
+              <span className="ml-auto whitespace-nowrap text-[11px] text-subtle-foreground">
                 {t('plugin-count', { count: plugins.length })}
               </span>
             </div>
             {snapshot === null || pending && snapshot.catalog.length === 0 ? (
-              <div className="tockteam-marketplace-empty">{t('loading-catalog')}</div>
+              <div className="grid min-h-[340px] place-items-center text-center text-xs text-subtle-foreground">{t('loading-catalog')}</div>
             ) : snapshot.auth.status !== 'ready' && snapshot.catalog.length === 0 ? (
-              <div className="tockteam-marketplace-empty">
+              <div className="grid min-h-[340px] place-items-center text-center text-xs text-subtle-foreground">
                 <div>
                   <strong>{t('github-auth-required')}</strong><br />
                   {localizedAuthDetail(snapshot.auth.detail, t)}
                 </div>
               </div>
             ) : plugins.length === 0 ? (
-              <div className="tockteam-marketplace-empty">{t('no-match')}</div>
+              <div className="grid min-h-[340px] place-items-center text-center text-xs text-subtle-foreground">{t('no-match')}</div>
             ) : (
-              <div className="tockteam-marketplace-grid">
+              <div className="grid grid-cols-[repeat(auto-fill,minmax(235px,1fr))] gap-3">
                 {plugins.map(plugin => (
                   <PluginCard
                     key={plugin.id}
