@@ -1,7 +1,6 @@
 import { defineStore } from '@deepseek-ai/dsh-client-runtime/client'
 import { Check } from 'lucide-react'
 import type { LocaleService, Translate } from '../../../shared/i18n.ts'
-import desktopSkinsCss from './skins.css'
 import {
   DESKTOP_SKINS_MESSAGES,
   type DesktopSkinsMessage,
@@ -94,19 +93,19 @@ function SkinSettingsRow({ setSkin, t, useStore }: SkinRowProps): JSX.Element {
   const activeId = useStore(state => state.activeId)
   const ready = useStore(state => state.ready)
   return (
-    <div className="tockteam-skins-group">
+    <div className="flex flex-col gap-2.5 border-b border-border py-4">
       <div className="flex flex-col gap-0.5">
-        <div className="tockteam-skins-title text-foreground">{t('skins.title')}</div>
-        <div className="tockteam-skins-description">{t('skins.description')}</div>
+        <div className="text-sm font-medium leading-[22px] text-foreground">{t('skins.title')}</div>
+        <div className="text-xs leading-[18px] text-subtle-foreground">{t('skins.description')}</div>
       </div>
-      <div className="tockteam-skins-grid">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(126px,1fr))] gap-[9px] max-[720px]:grid-cols-2">
         {OPTIONS.map(option => {
           const selected = activeId === (option.id ?? '')
           return (
             <button
               key={option.id ?? 'default'}
               type="button"
-              className="tockteam-skins-tile"
+              className="relative flex min-w-0 cursor-pointer flex-col overflow-hidden rounded-[14px] border border-border bg-surface p-0 text-left font-[inherit] text-foreground transition-[border-color,box-shadow,transform] duration-[120ms] ease-in-out hover:-translate-y-px hover:border-border-strong disabled:cursor-wait disabled:opacity-[.58] disabled:transform-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand data-[selected=true]:border-brand data-[selected=true]:shadow-[0_0_0_1px_var(--dsw-alias-brand-primary)] motion-reduce:transition-none"
               data-selected={selected}
               aria-label={t(option.label)}
               aria-pressed={selected}
@@ -114,17 +113,17 @@ function SkinSettingsRow({ setSkin, t, useStore }: SkinRowProps): JSX.Element {
               onClick={() => { setSkin(option.id) }}
             >
               <span
-                className="tockteam-skins-preview"
+                className="block aspect-video w-full border-b border-[var(--dsw-alias-border-l1)] bg-cover bg-center"
                 style={{ background: option.preview }}
               />
-              <span className="tockteam-skins-meta">
-                <span className="tockteam-skins-swatch" style={{ background: option.accent }} />
-                <span className="tockteam-skins-copy">
-                  <span className="tockteam-skins-name">{t(option.label)}</span>
-                  <span className="tockteam-skins-mode">{t(option.mode)}</span>
+              <span className="grid grid-cols-[9px_minmax(0,1fr)_auto] items-center gap-1.5 px-[9px] pt-2 pb-[9px]">
+                <span className="size-2 rounded-full" style={{ background: option.accent }} />
+                <span className="flex min-w-0 flex-col">
+                  <span className="truncate text-xs font-semibold leading-[17px]">{t(option.label)}</span>
+                  <span className="truncate text-[10px] leading-[14px] text-subtle-foreground">{t(option.mode)}</span>
                 </span>
                 {selected && (
-                  <span className="tockteam-skins-check" title={t('skins.selected')}><Check aria-hidden="true" /></span>
+                  <span className="grid size-[18px] place-items-center rounded-full bg-brand text-brand-foreground [&_svg]:size-3 [&_svg]:stroke-[2.5]" title={t('skins.selected')}><Check aria-hidden="true" /></span>
                 )}
               </span>
             </button>
@@ -138,7 +137,7 @@ function SkinSettingsRow({ setSkin, t, useStore }: SkinRowProps): JSX.Element {
 function installSettingsStyles(): () => void {
   const style = document.createElement('style')
   style.setAttribute(SETTINGS_STYLE_ATTRIBUTE, 'true')
-  style.textContent = `${desktopSkinsCss}\n${__TOCKTEAM_TAILWIND_CSS__}`
+  style.textContent = __TOCKTEAM_TAILWIND_CSS__
   document.head.append(style)
   return () => { style.remove() }
 }
@@ -162,7 +161,7 @@ export function apply(ctx: ClientContext): void {
   )
   ctx.effect(
     () => typeof document === 'undefined' ? undefined : installSettingsStyles(),
-    'tockteam-skins: settings styles',
+    'tockteam-skins: Tailwind utilities',
   )
 
   const storage = typeof fetch === 'undefined'
