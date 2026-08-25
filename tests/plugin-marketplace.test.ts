@@ -560,6 +560,40 @@ test('Agent gateway authenticates and defers runtime-restarting applies', async 
   }
 })
 
+test('Agent gateway binds deferred apply to the acknowledged preview', async () => {
+  const setup = fixture()
+  const errors: unknown[] = []
+  const gateway = await startMarketplaceAgentGateway(setup.manager, {
+    deferMs: 50,
+    onError: error => { errors.push(error) },
+  })
+  const dispatch = async (command: object) => await fetch(gateway.url, {
+    body: JSON.stringify({ type: 'dispatch', command }),
+    headers: { authorization: `Bearer ${gateway.token}` },
+    method: 'POST',
+  })
+  try {
+    await setup.manager.dispatch({ type: 'refresh' })
+    await setup.manager.dispatch({ type: 'prepare', action: 'install', pluginId: 'safe-demo' })
+    const acknowledged = setup.manager.getSnapshot().preview?.transactionId
+    assert.ok(acknowledged)
+    assert.equal((await dispatch({ type: 'apply' })).status, 202)
+    assert.equal((await dispatch({ type: 'discard' })).status, 400)
+
+    await setup.manager.dispatch({ type: 'discard' })
+    await setup.manager.dispatch({ type: 'prepare', action: 'install', pluginId: 'safe-demo' })
+    assert.notEqual(setup.manager.getSnapshot().preview?.transactionId, acknowledged)
+    await new Promise(resolve => { setTimeout(resolve, 80) })
+
+    assert.equal(setup.manager.getSnapshot().installed.length, 0)
+    assert.notEqual(setup.manager.getSnapshot().preview, null)
+    assert.match(String(errors[0]), /preview changed before deferred apply/u)
+  } finally {
+    await gateway.close()
+    setup.cleanup()
+  }
+})
+
 test('marketplace navigation preserves the Settings footer geometry', () => {
   const client = readFileSync(new URL(
     '../plugins/plugin-marketplace/src/client/plugin.tsx',
