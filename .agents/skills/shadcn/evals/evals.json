@@ -1,0 +1,47 @@
+{
+  "skill_name": "shadcn",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Adopt the official shadcn Button for TockTeam's plugin marketplace. The repository has no components.json yet. Set up only what this component needs without changing the inherited DSH shell.",
+      "expected_output": "A TockTeam-aware plan or implementation that chooses the marketplace browser client as the owner, previews CLI writes, preserves the existing Tailwind/DSH theme, and avoids root-level scaffolding.",
+      "files": [],
+      "expectations": [
+        "Does not run shadcn init against the TockTeam repository root",
+        "Uses pnpm dlx shadcn@latest and previews changes before writing",
+        "Keeps the component in an approved browser-client owner rather than creating an unowned root components/ui directory",
+        "Preserves plugins/skins/src/client/tailwind.css as the only first-party browser stylesheet",
+        "Maps semantic component colors to existing DSH theme tokens instead of installing a second palette or reset",
+        "Keeps Host and browser-client code separate"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Replace a custom confirmation overlay in a TockTeam browser plugin with the official shadcn AlertDialog. Keep local behavior and styling, and do not overwrite unrelated files.",
+      "expected_output": "A preview-first smart merge that uses accessible AlertDialog composition, retains local behavior, and participates in Cordis lifecycle cleanup.",
+      "files": [],
+      "expectations": [
+        "Uses add --dry-run and --diff before updating local source",
+        "Includes AlertDialogTitle and AlertDialogDescription for accessibility",
+        "Preserves local behavior instead of using --overwrite",
+        "Uses semantic tokens and existing variants rather than raw colors",
+        "Registers and disposes contributed UI through the owning Cordis client plugin",
+        "Runs a focused test followed by TockTeam typecheck, tests, and build"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Add the official shadcn Select to a TockTeam settings surface. Ensure the generated source works with this repository's React 18, strict NodeNext TypeScript, esbuild bundles, and existing lucide-react version.",
+      "expected_output": "A minimal official Select integration with corrected imports, explicit ownership, compatible dependencies, DSH-backed semantic tokens, and focused verification.",
+      "files": [],
+      "expectations": [
+        "Uses official @shadcn source unless the user explicitly requests another registry",
+        "Checks the configured base before choosing Radix or Base UI composition",
+        "Rewrites unsupported @ aliases to imports resolvable by the owning package",
+        "Uses explicit .ts import extensions where TockTeam source conventions require them",
+        "Preserves React 18 and the pinned lucide-react version unless a change is explicitly approved",
+        "Updates package manifests, build inputs, and Tailwind sources only when the chosen ownership requires it"
+      ]
+    }
+  ]
+}
