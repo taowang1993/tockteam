@@ -1738,6 +1738,7 @@ export class DesktopPickerOwner {
   }
 
   private async syncDirectory(path: string): Promise<void> {
+    if (process.platform === 'win32') return
     const handle = await open(path, fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW)
     try { await handle.sync() } finally { await handle.close() }
   }
@@ -1838,15 +1839,19 @@ export class DesktopPickerOwner {
     await this.ensureRecoveryRoot()
     let rootHandle: Awaited<ReturnType<typeof open>> | undefined
     try {
-      rootHandle = await open(
-        this.recoveryRoot,
-        fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW | fsConstants.O_NONBLOCK | fsConstants.O_DIRECTORY,
-      )
-      const rootStat = await rootHandle.stat()
-      if (!rootStat.isDirectory()) return error('recovery-required')
+      if (process.platform !== 'win32') {
+        rootHandle = await open(
+          this.recoveryRoot,
+          fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW | fsConstants.O_NONBLOCK | fsConstants.O_DIRECTORY,
+        )
+      }
+      const directory = await opendir(this.recoveryRoot)
+      const rootStat = rootHandle === undefined
+        ? await lstat(this.recoveryRoot)
+        : await rootHandle.stat()
+      if (!rootStat.isDirectory() || rootStat.isSymbolicLink()) return error('recovery-required')
       const result: Array<{ name: string; path: string; size: number }> = []
       let aggregateBytes = 0
-      const directory = await opendir(this.recoveryRoot)
       for await (const entry of directory) {
         if (!entry.name.startsWith('destination-') || !entry.name.endsWith('.json')) return error('recovery-required')
         const path = join(this.recoveryRoot, entry.name)
@@ -1858,15 +1863,14 @@ export class DesktopPickerOwner {
         if (result.length > MAX_RECOVERY_JOURNALS
           || aggregateBytes > MAX_RECOVERY_TOTAL_BYTES) return error('recovery-required')
       }
-      const finalRootStat = fstatSync(rootHandle.fd)
       const canonicalRoot = realpathSync(this.recoveryRoot)
       const pathRootStat = lstatSync(this.recoveryRoot)
       if (canonicalRoot !== this.recoveryRoot || pathRootStat.isSymbolicLink()
-        || revisionOf(finalRootStat) !== revisionOf(rootStat)
+        || rootHandle !== undefined && revisionOf(fstatSync(rootHandle.fd)) !== revisionOf(rootStat)
         || revisionOf(pathRootStat) !== revisionOf(rootStat)) return error('recovery-required')
       return result
     } finally {
-      if (rootHandle !== undefined) void rootHandle.close().catch(() => undefined)
+      await rootHandle?.close().catch(() => undefined)
     }
   }
 

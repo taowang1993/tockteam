@@ -195,8 +195,9 @@ test('nested symlink, hardlink, and socket entries are rejected and never follow
   await writeFile(file, 'safe')
   await link(file, hard)
   await symlink(file, symbolic)
-  const server = createServer()
+  const server = process.platform === 'win32' ? undefined : createServer()
   await new Promise<void>((resolve, reject) => {
+    if (server === undefined) return resolve()
     server.once('error', reject)
     server.listen(socket, resolve)
   })
@@ -214,11 +215,11 @@ test('nested symlink, hardlink, and socket entries are rejected and never follow
     const reasons = listed.entries.flatMap(entry => entry.kind === 'rejected' ? [entry.reason] : [])
     assert.ok(reasons.includes('hardlink'))
     assert.ok(reasons.includes('symlink'))
-    assert.ok(reasons.includes('special-file'))
+    if (server !== undefined) assert.ok(reasons.includes('special-file'))
     assert.equal(listed.entries.some(entry => entry.kind === 'file'), false)
     await owner.dispose()
   } finally {
-    await new Promise<void>(resolve => server.close(() => resolve()))
+    if (server !== undefined) await new Promise<void>(resolve => server.close(() => resolve()))
   }
 })
 
