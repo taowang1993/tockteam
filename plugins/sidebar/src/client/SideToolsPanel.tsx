@@ -109,7 +109,7 @@ function ToolRow(props: {
 }): JSX.Element {
   return (
     <button
-      className="tockteam-side-tool-row"
+      className="tockteam-side-tool-row grid min-h-12 grid-cols-[28px_minmax(0,1fr)_auto] items-center gap-2.5 rounded-[10px] border-0 bg-transparent px-3 text-left text-inherit hover:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_5%))] disabled:cursor-default disabled:opacity-40 [&>span]:text-sm [&_kbd]:rounded-full [&_kbd]:border-0 [&_kbd]:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))] [&_kbd]:px-[7px] [&_kbd]:py-0.5 [&_kbd]:text-[11px] [&_kbd]:text-[var(--dsw-alias-label-tertiary,#8c959f)] [&_kbd]:[font:11px_system-ui] [&_svg]:size-[21px] [&_svg]:fill-none [&_svg]:stroke-current [&_svg]:stroke-[1.7] [&_svg]:[stroke-linecap:round] [&_svg]:[stroke-linejoin:round]"
       type="button"
       disabled={props.disabled}
       onClick={props.onClick}
@@ -145,7 +145,7 @@ function SideMenu(props: SideToolsPanelProps): JSX.Element {
     descriptor.hidden !== true && props.sidebar.isTabEnabled(descriptor.id),
   )
   return (
-    <div className="tockteam-side-menu">
+    <div className="tockteam-side-menu grid min-h-0 flex-1 content-center gap-[5px] p-6">
       {descriptors.map(descriptor => (
         <ToolRow
           key={descriptor.id}
@@ -155,7 +155,7 @@ function SideMenu(props: SideToolsPanelProps): JSX.Element {
           onClick={() => { void open(descriptor) }}
         />
       ))}
-      {error !== '' && <div className="tockteam-side-error" role="alert">{error}</div>}
+      {error !== '' && <div className="tockteam-side-error mx-3 my-2 rounded-[7px] bg-[color-mix(in_srgb,#cf222e_10%,transparent)] px-[9px] py-[7px] text-[11px] text-[#cf222e]" role="alert">{error}</div>}
     </div>
   )
 }
@@ -192,7 +192,7 @@ export function BrowserView({
     const host = container.current
     if (host === null) return
     const element = document.createElement('webview') as unknown as ElectronWebviewElement
-    element.className = 'tockteam-browser-webview'
+    element.className = 'tockteam-browser-webview flex h-full w-full'
     element.setAttribute('partition', 'persist:tockteam-browser')
     element.setAttribute('src', tab.resource ?? 'about:blank')
     const update = (event: Event): void => {
@@ -250,9 +250,9 @@ export function BrowserView({
   }
 
   return (
-    <div className="tockteam-browser-view">
+    <div className="tockteam-browser-view flex min-h-0 flex-1 flex-col">
       <form
-        className="tockteam-browser-bar"
+        className="tockteam-browser-bar flex min-h-10 flex-none items-center gap-[5px] border-b border-[var(--dsw-alias-border-l1,rgb(0_0_0_/_8%))] px-2.5 py-1.5 [&_button]:h-[27px] [&_button]:min-w-[27px] [&_button]:cursor-pointer [&_button]:rounded-[7px] [&_button]:border-0 [&_button]:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_5%))] [&_button]:px-2 [&_button]:text-inherit [&_button:disabled]:cursor-default [&_button:disabled]:opacity-35 [&_button_svg]:mx-auto [&_button_svg]:block [&_button_svg]:size-[15px]"
         onSubmit={event => { event.preventDefault(); void navigate() }}
       >
         <button
@@ -268,14 +268,15 @@ export function BrowserView({
         ><RefreshCw aria-hidden="true" /></button>
         <input
           value={address}
+          className="h-7 min-w-0 flex-1 rounded-[7px] border border-[var(--dsw-alias-border-l1,rgb(0_0_0_/_10%))] bg-[var(--dsw-alias-bg-base,#fff)] px-[9px] text-inherit outline-none"
           placeholder={t('browser.enter-url')}
           aria-label={t('browser.url')}
           onChange={event => { setAddress(event.currentTarget.value) }}
         />
         <button type="submit">{t('browser.go')}</button>
       </form>
-      {error !== '' && <div className="tockteam-browser-error" role="alert">{error}</div>}
-      <div ref={container} className="tockteam-browser-host" />
+      {error !== '' && <div className="tockteam-browser-error mx-3 my-2 rounded-[7px] bg-[color-mix(in_srgb,#cf222e_10%,transparent)] px-[9px] py-[7px] text-[11px] text-[#cf222e]" role="alert">{error}</div>}
+      <div ref={container} className="tockteam-browser-host min-h-0 flex-1" />
     </div>
   )
 }
@@ -339,11 +340,11 @@ export function FilesView({
     patch({ resource: next })
   }
   if (cwd === undefined) {
-    return <div className="tockteam-side-empty">{t('files.select-workspace')}</div>
+    return <div className="tockteam-side-empty p-[18px] text-[11px] text-[var(--dsw-alias-label-tertiary,#8c959f)]">{t('files.select-workspace')}</div>
   }
   return (
-    <div className="tockteam-files-view">
-      <div className="tockteam-files-path" title={snapshot?.path ?? cwd}>
+    <div className="tockteam-files-view flex min-h-0 flex-1 flex-col">
+      <div className="tockteam-files-path flex min-h-10 flex-none items-center gap-[5px] border-b border-[var(--dsw-alias-border-l1,rgb(0_0_0_/_8%))] px-2.5 py-1.5 [&_button]:h-[27px] [&_button]:min-w-[27px] [&_button]:cursor-pointer [&_button]:rounded-[7px] [&_button]:border-0 [&_button]:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_5%))] [&_button]:px-2 [&_button]:text-inherit [&_button:disabled]:cursor-default [&_button:disabled]:opacity-35 [&_button_svg]:mx-auto [&_button_svg]:block [&_button_svg]:size-[15px]" title={snapshot?.path ?? cwd}>
         <button
           type="button"
           disabled={snapshot?.parent == null}
@@ -353,18 +354,19 @@ export function FilesView({
             }
           }}
         ><ChevronLeft aria-hidden="true" /></button>
-        <span>{(snapshot?.path ?? cwd).slice(cwd.length) || '/'}</span>
+        <span className="min-w-0 flex-1 truncate text-[11px] text-[var(--dsw-alias-label-secondary,#57606a)]">{(snapshot?.path ?? cwd).slice(cwd.length) || '/'}</span>
         <button
           type="button"
           onClick={() => { setRefreshKey(value => value + 1) }}
         ><RefreshCw aria-hidden="true" /></button>
       </div>
-      {loading && <div className="tockteam-side-muted">{t('files.loading')}</div>}
-      {error !== '' && <div className="tockteam-side-error" role="alert">{error}</div>}
+      {loading && <div className="tockteam-side-muted p-[18px] text-[11px] text-[var(--dsw-alias-label-tertiary,#8c959f)]">{t('files.loading')}</div>}
+      {error !== '' && <div className="tockteam-side-error mx-3 my-2 rounded-[7px] bg-[color-mix(in_srgb,#cf222e_10%,transparent)] px-[9px] py-[7px] text-[11px] text-[#cf222e]" role="alert">{error}</div>}
       {snapshot?.kind === 'directory' && (
-        <div className="tockteam-file-list">
+        <div className="tockteam-file-list min-h-0 flex-1 overflow-auto px-[9px] pt-1.5 pb-5">
           {snapshot.entries.map(entry => (
             <button
+              className="grid min-h-8 w-full grid-cols-[22px_minmax(0,1fr)_auto] items-center gap-1.5 rounded-[7px] border-0 bg-transparent px-[7px] text-left text-inherit hover:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_5%))] [&>span:first-child]:grid [&>span:first-child]:place-items-center [&>span:first-child_svg]:size-4 [&>span:nth-child(2)]:truncate [&>span:nth-child(2)]:text-xs [&_small]:text-[10px] [&_small]:text-[var(--dsw-alias-label-tertiary,#8c959f)]"
               key={entry.path}
               type="button"
               onClick={() => {
@@ -384,10 +386,10 @@ export function FilesView({
             </button>
           ))}
           {snapshot.entries.length === 0 && (
-            <div className="tockteam-side-muted">{t('files.empty-directory')}</div>
+            <div className="tockteam-side-muted p-[18px] text-[11px] text-[var(--dsw-alias-label-tertiary,#8c959f)]">{t('files.empty-directory')}</div>
           )}
           {snapshot.truncated && (
-            <div className="tockteam-side-muted">{t('files.showing-first')}</div>
+            <div className="tockteam-side-muted p-[18px] text-[11px] text-[var(--dsw-alias-label-tertiary,#8c959f)]">{t('files.showing-first')}</div>
           )}
         </div>
       )}
@@ -429,12 +431,12 @@ export function FileView({
   }, [cwd, path, scope?.sessionId])
 
   if (cwd === undefined || path === undefined) {
-    return <div className="tockteam-side-empty">{t('files.select-workspace')}</div>
+    return <div className="tockteam-side-empty p-[18px] text-[11px] text-[var(--dsw-alias-label-tertiary,#8c959f)]">{t('files.select-workspace')}</div>
   }
-  if (error !== '') return <div className="tockteam-side-error" role="alert">{error}</div>
-  if (snapshot === null) return <div className="tockteam-side-muted">{t('files.loading')}</div>
+  if (error !== '') return <div className="tockteam-side-error mx-3 my-2 rounded-[7px] bg-[color-mix(in_srgb,#cf222e_10%,transparent)] px-[9px] py-[7px] text-[11px] text-[#cf222e]" role="alert">{error}</div>
+  if (snapshot === null) return <div className="tockteam-side-muted p-[18px] text-[11px] text-[var(--dsw-alias-label-tertiary,#8c959f)]">{t('files.loading')}</div>
   if (snapshot.kind !== 'file') {
-    return <div className="tockteam-side-muted">{t('files.not-file')}</div>
+    return <div className="tockteam-side-muted p-[18px] text-[11px] text-[var(--dsw-alias-label-tertiary,#8c959f)]">{t('files.not-file')}</div>
   }
   const head = snapshot.binary
     ? new Uint8Array([0])
@@ -448,14 +450,14 @@ export function FileView({
     })}</>
   }
   return (
-    <div className="tockteam-file-preview">
+    <div className="tockteam-file-preview min-h-0 flex-1 overflow-auto p-3 [&>div:first-child]:mb-2.5 [&>div:first-child]:flex [&>div:first-child]:items-center [&>div:first-child]:justify-between [&>div:first-child]:gap-2 [&_button]:h-[27px] [&_button]:min-w-[27px] [&_button]:cursor-pointer [&_button]:rounded-[7px] [&_button]:border-0 [&_button]:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_5%))] [&_button]:px-2 [&_button]:text-inherit [&_strong]:truncate [&_strong]:text-xs">
       <div>
         <strong>{tab.title}</strong>
         <button type="button" onClick={() => { void onOpenPath(path) }}>
           {t('files.open')}
         </button>
       </div>
-      <div className="tockteam-side-muted">
+      <div className="tockteam-side-muted p-[18px] text-[11px] text-[var(--dsw-alias-label-tertiary,#8c959f)]">
         {t('files.no-viewer', { size: formatSize(snapshot.size) })}
       </div>
     </div>
@@ -467,7 +469,7 @@ function OrphanedTab({ title, t }: {
   title: string
 }): JSX.Element {
   return (
-    <div className="tockteam-side-empty">
+    <div className="tockteam-side-empty p-[18px] text-[11px] text-[var(--dsw-alias-label-tertiary,#8c959f)]">
       <strong>{title}</strong>
       <p>{t('side.orphaned-tab')}</p>
     </div>
@@ -481,7 +483,7 @@ function TabStrip({ sidebar, t }: {
   const snapshot = useSyncExternalStore(sidebar.subscribe, sidebar.getSnapshot)
   if (snapshot.tabs.length < 2) return null
   return (
-    <div className="tockteam-side-tabs" role="tablist">
+    <div className="tockteam-side-tabs flex min-h-[37px] flex-none gap-1 overflow-x-auto border-b border-[var(--dsw-alias-border-l1,rgb(0_0_0_/_8%))] px-2 py-[5px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [&>div]:flex [&>div]:flex-none [&>div]:items-center [&>div]:rounded-[7px] [&>div]:text-[var(--dsw-alias-label-secondary,#57606a)] [&>div[data-active='true']]:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))] [&>div[data-active='true']]:text-[var(--dsw-alias-label-primary,#1f2328)] [&_button]:h-[27px] [&_button]:border-0 [&_button]:bg-transparent [&_button]:px-[7px] [&_button]:text-[11px] [&_button]:text-inherit [&_button]:[font:11px_system-ui] [&>div>button:first-child]:max-w-[150px] [&>div>button:first-child]:truncate [&>div>button:last-child]:grid [&>div>button:last-child]:w-[23px] [&>div>button:last-child]:place-items-center [&>div>button:last-child]:p-0 [&>div>button:last-child]:opacity-55 [&>div>button:last-child_svg]:size-[13px]" role="tablist">
       {snapshot.tabs.map(tab => (
         <div key={tab.id} data-active={tab.id === snapshot.activeId || undefined}>
           <button
@@ -543,7 +545,7 @@ export function SideToolsPanel(props: SideToolsPanelProps): JSX.Element {
       : descriptor.render(renderProps)
   return (
     <aside
-      className="tockteam-workspace-panel tockteam-side-panel w-full"
+      className="tockteam-workspace-panel tockteam-side-panel absolute top-0 right-0 bottom-0 z-[9100] flex min-h-0 w-full box-border translate-x-[calc(100%+24px)] flex-col overflow-hidden border-y-0 border-r-0 border-l border-[var(--dsw-alias-border-l1,rgb(0_0_0_/_9%))] bg-[var(--dsw-alias-bg-base,#fff)] text-[var(--dsw-alias-label-primary,#1f2328)] invisible opacity-0 shadow-none transition-[opacity,transform,visibility] [transition-duration:140ms,180ms,0s] [transition-timing-function:var(--ds-ease-in-out,ease),var(--ds-ease-in-out,ease),linear] [transition-delay:0s,0s,180ms] pointer-events-none [-webkit-app-region:no-drag] data-[open=true]:visible data-[open=true]:translate-x-0 data-[open=true]:opacity-100 data-[open=true]:[transition-delay:0s] data-[open=true]:pointer-events-auto motion-reduce:transition-none max-[900px]:fixed max-[900px]:top-[var(--tockteam-titlebar-height,40px)] max-[900px]:right-0 max-[900px]:bottom-0 max-[900px]:left-[var(--tockteam-rail-width)] max-[900px]:w-auto max-[900px]:shadow-[-20px_0_48px_rgb(0_0_0_/_14%)]"
       data-open={String(props.open)}
       data-maximized={String(props.maximized)}
       aria-hidden={!props.open}
@@ -551,14 +553,14 @@ export function SideToolsPanel(props: SideToolsPanelProps): JSX.Element {
     >
       {!props.maximized && (
         <div
-          className="tockteam-workspace-resize"
+          className="tockteam-workspace-resize absolute top-0 bottom-0 left-[-4px] z-2 w-2 touch-none cursor-ew-resize"
           onPointerDown={beginResize}
           aria-hidden="true"
         />
       )}
       <TabStrip sidebar={props.sidebar} t={props.t} />
       {activeTab !== undefined && descriptor?.chrome !== 'custom' && (
-        <header className="tockteam-workspace-header tockteam-side-header">
+        <header className="tockteam-workspace-header tockteam-side-header flex min-h-[58px] flex-none items-center justify-between border-b border-[var(--dsw-alias-border-l1,rgb(0_0_0_/_8%))] py-2.5 pr-3.5 pl-5 [&>div]:flex [&>div]:min-w-0 [&>div]:items-center [&>div]:gap-1 [&_button]:size-7 [&_button]:cursor-pointer [&_button]:rounded-[7px] [&_button]:border-0 [&_button]:bg-transparent [&_button]:p-0 [&_button]:text-[var(--dsw-alias-label-secondary,#57606a)] [&_button:hover]:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))] [&_button:hover]:text-[var(--dsw-alias-label-primary,#1f2328)] [&_button_svg]:mx-auto [&_button_svg]:block [&_button_svg]:size-4 [&_strong]:truncate [&_strong]:text-[15px] [&_strong]:font-medium">
           <div>
             <button
               type="button"

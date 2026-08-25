@@ -483,12 +483,15 @@ class WorkspaceToolsService implements WorkspaceTools {
     document.documentElement.classList.add('tockteam-sidebar-styles')
     this.element = document.createElement('div')
     this.element.id = 'tockteam-sidebar-root'
+    this.element.className = "relative z-1 h-full w-full min-w-0 overflow-hidden [html[data-tockteam-desktop-sidebar-open='true']_&]:overflow-visible"
     const rail = document.createElement('div')
     rail.id = 'tockteam-rail-root'
+    rail.className = 'relative z-[1002] h-full min-h-0 w-[var(--tockteam-rail-width)] box-border border-r border-[var(--tockteam-shell-divider)] bg-[var(--tockteam-shell-chrome)] pt-0'
     const appRoot = document.getElementById('root')
     if (appRoot === null) throw new Error('sidebar: app root is unavailable')
     const layout = document.createElement('div')
     layout.id = 'tockteam-embedded-layout'
+    layout.className = 'grid h-full min-h-0 w-full grid-cols-[var(--tockteam-rail-width)_minmax(0,1fr)_0] grid-rows-[minmax(0,1fr)] overflow-hidden transition-[grid-template-columns] duration-180 ease-[var(--ds-ease-in-out,ease)] motion-reduce:transition-none'
     appRoot.before(layout)
     layout.append(rail, appRoot, this.element)
     this.appRoot = appRoot
@@ -625,7 +628,7 @@ function DesktopPanelToolbar({
   const summaryOpen = useSyncExternalStore(pinnedSummary.subscribe, () => pinnedSummary.isOpen())
   const sideOpen = workspaceState.open
   return (
-    <nav className="tockteam-panel-toolbar" aria-label={t('panels.label')}>
+    <nav className="tockteam-panel-toolbar fixed top-[5px] right-3.5 z-[2147483647] flex items-center gap-[3px] border-0 bg-transparent p-0 shadow-none [-webkit-app-region:no-drag] [html[data-tockteam-tocktutor-active='true']_&]:hidden [&_button]:grid [&_button]:size-[30px] [&_button]:cursor-pointer [&_button]:place-items-center [&_button]:rounded-lg [&_button]:border-0 [&_button]:bg-transparent [&_button]:p-0 [&_button]:text-[var(--dsw-alias-label-secondary,#57606a)] [&_button]:[-webkit-app-region:no-drag] [&_button:hover]:text-[var(--dsw-alias-label-primary,#1f2328)] [&_button[aria-pressed='true']]:text-[var(--dsw-alias-label-primary,#1f2328)] [&_svg]:size-[18px] [&_svg]:fill-none [&_svg]:stroke-current [&_svg]:stroke-[1.7] [&_svg]:[stroke-linecap:round] [&_svg]:[stroke-linejoin:round]" aria-label={t('panels.label')}>
       {sideOpen
         ? (
           <button
@@ -671,8 +674,8 @@ function DesktopWindowTitlebar({
   t: Translate<WorkspaceMessage>
 }): ReactNode {
   return (
-    <header className="tockteam-window-titlebar">
-      <div className="tockteam-titlebar-leading">
+    <header className="tockteam-window-titlebar fixed top-0 right-0 left-0 z-[2147483647] grid h-[var(--tockteam-titlebar-height,40px)] grid-cols-[minmax(120px,1fr)_minmax(0,auto)_minmax(120px,1fr)] items-center border-b border-[var(--tockteam-shell-divider)] bg-[var(--tockteam-shell-chrome)] shadow-[0_1px_0_rgb(0_0_0_/_2%)] select-none [-webkit-app-region:drag]">
+      <div className="tockteam-titlebar-leading ml-[var(--tockteam-rail-width)] flex h-full w-[var(--tockteam-primary-sidebar-width)] box-border items-center justify-end border-r border-[var(--tockteam-shell-divider)] pr-1 [body:has([data-sidebar-collapsed])_&]:w-[84px] [body:has([data-sidebar-collapsed])_&]:border-r-0 [html[data-tockteam-tocktutor-active='true']_&]:invisible [&_button]:grid [&_button]:size-9 [&_button]:cursor-pointer [&_button]:place-items-center [&_button]:rounded-lg [&_button]:border-0 [&_button]:bg-transparent [&_button]:p-0 [&_button]:text-[var(--dsw-alias-label-secondary,#57606a)] [&_button]:[-webkit-app-region:no-drag] [&_button:hover]:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))] [&_button:hover]:text-[var(--dsw-alias-label-primary,#1f2328)] [&_svg]:size-[18px] [&_svg]:fill-none [&_svg]:stroke-current [&_svg]:stroke-[1.7] [&_svg]:[stroke-linecap:round] [&_svg]:[stroke-linejoin:round]">
         <button
           type="button"
           aria-label={t('sidebar.toggle')}
@@ -680,8 +683,8 @@ function DesktopWindowTitlebar({
           onClick={() => { panels.toggleSidebar() }}
         ><PanelIcon kind="sidebar" /></button>
       </div>
-      <span className="tockteam-window-title">TockTeam</span>
-      <div id="tockteam-window-titlebar-slot" />
+      <span className="tockteam-window-title min-w-0 truncate text-center text-sm leading-none font-normal text-[color-mix(in_srgb,var(--dsw-alias-label-primary,#1f2328)_90%,var(--tockteam-shell-chrome,#fff)_10%)] [html[data-tockteam-tocktutor-active='true']_&]:invisible">TockTeam</span>
+      <div className="hidden [html[data-tockteam-tocktutor-active='true']_&]:absolute [html[data-tockteam-tocktutor-active='true']_&]:inset-[0_0_0_var(--tockteam-rail-width)] [html[data-tockteam-tocktutor-active='true']_&]:z-1 [html[data-tockteam-tocktutor-active='true']_&]:block" id="tockteam-window-titlebar-slot" />
     </header>
   )
 }
@@ -939,8 +942,8 @@ function WorkspacePanel({
   }
 
   return (
-    <div className="tockteam-review-view" aria-label={t('workspace.changes')}>
-      <header className="tockteam-workspace-header">
+    <div className="tockteam-review-view flex min-h-0 flex-1 flex-col overflow-hidden" aria-label={t('workspace.changes')}>
+      <header className="tockteam-workspace-header flex min-h-[58px] flex-none items-center justify-between border-b border-[var(--dsw-alias-border-l1,rgb(0_0_0_/_8%))] py-2.5 pr-3.5 pl-5 [&>div]:flex [&>div]:flex-none [&>div]:gap-0.5 [&_button]:size-7 [&_button]:cursor-pointer [&_button]:rounded-[7px] [&_button]:border-0 [&_button]:bg-transparent [&_button]:p-0 [&_button]:text-[var(--dsw-alias-label-secondary,#57606a)] [&_button:hover]:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))] [&_button:hover]:text-[var(--dsw-alias-label-primary,#1f2328)] [&_button_svg]:mx-auto [&_button_svg]:block [&_button_svg]:size-4 [&_strong]:min-w-0 [&_strong]:truncate [&_strong]:text-[15px] [&_strong]:font-medium">
         <div>
           <button type="button" aria-label={t('side.back')} onClick={() => { service.openMenu() }}><ChevronLeft aria-hidden="true" /></button>
           <strong>{snapshot?.name ?? (cwd?.split(/[\\/]/).filter(Boolean).pop() || t('workspace.title'))}</strong>
@@ -955,61 +958,61 @@ function WorkspacePanel({
       </header>
 
       {cwd === undefined
-        ? <div className="tockteam-workspace-empty">{t('workspace.select')}</div>
+        ? <div className="tockteam-workspace-empty m-auto max-w-[220px] p-[18px] text-center text-xs leading-normal text-[var(--dsw-alias-label-dimmed,#8c959f)]">{t('workspace.select')}</div>
         : (
-          <div className="tockteam-workspace-content">
-            {error !== '' && <div className="tockteam-workspace-error" role="alert">{error}</div>}
+          <div className="tockteam-workspace-content min-h-0 flex-1 overflow-auto px-4 pt-2 pb-6 [&>section]:border-b [&>section]:border-[var(--dsw-alias-border-l1,rgb(0_0_0_/_8%))] [&>section]:py-2">
+            {error !== '' && <div className="tockteam-workspace-error mt-1 mb-2 rounded-[7px] bg-[color-mix(in_srgb,#cf222e_10%,transparent)] px-2.5 py-2 text-[10px] leading-[1.45] text-[#cf222e] [overflow-wrap:anywhere]" role="alert">{error}</div>}
             <section>
-              <div className="tockteam-workspace-section-title">
-                <span className="tockteam-workspace-section-icon"><FileDiff aria-hidden="true" /></span>
+              <div className="tockteam-workspace-section-title grid min-h-[38px] grid-cols-[26px_minmax(0,1fr)_auto] items-center gap-2 px-1.5 text-[13px] [&_strong]:font-[550]">
+                <span className="tockteam-workspace-section-icon grid place-items-center text-[var(--dsw-alias-label-secondary,#57606a)] [&_svg]:size-4"><FileDiff aria-hidden="true" /></span>
                 <strong>{t('workspace.changes')}</strong>
-                <span className="tockteam-workspace-count">{snapshot?.changes.length ?? 0}</span>
+                <span className="tockteam-workspace-count min-w-5 rounded-full bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))] px-1.5 py-0.5 text-center text-[10px] text-[var(--dsw-alias-label-secondary,#57606a)]">{snapshot?.changes.length ?? 0}</span>
               </div>
-              <div className="tockteam-change-list">
+              <div className="tockteam-change-list pt-0 pr-0.5 pb-[5px] pl-[30px]">
                 {visibleChanges.map(change => (
                   <div key={`${change.path}:${change.oldPath ?? ''}`}>
                     <button
                       type="button"
-                      className="tockteam-change-row"
+                      className="tockteam-change-row grid min-h-[30px] w-full grid-cols-[18px_minmax(0,1fr)_auto] items-center gap-1.5 rounded-md border-0 bg-transparent px-1.5 py-[3px] text-left text-[11px] leading-[1.35] text-[var(--dsw-alias-label-primary,#1f2328)] hover:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))] data-[selected]:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))] [font-family:var(--ds-font-family-code,ui-monospace,monospace)] [&>span:nth-child(2)]:truncate [&_small]:text-[9px] [&_small]:leading-none [&_small]:text-[var(--dsw-alias-label-dimmed,#8c959f)]"
                       data-selected={selectedPath === change.path || undefined}
                       onClick={() => { void showDiff(change) }}
                     >
-                      <span className={`tockteam-change-status is-${change.status}`}>{statusLabel(change.status)}</span>
+                      <span className={`tockteam-change-status font-bold ${change.status === 'added' || change.status === 'untracked' ? 'text-[#2da44e]' : change.status === 'deleted' || change.status === 'conflicted' ? 'text-[#cf222e]' : 'text-[#9a6700]'}`}>{statusLabel(change.status)}</span>
                       <span title={change.path}>{change.path}</span>
                       {change.staged && <small>{t('workspace.staged')}</small>}
                     </button>
-                    {selectedPath === change.path && <pre className="tockteam-change-diff">{diff}</pre>}
+                    {selectedPath === change.path && <pre className="tockteam-change-diff mt-[3px] mb-[7px] max-h-60 overflow-auto whitespace-pre rounded-md bg-[var(--dsw-alias-bg-layer-1,#f6f8fa)] p-[9px] text-[10px] leading-[1.45] text-[var(--dsw-alias-label-secondary,#57606a)] [font-family:var(--ds-font-family-code,ui-monospace,monospace)]">{diff}</pre>}
                   </div>
                 ))}
                 {(snapshot?.changes.length ?? 0) > visibleChanges.length && (
-                  <div className="tockteam-workspace-muted">
+                  <div className="tockteam-workspace-muted p-[18px] text-center text-[11px] text-[var(--dsw-alias-label-dimmed,#8c959f)]">
                     {t('workspace.more-changes', {
                       count: (snapshot?.changes.length ?? 0) - visibleChanges.length,
                     })}
                   </div>
                 )}
                 {snapshot?.kind === 'repository' && snapshot.changes.length === 0 && (
-                  <div className="tockteam-workspace-muted">{t('workspace.clean')}</div>
+                  <div className="tockteam-workspace-muted p-[18px] text-center text-[11px] text-[var(--dsw-alias-label-dimmed,#8c959f)]">{t('workspace.clean')}</div>
                 )}
                 {snapshot?.kind === 'directory' && (
-                  <div className="tockteam-workspace-muted">{t('workspace.not-git')}</div>
+                  <div className="tockteam-workspace-muted p-[18px] text-center text-[11px] text-[var(--dsw-alias-label-dimmed,#8c959f)]">{t('workspace.not-git')}</div>
                 )}
               </div>
             </section>
 
             {snapshot?.kind === 'repository' && (
               <section className="tockteam-review-history">
-                <div className="tockteam-workspace-section-title">
-                  <span className="tockteam-workspace-section-icon"><History aria-hidden="true" /></span>
+                <div className="tockteam-workspace-section-title grid min-h-[38px] grid-cols-[26px_minmax(0,1fr)_auto] items-center gap-2 px-1.5 text-[13px] [&_strong]:font-[550]">
+                  <span className="tockteam-workspace-section-icon grid place-items-center text-[var(--dsw-alias-label-secondary,#57606a)] [&_svg]:size-4"><History aria-hidden="true" /></span>
                   <strong>{t('workspace.review-history')}</strong>
-                  <span className="tockteam-workspace-count">{history.length}</span>
+                  <span className="tockteam-workspace-count min-w-5 rounded-full bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))] px-1.5 py-0.5 text-center text-[10px] text-[var(--dsw-alias-label-secondary,#57606a)]">{history.length}</span>
                 </div>
-                <div className="tockteam-review-commit-list">
+                <div className="tockteam-review-commit-list grid gap-0.5 pr-0.5 pb-2 pl-[30px]">
                   {history.map(entry => (
                     <button
                       type="button"
                       key={entry.hashFull}
-                      className="tockteam-review-commit-row"
+                      className="tockteam-review-commit-row grid min-h-8 grid-cols-[58px_minmax(0,1fr)_auto] items-center gap-[7px] rounded-md border-0 bg-transparent px-[7px] py-1 text-left text-inherit hover:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))] data-[selected]:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))] disabled:cursor-default disabled:opacity-65 [&>span]:truncate [&>span]:text-[11px] [&_code]:text-[9px] [&_code]:leading-[1.3] [&_code]:text-[var(--dsw-alias-label-secondary,#57606a)] [&_code]:[font-family:var(--ds-font-family-code,ui-monospace,monospace)] [&_small]:max-w-[72px] [&_small]:truncate [&_small]:text-[9px] [&_small]:text-[var(--dsw-alias-label-dimmed,#8c959f)]"
                       data-selected={selectedCommit?.id === entry.hashFull || undefined}
                       disabled={reviewLoading}
                       onClick={() => { void showCommit(entry) }}
@@ -1020,14 +1023,14 @@ function WorkspacePanel({
                     </button>
                   ))}
                   {history.length === 0 && (
-                    <div className="tockteam-workspace-muted">
+                    <div className="tockteam-workspace-muted p-[18px] text-center text-[11px] text-[var(--dsw-alias-label-dimmed,#8c959f)]">
                       {t('workspace.no-commits')}
                     </div>
                   )}
                 </div>
 
                 {selectedCommit !== null && (
-                  <div className="tockteam-review-commit-detail">
+                  <div className="tockteam-review-commit-detail mt-0.5 mr-0.5 mb-2.5 ml-[30px] overflow-hidden rounded-lg border border-[var(--dsw-alias-border-l2,rgb(0_0_0_/_13%))] bg-[var(--dsw-alias-bg-layer-1,#fff)] [&>header]:flex [&>header]:items-start [&>header]:justify-between [&>header]:gap-2 [&>header]:border-b [&>header]:border-[var(--dsw-alias-border-l1,rgb(0_0_0_/_8%))] [&>header]:p-[9px] [&>header>div]:grid [&>header>div]:min-w-0 [&>header>div]:gap-[3px] [&>header_code]:text-[9px] [&>header_code]:text-[var(--dsw-alias-label-dimmed,#8c959f)] [&>header_small]:text-[9px] [&>header_small]:text-[var(--dsw-alias-label-dimmed,#8c959f)] [&>header_strong]:text-[11px] [&>header>button]:flex-none [&>header>button]:rounded-md [&>header>button]:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))] [&>header>button]:px-[7px] [&>header>button]:py-[5px] [&>header>button]:text-[9px] [&_button]:cursor-pointer [&_button]:border-0 [&_button]:bg-transparent [&_button]:text-inherit [&_button]:[font:inherit] [&>details]:border-b [&>details]:border-[var(--dsw-alias-border-l1,rgb(0_0_0_/_8%))] [&>details:last-of-type]:border-b-0 [&_summary]:flex [&_summary]:cursor-pointer [&_summary]:items-center [&_summary]:justify-between [&_summary]:gap-2 [&_summary]:px-[9px] [&_summary]:py-[7px] [&_summary]:text-[10px] [&_summary]:leading-[1.35] [&_summary]:[font-family:var(--ds-font-family-code,ui-monospace,monospace)] [&_summary>span]:truncate [&_summary_small]:text-[#cf222e] [&_summary_b]:font-medium [&_summary_b]:text-[#2da44e]">
                     <header>
                       <div>
                         <code>{selectedCommit.shortId}</code>
@@ -1046,7 +1049,7 @@ function WorkspacePanel({
                     </header>
 
                     {selectedComments.length > 0 && (
-                      <div className="tockteam-review-comments">
+                      <div className="tockteam-review-comments grid gap-[5px] border-b border-[var(--dsw-alias-border-l1,rgb(0_0_0_/_8%))] px-[9px] py-2 [&>strong]:text-[10px] [&>div]:relative [&>div]:rounded-md [&>div]:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))] [&>div]:pt-[7px] [&>div]:pr-7 [&>div]:pb-[7px] [&>div]:pl-2 [&_span]:text-[9px] [&_span]:leading-[1.3] [&_span]:text-[var(--dsw-alias-label-dimmed,#8c959f)] [&_span]:[font-family:var(--ds-font-family-code,ui-monospace,monospace)] [&_p]:mt-[3px] [&_p]:mb-0 [&_p]:text-[10px] [&_p]:leading-[1.45] [&_button]:absolute [&_button]:top-1 [&_button]:right-1">
                         <strong>{t('workspace.pending-comments')}</strong>
                         {selectedComments.map(comment => (
                           <div key={comment.id}>
@@ -1075,7 +1078,7 @@ function WorkspacePanel({
                             <b>+{file.additions}</b> −{file.deletions}
                           </small>
                         </summary>
-                        <div className="tockteam-review-diff-lines">
+                        <div className="tockteam-review-diff-lines max-h-[420px] overflow-auto border-t border-[var(--dsw-alias-border-l1,rgb(0_0_0_/_8%))] [&>button]:grid [&>button]:min-w-max [&>button]:w-full [&>button]:grid-cols-[30px_30px_minmax(max-content,1fr)] [&>button]:p-0 [&>button]:text-left [&>button]:text-[9px] [&>button]:leading-[1.55] [&>button]:[font-family:var(--ds-font-family-code,ui-monospace,monospace)] [&>button:hover]:shadow-[inset_2px_0_var(--dsw-alias-accent,#0969da)] [&>button[data-type='addition']]:bg-[color-mix(in_srgb,#2da44e_10%,transparent)] [&>button[data-type='deletion']]:bg-[color-mix(in_srgb,#cf222e_9%,transparent)] [&>button>span]:px-[5px] [&>button>span]:py-px [&>button>span]:text-right [&>button>span]:text-[var(--dsw-alias-label-dimmed,#8c959f)] [&>button>span]:select-none [&>button>code]:whitespace-pre [&>button>code]:px-2 [&>button>code]:py-px [&>button>code]:text-[var(--dsw-alias-label-primary,#1f2328)]">
                           {file.lines.slice(0, 400).map(line => {
                             const lineNumber = reviewLineNumber(
                               line.oldLine,
@@ -1106,7 +1109,7 @@ function WorkspacePanel({
                             )
                           })}
                           {file.lines.length > 400 && (
-                            <div className="tockteam-workspace-muted">
+                            <div className="tockteam-workspace-muted p-[18px] text-center text-[11px] text-[var(--dsw-alias-label-dimmed,#8c959f)]">
                               {t('workspace.diff-truncated', {
                                 count: file.lines.length - 400,
                               })}
@@ -1117,7 +1120,7 @@ function WorkspacePanel({
                     ))}
 
                     {commentTarget !== null && (
-                      <div className="tockteam-review-comment-form">
+                      <div className="tockteam-review-comment-form grid gap-1.5 border-t border-[var(--dsw-alias-border-l1,rgb(0_0_0_/_8%))] p-[9px] [&>strong]:truncate [&>strong]:text-[10px] [&>div]:flex [&>div]:justify-end [&>div]:gap-1.5 [&_textarea]:min-h-[68px] [&_textarea]:resize-y [&_textarea]:rounded-md [&_textarea]:border [&_textarea]:border-[var(--dsw-alias-border-l2,rgb(0_0_0_/_13%))] [&_textarea]:bg-[var(--dsw-alias-bg-layer-1,#fff)] [&_textarea]:p-[7px] [&_textarea]:text-inherit [&_textarea]:outline-0 [&_textarea]:focus:border-[var(--dsw-alias-accent,#0969da)] [&_textarea]:[font:10px/1.45_inherit] [&_button]:rounded-md [&_button]:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))] [&_button]:px-2 [&_button]:py-[5px] [&_button]:text-[9px] [&_button:disabled]:cursor-default [&_button:disabled]:opacity-45">
                         <strong>
                           {commentTarget.kind === 'commit'
                             ? t('workspace.comment-commit')
@@ -1146,7 +1149,7 @@ function WorkspacePanel({
                       </div>
                     )}
                     {commentNotice !== '' && (
-                      <p className="tockteam-review-comment-notice">
+                      <p className="tockteam-review-comment-notice mt-0 px-[9px] pt-0 pb-[9px] text-[9px] text-[var(--dsw-alias-label-secondary,#57606a)]">
                         {commentNotice}
                       </p>
                     )}
@@ -1155,16 +1158,16 @@ function WorkspacePanel({
               </section>
             )}
 
-            <section className="tockteam-workspace-facts">
-              <label className="tockteam-workspace-fact">
-                <span className="tockteam-workspace-fact-icon"><Monitor aria-hidden="true" /></span>
+            <section className="tockteam-workspace-facts grid gap-px">
+              <label className="tockteam-workspace-fact grid min-h-[38px] grid-cols-[26px_minmax(0,1fr)_auto] items-center gap-2 px-1.5 text-[13px] [&_select]:w-full [&_select]:min-w-0 [&_select]:cursor-pointer [&_select]:appearance-none [&_select]:border-0 [&_select]:bg-transparent [&_select]:p-0 [&_select]:text-inherit [&_select]:outline-0 [&_select]:[font:inherit]">
+                <span className="tockteam-workspace-fact-icon grid place-items-center text-[var(--dsw-alias-label-secondary,#57606a)] [&_svg]:size-4"><Monitor aria-hidden="true" /></span>
                 <select aria-label={t('workspace.execution-environment')} value="local" onChange={() => {}}>
                   <option value="local">{t('workspace.local')}</option>
                 </select>
-                <span className="tockteam-workspace-chevron"><ChevronDown aria-hidden="true" /></span>
+                <span className="tockteam-workspace-chevron text-[var(--dsw-alias-label-dimmed,#8c959f)] [&_svg]:block [&_svg]:size-3.5"><ChevronDown aria-hidden="true" /></span>
               </label>
-              <label className="tockteam-workspace-fact">
-                <span className="tockteam-workspace-fact-icon"><GitBranch aria-hidden="true" /></span>
+              <label className="tockteam-workspace-fact grid min-h-[38px] grid-cols-[26px_minmax(0,1fr)_auto] items-center gap-2 px-1.5 text-[13px] [&_select]:w-full [&_select]:min-w-0 [&_select]:cursor-pointer [&_select]:appearance-none [&_select]:border-0 [&_select]:bg-transparent [&_select]:p-0 [&_select]:text-inherit [&_select]:outline-0 [&_select]:[font:inherit]">
+                <span className="tockteam-workspace-fact-icon grid place-items-center text-[var(--dsw-alias-label-secondary,#57606a)] [&_svg]:size-4"><GitBranch aria-hidden="true" /></span>
                 <select
                   value={snapshot?.branch ?? ''}
                   disabled={snapshot?.kind !== 'repository' || busy}
@@ -1173,10 +1176,10 @@ function WorkspacePanel({
                 >
                   {(snapshot?.branches ?? []).map(branch => <option key={branch} value={branch}>{branch}</option>)}
                 </select>
-                <span className="tockteam-workspace-chevron"><ChevronDown aria-hidden="true" /></span>
+                <span className="tockteam-workspace-chevron text-[var(--dsw-alias-label-dimmed,#8c959f)] [&_svg]:block [&_svg]:size-3.5"><ChevronDown aria-hidden="true" /></span>
               </label>
               {snapshot?.kind === 'repository' && (
-                <div className="tockteam-new-branch">
+                <div className="tockteam-new-branch flex gap-1.5 pt-[3px] pr-1.5 pb-[5px] pl-10 [&_input]:h-7 [&_input]:min-w-0 [&_input]:flex-1 [&_input]:rounded-md [&_input]:border [&_input]:border-[var(--dsw-alias-border-l2,rgb(0_0_0_/_13%))] [&_input]:bg-[var(--dsw-alias-bg-layer-1,#fff)] [&_input]:px-[7px] [&_input]:text-[11px] [&_input]:text-inherit [&_button]:cursor-pointer [&_button]:rounded-md [&_button]:border [&_button]:border-[var(--dsw-alias-border-l2,rgb(0_0_0_/_13%))] [&_button]:bg-transparent [&_button]:px-[9px] [&_button]:py-1 [&_button]:text-[11px] [&_button]:leading-tight [&_button]:text-inherit [&_button:disabled]:cursor-default [&_button:disabled]:opacity-45">
                   <input
                     value={newBranch}
                     placeholder={t('workspace.new-branch')}
@@ -1192,18 +1195,18 @@ function WorkspacePanel({
               )}
               <button
                 type="button"
-                className="tockteam-workspace-fact tockteam-commit-toggle"
+                className="tockteam-workspace-fact tockteam-commit-toggle grid min-h-[38px] w-full grid-cols-[26px_minmax(0,1fr)_auto] items-center gap-2 rounded-[7px] border-0 bg-transparent px-1.5 text-left text-[13px] text-inherit hover:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_5%))]"
                 onClick={() => { setCommitOpen(open => !open) }}
                 aria-expanded={commitOpen}
               >
-                <span className="tockteam-workspace-fact-icon"><GitCommitHorizontal aria-hidden="true" /></span>
+                <span className="tockteam-workspace-fact-icon grid place-items-center text-[var(--dsw-alias-label-secondary,#57606a)] [&_svg]:size-4"><GitCommitHorizontal aria-hidden="true" /></span>
                 <span>{t('workspace.commit-or-push')}</span>
-                <span className="tockteam-workspace-chevron">
+                <span className="tockteam-workspace-chevron text-[var(--dsw-alias-label-dimmed,#8c959f)] [&_svg]:block [&_svg]:size-3.5">
                   {commitOpen ? <ChevronUp aria-hidden="true" /> : <ChevronDown aria-hidden="true" />}
                 </span>
               </button>
               {commitOpen && snapshot?.kind === 'repository' && (
-                <div className="tockteam-commit-box">
+                <div className="tockteam-commit-box grid gap-[7px] pt-[5px] pr-1.5 pb-2.5 pl-10 [&_textarea]:min-h-16 [&_textarea]:w-full [&_textarea]:resize-y [&_textarea]:rounded-md [&_textarea]:border [&_textarea]:border-[var(--dsw-alias-border-l2,rgb(0_0_0_/_13%))] [&_textarea]:bg-[var(--dsw-alias-bg-layer-1,#fff)] [&_textarea]:p-[7px] [&_textarea]:text-[11px] [&_textarea]:text-inherit [&>div]:flex [&>div]:gap-1.5 [&_button]:cursor-pointer [&_button]:rounded-md [&_button]:border [&_button]:border-[var(--dsw-alias-border-l2,rgb(0_0_0_/_13%))] [&_button]:bg-transparent [&_button]:px-[9px] [&_button]:py-1 [&_button]:text-[11px] [&_button]:leading-tight [&_button]:text-inherit [&_button:disabled]:cursor-default [&_button:disabled]:opacity-45 [&_small]:text-[10px] [&_small]:text-[var(--dsw-alias-label-dimmed,#8c959f)]">
                   <textarea
                     value={commitMessage}
                     placeholder={t('workspace.commit-message')}
@@ -1229,7 +1232,7 @@ function WorkspacePanel({
               )}
             </section>
 
-            <section className="tockteam-workspace-directory">
+            <section className="tockteam-workspace-directory relative grid min-h-[62px] grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2.5 gap-y-[3px] pt-[9px]! pr-10! pb-[9px]! pl-1.5! [&>span]:text-[13px] [&>small]:col-start-1 [&>small]:truncate [&>small]:text-[9px] [&>small]:text-[var(--dsw-alias-label-dimmed,#8c959f)] [&>button]:absolute [&>button]:right-[5px] [&>button]:size-7 [&>button]:cursor-pointer [&>button]:rounded-[7px] [&>button]:border-0 [&>button]:bg-transparent [&>button]:p-0 [&>button]:text-[var(--dsw-alias-label-secondary,#57606a)]">
               <span>{snapshot?.name ?? cwd.split(/[\\/]/).filter(Boolean).pop()}</span>
               <small title={cwd}>{cwd}</small>
               {window.dshDesktop?.chooseWorkspace !== undefined && (
@@ -1238,15 +1241,15 @@ function WorkspacePanel({
             </section>
 
             <section className="tockteam-processes">
-              <h3>{t('workspace.background-processes')}</h3>
+              <h3 className="mx-1.5 mt-2 mb-2.5 text-xs font-medium text-[var(--dsw-alias-label-secondary,#57606a)]">{t('workspace.background-processes')}</h3>
               {processes.map(process => (
-                <div key={process.callId} className="tockteam-process-row">
-                  <span><SquareTerminal aria-hidden="true" /></span>
-                  <code title={processTitle(process)}>{processTitle(process)}</code>
+                <div key={process.callId} className="tockteam-process-row grid min-h-[34px] grid-cols-[26px_minmax(0,1fr)] items-center gap-2 px-1.5">
+                  <span className="grid size-5 place-items-center text-[var(--dsw-alias-label-secondary,#57606a)] [&_svg]:size-[17px]"><SquareTerminal aria-hidden="true" /></span>
+                  <code className="truncate text-[11px] leading-[1.35] text-[var(--dsw-alias-label-primary,#1f2328)] [font-family:var(--ds-font-family-code,ui-monospace,monospace)]" title={processTitle(process)}>{processTitle(process)}</code>
                 </div>
               ))}
               {processes.length === 0 && (
-                <div className="tockteam-workspace-muted">{t('workspace.no-background-processes')}</div>
+                <div className="tockteam-workspace-muted p-[18px] text-center text-[11px] text-[var(--dsw-alias-label-dimmed,#8c959f)]">{t('workspace.no-background-processes')}</div>
               )}
             </section>
           </div>
@@ -1313,9 +1316,9 @@ function TextFileViewer({
   title: string
 }): JSX.Element {
   return (
-    <div className="tockteam-file-preview">
+    <div className="tockteam-file-preview min-h-0 flex-1 overflow-auto p-3 [&>div:first-child]:mb-2.5 [&>div:first-child]:flex [&>div:first-child]:items-center [&>div:first-child]:justify-between [&>div:first-child]:gap-2 [&_strong]:truncate [&_strong]:text-xs">
       <div><strong title={path}>{title}</strong></div>
-      <pre>{content}</pre>
+      <pre className="m-0 whitespace-pre-wrap text-[11px] leading-[1.55] [overflow-wrap:anywhere] [font-family:ui-monospace,SFMono-Regular,Menlo,monospace]">{content}</pre>
     </div>
   )
 }
@@ -1332,14 +1335,14 @@ function BinaryFileViewer({
   t: Translate<WorkspaceMessage>
 }): JSX.Element {
   return (
-    <div className="tockteam-file-preview">
+    <div className="tockteam-file-preview min-h-0 flex-1 overflow-auto p-3 [&>div:first-child]:mb-2.5 [&>div:first-child]:flex [&>div:first-child]:items-center [&>div:first-child]:justify-between [&>div:first-child]:gap-2 [&_button]:h-[27px] [&_button]:min-w-[27px] [&_button]:cursor-pointer [&_button]:rounded-[7px] [&_button]:border-0 [&_button]:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_5%))] [&_button]:px-2 [&_button]:text-inherit [&_strong]:truncate [&_strong]:text-xs">
       <div>
         <strong title={path}>{title}</strong>
         <button type="button" onClick={() => { void onOpen() }}>
           {t('files.open')}
         </button>
       </div>
-      <div className="tockteam-side-muted">{t('files.viewer.binary')}</div>
+      <div className="tockteam-side-muted p-[18px] text-[11px] text-[var(--dsw-alias-label-tertiary,#8c959f)]">{t('files.viewer.binary')}</div>
     </div>
   )
 }
@@ -1354,9 +1357,9 @@ function HtmlFileViewer({
   title: string
 }): JSX.Element {
   return (
-    <div className="tockteam-file-preview tockteam-html-preview">
+    <div className="tockteam-file-preview tockteam-html-preview flex min-h-0 flex-1 flex-col overflow-auto p-3 [&>div:first-child]:mb-2.5 [&>div:first-child]:flex [&>div:first-child]:items-center [&>div:first-child]:justify-between [&>div:first-child]:gap-2 [&_strong]:truncate [&_strong]:text-xs">
       <div><strong title={path}>{title}</strong></div>
-      <iframe title={title} sandbox="" srcDoc={content} />
+      <iframe className="min-h-[280px] flex-1 rounded-lg border border-[var(--dsw-alias-border-l1,rgb(0_0_0_/_8%))] bg-white" title={title} sandbox="" srcDoc={content} />
     </div>
   )
 }
@@ -1579,7 +1582,7 @@ function SidebarSettingsRow({
     void runtime.update({ [key]: enabled })
   }
   return (
-    <div className="tockteam-sidebar-settings">
+    <div className="tockteam-sidebar-settings grid w-full gap-[18px] px-0 pt-1 pb-3 text-[var(--dsw-alias-label-primary,#1f2328)] [&_.tockteam-sidebar-settings-heading]:flex [&_.tockteam-sidebar-settings-heading]:items-center [&_.tockteam-sidebar-settings-heading]:justify-between [&_.tockteam-sidebar-settings-heading]:gap-5 [&_.tockteam-sidebar-settings-heading>div]:grid [&_.tockteam-sidebar-settings-heading>div]:gap-1 [&_.tockteam-sidebar-settings-heading>button]:cursor-pointer [&_.tockteam-sidebar-settings-heading>button]:rounded-lg [&_.tockteam-sidebar-settings-heading>button]:border [&_.tockteam-sidebar-settings-heading>button]:border-[var(--dsw-alias-border-l1,rgb(0_0_0_/_9%))] [&_.tockteam-sidebar-settings-heading>button]:bg-transparent [&_.tockteam-sidebar-settings-heading>button]:px-2.5 [&_.tockteam-sidebar-settings-heading>button]:py-1.5 [&_.tockteam-sidebar-settings-row]:flex [&_.tockteam-sidebar-settings-row]:items-center [&_.tockteam-sidebar-settings-row]:justify-between [&_.tockteam-sidebar-settings-row]:gap-5 [&_.tockteam-sidebar-settings-row>span]:grid [&_.tockteam-sidebar-settings-row>span]:gap-1 [&_.tockteam-sidebar-settings-size]:flex [&_.tockteam-sidebar-settings-size]:items-center [&_.tockteam-sidebar-settings-size]:justify-between [&_.tockteam-sidebar-settings-size]:gap-5 max-[760px]:[&_.tockteam-sidebar-settings-size]:flex-col max-[760px]:[&_.tockteam-sidebar-settings-size]:items-start [&_.tockteam-sidebar-settings-size>span]:grid [&_.tockteam-sidebar-settings-size>span]:gap-1 [&_strong]:text-[13px] [&_p]:m-0 [&_p]:text-[11px] [&_p]:leading-[1.45] [&_p]:text-[var(--dsw-alias-label-secondary,#656d76)] [&_small]:m-0 [&_small]:text-[11px] [&_small]:leading-[1.45] [&_small]:text-[var(--dsw-alias-label-secondary,#656d76)] [&>section]:grid [&>section]:gap-2 [&>section>h4]:m-0 [&>section>h4]:text-xs [&_input[type='range']]:w-[min(210px,40%)] [&_input[type='range']]:accent-[var(--dsw-alias-interactive-primary,#4f7de8)] max-[760px]:[&_input[type='range']]:w-full [&_input[type='checkbox']]:relative [&_input[type='checkbox']]:m-0 [&_input[type='checkbox']]:h-[18px] [&_input[type='checkbox']]:w-8 [&_input[type='checkbox']]:flex-none [&_input[type='checkbox']]:cursor-pointer [&_input[type='checkbox']]:appearance-none [&_input[type='checkbox']]:rounded-full [&_input[type='checkbox']]:border [&_input[type='checkbox']]:border-[var(--dsw-alias-border-l1,rgb(0_0_0_/_14%))] [&_input[type='checkbox']]:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_8%))] [&_input[type='checkbox']]:transition-colors [&_input[type='checkbox']]:duration-140 [&_input[type='checkbox']]:after:absolute [&_input[type='checkbox']]:after:top-0.5 [&_input[type='checkbox']]:after:left-0.5 [&_input[type='checkbox']]:after:size-3 [&_input[type='checkbox']]:after:rounded-full [&_input[type='checkbox']]:after:bg-[var(--dsw-alias-bg-base,#fff)] [&_input[type='checkbox']]:after:shadow-[0_1px_3px_rgb(0_0_0_/_20%)] [&_input[type='checkbox']]:after:transition-transform [&_input[type='checkbox']]:after:duration-140 [&_input[type='checkbox']]:after:content-[''] [&_input[type='checkbox']:checked]:border-transparent [&_input[type='checkbox']:checked]:bg-[var(--dsw-alias-interactive-primary,#4f7de8)] [&_input[type='checkbox']:checked]:after:translate-x-3.5">
       <div className="tockteam-sidebar-settings-heading">
         <div>
           <strong>{t('settings.title')}</strong>
@@ -1678,7 +1681,7 @@ function SidebarSettingsRow({
           />
         </label>
         {runtimeState.error !== null && (
-          <p className="tockteam-sidebar-settings-error" role="alert">
+          <p className="tockteam-sidebar-settings-error text-[#cf222e]!" role="alert">
             {t(runtimeState.error === 'load'
               ? 'settings.runtime-load-failed'
               : 'settings.runtime-save-failed')}
@@ -1688,7 +1691,7 @@ function SidebarSettingsRow({
       <section>
         <h4>{t('settings.tools')}</h4>
         <p>{t('settings.tools-description')}</p>
-        <div className="tockteam-sidebar-settings-list">
+        <div className="tockteam-sidebar-settings-list grid grid-cols-2 gap-1.5 max-[760px]:grid-cols-1 [&_label]:flex [&_label]:min-h-9 [&_label]:items-center [&_label]:justify-between [&_label]:gap-2.5 [&_label]:rounded-[9px] [&_label]:border [&_label]:border-[var(--dsw-alias-border-l1,rgb(0_0_0_/_8%))] [&_label]:bg-[var(--dsw-alias-bg-base,transparent)] [&_label]:px-2.5 [&_label]:text-xs">
           {tabs.map(descriptor => (
             <label key={descriptor.id}>
               <span>{sidebarLabel(descriptor.title)}</span>
@@ -1706,7 +1709,7 @@ function SidebarSettingsRow({
       <section>
         <h4>{t('settings.viewers')}</h4>
         <p>{t('settings.viewers-description')}</p>
-        <div className="tockteam-sidebar-settings-list">
+        <div className="tockteam-sidebar-settings-list grid grid-cols-2 gap-1.5 max-[760px]:grid-cols-1 [&_label]:flex [&_label]:min-h-9 [&_label]:items-center [&_label]:justify-between [&_label]:gap-2.5 [&_label]:rounded-[9px] [&_label]:border [&_label]:border-[var(--dsw-alias-border-l1,rgb(0_0_0_/_8%))] [&_label]:bg-[var(--dsw-alias-bg-base,transparent)] [&_label]:px-2.5 [&_label]:text-xs">
           {viewers.map(descriptor => (
             <label key={descriptor.id}>
               <span>{sidebarLabel(descriptor.title)}</span>
@@ -1776,7 +1779,7 @@ function DesktopAppRail({
 }): ReactNode {
   const tockTutorActive = isTockTutorPath(location.pathname)
   return (
-    <nav className="tockteam-app-rail" aria-label="App Navigation">
+    <nav className="tockteam-app-rail flex h-full flex-col items-center gap-1 px-1 py-2 [&_button]:grid [&_button]:size-8 [&_button]:flex-none [&_button]:cursor-pointer [&_button]:place-items-center [&_button]:rounded-[7px] [&_button]:border-0 [&_button]:bg-transparent [&_button]:p-0 [&_button]:text-[color-mix(in_srgb,var(--dsw-alias-label-primary,#1f2328)_62%,transparent)] [&_button:hover]:bg-[color-mix(in_srgb,var(--dsw-alias-label-primary,#1f2328)_7%,transparent)] [&_button:hover]:text-[var(--dsw-alias-label-primary,#1f2328)] [&_button[aria-current='page']]:bg-[color-mix(in_srgb,var(--dsw-alias-label-primary,#1f2328)_11%,transparent)] [&_button[aria-current='page']]:text-[var(--dsw-alias-label-primary,#1f2328)] [&_button:focus-visible]:outline-2 [&_button:focus-visible]:outline-offset-1 [&_button:focus-visible]:outline-[var(--dsw-alias-border-focus,#315efb)] [&_svg]:size-[18px]" aria-label="App Navigation">
       <button
         type="button"
         aria-label="DeepSeek Harness"
@@ -1877,7 +1880,7 @@ function TockTutorRouteHost(props: RouteHostProps, routeSlots: RouteSlotsService
     : null
   const workbench = active
     ? createPortal(
-        <div className="tockteam-tocktutor-route" data-tockteam-tocktutor-route="true">
+        <div className="tockteam-tocktutor-route pointer-events-auto fixed z-[1001] bg-[var(--dsw-alias-bg-base,#fff)] [inset:var(--tockteam-titlebar-height,0)_0_0_var(--tockteam-rail-width)]" data-tockteam-tocktutor-route="true">
           {props.renderSlot(TOCKTUTOR_ROUTE_SLOT, { location, navigate })}
         </div>,
         document.body,

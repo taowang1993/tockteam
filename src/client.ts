@@ -117,6 +117,7 @@ function installBranding(): () => void {
     )) {
       const brand = document.createElement('span')
       brand.dataset.tockteamSidebarBrand = 'true'
+      brand.className = 'inline-flex items-center gap-[7px] whitespace-nowrap text-[15px] leading-5 font-semibold text-inherit [&_svg]:size-5 [&_svg]:flex-none'
       brand.innerHTML = `${TOCKTEAM_LOGO_MARK}<span>TockTeam</span>`
       originalSidebarBrands.set(brand, wordmark)
       wordmark.replaceWith(brand)
@@ -125,6 +126,7 @@ function installBranding(): () => void {
       "[data-slot='sidebar'] button:is([aria-label='Open sidebar'],[aria-label='打开侧边栏']) > svg[viewBox='0 0 23.16 17.04']:not([data-tockteam-sidebar-fish])",
     )) {
       fish.dataset.tockteamSidebarFish = 'true'
+      fish.classList.add('hidden!')
       if (fish.parentElement?.querySelector<SVGSVGElement>(
         ':scope > [data-tockteam-sidebar-logo]',
       ) !== null) continue
@@ -133,6 +135,7 @@ function installBranding(): () => void {
       const mark = logo.querySelector<SVGSVGElement>('svg')
       if (mark === null) continue
       mark.dataset.tockteamSidebarLogo = 'true'
+      mark.classList.add('size-5', 'flex-none')
       fish.before(mark)
     }
   }
@@ -153,6 +156,7 @@ function installBranding(): () => void {
     }
     for (const logo of document.querySelectorAll('[data-tockteam-sidebar-logo]')) logo.remove()
     for (const fish of document.querySelectorAll<SVGSVGElement>('[data-tockteam-sidebar-fish]')) {
+      fish.classList.remove('hidden!')
       delete fish.dataset.tockteamSidebarFish
     }
   }

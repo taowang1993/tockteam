@@ -18,7 +18,7 @@ test('desktop client replaces upstream branding with TockTeam', () => {
 
   assert.match(client, /element\.textContent = 'TockTeam Desktop'/)
   assert.match(client, /\['Into the Unknown', '探索未知之境', '探索未至之境'\]/)
-  assert.match(`${client}\n${tailwind}`, /data-tockteam-sidebar-brand/)
+  assert.match(client, /brand\.dataset\.tockteamSidebarBrand = 'true'/u)
   assert.match(client, /data-tockteam-hero-headline/)
   assert.match(client, /tockteamHeroLogo/)
   assert.match(client, /originalHeroLogos/)
@@ -39,7 +39,8 @@ test('desktop client replaces upstream branding with TockTeam', () => {
   assert.match(client, /observer\.observe\(document\.body, \{ childList: true, characterData: true, subtree: true \}\)/)
   assert.equal(client.match(/new MutationObserver/g)?.length, 1)
   assert.match(client, /viewBox="0 0 20 20" width="20" height="20"/)
-  assert.match(tailwind, /\[data-tockteam-sidebar-fish\] \{\s*display: none !important;/)
+  assert.match(client, /fish\.classList\.add\('hidden!'\)/u)
+  assert.doesNotMatch(tailwind, /data-tockteam-sidebar-fish/u)
   assert.equal(client.match(/M10 5\.5C6\.96243 5\.5 4\.5 7\.96243 4\.5 11/g)?.length, 1)
   assert.match(client, /if \(brand\.isConnected\) brand\.replaceWith\(original\)/)
   assert.doesNotMatch(client, /data-tockteam-hero-preview/)
