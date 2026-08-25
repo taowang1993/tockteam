@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { test } from 'node:test'
 import { previewRuntimeBaseEnvironment } from '../plugins/plugin-marketplace/src/host/platform.ts'
 import {
@@ -31,8 +32,8 @@ test('preview base environment withholds ambient Git, GitHub, SSH, and user-home
     HOME: '/preview-home',
     LANG: 'en_US.UTF-8',
     USERPROFILE: '/preview-home',
-    XDG_CACHE_HOME: '/preview-home/.cache',
-    XDG_CONFIG_HOME: '/preview-home/.config',
+    XDG_CACHE_HOME: join('/preview-home', '.cache'),
+    XDG_CONFIG_HOME: join('/preview-home', '.config'),
   })
 })
 

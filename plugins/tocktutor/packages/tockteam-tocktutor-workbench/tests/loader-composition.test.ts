@@ -3,7 +3,7 @@ import { execFile } from 'node:child_process'
 import { createRequire } from 'node:module'
 import { mkdir, mkdtemp, readFile, readdir, realpath, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join, relative } from 'node:path'
+import { join, relative, sep } from 'node:path'
 import test from 'node:test'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { promisify } from 'node:util'
@@ -111,8 +111,8 @@ async function loadHost(
     '',
   ].join('\n'))
   const resolved = consumerRequire.resolve(packageName)
-  assert.equal(relative(consumerRoot, resolved).startsWith('node_modules/'), true)
-  assert.equal(resolved.endsWith('/dist/index.js'), true)
+  assert.equal(relative(consumerRoot, resolved).startsWith(`node_modules${sep}`), true)
+  assert.equal(resolved.endsWith(join('dist', 'index.js')), true)
 
   const context = new Context()
   context.baseUrl = pathToFileURL(join(consumerRoot, 'package.json')).href
@@ -158,8 +158,8 @@ async function verifyPackedClient(
   ].join('\n'))
 
   const clientPath = join(packageRoot, 'dist/client.js')
-  assert.equal(relative(consumerRoot, clientPath).startsWith('node_modules/'), true)
-  assert.equal(clientPath.endsWith('/dist/client.js'), true)
+  assert.equal(relative(consumerRoot, clientPath).startsWith(`node_modules${sep}`), true)
+  assert.equal(clientPath.endsWith(join('dist', 'client.js')), true)
   const { ClientModuleSystem } = await import(
     pathToFileURL(join(dshRoot, 'packages/client/modules/lib/types/client/system.js')).href
   )

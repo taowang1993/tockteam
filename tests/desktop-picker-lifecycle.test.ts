@@ -6,6 +6,7 @@ import { createServer } from 'node:net'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
+import { fileURLToPath } from 'node:url'
 import {
   MAX_DESKTOP_SOURCE_DEPTH,
   MAX_DESKTOP_SOURCE_ENTRIES,
@@ -538,7 +539,7 @@ test('crash recovery preserves evidence and validates resolved tombstones idempo
     const activeVault = await canonicalTemp('tockteam-picker-active-')
     const destinationPath = join(root, 'output.html')
     const child = spawnSync(process.execPath, [
-      new URL('./fixtures/desktop-picker-crash.ts', import.meta.url).pathname,
+      fileURLToPath(new URL('./fixtures/desktop-picker-crash.ts', import.meta.url)),
       checkpoint,
       destinationPath,
       recoveryRoot,
