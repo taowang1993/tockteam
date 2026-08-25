@@ -5,6 +5,9 @@
 - id: cc-tui
   disabled: true
 
+- id: dsh-tui
+  disabled: true
+
 - insert:
   - id: tockteam-tui
     name: '@tockteam/tui'
@@ -13,7 +16,8 @@
     name: '@tockteam/skins'
 
   - id: tockteam-tui-renderer
-    name: 'dsh-cc-tui'
+    name: '@deepseek-harness-tui/dsh-tui'
+    inject: [workspaceRegistry, agents, tuiWorkspaces, tuiScenes, tuiDialogs, tuiStatus, tuiShortcuts, tuiRenderers]
     config:
       sessionId: !!js process.env.TOCKTEAM_TUI_SESSION_ID ?? undefined
       provider: !!js process.env.TOCKTEAM_TUI_PROVIDER ?? 'deepseek-official'

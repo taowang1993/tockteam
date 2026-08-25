@@ -39,8 +39,8 @@ separate Web Terminal or shell plugin is required.
 ## DSH-better-sidebar
 
 - Project: <https://github.com/omdsh-dev/DSH-better-sidebar>
-- Pinned release: `v0.9.0`
-- Pinned revision: `2e9db44a71bb75c9fa1185330541dce2582deee3`
+- Pinned release: `v0.15.0`
+- Pinned revision: `f0965e1d6157a3e06ed2f5c7775a64428d5d3c29`
 - Declared license: MIT
 - TockTeam components: `@tockteam/better-sidebar-runtime` and
   `@tockteam/sidebar`
@@ -75,8 +75,8 @@ skins, a desktop Settings interface, and Host-backed persistence.
 ## dsh-TUI
 
 - Project: <https://github.com/ccch1mneyyy/dsh-TUI>
-- Upstream package: `dsh-cc-tui@0.4.1`
-- Pinned revision: `6a8956678fc3746ed14b62bfee066ee8fc68f3cb`
+- Upstream package: `@deepseek-harness-tui/dsh-tui@0.8.8`
+- Pinned revision: `bdff0afb028d50c304e4474fd40f83b0721d50fd`
 - Declared license: MIT
 - TockTeam component: `@tockteam/tui`
 

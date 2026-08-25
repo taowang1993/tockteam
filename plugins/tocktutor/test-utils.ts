@@ -8,7 +8,7 @@ const execFile = promisify(execFileCallback)
 
 export const workspaceRoot = dirname(fileURLToPath(import.meta.url))
 export const repositoryRoot = join(workspaceRoot, '..', '..')
-export const dshRoot = join(repositoryRoot, '.cache', 'dsh-source', '47f943859bef')
+export const dshRoot = join(repositoryRoot, '.cache', 'dsh-source', 'b150a551b8d4')
 const desktopPackage = JSON.parse(await readFile(join(repositoryRoot, 'package.json'), 'utf8')) as {
   version: string
 }
@@ -16,6 +16,59 @@ export const desktopArtifact = join(repositoryRoot, `tockteam-desktop-${desktopP
 
 export function pluginRoot(directory: string): string {
   return join(workspaceRoot, 'packages', directory)
+}
+
+interface PackedClientModuleRow {
+  external?: string[]
+  id: string
+  immediately?: boolean
+  inject?: string[]
+  rev: string
+  url: string
+}
+
+interface PackedClientModuleOptions {
+  loadBundle(url: string): Promise<void>
+  modules: readonly PackedClientModuleRow[]
+  staticModules: Record<string, unknown>
+}
+
+/** Build rc.2 ClientModuleSystem inputs around the HTML loader facade used in production. */
+export function packedClientModuleSystemOptions(options: PackedClientModuleOptions) {
+  const pendingQueue: unknown[] = []
+  const registrationTarget = {
+    mode: 'queue' as 'live' | 'queue',
+    pendingQueue,
+    load(registration: unknown) { pendingQueue.push(registration) },
+    create(): never { throw new Error('packed test loader bootstrap is already complete') },
+  }
+  Object.defineProperty(globalThis, '__ModuleLoader__', {
+    configurable: true,
+    value: registrationTarget,
+  })
+  return {
+    bootstrapModule: {
+      exports: {},
+      id: '@deepseek-ai/dsh-client-modules',
+    },
+    loadBundle: options.loadBundle,
+    manifest: {
+      modules: options.modules.map(row => ({
+        external: row.external ?? [],
+        id: row.id,
+        rev: row.rev,
+        url: row.url,
+      })),
+      plugins: options.modules.map(row => ({
+        id: row.id,
+        immediately: row.immediately === true,
+        inject: row.inject ?? [],
+      })),
+      rev: 'packed',
+    },
+    registrationTarget,
+    staticModules: options.staticModules,
+  }
 }
 
 async function packPackage(root: string, output: string): Promise<string> {

@@ -14,7 +14,7 @@ import { dirname, join } from 'node:path'
 import type { Readable } from 'node:stream'
 import { test } from 'node:test'
 import { fileURLToPath } from 'node:url'
-import { TUI_BUNDLES, TUI_PROFILE } from '../src/profile.ts'
+import { ensureTuiProfile, TUI_BUNDLES, TUI_PROFILE } from '../src/profile.ts'
 import { adaptTuiRendererPackage } from '../scripts/tui-upstream-adapter.mjs'
 import {
   DEFAULT_TUI_HOME,
@@ -148,6 +148,31 @@ test('TUI launcher initializes its profile and attaches the packaged runtime', a
   }
 })
 
+test('TUI profile retires the legacy renderer bundle without removing user bundles', () => {
+  const root = mkdtempSync(join(tmpdir(), 'tockteam-tui-profile-'))
+  const profile = join(root, 'profiles', TUI_PROFILE)
+  mkdirSync(profile, { recursive: true })
+  writeFileSync(join(profile, 'package.json'), JSON.stringify({
+    dependencies: {
+      'dsh-cc-tui': '0.4.1',
+      '@example/user-bundle': '1.0.0',
+    },
+    dsh: {
+      profile: {
+        bundles: ['@deepseek-ai/dsh-base', 'dsh-cc-tui', '@tockteam/tui', '@example/user-bundle'],
+      },
+    },
+  }))
+  try {
+    ensureTuiProfile(root)
+    const manifest = JSON.parse(readFileSync(join(profile, 'package.json'), 'utf8'))
+    assert.deepEqual(manifest.dsh.profile.bundles, [...TUI_BUNDLES, '@example/user-bundle'])
+    assert.deepEqual(manifest.dependencies, { '@example/user-bundle': '1.0.0' })
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
 test('TUI bundle mounts its surface and skins before the upstream renderer', () => {
   const root = join(dirname(fileURLToPath(import.meta.url)), '..')
   const patch = readFileSync(
@@ -155,9 +180,10 @@ test('TUI bundle mounts its surface and skins before the upstream renderer', () 
     'utf8',
   ).replace(/\r\n?/g, '\n')
   assert.match(patch, /- id: cc-tui\n  disabled: true/)
+  assert.match(patch, /- id: dsh-tui\n  disabled: true/)
   const surface = patch.indexOf("name: '@tockteam/tui'")
   const skins = patch.indexOf("name: '@tockteam/skins'")
-  const renderer = patch.indexOf("name: 'dsh-cc-tui'")
+  const renderer = patch.indexOf("name: '@deepseek-harness-tui/dsh-tui'")
   assert.ok(surface >= 0 && surface < skins && skins < renderer)
   assert.equal((TUI_BUNDLES as readonly string[]).includes('tockbot-note-vault'), false)
   assert.equal((TUI_BUNDLES as readonly string[]).includes('tockbot-note-runtime'), false)
@@ -175,29 +201,33 @@ test('TUI upstream adapter removes legacy terminal branding and scopes storage',
     assert.match(readFileSync(join(lib, 'components', 'LogoV2.js'), 'utf8'), /TockTeam TUI/)
     assert.match(readFileSync(join(lib, 'components', 'LogoV2.js'), 'utf8'), /TOCKTEAM_TUI_VERSION/)
     assert.match(readFileSync(join(lib, 'screens', 'Chat.js'), 'utf8'), /TockTeam TUI/)
-    assert.match(readFileSync(join(lib, 'customTheme.js'), 'utf8'), /TOCKTEAM_TUI_CONFIG_HOME/)
-    assert.match(readFileSync(join(lib, 'themePrefs.js'), 'utf8'), /TOCKTEAM_TUI_CONFIG_HOME/)
+    assert.match(readFileSync(join(lib, 'customTheme.js'), 'utf8'), /DATA_DIR/)
+    assert.match(readFileSync(join(lib, 'themePrefs.js'), 'utf8'), /DATA_DIR/)
     const commands = readFileSync(join(lib, 'commands.js'), 'utf8')
     assert.match(commands, /Exit TockTeam TUI/)
-    assert.doesNotMatch(commands, /description: .*dsh-cc/)
-    const plugin = readFileSync(join(lib, 'plugin.js'), 'utf8')
+    assert.doesNotMatch(commands, /description: .*dsh-tui/)
+    const plugin = readFileSync(join(lib, 'dsh-adapter', 'plugin.js'), 'utf8')
     assert.match(plugin, /tockteam tui --resume/)
-    assert.doesNotMatch(plugin, /dsh-cc --resume/)
+    assert.doesNotMatch(plugin, /dsh-tui --resume/)
     const messages = readFileSync(join(lib, 'i18n.js'), 'utf8')
     assert.match(messages, /TockTeam TUI session export/)
-    assert.doesNotMatch(messages, /dsh-cc|~\/\.dsh-cc/)
-    const channel = readFileSync(join(lib, 'channel.js'), 'utf8')
+    assert.doesNotMatch(messages, /~\/\.dsh-tui/)
+    const channel = readFileSync(join(lib, 'dsh-adapter', 'channel.js'), 'utf8')
     assert.match(channel, /tockteam-tui-export-/)
-    assert.doesNotMatch(channel, /dsh-cc-export-|join\(userHome, '\.dsh-cc\//)
+    assert.doesNotMatch(channel, /dsh-tui-export-|join\(userHome, '\.dsh-tui\//)
     const chat = readFileSync(join(lib, 'screens', 'Chat.js'), 'utf8')
-    assert.doesNotMatch(chat, /userHome}\\\\\.dsh-cc/)
+    assert.match(chat, /TOCKTEAM_TUI_TITLE/)
     const themeProvider = readFileSync(
       join(lib, 'components', 'design-system', 'ThemeProvider.js'),
       'utf8',
     )
-    assert.doesNotMatch(themeProvider, /\[dsh-cc-tui\]|~\/\.dsh-cc/)
+    assert.doesNotMatch(themeProvider, /\[dsh-tui\]|~\/\.dsh-tui/)
     const customTheme = readFileSync(join(lib, 'customTheme.js'), 'utf8')
-    assert.doesNotMatch(customTheme, /\[dsh-cc-tui\]|~\/\.dsh-cc/)
+    assert.doesNotMatch(customTheme, /\[dsh-tui\]|~\/\.dsh-tui/)
+    const paths = readFileSync(join(lib, 'utils', 'paths.js'), 'utf8')
+    assert.match(paths, /TOCKTEAM_TUI_CONFIG_HOME/)
+    assert.match(paths, /join\(homeDir\(\), '\.tockteam', 'tui'\)/)
+    assert.match(paths, /LEGACY_DATA_DIR = DATA_DIR/)
     for (const name of [
       'activityPrefs.js',
       'effortPrefs.js',
@@ -208,8 +238,7 @@ test('TUI upstream adapter removes legacy terminal branding and scopes storage',
       'themePrefs.js',
     ]) {
       const preferences = readFileSync(join(lib, name), 'utf8')
-      assert.match(preferences, /TOCKTEAM_TUI_CONFIG_HOME/)
-      assert.doesNotMatch(preferences, /join\(homedir\(\), '\.dsh-cc'\)/)
+      assert.match(preferences, /DATA_DIR/)
     }
     assert.doesNotThrow(() => { adaptTuiRendererPackage(root) })
   } finally {

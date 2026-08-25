@@ -12,7 +12,13 @@ import test from 'node:test'
 import { Context } from '@deepseek-ai/cordis'
 import Include from '@deepseek-ai/cordis-plugin-include'
 import Loader from '@deepseek-ai/cordis-plugin-loader'
-import { desktopArtifact, dshRoot, packPlugin, packUi } from '../../../test-utils.ts'
+import {
+  desktopArtifact,
+  dshRoot,
+  packedClientModuleSystemOptions,
+  packPlugin,
+  packUi,
+} from '../../../test-utils.ts'
 
 const exec = promisify(execFile)
 const repositoryRoot = fileURLToPath(new URL('..', import.meta.url))
@@ -200,7 +206,7 @@ async function verifyPackedClient(require: NodeJS.Require): Promise<void> {
   const previousWindow = Object.getOwnPropertyDescriptor(globalThis, 'window')
   Object.defineProperty(globalThis, 'window', { configurable: true, value: globalThis })
   try {
-    const modules = new ClientModuleSystem({
+    const modules = new ClientModuleSystem(packedClientModuleSystemOptions({
       modules: [{ id: packageName, rev: 'packed', url: pathToFileURL(clientPath).href }],
       staticModules: {
         react: await import(pathToFileURL(require.resolve('react')).href),
@@ -211,7 +217,7 @@ async function verifyPackedClient(require: NodeJS.Require): Promise<void> {
         const path = fileURLToPath(url)
         runInThisContext(await readFile(path, 'utf8'), { filename: path })
       },
-    })
+    }))
     const client = await modules.import(packageName) as {
       ImportExportReviewController: new (remote: unknown) => {
         getSnapshot(): { error: string | null; phase: string }
@@ -327,6 +333,7 @@ async function verifyPackedClient(require: NodeJS.Require): Promise<void> {
     assert.deepEqual(reload, ['mount', 'panel', 'inject', 'remote'])
   } finally {
     delete (globalThis as { dshDesktop?: unknown }).dshDesktop
+    delete (globalThis as { __ModuleLoader__?: unknown }).__ModuleLoader__
     if (previousWindow === undefined) delete (globalThis as { window?: unknown }).window
     else Object.defineProperty(globalThis, 'window', previousWindow)
   }

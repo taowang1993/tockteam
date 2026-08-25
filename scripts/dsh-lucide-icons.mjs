@@ -189,7 +189,7 @@ function PendingGlyph() {
   },
   {
     path: 'packages/client/ui-conversation/src/client/skeleton/InputBar.tsx',
-    sha256: '97cfe4ec31c89d0a50144c096ca8c81928c96628a561257d3d34406fb713a451',
+    sha256: 'a46e5f74f6f247361a54cc5cb53862e64f8e72fd374eae1cb0df489cbe23bd07',
     transform(source) {
       let next = replaceChecked(
         source,
@@ -217,7 +217,7 @@ function PendingGlyph() {
   },
   {
     path: 'packages/client/ui-settings-models/src/client/ModelListEditor.tsx',
-    sha256: '57a863006335dfd855cbf29dfa712fe69e699deced9a1e3bf4e3e3a3f14a16a7',
+    sha256: '70275bbb328d1085d0fdf4c69999539bbc70a288c8a01a45e5de06283b838ae9',
     transform(source) {
       let next = replaceChecked(
         source,

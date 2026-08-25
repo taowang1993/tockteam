@@ -65,9 +65,11 @@ export const WEB_BUNDLES = [
 /** Bundle order owned by the TockTeam terminal distribution. */
 export const TUI_BUNDLES = [
   '@deepseek-ai/dsh-base',
-  'dsh-cc-tui',
+  '@deepseek-harness-tui/dsh-tui',
   '@tockteam/tui',
 ] as const
+
+const RETIRED_TUI_BUNDLES = ['dsh-cc-tui'] as const
 
 interface ProfileManifest {
   name?: string
@@ -147,6 +149,8 @@ export const TUI_PROFILE_SPEC: ProfileSpec = Object.freeze({
   bundles: TUI_BUNDLES,
   manifestName: 'dsh-profile-tui',
   name: TUI_PROFILE,
+  retiredBundles: RETIRED_TUI_BUNDLES,
+  retiredDependencies: RETIRED_TUI_BUNDLES,
 })
 
 /**

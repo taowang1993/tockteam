@@ -12,7 +12,13 @@ import { Context } from '@deepseek-ai/cordis'
 import Include from '@deepseek-ai/cordis-plugin-include'
 import Loader from '@deepseek-ai/cordis-plugin-loader'
 import { SlotCore } from '@deepseek-ai/dsh-client-ui-slots'
-import { desktopArtifact, dshRoot, packPlugin, packUi } from '../../../test-utils.ts'
+import {
+  desktopArtifact,
+  dshRoot,
+  packedClientModuleSystemOptions,
+  packPlugin,
+  packUi,
+} from '../../../test-utils.ts'
 
 const execFileAsync = promisify(execFile)
 const packageName = '@tockteam/tocktutor-workbench'
@@ -162,7 +168,7 @@ async function verifyPackedClient(
   try {
     const react = await import(pathToFileURL(consumerRequire.resolve('react')).href)
     const reactServer = await import(pathToFileURL(consumerRequire.resolve('react-dom/server')).href)
-    const modules = new ClientModuleSystem({
+    const modules = new ClientModuleSystem(packedClientModuleSystemOptions({
       modules: [{ id: packageName, rev: 'packed', url: pathToFileURL(clientPath).href }],
       staticModules: {
         react,
@@ -176,7 +182,7 @@ async function verifyPackedClient(
         const path = fileURLToPath(url)
         runInThisContext(await readFile(path, 'utf8'), { filename: path })
       },
-    })
+    }))
     const client = await modules.import(packageName) as {
       apply(context: unknown): Promise<() => Promise<void>>
       name: string

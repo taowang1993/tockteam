@@ -5,28 +5,28 @@ settings:
   excludeLinksFromLockfile: false
 
 overrides:
-  '@deepseek-ai/cordis': link:../../.cache/dsh-source/47f943859bef/vendor/cordis
-  '@deepseek-ai/dsh-agent': link:../../.cache/dsh-source/47f943859bef/packages/core/agent
-  '@deepseek-ai/dsh-api-gateway': link:../../.cache/dsh-source/47f943859bef/packages/api/gateway
-  '@deepseek-ai/dsh-client-connection': link:../../.cache/dsh-source/47f943859bef/packages/client/connection
-  '@deepseek-ai/dsh-client-modules': link:../../.cache/dsh-source/47f943859bef/packages/client/modules
-  '@deepseek-ai/dsh-client-runtime': link:../../.cache/dsh-source/47f943859bef/packages/client/runtime
-  '@deepseek-ai/dsh-client-ui-slots': link:../../.cache/dsh-source/47f943859bef/packages/client/ui-slots
-  '@deepseek-ai/dsh-host-webserver': link:../../.cache/dsh-source/47f943859bef/packages/host/webserver
-  '@deepseek-ai/dsh-invariants': link:../../.cache/dsh-source/47f943859bef/packages/runtime-diagnostics/invariants
-  '@deepseek-ai/dsh-llm': link:../../.cache/dsh-source/47f943859bef/packages/llm/llm
-  '@deepseek-ai/dsh-session': link:../../.cache/dsh-source/47f943859bef/packages/core/session
-  '@deepseek-ai/dsh-settings': link:../../.cache/dsh-source/47f943859bef/packages/settings/settings
-  '@deepseek-ai/dsh-storage': link:../../.cache/dsh-source/47f943859bef/packages/storage/storage
-  '@deepseek-ai/dsh-storage-domain': link:../../.cache/dsh-source/47f943859bef/packages/storage/storage-domain
-  '@deepseek-ai/dsh-storage-json': link:../../.cache/dsh-source/47f943859bef/packages/storage/storage-json
-  '@deepseek-ai/dsh-subprocess': link:../../.cache/dsh-source/47f943859bef/packages/subprocess/subprocess
-  '@deepseek-ai/dsh-subprocess-local': link:../../.cache/dsh-source/47f943859bef/packages/subprocess/subprocess-local
-  '@deepseek-ai/dsh-system-prompt': link:../../.cache/dsh-source/47f943859bef/packages/core/system-prompt
-  '@deepseek-ai/dsh-tools': link:../../.cache/dsh-source/47f943859bef/packages/core/tools
-  '@deepseek-ai/dsh-typert-generator': link:../../.cache/dsh-source/47f943859bef/packages/typert/generator
-  '@deepseek-ai/dsh-typert-protocol': link:../../.cache/dsh-source/47f943859bef/packages/typert/protocol
-  '@deepseek-ai/dsh-typert-registry': link:../../.cache/dsh-source/47f943859bef/packages/typert/registry
+  '@deepseek-ai/cordis': link:../../.cache/dsh-source/b150a551b8d4/vendor/cordis
+  '@deepseek-ai/dsh-agent': link:../../.cache/dsh-source/b150a551b8d4/packages/core/agent
+  '@deepseek-ai/dsh-api-gateway': link:../../.cache/dsh-source/b150a551b8d4/packages/api/gateway
+  '@deepseek-ai/dsh-client-connection': link:../../.cache/dsh-source/b150a551b8d4/packages/client/connection
+  '@deepseek-ai/dsh-client-modules': link:../../.cache/dsh-source/b150a551b8d4/packages/client/modules
+  '@deepseek-ai/dsh-client-runtime': link:../../.cache/dsh-source/b150a551b8d4/packages/client/runtime
+  '@deepseek-ai/dsh-client-ui-slots': link:../../.cache/dsh-source/b150a551b8d4/packages/client/ui-slots
+  '@deepseek-ai/dsh-host-webserver': link:../../.cache/dsh-source/b150a551b8d4/packages/host/webserver
+  '@deepseek-ai/dsh-invariants': link:../../.cache/dsh-source/b150a551b8d4/packages/runtime-diagnostics/invariants
+  '@deepseek-ai/dsh-llm': link:../../.cache/dsh-source/b150a551b8d4/packages/llm/llm
+  '@deepseek-ai/dsh-session': link:../../.cache/dsh-source/b150a551b8d4/packages/core/session
+  '@deepseek-ai/dsh-settings': link:../../.cache/dsh-source/b150a551b8d4/packages/settings/settings
+  '@deepseek-ai/dsh-storage': link:../../.cache/dsh-source/b150a551b8d4/packages/storage/storage
+  '@deepseek-ai/dsh-storage-domain': link:../../.cache/dsh-source/b150a551b8d4/packages/storage/storage-domain
+  '@deepseek-ai/dsh-storage-json': link:../../.cache/dsh-source/b150a551b8d4/packages/storage/storage-json
+  '@deepseek-ai/dsh-subprocess': link:../../.cache/dsh-source/b150a551b8d4/packages/subprocess/subprocess
+  '@deepseek-ai/dsh-subprocess-local': link:../../.cache/dsh-source/b150a551b8d4/packages/subprocess/subprocess-local
+  '@deepseek-ai/dsh-system-prompt': link:../../.cache/dsh-source/b150a551b8d4/packages/core/system-prompt
+  '@deepseek-ai/dsh-tools': link:../../.cache/dsh-source/b150a551b8d4/packages/core/tools
+  '@deepseek-ai/dsh-typert-generator': link:../../.cache/dsh-source/b150a551b8d4/packages/typert/generator
+  '@deepseek-ai/dsh-typert-protocol': link:../../.cache/dsh-source/b150a551b8d4/packages/typert/protocol
+  '@deepseek-ai/dsh-typert-registry': link:../../.cache/dsh-source/b150a551b8d4/packages/typert/registry
   '@tockteam/desktop': link:../..
   vite: 6.4.3
 
@@ -80,17 +80,17 @@ importers:
   packages/tockbot-note-desktop:
     dependencies:
       '@deepseek-ai/cordis':
-        specifier: link:../../../../.cache/dsh-source/47f943859bef/vendor/cordis
-        version: link:../../../../.cache/dsh-source/47f943859bef/vendor/cordis
+        specifier: link:../../../../.cache/dsh-source/b150a551b8d4/vendor/cordis
+        version: link:../../../../.cache/dsh-source/b150a551b8d4/vendor/cordis
       '@deepseek-ai/dsh-client-runtime':
-        specifier: link:../../../../.cache/dsh-source/47f943859bef/packages/client/runtime
-        version: link:../../../../.cache/dsh-source/47f943859bef/packages/client/runtime
+        specifier: link:../../../../.cache/dsh-source/b150a551b8d4/packages/client/runtime
+        version: link:../../../../.cache/dsh-source/b150a551b8d4/packages/client/runtime
       '@deepseek-ai/dsh-client-ui-slots':
-        specifier: link:../../../../.cache/dsh-source/47f943859bef/packages/client/ui-slots
-        version: link:../../../../.cache/dsh-source/47f943859bef/packages/client/ui-slots
+        specifier: link:../../../../.cache/dsh-source/b150a551b8d4/packages/client/ui-slots
+        version: link:../../../../.cache/dsh-source/b150a551b8d4/packages/client/ui-slots
       '@deepseek-ai/dsh-typert-protocol':
-        specifier: link:../../../../.cache/dsh-source/47f943859bef/packages/typert/protocol
-        version: link:../../../../.cache/dsh-source/47f943859bef/packages/typert/protocol
+        specifier: link:../../../../.cache/dsh-source/b150a551b8d4/packages/typert/protocol
+        version: link:../../../../.cache/dsh-source/b150a551b8d4/packages/typert/protocol
       '@tockteam/desktop':
         specifier: link:../../../..
         version: link:../../../..
@@ -103,13 +103,13 @@ importers:
     devDependencies:
       '@deepseek-ai/cordis-plugin-include':
         specifier: 1.0.6
-        version: 1.0.6(@deepseek-ai/cordis-plugin-loader@1.0.2(@deepseek-ai/cordis@..+.cache+dsh-source+47f943859bef+vendor+cordis))(@deepseek-ai/cordis@..+.cache+dsh-source+47f943859bef+vendor+cordis)
+        version: 1.0.6(@deepseek-ai/cordis-plugin-loader@1.0.2(@deepseek-ai/cordis@..+.cache+dsh-source+b150a551b8d4+vendor+cordis))(@deepseek-ai/cordis@..+.cache+dsh-source+b150a551b8d4+vendor+cordis)
       '@deepseek-ai/cordis-plugin-loader':
         specifier: 1.0.2
-        version: 1.0.2(@deepseek-ai/cordis@..+.cache+dsh-source+47f943859bef+vendor+cordis)
+        version: 1.0.2(@deepseek-ai/cordis@..+.cache+dsh-source+b150a551b8d4+vendor+cordis)
       '@deepseek-ai/dsh-typert-generator':
-        specifier: link:../../../../.cache/dsh-source/47f943859bef/packages/typert/generator
-        version: link:../../../../.cache/dsh-source/47f943859bef/packages/typert/generator
+        specifier: link:../../../../.cache/dsh-source/b150a551b8d4/packages/typert/generator
+        version: link:../../../../.cache/dsh-source/b150a551b8d4/packages/typert/generator
       '@tockteam/tocktutor-workbench':
         specifier: workspace:0.1.7
         version: link:../tockteam-tocktutor-workbench
@@ -141,18 +141,18 @@ importers:
   packages/tockbot-note-runtime:
     dependencies:
       '@deepseek-ai/cordis':
-        specifier: link:../../../../.cache/dsh-source/47f943859bef/vendor/cordis
-        version: link:../../../../.cache/dsh-source/47f943859bef/vendor/cordis
+        specifier: link:../../../../.cache/dsh-source/b150a551b8d4/vendor/cordis
+        version: link:../../../../.cache/dsh-source/b150a551b8d4/vendor/cordis
       '@deepseek-ai/schemastery':
         specifier: 3.18.1
         version: 3.18.1
     devDependencies:
       '@deepseek-ai/cordis-plugin-include':
         specifier: 1.0.6
-        version: 1.0.6(@deepseek-ai/cordis-plugin-loader@1.0.2(@deepseek-ai/cordis@..+.cache+dsh-source+47f943859bef+vendor+cordis))(@deepseek-ai/cordis@..+.cache+dsh-source+47f943859bef+vendor+cordis)
+        version: 1.0.6(@deepseek-ai/cordis-plugin-loader@1.0.2(@deepseek-ai/cordis@..+.cache+dsh-source+b150a551b8d4+vendor+cordis))(@deepseek-ai/cordis@..+.cache+dsh-source+b150a551b8d4+vendor+cordis)
       '@deepseek-ai/cordis-plugin-loader':
         specifier: 1.0.2
-        version: 1.0.2(@deepseek-ai/cordis@..+.cache+dsh-source+47f943859bef+vendor+cordis)
+        version: 1.0.2(@deepseek-ai/cordis@..+.cache+dsh-source+b150a551b8d4+vendor+cordis)
       '@types/node':
         specifier: 22.20.0
         version: 22.20.0
@@ -169,8 +169,8 @@ importers:
   packages/tockbot-web-clip:
     dependencies:
       '@deepseek-ai/cordis':
-        specifier: link:../../../../.cache/dsh-source/47f943859bef/vendor/cordis
-        version: link:../../../../.cache/dsh-source/47f943859bef/vendor/cordis
+        specifier: link:../../../../.cache/dsh-source/b150a551b8d4/vendor/cordis
+        version: link:../../../../.cache/dsh-source/b150a551b8d4/vendor/cordis
       '@deepseek-ai/schemastery':
         specifier: 3.18.1
         version: 3.18.1
@@ -180,10 +180,10 @@ importers:
     devDependencies:
       '@deepseek-ai/cordis-plugin-include':
         specifier: 1.0.6
-        version: 1.0.6(@deepseek-ai/cordis-plugin-loader@1.0.2(@deepseek-ai/cordis@..+.cache+dsh-source+47f943859bef+vendor+cordis))(@deepseek-ai/cordis@..+.cache+dsh-source+47f943859bef+vendor+cordis)
+        version: 1.0.6(@deepseek-ai/cordis-plugin-loader@1.0.2(@deepseek-ai/cordis@..+.cache+dsh-source+b150a551b8d4+vendor+cordis))(@deepseek-ai/cordis@..+.cache+dsh-source+b150a551b8d4+vendor+cordis)
       '@deepseek-ai/cordis-plugin-loader':
         specifier: 1.0.2
-        version: 1.0.2(@deepseek-ai/cordis@..+.cache+dsh-source+47f943859bef+vendor+cordis)
+        version: 1.0.2(@deepseek-ai/cordis@..+.cache+dsh-source+b150a551b8d4+vendor+cordis)
       '@tockteam/ui':
         specifier: workspace:*
         version: link:../../../ui
@@ -209,11 +209,11 @@ importers:
   packages/tockteam-note-vault-tools:
     dependencies:
       '@deepseek-ai/cordis':
-        specifier: link:../../../../.cache/dsh-source/47f943859bef/vendor/cordis
-        version: link:../../../../.cache/dsh-source/47f943859bef/vendor/cordis
+        specifier: link:../../../../.cache/dsh-source/b150a551b8d4/vendor/cordis
+        version: link:../../../../.cache/dsh-source/b150a551b8d4/vendor/cordis
       '@deepseek-ai/dsh-tools':
-        specifier: link:../../../../.cache/dsh-source/47f943859bef/packages/core/tools
-        version: link:../../../../.cache/dsh-source/47f943859bef/packages/core/tools
+        specifier: link:../../../../.cache/dsh-source/b150a551b8d4/packages/core/tools
+        version: link:../../../../.cache/dsh-source/b150a551b8d4/packages/core/tools
     devDependencies:
       '@types/node':
         specifier: 22.20.0
@@ -259,14 +259,14 @@ importers:
         version: link:../tockbot-web-clip
     devDependencies:
       '@deepseek-ai/cordis':
-        specifier: link:../../../../.cache/dsh-source/47f943859bef/vendor/cordis
-        version: link:../../../../.cache/dsh-source/47f943859bef/vendor/cordis
+        specifier: link:../../../../.cache/dsh-source/b150a551b8d4/vendor/cordis
+        version: link:../../../../.cache/dsh-source/b150a551b8d4/vendor/cordis
       '@deepseek-ai/cordis-plugin-include':
         specifier: 1.0.6
-        version: 1.0.6(@deepseek-ai/cordis-plugin-loader@1.0.2(@deepseek-ai/cordis@..+.cache+dsh-source+47f943859bef+vendor+cordis))(@deepseek-ai/cordis@..+.cache+dsh-source+47f943859bef+vendor+cordis)
+        version: 1.0.6(@deepseek-ai/cordis-plugin-loader@1.0.2(@deepseek-ai/cordis@..+.cache+dsh-source+b150a551b8d4+vendor+cordis))(@deepseek-ai/cordis@..+.cache+dsh-source+b150a551b8d4+vendor+cordis)
       '@deepseek-ai/cordis-plugin-loader':
         specifier: 1.0.2
-        version: 1.0.2(@deepseek-ai/cordis@..+.cache+dsh-source+47f943859bef+vendor+cordis)
+        version: 1.0.2(@deepseek-ai/cordis@..+.cache+dsh-source+b150a551b8d4+vendor+cordis)
       react:
         specifier: 18.3.1
         version: 18.3.1
@@ -277,38 +277,38 @@ importers:
   packages/tockteam-tocktutor-assistant:
     dependencies:
       '@deepseek-ai/cordis':
-        specifier: link:../../../../.cache/dsh-source/47f943859bef/vendor/cordis
-        version: link:../../../../.cache/dsh-source/47f943859bef/vendor/cordis
+        specifier: link:../../../../.cache/dsh-source/b150a551b8d4/vendor/cordis
+        version: link:../../../../.cache/dsh-source/b150a551b8d4/vendor/cordis
       '@deepseek-ai/dsh-agent':
-        specifier: link:../../../../.cache/dsh-source/47f943859bef/packages/core/agent
-        version: link:../../../../.cache/dsh-source/47f943859bef/packages/core/agent
+        specifier: link:../../../../.cache/dsh-source/b150a551b8d4/packages/core/agent
+        version: link:../../../../.cache/dsh-source/b150a551b8d4/packages/core/agent
       '@deepseek-ai/dsh-client-runtime':
-        specifier: link:../../../../.cache/dsh-source/47f943859bef/packages/client/runtime
-        version: link:../../../../.cache/dsh-source/47f943859bef/packages/client/runtime
+        specifier: link:../../../../.cache/dsh-source/b150a551b8d4/packages/client/runtime
+        version: link:../../../../.cache/dsh-source/b150a551b8d4/packages/client/runtime
       '@deepseek-ai/dsh-client-ui-slots':
-        specifier: link:../../../../.cache/dsh-source/47f943859bef/packages/client/ui-slots
-        version: link:../../../../.cache/dsh-source/47f943859bef/packages/client/ui-slots
+        specifier: link:../../../../.cache/dsh-source/b150a551b8d4/packages/client/ui-slots
+        version: link:../../../../.cache/dsh-source/b150a551b8d4/packages/client/ui-slots
       '@deepseek-ai/dsh-llm':
-        specifier: link:../../../../.cache/dsh-source/47f943859bef/packages/llm/llm
-        version: link:../../../../.cache/dsh-source/47f943859bef/packages/llm/llm
+        specifier: link:../../../../.cache/dsh-source/b150a551b8d4/packages/llm/llm
+        version: link:../../../../.cache/dsh-source/b150a551b8d4/packages/llm/llm
       '@deepseek-ai/dsh-session':
-        specifier: link:../../../../.cache/dsh-source/47f943859bef/packages/core/session
-        version: link:../../../../.cache/dsh-source/47f943859bef/packages/core/session
+        specifier: link:../../../../.cache/dsh-source/b150a551b8d4/packages/core/session
+        version: link:../../../../.cache/dsh-source/b150a551b8d4/packages/core/session
       '@deepseek-ai/dsh-settings':
-        specifier: link:../../../../.cache/dsh-source/47f943859bef/packages/settings/settings
-        version: link:../../../../.cache/dsh-source/47f943859bef/packages/settings/settings
+        specifier: link:../../../../.cache/dsh-source/b150a551b8d4/packages/settings/settings
+        version: link:../../../../.cache/dsh-source/b150a551b8d4/packages/settings/settings
       '@deepseek-ai/dsh-storage-domain':
-        specifier: link:../../../../.cache/dsh-source/47f943859bef/packages/storage/storage-domain
-        version: link:../../../../.cache/dsh-source/47f943859bef/packages/storage/storage-domain
+        specifier: link:../../../../.cache/dsh-source/b150a551b8d4/packages/storage/storage-domain
+        version: link:../../../../.cache/dsh-source/b150a551b8d4/packages/storage/storage-domain
       '@deepseek-ai/dsh-subprocess':
-        specifier: link:../../../../.cache/dsh-source/47f943859bef/packages/subprocess/subprocess
-        version: link:../../../../.cache/dsh-source/47f943859bef/packages/subprocess/subprocess
+        specifier: link:../../../../.cache/dsh-source/b150a551b8d4/packages/subprocess/subprocess
+        version: link:../../../../.cache/dsh-source/b150a551b8d4/packages/subprocess/subprocess
       '@deepseek-ai/dsh-tools':
-        specifier: link:../../../../.cache/dsh-source/47f943859bef/packages/core/tools
-        version: link:../../../../.cache/dsh-source/47f943859bef/packages/core/tools
+        specifier: link:../../../../.cache/dsh-source/b150a551b8d4/packages/core/tools
+        version: link:../../../../.cache/dsh-source/b150a551b8d4/packages/core/tools
       '@deepseek-ai/dsh-typert-protocol':
-        specifier: link:../../../../.cache/dsh-source/47f943859bef/packages/typert/protocol
-        version: link:../../../../.cache/dsh-source/47f943859bef/packages/typert/protocol
+        specifier: link:../../../../.cache/dsh-source/b150a551b8d4/packages/typert/protocol
+        version: link:../../../../.cache/dsh-source/b150a551b8d4/packages/typert/protocol
       '@deepseek-ai/schemastery':
         specifier: 3.18.1
         version: 3.18.1
@@ -327,43 +327,43 @@ importers:
     devDependencies:
       '@deepseek-ai/cordis-plugin-include':
         specifier: 1.0.6
-        version: 1.0.6(@deepseek-ai/cordis-plugin-loader@1.0.2(@deepseek-ai/cordis@..+.cache+dsh-source+47f943859bef+vendor+cordis))(@deepseek-ai/cordis@..+.cache+dsh-source+47f943859bef+vendor+cordis)
+        version: 1.0.6(@deepseek-ai/cordis-plugin-loader@1.0.2(@deepseek-ai/cordis@..+.cache+dsh-source+b150a551b8d4+vendor+cordis))(@deepseek-ai/cordis@..+.cache+dsh-source+b150a551b8d4+vendor+cordis)
       '@deepseek-ai/cordis-plugin-loader':
         specifier: 1.0.2
-        version: 1.0.2(@deepseek-ai/cordis@..+.cache+dsh-source+47f943859bef+vendor+cordis)
+        version: 1.0.2(@deepseek-ai/cordis@..+.cache+dsh-source+b150a551b8d4+vendor+cordis)
       '@deepseek-ai/dsh-api-gateway':
-        specifier: link:../../../../.cache/dsh-source/47f943859bef/packages/api/gateway
-        version: link:../../../../.cache/dsh-source/47f943859bef/packages/api/gateway
+        specifier: link:../../../../.cache/dsh-source/b150a551b8d4/packages/api/gateway
+        version: link:../../../../.cache/dsh-source/b150a551b8d4/packages/api/gateway
       '@deepseek-ai/dsh-client-connection':
-        specifier: link:../../../../.cache/dsh-source/47f943859bef/packages/client/connection
-        version: link:../../../../.cache/dsh-source/47f943859bef/packages/client/connection
+        specifier: link:../../../../.cache/dsh-source/b150a551b8d4/packages/client/connection
+        version: link:../../../../.cache/dsh-source/b150a551b8d4/packages/client/connection
       '@deepseek-ai/dsh-client-modules':
-        specifier: link:../../../../.cache/dsh-source/47f943859bef/packages/client/modules
-        version: link:../../../../.cache/dsh-source/47f943859bef/packages/client/modules
+        specifier: link:../../../../.cache/dsh-source/b150a551b8d4/packages/client/modules
+        version: link:../../../../.cache/dsh-source/b150a551b8d4/packages/client/modules
       '@deepseek-ai/dsh-host-webserver':
-        specifier: link:../../../../.cache/dsh-source/47f943859bef/packages/host/webserver
-        version: link:../../../../.cache/dsh-source/47f943859bef/packages/host/webserver
+        specifier: link:../../../../.cache/dsh-source/b150a551b8d4/packages/host/webserver
+        version: link:../../../../.cache/dsh-source/b150a551b8d4/packages/host/webserver
       '@deepseek-ai/dsh-invariants':
-        specifier: link:../../../../.cache/dsh-source/47f943859bef/packages/runtime-diagnostics/invariants
-        version: link:../../../../.cache/dsh-source/47f943859bef/packages/runtime-diagnostics/invariants
+        specifier: link:../../../../.cache/dsh-source/b150a551b8d4/packages/runtime-diagnostics/invariants
+        version: link:../../../../.cache/dsh-source/b150a551b8d4/packages/runtime-diagnostics/invariants
       '@deepseek-ai/dsh-storage':
-        specifier: link:../../../../.cache/dsh-source/47f943859bef/packages/storage/storage
-        version: link:../../../../.cache/dsh-source/47f943859bef/packages/storage/storage
+        specifier: link:../../../../.cache/dsh-source/b150a551b8d4/packages/storage/storage
+        version: link:../../../../.cache/dsh-source/b150a551b8d4/packages/storage/storage
       '@deepseek-ai/dsh-storage-json':
-        specifier: link:../../../../.cache/dsh-source/47f943859bef/packages/storage/storage-json
-        version: link:../../../../.cache/dsh-source/47f943859bef/packages/storage/storage-json
+        specifier: link:../../../../.cache/dsh-source/b150a551b8d4/packages/storage/storage-json
+        version: link:../../../../.cache/dsh-source/b150a551b8d4/packages/storage/storage-json
       '@deepseek-ai/dsh-subprocess-local':
-        specifier: link:../../../../.cache/dsh-source/47f943859bef/packages/subprocess/subprocess-local
-        version: link:../../../../.cache/dsh-source/47f943859bef/packages/subprocess/subprocess-local
+        specifier: link:../../../../.cache/dsh-source/b150a551b8d4/packages/subprocess/subprocess-local
+        version: link:../../../../.cache/dsh-source/b150a551b8d4/packages/subprocess/subprocess-local
       '@deepseek-ai/dsh-system-prompt':
-        specifier: link:../../../../.cache/dsh-source/47f943859bef/packages/core/system-prompt
-        version: link:../../../../.cache/dsh-source/47f943859bef/packages/core/system-prompt
+        specifier: link:../../../../.cache/dsh-source/b150a551b8d4/packages/core/system-prompt
+        version: link:../../../../.cache/dsh-source/b150a551b8d4/packages/core/system-prompt
       '@deepseek-ai/dsh-typert-generator':
-        specifier: link:../../../../.cache/dsh-source/47f943859bef/packages/typert/generator
-        version: link:../../../../.cache/dsh-source/47f943859bef/packages/typert/generator
+        specifier: link:../../../../.cache/dsh-source/b150a551b8d4/packages/typert/generator
+        version: link:../../../../.cache/dsh-source/b150a551b8d4/packages/typert/generator
       '@deepseek-ai/dsh-typert-registry':
-        specifier: link:../../../../.cache/dsh-source/47f943859bef/packages/typert/registry
-        version: link:../../../../.cache/dsh-source/47f943859bef/packages/typert/registry
+        specifier: link:../../../../.cache/dsh-source/b150a551b8d4/packages/typert/registry
+        version: link:../../../../.cache/dsh-source/b150a551b8d4/packages/typert/registry
       '@testing-library/dom':
         specifier: 10.4.1
         version: 10.4.1
@@ -413,11 +413,11 @@ importers:
   packages/tockteam-tocktutor-import-export:
     dependencies:
       '@deepseek-ai/cordis':
-        specifier: link:../../../../.cache/dsh-source/47f943859bef/vendor/cordis
-        version: link:../../../../.cache/dsh-source/47f943859bef/vendor/cordis
+        specifier: link:../../../../.cache/dsh-source/b150a551b8d4/vendor/cordis
+        version: link:../../../../.cache/dsh-source/b150a551b8d4/vendor/cordis
       '@deepseek-ai/dsh-typert-protocol':
-        specifier: link:../../../../.cache/dsh-source/47f943859bef/packages/typert/protocol
-        version: link:../../../../.cache/dsh-source/47f943859bef/packages/typert/protocol
+        specifier: link:../../../../.cache/dsh-source/b150a551b8d4/packages/typert/protocol
+        version: link:../../../../.cache/dsh-source/b150a551b8d4/packages/typert/protocol
       '@tockteam/desktop':
         specifier: link:../../../..
         version: link:../../../..
@@ -430,19 +430,19 @@ importers:
     devDependencies:
       '@deepseek-ai/cordis-plugin-include':
         specifier: 1.0.6
-        version: 1.0.6(@deepseek-ai/cordis-plugin-loader@1.0.2(@deepseek-ai/cordis@..+.cache+dsh-source+47f943859bef+vendor+cordis))(@deepseek-ai/cordis@..+.cache+dsh-source+47f943859bef+vendor+cordis)
+        version: 1.0.6(@deepseek-ai/cordis-plugin-loader@1.0.2(@deepseek-ai/cordis@..+.cache+dsh-source+b150a551b8d4+vendor+cordis))(@deepseek-ai/cordis@..+.cache+dsh-source+b150a551b8d4+vendor+cordis)
       '@deepseek-ai/cordis-plugin-loader':
         specifier: 1.0.2
-        version: 1.0.2(@deepseek-ai/cordis@..+.cache+dsh-source+47f943859bef+vendor+cordis)
+        version: 1.0.2(@deepseek-ai/cordis@..+.cache+dsh-source+b150a551b8d4+vendor+cordis)
       '@deepseek-ai/dsh-client-runtime':
-        specifier: link:../../../../.cache/dsh-source/47f943859bef/packages/client/runtime
-        version: link:../../../../.cache/dsh-source/47f943859bef/packages/client/runtime
+        specifier: link:../../../../.cache/dsh-source/b150a551b8d4/packages/client/runtime
+        version: link:../../../../.cache/dsh-source/b150a551b8d4/packages/client/runtime
       '@deepseek-ai/dsh-client-ui-slots':
-        specifier: link:../../../../.cache/dsh-source/47f943859bef/packages/client/ui-slots
-        version: link:../../../../.cache/dsh-source/47f943859bef/packages/client/ui-slots
+        specifier: link:../../../../.cache/dsh-source/b150a551b8d4/packages/client/ui-slots
+        version: link:../../../../.cache/dsh-source/b150a551b8d4/packages/client/ui-slots
       '@deepseek-ai/dsh-typert-generator':
-        specifier: link:../../../../.cache/dsh-source/47f943859bef/packages/typert/generator
-        version: link:../../../../.cache/dsh-source/47f943859bef/packages/typert/generator
+        specifier: link:../../../../.cache/dsh-source/b150a551b8d4/packages/typert/generator
+        version: link:../../../../.cache/dsh-source/b150a551b8d4/packages/typert/generator
       '@tockteam/tocktutor-workbench':
         specifier: workspace:0.1.7
         version: link:../tockteam-tocktutor-workbench
@@ -480,17 +480,17 @@ importers:
   packages/tockteam-tocktutor-workbench:
     dependencies:
       '@deepseek-ai/cordis':
-        specifier: link:../../../../.cache/dsh-source/47f943859bef/vendor/cordis
-        version: link:../../../../.cache/dsh-source/47f943859bef/vendor/cordis
+        specifier: link:../../../../.cache/dsh-source/b150a551b8d4/vendor/cordis
+        version: link:../../../../.cache/dsh-source/b150a551b8d4/vendor/cordis
       '@deepseek-ai/dsh-client-runtime':
-        specifier: link:../../../../.cache/dsh-source/47f943859bef/packages/client/runtime
-        version: link:../../../../.cache/dsh-source/47f943859bef/packages/client/runtime
+        specifier: link:../../../../.cache/dsh-source/b150a551b8d4/packages/client/runtime
+        version: link:../../../../.cache/dsh-source/b150a551b8d4/packages/client/runtime
       '@deepseek-ai/dsh-client-ui-slots':
-        specifier: link:../../../../.cache/dsh-source/47f943859bef/packages/client/ui-slots
-        version: link:../../../../.cache/dsh-source/47f943859bef/packages/client/ui-slots
+        specifier: link:../../../../.cache/dsh-source/b150a551b8d4/packages/client/ui-slots
+        version: link:../../../../.cache/dsh-source/b150a551b8d4/packages/client/ui-slots
       '@deepseek-ai/dsh-typert-protocol':
-        specifier: link:../../../../.cache/dsh-source/47f943859bef/packages/typert/protocol
-        version: link:../../../../.cache/dsh-source/47f943859bef/packages/typert/protocol
+        specifier: link:../../../../.cache/dsh-source/b150a551b8d4/packages/typert/protocol
+        version: link:../../../../.cache/dsh-source/b150a551b8d4/packages/typert/protocol
       '@tockteam/desktop':
         specifier: link:../../../..
         version: link:../../../..
@@ -506,13 +506,13 @@ importers:
     devDependencies:
       '@deepseek-ai/cordis-plugin-include':
         specifier: 1.0.6
-        version: 1.0.6(@deepseek-ai/cordis-plugin-loader@1.0.2(@deepseek-ai/cordis@..+.cache+dsh-source+47f943859bef+vendor+cordis))(@deepseek-ai/cordis@..+.cache+dsh-source+47f943859bef+vendor+cordis)
+        version: 1.0.6(@deepseek-ai/cordis-plugin-loader@1.0.2(@deepseek-ai/cordis@..+.cache+dsh-source+b150a551b8d4+vendor+cordis))(@deepseek-ai/cordis@..+.cache+dsh-source+b150a551b8d4+vendor+cordis)
       '@deepseek-ai/cordis-plugin-loader':
         specifier: 1.0.2
-        version: 1.0.2(@deepseek-ai/cordis@..+.cache+dsh-source+47f943859bef+vendor+cordis)
+        version: 1.0.2(@deepseek-ai/cordis@..+.cache+dsh-source+b150a551b8d4+vendor+cordis)
       '@deepseek-ai/dsh-typert-generator':
-        specifier: link:../../../../.cache/dsh-source/47f943859bef/packages/typert/generator
-        version: link:../../../../.cache/dsh-source/47f943859bef/packages/typert/generator
+        specifier: link:../../../../.cache/dsh-source/b150a551b8d4/packages/typert/generator
+        version: link:../../../../.cache/dsh-source/b150a551b8d4/packages/typert/generator
       '@radix-ui/react-dialog':
         specifier: 1.1.23
         version: 1.1.23(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -2191,16 +2191,16 @@ snapshots:
 
   '@csstools/css-tokenizer@4.0.0': {}
 
-  '@deepseek-ai/cordis-plugin-include@1.0.6(@deepseek-ai/cordis-plugin-loader@1.0.2(@deepseek-ai/cordis@..+.cache+dsh-source+47f943859bef+vendor+cordis))(@deepseek-ai/cordis@..+.cache+dsh-source+47f943859bef+vendor+cordis)':
+  '@deepseek-ai/cordis-plugin-include@1.0.6(@deepseek-ai/cordis-plugin-loader@1.0.2(@deepseek-ai/cordis@..+.cache+dsh-source+b150a551b8d4+vendor+cordis))(@deepseek-ai/cordis@..+.cache+dsh-source+b150a551b8d4+vendor+cordis)':
     dependencies:
-      '@deepseek-ai/cordis': link:../../.cache/dsh-source/47f943859bef/vendor/cordis
-      '@deepseek-ai/cordis-plugin-loader': 1.0.2(@deepseek-ai/cordis@..+.cache+dsh-source+47f943859bef+vendor+cordis)
+      '@deepseek-ai/cordis': link:../../.cache/dsh-source/b150a551b8d4/vendor/cordis
+      '@deepseek-ai/cordis-plugin-loader': 1.0.2(@deepseek-ai/cordis@..+.cache+dsh-source+b150a551b8d4+vendor+cordis)
       '@deepseek-ai/cosmokit': 1.8.2
       js-yaml: 4.3.1
 
-  '@deepseek-ai/cordis-plugin-loader@1.0.2(@deepseek-ai/cordis@..+.cache+dsh-source+47f943859bef+vendor+cordis)':
+  '@deepseek-ai/cordis-plugin-loader@1.0.2(@deepseek-ai/cordis@..+.cache+dsh-source+b150a551b8d4+vendor+cordis)':
     dependencies:
-      '@deepseek-ai/cordis': link:../../.cache/dsh-source/47f943859bef/vendor/cordis
+      '@deepseek-ai/cordis': link:../../.cache/dsh-source/b150a551b8d4/vendor/cordis
       '@deepseek-ai/cosmokit': 1.8.2
 
   '@deepseek-ai/cosmokit@1.8.2': {}

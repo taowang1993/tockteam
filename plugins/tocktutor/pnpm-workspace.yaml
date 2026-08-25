@@ -9,27 +9,27 @@ allowBuilds:
   esbuild: true
 
 overrides:
-  '@deepseek-ai/cordis': link:../../.cache/dsh-source/47f943859bef/vendor/cordis
-  '@deepseek-ai/dsh-agent': link:../../.cache/dsh-source/47f943859bef/packages/core/agent
-  '@deepseek-ai/dsh-api-gateway': link:../../.cache/dsh-source/47f943859bef/packages/api/gateway
-  '@deepseek-ai/dsh-client-connection': link:../../.cache/dsh-source/47f943859bef/packages/client/connection
-  '@deepseek-ai/dsh-client-modules': link:../../.cache/dsh-source/47f943859bef/packages/client/modules
-  '@deepseek-ai/dsh-client-runtime': link:../../.cache/dsh-source/47f943859bef/packages/client/runtime
-  '@deepseek-ai/dsh-client-ui-slots': link:../../.cache/dsh-source/47f943859bef/packages/client/ui-slots
-  '@deepseek-ai/dsh-host-webserver': link:../../.cache/dsh-source/47f943859bef/packages/host/webserver
-  '@deepseek-ai/dsh-invariants': link:../../.cache/dsh-source/47f943859bef/packages/runtime-diagnostics/invariants
-  '@deepseek-ai/dsh-llm': link:../../.cache/dsh-source/47f943859bef/packages/llm/llm
-  '@deepseek-ai/dsh-session': link:../../.cache/dsh-source/47f943859bef/packages/core/session
-  '@deepseek-ai/dsh-settings': link:../../.cache/dsh-source/47f943859bef/packages/settings/settings
-  '@deepseek-ai/dsh-storage': link:../../.cache/dsh-source/47f943859bef/packages/storage/storage
-  '@deepseek-ai/dsh-storage-domain': link:../../.cache/dsh-source/47f943859bef/packages/storage/storage-domain
-  '@deepseek-ai/dsh-storage-json': link:../../.cache/dsh-source/47f943859bef/packages/storage/storage-json
-  '@deepseek-ai/dsh-subprocess': link:../../.cache/dsh-source/47f943859bef/packages/subprocess/subprocess
-  '@deepseek-ai/dsh-subprocess-local': link:../../.cache/dsh-source/47f943859bef/packages/subprocess/subprocess-local
-  '@deepseek-ai/dsh-system-prompt': link:../../.cache/dsh-source/47f943859bef/packages/core/system-prompt
-  '@deepseek-ai/dsh-tools': link:../../.cache/dsh-source/47f943859bef/packages/core/tools
-  '@deepseek-ai/dsh-typert-generator': link:../../.cache/dsh-source/47f943859bef/packages/typert/generator
-  '@deepseek-ai/dsh-typert-protocol': link:../../.cache/dsh-source/47f943859bef/packages/typert/protocol
-  '@deepseek-ai/dsh-typert-registry': link:../../.cache/dsh-source/47f943859bef/packages/typert/registry
+  '@deepseek-ai/cordis': link:../../.cache/dsh-source/b150a551b8d4/vendor/cordis
+  '@deepseek-ai/dsh-agent': link:../../.cache/dsh-source/b150a551b8d4/packages/core/agent
+  '@deepseek-ai/dsh-api-gateway': link:../../.cache/dsh-source/b150a551b8d4/packages/api/gateway
+  '@deepseek-ai/dsh-client-connection': link:../../.cache/dsh-source/b150a551b8d4/packages/client/connection
+  '@deepseek-ai/dsh-client-modules': link:../../.cache/dsh-source/b150a551b8d4/packages/client/modules
+  '@deepseek-ai/dsh-client-runtime': link:../../.cache/dsh-source/b150a551b8d4/packages/client/runtime
+  '@deepseek-ai/dsh-client-ui-slots': link:../../.cache/dsh-source/b150a551b8d4/packages/client/ui-slots
+  '@deepseek-ai/dsh-host-webserver': link:../../.cache/dsh-source/b150a551b8d4/packages/host/webserver
+  '@deepseek-ai/dsh-invariants': link:../../.cache/dsh-source/b150a551b8d4/packages/runtime-diagnostics/invariants
+  '@deepseek-ai/dsh-llm': link:../../.cache/dsh-source/b150a551b8d4/packages/llm/llm
+  '@deepseek-ai/dsh-session': link:../../.cache/dsh-source/b150a551b8d4/packages/core/session
+  '@deepseek-ai/dsh-settings': link:../../.cache/dsh-source/b150a551b8d4/packages/settings/settings
+  '@deepseek-ai/dsh-storage': link:../../.cache/dsh-source/b150a551b8d4/packages/storage/storage
+  '@deepseek-ai/dsh-storage-domain': link:../../.cache/dsh-source/b150a551b8d4/packages/storage/storage-domain
+  '@deepseek-ai/dsh-storage-json': link:../../.cache/dsh-source/b150a551b8d4/packages/storage/storage-json
+  '@deepseek-ai/dsh-subprocess': link:../../.cache/dsh-source/b150a551b8d4/packages/subprocess/subprocess
+  '@deepseek-ai/dsh-subprocess-local': link:../../.cache/dsh-source/b150a551b8d4/packages/subprocess/subprocess-local
+  '@deepseek-ai/dsh-system-prompt': link:../../.cache/dsh-source/b150a551b8d4/packages/core/system-prompt
+  '@deepseek-ai/dsh-tools': link:../../.cache/dsh-source/b150a551b8d4/packages/core/tools
+  '@deepseek-ai/dsh-typert-generator': link:../../.cache/dsh-source/b150a551b8d4/packages/typert/generator
+  '@deepseek-ai/dsh-typert-protocol': link:../../.cache/dsh-source/b150a551b8d4/packages/typert/protocol
+  '@deepseek-ai/dsh-typert-registry': link:../../.cache/dsh-source/b150a551b8d4/packages/typert/registry
   '@tockteam/desktop': link:../..
   vite: 6.4.3

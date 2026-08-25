@@ -32,7 +32,16 @@ for (const required of [
   join(root, 'dist', 'tockteam.js'),
   join(stage, 'dsh-runtime', 'lib', 'bin.js'),
   stagedNode,
-  join(stage, 'dsh-runtime', 'node_modules', 'dsh-cc-tui', 'lib', 'types', 'index.js'),
+  join(
+    stage,
+    'dsh-runtime',
+    'node_modules',
+    '@deepseek-harness-tui',
+    'dsh-tui',
+    'lib',
+    'types',
+    'index.js',
+  ),
   join(stage, 'dsh-runtime', 'node_modules', '@tockteam', 'tui', 'dist', 'index.js'),
   join(stage, 'dsh-runtime', 'node_modules', '@tockteam', 'tui', 'dist', 'cordis.patch.yml'),
 ]) {

@@ -20,8 +20,20 @@ export function apply(ctx: ClientContext): void {
   } satisfies TockTeamSurfaceView), undefined)
   ctx.effect(() => {
     const originalTitle = document.title
-    document.title = 'TockTeam Web'
-    return () => { document.title = originalTitle }
+    const synchronizeTitle = (): void => {
+      if (document.title !== 'TockTeam Web') document.title = 'TockTeam Web'
+    }
+    const observer = new MutationObserver(synchronizeTitle)
+    observer.observe(document.head, {
+      childList: true,
+      characterData: true,
+      subtree: true,
+    })
+    synchronizeTitle()
+    return () => {
+      observer.disconnect()
+      document.title = originalTitle
+    }
   }, 'tockteam-web: shell identity')
   ctx.effect(() => {
     const headlineCopy = new Set([

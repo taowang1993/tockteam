@@ -25,7 +25,7 @@ import NoteVaultRuntime, { Config as RuntimeConfig } from 'tockbot-note-runtime'
 import type { PennivoBinding, PennivoChildInfo } from '../src/pennivo-child.ts'
 import type { AssistantTurnLease } from '../src/turn-bindings.ts'
 import type { AssistantProposalView } from '../src/remote-types.ts'
-import { dshRoot } from '../../../test-utils.ts'
+import { dshRoot, packedClientModuleSystemOptions } from '../../../test-utils.ts'
 
 const run = promisify(execFile)
 const packageName = '@tockteam/tocktutor-assistant'
@@ -164,7 +164,7 @@ test('a fresh packed artifact loads through pinned Host and web ClientModule loa
       peerDependencies?: Record<string, string>
     }
     assert.equal(manifest.name, packageName)
-    assert.equal(manifest.peerDependencies?.['@deepseek-ai/dsh-storage-domain'], '0.1.0-rc.5')
+    assert.equal(manifest.peerDependencies?.['@deepseek-ai/dsh-storage-domain'], '0.1.1-rc.2')
 
     const consumerRequire = createRequire(join(root, 'package.json'))
     const packedHostPath = consumerRequire.resolve(packageName)
@@ -276,7 +276,7 @@ test('a fresh packed artifact loads through pinned Host and web ClientModule loa
       pathToFileURL(join(dshRoot, 'packages/client/modules/lib/types/client/system.js')).href
     )
     const fetched: string[] = []
-    const modules = new ClientModuleSystem({
+    const modules = new ClientModuleSystem(packedClientModuleSystemOptions({
       modules: graph.entries,
       staticModules: {
         react: await import(pathToFileURL(consumerRequire.resolve('react')).href),
@@ -294,7 +294,7 @@ test('a fresh packed artifact loads through pinned Host and web ClientModule loa
         fetched.push(url)
         runInThisContext(source, { filename: url })
       },
-    })
+    }))
     await modules.import(workbenchName)
 
     let remoteDisposed = 0

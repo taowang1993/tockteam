@@ -4,7 +4,7 @@
 
 TockTutor is the Desktop-only note workspace distributed with TockTeam. It is not a second agent runtime. The packages under `plugins/tocktutor/` compose through the pinned DSH Loader and Cordis services, while TockTeam Desktop retains all Electron and native authority.
 
-The target runtime is DSH `0.1.0-rc.5` at revision `47f943859bef60e4160492346772ded9b24f765a`. Package names, versions, Remote names, Cordis service names, slot names, profile names, and existing data roots are compatibility contracts.
+The target runtime is DSH `0.1.1-rc.2` at revision `b150a551b8d465e31e418e1b2eaf5e79bbb7d28e`. Package names, versions, Remote names, Cordis service names, slot names, profile names, and existing data roots are compatibility contracts.
 
 ## Composition
 
@@ -227,7 +227,7 @@ The assistant panel intentionally uses a render-time route epoch to prevent an a
 
 Tracked `lib/` and `dist/` directories are release payloads. Never hand-edit them. Rebuild changed sources through the package scripts, then regenerate `plugins/tocktutor/build-manifest.json`.
 
-The root workspace intentionally excludes `plugins/tocktutor`; that workspace has its own `pnpm-lock.yaml` and pins DSH packages to `.cache/dsh-source/47f943859bef`.
+The root workspace intentionally excludes `plugins/tocktutor`; that workspace has its own `pnpm-lock.yaml` and pins DSH packages to `.cache/dsh-source/b150a551b8d4`.
 
 ## Verification
 

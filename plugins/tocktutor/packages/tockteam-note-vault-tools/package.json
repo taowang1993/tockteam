@@ -33,7 +33,7 @@
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "4.0.1",
-    "@deepseek-ai/dsh-tools": "0.1.0-rc.5",
+    "@deepseek-ai/dsh-tools": "0.1.1-rc.2",
     "tockbot-note-runtime": "0.1.2"
   },
   "peerDependenciesMeta": {
@@ -43,7 +43,7 @@
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "4.0.1",
-    "@deepseek-ai/dsh-tools": "0.1.0-rc.5",
+    "@deepseek-ai/dsh-tools": "0.1.1-rc.2",
     "@types/node": "22.20.0",
     "tockbot-note-runtime": "workspace:0.1.2",
     "tockbot-note-vault": "workspace:0.6.0",
