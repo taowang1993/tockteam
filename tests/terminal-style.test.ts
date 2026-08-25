@@ -14,6 +14,8 @@ test('terminal viewport cannot expose xterm default black behind the themed scre
   assert.match(panel, /border-\[var\(--tockteam-shell-divider,/)
   assert.match(view, /px-3 py-\[9px\]/)
   assert.doesNotMatch(view, /\[&_\.xterm\]:p[xy]?-/)
+  assert.match(view, /const requestedCwd = props\.cwd\?\.trim\(\)/)
+  assert.doesNotMatch(view, /\}, \[props\.cwd, props\.sessionId, props\.tabId\]\)/)
 })
 
 test('TockTutor owns keyboard focus while its route is active', () => {

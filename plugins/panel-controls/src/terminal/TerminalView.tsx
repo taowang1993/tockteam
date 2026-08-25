@@ -109,7 +109,8 @@ export function TerminalView(props: TerminalViewProps): JSX.Element {
       if (fitAddonRef.current === fitAddon) fitAddonRef.current = null
       terminal.dispose()
     }
-  }, [props.cwd, props.sessionId, props.tabId])
+  // CWD initializes a tab; later session metadata must not replace its live PTY.
+  }, [props.sessionId, props.tabId])
 
   useEffect(() => {
     const terminal = terminalRef.current
