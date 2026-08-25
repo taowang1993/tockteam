@@ -7,11 +7,13 @@ import { test } from 'node:test'
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 
 test('terminal viewport cannot expose xterm default black behind the themed screen', () => {
-  const css = readFileSync(join(root, 'plugins/panel-controls/src/terminal/terminal.css'), 'utf8')
-  assert.match(css, /\.tockteam-terminal-view \.xterm-viewport[\s\S]*background-color:[^;]+!important/)
-  assert.match(css, /\.tockteam-terminal-dock\s*\{[^}]*border-top: 1px solid var\(--tockteam-shell-divider,/s)
-  assert.match(css, /\.tockteam-terminal-view \{[\s\S]*padding: 9px 12px;/)
-  assert.doesNotMatch(css, /\.tockteam-terminal-view \.xterm \{[^}]*padding:/)
+  const panel = readFileSync(join(root, 'plugins/panel-controls/src/terminal/TerminalPanel.tsx'), 'utf8')
+  const view = readFileSync(join(root, 'plugins/panel-controls/src/terminal/TerminalView.tsx'), 'utf8')
+
+  assert.match(view, /\[&_\.xterm-viewport\]:!bg-surface/)
+  assert.match(panel, /border-\[var\(--tockteam-shell-divider,/)
+  assert.match(view, /px-3 py-\[9px\]/)
+  assert.doesNotMatch(view, /\[&_\.xterm\]:p[xy]?-/)
 })
 
 test('TockTutor owns keyboard focus while its route is active', () => {
@@ -35,12 +37,7 @@ test('terminal is controlled only by the shared desktop toolbar', () => {
     join(root, 'plugins/panel-controls/src/terminal/mount-utils.ts'),
     'utf8',
   )
-  const css = readFileSync(
-    join(root, 'plugins/panel-controls/src/terminal/terminal.css'),
-    'utf8',
-  )
 
   assert.doesNotMatch(plugin, /TerminalTrigger|terminal-trigger-root/)
   assert.doesNotMatch(mounts, /terminal-trigger-root/)
-  assert.doesNotMatch(css, /tockteam-terminal-trigger/)
 })

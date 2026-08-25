@@ -97,14 +97,14 @@ export function TerminalPanel({ locale, t: translate, store, scopeKey, cwd, acti
 
   return (
     <section
-      className="tockteam-terminal-dock"
+      className="group/terminal relative flex min-w-0 flex-none flex-col box-border border-t border-[var(--tockteam-shell-divider,var(--dsw-alias-border-l2,rgba(0,0,0,0.1)))] bg-surface text-foreground [-webkit-app-region:no-drag]"
       data-tockteam-terminal-dock=""
       data-collapsed={state.collapsed || undefined}
       aria-label={t('terminal')}
     >
       {!state.collapsed && (
         <div
-          className="tockteam-terminal-resize"
+          className="relative z-[1] h-2 flex-none touch-none cursor-ns-resize bg-surface after:absolute after:top-0.5 after:left-1/2 after:h-[3px] after:w-8 after:-translate-x-1/2 after:rounded-full after:bg-[var(--dsw-alias-label-dimmed,#8c959f)] after:opacity-50 after:content-[''] hover:after:bg-brand hover:after:opacity-100 focus-visible:after:bg-brand focus-visible:after:opacity-100"
           role="separator"
           aria-label={t('terminal.resize')}
           aria-orientation="horizontal"
@@ -116,18 +116,18 @@ export function TerminalPanel({ locale, t: translate, store, scopeKey, cwd, acti
           onKeyDown={resizeWithKeyboard}
         />
       )}
-      <div className="tockteam-terminal-bar">
-        <div className="tockteam-terminal-tabs" role="tablist" aria-label={t('terminal.tabs')}>
+      <div className="flex h-[34px] flex-none items-center justify-between gap-2 box-border border-b border-[var(--dsw-alias-border-l1,rgba(0,0,0,0.07))] bg-surface-muted px-2 text-[11px]">
+        <div className="flex min-w-0 items-center gap-[3px] overflow-x-auto [scrollbar-width:none]" role="tablist" aria-label={t('terminal.tabs')}>
           {state.tabs.map(tab => (
             <span
               key={tab.id}
               role="tab"
               aria-selected={tab.id === state.activeTabId}
-              className={`tockteam-terminal-tab${tab.id === state.activeTabId ? ' is-active' : ''}`}
+              className={`inline-flex h-6 max-w-[180px] cursor-default select-none items-center gap-[5px] whitespace-nowrap rounded-md px-1.5 box-border text-muted-foreground hover:bg-[var(--dsw-alias-interactive-bg-hover,rgba(0,0,0,0.05))] ${tab.id === state.activeTabId ? 'bg-[var(--dsw-alias-interactive-bg-active,rgba(0,0,0,0.08))] text-foreground' : ''}`}
               onClick={() => { store.dispatch({ type: 'activate-tab', id: tab.id }) }}
             >
-              <span className={`tockteam-terminal-status is-${tab.status}`} aria-hidden="true" />
-              <span className="tockteam-terminal-tab-label">
+              <span className={`size-[5px] flex-none rounded-full ${tab.status === 'ready' ? 'bg-[#2da44e]' : tab.status === 'error' ? 'bg-[#cf222e]' : 'bg-[#8c959f]'}`} aria-hidden="true" />
+              <span className="min-w-0 overflow-hidden text-ellipsis">
                 {tab.label === DEFAULT_TAB_LABEL ? t('terminal.shell') : tab.label}
                 {tab.status === 'exited'
                   ? ` · ${t('terminal.status.exited')}`
@@ -135,7 +135,7 @@ export function TerminalPanel({ locale, t: translate, store, scopeKey, cwd, acti
               </span>
               <button
                 type="button"
-                className="tockteam-terminal-tab-close"
+                className="grid size-[15px] cursor-pointer place-items-center rounded-sm border-0 bg-transparent p-0 font-[inherit] leading-none text-[var(--dsw-alias-label-dimmed,#8c959f)] hover:bg-[var(--dsw-alias-interactive-bg-hover,rgba(0,0,0,0.06))] hover:text-foreground [&_svg]:size-[11px]"
                 aria-label={t('terminal.close-tab', { tab: tab.label })}
                 onClick={(event) => {
                   event.stopPropagation()
@@ -146,17 +146,17 @@ export function TerminalPanel({ locale, t: translate, store, scopeKey, cwd, acti
           ))}
           <button
             type="button"
-            className="tockteam-terminal-add"
+            className="size-[22px] flex-none cursor-pointer rounded-md border-0 bg-transparent p-0 font-[inherit] text-[15px] text-muted-foreground hover:bg-[var(--dsw-alias-interactive-bg-hover,rgba(0,0,0,0.06))] hover:text-foreground [&_svg]:size-[15px]"
             onClick={addTab}
             title={t('terminal.new-shell')}
             aria-label={t('terminal.new-shell')}
           ><Plus aria-hidden="true" /></button>
-          {state.tabs.length === 0 && <span className="tockteam-terminal-hint">{t('terminal')}</span>}
+          {state.tabs.length === 0 && <span className="select-none pl-0.5 text-[var(--dsw-alias-label-dimmed,#8c959f)]">{t('terminal')}</span>}
         </div>
-        <div className="tockteam-terminal-actions">
+        <div className="flex items-center gap-0.5">
           <button
             type="button"
-            className="tockteam-terminal-action"
+            className="h-6 w-[27px] cursor-pointer rounded-md border-0 bg-transparent p-0 font-[inherit] text-muted-foreground hover:bg-[var(--dsw-alias-interactive-bg-hover,rgba(0,0,0,0.06))] hover:text-foreground [&_svg]:size-[15px]"
             onClick={() => { setSettingsOpen(open => !open) }}
             title={t('terminal.font')}
             aria-label={t('terminal.font-settings')}
@@ -164,7 +164,7 @@ export function TerminalPanel({ locale, t: translate, store, scopeKey, cwd, acti
           ><Type aria-hidden="true" /></button>
           <button
             type="button"
-            className="tockteam-terminal-action"
+            className="h-6 w-[27px] cursor-pointer rounded-md border-0 bg-transparent p-0 font-[inherit] text-muted-foreground hover:bg-[var(--dsw-alias-interactive-bg-hover,rgba(0,0,0,0.06))] hover:text-foreground [&_svg]:size-[15px]"
             onClick={() => { store.dispatch({ type: 'toggle-collapsed' }) }}
             title={state.collapsed ? t('terminal.expand') : t('terminal.collapse')}
             aria-label={state.collapsed ? t('terminal.expand') : t('terminal.collapse')}
@@ -174,14 +174,15 @@ export function TerminalPanel({ locale, t: translate, store, scopeKey, cwd, acti
         </div>
       </div>
       {settingsOpen && (
-        <div className="tockteam-terminal-settings" role="dialog" aria-label={t('terminal.font-settings')}>
-          <div className="tockteam-terminal-settings-header">
+        <div className="absolute top-[46px] right-2 z-8 grid w-[min(360px,calc(100%-16px))] gap-3 box-border rounded-[9px] border border-border bg-surface-muted p-3.5 text-xs shadow-[0_10px_28px_rgba(0,0,0,0.16)] group-data-[collapsed]/terminal:top-auto group-data-[collapsed]/terminal:bottom-[38px]" role="dialog" aria-label={t('terminal.font-settings')}>
+          <div className="flex items-center justify-between gap-2.5">
             <strong>{t('terminal.font')}</strong>
-            <button type="button" onClick={() => { setSettingsOpen(false) }} aria-label={t('terminal.close-settings')}><X aria-hidden="true" /></button>
+            <button className="cursor-pointer border-0 bg-transparent px-[5px] py-0.5 font-[inherit] text-base text-muted-foreground [&_svg]:size-[15px]" type="button" onClick={() => { setSettingsOpen(false) }} aria-label={t('terminal.close-settings')}><X aria-hidden="true" /></button>
           </div>
-          <label>
+          <label className="grid grid-cols-[78px_minmax(0,1fr)] items-center gap-2.5 text-muted-foreground">
             <span>{t('terminal.font-family')}</span>
             <input
+              className="h-7 min-w-0 box-border rounded-md border border-border bg-surface px-2 font-[inherit] text-foreground"
               type="text"
               list={fontPresetListId}
               value={fontFamilyDraft}
@@ -200,9 +201,10 @@ export function TerminalPanel({ locale, t: translate, store, scopeKey, cwd, acti
               <option value="'Fira Code', ui-monospace, monospace" />
             </datalist>
           </label>
-          <label>
+          <label className="grid grid-cols-[78px_minmax(0,1fr)] items-center gap-2.5 text-muted-foreground">
             <span>{t('terminal.font-size')}</span>
             <input
+              className="h-7 min-w-0 box-border rounded-md border border-border bg-surface px-2 font-[inherit] text-foreground"
               type="number"
               min={MIN_TERMINAL_FONT_SIZE}
               max={MAX_TERMINAL_FONT_SIZE}
@@ -210,21 +212,21 @@ export function TerminalPanel({ locale, t: translate, store, scopeKey, cwd, acti
               onChange={event => { store.dispatch({ type: 'set-font-size', fontSize: event.currentTarget.valueAsNumber }) }}
             />
           </label>
-          <div className="tockteam-terminal-settings-footer">
+          <div className="flex items-center justify-between gap-2.5 text-[var(--dsw-alias-label-dimmed,#8c959f)]">
             <span>{MIN_TERMINAL_FONT_SIZE}–{MAX_TERMINAL_FONT_SIZE}px</span>
-            <button type="button" onClick={() => { store.dispatch({ type: 'reset-font' }) }}>{t('terminal.reset')}</button>
+            <button className="cursor-pointer rounded-md border border-border bg-transparent px-[9px] py-1 font-[inherit] text-foreground" type="button" onClick={() => { store.dispatch({ type: 'reset-font' }) }}>{t('terminal.reset')}</button>
           </div>
         </div>
       )}
       <div
-        className={`tockteam-terminal-body${resizing ? ' is-resizing' : ''}`}
+        className={`flex max-h-[calc(100vh-190px)] min-h-0 flex-none flex-col overflow-hidden bg-surface transition-[height] duration-150 ease-in motion-reduce:transition-none ${resizing ? 'select-none transition-none' : ''}`}
         style={{ height: state.collapsed ? 0 : state.size }}
         aria-hidden={state.collapsed}
       >
         {state.tabs.map(tab => (
           <div
             key={tab.id}
-            className="tockteam-terminal-surface"
+            className="h-full min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden"
             style={{ display: tab.id === state.activeTabId ? 'flex' : 'none' }}
             aria-hidden={tab.id !== state.activeTabId}
           >
@@ -250,9 +252,9 @@ export function TerminalPanel({ locale, t: translate, store, scopeKey, cwd, acti
           </div>
         ))}
         {state.tabs.length === 0 && (
-          <div className="tockteam-terminal-empty">
+          <div className="flex flex-1 items-center justify-center gap-2.5 text-xs text-[var(--dsw-alias-label-dimmed,#8c959f)]">
             <span>{t('terminal.empty')}</span>
-            <button type="button" onClick={addTab}>{t('terminal.new-shell')}</button>
+            <button className="cursor-pointer rounded-md border border-border bg-transparent px-[9px] py-1 font-[inherit] text-foreground" type="button" onClick={addTab}>{t('terminal.new-shell')}</button>
           </div>
         )}
       </div>

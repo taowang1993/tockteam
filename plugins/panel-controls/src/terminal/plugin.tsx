@@ -1,7 +1,6 @@
 import { Fragment } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import xtermCss from '@xterm/xterm/css/xterm.css'
-import terminalCss from './terminal.css'
 import { TerminalPanel, openOrToggleTerminal } from './TerminalPanel.tsx'
 import { createMountScheduler, mutationNeedsMount } from './mount-utils.ts'
 import { createDockStore, type DockStore } from './panel-store.ts'
@@ -99,7 +98,7 @@ class DesktopPanelService implements DesktopPanels {
   mount(): void {
     this.style = document.createElement('style')
     this.style.dataset.tockteamTerminalStyles = 'true'
-    this.style.textContent = `${xtermCss}\n${terminalCss}`
+    this.style.textContent = xtermCss
     document.head.append(this.style)
     this.scheduler = createMountScheduler(() => { this.mountAll() })
     this.syncActiveSession()
@@ -201,7 +200,7 @@ class DesktopPanelService implements DesktopPanels {
     if (this.dock.element === null) {
       const element = document.createElement('div')
       element.id = 'tockteam-terminal-root'
-      element.style.display = 'contents'
+      element.className = 'contents'
       this.dock.element = element
       this.dock.root = createRoot(element)
     }
@@ -219,7 +218,7 @@ class DesktopPanelService implements DesktopPanels {
         {[...this.surfaces.values()].map(surface => (
           <div
             key={surface.scopeKey}
-            style={{ display: surface === active ? 'contents' : 'none' }}
+            className={surface === active ? 'contents' : 'hidden'}
           >
             <TerminalPanel
               locale={this.locale}
