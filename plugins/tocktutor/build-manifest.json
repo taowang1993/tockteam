@@ -3,7 +3,7 @@
   "files": [
     {
       "path": "package.json",
-      "sha256": "d1d6322ec6c28e26817187956af1c6b26b6e293dacd9013ecb6e25da0028b7c0"
+      "sha256": "0dc58843fe6ea267193b2bca2f131cd3678510476202bf36e59fd21884acdf0c"
     },
     {
       "path": "packages/tockbot-note-desktop/cordis.patch.yml",
