@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict'
-import { mkdtemp, rm } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
 import { Context } from '@deepseek-ai/cordis'
-import AgentRegistry from '@deepseek-ai/dsh-agent'
+import AgentRegistry, { type Agent } from '@deepseek-ai/dsh-agent'
+import { CallId } from '@deepseek-ai/dsh-llm'
 import { SettingsProvider, type SettingsNamespace } from '@deepseek-ai/dsh-settings'
 import Storage from '@deepseek-ai/dsh-storage'
 import * as StorageDomain from '@deepseek-ai/dsh-storage-domain'
@@ -71,19 +72,24 @@ async function installStorage(ctx: Context, root: string): Promise<void> {
   await ctx.plugin(StorageDomain, { backend: 'json' })
 }
 
-async function boot(): Promise<{ ctx: Context; assistant: NoteAssistant; assistantFiber: Context['fiber']; root: string }> {
+async function boot(activeVault = false): Promise<{ ctx: Context; assistant: NoteAssistant; assistantFiber: Context['fiber']; root: string; vaultRoot: string | null }> {
   const root = await mkdtemp(join(tmpdir(), 'assistant-settings-'))
+  const vaultRoot = activeVault ? join(root, 'vault') : null
+  if (vaultRoot !== null) {
+    await mkdir(join(vaultRoot, 'Inbox'), { recursive: true })
+    await writeFile(join(vaultRoot, 'Inbox', 'capture.md'), '# Capture\n\nShip the review flow.\n')
+  }
   const ctx = new Context()
   await ctx.plugin(AgentRegistry)
   await ctx.plugin(SystemPrompt)
   await ctx.plugin(ToolRuntime)
   await installStorage(ctx, join(root, 'storage'))
-  await ctx.plugin(NoteVaultRuntime, RuntimeConfig({ stateRoot: null, vaultRoot: null } as never))
+  await ctx.plugin(NoteVaultRuntime, RuntimeConfig({ stateRoot: null, vaultRoot } as never))
   await ctx.plugin(MemorySettings)
   await ctx.plugin(MemorySubprocess)
   const assistantFiber = ctx.plugin(NoteAssistant, defaults)
   await assistantFiber
-  return { ctx, assistant: ctx.noteAssistant, assistantFiber, root }
+  return { ctx, assistant: ctx.noteAssistant, assistantFiber, root, vaultRoot }
 }
 
 test('settings are bounded, persisted through DSH settings, and unregistered on unload', async () => {
@@ -117,6 +123,58 @@ test('settings are bounded, persisted through DSH settings, and unregistered on 
 
     await assistantFiber.dispose()
     assert.equal(ctx.get('settings')?.describe().some(entry => entry.ns === ASSISTANT_SETTINGS_NAMESPACE), false)
+  } finally {
+    await ctx.fiber.dispose()
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
+test('ordinary DSH agents stage durable reviewed Notes writes through the shared queue', async () => {
+  const { ctx, assistant, assistantFiber, root, vaultRoot } = await boot(true)
+  assert.ok(vaultRoot)
+  const agent = { id: 'agent-main-notes-12345678', ctx, options: {}, session: { id: 'session-main-notes-12345678' }, status: 'running' } as unknown as Agent
+  try {
+    assert.equal(ctx.tools.schemas(agent).some(tool => tool.name === 'notes_stage_write'), false)
+    await assistant.saveSettings({ ...defaults, writePermission: 'propose' })
+    assert.deepEqual(ctx.tools.schemas(agent).filter(tool => tool.name.startsWith('notes_')).map(tool => tool.name).sort(), [
+      'notes_organize_capture',
+      'notes_stage_write',
+    ])
+    const staged = await ctx.tools.execute({
+      agent,
+      arguments: { path: 'Proposed.md', content: '# Proposed\n', operation: 'create' },
+      callId: CallId('call-main-stage-12345678'),
+      name: 'notes_stage_write',
+      signal: new AbortController().signal,
+    })
+    const organized = await ctx.tools.execute({
+      agent,
+      arguments: { path: 'Inbox/capture.md' },
+      callId: CallId('call-main-organize-12345678'),
+      name: 'notes_organize_capture',
+      signal: new AbortController().signal,
+    })
+    assert.equal(staged.isError, false)
+    assert.equal(organized.isError, false)
+    await assert.rejects(readFile(join(vaultRoot, 'Proposed.md'), 'utf8'))
+    const pending = await assistant.listProposals()
+    assert.equal(pending.length, 2)
+
+    await assistantFiber.dispose()
+    assert.equal(ctx.tools.schemas(agent).some(tool => tool.name === 'notes_stage_write'), false)
+    const restartedFiber = ctx.plugin(NoteAssistant, defaults)
+    await restartedFiber
+    const restarted = ctx.noteAssistant
+    const restored = await restarted.listProposals()
+    assert.equal(restored.length, 2, JSON.stringify(await restarted.proposalAudit()))
+    const create = restored.find(proposal => proposal.destination === 'Proposed.md')
+    const organize = restored.find(proposal => proposal.destination.startsWith('Organized/'))
+    assert.ok(create)
+    assert.ok(organize)
+    assert.equal((await restarted.approveProposal(create.proposalId, new AbortController().signal)).status, 'created')
+    assert.equal(await readFile(join(vaultRoot, 'Proposed.md'), 'utf8'), '# Proposed\n')
+    await restarted.rejectProposal(organize.proposalId, 'Keep the capture unchanged.')
+    await assert.rejects(readFile(join(vaultRoot, organize.destination), 'utf8'))
   } finally {
     await ctx.fiber.dispose()
     await rm(root, { recursive: true, force: true })

@@ -719,7 +719,7 @@ test('restart hydration preserves terminal audit and cannot revive consumed or s
     assert.ok(audit.some(entry => entry.proposalId === appliedId && entry.outcome === 'applied'))
     assert.ok(audit.some(entry => entry.proposalId === staleId
       && entry.outcome === 'approval-denied'
-      && ['CHILD_REPLACED', 'TARGET_CHANGED', 'TURN_MISMATCH'].includes(entry.reason ?? '')), JSON.stringify(audit))
+      && ['CHILD_REPLACED', 'PERMISSION_CHANGED', 'TARGET_CHANGED', 'TURN_MISMATCH'].includes(entry.reason ?? '')), JSON.stringify(audit))
   } finally {
     await second.context.fiber.dispose()
     await rm(root, { recursive: true, force: true })

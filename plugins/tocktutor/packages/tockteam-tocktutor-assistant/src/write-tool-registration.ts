@@ -1,6 +1,6 @@
 import { Buffer } from 'node:buffer'
 import type { Agent } from '@deepseek-ai/dsh-agent'
-import { defineTool } from '@deepseek-ai/dsh-tools'
+import { defineTool, type ToolDefinition } from '@deepseek-ai/dsh-tools'
 import { assertSafeRelativePath, redactBoundaryText } from './context.ts'
 import {
   ProposalError,
@@ -104,12 +104,14 @@ function writeArguments(value: unknown): { path: string; content: string } {
   return { path: args.path, content: args.content }
 }
 
-function notesWriteArguments(value: unknown): {
+export interface TockDriverStageWriteArguments {
   vaultId?: string
   path: string
   content: string
   operation: 'create' | 'update'
-} {
+}
+
+export function notesWriteArguments(value: unknown): TockDriverStageWriteArguments {
   if (
     typeof value !== 'object'
     || value === null
@@ -142,7 +144,9 @@ function notesWriteArguments(value: unknown): {
   }
 }
 
-function organizeCaptureArguments(value: unknown): { vaultId?: string; path: string } {
+export interface TockDriverOrganizeArguments { vaultId?: string; path: string }
+
+export function organizeCaptureArguments(value: unknown): TockDriverOrganizeArguments {
   if (
     typeof value !== 'object'
     || value === null
@@ -208,7 +212,7 @@ function slug(value: string): string {
     .slice(0, 64) || 'organized-capture'
 }
 
-function organizedCaptureContent(
+export function organizedCaptureContent(
   sourcePath: string,
   sourceMarkdown: string,
   organizedAt: Date,
@@ -258,7 +262,7 @@ async function readDocumentForWrite(
   return { content, source: read.source }
 }
 
-function publicTockDriverWriteResult(
+export function publicTockDriverWriteResult(
   summary: Pick<ProposalSummary, 'proposalId'> & Partial<Pick<ProposalSummary, 'createdAt'>>,
   binding: { vaultId: string },
   path: string,
@@ -535,6 +539,64 @@ export function registerAssistantWriteTools(
     for (const dispose of disposers.reverse()) dispose()
     throw error
   }
+  let disposed = false
+  return () => {
+    if (disposed) return
+    disposed = true
+    for (const dispose of disposers.reverse()) dispose()
+  }
+}
+
+export interface MainTockDriverWriteHost {
+  organize(args: TockDriverOrganizeArguments, signal: AbortSignal): Promise<TockDriverWriteResult>
+  stage(args: TockDriverStageWriteArguments, signal: AbortSignal): Promise<TockDriverWriteResult>
+}
+
+/** Register the durable reviewed-write aliases for ordinary DSH agents. */
+export function registerMainTockDriverWriteTools(
+  tools: { register(definition: ToolDefinition): () => void },
+  host: MainTockDriverWriteHost,
+): () => void {
+  const disposers = [
+    tools.register(defineTool({
+      name: 'notes_stage_write',
+      description: 'Stage a Notes create or update for explicit user review. This never writes before approval.',
+      parameters: {
+        vaultId: { type: 'string', description: 'Optional opaque id; omitted means the active Notes vault.' },
+        path: { type: 'string', required: true, description: 'Vault-relative Markdown path.' },
+        content: { type: 'string', required: true, description: 'Complete proposed Markdown content.' },
+        operation: { type: 'string', required: true, enum: ['create', 'update'] },
+      },
+      output: {
+        schema: TOCKDRIVER_WRITE_OUTPUT_SCHEMA,
+        render: (_args, value) => [{
+          type: 'text',
+          text: `Staged ${value.operation} proposal for ${value.relativePath}. User approval is required.`,
+        }],
+      },
+      async execute(rawArgs, exec) {
+        return await host.stage(notesWriteArguments(rawArgs), exec.signal)
+      },
+    })),
+    tools.register(defineTool({
+      name: 'notes_organize_capture',
+      description: 'Stage an organized Markdown note from an Inbox capture for explicit user review. This never writes before approval.',
+      parameters: {
+        vaultId: { type: 'string', description: 'Optional opaque id; omitted means the active Notes vault.' },
+        path: { type: 'string', required: true, description: 'Vault-relative Inbox Markdown path.' },
+      },
+      output: {
+        schema: TOCKDRIVER_WRITE_OUTPUT_SCHEMA,
+        render: (_args, value) => [{
+          type: 'text',
+          text: `Staged organized note for ${value.relativePath}. User approval is required.`,
+        }],
+      },
+      async execute(rawArgs, exec) {
+        return await host.organize(organizeCaptureArguments(rawArgs), exec.signal)
+      },
+    })),
+  ]
   let disposed = false
   return () => {
     if (disposed) return

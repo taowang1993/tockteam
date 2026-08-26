@@ -41,7 +41,15 @@ import {
   type AssistantToolName,
   type AssistantTurnLease,
 } from './turn-bindings.ts'
-import { registerAssistantWriteTools } from './write-tool-registration.ts'
+import {
+  organizedCaptureContent,
+  publicTockDriverWriteResult,
+  registerAssistantWriteTools,
+  registerMainTockDriverWriteTools,
+  type TockDriverOrganizeArguments,
+  type TockDriverStageWriteArguments,
+  type TockDriverWriteResult,
+} from './write-tool-registration.ts'
 import {
   TockTutorAssistantGateway,
   type AssistantRemoteHost,
@@ -88,6 +96,7 @@ declare module '@deepseek-ai/cordis' {
 }
 
 const IDENTIFIER_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:/-]*$/u
+const MAIN_TOCKDRIVER_BINDING = 'tockdriver-main'
 
 export type AssistantWritePermission = 'read-only' | 'propose'
 
@@ -150,6 +159,7 @@ export class NoteAssistant extends Service implements AssistantRemoteHost {
   private proposalPersistence: Promise<void> = Promise.resolve()
   private readonly decisionTasks = new Set<Promise<unknown>>()
   private decisionAdmissionOpen = true
+  private mainTockDriverDispose: (() => void) | undefined
 
   constructor(ctx: Context, config: Config) {
     super(ctx, 'noteAssistant')
@@ -175,6 +185,7 @@ export class NoteAssistant extends Service implements AssistantRemoteHost {
       bind: (agent, turn, messageId, signal) => this.bindProductionTurn(agent, turn, messageId, signal),
       requestConfig: (agent, turn, signal, config) => this.productionRequestConfig(agent, turn, signal, config),
     })
+    this.syncMainTockDriverTools()
     ctx.on('settings/updated', (namespace) => {
       if (namespace === ASSISTANT_SETTINGS_NAMESPACE) this.observeSettings(this.settings.get())
     })
@@ -216,6 +227,8 @@ export class NoteAssistant extends Service implements AssistantRemoteHost {
       this.childAbort.abort(new Error('Assistant child disposed.'))
       this.productionTurns.dispose()
       this.turnBindings.dispose()
+      this.mainTockDriverDispose?.()
+      this.mainTockDriverDispose = undefined
       await this.vaultBarrier.catch(() => undefined)
       await this.pennivoChild.dispose()
       await Promise.allSettled(this.decisionTasks)
@@ -336,6 +349,111 @@ export class NoteAssistant extends Service implements AssistantRemoteHost {
     }
   }
 
+  private syncMainTockDriverTools(): void {
+    const enabled = this.settings.get().writePermission === 'propose'
+    if (enabled && this.mainTockDriverDispose === undefined) {
+      this.mainTockDriverDispose = registerMainTockDriverWriteTools(this.ctx.tools, {
+        organize: (args, signal) => this.organizeMainTockDriverCapture(args, signal),
+        stage: (args, signal) => this.stageMainTockDriverWrite(args, signal),
+      })
+    } else if (!enabled && this.mainTockDriverDispose !== undefined) {
+      this.mainTockDriverDispose()
+      this.mainTockDriverDispose = undefined
+    }
+  }
+
+  private mainTockDriverFacts(signal: AbortSignal, vaultId?: string): {
+    settings: AssistantSettings
+    vault: { generation: number; id: string }
+  } {
+    if (signal.aborted) throw new AssistantTurnBindingError('ABORTED')
+    const settings = this.settings.get()
+    this.observeSettings(settings)
+    const state = this.noteVault.state
+    if (settings.writePermission !== 'propose' || !state.active || vaultId !== undefined && vaultId !== state.id) {
+      throw new AssistantTurnBindingError('TOOL_UNAVAILABLE')
+    }
+    return { settings, vault: { generation: state.generation, id: state.id } }
+  }
+
+  private async stageMainTockDriverProposal(
+    input: Pick<StageProposalInput, 'content' | 'destination' | 'expectedTarget' | 'operation' | 'source'>,
+    facts: ReturnType<NoteAssistant['mainTockDriverFacts']>,
+    signal: AbortSignal,
+  ): Promise<ProposalSummary> {
+    const current = this.mainTockDriverFacts(signal, facts.vault.id)
+    if (current.vault.generation !== facts.vault.generation
+      || current.settings.provider !== facts.settings.provider
+      || current.settings.model !== facts.settings.model) throw new AssistantTurnBindingError('STALE_TURN')
+    const summary = this.proposalQueue.stage({
+      vaultId: facts.vault.id,
+      vaultGeneration: facts.vault.generation,
+      destination: input.destination,
+      operation: input.operation,
+      ...(input.source === undefined ? {} : { source: input.source }),
+      expectedTarget: input.expectedTarget,
+      content: input.content,
+      childInstanceId: MAIN_TOCKDRIVER_BINDING,
+      turnId: MAIN_TOCKDRIVER_BINDING,
+      requestId: MAIN_TOCKDRIVER_BINDING,
+      provider: facts.settings.provider,
+      model: facts.settings.model,
+      writePermission: 'propose',
+      permissionEpoch: this.permissionEpoch,
+    })
+    await this.persistProposalState()
+    return summary
+  }
+
+  private async stageMainTockDriverWrite(
+    args: TockDriverStageWriteArguments,
+    signal: AbortSignal,
+  ): Promise<TockDriverWriteResult> {
+    const facts = this.mainTockDriverFacts(signal, args.vaultId)
+    let source: StageProposalInput['source']
+    let expectedTarget: StageProposalInput['expectedTarget'] = { exists: false }
+    if (args.operation === 'update') {
+      const opened = await this.noteVault.openDocument(args.path, facts.vault, signal)
+      if (opened.generation !== facts.vault.generation || opened.path !== args.path || !opened.digest.startsWith('sha256:')) {
+        throw new Error('The Notes update source changed during staging.')
+      }
+      source = { relativePath: opened.path, identity: opened.revision, contentDigest: opened.digest.slice('sha256:'.length) }
+      expectedTarget = { exists: true, identity: opened.revision }
+    }
+    const summary = await this.stageMainTockDriverProposal({
+      content: args.content,
+      destination: args.path,
+      operation: args.operation,
+      ...(source === undefined ? {} : { source }),
+      expectedTarget,
+    }, facts, signal)
+    return publicTockDriverWriteResult(summary, { vaultId: facts.vault.id }, args.path,
+      args.path.slice(args.path.lastIndexOf('/') + 1).replace(/\.(?:md|markdown)$/iu, ''), args.operation)
+  }
+
+  private async organizeMainTockDriverCapture(
+    args: TockDriverOrganizeArguments,
+    signal: AbortSignal,
+  ): Promise<TockDriverWriteResult> {
+    const facts = this.mainTockDriverFacts(signal, args.vaultId)
+    const opened = await this.noteVault.openDocument(args.path, facts.vault, signal)
+    if (opened.generation !== facts.vault.generation || opened.path !== args.path || !opened.digest.startsWith('sha256:')) {
+      throw new Error('The Inbox capture changed during staging.')
+    }
+    const organized = organizedCaptureContent(args.path, opened.content, new Date())
+    if (new TextEncoder().encode(organized.content).byteLength > 1024 * 1024) {
+      throw new Error('The organized note exceeds the safe staging limit.')
+    }
+    const summary = await this.stageMainTockDriverProposal({
+      content: organized.content,
+      destination: organized.destination,
+      operation: 'create',
+      source: { relativePath: opened.path, identity: opened.revision, contentDigest: opened.digest.slice('sha256:'.length) },
+      expectedTarget: { exists: false },
+    }, facts, signal)
+    return publicTockDriverWriteResult(summary, { vaultId: facts.vault.id }, organized.destination, organized.title, 'create')
+  }
+
   private async stageBoundProposal(proposal: StageProposalInput): Promise<ProposalSummary> {
     this.observeSettings(this.settings.get())
     if (!this.turnBindings.isCurrentProposal({
@@ -375,6 +493,26 @@ export class NoteAssistant extends Service implements AssistantRemoteHost {
     void this.persistProposalState().catch(() => undefined)
   }
 
+  private async restoredCreateTargetExists(proposal: ProposalSummary, signal: AbortSignal): Promise<boolean> {
+    const expectedVault = { id: proposal.vaultId, generation: proposal.vaultGeneration }
+    const cursors = new Set<string>()
+    let cursor: string | null = null
+    for (let pageIndex = 0; pageIndex < 100; pageIndex += 1) {
+      const page = await this.noteVault.listTree({
+        expectedVault,
+        limit: 1_000,
+        ...(cursor === null ? {} : { cursor }),
+      }, signal)
+      if (page.generation !== proposal.vaultGeneration
+        || page.entries.some(entry => entry.path === proposal.destination)) return true
+      if (page.complete && page.cursor === null) return false
+      if (page.cursor === null || cursors.has(page.cursor)) return true
+      cursors.add(page.cursor)
+      cursor = page.cursor
+    }
+    return true
+  }
+
   private async restoredProposalMismatch(proposal: ProposalSummary): Promise<ProposalErrorCode | undefined> {
     const state = this.noteVault.state
     if (
@@ -400,17 +538,19 @@ export class NoteAssistant extends Service implements AssistantRemoteHost {
         return 'SOURCE_CHANGED'
       }
     }
-    try {
-      const target = await this.noteVault.openDocument(proposal.destination, expectedVault, signal)
-      if (
-        proposal.operation === 'create'
-        || target.revision !== proposal.expectedTarget.identity
-      ) return 'TARGET_CHANGED'
-    } catch (error) {
-      const code = error instanceof Error
-        ? (error as Error & { code?: unknown }).code
-        : undefined
-      if (proposal.operation === 'update' || code !== 'not-found') return 'TARGET_CHANGED'
+    if (proposal.operation === 'create') {
+      try {
+        if (await this.restoredCreateTargetExists(proposal, signal)) return 'TARGET_CHANGED'
+      } catch {
+        return 'TARGET_CHANGED'
+      }
+    } else {
+      try {
+        const target = await this.noteVault.openDocument(proposal.destination, expectedVault, signal)
+        if (target.revision !== proposal.expectedTarget.identity) return 'TARGET_CHANGED'
+      } catch {
+        return 'TARGET_CHANGED'
+      }
     }
 
     const settings = this.settings.get()
@@ -422,6 +562,10 @@ export class NoteAssistant extends Service implements AssistantRemoteHost {
     if (settings.provider !== proposal.provider || settings.model !== proposal.model) {
       return 'PROVIDER_MISMATCH'
     }
+    const mainBinding = proposal.childInstanceId === MAIN_TOCKDRIVER_BINDING
+      && proposal.turnId === MAIN_TOCKDRIVER_BINDING
+      && proposal.requestId === MAIN_TOCKDRIVER_BINDING
+    if (mainBinding) return undefined
     if (!this.turnBindings.isCurrentProposal({
       vaultId: proposal.vaultId,
       vaultGeneration: proposal.vaultGeneration,
@@ -458,6 +602,7 @@ export class NoteAssistant extends Service implements AssistantRemoteHost {
       this.turnBindings.invalidatePermission(next.writePermission, this.permissionEpoch)
       this.quiesceChild()
     }
+    this.syncMainTockDriverTools()
   }
 
   private quiesceChild(): Promise<void> {
@@ -650,12 +795,13 @@ export class NoteAssistant extends Service implements AssistantRemoteHost {
         const state = this.noteVault.state
         const settings = this.settings.get()
         this.observeSettings(settings)
+        const mainBinding = proposal?.childInstanceId === MAIN_TOCKDRIVER_BINDING
         return {
           vaultId: state.active ? state.id : 'inactive-vault',
           vaultGeneration: state.generation,
-          childInstanceId: this.pennivoChild.active()?.instanceId ?? 'missing-child',
-          turnId: proposal?.turnId ?? 'missing-turn',
-          requestId: proposal?.requestId ?? 'missing-request',
+          childInstanceId: mainBinding ? MAIN_TOCKDRIVER_BINDING : this.pennivoChild.active()?.instanceId ?? 'missing-child',
+          turnId: mainBinding ? MAIN_TOCKDRIVER_BINDING : proposal?.turnId ?? 'missing-turn',
+          requestId: mainBinding ? MAIN_TOCKDRIVER_BINDING : proposal?.requestId ?? 'missing-request',
           provider: settings.provider,
           model: settings.model,
           writePermission: settings.writePermission,
@@ -664,7 +810,9 @@ export class NoteAssistant extends Service implements AssistantRemoteHost {
       },
       () => this.persistProposalState(),
     )
-    const decisionSignal = AbortSignal.any([signal, settingsSignal, childSignal])
+    const decisionSignal = proposal?.childInstanceId === MAIN_TOCKDRIVER_BINDING
+      ? AbortSignal.any([signal, settingsSignal])
+      : AbortSignal.any([signal, settingsSignal, childSignal])
     const task = executor.approve(proposalId, decisionSignal).then(result => {
       const agent = this.proposalAgents.get(proposalId)
       this.proposalAgents.delete(proposalId)
