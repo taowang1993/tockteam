@@ -359,11 +359,28 @@ function WebViewer(): ReactNode {
     <section aria-label="Web Viewer" className="flex min-h-0 flex-1 flex-col">
       <div aria-label="Viewer Tabs" className="flex gap-1 overflow-x-auto">
         {viewer.tabs.map((tab, index) => (
-          <span className="inline-flex" key={tab.id}>
+          <span
+            className="inline-flex"
+            draggable={!clipApplying}
+            key={tab.id}
+            onDragOver={event => { if (!clipApplying) event.preventDefault() }}
+            onDragStart={event => { event.dataTransfer.setData('application/x-tocktutor-web-viewer-tab', tab.id); event.dataTransfer.effectAllowed = 'move' }}
+            onDrop={event => {
+              event.preventDefault()
+              const movedId = event.dataTransfer.getData('application/x-tocktutor-web-viewer-tab')
+              if (movedId !== '') applyViewer(moveViewerTab(viewerRef.current, movedId, index))
+            }}
+          >
             <Button unstyled
               aria-pressed={tab.id === viewer.activeId}
               disabled={clipApplying}
               onClick={() => { activate(tab) }}
+              onKeyDown={event => {
+                if (!event.altKey || (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight')) return
+                event.preventDefault()
+                const next = index + (event.key === 'ArrowLeft' ? -1 : 1)
+                if (next >= 0 && next < viewerRef.current.tabs.length) applyViewer(moveViewerTab(viewerRef.current, tab.id, next))
+              }}
               type="button"
             >{tab.title}</Button>
             <Button unstyled

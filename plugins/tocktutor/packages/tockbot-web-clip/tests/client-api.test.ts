@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { readFile } from 'node:fs/promises'
 import {
   parseClipApplyResult,
   parseClipPreview,
@@ -89,6 +90,14 @@ test('accepts only bounded Host clip preview and create results', () => {
     { ...created, path: '../escape.md' },
     { ...created, generation: -1 },
   ]) assert.throws(() => parseClipApplyResult(value))
+})
+
+test('renders drag and Alt+Arrow tab reordering through the bounded state helper', async () => {
+  const source = await readFile(new URL('../src/client.tsx', import.meta.url), 'utf8')
+  assert.match(source, /draggable=\{!clipApplying\}/u)
+  assert.match(source, /application\/x-tocktutor-web-viewer-tab/u)
+  assert.match(source, /event\.altKey/u)
+  assert.match(source, /moveViewerTab\(viewerRef\.current, tab\.id, next\)/u)
 })
 
 test('accepts only bounded Host viewer results', () => {

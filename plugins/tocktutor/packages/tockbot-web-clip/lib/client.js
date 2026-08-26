@@ -999,60 +999,86 @@ function WebViewer() {
   };
   return /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("section", { "aria-label": "Web Viewer", className: "flex min-h-0 flex-1 flex-col", children: [
     /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { "aria-label": "Viewer Tabs", className: "flex gap-1 overflow-x-auto", children: [
-      viewer.tabs.map((tab2, index) => /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("span", { className: "inline-flex", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
-          Button,
-          {
-            unstyled: true,
-            "aria-pressed": tab2.id === viewer.activeId,
-            disabled: clipApplying,
-            onClick: () => {
-              activate(tab2);
-            },
-            type: "button",
-            children: tab2.title
-          }
-        ),
-        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
-          Button,
-          {
-            unstyled: true,
-            "aria-label": `Close ${tab2.title}`,
-            disabled: clipApplying,
-            onClick: () => {
-              close(tab2.id);
-            },
-            type: "button",
-            children: /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(X, { "aria-hidden": "true", size: 16 })
-          }
-        ),
-        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
-          Button,
-          {
-            unstyled: true,
-            "aria-label": `Move ${tab2.title} Left`,
-            disabled: index === 0,
-            onClick: () => {
-              applyViewer(moveViewerTab(viewerRef.current, tab2.id, index - 1));
-            },
-            type: "button",
-            children: /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(ArrowLeft, { "aria-hidden": "true", size: 16 })
-          }
-        ),
-        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
-          Button,
-          {
-            unstyled: true,
-            "aria-label": `Move ${tab2.title} Right`,
-            disabled: index === viewer.tabs.length - 1,
-            onClick: () => {
-              applyViewer(moveViewerTab(viewerRef.current, tab2.id, index + 1));
-            },
-            type: "button",
-            children: /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(ArrowRight, { "aria-hidden": "true", size: 16 })
-          }
-        )
-      ] }, tab2.id)),
+      viewer.tabs.map((tab2, index) => /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(
+        "span",
+        {
+          className: "inline-flex",
+          draggable: !clipApplying,
+          onDragOver: (event) => {
+            if (!clipApplying) event.preventDefault();
+          },
+          onDragStart: (event) => {
+            event.dataTransfer.setData("application/x-tocktutor-web-viewer-tab", tab2.id);
+            event.dataTransfer.effectAllowed = "move";
+          },
+          onDrop: (event) => {
+            event.preventDefault();
+            const movedId = event.dataTransfer.getData("application/x-tocktutor-web-viewer-tab");
+            if (movedId !== "") applyViewer(moveViewerTab(viewerRef.current, movedId, index));
+          },
+          children: [
+            /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
+              Button,
+              {
+                unstyled: true,
+                "aria-pressed": tab2.id === viewer.activeId,
+                disabled: clipApplying,
+                onClick: () => {
+                  activate(tab2);
+                },
+                onKeyDown: (event) => {
+                  if (!event.altKey || event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+                  event.preventDefault();
+                  const next = index + (event.key === "ArrowLeft" ? -1 : 1);
+                  if (next >= 0 && next < viewerRef.current.tabs.length) applyViewer(moveViewerTab(viewerRef.current, tab2.id, next));
+                },
+                type: "button",
+                children: tab2.title
+              }
+            ),
+            /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
+              Button,
+              {
+                unstyled: true,
+                "aria-label": `Close ${tab2.title}`,
+                disabled: clipApplying,
+                onClick: () => {
+                  close(tab2.id);
+                },
+                type: "button",
+                children: /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(X, { "aria-hidden": "true", size: 16 })
+              }
+            ),
+            /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
+              Button,
+              {
+                unstyled: true,
+                "aria-label": `Move ${tab2.title} Left`,
+                disabled: index === 0,
+                onClick: () => {
+                  applyViewer(moveViewerTab(viewerRef.current, tab2.id, index - 1));
+                },
+                type: "button",
+                children: /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(ArrowLeft, { "aria-hidden": "true", size: 16 })
+              }
+            ),
+            /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
+              Button,
+              {
+                unstyled: true,
+                "aria-label": `Move ${tab2.title} Right`,
+                disabled: index === viewer.tabs.length - 1,
+                onClick: () => {
+                  applyViewer(moveViewerTab(viewerRef.current, tab2.id, index + 1));
+                },
+                type: "button",
+                children: /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(ArrowRight, { "aria-hidden": "true", size: 16 })
+              }
+            )
+          ]
+        },
+        tab2.id
+      )),
       /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
         Button,
         {
