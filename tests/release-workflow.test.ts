@@ -34,6 +34,26 @@ test('CI actions are immutable and release write access is publish-only', () => 
   assert.doesNotMatch(release, /run:.*\$\{\{ github\.ref_name \}\}/u)
 })
 
+test('publishable UI package builds its Node entrypoint before packing', () => {
+  const manifest = JSON.parse(readFileSync(
+    join(root, 'plugins', 'ui', 'package.json'),
+    'utf8',
+  )) as { scripts?: { prepack?: string } }
+
+  assert.equal(manifest.scripts?.prepack, 'pnpm run build')
+})
+
+test('macOS packages retain the production signing hook', () => {
+  const manifest = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')) as {
+    build?: { afterPack?: string }
+  }
+  const hook = readFileSync(join(root, 'scripts', 'after-pack.cjs'), 'utf8')
+
+  assert.equal(manifest.build?.afterPack, 'scripts/after-pack.cjs')
+  assert.match(hook, /DSH_DESKTOP_SIGN_IDENTITY \|\| '-'/u)
+  assert.match(hook, /spawnSync\('\/usr\/bin\/codesign'/u)
+})
+
 test('tagged releases build and upload both TUI archive formats', () => {
   const workflow = readFileSync(
     join(root, '.github', 'workflows', 'release.yml'),
