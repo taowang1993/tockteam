@@ -118,6 +118,7 @@ import type {
   ActiveVaultResult,
   AttachmentPreviewResult,
   CreateDocumentRequest,
+  CreateManagedVaultRequest,
   DraftMutationResult,
   DraftRequest,
   DraftResult,
@@ -177,6 +178,7 @@ export const MAX_ROUTE_SOURCE_BYTES = 2_000_000
 export interface WorkbenchRouteRemote extends NoteVaultEventRemote {
   tocktutorWorkbench: {
     currentVault(signal?: AbortSignal): Promise<RemoteResult<ActiveVaultResult>>
+    createManagedVault(request: CreateManagedVaultRequest, signal?: AbortSignal): Promise<RemoteResult<VaultReference>>
     listRecentVaults(signal?: AbortSignal): Promise<RemoteResult<RecentVaultListResult>>
     activateRecentVault(request: RecentVaultRequest, signal?: AbortSignal): Promise<RemoteResult<VaultReference>>
     removeRecentVault(request: RecentVaultRequest, signal?: AbortSignal): Promise<RemoteResult<RecentVaultListResult>>
@@ -1193,6 +1195,20 @@ export class WorkbenchRouteController {
     }
   }
 
+  async createManagedVault(name: string): Promise<boolean> {
+    if (this.snapshot.saveStatus !== 'saved' && !await this.save()) return false
+    const operation = this.nextOperation()
+    const expectedGeneration = this.vaultGeneration
+    try {
+      const vault = remoteValue(await this.remote.tocktutorWorkbench.createManagedVault({ expectedGeneration, name }, operation.signal))
+      if (!this.current(operation.id) || vault.generation < expectedGeneration) return false
+      await this.reload()
+      return sameVault(this.snapshot.vault, vault)
+    } catch {
+      return false
+    }
+  }
+
   async openSandboxVault(): Promise<boolean> {
     if (this.snapshot.saveStatus !== 'saved' && !await this.save()) return false
     const operation = this.nextOperation()
@@ -2170,6 +2186,7 @@ export interface TockTutorRouteViewProps {
   onCloseSearch?(): void
   onCloseTab?(paneId: string, path: string): void
   onConvertActiveNote?(): void
+  onCreateManagedVault?(name: string): void
   onAddPane(): void
   onEdit(source: string): void
   onEditorCommand?(command: EditorCommandId): void
@@ -2457,6 +2474,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
       ? documents.some(document => document.path.startsWith(`${entry.path}/`))
       : documents.includes(entry))
   const [panel, setPanel] = useState<'assistant' | 'utilities' | null>(null)
+  const [newVaultName, setNewVaultName] = useState('')
   const [assistantPanelWidth, setAssistantPanelWidth] = useState(DEFAULT_ASSISTANT_PANEL_WIDTH)
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_SIDEBAR_WIDTH)
@@ -2923,6 +2941,10 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
               <h2 className="m-0 text-sm">Vaults</h2>
               <Button unstyled className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs" onClick={props.onOpenSandboxVault} type="button">Open Sandbox Vault</Button>
             </div>
+            <form className="mt-2 flex gap-1" onSubmit={event => { event.preventDefault(); if (newVaultName.trim() !== '') { props.onCreateManagedVault?.(newVaultName); setNewVaultName('') } }}>
+              <Input unstyled aria-label="New Vault Name" className="min-w-0 flex-1 rounded border border-[var(--tt-border)] bg-transparent p-1 text-xs" maxLength={80} onChange={event => { setNewVaultName(event.target.value) }} value={newVaultName} />
+              <Button unstyled className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs" disabled={newVaultName.trim() === ''} type="submit">Create Vault</Button>
+            </form>
             <div className="mt-2 grid gap-1.5">
               {(snapshot.recentVaults ?? []).map((vault, index) => (
                 <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-1" key={vault.id}>
@@ -3351,6 +3373,7 @@ export function TockTutorRoute(props: TockTutorRouteProps): ReactNode {
         onCloseSearch={() => { controller.closeSearch() }}
         onCloseTab={(paneId, path) => { void controller.closeTab(paneId, path) }}
         onConvertActiveNote={() => { controller.convertActiveNote() }}
+        onCreateManagedVault={name => { void controller.createManagedVault(name) }}
         onEdit={source => { controller.edit(source) }}
         onEditorCommand={command => { controller.runEditorCommand(command) }}
         onExtractSelection={() => { void controller.extractActiveSelection() }}

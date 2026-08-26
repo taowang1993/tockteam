@@ -405,6 +405,7 @@ export declare class NoteVaultRuntime extends Service {
     listRecentVaults(): RecentVaultInfo[];
     removeRecentVault(id: string, expectedGeneration: number): RecentVaultInfo[];
     openSandboxVault(expectedGeneration: number): NoteVaultState;
+    createManagedVault(name: string, expectedGeneration: number): NoteVaultState;
     revealEntry(request: RevealEntryRequest, signal: AbortSignal): Promise<RevealEntryResult>;
     activateRecentVault(id: string, expectedGeneration: number): NoteVaultState;
     private createInspection;

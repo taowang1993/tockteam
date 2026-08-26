@@ -7,6 +7,7 @@ import type {
   AttachmentMetadataResult,
   AttachmentPreviewResult,
   CreateDocumentRequest,
+  CreateManagedVaultRequest,
   DraftMutationResult,
   DraftRequest,
   DraftResult,
@@ -56,6 +57,7 @@ export type NoteVaultCapability = Pick<
   | 'activateRecentVault'
   | 'clearDraft'
   | 'createDocument'
+  | 'createManagedVault'
   | 'facets'
   | 'graph'
   | 'inspectAttachment'
@@ -168,6 +170,13 @@ function assertExpectedGeneration(value: VaultGenerationRequest): void {
   assertRecord(value, 'Vault generation request')
   if (!Number.isSafeInteger(value.expectedGeneration) || value.expectedGeneration < 0) {
     throw new TypeError('Expected vault generation must be a non-negative safe integer.')
+  }
+}
+
+function assertCreateManagedVaultRequest(value: CreateManagedVaultRequest): void {
+  assertExpectedGeneration(value)
+  if (typeof value.name !== 'string' || value.name.trim().length === 0 || value.name.length > 80 || !/^[\p{L}\p{N}][\p{L}\p{N} ._-]*$/u.test(value.name.trim())) {
+    throw new TypeError('Managed vault name is invalid.')
   }
 }
 
@@ -337,6 +346,13 @@ export class TockTutorWorkbenchGateway extends TypertRemoteService {
     const vault = { generation: state.generation, id: state.id }
     assertVaultReference(vault)
     return vault
+  }
+
+  @Remote
+  async createManagedVault(request: CreateManagedVaultRequest, signal: AbortSignal): Promise<VaultReference> {
+    assertCreateManagedVaultRequest(request)
+    signal.throwIfAborted()
+    return activeReference(this.ctx.noteVault.createManagedVault(request.name, request.expectedGeneration))
   }
 
   @Remote

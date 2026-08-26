@@ -34,6 +34,7 @@ test('publishes deterministic strict read, tree, save, and recovery Remote artif
     'activateRecentVault',
     'clearDraft',
     'createDocument',
+    'createManagedVault',
     'currentVault',
     'facets',
     'graph',

@@ -4003,7 +4003,12 @@ test('legacy Tockbot vault state migrates read-only and sandbox/removal stay opa
       assert.ok(other)
       assert.deepEqual(loaded.context.noteVault.removeRecentVault(other.id, state.generation), [recents.find(vault => vault.id === state.id)])
 
-      const sandbox = loaded.context.noteVault.openSandboxVault(state.generation)
+      const managed = loaded.context.noteVault.createManagedVault('Class Notes', state.generation)
+      if (!managed.active) assert.fail('managed vault must activate')
+      assert.equal(await lstat(join(stateRoot, 'TockTutor Vaults', 'Class Notes')).then(entry => entry.isDirectory()), true)
+      assert.throws(() => loaded.context.noteVault.createManagedVault('../escape', managed.generation), /invalid/i)
+
+      const sandbox = loaded.context.noteVault.openSandboxVault(managed.generation)
       if (!sandbox.active) assert.fail('sandbox must activate')
       const sandboxRoot = join(stateRoot, 'TockTutor Sandbox')
       assert.match(await readFile(join(sandboxRoot, 'Welcome.md'), 'utf8'), /TockTutor Sandbox/u)

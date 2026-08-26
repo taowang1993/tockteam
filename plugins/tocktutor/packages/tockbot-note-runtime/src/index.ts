@@ -3234,6 +3234,27 @@ export class NoteVaultRuntime extends Service {
     return this.activate(root, expectedGeneration)
   }
 
+  createManagedVault(name: string, expectedGeneration: number): NoteVaultState {
+    if (!Number.isSafeInteger(expectedGeneration) || expectedGeneration < 0 || this.currentState.generation !== expectedGeneration) {
+      throw new NoteVaultError('stale-vault', 'The active vault changed before managed-vault creation')
+    }
+    const normalized = name.trim()
+    if (normalized.length === 0 || normalized.length > 80 || !/^[\p{L}\p{N}][\p{L}\p{N} ._-]*$/u.test(normalized) || normalized === '.' || normalized === '..') {
+      throw new NoteVaultError('invalid-path', 'Managed vault name is invalid')
+    }
+    if (this.stateRoot === null) throw new NoteVaultError('unavailable', 'Managed vault storage is unavailable')
+    const parent = path.join(this.stateRoot, 'TockTutor Vaults')
+    mkdirSync(parent, { mode: 0o700, recursive: true })
+    const root = path.join(parent, normalized)
+    try {
+      mkdirSync(root, { mode: 0o700 })
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'EEXIST') throw new NoteVaultError('exists', 'Managed vault already exists')
+      throw error
+    }
+    return this.activate(root, expectedGeneration)
+  }
+
   async revealEntry(
     request: RevealEntryRequest,
     signal: AbortSignal,

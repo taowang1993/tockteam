@@ -15,6 +15,10 @@ export interface RecentVaultListResult {
   vaults: RecentVaultInfo[]
 }
 
+export interface CreateManagedVaultRequest extends VaultGenerationRequest {
+  name: string
+}
+
 export interface VaultGenerationRequest {
   expectedGeneration: number
 }

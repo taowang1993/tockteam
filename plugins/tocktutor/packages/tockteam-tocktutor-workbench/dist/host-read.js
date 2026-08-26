@@ -103,6 +103,12 @@ function assertExpectedGeneration(value) {
         throw new TypeError('Expected vault generation must be a non-negative safe integer.');
     }
 }
+function assertCreateManagedVaultRequest(value) {
+    assertExpectedGeneration(value);
+    if (typeof value.name !== 'string' || value.name.trim().length === 0 || value.name.length > 80 || !/^[\p{L}\p{N}][\p{L}\p{N} ._-]*$/u.test(value.name.trim())) {
+        throw new TypeError('Managed vault name is invalid.');
+    }
+}
 function assertRecentVaultRequest(value) {
     assertExpectedGeneration(value);
     if (typeof value.id !== 'string' || !/^vault:[0-9a-f]{64}$/u.test(value.id)) {
@@ -260,6 +266,7 @@ let TockTutorWorkbenchGateway = (() => {
     let _classSuper = TypertRemoteService;
     let _instanceExtraInitializers = [];
     let _currentVault_decorators;
+    let _createManagedVault_decorators;
     let _listRecentVaults_decorators;
     let _activateRecentVault_decorators;
     let _removeRecentVault_decorators;
@@ -289,6 +296,7 @@ let TockTutorWorkbenchGateway = (() => {
         static {
             const _metadata = typeof Symbol === "function" && Symbol.metadata ? Object.create(_classSuper[Symbol.metadata] ?? null) : void 0;
             _currentVault_decorators = [Remote];
+            _createManagedVault_decorators = [Remote];
             _listRecentVaults_decorators = [Remote];
             _activateRecentVault_decorators = [Remote];
             _removeRecentVault_decorators = [Remote];
@@ -315,6 +323,7 @@ let TockTutorWorkbenchGateway = (() => {
             _listTrash_decorators = [Remote];
             _restoreTrash_decorators = [Remote];
             __esDecorate(this, null, _currentVault_decorators, { kind: "method", name: "currentVault", static: false, private: false, access: { has: obj => "currentVault" in obj, get: obj => obj.currentVault }, metadata: _metadata }, null, _instanceExtraInitializers);
+            __esDecorate(this, null, _createManagedVault_decorators, { kind: "method", name: "createManagedVault", static: false, private: false, access: { has: obj => "createManagedVault" in obj, get: obj => obj.createManagedVault }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _listRecentVaults_decorators, { kind: "method", name: "listRecentVaults", static: false, private: false, access: { has: obj => "listRecentVaults" in obj, get: obj => obj.listRecentVaults }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _activateRecentVault_decorators, { kind: "method", name: "activateRecentVault", static: false, private: false, access: { has: obj => "activateRecentVault" in obj, get: obj => obj.activateRecentVault }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _removeRecentVault_decorators, { kind: "method", name: "removeRecentVault", static: false, private: false, access: { has: obj => "removeRecentVault" in obj, get: obj => obj.removeRecentVault }, metadata: _metadata }, null, _instanceExtraInitializers);
@@ -355,6 +364,11 @@ let TockTutorWorkbenchGateway = (() => {
             const vault = { generation: state.generation, id: state.id };
             assertVaultReference(vault);
             return vault;
+        }
+        async createManagedVault(request, signal) {
+            assertCreateManagedVaultRequest(request);
+            signal.throwIfAborted();
+            return activeReference(this.ctx.noteVault.createManagedVault(request.name, request.expectedGeneration));
         }
         async listRecentVaults(signal) {
             signal.throwIfAborted();

@@ -74,6 +74,11 @@ class FakeNoteVault extends Service {
       : { active: false as const, generation: vault.generation }
   }
 
+  createManagedVault(name: string, expectedGeneration: number) {
+    this.calls.push({ method: 'createManagedVault', parameters: [name, expectedGeneration] })
+    return { active: true as const, generation: expectedGeneration + 1, id: `vault:${'f'.repeat(64)}` }
+  }
+
   listRecentVaults() {
     this.calls.push({ method: 'listRecentVaults', parameters: [] })
     return this.recent
@@ -184,6 +189,7 @@ test('registers only the accepted read/tree Remote methods and delegates exact r
   try {
     assert.deepEqual(remoteMethods(state.gateway), [
       { invocation: { kind: 'direct' }, method: 'currentVault' },
+      { invocation: { kind: 'direct' }, method: 'createManagedVault' },
       { invocation: { kind: 'direct' }, method: 'listRecentVaults' },
       { invocation: { kind: 'direct' }, method: 'activateRecentVault' },
       { invocation: { kind: 'direct' }, method: 'removeRecentVault' },
@@ -216,6 +222,7 @@ test('registers only the accepted read/tree Remote methods and delegates exact r
     state.runtime.active = false
     assert.equal(await state.gateway.currentVault(signal), null)
     state.runtime.active = true
+    assert.deepEqual(await state.gateway.createManagedVault({ expectedGeneration: 7, name: 'Class Notes' }, signal), { generation: 8, id: `vault:${'f'.repeat(64)}` })
     assert.deepEqual(await state.gateway.listRecentVaults(signal), { generation: 7, vaults: state.runtime.recent })
     assert.deepEqual(await state.gateway.activateRecentVault({ expectedGeneration: 7, id: state.runtime.recent[1]!.id }, signal), {
       generation: 8,
@@ -237,6 +244,7 @@ test('registers only the accepted read/tree Remote methods and delegates exact r
     assert.equal((await state.gateway.links({ expectedVault: vault, includeUnlinked: true, path: 'Folder/Note.md' }, signal)).path, 'Folder/Note.md')
     assert.equal((await state.gateway.search({ expectedVault: vault, mode: 'query', query: 'match' }, signal)).matches.length, 1)
     assert.deepEqual(state.runtime.calls, [
+      { method: 'createManagedVault', parameters: ['Class Notes', 7] },
       { method: 'listRecentVaults', parameters: [] },
       { method: 'activateRecentVault', parameters: [`vault:${'d'.repeat(64)}`, 7] },
       { method: 'removeRecentVault', parameters: [`vault:${'d'.repeat(64)}`, 7] },
@@ -282,6 +290,7 @@ test('fails closed on browser-controlled path, vault, cursor, and limit values',
     await assert.rejects(state.gateway.facets({ expectedVault: vault, limit: 1_001 }, signal), /limit/i)
     await assert.rejects(state.gateway.outline({ expectedVault: vault, path: '../escape.md' }, signal), /path/i)
     await assert.rejects(state.gateway.links({ expectedVault: vault, includeUnlinked: 'yes' as unknown as boolean, path: 'Folder/Note.md' }, signal), /Boolean/i)
+    await assert.rejects(state.gateway.createManagedVault({ expectedGeneration: 7, name: '../escape' }, signal), /name/i)
     await assert.rejects(state.gateway.search({ expectedVault: vault, query: 'x'.repeat(1_001) }, signal), /query/i)
     await assert.rejects(state.gateway.search({ expectedVault: vault, query: 'ok', regex: 'yes' as unknown as boolean }, signal), /Boolean/i)
     await assert.rejects(state.gateway.activateRecentVault({ expectedGeneration: -1, id: vault.id }, signal), /generation/i)

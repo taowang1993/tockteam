@@ -127,6 +127,11 @@ class FakeRemote implements WorkbenchRouteRemote {
       this.vault = target
       return success(target)
     },
+    createManagedVault: (request: { expectedGeneration: number; name: string }, signal?: AbortSignal) => {
+      this.calls.push({ method: 'createManagedVault', parameters: [request, signal] })
+      this.vault = sandboxVault
+      return success(sandboxVault)
+    },
     createDocument: (request: CreateDocumentRequest, signal?: AbortSignal) => {
       this.calls.push({ method: 'createDocument', parameters: [request, signal] })
       if (this.createOverride !== null) return this.createOverride(request)
@@ -1053,15 +1058,18 @@ test('dirty-gates opaque recent and sandbox vault transitions without browser pa
   assert.deepEqual(controller.getSnapshot().vault, secondVault)
   assert.equal(await controller.removeRecentVault(firstVault.id), true)
   assert.deepEqual(controller.getSnapshot().recentVaults?.map(vault => vault.id), [secondVault.id])
+  assert.equal(await controller.createManagedVault('Class Notes'), true)
+  assert.deepEqual(controller.getSnapshot().vault, sandboxVault)
   assert.equal(await controller.openSandboxVault(), true)
   assert.deepEqual(controller.getSnapshot().vault, sandboxVault)
   const requests = remote.calls
-    .filter(call => call.method === 'activateRecentVault' || call.method === 'removeRecentVault' || call.method === 'openSandboxVault')
+    .filter(call => call.method === 'activateRecentVault' || call.method === 'removeRecentVault' || call.method === 'createManagedVault' || call.method === 'openSandboxVault')
     .map(call => call.parameters[0])
   assert.deepEqual(requests, [
     { expectedGeneration: firstVault.generation, id: secondVault.id },
     { expectedGeneration: secondVault.generation, id: firstVault.id },
-    { expectedGeneration: secondVault.generation },
+    { expectedGeneration: secondVault.generation, name: 'Class Notes' },
+    { expectedGeneration: sandboxVault.generation },
   ])
   controller.dispose()
 })
