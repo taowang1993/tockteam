@@ -213,6 +213,9 @@ describe('TockTutor titlebar panel controls', () => {
     }, { onActivateRecentVault, onOpenSandboxVault, onRemoveRecentVault })
 
     fireEvent.click(screen.getByRole('button', { name: /TockTutor Vault/u }))
+    const utilities = screen.getByLabelText('Workbench Utilities')
+    expect(utilities.className).toContain('auto-rows-max')
+    expect(utilities.className).not.toContain('minmax(0,1fr)')
     fireEvent.click(screen.getByRole('button', { name: 'Open Sandbox Vault' }))
     expect(onOpenSandboxVault).toHaveBeenCalledOnce()
     fireEvent.click(screen.getByRole('button', { name: 'Open' }))
