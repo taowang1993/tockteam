@@ -337,6 +337,20 @@ test('GitHub CLI discovery follows Windows PATH syntax and executable names', ()
   }
 })
 
+test('repository names containing 404 do not hide unrelated command failures', async () => {
+  const platform = new ProductionMarketplacePlatform({
+    cliEntry: '/unused/dsh.mjs',
+    cwd: tmpdir(),
+    env: { DSH_DESKTOP_GH_PATH: process.execPath, PATH: '' },
+    nodeBinary: process.execPath,
+    pnpmEntry: '/unused/pnpm.mjs',
+  })
+  await assert.rejects(
+    platform.readRepositoryFile('owner/404-tools', 'package.json', COMMIT),
+    /failed/u,
+  )
+})
+
 test('public catalogs load anonymously without GitHub CLI', async () => {
   let requested = ''
   const platform = new ProductionMarketplacePlatform({

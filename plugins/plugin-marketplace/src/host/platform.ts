@@ -86,9 +86,20 @@ function repositoryContentPath(repository: string, path: string): string {
   return `repos/${repository}/contents/${segments.map(encodeURIComponent).join('/')}`
 }
 
+class CommandError extends Error {
+  readonly stderr: string
+  readonly stdout: string
+
+  constructor(command: string, args: readonly string[], stderr: string, stdout: string) {
+    const detail = stderr.trim() || stdout.trim() || 'command returned a non-zero status'
+    super(`${command} ${args.join(' ')} failed: ${detail}`)
+    this.stderr = stderr
+    this.stdout = stdout
+  }
+}
+
 function commandError(command: string, args: readonly string[], stderr: string, stdout: string): Error {
-  const detail = stderr.trim() || stdout.trim() || 'command returned a non-zero status'
-  return new Error(`${command} ${args.join(' ')} failed: ${detail}`)
+  return new CommandError(command, args, stderr, stdout)
 }
 
 async function runCommand(
@@ -502,7 +513,8 @@ export class ProductionMarketplacePlatform implements MarketplacePlatform {
       ], { env: this.#options.env, timeoutMs: 30_000 })
       return Buffer.from(result.stdout.replaceAll(/\s/g, ''), 'base64').toString('utf8')
     } catch (error) {
-      if (error instanceof Error && /404|Not Found/i.test(error.message)) return null
+      if (error instanceof CommandError
+        && /(?:HTTP\s+404|Not Found)/iu.test(`${error.stderr}\n${error.stdout}`)) return null
       throw error
     }
   }
