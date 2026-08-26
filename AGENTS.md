@@ -80,9 +80,10 @@ Folder: `.agents/references/`
 - Must use the TDD skill for non-trivial implementation or bug fixes: run the failing check first, then report the exact verification command.
 - Must use the design skill for UI/UX work and the playwright-cli skill to verify browser-visible UI or user-flow changes.
 - Must stop any Electron app, web server, and child process started for verification unless the user asks to keep it running.
+- Write new reports in `.beads/reports`.
 - Never push without explicit authority from the user, orchestrator, or active repository profile. Never squash-merge pull requests; use merge commits.
 - Never modify `AGENTS.md` or add Markdown files at the repository root without explicit user permission.
-- Never create scratch or context files in the repository root; use `/tmp` for disposable notes and `.beads/plans` or `.beads/report` only for requested durable work.
+- Never create scratch or context files in the repository root; use `/tmp` for disposable notes and `.beads/plans` or `.beads/reports` only for requested durable work.
 
 ## Security Boundaries
 
