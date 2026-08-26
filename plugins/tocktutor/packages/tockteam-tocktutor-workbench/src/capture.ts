@@ -74,8 +74,8 @@ export function expandTemplate(
   context: { now: Date; title: string; content?: string; fromTitle?: string },
 ): string {
   if (new TextEncoder().encode(template).byteLength > MAX_TEMPLATE_BYTES) throw new Error('The template is too large.')
-  return template.replace(/\{\{(title|content|fromTitle|date|time)(?::([^}\r\n]{1,100}))?\}\}/gu, (source, name: string, format?: string) => {
-    if (name === 'title') return context.title
+  return template.replace(/\{\{(title|newTitle|content|fromTitle|date|time)(?::([^}\r\n]{1,100}))?\}\}/gu, (source, name: string, format?: string) => {
+    if (name === 'title' || name === 'newTitle') return context.title
     if (name === 'content') return context.content ?? ''
     if (name === 'fromTitle') return context.fromTitle ?? ''
     if (name === 'date') return formatDate(context.now, format ?? 'YYYY-MM-DD')

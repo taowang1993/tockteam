@@ -69,8 +69,8 @@ function collisionPath(path, existing) {
 export function expandTemplate(template, context) {
     if (new TextEncoder().encode(template).byteLength > MAX_TEMPLATE_BYTES)
         throw new Error('The template is too large.');
-    return template.replace(/\{\{(title|content|fromTitle|date|time)(?::([^}\r\n]{1,100}))?\}\}/gu, (source, name, format) => {
-        if (name === 'title')
+    return template.replace(/\{\{(title|newTitle|content|fromTitle|date|time)(?::([^}\r\n]{1,100}))?\}\}/gu, (source, name, format) => {
+        if (name === 'title' || name === 'newTitle')
             return context.title;
         if (name === 'content')
             return context.content ?? '';

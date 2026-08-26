@@ -68,6 +68,7 @@ import { addBookmark, loadBookmarks, saveBookmarks, type Bookmark as TockTutorBo
 import { layoutGraph, projectGraph, type GraphPosition } from './graph.ts'
 import { buildCaptureNote, buildJournalNote, uniqueNotePath } from './capture.ts'
 import { buildOrganizationProposal, type OrganizationProposal } from './organize.ts'
+import { convertMarkdownFormats, extractSelectionToNote } from './composer.ts'
 import {
   createNamedWorkspace,
   loadTockTutorSettings,
@@ -1663,6 +1664,49 @@ export class WorkbenchRouteController {
     }
   }
 
+  convertActiveNote(): boolean {
+    if (this.snapshot.documentKind !== 'markdown' || this.snapshot.path === null || this.snapshot.mode === 'reading') return false
+    try {
+      const source = convertMarkdownFormats(this.snapshot.source, { deprecatedProperties: true, roamBear: true })
+      if (source === this.snapshot.source) return false
+      this.edit(source)
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  async extractActiveSelection(): Promise<boolean> {
+    const vault = this.snapshot.vault
+    const path = this.snapshot.path
+    const start = this.snapshot.selectionStart ?? 0
+    const end = this.snapshot.selectionEnd ?? 0
+    if (vault === null || path === null || this.snapshot.documentKind !== 'markdown' || end <= start) return false
+    const destinationPath = `Extracted/${noteTitle(path)} Extract.md`
+    try {
+      const extraction = extractSelectionToNote({
+        destinationPath,
+        destinationTitle: `${noteTitle(path)} Extract`,
+        end,
+        leftover: 'link',
+        source: this.snapshot.source,
+        sourceTitle: noteTitle(path),
+        start,
+      })
+      const created = remoteValue(await this.remote.tocktutorWorkbench.createDocument({
+        content: extraction.destinationContent,
+        expectedVault: vault,
+        path: destinationPath,
+      }))
+      if (created.status !== 'created' || created.generation !== vault.generation || created.path !== destinationPath) return false
+      this.edit(extraction.sourceContent)
+      this.update({ message: `${destinationPath} created; save the source note to finish extraction.` })
+      return true
+    } catch {
+      return false
+    }
+  }
+
   async prepareOrganization(): Promise<boolean> {
     const path = this.snapshot.path
     if (path === null || !/^Inbox\/.+\.md$/iu.test(path)) return false
@@ -1965,9 +2009,11 @@ export interface TockTutorRouteViewProps {
   onCloseCommandPalette?(): void
   onCloseSearch?(): void
   onCloseTab?(paneId: string, path: string): void
+  onConvertActiveNote?(): void
   onAddPane(): void
   onEdit(source: string): void
   onEditorCommand?(command: EditorCommandId): void
+  onExtractSelection?(): void
   onFocusPane(paneId: string): void
   onForward?(): void
   onJumpToLine?(line: number): void
@@ -2842,6 +2888,13 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
             {(snapshot.links?.outgoingDetails ?? []).map((link, index) => <Button unstyled className="block w-full rounded border-0 bg-transparent px-1 py-0.5 text-left text-xs" disabled={link.resolvedPath === null} key={`${link.authoredTarget}-${String(link.line)}-${String(index)}`} onClick={() => { if (link.resolvedPath !== null) props.onSelect(link.resolvedPath) }} type="button">{link.displayText || link.authoredTarget}</Button>)}
             {(snapshot.links?.unlinkedMentions ?? []).map((mention, index) => <span className="block text-xs text-[var(--tt-muted)]" key={`${mention.sourcePath}-${String(mention.line)}-${String(index)}`}>Mention: {mention.matchedText}</span>)}
           </section>
+          <section aria-label="Note Composer and Format Converter" className="border-t border-[var(--tt-border)] p-3">
+            <h2 className="m-0 text-sm">Note Composer and Format Converter</h2>
+            <div className="mt-2 flex gap-1">
+              <Button unstyled className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs" disabled={snapshot.documentKind !== 'markdown' || snapshot.mode === 'reading' || (snapshot.selectionEnd ?? 0) <= (snapshot.selectionStart ?? 0)} onClick={props.onExtractSelection} type="button">Extract Selection</Button>
+              <Button unstyled className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs" disabled={snapshot.documentKind !== 'markdown' || snapshot.mode === 'reading'} onClick={props.onConvertActiveNote} type="button">Convert Formats</Button>
+            </div>
+          </section>
           <section aria-label="Capture Organization" className="border-t border-[var(--tt-border)] p-3">
             <div className="flex items-center justify-between gap-2">
               <h2 className="m-0 text-sm">Capture Organization</h2>
@@ -3043,8 +3096,10 @@ export function TockTutorRoute(props: TockTutorRouteProps): ReactNode {
         onCloseCommandPalette={() => { controller.setCommandPaletteOpen(false) }}
         onCloseSearch={() => { controller.closeSearch() }}
         onCloseTab={(paneId, path) => { void controller.closeTab(paneId, path) }}
+        onConvertActiveNote={() => { controller.convertActiveNote() }}
         onEdit={source => { controller.edit(source) }}
         onEditorCommand={command => { controller.runEditorCommand(command) }}
+        onExtractSelection={() => { void controller.extractActiveSelection() }}
         onFocusPane={paneId => { void controller.focusPane(paneId) }}
         onForward={() => { void controller.goForward() }}
         onJumpToLine={line => { controller.jumpToLine(line) }}

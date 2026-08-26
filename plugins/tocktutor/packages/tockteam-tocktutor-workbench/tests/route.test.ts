@@ -1223,6 +1223,23 @@ test('persists bounded settings, tabs, focus mode, and named workspaces per vaul
   second.dispose()
 })
 
+test('extracts the active selection and converts active-note formats through reviewed boundaries', async () => {
+  const remote = new FakeRemote()
+  const controller = new WorkbenchRouteController(remote, () => {})
+  await controller.syncLocation('/tocktutor')
+  assert.equal(await controller.select('Folder/Note.md'), true)
+  controller.setSelection(2, 8)
+  assert.equal(await controller.extractActiveSelection(), true)
+  assert.match(controller.getSnapshot().source, /\[\[Extracted\/Note Extract\.md\|Before\]\]/u)
+  const create = remote.calls.findLast(call => call.method === 'createDocument')?.parameters[0] as CreateDocumentRequest
+  assert.equal(create.path, 'Extracted/Note Extract.md')
+  assert.equal(create.content, 'Before\n')
+  controller.edit('- TODO Review\n^^mark^^\n')
+  assert.equal(controller.convertActiveNote(), true)
+  assert.equal(controller.getSnapshot().source, '- [ ] Review\n==mark==\n')
+  controller.dispose()
+})
+
 test('requires explicit review before creating an organized Inbox note', async () => {
   const remote = new FakeRemote()
   const controller = new WorkbenchRouteController(remote, () => {}, () => new Date(2026, 7, 26, 10, 0))

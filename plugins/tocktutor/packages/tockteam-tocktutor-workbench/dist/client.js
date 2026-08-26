@@ -81,6 +81,7 @@ __export(client_exports, {
   calculateCanvasPointerValue: () => calculateCanvasPointerValue,
   calculateCanvasResizeGeometry: () => calculateCanvasResizeGeometry,
   compileTockTutorCssSnippet: () => compileTockTutorCssSnippet,
+  convertMarkdownFormats: () => convertMarkdownFormats,
   createCanvasChange: () => createCanvasChange,
   createCanvasConnectedTextNode: () => createCanvasConnectedTextNode,
   createCanvasEdge: () => createCanvasEdge,
@@ -98,6 +99,7 @@ __export(client_exports, {
   duplicateCanvasNodes: () => duplicateCanvasNodes,
   escapeMarkdownHtml: () => escapeMarkdownHtml,
   expandTemplate: () => expandTemplate,
+  extractSelectionToNote: () => extractSelectionToNote,
   inferPropertyType: () => inferPropertyType,
   inject: () => inject,
   internalLinkDropMarkdown: () => internalLinkDropMarkdown,
@@ -111,6 +113,7 @@ __export(client_exports, {
   loadBookmarks: () => loadBookmarks,
   loadTockTutorSettings: () => loadTockTutorSettings,
   loadWorkbenchState: () => loadWorkbenchState,
+  mergeNotes: () => mergeNotes,
   name: () => name,
   normalizeCanvasLinkUrl: () => normalizeCanvasLinkUrl,
   pagePreviewTargetAtOffset: () => pagePreviewTargetAtOffset,
@@ -23885,8 +23888,8 @@ function collisionPath(path, existing) {
 }
 function expandTemplate(template, context) {
   if (new TextEncoder().encode(template).byteLength > MAX_TEMPLATE_BYTES) throw new Error("The template is too large.");
-  return template.replace(/\{\{(title|content|fromTitle|date|time)(?::([^}\r\n]{1,100}))?\}\}/gu, (source, name2, format) => {
-    if (name2 === "title") return context.title;
+  return template.replace(/\{\{(title|newTitle|content|fromTitle|date|time)(?::([^}\r\n]{1,100}))?\}\}/gu, (source, name2, format) => {
+    if (name2 === "title" || name2 === "newTitle") return context.title;
     if (name2 === "content") return context.content ?? "";
     if (name2 === "fromTitle") return context.fromTitle ?? "";
     if (name2 === "date") return formatDate(context.now, format ?? "YYYY-MM-DD");
@@ -24006,6 +24009,87 @@ ${sections.join("\n\n")}
   if (bytes2(content) > MAX_ORGANIZE_BYTES) throw new Error("Organization output is too large.");
   const canonical = JSON.stringify({ captures: [...seen], content, destination, title });
   return { captures: Object.freeze([...seen]), content, destination, id: `organize-${digest(canonical)}`, title };
+}
+
+// src/composer.ts
+function appendBlock(source, block, prepend = false) {
+  if (prepend) return `${block.replace(/\s+$/u, "")}
+
+${source.replace(/^\s+/u, "")}`;
+  const separator = source === "" || /(?:\r\n|[\r\n]){2}$/u.test(source) ? "" : /(?:\r\n|[\r\n])$/u.test(source) ? "\n" : "\n\n";
+  return `${source}${separator}${block.replace(/^\s+/u, "")}`;
+}
+function link(path, label, kind) {
+  if (kind === "none") return "";
+  if (kind === "embed") return `![[${path}]]`;
+  return `[[${path}|${label.replace(/[\[\]|\r\n]/gu, " ").trim().slice(0, 200) || path}]]`;
+}
+function extractSelectionToNote(input) {
+  if (!isSafeVaultRelativePath(input.destinationPath) || !/\.md$/iu.test(input.destinationPath)) throw new Error("Composer destination is invalid.");
+  if (!Number.isSafeInteger(input.start) || !Number.isSafeInteger(input.end) || input.start < 0 || input.end <= input.start || input.end > input.source.length) throw new Error("Composer selection is invalid.");
+  const selected = input.source.slice(input.start, input.end);
+  const replacement = link(input.destinationPath, selected, input.leftover);
+  const destinationContent = input.template === void 0 ? `${selected.replace(/^\s+|\s+$/gu, "")}
+` : expandTemplate(input.template, {
+    content: selected.replace(/^\s+|\s+$/gu, ""),
+    fromTitle: input.sourceTitle,
+    now: /* @__PURE__ */ new Date(),
+    title: input.destinationTitle
+  }).replace(/\s+$/u, "");
+  return {
+    destinationContent,
+    sourceContent: `${input.source.slice(0, input.start)}${replacement}${input.source.slice(input.end)}`
+  };
+}
+function mergeNotes(input) {
+  if (!isSafeVaultRelativePath(input.destinationPath) || !isSafeVaultRelativePath(input.sourcePath) || input.destinationPath === input.sourcePath) throw new Error("Composer merge paths are invalid.");
+  return {
+    destinationContent: appendBlock(input.destination, input.source, input.placement === "prepend"),
+    sourceContent: `${link(input.destinationPath, input.destinationPath.replace(/\.md$/iu, ""), input.leftover)}
+`
+  };
+}
+function convertFrontmatter(lines) {
+  if (lines[0] !== "---") return;
+  const end = lines.findIndex((line, index2) => index2 > 0 && (line === "---" || line === "..."));
+  if (end < 0) return;
+  const replacements = /* @__PURE__ */ new Map([["alias", "aliases"], ["tag", "tags"], ["cssclass", "cssclasses"]]);
+  for (let index2 = 1; index2 < end; index2 += 1) {
+    const match = lines[index2]?.match(/^([A-Za-z_][A-Za-z0-9_-]*):(.*)$/u);
+    const replacement = match === null || match === void 0 ? void 0 : replacements.get(match[1].toLocaleLowerCase());
+    if (replacement !== void 0) lines[index2] = `${replacement}:${match[2]}`;
+  }
+}
+function convertMarkdownFormats(source, options) {
+  if (new TextEncoder().encode(source).byteLength > 2e6) throw new Error("Format conversion source is too large.");
+  const eol = source.includes("\r\n") ? "\r\n" : "\n";
+  const finalEol = /(?:\r\n|[\r\n])$/u.test(source);
+  const lines = source.split(/\r?\n/u);
+  if (finalEol) lines.pop();
+  if (options.deprecatedProperties === true) convertFrontmatter(lines);
+  let fence2 = null;
+  for (let index2 = 0; index2 < lines.length; index2 += 1) {
+    let line = lines[index2];
+    const marker = line.match(/^ {0,3}(`{3,}|~{3,})/u)?.[1];
+    if (marker !== void 0) {
+      if (fence2 === null) fence2 = { character: marker[0], length: marker.length };
+      else if (marker[0] === fence2.character && marker.length >= fence2.length && /^ {0,3}(?:`{3,}|~{3,})\s*$/u.test(line)) fence2 = null;
+      continue;
+    }
+    if (fence2 !== null) continue;
+    if (options.roamBear === true) {
+      line = line.replace(/^(\s*[-+*]\s+)TODO\s+/u, "$1[ ] ");
+      line = line.replace(/\^\^([^\r\n^]{1,100000})\^\^/gu, "==$1==");
+    }
+    if (options.zettelkasten !== void 0) {
+      line = line.replace(/\[\[(\d{8,14})\]\]/gu, (original, uid) => {
+        const path = options.zettelkasten?.get(uid);
+        return path !== void 0 && isSafeVaultRelativePath(path) ? `[[${path}|${uid}]]` : original;
+      });
+    }
+    lines[index2] = line;
+  }
+  return `${lines.join(eol)}${finalEol ? eol : ""}`;
 }
 
 // src/settings.ts
@@ -25692,6 +25776,47 @@ var WorkbenchRouteController = class {
       this.update({ message: "The Canvas node could not be moved within the bounded workspace." });
     }
   }
+  convertActiveNote() {
+    if (this.snapshot.documentKind !== "markdown" || this.snapshot.path === null || this.snapshot.mode === "reading") return false;
+    try {
+      const source = convertMarkdownFormats(this.snapshot.source, { deprecatedProperties: true, roamBear: true });
+      if (source === this.snapshot.source) return false;
+      this.edit(source);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  async extractActiveSelection() {
+    const vault = this.snapshot.vault;
+    const path = this.snapshot.path;
+    const start = this.snapshot.selectionStart ?? 0;
+    const end = this.snapshot.selectionEnd ?? 0;
+    if (vault === null || path === null || this.snapshot.documentKind !== "markdown" || end <= start) return false;
+    const destinationPath = `Extracted/${noteTitle(path)} Extract.md`;
+    try {
+      const extraction = extractSelectionToNote({
+        destinationPath,
+        destinationTitle: `${noteTitle(path)} Extract`,
+        end,
+        leftover: "link",
+        source: this.snapshot.source,
+        sourceTitle: noteTitle(path),
+        start
+      });
+      const created = remoteValue(await this.remote.tocktutorWorkbench.createDocument({
+        content: extraction.destinationContent,
+        expectedVault: vault,
+        path: destinationPath
+      }));
+      if (created.status !== "created" || created.generation !== vault.generation || created.path !== destinationPath) return false;
+      this.edit(extraction.sourceContent);
+      this.update({ message: `${destinationPath} created; save the source note to finish extraction.` });
+      return true;
+    } catch {
+      return false;
+    }
+  }
   async prepareOrganization() {
     const path = this.snapshot.path;
     if (path === null || !/^Inbox\/.+\.md$/iu.test(path)) return false;
@@ -26821,21 +26946,28 @@ function TockTutorRouteView(props) {
                         props.onJumpToLine?.(footnote.line);
                       }, type: "button", children: footnote.content }, `${footnote.line}-${footnote.ordinal}`)),
                       /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("h3", { className: "mt-2 mb-1 text-xs", children: "Backlinks" }),
-                      (snapshot.links?.backlinkDetails ?? []).map((link, index2) => /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)(Button, { unstyled: true, className: "block w-full rounded border-0 bg-transparent px-1 py-0.5 text-left text-xs", onClick: () => {
-                        props.onSelect(link.sourcePath);
+                      (snapshot.links?.backlinkDetails ?? []).map((link2, index2) => /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)(Button, { unstyled: true, className: "block w-full rounded border-0 bg-transparent px-1 py-0.5 text-left text-xs", onClick: () => {
+                        props.onSelect(link2.sourcePath);
                       }, type: "button", children: [
-                        link.sourcePath,
+                        link2.sourcePath,
                         ":",
-                        String(link.line)
-                      ] }, `${link.sourcePath}-${String(link.line)}-${String(index2)}`)),
+                        String(link2.line)
+                      ] }, `${link2.sourcePath}-${String(link2.line)}-${String(index2)}`)),
                       /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("h3", { className: "mt-2 mb-1 text-xs", children: "Outgoing Links" }),
-                      (snapshot.links?.outgoingDetails ?? []).map((link, index2) => /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(Button, { unstyled: true, className: "block w-full rounded border-0 bg-transparent px-1 py-0.5 text-left text-xs", disabled: link.resolvedPath === null, onClick: () => {
-                        if (link.resolvedPath !== null) props.onSelect(link.resolvedPath);
-                      }, type: "button", children: link.displayText || link.authoredTarget }, `${link.authoredTarget}-${String(link.line)}-${String(index2)}`)),
+                      (snapshot.links?.outgoingDetails ?? []).map((link2, index2) => /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(Button, { unstyled: true, className: "block w-full rounded border-0 bg-transparent px-1 py-0.5 text-left text-xs", disabled: link2.resolvedPath === null, onClick: () => {
+                        if (link2.resolvedPath !== null) props.onSelect(link2.resolvedPath);
+                      }, type: "button", children: link2.displayText || link2.authoredTarget }, `${link2.authoredTarget}-${String(link2.line)}-${String(index2)}`)),
                       (snapshot.links?.unlinkedMentions ?? []).map((mention, index2) => /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("span", { className: "block text-xs text-[var(--tt-muted)]", children: [
                         "Mention: ",
                         mention.matchedText
                       ] }, `${mention.sourcePath}-${String(mention.line)}-${String(index2)}`))
+                    ] }),
+                    /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("section", { "aria-label": "Note Composer and Format Converter", className: "border-t border-[var(--tt-border)] p-3", children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("h2", { className: "m-0 text-sm", children: "Note Composer and Format Converter" }),
+                      /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("div", { className: "mt-2 flex gap-1", children: [
+                        /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs", disabled: snapshot.documentKind !== "markdown" || snapshot.mode === "reading" || (snapshot.selectionEnd ?? 0) <= (snapshot.selectionStart ?? 0), onClick: props.onExtractSelection, type: "button", children: "Extract Selection" }),
+                        /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs", disabled: snapshot.documentKind !== "markdown" || snapshot.mode === "reading", onClick: props.onConvertActiveNote, type: "button", children: "Convert Formats" })
+                      ] })
                     ] }),
                     /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("section", { "aria-label": "Capture Organization", className: "border-t border-[var(--tt-border)] p-3", children: [
                       /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("div", { className: "flex items-center justify-between gap-2", children: [
@@ -27057,11 +27189,17 @@ function TockTutorRoute(props) {
       onCloseTab: (paneId, path) => {
         void controller.closeTab(paneId, path);
       },
+      onConvertActiveNote: () => {
+        controller.convertActiveNote();
+      },
       onEdit: (source) => {
         controller.edit(source);
       },
       onEditorCommand: (command) => {
         controller.runEditorCommand(command);
+      },
+      onExtractSelection: () => {
+        void controller.extractActiveSelection();
       },
       onFocusPane: (paneId) => {
         void controller.focusPane(paneId);

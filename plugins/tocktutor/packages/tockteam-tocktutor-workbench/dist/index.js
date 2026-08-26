@@ -39,4 +39,5 @@ export * from "./bookmarks.js";
 export * from "./graph.js";
 export * from "./capture.js";
 export * from "./organize.js";
+export * from "./composer.js";
 //# sourceMappingURL=index.js.map

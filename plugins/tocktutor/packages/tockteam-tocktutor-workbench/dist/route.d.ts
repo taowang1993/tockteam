@@ -208,6 +208,8 @@ export declare class WorkbenchRouteController {
     setMode(mode: RouteEditorMode): void;
     toggleTask(index: number): void;
     moveCanvasNode(nodeId: string, deltaX: number, deltaY: number): void;
+    convertActiveNote(): boolean;
+    extractActiveSelection(): Promise<boolean>;
     prepareOrganization(): Promise<boolean>;
     cancelOrganization(): void;
     applyOrganization(): Promise<boolean>;
@@ -230,9 +232,11 @@ export interface TockTutorRouteViewProps {
     onCloseCommandPalette?(): void;
     onCloseSearch?(): void;
     onCloseTab?(paneId: string, path: string): void;
+    onConvertActiveNote?(): void;
     onAddPane(): void;
     onEdit(source: string): void;
     onEditorCommand?(command: EditorCommandId): void;
+    onExtractSelection?(): void;
     onFocusPane(paneId: string): void;
     onForward?(): void;
     onJumpToLine?(line: number): void;
