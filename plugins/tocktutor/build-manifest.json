@@ -707,7 +707,7 @@
     },
     {
       "path": "packages/tockteam-tocktutor-assistant/package.json",
-      "sha256": "87986699945787f03ef52b1b8a26c8aaa4737d2ad6fc11668eb34dadbbdaa4c3"
+      "sha256": "29bbfa640dd250e9ab86a31207c9da54a0b67e43837c1665242b924d22f4fdc3"
     },
     {
       "path": "packages/tockteam-tocktutor-assistant/scripts/build-client.mjs",

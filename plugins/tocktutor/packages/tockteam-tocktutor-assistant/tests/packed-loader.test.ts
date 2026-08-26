@@ -269,6 +269,7 @@ test('a fresh packed artifact loads through pinned Host and web ClientModule loa
     )
     const assistantRow = graph.entries.find(row => row.id === packageName)
     assert.ok(assistantRow)
+    assert.deepEqual(assistantRow.external, [`${workbenchName}/client`])
     assert.equal(assistantRow.url.startsWith(`/plugins/${packageName}/client.js?rev=`), true)
 
     Object.defineProperty(globalThis, 'window', { configurable: true, value: globalThis })

@@ -35,6 +35,9 @@
       "patch": "./cordis.patch.yml"
     },
     "client": {
+      "external": [
+        "@tockteam/tocktutor-workbench/client"
+      ],
       "inject": [
         "@deepseek-ai/dsh-client-runtime",
         "@tockteam/tocktutor-workbench"
