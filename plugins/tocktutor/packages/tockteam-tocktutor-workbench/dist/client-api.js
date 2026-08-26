@@ -42,6 +42,13 @@ export async function apply(ctx) {
     };
 }
 export * from "./assistant-panel.js";
+export * from "./base-edit.js";
+export * from "./base-executable-view.js";
+export * from "./base-parser.js";
+export * from "./base-query.js";
+export * from "./base-spreadsheet.js";
+export * from "./base-view-model.js";
+export * from "./base-view-provenance.js";
 export * from "./canvas-board.js";
 export * from "./canvas-change.js";
 export * from "./canvas-edges.js";

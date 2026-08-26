@@ -35,6 +35,7 @@ __export(client_exports, {
   CANVAS_GRID_SIZE: () => CANVAS_GRID_SIZE,
   CanvasBoard: () => CanvasBoard,
   CanvasLinkUrlError: () => CanvasLinkUrlError,
+  ExecutableBaseView: () => ExecutableBaseView,
   MAX_BOOKMARK_BYTES: () => MAX_BOOKMARK_BYTES,
   MAX_BOOKMARK_ITEMS: () => MAX_BOOKMARK_ITEMS,
   MAX_CANVAS_BYTES: () => MAX_CANVAS_BYTES,
@@ -44,6 +45,14 @@ __export(client_exports, {
   MAX_CANVAS_LABEL_LENGTH: () => MAX_CANVAS_LABEL_LENGTH,
   MAX_CANVAS_NODES: () => MAX_CANVAS_NODES,
   MAX_EDITOR_COMMAND_SOURCE_BYTES: () => MAX_EDITOR_COMMAND_SOURCE_BYTES,
+  MAX_EXECUTABLE_BASE_FILES: () => MAX_EXECUTABLE_BASE_FILES,
+  MAX_EXECUTABLE_BASE_FILE_BYTES: () => MAX_EXECUTABLE_BASE_FILE_BYTES,
+  MAX_EXECUTABLE_BASE_FORMULAS: () => MAX_EXECUTABLE_BASE_FORMULAS,
+  MAX_EXECUTABLE_BASE_LIST_ITEMS: () => MAX_EXECUTABLE_BASE_LIST_ITEMS,
+  MAX_EXECUTABLE_BASE_SEARCH_LENGTH: () => MAX_EXECUTABLE_BASE_SEARCH_LENGTH,
+  MAX_EXECUTABLE_BASE_SPREADSHEET_CELLS: () => MAX_EXECUTABLE_BASE_SPREADSHEET_CELLS,
+  MAX_EXECUTABLE_BASE_SPREADSHEET_CHARACTERS: () => MAX_EXECUTABLE_BASE_SPREADSHEET_CHARACTERS,
+  MAX_EXECUTABLE_BASE_TOTAL_BYTES: () => MAX_EXECUTABLE_BASE_TOTAL_BYTES,
   MAX_GRAPH_EDGES: () => MAX_GRAPH_EDGES,
   MAX_GRAPH_NODES: () => MAX_GRAPH_NODES,
   MAX_LIVE_PREVIEW_LINE_BYTES: () => MAX_LIVE_PREVIEW_LINE_BYTES,
@@ -60,6 +69,7 @@ __export(client_exports, {
   MAX_TOCKTUTOR_WORKSPACES: () => MAX_TOCKTUTOR_WORKSPACES,
   MIN_CANVAS_NODE_HEIGHT: () => MIN_CANVAS_NODE_HEIGHT,
   MIN_CANVAS_NODE_WIDTH: () => MIN_CANVAS_NODE_WIDTH,
+  TOCKBOT_BASE_VIEW_PROVENANCE: () => TOCKBOT_BASE_VIEW_PROVENANCE,
   TOCKBOT_CANVAS_PROVENANCE: () => TOCKBOT_CANVAS_PROVENANCE,
   TOCKTUTOR_ASSISTANT_PANEL_SLOT: () => TOCKTUTOR_ASSISTANT_PANEL_SLOT,
   TOCKTUTOR_NATIVE_ACTIONS_SLOT: () => TOCKTUTOR_NATIVE_ACTIONS_SLOT,
@@ -84,6 +94,7 @@ __export(client_exports, {
   calculateCanvasResizeGeometry: () => calculateCanvasResizeGeometry,
   compileTockTutorCssSnippet: () => compileTockTutorCssSnippet,
   convertMarkdownFormats: () => convertMarkdownFormats,
+  createBaseViewModel: () => createBaseViewModel,
   createCanvasChange: () => createCanvasChange,
   createCanvasConnectedTextNode: () => createCanvasConnectedTextNode,
   createCanvasEdge: () => createCanvasEdge,
@@ -92,6 +103,7 @@ __export(client_exports, {
   createCanvasGroupNode: () => createCanvasGroupNode,
   createCanvasLinkNode: () => createCanvasLinkNode,
   createCanvasTextNode: () => createCanvasTextNode,
+  createExecutableBaseFrontmatterEdit: () => createExecutableBaseFrontmatterEdit,
   createNamedWorkspace: () => createNamedWorkspace,
   deleteCanvasEdge: () => deleteCanvasEdge,
   deleteCanvasGroup: () => deleteCanvasGroup,
@@ -100,6 +112,11 @@ __export(client_exports, {
   duplicateCanvasGroup: () => duplicateCanvasGroup,
   duplicateCanvasNodes: () => duplicateCanvasNodes,
   escapeMarkdownHtml: () => escapeMarkdownHtml,
+  executableBaseCellRangeTsv: () => executableBaseCellRangeTsv,
+  executableBaseCsvFilename: () => executableBaseCsvFilename,
+  executableBasePropertyIdentity: () => executableBasePropertyIdentity,
+  executableBaseViewCsv: () => executableBaseViewCsv,
+  executableBaseViewTsv: () => executableBaseViewTsv,
   expandTemplate: () => expandTemplate,
   extractSelectionToNote: () => extractSelectionToNote,
   inferPropertyType: () => inferPropertyType,
@@ -121,11 +138,14 @@ __export(client_exports, {
   pagePreviewTargetAtOffset: () => pagePreviewTargetAtOffset,
   parseCanvasDocument: () => parseCanvasDocument,
   parseCanvasForMutation: () => parseCanvasForMutation,
+  parseExecutableBase: () => parseExecutableBase,
+  parseExecutableBaseCoordinates: () => parseExecutableBaseCoordinates,
   parseFrontmatterProperties: () => parseFrontmatterProperties,
   pathFromTockTutorLocation: () => pathFromTockTutorLocation,
   projectCanvas: () => projectCanvas,
   projectGraph: () => projectGraph,
   projectLivePreview: () => projectLivePreview,
+  queryExecutableBaseView: () => queryExecutableBaseView,
   reconnectCanvasEdge: () => reconnectCanvasEdge,
   remapBookmarks: () => remapBookmarks,
   renameFrontmatterProperty: () => renameFrontmatterProperty,
@@ -137,9 +157,11 @@ __export(client_exports, {
   saveBookmarks: () => saveBookmarks,
   saveTockTutorSettings: () => saveTockTutorSettings,
   saveWorkbenchState: () => saveWorkbenchState,
+  selectExecutableBaseView: () => selectExecutableBaseView,
   serializeCanvasDocument: () => serializeCanvasDocument,
   setFrontmatterProperty: () => setFrontmatterProperty,
   subscribeNoteVaultChanges: () => subscribeNoteVaultChanges,
+  summarizeExecutableBaseRows: () => summarizeExecutableBaseRows,
   tryNormalizeCanvasLinkUrl: () => tryNormalizeCanvasLinkUrl,
   uniqueNotePath: () => uniqueNotePath,
   updateCanvasEdgeColor: () => updateCanvasEdgeColor,
@@ -837,8 +859,8 @@ function assertNever(_x) {
 function assert(_) {
 }
 function getEnumValues(entries) {
-  const numericValues = Object.values(entries).filter((v) => typeof v === "number");
-  const values = Object.entries(entries).filter(([k, _]) => numericValues.indexOf(+k) === -1).map(([_, v]) => v);
+  const numericValues2 = Object.values(entries).filter((v) => typeof v === "number");
+  const values = Object.entries(entries).filter(([k, _]) => numericValues2.indexOf(+k) === -1).map(([_, v]) => v);
   return values;
 }
 function joinValues(array2, separator = "|") {
@@ -7795,8 +7817,8 @@ function ko_default() {
 }
 
 // ../../node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/locales/lt.js
-var capitalizeFirstCharacter = (text) => {
-  return text.charAt(0).toUpperCase() + text.slice(1);
+var capitalizeFirstCharacter = (text2) => {
+  return text2.charAt(0).toUpperCase() + text2.slice(1);
 };
 function getUnitTypeFromNumber(number4) {
   const abs = Math.abs(number4);
@@ -22470,11 +22492,11 @@ function updateCanvasLinkNode(content, nodeId, value) {
   node.url = normalizeCanvasLinkUrl(value);
   return serializeCanvasDocument(document2);
 }
-function updateCanvasTextNode(content, nodeId, text) {
+function updateCanvasTextNode(content, nodeId, text2) {
   const document2 = parseCanvasForMutation(content);
   const node = document2.nodes.find((candidate) => candidate.id === nodeId);
   if (node?.type !== "text") throw new Error("The selected Canvas text card no longer exists.");
-  node.text = text;
+  node.text = text2;
   return serializeCanvasDocument(document2);
 }
 function updateCanvasNodeGeometries(content, updates) {
@@ -23166,34 +23188,34 @@ function renderInline(source, footnoteNumbers) {
     tokens.push(html);
     return token;
   };
-  let text = source;
-  text = text.replace(/<[^>]{1,200}>/gu, (tag) => SAFE_RAW_TAG.test(tag) ? hold(tag.toLocaleLowerCase()) : tag);
-  text = text.replace(/`([^`\n]{0,10000})`/gu, (_match, code) => hold(`<code>${escapeMarkdownHtml(code)}</code>`));
-  text = escapeMarkdownHtml(text);
-  text = text.replace(/!\[([^\]\n]{0,1000})\]\(([^)\n]{1,4096})\)/gu, (match, alt, target) => {
+  let text2 = source;
+  text2 = text2.replace(/<[^>]{1,200}>/gu, (tag) => SAFE_RAW_TAG.test(tag) ? hold(tag.toLocaleLowerCase()) : tag);
+  text2 = text2.replace(/`([^`\n]{0,10000})`/gu, (_match, code) => hold(`<code>${escapeMarkdownHtml(code)}</code>`));
+  text2 = escapeMarkdownHtml(text2);
+  text2 = text2.replace(/!\[([^\]\n]{0,1000})\]\(([^)\n]{1,4096})\)/gu, (match, alt, target) => {
     const url2 = safeUrl(target);
     return url2 === null || !/^(?:data:image\/|(?:https?:)?\/|\.\.?\/|[^:]+$)/iu.test(url2) ? escapeMarkdownHtml(match) : `<img alt="${escapeMarkdownHtml(alt)}" loading="lazy" referrerpolicy="no-referrer" src="${escapeMarkdownHtml(url2)}">`;
   });
-  text = text.replace(/\[([^\]\n]{1,2000})\]\(([^)\n]{1,4096})\)/gu, (match, label, target) => {
+  text2 = text2.replace(/\[([^\]\n]{1,2000})\]\(([^)\n]{1,4096})\)/gu, (match, label, target) => {
     const url2 = safeUrl(target);
     return url2 === null ? escapeMarkdownHtml(match) : `<a href="${escapeMarkdownHtml(url2)}" rel="noopener noreferrer">${label}</a>`;
   });
-  text = text.replace(/\[\[([^\]\n]{1,2000})(?:\|([^\]\n]{0,2000}))?\]\]/gu, (_match, target, alias) => {
+  text2 = text2.replace(/\[\[([^\]\n]{1,2000})(?:\|([^\]\n]{0,2000}))?\]\]/gu, (_match, target, alias) => {
     const path = safeUrl(target);
     return path === null ? escapeMarkdownHtml(`[[${target}${alias === void 0 ? "" : `|${alias}`}]]`) : `<a class="internal-link" data-target="${escapeMarkdownHtml(path)}" href="#">${escapeMarkdownHtml(alias ?? target)}</a>`;
   });
-  text = text.replace(/\[\^([^\]\n]{1,200})\]/gu, (match, label) => {
+  text2 = text2.replace(/\[\^([^\]\n]{1,200})\]/gu, (match, label) => {
     const number4 = footnoteNumbers.get(label.toLocaleLowerCase());
     return number4 === void 0 ? match : `<sup class="footnote-ref"><a href="#fn-${String(number4)}">${String(number4)}</a></sup>`;
   });
-  text = text.replace(/\^\[([^\]\n]{1,2000})\]/gu, (_match, value) => hold(`<sup class="footnote-inline">${renderInline(value, footnoteNumbers)}</sup>`));
-  text = text.replace(/\$([^$\n]{1,20000})\$/gu, (_match, value) => `<span class="math-inline" role="math">${escapeMarkdownHtml(value)}</span>`);
-  text = text.replace(/==([^=\n]{1,20000})==/gu, "<mark>$1</mark>");
-  text = text.replace(/~~([^~\n]{1,20000})~~/gu, "<del>$1</del>");
-  text = text.replace(/\*\*([^*\n]{1,20000})\*\*/gu, "<strong>$1</strong>");
-  text = text.replace(/(?<!\*)\*([^*\n]{1,20000})\*(?!\*)/gu, "<em>$1</em>");
-  text = text.replace(/\u0000(\d+)\u0000/gu, (_match, index2) => tokens[Number(index2)] ?? "");
-  return text;
+  text2 = text2.replace(/\^\[([^\]\n]{1,2000})\]/gu, (_match, value) => hold(`<sup class="footnote-inline">${renderInline(value, footnoteNumbers)}</sup>`));
+  text2 = text2.replace(/\$([^$\n]{1,20000})\$/gu, (_match, value) => `<span class="math-inline" role="math">${escapeMarkdownHtml(value)}</span>`);
+  text2 = text2.replace(/==([^=\n]{1,20000})==/gu, "<mark>$1</mark>");
+  text2 = text2.replace(/~~([^~\n]{1,20000})~~/gu, "<del>$1</del>");
+  text2 = text2.replace(/\*\*([^*\n]{1,20000})\*\*/gu, "<strong>$1</strong>");
+  text2 = text2.replace(/(?<!\*)\*([^*\n]{1,20000})\*(?!\*)/gu, "<em>$1</em>");
+  text2 = text2.replace(/\u0000(\d+)\u0000/gu, (_match, index2) => tokens[Number(index2)] ?? "");
+  return text2;
 }
 function stripLeadingFrontmatter(markdown) {
   if (!markdown.startsWith("---\n") && !markdown.startsWith("---\r\n")) return markdown;
@@ -24240,9 +24262,9 @@ function convertMarkdownFormats(source, options) {
 
 // src/attachments.ts
 var ACCEPTED = /\.(?:avif|bmp|gif|ico|jpe?g|png|webp|mp3|m4a|ogg|wav|webm|mp4|mov|pdf)$/iu;
-function attachmentTargetPath(folder, fileName2, existing) {
+function attachmentTargetPath(folder, fileName3, existing) {
   if (!isSafeVaultRelativePath(folder) || /^[A-Za-z]:/u.test(folder)) throw new Error("Attachment folder is invalid.");
-  const name2 = fileName2.trim();
+  const name2 = fileName3.trim();
   if (name2.length === 0 || name2.length > 255 || name2.includes("/") || name2.includes("\\") || name2 === "." || name2 === "..") throw new Error("Attachment name is invalid.");
   if (!ACCEPTED.test(name2)) throw new Error("Attachment type is unsupported.");
   const first = `${folder}/${name2}`;
@@ -24981,14 +25003,14 @@ var WorkbenchRouteController = class {
       content = "";
     } else {
       const title = draft.title?.trim() ?? "";
-      const text = draft.text ?? "";
-      if (title.length === 0 || title.length > 200 || text.length > 1e5) {
+      const text2 = draft.text ?? "";
+      if (title.length === 0 || title.length > 200 || text2.length > 1e5) {
         this.settlePendingDispatch("failed");
         return;
       }
       try {
         const capture = buildCaptureNote({
-          body: text,
+          body: text2,
           existing: new Set(this.snapshot.entries.filter((entry) => entry.kind === "document").map((entry) => entry.path)),
           now: this.now(),
           title
@@ -26039,7 +26061,7 @@ var WorkbenchRouteController = class {
       return false;
     }
   }
-  async storeActiveAttachment(fileName2, dataBase64) {
+  async storeActiveAttachment(fileName3, dataBase64) {
     const vault = this.snapshot.vault;
     const notePath = this.snapshot.path;
     const source = this.snapshot.source;
@@ -26049,7 +26071,7 @@ var WorkbenchRouteController = class {
     try {
       path = attachmentTargetPath(
         this.snapshot.settings?.attachmentFolder ?? "Attachments",
-        fileName2,
+        fileName3,
         new Set(this.snapshot.entries.filter((entry) => entry.kind === "attachment").map((entry) => entry.path))
       );
     } catch {
@@ -27551,8 +27573,8 @@ function TockTutorRoute(props) {
       onSetProperty: (key2, value) => {
         controller.setProperty(key2, value);
       },
-      onStoreAttachment: (fileName2, dataBase64) => {
-        void controller.storeActiveAttachment(fileName2, dataBase64);
+      onStoreAttachment: (fileName3, dataBase64) => {
+        void controller.storeActiveAttachment(fileName3, dataBase64);
       },
       onSubmitDispatch: (draft) => {
         void controller.submitDispatchDialog(draft);
@@ -27582,6 +27604,4312 @@ function TockTutorRoute(props) {
     }
   ) });
 }
+
+// src/NotesBaseFormulaDate.ts
+function pad2(value, length = 2) {
+  return String(value).padStart(length, "0");
+}
+function padSigned(value, length, forceSign = false) {
+  const sign = value < 0 ? "-" : forceSign ? "+" : "";
+  return `${sign}${String(Math.abs(value)).padStart(length, "0")}`;
+}
+function formatEnglishOrdinal(value) {
+  const remainder = value % 100;
+  if (remainder >= 11 && remainder <= 13) return `${value}th`;
+  if (value % 10 === 1) return `${value}st`;
+  if (value % 10 === 2) return `${value}nd`;
+  if (value % 10 === 3) return `${value}rd`;
+  return `${value}th`;
+}
+var MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+var WEEKDAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+var DAYS_BEFORE_MONTH = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334];
+var MILLISECONDS_PER_DAY = 864e5;
+function formatTimezoneOffset(date6, separator) {
+  const totalMinutes = -date6.getTimezoneOffset();
+  const sign = totalMinutes >= 0 ? "+" : "-";
+  const absoluteMinutes = Math.abs(totalMinutes);
+  return `${sign}${pad2(Math.floor(absoluteMinutes / 60))}${separator}${pad2(absoluteMinutes % 60)}`;
+}
+function localDayOfYear(date6) {
+  const year = date6.getFullYear();
+  const leapDay = date6.getMonth() > 1 && (year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0)) ? 1 : 0;
+  return (DAYS_BEFORE_MONTH[date6.getMonth()] ?? Number.NaN) + date6.getDate() + leapDay;
+}
+function createUtcCalendarDate(year, month, day) {
+  const calendarDate = /* @__PURE__ */ new Date(0);
+  calendarDate.setUTCHours(0, 0, 0, 0);
+  calendarDate.setUTCFullYear(year, month, day);
+  return calendarDate;
+}
+function localIsoCalendar(date6) {
+  const calendarDate = createUtcCalendarDate(date6.getFullYear(), date6.getMonth(), date6.getDate());
+  const weekday = calendarDate.getUTCDay();
+  if (!Number.isFinite(weekday)) return { week: Number.NaN, year: Number.NaN };
+  calendarDate.setUTCDate(calendarDate.getUTCDate() + 4 - (weekday === 0 ? 7 : weekday));
+  const year = calendarDate.getUTCFullYear();
+  const isoWeekThursday = calendarDate.getTime();
+  calendarDate.setUTCMonth(0, 1);
+  const week = Math.ceil(((isoWeekThursday - calendarDate.getTime()) / MILLISECONDS_PER_DAY + 1) / 7);
+  return { week, year };
+}
+function defaultEnglishWeekYearStart(year) {
+  const firstDay = createUtcCalendarDate(year, 0, 1);
+  return firstDay.getTime() - firstDay.getUTCDay() * MILLISECONDS_PER_DAY;
+}
+function localDefaultEnglishCalendar(date6) {
+  const calendarDate = createUtcCalendarDate(date6.getFullYear(), date6.getMonth(), date6.getDate());
+  const weekday = calendarDate.getUTCDay();
+  if (!Number.isFinite(weekday)) return { week: Number.NaN, year: Number.NaN };
+  const weekStart = calendarDate.getTime() - weekday * MILLISECONDS_PER_DAY;
+  const year = calendarDate.getUTCFullYear();
+  const currentYearStart = defaultEnglishWeekYearStart(year);
+  const nextYearStart = defaultEnglishWeekYearStart(year + 1);
+  let weekYearStart = currentYearStart;
+  let weekYear = year;
+  if (weekStart < currentYearStart) {
+    weekYearStart = defaultEnglishWeekYearStart(year - 1);
+    weekYear = year - 1;
+  } else if (weekStart >= nextYearStart) {
+    weekYearStart = nextYearStart;
+    weekYear = year + 1;
+  }
+  return {
+    week: Math.floor((weekStart - weekYearStart) / (7 * MILLISECONDS_PER_DAY)) + 1,
+    year: weekYear
+  };
+}
+function formatNotesTemplateDate(now, format) {
+  const year = now.getFullYear();
+  const calendarYear = padSigned(year, 4);
+  const hour = now.getHours();
+  const hour12 = hour % 12 || 12;
+  const hour24 = hour === 0 ? 24 : hour;
+  const meridiem = hour < 12 ? "AM" : "PM";
+  const localizedTime = `${hour12}:${pad2(now.getMinutes())} ${meridiem}`;
+  const dayOfYear = localDayOfYear(now);
+  const monthName = MONTH_NAMES[now.getMonth()] ?? "";
+  const weekday = now.getDay();
+  const weekdayName = WEEKDAY_NAMES[weekday] ?? "";
+  const fractionalSeconds = pad2(now.getMilliseconds(), 3);
+  const quarter = Math.floor(now.getMonth() / 3) + 1;
+  const { week: localeWeek, year: localeWeekYear } = localDefaultEnglishCalendar(now);
+  const { week: isoWeek, year: isoWeekYear } = localIsoCalendar(now);
+  const unixMilliseconds = now.getTime();
+  const eraAbbreviation = year <= 0 ? "BC" : "AD";
+  const eraYear = year <= 0 ? 1 - year : year;
+  const values = new Map(Object.entries({
+    YYYYYY: padSigned(year, 6, true),
+    YYYYY: padSigned(year, 5),
+    YYYY: calendarYear,
+    YY: pad2(year % 100),
+    Y: year > 9999 ? `+${year}` : calendarYear,
+    yyyy: pad2(eraYear, 4),
+    yyy: pad2(eraYear, 3),
+    yy: pad2(eraYear, 2),
+    yo: formatEnglishOrdinal(eraYear),
+    y: String(eraYear),
+    NNNNN: eraAbbreviation,
+    NNNN: year <= 0 ? "Before Christ" : "Anno Domini",
+    NNN: eraAbbreviation,
+    NN: eraAbbreviation,
+    N: eraAbbreviation,
+    LLLL: `${weekdayName}, ${monthName} ${now.getDate()}, ${calendarYear} ${localizedTime}`,
+    LLL: `${monthName} ${now.getDate()}, ${calendarYear} ${localizedTime}`,
+    LL: `${monthName} ${now.getDate()}, ${calendarYear}`,
+    L: `${pad2(now.getMonth() + 1)}/${pad2(now.getDate())}/${calendarYear}`,
+    LTS: `${hour12}:${pad2(now.getMinutes())}:${pad2(now.getSeconds())} ${meridiem}`,
+    LT: localizedTime,
+    llll: `${weekdayName.slice(0, 3)}, ${monthName.slice(0, 3)} ${now.getDate()}, ${calendarYear} ${localizedTime}`,
+    lll: `${monthName.slice(0, 3)} ${now.getDate()}, ${calendarYear} ${localizedTime}`,
+    ll: `${monthName.slice(0, 3)} ${now.getDate()}, ${calendarYear}`,
+    l: `${now.getMonth() + 1}/${now.getDate()}/${calendarYear}`,
+    MMMM: monthName,
+    MMM: monthName.slice(0, 3),
+    Mo: formatEnglishOrdinal(now.getMonth() + 1),
+    MM: pad2(now.getMonth() + 1),
+    M: String(now.getMonth() + 1),
+    DDDo: formatEnglishOrdinal(dayOfYear),
+    DDDD: pad2(dayOfYear, 3),
+    DDD: String(dayOfYear),
+    Do: formatEnglishOrdinal(now.getDate()),
+    DD: pad2(now.getDate()),
+    D: String(now.getDate()),
+    dddd: weekdayName,
+    ddd: weekdayName.slice(0, 3),
+    dd: weekdayName.slice(0, 2),
+    do: formatEnglishOrdinal(weekday),
+    d: String(weekday),
+    e: String(weekday),
+    E: String(weekday === 0 ? 7 : weekday),
+    GGGGG: padSigned(isoWeekYear, 5),
+    GGGG: String(isoWeekYear),
+    GG: pad2(isoWeekYear % 100),
+    ggggg: padSigned(localeWeekYear, 5),
+    gggg: String(localeWeekYear),
+    gg: pad2(localeWeekYear % 100),
+    wo: formatEnglishOrdinal(localeWeek),
+    ww: pad2(localeWeek),
+    w: String(localeWeek),
+    Wo: formatEnglishOrdinal(isoWeek),
+    WW: pad2(isoWeek),
+    W: String(isoWeek),
+    HH: pad2(hour),
+    H: String(hour),
+    kk: pad2(hour24),
+    k: String(hour24),
+    hh: pad2(hour12),
+    h: String(hour12),
+    mm: pad2(now.getMinutes()),
+    m: String(now.getMinutes()),
+    ss: pad2(now.getSeconds()),
+    s: String(now.getSeconds()),
+    A: meridiem,
+    a: meridiem.toLowerCase(),
+    Qo: formatEnglishOrdinal(quarter),
+    Q: String(quarter),
+    Z: formatTimezoneOffset(now, ":"),
+    ZZ: formatTimezoneOffset(now, ""),
+    zz: "",
+    z: "",
+    X: String(Math.floor(unixMilliseconds / 1e3)),
+    x: String(unixMilliseconds)
+  }));
+  return format.replace(/\[([^\]]*)\]|YYYYYY|YYYYY|YYYY|YY|Y|yyyy|yyy|yy|yo|y|NNNNN|NNNN|NNN|NN|N|GGGGG|GGGG|GG|ggggg|gggg|gg|LTS|LT|LLLL|LLL|LL|L|llll|lll|ll|l|MMMM|MMM|Mo|MM|M|DDDo|DDDD|DDD|Do|DD|D|dddd|ddd|dd|do|d|HH|H|kk|k|hh|h|mm|m|ss|s|S{1,9}|A|a|ZZ|Z|zz|z|Qo|Q|e|E|wo|ww|w|Wo|WW|W|X|x/gu, (token, literal2) => {
+    if (literal2 !== void 0) return literal2;
+    if (token.startsWith("S")) return fractionalSeconds.slice(0, token.length).padEnd(token.length, "0");
+    return values.get(token) ?? token;
+  });
+}
+
+// src/NotesBaseFormulaIcon.ts
+var NOTES_BASE_ICON_NAMES = [
+  "align-center",
+  "align-center-horizontal",
+  "align-center-vertical",
+  "align-end-horizontal",
+  "align-end-vertical",
+  "align-horizontal-distribute-center",
+  "align-horizontal-distribute-end",
+  "align-horizontal-distribute-start",
+  "align-horizontal-justify-center",
+  "align-horizontal-justify-end",
+  "align-horizontal-justify-start",
+  "align-horizontal-space-around",
+  "align-horizontal-space-between",
+  "align-justify",
+  "align-left",
+  "align-right",
+  "align-start-horizontal",
+  "align-start-vertical",
+  "align-vertical-distribute-center",
+  "align-vertical-distribute-end",
+  "align-vertical-distribute-start",
+  "align-vertical-justify-center",
+  "align-vertical-justify-end",
+  "align-vertical-justify-start",
+  "align-vertical-space-around",
+  "align-vertical-space-between",
+  "alert-circle",
+  "anchor",
+  "archive",
+  "archive-restore",
+  "archive-x",
+  "armchair",
+  "badge",
+  "binary",
+  "arrow-big-down-dash",
+  "arrow-big-down",
+  "arrow-big-left",
+  "arrow-big-right",
+  "arrow-big-up",
+  "arrow-down",
+  "arrow-down-01",
+  "arrow-down-10",
+  "arrow-down-az",
+  "arrow-down-narrow-wide",
+  "arrow-down-wide-narrow",
+  "arrow-left",
+  "arrow-right",
+  "arrow-up",
+  "arrow-up-01",
+  "arrow-up-10",
+  "arrow-up-az",
+  "arrow-up-down",
+  "arrow-up-narrow-wide",
+  "arrow-up-wide-narrow",
+  "arrow-up-za",
+  "bell",
+  "bookmark",
+  "bookmark-plus",
+  "book-check",
+  "book-copy",
+  "book-dashed",
+  "book-down",
+  "book-headphones",
+  "book-heart",
+  "book-image",
+  "book-icon",
+  "book-marked",
+  "book-open-check",
+  "book-open",
+  "book-open-text",
+  "book-up",
+  "book-up-2",
+  "calculator",
+  "calendar",
+  "calendar-check",
+  "calendar-days",
+  "calendar-minus",
+  "calendar-plus",
+  "calendar-range",
+  "calendar-search",
+  "case-sensitive",
+  "check",
+  "chevron-down",
+  "chevron-left",
+  "chevron-right",
+  "chevron-up",
+  "chevrons-down-up",
+  "chevrons-up-down",
+  "circle",
+  "circle-check",
+  "circle-help",
+  "circle-minus",
+  "circle-play",
+  "circle-plus",
+  "plus-circle",
+  "circle-x",
+  "clock",
+  "code-xml",
+  "cog",
+  "columns-3",
+  "copy",
+  "database",
+  "dot",
+  "download",
+  "edit-3",
+  "ellipsis-vertical",
+  "file-search",
+  "file-plus",
+  "file-text",
+  "filter",
+  "folder",
+  "folder-open",
+  "folder-plus",
+  "gallery-vertical",
+  "git-fork",
+  "grip-horizontal",
+  "grip-vertical",
+  "highlighter",
+  "history",
+  "heart",
+  "help-circle",
+  "house",
+  "image",
+  "info",
+  "landmark",
+  "layout-dashboard",
+  "layout-grid",
+  "link",
+  "list",
+  "list-filter",
+  "list-tree",
+  "mail",
+  "map",
+  "map-pin",
+  "maximize",
+  "mic",
+  "menu",
+  "minus",
+  "minus-circle",
+  "more-horizontal",
+  "monitor-check",
+  "navigation",
+  "panel-bottom",
+  "panel-bottom-close",
+  "panel-bottom-dashed",
+  "panel-bottom-inactive",
+  "panel-bottom-open",
+  "panel-left",
+  "panel-left-close",
+  "panel-left-dashed",
+  "panel-left-inactive",
+  "panel-left-open",
+  "panel-right",
+  "panel-right-close",
+  "panel-right-dashed",
+  "panel-right-inactive",
+  "panel-right-open",
+  "panel-top",
+  "panel-top-close",
+  "panel-top-dashed",
+  "panel-top-inactive",
+  "panel-top-open",
+  "panels-left-bottom",
+  "panels-left-right",
+  "panels-right-bottom",
+  "panels-top-bottom",
+  "panels-top-left",
+  "palette",
+  "paperclip",
+  "pencil",
+  "picture-in-picture-2",
+  "plus",
+  "rows-3",
+  "refresh-cw",
+  "refresh-cw-off",
+  "search",
+  "settings",
+  "square-function",
+  "star",
+  "table",
+  "tag",
+  "timer",
+  "trash-2",
+  "triangle-alert",
+  "upload",
+  "user",
+  "utensils",
+  "wrench",
+  "x"
+];
+var supportedNotesBaseIconNames = new Set(NOTES_BASE_ICON_NAMES);
+var NotesBaseIconValue = class {
+  #name;
+  constructor(name2) {
+    this.#name = name2;
+    Object.freeze(this);
+  }
+  name() {
+    return this.#name;
+  }
+};
+var notesBaseIconValues = /* @__PURE__ */ new WeakSet();
+function notesBaseIconValue(value) {
+  return typeof value === "object" && value !== null && notesBaseIconValues.has(value) ? value : null;
+}
+function createNotesBaseIconValue(name2) {
+  if (!supportedNotesBaseIconNames.has(name2)) return null;
+  const value = new NotesBaseIconValue(name2);
+  notesBaseIconValues.add(value);
+  return value;
+}
+function notesBaseIconName(value) {
+  return notesBaseIconValue(value)?.name() ?? null;
+}
+
+// src/NotesBaseFormulaLink.ts
+var NotesBaseLinkValue = class {
+  #path;
+  #display;
+  constructor(path, display) {
+    this.#path = path;
+    this.#display = display === null ? null : Object.freeze(display);
+    Object.freeze(this);
+  }
+  path() {
+    return this.#path;
+  }
+  text() {
+    if (this.#display === null) return this.#path;
+    return this.#display.kind === "text" ? this.#display.value : this.#display.name;
+  }
+  icon() {
+    return this.#display?.kind === "icon" ? this.#display.value : null;
+  }
+};
+var notesBaseLinkValues = /* @__PURE__ */ new WeakSet();
+function notesBaseLinkValue(value) {
+  return typeof value === "object" && value !== null && notesBaseLinkValues.has(value) ? value : null;
+}
+function createNotesBaseLinkValue(path, display) {
+  let normalizedDisplay = null;
+  if (typeof display === "string") {
+    normalizedDisplay = { kind: "text", value: display };
+  } else if (display != null) {
+    const name2 = notesBaseIconName(display);
+    if (name2 === null) return null;
+    normalizedDisplay = { kind: "icon", name: name2, value: display };
+  }
+  const value = new NotesBaseLinkValue(path, normalizedDisplay);
+  notesBaseLinkValues.add(value);
+  return value;
+}
+function notesBaseLinkPath(value) {
+  return notesBaseLinkValue(value)?.path() ?? null;
+}
+function notesBaseLinkText(value) {
+  return notesBaseLinkValue(value)?.text() ?? null;
+}
+
+// src/NotesBaseFormulaSyntax.ts
+function isNotesBaseFormulaQuoteEscaped(source, quoteIndex) {
+  let backslashCount = 0;
+  for (let index2 = quoteIndex - 1; index2 >= 0 && source[index2] === "\\"; index2 -= 1) {
+    backslashCount += 1;
+  }
+  return backslashCount % 2 === 1;
+}
+
+// src/NotesBaseFormulaArithmetic.ts
+var MAX_NOTES_BASE_TOP_LEVEL_OPERANDS = 1e4;
+var MAX_NOTES_BASE_STRING_LENGTH = 1e5;
+function isAdditiveScalar(value) {
+  return value == null || typeof value === "string" || typeof value === "boolean" || typeof value === "number" && Number.isFinite(value);
+}
+function additiveScalarText(value) {
+  if (value == null) return "null";
+  return String(value);
+}
+function isBoundedComparisonScalar(value) {
+  return value == null || typeof value === "boolean" || typeof value === "number" && Number.isFinite(value) || typeof value === "string" && value.length <= MAX_NOTES_BASE_STRING_LENGTH;
+}
+function splitTopLevelOperators(expression, acceptedOperators) {
+  const operands = [];
+  const operators = [];
+  let current = "";
+  let quote = "";
+  let depth = 0;
+  for (let index2 = 0; index2 < expression.length; index2 += 1) {
+    const char = expression[index2] ?? "";
+    if ((char === '"' || char === "'") && !isNotesBaseFormulaQuoteEscaped(expression, index2)) {
+      if (!quote) quote = char;
+      else if (char === quote) quote = "";
+    }
+    if (quote || char === '"' || char === "'") {
+      current += char;
+      continue;
+    }
+    if (char === "(") depth += 1;
+    if (char === ")") depth -= 1;
+    if (depth < 0) return null;
+    const operator = depth === 0 ? acceptedOperators.find((candidate) => expression.startsWith(candidate, index2)) : void 0;
+    if (operator) {
+      if (current.trim().length === 0) {
+        if (operator === "+" && operators.at(-1) === "+" && current.length === 0 || operator === "-" && operators.at(-1) === "-" && current.length === 0) return null;
+        current += operator;
+        index2 += operator.length - 1;
+        continue;
+      }
+      if (operator === "-" && /[*/%]$/u.test(current.trimEnd())) {
+        current += char;
+        continue;
+      }
+      operands.push(current.trim());
+      operators.push(operator);
+      current = "";
+      index2 += operator.length - 1;
+      if (operands.length >= MAX_NOTES_BASE_TOP_LEVEL_OPERANDS) return null;
+      continue;
+    }
+    current += char;
+  }
+  if (operators.length === 0) return void 0;
+  operands.push(current.trim());
+  return quote || depth !== 0 || operands.some((operand) => operand.length === 0) ? null : { operands, operators };
+}
+function isNotesBaseDateOffsetExpression(expression, isDateOperand) {
+  const additive = splitTopLevelOperators(expression, ["+", "-"]);
+  return Boolean(additive && isDateOperand(additive.operands[0] ?? ""));
+}
+function isNotesBaseDurationScaleExpression(expression, isDurationOperand) {
+  const multiplicative = splitTopLevelOperators(expression, ["*", "/", "%"]);
+  if (!multiplicative || !isDurationOperand(multiplicative.operands[0] ?? "")) return false;
+  for (let index2 = 0; index2 < multiplicative.operators.length; index2 += 1) {
+    const operator = multiplicative.operators[index2];
+    if (operator !== "*" && operator !== "/") return false;
+    if (isDurationOperand(multiplicative.operands[index2 + 1] ?? "")) return false;
+  }
+  return true;
+}
+function evaluateNotesBaseComparison(expression, resolveProperty, evaluateOperand, dateTimestamp, fileOperandPath) {
+  const comparison = splitTopLevelOperators(expression, ["==", "!=", ">=", "<=", "<", ">"]);
+  if (comparison === void 0) return null;
+  if (comparison === null || comparison.operators.length !== 1) return { supported: false };
+  const left = evaluateOperand(comparison.operands[0] ?? "", resolveProperty);
+  const right = evaluateOperand(comparison.operands[1] ?? "", resolveProperty);
+  if (!left.supported || !right.supported) return { supported: false };
+  const operator = comparison.operators[0];
+  if (operator === "==" || operator === "!=") {
+    const leftLinkPath = notesBaseLinkPath(left.value);
+    const rightLinkPath = notesBaseLinkPath(right.value);
+    if (leftLinkPath !== null || rightLinkPath !== null) {
+      const leftPath = leftLinkPath ?? fileOperandPath?.(left.value, comparison.operands[0] ?? "") ?? null;
+      const rightPath = rightLinkPath ?? fileOperandPath?.(right.value, comparison.operands[1] ?? "") ?? null;
+      if (leftPath === null || rightPath === null) return { supported: false };
+      const equal2 = leftPath === rightPath;
+      return { supported: true, value: operator === "==" ? equal2 : !equal2 };
+    }
+    if (!isBoundedComparisonScalar(left.value) || !isBoundedComparisonScalar(right.value)) {
+      return { supported: false };
+    }
+    const equal = (left.value ?? null) === (right.value ?? null);
+    return { supported: true, value: operator === "==" ? equal : !equal };
+  }
+  let leftValue;
+  let rightValue;
+  if (typeof left.value === "number" && Number.isFinite(left.value) && typeof right.value === "number" && Number.isFinite(right.value)) {
+    leftValue = left.value;
+    rightValue = right.value;
+  } else {
+    const leftTimestamp = dateTimestamp?.(left.value, comparison.operands[0] ?? "") ?? null;
+    const rightTimestamp = dateTimestamp?.(right.value, comparison.operands[1] ?? "") ?? null;
+    if (leftTimestamp === null || !Number.isFinite(leftTimestamp) || rightTimestamp === null || !Number.isFinite(rightTimestamp)) {
+      return { supported: false };
+    }
+    leftValue = leftTimestamp;
+    rightValue = rightTimestamp;
+  }
+  if (operator === "<") return { supported: true, value: leftValue < rightValue };
+  if (operator === "<=") return { supported: true, value: leftValue <= rightValue };
+  if (operator === ">") return { supported: true, value: leftValue > rightValue };
+  if (operator === ">=") return { supported: true, value: leftValue >= rightValue };
+  return { supported: false };
+}
+function evaluateNotesBaseBooleanNot(expression, resolveProperty, evaluateOperand) {
+  if (!expression.startsWith("!") || expression.startsWith("!=")) return null;
+  const operand = expression.slice(1).trim();
+  if (!operand || operand.startsWith("!")) return { supported: false };
+  const result = evaluateOperand(operand, resolveProperty);
+  return result.supported ? { supported: true, value: !result.value } : { supported: false };
+}
+function evaluateNotesBaseUnaryNumeric(expression, resolveProperty, evaluateOperand, rejectOperand) {
+  const operator = expression[0];
+  if (operator !== "+" && operator !== "-") return null;
+  if (expression.length > MAX_NOTES_BASE_STRING_LENGTH) return { supported: false };
+  const operand = expression.slice(1).trim();
+  if (!operand || operand.startsWith(operator) || rejectOperand(operator, operand)) {
+    return { supported: false };
+  }
+  const result = evaluateOperand(operand, resolveProperty);
+  return result.supported && typeof result.value === "number" && Number.isFinite(result.value) ? { supported: true, value: operator === "-" ? -result.value : result.value } : { supported: false };
+}
+function evaluateNotesBaseBooleanOperands(operands, resolveProperty, evaluateOperand, operator, isOperandSafe) {
+  let value = operator === "&&";
+  for (const operand of operands) {
+    const shortCircuited = operator === "&&" ? !value : value;
+    if (shortCircuited) {
+      if (!isOperandSafe?.(operand)) return { supported: false };
+      continue;
+    }
+    const result = evaluateOperand(operand, resolveProperty);
+    if (!result.supported) return { supported: false };
+    value = operator === "&&" ? value && Boolean(result.value) : value || Boolean(result.value);
+  }
+  return { supported: true, value };
+}
+function evaluateNotesBaseBooleanAnd(expression, resolveProperty, evaluateOperand, isOperandSafe) {
+  const conjunction = splitTopLevelOperators(expression, ["&&"]);
+  if (conjunction === void 0) return null;
+  if (conjunction === null) return { supported: false };
+  return evaluateNotesBaseBooleanOperands(
+    conjunction.operands,
+    resolveProperty,
+    evaluateOperand,
+    "&&",
+    isOperandSafe
+  );
+}
+function evaluateNotesBaseBooleanOr(expression, resolveProperty, evaluateOperand, isOperandSafe) {
+  const disjunction = splitTopLevelOperators(expression, ["||"]);
+  if (disjunction === void 0) return null;
+  if (disjunction === null) return { supported: false };
+  return evaluateNotesBaseBooleanOperands(
+    disjunction.operands,
+    resolveProperty,
+    evaluateOperand,
+    "||",
+    isOperandSafe
+  );
+}
+function evaluateNotesBaseAdditive(expression, resolveProperty, evaluateOperand, dateTimestamp, dateOffset) {
+  const additive = splitTopLevelOperators(expression, ["+", "-"]);
+  if (additive === void 0) return null;
+  if (additive === null) return { supported: false };
+  let value;
+  let hasValue = false;
+  let currentDateTimestamp = null;
+  for (let index2 = 0; index2 < additive.operands.length; index2 += 1) {
+    const operand = additive.operands[index2] ?? "";
+    const result = evaluateOperand(operand, resolveProperty);
+    if (!result.supported) return { supported: false };
+    if (!hasValue) {
+      if (!isAdditiveScalar(result.value)) return { supported: false };
+      value = result.value;
+      hasValue = true;
+      currentDateTimestamp = typeof result.value === "string" ? dateTimestamp?.(result.value, operand) ?? null : null;
+    } else {
+      const operator = additive.operators[index2 - 1];
+      if (operator !== "+" && operator !== "-") return { supported: false };
+      if (currentDateTimestamp !== null && dateTimestamp && dateOffset) {
+        if (operator === "-" && additive.operators.length === 1) {
+          const secondDateTimestamp = dateTimestamp(result.value, operand);
+          if (secondDateTimestamp !== null) {
+            const difference = currentDateTimestamp - secondDateTimestamp;
+            return Number.isFinite(difference) ? { supported: true, value: difference } : { supported: false };
+          }
+        }
+        const nextTimestamp = dateOffset(currentDateTimestamp, result.value, operand, operator);
+        if (nextTimestamp === null || !Number.isFinite(nextTimestamp)) return { supported: false };
+        const nextDate = new Date(nextTimestamp);
+        if (!Number.isFinite(nextDate.getTime())) {
+          return { supported: false };
+        }
+        currentDateTimestamp = nextTimestamp;
+        value = nextDate.toISOString();
+      } else if (typeof value === "number" && typeof result.value === "number" && Number.isFinite(result.value)) {
+        value = operator === "+" ? value + result.value : value - result.value;
+        if (!Number.isFinite(value)) return { supported: false };
+      } else {
+        if (operator !== "+" || typeof value !== "string" && typeof result.value !== "string" || !isAdditiveScalar(result.value)) {
+          return { supported: false };
+        }
+        const valueText = additiveScalarText(value);
+        const resultText = additiveScalarText(result.value);
+        if (resultText.length > MAX_NOTES_BASE_STRING_LENGTH - valueText.length) {
+          return { supported: false };
+        }
+        value = valueText + resultText;
+      }
+    }
+  }
+  return !hasValue ? { supported: false } : { supported: true, value };
+}
+function evaluateNotesBaseMultiplicative(expression, resolveProperty, evaluateOperand) {
+  const multiplicative = splitTopLevelOperators(expression, ["*", "/", "%"]);
+  if (multiplicative === void 0) return null;
+  if (multiplicative === null) return { supported: false };
+  let value;
+  for (let index2 = 0; index2 < multiplicative.operands.length; index2 += 1) {
+    const operand = multiplicative.operands[index2] ?? "";
+    const result = evaluateOperand(operand, resolveProperty);
+    if (!result.supported || typeof result.value !== "number" || !Number.isFinite(result.value)) {
+      return { supported: false };
+    }
+    if (value === void 0) {
+      value = result.value;
+    } else {
+      const operator = multiplicative.operators[index2 - 1];
+      if (operator === "*") value *= result.value;
+      else if (operator === "/") value /= result.value;
+      else if (operator === "%") value %= result.value;
+      else return { supported: false };
+    }
+    if (!Number.isFinite(value)) return { supported: false };
+  }
+  return value === void 0 ? { supported: false } : { supported: true, value };
+}
+function evaluateNotesBaseNumberTransform(call, resolveProperty, splitArgs, evaluateOperand, transform2) {
+  const args = splitArgs(call.args);
+  if (!args || args.length !== 0) return { supported: false };
+  const receiver = evaluateOperand(call.receiver, resolveProperty);
+  return receiver.supported && typeof receiver.value === "number" && Number.isFinite(receiver.value) ? { supported: true, value: transform2(receiver.value) } : { supported: false };
+}
+
+// src/NotesBaseFormulaObject.ts
+var MAX_NOTES_BASE_FORMULA_OBJECT_KEYS = 1e4;
+function notesBaseObjectKeys(value) {
+  if (value == null || typeof value !== "object" || Array.isArray(value)) return null;
+  try {
+    const prototype = Object.getPrototypeOf(value);
+    if (prototype !== Object.prototype && prototype !== null) return null;
+    const keys = Object.keys(value);
+    return keys.length <= MAX_NOTES_BASE_FORMULA_OBJECT_KEYS ? keys : null;
+  } catch {
+    return null;
+  }
+}
+function notesBaseObjectSnapshot(value) {
+  const keys = notesBaseObjectKeys(value);
+  if (keys === null) return null;
+  try {
+    const snapshot = /* @__PURE__ */ Object.create(null);
+    for (const key2 of keys) {
+      const descriptor = Object.getOwnPropertyDescriptor(value, key2);
+      if (!descriptor || !("value" in descriptor)) return null;
+      Object.defineProperty(snapshot, key2, {
+        configurable: true,
+        enumerable: true,
+        value: descriptor.value,
+        writable: true
+      });
+    }
+    const stableKeys = notesBaseObjectKeys(value);
+    return stableKeys?.length === keys.length && stableKeys.every((key2, index2) => key2 === keys[index2]) ? snapshot : null;
+  } catch {
+    return null;
+  }
+}
+function notesBaseObjectValues(value) {
+  if (value == null || typeof value !== "object") return null;
+  const keys = notesBaseObjectKeys(value);
+  if (keys === null) return null;
+  try {
+    const values = [];
+    for (const key2 of keys) {
+      const descriptor = Object.getOwnPropertyDescriptor(value, key2);
+      if (!descriptor || !("value" in descriptor)) return null;
+      values.push(descriptor.value);
+    }
+    return values;
+  } catch {
+    return null;
+  }
+}
+function notesBaseObjectValue(value, key2) {
+  const keys = notesBaseObjectKeys(value);
+  if (keys === null) return null;
+  try {
+    const descriptor = keys.includes(key2) ? Object.getOwnPropertyDescriptor(value, key2) : void 0;
+    if (descriptor && !("value" in descriptor)) return null;
+    const stableKeys = notesBaseObjectKeys(value);
+    return stableKeys?.length === keys.length && stableKeys.every((stableKey, index2) => stableKey === keys[index2]) ? { keyCount: keys.length, value: descriptor?.value } : null;
+  } catch {
+    return null;
+  }
+}
+function notesBaseObjectHasProperty(value, name2) {
+  const keys = notesBaseObjectKeys(value);
+  return keys === null ? null : keys.includes(name2);
+}
+
+// src/NotesBaseFormulaPath.ts
+var MAX_NOTES_BASE_PATH_LENGTH = 4096;
+var MAX_NOTES_BASE_LINK_VALUES = 1e4;
+var MAX_NOTES_BASE_LINK_TEXT_LENGTH = 1e5;
+function normalizedPathParts(value) {
+  if (value.length > MAX_NOTES_BASE_PATH_LENGTH || value.includes("\0")) return null;
+  const parts = value.replaceAll("\\", "/").split("/").filter(Boolean);
+  return parts.some((part) => part === "." || part === "..") ? null : parts;
+}
+function normalizeNotesBaseFilePath(value) {
+  if (value.startsWith("/") || value.startsWith("\\") || /^[A-Za-z]:[\\/]/u.test(value) || /^[A-Za-z][A-Za-z\d+.-]*:/u.test(value)) return null;
+  const parts = normalizedPathParts(value);
+  return parts && parts.length > 0 ? parts.join("/") : null;
+}
+function normalizeNotesBaseLinkPath(value) {
+  if (value.startsWith("![[")) return null;
+  const hasOpeningWrapper = value.startsWith("[[");
+  const hasClosingWrapper = value.endsWith("]]");
+  if (!hasOpeningWrapper && !hasClosingWrapper) {
+    return normalizeNotesBaseFilePath(value);
+  }
+  if (!hasOpeningWrapper || !hasClosingWrapper) return null;
+  const path = value.slice(2, -2);
+  if (path.length === 0 || path !== path.trim() || /[[\]|#^\u0000-\u001F\u007F]/u.test(path)) {
+    return null;
+  }
+  return normalizeNotesBaseFilePath(path);
+}
+function notesBaseFilePathField(value, field) {
+  const path = normalizeNotesBaseFilePath(value);
+  if (path === null) return null;
+  if (field === "path") return path;
+  const separator = path.lastIndexOf("/");
+  if (field === "folder") return separator < 0 ? "" : path.slice(0, separator);
+  const name2 = path.slice(separator + 1);
+  if (field === "name") return name2;
+  const extension = name2.lastIndexOf(".");
+  if (field === "basename") return extension <= 0 ? name2 : name2.slice(0, extension);
+  if (field === "ext") return extension <= 0 ? "" : name2.slice(extension + 1);
+  return null;
+}
+function notesBaseFilePathValue(value) {
+  return typeof value === "string" ? normalizeNotesBaseFilePath(value) : notesBaseLinkPath(value);
+}
+function notesBaseFileInFolder(filePath, folder) {
+  if (filePath.startsWith("/") || filePath.startsWith("\\")) return null;
+  const fileParts = normalizedPathParts(filePath);
+  const folderParts = normalizedPathParts(folder);
+  if (!fileParts || fileParts.length === 0 || !folderParts) return null;
+  const normalizedFilePath = fileParts.join("/");
+  const normalizedFolder = folderParts.join("/");
+  return normalizedFolder === "" || normalizedFilePath.startsWith(`${normalizedFolder}/`);
+}
+function evaluateNotesBaseFileInFolderCall(call, resolveProperty, splitArgs, evaluateArg2) {
+  const args = splitArgs(call.args);
+  if (call.receiver !== "file" && call.receiver !== "this.file" && !/^file\([\s\S]*\)$/u.test(call.receiver) || !args || args.length !== 1 || /,\s*$/u.test(call.args)) {
+    return { supported: false };
+  }
+  const folder = evaluateArg2(args[0] ?? "", resolveProperty);
+  const projectedFile = call.receiver === "file" ? { supported: true, value: resolveProperty("file.path") } : evaluateArg2(call.receiver, resolveProperty);
+  const filePath = projectedFile.supported ? projectedFile.value : void 0;
+  if (!folder.supported || typeof folder.value !== "string" || typeof filePath !== "string") {
+    return { supported: false };
+  }
+  const inFolder = notesBaseFileInFolder(filePath, folder.value);
+  return inFolder === null ? { supported: false } : { supported: true, value: inFolder };
+}
+function evaluateNotesBaseFileHasLinkCall(call, resolveProperty, fileLinksContain, splitArgs, evaluateArg2) {
+  const args = splitArgs(call.args);
+  const projectedSourceArgs = call.receiver.startsWith("file(") && call.receiver.endsWith(")") ? splitArgs(call.receiver.slice("file(".length, -1)) : null;
+  if (call.receiver !== "file" && call.receiver !== "this.file" && (!projectedSourceArgs || projectedSourceArgs.length !== 1 || /,\s*\)$/u.test(call.receiver)) || !args || args.length !== 1 || /,\s*$/u.test(call.args)) {
+    return { supported: false };
+  }
+  const candidate = evaluateArg2(args[0] ?? "", resolveProperty);
+  const normalizedCandidate = candidate.supported ? notesBaseFilePathValue(candidate.value) : null;
+  if (!normalizedCandidate) return { supported: false };
+  const candidateVariants = normalizedCandidate.endsWith(".md") ? [normalizedCandidate] : [normalizedCandidate, `${normalizedCandidate}.md`];
+  if (call.receiver === "file") {
+    const links = resolveProperty("file.links");
+    for (const variant of candidateVariants) {
+      const matches = notesBaseFileLinksContain(links, variant);
+      if (matches === null) return { supported: false };
+      if (matches) return { supported: true, value: true };
+    }
+    return { supported: true, value: false };
+  }
+  const source = evaluateArg2(call.receiver, resolveProperty);
+  const sourcePath = source.supported ? notesBaseFilePathValue(source.value) : null;
+  if (!sourcePath || !fileLinksContain) return { supported: false };
+  try {
+    for (const variant of candidateVariants) {
+      const matches = fileLinksContain(sourcePath, variant);
+      if (matches === null) return { supported: false };
+      if (matches) return { supported: true, value: true };
+    }
+    return { supported: true, value: false };
+  } catch {
+    return { supported: false };
+  }
+}
+function evaluateNotesBaseLinkLinksToCall(call, resolveProperty, fileLinksContain, splitArgs, evaluateArg2) {
+  const args = splitArgs(call.args);
+  if (!args || args.length !== 1 || /,\s*$/u.test(call.args) || !fileLinksContain) {
+    return { supported: false };
+  }
+  const receiver = evaluateArg2(call.receiver, resolveProperty);
+  const sourcePath = receiver.supported ? notesBaseLinkPath(receiver.value) : null;
+  const targetExpression = args[0]?.trim() ?? "";
+  const target = targetExpression === "file" ? { supported: true, value: resolveProperty("file.path") } : evaluateArg2(targetExpression, resolveProperty);
+  const targetPath = target.supported ? notesBaseFilePathValue(target.value) : null;
+  if (!sourcePath || !targetPath) return { supported: false };
+  let matches;
+  try {
+    matches = fileLinksContain(sourcePath, targetPath);
+  } catch {
+    return { supported: false };
+  }
+  return matches === null ? { supported: false } : { supported: true, value: matches };
+}
+function visitNotesBaseFileLinkTargets(links, visit) {
+  try {
+    if (!Array.isArray(links) || links[Symbol.iterator] !== Array.prototype[Symbol.iterator]) {
+      return false;
+    }
+    const linkCount = links.length;
+    if (!Number.isSafeInteger(linkCount) || linkCount < 0 || linkCount > MAX_NOTES_BASE_LINK_VALUES) return false;
+    let textLength = 0;
+    for (let index2 = 0; index2 < linkCount; index2 += 1) {
+      const descriptor = Object.getOwnPropertyDescriptor(links, String(index2));
+      if (!descriptor || !("value" in descriptor)) return false;
+      const link2 = descriptor.value;
+      if (typeof link2 !== "string") return false;
+      textLength += link2.length;
+      if (textLength > MAX_NOTES_BASE_LINK_TEXT_LENGTH) return false;
+      const normalizedLink2 = normalizeNotesBaseFilePath(link2);
+      if (!normalizedLink2) return false;
+      visit(normalizedLink2);
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+function notesBaseFileLinksSnapshot(links) {
+  const snapshot = [];
+  return visitNotesBaseFileLinkTargets(links, (target) => snapshot.push(target)) ? snapshot : null;
+}
+function notesBaseFileLinksContain(links, normalizedCandidate) {
+  let matches = false;
+  return visitNotesBaseFileLinkTargets(links, (target) => {
+    if (target === normalizedCandidate) matches = true;
+  }) ? matches : null;
+}
+
+// src/NotesBaseFormulaMedia.ts
+var IMAGE_EXTENSIONS = /* @__PURE__ */ new Set([".avif", ".bmp", ".gif", ".jpeg", ".jpg", ".png", ".svg", ".webp"]);
+function extensionOf(pathValue) {
+  const base = pathValue.split(/[\\/]/u).pop() ?? pathValue;
+  const dot = base.lastIndexOf(".");
+  return dot >= 0 ? base.slice(dot).toLowerCase() : "";
+}
+function isNotesBaseImagePath(pathValue) {
+  return IMAGE_EXTENSIONS.has(extensionOf(pathValue));
+}
+
+// src/NotesBaseFormulaImage.ts
+var MAX_NOTES_BASE_IMAGE_URL_LENGTH = 4096;
+var NotesBaseImageValue = class {
+  #source;
+  constructor(source) {
+    this.#source = source;
+    Object.freeze(this);
+  }
+  source() {
+    return this.#source;
+  }
+};
+var notesBaseImageValues = /* @__PURE__ */ new WeakSet();
+function normalizeNotesBaseImageUrl(input) {
+  if (input.length === 0 || input.length > MAX_NOTES_BASE_IMAGE_URL_LENGTH || input !== input.trim() || /[\u0000-\u001F\u007F]/u.test(input) || !/^https?:\/\//iu.test(input)) return null;
+  try {
+    const url2 = new URL(input);
+    if (url2.protocol !== "http:" && url2.protocol !== "https:" || url2.username.length > 0 || url2.password.length > 0 || url2.hash.length > 0) return null;
+    const normalized = url2.toString();
+    return normalized.length <= MAX_NOTES_BASE_IMAGE_URL_LENGTH ? normalized : null;
+  } catch {
+    return null;
+  }
+}
+function notesBaseImageValue(value) {
+  return typeof value === "object" && value !== null && notesBaseImageValues.has(value) ? value : null;
+}
+function createNotesBaseImageValue(input) {
+  const remoteUrl = normalizeNotesBaseImageUrl(input);
+  const localPath = remoteUrl === null ? normalizeNotesBaseFilePath(input) : null;
+  const source = remoteUrl !== null ? { kind: "remote", value: remoteUrl } : localPath !== null && isNotesBaseImagePath(localPath) ? { kind: "local", value: localPath } : null;
+  if (source === null) return null;
+  const value = new NotesBaseImageValue(source);
+  notesBaseImageValues.add(value);
+  return value;
+}
+function notesBaseImageText(value) {
+  return notesBaseImageValue(value)?.source().value ?? null;
+}
+
+// src/NotesBaseFormulaHtml.ts
+var NOTES_BASE_HTML_TAGS = ["strong", "em", "s", "u", "code"];
+var MAX_NOTES_BASE_HTML_LENGTH = 1e5;
+var MAX_NOTES_BASE_HTML_NODES = 1e3;
+var MAX_NOTES_BASE_HTML_DEPTH = 64;
+var supportedTags = new Set(NOTES_BASE_HTML_TAGS);
+function isNotesBaseHtmlTag(value) {
+  return supportedTags.has(value);
+}
+var NotesBaseHtmlValue = class {
+  #nodes;
+  #text;
+  constructor(nodes, text2) {
+    this.#nodes = nodes;
+    this.#text = text2;
+    Object.freeze(this);
+  }
+  nodes() {
+    return this.#nodes;
+  }
+  text() {
+    return this.#text;
+  }
+};
+var notesBaseHtmlValues = /* @__PURE__ */ new WeakSet();
+function frozenNodes(nodes) {
+  return Object.freeze(nodes.map((node) => node.kind === "tag" ? Object.freeze({ ...node, children: frozenNodes([...node.children]) }) : Object.freeze(node)));
+}
+function visibleText(nodes) {
+  return nodes.map((node) => {
+    if (node.kind === "text") return node.value;
+    if (node.kind === "break") return "\n";
+    return visibleText(node.children);
+  }).join("");
+}
+function parseNotesBaseHtml(source) {
+  if (source.length > MAX_NOTES_BASE_HTML_LENGTH) return null;
+  const root = [];
+  const stack = [{ tag: null, children: root }];
+  let cursor = 0;
+  let nodeCount = 0;
+  const push = (node) => {
+    nodeCount += 1;
+    if (nodeCount > MAX_NOTES_BASE_HTML_NODES) return false;
+    const frame = stack.at(-1);
+    if (!frame) return false;
+    frame.children.push(node);
+    return true;
+  };
+  while (cursor < source.length) {
+    const open = source.indexOf("<", cursor);
+    if (open < 0) {
+      if (cursor < source.length && !push({ kind: "text", value: source.slice(cursor) })) return null;
+      break;
+    }
+    if (open > cursor && !push({ kind: "text", value: source.slice(cursor, open) })) return null;
+    const close = source.indexOf(">", open + 1);
+    if (close < 0) return null;
+    const token = source.slice(open, close + 1);
+    if (/^<br\/?\s*>$/iu.test(token)) {
+      if (!push({ kind: "break", key: nodeCount })) return null;
+      cursor = close + 1;
+      continue;
+    }
+    const closing = /^<\/([a-z]+)>$/iu.exec(token);
+    if (closing) {
+      const tag2 = (closing[1] ?? "").toLowerCase();
+      const frame = stack.pop();
+      if (!frame?.tag || frame.tag !== tag2) return null;
+      cursor = close + 1;
+      continue;
+    }
+    const opening = /^<([a-z]+)>$/iu.exec(token);
+    const tag = (opening?.[1] ?? "").toLowerCase();
+    if (!opening || !isNotesBaseHtmlTag(tag) || stack.length > MAX_NOTES_BASE_HTML_DEPTH) return null;
+    const children = [];
+    const node = { kind: "tag", key: nodeCount, tag, children };
+    if (!push(node)) return null;
+    stack.push({ tag, children });
+    cursor = close + 1;
+  }
+  return stack.length === 1 ? frozenNodes(root) : null;
+}
+function createNotesBaseHtmlValue(source) {
+  const nodes = parseNotesBaseHtml(source);
+  if (nodes === null) return null;
+  const value = new NotesBaseHtmlValue(nodes, visibleText(nodes));
+  notesBaseHtmlValues.add(value);
+  return value;
+}
+function notesBaseHtmlValue(value) {
+  return typeof value === "object" && value !== null && notesBaseHtmlValues.has(value) ? value : null;
+}
+function notesBaseHtmlText(value) {
+  return notesBaseHtmlValue(value)?.text() ?? null;
+}
+
+// src/NotesBaseFormulaRegex.ts
+var MAX_NOTES_BASE_REGEXP_PATTERN_LENGTH = 1e3;
+var MAX_NOTES_BASE_REGEXP_INPUT_LENGTH = 1e5;
+var MAX_NOTES_BASE_REGEXP_MATCH_WORK = 1e6;
+var MAX_NOTES_BASE_REGEXP_CAPTURE_GROUPS = 9;
+var NOTES_BASE_REGEXP_FLAGS = /^[dgimsuvy]*$/u;
+var NOTES_BASE_UNSAFE_REGEXP_TOKEN = /[()|*+?{}]/u;
+function parseNotesBaseRegexpLiteralPrefix(value, allowedFlags = NOTES_BASE_REGEXP_FLAGS, maxCaptureGroups = 0) {
+  if (!value.startsWith("/")) return null;
+  let escaped = false;
+  let inCharacterClass = false;
+  let captureGroupDepth = 0;
+  let captureGroupCount = 0;
+  let captureGroupStart = -1;
+  let closingSlash = -1;
+  let escapedAtom = false;
+  for (let index2 = 1; index2 < value.length && index2 <= MAX_NOTES_BASE_REGEXP_PATTERN_LENGTH + 1; index2 += 1) {
+    const character = value[index2] ?? "";
+    if (escaped) {
+      if (/[1-9]/u.test(character)) return null;
+      escaped = false;
+      escapedAtom = true;
+      continue;
+    }
+    if (character === "\\") {
+      escaped = true;
+      escapedAtom = false;
+      continue;
+    }
+    if (character === "[" && !inCharacterClass) {
+      inCharacterClass = true;
+      escapedAtom = false;
+      continue;
+    }
+    if (character === "]" && inCharacterClass) {
+      inCharacterClass = false;
+      escapedAtom = false;
+      continue;
+    }
+    if (!inCharacterClass && character === "(") {
+      if (captureGroupDepth > 0 || captureGroupCount >= maxCaptureGroups) return null;
+      captureGroupDepth = 1;
+      captureGroupCount += 1;
+      captureGroupStart = index2;
+      escapedAtom = false;
+      continue;
+    }
+    if (!inCharacterClass && character === ")") {
+      if (captureGroupDepth !== 1 || index2 === captureGroupStart + 1) return null;
+      captureGroupDepth = 0;
+      captureGroupStart = -1;
+      escapedAtom = false;
+      continue;
+    }
+    if (!inCharacterClass && character === "+") {
+      if (!escapedAtom) return null;
+      escapedAtom = false;
+      continue;
+    }
+    if (character === "/" && !inCharacterClass) {
+      if (captureGroupDepth !== 0) return null;
+      closingSlash = index2;
+      break;
+    }
+    if (!inCharacterClass && NOTES_BASE_UNSAFE_REGEXP_TOKEN.test(character)) return null;
+    if (/[\n\r\u2028\u2029]/u.test(character)) return null;
+    escapedAtom = false;
+  }
+  if (closingSlash < 1 || escaped || inCharacterClass) return null;
+  const source = value.slice(1, closingSlash);
+  let flagEnd = closingSlash + 1;
+  while (/[A-Za-z]/u.test(value[flagEnd] ?? "")) flagEnd += 1;
+  const flags = value.slice(closingSlash + 1, flagEnd);
+  if (source.length > MAX_NOTES_BASE_REGEXP_PATTERN_LENGTH || !allowedFlags.test(flags) || new Set(flags).size !== flags.length) {
+    return null;
+  }
+  try {
+    return {
+      captureGroupCount,
+      expression: new RegExp(source, flags),
+      length: flagEnd,
+      source
+    };
+  } catch {
+    return null;
+  }
+}
+function tokenizeNotesBaseCaptureReplacement(replacement, captureGroupCount) {
+  const tokens = [];
+  let literalStart = 0;
+  for (let index2 = 0; index2 < replacement.length; index2 += 1) {
+    const character = replacement[index2] ?? "";
+    const captureDigit = replacement[index2 + 1] ?? "";
+    const followingCharacter = replacement[index2 + 2] ?? "";
+    const captureIndex = character === "$" && captureDigit >= "1" && captureDigit <= "9" && (followingCharacter < "0" || followingCharacter > "9") ? Number(captureDigit) : 0;
+    if (captureIndex >= 1 && captureIndex <= captureGroupCount) {
+      if (literalStart < index2) tokens.push(replacement.slice(literalStart, index2));
+      tokens.push(captureIndex);
+      index2 += 1;
+      literalStart = index2 + 1;
+    }
+  }
+  if (literalStart < replacement.length) tokens.push(replacement.slice(literalStart));
+  return tokens;
+}
+function notesBaseCaptureReplacementLength(tokens, match) {
+  let length = 0;
+  for (const token of tokens) {
+    length += typeof token === "number" ? (match[token] ?? "").length : token.length;
+  }
+  return length;
+}
+function expandNotesBaseCaptureReplacement(tokens, captures) {
+  let expanded = "";
+  for (const token of tokens) {
+    if (typeof token === "string") {
+      expanded += token;
+      continue;
+    }
+    const capture = captures[token - 1];
+    if (typeof capture === "string") expanded += capture;
+  }
+  return expanded;
+}
+function evaluateNotesBaseRegexpReplaceCall(call, resolveProperty, splitArgs, evaluateArg2, maxOutputLength) {
+  const argsSource = call.args.trim();
+  const parsed = parseNotesBaseRegexpLiteralPrefix(
+    argsSource,
+    NOTES_BASE_REGEXP_FLAGS,
+    MAX_NOTES_BASE_REGEXP_CAPTURE_GROUPS
+  );
+  if (!parsed || parsed.source.length === 0) return { supported: false };
+  const remainder = argsSource.slice(parsed.length).trim();
+  if (!remainder.startsWith(",")) return { supported: false };
+  const replacementSource = remainder.slice(1).trim();
+  const replacementArgs = splitArgs(replacementSource);
+  if (!replacementArgs || replacementArgs.length !== 1 || /,\s*$/u.test(replacementSource)) {
+    return { supported: false };
+  }
+  const receiver = evaluateArg2(call.receiver, resolveProperty);
+  const replacement = evaluateArg2(replacementArgs[0] ?? "", resolveProperty);
+  if (!receiver.supported || typeof receiver.value !== "string" || receiver.value.length > MAX_NOTES_BASE_REGEXP_INPUT_LENGTH || !replacement.supported || typeof replacement.value !== "string" || replacement.value.length > maxOutputLength || parsed.source.length * receiver.value.length > MAX_NOTES_BASE_REGEXP_MATCH_WORK) {
+    return { supported: false };
+  }
+  const replacementText = replacement.value;
+  const replacementTokens = tokenizeNotesBaseCaptureReplacement(
+    replacementText,
+    parsed.captureGroupCount
+  );
+  let projectedLength = receiver.value.length;
+  let captureExpansionWork = 0;
+  const projectMatch = (match) => {
+    captureExpansionWork += replacementTokens.length;
+    if (captureExpansionWork > MAX_NOTES_BASE_REGEXP_MATCH_WORK) return false;
+    projectedLength += notesBaseCaptureReplacementLength(replacementTokens, match) - match[0].length;
+    return projectedLength <= maxOutputLength;
+  };
+  if (parsed.expression.global) {
+    for (const match of receiver.value.matchAll(parsed.expression)) {
+      if (!projectMatch(match)) return { supported: false };
+    }
+  } else {
+    const match = parsed.expression.exec(receiver.value);
+    if (match && !projectMatch(match)) return { supported: false };
+  }
+  if (projectedLength > maxOutputLength) return { supported: false };
+  parsed.expression.lastIndex = 0;
+  return {
+    supported: true,
+    value: receiver.value.replace(parsed.expression, (_match, ...captures) => expandNotesBaseCaptureReplacement(replacementTokens, captures))
+  };
+}
+function parseNotesBaseRegexpLiteral(value, maxCaptureGroups = 0) {
+  const parsed = parseNotesBaseRegexpLiteralPrefix(
+    value,
+    NOTES_BASE_REGEXP_FLAGS,
+    maxCaptureGroups
+  );
+  return parsed?.length === value.length ? parsed.expression : null;
+}
+function splitNotesBaseRegexpIsTypeCall(value) {
+  const parsed = parseNotesBaseRegexpLiteralPrefix(
+    value,
+    NOTES_BASE_REGEXP_FLAGS,
+    MAX_NOTES_BASE_REGEXP_CAPTURE_GROUPS
+  );
+  const marker = ".isType(";
+  if (!parsed || !value.startsWith(marker, parsed.length) || !value.endsWith(")")) return null;
+  return {
+    args: value.slice(parsed.length + marker.length, -1),
+    receiver: value.slice(0, parsed.length)
+  };
+}
+function evaluateNotesBaseRegexpAnyValueCall(value) {
+  const parsed = parseNotesBaseRegexpLiteralPrefix(
+    value,
+    NOTES_BASE_REGEXP_FLAGS,
+    MAX_NOTES_BASE_REGEXP_CAPTURE_GROUPS
+  );
+  if (!parsed) return null;
+  const isTruthy = value.startsWith(".isTruthy(", parsed.length);
+  const isString = value.startsWith(".toString(", parsed.length);
+  if (!isTruthy && !isString || !value.endsWith(")")) return null;
+  const marker = isTruthy ? ".isTruthy(" : ".toString(";
+  const args = value.slice(parsed.length + marker.length, -1).trim();
+  return args.length === 0 ? { supported: true, value: isTruthy ? true : parsed.expression.toString() } : { supported: false };
+}
+function evaluateNotesBaseRegexpMatchesCall(call, resolveProperty, splitArgs, evaluateArg2) {
+  const args = splitArgs(call.args);
+  if (!args || args.length !== 1 || /,\s*$/u.test(call.args)) return { supported: false };
+  const expression = parseNotesBaseRegexpLiteral(
+    call.receiver,
+    MAX_NOTES_BASE_REGEXP_CAPTURE_GROUPS
+  );
+  const candidate = evaluateArg2(args[0] ?? "", resolveProperty);
+  if (!expression || !candidate.supported || typeof candidate.value !== "string" || candidate.value.length > MAX_NOTES_BASE_REGEXP_INPUT_LENGTH || expression.source.length * candidate.value.length > MAX_NOTES_BASE_REGEXP_MATCH_WORK) {
+    return { supported: false };
+  }
+  return { supported: true, value: expression.test(candidate.value) };
+}
+function evaluateNotesBaseRegexpSplitCall(call, resolveProperty, splitArgs, evaluateArg2, maxElements) {
+  const argsSource = call.args.trim();
+  const parsed = parseNotesBaseRegexpLiteralPrefix(
+    argsSource,
+    NOTES_BASE_REGEXP_FLAGS,
+    MAX_NOTES_BASE_REGEXP_CAPTURE_GROUPS
+  );
+  if (!parsed) return { supported: false };
+  const remainder = argsSource.slice(parsed.length).trim();
+  let limit = maxElements + 1;
+  if (remainder.length > 0) {
+    if (!remainder.startsWith(",")) return { supported: false };
+    const limitSource = remainder.slice(1).trim();
+    const limitArgs = splitArgs(limitSource);
+    if (!limitArgs || limitArgs.length !== 1 || /,\s*$/u.test(limitSource)) {
+      return { supported: false };
+    }
+    const requestedLimit = evaluateArg2(limitArgs[0] ?? "", resolveProperty);
+    if (!requestedLimit.supported || typeof requestedLimit.value !== "number" || !Number.isFinite(requestedLimit.value)) {
+      return { supported: false };
+    }
+    limit = Math.min(requestedLimit.value >>> 0, limit);
+  }
+  const receiver = evaluateArg2(call.receiver, resolveProperty);
+  if (!receiver.supported || typeof receiver.value !== "string" || receiver.value.length > MAX_NOTES_BASE_REGEXP_INPUT_LENGTH || parsed.expression.source.length * receiver.value.length > MAX_NOTES_BASE_REGEXP_MATCH_WORK) {
+    return { supported: false };
+  }
+  const value = receiver.value.split(parsed.expression, limit);
+  return value.length <= maxElements ? { supported: true, value } : { supported: false };
+}
+
+// src/NotesBaseFormulaTagsMatch.ts
+function noteHasTag(tags, tag) {
+  const normalized = tag.replace(/^#+/u, "").trim().toLowerCase();
+  return tags.some((candidate) => {
+    const value = candidate.toLowerCase();
+    return value === normalized || value.startsWith(`${normalized}/`);
+  });
+}
+
+// src/NotesBaseFormulaTags.ts
+var MAX_NOTES_BASE_TAG_VALUES = 1e4;
+var MAX_NOTES_BASE_TAG_TEXT_LENGTH = 1e5;
+var MAX_NOTES_BASE_TAG_MATCHES = 1e5;
+function notesBaseTagsSnapshot(value) {
+  try {
+    if (!Array.isArray(value)) return null;
+    const lengthDescriptor = Object.getOwnPropertyDescriptor(value, "length");
+    const length = lengthDescriptor && "value" in lengthDescriptor ? lengthDescriptor.value : null;
+    if (typeof length !== "number" || !Number.isSafeInteger(length) || length < 0 || length > MAX_NOTES_BASE_TAG_VALUES || value.length !== length) return null;
+    let textLength = 0;
+    const tags = [];
+    for (let index2 = 0; index2 < length; index2 += 1) {
+      const descriptor = Object.getOwnPropertyDescriptor(value, String(index2));
+      const entry = descriptor && "value" in descriptor ? descriptor.value : null;
+      if (typeof entry !== "string" || value[index2] !== entry) return null;
+      textLength += entry.length;
+      if (textLength > MAX_NOTES_BASE_TAG_TEXT_LENGTH) return null;
+      tags.push(entry);
+    }
+    return tags;
+  } catch {
+    return null;
+  }
+}
+function evaluateNotesBaseFileHasTagCall(call, resolveProperty, splitArgs, evaluateArg2, fileTagsFor) {
+  const args = splitArgs(call.args);
+  if (call.receiver !== "file" && call.receiver !== "this.file" && !/^file\([\s\S]*\)$/u.test(call.receiver) || !args || args.length === 0 || args.length > MAX_NOTES_BASE_TAG_VALUES || /,\s*$/u.test(call.args)) {
+    return { supported: false };
+  }
+  let tagValue;
+  if (call.receiver === "file") {
+    tagValue = resolveProperty("file.tags");
+  } else {
+    const projectedFile = evaluateArg2(call.receiver, resolveProperty);
+    const path = projectedFile.supported && typeof projectedFile.value === "string" ? normalizeNotesBaseFilePath(projectedFile.value) : null;
+    if (!path || !fileTagsFor) return { supported: false };
+    try {
+      tagValue = fileTagsFor(path);
+    } catch {
+      return { supported: false };
+    }
+  }
+  const tags = notesBaseTagsSnapshot(tagValue);
+  if (!tags || tags.length * args.length > MAX_NOTES_BASE_TAG_MATCHES) return { supported: false };
+  const queries = [];
+  let queryLength = 0;
+  for (const arg of args) {
+    const query = evaluateArg2(arg, resolveProperty);
+    if (!query.supported || typeof query.value !== "string") return { supported: false };
+    queryLength += query.value.length;
+    if (queryLength > MAX_NOTES_BASE_TAG_TEXT_LENGTH) return { supported: false };
+    queries.push(query.value);
+  }
+  return { supported: true, value: queries.some((query) => noteHasTag(tags, query)) };
+}
+
+// src/NotesBaseSummaryUnique.ts
+var MAX_UNIQUE_STRING_LENGTH = 1e5;
+var MAX_UNIQUE_COLLECTION_ENTRIES = 1e4;
+var MAX_UNIQUE_DEPTH = 64;
+var MAX_UNIQUE_WORK = 1e6;
+function uniqueValueIdentity(value, state, depth = 0) {
+  if (depth > MAX_UNIQUE_DEPTH) return null;
+  state.work += 1;
+  if (state.work > MAX_UNIQUE_WORK) return null;
+  if (value == null) return "z";
+  if (typeof value === "boolean") return value ? "b1" : "b0";
+  if (typeof value === "number") return Number.isFinite(value) ? `n${Object.is(value, -0) ? 0 : value};` : null;
+  if (typeof value === "string") {
+    state.work += value.length;
+    return value.length <= MAX_UNIQUE_STRING_LENGTH && state.work <= MAX_UNIQUE_WORK ? `s${value.length}:${value}` : null;
+  }
+  if (typeof value !== "object" || state.active.has(value)) return null;
+  if (Array.isArray(value)) {
+    try {
+      const length = value.length;
+      if (!Number.isSafeInteger(length) || length < 0 || length > MAX_UNIQUE_COLLECTION_ENTRIES) return null;
+      state.work += length;
+      if (state.work > MAX_UNIQUE_WORK) return null;
+      state.active.add(value);
+      const identities = [];
+      for (let index2 = 0; index2 < length; index2 += 1) {
+        const descriptor = Object.getOwnPropertyDescriptor(value, String(index2));
+        if (descriptor && !("value" in descriptor)) return null;
+        const identity = uniqueValueIdentity(descriptor?.value, state, depth + 1);
+        if (identity === null) return null;
+        identities.push(identity);
+      }
+      return `a${length}[${identities.join("")}]`;
+    } catch {
+      return null;
+    } finally {
+      state.active.delete(value);
+    }
+  }
+  const keys = notesBaseObjectKeys(value);
+  if (keys === null) return null;
+  state.work += keys.length;
+  if (state.work > MAX_UNIQUE_WORK) return null;
+  state.active.add(value);
+  try {
+    const identities = [];
+    for (const key2 of keys.sort()) {
+      state.work += key2.length;
+      if (key2.length > MAX_UNIQUE_STRING_LENGTH || state.work > MAX_UNIQUE_WORK) return null;
+      const descriptor = Object.getOwnPropertyDescriptor(value, key2);
+      if (!descriptor || !("value" in descriptor)) return null;
+      const identity = uniqueValueIdentity(descriptor.value, state, depth + 1);
+      if (identity === null) return null;
+      identities.push(`k${key2.length}:${key2}${identity}`);
+    }
+    return `o${keys.length}{${identities.join("")}}`;
+  } catch {
+    return null;
+  } finally {
+    state.active.delete(value);
+  }
+}
+function countNotesBaseUniqueValues(rows, resolveValue) {
+  const identities = /* @__PURE__ */ new Set();
+  const state = { active: /* @__PURE__ */ new Set(), work: 0 };
+  for (const row of rows) {
+    const identity = uniqueValueIdentity(resolveValue(row), state);
+    if (identity === null) return null;
+    identities.add(identity);
+  }
+  return identities.size;
+}
+
+// src/NotesBaseFormula.ts
+var NOTES_BASE_UNSUPPORTED_FORMULA_VALUE = Symbol("notes-base-unsupported-formula-value");
+var MAX_NOTES_BASE_FORMULA_STRING_LENGTH = 1e5;
+var MAX_NOTES_BASE_FORMULA_EXPRESSION_LENGTH = 2e5;
+var MAX_NOTES_BASE_FORMULA_LIST_ELEMENTS = 1e4;
+var MAX_NOTES_BASE_FORMULA_LIST_CALLBACK_WORK = 1e6;
+var MAX_NOTES_BASE_FORMULA_GROUP_DEPTH = 64;
+var NOTES_BASE_FORMULA_LIST_CALLBACK_FORBIDDEN_METHODS = ["filter", "map", "matches", "reduce"];
+var NOTES_BASE_HTML_ESCAPE_BY_CHARACTER = new Map(Object.entries({
+  "&": "&amp;",
+  "<": "&lt;",
+  ">": "&gt;",
+  '"': "&quot;"
+}));
+var NOTES_BASE_LIST_INDEX_EXPRESSION = /^([\s\S]+)\[(0|[1-9]\d{0,4})\]$/u;
+var NOTES_BASE_FIXED_DURATION_MULTIPLIERS = {
+  ms: 1,
+  s: 1e3,
+  second: 1e3,
+  seconds: 1e3,
+  m: 6e4,
+  minute: 6e4,
+  minutes: 6e4,
+  h: 36e5,
+  hour: 36e5,
+  hours: 36e5,
+  d: 864e5,
+  day: 864e5,
+  days: 864e5,
+  w: 6048e5,
+  week: 6048e5,
+  weeks: 6048e5
+};
+var NOTES_BASE_FORMULA_LIST_COLLATOR = new Intl.Collator(
+  void 0,
+  { usage: "sort", sensitivity: "base", numeric: true }
+);
+function notesBaseFileTimestamp(timestamp) {
+  if (typeof timestamp !== "number" || !Number.isFinite(timestamp)) return void 0;
+  const date6 = new Date(timestamp);
+  return Number.isFinite(date6.getTime()) ? date6.toISOString() : void 0;
+}
+function notesBaseFormulaExpression(value) {
+  return /^formula\((['"])([\s\S]*)\1\)$/u.exec(value.trim())?.[2] ?? null;
+}
+function evaluateNotesBaseValueEmptiness(value) {
+  if (value == null) return { supported: true, value: true };
+  if (Array.isArray(value)) return { supported: true, value: value.length === 0 };
+  if (notesBaseIconName(value) !== null) return { supported: true, value: false };
+  if (notesBaseImageText(value) !== null) return { supported: true, value: false };
+  if (notesBaseHtmlText(value) !== null) return { supported: true, value: false };
+  if (typeof value === "object") {
+    const keys = notesBaseObjectKeys(value);
+    return keys === null ? { supported: false } : { supported: true, value: keys.length === 0 };
+  }
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? { supported: true, value: false } : { supported: false };
+  }
+  if (typeof value === "string") return { supported: true, value: value.length === 0 };
+  if (typeof value === "boolean") return { supported: true, value: false };
+  return { supported: false };
+}
+function splitFormulaArgs(value) {
+  const args = [];
+  let current = "";
+  let quote = "";
+  let depth = 0;
+  for (let index2 = 0; index2 < value.length; index2 += 1) {
+    const char = value[index2] ?? "";
+    if ((char === '"' || char === "'") && !isNotesBaseFormulaQuoteEscaped(value, index2)) {
+      if (!quote) quote = char;
+      else if (char === quote) quote = "";
+    }
+    if (quote || char === '"' || char === "'") {
+      current += char;
+      continue;
+    }
+    if (char === "(" || char === "[" || char === "{") depth += 1;
+    if (char === ")" || char === "]" || char === "}") depth -= 1;
+    if (depth < 0) return null;
+    if (char === "," && !quote && depth === 0) {
+      args.push(current.trim());
+      current = "";
+      continue;
+    }
+    current += char;
+  }
+  if (quote || depth !== 0) return null;
+  if (current.trim()) args.push(current.trim());
+  return args;
+}
+function projectedFilePath(receiverSource, resolveProperty, evaluateReceiver) {
+  if (!receiverSource.startsWith("file(") || !receiverSource.endsWith(")")) return null;
+  const receiverArgs = splitFormulaArgs(receiverSource.slice("file(".length, -1));
+  if (!receiverArgs || receiverArgs.length !== 1 || /,\s*\)$/u.test(receiverSource)) return null;
+  const receiver = evaluateReceiver(receiverSource, resolveProperty);
+  return receiver.supported && typeof receiver.value === "string" ? normalizeNotesBaseFilePath(receiver.value) : null;
+}
+function splitMemberCall(value, method) {
+  const marker = `.${method}(`;
+  let quote = "";
+  let depth = 0;
+  let markerIndex = -1;
+  let lastMemberCallIndex = -1;
+  for (let index2 = 0; index2 < value.length; index2 += 1) {
+    const char = value[index2] ?? "";
+    if ((char === '"' || char === "'") && !isNotesBaseFormulaQuoteEscaped(value, index2)) {
+      if (!quote) quote = char;
+      else if (char === quote) quote = "";
+    }
+    if (quote || char === '"' || char === "'") {
+      continue;
+    }
+    if (depth === 0 && char === ".") {
+      const memberCall = /^\.([A-Za-z_][\w]*)\(/u.exec(value.slice(index2));
+      if (memberCall) lastMemberCallIndex = index2;
+      if (value.startsWith(marker, index2)) markerIndex = index2;
+    }
+    if (char === "(") depth += 1;
+    if (char === ")") depth -= 1;
+    if (depth < 0) return null;
+  }
+  if (quote || depth !== 0 || markerIndex < 1 || markerIndex !== lastMemberCallIndex || !value.endsWith(")")) return null;
+  return {
+    receiver: value.slice(0, markerIndex).trim(),
+    args: value.slice(markerIndex + marker.length, -1)
+  };
+}
+function unwrapBoundedFormulaGroup(value) {
+  if (value.length > MAX_NOTES_BASE_FORMULA_EXPRESSION_LENGTH) return null;
+  let quote = "";
+  let depth = 0;
+  let outerClose = -1;
+  for (let index2 = 0; index2 < value.length; index2 += 1) {
+    const char = value[index2] ?? "";
+    if ((char === '"' || char === "'") && !isNotesBaseFormulaQuoteEscaped(value, index2)) {
+      if (!quote) quote = char;
+      else if (char === quote) quote = "";
+    }
+    if (quote || char === '"' || char === "'") {
+      continue;
+    }
+    if (char === "(") {
+      depth += 1;
+      if (depth > MAX_NOTES_BASE_FORMULA_GROUP_DEPTH) return null;
+    } else if (char === ")") {
+      depth -= 1;
+      if (depth < 0) return null;
+      if (depth === 0 && outerClose < 0) outerClose = index2;
+    }
+  }
+  if (quote !== "" || depth !== 0) return null;
+  return value.startsWith("(") && outerClose === value.length - 1 ? value.slice(1, -1).trim() : value;
+}
+function unwrapNotesBaseOperand(value) {
+  let current = value.trim();
+  for (let depth = 0; depth <= MAX_NOTES_BASE_FORMULA_GROUP_DEPTH; depth += 1) {
+    const unwrapped = unwrapBoundedFormulaGroup(current);
+    if (unwrapped === null) return null;
+    if (unwrapped === current) return current;
+    current = unwrapped;
+  }
+  return current;
+}
+function isNotesBaseDateOperand(value) {
+  const current = unwrapNotesBaseOperand(value);
+  if (current === null) return false;
+  if (/^[\w.-]+$/u.test(current) || current === "today()" || current === "now()") return true;
+  if (!current.startsWith("date(") || !current.endsWith(")")) return false;
+  const argsSource = current.slice("date(".length, -1);
+  const args = splitFormulaArgs(argsSource);
+  return args?.length === 1 && !/,\s*$/u.test(argsSource);
+}
+function isNotesBaseDateOffsetOperand(value) {
+  const current = unwrapNotesBaseOperand(value);
+  return current !== null && isNotesBaseDateOffsetExpression(current, isNotesBaseDateOperand);
+}
+function isDirectNotesBaseDurationOperand(value) {
+  const current = unwrapNotesBaseOperand(value);
+  if (current === null || !current.startsWith("duration(") || !current.endsWith(")")) return false;
+  const argsSource = current.slice("duration(".length, -1);
+  const args = splitFormulaArgs(argsSource);
+  return args?.length === 1 && !/,\s*$/u.test(argsSource);
+}
+function isNotesBaseDurationOperand(value) {
+  const current = unwrapNotesBaseOperand(value);
+  return current !== null && (isDirectNotesBaseDurationOperand(current) || isNotesBaseDurationScaleExpression(current, isDirectNotesBaseDurationOperand));
+}
+function rejectNotesBaseUnaryNumericOperand(operator, operand) {
+  return operator === "-" && isNotesBaseDurationOperand(operand);
+}
+function containsMemberCall(value, methods) {
+  let quote = "";
+  for (let index2 = 0; index2 < value.length; index2 += 1) {
+    const char = value[index2] ?? "";
+    if ((char === '"' || char === "'") && !isNotesBaseFormulaQuoteEscaped(value, index2)) {
+      if (!quote) quote = char;
+      else if (char === quote) quote = "";
+    }
+    if (quote || char === '"' || char === "'") {
+      continue;
+    }
+    if (methods.some((method) => value.startsWith(`.${method}(`, index2))) return true;
+  }
+  return false;
+}
+function isNotesBaseSafeShortCircuitOperand(value) {
+  const trimmed = value.trim();
+  if (!trimmed || trimmed.length > MAX_NOTES_BASE_FORMULA_EXPRESSION_LENGTH || unwrapBoundedFormulaGroup(trimmed) === null || /[;`]|=>|(?:^|[\s(])(?:process|globalThis|window|document|require|eval|Function|fetch|XMLHttpRequest)\b|\.(?:constructor|prototype)\b|__proto__/u.test(trimmed)) {
+    return false;
+  }
+  return true;
+}
+function text(value) {
+  if (Array.isArray(value)) return value.join(", ");
+  if (value == null) return "";
+  const linkText = notesBaseLinkText(value);
+  if (linkText !== null) return linkText;
+  return String(value);
+}
+function escapeNotesBaseHtml(value) {
+  if (value.length > MAX_NOTES_BASE_FORMULA_STRING_LENGTH) return null;
+  let projectedLength = value.length;
+  for (let index2 = 0; index2 < value.length; index2 += 1) {
+    const escaped = NOTES_BASE_HTML_ESCAPE_BY_CHARACTER.get(value.charAt(index2));
+    if (escaped !== void 0) projectedLength += escaped.length - 1;
+    if (projectedLength > MAX_NOTES_BASE_FORMULA_STRING_LENGTH) return null;
+  }
+  return value.replace(/[&<>"]/gu, (character) => NOTES_BASE_HTML_ESCAPE_BY_CHARACTER.get(character) ?? character);
+}
+function notesBaseNumberValue(value, operand) {
+  if (isNotesBaseDateOperand(operand)) {
+    const date6 = notesBaseDateValue(value);
+    if (date6) return date6.getTime();
+  }
+  if (typeof value === "boolean") return value ? 1 : 0;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+function localCalendarDate(now = /* @__PURE__ */ new Date()) {
+  const year = String(now.getFullYear()).padStart(4, "0");
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+function localClockTime(now) {
+  const hour = String(now.getHours()).padStart(2, "0");
+  const minute = String(now.getMinutes()).padStart(2, "0");
+  const second = String(now.getSeconds()).padStart(2, "0");
+  return `${hour}:${minute}:${second}`;
+}
+function parseLocalDate(value) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})(?:(?:T| )(\d{2}):(\d{2})(?::(\d{2}))?)?$/u.exec(value);
+  if (!match) return null;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const hour = Number(match[4] ?? 0);
+  const minute = Number(match[5] ?? 0);
+  const second = Number(match[6] ?? 0);
+  const parsed = /* @__PURE__ */ new Date(0);
+  parsed.setFullYear(year, month - 1, day);
+  parsed.setHours(hour, minute, second, 0);
+  return parsed.getFullYear() === year && parsed.getMonth() === month - 1 && parsed.getDate() === day && parsed.getHours() === hour && parsed.getMinutes() === minute && parsed.getSeconds() === second ? parsed.toISOString() : null;
+}
+function parseTimezoneOffsetDate(value) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,3}))?(?:Z|([+-])(\d{2}):(\d{2}))$/u.exec(value);
+  if (!match) return null;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const hour = Number(match[4]);
+  const minute = Number(match[5]);
+  const second = Number(match[6]);
+  const millisecond = Number((match[7] ?? "").padEnd(3, "0"));
+  const offsetHour = Number(match[9] ?? 0);
+  const offsetMinute = Number(match[10] ?? 0);
+  if (offsetHour > 23 || offsetMinute > 59) return null;
+  const calendar = /* @__PURE__ */ new Date(0);
+  calendar.setUTCFullYear(year, month - 1, day);
+  calendar.setUTCHours(hour, minute, second, millisecond);
+  if (calendar.getUTCFullYear() !== year || calendar.getUTCMonth() !== month - 1 || calendar.getUTCDate() !== day || calendar.getUTCHours() !== hour || calendar.getUTCMinutes() !== minute || calendar.getUTCSeconds() !== second || calendar.getUTCMilliseconds() !== millisecond) {
+    return null;
+  }
+  const offsetDirection = match[8] === "-" ? -1 : 1;
+  const timestamp = calendar.getTime() - offsetDirection * (offsetHour * 60 + offsetMinute) * 6e4;
+  const parsed = new Date(timestamp);
+  return Number.isFinite(parsed.getTime()) ? parsed.toISOString() : null;
+}
+function parseFixedDuration(value) {
+  if (value.length > MAX_NOTES_BASE_FORMULA_STRING_LENGTH) return null;
+  const match = /^([+-]?(?:\d+(?:\.\d+)?|\.\d+))\s*(ms|s|seconds?|m|minutes?|h|hours?|d|days?|w|weeks?)$/u.exec(value.trim());
+  if (!match) return null;
+  const magnitude = Number(match[1]);
+  const unit = match[2];
+  const milliseconds = magnitude * NOTES_BASE_FIXED_DURATION_MULTIPLIERS[unit];
+  return Number.isSafeInteger(milliseconds) ? milliseconds : null;
+}
+function parseFixedDateDuration(value, operand) {
+  if (typeof value === "number") {
+    return isNotesBaseDurationOperand(operand) && Number.isSafeInteger(value) ? value : null;
+  }
+  if (typeof value !== "string" || value.length > MAX_NOTES_BASE_FORMULA_STRING_LENGTH) return null;
+  const match = /^([+-]?(?:\d+(?:\.\d+)?|\.\d+))\s*(d|days?|w|weeks?|h|hours?|m|minutes?|s|seconds?)$/u.exec(value.trim());
+  if (!match) return null;
+  const magnitude = Number(match[1]);
+  const unit = match[2];
+  const milliseconds = magnitude * NOTES_BASE_FIXED_DURATION_MULTIPLIERS[unit];
+  return Number.isSafeInteger(milliseconds) ? milliseconds : null;
+}
+function offsetLocalCalendarMonths(timestamp, months) {
+  if (!Number.isFinite(timestamp) || !Number.isSafeInteger(months)) return null;
+  const date6 = new Date(timestamp);
+  if (!Number.isFinite(date6.getTime())) return null;
+  const day = date6.getDate();
+  date6.setDate(1);
+  date6.setMonth(date6.getMonth() + months);
+  if (!Number.isFinite(date6.getTime())) return null;
+  const lastDay = new Date(date6.getTime());
+  lastDay.setMonth(lastDay.getMonth() + 1, 0);
+  if (!Number.isFinite(lastDay.getTime())) return null;
+  date6.setDate(Math.min(day, lastDay.getDate()));
+  return Number.isFinite(date6.getTime()) ? date6.getTime() : null;
+}
+function offsetNotesBaseDate(timestamp, value, operand, operator) {
+  const fixedDuration = parseFixedDateDuration(value, operand);
+  if (fixedDuration !== null) {
+    const result = operator === "+" ? timestamp + fixedDuration : timestamp - fixedDuration;
+    return Number.isFinite(result) ? result : null;
+  }
+  if (typeof value !== "string" || value.length > MAX_NOTES_BASE_FORMULA_STRING_LENGTH) return null;
+  const match = /^([+-]?\d+)\s*(M|months?|y|years?)$/u.exec(value.trim());
+  if (!match) return null;
+  const magnitude = Number(match[1]);
+  const monthsPerUnit = match[2] === "y" || match[2]?.startsWith("year") ? 12 : 1;
+  const months = magnitude * monthsPerUnit * (operator === "+" ? 1 : -1);
+  return Number.isSafeInteger(magnitude) && Number.isSafeInteger(months) ? offsetLocalCalendarMonths(timestamp, months) : null;
+}
+var NOTES_BASE_DATE_FIELD_ACCESSORS = {
+  year: (date6) => date6.getFullYear(),
+  month: (date6) => date6.getMonth() + 1,
+  day: (date6) => date6.getDate(),
+  hour: (date6) => date6.getHours(),
+  minute: (date6) => date6.getMinutes(),
+  second: (date6) => date6.getSeconds(),
+  millisecond: (date6) => date6.getMilliseconds()
+};
+function notesBaseDateValue(value) {
+  if (typeof value !== "string") return null;
+  const parsedInstant = parseLocalDate(value) ?? parseTimezoneOffsetDate(value);
+  if (parsedInstant) return new Date(parsedInstant);
+  if (!/^(?:\d{4}|[+-]\d{6})-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/u.test(value)) return null;
+  const instant = new Date(value);
+  return Number.isFinite(instant.getTime()) && instant.toISOString() === value ? instant : null;
+}
+function notesBaseDateTimestamp(value, operand) {
+  return isNotesBaseDateOperand(operand) || isNotesBaseDateOffsetOperand(operand) ? notesBaseDateValue(value)?.getTime() ?? null : null;
+}
+function notesBaseFileOperandPath(value, operand) {
+  const source = operand.trim();
+  const hasFileProvenance = source === "file.file" || source === "this" || source === "this.file" || /^file\([\s\S]*\)$/u.test(source) || /\.asFile\(\s*\)$/u.test(source);
+  return hasFileProvenance && typeof value === "string" ? normalizeNotesBaseFilePath(value) : null;
+}
+function isNotesBaseFileOperand(value, operand) {
+  return notesBaseFileOperandPath(value, operand) !== null;
+}
+function notesBaseRelativeTime(date6, now = /* @__PURE__ */ new Date()) {
+  const difference = date6.getTime() - now.getTime();
+  const absoluteMilliseconds = Math.abs(difference);
+  const seconds = Math.round(absoluteMilliseconds / 1e3);
+  const minutes = Math.round(absoluteMilliseconds / 6e4);
+  const hours = Math.round(absoluteMilliseconds / 36e5);
+  const days = Math.round(absoluteMilliseconds / 864e5);
+  const months = Math.round(days * 4800 / 146097);
+  const years = Math.round(days * 400 / 146097);
+  let value;
+  if (seconds <= 44) value = "a few seconds";
+  else if (minutes <= 1) value = "a minute";
+  else if (minutes < 45) value = `${minutes} minutes`;
+  else if (hours <= 1) value = "an hour";
+  else if (hours < 22) value = `${hours} hours`;
+  else if (days <= 1) value = "a day";
+  else if (days < 26) value = `${days} days`;
+  else if (months <= 1) value = "a month";
+  else if (months < 11) value = `${months} months`;
+  else if (years <= 1) value = "a year";
+  else value = `${years} years`;
+  return difference > 0 ? `in ${value}` : `${value} ago`;
+}
+function isNotesBaseValueType(value, expectedType, receiverSource) {
+  const normalizedType = expectedType.toLowerCase();
+  if (normalizedType === "any") return true;
+  if (value == null) return normalizedType === "null";
+  if (notesBaseLinkPath(value) !== null) return normalizedType === "link";
+  if (normalizedType === "link") return false;
+  if (notesBaseImageText(value) !== null) return normalizedType === "image";
+  if (normalizedType === "image") return false;
+  if (notesBaseIconName(value) !== null) return normalizedType === "icon";
+  if (normalizedType === "icon") return false;
+  if (notesBaseHtmlText(value) !== null) return normalizedType === "html";
+  if (normalizedType === "html") return false;
+  if (normalizedType === "regexp") return false;
+  if (Array.isArray(value)) return normalizedType === "list";
+  if (isNotesBaseFileOperand(value, receiverSource)) return normalizedType === "file";
+  if (normalizedType === "file") return false;
+  if (typeof value === "number" && Number.isSafeInteger(value) && isNotesBaseDurationOperand(receiverSource)) {
+    return normalizedType === "duration";
+  }
+  if (normalizedType === "duration") return false;
+  if (notesBaseDateTimestamp(value, receiverSource) !== null) return normalizedType === "date";
+  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+    return normalizedType === typeof value;
+  }
+  if (typeof value === "object") {
+    const prototype = Object.getPrototypeOf(value);
+    return normalizedType === "object" && (prototype === Object.prototype || prototype === null);
+  }
+  return false;
+}
+function evaluateNotesBaseIsTypeCall(call, resolveProperty, evaluateReceiver, sourceType) {
+  const args = splitFormulaArgs(call.args);
+  if (!args || args.length !== 1) return { supported: false };
+  const typeLiteral = /^(['"])([\s\S]*)\1$/u.exec(args[0] ?? "");
+  if (!typeLiteral) return { supported: false };
+  const normalizedType = (typeLiteral[2] ?? "").toLowerCase();
+  if (sourceType) {
+    return { supported: true, value: normalizedType === sourceType || normalizedType === "any" };
+  }
+  const receiver = evaluateReceiver(call.receiver, resolveProperty);
+  return receiver.supported ? { supported: true, value: isNotesBaseValueType(receiver.value, typeLiteral[2] ?? "", call.receiver) } : { supported: false };
+}
+function stringifyNotesBaseValue(value, listElement = false) {
+  if (value == null) return listElement ? "" : "null";
+  const linkText = notesBaseLinkText(value);
+  if (linkText !== null) return linkText;
+  const iconName = notesBaseIconName(value);
+  if (iconName !== null) return iconName;
+  const imageText = notesBaseImageText(value);
+  if (imageText !== null) return imageText;
+  const htmlText = notesBaseHtmlText(value);
+  if (htmlText !== null) return htmlText;
+  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+  if (Array.isArray(value)) {
+    const elements = value.map((element) => stringifyNotesBaseValue(element, true));
+    return elements.some((element) => element === void 0) ? void 0 : elements.join(",");
+  }
+  if (typeof value === "object") {
+    try {
+      const prototype = Object.getPrototypeOf(value);
+      if (prototype === Object.prototype || prototype === null) {
+        return "[object Object]";
+      }
+    } catch {
+      return void 0;
+    }
+  }
+  return void 0;
+}
+function notesBaseQuotedNotePropertyReference(value) {
+  if (!value.startsWith("note[")) return null;
+  const match = /^note\[(['"])([\s\S]+)\1\]$/u.exec(value);
+  const quote = match?.[1] ?? "";
+  const name2 = match?.[2] ?? "";
+  return name2.length > 0 && name2.length <= MAX_NOTES_BASE_FORMULA_STRING_LENGTH && !name2.includes(quote) && !/[\u0000-\u001F\u007F\\]/u.test(name2) ? `note.${name2}` : null;
+}
+function notesBasePropertyReference(value) {
+  return /^[A-Za-z_][\w-]*$/u.test(value) || /^(?:file|formula|note)\.[A-Za-z_][\w-]*$/u.test(value) ? value : notesBaseQuotedNotePropertyReference(value);
+}
+function evaluateNotesBaseThisFile(expression, context) {
+  const match = /^(?:this|this\.file(?:\.(path|name|basename|folder|ext|size|properties|ctime|mtime|tags|backlinks|links|embeds))?)$/u.exec(expression);
+  if (!match) return null;
+  const path = context?.thisFile?.relativePath;
+  const field = expression === "this" ? "" : match[1] ?? "";
+  const normalizedPath = typeof path === "string" ? notesBaseFilePathField(path, "path") : null;
+  if (normalizedPath === null) {
+    return { supported: false };
+  }
+  if (field === "") return { supported: true, value: normalizedPath };
+  if (field === "size") {
+    const size4 = context?.thisFile?.sizeBytes;
+    return typeof size4 === "number" && Number.isSafeInteger(size4) && size4 >= 0 ? { supported: true, value: size4 } : { supported: false };
+  }
+  if (field === "properties") {
+    try {
+      const properties = context?.filePropertiesFor ? notesBaseObjectSnapshot(context.filePropertiesFor(normalizedPath)) : null;
+      return properties === null ? { supported: false } : { supported: true, value: properties };
+    } catch {
+      return { supported: false };
+    }
+  }
+  if (field === "ctime" || field === "mtime") {
+    const timestamp = field === "ctime" ? context?.thisFile?.createdAt : context?.thisFile?.modifiedAt;
+    const value2 = notesBaseFileTimestamp(timestamp);
+    return value2 === void 0 ? { supported: false } : { supported: true, value: value2 };
+  }
+  if (field === "tags") {
+    try {
+      const tags = context?.fileTagsFor ? notesBaseTagsSnapshot(context.fileTagsFor(normalizedPath)) : null;
+      return tags === null ? { supported: false } : { supported: true, value: tags };
+    } catch {
+      return { supported: false };
+    }
+  }
+  if (field === "backlinks" || field === "links" || field === "embeds") {
+    try {
+      const lookup = field === "backlinks" ? context?.fileBacklinksFor : field === "links" ? context?.fileLinksFor : context?.fileEmbedsFor;
+      const paths = lookup ? notesBaseFileLinksSnapshot(lookup(normalizedPath)) : null;
+      return paths === null ? { supported: false } : { supported: true, value: paths };
+    } catch {
+      return { supported: false };
+    }
+  }
+  const value = notesBaseFilePathField(normalizedPath, field);
+  return value === null ? { supported: false } : { supported: true, value };
+}
+function splitNotesBaseQuotedBracketMember(expression) {
+  if (!expression.endsWith("]")) return null;
+  const quote = expression[expression.length - 2] ?? "";
+  if (quote !== '"' && quote !== "'") return null;
+  const openingIndex = expression.lastIndexOf(`[${quote}`, expression.length - 3);
+  if (openingIndex < 1) return null;
+  const receiver = expression.slice(0, openingIndex).trim();
+  const encodedKey = expression.slice(openingIndex + 2, -2);
+  if (!receiver || !encodedKey || encodedKey.length > MAX_NOTES_BASE_FORMULA_STRING_LENGTH) {
+    return null;
+  }
+  let key2 = "";
+  for (let index2 = 0; index2 < encodedKey.length; index2 += 1) {
+    const character = encodedKey[index2] ?? "";
+    if (character !== "\\") {
+      if (character === quote || /[\u0000-\u001F\u007F]/u.test(character)) return null;
+      key2 += character;
+      continue;
+    }
+    const escaped = encodedKey[index2 + 1] ?? "";
+    if (escaped !== quote && escaped !== "\\") return null;
+    key2 += escaped;
+    index2 += 1;
+  }
+  return key2 ? { key: key2, receiver } : null;
+}
+function isNotesBaseFilePropertiesReceiver(expression) {
+  return expression === "this.file.properties" || /^file\([\s\S]*\)\.properties$/u.test(expression);
+}
+function splitNotesBaseObjectMemberAccess(expression) {
+  if (expression.length > MAX_NOTES_BASE_FORMULA_EXPRESSION_LENGTH) return null;
+  const keys = [];
+  let receiver = expression;
+  while (keys.length <= MAX_NOTES_BASE_FORMULA_GROUP_DEPTH) {
+    if (keys.length > 0 && isNotesBaseFilePropertiesReceiver(receiver)) break;
+    const bracket = splitNotesBaseQuotedBracketMember(receiver);
+    const dot = bracket ? null : /^([\s\S]+)\.([A-Za-z_][\w]*)$/u.exec(receiver);
+    if (!bracket && !dot) break;
+    const nextReceiver = (bracket?.receiver ?? dot?.[1] ?? "").trim();
+    if (nextReceiver === "note" || nextReceiver === "file" || nextReceiver === "formula") break;
+    const key2 = bracket?.key ?? dot?.[2] ?? "";
+    if (!nextReceiver || !key2 || key2.length > MAX_NOTES_BASE_FORMULA_STRING_LENGTH || /[\u0000-\u001F\u007F]/u.test(key2)) return null;
+    keys.push(key2);
+    receiver = nextReceiver;
+  }
+  const receiverIsSupported = notesBasePropertyReference(receiver) !== null || receiver.startsWith("{") && receiver.endsWith("}") || isNotesBaseFilePropertiesReceiver(receiver);
+  return keys.length > 0 && keys.length <= MAX_NOTES_BASE_FORMULA_GROUP_DEPTH && receiverIsSupported ? { keys: keys.reverse(), receiver } : null;
+}
+function evaluateNotesBaseObjectMemberAccess(expression, resolveProperty, context) {
+  const access = splitNotesBaseObjectMemberAccess(expression);
+  if (!access) return null;
+  const receiver = evaluateArg(access.receiver, resolveProperty, context);
+  if (!receiver.supported) return { supported: false };
+  let value = receiver.value;
+  let objectKeyWork = 0;
+  for (const key2 of access.keys) {
+    const member = notesBaseObjectValue(value, key2);
+    if (member === null) return { supported: false };
+    objectKeyWork += member.keyCount;
+    if (objectKeyWork > MAX_NOTES_BASE_FORMULA_LIST_ELEMENTS) return { supported: false };
+    value = member.value;
+  }
+  return { supported: true, value };
+}
+function evaluateArg(arg, resolveProperty, context) {
+  const literal2 = /^(['"])([\s\S]*)\1$/u.exec(arg);
+  if (literal2) {
+    const quote = literal2[1] ?? "";
+    const value = literal2[2] ?? "";
+    return value.includes(`\\${quote}`) ? { supported: false } : { supported: true, value };
+  }
+  if (/^-?\d+(?:\.\d+)?$/u.test(arg)) return { supported: true, value: Number(arg) };
+  if (arg === "true" || arg === "false") return { supported: true, value: arg === "true" };
+  if (arg === "null") return { supported: true, value: null };
+  const thisFile = evaluateNotesBaseThisFile(arg, context);
+  if (thisFile) return thisFile;
+  const objectMember = evaluateNotesBaseObjectMemberAccess(arg, resolveProperty, context);
+  if (objectMember) return objectMember;
+  if (arg === "this" || arg.startsWith("this.") && !arg.startsWith("this.file.")) return { supported: false };
+  const propertyReference = notesBasePropertyReference(arg);
+  if (propertyReference !== null) {
+    const value = resolveProperty(propertyReference);
+    return value === NOTES_BASE_UNSUPPORTED_FORMULA_VALUE ? { supported: false } : { supported: true, value };
+  }
+  return evaluateNotesBaseFormula(arg, resolveProperty, context);
+}
+function evaluateNumericExtremum(args, source, resolveProperty, initialValue, combine, context) {
+  if (args.length === 0 || args.length > MAX_NOTES_BASE_FORMULA_LIST_ELEMENTS || /,\s*$/u.test(source)) {
+    return { supported: false };
+  }
+  let result = initialValue;
+  for (const arg of args) {
+    const value = evaluateArg(arg, resolveProperty, context);
+    if (!value.supported || typeof value.value !== "number" || !Number.isFinite(value.value)) {
+      return { supported: false };
+    }
+    result = combine(result, value.value);
+  }
+  return { supported: true, value: result };
+}
+function evaluateStringQuery(call, resolveProperty, matches, context) {
+  const args = splitFormulaArgs(call.args);
+  if (!args || args.length !== 1 || /,\s*$/u.test(call.args)) return { supported: false };
+  const receiver = evaluateArg(call.receiver, resolveProperty, context);
+  const query = evaluateArg(args[0] ?? "", resolveProperty, context);
+  return receiver.supported && query.supported && typeof receiver.value === "string" && typeof query.value === "string" ? { supported: true, value: matches(receiver.value, query.value) } : { supported: false };
+}
+function isNotesBaseScalar(value) {
+  return value == null || typeof value === "string" || typeof value === "boolean" || typeof value === "number" && Number.isFinite(value);
+}
+function isBoundedNotesBaseScalar(value) {
+  return isNotesBaseScalar(value) && (typeof value !== "string" || value.length <= MAX_NOTES_BASE_FORMULA_STRING_LENGTH);
+}
+function evaluateNotesBaseCompositeLiteralValue(expression, resolveProperty, context, depth, budget) {
+  if (expression.startsWith("[") && expression.endsWith("]")) {
+    return evaluateNotesBaseListLiteral(expression, resolveProperty, context, depth, budget) ?? { supported: false };
+  }
+  if (expression.startsWith("{") && expression.endsWith("}")) {
+    return evaluateNotesBaseObjectLiteral(expression, resolveProperty, context, depth, budget) ?? { supported: false };
+  }
+  const result = evaluateArg(expression, resolveProperty, context);
+  return result.supported && isBoundedNotesBaseScalar(result.value) ? result : { supported: false };
+}
+function evaluateNotesBaseListIndex(expression, resolveProperty, context) {
+  const match = NOTES_BASE_LIST_INDEX_EXPRESSION.exec(expression);
+  if (!match) return null;
+  const receiverSource = (match[1] ?? "").trim();
+  if (!receiverSource || NOTES_BASE_LIST_INDEX_EXPRESSION.test(receiverSource)) {
+    return { supported: false };
+  }
+  const index2 = Number(match[2]);
+  if (!Number.isSafeInteger(index2) || index2 >= MAX_NOTES_BASE_FORMULA_LIST_ELEMENTS) {
+    return { supported: false };
+  }
+  const receiver = evaluateArg(receiverSource, resolveProperty, context);
+  if (!receiver.supported || !Array.isArray(receiver.value)) return { supported: false };
+  try {
+    const lengthDescriptor = Object.getOwnPropertyDescriptor(receiver.value, "length");
+    const elementDescriptor = Object.getOwnPropertyDescriptor(receiver.value, String(index2));
+    if (!lengthDescriptor || !("value" in lengthDescriptor) || typeof lengthDescriptor.value !== "number" || !Number.isSafeInteger(lengthDescriptor.value) || lengthDescriptor.value > MAX_NOTES_BASE_FORMULA_LIST_ELEMENTS || index2 >= lengthDescriptor.value || !elementDescriptor || !("value" in elementDescriptor) || !(Array.isArray(elementDescriptor.value) ? receiverSource.startsWith("[") && receiverSource.endsWith("]") : isBoundedNotesBaseScalar(elementDescriptor.value))) {
+      return { supported: false };
+    }
+    return { supported: true, value: elementDescriptor.value };
+  } catch {
+    return { supported: false };
+  }
+}
+function evaluateNotesBaseListLiteral(expression, resolveProperty, context, depth = 1, budget = { valueCount: 0, stringLength: 0 }) {
+  if (!expression.startsWith("[") || !expression.endsWith("]")) return null;
+  if (depth > MAX_NOTES_BASE_FORMULA_GROUP_DEPTH) return { supported: false };
+  const source = expression.slice(1, -1);
+  if (!source.trim()) return { supported: true, value: [] };
+  const elements = splitFormulaArgs(source);
+  if (!elements || elements.length > MAX_NOTES_BASE_FORMULA_LIST_ELEMENTS || elements.some((element) => !element) || /,\s*$/u.test(source)) {
+    return { supported: false };
+  }
+  const value = [];
+  for (const element of elements) {
+    budget.valueCount += 1;
+    if (budget.valueCount > MAX_NOTES_BASE_FORMULA_LIST_ELEMENTS) return { supported: false };
+    const result = evaluateNotesBaseCompositeLiteralValue(
+      element,
+      resolveProperty,
+      context,
+      depth + 1,
+      budget
+    );
+    if (!result.supported) return { supported: false };
+    if (typeof result.value === "string") {
+      budget.stringLength += result.value.length;
+      if (budget.stringLength > MAX_NOTES_BASE_FORMULA_STRING_LENGTH) return { supported: false };
+    }
+    value.push(result.value);
+  }
+  return { supported: true, value };
+}
+function splitNotesBaseObjectEntry(source) {
+  let quote = "";
+  let depth = 0;
+  let separatorIndex = -1;
+  for (let index2 = 0; index2 < source.length; index2 += 1) {
+    const char = source[index2] ?? "";
+    if ((char === '"' || char === "'") && !isNotesBaseFormulaQuoteEscaped(source, index2)) {
+      if (!quote) quote = char;
+      else if (char === quote) quote = "";
+    }
+    if (quote || char === '"' || char === "'") {
+      continue;
+    }
+    if (char === "(" || char === "[" || char === "{") depth += 1;
+    if (char === ")" || char === "]" || char === "}") depth -= 1;
+    if (depth < 0) return null;
+    if (char === ":" && depth === 0) {
+      if (separatorIndex >= 0) return null;
+      separatorIndex = index2;
+    }
+  }
+  if (quote || depth !== 0 || separatorIndex < 0) return null;
+  return {
+    key: source.slice(0, separatorIndex).trim(),
+    value: source.slice(separatorIndex + 1).trim()
+  };
+}
+function evaluateNotesBaseObjectLiteral(expression, resolveProperty, context, depth = 1, budget = { valueCount: 0, stringLength: 0 }) {
+  if (!expression.startsWith("{") || !expression.endsWith("}")) return null;
+  if (depth > MAX_NOTES_BASE_FORMULA_GROUP_DEPTH) return { supported: false };
+  const source = expression.slice(1, -1);
+  const value = {};
+  if (!source.trim()) return { supported: true, value };
+  const entries = splitFormulaArgs(source);
+  if (!entries || entries.length > MAX_NOTES_BASE_FORMULA_LIST_ELEMENTS || entries.some((entry) => !entry) || /,\s*$/u.test(source)) {
+    return { supported: false };
+  }
+  const keys = /* @__PURE__ */ new Set();
+  for (const entrySource of entries) {
+    budget.valueCount += 1;
+    if (budget.valueCount > MAX_NOTES_BASE_FORMULA_LIST_ELEMENTS) return { supported: false };
+    const entry = splitNotesBaseObjectEntry(entrySource);
+    const keyLiteral = entry ? /^(['"])([\s\S]*)\1$/u.exec(entry.key) : null;
+    const quote = keyLiteral?.[1] ?? "";
+    const key2 = keyLiteral?.[2] ?? "";
+    if (!entry || !key2 || key2.length > MAX_NOTES_BASE_FORMULA_STRING_LENGTH || key2.includes(quote) || /[\u0000-\u001F\u007F\\]/u.test(key2) || keys.has(key2)) {
+      return { supported: false };
+    }
+    budget.stringLength += key2.length;
+    if (budget.stringLength > MAX_NOTES_BASE_FORMULA_STRING_LENGTH) return { supported: false };
+    const result = evaluateNotesBaseCompositeLiteralValue(
+      entry.value,
+      resolveProperty,
+      context,
+      depth + 1,
+      budget
+    );
+    if (!result.supported) return { supported: false };
+    if (typeof result.value === "string") {
+      budget.stringLength += result.value.length;
+      if (budget.stringLength > MAX_NOTES_BASE_FORMULA_STRING_LENGTH) return { supported: false };
+    }
+    keys.add(key2);
+    Object.defineProperty(value, key2, {
+      configurable: true,
+      enumerable: true,
+      value: result.value,
+      writable: true
+    });
+  }
+  return { supported: true, value };
+}
+function evaluateListJoin(call, resolveProperty, context) {
+  const args = splitFormulaArgs(call.args);
+  if (!args || args.length !== 1 || /,\s*$/u.test(call.args)) return { supported: false };
+  const receiver = evaluateArg(call.receiver, resolveProperty, context);
+  const separator = evaluateArg(args[0] ?? "", resolveProperty, context);
+  if (!receiver.supported || !Array.isArray(receiver.value) || receiver.value.length > MAX_NOTES_BASE_FORMULA_LIST_ELEMENTS || !separator.supported || typeof separator.value !== "string") {
+    return { supported: false };
+  }
+  const values = [];
+  let projectedLength = separator.value.length * Math.max(0, receiver.value.length - 1);
+  if (projectedLength > MAX_NOTES_BASE_FORMULA_STRING_LENGTH) return { supported: false };
+  for (const value of receiver.value) {
+    if (!isNotesBaseScalar(value)) return { supported: false };
+    const text2 = value == null ? "" : String(value);
+    projectedLength += text2.length;
+    if (projectedLength > MAX_NOTES_BASE_FORMULA_STRING_LENGTH) return { supported: false };
+    values.push(text2);
+  }
+  return { supported: true, value: values.join(separator.value) };
+}
+function evaluateListUnique(call, resolveProperty, context) {
+  const args = splitFormulaArgs(call.args);
+  if (!args || args.length !== 0) return { supported: false };
+  const receiver = evaluateArg(call.receiver, resolveProperty, context);
+  if (!receiver.supported || !Array.isArray(receiver.value) || receiver.value.length > MAX_NOTES_BASE_FORMULA_LIST_ELEMENTS || !receiver.value.every(isNotesBaseScalar)) {
+    return { supported: false };
+  }
+  return { supported: true, value: [...new Set(receiver.value)] };
+}
+function evaluateListSort(call, resolveProperty, context) {
+  const args = splitFormulaArgs(call.args);
+  if (!args || args.length !== 0) return { supported: false };
+  const receiver = evaluateArg(call.receiver, resolveProperty, context);
+  if (!receiver.supported || !Array.isArray(receiver.value) || receiver.value.length > MAX_NOTES_BASE_FORMULA_LIST_ELEMENTS || !receiver.value.every(isNotesBaseScalar)) {
+    return { supported: false };
+  }
+  return {
+    supported: true,
+    value: [...receiver.value].sort((left, right) => typeof left === "number" && typeof right === "number" ? left - right : NOTES_BASE_FORMULA_LIST_COLLATOR.compare(String(left), String(right)))
+  };
+}
+function evaluateListFlat(call, resolveProperty, context) {
+  const args = splitFormulaArgs(call.args);
+  if (!args || args.length !== 0) return { supported: false };
+  const receiver = evaluateArg(call.receiver, resolveProperty, context);
+  if (!receiver.supported || !Array.isArray(receiver.value) || receiver.value.length > MAX_NOTES_BASE_FORMULA_LIST_ELEMENTS) {
+    return { supported: false };
+  }
+  const flattened = [];
+  const pending = [{ type: "leave", value: receiver.value }];
+  for (let index2 = receiver.value.length - 1; index2 >= 0; index2 -= 1) {
+    pending.push({ type: "value", value: receiver.value[index2] });
+  }
+  const activeArrays = new WeakSet([receiver.value]);
+  let nestedArrayCount = 0;
+  while (pending.length > 0) {
+    const entry = pending.pop();
+    if (!entry) break;
+    if (entry.type === "leave") {
+      activeArrays.delete(entry.value);
+      continue;
+    }
+    const { value } = entry;
+    if (Array.isArray(value)) {
+      if (value.length > MAX_NOTES_BASE_FORMULA_LIST_ELEMENTS) return { supported: false };
+      if (activeArrays.has(value)) return { supported: false };
+      activeArrays.add(value);
+      nestedArrayCount += 1;
+      if (nestedArrayCount > MAX_NOTES_BASE_FORMULA_LIST_ELEMENTS) return { supported: false };
+      pending.push({ type: "leave", value });
+      for (let index2 = value.length - 1; index2 >= 0; index2 -= 1) {
+        pending.push({ type: "value", value: value[index2] });
+      }
+      continue;
+    }
+    if (!isNotesBaseScalar(value)) return { supported: false };
+    flattened.push(value);
+    if (flattened.length > MAX_NOTES_BASE_FORMULA_LIST_ELEMENTS) return { supported: false };
+  }
+  return { supported: true, value: flattened };
+}
+function evaluateListCallback(call, resolveProperty, mode, context) {
+  const args = splitFormulaArgs(call.args);
+  if (!args || args.length !== 1 || /,\s*$/u.test(call.args)) return { supported: false };
+  const receiver = evaluateArg(call.receiver, resolveProperty, context);
+  if (!receiver.supported || !Array.isArray(receiver.value) || receiver.value.length > MAX_NOTES_BASE_FORMULA_LIST_ELEMENTS) {
+    return { supported: false };
+  }
+  const expression = args[0] ?? "";
+  if (expression.length > MAX_NOTES_BASE_FORMULA_STRING_LENGTH || expression.length * receiver.value.length > MAX_NOTES_BASE_FORMULA_LIST_CALLBACK_WORK || containsMemberCall(expression, NOTES_BASE_FORMULA_LIST_CALLBACK_FORBIDDEN_METHODS)) {
+    return { supported: false };
+  }
+  const resultValues = [];
+  let sourceStringLength = 0;
+  let resultStringLength = 0;
+  for (let index2 = 0; index2 < receiver.value.length; index2 += 1) {
+    const value = receiver.value[index2];
+    if (!isBoundedNotesBaseScalar(value)) return { supported: false };
+    if (typeof value === "string") {
+      sourceStringLength += value.length;
+      if (sourceStringLength > MAX_NOTES_BASE_FORMULA_STRING_LENGTH) return { supported: false };
+    }
+    const result = evaluateArg(expression, (property) => {
+      if (property === "value") return value;
+      if (property === "index") return index2;
+      return resolveProperty(property);
+    }, context);
+    if (!result.supported) return { supported: false };
+    if (mode === "filter") {
+      if (typeof result.value !== "boolean") return { supported: false };
+      if (result.value) resultValues.push(value);
+      continue;
+    }
+    if (!isBoundedNotesBaseScalar(result.value)) return { supported: false };
+    if (typeof result.value === "string") {
+      resultStringLength += result.value.length;
+      if (resultStringLength > MAX_NOTES_BASE_FORMULA_STRING_LENGTH) return { supported: false };
+    }
+    resultValues.push(result.value);
+  }
+  return { supported: true, value: resultValues };
+}
+function evaluateListFilter(call, resolveProperty, context) {
+  return evaluateListCallback(call, resolveProperty, "filter", context);
+}
+function evaluateListMap(call, resolveProperty, context) {
+  return evaluateListCallback(call, resolveProperty, "map", context);
+}
+function evaluateListReduce(call, resolveProperty, context) {
+  const args = splitFormulaArgs(call.args);
+  if (!args || args.length !== 2 || /,\s*$/u.test(call.args)) return { supported: false };
+  const expression = args[0] ?? "";
+  const initialExpression = args[1] ?? "";
+  if (expression.length > MAX_NOTES_BASE_FORMULA_STRING_LENGTH || initialExpression.length > MAX_NOTES_BASE_FORMULA_STRING_LENGTH || containsMemberCall(expression, NOTES_BASE_FORMULA_LIST_CALLBACK_FORBIDDEN_METHODS) || containsMemberCall(initialExpression, NOTES_BASE_FORMULA_LIST_CALLBACK_FORBIDDEN_METHODS)) {
+    return { supported: false };
+  }
+  const receiver = evaluateArg(call.receiver, resolveProperty, context);
+  if (!receiver.supported || !Array.isArray(receiver.value) || receiver.value.length > MAX_NOTES_BASE_FORMULA_LIST_ELEMENTS || expression.length * receiver.value.length > MAX_NOTES_BASE_FORMULA_LIST_CALLBACK_WORK) {
+    return { supported: false };
+  }
+  const initial = evaluateArg(initialExpression, resolveProperty, context);
+  if (!initial.supported || !isBoundedNotesBaseScalar(initial.value)) return { supported: false };
+  let accumulator = initial.value;
+  let sourceStringLength = 0;
+  let accumulatorStringWork = 0;
+  for (let index2 = 0; index2 < receiver.value.length; index2 += 1) {
+    const value = receiver.value[index2];
+    if (!isBoundedNotesBaseScalar(value)) return { supported: false };
+    if (typeof value === "string") {
+      sourceStringLength += value.length;
+      if (sourceStringLength > MAX_NOTES_BASE_FORMULA_STRING_LENGTH) return { supported: false };
+    }
+    const result = evaluateArg(expression, (property) => {
+      if (property === "value") return value;
+      if (property === "index") return index2;
+      if (property === "acc") return accumulator;
+      return resolveProperty(property);
+    }, context);
+    if (!result.supported || !isBoundedNotesBaseScalar(result.value)) return { supported: false };
+    if (typeof result.value === "string") {
+      accumulatorStringWork += result.value.length;
+      if (accumulatorStringWork > MAX_NOTES_BASE_FORMULA_LIST_CALLBACK_WORK) return { supported: false };
+    }
+    accumulator = result.value;
+  }
+  return { supported: true, value: accumulator };
+}
+function evaluateContains(call, resolveProperty, arity = "one", quantifier = "all", context) {
+  const args = splitFormulaArgs(call.args);
+  if (!args || (arity === "one" ? args.length !== 1 : args.length === 0) || /,\s*$/u.test(call.args)) {
+    return { supported: false };
+  }
+  const receiver = evaluateArg(call.receiver, resolveProperty, context);
+  if (!receiver.supported) return { supported: false };
+  if (typeof receiver.value === "string") {
+    const source = receiver.value;
+    const queries = [];
+    for (const arg of args) {
+      const query = evaluateArg(arg, resolveProperty, context);
+      if (!query.supported || typeof query.value !== "string") return { supported: false };
+      queries.push(query.value);
+    }
+    return {
+      supported: true,
+      value: quantifier === "all" ? queries.every((query) => source.includes(query)) : queries.some((query) => source.includes(query))
+    };
+  }
+  if (!Array.isArray(receiver.value) || receiver.value.length > MAX_NOTES_BASE_FORMULA_LIST_ELEMENTS || args.length > MAX_NOTES_BASE_FORMULA_LIST_ELEMENTS) {
+    return { supported: false };
+  }
+  const scalarValues = /* @__PURE__ */ new Set();
+  const linkPaths = /* @__PURE__ */ new Set();
+  for (const value of receiver.value) {
+    const path = notesBaseLinkPath(value);
+    if (path !== null) {
+      linkPaths.add(path);
+      continue;
+    }
+    scalarValues.add(value);
+    if (typeof value === "string") {
+      const normalizedPath = normalizeNotesBaseFilePath(value);
+      if (normalizedPath !== null) linkPaths.add(normalizedPath);
+    }
+  }
+  let matches = quantifier === "all";
+  for (const arg of args) {
+    const query = evaluateArg(arg, resolveProperty, context);
+    if (!query.supported) return { supported: false };
+    const path = notesBaseLinkPath(query.value) ?? notesBaseFileOperandPath(query.value, arg);
+    let matched;
+    if (path !== null) {
+      matched = linkPaths.has(path);
+    } else {
+      if (!isNotesBaseScalar(query.value)) return { supported: false };
+      matched = scalarValues.has(query.value);
+    }
+    matches = quantifier === "all" ? matches && matched : matches || matched;
+  }
+  return {
+    supported: true,
+    value: matches
+  };
+}
+function evaluateStringTransform(call, resolveProperty, transform2, context) {
+  const args = splitFormulaArgs(call.args);
+  if (!args || args.length !== 0) return { supported: false };
+  const receiver = evaluateArg(call.receiver, resolveProperty, context);
+  if (!receiver.supported || typeof receiver.value !== "string" || receiver.value.length > MAX_NOTES_BASE_FORMULA_STRING_LENGTH) {
+    return { supported: false };
+  }
+  const value = transform2(receiver.value);
+  return value.length <= MAX_NOTES_BASE_FORMULA_STRING_LENGTH ? { supported: true, value } : { supported: false };
+}
+function evaluateReverse(call, resolveProperty, context) {
+  const args = splitFormulaArgs(call.args);
+  if (!args || args.length !== 0) return { supported: false };
+  const receiver = evaluateArg(call.receiver, resolveProperty, context);
+  if (!receiver.supported) return { supported: false };
+  if (typeof receiver.value === "string") {
+    if (receiver.value.length > MAX_NOTES_BASE_FORMULA_STRING_LENGTH) return { supported: false };
+    return { supported: true, value: Array.from(receiver.value).reverse().join("") };
+  }
+  if (!Array.isArray(receiver.value) || receiver.value.length > MAX_NOTES_BASE_FORMULA_LIST_ELEMENTS || !receiver.value.every(isNotesBaseScalar)) {
+    return { supported: false };
+  }
+  return { supported: true, value: [...receiver.value].reverse() };
+}
+function evaluateNumberRound(call, resolveProperty, context) {
+  const args = splitFormulaArgs(call.args);
+  if (!args || args.length > 1 || /,\s*$/u.test(call.args)) return { supported: false };
+  const receiver = evaluateArg(call.receiver, resolveProperty, context);
+  if (!receiver.supported || typeof receiver.value !== "number" || !Number.isFinite(receiver.value)) {
+    return { supported: false };
+  }
+  if (args.length === 0) return { supported: true, value: Math.round(receiver.value) };
+  const digits = evaluateArg(args[0] ?? "", resolveProperty, context);
+  if (!digits.supported || typeof digits.value !== "number" || !Number.isFinite(digits.value)) {
+    return { supported: false };
+  }
+  if (digits.value <= 0) return { supported: true, value: Math.round(receiver.value) };
+  const factor = 10 ** digits.value;
+  if (!Number.isFinite(factor)) return { supported: false };
+  const scaled = receiver.value * factor;
+  if (!Number.isFinite(scaled)) return { supported: false };
+  const value = Math.round(scaled) / factor;
+  return Number.isFinite(value) ? { supported: true, value } : { supported: false };
+}
+function evaluateNumberToFixed(call, resolveProperty, context) {
+  const args = splitFormulaArgs(call.args);
+  if (!args || args.length !== 1 || /,\s*$/u.test(call.args)) return { supported: false };
+  const receiver = evaluateArg(call.receiver, resolveProperty, context);
+  const precision = evaluateArg(args[0] ?? "", resolveProperty, context);
+  if (!receiver.supported || typeof receiver.value !== "number" || !Number.isFinite(receiver.value) || !precision.supported || typeof precision.value !== "number" || !Number.isFinite(precision.value)) {
+    return { supported: false };
+  }
+  const normalizedPrecision = Math.trunc(precision.value);
+  return normalizedPrecision >= 0 && normalizedPrecision <= 100 ? { supported: true, value: receiver.value.toFixed(normalizedPrecision) } : { supported: false };
+}
+function titleCaseNotesBaseString(source) {
+  return source.replace(
+    /[\p{L}\p{M}\p{N}]+/gu,
+    (word) => word.replace(/\p{L}/u, (letter) => letter.toUpperCase())
+  );
+}
+function evaluateStringRepeat(call, resolveProperty, context) {
+  const args = splitFormulaArgs(call.args);
+  if (!args || args.length !== 1 || /,\s*$/u.test(call.args)) return { supported: false };
+  const receiver = evaluateArg(call.receiver, resolveProperty, context);
+  const count3 = evaluateArg(args[0] ?? "", resolveProperty, context);
+  if (!receiver.supported || typeof receiver.value !== "string" || !count3.supported || typeof count3.value !== "number" || !Number.isFinite(count3.value)) {
+    return { supported: false };
+  }
+  const repetitions = Math.trunc(count3.value);
+  if (repetitions < 0 || receiver.value.length * repetitions > MAX_NOTES_BASE_FORMULA_STRING_LENGTH) {
+    return { supported: false };
+  }
+  return { supported: true, value: receiver.value.repeat(repetitions) };
+}
+function evaluateStringReplace(call, resolveProperty, context) {
+  const evaluateNestedArg = (arg, resolver) => evaluateArg(arg, resolver, context);
+  if (call.args.trimStart().startsWith("/")) {
+    return evaluateNotesBaseRegexpReplaceCall(
+      call,
+      resolveProperty,
+      splitFormulaArgs,
+      evaluateNestedArg,
+      MAX_NOTES_BASE_FORMULA_STRING_LENGTH
+    );
+  }
+  const args = splitFormulaArgs(call.args);
+  if (!args || args.length !== 2 || /,\s*$/u.test(call.args)) return { supported: false };
+  const receiver = evaluateNestedArg(call.receiver, resolveProperty);
+  const pattern = evaluateNestedArg(args[0] ?? "", resolveProperty);
+  const replacement = evaluateNestedArg(args[1] ?? "", resolveProperty);
+  if (!receiver.supported || typeof receiver.value !== "string" || !pattern.supported || typeof pattern.value !== "string" || !replacement.supported || typeof replacement.value !== "string") {
+    return { supported: false };
+  }
+  if (pattern.value === "") {
+    const replacementText = replacement.value;
+    const projectedLength2 = receiver.value.length + (receiver.value.length + 1) * replacementText.length;
+    return projectedLength2 <= MAX_NOTES_BASE_FORMULA_STRING_LENGTH ? { supported: true, value: receiver.value.replaceAll("", () => replacementText) } : { supported: false };
+  }
+  const lengthDelta = replacement.value.length - pattern.value.length;
+  let projectedLength = receiver.value.length;
+  let matchIndex = receiver.value.indexOf(pattern.value);
+  while (matchIndex >= 0) {
+    projectedLength += lengthDelta;
+    if (lengthDelta >= 0 && projectedLength > MAX_NOTES_BASE_FORMULA_STRING_LENGTH) {
+      return { supported: false };
+    }
+    matchIndex = receiver.value.indexOf(pattern.value, matchIndex + pattern.value.length);
+  }
+  if (projectedLength > MAX_NOTES_BASE_FORMULA_STRING_LENGTH) return { supported: false };
+  return { supported: true, value: receiver.value.split(pattern.value).join(replacement.value) };
+}
+function evaluateSlice(call, resolveProperty, context) {
+  const args = splitFormulaArgs(call.args);
+  if (!args || args.length < 1 || args.length > 2 || /,\s*$/u.test(call.args)) return { supported: false };
+  const receiver = evaluateArg(call.receiver, resolveProperty, context);
+  if (!receiver.supported || typeof receiver.value !== "string" && !Array.isArray(receiver.value)) {
+    return { supported: false };
+  }
+  if (typeof receiver.value === "string" && receiver.value.length > MAX_NOTES_BASE_FORMULA_STRING_LENGTH) {
+    return { supported: false };
+  }
+  if (Array.isArray(receiver.value) && (receiver.value.length > MAX_NOTES_BASE_FORMULA_LIST_ELEMENTS || !receiver.value.every(isNotesBaseScalar))) {
+    return { supported: false };
+  }
+  const start = evaluateArg(args[0] ?? "", resolveProperty, context);
+  if (!start.supported || typeof start.value !== "number" || !Number.isFinite(start.value)) {
+    return { supported: false };
+  }
+  if (args.length === 1) return { supported: true, value: receiver.value.slice(start.value) };
+  const end = evaluateArg(args[1] ?? "", resolveProperty, context);
+  if (!end.supported || typeof end.value !== "number" || !Number.isFinite(end.value)) {
+    return { supported: false };
+  }
+  return { supported: true, value: receiver.value.slice(start.value, end.value) };
+}
+function evaluateStringSplit(call, resolveProperty, context) {
+  const evaluateNestedArg = (arg, resolver) => evaluateArg(arg, resolver, context);
+  if (call.args.trimStart().startsWith("/")) {
+    return evaluateNotesBaseRegexpSplitCall(
+      call,
+      resolveProperty,
+      splitFormulaArgs,
+      evaluateNestedArg,
+      MAX_NOTES_BASE_FORMULA_LIST_ELEMENTS
+    );
+  }
+  const args = splitFormulaArgs(call.args);
+  if (!args || args.length < 1 || args.length > 2 || /,\s*$/u.test(call.args)) return { supported: false };
+  const receiver = evaluateNestedArg(call.receiver, resolveProperty);
+  const separator = evaluateNestedArg(args[0] ?? "", resolveProperty);
+  if (!receiver.supported || typeof receiver.value !== "string" || !separator.supported || typeof separator.value !== "string") {
+    return { supported: false };
+  }
+  let limit = MAX_NOTES_BASE_FORMULA_LIST_ELEMENTS + 1;
+  if (args.length === 2) {
+    const requestedLimit = evaluateNestedArg(args[1] ?? "", resolveProperty);
+    if (!requestedLimit.supported || typeof requestedLimit.value !== "number" || !Number.isFinite(requestedLimit.value)) {
+      return { supported: false };
+    }
+    limit = Math.min(requestedLimit.value >>> 0, limit);
+  }
+  const value = receiver.value.split(separator.value, limit);
+  return value.length <= MAX_NOTES_BASE_FORMULA_LIST_ELEMENTS ? { supported: true, value } : { supported: false };
+}
+function evaluateNotesBaseFormula(expression, resolveProperty, context) {
+  const evaluateNestedArg = (arg, resolver) => evaluateArg(arg, resolver, context);
+  const trimmed = expression.trim();
+  const regexpAnyValueCall = trimmed.startsWith("/") ? evaluateNotesBaseRegexpAnyValueCall(trimmed) : null;
+  if (regexpAnyValueCall) return regexpAnyValueCall;
+  const regexpTypeCall = trimmed.startsWith("/") ? splitNotesBaseRegexpIsTypeCall(trimmed) : null;
+  if (regexpTypeCall) {
+    return evaluateNotesBaseIsTypeCall(regexpTypeCall, resolveProperty, evaluateNestedArg, "regexp");
+  }
+  const unwrapped = unwrapBoundedFormulaGroup(trimmed);
+  if (unwrapped === null) return { supported: false };
+  if (unwrapped !== trimmed) {
+    return unwrapped.length > 0 ? evaluateNestedArg(unwrapped, resolveProperty) : { supported: false };
+  }
+  const listIndex = evaluateNotesBaseListIndex(trimmed, resolveProperty, context);
+  if (listIndex) return listIndex;
+  const listLiteral = evaluateNotesBaseListLiteral(trimmed, resolveProperty, context);
+  if (listLiteral) return listLiteral;
+  const objectLiteral = evaluateNotesBaseObjectLiteral(trimmed, resolveProperty, context);
+  if (objectLiteral) return objectLiteral;
+  const matchesCall = splitMemberCall(trimmed, "matches");
+  if (matchesCall) {
+    return evaluateNotesBaseRegexpMatchesCall(matchesCall, resolveProperty, splitFormulaArgs, evaluateNestedArg);
+  }
+  const booleanOr = evaluateNotesBaseBooleanOr(
+    trimmed,
+    resolveProperty,
+    evaluateNestedArg,
+    isNotesBaseSafeShortCircuitOperand
+  );
+  if (booleanOr) return booleanOr;
+  const booleanAnd = evaluateNotesBaseBooleanAnd(
+    trimmed,
+    resolveProperty,
+    evaluateNestedArg,
+    isNotesBaseSafeShortCircuitOperand
+  );
+  if (booleanAnd) return booleanAnd;
+  const comparison = evaluateNotesBaseComparison(
+    trimmed,
+    resolveProperty,
+    evaluateNestedArg,
+    notesBaseDateTimestamp,
+    notesBaseFileOperandPath
+  );
+  if (comparison) return comparison;
+  const booleanNot = evaluateNotesBaseBooleanNot(trimmed, resolveProperty, evaluateNestedArg);
+  if (booleanNot) return booleanNot;
+  const additive = evaluateNotesBaseAdditive(
+    trimmed,
+    resolveProperty,
+    evaluateNestedArg,
+    notesBaseDateTimestamp,
+    offsetNotesBaseDate
+  );
+  if (additive) return additive;
+  const multiplicative = evaluateNotesBaseMultiplicative(trimmed, resolveProperty, evaluateNestedArg);
+  if (multiplicative) return multiplicative;
+  const unaryNumeric = evaluateNotesBaseUnaryNumeric(
+    trimmed,
+    resolveProperty,
+    evaluateNestedArg,
+    rejectNotesBaseUnaryNumericOperand
+  );
+  if (unaryNumeric) return unaryNumeric;
+  const dateField = /^(.*)\.(year|month|day|hour|minute|second|millisecond)$/u.exec(trimmed);
+  if (dateField) {
+    const receiver = evaluateNestedArg((dateField[1] ?? "").trim(), resolveProperty);
+    const date6 = receiver.supported ? notesBaseDateValue(receiver.value) : null;
+    if (!date6) return { supported: false };
+    const field = dateField[2];
+    return { supported: true, value: NOTES_BASE_DATE_FIELD_ACCESSORS[field](date6) };
+  }
+  const projectedFileSize = /^(file\([\s\S]*\))\.size$/u.exec(trimmed);
+  if (projectedFileSize) {
+    const path = projectedFilePath(projectedFileSize[1] ?? "", resolveProperty, evaluateNestedArg);
+    if (!path || !context?.fileSizeFor) return { supported: false };
+    try {
+      const size4 = context.fileSizeFor(path);
+      return typeof size4 === "number" && Number.isSafeInteger(size4) && size4 >= 0 ? { supported: true, value: size4 } : { supported: false };
+    } catch {
+      return { supported: false };
+    }
+  }
+  const projectedFileTimestamp = /^(file\([\s\S]*\))\.(ctime|mtime)$/u.exec(trimmed);
+  if (projectedFileTimestamp) {
+    const path = projectedFilePath(projectedFileTimestamp[1] ?? "", resolveProperty, evaluateNestedArg);
+    const lookup = projectedFileTimestamp[2] === "ctime" ? context?.fileCreatedAtFor : context?.fileModifiedAtFor;
+    if (!path || !lookup) return { supported: false };
+    try {
+      const timestamp = lookup(path);
+      const value = notesBaseFileTimestamp(timestamp);
+      return value !== void 0 ? { supported: true, value } : { supported: false };
+    } catch {
+      return { supported: false };
+    }
+  }
+  const projectedFileProperties = /^(file\([\s\S]*\))\.properties$/u.exec(trimmed);
+  if (projectedFileProperties) {
+    const receiverSource = projectedFileProperties[1] ?? "";
+    const path = projectedFilePath(receiverSource, resolveProperty, evaluateNestedArg);
+    if (!path || !context?.filePropertiesFor) return { supported: false };
+    try {
+      const properties = notesBaseObjectSnapshot(context.filePropertiesFor(path));
+      return properties === null ? { supported: false } : { supported: true, value: properties };
+    } catch {
+      return { supported: false };
+    }
+  }
+  const projectedFilePathList = /^(file\([\s\S]*\))\.(backlinks|embeds|links)$/u.exec(trimmed);
+  if (projectedFilePathList) {
+    const receiverSource = projectedFilePathList[1] ?? "";
+    const lookup = projectedFilePathList[2] === "backlinks" ? context?.fileBacklinksFor : projectedFilePathList[2] === "embeds" ? context?.fileEmbedsFor : context?.fileLinksFor;
+    const path = projectedFilePath(receiverSource, resolveProperty, evaluateNestedArg);
+    if (!path || !lookup) return { supported: false };
+    try {
+      const paths = notesBaseFileLinksSnapshot(lookup(path));
+      return paths === null ? { supported: false } : { supported: true, value: paths };
+    } catch {
+      return { supported: false };
+    }
+  }
+  const projectedFileTags = /^(file\([\s\S]*\))\.tags$/u.exec(trimmed);
+  if (projectedFileTags) {
+    const receiverSource = projectedFileTags[1] ?? "";
+    const path = projectedFilePath(receiverSource, resolveProperty, evaluateNestedArg);
+    if (!path || !context?.fileTagsFor) return { supported: false };
+    try {
+      const tags = notesBaseTagsSnapshot(context.fileTagsFor(path));
+      return tags === null ? { supported: false } : { supported: true, value: tags };
+    } catch {
+      return { supported: false };
+    }
+  }
+  const filePathField = /^(file\([\s\S]*\))\.(path|name|basename|folder|ext)$/u.exec(trimmed);
+  if (filePathField) {
+    const path = projectedFilePath(filePathField[1] ?? "", resolveProperty, evaluateNestedArg);
+    const value = path === null ? null : notesBaseFilePathField(path, filePathField[2] ?? "");
+    return value === null ? { supported: false } : { supported: true, value };
+  }
+  const dateCall = splitMemberCall(trimmed, "date");
+  if (dateCall) {
+    const args2 = splitFormulaArgs(dateCall.args);
+    if (!args2 || args2.length !== 0) return { supported: false };
+    const receiver = evaluateNestedArg(dateCall.receiver, resolveProperty);
+    const date6 = receiver.supported ? notesBaseDateValue(receiver.value) : null;
+    return date6 ? { supported: true, value: localCalendarDate(date6) } : { supported: false };
+  }
+  const timeCall = splitMemberCall(trimmed, "time");
+  if (timeCall) {
+    const args2 = splitFormulaArgs(timeCall.args);
+    if (!args2 || args2.length !== 0) return { supported: false };
+    const receiver = evaluateNestedArg(timeCall.receiver, resolveProperty);
+    const date6 = receiver.supported ? notesBaseDateValue(receiver.value) : null;
+    return date6 ? { supported: true, value: localClockTime(date6) } : { supported: false };
+  }
+  const relativeCall = splitMemberCall(trimmed, "relative");
+  if (relativeCall) {
+    const args2 = splitFormulaArgs(relativeCall.args);
+    if (!args2 || args2.length !== 0) return { supported: false };
+    const receiver = evaluateNestedArg(relativeCall.receiver, resolveProperty);
+    const date6 = receiver.supported ? notesBaseDateValue(receiver.value) : null;
+    return date6 ? { supported: true, value: notesBaseRelativeTime(date6) } : { supported: false };
+  }
+  const formatCall = splitMemberCall(trimmed, "format");
+  if (formatCall) {
+    const args2 = splitFormulaArgs(formatCall.args);
+    if (!args2 || args2.length !== 1 || /,\s*$/u.test(formatCall.args)) return { supported: false };
+    const receiver = evaluateNestedArg(formatCall.receiver, resolveProperty);
+    const pattern = evaluateNestedArg(args2[0] ?? "", resolveProperty);
+    const date6 = receiver.supported ? notesBaseDateValue(receiver.value) : null;
+    if (!date6 || !pattern.supported || typeof pattern.value !== "string" || pattern.value.length > MAX_NOTES_BASE_FORMULA_STRING_LENGTH) {
+      return { supported: false };
+    }
+    const value = formatNotesTemplateDate(date6, pattern.value);
+    return value.length <= MAX_NOTES_BASE_FORMULA_STRING_LENGTH ? { supported: true, value } : { supported: false };
+  }
+  const lengthReceiver = trimmed.endsWith(".length") ? trimmed.slice(0, trimmed.length - ".length".length).trim() : "";
+  if (lengthReceiver) {
+    const receiver = evaluateNestedArg(lengthReceiver, resolveProperty);
+    return receiver.supported && (typeof receiver.value === "string" || Array.isArray(receiver.value)) ? { supported: true, value: receiver.value.length } : { supported: false };
+  }
+  const absCall = splitMemberCall(trimmed, "abs");
+  if (absCall) {
+    return evaluateNotesBaseNumberTransform(absCall, resolveProperty, splitFormulaArgs, evaluateNestedArg, Math.abs);
+  }
+  const ceilCall = splitMemberCall(trimmed, "ceil");
+  if (ceilCall) {
+    return evaluateNotesBaseNumberTransform(ceilCall, resolveProperty, splitFormulaArgs, evaluateNestedArg, Math.ceil);
+  }
+  const floorCall = splitMemberCall(trimmed, "floor");
+  if (floorCall) {
+    return evaluateNotesBaseNumberTransform(floorCall, resolveProperty, splitFormulaArgs, evaluateNestedArg, Math.floor);
+  }
+  const roundCall = splitMemberCall(trimmed, "round");
+  if (roundCall) {
+    return evaluateNumberRound(roundCall, resolveProperty, context);
+  }
+  const toFixedCall = splitMemberCall(trimmed, "toFixed");
+  if (toFixedCall) {
+    return evaluateNumberToFixed(toFixedCall, resolveProperty, context);
+  }
+  const emptyCall = splitMemberCall(trimmed, "isEmpty");
+  if (emptyCall) {
+    const args2 = splitFormulaArgs(emptyCall.args);
+    if (!args2 || args2.length !== 0) return { supported: false };
+    const receiver = evaluateNestedArg(emptyCall.receiver, resolveProperty);
+    if (!receiver.supported || typeof receiver.value === "boolean") return { supported: false };
+    return evaluateNotesBaseValueEmptiness(receiver.value);
+  }
+  const titleCall = splitMemberCall(trimmed, "title");
+  if (titleCall) {
+    return evaluateStringTransform(titleCall, resolveProperty, titleCaseNotesBaseString, context);
+  }
+  const trimCall = splitMemberCall(trimmed, "trim");
+  if (trimCall) {
+    return evaluateStringTransform(trimCall, resolveProperty, (source) => source.trim(), context);
+  }
+  const reverseCall = splitMemberCall(trimmed, "reverse");
+  if (reverseCall) {
+    return evaluateReverse(reverseCall, resolveProperty, context);
+  }
+  const repeatCall = splitMemberCall(trimmed, "repeat");
+  if (repeatCall) {
+    return evaluateStringRepeat(repeatCall, resolveProperty, context);
+  }
+  const replaceCall = splitMemberCall(trimmed, "replace");
+  if (replaceCall) {
+    return evaluateStringReplace(replaceCall, resolveProperty, context);
+  }
+  const sliceCall = splitMemberCall(trimmed, "slice");
+  if (sliceCall) {
+    return evaluateSlice(sliceCall, resolveProperty, context);
+  }
+  const splitCall = splitMemberCall(trimmed, "split");
+  if (splitCall) {
+    return evaluateStringSplit(splitCall, resolveProperty, context);
+  }
+  const lowerCall = splitMemberCall(trimmed, "lower");
+  if (lowerCall) {
+    return evaluateStringTransform(lowerCall, resolveProperty, (source) => source.toLowerCase(), context);
+  }
+  const startsWithCall = splitMemberCall(trimmed, "startsWith");
+  if (startsWithCall) {
+    return evaluateStringQuery(startsWithCall, resolveProperty, (source, query) => source.startsWith(query), context);
+  }
+  const endsWithCall = splitMemberCall(trimmed, "endsWith");
+  if (endsWithCall) {
+    return evaluateStringQuery(endsWithCall, resolveProperty, (source, query) => source.endsWith(query), context);
+  }
+  const containsAnyCall = splitMemberCall(trimmed, "containsAny");
+  if (containsAnyCall) {
+    return evaluateContains(containsAnyCall, resolveProperty, "one-or-more", "any", context);
+  }
+  const joinCall = splitMemberCall(trimmed, "join");
+  if (joinCall) {
+    return evaluateListJoin(joinCall, resolveProperty, context);
+  }
+  const flatCall = splitMemberCall(trimmed, "flat");
+  if (flatCall) {
+    return evaluateListFlat(flatCall, resolveProperty, context);
+  }
+  const mapCall = splitMemberCall(trimmed, "map");
+  if (mapCall) {
+    return evaluateListMap(mapCall, resolveProperty, context);
+  }
+  const filterCall = splitMemberCall(trimmed, "filter");
+  if (filterCall) {
+    return evaluateListFilter(filterCall, resolveProperty, context);
+  }
+  const reduceCall = splitMemberCall(trimmed, "reduce");
+  if (reduceCall) {
+    return evaluateListReduce(reduceCall, resolveProperty, context);
+  }
+  const uniqueCall = splitMemberCall(trimmed, "unique");
+  if (uniqueCall) {
+    return evaluateListUnique(uniqueCall, resolveProperty, context);
+  }
+  const sortCall = splitMemberCall(trimmed, "sort");
+  if (sortCall) {
+    return evaluateListSort(sortCall, resolveProperty, context);
+  }
+  const containsAllCall = splitMemberCall(trimmed, "containsAll");
+  if (containsAllCall) {
+    return evaluateContains(containsAllCall, resolveProperty, "one-or-more", "all", context);
+  }
+  const containsCall = splitMemberCall(trimmed, "contains");
+  if (containsCall) {
+    return evaluateContains(containsCall, resolveProperty, "one", "all", context);
+  }
+  const inFolderCall = splitMemberCall(trimmed, "inFolder");
+  if (inFolderCall) {
+    return evaluateNotesBaseFileInFolderCall(inFolderCall, resolveProperty, splitFormulaArgs, evaluateNestedArg);
+  }
+  const hasLinkCall = splitMemberCall(trimmed, "hasLink");
+  if (hasLinkCall) return evaluateNotesBaseFileHasLinkCall(
+    hasLinkCall,
+    resolveProperty,
+    context?.fileLinksContain,
+    splitFormulaArgs,
+    evaluateNestedArg
+  );
+  const linksToCall = splitMemberCall(trimmed, "linksTo");
+  if (linksToCall) return evaluateNotesBaseLinkLinksToCall(
+    linksToCall,
+    resolveProperty,
+    context?.fileLinksContain,
+    splitFormulaArgs,
+    evaluateNestedArg
+  );
+  const asFileTypeCall = splitMemberCall(trimmed, "isType");
+  if (asFileTypeCall && /\.asFile\(\s*\)$/u.test(asFileTypeCall.receiver)) {
+    return evaluateNotesBaseIsTypeCall(asFileTypeCall, resolveProperty, evaluateNestedArg);
+  }
+  const asFileCall = splitMemberCall(trimmed, "asFile");
+  if (asFileCall) {
+    const args2 = splitFormulaArgs(asFileCall.args);
+    if (!args2 || args2.length !== 0) return { supported: false };
+    const receiver = evaluateNestedArg(asFileCall.receiver, resolveProperty);
+    if (!receiver.supported) return { supported: false };
+    const path = notesBaseLinkPath(receiver.value);
+    return path === null ? { supported: false } : { supported: true, value: path };
+  }
+  const asLinkCall = splitMemberCall(trimmed, "asLink");
+  if (asLinkCall) {
+    const args2 = splitFormulaArgs(asLinkCall.args);
+    let activeFileProperty = null;
+    if (asLinkCall.receiver === "file") activeFileProperty = "file.path";
+    else if (asLinkCall.receiver === "file.file") activeFileProperty = "file.file";
+    if (!activeFileProperty && asLinkCall.receiver !== "this.file" && !/^file\([\s\S]*\)$/u.test(asLinkCall.receiver) || !args2 || args2.length > 1 || /,\s*$/u.test(asLinkCall.args)) return { supported: false };
+    const projectedFile = activeFileProperty ? { supported: true, value: resolveProperty(activeFileProperty) } : evaluateNestedArg(asLinkCall.receiver, resolveProperty);
+    const normalizedPath = projectedFile.supported && typeof projectedFile.value === "string" ? normalizeNotesBaseFilePath(projectedFile.value) : null;
+    if (!normalizedPath) return { supported: false };
+    let display = null;
+    if (args2.length === 1) {
+      const result = evaluateNestedArg(args2[0] ?? "", resolveProperty);
+      if (!result.supported || typeof result.value !== "string" || result.value.length > MAX_NOTES_BASE_FORMULA_STRING_LENGTH) return { supported: false };
+      display = result.value;
+    }
+    return {
+      supported: true,
+      value: createNotesBaseLinkValue(normalizedPath, display)
+    };
+  }
+  const hasTagCall = splitMemberCall(trimmed, "hasTag");
+  if (hasTagCall) {
+    return evaluateNotesBaseFileHasTagCall(
+      hasTagCall,
+      resolveProperty,
+      splitFormulaArgs,
+      evaluateNestedArg,
+      context?.fileTagsFor
+    );
+  }
+  const hasPropertyCall = splitMemberCall(trimmed, "hasProperty");
+  if (hasPropertyCall) {
+    const args2 = splitFormulaArgs(hasPropertyCall.args);
+    if (hasPropertyCall.receiver !== "file" && hasPropertyCall.receiver !== "this.file" && !/^file\([\s\S]*\)$/u.test(hasPropertyCall.receiver) || !args2 || args2.length !== 1 || /,\s*$/u.test(hasPropertyCall.args)) {
+      return { supported: false };
+    }
+    const name3 = evaluateNestedArg(args2[0] ?? "", resolveProperty);
+    if (!name3.supported || typeof name3.value !== "string") return { supported: false };
+    if (hasPropertyCall.receiver === "file") {
+      const hasProperty = notesBaseObjectHasProperty(resolveProperty("file.properties"), name3.value);
+      return hasProperty === null ? { supported: false } : { supported: true, value: hasProperty };
+    }
+    if (hasPropertyCall.receiver === "this.file") {
+      const ownerProperties = evaluateNestedArg("this.file.properties", resolveProperty);
+      const hasProperty = ownerProperties.supported ? notesBaseObjectHasProperty(ownerProperties.value, name3.value) : null;
+      return hasProperty === null ? { supported: false } : { supported: true, value: hasProperty };
+    }
+    const projectedFile = evaluateNestedArg(hasPropertyCall.receiver, resolveProperty);
+    const path = projectedFile.supported && typeof projectedFile.value === "string" ? normalizeNotesBaseFilePath(projectedFile.value) : null;
+    if (!path || !context?.filePropertiesHas) return { supported: false };
+    try {
+      const hasProperty = context.filePropertiesHas(path, name3.value);
+      return hasProperty === null ? { supported: false } : { supported: true, value: hasProperty };
+    } catch {
+      return { supported: false };
+    }
+  }
+  const keysCall = splitMemberCall(trimmed, "keys");
+  if (keysCall) {
+    const args2 = splitFormulaArgs(keysCall.args);
+    if (!args2 || args2.length !== 0) return { supported: false };
+    const receiver = evaluateNestedArg(keysCall.receiver, resolveProperty);
+    if (!receiver.supported) return { supported: false };
+    const keys = notesBaseObjectKeys(receiver.value);
+    return keys === null ? { supported: false } : { supported: true, value: keys };
+  }
+  const valuesCall = splitMemberCall(trimmed, "values");
+  if (valuesCall) {
+    const args2 = splitFormulaArgs(valuesCall.args);
+    if (!args2 || args2.length !== 0) return { supported: false };
+    const receiver = evaluateNestedArg(valuesCall.receiver, resolveProperty);
+    if (!receiver.supported) return { supported: false };
+    const values2 = notesBaseObjectValues(receiver.value);
+    return values2 === null ? { supported: false } : { supported: true, value: values2 };
+  }
+  const truthyCall = splitMemberCall(trimmed, "isTruthy");
+  if (truthyCall) {
+    const args2 = splitFormulaArgs(truthyCall.args);
+    if (!args2 || args2.length !== 0) return { supported: false };
+    const receiver = evaluateNestedArg(truthyCall.receiver, resolveProperty);
+    return receiver.supported ? { supported: true, value: Boolean(receiver.value) } : { supported: false };
+  }
+  const typeCall = splitMemberCall(trimmed, "isType");
+  if (typeCall) {
+    return evaluateNotesBaseIsTypeCall(typeCall, resolveProperty, evaluateNestedArg);
+  }
+  const toStringCall = splitMemberCall(trimmed, "toString");
+  if (toStringCall) {
+    const args2 = splitFormulaArgs(toStringCall.args);
+    if (!args2 || args2.length !== 0) return { supported: false };
+    const receiver = evaluateNestedArg(toStringCall.receiver, resolveProperty);
+    if (!receiver.supported) return { supported: false };
+    const value = stringifyNotesBaseValue(receiver.value);
+    return value === void 0 ? { supported: false } : { supported: true, value };
+  }
+  const thisFile = evaluateNotesBaseThisFile(trimmed, context);
+  if (thisFile) return thisFile;
+  const objectMember = evaluateNotesBaseObjectMemberAccess(trimmed, resolveProperty, context);
+  if (objectMember) return objectMember;
+  if (trimmed === "this" || trimmed.startsWith("this.")) return { supported: false };
+  const propertyReference = notesBasePropertyReference(trimmed);
+  if (propertyReference !== null) {
+    const value = resolveProperty(propertyReference);
+    return value === NOTES_BASE_UNSUPPORTED_FORMULA_VALUE ? { supported: false } : { supported: true, value };
+  }
+  const call = /^([A-Za-z][\w]*)\((.*)\)$/u.exec(trimmed);
+  if (!call) return { supported: false };
+  const name2 = (call[1] ?? "").toLowerCase();
+  const args = splitFormulaArgs(call[2] ?? "");
+  if (!args) return { supported: false };
+  if (name2 === "if") {
+    if (args.length < 2 || args.length > 3 || /,\s*$/u.test(call[2] ?? "")) return { supported: false };
+    const condition = evaluateNestedArg(args[0] ?? "", resolveProperty);
+    if (!condition.supported) return { supported: false };
+    const selected = condition.value ? args[1] : args[2];
+    return selected === void 0 ? { supported: true, value: null } : evaluateNestedArg(selected, resolveProperty);
+  }
+  if (name2 === "min" || name2 === "max") {
+    return evaluateNumericExtremum(
+      args,
+      call[2] ?? "",
+      resolveProperty,
+      name2 === "min" ? Number.POSITIVE_INFINITY : Number.NEGATIVE_INFINITY,
+      name2 === "min" ? Math.min : Math.max,
+      context
+    );
+  }
+  const values = args.map((arg) => evaluateNestedArg(arg, resolveProperty));
+  if (values.some((value) => !value.supported)) return { supported: false };
+  const resolved = values.map((value) => value.supported ? value.value : "");
+  if (name2 === "upper" && resolved.length === 1) return { supported: true, value: text(resolved[0]).toUpperCase() };
+  if (name2 === "lower" && resolved.length === 1) return { supported: true, value: text(resolved[0]).toLowerCase() };
+  if (name2 === "escapehtml" && resolved.length === 1 && typeof resolved[0] === "string" && !/,\s*$/u.test(call[2] ?? "")) {
+    const value = escapeNotesBaseHtml(resolved[0]);
+    return value === null ? { supported: false } : { supported: true, value };
+  }
+  if (name2 === "html" && resolved.length === 1 && typeof resolved[0] === "string" && !/,\s*$/u.test(call[2] ?? "")) {
+    const value = createNotesBaseHtmlValue(resolved[0]);
+    return value === null ? { supported: false } : { supported: true, value };
+  }
+  if (name2 === "image" && resolved.length === 1 && typeof resolved[0] === "string" && !/,\s*$/u.test(call[2] ?? "")) {
+    const value = createNotesBaseImageValue(resolved[0]);
+    return value === null ? { supported: false } : { supported: true, value };
+  }
+  if (name2 === "random" && resolved.length === 0) return { supported: true, value: Math.random() };
+  if (name2 === "today" && resolved.length === 0) return { supported: true, value: localCalendarDate() };
+  if (name2 === "now" && resolved.length === 0) return { supported: true, value: (/* @__PURE__ */ new Date()).toISOString() };
+  if (name2 === "icon" && resolved.length === 1 && typeof resolved[0] === "string" && !/,\s*$/u.test(call[2] ?? "")) {
+    const value = createNotesBaseIconValue(resolved[0]);
+    return value === null ? { supported: false } : { supported: true, value };
+  }
+  if (name2 === "link" && resolved.length >= 1 && resolved.length <= 2 && !/,\s*$/u.test(call[2] ?? "")) {
+    const [path, display] = resolved;
+    if (typeof path !== "string") return { supported: false };
+    let displayValue = display ?? null;
+    if (typeof displayValue === "number" && Number.isFinite(displayValue) || typeof displayValue === "boolean") {
+      displayValue = String(displayValue);
+    }
+    if (typeof displayValue === "string" && displayValue.length > MAX_NOTES_BASE_FORMULA_STRING_LENGTH) {
+      return { supported: false };
+    }
+    const normalizedPath = normalizeNotesBaseLinkPath(path);
+    const value = normalizedPath === null ? null : createNotesBaseLinkValue(normalizedPath, displayValue);
+    return value === null ? { supported: false } : { supported: true, value };
+  }
+  if (name2 === "file" && resolved.length === 1 && !/,\s*$/u.test(call[2] ?? "")) {
+    const value = typeof resolved[0] === "string" ? normalizeNotesBaseFilePath(resolved[0]) : notesBaseLinkPath(resolved[0]);
+    return value === null ? { supported: false } : { supported: true, value };
+  }
+  if (name2 === "date" && resolved.length === 1 && typeof resolved[0] === "string" && !/,\s*$/u.test(call[2] ?? "")) {
+    const value = parseLocalDate(resolved[0]) ?? parseTimezoneOffsetDate(resolved[0]);
+    return value === null ? { supported: false } : { supported: true, value };
+  }
+  if (name2 === "duration" && resolved.length === 1 && typeof resolved[0] === "string" && !/,\s*$/u.test(call[2] ?? "")) {
+    const value = parseFixedDuration(resolved[0]);
+    return value === null ? { supported: false } : { supported: true, value };
+  }
+  if (name2 === "length" && resolved.length === 1) return { supported: true, value: Array.isArray(resolved[0]) ? resolved[0].length : text(resolved[0]).length };
+  if (name2 === "concat") return { supported: true, value: resolved.map(text).join("") };
+  if (name2 === "list" && resolved.length === 1) {
+    return { supported: true, value: Array.isArray(resolved[0]) ? resolved[0] : [resolved[0]] };
+  }
+  if (name2 === "contains" && resolved.length === 2) {
+    const [source, needle] = resolved;
+    return { supported: true, value: Array.isArray(source) ? source.map(text).includes(text(needle)) : text(source).includes(text(needle)) };
+  }
+  if (name2 === "number" && resolved.length === 1) {
+    const value = notesBaseNumberValue(resolved[0], args[0] ?? "");
+    return value == null ? { supported: false } : { supported: true, value };
+  }
+  return { supported: false };
+}
+function numericValues(rows, property, resolveProperty) {
+  const values = [];
+  for (const row of rows) {
+    const value = Number(resolveProperty(row, property));
+    if (Number.isFinite(value)) values.push(value);
+  }
+  return values;
+}
+function evaluateNotesBaseSummary(expression, rows, resolveProperty) {
+  const trimmed = expression.trim();
+  if (trimmed === "count()") return { supported: true, value: rows.length };
+  const call = /^(sum|average|min|max|range|median|stddev|earliest|latest|checked|unchecked|empty|filled|unique)\(([\w.-]+)\)$/u.exec(trimmed);
+  if (!call) return { supported: false };
+  if (call[1] === "unique") {
+    const count3 = countNotesBaseUniqueValues(rows, (row) => resolveProperty(row, call[2] ?? ""));
+    return count3 === null ? { supported: false } : { supported: true, value: count3 };
+  }
+  if (call[1] === "empty" || call[1] === "filled") {
+    const expectedEmpty = call[1] === "empty";
+    let count3 = 0;
+    for (const row of rows) {
+      const result = evaluateNotesBaseValueEmptiness(resolveProperty(row, call[2] ?? ""));
+      if (!result.supported) return { supported: false };
+      if (result.value === expectedEmpty) count3 += 1;
+    }
+    return { supported: true, value: count3 };
+  }
+  if (call[1] === "checked" || call[1] === "unchecked") {
+    const expected = call[1] === "checked";
+    let count3 = 0;
+    for (const row of rows) {
+      if (resolveProperty(row, call[2] ?? "") === expected) count3 += 1;
+    }
+    return { supported: true, value: count3 };
+  }
+  if (call[1] === "range") {
+    let dateMinimum = Number.POSITIVE_INFINITY;
+    let dateMaximum = Number.NEGATIVE_INFINITY;
+    let dateCount = 0;
+    let numericMinimum = Number.POSITIVE_INFINITY;
+    let numericMaximum = Number.NEGATIVE_INFINITY;
+    let numericCount = 0;
+    for (const row of rows) {
+      const value = resolveProperty(row, call[2] ?? "");
+      const date6 = notesBaseDateValue(value);
+      if (date6) {
+        const timestamp = date6.getTime();
+        dateMinimum = Math.min(dateMinimum, timestamp);
+        dateMaximum = Math.max(dateMaximum, timestamp);
+        dateCount += 1;
+        continue;
+      }
+      const numericValue = Number(value);
+      if (Number.isFinite(numericValue)) {
+        numericMinimum = Math.min(numericMinimum, numericValue);
+        numericMaximum = Math.max(numericMaximum, numericValue);
+        numericCount += 1;
+      }
+    }
+    let range = 0;
+    if (dateCount >= 2) range = dateMaximum - dateMinimum;
+    else if (numericCount >= 2) range = numericMaximum - numericMinimum;
+    return Number.isFinite(range) ? { supported: true, value: range } : { supported: false };
+  }
+  if (call[1] === "earliest" || call[1] === "latest") {
+    const findEarliest = call[1] === "earliest";
+    let timestamp = findEarliest ? Number.POSITIVE_INFINITY : Number.NEGATIVE_INFINITY;
+    for (const row of rows) {
+      const date6 = notesBaseDateValue(resolveProperty(row, call[2] ?? ""));
+      if (date6) timestamp = findEarliest ? Math.min(timestamp, date6.getTime()) : Math.max(timestamp, date6.getTime());
+    }
+    return { supported: true, value: Number.isFinite(timestamp) ? new Date(timestamp).toISOString() : 0 };
+  }
+  const values = numericValues(rows, call[2] ?? "", resolveProperty);
+  if (call[1] === "sum") return { supported: true, value: values.reduce((sum, value) => sum + value, 0) };
+  if (call[1] === "min") return { supported: true, value: values.length > 0 ? values.reduce((minimum, value) => Math.min(minimum, value)) : 0 };
+  if (call[1] === "max") return { supported: true, value: values.length > 0 ? values.reduce((maximum, value) => Math.max(maximum, value)) : 0 };
+  if (call[1] === "median") {
+    if (values.length === 0) return { supported: true, value: 0 };
+    values.sort((left, right) => left - right);
+    const middle = Math.floor(values.length / 2);
+    if (values.length % 2 === 1) return { supported: true, value: values[middle] };
+    const lower = values[middle - 1] ?? 0;
+    const upper = values[middle] ?? 0;
+    const median = Math.sign(lower) === Math.sign(upper) ? lower + (upper - lower) / 2 : (lower + upper) / 2;
+    return Number.isFinite(median) ? { supported: true, value: median } : { supported: false };
+  }
+  if (call[1] === "stddev") {
+    if (values.length === 0) return { supported: true, value: 0 };
+    const scale = values.reduce((maximum, value) => Math.max(maximum, Math.abs(value)), 0);
+    if (scale === 0) return { supported: true, value: 0 };
+    const mean = values.reduce((sum, value) => sum + value / scale, 0) / values.length;
+    const variance = values.reduce((sum, value) => sum + (value / scale - mean) ** 2, 0) / values.length;
+    const standardDeviation = Math.sqrt(variance) * scale;
+    return Number.isFinite(standardDeviation) ? { supported: true, value: standardDeviation } : { supported: false };
+  }
+  return { supported: true, value: values.length > 0 ? values.reduce((sum, value) => sum + value, 0) / values.length : 0 };
+}
+
+// src/NotesBaseFilterTree.ts
+var MAX_NOTES_BASE_FILTER_TREE_DEPTH = 8;
+var MAX_NOTES_BASE_FILTER_TREE_NODES = 64;
+function filterBlockLines(lines) {
+  const block = [];
+  for (const line of lines) {
+    const text2 = line.trim();
+    if (!text2 || text2.startsWith("#")) continue;
+    block.push({ indent: /^\s*/u.exec(line)?.[0].length ?? 0, text: text2 });
+  }
+  return block;
+}
+function filterBlockText(block) {
+  return block.map((line) => line.text).join(" ");
+}
+function cleanFilterStatement(value) {
+  return value.trim().replace(/^['"]|['"]$/u, "");
+}
+function parseFilterItems(block, depth, budget) {
+  if (block.length === 0) return null;
+  const itemIndent = block[0]?.indent ?? 0;
+  const children = [];
+  let index2 = 0;
+  while (index2 < block.length) {
+    const line = block[index2] ?? { indent: -1, text: "" };
+    if (line.indent !== itemIndent || !line.text.startsWith("- ")) return null;
+    let end = index2 + 1;
+    while (end < block.length && (block[end]?.indent ?? 0) > itemIndent) end += 1;
+    const subtree = block.slice(index2 + 1, end);
+    const content = cleanFilterStatement(line.text.slice(2));
+    budget.nodes += 1;
+    if (budget.nodes > MAX_NOTES_BASE_FILTER_TREE_NODES || depth > MAX_NOTES_BASE_FILTER_TREE_DEPTH) {
+      return null;
+    }
+    const conjunction = /^(and|or|not):$/u.exec(content);
+    if (conjunction) {
+      const nested = parseFilterItems(subtree, depth + 1, budget);
+      if (!nested) return null;
+      children.push({ kind: conjunction[1], children: nested });
+    } else {
+      if (subtree.length > 0) return null;
+      children.push({ kind: "statement", statement: content });
+    }
+    index2 = end;
+  }
+  return children;
+}
+function parseFilterBlock(block, depth, budget) {
+  const first = block[0];
+  if (!first) return { kind: "unsupported", raw: "" };
+  const conjunction = /^(and|or|not):$/u.exec(first.text);
+  if (conjunction) {
+    budget.nodes += 1;
+    if (budget.nodes > MAX_NOTES_BASE_FILTER_TREE_NODES || depth > MAX_NOTES_BASE_FILTER_TREE_DEPTH) {
+      return { kind: "unsupported", raw: filterBlockText(block) };
+    }
+    const children = parseFilterItems(block.slice(1), depth + 1, budget);
+    if (!children) return { kind: "unsupported", raw: filterBlockText(block) };
+    return { kind: conjunction[1], children };
+  }
+  if (first.text.startsWith("- ")) {
+    const children = parseFilterItems(block, depth + 1, budget);
+    if (!children) return { kind: "unsupported", raw: filterBlockText(block) };
+    return { kind: "and", children };
+  }
+  if (block.length > 1) return { kind: "unsupported", raw: filterBlockText(block) };
+  budget.nodes += 1;
+  if (budget.nodes > MAX_NOTES_BASE_FILTER_TREE_NODES) return { kind: "unsupported", raw: filterBlockText(block) };
+  return { kind: "statement", statement: cleanFilterStatement(first.text) };
+}
+function parseNotesBaseFilterBlock(lines) {
+  return parseFilterBlock(filterBlockLines(lines), 0, { nodes: 0 });
+}
+function evaluateNotesBaseFilterTree(tree, evaluateStatement) {
+  if (tree.kind === "unsupported") {
+    return { supported: false, kind: "filter", expression: tree.raw };
+  }
+  if (tree.kind === "statement") return evaluateStatement(tree.statement);
+  let matched = tree.kind !== "or";
+  for (const child of tree.children) {
+    const outcome = evaluateNotesBaseFilterTree(child, evaluateStatement);
+    if (!outcome.supported) return outcome;
+    if (tree.kind === "and") matched = matched && outcome.matched;
+    else if (tree.kind === "or") matched = matched || outcome.matched;
+    else matched = matched && !outcome.matched;
+  }
+  return { supported: true, matched };
+}
+
+// src/NotesBaseFormulaValue.ts
+function notesBaseScalarValueText(value) {
+  if (value == null) return "";
+  const iconName = notesBaseIconName(value);
+  if (iconName !== null) return iconName;
+  const imageText = notesBaseImageText(value);
+  if (imageText !== null) return imageText;
+  const htmlText = notesBaseHtmlText(value);
+  if (htmlText !== null) return htmlText;
+  const linkText = notesBaseLinkText(value);
+  if (linkText !== null) return linkText;
+  try {
+    if (typeof value === "object") {
+      const prototype = Object.getPrototypeOf(value);
+      if (prototype === Object.prototype || prototype === null) return "[object Object]";
+    }
+    return String(value);
+  } catch {
+    return "";
+  }
+}
+function notesBaseValueText(value) {
+  return Array.isArray(value) ? value.map(notesBaseScalarValueText).join(", ") : notesBaseScalarValueText(value);
+}
+
+// src/base-query.ts
+var MAX_EXECUTABLE_BASE_FILES = 2e3;
+var MAX_EXECUTABLE_BASE_FILE_BYTES = 1e6;
+var MAX_EXECUTABLE_BASE_TOTAL_BYTES = 16e6;
+var MAX_EXECUTABLE_BASE_PROPERTIES = 256;
+var MAX_EXECUTABLE_BASE_FORMULA_DEPTH = 32;
+var SAFE_PATH = /^(?!\/)(?!.*(?:^|\/)\.\.(?:\/|$))(?!.*[\\\0\r\n])[\p{L}\p{N} ._()\-\/[\]]+$/u;
+var REVISION = /^file:[0-9a-f]{64}$/u;
+function fileName2(path) {
+  return (path.split("/").at(-1) ?? path).replace(/\.md$/iu, "");
+}
+function fileFolder(path) {
+  const separator = path.lastIndexOf("/");
+  return separator < 0 ? "" : path.slice(0, separator);
+}
+function fileSize(file2) {
+  return typeof file2.sizeBytes === "number" && Number.isSafeInteger(file2.sizeBytes) && file2.sizeBytes >= 0 ? file2.sizeBytes : new TextEncoder().encode(file2.source).byteLength;
+}
+function fileTags(properties, source) {
+  const tags = properties.tags;
+  const values = Array.isArray(tags) ? tags : typeof tags === "string" ? [tags] : [];
+  const found = new Set(values.flatMap((value) => value.split(/[\s,]+/u)).filter(Boolean).map((value) => value.startsWith("#") ? value : `#${value}`));
+  for (const match of source.matchAll(/(^|\s)(#[\p{L}\p{N}_/-]+)/gu)) found.add(match[2] ?? "");
+  return [...found].filter(Boolean).slice(0, 1e4);
+}
+function propertyValue(row, property) {
+  const key2 = property.trim();
+  if (key2 === "file.name" || key2 === "file.basename") return fileName2(row.file.path);
+  if (key2 === "file.file" || key2 === "file.path") return row.file.path;
+  if (key2 === "file.folder") return fileFolder(row.file.path);
+  if (key2 === "file.ext") return row.file.path.split(".").at(-1) ?? "";
+  if (key2 === "file.size") return fileSize(row.file);
+  if (key2 === "file.ctime") return notesBaseFileTimestamp(row.file.createdAt);
+  if (key2 === "file.mtime") return notesBaseFileTimestamp(row.file.modifiedAt);
+  if (key2 === "file.properties") return row.properties;
+  if (key2 === "file.tags") return fileTags(row.properties, row.file.source);
+  const frontmatterKey = key2.startsWith("note.") ? key2.slice(5) : key2;
+  return Object.prototype.hasOwnProperty.call(row.properties, frontmatterKey) ? row.properties[frontmatterKey] : void 0;
+}
+function namedFormula(column) {
+  return /^formula\.([A-Za-z_][\w-]*)$/u.exec(column.trim())?.[1] ?? null;
+}
+function formulaContext(rowsByPath, baseFile) {
+  return {
+    fileCreatedAtFor: (path) => rowsByPath.get(path)?.file.createdAt ?? null,
+    fileModifiedAtFor: (path) => rowsByPath.get(path)?.file.modifiedAt ?? null,
+    filePropertiesFor: (path) => rowsByPath.get(path)?.properties ?? null,
+    fileSizeFor: (path) => rowsByPath.has(path) ? fileSize(rowsByPath.get(path).file) : null,
+    fileTagsFor: (path) => {
+      const row = rowsByPath.get(path);
+      return row === void 0 ? null : fileTags(row.properties, row.file.source);
+    },
+    ...baseFile === void 0 ? {} : { thisFile: baseFile }
+  };
+}
+function columnValue(document2, row, column, context, active = /* @__PURE__ */ new Set()) {
+  const formulaName = namedFormula(column);
+  if (formulaName !== null) {
+    const cached2 = row.formulaCache.get(formulaName);
+    if (cached2 !== void 0) return cached2;
+    const expression2 = document2.formulas[formulaName];
+    if (expression2 === void 0 || active.has(formulaName) || active.size >= MAX_EXECUTABLE_BASE_FORMULA_DEPTH) {
+      return { supported: false };
+    }
+    active.add(formulaName);
+    const result = evaluateNotesBaseFormula(expression2, (property) => {
+      const dependency = namedFormula(property);
+      if (dependency === null) return propertyValue(row, property);
+      const nested = columnValue(document2, row, property, context, active);
+      return nested.supported ? nested.value : NOTES_BASE_UNSUPPORTED_FORMULA_VALUE;
+    }, context);
+    active.delete(formulaName);
+    row.formulaCache.set(formulaName, result);
+    return result;
+  }
+  const expression = notesBaseFormulaExpression(column);
+  if (expression !== null) {
+    return evaluateNotesBaseFormula(expression, (property) => {
+      const dependency = namedFormula(property);
+      if (dependency === null) return propertyValue(row, property);
+      const nested = columnValue(document2, row, property, context, active);
+      return nested.supported ? nested.value : NOTES_BASE_UNSUPPORTED_FORMULA_VALUE;
+    }, context);
+  }
+  return { supported: true, value: propertyValue(row, column) };
+}
+function compareValues(left, right) {
+  if (left == null && right == null) return 0;
+  if (left == null) return 1;
+  if (right == null) return -1;
+  if (typeof left === "number" && typeof right === "number") return left - right;
+  return notesBaseValueText(left).localeCompare(notesBaseValueText(right), void 0, { numeric: true, sensitivity: "base" });
+}
+function validateFiles(files) {
+  if (files.length > MAX_EXECUTABLE_BASE_FILES) return "Base hydration exceeds the file limit.";
+  const paths = /* @__PURE__ */ new Set();
+  let totalBytes = 0;
+  for (const file2 of files) {
+    if (!SAFE_PATH.test(file2.path) || !/\.md$/iu.test(file2.path) || paths.has(file2.path)) return "Base hydration contains an invalid or duplicate path.";
+    if (!REVISION.test(file2.revision)) return "Base hydration contains an invalid revision.";
+    const bytes3 = new TextEncoder().encode(file2.source).byteLength;
+    if (bytes3 > MAX_EXECUTABLE_BASE_FILE_BYTES) return "Base hydration contains an oversized note.";
+    totalBytes += bytes3;
+    if (totalBytes > MAX_EXECUTABLE_BASE_TOTAL_BYTES) return "Base hydration exceeds its total byte limit.";
+    paths.add(file2.path);
+  }
+  return null;
+}
+function mutableRows(files) {
+  const rows = [];
+  for (const file2 of files) {
+    const parsed = parseFrontmatterProperties(file2.source);
+    if (parsed.length > MAX_EXECUTABLE_BASE_PROPERTIES) {
+      return { error: `Base note ${JSON.stringify(file2.path)} exceeds the property limit.`, rows: [] };
+    }
+    const properties = /* @__PURE__ */ Object.create(null);
+    const keys = /* @__PURE__ */ new Set();
+    for (const property of parsed) {
+      const identity = property.key.toLocaleLowerCase();
+      if (keys.has(identity)) return { error: `Base note ${JSON.stringify(file2.path)} contains duplicate properties.`, rows: [] };
+      keys.add(identity);
+      properties[property.key] = property.value;
+    }
+    rows.push({ file: file2, formulaCache: /* @__PURE__ */ new Map(), properties, values: /* @__PURE__ */ Object.create(null) });
+  }
+  return { error: null, rows };
+}
+function summariesForRows(document2, summaries, rows, context) {
+  const results = [];
+  const unsupported4 = [];
+  for (const summary of summaries) {
+    let formulasSupported = true;
+    const result = evaluateNotesBaseSummary(summary.expression, [...rows], (row, property) => {
+      const value = columnValue(document2, row, property, context);
+      if (!value.supported) formulasSupported = false;
+      return value.supported ? value.value : void 0;
+    });
+    if (!result.supported || !formulasSupported) unsupported4.push({ expression: summary.expression, kind: "summary" });
+    else results.push({ expression: summary.expression, label: summary.label, value: result.value });
+  }
+  return { results, unsupported: unsupported4 };
+}
+function summarizeExecutableBaseRows(document2, view, rows, baseFile) {
+  const mutable = rows.map((row) => ({
+    file: row.file,
+    formulaCache: /* @__PURE__ */ new Map(),
+    properties: { ...row.properties },
+    values: { ...row.values }
+  }));
+  const byPath = new Map(mutable.map((row) => [row.file.path, row]));
+  const result = summariesForRows(document2, view.summaries, mutable, formulaContext(byPath, baseFile));
+  return { summaries: result.results, unsupported: result.unsupported };
+}
+function queryExecutableBaseView(document2, view, files, baseFile) {
+  const inputError = validateFiles(files);
+  if (inputError !== null) return { rows: [], summaries: [], unsupported: [{ expression: inputError, kind: "input" }] };
+  const hydrated = mutableRows(files);
+  if (hydrated.error !== null) return { rows: [], summaries: [], unsupported: [{ expression: hydrated.error, kind: "input" }] };
+  const allRows = hydrated.rows;
+  const rowsByPath = new Map(allRows.map((row) => [row.file.path, row]));
+  const context = formulaContext(rowsByPath, baseFile);
+  const unsupported4 = [];
+  let rows = allRows;
+  for (const tree of [...document2.filters, ...view.filters]) {
+    const matching = [];
+    let failure = null;
+    for (const row of rows) {
+      const outcome = evaluateNotesBaseFilterTree(tree, (statement) => {
+        const result = evaluateNotesBaseFormula(statement, (property) => {
+          const value = columnValue(document2, row, property, context);
+          return value.supported ? value.value : NOTES_BASE_UNSUPPORTED_FORMULA_VALUE;
+        }, context);
+        return result.supported && typeof result.value === "boolean" ? { matched: result.value, supported: true } : { expression: statement, kind: "formula", supported: false };
+      });
+      if (!outcome.supported) {
+        failure = { expression: outcome.expression, kind: outcome.kind };
+        break;
+      }
+      if (outcome.matched) matching.push(row);
+    }
+    if (failure !== null) {
+      unsupported4.push(failure);
+      rows = [];
+      break;
+    }
+    rows = matching;
+  }
+  const sortSpecs = [];
+  for (const source of view.sort) {
+    const match = /^([\w.-]+)(?:\s+(asc|desc))?$/iu.exec(source);
+    if (match === null) unsupported4.push({ expression: source, kind: "sort" });
+    else sortSpecs.push({ column: match[1] ?? "file.name", direction: (match[2] ?? "asc").toLowerCase() === "desc" ? -1 : 1 });
+  }
+  if (unsupported4.length === 0 && sortSpecs.length > 0) {
+    const projected = rows.map((row, index2) => ({
+      index: index2,
+      row,
+      values: sortSpecs.map((spec) => columnValue(document2, row, spec.column, context))
+    }));
+    for (let index2 = 0; index2 < sortSpecs.length; index2 += 1) {
+      if (projected.some((entry) => entry.values[index2]?.supported !== true)) {
+        unsupported4.push({ expression: sortSpecs[index2]?.column ?? "", kind: "formula" });
+      }
+    }
+    if (unsupported4.length === 0) {
+      rows = projected.sort((left, right) => {
+        for (let index2 = 0; index2 < sortSpecs.length; index2 += 1) {
+          const leftValue = left.values[index2];
+          const rightValue = right.values[index2];
+          const compared = compareValues(
+            leftValue?.supported ? leftValue.value : void 0,
+            rightValue?.supported ? rightValue.value : void 0
+          ) * (sortSpecs[index2]?.direction ?? 1);
+          if (compared !== 0) return compared;
+        }
+        return left.index - right.index;
+      }).map((entry) => entry.row);
+    }
+  }
+  if (view.limit !== null) rows = rows.slice(0, view.limit);
+  const columns = view.order.length > 0 ? view.order : ["file.name"];
+  for (const row of rows) {
+    for (const column of /* @__PURE__ */ new Set([...columns, ...view.coordinates === null ? [] : [view.coordinates]])) {
+      const value = columnValue(document2, row, column, context);
+      if (!value.supported) unsupported4.push({ expression: column, kind: "formula" });
+      else row.values[column] = value.value;
+    }
+  }
+  if (unsupported4.length > 0) return { rows: [], summaries: [], unsupported: unsupported4 };
+  const summary = summariesForRows(document2, view.summaries, rows, context);
+  unsupported4.push(...summary.unsupported);
+  return {
+    rows: Object.freeze(rows.map((row) => Object.freeze({
+      file: Object.freeze({ ...row.file }),
+      properties: Object.freeze({ ...row.properties }),
+      values: Object.freeze({ ...row.values })
+    }))),
+    summaries: Object.freeze(summary.results.map((result) => Object.freeze({ ...result }))),
+    unsupported: Object.freeze(unsupported4.map((entry) => Object.freeze({ ...entry })))
+  };
+}
+
+// src/base-edit.ts
+var EDITABLE_COLUMN = /^note\.([A-Za-z_][\w-]*)$/u;
+var REVISION2 = /^file:[0-9a-f]{64}$/u;
+function executableBasePropertyIdentity(property, value) {
+  return JSON.stringify([property, inferPropertyType(value), value]);
+}
+function parseNextValue(current, rawValue) {
+  if (typeof current === "boolean") {
+    if (rawValue !== "true" && rawValue !== "false") return null;
+    return rawValue === "true";
+  }
+  if (typeof current === "number") {
+    if (!/^-?(?:0|[1-9]\d*)(?:\.\d+)?$/u.test(rawValue)) return null;
+    const value = Number(rawValue);
+    return Number.isFinite(value) ? value : null;
+  }
+  return typeof current === "string" ? rawValue : null;
+}
+function createExecutableBaseFrontmatterEdit(file2, column, rawValue) {
+  const property = EDITABLE_COLUMN.exec(column)?.[1];
+  if (property === void 0 || !REVISION2.test(file2.revision) || rawValue.length > 1e5 || /[\0\r\n]/u.test(rawValue)) return null;
+  const properties = parseFrontmatterProperties(file2.source);
+  const matching = properties.filter((entry) => entry.key.toLocaleLowerCase() === property.toLocaleLowerCase());
+  if (matching.length !== 1) return null;
+  const previous = matching[0];
+  const value = parseNextValue(previous.value, rawValue);
+  if (value === null || Object.is(value, previous.value)) return null;
+  let source;
+  try {
+    source = setFrontmatterProperty(file2.source, previous.key, value);
+  } catch {
+    return null;
+  }
+  if (source === file2.source || new TextEncoder().encode(source).byteLength > MAX_EXECUTABLE_BASE_FILE_BYTES) return null;
+  return {
+    expectedPropertyIdentity: executableBasePropertyIdentity(previous.key, previous.value),
+    expectedRevision: file2.revision,
+    operation: "base-frontmatter",
+    path: file2.path,
+    previousSource: file2.source,
+    previousValue: previous.value,
+    property: previous.key,
+    source,
+    value
+  };
+}
+
+// src/base-executable-view.tsx
+var import_react7 = require("react");
+
+// src/base-parser.ts
+var MAX_EXECUTABLE_BASE_LIST_ITEMS = 256;
+var MAX_EXECUTABLE_BASE_FORMULAS = 128;
+var MAX_EXECUTABLE_BASE_SEARCH_LENGTH = 1e3;
+function unsupported3(reason) {
+  return { reason, status: "unsupported" };
+}
+function leadingSpaces2(line) {
+  return /^ */u.exec(line)?.[0].length ?? 0;
+}
+function cleanScalar(value) {
+  const trimmed = value.trim();
+  if (trimmed.length < 2) return trimmed;
+  if (trimmed.startsWith('"') && trimmed.endsWith('"')) {
+    try {
+      return JSON.parse(trimmed);
+    } catch {
+      return trimmed.slice(1, -1);
+    }
+  }
+  return trimmed.startsWith("'") && trimmed.endsWith("'") ? trimmed.slice(1, -1).replaceAll("''", "'") : trimmed;
+}
+function splitInlineList2(value) {
+  const trimmed = value.trim();
+  if (!trimmed.startsWith("[") || !trimmed.endsWith("]")) return null;
+  const items = [];
+  let current = "";
+  let quote = "";
+  let escaped = false;
+  for (const character of trimmed.slice(1, -1)) {
+    if (quote !== "") {
+      current += character;
+      if (escaped) escaped = false;
+      else if (character === "\\") escaped = true;
+      else if (character === quote) quote = "";
+      continue;
+    }
+    if (character === '"' || character === "'") {
+      quote = character;
+      current += character;
+    } else if (character === ",") {
+      const item2 = cleanScalar(current);
+      if (item2 !== "") items.push(item2);
+      current = "";
+    } else {
+      current += character;
+    }
+  }
+  if (quote !== "") return null;
+  const item = cleanScalar(current);
+  if (item !== "") items.push(item);
+  return items;
+}
+function safeLine(line) {
+  return line.length <= MAX_BASE_LINE_LENGTH && !line.includes("	") && !/!![A-Za-z]|(^|\s)[&*][A-Za-z0-9_-]+|(^|\s)![A-Za-z][A-Za-z0-9_-]*/u.test(line);
+}
+function boundedList(values) {
+  return values.length <= MAX_EXECUTABLE_BASE_LIST_ITEMS && values.every((value) => value !== "" && value.length <= MAX_BASE_LINE_LENGTH);
+}
+function parseFilterLines(lines) {
+  return parseNotesBaseFilterBlock(lines.map((line) => {
+    const item = /^(\s*-\s*)(.+)$/u.exec(line);
+    return item === null ? line : `${item[1]}${cleanScalar(item[2] ?? "")}`;
+  }));
+}
+function parseExecutableBase(source) {
+  if (new TextEncoder().encode(source).byteLength > MAX_BASE_BYTES) return unsupported3("Base document exceeds the byte limit.");
+  const lines = source.split(/\r\n|\n|\r/u);
+  if (lines.length > MAX_BASE_LINES) return unsupported3("Base document exceeds the line limit.");
+  if (lines.some((line) => !safeLine(line) || leadingSpaces2(line) % 2 !== 0)) {
+    return unsupported3("Base document contains unsupported YAML syntax.");
+  }
+  const formulas = /* @__PURE__ */ Object.create(null);
+  const properties = /* @__PURE__ */ Object.create(null);
+  const filters = [];
+  const views = [];
+  let section = "";
+  let currentView = null;
+  let currentList = "";
+  let currentProperty = "";
+  for (let index2 = 0; index2 < lines.length; index2 += 1) {
+    const line = lines[index2] ?? "";
+    const trimmed = line.trim();
+    if (trimmed === "" || trimmed.startsWith("#")) continue;
+    const indent = leadingSpaces2(line);
+    const topLevel = indent === 0 ? /^([A-Za-z][\w.-]*):\s*(.*)$/u.exec(trimmed) : null;
+    if (topLevel !== null) {
+      section = topLevel[1] ?? "";
+      currentView = null;
+      currentList = "";
+      currentProperty = "";
+      if (section === "filters") {
+        const inline3 = cleanScalar(topLevel[2] ?? "");
+        if (inline3 !== "") filters.push({ kind: "statement", statement: inline3 });
+        else {
+          const block = [];
+          let next = index2 + 1;
+          while (next < lines.length && (lines[next]?.trim() === "" || leadingSpaces2(lines[next] ?? "") > 0)) {
+            block.push(lines[next] ?? "");
+            next += 1;
+          }
+          if (block.some((entry) => entry.trim() !== "")) filters.push(parseFilterLines(block));
+          index2 = next - 1;
+        }
+      }
+      continue;
+    }
+    if (section === "properties") {
+      const property = indent === 2 ? /^([^:]+):\s*$/u.exec(trimmed) : null;
+      if (property !== null) {
+        currentProperty = cleanScalar(property[1] ?? "");
+        if (!/^(?:note\.)?[A-Za-z_][\w-]*$/u.test(currentProperty)) currentProperty = "";
+        continue;
+      }
+      const displayName = currentProperty !== "" && indent === 4 ? /^displayName:\s*(.+)$/u.exec(trimmed) : null;
+      if (displayName !== null) {
+        if (Object.keys(properties).length >= MAX_BASE_FIELDS && properties[currentProperty] === void 0) {
+          return unsupported3("Base document exceeds the property display-name limit.");
+        }
+        properties[currentProperty] = cleanScalar(displayName[1] ?? "");
+      }
+      continue;
+    }
+    if (section === "formulas") {
+      const formula = indent === 2 ? /^([A-Za-z_][\w-]*):\s*(.+)$/u.exec(trimmed) : null;
+      if (formula !== null) {
+        const name2 = formula[1] ?? "";
+        if (Object.keys(formulas).length >= MAX_EXECUTABLE_BASE_FORMULAS && formulas[name2] === void 0) {
+          return unsupported3("Base document exceeds the formula limit.");
+        }
+        const expression = cleanScalar(formula[2] ?? "");
+        if (expression !== "") formulas[name2] = expression;
+      }
+      continue;
+    }
+    if (section !== "views") continue;
+    const newView = indent === 2 ? /^-\s*(?:(type|name):\s*(.+))?$/u.exec(trimmed) : null;
+    if (newView !== null) {
+      if (views.length >= MAX_BASE_VIEWS) return unsupported3("Base document exceeds the view limit.");
+      currentView = {
+        coordinates: null,
+        filters: [],
+        index: views.length,
+        limit: null,
+        name: `View ${String(views.length + 1)}`,
+        order: [],
+        sort: [],
+        summaries: [],
+        type: "table"
+      };
+      if (newView[1] === "type") {
+        const type = cleanScalar(newView[2] ?? "");
+        if (type !== "table" && type !== "list" && type !== "cards" && type !== "map") {
+          return unsupported3(`Unsupported Base view type ${JSON.stringify(type)}.`);
+        }
+        currentView.type = type;
+      } else if (newView[1] === "name") {
+        currentView.name = cleanScalar(newView[2] ?? "");
+      }
+      views.push(currentView);
+      currentList = "";
+      continue;
+    }
+    if (currentView === null) return unsupported3("Base views contain malformed syntax.");
+    const field = indent === 4 ? /^([A-Za-z][\w.-]*):\s*(.*)$/u.exec(trimmed) : null;
+    if (field !== null) {
+      const key2 = field[1] ?? "";
+      const raw = field[2] ?? "";
+      const value = cleanScalar(raw);
+      currentList = key2 === "order" || key2 === "sort" || key2 === "summaries" ? key2 : "";
+      if (key2 === "type") {
+        if (value !== "table" && value !== "list" && value !== "cards" && value !== "map") {
+          return unsupported3(`Unsupported Base view type ${JSON.stringify(value)}.`);
+        }
+        currentView.type = value;
+      } else if (key2 === "name") {
+        if (value === "") return unsupported3("Base view names must not be empty.");
+        currentView.name = value;
+      } else if (key2 === "limit") {
+        if (!/^\d+$/u.test(value)) return unsupported3("Base view limit is invalid.");
+        const limit = Number(value);
+        if (!Number.isSafeInteger(limit) || limit > 2e3) return unsupported3("Base view limit is invalid.");
+        currentView.limit = limit;
+      } else if (key2 === "coordinates") {
+        currentView.coordinates = /^[\w.-]+$/u.test(value) ? value : null;
+        if (value !== "" && currentView.coordinates === null) return unsupported3("Base map coordinates property is invalid.");
+      } else if (key2 === "filters") {
+        currentList = "";
+        if (value !== "") currentView.filters.push({ kind: "statement", statement: value });
+        else {
+          const block = [];
+          let next = index2 + 1;
+          while (next < lines.length && (lines[next]?.trim() === "" || leadingSpaces2(lines[next] ?? "") > 4)) {
+            block.push(lines[next] ?? "");
+            next += 1;
+          }
+          if (block.some((entry) => entry.trim() !== "")) currentView.filters.push(parseFilterLines(block));
+          index2 = next - 1;
+        }
+      } else if (currentList !== "") {
+        const inline3 = splitInlineList2(raw);
+        if (inline3 !== null) {
+          if (!boundedList(inline3)) return unsupported3("Base view list exceeds its limit.");
+          if (currentList === "summaries") {
+            currentView.summaries.push(...inline3.map((expression) => ({ expression, label: expression })));
+          } else if (currentList === "order") currentView.order.push(...inline3);
+          else currentView.sort.push(...inline3);
+        } else if (raw.trim() !== "") return unsupported3(`Base ${key2} must be a list.`);
+      }
+      continue;
+    }
+    const summaryAssignment = currentList === "summaries" && indent >= 6 ? /^([\w.-]+):\s*([A-Za-z][\w-]*)$/u.exec(trimmed) : null;
+    if (summaryAssignment !== null) {
+      const property = cleanScalar(summaryAssignment[1] ?? "");
+      const name2 = cleanScalar(summaryAssignment[2] ?? "");
+      currentView.summaries.push({ expression: `${name2.toLocaleLowerCase()}(${property})`, label: `${name2}(${property})` });
+      if (!boundedList(currentView.summaries.map((summary) => summary.expression))) return unsupported3("Base view list exceeds its limit.");
+      continue;
+    }
+    const listItem = currentList !== "" && indent >= 6 ? /^-\s*(.+)$/u.exec(trimmed) : null;
+    if (listItem !== null) {
+      const value = cleanScalar(listItem[1] ?? "");
+      if (value === "") return unsupported3("Base view list item is empty.");
+      if (currentList === "summaries") currentView.summaries.push({ expression: value, label: value });
+      else if (currentList === "order") currentView.order.push(value);
+      else currentView.sort.push(value);
+      const values = currentList === "summaries" ? currentView.summaries.map((summary) => summary.expression) : currentList === "order" ? currentView.order : currentView.sort;
+      if (!boundedList(values)) return unsupported3("Base view list exceeds its limit.");
+      continue;
+    }
+    if (indent >= 4) return unsupported3("Base views contain unsupported nested syntax.");
+  }
+  if (views.length === 0) return unsupported3("Base document has no executable views.");
+  const names = /* @__PURE__ */ new Set();
+  for (const view of views) {
+    const name2 = view.name.trim().toLocaleLowerCase();
+    if (name2 === "" || names.has(name2)) return unsupported3("Base view names must be unique.");
+    names.add(name2);
+  }
+  return {
+    filters: [...filters],
+    formulas: Object.freeze(formulas),
+    properties: Object.freeze(properties),
+    source,
+    status: "ready",
+    views: views.map((view) => ({
+      ...view,
+      filters: [...view.filters],
+      order: [...view.order],
+      sort: [...view.sort],
+      summaries: view.summaries.map((summary) => ({ ...summary }))
+    }))
+  };
+}
+
+// src/base-spreadsheet.ts
+var MAX_EXECUTABLE_BASE_SPREADSHEET_CHARACTERS = 1e6;
+var MAX_EXECUTABLE_BASE_SPREADSHEET_CELLS = 1e6;
+function spreadsheetSafeText(value, lineBreak) {
+  const source = notesBaseValueText(value);
+  if (source.length > MAX_EXECUTABLE_BASE_SPREADSHEET_CHARACTERS) return null;
+  const normalized = source.replace(/\r\n?|\n/gu, lineBreak);
+  return typeof value !== "number" && /^\s*[=+@-]/u.test(normalized) ? `'${normalized}` : normalized;
+}
+function tsvCell(value) {
+  const safe = spreadsheetSafeText(value, "\n");
+  if (safe === null) return null;
+  return /[\t\n"]/u.test(safe) ? `"${safe.replaceAll('"', '""')}"` : safe;
+}
+function csvCell(value) {
+  const safe = spreadsheetSafeText(value, "\r\n");
+  if (safe === null) return null;
+  return /[,\r\n"]/u.test(safe) ? `"${safe.replaceAll('"', '""')}"` : safe;
+}
+function serialize(headers, rows, separator, lineBreak, cell) {
+  const width = headers?.length ?? rows[0]?.length ?? 0;
+  if (width === 0 || rows.some((row) => row.length !== width)) return null;
+  if ((rows.length + (headers === null ? 0 : 1)) * width > MAX_EXECUTABLE_BASE_SPREADSHEET_CELLS) return null;
+  const lines = [];
+  let length = 0;
+  for (const values of headers === null ? rows : [headers, ...rows]) {
+    const serialized = [];
+    for (const value of values) {
+      const encoded = cell(value);
+      if (encoded === null) return null;
+      serialized.push(encoded);
+    }
+    const line = serialized.join(separator);
+    length += line.length + (lines.length === 0 ? 0 : lineBreak.length);
+    if (length > MAX_EXECUTABLE_BASE_SPREADSHEET_CHARACTERS) return null;
+    lines.push(line);
+  }
+  return lines.join(lineBreak);
+}
+function visibleTable(model) {
+  if (model.status !== "ready" || model.unsupported.length > 0) return null;
+  return {
+    headers: model.columns.map((column) => column.label),
+    rows: model.rows.map((row) => row.cells.map((cell) => cell.value))
+  };
+}
+function executableBaseViewTsv(model) {
+  const table = visibleTable(model);
+  return table === null ? null : serialize(table.headers, table.rows, "	", "\n", tsvCell);
+}
+function executableBaseViewCsv(model) {
+  const table = visibleTable(model);
+  return table === null ? null : serialize(table.headers, table.rows, ",", "\r\n", csvCell);
+}
+function executableBaseCellRangeTsv(rows) {
+  return serialize(null, rows, "	", "\n", tsvCell);
+}
+function executableBaseCsvFilename(viewName) {
+  const normalized = viewName.normalize("NFKC").trim().replace(/[\u0000-\u001f\u007f<>:"/\\|?*]+/gu, "-").replace(/\s+/gu, "-").replace(/-+/gu, "-").replace(/^[.-]+|[. -]+$/gu, "");
+  const stem = Array.from(normalized).slice(0, 80).join("").replace(/[. -]+$/gu, "");
+  return `${stem || "base-results"}.csv`;
+}
+
+// src/base-view-model.ts
+function selectExecutableBaseView(document2, name2) {
+  const wanted = name2?.trim().toLocaleLowerCase();
+  return document2.views.find((view) => view.name.trim().toLocaleLowerCase() === wanted) ?? document2.views[0];
+}
+function viewKind(view) {
+  return view.type === "map" ? "map-label" : view.type;
+}
+function inputType(value) {
+  if (typeof value === "boolean") return "checkbox";
+  if (typeof value === "number" && Number.isFinite(value)) return "number";
+  if (typeof value !== "string") return null;
+  return /^\d{4}-\d{2}-\d{2}$/u.test(value) ? "date" : "text";
+}
+function editableProperty(column, value) {
+  return /^note\.[A-Za-z_][\w-]*$/u.test(column) && inputType(value) !== null;
+}
+function parseExecutableBaseCoordinates(value) {
+  let latitude;
+  let longitude;
+  if (Array.isArray(value) && value.length === 2 && typeof value[0] === "number" && typeof value[1] === "number") {
+    latitude = value[0];
+    longitude = value[1];
+  } else if (typeof value === "string") {
+    const match = /^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/u.exec(value);
+    if (match === null) return null;
+    latitude = Number(match[1]);
+    longitude = Number(match[2]);
+  } else return null;
+  return Number.isFinite(latitude) && Number.isFinite(longitude) && latitude >= -90 && latitude <= 90 && longitude >= -180 && longitude <= 180 ? { latitude, longitude } : null;
+}
+function modelRows(document2, view, query) {
+  const columns = view.order.length > 0 ? view.order : ["file.name"];
+  return query.rows.map((row) => ({
+    cells: Object.freeze(columns.map((column) => {
+      const value = row.values[column];
+      return Object.freeze({
+        column,
+        editable: editableProperty(column, value),
+        inputType: editableProperty(column, value) ? inputType(value) : null,
+        label: document2.properties[column] ?? column,
+        text: notesBaseValueText(value),
+        value
+      });
+    })),
+    coordinates: view.coordinates === null ? null : parseExecutableBaseCoordinates(row.values[view.coordinates]),
+    path: row.file.path,
+    revision: row.file.revision,
+    source: row.file.source
+  }));
+}
+function createBaseViewModel(document2, files, selectedView, search = "", baseFile) {
+  if (search.length > MAX_EXECUTABLE_BASE_SEARCH_LENGTH) return { reason: "Base view search exceeds its limit.", status: "unsupported" };
+  const view = selectExecutableBaseView(document2, selectedView);
+  const query = queryExecutableBaseView(document2, view, files, baseFile);
+  const columns = view.order.length > 0 ? view.order : ["file.name"];
+  const normalizedSearch = search.trim().toLocaleLowerCase();
+  const searchedRows = normalizedSearch === "" || query.unsupported.length > 0 ? query.rows : query.rows.filter((row) => columns.some((column) => notesBaseValueText(row.values[column]).toLocaleLowerCase().includes(normalizedSearch)));
+  const summary = normalizedSearch === "" || query.unsupported.length > 0 ? { summaries: query.summaries, unsupported: [] } : summarizeExecutableBaseRows(document2, view, searchedRows, baseFile);
+  const unsupported4 = [...query.unsupported, ...summary.unsupported];
+  const searchedQuery = { rows: searchedRows, summaries: summary.summaries, unsupported: unsupported4 };
+  return {
+    columns: Object.freeze(columns.map((key2) => Object.freeze({ key: key2, label: document2.properties[key2] ?? key2 }))),
+    kind: viewKind(view),
+    rows: Object.freeze(modelRows(document2, view, searchedQuery).map((row) => Object.freeze(row))),
+    search,
+    status: "ready",
+    summaries: Object.freeze([...summary.summaries]),
+    unsupported: Object.freeze(unsupported4.map((entry) => Object.freeze({ ...entry }))),
+    view,
+    views: Object.freeze(document2.views.map((candidate) => Object.freeze({ kind: viewKind(candidate), name: candidate.name })))
+  };
+}
+
+// src/base-executable-view.tsx
+var import_jsx_runtime23 = require("react/jsx-runtime");
+function resultCount(count3) {
+  return `${String(count3)} ${count3 === 1 ? "Result" : "Results"}`;
+}
+function cellKey(view, path, column) {
+  return `${view}\0${path}\0${String(column)}`;
+}
+function readableKind(kind) {
+  return kind === "map-label" ? "Map Labels" : `${kind.slice(0, 1).toUpperCase()}${kind.slice(1)}`;
+}
+function SummaryList(props) {
+  if (props.model.summaries.length === 0) return null;
+  return /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("dl", { "aria-label": `${props.model.view.name} Summaries`, className: "flex flex-wrap gap-2", children: props.model.summaries.map((summary) => /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("div", { className: "rounded-md border border-[var(--tt-border)] px-2 py-1 text-xs", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("dt", { className: "inline font-medium", children: [
+      summary.label,
+      ": "
+    ] }),
+    /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("dd", { className: "inline", children: String(summary.value ?? "") })
+  ] }, summary.expression)) });
+}
+function ReadonlyLayouts(props) {
+  const { model } = props;
+  if (model.kind === "list") {
+    return /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("ul", { "aria-label": `${model.view.name} Results`, className: "space-y-1.5", children: model.rows.map((row) => /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("li", { className: "rounded-md border border-[var(--tt-border)] p-2", children: row.cells.map((cell, index2) => /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("span", { children: [
+      index2 > 0 ? /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("span", { "aria-hidden": "true", children: " \xB7 " }) : null,
+      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("span", { className: index2 === 0 ? "font-medium" : "text-[var(--tt-muted)]", children: cell.text })
+    ] }, cell.column)) }, row.path)) });
+  }
+  if (model.kind === "cards") {
+    return /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("ul", { "aria-label": `${model.view.name} Results`, className: "grid list-none grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-2 p-0", children: model.rows.map((row) => /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("li", { className: "rounded-lg border border-[var(--tt-border)] p-3", children: row.cells.map((cell) => /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("p", { className: "m-0 text-sm", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("strong", { children: [
+        cell.label,
+        ":"
+      ] }),
+      " ",
+      cell.text
+    ] }, cell.column)) }, row.path)) });
+  }
+  return /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("ul", { "aria-label": `${model.view.name} Map Labels`, className: "space-y-1.5", children: model.rows.map((row) => {
+    const coordinateCell = model.view.coordinates === null ? void 0 : row.cells.find((cell) => cell.column === model.view.coordinates);
+    return /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("li", { className: "flex flex-wrap items-baseline justify-between gap-2 rounded-md border border-[var(--tt-border)] p-2", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("span", { className: "font-medium", children: row.cells[0]?.text || row.path }),
+      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("span", { className: "text-xs text-[var(--tt-muted)]", children: row.coordinates === null ? "Coordinates Unavailable" : coordinateCell?.text ?? `${String(row.coordinates.latitude)}, ${String(row.coordinates.longitude)}` })
+    ] }, row.path);
+  }) });
+}
+function EditableCell(props) {
+  const { cell, row } = props;
+  if (!cell.editable || cell.inputType === null || props.onEdit === void 0) return cell.text;
+  const label = `Edit ${cell.label} for ${row.path}`;
+  const emit = (rawValue) => {
+    const request = createExecutableBaseFrontmatterEdit({ path: row.path, revision: row.revision, source: row.source }, cell.column, rawValue);
+    if (request !== null) props.onEdit?.(request);
+  };
+  if (cell.inputType === "checkbox") {
+    return /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(
+      "input",
+      {
+        "aria-label": label,
+        checked: cell.value === true,
+        type: "checkbox",
+        onChange: (event) => emit(event.currentTarget.checked ? "true" : "false")
+      }
+    );
+  }
+  return /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(
+    "input",
+    {
+      "aria-label": label,
+      className: "min-w-24 rounded border border-[var(--tt-border)] bg-transparent px-1.5 py-1",
+      defaultValue: cell.text,
+      type: cell.inputType,
+      onBlur: (event) => {
+        if (event.currentTarget.value !== cell.text) emit(event.currentTarget.value);
+      }
+    },
+    `${row.revision}:${cell.column}:${cell.text}`
+  );
+}
+function ExecutableTable(props) {
+  const { model } = props;
+  const [selected, setSelected] = (0, import_react7.useState)(null);
+  const [anchor, setAnchor] = (0, import_react7.useState)(null);
+  const refs = (0, import_react7.useRef)(/* @__PURE__ */ new Map());
+  const selectedRow = selected?.view === model.view.name ? model.rows.findIndex((row) => row.path === selected.path) : -1;
+  const selectedVisible = selected !== null && selectedRow >= 0 && selected.column < model.columns.length;
+  const anchorRow = anchor?.view === model.view.name ? model.rows.findIndex((row) => row.path === anchor.path) : -1;
+  const range = selectedVisible && anchor !== null && anchorRow >= 0 ? {
+    columnEnd: Math.max(selected.column, Math.min(anchor.column, model.columns.length - 1)),
+    columnStart: Math.min(selected.column, Math.min(anchor.column, model.columns.length - 1)),
+    rowEnd: Math.max(selectedRow, anchorRow),
+    rowStart: Math.min(selectedRow, anchorRow)
+  } : null;
+  const focusCell = (rowIndex, column, extend2) => {
+    if (model.rows.length === 0 || model.columns.length === 0) return;
+    const boundedRow = Math.max(0, Math.min(rowIndex, model.rows.length - 1));
+    const boundedColumn = Math.max(0, Math.min(column, model.columns.length - 1));
+    const path = model.rows[boundedRow]?.path;
+    if (path === void 0) return;
+    setAnchor(extend2 ? anchor ?? (selectedVisible ? selected : null) : null);
+    const next = { column: boundedColumn, path, view: model.view.name };
+    setSelected(next);
+    refs.current.get(cellKey(next.view, next.path, next.column))?.focus();
+  };
+  const copySelection = () => {
+    if (!selectedVisible || selected === null || props.onCopy === void 0) return;
+    const rectangle = range ?? {
+      columnEnd: selected.column,
+      columnStart: selected.column,
+      rowEnd: selectedRow,
+      rowStart: selectedRow
+    };
+    const values = model.rows.slice(rectangle.rowStart, rectangle.rowEnd + 1).map((row) => row.cells.slice(rectangle.columnStart, rectangle.columnEnd + 1).map((cell) => cell.value));
+    const text2 = executableBaseCellRangeTsv(values);
+    if (text2 !== null) props.onCopy({ kind: "selection", text: text2, view: model.view.name });
+  };
+  const handleKeyDown = (event, row, column) => {
+    if (event.target !== event.currentTarget || event.altKey) return;
+    if (event.ctrlKey || event.metaKey) {
+      if (event.key.toLocaleLowerCase() === "c") {
+        event.preventDefault();
+        copySelection();
+      }
+      return;
+    }
+    let nextRow = row;
+    let nextColumn = column;
+    if (event.key === "ArrowLeft") nextColumn -= 1;
+    else if (event.key === "ArrowRight") nextColumn += 1;
+    else if (event.key === "ArrowUp") nextRow -= 1;
+    else if (event.key === "ArrowDown") nextRow += 1;
+    else if (event.key === "Home") nextColumn = 0;
+    else if (event.key === "End") nextColumn = model.columns.length - 1;
+    else if (event.key === "Tab") {
+      const flat = row * model.columns.length + column + (event.shiftKey ? -1 : 1);
+      if (flat < 0 || flat >= model.rows.length * model.columns.length) return;
+      nextRow = Math.floor(flat / model.columns.length);
+      nextColumn = flat % model.columns.length;
+    } else if (event.key === "Enter") {
+      const control = event.currentTarget.querySelector("input, button, select, textarea");
+      if (control === null) return;
+      event.preventDefault();
+      control.focus();
+      return;
+    } else if (event.key === "Escape") {
+      event.preventDefault();
+      setSelected(null);
+      setAnchor(null);
+      event.currentTarget.blur();
+      return;
+    } else return;
+    event.preventDefault();
+    focusCell(nextRow, nextColumn, event.shiftKey && event.key.startsWith("Arrow"));
+  };
+  return /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("div", { className: "overflow-auto", children: /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("table", { "aria-label": `${model.view.name} Results`, className: "w-full border-collapse text-sm", role: "grid", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("thead", { children: /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("tr", { children: model.columns.map((column) => /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("th", { className: "border border-[var(--tt-border)] p-2 text-left", children: column.label }, column.key)) }) }),
+    /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("tbody", { children: model.rows.map((row, rowIndex) => /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("tr", { children: row.cells.map((cell, columnIndex) => {
+      const active = selectedVisible && selected?.path === row.path && selected.column === columnIndex;
+      const inRange = selectedVisible && (range === null ? active : rowIndex >= range.rowStart && rowIndex <= range.rowEnd && columnIndex >= range.columnStart && columnIndex <= range.columnEnd);
+      return /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(
+        "td",
+        {
+          "aria-selected": inRange ? "true" : void 0,
+          className: "border border-[var(--tt-border)] p-2 outline-none focus-visible:ring-2 focus-visible:ring-[var(--tt-accent)] data-[selected=true]:bg-[var(--tt-selected)]",
+          "data-selected": inRange ? "true" : void 0,
+          ref: (element) => {
+            const key2 = cellKey(model.view.name, row.path, columnIndex);
+            if (element === null) refs.current.delete(key2);
+            else refs.current.set(key2, element);
+          },
+          role: "gridcell",
+          tabIndex: active || !selectedVisible && rowIndex === 0 && columnIndex === 0 ? 0 : -1,
+          onClick: (event) => {
+            setAnchor(event.shiftKey ? anchor ?? (selectedVisible ? selected : null) : null);
+            setSelected({ column: columnIndex, path: row.path, view: model.view.name });
+            if (event.target === event.currentTarget) event.currentTarget.focus();
+          },
+          onFocus: () => setSelected({ column: columnIndex, path: row.path, view: model.view.name }),
+          onKeyDown: (event) => handleKeyDown(event, rowIndex, columnIndex),
+          children: /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(EditableCell, { cell, row, onEdit: props.onEdit })
+        },
+        cell.column
+      );
+    }) }, row.path)) })
+  ] }) });
+}
+function ExecutableBaseView(props) {
+  const document2 = (0, import_react7.useMemo)(() => parseExecutableBase(props.source), [props.source]);
+  const selectedName = document2.status === "ready" ? document2.views.find((view) => view.name === props.activeView)?.name ?? document2.views[0]?.name ?? "" : "";
+  const search = props.searches?.[selectedName] ?? "";
+  const model = (0, import_react7.useMemo)(() => document2.status === "ready" ? createBaseViewModel(document2, props.files, selectedName, search, props.baseFile) : document2, [document2, props.files, selectedName, search, props.baseFile]);
+  if (model.status !== "ready") return /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("p", { role: "alert", children: model.reason });
+  const blocked = model.unsupported.length > 0;
+  const tsv = blocked ? null : executableBaseViewTsv(model);
+  const csv = blocked ? null : executableBaseViewCsv(model);
+  return /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("section", { "aria-label": "Executable Base", className: "flex min-h-0 flex-col gap-3 overflow-auto p-4", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("header", { className: "flex flex-wrap items-end gap-3", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("label", { className: "grid gap-1 text-xs font-medium", children: [
+        "Base View",
+        /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(
+          "select",
+          {
+            "aria-label": "Base View",
+            className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1.5 text-sm",
+            value: model.view.name,
+            onChange: (event) => props.onActiveViewChange?.(event.currentTarget.value),
+            children: model.views.map((view) => /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("option", { value: view.name, children: [
+              view.name,
+              " \u2014 ",
+              readableKind(view.kind)
+            ] }, view.name))
+          }
+        )
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("label", { className: "grid min-w-48 flex-1 gap-1 text-xs font-medium", children: [
+        "Search This View",
+        /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(
+          "input",
+          {
+            "aria-label": `Search ${model.view.name}`,
+            className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1.5 text-sm",
+            maxLength: 1e3,
+            type: "search",
+            value: model.search,
+            onChange: (event) => props.onSearchChange?.(model.view.name, event.currentTarget.value)
+          }
+        )
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("p", { "aria-live": "polite", className: "m-0 text-sm text-[var(--tt-muted)]", children: resultCount(model.rows.length) }),
+      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(
+        "button",
+        {
+          disabled: tsv === null || props.onCopy === void 0,
+          type: "button",
+          onClick: () => {
+            if (tsv !== null) props.onCopy?.({ kind: "results", text: tsv, view: model.view.name });
+          },
+          children: "Copy Visible Results"
+        }
+      ),
+      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(
+        "button",
+        {
+          disabled: csv === null || props.onExport === void 0,
+          type: "button",
+          onClick: () => {
+            if (csv !== null) props.onExport?.({ filename: executableBaseCsvFilename(model.view.name), text: csv, view: model.view.name });
+          },
+          children: "Export Visible CSV"
+        }
+      )
+    ] }),
+    blocked ? /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("p", { role: "alert", children: [
+      "Unsupported Base expression: ",
+      model.unsupported.map((entry) => entry.expression).join(", ")
+    ] }) : model.rows.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("p", { children: "No notes match this view." }) : model.kind === "table" ? /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(ExecutableTable, { model, onCopy: props.onCopy, onEdit: props.onEdit }) : /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(ReadonlyLayouts, { model }),
+    /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(SummaryList, { model })
+  ] });
+}
+
+// src/base-view-provenance.ts
+var TOCKBOT_BASE_VIEW_PROVENANCE = Object.freeze({
+  repository: "https://github.com/taowang1993/tockbot",
+  revision: "af214b2d1a5df8ca23bf99fad9f0408a07c2e4ba",
+  sourceFiles: Object.freeze([
+    "apps/web/src/components/notes/NotesBaseClipboard.ts",
+    "apps/web/src/components/notes/NotesBaseFilterTree.ts",
+    "apps/web/src/components/notes/NotesBaseView.tsx"
+  ]),
+  adaptations: Object.freeze([
+    "Use NodeNext .ts import extensions and unknown-valued ordinary module contracts.",
+    "Accept caller-hydrated bounded note snapshots because the current Remote surface has no Base row hydration method.",
+    "Replace the interactive geographic map with a credential-free semantic map-label view.",
+    "Emit exact revision, property identity, previous source, and next source for caller-owned conflict handling and rollback.",
+    "Keep view selection, per-view search, clipboard writes, CSV delivery, and persistence controlled by the caller."
+  ])
+});
 
 // src/canvas-provenance.ts
 var TOCKBOT_CANVAS_PROVENANCE = Object.freeze({
