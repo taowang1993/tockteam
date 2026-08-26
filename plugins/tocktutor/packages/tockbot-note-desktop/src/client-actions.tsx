@@ -217,9 +217,11 @@ async function handleDesktopDispatch(
     const updatedOwner = await waitForActivePath(currentOwner, owner.vault.id, request.file, previousPath, signal)
     if (updatedOwner === undefined || updatedOwner.vault === null || updatedOwner.activePath === null) return signal?.aborted === true ? 'stale' : 'failed'
     owner = updatedOwner
+    const activePath = updatedOwner.activePath
+    const activeVault = updatedOwner.vault
     return dispatchStatus(await nativeCall(bridge, 'popout-open', signal, (authorization, ownerSignal) => (
-      remote.tocktutorDesktop.openPopOut(authorization, owner.activePath!, owner.vault!, ownerSignal)
-    ), owner.vault))
+      remote.tocktutorDesktop.openPopOut(authorization, activePath, activeVault, ownerSignal)
+    ), activeVault))
   }
   return owner.handleDispatch({ kind: 'protocol', operationId: event.operationId, request })
 }
