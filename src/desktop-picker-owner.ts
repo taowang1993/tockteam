@@ -319,6 +319,12 @@ function within(parent: string, candidate: string): boolean {
   return value === '' || value !== '..' && !value.startsWith(`..${sep}`) && !isAbsolute(value)
 }
 
+function pathEqual(left: string, right: string): boolean {
+  return process.platform === 'win32'
+    ? left.toLowerCase() === right.toLowerCase()
+    : left === right
+}
+
 function pathOverlaps(left: string, right: string): boolean {
   return within(left, right) || within(right, left)
 }
@@ -1823,7 +1829,7 @@ export class DesktopPickerOwner {
     const canonical = await this.safeRealpath(this.recoveryRoot)
     const stat = await this.safeLstat(this.recoveryRoot)
     if (
-      canonical !== this.recoveryRoot ||
+      !pathEqual(canonical, this.recoveryRoot) ||
       stat === undefined ||
       !stat.isDirectory() ||
       stat.isSymbolicLink() ||
@@ -1865,9 +1871,11 @@ export class DesktopPickerOwner {
       }
       const canonicalRoot = realpathSync(this.recoveryRoot)
       const pathRootStat = lstatSync(this.recoveryRoot)
-      if (canonicalRoot !== this.recoveryRoot || pathRootStat.isSymbolicLink()
+      if (!pathEqual(canonicalRoot, this.recoveryRoot) || pathRootStat.isSymbolicLink()
         || rootHandle !== undefined && revisionOf(fstatSync(rootHandle.fd)) !== revisionOf(rootStat)
-        || revisionOf(pathRootStat) !== revisionOf(rootStat)) return error('recovery-required')
+        || (rootHandle === undefined
+          ? ownedIdentityOf(pathRootStat) !== ownedIdentityOf(rootStat)
+          : revisionOf(pathRootStat) !== revisionOf(rootStat))) return error('recovery-required')
       return result
     } finally {
       await rootHandle?.close().catch(() => undefined)
