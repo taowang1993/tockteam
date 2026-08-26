@@ -120,6 +120,13 @@ void app.whenReady().then(async () => {
           reference.remove()
           return result
         })(),
+        previewBadgeVisible: (() => {
+          const headline = document.querySelector('[data-tockteam-hero-headline]')
+          const badge = headline?.nextElementSibling
+          return badge instanceof HTMLElement
+            && !badge.hidden
+            && badge.getBoundingClientRect().width > 0
+        })(),
         navigation: (() => {
           const pluginsIcon = document.querySelector('[data-tockteam-marketplace-nav] svg')
           const slotted = [...document.querySelectorAll('button')]
@@ -190,6 +197,10 @@ void app.whenReady().then(async () => {
         ready: document.documentElement.dataset.tockteamDesktop === 'true',
       }
     })()`)
+      if (state.ready === true && state.previewBadgeVisible === true) {
+        settle(new Error('TockCoder Preview badge is visible.'))
+        return
+      }
       if (state.ready === true && state.customIcons.length > 0) {
         settle(new Error(
           'Visible interface icons are not Lucide: '

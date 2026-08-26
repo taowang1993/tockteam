@@ -45,6 +45,7 @@ test('desktop client brands the coding route as TockCoder', () => {
   assert.equal(client.match(/M10 5\.5C6\.96243 5\.5 4\.5 7\.96243 4\.5 11/g)?.length, 1)
   assert.doesNotMatch(client, /data-tockteam-hero-preview/)
   assert.doesNotMatch(client, /preview\.label|tockteamPreviewLabel/)
+  assert.match(client, /previewBadge\.hidden = true/)
   assert.doesNotMatch(client, /html\[data-tockteam-preview='true'\] body::after/)
   assert.doesNotMatch(`${main}\n${splash}`, /DeepSeek Harness/)
   assert.doesNotMatch(splash, />DSH</)

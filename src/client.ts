@@ -90,18 +90,29 @@ const TOCKTEAM_LOGO_MARK = `
 
 function installBranding(): () => void {
   const headlineCopy = new Set(['Into the Unknown', '探索未知之境', '探索未至之境'])
+  const previewCopy = new Set(['Preview', '预览版'])
   const originalHeadlines = new Map<HTMLElement, string>()
+  const originalPreviewBadges = new Map<HTMLElement, HTMLElement['hidden']>()
   const originalBrandMarks = new Map<SVGSVGElement, SVGSVGElement>()
   const originalSidebarNames = new Map<HTMLElement, string>()
   const synchronize = (roots: readonly ParentNode[] = [document]): void => {
     pruneDisconnected(originalHeadlines)
+    pruneDisconnected(originalPreviewBadges)
     pruneDisconnected(originalBrandMarks)
     pruneDisconnected(originalSidebarNames)
     for (const element of new Set(roots.flatMap(findHeroHeadlines))) {
       const text = element.textContent?.trim() ?? ''
-      if (!headlineCopy.has(text)) continue
-      if (!originalHeadlines.has(element)) originalHeadlines.set(element, text)
-      element.textContent = 'TockCoder'
+      if (headlineCopy.has(text)) {
+        if (!originalHeadlines.has(element)) originalHeadlines.set(element, text)
+        element.textContent = 'TockCoder'
+      } else if (text !== 'TockCoder') {
+        continue
+      }
+      const previewBadge = element.nextElementSibling
+      if (previewBadge instanceof HTMLElement && previewCopy.has(previewBadge.textContent?.trim() ?? '')) {
+        if (!originalPreviewBadges.has(previewBadge)) originalPreviewBadges.set(previewBadge, previewBadge.hidden)
+        previewBadge.hidden = true
+      }
       element.dataset.tockteamHeroHeadline = 'true'
     }
     for (const brand of new Set(roots.flatMap(root => (
@@ -141,6 +152,9 @@ function installBranding(): () => void {
     for (const [element, original] of originalHeadlines) {
       if (element.isConnected && element.textContent === 'TockCoder') element.textContent = original
       delete element.dataset.tockteamHeroHeadline
+    }
+    for (const [previewBadge, hidden] of originalPreviewBadges) {
+      if (previewBadge.isConnected) previewBadge.hidden = hidden
     }
     for (const [mark, original] of originalBrandMarks) {
       if (mark.isConnected) mark.replaceWith(original)

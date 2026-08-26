@@ -11,3 +11,7 @@ test('Chromium smoke watchdog starts before navigation and renderer work', () =>
   assert.ok(navigation > watchdog)
   assert.match(source, /clearTimeout\(watchdog\)/u)
 })
+
+test('Chromium smoke rejects the visible TockCoder Preview badge', () => {
+  assert.match(source, /state\.previewBadgeVisible === true/u)
+})
