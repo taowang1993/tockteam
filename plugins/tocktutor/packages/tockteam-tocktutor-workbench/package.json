@@ -51,7 +51,7 @@
   "scripts": {
     "build": "pnpm run generate:typert && tsc -p tsconfig.build.json && node scripts/build-client.mjs",
     "generate:typert": "node scripts/generate-typert.mjs",
-    "test": "pnpm run build && node --test --test-concurrency=1 tests/*.test.ts && pnpm run test:component",
+    "test": "pnpm run build && node --import ./tests/react-singleton.mjs --test --test-concurrency=1 tests/*.test.ts && pnpm run test:component",
     "test:component": "vitest run tests/*.test.tsx --environment jsdom",
     "typecheck": "pnpm run generate:typert && tsc --noEmit",
     "prepack": "pnpm run build"
