@@ -1223,6 +1223,24 @@ test('persists bounded settings, tabs, focus mode, and named workspaces per vaul
   second.dispose()
 })
 
+test('requires explicit review before creating an organized Inbox note', async () => {
+  const remote = new FakeRemote()
+  const controller = new WorkbenchRouteController(remote, () => {}, () => new Date(2026, 7, 26, 10, 0))
+  await controller.syncLocation('/tocktutor')
+  const pending = controller.handleDispatch({ action: 'capture', kind: 'quick-action', operationId: 'capture-review' })
+  await controller.submitDispatchDialog({ text: 'Quadratic notes.', title: 'Algebra' })
+  assert.equal(await pending, 'handled')
+  assert.match(controller.getSnapshot().path ?? '', /^Inbox\//u)
+  assert.equal(await controller.prepareOrganization(), true)
+  const proposal = controller.getSnapshot().organizationProposal
+  assert.match(proposal?.destination ?? '', /^Organized\//u)
+  const createsBeforeApproval = remote.calls.filter(call => call.method === 'createDocument').length
+  assert.equal(await controller.applyOrganization(), true)
+  assert.equal(remote.calls.filter(call => call.method === 'createDocument').length, createsBeforeApproval + 1)
+  assert.equal(controller.getSnapshot().organizationProposal, null)
+  controller.dispose()
+})
+
 test('stores and reopens one bounded per-vault active-note bookmark', async () => {
   const storage = new MemoryStorage()
   const remote = new FakeRemote()

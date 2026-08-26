@@ -48,6 +48,8 @@ __export(client_exports, {
   MAX_GRAPH_NODES: () => MAX_GRAPH_NODES,
   MAX_LIVE_PREVIEW_LINE_BYTES: () => MAX_LIVE_PREVIEW_LINE_BYTES,
   MAX_LIVE_PREVIEW_SOURCE_BYTES: () => MAX_LIVE_PREVIEW_SOURCE_BYTES,
+  MAX_ORGANIZE_BYTES: () => MAX_ORGANIZE_BYTES,
+  MAX_ORGANIZE_CAPTURES: () => MAX_ORGANIZE_CAPTURES,
   MAX_RICH_MARKDOWN_BLOCKS: () => MAX_RICH_MARKDOWN_BLOCKS,
   MAX_RICH_MARKDOWN_BYTES: () => MAX_RICH_MARKDOWN_BYTES,
   MAX_RICH_MARKDOWN_FOOTNOTES: () => MAX_RICH_MARKDOWN_FOOTNOTES,
@@ -71,9 +73,11 @@ __export(client_exports, {
   applyTableCommand: () => applyTableCommand,
   assertUniqueCanvasDocumentIdentities: () => assertUniqueCanvasDocumentIdentities,
   buildCaptureNote: () => buildCaptureNote,
+  buildHighlightNote: () => buildHighlightNote,
   buildJournalNote: () => buildJournalNote,
   buildMarkdownExportDocument: () => buildMarkdownExportDocument,
   buildMarkdownSlides: () => buildMarkdownSlides,
+  buildOrganizationProposal: () => buildOrganizationProposal,
   calculateCanvasPointerValue: () => calculateCanvasPointerValue,
   calculateCanvasResizeGeometry: () => calculateCanvasResizeGeometry,
   compileTockTutorCssSnippet: () => compileTockTutorCssSnippet,
@@ -1403,16 +1407,16 @@ function cleanEnum(obj) {
 }
 function base64ToUint8Array(base643) {
   const binaryString = atob(base643);
-  const bytes2 = new Uint8Array(binaryString.length);
+  const bytes3 = new Uint8Array(binaryString.length);
   for (let i = 0; i < binaryString.length; i++) {
-    bytes2[i] = binaryString.charCodeAt(i);
+    bytes3[i] = binaryString.charCodeAt(i);
   }
-  return bytes2;
+  return bytes3;
 }
-function uint8ArrayToBase64(bytes2) {
+function uint8ArrayToBase64(bytes3) {
   let binaryString = "";
-  for (let i = 0; i < bytes2.length; i++) {
-    binaryString += String.fromCharCode(bytes2[i]);
+  for (let i = 0; i < bytes3.length; i++) {
+    binaryString += String.fromCharCode(bytes3[i]);
   }
   return btoa(binaryString);
 }
@@ -1421,22 +1425,22 @@ function base64urlToUint8Array(base64url3) {
   const padding = "=".repeat((4 - base643.length % 4) % 4);
   return base64ToUint8Array(base643 + padding);
 }
-function uint8ArrayToBase64url(bytes2) {
-  return uint8ArrayToBase64(bytes2).replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
+function uint8ArrayToBase64url(bytes3) {
+  return uint8ArrayToBase64(bytes3).replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
 }
 function hexToUint8Array(hex3) {
   const cleanHex = hex3.replace(/^0x/, "");
   if (cleanHex.length % 2 !== 0) {
     throw new Error("Invalid hex string length");
   }
-  const bytes2 = new Uint8Array(cleanHex.length / 2);
+  const bytes3 = new Uint8Array(cleanHex.length / 2);
   for (let i = 0; i < cleanHex.length; i += 2) {
-    bytes2[i / 2] = Number.parseInt(cleanHex.slice(i, i + 2), 16);
+    bytes3[i / 2] = Number.parseInt(cleanHex.slice(i, i + 2), 16);
   }
-  return bytes2;
+  return bytes3;
 }
-function uint8ArrayToHex(bytes2) {
-  return Array.from(bytes2).map((b) => b.toString(16).padStart(2, "0")).join("");
+function uint8ArrayToHex(bytes3) {
+  return Array.from(bytes3).map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 var Class = class {
   constructor(..._args) {
@@ -23895,25 +23899,25 @@ function buildCaptureNote(input) {
   if (title === "") throw new Error("Capture title is required.");
   if (new TextEncoder().encode(input.body).byteLength > MAX_TEMPLATE_BYTES) throw new Error("Capture body is too large.");
   const folder = safeFolder(input.folder ?? "Inbox");
-  const date5 = formatDate(input.now, "YYYY-MM-DD");
+  const date6 = formatDate(input.now, "YYYY-MM-DD");
   return {
     content: `# ${title}
 
 ${input.body}`,
-    path: collisionPath(`${folder}/${date5}-${slug(title)}.md`, input.existing)
+    path: collisionPath(`${folder}/${date6}-${slug(title)}.md`, input.existing)
   };
 }
 function buildJournalNote(input) {
   const folder = safeFolder(input.folder);
-  const date5 = formatDate(input.now, input.dateFormat ?? "YYYY-MM-DD");
-  if (date5.length === 0 || date5.length > 200 || /[\\/:*?"<>|]/u.test(date5)) throw new Error("The journal date format is invalid.");
+  const date6 = formatDate(input.now, input.dateFormat ?? "YYYY-MM-DD");
+  if (date6.length === 0 || date6.length > 200 || /[\\/:*?"<>|]/u.test(date6)) throw new Error("The journal date format is invalid.");
   return {
     content: input.template === void 0 ? `---
 journal-date: ${formatDate(input.now, "YYYY-MM-DD")}
 ---
-# ${date5}
-` : expandTemplate(input.template, { now: input.now, title: date5 }),
-    path: `${folder}/${date5}.md`
+# ${date6}
+` : expandTemplate(input.template, { now: input.now, title: date6 }),
+    path: `${folder}/${date6}.md`
   };
 }
 function uniqueNotePath(now, existing) {
@@ -23925,6 +23929,83 @@ function uniqueNotePath(now, existing) {
     candidate.setMinutes(candidate.getMinutes() + 1);
   }
   throw new Error("No unique-note timestamp is available within one day.");
+}
+
+// src/organize.ts
+var MAX_ORGANIZE_BYTES = 1e6;
+var MAX_ORGANIZE_CAPTURES = 100;
+function bytes2(value) {
+  return new TextEncoder().encode(value).byteLength;
+}
+function date5(value) {
+  return `${String(value.getFullYear())}-${String(value.getMonth() + 1).padStart(2, "0")}-${String(value.getDate()).padStart(2, "0")}`;
+}
+function slug2(value) {
+  return value.normalize("NFKD").replace(/[\u0300-\u036f]/gu, "").toLocaleLowerCase().replace(/[^a-z0-9]+/gu, "-").replace(/^-|-$/gu, "").slice(0, 80) || "note";
+}
+function safeUrl2(value) {
+  if (value === void 0 || value.trim() === "") return null;
+  try {
+    const url2 = new URL(value);
+    return (url2.protocol === "http:" || url2.protocol === "https:") && url2.username === "" && url2.password === "" ? url2.toString() : null;
+  } catch {
+    return null;
+  }
+}
+function digest(value) {
+  let hash3 = 2166136261;
+  for (const character of value) hash3 = Math.imul(hash3 ^ character.codePointAt(0), 16777619) >>> 0;
+  return hash3.toString(16).padStart(8, "0");
+}
+function buildHighlightNote(input) {
+  const title = input.title.trim().slice(0, 200);
+  if (title === "" || input.highlights.length === 0 || input.highlights.length > 1e3) throw new Error("Highlight input is invalid.");
+  const url2 = safeUrl2(input.sourceUrl);
+  if (input.sourceUrl !== void 0 && input.sourceUrl.trim() !== "" && url2 === null) throw new Error("Highlight source URL is invalid.");
+  const body = input.highlights.map((highlight) => {
+    if (bytes2(highlight) > MAX_ORGANIZE_BYTES) throw new Error("Highlight input is too large.");
+    return highlight.split(/\r?\n/u).map((line) => `> ${line}`).join("\n");
+  }).join("\n\n");
+  const content = [
+    "---",
+    ...url2 === null ? [] : [`source: ${JSON.stringify(url2)}`],
+    `title: ${JSON.stringify(title)}`,
+    "---",
+    `# ${title}`,
+    "",
+    body,
+    ""
+  ].join("\n");
+  if (bytes2(content) > MAX_ORGANIZE_BYTES) throw new Error("Highlight input is too large.");
+  return { content, path: `Highlights/${date5(input.now)}-${slug2(title)}.md` };
+}
+function buildOrganizationProposal(input) {
+  if (input.captures.length === 0 || input.captures.length > MAX_ORGANIZE_CAPTURES) throw new Error("Organization requires bounded captures.");
+  const title = input.title.trim().slice(0, 200);
+  if (title === "") throw new Error("Organization title is required.");
+  const seen = /* @__PURE__ */ new Set();
+  for (const capture of input.captures) {
+    if (!isSafeVaultRelativePath(capture.path) || !/^Inbox\/.+\.md$/iu.test(capture.path)) throw new Error("Capture path is invalid.");
+    if (seen.has(capture.path) || bytes2(capture.content) > MAX_ORGANIZE_BYTES) throw new Error("Capture input is invalid or too large.");
+    seen.add(capture.path);
+  }
+  const sections = input.captures.map((capture) => {
+    const heading2 = capture.content.match(/^#\s+(.+)$/mu)?.[1]?.trim() || capture.path.split("/").at(-1).replace(/\.md$/iu, "");
+    const body = capture.content.replace(/^---[\s\S]*?^---\s*/mu, "").replace(/^#\s+.*(?:\r?\n|$)/u, "").trim();
+    return `## ${heading2}
+
+Source: [[${capture.path}]]
+
+${body}`;
+  });
+  const destination = `Organized/${date5(input.now)}-${slug2(title)}.md`;
+  const content = `# ${title}
+
+${sections.join("\n\n")}
+`;
+  if (bytes2(content) > MAX_ORGANIZE_BYTES) throw new Error("Organization output is too large.");
+  const canonical = JSON.stringify({ captures: [...seen], content, destination, title });
+  return { captures: Object.freeze([...seen]), content, destination, id: `organize-${digest(canonical)}`, title };
 }
 
 // src/settings.ts
@@ -24461,6 +24542,7 @@ function initialSnapshot() {
     message: "Loading the active vault.",
     outline: null,
     mode: "source",
+    organizationProposal: null,
     path: null,
     phase: "loading",
     recentVaults: Object.freeze([]),
@@ -24919,6 +25001,7 @@ var WorkbenchRouteController = class {
       draftRecovered: false,
       links: null,
       message: "Select a note from the vault.",
+      organizationProposal: null,
       outline: null,
       path: null,
       revision: null,
@@ -24986,6 +25069,7 @@ var WorkbenchRouteController = class {
       graphMode: "global",
       links: null,
       message: "Loading the active vault.",
+      organizationProposal: null,
       outline: null,
       path: null,
       phase: "loading",
@@ -25606,6 +25690,56 @@ var WorkbenchRouteController = class {
       this.edit(updateCanvasNodePosition(this.snapshot.source, nodeId, node.x + deltaX, node.y + deltaY));
     } catch {
       this.update({ message: "The Canvas node could not be moved within the bounded workspace." });
+    }
+  }
+  async prepareOrganization() {
+    const path = this.snapshot.path;
+    if (path === null || !/^Inbox\/.+\.md$/iu.test(path)) return false;
+    if (this.snapshot.saveStatus !== "saved" && !await this.save()) return false;
+    try {
+      const title = noteTitle(path);
+      const proposal = buildOrganizationProposal({
+        captures: [{ content: this.snapshot.source, path }],
+        now: this.now(),
+        title: `${title} Review`
+      });
+      this.update({ organizationProposal: proposal });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  cancelOrganization() {
+    this.update({ organizationProposal: null });
+  }
+  async applyOrganization() {
+    const proposal = this.snapshot.organizationProposal;
+    const vault = this.snapshot.vault;
+    const path = this.snapshot.path;
+    if (proposal === null || proposal === void 0 || vault === null || path === null || proposal.captures[0] !== path) return false;
+    let current;
+    try {
+      current = buildOrganizationProposal({
+        captures: [{ content: this.snapshot.source, path }],
+        now: this.now(),
+        title: proposal.title
+      });
+    } catch {
+      return false;
+    }
+    if (current.id !== proposal.id || current.destination !== proposal.destination) return false;
+    try {
+      const created = remoteValue(await this.remote.tocktutorWorkbench.createDocument({
+        content: proposal.content,
+        expectedVault: vault,
+        path: proposal.destination
+      }));
+      if (created.status !== "created" || created.generation !== vault.generation || created.path !== proposal.destination) return false;
+      this.update({ message: `${proposal.destination} created.`, organizationProposal: null });
+      await this.refreshTree(vault);
+      return true;
+    } catch {
+      return false;
     }
   }
   async applyCanvasChange(change) {
@@ -26703,6 +26837,21 @@ function TockTutorRouteView(props) {
                         mention.matchedText
                       ] }, `${mention.sourcePath}-${String(mention.line)}-${String(index2)}`))
                     ] }),
+                    /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("section", { "aria-label": "Capture Organization", className: "border-t border-[var(--tt-border)] p-3", children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("div", { className: "flex items-center justify-between gap-2", children: [
+                        /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("h2", { className: "m-0 text-sm", children: "Capture Organization" }),
+                        /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs", disabled: snapshot.path === null || !/^Inbox\/.+\.md$/iu.test(snapshot.path), onClick: props.onPrepareOrganization, type: "button", children: "Prepare Review" })
+                      ] }),
+                      snapshot.organizationProposal !== null && snapshot.organizationProposal !== void 0 && /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("div", { className: "mt-2 rounded border border-[var(--tt-border)] p-2 text-xs", children: [
+                        /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("strong", { className: "block", children: snapshot.organizationProposal.title }),
+                        /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("span", { className: "block truncate", children: snapshot.organizationProposal.destination }),
+                        /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("pre", { className: "max-h-32 overflow-auto whitespace-pre-wrap", children: snapshot.organizationProposal.content }),
+                        /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("div", { className: "flex justify-end gap-1", children: [
+                          /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1", onClick: props.onCancelOrganization, type: "button", children: "Cancel" }),
+                          /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1", onClick: props.onApplyOrganization, type: "button", children: "Approve and Create" })
+                        ] })
+                      ] })
+                    ] }),
                     /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("section", { "aria-label": "TockTutor Settings", className: "border-t border-[var(--tt-border)] p-3", children: [
                       /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("div", { className: "flex items-center justify-between gap-2", children: [
                         /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("h2", { className: "m-0 text-sm", children: "Settings and Workspaces" }),
@@ -26881,6 +27030,9 @@ function TockTutorRoute(props) {
       onAddBookmark: () => {
         controller.addActiveBookmark();
       },
+      onApplyOrganization: () => {
+        void controller.applyOrganization();
+      },
       onAddPane: () => {
         void controller.addPane();
       },
@@ -26889,6 +27041,9 @@ function TockTutorRoute(props) {
       },
       onCancelDispatch: () => {
         controller.cancelDispatchDialog();
+      },
+      onCancelOrganization: () => {
+        controller.cancelOrganization();
       },
       onCanvasChange: (change) => {
         void controller.applyCanvasChange(change);
@@ -26952,6 +27107,9 @@ function TockTutorRoute(props) {
       },
       onOpenSmartView: (kind) => {
         void controller.openSmartView(kind);
+      },
+      onPrepareOrganization: () => {
+        void controller.prepareOrganization();
       },
       onReadSnapshot: (id) => {
         void controller.readRecoverySnapshot(id);

@@ -36,4 +36,5 @@ export * from './properties.ts';
 export * from './bookmarks.ts';
 export * from './graph.ts';
 export * from './capture.ts';
+export * from './organize.ts';
 //# sourceMappingURL=index.d.ts.map

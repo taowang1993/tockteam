@@ -9,6 +9,7 @@ import { TOCKTUTOR_REVIEW_PANEL_SLOT } from './review-panel.ts';
 import { type PropertyValue } from './properties.ts';
 import { type Bookmark as TockTutorBookmark } from './bookmarks.ts';
 import { type GraphPosition } from './graph.ts';
+import { type OrganizationProposal } from './organize.ts';
 import { type KeyValueStorage, type NamedWorkspace, type TockTutorSettings } from './settings.ts';
 import { type EditorCommandId } from './editor-commands.ts';
 import { type EditorStatus } from './markdown.ts';
@@ -80,6 +81,7 @@ export interface WorkbenchRouteSnapshot {
     links?: VaultLinksResult | null;
     message: string;
     mode: RouteEditorMode;
+    organizationProposal?: OrganizationProposal | null;
     outline?: VaultOutlineResult | null;
     path: string | null;
     phase: RoutePhase;
@@ -206,6 +208,9 @@ export declare class WorkbenchRouteController {
     setMode(mode: RouteEditorMode): void;
     toggleTask(index: number): void;
     moveCanvasNode(nodeId: string, deltaX: number, deltaY: number): void;
+    prepareOrganization(): Promise<boolean>;
+    cancelOrganization(): void;
+    applyOrganization(): Promise<boolean>;
     applyCanvasChange(change: CanvasChange): Promise<boolean>;
     save(): Promise<boolean>;
     private failureMessage;
@@ -217,8 +222,10 @@ export interface TockTutorRouteViewProps {
     onActivateRecentVault?(id: string): void;
     onAddBookmark?(): void;
     onActivateTab(paneId: string, path: string): void;
+    onApplyOrganization?(): void;
     onBack?(): void;
     onCancelDispatch?(): void;
+    onCancelOrganization?(): void;
     onCanvasChange?(change: CanvasChange): void;
     onCloseCommandPalette?(): void;
     onCloseSearch?(): void;
@@ -241,6 +248,7 @@ export interface TockTutorRouteViewProps {
     onOpenSandboxVault?(): void;
     onOpenSmartView?(kind: 'recent' | 'tasks' | 'journals' | 'favorites' | 'collections' | 'tags'): void;
     onOpenSearch?(): void;
+    onPrepareOrganization?(): void;
     onReadSnapshot?(id: string): void;
     onRemoveBookmark?(id: string): void;
     onRemoveRecentVault?(id: string): void;

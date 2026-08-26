@@ -67,6 +67,7 @@ import { parseFrontmatterProperties, setFrontmatterProperty, type PropertyValue 
 import { addBookmark, loadBookmarks, saveBookmarks, type Bookmark as TockTutorBookmark } from './bookmarks.ts'
 import { layoutGraph, projectGraph, type GraphPosition } from './graph.ts'
 import { buildCaptureNote, buildJournalNote, uniqueNotePath } from './capture.ts'
+import { buildOrganizationProposal, type OrganizationProposal } from './organize.ts'
 import {
   createNamedWorkspace,
   loadTockTutorSettings,
@@ -236,6 +237,7 @@ export interface WorkbenchRouteSnapshot {
   links?: VaultLinksResult | null
   message: string
   mode: RouteEditorMode
+  organizationProposal?: OrganizationProposal | null
   outline?: VaultOutlineResult | null
   path: string | null
   phase: RoutePhase
@@ -383,6 +385,7 @@ function initialSnapshot(): WorkbenchRouteSnapshot {
     message: 'Loading the active vault.',
     outline: null,
     mode: 'source',
+    organizationProposal: null,
     path: null,
     phase: 'loading',
     recentVaults: Object.freeze([]),
@@ -915,6 +918,7 @@ export class WorkbenchRouteController {
       draftRecovered: false,
       links: null,
       message: 'Select a note from the vault.',
+      organizationProposal: null,
       outline: null,
       path: null,
       revision: null,
@@ -988,6 +992,7 @@ export class WorkbenchRouteController {
       graphMode: 'global',
       links: null,
       message: 'Loading the active vault.',
+      organizationProposal: null,
       outline: null,
       path: null,
       phase: 'loading',
@@ -1658,6 +1663,59 @@ export class WorkbenchRouteController {
     }
   }
 
+  async prepareOrganization(): Promise<boolean> {
+    const path = this.snapshot.path
+    if (path === null || !/^Inbox\/.+\.md$/iu.test(path)) return false
+    if (this.snapshot.saveStatus !== 'saved' && !await this.save()) return false
+    try {
+      const title = noteTitle(path)
+      const proposal = buildOrganizationProposal({
+        captures: [{ content: this.snapshot.source, path }],
+        now: this.now(),
+        title: `${title} Review`,
+      })
+      this.update({ organizationProposal: proposal })
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  cancelOrganization(): void {
+    this.update({ organizationProposal: null })
+  }
+
+  async applyOrganization(): Promise<boolean> {
+    const proposal = this.snapshot.organizationProposal
+    const vault = this.snapshot.vault
+    const path = this.snapshot.path
+    if (proposal === null || proposal === undefined || vault === null || path === null || proposal.captures[0] !== path) return false
+    let current: OrganizationProposal
+    try {
+      current = buildOrganizationProposal({
+        captures: [{ content: this.snapshot.source, path }],
+        now: this.now(),
+        title: proposal.title,
+      })
+    } catch {
+      return false
+    }
+    if (current.id !== proposal.id || current.destination !== proposal.destination) return false
+    try {
+      const created = remoteValue(await this.remote.tocktutorWorkbench.createDocument({
+        content: proposal.content,
+        expectedVault: vault,
+        path: proposal.destination,
+      }))
+      if (created.status !== 'created' || created.generation !== vault.generation || created.path !== proposal.destination) return false
+      this.update({ message: `${proposal.destination} created.`, organizationProposal: null })
+      await this.refreshTree(vault)
+      return true
+    } catch {
+      return false
+    }
+  }
+
   async applyCanvasChange(change: CanvasChange): Promise<boolean> {
     const vault = this.snapshot.vault
     const path = this.snapshot.path
@@ -1899,8 +1957,10 @@ export interface TockTutorRouteViewProps {
   onActivateRecentVault?(id: string): void
   onAddBookmark?(): void
   onActivateTab(paneId: string, path: string): void
+  onApplyOrganization?(): void
   onBack?(): void
   onCancelDispatch?(): void
+  onCancelOrganization?(): void
   onCanvasChange?(change: CanvasChange): void
   onCloseCommandPalette?(): void
   onCloseSearch?(): void
@@ -1923,6 +1983,7 @@ export interface TockTutorRouteViewProps {
   onOpenSandboxVault?(): void
   onOpenSmartView?(kind: 'recent' | 'tasks' | 'journals' | 'favorites' | 'collections' | 'tags'): void
   onOpenSearch?(): void
+  onPrepareOrganization?(): void
   onReadSnapshot?(id: string): void
   onRemoveBookmark?(id: string): void
   onRemoveRecentVault?(id: string): void
@@ -2781,6 +2842,23 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
             {(snapshot.links?.outgoingDetails ?? []).map((link, index) => <Button unstyled className="block w-full rounded border-0 bg-transparent px-1 py-0.5 text-left text-xs" disabled={link.resolvedPath === null} key={`${link.authoredTarget}-${String(link.line)}-${String(index)}`} onClick={() => { if (link.resolvedPath !== null) props.onSelect(link.resolvedPath) }} type="button">{link.displayText || link.authoredTarget}</Button>)}
             {(snapshot.links?.unlinkedMentions ?? []).map((mention, index) => <span className="block text-xs text-[var(--tt-muted)]" key={`${mention.sourcePath}-${String(mention.line)}-${String(index)}`}>Mention: {mention.matchedText}</span>)}
           </section>
+          <section aria-label="Capture Organization" className="border-t border-[var(--tt-border)] p-3">
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="m-0 text-sm">Capture Organization</h2>
+              <Button unstyled className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs" disabled={snapshot.path === null || !/^Inbox\/.+\.md$/iu.test(snapshot.path)} onClick={props.onPrepareOrganization} type="button">Prepare Review</Button>
+            </div>
+            {snapshot.organizationProposal !== null && snapshot.organizationProposal !== undefined && (
+              <div className="mt-2 rounded border border-[var(--tt-border)] p-2 text-xs">
+                <strong className="block">{snapshot.organizationProposal.title}</strong>
+                <span className="block truncate">{snapshot.organizationProposal.destination}</span>
+                <pre className="max-h-32 overflow-auto whitespace-pre-wrap">{snapshot.organizationProposal.content}</pre>
+                <div className="flex justify-end gap-1">
+                  <Button unstyled className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1" onClick={props.onCancelOrganization} type="button">Cancel</Button>
+                  <Button unstyled className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1" onClick={props.onApplyOrganization} type="button">Approve and Create</Button>
+                </div>
+              </div>
+            )}
+          </section>
           <section aria-label="TockTutor Settings" className="border-t border-[var(--tt-border)] p-3">
             <div className="flex items-center justify-between gap-2">
               <h2 className="m-0 text-sm">Settings and Workspaces</h2>
@@ -2956,9 +3034,11 @@ export function TockTutorRoute(props: TockTutorRouteProps): ReactNode {
         onActivateRecentVault={id => { void controller.activateRecentVault(id) }}
         onActivateTab={(paneId, path) => { void controller.activateTab(paneId, path) }}
         onAddBookmark={() => { controller.addActiveBookmark() }}
+        onApplyOrganization={() => { void controller.applyOrganization() }}
         onAddPane={() => { void controller.addPane() }}
         onBack={() => { void controller.goBack() }}
         onCancelDispatch={() => { controller.cancelDispatchDialog() }}
+        onCancelOrganization={() => { controller.cancelOrganization() }}
         onCanvasChange={change => { void controller.applyCanvasChange(change) }}
         onCloseCommandPalette={() => { controller.setCommandPaletteOpen(false) }}
         onCloseSearch={() => { controller.closeSearch() }}
@@ -2980,6 +3060,7 @@ export function TockTutorRoute(props: TockTutorRouteProps): ReactNode {
         onOpenSandboxVault={() => { void controller.openSandboxVault() }}
         onOpenSearch={() => { controller.openSearch('') }}
         onOpenSmartView={kind => { void controller.openSmartView(kind) }}
+        onPrepareOrganization={() => { void controller.prepareOrganization() }}
         onReadSnapshot={id => { void controller.readRecoverySnapshot(id) }}
         onRemoveBookmark={id => { controller.removeBookmark(id) }}
         onRemoveRecentVault={id => { void controller.removeRecentVault(id) }}
