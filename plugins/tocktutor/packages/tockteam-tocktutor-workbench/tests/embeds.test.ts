@@ -1,6 +1,11 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { collectEmbedTargets, resolveEmbedTargetPath, resolveNoteEmbedFragment } from '../dist/embeds.js'
+import {
+  collectEmbedTargets,
+  resolveEmbedGraph,
+  resolveEmbedTargetPath,
+  resolveNoteEmbedFragment,
+} from '../dist/embeds.js'
 
 test('collects bounded safe note, media, Canvas, and Base embeds outside code', () => {
   const source = [
