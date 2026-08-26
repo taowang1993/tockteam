@@ -35,6 +35,7 @@ test('print/export owner rejects unsafe or oversized resources before native eff
     picker: fixture.value,
   })
   assert.equal((await owner.render({ format: 'print', html: '<script>alert(1)</script>', identity, title: 'Unsafe' }, new AbortController().signal)).status, 'denied')
+  assert.equal((await owner.render({ format: 'print', html: '<svg/onload=alert(1)>', identity, title: 'Unsafe' }, new AbortController().signal)).status, 'denied')
   assert.equal((await owner.render({ format: 'print', html: '<img src="https://example.com/x.png">', identity, title: 'Unsafe' }, new AbortController().signal)).status, 'denied')
   assert.equal((await owner.render({ format: 'print', html: '<img src=https://example.com/x.png>', identity, title: 'Unsafe' }, new AbortController().signal)).status, 'denied')
   assert.equal((await owner.render({

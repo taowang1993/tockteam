@@ -13,7 +13,7 @@ import {
   type TockTeamDesktopPickerService,
 } from './host-contract.ts'
 
-const FORBIDDEN_MARKUP = /<(?:script|iframe|object|embed|link|meta|base|style|form)\b|\son[a-z]+\s*=|\s(?:style|srcset|poster)\s*=/iu
+const FORBIDDEN_MARKUP = /<(?:script|iframe|object|embed|link|meta|base|style|form|svg|math)\b|(?:\s|\/)on[a-z]+\s*=|\s(?:style|srcset|poster)\s*=/iu
 const RESOURCE_PATTERN = /\b(?:src|href)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/giu
 const ALLOWED_DATA_IMAGE = /^data:image\/(?:avif|gif|jpeg|png|webp);base64,[a-z0-9+/=]+$/iu
 const RESULT_LIFETIME_MS = 5 * 60 * 1000
