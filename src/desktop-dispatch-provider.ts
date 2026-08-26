@@ -42,7 +42,9 @@ export class DesktopDispatchProvider implements TockTeamDesktopDispatch {
   private readonly currentVault: DesktopPickerCurrentVault
   private readonly lifetime = new AbortController()
   private readonly listeners = new Set<(event: DesktopDispatchEvent) => void>()
+  private idleCleanup: Promise<void> | undefined
   private polling: Promise<void> | undefined
+  private pollController: AbortController | undefined
   private disposed = false
   private disposal: Promise<void> | undefined
 
@@ -63,8 +65,11 @@ export class DesktopDispatchProvider implements TockTeamDesktopDispatch {
   subscribe(listener: (event: DesktopDispatchEvent) => void): () => void {
     if (this.disposed) return () => {}
     this.listeners.add(listener)
-    this.polling ??= this.poll()
-    return () => { this.listeners.delete(listener) }
+    if (this.idleCleanup === undefined) this.polling ??= this.poll()
+    return () => {
+      this.listeners.delete(listener)
+      if (this.listeners.size === 0) this.cleanupIdlePoll()
+    }
   }
 
   async complete(
@@ -82,13 +87,16 @@ export class DesktopDispatchProvider implements TockTeamDesktopDispatch {
     if (this.disposal !== undefined) return this.disposal
     this.disposed = true
     this.listeners.clear()
+    this.pollController?.abort()
     this.lifetime.abort()
     this.disposal = this.finishDispose()
     return this.disposal
   }
 
   private async finishDispose(): Promise<void> {
-    await Promise.allSettled(this.polling === undefined ? [] : [this.polling])
+    await Promise.allSettled([this.polling, this.idleCleanup].filter(
+      (work): work is Promise<void> => work !== undefined,
+    ))
     if (this.endpoint === undefined || this.token === undefined) return
     const result = await this.request({ method: 'disposeProvider' }) as { status?: string }
     if (result.status !== 'closed') throw new Error('TockTeam Desktop dispatch cleanup was incomplete')
@@ -103,11 +111,15 @@ export class DesktopDispatchProvider implements TockTeamDesktopDispatch {
   }
 
   private async poll(): Promise<void> {
+    const controller = new AbortController()
+    this.pollController = controller
     try {
-      while (!this.disposed && this.listeners.size > 0) {
+      while (!this.disposed && this.listeners.size > 0 && !controller.signal.aborted) {
         let response: unknown
-        try { response = await this.call({ method: 'next' }, this.lifetime.signal) } catch {
-          if (!this.disposed) await new Promise(resolve => setTimeout(resolve, 100))
+        try { response = await this.call({ method: 'next' }, controller.signal) } catch {
+          if (!this.disposed && this.listeners.size > 0 && !controller.signal.aborted) {
+            await new Promise(resolve => setTimeout(resolve, 100))
+          }
           continue
         }
         const event = typeof response === 'object' && response !== null
@@ -118,13 +130,38 @@ export class DesktopDispatchProvider implements TockTeamDesktopDispatch {
           await this.complete({ operationId: event.identity.operationId, status: 'stale' }, this.lifetime.signal).catch(() => undefined)
           continue
         }
-        for (const listener of [...this.listeners]) {
-          try { listener(event) } catch { /* one listener cannot block the others */ }
-        }
+        if (this.listeners.size === 0) return
+        this.deliver(event)
       }
     } finally {
+      if (this.pollController === controller) this.pollController = undefined
       this.polling = undefined
-      if (!this.disposed && this.listeners.size > 0) this.polling = this.poll()
+      if (!this.disposed && this.listeners.size > 0 && this.idleCleanup === undefined) {
+        this.polling = this.poll()
+      }
+    }
+  }
+
+  private cleanupIdlePoll(): void {
+    if (this.idleCleanup !== undefined || this.disposed) return
+    this.pollController?.abort()
+    const polling = this.polling
+    const cleanup = Promise.allSettled(polling === undefined ? [] : [polling])
+      .then(async () => {
+        if (this.endpoint === undefined || this.token === undefined) return
+        await this.request({ method: 'disposeProvider' })
+      })
+      .finally(() => {
+        if (this.idleCleanup === cleanup) this.idleCleanup = undefined
+        if (!this.disposed && this.listeners.size > 0) this.polling ??= this.poll()
+      })
+    this.idleCleanup = cleanup
+    void cleanup.catch(() => undefined)
+  }
+
+  private deliver(event: DesktopDispatchEvent): void {
+    for (const listener of [...this.listeners]) {
+      try { listener(event) } catch { /* one listener cannot block the others */ }
     }
   }
 

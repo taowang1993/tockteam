@@ -41,6 +41,46 @@ test('dispatch channel authenticates and provider subscribes without listener in
   await native.stop()
 })
 
+test('dispatch provider aborts an empty subscription poll without stranding work', async () => {
+  const native = channel()
+  const environment = await native.start()
+  const owner = (native as unknown as { owner: DesktopDispatchOwner }).owner
+  let delivered!: () => void
+  const eventDelivered = new Promise<void>(resolve => { delivered = resolve })
+  let releaseReply!: () => void
+  const replyBlocked = new Promise<void>(resolve => { releaseReply = resolve })
+  const originalNext = owner.next.bind(owner)
+  owner.next = (async (signal, consumerId) => {
+    const event = await originalNext(signal, consumerId)
+    if (event !== undefined) {
+      delivered()
+      await replyBlocked
+    }
+    return event
+  }) as typeof owner.next
+  const provider = new DesktopDispatchProvider(environment, fetch, () => ({ active: true, generation: 1, id: 'vault' }))
+  const unsubscribe = provider.subscribe(() => {})
+  assert.equal(native.publishQuickAction('new'), true)
+  await eventDelivered
+  unsubscribe()
+  releaseReply()
+  for (let attempt = 0; attempt < 20
+    && (provider as unknown as { polling?: Promise<void> }).polling !== undefined; attempt += 1) {
+    await new Promise<void>(resolve => { setImmediate(resolve) })
+  }
+  assert.equal((provider as unknown as { polling?: Promise<void> }).polling, undefined)
+  const received = new Promise<DesktopDispatchEvent>(resolve => { provider.subscribe(resolve) })
+  const event = await Promise.race([
+    received,
+    new Promise<never>((_resolve, reject) => {
+      setTimeout(() => { reject(new Error('dispatch was stranded')) }, 500)
+    }),
+  ])
+  assert.equal(event.kind, 'quick-action')
+  await provider.dispose()
+  await native.stop()
+})
+
 test('trusted-main dispatch consumer receives normalized work and completes exact delivery', async () => {
   const native = channel()
   await native.start()
