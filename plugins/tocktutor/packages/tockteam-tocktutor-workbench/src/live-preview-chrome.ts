@@ -209,7 +209,6 @@ export function buildLivePreviewChromePlugin(options: {
     },
     props: {
       decorations: state => decorations(state, chromeKey.getState(state)?.folded ?? new Set()),
-      editable: () => !options.isProtected(),
       nodeViews: {
         image(node) {
           const src = typeof node.attrs.src === 'string' ? node.attrs.src : ''
@@ -229,6 +228,29 @@ export function buildLivePreviewChromePlugin(options: {
         },
       },
       handleDOMEvents: {
+        beforeinput(_view, event) {
+          if (!options.isProtected()) return false
+          event.preventDefault()
+          return true
+        },
+        paste(_view, event) {
+          if (!options.isProtected()) return false
+          event.preventDefault()
+          return true
+        },
+        drop(_view, event) {
+          if (!options.isProtected()) return false
+          event.preventDefault()
+          return true
+        },
+        keydown(_view, event) {
+          if (!options.isProtected()) return false
+          const mutates = event.key.length === 1 && !event.metaKey && !event.ctrlKey
+            || ['Backspace', 'Delete', 'Enter', 'Tab'].includes(event.key)
+          if (!mutates) return false
+          event.preventDefault()
+          return true
+        },
         mousedown(view, event) {
           const target = event.target instanceof Element ? event.target : null
           const externalUrl = target?.closest<HTMLElement>('[data-external-url]')?.dataset.externalUrl
