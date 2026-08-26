@@ -41,6 +41,18 @@ function deferred<T>(): Deferred<T> {
   return { promise, reject, resolve }
 }
 
+export function dshLaunchSpec(
+  options: Pick<DshRuntimeOptions, 'cliEntry' | 'launcher' | 'nodeBinary'>,
+  args: readonly string[],
+): { args: string[]; command: string } {
+  return options.launcher === undefined
+    ? { args: [options.cliEntry, ...args], command: options.nodeBinary }
+    : {
+        args: [...options.launcher.args, options.nodeBinary, options.cliEntry, ...args],
+        command: options.launcher.command,
+      }
+}
+
 function lineReader(consume: (line: string) => void): (chunk: Buffer) => void {
   let pending = ''
   return (chunk: Buffer): void => {
@@ -73,11 +85,8 @@ export class DshRuntimeSupervisor extends EventEmitter {
   async start(): Promise<URL> {
     if (this.child !== undefined) throw new Error('DSH runtime is already running')
     this.ready = false
-    const command = this.options.launcher?.command ?? this.options.nodeBinary
-    const args = this.options.launcher === undefined
-      ? [this.options.cliEntry, ...this.options.args]
-      : [...this.options.launcher.args, this.options.nodeBinary, this.options.cliEntry, ...this.options.args]
-    const child = spawn(command, args, {
+    const launch = dshLaunchSpec(this.options, this.options.args)
+    const child = spawn(launch.command, launch.args, {
       cwd: this.options.cwd,
       env: this.options.env,
       stdio: ['ignore', 'pipe', 'pipe'],
@@ -96,9 +105,16 @@ export class DshRuntimeSupervisor extends EventEmitter {
       if (stream !== 'stdout' || settled) return
       const match = READY_LINE.exec(line)
       if (match?.[1] === undefined) return
+      let url: URL
+      try {
+        url = new URL(match[1])
+      } catch (error) {
+        settleFailure(new Error('invalid DSH runtime readiness URL', { cause: error }))
+        return
+      }
       settled = true
       this.ready = true
-      readiness.resolve(new URL(match[1]))
+      readiness.resolve(url)
     }
     child.stdout.on('data', lineReader(line => { consume('stdout', line) }))
     child.stderr.on('data', lineReader(line => { consume('stderr', line) }))
@@ -120,6 +136,9 @@ export class DshRuntimeSupervisor extends EventEmitter {
     }, this.options.readyTimeoutMs ?? 45_000)
     try {
       return await readiness.promise
+    } catch (error) {
+      await this.stop()
+      throw error
     } finally {
       clearTimeout(timeout)
     }
@@ -129,7 +148,7 @@ export class DshRuntimeSupervisor extends EventEmitter {
   async stop(timeoutMs = 8_000): Promise<void> {
     const child = this.child
     if (child === undefined) return
-    const exited = new Promise<void>((resolve) => { child.once('exit', () => { resolve() }) })
+    const exited = new Promise<void>((resolve) => { child.once('close', () => { resolve() }) })
     child.kill('SIGTERM')
     let timer: NodeJS.Timeout | undefined
     const timedOut = new Promise<'timeout'>((resolve) => {
@@ -153,7 +172,8 @@ export async function runDshCommand(
   timeoutMs = 120_000,
 ): Promise<{ stderr: string; stdout: string }> {
   return await new Promise((resolve, reject) => {
-    const child = spawn(options.nodeBinary, [options.cliEntry, ...args], {
+    const launch = dshLaunchSpec(options, args)
+    const child = spawn(launch.command, launch.args, {
       cwd: options.cwd,
       env: options.env,
       stdio: ['ignore', 'pipe', 'pipe'],
