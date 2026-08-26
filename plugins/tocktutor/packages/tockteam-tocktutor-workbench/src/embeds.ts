@@ -82,7 +82,7 @@ export function resolveEmbedTargetPath(entries: readonly { path: string }[], tar
   const targetName = targetPath.split('/').at(-1)?.toLowerCase()
   if (targetName === undefined) return null
   const matches = entries.filter(entry => entry.path.split('/').at(-1)?.toLowerCase() === targetName)
-  return matches.length === 1 ? matches[0]!.path : null
+  return matches.length === 1 ? matches[0]?.path ?? null : null
 }
 
 export function resolveNoteEmbedFragment(source: string, fragment: string | null): string | null {

@@ -89,6 +89,8 @@ async function resolveExportEmbeds(runtime, source, expectedVault, signal) {
         if (path === null)
             continue;
         const entry = entries.find(candidate => candidate.path === path);
+        if (entry === undefined)
+            continue;
         const projectedTarget = { ...target, path: entry.path };
         if (target.kind === 'media') {
             if (entry.kind !== 'attachment')

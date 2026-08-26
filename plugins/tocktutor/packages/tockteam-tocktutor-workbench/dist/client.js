@@ -29745,7 +29745,7 @@ function resolveEmbedTargetPath(entries, targetPath) {
   const targetName = targetPath.split("/").at(-1)?.toLowerCase();
   if (targetName === void 0) return null;
   const matches = entries.filter((entry) => entry.path.split("/").at(-1)?.toLowerCase() === targetName);
-  return matches.length === 1 ? matches[0].path : null;
+  return matches.length === 1 ? matches[0]?.path ?? null : null;
 }
 function resolveNoteEmbedFragment(source, fragment) {
   if (new TextEncoder().encode(source).byteLength > MAX_EMBED_CONTENT_BYTES) return null;

@@ -94,7 +94,8 @@ async function resolveExportEmbeds(
   for (const target of targets) {
     const path = resolveEmbedTargetPath(entries, target.path)
     if (path === null) continue
-    const entry = entries.find(candidate => candidate.path === path)!
+    const entry = entries.find(candidate => candidate.path === path)
+    if (entry === undefined) continue
     const projectedTarget = { ...target, path: entry.path }
     if (target.kind === 'media') {
       if (entry.kind !== 'attachment') continue
