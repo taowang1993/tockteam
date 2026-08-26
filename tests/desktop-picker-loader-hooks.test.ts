@@ -160,8 +160,13 @@ test('startup post-open resolved flat-stage swap rebinds path and blocks globall
   const child = runHook('startup-resolved-stage-open-swap', nextDestination, recoveryRoot, vault, result, foreign, stage)
   assert.equal(child.status, 0, child.stderr || child.stdout)
   assert.equal(JSON.parse(await readFile(result, 'utf8')).outcome, 'error:recovery-required')
-  assert.equal(await readFile(stage, 'utf8'), foreign)
-  assert.equal(await readFile(`${stage}-recorded-owner`, 'utf8'), secret)
+  if (process.platform === 'win32') {
+    assert.equal(await readFile(stage, 'utf8'), secret)
+    await assert.rejects(readFile(`${stage}-recorded-owner`), { code: 'ENOENT' })
+  } else {
+    assert.equal(await readFile(stage, 'utf8'), foreign)
+    assert.equal(await readFile(`${stage}-recorded-owner`, 'utf8'), secret)
+  }
   assert.equal(await readFile(publishedDestination, 'utf8'), secret)
 })
 

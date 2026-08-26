@@ -346,7 +346,11 @@ test('journal checkpoint stage drift is rebound before any payload write', async
   await owner.dispose()
 })
 
-test('moved destination parent reports unresolved residue instead of false scrubbed cleanup', async () => {
+test('moved destination parent reports unresolved residue instead of false scrubbed cleanup', {
+  skip: process.platform === 'win32'
+    ? 'Windows prevents renaming a directory that contains an open destination handle'
+    : false,
+}, async () => {
   const root = await canonicalTemp('tockteam-picker-moved-parent-')
   const moved = `${root}-moved`
   const activeVault = await canonicalTemp('tockteam-picker-active-')

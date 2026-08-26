@@ -1904,7 +1904,7 @@ export class DesktopPickerOwner {
       journalHandle = await open(path, fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW | fsConstants.O_NONBLOCK)
       const journalStat = await journalHandle.stat()
       if (!journalStat.isFile() || Number(journalStat.size) > MAX_RECOVERY_JOURNAL_BYTES
-        || (Number(journalStat.mode) & 0o777) !== 0o600
+        || process.platform !== 'win32' && (Number(journalStat.mode) & 0o777) !== 0o600
         || typeof process.getuid === 'function' && journalStat.uid !== process.getuid()) return this.markRecoveryCorrupt()
       const journalBytes = Buffer.alloc(Number(journalStat.size))
       const read = await journalHandle.read(journalBytes, 0, journalBytes.length, 0)
@@ -1972,7 +1972,8 @@ export class DesktopPickerOwner {
         const finalStat = fstatSync(item.handle.fd)
         const canonicalPath = realpathSync(item.residue.path)
         const pathStat = lstatSync(item.residue.path)
-        if (pathStat.isSymbolicLink() || canonicalPath !== item.residue.path
+        const canonicalStat = lstatSync(canonicalPath)
+        if (pathStat.isSymbolicLink() || identityOf(canonicalStat) !== identityOf(pathStat)
           || revisionOf(finalStat) !== revisionOf(item.stat)
           || revisionOf(pathStat) !== revisionOf(item.stat)
           || !pathStat.isFile()) return false
@@ -1980,7 +1981,9 @@ export class DesktopPickerOwner {
       const finalJournalStat = fstatSync(journalHandle.fd)
       const canonicalJournalPath = realpathSync(journalPath)
       const journalPathStat = lstatSync(journalPath)
-      return !journalPathStat.isSymbolicLink() && canonicalJournalPath === journalPath
+      const canonicalJournalStat = lstatSync(canonicalJournalPath)
+      return !journalPathStat.isSymbolicLink()
+        && identityOf(canonicalJournalStat) === identityOf(journalPathStat)
         && revisionOf(finalJournalStat) === revisionOf(journalStat)
         && revisionOf(journalPathStat) === revisionOf(journalStat)
     } catch {
