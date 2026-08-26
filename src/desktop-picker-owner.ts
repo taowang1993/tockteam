@@ -69,6 +69,8 @@ import {
   type ListDesktopSourceResult,
   type StatDesktopSourceRequest,
   type StatDesktopSourceResult,
+  type TockTeamDesktopVaultSelectionAdoptInput,
+  type TockTeamDesktopVaultSelectionAdoptResult,
   type TockTeamDesktopVaultSelectionBindInput,
   type TockTeamDesktopVaultSelectionBindResult,
   type TockTeamDesktopVaultSelectionClaim,
@@ -93,6 +95,7 @@ export const DESKTOP_PICKER_CHANNEL_PATH = '/tockteam/desktop-picker'
 
 const MAX_ID_BYTES = 256
 const MAX_LABEL_BYTES = 512
+const MAX_RUNTIME_VAULT_PATH_BYTES = 4096
 const MAX_PUBLICATION_NAME_BYTES = 256
 const MAX_SOURCE_LIMIT = 1_024 * 1024 * 1024
 const MAX_RECOVERY_JOURNALS = 1024
@@ -638,6 +641,55 @@ export class DesktopPickerOwner {
       })
       this.scheduleExpiry()
       return { canonicalPath, claim: cast<TockTeamDesktopVaultSelectionClaim>(claim), identity: { dev, ino }, operationId, status: 'consumed' }
+    } catch (cause) {
+      const status = cause instanceof TockTeamDesktopGrantError && cause.code === 'stale'
+        ? 'stale'
+        : signal.aborted ? 'cancelled' : 'unavailable'
+      return { operationId, status }
+    }
+  }
+
+  async adoptVaultSelection(
+    request: TockTeamDesktopVaultSelectionAdoptInput,
+    signal: AbortSignal,
+  ): Promise<TockTeamDesktopVaultSelectionAdoptResult> {
+    const operationId = typeof request?.operationId === 'string' ? request.operationId.slice(0, MAX_ID_BYTES) : ''
+    if (signal.aborted) return { operationId, status: 'cancelled' }
+    if (!exact(request, ['canonicalPath', 'operationId', 'vaultGeneration', 'vaultId'])
+      || !text(request.canonicalPath, MAX_RUNTIME_VAULT_PATH_BYTES) || !isAbsolute(request.canonicalPath)
+      || !text(request.operationId) || typeof request.vaultId !== 'string'
+      || !/^vault:[a-f0-9]{64}$/u.test(request.vaultId)
+      || !Number.isSafeInteger(request.vaultGeneration) || request.vaultGeneration <= 0) {
+      return { operationId, status: 'denied' }
+    }
+    try {
+      this.assertAvailable()
+      const canonicalPath = await this.safeRealpath(request.canonicalPath)
+      const stat = canonicalPath === undefined ? undefined : await this.safeLstat(canonicalPath)
+      if (signal.aborted) return { operationId, status: 'cancelled' }
+      if (canonicalPath !== request.canonicalPath || stat === undefined || !stat.isDirectory() || stat.isSymbolicLink()) {
+        return { operationId, status: 'stale' }
+      }
+      const dev = String(stat.dev)
+      const ino = String(stat.ino)
+      const active = this.activeVault
+      if (active !== undefined && active.path === canonicalPath && active.dev === dev && active.ino === ino
+        && active.id === request.vaultId && active.generation === request.vaultGeneration) {
+        return { operationId, status: 'bound' }
+      }
+      const cleanup = await this.clearSessions()
+      if (cleanup.status !== 'complete') return { operationId, status: 'unavailable' }
+      if (signal.aborted || !this.options.isAvailable()) return { operationId, status: 'cancelled' }
+      this.options.onVaultTransition?.()
+      this.activeVault = {
+        claim: `runtime:${this.options.randomId()}`,
+        dev,
+        generation: request.vaultGeneration,
+        id: request.vaultId,
+        ino,
+        path: canonicalPath,
+      }
+      return { operationId, status: 'bound' }
     } catch (cause) {
       const status = cause instanceof TockTeamDesktopGrantError && cause.code === 'stale'
         ? 'stale'

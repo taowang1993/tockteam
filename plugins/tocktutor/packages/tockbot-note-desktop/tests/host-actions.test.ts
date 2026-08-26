@@ -25,8 +25,10 @@ async function loaded(): Promise<{
   gateway: TockTutorDesktopGateway
   driftAfterReveal(value: VaultState): void
   setState(value: VaultState): void
+  syncCalls(): number
 }> {
   const calls: Call[] = []
+  let desktopSyncCalls = 0
   let stateAfterReveal: VaultState | undefined
   let state: VaultState = {
     active: true,
@@ -44,6 +46,10 @@ async function loaded(): Promise<{
       })
       ctx.provide('noteVault', {
         get state() { return state },
+        async synchronizeDesktopSelection() {
+          desktopSyncCalls += 1
+          return state
+        },
         async activateDesktopSelection(...parameters: unknown[]) {
           calls.push({ method: 'activateDesktopSelection', parameters })
           state = { active: true, ...nextVault }
@@ -158,6 +164,7 @@ async function loaded(): Promise<{
     gateway,
     driftAfterReveal(value) { stateAfterReveal = value },
     setState(value) { state = value },
+    syncCalls() { return desktopSyncCalls },
   }
 }
 
@@ -325,6 +332,7 @@ test('opens and closes only the active caller-bound note pop-out', async () => {
       await state.gateway.closePopOut('authorization-close', 'Folder/Note.md', vault, signal),
       { status: 'closed' },
     )
+    assert.equal(state.syncCalls(), 4)
     assert.deepEqual(publicCalls(state.calls), [
       {
         method: 'claim',

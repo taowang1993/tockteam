@@ -110,6 +110,41 @@ test('Runtime 0.1.2 activates a Desktop selection through consume-bind authority
   }
 })
 
+test('runtime-authorized managed or recent vault adopts the exact main identity over the authenticated channel', async () => {
+  const vault = await canonicalTemp('tockteam-runtime-adopt-vault-')
+  const source = await canonicalTemp('tockteam-runtime-adopt-source-')
+  const owner = new DesktopPickerOwner({
+    isAvailable: () => true,
+    showOpenDialog: async () => ({ canceled: false, filePath: source }),
+    showSaveDialog: async () => ({ canceled: true }),
+  })
+  const channel = new DesktopPickerChannel(owner)
+  const environment = await channel.start()
+  const loaded = await loadRuntime()
+  const picker = new DesktopPickerProvider(environment, fetch, () => loaded.context.noteVault.state)
+  const vaultProvider = new DesktopVaultSelectionProvider(loaded.context, environment)
+  try {
+    const state = loaded.context.noteVault.activate(vault, 0)
+    assert.equal(state.active, true)
+    if (!state.active) return
+    assert.strictEqual(await loaded.context.noteVault.synchronizeDesktopSelection(new AbortController().signal), state)
+    assert.deepEqual(owner.nativeVaultSnapshot(), { generation: state.generation, id: state.id })
+    const identity = {
+      operationId: 'runtime-adopt-source', requestId: 'runtime-adopt-request', sessionId: 'runtime-adopt-session',
+      vaultGeneration: state.generation, vaultId: state.id, windowId: 'runtime-adopt-window',
+    }
+    assert.equal((await picker.pick({ identity, kind: 'source', purpose: 'markdown-folder' }, new AbortController().signal)).status, 'selected')
+  } finally {
+    await loaded.context.fiber.dispose()
+    await vaultProvider.close()
+    await picker.dispose()
+    await channel.stop()
+    await rm(loaded.root, { recursive: true, force: true })
+    await rm(vault, { recursive: true, force: true })
+    await rm(source, { recursive: true, force: true })
+  }
+})
+
 test('selected vault inode replacement invalidates Runtime and exact main mapping', async () => {
   const vault = await canonicalTemp('tockteam-replaced-vault-')
   const moved = `${vault}-moved`

@@ -229,6 +229,23 @@ export type TockTeamDesktopVaultSelectionBindResult =
       status: 'bound'
     }
 
+export interface TockTeamDesktopVaultSelectionAdoptInput {
+  canonicalPath: string
+  operationId: string
+  vaultGeneration: number
+  vaultId: string
+}
+
+export type TockTeamDesktopVaultSelectionAdoptResult =
+  | {
+      operationId: string
+      status: TockTeamDesktopVaultSelectionFailureStatus
+    }
+  | {
+      operationId: string
+      status: 'bound'
+    }
+
 export interface TockTeamDesktopVaultSelectionReleaseInput {
   claim: TockTeamDesktopVaultSelectionClaim
   operationId: string
@@ -237,6 +254,13 @@ export interface TockTeamDesktopVaultSelectionReleaseInput {
 export abstract class TockTeamDesktopVaultSelection extends Service {
   constructor(ctx: Context) {
     super(ctx, TOCKTEAM_DESKTOP_VAULT_SELECTION_SERVICE)
+  }
+
+  async adopt(
+    input: TockTeamDesktopVaultSelectionAdoptInput,
+    _signal: AbortSignal,
+  ): Promise<TockTeamDesktopVaultSelectionAdoptResult> {
+    return { operationId: typeof input?.operationId === 'string' ? input.operationId : '', status: 'unavailable' }
   }
 
   abstract bind(
@@ -3246,6 +3270,53 @@ export class NoteVaultRuntime extends Service {
     root: string,
   ): void {
     this.assertActiveVaultBound(state, root)
+  }
+
+  /** Synchronize the active runtime vault into the authenticated Desktop owner before native authorization is claimed. */
+  async synchronizeDesktopSelection(signal: AbortSignal): Promise<Extract<NoteVaultState, { active: true }>> {
+    const state = this.currentState
+    const root = this.vaultRoot
+    if (!state.active || root === null) throw new NoteVaultError('inactive', 'No vault is active')
+    this.assertActiveVaultBound(state, root)
+    signal.throwIfAborted()
+    const provider = this.context.get('tockTeamDesktopVaultSelection')
+    if (provider === undefined) throw new NoteVaultError('unavailable', 'Desktop vault selection is unavailable in this runtime')
+    const controller = new AbortController()
+    let completeOperation: (() => void) | undefined
+    const completion = new Promise<void>(resolve => { completeOperation = resolve })
+    const operation = { complete: () => completeOperation?.(), completion, controller }
+    const operationSignal = AbortSignal.any([signal, controller.signal])
+    const operationId = randomUUID()
+    this.activeDesktopSelectionOperations.add(operation)
+    try {
+      const result = await awaitWithAbort(provider.adopt({
+        canonicalPath: root,
+        operationId,
+        vaultGeneration: state.generation,
+        vaultId: state.id,
+      }, operationSignal), operationSignal)
+      operationSignal.throwIfAborted()
+      this.assertCapturedVault(state, root)
+      if (!hasExactKeys(result, ['operationId', 'status']) || result.operationId !== operationId) {
+        throw new NoteVaultError('unavailable', 'Desktop vault synchronization returned an invalid result')
+      }
+      if (result.status !== 'bound') {
+        const code = result.status === 'stale' ? 'stale-vault'
+          : result.status === 'cancelled' || result.status === 'denied' || result.status === 'unavailable'
+            ? result.status
+            : 'unavailable'
+        throw new NoteVaultError(code, 'Desktop vault synchronization failed')
+      }
+      return state
+    } catch (cause) {
+      operationSignal.throwIfAborted()
+      this.assertCapturedVault(state, root)
+      if (cause instanceof NoteVaultError) throw cause
+      throw new NoteVaultError('unavailable', 'The Desktop vault synchronization provider failed')
+    } finally {
+      this.activeDesktopSelectionOperations.delete(operation)
+      operation.complete()
+    }
   }
 
   async activateDesktopSelection(

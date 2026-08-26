@@ -33,6 +33,8 @@ import {
   type RevokeDesktopDestinationPlanResult,
   type RevalidateDesktopSourceRequest,
   type RevalidateDesktopSourceResult,
+  type TockTeamDesktopVaultSelectionAdoptInput,
+  type TockTeamDesktopVaultSelectionAdoptResult,
   type StatDesktopSourceRequest,
   type StatDesktopSourceResult,
   type TockTeamDesktopPickerService,
@@ -389,6 +391,13 @@ export class DesktopVaultSelectionProvider extends TockTeamDesktopVaultSelection
   ) {
     super(ctx as never)
     this.transport = transport ?? new DesktopPickerProvider(environment, fetcher)
+  }
+
+  async adopt(
+    input: TockTeamDesktopVaultSelectionAdoptInput,
+    signal: AbortSignal,
+  ): Promise<TockTeamDesktopVaultSelectionAdoptResult> {
+    return await this.transport.nativeRequest('adoptVaultSelection', input, signal) as TockTeamDesktopVaultSelectionAdoptResult
   }
 
   async consume(

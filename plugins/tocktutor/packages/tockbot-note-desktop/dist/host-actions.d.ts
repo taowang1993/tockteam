@@ -25,6 +25,7 @@ export declare class TockTutorDesktopGateway extends TypertRemoteService {
     private readonly popOuts;
     private readonly revealed;
     constructor(ctx: Context);
+    private claimForVault;
     private recoverResult;
     private rememberResult;
     activateVault(authorization: string, signal: AbortSignal): Promise<NativeActionResult>;

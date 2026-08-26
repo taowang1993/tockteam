@@ -3,6 +3,7 @@ import { Remote, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
 import {
   createNativeOwnerLifetime,
   MAX_PRINT_EXPORT_HTML_BYTES,
+  type DesktopCallerOperation,
   type NativeOperationIdentity,
   type TockTeamDesktopCaller,
   type TockTeamDesktopMicrophone,
@@ -233,6 +234,19 @@ export class TockTutorDesktopGateway extends TypertRemoteService {
     }, 'tocktutorDesktop owner lifetime')
   }
 
+  private async claimForVault(
+    authorization: string,
+    operation: DesktopCallerOperation,
+    expectedVault: VaultReference,
+    signal: AbortSignal,
+  ): Promise<NativeOperationIdentity> {
+    await this.ctx.noteVault.synchronizeDesktopSelection(signal)
+    assertCurrentVault(this.ctx.noteVault, expectedVault)
+    const identity = await this.ctx.tockTeamDesktopCaller.claim({ authorization, operation }, signal)
+    assertClaim(this.ctx.noteVault, expectedVault, identity)
+    return identity
+  }
+
   private recoverResult(
     authorization: string,
     fingerprint: string,
@@ -318,11 +332,7 @@ export class TockTutorDesktopGateway extends TypertRemoteService {
     assertVault(expectedVault)
     assertCurrentVault(this.ctx.noteVault, expectedVault)
     return this.lifetime.run(async ownerSignal => {
-      const identity = await this.ctx.tockTeamDesktopCaller.claim({
-        authorization,
-        operation: 'popout-open',
-      }, ownerSignal)
-      assertClaim(this.ctx.noteVault, expectedVault, identity)
+      const identity = await this.claimForVault(authorization, 'popout-open', expectedVault, ownerSignal)
       const fingerprint = `popout-open:${expectedVault.id}:${String(expectedVault.generation)}:${path}`
       const recovered = this.recoverResult(authorization, fingerprint, identity)
       if (recovered !== undefined) return recovered
@@ -354,11 +364,7 @@ export class TockTutorDesktopGateway extends TypertRemoteService {
     assertVault(expectedVault)
     assertCurrentVault(this.ctx.noteVault, expectedVault)
     return this.lifetime.run(async ownerSignal => {
-      const identity = await this.ctx.tockTeamDesktopCaller.claim({
-        authorization,
-        operation: 'popout-close',
-      }, ownerSignal)
-      assertClaim(this.ctx.noteVault, expectedVault, identity)
+      const identity = await this.claimForVault(authorization, 'popout-close', expectedVault, ownerSignal)
       const recovered = this.popOutClosures.get(authorization)
       if (recovered !== undefined) {
         if (!sameIdentity(recovered.identity, identity)
@@ -401,11 +407,7 @@ export class TockTutorDesktopGateway extends TypertRemoteService {
     assertVault(expectedVault)
     assertCurrentVault(this.ctx.noteVault, expectedVault)
     return this.lifetime.run(async ownerSignal => {
-      const identity = await this.ctx.tockTeamDesktopCaller.claim({
-        authorization,
-        operation: 'popout-close-all',
-      }, ownerSignal)
-      assertClaim(this.ctx.noteVault, expectedVault, identity)
+      const identity = await this.claimForVault(authorization, 'popout-close-all', expectedVault, ownerSignal)
       const recovered = this.popOutClosures.get(authorization)
       if (recovered !== undefined) {
         if (!sameIdentity(recovered.identity, identity)
@@ -444,11 +446,7 @@ export class TockTutorDesktopGateway extends TypertRemoteService {
     assertVault(expectedVault)
     assertCurrentVault(this.ctx.noteVault, expectedVault)
     return this.lifetime.run(async ownerSignal => {
-      const identity = await this.ctx.tockTeamDesktopCaller.claim({
-        authorization,
-        operation: 'print',
-      }, ownerSignal)
-      assertClaim(this.ctx.noteVault, expectedVault, identity)
+      const identity = await this.claimForVault(authorization, 'print', expectedVault, ownerSignal)
       const fingerprint = `print:${expectedVault.id}:${String(expectedVault.generation)}:${path}`
       const recovered = this.recoverResult(authorization, fingerprint, identity)
       if (recovered !== undefined) return recovered
@@ -484,8 +482,7 @@ export class TockTutorDesktopGateway extends TypertRemoteService {
     assertCurrentVault(this.ctx.noteVault, expectedVault)
     return this.lifetime.run(async ownerSignal => {
       const purpose = format === 'html' ? 'export-html' : 'export-pdf'
-      const identity = await this.ctx.tockTeamDesktopCaller.claim({ authorization, operation: purpose }, ownerSignal)
-      assertClaim(this.ctx.noteVault, expectedVault, identity)
+      const identity = await this.claimForVault(authorization, purpose, expectedVault, ownerSignal)
       const fingerprint = `export-${format}:${expectedVault.id}:${String(expectedVault.generation)}:${path}`
       const recovered = this.recoverResult(authorization, fingerprint, identity)
       if (recovered !== undefined) return recovered
@@ -536,11 +533,7 @@ export class TockTutorDesktopGateway extends TypertRemoteService {
     assertVault(expectedVault)
     assertCurrentVault(this.ctx.noteVault, expectedVault)
     return this.lifetime.run(async ownerSignal => {
-      const identity = await this.ctx.tockTeamDesktopCaller.claim({
-        authorization,
-        operation: 'microphone',
-      }, ownerSignal)
-      assertClaim(this.ctx.noteVault, expectedVault, identity)
+      const identity = await this.claimForVault(authorization, 'microphone', expectedVault, ownerSignal)
       const fingerprint = `microphone:${expectedVault.id}:${String(expectedVault.generation)}`
       const recovered = this.recoverResult(authorization, fingerprint, identity)
       if (recovered !== undefined) return recovered
@@ -565,11 +558,7 @@ export class TockTutorDesktopGateway extends TypertRemoteService {
     assertVault(expectedVault)
     assertCurrentVault(this.ctx.noteVault, expectedVault)
     return this.lifetime.run(async ownerSignal => {
-      const identity = await this.ctx.tockTeamDesktopCaller.claim({
-        authorization,
-        operation: 'reveal-entry',
-      }, ownerSignal)
-      assertClaim(this.ctx.noteVault, expectedVault, identity)
+      const identity = await this.claimForVault(authorization, 'reveal-entry', expectedVault, ownerSignal)
       const recovered = this.revealed.get(authorization)
       if (
         recovered !== undefined

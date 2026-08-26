@@ -601,17 +601,37 @@ export type TockTeamDesktopVaultSelectionBindResult = {
   status: 'bound'
 }
 
+export interface TockTeamDesktopVaultSelectionAdoptInput {
+  canonicalPath: string
+  operationId: string
+  vaultGeneration: number
+  vaultId: string
+}
+
+export type TockTeamDesktopVaultSelectionAdoptResult = {
+  operationId: string
+  status: TockTeamDesktopVaultSelectionFailureStatus
+} | {
+  operationId: string
+  status: 'bound'
+}
+
 export interface TockTeamDesktopVaultSelectionReleaseInput {
   claim: TockTeamDesktopVaultSelectionClaim
   operationId: string
 }
 
 /**
- * Host-only two-phase handoff consumed by Runtime 0.1.2. canonicalPath must
- * never cross a browser/preload boundary. release is deliberately no-signal,
+ * Host-only handoff consumed by Runtime 0.1.2. canonicalPath must never cross
+ * a browser/preload boundary. adopt rebinds an already runtime-authorized
+ * managed, sandbox, or recent vault. release is deliberately no-signal,
  * bounded, idempotent best-effort cleanup and has no result to branch on.
  */
 export interface TockTeamDesktopVaultSelection {
+  adopt(
+    input: TockTeamDesktopVaultSelectionAdoptInput,
+    signal: AbortSignal,
+  ): Promise<TockTeamDesktopVaultSelectionAdoptResult>
   bind(
     input: TockTeamDesktopVaultSelectionBindInput,
     signal: AbortSignal,

@@ -76,6 +76,28 @@ async function activate(owner: DesktopPickerOwner): Promise<void> {
   })
 }
 
+test('picker owner adopts a runtime-bound active vault only after canonical revalidation', async () => {
+  const root = await canonicalTemp('tockteam-picker-adopt-')
+  let transitions = 0
+  const owner = new DesktopPickerOwner({
+    isAvailable: () => true,
+    onVaultTransition: () => { transitions += 1 },
+    showOpenDialog: async () => ({ canceled: true }),
+    showSaveDialog: async () => ({ canceled: true }),
+    randomId: () => 'runtime-claim',
+  })
+  const adopt = (owner as unknown as { adoptVaultSelection(request: unknown, signal: AbortSignal): Promise<unknown> }).adoptVaultSelection
+  const request = { canonicalPath: root, operationId: 'runtime-adopt', vaultGeneration: 4, vaultId: `vault:${'a'.repeat(64)}` }
+  assert.deepEqual(await adopt.call(owner, request, new AbortController().signal), { operationId: 'runtime-adopt', status: 'bound' })
+  assert.deepEqual(owner.nativeVaultSnapshot(), { generation: 4, id: request.vaultId })
+  assert.equal(owner.matchesActiveIdentity({ ...identity('runtime'), vaultGeneration: 4, vaultId: request.vaultId }), true)
+  assert.equal(transitions, 1)
+  assert.deepEqual(await adopt.call(owner, request, new AbortController().signal), { operationId: 'runtime-adopt', status: 'bound' })
+  assert.equal(transitions, 1)
+  assert.deepEqual(await adopt.call(owner, { ...request, canonicalPath: `${root}/.` }, new AbortController().signal), { operationId: 'runtime-adopt', status: 'stale' })
+  await owner.dispose()
+})
+
 test('picker owner consumes opaque source grants and reads bounded path-free sessions', async () => {
   const root = await canonicalTemp('tockteam-picker-source-')
   const activeVault = await canonicalTemp('tockteam-picker-active-')

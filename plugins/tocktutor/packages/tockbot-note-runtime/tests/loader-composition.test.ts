@@ -15,6 +15,8 @@ import NoteVaultRuntime, {
   type NoteVaultChangeEvent,
   type TockTeamDesktopRevealInput,
   type TockTeamDesktopRevealResult,
+  type TockTeamDesktopVaultSelectionAdoptInput,
+  type TockTeamDesktopVaultSelectionAdoptResult,
   type TockTeamDesktopVaultSelectionBindInput,
   type TockTeamDesktopVaultSelectionBindResult,
   type TockTeamDesktopVaultSelectionClaim,
@@ -445,6 +447,48 @@ test('Desktop vault selection activates only through a generation-bound Host cla
       rm(fixture, { recursive: true, force: true }),
       rm(moved, { recursive: true, force: true }),
     ])
+  }
+})
+
+test('active runtime vault synchronizes through the authenticated Desktop owner before native actions', async () => {
+  const fixture = await mkdtemp(join(tmpdir(), 'note-vault-desktop-synchronize-'))
+  try {
+    const loaded = await load(`vaultRoot: ${JSON.stringify(fixture)}`)
+    try {
+      const adopted: TockTeamDesktopVaultSelectionAdoptInput[] = []
+      class SelectionOwner extends TockTeamDesktopVaultSelection {
+        async adopt(
+          input: TockTeamDesktopVaultSelectionAdoptInput,
+          _signal: AbortSignal,
+        ): Promise<TockTeamDesktopVaultSelectionAdoptResult> {
+          adopted.push(input)
+          return { operationId: input.operationId, status: 'bound' }
+        }
+        async consume(input: TockTeamDesktopVaultSelectionConsumeInput): Promise<TockTeamDesktopVaultSelectionConsumeResult> {
+          return { operationId: input.identity.operationId, status: 'unavailable' }
+        }
+        async bind(input: TockTeamDesktopVaultSelectionBindInput): Promise<TockTeamDesktopVaultSelectionBindResult> {
+          return { operationId: input.operationId, status: 'unavailable' }
+        }
+        async release(_input: TockTeamDesktopVaultSelectionReleaseInput): Promise<void> {}
+      }
+      await loaded.context.plugin(SelectionOwner)
+      const result = await loaded.context.noteVault.synchronizeDesktopSelection(new AbortController().signal)
+      assert.strictEqual(result, loaded.context.noteVault.state)
+      assert.equal(result.active, true)
+      assert.equal(adopted.length, 1)
+      assert.deepEqual(adopted[0], {
+        canonicalPath: await realpath(fixture),
+        operationId: adopted[0]?.operationId,
+        vaultGeneration: 1,
+        vaultId: result.active ? result.id : '',
+      })
+      assert.match(adopted[0]?.operationId ?? '', /^[0-9a-f-]{36}$/u)
+    } finally {
+      await dispose(loaded.context, loaded.root)
+    }
+  } finally {
+    await rm(fixture, { recursive: true, force: true })
   }
 })
 

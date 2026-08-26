@@ -104,12 +104,26 @@ export type TockTeamDesktopVaultSelectionBindResult = {
     operationId: string;
     status: 'bound';
 };
+export interface TockTeamDesktopVaultSelectionAdoptInput {
+    canonicalPath: string;
+    operationId: string;
+    vaultGeneration: number;
+    vaultId: string;
+}
+export type TockTeamDesktopVaultSelectionAdoptResult = {
+    operationId: string;
+    status: TockTeamDesktopVaultSelectionFailureStatus;
+} | {
+    operationId: string;
+    status: 'bound';
+};
 export interface TockTeamDesktopVaultSelectionReleaseInput {
     claim: TockTeamDesktopVaultSelectionClaim;
     operationId: string;
 }
 export declare abstract class TockTeamDesktopVaultSelection extends Service {
     constructor(ctx: Context);
+    adopt(input: TockTeamDesktopVaultSelectionAdoptInput, _signal: AbortSignal): Promise<TockTeamDesktopVaultSelectionAdoptResult>;
     abstract bind(input: TockTeamDesktopVaultSelectionBindInput, signal: AbortSignal): Promise<TockTeamDesktopVaultSelectionBindResult>;
     abstract consume(input: TockTeamDesktopVaultSelectionConsumeInput, signal: AbortSignal): Promise<TockTeamDesktopVaultSelectionConsumeResult>;
     abstract release(input: TockTeamDesktopVaultSelectionReleaseInput): Promise<void>;
@@ -444,6 +458,10 @@ export declare class NoteVaultRuntime extends Service {
     private assertActiveVaultBound;
     private captureExpectedVault;
     private assertCapturedVault;
+    /** Synchronize the active runtime vault into the authenticated Desktop owner before native authorization is claimed. */
+    synchronizeDesktopSelection(signal: AbortSignal): Promise<Extract<NoteVaultState, {
+        active: true;
+    }>>;
     activateDesktopSelection(request: ActivateDesktopSelectionRequest, signal: AbortSignal): Promise<ActivateDesktopSelectionResult>;
     activate(vaultRoot: string, expectedGeneration: number): NoteVaultState;
     private activateVault;

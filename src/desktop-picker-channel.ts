@@ -22,6 +22,7 @@ type PickerMethod =
   | 'finalizeDestination'
   | 'abortDestination'
   | 'consumeVaultSelection'
+  | 'adoptVaultSelection'
   | 'bindVaultSelection'
   | 'releaseVaultSelection'
   | 'disposeProvider'
@@ -58,6 +59,8 @@ async function requestBody(request: IncomingMessage): Promise<string | undefined
 
 function operationIdOf(value: unknown): string {
   if (typeof value !== 'object' || value === null) return ''
+  const direct = (value as Record<string, unknown>).operationId
+  if (typeof direct === 'string') return direct.slice(0, 256)
   const operationId = (value as Record<string, unknown>).identity
   if (typeof operationId !== 'object' || operationId === null) return ''
   const id = (operationId as Record<string, unknown>).operationId
@@ -260,7 +263,7 @@ export class DesktopPickerChannel {
       || value === 'lockDestinationPlan' || value === 'revokeDestinationPlan'
       || value === 'writeDestinationChunk' || value === 'finalizeDestination'
       || value === 'abortDestination' || value === 'consumeVaultSelection'
-      || value === 'bindVaultSelection' || value === 'releaseVaultSelection'
+      || value === 'adoptVaultSelection' || value === 'bindVaultSelection' || value === 'releaseVaultSelection'
       || value === 'disposeProvider'
   }
 
@@ -280,6 +283,7 @@ export class DesktopPickerChannel {
       case 'finalizeDestination': return await this.owner.finalizeDestination(value as never, signal)
       case 'abortDestination': return await this.owner.abortDestination(value as never)
       case 'consumeVaultSelection': return await this.owner.consumeVaultSelection(value as never, signal)
+      case 'adoptVaultSelection': return await this.owner.adoptVaultSelection(value as never, signal)
       case 'bindVaultSelection': return await this.owner.bindVaultSelection(value as never, signal)
       case 'releaseVaultSelection': return await this.owner.releaseVaultSelection(value as never)
       case 'disposeProvider': return await this.owner.disposeProvider()
