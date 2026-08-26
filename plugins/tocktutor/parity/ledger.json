@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "generatedAt": "2026-08-26",
   "sources": {
     "tockbotCommit": "af214b2d1a5df8ca23bf99fad9f0408a07c2e4ba",
@@ -24,6 +24,7 @@
   },
   "statuses": [
     "proven",
+    "partial",
     "gap",
     "excluded"
   ],
@@ -1917,36 +1918,50 @@
       "id": "capture-organization",
       "title": "Highlights and reviewed Inbox organization",
       "scope": "included",
-      "status": "proven",
+      "status": "partial",
       "issueId": "tockteam-3t5.16",
       "owner": "@tockteam/tocktutor-workbench",
       "evidence": [
         "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/review-panel.ts"
-      ]
+      ],
+      "children": [
+        "agent-staged-write-tools"
+      ],
+      "disposition": "The existing bounded capability remains proven, but this aggregate is partial until every listed residual child is proven."
     },
     {
       "id": "assistant",
       "title": "Inline assistant selected-text context, bounded reads, reviewed writes, and continuation",
       "scope": "included",
-      "status": "proven",
+      "status": "partial",
       "issueId": "tockteam-3t5.28",
       "owner": "@tockteam/tocktutor-assistant + @tockteam/tocktutor-workbench",
       "evidence": [
         "plugins/tocktutor/packages/tockteam-tocktutor-assistant/tests/loader-composition.test.ts",
         "plugins/tocktutor/packages/tockteam-tocktutor-assistant/tests/assistant-panel.test.tsx"
-      ]
+      ],
+      "children": [
+        "agent-note-read-tools",
+        "agent-staged-write-tools"
+      ],
+      "disposition": "The existing bounded capability remains proven, but this aggregate is partial until every listed residual child is proven."
     },
     {
       "id": "native-dispatch",
       "title": "Trusted Desktop menu, protocol, pop-out, reveal, microphone, print, and export integration",
       "scope": "included",
-      "status": "proven",
+      "status": "partial",
       "issueId": "tockteam-3t5.26",
       "owner": "tockbot-note-desktop + TockTeam Desktop",
       "evidence": [
         "plugins/tocktutor/packages/tockbot-note-desktop/tests/host-actions.test.ts",
         "tests/desktop-print-export-owner.test.ts"
-      ]
+      ],
+      "children": [
+        "protocol-vault-routing",
+        "protocol-pane-clipboard-callbacks"
+      ],
+      "disposition": "The existing bounded capability remains proven, but this aggregate is partial until every listed residual child is proven."
     },
     {
       "id": "canvas-edges",
@@ -1957,19 +1972,25 @@
       "owner": "@tockteam/tocktutor-workbench",
       "evidence": [
         "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/canvas.ts"
-      ]
+      ],
+      "disposition": "The existing bounded capability is complete within the scoped TockTeam contract; no residual child is claimed by this aggregate."
     },
     {
       "id": "web-viewer-integration",
       "title": "Web Viewer tab reordering, shared bookmarks, Reader settings, and settings-backed clipping",
       "scope": "included",
-      "status": "proven",
+      "status": "partial",
       "issueId": "tockteam-3t5.24",
       "owner": "tockbot-web-clip + @tockteam/tocktutor-workbench",
       "evidence": [
         "plugins/tocktutor/packages/tockbot-web-clip/tests/viewer.test.ts",
         "plugins/tocktutor/packages/tockbot-web-clip/tests/fetch.test.ts"
-      ]
+      ],
+      "children": [
+        "render-safe-raw-html",
+        "render-external-embeds"
+      ],
+      "disposition": "The existing bounded capability remains proven, but this aggregate is partial until every listed residual child is proven."
     },
     {
       "id": "compatibility-state",
@@ -1981,7 +2002,456 @@
       "evidence": [
         "plugins/tocktutor/packages/tockteam-tocktutor-import-export/tests/engine.test.ts",
         "plugins/tocktutor/packages/tockteam-tocktutor-import-export/tests/formats.test.ts"
-      ]
+      ],
+      "disposition": "The existing bounded capability is complete within the scoped TockTeam contract; no residual child is claimed by this aggregate."
+    }
+  ],
+  "claims": {
+    "scope": "bounded Tockbot residual compatibility",
+    "exhaustive": false,
+    "text": "This ledger reports the scoped TockTeam parity contract and residual Tockbot behaviors; it does not claim exhaustive Tockbot or Obsidian parity."
+  },
+  "residualCapabilities": [
+    {
+      "id": "editor-source-codemirror",
+      "title": "CodeMirror Source editor substrate",
+      "area": "editor",
+      "scope": "included",
+      "status": "gap",
+      "issueId": "tockteam-tc9.2",
+      "owner": "@tockteam/tocktutor-workbench",
+      "oracle": {
+        "commit": "af214b2d1a5df8ca23bf99fad9f0408a07c2e4ba",
+        "source": [
+          "apps/web/src/components/notes/NotesSourceEditor.tsx"
+        ],
+        "tests": [
+          "apps/web/src/components/notes/NotesSourceEditor.test.tsx"
+        ]
+      },
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/route.tsx",
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/tests/route.test.ts"
+      ],
+      "focusedCommand": "pnpm -C plugins/tocktutor --filter @tockteam/tocktutor-workbench test",
+      "realConsumerCheck": "Packaged Electron /tocktutor Source mode: open, edit, select, save, switch tabs, and restart without source normalization.",
+      "disposition": "Residual: replace the route Source textarea with a source-preserving CodeMirror adapter."
+    },
+    {
+      "id": "editor-source-fidelity",
+      "title": "Source selection and editing extensions",
+      "area": "editor",
+      "scope": "included",
+      "status": "gap",
+      "issueId": "tockteam-tc9.3",
+      "owner": "@tockteam/tocktutor-workbench",
+      "oracle": {
+        "commit": "af214b2d1a5df8ca23bf99fad9f0408a07c2e4ba",
+        "source": [
+          "apps/web/src/components/notes/NotesSourceEditingShortcuts.ts",
+          "apps/web/src/components/notes/NotesSourceLineEditing.ts",
+          "apps/web/src/components/notes/NotesSourceTasks.ts"
+        ],
+        "tests": [
+          "apps/web/src/components/notes/NotesEditingShortcuts.test.ts",
+          "apps/web/src/components/notes/NotesSourceLineEditing.test.ts",
+          "apps/web/src/components/notes/NotesSourceTasks.test.ts"
+        ]
+      },
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/editor-commands.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/tests/editor-commands.test.ts"
+      ],
+      "focusedCommand": "pnpm -C plugins/tocktutor --filter @tockteam/tocktutor-workbench test",
+      "realConsumerCheck": "Packaged Electron Source mode: exercise multiple cursors, rectangular selection, line edits, no-format paste, folds, task/comment decorations, and source recovery.",
+      "disposition": "Residual: port bounded keyboard, selection, decoration, and fold behavior without changing unsupported source text."
+    },
+    {
+      "id": "editor-live-preview-milkdown",
+      "title": "Milkdown Live Preview editor substrate",
+      "area": "editor",
+      "scope": "included",
+      "status": "gap",
+      "issueId": "tockteam-tc9.4",
+      "owner": "@tockteam/tocktutor-workbench",
+      "oracle": {
+        "commit": "af214b2d1a5df8ca23bf99fad9f0408a07c2e4ba",
+        "source": [
+          "apps/web/src/components/notes/NotesEditor.tsx"
+        ],
+        "tests": [
+          "apps/web/src/components/notes/NotesEditor.test.tsx"
+        ]
+      },
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/editor-surface.tsx",
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/tests/route.test.ts"
+      ],
+      "focusedCommand": "pnpm -C plugins/tocktutor --filter @tockteam/tocktutor-workbench test",
+      "realConsumerCheck": "Packaged Electron /tocktutor Live Preview: edit, undo/redo, switch tabs, restore workspace state, and dispose the editor during route changes.",
+      "disposition": "Residual: replace line-based Live Preview textareas with one source-preserving Milkdown editor."
+    },
+    {
+      "id": "editor-live-preview-blocks",
+      "title": "Live Preview block interaction parity",
+      "area": "editor",
+      "scope": "included",
+      "status": "gap",
+      "issueId": "tockteam-tc9.5",
+      "owner": "@tockteam/tocktutor-workbench",
+      "oracle": {
+        "commit": "af214b2d1a5df8ca23bf99fad9f0408a07c2e4ba",
+        "source": [
+          "apps/web/src/components/notes/NotesEditorTasks.ts",
+          "apps/web/src/components/notes/NotesEditorCallouts.ts",
+          "apps/web/src/components/notes/NotesEditorFolding.ts",
+          "apps/web/src/components/notes/NotesEditorComments.ts"
+        ],
+        "tests": [
+          "apps/web/src/components/notes/NotesEditorTasks.test.ts",
+          "apps/web/src/components/notes/NotesEditorCallouts.test.ts",
+          "apps/web/src/components/notes/NotesEditorFolding.test.ts"
+        ]
+      },
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/markdown.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/tests/markdown.test.ts"
+      ],
+      "focusedCommand": "pnpm -C plugins/tocktutor --filter @tockteam/tocktutor-workbench test",
+      "realConsumerCheck": "Packaged Electron Live Preview: toggle tasks, callout types/folds, comments, heading/list folds, properties, hard breaks, and line commands with keyboard and pointer.",
+      "disposition": "Residual: complete source-preserving block widgets and history-safe Live Preview transactions."
+    },
+    {
+      "id": "editor-live-preview-tables-commands",
+      "title": "Live Preview tables and command routing",
+      "area": "editor",
+      "scope": "included",
+      "status": "gap",
+      "issueId": "tockteam-tc9.14",
+      "owner": "@tockteam/tocktutor-workbench",
+      "oracle": {
+        "commit": "af214b2d1a5df8ca23bf99fad9f0408a07c2e4ba",
+        "source": [
+          "apps/web/src/components/notes/NotesEditorTables.ts",
+          "apps/web/src/components/notes/NotesCommandPalette.tsx"
+        ],
+        "tests": [
+          "apps/web/src/components/notes/NotesEditorTables.test.ts",
+          "apps/web/src/components/notes/NotesCommandPalette.test.tsx"
+        ]
+      },
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/editor-commands.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/tests/editor-commands.test.ts"
+      ],
+      "focusedCommand": "pnpm -C plugins/tocktutor --filter @tockteam/tocktutor-workbench test",
+      "realConsumerCheck": "Packaged Electron Live Preview: navigate and mutate GFM tables, use formatting/slash commands, preview links, drag/drop content, and preserve undo history.",
+      "disposition": "Residual: port bounded table, command, link-preview, template, and drag/drop behavior through the existing editor owner."
+    },
+    {
+      "id": "embed-recursive-resolution",
+      "title": "Bounded recursive note, media, Canvas, and Base resolution",
+      "area": "embeds",
+      "scope": "included",
+      "status": "gap",
+      "issueId": "tockteam-tc9.6",
+      "owner": "@tockteam/tocktutor-workbench + tockbot-note-runtime",
+      "oracle": {
+        "commit": "af214b2d1a5df8ca23bf99fad9f0408a07c2e4ba",
+        "source": [
+          "apps/web/src/components/notes/UseNotesEmbedExportContext.ts",
+          "apps/web/src/components/notes/NotesNoteEmbeds.ts",
+          "apps/web/src/components/notes/NotesMediaEmbeds.ts",
+          "apps/web/src/components/notes/NotesCanvasEmbeds.ts",
+          "apps/web/src/components/notes/NotesBaseEmbeds.ts"
+        ],
+        "tests": [
+          "apps/web/src/components/notes/NotesEditorNoteEmbeds.test.ts",
+          "apps/web/src/components/notes/NotesMediaEmbeds.test.ts",
+          "apps/web/src/components/notes/NotesCanvasEmbeds.test.ts",
+          "apps/web/src/components/notes/NotesBaseEmbeds.test.ts"
+        ]
+      },
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/embeds.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/tests/embeds.test.ts"
+      ],
+      "focusedCommand": "pnpm -C plugins/tocktutor --filter @tockteam/tocktutor-workbench test",
+      "realConsumerCheck": "Packaged Electron fixture vault: resolve exact-path and unambiguous basename targets recursively to depth three while rejecting cycles, traversal, ambiguity, and stale generations.",
+      "disposition": "Residual: replace first-level projection with one cancellable, target-stable, bounded resolver shared by every presentation mode."
+    },
+    {
+      "id": "embed-reading-slides-export",
+      "title": "Local embed presentation in Reading, Slides, and export",
+      "area": "embeds",
+      "scope": "included",
+      "status": "gap",
+      "issueId": "tockteam-tc9.7",
+      "owner": "@tockteam/tocktutor-workbench + TockTeam Desktop",
+      "oracle": {
+        "commit": "af214b2d1a5df8ca23bf99fad9f0408a07c2e4ba",
+        "source": [
+          "apps/web/src/components/notes/NotesReadingView.tsx",
+          "apps/web/src/components/notes/NotesSlides.tsx",
+          "apps/web/src/components/notes/NotesExportHtml.ts"
+        ],
+        "tests": [
+          "apps/web/src/components/notes/NotesReadingView.test.tsx",
+          "apps/web/src/components/notes/NotesSlides.test.tsx",
+          "apps/web/src/components/notes/NotesExportHtml.test.ts"
+        ]
+      },
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/rich-markdown.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/tests/rich-markdown.test.ts"
+      ],
+      "focusedCommand": "pnpm -C plugins/tocktutor --filter @tockteam/tocktutor-workbench test",
+      "realConsumerCheck": "Packaged Electron Reading and Slides: render nested note/Canvas/Base and local image/audio/video/PDF fixtures, then inspect inert HTML/PDF output and cleanup.",
+      "disposition": "Residual: consume the shared resolver in live views; static export keeps non-image media metadata-only and no active network resources."
+    },
+    {
+      "id": "embed-editor-widgets",
+      "title": "Selection-aware Source and Live Preview embed widgets",
+      "area": "embeds",
+      "scope": "included",
+      "status": "gap",
+      "issueId": "tockteam-tc9.15",
+      "owner": "@tockteam/tocktutor-workbench",
+      "oracle": {
+        "commit": "af214b2d1a5df8ca23bf99fad9f0408a07c2e4ba",
+        "source": [
+          "apps/web/src/components/notes/NotesSourceMediaEmbeds.ts",
+          "apps/web/src/components/notes/NotesSourceCanvasEmbeds.ts",
+          "apps/web/src/components/notes/NotesSourceBaseEmbeds.ts",
+          "apps/web/src/components/notes/NotesEditorNoteEmbeds.ts",
+          "apps/web/src/components/notes/NotesEditorBaseEmbeds.ts"
+        ],
+        "tests": [
+          "apps/web/src/components/notes/NotesSourceMediaEmbeds.test.ts",
+          "apps/web/src/components/notes/NotesSourceCanvasEmbeds.test.ts",
+          "apps/web/src/components/notes/NotesSourceBaseEmbeds.test.ts",
+          "apps/web/src/components/notes/NotesEditorNoteEmbeds.test.ts"
+        ]
+      },
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/editor-surface.tsx",
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/tests/route.test.ts"
+      ],
+      "focusedCommand": "pnpm -C plugins/tocktutor --filter @tockteam/tocktutor-workbench test",
+      "realConsumerCheck": "Packaged Electron Source and Live Preview: activate nested media, note, Canvas, Base, Mermaid, and math widgets, then select/click to restore exact authored source.",
+      "disposition": "Residual: add target-stable widgets without recreating editor instances or losing selection and history."
+    },
+    {
+      "id": "render-safe-raw-html",
+      "title": "Bounded sanitized raw HTML subset",
+      "area": "rendering",
+      "scope": "included",
+      "status": "gap",
+      "issueId": "tockteam-tc9.8",
+      "owner": "@tockteam/tocktutor-workbench",
+      "oracle": {
+        "commit": "af214b2d1a5df8ca23bf99fad9f0408a07c2e4ba",
+        "source": [
+          "apps/web/src/components/notes/NotesExportHtml.ts"
+        ],
+        "tests": [
+          "apps/web/src/components/notes/NotesExportHtml.test.ts",
+          "apps/web/src/components/notes/NotesHtmlAfterFencedCode.test.ts"
+        ]
+      },
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/rich-markdown.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/tests/rich-markdown.test.ts"
+      ],
+      "focusedCommand": "pnpm -C plugins/tocktutor --filter @tockteam/tocktutor-workbench test",
+      "realConsumerCheck": "Packaged Electron Reading and export: render allowed static text/table tags and prove scripts, handlers, unsafe URLs, frames, styles, forms, and malformed markup stay inert.",
+      "disposition": "Residual: port only the reviewed static raw-HTML subset; retain deny-by-default Desktop export validation."
+    },
+    {
+      "id": "render-external-embeds",
+      "title": "Credential-free external image and web embeds",
+      "area": "rendering",
+      "scope": "included",
+      "status": "gap",
+      "issueId": "tockteam-tc9.16",
+      "owner": "@tockteam/tocktutor-workbench + tockbot-web-clip + TockTeam Desktop",
+      "oracle": {
+        "commit": "af214b2d1a5df8ca23bf99fad9f0408a07c2e4ba",
+        "source": [
+          "apps/web/src/components/notes/NotesExternalEmbeds.ts",
+          "apps/web/src/components/notes/NotesWebViewerDialog.tsx"
+        ],
+        "tests": [
+          "apps/web/src/components/notes/NotesExternalEmbeds.test.ts",
+          "apps/web/src/components/notes/NotesWebViewerDialog.test.tsx"
+        ]
+      },
+      "evidence": [
+        "plugins/tocktutor/packages/tockbot-web-clip/src/client.tsx",
+        "plugins/tocktutor/packages/tockbot-web-clip/tests/viewer.test.ts"
+      ],
+      "focusedCommand": "pnpm -C plugins/tocktutor --filter tockbot-web-clip test",
+      "realConsumerCheck": "Packaged Electron live embed flow: load only validated credential-free external image/YouTube/Twitter/X/HTTP(S) content in the isolated viewer and inspect blocked private/credential URLs.",
+      "disposition": "Residual: route live external content through the existing hardened frame; saved HTML/PDF remains inert by explicit security policy."
+    },
+    {
+      "id": "protocol-vault-routing",
+      "title": "Trusted named-vault and cross-vault protocol routing",
+      "area": "protocol",
+      "scope": "included",
+      "status": "gap",
+      "issueId": "tockteam-tc9.9",
+      "owner": "TockTeam Desktop + tockbot-note-desktop + tockbot-note-runtime",
+      "oracle": {
+        "commit": "af214b2d1a5df8ca23bf99fad9f0408a07c2e4ba",
+        "source": [
+          "apps/web/electron/notes-uri.ts",
+          "apps/web/electron/notes-vault-activation.ts"
+        ],
+        "tests": [
+          "apps/web/electron/__tests__/notes-uri.test.ts",
+          "apps/web/electron/__tests__/notes-vault.test.ts"
+        ]
+      },
+      "evidence": [
+        "src/desktop-native-policy.ts",
+        "tests/desktop-dispatch-owner.test.ts"
+      ],
+      "focusedCommand": "node --test tests/desktop-dispatch-owner.test.ts tests/desktop-dispatch-channel.test.ts",
+      "realConsumerCheck": "Packaged Electron: issue overlapping choose-vault, named/recent-vault, shorthand, and absolute-path requests against copied vaults and verify canonical identity, dirty-save gating, and latest-request-wins.",
+      "disposition": "Residual: resolve names and absolute paths only in trusted Desktop/Host ownership; browser payloads remain opaque."
+    },
+    {
+      "id": "protocol-pane-clipboard-callbacks",
+      "title": "Protocol pane, clipboard, mutation, and callback behavior",
+      "area": "protocol",
+      "scope": "included",
+      "status": "gap",
+      "issueId": "tockteam-tc9.10",
+      "owner": "TockTeam Desktop + tockbot-note-desktop + @tockteam/tocktutor-workbench",
+      "oracle": {
+        "commit": "af214b2d1a5df8ca23bf99fad9f0408a07c2e4ba",
+        "source": [
+          "apps/web/electron/notes-uri.ts",
+          "apps/web/electron/notes-popout-windows.ts",
+          "apps/web/src/components/notes/NotesPane.tsx"
+        ],
+        "tests": [
+          "apps/web/electron/__tests__/notes-uri.test.ts",
+          "apps/web/electron/__tests__/notes-popout.test.ts",
+          "apps/web/src/components/notes/NotesPane.pop-out.test.tsx"
+        ]
+      },
+      "evidence": [
+        "src/desktop-dispatch-owner.ts",
+        "tests/desktop-dispatch-owner.test.ts"
+      ],
+      "focusedCommand": "node --test tests/desktop-dispatch-owner.test.ts tests/desktop-caller-bridge.test.ts",
+      "realConsumerCheck": "Packaged Electron: exercise tab/split/window panes, clipboard content, append/prepend/overwrite, heading/block jumps, and x-success/x-error callbacks with exact completion.",
+      "disposition": "Residual: finish trusted protocol delivery through existing dispatch, pop-out, clipboard, and dirty-save owners."
+    },
+    {
+      "id": "agent-note-read-tools",
+      "title": "TockDriver-compatible note search and read tools",
+      "area": "agent",
+      "scope": "included",
+      "status": "gap",
+      "issueId": "tockteam-tc9.11",
+      "owner": "@tockteam/note-vault-tools + @tockteam/tocktutor-assistant",
+      "oracle": {
+        "commit": "af214b2d1a5df8ca23bf99fad9f0408a07c2e4ba",
+        "source": [
+          "packages/agent-service/src/notes.ts"
+        ],
+        "tests": [
+          "packages/agent-service/__tests__/notes.test.ts",
+          "apps/web/src/components/notes/NotesAgentWritePolling.test.ts"
+        ]
+      },
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-note-vault-tools/src/index.ts",
+        "plugins/tocktutor/packages/tockteam-note-vault-tools/tests/note-vault-tools.test.ts"
+      ],
+      "focusedCommand": "pnpm -C plugins/tocktutor --filter @tockteam/note-vault-tools test",
+      "realConsumerCheck": "Disposable DSH headless model task: invoke notes_search and notes_read against a non-guessable fixture, return exact bounded canonical JSON, then verify cancellation and vault replacement fail closed.",
+      "disposition": "Residual: add thin notes_* aliases over the existing generation-bound noteVault reads without a second scanner."
+    },
+    {
+      "id": "agent-staged-write-tools",
+      "title": "TockDriver-compatible staged write and organize-capture tools",
+      "area": "agent",
+      "scope": "included",
+      "status": "gap",
+      "issueId": "tockteam-tc9.12",
+      "owner": "@tockteam/tocktutor-assistant + tockbot-note-runtime",
+      "oracle": {
+        "commit": "af214b2d1a5df8ca23bf99fad9f0408a07c2e4ba",
+        "source": [
+          "packages/agent-service/src/notes.ts"
+        ],
+        "tests": [
+          "packages/agent-service/__tests__/notes-write.test.ts",
+          "packages/agent-service/__tests__/notes.test.ts"
+        ]
+      },
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-assistant/src/write-tool-registration.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-assistant/tests/write-tool-registration.test.ts"
+      ],
+      "focusedCommand": "pnpm -C plugins/tocktutor --filter @tockteam/tocktutor-assistant test",
+      "realConsumerCheck": "Disposable packaged Desktop model flow: stage create/update and organize-capture proposals, review/approve or reject them, and verify no mutation before approval plus restart recovery.",
+      "disposition": "Residual: expose thin notes_* staged-write aliases over the existing reviewed proposal queue and audit authority."
+    }
+  ],
+  "retainedDivergences": [
+    {
+      "id": "static-export-network-content",
+      "title": "Static HTML/PDF export of network-backed content",
+      "kind": "security",
+      "scope": "excluded",
+      "status": "excluded",
+      "issueId": null,
+      "owner": "none",
+      "oracleSources": [
+        "apps/web/src/components/notes/NotesExternalEmbeds.ts",
+        "apps/web/src/components/notes/NotesExportHtml.ts"
+      ],
+      "oracleTests": [
+        "apps/web/src/components/notes/NotesExportHtml.test.ts"
+      ],
+      "evidence": [
+        "src/desktop-print-export-owner.ts",
+        "tests/desktop-print-export-owner.test.ts"
+      ],
+      "focusedCommand": "node --test tests/desktop-print-export-owner.test.ts",
+      "realConsumerCheck": "Packaged Electron HTML/PDF export with external image, YouTube, Twitter/X, and HTTP(S) fixtures; inspect that saved output contains no active remote resource.",
+      "securityRationale": "Saved HTML/PDF is an inert artifact and must not disclose export activity or create a network authority. Live external content belongs behind the isolated Web Viewer boundary.",
+      "disposition": "Retained security divergence from Tockbot export behavior; live Reading/Slides support does not authorize static output to fetch remote content."
+    },
+    {
+      "id": "static-export-active-media",
+      "title": "Static HTML/PDF export of audio, video, and PDF resources",
+      "kind": "security",
+      "scope": "excluded",
+      "status": "excluded",
+      "issueId": null,
+      "owner": "none",
+      "oracleSources": [
+        "apps/web/src/components/notes/NotesMediaEmbeds.ts",
+        "apps/web/src/components/notes/NotesExportHtml.ts"
+      ],
+      "oracleTests": [
+        "apps/web/src/components/notes/NotesMediaEmbeds.test.ts",
+        "apps/web/src/components/notes/NotesExportHtml.test.ts"
+      ],
+      "evidence": [
+        "src/desktop-print-export-owner.ts",
+        "tests/desktop-print-export-owner.test.ts"
+      ],
+      "focusedCommand": "node --test tests/desktop-print-export-owner.test.ts",
+      "realConsumerCheck": "Packaged Electron HTML/PDF export with local audio/video/PDF fixtures; inspect that output retains labeled metadata rather than active media resource elements.",
+      "securityRationale": "The Desktop static exporter accepts only bounded data-image resources. Keeping audio, video, and PDF as metadata avoids widening the saved artifact resource surface.",
+      "disposition": "Retained security divergence from Tockbot export behavior; interactive local media remains available only in live views or the in-app preview owner."
     }
   ]
 }
