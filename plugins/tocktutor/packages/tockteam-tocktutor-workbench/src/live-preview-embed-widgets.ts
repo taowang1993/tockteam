@@ -117,7 +117,7 @@ export function buildLivePreviewEmbedPlugin(getEmbeds: () => readonly ResolvedEm
     key: livePreviewEmbedPluginKey,
     state: {
       init: () => null,
-      apply(transaction) { if (transaction.docChanged) revealed.clear(); return null },
+      apply() { return null },
     },
     props: {
       decorations: state => decorationSet(state, getEmbeds(), revealed, revealRange),
