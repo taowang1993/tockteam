@@ -135,6 +135,40 @@ test('rejects malformed leases, unsafe tools, capacity overflow, and reused turn
   )
 })
 
+test('accepts TockDriver staged-write aliases while keeping them out of read-only turns', () => {
+  const registry = new AssistantTurnBindingRegistry()
+  const agent = fakeAgent()
+  const lease = registry.begin(input({
+    agent,
+    allowedTools: ['notes_stage_write', 'notes_organize_capture'],
+  }))
+  try {
+    const signal = new AbortController().signal
+    assert.equal(registry.resolve({
+      agent,
+      callId: CallId('call-notes-stage-12345678'),
+      signal,
+      tool: 'notes_stage_write',
+    }).readBinding.vaultId, 'vault:12345678')
+    assert.equal(registry.resolve({
+      agent,
+      callId: CallId('call-notes-organize-12345678'),
+      signal,
+      tool: 'notes_organize_capture',
+    }).readBinding.vaultId, 'vault:12345678')
+  } finally {
+    lease.end()
+    registry.dispose()
+  }
+
+  const readOnly = new AssistantTurnBindingRegistry()
+  assert.throws(
+    () => readOnly.begin(input({ permission: 'read-only', allowedTools: ['notes_stage_write'] })),
+    error => expectCode(error, 'INVALID_BINDING'),
+  )
+  readOnly.dispose()
+})
+
 test('invalidates synchronously on every bound Host fact transition', () => {
   const scenarios: Array<(registry: AssistantTurnBindingRegistry) => void> = [
     registry => registry.invalidateChild('child-replacement-12345678'),

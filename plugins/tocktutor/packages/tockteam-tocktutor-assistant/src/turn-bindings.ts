@@ -6,19 +6,32 @@ import {
   type ReadBinding,
 } from './read-tools.ts'
 
+export const TOCKDRIVER_WRITE_TOOL_NAMES = [
+  'notes_stage_write',
+  'notes_organize_capture',
+] as const
+export type TockDriverWriteTool = typeof TOCKDRIVER_WRITE_TOOL_NAMES[number]
+
 const OPAQUE_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:/~-]{7,255}$/u
 const CALL_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{7,511}$/u
 const PROVIDER_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:/-]*$/u
 const MAX_USED_TURNS = 100_000
 const DEFAULT_MAX_ACTIVE_TURNS = 32
-export type AssistantToolName = PennivoReadTool | 'create_file' | 'write_file'
+export type AssistantToolName = PennivoReadTool | 'create_file' | 'write_file' | 'notes_search' | 'notes_read' | TockDriverWriteTool
 
 const AVAILABLE_TOOLS = new Set<AssistantToolName>([
   ...REVIEWED_PENNIVO_READ_TOOLS.filter(tool => tool !== 'list_workspaces'),
   'create_file',
   'write_file',
+  'notes_search',
+  'notes_read',
+  ...TOCKDRIVER_WRITE_TOOL_NAMES,
 ])
-const WRITE_TOOLS = new Set<AssistantToolName>(['create_file', 'write_file'])
+const WRITE_TOOLS = new Set<AssistantToolName>([
+  'create_file',
+  'write_file',
+  ...TOCKDRIVER_WRITE_TOOL_NAMES,
+])
 
 export type AssistantTurnPermission = 'read-only' | 'propose'
 

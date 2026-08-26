@@ -290,7 +290,12 @@ export class NoteAssistant extends Service implements AssistantRemoteHost {
       const readTools = input.allowedTools.filter((tool): tool is PennivoReadTool => (
         REVIEWED_PENNIVO_READ_TOOLS.includes(tool as PennivoReadTool) && tool !== 'list_workspaces'
       ))
-      const writeTools = input.allowedTools.filter(tool => tool === 'create_file' || tool === 'write_file')
+      const writeTools = input.allowedTools.filter(tool => (
+        tool === 'create_file'
+        || tool === 'write_file'
+        || tool === 'notes_stage_write'
+        || tool === 'notes_organize_capture'
+      ))
       if (readTools.length > 0) {
         lease.addCleanup(registerAssistantReadTools(
           input.agent,
@@ -517,7 +522,11 @@ export class NoteAssistant extends Service implements AssistantRemoteHost {
     ) throw new AssistantTurnBindingError('STALE_TURN')
     const allowedTools: AssistantToolName[] = [
       ...REVIEWED_PENNIVO_READ_TOOLS.filter(tool => tool !== 'list_workspaces'),
-      ...(settings.writePermission === 'propose' ? ['create_file' as const, 'write_file' as const] : []),
+      'notes_search',
+      'notes_read',
+      ...(settings.writePermission === 'propose'
+        ? ['create_file' as const, 'write_file' as const, 'notes_stage_write' as const, 'notes_organize_capture' as const]
+        : []),
     ]
     return {
       lease: this.bindAgentTurn({

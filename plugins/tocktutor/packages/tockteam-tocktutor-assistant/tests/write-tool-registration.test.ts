@@ -14,13 +14,14 @@ import type { AssistantReadToolExecutor } from '../src/read-tool-registration.ts
 import type { ReadBinding, ReadToolOutcome } from '../src/read-tools.ts'
 import { AssistantTurnBindingRegistry } from '../src/turn-bindings.ts'
 
-function fakeAgent(context: Context): Agent {
-  const id = 'agent-write-12345678'
+function fakeAgent(context: Context, requestedId = 'agent-write-12345678'): Agent {
+  const id = requestedId
   return { id, ctx: context, options: {}, session: { id }, status: 'running' } as unknown as Agent
 }
 
 class FakeReader implements AssistantReadToolExecutor {
   calls = 0
+  content = 'private old content'
   source: ReadToolOutcome['source'] = {
     path: 'notes/a.md',
     digest: `sha256:${'a'.repeat(64)}`,
@@ -30,12 +31,19 @@ class FakeReader implements AssistantReadToolExecutor {
 
   async execute(
     _tool: unknown,
-    _args: unknown,
+    args: unknown,
     _binding: ReadBinding,
     _signal: AbortSignal,
   ): Promise<ReadToolOutcome> {
     this.calls += 1
-    return { result: { content: [{ type: 'text', text: 'private old content' }] }, source: this.source, truncated: false }
+    const path = typeof args === 'object' && args !== null && 'path' in args && typeof args.path === 'string'
+      ? args.path
+      : this.source?.path
+    return {
+      result: { content: [{ type: 'text', text: this.content }] },
+      source: this.source === null || path === undefined ? null : { ...this.source, path },
+      truncated: false,
+    }
   }
 }
 
@@ -79,6 +87,39 @@ async function harness(permission: 'read-only' | 'propose' = 'propose') {
   if (permission === 'propose') {
     lease.addCleanup(registerAssistantWriteTools(agent, reader, stager, turns, ['create_file', 'write_file']))
   }
+  return { agent, context, lease, reader, stager, turns }
+}
+
+async function driverHarness() {
+  const context = new Context()
+  await context.plugin(SystemPrompt)
+  await context.plugin(ToolRuntime)
+  const turns = new AssistantTurnBindingRegistry()
+  const agent = fakeAgent(context, 'agent-driver-12345678')
+  const signal = new AbortController().signal
+  const lease = turns.begin({
+    agent,
+    turnId: 'turn-driver-12345678',
+    requestId: 'request-driver-12345678',
+    childInstanceId: 'child-driver-12345678',
+    vaultId: 'vault:write-12345678',
+    vaultGeneration: 7,
+    provider: 'deepseek-official',
+    model: 'deepseek-v4-flash',
+    permission: 'propose',
+    permissionEpoch: 4,
+    allowedTools: ['notes_stage_write', 'notes_organize_capture'],
+    signal,
+  })
+  const reader = new FakeReader()
+  const stager = new FakeStager()
+  lease.addCleanup(registerAssistantWriteTools(
+    agent,
+    reader,
+    stager,
+    turns,
+    ['notes_stage_write', 'notes_organize_capture'],
+  ))
   return { agent, context, lease, reader, stager, turns }
 }
 
@@ -152,6 +193,78 @@ test('write_file reads current identity then stages an update without mutating',
       permissionEpoch: 4,
     })
     assert.doesNotMatch(JSON.stringify(result), /Replacement|sha256|file:/u)
+  } finally {
+    lease.end()
+    turns.dispose()
+    await context.fiber.dispose()
+  }
+})
+
+test('TockDriver writes stage redacted proposals and organize Inbox captures through the same queue', async () => {
+  const { agent, context, lease, reader, stager, turns } = await driverHarness()
+  try {
+    assert.deepEqual(context.tools.schemas(agent).map(schema => schema.name), [
+      'notes_stage_write',
+      'notes_organize_capture',
+    ])
+    const staged = await context.tools.execute({
+      agent,
+      arguments: {
+        vaultId: 'vault:write-12345678',
+        path: 'notes/new.md',
+        content: '# Private TockDriver Draft',
+        operation: 'create',
+      },
+      callId: CallId('call-driver-stage-12345678'),
+      name: 'notes_stage_write',
+      signal: new AbortController().signal,
+    })
+    assert.equal(staged.isError, false)
+    assert.equal(reader.calls, 0)
+    assert.equal(stager.inputs.length, 1)
+    assert.deepEqual(stager.inputs[0], {
+      vaultId: 'vault:write-12345678',
+      vaultGeneration: 7,
+      destination: 'notes/new.md',
+      operation: 'create',
+      expectedTarget: { exists: false },
+      content: '# Private TockDriver Draft',
+      childInstanceId: 'child-driver-12345678',
+      turnId: 'turn-driver-12345678',
+      requestId: 'request-driver-12345678',
+      provider: 'deepseek-official',
+      model: 'deepseek-v4-flash',
+      writePermission: 'propose',
+      permissionEpoch: 4,
+    })
+    assert.doesNotMatch(JSON.stringify(staged), /Private TockDriver Draft|digest|revision|child-driver|turn-driver/u)
+    assert.match(JSON.stringify(staged), /pending_review|tockdriver-notes|notes\/new\.md/u)
+
+    reader.content = '# Inbox Title\n\nShip the review flow.\n'
+    reader.source = {
+      path: 'Inbox/capture.md',
+      digest: `sha256:${'c'.repeat(64)}`,
+      revision: `file:${'d'.repeat(64)}`,
+      generation: 7,
+    }
+    const organized = await context.tools.execute({
+      agent,
+      arguments: { vaultId: 'vault:write-12345678', path: 'Inbox/capture.md' },
+      callId: CallId('call-driver-organize-12345678'),
+      name: 'notes_organize_capture',
+      signal: new AbortController().signal,
+    })
+    assert.equal(organized.isError, false)
+    assert.equal(reader.calls, 1)
+    assert.equal(stager.inputs.length, 2)
+    const organizedInput = stager.inputs[1]
+    assert.ok(organizedInput)
+    assert.equal(organizedInput.operation, 'create')
+    assert.match(organizedInput.destination, /^Organized\/\d{4}-\d{2}-\d{2}-inbox-title\.md$/u)
+    assert.match(organizedInput.content, /Organized from \[Inbox\/capture\.md\]/u)
+    assert.match(organizedInput.content, /Ship the review flow/u)
+    assert.equal(organizedInput.source?.relativePath, 'Inbox/capture.md')
+    assert.doesNotMatch(JSON.stringify(organized), /Ship the review flow|file:|sha256:/u)
   } finally {
     lease.end()
     turns.dispose()

@@ -79,6 +79,11 @@ const READ_TOOL_SPECS: readonly ReadToolSpec[] = [
   },
 ]
 
+export interface AssistantReadDocument {
+  readonly content: string
+  readonly source: ReadToolOutcome['source']
+}
+
 export interface AssistantReadToolExecutor {
   execute(
     tool: unknown,
@@ -86,6 +91,12 @@ export interface AssistantReadToolExecutor {
     binding: ReadBinding,
     signal: AbortSignal,
   ): Promise<ReadToolOutcome>
+  /** Host-private full bounded content for transformations that are not model reads. */
+  readDocument?(
+    path: string,
+    binding: ReadBinding,
+    signal: AbortSignal,
+  ): Promise<AssistantReadDocument>
 }
 
 function definition(
