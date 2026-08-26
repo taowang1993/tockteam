@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict'
+import { spawnSync } from 'node:child_process'
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
-import { join, win32 } from 'node:path'
+import { homedir, tmpdir } from 'node:os'
+import { dirname, join, win32 } from 'node:path'
 import { test } from 'node:test'
 import { fileURLToPath } from 'node:url'
 import { parseMarketplaceCatalog } from '../plugins/plugin-marketplace/src/catalog.ts'
@@ -14,6 +15,7 @@ import type {
 } from '../plugins/plugin-marketplace/src/host/platform.ts'
 import {
   findGitHubCli,
+  previewSandboxPolicy,
   previewScriptCommand,
   ProductionMarketplacePlatform,
   withGitHubCredentials,
@@ -455,6 +457,39 @@ test('production bundle build runs approved hooks in its own workspace', {
     assert.equal(existsSync(join(candidateProfile, 'profile-built')), false)
   } finally {
     rmSync(sandboxRoot, { recursive: true, force: true })
+  }
+})
+
+test('preview sandbox denies host data and optional network access', {
+  skip: process.platform !== 'darwin' || !existsSync('/usr/bin/sandbox-exec')
+    ? 'requires macOS Seatbelt'
+    : false,
+}, () => {
+  const root = mkdtempSync(join(tmpdir(), 'tockteam-preview-policy-'))
+  const outside = mkdtempSync(join(homedir(), '.tockteam-preview-secret-'))
+  const secret = join(outside, 'secret.txt')
+  const script = join(root, 'probe.mjs')
+  try {
+    writeFileSync(secret, 'host secret')
+    writeFileSync(script, [
+      "import { readFileSync, writeFileSync } from 'node:fs'",
+      `try { readFileSync(${JSON.stringify(secret)}); throw new Error('host data was readable') }`,
+      "catch (error) { if (error instanceof Error && error.message === 'host data was readable') throw error }",
+      "writeFileSync(new URL('./denied', import.meta.url), 'denied')",
+    ].join('\n'))
+    const policy = previewSandboxPolicy(root, {
+      network: false,
+      readRoots: [dirname(dirname(process.execPath))],
+    })
+    assert.doesNotMatch(policy, /allow network/u)
+    const result = spawnSync('/usr/bin/sandbox-exec', [
+      '-p', policy, process.execPath, script,
+    ], { encoding: 'utf8' })
+    assert.equal(result.status, 0, result.stderr)
+    assert.equal(readFileSync(join(root, 'denied'), 'utf8'), 'denied')
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+    rmSync(outside, { recursive: true, force: true })
   }
 })
 

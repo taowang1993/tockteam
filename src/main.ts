@@ -30,7 +30,7 @@ import {
 import {
   findGitHubCli,
   previewRuntimeBaseEnvironment,
-  previewSandboxPolicy,
+  previewSandboxLauncher,
   ProductionMarketplacePlatform,
   withGitHubCredentials,
 } from '../plugins/plugin-marketplace/src/host/platform.ts'
@@ -550,10 +550,10 @@ function previewRuntimeOptions(input: {
   if (!existsSync(paths.nodeBinary)) throw new Error(`packaged Node runtime is missing: ${paths.nodeBinary}`)
   if (!existsSync(paths.cliEntry)) throw new Error(`packaged DSH CLI is missing: ${paths.cliEntry}`)
   const preview = { pluginId: input.pluginId, transactionId: input.transactionId }
-  const sandbox = '/usr/bin/sandbox-exec'
-  const launcher = process.platform === 'darwin' && existsSync(sandbox)
-    ? { args: ['-p', previewSandboxPolicy(input.sandboxRoot)], command: sandbox }
-    : undefined
+  const launcher = previewSandboxLauncher({
+    readRoots: [paths.runtimeRoot, dirname(paths.nodeBinDirectory)],
+    root: input.sandboxRoot,
+  })
   return {
     args: ['--profile', DESKTOP_PROFILE],
     cliEntry: paths.cliEntry,
@@ -566,7 +566,7 @@ function previewRuntimeOptions(input: {
       }),
       TMPDIR: temporary,
     },
-    ...(launcher === undefined ? {} : { launcher }),
+    launcher,
     nodeBinary: paths.nodeBinary,
     onLog: (stream, line) => { appendLog(stream, `[preview:${input.pluginId}] ${line}`) },
     readyTimeoutMs: 90_000,
