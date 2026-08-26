@@ -10,7 +10,6 @@ export type { DesktopProtocolVault, DesktopProtocolVaultTarget, TockTutorBrowser
 
 export interface ResolvedTockTutorProtocolRequest {
   request: TockTutorBrowserProtocolRequest
-  target?: DesktopProtocolVaultTarget
 }
 
 export const MAX_PROTOCOL_URI_LENGTH = 16_384
@@ -355,10 +354,7 @@ export function resolveTockTutorProtocolRequest(
     ...(request.xSuccess === undefined ? {} : { xSuccess: request.xSuccess }),
     ...(request.xError === undefined ? {} : { xError: request.xError }),
   }
-  return {
-    request: browserRequest,
-    target: { id: vault.id, generation: vault.generation },
-  }
+  return { request: browserRequest }
 }
 
 export function isEligibleTrustedMainWindow(window: TrustedWindowState): boolean {

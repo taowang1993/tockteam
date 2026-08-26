@@ -28,6 +28,10 @@ test('applies multi-cursor formatting as one source-preserving transaction', () 
   ])
   assert.equal(result.source, '**one** two\nthree **four**')
   assert.deepEqual(result.ranges, [{ from: 2, to: 5 }, { from: 20, to: 24 }])
+  assert.equal(applyEditorCommandToSelections('one\ntwo\nthree\n', 'delete-line', [
+    { from: 1, to: 1 },
+    { from: 9, to: 9 },
+  ]).source, 'two\n')
 })
 
 test('edits complete Markdown table rows and columns without losing alignment', () => {

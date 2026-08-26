@@ -189,6 +189,7 @@ test('publishes only the bounded native action Remote methods', async () => {
   try {
     assert.deepEqual(remoteMethods(state.gateway), [
       { invocation: { kind: 'direct' }, method: 'activateVault' },
+      { invocation: { kind: 'direct' }, method: 'activateVaultTarget' },
       { invocation: { kind: 'direct' }, method: 'openPopOut' },
       { invocation: { kind: 'direct' }, method: 'closePopOut' },
       { invocation: { kind: 'direct' }, method: 'closeAllPopOuts' },
@@ -433,7 +434,8 @@ test('activates a named recent target through Runtime and resynchronizes Desktop
   const state = await loaded()
   try {
     assert.deepEqual(await state.gateway.activateVaultTarget('authorization-target', nextVault, new AbortController().signal), { status: 'activated' })
-    assert.deepEqual(state.calls.map(call => call.method), ['synchronizeDesktopSelection', 'claim', 'activateRecentVault', 'synchronizeDesktopSelection'])
+    assert.deepEqual(state.calls.map(call => call.method), ['claim', 'activateRecentVault'])
+    assert.equal(state.syncCalls(), 2)
   } finally {
     await state.context.fiber.dispose()
   }

@@ -217,7 +217,7 @@ class FakeRemote implements WorkbenchRouteRemote {
       if (this.openOverride !== null) return this.openOverride(path)
       return success({
         content: path === 'Folder/Note.md'
-          ? '# Before\n- [ ] Verify route\n'
+          ? '# Before\n- [ ] Verify route\nParagraph ^route-block\n'
           : path === 'Board.canvas'
             ? JSON.stringify({
                 customRoot: { preserve: true },
@@ -561,14 +561,20 @@ test('routes split panes, heading targets, and existing-file policies through th
     operationId: 'heading-open-decoded',
     request: { action: 'open', file: 'Folder/Note.md#Before' },
   }), 'handled')
-  assert.equal(controller.getSnapshot().selectionStart, '# Before\\n'.length)
+  assert.equal(controller.getSnapshot().selectionStart, 0)
+  assert.equal(await controller.handleDispatch({
+    kind: 'protocol',
+    operationId: 'block-open',
+    request: { action: 'open', file: 'Folder/Note.md#^route-block' },
+  }), 'handled')
+  assert.equal(controller.getSnapshot().selectionStart, '# Before\n- [ ] Verify route\n'.length)
   assert.equal(await controller.handleDispatch({
     kind: 'protocol',
     operationId: 'append-existing',
     request: { action: 'new', file: 'Existing.md', content: 'Added', ifExists: 'append', silent: true },
   }), 'handled')
   const save = remote.calls.filter(call => call.method === 'saveDocument').at(-1)?.parameters[0] as { content: string }
-  assert.match(save.content, /Added/u)
+  assert.equal(save.content, '---\nstatus: open\n---\n# Second\nAdded')
   controller.dispose()
 })
 
@@ -736,9 +742,9 @@ test('loads, edits, reads, toggles, and snapshot-saves one exact note', async ()
 
   assert.equal(await controller.select('Folder/Note.md'), true)
   assert.deepEqual(navigation, [['/tocktutor/Folder/Note.md', undefined]])
-  assert.equal(controller.getSnapshot().source, '# Before\n- [ ] Verify route\n')
+  assert.equal(controller.getSnapshot().source, '# Before\n- [ ] Verify route\nParagraph ^route-block\n')
   controller.edit('x'.repeat(MAX_ROUTE_SOURCE_BYTES + 1))
-  assert.equal(controller.getSnapshot().source, '# Before\n- [ ] Verify route\n')
+  assert.equal(controller.getSnapshot().source, '# Before\n- [ ] Verify route\nParagraph ^route-block\n')
   assert.match(controller.getSnapshot().message, /bounded source limit/u)
 
   controller.edit('# After\n- [ ] Verify route\n<script>unsafe()</script>\n')

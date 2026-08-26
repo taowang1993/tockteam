@@ -178,7 +178,7 @@ describe('TockTutor titlebar panel controls', () => {
     expect(onCloseCommandPalette).toHaveBeenCalledOnce()
   })
 
-  it('renders editable source-preserving Live Preview chrome', () => {
+  it('renders editable source-preserving Live Preview chrome', async () => {
     const onEdit = vi.fn()
     const onMode = vi.fn()
     const onToggleTask = vi.fn()
@@ -195,7 +195,7 @@ describe('TockTutor titlebar panel controls', () => {
     expect(screen.getByRole('button', { name: 'Live Preview' }).getAttribute('aria-pressed')).toBe('true')
     fireEvent.click(screen.getByRole('button', { name: 'Source' }))
     expect(onMode).toHaveBeenCalledWith('source')
-    fireEvent.click(screen.getByRole('checkbox', { name: /Mark Task on Line 2 as Complete/u }))
+    fireEvent.click(await screen.findByRole('checkbox', { name: /Mark Task on Line 2 as Complete/u }, { timeout: 5_000 }))
     expect(onToggleTask).toHaveBeenCalledWith(0)
     fireEvent.change(screen.getByLabelText('Live Preview Line 1'), { target: { value: '# Updated' } })
     expect(onEdit).toHaveBeenCalledWith('# Updated\n- [ ] Review\n> [!tip]- Fold\n> Body\n')

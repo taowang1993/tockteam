@@ -48,7 +48,7 @@ export function escapeMarkdownHtml(value: string): string {
 
 function safeUrl(value: string): string | null {
   const trimmed = value.trim()
-  if (trimmed.length === 0 || trimmed.length > 4096 || /[\u0000-\u001f\u007f]/u.test(trimmed)) return null
+  if (trimmed.length === 0 || trimmed.length > 4096 || trimmed.startsWith('//') || /[\u0000-\u001f\u007f]/u.test(trimmed)) return null
   if (/^(?:https?:|mailto:)/iu.test(trimmed)) {
     try {
       const url = new URL(trimmed)
@@ -104,11 +104,21 @@ function renderSafeRawHtmlBlock(source: string): string | null {
     .replace(/<(?:script|style|iframe|object|embed|form|svg|math)\b[^>]*>[\s\S]*?(?:<\/\s*(?:script|style|iframe|object|embed|form|svg|math)\s*>|$)/giu, '')
   let result = ''
   let cursor = 0
+  const stack: string[] = []
   for (const match of withoutActive.matchAll(/<[^>]{1,200}>/gu)) {
+    const parsed = match[0]!.match(/^<\s*(\/)?\s*([A-Za-z][\w:-]*)([^>]*)>$/u)
+    if (parsed !== null) {
+      const name = parsed[2]!.toLocaleLowerCase()
+      if (SAFE_RAW_BLOCK_TAGS.has(name) && !SAFE_RAW_VOID_TAGS.has(name)) {
+        if (parsed[1] === undefined) stack.push(name)
+        else if (stack.pop() !== name) return escapeMarkdownHtml(source)
+      }
+    }
     result += escapeMarkdownHtml(withoutActive.slice(cursor, match.index))
     result += sanitizeRawHtmlTag(match[0]!)
     cursor = (match.index ?? cursor) + match[0]!.length
   }
+  if (stack.length > 0) return escapeMarkdownHtml(source)
   result += escapeMarkdownHtml(withoutActive.slice(cursor))
   return result.trim() === '' ? '' : result
 }
@@ -271,7 +281,7 @@ export function renderMarkdownHtml(markdown: string, options: RenderMarkdownOpti
         rawLines.push(lines[index]!)
         index += 1
       }
-      blocks.push(renderSafeRawHtmlBlock(rawLines.join('\\n')) ?? paragraphHtml(rawLines, options.strictLineBreaks === true, footnotes.numbers, externalEmbedMode))
+      blocks.push(renderSafeRawHtmlBlock(rawLines.join('\n')) ?? paragraphHtml(rawLines, options.strictLineBreaks === true, footnotes.numbers, externalEmbedMode))
       index -= 1
       continue
     }

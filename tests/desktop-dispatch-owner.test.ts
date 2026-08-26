@@ -58,7 +58,6 @@ test('resolves named and absolute protocol selectors without exposing Host paths
       vaultGeneration: 5,
       vaultId: known[1]!.id,
     },
-    target: { generation: 5, id: known[1]!.id },
   })
   const absolute = resolveTockTutorProtocolRequest(
     parseTockTutorProtocol('tocktutor://open?path=%2Fvaults%2Fwork%2FNotes%2FPlan.md')!,
@@ -68,6 +67,50 @@ test('resolves named and absolute protocol selectors without exposing Host paths
   assert.equal(absolute?.request.file, 'Notes/Plan.md')
   assert.equal('path' in (absolute?.request ?? {}), false)
   assert.equal('vault' in (absolute?.request ?? {}), false)
+})
+
+test('delivers a named-vault request under the current boundary and completes under the activated boundary', async () => {
+  const current = { generation: 4, id: `vault:${'a'.repeat(64)}` }
+  const target = { generation: 5, id: `vault:${'b'.repeat(64)}` }
+  let active = current
+  const dispatch = new DesktopDispatchOwner({
+    identity: (operationId, requestId) => ({
+      operationId,
+      requestId,
+      sessionId: 'session',
+      vaultGeneration: active.generation,
+      vaultId: active.id,
+      windowId: 'window',
+    }),
+    isAvailable: () => true,
+    resolveProtocol: request => resolveTockTutorProtocolRequest(request, [
+      { ...current, name: 'Archive', path: '/vaults/archive' },
+      { ...target, name: 'Work', path: '/vaults/work' },
+    ], { ...current, name: 'Archive', path: '/vaults/archive' }),
+  })
+  assert.equal(dispatch.publishProtocol('tocktutor://open?vault=Work&file=Plan.md'), true)
+  const event = await dispatch.next(new AbortController().signal)
+  assert.ok(event?.kind === 'protocol')
+  assert.equal(event?.identity.vaultId, current.id)
+  if (event?.kind !== 'protocol') return
+  assert.equal(event.request.vaultId, target.id)
+  active = target
+  assert.equal((await dispatch.complete({ operationId: event.identity.operationId, status: 'handled' }, new AbortController().signal)).status, 'handled')
+})
+
+test('reports a superseded queued vault callback exactly once', () => {
+  const callbacks: string[] = []
+  const current = { generation: 4, id: `vault:${'a'.repeat(64)}`, name: 'Archive', path: '/vaults/archive' }
+  const work = { generation: 5, id: `vault:${'b'.repeat(64)}`, name: 'Work', path: '/vaults/work' }
+  const dispatch = new DesktopDispatchOwner({
+    identity: (operationId, requestId) => ({ operationId, requestId, sessionId: 'session', vaultGeneration: current.generation, vaultId: current.id, windowId: 'window' }),
+    isAvailable: () => true,
+    onCallback: (url, status) => { callbacks.push(`${status}:${url}`) },
+    resolveProtocol: request => resolveTockTutorProtocolRequest(request, [current, work], current),
+  })
+  assert.equal(dispatch.publishProtocol('tocktutor://open?vault=Work&file=One.md&x-error=https%3A%2F%2Fexample.test%2Fone-error'), true)
+  assert.equal(dispatch.publishProtocol('tocktutor://open?vault=Work&file=Two.md&x-error=https%3A%2F%2Fexample.test%2Ftwo-error'), true)
+  assert.deepEqual(callbacks, ['error:https://example.test/one-error'])
 })
 
 test('dispatch callbacks are emitted once after final completion', async () => {

@@ -6,7 +6,6 @@ import type {
   DesktopDispatchCompletionRequest,
   DesktopDispatchCompletionResult,
   DesktopDispatchEvent,
-  DesktopProtocolVaultTarget,
   DesktopQuickAction,
   NativeOperationIdentity,
   TockTutorProtocolRequest,
@@ -22,7 +21,7 @@ export interface DesktopDispatchChannelEnvironment {
 }
 
 export interface DesktopDispatchChannelOptions {
-  identity(operationId: string, requestId: string, channelSessionId: string, target?: DesktopProtocolVaultTarget): NativeOperationIdentity | undefined
+  identity(operationId: string, requestId: string, channelSessionId: string): NativeOperationIdentity | undefined
   isAvailable(): boolean
   onCallback?(url: string, status: 'success' | 'error'): void
   onDeliveryExpired?(operationId: string, consumerId: string): void
@@ -101,7 +100,7 @@ export class DesktopDispatchChannel {
     const channelSessionId = randomBytes(24).toString('base64url')
     const providerConsumerId = `host-provider-${randomBytes(24).toString('base64url')}`
     const owner = new DesktopDispatchOwner({
-      identity: (operationId, requestId, target) => this.options.identity(operationId, requestId, channelSessionId, target),
+      identity: (operationId, requestId) => this.options.identity(operationId, requestId, channelSessionId),
       isAvailable: this.options.isAvailable,
       ...(this.options.onCallback === undefined ? {} : { onCallback: this.options.onCallback }),
       ...(this.options.resolveProtocol === undefined ? {} : { resolveProtocol: this.options.resolveProtocol }),

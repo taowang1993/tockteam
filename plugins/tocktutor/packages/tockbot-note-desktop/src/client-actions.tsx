@@ -138,37 +138,44 @@ function workbenchEvent(event: DesktopDispatchDelivery): TockTutorNativeActionsD
 }
 
 async function waitForVault(
-  owner: TockTutorNativeActionsOwnerProps,
+  currentOwner: () => TockTutorNativeActionsOwnerProps | undefined,
   target: { id: string; generation: number },
   signal?: AbortSignal,
-): Promise<boolean> {
+): Promise<TockTutorNativeActionsOwnerProps | undefined> {
   for (let attempt = 0; attempt < 200; attempt += 1) {
-    if (owner.vault?.id === target.id && owner.vault.generation === target.generation) return true
-    if (signal?.aborted === true) return false
+    const owner = currentOwner()
+    if (owner?.vault?.id === target.id && owner.vault.generation === target.generation) return owner
+    if (signal?.aborted === true) return undefined
     await new Promise(resolve => setTimeout(resolve, 25))
   }
-  return false
+  return undefined
 }
 
 async function handleDesktopDispatch(
   event: DesktopDispatchDelivery,
-  owner: TockTutorNativeActionsOwnerProps,
+  initialOwner: TockTutorNativeActionsOwnerProps,
+  currentOwner: () => TockTutorNativeActionsOwnerProps | undefined,
   bridge: DesktopCallerBridge,
   remote: DesktopActionRemote,
   signal?: AbortSignal,
 ): Promise<TockTutorNativeActionsDispatchResult> {
+  let owner = initialOwner
   if (event.kind !== 'protocol') return owner.handleDispatch(workbenchEvent(event))
   const target = event.request.vaultId !== undefined || event.request.vaultGeneration !== undefined
     ? { id: event.request.vaultId ?? '', generation: event.request.vaultGeneration ?? -1 }
     : undefined
   if (target !== undefined) {
     if (!/^vault:[0-9a-f]{64}$/u.test(target.id) || !Number.isSafeInteger(target.generation) || target.generation < 0) return 'failed'
-    if (owner.vault?.id !== target.id || owner.vault.generation !== target.generation) {
+    const currentVault = owner.vault
+    if (currentVault === null || currentVault.id !== target.id || currentVault.generation !== target.generation) {
       if (!await saveCurrent(owner)) return 'failed'
       const activated = dispatchStatus(await nativeCall(bridge, 'activate-vault', signal, (authorization, ownerSignal) => (
         remote.tocktutorDesktop.activateVaultTarget(authorization, target, ownerSignal)
       )))
-      if (activated !== 'handled' || !await waitForVault(owner, target, signal)) return activated === 'stale' ? 'stale' : 'failed'
+      if (activated !== 'handled') return activated === 'stale' ? 'stale' : 'failed'
+      const activatedOwner = await waitForVault(currentOwner, target, signal)
+      if (activatedOwner === undefined) return signal?.aborted === true ? 'stale' : 'failed'
+      owner = activatedOwner
     }
   }
   if (event.request.action === 'choose-vault') {
@@ -185,8 +192,8 @@ async function handleDesktopDispatch(
         remote.tocktutorDesktop.openPopOut(authorization, event.request.file!, owner.vault!, ownerSignal)
       ), owner.vault))
     }
-    const routed = { ...event, request: { ...event.request, paneType: undefined } }
-    const created = await owner.handleDispatch(routed)
+    const { paneType: _paneType, ...request } = event.request
+    const created = await owner.handleDispatch({ kind: 'protocol', operationId: event.operationId, request })
     if (created !== 'handled' || owner.activePath === null || owner.vault === null) return created
     return dispatchStatus(await nativeCall(bridge, 'popout-open', signal, (authorization, ownerSignal) => (
       remote.tocktutorDesktop.openPopOut(authorization, owner.activePath!, owner.vault!, ownerSignal)
@@ -392,6 +399,7 @@ export async function runDesktopDispatchLoop(options: DesktopDispatchLoopOptions
         status = await handleDesktopDispatch(
           event,
           owner,
+          options.owner,
           options.bridge,
           options.remote,
           options.signal,

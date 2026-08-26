@@ -352,7 +352,7 @@ export class TockTutorDesktopGateway extends TypertRemoteService {
       }
       if (current.id !== target.id || current.generation !== target.generation) {
         const activated = this.ctx.noteVault.activateRecentVault(target.id, current.generation)
-        if (activated.id !== target.id || activated.generation < target.generation) {
+        if (!activated.active || activated.id !== target.id || activated.generation < target.generation) {
           throw new Error('Desktop vault target activation returned stale state.')
         }
       }

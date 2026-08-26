@@ -134,7 +134,7 @@ export function LivePreviewView(props: {
         content={props.source}
         key={props.documentKey}
         onMarkdownChange={props.onEdit}
-        onSelectionChange={props.onSelectionChange}
+        {...(props.onSelectionChange === undefined ? {} : { onSelectionChange: props.onSelectionChange })}
         onToggleTask={props.onToggleTask}
       />
       <details className="mx-auto mb-6 mt-4 w-[calc(100%-32px)] max-w-3xl rounded border border-[var(--tt-border)] p-2">

@@ -15,12 +15,12 @@ export type DesktopCallerOperation =
 export type DesktopQuickAction = 'new' | 'daily' | 'capture' | 'search'
 export type TockTutorProtocolRequest = {
   action: 'open' | 'new' | 'daily' | 'unique' | 'search' | 'choose-vault'
-  vault?: string
+  vaultId?: string
+  vaultGeneration?: number
   file?: string
   name?: string
   content?: string
   query?: string
-  clipboard?: true
   ifExists?: 'prepend' | 'append' | 'overwrite'
   silent?: true
   paneType?: 'tab' | 'split' | 'window'

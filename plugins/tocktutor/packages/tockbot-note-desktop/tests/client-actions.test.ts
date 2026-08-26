@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import type { TockTutorNativeActionsOwnerProps } from '@tockteam/tocktutor-workbench/client'
 import {
   replaceActionController,
   requestMicrophoneAccess,
@@ -430,6 +431,50 @@ test('forwards lifecycle cancellation to adapter-owned dispatch calls', async ()
     signal,
   })
   assert.strictEqual(received, signal)
+})
+
+test('continues a named-vault dispatch with the freshly activated Workbench owner', async () => {
+  const target = Object.freeze({ generation: 8, id: `vault:${'b'.repeat(64)}` })
+  const completions: unknown[] = []
+  const event = {
+    deliveryId: 'delivery-target',
+    kind: 'protocol' as const,
+    operationId: 'dispatch-target',
+    request: { action: 'open' as const, file: 'Folder/Target.md', vaultGeneration: target.generation, vaultId: target.id },
+  }
+  let next = true
+  let currentOwner: TockTutorNativeActionsOwnerProps = {
+    activePath: 'Folder/Current.md',
+    async handleDispatch() { return 'failed' as const },
+    async saveCurrent() { return true },
+    vault,
+  }
+  const bridge: DesktopCallerBridge = {
+    async authorize() { return { authorization: 'activate-target' } },
+    async cancelDispatch() {},
+    async completeDispatch(value) { completions.push(value); return value.status === 'handled' ? 'handled' : 'stale' },
+    async nextDispatch() { if (!next) return null; next = false; return event },
+  }
+  const remote: DesktopActionRemote = {
+    tocktutorDesktop: {
+      async activateVaultTarget() {
+        currentOwner = {
+          activePath: null,
+          async handleDispatch(delivery: unknown) {
+            assert.deepEqual(delivery, { kind: 'protocol', operationId: 'dispatch-target', request: event.request })
+            return 'handled' as const
+          },
+          async saveCurrent() { return true },
+          vault: target,
+        }
+        return { ok: true, value: { status: 'activated' } }
+      },
+    } as unknown as DesktopActionRemote['tocktutorDesktop'],
+  }
+
+  await runDesktopDispatchLoop({ bridge, owner: () => currentOwner, remote })
+
+  assert.deepEqual(completions, [{ deliveryId: 'delivery-target', operationId: 'dispatch-target', status: 'handled' }])
 })
 
 test('dispatches Workbench actions and keeps Desktop-owned vault/window actions caller-bound', async () => {

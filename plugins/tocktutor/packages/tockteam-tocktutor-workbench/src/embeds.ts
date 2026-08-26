@@ -170,10 +170,11 @@ function codeLines(source: string): Set<number> {
   const result = new Set<number>()
   let fence: { character: string; length: number } | null = null
   lines.forEach((line, index) => {
-    const marker = line.match(/^ {0,3}(`{3,}|~{3,})(.*)$/u)?.[1]
+    const match = line.match(/^ {0,3}(`{3,}|~{3,})(.*)$/u)
+    const marker = match?.[1]
     if (fence !== null) {
       result.add(index)
-      if (marker !== undefined && marker[0] === fence.character && marker.length >= fence.length && marker.slice(1).trim() === '') fence = null
+      if (marker !== undefined && marker[0] === fence.character && marker.length >= fence.length && (match?.[2] ?? '').trim() === '') fence = null
       return
     }
     if (marker !== undefined) {

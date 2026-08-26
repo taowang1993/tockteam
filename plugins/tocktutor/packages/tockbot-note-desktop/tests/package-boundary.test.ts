@@ -54,5 +54,5 @@ test('never imports Electron, vault paths, or environment/browser surface heuris
   assert.doesNotMatch(source, /from ['"]electron['"]/u)
   assert.doesNotMatch(source, /from ['"]node:(?:fs|path)['"]/u)
   assert.doesNotMatch(source, /process\.env|typeof window|navigator\.platform/u)
-  assert.doesNotMatch(clientSource, /\b(?:canonicalPath|requestId|sessionId|windowId|vaultGeneration)\b/u)
+  assert.doesNotMatch(clientSource, /\b(?:canonicalPath|requestId|sessionId|windowId)\b/u)
 })

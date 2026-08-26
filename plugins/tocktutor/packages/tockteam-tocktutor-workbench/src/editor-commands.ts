@@ -120,11 +120,11 @@ export function applyEditorCommandToSelections(
   if (command === 'delete-line') {
     const lines = new Map<number, { from: number; to: number }>()
     for (const range of ranges) {
-      const from = Math.max(source.lastIndexOf('\\n', Math.max(0, range.from - 1)), source.lastIndexOf('\\r', Math.max(0, range.from - 1))) + 1
+      const from = Math.max(source.lastIndexOf('\n', Math.max(0, range.from - 1)), source.lastIndexOf('\r', Math.max(0, range.from - 1))) + 1
       let to = source.length
       for (let index = range.to; index < source.length; index += 1) {
-        if (source[index] !== '\\n' && source[index] !== '\\r') continue
-        to = index + (source.startsWith('\\r\\n', index) ? 2 : 1)
+        if (source[index] !== '\n' && source[index] !== '\r') continue
+        to = index + (source.startsWith('\r\n', index) ? 2 : 1)
         break
       }
       lines.set(from, { from, to })

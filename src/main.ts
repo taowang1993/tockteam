@@ -304,19 +304,14 @@ function initializeDesktopPicker(): void {
     },
   })
   desktopDispatchChannel = new DesktopDispatchChannel({
-    identity: (operationId, requestId, channelSessionId, target) => {
+    identity: (operationId, requestId, channelSessionId) => {
       if (mainWindow === undefined || mainWindow.isDestroyed()) return undefined
-      const identity = desktopPickerOwner.nativeIdentity(
+      return desktopPickerOwner.nativeIdentity(
         operationId,
         requestId,
         String(mainWindow.webContents.id),
         channelSessionId,
       )
-      return target === undefined ? identity : {
-        ...identity,
-        vaultGeneration: target.generation,
-        vaultId: target.id,
-      }
     },
     isAvailable: () => isEligibleDesktopRevealWindow(),
     onCallback: (url) => { void shell.openExternal(url) },

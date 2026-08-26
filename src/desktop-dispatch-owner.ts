@@ -3,7 +3,6 @@ import {
   type DesktopDispatchCompletionRequest,
   type DesktopDispatchCompletionResult,
   type DesktopDispatchEvent,
-  type DesktopProtocolVaultTarget,
   type DesktopQuickAction,
   type NativeOperationIdentity,
   type TockTutorBrowserProtocolRequest,
@@ -19,7 +18,7 @@ const MAX_ID_BYTES = 256
 const DELIVERY_LIFETIME_MS = 5 * 60 * 1000
 
 export interface DesktopDispatchOwnerOptions {
-  identity(operationId: string, requestId: string, target?: DesktopProtocolVaultTarget): NativeOperationIdentity | undefined
+  identity(operationId: string, requestId: string): NativeOperationIdentity | undefined
   isAvailable(): boolean
   onCallback?(url: string, status: 'success' | 'error'): void
   onDeliveryExpired?(operationId: string, consumerId: string): void
@@ -79,7 +78,7 @@ export class DesktopDispatchOwner {
       ?? this.resolveWithoutSensitiveFields(parsed)
     if (resolved === null) return false
     return this.publish(operationId => ({
-      identity: this.identity(operationId, resolved.target),
+      identity: this.identity(operationId),
       kind: 'protocol',
       request: resolved.request,
     }))
@@ -130,8 +129,14 @@ export class DesktopDispatchOwner {
     this.delivered.delete(request.operationId)
     const event = delivered.event
     const current = this.options.identity(event.identity.operationId, event.identity.requestId)
-    if (current === undefined || current.vaultId !== event.identity.vaultId
-      || current.vaultGeneration !== event.identity.vaultGeneration
+    const expectedVaultId = event.kind === 'protocol' && event.request.vaultId !== undefined
+      ? event.request.vaultId
+      : event.identity.vaultId
+    const expectedVaultGeneration = event.kind === 'protocol' && event.request.vaultGeneration !== undefined
+      ? event.request.vaultGeneration
+      : event.identity.vaultGeneration
+    if (current === undefined || current.vaultId !== expectedVaultId
+      || current.vaultGeneration !== expectedVaultGeneration
       || current.sessionId !== event.identity.sessionId || current.windowId !== event.identity.windowId) {
       this.superseded.delete(request.operationId)
       if (event.kind === 'protocol') this.notifyCallback(event.request, 'error')
@@ -220,9 +225,9 @@ export class DesktopDispatchOwner {
     while (this.queue.length > MAX_PENDING_EVENTS) this.queue.pop()
   }
 
-  private identity(operationId: string, target?: DesktopProtocolVaultTarget): NativeOperationIdentity {
+  private identity(operationId: string): NativeOperationIdentity {
     const requestId = this.options.randomId()
-    const identity = this.options.identity(operationId, requestId, target)
+    const identity = this.options.identity(operationId, requestId)
     if (identity === undefined) throw new Error('Desktop dispatch identity is unavailable')
     return identity
   }
@@ -248,7 +253,7 @@ export class DesktopDispatchOwner {
       for (const queued of this.queue.splice(0, this.queue.length)) {
         if (queued.kind === 'protocol'
           && (queued.request.action === 'choose-vault' || queued.request.vaultId !== undefined)) {
-          this.rememberSuperseded(queued.identity.operationId)
+          this.notifyCallback(queued.request, 'error')
         } else {
           this.queue.push(queued)
         }

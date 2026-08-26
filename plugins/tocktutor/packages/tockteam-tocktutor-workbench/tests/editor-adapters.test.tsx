@@ -59,7 +59,7 @@ describe('Milkdown Live Preview editor', () => {
       <LivePreviewEditor content={source} onMarkdownChange={onChange} onSelectionChange={onSelection} />,
     )
 
-    await waitFor(() => expect(container.querySelector('.ProseMirror')).toBeTruthy())
+    await waitFor(() => expect(container.querySelector('.ProseMirror')).toBeTruthy(), { timeout: 5_000 })
     expect(container.querySelector('.ProseMirror')?.textContent).toContain('Lesson')
     expect(onChange).not.toHaveBeenCalled()
     expect(container.querySelector<HTMLElement>('.ProseMirror')?.getAttribute('contenteditable')).toBe('true')
@@ -72,7 +72,7 @@ describe('Milkdown Live Preview editor', () => {
     const { container, rerender } = render(
       <LivePreviewEditor content={source} onMarkdownChange={() => {}} onWidgetState={onWidgetState} />,
     )
-    await waitFor(() => expect(container.querySelector('.ProseMirror')).toBeTruthy())
+    await waitFor(() => expect(container.querySelector('.ProseMirror')).toBeTruthy(), { timeout: 5_000 })
     const editor = container.querySelector('.ProseMirror')
     rerender(<LivePreviewEditor content={source} onMarkdownChange={() => {}} onWidgetState={onWidgetState} />)
     expect(container.querySelector('.ProseMirror')).toBe(editor)

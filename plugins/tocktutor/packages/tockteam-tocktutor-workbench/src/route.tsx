@@ -330,21 +330,25 @@ function sameVault(left: VaultReference | null, right: VaultReference): boolean 
 }
 
 function protocolFileTarget(file: string): { path: string; fragment?: string } | null {
-  const marker = file.search(/[#^]/u)
+  const marker = file.indexOf('#')
   const path = marker < 0 ? file : file.slice(0, marker)
-  const fragment = marker < 0 ? undefined : file.slice(marker + 1)
-  if (!isSafeVaultRelativePath(path) || (fragment !== undefined && (fragment.length === 0 || fragment.length > 512))) return null
+  const fragment = marker < 0 ? undefined : file.slice(marker)
+  if (!isSafeVaultRelativePath(path) || (fragment !== undefined && (fragment.length < 2 || fragment.length > 512))) return null
   return fragment === undefined ? { path } : { fragment, path }
 }
 
+function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')
+}
+
 function targetLine(source: string, fragment: string): number | null {
-  const block = fragment.startsWith('^') ? fragment.slice(1) : ''
-  const heading = fragment.startsWith('#') ? fragment.slice(1).trim() : fragment.trim()
+  const block = fragment.startsWith('#^') ? fragment.slice(2) : ''
+  const heading = fragment.startsWith('#') && !fragment.startsWith('#^') ? fragment.slice(1).trim() : ''
   const lines = source.split(/\n/u)
   for (let index = 0; index < lines.length; index += 1) {
     const line = lines[index]!.replace(/\r$/u, '')
-    if (block !== '' && new RegExp(`(?:^|\\s)\\^${block.replace(/[.*+?^${}()|[\\]\\\\]/gu, '\\\\$&')}(?:$|\\s)`, 'u').test(line)) return index + 1
-    if (heading !== '' && new RegExp(`^#{1,6}\\s+${heading.replace(/[.*+?^${}()|[\\]\\\\]/gu, '\\\\$&')}\\s*$`, 'iu').test(line)) return index + 1
+    if (block !== '' && new RegExp(`(?:^|\\s)\\^${escapeRegex(block)}(?:$|\\s)`, 'u').test(line)) return index + 1
+    if (heading !== '' && new RegExp(`^#{1,6}\\s+${escapeRegex(heading)}\\s*$`, 'iu').test(line)) return index + 1
   }
   return null
 }
@@ -614,8 +618,6 @@ export class WorkbenchRouteController {
     if (id === undefined) return false
     this.shellSession = addPaneGroup(this.shellSession, id).session
     this.syncShell()
-    this.clearDocument()
-    this.navigate(ROUTE_PREFIX)
     return true
   }
 
@@ -643,8 +645,9 @@ export class WorkbenchRouteController {
         if (existing !== null) {
           if (existing.generation !== vault.generation || existing.path !== path) return 'stale'
           const merged = ifExists === 'overwrite' ? content
-            : ifExists === 'prepend' ? `${content}${content.endsWith('\\n') || existing.content.startsWith('\\n') ? '' : '\\n'}${existing.content}`
-              : `${existing.content}${existing.content.endsWith('\\n') || content.startsWith('\\n') ? '' : '\\n'}${content}`
+            : content === '' ? existing.content
+              : ifExists === 'prepend' ? `${content}${content.endsWith('\n') || existing.content.startsWith('\n') ? '' : '\n'}${existing.content}`
+                : `${existing.content}${existing.content.endsWith('\n') || content.startsWith('\n') ? '' : '\n'}${content}`
           if (!boundedSource(merged)) return 'failed'
           result = remoteValue(await this.remote.tocktutorWorkbench.saveDocument({
             content: merged,
