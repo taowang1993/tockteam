@@ -251,19 +251,24 @@ export async function main(
     readyTimeoutMs: 60_000,
   })
 
-  let stopping = false
-  const stop = async (): Promise<void> => {
-    if (stopping) return
-    stopping = true
-    await runtime.stop()
+  let stopping: Promise<void> | undefined
+  const stop = (): Promise<void> => {
+    stopping ??= runtime.stop()
+    return stopping
   }
   const onSignal = (): void => {
-    void stop().then(() => { process.exit(0) })
+    void stop().then(
+      () => { process.exit(0) },
+      error => {
+        process.stderr.write(`TockTeam Web shutdown failed: ${error instanceof Error ? error.message : String(error)}\n`)
+        process.exit(1)
+      },
+    )
   }
   process.once('SIGINT', onSignal)
   process.once('SIGTERM', onSignal)
   runtime.on('exit', (exit: RuntimeExit) => {
-    if (stopping) return
+    if (stopping !== undefined) return
     process.stderr.write(
       `TockTeam Web stopped (code=${String(exit.code)}, signal=${String(exit.signal)})\n`
       + `${logTail.slice(-20).join('\n')}\n`,

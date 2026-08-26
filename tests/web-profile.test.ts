@@ -31,6 +31,13 @@ import {
   UsageError,
 } from '../src/web.ts'
 
+test('Web shutdown shares one in-flight runtime stop across signals', () => {
+  const source = readFileSync(new URL('../src/web.ts', import.meta.url), 'utf8')
+  assert.match(source, /stopping \?\?= runtime\.stop\(\)/u)
+  assert.match(source, /TockTeam Web shutdown failed/u)
+  assert.doesNotMatch(source, /if \(stopping\) return/u)
+})
+
 test('web profile initializes required bundles and preserves user plugins', () => {
   const root = mkdtempSync(join(tmpdir(), 'dsh-web-profile-'))
   try {
