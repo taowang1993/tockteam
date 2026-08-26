@@ -64,6 +64,10 @@ jobs:
       - name: Type check
         run: pnpm run typecheck
 
+      - name: Run Windows portability tests
+        if: runner.os == 'Windows'
+        run: node --test tests/desktop-native-caller-abort.test.ts tests/desktop-picker-*.test.ts
+
       - name: Run tests
         run: pnpm test
 
