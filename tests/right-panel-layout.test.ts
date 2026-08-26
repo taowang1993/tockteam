@@ -137,6 +137,10 @@ test('desktop titlebar matches Tockbot chrome and stays draggable', () => {
     tailwind,
     /\[data-slot='sidebar'\] button:is\([\s\S]*?aria-label='Open sidebar'[\s\S]*?aria-label='打开侧边栏'[\s\S]*?\) > svg:last-child\s*\{[^}]*display: none !important;/s,
   )
+  assert.match(
+    tailwind,
+    /\[data-slot='sidebar'\] button:is\([\s\S]*?aria-label='New session'[\s\S]*?aria-label='新建会话'[\s\S]*?\):not\(:has\(\[data-slot='sidebar\.brand\.name'\]\)\)\s*\{[^}]*display: none !important;/s,
+  )
   assert.match(workspace, /panels\.toggleSidebar\(\)/)
   assert.match(
     workspace,

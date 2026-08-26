@@ -143,6 +143,10 @@
     --tockteam-shell-chrome: var(--dsw-alias-bg-base);
   }
 
+  & [data-slot='sidebar'] button:is([aria-label='New session'], [aria-label='新建会话']):not(:has([data-slot='sidebar.brand.name'])) {
+    display: none !important;
+  }
+
   & #tockteam-embedded-layout > #root {
     --dsw-specific-sidebar-fill: var(--tockteam-shell-chrome);
     --dsw-alias-border-l1: var(--tockteam-shell-divider);
