@@ -4,6 +4,7 @@ import type { DesktopBridge, DesktopCommand } from './contracts.ts'
 import type { DesktopPanels } from '../plugins/panel-controls/src/client.ts'
 import type { PinnedSummary } from '../plugins/pinned-summary/src/client.ts'
 import type { WorkspaceTools } from '../plugins/sidebar/src/client.ts'
+import { findHeroHeadlines, pruneDisconnected } from '../plugins/shared/branding.ts'
 import type {
   LocaleMessages,
   LocaleService,
@@ -104,7 +105,10 @@ function installBranding(): () => void {
   const originalBrandMarks = new Map<SVGSVGElement, SVGSVGElement>()
   const originalSidebarNames = new Map<HTMLElement, string>()
   const synchronize = (): void => {
-    for (const element of document.querySelectorAll<HTMLElement>('span')) {
+    pruneDisconnected(originalHeadlines)
+    pruneDisconnected(originalBrandMarks)
+    pruneDisconnected(originalSidebarNames)
+    for (const element of findHeroHeadlines()) {
       const text = element.textContent?.trim() ?? ''
       if (!headlineCopy.has(text)) continue
       if (!originalHeadlines.has(element)) originalHeadlines.set(element, text)

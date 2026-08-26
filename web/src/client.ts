@@ -1,5 +1,6 @@
 /** Browser face of the TockTeam Web shell. */
 
+import { findHeroHeadlines, pruneDisconnected } from '../../plugins/shared/branding.ts'
 import {
   TOCKTEAM_SURFACE_VIEW_SERVICE,
   type TockTeamSurfaceView,
@@ -46,7 +47,8 @@ export function apply(ctx: ClientContext): void {
     ])
     const originalHeadlines = new Map<HTMLElement, string>()
     const synchronize = (): void => {
-      for (const element of document.querySelectorAll<HTMLElement>('span')) {
+      pruneDisconnected(originalHeadlines)
+      for (const element of findHeroHeadlines()) {
         const text = element.textContent?.trim() ?? ''
         if (!headlineCopy.has(text)) continue
         if (!originalHeadlines.has(element)) originalHeadlines.set(element, text)
