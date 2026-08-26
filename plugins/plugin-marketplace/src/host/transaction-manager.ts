@@ -554,9 +554,15 @@ export class PluginMarketplaceManager {
 
   getSnapshot(): MarketplaceSnapshot {
     const state = readMarketplaceState(this.#profileDir)
-    const receipts = state.entries
-    const installed = receipts.filter(entry => entry.mechanism === 'repository'
-      || bundleInstalled(this.#profileDir, entry.packageName))
+    const manifest = profileManifest(this.#profileDir)
+    const dependencies = isRecord(manifest.dependencies) ? manifest.dependencies : {}
+    const enabledBundles = new Set(profileBundles(manifest))
+    const patchPath = join(this.#profileDir, 'cordis.patch.yml')
+    const enabledRepositories = new Set(repositorySources(
+      existsSync(patchPath) ? readFileSync(patchPath, 'utf8') : '',
+    ))
+    const installed = state.entries.filter(entry => entry.mechanism === 'repository'
+      || entry.packageName !== null && typeof dependencies[entry.packageName] === 'string')
     const installedById = new Map(installed.map(entry => [entry.pluginId, entry]))
     return cloneSnapshot({
       auth: this.#auth,
@@ -567,8 +573,8 @@ export class PluginMarketplaceManager {
         const enabled = receipt === undefined
           ? false
           : receipt.mechanism === 'bundle'
-            ? bundleEnabled(this.#profileDir, receipt.packageName)
-            : repositoryEnabled(this.#profileDir, receipt)
+            ? receipt.packageName !== null && enabledBundles.has(receipt.packageName)
+            : enabledRepositories.has(receipt.source)
         return {
           ...plugin,
           currentCommit: receipt?.resolvedCommit ?? null,
