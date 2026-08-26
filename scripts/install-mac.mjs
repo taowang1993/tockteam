@@ -100,13 +100,16 @@ export async function replaceMacBundle(options) {
     }
     try {
       await rename(pending, destination)
+      await validateBundle(destination)
     } catch (error) {
-      if (previousMoved && backup !== undefined) {
-        await rename(backup, destination)
+      try {
+        await rm(destination, { force: true, recursive: true })
+        if (previousMoved && backup !== undefined) await rename(backup, destination)
+      } catch (rollbackError) {
+        throw new AggregateError([error, rollbackError], 'TockTeam Desktop install and rollback both failed')
       }
       throw error
     }
-    await validateBundle(destination)
     return { backup, destination }
   } finally {
     await rm(pending, { force: true, recursive: true })

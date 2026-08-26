@@ -70,6 +70,33 @@ test('local mac install never exposes a partially copied app bundle', async () =
   )
 })
 
+test('local mac install restores the previous app when final validation fails', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'tockteam-install-rollback-'))
+  const source = join(root, 'source.app')
+  const destination = join(root, 'Applications', 'TockTeam Desktop.app')
+  await makeBundle(source, 'new')
+  await makeBundle(destination, 'old')
+
+  await assert.rejects(replaceMacBundle({
+    source,
+    destination,
+    backupDirectory: join(root, 'Trash'),
+    copyBundle: async (from: string, pending: string) => { await cp(from, pending, { recursive: true }) },
+    validateBundle: async (path: string) => {
+      await makeBundleValidation(path)
+      if (path === destination
+        && await readFile(join(path, 'Contents', 'Resources', 'app.asar'), 'utf8') === 'new') {
+        throw new Error('final validation failed')
+      }
+    },
+  }), /final validation failed/u)
+
+  assert.equal(
+    await readFile(join(destination, 'Contents', 'Resources', 'app.asar'), 'utf8'),
+    'old',
+  )
+})
+
 async function makeBundleValidation(path: string): Promise<void> {
   const values = await Promise.all([
     readFile(join(path, 'Contents', 'MacOS', 'TockTeam Desktop'), 'utf8'),
