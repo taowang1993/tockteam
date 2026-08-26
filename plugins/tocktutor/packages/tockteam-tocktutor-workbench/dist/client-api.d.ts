@@ -18,6 +18,7 @@ export declare function apply(ctx: Context): Promise<() => Promise<void>>;
 export * from './assistant-panel.ts';
 export * from './live-preview.ts';
 export * from './rich-markdown.ts';
+export * from './editor-commands.ts';
 export * from './native-actions.ts';
 export * from './review-panel.ts';
 export * from './route.tsx';

@@ -839,6 +839,25 @@ test('persists Reading, Live Preview, and Source mode independently per tab', as
   controller.dispose()
 })
 
+test('runs editor commands against the captured Source selection', async () => {
+  const remote = new FakeRemote()
+  const controller = new WorkbenchRouteController(remote, () => {})
+  await controller.syncLocation('/tocktutor')
+  assert.equal(await controller.select('Folder/Note.md'), true)
+  controller.setSelection(2, 8)
+  controller.runEditorCommand('bold')
+  assert.match(controller.getSnapshot().source, /^# \*\*Before\*\*/u)
+  const end = controller.getSnapshot().source.length
+  controller.setSelection(end, end)
+  controller.runEditorCommand('insert-table')
+  assert.match(controller.getSnapshot().source, /\| Column 1 \| Column 2 \|/u)
+  controller.setMode('reading')
+  const unchanged = controller.getSnapshot().source
+  controller.runEditorCommand('delete-line')
+  assert.equal(controller.getSnapshot().source, unchanged)
+  controller.dispose()
+})
+
 test('late note and vault completions cannot replace the active route identity', async () => {
   const remote = new FakeRemote()
   const first = deferred<{ ok: true; value: OpenDocumentResult }>()

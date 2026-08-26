@@ -5,6 +5,7 @@ import type { RemoteResult } from '@deepseek-ai/dsh-typert-protocol';
 import { TOCKTUTOR_ASSISTANT_PANEL_SLOT } from './assistant-panel.ts';
 import { TOCKTUTOR_NATIVE_ACTIONS_SLOT, type TockTutorNativeActionsDispatchEvent, type TockTutorNativeActionsDispatchResult } from './native-actions.ts';
 import { TOCKTUTOR_REVIEW_PANEL_SLOT } from './review-panel.ts';
+import { type EditorCommandId } from './editor-commands.ts';
 import { type EditorStatus } from './markdown.ts';
 import { type NoteVaultEventRemote } from './vault-events.ts';
 import type { ActiveVaultResult, CreateDocumentRequest, ListTreeRequest, OpenDocumentResult, SaveDocumentRequest, VaultReference, VaultTreeEntry, VaultTreePage, WriteDocumentResult } from './types.ts';
@@ -49,6 +50,8 @@ export interface WorkbenchRouteSnapshot {
     revision: string | null;
     saveStatus: EditorStatus;
     searchOpen: boolean;
+    selectionEnd?: number;
+    selectionStart?: number;
     searchQuery: string;
     source: string;
     panes: readonly RoutePaneSummary[];
@@ -122,6 +125,8 @@ export declare class WorkbenchRouteController {
     toggleFocusMode(): void;
     select(path: string, navigate?: boolean, dispatchRevision?: number, recordHistory?: boolean): Promise<boolean>;
     edit(source: string): void;
+    setSelection(start: number, end: number): void;
+    runEditorCommand(command: EditorCommandId): void;
     setMode(mode: RouteEditorMode): void;
     toggleTask(index: number): void;
     moveCanvasNode(nodeId: string, deltaX: number, deltaY: number): void;
@@ -140,6 +145,7 @@ export interface TockTutorRouteViewProps {
     onCloseTab?(paneId: string, path: string): void;
     onAddPane(): void;
     onEdit(source: string): void;
+    onEditorCommand?(command: EditorCommandId): void;
     onFocusPane(paneId: string): void;
     onForward?(): void;
     onMoveCanvas(nodeId: string, deltaX: number, deltaY: number): void;
@@ -151,6 +157,7 @@ export interface TockTutorRouteViewProps {
     onReopenClosedTab?(): void;
     onSave(): void;
     onSearchChange?(query: string): void;
+    onSelectionChange?(start: number, end: number): void;
     onSelect(path: string): void;
     onSubmitDispatch?(draft: NativeDispatchDraft): void;
     onToggleFocusMode?(): void;

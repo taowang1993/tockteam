@@ -31,6 +31,7 @@ var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: tru
 // src/client.ts
 var client_exports = {};
 __export(client_exports, {
+  MAX_EDITOR_COMMAND_SOURCE_BYTES: () => MAX_EDITOR_COMMAND_SOURCE_BYTES,
   MAX_LIVE_PREVIEW_LINE_BYTES: () => MAX_LIVE_PREVIEW_LINE_BYTES,
   MAX_LIVE_PREVIEW_SOURCE_BYTES: () => MAX_LIVE_PREVIEW_SOURCE_BYTES,
   MAX_RICH_MARKDOWN_BLOCKS: () => MAX_RICH_MARKDOWN_BLOCKS,
@@ -44,16 +45,22 @@ __export(client_exports, {
   TockTutorRouteView: () => TockTutorRouteView,
   WorkbenchRouteController: () => WorkbenchRouteController,
   apply: () => apply,
+  applyEditorCommand: () => applyEditorCommand,
+  applyTableCommand: () => applyTableCommand,
   buildMarkdownExportDocument: () => buildMarkdownExportDocument,
   buildMarkdownSlides: () => buildMarkdownSlides,
   escapeMarkdownHtml: () => escapeMarkdownHtml,
   inject: () => inject,
+  internalLinkDropMarkdown: () => internalLinkDropMarkdown,
   isNoteVaultChangeEvent: () => isNoteVaultChangeEvent,
   name: () => name,
+  pagePreviewTargetAtOffset: () => pagePreviewTargetAtOffset,
   pathFromTockTutorLocation: () => pathFromTockTutorLocation,
   projectLivePreview: () => projectLivePreview,
   renderMarkdownHtml: () => renderMarkdownHtml,
   replaceLivePreviewLine: () => replaceLivePreviewLine,
+  resolvePlatformEditorCommand: () => resolvePlatformEditorCommand,
+  resolveSlashCommand: () => resolveSlashCommand,
   subscribeNoteVaultChanges: () => subscribeNoteVaultChanges
 });
 module.exports = __toCommonJS(client_exports);
@@ -21851,94 +21858,6 @@ function buildMarkdownExportDocument(options) {
   return `<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data: blob:; media-src data: blob:; style-src 'unsafe-inline';"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title><style>body{font:16px/1.6 system-ui,sans-serif;max-width:780px;margin:40px auto;padding:0 24px;color:#202124}pre,code{font-family:ui-monospace,monospace}pre{overflow:auto;padding:12px;background:#f5f5f5}table{border-collapse:collapse;width:100%}th,td{border:1px solid #ccc;padding:6px}.callout{border-left:4px solid #6750a4;padding:8px 12px;background:#f7f5ff}.math-display{text-align:center}.footnotes{border-top:1px solid #ddd}</style></head><body>${body}</body></html>`;
 }
 
-// src/markdown.ts
-function sourceLines2(source) {
-  const result = [];
-  let start = 0;
-  for (let index2 = 0; index2 < source.length; index2 += 1) {
-    const character = source[index2];
-    if (character !== "\n" && character !== "\r") continue;
-    result.push({ text: source.slice(start, index2), start });
-    if (character === "\r" && source[index2 + 1] === "\n") index2 += 1;
-    start = index2 + 1;
-  }
-  result.push({ text: source.slice(start), start });
-  return result;
-}
-function maskComments(line, open) {
-  const chars = line.split("");
-  let cursor = 0;
-  let inside = open;
-  while (cursor < line.length) {
-    const marker = line.indexOf("%%", cursor);
-    if (marker < 0) {
-      if (inside) for (let index2 = cursor; index2 < line.length; index2 += 1) chars[index2] = " ";
-      break;
-    }
-    if (inside) {
-      for (let index2 = cursor; index2 < marker + 2; index2 += 1) chars[index2] = " ";
-      inside = false;
-    } else {
-      for (let index2 = marker; index2 < marker + 2; index2 += 1) chars[index2] = " ";
-      inside = true;
-    }
-    cursor = marker + 2;
-  }
-  return { text: chars.join(""), open: inside };
-}
-function fence(value) {
-  const match = /^ {0,3}(`{3,}|~{3,})(.*)$/u.exec(value);
-  return match === null ? null : { marker: match[1], rest: match[2] };
-}
-function taskMatch(value) {
-  const match = /^(\s*[-*+]\s+)\[([^\]\n])\](?:\s+)(.*)$/u.exec(value);
-  return match === null ? null : { prefix: match[1], marker: match[2], body: match[3] };
-}
-function taskLocations(source) {
-  const locations = [];
-  let commentOpen = false;
-  let fenceMarker2 = null;
-  for (const line of sourceLines2(source)) {
-    const masked = maskComments(line.text, commentOpen);
-    commentOpen = masked.open;
-    const fenceMatch = fence(masked.text);
-    if (fenceMarker2 !== null) {
-      if (fenceMatch !== null && fenceMatch.marker[0] === fenceMarker2[0] && fenceMatch.marker.length >= fenceMarker2.length && fenceMatch.rest.trim() === "") fenceMarker2 = null;
-      continue;
-    }
-    if (fenceMatch !== null) {
-      fenceMarker2 = fenceMatch.marker;
-      continue;
-    }
-    const match = taskMatch(masked.text);
-    if (match === null) continue;
-    locations.push({
-      index: locations.length,
-      markerStart: line.start + match.prefix.length,
-      marker: match.marker
-    });
-  }
-  return locations;
-}
-function toggleMarkdownTask(source, taskIndex) {
-  if (!Number.isSafeInteger(taskIndex) || taskIndex < 0) return source;
-  const location = taskLocations(source).find((task) => task.index === taskIndex);
-  if (location === void 0) return source;
-  const next = location.marker === " " ? "x" : " ";
-  return `${source.slice(0, location.markerStart)}[${next}]${source.slice(location.markerStart + 3)}`;
-}
-function resolveEditorShortcut(event, isMac) {
-  const modifier = isMac ? event.metaKey && !event.ctrlKey : event.ctrlKey && !event.metaKey;
-  if (event.altKey) return null;
-  if (modifier && !event.shiftKey && event.key.toLowerCase() === "s") return "save";
-  if (modifier && !event.shiftKey && event.key.toLowerCase() === "p") return "command-palette";
-  if (modifier && event.shiftKey && event.key.toLowerCase() === "k") return "delete-line";
-  if (!modifier && !event.shiftKey && !event.metaKey && !event.ctrlKey && event.key === "Escape") {
-    return "simplify-selection";
-  }
-  return null;
-}
-
 // src/session.ts
 var MAX_PANE_GROUPS = 8;
 var MAX_NOTE_TABS = 20;
@@ -22130,6 +22049,268 @@ function closeNoteTab(source, groupId, path) {
   };
 }
 
+// src/editor-commands.ts
+var MAX_EDITOR_COMMAND_SOURCE_BYTES = 2e6;
+function byteLength3(value) {
+  return new TextEncoder().encode(value).byteLength;
+}
+function boundedRange(source, start, end) {
+  const safeStart = Number.isSafeInteger(start) ? Math.max(0, Math.min(start, source.length)) : 0;
+  const safeEnd = Number.isSafeInteger(end) ? Math.max(safeStart, Math.min(end, source.length)) : safeStart;
+  return [safeStart, safeEnd];
+}
+function replaceRange(source, start, end, value, selectOffset = 0) {
+  const next = `${source.slice(0, start)}${value}${source.slice(end)}`;
+  if (byteLength3(next) > MAX_EDITOR_COMMAND_SOURCE_BYTES) return { selectionEnd: end, selectionStart: start, source };
+  return {
+    selectionEnd: start + value.length - selectOffset,
+    selectionStart: start + selectOffset,
+    source: next
+  };
+}
+function applyEditorCommand(source, command, selectionStart, selectionEnd) {
+  const [start, end] = boundedRange(source, selectionStart, selectionEnd);
+  const selected = source.slice(start, end);
+  if (command === "delete-line") {
+    const lineStart = Math.max(source.lastIndexOf("\n", Math.max(0, start - 1)), source.lastIndexOf("\r", Math.max(0, start - 1))) + 1;
+    let lineEnd = source.length;
+    for (let index2 = start; index2 < source.length; index2 += 1) {
+      if (source[index2] !== "\n" && source[index2] !== "\r") continue;
+      lineEnd = index2 + (source.startsWith("\r\n", index2) ? 2 : 1);
+      break;
+    }
+    return replaceRange(source, lineStart, lineEnd, "");
+  }
+  if (command === "insert-table") {
+    const prefix = start > 0 && !/(?:\r\n|[\r\n]){2}$/u.test(source.slice(0, start)) ? "\n\n" : "";
+    const suffix = end < source.length && !/^(?:\r\n|[\r\n]){2}/u.test(source.slice(end)) ? "\n" : "";
+    const table = `${prefix}| Column 1 | Column 2 |
+| --- | --- |
+|  |  |
+${suffix}`;
+    return replaceRange(source, start, end, table, prefix.length + 2);
+  }
+  if (command === "callout-tip") {
+    const content = (selected || "Tip").split(/\r?\n/u).map((line) => `> ${line}`).join("\n");
+    return replaceRange(source, start, end, `> [!tip]
+${content}
+`);
+  }
+  const wrappers = {
+    bold: ["**", "**"],
+    highlight: ["==", "=="],
+    italic: ["*", "*"],
+    link: ["[", "](Target.md)"],
+    strikethrough: ["~~", "~~"]
+  };
+  const [before, after] = wrappers[command];
+  const value = `${before}${selected || "text"}${after}`;
+  return {
+    selectionEnd: start + before.length + (selected || "text").length,
+    selectionStart: start + before.length,
+    source: `${source.slice(0, start)}${value}${source.slice(end)}`
+  };
+}
+function parseTable(source) {
+  if (byteLength3(source) > MAX_EDITOR_COMMAND_SOURCE_BYTES) return null;
+  const eol = source.includes("\r\n") ? "\r\n" : "\n";
+  const finalEol = /(?:\r\n|[\r\n])$/u.test(source);
+  const lines = source.split(/\r?\n/u);
+  if (finalEol) lines.pop();
+  if (lines.length < 2) return null;
+  const cells = lines.map((line) => line.trim().replace(/^\|/u, "").replace(/\|$/u, "").split("|").map((cell) => cell.trim()));
+  const width = cells[0]?.length ?? 0;
+  if (width < 1 || cells.some((row) => row.length !== width)) return null;
+  if (!cells[1]?.every((cell) => /^:?-{3,}:?$/u.test(cell))) return null;
+  return { cells, eol, finalEol };
+}
+function serializeTable(cells, eol, finalEol) {
+  return `${cells.map((row) => `| ${row.join(" | ")} |`).join(eol)}${finalEol ? eol : ""}`;
+}
+function compareCells(left, right) {
+  const leftNumber = Number(left);
+  const rightNumber = Number(right);
+  if (left.trim() !== "" && right.trim() !== "" && Number.isFinite(leftNumber) && Number.isFinite(rightNumber)) {
+    return leftNumber - rightNumber;
+  }
+  return left.localeCompare(right, void 0, { sensitivity: "base" });
+}
+function applyTableCommand(source, command) {
+  const parsed = parseTable(source);
+  if (parsed === null) return source;
+  const cells = parsed.cells.map((row) => [...row]);
+  const width = cells[0].length;
+  if (command.kind === "add-row") {
+    const index2 = Math.max(0, Math.min(command.row, cells.length - 2)) + 2;
+    cells.splice(index2, 0, Array.from({ length: width }, () => ""));
+  } else if (command.kind === "delete-row" || command.kind === "move-row-down" || command.kind === "move-row-up") {
+    const index2 = command.row + 2;
+    if (index2 < 2 || index2 >= cells.length) return source;
+    if (command.kind === "delete-row") cells.splice(index2, 1);
+    else {
+      const destination = index2 + (command.kind === "move-row-up" ? -1 : 1);
+      if (destination < 2 || destination >= cells.length) return source;
+      const [row] = cells.splice(index2, 1);
+      if (row !== void 0) cells.splice(destination, 0, row);
+    }
+  } else {
+    if (!("column" in command)) return source;
+    if (!Number.isSafeInteger(command.column) || command.column < 0 || command.column >= width) return source;
+    if (command.kind === "delete-column") {
+      if (width === 1) return source;
+      for (const row of cells) row.splice(command.column, 1);
+    } else if (command.kind.startsWith("align-")) {
+      const marker = command.kind === "align-center" ? ":---:" : command.kind === "align-left" ? ":---" : command.kind === "align-right" ? "---:" : "---";
+      cells[1][command.column] = marker;
+    } else {
+      const direction = command.kind === "sort-descending" ? -1 : 1;
+      const rows = cells.slice(2).map((row, index2) => ({ index: index2, row }));
+      rows.sort((left, right) => direction * compareCells(left.row[command.column] ?? "", right.row[command.column] ?? "") || left.index - right.index);
+      cells.splice(2, cells.length - 2, ...rows.map((entry) => entry.row));
+    }
+  }
+  return serializeTable(cells, parsed.eol, parsed.finalEol);
+}
+var SLASH_COMMANDS = /* @__PURE__ */ new Map([
+  ["/bold", "bold"],
+  ["/callout", "callout-tip"],
+  ["/highlight", "highlight"],
+  ["/italic", "italic"],
+  ["/link", "link"],
+  ["/strike", "strikethrough"],
+  ["/table", "insert-table"]
+]);
+function resolveSlashCommand(value) {
+  return SLASH_COMMANDS.get(value.trim().toLocaleLowerCase()) ?? null;
+}
+function resolvePlatformEditorCommand(event, isMac) {
+  const primary = isMac ? event.metaKey : event.ctrlKey;
+  if (!primary || event.altKey) return null;
+  const key = event.key.toLocaleLowerCase();
+  if (!event.shiftKey && key === "b") return "bold";
+  if (!event.shiftKey && key === "i") return "italic";
+  if (event.shiftKey && key === "x") return "strikethrough";
+  if (event.shiftKey && key === "h") return "highlight";
+  if (event.shiftKey && key === "k") return "delete-line";
+  return null;
+}
+function internalLinkDropMarkdown(path, label) {
+  if (!isSafeVaultRelativePath(path)) return null;
+  const target = path;
+  const safeLabel = label?.replace(/[\[\]|\r\n]/gu, "").trim().slice(0, 1e3);
+  return safeLabel ? `[[${target}|${safeLabel}]]` : `[[${target}]]`;
+}
+function codeRanges(source) {
+  const ranges = [];
+  const fence2 = /^ {0,3}(`{3,}|~{3,}).*$(?:\r?\n|\r)([\s\S]*?)^ {0,3}\1\s*$/gmu;
+  for (const match of source.matchAll(fence2)) {
+    if (match.index !== void 0) ranges.push([match.index, match.index + match[0].length]);
+  }
+  for (const match of source.matchAll(/`[^`\r\n]*`/gu)) {
+    if (match.index !== void 0) ranges.push([match.index, match.index + match[0].length]);
+  }
+  return ranges;
+}
+function pagePreviewTargetAtOffset(source, offset4) {
+  if (!Number.isSafeInteger(offset4) || offset4 < 0 || offset4 > source.length || byteLength3(source) > MAX_EDITOR_COMMAND_SOURCE_BYTES) return null;
+  if (codeRanges(source).some(([start, end]) => offset4 >= start && offset4 < end)) return null;
+  for (const match of source.matchAll(/\[\[([^\]|\r\n]{1,2000})(?:\|[^\]\r\n]{0,2000})?\]\]/gu)) {
+    if (match.index === void 0 || offset4 < match.index || offset4 >= match.index + match[0].length) continue;
+    const [path, fragment] = match[1].split("#", 2);
+    if (!isSafeVaultRelativePath(/\.md$/iu.test(path) ? path : `${path}.md`)) return null;
+    return { fragment: fragment?.replace(/^\^/u, "") || null, path };
+  }
+  return null;
+}
+
+// src/markdown.ts
+function sourceLines2(source) {
+  const result = [];
+  let start = 0;
+  for (let index2 = 0; index2 < source.length; index2 += 1) {
+    const character = source[index2];
+    if (character !== "\n" && character !== "\r") continue;
+    result.push({ text: source.slice(start, index2), start });
+    if (character === "\r" && source[index2 + 1] === "\n") index2 += 1;
+    start = index2 + 1;
+  }
+  result.push({ text: source.slice(start), start });
+  return result;
+}
+function maskComments(line, open) {
+  const chars = line.split("");
+  let cursor = 0;
+  let inside = open;
+  while (cursor < line.length) {
+    const marker = line.indexOf("%%", cursor);
+    if (marker < 0) {
+      if (inside) for (let index2 = cursor; index2 < line.length; index2 += 1) chars[index2] = " ";
+      break;
+    }
+    if (inside) {
+      for (let index2 = cursor; index2 < marker + 2; index2 += 1) chars[index2] = " ";
+      inside = false;
+    } else {
+      for (let index2 = marker; index2 < marker + 2; index2 += 1) chars[index2] = " ";
+      inside = true;
+    }
+    cursor = marker + 2;
+  }
+  return { text: chars.join(""), open: inside };
+}
+function fence(value) {
+  const match = /^ {0,3}(`{3,}|~{3,})(.*)$/u.exec(value);
+  return match === null ? null : { marker: match[1], rest: match[2] };
+}
+function taskMatch(value) {
+  const match = /^(\s*[-*+]\s+)\[([^\]\n])\](?:\s+)(.*)$/u.exec(value);
+  return match === null ? null : { prefix: match[1], marker: match[2], body: match[3] };
+}
+function taskLocations(source) {
+  const locations = [];
+  let commentOpen = false;
+  let fenceMarker2 = null;
+  for (const line of sourceLines2(source)) {
+    const masked = maskComments(line.text, commentOpen);
+    commentOpen = masked.open;
+    const fenceMatch = fence(masked.text);
+    if (fenceMarker2 !== null) {
+      if (fenceMatch !== null && fenceMatch.marker[0] === fenceMarker2[0] && fenceMatch.marker.length >= fenceMarker2.length && fenceMatch.rest.trim() === "") fenceMarker2 = null;
+      continue;
+    }
+    if (fenceMatch !== null) {
+      fenceMarker2 = fenceMatch.marker;
+      continue;
+    }
+    const match = taskMatch(masked.text);
+    if (match === null) continue;
+    locations.push({
+      index: locations.length,
+      markerStart: line.start + match.prefix.length,
+      marker: match.marker
+    });
+  }
+  return locations;
+}
+function toggleMarkdownTask(source, taskIndex) {
+  if (!Number.isSafeInteger(taskIndex) || taskIndex < 0) return source;
+  const location = taskLocations(source).find((task) => task.index === taskIndex);
+  if (location === void 0) return source;
+  const next = location.marker === " " ? "x" : " ";
+  return `${source.slice(0, location.markerStart)}[${next}]${source.slice(location.markerStart + 3)}`;
+}
+function resolveEditorShortcut(event, isMac) {
+  const modifier = isMac ? event.metaKey && !event.ctrlKey : event.ctrlKey && !event.metaKey;
+  if (event.altKey) return null;
+  if (modifier && !event.shiftKey && event.key.toLowerCase() === "s") return "save";
+  if (modifier && !event.shiftKey && event.key.toLowerCase() === "p") return "command-palette";
+  if (modifier && event.shiftKey && event.key.toLowerCase() === "k") return "delete-line";
+  if (!modifier && !event.shiftKey && !event.metaKey && !event.ctrlKey && event.key === "Escape") {
+    return "simplify-selection";
+  }
+  return null;
+}
+
 // src/vault-events.ts
 function isRecord2(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -22252,6 +22433,8 @@ function initialSnapshot() {
     saveStatus: "saved",
     searchOpen: false,
     searchQuery: "",
+    selectionEnd: 0,
+    selectionStart: 0,
     source: "",
     panes: Object.freeze([Object.freeze({
       activePath: null,
@@ -22587,6 +22770,8 @@ ${text}`;
       saveStatus: "saved",
       searchOpen: false,
       searchQuery: "",
+      selectionEnd: 0,
+      selectionStart: 0,
       source: "",
       panes: this.shellPanes(),
       vault: null,
@@ -22830,6 +23015,8 @@ ${text}`;
         path,
         revision: opened.revision,
         saveStatus: "saved",
+        selectionEnd: 0,
+        selectionStart: 0,
         source: opened.content
       });
       this.recordOpen(path, recordHistory, previousPath);
@@ -22856,6 +23043,24 @@ ${text}`;
       source
     });
     this.recordDirty(true);
+  }
+  setSelection(start, end) {
+    if (this.snapshot.path === null) return;
+    const selectionStart = Number.isSafeInteger(start) ? Math.max(0, Math.min(start, this.snapshot.source.length)) : 0;
+    const selectionEnd = Number.isSafeInteger(end) ? Math.max(selectionStart, Math.min(end, this.snapshot.source.length)) : selectionStart;
+    this.update({ selectionEnd, selectionStart });
+  }
+  runEditorCommand(command) {
+    if (this.snapshot.path === null || this.snapshot.documentKind !== "markdown" || this.snapshot.mode === "reading") return;
+    const result = applyEditorCommand(
+      this.snapshot.source,
+      command,
+      this.snapshot.selectionStart ?? this.snapshot.source.length,
+      this.snapshot.selectionEnd ?? this.snapshot.source.length
+    );
+    if (result.source === this.snapshot.source) return;
+    this.edit(result.source);
+    this.update({ selectionEnd: result.selectionEnd, selectionStart: result.selectionStart });
   }
   setMode(mode) {
     if (this.snapshot.path === null) return;
@@ -23163,13 +23368,24 @@ function NativeDispatchDialog(props) {
 }
 function WorkbenchCommandPalette(props) {
   const [query, setQuery] = (0, import_react5.useState)("");
+  const editor = (command) => props.onEditorCommand === void 0 ? void 0 : () => {
+    props.onEditorCommand?.(command);
+  };
   const commands = [
     { label: "New Note", run: props.onNewNote },
     { label: "Search Notes", run: props.onSearch },
     { label: "Toggle Focus Mode", run: props.onToggleFocus },
     { disabled: !props.canGoBack, label: "Go Back", run: props.onBack },
     { disabled: !props.canGoForward, label: "Go Forward", run: props.onForward },
-    { disabled: !props.canReopen, label: "Reopen Closed Note", run: props.onReopen }
+    { disabled: !props.canReopen, label: "Reopen Closed Note", run: props.onReopen },
+    { disabled: !props.editorEnabled, label: "Bold Text", run: editor("bold") },
+    { disabled: !props.editorEnabled, label: "Italic Text", run: editor("italic") },
+    { disabled: !props.editorEnabled, label: "Strikethrough Text", run: editor("strikethrough") },
+    { disabled: !props.editorEnabled, label: "Highlight Text", run: editor("highlight") },
+    { disabled: !props.editorEnabled, label: "Add Internal Link", run: editor("link") },
+    { disabled: !props.editorEnabled, label: "Insert Table", run: editor("insert-table") },
+    { disabled: !props.editorEnabled, label: "Insert Tip Callout", run: editor("callout-tip") },
+    { disabled: !props.editorEnabled, label: "Delete Current Line", run: editor("delete-line") }
   ].filter((command) => command.label.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()));
   return /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(Dialog2, { open: true, onOpenChange: (open) => {
     if (!open) props.onClose();
@@ -23508,10 +23724,12 @@ function TockTutorRouteView(props) {
             canGoBack: snapshot.canGoBack === true,
             canGoForward: snapshot.canGoForward === true,
             canReopen: (snapshot.recentlyClosed?.length ?? 0) > 0,
+            editorEnabled: snapshot.documentKind === "markdown" && snapshot.mode !== "reading",
             onBack: props.onBack,
             onClose: () => {
               props.onCloseCommandPalette?.();
             },
+            onEditorCommand: props.onEditorCommand,
             onForward: props.onForward,
             onNewNote: props.onNewNote,
             onReopen: props.onReopenClosedTab,
@@ -23680,6 +23898,9 @@ function TockTutorRouteView(props) {
                     className: "h-full min-h-0 w-full resize-none border-0 bg-[var(--tt-panel)] px-[max(28px,calc((100%-768px)/2))] py-9 text-[var(--tt-text)] outline-none [tab-size:2] [font:14px/1.65_ui-monospace,SFMono-Regular,Consolas,monospace]",
                     onChange: (event) => {
                       props.onEdit(event.target.value);
+                    },
+                    onSelect: (event) => {
+                      props.onSelectionChange?.(event.currentTarget.selectionStart, event.currentTarget.selectionEnd);
                     },
                     spellCheck: "true",
                     value: snapshot.source
@@ -23870,6 +24091,12 @@ function TockTutorRoute(props) {
         void controller.reopenClosedTab();
         return;
       }
+      const editorCommand = resolvePlatformEditorCommand(event, isMac);
+      if (editorCommand !== null) {
+        event.preventDefault();
+        controller.runEditorCommand(editorCommand);
+        return;
+      }
       const shortcut = resolveEditorShortcut(event, isMac);
       if (shortcut !== "save") return;
       event.preventDefault();
@@ -23924,6 +24151,9 @@ function TockTutorRoute(props) {
       onEdit: (source) => {
         controller.edit(source);
       },
+      onEditorCommand: (command) => {
+        controller.runEditorCommand(command);
+      },
       onFocusPane: (paneId) => {
         void controller.focusPane(paneId);
       },
@@ -23959,6 +24189,9 @@ function TockTutorRoute(props) {
       },
       onSelect: (path) => {
         void controller.select(path);
+      },
+      onSelectionChange: (start, end) => {
+        controller.setSelection(start, end);
       },
       onSubmitDispatch: (draft) => {
         void controller.submitDispatchDialog(draft);

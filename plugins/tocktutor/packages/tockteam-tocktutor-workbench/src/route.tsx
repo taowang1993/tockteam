@@ -67,6 +67,11 @@ import {
 } from './live-preview.ts'
 import { renderMarkdownHtml } from './rich-markdown.ts'
 import {
+  applyEditorCommand,
+  resolvePlatformEditorCommand,
+  type EditorCommandId,
+} from './editor-commands.ts'
+import {
   editorStatusLabel,
   resolveEditorShortcut,
   toggleMarkdownTask,
@@ -171,6 +176,8 @@ export interface WorkbenchRouteSnapshot {
   revision: string | null
   saveStatus: EditorStatus
   searchOpen: boolean
+  selectionEnd?: number
+  selectionStart?: number
   searchQuery: string
   source: string
   panes: readonly RoutePaneSummary[]
@@ -281,6 +288,8 @@ function initialSnapshot(): WorkbenchRouteSnapshot {
     saveStatus: 'saved',
     searchOpen: false,
     searchQuery: '',
+    selectionEnd: 0,
+    selectionStart: 0,
     source: '',
     panes: Object.freeze([Object.freeze({
       activePath: null,
@@ -664,6 +673,8 @@ export class WorkbenchRouteController {
       saveStatus: 'saved',
       searchOpen: false,
       searchQuery: '',
+      selectionEnd: 0,
+      selectionStart: 0,
       source: '',
       panes: this.shellPanes(),
       vault: null,
@@ -929,6 +940,8 @@ export class WorkbenchRouteController {
         path,
         revision: opened.revision,
         saveStatus: 'saved',
+        selectionEnd: 0,
+        selectionStart: 0,
         source: opened.content,
       })
       this.recordOpen(path, recordHistory, previousPath)
@@ -956,6 +969,26 @@ export class WorkbenchRouteController {
       source,
     })
     this.recordDirty(true)
+  }
+
+  setSelection(start: number, end: number): void {
+    if (this.snapshot.path === null) return
+    const selectionStart = Number.isSafeInteger(start) ? Math.max(0, Math.min(start, this.snapshot.source.length)) : 0
+    const selectionEnd = Number.isSafeInteger(end) ? Math.max(selectionStart, Math.min(end, this.snapshot.source.length)) : selectionStart
+    this.update({ selectionEnd, selectionStart })
+  }
+
+  runEditorCommand(command: EditorCommandId): void {
+    if (this.snapshot.path === null || this.snapshot.documentKind !== 'markdown' || this.snapshot.mode === 'reading') return
+    const result = applyEditorCommand(
+      this.snapshot.source,
+      command,
+      this.snapshot.selectionStart ?? this.snapshot.source.length,
+      this.snapshot.selectionEnd ?? this.snapshot.source.length,
+    )
+    if (result.source === this.snapshot.source) return
+    this.edit(result.source)
+    this.update({ selectionEnd: result.selectionEnd, selectionStart: result.selectionStart })
   }
 
   setMode(mode: RouteEditorMode): void {
@@ -1236,6 +1269,7 @@ export interface TockTutorRouteViewProps {
   onCloseTab?(paneId: string, path: string): void
   onAddPane(): void
   onEdit(source: string): void
+  onEditorCommand?(command: EditorCommandId): void
   onFocusPane(paneId: string): void
   onForward?(): void
   onMoveCanvas(nodeId: string, deltaX: number, deltaY: number): void
@@ -1247,6 +1281,7 @@ export interface TockTutorRouteViewProps {
   onReopenClosedTab?(): void
   onSave(): void
   onSearchChange?(query: string): void
+  onSelectionChange?(start: number, end: number): void
   onSelect(path: string): void
   onSubmitDispatch?(draft: NativeDispatchDraft): void
   onToggleFocusMode?(): void
@@ -1313,8 +1348,10 @@ function WorkbenchCommandPalette(props: {
   canGoBack: boolean
   canGoForward: boolean
   canReopen: boolean
+  editorEnabled: boolean
   onBack: (() => void) | undefined
   onClose(): void
+  onEditorCommand: ((command: EditorCommandId) => void) | undefined
   onForward: (() => void) | undefined
   onNewNote: (() => void) | undefined
   onReopen: (() => void) | undefined
@@ -1322,13 +1359,24 @@ function WorkbenchCommandPalette(props: {
   onToggleFocus: (() => void) | undefined
 }): ReactNode {
   const [query, setQuery] = useState('')
-  const commands = [
+  const editor = (command: EditorCommandId): (() => void) | undefined => props.onEditorCommand === undefined
+    ? undefined
+    : () => { props.onEditorCommand?.(command) }
+  const commands: Array<{ disabled?: boolean; label: string; run: (() => void) | undefined }> = [
     { label: 'New Note', run: props.onNewNote },
     { label: 'Search Notes', run: props.onSearch },
     { label: 'Toggle Focus Mode', run: props.onToggleFocus },
     { disabled: !props.canGoBack, label: 'Go Back', run: props.onBack },
     { disabled: !props.canGoForward, label: 'Go Forward', run: props.onForward },
     { disabled: !props.canReopen, label: 'Reopen Closed Note', run: props.onReopen },
+    { disabled: !props.editorEnabled, label: 'Bold Text', run: editor('bold') },
+    { disabled: !props.editorEnabled, label: 'Italic Text', run: editor('italic') },
+    { disabled: !props.editorEnabled, label: 'Strikethrough Text', run: editor('strikethrough') },
+    { disabled: !props.editorEnabled, label: 'Highlight Text', run: editor('highlight') },
+    { disabled: !props.editorEnabled, label: 'Add Internal Link', run: editor('link') },
+    { disabled: !props.editorEnabled, label: 'Insert Table', run: editor('insert-table') },
+    { disabled: !props.editorEnabled, label: 'Insert Tip Callout', run: editor('callout-tip') },
+    { disabled: !props.editorEnabled, label: 'Delete Current Line', run: editor('delete-line') },
   ].filter(command => command.label.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()))
   return (
     <Dialog open onOpenChange={open => { if (!open) props.onClose() }}>
@@ -1687,8 +1735,10 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
           canGoBack={snapshot.canGoBack === true}
           canGoForward={snapshot.canGoForward === true}
           canReopen={(snapshot.recentlyClosed?.length ?? 0) > 0}
+          editorEnabled={snapshot.documentKind === 'markdown' && snapshot.mode !== 'reading'}
           onBack={props.onBack}
           onClose={() => { props.onCloseCommandPalette?.() }}
+          onEditorCommand={props.onEditorCommand}
           onForward={props.onForward}
           onNewNote={props.onNewNote}
           onReopen={props.onReopenClosedTab}
@@ -1827,6 +1877,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
                 aria-label={sourceLabel}
                 className="h-full min-h-0 w-full resize-none border-0 bg-[var(--tt-panel)] px-[max(28px,calc((100%-768px)/2))] py-9 text-[var(--tt-text)] outline-none [tab-size:2] [font:14px/1.65_ui-monospace,SFMono-Regular,Consolas,monospace]"
                 onChange={(event: ChangeEvent<HTMLTextAreaElement>) => { props.onEdit(event.target.value) }}
+                onSelect={event => { props.onSelectionChange?.(event.currentTarget.selectionStart, event.currentTarget.selectionEnd) }}
                 spellCheck="true"
                 value={snapshot.source}
               />
@@ -2030,6 +2081,12 @@ export function TockTutorRoute(props: TockTutorRouteProps): ReactNode {
         void controller.reopenClosedTab()
         return
       }
+      const editorCommand = resolvePlatformEditorCommand(event, isMac)
+      if (editorCommand !== null) {
+        event.preventDefault()
+        controller.runEditorCommand(editorCommand)
+        return
+      }
       const shortcut = resolveEditorShortcut(event, isMac)
       if (shortcut !== 'save') return
       event.preventDefault()
@@ -2064,6 +2121,7 @@ export function TockTutorRoute(props: TockTutorRouteProps): ReactNode {
         onCloseSearch={() => { controller.closeSearch() }}
         onCloseTab={(paneId, path) => { void controller.closeTab(paneId, path) }}
         onEdit={source => { controller.edit(source) }}
+        onEditorCommand={command => { controller.runEditorCommand(command) }}
         onFocusPane={paneId => { void controller.focusPane(paneId) }}
         onForward={() => { void controller.goForward() }}
         onMode={mode => { controller.setMode(mode) }}
@@ -2076,6 +2134,7 @@ export function TockTutorRoute(props: TockTutorRouteProps): ReactNode {
         onSave={() => { void controller.save() }}
         onSearchChange={query => { controller.setSearchQuery(query) }}
         onSelect={path => { void controller.select(path) }}
+        onSelectionChange={(start, end) => { controller.setSelection(start, end) }}
         onSubmitDispatch={draft => { void controller.submitDispatchDialog(draft) }}
         onToggleFocusMode={() => { controller.toggleFocusMode() }}
         onTogglePinTab={(paneId, path) => { controller.togglePinTab(paneId, path) }}

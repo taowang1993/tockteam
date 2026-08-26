@@ -15,4 +15,5 @@ export * from "./base.js";
 export * from "./markdown.js";
 export * from "./live-preview.js";
 export * from "./rich-markdown.js";
+export * from "./editor-commands.js";
 //# sourceMappingURL=index.js.map
