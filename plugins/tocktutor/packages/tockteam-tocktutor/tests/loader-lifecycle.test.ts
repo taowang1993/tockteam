@@ -143,7 +143,10 @@ test('real Desktop and user layers replace Runtime config without mutating the a
     assert.deepEqual(desktop, [{
       id: 'note-vault-runtime',
       name: 'tockbot-note-runtime',
-      config: { stateRoot: null, vaultRoot: null },
+      config: {
+        stateRoot: { __jsExpr: "process.env.DSH_DESKTOP_APP_DATA ? process.env.DSH_DESKTOP_APP_DATA + '/tocktutor' : null" },
+        vaultRoot: null,
+      },
     }])
     const user = [{
       id: 'note-vault-runtime',
