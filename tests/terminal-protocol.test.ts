@@ -13,8 +13,8 @@ test('Better Sidebar adapter frames session exits without changing agent termina
   const adapted = adaptBetterSidebarHost(source)
   assert.equal((adapted.match(/tockteam-terminal-exit/g) ?? []).length, 1)
   assert.equal((adapted.match(/\[process exited with code/g) ?? []).length, 1)
-  assert.equal((adaptBetterSidebarHost(source.replaceAll('\n', '\r\n'))
-    .match(/tockteam-terminal-exit/g) ?? []).length, 1)
+  const crlfSource = source.replaceAll('\r\n', '\n').replaceAll('\n', '\r\n')
+  assert.equal((adaptBetterSidebarHost(crlfSource).match(/tockteam-terminal-exit/g) ?? []).length, 1)
   assert.throws(() => adaptBetterSidebarHost(adapted), /exit seam changed upstream/u)
 })
 
