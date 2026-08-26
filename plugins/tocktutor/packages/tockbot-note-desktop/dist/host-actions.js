@@ -34,6 +34,7 @@ var __esDecorate = (this && this.__esDecorate) || function (ctor, descriptorIn, 
 };
 import { Remote, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol';
 import { createNativeOwnerLifetime, MAX_PRINT_EXPORT_HTML_BYTES, } from '@tockteam/desktop/host';
+import { buildMarkdownExportDocument } from '@tockteam/tocktutor-workbench';
 export const MAX_TRACKED_POPOUTS = 64;
 function assertVault(value) {
     if (typeof value !== 'object'
@@ -63,12 +64,9 @@ function assertAuthorization(value) {
 function popOutKey(vault, path) {
     return `${vault.id}:${String(vault.generation)}:${path}`;
 }
-function escapeHtml(value) {
-    return value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
-}
 function renderNote(path, content) {
     const title = Array.from(path).slice(-128).join('');
-    const html = `<!doctype html><meta charset="utf-8"><title>${escapeHtml(title)}</title><pre>${escapeHtml(content)}</pre>`;
+    const html = buildMarkdownExportDocument({ markdown: content, title });
     if (new TextEncoder().encode(html).byteLength > MAX_PRINT_EXPORT_HTML_BYTES) {
         throw new TypeError('The active note is too large to print or export safely.');
     }

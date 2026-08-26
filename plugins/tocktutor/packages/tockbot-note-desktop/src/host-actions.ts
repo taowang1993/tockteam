@@ -11,6 +11,7 @@ import {
   type TockTeamDesktopPrintExport,
 } from '@tockteam/desktop/host'
 import type { NoteVaultRuntime } from 'tockbot-note-runtime'
+import { buildMarkdownExportDocument } from '@tockteam/tocktutor-workbench'
 import type { DesktopVaultReference as VaultReference, NativeActionResult } from './types.ts'
 
 export type { NativeActionResult } from './types.ts'
@@ -62,13 +63,9 @@ function popOutKey(vault: VaultReference, path: string): string {
   return `${vault.id}:${String(vault.generation)}:${path}`
 }
 
-function escapeHtml(value: string): string {
-  return value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
-}
-
 function renderNote(path: string, content: string): { html: string; title: string } {
   const title = Array.from(path).slice(-128).join('')
-  const html = `<!doctype html><meta charset="utf-8"><title>${escapeHtml(title)}</title><pre>${escapeHtml(content)}</pre>`
+  const html = buildMarkdownExportDocument({ markdown: content, title })
   if (new TextEncoder().encode(html).byteLength > MAX_PRINT_EXPORT_HTML_BYTES) {
     throw new TypeError('The active note is too large to print or export safely.')
   }

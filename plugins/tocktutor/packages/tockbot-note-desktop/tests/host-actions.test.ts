@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { Context } from '@deepseek-ai/cordis'
 import { remoteMethods } from '@deepseek-ai/dsh-typert-protocol'
+import { buildMarkdownExportDocument } from '@tockteam/tocktutor-workbench'
 import { MAX_TRACKED_POPOUTS, TockTutorDesktopGateway } from '../dist/host-actions.js'
 
 const vault = Object.freeze({ generation: 7, id: `vault:${'a'.repeat(64)}` })
@@ -434,7 +435,7 @@ test('prints and exports a freshly read bounded note without exposing destinatio
       await state.gateway.exportNote('authorization-export', 'html', 'Folder/Note.md', vault, signal),
       { status: 'exported' },
     )
-    const html = '<!doctype html><meta charset="utf-8"><title>Folder/Note.md</title><pre># Exact &amp; &lt;source&gt;\n</pre>'
+    const html = buildMarkdownExportDocument({ markdown: '# Exact & <source>\n', title: 'Folder/Note.md' })
     assert.deepEqual(publicCalls(state.calls), [
       { method: 'claim', value: { authorization: 'authorization-print', operation: 'print' } },
       { method: 'openDocument', value: 'Folder/Note.md' },
