@@ -78,14 +78,14 @@ function staticWidget(kind: 'base' | 'math' | 'mermaid', content: string, from: 
   return widget
 }
 
-function calloutFoldButton(pos: number, collapsed: boolean): HTMLButtonElement {
+function calloutFoldButton(pos: number, collapsed: boolean, title: string): HTMLButtonElement {
   const button = document.createElement('button')
   button.type = 'button'
   button.className = 'tocktutor-live-callout-fold mr-1 inline-flex size-5 items-center justify-center rounded border-0 bg-transparent text-[var(--tt-muted)]'
   button.dataset.calloutFoldPos = String(pos)
   button.setAttribute('aria-expanded', String(!collapsed))
   button.setAttribute('aria-label', collapsed ? 'Expand Callout' : 'Collapse Callout')
-  button.textContent = collapsed ? '›' : '⌄'
+  button.textContent = collapsed ? `› ${title}` : '⌄'
   return button
 }
 
@@ -133,15 +133,10 @@ function decorations(state, folded: ReadonlySet<number>): DecorationSet {
       const marker = node.textContent.match(/^\[![A-Za-z][\w-]*\]([+-])/u)
       if (marker !== null) {
         const collapsed = marker[1] === '-'
-        values.push(Decoration.widget(pos + 2, () => calloutFoldButton(pos, collapsed), { side: -1 }))
-        if (collapsed) {
-          let offset = 0
-          node.forEach((child, index) => {
-            const childPos = pos + 1 + offset
-            if (index > 0) values.push(Decoration.node(childPos, childPos + child.nodeSize, { class: 'hidden' }))
-            offset += child.nodeSize
-          })
-        }
+        const firstLine = node.firstChild?.textBetween(0, node.firstChild.content.size, '\n', '\n').split('\n')[0] ?? ''
+        const title = firstLine.replace(/^\[![A-Za-z][\w-]*\][+-]?\s*/u, '').trim() || 'Callout'
+        values.push(Decoration.widget(pos, () => calloutFoldButton(pos, collapsed, title), { side: -1 }))
+        if (collapsed) values.push(Decoration.node(pos, pos + node.nodeSize, { class: 'hidden' }))
       }
     }
     if (node.type.name === 'list_item' && node.attrs.checked !== null && node.attrs.checked !== undefined) {
