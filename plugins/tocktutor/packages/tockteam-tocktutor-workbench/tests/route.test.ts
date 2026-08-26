@@ -662,6 +662,7 @@ test('loads, edits, reads, toggles, and snapshot-saves one exact note', async ()
   await controller.syncLocation('/tocktutor')
   assert.equal(controller.getSnapshot().phase, 'ready')
   assert.deepEqual(controller.getSnapshot().entries.map(entry => entry.path), [
+    'Attachments/existing.png',
     'Board.canvas',
     'Folder/Note.md',
     'Second.md',

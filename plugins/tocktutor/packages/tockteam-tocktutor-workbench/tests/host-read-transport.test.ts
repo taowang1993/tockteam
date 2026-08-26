@@ -314,5 +314,5 @@ test('preserves runtime failures and withdraws the gateway with its owning fiber
 test('keeps the Host gateway free of filesystem authority and unreleased methods', async () => {
   const source = await readFile(new URL('../src/host-read.ts', import.meta.url), 'utf8')
   assert.doesNotMatch(source, /node:|electron|window\.electronAPI|child_process/u)
-  assert.doesNotMatch(source, /\b(?:inspect|preview|store)Attachment\b|\b(?:move|duplicate)(?:File|Folder)\b/u)
+  assert.doesNotMatch(source, /\b(?:move|duplicate)(?:File|Folder)\b/u)
 })
