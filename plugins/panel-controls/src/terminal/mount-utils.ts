@@ -1,9 +1,13 @@
 const OWNED_ROOTS = '#tockteam-terminal-root'
 
+function isOwnedRoot(node: Node): boolean {
+  return node instanceof Element && node.matches(OWNED_ROOTS)
+}
+
 function insideOwnedRoot(node: Node): boolean {
   let current: Node | null = node
   while (current !== null) {
-    if (current instanceof Element && current.matches(OWNED_ROOTS)) return true
+    if (isOwnedRoot(current)) return true
     current = current.parentNode
   }
   return false
@@ -12,6 +16,7 @@ function insideOwnedRoot(node: Node): boolean {
 export function mutationNeedsMount(record: MutationRecord): boolean {
   if (record.type === 'attributes') return !insideOwnedRoot(record.target)
   if (record.type !== 'childList' || insideOwnedRoot(record.target)) return false
+  if ([...record.removedNodes].some(isOwnedRoot)) return true
   return [...record.addedNodes, ...record.removedNodes].some(node => !insideOwnedRoot(node))
 }
 
