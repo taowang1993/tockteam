@@ -821,14 +821,19 @@ export function apply(context: Context): void {
     name: 'notes_search',
     description: 'Search the active local Notes vault. Results cite Markdown path, title, line, and snippet; this is read-only.',
     parameters: {
-      vaultId: { type: 'string', description: 'Optional opaque id; omitted means the active Notes vault.' },
-      query: { type: 'string', description: 'Text or terms to search.', required: true },
-      mode: {
-        type: 'string',
-        enum: ['keyword', 'semantic'],
-        description: 'Keyword matching by default, or bounded local related matching.',
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        vaultId: { type: 'string', description: 'Optional opaque id; omitted means the active Notes vault.' },
+        query: { type: 'string', description: 'Text or terms to search.' },
+        mode: {
+          type: 'string',
+          enum: ['keyword', 'semantic'],
+          description: 'Keyword matching by default, or bounded local related matching.',
+        },
+        limit: { type: 'integer', description: 'Maximum citations, capped at 25.' },
       },
-      limit: { type: 'integer', description: 'Maximum citations, capped at 25.' },
+      required: ['query'],
     },
     output: {
       schema: NOTES_SEARCH_OUTPUT_SCHEMA,
@@ -844,8 +849,13 @@ export function apply(context: Context): void {
     name: 'notes_read',
     description: 'Read one Markdown note from the active local Notes vault. Access is read-only and bounded.',
     parameters: {
-      vaultId: { type: 'string', description: 'Optional opaque id; omitted means the active Notes vault.' },
-      path: { type: 'string', description: 'Vault-relative Markdown path.', required: true },
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        vaultId: { type: 'string', description: 'Optional opaque id; omitted means the active Notes vault.' },
+        path: { type: 'string', description: 'Vault-relative Markdown path.' },
+      },
+      required: ['path'],
     },
     output: {
       schema: NOTES_READ_OUTPUT_SCHEMA,
