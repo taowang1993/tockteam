@@ -27753,6 +27753,20 @@ function collectFootnotes(lines) {
   }
   return { definitions, numbers, hidden };
 }
+function renderBoundedMermaid(source) {
+  if (source.length > 2e4) return null;
+  const statements = source.split(/[;\r\n]+/u).map((value) => value.trim()).filter(Boolean);
+  if (!/^graph\s+(?:TD|TB|LR|RL|BT)$/iu.test(statements.shift() ?? "") || statements.length === 0 || statements.length > 100) return null;
+  const edges = [];
+  for (const statement of statements) {
+    const match = statement.match(/^([A-Za-z][\w-]*)(?:\[([^\]]{1,200})\])?\s*--+>?\s*([A-Za-z][\w-]*)(?:\[([^\]]{1,200})\])?$/u);
+    if (match === null) return null;
+    const from = escapeMarkdownHtml(match[2] ?? match[1]);
+    const to = escapeMarkdownHtml(match[4] ?? match[3]);
+    edges.push(`<span class="mermaid-node">${from}</span><span aria-hidden="true"> \u2192 </span><span class="mermaid-node">${to}</span>`);
+  }
+  return `<div aria-label="Mermaid Diagram" class="mermaid-diagram" role="img">${edges.join("<br>")}</div>`;
+}
 function tableDelimiter(line) {
   const cells = line.trim().replace(/^\|/u, "").replace(/\|$/u, "").split("|");
   return cells.length >= 2 && cells.every((cell) => /^\s*:?-{3,}:?\s*$/u.test(cell));
@@ -27801,7 +27815,8 @@ function renderMarkdownHtml(markdown, options = {}) {
         index2 += 1;
       }
       const escaped = escapeMarkdownHtml(code.join("\n"));
-      blocks.push(language === "mermaid" ? `<figure class="mermaid" data-language="mermaid"><pre>${escaped}</pre></figure>` : `<pre data-language="${escapeMarkdownHtml(language)}"><code>${escaped}</code></pre>`);
+      const mermaid = language === "mermaid" ? renderBoundedMermaid(code.join("\n")) : null;
+      blocks.push(language === "mermaid" ? mermaid ?? `<figure class="mermaid" data-language="mermaid"><pre>${escaped}</pre></figure>` : `<pre data-language="${escapeMarkdownHtml(language)}"><code>${escaped}</code></pre>`);
       continue;
     }
     const displayMath = line.match(/^\s*\$\$(.{1,20000})\$\$\s*$/u);
@@ -30917,55 +30932,61 @@ function LivePreviewView(props) {
       return next;
     });
   };
-  return /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("section", { "aria-label": "Live Preview", className: "mx-auto grid min-h-full w-[calc(100%-32px)] max-w-3xl content-start gap-0.5 py-6", tabIndex: -1, children: projection.lines.map((line) => hidden.has(line.index) ? null : /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)(
-    "div",
-    {
-      className: "group flex min-h-7 items-start gap-2 rounded px-1.5 py-0.5 data-[kind=callout]:border-l-4 data-[kind=callout]:border-[var(--tt-accent)] data-[kind=callout]:bg-[var(--tt-selected)] data-[kind=code]:bg-[color-mix(in_srgb,var(--tt-text)_5%,var(--tt-panel))] data-[kind=comment]:text-[var(--tt-muted)] data-[kind=heading]:font-semibold data-[kind=property]:text-[var(--tt-muted)]",
-      "data-kind": line.kind,
-      children: [
-        line.foldEndLine !== void 0 ? /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(
-          Button,
-          {
-            unstyled: true,
-            "aria-expanded": !folded.has(line.index),
-            "aria-label": `${folded.has(line.index) ? "Expand" : "Collapse"} Line ${String(line.index + 1)}`,
-            className: "mt-1 size-5 shrink-0 rounded border-0 bg-transparent p-0 text-[var(--tt-muted)]",
-            onClick: () => {
-              toggleFold(line.index);
-            },
-            type: "button",
-            children: /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(ChevronRight, { "aria-hidden": "true", className: folded.has(line.index) ? "" : "rotate-90" })
-          }
-        ) : /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("span", { className: "w-5 shrink-0" }),
-        line.kind === "task" && line.taskIndex !== void 0 && /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(
-          Checkbox3,
-          {
-            "aria-label": `Mark Task on Line ${String(line.index + 1)} as ${line.checked === true ? "Incomplete" : "Complete"}`,
-            checked: line.checked === true,
-            className: "mt-1.5",
-            onCheckedChange: () => {
-              props.onToggleTask(line.taskIndex);
+  return /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("section", { "aria-label": "Live Preview", className: "mx-auto grid min-h-full w-[calc(100%-32px)] max-w-3xl content-start gap-0.5 py-6", tabIndex: -1, children: [
+    projection.lines.map((line) => hidden.has(line.index) ? null : /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)(
+      "div",
+      {
+        className: "group flex min-h-7 items-start gap-2 rounded px-1.5 py-0.5 data-[kind=callout]:border-l-4 data-[kind=callout]:border-[var(--tt-accent)] data-[kind=callout]:bg-[var(--tt-selected)] data-[kind=code]:bg-[color-mix(in_srgb,var(--tt-text)_5%,var(--tt-panel))] data-[kind=comment]:text-[var(--tt-muted)] data-[kind=heading]:font-semibold data-[kind=property]:text-[var(--tt-muted)]",
+        "data-kind": line.kind,
+        children: [
+          line.foldEndLine !== void 0 ? /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(
+            Button,
+            {
+              unstyled: true,
+              "aria-expanded": !folded.has(line.index),
+              "aria-label": `${folded.has(line.index) ? "Expand" : "Collapse"} Line ${String(line.index + 1)}`,
+              className: "mt-1 size-5 shrink-0 rounded border-0 bg-transparent p-0 text-[var(--tt-muted)]",
+              onClick: () => {
+                toggleFold(line.index);
+              },
+              type: "button",
+              children: /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(ChevronRight, { "aria-hidden": "true", className: folded.has(line.index) ? "" : "rotate-90" })
             }
-          }
-        ),
-        /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(
-          Textarea,
-          {
-            unstyled: true,
-            "aria-label": `Live Preview Line ${String(line.index + 1)}`,
-            className: "min-h-7 flex-1 resize-none overflow-hidden border-0 bg-transparent px-1 py-0.5 text-inherit outline-none [font:inherit]",
-            onChange: (event) => {
-              props.onEdit(replaceLivePreviewLine(props.source, line.index, event.target.value));
-            },
-            rows: 1,
-            spellCheck: line.kind !== "code",
-            value: line.content
-          }
-        )
-      ]
-    },
-    line.index
-  )) });
+          ) : /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("span", { className: "w-5 shrink-0" }),
+          line.kind === "task" && line.taskIndex !== void 0 && /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(
+            Checkbox3,
+            {
+              "aria-label": `Mark Task on Line ${String(line.index + 1)} as ${line.checked === true ? "Incomplete" : "Complete"}`,
+              checked: line.checked === true,
+              className: "mt-1.5",
+              onCheckedChange: () => {
+                props.onToggleTask(line.taskIndex);
+              }
+            }
+          ),
+          /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(
+            Textarea,
+            {
+              unstyled: true,
+              "aria-label": `Live Preview Line ${String(line.index + 1)}`,
+              className: "min-h-7 flex-1 resize-none overflow-hidden border-0 bg-transparent px-1 py-0.5 text-inherit outline-none [font:inherit]",
+              onChange: (event) => {
+                props.onEdit(replaceLivePreviewLine(props.source, line.index, event.target.value));
+              },
+              rows: 1,
+              spellCheck: line.kind !== "code",
+              value: line.content
+            }
+          )
+        ]
+      },
+      line.index
+    )),
+    /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("details", { className: "mt-4 rounded border border-[var(--tt-border)] p-2", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("summary", { className: "cursor-pointer text-xs font-medium", children: "Rendered Preview" }),
+      /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("div", { "aria-label": "Live Preview Rendered Content", className: "mt-2", dangerouslySetInnerHTML: { __html: renderMarkdownHtml(props.source) } })
+    ] })
+  ] });
 }
 function NativeDispatchDialog(props) {
   const submit = (event) => {

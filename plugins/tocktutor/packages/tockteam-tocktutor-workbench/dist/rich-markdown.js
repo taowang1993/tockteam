@@ -115,6 +115,23 @@ function collectFootnotes(lines) {
     }
     return { definitions, numbers, hidden };
 }
+function renderBoundedMermaid(source) {
+    if (source.length > 20_000)
+        return null;
+    const statements = source.split(/[;\r\n]+/u).map(value => value.trim()).filter(Boolean);
+    if (!/^graph\s+(?:TD|TB|LR|RL|BT)$/iu.test(statements.shift() ?? '') || statements.length === 0 || statements.length > 100)
+        return null;
+    const edges = [];
+    for (const statement of statements) {
+        const match = statement.match(/^([A-Za-z][\w-]*)(?:\[([^\]]{1,200})\])?\s*--+>?\s*([A-Za-z][\w-]*)(?:\[([^\]]{1,200})\])?$/u);
+        if (match === null)
+            return null;
+        const from = escapeMarkdownHtml(match[2] ?? match[1]);
+        const to = escapeMarkdownHtml(match[4] ?? match[3]);
+        edges.push(`<span class="mermaid-node">${from}</span><span aria-hidden="true"> → </span><span class="mermaid-node">${to}</span>`);
+    }
+    return `<div aria-label="Mermaid Diagram" class="mermaid-diagram" role="img">${edges.join('<br>')}</div>`;
+}
 function tableDelimiter(line) {
     const cells = line.trim().replace(/^\|/u, '').replace(/\|$/u, '').split('|');
     return cells.length >= 2 && cells.every(cell => /^\s*:?-{3,}:?\s*$/u.test(cell));
@@ -166,8 +183,9 @@ export function renderMarkdownHtml(markdown, options = {}) {
                 index += 1;
             }
             const escaped = escapeMarkdownHtml(code.join('\n'));
+            const mermaid = language === 'mermaid' ? renderBoundedMermaid(code.join('\n')) : null;
             blocks.push(language === 'mermaid'
-                ? `<figure class="mermaid" data-language="mermaid"><pre>${escaped}</pre></figure>`
+                ? mermaid ?? `<figure class="mermaid" data-language="mermaid"><pre>${escaped}</pre></figure>`
                 : `<pre data-language="${escapeMarkdownHtml(language)}"><code>${escaped}</code></pre>`);
             continue;
         }

@@ -2247,6 +2247,10 @@ function LivePreviewView(props: {
           />
         </div>
       ))}
+      <details className="mt-4 rounded border border-[var(--tt-border)] p-2">
+        <summary className="cursor-pointer text-xs font-medium">Rendered Preview</summary>
+        <div aria-label="Live Preview Rendered Content" className="mt-2" dangerouslySetInnerHTML={{ __html: renderMarkdownHtml(props.source) }} />
+      </details>
     </section>
   )
 }

@@ -37,7 +37,8 @@ test('renders bounded rich Markdown without executing raw HTML or unsafe URLs', 
   assert.match(html, /href="https:\/\/example\.com\/"/u)
   assert.doesNotMatch(html, /href="javascript:/u)
   assert.match(html, /&lt;script&gt;alert\(1\)&lt;\/script&gt;<strong>Safe<\/strong>/u)
-  assert.match(html, /data-language="mermaid"/u)
+  assert.match(html, /aria-label="Mermaid Diagram"/u)
+  assert.match(html, />A<\/span><span aria-hidden="true"> → <\/span><span class="mermaid-node">B</u)
 })
 
 test('honors strict line breaks and builds fenced-aware slides', () => {
