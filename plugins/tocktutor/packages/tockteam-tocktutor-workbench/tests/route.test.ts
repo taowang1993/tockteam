@@ -89,6 +89,9 @@ function tree(vault: VaultReference): VaultTreePage {
 class FakeRemote implements WorkbenchRouteRemote {
   vault: VaultReference | null = firstVault
   saveFailure: { code: string; message: string } | null = null
+  draftContent: string | null = null
+  snapshots: Array<{ createdAt: number; digest: string; id: string; path: string; reason: string; size: number }> = []
+  trashEntries: Array<{ createdAt: number; id: string; kind: 'document'; originalPath: string }> = []
   readonly calls: Array<{ method: string; parameters: unknown[] }> = []
   readonly listeners = new Set<(event: NoteVaultChangeEvent) => void>()
   createOverride: ((request: CreateDocumentRequest) => Promise<{
@@ -120,12 +123,25 @@ class FakeRemote implements WorkbenchRouteRemote {
       this.calls.push({ method: 'currentVault', parameters: [signal] })
       return success(this.vault)
     },
+    clearDraft: (request: { expectedVault: VaultReference; path: string }, signal?: AbortSignal) => {
+      this.calls.push({ method: 'clearDraft', parameters: [request, signal] })
+      this.draftContent = null
+      return success({ generation: request.expectedVault.generation, ok: true as const })
+    },
     listRecentVaults: (signal?: AbortSignal) => {
       this.calls.push({ method: 'listRecentVaults', parameters: [signal] })
       return success({
         generation: this.vault?.generation ?? 0,
         vaults: [firstVault, secondVault].map(vault => ({ id: vault.id, lastOpenedAt: vault.generation })),
       })
+    },
+    listSnapshots: (request: { expectedVault: VaultReference; path: string }, signal?: AbortSignal) => {
+      this.calls.push({ method: 'listSnapshots', parameters: [request, signal] })
+      return success({ generation: request.expectedVault.generation, snapshots: this.snapshots })
+    },
+    listTrash: (request: { expectedVault: VaultReference }, signal?: AbortSignal) => {
+      this.calls.push({ method: 'listTrash', parameters: [request, signal] })
+      return success({ entries: this.trashEntries, generation: request.expectedVault.generation })
     },
     listTree: (request: { expectedVault: VaultReference; cursor?: string | null; limit?: number }, signal?: AbortSignal) => {
       this.calls.push({ method: 'listTree', parameters: [request, signal] })
@@ -135,6 +151,26 @@ class FakeRemote implements WorkbenchRouteRemote {
       this.calls.push({ method: 'openSandboxVault', parameters: [request, signal] })
       this.vault = sandboxVault
       return success(sandboxVault)
+    },
+    readDraft: (request: { expectedVault: VaultReference; path: string }, signal?: AbortSignal) => {
+      this.calls.push({ method: 'readDraft', parameters: [request, signal] })
+      return success({
+        draft: this.draftContent === null ? null : {
+          content: this.draftContent,
+          path: request.path,
+          revision: firstRevision,
+          updatedAt: 1,
+        },
+        generation: request.expectedVault.generation,
+      })
+    },
+    readSnapshot: (request: { expectedVault: VaultReference; path: string; snapshotId: string }, signal?: AbortSignal) => {
+      this.calls.push({ method: 'readSnapshot', parameters: [request, signal] })
+      return success({
+        content: '# Snapshot\n',
+        generation: request.expectedVault.generation,
+        snapshot: { createdAt: 1, digest: `sha256:${'a'.repeat(64)}`, id: request.snapshotId, path: request.path, reason: 'save', size: 11 },
+      })
     },
     openDocument: (path: string, expectedVault: VaultReference, signal?: AbortSignal) => {
       this.calls.push({ method: 'openDocument', parameters: [path, expectedVault, signal] })
@@ -174,6 +210,19 @@ class FakeRemote implements WorkbenchRouteRemote {
           .map(vault => ({ id: vault.id, lastOpenedAt: vault.generation })),
       })
     },
+    restoreSnapshotAsNew: (request: { expectedVault: VaultReference; path: string; snapshotId: string; toPath: string }, signal?: AbortSignal) => {
+      this.calls.push({ method: 'restoreSnapshotAsNew', parameters: [request, signal] })
+      return success({ digest: `sha256:${'a'.repeat(64)}`, generation: request.expectedVault.generation, path: request.toPath, revision: secondRevision, status: 'created' as const })
+    },
+    restoreTrash: (request: { expectedVault: VaultReference; id: string; toPath?: string }, signal?: AbortSignal) => {
+      this.calls.push({ method: 'restoreTrash', parameters: [request, signal] })
+      return success({ generation: request.expectedVault.generation, status: 'restored' })
+    },
+    saveDraft: (request: { content: string; expectedVault: VaultReference; path: string; revision?: string }, signal?: AbortSignal) => {
+      this.calls.push({ method: 'saveDraft', parameters: [request, signal] })
+      this.draftContent = request.content
+      return success({ generation: request.expectedVault.generation, ok: true as const, updatedAt: 2 })
+    },
     saveDocument: (request: {
       content: string
       expectedRevision: string
@@ -192,6 +241,10 @@ class FakeRemote implements WorkbenchRouteRemote {
         status: 'saved',
       }
       return success(result)
+    },
+    trashEntry: (request: { expectedRevision: string; expectedVault: VaultReference; path: string }, signal?: AbortSignal) => {
+      this.calls.push({ method: 'trashEntry', parameters: [request, signal] })
+      return success({ generation: request.expectedVault.generation, status: 'trashed' })
     },
   }
 
@@ -793,6 +846,66 @@ test('clears a selected note moved to an unsupported entry type', async () => {
   await new Promise(resolve => setImmediate(resolve))
   assert.equal(controller.getSnapshot().path, null)
   assert.equal(navigation.at(-1), '/tocktutor')
+  controller.dispose()
+})
+
+test('recovers, persists, and clears one generation-bound local draft', async () => {
+  const remote = new FakeRemote()
+  remote.draftContent = '# Recovered draft\n'
+  const controller = new WorkbenchRouteController(remote, () => {})
+  await controller.syncLocation('/tocktutor')
+  assert.equal(await controller.select('Folder/Note.md'), true)
+  assert.equal(controller.getSnapshot().source, '# Recovered draft\n')
+  assert.equal(controller.getSnapshot().draftRecovered, true)
+  assert.equal(controller.getSnapshot().saveStatus, 'unsaved')
+
+  controller.edit('# New local draft\n')
+  remote.emit({ action: 'external-change', kind: 'entry', path: 'Folder/Note.md', vault: firstVault })
+  await new Promise(resolve => setImmediate(resolve))
+  assert.match(controller.getSnapshot().message, /External Change/u)
+  assert.equal(controller.getSnapshot().source, '# New local draft\n')
+  await new Promise(resolve => setTimeout(resolve, 450))
+  const draftCall = remote.calls.findLast(call => call.method === 'saveDraft')
+  assert.deepEqual(draftCall?.parameters[0], {
+    content: '# New local draft\n',
+    expectedVault: firstVault,
+    path: 'Folder/Note.md',
+    revision: firstRevision,
+  })
+  assert.equal(await controller.save(), true)
+  assert.equal(remote.calls.some(call => call.method === 'clearDraft'), true)
+  assert.equal(controller.getSnapshot().draftRecovered, false)
+  controller.dispose()
+})
+
+test('loads bounded recovery state and drives preview, restore, trash, and recovery refresh', async () => {
+  const remote = new FakeRemote()
+  const snapshotId = '2026-08-22T18-00-00-000Z-deadbeef'
+  const trashId = 'trash-123e4567-e89b-42d3-a456-426614174000'
+  remote.snapshots = [{
+    createdAt: 1,
+    digest: `sha256:${'a'.repeat(64)}`,
+    id: snapshotId,
+    path: 'Folder/Note.md',
+    reason: 'save',
+    size: 11,
+  }]
+  remote.trashEntries = [{ createdAt: 2, id: trashId, kind: 'document', originalPath: 'Deleted.md' }]
+  const controller = new WorkbenchRouteController(remote, () => {})
+  await controller.syncLocation('/tocktutor')
+  assert.equal(await controller.select('Folder/Note.md'), true)
+  await controller.setRecoveryOpen(true)
+  assert.equal(controller.getSnapshot().snapshots?.[0]?.id, snapshotId)
+  assert.equal(controller.getSnapshot().trash?.[0]?.id, trashId)
+  assert.equal(await controller.readRecoverySnapshot(snapshotId), true)
+  assert.equal(controller.getSnapshot().selectedSnapshot?.content, '# Snapshot\n')
+  assert.equal(await controller.restoreRecoverySnapshot(snapshotId), true)
+  assert.equal(remote.calls.some(call => call.method === 'restoreSnapshotAsNew'), true)
+  assert.equal(await controller.restoreTrashEntry(trashId), true)
+  assert.equal(remote.calls.some(call => call.method === 'restoreTrash'), true)
+  assert.equal(await controller.trashCurrent(), true)
+  assert.equal(controller.getSnapshot().path, null)
+  assert.equal(remote.calls.some(call => call.method === 'trashEntry'), true)
   controller.dispose()
 })
 

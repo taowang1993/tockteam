@@ -7,11 +7,15 @@ import {
 } from '../dist/host-read.js'
 import type {
   CreateDocumentRequest,
+  DraftMutationResult,
+  DraftRequest,
+  DraftResult,
   ListSnapshotsRequest,
   ReadSnapshotRequest,
   RestoreSnapshotRequest,
   RestoreTrashRequest,
   SaveDocumentRequest,
+  SaveDraftRequest,
   SnapshotContentResult,
   SnapshotListResult,
   TrashEntryRequest,
@@ -48,6 +52,25 @@ class FakeRecoveryVault extends Service {
       revision: `file:${'3'.repeat(64)}`,
       status: 'created',
     })
+  }
+
+  readDraft(request: DraftRequest, operationSignal: AbortSignal): Promise<DraftResult> {
+    return this.result('readDraft', [request, operationSignal], {
+      draft: { content: '# Draft\n', path: request.path, revision: `file:${'b'.repeat(64)}`, updatedAt: 3 },
+      generation: vault.generation,
+    })
+  }
+
+  saveDraft(request: SaveDraftRequest, operationSignal: AbortSignal): Promise<DraftMutationResult> {
+    return this.result('saveDraft', [request, operationSignal], {
+      generation: vault.generation,
+      ok: true,
+      updatedAt: 4,
+    })
+  }
+
+  clearDraft(request: DraftRequest, operationSignal: AbortSignal): Promise<DraftMutationResult> {
+    return this.result('clearDraft', [request, operationSignal], { generation: vault.generation, ok: true })
   }
 
   saveDocument(request: SaveDocumentRequest, operationSignal: AbortSignal): Promise<WriteDocumentResult> {
@@ -160,6 +183,8 @@ test('delegates exact create, snapshot save, recovery, trash, and restore record
       expectedVault: vault,
       path: 'Note.md',
     }
+    const draft = { expectedVault: vault, path: 'Note.md' }
+    const saveDraft = { ...draft, content: '# Draft\n', revision: `file:${'b'.repeat(64)}` }
     const listSnapshots = { expectedVault: vault, path: 'Note.md' }
     const readSnapshot = { ...listSnapshots, snapshotId }
     const restoreSnapshot = { ...readSnapshot, toPath: 'Recovered.md' }
@@ -171,6 +196,9 @@ test('delegates exact create, snapshot save, recovery, trash, and restore record
     const saved = await state.gateway.saveDocument(save, signal)
     assert.equal(saved.status, 'saved')
     if (saved.status === 'saved') assert.equal(saved.snapshotId, snapshotId)
+    assert.equal((await state.gateway.readDraft(draft, signal)).draft?.content, '# Draft\n')
+    assert.equal((await state.gateway.saveDraft(saveDraft, signal)).ok, true)
+    assert.equal((await state.gateway.clearDraft(draft, signal)).ok, true)
     assert.equal((await state.gateway.listSnapshots(listSnapshots, signal)).snapshots[0]?.id, snapshotId)
     assert.equal((await state.gateway.readSnapshot(readSnapshot, signal)).content, '# Before\n')
     assert.equal((await state.gateway.restoreSnapshotAsNew(restoreSnapshot, signal)).status, 'created')
@@ -181,6 +209,9 @@ test('delegates exact create, snapshot save, recovery, trash, and restore record
     assert.deepEqual(state.runtime.calls, [
       { method: 'createDocument', parameters: [create, signal] },
       { method: 'saveDocument', parameters: [save, signal] },
+      { method: 'readDraft', parameters: [draft, signal] },
+      { method: 'saveDraft', parameters: [saveDraft, signal] },
+      { method: 'clearDraft', parameters: [draft, signal] },
       { method: 'listSnapshots', parameters: [listSnapshots, signal] },
       { method: 'readSnapshot', parameters: [readSnapshot, signal] },
       { method: 'restoreSnapshotAsNew', parameters: [restoreSnapshot, signal] },
@@ -203,6 +234,9 @@ test('fails closed before runtime calls for excessive or unsafe recovery inputs'
     await assert.rejects(state.gateway.saveDocument({
       content: '# Save\n', expectedRevision: 'unsafe', expectedVault: vault, path: 'Note.md',
     }, signal), /revision/i)
+    await assert.rejects(state.gateway.readDraft({ expectedVault: vault, path: '../escape.md' }, signal), /path/i)
+    await assert.rejects(state.gateway.saveDraft({ content: 'x'.repeat(MAX_DOCUMENT_CONTENT_BYTES + 1), expectedVault: vault, path: 'Note.md' }, signal), /content/i)
+    await assert.rejects(state.gateway.clearDraft({ expectedVault: vault, path: '/absolute.md' }, signal), /path/i)
     await assert.rejects(state.gateway.listSnapshots({ expectedVault: vault, path: '../escape.md' }, signal), /path/i)
     await assert.rejects(state.gateway.readSnapshot({
       expectedVault: vault, path: 'Note.md', snapshotId: 'unsafe',

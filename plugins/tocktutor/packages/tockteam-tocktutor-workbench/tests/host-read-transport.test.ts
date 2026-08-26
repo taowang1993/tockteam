@@ -129,6 +129,9 @@ test('registers only the accepted read/tree Remote methods and delegates exact r
       { invocation: { kind: 'direct' }, method: 'listTree' },
       { invocation: { kind: 'direct' }, method: 'createDocument' },
       { invocation: { kind: 'direct' }, method: 'saveDocument' },
+      { invocation: { kind: 'direct' }, method: 'readDraft' },
+      { invocation: { kind: 'direct' }, method: 'saveDraft' },
+      { invocation: { kind: 'direct' }, method: 'clearDraft' },
       { invocation: { kind: 'direct' }, method: 'listSnapshots' },
       { invocation: { kind: 'direct' }, method: 'readSnapshot' },
       { invocation: { kind: 'direct' }, method: 'restoreSnapshotAsNew' },
@@ -216,5 +219,5 @@ test('preserves runtime failures and withdraws the gateway with its owning fiber
 test('keeps the Host gateway free of filesystem authority and unreleased methods', async () => {
   const source = await readFile(new URL('../src/host-read.ts', import.meta.url), 'utf8')
   assert.doesNotMatch(source, /node:|electron|window\.electronAPI|child_process/u)
-  assert.doesNotMatch(source, /\b(?:save|read|clear)Draft\b|\b(?:inspect|preview|store)Attachment\b|\b(?:move|duplicate)(?:File|Folder)\b/u)
+  assert.doesNotMatch(source, /\b(?:inspect|preview|store)Attachment\b|\b(?:move|duplicate)(?:File|Folder)\b/u)
 })

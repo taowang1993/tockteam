@@ -129,6 +129,17 @@ function assertSaveRequest(value) {
     assertCreateRequest(value);
     assertRevision(value.expectedRevision);
 }
+function assertDraftRequest(value) {
+    assertRecord(value, 'Draft request');
+    assertVaultReference(value.expectedVault);
+    assertDocumentPath(value.path);
+}
+function assertSaveDraftRequest(value) {
+    assertDraftRequest(value);
+    assertContent(value.content);
+    if (value.revision !== undefined)
+        assertRevision(value.revision);
+}
 function assertSnapshotListRequest(value) {
     assertRecord(value, 'Snapshot request');
     assertVaultReference(value.expectedVault);
@@ -172,6 +183,9 @@ let TockTutorWorkbenchGateway = (() => {
     let _listTree_decorators;
     let _createDocument_decorators;
     let _saveDocument_decorators;
+    let _readDraft_decorators;
+    let _saveDraft_decorators;
+    let _clearDraft_decorators;
     let _listSnapshots_decorators;
     let _readSnapshot_decorators;
     let _restoreSnapshotAsNew_decorators;
@@ -190,6 +204,9 @@ let TockTutorWorkbenchGateway = (() => {
             _listTree_decorators = [Remote];
             _createDocument_decorators = [Remote];
             _saveDocument_decorators = [Remote];
+            _readDraft_decorators = [Remote];
+            _saveDraft_decorators = [Remote];
+            _clearDraft_decorators = [Remote];
             _listSnapshots_decorators = [Remote];
             _readSnapshot_decorators = [Remote];
             _restoreSnapshotAsNew_decorators = [Remote];
@@ -205,6 +222,9 @@ let TockTutorWorkbenchGateway = (() => {
             __esDecorate(this, null, _listTree_decorators, { kind: "method", name: "listTree", static: false, private: false, access: { has: obj => "listTree" in obj, get: obj => obj.listTree }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _createDocument_decorators, { kind: "method", name: "createDocument", static: false, private: false, access: { has: obj => "createDocument" in obj, get: obj => obj.createDocument }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _saveDocument_decorators, { kind: "method", name: "saveDocument", static: false, private: false, access: { has: obj => "saveDocument" in obj, get: obj => obj.saveDocument }, metadata: _metadata }, null, _instanceExtraInitializers);
+            __esDecorate(this, null, _readDraft_decorators, { kind: "method", name: "readDraft", static: false, private: false, access: { has: obj => "readDraft" in obj, get: obj => obj.readDraft }, metadata: _metadata }, null, _instanceExtraInitializers);
+            __esDecorate(this, null, _saveDraft_decorators, { kind: "method", name: "saveDraft", static: false, private: false, access: { has: obj => "saveDraft" in obj, get: obj => obj.saveDraft }, metadata: _metadata }, null, _instanceExtraInitializers);
+            __esDecorate(this, null, _clearDraft_decorators, { kind: "method", name: "clearDraft", static: false, private: false, access: { has: obj => "clearDraft" in obj, get: obj => obj.clearDraft }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _listSnapshots_decorators, { kind: "method", name: "listSnapshots", static: false, private: false, access: { has: obj => "listSnapshots" in obj, get: obj => obj.listSnapshots }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _readSnapshot_decorators, { kind: "method", name: "readSnapshot", static: false, private: false, access: { has: obj => "readSnapshot" in obj, get: obj => obj.readSnapshot }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _restoreSnapshotAsNew_decorators, { kind: "method", name: "restoreSnapshotAsNew", static: false, private: false, access: { has: obj => "restoreSnapshotAsNew" in obj, get: obj => obj.restoreSnapshotAsNew }, metadata: _metadata }, null, _instanceExtraInitializers);
@@ -272,6 +292,21 @@ let TockTutorWorkbenchGateway = (() => {
             assertSaveRequest(request);
             signal.throwIfAborted();
             return this.ctx.noteVault.saveDocument(request, signal);
+        }
+        async readDraft(request, signal) {
+            assertDraftRequest(request);
+            signal.throwIfAborted();
+            return this.ctx.noteVault.readDraft(request, signal);
+        }
+        async saveDraft(request, signal) {
+            assertSaveDraftRequest(request);
+            signal.throwIfAborted();
+            return this.ctx.noteVault.saveDraft(request, signal);
+        }
+        async clearDraft(request, signal) {
+            assertDraftRequest(request);
+            signal.throwIfAborted();
+            return this.ctx.noteVault.clearDraft(request, signal);
         }
         async listSnapshots(request, signal) {
             assertSnapshotListRequest(request);

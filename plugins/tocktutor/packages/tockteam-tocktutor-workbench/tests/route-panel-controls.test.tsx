@@ -37,13 +37,18 @@ function renderRoute(overrides: Partial<WorkbenchRouteSnapshot> = {}, props: {
   onEdit?(source: string): void
   onMode?(mode: 'live-preview' | 'reading' | 'source'): void
   onMoveTab?(paneId: string, path: string, direction: -1 | 1): void
+  onOpenRecovery?(): void
   onOpenSandboxVault?(): void
+  onReadSnapshot?(id: string): void
   onRemoveRecentVault?(id: string): void
   onReopenClosedTab?(): void
+  onRestoreSnapshot?(id: string): void
+  onRestoreTrash?(id: string): void
   onSubmitDispatch?(draft: { path: string } | { text: string; title: string }): void
   onToggleFocusMode?(): void
   onTogglePinTab?(paneId: string, path: string): void
   onToggleTask?(index: number): void
+  onTrashCurrent?(): void
 } = {}): void {
   render(<TockTutorRouteView
     onActivateTab={() => {}}
@@ -207,6 +212,40 @@ describe('TockTutor titlebar panel controls', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Remove Recent Vault 1' }))
     expect(onRemoveRecentVault).toHaveBeenCalledWith(id)
     expect(document.body.textContent).not.toContain(id)
+  })
+
+  it('renders bounded File Recovery and Trash actions', () => {
+    const snapshotId = '2026-08-22T18-00-00-000Z-deadbeef'
+    const trashId = 'trash-123e4567-e89b-42d3-a456-426614174000'
+    const onOpenRecovery = vi.fn()
+    const onReadSnapshot = vi.fn()
+    const onRestoreSnapshot = vi.fn()
+    const onRestoreTrash = vi.fn()
+    const onTrashCurrent = vi.fn()
+    renderRoute({
+      draftRecovered: true,
+      path: 'Note.md',
+      selectedSnapshot: {
+        content: '# Before\n',
+        generation: 1,
+        snapshot: { createdAt: 1, digest: `sha256:${'a'.repeat(64)}`, id: snapshotId, path: 'Note.md', reason: 'save', size: 9 },
+      },
+      snapshots: [{ createdAt: 1, digest: `sha256:${'a'.repeat(64)}`, id: snapshotId, path: 'Note.md', reason: 'save', size: 9 }],
+      trash: [{ createdAt: 2, id: trashId, kind: 'document', originalPath: 'Deleted.md' }],
+    }, { onOpenRecovery, onReadSnapshot, onRestoreSnapshot, onRestoreTrash, onTrashCurrent })
+
+    fireEvent.click(screen.getByRole('button', { name: /Choose Vault/u }))
+    fireEvent.click(screen.getByRole('button', { name: 'Refresh' }))
+    expect(onOpenRecovery).toHaveBeenCalledOnce()
+    fireEvent.click(screen.getByRole('button', { name: 'Preview' }))
+    expect(onReadSnapshot).toHaveBeenCalledWith(snapshotId)
+    fireEvent.click(screen.getByRole('button', { name: 'Restore as New' }))
+    expect(onRestoreSnapshot).toHaveBeenCalledWith(snapshotId)
+    fireEvent.click(screen.getByRole('button', { name: 'Restore Trash Entry 1' }))
+    expect(onRestoreTrash).toHaveBeenCalledWith(trashId)
+    fireEvent.click(screen.getByRole('button', { name: 'Move Current File to Trash' }))
+    expect(onTrashCurrent).toHaveBeenCalledOnce()
+    expect(screen.getByLabelText('Snapshot Preview').textContent).toContain('# Before')
   })
 
   it('renders and submits the shadcn New Note dialog', () => {

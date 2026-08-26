@@ -5,6 +5,9 @@ import { isSafeVaultRelativePath } from './session.ts'
 import type {
   ActiveVaultResult,
   CreateDocumentRequest,
+  DraftMutationResult,
+  DraftRequest,
+  DraftResult,
   ListSnapshotsRequest,
   ListTrashRequest,
   ListTreeRequest,
@@ -16,6 +19,7 @@ import type {
   RestoreTrashRequest,
   RestoreTrashResult,
   SaveDocumentRequest,
+  SaveDraftRequest,
   SnapshotContentResult,
   SnapshotListResult,
   TrashEntryRequest,
@@ -35,19 +39,22 @@ export const MAX_TREE_PAGE_SIZE = 200
 
 export type NoteVaultCapability = Pick<
   NoteVaultRuntime,
-  | 'createDocument'
   | 'activateRecentVault'
+  | 'clearDraft'
+  | 'createDocument'
   | 'listRecentVaults'
   | 'listSnapshots'
   | 'listTrash'
   | 'listTree'
   | 'openDocument'
   | 'openSandboxVault'
+  | 'readDraft'
   | 'readSnapshot'
   | 'removeRecentVault'
   | 'restoreSnapshotAsNew'
   | 'restoreTrash'
   | 'saveDocument'
+  | 'saveDraft'
   | 'state'
   | 'trashEntry'
 >
@@ -175,6 +182,18 @@ function assertSaveRequest(value: SaveDocumentRequest): void {
   assertRevision(value.expectedRevision)
 }
 
+function assertDraftRequest(value: DraftRequest): void {
+  assertRecord(value, 'Draft request')
+  assertVaultReference(value.expectedVault)
+  assertDocumentPath(value.path)
+}
+
+function assertSaveDraftRequest(value: SaveDraftRequest): void {
+  assertDraftRequest(value)
+  assertContent(value.content)
+  if (value.revision !== undefined) assertRevision(value.revision)
+}
+
 function assertSnapshotListRequest(value: ListSnapshotsRequest): void {
   assertRecord(value, 'Snapshot request')
   assertVaultReference(value.expectedVault)
@@ -298,6 +317,27 @@ export class TockTutorWorkbenchGateway extends TypertRemoteService {
     assertSaveRequest(request)
     signal.throwIfAborted()
     return this.ctx.noteVault.saveDocument(request, signal)
+  }
+
+  @Remote
+  async readDraft(request: DraftRequest, signal: AbortSignal): Promise<DraftResult> {
+    assertDraftRequest(request)
+    signal.throwIfAborted()
+    return this.ctx.noteVault.readDraft(request, signal)
+  }
+
+  @Remote
+  async saveDraft(request: SaveDraftRequest, signal: AbortSignal): Promise<DraftMutationResult> {
+    assertSaveDraftRequest(request)
+    signal.throwIfAborted()
+    return this.ctx.noteVault.saveDraft(request, signal)
+  }
+
+  @Remote
+  async clearDraft(request: DraftRequest, signal: AbortSignal): Promise<DraftMutationResult> {
+    assertDraftRequest(request)
+    signal.throwIfAborted()
+    return this.ctx.noteVault.clearDraft(request, signal)
   }
 
   @Remote

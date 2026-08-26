@@ -97,13 +97,26 @@ import { isNoteVaultChangeEvent, type NoteVaultEventRemote } from './vault-event
 import type {
   ActiveVaultResult,
   CreateDocumentRequest,
+  DraftMutationResult,
+  DraftRequest,
+  DraftResult,
+  ListSnapshotsRequest,
+  ListTrashRequest,
   ListTreeRequest,
   NoteVaultChangeEvent,
   OpenDocumentResult,
   RecentVaultInfo,
   RecentVaultListResult,
+  ReadSnapshotRequest,
   RecentVaultRequest,
+  RestoreSnapshotRequest,
+  RestoreTrashRequest,
   SaveDocumentRequest,
+  SaveDraftRequest,
+  SnapshotContentResult,
+  SnapshotInfo,
+  TrashEntryInfo,
+  TrashEntryRequest,
   VaultGenerationRequest,
   VaultReference,
   VaultTreeEntry,
@@ -147,6 +160,15 @@ export interface WorkbenchRouteRemote extends NoteVaultEventRemote {
       request: SaveDocumentRequest,
       signal?: AbortSignal,
     ): Promise<RemoteResult<WriteDocumentResult>>
+    readDraft(request: DraftRequest, signal?: AbortSignal): Promise<RemoteResult<DraftResult>>
+    saveDraft(request: SaveDraftRequest, signal?: AbortSignal): Promise<RemoteResult<DraftMutationResult>>
+    clearDraft(request: DraftRequest, signal?: AbortSignal): Promise<RemoteResult<DraftMutationResult>>
+    listSnapshots(request: ListSnapshotsRequest, signal?: AbortSignal): Promise<RemoteResult<{ generation: number; snapshots: SnapshotInfo[] }>>
+    readSnapshot(request: ReadSnapshotRequest, signal?: AbortSignal): Promise<RemoteResult<SnapshotContentResult>>
+    restoreSnapshotAsNew(request: RestoreSnapshotRequest, signal?: AbortSignal): Promise<RemoteResult<WriteDocumentResult>>
+    trashEntry(request: TrashEntryRequest, signal?: AbortSignal): Promise<RemoteResult<unknown>>
+    listTrash(request: ListTrashRequest, signal?: AbortSignal): Promise<RemoteResult<{ entries: TrashEntryInfo[]; generation: number }>>
+    restoreTrash(request: RestoreTrashRequest, signal?: AbortSignal): Promise<RemoteResult<unknown>>
   }
 }
 
@@ -173,6 +195,7 @@ export interface WorkbenchRouteSnapshot {
   commandPaletteOpen?: boolean
   dispatchDialog: 'capture' | 'new' | null
   documentKind: RouteDocumentKind | null
+  draftRecovered?: boolean
   entries: readonly VaultTreeEntry[]
   focusedPaneId: string
   focusMode?: boolean
@@ -182,13 +205,17 @@ export interface WorkbenchRouteSnapshot {
   phase: RoutePhase
   recentVaults?: readonly RecentVaultInfo[]
   recentlyClosed?: readonly RouteTabSummary[]
+  recoveryOpen?: boolean
   revision: string | null
   saveStatus: EditorStatus
   searchOpen: boolean
+  searchQuery: string
+  selectedSnapshot?: SnapshotContentResult | null
   selectionEnd?: number
   selectionStart?: number
-  searchQuery: string
+  snapshots?: readonly SnapshotInfo[]
   source: string
+  trash?: readonly TrashEntryInfo[]
   panes: readonly RoutePaneSummary[]
   vault: VaultReference | null
   warnings: readonly string[]
@@ -295,6 +322,7 @@ function initialSnapshot(): WorkbenchRouteSnapshot {
     commandPaletteOpen: false,
     dispatchDialog: null,
     documentKind: null,
+    draftRecovered: false,
     entries: Object.freeze([]),
     focusedPaneId: 'pane-1',
     focusMode: false,
@@ -304,13 +332,17 @@ function initialSnapshot(): WorkbenchRouteSnapshot {
     phase: 'loading',
     recentVaults: Object.freeze([]),
     recentlyClosed: Object.freeze([]),
+    recoveryOpen: false,
     revision: null,
     saveStatus: 'saved',
     searchOpen: false,
     searchQuery: '',
+    selectedSnapshot: null,
     selectionEnd: 0,
     selectionStart: 0,
+    snapshots: Object.freeze([]),
     source: '',
+    trash: Object.freeze([]),
     panes: Object.freeze([Object.freeze({
       activePath: null,
       id: 'pane-1',
@@ -335,6 +367,8 @@ export class WorkbenchRouteController {
   private operationAbort: AbortController | null = null
   private saveAbort: AbortController | null = null
   private saving: Promise<boolean> | null = null
+  private draftAbort: AbortController | null = null
+  private draftTimer: ReturnType<typeof setTimeout> | null = null
   private eventDispose: (() => void) | null = null
   private pendingDispatch: PendingNativeDispatch | null = null
   private pathname = ROUTE_PREFIX
@@ -618,11 +652,35 @@ export class WorkbenchRouteController {
     this.syncShell()
   }
 
+  private scheduleDraft(): void {
+    if (this.draftTimer !== null) clearTimeout(this.draftTimer)
+    this.draftAbort?.abort()
+    const vault = this.snapshot.vault
+    const path = this.snapshot.path
+    const revision = this.snapshot.revision
+    const content = this.snapshot.source
+    if (vault === null || path === null) return
+    const abort = new AbortController()
+    this.draftAbort = abort
+    this.draftTimer = setTimeout(() => {
+      this.draftTimer = null
+      void this.remote.tocktutorWorkbench.saveDraft({
+        content,
+        expectedVault: vault,
+        path,
+        ...(revision === null ? {} : { revision }),
+      }, abort.signal).catch(() => undefined).finally(() => {
+        if (this.draftAbort === abort) this.draftAbort = null
+      })
+    }, 400)
+  }
+
   private clearDocument(): void {
     this.invalidateDispatch()
     this.nextOperation()
     this.update({
       documentKind: null,
+      draftRecovered: false,
       message: 'Select a note from the vault.',
       path: null,
       revision: null,
@@ -685,6 +743,7 @@ export class WorkbenchRouteController {
       canGoForward: false,
       dispatchDialog: null,
       documentKind: null,
+      draftRecovered: false,
       entries: Object.freeze([]),
       focusedPaneId: 'pane-1',
       message: 'Loading the active vault.',
@@ -752,6 +811,13 @@ export class WorkbenchRouteController {
       return
     }
     const selected = this.snapshot.path
+    if (selected !== null
+      && this.snapshot.saveStatus !== 'saved'
+      && (value.path === selected || ('fromPath' in value && value.fromPath === selected))) {
+      this.update({ message: 'External Change: The active file changed on disk. Your local draft remains unsaved.' })
+      void this.refreshTree(value.vault)
+      return
+    }
     if (selected !== null
       && this.snapshot.saveStatus === 'saved'
       && (value.path === selected || ('fromPath' in value && value.fromPath === selected))) {
@@ -833,6 +899,103 @@ export class WorkbenchRouteController {
       if (!this.current(operation.id) || vault.generation < expectedGeneration) return false
       await this.reload()
       return sameVault(this.snapshot.vault, vault)
+    } catch {
+      return false
+    }
+  }
+
+  async setRecoveryOpen(open: boolean): Promise<void> {
+    this.update({ recoveryOpen: open, selectedSnapshot: open ? this.snapshot.selectedSnapshot ?? null : null })
+    if (!open) return
+    const vault = this.snapshot.vault
+    if (vault === null) return
+    const path = this.snapshot.path
+    const operation = this.nextOperation()
+    try {
+      const trash = remoteValue(await this.remote.tocktutorWorkbench.listTrash({ expectedVault: vault }, operation.signal))
+      if (!this.current(operation.id, vault) || trash.generation !== vault.generation || !Array.isArray(trash.entries)) return
+      let snapshots: SnapshotInfo[] = []
+      if (path !== null) {
+        const result = remoteValue(await this.remote.tocktutorWorkbench.listSnapshots({ expectedVault: vault, path }, operation.signal))
+        if (!this.current(operation.id, vault) || result.generation !== vault.generation || !Array.isArray(result.snapshots)) return
+        snapshots = result.snapshots
+      }
+      this.update({
+        snapshots: Object.freeze(snapshots.map(snapshot => Object.freeze({ ...snapshot }))),
+        trash: Object.freeze(trash.entries.map(entry => Object.freeze({ ...entry }))),
+      })
+    } catch {
+      if (this.current(operation.id, vault) && !operation.signal.aborted) this.update({ message: 'Recovery data could not be loaded.' })
+    }
+  }
+
+  async readRecoverySnapshot(snapshotId: string): Promise<boolean> {
+    const vault = this.snapshot.vault
+    const path = this.snapshot.path
+    if (vault === null || path === null || this.snapshot.snapshots?.some(snapshot => snapshot.id === snapshotId) !== true) return false
+    const operation = this.nextOperation()
+    try {
+      const snapshot = remoteValue(await this.remote.tocktutorWorkbench.readSnapshot({ expectedVault: vault, path, snapshotId }, operation.signal))
+      if (!this.current(operation.id, vault) || snapshot.generation !== vault.generation || snapshot.snapshot.id !== snapshotId) return false
+      this.update({ selectedSnapshot: snapshot })
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  async restoreRecoverySnapshot(snapshotId: string): Promise<boolean> {
+    const vault = this.snapshot.vault
+    const path = this.snapshot.path
+    if (vault === null || path === null || this.snapshot.snapshots?.some(snapshot => snapshot.id === snapshotId) !== true) return false
+    const basename = path.split('/').at(-1) ?? 'Recovered.md'
+    const stem = basename.replace(/\.(?:base|canvas|markdown|md)$/iu, '')
+    const extension = basename.slice(stem.length) || '.md'
+    const toPath = `Recovered/${stem} Recovery${extension}`
+    try {
+      const restored = remoteValue(await this.remote.tocktutorWorkbench.restoreSnapshotAsNew({
+        expectedVault: vault,
+        path,
+        snapshotId,
+        toPath,
+      }))
+      if (restored.status !== 'created' || restored.generation !== vault.generation || restored.path !== toPath) return false
+      this.update({ message: `${toPath} restored.` })
+      await this.refreshTree(vault)
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  async trashCurrent(): Promise<boolean> {
+    const vault = this.snapshot.vault
+    const path = this.snapshot.path
+    const revision = this.snapshot.revision
+    if (vault === null || path === null || revision === null) return false
+    if (this.snapshot.saveStatus !== 'saved' && !await this.save()) return false
+    try {
+      remoteValue(await this.remote.tocktutorWorkbench.trashEntry({ expectedRevision: revision, expectedVault: vault, path }))
+      const closed = closeNoteTab(this.shellSession, this.shellSession.focusedGroupId, path)
+      this.shellSession = closed.session
+      this.syncShell()
+      this.clearDocument()
+      this.navigate(ROUTE_PREFIX)
+      await this.setRecoveryOpen(true)
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  async restoreTrashEntry(id: string): Promise<boolean> {
+    const vault = this.snapshot.vault
+    if (vault === null || this.snapshot.trash?.some(entry => entry.id === id) !== true) return false
+    try {
+      remoteValue(await this.remote.tocktutorWorkbench.restoreTrash({ expectedVault: vault, id }))
+      await this.setRecoveryOpen(true)
+      await this.refreshTree(vault)
+      return true
     } catch {
       return false
     }
@@ -1009,19 +1172,37 @@ export class WorkbenchRouteController {
         this.update({ message: `${path} exceeds the editor size limit.` })
         return false
       }
+      let content = opened.content
+      let draftRecovered = false
+      if (documentKind(path) === 'markdown') {
+        try {
+          const draft = remoteValue(await this.remote.tocktutorWorkbench.readDraft({ expectedVault: vault, path }, operation.signal))
+          if (!this.current(operation.id, vault) || draft.generation !== vault.generation) return false
+          if (draft.draft !== null
+            && (draft.draft.revision === undefined || draft.draft.revision === opened.revision)
+            && boundedSource(draft.draft.content)) {
+            content = draft.draft.content
+            draftRecovered = content !== opened.content
+          }
+        } catch {
+          if (!this.current(operation.id, vault) || operation.signal.aborted) return false
+        }
+      }
       const mode = pane.tabs.find(tab => tab.path === path)?.mode ?? this.snapshot.mode
       this.update({
         documentKind: documentKind(path),
-        message: `${path} opened.`,
+        draftRecovered,
+        message: draftRecovered ? `${path} opened with its recovered draft.` : `${path} opened.`,
         mode,
         path,
         revision: opened.revision,
-        saveStatus: 'saved',
+        saveStatus: draftRecovered ? 'unsaved' : 'saved',
         selectionEnd: 0,
         selectionStart: 0,
-        source: opened.content,
+        source: content,
       })
       this.recordOpen(path, recordHistory, previousPath)
+      if (draftRecovered) this.recordDirty(true)
       if (navigate) this.navigate(routeForPath(path))
       return true
     } catch (error) {
@@ -1046,6 +1227,7 @@ export class WorkbenchRouteController {
       source,
     })
     this.recordDirty(true)
+    this.scheduleDraft()
   }
 
   setSelection(start: number, end: number): void {
@@ -1126,11 +1308,19 @@ export class WorkbenchRouteController {
         }
         const unchanged = this.snapshot.source === source
         this.update({
+          draftRecovered: unchanged ? false : this.snapshot.draftRecovered === true,
           message: unchanged ? `${path} saved.` : 'Newer changes remain unsaved.',
           revision: saved.revision,
           saveStatus: unchanged ? 'saved' : 'unsaved',
         })
         this.recordDirty(!unchanged)
+        if (unchanged) {
+          if (this.draftTimer !== null) clearTimeout(this.draftTimer)
+          this.draftTimer = null
+          this.draftAbort?.abort()
+          this.draftAbort = null
+          void this.remote.tocktutorWorkbench.clearDraft({ expectedVault: vault, path }).catch(() => undefined)
+        }
         return unchanged
       })
       .catch(error => {
@@ -1167,6 +1357,8 @@ export class WorkbenchRouteController {
     this.operation += 1
     this.operationAbort?.abort()
     this.saveAbort?.abort()
+    this.draftAbort?.abort()
+    if (this.draftTimer !== null) clearTimeout(this.draftTimer)
     this.eventDispose?.()
     this.listeners.clear()
   }
@@ -1355,10 +1547,14 @@ export interface TockTutorRouteViewProps {
   onMode(mode: RouteEditorMode): void
   onNewNote?(): void
   onOpenCommandPalette?(): void
+  onOpenRecovery?(): void
   onOpenSandboxVault?(): void
   onOpenSearch?(): void
+  onReadSnapshot?(id: string): void
   onRemoveRecentVault?(id: string): void
   onReopenClosedTab?(): void
+  onRestoreSnapshot?(id: string): void
+  onRestoreTrash?(id: string): void
   onSave(): void
   onSearchChange?(query: string): void
   onSelectionChange?(start: number, end: number): void
@@ -1366,6 +1562,7 @@ export interface TockTutorRouteViewProps {
   onSubmitDispatch?(draft: NativeDispatchDraft): void
   onToggleFocusMode?(): void
   onTogglePinTab?(paneId: string, path: string): void
+  onTrashCurrent?(): void
   onToggleTask(index: number): void
   reviewPanel?: ReactNode
   snapshot: WorkbenchRouteSnapshot
@@ -2059,6 +2256,40 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
               {(snapshot.recentVaults?.length ?? 0) === 0 && <Alert unstyled role="status">No recent vaults.</Alert>}
             </div>
           </section>
+          <section aria-label="File Recovery" className="border-t border-[var(--tt-border)] p-3">
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="m-0 text-sm">File Recovery</h2>
+              <Button unstyled className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs" onClick={props.onOpenRecovery} type="button">Refresh</Button>
+            </div>
+            {snapshot.draftRecovered === true && <Alert unstyled className="mt-2" role="status">A local draft was recovered for this note.</Alert>}
+            <div className="mt-2 flex gap-2">
+              <Button unstyled className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs" disabled={snapshot.path === null} onClick={props.onTrashCurrent} type="button">Move Current File to Trash</Button>
+            </div>
+            <h3 className="mt-3 mb-1 text-xs">Snapshots</h3>
+            <div className="grid gap-1">
+              {(snapshot.snapshots ?? []).map((snapshotEntry, index) => (
+                <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-1" key={snapshotEntry.id}>
+                  <span className="truncate text-xs">Snapshot {String(index + 1)} · {snapshotEntry.reason}</span>
+                  <Button unstyled className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs" onClick={() => { props.onReadSnapshot?.(snapshotEntry.id) }} type="button">Preview</Button>
+                  <Button unstyled className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs" onClick={() => { props.onRestoreSnapshot?.(snapshotEntry.id) }} type="button">Restore as New</Button>
+                </div>
+              ))}
+              {(snapshot.snapshots?.length ?? 0) === 0 && <span className="text-xs text-[var(--tt-muted)]">No snapshots for the active file.</span>}
+            </div>
+            {snapshot.selectedSnapshot !== null && snapshot.selectedSnapshot !== undefined && (
+              <pre aria-label="Snapshot Preview" className="mt-2 max-h-32 overflow-auto rounded border border-[var(--tt-border)] p-2 text-xs">{snapshot.selectedSnapshot.content}</pre>
+            )}
+            <h3 className="mt-3 mb-1 text-xs">Trash</h3>
+            <div className="grid gap-1">
+              {(snapshot.trash ?? []).map((entry, index) => (
+                <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-1" key={entry.id}>
+                  <span className="truncate text-xs">{entry.originalPath}</span>
+                  <Button unstyled aria-label={`Restore Trash Entry ${String(index + 1)}`} className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs" onClick={() => { props.onRestoreTrash?.(entry.id) }} type="button">Restore</Button>
+                </div>
+              ))}
+              {(snapshot.trash?.length ?? 0) === 0 && <span className="text-xs text-[var(--tt-muted)]">Trash is empty.</span>}
+            </div>
+          </section>
           <section aria-label="Pane Groups" className="tocktutor-pane-groups border-t border-[var(--tt-border)] p-3">
             <div className="tocktutor-pane-heading flex items-center justify-between">
               <h2 className="m-0 text-sm">Pane Groups</h2>
@@ -2226,10 +2457,14 @@ export function TockTutorRoute(props: TockTutorRouteProps): ReactNode {
         onMoveTab={(paneId, path, direction) => { controller.moveTab(paneId, path, direction) }}
         onNewNote={() => { void controller.handleDispatch({ action: 'new', kind: 'quick-action', operationId: crypto.randomUUID() }) }}
         onOpenCommandPalette={() => { controller.setCommandPaletteOpen(true) }}
+        onOpenRecovery={() => { void controller.setRecoveryOpen(true) }}
         onOpenSandboxVault={() => { void controller.openSandboxVault() }}
         onOpenSearch={() => { controller.openSearch('') }}
+        onReadSnapshot={id => { void controller.readRecoverySnapshot(id) }}
         onRemoveRecentVault={id => { void controller.removeRecentVault(id) }}
         onReopenClosedTab={() => { void controller.reopenClosedTab() }}
+        onRestoreSnapshot={id => { void controller.restoreRecoverySnapshot(id) }}
+        onRestoreTrash={id => { void controller.restoreTrashEntry(id) }}
         onSave={() => { void controller.save() }}
         onSearchChange={query => { controller.setSearchQuery(query) }}
         onSelect={path => { void controller.select(path) }}
@@ -2238,6 +2473,7 @@ export function TockTutorRoute(props: TockTutorRouteProps): ReactNode {
         onToggleFocusMode={() => { controller.toggleFocusMode() }}
         onTogglePinTab={(paneId, path) => { controller.togglePinTab(paneId, path) }}
         onToggleTask={index => { controller.toggleTask(index) }}
+        onTrashCurrent={() => { void controller.trashCurrent() }}
         reviewPanel={(
           <TockTutorReviewPanelOutlet
             activePath={snapshot.path}

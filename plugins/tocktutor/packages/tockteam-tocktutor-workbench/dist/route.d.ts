@@ -8,7 +8,7 @@ import { TOCKTUTOR_REVIEW_PANEL_SLOT } from './review-panel.ts';
 import { type EditorCommandId } from './editor-commands.ts';
 import { type EditorStatus } from './markdown.ts';
 import { type NoteVaultEventRemote } from './vault-events.ts';
-import type { ActiveVaultResult, CreateDocumentRequest, ListTreeRequest, OpenDocumentResult, RecentVaultInfo, RecentVaultListResult, RecentVaultRequest, SaveDocumentRequest, VaultGenerationRequest, VaultReference, VaultTreeEntry, VaultTreePage, WriteDocumentResult } from './types.ts';
+import type { ActiveVaultResult, CreateDocumentRequest, DraftMutationResult, DraftRequest, DraftResult, ListSnapshotsRequest, ListTrashRequest, ListTreeRequest, OpenDocumentResult, RecentVaultInfo, RecentVaultListResult, ReadSnapshotRequest, RecentVaultRequest, RestoreSnapshotRequest, RestoreTrashRequest, SaveDocumentRequest, SaveDraftRequest, SnapshotContentResult, SnapshotInfo, TrashEntryInfo, TrashEntryRequest, VaultGenerationRequest, VaultReference, VaultTreeEntry, VaultTreePage, WriteDocumentResult } from './types.ts';
 export declare const MAX_ROUTE_SOURCE_BYTES = 2000000;
 export interface WorkbenchRouteRemote extends NoteVaultEventRemote {
     tocktutorWorkbench: {
@@ -21,6 +21,21 @@ export interface WorkbenchRouteRemote extends NoteVaultEventRemote {
         createDocument(request: CreateDocumentRequest, signal?: AbortSignal): Promise<RemoteResult<WriteDocumentResult>>;
         openDocument(path: string, expectedVault: VaultReference, signal?: AbortSignal): Promise<RemoteResult<OpenDocumentResult>>;
         saveDocument(request: SaveDocumentRequest, signal?: AbortSignal): Promise<RemoteResult<WriteDocumentResult>>;
+        readDraft(request: DraftRequest, signal?: AbortSignal): Promise<RemoteResult<DraftResult>>;
+        saveDraft(request: SaveDraftRequest, signal?: AbortSignal): Promise<RemoteResult<DraftMutationResult>>;
+        clearDraft(request: DraftRequest, signal?: AbortSignal): Promise<RemoteResult<DraftMutationResult>>;
+        listSnapshots(request: ListSnapshotsRequest, signal?: AbortSignal): Promise<RemoteResult<{
+            generation: number;
+            snapshots: SnapshotInfo[];
+        }>>;
+        readSnapshot(request: ReadSnapshotRequest, signal?: AbortSignal): Promise<RemoteResult<SnapshotContentResult>>;
+        restoreSnapshotAsNew(request: RestoreSnapshotRequest, signal?: AbortSignal): Promise<RemoteResult<WriteDocumentResult>>;
+        trashEntry(request: TrashEntryRequest, signal?: AbortSignal): Promise<RemoteResult<unknown>>;
+        listTrash(request: ListTrashRequest, signal?: AbortSignal): Promise<RemoteResult<{
+            entries: TrashEntryInfo[];
+            generation: number;
+        }>>;
+        restoreTrash(request: RestoreTrashRequest, signal?: AbortSignal): Promise<RemoteResult<unknown>>;
     };
 }
 export type RoutePhase = 'loading' | 'inactive' | 'ready' | 'error';
@@ -43,6 +58,7 @@ export interface WorkbenchRouteSnapshot {
     commandPaletteOpen?: boolean;
     dispatchDialog: 'capture' | 'new' | null;
     documentKind: RouteDocumentKind | null;
+    draftRecovered?: boolean;
     entries: readonly VaultTreeEntry[];
     focusedPaneId: string;
     focusMode?: boolean;
@@ -52,13 +68,17 @@ export interface WorkbenchRouteSnapshot {
     phase: RoutePhase;
     recentVaults?: readonly RecentVaultInfo[];
     recentlyClosed?: readonly RouteTabSummary[];
+    recoveryOpen?: boolean;
     revision: string | null;
     saveStatus: EditorStatus;
     searchOpen: boolean;
+    searchQuery: string;
+    selectedSnapshot?: SnapshotContentResult | null;
     selectionEnd?: number;
     selectionStart?: number;
-    searchQuery: string;
+    snapshots?: readonly SnapshotInfo[];
     source: string;
+    trash?: readonly TrashEntryInfo[];
     panes: readonly RoutePaneSummary[];
     vault: VaultReference | null;
     warnings: readonly string[];
@@ -86,6 +106,8 @@ export declare class WorkbenchRouteController {
     private operationAbort;
     private saveAbort;
     private saving;
+    private draftAbort;
+    private draftTimer;
     private eventDispose;
     private pendingDispatch;
     private pathname;
@@ -111,6 +133,7 @@ export declare class WorkbenchRouteController {
     private pane;
     private recordOpen;
     private recordDirty;
+    private scheduleDraft;
     private clearDocument;
     private nextOperation;
     private current;
@@ -121,6 +144,11 @@ export declare class WorkbenchRouteController {
     activateRecentVault(id: string): Promise<boolean>;
     removeRecentVault(id: string): Promise<boolean>;
     openSandboxVault(): Promise<boolean>;
+    setRecoveryOpen(open: boolean): Promise<void>;
+    readRecoverySnapshot(snapshotId: string): Promise<boolean>;
+    restoreRecoverySnapshot(snapshotId: string): Promise<boolean>;
+    trashCurrent(): Promise<boolean>;
+    restoreTrashEntry(id: string): Promise<boolean>;
     addPane(): Promise<boolean>;
     focusPane(id: string, pathOverride?: string): Promise<boolean>;
     activateTab(paneId: string, path: string): Promise<boolean>;
@@ -163,10 +191,14 @@ export interface TockTutorRouteViewProps {
     onMode(mode: RouteEditorMode): void;
     onNewNote?(): void;
     onOpenCommandPalette?(): void;
+    onOpenRecovery?(): void;
     onOpenSandboxVault?(): void;
     onOpenSearch?(): void;
+    onReadSnapshot?(id: string): void;
     onRemoveRecentVault?(id: string): void;
     onReopenClosedTab?(): void;
+    onRestoreSnapshot?(id: string): void;
+    onRestoreTrash?(id: string): void;
     onSave(): void;
     onSearchChange?(query: string): void;
     onSelectionChange?(start: number, end: number): void;
@@ -174,6 +206,7 @@ export interface TockTutorRouteViewProps {
     onSubmitDispatch?(draft: NativeDispatchDraft): void;
     onToggleFocusMode?(): void;
     onTogglePinTab?(paneId: string, path: string): void;
+    onTrashCurrent?(): void;
     onToggleTask(index: number): void;
     reviewPanel?: ReactNode;
     snapshot: WorkbenchRouteSnapshot;

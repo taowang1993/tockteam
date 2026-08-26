@@ -105,6 +105,29 @@ export type NoteVaultChangeEvent = Readonly<{
     path: string;
     vault: VaultReference;
 }>;
+export interface DraftRequest {
+    expectedVault: VaultReference;
+    path: string;
+}
+export interface SaveDraftRequest extends DraftRequest {
+    content: string;
+    revision?: string;
+}
+export interface DraftRecord {
+    content: string;
+    path: string;
+    revision?: string;
+    updatedAt: number;
+}
+export interface DraftResult {
+    draft: DraftRecord | null;
+    generation: number;
+}
+export interface DraftMutationResult {
+    generation: number;
+    ok: true;
+    updatedAt?: number;
+}
 export interface SnapshotInfo {
     createdAt: number;
     digest: string;

@@ -14591,6 +14591,18 @@ var _tockteam_tocktutor_workbench_tocktutorWorkbench_activateRecentVault_result$
   "generation": external_exports.number(),
   "id": external_exports.string()
 });
+var _tockteam_tocktutor_workbench_tocktutorWorkbench_clearDraft_parameter_0$schema = external_exports.object({
+  "expectedVault": external_exports.object({
+    "generation": external_exports.number(),
+    "id": external_exports.string()
+  }),
+  "path": external_exports.string()
+});
+var _tockteam_tocktutor_workbench_tocktutorWorkbench_clearDraft_result$schema = external_exports.object({
+  "generation": external_exports.number(),
+  "ok": external_exports.literal(true),
+  "updatedAt": external_exports.union([external_exports.undefined(), external_exports.number()]).optional()
+});
 var _tockteam_tocktutor_workbench_tocktutorWorkbench_createDocument_parameter_0$schema = external_exports.object({
   "content": external_exports.string(),
   "expectedVault": external_exports.object({
@@ -14716,6 +14728,22 @@ var _tockteam_tocktutor_workbench_tocktutorWorkbench_openSandboxVault_result$sch
   "generation": external_exports.number(),
   "id": external_exports.string()
 });
+var _tockteam_tocktutor_workbench_tocktutorWorkbench_readDraft_parameter_0$schema = external_exports.object({
+  "expectedVault": external_exports.object({
+    "generation": external_exports.number(),
+    "id": external_exports.string()
+  }),
+  "path": external_exports.string()
+});
+var _tockteam_tocktutor_workbench_tocktutorWorkbench_readDraft_result$schema = external_exports.object({
+  "draft": external_exports.union([external_exports.literal(null), external_exports.object({
+    "content": external_exports.string(),
+    "path": external_exports.string(),
+    "revision": external_exports.union([external_exports.undefined(), external_exports.string()]).optional(),
+    "updatedAt": external_exports.number()
+  })]),
+  "generation": external_exports.number()
+});
 var _tockteam_tocktutor_workbench_tocktutorWorkbench_readSnapshot_parameter_0$schema = external_exports.object({
   "snapshotId": external_exports.string(),
   "expectedVault": external_exports.object({
@@ -14811,6 +14839,20 @@ var _tockteam_tocktutor_workbench_tocktutorWorkbench_saveDocument_result$schema 
   "snapshotId": external_exports.string(),
   "status": external_exports.literal("saved")
 })]);
+var _tockteam_tocktutor_workbench_tocktutorWorkbench_saveDraft_parameter_0$schema = external_exports.object({
+  "content": external_exports.string(),
+  "revision": external_exports.union([external_exports.undefined(), external_exports.string()]).optional(),
+  "expectedVault": external_exports.object({
+    "generation": external_exports.number(),
+    "id": external_exports.string()
+  }),
+  "path": external_exports.string()
+});
+var _tockteam_tocktutor_workbench_tocktutorWorkbench_saveDraft_result$schema = external_exports.object({
+  "generation": external_exports.number(),
+  "ok": external_exports.literal(true),
+  "updatedAt": external_exports.union([external_exports.undefined(), external_exports.number()]).optional()
+});
 var _tockteam_tocktutor_workbench_tocktutorWorkbench_trashEntry_parameter_0$schema = external_exports.object({
   "expectedRevision": external_exports.string(),
   "expectedVault": external_exports.object({
@@ -14855,7 +14897,33 @@ var TYPERT_REMOTE = {
         typeSymbol: "@tockteam/tocktutor-workbench/client#VaultReference",
         schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_activateRecentVault_result$schema
       },
-      sourceLocation: { "file": "packages/workbench/src/host-read.ts", "line": 241, "column": 9 }
+      sourceLocation: { "file": "packages/workbench/src/host-read.ts", "line": 260, "column": 9 }
+    },
+    {
+      id: "@tockteam/tocktutor-workbench#tocktutorWorkbench/clearDraft",
+      service: "tocktutorWorkbench",
+      namespace: "tocktutorWorkbench",
+      method: "clearDraft",
+      invocation: { kind: "direct" },
+      parameters: [
+        {
+          name: "request",
+          wire: "request",
+          source: "json",
+          codec: {
+            mode: "strict",
+            typeSymbol: "@tockteam/tocktutor-workbench/client#DraftRequest",
+            schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_clearDraft_parameter_0$schema
+          }
+        }
+      ],
+      cancellation: { parameter: "signal" },
+      result: {
+        mode: "strict",
+        typeSymbol: "@tockteam/tocktutor-workbench/client#DraftMutationResult",
+        schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_clearDraft_result$schema
+      },
+      sourceLocation: { "file": "packages/workbench/src/host-read.ts", "line": 337, "column": 9 }
     },
     {
       id: "@tockteam/tocktutor-workbench#tocktutorWorkbench/createDocument",
@@ -14881,7 +14949,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "@tockteam/tocktutor-workbench/client#WriteDocumentResult",
         schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_createDocument_result$schema
       },
-      sourceLocation: { "file": "packages/workbench/src/host-read.ts", "line": 284, "column": 9 }
+      sourceLocation: { "file": "packages/workbench/src/host-read.ts", "line": 303, "column": 9 }
     },
     {
       id: "@tockteam/tocktutor-workbench#tocktutorWorkbench/currentVault",
@@ -14896,7 +14964,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "@tockteam/tocktutor-workbench/client#ActiveVaultResult",
         schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_currentVault_result$schema
       },
-      sourceLocation: { "file": "packages/workbench/src/host-read.ts", "line": 222, "column": 9 }
+      sourceLocation: { "file": "packages/workbench/src/host-read.ts", "line": 241, "column": 9 }
     },
     {
       id: "@tockteam/tocktutor-workbench#tocktutorWorkbench/listRecentVaults",
@@ -14911,7 +14979,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "@tockteam/tocktutor-workbench/client#RecentVaultListResult",
         schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_listRecentVaults_result$schema
       },
-      sourceLocation: { "file": "packages/workbench/src/host-read.ts", "line": 232, "column": 9 }
+      sourceLocation: { "file": "packages/workbench/src/host-read.ts", "line": 251, "column": 9 }
     },
     {
       id: "@tockteam/tocktutor-workbench#tocktutorWorkbench/listSnapshots",
@@ -14937,7 +15005,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "@tockteam/tocktutor-workbench/client#SnapshotListResult",
         schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_listSnapshots_result$schema
       },
-      sourceLocation: { "file": "packages/workbench/src/host-read.ts", "line": 304, "column": 9 }
+      sourceLocation: { "file": "packages/workbench/src/host-read.ts", "line": 344, "column": 9 }
     },
     {
       id: "@tockteam/tocktutor-workbench#tocktutorWorkbench/listTrash",
@@ -14963,7 +15031,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "@tockteam/tocktutor-workbench/client#TrashListResult",
         schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_listTrash_result$schema
       },
-      sourceLocation: { "file": "packages/workbench/src/host-read.ts", "line": 344, "column": 9 }
+      sourceLocation: { "file": "packages/workbench/src/host-read.ts", "line": 384, "column": 9 }
     },
     {
       id: "@tockteam/tocktutor-workbench#tocktutorWorkbench/listTree",
@@ -14989,7 +15057,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "@tockteam/tocktutor-workbench/client#VaultTreePage",
         schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_listTree_result$schema
       },
-      sourceLocation: { "file": "packages/workbench/src/host-read.ts", "line": 277, "column": 9 }
+      sourceLocation: { "file": "packages/workbench/src/host-read.ts", "line": 296, "column": 9 }
     },
     {
       id: "@tockteam/tocktutor-workbench#tocktutorWorkbench/openDocument",
@@ -15025,7 +15093,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "@tockteam/tocktutor-workbench/client#OpenDocumentResult",
         schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_openDocument_result$schema
       },
-      sourceLocation: { "file": "packages/workbench/src/host-read.ts", "line": 265, "column": 9 }
+      sourceLocation: { "file": "packages/workbench/src/host-read.ts", "line": 284, "column": 9 }
     },
     {
       id: "@tockteam/tocktutor-workbench#tocktutorWorkbench/openSandboxVault",
@@ -15051,7 +15119,33 @@ var TYPERT_REMOTE = {
         typeSymbol: "@tockteam/tocktutor-workbench/client#VaultReference",
         schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_openSandboxVault_result$schema
       },
-      sourceLocation: { "file": "packages/workbench/src/host-read.ts", "line": 258, "column": 9 }
+      sourceLocation: { "file": "packages/workbench/src/host-read.ts", "line": 277, "column": 9 }
+    },
+    {
+      id: "@tockteam/tocktutor-workbench#tocktutorWorkbench/readDraft",
+      service: "tocktutorWorkbench",
+      namespace: "tocktutorWorkbench",
+      method: "readDraft",
+      invocation: { kind: "direct" },
+      parameters: [
+        {
+          name: "request",
+          wire: "request",
+          source: "json",
+          codec: {
+            mode: "strict",
+            typeSymbol: "@tockteam/tocktutor-workbench/client#DraftRequest",
+            schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_readDraft_parameter_0$schema
+          }
+        }
+      ],
+      cancellation: { parameter: "signal" },
+      result: {
+        mode: "strict",
+        typeSymbol: "@tockteam/tocktutor-workbench/client#DraftResult",
+        schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_readDraft_result$schema
+      },
+      sourceLocation: { "file": "packages/workbench/src/host-read.ts", "line": 323, "column": 9 }
     },
     {
       id: "@tockteam/tocktutor-workbench#tocktutorWorkbench/readSnapshot",
@@ -15077,7 +15171,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "@tockteam/tocktutor-workbench/client#SnapshotContentResult",
         schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_readSnapshot_result$schema
       },
-      sourceLocation: { "file": "packages/workbench/src/host-read.ts", "line": 314, "column": 9 }
+      sourceLocation: { "file": "packages/workbench/src/host-read.ts", "line": 354, "column": 9 }
     },
     {
       id: "@tockteam/tocktutor-workbench#tocktutorWorkbench/removeRecentVault",
@@ -15103,7 +15197,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "@tockteam/tocktutor-workbench/client#RecentVaultListResult",
         schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_removeRecentVault_result$schema
       },
-      sourceLocation: { "file": "packages/workbench/src/host-read.ts", "line": 248, "column": 9 }
+      sourceLocation: { "file": "packages/workbench/src/host-read.ts", "line": 267, "column": 9 }
     },
     {
       id: "@tockteam/tocktutor-workbench#tocktutorWorkbench/restoreSnapshotAsNew",
@@ -15129,7 +15223,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "@tockteam/tocktutor-workbench/client#WriteDocumentResult",
         schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_restoreSnapshotAsNew_result$schema
       },
-      sourceLocation: { "file": "packages/workbench/src/host-read.ts", "line": 324, "column": 9 }
+      sourceLocation: { "file": "packages/workbench/src/host-read.ts", "line": 364, "column": 9 }
     },
     {
       id: "@tockteam/tocktutor-workbench#tocktutorWorkbench/restoreTrash",
@@ -15155,7 +15249,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "@tockteam/tocktutor-workbench/client#RestoreTrashResult",
         schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_restoreTrash_result$schema
       },
-      sourceLocation: { "file": "packages/workbench/src/host-read.ts", "line": 351, "column": 9 }
+      sourceLocation: { "file": "packages/workbench/src/host-read.ts", "line": 391, "column": 9 }
     },
     {
       id: "@tockteam/tocktutor-workbench#tocktutorWorkbench/saveDocument",
@@ -15181,7 +15275,33 @@ var TYPERT_REMOTE = {
         typeSymbol: "@tockteam/tocktutor-workbench/client#WriteDocumentResult",
         schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_saveDocument_result$schema
       },
-      sourceLocation: { "file": "packages/workbench/src/host-read.ts", "line": 294, "column": 9 }
+      sourceLocation: { "file": "packages/workbench/src/host-read.ts", "line": 313, "column": 9 }
+    },
+    {
+      id: "@tockteam/tocktutor-workbench#tocktutorWorkbench/saveDraft",
+      service: "tocktutorWorkbench",
+      namespace: "tocktutorWorkbench",
+      method: "saveDraft",
+      invocation: { kind: "direct" },
+      parameters: [
+        {
+          name: "request",
+          wire: "request",
+          source: "json",
+          codec: {
+            mode: "strict",
+            typeSymbol: "@tockteam/tocktutor-workbench/client#SaveDraftRequest",
+            schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_saveDraft_parameter_0$schema
+          }
+        }
+      ],
+      cancellation: { parameter: "signal" },
+      result: {
+        mode: "strict",
+        typeSymbol: "@tockteam/tocktutor-workbench/client#DraftMutationResult",
+        schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_saveDraft_result$schema
+      },
+      sourceLocation: { "file": "packages/workbench/src/host-read.ts", "line": 330, "column": 9 }
     },
     {
       id: "@tockteam/tocktutor-workbench#tocktutorWorkbench/trashEntry",
@@ -15207,7 +15327,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "@tockteam/tocktutor-workbench/client#TrashMutationResult",
         schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_trashEntry_result$schema
       },
-      sourceLocation: { "file": "packages/workbench/src/host-read.ts", "line": 334, "column": 9 }
+      sourceLocation: { "file": "packages/workbench/src/host-read.ts", "line": 374, "column": 9 }
     }
   ]
 };
@@ -22550,6 +22670,7 @@ function initialSnapshot() {
     commandPaletteOpen: false,
     dispatchDialog: null,
     documentKind: null,
+    draftRecovered: false,
     entries: Object.freeze([]),
     focusedPaneId: "pane-1",
     focusMode: false,
@@ -22559,13 +22680,17 @@ function initialSnapshot() {
     phase: "loading",
     recentVaults: Object.freeze([]),
     recentlyClosed: Object.freeze([]),
+    recoveryOpen: false,
     revision: null,
     saveStatus: "saved",
     searchOpen: false,
     searchQuery: "",
+    selectedSnapshot: null,
     selectionEnd: 0,
     selectionStart: 0,
+    snapshots: Object.freeze([]),
     source: "",
+    trash: Object.freeze([]),
     panes: Object.freeze([Object.freeze({
       activePath: null,
       id: "pane-1",
@@ -22593,6 +22718,8 @@ var WorkbenchRouteController = class {
   operationAbort = null;
   saveAbort = null;
   saving = null;
+  draftAbort = null;
+  draftTimer = null;
   eventDispose = null;
   pendingDispatch = null;
   pathname = ROUTE_PREFIX;
@@ -22831,11 +22958,34 @@ ${text}`;
     );
     this.syncShell();
   }
+  scheduleDraft() {
+    if (this.draftTimer !== null) clearTimeout(this.draftTimer);
+    this.draftAbort?.abort();
+    const vault = this.snapshot.vault;
+    const path = this.snapshot.path;
+    const revision = this.snapshot.revision;
+    const content = this.snapshot.source;
+    if (vault === null || path === null) return;
+    const abort = new AbortController();
+    this.draftAbort = abort;
+    this.draftTimer = setTimeout(() => {
+      this.draftTimer = null;
+      void this.remote.tocktutorWorkbench.saveDraft({
+        content,
+        expectedVault: vault,
+        path,
+        ...revision === null ? {} : { revision }
+      }, abort.signal).catch(() => void 0).finally(() => {
+        if (this.draftAbort === abort) this.draftAbort = null;
+      });
+    }, 400);
+  }
   clearDocument() {
     this.invalidateDispatch();
     this.nextOperation();
     this.update({
       documentKind: null,
+      draftRecovered: false,
       message: "Select a note from the vault.",
       path: null,
       revision: null,
@@ -22892,6 +23042,7 @@ ${text}`;
       canGoForward: false,
       dispatchDialog: null,
       documentKind: null,
+      draftRecovered: false,
       entries: Object.freeze([]),
       focusedPaneId: "pane-1",
       message: "Loading the active vault.",
@@ -22960,6 +23111,11 @@ ${text}`;
       return;
     }
     const selected = this.snapshot.path;
+    if (selected !== null && this.snapshot.saveStatus !== "saved" && (value.path === selected || "fromPath" in value && value.fromPath === selected)) {
+      this.update({ message: "External Change: The active file changed on disk. Your local draft remains unsaved." });
+      void this.refreshTree(value.vault);
+      return;
+    }
     if (selected !== null && this.snapshot.saveStatus === "saved" && (value.path === selected || "fromPath" in value && value.fromPath === selected)) {
       const nextPath = value.path === selected ? selected : value.path;
       if (supportedDocument(nextPath)) {
@@ -23035,6 +23191,98 @@ ${text}`;
       if (!this.current(operation.id) || vault.generation < expectedGeneration) return false;
       await this.reload();
       return sameVault(this.snapshot.vault, vault);
+    } catch {
+      return false;
+    }
+  }
+  async setRecoveryOpen(open) {
+    this.update({ recoveryOpen: open, selectedSnapshot: open ? this.snapshot.selectedSnapshot ?? null : null });
+    if (!open) return;
+    const vault = this.snapshot.vault;
+    if (vault === null) return;
+    const path = this.snapshot.path;
+    const operation = this.nextOperation();
+    try {
+      const trash = remoteValue(await this.remote.tocktutorWorkbench.listTrash({ expectedVault: vault }, operation.signal));
+      if (!this.current(operation.id, vault) || trash.generation !== vault.generation || !Array.isArray(trash.entries)) return;
+      let snapshots = [];
+      if (path !== null) {
+        const result = remoteValue(await this.remote.tocktutorWorkbench.listSnapshots({ expectedVault: vault, path }, operation.signal));
+        if (!this.current(operation.id, vault) || result.generation !== vault.generation || !Array.isArray(result.snapshots)) return;
+        snapshots = result.snapshots;
+      }
+      this.update({
+        snapshots: Object.freeze(snapshots.map((snapshot) => Object.freeze({ ...snapshot }))),
+        trash: Object.freeze(trash.entries.map((entry) => Object.freeze({ ...entry })))
+      });
+    } catch {
+      if (this.current(operation.id, vault) && !operation.signal.aborted) this.update({ message: "Recovery data could not be loaded." });
+    }
+  }
+  async readRecoverySnapshot(snapshotId) {
+    const vault = this.snapshot.vault;
+    const path = this.snapshot.path;
+    if (vault === null || path === null || this.snapshot.snapshots?.some((snapshot) => snapshot.id === snapshotId) !== true) return false;
+    const operation = this.nextOperation();
+    try {
+      const snapshot = remoteValue(await this.remote.tocktutorWorkbench.readSnapshot({ expectedVault: vault, path, snapshotId }, operation.signal));
+      if (!this.current(operation.id, vault) || snapshot.generation !== vault.generation || snapshot.snapshot.id !== snapshotId) return false;
+      this.update({ selectedSnapshot: snapshot });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  async restoreRecoverySnapshot(snapshotId) {
+    const vault = this.snapshot.vault;
+    const path = this.snapshot.path;
+    if (vault === null || path === null || this.snapshot.snapshots?.some((snapshot) => snapshot.id === snapshotId) !== true) return false;
+    const basename = path.split("/").at(-1) ?? "Recovered.md";
+    const stem = basename.replace(/\.(?:base|canvas|markdown|md)$/iu, "");
+    const extension = basename.slice(stem.length) || ".md";
+    const toPath = `Recovered/${stem} Recovery${extension}`;
+    try {
+      const restored = remoteValue(await this.remote.tocktutorWorkbench.restoreSnapshotAsNew({
+        expectedVault: vault,
+        path,
+        snapshotId,
+        toPath
+      }));
+      if (restored.status !== "created" || restored.generation !== vault.generation || restored.path !== toPath) return false;
+      this.update({ message: `${toPath} restored.` });
+      await this.refreshTree(vault);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  async trashCurrent() {
+    const vault = this.snapshot.vault;
+    const path = this.snapshot.path;
+    const revision = this.snapshot.revision;
+    if (vault === null || path === null || revision === null) return false;
+    if (this.snapshot.saveStatus !== "saved" && !await this.save()) return false;
+    try {
+      remoteValue(await this.remote.tocktutorWorkbench.trashEntry({ expectedRevision: revision, expectedVault: vault, path }));
+      const closed = closeNoteTab(this.shellSession, this.shellSession.focusedGroupId, path);
+      this.shellSession = closed.session;
+      this.syncShell();
+      this.clearDocument();
+      this.navigate(ROUTE_PREFIX);
+      await this.setRecoveryOpen(true);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  async restoreTrashEntry(id) {
+    const vault = this.snapshot.vault;
+    if (vault === null || this.snapshot.trash?.some((entry) => entry.id === id) !== true) return false;
+    try {
+      remoteValue(await this.remote.tocktutorWorkbench.restoreTrash({ expectedVault: vault, id }));
+      await this.setRecoveryOpen(true);
+      await this.refreshTree(vault);
+      return true;
     } catch {
       return false;
     }
@@ -23191,19 +23439,35 @@ ${text}`;
         this.update({ message: `${path} exceeds the editor size limit.` });
         return false;
       }
+      let content = opened.content;
+      let draftRecovered = false;
+      if (documentKind(path) === "markdown") {
+        try {
+          const draft = remoteValue(await this.remote.tocktutorWorkbench.readDraft({ expectedVault: vault, path }, operation.signal));
+          if (!this.current(operation.id, vault) || draft.generation !== vault.generation) return false;
+          if (draft.draft !== null && (draft.draft.revision === void 0 || draft.draft.revision === opened.revision) && boundedSource(draft.draft.content)) {
+            content = draft.draft.content;
+            draftRecovered = content !== opened.content;
+          }
+        } catch {
+          if (!this.current(operation.id, vault) || operation.signal.aborted) return false;
+        }
+      }
       const mode = pane.tabs.find((tab) => tab.path === path)?.mode ?? this.snapshot.mode;
       this.update({
         documentKind: documentKind(path),
-        message: `${path} opened.`,
+        draftRecovered,
+        message: draftRecovered ? `${path} opened with its recovered draft.` : `${path} opened.`,
         mode,
         path,
         revision: opened.revision,
-        saveStatus: "saved",
+        saveStatus: draftRecovered ? "unsaved" : "saved",
         selectionEnd: 0,
         selectionStart: 0,
-        source: opened.content
+        source: content
       });
       this.recordOpen(path, recordHistory, previousPath);
+      if (draftRecovered) this.recordDirty(true);
       if (navigate) this.navigate(routeForPath(path));
       return true;
     } catch (error51) {
@@ -23227,6 +23491,7 @@ ${text}`;
       source
     });
     this.recordDirty(true);
+    this.scheduleDraft();
   }
   setSelection(start, end) {
     if (this.snapshot.path === null) return;
@@ -23300,11 +23565,19 @@ ${text}`;
       }
       const unchanged = this.snapshot.source === source;
       this.update({
+        draftRecovered: unchanged ? false : this.snapshot.draftRecovered === true,
         message: unchanged ? `${path} saved.` : "Newer changes remain unsaved.",
         revision: saved.revision,
         saveStatus: unchanged ? "saved" : "unsaved"
       });
       this.recordDirty(!unchanged);
+      if (unchanged) {
+        if (this.draftTimer !== null) clearTimeout(this.draftTimer);
+        this.draftTimer = null;
+        this.draftAbort?.abort();
+        this.draftAbort = null;
+        void this.remote.tocktutorWorkbench.clearDraft({ expectedVault: vault, path }).catch(() => void 0);
+      }
       return unchanged;
     }).catch((error51) => {
       if (!this.disposed && !abort.signal.aborted && sameVault(this.snapshot.vault, vault) && this.snapshot.path === path) {
@@ -23337,6 +23610,8 @@ ${text}`;
     this.operation += 1;
     this.operationAbort?.abort();
     this.saveAbort?.abort();
+    this.draftAbort?.abort();
+    if (this.draftTimer !== null) clearTimeout(this.draftTimer);
     this.eventDispose?.();
     this.listeners.clear();
   }
@@ -24202,6 +24477,43 @@ function TockTutorRouteView(props) {
                         (snapshot.recentVaults?.length ?? 0) === 0 && /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(Alert, { unstyled: true, role: "status", children: "No recent vaults." })
                       ] })
                     ] }),
+                    /* @__PURE__ */ (0, import_jsx_runtime21.jsxs)("section", { "aria-label": "File Recovery", className: "border-t border-[var(--tt-border)] p-3", children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime21.jsxs)("div", { className: "flex items-center justify-between gap-2", children: [
+                        /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("h2", { className: "m-0 text-sm", children: "File Recovery" }),
+                        /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs", onClick: props.onOpenRecovery, type: "button", children: "Refresh" })
+                      ] }),
+                      snapshot.draftRecovered === true && /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(Alert, { unstyled: true, className: "mt-2", role: "status", children: "A local draft was recovered for this note." }),
+                      /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("div", { className: "mt-2 flex gap-2", children: /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs", disabled: snapshot.path === null, onClick: props.onTrashCurrent, type: "button", children: "Move Current File to Trash" }) }),
+                      /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("h3", { className: "mt-3 mb-1 text-xs", children: "Snapshots" }),
+                      /* @__PURE__ */ (0, import_jsx_runtime21.jsxs)("div", { className: "grid gap-1", children: [
+                        (snapshot.snapshots ?? []).map((snapshotEntry, index2) => /* @__PURE__ */ (0, import_jsx_runtime21.jsxs)("div", { className: "grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-1", children: [
+                          /* @__PURE__ */ (0, import_jsx_runtime21.jsxs)("span", { className: "truncate text-xs", children: [
+                            "Snapshot ",
+                            String(index2 + 1),
+                            " \xB7 ",
+                            snapshotEntry.reason
+                          ] }),
+                          /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs", onClick: () => {
+                            props.onReadSnapshot?.(snapshotEntry.id);
+                          }, type: "button", children: "Preview" }),
+                          /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs", onClick: () => {
+                            props.onRestoreSnapshot?.(snapshotEntry.id);
+                          }, type: "button", children: "Restore as New" })
+                        ] }, snapshotEntry.id)),
+                        (snapshot.snapshots?.length ?? 0) === 0 && /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("span", { className: "text-xs text-[var(--tt-muted)]", children: "No snapshots for the active file." })
+                      ] }),
+                      snapshot.selectedSnapshot !== null && snapshot.selectedSnapshot !== void 0 && /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("pre", { "aria-label": "Snapshot Preview", className: "mt-2 max-h-32 overflow-auto rounded border border-[var(--tt-border)] p-2 text-xs", children: snapshot.selectedSnapshot.content }),
+                      /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("h3", { className: "mt-3 mb-1 text-xs", children: "Trash" }),
+                      /* @__PURE__ */ (0, import_jsx_runtime21.jsxs)("div", { className: "grid gap-1", children: [
+                        (snapshot.trash ?? []).map((entry, index2) => /* @__PURE__ */ (0, import_jsx_runtime21.jsxs)("div", { className: "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-1", children: [
+                          /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("span", { className: "truncate text-xs", children: entry.originalPath }),
+                          /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(Button, { unstyled: true, "aria-label": `Restore Trash Entry ${String(index2 + 1)}`, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs", onClick: () => {
+                            props.onRestoreTrash?.(entry.id);
+                          }, type: "button", children: "Restore" })
+                        ] }, entry.id)),
+                        (snapshot.trash?.length ?? 0) === 0 && /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("span", { className: "text-xs text-[var(--tt-muted)]", children: "Trash is empty." })
+                      ] })
+                    ] }),
                     /* @__PURE__ */ (0, import_jsx_runtime21.jsxs)("section", { "aria-label": "Pane Groups", className: "tocktutor-pane-groups border-t border-[var(--tt-border)] p-3", children: [
                       /* @__PURE__ */ (0, import_jsx_runtime21.jsxs)("div", { className: "tocktutor-pane-heading flex items-center justify-between", children: [
                         /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("h2", { className: "m-0 text-sm", children: "Pane Groups" }),
@@ -24384,17 +24696,29 @@ function TockTutorRoute(props) {
       onOpenCommandPalette: () => {
         controller.setCommandPaletteOpen(true);
       },
+      onOpenRecovery: () => {
+        void controller.setRecoveryOpen(true);
+      },
       onOpenSandboxVault: () => {
         void controller.openSandboxVault();
       },
       onOpenSearch: () => {
         controller.openSearch("");
       },
+      onReadSnapshot: (id) => {
+        void controller.readRecoverySnapshot(id);
+      },
       onRemoveRecentVault: (id) => {
         void controller.removeRecentVault(id);
       },
       onReopenClosedTab: () => {
         void controller.reopenClosedTab();
+      },
+      onRestoreSnapshot: (id) => {
+        void controller.restoreRecoverySnapshot(id);
+      },
+      onRestoreTrash: (id) => {
+        void controller.restoreTrashEntry(id);
       },
       onSave: () => {
         void controller.save();
@@ -24419,6 +24743,9 @@ function TockTutorRoute(props) {
       },
       onToggleTask: (index2) => {
         controller.toggleTask(index2);
+      },
+      onTrashCurrent: () => {
+        void controller.trashCurrent();
       },
       reviewPanel: /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(
         TockTutorReviewPanelOutlet,
