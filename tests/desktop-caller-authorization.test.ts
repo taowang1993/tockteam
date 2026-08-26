@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import {
   DesktopCallerAuthorizations,
+  resolveDesktopCallerAuthorizationRequest,
   type DesktopCallerOperation,
 } from '../src/desktop-caller-authorization.ts'
 import type { NativeOperationIdentity } from '../src/host-contract.ts'
@@ -19,6 +20,22 @@ function identity(operationId: string, requestId: string, windowId: string): Nat
     windowId,
   }
 }
+
+test('binds a new caller request to the browser-observed vault for later Host revalidation', () => {
+  const native = { generation: 0, id: null }
+  const expectedVault = { generation: 4, id: `vault:${'a'.repeat(64)}` }
+  assert.deepEqual(resolveDesktopCallerAuthorizationRequest({ expectedVault, operation: 'popout-open' }, native), {
+    operation: 'popout-open',
+    vault: expectedVault,
+  })
+  assert.deepEqual(resolveDesktopCallerAuthorizationRequest({ operation: 'activate-vault' }, native), {
+    operation: 'activate-vault',
+    vault: native,
+  })
+  assert.deepEqual(resolveDesktopCallerAuthorizationRequest('print', native), { operation: 'print', vault: native })
+  assert.equal(resolveDesktopCallerAuthorizationRequest({ expectedVault: { ...expectedVault, id: 'forged' }, operation: 'print' }, native), undefined)
+  assert.equal(resolveDesktopCallerAuthorizationRequest({ expectedVault, extra: true, operation: 'print' }, native), undefined)
+})
 
 test('claims one trusted-main authorization with a fully main-derived native identity', () => {
   let next = 0

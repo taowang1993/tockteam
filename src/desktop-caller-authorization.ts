@@ -26,6 +26,11 @@ export interface DesktopCallerVaultSnapshot {
   id: string | null
 }
 
+export interface DesktopCallerAuthorizationRequest {
+  expectedVault?: Readonly<{ generation: number; id: string }>
+  operation: DesktopCallerOperation
+}
+
 interface AuthorizationRecord {
   expiresAt: number
   frameId: string
@@ -66,6 +71,25 @@ function bounded(value: unknown): value is string {
 
 function operation(value: unknown): value is DesktopCallerOperation {
   return typeof value === 'string' && (DESKTOP_CALLER_OPERATIONS as readonly string[]).includes(value)
+}
+
+/** Bind a trusted-frame request to its browser-observed vault; Host claim still revalidates it. */
+export function resolveDesktopCallerAuthorizationRequest(
+  raw: unknown,
+  nativeVault: DesktopCallerVaultSnapshot,
+): { operation: DesktopCallerOperation; vault: DesktopCallerVaultSnapshot } | undefined {
+  if (operation(raw)) return { operation: raw, vault: nativeVault }
+  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) return undefined
+  const record = raw as Record<string, unknown>
+  if (Object.keys(record).some(key => key !== 'operation' && key !== 'expectedVault') || !operation(record.operation)) return undefined
+  if (record.operation === 'activate-vault') return { operation: record.operation, vault: nativeVault }
+  const expected = record.expectedVault
+  if (typeof expected !== 'object' || expected === null || Array.isArray(expected)) return undefined
+  const vault = expected as Record<string, unknown>
+  if (Object.keys(vault).length !== 2 || !Object.hasOwn(vault, 'generation') || !Object.hasOwn(vault, 'id')
+    || !Number.isSafeInteger(vault.generation) || Number(vault.generation) <= 0
+    || typeof vault.id !== 'string' || !/^vault:[a-f0-9]{64}$/u.test(vault.id)) return undefined
+  return { operation: record.operation, vault: { generation: Number(vault.generation), id: vault.id } }
 }
 
 /** Main-process owner for one-use authorizations minted only for the trusted main frame. */

@@ -107,8 +107,9 @@ async function nativeCall(
   operation: DesktopCallerOperation,
   signal: AbortSignal | undefined,
   call: (authorization: string, signal?: AbortSignal) => Promise<RemoteResult<NativeActionResult>>,
+  expectedVault?: VaultReference,
 ): Promise<NativeActionResult> {
-  const { authorization } = await bridge.authorize(operation)
+  const { authorization } = await bridge.authorize(operation, expectedVault)
   let result = await call(authorization, signal)
   if (responseWasLost(result)) result = await call(authorization, signal)
   return valueOf(result)
@@ -149,7 +150,7 @@ async function handleDesktopDispatch(
     if (owner.vault === null || event.request.file === undefined || !await saveCurrent(owner)) return 'failed'
     return dispatchStatus(await nativeCall(bridge, 'popout-open', signal, (authorization, ownerSignal) => (
       remote.tocktutorDesktop.openPopOut(authorization, event.request.file!, owner.vault!, ownerSignal)
-    )))
+    ), owner.vault))
   }
   return owner.handleDispatch(workbenchEvent(event))
 }
@@ -439,13 +440,14 @@ export function TockTutorNativeActions(props: TockTutorNativeActionsProps): Reac
     label: string,
     operation: DesktopCallerOperation,
     call: (authorization: string, signal: AbortSignal) => Promise<RemoteResult<NativeActionResult>>,
+    expectedVault?: VaultReference,
   ): Promise<NativeActionResult | undefined> => {
     const signal = lifetime.current?.signal
     if (signal === undefined || signal.aborted) return undefined
     setBusy(label)
     setMessage(`${label}…`)
     try {
-      const { authorization } = await props.bridge.authorize(operation)
+      const { authorization } = await props.bridge.authorize(operation, expectedVault)
       let response = await call(authorization, signal)
       if (responseWasLost(response) && !signal.aborted) response = await call(authorization, signal)
       const result = valueOf(response)
@@ -473,7 +475,7 @@ export function TockTutorNativeActions(props: TockTutorNativeActionsProps): Reac
     if (props.activePath === null || props.vault === null || (saveFirst && !await saveCurrent(props))) return
     await run(label, operation, (authorization, signal) => (
       call(authorization, props.activePath!, props.vault!, signal)
-    ))
+    ), props.vault)
   }
 
   const startRecording = async (): Promise<void> => {
@@ -484,7 +486,7 @@ export function TockTutorNativeActions(props: TockTutorNativeActionsProps): Reac
     try {
       const path = props.activePath
       const vault = props.vault
-      const { authorization } = await props.bridge.authorize('microphone')
+      const { authorization } = await props.bridge.authorize('microphone', vault)
       const started = await startAudioRecording(
         authorization,
         path,
@@ -567,7 +569,7 @@ export function TockTutorNativeActions(props: TockTutorNativeActionsProps): Reac
           if (props.vault === null) return
           await run('Closing Pop-Outs', 'popout-close-all', (authorization, signal) => (
             props.remote.tocktutorDesktop.closeAllPopOuts(authorization, props.vault!, signal)
-          ))
+          ), props.vault)
         }, props.vault !== null)}
         {button('Request Microphone', withNote('Requesting Microphone', 'microphone', (
           authorization,

@@ -29,8 +29,8 @@ async function completeDispatch(bridge, request) {
         }
     }
 }
-async function nativeCall(bridge, operation, signal, call) {
-    const { authorization } = await bridge.authorize(operation);
+async function nativeCall(bridge, operation, signal, call, expectedVault) {
+    const { authorization } = await bridge.authorize(operation, expectedVault);
     let result = await call(authorization, signal);
     if (responseWasLost(result))
         result = await call(authorization, signal);
@@ -62,7 +62,7 @@ async function handleDesktopDispatch(event, owner, bridge, remote, signal) {
     if (event.request.action === 'open' && event.request.paneType === 'window') {
         if (owner.vault === null || event.request.file === undefined || !await saveCurrent(owner))
             return 'failed';
-        return dispatchStatus(await nativeCall(bridge, 'popout-open', signal, (authorization, ownerSignal) => (remote.tocktutorDesktop.openPopOut(authorization, event.request.file, owner.vault, ownerSignal))));
+        return dispatchStatus(await nativeCall(bridge, 'popout-open', signal, (authorization, ownerSignal) => (remote.tocktutorDesktop.openPopOut(authorization, event.request.file, owner.vault, ownerSignal)), owner.vault));
     }
     return owner.handleDispatch(workbenchEvent(event));
 }
@@ -291,14 +291,14 @@ export function TockTutorNativeActions(props) {
             void props.bridge.cancelDispatch().catch(() => { });
         };
     }, [props.bridge, props.remote]);
-    const run = async (label, operation, call) => {
+    const run = async (label, operation, call, expectedVault) => {
         const signal = lifetime.current?.signal;
         if (signal === undefined || signal.aborted)
             return undefined;
         setBusy(label);
         setMessage(`${label}…`);
         try {
-            const { authorization } = await props.bridge.authorize(operation);
+            const { authorization } = await props.bridge.authorize(operation, expectedVault);
             let response = await call(authorization, signal);
             if (responseWasLost(response) && !signal.aborted)
                 response = await call(authorization, signal);
@@ -320,7 +320,7 @@ export function TockTutorNativeActions(props) {
     const withNote = (label, operation, call, saveFirst = false) => async () => {
         if (props.activePath === null || props.vault === null || (saveFirst && !await saveCurrent(props)))
             return;
-        await run(label, operation, (authorization, signal) => (call(authorization, props.activePath, props.vault, signal)));
+        await run(label, operation, (authorization, signal) => (call(authorization, props.activePath, props.vault, signal)), props.vault);
     };
     const startRecording = async () => {
         const signal = lifetime.current?.signal;
@@ -331,7 +331,7 @@ export function TockTutorNativeActions(props) {
         try {
             const path = props.activePath;
             const vault = props.vault;
-            const { authorization } = await props.bridge.authorize('microphone');
+            const { authorization } = await props.bridge.authorize('microphone', vault);
             const started = await startAudioRecording(authorization, path, vault, () => owner.current, async (token, expectedVault) => {
                 let response = await props.remote.tocktutorDesktop.requestMicrophone(token, expectedVault, signal);
                 if (responseWasLost(response) && !signal.aborted)
@@ -388,7 +388,7 @@ export function TockTutorNativeActions(props) {
                     }), button('Reveal Entry', withNote('Revealing Entry', 'reveal-entry', (authorization, path, vault, signal) => (props.remote.tocktutorDesktop.revealEntry(authorization, path, vault, signal))), hasNote), button('Open Pop-Out', withNote('Opening Pop-Out', 'popout-open', (authorization, path, vault, signal) => (props.remote.tocktutorDesktop.openPopOut(authorization, path, vault, signal)), true), hasNote), button('Close Pop-Out', withNote('Closing Pop-Out', 'popout-close', (authorization, path, vault, signal) => (props.remote.tocktutorDesktop.closePopOut(authorization, path, vault, signal))), hasNote), button('Close All Pop-Outs', async () => {
                         if (props.vault === null)
                             return;
-                        await run('Closing Pop-Outs', 'popout-close-all', (authorization, signal) => (props.remote.tocktutorDesktop.closeAllPopOuts(authorization, props.vault, signal)));
+                        await run('Closing Pop-Outs', 'popout-close-all', (authorization, signal) => (props.remote.tocktutorDesktop.closeAllPopOuts(authorization, props.vault, signal)), props.vault);
                     }, props.vault !== null), button('Request Microphone', withNote('Requesting Microphone', 'microphone', (authorization, path, vault, signal) => requestMicrophoneAccess(authorization, path, vault, () => owner.current, (token, expectedVault) => props.remote.tocktutorDesktop.requestMicrophone(token, expectedVault, signal), navigator.mediaDevices)), hasNote), recording
                         ? button('Stop Recording', stopRecording)
                         : button('Start Recording', startRecording, hasNote && props.storeAudio !== undefined && typeof MediaRecorder !== 'undefined'), button('Print Note', withNote('Printing Note', 'print', (authorization, path, vault, signal) => (props.remote.tocktutorDesktop.printNote(authorization, path, vault, signal)), true), hasNote), button('Export HTML', withNote('Exporting HTML', 'export-html', (authorization, path, vault, signal) => (props.remote.tocktutorDesktop.exportNote(authorization, 'html', path, vault, signal)), true), hasNote), button('Export PDF', withNote('Exporting PDF', 'export-pdf', (authorization, path, vault, signal) => (props.remote.tocktutorDesktop.exportNote(authorization, 'pdf', path, vault, signal)), true), hasNote)] }), _jsx(Alert, { unstyled: true, "aria-live": "polite", className: "mt-1 mb-0 text-[var(--tt-muted,#667085)]", role: "status", children: message })] }));

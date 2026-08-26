@@ -38,7 +38,12 @@ const ok = <Value,>(value: Value): RemoteResult<Value> => ({ ok: true, value })
 
 class FakeRuntime extends Service {
   state = { active: true as const, ...vault }
+  synchronizations = 0
   constructor(ctx: Context) { super(ctx, 'noteVault') }
+  async synchronizeDesktopSelection(): Promise<typeof this.state> {
+    this.synchronizations += 1
+    return this.state
+  }
 }
 
 class FakePicker extends Service {
@@ -143,11 +148,12 @@ test('browser rejects malformed bridge authorization before Remote transport', a
 })
 
 test('Host claims the opaque authorization and derives all picker identity in Desktop', async () => {
-  const { caller, context, gateway, picker } = await host()
+  const { caller, context, gateway, picker, runtime } = await host()
   await assert.rejects(
     gateway.inspect({ authorization: 'trusted-main', format: 'markdown-folder' }, AbortSignal.timeout(5_000)),
     (error: unknown) => error instanceof Error && 'code' in error && error.code === 'aborted',
   )
+  assert.equal(runtime.synchronizations, 1)
   assert.deepEqual(caller.claims, [{ authorization: 'trusted-main', operation: 'import-source' }])
   assert.deepEqual(picker.picks, [{ identity, kind: 'source', purpose: 'markdown-folder' }])
   await context.fiber.dispose()

@@ -36,11 +36,10 @@ import {
 } from '../plugins/plugin-marketplace/src/host/platform.ts'
 import { parseMarketplaceCommand } from '../plugins/plugin-marketplace/src/protocol.ts'
 import type { DesktopCommand, DesktopInfo, DesktopRuntimeSnapshot } from './contracts.ts'
-import { DesktopCallerAuthorizations } from './desktop-caller-authorization.ts'
+import { DesktopCallerAuthorizations, resolveDesktopCallerAuthorizationRequest } from './desktop-caller-authorization.ts'
 import { DesktopCallerChannel } from './desktop-caller-channel.ts'
 import { isAllowedBrowserNavigation, isAllowedRuntimeNavigation } from './desktop-navigation.ts'
 import type {
-  DesktopCallerOperation,
   DesktopDispatchCompletionRequest,
   DesktopDispatchEvent,
 } from './host-contract.ts'
@@ -1295,11 +1294,13 @@ function installIpc(): void {
     assertTrustedMainIpc(event)
     const frame = event.senderFrame
     if (frame === null) throw new Error('Desktop IPC frame is unavailable')
+    const request = resolveDesktopCallerAuthorizationRequest(raw, desktopPickerOwner.nativeVaultSnapshot())
+    if (request === undefined) throw new Error('Desktop caller authorization request is invalid')
     return desktopCallerAuthorizations.issue(
-      raw as DesktopCallerOperation,
+      request.operation,
       String(event.sender.id),
       dispatchConsumerId(event.sender, frame),
-      desktopPickerOwner.nativeVaultSnapshot(),
+      request.vault,
     )
   })
   ipcMain.handle('desktop:tocktutor-dispatch-next', async event => {

@@ -44,7 +44,7 @@ export interface TockTutorDesktopDispatchCompletionRequest {
   status: 'handled' | 'failed' | 'stale'
 }
 export interface TockTutorDesktopCallerBridge {
-  authorize(operation: DesktopCallerOperation): Promise<{ authorization: string }>
+  authorize(operation: DesktopCallerOperation, expectedVault?: Readonly<{ generation: number; id: string }>): Promise<{ authorization: string }>
   cancelDispatch(): Promise<void>
   completeDispatch(request: TockTutorDesktopDispatchCompletionRequest): Promise<'handled' | 'stale' | 'unavailable'>
   nextDispatch(): Promise<TockTutorDesktopDispatchEvent | null>

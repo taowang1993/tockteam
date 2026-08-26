@@ -455,8 +455,8 @@ test('dispatches Workbench actions and keeps Desktop-owned vault/window actions 
     },
   ]
   const bridge: DesktopCallerBridge = {
-    async authorize(operation) {
-      calls.push({ method: 'authorize', value: operation })
+    async authorize(operation, expectedVault) {
+      calls.push({ method: 'authorize', value: { expectedVault, operation } })
       return { authorization: `${operation}-authorization` }
     },
     async cancelDispatch() {},
@@ -500,14 +500,14 @@ test('dispatches Workbench actions and keeps Desktop-owned vault/window actions 
       value: { deliveryId: 'delivery-1', operationId: 'dispatch-1', status: 'handled' },
     },
     { method: 'saveCurrent', value: true },
-    { method: 'authorize', value: 'activate-vault' },
+    { method: 'authorize', value: { expectedVault: undefined, operation: 'activate-vault' } },
     { method: 'activateVault', value: 'activate-vault-authorization' },
     {
       method: 'completeDispatch',
       value: { deliveryId: 'delivery-2', operationId: 'dispatch-2', status: 'handled' },
     },
     { method: 'saveCurrent', value: true },
-    { method: 'authorize', value: 'popout-open' },
+    { method: 'authorize', value: { expectedVault: vault, operation: 'popout-open' } },
     {
       method: 'openPopOut',
       value: {

@@ -74,13 +74,13 @@ interface RetriedStart {
 }
 
 const callerBridge: DesktopCallerAuthorizer = {
-  async authorize(operation) {
+  async authorize(operation, expectedVault) {
     const root = globalThis as typeof globalThis & {
       window?: { dshDesktop?: { tockTutor?: TockTutorDesktopCallerBridge } }
     }
     const bridge = root.window?.dshDesktop?.tockTutor
     if (bridge === undefined) throw new Error('This operation is available only in the trusted TockTeam Desktop window.')
-    return await bridge.authorize(operation)
+    return await bridge.authorize(operation, expectedVault)
   },
 }
 
@@ -476,8 +476,10 @@ export function ImportExportReviewPanel(
   const vaultGeneration = props.vault?.generation ?? null
   const vaultId = props.vault?.id ?? null
   const controller = useMemo(
-    () => new ImportExportReviewController(props.remote),
-    [props.remote],
+    () => new ImportExportReviewController(props.remote, {
+      authorize: async operation => await callerBridge.authorize(operation, props.vault ?? undefined),
+    }),
+    [props.remote, vaultGeneration, vaultId],
   )
   const snapshot = useSyncExternalStore(controller.subscribe, controller.getSnapshot, controller.getSnapshot)
   useEffect(() => { void controller.cancel() }, [controller, vaultGeneration, vaultId])

@@ -20,14 +20,14 @@ void bridge
 test('isolated preload exposes only bounded TockTutor caller and dispatch methods', () => {
   const contract = contracts.match(/interface TockTutorDesktopCallerBridge[\s\S]*?\n\}/u)?.[0]
   assert.ok(contract)
-  assert.match(contract, /authorize\(operation: DesktopCallerOperation\)/u)
+  assert.match(contract, /authorize\([\s\S]*operation: DesktopCallerOperation,[\s\S]*expectedVault\?/u)
   assert.match(contract, /cancelDispatch\(\)/u)
   assert.match(contract, /nextDispatch\(\)/u)
   assert.match(contract, /completeDispatch\(request: TockTutorDesktopDispatchCompletionRequest\)/u)
   assert.match(contracts, /interface TockTutorDesktopDispatchCompletionRequest[\s\S]*deliveryId: string/u)
   assert.match(contracts, /type TockTutorDesktopDispatchEvent[\s\S]*deliveryId: string/u)
   assert.doesNotMatch(contract, /invokeAny|sendAny|absolutePath|handle:/iu)
-  assert.match(preload, /ipcRenderer\.invoke\('desktop:tocktutor-authorize', operation\)/u)
+  assert.match(preload, /ipcRenderer\.invoke\('desktop:tocktutor-authorize', \{ expectedVault, operation \}\)/u)
   assert.match(preload, /ipcRenderer\.invoke\('desktop:tocktutor-dispatch-cancel'\)/u)
   assert.match(preload, /ipcRenderer\.invoke\('desktop:tocktutor-dispatch-next'\)/u)
   assert.match(preload, /ipcRenderer\.invoke\('desktop:tocktutor-dispatch-complete', request\)/u)
@@ -36,7 +36,7 @@ test('isolated preload exposes only bounded TockTutor caller and dispatch method
 test('main issues caller authorization only after the trusted-main IPC guard', () => {
   const handler = main.match(/ipcMain\.handle\('desktop:tocktutor-authorize'[\s\S]*?\n  \}\)/u)?.[0]
   assert.ok(handler)
-  assert.match(handler, /assertTrustedMainIpc\(event\)[\s\S]*desktopCallerAuthorizations\.issue/u)
+  assert.match(handler, /assertTrustedMainIpc\(event\)[\s\S]*resolveDesktopCallerAuthorizationRequest[\s\S]*desktopCallerAuthorizations\.issue/u)
   assert.match(handler, /String\(event\.sender\.id\)/u)
   assert.match(handler, /dispatchConsumerId\(event\.sender, frame\)/u)
   assert.doesNotMatch(handler, /senderFrame\?\.url|sessionId|vaultId|vaultGeneration/u)

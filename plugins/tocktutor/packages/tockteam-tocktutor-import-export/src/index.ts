@@ -134,6 +134,7 @@ export class TockTutorImportExportGateway extends TypertRemoteService {
     if (typeof authorization !== 'string' || authorization === '' || Buffer.byteLength(authorization, 'utf8') > 1_024) {
       throw new ImportExportError('invalid-plan')
     }
+    if (this.runtime.state.active) await this.runtime.synchronizeDesktopSelection(signal)
     const identity = await this.caller.claim({ authorization, operation }, signal)
     if (revalidateRuntime) {
       const state = this.runtime.state

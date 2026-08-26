@@ -39,8 +39,8 @@ const bridge: DesktopBridge = Object.freeze({
     },
   }),
   tockTutor: Object.freeze({
-    authorize: async (operation: DesktopCallerOperation) => {
-      return await ipcRenderer.invoke('desktop:tocktutor-authorize', operation) as { authorization: string }
+    authorize: async (operation: DesktopCallerOperation, expectedVault?: Readonly<{ generation: number; id: string }>) => {
+      return await ipcRenderer.invoke('desktop:tocktutor-authorize', { expectedVault, operation }) as { authorization: string }
     },
     cancelDispatch: async () => {
       await ipcRenderer.invoke('desktop:tocktutor-dispatch-cancel')

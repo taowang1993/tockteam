@@ -15280,11 +15280,11 @@ function remoteValue(result) {
   throw new Error(result.error.message);
 }
 var callerBridge = {
-  async authorize(operation) {
+  async authorize(operation, expectedVault) {
     const root = globalThis;
     const bridge = root.window?.dshDesktop?.tockTutor;
     if (bridge === void 0) throw new Error("This operation is available only in the trusted TockTeam Desktop window.");
-    return await bridge.authorize(operation);
+    return await bridge.authorize(operation, expectedVault);
   }
 };
 var ImportExportReviewController = class {
@@ -15685,8 +15685,10 @@ function ImportExportReviewPanel(props) {
   const vaultGeneration = props.vault?.generation ?? null;
   const vaultId = props.vault?.id ?? null;
   const controller = (0, import_react3.useMemo)(
-    () => new ImportExportReviewController(props.remote),
-    [props.remote]
+    () => new ImportExportReviewController(props.remote, {
+      authorize: async (operation) => await callerBridge.authorize(operation, props.vault ?? void 0)
+    }),
+    [props.remote, vaultGeneration, vaultId]
   );
   const snapshot = (0, import_react3.useSyncExternalStore)(controller.subscribe, controller.getSnapshot, controller.getSnapshot);
   (0, import_react3.useEffect)(() => {
