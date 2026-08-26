@@ -238,6 +238,7 @@ test('TockDriver writes stage redacted proposals and organize Inbox captures thr
     })
     assert.doesNotMatch(JSON.stringify(staged), /Private TockDriver Draft|digest|revision|child-driver|turn-driver/u)
     assert.match(JSON.stringify(staged), /pending_review|tockdriver-notes|notes\/new\.md/u)
+    assert.match(staged.content[0]?.type === 'text' ? staged.content[0].text : '', /"id": "proposal-12345678"/u)
 
     reader.content = '# Inbox Title\n\nShip the review flow.\n'
     reader.source = {

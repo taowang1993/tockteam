@@ -73,6 +73,10 @@ const TOCKDRIVER_WRITE_OUTPUT_SCHEMA = {
   additionalProperties: false,
 } as const
 
+function renderTockDriverWriteResult(value: TockDriverWriteResult) {
+  return [{ type: 'text' as const, text: JSON.stringify(value, undefined, 2) }]
+}
+
 class TockDriverWriteError extends Error {
   constructor(message: string) {
     super(message)
@@ -395,10 +399,7 @@ export function registerAssistantWriteTools(
         },
         output: {
           schema: TOCKDRIVER_WRITE_OUTPUT_SCHEMA,
-          render: (_args, value) => [{
-            type: 'text',
-            text: `Staged ${value.operation} proposal for ${value.relativePath}. User approval is required.`,
-          }],
+          render: (_args, value) => renderTockDriverWriteResult(value),
         },
         async execute(rawArgs, exec) {
           try {
@@ -471,10 +472,7 @@ export function registerAssistantWriteTools(
         },
         output: {
           schema: TOCKDRIVER_WRITE_OUTPUT_SCHEMA,
-          render: (_args, value) => [{
-            type: 'text',
-            text: `Staged organized note for ${value.relativePath}. User approval is required.`,
-          }],
+          render: (_args, value) => renderTockDriverWriteResult(value),
         },
         async execute(rawArgs, exec) {
           try {
@@ -569,10 +567,7 @@ export function registerMainTockDriverWriteTools(
       },
       output: {
         schema: TOCKDRIVER_WRITE_OUTPUT_SCHEMA,
-        render: (_args, value) => [{
-          type: 'text',
-          text: `Staged ${value.operation} proposal for ${value.relativePath}. User approval is required.`,
-        }],
+        render: (_args, value) => renderTockDriverWriteResult(value),
       },
       async execute(rawArgs, exec) {
         return await host.stage(notesWriteArguments(rawArgs), exec.signal)
@@ -587,10 +582,7 @@ export function registerMainTockDriverWriteTools(
       },
       output: {
         schema: TOCKDRIVER_WRITE_OUTPUT_SCHEMA,
-        render: (_args, value) => [{
-          type: 'text',
-          text: `Staged organized note for ${value.relativePath}. User approval is required.`,
-        }],
+        render: (_args, value) => renderTockDriverWriteResult(value),
       },
       async execute(rawArgs, exec) {
         return await host.organize(organizeCaptureArguments(rawArgs), exec.signal)
