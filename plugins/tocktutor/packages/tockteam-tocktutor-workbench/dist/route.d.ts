@@ -9,7 +9,7 @@ import { type KeyValueStorage, type NamedWorkspace, type TockTutorSettings } fro
 import { type EditorCommandId } from './editor-commands.ts';
 import { type EditorStatus } from './markdown.ts';
 import { type NoteVaultEventRemote } from './vault-events.ts';
-import type { ActiveVaultResult, CreateDocumentRequest, DraftMutationResult, DraftRequest, DraftResult, ListSnapshotsRequest, ListTrashRequest, ListTreeRequest, OpenDocumentResult, RecentVaultInfo, RecentVaultListResult, ReadSnapshotRequest, RecentVaultRequest, RestoreSnapshotRequest, RestoreTrashRequest, SaveDocumentRequest, SaveDraftRequest, SnapshotContentResult, SnapshotInfo, TrashEntryInfo, TrashEntryRequest, VaultGenerationRequest, VaultReference, VaultSearchMatch, VaultSearchRequest, VaultSearchResult, VaultTreeEntry, VaultTreePage, WriteDocumentResult } from './types.ts';
+import type { ActiveVaultResult, CreateDocumentRequest, DraftMutationResult, DraftRequest, DraftResult, ListSnapshotsRequest, ListTrashRequest, ListTreeRequest, OpenDocumentResult, RecentVaultInfo, RecentVaultListResult, ReadSnapshotRequest, RecentVaultRequest, RestoreSnapshotRequest, RestoreTrashRequest, SaveDocumentRequest, SaveDraftRequest, SnapshotContentResult, SnapshotInfo, TrashEntryInfo, TrashEntryRequest, VaultGenerationRequest, VaultLinksRequest, VaultLinksResult, VaultOutlineRequest, VaultOutlineResult, VaultReference, VaultSearchMatch, VaultSearchRequest, VaultSearchResult, VaultTreeEntry, VaultTreePage, WriteDocumentResult } from './types.ts';
 export declare const MAX_ROUTE_SOURCE_BYTES = 2000000;
 export interface WorkbenchRouteRemote extends NoteVaultEventRemote {
     tocktutorWorkbench: {
@@ -38,6 +38,8 @@ export interface WorkbenchRouteRemote extends NoteVaultEventRemote {
         }>>;
         restoreTrash(request: RestoreTrashRequest, signal?: AbortSignal): Promise<RemoteResult<unknown>>;
         search(request: VaultSearchRequest, signal?: AbortSignal): Promise<RemoteResult<VaultSearchResult>>;
+        outline(request: VaultOutlineRequest, signal?: AbortSignal): Promise<RemoteResult<VaultOutlineResult>>;
+        links(request: VaultLinksRequest, signal?: AbortSignal): Promise<RemoteResult<VaultLinksResult>>;
     };
 }
 export type RoutePhase = 'loading' | 'inactive' | 'ready' | 'error';
@@ -64,8 +66,10 @@ export interface WorkbenchRouteSnapshot {
     entries: readonly VaultTreeEntry[];
     focusedPaneId: string;
     focusMode?: boolean;
+    links?: VaultLinksResult | null;
     message: string;
     mode: RouteEditorMode;
+    outline?: VaultOutlineResult | null;
     path: string | null;
     phase: RoutePhase;
     recentVaults?: readonly RecentVaultInfo[];
@@ -134,6 +138,8 @@ export declare class WorkbenchRouteController {
     openSearch(query: string): void;
     setSearchMode(mode: 'query' | 'related'): void;
     runSearch(): Promise<boolean>;
+    loadRelationships(): Promise<boolean>;
+    jumpToLine(line: number): boolean;
     private settlePendingDispatch;
     private dispatchCurrent;
     private invalidateDispatch;
@@ -200,6 +206,7 @@ export interface TockTutorRouteViewProps {
     onEditorCommand?(command: EditorCommandId): void;
     onFocusPane(paneId: string): void;
     onForward?(): void;
+    onJumpToLine?(line: number): void;
     onLoadWorkspace?(id: string): void;
     onMoveCanvas(nodeId: string, deltaX: number, deltaY: number): void;
     onMoveTab?(paneId: string, path: string, direction: -1 | 1): void;

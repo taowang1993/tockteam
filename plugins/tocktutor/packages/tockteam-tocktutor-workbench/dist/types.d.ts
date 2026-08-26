@@ -105,6 +105,80 @@ export type NoteVaultChangeEvent = Readonly<{
     path: string;
     vault: VaultReference;
 }>;
+export interface VaultOutlineRequest {
+    expectedVault: VaultReference;
+    includeFootnotes?: boolean;
+    includeQueries?: boolean;
+    limit?: number;
+    path: string;
+}
+export interface VaultHeading {
+    level: number;
+    line: number;
+    selector: string;
+    text: string;
+}
+export interface VaultInlineFootnote {
+    content: string;
+    kind: 'inline';
+    line: number;
+    ordinal: number;
+}
+export interface VaultOutlineResult {
+    footnotes?: VaultInlineFootnote[];
+    footnotesTruncated?: boolean;
+    generation: number;
+    headings: VaultHeading[];
+    path: string;
+    truncated: boolean;
+}
+export interface VaultLinksRequest {
+    cursor?: string;
+    expectedVault: VaultReference;
+    includeUnlinked?: boolean;
+    path: string;
+}
+export interface VaultLinkRecord {
+    authoredTarget: string;
+    displayText: string;
+    fragment: string | null;
+    kind: 'canvas-file' | 'embed' | 'image' | 'image-reference' | 'markdown' | 'reference' | 'tag' | 'wiki';
+    line: number;
+    normalizedTarget: string;
+    resolvedPath: string | null;
+    sourcePath: string;
+    status: 'ambiguous' | 'resolved' | 'unresolved';
+}
+export interface VaultUnlinkedMention {
+    identifierKind: 'alias' | 'basename' | 'title';
+    line: number;
+    matchedText: string;
+    snippet: string;
+    sourcePath: string;
+}
+export interface VaultLinksResult {
+    backlinkDetails: VaultLinkRecord[];
+    backlinks: string[];
+    complete?: boolean;
+    cursor: string | null;
+    generation: number;
+    outgoing: string[];
+    outgoingDetails: VaultLinkRecord[];
+    path: string;
+    scan: {
+        bytes: number;
+        entries: number;
+        files: number;
+    };
+    tagRelations: Array<{
+        paths: string[];
+        tag: string;
+    }>;
+    truncated: boolean;
+    truncationReason: 'byte-limit' | 'entry-limit' | 'file-limit' | 'metadata-limit' | 'result-limit' | null;
+    unlinkedMentions?: VaultUnlinkedMention[];
+    warnings: string[];
+}
 export interface VaultSearchRequest {
     caseSensitive?: boolean;
     cursor?: string;

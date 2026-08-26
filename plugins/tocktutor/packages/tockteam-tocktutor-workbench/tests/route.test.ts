@@ -230,6 +230,34 @@ class FakeRemote implements WorkbenchRouteRemote {
       this.draftContent = request.content
       return success({ generation: request.expectedVault.generation, ok: true as const, updatedAt: 2 })
     },
+    links: (request: { expectedVault: VaultReference; includeUnlinked?: boolean; path: string }, signal?: AbortSignal) => {
+      this.calls.push({ method: 'links', parameters: [request, signal] })
+      return success({
+        backlinkDetails: [{ authoredTarget: request.path, displayText: 'Note', fragment: null, kind: 'wiki' as const, line: 3, normalizedTarget: request.path, resolvedPath: request.path, sourcePath: 'Second.md', status: 'resolved' as const }],
+        backlinks: ['Second.md'],
+        cursor: null,
+        generation: request.expectedVault.generation,
+        outgoing: ['Second.md'],
+        outgoingDetails: [{ authoredTarget: 'Second', displayText: 'Second', fragment: null, kind: 'wiki' as const, line: 2, normalizedTarget: 'Second.md', resolvedPath: 'Second.md', sourcePath: request.path, status: 'resolved' as const }],
+        path: request.path,
+        scan: { bytes: 30, entries: 2, files: 2 },
+        tagRelations: [],
+        truncated: false,
+        truncationReason: null,
+        unlinkedMentions: [],
+        warnings: [],
+      })
+    },
+    outline: (request: { expectedVault: VaultReference; includeFootnotes?: boolean; path: string }, signal?: AbortSignal) => {
+      this.calls.push({ method: 'outline', parameters: [request, signal] })
+      return success({
+        footnotes: [{ content: 'Footnote', kind: 'inline' as const, line: 4, ordinal: 1 }],
+        generation: request.expectedVault.generation,
+        headings: [{ level: 1, line: 1, selector: 'Before', text: 'Before' }],
+        path: request.path,
+        truncated: false,
+      })
+    },
     search: (request: { expectedVault: VaultReference; limit?: number; mode?: string; query: string }, signal?: AbortSignal) => {
       this.calls.push({ method: 'search', parameters: [request, signal] })
       return success({
@@ -1045,6 +1073,22 @@ test('runs editor commands against the captured Source selection', async () => {
   const unchanged = controller.getSnapshot().source
   controller.runEditorCommand('delete-line')
   assert.equal(controller.getSnapshot().source, unchanged)
+  controller.dispose()
+})
+
+test('loads generation-bound outline, footnotes, backlinks, and outgoing links', async () => {
+  const remote = new FakeRemote()
+  const controller = new WorkbenchRouteController(remote, () => {})
+  await controller.syncLocation('/tocktutor')
+  assert.equal(await controller.select('Folder/Note.md'), true)
+  await new Promise(resolve => setImmediate(resolve))
+  assert.equal(controller.getSnapshot().outline?.headings[0]?.text, 'Before')
+  assert.equal(controller.getSnapshot().outline?.footnotes?.[0]?.content, 'Footnote')
+  assert.equal(controller.getSnapshot().links?.backlinkDetails[0]?.sourcePath, 'Second.md')
+  assert.equal(controller.getSnapshot().links?.outgoingDetails[0]?.resolvedPath, 'Second.md')
+  assert.equal(controller.jumpToLine(2), true)
+  assert.equal(controller.getSnapshot().mode, 'source')
+  assert.equal(controller.getSnapshot().selectionStart, '# Before\n'.length)
   controller.dispose()
 })
 

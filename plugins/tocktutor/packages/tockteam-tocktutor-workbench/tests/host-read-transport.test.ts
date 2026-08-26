@@ -10,6 +10,10 @@ import {
   TockTutorWorkbenchGateway,
   type ListTreeRequest,
   type OpenDocumentResult,
+  type VaultLinksRequest,
+  type VaultLinksResult,
+  type VaultOutlineRequest,
+  type VaultOutlineResult,
   type VaultReference,
   type VaultSearchRequest,
   type VaultSearchResult,
@@ -93,6 +97,16 @@ class FakeNoteVault extends Service {
     return this.openResult
   }
 
+  async outline(args: Omit<VaultOutlineRequest, 'expectedVault'>, expectedVault: VaultReference, signal: AbortSignal): Promise<VaultOutlineResult> {
+    this.calls.push({ method: 'outline', parameters: [args, expectedVault, signal] })
+    return { generation: expectedVault.generation, headings: [], path: args.path, truncated: false }
+  }
+
+  async links(args: Omit<VaultLinksRequest, 'expectedVault'>, expectedVault: VaultReference, signal: AbortSignal): Promise<VaultLinksResult> {
+    this.calls.push({ method: 'links', parameters: [args, expectedVault, signal] })
+    return { backlinkDetails: [], backlinks: [], cursor: null, generation: expectedVault.generation, outgoing: [], outgoingDetails: [], path: args.path, scan: { bytes: 0, entries: 0, files: 0 }, tagRelations: [], truncated: false, truncationReason: null, warnings: [] }
+  }
+
   async search(args: Omit<VaultSearchRequest, 'expectedVault'>, expectedVault: VaultReference, signal: AbortSignal): Promise<VaultSearchResult> {
     this.calls.push({ method: 'search', parameters: [args, expectedVault, signal] })
     return {
@@ -145,6 +159,8 @@ test('registers only the accepted read/tree Remote methods and delegates exact r
       { invocation: { kind: 'direct' }, method: 'listTree' },
       { invocation: { kind: 'direct' }, method: 'createDocument' },
       { invocation: { kind: 'direct' }, method: 'saveDocument' },
+      { invocation: { kind: 'direct' }, method: 'outline' },
+      { invocation: { kind: 'direct' }, method: 'links' },
       { invocation: { kind: 'direct' }, method: 'search' },
       { invocation: { kind: 'direct' }, method: 'readDraft' },
       { invocation: { kind: 'direct' }, method: 'saveDraft' },
@@ -174,6 +190,8 @@ test('registers only the accepted read/tree Remote methods and delegates exact r
     })
     assert.strictEqual(await state.gateway.openDocument('Folder/Note.md', vault, signal), state.runtime.openResult)
     assert.strictEqual(await state.gateway.listTree({ expectedVault: vault, limit: 20 }, signal), state.runtime.treeResult)
+    assert.equal((await state.gateway.outline({ expectedVault: vault, includeFootnotes: true, path: 'Folder/Note.md' }, signal)).path, 'Folder/Note.md')
+    assert.equal((await state.gateway.links({ expectedVault: vault, includeUnlinked: true, path: 'Folder/Note.md' }, signal)).path, 'Folder/Note.md')
     assert.equal((await state.gateway.search({ expectedVault: vault, mode: 'query', query: 'match' }, signal)).matches.length, 1)
     assert.deepEqual(state.runtime.calls, [
       { method: 'listRecentVaults', parameters: [] },
@@ -182,6 +200,8 @@ test('registers only the accepted read/tree Remote methods and delegates exact r
       { method: 'openSandboxVault', parameters: [7] },
       { method: 'openDocument', parameters: ['Folder/Note.md', vault, signal] },
       { method: 'listTree', parameters: [{ expectedVault: vault, limit: 20 }, signal] },
+      { method: 'outline', parameters: [{ includeFootnotes: true, path: 'Folder/Note.md' }, vault, signal] },
+      { method: 'links', parameters: [{ includeUnlinked: true, path: 'Folder/Note.md' }, vault, signal] },
       { method: 'search', parameters: [{ mode: 'query', query: 'match' }, vault, signal] },
     ])
   } finally {
@@ -208,6 +228,8 @@ test('fails closed on browser-controlled path, vault, cursor, and limit values',
       state.gateway.listTree({ expectedVault: vault, cursor: 'x'.repeat(MAX_TREE_CURSOR_LENGTH + 1) }, signal),
       /cursor/i,
     )
+    await assert.rejects(state.gateway.outline({ expectedVault: vault, path: '../escape.md' }, signal), /path/i)
+    await assert.rejects(state.gateway.links({ expectedVault: vault, includeUnlinked: 'yes' as unknown as boolean, path: 'Folder/Note.md' }, signal), /Boolean/i)
     await assert.rejects(state.gateway.search({ expectedVault: vault, query: 'x'.repeat(1_001) }, signal), /query/i)
     await assert.rejects(state.gateway.search({ expectedVault: vault, query: 'ok', regex: 'yes' as unknown as boolean }, signal), /Boolean/i)
     await assert.rejects(state.gateway.activateRecentVault({ expectedGeneration: -1, id: vault.id }, signal), /generation/i)

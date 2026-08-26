@@ -26,6 +26,10 @@ import type {
   TrashListResult,
   TrashMutationResult,
   VaultGenerationRequest,
+  VaultLinksRequest,
+  VaultLinksResult,
+  VaultOutlineRequest,
+  VaultOutlineResult,
   VaultReference,
   VaultSearchRequest,
   VaultSearchResult,
@@ -47,8 +51,10 @@ export type NoteVaultCapability = Pick<
   | 'listRecentVaults'
   | 'listSnapshots'
   | 'listTrash'
+  | 'links'
   | 'listTree'
   | 'openDocument'
+  | 'outline'
   | 'openSandboxVault'
   | 'readDraft'
   | 'readSnapshot'
@@ -183,6 +189,24 @@ function assertCreateRequest(value: CreateDocumentRequest): void {
 function assertSaveRequest(value: SaveDocumentRequest): void {
   assertCreateRequest(value)
   assertRevision(value.expectedRevision)
+}
+
+function assertOutlineRequest(value: VaultOutlineRequest): void {
+  assertRecord(value, 'Outline request')
+  assertVaultReference(value.expectedVault)
+  assertDocumentPath(value.path)
+  if (value.limit !== undefined && (!Number.isSafeInteger(value.limit) || value.limit < 1 || value.limit > 1_000)) throw new TypeError('Outline limit must be bounded.')
+  for (const option of [value.includeFootnotes, value.includeQueries]) {
+    if (option !== undefined && typeof option !== 'boolean') throw new TypeError('Outline options must be Boolean.')
+  }
+}
+
+function assertLinksRequest(value: VaultLinksRequest): void {
+  assertRecord(value, 'Links request')
+  assertVaultReference(value.expectedVault)
+  assertDocumentPath(value.path)
+  if (value.cursor !== undefined && (typeof value.cursor !== 'string' || value.cursor.length === 0 || value.cursor.length > MAX_TREE_CURSOR_LENGTH)) throw new TypeError('Links cursor must be bounded.')
+  if (value.includeUnlinked !== undefined && typeof value.includeUnlinked !== 'boolean') throw new TypeError('Links options must be Boolean.')
 }
 
 function assertSearchRequest(value: VaultSearchRequest): void {
@@ -336,6 +360,22 @@ export class TockTutorWorkbenchGateway extends TypertRemoteService {
     assertSaveRequest(request)
     signal.throwIfAborted()
     return this.ctx.noteVault.saveDocument(request, signal)
+  }
+
+  @Remote
+  async outline(request: VaultOutlineRequest, signal: AbortSignal): Promise<VaultOutlineResult> {
+    assertOutlineRequest(request)
+    signal.throwIfAborted()
+    const { expectedVault, ...args } = request
+    return this.ctx.noteVault.outline(args, expectedVault, signal)
+  }
+
+  @Remote
+  async links(request: VaultLinksRequest, signal: AbortSignal): Promise<VaultLinksResult> {
+    assertLinksRequest(request)
+    signal.throwIfAborted()
+    const { expectedVault, ...args } = request
+    return this.ctx.noteVault.links(args, expectedVault, signal)
   }
 
   @Remote

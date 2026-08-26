@@ -129,6 +129,11 @@ import type {
   TrashEntryInfo,
   TrashEntryRequest,
   VaultGenerationRequest,
+  VaultHeading,
+  VaultLinksRequest,
+  VaultLinksResult,
+  VaultOutlineRequest,
+  VaultOutlineResult,
   VaultReference,
   VaultSearchMatch,
   VaultSearchRequest,
@@ -184,6 +189,8 @@ export interface WorkbenchRouteRemote extends NoteVaultEventRemote {
     listTrash(request: ListTrashRequest, signal?: AbortSignal): Promise<RemoteResult<{ entries: TrashEntryInfo[]; generation: number }>>
     restoreTrash(request: RestoreTrashRequest, signal?: AbortSignal): Promise<RemoteResult<unknown>>
     search(request: VaultSearchRequest, signal?: AbortSignal): Promise<RemoteResult<VaultSearchResult>>
+    outline(request: VaultOutlineRequest, signal?: AbortSignal): Promise<RemoteResult<VaultOutlineResult>>
+    links(request: VaultLinksRequest, signal?: AbortSignal): Promise<RemoteResult<VaultLinksResult>>
   }
 }
 
@@ -214,8 +221,10 @@ export interface WorkbenchRouteSnapshot {
   entries: readonly VaultTreeEntry[]
   focusedPaneId: string
   focusMode?: boolean
+  links?: VaultLinksResult | null
   message: string
   mode: RouteEditorMode
+  outline?: VaultOutlineResult | null
   path: string | null
   phase: RoutePhase
   recentVaults?: readonly RecentVaultInfo[]
@@ -365,7 +374,9 @@ function initialSnapshot(): WorkbenchRouteSnapshot {
     entries: Object.freeze([]),
     focusedPaneId: 'pane-1',
     focusMode: false,
+    links: null,
     message: 'Loading the active vault.',
+    outline: null,
     mode: 'source',
     path: null,
     phase: 'loading',
@@ -645,6 +656,47 @@ export class WorkbenchRouteController {
     }
   }
 
+  async loadRelationships(): Promise<boolean> {
+    const vault = this.snapshot.vault
+    const path = this.snapshot.path
+    if (vault === null || path === null || this.snapshot.documentKind !== 'markdown') return false
+    const operation = this.nextOperation()
+    try {
+      const [outlineResult, linksResult] = await Promise.all([
+        this.remote.tocktutorWorkbench.outline({ expectedVault: vault, includeFootnotes: true, path }, operation.signal),
+        this.remote.tocktutorWorkbench.links({ expectedVault: vault, includeUnlinked: true, path }, operation.signal),
+      ])
+      const outline = remoteValue(outlineResult)
+      const links = remoteValue(linksResult)
+      if (!this.current(operation.id, vault)
+        || this.snapshot.path !== path
+        || outline.generation !== vault.generation
+        || links.generation !== vault.generation
+        || outline.path !== path
+        || links.path !== path
+        || !Array.isArray(outline.headings)
+        || !Array.isArray(links.backlinkDetails)
+        || !Array.isArray(links.outgoingDetails)) return false
+      this.update({ links, outline })
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  jumpToLine(line: number): boolean {
+    if (!Number.isSafeInteger(line) || line < 1 || this.snapshot.path === null) return false
+    let offset = 0
+    for (let current = 1; current < line; current += 1) {
+      const next = this.snapshot.source.indexOf('\n', offset)
+      if (next < 0) return false
+      offset = next + 1
+    }
+    this.setMode('source')
+    this.setSelection(offset, offset)
+    return true
+  }
+
   private settlePendingDispatch(result: TockTutorNativeActionsDispatchResult): void {
     const pending = this.pendingDispatch
     if (pending === null) return
@@ -771,7 +823,9 @@ export class WorkbenchRouteController {
     this.update({
       documentKind: null,
       draftRecovered: false,
+      links: null,
       message: 'Select a note from the vault.',
+      outline: null,
       path: null,
       revision: null,
       saveStatus: 'saved',
@@ -836,7 +890,9 @@ export class WorkbenchRouteController {
       draftRecovered: false,
       entries: Object.freeze([]),
       focusedPaneId: 'pane-1',
+      links: null,
       message: 'Loading the active vault.',
+      outline: null,
       path: null,
       phase: 'loading',
       recentVaults: Object.freeze([]),
@@ -1363,6 +1419,7 @@ export class WorkbenchRouteController {
       this.recordOpen(path, recordHistory, previousPath)
       if (draftRecovered) this.recordDirty(true)
       if (navigate) this.navigate(routeForPath(path))
+      if (documentKind(path) === 'markdown') void this.loadRelationships()
       return true
     } catch (error) {
       if (this.current(operation.id, vault) && !operation.signal.aborted) {
@@ -1701,6 +1758,7 @@ export interface TockTutorRouteViewProps {
   onEditorCommand?(command: EditorCommandId): void
   onFocusPane(paneId: string): void
   onForward?(): void
+  onJumpToLine?(line: number): void
   onLoadWorkspace?(id: string): void
   onMoveCanvas(nodeId: string, deltaX: number, deltaY: number): void
   onMoveTab?(paneId: string, path: string, direction: -1 | 1): void
@@ -2471,6 +2529,23 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
               {(snapshot.trash?.length ?? 0) === 0 && <span className="text-xs text-[var(--tt-muted)]">Trash is empty.</span>}
             </div>
           </section>
+          <section aria-label="Note Relationships" className="border-t border-[var(--tt-border)] p-3">
+            <h2 className="m-0 text-sm">Outline and Relationships</h2>
+            <h3 className="mt-2 mb-1 text-xs">Outline</h3>
+            <div className="grid gap-1">
+              {(snapshot.outline?.headings ?? []).map((heading: VaultHeading) => (
+                <Button unstyled className="rounded border-0 bg-transparent px-1 py-0.5 text-left text-xs" key={`${heading.line}-${heading.selector}`} onClick={() => { props.onJumpToLine?.(heading.line) }} type="button">{'·'.repeat(Math.max(1, heading.level))} {heading.text}</Button>
+              ))}
+              {(snapshot.outline?.headings.length ?? 0) === 0 && <span className="text-xs text-[var(--tt-muted)]">No headings.</span>}
+            </div>
+            <h3 className="mt-2 mb-1 text-xs">Footnotes</h3>
+            {(snapshot.outline?.footnotes ?? []).map(footnote => <Button unstyled className="block w-full rounded border-0 bg-transparent px-1 py-0.5 text-left text-xs" key={`${footnote.line}-${footnote.ordinal}`} onClick={() => { props.onJumpToLine?.(footnote.line) }} type="button">{footnote.content}</Button>)}
+            <h3 className="mt-2 mb-1 text-xs">Backlinks</h3>
+            {(snapshot.links?.backlinkDetails ?? []).map((link, index) => <Button unstyled className="block w-full rounded border-0 bg-transparent px-1 py-0.5 text-left text-xs" key={`${link.sourcePath}-${String(link.line)}-${String(index)}`} onClick={() => { props.onSelect(link.sourcePath) }} type="button">{link.sourcePath}:{String(link.line)}</Button>)}
+            <h3 className="mt-2 mb-1 text-xs">Outgoing Links</h3>
+            {(snapshot.links?.outgoingDetails ?? []).map((link, index) => <Button unstyled className="block w-full rounded border-0 bg-transparent px-1 py-0.5 text-left text-xs" disabled={link.resolvedPath === null} key={`${link.authoredTarget}-${String(link.line)}-${String(index)}`} onClick={() => { if (link.resolvedPath !== null) props.onSelect(link.resolvedPath) }} type="button">{link.displayText || link.authoredTarget}</Button>)}
+            {(snapshot.links?.unlinkedMentions ?? []).map((mention, index) => <span className="block text-xs text-[var(--tt-muted)]" key={`${mention.sourcePath}-${String(mention.line)}-${String(index)}`}>Mention: {mention.matchedText}</span>)}
+          </section>
           <section aria-label="TockTutor Settings" className="border-t border-[var(--tt-border)] p-3">
             <div className="flex items-center justify-between gap-2">
               <h2 className="m-0 text-sm">Settings and Workspaces</h2>
@@ -2655,6 +2730,7 @@ export function TockTutorRoute(props: TockTutorRouteProps): ReactNode {
         onEditorCommand={command => { controller.runEditorCommand(command) }}
         onFocusPane={paneId => { void controller.focusPane(paneId) }}
         onForward={() => { void controller.goForward() }}
+        onJumpToLine={line => { controller.jumpToLine(line) }}
         onLoadWorkspace={id => { void controller.loadWorkspace(id) }}
         onMode={mode => { controller.setMode(mode) }}
         onMoveCanvas={(nodeId, deltaX, deltaY) => { controller.moveCanvasNode(nodeId, deltaX, deltaY) }}

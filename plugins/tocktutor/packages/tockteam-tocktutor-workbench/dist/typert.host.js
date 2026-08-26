@@ -47,6 +47,64 @@ const _tockteam_tocktutor_workbench_tocktutorWorkbench_currentVault_result$schem
   'generation': z.number(),
   'id': z.string(),
 })])
+const _tockteam_tocktutor_workbench_tocktutorWorkbench_links_parameter_0$schema = z.object({
+  'cursor': z.union([z.undefined(), z.string()]).optional(),
+  'expectedVault': z.object({
+  'generation': z.number(),
+  'id': z.string(),
+}),
+  'includeUnlinked': z.union([z.undefined(), z.literal(false), z.literal(true)]).optional(),
+  'path': z.string(),
+})
+const _tockteam_tocktutor_workbench_tocktutorWorkbench_links_result$schema = z.object({
+  'backlinkDetails': z.array(z.object({
+  'authoredTarget': z.string(),
+  'displayText': z.string(),
+  'fragment': z.union([z.literal(null), z.string()]),
+  'kind': z.union([z.literal("image"), z.literal("canvas-file"), z.literal("embed"), z.literal("image-reference"), z.literal("markdown"), z.literal("reference"), z.literal("tag"), z.literal("wiki")]),
+  'line': z.number(),
+  'normalizedTarget': z.string(),
+  'resolvedPath': z.union([z.literal(null), z.string()]),
+  'sourcePath': z.string(),
+  'status': z.union([z.literal("ambiguous"), z.literal("resolved"), z.literal("unresolved")]),
+})),
+  'backlinks': z.array(z.string()),
+  'complete': z.union([z.undefined(), z.literal(false), z.literal(true)]).optional(),
+  'cursor': z.union([z.literal(null), z.string()]),
+  'generation': z.number(),
+  'outgoing': z.array(z.string()),
+  'outgoingDetails': z.array(z.object({
+  'authoredTarget': z.string(),
+  'displayText': z.string(),
+  'fragment': z.union([z.literal(null), z.string()]),
+  'kind': z.union([z.literal("image"), z.literal("canvas-file"), z.literal("embed"), z.literal("image-reference"), z.literal("markdown"), z.literal("reference"), z.literal("tag"), z.literal("wiki")]),
+  'line': z.number(),
+  'normalizedTarget': z.string(),
+  'resolvedPath': z.union([z.literal(null), z.string()]),
+  'sourcePath': z.string(),
+  'status': z.union([z.literal("ambiguous"), z.literal("resolved"), z.literal("unresolved")]),
+})),
+  'path': z.string(),
+  'scan': z.object({
+  'bytes': z.number(),
+  'entries': z.number(),
+  'files': z.number(),
+}),
+  'tagRelations': z.array(z.object({
+  'paths': z.array(z.string()),
+  'tag': z.string(),
+})),
+  'truncated': z.boolean(),
+  'truncationReason': z.union([z.literal(null), z.literal("entry-limit"), z.literal("result-limit"), z.literal("byte-limit"), z.literal("file-limit"), z.literal("metadata-limit")]),
+  'unlinkedMentions': z.union([z.undefined(), z.array(z.object({
+  'identifierKind': z.union([z.literal("alias"), z.literal("basename"), z.literal("title")]),
+  'line': z.number(),
+  'matchedText': z.string(),
+  'snippet': z.string(),
+  'sourcePath': z.string(),
+}))]).optional(),
+  'warnings': z.array(z.string()),
+})
 const _tockteam_tocktutor_workbench_tocktutorWorkbench_listRecentVaults_result$schema = z.object({
   'generation': z.number(),
   'vaults': z.array(z.object({
@@ -145,6 +203,34 @@ const _tockteam_tocktutor_workbench_tocktutorWorkbench_openSandboxVault_paramete
 const _tockteam_tocktutor_workbench_tocktutorWorkbench_openSandboxVault_result$schema = z.object({
   'generation': z.number(),
   'id': z.string(),
+})
+const _tockteam_tocktutor_workbench_tocktutorWorkbench_outline_parameter_0$schema = z.object({
+  'expectedVault': z.object({
+  'generation': z.number(),
+  'id': z.string(),
+}),
+  'includeFootnotes': z.union([z.undefined(), z.literal(false), z.literal(true)]).optional(),
+  'includeQueries': z.union([z.undefined(), z.literal(false), z.literal(true)]).optional(),
+  'limit': z.union([z.undefined(), z.number()]).optional(),
+  'path': z.string(),
+})
+const _tockteam_tocktutor_workbench_tocktutorWorkbench_outline_result$schema = z.object({
+  'footnotes': z.union([z.undefined(), z.array(z.object({
+  'content': z.string(),
+  'kind': z.literal("inline"),
+  'line': z.number(),
+  'ordinal': z.number(),
+}))]).optional(),
+  'footnotesTruncated': z.union([z.undefined(), z.literal(false), z.literal(true)]).optional(),
+  'generation': z.number(),
+  'headings': z.array(z.object({
+  'level': z.number(),
+  'line': z.number(),
+  'selector': z.string(),
+  'text': z.string(),
+})),
+  'path': z.string(),
+  'truncated': z.boolean(),
 })
 const _tockteam_tocktutor_workbench_tocktutorWorkbench_readDraft_parameter_0$schema = z.object({
   'expectedVault': z.object({
@@ -290,10 +376,10 @@ const _tockteam_tocktutor_workbench_tocktutorWorkbench_search_result$schema = z.
   'cursor': z.union([z.literal(null), z.string()]),
   'generation': z.number(),
   'matches': z.array(z.object({
-  'kind': z.union([z.literal("path"), z.literal("content"), z.literal("base"), z.literal("block"), z.literal("canvas"), z.literal("line"), z.literal("property"), z.literal("section"), z.literal("tag"), z.literal("task")]),
+  'kind': z.union([z.literal("path"), z.literal("tag"), z.literal("content"), z.literal("base"), z.literal("block"), z.literal("canvas"), z.literal("line"), z.literal("property"), z.literal("section"), z.literal("task")]),
   'line': z.union([z.literal(null), z.number()]),
   'lineEnd': z.union([z.undefined(), z.literal(null), z.number()]).optional(),
-  'operator': z.union([z.undefined(), z.literal("path"), z.literal("related"), z.literal("content"), z.literal("block"), z.literal("line"), z.literal("property"), z.literal("section"), z.literal("tag"), z.literal("task"), z.literal("any"), z.literal("file"), z.literal("task-done"), z.literal("task-todo")]).optional(),
+  'operator': z.union([z.undefined(), z.literal("path"), z.literal("tag"), z.literal("related"), z.literal("content"), z.literal("block"), z.literal("line"), z.literal("property"), z.literal("section"), z.literal("task"), z.literal("any"), z.literal("file"), z.literal("task-done"), z.literal("task-todo")]).optional(),
   'path': z.string(),
   'preview': z.string(),
   'provenance': z.union([z.undefined(), z.literal("path"), z.literal("canvas"), z.literal("section"), z.literal("task"), z.literal("body"), z.literal("frontmatter")]).optional(),
@@ -357,7 +443,7 @@ export const TYPERT = {
         typeSymbol: '@tockteam/tocktutor-workbench/client#VaultReference',
         schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_activateRecentVault_result$schema,
       },
-      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":279,"column":9},
+      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":303,"column":9},
     },
     {
       id: '@tockteam/tocktutor-workbench#tocktutorWorkbench/clearDraft',
@@ -383,7 +469,7 @@ export const TYPERT = {
         typeSymbol: '@tockteam/tocktutor-workbench/client#DraftMutationResult',
         schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_clearDraft_result$schema,
       },
-      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":364,"column":9},
+      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":404,"column":9},
     },
     {
       id: '@tockteam/tocktutor-workbench#tocktutorWorkbench/createDocument',
@@ -409,7 +495,7 @@ export const TYPERT = {
         typeSymbol: '@tockteam/tocktutor-workbench/client#WriteDocumentResult',
         schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_createDocument_result$schema,
       },
-      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":322,"column":9},
+      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":346,"column":9},
     },
     {
       id: '@tockteam/tocktutor-workbench#tocktutorWorkbench/currentVault',
@@ -425,7 +511,33 @@ export const TYPERT = {
         typeSymbol: '@tockteam/tocktutor-workbench/client#ActiveVaultResult',
         schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_currentVault_result$schema,
       },
-      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":260,"column":9},
+      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":284,"column":9},
+    },
+    {
+      id: '@tockteam/tocktutor-workbench#tocktutorWorkbench/links',
+      service: 'tocktutorWorkbench',
+      namespace: 'tocktutorWorkbench',
+      method: 'links',
+      invocation: { kind: 'direct' },
+      parameters: [
+        {
+          name: 'request',
+          wire: 'request',
+          source: 'json',
+          codec: {
+            mode: 'strict',
+            typeSymbol: '@tockteam/tocktutor-workbench/client#VaultLinksRequest',
+            schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_links_parameter_0$schema,
+          },
+        },
+      ],
+      cancellation: { parameter: 'signal' },
+      result: {
+        mode: 'strict',
+        typeSymbol: '@tockteam/tocktutor-workbench/client#VaultLinksResult',
+        schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_links_result$schema,
+      },
+      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":374,"column":9},
     },
     {
       id: '@tockteam/tocktutor-workbench#tocktutorWorkbench/listRecentVaults',
@@ -441,7 +553,7 @@ export const TYPERT = {
         typeSymbol: '@tockteam/tocktutor-workbench/client#RecentVaultListResult',
         schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_listRecentVaults_result$schema,
       },
-      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":270,"column":9},
+      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":294,"column":9},
     },
     {
       id: '@tockteam/tocktutor-workbench#tocktutorWorkbench/listSnapshots',
@@ -467,7 +579,7 @@ export const TYPERT = {
         typeSymbol: '@tockteam/tocktutor-workbench/client#SnapshotListResult',
         schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_listSnapshots_result$schema,
       },
-      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":371,"column":9},
+      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":411,"column":9},
     },
     {
       id: '@tockteam/tocktutor-workbench#tocktutorWorkbench/listTrash',
@@ -493,7 +605,7 @@ export const TYPERT = {
         typeSymbol: '@tockteam/tocktutor-workbench/client#TrashListResult',
         schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_listTrash_result$schema,
       },
-      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":411,"column":9},
+      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":451,"column":9},
     },
     {
       id: '@tockteam/tocktutor-workbench#tocktutorWorkbench/listTree',
@@ -519,7 +631,7 @@ export const TYPERT = {
         typeSymbol: '@tockteam/tocktutor-workbench/client#VaultTreePage',
         schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_listTree_result$schema,
       },
-      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":315,"column":9},
+      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":339,"column":9},
     },
     {
       id: '@tockteam/tocktutor-workbench#tocktutorWorkbench/openDocument',
@@ -555,7 +667,7 @@ export const TYPERT = {
         typeSymbol: '@tockteam/tocktutor-workbench/client#OpenDocumentResult',
         schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_openDocument_result$schema,
       },
-      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":303,"column":9},
+      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":327,"column":9},
     },
     {
       id: '@tockteam/tocktutor-workbench#tocktutorWorkbench/openSandboxVault',
@@ -581,7 +693,33 @@ export const TYPERT = {
         typeSymbol: '@tockteam/tocktutor-workbench/client#VaultReference',
         schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_openSandboxVault_result$schema,
       },
-      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":296,"column":9},
+      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":320,"column":9},
+    },
+    {
+      id: '@tockteam/tocktutor-workbench#tocktutorWorkbench/outline',
+      service: 'tocktutorWorkbench',
+      namespace: 'tocktutorWorkbench',
+      method: 'outline',
+      invocation: { kind: 'direct' },
+      parameters: [
+        {
+          name: 'request',
+          wire: 'request',
+          source: 'json',
+          codec: {
+            mode: 'strict',
+            typeSymbol: '@tockteam/tocktutor-workbench/client#VaultOutlineRequest',
+            schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_outline_parameter_0$schema,
+          },
+        },
+      ],
+      cancellation: { parameter: 'signal' },
+      result: {
+        mode: 'strict',
+        typeSymbol: '@tockteam/tocktutor-workbench/client#VaultOutlineResult',
+        schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_outline_result$schema,
+      },
+      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":366,"column":9},
     },
     {
       id: '@tockteam/tocktutor-workbench#tocktutorWorkbench/readDraft',
@@ -607,7 +745,7 @@ export const TYPERT = {
         typeSymbol: '@tockteam/tocktutor-workbench/client#DraftResult',
         schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_readDraft_result$schema,
       },
-      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":350,"column":9},
+      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":390,"column":9},
     },
     {
       id: '@tockteam/tocktutor-workbench#tocktutorWorkbench/readSnapshot',
@@ -633,7 +771,7 @@ export const TYPERT = {
         typeSymbol: '@tockteam/tocktutor-workbench/client#SnapshotContentResult',
         schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_readSnapshot_result$schema,
       },
-      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":381,"column":9},
+      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":421,"column":9},
     },
     {
       id: '@tockteam/tocktutor-workbench#tocktutorWorkbench/removeRecentVault',
@@ -659,7 +797,7 @@ export const TYPERT = {
         typeSymbol: '@tockteam/tocktutor-workbench/client#RecentVaultListResult',
         schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_removeRecentVault_result$schema,
       },
-      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":286,"column":9},
+      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":310,"column":9},
     },
     {
       id: '@tockteam/tocktutor-workbench#tocktutorWorkbench/restoreSnapshotAsNew',
@@ -685,7 +823,7 @@ export const TYPERT = {
         typeSymbol: '@tockteam/tocktutor-workbench/client#WriteDocumentResult',
         schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_restoreSnapshotAsNew_result$schema,
       },
-      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":391,"column":9},
+      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":431,"column":9},
     },
     {
       id: '@tockteam/tocktutor-workbench#tocktutorWorkbench/restoreTrash',
@@ -711,7 +849,7 @@ export const TYPERT = {
         typeSymbol: '@tockteam/tocktutor-workbench/client#RestoreTrashResult',
         schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_restoreTrash_result$schema,
       },
-      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":418,"column":9},
+      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":458,"column":9},
     },
     {
       id: '@tockteam/tocktutor-workbench#tocktutorWorkbench/saveDocument',
@@ -737,7 +875,7 @@ export const TYPERT = {
         typeSymbol: '@tockteam/tocktutor-workbench/client#WriteDocumentResult',
         schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_saveDocument_result$schema,
       },
-      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":332,"column":9},
+      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":356,"column":9},
     },
     {
       id: '@tockteam/tocktutor-workbench#tocktutorWorkbench/saveDraft',
@@ -763,7 +901,7 @@ export const TYPERT = {
         typeSymbol: '@tockteam/tocktutor-workbench/client#DraftMutationResult',
         schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_saveDraft_result$schema,
       },
-      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":357,"column":9},
+      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":397,"column":9},
     },
     {
       id: '@tockteam/tocktutor-workbench#tocktutorWorkbench/search',
@@ -789,7 +927,7 @@ export const TYPERT = {
         typeSymbol: '@tockteam/tocktutor-workbench/client#VaultSearchResult',
         schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_search_result$schema,
       },
-      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":342,"column":9},
+      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":382,"column":9},
     },
     {
       id: '@tockteam/tocktutor-workbench#tocktutorWorkbench/trashEntry',
@@ -815,7 +953,7 @@ export const TYPERT = {
         typeSymbol: '@tockteam/tocktutor-workbench/client#TrashMutationResult',
         schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_trashEntry_result$schema,
       },
-      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":401,"column":9},
+      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":441,"column":9},
     },
   ],
   model: {
@@ -872,6 +1010,16 @@ export const TYPERT = {
             "kind": "method",
             "name": "saveDocument",
             "signature": "@Remote async saveDocument( request: SaveDocumentRequest, signal: AbortSignal, ): Promise<WriteDocumentResult>"
+          },
+          {
+            "kind": "method",
+            "name": "outline",
+            "signature": "@Remote async outline(request: VaultOutlineRequest, signal: AbortSignal): Promise<VaultOutlineResult>"
+          },
+          {
+            "kind": "method",
+            "name": "links",
+            "signature": "@Remote async links(request: VaultLinksRequest, signal: AbortSignal): Promise<VaultLinksResult>"
           },
           {
             "kind": "method",
@@ -1038,6 +1186,34 @@ export const TYPERT = {
             "declaration": "export interface VaultGenerationRequest {\n    expectedGeneration: number;\n}"
           },
           {
+            "name": "VaultHeading",
+            "declaration": "export interface VaultHeading {\n    level: number;\n    line: number;\n    selector: string;\n    text: string;\n}"
+          },
+          {
+            "name": "VaultInlineFootnote",
+            "declaration": "export interface VaultInlineFootnote {\n    content: string;\n    kind: 'inline';\n    line: number;\n    ordinal: number;\n}"
+          },
+          {
+            "name": "VaultLinkRecord",
+            "declaration": "export interface VaultLinkRecord {\n    authoredTarget: string;\n    displayText: string;\n    fragment: string | null;\n    kind: 'canvas-file' | 'embed' | 'image' | 'image-reference' | 'markdown' | 'reference' | 'tag' | 'wiki';\n    line: number;\n    normalizedTarget: string;\n    resolvedPath: string | null;\n    sourcePath: string;\n    status: 'ambiguous' | 'resolved' | 'unresolved';\n}"
+          },
+          {
+            "name": "VaultLinksRequest",
+            "declaration": "export interface VaultLinksRequest {\n    cursor?: string;\n    expectedVault: VaultReference;\n    includeUnlinked?: boolean;\n    path: string;\n}"
+          },
+          {
+            "name": "VaultLinksResult",
+            "declaration": "export interface VaultLinksResult {\n    backlinkDetails: VaultLinkRecord[];\n    backlinks: string[];\n    complete?: boolean;\n    cursor: string | null;\n    generation: number;\n    outgoing: string[];\n    outgoingDetails: VaultLinkRecord[];\n    path: string;\n    scan: { bytes: number; entries: number; files: number; };\n    tagRelations: Array<{ paths: string[]; tag: string; }>;\n    truncated: boolean;\n    truncationReason: 'byte-limit' | 'entry-limit' | 'file-limit' | 'metadata-limit' | 'result-limit' | null;\n    unlinkedMentions?: VaultUnlinkedMention[];\n    warnings: string[];\n}"
+          },
+          {
+            "name": "VaultOutlineRequest",
+            "declaration": "export interface VaultOutlineRequest {\n    expectedVault: VaultReference;\n    includeFootnotes?: boolean;\n    includeQueries?: boolean;\n    limit?: number;\n    path: string;\n}"
+          },
+          {
+            "name": "VaultOutlineResult",
+            "declaration": "export interface VaultOutlineResult {\n    footnotes?: VaultInlineFootnote[];\n    footnotesTruncated?: boolean;\n    generation: number;\n    headings: VaultHeading[];\n    path: string;\n    truncated: boolean;\n}"
+          },
+          {
             "name": "VaultReference",
             "declaration": "export interface VaultReference {\n    generation: number;\n    id: string;\n}"
           },
@@ -1060,6 +1236,10 @@ export const TYPERT = {
           {
             "name": "VaultTreePage",
             "declaration": "export interface VaultTreePage {\n    complete: boolean;\n    cursor: string | null;\n    entries: VaultTreeEntry[];\n    generation: number;\n    scan: { entries: number; };\n    truncated: boolean;\n    truncationReason: TreeTruncationReason;\n    warnings: string[];\n}"
+          },
+          {
+            "name": "VaultUnlinkedMention",
+            "declaration": "export interface VaultUnlinkedMention {\n    identifierKind: 'alias' | 'basename' | 'title';\n    line: number;\n    matchedText: string;\n    snippet: string;\n    sourcePath: string;\n}"
           },
           {
             "name": "WriteDocumentResult",
