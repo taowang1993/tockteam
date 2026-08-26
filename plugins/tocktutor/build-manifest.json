@@ -479,19 +479,19 @@
     },
     {
       "path": "packages/tockteam-tocktutor-assistant/lib/index.d.ts",
-      "sha256": "5b9c565deed480879bb3422a253ed50dca659d18caa61ccdbc57b1ca5c854eb2"
+      "sha256": "ca14feabb4ce05a8ba942fbe0efbd1334425427d1a1041dc084505d2ac17f43b"
     },
     {
       "path": "packages/tockteam-tocktutor-assistant/lib/index.d.ts.map",
-      "sha256": "93d434e4f6aed098287de951e2913bd227d4067d8e9111d33fb7fce91699f0a5"
+      "sha256": "75973bb964d7bcec8e1c1dbf085cc58f83e9bc1187a7e02bc7da1a7b0fa35d81"
     },
     {
       "path": "packages/tockteam-tocktutor-assistant/lib/index.js",
-      "sha256": "d6d8187dcdc49c02ac2ae7f15d3a71d558682af039fa8a5929467a563cf0c29a"
+      "sha256": "92ad61e1fe6a50379326e3fb51c795236f8b4ad8a3691e8eeccda1ed995748bf"
     },
     {
       "path": "packages/tockteam-tocktutor-assistant/lib/index.js.map",
-      "sha256": "6fdc860beccbae7433667821e2d5d28a86a8918c049459833df7e2829b75f647"
+      "sha256": "1b1246c1f5f18479a50e513459a0b5390f6a77376b49160bb9ffee3bca95e3df"
     },
     {
       "path": "packages/tockteam-tocktutor-assistant/lib/pennivo-child.d.ts",
@@ -655,19 +655,19 @@
     },
     {
       "path": "packages/tockteam-tocktutor-assistant/lib/turn-bindings.d.ts",
-      "sha256": "6e6666f2fd22c57f63718289bd32a18c2a656bf3ab9ba0299396ba57b8b5c64e"
+      "sha256": "6ef8eeff5a2fc9aa4c2e8a880df20569f577e3f0461638eea7c3bd6c9e977bee"
     },
     {
       "path": "packages/tockteam-tocktutor-assistant/lib/turn-bindings.d.ts.map",
-      "sha256": "360f78f5eba0e0db1579ae63dffd382bffffd4b4519260a3816e93c0aebd22b8"
+      "sha256": "4c7e988704247d90ab2af2c859bd27bfe0bfec60f9f113a15f31dad18eefcffe"
     },
     {
       "path": "packages/tockteam-tocktutor-assistant/lib/turn-bindings.js",
-      "sha256": "3c552e2393c221b9b7c4122c044e67997d7892412934493372edfd390a95caf0"
+      "sha256": "e5827f8552b40bd9e5c0ca0f1fc6c075d856d2515110f8eb2cd3563efb7a9f63"
     },
     {
       "path": "packages/tockteam-tocktutor-assistant/lib/turn-bindings.js.map",
-      "sha256": "aa4fddad52aa4f86ecbe31044c7ef71581f42e32ed83c943271cb76bb941952a"
+      "sha256": "13ddba29e331d17695d797c84bc4d0cf1eed45f367f5a08ce7e80a82f12f0077"
     },
     {
       "path": "packages/tockteam-tocktutor-assistant/lib/typert.host.d.ts",
@@ -739,7 +739,7 @@
     },
     {
       "path": "packages/tockteam-tocktutor-assistant/src/index.ts",
-      "sha256": "c8d442210f5cd8439fd14b20a4890d421a05f9a484dc2a064654cc5767f0c16e"
+      "sha256": "4b67d34920594ad6b5e74b0b01b53f955a8111137aa5514f6e0c0b9a322e02b7"
     },
     {
       "path": "packages/tockteam-tocktutor-assistant/src/pennivo-child.ts",
@@ -783,7 +783,7 @@
     },
     {
       "path": "packages/tockteam-tocktutor-assistant/src/turn-bindings.ts",
-      "sha256": "7c26519fa8340eb63cc2d379ea1adc8b0763e6fa265600537be8c9a2c704ad19"
+      "sha256": "3f798ea5f9bceac6960285296a55520d3fe4ae66a10b91897559067538a67470"
     },
     {
       "path": "packages/tockteam-tocktutor-assistant/src/write-tool-registration.ts",
@@ -883,11 +883,11 @@
     },
     {
       "path": "packages/tockteam-tocktutor-import-export/dist/client.js",
-      "sha256": "f5a6db968e7cca3c0714998869e2efe491b5535f932813fc5915e6ff8adf4276"
+      "sha256": "7b3e3710d0dde4e610c4cc141583d64448e72085aaa9e6ff16e48ad9c5424069"
     },
     {
       "path": "packages/tockteam-tocktutor-import-export/dist/client.js.map",
-      "sha256": "7870c89030464cc2de1b2e780cefb35fa5124cfa5afe42c2bc91802c074acb90"
+      "sha256": "08b60ab4d57ba0425eb39b5ff5088140953deb5e80ce46dda8125dfff4a90d66"
     },
     {
       "path": "packages/tockteam-tocktutor-import-export/dist/core.d.ts",
