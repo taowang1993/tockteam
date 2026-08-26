@@ -95,7 +95,7 @@ test('converts real-shaped Apple Journal dates, metadata, and bounded rich text'
       '<div class="pageHeader">Monday, 27 April 2026</div>',
       '<div class="reflectionPrompt">Notice this</div>',
       '<p class="p2"><strong>Bold</strong> and <a href="https://example.com">linked</a></p>',
-      '<div class="assetGrid"><div class="gridItem assetType_activity"><span class="activityType">Running</span><span aria-label="5 km, Outdoors"></span></div><div class="gridItem assetType_genericMap"><span title="London"></span></div></div>',
+      '<div class="assetGrid"><div class="gridItem assetType_activity"><div class="activityType"><span>Running</span></div><span aria-label="5 km, Outdoors"></span></div><div class="gridItem assetType_genericMap"><span title="London"></span></div></div>',
     ].join('')),
   ])
   const markdown = text(result.files[0]!.bytes)

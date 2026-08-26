@@ -386,10 +386,50 @@ export function planHtmlZip(bytes: Uint8Array, rootName: string): PlannedSourceR
   })), rootName)
 }
 
+interface JournalElement { innerHtml: string; openingTag: string }
+
+const JOURNAL_VOID_TAGS = new Set(['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'param', 'source', 'track', 'wbr'])
+
+function journalAttribute(openingTag: string, name: string): string {
+  const match = new RegExp(`\\s${name}\\s*=\\s*(?:"([^"]*)"|'([^']*)'|([^\\s>]+))`, 'iu').exec(openingTag)
+  return decodeEntities(match?.[1] ?? match?.[2] ?? match?.[3] ?? '').trim()
+}
+
+function journalClasses(openingTag: string): string[] {
+  return journalAttribute(openingTag, 'class').split(/\s+/u).filter(Boolean)
+}
+
+function journalElementsByClass(source: string, classes: ReadonlySet<string>): JournalElement[] {
+  const elements: JournalElement[] = []
+  const pattern = /<(\/)?([a-z][\w:-]*)\b[^>]*>/giu
+  let match: RegExpExecArray | null
+  while ((match = pattern.exec(source)) !== null) {
+    if (match[1] !== undefined) continue
+    const openingTag = match[0]
+    if (!journalClasses(openingTag).some(className => classes.has(className))) continue
+    const tagName = (match[2] ?? '').toLocaleLowerCase('en-US')
+    if (JOURNAL_VOID_TAGS.has(tagName) || openingTag.endsWith('/>')) {
+      elements.push({ innerHtml: '', openingTag })
+      continue
+    }
+    const innerStart = pattern.lastIndex
+    let depth = 1
+    let closingStart = source.length
+    let nested: RegExpExecArray | null
+    while ((nested = pattern.exec(source)) !== null) {
+      if ((nested[2] ?? '').toLocaleLowerCase('en-US') !== tagName) continue
+      if (nested[1] !== undefined) {
+        depth -= 1
+        if (depth === 0) { closingStart = nested.index; break }
+      } else if (!JOURNAL_VOID_TAGS.has(tagName) && !nested[0].endsWith('/>')) depth += 1
+    }
+    elements.push({ innerHtml: source.slice(innerStart, closingStart), openingTag })
+  }
+  return elements
+}
+
 function classHtml(html: string, className: string): string[] {
-  const escaped = className.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')
-  return [...html.matchAll(new RegExp(`<([a-z][\\w:-]*)\\b[^>]*class=["'][^"']*\\b${escaped}\\b[^"']*["'][^>]*>([^]*?)<\\/\\1>`, 'giu'))]
-    .map(match => match[2] ?? '')
+  return journalElementsByClass(html, new Set([className])).map(element => element.innerHtml)
 }
 
 function classText(html: string, className: string): string[] {
@@ -440,19 +480,20 @@ function journalFragment(html: string): string {
 
 function journalMetadata(html: string): Map<string, Set<string>> {
   const metadata = new Map<string, Set<string>>()
-  const itemPattern = /<([a-z][\w:-]*)\b([^>]*\bclass=["'][^"']*\bgridItem\b[^"']*\bassetType_([A-Za-z][A-Za-z0-9_-]*)\b[^"']*["'][^>]*)>([^]*?)<\/\1>/giu
-  for (const match of html.matchAll(itemPattern)) {
-    const rawType = match[3] ?? ''
+  const assetGrid = journalElementsByClass(html, new Set(['assetGrid']))[0]
+  for (const item of journalElementsByClass(assetGrid?.innerHtml ?? html, new Set(['gridItem']))) {
+    const rawType = journalClasses(item.openingTag).find(className => className.startsWith('assetType_'))?.slice('assetType_'.length) ?? ''
     const normalized = rawType.replace(/(\w)([A-Z])/gu, '$1-$2').replace(/_/gu, '-').toLocaleLowerCase('en-US').replace(/-+/gu, '-').replace(/^-+|-+$/gu, '')
     const key = JOURNAL_ASSET_ALIASES.get(normalized) ?? normalized
     if (!/^[a-z][a-z0-9-]*$/u.test(key) || JOURNAL_IGNORED_ASSETS.has(key)) continue
-    const inner = match[4] ?? ''
     const tokens = new Set<string>()
     for (const className of JOURNAL_OVERLAY_CLASSES) {
-      for (const value of classText(inner, className)) for (const token of value.split(',')) if (token.trim() !== '') tokens.add(token.trim())
+      for (const value of classText(item.innerHtml, className)) for (const token of value.split(',')) if (token.trim() !== '') tokens.add(token.trim())
     }
-    for (const attribute of inner.matchAll(/\s(?:aria-label|title|alt)\s*=\s*["']([^"']+)["']/giu)) {
-      for (const token of decodeEntities(attribute[1] ?? '').split(',')) if (token.trim() !== '') tokens.add(token.trim())
+    for (const tag of item.innerHtml.match(/<[a-z][\w:-]*\b[^>]*>/giu) ?? []) {
+      for (const name of ['aria-label', 'title', 'alt']) {
+        for (const token of journalAttribute(tag, name).split(',')) if (token.trim() !== '') tokens.add(token.trim())
+      }
     }
     if (tokens.size === 0) continue
     const values = metadata.get(key) ?? new Set<string>()
