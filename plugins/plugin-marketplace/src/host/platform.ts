@@ -270,8 +270,8 @@ export function previewSandboxPolicy(
     return [...roots]
   }
   const writablePaths = canonical([root])
-    .flatMap(path => [path, join(path, '.tmp')])
-    .map(path => `(subpath "${seatbeltString(path)}")`)
+    .flatMap(path => [path, join(path, '.tmp')]
+      .map(writable => `(subpath "${seatbeltString(writable)}")`))
     .join(' ')
   const readablePaths = canonical([
     root,

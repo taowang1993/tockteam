@@ -226,6 +226,10 @@ export function BrowserView({
     host.append(element)
     webview.current = element
     return () => {
+      element.removeEventListener('did-navigate', update)
+      element.removeEventListener('did-navigate-in-page', update)
+      element.removeEventListener('will-navigate', guard)
+      element.removeEventListener('did-fail-load', failed)
       webview.current = null
       element.remove()
     }
@@ -403,10 +407,11 @@ export function FileView({
   t: Translate<WorkspaceMessage>
 }): JSX.Element {
   const cwd = scope?.cwd
+  const sessionId = scope?.sessionId
   const path = tab.resource
-  const requestKey = cwd === undefined || path === undefined || scope === undefined
+  const requestKey = cwd === undefined || path === undefined || sessionId === undefined
     ? ''
-    : `${scope.sessionId}\u0000${cwd}\u0000${path}`
+    : `${sessionId}\u0000${cwd}\u0000${path}`
   const [file, setFile] = useState<{
     error: string
     key: string
@@ -415,10 +420,10 @@ export function FileView({
   const current = file.key === requestKey ? file : { error: '', key: requestKey, snapshot: null }
 
   useEffect(() => {
-    if (cwd === undefined || path === undefined || scope === undefined) return
+    if (cwd === undefined || path === undefined || sessionId === undefined) return
     const controller = new AbortController()
     setFile({ error: '', key: requestKey, snapshot: null })
-    void betterSidebarApi.fsRead(scope, path, controller.signal).then(
+    void betterSidebarApi.fsRead({ cwd, sessionId }, path, controller.signal).then(
       result => {
         if (!controller.signal.aborted) {
           setFile({
@@ -438,7 +443,7 @@ export function FileView({
       }
     })
     return () => { controller.abort() }
-  }, [cwd, path, requestKey, scope?.sessionId])
+  }, [cwd, path, requestKey, sessionId])
 
   const { error, snapshot } = current
 
