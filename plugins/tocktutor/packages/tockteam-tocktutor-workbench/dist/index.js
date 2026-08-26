@@ -35,4 +35,5 @@ export * from "./rich-markdown.js";
 export * from "./editor-commands.js";
 export * from "./settings.js";
 export * from "./properties.js";
+export * from "./bookmarks.js";
 //# sourceMappingURL=index.js.map

@@ -7,6 +7,7 @@ import type { CanvasChange } from './canvas-change.ts';
 import { TOCKTUTOR_NATIVE_ACTIONS_SLOT, type TockTutorNativeActionsDispatchEvent, type TockTutorNativeActionsDispatchResult } from './native-actions.ts';
 import { TOCKTUTOR_REVIEW_PANEL_SLOT } from './review-panel.ts';
 import { type PropertyValue } from './properties.ts';
+import { type Bookmark as TockTutorBookmark } from './bookmarks.ts';
 import { type KeyValueStorage, type NamedWorkspace, type TockTutorSettings } from './settings.ts';
 import { type EditorCommandId } from './editor-commands.ts';
 import { type EditorStatus } from './markdown.ts';
@@ -60,6 +61,7 @@ export interface RoutePaneSummary {
     tabs: readonly RouteTabSummary[];
 }
 export interface WorkbenchRouteSnapshot {
+    bookmarks?: readonly TockTutorBookmark[];
     canGoBack?: boolean;
     canGoForward?: boolean;
     commandPaletteOpen?: boolean;
@@ -117,6 +119,7 @@ export declare class WorkbenchRouteController {
     private readonly recentlyClosed;
     private readonly historyBack;
     private readonly historyForward;
+    private bookmarks;
     private workspaces;
     private operation;
     private dispatchRevision;
@@ -185,6 +188,9 @@ export declare class WorkbenchRouteController {
     toggleFocusMode(): void;
     updateSettings(change: Partial<TockTutorSettings>): boolean;
     saveCurrentWorkspace(name?: string): boolean;
+    addActiveBookmark(): boolean;
+    removeBookmark(id: string): boolean;
+    openBookmark(id: string): Promise<boolean>;
     loadWorkspace(id: string): Promise<boolean>;
     select(path: string, navigate?: boolean, dispatchRevision?: number, recordHistory?: boolean): Promise<boolean>;
     edit(source: string): void;
@@ -203,6 +209,7 @@ export interface TockTutorRouteViewProps {
     assistantPanel?: ReactNode;
     nativeActions?: ReactNode;
     onActivateRecentVault?(id: string): void;
+    onAddBookmark?(): void;
     onActivateTab(paneId: string, path: string): void;
     onBack?(): void;
     onCancelDispatch?(): void;
@@ -221,12 +228,14 @@ export interface TockTutorRouteViewProps {
     onMoveTab?(paneId: string, path: string, direction: -1 | 1): void;
     onMode(mode: RouteEditorMode): void;
     onNewNote?(): void;
+    onOpenBookmark?(id: string): void;
     onOpenCommandPalette?(): void;
     onOpenRecovery?(): void;
     onOpenSandboxVault?(): void;
     onOpenSmartView?(kind: 'recent' | 'tasks' | 'journals' | 'favorites' | 'collections' | 'tags'): void;
     onOpenSearch?(): void;
     onReadSnapshot?(id: string): void;
+    onRemoveBookmark?(id: string): void;
     onRemoveRecentVault?(id: string): void;
     onReopenClosedTab?(): void;
     onRestoreSnapshot?(id: string): void;

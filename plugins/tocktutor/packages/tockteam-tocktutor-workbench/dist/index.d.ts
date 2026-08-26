@@ -33,4 +33,5 @@ export * from './rich-markdown.ts';
 export * from './editor-commands.ts';
 export * from './settings.ts';
 export * from './properties.ts';
+export * from './bookmarks.ts';
 //# sourceMappingURL=index.d.ts.map

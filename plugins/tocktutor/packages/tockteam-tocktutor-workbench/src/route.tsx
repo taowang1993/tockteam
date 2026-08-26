@@ -64,6 +64,7 @@ import {
 } from './live-preview.ts'
 import { renderMarkdownHtml } from './rich-markdown.ts'
 import { parseFrontmatterProperties, setFrontmatterProperty, type PropertyValue } from './properties.ts'
+import { addBookmark, loadBookmarks, saveBookmarks, type Bookmark as TockTutorBookmark } from './bookmarks.ts'
 import {
   createNamedWorkspace,
   loadTockTutorSettings,
@@ -213,6 +214,7 @@ export interface RoutePaneSummary {
 }
 
 export interface WorkbenchRouteSnapshot {
+  bookmarks?: readonly TockTutorBookmark[]
   canGoBack?: boolean
   canGoForward?: boolean
   commandPaletteOpen?: boolean
@@ -367,6 +369,7 @@ function minuteStamp(value: Date): string {
 
 function initialSnapshot(): WorkbenchRouteSnapshot {
   return Object.freeze({
+    bookmarks: Object.freeze([]),
     canGoBack: false,
     canGoForward: false,
     commandPaletteOpen: false,
@@ -419,6 +422,7 @@ export class WorkbenchRouteController {
   private readonly recentlyClosed: RouteTabSummary[] = []
   private readonly historyBack: string[] = []
   private readonly historyForward: string[] = []
+  private bookmarks: TockTutorBookmark[] = []
   private workspaces: NamedWorkspace[] = []
   private operation = 0
   private dispatchRevision = 0
@@ -919,6 +923,7 @@ export class WorkbenchRouteController {
     this.invalidateDispatch()
     const operation = this.nextOperation()
     this.shellSession = createWorkbenchSession(ROUTE_PREFIX, null, 'pane-1')
+    this.bookmarks = []
     this.vaultGeneration = 0
     this.recentlyClosed.length = 0
     this.historyBack.length = 0
@@ -926,6 +931,7 @@ export class WorkbenchRouteController {
     this.eventDispose?.()
     this.eventDispose = null
     this.update({
+      bookmarks: Object.freeze([]),
       canGoBack: false,
       canGoForward: false,
       dispatchDialog: null,
@@ -977,6 +983,7 @@ export class WorkbenchRouteController {
       let restoredFocusMode = false
       if (this.storage === null) {
         this.shellSession = createWorkbenchSession(ROUTE_PREFIX, vault, 'pane-1')
+        this.bookmarks = []
         this.workspaces = []
       } else {
         const restored = loadWorkbenchState(this.storage, vault.id)
@@ -988,11 +995,13 @@ export class WorkbenchRouteController {
             tabs: group.tabs.filter(tab => openable.has(tab.path)),
           })),
         })
+        this.bookmarks = loadBookmarks(this.storage, vault.id)
         this.workspaces = restored.workspaces
         restoredFocusMode = restored.focusMode
         settings = loadTockTutorSettings(this.storage, vault.id)
       }
       this.update({
+        bookmarks: Object.freeze(this.bookmarks.map(bookmark => Object.freeze({ ...bookmark }))),
         entries: Object.freeze(page.entries.toSorted((left, right) => left.path.localeCompare(right.path))),
         focusedPaneId: this.shellSession.focusedGroupId,
         focusMode: restoredFocusMode,
@@ -1374,6 +1383,56 @@ export class WorkbenchRouteController {
     this.workspaces = next
     this.syncShell()
     return true
+  }
+
+  addActiveBookmark(): boolean {
+    const vault = this.snapshot.vault
+    const path = this.snapshot.path
+    if (vault === null || path === null || this.storage === null) return false
+    try {
+      this.bookmarks = addBookmark(this.bookmarks, {
+        id: `note-${this.now().getTime().toString(36)}`,
+        kind: 'note',
+        path,
+        title: noteTitle(path),
+      })
+      if (!saveBookmarks(this.storage, vault.id, this.bookmarks)) return false
+      this.update({ bookmarks: Object.freeze(this.bookmarks.map(bookmark => Object.freeze({ ...bookmark }))) })
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  removeBookmark(id: string): boolean {
+    const vault = this.snapshot.vault
+    if (vault === null || this.storage === null) return false
+    const next = this.bookmarks.filter(bookmark => bookmark.id !== id)
+    if (next.length === this.bookmarks.length || !saveBookmarks(this.storage, vault.id, next)) return false
+    this.bookmarks = next
+    this.update({ bookmarks: Object.freeze(next.map(bookmark => Object.freeze({ ...bookmark }))) })
+    return true
+  }
+
+  async openBookmark(id: string): Promise<boolean> {
+    const bookmark = this.bookmarks.find(candidate => candidate.id === id)
+    if (bookmark === undefined) return false
+    if (bookmark.kind === 'note' || bookmark.kind === 'heading' || bookmark.kind === 'block') {
+      if (!await this.select(bookmark.path)) return false
+      if (bookmark.kind === 'heading') this.jumpToLine(bookmark.line)
+      return true
+    }
+    if (bookmark.kind === 'folder') {
+      this.openSearch(`path:${bookmark.path}`)
+      return await this.runSearch()
+    }
+    if (bookmark.kind === 'search') {
+      this.openSearch(bookmark.query)
+      return await this.runSearch()
+    }
+    if (bookmark.kind === 'graph') return false
+    if (bookmark.kind === 'link') return false
+    return false
   }
 
   async loadWorkspace(id: string): Promise<boolean> {
@@ -1792,6 +1851,7 @@ export interface TockTutorRouteViewProps {
   assistantPanel?: ReactNode
   nativeActions?: ReactNode
   onActivateRecentVault?(id: string): void
+  onAddBookmark?(): void
   onActivateTab(paneId: string, path: string): void
   onBack?(): void
   onCancelDispatch?(): void
@@ -1810,12 +1870,14 @@ export interface TockTutorRouteViewProps {
   onMoveTab?(paneId: string, path: string, direction: -1 | 1): void
   onMode(mode: RouteEditorMode): void
   onNewNote?(): void
+  onOpenBookmark?(id: string): void
   onOpenCommandPalette?(): void
   onOpenRecovery?(): void
   onOpenSandboxVault?(): void
   onOpenSmartView?(kind: 'recent' | 'tasks' | 'journals' | 'favorites' | 'collections' | 'tags'): void
   onOpenSearch?(): void
   onReadSnapshot?(id: string): void
+  onRemoveBookmark?(id: string): void
   onRemoveRecentVault?(id: string): void
   onReopenClosedTab?(): void
   onRestoreSnapshot?(id: string): void
@@ -2175,7 +2237,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
               </TooltipTrigger>
               <TooltipContent>Search Notes</TooltipContent>
             </Tooltip>
-            <span><WorkbenchGlyph kind="bookmark" /></span>
+            <Button unstyled aria-label="Bookmark Active Note" className="border-0 bg-transparent p-0" disabled={snapshot.path === null || props.onAddBookmark === undefined} onClick={props.onAddBookmark} type="button"><WorkbenchGlyph kind="bookmark" /></Button>
           </>
         )}
         <Tooltip>
@@ -2583,6 +2645,18 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
               {(snapshot.trash?.length ?? 0) === 0 && <span className="text-xs text-[var(--tt-muted)]">Trash is empty.</span>}
             </div>
           </section>
+          <section aria-label="Bookmarks" className="border-t border-[var(--tt-border)] p-3">
+            <h2 className="m-0 text-sm">Bookmarks</h2>
+            <div className="mt-2 grid gap-1">
+              {(snapshot.bookmarks ?? []).map(bookmark => (
+                <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-1" key={bookmark.id}>
+                  <Button unstyled className="truncate rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-left text-xs" onClick={() => { props.onOpenBookmark?.(bookmark.id) }} type="button">{bookmark.title} · {bookmark.kind}{bookmark.missing === true ? ' · Missing' : ''}</Button>
+                  <Button unstyled aria-label={`Remove Bookmark ${bookmark.title}`} className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs" onClick={() => { props.onRemoveBookmark?.(bookmark.id) }} type="button">Remove</Button>
+                </div>
+              ))}
+              {(snapshot.bookmarks?.length ?? 0) === 0 && <span className="text-xs text-[var(--tt-muted)]">No bookmarks.</span>}
+            </div>
+          </section>
           <section aria-label="Smart Views and Tags" className="border-t border-[var(--tt-border)] p-3">
             <h2 className="m-0 text-sm">Smart Views and Tags</h2>
             <div className="mt-2 grid grid-cols-2 gap-1">
@@ -2810,6 +2884,7 @@ export function TockTutorRoute(props: TockTutorRouteProps): ReactNode {
         )}
         onActivateRecentVault={id => { void controller.activateRecentVault(id) }}
         onActivateTab={(paneId, path) => { void controller.activateTab(paneId, path) }}
+        onAddBookmark={() => { controller.addActiveBookmark() }}
         onAddPane={() => { void controller.addPane() }}
         onBack={() => { void controller.goBack() }}
         onCancelDispatch={() => { controller.cancelDispatchDialog() }}
@@ -2827,12 +2902,14 @@ export function TockTutorRoute(props: TockTutorRouteProps): ReactNode {
         onMoveCanvas={(nodeId, deltaX, deltaY) => { controller.moveCanvasNode(nodeId, deltaX, deltaY) }}
         onMoveTab={(paneId, path, direction) => { controller.moveTab(paneId, path, direction) }}
         onNewNote={() => { void controller.handleDispatch({ action: 'new', kind: 'quick-action', operationId: crypto.randomUUID() }) }}
+        onOpenBookmark={id => { void controller.openBookmark(id) }}
         onOpenCommandPalette={() => { controller.setCommandPaletteOpen(true) }}
         onOpenRecovery={() => { void controller.setRecoveryOpen(true) }}
         onOpenSandboxVault={() => { void controller.openSandboxVault() }}
         onOpenSearch={() => { controller.openSearch('') }}
         onOpenSmartView={kind => { void controller.openSmartView(kind) }}
         onReadSnapshot={id => { void controller.readRecoverySnapshot(id) }}
+        onRemoveBookmark={id => { controller.removeBookmark(id) }}
         onRemoveRecentVault={id => { void controller.removeRecentVault(id) }}
         onReopenClosedTab={() => { void controller.reopenClosedTab() }}
         onRestoreSnapshot={id => { void controller.restoreRecoverySnapshot(id) }}

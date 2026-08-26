@@ -56,6 +56,7 @@ export * from "./rich-markdown.js";
 export * from "./editor-commands.js";
 export * from "./settings.js";
 export * from "./properties.js";
+export * from "./bookmarks.js";
 export * from "./native-actions.js";
 export * from "./review-panel.js";
 export * from "./route.js";

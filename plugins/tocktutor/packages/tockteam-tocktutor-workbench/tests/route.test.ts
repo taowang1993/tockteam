@@ -1192,6 +1192,23 @@ test('persists bounded settings, tabs, focus mode, and named workspaces per vaul
   second.dispose()
 })
 
+test('stores and reopens one bounded per-vault active-note bookmark', async () => {
+  const storage = new MemoryStorage()
+  const remote = new FakeRemote()
+  const controller = new WorkbenchRouteController(remote, () => {}, () => new Date(20), storage)
+  await controller.syncLocation('/tocktutor')
+  assert.equal(await controller.select('Folder/Note.md'), true)
+  assert.equal(controller.addActiveBookmark(), true)
+  const id = controller.getSnapshot().bookmarks?.[0]?.id
+  assert.equal(id, 'note-k')
+  assert.equal(await controller.select('Second.md'), true)
+  assert.equal(await controller.openBookmark(id!), true)
+  assert.equal(controller.getSnapshot().path, 'Folder/Note.md')
+  assert.equal(controller.removeBookmark(id!), true)
+  assert.equal(controller.getSnapshot().bookmarks?.length, 0)
+  controller.dispose()
+})
+
 test('late note and vault completions cannot replace the active route identity', async () => {
   const remote = new FakeRemote()
   const first = deferred<{ ok: true; value: OpenDocumentResult }>()

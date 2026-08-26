@@ -12,9 +12,9 @@ var __export = (target, all) => {
 };
 var __copyProps = (to, from, except, desc) => {
   if (from && typeof from === "object" || typeof from === "function") {
-    for (let key of __getOwnPropNames(from))
-      if (!__hasOwnProp.call(to, key) && key !== except)
-        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+    for (let key2 of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(to, key2) && key2 !== except)
+        __defProp(to, key2, { get: () => from[key2], enumerable: !(desc = __getOwnPropDesc(from, key2)) || desc.enumerable });
   }
   return to;
 };
@@ -35,6 +35,8 @@ __export(client_exports, {
   CANVAS_GRID_SIZE: () => CANVAS_GRID_SIZE,
   CanvasBoard: () => CanvasBoard,
   CanvasLinkUrlError: () => CanvasLinkUrlError,
+  MAX_BOOKMARK_BYTES: () => MAX_BOOKMARK_BYTES,
+  MAX_BOOKMARK_ITEMS: () => MAX_BOOKMARK_ITEMS,
   MAX_CANVAS_BYTES: () => MAX_CANVAS_BYTES,
   MAX_CANVAS_COORDINATE: () => MAX_CANVAS_COORDINATE,
   MAX_CANVAS_EDGES: () => MAX_CANVAS_EDGES,
@@ -60,6 +62,7 @@ __export(client_exports, {
   TockTutorRoute: () => TockTutorRoute,
   TockTutorRouteView: () => TockTutorRouteView,
   WorkbenchRouteController: () => WorkbenchRouteController,
+  addBookmark: () => addBookmark,
   apply: () => apply,
   applyEditorCommand: () => applyEditorCommand,
   applyTableCommand: () => applyTableCommand,
@@ -94,6 +97,7 @@ __export(client_exports, {
   isCredentialFreeCanvasLink: () => isCredentialFreeCanvasLink,
   isNoteVaultChangeEvent: () => isNoteVaultChangeEvent,
   isSupportedCanvasCard: () => isSupportedCanvasCard,
+  loadBookmarks: () => loadBookmarks,
   loadTockTutorSettings: () => loadTockTutorSettings,
   loadWorkbenchState: () => loadWorkbenchState,
   name: () => name,
@@ -106,12 +110,14 @@ __export(client_exports, {
   projectCanvas: () => projectCanvas,
   projectLivePreview: () => projectLivePreview,
   reconnectCanvasEdge: () => reconnectCanvasEdge,
+  remapBookmarks: () => remapBookmarks,
   renameFrontmatterProperty: () => renameFrontmatterProperty,
   renamePropertiesRecoverably: () => renamePropertiesRecoverably,
   renderMarkdownHtml: () => renderMarkdownHtml,
   replaceLivePreviewLine: () => replaceLivePreviewLine,
   resolvePlatformEditorCommand: () => resolvePlatformEditorCommand,
   resolveSlashCommand: () => resolveSlashCommand,
+  saveBookmarks: () => saveBookmarks,
   saveTockTutorSettings: () => saveTockTutorSettings,
   saveWorkbenchState: () => saveWorkbenchState,
   serializeCanvasDocument: () => serializeCanvasDocument,
@@ -855,9 +861,9 @@ function floatSafeRemainder(val, step) {
   return ratio - roundedRatio;
 }
 var EVALUATING = /* @__PURE__ */ Symbol("evaluating");
-function defineLazy(object2, key, getter) {
+function defineLazy(object2, key2, getter) {
   let value = void 0;
-  Object.defineProperty(object2, key, {
+  Object.defineProperty(object2, key2, {
     get() {
       if (value === EVALUATING) {
         return void 0;
@@ -869,7 +875,7 @@ function defineLazy(object2, key, getter) {
       return value;
     },
     set(v) {
-      Object.defineProperty(object2, key, {
+      Object.defineProperty(object2, key2, {
         value: v
         // configurable: true,
       });
@@ -902,11 +908,11 @@ function cloneDef(schema) {
 function getElementAtPath(obj, path) {
   if (!path)
     return obj;
-  return path.reduce((acc, key) => acc?.[key], obj);
+  return path.reduce((acc, key2) => acc?.[key2], obj);
 }
 function promiseAllObject(promisesObj) {
   const keys = Object.keys(promisesObj);
-  const promises = keys.map((key) => promisesObj[key]);
+  const promises = keys.map((key2) => promisesObj[key2]);
   return Promise.all(promises).then((results) => {
     const resolvedObj = {};
     for (let i = 0; i < keys.length; i++) {
@@ -978,8 +984,8 @@ function shallowClone(o) {
 }
 function numKeys(data) {
   let keyCount = 0;
-  for (const key in data) {
-    if (Object.prototype.hasOwnProperty.call(data, key)) {
+  for (const key2 in data) {
+    if (Object.prototype.hasOwnProperty.call(data, key2)) {
       keyCount++;
     }
   }
@@ -1129,13 +1135,13 @@ function pick(schema, mask) {
   const def = mergeDefs(schema._zod.def, {
     get shape() {
       const newShape = {};
-      for (const key in mask) {
-        if (!(key in currDef.shape)) {
-          throw new Error(`Unrecognized key: "${key}"`);
+      for (const key2 in mask) {
+        if (!(key2 in currDef.shape)) {
+          throw new Error(`Unrecognized key: "${key2}"`);
         }
-        if (!mask[key])
+        if (!mask[key2])
           continue;
-        newShape[key] = currDef.shape[key];
+        newShape[key2] = currDef.shape[key2];
       }
       assignProp(this, "shape", newShape);
       return newShape;
@@ -1154,13 +1160,13 @@ function omit(schema, mask) {
   const def = mergeDefs(schema._zod.def, {
     get shape() {
       const newShape = { ...schema._zod.def.shape };
-      for (const key in mask) {
-        if (!(key in currDef.shape)) {
-          throw new Error(`Unrecognized key: "${key}"`);
+      for (const key2 in mask) {
+        if (!(key2 in currDef.shape)) {
+          throw new Error(`Unrecognized key: "${key2}"`);
         }
-        if (!mask[key])
+        if (!mask[key2])
           continue;
-        delete newShape[key];
+        delete newShape[key2];
       }
       assignProp(this, "shape", newShape);
       return newShape;
@@ -1177,8 +1183,8 @@ function extend(schema, shape) {
   const hasChecks = checks && checks.length > 0;
   if (hasChecks) {
     const existingShape = schema._zod.def.shape;
-    for (const key in shape) {
-      if (Object.getOwnPropertyDescriptor(existingShape, key) !== void 0) {
+    for (const key2 in shape) {
+      if (Object.getOwnPropertyDescriptor(existingShape, key2) !== void 0) {
         throw new Error("Cannot overwrite keys on object schemas containing refinements. Use `.safeExtend()` instead.");
       }
     }
@@ -1234,23 +1240,23 @@ function partial(Class2, schema, mask) {
       const oldShape = schema._zod.def.shape;
       const shape = { ...oldShape };
       if (mask) {
-        for (const key in mask) {
-          if (!(key in oldShape)) {
-            throw new Error(`Unrecognized key: "${key}"`);
+        for (const key2 in mask) {
+          if (!(key2 in oldShape)) {
+            throw new Error(`Unrecognized key: "${key2}"`);
           }
-          if (!mask[key])
+          if (!mask[key2])
             continue;
-          shape[key] = Class2 ? new Class2({
+          shape[key2] = Class2 ? new Class2({
             type: "optional",
-            innerType: oldShape[key]
-          }) : oldShape[key];
+            innerType: oldShape[key2]
+          }) : oldShape[key2];
         }
       } else {
-        for (const key in oldShape) {
-          shape[key] = Class2 ? new Class2({
+        for (const key2 in oldShape) {
+          shape[key2] = Class2 ? new Class2({
             type: "optional",
-            innerType: oldShape[key]
-          }) : oldShape[key];
+            innerType: oldShape[key2]
+          }) : oldShape[key2];
         }
       }
       assignProp(this, "shape", shape);
@@ -1266,22 +1272,22 @@ function required(Class2, schema, mask) {
       const oldShape = schema._zod.def.shape;
       const shape = { ...oldShape };
       if (mask) {
-        for (const key in mask) {
-          if (!(key in shape)) {
-            throw new Error(`Unrecognized key: "${key}"`);
+        for (const key2 in mask) {
+          if (!(key2 in shape)) {
+            throw new Error(`Unrecognized key: "${key2}"`);
           }
-          if (!mask[key])
+          if (!mask[key2])
             continue;
-          shape[key] = new Class2({
+          shape[key2] = new Class2({
             type: "nonoptional",
-            innerType: oldShape[key]
+            innerType: oldShape[key2]
           });
         }
       } else {
-        for (const key in oldShape) {
-          shape[key] = new Class2({
+        for (const key2 in oldShape) {
+          shape[key2] = new Class2({
             type: "nonoptional",
-            innerType: oldShape[key]
+            innerType: oldShape[key2]
           });
         }
       }
@@ -3062,13 +3068,13 @@ var $ZodArray = /* @__PURE__ */ $constructor("$ZodArray", (inst, def) => {
     return payload;
   };
 });
-function handlePropertyResult(result, final, key, input, isOptionalIn, isOptionalOut) {
-  const isPresent = key in input;
+function handlePropertyResult(result, final, key2, input, isOptionalIn, isOptionalOut) {
+  const isPresent = key2 in input;
   if (result.issues.length) {
     if (isOptionalIn && isOptionalOut && !isPresent) {
       return;
     }
-    final.issues.push(...prefixIssues(key, result.issues));
+    final.issues.push(...prefixIssues(key2, result.issues));
   }
   if (!isPresent && !isOptionalIn) {
     if (!result.issues.length) {
@@ -3076,17 +3082,17 @@ function handlePropertyResult(result, final, key, input, isOptionalIn, isOptiona
         code: "invalid_type",
         expected: "nonoptional",
         input: void 0,
-        path: [key]
+        path: [key2]
       });
     }
     return;
   }
   if (result.value === void 0) {
     if (isPresent) {
-      final.value[key] = void 0;
+      final.value[key2] = void 0;
     }
   } else {
-    final.value[key] = result.value;
+    final.value[key2] = result.value;
   }
 }
 function normalizeDef(def) {
@@ -3112,20 +3118,20 @@ function handleCatchall(proms, input, payload, ctx, def, inst) {
   const t = _catchall.def.type;
   const isOptionalIn = _catchall.optin === "optional";
   const isOptionalOut = _catchall.optout === "optional";
-  for (const key in input) {
-    if (key === "__proto__")
+  for (const key2 in input) {
+    if (key2 === "__proto__")
       continue;
-    if (keySet.has(key))
+    if (keySet.has(key2))
       continue;
     if (t === "never") {
-      unrecognized.push(key);
+      unrecognized.push(key2);
       continue;
     }
-    const r2 = _catchall.run({ value: input[key], issues: [] }, ctx);
+    const r2 = _catchall.run({ value: input[key2], issues: [] }, ctx);
     if (r2 instanceof Promise) {
-      proms.push(r2.then((r3) => handlePropertyResult(r3, payload, key, input, isOptionalIn, isOptionalOut)));
+      proms.push(r2.then((r3) => handlePropertyResult(r3, payload, key2, input, isOptionalIn, isOptionalOut)));
     } else {
-      handlePropertyResult(r2, payload, key, input, isOptionalIn, isOptionalOut);
+      handlePropertyResult(r2, payload, key2, input, isOptionalIn, isOptionalOut);
     }
   }
   if (unrecognized.length) {
@@ -3161,12 +3167,12 @@ var $ZodObject = /* @__PURE__ */ $constructor("$ZodObject", (inst, def) => {
   defineLazy(inst._zod, "propValues", () => {
     const shape = def.shape;
     const propValues = {};
-    for (const key in shape) {
-      const field = shape[key]._zod;
+    for (const key2 in shape) {
+      const field = shape[key2]._zod;
       if (field.values) {
-        propValues[key] ?? (propValues[key] = /* @__PURE__ */ new Set());
+        propValues[key2] ?? (propValues[key2] = /* @__PURE__ */ new Set());
         for (const v of field.values)
-          propValues[key].add(v);
+          propValues[key2].add(v);
       }
     }
     return propValues;
@@ -3189,15 +3195,15 @@ var $ZodObject = /* @__PURE__ */ $constructor("$ZodObject", (inst, def) => {
     payload.value = {};
     const proms = [];
     const shape = value.shape;
-    for (const key of value.keys) {
-      const el = shape[key];
+    for (const key2 of value.keys) {
+      const el = shape[key2];
       const isOptionalIn = el._zod.optin === "optional";
       const isOptionalOut = el._zod.optout === "optional";
-      const r2 = el._zod.run({ value: input[key], issues: [] }, ctx);
+      const r2 = el._zod.run({ value: input[key2], issues: [] }, ctx);
       if (r2 instanceof Promise) {
-        proms.push(r2.then((r3) => handlePropertyResult(r3, payload, key, input, isOptionalIn, isOptionalOut)));
+        proms.push(r2.then((r3) => handlePropertyResult(r3, payload, key2, input, isOptionalIn, isOptionalOut)));
       } else {
-        handlePropertyResult(r2, payload, key, input, isOptionalIn, isOptionalOut);
+        handlePropertyResult(r2, payload, key2, input, isOptionalIn, isOptionalOut);
       }
     }
     if (!catchall) {
@@ -3213,24 +3219,24 @@ var $ZodObjectJIT = /* @__PURE__ */ $constructor("$ZodObjectJIT", (inst, def) =>
   const generateFastpass = (shape) => {
     const doc = new Doc(["shape", "payload", "ctx"]);
     const normalized = _normalized.value;
-    const parseStr = (key) => {
-      const k = esc(key);
+    const parseStr = (key2) => {
+      const k = esc(key2);
       return `shape[${k}]._zod.run({ value: input[${k}], issues: [] }, ctx)`;
     };
     doc.write(`const input = payload.value;`);
     const ids = /* @__PURE__ */ Object.create(null);
     let counter = 0;
-    for (const key of normalized.keys) {
-      ids[key] = `key_${counter++}`;
+    for (const key2 of normalized.keys) {
+      ids[key2] = `key_${counter++}`;
     }
     doc.write(`const newResult = {};`);
-    for (const key of normalized.keys) {
-      const id = ids[key];
-      const k = esc(key);
-      const schema = shape[key];
+    for (const key2 of normalized.keys) {
+      const id = ids[key2];
+      const k = esc(key2);
+      const schema = shape[key2];
       const isOptionalIn = schema?._zod?.optin === "optional";
       const isOptionalOut = schema?._zod?.optout === "optional";
-      doc.write(`const ${id} = ${parseStr(key)};`);
+      doc.write(`const ${id} = ${parseStr(key2)};`);
       if (isOptionalIn && isOptionalOut) {
         doc.write(`
         if (${id}.issues.length) {
@@ -3542,17 +3548,17 @@ function mergeValues(a, b) {
   }
   if (isPlainObject(a) && isPlainObject(b)) {
     const bKeys = Object.keys(b);
-    const sharedKeys = Object.keys(a).filter((key) => bKeys.indexOf(key) !== -1);
+    const sharedKeys = Object.keys(a).filter((key2) => bKeys.indexOf(key2) !== -1);
     const newObj = { ...a, ...b };
-    for (const key of sharedKeys) {
-      const sharedValue = mergeValues(a[key], b[key]);
+    for (const key2 of sharedKeys) {
+      const sharedValue = mergeValues(a[key2], b[key2]);
       if (!sharedValue.valid) {
         return {
           valid: false,
-          mergeErrorPath: [key, ...sharedValue.mergeErrorPath]
+          mergeErrorPath: [key2, ...sharedValue.mergeErrorPath]
         };
       }
-      newObj[key] = sharedValue.data;
+      newObj[key2] = sharedValue.data;
     }
     return { valid: true, data: newObj };
   }
@@ -3687,9 +3693,9 @@ var $ZodTuple = /* @__PURE__ */ $constructor("$ZodTuple", (inst, def) => {
     return handleTupleResults(itemResults, payload, items, input, optoutStart);
   };
 });
-function getTupleOptStart(items, key) {
+function getTupleOptStart(items, key2) {
   for (let i = items.length - 1; i >= 0; i--) {
-    if (items[i]._zod[key] !== "optional")
+    if (items[i]._zod[key2] !== "optional")
       return i + 1;
   }
   return 0;
@@ -3740,10 +3746,10 @@ var $ZodRecord = /* @__PURE__ */ $constructor("$ZodRecord", (inst, def) => {
     if (values) {
       payload.value = {};
       const recordKeys = /* @__PURE__ */ new Set();
-      for (const key of values) {
-        if (typeof key === "string" || typeof key === "number" || typeof key === "symbol") {
-          recordKeys.add(typeof key === "number" ? key.toString() : key);
-          const keyResult = def.keyType._zod.run({ value: key, issues: [] }, ctx);
+      for (const key2 of values) {
+        if (typeof key2 === "string" || typeof key2 === "number" || typeof key2 === "symbol") {
+          recordKeys.add(typeof key2 === "number" ? key2.toString() : key2);
+          const keyResult = def.keyType._zod.run({ value: key2, issues: [] }, ctx);
           if (keyResult instanceof Promise) {
             throw new Error("Async schemas not supported in object keys currently");
           }
@@ -3752,34 +3758,34 @@ var $ZodRecord = /* @__PURE__ */ $constructor("$ZodRecord", (inst, def) => {
               code: "invalid_key",
               origin: "record",
               issues: keyResult.issues.map((iss) => finalizeIssue(iss, ctx, config())),
-              input: key,
-              path: [key],
+              input: key2,
+              path: [key2],
               inst
             });
             continue;
           }
           const outKey = keyResult.value;
-          const result = def.valueType._zod.run({ value: input[key], issues: [] }, ctx);
+          const result = def.valueType._zod.run({ value: input[key2], issues: [] }, ctx);
           if (result instanceof Promise) {
             proms.push(result.then((result2) => {
               if (result2.issues.length) {
-                payload.issues.push(...prefixIssues(key, result2.issues));
+                payload.issues.push(...prefixIssues(key2, result2.issues));
               }
               payload.value[outKey] = result2.value;
             }));
           } else {
             if (result.issues.length) {
-              payload.issues.push(...prefixIssues(key, result.issues));
+              payload.issues.push(...prefixIssues(key2, result.issues));
             }
             payload.value[outKey] = result.value;
           }
         }
       }
       let unrecognized;
-      for (const key in input) {
-        if (!recordKeys.has(key)) {
+      for (const key2 in input) {
+        if (!recordKeys.has(key2)) {
           unrecognized = unrecognized ?? [];
-          unrecognized.push(key);
+          unrecognized.push(key2);
         }
       }
       if (unrecognized && unrecognized.length > 0) {
@@ -3792,18 +3798,18 @@ var $ZodRecord = /* @__PURE__ */ $constructor("$ZodRecord", (inst, def) => {
       }
     } else {
       payload.value = {};
-      for (const key of Reflect.ownKeys(input)) {
-        if (key === "__proto__")
+      for (const key2 of Reflect.ownKeys(input)) {
+        if (key2 === "__proto__")
           continue;
-        if (!Object.prototype.propertyIsEnumerable.call(input, key))
+        if (!Object.prototype.propertyIsEnumerable.call(input, key2))
           continue;
-        let keyResult = def.keyType._zod.run({ value: key, issues: [] }, ctx);
+        let keyResult = def.keyType._zod.run({ value: key2, issues: [] }, ctx);
         if (keyResult instanceof Promise) {
           throw new Error("Async schemas not supported in object keys currently");
         }
-        const checkNumericKey = typeof key === "string" && number.test(key) && keyResult.issues.length;
+        const checkNumericKey = typeof key2 === "string" && number.test(key2) && keyResult.issues.length;
         if (checkNumericKey) {
-          const retryResult = def.keyType._zod.run({ value: Number(key), issues: [] }, ctx);
+          const retryResult = def.keyType._zod.run({ value: Number(key2), issues: [] }, ctx);
           if (retryResult instanceof Promise) {
             throw new Error("Async schemas not supported in object keys currently");
           }
@@ -3813,30 +3819,30 @@ var $ZodRecord = /* @__PURE__ */ $constructor("$ZodRecord", (inst, def) => {
         }
         if (keyResult.issues.length) {
           if (def.mode === "loose") {
-            payload.value[key] = input[key];
+            payload.value[key2] = input[key2];
           } else {
             payload.issues.push({
               code: "invalid_key",
               origin: "record",
               issues: keyResult.issues.map((iss) => finalizeIssue(iss, ctx, config())),
-              input: key,
-              path: [key],
+              input: key2,
+              path: [key2],
               inst
             });
           }
           continue;
         }
-        const result = def.valueType._zod.run({ value: input[key], issues: [] }, ctx);
+        const result = def.valueType._zod.run({ value: input[key2], issues: [] }, ctx);
         if (result instanceof Promise) {
           proms.push(result.then((result2) => {
             if (result2.issues.length) {
-              payload.issues.push(...prefixIssues(key, result2.issues));
+              payload.issues.push(...prefixIssues(key2, result2.issues));
             }
             payload.value[keyResult.value] = result2.value;
           }));
         } else {
           if (result.issues.length) {
-            payload.issues.push(...prefixIssues(key, result.issues));
+            payload.issues.push(...prefixIssues(key2, result.issues));
           }
           payload.value[keyResult.value] = result.value;
         }
@@ -3863,15 +3869,15 @@ var $ZodMap = /* @__PURE__ */ $constructor("$ZodMap", (inst, def) => {
     }
     const proms = [];
     payload.value = /* @__PURE__ */ new Map();
-    for (const [key, value] of input) {
-      const keyResult = def.keyType._zod.run({ value: key, issues: [] }, ctx);
+    for (const [key2, value] of input) {
+      const keyResult = def.keyType._zod.run({ value: key2, issues: [] }, ctx);
       const valueResult = def.valueType._zod.run({ value, issues: [] }, ctx);
       if (keyResult instanceof Promise || valueResult instanceof Promise) {
         proms.push(Promise.all([keyResult, valueResult]).then(([keyResult2, valueResult2]) => {
-          handleMapResult(keyResult2, valueResult2, payload, key, input, inst, ctx);
+          handleMapResult(keyResult2, valueResult2, payload, key2, input, inst, ctx);
         }));
       } else {
-        handleMapResult(keyResult, valueResult, payload, key, input, inst, ctx);
+        handleMapResult(keyResult, valueResult, payload, key2, input, inst, ctx);
       }
     }
     if (proms.length)
@@ -3879,10 +3885,10 @@ var $ZodMap = /* @__PURE__ */ $constructor("$ZodMap", (inst, def) => {
     return payload;
   };
 });
-function handleMapResult(keyResult, valueResult, final, key, input, inst, ctx) {
+function handleMapResult(keyResult, valueResult, final, key2, input, inst, ctx) {
   if (keyResult.issues.length) {
-    if (propertyKeyTypes.has(typeof key)) {
-      final.issues.push(...prefixIssues(key, keyResult.issues));
+    if (propertyKeyTypes.has(typeof key2)) {
+      final.issues.push(...prefixIssues(key2, keyResult.issues));
     } else {
       final.issues.push({
         code: "invalid_key",
@@ -3894,15 +3900,15 @@ function handleMapResult(keyResult, valueResult, final, key, input, inst, ctx) {
     }
   }
   if (valueResult.issues.length) {
-    if (propertyKeyTypes.has(typeof key)) {
-      final.issues.push(...prefixIssues(key, valueResult.issues));
+    if (propertyKeyTypes.has(typeof key2)) {
+      final.issues.push(...prefixIssues(key2, valueResult.issues));
     } else {
       final.issues.push({
         origin: "map",
         code: "invalid_element",
         input,
         inst,
-        key,
+        key: key2,
         issues: valueResult.issues.map((iss) => finalizeIssue(iss, ctx, config()))
       });
     }
@@ -11663,8 +11669,8 @@ function extractDefs(ctx, schema) {
     if (defId)
       seen.defId = defId;
     const schema2 = seen.schema;
-    for (const key in schema2) {
-      delete schema2[key];
+    for (const key2 in schema2) {
+      delete schema2[key2];
     }
     schema2.$ref = ref;
   };
@@ -11733,20 +11739,20 @@ function finalize(ctx, schema) {
       Object.assign(schema2, _cached);
       const isParentRef = zodSchema._zod.parent === ref;
       if (isParentRef) {
-        for (const key in schema2) {
-          if (key === "$ref" || key === "allOf")
+        for (const key2 in schema2) {
+          if (key2 === "$ref" || key2 === "allOf")
             continue;
-          if (!(key in _cached)) {
-            delete schema2[key];
+          if (!(key2 in _cached)) {
+            delete schema2[key2];
           }
         }
       }
       if (refSchema.$ref && refSeen.def) {
-        for (const key in schema2) {
-          if (key === "$ref" || key === "allOf")
+        for (const key2 in schema2) {
+          if (key2 === "$ref" || key2 === "allOf")
             continue;
-          if (key in refSeen.def && JSON.stringify(schema2[key]) === JSON.stringify(refSeen.def[key])) {
-            delete schema2[key];
+          if (key2 in refSeen.def && JSON.stringify(schema2[key2]) === JSON.stringify(refSeen.def[key2])) {
+            delete schema2[key2];
           }
         }
       }
@@ -11758,11 +11764,11 @@ function finalize(ctx, schema) {
       if (parentSeen?.schema.$ref) {
         schema2.$ref = parentSeen.schema.$ref;
         if (parentSeen.def) {
-          for (const key in schema2) {
-            if (key === "$ref" || key === "allOf")
+          for (const key2 in schema2) {
+            if (key2 === "$ref" || key2 === "allOf")
               continue;
-            if (key in parentSeen.def && JSON.stringify(schema2[key]) === JSON.stringify(parentSeen.def[key])) {
-              delete schema2[key];
+            if (key2 in parentSeen.def && JSON.stringify(schema2[key2]) === JSON.stringify(parentSeen.def[key2])) {
+              delete schema2[key2];
             }
           }
         }
@@ -11863,8 +11869,8 @@ function isTransforming(_schema, _ctx) {
     return isTransforming(def.in, ctx) || isTransforming(def.out, ctx);
   }
   if (def.type === "object") {
-    for (const key in def.shape) {
-      if (isTransforming(def.shape[key], ctx))
+    for (const key2 in def.shape) {
+      if (isTransforming(def.shape[key2], ctx))
         return true;
     }
     return false;
@@ -12153,15 +12159,15 @@ var objectProcessor = (schema, ctx, _json, params) => {
   json2.type = "object";
   json2.properties = {};
   const shape = def.shape;
-  for (const key in shape) {
-    json2.properties[key] = process(shape[key], ctx, {
+  for (const key2 in shape) {
+    json2.properties[key2] = process(shape[key2], ctx, {
       ...params,
-      path: [...params.path, "properties", key]
+      path: [...params.path, "properties", key2]
     });
   }
   const allKeys = new Set(Object.keys(shape));
-  const requiredKeys = new Set([...allKeys].filter((key) => {
-    const v = def.shape[key]._zod;
+  const requiredKeys = new Set([...allKeys].filter((key2) => {
+    const v = def.shape[key2]._zod;
     if (ctx.io === "input") {
       return v.optin === void 0;
     } else {
@@ -12427,9 +12433,9 @@ function toJSONSchema(input, params) {
     };
     ctx2.external = external;
     for (const entry of registry2._idmap.entries()) {
-      const [key, schema] = entry;
+      const [key2, schema] = entry;
       extractDefs(ctx2, schema);
-      schemas[key] = finalize(ctx2, schema);
+      schemas[key2] = finalize(ctx2, schema);
     }
     if (Object.keys(defs).length > 0) {
       const defsSegment = ctx2.target === "draft-2020-12" ? "$defs" : "definitions";
@@ -12835,14 +12841,14 @@ function _installLazyMethods(inst, group, methods) {
   if (installed.has(group))
     return;
   installed.add(group);
-  for (const key in methods) {
-    const fn = methods[key];
-    Object.defineProperty(proto, key, {
+  for (const key2 in methods) {
+    const fn = methods[key2];
+    Object.defineProperty(proto, key2, {
       configurable: true,
       enumerable: false,
       get() {
         const bound = fn.bind(this);
-        Object.defineProperty(this, key, {
+        Object.defineProperty(this, key2, {
           configurable: true,
           writable: true,
           enumerable: true,
@@ -12851,7 +12857,7 @@ function _installLazyMethods(inst, group, methods) {
         return bound;
       },
       set(v) {
-        Object.defineProperty(this, key, {
+        Object.defineProperty(this, key2, {
           configurable: true,
           writable: true,
           enumerable: true,
@@ -14239,11 +14245,11 @@ function resolveRef(ref, ctx) {
   }
   const defsKey = ctx.version === "draft-2020-12" ? "$defs" : "definitions";
   if (path[0] === defsKey) {
-    const key = path[1];
-    if (!key || !ctx.defs[key]) {
+    const key2 = path[1];
+    if (!key2 || !ctx.defs[key2]) {
       throw new Error(`Reference not found: ${ref}`);
     }
-    return ctx.defs[key];
+    return ctx.defs[key2];
   }
   throw new Error(`Reference not found: ${ref}`);
 }
@@ -14429,9 +14435,9 @@ function convertBaseSchema(schema, ctx) {
       const shape = {};
       const properties = schema.properties || {};
       const requiredSet = new Set(schema.required || []);
-      for (const [key, propSchema] of Object.entries(properties)) {
+      for (const [key2, propSchema] of Object.entries(properties)) {
         const propZodSchema = convertSchema(propSchema, ctx);
-        shape[key] = requiredSet.has(key) ? propZodSchema : propZodSchema.optional();
+        shape[key2] = requiredSet.has(key2) ? propZodSchema : propZodSchema.optional();
       }
       if (schema.propertyNames) {
         const keySchema = convertSchema(schema.propertyNames, ctx);
@@ -14572,20 +14578,20 @@ function convertSchema(schema, ctx) {
   }
   const extraMeta = {};
   const coreMetadataKeys = ["$id", "id", "$comment", "$anchor", "$vocabulary", "$dynamicRef", "$dynamicAnchor"];
-  for (const key of coreMetadataKeys) {
-    if (key in schema) {
-      extraMeta[key] = schema[key];
+  for (const key2 of coreMetadataKeys) {
+    if (key2 in schema) {
+      extraMeta[key2] = schema[key2];
     }
   }
   const contentMetadataKeys = ["contentEncoding", "contentMediaType", "contentSchema"];
-  for (const key of contentMetadataKeys) {
-    if (key in schema) {
-      extraMeta[key] = schema[key];
+  for (const key2 of contentMetadataKeys) {
+    if (key2 in schema) {
+      extraMeta[key2] = schema[key2];
     }
   }
-  for (const key of Object.keys(schema)) {
-    if (!RECOGNIZED_KEYS.has(key)) {
-      extraMeta[key] = schema[key];
+  for (const key2 of Object.keys(schema)) {
+    if (!RECOGNIZED_KEYS.has(key2)) {
+      extraMeta[key2] = schema[key2];
     }
   }
   if (Object.keys(extraMeta).length > 0) {
@@ -15699,24 +15705,24 @@ var cva = (base, config2) => (props) => {
     return variants[variant][variantKey];
   });
   const propsWithoutUndefined = props && Object.entries(props).reduce((acc, param) => {
-    let [key, value] = param;
+    let [key2, value] = param;
     if (value === void 0) {
       return acc;
     }
-    acc[key] = value;
+    acc[key2] = value;
     return acc;
   }, {});
   const getCompoundVariantClassNames = config2 === null || config2 === void 0 ? void 0 : (_config_compoundVariants = config2.compoundVariants) === null || _config_compoundVariants === void 0 ? void 0 : _config_compoundVariants.reduce((acc, param) => {
     let { class: cvClass, className: cvClassName, ...compoundVariantOptions } = param;
     return Object.entries(compoundVariantOptions).every((param2) => {
-      let [key, value] = param2;
+      let [key2, value] = param2;
       return Array.isArray(value) ? value.includes({
         ...defaultVariants,
         ...propsWithoutUndefined
-      }[key]) : {
+      }[key2]) : {
         ...defaultVariants,
         ...propsWithoutUndefined
-      }[key] === value;
+      }[key2] === value;
     }) ? [
       ...acc,
       cvClass,
@@ -20560,11 +20566,11 @@ function deepEqual(a, b) {
       }
     }
     for (i = length; i-- !== 0; ) {
-      const key = keys[i];
-      if (key === "_owner" && a.$$typeof) {
+      const key2 = keys[i];
+      if (key2 === "_owner" && a.$$typeof) {
         continue;
       }
-      if (!deepEqual(a[key], b[key])) {
+      if (!deepEqual(a[key2], b[key2])) {
         return false;
       }
     }
@@ -21856,34 +21862,34 @@ function projectBase(content) {
   if (malformed || !sawViews || views.length === 0) return unsupported("Base document has unsupported or missing views syntax.");
   return { status: "ready", views, warnings };
 }
-function assignField(view, key, rawValue) {
-  if (Object.keys(view.fields).length >= MAX_BASE_FIELDS && view.fields[key] === void 0) {
+function assignField(view, key2, rawValue) {
+  if (Object.keys(view.fields).length >= MAX_BASE_FIELDS && view.fields[key2] === void 0) {
     view.status = "unsupported";
     view.warnings.push("View field limit exceeded.");
     return;
   }
   const value = scalar(rawValue);
-  if (key === "type") {
+  if (key2 === "type") {
     view.type = value;
     if (!["table", "list", "cards", "map"].includes(value)) {
       view.status = "unsupported";
       view.warnings.push(`Unsupported view type ${JSON.stringify(value)} is inert.`);
     }
-  } else if (key === "name") {
+  } else if (key2 === "name") {
     if (value.length === 0 || value.length > MAX_BASE_LINE_LENGTH) {
       view.status = "unsupported";
       view.warnings.push("View name is invalid.");
     } else {
       view.name = value;
     }
-  } else if (key === "order") {
+  } else if (key2 === "order") {
     const inline3 = splitInlineList(rawValue);
     view.order.push(...inline3);
   }
-  view.fields[key] = value;
-  if (key === "formula" || key === "filter" || key === "where" || /\b(?:eval|Function|import)\s*[(]/u.test(value)) {
+  view.fields[key2] = value;
+  if (key2 === "formula" || key2 === "filter" || key2 === "where" || /\b(?:eval|Function|import)\s*[(]/u.test(value)) {
     view.status = "unsupported";
-    view.warnings.push(`Base ${key} is inert and is not evaluated.`);
+    view.warnings.push(`Base ${key2} is inert and is not evaluated.`);
   }
 }
 
@@ -22975,10 +22981,10 @@ function collectFootnotes(lines) {
   for (let index2 = 0; index2 < lines.length && definitions.length < MAX_RICH_MARKDOWN_FOOTNOTES; index2 += 1) {
     const match = lines[index2]?.match(/^\[\^([^\]]{1,200})\]:\s*(.*)$/u);
     if (match === void 0 || match === null) continue;
-    const key = match[1].toLocaleLowerCase();
-    if (numbers.has(key)) continue;
+    const key2 = match[1].toLocaleLowerCase();
+    if (numbers.has(key2)) continue;
     const number4 = definitions.length + 1;
-    numbers.set(key, number4);
+    numbers.set(key2, number4);
     definitions.push({ label: match[1], number: number4, text: match[2] });
     hidden.add(index2);
   }
@@ -23196,7 +23202,7 @@ function ranges(source) {
       offset4 += line.length;
       continue;
     }
-    const key = match[1];
+    const key2 = match[1];
     let end = offset4 + line.length;
     const items = [];
     let next = index2 + 1;
@@ -23206,29 +23212,29 @@ function ranges(source) {
       next += 1;
     }
     const value = items.length > 0 ? items : scalar2(match[2] ?? "");
-    properties.push({ end, key, start: offset4, type: inferPropertyType(value), value });
+    properties.push({ end, key: key2, start: offset4, type: inferPropertyType(value), value });
     index2 = next - 1;
     offset4 = end;
   }
   return properties;
 }
 function parseFrontmatterProperties(source) {
-  return ranges(source).map(({ key, type, value }) => ({ key, type, value }));
+  return ranges(source).map(({ key: key2, type, value }) => ({ key: key2, type, value }));
 }
 function quoteText(value) {
   if (value === "" || /^(?:true|false|null|~|-?(?:0|[1-9]\d*)(?:\.\d+)?|\d{4}-\d{2}-\d{2}(?:T.*)?)$/iu.test(value) || /[:#\[\]{},&*!|>'"%@`]/u.test(value) || /^\s|\s$/u.test(value)) return JSON.stringify(value);
   return value;
 }
-function serializedProperty(key, value, eol) {
-  if (Array.isArray(value)) return `${key}:${eol}${value.map((item) => `  - ${quoteText(item)}`).join(eol)}${eol}`;
+function serializedProperty(key2, value, eol) {
+  if (Array.isArray(value)) return `${key2}:${eol}${value.map((item) => `  - ${quoteText(item)}`).join(eol)}${eol}`;
   const encoded = value === null ? "null" : typeof value === "string" ? quoteText(value) : String(value);
-  return `${key}: ${encoded}${eol}`;
+  return `${key2}: ${encoded}${eol}`;
 }
-function setFrontmatterProperty(source, key, value) {
-  if (!KEY.test(key)) throw new Error("The property name is invalid.");
+function setFrontmatterProperty(source, key2, value) {
+  if (!KEY.test(key2)) throw new Error("The property name is invalid.");
   const eol = source.includes("\r\n") ? "\r\n" : "\n";
-  const existing = ranges(source).find((property) => property.key.toLocaleLowerCase() === key.toLocaleLowerCase());
-  const serialized = serializedProperty(key, value, eol);
+  const existing = ranges(source).find((property) => property.key.toLocaleLowerCase() === key2.toLocaleLowerCase());
+  const serialized = serializedProperty(key2, value, eol);
   if (existing !== void 0) return `${source.slice(0, existing.start)}${serialized}${source.slice(existing.end)}`;
   const block = frontmatter(source);
   if (block === null) return `---${eol}${serialized}---${eol}${source}`;
@@ -23526,6 +23532,117 @@ function closeNoteTab(source, groupId, path) {
   };
 }
 
+// src/bookmarks.ts
+var MAX_BOOKMARK_ITEMS = 1e3;
+var MAX_BOOKMARK_BYTES = 1048576;
+function key(vaultId) {
+  return `tocktutor.bookmarks.v1.${vaultId}`;
+}
+function validBase(value) {
+  if (typeof value.id !== "string" || !/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/u.test(value.id)) return null;
+  if (typeof value.title !== "string" || value.title.trim().length === 0 || value.title.length > 200) return null;
+  return { id: value.id, ...value.missing === true ? { missing: true } : {}, title: value.title.trim() };
+}
+function normalizedLink(value) {
+  if (typeof value !== "string" || value.length > 4096) return null;
+  try {
+    const url2 = new URL(/^https?:\/\//iu.test(value) ? value : `https://${value}`);
+    if (url2.protocol !== "http:" && url2.protocol !== "https:" || url2.username !== "" || url2.password !== "") return null;
+    return url2.toString();
+  } catch {
+    return null;
+  }
+}
+function parseBookmark(value, allowGroup) {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return null;
+  const record2 = value;
+  const base = validBase(record2);
+  if (base === null || typeof record2.kind !== "string") return null;
+  if (record2.kind === "note" || record2.kind === "folder") {
+    return typeof record2.path === "string" && isSafeVaultRelativePath(record2.path) ? { ...base, kind: record2.kind, path: record2.path } : null;
+  }
+  if (record2.kind === "search") {
+    return typeof record2.query === "string" && record2.query.length > 0 && record2.query.length <= 1e3 ? { ...base, kind: "search", query: record2.query } : null;
+  }
+  if (record2.kind === "graph") return { ...base, kind: "graph" };
+  if (record2.kind === "heading") {
+    return typeof record2.path === "string" && isSafeVaultRelativePath(record2.path) && Number.isSafeInteger(record2.line) && record2.line > 0 ? { ...base, kind: "heading", line: record2.line, path: record2.path } : null;
+  }
+  if (record2.kind === "block") {
+    return typeof record2.path === "string" && isSafeVaultRelativePath(record2.path) && typeof record2.blockId === "string" && /^[A-Za-z0-9-]{1,200}$/u.test(record2.blockId) ? { ...base, blockId: record2.blockId, kind: "block", path: record2.path } : null;
+  }
+  if (record2.kind === "link") {
+    const url2 = normalizedLink(record2.url);
+    return url2 === null ? null : { ...base, kind: "link", url: url2 };
+  }
+  if (record2.kind === "group" && allowGroup && Array.isArray(record2.children) && record2.children.length <= MAX_BOOKMARK_ITEMS) {
+    const children = [];
+    for (const child of record2.children) {
+      const parsed = parseBookmark(child, false);
+      if (parsed === null || parsed.kind === "group") return null;
+      children.push(parsed);
+    }
+    return { ...base, children, kind: "group" };
+  }
+  return null;
+}
+function flattenCount(bookmarks) {
+  return bookmarks.reduce((count3, bookmark) => count3 + 1 + (bookmark.kind === "group" ? bookmark.children.length : 0), 0);
+}
+function loadBookmarks(storage, vaultId) {
+  if (!/^vault:[0-9a-f]{64}$/u.test(vaultId)) return [];
+  try {
+    const raw = storage.getItem(key(vaultId));
+    if (raw === null || new TextEncoder().encode(raw).byteLength > MAX_BOOKMARK_BYTES) return [];
+    const value = JSON.parse(raw);
+    if (!Array.isArray(value)) return [];
+    const bookmarks = [];
+    const ids = /* @__PURE__ */ new Set();
+    for (const candidate of value) {
+      const bookmark = parseBookmark(candidate, true);
+      if (bookmark === null || ids.has(bookmark.id)) continue;
+      if (flattenCount([...bookmarks, bookmark]) > MAX_BOOKMARK_ITEMS) break;
+      ids.add(bookmark.id);
+      bookmarks.push(bookmark);
+    }
+    return bookmarks;
+  } catch {
+    return [];
+  }
+}
+function saveBookmarks(storage, vaultId, bookmarks) {
+  if (!/^vault:[0-9a-f]{64}$/u.test(vaultId) || flattenCount(bookmarks) > MAX_BOOKMARK_ITEMS) return false;
+  const parsed = bookmarks.map((bookmark) => parseBookmark(bookmark, true));
+  if (parsed.some((bookmark) => bookmark === null)) return false;
+  try {
+    const raw = JSON.stringify(parsed);
+    if (new TextEncoder().encode(raw).byteLength > MAX_BOOKMARK_BYTES) return false;
+    storage.setItem(key(vaultId), raw);
+    return true;
+  } catch {
+    return false;
+  }
+}
+function addBookmark(bookmarks, bookmark) {
+  const parsed = parseBookmark(bookmark, true);
+  if (parsed === null) throw new Error(bookmark.kind === "link" ? "Bookmark URL is invalid." : "Bookmark is invalid.");
+  const next = [...bookmarks.filter((candidate) => candidate.id !== parsed.id), parsed];
+  if (flattenCount(next) > MAX_BOOKMARK_ITEMS) throw new Error("Bookmark capacity is full.");
+  return next;
+}
+function remap(path, fromPath, toPath) {
+  return path === fromPath ? toPath : path.startsWith(`${fromPath}/`) ? `${toPath}${path.slice(fromPath.length)}` : path;
+}
+function remapBookmarks(bookmarks, fromPath, toPath) {
+  if (!isSafeVaultRelativePath(fromPath) || !isSafeVaultRelativePath(toPath)) return [...bookmarks];
+  const one = (bookmark) => {
+    if (bookmark.kind === "group") return { ...bookmark, children: bookmark.children.map((child) => one(child)) };
+    if ("path" in bookmark) return { ...bookmark, path: remap(bookmark.path, fromPath, toPath) };
+    return { ...bookmark };
+  };
+  return bookmarks.map(one);
+}
+
 // src/settings.ts
 var MAX_TOCKTUTOR_SETTINGS_BYTES = 1048576;
 var MAX_TOCKTUTOR_WORKSPACES = 32;
@@ -23561,20 +23678,20 @@ function normalizeSettings(value) {
     templateFolder: safeFolder(record2.templateFolder, DEFAULT_SETTINGS.templateFolder)
   };
 }
-function readJson(storage, key) {
+function readJson(storage, key2) {
   try {
-    const raw = storage.getItem(key);
+    const raw = storage.getItem(key2);
     if (raw === null || new TextEncoder().encode(raw).byteLength > MAX_TOCKTUTOR_SETTINGS_BYTES) return null;
     return JSON.parse(raw);
   } catch {
     return null;
   }
 }
-function writeJson(storage, key, value) {
+function writeJson(storage, key2, value) {
   try {
     const raw = JSON.stringify(value);
     if (new TextEncoder().encode(raw).byteLength > MAX_TOCKTUTOR_SETTINGS_BYTES) return false;
-    storage.setItem(key, raw);
+    storage.setItem(key2, raw);
     return true;
   } catch {
     return false;
@@ -23808,12 +23925,12 @@ function resolveSlashCommand(value) {
 function resolvePlatformEditorCommand(event, isMac) {
   const primary = isMac ? event.metaKey : event.ctrlKey;
   if (!primary || event.altKey) return null;
-  const key = event.key.toLocaleLowerCase();
-  if (!event.shiftKey && key === "b") return "bold";
-  if (!event.shiftKey && key === "i") return "italic";
-  if (event.shiftKey && key === "x") return "strikethrough";
-  if (event.shiftKey && key === "h") return "highlight";
-  if (event.shiftKey && key === "k") return "delete-line";
+  const key2 = event.key.toLocaleLowerCase();
+  if (!event.shiftKey && key2 === "b") return "bold";
+  if (!event.shiftKey && key2 === "i") return "italic";
+  if (event.shiftKey && key2 === "x") return "strikethrough";
+  if (event.shiftKey && key2 === "h") return "highlight";
+  if (event.shiftKey && key2 === "k") return "delete-line";
   return null;
 }
 function internalLinkDropMarkdown(path, label) {
@@ -23940,7 +24057,7 @@ function isRecord4(value) {
 function hasExactKeys(value, keys) {
   const actual = Object.keys(value).toSorted();
   const expected = keys.toSorted();
-  return actual.length === expected.length && actual.every((key, index2) => key === expected[index2]);
+  return actual.length === expected.length && actual.every((key2, index2) => key2 === expected[index2]);
 }
 function isVaultReference(value) {
   return isRecord4(value) && hasExactKeys(value, ["generation", "id"]) && Number.isSafeInteger(value.generation) && value.generation >= 0 && typeof value.id === "string" && /^vault:[0-9a-f]{64}$/u.test(value.id);
@@ -24051,6 +24168,7 @@ function minuteStamp(value) {
 }
 function initialSnapshot() {
   return Object.freeze({
+    bookmarks: Object.freeze([]),
     canGoBack: false,
     canGoForward: false,
     commandPaletteOpen: false,
@@ -24107,6 +24225,7 @@ var WorkbenchRouteController = class {
   recentlyClosed = [];
   historyBack = [];
   historyForward = [];
+  bookmarks = [];
   workspaces = [];
   operation = 0;
   dispatchRevision = 0;
@@ -24528,6 +24647,7 @@ ${text}`;
     this.invalidateDispatch();
     const operation = this.nextOperation();
     this.shellSession = createWorkbenchSession(ROUTE_PREFIX, null, "pane-1");
+    this.bookmarks = [];
     this.vaultGeneration = 0;
     this.recentlyClosed.length = 0;
     this.historyBack.length = 0;
@@ -24535,6 +24655,7 @@ ${text}`;
     this.eventDispose?.();
     this.eventDispose = null;
     this.update({
+      bookmarks: Object.freeze([]),
       canGoBack: false,
       canGoForward: false,
       dispatchDialog: null,
@@ -24586,6 +24707,7 @@ ${text}`;
       let restoredFocusMode = false;
       if (this.storage === null) {
         this.shellSession = createWorkbenchSession(ROUTE_PREFIX, vault, "pane-1");
+        this.bookmarks = [];
         this.workspaces = [];
       } else {
         const restored = loadWorkbenchState(this.storage, vault.id);
@@ -24597,11 +24719,13 @@ ${text}`;
             tabs: group.tabs.filter((tab) => openable.has(tab.path))
           }))
         });
+        this.bookmarks = loadBookmarks(this.storage, vault.id);
         this.workspaces = restored.workspaces;
         restoredFocusMode = restored.focusMode;
         settings = loadTockTutorSettings(this.storage, vault.id);
       }
       this.update({
+        bookmarks: Object.freeze(this.bookmarks.map((bookmark) => Object.freeze({ ...bookmark }))),
         entries: Object.freeze(page.entries.toSorted((left, right) => left.path.localeCompare(right.path))),
         focusedPaneId: this.shellSession.focusedGroupId,
         focusMode: restoredFocusMode,
@@ -24959,6 +25083,53 @@ ${text}`;
     this.syncShell();
     return true;
   }
+  addActiveBookmark() {
+    const vault = this.snapshot.vault;
+    const path = this.snapshot.path;
+    if (vault === null || path === null || this.storage === null) return false;
+    try {
+      this.bookmarks = addBookmark(this.bookmarks, {
+        id: `note-${this.now().getTime().toString(36)}`,
+        kind: "note",
+        path,
+        title: noteTitle(path)
+      });
+      if (!saveBookmarks(this.storage, vault.id, this.bookmarks)) return false;
+      this.update({ bookmarks: Object.freeze(this.bookmarks.map((bookmark) => Object.freeze({ ...bookmark }))) });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  removeBookmark(id) {
+    const vault = this.snapshot.vault;
+    if (vault === null || this.storage === null) return false;
+    const next = this.bookmarks.filter((bookmark) => bookmark.id !== id);
+    if (next.length === this.bookmarks.length || !saveBookmarks(this.storage, vault.id, next)) return false;
+    this.bookmarks = next;
+    this.update({ bookmarks: Object.freeze(next.map((bookmark) => Object.freeze({ ...bookmark }))) });
+    return true;
+  }
+  async openBookmark(id) {
+    const bookmark = this.bookmarks.find((candidate) => candidate.id === id);
+    if (bookmark === void 0) return false;
+    if (bookmark.kind === "note" || bookmark.kind === "heading" || bookmark.kind === "block") {
+      if (!await this.select(bookmark.path)) return false;
+      if (bookmark.kind === "heading") this.jumpToLine(bookmark.line);
+      return true;
+    }
+    if (bookmark.kind === "folder") {
+      this.openSearch(`path:${bookmark.path}`);
+      return await this.runSearch();
+    }
+    if (bookmark.kind === "search") {
+      this.openSearch(bookmark.query);
+      return await this.runSearch();
+    }
+    if (bookmark.kind === "graph") return false;
+    if (bookmark.kind === "link") return false;
+    return false;
+  }
   async loadWorkspace(id) {
     const workspace = this.workspaces.find((candidate) => candidate.id === id);
     const vault = this.snapshot.vault;
@@ -25066,10 +25237,10 @@ ${text}`;
     const selectionEnd = Number.isSafeInteger(end) ? Math.max(selectionStart, Math.min(end, this.snapshot.source.length)) : selectionStart;
     this.update({ selectionEnd, selectionStart });
   }
-  setProperty(key, value) {
+  setProperty(key2, value) {
     if (this.snapshot.documentKind !== "markdown" || this.snapshot.path === null || this.snapshot.mode === "reading") return false;
     try {
-      const source = setFrontmatterProperty(this.snapshot.source, key, value);
+      const source = setFrontmatterProperty(this.snapshot.source, key2, value);
       if (source === this.snapshot.source) return false;
       this.edit(source);
       return true;
@@ -25607,7 +25778,7 @@ function TockTutorRouteView(props) {
               /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(TooltipTrigger3, { asChild: true, children: /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("span", { className: "inline-flex", children: /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(Button, { unstyled: true, "aria-label": "Search Notes", className: "border-0 bg-transparent p-0", disabled: props.onOpenSearch === void 0, onClick: props.onOpenSearch, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(WorkbenchGlyph, { kind: "search" }) }) }) }),
               /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(TooltipContent3, { children: "Search Notes" })
             ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("span", { children: /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(WorkbenchGlyph, { kind: "bookmark" }) })
+            /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(Button, { unstyled: true, "aria-label": "Bookmark Active Note", className: "border-0 bg-transparent p-0", disabled: snapshot.path === null || props.onAddBookmark === void 0, onClick: props.onAddBookmark, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(WorkbenchGlyph, { kind: "bookmark" }) })
           ] }),
           /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)(Tooltip2, { children: [
             /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(TooltipTrigger3, { asChild: true, children: /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(
@@ -26088,6 +26259,25 @@ function TockTutorRouteView(props) {
                         (snapshot.trash?.length ?? 0) === 0 && /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("span", { className: "text-xs text-[var(--tt-muted)]", children: "Trash is empty." })
                       ] })
                     ] }),
+                    /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("section", { "aria-label": "Bookmarks", className: "border-t border-[var(--tt-border)] p-3", children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("h2", { className: "m-0 text-sm", children: "Bookmarks" }),
+                      /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("div", { className: "mt-2 grid gap-1", children: [
+                        (snapshot.bookmarks ?? []).map((bookmark) => /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("div", { className: "grid grid-cols-[minmax(0,1fr)_auto] gap-1", children: [
+                          /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)(Button, { unstyled: true, className: "truncate rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-left text-xs", onClick: () => {
+                            props.onOpenBookmark?.(bookmark.id);
+                          }, type: "button", children: [
+                            bookmark.title,
+                            " \xB7 ",
+                            bookmark.kind,
+                            bookmark.missing === true ? " \xB7 Missing" : ""
+                          ] }),
+                          /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(Button, { unstyled: true, "aria-label": `Remove Bookmark ${bookmark.title}`, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs", onClick: () => {
+                            props.onRemoveBookmark?.(bookmark.id);
+                          }, type: "button", children: "Remove" })
+                        ] }, bookmark.id)),
+                        (snapshot.bookmarks?.length ?? 0) === 0 && /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("span", { className: "text-xs text-[var(--tt-muted)]", children: "No bookmarks." })
+                      ] })
+                    ] }),
                     /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("section", { "aria-label": "Smart Views and Tags", className: "border-t border-[var(--tt-border)] p-3", children: [
                       /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("h2", { className: "m-0 text-sm", children: "Smart Views and Tags" }),
                       /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("div", { className: "mt-2 grid grid-cols-2 gap-1", children: ["recent", "tasks", "journals", "favorites", "collections", "tags"].map((kind) => /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-left text-xs", onClick: () => {
@@ -26342,6 +26532,9 @@ function TockTutorRoute(props) {
       onActivateTab: (paneId, path) => {
         void controller.activateTab(paneId, path);
       },
+      onAddBookmark: () => {
+        controller.addActiveBookmark();
+      },
       onAddPane: () => {
         void controller.addPane();
       },
@@ -26393,6 +26586,9 @@ function TockTutorRoute(props) {
       onNewNote: () => {
         void controller.handleDispatch({ action: "new", kind: "quick-action", operationId: crypto.randomUUID() });
       },
+      onOpenBookmark: (id) => {
+        void controller.openBookmark(id);
+      },
       onOpenCommandPalette: () => {
         controller.setCommandPaletteOpen(true);
       },
@@ -26410,6 +26606,9 @@ function TockTutorRoute(props) {
       },
       onReadSnapshot: (id) => {
         void controller.readRecoverySnapshot(id);
+      },
+      onRemoveBookmark: (id) => {
+        controller.removeBookmark(id);
       },
       onRemoveRecentVault: (id) => {
         void controller.removeRecentVault(id);
@@ -26447,8 +26646,8 @@ function TockTutorRoute(props) {
       onSelectionChange: (start, end) => {
         controller.setSelection(start, end);
       },
-      onSetProperty: (key, value) => {
-        controller.setProperty(key, value);
+      onSetProperty: (key2, value) => {
+        controller.setProperty(key2, value);
       },
       onSubmitDispatch: (draft) => {
         void controller.submitDispatchDialog(draft);
