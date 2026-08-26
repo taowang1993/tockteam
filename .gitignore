@@ -8,6 +8,7 @@ plugins/tocktutor/packages/*/*.tgz
 /.local/
 release/
 tmp/
+.clawpatch/
 *.log
 .DS_Store
 .direnv/
