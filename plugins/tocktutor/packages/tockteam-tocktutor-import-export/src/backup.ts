@@ -1,6 +1,7 @@
 import { isPassiveBackupPath } from 'tockbot-note-runtime'
 import { createDeterministicZip, parseZip, type ArchiveLimits } from './archive.ts'
 import {
+  comparePortableText,
   destinationAliasKey,
   ImportExportError,
   normalizeRelativePath,
@@ -125,7 +126,7 @@ export function createBackupArchive(input: {
   const byPath = new Map(input.entries.map(entry => [backupPath(entry.path, entry.kind), entry]))
   if (byPath.size !== input.entries.length) invalidManifest()
   const aliases = new Set<string>()
-  const manifestEntries = input.entries.map(manifestEntry).sort((left, right) => left.path.localeCompare(right.path))
+  const manifestEntries = input.entries.map(manifestEntry).sort((left, right) => comparePortableText(left.path, right.path))
   let totalBytes = 0
   for (const entry of manifestEntries) {
     const alias = destinationAliasKey(entry.path)
@@ -188,7 +189,7 @@ function parseManifest(bytes: Uint8Array): BackupManifest {
     try { path = backupPath(raw.path, raw.kind) } catch { return invalidManifest() }
     if (path !== raw.path || !supported(path, raw.kind)) invalidManifest()
     const alias = destinationAliasKey(path)
-    if (aliases.has(alias) || (previous !== '' && previous.localeCompare(path) >= 0)) invalidManifest()
+    if (aliases.has(alias) || (previous !== '' && comparePortableText(previous, path) >= 0)) invalidManifest()
     aliases.add(alias)
     previous = path
     totalBytes += raw.size

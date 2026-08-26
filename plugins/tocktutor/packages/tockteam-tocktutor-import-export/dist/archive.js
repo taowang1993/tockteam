@@ -1,5 +1,5 @@
 import { deflateRawSync, inflateRawSync } from 'node:zlib';
-import { destinationAliasKey, ImportExportError, normalizeRelativePath, } from "./core.js";
+import { comparePortableText, destinationAliasKey, ImportExportError, normalizeRelativePath, } from "./core.js";
 const LOCAL_SIGNATURE = 0x04034b50;
 const CENTRAL_SIGNATURE = 0x02014b50;
 const END_SIGNATURE = 0x06054b50;
@@ -232,7 +232,7 @@ export function parseZip(input, limits, options = {}) {
     if (totalBytes > 0 && totalBytes / Math.max(1, totalCompressed) > limits.maxCompressionRatio) {
         limitExceeded();
     }
-    return output.sort((left, right) => left.path.localeCompare(right.path));
+    return output.sort((left, right) => comparePortableText(left.path, right.path));
 }
 function localHeader(name, bytes, compressed, method) {
     const header = Buffer.alloc(30);
@@ -298,7 +298,7 @@ export function createDeterministicZip(entries, maxCompressionRatio = Number.POS
             name: Buffer.from(path, 'utf8'),
             path,
         };
-    }).sort((left, right) => left.path.localeCompare(right.path));
+    }).sort((left, right) => comparePortableText(left.path, right.path));
     const locals = [];
     const centrals = [];
     let localOffset = 0;

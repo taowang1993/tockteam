@@ -74,6 +74,7 @@ export interface CreateReviewedPlanInput {
 export declare function sha256(bytes: Uint8Array | string): string;
 export declare function normalizeRelativePath(value: string): string;
 export declare function destinationAliasKey(destination: string): string;
+export declare function comparePortableText(left: string, right: string): number;
 export declare function stableJson(value: unknown): string;
 export declare function createReviewedPlan(input: CreateReviewedPlanInput): ReviewedPlan;
 export declare function assertPlanContent(plan: ReviewedPlan): void;

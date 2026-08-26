@@ -1,5 +1,6 @@
 import { deflateRawSync, inflateRawSync } from 'node:zlib'
 import {
+  comparePortableText,
   destinationAliasKey,
   ImportExportError,
   normalizeRelativePath,
@@ -262,7 +263,7 @@ export function parseZip(
   if (totalBytes > 0 && totalBytes / Math.max(1, totalCompressed) > limits.maxCompressionRatio) {
     limitExceeded()
   }
-  return output.sort((left, right) => left.path.localeCompare(right.path))
+  return output.sort((left, right) => comparePortableText(left.path, right.path))
 }
 
 function localHeader(name: Buffer, bytes: Buffer, compressed: Buffer, method: number): Buffer {
@@ -335,7 +336,7 @@ export function createDeterministicZip(
       name: Buffer.from(path, 'utf8'),
       path,
     }
-  }).sort((left, right) => left.path.localeCompare(right.path))
+  }).sort((left, right) => comparePortableText(left.path, right.path))
 
   const locals: Buffer[] = []
   const centrals: Buffer[] = []

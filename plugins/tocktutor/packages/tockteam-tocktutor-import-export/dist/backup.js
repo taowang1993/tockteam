@@ -1,6 +1,6 @@
 import { isPassiveBackupPath } from 'tockbot-note-runtime';
 import { createDeterministicZip, parseZip } from "./archive.js";
-import { destinationAliasKey, ImportExportError, normalizeRelativePath, sha256, stableJson, } from "./core.js";
+import { comparePortableText, destinationAliasKey, ImportExportError, normalizeRelativePath, sha256, stableJson, } from "./core.js";
 export const BACKUP_FORMAT = 'tockbot-vault-backup';
 export const BACKUP_VERSION = 3;
 export const BACKUP_ARCHIVE_LIMITS = {
@@ -78,7 +78,7 @@ export function createBackupArchive(input) {
     if (byPath.size !== input.entries.length)
         invalidManifest();
     const aliases = new Set();
-    const manifestEntries = input.entries.map(manifestEntry).sort((left, right) => left.path.localeCompare(right.path));
+    const manifestEntries = input.entries.map(manifestEntry).sort((left, right) => comparePortableText(left.path, right.path));
     let totalBytes = 0;
     for (const entry of manifestEntries) {
         const alias = destinationAliasKey(entry.path);
@@ -157,7 +157,7 @@ function parseManifest(bytes) {
         if (path !== raw.path || !supported(path, raw.kind))
             invalidManifest();
         const alias = destinationAliasKey(path);
-        if (aliases.has(alias) || (previous !== '' && previous.localeCompare(path) >= 0))
+        if (aliases.has(alias) || (previous !== '' && comparePortableText(previous, path) >= 0))
             invalidManifest();
         aliases.add(alias);
         previous = path;

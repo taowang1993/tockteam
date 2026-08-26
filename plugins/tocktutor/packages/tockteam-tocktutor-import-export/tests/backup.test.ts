@@ -38,6 +38,18 @@ test('creates a deterministic complete nested backup and independently verifies 
   ])
 })
 
+test('orders archive paths by portable code units instead of the host locale', () => {
+  const archive = createBackupArchive({
+    createdAt: 1_000,
+    entries: [
+      { bytes: encode('umlaut'), kind: 'document', path: 'Ä.md', revision: 'umlaut' },
+      { bytes: encode('zed'), kind: 'document', path: 'Z.md', revision: 'zed' },
+    ],
+    vault,
+  })
+  assert.deepEqual(verifyBackupArchive(archive).manifest.entries.map(entry => entry.path), ['Z.md', 'Ä.md'])
+})
+
 test('continues to verify version 2 backups without passive entries', () => {
   const archive = createBackupArchive({ createdAt: 1_000, entries: entries.filter(entry => entry.kind !== 'passive'), vault })
   const parsed = parseZip(archive, BACKUP_ARCHIVE_LIMITS, { allowNestedArchives: true })

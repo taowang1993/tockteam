@@ -194,11 +194,15 @@ function stable(value: unknown): unknown {
   if (value !== null && typeof value === 'object') {
     return Object.fromEntries(
       Object.entries(value as Record<string, unknown>)
-        .sort(([left], [right]) => left.localeCompare(right))
+        .sort(([left], [right]) => comparePortableText(left, right))
         .map(([key, item]) => [key, stable(item)]),
     )
   }
   return value
+}
+
+export function comparePortableText(left: string, right: string): number {
+  return left < right ? -1 : left > right ? 1 : 0
 }
 
 export function stableJson(value: unknown): string {
@@ -244,7 +248,7 @@ export function createReviewedPlan(input: CreateReviewedPlanInput): ReviewedPlan
     totalBytes += file.bytes.byteLength
     if (totalBytes > MAX_PLAN_BYTES) throw new ImportExportError('limit-exceeded')
     return { ...file, bytes: new Uint8Array(file.bytes), destination }
-  }).sort((left, right) => left.destination.localeCompare(right.destination))
+  }).sort((left, right) => comparePortableText(left.destination, right.destination))
 
   const items = files.map(file => {
     const digest = sha256(file.bytes)
@@ -264,7 +268,7 @@ export function createReviewedPlan(input: CreateReviewedPlanInput): ReviewedPlan
       throw new ImportExportError('invalid-plan')
     }
     return { ...entry }
-  }).sort((left, right) => left.label.localeCompare(right.label) || left.reason.localeCompare(right.reason))
+  }).sort((left, right) => comparePortableText(left.label, right.label) || comparePortableText(left.reason, right.reason))
   const warnings = [...input.warnings]
   if (warnings.some(warning => !boundedText(warning, 2_048))) throw new ImportExportError('invalid-plan')
 
