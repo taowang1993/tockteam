@@ -7,6 +7,7 @@ import {
   shouldStartEditorRectangularSelection,
 } from '../src/source-editor.tsx'
 import { LivePreviewEditor } from '../src/live-preview-editor.tsx'
+import { projectEditorWidgets } from '../src/editor-widgets.ts'
 
 afterEach(() => {
   document.body.replaceChildren()
@@ -36,6 +37,16 @@ describe('CodeMirror Source editor', () => {
     expect(shouldStartEditorRectangularSelection({ altKey: true, shiftKey: true, button: 0 })).toBe(true)
     expect(shouldStartEditorRectangularSelection({ altKey: false, shiftKey: false, button: 1 })).toBe(true)
     expect(shouldStartEditorRectangularSelection({ altKey: true, shiftKey: false, button: 0 })).toBe(false)
+  })
+})
+
+describe('selection-aware editor widgets', () => {
+  it('hides an embed widget while its exact source range is selected', () => {
+    const source = 'Before ![[Target.md]] after'
+    const targetStart = source.indexOf('![[Target.md]]')
+    expect(projectEditorWidgets(source)[0]).toMatchObject({ path: 'Target.md', visible: true, selected: false })
+    expect(projectEditorWidgets(source, { from: targetStart, to: targetStart + 14 })[0]).toMatchObject({ visible: false, selected: true })
+    expect(projectEditorWidgets('```md\\n![[Target.md]]\\n```')).toHaveLength(0)
   })
 })
 

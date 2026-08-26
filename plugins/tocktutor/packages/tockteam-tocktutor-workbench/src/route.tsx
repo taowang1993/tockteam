@@ -2850,6 +2850,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
                 content={snapshot.source}
                 onMarkdownChange={props.onEdit}
                 onSelectionChange={selection => { props.onSelectionChange?.(selection.from, selection.to) }}
+                onToggleTask={props.onToggleTask}
               />
             ) : snapshot.documentKind === 'canvas' ? (
               <CanvasBoard

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
   applyEditorCommand,
+  applyEditorCommandToSelections,
   applyTableCommand,
   internalLinkDropMarkdown,
   pagePreviewTargetAtOffset,
@@ -18,6 +19,15 @@ test('applies bounded formatting, insertion, and line commands at exact source r
   assert.equal(applyEditorCommand('Before\r\nAfter\r\n', 'delete-line', 9, 9).source, 'Before\r\n')
   assert.match(applyEditorCommand('# Note\n', 'insert-table', 7, 7).source, /\| Column 1 \| Column 2 \|/u)
   assert.equal(applyEditorCommand('word', 'callout-tip', 0, 4).source, '> [!tip]\n> word\n')
+})
+
+test('applies multi-cursor formatting as one source-preserving transaction', () => {
+  const result = applyEditorCommandToSelections('one two\nthree four', 'bold', [
+    { from: 0, to: 3 },
+    { from: 14, to: 18 },
+  ])
+  assert.equal(result.source, '**one** two\nthree **four**')
+  assert.deepEqual(result.ranges, [{ from: 2, to: 5 }, { from: 20, to: 24 }])
 })
 
 test('edits complete Markdown table rows and columns without losing alignment', () => {

@@ -1,16 +1,10 @@
 import { Alert } from '@tockteam/ui/alert'
-import { Button } from '@tockteam/ui/button'
-import { Checkbox } from '@tockteam/ui/checkbox'
-import { Textarea } from '@tockteam/ui/textarea'
-import { ChevronRight } from 'lucide-react'
 import {
-  useEffect,
   useMemo,
-  useState,
   type MouseEvent as ReactMouseEvent,
   type ReactNode,
 } from 'react'
-import { projectLivePreview, replaceLivePreviewLine } from './live-preview.ts'
+import { LivePreviewEditor } from './live-preview-editor.tsx'
 import { renderMarkdownHtml } from './rich-markdown.ts'
 
 export function RichReadingView(props: {
@@ -49,70 +43,6 @@ export function LivePreviewView(props: {
   onToggleTask(index: number): void
   source: string
 }): ReactNode {
-  const projection = useMemo(() => projectLivePreview(props.source), [props.source])
-  const [folded, setFolded] = useState<ReadonlySet<number>>(() => new Set())
-  useEffect(() => {
-    if (projection.status !== 'ready') {
-      setFolded(new Set())
-      return
-    }
-    setFolded(new Set(projection.lines.filter(line => line.folded === true).map(line => line.index)))
-  }, [props.documentKey])
-  if (projection.status !== 'ready') return <Alert unstyled>{projection.reason}</Alert>
-  const hidden = new Set<number>()
-  for (const line of projection.lines) {
-    if (!folded.has(line.index) || line.foldEndLine === undefined) continue
-    for (let index = line.index + 1; index <= line.foldEndLine; index += 1) hidden.add(index)
-  }
-  const toggleFold = (index: number): void => {
-    setFolded(current => {
-      const next = new Set(current)
-      if (next.has(index)) next.delete(index)
-      else next.add(index)
-      return next
-    })
-  }
-  return (
-    <section aria-label="Live Preview" className="mx-auto grid min-h-full w-[calc(100%-32px)] max-w-3xl content-start gap-0.5 py-6" tabIndex={-1}>
-      {projection.lines.map(line => hidden.has(line.index) ? null : (
-        <div
-          className="group flex min-h-7 items-start gap-2 rounded px-1.5 py-0.5 data-[kind=callout]:border-l-4 data-[kind=callout]:border-[var(--tt-accent)] data-[kind=callout]:bg-[var(--tt-selected)] data-[kind=code]:bg-[color-mix(in_srgb,var(--tt-text)_5%,var(--tt-panel))] data-[kind=comment]:text-[var(--tt-muted)] data-[kind=heading]:font-semibold data-[kind=property]:text-[var(--tt-muted)]"
-          data-kind={line.kind}
-          key={line.index}
-        >
-          {line.foldEndLine !== undefined ? (
-            <Button
-              unstyled
-              aria-expanded={!folded.has(line.index)}
-              aria-label={`${folded.has(line.index) ? 'Expand' : 'Collapse'} Line ${String(line.index + 1)}`}
-              className="mt-1 size-5 shrink-0 rounded border-0 bg-transparent p-0 text-[var(--tt-muted)]"
-              onClick={() => { toggleFold(line.index) }}
-              type="button"
-            ><ChevronRight aria-hidden="true" className={folded.has(line.index) ? '' : 'rotate-90'} /></Button>
-          ) : <span className="w-5 shrink-0" />}
-          {line.kind === 'task' && line.taskIndex !== undefined && (
-            <Checkbox
-              aria-label={`Mark Task on Line ${String(line.index + 1)} as ${line.checked === true ? 'Incomplete' : 'Complete'}`}
-              checked={line.checked === true}
-              className="mt-1.5"
-              onCheckedChange={() => { props.onToggleTask(line.taskIndex!) }}
-            />
-          )}
-          <Textarea
-            unstyled
-            aria-label={`Live Preview Line ${String(line.index + 1)}`}
-            className="min-h-7 flex-1 resize-none overflow-hidden border-0 bg-transparent px-1 py-0.5 text-inherit outline-none [font:inherit]"
-            onChange={event => { props.onEdit(replaceLivePreviewLine(props.source, line.index, event.target.value)) }}
-            rows={1}
-            spellCheck={line.kind !== 'code'}
-            value={line.content}
-          />
-        </div>
-      ))}
-      <details className="mt-4 rounded border border-[var(--tt-border)] p-2">
-        <summary className="cursor-pointer text-xs font-medium">Rendered Preview</summary>
-        <div aria-label="Live Preview Rendered Content" className="mt-2" dangerouslySetInnerHTML={{ __html: renderMarkdownHtml(props.source) }} />
-      </details>
-    </section>
-  )
+  void props.documentKey
+  return <LivePreviewEditor ariaLabel="Live Preview" content={props.source} onMarkdownChange={props.onEdit} onToggleTask={props.onToggleTask} />
 }
