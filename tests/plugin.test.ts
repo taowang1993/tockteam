@@ -255,6 +255,13 @@ test('desktop Agent tools share the guarded marketplace transaction owner', asyn
     },
   )
   assert.deepEqual(
+    await policy({ name: 'desktop_plugin_preview' }, async () => ({ kind: 'allow' })),
+    {
+      kind: 'ask',
+      reason: 'Approve the prepared plugin risks before starting its isolated preview?',
+    },
+  )
+  assert.deepEqual(
     await policy({ name: 'desktop_plugin_search' }, async () => ({ kind: 'allow' })),
     { kind: 'allow' },
   )

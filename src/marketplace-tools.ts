@@ -197,6 +197,12 @@ export function mountMarketplaceAgentTools(
   if (credentials === null) return
 
   ctx.on('tools/pre-execute', async (exec, next) => {
+    if (exec.name === 'desktop_plugin_preview') {
+      return {
+        kind: 'ask',
+        reason: 'Approve the prepared plugin risks before starting its isolated preview?',
+      }
+    }
     if (exec.name === 'desktop_plugin_apply') {
       return {
         kind: 'ask',
