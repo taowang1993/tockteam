@@ -30763,7 +30763,7 @@ function WorkbenchCommandPalette(props) {
     DialogContent3,
     {
       unstyled: true,
-      className: "fixed top-[18%] left-1/2 z-50 w-[calc(100%-32px)] max-w-xl -translate-x-1/2 rounded-lg border border-[var(--tt-border)] bg-[var(--tt-panel)] p-3 shadow-xl",
+      className: "fixed top-[18%] left-1/2 z-[2147483647] w-[calc(100%-32px)] max-w-xl -translate-x-1/2 rounded-lg border border-[var(--tt-border)] bg-[var(--tt-panel)] p-3 shadow-xl",
       showCloseButton: false,
       children: [
         /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(DialogTitle3, { className: "mb-2 text-sm font-semibold", children: "Command Palette" }),

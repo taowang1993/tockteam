@@ -2308,7 +2308,7 @@ function WorkbenchCommandPalette(props: {
     <Dialog open onOpenChange={open => { if (!open) props.onClose() }}>
       <DialogContent
         unstyled
-        className="fixed top-[18%] left-1/2 z-50 w-[calc(100%-32px)] max-w-xl -translate-x-1/2 rounded-lg border border-[var(--tt-border)] bg-[var(--tt-panel)] p-3 shadow-xl"
+        className="fixed top-[18%] left-1/2 z-[2147483647] w-[calc(100%-32px)] max-w-xl -translate-x-1/2 rounded-lg border border-[var(--tt-border)] bg-[var(--tt-panel)] p-3 shadow-xl"
         showCloseButton={false}
       >
         <DialogTitle className="mb-2 text-sm font-semibold">Command Palette</DialogTitle>
