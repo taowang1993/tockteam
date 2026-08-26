@@ -7,82 +7,91 @@ TockTeam is an installable distribution over one pinned DSH runtime. The unified
 Preserve these boundaries:
 
 - **Desktop** owns Electron windows, menus, preload/IPC, the Desktop bridge, and the full Web-based UI.
-- **Web** owns the browser-only surface. It must not emulate Electron authority.
+- **Web** owns the browser-facing surface and its web-compatible Host/client plugins. It must not emulate Electron authority.
 - **TUI** keeps the pinned `dsh-TUI` renderer; TockTeam owns its profile, identity, themes, adapter, launcher, and packaging.
 - DSH Profile + Loader remains the only composition mechanism. Add behavior as Cordis plugins and bundle patches, not by patching the agent loop.
 - Existing package IDs, profile names, and data roots are compatibility contracts. Visible renames must not discard sessions, settings, plugins, or credentials.
 
-## Repository Map
+## Tech Stack
 
-| Path | Responsibility |
-| --- | --- |
-| `src/cli.ts` | Unified `desktop` / `web` / `tui` dispatch |
-| `src/main.ts`, `src/preload.ts`, `src/client.ts` | Electron Host, restricted bridge, and Desktop client |
-| `src/web.ts`, `web/` | Web launcher, Host/client plugin, and Web bundle patch |
-| `src/tui.ts`, `plugins/tui/` | TUI launcher and downstream bundle adapter |
-| `src/profile.ts` | Surface profile names, owned bundle order, upgrade-safe initialization |
-| `src/runtime*.ts` | Staged DSH process supervision and packaged runtime paths |
-| `plugins/*/src` | First-party Host and browser-client plugins |
-| `plugins/tocktutor/packages/*` | In-repo TockTutor packages, aggregate bundle, tests, and shared plugin-stack workspace |
-| `plugins/shared/` | Cross-surface contracts, especially `tockTeamSurface` |
-| `plugins/plugin-marketplace/` | Prepare, preview, approval, apply, enable, update, and recovery transaction |
-| `cordis.patch.yml` | Desktop bundle layer |
-| `web/cordis.patch.yml` | Web bundle layer |
-| `plugins/tui/cordis.patch.yml` | TUI bundle layer |
-| `scripts/build.mjs` | Builds tracked source into ignored `dist/` outputs |
-| `scripts/stage-dsh.mjs` | Produces the self-contained ignored `.stage/` runtime |
-| `dsh-source.json` | Exact DSH repository, revision, and version pin |
-| `upstream/` | Git submodules for Better Sidebar and `dsh-TUI` |
+| Layer      | Technology                                          |
+| ---------- | --------------------------------------------------- |
+| Runtime    | DSH `0.1.1-rc.2` + Cordis                           |
+| Language   | TypeScript NodeNext / ES2024 on Node >=24           |
+| Desktop    | Electron 42 + the DSH Web UI                        |
+| Web        | DSH Web App over HTTP, bound to loopback by default |
+| TUI        | Pinned `dsh-TUI` renderer                           |
+| Browser UI | React + Tailwind CSS v4 + shadcn/ui + Lucide        |
+| Build      | pnpm + esbuild                                      |
+| Packaging  | electron-builder + Nix                              |
+| Tests      | `node:test` + `node:assert/strict`                  |
 
-## Sources of Truth
+## Project Structure
 
-- Target the DSH revision in `dsh-source.json`, currently `b150a551b8d465e31e418e1b2eaf5e79bbb7d28e` (`0.1.1-rc.2`). Inspect its source and docs through `scripts/dsh-source.mjs` or the matching `.cache/dsh-source/<revision-prefix>` checkout before using a DSH API.
-- `src/profile.ts`, package `dsh` metadata, and the three tracked patch files jointly define surface composition.
-- `package.json` scripts and `.github/workflows/ci.yml` define supported checks. Node is `>=24`; CI uses Node 24 and pnpm 11.21.0.
-- `README.md` / `README.en.md` are a bilingual pair. Files under `docs/` are English-only.
-
-Do not hand-edit generated or installed paths: `dist/`, `.stage/`, `.cache/`, `.local/`, `release/`, `node_modules/`, `tmp/`, or Nix `result*`. Rebuild them.
-
-Do not edit code inside `upstream/*` for TockTeam behavior. Move a submodule pointer only as an explicit dependency update. Better Sidebar Host code is built from `upstream/DSH-better-sidebar`; TUI branding and data-path changes belong in `scripts/tui-upstream-adapter.mjs`, whose exact-match guards intentionally fail when an upstream seam changes.
+```text
+tockteam/
+├── .agents/references/              # Architecture and operating references
+├── assets/                          # Product icons and artwork
+├── bin/                             # Unix and Windows launchers
+├── nix/                             # Nix packaging
+├── plugins/
+│   ├── */src/                       # First-party Host and browser-client plugins
+│   ├── plugin-marketplace/          # Marketplace transaction and recovery flow
+│   ├── shared/                      # Cross-surface contracts
+│   ├── tocktutor/packages/          # In-repo TockTutor packages and tests
+│   └── tui/
+│       └── cordis.patch.yml         # TUI bundle layer
+├── scripts/
+│   ├── build.mjs                    # Source build
+│   └── stage-dsh.mjs                # Self-contained DSH runtime staging
+├── src/
+│   ├── cli.ts                       # Desktop, Web, and TUI dispatch
+│   ├── main.ts                      # Electron Host
+│   ├── preload.ts                   # Restricted Desktop bridge
+│   ├── client.ts                    # Desktop client
+│   ├── web.ts                       # Web launcher
+│   ├── tui.ts                       # TUI launcher
+│   ├── profile.ts                   # Surface profiles and bundle order
+│   └── runtime*.ts                  # DSH supervision and packaged paths
+├── tests/                           # Root node:test suite
+├── upstream/                        # Better Sidebar and dsh-TUI submodules
+├── web/
+│   └── cordis.patch.yml             # Web bundle layer
+├── cordis.patch.yml                 # Desktop bundle layer
+└── dsh-source.json                  # Exact DSH revision and version pin
+```
 
 ## References
 
-Folder: `docs/`
-
-| Document | Purpose |
-| --- | --- |
-| `architecture.md` | Surface architecture, distribution boundaries, and bundled plugins |
-| `usage.md` | Installation, operations, and troubleshooting |
-
 Folder: `.agents/references/`
 
-| Document | Purpose |
-| --- | --- |
-| `self-evolving.md` | Reversible Cordis composition philosophy |
-| `tocktutor.md` | TockTutor plugin and package contracts |
+| Document           | Purpose                                       |
+| ------------------ | --------------------------------------------- |
+| `architecture.md`  | The Software Architecture of Tockteam         |
+| `self-evolving.md` | Reversible Cordis composition philosophy      |
+| `tocktutor.md`     | TockTutor plugin and package contracts        |
+| `usage.md`         | Installation, operations, and troubleshooting |
 
-Folder: `.pi/rules/`
 
-| Rule File | Purpose |
-| --- | --- |
-| `web.md` | Browser UI design rules for Desktop and Web |
+| Interface                     | Use For                                                                |
+| ----------------------------- | ---------------------------------------------------------------------- |
+| `codegraph_explore`           | Primary MCP query for architecture, flows, symbols, source, and impact |
+| `codegraph explore "<query>"` | Equivalent CLI fallback                                                |
+| `codegraph status`            | Index health and synchronization status                                |
 
-## Cordis and DSH Rules
+The generated `.codegraph/codegraph.db` stays local and ignored. Commit only `.codegraph/.gitignore` from that directory.
 
-Cordis provides temporal composability through reversible effects and spatial composability through declared, reactive dependencies. Preserve both:
+## Development Guidelines
 
-- Prefer a function plugin exporting a stable `name`, required `inject` dependencies, and `apply(ctx)`. Use a service class only when other plugins need an injectable public service.
-- Declare hard service requirements instead of polling. This repository also uses `ctx.inject([...], callback)` for contributions scoped to services that may appear or disappear.
-- Register listeners, routes, tools, prompt sections, adapters, child plugins, and providers through `ctx` so Fiber disposal removes them.
-- Wrap sockets, processes, watchers, timers, temporary resources, and other external acquisitions in one `ctx.effect()` that returns a complete disposer.
-- If cleanup order matters, perform the ordered async teardown inside one disposer. Separate async disposers may run concurrently.
-- An external emission is not automatically reversible. File writes, network sends, Git operations, and package installation still need explicit transaction, compensation, or withholding semantics.
-- Keep Host and browser-client halves separate. Browser plugins expose `./client` and declare `dsh.client` metadata; Host-only packages must not accidentally gain a client block.
-- Reuse `plugins/shared/surface.ts`. Never provide a TockTeam surface as `ctx.web`; DSH already owns that service name.
-- Cordis patch rows replace the row's entire `config`; they do not deep-merge it. Restate defaults that an override must retain.
-- User profile patches and third-party bundles are user-owned. `ensureProfile()` may add required owned bundles but must not overwrite existing user files or remove extra bundles.
-
-When adding a bundled plugin, update every owning layer that applies: its package manifest/exports, `scripts/build.mjs`, the relevant patch file, `src/profile.ts` protected lists or bundle order, browser-client injections, and focused composition tests. Do not mount a plugin on a surface that cannot provide its dependencies.
+- Must reuse `plugins/shared/surface.ts`. Never provide a TockTeam surface as `ctx.web`; DSH owns that service name.
+- Must treat user profile patches and third-party bundles as user-owned. `ensureProfile()` may add required owned bundles but must not overwrite existing files or remove extra bundles.
+- Must keep Host and browser-client halves separate when adding a bundled plugin. Update every owning layer: package exports and metadata, `scripts/build.mjs`, the relevant patch file, `src/profile.ts`, browser-client injections, and focused composition tests. Do not mount it on a surface that cannot provide its dependencies.
+- Must use the TDD skill for non-trivial implementation or bug fixes: run the failing check first, then report the exact verification command.
+- Must use the design skill for UI/UX work and the playwright-cli skill to verify browser-visible UI or user-flow changes.
+- Must stop any Electron app, web server, and child process started for verification unless the user asks to keep it running.
+- Never push without explicit authority from the user, orchestrator, or active repository profile. Never squash-merge pull requests; use merge commits.
+- Never modify `AGENTS.md` or add Markdown files at the repository root without explicit user permission.
+- Never create scratch or context files in the repository root; use `/tmp` for disposable notes and `.beads/plans` or `.beads/report` only for requested durable work.
 
 ## Security Boundaries
 
@@ -94,39 +103,62 @@ Do not simplify away these controls:
 - Plugins, presets, MCP commands, and Cordis configuration execute as trusted Host code. Agent permission presets do not sandbox arbitrary plugins.
 - Marketplace mutations must follow prepare -> pinned candidate -> isolated preview -> explicit approval/apply. Installed and enabled are separate states; candidate, current, and previous state must remain recoverable. Never mutate the live Profile as a shortcut.
 
-## Code and Test Conventions
+## Environment Variables
 
-- TypeScript is strict NodeNext/ES2024 with `noUncheckedIndexedAccess` and `exactOptionalPropertyTypes`. Keep explicit `.ts` import extensions in source.
-- Follow existing formatting: two spaces, single quotes, no semicolons, trailing commas in multiline constructs.
-- Prefer Node/platform APIs and existing helpers over new dependencies. Native dependency build permissions in `pnpm-workspace.yaml` are a security boundary.
-- Tests use `node:test` and `node:assert/strict` in top-level `tests/*.test.ts`. Add the smallest focused regression test and import source directly.
-- TockTutor packages share `plugins/tocktutor/pnpm-lock.yaml`. Run `install:tocktutor` once after dependency or DSH-pin changes, then `typecheck:tocktutor`, `test:tocktutor`, and `build:tocktutor` before the root gate. Their tracked `lib/` and `dist/` directories are release payloads: rebuild them, never hand-edit them.
-- Keep parsers and launch-spec builders pure where practical so tests do not need Electron, a browser, a TTY, or a real DSH process.
-- Use temporary directories for filesystem tests and remove them in `finally`/test cleanup.
-- User-facing standalone labels use Title Case; descriptions and complete sentences use sentence case. Preserve the exact product names **TockTeam Desktop**, **TockTeam Web**, and **TockTeam TUI**.
+`.envrc` loads the repository's Nix flake. It does not contain application secrets.
 
-## Verification
+| Variable                           | Purpose                                                             |
+| ---------------------------------- | ------------------------------------------------------------------- |
+| `TOCKTEAM_SURFACES`                | Comma-separated surfaces included in a layered distribution         |
+| `TOCKTEAM_SOURCE_ROOT`             | Source checkout used by development launchers                       |
+| `TOCKTEAM_DESKTOP_APP`             | Explicit installed Desktop app or executable path                   |
+| `TOCKTEAM_RESOURCES_ROOT`          | Packaged or staged runtime resources override                       |
+| `TOCKTEAM_WEB_ROOT`                | Web distribution root override                                      |
+| `TOCKTEAM_WEB_HOST`                | Web bind host; defaults to loopback                                 |
+| `TOCKTEAM_WEB_PORT`                | Web listen port                                                     |
+| `TOCKTEAM_WEB_HOME`                | Writable Web data root                                              |
+| `TOCKTEAM_WEB_OPEN`                | Whether Web opens a browser (`1`/`0` or `true`/`false`)             |
+| `TOCKTEAM_TUI_ROOT`                | TUI distribution root override                                      |
+| `TOCKTEAM_TUI_HOME`                | TUI data and session root                                           |
+| `TOCKTEAM_TUI_CWD`                 | Initial TUI workspace directory                                     |
+| `TOCKTEAM_TUI_FULLSCREEN`          | Alternate-screen mode (`1`/`0` or `true`/`false`)                   |
+| `TOCKTEAM_TUI_LANG`                | Initial TUI language (`en` or `zh`)                                 |
+| `TOCKTEAM_TUI_PRESET`              | Initial TUI agent preset                                            |
+| `TOCKTEAM_TUI_SESSION_ID`          | Existing session to resume                                          |
+| `DSH_SOURCE`                       | Development DSH checkout override; it must match the pinned version |
+| `DSH_DESKTOP_NODE_VERSION`         | Node version staged into distributions                              |
+| `DSH_DESKTOP_NODE_PLATFORM`        | Node distribution platform override (`darwin`, `linux`, or `win`)   |
+| `DSH_DESKTOP_NODE_ARCH`            | Node distribution architecture override (`arm64` or `x64`)          |
+| `DSH_DESKTOP_SIGN_IDENTITY`        | macOS package signing identity; defaults to ad-hoc signing          |
+| `DSH_DESKTOP_GH_PATH`              | Explicit GitHub CLI path for the marketplace Host                   |
+| `TOCKTEAM_MARKETPLACE_CATALOG`     | Marketplace catalog locator in `owner/repository/path` form         |
+| `TOCKTEAM_MARKETPLACE_AGENT_URL`   | Private marketplace Agent gateway URL                               |
+| `TOCKTEAM_MARKETPLACE_AGENT_TOKEN` | Secret for the private marketplace Agent gateway                    |
 
-Run the smallest relevant check first, then the repository gate:
+Runtime-generated capability endpoints, tokens, profile names, versions, and data paths are internal contracts. Do not set them manually or expose them to browser code.
 
-```sh
-node --test tests/<focused>.test.ts
-pnpm run typecheck
-pnpm test
-pnpm run build
-```
+## CodeGraph
 
-The CI source gate is exactly typecheck, tests, and build on macOS arm64/x64, Linux x64, and Windows x64.
+Use CodeGraph when this checkout has a `.codegraph/codegraph.db` semantic index. Run `codegraph init` once in a new checkout. Prefer it for structural exploration, call flows, and impact analysis; use text/file search for literal strings, filenames, documentation, configuration, or when CodeGraph is unavailable.
 
-For profile, plugin graph, DSH integration, staging, or runtime changes, also run:
+- Prefer one `codegraph_explore` query that names the flow, file, or symbols you need. It returns current source, relationships, call paths, and blast radius together.
+- Treat returned source blocks as already read. Do not repeat the same discovery with grep or file reads.
+- Check any staleness banner after edits. Auto-sync is normally sufficient; use `codegraph status` when the index may be stale.
+- Use the CLI fallback when the MCP tool is unavailable.
 
-```sh
-pnpm run build:dsh
-pnpm run stage:dsh
-pnpm run smoke:web
-pnpm run smoke:runtime
-```
+## Beads Issue Tracker
 
-`build:dsh` and full staging are expensive; do not run them for an isolated pure helper or CSS change. Use the matching `dist:*`, `smoke:web:package`, `smoke:app`, or `smoke:app:linux` command only when packaging changed. TUI needs a real interactive terminal for a manual launch; its parser, profile, patch order, and upstream adapter remain testable without one.
+This project uses **bd (Beads)** for issue tracking. Run `bd prime` for the current workflow and session rules.
 
-Before finishing, inspect `git status`, verify that only intended tracked source changed, and make a small commit. Never commit ignored build products.
+| Command                   | Use For                             |
+| ------------------------- | ----------------------------------- |
+| `bd ready`                | Find unblocked work                 |
+| `bd show <id>`            | Read issue context and dependencies |
+| `bd update <id> --claim`  | Claim work before implementation    |
+| `bd close <id>`           | Complete verified work              |
+| `bd remember "<insight>"` | Store persistent project knowledge  |
+
+- Use Beads for task tracking; do not create markdown TODO lists or `MEMORY.md` files.
+- Run `bd prime` after compaction or when resuming a session.
+- Use the repository-local Beads database resolved by `bd where`.
+- Before ending a session, follow the `bd prime` close protocol: close completed issues, run relevant checks, inspect `git status`, then follow the active profile for commit, sync, and push authority.

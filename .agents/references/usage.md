@@ -1,7 +1,3 @@
-<p align="center">
-  <a href="../README.en.md">Back to README</a>
-</p>
-
 # Installation, operations, and troubleshooting
 
 ## Choose a distribution

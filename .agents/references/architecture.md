@@ -1,7 +1,3 @@
-<p align="center">
-  <a href="../README.en.md">Back to README</a>
-</p>
-
 # TockTeam Architecture and Plugin Boundaries
 
 ## Goals
