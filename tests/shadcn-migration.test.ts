@@ -75,6 +75,8 @@ test('icon-only actions use shared tooltips instead of native titles', () => {
   const sidebar = read('plugins/sidebar/src/client/plugin.tsx')
   const sideTools = read('plugins/sidebar/src/client/SideToolsPanel.tsx')
   const workbench = read('plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/route.tsx')
+  const workbenchUtilities = read('plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/utility-panel.tsx')
+  const workbenchSurfaces = `${workbench}\n${workbenchUtilities}`
 
   for (const source of [marketplace, sidebar, sideTools, workbench]) {
     assert.match(source, /from '@tockteam\/ui\/tooltip'/)
@@ -92,9 +94,9 @@ test('icon-only actions use shared tooltips instead of native titles', () => {
   }
   assert.match(sideTools, /<TooltipContent>\{t\('side\.close-tab'\)\}<\/TooltipContent>/)
   for (const label of ['Search Notes', 'Toggle Files Sidebar', 'New Note', 'Toggle Assistant Panel', 'Close Search', 'More Note Actions', 'Open Assistant', 'Close More Options', 'Add Pane']) {
-    assert.match(workbench, new RegExp(`<TooltipContent>${label}<\\/TooltipContent>`))
+    assert.match(workbenchSurfaces, new RegExp(`<TooltipContent>${label}<\\/TooltipContent>`))
   }
   for (const label of ['Search Notes', 'New Note', 'Add Pane']) {
-    assert.match(workbench, new RegExp(`<span className="inline-flex">\\s*<Button unstyled aria-label="${label}"`))
+    assert.match(workbenchSurfaces, new RegExp(`<span className="inline-flex">\\s*<Button unstyled aria-label="${label}"`))
   }
 })

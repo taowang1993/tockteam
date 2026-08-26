@@ -174,6 +174,7 @@ export declare class WorkbenchRouteController {
     runSearch(): Promise<boolean>;
     loadFacets(): Promise<boolean>;
     loadGraph(mode: 'global' | 'local'): Promise<boolean>;
+    openGraphNode(path: string, mode: 'local' | 'note'): Promise<boolean>;
     openSmartView(kind: 'recent' | 'tasks' | 'journals' | 'favorites' | 'collections' | 'tags'): Promise<boolean>;
     loadRelationships(): Promise<boolean>;
     jumpToLine(line: number): boolean;
@@ -243,6 +244,7 @@ export declare class WorkbenchRouteController {
     loadEmbeds(): Promise<boolean>;
     hydrateBaseRows(basePath: string): Promise<boolean>;
     applyBaseEdit(request: ExecutableBaseFrontmatterEditRequest): Promise<boolean>;
+    attachFiles(files: readonly File[]): Promise<boolean>;
     storeActiveAttachment(fileName: string, dataBase64: string): Promise<boolean>;
     previewAttachment(path: string): Promise<boolean>;
     closeAttachmentPreview(): void;
@@ -256,6 +258,7 @@ export interface TockTutorRouteViewProps {
     nativeActions?: ReactNode;
     onActivateRecentVault?(id: string): void;
     onAddBookmark?(): void;
+    onAttachFiles?(files: FileList): void;
     onActivateTab(paneId: string, path: string): void;
     onApplyOrganization?(): void;
     onBack?(): void;
@@ -272,6 +275,7 @@ export interface TockTutorRouteViewProps {
     onCloseSearch?(): void;
     onCloseTab?(paneId: string, path: string): void;
     onConvertActiveNote?(): void;
+    onCopyGraphPath?(path: string): void;
     onCreateBuiltinTemplate?(name: keyof typeof BUILTIN_TEMPLATES): void;
     onCreateManagedVault?(name: string): void;
     onAddPane(): void;
@@ -290,6 +294,7 @@ export interface TockTutorRouteViewProps {
     onNewNote?(): void;
     onOpenBookmark?(id: string): void;
     onOpenCommandPalette?(): void;
+    onOpenGraphNode?(path: string, mode: 'local' | 'note'): void;
     onOpenRecovery?(): void;
     onOpenSandboxVault?(): void;
     onOpenSmartView?(kind: 'recent' | 'tasks' | 'journals' | 'favorites' | 'collections' | 'tags'): void;

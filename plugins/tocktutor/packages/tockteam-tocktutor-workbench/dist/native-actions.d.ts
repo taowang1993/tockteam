@@ -30,6 +30,7 @@ export interface TockTutorNativeActionsOwnerProps {
     activePath: string | null;
     handleDispatch(event: TockTutorNativeActionsDispatchEvent): Promise<TockTutorNativeActionsDispatchResult>;
     saveCurrent?(): Promise<boolean>;
+    storeAudio?(fileName: string, dataBase64: string): Promise<boolean>;
     vault: VaultReference | null;
 }
 declare module '@deepseek-ai/dsh-client-ui-slots' {

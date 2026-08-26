@@ -79,6 +79,42 @@ describe('CanvasBoard', () => {
     expect(screen.getByRole('button', { name: 'Canvas Card First' }).getAttribute('data-canvas-x')).toBe('0')
   })
 
+  it('moves and resizes with bounded pointer snapping and accessible zoom controls', () => {
+    const onChange = vi.fn()
+    const view = render(<CanvasBoard source={source} revision="sha256:pointer" onChange={onChange} />)
+    const surface = screen.getByLabelText('Canvas Board Surface')
+    fireEvent.click(screen.getByRole('button', { name: 'Zoom Canvas In' }))
+    expect((surface as HTMLElement).style.zoom).toBe('1.25')
+    const card = screen.getByRole('button', { name: 'Canvas Card First' })
+    fireEvent.pointerDown(card, { button: 0, clientX: 0, clientY: 0 })
+    fireEvent.pointerMove(window, { clientX: 25, clientY: 25 })
+    fireEvent.pointerUp(window)
+    const moved = onChange.mock.calls.at(-1)?.[0]
+    expect(moved.operation).toBe('move-node')
+    expect(JSON.parse(moved.source).nodes[0]).toMatchObject({ x: 20, y: 20 })
+
+    view.rerender(<CanvasBoard source={moved.source} revision="sha256:resize" onChange={onChange} />)
+    const resize = screen.getByRole('button', { name: 'Resize Card First' })
+    fireEvent.pointerDown(resize, { button: 0, clientX: 0, clientY: 0 })
+    fireEvent.pointerMove(window, { clientX: 40, clientY: 20 })
+    fireEvent.pointerUp(window)
+    const resized = onChange.mock.calls.at(-1)?.[0]
+    expect(resized.operation).toBe('resize-node')
+    expect(JSON.parse(resized.source).nodes[0]).toMatchObject({ width: 280, height: 140 })
+    fireEvent.click(screen.getByRole('button', { name: 'Reset Canvas Zoom' }))
+    expect((screen.getByLabelText('Canvas Board Surface') as HTMLElement).style.zoom).toBe('1')
+    const emitted = onChange.mock.calls.length
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Canvas Card First' }), { button: 0, clientX: 0, clientY: 0 })
+    fireEvent.pointerMove(window, { clientX: 80, clientY: 40 })
+    fireEvent.pointerCancel(window)
+    expect(onChange).toHaveBeenCalledTimes(emitted)
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Canvas Card First' }), { button: 0, clientX: 0, clientY: 0 })
+    view.unmount()
+    fireEvent.pointerMove(window, { clientX: 80, clientY: 40 })
+    fireEvent.pointerUp(window)
+    expect(onChange).toHaveBeenCalledTimes(emitted)
+  })
+
   it('selects and deletes a visible connection through the controlled change seam', () => {
     const connected = JSON.stringify({
       ...JSON.parse(source),

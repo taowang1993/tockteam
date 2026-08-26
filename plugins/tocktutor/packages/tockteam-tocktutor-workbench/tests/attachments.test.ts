@@ -6,6 +6,7 @@ test('allocates collision-safe attachment targets and preserves Markdown bytes',
   assert.equal(attachmentTargetPath('Attachments', 'lesson image.png', new Set(['Attachments/lesson image.png'])), 'Attachments/lesson image 2.png')
   assert.equal(appendAttachmentMarkdown('Body  \n', '![[Attachments/image.png]]'), 'Body  \n\n![[Attachments/image.png]]\n')
   assert.equal(appendAttachmentMarkdown('Body\t', '![[Attachments/audio.wav]]'), 'Body\t\n\n![[Attachments/audio.wav]]\n')
+  assert.equal(attachmentTargetPath('Attachments', 'Recording.weba', new Set()), 'Attachments/Recording.weba')
 })
 
 test('rejects unsafe names, paths, and unsupported attachment types', () => {

@@ -15,6 +15,9 @@ export interface TockTutorSettings {
     graphIncludeAttachments: boolean;
     graphIncludeOrphans: boolean;
     graphIncludeTags: boolean;
+    graphQuery: string;
+    graphGroupBy: 'folder' | 'none';
+    graphColorBy: 'folder' | 'none';
     journalFolder: string;
     pagePreview: boolean;
     recoveryIntervalMinutes: number;

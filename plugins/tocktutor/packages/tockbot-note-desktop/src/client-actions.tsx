@@ -184,6 +184,152 @@ export async function requestMicrophoneAccess(
   }
 }
 
+export interface AudioMediaRecorder {
+  readonly mimeType: string
+  readonly state: string
+  addEventListener(type: 'dataavailable' | 'error' | 'stop', listener: (event?: { data: Blob }) => void): void
+  start(): void
+  stop(): void
+}
+
+export interface AudioRecording {
+  cancel(): void
+  stop(): Promise<
+    | { dataBase64: string; fileName: string; status: 'recorded' }
+    | { status: 'failed' | 'stale' | 'too-large' }
+  >
+}
+
+const MAX_AUDIO_BYTES = 25 * 1024 * 1024
+
+function sameRecordingOwner(
+  path: string,
+  vault: VaultReference,
+  current: Pick<TockTutorNativeActionsOwnerProps, 'activePath' | 'vault'>,
+): boolean {
+  return current.activePath === path && current.vault?.id === vault.id
+    && current.vault.generation === vault.generation
+}
+
+function recordingExtension(mimeType: string): string | null {
+  switch (mimeType.toLowerCase().split(';', 1)[0]) {
+    case 'audio/mp4': return '.m4a'
+    case 'audio/ogg': return '.ogg'
+    case 'audio/wav': return '.wav'
+    case 'audio/webm': return '.weba'
+    default: return null
+  }
+}
+
+function base64(bytes: Uint8Array): string {
+  let binary = ''
+  for (let offset = 0; offset < bytes.length; offset += 32_768) {
+    binary += String.fromCharCode(...bytes.subarray(offset, offset + 32_768))
+  }
+  return btoa(binary)
+}
+
+/** Record only after Desktop grants the exact live note, then re-check it before returning bytes. */
+export async function startAudioRecording(
+  authorization: string,
+  path: string,
+  vault: VaultReference,
+  current: () => Pick<TockTutorNativeActionsOwnerProps, 'activePath' | 'vault'>,
+  request: (authorization: string, vault: VaultReference) => Promise<RemoteResult<NativeActionResult>>,
+  mediaDevices: AudioMediaDevices,
+  createRecorder: (stream: Awaited<ReturnType<AudioMediaDevices['getUserMedia']>>) => AudioMediaRecorder,
+  now: () => Date = () => new Date(),
+  readBlob: (blob: Blob) => Promise<ArrayBuffer> = blob => blob.arrayBuffer(),
+): Promise<
+  | { result: RemoteResult<NativeActionResult>; status: 'not-started' }
+  | { recording: AudioRecording; status: 'recording' }
+> {
+  const result = await request(authorization, vault)
+  if (!result.ok || result.value.status !== 'granted') return { result, status: 'not-started' }
+  const stream = await mediaDevices.getUserMedia({ audio: true, video: false })
+  const tracks = stream.getTracks()
+  const cleanup = (): void => { for (const track of tracks) track.stop() }
+  if (!sameRecordingOwner(path, vault, current())) {
+    cleanup()
+    return { result: { ok: true, value: { status: 'stale' } }, status: 'not-started' }
+  }
+
+  let recorder: AudioMediaRecorder
+  try {
+    recorder = createRecorder(stream)
+  } catch (error) {
+    cleanup()
+    throw error
+  }
+  const extension = recordingExtension(recorder.mimeType)
+  if (extension === null) {
+    cleanup()
+    return { result: { ok: true, value: { status: 'unavailable' } }, status: 'not-started' }
+  }
+  const chunks: Blob[] = []
+  let bytes = 0
+  let cancelled = false
+  let settled = false
+  let resolve!: (result: Awaited<ReturnType<AudioRecording['stop']>>) => void
+  const completed = new Promise<Awaited<ReturnType<AudioRecording['stop']>>>(finish => { resolve = finish })
+  const finish = (value: Awaited<ReturnType<AudioRecording['stop']>>): void => {
+    if (settled) return
+    settled = true
+    cleanup()
+    resolve(value)
+  }
+  recorder.addEventListener('dataavailable', event => {
+    if (event === undefined || event.data.size === 0 || settled) return
+    bytes += event.data.size
+    if (bytes <= MAX_AUDIO_BYTES) chunks.push(event.data)
+  })
+  recorder.addEventListener('error', () => { finish({ status: 'failed' }) })
+  recorder.addEventListener('stop', () => {
+    if (cancelled) {
+      finish({ status: 'stale' })
+      return
+    }
+    if (bytes > MAX_AUDIO_BYTES) {
+      finish({ status: 'too-large' })
+      return
+    }
+    if (!sameRecordingOwner(path, vault, current())) {
+      finish({ status: 'stale' })
+      return
+    }
+    void readBlob(new Blob(chunks, { type: recorder.mimeType }))
+      .then(buffer => {
+        if (!sameRecordingOwner(path, vault, current())) {
+          finish({ status: 'stale' })
+          return
+        }
+        const timestamp = now().toISOString().slice(0, 19).replace('T', ' ').replaceAll(':', '-')
+        finish({ dataBase64: base64(new Uint8Array(buffer)), fileName: `Recording ${timestamp}${extension}`, status: 'recorded' })
+      })
+      .catch(() => { finish({ status: 'failed' }) })
+  })
+  try {
+    recorder.start()
+  } catch (error) {
+    cleanup()
+    throw error
+  }
+  return {
+    status: 'recording',
+    recording: {
+      cancel() {
+        cancelled = true
+        if (recorder.state === 'recording') recorder.stop()
+        else finish({ status: 'stale' })
+      },
+      async stop() {
+        if (recorder.state === 'recording') recorder.stop()
+        return completed
+      },
+    },
+  }
+}
+
 /** Consume the trusted-main dispatch facade until Desktop closes the consumer. */
 export async function runDesktopDispatchLoop(options: DesktopDispatchLoopOptions): Promise<void> {
   const active = options.active ?? (() => true)
@@ -258,7 +404,9 @@ function resultMessage(result: NativeActionResult): string {
 export function TockTutorNativeActions(props: TockTutorNativeActionsProps): ReactNode {
   const owner = useRef<TockTutorNativeActionsOwnerProps>(props)
   const lifetime = useRef<AbortController>()
+  const activeRecording = useRef<AudioRecording>()
   const [busy, setBusy] = useState<string | null>(null)
+  const [recording, setRecording] = useState(false)
   const [message, setMessage] = useState('Ready.')
   const hasNote = props.activePath !== null && props.vault !== null
 
@@ -279,6 +427,8 @@ export function TockTutorNativeActions(props: TockTutorNativeActionsProps): Reac
     }).catch(() => { if (active) setMessage('Desktop dispatch is unavailable.') })
     return () => {
       active = false
+      activeRecording.current?.cancel()
+      activeRecording.current = undefined
       controller.abort()
       if (lifetime.current === controller) lifetime.current = undefined
       void props.bridge.cancelDispatch().catch(() => {})
@@ -324,6 +474,63 @@ export function TockTutorNativeActions(props: TockTutorNativeActionsProps): Reac
     await run(label, operation, (authorization, signal) => (
       call(authorization, props.activePath!, props.vault!, signal)
     ))
+  }
+
+  const startRecording = async (): Promise<void> => {
+    const signal = lifetime.current?.signal
+    if (signal === undefined || signal.aborted || props.activePath === null || props.vault === null || props.storeAudio === undefined) return
+    setBusy('Starting Recording')
+    setMessage('Starting Recording…')
+    try {
+      const path = props.activePath
+      const vault = props.vault
+      const { authorization } = await props.bridge.authorize('microphone')
+      const started = await startAudioRecording(
+        authorization,
+        path,
+        vault,
+        () => owner.current,
+        async (token, expectedVault) => {
+          let response = await props.remote.tocktutorDesktop.requestMicrophone(token, expectedVault, signal)
+          if (responseWasLost(response) && !signal.aborted) response = await props.remote.tocktutorDesktop.requestMicrophone(token, expectedVault, signal)
+          return response
+        },
+        navigator.mediaDevices,
+        stream => new MediaRecorder(stream as MediaStream) as unknown as AudioMediaRecorder,
+      )
+      if (started.status !== 'recording') {
+        if (!signal.aborted) setMessage(started.result.ok ? resultMessage(started.result.value) : 'Audio recording is unavailable.')
+        return
+      }
+      activeRecording.current = started.recording
+      setRecording(true)
+      setMessage('Recording Audio…')
+    } catch {
+      if (!signal.aborted) setMessage('Audio recording could not start.')
+    } finally {
+      if (!signal.aborted) setBusy(null)
+    }
+  }
+
+  const stopRecording = async (): Promise<void> => {
+    const signal = lifetime.current?.signal
+    const currentRecording = activeRecording.current
+    if (signal === undefined || currentRecording === undefined) return
+    setBusy('Stopping Recording')
+    setMessage('Stopping Recording…')
+    const result = await currentRecording.stop()
+    if (activeRecording.current === currentRecording) activeRecording.current = undefined
+    if (signal.aborted) return
+    setRecording(false)
+    if (result.status === 'recorded') {
+      const stored = await owner.current.storeAudio?.(result.fileName, result.dataBase64)
+      setMessage(stored === true ? 'Audio recording added to the note.' : 'The audio recording could not be added safely.')
+    } else {
+      setMessage(result.status === 'stale'
+        ? 'The note or vault changed. The recording was discarded.'
+        : result.status === 'too-large' ? 'The audio recording exceeded 25 MiB.' : 'Audio recording failed safely.')
+    }
+    setBusy(null)
   }
 
   const button = (label: string, action: () => Promise<void>, enabled = true): ReactNode => (
@@ -379,6 +586,9 @@ export function TockTutorNativeActions(props: TockTutorNativeActionsProps): Reac
           ),
           navigator.mediaDevices,
         )), hasNote)}
+        {recording
+          ? button('Stop Recording', stopRecording)
+          : button('Start Recording', startRecording, hasNote && props.storeAudio !== undefined && typeof MediaRecorder !== 'undefined')}
         {button('Print Note', withNote('Printing Note', 'print', (authorization, path, vault, signal) => (
           props.remote.tocktutorDesktop.printNote(authorization, path, vault, signal)
         ), true), hasNote)}

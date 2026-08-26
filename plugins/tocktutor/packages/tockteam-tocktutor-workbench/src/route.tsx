@@ -763,6 +763,11 @@ export class WorkbenchRouteController {
     }
   }
 
+  async openGraphNode(path: string, mode: 'local' | 'note'): Promise<boolean> {
+    if (!await this.select(path)) return false
+    return mode === 'note' ? true : await this.loadGraph('local')
+  }
+
   async openSmartView(kind: 'recent' | 'tasks' | 'journals' | 'favorites' | 'collections' | 'tags'): Promise<boolean> {
     this.openSearch('')
     if (kind === 'recent') {
@@ -1998,6 +2003,30 @@ export class WorkbenchRouteController {
     }
   }
 
+  async attachFiles(files: readonly File[]): Promise<boolean> {
+    if (files.length === 0 || files.length > 16 || this.snapshot.path === null || this.snapshot.vault === null
+      || this.snapshot.revision === null || this.snapshot.documentKind !== 'markdown') return false
+    const path = this.snapshot.path
+    const vault = this.snapshot.vault
+    let expectedRevision = this.snapshot.revision
+    let expectedSource = this.snapshot.source
+    for (const file of files) {
+      if (file.size > 25 * 1024 * 1024 || this.snapshot.path !== path || !sameVault(this.snapshot.vault, vault)
+        || this.snapshot.revision !== expectedRevision || this.snapshot.source !== expectedSource) return false
+      const bytes = new Uint8Array(await file.arrayBuffer())
+      if (bytes.byteLength !== file.size || this.snapshot.path !== path || !sameVault(this.snapshot.vault, vault)
+        || this.snapshot.revision !== expectedRevision || this.snapshot.source !== expectedSource) return false
+      let binary = ''
+      for (let offset = 0; offset < bytes.length; offset += 32_768) {
+        binary += String.fromCharCode(...bytes.subarray(offset, offset + 32_768))
+      }
+      if (!await this.storeActiveAttachment(file.name, btoa(binary))) return false
+      expectedRevision = this.snapshot.revision!
+      expectedSource = this.snapshot.source
+    }
+    return true
+  }
+
   async storeActiveAttachment(fileName: string, dataBase64: string): Promise<boolean> {
     const vault = this.snapshot.vault
     const notePath = this.snapshot.path
@@ -2159,6 +2188,7 @@ export interface TockTutorRouteViewProps {
   nativeActions?: ReactNode
   onActivateRecentVault?(id: string): void
   onAddBookmark?(): void
+  onAttachFiles?(files: FileList): void
   onActivateTab(paneId: string, path: string): void
   onApplyOrganization?(): void
   onBack?(): void
@@ -2175,6 +2205,7 @@ export interface TockTutorRouteViewProps {
   onCloseSearch?(): void
   onCloseTab?(paneId: string, path: string): void
   onConvertActiveNote?(): void
+  onCopyGraphPath?(path: string): void
   onCreateBuiltinTemplate?(name: keyof typeof BUILTIN_TEMPLATES): void
   onCreateManagedVault?(name: string): void
   onAddPane(): void
@@ -2193,6 +2224,7 @@ export interface TockTutorRouteViewProps {
   onNewNote?(): void
   onOpenBookmark?(id: string): void
   onOpenCommandPalette?(): void
+  onOpenGraphNode?(path: string, mode: 'local' | 'note'): void
   onOpenRecovery?(): void
   onOpenSandboxVault?(): void
   onOpenSmartView?(kind: 'recent' | 'tasks' | 'journals' | 'favorites' | 'collections' | 'tags'): void
@@ -2778,7 +2810,19 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
               </Tooltip>
             </div>
           </header>
-          <div className="tocktutor-editor-body relative min-h-0 overflow-auto">
+          <div
+            aria-label="Editor Attachment Drop Zone"
+            className="tocktutor-editor-body relative min-h-0 overflow-auto"
+            onDrop={event => {
+              if (event.dataTransfer.files.length === 0) return
+              event.preventDefault()
+              props.onAttachFiles?.(event.dataTransfer.files)
+            }}
+            onPaste={event => {
+              if (event.clipboardData.files.length === 0) return
+              props.onAttachFiles?.(event.clipboardData.files)
+            }}
+          >
             {snapshot.path === null ? (
               <Empty unstyled className="tocktutor-empty absolute top-[45%] left-1/2 w-full max-w-[420px] -translate-1/2 p-8 text-center">
                 <EmptyHeader unstyled>
@@ -2938,12 +2982,14 @@ function TockTutorNativeActionsOutlet(props: {
   handleDispatch: TockTutorNativeActionsOwnerProps['handleDispatch']
   renderSlot: TockTutorRouteProps['renderSlot']
   saveCurrent(): Promise<boolean>
+  storeAudio(fileName: string, dataBase64: string): Promise<boolean>
   vault: VaultReference | null
 }): ReactNode {
   return props.renderSlot(TOCKTUTOR_NATIVE_ACTIONS_SLOT, {
     activePath: props.activePath,
     handleDispatch: props.handleDispatch,
     saveCurrent: props.saveCurrent,
+    storeAudio: props.storeAudio,
     vault: props.vault,
   }, {
     fallback: <Alert unstyled role="status">No native actions are available.</Alert>,
@@ -3023,12 +3069,14 @@ export function TockTutorRoute(props: TockTutorRouteProps): ReactNode {
             handleDispatch={event => controller.handleDispatch(event)}
             renderSlot={props.renderSlot}
             saveCurrent={() => controller.save()}
+            storeAudio={(fileName, dataBase64) => controller.storeActiveAttachment(fileName, dataBase64)}
             vault={snapshot.vault}
           />
         )}
         onActivateRecentVault={id => { void controller.activateRecentVault(id) }}
         onActivateTab={(paneId, path) => { void controller.activateTab(paneId, path) }}
         onAddBookmark={() => { controller.addActiveBookmark() }}
+        onAttachFiles={files => { void controller.attachFiles(Array.from(files).slice(0, 16)) }}
         onApplyOrganization={() => { void controller.applyOrganization() }}
         onAddPane={() => { void controller.addPane() }}
         onBack={() => { void controller.goBack() }}
@@ -3052,6 +3100,7 @@ export function TockTutorRoute(props: TockTutorRouteProps): ReactNode {
         onCloseSearch={() => { controller.closeSearch() }}
         onCloseTab={(paneId, path) => { void controller.closeTab(paneId, path) }}
         onConvertActiveNote={() => { controller.convertActiveNote() }}
+        onCopyGraphPath={path => { void globalThis.navigator?.clipboard?.writeText(path) }}
         onCreateBuiltinTemplate={name => { void controller.createBuiltinTemplateNote(name) }}
         onCreateManagedVault={name => { void controller.createManagedVault(name) }}
         onEdit={source => { controller.edit(source) }}
@@ -3069,6 +3118,7 @@ export function TockTutorRoute(props: TockTutorRouteProps): ReactNode {
         onNewNote={() => { void controller.handleDispatch({ action: 'new', kind: 'quick-action', operationId: crypto.randomUUID() }) }}
         onOpenBookmark={id => { void controller.openBookmark(id) }}
         onOpenCommandPalette={() => { controller.setCommandPaletteOpen(true) }}
+        onOpenGraphNode={(path, mode) => { void controller.openGraphNode(path, mode) }}
         onOpenRecovery={() => { void controller.setRecoveryOpen(true) }}
         onOpenSandboxVault={() => { void controller.openSandboxVault() }}
         onOpenSearch={() => { controller.openSearch('') }}

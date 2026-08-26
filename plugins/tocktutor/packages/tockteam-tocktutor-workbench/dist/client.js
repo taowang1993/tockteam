@@ -27362,30 +27362,30 @@ function CanvasNodeEditor(props) {
     /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("strong", { children: editing ? `Edit ${label}` : `Add ${kind2 === "group" ? "Group" : `${kind2[0].toUpperCase()}${kind2.slice(1)} Card`}` }),
     kind2 === "text" && /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("label", { className: "grid gap-1 text-xs", children: [
       "Card Text",
-      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("textarea", { "aria-label": "Card Text", className: controlClass, defaultValue: String(value ?? ""), maxLength: 1e5, name: "value", required: true })
+      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Textarea, { unstyled: true, "aria-label": "Card Text", className: controlClass, defaultValue: String(value ?? ""), maxLength: 1e5, name: "value", required: true })
     ] }),
     kind2 === "link" && /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("label", { className: "grid gap-1 text-xs", children: [
       "Card URL",
-      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("input", { "aria-label": "Card URL", className: controlClass, defaultValue: String(value ?? ""), maxLength: 2e3, name: "value", required: true, type: "url" })
+      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Input, { unstyled: true, "aria-label": "Card URL", className: controlClass, defaultValue: String(value ?? ""), maxLength: 2e3, name: "value", required: true, type: "url" })
     ] }),
     kind2 === "file" && /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("label", { className: "grid gap-1 text-xs", children: [
       "Card File",
-      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("input", { "aria-label": "Card File", className: controlClass, defaultValue: String(value ?? ""), maxLength: 1e3, name: "value", readOnly: editing, required: true })
+      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Input, { unstyled: true, "aria-label": "Card File", className: controlClass, defaultValue: String(value ?? ""), maxLength: 1e3, name: "value", readOnly: editing, required: true })
     ] }),
     kind2 === "group" && /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("label", { className: "grid gap-1 text-xs", children: [
       "Group Label",
-      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("input", { "aria-label": "Group Label", className: controlClass, defaultValue: String(value ?? "Group"), maxLength: 200, name: "value", required: true })
+      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Input, { unstyled: true, "aria-label": "Group Label", className: controlClass, defaultValue: String(value ?? "Group"), maxLength: 200, name: "value", required: true })
     ] }),
     editing && node !== void 0 && /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("fieldset", { className: "grid grid-cols-2 gap-2 border-0 p-0", children: [
       /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("legend", { className: "sr-only", children: "Card Geometry" }),
       ["x", "y", "width", "height"].map((key2) => /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("label", { className: "grid gap-1 text-xs", children: [
         `Card ${key2[0].toUpperCase()}${key2.slice(1)}`,
-        /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("input", { "aria-label": `Card ${key2[0].toUpperCase()}${key2.slice(1)}`, className: controlClass, defaultValue: String(node[key2]), name: key2, required: true, type: "number" })
+        /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Input, { unstyled: true, "aria-label": `Card ${key2[0].toUpperCase()}${key2.slice(1)}`, className: controlClass, defaultValue: String(node[key2]), name: key2, required: true, type: "number" })
       ] }, key2))
     ] }),
     /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("div", { className: "flex justify-end gap-2", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("button", { className: controlClass, onClick: props.onCancel, type: "button", children: "Cancel" }),
-      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("button", { className: controlClass, type: "submit", children: editing ? `Save ${label}` : `Create ${label}` })
+      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Button, { unstyled: true, className: controlClass, onClick: props.onCancel, type: "button", children: "Cancel" }),
+      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Button, { unstyled: true, className: controlClass, type: "submit", children: editing ? `Save ${label}` : `Create ${label}` })
     ] })
   ] });
 }
@@ -27396,13 +27396,13 @@ function CanvasEdgeEditor(props) {
     /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("strong", { children: "Edit Connection" }),
     /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("label", { className: "grid gap-1 text-xs", children: [
       "Label",
-      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("input", { "aria-label": "Connection Label", className: controlClass, defaultValue: typeof edge.label === "string" ? edge.label : "", maxLength: 200, name: "label" })
+      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Input, { unstyled: true, "aria-label": "Connection Label", className: controlClass, defaultValue: typeof edge.label === "string" ? edge.label : "", maxLength: 200, name: "label" })
     ] }),
     /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("label", { className: "grid gap-1 text-xs", children: [
       "Color",
-      /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("select", { "aria-label": "Connection Color", className: controlClass, defaultValue: typeof edge.color === "string" ? edge.color : "", name: "color", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("option", { value: "", children: "Default" }),
-        [1, 2, 3, 4, 5, 6].map((value) => /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("option", { value: String(value), children: String(value) }, value))
+      /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)(NativeSelect, { unstyled: true, "aria-label": "Connection Color", className: controlClass, defaultValue: typeof edge.color === "string" ? edge.color : "", name: "color", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(NativeSelectOption, { value: "", children: "Default" }),
+        [1, 2, 3, 4, 5, 6].map((value) => /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(NativeSelectOption, { value: String(value), children: String(value) }, value))
       ] })
     ] }),
     ["from", "to"].map((endpoint) => {
@@ -27412,17 +27412,17 @@ function CanvasEdgeEditor(props) {
         /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("legend", { className: "sr-only", children: endpoint === "from" ? "Connection Source" : "Connection Target" }),
         /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("label", { className: "grid gap-1 text-xs", children: [
           endpoint === "from" ? "Source Card" : "Target Card",
-          /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("select", { "aria-label": `Connection ${endpoint === "from" ? "Source" : "Target"} Card`, className: controlClass, defaultValue: nodeId, name: `${endpoint}Node`, children: props.document.nodes.filter(isConnectableCanvasNode).map((node) => /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("option", { value: node.id, children: nodeLabel(node) }, node.id)) })
+          /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(NativeSelect, { unstyled: true, "aria-label": `Connection ${endpoint === "from" ? "Source" : "Target"} Card`, className: controlClass, defaultValue: nodeId, name: `${endpoint}Node`, children: props.document.nodes.filter(isConnectableCanvasNode).map((node) => /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(NativeSelectOption, { value: node.id, children: nodeLabel(node) }, node.id)) })
         ] }),
         /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("label", { className: "grid gap-1 text-xs", children: [
           endpoint === "from" ? "Source Side" : "Target Side",
-          /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("select", { "aria-label": `Connection ${endpoint === "from" ? "Source" : "Target"} Side`, className: controlClass, defaultValue: typeof side === "string" ? side : endpoint === "from" ? "right" : "left", name: `${endpoint}Side`, children: SIDES.map((value) => /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("option", { value, children: titleCaseSide(value) }, value)) })
+          /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(NativeSelect, { unstyled: true, "aria-label": `Connection ${endpoint === "from" ? "Source" : "Target"} Side`, className: controlClass, defaultValue: typeof side === "string" ? side : endpoint === "from" ? "right" : "left", name: `${endpoint}Side`, children: SIDES.map((value) => /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(NativeSelectOption, { value, children: titleCaseSide(value) }, value)) })
         ] })
       ] }, endpoint);
     }),
     /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("div", { className: "flex justify-end gap-2", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("button", { className: controlClass, onClick: props.onCancel, type: "button", children: "Cancel" }),
-      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("button", { className: controlClass, type: "submit", children: "Save Connection" })
+      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Button, { unstyled: true, className: controlClass, onClick: props.onCancel, type: "button", children: "Cancel" }),
+      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Button, { unstyled: true, className: controlClass, type: "submit", children: "Save Connection" })
     ] })
   ] });
 }
@@ -27460,13 +27460,18 @@ function CanvasBoard({ source, revision, onChange, disabled = false }) {
   const [selectedEdgeId, setSelectedEdgeId] = (0, import_react8.useState)(null);
   const [nodeEditor, setNodeEditor] = (0, import_react8.useState)(null);
   const [edgeEditor, setEdgeEditor] = (0, import_react8.useState)(null);
+  const [zoom, setZoom] = (0, import_react8.useState)(1);
   const [error51, setError] = (0, import_react8.useState)(null);
+  const pointerCleanup = (0, import_react8.useRef)(null);
   const document2 = parsed.status === "ready" ? parsed.document : null;
   const labels = (0, import_react8.useMemo)(() => new Map(
     (document2?.nodes ?? []).map((node) => [node.id, nodeLabel(node)])
   ), [document2]);
   const selectedNode = document2?.nodes.find((node) => node.id === selectedNodeId);
   const selectedEdge = document2?.edges?.find((edge) => edge.id === selectedEdgeId);
+  (0, import_react8.useEffect)(() => () => {
+    pointerCleanup.current?.();
+  }, []);
   (0, import_react8.useEffect)(() => {
     if (document2 === null) {
       setArmed(null);
@@ -27611,6 +27616,38 @@ function CanvasBoard({ source, revision, onChange, disabled = false }) {
       height: node.height
     }));
   };
+  const beginPointerGeometry = (node, event, mode) => {
+    if (disabled || event.button !== 0) return;
+    event.preventDefault();
+    pointerCleanup.current?.();
+    const startX = event.clientX;
+    const startY = event.clientY;
+    const snappingDisabled = event.altKey;
+    let deltaX = 0;
+    let deltaY = 0;
+    const move = (next) => {
+      deltaX = calculateCanvasPointerValue(0, (next.clientX - startX) / zoom, snappingDisabled);
+      deltaY = calculateCanvasPointerValue(0, (next.clientY - startY) / zoom, snappingDisabled);
+    };
+    const cleanup = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", finish);
+      window.removeEventListener("pointercancel", cancel);
+      if (pointerCleanup.current === cleanup) pointerCleanup.current = null;
+    };
+    const finish = () => {
+      cleanup();
+      if (Math.abs(deltaX) < 1 && Math.abs(deltaY) < 1) return;
+      emit(mode === "move" ? "move-node" : "resize-node", (content) => updateCanvasNodeGeometry(content, node.id, mode === "move" ? { x: node.x + deltaX, y: node.y + deltaY, width: node.width, height: node.height } : { x: node.x, y: node.y, width: node.width + deltaX, height: node.height + deltaY }));
+    };
+    const cancel = () => {
+      cleanup();
+    };
+    pointerCleanup.current = cleanup;
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", finish);
+    window.addEventListener("pointercancel", cancel);
+  };
   const cancelConnection = (event) => {
     if (event.key !== "Escape" || armed === null) return;
     event.preventDefault();
@@ -27639,39 +27676,51 @@ function CanvasBoard({ source, revision, onChange, disabled = false }) {
         ] }),
         error51 !== null && /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("p", { className: "m-3 text-sm text-red-600", role: "note", children: error51 }),
         !disabled && /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("div", { "aria-label": "Canvas Actions", className: "sticky top-2 left-2 z-30 m-2 flex w-fit max-w-[calc(100%-16px)] flex-wrap gap-1 rounded-md border border-[var(--tt-border)] bg-[var(--tt-panel)] p-1 shadow-sm", role: "toolbar", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("button", { className: controlClass, onClick: () => {
+          /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Button, { unstyled: true, className: controlClass, onClick: () => {
             setNodeEditor({ kind: "text", mode: "create" });
           }, type: "button", children: "Add Text Card" }),
-          /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("button", { className: controlClass, onClick: () => {
+          /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Button, { unstyled: true, className: controlClass, onClick: () => {
             setNodeEditor({ kind: "link", mode: "create" });
           }, type: "button", children: "Add Link Card" }),
-          /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("button", { className: controlClass, onClick: () => {
+          /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Button, { unstyled: true, className: controlClass, onClick: () => {
             setNodeEditor({ kind: "file", mode: "create" });
           }, type: "button", children: "Add File Card" }),
-          /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("button", { className: controlClass, onClick: () => {
+          /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Button, { unstyled: true, className: controlClass, onClick: () => {
             setNodeEditor({ kind: "group", mode: "create" });
           }, type: "button", children: "Add Group" }),
+          /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Button, { unstyled: true, "aria-label": "Zoom Canvas Out", className: controlClass, disabled: zoom <= 0.5, onClick: () => {
+            setZoom((value) => Math.max(0.5, value - 0.25));
+          }, type: "button", children: "\u2212" }),
+          /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)(Button, { unstyled: true, "aria-label": "Reset Canvas Zoom", className: controlClass, onClick: () => {
+            setZoom(1);
+          }, type: "button", children: [
+            String(Math.round(zoom * 100)),
+            "%"
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Button, { unstyled: true, "aria-label": "Zoom Canvas In", className: controlClass, disabled: zoom >= 2, onClick: () => {
+            setZoom((value) => Math.min(2, value + 0.25));
+          }, type: "button", children: "+" }),
           selectedNode !== void 0 && /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)(import_jsx_runtime23.Fragment, { children: [
-            /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("button", { className: controlClass, onClick: () => {
+            /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)(Button, { unstyled: true, className: controlClass, onClick: () => {
               setNodeEditor({ mode: "edit", nodeId: selectedNode.id });
             }, type: "button", children: [
               "Edit ",
               selectedNode.type === "group" ? "Group" : "Card"
             ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("button", { className: controlClass, onClick: duplicateSelectedNode, type: "button", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)(Button, { unstyled: true, className: controlClass, onClick: duplicateSelectedNode, type: "button", children: [
               "Duplicate ",
               selectedNode.type === "group" ? "Group" : "Card"
             ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("button", { className: controlClass, onClick: deleteSelectedNode, type: "button", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)(Button, { unstyled: true, className: controlClass, onClick: deleteSelectedNode, type: "button", children: [
               "Delete ",
               selectedNode.type === "group" ? "Group" : "Card"
             ] })
           ] }),
           selectedEdge !== void 0 && /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)(import_jsx_runtime23.Fragment, { children: [
-            /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("button", { className: controlClass, onClick: () => {
+            /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Button, { unstyled: true, className: controlClass, onClick: () => {
               setEdgeEditor({ edgeId: selectedEdge.id });
             }, type: "button", children: "Edit Connection" }),
-            /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("button", { className: controlClass, onClick: () => {
+            /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Button, { unstyled: true, className: controlClass, onClick: () => {
               if (emit("delete-edge", (content) => deleteCanvasEdge(content, selectedEdge.id))) setSelectedEdgeId(null);
             }, type: "button", children: "Delete Connection" })
           ] })
@@ -27687,7 +27736,7 @@ function CanvasBoard({ source, revision, onChange, disabled = false }) {
           {
             "aria-label": "Canvas Board Surface",
             className: "relative",
-            style: { height: bounds.height, width: bounds.width },
+            style: { height: bounds.height, width: bounds.width, zoom },
             children: document2.nodes.map((node) => {
               const label = labels.get(node.id) ?? node.id;
               const connectable = isConnectableCanvasNode(node);
@@ -27706,8 +27755,9 @@ function CanvasBoard({ source, revision, onChange, disabled = false }) {
                   style,
                   children: [
                     /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)(
-                      "button",
+                      Button,
                       {
+                        unstyled: true,
                         "aria-label": `${node.type === "group" ? "Canvas Group" : "Canvas Card"} ${label}`,
                         "aria-pressed": selectedNodeId === node.id,
                         className: "h-full w-full border-0 bg-transparent p-1 text-left text-inherit outline-offset-2",
@@ -27720,6 +27770,9 @@ function CanvasBoard({ source, revision, onChange, disabled = false }) {
                         onKeyDown: (event) => {
                           moveNode(node.id, event);
                         },
+                        onPointerDown: (event) => {
+                          beginPointerGeometry(node, event, "move");
+                        },
                         type: "button",
                         children: [
                           /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("strong", { className: "block truncate", children: label }),
@@ -27729,14 +27782,18 @@ function CanvasBoard({ source, revision, onChange, disabled = false }) {
                         ]
                       }
                     ),
+                    connectable && !disabled && /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Button, { unstyled: true, "aria-label": `Resize ${node.type === "group" ? "Group" : "Card"} ${label}`, className: "absolute right-0 bottom-0 z-10 size-5 translate-1/2 cursor-nwse-resize rounded border border-[var(--tt-border)] bg-[var(--tt-panel)] p-0", onPointerDown: (event) => {
+                      beginPointerGeometry(node, event, "resize");
+                    }, type: "button" }),
                     connectable && /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("fieldset", { className: "contents", disabled, children: [
                       /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("legend", { className: "sr-only", children: [
                         "Connect ",
                         label
                       ] }),
                       SIDES.map((side) => /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(
-                        "button",
+                        Button,
                         {
+                          unstyled: true,
                           "aria-label": `${titleCaseSide(side)} Connection Handle for ${label}`,
                           "aria-pressed": armed?.nodeId === node.id && armed.side === side,
                           className: "absolute z-10 m-0 size-5 rounded-full border border-[var(--tt-border)] bg-[var(--tt-panel)] text-[10px]",
@@ -27758,8 +27815,9 @@ function CanvasBoard({ source, revision, onChange, disabled = false }) {
           }
         ),
         (document2.edges?.length ?? 0) > 0 && /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("ul", { "aria-label": "Canvas Connections", className: "absolute top-2 right-2 z-20 m-0 max-w-72 list-none rounded-md border border-[var(--tt-border)] bg-[var(--tt-panel)] p-1 text-xs shadow-sm", children: document2.edges?.map((edge) => /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("li", { children: /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)(
-          "button",
+          Button,
           {
+            unstyled: true,
             "aria-pressed": selectedEdgeId === edge.id,
             className: "block w-full rounded-sm border-0 bg-transparent px-2 py-1 text-left text-inherit outline-offset-2",
             onClick: () => {
@@ -28702,9 +28760,23 @@ function WorkbenchGlyph({ kind: kind2 }) {
 
 // src/utility-panel.tsx
 var import_jsx_runtime26 = require("react/jsx-runtime");
+function graphFolder(path) {
+  return path.includes("/") ? path.split("/", 1)[0] : "Vault Root";
+}
+function graphFolderColor(folder) {
+  let hash3 = 0;
+  for (const character of folder) hash3 = Math.imul(hash3, 31) + character.codePointAt(0) >>> 0;
+  return `hsl(${String(hash3 % 360)} 62% 48%)`;
+}
 function WorkbenchUtilities(props) {
   const { activeProperties, snapshot } = props;
   const [newVaultName, setNewVaultName] = (0, import_react10.useState)("");
+  const [graphZoom, setGraphZoom] = (0, import_react10.useState)(1);
+  const [graphPan, setGraphPan] = (0, import_react10.useState)({ x: 0, y: 0 });
+  const graphQuery = (snapshot.settings?.graphQuery ?? "").trim().toLocaleLowerCase();
+  const graphNodes = (snapshot.graphLayout ?? []).filter((node) => graphQuery === "" || node.path.toLocaleLowerCase().includes(graphQuery));
+  const graphPaths = new Set(graphNodes.map((node) => node.path));
+  const graphGroups = Object.entries(Object.groupBy(graphNodes, (node) => snapshot.settings?.graphGroupBy === "folder" ? graphFolder(node.path) : "All Notes")).toSorted(([left], [right]) => left.localeCompare(right));
   return /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)(
     "aside",
     {
@@ -28844,17 +28916,83 @@ function WorkbenchUtilities(props) {
                 /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(NativeSelectOption, { value: "2", children: "2" }),
                 /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(NativeSelectOption, { value: "3", children: "3" })
               ] })
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)(Label, { unstyled: true, className: "col-span-2 grid gap-1", children: [
+              "Filter Note Paths",
+              /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(Input, { unstyled: true, "aria-label": "Filter Graph Note Paths", className: "rounded border border-[var(--tt-border)] bg-transparent p-1", maxLength: 1e3, onChange: (event) => {
+                props.onSettingsChange?.({ graphQuery: event.target.value });
+              }, type: "search", value: snapshot.settings?.graphQuery ?? "" })
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)(Label, { unstyled: true, className: "grid gap-1", children: [
+              "Group Nodes",
+              /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)(NativeSelect, { unstyled: true, "aria-label": "Group Graph Nodes", className: "rounded border border-[var(--tt-border)] bg-transparent p-1", onChange: (event) => {
+                props.onSettingsChange?.({ graphGroupBy: event.target.value === "folder" ? "folder" : "none" });
+              }, value: snapshot.settings?.graphGroupBy ?? "none", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(NativeSelectOption, { value: "none", children: "None" }),
+                /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(NativeSelectOption, { value: "folder", children: "Folder" })
+              ] })
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)(Label, { unstyled: true, className: "grid gap-1", children: [
+              "Color Nodes",
+              /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)(NativeSelect, { unstyled: true, "aria-label": "Color Graph Nodes", className: "rounded border border-[var(--tt-border)] bg-transparent p-1", onChange: (event) => {
+                props.onSettingsChange?.({ graphColorBy: event.target.value === "folder" ? "folder" : "none" });
+              }, value: snapshot.settings?.graphColorBy ?? "none", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(NativeSelectOption, { value: "none", children: "Default" }),
+                /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(NativeSelectOption, { value: "folder", children: "Folder" })
+              ] })
             ] })
           ] }),
-          (snapshot.graphLayout?.length ?? 0) > 0 ? /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)(import_jsx_runtime26.Fragment, { children: [
-            /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("div", { "aria-label": `${snapshot.graphMode === "local" ? "Local" : "Global"} Graph Canvas`, className: "relative mt-2 h-48 w-full overflow-hidden rounded border border-[var(--tt-border)]", role: "img", children: [
-              snapshot.graphLayout?.map((node) => /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("span", { className: "absolute size-2 rounded-full bg-[var(--tt-muted)] data-[active=true]:bg-[var(--tt-accent)]", "data-active": node.path === snapshot.graph?.path, style: { left: `calc(50% + ${String(node.x / 5)}px)`, top: `calc(50% + ${String(node.y / 5)}px)` }, title: node.path }, node.path)),
-              /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("span", { className: "sr-only", children: (snapshot.graph?.edges ?? []).map((edge) => `${edge.sourcePath} links to ${edge.targetPath}`).join(". ") })
+          /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("div", { "aria-label": "Graph Viewport Controls", className: "mt-2 flex gap-1", role: "group", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(Button, { unstyled: true, "aria-label": "Zoom Graph Out", className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs", disabled: graphZoom <= 0.5, onClick: () => {
+              setGraphZoom((value) => Math.max(0.5, value - 0.25));
+            }, type: "button", children: "\u2212" }),
+            /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)(Button, { unstyled: true, "aria-label": "Reset Graph Viewport", className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs", onClick: () => {
+              setGraphZoom(1);
+              setGraphPan({ x: 0, y: 0 });
+            }, type: "button", children: [
+              String(Math.round(graphZoom * 100)),
+              "%"
             ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("div", { className: "mt-1 grid max-h-28 gap-1 overflow-auto", children: snapshot.graphLayout?.map((node) => /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(Button, { unstyled: true, className: "truncate rounded border-0 bg-transparent px-1 py-0.5 text-left text-xs", onClick: () => {
-              props.onSelect(node.path);
-            }, type: "button", children: node.path }, node.path)) })
-          ] }) : /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("span", { className: "mt-2 block text-xs text-[var(--tt-muted)]", children: "Open Global or Local Graph." })
+            /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(Button, { unstyled: true, "aria-label": "Zoom Graph In", className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs", disabled: graphZoom >= 2, onClick: () => {
+              setGraphZoom((value) => Math.min(2, value + 0.25));
+            }, type: "button", children: "+" }),
+            /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(Button, { unstyled: true, "aria-label": "Pan Graph Left", className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs", onClick: () => {
+              setGraphPan((value) => ({ ...value, x: Math.max(-200, value.x - 20) }));
+            }, type: "button", children: "\u2190" }),
+            /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(Button, { unstyled: true, "aria-label": "Pan Graph Up", className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs", onClick: () => {
+              setGraphPan((value) => ({ ...value, y: Math.max(-200, value.y - 20) }));
+            }, type: "button", children: "\u2191" }),
+            /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(Button, { unstyled: true, "aria-label": "Pan Graph Down", className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs", onClick: () => {
+              setGraphPan((value) => ({ ...value, y: Math.min(200, value.y + 20) }));
+            }, type: "button", children: "\u2193" }),
+            /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(Button, { unstyled: true, "aria-label": "Pan Graph Right", className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs", onClick: () => {
+              setGraphPan((value) => ({ ...value, x: Math.min(200, value.x + 20) }));
+            }, type: "button", children: "\u2192" })
+          ] }),
+          graphNodes.length > 0 ? /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)(import_jsx_runtime26.Fragment, { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("div", { "aria-label": `${snapshot.graphMode === "local" ? "Local" : "Global"} Graph Canvas`, className: "relative mt-2 h-48 w-full overflow-hidden rounded border border-[var(--tt-border)]", role: "img", children: [
+              graphNodes.map((node) => {
+                const folder = graphFolder(node.path);
+                return /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("span", { "aria-label": `${node.path} Graph Node`, className: "absolute size-2 rounded-full bg-[var(--tt-muted)] data-[active=true]:bg-[var(--tt-accent)]", "data-active": node.path === snapshot.graph?.path, "data-graph-group": snapshot.settings?.graphGroupBy === "folder" ? folder : void 0, style: { backgroundColor: snapshot.settings?.graphColorBy === "folder" ? graphFolderColor(folder) : void 0, left: `calc(50% + ${String(node.x / 5 * graphZoom + graphPan.x)}px)`, top: `calc(50% + ${String(node.y / 5 * graphZoom + graphPan.y)}px)` }, title: node.path }, node.path);
+              }),
+              /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("span", { className: "sr-only", children: (snapshot.graph?.edges ?? []).filter((edge) => graphPaths.has(edge.sourcePath) && graphPaths.has(edge.targetPath)).map((edge) => `${edge.sourcePath} links to ${edge.targetPath}`).join(". ") })
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("div", { className: "mt-1 grid max-h-48 gap-2 overflow-auto", children: graphGroups.map(([group, nodes]) => /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("section", { "aria-label": `Graph Group ${group}`, children: [
+              /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("h3", { className: "m-0 text-xs", children: group }),
+              /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("div", { className: "grid gap-1", children: (nodes ?? []).map((node) => /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("div", { className: "grid grid-cols-[minmax(0,1fr)_auto_auto_auto] gap-1", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("span", { className: "truncate text-xs", children: node.path }),
+                /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(Button, { unstyled: true, "aria-label": `Open Note ${node.path}`, className: "rounded border border-[var(--tt-border)] bg-transparent px-1 py-0.5 text-xs", onClick: () => {
+                  props.onOpenGraphNode?.(node.path, "note");
+                }, type: "button", children: "Open" }),
+                /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(Button, { unstyled: true, "aria-label": `Open Local Graph ${node.path}`, className: "rounded border border-[var(--tt-border)] bg-transparent px-1 py-0.5 text-xs", onClick: () => {
+                  props.onOpenGraphNode?.(node.path, "local");
+                }, type: "button", children: "Local" }),
+                /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(Button, { unstyled: true, "aria-label": `Copy Graph Path ${node.path}`, className: "rounded border border-[var(--tt-border)] bg-transparent px-1 py-0.5 text-xs", onClick: () => {
+                  props.onCopyGraphPath?.(node.path);
+                }, type: "button", children: "Copy" })
+              ] }, node.path)) })
+            ] }, group)) })
+          ] }) : /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("span", { className: "mt-2 block text-xs text-[var(--tt-muted)]", children: (snapshot.graphLayout?.length ?? 0) > 0 ? "No graph nodes match this filter." : "Open Global or Local Graph." })
         ] }),
         /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("section", { "aria-label": "Bookmarks", className: "border-t border-[var(--tt-border)] p-3", children: [
           /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("h2", { className: "m-0 text-sm", children: "Bookmarks" }),
@@ -28979,17 +29117,10 @@ function WorkbenchUtilities(props) {
             /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("h2", { className: "m-0 text-sm", children: "Attachments" }),
             /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)(Label, { unstyled: true, className: "cursor-pointer rounded border border-[var(--tt-border)] px-2 py-1 text-xs", children: [
               "Add Files",
-              /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(Input, { unstyled: true, className: "sr-only", type: "file", accept: "image/*,audio/*,video/*,application/pdf", onChange: (event) => {
-                const file2 = event.target.files?.[0];
-                if (file2 === void 0) return;
-                const reader = new FileReader();
-                reader.addEventListener("load", () => {
-                  const value = typeof reader.result === "string" ? reader.result.split(",", 2)[1] : void 0;
-                  if (value !== void 0) props.onStoreAttachment?.(file2.name, value);
-                }, { once: true });
-                reader.readAsDataURL(file2);
+              /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(Input, { unstyled: true, accept: "image/*,audio/*,video/*,application/pdf", className: "sr-only", multiple: true, onChange: (event) => {
+                if (event.target.files !== null) props.onAttachFiles?.(event.target.files);
                 event.target.value = "";
-              } })
+              }, type: "file" })
             ] })
           ] }),
           /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("div", { className: "mt-2 grid gap-1", children: snapshot.entries.filter((entry) => entry.kind === "attachment").map((entry) => /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(Button, { unstyled: true, className: "truncate rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-left text-xs", onClick: () => {
@@ -29471,7 +29602,7 @@ function convertMarkdownFormats(source, options) {
 }
 
 // src/attachments.ts
-var ACCEPTED = /\.(?:avif|bmp|gif|ico|jpe?g|png|webp|mp3|m4a|ogg|wav|webm|mp4|mov|pdf)$/iu;
+var ACCEPTED = /\.(?:avif|bmp|gif|ico|jpe?g|png|webp|mp3|m4a|ogg|wav|weba|webm|mp4|mov|pdf)$/iu;
 function attachmentTargetPath(folder, fileName3, existing) {
   if (!isSafeVaultRelativePath(folder) || /^[A-Za-z]:/u.test(folder)) throw new Error("Attachment folder is invalid.");
   const name2 = fileName3.trim();
@@ -29598,6 +29729,9 @@ var DEFAULT_SETTINGS = Object.freeze({
   graphIncludeAttachments: false,
   graphIncludeOrphans: true,
   graphIncludeTags: false,
+  graphQuery: "",
+  graphGroupBy: "none",
+  graphColorBy: "none",
   journalFolder: "Journals",
   pagePreview: true,
   recoveryIntervalMinutes: 5,
@@ -29627,6 +29761,9 @@ function normalizeSettings(value) {
     graphIncludeAttachments: record2.graphIncludeAttachments === true,
     graphIncludeOrphans: record2.graphIncludeOrphans !== false,
     graphIncludeTags: record2.graphIncludeTags === true,
+    graphQuery: typeof record2.graphQuery === "string" ? record2.graphQuery.slice(0, 1e3) : "",
+    graphGroupBy: record2.graphGroupBy === "folder" ? "folder" : "none",
+    graphColorBy: record2.graphColorBy === "folder" ? "folder" : "none",
     journalFolder: safeFolder2(record2.journalFolder, DEFAULT_SETTINGS.journalFolder),
     pagePreview: record2.pagePreview !== false,
     recoveryIntervalMinutes: typeof record2.recoveryIntervalMinutes === "number" && Number.isSafeInteger(record2.recoveryIntervalMinutes) && record2.recoveryIntervalMinutes >= 1 && record2.recoveryIntervalMinutes <= 1440 ? record2.recoveryIntervalMinutes : DEFAULT_SETTINGS.recoveryIntervalMinutes,
@@ -30436,6 +30573,10 @@ var WorkbenchRouteController = class {
     } catch {
       return false;
     }
+  }
+  async openGraphNode(path, mode) {
+    if (!await this.select(path)) return false;
+    return mode === "note" ? true : await this.loadGraph("local");
   }
   async openSmartView(kind2) {
     this.openSearch("");
@@ -31576,6 +31717,26 @@ var WorkbenchRouteController = class {
       return false;
     }
   }
+  async attachFiles(files) {
+    if (files.length === 0 || files.length > 16 || this.snapshot.path === null || this.snapshot.vault === null || this.snapshot.revision === null || this.snapshot.documentKind !== "markdown") return false;
+    const path = this.snapshot.path;
+    const vault = this.snapshot.vault;
+    let expectedRevision = this.snapshot.revision;
+    let expectedSource = this.snapshot.source;
+    for (const file2 of files) {
+      if (file2.size > 25 * 1024 * 1024 || this.snapshot.path !== path || !sameVault(this.snapshot.vault, vault) || this.snapshot.revision !== expectedRevision || this.snapshot.source !== expectedSource) return false;
+      const bytes3 = new Uint8Array(await file2.arrayBuffer());
+      if (bytes3.byteLength !== file2.size || this.snapshot.path !== path || !sameVault(this.snapshot.vault, vault) || this.snapshot.revision !== expectedRevision || this.snapshot.source !== expectedSource) return false;
+      let binary = "";
+      for (let offset4 = 0; offset4 < bytes3.length; offset4 += 32768) {
+        binary += String.fromCharCode(...bytes3.subarray(offset4, offset4 + 32768));
+      }
+      if (!await this.storeActiveAttachment(file2.name, btoa(binary))) return false;
+      expectedRevision = this.snapshot.revision;
+      expectedSource = this.snapshot.source;
+    }
+    return true;
+  }
   async storeActiveAttachment(fileName3, dataBase64) {
     const vault = this.snapshot.vault;
     const notePath = this.snapshot.path;
@@ -32271,53 +32432,69 @@ function TockTutorRouteView(props) {
                     ] })
                   ] })
                 ] }),
-                /* @__PURE__ */ (0, import_jsx_runtime27.jsx)("div", { className: "tocktutor-editor-body relative min-h-0 overflow-auto", children: snapshot.path === null ? /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(Empty, { unstyled: true, className: "tocktutor-empty absolute top-[45%] left-1/2 w-full max-w-[420px] -translate-1/2 p-8 text-center", children: /* @__PURE__ */ (0, import_jsx_runtime27.jsxs)(EmptyHeader, { unstyled: true, children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime27.jsx)("p", { className: "tocktutor-kicker mb-0.5 text-[11px] font-[650] tracking-[.08em] text-[var(--tt-muted)] uppercase", children: "Ready When You Are" }),
-                  /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(EmptyTitle, { unstyled: true, "aria-level": 2, className: "text-xl font-bold", role: "heading", children: "Select a Note" }),
-                  /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(EmptyDescription, { unstyled: true, className: "text-[var(--tt-muted)]", children: "Choose a Markdown note from the vault to read or edit its exact source." })
-                ] }) }) : snapshot.mode === "source" ? /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(
-                  Textarea,
+                /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(
+                  "div",
                   {
-                    unstyled: true,
-                    "aria-label": sourceLabel,
-                    className: "h-full min-h-0 w-full resize-none border-0 bg-[var(--tt-panel)] px-[max(28px,calc((100%-768px)/2))] py-9 text-[var(--tt-text)] outline-none [tab-size:2] [font:14px/1.65_ui-monospace,SFMono-Regular,Consolas,monospace]",
-                    onChange: (event) => {
-                      props.onEdit(event.target.value);
+                    "aria-label": "Editor Attachment Drop Zone",
+                    className: "tocktutor-editor-body relative min-h-0 overflow-auto",
+                    onDrop: (event) => {
+                      if (event.dataTransfer.files.length === 0) return;
+                      event.preventDefault();
+                      props.onAttachFiles?.(event.dataTransfer.files);
                     },
-                    onSelect: (event) => {
-                      props.onSelectionChange?.(event.currentTarget.selectionStart, event.currentTarget.selectionEnd);
+                    onPaste: (event) => {
+                      if (event.clipboardData.files.length === 0) return;
+                      props.onAttachFiles?.(event.clipboardData.files);
                     },
-                    spellCheck: "true",
-                    value: snapshot.source
+                    children: snapshot.path === null ? /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(Empty, { unstyled: true, className: "tocktutor-empty absolute top-[45%] left-1/2 w-full max-w-[420px] -translate-1/2 p-8 text-center", children: /* @__PURE__ */ (0, import_jsx_runtime27.jsxs)(EmptyHeader, { unstyled: true, children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime27.jsx)("p", { className: "tocktutor-kicker mb-0.5 text-[11px] font-[650] tracking-[.08em] text-[var(--tt-muted)] uppercase", children: "Ready When You Are" }),
+                      /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(EmptyTitle, { unstyled: true, "aria-level": 2, className: "text-xl font-bold", role: "heading", children: "Select a Note" }),
+                      /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(EmptyDescription, { unstyled: true, className: "text-[var(--tt-muted)]", children: "Choose a Markdown note from the vault to read or edit its exact source." })
+                    ] }) }) : snapshot.mode === "source" ? /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(
+                      Textarea,
+                      {
+                        unstyled: true,
+                        "aria-label": sourceLabel,
+                        className: "h-full min-h-0 w-full resize-none border-0 bg-[var(--tt-panel)] px-[max(28px,calc((100%-768px)/2))] py-9 text-[var(--tt-text)] outline-none [tab-size:2] [font:14px/1.65_ui-monospace,SFMono-Regular,Consolas,monospace]",
+                        onChange: (event) => {
+                          props.onEdit(event.target.value);
+                        },
+                        onSelect: (event) => {
+                          props.onSelectionChange?.(event.currentTarget.selectionStart, event.currentTarget.selectionEnd);
+                        },
+                        spellCheck: "true",
+                        value: snapshot.source
+                      }
+                    ) : snapshot.mode === "live-preview" && snapshot.documentKind === "markdown" ? /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(
+                      LivePreviewView,
+                      {
+                        documentKey: snapshot.path,
+                        onEdit: props.onEdit,
+                        onToggleTask: props.onToggleTask,
+                        source: snapshot.source
+                      }
+                    ) : snapshot.documentKind === "canvas" ? /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(
+                      CanvasBoard,
+                      {
+                        disabled: snapshot.revision === null || props.onCanvasChange === void 0,
+                        onChange: (change) => {
+                          props.onCanvasChange?.(change);
+                        },
+                        revision: snapshot.revision ?? "unavailable",
+                        source: snapshot.source
+                      }
+                    ) : snapshot.documentKind === "base" ? /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(
+                      ExecutableBaseView,
+                      {
+                        files: snapshot.baseFiles ?? [],
+                        ...props.onBaseCopy === void 0 ? {} : { onCopy: props.onBaseCopy },
+                        ...props.onBaseEdit === void 0 ? {} : { onEdit: props.onBaseEdit },
+                        ...props.onBaseExport === void 0 ? {} : { onExport: props.onBaseExport },
+                        source: snapshot.source
+                      }
+                    ) : snapshot.documentKind === "markdown" ? /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(RichReadingView, { onToggleTask: props.onToggleTask, source: snapshot.source }) : /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(Alert, { unstyled: true, children: "Reading view is unavailable." })
                   }
-                ) : snapshot.mode === "live-preview" && snapshot.documentKind === "markdown" ? /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(
-                  LivePreviewView,
-                  {
-                    documentKey: snapshot.path,
-                    onEdit: props.onEdit,
-                    onToggleTask: props.onToggleTask,
-                    source: snapshot.source
-                  }
-                ) : snapshot.documentKind === "canvas" ? /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(
-                  CanvasBoard,
-                  {
-                    disabled: snapshot.revision === null || props.onCanvasChange === void 0,
-                    onChange: (change) => {
-                      props.onCanvasChange?.(change);
-                    },
-                    revision: snapshot.revision ?? "unavailable",
-                    source: snapshot.source
-                  }
-                ) : snapshot.documentKind === "base" ? /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(
-                  ExecutableBaseView,
-                  {
-                    files: snapshot.baseFiles ?? [],
-                    ...props.onBaseCopy === void 0 ? {} : { onCopy: props.onBaseCopy },
-                    ...props.onBaseEdit === void 0 ? {} : { onEdit: props.onBaseEdit },
-                    ...props.onBaseExport === void 0 ? {} : { onExport: props.onBaseExport },
-                    source: snapshot.source
-                  }
-                ) : snapshot.documentKind === "markdown" ? /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(RichReadingView, { onToggleTask: props.onToggleTask, source: snapshot.source }) : /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(Alert, { unstyled: true, children: "Reading view is unavailable." }) }),
+                ),
                 /* @__PURE__ */ (0, import_jsx_runtime27.jsxs)("footer", { "aria-label": "TockTutor Status Bar", className: "tocktutor-statusbar flex min-w-0 items-center border-t border-[var(--tt-border)] px-2 text-xs text-[var(--tt-muted)]", role: "group", children: [
                   /* @__PURE__ */ (0, import_jsx_runtime27.jsx)("output", { "aria-live": "polite", className: "tocktutor-message absolute size-px overflow-hidden whitespace-nowrap [clip:rect(0_0_0_0)] [clip-path:inset(50%)]", children: snapshot.message }),
                   snapshot.path !== null && /* @__PURE__ */ (0, import_jsx_runtime27.jsxs)("div", { className: "ml-auto flex items-center gap-[18px] whitespace-nowrap max-[760px]:gap-2", children: [
@@ -32422,6 +32599,7 @@ function TockTutorNativeActionsOutlet(props) {
     activePath: props.activePath,
     handleDispatch: props.handleDispatch,
     saveCurrent: props.saveCurrent,
+    storeAudio: props.storeAudio,
     vault: props.vault
   }, {
     fallback: /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(Alert, { unstyled: true, role: "status", children: "No native actions are available." })
@@ -32507,6 +32685,7 @@ function TockTutorRoute(props) {
           handleDispatch: (event) => controller.handleDispatch(event),
           renderSlot: props.renderSlot,
           saveCurrent: () => controller.save(),
+          storeAudio: (fileName3, dataBase64) => controller.storeActiveAttachment(fileName3, dataBase64),
           vault: snapshot.vault
         }
       ),
@@ -32518,6 +32697,9 @@ function TockTutorRoute(props) {
       },
       onAddBookmark: () => {
         controller.addActiveBookmark();
+      },
+      onAttachFiles: (files) => {
+        void controller.attachFiles(Array.from(files).slice(0, 16));
       },
       onApplyOrganization: () => {
         void controller.applyOrganization();
@@ -32572,6 +32754,9 @@ function TockTutorRoute(props) {
       onConvertActiveNote: () => {
         controller.convertActiveNote();
       },
+      onCopyGraphPath: (path) => {
+        void globalThis.navigator?.clipboard?.writeText(path);
+      },
       onCreateBuiltinTemplate: (name2) => {
         void controller.createBuiltinTemplateNote(name2);
       },
@@ -32622,6 +32807,9 @@ function TockTutorRoute(props) {
       },
       onOpenCommandPalette: () => {
         controller.setCommandPaletteOpen(true);
+      },
+      onOpenGraphNode: (path, mode) => {
+        void controller.openGraphNode(path, mode);
       },
       onOpenRecovery: () => {
         void controller.setRecoveryOpen(true);

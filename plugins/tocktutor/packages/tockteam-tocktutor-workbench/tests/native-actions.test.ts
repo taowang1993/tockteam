@@ -100,10 +100,12 @@ test('route renders an accessible Native Actions area with bounded owner props',
     'activePath',
     'handleDispatch',
     'saveCurrent',
+    'storeAudio',
     'vault',
   ])
   assert.equal(typeof (dispatched[3]?.owner as { handleDispatch?: unknown }).handleDispatch, 'function')
   assert.equal(typeof (dispatched[3]?.owner as { saveCurrent?: unknown }).saveCurrent, 'function')
+  assert.equal(typeof (dispatched[3]?.owner as { storeAudio?: unknown }).storeAudio, 'function')
   assert.equal(JSON.stringify(dispatched).includes('source'), false)
   assert.equal(JSON.stringify(dispatched).includes('content'), false)
   assert.equal(JSON.stringify(dispatched).includes('session'), false)

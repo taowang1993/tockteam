@@ -30,13 +30,16 @@ afterEach(() => {
 
 function renderRoute(overrides: Partial<WorkbenchRouteSnapshot> = {}, props: {
   onActivateRecentVault?(id: string): void
+  onAttachFiles?(files: FileList): void
   onBack?(): void
   onCancelDispatch?(): void
   onCloseCommandPalette?(): void
   onCloseTab?(paneId: string, path: string): void
+  onCopyGraphPath?(path: string): void
   onEdit?(source: string): void
   onMode?(mode: 'live-preview' | 'reading' | 'source'): void
   onMoveTab?(paneId: string, path: string, direction: -1 | 1): void
+  onOpenGraphNode?(path: string, mode: 'local' | 'note'): void
   onOpenRecovery?(): void
   onOpenSandboxVault?(): void
   onReadSnapshot?(id: string): void
@@ -46,6 +49,7 @@ function renderRoute(overrides: Partial<WorkbenchRouteSnapshot> = {}, props: {
   onRestoreTrash?(id: string): void
   onRunSearch?(): void
   onSearchMode?(mode: 'query' | 'related'): void
+  onSettingsChange?(change: Record<string, unknown>): void
   onSubmitDispatch?(draft: { path: string } | { text: string; title: string }): void
   onToggleFocusMode?(): void
   onTogglePinTab?(paneId: string, path: string): void
@@ -216,6 +220,29 @@ describe('TockTutor titlebar panel controls', () => {
     expect(document.body.textContent).not.toContain(id)
   })
 
+  it('uses one identity-bound FileList callback for picker, paste, and drop', () => {
+    const onAttachFiles = vi.fn()
+    const file = new File(['voice'], 'voice.weba', { type: 'audio/webm' })
+    const files = { 0: file, item: (index: number) => index === 0 ? file : null, length: 1 } as FileList
+    renderRoute({
+      documentKind: 'markdown',
+      mode: 'source',
+      path: 'Note.md',
+      phase: 'ready',
+      revision: 'sha256:note',
+      source: '# Note\n',
+    }, { onAttachFiles })
+
+    const dropZone = screen.getByLabelText('Editor Attachment Drop Zone')
+    fireEvent.drop(dropZone, { dataTransfer: { files } })
+    fireEvent.paste(dropZone, { clipboardData: { files } })
+    fireEvent.click(screen.getByRole('button', { name: 'More Note Actions' }))
+    fireEvent.change(screen.getByLabelText('Add Files'), { target: { files } })
+    expect(onAttachFiles).toHaveBeenNthCalledWith(1, files)
+    expect(onAttachFiles).toHaveBeenNthCalledWith(2, files)
+    expect(onAttachFiles).toHaveBeenNthCalledWith(3, files)
+  })
+
   it('renders bounded File Recovery and Trash actions', () => {
     const snapshotId = '2026-08-22T18-00-00-000Z-deadbeef'
     const trashId = 'trash-123e4567-e89b-42d3-a456-426614174000'
@@ -248,6 +275,48 @@ describe('TockTutor titlebar panel controls', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Move Current File to Trash' }))
     expect(onTrashCurrent).toHaveBeenCalledOnce()
     expect(screen.getByLabelText('Snapshot Preview').textContent).toContain('# Before')
+  })
+
+  it('filters, groups, colors, zooms, and opens bounded graph nodes accessibly', () => {
+    const onCopyGraphPath = vi.fn()
+    const onOpenGraphNode = vi.fn()
+    const onSettingsChange = vi.fn()
+    renderRoute({
+      graph: { complete: true, edges: [], generation: 1, missing: [], nodes: [{ depth: 0, path: 'Lessons/One.md' }, { depth: 1, path: 'Other.md' }], orphans: [], path: null, scan: { bytes: 1, entries: 2, files: 2 }, truncated: false, truncationReason: null, warnings: [] },
+      graphLayout: [{ depth: 0, path: 'Lessons/One.md', x: 100, y: 0 }, { depth: 1, path: 'Other.md', x: -100, y: 0 }],
+      graphMode: 'global',
+      settings: {
+        attachmentFolder: 'Attachments', backlinksInDocument: false, defaultEditingMode: 'live-preview',
+        graphColorBy: 'folder', graphDepth: 2, graphGroupBy: 'folder', graphIncludeAttachments: false,
+        graphIncludeOrphans: true, graphIncludeTags: false, graphQuery: 'Lessons', journalFolder: 'Journals',
+        pagePreview: true, recoveryIntervalMinutes: 5, snapshotRetentionDays: 7, templateFolder: 'Templates', webClipFolder: 'Clips',
+      },
+    }, { onCopyGraphPath, onOpenGraphNode, onSettingsChange })
+
+    fireEvent.click(screen.getByRole('button', { name: /Choose Vault/u }))
+    const graphNode = screen.getByLabelText('Lessons/One.md Graph Node')
+    expect(screen.queryByLabelText('Other.md Graph Node')).toBeNull()
+    expect(graphNode.getAttribute('data-graph-group')).toBe('Lessons')
+    expect(graphNode.getAttribute('style')).toContain('background-color')
+    const initialLeft = (graphNode as HTMLElement).style.left
+    fireEvent.click(screen.getByRole('button', { name: 'Zoom Graph In' }))
+    expect((screen.getByLabelText('Lessons/One.md Graph Node') as HTMLElement).style.left).not.toBe(initialLeft)
+    fireEvent.click(screen.getByRole('button', { name: 'Pan Graph Right' }))
+    expect((screen.getByLabelText('Lessons/One.md Graph Node') as HTMLElement).style.left).toContain('45px')
+    fireEvent.click(screen.getByRole('button', { name: 'Reset Graph Viewport' }))
+    expect((screen.getByLabelText('Lessons/One.md Graph Node') as HTMLElement).style.left).toContain('20px')
+    fireEvent.click(screen.getByRole('button', { name: 'Open Note Lessons/One.md' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Open Local Graph Lessons/One.md' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Copy Graph Path Lessons/One.md' }))
+    expect(onOpenGraphNode).toHaveBeenNthCalledWith(1, 'Lessons/One.md', 'note')
+    expect(onOpenGraphNode).toHaveBeenNthCalledWith(2, 'Lessons/One.md', 'local')
+    expect(onCopyGraphPath).toHaveBeenCalledWith('Lessons/One.md')
+    fireEvent.change(screen.getByLabelText('Filter Graph Note Paths'), { target: { value: 'Other' } })
+    fireEvent.change(screen.getByLabelText('Group Graph Nodes'), { target: { value: 'none' } })
+    fireEvent.change(screen.getByLabelText('Color Graph Nodes'), { target: { value: 'none' } })
+    expect(onSettingsChange).toHaveBeenCalledWith({ graphQuery: 'Other' })
+    expect(onSettingsChange).toHaveBeenCalledWith({ graphGroupBy: 'none' })
+    expect(onSettingsChange).toHaveBeenCalledWith({ graphColorBy: 'none' })
   })
 
   it('renders bounded keyword and Related search results', () => {

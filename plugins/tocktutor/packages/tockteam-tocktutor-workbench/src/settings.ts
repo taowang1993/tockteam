@@ -23,6 +23,9 @@ export interface TockTutorSettings {
   graphIncludeAttachments: boolean
   graphIncludeOrphans: boolean
   graphIncludeTags: boolean
+  graphQuery: string
+  graphGroupBy: 'folder' | 'none'
+  graphColorBy: 'folder' | 'none'
   journalFolder: string
   pagePreview: boolean
   recoveryIntervalMinutes: number
@@ -53,6 +56,9 @@ const DEFAULT_SETTINGS: TockTutorSettings = Object.freeze({
   graphIncludeAttachments: false,
   graphIncludeOrphans: true,
   graphIncludeTags: false,
+  graphQuery: '',
+  graphGroupBy: 'none',
+  graphColorBy: 'none',
   journalFolder: 'Journals',
   pagePreview: true,
   recoveryIntervalMinutes: 5,
@@ -94,6 +100,9 @@ function normalizeSettings(value: unknown): TockTutorSettings {
     graphIncludeAttachments: record.graphIncludeAttachments === true,
     graphIncludeOrphans: record.graphIncludeOrphans !== false,
     graphIncludeTags: record.graphIncludeTags === true,
+    graphQuery: typeof record.graphQuery === 'string' ? record.graphQuery.slice(0, 1_000) : '',
+    graphGroupBy: record.graphGroupBy === 'folder' ? 'folder' : 'none',
+    graphColorBy: record.graphColorBy === 'folder' ? 'folder' : 'none',
     journalFolder: safeFolder(record.journalFolder, DEFAULT_SETTINGS.journalFolder),
     pagePreview: record.pagePreview !== false,
     recoveryIntervalMinutes: typeof record.recoveryIntervalMinutes === 'number' && Number.isSafeInteger(record.recoveryIntervalMinutes) && record.recoveryIntervalMinutes >= 1 && record.recoveryIntervalMinutes <= 1_440 ? record.recoveryIntervalMinutes : DEFAULT_SETTINGS.recoveryIntervalMinutes,

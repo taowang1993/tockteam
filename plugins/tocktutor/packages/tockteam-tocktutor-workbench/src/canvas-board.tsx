@@ -1,4 +1,8 @@
-import { useEffect, useMemo, useState, type CSSProperties, type FormEvent, type KeyboardEvent, type ReactNode } from 'react'
+import { Button } from '@tockteam/ui/button'
+import { Input } from '@tockteam/ui/input'
+import { NativeSelect, NativeSelectOption } from '@tockteam/ui/native-select'
+import { Textarea } from '@tockteam/ui/textarea'
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent, type KeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
 import { createCanvasChange, type CanvasChange } from './canvas-change.ts'
 import {
   createCanvasEdge,
@@ -8,7 +12,7 @@ import {
   updateCanvasEdgeColor,
   updateCanvasEdgeLabel,
 } from './canvas-edges.ts'
-import { CANVAS_GRID_SIZE, type CanvasSide } from './canvas-geometry.ts'
+import { calculateCanvasPointerValue, CANVAS_GRID_SIZE, type CanvasSide } from './canvas-geometry.ts'
 import { tryNormalizeCanvasLinkUrl } from './canvas-links.ts'
 import {
   createCanvasFileNode,
@@ -62,17 +66,17 @@ function CanvasNodeEditor(props: {
   return (
     <form aria-label={`${label} Editor`} className="absolute top-12 left-2 z-40 grid min-w-64 gap-2 rounded-md border border-[var(--tt-border)] bg-[var(--tt-panel)] p-3 shadow-lg" onSubmit={props.onSubmit}>
       <strong>{editing ? `Edit ${label}` : `Add ${kind === 'group' ? 'Group' : `${kind[0]!.toUpperCase()}${kind.slice(1)} Card`}`}</strong>
-      {kind === 'text' && <label className="grid gap-1 text-xs">Card Text<textarea aria-label="Card Text" className={controlClass} defaultValue={String(value ?? '')} maxLength={100_000} name="value" required /></label>}
-      {kind === 'link' && <label className="grid gap-1 text-xs">Card URL<input aria-label="Card URL" className={controlClass} defaultValue={String(value ?? '')} maxLength={2_000} name="value" required type="url" /></label>}
-      {kind === 'file' && <label className="grid gap-1 text-xs">Card File<input aria-label="Card File" className={controlClass} defaultValue={String(value ?? '')} maxLength={1_000} name="value" readOnly={editing} required /></label>}
-      {kind === 'group' && <label className="grid gap-1 text-xs">Group Label<input aria-label="Group Label" className={controlClass} defaultValue={String(value ?? 'Group')} maxLength={200} name="value" required /></label>}
+      {kind === 'text' && <label className="grid gap-1 text-xs">Card Text<Textarea unstyled aria-label="Card Text" className={controlClass} defaultValue={String(value ?? '')} maxLength={100_000} name="value" required /></label>}
+      {kind === 'link' && <label className="grid gap-1 text-xs">Card URL<Input unstyled aria-label="Card URL" className={controlClass} defaultValue={String(value ?? '')} maxLength={2_000} name="value" required type="url" /></label>}
+      {kind === 'file' && <label className="grid gap-1 text-xs">Card File<Input unstyled aria-label="Card File" className={controlClass} defaultValue={String(value ?? '')} maxLength={1_000} name="value" readOnly={editing} required /></label>}
+      {kind === 'group' && <label className="grid gap-1 text-xs">Group Label<Input unstyled aria-label="Group Label" className={controlClass} defaultValue={String(value ?? 'Group')} maxLength={200} name="value" required /></label>}
       {editing && node !== undefined && (
         <fieldset className="grid grid-cols-2 gap-2 border-0 p-0">
           <legend className="sr-only">Card Geometry</legend>
-          {(['x', 'y', 'width', 'height'] as const).map(key => <label className="grid gap-1 text-xs" key={key}>{`Card ${key[0]!.toUpperCase()}${key.slice(1)}`}<input aria-label={`Card ${key[0]!.toUpperCase()}${key.slice(1)}`} className={controlClass} defaultValue={String(node[key])} name={key} required type="number" /></label>)}
+          {(['x', 'y', 'width', 'height'] as const).map(key => <label className="grid gap-1 text-xs" key={key}>{`Card ${key[0]!.toUpperCase()}${key.slice(1)}`}<Input unstyled aria-label={`Card ${key[0]!.toUpperCase()}${key.slice(1)}`} className={controlClass} defaultValue={String(node[key])} name={key} required type="number" /></label>)}
         </fieldset>
       )}
-      <div className="flex justify-end gap-2"><button className={controlClass} onClick={props.onCancel} type="button">Cancel</button><button className={controlClass} type="submit">{editing ? `Save ${label}` : `Create ${label}`}</button></div>
+      <div className="flex justify-end gap-2"><Button unstyled className={controlClass} onClick={props.onCancel} type="button">Cancel</Button><Button unstyled className={controlClass} type="submit">{editing ? `Save ${label}` : `Create ${label}`}</Button></div>
     </form>
   )
 }
@@ -88,20 +92,20 @@ function CanvasEdgeEditor(props: {
   return (
     <form aria-label="Connection Editor" className="absolute top-12 right-2 z-40 grid min-w-72 gap-2 rounded-md border border-[var(--tt-border)] bg-[var(--tt-panel)] p-3 shadow-lg" onSubmit={props.onSubmit}>
       <strong>Edit Connection</strong>
-      <label className="grid gap-1 text-xs">Label<input aria-label="Connection Label" className={controlClass} defaultValue={typeof edge.label === 'string' ? edge.label : ''} maxLength={200} name="label" /></label>
-      <label className="grid gap-1 text-xs">Color<select aria-label="Connection Color" className={controlClass} defaultValue={typeof edge.color === 'string' ? edge.color : ''} name="color"><option value="">Default</option>{[1, 2, 3, 4, 5, 6].map(value => <option key={value} value={String(value)}>{String(value)}</option>)}</select></label>
+      <label className="grid gap-1 text-xs">Label<Input unstyled aria-label="Connection Label" className={controlClass} defaultValue={typeof edge.label === 'string' ? edge.label : ''} maxLength={200} name="label" /></label>
+      <label className="grid gap-1 text-xs">Color<NativeSelect unstyled aria-label="Connection Color" className={controlClass} defaultValue={typeof edge.color === 'string' ? edge.color : ''} name="color"><NativeSelectOption value="">Default</NativeSelectOption>{[1, 2, 3, 4, 5, 6].map(value => <NativeSelectOption key={value} value={String(value)}>{String(value)}</NativeSelectOption>)}</NativeSelect></label>
       {(['from', 'to'] as const).map(endpoint => {
         const nodeId = endpoint === 'from' ? edge.fromNode : edge.toNode
         const side = endpoint === 'from' ? edge.fromSide : edge.toSide
         return (
           <fieldset className="grid grid-cols-2 gap-2 border-0 p-0" key={endpoint}>
             <legend className="sr-only">{endpoint === 'from' ? 'Connection Source' : 'Connection Target'}</legend>
-            <label className="grid gap-1 text-xs">{endpoint === 'from' ? 'Source Card' : 'Target Card'}<select aria-label={`Connection ${endpoint === 'from' ? 'Source' : 'Target'} Card`} className={controlClass} defaultValue={nodeId} name={`${endpoint}Node`}>{props.document.nodes.filter(isConnectableCanvasNode).map(node => <option key={node.id} value={node.id}>{nodeLabel(node)}</option>)}</select></label>
-            <label className="grid gap-1 text-xs">{endpoint === 'from' ? 'Source Side' : 'Target Side'}<select aria-label={`Connection ${endpoint === 'from' ? 'Source' : 'Target'} Side`} className={controlClass} defaultValue={typeof side === 'string' ? side : endpoint === 'from' ? 'right' : 'left'} name={`${endpoint}Side`}>{SIDES.map(value => <option key={value} value={value}>{titleCaseSide(value)}</option>)}</select></label>
+            <label className="grid gap-1 text-xs">{endpoint === 'from' ? 'Source Card' : 'Target Card'}<NativeSelect unstyled aria-label={`Connection ${endpoint === 'from' ? 'Source' : 'Target'} Card`} className={controlClass} defaultValue={nodeId} name={`${endpoint}Node`}>{props.document.nodes.filter(isConnectableCanvasNode).map(node => <NativeSelectOption key={node.id} value={node.id}>{nodeLabel(node)}</NativeSelectOption>)}</NativeSelect></label>
+            <label className="grid gap-1 text-xs">{endpoint === 'from' ? 'Source Side' : 'Target Side'}<NativeSelect unstyled aria-label={`Connection ${endpoint === 'from' ? 'Source' : 'Target'} Side`} className={controlClass} defaultValue={typeof side === 'string' ? side : endpoint === 'from' ? 'right' : 'left'} name={`${endpoint}Side`}>{SIDES.map(value => <NativeSelectOption key={value} value={value}>{titleCaseSide(value)}</NativeSelectOption>)}</NativeSelect></label>
           </fieldset>
         )
       })}
-      <div className="flex justify-end gap-2"><button className={controlClass} onClick={props.onCancel} type="button">Cancel</button><button className={controlClass} type="submit">Save Connection</button></div>
+      <div className="flex justify-end gap-2"><Button unstyled className={controlClass} onClick={props.onCancel} type="button">Cancel</Button><Button unstyled className={controlClass} type="submit">Save Connection</Button></div>
     </form>
   )
 }
@@ -147,7 +151,9 @@ export function CanvasBoard({ source, revision, onChange, disabled = false }: Ca
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null)
   const [nodeEditor, setNodeEditor] = useState<NodeEditor | null>(null)
   const [edgeEditor, setEdgeEditor] = useState<EdgeEditor | null>(null)
+  const [zoom, setZoom] = useState(1)
   const [error, setError] = useState<string | null>(null)
+  const pointerCleanup = useRef<(() => void) | null>(null)
 
   const document = parsed.status === 'ready' ? parsed.document : null
   const labels = useMemo(() => new Map(
@@ -155,6 +161,8 @@ export function CanvasBoard({ source, revision, onChange, disabled = false }: Ca
   ), [document])
   const selectedNode = document?.nodes.find(node => node.id === selectedNodeId)
   const selectedEdge = document?.edges?.find(edge => edge.id === selectedEdgeId)
+
+  useEffect(() => () => { pointerCleanup.current?.() }, [])
 
   useEffect(() => {
     if (document === null) {
@@ -315,6 +323,43 @@ export function CanvasBoard({ source, revision, onChange, disabled = false }: Ca
     }))
   }
 
+  const beginPointerGeometry = (
+    node: CanvasDocument['nodes'][number],
+    event: ReactPointerEvent<HTMLElement>,
+    mode: 'move' | 'resize',
+  ): void => {
+    if (disabled || event.button !== 0) return
+    event.preventDefault()
+    pointerCleanup.current?.()
+    const startX = event.clientX
+    const startY = event.clientY
+    const snappingDisabled = event.altKey
+    let deltaX = 0
+    let deltaY = 0
+    const move = (next: PointerEvent): void => {
+      deltaX = calculateCanvasPointerValue(0, (next.clientX - startX) / zoom, snappingDisabled)
+      deltaY = calculateCanvasPointerValue(0, (next.clientY - startY) / zoom, snappingDisabled)
+    }
+    const cleanup = (): void => {
+      window.removeEventListener('pointermove', move)
+      window.removeEventListener('pointerup', finish)
+      window.removeEventListener('pointercancel', cancel)
+      if (pointerCleanup.current === cleanup) pointerCleanup.current = null
+    }
+    const finish = (): void => {
+      cleanup()
+      if (Math.abs(deltaX) < 1 && Math.abs(deltaY) < 1) return
+      emit(mode === 'move' ? 'move-node' : 'resize-node', content => updateCanvasNodeGeometry(content, node.id, mode === 'move'
+        ? { x: node.x + deltaX, y: node.y + deltaY, width: node.width, height: node.height }
+        : { x: node.x, y: node.y, width: node.width + deltaX, height: node.height + deltaY }))
+    }
+    const cancel = (): void => { cleanup() }
+    pointerCleanup.current = cleanup
+    window.addEventListener('pointermove', move)
+    window.addEventListener('pointerup', finish)
+    window.addEventListener('pointercancel', cancel)
+  }
+
   const cancelConnection = (event: KeyboardEvent<HTMLElement>): void => {
     if (event.key !== 'Escape' || armed === null) return
     event.preventDefault()
@@ -345,21 +390,24 @@ export function CanvasBoard({ source, revision, onChange, disabled = false }: Ca
       {error !== null && <p className="m-3 text-sm text-red-600" role="note">{error}</p>}
       {!disabled && (
         <div aria-label="Canvas Actions" className="sticky top-2 left-2 z-30 m-2 flex w-fit max-w-[calc(100%-16px)] flex-wrap gap-1 rounded-md border border-[var(--tt-border)] bg-[var(--tt-panel)] p-1 shadow-sm" role="toolbar">
-          <button className={controlClass} onClick={() => { setNodeEditor({ kind: 'text', mode: 'create' }) }} type="button">Add Text Card</button>
-          <button className={controlClass} onClick={() => { setNodeEditor({ kind: 'link', mode: 'create' }) }} type="button">Add Link Card</button>
-          <button className={controlClass} onClick={() => { setNodeEditor({ kind: 'file', mode: 'create' }) }} type="button">Add File Card</button>
-          <button className={controlClass} onClick={() => { setNodeEditor({ kind: 'group', mode: 'create' }) }} type="button">Add Group</button>
+          <Button unstyled className={controlClass} onClick={() => { setNodeEditor({ kind: 'text', mode: 'create' }) }} type="button">Add Text Card</Button>
+          <Button unstyled className={controlClass} onClick={() => { setNodeEditor({ kind: 'link', mode: 'create' }) }} type="button">Add Link Card</Button>
+          <Button unstyled className={controlClass} onClick={() => { setNodeEditor({ kind: 'file', mode: 'create' }) }} type="button">Add File Card</Button>
+          <Button unstyled className={controlClass} onClick={() => { setNodeEditor({ kind: 'group', mode: 'create' }) }} type="button">Add Group</Button>
+          <Button unstyled aria-label="Zoom Canvas Out" className={controlClass} disabled={zoom <= 0.5} onClick={() => { setZoom(value => Math.max(0.5, value - 0.25)) }} type="button">−</Button>
+          <Button unstyled aria-label="Reset Canvas Zoom" className={controlClass} onClick={() => { setZoom(1) }} type="button">{String(Math.round(zoom * 100))}%</Button>
+          <Button unstyled aria-label="Zoom Canvas In" className={controlClass} disabled={zoom >= 2} onClick={() => { setZoom(value => Math.min(2, value + 0.25)) }} type="button">+</Button>
           {selectedNode !== undefined && (
             <>
-              <button className={controlClass} onClick={() => { setNodeEditor({ mode: 'edit', nodeId: selectedNode.id }) }} type="button">Edit {selectedNode.type === 'group' ? 'Group' : 'Card'}</button>
-              <button className={controlClass} onClick={duplicateSelectedNode} type="button">Duplicate {selectedNode.type === 'group' ? 'Group' : 'Card'}</button>
-              <button className={controlClass} onClick={deleteSelectedNode} type="button">Delete {selectedNode.type === 'group' ? 'Group' : 'Card'}</button>
+              <Button unstyled className={controlClass} onClick={() => { setNodeEditor({ mode: 'edit', nodeId: selectedNode.id }) }} type="button">Edit {selectedNode.type === 'group' ? 'Group' : 'Card'}</Button>
+              <Button unstyled className={controlClass} onClick={duplicateSelectedNode} type="button">Duplicate {selectedNode.type === 'group' ? 'Group' : 'Card'}</Button>
+              <Button unstyled className={controlClass} onClick={deleteSelectedNode} type="button">Delete {selectedNode.type === 'group' ? 'Group' : 'Card'}</Button>
             </>
           )}
           {selectedEdge !== undefined && (
             <>
-              <button className={controlClass} onClick={() => { setEdgeEditor({ edgeId: selectedEdge.id }) }} type="button">Edit Connection</button>
-              <button className={controlClass} onClick={() => { if (emit('delete-edge', content => deleteCanvasEdge(content, selectedEdge.id))) setSelectedEdgeId(null) }} type="button">Delete Connection</button>
+              <Button unstyled className={controlClass} onClick={() => { setEdgeEditor({ edgeId: selectedEdge.id }) }} type="button">Edit Connection</Button>
+              <Button unstyled className={controlClass} onClick={() => { if (emit('delete-edge', content => deleteCanvasEdge(content, selectedEdge.id))) setSelectedEdgeId(null) }} type="button">Delete Connection</Button>
             </>
           )}
         </div>
@@ -369,7 +417,7 @@ export function CanvasBoard({ source, revision, onChange, disabled = false }: Ca
       <div
         aria-label="Canvas Board Surface"
         className="relative"
-        style={{ height: bounds.height, width: bounds.width }}
+        style={{ height: bounds.height, width: bounds.width, zoom }}
       >
         {document.nodes.map(node => {
           const label = labels.get(node.id) ?? node.id
@@ -388,7 +436,7 @@ export function CanvasBoard({ source, revision, onChange, disabled = false }: Ca
               key={node.id}
               style={style}
             >
-              <button
+              <Button unstyled
                 aria-label={`${node.type === 'group' ? 'Canvas Group' : 'Canvas Card'} ${label}`}
                 aria-pressed={selectedNodeId === node.id}
                 className="h-full w-full border-0 bg-transparent p-1 text-left text-inherit outline-offset-2"
@@ -399,18 +447,20 @@ export function CanvasBoard({ source, revision, onChange, disabled = false }: Ca
                   setSelectedEdgeId(null)
                 }}
                 onKeyDown={event => { moveNode(node.id, event) }}
+                onPointerDown={event => { beginPointerGeometry(node, event, 'move') }}
                 type="button"
               >
                 <strong className="block truncate">{label}</strong>
                 {node.type === 'text' && typeof node.text === 'string' && <span className="block line-clamp-3 whitespace-pre-wrap text-xs">{node.text}</span>}
                 {node.type === 'link' && safeLink === undefined && <span className="block text-xs" role="note">This unsafe link is inert.</span>}
                 {!connectable && <span className="block text-xs" role="note">This unsupported card is inert.</span>}
-              </button>
+              </Button>
+              {connectable && !disabled && <Button unstyled aria-label={`Resize ${node.type === 'group' ? 'Group' : 'Card'} ${label}`} className="absolute right-0 bottom-0 z-10 size-5 translate-1/2 cursor-nwse-resize rounded border border-[var(--tt-border)] bg-[var(--tt-panel)] p-0" onPointerDown={event => { beginPointerGeometry(node, event, 'resize') }} type="button" />}
               {connectable && (
                 <fieldset className="contents" disabled={disabled}>
                   <legend className="sr-only">Connect {label}</legend>
                   {SIDES.map(side => (
-                    <button
+                    <Button unstyled
                       aria-label={`${titleCaseSide(side)} Connection Handle for ${label}`}
                       aria-pressed={armed?.nodeId === node.id && armed.side === side}
                       className="absolute z-10 m-0 size-5 rounded-full border border-[var(--tt-border)] bg-[var(--tt-panel)] text-[10px]"
@@ -420,7 +470,7 @@ export function CanvasBoard({ source, revision, onChange, disabled = false }: Ca
                       type="button"
                     >
                       <span aria-hidden="true">{side.slice(0, 1).toUpperCase()}</span>
-                    </button>
+                    </Button>
                   ))}
                 </fieldset>
               )}
@@ -432,7 +482,7 @@ export function CanvasBoard({ source, revision, onChange, disabled = false }: Ca
         <ul aria-label="Canvas Connections" className="absolute top-2 right-2 z-20 m-0 max-w-72 list-none rounded-md border border-[var(--tt-border)] bg-[var(--tt-panel)] p-1 text-xs shadow-sm">
           {document.edges?.map(edge => (
             <li key={edge.id}>
-              <button
+              <Button unstyled
                 aria-pressed={selectedEdgeId === edge.id}
                 className="block w-full rounded-sm border-0 bg-transparent px-2 py-1 text-left text-inherit outline-offset-2"
                 onClick={() => {
@@ -448,7 +498,7 @@ export function CanvasBoard({ source, revision, onChange, disabled = false }: Ca
                 type="button"
               >
                 Canvas Edge {typeof edge.label === 'string' ? edge.label : 'Unlabeled'} from {labels.get(edge.fromNode) ?? edge.fromNode} to {labels.get(edge.toNode) ?? edge.toNode}
-              </button>
+              </Button>
             </li>
           ))}
         </ul>

@@ -39,7 +39,8 @@ __export(client_exports, {
   name: () => name,
   replaceActionController: () => replaceActionController,
   requestMicrophoneAccess: () => requestMicrophoneAccess,
-  runDesktopDispatchLoop: () => runDesktopDispatchLoop
+  runDesktopDispatchLoop: () => runDesktopDispatchLoop,
+  startAudioRecording: () => startAudioRecording
 });
 module.exports = __toCommonJS(client_exports);
 
@@ -1296,8 +1297,8 @@ function cleanEnum(obj) {
     return Number.isNaN(Number.parseInt(k, 10));
   }).map((el) => el[1]);
 }
-function base64ToUint8Array(base643) {
-  const binaryString = atob(base643);
+function base64ToUint8Array(base644) {
+  const binaryString = atob(base644);
   const bytes = new Uint8Array(binaryString.length);
   for (let i = 0; i < binaryString.length; i++) {
     bytes[i] = binaryString.charCodeAt(i);
@@ -1312,9 +1313,9 @@ function uint8ArrayToBase64(bytes) {
   return btoa(binaryString);
 }
 function base64urlToUint8Array(base64url3) {
-  const base643 = base64url3.replace(/-/g, "+").replace(/_/g, "/");
-  const padding = "=".repeat((4 - base643.length % 4) % 4);
-  return base64ToUint8Array(base643 + padding);
+  const base644 = base64url3.replace(/-/g, "+").replace(/_/g, "/");
+  const padding = "=".repeat((4 - base644.length % 4) % 4);
+  return base64ToUint8Array(base644 + padding);
 }
 function uint8ArrayToBase64url(bytes) {
   return uint8ArrayToBase64(bytes).replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
@@ -2680,8 +2681,8 @@ var $ZodBase64 = /* @__PURE__ */ $constructor("$ZodBase64", (inst, def) => {
 function isValidBase64URL(data) {
   if (!base64url.test(data))
     return false;
-  const base643 = data.replace(/[-_]/g, (c) => c === "-" ? "+" : "/");
-  const padded = base643.padEnd(Math.ceil(base643.length / 4) * 4, "=");
+  const base644 = data.replace(/[-_]/g, (c) => c === "-" ? "+" : "/");
+  const padded = base644.padEnd(Math.ceil(base644.length / 4) * 4, "=");
   return isValidBase64(padded);
 }
 var $ZodBase64URL = /* @__PURE__ */ $constructor("$ZodBase64URL", (inst, def) => {
@@ -14972,7 +14973,7 @@ var typert_remote_client_default = TYPERT_REMOTE;
 // ../../../ui/src/alert.tsx
 var React = __toESM(require("react"), 1);
 
-// ../../node_modules/.pnpm/clsx@2.1.1/node_modules/clsx/dist/clsx.mjs
+// ../../../../node_modules/.pnpm/clsx@2.1.1/node_modules/clsx/dist/clsx.mjs
 function r(e) {
   var t, f, n = "";
   if ("string" == typeof e || "number" == typeof e) n += e;
@@ -14987,7 +14988,7 @@ function clsx() {
   return n;
 }
 
-// ../../node_modules/.pnpm/class-variance-authority@0.7.1/node_modules/class-variance-authority/dist/index.mjs
+// ../../../../node_modules/.pnpm/class-variance-authority@0.7.1/node_modules/class-variance-authority/dist/index.mjs
 var falsyToString = (value) => typeof value === "boolean" ? `${value}` : value === 0 ? "0" : value;
 var cx = clsx;
 var cva = (base, config2) => (props) => {
@@ -15181,6 +15182,122 @@ async function requestMicrophoneAccess(authorization, path, vault, current, requ
     for (const track of stream.getTracks()) track.stop();
   }
 }
+var MAX_AUDIO_BYTES = 25 * 1024 * 1024;
+function sameRecordingOwner(path, vault, current) {
+  return current.activePath === path && current.vault?.id === vault.id && current.vault.generation === vault.generation;
+}
+function recordingExtension(mimeType) {
+  switch (mimeType.toLowerCase().split(";", 1)[0]) {
+    case "audio/mp4":
+      return ".m4a";
+    case "audio/ogg":
+      return ".ogg";
+    case "audio/wav":
+      return ".wav";
+    case "audio/webm":
+      return ".weba";
+    default:
+      return null;
+  }
+}
+function base643(bytes) {
+  let binary = "";
+  for (let offset = 0; offset < bytes.length; offset += 32768) {
+    binary += String.fromCharCode(...bytes.subarray(offset, offset + 32768));
+  }
+  return btoa(binary);
+}
+async function startAudioRecording(authorization, path, vault, current, request, mediaDevices, createRecorder, now = () => /* @__PURE__ */ new Date(), readBlob = (blob) => blob.arrayBuffer()) {
+  const result = await request(authorization, vault);
+  if (!result.ok || result.value.status !== "granted") return { result, status: "not-started" };
+  const stream = await mediaDevices.getUserMedia({ audio: true, video: false });
+  const tracks = stream.getTracks();
+  const cleanup = () => {
+    for (const track of tracks) track.stop();
+  };
+  if (!sameRecordingOwner(path, vault, current())) {
+    cleanup();
+    return { result: { ok: true, value: { status: "stale" } }, status: "not-started" };
+  }
+  let recorder;
+  try {
+    recorder = createRecorder(stream);
+  } catch (error51) {
+    cleanup();
+    throw error51;
+  }
+  const extension = recordingExtension(recorder.mimeType);
+  if (extension === null) {
+    cleanup();
+    return { result: { ok: true, value: { status: "unavailable" } }, status: "not-started" };
+  }
+  const chunks = [];
+  let bytes = 0;
+  let cancelled = false;
+  let settled = false;
+  let resolve;
+  const completed = new Promise((finish2) => {
+    resolve = finish2;
+  });
+  const finish = (value) => {
+    if (settled) return;
+    settled = true;
+    cleanup();
+    resolve(value);
+  };
+  recorder.addEventListener("dataavailable", (event) => {
+    if (event === void 0 || event.data.size === 0 || settled) return;
+    bytes += event.data.size;
+    if (bytes <= MAX_AUDIO_BYTES) chunks.push(event.data);
+  });
+  recorder.addEventListener("error", () => {
+    finish({ status: "failed" });
+  });
+  recorder.addEventListener("stop", () => {
+    if (cancelled) {
+      finish({ status: "stale" });
+      return;
+    }
+    if (bytes > MAX_AUDIO_BYTES) {
+      finish({ status: "too-large" });
+      return;
+    }
+    if (!sameRecordingOwner(path, vault, current())) {
+      finish({ status: "stale" });
+      return;
+    }
+    void readBlob(new Blob(chunks, { type: recorder.mimeType })).then((buffer) => {
+      if (!sameRecordingOwner(path, vault, current())) {
+        finish({ status: "stale" });
+        return;
+      }
+      const timestamp = now().toISOString().slice(0, 19).replace("T", " ").replaceAll(":", "-");
+      finish({ dataBase64: base643(new Uint8Array(buffer)), fileName: `Recording ${timestamp}${extension}`, status: "recorded" });
+    }).catch(() => {
+      finish({ status: "failed" });
+    });
+  });
+  try {
+    recorder.start();
+  } catch (error51) {
+    cleanup();
+    throw error51;
+  }
+  return {
+    status: "recording",
+    recording: {
+      cancel() {
+        cancelled = true;
+        if (recorder.state === "recording") recorder.stop();
+        else finish({ status: "stale" });
+      },
+      async stop() {
+        if (recorder.state === "recording") recorder.stop();
+        return completed;
+      }
+    }
+  };
+}
 async function runDesktopDispatchLoop(options) {
   const active = options.active ?? (() => true);
   while (active() && !options.signal?.aborted) {
@@ -15254,7 +15371,9 @@ function resultMessage(result) {
 function TockTutorNativeActions(props) {
   const owner = (0, import_react.useRef)(props);
   const lifetime = (0, import_react.useRef)();
+  const activeRecording = (0, import_react.useRef)();
   const [busy, setBusy] = (0, import_react.useState)(null);
+  const [recording, setRecording] = (0, import_react.useState)(false);
   const [message, setMessage] = (0, import_react.useState)("Ready.");
   const hasNote = props.activePath !== null && props.vault !== null;
   (0, import_react.useEffect)(() => {
@@ -15277,6 +15396,8 @@ function TockTutorNativeActions(props) {
     });
     return () => {
       active = false;
+      activeRecording.current?.cancel();
+      activeRecording.current = void 0;
       controller.abort();
       if (lifetime.current === controller) lifetime.current = void 0;
       void props.bridge.cancelDispatch().catch(() => {
@@ -15305,6 +15426,59 @@ function TockTutorNativeActions(props) {
   const withNote = (label, operation, call, saveFirst = false) => async () => {
     if (props.activePath === null || props.vault === null || saveFirst && !await saveCurrent(props)) return;
     await run(label, operation, (authorization, signal) => call(authorization, props.activePath, props.vault, signal));
+  };
+  const startRecording = async () => {
+    const signal = lifetime.current?.signal;
+    if (signal === void 0 || signal.aborted || props.activePath === null || props.vault === null || props.storeAudio === void 0) return;
+    setBusy("Starting Recording");
+    setMessage("Starting Recording\u2026");
+    try {
+      const path = props.activePath;
+      const vault = props.vault;
+      const { authorization } = await props.bridge.authorize("microphone");
+      const started = await startAudioRecording(
+        authorization,
+        path,
+        vault,
+        () => owner.current,
+        async (token, expectedVault) => {
+          let response = await props.remote.tocktutorDesktop.requestMicrophone(token, expectedVault, signal);
+          if (responseWasLost(response) && !signal.aborted) response = await props.remote.tocktutorDesktop.requestMicrophone(token, expectedVault, signal);
+          return response;
+        },
+        navigator.mediaDevices,
+        (stream) => new MediaRecorder(stream)
+      );
+      if (started.status !== "recording") {
+        if (!signal.aborted) setMessage(started.result.ok ? resultMessage(started.result.value) : "Audio recording is unavailable.");
+        return;
+      }
+      activeRecording.current = started.recording;
+      setRecording(true);
+      setMessage("Recording Audio\u2026");
+    } catch {
+      if (!signal.aborted) setMessage("Audio recording could not start.");
+    } finally {
+      if (!signal.aborted) setBusy(null);
+    }
+  };
+  const stopRecording = async () => {
+    const signal = lifetime.current?.signal;
+    const currentRecording = activeRecording.current;
+    if (signal === void 0 || currentRecording === void 0) return;
+    setBusy("Stopping Recording");
+    setMessage("Stopping Recording\u2026");
+    const result = await currentRecording.stop();
+    if (activeRecording.current === currentRecording) activeRecording.current = void 0;
+    if (signal.aborted) return;
+    setRecording(false);
+    if (result.status === "recorded") {
+      const stored = await owner.current.storeAudio?.(result.fileName, result.dataBase64);
+      setMessage(stored === true ? "Audio recording added to the note." : "The audio recording could not be added safely.");
+    } else {
+      setMessage(result.status === "stale" ? "The note or vault changed. The recording was discarded." : result.status === "too-large" ? "The audio recording exceeded 25 MiB." : "Audio recording failed safely.");
+    }
+    setBusy(null);
   };
   const button = (label, action, enabled = true) => /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
     Button,
@@ -15345,6 +15519,7 @@ function TockTutorNativeActions(props) {
         ),
         navigator.mediaDevices
       )), hasNote),
+      recording ? button("Stop Recording", stopRecording) : button("Start Recording", startRecording, hasNote && props.storeAudio !== void 0 && typeof MediaRecorder !== "undefined"),
       button("Print Note", withNote("Printing Note", "print", (authorization, path, vault, signal) => props.remote.tocktutorDesktop.printNote(authorization, path, vault, signal), true), hasNote),
       button("Export HTML", withNote("Exporting HTML", "export-html", (authorization, path, vault, signal) => props.remote.tocktutorDesktop.exportNote(authorization, "html", path, vault, signal), true), hasNote),
       button("Export PDF", withNote("Exporting PDF", "export-pdf", (authorization, path, vault, signal) => props.remote.tocktutorDesktop.exportNote(authorization, "pdf", path, vault, signal), true), hasNote)

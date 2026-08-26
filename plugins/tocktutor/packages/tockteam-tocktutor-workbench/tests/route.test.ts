@@ -1213,6 +1213,9 @@ test('loads deterministic bounded Global and Local Graph projections', async () 
   assert.equal(await controller.loadGraph('local'), true)
   assert.equal(controller.getSnapshot().graph?.path, 'Folder/Note.md')
   assert.equal(controller.getSnapshot().graphMode, 'local')
+  assert.equal(await controller.openGraphNode('Second.md', 'local'), true)
+  assert.equal(controller.getSnapshot().path, 'Second.md')
+  assert.equal(controller.getSnapshot().graph?.path, 'Second.md')
   controller.dispose()
 })
 
@@ -1320,6 +1323,31 @@ test('stores, embeds, and previews bounded attachments under note identity', asy
   assert.equal(controller.getSnapshot().attachmentPreview?.dataBase64, 'AQID')
   controller.closeAttachmentPreview()
   assert.equal(controller.getSnapshot().attachmentPreview, null)
+  controller.dispose()
+})
+
+test('binds picker, paste, and drop file reads to the initiating note source', async () => {
+  const remote = new FakeRemote()
+  const controller = new WorkbenchRouteController(remote, () => {})
+  await controller.syncLocation('/tocktutor')
+  assert.equal(await controller.select('Folder/Note.md'), true)
+  assert.equal(await controller.attachFiles([{
+    async arrayBuffer() { return Uint8Array.from([1, 2, 3]).buffer },
+    name: 'Recording.weba',
+    size: 3,
+  } as File]), true)
+  assert.match(controller.getSnapshot().source, /!\[\[Attachments\/Recording\.weba\]\]/u)
+
+  let release!: (value: ArrayBuffer) => void
+  const delayed = controller.attachFiles([{
+    arrayBuffer: async () => await new Promise<ArrayBuffer>(resolve => { release = resolve }),
+    name: 'late.wav',
+    size: 3,
+  } as File])
+  controller.edit(`${controller.getSnapshot().source}Newer input\n`)
+  release(Uint8Array.from([4, 5, 6]).buffer)
+  assert.equal(await delayed, false)
+  assert.equal(remote.calls.filter(call => call.method === 'storeAttachment').length, 1)
   controller.dispose()
 })
 

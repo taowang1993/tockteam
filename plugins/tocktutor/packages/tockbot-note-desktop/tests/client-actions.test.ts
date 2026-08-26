@@ -3,6 +3,7 @@ import test from 'node:test'
 import {
   replaceActionController,
   requestMicrophoneAccess,
+  startAudioRecording,
   runDesktopDispatchLoop,
   type DesktopActionRemote,
   type DesktopCallerBridge,
@@ -65,6 +66,112 @@ test('uses audio-only media after the exact source note remains current', async 
     { audio: true, video: false },
     { audio: true, video: false },
   ])
+  assert.equal(stopped, true)
+})
+
+test('records authorized audio and returns a stale-safe Workbench attachment handoff', async () => {
+  const listeners = new Map<string, Array<(event?: { data: Blob }) => void>>()
+  let stopped = false
+  const stream = { getTracks: () => [{ stop() { stopped = true } }] }
+  const recorder = {
+    mimeType: 'audio/webm;codecs=opus',
+    state: 'inactive',
+    addEventListener(type: string, listener: (event?: { data: Blob }) => void) {
+      listeners.set(type, [...(listeners.get(type) ?? []), listener])
+    },
+    start() { this.state = 'recording' },
+    stop() {
+      this.state = 'inactive'
+      for (const listener of listeners.get('dataavailable') ?? []) listener({ data: new Blob(['voice']) })
+      for (const listener of listeners.get('stop') ?? []) listener()
+    },
+  }
+  let current = { activePath: 'Folder/Note.md', vault }
+  const started = await startAudioRecording(
+    'authorization',
+    'Folder/Note.md',
+    vault,
+    () => current,
+    async () => ({ ok: true, value: { status: 'granted' } }),
+    { async getUserMedia() { return stream } },
+    () => recorder,
+    () => new Date('2026-08-26T12:00:00.000Z'),
+  )
+  assert.equal(started.status, 'recording')
+  if (started.status !== 'recording') assert.fail('recording must start')
+  assert.equal(stopped, false)
+  const result = await started.recording.stop()
+  assert.deepEqual(result, {
+    dataBase64: 'dm9pY2U=',
+    fileName: 'Recording 2026-08-26 12-00-00.weba',
+    status: 'recorded',
+  })
+  assert.equal(stopped, true)
+
+  stopped = false
+  recorder.state = 'inactive'
+  const stale = await startAudioRecording(
+    'authorization',
+    'Folder/Note.md',
+    vault,
+    () => current,
+    async () => ({ ok: true, value: { status: 'granted' } }),
+    { async getUserMedia() { return stream } },
+    () => recorder,
+  )
+  assert.equal(stale.status, 'recording')
+  if (stale.status !== 'recording') assert.fail('recording must start')
+  current = { activePath: 'Folder/Other.md', vault }
+  assert.deepEqual(await stale.recording.stop(), { status: 'stale' })
+  assert.equal(stopped, true)
+})
+
+test('cleans up failed recorder construction and rechecks ownership after byte conversion', async () => {
+  let stopped = false
+  const stream = { getTracks: () => [{ stop() { stopped = true } }] }
+  const current = { activePath: 'Folder/Note.md', vault }
+  await assert.rejects(startAudioRecording(
+    'authorization',
+    'Folder/Note.md',
+    vault,
+    () => current,
+    async () => ({ ok: true, value: { status: 'granted' } }),
+    { async getUserMedia() { return stream } },
+    () => { throw new Error('recorder unavailable') },
+  ), /recorder unavailable/u)
+  assert.equal(stopped, true)
+
+  stopped = false
+  const listeners = new Map<string, Array<(event?: { data: Blob }) => void>>()
+  const recorder = {
+    mimeType: 'audio/webm',
+    state: 'inactive',
+    addEventListener(type: string, listener: (event?: { data: Blob }) => void) { listeners.set(type, [...(listeners.get(type) ?? []), listener]) },
+    start() { this.state = 'recording' },
+    stop() {
+      this.state = 'inactive'
+      for (const listener of listeners.get('dataavailable') ?? []) listener({ data: new Blob(['voice']) })
+      for (const listener of listeners.get('stop') ?? []) listener()
+    },
+  }
+  let owner = current
+  let release!: (value: ArrayBuffer) => void
+  const started = await startAudioRecording(
+    'authorization',
+    'Folder/Note.md',
+    vault,
+    () => owner,
+    async () => ({ ok: true, value: { status: 'granted' } }),
+    { async getUserMedia() { return stream } },
+    () => recorder,
+    () => new Date(),
+    async () => await new Promise<ArrayBuffer>(resolve => { release = resolve }),
+  )
+  if (started.status !== 'recording') assert.fail('recording must start')
+  const pending = started.recording.stop()
+  owner = { activePath: 'Folder/Other.md', vault }
+  release(Uint8Array.from([1]).buffer)
+  assert.deepEqual(await pending, { status: 'stale' })
   assert.equal(stopped, true)
 })
 

@@ -1,7 +1,8 @@
 import { createRequire } from 'node:module'
 
 const localReact = createRequire(import.meta.url)('react')
-const uiReact = createRequire(new URL('../../../../ui/package.json', import.meta.url))('react')
-const internals = '__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED'
-
-Object.assign(uiReact[internals], localReact[internals])
+const uiRequire = createRequire(new URL('../../../../ui/package.json', import.meta.url))
+const uiReact = uiRequire('react')
+const radixReact = createRequire(uiRequire.resolve('@radix-ui/react-tooltip'))('react')
+Object.assign(uiReact, localReact)
+Object.assign(radixReact, localReact)

@@ -13,11 +13,13 @@ const remote = Object.freeze({}) as DesktopActionRemote
 const vault = Object.freeze({ generation: 7, id: `vault:${'a'.repeat(64)}` })
 
 test('renders keyboard-native actions with bounded availability and polite status', () => {
+  Object.defineProperty(globalThis, 'MediaRecorder', { configurable: true, value: class {}, writable: true })
   const active = renderToStaticMarkup(createElement(TockTutorNativeActions, {
     activePath: 'Folder/Note.md',
     bridge,
     handleDispatch: async () => 'handled' as const,
     remote,
+    storeAudio: async () => true,
     vault,
   }))
   assert.match(active, /aria-label="Desktop Note Actions"/u)
@@ -30,6 +32,7 @@ test('renders keyboard-native actions with bounded availability and polite statu
     'Close Pop-Out',
     'Close All Pop-Outs',
     'Request Microphone',
+    'Start Recording',
     'Print Note',
     'Export HTML',
     'Export PDF',
@@ -44,5 +47,5 @@ test('renders keyboard-native actions with bounded availability and polite statu
     vault: null,
   }))
   assert.match(inactive, /<button[^>]*type="button">Choose Vault<\/button>/u)
-  assert.equal([...inactive.matchAll(/<button[^>]*disabled=""/gu)].length, 8)
+  assert.equal([...inactive.matchAll(/<button[^>]*disabled=""/gu)].length, 9)
 })

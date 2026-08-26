@@ -686,7 +686,7 @@ function documentKind(filePath: string): 'base' | 'canvas' | 'markdown' | null {
 
 const ATTACHMENT_KINDS = new Map<string, 'audio' | 'image' | 'pdf' | 'video'>(
   Object.entries({
-    audio: ['.3gp', '.flac', '.m4a', '.mp3', '.ogg', '.wav'],
+    audio: ['.3gp', '.flac', '.m4a', '.mp3', '.ogg', '.wav', '.weba'],
     image: ['.avif', '.bmp', '.gif', '.jpeg', '.jpg', '.png', '.svg', '.webp'],
     pdf: ['.pdf'],
     video: ['.mkv', '.mov', '.mp4', '.ogv', '.webm'],
@@ -718,6 +718,7 @@ const ATTACHMENT_MIME_TYPES = new Map(Object.entries({
   '.png': 'image/png',
   '.svg': 'image/svg+xml',
   '.wav': 'audio/wav',
+  '.weba': 'audio/webm',
   '.webm': 'video/webm',
   '.webp': 'image/webp',
 }))

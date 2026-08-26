@@ -1,6 +1,6 @@
 import { isSafeVaultRelativePath } from './session.ts'
 
-const ACCEPTED = /\.(?:avif|bmp|gif|ico|jpe?g|png|webp|mp3|m4a|ogg|wav|webm|mp4|mov|pdf)$/iu
+const ACCEPTED = /\.(?:avif|bmp|gif|ico|jpe?g|png|webp|mp3|m4a|ogg|wav|weba|webm|mp4|mov|pdf)$/iu
 
 export function attachmentTargetPath(folder: string, fileName: string, existing: ReadonlySet<string>): string {
   if (!isSafeVaultRelativePath(folder) || /^[A-Za-z]:/u.test(folder)) throw new Error('Attachment folder is invalid.')

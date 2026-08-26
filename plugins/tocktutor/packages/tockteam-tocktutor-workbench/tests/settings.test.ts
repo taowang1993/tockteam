@@ -27,12 +27,19 @@ test('loads bounded vault-scoped settings and fails malformed state to defaults'
     attachmentFolder: 'Assets',
     backlinksInDocument: true,
     defaultEditingMode: 'source',
+    graphColorBy: 'folder',
+    graphGroupBy: 'folder',
+    graphQuery: 'Lessons/',
     journalFolder: 'Daily',
     pagePreview: false,
     templateFolder: 'Templates/Class',
   })
   assert.equal(saved.attachmentFolder, 'Assets')
   assert.equal(loadTockTutorSettings(storage, vault).journalFolder, 'Daily')
+  assert.deepEqual(
+    (({ graphColorBy, graphGroupBy, graphQuery }) => ({ graphColorBy, graphGroupBy, graphQuery }))(loadTockTutorSettings(storage, vault)),
+    { graphColorBy: 'folder', graphGroupBy: 'folder', graphQuery: 'Lessons/' },
+  )
   assert.equal(loadTockTutorSettings(storage, `vault:${'b'.repeat(64)}`).journalFolder, 'Journals')
   storage.setItem(`tocktutor.settings.v1.${vault}`, '{bad')
   assert.equal(loadTockTutorSettings(storage, vault).defaultEditingMode, 'live-preview')

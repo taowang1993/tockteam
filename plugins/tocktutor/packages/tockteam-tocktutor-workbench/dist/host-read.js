@@ -68,7 +68,7 @@ function assertRevision(value) {
     }
 }
 function assertAttachmentPath(value) {
-    if (!isSafeVaultRelativePath(value) || !/\.(?:avif|bmp|gif|ico|jpe?g|png|webp|mp3|m4a|ogg|wav|webm|mp4|mov|pdf)$/iu.test(value)) {
+    if (!isSafeVaultRelativePath(value) || !/\.(?:avif|bmp|gif|ico|jpe?g|png|webp|mp3|m4a|ogg|wav|weba|webm|mp4|mov|pdf)$/iu.test(value)) {
         throw new TypeError('Attachment path must be one accepted vault-relative media path.');
     }
 }

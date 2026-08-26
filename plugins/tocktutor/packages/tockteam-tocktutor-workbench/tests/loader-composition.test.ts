@@ -292,7 +292,7 @@ async function verifyPackedClient(
     ))
     assert.match(html, /aria-label="Native Actions"/u)
     assert.ok(nativeOwner)
-    assert.deepEqual(Object.keys(nativeOwner).sort(), ['activePath', 'handleDispatch', 'saveCurrent', 'vault'])
+    assert.deepEqual(Object.keys(nativeOwner).sort(), ['activePath', 'handleDispatch', 'saveCurrent', 'storeAudio', 'vault'])
     assert.equal(nativeOwner.activePath, null)
     assert.equal(nativeOwner.vault, null)
     assert.equal(await nativeOwner.handleDispatch({

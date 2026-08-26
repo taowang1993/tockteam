@@ -22,9 +22,26 @@ export type WorkbenchUtilitiesProps = TockTutorRouteViewProps & {
   open: boolean
 }
 
+function graphFolder(path: string): string {
+  return path.includes('/') ? path.split('/', 1)[0]! : 'Vault Root'
+}
+
+function graphFolderColor(folder: string): string {
+  let hash = 0
+  for (const character of folder) hash = (Math.imul(hash, 31) + character.codePointAt(0)!) >>> 0
+  return `hsl(${String(hash % 360)} 62% 48%)`
+}
+
 export function WorkbenchUtilities(props: WorkbenchUtilitiesProps): ReactNode {
   const { activeProperties, snapshot } = props
   const [newVaultName, setNewVaultName] = useState('')
+  const [graphZoom, setGraphZoom] = useState(1)
+  const [graphPan, setGraphPan] = useState({ x: 0, y: 0 })
+  const graphQuery = (snapshot.settings?.graphQuery ?? '').trim().toLocaleLowerCase()
+  const graphNodes = (snapshot.graphLayout ?? []).filter(node => graphQuery === '' || node.path.toLocaleLowerCase().includes(graphQuery))
+  const graphPaths = new Set(graphNodes.map(node => node.path))
+  const graphGroups = Object.entries(Object.groupBy(graphNodes, node => snapshot.settings?.graphGroupBy === 'folder' ? graphFolder(node.path) : 'All Notes'))
+    .toSorted(([left], [right]) => left.localeCompare(right))
   return (
         <aside
           aria-hidden={!props.open}
@@ -118,18 +135,33 @@ export function WorkbenchUtilities(props: WorkbenchUtilitiesProps): ReactNode {
               <Label unstyled className="flex items-center gap-1">Tags<Checkbox checked={snapshot.settings?.graphIncludeTags ?? false} onCheckedChange={checked => { props.onSettingsChange?.({ graphIncludeTags: checked === true }) }} /></Label>
               <Label unstyled className="flex items-center gap-1">Attachments<Checkbox checked={snapshot.settings?.graphIncludeAttachments ?? false} onCheckedChange={checked => { props.onSettingsChange?.({ graphIncludeAttachments: checked === true }) }} /></Label>
               <Label unstyled className="flex items-center gap-1">Local Depth<NativeSelect unstyled value={String(snapshot.settings?.graphDepth ?? 2)} onChange={event => { const depth = Number(event.target.value); if (depth === 1 || depth === 2 || depth === 3) props.onSettingsChange?.({ graphDepth: depth }) }}><NativeSelectOption value="1">1</NativeSelectOption><NativeSelectOption value="2">2</NativeSelectOption><NativeSelectOption value="3">3</NativeSelectOption></NativeSelect></Label>
+              <Label unstyled className="col-span-2 grid gap-1">Filter Note Paths<Input unstyled aria-label="Filter Graph Note Paths" className="rounded border border-[var(--tt-border)] bg-transparent p-1" maxLength={1_000} onChange={event => { props.onSettingsChange?.({ graphQuery: event.target.value }) }} type="search" value={snapshot.settings?.graphQuery ?? ''} /></Label>
+              <Label unstyled className="grid gap-1">Group Nodes<NativeSelect unstyled aria-label="Group Graph Nodes" className="rounded border border-[var(--tt-border)] bg-transparent p-1" onChange={event => { props.onSettingsChange?.({ graphGroupBy: event.target.value === 'folder' ? 'folder' : 'none' }) }} value={snapshot.settings?.graphGroupBy ?? 'none'}><NativeSelectOption value="none">None</NativeSelectOption><NativeSelectOption value="folder">Folder</NativeSelectOption></NativeSelect></Label>
+              <Label unstyled className="grid gap-1">Color Nodes<NativeSelect unstyled aria-label="Color Graph Nodes" className="rounded border border-[var(--tt-border)] bg-transparent p-1" onChange={event => { props.onSettingsChange?.({ graphColorBy: event.target.value === 'folder' ? 'folder' : 'none' }) }} value={snapshot.settings?.graphColorBy ?? 'none'}><NativeSelectOption value="none">Default</NativeSelectOption><NativeSelectOption value="folder">Folder</NativeSelectOption></NativeSelect></Label>
             </div>
-            {(snapshot.graphLayout?.length ?? 0) > 0 ? (
+            <div aria-label="Graph Viewport Controls" className="mt-2 flex gap-1" role="group">
+              <Button unstyled aria-label="Zoom Graph Out" className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs" disabled={graphZoom <= 0.5} onClick={() => { setGraphZoom(value => Math.max(0.5, value - 0.25)) }} type="button">−</Button>
+              <Button unstyled aria-label="Reset Graph Viewport" className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs" onClick={() => { setGraphZoom(1); setGraphPan({ x: 0, y: 0 }) }} type="button">{String(Math.round(graphZoom * 100))}%</Button>
+              <Button unstyled aria-label="Zoom Graph In" className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs" disabled={graphZoom >= 2} onClick={() => { setGraphZoom(value => Math.min(2, value + 0.25)) }} type="button">+</Button>
+              <Button unstyled aria-label="Pan Graph Left" className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs" onClick={() => { setGraphPan(value => ({ ...value, x: Math.max(-200, value.x - 20) })) }} type="button">←</Button>
+              <Button unstyled aria-label="Pan Graph Up" className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs" onClick={() => { setGraphPan(value => ({ ...value, y: Math.max(-200, value.y - 20) })) }} type="button">↑</Button>
+              <Button unstyled aria-label="Pan Graph Down" className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs" onClick={() => { setGraphPan(value => ({ ...value, y: Math.min(200, value.y + 20) })) }} type="button">↓</Button>
+              <Button unstyled aria-label="Pan Graph Right" className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs" onClick={() => { setGraphPan(value => ({ ...value, x: Math.min(200, value.x + 20) })) }} type="button">→</Button>
+            </div>
+            {graphNodes.length > 0 ? (
               <>
                 <div aria-label={`${snapshot.graphMode === 'local' ? 'Local' : 'Global'} Graph Canvas`} className="relative mt-2 h-48 w-full overflow-hidden rounded border border-[var(--tt-border)]" role="img">
-                  {snapshot.graphLayout?.map(node => <span className="absolute size-2 rounded-full bg-[var(--tt-muted)] data-[active=true]:bg-[var(--tt-accent)]" data-active={node.path === snapshot.graph?.path} key={node.path} style={{ left: `calc(50% + ${String(node.x / 5)}px)`, top: `calc(50% + ${String(node.y / 5)}px)` }} title={node.path} />)}
-                  <span className="sr-only">{(snapshot.graph?.edges ?? []).map(edge => `${edge.sourcePath} links to ${edge.targetPath}`).join('. ')}</span>
+                  {graphNodes.map(node => {
+                    const folder = graphFolder(node.path)
+                    return <span aria-label={`${node.path} Graph Node`} className="absolute size-2 rounded-full bg-[var(--tt-muted)] data-[active=true]:bg-[var(--tt-accent)]" data-active={node.path === snapshot.graph?.path} data-graph-group={snapshot.settings?.graphGroupBy === 'folder' ? folder : undefined} key={node.path} style={{ backgroundColor: snapshot.settings?.graphColorBy === 'folder' ? graphFolderColor(folder) : undefined, left: `calc(50% + ${String(node.x / 5 * graphZoom + graphPan.x)}px)`, top: `calc(50% + ${String(node.y / 5 * graphZoom + graphPan.y)}px)` }} title={node.path} />
+                  })}
+                  <span className="sr-only">{(snapshot.graph?.edges ?? []).filter(edge => graphPaths.has(edge.sourcePath) && graphPaths.has(edge.targetPath)).map(edge => `${edge.sourcePath} links to ${edge.targetPath}`).join('. ')}</span>
                 </div>
-                <div className="mt-1 grid max-h-28 gap-1 overflow-auto">
-                  {snapshot.graphLayout?.map(node => <Button unstyled className="truncate rounded border-0 bg-transparent px-1 py-0.5 text-left text-xs" key={node.path} onClick={() => { props.onSelect(node.path) }} type="button">{node.path}</Button>)}
+                <div className="mt-1 grid max-h-48 gap-2 overflow-auto">
+                  {graphGroups.map(([group, nodes]) => <section aria-label={`Graph Group ${group}`} key={group}><h3 className="m-0 text-xs">{group}</h3><div className="grid gap-1">{(nodes ?? []).map(node => <div className="grid grid-cols-[minmax(0,1fr)_auto_auto_auto] gap-1" key={node.path}><span className="truncate text-xs">{node.path}</span><Button unstyled aria-label={`Open Note ${node.path}`} className="rounded border border-[var(--tt-border)] bg-transparent px-1 py-0.5 text-xs" onClick={() => { props.onOpenGraphNode?.(node.path, 'note') }} type="button">Open</Button><Button unstyled aria-label={`Open Local Graph ${node.path}`} className="rounded border border-[var(--tt-border)] bg-transparent px-1 py-0.5 text-xs" onClick={() => { props.onOpenGraphNode?.(node.path, 'local') }} type="button">Local</Button><Button unstyled aria-label={`Copy Graph Path ${node.path}`} className="rounded border border-[var(--tt-border)] bg-transparent px-1 py-0.5 text-xs" onClick={() => { props.onCopyGraphPath?.(node.path) }} type="button">Copy</Button></div>)}</div></section>)}
                 </div>
               </>
-            ) : <span className="mt-2 block text-xs text-[var(--tt-muted)]">Open Global or Local Graph.</span>}
+            ) : <span className="mt-2 block text-xs text-[var(--tt-muted)]">{(snapshot.graphLayout?.length ?? 0) > 0 ? 'No graph nodes match this filter.' : 'Open Global or Local Graph.'}</span>}
           </section>
           <section aria-label="Bookmarks" className="border-t border-[var(--tt-border)] p-3">
             <h2 className="m-0 text-sm">Bookmarks</h2>
@@ -218,17 +250,10 @@ export function WorkbenchUtilities(props: WorkbenchUtilitiesProps): ReactNode {
             <div className="flex items-center justify-between gap-2">
               <h2 className="m-0 text-sm">Attachments</h2>
               <Label unstyled className="cursor-pointer rounded border border-[var(--tt-border)] px-2 py-1 text-xs">Add Files
-                <Input unstyled className="sr-only" type="file" accept="image/*,audio/*,video/*,application/pdf" onChange={event => {
-                  const file = event.target.files?.[0]
-                  if (file === undefined) return
-                  const reader = new FileReader()
-                  reader.addEventListener('load', () => {
-                    const value = typeof reader.result === 'string' ? reader.result.split(',', 2)[1] : undefined
-                    if (value !== undefined) props.onStoreAttachment?.(file.name, value)
-                  }, { once: true })
-                  reader.readAsDataURL(file)
+                <Input unstyled accept="image/*,audio/*,video/*,application/pdf" className="sr-only" multiple onChange={event => {
+                  if (event.target.files !== null) props.onAttachFiles?.(event.target.files)
                   event.target.value = ''
-                }} />
+                }} type="file" />
               </Label>
             </div>
             <div className="mt-2 grid gap-1">
