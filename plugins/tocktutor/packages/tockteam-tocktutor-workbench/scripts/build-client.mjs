@@ -20,6 +20,7 @@ await build({
   footer: { js: 'return module.exports; } });' },
   format: 'cjs',
   logLevel: 'info',
+  minifyWhitespace: true,
   outfile: join(root, 'dist/client.js'),
   platform: 'browser',
   sourcemap: true,

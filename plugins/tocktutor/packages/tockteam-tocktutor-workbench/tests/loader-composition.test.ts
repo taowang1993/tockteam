@@ -79,13 +79,20 @@ async function installFreshPackage(root: string): Promise<{
     `  '@tockteam/ui': file:${uiArtifact}`,
     '',
   ].join('\n'))
-  await execFileAsync('pnpm', [
-    'install',
-    '--offline',
-    '--ignore-scripts',
-    '--no-frozen-lockfile',
-    '--config.engine-strict=false',
-  ], { cwd: consumerRoot, env: process.env })
+  try {
+    await execFileAsync('pnpm', [
+      'install',
+      '--offline',
+      '--ignore-scripts',
+      '--no-frozen-lockfile',
+      '--config.engine-strict=false',
+    ], { cwd: consumerRoot, env: process.env })
+  } catch (error) {
+    const output = error instanceof Error
+      ? `${'stdout' in error ? String(error.stdout) : ''}\n${'stderr' in error ? String(error.stderr) : ''}`.trim()
+      : ''
+    throw new Error(`Packed consumer install failed.\n${output}`, { cause: error })
+  }
   return {
     artifact,
     consumerRoot,
