@@ -1,3 +1,5 @@
+import { assertUniqueCanvasDocumentIdentities } from './canvas-identity.ts'
+
 export const MAX_CANVAS_BYTES = 2_000_000
 export const MAX_CANVAS_NODES = 2_000
 export const MAX_CANVAS_EDGES = 4_000
@@ -121,6 +123,11 @@ export function parseCanvasDocument(content: string): CanvasParseResult {
     return unsupported('Canvas document is not valid JSON.')
   }
   if (!isRecord(value) || !Array.isArray(value.nodes)) return unsupported('Canvas document must contain a nodes array.')
+  try {
+    assertUniqueCanvasDocumentIdentities(value)
+  } catch (error) {
+    return unsupported(error instanceof Error ? error.message : 'Canvas document contains duplicate identities.')
+  }
   if (value.nodes.length > MAX_CANVAS_NODES) return unsupported('Canvas document exceeds the node limit.')
   if (value.edges !== undefined && !Array.isArray(value.edges)) return unsupported('Canvas edges must be an array.')
   if (Array.isArray(value.edges) && value.edges.length > MAX_CANVAS_EDGES) return unsupported('Canvas document exceeds the edge limit.')
@@ -196,15 +203,27 @@ export function projectCanvas(parsed: CanvasParseResult): CanvasProjection {
   return { status: 'ready', nodes, edges, document }
 }
 
+export function parseCanvasForMutation(content: string): CanvasDocument {
+  const parsed = parseCanvasDocument(content)
+  if (parsed.status !== 'ready') throw new Error(parsed.reason)
+  return parsed.document
+}
+
+export function serializeCanvasDocument(document: CanvasDocument): string {
+  const content = `${JSON.stringify(document, null, 2)}\n`
+  const parsed = parseCanvasDocument(content)
+  if (parsed.status !== 'ready') throw new Error(parsed.reason)
+  return content
+}
+
 export function updateCanvasNodePosition(content: string, nodeId: string, x: number, y: number): string {
   if (!isSafeId(nodeId) || !isFiniteCoordinate(x) || !isFiniteCoordinate(y)) {
     throw new Error('Canvas node position is invalid.')
   }
-  const parsed = parseCanvasDocument(content)
-  if (parsed.status !== 'ready') throw new Error(parsed.reason)
-  const node = parsed.document.nodes.find(candidate => candidate.id === nodeId)
+  const document = parseCanvasForMutation(content)
+  const node = document.nodes.find(candidate => candidate.id === nodeId)
   if (node === undefined) throw new Error('Canvas node no longer exists.')
   node.x = x
   node.y = y
-  return `${JSON.stringify(parsed.document, null, 2)}\n`
+  return serializeCanvasDocument(document)
 }
