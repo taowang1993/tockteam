@@ -544,6 +544,16 @@ export function apply(ctx: Context): void {
     removePanel?.()
     removeSidebar?.()
   }, 'tockbot-web-clip: Web Viewer')
+  removePanel = ctx.slots.inject(
+    TOCKTUTOR_WEB_VIEWER_PANEL_SLOT,
+    () => ctx.slots.register({
+      name: TOCKTUTOR_WEB_VIEWER_PANEL_SLOT,
+      registrant: name,
+    }, (owner: TockTutorWebViewerOwnerProps) => <WebViewer
+      addLinkBookmark={owner.addLinkBookmark}
+      webClipFolder={owner.webClipFolder}
+    />),
+  )
   void desktop.getInfo().then(info => {
     if (disposed || info.version !== SUPPORTED_TOCKTEAM_DESKTOP_VERSION) return
     removeSidebar = sidebar.registerTab({
@@ -553,15 +563,5 @@ export function apply(ctx: Context): void {
       single: true,
       title: 'Web Viewer',
     })
-    removePanel = ctx.slots.inject(
-      TOCKTUTOR_WEB_VIEWER_PANEL_SLOT,
-      () => ctx.slots.register({
-        name: TOCKTUTOR_WEB_VIEWER_PANEL_SLOT,
-        registrant: name,
-      }, (owner: TockTutorWebViewerOwnerProps) => <WebViewer
-        addLinkBookmark={owner.addLinkBookmark}
-        webClipFolder={owner.webClipFolder}
-      />),
-    )
   }).catch(() => undefined)
 }

@@ -1328,6 +1328,19 @@ function apply(ctx) {
     removePanel?.();
     removeSidebar?.();
   }, "tockbot-web-clip: Web Viewer");
+  removePanel = ctx.slots.inject(
+    TOCKTUTOR_WEB_VIEWER_PANEL_SLOT,
+    () => ctx.slots.register({
+      name: TOCKTUTOR_WEB_VIEWER_PANEL_SLOT,
+      registrant: name
+    }, (owner) => /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
+      WebViewer,
+      {
+        addLinkBookmark: owner.addLinkBookmark,
+        webClipFolder: owner.webClipFolder
+      }
+    ))
+  );
   void desktop.getInfo().then((info) => {
     if (disposed || info.version !== SUPPORTED_TOCKTEAM_DESKTOP_VERSION) return;
     removeSidebar = sidebar.registerTab({
@@ -1337,19 +1350,6 @@ function apply(ctx) {
       single: true,
       title: "Web Viewer"
     });
-    removePanel = ctx.slots.inject(
-      TOCKTUTOR_WEB_VIEWER_PANEL_SLOT,
-      () => ctx.slots.register({
-        name: TOCKTUTOR_WEB_VIEWER_PANEL_SLOT,
-        registrant: name
-      }, (owner) => /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
-        WebViewer,
-        {
-          addLinkBookmark: owner.addLinkBookmark,
-          webClipFolder: owner.webClipFolder
-        }
-      ))
-    );
   }).catch(() => void 0);
 }
 /*! Bundled license information:
