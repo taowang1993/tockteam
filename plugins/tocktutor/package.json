@@ -4,8 +4,9 @@
   "type": "module",
   "scripts": {
     "build": "pnpm -r --filter='!@tockteam/tocktutor-workspace' --if-present run build",
-    "pretest": "node ../../scripts/prepare-tocktutor-desktop-artifact.mjs",
+    "pretest": "pnpm run validate:parity && node ../../scripts/prepare-tocktutor-desktop-artifact.mjs",
     "test": "pnpm -r --filter='!@tockteam/tocktutor-workspace' --if-present run test",
-    "typecheck": "pnpm -r --filter='!@tockteam/tocktutor-workspace' --if-present run typecheck"
+    "typecheck": "pnpm -r --filter='!@tockteam/tocktutor-workspace' --if-present run typecheck",
+    "validate:parity": "node parity/validate.mjs"
   }
 }

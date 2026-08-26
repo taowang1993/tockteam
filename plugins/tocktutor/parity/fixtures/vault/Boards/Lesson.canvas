@@ -1,0 +1,12 @@
+{
+  "nodes": [
+    {"id":"text-1","type":"text","text":"Welcome","x":0,"y":0,"width":240,"height":120,"tockteamFixture":"preserve"},
+    {"id":"file-1","type":"file","file":"Notes/Alias Target.md","x":300,"y":0,"width":240,"height":120},
+    {"id":"link-1","type":"link","url":"https://example.com/lesson","x":600,"y":0,"width":240,"height":120},
+    {"id":"group-1","type":"group","label":"Lesson","x":-20,"y":-20,"width":880,"height":180,"color":"3"}
+  ],
+  "edges": [
+    {"id":"edge-1","fromNode":"text-1","fromSide":"right","toNode":"file-1","toSide":"left","toEnd":"arrow","label":"opens","tockteamFixture":"preserve"}
+  ],
+  "tockteamFixtureRoot":"preserve"
+}

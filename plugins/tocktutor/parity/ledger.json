@@ -1,0 +1,1987 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-08-26",
+  "sources": {
+    "tockbotCommit": "af214b2d1a5df8ca23bf99fad9f0408a07c2e4ba",
+    "tockbotReference": {
+      "path": "/Users/max/projects/tockbot/.agents/reference/tocktutor.md",
+      "sha256": "85dab58ff094e66517798e13b46010ce20aaefe8110e72ea63f1f265c15a8165"
+    },
+    "obsidianChecklist": {
+      "path": "/Users/max/projects/resources/.tutor/obsidian.md",
+      "sha256": "cdc5466f6cb56bab100622b7ccf8fe37c112f7031efb004a1908fb998bd49479",
+      "declaredRows": 123,
+      "observedRows": 122,
+      "observedChecked": 88,
+      "observedUnchecked": 34,
+      "observedNotNeeded": 5,
+      "discrepancy": "The canonical checklist prose declares 123 rows, but 122 checkbox rows are present at the pinned source revision. The ledger preserves every observed row and records the mismatch instead of inventing a capability."
+    }
+  },
+  "fixtures": {
+    "manifest": "plugins/tocktutor/parity/fixtures/manifest.json",
+    "root": "plugins/tocktutor/parity/fixtures"
+  },
+  "statuses": [
+    "proven",
+    "gap",
+    "excluded"
+  ],
+  "rows": [
+    {
+      "id": "obsidian-001",
+      "title": "Local Vaults",
+      "section": "Core Notes And Vaults",
+      "sourceLine": 71,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "gap",
+      "owner": "tockbot-note-runtime + @tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.6",
+      "evidence": [
+        "plugins/tocktutor/packages/tockbot-note-runtime/src/index.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/host-read.ts"
+      ],
+      "disposition": "Implement and prove the bounded native behavior through the assigned existing owner."
+    },
+    {
+      "id": "obsidian-002",
+      "title": "Markdown Notes",
+      "section": "Core Notes And Vaults",
+      "sourceLine": 73,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "gap",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.2",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/session.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/tests/session.test.ts"
+      ],
+      "disposition": "Implement and prove the bounded native behavior through the assigned existing owner."
+    },
+    {
+      "id": "obsidian-003",
+      "title": "Accepted File Formats",
+      "section": "Core Notes And Vaults",
+      "sourceLine": 75,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "gap",
+      "owner": "tockbot-note-runtime + tockbot-note-desktop + @tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.18",
+      "evidence": [
+        "plugins/tocktutor/packages/tockbot-note-runtime/src/index.ts",
+        "plugins/tocktutor/packages/tockbot-note-desktop/src/client-actions.tsx"
+      ],
+      "disposition": "Implement and prove the bounded native behavior through the assigned existing owner."
+    },
+    {
+      "id": "obsidian-004",
+      "title": "File Explorer",
+      "section": "Core Notes And Vaults",
+      "sourceLine": 77,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "gap",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.2",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/session.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/tests/session.test.ts"
+      ],
+      "disposition": "Implement and prove the bounded native behavior through the assigned existing owner."
+    },
+    {
+      "id": "obsidian-005",
+      "title": "Manual Backup And Restore",
+      "section": "Core Notes And Vaults",
+      "sourceLine": 79,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "gap",
+      "owner": "@tockteam/tocktutor-import-export",
+      "issueId": "tockteam-3t5.25",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-import-export/tests/engine.test.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-import-export/tests/formats.test.ts"
+      ],
+      "disposition": "Implement and prove the bounded native behavior through the assigned existing owner."
+    },
+    {
+      "id": "obsidian-006",
+      "title": "Obsidian Configuration Folder Compatibility",
+      "section": "Core Notes And Vaults",
+      "sourceLine": 102,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "gap",
+      "owner": "@tockteam/tocktutor-import-export",
+      "issueId": "tockteam-3t5.25",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-import-export/tests/engine.test.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-import-export/tests/formats.test.ts"
+      ],
+      "disposition": "Implement and prove the bounded native behavior through the assigned existing owner."
+    },
+    {
+      "id": "obsidian-007",
+      "title": "Symbolic Links And Junctions",
+      "section": "Core Notes And Vaults",
+      "sourceLine": 104,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "tockbot-note-runtime",
+      "issueId": null,
+      "evidence": [
+        "plugins/tocktutor/packages/tockbot-note-runtime/src/index.ts",
+        "plugins/tocktutor/packages/tockbot-note-runtime/tests/loader-composition.test.ts"
+      ],
+      "disposition": "Existing focused source and tests prove the bounded TockTeam behavior; final packaged evidence remains in the cutover matrix."
+    },
+    {
+      "id": "obsidian-008",
+      "title": "Mobile TockTutor App Parity",
+      "section": "Core Notes And Vaults",
+      "sourceLine": 106,
+      "sourceChecked": false,
+      "scope": "excluded",
+      "status": "excluded",
+      "owner": "none",
+      "issueId": null,
+      "evidence": [
+        "/Users/max/projects/tockbot/.agents/reference/tocktutor.md#known-divergences-and-non-goals"
+      ],
+      "disposition": "Outside the local-first Desktop MVP boundary; reversal requires a new dated scope contract."
+    },
+    {
+      "id": "obsidian-009",
+      "title": "Cross-Device Sync",
+      "section": "Core Notes And Vaults",
+      "sourceLine": 108,
+      "sourceChecked": false,
+      "scope": "excluded",
+      "status": "excluded",
+      "owner": "none",
+      "issueId": null,
+      "evidence": [
+        "/Users/max/projects/tockbot/.agents/reference/tocktutor.md#known-divergences-and-non-goals"
+      ],
+      "disposition": "Outside the local-first Desktop MVP boundary; reversal requires a new dated scope contract."
+    },
+    {
+      "id": "obsidian-010",
+      "title": "Sandbox / Demo Vault",
+      "section": "Core Notes And Vaults",
+      "sourceLine": 110,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "gap",
+      "owner": "tockbot-note-runtime + @tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.6",
+      "evidence": [
+        "plugins/tocktutor/packages/tockbot-note-runtime/src/index.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/host-read.ts"
+      ],
+      "disposition": "Implement and prove the bounded native behavior through the assigned existing owner."
+    },
+    {
+      "id": "obsidian-011",
+      "title": "Preview And Source Modes",
+      "section": "Editing And Markdown",
+      "sourceLine": 115,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "gap",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.3",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/route.tsx",
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/tests/route.test.ts"
+      ],
+      "disposition": "Implement and prove the bounded native behavior through the assigned existing owner."
+    },
+    {
+      "id": "obsidian-012",
+      "title": "Basic Markdown Syntax",
+      "section": "Editing And Markdown",
+      "sourceLine": 117,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "gap",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.3",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/route.tsx",
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/tests/route.test.ts"
+      ],
+      "disposition": "Implement and prove the bounded native behavior through the assigned existing owner."
+    },
+    {
+      "id": "obsidian-013",
+      "title": "Advanced Markdown Parity",
+      "section": "Editing And Markdown",
+      "sourceLine": 119,
+      "sourceChecked": false,
+      "scope": "excluded",
+      "status": "excluded",
+      "owner": "none",
+      "issueId": null,
+      "evidence": [
+        "/Users/max/projects/tockbot/.agents/reference/tocktutor.md#known-divergences-and-non-goals"
+      ],
+      "disposition": "Outside the local-first Desktop MVP boundary; reversal requires a new dated scope contract."
+    },
+    {
+      "id": "obsidian-014",
+      "title": "Callouts",
+      "section": "Editing And Markdown",
+      "sourceLine": 165,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "gap",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.3",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/route.tsx",
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/tests/route.test.ts"
+      ],
+      "disposition": "Implement and prove the bounded native behavior through the assigned existing owner."
+    },
+    {
+      "id": "obsidian-015",
+      "title": "Properties / YAML Frontmatter",
+      "section": "Editing And Markdown",
+      "sourceLine": 167,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "gap",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.12",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/markdown.ts"
+      ],
+      "disposition": "Implement and prove the bounded native behavior through the assigned existing owner."
+    },
+    {
+      "id": "obsidian-016",
+      "title": "Tags",
+      "section": "Editing And Markdown",
+      "sourceLine": 169,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "gap",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.11",
+      "evidence": [
+        "plugins/tocktutor/packages/tockbot-note-runtime/src/index.ts"
+      ],
+      "disposition": "Implement and prove the bounded native behavior through the assigned existing owner."
+    },
+    {
+      "id": "obsidian-017",
+      "title": "Attachments",
+      "section": "Editing And Markdown",
+      "sourceLine": 171,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "gap",
+      "owner": "tockbot-note-runtime + tockbot-note-desktop + @tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.18",
+      "evidence": [
+        "plugins/tocktutor/packages/tockbot-note-runtime/src/index.ts",
+        "plugins/tocktutor/packages/tockbot-note-desktop/src/client-actions.tsx"
+      ],
+      "disposition": "Implement and prove the bounded native behavior through the assigned existing owner."
+    },
+    {
+      "id": "obsidian-018",
+      "title": "File Embeds",
+      "section": "Editing And Markdown",
+      "sourceLine": 173,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "gap",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.23",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/markdown.ts"
+      ],
+      "disposition": "Implement and prove the bounded native behavior through the assigned existing owner."
+    },
+    {
+      "id": "obsidian-019",
+      "title": "HTML Content In Notes",
+      "section": "Editing And Markdown",
+      "sourceLine": 179,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "gap",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.4",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/markdown.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/tests/markdown.test.ts"
+      ],
+      "disposition": "Implement and prove the bounded native behavior through the assigned existing owner."
+    },
+    {
+      "id": "obsidian-020",
+      "title": "Folding",
+      "section": "Editing And Markdown",
+      "sourceLine": 181,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "gap",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.5",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/markdown.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/tests/markdown.test.ts"
+      ],
+      "disposition": "Implement and prove the bounded native behavior through the assigned existing owner."
+    },
+    {
+      "id": "obsidian-021",
+      "title": "Multiple Cursors",
+      "section": "Editing And Markdown",
+      "sourceLine": 183,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "gap",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.5",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/markdown.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/tests/markdown.test.ts"
+      ],
+      "disposition": "Implement and prove the bounded native behavior through the assigned existing owner."
+    },
+    {
+      "id": "obsidian-022",
+      "title": "Core Editing Shortcuts",
+      "section": "Editing And Markdown",
+      "sourceLine": 185,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "gap",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.5",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/markdown.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/tests/markdown.test.ts"
+      ],
+      "disposition": "Implement and prove the bounded native behavior through the assigned existing owner."
+    },
+    {
+      "id": "obsidian-023",
+      "title": "Strict Line Breaks Setting",
+      "section": "Editing And Markdown",
+      "sourceLine": 187,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "gap",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.4",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/markdown.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/tests/markdown.test.ts"
+      ],
+      "disposition": "Implement and prove the bounded native behavior through the assigned existing owner."
+    },
+    {
+      "id": "obsidian-024",
+      "title": "Internal Links",
+      "section": "Linking, Navigation, And Graphs",
+      "sourceLine": 192,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "gap",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.10",
+      "evidence": [
+        "plugins/tocktutor/packages/tockbot-note-runtime/src/index.ts"
+      ],
+      "disposition": "Implement and prove the bounded native behavior through the assigned existing owner."
+    },
+    {
+      "id": "obsidian-025",
+      "title": "Aliases",
+      "section": "Linking, Navigation, And Graphs",
+      "sourceLine": 194,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "gap",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.10",
+      "evidence": [
+        "plugins/tocktutor/packages/tockbot-note-runtime/src/index.ts"
+      ],
+      "disposition": "Implement and prove the bounded native behavior through the assigned existing owner."
+    },
+    {
+      "id": "obsidian-026",
+      "title": "Backlinks And Unlinked Mentions",
+      "section": "Linking, Navigation, And Graphs",
+      "sourceLine": 196,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "gap",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.10",
+      "evidence": [
+        "plugins/tocktutor/packages/tockbot-note-runtime/src/index.ts"
+      ],
+      "disposition": "Implement and prove the bounded native behavior through the assigned existing owner."
+    },
+    {
+      "id": "obsidian-027",
+      "title": "Outgoing Links",
+      "section": "Linking, Navigation, And Graphs",
+      "sourceLine": 198,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "gap",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.10",
+      "evidence": [
+        "plugins/tocktutor/packages/tockbot-note-runtime/src/index.ts"
+      ],
+      "disposition": "Implement and prove the bounded native behavior through the assigned existing owner."
+    },
+    {
+      "id": "obsidian-028",
+      "title": "Outline",
+      "section": "Linking, Navigation, And Graphs",
+      "sourceLine": 200,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "gap",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.10",
+      "evidence": [
+        "plugins/tocktutor/packages/tockbot-note-runtime/src/index.ts"
+      ],
+      "disposition": "Implement and prove the bounded native behavior through the assigned existing owner."
+    },
+    {
+      "id": "obsidian-029",
+      "title": "Footnotes View",
+      "section": "Linking, Navigation, And Graphs",
+      "sourceLine": 202,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "gap",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.10",
+      "evidence": [
+        "plugins/tocktutor/packages/tockbot-note-runtime/src/index.ts"
+      ],
+      "disposition": "Implement and prove the bounded native behavior through the assigned existing owner."
+    },
+    {
+      "id": "obsidian-030",
+      "title": "Graph View And Local Graph",
+      "section": "Linking, Navigation, And Graphs",
+      "sourceLine": 204,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "gap",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.14",
+      "evidence": [
+        "plugins/tocktutor/packages/tockbot-note-runtime/src/index.ts"
+      ],
+      "disposition": "Implement and prove the bounded native behavior through the assigned existing owner."
+    },
+    {
+      "id": "obsidian-031",
+      "title": "Page Preview",
+      "section": "Linking, Navigation, And Graphs",
+      "sourceLine": 206,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "gap",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.10",
+      "evidence": [
+        "plugins/tocktutor/packages/tockbot-note-runtime/src/index.ts"
+      ],
+      "disposition": "Implement and prove the bounded native behavior through the assigned existing owner."
+    },
+    {
+      "id": "obsidian-032",
+      "title": "Quick Switcher / Go to File",
+      "section": "Linking, Navigation, And Graphs",
+      "sourceLine": 208,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "gap",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.9",
+      "evidence": [
+        "plugins/tocktutor/packages/tockbot-note-runtime/src/index.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/route.tsx"
+      ],
+      "disposition": "Implement and prove the bounded native behavior through the assigned existing owner."
+    },
+    {
+      "id": "obsidian-033",
+      "title": "Note Navigation History",
+      "section": "Linking, Navigation, And Graphs",
+      "sourceLine": 210,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "gap",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.2",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/session.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/tests/session.test.ts"
+      ],
+      "disposition": "Implement and prove the bounded native behavior through the assigned existing owner."
+    },
+    {
+      "id": "obsidian-034",
+      "title": "Vault Search",
+      "section": "Search",
+      "sourceLine": 215,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "gap",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.9",
+      "evidence": [
+        "plugins/tocktutor/packages/tockbot-note-runtime/src/index.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/route.tsx"
+      ],
+      "disposition": "Implement and prove the bounded native behavior through the assigned existing owner."
+    },
+    {
+      "id": "obsidian-035",
+      "title": "Search Operators",
+      "section": "Search",
+      "sourceLine": 217,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "gap",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.9",
+      "evidence": [
+        "plugins/tocktutor/packages/tockbot-note-runtime/src/index.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/route.tsx"
+      ],
+      "disposition": "Implement and prove the bounded native behavior through the assigned existing owner."
+    },
+    {
+      "id": "obsidian-036",
+      "title": "Embedded Search Query Blocks",
+      "section": "Search",
+      "sourceLine": 219,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "gap",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.9",
+      "evidence": [
+        "plugins/tocktutor/packages/tockbot-note-runtime/src/index.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/route.tsx"
+      ],
+      "disposition": "Implement and prove the bounded native behavior through the assigned existing owner."
+    },
+    {
+      "id": "obsidian-037",
+      "title": "Search Bookmarks",
+      "section": "Search",
+      "sourceLine": 221,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "gap",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.13",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/route.tsx"
+      ],
+      "disposition": "Implement and prove the bounded native behavior through the assigned existing owner."
+    },
+    {
+      "id": "obsidian-038",
+      "title": "Audio Recorder",
+      "section": "Core Plugins",
+      "sourceLine": 226,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "gap",
+      "owner": "tockbot-note-runtime + tockbot-note-desktop + @tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.18",
+      "evidence": [
+        "plugins/tocktutor/packages/tockbot-note-runtime/src/index.ts",
+        "plugins/tocktutor/packages/tockbot-note-desktop/src/client-actions.tsx"
+      ],
+      "disposition": "Implement and prove the bounded native behavior through the assigned existing owner."
+    },
+    {
+      "id": "obsidian-039",
+      "title": "Backlinks",
+      "section": "Core Plugins",
+      "sourceLine": 228,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "gap",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.10",
+      "evidence": [
+        "plugins/tocktutor/packages/tockbot-note-runtime/src/index.ts"
+      ],
+      "disposition": "Implement and prove the bounded native behavior through the assigned existing owner."
+    },
+    {
+      "id": "obsidian-040",
+      "title": "Bases Full Parity",
+      "section": "Core Plugins",
+      "sourceLine": 230,
+      "sourceChecked": false,
+      "scope": "excluded",
+      "status": "excluded",
+      "owner": "none",
+      "issueId": null,
+      "evidence": [
+        "/Users/max/projects/tockbot/.agents/reference/tocktutor.md#known-divergences-and-non-goals"
+      ],
+      "disposition": "Outside the local-first Desktop MVP boundary; reversal requires a new dated scope contract."
+    },
+    {
+      "id": "obsidian-041",
+      "title": "Bookmarks",
+      "section": "Core Plugins",
+      "sourceLine": 245,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "gap",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.13",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/route.tsx"
+      ],
+      "disposition": "Implement and prove the bounded native behavior through the assigned existing owner."
+    },
+    {
+      "id": "obsidian-042",
+      "title": "Canvas Editing",
+      "section": "Core Plugins",
+      "sourceLine": 247,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "gap",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.19",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/canvas.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/tests/canvas-base.test.ts"
+      ],
+      "disposition": "Implement and prove the bounded native behavior through the assigned existing owner."
+    },
+    {
+      "id": "obsidian-043",
+      "title": "Command Palette",
+      "section": "Core Plugins",
+      "sourceLine": 271,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "gap",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.5",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/markdown.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/tests/markdown.test.ts"
+      ],
+      "disposition": "Implement and prove the bounded native behavior through the assigned existing owner."
+    },
+    {
+      "id": "obsidian-044",
+      "title": "Daily Notes",
+      "section": "Core Plugins",
+      "sourceLine": 273,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "gap",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.15",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/route.tsx",
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/tests/route.test.ts"
+      ],
+      "disposition": "Implement and prove the bounded native behavior through the assigned existing owner."
+    },
+    {
+      "id": "obsidian-045",
+      "title": "File Explorer",
+      "section": "Core Plugins",
+      "sourceLine": 275,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "gap",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.2",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/session.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/tests/session.test.ts"
+      ],
+      "disposition": "Implement and prove the bounded native behavior through the assigned existing owner."
+    },
+    {
+      "id": "obsidian-046",
+      "title": "File Recovery",
+      "section": "Core Plugins",
+      "sourceLine": 277,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "gap",
+      "owner": "tockbot-note-runtime + @tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.7",
+      "evidence": [
+        "plugins/tocktutor/packages/tockbot-note-runtime/src/index.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/tests/host-recovery-transport.test.ts"
+      ],
+      "disposition": "Implement and prove the bounded native behavior through the assigned existing owner."
+    },
+    {
+      "id": "obsidian-047",
+      "title": "Footnotes View",
+      "section": "Core Plugins",
+      "sourceLine": 279,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "gap",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.10",
+      "evidence": [
+        "plugins/tocktutor/packages/tockbot-note-runtime/src/index.ts"
+      ],
+      "disposition": "Implement and prove the bounded native behavior through the assigned existing owner."
+    },
+    {
+      "id": "obsidian-048",
+      "title": "Format Converter",
+      "section": "Core Plugins",
+      "sourceLine": 281,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "gap",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.17",
+      "evidence": [
+        "plugins/tocktutor/packages/tockbot-note-runtime/src/index.ts"
+      ],
+      "disposition": "Implement and prove the bounded native behavior through the assigned existing owner."
+    },
+    {
+      "id": "obsidian-049",
+      "title": "Graph View",
+      "section": "Core Plugins",
+      "sourceLine": 283,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "gap",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.14",
+      "evidence": [
+        "plugins/tocktutor/packages/tockbot-note-runtime/src/index.ts"
+      ],
+      "disposition": "Implement and prove the bounded native behavior through the assigned existing owner."
+    },
+    {
+      "id": "obsidian-050",
+      "title": "Note Composer Full Parity",
+      "section": "Core Plugins",
+      "sourceLine": 291,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "gap",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.17",
+      "evidence": [
+        "plugins/tocktutor/packages/tockbot-note-runtime/src/index.ts"
+      ],
+      "disposition": "Implement and prove the bounded native behavior through the assigned existing owner."
+    },
+    {
+      "id": "obsidian-051",
+      "title": "Outgoing Links",
+      "section": "Core Plugins",
+      "sourceLine": 293,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "gap",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.10",
+      "evidence": [
+        "plugins/tocktutor/packages/tockbot-note-runtime/src/index.ts"
+      ],
+      "disposition": "Implement and prove the bounded native behavior through the assigned existing owner."
+    },
+    {
+      "id": "obsidian-052",
+      "title": "Outline",
+      "section": "Core Plugins",
+      "sourceLine": 295,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "gap",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.10",
+      "evidence": [
+        "plugins/tocktutor/packages/tockbot-note-runtime/src/index.ts"
+      ],
+      "disposition": "Implement and prove the bounded native behavior through the assigned existing owner."
+    },
+    {
+      "id": "obsidian-053",
+      "title": "Page Preview",
+      "section": "Core Plugins",
+      "sourceLine": 296,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "gap",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.10",
+      "evidence": [
+        "plugins/tocktutor/packages/tockbot-note-runtime/src/index.ts"
+      ],
+      "disposition": "Implement and prove the bounded native behavior through the assigned existing owner."
+    },
+    {
+      "id": "obsidian-054",
+      "title": "Properties View",
+      "section": "Core Plugins",
+      "sourceLine": 298,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "gap",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.12",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/markdown.ts"
+      ],
+      "disposition": "Implement and prove the bounded native behavior through the assigned existing owner."
+    },
+    {
+      "id": "obsidian-055",
+      "title": "Publish",
+      "section": "Core Plugins",
+      "sourceLine": 300,
+      "sourceChecked": false,
+      "scope": "excluded",
+      "status": "excluded",
+      "owner": "none",
+      "issueId": null,
+      "evidence": [
+        "/Users/max/projects/tockbot/.agents/reference/tocktutor.md#known-divergences-and-non-goals"
+      ],
+      "disposition": "Outside the local-first Desktop MVP boundary; reversal requires a new dated scope contract."
+    },
+    {
+      "id": "obsidian-056",
+      "title": "Quick Switcher",
+      "section": "Core Plugins",
+      "sourceLine": 302,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "gap",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.9",
+      "evidence": [
+        "plugins/tocktutor/packages/tockbot-note-runtime/src/index.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/route.tsx"
+      ],
+      "disposition": "Implement and prove the bounded native behavior through the assigned existing owner."
+    },
+    {
+      "id": "obsidian-057",
+      "title": "Random Note",
+      "section": "Core Plugins",
+      "sourceLine": 304,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "gap",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.11",
+      "evidence": [
+        "plugins/tocktutor/packages/tockbot-note-runtime/src/index.ts"
+      ],
+      "disposition": "Implement and prove the bounded native behavior through the assigned existing owner."
+    },
+    {
+      "id": "obsidian-058",
+      "title": "Search",
+      "section": "Core Plugins",
+      "sourceLine": 305,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "gap",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.9",
+      "evidence": [
+        "plugins/tocktutor/packages/tockbot-note-runtime/src/index.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/route.tsx"
+      ],
+      "disposition": "Implement and prove the bounded native behavior through the assigned existing owner."
+    },
+    {
+      "id": "obsidian-059",
+      "title": "Slash Commands",
+      "section": "Core Plugins",
+      "sourceLine": 306,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "gap",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.5",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/markdown.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/tests/markdown.test.ts"
+      ],
+      "disposition": "Implement and prove the bounded native behavior through the assigned existing owner."
+    },
+    {
+      "id": "obsidian-060",
+      "title": "Slides",
+      "section": "Core Plugins",
+      "sourceLine": 307,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "gap",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.4",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/markdown.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/tests/markdown.test.ts"
+      ],
+      "disposition": "Implement and prove the bounded native behavior through the assigned existing owner."
+    },
+    {
+      "id": "obsidian-061",
+      "title": "Sync",
+      "section": "Core Plugins",
+      "sourceLine": 308,
+      "sourceChecked": false,
+      "scope": "excluded",
+      "status": "excluded",
+      "owner": "none",
+      "issueId": null,
+      "evidence": [
+        "/Users/max/projects/tockbot/.agents/reference/tocktutor.md#known-divergences-and-non-goals"
+      ],
+      "disposition": "Outside the local-first Desktop MVP boundary; reversal requires a new dated scope contract."
+    },
+    {
+      "id": "obsidian-062",
+      "title": "Tags View",
+      "section": "Core Plugins",
+      "sourceLine": 309,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "gap",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.11",
+      "evidence": [
+        "plugins/tocktutor/packages/tockbot-note-runtime/src/index.ts"
+      ],
+      "disposition": "Implement and prove the bounded native behavior through the assigned existing owner."
+    },
+    {
+      "id": "obsidian-063",
+      "title": "Templates",
+      "section": "Core Plugins",
+      "sourceLine": 310,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "gap",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.15",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/route.tsx",
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/tests/route.test.ts"
+      ],
+      "disposition": "Implement and prove the bounded native behavior through the assigned existing owner."
+    },
+    {
+      "id": "obsidian-064",
+      "title": "Unique Note Creator",
+      "section": "Core Plugins",
+      "sourceLine": 312,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "gap",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.15",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/route.tsx",
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/tests/route.test.ts"
+      ],
+      "disposition": "Implement and prove the bounded native behavior through the assigned existing owner."
+    },
+    {
+      "id": "obsidian-065",
+      "title": "Web Viewer",
+      "section": "Core Plugins",
+      "sourceLine": 314,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "gap",
+      "owner": "tockbot-web-clip + @tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.24",
+      "evidence": [
+        "plugins/tocktutor/packages/tockbot-web-clip/tests/viewer.test.ts",
+        "plugins/tocktutor/packages/tockbot-web-clip/tests/fetch.test.ts"
+      ],
+      "disposition": "Implement and prove the bounded native behavior through the assigned existing owner."
+    },
+    {
+      "id": "obsidian-066",
+      "title": "Word Count",
+      "section": "Core Plugins",
+      "sourceLine": 316,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "gap",
+      "owner": "@tockteam/tocktutor",
+      "issueId": "tockteam-3t5.27",
+      "evidence": [
+        ".agents/references/tocktutor.md"
+      ],
+      "disposition": "Implement and prove the bounded native behavior through the assigned existing owner."
+    },
+    {
+      "id": "obsidian-067",
+      "title": "Workspaces",
+      "section": "Core Plugins",
+      "sourceLine": 317,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "gap",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.8",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/session.ts"
+      ],
+      "disposition": "Implement and prove the bounded native behavior through the assigned existing owner."
+    },
+    {
+      "id": "obsidian-068",
+      "title": "Open `.base` Files",
+      "section": "Bases",
+      "sourceLine": 324,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "gap",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.22",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/base.ts"
+      ],
+      "disposition": "Implement and prove the bounded native behavior through the assigned existing owner."
+    },
+    {
+      "id": "obsidian-069",
+      "title": "Create, Insert, And Embed Bases",
+      "section": "Bases",
+      "sourceLine": 326,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "gap",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.23",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/markdown.ts"
+      ],
+      "disposition": "Implement and prove the bounded native behavior through the assigned existing owner."
+    },
+    {
+      "id": "obsidian-070",
+      "title": "Lightweight Base Views",
+      "section": "Bases",
+      "sourceLine": 328,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "gap",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.22",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/base.ts"
+      ],
+      "disposition": "Implement and prove the bounded native behavior through the assigned existing owner."
+    },
+    {
+      "id": "obsidian-071",
+      "title": "Bases Toolbar, Results, And Table Interaction Full Parity",
+      "section": "Bases",
+      "sourceLine": 330,
+      "sourceChecked": false,
+      "scope": "excluded",
+      "status": "excluded",
+      "owner": "none",
+      "issueId": null,
+      "evidence": [
+        "/Users/max/projects/tockbot/.agents/reference/tocktutor.md#known-divergences-and-non-goals"
+      ],
+      "disposition": "Outside the local-first Desktop MVP boundary; reversal requires a new dated scope contract."
+    },
+    {
+      "id": "obsidian-072",
+      "title": "Bases Syntax Full Parity",
+      "section": "Bases",
+      "sourceLine": 345,
+      "sourceChecked": false,
+      "scope": "excluded",
+      "status": "excluded",
+      "owner": "none",
+      "issueId": null,
+      "evidence": [
+        "/Users/max/projects/tockbot/.agents/reference/tocktutor.md#known-divergences-and-non-goals"
+      ],
+      "disposition": "Outside the local-first Desktop MVP boundary; reversal requires a new dated scope contract."
+    },
+    {
+      "id": "obsidian-073",
+      "title": "Bases Formula And Function Full Parity",
+      "section": "Bases",
+      "sourceLine": 379,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "gap",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.21",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/base.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/tests/canvas-base.test.ts"
+      ],
+      "disposition": "Implement and prove the bounded native behavior through the assigned existing owner."
+    },
+    {
+      "id": "obsidian-074",
+      "title": "Import Markdown",
+      "section": "Import, Export, Capture, And Clipping",
+      "sourceLine": 748,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "@tockteam/tocktutor-import-export",
+      "issueId": null,
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-import-export/tests/formats.test.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-import-export/tests/engine.test.ts"
+      ],
+      "disposition": "Existing focused source and tests prove the bounded TockTeam behavior; final packaged evidence remains in the cutover matrix."
+    },
+    {
+      "id": "obsidian-075",
+      "title": "Import HTML",
+      "section": "Import, Export, Capture, And Clipping",
+      "sourceLine": 750,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "gap",
+      "owner": "@tockteam/tocktutor-import-export",
+      "issueId": "tockteam-3t5.25",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-import-export/tests/engine.test.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-import-export/tests/formats.test.ts"
+      ],
+      "disposition": "Implement and prove the bounded native behavior through the assigned existing owner."
+    },
+    {
+      "id": "obsidian-076",
+      "title": "Import CSV Files",
+      "section": "Import, Export, Capture, And Clipping",
+      "sourceLine": 752,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "@tockteam/tocktutor-import-export",
+      "issueId": null,
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-import-export/tests/formats.test.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-import-export/tests/engine.test.ts"
+      ],
+      "disposition": "Existing focused source and tests prove the bounded TockTeam behavior; final packaged evidence remains in the cutover matrix."
+    },
+    {
+      "id": "obsidian-077",
+      "title": "Import Textbundle Files",
+      "section": "Import, Export, Capture, And Clipping",
+      "sourceLine": 754,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "@tockteam/tocktutor-import-export",
+      "issueId": null,
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-import-export/tests/formats.test.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-import-export/tests/engine.test.ts"
+      ],
+      "disposition": "Existing focused source and tests prove the bounded TockTeam behavior; final packaged evidence remains in the cutover matrix."
+    },
+    {
+      "id": "obsidian-078",
+      "title": "Import Zettelkasten Notes",
+      "section": "Import, Export, Capture, And Clipping",
+      "sourceLine": 756,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "gap",
+      "owner": "@tockteam/tocktutor-import-export",
+      "issueId": "tockteam-3t5.25",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-import-export/tests/engine.test.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-import-export/tests/formats.test.ts"
+      ],
+      "disposition": "Implement and prove the bounded native behavior through the assigned existing owner."
+    },
+    {
+      "id": "obsidian-079",
+      "title": "Import From Apple Journal",
+      "section": "Import, Export, Capture, And Clipping",
+      "sourceLine": 758,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "gap",
+      "owner": "@tockteam/tocktutor-import-export",
+      "issueId": "tockteam-3t5.25",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-import-export/tests/engine.test.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-import-export/tests/formats.test.ts"
+      ],
+      "disposition": "Implement and prove the bounded native behavior through the assigned existing owner."
+    },
+    {
+      "id": "obsidian-080",
+      "title": "Import From Apple Notes",
+      "section": "Import, Export, Capture, And Clipping",
+      "sourceLine": 760,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "gap",
+      "owner": "@tockteam/tocktutor-import-export",
+      "issueId": "tockteam-3t5.25",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-import-export/tests/engine.test.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-import-export/tests/formats.test.ts"
+      ],
+      "disposition": "Implement and prove the bounded native behavior through the assigned existing owner."
+    },
+    {
+      "id": "obsidian-081",
+      "title": "Import From Bear",
+      "section": "Import, Export, Capture, And Clipping",
+      "sourceLine": 762,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "gap",
+      "owner": "@tockteam/tocktutor-import-export",
+      "issueId": "tockteam-3t5.25",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-import-export/tests/engine.test.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-import-export/tests/formats.test.ts"
+      ],
+      "disposition": "Implement and prove the bounded native behavior through the assigned existing owner."
+    },
+    {
+      "id": "obsidian-082",
+      "title": "Import From Craft",
+      "section": "Import, Export, Capture, And Clipping",
+      "sourceLine": 764,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "gap",
+      "owner": "@tockteam/tocktutor-import-export",
+      "issueId": "tockteam-3t5.25",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-import-export/tests/engine.test.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-import-export/tests/formats.test.ts"
+      ],
+      "disposition": "Implement and prove the bounded native behavior through the assigned existing owner."
+    },
+    {
+      "id": "obsidian-083",
+      "title": "Import From Evernote",
+      "section": "Import, Export, Capture, And Clipping",
+      "sourceLine": 766,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "gap",
+      "owner": "@tockteam/tocktutor-import-export",
+      "issueId": "tockteam-3t5.25",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-import-export/tests/engine.test.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-import-export/tests/formats.test.ts"
+      ],
+      "disposition": "Implement and prove the bounded native behavior through the assigned existing owner."
+    },
+    {
+      "id": "obsidian-084",
+      "title": "Import From Google Keep",
+      "section": "Import, Export, Capture, And Clipping",
+      "sourceLine": 768,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "gap",
+      "owner": "@tockteam/tocktutor-import-export",
+      "issueId": "tockteam-3t5.25",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-import-export/tests/engine.test.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-import-export/tests/formats.test.ts"
+      ],
+      "disposition": "Implement and prove the bounded native behavior through the assigned existing owner."
+    },
+    {
+      "id": "obsidian-085",
+      "title": "Import From Microsoft OneNote",
+      "section": "Import, Export, Capture, And Clipping",
+      "sourceLine": 770,
+      "sourceChecked": false,
+      "scope": "not-needed",
+      "status": "excluded",
+      "owner": "none",
+      "issueId": null,
+      "evidence": [
+        "/Users/max/projects/tockbot/.agents/reference/tocktutor.md#known-divergences-and-non-goals"
+      ],
+      "disposition": "Permanently descoped by the 2026-08-18 product decision."
+    },
+    {
+      "id": "obsidian-086",
+      "title": "Import From Notion",
+      "section": "Import, Export, Capture, And Clipping",
+      "sourceLine": 772,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "gap",
+      "owner": "@tockteam/tocktutor-import-export",
+      "issueId": "tockteam-3t5.25",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-import-export/tests/engine.test.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-import-export/tests/formats.test.ts"
+      ],
+      "disposition": "Implement and prove the bounded native behavior through the assigned existing owner."
+    },
+    {
+      "id": "obsidian-087",
+      "title": "Import From Roam Research",
+      "section": "Import, Export, Capture, And Clipping",
+      "sourceLine": 774,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "@tockteam/tocktutor-import-export",
+      "issueId": null,
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-import-export/tests/formats.test.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-import-export/tests/engine.test.ts"
+      ],
+      "disposition": "Existing focused source and tests prove the bounded TockTeam behavior; final packaged evidence remains in the cutover matrix."
+    },
+    {
+      "id": "obsidian-088",
+      "title": "Obsidian Importer Plugin Workflow",
+      "section": "Import, Export, Capture, And Clipping",
+      "sourceLine": 776,
+      "sourceChecked": false,
+      "scope": "excluded",
+      "status": "excluded",
+      "owner": "none",
+      "issueId": null,
+      "evidence": [
+        "/Users/max/projects/tockbot/.agents/reference/tocktutor.md#known-divergences-and-non-goals"
+      ],
+      "disposition": "Outside the local-first Desktop MVP boundary; reversal requires a new dated scope contract."
+    },
+    {
+      "id": "obsidian-089",
+      "title": "Clip Web Pages",
+      "section": "Import, Export, Capture, And Clipping",
+      "sourceLine": 778,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "tockbot-web-clip",
+      "issueId": null,
+      "evidence": [
+        "plugins/tocktutor/packages/tockbot-web-clip/tests/fetch.test.ts",
+        "plugins/tocktutor/packages/tockbot-web-clip/tests/review.test.ts"
+      ],
+      "disposition": "Existing focused source and tests prove the bounded TockTeam behavior; final packaged evidence remains in the cutover matrix."
+    },
+    {
+      "id": "obsidian-090",
+      "title": "Browser Web Clipper Extension",
+      "section": "Import, Export, Capture, And Clipping",
+      "sourceLine": 780,
+      "sourceChecked": false,
+      "scope": "excluded",
+      "status": "excluded",
+      "owner": "none",
+      "issueId": null,
+      "evidence": [
+        "/Users/max/projects/tockbot/.agents/reference/tocktutor.md#known-divergences-and-non-goals"
+      ],
+      "disposition": "Outside the local-first Desktop MVP boundary; reversal requires a new dated scope contract."
+    },
+    {
+      "id": "obsidian-091",
+      "title": "Web Clipper Filters, Logic, Interpreter, Reader, Templates, And Variables",
+      "section": "Import, Export, Capture, And Clipping",
+      "sourceLine": 782,
+      "sourceChecked": false,
+      "scope": "excluded",
+      "status": "excluded",
+      "owner": "none",
+      "issueId": null,
+      "evidence": [
+        "/Users/max/projects/tockbot/.agents/reference/tocktutor.md#known-divergences-and-non-goals"
+      ],
+      "disposition": "Outside the local-first Desktop MVP boundary; reversal requires a new dated scope contract."
+    },
+    {
+      "id": "obsidian-092",
+      "title": "Web Clipper Highlighter Extension",
+      "section": "Import, Export, Capture, And Clipping",
+      "sourceLine": 784,
+      "sourceChecked": false,
+      "scope": "excluded",
+      "status": "excluded",
+      "owner": "none",
+      "issueId": null,
+      "evidence": [
+        "/Users/max/projects/tockbot/.agents/reference/tocktutor.md#known-divergences-and-non-goals"
+      ],
+      "disposition": "Outside the local-first Desktop MVP boundary; reversal requires a new dated scope contract."
+    },
+    {
+      "id": "obsidian-093",
+      "title": "Sidebar",
+      "section": "User Interface And Settings",
+      "sourceLine": 789,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "gap",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.2",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/session.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/tests/session.test.ts"
+      ],
+      "disposition": "Implement and prove the bounded native behavior through the assigned existing owner."
+    },
+    {
+      "id": "obsidian-094",
+      "title": "Status Bar",
+      "section": "User Interface And Settings",
+      "sourceLine": 795,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "gap",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.2",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/session.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/tests/session.test.ts"
+      ],
+      "disposition": "Implement and prove the bounded native behavior through the assigned existing owner."
+    },
+    {
+      "id": "obsidian-095",
+      "title": "Ribbon Full Parity",
+      "section": "User Interface And Settings",
+      "sourceLine": 797,
+      "sourceChecked": false,
+      "scope": "excluded",
+      "status": "excluded",
+      "owner": "none",
+      "issueId": null,
+      "evidence": [
+        "/Users/max/projects/tockbot/.agents/reference/tocktutor.md#known-divergences-and-non-goals"
+      ],
+      "disposition": "Outside the local-first Desktop MVP boundary; reversal requires a new dated scope contract."
+    },
+    {
+      "id": "obsidian-096",
+      "title": "Drag And Drop",
+      "section": "User Interface And Settings",
+      "sourceLine": 800,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "gap",
+      "owner": "tockbot-note-runtime + tockbot-note-desktop + @tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.18",
+      "evidence": [
+        "plugins/tocktutor/packages/tockbot-note-runtime/src/index.ts",
+        "plugins/tocktutor/packages/tockbot-note-desktop/src/client-actions.tsx"
+      ],
+      "disposition": "Implement and prove the bounded native behavior through the assigned existing owner."
+    },
+    {
+      "id": "obsidian-097",
+      "title": "Tabs Full Parity",
+      "section": "User Interface And Settings",
+      "sourceLine": 802,
+      "sourceChecked": false,
+      "scope": "excluded",
+      "status": "excluded",
+      "owner": "none",
+      "issueId": null,
+      "evidence": [
+        "/Users/max/projects/tockbot/.agents/reference/tocktutor.md#known-divergences-and-non-goals"
+      ],
+      "disposition": "Outside the local-first Desktop MVP boundary; reversal requires a new dated scope contract."
+    },
+    {
+      "id": "obsidian-098",
+      "title": "Pop-Out Windows",
+      "section": "User Interface And Settings",
+      "sourceLine": 807,
+      "sourceChecked": false,
+      "scope": "excluded",
+      "status": "excluded",
+      "owner": "none",
+      "issueId": null,
+      "evidence": [
+        "/Users/max/projects/tockbot/.agents/reference/tocktutor.md#known-divergences-and-non-goals"
+      ],
+      "disposition": "Outside the local-first Desktop MVP boundary; reversal requires a new dated scope contract."
+    },
+    {
+      "id": "obsidian-099",
+      "title": "Appearance Themes",
+      "section": "User Interface And Settings",
+      "sourceLine": 810,
+      "sourceChecked": false,
+      "scope": "excluded",
+      "status": "excluded",
+      "owner": "none",
+      "issueId": null,
+      "evidence": [
+        "/Users/max/projects/tockbot/.agents/reference/tocktutor.md#known-divergences-and-non-goals"
+      ],
+      "disposition": "Outside the local-first Desktop MVP boundary; reversal requires a new dated scope contract."
+    },
+    {
+      "id": "obsidian-100",
+      "title": "CSS Snippets",
+      "section": "User Interface And Settings",
+      "sourceLine": 812,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "gap",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.8",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/session.ts"
+      ],
+      "disposition": "Implement and prove the bounded native behavior through the assigned existing owner."
+    },
+    {
+      "id": "obsidian-101",
+      "title": "Custom Hotkeys Settings",
+      "section": "User Interface And Settings",
+      "sourceLine": 814,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "gap",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.8",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/session.ts"
+      ],
+      "disposition": "Implement and prove the bounded native behavior through the assigned existing owner."
+    },
+    {
+      "id": "obsidian-102",
+      "title": "Language Settings",
+      "section": "User Interface And Settings",
+      "sourceLine": 816,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "gap",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.8",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/session.ts"
+      ],
+      "disposition": "Implement and prove the bounded native behavior through the assigned existing owner."
+    },
+    {
+      "id": "obsidian-103",
+      "title": "Obsidian-Style Settings Surface",
+      "section": "User Interface And Settings",
+      "sourceLine": 818,
+      "sourceChecked": false,
+      "scope": "excluded",
+      "status": "excluded",
+      "owner": "none",
+      "issueId": null,
+      "evidence": [
+        "/Users/max/projects/tockbot/.agents/reference/tocktutor.md#known-divergences-and-non-goals"
+      ],
+      "disposition": "Outside the local-first Desktop MVP boundary; reversal requires a new dated scope contract."
+    },
+    {
+      "id": "obsidian-104",
+      "title": "Workspace Layouts",
+      "section": "User Interface And Settings",
+      "sourceLine": 821,
+      "sourceChecked": false,
+      "scope": "excluded",
+      "status": "excluded",
+      "owner": "none",
+      "issueId": null,
+      "evidence": [
+        "/Users/max/projects/tockbot/.agents/reference/tocktutor.md#known-divergences-and-non-goals"
+      ],
+      "disposition": "Outside the local-first Desktop MVP boundary; reversal requires a new dated scope contract."
+    },
+    {
+      "id": "obsidian-105",
+      "title": "Community Plugins",
+      "section": "Extensibility And Platform Integration",
+      "sourceLine": 827,
+      "sourceChecked": false,
+      "scope": "excluded",
+      "status": "excluded",
+      "owner": "none",
+      "issueId": null,
+      "evidence": [
+        "/Users/max/projects/tockbot/.agents/reference/tocktutor.md#known-divergences-and-non-goals"
+      ],
+      "disposition": "Outside the local-first Desktop MVP boundary; reversal requires a new dated scope contract."
+    },
+    {
+      "id": "obsidian-106",
+      "title": "Developer Plugin API",
+      "section": "Extensibility And Platform Integration",
+      "sourceLine": 829,
+      "sourceChecked": false,
+      "scope": "excluded",
+      "status": "excluded",
+      "owner": "none",
+      "issueId": null,
+      "evidence": [
+        "/Users/max/projects/tockbot/.agents/reference/tocktutor.md#known-divergences-and-non-goals"
+      ],
+      "disposition": "Outside the local-first Desktop MVP boundary; reversal requires a new dated scope contract."
+    },
+    {
+      "id": "obsidian-107",
+      "title": "Obsidian URI",
+      "section": "Extensibility And Platform Integration",
+      "sourceLine": 831,
+      "sourceChecked": false,
+      "scope": "excluded",
+      "status": "excluded",
+      "owner": "none",
+      "issueId": null,
+      "evidence": [
+        "/Users/max/projects/tockbot/.agents/reference/tocktutor.md#known-divergences-and-non-goals"
+      ],
+      "disposition": "Outside the local-first Desktop MVP boundary; reversal requires a new dated scope contract."
+    },
+    {
+      "id": "obsidian-108",
+      "title": "Obsidian CLI",
+      "section": "Extensibility And Platform Integration",
+      "sourceLine": 836,
+      "sourceChecked": false,
+      "scope": "excluded",
+      "status": "excluded",
+      "owner": "none",
+      "issueId": null,
+      "evidence": [
+        "/Users/max/projects/tockbot/.agents/reference/tocktutor.md#known-divergences-and-non-goals"
+      ],
+      "disposition": "Outside the local-first Desktop MVP boundary; reversal requires a new dated scope contract."
+    },
+    {
+      "id": "obsidian-109",
+      "title": "Obsidian Headless",
+      "section": "Extensibility And Platform Integration",
+      "sourceLine": 838,
+      "sourceChecked": false,
+      "scope": "excluded",
+      "status": "excluded",
+      "owner": "none",
+      "issueId": null,
+      "evidence": [
+        "/Users/max/projects/tockbot/.agents/reference/tocktutor.md#known-divergences-and-non-goals"
+      ],
+      "disposition": "Outside the local-first Desktop MVP boundary; reversal requires a new dated scope contract."
+    },
+    {
+      "id": "obsidian-110",
+      "title": "Early Access / Insider Builds",
+      "section": "Extensibility And Platform Integration",
+      "sourceLine": 840,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "gap",
+      "owner": "@tockteam/tocktutor",
+      "issueId": "tockteam-3t5.27",
+      "evidence": [
+        ".agents/references/tocktutor.md"
+      ],
+      "disposition": "Implement and prove the bounded native behavior through the assigned existing owner."
+    },
+    {
+      "id": "obsidian-111",
+      "title": "Obsidian Sync Service",
+      "section": "Add-On Services And Team Features",
+      "sourceLine": 845,
+      "sourceChecked": false,
+      "scope": "excluded",
+      "status": "excluded",
+      "owner": "none",
+      "issueId": null,
+      "evidence": [
+        "/Users/max/projects/tockbot/.agents/reference/tocktutor.md#known-divergences-and-non-goals"
+      ],
+      "disposition": "Outside the local-first Desktop MVP boundary; reversal requires a new dated scope contract."
+    },
+    {
+      "id": "obsidian-112",
+      "title": "Shared Vault Collaboration",
+      "section": "Add-On Services And Team Features",
+      "sourceLine": 847,
+      "sourceChecked": false,
+      "scope": "excluded",
+      "status": "excluded",
+      "owner": "none",
+      "issueId": null,
+      "evidence": [
+        "/Users/max/projects/tockbot/.agents/reference/tocktutor.md#known-divergences-and-non-goals"
+      ],
+      "disposition": "Outside the local-first Desktop MVP boundary; reversal requires a new dated scope contract."
+    },
+    {
+      "id": "obsidian-113",
+      "title": "Headless Sync",
+      "section": "Add-On Services And Team Features",
+      "sourceLine": 849,
+      "sourceChecked": false,
+      "scope": "excluded",
+      "status": "excluded",
+      "owner": "none",
+      "issueId": null,
+      "evidence": [
+        "/Users/max/projects/tockbot/.agents/reference/tocktutor.md#known-divergences-and-non-goals"
+      ],
+      "disposition": "Outside the local-first Desktop MVP boundary; reversal requires a new dated scope contract."
+    },
+    {
+      "id": "obsidian-114",
+      "title": "Obsidian Publish Service",
+      "section": "Add-On Services And Team Features",
+      "sourceLine": 851,
+      "sourceChecked": false,
+      "scope": "excluded",
+      "status": "excluded",
+      "owner": "none",
+      "issueId": null,
+      "evidence": [
+        "/Users/max/projects/tockbot/.agents/reference/tocktutor.md#known-divergences-and-non-goals"
+      ],
+      "disposition": "Outside the local-first Desktop MVP boundary; reversal requires a new dated scope contract."
+    },
+    {
+      "id": "obsidian-115",
+      "title": "Publish Customization, Domains, SEO, Analytics, And Permalinks",
+      "section": "Add-On Services And Team Features",
+      "sourceLine": 853,
+      "sourceChecked": false,
+      "scope": "excluded",
+      "status": "excluded",
+      "owner": "none",
+      "issueId": null,
+      "evidence": [
+        "/Users/max/projects/tockbot/.agents/reference/tocktutor.md#known-divergences-and-non-goals"
+      ],
+      "disposition": "Outside the local-first Desktop MVP boundary; reversal requires a new dated scope contract."
+    },
+    {
+      "id": "obsidian-116",
+      "title": "Publish Collaboration / Headless Publish / Media Files",
+      "section": "Add-On Services And Team Features",
+      "sourceLine": 855,
+      "sourceChecked": false,
+      "scope": "excluded",
+      "status": "excluded",
+      "owner": "none",
+      "issueId": null,
+      "evidence": [
+        "/Users/max/projects/tockbot/.agents/reference/tocktutor.md#known-divergences-and-non-goals"
+      ],
+      "disposition": "Outside the local-first Desktop MVP boundary; reversal requires a new dated scope contract."
+    },
+    {
+      "id": "obsidian-117",
+      "title": "Team Deployment And Commercial Licensing",
+      "section": "Add-On Services And Team Features",
+      "sourceLine": 857,
+      "sourceChecked": false,
+      "scope": "not-needed",
+      "status": "excluded",
+      "owner": "none",
+      "issueId": null,
+      "evidence": [
+        "/Users/max/projects/tockbot/.agents/reference/tocktutor.md#known-divergences-and-non-goals"
+      ],
+      "disposition": "Permanently descoped by the 2026-08-18 product decision."
+    },
+    {
+      "id": "obsidian-118",
+      "title": "Team Publishing / Syncing / Security",
+      "section": "Add-On Services And Team Features",
+      "sourceLine": 859,
+      "sourceChecked": false,
+      "scope": "not-needed",
+      "status": "excluded",
+      "owner": "none",
+      "issueId": null,
+      "evidence": [
+        "/Users/max/projects/tockbot/.agents/reference/tocktutor.md#known-divergences-and-non-goals"
+      ],
+      "disposition": "Permanently descoped by the 2026-08-18 product decision."
+    },
+    {
+      "id": "obsidian-119",
+      "title": "Obsidian Account And 2FA",
+      "section": "Account, Payment, And Support Docs",
+      "sourceLine": 866,
+      "sourceChecked": false,
+      "scope": "not-needed",
+      "status": "excluded",
+      "owner": "none",
+      "issueId": null,
+      "evidence": [
+        "/Users/max/projects/tockbot/.agents/reference/tocktutor.md#known-divergences-and-non-goals"
+      ],
+      "disposition": "Permanently descoped by the 2026-08-18 product decision."
+    },
+    {
+      "id": "obsidian-120",
+      "title": "Licenses And Payments",
+      "section": "Account, Payment, And Support Docs",
+      "sourceLine": 868,
+      "sourceChecked": false,
+      "scope": "not-needed",
+      "status": "excluded",
+      "owner": "none",
+      "issueId": null,
+      "evidence": [
+        "/Users/max/projects/tockbot/.agents/reference/tocktutor.md#known-divergences-and-non-goals"
+      ],
+      "disposition": "Permanently descoped by the 2026-08-18 product decision."
+    },
+    {
+      "id": "obsidian-121",
+      "title": "Help And Support Surface",
+      "section": "Account, Payment, And Support Docs",
+      "sourceLine": 870,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "gap",
+      "owner": "@tockteam/tocktutor",
+      "issueId": "tockteam-3t5.27",
+      "evidence": [
+        ".agents/references/tocktutor.md"
+      ],
+      "disposition": "Implement and prove the bounded native behavior through the assigned existing owner."
+    },
+    {
+      "id": "obsidian-122",
+      "title": "About / Website / Credits / Code of Conduct",
+      "section": "Account, Payment, And Support Docs",
+      "sourceLine": 872,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "gap",
+      "owner": "@tockteam/tocktutor",
+      "issueId": "tockteam-3t5.27",
+      "evidence": [
+        ".agents/references/tocktutor.md"
+      ],
+      "disposition": "Implement and prove the bounded native behavior through the assigned existing owner."
+    }
+  ],
+  "additionalCapabilities": [
+    {
+      "id": "capture-organization",
+      "title": "Highlights and reviewed Inbox organization",
+      "scope": "included",
+      "status": "gap",
+      "issueId": "tockteam-3t5.16",
+      "owner": "@tockteam/tocktutor-workbench",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/review-panel.ts"
+      ]
+    },
+    {
+      "id": "assistant",
+      "title": "Inline assistant selected-text context, bounded reads, reviewed writes, and continuation",
+      "scope": "included",
+      "status": "gap",
+      "issueId": "tockteam-3t5.28",
+      "owner": "@tockteam/tocktutor-assistant + @tockteam/tocktutor-workbench",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-assistant/tests/loader-composition.test.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-assistant/tests/assistant-panel.test.tsx"
+      ]
+    },
+    {
+      "id": "native-dispatch",
+      "title": "Trusted Desktop menu, protocol, pop-out, reveal, microphone, print, and export integration",
+      "scope": "included",
+      "status": "gap",
+      "issueId": "tockteam-3t5.26",
+      "owner": "tockbot-note-desktop + TockTeam Desktop",
+      "evidence": [
+        "plugins/tocktutor/packages/tockbot-note-desktop/tests/host-actions.test.ts",
+        "tests/desktop-print-export-owner.test.ts"
+      ]
+    },
+    {
+      "id": "canvas-edges",
+      "title": "JSON Canvas edge creation, selection, editing, reconnection, and rollback",
+      "scope": "included",
+      "status": "gap",
+      "issueId": "tockteam-3t5.20",
+      "owner": "@tockteam/tocktutor-workbench",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/canvas.ts"
+      ]
+    },
+    {
+      "id": "web-viewer-integration",
+      "title": "Web Viewer tab reordering, shared bookmarks, Reader settings, and settings-backed clipping",
+      "scope": "included",
+      "status": "gap",
+      "issueId": "tockteam-3t5.24",
+      "owner": "tockbot-web-clip + @tockteam/tocktutor-workbench",
+      "evidence": [
+        "plugins/tocktutor/packages/tockbot-web-clip/tests/viewer.test.ts",
+        "plugins/tocktutor/packages/tockbot-web-clip/tests/fetch.test.ts"
+      ]
+    },
+    {
+      "id": "compatibility-state",
+      "title": "Copied Tockbot vault and local-state compatibility",
+      "scope": "included",
+      "status": "gap",
+      "issueId": "tockteam-3t5.25",
+      "owner": "@tockteam/tocktutor-import-export",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-import-export/tests/engine.test.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-import-export/tests/formats.test.ts"
+      ]
+    }
+  ]
+}

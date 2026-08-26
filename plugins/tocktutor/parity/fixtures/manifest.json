@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "vault": "vault",
+  "stateRoot": "state-root",
+  "required": {
+    "markdown": ["vault/Notes/Welcome.md", "vault/Notes/Alias Target.md"],
+    "canvas": ["vault/Boards/Lesson.canvas"],
+    "base": ["vault/Bases/Lessons.base"],
+    "attachments": ["vault/Attachments/pixel.png"],
+    "drafts": ["state-root/drafts/welcome.json"],
+    "snapshots": ["state-root/snapshots/welcome.json"],
+    "trash": ["vault/.trash/Deleted.md"],
+    "imports": ["vault/Imports/Imported.md"],
+    "aliases": ["vault/Notes/Alias Target.md"],
+    "hostileFilesystem": ["hostile-cases.json"]
+  },
+  "limits": {
+    "maxFixtureFileBytes": 2097152,
+    "maxFixtureFiles": 64
+  }
+}

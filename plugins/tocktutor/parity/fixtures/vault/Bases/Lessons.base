@@ -1,0 +1,33 @@
+formulas:
+  scoreLabel: 'note.points + " points"'
+filters:
+  and:
+    - 'file.inFolder("Notes")'
+    - 'note.status != "archived"'
+views:
+  - type: table
+    name: Lessons
+    order:
+      - file.name
+      - note.status
+      - formula.scoreLabel
+    sort:
+      - property: note.points
+        direction: DESC
+    summaries:
+      note.points: average
+  - type: list
+    name: Drafts
+    filters:
+      - 'note.status == "draft"'
+    order:
+      - file.name
+  - type: cards
+    name: Cards
+    order:
+      - file.name
+      - note.status
+  - type: map
+    name: Places
+    order:
+      - file.name
