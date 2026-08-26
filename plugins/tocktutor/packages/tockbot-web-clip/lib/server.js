@@ -10,15 +10,22 @@ function sendJson(response, status, value) {
     });
     response.end(JSON.stringify(value));
 }
-function sameOrigin(request) {
+export function isTrustedDesktopRequest(request) {
     const origin = request.headers.origin;
     const host = request.headers.host;
-    if (!origin || !host)
+    if (!origin || !host || request.headers['sec-fetch-site'] === 'cross-site')
         return false;
     try {
+        const authority = new URL(`http://${host}`);
+        const loopback = authority.hostname === 'localhost'
+            || authority.hostname.endsWith('.localhost')
+            || authority.hostname === '127.0.0.1'
+            || authority.hostname === '[::1]';
+        if (!loopback)
+            return false;
         const url = new URL(origin);
         const protocol = request.socket.encrypted === true ? 'https:' : 'http:';
-        return url.protocol === protocol && url.host === host;
+        return url.protocol === protocol && url.host === authority.host;
     }
     catch {
         return false;
@@ -139,7 +146,7 @@ function createApiHandler(parse, load, options) {
             response.end();
             return;
         }
-        if (!sameOrigin(request)) {
+        if (!isTrustedDesktopRequest(request)) {
             sendJson(response, 403, { error: 'untrusted origin' });
             return;
         }
