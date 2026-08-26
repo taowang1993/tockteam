@@ -27310,6 +27310,7 @@ function TockTutorRouteView(props) {
 function TockTutorAssistantPanelOutlet(props) {
   return props.renderSlot(TOCKTUTOR_ASSISTANT_PANEL_SLOT, {
     activePath: props.activePath,
+    ...props.selectedText === void 0 ? {} : { selectedText: props.selectedText },
     vault: props.vault
   });
 }
@@ -27390,6 +27391,7 @@ function TockTutorRoute(props) {
         {
           activePath: snapshot.path,
           renderSlot: props.renderSlot,
+          ...(snapshot.selectionEnd ?? 0) > (snapshot.selectionStart ?? 0) ? { selectedText: snapshot.source.slice(snapshot.selectionStart, Math.min(snapshot.selectionEnd ?? 0, (snapshot.selectionStart ?? 0) + 1e4)) } : {},
           vault: snapshot.vault
         }
       ),

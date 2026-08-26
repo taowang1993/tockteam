@@ -16,6 +16,7 @@ const vault = {
 
 const exactOwner = {
   activePath: 'Notes/Bounded.md',
+  selectedText: 'bounded selection',
   vault,
 } satisfies TockTutorAssistantPanelOwnerProps
 
@@ -27,14 +28,14 @@ const rejectedOwner: TockTutorAssistantPanelOwnerProps = {
 }
 void rejectedOwner
 
-test('exports the exact bounded Assistant panel contract without content or Agent identity', async () => {
+test('exports bounded selected context without full content or Agent identity', async () => {
   const client = await import('../dist/client-api.js') as unknown as Pick<
     typeof import('../src/client.ts'),
     'TOCKTUTOR_ASSISTANT_PANEL_SLOT'
   >
   assert.equal(client.TOCKTUTOR_ASSISTANT_PANEL_SLOT, TOCKTUTOR_ASSISTANT_PANEL_SLOT)
-  assert.deepEqual(exactOwner, { activePath: 'Notes/Bounded.md', vault })
-  assert.deepEqual(Object.keys(exactOwner).sort(), ['activePath', 'vault'])
+  assert.deepEqual(exactOwner, { activePath: 'Notes/Bounded.md', selectedText: 'bounded selection', vault })
+  assert.deepEqual(Object.keys(exactOwner).sort(), ['activePath', 'selectedText', 'vault'])
 
   const packageJson = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8')) as {
     dependencies?: Record<string, string>

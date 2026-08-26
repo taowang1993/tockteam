@@ -20697,6 +20697,16 @@ function TockTutorAssistantPanel(props) {
     () => conversation?.getSnapshot() ?? EMPTY_CONVERSATION,
     () => EMPTY_CONVERSATION
   );
+  (0, import_react5.useEffect)(() => {
+    setMessage("");
+  }, [reviewKey]);
+  (0, import_react5.useEffect)(() => {
+    const selected = props.selectedText?.slice(0, 1e4);
+    if (selected === void 0 || selected === "") return;
+    setMessage(`${selected.split(/\r?\n/u).map((line) => `> ${line}`).join("\n")}
+
+`);
+  }, [props.selectedText, reviewKey]);
   const loadAudit = (0, import_react5.useCallback)((offset4 = 0) => {
     const controller = new AbortController();
     pending.current.add(controller);

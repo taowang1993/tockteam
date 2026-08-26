@@ -6,6 +6,7 @@ export const TOCKTUTOR_ASSISTANT_PANEL_SLOT = 'tockteam.tocktutor.workbench.assi
 /** Bounded route context shared with the optional Assistant panel. */
 export interface TockTutorAssistantPanelOwnerProps {
   activePath: string | null
+  selectedText?: string
   vault: VaultReference | null
 }
 

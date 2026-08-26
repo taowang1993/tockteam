@@ -240,6 +240,15 @@ export function TockTutorAssistantPanel(props: TockTutorAssistantPanelProps): Re
     () => EMPTY_CONVERSATION,
   )
 
+  useEffect(() => {
+    setMessage('')
+  }, [reviewKey])
+  useEffect(() => {
+    const selected = props.selectedText?.slice(0, 10_000)
+    if (selected === undefined || selected === '') return
+    setMessage(`${selected.split(/\r?\n/u).map(line => `> ${line}`).join('\n')}\n\n`)
+  }, [props.selectedText, reviewKey])
+
   const loadAudit = useCallback((offset = 0): Promise<void> => {
     const controller = new AbortController()
     pending.current.add(controller)

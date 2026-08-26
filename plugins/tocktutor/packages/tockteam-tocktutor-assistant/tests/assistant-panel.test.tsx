@@ -113,6 +113,7 @@ describe('TockTutorAssistantPanel', () => {
 
     const view: ReactNode = <TockTutorAssistantPanel
       activePath="Folder/Plan.md"
+      selectedText={'Chosen line\nSecond line'}
       remote={remote}
       sessions={sessions}
       vault={{ generation: 7, id: `vault:${'a'.repeat(64)}` }}
@@ -127,6 +128,8 @@ describe('TockTutorAssistantPanel', () => {
     expect(screen.getByRole('button', { name: 'Freely communicate with AI' })).toBeTruthy()
     const composer = screen.getByRole('textbox', { name: 'Assistant Message' }) as HTMLTextAreaElement
     expect(composer.placeholder).toBe('What are your thoughts?')
+    expect(composer.value).toBe('> Chosen line\n> Second line\n\n')
+    expect(turnCalls).toHaveLength(0)
     expect(composer.className).toContain('focus-visible:outline-none')
     expect(screen.getByRole('button', { name: 'Send' }).className).toContain('[&_svg]:stroke-white')
     fireEvent.click(screen.getByRole('button', { name: 'Summarize the current note' }))

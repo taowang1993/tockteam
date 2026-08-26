@@ -3070,10 +3070,12 @@ export type TockTutorRouteProps = TockTutorRouteOwnerProps &
 function TockTutorAssistantPanelOutlet(props: {
   activePath: string | null
   renderSlot: TockTutorRouteProps['renderSlot']
+  selectedText?: string
   vault: VaultReference | null
 }): ReactNode {
   return props.renderSlot(TOCKTUTOR_ASSISTANT_PANEL_SLOT, {
     activePath: props.activePath,
+    ...(props.selectedText === undefined ? {} : { selectedText: props.selectedText }),
     vault: props.vault,
   })
 }
@@ -3162,6 +3164,9 @@ export function TockTutorRoute(props: TockTutorRouteProps): ReactNode {
           <TockTutorAssistantPanelOutlet
             activePath={snapshot.path}
             renderSlot={props.renderSlot}
+            {...((snapshot.selectionEnd ?? 0) > (snapshot.selectionStart ?? 0)
+              ? { selectedText: snapshot.source.slice(snapshot.selectionStart, Math.min(snapshot.selectionEnd ?? 0, (snapshot.selectionStart ?? 0) + 10_000)) }
+              : {})}
             vault={snapshot.vault}
           />
         )}
