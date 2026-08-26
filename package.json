@@ -98,7 +98,7 @@
     "typecheck": "tsc --noEmit",
     "typecheck:tocktutor": "pnpm -C plugins/tocktutor run typecheck",
     "dist:mac": "pnpm run build && pnpm run build:dsh && pnpm run stage:dsh && node scripts/build-mac.mjs",
-    "dist:mac:x64": "pnpm run build && pnpm run build:dsh && pnpm run stage:dsh && node scripts/build-mac.mjs x64",
+    "dist:mac:x64": "node scripts/check-mac-architecture.mjs x64 && pnpm run build && pnpm run build:dsh && pnpm run stage:dsh && node scripts/build-mac.mjs x64",
     "dist:mac:quick": "pnpm run build && pnpm run stage:dsh && node scripts/build-mac.mjs",
     "dist:linux": "pnpm run build && pnpm run build:dsh && pnpm run stage:dsh && node scripts/build-linux.mjs",
     "dist:linux:quick": "pnpm run build && pnpm run stage:dsh && node scripts/build-linux.mjs",

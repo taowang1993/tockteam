@@ -60,6 +60,11 @@ test('tagged releases build and upload both TUI archive formats', () => {
     'utf8',
   ).replace(/\r\n?/g, '\n')
 
+  assert.match(workflow, /name: macOS x64[\s\S]*?os: macos-15-intel[\s\S]*?node_arch: x64/u)
+  assert.match(
+    readFileSync(join(root, 'package.json'), 'utf8'),
+    /"dist:mac:x64": "node scripts\/check-mac-architecture\.mjs x64/u,
+  )
   assert.match(workflow, /run: node scripts\/build-tui\.mjs/)
   assert.match(workflow, /release\/tockteam-tui-\*\.tar\.gz/)
   assert.match(workflow, /release\/tockteam-tui-\*\.zip/)

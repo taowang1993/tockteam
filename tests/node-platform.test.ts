@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import {
   nodeDistributionPlatform,
+  resolveMacPackageArchitecture,
   resolveNodeDistributionArchitecture,
   resolveNodeDistributionPlatform,
 } from '../src/node-platform.ts'
@@ -18,6 +19,15 @@ test('Node distribution architectures reject path-like and unsupported values', 
   assert.throws(
     () => resolveNodeDistributionArchitecture({ DSH_DESKTOP_NODE_ARCH: '../victim' }, 'x64'),
     /unsupported Node distribution architecture/u,
+  )
+})
+
+test('macOS packaging refuses cross-architecture runtime staging', () => {
+  assert.equal(resolveMacPackageArchitecture('x64', 'x64'), 'x64')
+  assert.equal(resolveMacPackageArchitecture(undefined, 'arm64'), 'arm64')
+  assert.throws(
+    () => resolveMacPackageArchitecture('x64', 'arm64'),
+    /requires an x64 host/u,
   )
 })
 
