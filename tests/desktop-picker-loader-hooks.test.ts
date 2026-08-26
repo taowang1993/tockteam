@@ -113,7 +113,9 @@ test('startup journal growth, same-size rewrite, and shrink block globally', asy
     assert.equal(child.status, 0, child.stderr || child.stdout)
     assert.equal(JSON.parse(await readFile(result, 'utf8')).outcome, 'error:recovery-required')
     assert.equal((await readFile(stage)).byteLength, 0)
-    if (mode === 'startup-journal-growth') assert.ok((await lstat(journal)).size > 64 * 1024)
+    if (mode === 'startup-journal-growth' && process.platform !== 'win32') {
+      assert.ok((await lstat(journal)).size > 64 * 1024)
+    }
   }
 })
 

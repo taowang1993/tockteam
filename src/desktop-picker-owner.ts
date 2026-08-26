@@ -98,13 +98,6 @@ const MAX_SOURCE_LIMIT = 1_024 * 1024 * 1024
 const MAX_RECOVERY_JOURNALS = 1024
 const MAX_RECOVERY_JOURNAL_BYTES = 64 * 1024
 const MAX_RECOVERY_TOTAL_BYTES = 64 * 1024 * 1024
-let recoveryDiagnosticWritten = false
-
-function recoveryDiagnostic(stage: string, details: unknown): void {
-  if (process.env.TOCKTEAM_RECOVERY_DIAGNOSTICS !== '1' || recoveryDiagnosticWritten) return
-  recoveryDiagnosticWritten = true
-  console.error('[desktop-picker-recovery]', stage, details)
-}
 
 type Stat = Awaited<ReturnType<typeof lstat>>
 type DialogKind = 'open' | 'save'
@@ -324,12 +317,6 @@ function sameVaultBoundary(identity: NativeOperationIdentity, boundary: ActiveVa
 function within(parent: string, candidate: string): boolean {
   const value = relative(parent, candidate)
   return value === '' || value !== '..' && !value.startsWith(`..${sep}`) && !isAbsolute(value)
-}
-
-function pathEqual(left: string, right: string): boolean {
-  return process.platform === 'win32'
-    ? left.toLowerCase() === right.toLowerCase()
-    : left === right
 }
 
 function pathOverlaps(left: string, right: string): boolean {
@@ -1834,24 +1821,19 @@ export class DesktopPickerOwner {
   private async ensureRecoveryRoot(): Promise<void> {
     await mkdir(this.recoveryRoot, { recursive: true, mode: 0o700 })
     const canonical = await this.safeRealpath(this.recoveryRoot)
-    const stat = await this.safeLstat(this.recoveryRoot)
+    const [stat, canonicalStat] = await Promise.all([
+      this.safeLstat(this.recoveryRoot),
+      canonical === undefined ? undefined : this.safeLstat(canonical),
+    ])
     if (
       canonical === undefined ||
-      !pathEqual(canonical, this.recoveryRoot) ||
       stat === undefined ||
+      canonicalStat === undefined ||
+      identityOf(stat) !== identityOf(canonicalStat) ||
       !stat.isDirectory() ||
       stat.isSymbolicLink() ||
       (typeof process.getuid === 'function' && stat.uid !== process.getuid())
-    ) {
-      recoveryDiagnostic('ensure-root', {
-        canonical,
-        recoveryRoot: this.recoveryRoot,
-        stat: stat === undefined ? undefined : {
-          directory: stat.isDirectory(), mode: stat.mode, symbolic: stat.isSymbolicLink(), uid: stat.uid,
-        },
-      })
-      return error('recovery-required')
-    }
+    ) return error('recovery-required')
     await chmod(this.recoveryRoot, 0o700)
   }
 
@@ -1887,21 +1869,12 @@ export class DesktopPickerOwner {
       }
       const canonicalRoot = realpathSync(this.recoveryRoot)
       const pathRootStat = lstatSync(this.recoveryRoot)
-      if (!pathEqual(canonicalRoot, this.recoveryRoot) || pathRootStat.isSymbolicLink()
+      const canonicalRootStat = lstatSync(canonicalRoot)
+      if (identityOf(canonicalRootStat) !== identityOf(pathRootStat) || pathRootStat.isSymbolicLink()
         || rootHandle !== undefined && revisionOf(fstatSync(rootHandle.fd)) !== revisionOf(rootStat)
         || (rootHandle === undefined
           ? ownedIdentityOf(pathRootStat) !== ownedIdentityOf(rootStat)
-          : revisionOf(pathRootStat) !== revisionOf(rootStat))) {
-        recoveryDiagnostic('revalidate-root', {
-          canonicalRoot,
-          recoveryRoot: this.recoveryRoot,
-          firstIdentity: ownedIdentityOf(rootStat),
-          finalIdentity: ownedIdentityOf(pathRootStat),
-          firstRevision: revisionOf(rootStat),
-          finalRevision: revisionOf(pathRootStat),
-        })
-        return error('recovery-required')
-      }
+          : revisionOf(pathRootStat) !== revisionOf(rootStat))) return error('recovery-required')
       return result
     } finally {
       await rootHandle?.close().catch(() => undefined)
@@ -1912,8 +1885,7 @@ export class DesktopPickerOwner {
     let entries: Array<{ name: string; path: string; size: number }>
     try {
       entries = await this.recoveryEntries()
-    } catch (error) {
-      recoveryDiagnostic('enumerate-root', error)
+    } catch {
       this.recoveryCorrupt = true
       return
     }
