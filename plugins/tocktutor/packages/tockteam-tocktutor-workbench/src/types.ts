@@ -5,6 +5,24 @@ export interface VaultReference {
 
 export type ActiveVaultResult = VaultReference | null
 
+export interface RecentVaultInfo {
+  id: string
+  lastOpenedAt: number
+}
+
+export interface RecentVaultListResult {
+  generation: number
+  vaults: RecentVaultInfo[]
+}
+
+export interface VaultGenerationRequest {
+  expectedGeneration: number
+}
+
+export interface RecentVaultRequest extends VaultGenerationRequest {
+  id: string
+}
+
 export interface OpenDocumentResult {
   content: string
   digest: string

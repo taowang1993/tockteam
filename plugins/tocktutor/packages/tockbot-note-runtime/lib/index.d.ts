@@ -403,6 +403,8 @@ export declare class NoteVaultRuntime extends Service {
     activate(vaultRoot: string, expectedGeneration: number): NoteVaultState;
     private activateVault;
     listRecentVaults(): RecentVaultInfo[];
+    removeRecentVault(id: string, expectedGeneration: number): RecentVaultInfo[];
+    openSandboxVault(expectedGeneration: number): NoteVaultState;
     revealEntry(request: RevealEntryRequest, signal: AbortSignal): Promise<RevealEntryResult>;
     activateRecentVault(id: string, expectedGeneration: number): NoteVaultState;
     private createInspection;

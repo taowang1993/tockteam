@@ -29,6 +29,7 @@ afterEach(() => {
 })
 
 function renderRoute(overrides: Partial<WorkbenchRouteSnapshot> = {}, props: {
+  onActivateRecentVault?(id: string): void
   onBack?(): void
   onCancelDispatch?(): void
   onCloseCommandPalette?(): void
@@ -36,6 +37,8 @@ function renderRoute(overrides: Partial<WorkbenchRouteSnapshot> = {}, props: {
   onEdit?(source: string): void
   onMode?(mode: 'live-preview' | 'reading' | 'source'): void
   onMoveTab?(paneId: string, path: string, direction: -1 | 1): void
+  onOpenSandboxVault?(): void
+  onRemoveRecentVault?(id: string): void
   onReopenClosedTab?(): void
   onSubmitDispatch?(draft: { path: string } | { text: string; title: string }): void
   onToggleFocusMode?(): void
@@ -184,6 +187,26 @@ describe('TockTutor titlebar panel controls', () => {
     fireEvent.change(screen.getByLabelText('Live Preview Line 1'), { target: { value: '# Updated' } })
     expect(onEdit).toHaveBeenCalledWith('# Updated\n- [ ] Review\n> [!tip]- Fold\n> Body\n')
     expect(screen.getByRole('button', { name: 'Expand Line 3' })).toBeTruthy()
+  })
+
+  it('opens opaque recent and sandbox vault controls without paths', () => {
+    const id = `vault:${'a'.repeat(64)}`
+    const onActivateRecentVault = vi.fn()
+    const onOpenSandboxVault = vi.fn()
+    const onRemoveRecentVault = vi.fn()
+    renderRoute({
+      recentVaults: [{ id, lastOpenedAt: 1 }],
+      vault: { generation: 2, id: `vault:${'b'.repeat(64)}` },
+    }, { onActivateRecentVault, onOpenSandboxVault, onRemoveRecentVault })
+
+    fireEvent.click(screen.getByRole('button', { name: /TockTutor Vault/u }))
+    fireEvent.click(screen.getByRole('button', { name: 'Open Sandbox Vault' }))
+    expect(onOpenSandboxVault).toHaveBeenCalledOnce()
+    fireEvent.click(screen.getByRole('button', { name: 'Open' }))
+    expect(onActivateRecentVault).toHaveBeenCalledWith(id)
+    fireEvent.click(screen.getByRole('button', { name: 'Remove Recent Vault 1' }))
+    expect(onRemoveRecentVault).toHaveBeenCalledWith(id)
+    expect(document.body.textContent).not.toContain(id)
   })
 
   it('renders and submits the shadcn New Note dialog', () => {

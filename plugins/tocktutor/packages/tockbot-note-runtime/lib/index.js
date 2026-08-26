@@ -1597,6 +1597,36 @@ function loadPersistedActiveVault(stateRoot) {
         return null;
     }
 }
+function loadLegacyRecentVaults(stateRoot, limit) {
+    const raw = readStateTextSync(path.join(stateRoot, 'notes-recent-vaults.json'), 1024 * 1024);
+    if (raw === null)
+        return [];
+    try {
+        const parsed = JSON.parse(raw);
+        if (!Array.isArray(parsed))
+            return [];
+        return parsePersistedRecentVaults(parsed.map(candidate => typeof candidate === 'string'
+            ? { lastOpenedAt: 0, root: candidate }
+            : candidate), limit);
+    }
+    catch {
+        return [];
+    }
+}
+function loadLegacyActiveVault(stateRoot) {
+    const raw = readStateTextSync(path.join(stateRoot, 'notes-vault-path'), 32_769);
+    if (raw === null)
+        return null;
+    const value = raw.replace(/\r?\n$/u, '');
+    if (value.length === 0 || value.length > 32_768 || value.includes('\0'))
+        return null;
+    try {
+        return resolveVaultRoot(value);
+    }
+    catch {
+        return null;
+    }
+}
 function loadPersistedVaultSelection(stateRoot, limit) {
     const directory = vaultStateDirectorySync(stateRoot);
     const raw = readStateTextSync(path.join(directory, 'selection.json'), 1024 * 1024);
@@ -1736,9 +1766,14 @@ export class NoteVaultRuntime extends Service {
         this.recentVaults = persistedSelection?.recents
             ?? (this.stateRoot === null
                 ? []
-                : loadPersistedRecentVaults(this.stateRoot, this.recentVaultLimit));
+                : (() => {
+                    const current = loadPersistedRecentVaults(this.stateRoot, this.recentVaultLimit);
+                    return current.length > 0 ? current : loadLegacyRecentVaults(this.stateRoot, this.recentVaultLimit);
+                })());
         const initialRoot = config.vaultRoot === null && config.restoreActiveVault && this.stateRoot !== null
-            ? persistedSelection?.activeRoot ?? loadPersistedActiveVault(this.stateRoot)
+            ? persistedSelection?.activeRoot
+                ?? loadPersistedActiveVault(this.stateRoot)
+                ?? loadLegacyActiveVault(this.stateRoot)
             : config.vaultRoot;
         if (initialRoot === null) {
             this.vaultIdentity = null;
@@ -2243,6 +2278,54 @@ export class NoteVaultRuntime extends Service {
             id: record.id,
             lastOpenedAt: record.lastOpenedAt,
         }));
+    }
+    removeRecentVault(id, expectedGeneration) {
+        if (!/^vault:[0-9a-f]{64}$/u.test(id) || !Number.isSafeInteger(expectedGeneration) || expectedGeneration < 0) {
+            throw new NoteVaultError('denied', 'Recent vault removal is invalid');
+        }
+        const state = this.currentState;
+        if (state.generation !== expectedGeneration)
+            throw new NoteVaultError('stale-vault', 'The active vault changed before recent-vault removal');
+        this.recentVaults = this.recentVaults.filter(record => record.id !== id);
+        if (this.stateRoot !== null && state.active && this.vaultRoot !== null) {
+            persistVaultSelection(this.stateRoot, this.vaultRoot, this.recentVaults);
+        }
+        return this.listRecentVaults();
+    }
+    openSandboxVault(expectedGeneration) {
+        if (!Number.isSafeInteger(expectedGeneration) || expectedGeneration < 0) {
+            throw new NoteVaultError('denied', 'Sandbox activation is invalid');
+        }
+        if (this.currentState.generation !== expectedGeneration) {
+            throw new NoteVaultError('stale-vault', 'The active vault changed before sandbox activation');
+        }
+        if (this.stateRoot === null)
+            throw new NoteVaultError('unavailable', 'Sandbox storage is unavailable');
+        const root = path.join(this.stateRoot, 'TockTutor Sandbox');
+        mkdirSync(root, { mode: 0o700, recursive: true });
+        const welcome = path.join(root, 'Welcome.md');
+        try {
+            const descriptor = openSync(welcome, fsConstants.O_CREAT | fsConstants.O_EXCL | fsConstants.O_WRONLY | fsConstants.O_NOFOLLOW, 0o600);
+            try {
+                const data = Buffer.from('# TockTutor Sandbox\n\nThis local demo vault preserves your edits.\n', 'utf8');
+                let offset = 0;
+                while (offset < data.byteLength) {
+                    const written = writeSync(descriptor, data, offset, data.byteLength - offset);
+                    if (written <= 0)
+                        throw new Error('sandbox seed write stopped');
+                    offset += written;
+                }
+                fsyncSync(descriptor);
+            }
+            finally {
+                closeSync(descriptor);
+            }
+        }
+        catch (error) {
+            if (error.code !== 'EEXIST')
+                throw error;
+        }
+        return this.activate(root, expectedGeneration);
     }
     async revealEntry(request, signal) {
         const { root, state } = this.captureExpectedVault(request.expectedVault);

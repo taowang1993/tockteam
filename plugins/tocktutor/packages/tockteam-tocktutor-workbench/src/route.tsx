@@ -100,7 +100,11 @@ import type {
   ListTreeRequest,
   NoteVaultChangeEvent,
   OpenDocumentResult,
+  RecentVaultInfo,
+  RecentVaultListResult,
+  RecentVaultRequest,
   SaveDocumentRequest,
+  VaultGenerationRequest,
   VaultReference,
   VaultTreeEntry,
   VaultTreePage,
@@ -125,6 +129,10 @@ export const MAX_ROUTE_SOURCE_BYTES = 2_000_000
 export interface WorkbenchRouteRemote extends NoteVaultEventRemote {
   tocktutorWorkbench: {
     currentVault(signal?: AbortSignal): Promise<RemoteResult<ActiveVaultResult>>
+    listRecentVaults(signal?: AbortSignal): Promise<RemoteResult<RecentVaultListResult>>
+    activateRecentVault(request: RecentVaultRequest, signal?: AbortSignal): Promise<RemoteResult<VaultReference>>
+    removeRecentVault(request: RecentVaultRequest, signal?: AbortSignal): Promise<RemoteResult<RecentVaultListResult>>
+    openSandboxVault(request: VaultGenerationRequest, signal?: AbortSignal): Promise<RemoteResult<VaultReference>>
     listTree(request: ListTreeRequest, signal?: AbortSignal): Promise<RemoteResult<VaultTreePage>>
     createDocument(
       request: CreateDocumentRequest,
@@ -172,6 +180,7 @@ export interface WorkbenchRouteSnapshot {
   mode: RouteEditorMode
   path: string | null
   phase: RoutePhase
+  recentVaults?: readonly RecentVaultInfo[]
   recentlyClosed?: readonly RouteTabSummary[]
   revision: string | null
   saveStatus: EditorStatus
@@ -213,6 +222,16 @@ function remoteValue<T>(result: RemoteResult<T>): T {
 
 function sameVault(left: VaultReference | null, right: VaultReference): boolean {
   return left !== null && left.id === right.id && left.generation === right.generation
+}
+
+function validRecentVaults(value: RecentVaultListResult): boolean {
+  return Number.isSafeInteger(value?.generation)
+    && value.generation >= 0
+    && Array.isArray(value.vaults)
+    && value.vaults.length <= 20
+    && value.vaults.every(vault => /^vault:[0-9a-f]{64}$/u.test(vault.id)
+      && Number.isFinite(vault.lastOpenedAt)
+      && vault.lastOpenedAt >= 0)
 }
 
 function documentKind(path: string): RouteDocumentKind | null {
@@ -283,6 +302,7 @@ function initialSnapshot(): WorkbenchRouteSnapshot {
     mode: 'source',
     path: null,
     phase: 'loading',
+    recentVaults: Object.freeze([]),
     recentlyClosed: Object.freeze([]),
     revision: null,
     saveStatus: 'saved',
@@ -305,6 +325,7 @@ function initialSnapshot(): WorkbenchRouteSnapshot {
 export class WorkbenchRouteController {
   private snapshot = initialSnapshot()
   private readonly listeners = new Set<() => void>()
+  private vaultGeneration = 0
   private shellSession: WorkbenchSession = createWorkbenchSession(ROUTE_PREFIX, null, 'pane-1')
   private readonly recentlyClosed: RouteTabSummary[] = []
   private readonly historyBack: string[] = []
@@ -653,6 +674,7 @@ export class WorkbenchRouteController {
     this.invalidateDispatch()
     const operation = this.nextOperation()
     this.shellSession = createWorkbenchSession(ROUTE_PREFIX, null, 'pane-1')
+    this.vaultGeneration = 0
     this.recentlyClosed.length = 0
     this.historyBack.length = 0
     this.historyForward.length = 0
@@ -668,6 +690,7 @@ export class WorkbenchRouteController {
       message: 'Loading the active vault.',
       path: null,
       phase: 'loading',
+      recentVaults: Object.freeze([]),
       recentlyClosed: Object.freeze([]),
       revision: null,
       saveStatus: 'saved',
@@ -681,12 +704,17 @@ export class WorkbenchRouteController {
       warnings: Object.freeze([]),
     })
     try {
+      const recent = remoteValue(await this.remote.tocktutorWorkbench.listRecentVaults(operation.signal))
+      if (!this.current(operation.id) || !validRecentVaults(recent)) return
+      this.vaultGeneration = recent.generation
+      const recentVaults = Object.freeze(recent.vaults.map(vault => Object.freeze({ ...vault })))
       const vault = remoteValue(await this.remote.tocktutorWorkbench.currentVault(operation.signal))
       if (!this.current(operation.id)) return
       if (vault === null) {
-        this.update({ message: 'No active TockTutor vault is available.', phase: 'inactive' })
+        this.update({ message: 'No active TockTutor vault is available.', phase: 'inactive', recentVaults })
         return
       }
+      if (vault.generation !== recent.generation) return await this.reload()
       const page = remoteValue(await this.remote.tocktutorWorkbench.listTree({
         expectedVault: vault,
         limit: TREE_LIMIT,
@@ -699,6 +727,7 @@ export class WorkbenchRouteController {
         message: page.truncated ? 'The vault tree is truncated to a bounded result.' : 'Vault ready.',
         panes: this.shellPanes(),
         phase: 'ready',
+        recentVaults,
         vault,
         warnings: Object.freeze(page.warnings),
       })
@@ -758,6 +787,54 @@ export class WorkbenchRouteController {
       if (this.current(operation.id, vault) && !operation.signal.aborted) {
         this.update({ message: this.failureMessage(error, 'The vault tree could not be refreshed.') })
       }
+    }
+  }
+
+  async activateRecentVault(id: string): Promise<boolean> {
+    if (!/^vault:[0-9a-f]{64}$/u.test(id) || this.snapshot.recentVaults?.some(vault => vault.id === id) !== true) return false
+    if (this.snapshot.saveStatus !== 'saved' && !await this.save()) return false
+    const operation = this.nextOperation()
+    const expectedGeneration = this.vaultGeneration
+    try {
+      const vault = remoteValue(await this.remote.tocktutorWorkbench.activateRecentVault({
+        expectedGeneration,
+        id,
+      }, operation.signal))
+      if (!this.current(operation.id) || vault.generation < expectedGeneration || vault.id !== id) return false
+      await this.reload()
+      return sameVault(this.snapshot.vault, vault)
+    } catch {
+      return false
+    }
+  }
+
+  async removeRecentVault(id: string): Promise<boolean> {
+    if (!/^vault:[0-9a-f]{64}$/u.test(id) || this.snapshot.recentVaults?.some(vault => vault.id === id) !== true) return false
+    const operation = this.nextOperation()
+    try {
+      const result = remoteValue(await this.remote.tocktutorWorkbench.removeRecentVault({
+        expectedGeneration: this.vaultGeneration,
+        id,
+      }, operation.signal))
+      if (!this.current(operation.id) || !validRecentVaults(result) || result.generation !== this.vaultGeneration) return false
+      this.update({ recentVaults: Object.freeze(result.vaults.map(vault => Object.freeze({ ...vault }))) })
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  async openSandboxVault(): Promise<boolean> {
+    if (this.snapshot.saveStatus !== 'saved' && !await this.save()) return false
+    const operation = this.nextOperation()
+    const expectedGeneration = this.vaultGeneration
+    try {
+      const vault = remoteValue(await this.remote.tocktutorWorkbench.openSandboxVault({ expectedGeneration }, operation.signal))
+      if (!this.current(operation.id) || vault.generation < expectedGeneration) return false
+      await this.reload()
+      return sameVault(this.snapshot.vault, vault)
+    } catch {
+      return false
     }
   }
 
@@ -1261,6 +1338,7 @@ function BaseView(props: { source: string }): ReactNode {
 export interface TockTutorRouteViewProps {
   assistantPanel?: ReactNode
   nativeActions?: ReactNode
+  onActivateRecentVault?(id: string): void
   onActivateTab(paneId: string, path: string): void
   onBack?(): void
   onCancelDispatch?(): void
@@ -1277,7 +1355,9 @@ export interface TockTutorRouteViewProps {
   onMode(mode: RouteEditorMode): void
   onNewNote?(): void
   onOpenCommandPalette?(): void
+  onOpenSandboxVault?(): void
   onOpenSearch?(): void
+  onRemoveRecentVault?(id: string): void
   onReopenClosedTab?(): void
   onSave(): void
   onSearchChange?(query: string): void
@@ -1963,6 +2043,22 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
               <TooltipContent>Close More Options</TooltipContent>
             </Tooltip>
           </header>
+          <section aria-label="Vaults" className="border-t border-[var(--tt-border)] p-3">
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="m-0 text-sm">Vaults</h2>
+              <Button unstyled className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs" onClick={props.onOpenSandboxVault} type="button">Open Sandbox Vault</Button>
+            </div>
+            <div className="mt-2 grid gap-1.5">
+              {(snapshot.recentVaults ?? []).map((vault, index) => (
+                <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-1" key={vault.id}>
+                  <span className="truncate text-xs" title={vault.id}>Recent Vault {String(index + 1)}{snapshot.vault?.id === vault.id ? ' · Active' : ''}</span>
+                  <Button unstyled className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs" disabled={snapshot.vault?.id === vault.id} onClick={() => { props.onActivateRecentVault?.(vault.id) }} type="button">Open</Button>
+                  <Button unstyled aria-label={`Remove Recent Vault ${String(index + 1)}`} className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs" onClick={() => { props.onRemoveRecentVault?.(vault.id) }} type="button">Remove</Button>
+                </div>
+              ))}
+              {(snapshot.recentVaults?.length ?? 0) === 0 && <Alert unstyled role="status">No recent vaults.</Alert>}
+            </div>
+          </section>
           <section aria-label="Pane Groups" className="tocktutor-pane-groups border-t border-[var(--tt-border)] p-3">
             <div className="tocktutor-pane-heading flex items-center justify-between">
               <h2 className="m-0 text-sm">Pane Groups</h2>
@@ -2113,6 +2209,7 @@ export function TockTutorRoute(props: TockTutorRouteProps): ReactNode {
             vault={snapshot.vault}
           />
         )}
+        onActivateRecentVault={id => { void controller.activateRecentVault(id) }}
         onActivateTab={(paneId, path) => { void controller.activateTab(paneId, path) }}
         onAddPane={() => { void controller.addPane() }}
         onBack={() => { void controller.goBack() }}
@@ -2129,7 +2226,9 @@ export function TockTutorRoute(props: TockTutorRouteProps): ReactNode {
         onMoveTab={(paneId, path, direction) => { controller.moveTab(paneId, path, direction) }}
         onNewNote={() => { void controller.handleDispatch({ action: 'new', kind: 'quick-action', operationId: crypto.randomUUID() }) }}
         onOpenCommandPalette={() => { controller.setCommandPaletteOpen(true) }}
+        onOpenSandboxVault={() => { void controller.openSandboxVault() }}
         onOpenSearch={() => { controller.openSearch('') }}
+        onRemoveRecentVault={id => { void controller.removeRecentVault(id) }}
         onReopenClosedTab={() => { void controller.reopenClosedTab() }}
         onSave={() => { void controller.save() }}
         onSearchChange={query => { controller.setSearchQuery(query) }}

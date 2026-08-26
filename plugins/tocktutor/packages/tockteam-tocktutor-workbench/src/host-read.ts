@@ -10,6 +10,8 @@ import type {
   ListTreeRequest,
   OpenDocumentResult,
   ReadSnapshotRequest,
+  RecentVaultListResult,
+  RecentVaultRequest,
   RestoreSnapshotRequest,
   RestoreTrashRequest,
   RestoreTrashResult,
@@ -19,6 +21,7 @@ import type {
   TrashEntryRequest,
   TrashListResult,
   TrashMutationResult,
+  VaultGenerationRequest,
   VaultReference,
   VaultTreePage,
   WriteDocumentResult,
@@ -33,11 +36,15 @@ export const MAX_TREE_PAGE_SIZE = 200
 export type NoteVaultCapability = Pick<
   NoteVaultRuntime,
   | 'createDocument'
+  | 'activateRecentVault'
+  | 'listRecentVaults'
   | 'listSnapshots'
   | 'listTrash'
   | 'listTree'
   | 'openDocument'
+  | 'openSandboxVault'
   | 'readSnapshot'
+  | 'removeRecentVault'
   | 'restoreSnapshotAsNew'
   | 'restoreTrash'
   | 'saveDocument'
@@ -113,6 +120,27 @@ function assertTrashId(value: string): void {
   ) {
     throw new TypeError('Trash id must be one bounded recovery identifier.')
   }
+}
+
+function assertExpectedGeneration(value: VaultGenerationRequest): void {
+  assertRecord(value, 'Vault generation request')
+  if (!Number.isSafeInteger(value.expectedGeneration) || value.expectedGeneration < 0) {
+    throw new TypeError('Expected vault generation must be a non-negative safe integer.')
+  }
+}
+
+function assertRecentVaultRequest(value: RecentVaultRequest): void {
+  assertExpectedGeneration(value)
+  if (typeof value.id !== 'string' || !/^vault:[0-9a-f]{64}$/u.test(value.id)) {
+    throw new TypeError('Recent vault request must identify one opaque vault.')
+  }
+}
+
+function activeReference(state: NoteVaultRuntime['state']): VaultReference {
+  if (!state.active) throw new TypeError('Vault activation returned no active vault.')
+  const vault = { generation: state.generation, id: state.id }
+  assertVaultReference(vault)
+  return vault
 }
 
 function assertTreeRequest(value: ListTreeRequest): void {
@@ -198,6 +226,39 @@ export class TockTutorWorkbenchGateway extends TypertRemoteService {
     const vault = { generation: state.generation, id: state.id }
     assertVaultReference(vault)
     return vault
+  }
+
+  @Remote
+  async listRecentVaults(signal: AbortSignal): Promise<RecentVaultListResult> {
+    signal.throwIfAborted()
+    return {
+      generation: this.ctx.noteVault.state.generation,
+      vaults: this.ctx.noteVault.listRecentVaults(),
+    }
+  }
+
+  @Remote
+  async activateRecentVault(request: RecentVaultRequest, signal: AbortSignal): Promise<VaultReference> {
+    assertRecentVaultRequest(request)
+    signal.throwIfAborted()
+    return activeReference(this.ctx.noteVault.activateRecentVault(request.id, request.expectedGeneration))
+  }
+
+  @Remote
+  async removeRecentVault(request: RecentVaultRequest, signal: AbortSignal): Promise<RecentVaultListResult> {
+    assertRecentVaultRequest(request)
+    signal.throwIfAborted()
+    return {
+      generation: this.ctx.noteVault.state.generation,
+      vaults: this.ctx.noteVault.removeRecentVault(request.id, request.expectedGeneration),
+    }
+  }
+
+  @Remote
+  async openSandboxVault(request: VaultGenerationRequest, signal: AbortSignal): Promise<VaultReference> {
+    assertExpectedGeneration(request)
+    signal.throwIfAborted()
+    return activeReference(this.ctx.noteVault.openSandboxVault(request.expectedGeneration))
   }
 
   @Remote

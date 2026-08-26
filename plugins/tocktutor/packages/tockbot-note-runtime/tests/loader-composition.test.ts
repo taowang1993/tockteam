@@ -3980,6 +3980,46 @@ test('recent vault persistence dedupes caps and reactivates by opaque ID', async
   }
 })
 
+test('legacy Tockbot vault state migrates read-only and sandbox/removal stay opaque', async () => {
+  const stateRoot = await mkdtemp(join(tmpdir(), 'note-vault-legacy-state-'))
+  const active = await mkdtemp(join(tmpdir(), 'note-vault-legacy-active-'))
+  const recent = await mkdtemp(join(tmpdir(), 'note-vault-legacy-recent-'))
+  try {
+    await writeFile(join(stateRoot, 'notes-vault-path'), `${active}\n`)
+    await writeFile(join(stateRoot, 'notes-recent-vaults.json'), JSON.stringify([recent, active]))
+    const loaded = await load([
+      'vaultRoot: null',
+      `stateRoot: ${JSON.stringify(stateRoot)}`,
+      'restoreActiveVault: true',
+    ].join('\n'))
+    try {
+      const state = loaded.context.noteVault.state
+      if (!state.active) assert.fail('legacy active vault must restore')
+      const recents = loaded.context.noteVault.listRecentVaults()
+      assert.equal(recents.length, 2)
+      assert.equal(JSON.stringify(recents).includes(active), false)
+      assert.equal(JSON.stringify(recents).includes(recent), false)
+      const other = recents.find(vault => vault.id !== state.id)
+      assert.ok(other)
+      assert.deepEqual(loaded.context.noteVault.removeRecentVault(other.id, state.generation), [recents.find(vault => vault.id === state.id)])
+
+      const sandbox = loaded.context.noteVault.openSandboxVault(state.generation)
+      if (!sandbox.active) assert.fail('sandbox must activate')
+      const sandboxRoot = join(stateRoot, 'TockTutor Sandbox')
+      assert.match(await readFile(join(sandboxRoot, 'Welcome.md'), 'utf8'), /TockTutor Sandbox/u)
+      await writeFile(join(sandboxRoot, 'Welcome.md'), 'local edit')
+      loaded.context.noteVault.openSandboxVault(sandbox.generation)
+      assert.equal(await readFile(join(sandboxRoot, 'Welcome.md'), 'utf8'), 'local edit')
+    } finally {
+      await dispose(loaded.context, loaded.root)
+    }
+  } finally {
+    await rm(stateRoot, { recursive: true, force: true })
+    await rm(active, { recursive: true, force: true })
+    await rm(recent, { recursive: true, force: true })
+  }
+})
+
 test('persisted vault state fails closed on symlinked malformed oversized and future records', async () => {
   const stateRoot = await mkdtemp(join(tmpdir(), 'note-vault-state-tamper-'))
   const vault = await mkdtemp(join(tmpdir(), 'note-vault-state-valid-'))

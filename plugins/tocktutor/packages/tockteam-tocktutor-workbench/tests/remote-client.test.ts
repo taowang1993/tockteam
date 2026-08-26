@@ -31,13 +31,17 @@ test('publishes deterministic strict read, tree, save, and recovery Remote artif
   const { default: remote } = await import('../dist/typert.remote-client.js')
   assert.equal(remote.package, '@tockteam/tocktutor-workbench')
   assert.deepEqual(remote.descriptors.map(descriptor => descriptor.method), [
+    'activateRecentVault',
     'createDocument',
     'currentVault',
+    'listRecentVaults',
     'listSnapshots',
     'listTrash',
     'listTree',
     'openDocument',
+    'openSandboxVault',
     'readSnapshot',
+    'removeRecentVault',
     'restoreSnapshotAsNew',
     'restoreTrash',
     'saveDocument',
@@ -51,7 +55,7 @@ test('publishes deterministic strict read, tree, save, and recovery Remote artif
     assert.equal(descriptor.parameters.every(parameter => parameter.codec.mode === 'strict'), true)
     assert.deepEqual(
       descriptor.parameters.map(parameter => parameter.name),
-      descriptor.method === 'currentVault'
+      descriptor.method === 'currentVault' || descriptor.method === 'listRecentVaults'
         ? []
         : descriptor.method === 'openDocument' ? ['path', 'expectedVault'] : ['request'],
     )

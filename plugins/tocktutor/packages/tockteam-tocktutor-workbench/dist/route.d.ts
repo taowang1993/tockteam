@@ -8,11 +8,15 @@ import { TOCKTUTOR_REVIEW_PANEL_SLOT } from './review-panel.ts';
 import { type EditorCommandId } from './editor-commands.ts';
 import { type EditorStatus } from './markdown.ts';
 import { type NoteVaultEventRemote } from './vault-events.ts';
-import type { ActiveVaultResult, CreateDocumentRequest, ListTreeRequest, OpenDocumentResult, SaveDocumentRequest, VaultReference, VaultTreeEntry, VaultTreePage, WriteDocumentResult } from './types.ts';
+import type { ActiveVaultResult, CreateDocumentRequest, ListTreeRequest, OpenDocumentResult, RecentVaultInfo, RecentVaultListResult, RecentVaultRequest, SaveDocumentRequest, VaultGenerationRequest, VaultReference, VaultTreeEntry, VaultTreePage, WriteDocumentResult } from './types.ts';
 export declare const MAX_ROUTE_SOURCE_BYTES = 2000000;
 export interface WorkbenchRouteRemote extends NoteVaultEventRemote {
     tocktutorWorkbench: {
         currentVault(signal?: AbortSignal): Promise<RemoteResult<ActiveVaultResult>>;
+        listRecentVaults(signal?: AbortSignal): Promise<RemoteResult<RecentVaultListResult>>;
+        activateRecentVault(request: RecentVaultRequest, signal?: AbortSignal): Promise<RemoteResult<VaultReference>>;
+        removeRecentVault(request: RecentVaultRequest, signal?: AbortSignal): Promise<RemoteResult<RecentVaultListResult>>;
+        openSandboxVault(request: VaultGenerationRequest, signal?: AbortSignal): Promise<RemoteResult<VaultReference>>;
         listTree(request: ListTreeRequest, signal?: AbortSignal): Promise<RemoteResult<VaultTreePage>>;
         createDocument(request: CreateDocumentRequest, signal?: AbortSignal): Promise<RemoteResult<WriteDocumentResult>>;
         openDocument(path: string, expectedVault: VaultReference, signal?: AbortSignal): Promise<RemoteResult<OpenDocumentResult>>;
@@ -46,6 +50,7 @@ export interface WorkbenchRouteSnapshot {
     mode: RouteEditorMode;
     path: string | null;
     phase: RoutePhase;
+    recentVaults?: readonly RecentVaultInfo[];
     recentlyClosed?: readonly RouteTabSummary[];
     revision: string | null;
     saveStatus: EditorStatus;
@@ -71,6 +76,7 @@ export declare class WorkbenchRouteController {
     private readonly now;
     private snapshot;
     private readonly listeners;
+    private vaultGeneration;
     private shellSession;
     private readonly recentlyClosed;
     private readonly historyBack;
@@ -112,6 +118,9 @@ export declare class WorkbenchRouteController {
     reload(): Promise<void>;
     private onVaultChange;
     private refreshTree;
+    activateRecentVault(id: string): Promise<boolean>;
+    removeRecentVault(id: string): Promise<boolean>;
+    openSandboxVault(): Promise<boolean>;
     addPane(): Promise<boolean>;
     focusPane(id: string, pathOverride?: string): Promise<boolean>;
     activateTab(paneId: string, path: string): Promise<boolean>;
@@ -137,6 +146,7 @@ export declare class WorkbenchRouteController {
 export interface TockTutorRouteViewProps {
     assistantPanel?: ReactNode;
     nativeActions?: ReactNode;
+    onActivateRecentVault?(id: string): void;
     onActivateTab(paneId: string, path: string): void;
     onBack?(): void;
     onCancelDispatch?(): void;
@@ -153,7 +163,9 @@ export interface TockTutorRouteViewProps {
     onMode(mode: RouteEditorMode): void;
     onNewNote?(): void;
     onOpenCommandPalette?(): void;
+    onOpenSandboxVault?(): void;
     onOpenSearch?(): void;
+    onRemoveRecentVault?(id: string): void;
     onReopenClosedTab?(): void;
     onSave(): void;
     onSearchChange?(query: string): void;

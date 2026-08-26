@@ -85,6 +85,25 @@ function assertTrashId(value) {
         throw new TypeError('Trash id must be one bounded recovery identifier.');
     }
 }
+function assertExpectedGeneration(value) {
+    assertRecord(value, 'Vault generation request');
+    if (!Number.isSafeInteger(value.expectedGeneration) || value.expectedGeneration < 0) {
+        throw new TypeError('Expected vault generation must be a non-negative safe integer.');
+    }
+}
+function assertRecentVaultRequest(value) {
+    assertExpectedGeneration(value);
+    if (typeof value.id !== 'string' || !/^vault:[0-9a-f]{64}$/u.test(value.id)) {
+        throw new TypeError('Recent vault request must identify one opaque vault.');
+    }
+}
+function activeReference(state) {
+    if (!state.active)
+        throw new TypeError('Vault activation returned no active vault.');
+    const vault = { generation: state.generation, id: state.id };
+    assertVaultReference(vault);
+    return vault;
+}
 function assertTreeRequest(value) {
     assertRecord(value, 'Tree request');
     assertVaultReference(value.expectedVault);
@@ -145,6 +164,10 @@ let TockTutorWorkbenchGateway = (() => {
     let _classSuper = TypertRemoteService;
     let _instanceExtraInitializers = [];
     let _currentVault_decorators;
+    let _listRecentVaults_decorators;
+    let _activateRecentVault_decorators;
+    let _removeRecentVault_decorators;
+    let _openSandboxVault_decorators;
     let _openDocument_decorators;
     let _listTree_decorators;
     let _createDocument_decorators;
@@ -159,6 +182,10 @@ let TockTutorWorkbenchGateway = (() => {
         static {
             const _metadata = typeof Symbol === "function" && Symbol.metadata ? Object.create(_classSuper[Symbol.metadata] ?? null) : void 0;
             _currentVault_decorators = [Remote];
+            _listRecentVaults_decorators = [Remote];
+            _activateRecentVault_decorators = [Remote];
+            _removeRecentVault_decorators = [Remote];
+            _openSandboxVault_decorators = [Remote];
             _openDocument_decorators = [Remote];
             _listTree_decorators = [Remote];
             _createDocument_decorators = [Remote];
@@ -170,6 +197,10 @@ let TockTutorWorkbenchGateway = (() => {
             _listTrash_decorators = [Remote];
             _restoreTrash_decorators = [Remote];
             __esDecorate(this, null, _currentVault_decorators, { kind: "method", name: "currentVault", static: false, private: false, access: { has: obj => "currentVault" in obj, get: obj => obj.currentVault }, metadata: _metadata }, null, _instanceExtraInitializers);
+            __esDecorate(this, null, _listRecentVaults_decorators, { kind: "method", name: "listRecentVaults", static: false, private: false, access: { has: obj => "listRecentVaults" in obj, get: obj => obj.listRecentVaults }, metadata: _metadata }, null, _instanceExtraInitializers);
+            __esDecorate(this, null, _activateRecentVault_decorators, { kind: "method", name: "activateRecentVault", static: false, private: false, access: { has: obj => "activateRecentVault" in obj, get: obj => obj.activateRecentVault }, metadata: _metadata }, null, _instanceExtraInitializers);
+            __esDecorate(this, null, _removeRecentVault_decorators, { kind: "method", name: "removeRecentVault", static: false, private: false, access: { has: obj => "removeRecentVault" in obj, get: obj => obj.removeRecentVault }, metadata: _metadata }, null, _instanceExtraInitializers);
+            __esDecorate(this, null, _openSandboxVault_decorators, { kind: "method", name: "openSandboxVault", static: false, private: false, access: { has: obj => "openSandboxVault" in obj, get: obj => obj.openSandboxVault }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _openDocument_decorators, { kind: "method", name: "openDocument", static: false, private: false, access: { has: obj => "openDocument" in obj, get: obj => obj.openDocument }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _listTree_decorators, { kind: "method", name: "listTree", static: false, private: false, access: { has: obj => "listTree" in obj, get: obj => obj.listTree }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _createDocument_decorators, { kind: "method", name: "createDocument", static: false, private: false, access: { has: obj => "createDocument" in obj, get: obj => obj.createDocument }, metadata: _metadata }, null, _instanceExtraInitializers);
@@ -195,6 +226,31 @@ let TockTutorWorkbenchGateway = (() => {
             const vault = { generation: state.generation, id: state.id };
             assertVaultReference(vault);
             return vault;
+        }
+        async listRecentVaults(signal) {
+            signal.throwIfAborted();
+            return {
+                generation: this.ctx.noteVault.state.generation,
+                vaults: this.ctx.noteVault.listRecentVaults(),
+            };
+        }
+        async activateRecentVault(request, signal) {
+            assertRecentVaultRequest(request);
+            signal.throwIfAborted();
+            return activeReference(this.ctx.noteVault.activateRecentVault(request.id, request.expectedGeneration));
+        }
+        async removeRecentVault(request, signal) {
+            assertRecentVaultRequest(request);
+            signal.throwIfAborted();
+            return {
+                generation: this.ctx.noteVault.state.generation,
+                vaults: this.ctx.noteVault.removeRecentVault(request.id, request.expectedGeneration),
+            };
+        }
+        async openSandboxVault(request, signal) {
+            assertExpectedGeneration(request);
+            signal.throwIfAborted();
+            return activeReference(this.ctx.noteVault.openSandboxVault(request.expectedGeneration));
         }
         async openDocument(path, expectedVault, signal) {
             assertDocumentPath(path);
