@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { basename, join } from 'node:path'
 import { test } from 'node:test'
+import { authorizedSessionWorkspace } from '../plugins/sidebar/src/index.ts'
 import {
   mutateWorkspace,
   readWorkspaceFacts,
@@ -19,6 +20,22 @@ function git(cwd: string, args: string[]): string {
   assert.equal(result.status, 0, result.stderr || result.stdout)
   return result.stdout
 }
+
+test('workspace APIs bind paths to the owning Host session', () => {
+  const workspace = mkdtempSync(join(tmpdir(), 'tockteam-authorized-workspace-'))
+  const other = mkdtempSync(join(tmpdir(), 'tockteam-other-workspace-'))
+  const sessions = {
+    get: (id: string) => id === 'session' ? { header: { cwd: workspace } } : undefined,
+  }
+  try {
+    assert.equal(authorizedSessionWorkspace(sessions, 'session', workspace), realpathSync(workspace))
+    assert.equal(authorizedSessionWorkspace(sessions, 'session', other), undefined)
+    assert.equal(authorizedSessionWorkspace(sessions, 'missing', workspace), undefined)
+  } finally {
+    rmSync(workspace, { recursive: true, force: true })
+    rmSync(other, { recursive: true, force: true })
+  }
+})
 
 test('workspace extension provides repository facts and branch creation', async () => {
   const workspace = mkdtempSync(join(tmpdir(), 'tockteam-workspace-tools-'))

@@ -293,9 +293,10 @@ async function responseJson<T>(
   return payload
 }
 
-function workspaceUrl(cwd: string): string {
+function workspaceUrl(cwd: string, sessionId: string): string {
   const url = new URL(WORKSPACE_API_PATH, window.location.origin)
   url.searchParams.set('cwd', cwd)
+  url.searchParams.set('sessionId', sessionId)
   return url.href
 }
 
@@ -808,7 +809,7 @@ function WorkspacePanel({
     try {
       const nextScope = { sessionId, cwd }
       const [facts, status] = await Promise.all([
-        responseJson<WorkspaceFacts>(await fetch(workspaceUrl(cwd)), t),
+        responseJson<WorkspaceFacts>(await fetch(workspaceUrl(cwd, sessionId)), t),
         betterSidebarApi.gitStatus(nextScope),
       ])
       if (!status.isRepo) {
@@ -879,7 +880,7 @@ function WorkspacePanel({
         await betterSidebarApi.gitCommit(scope, mutation.message)
         setCommitMessage('')
       } else {
-        const response = await fetch(workspaceUrl(cwd), {
+        const response = await fetch(workspaceUrl(cwd, scope.sessionId), {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify(mutation),

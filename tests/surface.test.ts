@@ -40,7 +40,7 @@ test('every bundled plugin adapts explicitly per surface', () => {
   assert.match(skins, /ctx\.inject\(\['webServer'\]/)
 
   const sidebar = readFileSync(join(root, 'plugins/sidebar/src/index.ts'), 'utf8')
-  assert.match(sidebar, /export const inject = \['webServer'\]/)
+  assert.match(sidebar, /export const inject = \['sessions', 'webServer'\]/)
   assert.doesNotMatch(sidebar, /inject = \['desktop', 'webServer'\]/)
   assert.match(sidebar, /TOCKTEAM_SURFACE_SERVICE/)
   assert.match(sidebar, /hasBrowserSurface/)

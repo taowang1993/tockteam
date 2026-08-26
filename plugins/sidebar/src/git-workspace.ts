@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process'
-import { existsSync, statSync } from 'node:fs'
+import { existsSync, realpathSync, statSync } from 'node:fs'
 import { basename, isAbsolute } from 'node:path'
 import { promisify } from 'node:util'
 import type {
@@ -20,7 +20,7 @@ export function normalizeWorkspacePath(raw: string | undefined): string {
   if (!existsSync(cwd) || !statSync(cwd).isDirectory()) {
     throw new Error('workspace directory does not exist')
   }
-  return cwd
+  return realpathSync(cwd)
 }
 
 async function git(
