@@ -2,6 +2,7 @@ import { randomBytes } from 'node:crypto'
 import { mkdir, readFile, rename, unlink, writeFile } from 'node:fs/promises'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { dirname, join } from 'node:path'
+import { isTrustedBrowserRequest, webRuntimeTrustedHosts } from '../../shared/request-trust.ts'
 import {
   DEFAULT_SIDEBAR_PREFERENCES,
   parseSidebarPreferences,
@@ -16,6 +17,7 @@ export interface SidebarDesktopCapability {
 }
 
 export interface SidebarPreferencesHostContext {
+  get(name: string): unknown
   webServer: {
     register(route: {
       kind: 'exact'
@@ -45,17 +47,6 @@ function sendJson(response: ServerResponse, status: number, value: unknown): voi
     'content-type': 'application/json; charset=utf-8',
   })
   response.end(JSON.stringify(value))
-}
-
-function sameOrigin(request: IncomingMessage): boolean {
-  const origin = request.headers.origin
-  const host = request.headers.host
-  if (origin === undefined || host === undefined) return false
-  try {
-    return new URL(origin).host === host
-  } catch {
-    return false
-  }
 }
 
 async function readJson(request: IncomingMessage): Promise<unknown> {
@@ -116,6 +107,7 @@ export function mountSidebarPreferences(
     throw new Error('sidebar: application data path is unavailable')
   }
   const path = join(desktop.appDataPath, 'sidebar.json')
+  const trustedHosts = webRuntimeTrustedHosts(ctx)
   return ctx.webServer.register({
     kind: 'exact',
     path: SIDEBAR_PREFERENCES_API_PATH,
@@ -126,7 +118,7 @@ export function mountSidebarPreferences(
           return
         }
         if (request.method === 'PUT') {
-          if (!sameOrigin(request)) {
+          if (!isTrustedBrowserRequest(request, trustedHosts)) {
             sendJson(response, 403, { error: 'untrusted sidebar origin' })
             return
           }

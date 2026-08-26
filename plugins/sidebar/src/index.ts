@@ -1,4 +1,5 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
+import { isTrustedBrowserRequest, webRuntimeTrustedHosts } from '../../shared/request-trust.ts'
 import type { WorkspaceHostMutation } from './protocol.ts'
 import { WORKSPACE_API_PATH } from './protocol.ts'
 import { mutateWorkspace, readWorkspaceFacts } from './git-workspace.ts'
@@ -38,17 +39,6 @@ function sendJson(response: ServerResponse, status: number, payload: unknown): v
   response.end(JSON.stringify(payload))
 }
 
-function sameOrigin(request: IncomingMessage): boolean {
-  const origin = request.headers.origin
-  const host = request.headers.host
-  if (origin === undefined || host === undefined) return false
-  try {
-    return new URL(origin).host === host
-  } catch {
-    return false
-  }
-}
-
 async function readJsonBody(request: IncomingMessage): Promise<unknown> {
   const chunks: Buffer[] = []
   let size = 0
@@ -79,6 +69,7 @@ export function apply(ctx: HostContext): void {
     return
   }
   const dataRoot = surface?.dataRoot ?? legacy?.appDataPath ?? ''
+  const trustedHosts = webRuntimeTrustedHosts(ctx)
   if (dataRoot !== '') {
     ctx.effect(
       () => mountSidebarPreferences(ctx, { appDataPath: dataRoot }),
@@ -97,7 +88,7 @@ export function apply(ctx: HostContext): void {
           return
         }
         if (request.method === 'POST') {
-          if (!sameOrigin(request)) {
+          if (!isTrustedBrowserRequest(request, trustedHosts)) {
             sendJson(response, 403, { error: 'untrusted workspace mutation origin' })
             return
           }

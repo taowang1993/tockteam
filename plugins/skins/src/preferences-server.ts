@@ -9,6 +9,7 @@ import {
 } from 'node:fs/promises'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { dirname, join } from 'node:path'
+import { isTrustedBrowserRequest, webRuntimeTrustedHosts } from '../../shared/request-trust.ts'
 import {
   DEFAULT_SKIN_PREFERENCES,
   PREFERENCES_API_PATH,
@@ -23,6 +24,7 @@ export interface DesktopCapability {
 }
 
 export interface DesktopSkinPreferencesHostContext {
+  get(name: string): unknown
   webServer: {
     register(route: {
       kind: 'exact'
@@ -47,17 +49,6 @@ function sendJson(response: ServerResponse, status: number, payload: unknown): v
     'content-type': 'application/json; charset=utf-8',
   })
   response.end(JSON.stringify(payload))
-}
-
-function sameOrigin(request: IncomingMessage): boolean {
-  const origin = request.headers.origin
-  const host = request.headers.host
-  if (origin === undefined || host === undefined) return false
-  try {
-    return new URL(origin).host === host
-  } catch {
-    return false
-  }
 }
 
 async function readJson(request: IncomingMessage): Promise<unknown> {
@@ -119,6 +110,7 @@ export function mountDesktopSkinPreferences(
     throw new Error('skins: desktop application data path is unavailable')
   }
   const path = join(desktop.appDataPath, 'skins.json')
+  const trustedHosts = webRuntimeTrustedHosts(ctx)
   return ctx.webServer.register({
     kind: 'exact',
     path: PREFERENCES_API_PATH,
@@ -129,7 +121,7 @@ export function mountDesktopSkinPreferences(
           return
         }
         if (request.method === 'PUT') {
-          if (!sameOrigin(request)) {
+          if (!isTrustedBrowserRequest(request, trustedHosts)) {
             sendJson(response, 403, { error: 'untrusted desktop skin preferences origin' })
             return
           }
