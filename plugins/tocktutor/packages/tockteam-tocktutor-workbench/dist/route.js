@@ -17,7 +17,7 @@ import { TOCKTUTOR_NATIVE_ACTIONS_SLOT, } from "./native-actions.js";
 import { TOCKTUTOR_REVIEW_PANEL_SLOT } from "./review-panel.js";
 import { parseCanvasDocument, projectCanvas, updateCanvasNodePosition, } from "./canvas.js";
 import { editorStatusLabel, projectReading, resolveEditorShortcut, toggleMarkdownTask, } from "./markdown.js";
-import { isSafeVaultRelativePath, MAX_NOTE_TABS, MAX_PANE_GROUPS, } from "./session.js";
+import { addPaneGroup, closeNoteTab, createWorkbenchSession, focusPaneGroup, isSafeVaultRelativePath, markTabDirty, MAX_NOTE_TABS, MAX_PANE_GROUPS, moveNoteTab, openNoteTab, setActiveNoteTab, setNoteTabMode, setTabPinned, } from "./session.js";
 import { isNoteVaultChangeEvent } from "./vault-events.js";
 const ROUTE_PREFIX = '/tocktutor';
 const TREE_LIMIT = 200;
@@ -92,14 +92,19 @@ function minuteStamp(value) {
 }
 function initialSnapshot() {
     return Object.freeze({
+        canGoBack: false,
+        canGoForward: false,
+        commandPaletteOpen: false,
         dispatchDialog: null,
         documentKind: null,
         entries: Object.freeze([]),
         focusedPaneId: 'pane-1',
+        focusMode: false,
         message: 'Loading the active vault.',
         mode: 'source',
         path: null,
         phase: 'loading',
+        recentlyClosed: Object.freeze([]),
         revision: null,
         saveStatus: 'saved',
         searchOpen: false,
@@ -121,6 +126,10 @@ export class WorkbenchRouteController {
     now;
     snapshot = initialSnapshot();
     listeners = new Set();
+    shellSession = createWorkbenchSession(ROUTE_PREFIX, null, 'pane-1');
+    recentlyClosed = [];
+    historyBack = [];
+    historyForward = [];
     operation = 0;
     dispatchRevision = 0;
     operationAbort = null;
@@ -212,6 +221,7 @@ export class WorkbenchRouteController {
     async createDispatchedDocument(path, content, silent, revision, vault) {
         if (!isSafeVaultRelativePath(path) || !/\.md$/iu.test(path) || !boundedSource(content))
             return 'failed';
+        const previousPath = this.snapshot.path;
         if (this.snapshot.saveStatus !== 'saved' && !await this.save())
             return 'failed';
         if (!this.dispatchCurrent(revision, vault))
@@ -237,7 +247,7 @@ export class WorkbenchRouteController {
                 saveStatus: 'saved',
                 source: content,
             });
-            this.recordOpen(path);
+            this.recordOpen(path, true, previousPath);
             this.navigate(routeForPath(path));
             return 'handled';
         }
@@ -322,41 +332,48 @@ export class WorkbenchRouteController {
         for (const listener of this.listeners)
             listener();
     }
+    shellPanes() {
+        return Object.freeze(this.shellSession.groups.map(group => Object.freeze({
+            activePath: group.tabs.find(tab => tab.id === group.activeTabId)?.path ?? null,
+            id: group.id,
+            tabs: Object.freeze(group.tabs.map(tab => Object.freeze({
+                dirty: tab.dirty,
+                mode: tab.mode === 'reading' ? 'reading' : 'source',
+                path: tab.path,
+                pinned: tab.pinned,
+            }))),
+        })));
+    }
+    syncShell(change = {}) {
+        this.update({
+            canGoBack: this.historyBack.length > 0,
+            canGoForward: this.historyForward.length > 0,
+            focusedPaneId: this.shellSession.focusedGroupId,
+            panes: this.shellPanes(),
+            recentlyClosed: Object.freeze(this.recentlyClosed.map(tab => Object.freeze({ ...tab }))),
+            ...change,
+        });
+    }
     pane(id = this.snapshot.focusedPaneId) {
         return this.snapshot.panes.find(candidate => candidate.id === id);
     }
-    replacePane(id, replace) {
-        this.update({
-            panes: Object.freeze(this.snapshot.panes.map(pane => pane.id === id
-                ? Object.freeze(replace(pane))
-                : pane)),
-        });
-    }
-    recordOpen(path) {
-        const pane = this.pane();
-        if (pane === undefined)
-            return;
-        const existing = pane.tabs.find(tab => tab.path === path);
-        const tabs = existing === undefined
-            ? [...pane.tabs, Object.freeze({ dirty: false, path })]
-            : pane.tabs.map(tab => tab.path === path ? Object.freeze({ ...tab, dirty: false }) : tab);
-        this.replacePane(pane.id, current => ({
-            ...current,
-            activePath: path,
-            tabs: Object.freeze(tabs),
-        }));
+    recordOpen(path, recordHistory = true, previous = this.snapshot.path) {
+        if (recordHistory && previous !== null && previous !== path) {
+            this.historyBack.push(previous);
+            if (this.historyBack.length > MAX_NOTE_TABS * MAX_PANE_GROUPS)
+                this.historyBack.shift();
+            this.historyForward.length = 0;
+        }
+        this.shellSession = openNoteTab(this.shellSession, this.shellSession.focusedGroupId, path, { mode: this.snapshot.mode });
+        this.shellSession = markTabDirty(this.shellSession, this.shellSession.focusedGroupId, path, false);
+        this.syncShell();
     }
     recordDirty(dirty) {
-        const pane = this.pane();
         const path = this.snapshot.path;
-        if (pane === undefined || path === null)
+        if (path === null)
             return;
-        this.replacePane(pane.id, current => ({
-            ...current,
-            tabs: Object.freeze(current.tabs.map(tab => tab.path === path
-                ? Object.freeze({ ...tab, dirty })
-                : tab)),
-        }));
+        this.shellSession = markTabDirty(this.shellSession, this.shellSession.focusedGroupId, path, dirty);
+        this.syncShell();
     }
     clearDocument() {
         this.invalidateDispatch();
@@ -400,18 +417,22 @@ export class WorkbenchRouteController {
                 this.navigate(routeForPath(this.snapshot.path), 'replace');
             return;
         }
-        const pane = this.pane();
-        if (pane !== undefined) {
-            this.replacePane(pane.id, current => ({ ...current, activePath: null }));
-        }
+        this.shellSession = setActiveNoteTab(this.shellSession, this.shellSession.focusedGroupId, null);
+        this.syncShell();
         this.clearDocument();
     }
     async reload() {
         this.invalidateDispatch();
         const operation = this.nextOperation();
+        this.shellSession = createWorkbenchSession(ROUTE_PREFIX, null, 'pane-1');
+        this.recentlyClosed.length = 0;
+        this.historyBack.length = 0;
+        this.historyForward.length = 0;
         this.eventDispose?.();
         this.eventDispose = null;
         this.update({
+            canGoBack: false,
+            canGoForward: false,
             dispatchDialog: null,
             documentKind: null,
             entries: Object.freeze([]),
@@ -419,16 +440,13 @@ export class WorkbenchRouteController {
             message: 'Loading the active vault.',
             path: null,
             phase: 'loading',
+            recentlyClosed: Object.freeze([]),
             revision: null,
             saveStatus: 'saved',
             searchOpen: false,
             searchQuery: '',
             source: '',
-            panes: Object.freeze([Object.freeze({
-                    activePath: null,
-                    id: 'pane-1',
-                    tabs: Object.freeze([]),
-                })]),
+            panes: this.shellPanes(),
             vault: null,
             warnings: Object.freeze([]),
         });
@@ -446,9 +464,12 @@ export class WorkbenchRouteController {
             }, operation.signal));
             if (!this.current(operation.id) || page.generation !== vault.generation)
                 return;
+            this.shellSession = createWorkbenchSession(ROUTE_PREFIX, vault, 'pane-1');
             this.update({
                 entries: Object.freeze(page.entries.toSorted((left, right) => left.path.localeCompare(right.path))),
+                focusedPaneId: this.shellSession.focusedGroupId,
                 message: page.truncated ? 'The vault tree is truncated to a bounded result.' : 'Vault ready.',
+                panes: this.shellPanes(),
                 phase: 'ready',
                 vault,
                 warnings: Object.freeze(page.warnings),
@@ -487,14 +508,9 @@ export class WorkbenchRouteController {
                 void this.select(nextPath, false);
             }
             else {
-                const pane = this.pane();
-                if (pane !== undefined) {
-                    this.replacePane(pane.id, current => ({
-                        ...current,
-                        activePath: null,
-                        tabs: Object.freeze(current.tabs.filter(tab => tab.path !== selected)),
-                    }));
-                }
+                const closed = closeNoteTab(this.shellSession, this.shellSession.focusedGroupId, selected);
+                this.shellSession = closed.session;
+                this.syncShell();
                 this.clearDocument();
                 this.navigate(ROUTE_PREFIX, 'replace');
                 void this.refreshTree(value.vault);
@@ -540,14 +556,9 @@ export class WorkbenchRouteController {
         }
         if (id === '')
             return false;
-        this.update({
-            focusedPaneId: id,
-            panes: Object.freeze([...this.snapshot.panes, Object.freeze({
-                    activePath: null,
-                    id,
-                    tabs: Object.freeze([]),
-                })]),
-        });
+        const added = addPaneGroup(this.shellSession, id);
+        this.shellSession = added.session;
+        this.syncShell();
         this.clearDocument();
         this.navigate(ROUTE_PREFIX);
         return true;
@@ -561,7 +572,10 @@ export class WorkbenchRouteController {
             return true;
         if (this.snapshot.saveStatus !== 'saved' && !await this.save())
             return false;
-        this.update({ focusedPaneId: id });
+        this.shellSession = focusPaneGroup(this.shellSession, id);
+        if (path === null)
+            this.shellSession = setActiveNoteTab(this.shellSession, id, null);
+        this.syncShell();
         this.clearDocument();
         if (path === null) {
             this.navigate(ROUTE_PREFIX);
@@ -575,10 +589,97 @@ export class WorkbenchRouteController {
             return false;
         return this.focusPane(paneId, path);
     }
-    async select(path, navigate = true, dispatchRevision) {
+    togglePinTab(paneId, path) {
+        if (this.pane(paneId)?.tabs.some(tab => tab.path === path) !== true)
+            return;
+        this.shellSession = setTabPinned(this.shellSession, paneId, path);
+        this.syncShell();
+    }
+    moveTab(paneId, path, direction) {
+        this.shellSession = moveNoteTab(this.shellSession, paneId, path, direction);
+        this.syncShell();
+    }
+    async closeTab(paneId, path) {
+        const pane = this.pane(paneId);
+        const tab = pane?.tabs.find(candidate => candidate.path === path);
+        if (tab === undefined)
+            return false;
+        const active = paneId === this.snapshot.focusedPaneId && path === this.snapshot.path;
+        if (active && this.snapshot.saveStatus !== 'saved' && !await this.save())
+            return false;
+        const result = closeNoteTab(this.shellSession, paneId, path);
+        if (result.closed === null)
+            return false;
+        this.shellSession = result.session;
+        this.recentlyClosed.splice(0, this.recentlyClosed.length, {
+            dirty: false,
+            mode: result.closed.mode === 'reading' ? 'reading' : 'source',
+            path: result.closed.path,
+            pinned: result.closed.pinned,
+        }, ...this.recentlyClosed.filter(candidate => candidate.path !== result.closed?.path));
+        this.recentlyClosed.length = Math.min(this.recentlyClosed.length, MAX_NOTE_TABS);
+        this.syncShell();
+        if (!active)
+            return true;
+        this.clearDocument();
+        if (result.nextPath === null) {
+            this.navigate(ROUTE_PREFIX);
+            return true;
+        }
+        return await this.select(result.nextPath);
+    }
+    async reopenClosedTab() {
+        const candidate = this.recentlyClosed.shift();
+        if (candidate === undefined)
+            return false;
+        this.shellSession = openNoteTab(this.shellSession, this.shellSession.focusedGroupId, candidate.path, {
+            ...(candidate.mode === undefined ? {} : { mode: candidate.mode }),
+            ...(candidate.pinned === undefined ? {} : { pinned: candidate.pinned }),
+        });
+        this.syncShell();
+        if (await this.select(candidate.path))
+            return true;
+        const closed = closeNoteTab(this.shellSession, this.shellSession.focusedGroupId, candidate.path);
+        this.shellSession = closed.session;
+        this.recentlyClosed.unshift(candidate);
+        this.syncShell();
+        return false;
+    }
+    async goBack() {
+        const target = this.historyBack.at(-1);
+        const current = this.snapshot.path;
+        if (target === undefined || current === null)
+            return false;
+        if (!await this.select(target, true, undefined, false))
+            return false;
+        this.historyBack.pop();
+        this.historyForward.push(current);
+        this.syncShell();
+        return true;
+    }
+    async goForward() {
+        const target = this.historyForward.at(-1);
+        const current = this.snapshot.path;
+        if (target === undefined || current === null)
+            return false;
+        if (!await this.select(target, true, undefined, false))
+            return false;
+        this.historyForward.pop();
+        this.historyBack.push(current);
+        this.syncShell();
+        return true;
+    }
+    setCommandPaletteOpen(open) {
+        this.update({ commandPaletteOpen: open });
+    }
+    toggleFocusMode() {
+        this.update({ focusMode: this.snapshot.focusMode !== true });
+    }
+    async select(path, navigate = true, dispatchRevision, recordHistory = true) {
         const activeVault = this.snapshot.vault;
         if (!supportedDocument(path) || activeVault === null || this.snapshot.phase !== 'ready')
             return false;
+        const previousPath = this.snapshot.path;
         if (dispatchRevision === undefined)
             this.invalidateDispatch();
         else if (!this.dispatchCurrent(dispatchRevision, activeVault))
@@ -609,15 +710,17 @@ export class WorkbenchRouteController {
                 this.update({ message: `${path} exceeds the editor size limit.` });
                 return false;
             }
+            const mode = pane.tabs.find(tab => tab.path === path)?.mode ?? this.snapshot.mode;
             this.update({
                 documentKind: documentKind(path),
                 message: `${path} opened.`,
+                mode,
                 path,
                 revision: opened.revision,
                 saveStatus: 'saved',
                 source: opened.content,
             });
-            this.recordOpen(path);
+            this.recordOpen(path, recordHistory, previousPath);
             if (navigate)
                 this.navigate(routeForPath(path));
             return true;
@@ -647,8 +750,10 @@ export class WorkbenchRouteController {
         this.recordDirty(true);
     }
     setMode(mode) {
-        if (this.snapshot.path !== null)
-            this.update({ mode });
+        if (this.snapshot.path === null)
+            return;
+        this.shellSession = setNoteTabMode(this.shellSession, this.shellSession.focusedGroupId, this.snapshot.path, mode);
+        this.syncShell({ mode });
     }
     toggleTask(index) {
         if (this.snapshot.documentKind !== 'markdown')
@@ -791,6 +896,22 @@ function NativeDispatchDialog(props) {
     return (_jsx(Dialog, { open: true, onOpenChange: open => { if (!open)
             props.onCancel(); }, children: _jsx(DialogContent, { unstyled: true, className: "tocktutor-dispatch-dialog fixed top-1/2 left-1/2 z-50 w-[calc(100%-48px)] max-w-[480px] -translate-1/2", showCloseButton: false, children: _jsxs("form", { className: "grid w-full gap-3.5 rounded-lg border border-[var(--tt-border)] bg-[var(--tt-panel)] p-5 [&_input]:rounded-[5px] [&_input]:border [&_input]:border-[var(--tt-border)] [&_input]:p-2 [&_input]:[font:inherit] [&_label]:grid [&_label]:gap-[5px] [&_label]:font-[650] [&_textarea]:rounded-[5px] [&_textarea]:border [&_textarea]:border-[var(--tt-border)] [&_textarea]:p-2 [&_textarea]:[font:inherit]", onSubmit: submit, children: [_jsx("header", { children: _jsx(DialogTitle, { className: "m-0 text-[17px]", children: label }) }), props.kind === 'new' ? (_jsxs(Label, { unstyled: true, children: ["Note Path", _jsx(Input, { unstyled: true, "aria-label": "New Note Path", autoFocus: true, maxLength: 1_000, name: "path", required: true })] })) : (_jsxs(_Fragment, { children: [_jsxs(Label, { unstyled: true, children: ["Title", _jsx(Input, { unstyled: true, "aria-label": "Capture Title", autoFocus: true, maxLength: 200, name: "title", required: true })] }), _jsxs(Label, { unstyled: true, children: ["Text", _jsx(Textarea, { unstyled: true, "aria-label": "Capture Text", maxLength: 100_000, name: "text" })] })] })), _jsxs("div", { className: "tocktutor-dialog-actions flex justify-end gap-2 [&_button]:cursor-pointer [&_button]:rounded-[5px] [&_button]:border [&_button]:border-[var(--tt-border)] [&_button]:bg-[var(--tt-panel)] [&_button]:px-2.5 [&_button]:py-[7px] [&_button]:text-inherit", children: [_jsx(Button, { unstyled: true, onClick: props.onCancel, type: "button", children: "Cancel" }), _jsx(Button, { unstyled: true, type: "submit", children: "Create" })] })] }) }) }));
 }
+function WorkbenchCommandPalette(props) {
+    const [query, setQuery] = useState('');
+    const commands = [
+        { label: 'New Note', run: props.onNewNote },
+        { label: 'Search Notes', run: props.onSearch },
+        { label: 'Toggle Focus Mode', run: props.onToggleFocus },
+        { disabled: !props.canGoBack, label: 'Go Back', run: props.onBack },
+        { disabled: !props.canGoForward, label: 'Go Forward', run: props.onForward },
+        { disabled: !props.canReopen, label: 'Reopen Closed Note', run: props.onReopen },
+    ].filter(command => command.label.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()));
+    return (_jsx(Dialog, { open: true, onOpenChange: open => { if (!open)
+            props.onClose(); }, children: _jsxs(DialogContent, { unstyled: true, className: "fixed top-[18%] left-1/2 z-50 w-[calc(100%-32px)] max-w-xl -translate-x-1/2 rounded-lg border border-[var(--tt-border)] bg-[var(--tt-panel)] p-3 shadow-xl", showCloseButton: false, children: [_jsx(DialogTitle, { className: "mb-2 text-sm font-semibold", children: "Command Palette" }), _jsx(Input, { unstyled: true, "aria-label": "Search Commands", autoFocus: true, className: "w-full rounded border border-[var(--tt-border)] px-2 py-1.5", maxLength: 200, onChange: event => { setQuery(event.target.value); }, placeholder: "Search commands", value: query }), _jsxs("div", { className: "mt-2 grid max-h-80 gap-1 overflow-auto", role: "listbox", children: [commands.map(command => (_jsx(Button, { unstyled: true, className: "rounded border-0 bg-transparent px-2 py-1.5 text-left hover:bg-[var(--tt-selected)] disabled:opacity-50", disabled: command.disabled === true || command.run === undefined, onClick: () => {
+                                command.run?.();
+                                props.onClose();
+                            }, role: "option", type: "button", children: command.label }, command.label))), commands.length === 0 && _jsx(Alert, { unstyled: true, role: "status", children: "No matching commands." })] })] }) }));
+}
 const WORKBENCH_GLYPHS = {
     back: ChevronLeft,
     bookmark: Bookmark,
@@ -859,13 +980,14 @@ export function TockTutorRouteView(props) {
     const [assistantPanelWidth, setAssistantPanelWidth] = useState(DEFAULT_ASSISTANT_PANEL_WIDTH);
     const [sidebarOpen, setSidebarOpen] = useState(true);
     const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_SIDEBAR_WIDTH);
-    const previousSidebarOpen = useRef(sidebarOpen);
-    const shouldAnimateSidebarColumns = previousSidebarOpen.current !== sidebarOpen;
-    const contentColumns = `${String(sidebarOpen ? sidebarWidth : 0)}px minmax(0, 1fr) auto auto`;
-    const titlebarColumns = `${String(sidebarOpen ? sidebarWidth : COLLAPSED_TITLEBAR_SIDEBAR_WIDTH)}px minmax(0, 1fr)`;
+    const effectiveSidebarOpen = sidebarOpen && snapshot.focusMode !== true;
+    const previousSidebarOpen = useRef(effectiveSidebarOpen);
+    const shouldAnimateSidebarColumns = previousSidebarOpen.current !== effectiveSidebarOpen;
+    const contentColumns = `${String(effectiveSidebarOpen ? sidebarWidth : 0)}px minmax(0, 1fr) auto auto`;
+    const titlebarColumns = `${String(effectiveSidebarOpen ? sidebarWidth : COLLAPSED_TITLEBAR_SIDEBAR_WIDTH)}px minmax(0, 1fr)`;
     useEffect(() => {
-        previousSidebarOpen.current = sidebarOpen;
-    }, [sidebarOpen]);
+        previousSidebarOpen.current = effectiveSidebarOpen;
+    }, [effectiveSidebarOpen]);
     const resizeSidebar = (width) => {
         setSidebarWidth(Math.min(MAX_SIDEBAR_WIDTH, Math.max(MIN_SIDEBAR_WIDTH, width)));
     };
@@ -938,19 +1060,23 @@ export function TockTutorRouteView(props) {
     const titlebar = (_jsxs("section", { "aria-label": "TockTutor Title Bar", className: "tocktutor-titlebar absolute top-0 right-0 left-0 z-[2147483647] grid h-[var(--tockteam-titlebar-height,40px)] grid-cols-[var(--tockteam-primary-sidebar-width,280px)_minmax(0,1fr)] border-b border-[var(--tt-tab-border)] bg-[var(--tockteam-shell-chrome,var(--tt-panel))] text-[var(--tt-text)] transition-[grid-template-columns] duration-300 ease-out [--tt-accent:var(--dsw-alias-accent-primary,#533afd)] [--tt-border:var(--dsw-alias-border-l1,var(--dsw-alias-border-subtle,#e1e3e7))] [--tt-muted:var(--dsw-alias-fg-muted,#71717a)] [--tt-panel:var(--dsw-alias-bg-elevated,#fff)] [--tt-tab-border:#d1d5db] [--tt-text:var(--dsw-alias-fg-primary,#27272a)] [-webkit-app-region:drag] [font:14px/1.45_ui-sans-serif,-apple-system,BlinkMacSystemFont,'Segoe_UI',sans-serif] [&_*]:box-border [&_*::after]:box-border [&_*::before]:box-border [&_button]:text-inherit [&_button]:[font:inherit] [&_button]:[-webkit-app-region:no-drag] [&_svg]:block [&_svg]:size-[18px]", style: {
             gridTemplateColumns: titlebarColumns,
             transitionDuration: shouldAnimateSidebarColumns ? undefined : '0ms',
-        }, children: [_jsxs("div", { className: "tocktutor-titlebar-sidebar flex min-w-0 items-center justify-start gap-2 border-r border-[var(--tt-border)] pr-2 pl-[46px] [&>button]:inline-flex [&>button]:h-7 [&>button]:w-[22px] [&>button]:items-center [&>button]:justify-center [&>button]:border-0 [&>button]:bg-transparent [&>button]:p-0 [&>button]:text-[var(--tt-muted)] [&>span]:inline-flex [&>span]:h-7 [&>span]:w-[22px] [&>span]:items-center [&>span]:justify-center [&>span]:border-0 [&>span]:bg-transparent [&>span]:p-0 [&>span]:text-[var(--tt-muted)]", children: [sidebarOpen && (_jsxs(_Fragment, { children: [_jsx("span", { className: "tocktutor-titlebar-document rounded-[5px] bg-[color-mix(in_srgb,var(--tt-text)_8%,transparent)] text-[var(--tt-text)]", children: _jsx(WorkbenchGlyph, { kind: "document" }) }), _jsx("span", { children: _jsx(WorkbenchGlyph, { kind: "document" }) }), _jsxs(Tooltip, { children: [_jsx(TooltipTrigger, { asChild: true, children: _jsx("span", { className: "inline-flex", children: _jsx(Button, { unstyled: true, "aria-label": "Search Notes", className: "border-0 bg-transparent p-0", disabled: props.onOpenSearch === undefined, onClick: props.onOpenSearch, type: "button", children: _jsx(WorkbenchGlyph, { kind: "search" }) }) }) }), _jsx(TooltipContent, { children: "Search Notes" })] }), _jsx("span", { children: _jsx(WorkbenchGlyph, { kind: "bookmark" }) })] })), _jsxs(Tooltip, { children: [_jsx(TooltipTrigger, { asChild: true, children: _jsx(Button, { unstyled: true, "aria-expanded": sidebarOpen, "aria-label": "Toggle Files Sidebar", className: "tocktutor-panel-icon ml-auto border-0 bg-transparent p-1.5 text-[var(--tt-muted)]", onClick: () => { setSidebarOpen(open => !open); }, type: "button", children: _jsx(WorkbenchGlyph, { kind: "panel" }) }) }), _jsx(TooltipContent, { children: "Toggle Files Sidebar" })] })] }), _jsxs("div", { className: "tocktutor-titlebar-main flex min-w-0 items-center gap-1 px-2", children: [_jsxs("span", { className: "tocktutor-history mr-[18px] flex gap-[5px] px-1.5 text-[color-mix(in_srgb,var(--tt-muted)_45%,transparent)]", children: [_jsx(WorkbenchGlyph, { kind: "back" }), _jsx(WorkbenchGlyph, { kind: "forward" })] }), _jsx("div", { className: "tocktutor-tabs -mx-[calc(var(--tt-tab-curve)*2)] -mb-px flex min-w-0 self-stretch items-end gap-1 overflow-visible px-[calc(var(--tt-tab-curve)*2)] [--tt-tab-curve:10px]", ...(focusedPane?.tabs.length ? { 'aria-label': 'Note Tabs', role: 'tablist' } : {}), children: focusedPane?.tabs.map((tab, index) => (_jsxs(Button, { unstyled: true, "aria-selected": tab.path === focusedPane.activePath, className: "relative z-1 -mb-px flex h-[30px] min-w-[118px] max-w-[220px] items-center gap-3 rounded-t-[10px] border border-b-0 border-[var(--tt-tab-border)] bg-[var(--tt-panel)] px-2.5 shadow-[inset_0_1px_0_rgb(255_255_255_/_18%)] aria-[selected=false]:mb-0.5 aria-[selected=false]:border-b aria-[selected=false]:bg-[color-mix(in_srgb,var(--tt-panel)_70%,transparent)] aria-[selected=false]:text-[var(--tt-muted)] aria-[selected=false]:shadow-none aria-selected:before:pointer-events-none aria-selected:before:absolute aria-selected:before:bottom-[-1px] aria-selected:before:left-[calc(var(--tt-tab-curve)*-2)] aria-selected:before:h-[calc(var(--tt-tab-curve)*2)] aria-selected:before:w-[calc(var(--tt-tab-curve)*2)] aria-selected:before:rounded-full aria-selected:before:content-[''] aria-selected:before:[clip-path:inset(50%_calc(var(--tt-tab-curve)*-1)_0_50%)] aria-selected:before:[box-shadow:inset_0_0_0_1px_var(--tt-tab-border),0_0_0_calc(var(--tt-tab-curve)*4)_var(--tt-panel)] aria-selected:after:pointer-events-none aria-selected:after:absolute aria-selected:after:right-[calc(var(--tt-tab-curve)*-2)] aria-selected:after:bottom-[-1px] aria-selected:after:h-[calc(var(--tt-tab-curve)*2)] aria-selected:after:w-[calc(var(--tt-tab-curve)*2)] aria-selected:after:rounded-full aria-selected:after:content-[''] aria-selected:after:[clip-path:inset(50%_50%_0_calc(var(--tt-tab-curve)*-1))] aria-selected:after:[box-shadow:inset_0_0_0_1px_var(--tt-tab-border),0_0_0_calc(var(--tt-tab-curve)*4)_var(--tt-panel)] [&>span]:truncate [&_svg]:ml-auto [&_svg]:size-3.5", onClick: () => { props.onActivateTab(focusedPane.id, tab.path); }, onKeyDown: event => {
-                                if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight')
-                                    return;
-                                event.preventDefault();
-                                const offset = event.key === 'ArrowLeft' ? -1 : 1;
-                                const next = focusedPane.tabs[(index + offset + focusedPane.tabs.length) % focusedPane.tabs.length];
-                                if (next !== undefined)
-                                    props.onActivateTab(focusedPane.id, next.path);
-                            }, "aria-controls": "tocktutor-note-editor", role: "tab", tabIndex: tab.path === focusedPane.activePath ? 0 : -1, title: tab.path, type: "button", children: [_jsxs("span", { children: [tab.dirty && _jsx("span", { "aria-label": "Unsaved", children: "\u2022" }), fileName(tab.path)] }), tab.path === focusedPane.activePath && _jsx(WorkbenchGlyph, { kind: "close" })] }, tab.path))) }), _jsxs(Tooltip, { children: [_jsx(TooltipTrigger, { asChild: true, children: _jsx("span", { className: "inline-flex", children: _jsx(Button, { unstyled: true, "aria-label": "New Note", className: "tocktutor-new-tab border-0 bg-transparent p-1.5 text-[var(--tt-muted)]", disabled: props.onNewNote === undefined, onClick: props.onNewNote, type: "button", children: _jsx(WorkbenchGlyph, { kind: "new" }) }) }) }), _jsx(TooltipContent, { children: "New Note" })] }), _jsx("span", { className: "tocktutor-titlebar-spacer flex-1" }), _jsxs(Tooltip, { children: [_jsx(TooltipTrigger, { asChild: true, children: _jsx(Button, { unstyled: true, "aria-expanded": panel === 'assistant', "aria-label": "Toggle Assistant Panel", className: "tocktutor-panel-icon border-0 bg-transparent p-1.5 text-[var(--tt-muted)]", onClick: () => { setPanel(current => current === 'assistant' ? null : 'assistant'); }, type: "button", children: _jsx(WorkbenchGlyph, { kind: "panel-right" }) }) }), _jsx(TooltipContent, { children: "Toggle Assistant Panel" })] })] })] }));
-    return (_jsx(TooltipProvider, { children: _jsxs("main", { "aria-label": "TockTutor Workbench", className: "tocktutor-workbench h-full min-h-0 box-border bg-[var(--tt-bg)] pt-0 text-[var(--tt-text)] [--tt-accent:var(--dsw-alias-accent-primary,#533afd)] [--tt-bg:var(--dsw-alias-bg-base,#fff)] [--tt-border:var(--dsw-alias-border-l1,var(--dsw-alias-border-subtle,#e1e3e7))] [--tt-footer-height:28px] [--tt-muted:var(--dsw-alias-fg-muted,#71717a)] [--tt-panel:var(--dsw-alias-bg-elevated,#fff)] [--tt-selected:color-mix(in_srgb,var(--tt-accent)_14%,var(--tt-panel))] [--tt-text:var(--dsw-alias-fg-primary,#27272a)] [font:14px/1.45_ui-sans-serif,-apple-system,BlinkMacSystemFont,'Segoe_UI',sans-serif] [&_*]:box-border [&_*::after]:box-border [&_*::before]:box-border [&_[hidden]]:!hidden [&_button]:text-inherit [&_button]:[font:inherit] [&_button:focus-visible]:outline-2 [&_button:focus-visible]:outline-offset-2 [&_button:focus-visible]:outline-[var(--tt-accent)] [&_input:focus-visible]:outline-2 [&_input:focus-visible]:outline-offset-2 [&_input:focus-visible]:outline-[var(--tt-accent)] [&_svg]:block [&_svg]:size-4 [&_textarea:focus-visible]:outline-2 [&_textarea:focus-visible]:outline-offset-2 [&_textarea:focus-visible]:outline-[var(--tt-accent)] motion-reduce:[&_*]:!scroll-auto motion-reduce:[&_*]:!delay-0 motion-reduce:[&_*]:!duration-0 motion-reduce:[&_*::after]:!delay-0 motion-reduce:[&_*::after]:!duration-0 motion-reduce:[&_*::before]:!delay-0 motion-reduce:[&_*::before]:!duration-0", "data-phase": snapshot.phase, tabIndex: -1, children: [props.titlebarTarget === undefined ? titlebar : createPortal(titlebar, props.titlebarTarget), snapshot.dispatchDialog !== null && (_jsx(NativeDispatchDialog, { kind: snapshot.dispatchDialog, onCancel: () => { props.onCancelDispatch?.(); }, onSubmit: draft => { props.onSubmitDispatch?.(draft); } })), _jsxs("div", { className: "tocktutor-grid relative grid h-full min-h-0 grid-cols-[var(--tockteam-primary-sidebar-width,280px)_minmax(0,1fr)_auto_auto] transition-[grid-template-columns] duration-300 ease-out", style: {
+        }, children: [_jsxs("div", { className: "tocktutor-titlebar-sidebar flex min-w-0 items-center justify-start gap-2 border-r border-[var(--tt-border)] pr-2 pl-[46px] [&>button]:inline-flex [&>button]:h-7 [&>button]:w-[22px] [&>button]:items-center [&>button]:justify-center [&>button]:border-0 [&>button]:bg-transparent [&>button]:p-0 [&>button]:text-[var(--tt-muted)] [&>span]:inline-flex [&>span]:h-7 [&>span]:w-[22px] [&>span]:items-center [&>span]:justify-center [&>span]:border-0 [&>span]:bg-transparent [&>span]:p-0 [&>span]:text-[var(--tt-muted)]", children: [effectiveSidebarOpen && (_jsxs(_Fragment, { children: [_jsx("span", { className: "tocktutor-titlebar-document rounded-[5px] bg-[color-mix(in_srgb,var(--tt-text)_8%,transparent)] text-[var(--tt-text)]", children: _jsx(WorkbenchGlyph, { kind: "document" }) }), _jsx("span", { children: _jsx(WorkbenchGlyph, { kind: "document" }) }), _jsxs(Tooltip, { children: [_jsx(TooltipTrigger, { asChild: true, children: _jsx("span", { className: "inline-flex", children: _jsx(Button, { unstyled: true, "aria-label": "Search Notes", className: "border-0 bg-transparent p-0", disabled: props.onOpenSearch === undefined, onClick: props.onOpenSearch, type: "button", children: _jsx(WorkbenchGlyph, { kind: "search" }) }) }) }), _jsx(TooltipContent, { children: "Search Notes" })] }), _jsx("span", { children: _jsx(WorkbenchGlyph, { kind: "bookmark" }) })] })), _jsxs(Tooltip, { children: [_jsx(TooltipTrigger, { asChild: true, children: _jsx(Button, { unstyled: true, "aria-expanded": effectiveSidebarOpen, "aria-label": "Toggle Files Sidebar", className: "tocktutor-panel-icon ml-auto border-0 bg-transparent p-1.5 text-[var(--tt-muted)]", onClick: () => { setSidebarOpen(open => !open); }, type: "button", children: _jsx(WorkbenchGlyph, { kind: "panel" }) }) }), _jsx(TooltipContent, { children: "Toggle Files Sidebar" })] })] }), _jsxs("div", { className: "tocktutor-titlebar-main flex min-w-0 items-center gap-1 px-2", children: [_jsxs("span", { className: "tocktutor-history mr-[18px] flex gap-[5px] px-1.5", children: [_jsx(Button, { unstyled: true, "aria-label": "Go Back", className: "border-0 bg-transparent p-1 text-[var(--tt-muted)] disabled:opacity-35", disabled: snapshot.canGoBack !== true, onClick: props.onBack, type: "button", children: _jsx(WorkbenchGlyph, { kind: "back" }) }), _jsx(Button, { unstyled: true, "aria-label": "Go Forward", className: "border-0 bg-transparent p-1 text-[var(--tt-muted)] disabled:opacity-35", disabled: snapshot.canGoForward !== true, onClick: props.onForward, type: "button", children: _jsx(WorkbenchGlyph, { kind: "forward" }) })] }), _jsx("div", { className: "tocktutor-tabs -mx-[calc(var(--tt-tab-curve)*2)] -mb-px flex min-w-0 self-stretch items-end gap-1 overflow-visible px-[calc(var(--tt-tab-curve)*2)] [--tt-tab-curve:10px]", ...(focusedPane?.tabs.length ? { 'aria-label': 'Note Tabs', role: 'tablist' } : {}), children: focusedPane?.tabs.map((tab, index) => (_jsxs("div", { className: "relative", role: "presentation", children: [_jsx(Button, { unstyled: true, "aria-selected": tab.path === focusedPane.activePath, className: "relative z-1 -mb-px flex h-[30px] min-w-[118px] max-w-[220px] items-center gap-3 rounded-t-[10px] border border-b-0 border-[var(--tt-tab-border)] bg-[var(--tt-panel)] px-2.5 shadow-[inset_0_1px_0_rgb(255_255_255_/_18%)] aria-[selected=false]:mb-0.5 aria-[selected=false]:border-b aria-[selected=false]:bg-[color-mix(in_srgb,var(--tt-panel)_70%,transparent)] aria-[selected=false]:text-[var(--tt-muted)] aria-[selected=false]:shadow-none aria-selected:before:pointer-events-none aria-selected:before:absolute aria-selected:before:bottom-[-1px] aria-selected:before:left-[calc(var(--tt-tab-curve)*-2)] aria-selected:before:h-[calc(var(--tt-tab-curve)*2)] aria-selected:before:w-[calc(var(--tt-tab-curve)*2)] aria-selected:before:rounded-full aria-selected:before:content-[''] aria-selected:before:[clip-path:inset(50%_calc(var(--tt-tab-curve)*-1)_0_50%)] aria-selected:before:[box-shadow:inset_0_0_0_1px_var(--tt-tab-border),0_0_0_calc(var(--tt-tab-curve)*4)_var(--tt-panel)] aria-selected:after:pointer-events-none aria-selected:after:absolute aria-selected:after:right-[calc(var(--tt-tab-curve)*-2)] aria-selected:after:bottom-[-1px] aria-selected:after:h-[calc(var(--tt-tab-curve)*2)] aria-selected:after:w-[calc(var(--tt-tab-curve)*2)] aria-selected:after:rounded-full aria-selected:after:content-[''] aria-selected:after:[clip-path:inset(50%_50%_0_calc(var(--tt-tab-curve)*-1))] aria-selected:after:[box-shadow:inset_0_0_0_1px_var(--tt-tab-border),0_0_0_calc(var(--tt-tab-curve)*4)_var(--tt-panel)] [&>span]:truncate [&_svg]:ml-auto [&_svg]:size-3.5", onClick: () => { props.onActivateTab(focusedPane.id, tab.path); }, onKeyDown: event => {
+                                        if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight')
+                                            return;
+                                        event.preventDefault();
+                                        const offset = event.key === 'ArrowLeft' ? -1 : 1;
+                                        if (event.altKey) {
+                                            props.onMoveTab?.(focusedPane.id, tab.path, offset);
+                                            return;
+                                        }
+                                        const next = focusedPane.tabs[(index + offset + focusedPane.tabs.length) % focusedPane.tabs.length];
+                                        if (next !== undefined)
+                                            props.onActivateTab(focusedPane.id, next.path);
+                                    }, "aria-controls": "tocktutor-note-editor", role: "tab", tabIndex: tab.path === focusedPane.activePath ? 0 : -1, title: tab.path, type: "button", children: _jsxs("span", { children: [tab.dirty && _jsx("span", { "aria-label": "Unsaved", children: "\u2022" }), tab.pinned === true && _jsx("span", { "aria-label": "Pinned", children: "\u25C6" }), fileName(tab.path)] }) }), _jsxs("span", { className: "absolute top-1/2 right-1 z-2 flex -translate-y-1/2 gap-0.5", children: [_jsx(Button, { unstyled: true, "aria-label": `${tab.pinned === true ? 'Unpin' : 'Pin'} ${fileName(tab.path)}`, className: "rounded border-0 bg-transparent p-0.5 text-[var(--tt-muted)]", onClick: () => { props.onTogglePinTab?.(focusedPane.id, tab.path); }, type: "button", children: _jsx(Bookmark, { "aria-hidden": "true" }) }), _jsx(Button, { unstyled: true, "aria-label": `Close ${fileName(tab.path)}`, className: "rounded border-0 bg-transparent p-0.5 text-[var(--tt-muted)]", onClick: () => { props.onCloseTab?.(focusedPane.id, tab.path); }, type: "button", children: _jsx(WorkbenchGlyph, { kind: "close" }) })] })] }, tab.path))) }), _jsxs(Tooltip, { children: [_jsx(TooltipTrigger, { asChild: true, children: _jsx("span", { className: "inline-flex", children: _jsx(Button, { unstyled: true, "aria-label": "Command Palette", className: "border-0 bg-transparent p-1.5 text-[var(--tt-muted)]", disabled: props.onOpenCommandPalette === undefined, onClick: props.onOpenCommandPalette, type: "button", children: _jsx(WorkbenchGlyph, { kind: "search" }) }) }) }), _jsx(TooltipContent, { children: "Command Palette" })] }), _jsxs(Tooltip, { children: [_jsx(TooltipTrigger, { asChild: true, children: _jsx("span", { className: "inline-flex", children: _jsx(Button, { unstyled: true, "aria-label": "New Note", className: "tocktutor-new-tab border-0 bg-transparent p-1.5 text-[var(--tt-muted)]", disabled: props.onNewNote === undefined, onClick: props.onNewNote, type: "button", children: _jsx(WorkbenchGlyph, { kind: "new" }) }) }) }), _jsx(TooltipContent, { children: "New Note" })] }), _jsx("span", { className: "tocktutor-titlebar-spacer flex-1" }), _jsxs(Tooltip, { children: [_jsx(TooltipTrigger, { asChild: true, children: _jsx(Button, { unstyled: true, "aria-expanded": panel === 'assistant', "aria-label": "Toggle Assistant Panel", className: "tocktutor-panel-icon border-0 bg-transparent p-1.5 text-[var(--tt-muted)]", onClick: () => { setPanel(current => current === 'assistant' ? null : 'assistant'); }, type: "button", children: _jsx(WorkbenchGlyph, { kind: "panel-right" }) }) }), _jsx(TooltipContent, { children: "Toggle Assistant Panel" })] })] })] }));
+    return (_jsx(TooltipProvider, { children: _jsxs("main", { "aria-label": "TockTutor Workbench", className: "tocktutor-workbench h-full min-h-0 box-border bg-[var(--tt-bg)] pt-0 text-[var(--tt-text)] [--tt-accent:var(--dsw-alias-accent-primary,#533afd)] [--tt-bg:var(--dsw-alias-bg-base,#fff)] [--tt-border:var(--dsw-alias-border-l1,var(--dsw-alias-border-subtle,#e1e3e7))] [--tt-footer-height:28px] [--tt-muted:var(--dsw-alias-fg-muted,#71717a)] [--tt-panel:var(--dsw-alias-bg-elevated,#fff)] [--tt-selected:color-mix(in_srgb,var(--tt-accent)_14%,var(--tt-panel))] [--tt-text:var(--dsw-alias-fg-primary,#27272a)] [font:14px/1.45_ui-sans-serif,-apple-system,BlinkMacSystemFont,'Segoe_UI',sans-serif] [&_*]:box-border [&_*::after]:box-border [&_*::before]:box-border [&_[hidden]]:!hidden [&_button]:text-inherit [&_button]:[font:inherit] [&_button:focus-visible]:outline-2 [&_button:focus-visible]:outline-offset-2 [&_button:focus-visible]:outline-[var(--tt-accent)] [&_input:focus-visible]:outline-2 [&_input:focus-visible]:outline-offset-2 [&_input:focus-visible]:outline-[var(--tt-accent)] [&_svg]:block [&_svg]:size-4 [&_textarea:focus-visible]:outline-2 [&_textarea:focus-visible]:outline-offset-2 [&_textarea:focus-visible]:outline-[var(--tt-accent)] motion-reduce:[&_*]:!scroll-auto motion-reduce:[&_*]:!delay-0 motion-reduce:[&_*]:!duration-0 motion-reduce:[&_*::after]:!delay-0 motion-reduce:[&_*::after]:!duration-0 motion-reduce:[&_*::before]:!delay-0 motion-reduce:[&_*::before]:!duration-0", "data-focus-mode": snapshot.focusMode === true, "data-phase": snapshot.phase, tabIndex: -1, children: [props.titlebarTarget === undefined ? titlebar : createPortal(titlebar, props.titlebarTarget), snapshot.dispatchDialog !== null && (_jsx(NativeDispatchDialog, { kind: snapshot.dispatchDialog, onCancel: () => { props.onCancelDispatch?.(); }, onSubmit: draft => { props.onSubmitDispatch?.(draft); } })), snapshot.commandPaletteOpen === true && (_jsx(WorkbenchCommandPalette, { canGoBack: snapshot.canGoBack === true, canGoForward: snapshot.canGoForward === true, canReopen: (snapshot.recentlyClosed?.length ?? 0) > 0, onBack: props.onBack, onClose: () => { props.onCloseCommandPalette?.(); }, onForward: props.onForward, onNewNote: props.onNewNote, onReopen: props.onReopenClosedTab, onSearch: props.onOpenSearch, onToggleFocus: props.onToggleFocusMode })), _jsxs("div", { className: "tocktutor-grid relative grid h-full min-h-0 grid-cols-[var(--tockteam-primary-sidebar-width,280px)_minmax(0,1fr)_auto_auto] transition-[grid-template-columns] duration-300 ease-out", style: {
                         gridTemplateColumns: contentColumns,
                         transitionDuration: shouldAnimateSidebarColumns ? undefined : '0ms',
-                    }, children: [_jsxs("aside", { "aria-hidden": !sidebarOpen, "aria-label": "Files", className: "tocktutor-sidebar grid min-h-0 grid-rows-[40px_minmax(0,1fr)_var(--tt-footer-height)] overflow-hidden border-r border-[var(--tt-border)] bg-[var(--tockteam-shell-chrome,var(--tt-panel))] data-[open=false]:invisible data-[open=false]:[transition:visibility_0s_linear_300ms]", "data-open": sidebarOpen, ...(sidebarOpen ? {} : { inert: '' }), children: [_jsxs("header", { className: "tocktutor-sidebar-header flex items-center gap-2.5 border-b border-[var(--tt-border)] px-2.5 [&_svg]:size-3.5", children: [_jsx("h1", { className: "mr-auto my-0 text-sm font-semibold", children: "Files" }), _jsx("span", { className: "inline-flex items-center justify-center text-sm text-[var(--tt-muted)]", children: _jsx(WorkbenchGlyph, { kind: "more" }) }), _jsx("span", { className: "inline-flex items-center justify-center text-sm text-[var(--tt-muted)]", children: _jsx(Upload, { "aria-hidden": "true" }) }), _jsx("span", { className: "inline-flex items-center justify-center text-sm text-[var(--tt-muted)]", children: _jsx(WorkbenchGlyph, { kind: "folder" }) }), _jsx("span", { className: "inline-flex items-center justify-center text-sm text-[var(--tt-muted)]", children: _jsx(PanelTop, { "aria-hidden": "true" }) })] }), _jsxs("div", { className: "tocktutor-sidebar-content min-h-0 overflow-auto px-[5px] py-[3px]", children: [snapshot.searchOpen && (_jsxs("section", { "aria-label": "Search Notes", className: "tocktutor-search mb-2 border-b border-[var(--tt-border)] px-[3px] pb-2", children: [_jsx(Label, { unstyled: true, className: "mb-[5px] block text-xs font-semibold", htmlFor: "tocktutor-search-query", children: "Search Notes" }), _jsxs("div", { className: "flex gap-1", children: [_jsx(Input, { unstyled: true, "aria-label": "Search Notes Query", autoFocus: true, className: "w-full min-w-0 rounded-[5px] border border-[var(--tt-border)] px-[7px] py-[5px] [font:inherit]", id: "tocktutor-search-query", maxLength: 1_000, onChange: event => { props.onSearchChange?.(event.target.value); }, type: "search", value: snapshot.searchQuery }), _jsxs(Tooltip, { children: [_jsx(TooltipTrigger, { asChild: true, children: _jsx(Button, { unstyled: true, "aria-label": "Close Search", className: "w-7 rounded-[5px] border border-[var(--tt-border)] bg-transparent", onClick: () => { props.onCloseSearch?.(); }, type: "button", children: _jsx(WorkbenchGlyph, { kind: "close" }) }) }), _jsx(TooltipContent, { children: "Close Search" })] })] }), _jsxs(Alert, { unstyled: true, "aria-live": "polite", className: "mx-1 my-[7px] text-xs text-[var(--tt-muted)]", role: "status", children: [documents.length, " matching notes."] })] })), _jsxs("nav", { "aria-label": "Vault Notes", children: [snapshot.phase === 'loading' && _jsx("p", { className: "mx-1 my-[7px] text-xs text-[var(--tt-muted)]", children: "Loading notes\u2026" }), snapshot.phase === 'inactive' && _jsx(Alert, { unstyled: true, className: "mx-1 my-[7px] text-xs text-[color-mix(in_srgb,var(--tt-muted)_90%,var(--tt-text))]", children: "No Active Vault" }), snapshot.phase === 'error' && _jsx(Alert, { unstyled: true, className: "mx-1 my-[7px] text-xs text-[color-mix(in_srgb,var(--tt-muted)_90%,var(--tt-text))]", children: snapshot.message }), snapshot.phase === 'ready' && documents.length === 0 && _jsx("p", { className: "mx-1 my-[7px] text-xs text-[var(--tt-muted)]", children: "No supported notes found." }), _jsx("ul", { className: "tocktutor-tree m-0 list-none p-0", role: visibleTreeEntries.length > 0 ? 'tree' : undefined, children: _jsx(TreeEntries, { entries: visibleTreeEntries, onSelect: props.onSelect, path: snapshot.path }) })] })] }), _jsxs(Button, { unstyled: true, "aria-expanded": panel === 'utilities', className: "tocktutor-vault-switcher grid grid-cols-[14px_minmax(0,1fr)_16px] items-center gap-1.5 border-0 border-t border-[var(--tt-border)] bg-[var(--tockteam-shell-chrome,var(--tt-panel))] px-2.5 text-left [&>span]:truncate [&_svg]:size-[13px]", onClick: () => { setPanel(current => current === 'utilities' ? null : 'utilities'); }, type: "button", children: [_jsx(WorkbenchGlyph, { kind: "collapse" }), _jsx("span", { children: snapshot.vault === null ? 'Choose Vault' : 'TockTutor Vault' }), _jsx(WorkbenchGlyph, { kind: "more" })] })] }), _jsx(Button, { unstyled: true, "aria-label": `Resize Files Sidebar, ${String(sidebarWidth)} Pixels`, className: "tocktutor-sidebar-resize absolute top-0 bottom-0 z-5 m-0 w-2 touch-none cursor-ew-resize border-0 bg-transparent p-0 outline-none after:absolute after:top-0 after:bottom-0 after:left-[3px] after:w-0.5 after:bg-transparent after:content-[''] focus-visible:after:bg-[var(--tt-accent)]", hidden: !sidebarOpen, onKeyDown: resizeSidebarWithKeyboard, onPointerDown: beginSidebarResize, style: { left: sidebarWidth - 4 }, title: "Drag or Use Left and Right Arrow Keys", type: "button" }), _jsxs("section", { "aria-label": "Note Editor", className: "tocktutor-editor grid min-h-0 grid-rows-[40px_minmax(0,1fr)_var(--tt-footer-height)] overflow-hidden bg-[var(--tt-panel)]", id: "tocktutor-note-editor", role: "tabpanel", children: [_jsxs("header", { className: "tocktutor-editor-header relative flex min-w-0 items-center justify-center border-b border-[var(--tt-border)] px-2.5", children: [_jsx("h2", { className: "m-0 truncate text-[13px] font-medium text-[var(--tt-muted)]", children: noteTitle(snapshot.path) }), _jsxs("div", { className: "tocktutor-editor-actions absolute right-2.5 flex items-center gap-1 [&_button]:inline-flex [&_button]:h-7 [&_button]:w-[26px] [&_button]:items-center [&_button]:justify-center [&_button]:border-0 [&_button]:bg-transparent [&_button]:p-0 [&_button]:text-[var(--tt-muted)] [&_span]:inline-flex [&_span]:h-7 [&_span]:w-[26px] [&_span]:items-center [&_span]:justify-center [&_span]:border-0 [&_span]:bg-transparent [&_span]:p-0 [&_span]:text-[var(--tt-muted)]", children: [_jsx(Button, { unstyled: true, "aria-label": snapshot.mode === 'source' ? previewLabel : sourceLabel, onClick: () => { props.onMode(snapshot.mode === 'source' ? 'reading' : 'source'); }, type: "button", children: _jsx(WorkbenchGlyph, { kind: "pencil" }) }), _jsx("span", { children: _jsx(Music, { "aria-hidden": "true" }) }), _jsx("span", { children: _jsx(Folder, { "aria-hidden": "true" }) }), _jsxs(Tooltip, { children: [_jsx(TooltipTrigger, { asChild: true, children: _jsx(Button, { unstyled: true, "aria-label": "More Note Actions", "aria-expanded": panel === 'utilities', onClick: () => { setPanel(current => current === 'utilities' ? null : 'utilities'); }, type: "button", children: _jsx(WorkbenchGlyph, { kind: "more" }) }) }), _jsx(TooltipContent, { children: "More Note Actions" })] })] })] }), _jsx("div", { className: "tocktutor-editor-body relative min-h-0 overflow-auto", children: snapshot.path === null ? (_jsx(Empty, { unstyled: true, className: "tocktutor-empty absolute top-[45%] left-1/2 w-full max-w-[420px] -translate-1/2 p-8 text-center", children: _jsxs(EmptyHeader, { unstyled: true, children: [_jsx("p", { className: "tocktutor-kicker mb-0.5 text-[11px] font-[650] tracking-[.08em] text-[var(--tt-muted)] uppercase", children: "Ready When You Are" }), _jsx(EmptyTitle, { unstyled: true, "aria-level": 2, className: "text-xl font-bold", role: "heading", children: "Select a Note" }), _jsx(EmptyDescription, { unstyled: true, className: "text-[var(--tt-muted)]", children: "Choose a Markdown note from the vault to read or edit its exact source." })] }) })) : snapshot.mode === 'source' ? (_jsx(Textarea, { unstyled: true, "aria-label": sourceLabel, className: "h-full min-h-0 w-full resize-none border-0 bg-[var(--tt-panel)] px-[max(28px,calc((100%-768px)/2))] py-9 text-[var(--tt-text)] outline-none [tab-size:2] [font:14px/1.65_ui-monospace,SFMono-Regular,Consolas,monospace]", onChange: (event) => { props.onEdit(event.target.value); }, spellCheck: "true", value: snapshot.source })) : snapshot.documentKind === 'canvas' ? (_jsx(CanvasView, { onMove: props.onMoveCanvas, source: snapshot.source })) : snapshot.documentKind === 'base' ? (_jsx(BaseView, { source: snapshot.source })) : reading?.status === 'ready' ? (_jsxs("article", { "aria-label": "Reading View", className: "tocktutor-reading mx-auto min-h-full w-[calc(100%-48px)] max-w-3xl pt-[18px] pb-[72px] [&_h1]:mt-0 [&_h1]:mb-4 [&_h1]:text-[30px] [&_h1]:leading-tight [&_h1]:font-[650] [&_h1>svg]:mr-1.5 [&_h1>svg]:ml-[-20px] [&_h1>svg]:inline-block [&_h1>svg]:size-3.5 [&_h1>svg]:-translate-y-[3px] [&_h1>svg]:text-[color-mix(in_srgb,var(--tt-muted)_45%,transparent)] [&_h2]:mt-0 [&_h2]:mb-4 [&_h2]:text-2xl [&_h2]:leading-tight [&_h2]:font-[650] [&_h3]:mt-0 [&_h3]:mb-4 [&_h3]:text-xl [&_h3]:leading-tight [&_h3]:font-[650] [&_p]:mt-0 [&_p]:mb-4 [&_p]:text-lg [&_pre]:overflow-auto [&_pre]:rounded-md [&_pre]:border [&_pre]:border-[var(--tt-border)] [&_pre]:bg-[color-mix(in_srgb,var(--tt-text)_4%,var(--tt-panel))] [&_pre]:p-3", tabIndex: -1, children: [reading.warnings.map(warning => _jsx("p", { className: "tocktutor-warning border-l-[3px] border-[#b7791f] pl-2.5 text-[var(--tt-muted)]", role: "note", children: warning }, warning)), reading.blocks.map((block, index) => (_jsx(ReadingBlockView, { block: block, onToggleTask: props.onToggleTask }, `${block.kind}-${String(index)}`)))] })) : (_jsx(Alert, { unstyled: true, children: reading?.reason ?? 'Reading view is unavailable.' })) }), _jsxs("footer", { "aria-label": "TockTutor Status Bar", className: "tocktutor-statusbar flex min-w-0 items-center border-t border-[var(--tt-border)] px-2 text-xs text-[var(--tt-muted)]", role: "group", children: [_jsx("output", { "aria-live": "polite", className: "tocktutor-message absolute size-px overflow-hidden whitespace-nowrap [clip:rect(0_0_0_0)] [clip-path:inset(50%)]", children: snapshot.message }), snapshot.path !== null && (_jsxs("div", { className: "ml-auto flex items-center gap-[18px] whitespace-nowrap max-[760px]:gap-2", children: [_jsx("span", { children: "0 Backlinks" }), _jsx("span", { children: snapshot.mode === 'reading' ? 'Live Preview' : 'Source' }), _jsxs("span", { children: [String(words), " Words"] }), _jsxs("span", { children: [String(characters), " Characters"] }), _jsxs(Tooltip, { children: [_jsx(TooltipTrigger, { asChild: true, children: _jsx(Button, { unstyled: true, "aria-label": "Open Assistant", "aria-expanded": panel === 'assistant', onClick: () => { setPanel(current => current === 'assistant' ? null : 'assistant'); }, type: "button", className: "border-0 bg-transparent px-0 py-0.5 text-[var(--tt-muted)] [&_svg]:size-[17px]", children: _jsx(WorkbenchGlyph, { kind: "chat" }) }) }), _jsx(TooltipContent, { children: "Open Assistant" })] })] }))] })] }), _jsxs("aside", { "aria-hidden": panel !== 'assistant', "aria-label": "Assistant Panel", className: "tocktutor-right-panel tocktutor-right-panel-assistant relative invisible grid min-w-0 w-0 translate-x-6 grid-rows-[minmax(0,1fr)] overflow-hidden border-l-0 bg-[var(--tt-panel)] opacity-0 shadow-none transition-[width,opacity,transform,visibility] [transition-duration:420ms,300ms,460ms,0s] [transition-timing-function:cubic-bezier(.16,1,.3,1),cubic-bezier(.16,1,.3,1),cubic-bezier(.16,1,.3,1),linear] [transition-delay:0s,0s,0s,420ms] pointer-events-none data-[open=true]:visible data-[open=true]:translate-x-0 data-[open=true]:overflow-visible data-[open=true]:opacity-100 data-[open=true]:[transition-delay:0s] data-[open=true]:pointer-events-auto [&>:not(.tocktutor-assistant-resize)]:min-w-[min(240px,calc(100vw-262px))]", "data-open": panel === 'assistant', style: { width: panel === 'assistant' ? `${String(assistantPanelWidth)}px` : '0px' }, ...(panel === 'assistant' ? {} : { inert: '' }), children: [panel === 'assistant' && (_jsx(Button, { unstyled: true, "aria-label": "Resize Assistant Panel", "aria-orientation": "vertical", "aria-valuemax": MAX_ASSISTANT_PANEL_WIDTH, "aria-valuemin": MIN_ASSISTANT_PANEL_WIDTH, "aria-valuenow": assistantPanelWidth, className: "tocktutor-assistant-resize absolute top-0 bottom-0 left-0 z-3 w-4 -translate-x-1/2 touch-none cursor-col-resize border-0 bg-transparent p-0 outline-none before:absolute before:top-1/2 before:left-1/2 before:h-10 before:w-2 before:-translate-1/2 before:rounded-full before:border before:border-[color-mix(in_srgb,var(--tt-text)_32%,var(--tt-border)_68%)] before:bg-[color-mix(in_srgb,var(--tt-text)_8%,var(--tt-panel))] before:shadow-[0_4px_12px_-7px_color-mix(in_srgb,var(--tt-text)_42%,transparent),0_0_0_1px_color-mix(in_srgb,var(--tt-panel)_82%,transparent)] before:transition-colors before:duration-140 before:ease-[cubic-bezier(.16,1,.3,1)] before:content-[''] hover:before:border-[color-mix(in_srgb,var(--tt-accent)_58%,var(--tt-border)_42%)] active:before:border-[color-mix(in_srgb,var(--tt-accent)_58%,var(--tt-border)_42%)] focus-visible:before:border-[color-mix(in_srgb,var(--tt-accent)_58%,var(--tt-border)_42%)] hover:[&+.tocktutor-assistant-content]:border-l-[var(--tt-accent)] active:[&+.tocktutor-assistant-content]:border-l-[var(--tt-accent)] focus-visible:[&+.tocktutor-assistant-content]:border-l-[var(--tt-accent)]", onKeyDown: resizeAssistantPanelWithKeyboard, onPointerDown: beginAssistantPanelResize, role: "separator", title: "Drag or Use Left and Right Arrow Keys", type: "button" })), _jsx("div", { className: "tocktutor-assistant-content min-h-0 min-w-[min(240px,calc(100vw-262px))] overflow-hidden border-l border-[color-mix(in_srgb,var(--tt-text)_8%,var(--tt-border)_92%)] transition-colors duration-140 ease-[cubic-bezier(.16,1,.3,1)]", children: props.assistantPanel })] }), _jsxs("aside", { "aria-hidden": panel !== 'utilities', "aria-label": "Workbench Utilities", className: "tocktutor-right-panel invisible grid min-w-0 w-0 translate-x-6 grid-rows-[40px_minmax(0,1fr)] overflow-auto border-l border-[var(--tt-border)] bg-[var(--tt-panel)] opacity-0 shadow-none transition-[width,opacity,transform,visibility] [transition-duration:420ms,300ms,460ms,0s] [transition-timing-function:cubic-bezier(.16,1,.3,1),cubic-bezier(.16,1,.3,1),cubic-bezier(.16,1,.3,1),linear] [transition-delay:0s,0s,0s,420ms] pointer-events-none data-[open=true]:visible data-[open=true]:w-[min(360px,calc(100vw-262px))] data-[open=true]:translate-x-0 data-[open=true]:opacity-100 data-[open=true]:[transition-delay:0s] data-[open=true]:pointer-events-auto [&>:not(.tocktutor-assistant-resize)]:min-w-[min(360px,calc(100vw-262px))]", "data-open": panel === 'utilities', ...(panel === 'utilities' ? {} : { inert: '' }), children: [_jsxs("header", { className: "flex items-center justify-between border-b border-[var(--tt-border)] px-3", children: [_jsx("h2", { className: "m-0 text-sm", children: "More Options" }), _jsxs(Tooltip, { children: [_jsx(TooltipTrigger, { asChild: true, children: _jsx(Button, { unstyled: true, "aria-label": "Close More Options", className: "border-0 bg-transparent p-[5px]", onClick: () => { setPanel(null); }, type: "button", children: _jsx(WorkbenchGlyph, { kind: "close" }) }) }), _jsx(TooltipContent, { children: "Close More Options" })] })] }), _jsxs("section", { "aria-label": "Pane Groups", className: "tocktutor-pane-groups border-t border-[var(--tt-border)] p-3", children: [_jsxs("div", { className: "tocktutor-pane-heading flex items-center justify-between", children: [_jsx("h2", { className: "m-0 text-sm", children: "Pane Groups" }), _jsxs(Tooltip, { children: [_jsx(TooltipTrigger, { asChild: true, children: _jsx("span", { className: "inline-flex", children: _jsx(Button, { unstyled: true, "aria-label": "Add Pane", className: "size-[26px] rounded border border-[var(--tt-border)] bg-transparent", disabled: snapshot.panes.length >= MAX_PANE_GROUPS, onClick: props.onAddPane, type: "button", children: _jsx(WorkbenchGlyph, { kind: "new" }) }) }) }), _jsx(TooltipContent, { children: "Add Pane" })] })] }), _jsx("div", { className: "tocktutor-pane-list mt-2 grid grid-cols-2 gap-1.5", children: snapshot.panes.map((pane, index) => (_jsxs(Button, { unstyled: true, "aria-pressed": pane.id === snapshot.focusedPaneId, className: "overflow-hidden rounded-[5px] border border-[var(--tt-border)] bg-transparent p-1.5 text-left aria-pressed:border-[var(--tt-accent)] [&_small]:block [&_small]:truncate [&_small]:text-xs [&_small]:text-[var(--tt-muted)] [&_span]:block [&_span]:truncate", onClick: () => { props.onFocusPane(pane.id); }, title: pane.activePath ?? `Pane ${String(index + 1)}`, type: "button", children: [_jsxs("span", { children: ["Pane ", String(index + 1)] }), _jsx("small", { children: pane.activePath ?? 'Empty' })] }, pane.id))) })] }), _jsxs("section", { "aria-label": "Shared Review Panel", className: "tocktutor-review border-t border-[var(--tt-border)] p-3", children: [_jsx("header", { children: _jsx("h2", { className: "m-0 text-sm", children: "Reviews" }) }), _jsx("div", { className: "tocktutor-review-content min-h-0 overflow-auto text-xs text-[var(--tt-muted)]", children: props.reviewPanel ?? _jsx(Alert, { unstyled: true, role: "status", children: "No review workflow is active." }) })] }), _jsxs("section", { "aria-label": "Native Actions", className: "tocktutor-native-actions border-t border-[var(--tt-border)] p-3", children: [_jsx("header", { children: _jsx("h2", { className: "m-0 text-sm", children: "Native Actions" }) }), _jsx("div", { className: "tocktutor-native-actions-content min-h-0 overflow-auto text-xs text-[var(--tt-muted)]", children: props.nativeActions ?? _jsx(Alert, { unstyled: true, role: "status", children: "No native actions are available." }) })] })] })] })] }) }));
+                    }, children: [_jsxs("aside", { "aria-hidden": !effectiveSidebarOpen, "aria-label": "Files", className: "tocktutor-sidebar grid min-h-0 grid-rows-[40px_minmax(0,1fr)_var(--tt-footer-height)] overflow-hidden border-r border-[var(--tt-border)] bg-[var(--tockteam-shell-chrome,var(--tt-panel))] data-[open=false]:invisible data-[open=false]:[transition:visibility_0s_linear_300ms]", "data-open": effectiveSidebarOpen, ...(effectiveSidebarOpen ? {} : { inert: '' }), children: [_jsxs("header", { className: "tocktutor-sidebar-header flex items-center gap-2.5 border-b border-[var(--tt-border)] px-2.5 [&_svg]:size-3.5", children: [_jsx("h1", { className: "mr-auto my-0 text-sm font-semibold", children: "Files" }), _jsx("span", { className: "inline-flex items-center justify-center text-sm text-[var(--tt-muted)]", children: _jsx(WorkbenchGlyph, { kind: "more" }) }), _jsx("span", { className: "inline-flex items-center justify-center text-sm text-[var(--tt-muted)]", children: _jsx(Upload, { "aria-hidden": "true" }) }), _jsx("span", { className: "inline-flex items-center justify-center text-sm text-[var(--tt-muted)]", children: _jsx(WorkbenchGlyph, { kind: "folder" }) }), _jsx("span", { className: "inline-flex items-center justify-center text-sm text-[var(--tt-muted)]", children: _jsx(PanelTop, { "aria-hidden": "true" }) })] }), _jsxs("div", { className: "tocktutor-sidebar-content min-h-0 overflow-auto px-[5px] py-[3px]", children: [snapshot.searchOpen && (_jsxs("section", { "aria-label": "Search Notes", className: "tocktutor-search mb-2 border-b border-[var(--tt-border)] px-[3px] pb-2", children: [_jsx(Label, { unstyled: true, className: "mb-[5px] block text-xs font-semibold", htmlFor: "tocktutor-search-query", children: "Search Notes" }), _jsxs("div", { className: "flex gap-1", children: [_jsx(Input, { unstyled: true, "aria-label": "Search Notes Query", autoFocus: true, className: "w-full min-w-0 rounded-[5px] border border-[var(--tt-border)] px-[7px] py-[5px] [font:inherit]", id: "tocktutor-search-query", maxLength: 1_000, onChange: event => { props.onSearchChange?.(event.target.value); }, type: "search", value: snapshot.searchQuery }), _jsxs(Tooltip, { children: [_jsx(TooltipTrigger, { asChild: true, children: _jsx(Button, { unstyled: true, "aria-label": "Close Search", className: "w-7 rounded-[5px] border border-[var(--tt-border)] bg-transparent", onClick: () => { props.onCloseSearch?.(); }, type: "button", children: _jsx(WorkbenchGlyph, { kind: "close" }) }) }), _jsx(TooltipContent, { children: "Close Search" })] })] }), _jsxs(Alert, { unstyled: true, "aria-live": "polite", className: "mx-1 my-[7px] text-xs text-[var(--tt-muted)]", role: "status", children: [documents.length, " matching notes."] })] })), _jsxs("nav", { "aria-label": "Vault Notes", children: [snapshot.phase === 'loading' && _jsx("p", { className: "mx-1 my-[7px] text-xs text-[var(--tt-muted)]", children: "Loading notes\u2026" }), snapshot.phase === 'inactive' && _jsx(Alert, { unstyled: true, className: "mx-1 my-[7px] text-xs text-[color-mix(in_srgb,var(--tt-muted)_90%,var(--tt-text))]", children: "No Active Vault" }), snapshot.phase === 'error' && _jsx(Alert, { unstyled: true, className: "mx-1 my-[7px] text-xs text-[color-mix(in_srgb,var(--tt-muted)_90%,var(--tt-text))]", children: snapshot.message }), snapshot.phase === 'ready' && documents.length === 0 && _jsx("p", { className: "mx-1 my-[7px] text-xs text-[var(--tt-muted)]", children: "No supported notes found." }), _jsx("ul", { className: "tocktutor-tree m-0 list-none p-0", role: visibleTreeEntries.length > 0 ? 'tree' : undefined, children: _jsx(TreeEntries, { entries: visibleTreeEntries, onSelect: props.onSelect, path: snapshot.path }) })] })] }), _jsxs(Button, { unstyled: true, "aria-expanded": panel === 'utilities', className: "tocktutor-vault-switcher grid grid-cols-[14px_minmax(0,1fr)_16px] items-center gap-1.5 border-0 border-t border-[var(--tt-border)] bg-[var(--tockteam-shell-chrome,var(--tt-panel))] px-2.5 text-left [&>span]:truncate [&_svg]:size-[13px]", onClick: () => { setPanel(current => current === 'utilities' ? null : 'utilities'); }, type: "button", children: [_jsx(WorkbenchGlyph, { kind: "collapse" }), _jsx("span", { children: snapshot.vault === null ? 'Choose Vault' : 'TockTutor Vault' }), _jsx(WorkbenchGlyph, { kind: "more" })] })] }), _jsx(Button, { unstyled: true, "aria-label": `Resize Files Sidebar, ${String(sidebarWidth)} Pixels`, className: "tocktutor-sidebar-resize absolute top-0 bottom-0 z-5 m-0 w-2 touch-none cursor-ew-resize border-0 bg-transparent p-0 outline-none after:absolute after:top-0 after:bottom-0 after:left-[3px] after:w-0.5 after:bg-transparent after:content-[''] focus-visible:after:bg-[var(--tt-accent)]", hidden: !effectiveSidebarOpen, onKeyDown: resizeSidebarWithKeyboard, onPointerDown: beginSidebarResize, style: { left: sidebarWidth - 4 }, title: "Drag or Use Left and Right Arrow Keys", type: "button" }), _jsxs("section", { "aria-label": "Note Editor", className: "tocktutor-editor grid min-h-0 grid-rows-[40px_minmax(0,1fr)_var(--tt-footer-height)] overflow-hidden bg-[var(--tt-panel)]", id: "tocktutor-note-editor", role: "tabpanel", children: [_jsxs("header", { className: "tocktutor-editor-header relative flex min-w-0 items-center justify-center border-b border-[var(--tt-border)] px-2.5", children: [_jsx("h2", { className: "m-0 truncate text-[13px] font-medium text-[var(--tt-muted)]", children: noteTitle(snapshot.path) }), _jsxs("div", { className: "tocktutor-editor-actions absolute right-2.5 flex items-center gap-1 [&_button]:inline-flex [&_button]:h-7 [&_button]:w-[26px] [&_button]:items-center [&_button]:justify-center [&_button]:border-0 [&_button]:bg-transparent [&_button]:p-0 [&_button]:text-[var(--tt-muted)] [&_span]:inline-flex [&_span]:h-7 [&_span]:w-[26px] [&_span]:items-center [&_span]:justify-center [&_span]:border-0 [&_span]:bg-transparent [&_span]:p-0 [&_span]:text-[var(--tt-muted)]", children: [_jsx(Button, { unstyled: true, "aria-label": snapshot.mode === 'source' ? previewLabel : sourceLabel, onClick: () => { props.onMode(snapshot.mode === 'source' ? 'reading' : 'source'); }, type: "button", children: _jsx(WorkbenchGlyph, { kind: "pencil" }) }), _jsx("span", { children: _jsx(Music, { "aria-hidden": "true" }) }), _jsx("span", { children: _jsx(Folder, { "aria-hidden": "true" }) }), _jsxs(Tooltip, { children: [_jsx(TooltipTrigger, { asChild: true, children: _jsx(Button, { unstyled: true, "aria-label": "More Note Actions", "aria-expanded": panel === 'utilities', onClick: () => { setPanel(current => current === 'utilities' ? null : 'utilities'); }, type: "button", children: _jsx(WorkbenchGlyph, { kind: "more" }) }) }), _jsx(TooltipContent, { children: "More Note Actions" })] })] })] }), _jsx("div", { className: "tocktutor-editor-body relative min-h-0 overflow-auto", children: snapshot.path === null ? (_jsx(Empty, { unstyled: true, className: "tocktutor-empty absolute top-[45%] left-1/2 w-full max-w-[420px] -translate-1/2 p-8 text-center", children: _jsxs(EmptyHeader, { unstyled: true, children: [_jsx("p", { className: "tocktutor-kicker mb-0.5 text-[11px] font-[650] tracking-[.08em] text-[var(--tt-muted)] uppercase", children: "Ready When You Are" }), _jsx(EmptyTitle, { unstyled: true, "aria-level": 2, className: "text-xl font-bold", role: "heading", children: "Select a Note" }), _jsx(EmptyDescription, { unstyled: true, className: "text-[var(--tt-muted)]", children: "Choose a Markdown note from the vault to read or edit its exact source." })] }) })) : snapshot.mode === 'source' ? (_jsx(Textarea, { unstyled: true, "aria-label": sourceLabel, className: "h-full min-h-0 w-full resize-none border-0 bg-[var(--tt-panel)] px-[max(28px,calc((100%-768px)/2))] py-9 text-[var(--tt-text)] outline-none [tab-size:2] [font:14px/1.65_ui-monospace,SFMono-Regular,Consolas,monospace]", onChange: (event) => { props.onEdit(event.target.value); }, spellCheck: "true", value: snapshot.source })) : snapshot.documentKind === 'canvas' ? (_jsx(CanvasView, { onMove: props.onMoveCanvas, source: snapshot.source })) : snapshot.documentKind === 'base' ? (_jsx(BaseView, { source: snapshot.source })) : reading?.status === 'ready' ? (_jsxs("article", { "aria-label": "Reading View", className: "tocktutor-reading mx-auto min-h-full w-[calc(100%-48px)] max-w-3xl pt-[18px] pb-[72px] [&_h1]:mt-0 [&_h1]:mb-4 [&_h1]:text-[30px] [&_h1]:leading-tight [&_h1]:font-[650] [&_h1>svg]:mr-1.5 [&_h1>svg]:ml-[-20px] [&_h1>svg]:inline-block [&_h1>svg]:size-3.5 [&_h1>svg]:-translate-y-[3px] [&_h1>svg]:text-[color-mix(in_srgb,var(--tt-muted)_45%,transparent)] [&_h2]:mt-0 [&_h2]:mb-4 [&_h2]:text-2xl [&_h2]:leading-tight [&_h2]:font-[650] [&_h3]:mt-0 [&_h3]:mb-4 [&_h3]:text-xl [&_h3]:leading-tight [&_h3]:font-[650] [&_p]:mt-0 [&_p]:mb-4 [&_p]:text-lg [&_pre]:overflow-auto [&_pre]:rounded-md [&_pre]:border [&_pre]:border-[var(--tt-border)] [&_pre]:bg-[color-mix(in_srgb,var(--tt-text)_4%,var(--tt-panel))] [&_pre]:p-3", tabIndex: -1, children: [reading.warnings.map(warning => _jsx("p", { className: "tocktutor-warning border-l-[3px] border-[#b7791f] pl-2.5 text-[var(--tt-muted)]", role: "note", children: warning }, warning)), reading.blocks.map((block, index) => (_jsx(ReadingBlockView, { block: block, onToggleTask: props.onToggleTask }, `${block.kind}-${String(index)}`)))] })) : (_jsx(Alert, { unstyled: true, children: reading?.reason ?? 'Reading view is unavailable.' })) }), _jsxs("footer", { "aria-label": "TockTutor Status Bar", className: "tocktutor-statusbar flex min-w-0 items-center border-t border-[var(--tt-border)] px-2 text-xs text-[var(--tt-muted)]", role: "group", children: [_jsx("output", { "aria-live": "polite", className: "tocktutor-message absolute size-px overflow-hidden whitespace-nowrap [clip:rect(0_0_0_0)] [clip-path:inset(50%)]", children: snapshot.message }), snapshot.path !== null && (_jsxs("div", { className: "ml-auto flex items-center gap-[18px] whitespace-nowrap max-[760px]:gap-2", children: [_jsx("span", { children: "0 Backlinks" }), _jsx("span", { children: snapshot.mode === 'reading' ? 'Live Preview' : 'Source' }), _jsxs("span", { children: [String(words), " Words"] }), _jsxs("span", { children: [String(characters), " Characters"] }), _jsxs(Tooltip, { children: [_jsx(TooltipTrigger, { asChild: true, children: _jsx(Button, { unstyled: true, "aria-label": "Open Assistant", "aria-expanded": panel === 'assistant', onClick: () => { setPanel(current => current === 'assistant' ? null : 'assistant'); }, type: "button", className: "border-0 bg-transparent px-0 py-0.5 text-[var(--tt-muted)] [&_svg]:size-[17px]", children: _jsx(WorkbenchGlyph, { kind: "chat" }) }) }), _jsx(TooltipContent, { children: "Open Assistant" })] })] }))] })] }), _jsxs("aside", { "aria-hidden": panel !== 'assistant', "aria-label": "Assistant Panel", className: "tocktutor-right-panel tocktutor-right-panel-assistant relative invisible grid min-w-0 w-0 translate-x-6 grid-rows-[minmax(0,1fr)] overflow-hidden border-l-0 bg-[var(--tt-panel)] opacity-0 shadow-none transition-[width,opacity,transform,visibility] [transition-duration:420ms,300ms,460ms,0s] [transition-timing-function:cubic-bezier(.16,1,.3,1),cubic-bezier(.16,1,.3,1),cubic-bezier(.16,1,.3,1),linear] [transition-delay:0s,0s,0s,420ms] pointer-events-none data-[open=true]:visible data-[open=true]:translate-x-0 data-[open=true]:overflow-visible data-[open=true]:opacity-100 data-[open=true]:[transition-delay:0s] data-[open=true]:pointer-events-auto [&>:not(.tocktutor-assistant-resize)]:min-w-[min(240px,calc(100vw-262px))]", "data-open": panel === 'assistant', style: { width: panel === 'assistant' ? `${String(assistantPanelWidth)}px` : '0px' }, ...(panel === 'assistant' ? {} : { inert: '' }), children: [panel === 'assistant' && (_jsx(Button, { unstyled: true, "aria-label": "Resize Assistant Panel", "aria-orientation": "vertical", "aria-valuemax": MAX_ASSISTANT_PANEL_WIDTH, "aria-valuemin": MIN_ASSISTANT_PANEL_WIDTH, "aria-valuenow": assistantPanelWidth, className: "tocktutor-assistant-resize absolute top-0 bottom-0 left-0 z-3 w-4 -translate-x-1/2 touch-none cursor-col-resize border-0 bg-transparent p-0 outline-none before:absolute before:top-1/2 before:left-1/2 before:h-10 before:w-2 before:-translate-1/2 before:rounded-full before:border before:border-[color-mix(in_srgb,var(--tt-text)_32%,var(--tt-border)_68%)] before:bg-[color-mix(in_srgb,var(--tt-text)_8%,var(--tt-panel))] before:shadow-[0_4px_12px_-7px_color-mix(in_srgb,var(--tt-text)_42%,transparent),0_0_0_1px_color-mix(in_srgb,var(--tt-panel)_82%,transparent)] before:transition-colors before:duration-140 before:ease-[cubic-bezier(.16,1,.3,1)] before:content-[''] hover:before:border-[color-mix(in_srgb,var(--tt-accent)_58%,var(--tt-border)_42%)] active:before:border-[color-mix(in_srgb,var(--tt-accent)_58%,var(--tt-border)_42%)] focus-visible:before:border-[color-mix(in_srgb,var(--tt-accent)_58%,var(--tt-border)_42%)] hover:[&+.tocktutor-assistant-content]:border-l-[var(--tt-accent)] active:[&+.tocktutor-assistant-content]:border-l-[var(--tt-accent)] focus-visible:[&+.tocktutor-assistant-content]:border-l-[var(--tt-accent)]", onKeyDown: resizeAssistantPanelWithKeyboard, onPointerDown: beginAssistantPanelResize, role: "separator", title: "Drag or Use Left and Right Arrow Keys", type: "button" })), _jsx("div", { className: "tocktutor-assistant-content min-h-0 min-w-[min(240px,calc(100vw-262px))] overflow-hidden border-l border-[color-mix(in_srgb,var(--tt-text)_8%,var(--tt-border)_92%)] transition-colors duration-140 ease-[cubic-bezier(.16,1,.3,1)]", children: props.assistantPanel })] }), _jsxs("aside", { "aria-hidden": panel !== 'utilities', "aria-label": "Workbench Utilities", className: "tocktutor-right-panel invisible grid min-w-0 w-0 translate-x-6 grid-rows-[40px_minmax(0,1fr)] overflow-auto border-l border-[var(--tt-border)] bg-[var(--tt-panel)] opacity-0 shadow-none transition-[width,opacity,transform,visibility] [transition-duration:420ms,300ms,460ms,0s] [transition-timing-function:cubic-bezier(.16,1,.3,1),cubic-bezier(.16,1,.3,1),cubic-bezier(.16,1,.3,1),linear] [transition-delay:0s,0s,0s,420ms] pointer-events-none data-[open=true]:visible data-[open=true]:w-[min(360px,calc(100vw-262px))] data-[open=true]:translate-x-0 data-[open=true]:opacity-100 data-[open=true]:[transition-delay:0s] data-[open=true]:pointer-events-auto [&>:not(.tocktutor-assistant-resize)]:min-w-[min(360px,calc(100vw-262px))]", "data-open": panel === 'utilities', ...(panel === 'utilities' ? {} : { inert: '' }), children: [_jsxs("header", { className: "flex items-center justify-between border-b border-[var(--tt-border)] px-3", children: [_jsx("h2", { className: "m-0 text-sm", children: "More Options" }), _jsxs(Tooltip, { children: [_jsx(TooltipTrigger, { asChild: true, children: _jsx(Button, { unstyled: true, "aria-label": "Close More Options", className: "border-0 bg-transparent p-[5px]", onClick: () => { setPanel(null); }, type: "button", children: _jsx(WorkbenchGlyph, { kind: "close" }) }) }), _jsx(TooltipContent, { children: "Close More Options" })] })] }), _jsxs("section", { "aria-label": "Pane Groups", className: "tocktutor-pane-groups border-t border-[var(--tt-border)] p-3", children: [_jsxs("div", { className: "tocktutor-pane-heading flex items-center justify-between", children: [_jsx("h2", { className: "m-0 text-sm", children: "Pane Groups" }), _jsxs(Tooltip, { children: [_jsx(TooltipTrigger, { asChild: true, children: _jsx("span", { className: "inline-flex", children: _jsx(Button, { unstyled: true, "aria-label": "Add Pane", className: "size-[26px] rounded border border-[var(--tt-border)] bg-transparent", disabled: snapshot.panes.length >= MAX_PANE_GROUPS, onClick: props.onAddPane, type: "button", children: _jsx(WorkbenchGlyph, { kind: "new" }) }) }) }), _jsx(TooltipContent, { children: "Add Pane" })] })] }), _jsx("div", { className: "tocktutor-pane-list mt-2 grid grid-cols-2 gap-1.5", children: snapshot.panes.map((pane, index) => (_jsxs(Button, { unstyled: true, "aria-pressed": pane.id === snapshot.focusedPaneId, className: "overflow-hidden rounded-[5px] border border-[var(--tt-border)] bg-transparent p-1.5 text-left aria-pressed:border-[var(--tt-accent)] [&_small]:block [&_small]:truncate [&_small]:text-xs [&_small]:text-[var(--tt-muted)] [&_span]:block [&_span]:truncate", onClick: () => { props.onFocusPane(pane.id); }, title: pane.activePath ?? `Pane ${String(index + 1)}`, type: "button", children: [_jsxs("span", { children: ["Pane ", String(index + 1)] }), _jsx("small", { children: pane.activePath ?? 'Empty' })] }, pane.id))) })] }), _jsxs("section", { "aria-label": "Shared Review Panel", className: "tocktutor-review border-t border-[var(--tt-border)] p-3", children: [_jsx("header", { children: _jsx("h2", { className: "m-0 text-sm", children: "Reviews" }) }), _jsx("div", { className: "tocktutor-review-content min-h-0 overflow-auto text-xs text-[var(--tt-muted)]", children: props.reviewPanel ?? _jsx(Alert, { unstyled: true, role: "status", children: "No review workflow is active." }) })] }), _jsxs("section", { "aria-label": "Native Actions", className: "tocktutor-native-actions border-t border-[var(--tt-border)] p-3", children: [_jsx("header", { children: _jsx("h2", { className: "m-0 text-sm", children: "Native Actions" }) }), _jsx("div", { className: "tocktutor-native-actions-content min-h-0 overflow-auto text-xs text-[var(--tt-muted)]", children: props.nativeActions ?? _jsx(Alert, { unstyled: true, role: "status", children: "No native actions are available." }) })] })] })] })] }) }));
 }
 function TockTutorAssistantPanelOutlet(props) {
     return props.renderSlot(TOCKTUTOR_ASSISTANT_PANEL_SLOT, {
@@ -998,7 +1124,19 @@ export function TockTutorRoute(props) {
         if (node === null)
             return;
         const onKeyDown = (event) => {
-            const shortcut = resolveEditorShortcut(event, /Mac|iPhone|iPad/u.test(globalThis.navigator?.platform ?? ''));
+            const isMac = /Mac|iPhone|iPad/u.test(globalThis.navigator?.platform ?? '');
+            const primary = isMac ? event.metaKey : event.ctrlKey;
+            if (primary && !event.altKey && event.key.toLocaleLowerCase() === 'p') {
+                event.preventDefault();
+                controller.setCommandPaletteOpen(true);
+                return;
+            }
+            if (primary && event.shiftKey && !event.altKey && event.key.toLocaleLowerCase() === 't') {
+                event.preventDefault();
+                void controller.reopenClosedTab();
+                return;
+            }
+            const shortcut = resolveEditorShortcut(event, isMac);
             if (shortcut !== 'save')
                 return;
             event.preventDefault();
@@ -1007,7 +1145,7 @@ export function TockTutorRoute(props) {
         node.addEventListener('keydown', onKeyDown);
         return () => { node.removeEventListener('keydown', onKeyDown); };
     }, [controller]);
-    return (_jsx("div", { className: "tocktutor-root h-full min-h-0", ref: root, children: _jsx(TockTutorRouteView, { assistantPanel: (_jsx(TockTutorAssistantPanelOutlet, { activePath: snapshot.path, renderSlot: props.renderSlot, vault: snapshot.vault })), nativeActions: (_jsx(TockTutorNativeActionsOutlet, { activePath: snapshot.path, handleDispatch: event => controller.handleDispatch(event), renderSlot: props.renderSlot, vault: snapshot.vault })), onActivateTab: (paneId, path) => { void controller.activateTab(paneId, path); }, onAddPane: () => { void controller.addPane(); }, onCancelDispatch: () => { controller.cancelDispatchDialog(); }, onCloseSearch: () => { controller.closeSearch(); }, onEdit: source => { controller.edit(source); }, onFocusPane: paneId => { void controller.focusPane(paneId); }, onMode: mode => { controller.setMode(mode); }, onMoveCanvas: (nodeId, deltaX, deltaY) => { controller.moveCanvasNode(nodeId, deltaX, deltaY); }, onNewNote: () => { void controller.handleDispatch({ action: 'new', kind: 'quick-action', operationId: crypto.randomUUID() }); }, onOpenSearch: () => { controller.openSearch(''); }, onSave: () => { void controller.save(); }, onSearchChange: query => { controller.setSearchQuery(query); }, onSelect: path => { void controller.select(path); }, onSubmitDispatch: draft => { void controller.submitDispatchDialog(draft); }, onToggleTask: index => { controller.toggleTask(index); }, reviewPanel: (_jsx(TockTutorReviewPanelOutlet, { activePath: snapshot.path, renderSlot: props.renderSlot, vault: snapshot.vault })), snapshot: snapshot, ...(typeof document === 'undefined'
+    return (_jsx("div", { className: "tocktutor-root h-full min-h-0", ref: root, children: _jsx(TockTutorRouteView, { assistantPanel: (_jsx(TockTutorAssistantPanelOutlet, { activePath: snapshot.path, renderSlot: props.renderSlot, vault: snapshot.vault })), nativeActions: (_jsx(TockTutorNativeActionsOutlet, { activePath: snapshot.path, handleDispatch: event => controller.handleDispatch(event), renderSlot: props.renderSlot, vault: snapshot.vault })), onActivateTab: (paneId, path) => { void controller.activateTab(paneId, path); }, onAddPane: () => { void controller.addPane(); }, onBack: () => { void controller.goBack(); }, onCancelDispatch: () => { controller.cancelDispatchDialog(); }, onCloseCommandPalette: () => { controller.setCommandPaletteOpen(false); }, onCloseSearch: () => { controller.closeSearch(); }, onCloseTab: (paneId, path) => { void controller.closeTab(paneId, path); }, onEdit: source => { controller.edit(source); }, onFocusPane: paneId => { void controller.focusPane(paneId); }, onForward: () => { void controller.goForward(); }, onMode: mode => { controller.setMode(mode); }, onMoveCanvas: (nodeId, deltaX, deltaY) => { controller.moveCanvasNode(nodeId, deltaX, deltaY); }, onMoveTab: (paneId, path, direction) => { controller.moveTab(paneId, path, direction); }, onNewNote: () => { void controller.handleDispatch({ action: 'new', kind: 'quick-action', operationId: crypto.randomUUID() }); }, onOpenCommandPalette: () => { controller.setCommandPaletteOpen(true); }, onOpenSearch: () => { controller.openSearch(''); }, onReopenClosedTab: () => { void controller.reopenClosedTab(); }, onSave: () => { void controller.save(); }, onSearchChange: query => { controller.setSearchQuery(query); }, onSelect: path => { void controller.select(path); }, onSubmitDispatch: draft => { void controller.submitDispatchDialog(draft); }, onToggleFocusMode: () => { controller.toggleFocusMode(); }, onTogglePinTab: (paneId, path) => { controller.togglePinTab(paneId, path); }, onToggleTask: index => { controller.toggleTask(index); }, reviewPanel: (_jsx(TockTutorReviewPanelOutlet, { activePath: snapshot.path, renderSlot: props.renderSlot, vault: snapshot.vault })), snapshot: snapshot, ...(typeof document === 'undefined'
                 ? {}
                 : { titlebarTarget: document.getElementById('tockteam-window-titlebar-slot') ?? document.body }) }) }));
 }

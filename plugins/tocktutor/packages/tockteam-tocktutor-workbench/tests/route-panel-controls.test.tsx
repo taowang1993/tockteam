@@ -29,8 +29,15 @@ afterEach(() => {
 })
 
 function renderRoute(overrides: Partial<WorkbenchRouteSnapshot> = {}, props: {
+  onBack?(): void
   onCancelDispatch?(): void
+  onCloseCommandPalette?(): void
+  onCloseTab?(paneId: string, path: string): void
+  onMoveTab?(paneId: string, path: string, direction: -1 | 1): void
+  onReopenClosedTab?(): void
   onSubmitDispatch?(draft: { path: string } | { text: string; title: string }): void
+  onToggleFocusMode?(): void
+  onTogglePinTab?(paneId: string, path: string): void
 } = {}): void {
   render(<TockTutorRouteView
     onActivateTab={() => {}}
@@ -97,6 +104,59 @@ describe('TockTutor titlebar panel controls', () => {
     expect(assistantButton.getAttribute('aria-expanded')).toBe('false')
     expect(assistant.getAttribute('data-open')).toBe('false')
     expect(assistant.hasAttribute('inert')).toBe(true)
+  })
+
+  it('exposes accessible tab lifecycle and history controls', () => {
+    const onBack = vi.fn()
+    const onCloseTab = vi.fn()
+    const onMoveTab = vi.fn()
+    const onTogglePinTab = vi.fn()
+    renderRoute({
+      canGoBack: true,
+      commandPaletteOpen: false,
+      focusedPaneId: 'main',
+      panes: [{
+        activePath: 'First.md',
+        id: 'main',
+        tabs: [
+          { dirty: false, path: 'First.md', pinned: false },
+          { dirty: false, path: 'Second.md', pinned: true },
+        ],
+      }],
+      path: 'First.md',
+      phase: 'ready',
+      recentlyClosed: [{ dirty: false, path: 'Closed.md', pinned: false }],
+    }, {
+      onBack,
+      onCloseTab,
+      onMoveTab,
+      onTogglePinTab,
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Go Back' }))
+    expect(onBack).toHaveBeenCalledOnce()
+    const firstTab = screen.getByRole('tab', { name: 'First.md' })
+    fireEvent.keyDown(firstTab, { altKey: true, key: 'ArrowRight' })
+    expect(onMoveTab).toHaveBeenCalledWith('main', 'First.md', 1)
+    fireEvent.click(screen.getByRole('button', { name: 'Pin First.md' }))
+    expect(onTogglePinTab).toHaveBeenCalledWith('main', 'First.md')
+    fireEvent.click(screen.getByRole('button', { name: 'Close First.md' }))
+    expect(onCloseTab).toHaveBeenCalledWith('main', 'First.md')
+  })
+
+  it('filters and executes searchable command controls', () => {
+    const onCloseCommandPalette = vi.fn()
+    const onToggleFocusMode = vi.fn()
+    renderRoute({ commandPaletteOpen: true }, {
+      onCloseCommandPalette,
+      onToggleFocusMode,
+    })
+
+    expect(screen.getByRole('dialog', { name: 'Command Palette' })).toBeTruthy()
+    fireEvent.change(screen.getByLabelText('Search Commands'), { target: { value: 'focus' } })
+    fireEvent.click(screen.getByRole('option', { name: 'Toggle Focus Mode' }))
+    expect(onToggleFocusMode).toHaveBeenCalledOnce()
+    expect(onCloseCommandPalette).toHaveBeenCalledOnce()
   })
 
   it('renders and submits the shadcn New Note dialog', () => {

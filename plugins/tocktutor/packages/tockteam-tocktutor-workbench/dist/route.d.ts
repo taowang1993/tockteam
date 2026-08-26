@@ -23,7 +23,9 @@ export type RouteEditorMode = 'source' | 'reading';
 export type RouteDocumentKind = 'markdown' | 'canvas' | 'base';
 export interface RouteTabSummary {
     dirty: boolean;
+    mode?: RouteEditorMode;
     path: string;
+    pinned?: boolean;
 }
 export interface RoutePaneSummary {
     activePath: string | null;
@@ -31,14 +33,19 @@ export interface RoutePaneSummary {
     tabs: readonly RouteTabSummary[];
 }
 export interface WorkbenchRouteSnapshot {
+    canGoBack?: boolean;
+    canGoForward?: boolean;
+    commandPaletteOpen?: boolean;
     dispatchDialog: 'capture' | 'new' | null;
     documentKind: RouteDocumentKind | null;
     entries: readonly VaultTreeEntry[];
     focusedPaneId: string;
+    focusMode?: boolean;
     message: string;
     mode: RouteEditorMode;
     path: string | null;
     phase: RoutePhase;
+    recentlyClosed?: readonly RouteTabSummary[];
     revision: string | null;
     saveStatus: EditorStatus;
     searchOpen: boolean;
@@ -61,6 +68,10 @@ export declare class WorkbenchRouteController {
     private readonly now;
     private snapshot;
     private readonly listeners;
+    private shellSession;
+    private readonly recentlyClosed;
+    private readonly historyBack;
+    private readonly historyForward;
     private operation;
     private dispatchRevision;
     private operationAbort;
@@ -86,8 +97,9 @@ export declare class WorkbenchRouteController {
     private invalidateDispatch;
     subscribe: (listener: () => void) => (() => void);
     private update;
+    private shellPanes;
+    private syncShell;
     private pane;
-    private replacePane;
     private recordOpen;
     private recordDirty;
     private clearDocument;
@@ -100,7 +112,15 @@ export declare class WorkbenchRouteController {
     addPane(): Promise<boolean>;
     focusPane(id: string, pathOverride?: string): Promise<boolean>;
     activateTab(paneId: string, path: string): Promise<boolean>;
-    select(path: string, navigate?: boolean, dispatchRevision?: number): Promise<boolean>;
+    togglePinTab(paneId: string, path: string): void;
+    moveTab(paneId: string, path: string, direction: -1 | 1): void;
+    closeTab(paneId: string, path: string): Promise<boolean>;
+    reopenClosedTab(): Promise<boolean>;
+    goBack(): Promise<boolean>;
+    goForward(): Promise<boolean>;
+    setCommandPaletteOpen(open: boolean): void;
+    toggleFocusMode(): void;
+    select(path: string, navigate?: boolean, dispatchRevision?: number, recordHistory?: boolean): Promise<boolean>;
     edit(source: string): void;
     setMode(mode: RouteEditorMode): void;
     toggleTask(index: number): void;
@@ -113,19 +133,28 @@ export interface TockTutorRouteViewProps {
     assistantPanel?: ReactNode;
     nativeActions?: ReactNode;
     onActivateTab(paneId: string, path: string): void;
+    onBack?(): void;
     onCancelDispatch?(): void;
+    onCloseCommandPalette?(): void;
     onCloseSearch?(): void;
+    onCloseTab?(paneId: string, path: string): void;
     onAddPane(): void;
     onEdit(source: string): void;
     onFocusPane(paneId: string): void;
+    onForward?(): void;
     onMoveCanvas(nodeId: string, deltaX: number, deltaY: number): void;
+    onMoveTab?(paneId: string, path: string, direction: -1 | 1): void;
     onMode(mode: RouteEditorMode): void;
     onNewNote?(): void;
+    onOpenCommandPalette?(): void;
     onOpenSearch?(): void;
+    onReopenClosedTab?(): void;
     onSave(): void;
     onSearchChange?(query: string): void;
     onSelect(path: string): void;
     onSubmitDispatch?(draft: NativeDispatchDraft): void;
+    onToggleFocusMode?(): void;
+    onTogglePinTab?(paneId: string, path: string): void;
     onToggleTask(index: number): void;
     reviewPanel?: ReactNode;
     snapshot: WorkbenchRouteSnapshot;

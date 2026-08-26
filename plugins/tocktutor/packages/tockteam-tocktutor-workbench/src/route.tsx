@@ -70,9 +70,20 @@ import {
   type ReadingBlock,
 } from './markdown.ts'
 import {
+  addPaneGroup,
+  closeNoteTab,
+  createWorkbenchSession,
+  focusPaneGroup,
   isSafeVaultRelativePath,
+  markTabDirty,
   MAX_NOTE_TABS,
   MAX_PANE_GROUPS,
+  moveNoteTab,
+  openNoteTab,
+  setActiveNoteTab,
+  setNoteTabMode,
+  setTabPinned,
+  type WorkbenchSession,
 } from './session.ts'
 import { isNoteVaultChangeEvent, type NoteVaultEventRemote } from './vault-events.ts'
 import type {
@@ -129,7 +140,9 @@ export type RouteDocumentKind = 'markdown' | 'canvas' | 'base'
 
 export interface RouteTabSummary {
   dirty: boolean
+  mode?: RouteEditorMode
   path: string
+  pinned?: boolean
 }
 
 export interface RoutePaneSummary {
@@ -139,14 +152,19 @@ export interface RoutePaneSummary {
 }
 
 export interface WorkbenchRouteSnapshot {
+  canGoBack?: boolean
+  canGoForward?: boolean
+  commandPaletteOpen?: boolean
   dispatchDialog: 'capture' | 'new' | null
   documentKind: RouteDocumentKind | null
   entries: readonly VaultTreeEntry[]
   focusedPaneId: string
+  focusMode?: boolean
   message: string
   mode: RouteEditorMode
   path: string | null
   phase: RoutePhase
+  recentlyClosed?: readonly RouteTabSummary[]
   revision: string | null
   saveStatus: EditorStatus
   searchOpen: boolean
@@ -235,14 +253,19 @@ function minuteStamp(value: Date): string {
 
 function initialSnapshot(): WorkbenchRouteSnapshot {
   return Object.freeze({
+    canGoBack: false,
+    canGoForward: false,
+    commandPaletteOpen: false,
     dispatchDialog: null,
     documentKind: null,
     entries: Object.freeze([]),
     focusedPaneId: 'pane-1',
+    focusMode: false,
     message: 'Loading the active vault.',
     mode: 'source',
     path: null,
     phase: 'loading',
+    recentlyClosed: Object.freeze([]),
     revision: null,
     saveStatus: 'saved',
     searchOpen: false,
@@ -262,6 +285,10 @@ function initialSnapshot(): WorkbenchRouteSnapshot {
 export class WorkbenchRouteController {
   private snapshot = initialSnapshot()
   private readonly listeners = new Set<() => void>()
+  private shellSession: WorkbenchSession = createWorkbenchSession(ROUTE_PREFIX, null, 'pane-1')
+  private readonly recentlyClosed: RouteTabSummary[] = []
+  private readonly historyBack: string[] = []
+  private readonly historyForward: string[] = []
   private operation = 0
   private dispatchRevision = 0
   private operationAbort: AbortController | null = null
@@ -369,6 +396,7 @@ export class WorkbenchRouteController {
     vault: VaultReference,
   ): Promise<TockTutorNativeActionsDispatchResult> {
     if (!isSafeVaultRelativePath(path) || !/\.md$/iu.test(path) || !boundedSource(content)) return 'failed'
+    const previousPath = this.snapshot.path
     if (this.snapshot.saveStatus !== 'saved' && !await this.save()) return 'failed'
     if (!this.dispatchCurrent(revision, vault)) return 'stale'
     try {
@@ -389,7 +417,7 @@ export class WorkbenchRouteController {
         saveStatus: 'saved',
         source: content,
       })
-      this.recordOpen(path)
+      this.recordOpen(path, true, previousPath)
       this.navigate(routeForPath(path))
       return 'handled'
     } catch {
@@ -489,42 +517,64 @@ export class WorkbenchRouteController {
     for (const listener of this.listeners) listener()
   }
 
+  private shellPanes(): readonly RoutePaneSummary[] {
+    return Object.freeze(this.shellSession.groups.map(group => Object.freeze({
+      activePath: group.tabs.find(tab => tab.id === group.activeTabId)?.path ?? null,
+      id: group.id,
+      tabs: Object.freeze(group.tabs.map(tab => Object.freeze({
+        dirty: tab.dirty,
+        mode: tab.mode === 'reading' ? 'reading' as const : 'source' as const,
+        path: tab.path,
+        pinned: tab.pinned,
+      }))),
+    })))
+  }
+
+  private syncShell(change: Partial<WorkbenchRouteSnapshot> = {}): void {
+    this.update({
+      canGoBack: this.historyBack.length > 0,
+      canGoForward: this.historyForward.length > 0,
+      focusedPaneId: this.shellSession.focusedGroupId,
+      panes: this.shellPanes(),
+      recentlyClosed: Object.freeze(this.recentlyClosed.map(tab => Object.freeze({ ...tab }))),
+      ...change,
+    })
+  }
+
   private pane(id = this.snapshot.focusedPaneId): RoutePaneSummary | undefined {
     return this.snapshot.panes.find(candidate => candidate.id === id)
   }
 
-  private replacePane(id: string, replace: (pane: RoutePaneSummary) => RoutePaneSummary): void {
-    this.update({
-      panes: Object.freeze(this.snapshot.panes.map(pane => pane.id === id
-        ? Object.freeze(replace(pane))
-        : pane)),
-    })
-  }
-
-  private recordOpen(path: string): void {
-    const pane = this.pane()
-    if (pane === undefined) return
-    const existing = pane.tabs.find(tab => tab.path === path)
-    const tabs = existing === undefined
-      ? [...pane.tabs, Object.freeze({ dirty: false, path })]
-      : pane.tabs.map(tab => tab.path === path ? Object.freeze({ ...tab, dirty: false }) : tab)
-    this.replacePane(pane.id, current => ({
-      ...current,
-      activePath: path,
-      tabs: Object.freeze(tabs),
-    }))
+  private recordOpen(
+    path: string,
+    recordHistory = true,
+    previous = this.snapshot.path,
+  ): void {
+    if (recordHistory && previous !== null && previous !== path) {
+      this.historyBack.push(previous)
+      if (this.historyBack.length > MAX_NOTE_TABS * MAX_PANE_GROUPS) this.historyBack.shift()
+      this.historyForward.length = 0
+    }
+    this.shellSession = openNoteTab(
+      this.shellSession,
+      this.shellSession.focusedGroupId,
+      path,
+      { mode: this.snapshot.mode },
+    )
+    this.shellSession = markTabDirty(this.shellSession, this.shellSession.focusedGroupId, path, false)
+    this.syncShell()
   }
 
   private recordDirty(dirty: boolean): void {
-    const pane = this.pane()
     const path = this.snapshot.path
-    if (pane === undefined || path === null) return
-    this.replacePane(pane.id, current => ({
-      ...current,
-      tabs: Object.freeze(current.tabs.map(tab => tab.path === path
-        ? Object.freeze({ ...tab, dirty })
-        : tab)),
-    }))
+    if (path === null) return
+    this.shellSession = markTabDirty(
+      this.shellSession,
+      this.shellSession.focusedGroupId,
+      path,
+      dirty,
+    )
+    this.syncShell()
   }
 
   private clearDocument(): void {
@@ -570,19 +620,27 @@ export class WorkbenchRouteController {
       if (this.snapshot.path !== null) this.navigate(routeForPath(this.snapshot.path), 'replace')
       return
     }
-    const pane = this.pane()
-    if (pane !== undefined) {
-      this.replacePane(pane.id, current => ({ ...current, activePath: null }))
-    }
+    this.shellSession = setActiveNoteTab(
+      this.shellSession,
+      this.shellSession.focusedGroupId,
+      null,
+    )
+    this.syncShell()
     this.clearDocument()
   }
 
   async reload(): Promise<void> {
     this.invalidateDispatch()
     const operation = this.nextOperation()
+    this.shellSession = createWorkbenchSession(ROUTE_PREFIX, null, 'pane-1')
+    this.recentlyClosed.length = 0
+    this.historyBack.length = 0
+    this.historyForward.length = 0
     this.eventDispose?.()
     this.eventDispose = null
     this.update({
+      canGoBack: false,
+      canGoForward: false,
       dispatchDialog: null,
       documentKind: null,
       entries: Object.freeze([]),
@@ -590,16 +648,13 @@ export class WorkbenchRouteController {
       message: 'Loading the active vault.',
       path: null,
       phase: 'loading',
+      recentlyClosed: Object.freeze([]),
       revision: null,
       saveStatus: 'saved',
       searchOpen: false,
       searchQuery: '',
       source: '',
-      panes: Object.freeze([Object.freeze({
-        activePath: null,
-        id: 'pane-1',
-        tabs: Object.freeze([]),
-      })]),
+      panes: this.shellPanes(),
       vault: null,
       warnings: Object.freeze([]),
     })
@@ -615,9 +670,12 @@ export class WorkbenchRouteController {
         limit: TREE_LIMIT,
       }, operation.signal))
       if (!this.current(operation.id) || page.generation !== vault.generation) return
+      this.shellSession = createWorkbenchSession(ROUTE_PREFIX, vault, 'pane-1')
       this.update({
         entries: Object.freeze(page.entries.toSorted((left, right) => left.path.localeCompare(right.path))),
+        focusedPaneId: this.shellSession.focusedGroupId,
         message: page.truncated ? 'The vault tree is truncated to a bounded result.' : 'Vault ready.',
+        panes: this.shellPanes(),
         phase: 'ready',
         vault,
         warnings: Object.freeze(page.warnings),
@@ -650,14 +708,9 @@ export class WorkbenchRouteController {
       if (supportedDocument(nextPath)) {
         void this.select(nextPath, false)
       } else {
-        const pane = this.pane()
-        if (pane !== undefined) {
-          this.replacePane(pane.id, current => ({
-            ...current,
-            activePath: null,
-            tabs: Object.freeze(current.tabs.filter(tab => tab.path !== selected)),
-          }))
-        }
+        const closed = closeNoteTab(this.shellSession, this.shellSession.focusedGroupId, selected)
+        this.shellSession = closed.session
+        this.syncShell()
         this.clearDocument()
         this.navigate(ROUTE_PREFIX, 'replace')
         void this.refreshTree(value.vault)
@@ -699,14 +752,9 @@ export class WorkbenchRouteController {
       }
     }
     if (id === '') return false
-    this.update({
-      focusedPaneId: id,
-      panes: Object.freeze([...this.snapshot.panes, Object.freeze({
-        activePath: null,
-        id,
-        tabs: Object.freeze([]),
-      })]),
-    })
+    const added = addPaneGroup(this.shellSession, id)
+    this.shellSession = added.session
+    this.syncShell()
     this.clearDocument()
     this.navigate(ROUTE_PREFIX)
     return true
@@ -718,7 +766,9 @@ export class WorkbenchRouteController {
     const path = pathOverride ?? target.activePath
     if (id === this.snapshot.focusedPaneId && path === this.snapshot.path) return true
     if (this.snapshot.saveStatus !== 'saved' && !await this.save()) return false
-    this.update({ focusedPaneId: id })
+    this.shellSession = focusPaneGroup(this.shellSession, id)
+    if (path === null) this.shellSession = setActiveNoteTab(this.shellSession, id, null)
+    this.syncShell()
     this.clearDocument()
     if (path === null) {
       this.navigate(ROUTE_PREFIX)
@@ -733,9 +783,108 @@ export class WorkbenchRouteController {
     return this.focusPane(paneId, path)
   }
 
-  async select(path: string, navigate = true, dispatchRevision?: number): Promise<boolean> {
+  togglePinTab(paneId: string, path: string): void {
+    if (this.pane(paneId)?.tabs.some(tab => tab.path === path) !== true) return
+    this.shellSession = setTabPinned(this.shellSession, paneId, path)
+    this.syncShell()
+  }
+
+  moveTab(paneId: string, path: string, direction: -1 | 1): void {
+    this.shellSession = moveNoteTab(this.shellSession, paneId, path, direction)
+    this.syncShell()
+  }
+
+  async closeTab(paneId: string, path: string): Promise<boolean> {
+    const pane = this.pane(paneId)
+    const tab = pane?.tabs.find(candidate => candidate.path === path)
+    if (tab === undefined) return false
+    const active = paneId === this.snapshot.focusedPaneId && path === this.snapshot.path
+    if (active && this.snapshot.saveStatus !== 'saved' && !await this.save()) return false
+    const result = closeNoteTab(this.shellSession, paneId, path)
+    if (result.closed === null) return false
+    this.shellSession = result.session
+    this.recentlyClosed.splice(
+      0,
+      this.recentlyClosed.length,
+      {
+        dirty: false,
+        mode: result.closed.mode === 'reading' ? 'reading' : 'source',
+        path: result.closed.path,
+        pinned: result.closed.pinned,
+      },
+      ...this.recentlyClosed.filter(candidate => candidate.path !== result.closed?.path),
+    )
+    this.recentlyClosed.length = Math.min(this.recentlyClosed.length, MAX_NOTE_TABS)
+    this.syncShell()
+    if (!active) return true
+    this.clearDocument()
+    if (result.nextPath === null) {
+      this.navigate(ROUTE_PREFIX)
+      return true
+    }
+    return await this.select(result.nextPath)
+  }
+
+  async reopenClosedTab(): Promise<boolean> {
+    const candidate = this.recentlyClosed.shift()
+    if (candidate === undefined) return false
+    this.shellSession = openNoteTab(
+      this.shellSession,
+      this.shellSession.focusedGroupId,
+      candidate.path,
+      {
+        ...(candidate.mode === undefined ? {} : { mode: candidate.mode }),
+        ...(candidate.pinned === undefined ? {} : { pinned: candidate.pinned }),
+      },
+    )
+    this.syncShell()
+    if (await this.select(candidate.path)) return true
+    const closed = closeNoteTab(this.shellSession, this.shellSession.focusedGroupId, candidate.path)
+    this.shellSession = closed.session
+    this.recentlyClosed.unshift(candidate)
+    this.syncShell()
+    return false
+  }
+
+  async goBack(): Promise<boolean> {
+    const target = this.historyBack.at(-1)
+    const current = this.snapshot.path
+    if (target === undefined || current === null) return false
+    if (!await this.select(target, true, undefined, false)) return false
+    this.historyBack.pop()
+    this.historyForward.push(current)
+    this.syncShell()
+    return true
+  }
+
+  async goForward(): Promise<boolean> {
+    const target = this.historyForward.at(-1)
+    const current = this.snapshot.path
+    if (target === undefined || current === null) return false
+    if (!await this.select(target, true, undefined, false)) return false
+    this.historyForward.pop()
+    this.historyBack.push(current)
+    this.syncShell()
+    return true
+  }
+
+  setCommandPaletteOpen(open: boolean): void {
+    this.update({ commandPaletteOpen: open })
+  }
+
+  toggleFocusMode(): void {
+    this.update({ focusMode: this.snapshot.focusMode !== true })
+  }
+
+  async select(
+    path: string,
+    navigate = true,
+    dispatchRevision?: number,
+    recordHistory = true,
+  ): Promise<boolean> {
     const activeVault = this.snapshot.vault
     if (!supportedDocument(path) || activeVault === null || this.snapshot.phase !== 'ready') return false
+    const previousPath = this.snapshot.path
     if (dispatchRevision === undefined) this.invalidateDispatch()
     else if (!this.dispatchCurrent(dispatchRevision, activeVault)) return false
     if (path === this.snapshot.path) return true
@@ -761,15 +910,17 @@ export class WorkbenchRouteController {
         this.update({ message: `${path} exceeds the editor size limit.` })
         return false
       }
+      const mode = pane.tabs.find(tab => tab.path === path)?.mode ?? this.snapshot.mode
       this.update({
         documentKind: documentKind(path),
         message: `${path} opened.`,
+        mode,
         path,
         revision: opened.revision,
         saveStatus: 'saved',
         source: opened.content,
       })
-      this.recordOpen(path)
+      this.recordOpen(path, recordHistory, previousPath)
       if (navigate) this.navigate(routeForPath(path))
       return true
     } catch (error) {
@@ -797,7 +948,14 @@ export class WorkbenchRouteController {
   }
 
   setMode(mode: RouteEditorMode): void {
-    if (this.snapshot.path !== null) this.update({ mode })
+    if (this.snapshot.path === null) return
+    this.shellSession = setNoteTabMode(
+      this.shellSession,
+      this.shellSession.focusedGroupId,
+      this.snapshot.path,
+      mode,
+    )
+    this.syncShell({ mode })
   }
 
   toggleTask(index: number): void {
@@ -984,19 +1142,28 @@ export interface TockTutorRouteViewProps {
   assistantPanel?: ReactNode
   nativeActions?: ReactNode
   onActivateTab(paneId: string, path: string): void
+  onBack?(): void
   onCancelDispatch?(): void
+  onCloseCommandPalette?(): void
   onCloseSearch?(): void
+  onCloseTab?(paneId: string, path: string): void
   onAddPane(): void
   onEdit(source: string): void
   onFocusPane(paneId: string): void
+  onForward?(): void
   onMoveCanvas(nodeId: string, deltaX: number, deltaY: number): void
+  onMoveTab?(paneId: string, path: string, direction: -1 | 1): void
   onMode(mode: RouteEditorMode): void
   onNewNote?(): void
+  onOpenCommandPalette?(): void
   onOpenSearch?(): void
+  onReopenClosedTab?(): void
   onSave(): void
   onSearchChange?(query: string): void
   onSelect(path: string): void
   onSubmitDispatch?(draft: NativeDispatchDraft): void
+  onToggleFocusMode?(): void
+  onTogglePinTab?(paneId: string, path: string): void
   onToggleTask(index: number): void
   reviewPanel?: ReactNode
   snapshot: WorkbenchRouteSnapshot
@@ -1050,6 +1217,67 @@ function NativeDispatchDialog(props: {
             <Button unstyled type="submit">Create</Button>
           </div>
         </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function WorkbenchCommandPalette(props: {
+  canGoBack: boolean
+  canGoForward: boolean
+  canReopen: boolean
+  onBack: (() => void) | undefined
+  onClose(): void
+  onForward: (() => void) | undefined
+  onNewNote: (() => void) | undefined
+  onReopen: (() => void) | undefined
+  onSearch: (() => void) | undefined
+  onToggleFocus: (() => void) | undefined
+}): ReactNode {
+  const [query, setQuery] = useState('')
+  const commands = [
+    { label: 'New Note', run: props.onNewNote },
+    { label: 'Search Notes', run: props.onSearch },
+    { label: 'Toggle Focus Mode', run: props.onToggleFocus },
+    { disabled: !props.canGoBack, label: 'Go Back', run: props.onBack },
+    { disabled: !props.canGoForward, label: 'Go Forward', run: props.onForward },
+    { disabled: !props.canReopen, label: 'Reopen Closed Note', run: props.onReopen },
+  ].filter(command => command.label.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()))
+  return (
+    <Dialog open onOpenChange={open => { if (!open) props.onClose() }}>
+      <DialogContent
+        unstyled
+        className="fixed top-[18%] left-1/2 z-50 w-[calc(100%-32px)] max-w-xl -translate-x-1/2 rounded-lg border border-[var(--tt-border)] bg-[var(--tt-panel)] p-3 shadow-xl"
+        showCloseButton={false}
+      >
+        <DialogTitle className="mb-2 text-sm font-semibold">Command Palette</DialogTitle>
+        <Input
+          unstyled
+          aria-label="Search Commands"
+          autoFocus
+          className="w-full rounded border border-[var(--tt-border)] px-2 py-1.5"
+          maxLength={200}
+          onChange={event => { setQuery(event.target.value) }}
+          placeholder="Search commands"
+          value={query}
+        />
+        <div className="mt-2 grid max-h-80 gap-1 overflow-auto" role="listbox">
+          {commands.map(command => (
+            <Button
+              unstyled
+              className="rounded border-0 bg-transparent px-2 py-1.5 text-left hover:bg-[var(--tt-selected)] disabled:opacity-50"
+              disabled={command.disabled === true || command.run === undefined}
+              key={command.label}
+              onClick={() => {
+                command.run?.()
+                props.onClose()
+              }}
+              role="option"
+              type="button"
+            >{command.label}</Button>
+          ))}
+          {commands.length === 0 && <Alert unstyled role="status">No matching commands.</Alert>}
+        </div>
       </DialogContent>
     </Dialog>
   )
@@ -1175,13 +1403,14 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
   const [assistantPanelWidth, setAssistantPanelWidth] = useState(DEFAULT_ASSISTANT_PANEL_WIDTH)
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_SIDEBAR_WIDTH)
-  const previousSidebarOpen = useRef(sidebarOpen)
-  const shouldAnimateSidebarColumns = previousSidebarOpen.current !== sidebarOpen
-  const contentColumns = `${String(sidebarOpen ? sidebarWidth : 0)}px minmax(0, 1fr) auto auto`
-  const titlebarColumns = `${String(sidebarOpen ? sidebarWidth : COLLAPSED_TITLEBAR_SIDEBAR_WIDTH)}px minmax(0, 1fr)`
+  const effectiveSidebarOpen = sidebarOpen && snapshot.focusMode !== true
+  const previousSidebarOpen = useRef(effectiveSidebarOpen)
+  const shouldAnimateSidebarColumns = previousSidebarOpen.current !== effectiveSidebarOpen
+  const contentColumns = `${String(effectiveSidebarOpen ? sidebarWidth : 0)}px minmax(0, 1fr) auto auto`
+  const titlebarColumns = `${String(effectiveSidebarOpen ? sidebarWidth : COLLAPSED_TITLEBAR_SIDEBAR_WIDTH)}px minmax(0, 1fr)`
   useEffect(() => {
-    previousSidebarOpen.current = sidebarOpen
-  }, [sidebarOpen])
+    previousSidebarOpen.current = effectiveSidebarOpen
+  }, [effectiveSidebarOpen])
   const resizeSidebar = (width: number): void => {
     setSidebarWidth(Math.min(MAX_SIDEBAR_WIDTH, Math.max(MIN_SIDEBAR_WIDTH, width)))
   }
@@ -1256,7 +1485,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
       }}
     >
       <div className="tocktutor-titlebar-sidebar flex min-w-0 items-center justify-start gap-2 border-r border-[var(--tt-border)] pr-2 pl-[46px] [&>button]:inline-flex [&>button]:h-7 [&>button]:w-[22px] [&>button]:items-center [&>button]:justify-center [&>button]:border-0 [&>button]:bg-transparent [&>button]:p-0 [&>button]:text-[var(--tt-muted)] [&>span]:inline-flex [&>span]:h-7 [&>span]:w-[22px] [&>span]:items-center [&>span]:justify-center [&>span]:border-0 [&>span]:bg-transparent [&>span]:p-0 [&>span]:text-[var(--tt-muted)]">
-        {sidebarOpen && (
+        {effectiveSidebarOpen && (
           <>
             <span className="tocktutor-titlebar-document rounded-[5px] bg-[color-mix(in_srgb,var(--tt-text)_8%,transparent)] text-[var(--tt-text)]"><WorkbenchGlyph kind="document" /></span>
             <span><WorkbenchGlyph kind="document" /></span>
@@ -1274,7 +1503,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
         <Tooltip>
           <TooltipTrigger asChild>
             <Button unstyled
-              aria-expanded={sidebarOpen}
+              aria-expanded={effectiveSidebarOpen}
               aria-label="Toggle Files Sidebar"
               className="tocktutor-panel-icon ml-auto border-0 bg-transparent p-1.5 text-[var(--tt-muted)]"
               onClick={() => { setSidebarOpen(open => !open) }}
@@ -1285,18 +1514,25 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
         </Tooltip>
       </div>
       <div className="tocktutor-titlebar-main flex min-w-0 items-center gap-1 px-2">
-        <span className="tocktutor-history mr-[18px] flex gap-[5px] px-1.5 text-[color-mix(in_srgb,var(--tt-muted)_45%,transparent)]"><WorkbenchGlyph kind="back" /><WorkbenchGlyph kind="forward" /></span>
+        <span className="tocktutor-history mr-[18px] flex gap-[5px] px-1.5">
+          <Button unstyled aria-label="Go Back" className="border-0 bg-transparent p-1 text-[var(--tt-muted)] disabled:opacity-35" disabled={snapshot.canGoBack !== true} onClick={props.onBack} type="button"><WorkbenchGlyph kind="back" /></Button>
+          <Button unstyled aria-label="Go Forward" className="border-0 bg-transparent p-1 text-[var(--tt-muted)] disabled:opacity-35" disabled={snapshot.canGoForward !== true} onClick={props.onForward} type="button"><WorkbenchGlyph kind="forward" /></Button>
+        </span>
         <div className="tocktutor-tabs -mx-[calc(var(--tt-tab-curve)*2)] -mb-px flex min-w-0 self-stretch items-end gap-1 overflow-visible px-[calc(var(--tt-tab-curve)*2)] [--tt-tab-curve:10px]" {...(focusedPane?.tabs.length ? { 'aria-label': 'Note Tabs', role: 'tablist' } : {})}>
           {focusedPane?.tabs.map((tab, index) => (
+            <div className="relative" key={tab.path} role="presentation">
             <Button unstyled
               aria-selected={tab.path === focusedPane.activePath}
               className="relative z-1 -mb-px flex h-[30px] min-w-[118px] max-w-[220px] items-center gap-3 rounded-t-[10px] border border-b-0 border-[var(--tt-tab-border)] bg-[var(--tt-panel)] px-2.5 shadow-[inset_0_1px_0_rgb(255_255_255_/_18%)] aria-[selected=false]:mb-0.5 aria-[selected=false]:border-b aria-[selected=false]:bg-[color-mix(in_srgb,var(--tt-panel)_70%,transparent)] aria-[selected=false]:text-[var(--tt-muted)] aria-[selected=false]:shadow-none aria-selected:before:pointer-events-none aria-selected:before:absolute aria-selected:before:bottom-[-1px] aria-selected:before:left-[calc(var(--tt-tab-curve)*-2)] aria-selected:before:h-[calc(var(--tt-tab-curve)*2)] aria-selected:before:w-[calc(var(--tt-tab-curve)*2)] aria-selected:before:rounded-full aria-selected:before:content-[''] aria-selected:before:[clip-path:inset(50%_calc(var(--tt-tab-curve)*-1)_0_50%)] aria-selected:before:[box-shadow:inset_0_0_0_1px_var(--tt-tab-border),0_0_0_calc(var(--tt-tab-curve)*4)_var(--tt-panel)] aria-selected:after:pointer-events-none aria-selected:after:absolute aria-selected:after:right-[calc(var(--tt-tab-curve)*-2)] aria-selected:after:bottom-[-1px] aria-selected:after:h-[calc(var(--tt-tab-curve)*2)] aria-selected:after:w-[calc(var(--tt-tab-curve)*2)] aria-selected:after:rounded-full aria-selected:after:content-[''] aria-selected:after:[clip-path:inset(50%_50%_0_calc(var(--tt-tab-curve)*-1))] aria-selected:after:[box-shadow:inset_0_0_0_1px_var(--tt-tab-border),0_0_0_calc(var(--tt-tab-curve)*4)_var(--tt-panel)] [&>span]:truncate [&_svg]:ml-auto [&_svg]:size-3.5"
-              key={tab.path}
               onClick={() => { props.onActivateTab(focusedPane.id, tab.path) }}
               onKeyDown={event => {
                 if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
                 event.preventDefault()
                 const offset = event.key === 'ArrowLeft' ? -1 : 1
+                if (event.altKey) {
+                  props.onMoveTab?.(focusedPane.id, tab.path, offset)
+                  return
+                }
                 const next = focusedPane.tabs[(index + offset + focusedPane.tabs.length) % focusedPane.tabs.length]
                 if (next !== undefined) props.onActivateTab(focusedPane.id, next.path)
               }}
@@ -1306,11 +1542,23 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
               title={tab.path}
               type="button"
             >
-              <span>{tab.dirty && <span aria-label="Unsaved">•</span>}{fileName(tab.path)}</span>
-              {tab.path === focusedPane.activePath && <WorkbenchGlyph kind="close" />}
+              <span>{tab.dirty && <span aria-label="Unsaved">•</span>}{tab.pinned === true && <span aria-label="Pinned">◆</span>}{fileName(tab.path)}</span>
             </Button>
+            <span className="absolute top-1/2 right-1 z-2 flex -translate-y-1/2 gap-0.5">
+              <Button unstyled aria-label={`${tab.pinned === true ? 'Unpin' : 'Pin'} ${fileName(tab.path)}`} className="rounded border-0 bg-transparent p-0.5 text-[var(--tt-muted)]" onClick={() => { props.onTogglePinTab?.(focusedPane.id, tab.path) }} type="button"><Bookmark aria-hidden="true" /></Button>
+              <Button unstyled aria-label={`Close ${fileName(tab.path)}`} className="rounded border-0 bg-transparent p-0.5 text-[var(--tt-muted)]" onClick={() => { props.onCloseTab?.(focusedPane.id, tab.path) }} type="button"><WorkbenchGlyph kind="close" /></Button>
+            </span>
+            </div>
           ))}
         </div>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="inline-flex">
+              <Button unstyled aria-label="Command Palette" className="border-0 bg-transparent p-1.5 text-[var(--tt-muted)]" disabled={props.onOpenCommandPalette === undefined} onClick={props.onOpenCommandPalette} type="button"><WorkbenchGlyph kind="search" /></Button>
+            </span>
+          </TooltipTrigger>
+          <TooltipContent>Command Palette</TooltipContent>
+        </Tooltip>
         <Tooltip>
           <TooltipTrigger asChild>
             <span className="inline-flex">
@@ -1340,6 +1588,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
       <main
         aria-label="TockTutor Workbench"
       className="tocktutor-workbench h-full min-h-0 box-border bg-[var(--tt-bg)] pt-0 text-[var(--tt-text)] [--tt-accent:var(--dsw-alias-accent-primary,#533afd)] [--tt-bg:var(--dsw-alias-bg-base,#fff)] [--tt-border:var(--dsw-alias-border-l1,var(--dsw-alias-border-subtle,#e1e3e7))] [--tt-footer-height:28px] [--tt-muted:var(--dsw-alias-fg-muted,#71717a)] [--tt-panel:var(--dsw-alias-bg-elevated,#fff)] [--tt-selected:color-mix(in_srgb,var(--tt-accent)_14%,var(--tt-panel))] [--tt-text:var(--dsw-alias-fg-primary,#27272a)] [font:14px/1.45_ui-sans-serif,-apple-system,BlinkMacSystemFont,'Segoe_UI',sans-serif] [&_*]:box-border [&_*::after]:box-border [&_*::before]:box-border [&_[hidden]]:!hidden [&_button]:text-inherit [&_button]:[font:inherit] [&_button:focus-visible]:outline-2 [&_button:focus-visible]:outline-offset-2 [&_button:focus-visible]:outline-[var(--tt-accent)] [&_input:focus-visible]:outline-2 [&_input:focus-visible]:outline-offset-2 [&_input:focus-visible]:outline-[var(--tt-accent)] [&_svg]:block [&_svg]:size-4 [&_textarea:focus-visible]:outline-2 [&_textarea:focus-visible]:outline-offset-2 [&_textarea:focus-visible]:outline-[var(--tt-accent)] motion-reduce:[&_*]:!scroll-auto motion-reduce:[&_*]:!delay-0 motion-reduce:[&_*]:!duration-0 motion-reduce:[&_*::after]:!delay-0 motion-reduce:[&_*::after]:!duration-0 motion-reduce:[&_*::before]:!delay-0 motion-reduce:[&_*::before]:!duration-0"
+      data-focus-mode={snapshot.focusMode === true}
       data-phase={snapshot.phase}
       tabIndex={-1}
     >
@@ -1351,6 +1600,20 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
           onSubmit={draft => { props.onSubmitDispatch?.(draft) }}
         />
       )}
+      {snapshot.commandPaletteOpen === true && (
+        <WorkbenchCommandPalette
+          canGoBack={snapshot.canGoBack === true}
+          canGoForward={snapshot.canGoForward === true}
+          canReopen={(snapshot.recentlyClosed?.length ?? 0) > 0}
+          onBack={props.onBack}
+          onClose={() => { props.onCloseCommandPalette?.() }}
+          onForward={props.onForward}
+          onNewNote={props.onNewNote}
+          onReopen={props.onReopenClosedTab}
+          onSearch={props.onOpenSearch}
+          onToggleFocus={props.onToggleFocusMode}
+        />
+      )}
       <div
         className="tocktutor-grid relative grid h-full min-h-0 grid-cols-[var(--tockteam-primary-sidebar-width,280px)_minmax(0,1fr)_auto_auto] transition-[grid-template-columns] duration-300 ease-out"
         style={{
@@ -1359,11 +1622,11 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
         }}
       >
         <aside
-          aria-hidden={!sidebarOpen}
+          aria-hidden={!effectiveSidebarOpen}
           aria-label="Files"
           className="tocktutor-sidebar grid min-h-0 grid-rows-[40px_minmax(0,1fr)_var(--tt-footer-height)] overflow-hidden border-r border-[var(--tt-border)] bg-[var(--tockteam-shell-chrome,var(--tt-panel))] data-[open=false]:invisible data-[open=false]:[transition:visibility_0s_linear_300ms]"
-          data-open={sidebarOpen}
-          {...(sidebarOpen ? {} : { inert: '' })}
+          data-open={effectiveSidebarOpen}
+          {...(effectiveSidebarOpen ? {} : { inert: '' })}
         >
           <header className="tocktutor-sidebar-header flex items-center gap-2.5 border-b border-[var(--tt-border)] px-2.5 [&_svg]:size-3.5">
             <h1 className="mr-auto my-0 text-sm font-semibold">Files</h1>
@@ -1421,7 +1684,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
         <Button unstyled
           aria-label={`Resize Files Sidebar, ${String(sidebarWidth)} Pixels`}
           className="tocktutor-sidebar-resize absolute top-0 bottom-0 z-5 m-0 w-2 touch-none cursor-ew-resize border-0 bg-transparent p-0 outline-none after:absolute after:top-0 after:bottom-0 after:left-[3px] after:w-0.5 after:bg-transparent after:content-[''] focus-visible:after:bg-[var(--tt-accent)]"
-          hidden={!sidebarOpen}
+          hidden={!effectiveSidebarOpen}
           onKeyDown={resizeSidebarWithKeyboard}
           onPointerDown={beginSidebarResize}
           style={{ left: sidebarWidth - 4 }}
@@ -1659,7 +1922,19 @@ export function TockTutorRoute(props: TockTutorRouteProps): ReactNode {
     const node = root.current
     if (node === null) return
     const onKeyDown = (event: KeyboardEvent): void => {
-      const shortcut = resolveEditorShortcut(event, /Mac|iPhone|iPad/u.test(globalThis.navigator?.platform ?? ''))
+      const isMac = /Mac|iPhone|iPad/u.test(globalThis.navigator?.platform ?? '')
+      const primary = isMac ? event.metaKey : event.ctrlKey
+      if (primary && !event.altKey && event.key.toLocaleLowerCase() === 'p') {
+        event.preventDefault()
+        controller.setCommandPaletteOpen(true)
+        return
+      }
+      if (primary && event.shiftKey && !event.altKey && event.key.toLocaleLowerCase() === 't') {
+        event.preventDefault()
+        void controller.reopenClosedTab()
+        return
+      }
+      const shortcut = resolveEditorShortcut(event, isMac)
       if (shortcut !== 'save') return
       event.preventDefault()
       void controller.save()
@@ -1687,18 +1962,27 @@ export function TockTutorRoute(props: TockTutorRouteProps): ReactNode {
         )}
         onActivateTab={(paneId, path) => { void controller.activateTab(paneId, path) }}
         onAddPane={() => { void controller.addPane() }}
+        onBack={() => { void controller.goBack() }}
         onCancelDispatch={() => { controller.cancelDispatchDialog() }}
+        onCloseCommandPalette={() => { controller.setCommandPaletteOpen(false) }}
         onCloseSearch={() => { controller.closeSearch() }}
+        onCloseTab={(paneId, path) => { void controller.closeTab(paneId, path) }}
         onEdit={source => { controller.edit(source) }}
         onFocusPane={paneId => { void controller.focusPane(paneId) }}
+        onForward={() => { void controller.goForward() }}
         onMode={mode => { controller.setMode(mode) }}
         onMoveCanvas={(nodeId, deltaX, deltaY) => { controller.moveCanvasNode(nodeId, deltaX, deltaY) }}
+        onMoveTab={(paneId, path, direction) => { controller.moveTab(paneId, path, direction) }}
         onNewNote={() => { void controller.handleDispatch({ action: 'new', kind: 'quick-action', operationId: crypto.randomUUID() }) }}
+        onOpenCommandPalette={() => { controller.setCommandPaletteOpen(true) }}
         onOpenSearch={() => { controller.openSearch('') }}
+        onReopenClosedTab={() => { void controller.reopenClosedTab() }}
         onSave={() => { void controller.save() }}
         onSearchChange={query => { controller.setSearchQuery(query) }}
         onSelect={path => { void controller.select(path) }}
         onSubmitDispatch={draft => { void controller.submitDispatchDialog(draft) }}
+        onToggleFocusMode={() => { controller.toggleFocusMode() }}
+        onTogglePinTab={(paneId, path) => { controller.togglePinTab(paneId, path) }}
         onToggleTask={index => { controller.toggleTask(index) }}
         reviewPanel={(
           <TockTutorReviewPanelOutlet

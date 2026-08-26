@@ -192,13 +192,18 @@ function parseGroup(value: unknown, groupIds: Set<string>, tabIds: Set<string>):
   return { id: value.id, activeTabId, tabs }
 }
 
-export function createWorkbenchSession(routeId: string, vault: VaultIdentity | null = null): WorkbenchSession {
+export function createWorkbenchSession(
+  routeId: string,
+  vault: VaultIdentity | null = null,
+  initialGroupId = 'group-1',
+): WorkbenchSession {
   const safeRouteId = boundedString(routeId, MAX_ROUTE_ID_LENGTH) ? routeId : 'tocktutor'
+  const groupId = isSafeId(initialGroupId) ? initialGroupId : 'group-1'
   return {
     routeId: safeRouteId,
     vault: vault === null ? null : { ...vault },
-    focusedGroupId: 'group-1',
-    groups: [{ id: 'group-1', activeTabId: null, tabs: [] }],
+    focusedGroupId: groupId,
+    groups: [{ id: groupId, activeTabId: null, tabs: [] }],
     editorRevision: 0,
   }
 }
@@ -336,6 +341,98 @@ export function isCurrentOperation(
   return group?.activeTabId === identity.tabId
     && tab?.path === identity.path
     && tab.revision === identity.tabRevision
+}
+
+export function setActiveNoteTab(
+  source: WorkbenchSession,
+  groupId: string,
+  path: string | null,
+): WorkbenchSession {
+  const session = cloneSession(source)
+  const group = groupOf(session, groupId)
+  if (group === undefined) return session
+  group.activeTabId = path === null
+    ? null
+    : group.tabs.find(tab => tab.path === path)?.id ?? group.activeTabId
+  return session
+}
+
+export function focusPaneGroup(source: WorkbenchSession, groupId: string): WorkbenchSession {
+  const session = cloneSession(source)
+  if (groupOf(session, groupId) !== undefined) session.focusedGroupId = groupId
+  return session
+}
+
+export function setNoteTabMode(
+  source: WorkbenchSession,
+  groupId: string,
+  path: string,
+  mode: EditorMode,
+): WorkbenchSession {
+  const session = cloneSession(source)
+  const tab = groupOf(session, groupId)?.tabs.find(candidate => candidate.path === path)
+  if (tab === undefined || !isEditorMode(mode)) return session
+  tab.mode = mode
+  if (mode !== 'reading') tab.lastEditingMode = mode
+  return session
+}
+
+export function setTabPinned(
+  source: WorkbenchSession,
+  groupId: string,
+  path: string,
+  pinned?: boolean,
+): WorkbenchSession {
+  const session = cloneSession(source)
+  const tab = groupOf(session, groupId)?.tabs.find(candidate => candidate.path === path)
+  if (tab !== undefined) tab.pinned = pinned ?? !tab.pinned
+  return session
+}
+
+export function moveNoteTab(
+  source: WorkbenchSession,
+  groupId: string,
+  path: string,
+  direction: -1 | 1,
+): WorkbenchSession {
+  const session = cloneSession(source)
+  const tabs = groupOf(session, groupId)?.tabs
+  if (tabs === undefined) return session
+  const index = tabs.findIndex(tab => tab.path === path)
+  const destination = index + direction
+  if (index < 0 || destination < 0 || destination >= tabs.length) return session
+  const [tab] = tabs.splice(index, 1)
+  if (tab !== undefined) tabs.splice(destination, 0, tab)
+  return session
+}
+
+export interface CloseNoteTabResult {
+  closed: NoteTab | null
+  nextPath: string | null
+  session: WorkbenchSession
+}
+
+export function closeNoteTab(
+  source: WorkbenchSession,
+  groupId: string,
+  path: string,
+): CloseNoteTabResult {
+  const session = cloneSession(source)
+  const group = groupOf(session, groupId)
+  if (group === undefined) return { closed: null, nextPath: null, session }
+  const index = group.tabs.findIndex(tab => tab.path === path)
+  if (index < 0) return { closed: null, nextPath: group.tabs.find(tab => tab.id === group.activeTabId)?.path ?? null, session }
+  const [closed] = group.tabs.splice(index, 1)
+  if (closed === undefined) return { closed: null, nextPath: null, session }
+  if (group.activeTabId === closed.id) {
+    const next = group.tabs[index] ?? group.tabs[index - 1]
+    group.activeTabId = next?.id ?? null
+  }
+  return {
+    closed,
+    nextPath: group.tabs.find(tab => tab.id === group.activeTabId)?.path ?? null,
+    session,
+  }
 }
 
 export function createDirtySaveGate(

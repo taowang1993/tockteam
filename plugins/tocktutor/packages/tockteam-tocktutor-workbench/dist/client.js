@@ -21665,15 +21665,192 @@ function resolveEditorShortcut(event, isMac) {
 // src/session.ts
 var MAX_PANE_GROUPS = 8;
 var MAX_NOTE_TABS = 20;
+var MAX_ID_LENGTH = 128;
 var MAX_VAULT_PATH_LENGTH = 4096;
+var MAX_ROUTE_ID_LENGTH = 128;
+var DEFAULT_MODE = "wysiwyg";
+var DEFAULT_EDITING_MODE = "wysiwyg";
 function boundedString(value, max2) {
   return typeof value === "string" && value.length > 0 && value.length <= max2;
+}
+function isSafeId2(value) {
+  return boundedString(value, MAX_ID_LENGTH) && !/[\0\r\n]/u.test(value);
 }
 function isSafeVaultRelativePath(value) {
   if (!boundedString(value, MAX_VAULT_PATH_LENGTH)) return false;
   if (value.startsWith("/") || value.startsWith("\\") || value.includes("\\") || value.includes("\0")) return false;
   if (/^[A-Za-z][A-Za-z\d+.-]*:/u.test(value)) return false;
   return value.split("/").every((segment) => segment !== "" && segment !== "." && segment !== "..");
+}
+function isEditorMode(value) {
+  return value === "reading" || value === "wysiwyg" || value === "source";
+}
+function isEditingMode(value) {
+  return value === "wysiwyg" || value === "source";
+}
+function tabDirty(revision, savedRevision) {
+  return revision !== savedRevision;
+}
+function makeTab(input) {
+  return {
+    ...input,
+    get dirty() {
+      return tabDirty(this.revision, this.savedRevision);
+    }
+  };
+}
+function cloneTab(tab) {
+  return makeTab({
+    id: tab.id,
+    path: tab.path,
+    pinned: tab.pinned,
+    mode: tab.mode,
+    lastEditingMode: tab.lastEditingMode,
+    revision: tab.revision,
+    savedRevision: tab.savedRevision
+  });
+}
+function cloneGroup(group) {
+  return {
+    id: group.id,
+    activeTabId: group.activeTabId,
+    tabs: group.tabs.map(cloneTab)
+  };
+}
+function cloneSession(session) {
+  return {
+    routeId: session.routeId,
+    vault: session.vault === null ? null : { ...session.vault },
+    focusedGroupId: session.focusedGroupId,
+    groups: session.groups.map(cloneGroup),
+    editorRevision: session.editorRevision
+  };
+}
+function nextId(prefix, used) {
+  for (let index2 = 1; index2 <= MAX_NOTE_TABS * MAX_PANE_GROUPS; index2 += 1) {
+    const candidate = `${prefix}-${index2}`;
+    if (!used.has(candidate)) return candidate;
+  }
+  return `${prefix}-${Date.now().toString(36)}`.slice(0, MAX_ID_LENGTH);
+}
+function createWorkbenchSession(routeId, vault = null, initialGroupId = "group-1") {
+  const safeRouteId = boundedString(routeId, MAX_ROUTE_ID_LENGTH) ? routeId : "tocktutor";
+  const groupId = isSafeId2(initialGroupId) ? initialGroupId : "group-1";
+  return {
+    routeId: safeRouteId,
+    vault: vault === null ? null : { ...vault },
+    focusedGroupId: groupId,
+    groups: [{ id: groupId, activeTabId: null, tabs: [] }],
+    editorRevision: 0
+  };
+}
+function addPaneGroup(source, requestedId) {
+  const session = cloneSession(source);
+  if (session.groups.length >= MAX_PANE_GROUPS) return { session, groupId: session.focusedGroupId };
+  const used = new Set(session.groups.map((group) => group.id));
+  const groupId = requestedId !== void 0 && isSafeId2(requestedId) && !used.has(requestedId) ? requestedId : nextId("group", used);
+  session.groups.push({ id: groupId, activeTabId: null, tabs: [] });
+  session.focusedGroupId = groupId;
+  return { session, groupId };
+}
+function groupOf(session, groupId) {
+  return session.groups.find((group) => group.id === groupId);
+}
+function openNoteTab(source, groupId, path, options = {}) {
+  if (!isSafeVaultRelativePath(path)) return cloneSession(source);
+  const session = cloneSession(source);
+  const group = groupOf(session, groupId);
+  if (group === void 0) return session;
+  session.focusedGroupId = groupId;
+  const existing = group.tabs.find((tab2) => tab2.path === path);
+  if (existing !== void 0) {
+    group.activeTabId = existing.id;
+    return session;
+  }
+  if (group.tabs.length >= MAX_NOTE_TABS) return session;
+  const ids = new Set(session.groups.flatMap((candidate) => candidate.tabs.map((tab2) => tab2.id)));
+  const mode = isEditorMode(options.mode) ? options.mode : DEFAULT_MODE;
+  const lastEditingMode = isEditingMode(options.lastEditingMode) ? options.lastEditingMode : mode === "reading" ? DEFAULT_EDITING_MODE : mode;
+  const tab = makeTab({
+    id: nextId("tab", ids),
+    path,
+    pinned: options.pinned === true,
+    mode,
+    lastEditingMode,
+    revision: 0,
+    savedRevision: 0
+  });
+  group.tabs.push(tab);
+  group.activeTabId = tab.id;
+  return session;
+}
+function markTabDirty(source, groupId, path, dirty) {
+  const session = cloneSession(source);
+  const group = groupOf(session, groupId);
+  const tab = group?.tabs.find((candidate) => candidate.path === path);
+  if (tab === void 0) return session;
+  if (dirty) {
+    session.editorRevision += 1;
+    tab.revision = Math.max(tab.revision + 1, session.editorRevision);
+  } else {
+    tab.savedRevision = tab.revision;
+  }
+  return session;
+}
+function setActiveNoteTab(source, groupId, path) {
+  const session = cloneSession(source);
+  const group = groupOf(session, groupId);
+  if (group === void 0) return session;
+  group.activeTabId = path === null ? null : group.tabs.find((tab) => tab.path === path)?.id ?? group.activeTabId;
+  return session;
+}
+function focusPaneGroup(source, groupId) {
+  const session = cloneSession(source);
+  if (groupOf(session, groupId) !== void 0) session.focusedGroupId = groupId;
+  return session;
+}
+function setNoteTabMode(source, groupId, path, mode) {
+  const session = cloneSession(source);
+  const tab = groupOf(session, groupId)?.tabs.find((candidate) => candidate.path === path);
+  if (tab === void 0 || !isEditorMode(mode)) return session;
+  tab.mode = mode;
+  if (mode !== "reading") tab.lastEditingMode = mode;
+  return session;
+}
+function setTabPinned(source, groupId, path, pinned) {
+  const session = cloneSession(source);
+  const tab = groupOf(session, groupId)?.tabs.find((candidate) => candidate.path === path);
+  if (tab !== void 0) tab.pinned = pinned ?? !tab.pinned;
+  return session;
+}
+function moveNoteTab(source, groupId, path, direction) {
+  const session = cloneSession(source);
+  const tabs = groupOf(session, groupId)?.tabs;
+  if (tabs === void 0) return session;
+  const index2 = tabs.findIndex((tab2) => tab2.path === path);
+  const destination = index2 + direction;
+  if (index2 < 0 || destination < 0 || destination >= tabs.length) return session;
+  const [tab] = tabs.splice(index2, 1);
+  if (tab !== void 0) tabs.splice(destination, 0, tab);
+  return session;
+}
+function closeNoteTab(source, groupId, path) {
+  const session = cloneSession(source);
+  const group = groupOf(session, groupId);
+  if (group === void 0) return { closed: null, nextPath: null, session };
+  const index2 = group.tabs.findIndex((tab) => tab.path === path);
+  if (index2 < 0) return { closed: null, nextPath: group.tabs.find((tab) => tab.id === group.activeTabId)?.path ?? null, session };
+  const [closed] = group.tabs.splice(index2, 1);
+  if (closed === void 0) return { closed: null, nextPath: null, session };
+  if (group.activeTabId === closed.id) {
+    const next = group.tabs[index2] ?? group.tabs[index2 - 1];
+    group.activeTabId = next?.id ?? null;
+  }
+  return {
+    closed,
+    nextPath: group.tabs.find((tab) => tab.id === group.activeTabId)?.path ?? null,
+    session
+  };
 }
 
 // src/vault-events.ts
@@ -21775,14 +21952,19 @@ function minuteStamp(value) {
 }
 function initialSnapshot() {
   return Object.freeze({
+    canGoBack: false,
+    canGoForward: false,
+    commandPaletteOpen: false,
     dispatchDialog: null,
     documentKind: null,
     entries: Object.freeze([]),
     focusedPaneId: "pane-1",
+    focusMode: false,
     message: "Loading the active vault.",
     mode: "source",
     path: null,
     phase: "loading",
+    recentlyClosed: Object.freeze([]),
     revision: null,
     saveStatus: "saved",
     searchOpen: false,
@@ -21805,6 +21987,10 @@ var WorkbenchRouteController = class {
   }
   snapshot = initialSnapshot();
   listeners = /* @__PURE__ */ new Set();
+  shellSession = createWorkbenchSession(ROUTE_PREFIX, null, "pane-1");
+  recentlyClosed = [];
+  historyBack = [];
+  historyForward = [];
   operation = 0;
   dispatchRevision = 0;
   operationAbort = null;
@@ -21894,6 +22080,7 @@ journal-date: ${day}
   }
   async createDispatchedDocument(path, content, silent, revision, vault) {
     if (!isSafeVaultRelativePath(path) || !/\.md$/iu.test(path) || !boundedSource(content)) return "failed";
+    const previousPath = this.snapshot.path;
     if (this.snapshot.saveStatus !== "saved" && !await this.save()) return "failed";
     if (!this.dispatchCurrent(revision, vault)) return "stale";
     try {
@@ -21914,7 +22101,7 @@ journal-date: ${day}
         saveStatus: "saved",
         source: content
       });
-      this.recordOpen(path);
+      this.recordOpen(path, true, previousPath);
       this.navigate(routeForPath(path));
       return "handled";
     } catch {
@@ -21996,33 +22183,56 @@ ${text}`;
     this.snapshot = Object.freeze({ ...this.snapshot, ...change });
     for (const listener of this.listeners) listener();
   }
+  shellPanes() {
+    return Object.freeze(this.shellSession.groups.map((group) => Object.freeze({
+      activePath: group.tabs.find((tab) => tab.id === group.activeTabId)?.path ?? null,
+      id: group.id,
+      tabs: Object.freeze(group.tabs.map((tab) => Object.freeze({
+        dirty: tab.dirty,
+        mode: tab.mode === "reading" ? "reading" : "source",
+        path: tab.path,
+        pinned: tab.pinned
+      })))
+    })));
+  }
+  syncShell(change = {}) {
+    this.update({
+      canGoBack: this.historyBack.length > 0,
+      canGoForward: this.historyForward.length > 0,
+      focusedPaneId: this.shellSession.focusedGroupId,
+      panes: this.shellPanes(),
+      recentlyClosed: Object.freeze(this.recentlyClosed.map((tab) => Object.freeze({ ...tab }))),
+      ...change
+    });
+  }
   pane(id = this.snapshot.focusedPaneId) {
     return this.snapshot.panes.find((candidate) => candidate.id === id);
   }
-  replacePane(id, replace) {
-    this.update({
-      panes: Object.freeze(this.snapshot.panes.map((pane) => pane.id === id ? Object.freeze(replace(pane)) : pane))
-    });
-  }
-  recordOpen(path) {
-    const pane = this.pane();
-    if (pane === void 0) return;
-    const existing = pane.tabs.find((tab) => tab.path === path);
-    const tabs = existing === void 0 ? [...pane.tabs, Object.freeze({ dirty: false, path })] : pane.tabs.map((tab) => tab.path === path ? Object.freeze({ ...tab, dirty: false }) : tab);
-    this.replacePane(pane.id, (current) => ({
-      ...current,
-      activePath: path,
-      tabs: Object.freeze(tabs)
-    }));
+  recordOpen(path, recordHistory = true, previous = this.snapshot.path) {
+    if (recordHistory && previous !== null && previous !== path) {
+      this.historyBack.push(previous);
+      if (this.historyBack.length > MAX_NOTE_TABS * MAX_PANE_GROUPS) this.historyBack.shift();
+      this.historyForward.length = 0;
+    }
+    this.shellSession = openNoteTab(
+      this.shellSession,
+      this.shellSession.focusedGroupId,
+      path,
+      { mode: this.snapshot.mode }
+    );
+    this.shellSession = markTabDirty(this.shellSession, this.shellSession.focusedGroupId, path, false);
+    this.syncShell();
   }
   recordDirty(dirty) {
-    const pane = this.pane();
     const path = this.snapshot.path;
-    if (pane === void 0 || path === null) return;
-    this.replacePane(pane.id, (current) => ({
-      ...current,
-      tabs: Object.freeze(current.tabs.map((tab) => tab.path === path ? Object.freeze({ ...tab, dirty }) : tab))
-    }));
+    if (path === null) return;
+    this.shellSession = markTabDirty(
+      this.shellSession,
+      this.shellSession.focusedGroupId,
+      path,
+      dirty
+    );
+    this.syncShell();
   }
   clearDocument() {
     this.invalidateDispatch();
@@ -22062,18 +22272,26 @@ ${text}`;
       if (this.snapshot.path !== null) this.navigate(routeForPath(this.snapshot.path), "replace");
       return;
     }
-    const pane = this.pane();
-    if (pane !== void 0) {
-      this.replacePane(pane.id, (current) => ({ ...current, activePath: null }));
-    }
+    this.shellSession = setActiveNoteTab(
+      this.shellSession,
+      this.shellSession.focusedGroupId,
+      null
+    );
+    this.syncShell();
     this.clearDocument();
   }
   async reload() {
     this.invalidateDispatch();
     const operation = this.nextOperation();
+    this.shellSession = createWorkbenchSession(ROUTE_PREFIX, null, "pane-1");
+    this.recentlyClosed.length = 0;
+    this.historyBack.length = 0;
+    this.historyForward.length = 0;
     this.eventDispose?.();
     this.eventDispose = null;
     this.update({
+      canGoBack: false,
+      canGoForward: false,
       dispatchDialog: null,
       documentKind: null,
       entries: Object.freeze([]),
@@ -22081,16 +22299,13 @@ ${text}`;
       message: "Loading the active vault.",
       path: null,
       phase: "loading",
+      recentlyClosed: Object.freeze([]),
       revision: null,
       saveStatus: "saved",
       searchOpen: false,
       searchQuery: "",
       source: "",
-      panes: Object.freeze([Object.freeze({
-        activePath: null,
-        id: "pane-1",
-        tabs: Object.freeze([])
-      })]),
+      panes: this.shellPanes(),
       vault: null,
       warnings: Object.freeze([])
     });
@@ -22106,9 +22321,12 @@ ${text}`;
         limit: TREE_LIMIT
       }, operation.signal));
       if (!this.current(operation.id) || page.generation !== vault.generation) return;
+      this.shellSession = createWorkbenchSession(ROUTE_PREFIX, vault, "pane-1");
       this.update({
         entries: Object.freeze(page.entries.toSorted((left, right) => left.path.localeCompare(right.path))),
+        focusedPaneId: this.shellSession.focusedGroupId,
         message: page.truncated ? "The vault tree is truncated to a bounded result." : "Vault ready.",
+        panes: this.shellPanes(),
         phase: "ready",
         vault,
         warnings: Object.freeze(page.warnings)
@@ -22140,14 +22358,9 @@ ${text}`;
       if (supportedDocument(nextPath)) {
         void this.select(nextPath, false);
       } else {
-        const pane = this.pane();
-        if (pane !== void 0) {
-          this.replacePane(pane.id, (current) => ({
-            ...current,
-            activePath: null,
-            tabs: Object.freeze(current.tabs.filter((tab) => tab.path !== selected))
-          }));
-        }
+        const closed = closeNoteTab(this.shellSession, this.shellSession.focusedGroupId, selected);
+        this.shellSession = closed.session;
+        this.syncShell();
         this.clearDocument();
         this.navigate(ROUTE_PREFIX, "replace");
         void this.refreshTree(value.vault);
@@ -22187,14 +22400,9 @@ ${text}`;
       }
     }
     if (id === "") return false;
-    this.update({
-      focusedPaneId: id,
-      panes: Object.freeze([...this.snapshot.panes, Object.freeze({
-        activePath: null,
-        id,
-        tabs: Object.freeze([])
-      })])
-    });
+    const added = addPaneGroup(this.shellSession, id);
+    this.shellSession = added.session;
+    this.syncShell();
     this.clearDocument();
     this.navigate(ROUTE_PREFIX);
     return true;
@@ -22205,7 +22413,9 @@ ${text}`;
     const path = pathOverride ?? target.activePath;
     if (id === this.snapshot.focusedPaneId && path === this.snapshot.path) return true;
     if (this.snapshot.saveStatus !== "saved" && !await this.save()) return false;
-    this.update({ focusedPaneId: id });
+    this.shellSession = focusPaneGroup(this.shellSession, id);
+    if (path === null) this.shellSession = setActiveNoteTab(this.shellSession, id, null);
+    this.syncShell();
     this.clearDocument();
     if (path === null) {
       this.navigate(ROUTE_PREFIX);
@@ -22218,9 +22428,95 @@ ${text}`;
     if (pane === void 0 || !pane.tabs.some((tab) => tab.path === path)) return false;
     return this.focusPane(paneId, path);
   }
-  async select(path, navigate = true, dispatchRevision) {
+  togglePinTab(paneId, path) {
+    if (this.pane(paneId)?.tabs.some((tab) => tab.path === path) !== true) return;
+    this.shellSession = setTabPinned(this.shellSession, paneId, path);
+    this.syncShell();
+  }
+  moveTab(paneId, path, direction) {
+    this.shellSession = moveNoteTab(this.shellSession, paneId, path, direction);
+    this.syncShell();
+  }
+  async closeTab(paneId, path) {
+    const pane = this.pane(paneId);
+    const tab = pane?.tabs.find((candidate) => candidate.path === path);
+    if (tab === void 0) return false;
+    const active = paneId === this.snapshot.focusedPaneId && path === this.snapshot.path;
+    if (active && this.snapshot.saveStatus !== "saved" && !await this.save()) return false;
+    const result = closeNoteTab(this.shellSession, paneId, path);
+    if (result.closed === null) return false;
+    this.shellSession = result.session;
+    this.recentlyClosed.splice(
+      0,
+      this.recentlyClosed.length,
+      {
+        dirty: false,
+        mode: result.closed.mode === "reading" ? "reading" : "source",
+        path: result.closed.path,
+        pinned: result.closed.pinned
+      },
+      ...this.recentlyClosed.filter((candidate) => candidate.path !== result.closed?.path)
+    );
+    this.recentlyClosed.length = Math.min(this.recentlyClosed.length, MAX_NOTE_TABS);
+    this.syncShell();
+    if (!active) return true;
+    this.clearDocument();
+    if (result.nextPath === null) {
+      this.navigate(ROUTE_PREFIX);
+      return true;
+    }
+    return await this.select(result.nextPath);
+  }
+  async reopenClosedTab() {
+    const candidate = this.recentlyClosed.shift();
+    if (candidate === void 0) return false;
+    this.shellSession = openNoteTab(
+      this.shellSession,
+      this.shellSession.focusedGroupId,
+      candidate.path,
+      {
+        ...candidate.mode === void 0 ? {} : { mode: candidate.mode },
+        ...candidate.pinned === void 0 ? {} : { pinned: candidate.pinned }
+      }
+    );
+    this.syncShell();
+    if (await this.select(candidate.path)) return true;
+    const closed = closeNoteTab(this.shellSession, this.shellSession.focusedGroupId, candidate.path);
+    this.shellSession = closed.session;
+    this.recentlyClosed.unshift(candidate);
+    this.syncShell();
+    return false;
+  }
+  async goBack() {
+    const target = this.historyBack.at(-1);
+    const current = this.snapshot.path;
+    if (target === void 0 || current === null) return false;
+    if (!await this.select(target, true, void 0, false)) return false;
+    this.historyBack.pop();
+    this.historyForward.push(current);
+    this.syncShell();
+    return true;
+  }
+  async goForward() {
+    const target = this.historyForward.at(-1);
+    const current = this.snapshot.path;
+    if (target === void 0 || current === null) return false;
+    if (!await this.select(target, true, void 0, false)) return false;
+    this.historyForward.pop();
+    this.historyBack.push(current);
+    this.syncShell();
+    return true;
+  }
+  setCommandPaletteOpen(open) {
+    this.update({ commandPaletteOpen: open });
+  }
+  toggleFocusMode() {
+    this.update({ focusMode: this.snapshot.focusMode !== true });
+  }
+  async select(path, navigate = true, dispatchRevision, recordHistory = true) {
     const activeVault = this.snapshot.vault;
     if (!supportedDocument(path) || activeVault === null || this.snapshot.phase !== "ready") return false;
+    const previousPath = this.snapshot.path;
     if (dispatchRevision === void 0) this.invalidateDispatch();
     else if (!this.dispatchCurrent(dispatchRevision, activeVault)) return false;
     if (path === this.snapshot.path) return true;
@@ -22243,15 +22539,17 @@ ${text}`;
         this.update({ message: `${path} exceeds the editor size limit.` });
         return false;
       }
+      const mode = pane.tabs.find((tab) => tab.path === path)?.mode ?? this.snapshot.mode;
       this.update({
         documentKind: documentKind(path),
         message: `${path} opened.`,
+        mode,
         path,
         revision: opened.revision,
         saveStatus: "saved",
         source: opened.content
       });
-      this.recordOpen(path);
+      this.recordOpen(path, recordHistory, previousPath);
       if (navigate) this.navigate(routeForPath(path));
       return true;
     } catch (error51) {
@@ -22277,7 +22575,14 @@ ${text}`;
     this.recordDirty(true);
   }
   setMode(mode) {
-    if (this.snapshot.path !== null) this.update({ mode });
+    if (this.snapshot.path === null) return;
+    this.shellSession = setNoteTabMode(
+      this.shellSession,
+      this.shellSession.focusedGroupId,
+      this.snapshot.path,
+      mode
+    );
+    this.syncShell({ mode });
   }
   toggleTask(index2) {
     if (this.snapshot.documentKind !== "markdown") return;
@@ -22503,6 +22808,64 @@ function NativeDispatchDialog(props) {
     }
   ) });
 }
+function WorkbenchCommandPalette(props) {
+  const [query, setQuery] = (0, import_react5.useState)("");
+  const commands = [
+    { label: "New Note", run: props.onNewNote },
+    { label: "Search Notes", run: props.onSearch },
+    { label: "Toggle Focus Mode", run: props.onToggleFocus },
+    { disabled: !props.canGoBack, label: "Go Back", run: props.onBack },
+    { disabled: !props.canGoForward, label: "Go Forward", run: props.onForward },
+    { disabled: !props.canReopen, label: "Reopen Closed Note", run: props.onReopen }
+  ].filter((command) => command.label.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()));
+  return /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(Dialog2, { open: true, onOpenChange: (open) => {
+    if (!open) props.onClose();
+  }, children: /* @__PURE__ */ (0, import_jsx_runtime21.jsxs)(
+    DialogContent3,
+    {
+      unstyled: true,
+      className: "fixed top-[18%] left-1/2 z-50 w-[calc(100%-32px)] max-w-xl -translate-x-1/2 rounded-lg border border-[var(--tt-border)] bg-[var(--tt-panel)] p-3 shadow-xl",
+      showCloseButton: false,
+      children: [
+        /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(DialogTitle3, { className: "mb-2 text-sm font-semibold", children: "Command Palette" }),
+        /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(
+          Input,
+          {
+            unstyled: true,
+            "aria-label": "Search Commands",
+            autoFocus: true,
+            className: "w-full rounded border border-[var(--tt-border)] px-2 py-1.5",
+            maxLength: 200,
+            onChange: (event) => {
+              setQuery(event.target.value);
+            },
+            placeholder: "Search commands",
+            value: query
+          }
+        ),
+        /* @__PURE__ */ (0, import_jsx_runtime21.jsxs)("div", { className: "mt-2 grid max-h-80 gap-1 overflow-auto", role: "listbox", children: [
+          commands.map((command) => /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(
+            Button,
+            {
+              unstyled: true,
+              className: "rounded border-0 bg-transparent px-2 py-1.5 text-left hover:bg-[var(--tt-selected)] disabled:opacity-50",
+              disabled: command.disabled === true || command.run === void 0,
+              onClick: () => {
+                command.run?.();
+                props.onClose();
+              },
+              role: "option",
+              type: "button",
+              children: command.label
+            },
+            command.label
+          )),
+          commands.length === 0 && /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(Alert, { unstyled: true, role: "status", children: "No matching commands." })
+        ] })
+      ]
+    }
+  ) });
+}
 var WORKBENCH_GLYPHS = {
   back: ChevronLeft,
   bookmark: Bookmark,
@@ -22576,13 +22939,14 @@ function TockTutorRouteView(props) {
   const [assistantPanelWidth, setAssistantPanelWidth] = (0, import_react5.useState)(DEFAULT_ASSISTANT_PANEL_WIDTH);
   const [sidebarOpen, setSidebarOpen] = (0, import_react5.useState)(true);
   const [sidebarWidth, setSidebarWidth] = (0, import_react5.useState)(DEFAULT_SIDEBAR_WIDTH);
-  const previousSidebarOpen = (0, import_react5.useRef)(sidebarOpen);
-  const shouldAnimateSidebarColumns = previousSidebarOpen.current !== sidebarOpen;
-  const contentColumns = `${String(sidebarOpen ? sidebarWidth : 0)}px minmax(0, 1fr) auto auto`;
-  const titlebarColumns = `${String(sidebarOpen ? sidebarWidth : COLLAPSED_TITLEBAR_SIDEBAR_WIDTH)}px minmax(0, 1fr)`;
+  const effectiveSidebarOpen = sidebarOpen && snapshot.focusMode !== true;
+  const previousSidebarOpen = (0, import_react5.useRef)(effectiveSidebarOpen);
+  const shouldAnimateSidebarColumns = previousSidebarOpen.current !== effectiveSidebarOpen;
+  const contentColumns = `${String(effectiveSidebarOpen ? sidebarWidth : 0)}px minmax(0, 1fr) auto auto`;
+  const titlebarColumns = `${String(effectiveSidebarOpen ? sidebarWidth : COLLAPSED_TITLEBAR_SIDEBAR_WIDTH)}px minmax(0, 1fr)`;
   (0, import_react5.useEffect)(() => {
-    previousSidebarOpen.current = sidebarOpen;
-  }, [sidebarOpen]);
+    previousSidebarOpen.current = effectiveSidebarOpen;
+  }, [effectiveSidebarOpen]);
   const resizeSidebar = (width) => {
     setSidebarWidth(Math.min(MAX_SIDEBAR_WIDTH, Math.max(MIN_SIDEBAR_WIDTH, width)));
   };
@@ -22660,7 +23024,7 @@ function TockTutorRouteView(props) {
       },
       children: [
         /* @__PURE__ */ (0, import_jsx_runtime21.jsxs)("div", { className: "tocktutor-titlebar-sidebar flex min-w-0 items-center justify-start gap-2 border-r border-[var(--tt-border)] pr-2 pl-[46px] [&>button]:inline-flex [&>button]:h-7 [&>button]:w-[22px] [&>button]:items-center [&>button]:justify-center [&>button]:border-0 [&>button]:bg-transparent [&>button]:p-0 [&>button]:text-[var(--tt-muted)] [&>span]:inline-flex [&>span]:h-7 [&>span]:w-[22px] [&>span]:items-center [&>span]:justify-center [&>span]:border-0 [&>span]:bg-transparent [&>span]:p-0 [&>span]:text-[var(--tt-muted)]", children: [
-          sidebarOpen && /* @__PURE__ */ (0, import_jsx_runtime21.jsxs)(import_jsx_runtime21.Fragment, { children: [
+          effectiveSidebarOpen && /* @__PURE__ */ (0, import_jsx_runtime21.jsxs)(import_jsx_runtime21.Fragment, { children: [
             /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("span", { className: "tocktutor-titlebar-document rounded-[5px] bg-[color-mix(in_srgb,var(--tt-text)_8%,transparent)] text-[var(--tt-text)]", children: /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(WorkbenchGlyph, { kind: "document" }) }),
             /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("span", { children: /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(WorkbenchGlyph, { kind: "document" }) }),
             /* @__PURE__ */ (0, import_jsx_runtime21.jsxs)(Tooltip2, { children: [
@@ -22674,7 +23038,7 @@ function TockTutorRouteView(props) {
               Button,
               {
                 unstyled: true,
-                "aria-expanded": sidebarOpen,
+                "aria-expanded": effectiveSidebarOpen,
                 "aria-label": "Toggle Files Sidebar",
                 className: "tocktutor-panel-icon ml-auto border-0 bg-transparent p-1.5 text-[var(--tt-muted)]",
                 onClick: () => {
@@ -22688,41 +23052,56 @@ function TockTutorRouteView(props) {
           ] })
         ] }),
         /* @__PURE__ */ (0, import_jsx_runtime21.jsxs)("div", { className: "tocktutor-titlebar-main flex min-w-0 items-center gap-1 px-2", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime21.jsxs)("span", { className: "tocktutor-history mr-[18px] flex gap-[5px] px-1.5 text-[color-mix(in_srgb,var(--tt-muted)_45%,transparent)]", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(WorkbenchGlyph, { kind: "back" }),
-            /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(WorkbenchGlyph, { kind: "forward" })
+          /* @__PURE__ */ (0, import_jsx_runtime21.jsxs)("span", { className: "tocktutor-history mr-[18px] flex gap-[5px] px-1.5", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(Button, { unstyled: true, "aria-label": "Go Back", className: "border-0 bg-transparent p-1 text-[var(--tt-muted)] disabled:opacity-35", disabled: snapshot.canGoBack !== true, onClick: props.onBack, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(WorkbenchGlyph, { kind: "back" }) }),
+            /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(Button, { unstyled: true, "aria-label": "Go Forward", className: "border-0 bg-transparent p-1 text-[var(--tt-muted)] disabled:opacity-35", disabled: snapshot.canGoForward !== true, onClick: props.onForward, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(WorkbenchGlyph, { kind: "forward" }) })
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("div", { className: "tocktutor-tabs -mx-[calc(var(--tt-tab-curve)*2)] -mb-px flex min-w-0 self-stretch items-end gap-1 overflow-visible px-[calc(var(--tt-tab-curve)*2)] [--tt-tab-curve:10px]", ...focusedPane?.tabs.length ? { "aria-label": "Note Tabs", role: "tablist" } : {}, children: focusedPane?.tabs.map((tab, index2) => /* @__PURE__ */ (0, import_jsx_runtime21.jsxs)(
-            Button,
-            {
-              unstyled: true,
-              "aria-selected": tab.path === focusedPane.activePath,
-              className: "relative z-1 -mb-px flex h-[30px] min-w-[118px] max-w-[220px] items-center gap-3 rounded-t-[10px] border border-b-0 border-[var(--tt-tab-border)] bg-[var(--tt-panel)] px-2.5 shadow-[inset_0_1px_0_rgb(255_255_255_/_18%)] aria-[selected=false]:mb-0.5 aria-[selected=false]:border-b aria-[selected=false]:bg-[color-mix(in_srgb,var(--tt-panel)_70%,transparent)] aria-[selected=false]:text-[var(--tt-muted)] aria-[selected=false]:shadow-none aria-selected:before:pointer-events-none aria-selected:before:absolute aria-selected:before:bottom-[-1px] aria-selected:before:left-[calc(var(--tt-tab-curve)*-2)] aria-selected:before:h-[calc(var(--tt-tab-curve)*2)] aria-selected:before:w-[calc(var(--tt-tab-curve)*2)] aria-selected:before:rounded-full aria-selected:before:content-[''] aria-selected:before:[clip-path:inset(50%_calc(var(--tt-tab-curve)*-1)_0_50%)] aria-selected:before:[box-shadow:inset_0_0_0_1px_var(--tt-tab-border),0_0_0_calc(var(--tt-tab-curve)*4)_var(--tt-panel)] aria-selected:after:pointer-events-none aria-selected:after:absolute aria-selected:after:right-[calc(var(--tt-tab-curve)*-2)] aria-selected:after:bottom-[-1px] aria-selected:after:h-[calc(var(--tt-tab-curve)*2)] aria-selected:after:w-[calc(var(--tt-tab-curve)*2)] aria-selected:after:rounded-full aria-selected:after:content-[''] aria-selected:after:[clip-path:inset(50%_50%_0_calc(var(--tt-tab-curve)*-1))] aria-selected:after:[box-shadow:inset_0_0_0_1px_var(--tt-tab-border),0_0_0_calc(var(--tt-tab-curve)*4)_var(--tt-panel)] [&>span]:truncate [&_svg]:ml-auto [&_svg]:size-3.5",
-              onClick: () => {
-                props.onActivateTab(focusedPane.id, tab.path);
-              },
-              onKeyDown: (event) => {
-                if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
-                event.preventDefault();
-                const offset4 = event.key === "ArrowLeft" ? -1 : 1;
-                const next = focusedPane.tabs[(index2 + offset4 + focusedPane.tabs.length) % focusedPane.tabs.length];
-                if (next !== void 0) props.onActivateTab(focusedPane.id, next.path);
-              },
-              "aria-controls": "tocktutor-note-editor",
-              role: "tab",
-              tabIndex: tab.path === focusedPane.activePath ? 0 : -1,
-              title: tab.path,
-              type: "button",
-              children: [
-                /* @__PURE__ */ (0, import_jsx_runtime21.jsxs)("span", { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("div", { className: "tocktutor-tabs -mx-[calc(var(--tt-tab-curve)*2)] -mb-px flex min-w-0 self-stretch items-end gap-1 overflow-visible px-[calc(var(--tt-tab-curve)*2)] [--tt-tab-curve:10px]", ...focusedPane?.tabs.length ? { "aria-label": "Note Tabs", role: "tablist" } : {}, children: focusedPane?.tabs.map((tab, index2) => /* @__PURE__ */ (0, import_jsx_runtime21.jsxs)("div", { className: "relative", role: "presentation", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(
+              Button,
+              {
+                unstyled: true,
+                "aria-selected": tab.path === focusedPane.activePath,
+                className: "relative z-1 -mb-px flex h-[30px] min-w-[118px] max-w-[220px] items-center gap-3 rounded-t-[10px] border border-b-0 border-[var(--tt-tab-border)] bg-[var(--tt-panel)] px-2.5 shadow-[inset_0_1px_0_rgb(255_255_255_/_18%)] aria-[selected=false]:mb-0.5 aria-[selected=false]:border-b aria-[selected=false]:bg-[color-mix(in_srgb,var(--tt-panel)_70%,transparent)] aria-[selected=false]:text-[var(--tt-muted)] aria-[selected=false]:shadow-none aria-selected:before:pointer-events-none aria-selected:before:absolute aria-selected:before:bottom-[-1px] aria-selected:before:left-[calc(var(--tt-tab-curve)*-2)] aria-selected:before:h-[calc(var(--tt-tab-curve)*2)] aria-selected:before:w-[calc(var(--tt-tab-curve)*2)] aria-selected:before:rounded-full aria-selected:before:content-[''] aria-selected:before:[clip-path:inset(50%_calc(var(--tt-tab-curve)*-1)_0_50%)] aria-selected:before:[box-shadow:inset_0_0_0_1px_var(--tt-tab-border),0_0_0_calc(var(--tt-tab-curve)*4)_var(--tt-panel)] aria-selected:after:pointer-events-none aria-selected:after:absolute aria-selected:after:right-[calc(var(--tt-tab-curve)*-2)] aria-selected:after:bottom-[-1px] aria-selected:after:h-[calc(var(--tt-tab-curve)*2)] aria-selected:after:w-[calc(var(--tt-tab-curve)*2)] aria-selected:after:rounded-full aria-selected:after:content-[''] aria-selected:after:[clip-path:inset(50%_50%_0_calc(var(--tt-tab-curve)*-1))] aria-selected:after:[box-shadow:inset_0_0_0_1px_var(--tt-tab-border),0_0_0_calc(var(--tt-tab-curve)*4)_var(--tt-panel)] [&>span]:truncate [&_svg]:ml-auto [&_svg]:size-3.5",
+                onClick: () => {
+                  props.onActivateTab(focusedPane.id, tab.path);
+                },
+                onKeyDown: (event) => {
+                  if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+                  event.preventDefault();
+                  const offset4 = event.key === "ArrowLeft" ? -1 : 1;
+                  if (event.altKey) {
+                    props.onMoveTab?.(focusedPane.id, tab.path, offset4);
+                    return;
+                  }
+                  const next = focusedPane.tabs[(index2 + offset4 + focusedPane.tabs.length) % focusedPane.tabs.length];
+                  if (next !== void 0) props.onActivateTab(focusedPane.id, next.path);
+                },
+                "aria-controls": "tocktutor-note-editor",
+                role: "tab",
+                tabIndex: tab.path === focusedPane.activePath ? 0 : -1,
+                title: tab.path,
+                type: "button",
+                children: /* @__PURE__ */ (0, import_jsx_runtime21.jsxs)("span", { children: [
                   tab.dirty && /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("span", { "aria-label": "Unsaved", children: "\u2022" }),
+                  tab.pinned === true && /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("span", { "aria-label": "Pinned", children: "\u25C6" }),
                   fileName(tab.path)
-                ] }),
-                tab.path === focusedPane.activePath && /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(WorkbenchGlyph, { kind: "close" })
-              ]
-            },
-            tab.path
-          )) }),
+                ] })
+              }
+            ),
+            /* @__PURE__ */ (0, import_jsx_runtime21.jsxs)("span", { className: "absolute top-1/2 right-1 z-2 flex -translate-y-1/2 gap-0.5", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(Button, { unstyled: true, "aria-label": `${tab.pinned === true ? "Unpin" : "Pin"} ${fileName(tab.path)}`, className: "rounded border-0 bg-transparent p-0.5 text-[var(--tt-muted)]", onClick: () => {
+                props.onTogglePinTab?.(focusedPane.id, tab.path);
+              }, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(Bookmark, { "aria-hidden": "true" }) }),
+              /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(Button, { unstyled: true, "aria-label": `Close ${fileName(tab.path)}`, className: "rounded border-0 bg-transparent p-0.5 text-[var(--tt-muted)]", onClick: () => {
+                props.onCloseTab?.(focusedPane.id, tab.path);
+              }, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(WorkbenchGlyph, { kind: "close" }) })
+            ] })
+          ] }, tab.path)) }),
+          /* @__PURE__ */ (0, import_jsx_runtime21.jsxs)(Tooltip2, { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(TooltipTrigger3, { asChild: true, children: /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("span", { className: "inline-flex", children: /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(Button, { unstyled: true, "aria-label": "Command Palette", className: "border-0 bg-transparent p-1.5 text-[var(--tt-muted)]", disabled: props.onOpenCommandPalette === void 0, onClick: props.onOpenCommandPalette, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(WorkbenchGlyph, { kind: "search" }) }) }) }),
+            /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(TooltipContent3, { children: "Command Palette" })
+          ] }),
           /* @__PURE__ */ (0, import_jsx_runtime21.jsxs)(Tooltip2, { children: [
             /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(TooltipTrigger3, { asChild: true, children: /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("span", { className: "inline-flex", children: /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(Button, { unstyled: true, "aria-label": "New Note", className: "tocktutor-new-tab border-0 bg-transparent p-1.5 text-[var(--tt-muted)]", disabled: props.onNewNote === void 0, onClick: props.onNewNote, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(WorkbenchGlyph, { kind: "new" }) }) }) }),
             /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(TooltipContent3, { children: "New Note" })
@@ -22754,6 +23133,7 @@ function TockTutorRouteView(props) {
     {
       "aria-label": "TockTutor Workbench",
       className: "tocktutor-workbench h-full min-h-0 box-border bg-[var(--tt-bg)] pt-0 text-[var(--tt-text)] [--tt-accent:var(--dsw-alias-accent-primary,#533afd)] [--tt-bg:var(--dsw-alias-bg-base,#fff)] [--tt-border:var(--dsw-alias-border-l1,var(--dsw-alias-border-subtle,#e1e3e7))] [--tt-footer-height:28px] [--tt-muted:var(--dsw-alias-fg-muted,#71717a)] [--tt-panel:var(--dsw-alias-bg-elevated,#fff)] [--tt-selected:color-mix(in_srgb,var(--tt-accent)_14%,var(--tt-panel))] [--tt-text:var(--dsw-alias-fg-primary,#27272a)] [font:14px/1.45_ui-sans-serif,-apple-system,BlinkMacSystemFont,'Segoe_UI',sans-serif] [&_*]:box-border [&_*::after]:box-border [&_*::before]:box-border [&_[hidden]]:!hidden [&_button]:text-inherit [&_button]:[font:inherit] [&_button:focus-visible]:outline-2 [&_button:focus-visible]:outline-offset-2 [&_button:focus-visible]:outline-[var(--tt-accent)] [&_input:focus-visible]:outline-2 [&_input:focus-visible]:outline-offset-2 [&_input:focus-visible]:outline-[var(--tt-accent)] [&_svg]:block [&_svg]:size-4 [&_textarea:focus-visible]:outline-2 [&_textarea:focus-visible]:outline-offset-2 [&_textarea:focus-visible]:outline-[var(--tt-accent)] motion-reduce:[&_*]:!scroll-auto motion-reduce:[&_*]:!delay-0 motion-reduce:[&_*]:!duration-0 motion-reduce:[&_*::after]:!delay-0 motion-reduce:[&_*::after]:!duration-0 motion-reduce:[&_*::before]:!delay-0 motion-reduce:[&_*::before]:!duration-0",
+      "data-focus-mode": snapshot.focusMode === true,
       "data-phase": snapshot.phase,
       tabIndex: -1,
       children: [
@@ -22770,6 +23150,23 @@ function TockTutorRouteView(props) {
             }
           }
         ),
+        snapshot.commandPaletteOpen === true && /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(
+          WorkbenchCommandPalette,
+          {
+            canGoBack: snapshot.canGoBack === true,
+            canGoForward: snapshot.canGoForward === true,
+            canReopen: (snapshot.recentlyClosed?.length ?? 0) > 0,
+            onBack: props.onBack,
+            onClose: () => {
+              props.onCloseCommandPalette?.();
+            },
+            onForward: props.onForward,
+            onNewNote: props.onNewNote,
+            onReopen: props.onReopenClosedTab,
+            onSearch: props.onOpenSearch,
+            onToggleFocus: props.onToggleFocusMode
+          }
+        ),
         /* @__PURE__ */ (0, import_jsx_runtime21.jsxs)(
           "div",
           {
@@ -22782,11 +23179,11 @@ function TockTutorRouteView(props) {
               /* @__PURE__ */ (0, import_jsx_runtime21.jsxs)(
                 "aside",
                 {
-                  "aria-hidden": !sidebarOpen,
+                  "aria-hidden": !effectiveSidebarOpen,
                   "aria-label": "Files",
                   className: "tocktutor-sidebar grid min-h-0 grid-rows-[40px_minmax(0,1fr)_var(--tt-footer-height)] overflow-hidden border-r border-[var(--tt-border)] bg-[var(--tockteam-shell-chrome,var(--tt-panel))] data-[open=false]:invisible data-[open=false]:[transition:visibility_0s_linear_300ms]",
-                  "data-open": sidebarOpen,
-                  ...sidebarOpen ? {} : { inert: "" },
+                  "data-open": effectiveSidebarOpen,
+                  ...effectiveSidebarOpen ? {} : { inert: "" },
                   children: [
                     /* @__PURE__ */ (0, import_jsx_runtime21.jsxs)("header", { className: "tocktutor-sidebar-header flex items-center gap-2.5 border-b border-[var(--tt-border)] px-2.5 [&_svg]:size-3.5", children: [
                       /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("h1", { className: "mr-auto my-0 text-sm font-semibold", children: "Files" }),
@@ -22861,7 +23258,7 @@ function TockTutorRouteView(props) {
                   unstyled: true,
                   "aria-label": `Resize Files Sidebar, ${String(sidebarWidth)} Pixels`,
                   className: "tocktutor-sidebar-resize absolute top-0 bottom-0 z-5 m-0 w-2 touch-none cursor-ew-resize border-0 bg-transparent p-0 outline-none after:absolute after:top-0 after:bottom-0 after:left-[3px] after:w-0.5 after:bg-transparent after:content-[''] focus-visible:after:bg-[var(--tt-accent)]",
-                  hidden: !sidebarOpen,
+                  hidden: !effectiveSidebarOpen,
                   onKeyDown: resizeSidebarWithKeyboard,
                   onPointerDown: beginSidebarResize,
                   style: { left: sidebarWidth - 4 },
@@ -23097,7 +23494,19 @@ function TockTutorRoute(props) {
     const node = root.current;
     if (node === null) return;
     const onKeyDown = (event) => {
-      const shortcut = resolveEditorShortcut(event, /Mac|iPhone|iPad/u.test(globalThis.navigator?.platform ?? ""));
+      const isMac = /Mac|iPhone|iPad/u.test(globalThis.navigator?.platform ?? "");
+      const primary = isMac ? event.metaKey : event.ctrlKey;
+      if (primary && !event.altKey && event.key.toLocaleLowerCase() === "p") {
+        event.preventDefault();
+        controller.setCommandPaletteOpen(true);
+        return;
+      }
+      if (primary && event.shiftKey && !event.altKey && event.key.toLocaleLowerCase() === "t") {
+        event.preventDefault();
+        void controller.reopenClosedTab();
+        return;
+      }
+      const shortcut = resolveEditorShortcut(event, isMac);
       if (shortcut !== "save") return;
       event.preventDefault();
       void controller.save();
@@ -23133,11 +23542,20 @@ function TockTutorRoute(props) {
       onAddPane: () => {
         void controller.addPane();
       },
+      onBack: () => {
+        void controller.goBack();
+      },
       onCancelDispatch: () => {
         controller.cancelDispatchDialog();
       },
+      onCloseCommandPalette: () => {
+        controller.setCommandPaletteOpen(false);
+      },
       onCloseSearch: () => {
         controller.closeSearch();
+      },
+      onCloseTab: (paneId, path) => {
+        void controller.closeTab(paneId, path);
       },
       onEdit: (source) => {
         controller.edit(source);
@@ -23145,17 +23563,29 @@ function TockTutorRoute(props) {
       onFocusPane: (paneId) => {
         void controller.focusPane(paneId);
       },
+      onForward: () => {
+        void controller.goForward();
+      },
       onMode: (mode) => {
         controller.setMode(mode);
       },
       onMoveCanvas: (nodeId, deltaX, deltaY) => {
         controller.moveCanvasNode(nodeId, deltaX, deltaY);
       },
+      onMoveTab: (paneId, path, direction) => {
+        controller.moveTab(paneId, path, direction);
+      },
       onNewNote: () => {
         void controller.handleDispatch({ action: "new", kind: "quick-action", operationId: crypto.randomUUID() });
       },
+      onOpenCommandPalette: () => {
+        controller.setCommandPaletteOpen(true);
+      },
       onOpenSearch: () => {
         controller.openSearch("");
+      },
+      onReopenClosedTab: () => {
+        void controller.reopenClosedTab();
       },
       onSave: () => {
         void controller.save();
@@ -23168,6 +23598,12 @@ function TockTutorRoute(props) {
       },
       onSubmitDispatch: (draft) => {
         void controller.submitDispatchDialog(draft);
+      },
+      onToggleFocusMode: () => {
+        controller.toggleFocusMode();
+      },
+      onTogglePinTab: (paneId, path) => {
+        controller.togglePinTab(paneId, path);
       },
       onToggleTask: (index2) => {
         controller.toggleTask(index2);

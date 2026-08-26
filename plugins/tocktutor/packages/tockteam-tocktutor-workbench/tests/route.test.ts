@@ -768,6 +768,59 @@ test('clears a selected note moved to an unsupported entry type', async () => {
   controller.dispose()
 })
 
+test('pins, reorders, dirty-gates closes, and restores bounded route tabs', async () => {
+  const remote = new FakeRemote()
+  const controller = new WorkbenchRouteController(remote, () => {})
+  await controller.syncLocation('/tocktutor')
+  assert.equal(await controller.select('Folder/Note.md'), true)
+  assert.equal(await controller.select('Second.md'), true)
+
+  controller.togglePinTab('pane-1', 'Folder/Note.md')
+  controller.moveTab('pane-1', 'Second.md', -1)
+  let pane = controller.getSnapshot().panes[0]!
+  assert.deepEqual(pane.tabs.map(tab => [tab.path, tab.pinned]), [
+    ['Second.md', false],
+    ['Folder/Note.md', true],
+  ])
+
+  controller.edit('# Dirty close\n')
+  remote.saveFailure = { code: 'conflict', message: 'changed' }
+  assert.equal(await controller.closeTab('pane-1', 'Second.md'), false)
+  assert.equal(controller.getSnapshot().path, 'Second.md')
+
+  remote.saveFailure = null
+  assert.equal(await controller.closeTab('pane-1', 'Second.md'), true)
+  assert.equal(controller.getSnapshot().path, 'Folder/Note.md')
+  assert.equal(await controller.reopenClosedTab(), true)
+  pane = controller.getSnapshot().panes[0]!
+  assert.equal(pane.activePath, 'Second.md')
+  assert.equal(pane.tabs.at(-1)?.path, 'Second.md')
+  controller.dispose()
+})
+
+test('navigates note history and exposes command-palette and focus-mode shell state', async () => {
+  const remote = new FakeRemote()
+  const controller = new WorkbenchRouteController(remote, () => {})
+  await controller.syncLocation('/tocktutor')
+  assert.equal(await controller.select('Folder/Note.md'), true)
+  assert.equal(await controller.select('Second.md'), true)
+  assert.equal(controller.getSnapshot().canGoBack, true)
+
+  assert.equal(await controller.goBack(), true)
+  assert.equal(controller.getSnapshot().path, 'Folder/Note.md')
+  assert.equal(controller.getSnapshot().canGoForward, true)
+  assert.equal(await controller.goForward(), true)
+  assert.equal(controller.getSnapshot().path, 'Second.md')
+
+  controller.setCommandPaletteOpen(true)
+  assert.equal(controller.getSnapshot().commandPaletteOpen, true)
+  controller.toggleFocusMode()
+  assert.equal(controller.getSnapshot().focusMode, true)
+  controller.setCommandPaletteOpen(false)
+  assert.equal(controller.getSnapshot().commandPaletteOpen, false)
+  controller.dispose()
+})
+
 test('late note and vault completions cannot replace the active route identity', async () => {
   const remote = new FakeRemote()
   const first = deferred<{ ok: true; value: OpenDocumentResult }>()
