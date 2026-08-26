@@ -72,15 +72,6 @@ Folder: `.agents/references/`
 | `tocktutor.md`     | TockTutor plugin and package contracts        |
 | `usage.md`         | Installation, operations, and troubleshooting |
 
-
-| Interface                     | Use For                                                                |
-| ----------------------------- | ---------------------------------------------------------------------- |
-| `codegraph_explore`           | Primary MCP query for architecture, flows, symbols, source, and impact |
-| `codegraph explore "<query>"` | Equivalent CLI fallback                                                |
-| `codegraph status`            | Index health and synchronization status                                |
-
-The generated `.codegraph/codegraph.db` stays local and ignored. Commit only `.codegraph/.gitignore` from that directory.
-
 ## Development Guidelines
 
 - Must reuse `plugins/shared/surface.ts`. Never provide a TockTeam surface as `ctx.web`; DSH owns that service name.
@@ -140,6 +131,14 @@ Runtime-generated capability endpoints, tokens, profile names, versions, and dat
 ## CodeGraph
 
 Use CodeGraph when this checkout has a `.codegraph/codegraph.db` semantic index. Run `codegraph init` once in a new checkout. Prefer it for structural exploration, call flows, and impact analysis; use text/file search for literal strings, filenames, documentation, configuration, or when CodeGraph is unavailable.
+
+| Interface                     | Use For                                                                |
+| ----------------------------- | ---------------------------------------------------------------------- |
+| `codegraph_explore`           | Primary MCP query for architecture, flows, symbols, source, and impact |
+| `codegraph explore "<query>"` | Equivalent CLI fallback                                                |
+| `codegraph status`            | Index health and synchronization status                                |
+
+The generated `.codegraph/codegraph.db` stays local and ignored. Commit only `.codegraph/.gitignore` from that directory.
 
 - Prefer one `codegraph_explore` query that names the flow, file, or symbols you need. It returns current source, relationships, call paths, and blast radius together.
 - Treat returned source blocks as already read. Do not repeat the same discovery with grep or file reads.
