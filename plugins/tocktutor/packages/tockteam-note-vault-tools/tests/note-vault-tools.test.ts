@@ -13,6 +13,7 @@ import type {
   VaultReadArgs,
   VaultReference,
   VaultSearchArgs,
+  VaultSearchResult,
 } from 'tockbot-note-runtime'
 import { apply, inject } from '../src/index.ts'
 
@@ -74,6 +75,8 @@ class TestNoteVault extends Service {
     signal: AbortSignal
   }> = []
   error: Error | null = null
+  notesSearchResult: (VaultSearchResult & { generation: number }) | null = null
+  notesReadContent: string | null = null
 
   constructor(ctx: Context) {
     super(ctx, 'noteVault')
@@ -212,7 +215,7 @@ class TestNoteVault extends Service {
     if (this.error !== null) throw this.error
     return {
       path: args.path,
-      content: `content:${args.path}`,
+      content: this.notesReadContent ?? `content:${args.path}`,
       generation: expectedVault.generation,
     }
   }
@@ -220,7 +223,7 @@ class TestNoteVault extends Service {
   async search(args: VaultSearchArgs, expectedVault: VaultReference, signal: AbortSignal) {
     this.searches.push({ args, expectedVault, signal })
     if (this.error !== null) throw this.error
-    return {
+    return this.notesSearchResult ?? {
       query: args.query,
       matches: [],
       truncated: false,
@@ -421,6 +424,147 @@ test('vault_search preserves its schema, result, rendering, and runtime call', a
     assert.deepEqual(
       tool.output.render(args, result as never),
       [{ type: 'text', text: JSON.stringify(result, undefined, 2) }],
+    )
+  } finally {
+    await loaded.context.fiber.dispose()
+  }
+})
+
+test('notes_search adapts the active generation into TockDriver citations without exposing source details', async () => {
+  const loaded = await load()
+  try {
+    loaded.noteVault.notesSearchResult = {
+      query: 'launch',
+      matches: [
+        {
+          path: 'Notes/Launch.md',
+          kind: 'content',
+          line: 3,
+          preview: 'Bearer private /Users/max/secret launch plan',
+        },
+        {
+          path: 'Notes/Launch.md',
+          kind: 'path',
+          line: null,
+          preview: 'Launch',
+        },
+      ],
+      truncated: true,
+      cursor: null,
+      scan: { bytes: 64, entries: 2, files: 2 },
+      truncationReason: 'file-limit',
+      warnings: ['Notes/Huge.md: exceeds the per-file scan limit'],
+      generation: 7,
+    }
+    const tool = loaded.tools.definitions.get('notes_search')
+    assert.ok(tool)
+    assert.deepEqual(tool.parameters, {
+      vaultId: { type: 'string', description: 'Opaque id of the active Notes vault.', required: true },
+      query: { type: 'string', description: 'Text or terms to search.', required: true },
+      mode: {
+        type: 'string',
+        enum: ['keyword', 'semantic'],
+        description: 'Keyword matching by default, or bounded local related matching.',
+      },
+      limit: { type: 'integer', description: 'Maximum citations, capped at 25.' },
+    })
+    const signal = new AbortController().signal
+    const result = await tool.execute({
+      vaultId: 'vault:test',
+      query: 'launch',
+      mode: 'semantic',
+      limit: 4,
+    }, execution(signal))
+    assert.deepEqual(result, {
+      vaultId: 'vault:test',
+      query: 'launch',
+      mode: 'semantic',
+      citations: [{
+        path: 'Notes/Launch.md',
+        title: 'Launch',
+        line: 3,
+        snippet: 'Bearer [REDACTED] [REDACTED] launch plan',
+        matchType: 'semantic',
+      }],
+      omittedFiles: 1,
+      truncated: true,
+    })
+    assert.deepEqual(loaded.noteVault.searches.at(-1), {
+      args: { query: 'launch', mode: 'related', limit: 4 },
+      expectedVault: { generation: 7, id: 'vault:test' },
+      signal,
+    })
+    assert.doesNotMatch(JSON.stringify(result), /\/Users\/max|private|secret/u)
+    assert.deepEqual(
+      tool.output.render({}, result as never),
+      [{ type: 'text', text: JSON.stringify(result, undefined, 2) }],
+    )
+  } finally {
+    await loaded.context.fiber.dispose()
+  }
+})
+
+test('notes_read returns a bounded redacted canonical note result and rejects another vault', async () => {
+  const loaded = await load()
+  try {
+    loaded.noteVault.notesReadContent = `# Launch\n\nBearer private /Users/max/secret\n${'x'.repeat(70_000)}`
+    const tool = loaded.tools.definitions.get('notes_read')
+    assert.ok(tool)
+    const signal = new AbortController().signal
+    const result = await tool.execute({ vaultId: 'vault:test', path: 'Notes/Launch.md' }, execution(signal)) as {
+      vaultId: string
+      path: string
+      title: string
+      content: string
+      truncated?: boolean
+    }
+    assert.equal(result.vaultId, 'vault:test')
+    assert.equal(result.path, 'Notes/Launch.md')
+    assert.equal(result.title, 'Launch')
+    assert.equal(result.truncated, true)
+    assert.ok(result.content.length <= 64_000)
+    assert.doesNotMatch(JSON.stringify(result), /\/Users\/max|private|secret/u)
+    assert.deepEqual(loaded.noteVault.reads.at(-1), {
+      args: { path: 'Notes/Launch.md' },
+      expectedVault: { generation: 7, id: 'vault:test' },
+      signal,
+    })
+    await assert.rejects(
+      tool.execute({ vaultId: 'vault:other', path: 'Notes/Launch.md' }, execution(signal)),
+      /not the active vault/u,
+    )
+    assert.equal(loaded.noteVault.reads.length, 1)
+  } finally {
+    await loaded.context.fiber.dispose()
+  }
+})
+
+test('notes compatibility tools fail closed on cancellation, malformed paths, and stale generations', async () => {
+  const loaded = await load()
+  try {
+    const aborted = new AbortController()
+    aborted.abort('Bearer secret /Users/max')
+    await assert.rejects(
+      loaded.tools.definitions.get('notes_search')!.execute({ vaultId: 'vault:test', query: 'x' }, execution(aborted.signal)),
+      error => error instanceof Error && error.name === 'AbortError' && !String(error).includes('/Users/max'),
+    )
+    await assert.rejects(
+      loaded.tools.definitions.get('notes_read')!.execute({ vaultId: 'vault:test', path: '../secret.md' }, execution(new AbortController().signal)),
+      /safe vault-relative Markdown path/u,
+    )
+    loaded.noteVault.notesSearchResult = {
+      query: 'x',
+      matches: [],
+      truncated: false,
+      cursor: null,
+      scan: { bytes: 0, entries: 0, files: 0 },
+      truncationReason: null,
+      warnings: [],
+      generation: 8,
+    }
+    await assert.rejects(
+      loaded.tools.definitions.get('notes_search')!.execute({ vaultId: 'vault:test', query: 'x' }, execution(new AbortController().signal)),
+      /invalid bounded result/u,
     )
   } finally {
     await loaded.context.fiber.dispose()
@@ -775,6 +919,8 @@ test('vault_facets preserves bounded additive counts and all eight public names'
     assert.deepEqual([...loaded.tools.definitions.keys()], [
       'vault_search',
       'vault_read',
+      'notes_search',
+      'notes_read',
       'vault_list',
       'vault_links',
       'vault_outline',

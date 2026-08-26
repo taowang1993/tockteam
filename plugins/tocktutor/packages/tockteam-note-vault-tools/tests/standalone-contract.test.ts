@@ -18,7 +18,7 @@ function publicContract(tool: ToolDefinition) {
   }
 }
 
-test('all eight public contracts exactly match standalone note-vault 0.6.0', async () => {
+test('the eight vault contracts still exactly match standalone note-vault 0.6.0 beside Notes aliases', async () => {
   const root = await mkdtemp(join(tmpdir(), 'note-vault-contract-'))
   try {
     const expected: ToolDefinition[] = []
@@ -39,11 +39,16 @@ test('all eight public contracts exactly match standalone note-vault 0.6.0', asy
       tools: { register(tool: ToolDefinition) { actual.push(tool) } },
     } as unknown as Context)
 
-    assert.deepEqual(actual.map(publicContract), expected.map(publicContract))
-    assert.equal(actual.length, 8)
-    for (let index = 0; index < actual.length; index += 1) {
+    const actualVault = actual.filter(tool => tool.name.startsWith('vault_'))
+    assert.deepEqual(actualVault.map(publicContract), expected.map(publicContract))
+    assert.equal(actualVault.length, 8)
+    assert.deepEqual(actual.filter(tool => tool.name.startsWith('notes_')).map(tool => tool.name), [
+      'notes_search',
+      'notes_read',
+    ])
+    for (let index = 0; index < actualVault.length; index += 1) {
       const expectedTool = expected[index]
-      const actualTool = actual[index]
+      const actualTool = actualVault[index]
       assert.ok(expectedTool && actualTool)
       assert.equal(actualTool.isConcurrencySafe?.({}), expectedTool.isConcurrencySafe?.({}))
       const value = (actualTool.name === 'vault_read'
