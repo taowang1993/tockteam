@@ -16,6 +16,7 @@ import {
   type ChangeEvent,
   type FormEvent,
   type KeyboardEvent as ReactKeyboardEvent,
+  type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from 'react'
@@ -26,7 +27,6 @@ import {
   ArrowRight,
   ArrowUp,
   Bookmark,
-  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Ellipsis,
@@ -65,13 +65,12 @@ import {
   projectLivePreview,
   replaceLivePreviewLine,
 } from './live-preview.ts'
+import { renderMarkdownHtml } from './rich-markdown.ts'
 import {
   editorStatusLabel,
-  projectReading,
   resolveEditorShortcut,
   toggleMarkdownTask,
   type EditorStatus,
-  type ReadingBlock,
 } from './markdown.ts'
 import {
   addPaneGroup,
@@ -1063,29 +1062,34 @@ export class WorkbenchRouteController {
   }
 }
 
-function ReadingBlockView(props: {
-  block: ReadingBlock
+function RichReadingView(props: {
   onToggleTask(index: number): void
+  source: string
 }): ReactNode {
-  const { block } = props
-  switch (block.kind) {
-    case 'heading': {
-      const Tag = `h${String(block.level)}` as keyof JSX.IntrinsicElements
-      return <Tag>{block.level === 1 && <ChevronDown aria-hidden="true" />}{block.text}</Tag>
+  const html = useMemo(() => {
+    const warning = /<\/?(?:script|style|iframe|object|embed|form|svg|link|meta)\b/iu.test(props.source)
+      ? '<p class="tocktutor-warning" role="note">Unsafe HTML is inert in Reading view.</p>'
+      : ''
+    return `${warning}${renderMarkdownHtml(props.source)}`
+  }, [props.source])
+  const onClick = (event: ReactMouseEvent<HTMLElement>): void => {
+    const target = event.target
+    if (target instanceof HTMLInputElement && target.dataset.taskIndex !== undefined) {
+      const index = Number(target.dataset.taskIndex)
+      if (Number.isSafeInteger(index) && index >= 0) props.onToggleTask(index)
+      return
     }
-    case 'paragraph': return <p>{block.text}</p>
-    case 'code': return <pre><code>{block.text}</code></pre>
-    case 'task': return (
-      <Label unstyled className="tocktutor-task my-2 flex items-start gap-2">
-        <Checkbox
-          aria-label={`Mark ${block.text} as ${block.checked ? 'incomplete' : 'complete'}`}
-          checked={block.checked}
-          onCheckedChange={() => { props.onToggleTask(block.index) }}
-        />
-        <span>{block.text}</span>
-      </Label>
-    )
+    if (target instanceof HTMLAnchorElement) event.preventDefault()
   }
+  return (
+    <article
+      aria-label="Reading View"
+      className="tocktutor-reading mx-auto min-h-full w-[calc(100%-48px)] max-w-3xl pt-[18px] pb-[72px] [&_.callout]:my-4 [&_.callout]:rounded-md [&_.footnotes]:mt-8 [&_.math-display]:my-4 [&_.mermaid]:my-4 [&_.task-list]:pl-5 [&_h1]:mt-0 [&_h1]:mb-4 [&_h1]:text-[30px] [&_h1]:leading-tight [&_h1]:font-[650] [&_h2]:mt-6 [&_h2]:mb-3 [&_h2]:text-2xl [&_h3]:mt-5 [&_h3]:mb-2 [&_h3]:text-xl [&_mark]:bg-[color-mix(in_srgb,#fde047_55%,transparent)] [&_p]:mt-0 [&_p]:mb-4 [&_p]:text-lg [&_pre]:overflow-auto [&_pre]:rounded-md [&_pre]:border [&_pre]:border-[var(--tt-border)] [&_pre]:bg-[color-mix(in_srgb,var(--tt-text)_4%,var(--tt-panel))] [&_pre]:p-3 [&_table]:my-4 [&_table]:w-full [&_table]:border-collapse [&_td]:border [&_td]:border-[var(--tt-border)] [&_td]:p-2 [&_th]:border [&_th]:border-[var(--tt-border)] [&_th]:p-2"
+      dangerouslySetInnerHTML={{ __html: html }}
+      onClick={onClick}
+      tabIndex={-1}
+    />
+  )
 }
 
 function LivePreviewView(props: {
@@ -1460,11 +1464,6 @@ function TreeEntries(props: {
 /** Semantic, authority-free view for the route state machine. */
 export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
   const { snapshot } = props
-  const reading = snapshot.path === null
-    || snapshot.mode !== 'reading'
-    || snapshot.documentKind !== 'markdown'
-    ? null
-    : projectReading(snapshot.source)
   const previewLabel = snapshot.documentKind === 'canvas'
     ? 'Canvas'
     : snapshot.documentKind === 'base' ? 'Base' : 'Reading'
@@ -1842,19 +1841,10 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
               <CanvasView onMove={props.onMoveCanvas} source={snapshot.source} />
             ) : snapshot.documentKind === 'base' ? (
               <BaseView source={snapshot.source} />
-            ) : reading?.status === 'ready' ? (
-              <article aria-label="Reading View" className="tocktutor-reading mx-auto min-h-full w-[calc(100%-48px)] max-w-3xl pt-[18px] pb-[72px] [&_h1]:mt-0 [&_h1]:mb-4 [&_h1]:text-[30px] [&_h1]:leading-tight [&_h1]:font-[650] [&_h1>svg]:mr-1.5 [&_h1>svg]:ml-[-20px] [&_h1>svg]:inline-block [&_h1>svg]:size-3.5 [&_h1>svg]:-translate-y-[3px] [&_h1>svg]:text-[color-mix(in_srgb,var(--tt-muted)_45%,transparent)] [&_h2]:mt-0 [&_h2]:mb-4 [&_h2]:text-2xl [&_h2]:leading-tight [&_h2]:font-[650] [&_h3]:mt-0 [&_h3]:mb-4 [&_h3]:text-xl [&_h3]:leading-tight [&_h3]:font-[650] [&_p]:mt-0 [&_p]:mb-4 [&_p]:text-lg [&_pre]:overflow-auto [&_pre]:rounded-md [&_pre]:border [&_pre]:border-[var(--tt-border)] [&_pre]:bg-[color-mix(in_srgb,var(--tt-text)_4%,var(--tt-panel))] [&_pre]:p-3" tabIndex={-1}>
-                {reading.warnings.map(warning => <p className="tocktutor-warning border-l-[3px] border-[#b7791f] pl-2.5 text-[var(--tt-muted)]" key={warning} role="note">{warning}</p>)}
-                {reading.blocks.map((block, index) => (
-                  <ReadingBlockView
-                    block={block}
-                    key={`${block.kind}-${String(index)}`}
-                    onToggleTask={props.onToggleTask}
-                  />
-                ))}
-              </article>
+            ) : snapshot.documentKind === 'markdown' ? (
+              <RichReadingView onToggleTask={props.onToggleTask} source={snapshot.source} />
             ) : (
-              <Alert unstyled>{reading?.reason ?? 'Reading view is unavailable.'}</Alert>
+              <Alert unstyled>Reading view is unavailable.</Alert>
             )}
           </div>
           <footer aria-label="TockTutor Status Bar" className="tocktutor-statusbar flex min-w-0 items-center border-t border-[var(--tt-border)] px-2 text-xs text-[var(--tt-muted)]" role="group">

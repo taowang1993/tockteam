@@ -33,6 +33,9 @@ var client_exports = {};
 __export(client_exports, {
   MAX_LIVE_PREVIEW_LINE_BYTES: () => MAX_LIVE_PREVIEW_LINE_BYTES,
   MAX_LIVE_PREVIEW_SOURCE_BYTES: () => MAX_LIVE_PREVIEW_SOURCE_BYTES,
+  MAX_RICH_MARKDOWN_BLOCKS: () => MAX_RICH_MARKDOWN_BLOCKS,
+  MAX_RICH_MARKDOWN_BYTES: () => MAX_RICH_MARKDOWN_BYTES,
+  MAX_RICH_MARKDOWN_FOOTNOTES: () => MAX_RICH_MARKDOWN_FOOTNOTES,
   MAX_ROUTE_SOURCE_BYTES: () => MAX_ROUTE_SOURCE_BYTES,
   TOCKTUTOR_ASSISTANT_PANEL_SLOT: () => TOCKTUTOR_ASSISTANT_PANEL_SLOT,
   TOCKTUTOR_NATIVE_ACTIONS_SLOT: () => TOCKTUTOR_NATIVE_ACTIONS_SLOT,
@@ -41,11 +44,15 @@ __export(client_exports, {
   TockTutorRouteView: () => TockTutorRouteView,
   WorkbenchRouteController: () => WorkbenchRouteController,
   apply: () => apply,
+  buildMarkdownExportDocument: () => buildMarkdownExportDocument,
+  buildMarkdownSlides: () => buildMarkdownSlides,
+  escapeMarkdownHtml: () => escapeMarkdownHtml,
   inject: () => inject,
   isNoteVaultChangeEvent: () => isNoteVaultChangeEvent,
   name: () => name,
   pathFromTockTutorLocation: () => pathFromTockTutorLocation,
   projectLivePreview: () => projectLivePreview,
+  renderMarkdownHtml: () => renderMarkdownHtml,
   replaceLivePreviewLine: () => replaceLivePreviewLine,
   subscribeNoteVaultChanges: () => subscribeNoteVaultChanges
 });
@@ -1309,16 +1316,16 @@ function cleanEnum(obj) {
 }
 function base64ToUint8Array(base643) {
   const binaryString = atob(base643);
-  const bytes = new Uint8Array(binaryString.length);
+  const bytes2 = new Uint8Array(binaryString.length);
   for (let i = 0; i < binaryString.length; i++) {
-    bytes[i] = binaryString.charCodeAt(i);
+    bytes2[i] = binaryString.charCodeAt(i);
   }
-  return bytes;
+  return bytes2;
 }
-function uint8ArrayToBase64(bytes) {
+function uint8ArrayToBase64(bytes2) {
   let binaryString = "";
-  for (let i = 0; i < bytes.length; i++) {
-    binaryString += String.fromCharCode(bytes[i]);
+  for (let i = 0; i < bytes2.length; i++) {
+    binaryString += String.fromCharCode(bytes2[i]);
   }
   return btoa(binaryString);
 }
@@ -1327,22 +1334,22 @@ function base64urlToUint8Array(base64url3) {
   const padding = "=".repeat((4 - base643.length % 4) % 4);
   return base64ToUint8Array(base643 + padding);
 }
-function uint8ArrayToBase64url(bytes) {
-  return uint8ArrayToBase64(bytes).replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
+function uint8ArrayToBase64url(bytes2) {
+  return uint8ArrayToBase64(bytes2).replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
 }
 function hexToUint8Array(hex3) {
   const cleanHex = hex3.replace(/^0x/, "");
   if (cleanHex.length % 2 !== 0) {
     throw new Error("Invalid hex string length");
   }
-  const bytes = new Uint8Array(cleanHex.length / 2);
+  const bytes2 = new Uint8Array(cleanHex.length / 2);
   for (let i = 0; i < cleanHex.length; i += 2) {
-    bytes[i / 2] = Number.parseInt(cleanHex.slice(i, i + 2), 16);
+    bytes2[i / 2] = Number.parseInt(cleanHex.slice(i, i + 2), 16);
   }
-  return bytes;
+  return bytes2;
 }
-function uint8ArrayToHex(bytes) {
-  return Array.from(bytes).map((b) => b.toString(16).padStart(2, "0")).join("");
+function uint8ArrayToHex(bytes2) {
+  return Array.from(bytes2).map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 var Class = class {
   constructor(..._args) {
@@ -16384,38 +16391,34 @@ var Bookmark = createLucideIcon("Bookmark", __iconNode5);
 var __iconNode6 = [["path", { d: "M20 6 9 17l-5-5", key: "1gmf2c" }]];
 var Check = createLucideIcon("Check", __iconNode6);
 
-// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/chevron-down.js
-var __iconNode7 = [["path", { d: "m6 9 6 6 6-6", key: "qrunsl" }]];
-var ChevronDown = createLucideIcon("ChevronDown", __iconNode7);
-
 // ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/chevron-left.js
-var __iconNode8 = [["path", { d: "m15 18-6-6 6-6", key: "1wnfg3" }]];
-var ChevronLeft = createLucideIcon("ChevronLeft", __iconNode8);
+var __iconNode7 = [["path", { d: "m15 18-6-6 6-6", key: "1wnfg3" }]];
+var ChevronLeft = createLucideIcon("ChevronLeft", __iconNode7);
 
 // ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/chevron-right.js
-var __iconNode9 = [["path", { d: "m9 18 6-6-6-6", key: "mthhwq" }]];
-var ChevronRight = createLucideIcon("ChevronRight", __iconNode9);
+var __iconNode8 = [["path", { d: "m9 18 6-6-6-6", key: "mthhwq" }]];
+var ChevronRight = createLucideIcon("ChevronRight", __iconNode8);
 
 // ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/ellipsis.js
-var __iconNode10 = [
+var __iconNode9 = [
   ["circle", { cx: "12", cy: "12", r: "1", key: "41hilf" }],
   ["circle", { cx: "19", cy: "12", r: "1", key: "1wjl8i" }],
   ["circle", { cx: "5", cy: "12", r: "1", key: "1pcz8c" }]
 ];
-var Ellipsis = createLucideIcon("Ellipsis", __iconNode10);
+var Ellipsis = createLucideIcon("Ellipsis", __iconNode9);
 
 // ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/file-text.js
-var __iconNode11 = [
+var __iconNode10 = [
   ["path", { d: "M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z", key: "1rqfz7" }],
   ["path", { d: "M14 2v4a2 2 0 0 0 2 2h4", key: "tnqrlb" }],
   ["path", { d: "M10 9H8", key: "b1mrlr" }],
   ["path", { d: "M16 13H8", key: "t4e002" }],
   ["path", { d: "M16 17H8", key: "z1uh3a" }]
 ];
-var FileText = createLucideIcon("FileText", __iconNode11);
+var FileText = createLucideIcon("FileText", __iconNode10);
 
 // ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/folder.js
-var __iconNode12 = [
+var __iconNode11 = [
   [
     "path",
     {
@@ -16424,45 +16427,45 @@ var __iconNode12 = [
     }
   ]
 ];
-var Folder = createLucideIcon("Folder", __iconNode12);
+var Folder = createLucideIcon("Folder", __iconNode11);
 
 // ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/message-square.js
-var __iconNode13 = [
+var __iconNode12 = [
   ["path", { d: "M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z", key: "1lielz" }]
 ];
-var MessageSquare = createLucideIcon("MessageSquare", __iconNode13);
+var MessageSquare = createLucideIcon("MessageSquare", __iconNode12);
 
 // ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/music.js
-var __iconNode14 = [
+var __iconNode13 = [
   ["path", { d: "M9 18V5l12-2v13", key: "1jmyc2" }],
   ["circle", { cx: "6", cy: "18", r: "3", key: "fqmcym" }],
   ["circle", { cx: "18", cy: "16", r: "3", key: "1hluhg" }]
 ];
-var Music = createLucideIcon("Music", __iconNode14);
+var Music = createLucideIcon("Music", __iconNode13);
 
 // ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/panel-left.js
-var __iconNode15 = [
+var __iconNode14 = [
   ["rect", { width: "18", height: "18", x: "3", y: "3", rx: "2", key: "afitv7" }],
   ["path", { d: "M9 3v18", key: "fh3hqa" }]
 ];
-var PanelLeft = createLucideIcon("PanelLeft", __iconNode15);
+var PanelLeft = createLucideIcon("PanelLeft", __iconNode14);
 
 // ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/panel-right.js
-var __iconNode16 = [
+var __iconNode15 = [
   ["rect", { width: "18", height: "18", x: "3", y: "3", rx: "2", key: "afitv7" }],
   ["path", { d: "M15 3v18", key: "14nvp0" }]
 ];
-var PanelRight = createLucideIcon("PanelRight", __iconNode16);
+var PanelRight = createLucideIcon("PanelRight", __iconNode15);
 
 // ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/panel-top.js
-var __iconNode17 = [
+var __iconNode16 = [
   ["rect", { width: "18", height: "18", x: "3", y: "3", rx: "2", key: "afitv7" }],
   ["path", { d: "M3 9h18", key: "1pudct" }]
 ];
-var PanelTop = createLucideIcon("PanelTop", __iconNode17);
+var PanelTop = createLucideIcon("PanelTop", __iconNode16);
 
 // ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/pencil.js
-var __iconNode18 = [
+var __iconNode17 = [
   [
     "path",
     {
@@ -16472,36 +16475,36 @@ var __iconNode18 = [
   ],
   ["path", { d: "m15 5 4 4", key: "1mk7zo" }]
 ];
-var Pencil = createLucideIcon("Pencil", __iconNode18);
+var Pencil = createLucideIcon("Pencil", __iconNode17);
 
 // ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/plus.js
-var __iconNode19 = [
+var __iconNode18 = [
   ["path", { d: "M5 12h14", key: "1ays0h" }],
   ["path", { d: "M12 5v14", key: "s699le" }]
 ];
-var Plus = createLucideIcon("Plus", __iconNode19);
+var Plus = createLucideIcon("Plus", __iconNode18);
 
 // ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/search.js
-var __iconNode20 = [
+var __iconNode19 = [
   ["circle", { cx: "11", cy: "11", r: "8", key: "4ej97u" }],
   ["path", { d: "m21 21-4.3-4.3", key: "1qie3q" }]
 ];
-var Search = createLucideIcon("Search", __iconNode20);
+var Search = createLucideIcon("Search", __iconNode19);
 
 // ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/upload.js
-var __iconNode21 = [
+var __iconNode20 = [
   ["path", { d: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4", key: "ih7n3h" }],
   ["polyline", { points: "17 8 12 3 7 8", key: "t8dd8p" }],
   ["line", { x1: "12", x2: "12", y1: "3", y2: "15", key: "widbto" }]
 ];
-var Upload = createLucideIcon("Upload", __iconNode21);
+var Upload = createLucideIcon("Upload", __iconNode20);
 
 // ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/x.js
-var __iconNode22 = [
+var __iconNode21 = [
   ["path", { d: "M18 6 6 18", key: "1bl5f8" }],
   ["path", { d: "m6 6 12 12", key: "d8bk6v" }]
 ];
-var X = createLucideIcon("X", __iconNode22);
+var X = createLucideIcon("X", __iconNode21);
 
 // ../../../ui/src/checkbox.tsx
 var import_jsx_runtime6 = require("react/jsx-runtime");
@@ -21603,19 +21606,252 @@ function replaceLivePreviewLine(source, index2, replacement) {
   return `${source.slice(0, line.start)}${replacement}${line.separator}${source.slice(line.end)}`;
 }
 
-// src/markdown.ts
-var MAX_MARKDOWN_BYTES = 1e6;
-var MAX_MARKDOWN_LINES = 1e4;
-var MAX_MARKDOWN_LINE_LENGTH = 16384;
-var MAX_READING_BLOCKS = 4096;
-function isSafeExternalUrl(value) {
-  try {
-    const url2 = new URL(value);
-    return (url2.protocol === "http:" || url2.protocol === "https:") && url2.username === "" && url2.password === "";
-  } catch {
-    return false;
-  }
+// src/rich-markdown.ts
+var MAX_RICH_MARKDOWN_BYTES = 2e6;
+var MAX_RICH_MARKDOWN_BLOCKS = 2e4;
+var MAX_RICH_MARKDOWN_FOOTNOTES = 1e3;
+function bytes(value) {
+  return new TextEncoder().encode(value).byteLength;
 }
+function escapeMarkdownHtml(value) {
+  return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#39;");
+}
+function safeUrl(value) {
+  const trimmed = value.trim();
+  if (trimmed.length === 0 || trimmed.length > 4096 || /[\u0000-\u001f\u007f]/u.test(trimmed)) return null;
+  if (/^(?:https?:|mailto:)/iu.test(trimmed)) {
+    try {
+      const url2 = new URL(trimmed);
+      if ((url2.protocol === "http:" || url2.protocol === "https:") && (url2.username !== "" || url2.password !== "")) return null;
+      return url2.toString();
+    } catch {
+      return null;
+    }
+  }
+  if (/^(?:#|\.\.?\/|\/)?[^:\s\\]+(?:[/?#][^\s\\]*)?$/u.test(trimmed) && !trimmed.split("/").includes("..")) return trimmed;
+  return null;
+}
+var SAFE_RAW_TAG = /^<\/?(?:br|code|del|em|kbd|mark|s|small|strong|sub|sup|u)>$/iu;
+function renderInline(source, footnoteNumbers) {
+  const tokens = [];
+  const hold = (html) => {
+    const token = `\0${String(tokens.length)}\0`;
+    tokens.push(html);
+    return token;
+  };
+  let text = source;
+  text = text.replace(/<[^>]{1,200}>/gu, (tag) => SAFE_RAW_TAG.test(tag) ? hold(tag.toLocaleLowerCase()) : tag);
+  text = text.replace(/`([^`\n]{0,10000})`/gu, (_match, code) => hold(`<code>${escapeMarkdownHtml(code)}</code>`));
+  text = escapeMarkdownHtml(text);
+  text = text.replace(/!\[([^\]\n]{0,1000})\]\(([^)\n]{1,4096})\)/gu, (match, alt, target) => {
+    const url2 = safeUrl(target);
+    return url2 === null || !/^(?:data:image\/|(?:https?:)?\/|\.\.?\/|[^:]+$)/iu.test(url2) ? escapeMarkdownHtml(match) : `<img alt="${escapeMarkdownHtml(alt)}" loading="lazy" referrerpolicy="no-referrer" src="${escapeMarkdownHtml(url2)}">`;
+  });
+  text = text.replace(/\[([^\]\n]{1,2000})\]\(([^)\n]{1,4096})\)/gu, (match, label, target) => {
+    const url2 = safeUrl(target);
+    return url2 === null ? escapeMarkdownHtml(match) : `<a href="${escapeMarkdownHtml(url2)}" rel="noopener noreferrer">${label}</a>`;
+  });
+  text = text.replace(/\[\[([^\]\n]{1,2000})(?:\|([^\]\n]{0,2000}))?\]\]/gu, (_match, target, alias) => {
+    const path = safeUrl(target);
+    return path === null ? escapeMarkdownHtml(`[[${target}${alias === void 0 ? "" : `|${alias}`}]]`) : `<a class="internal-link" data-target="${escapeMarkdownHtml(path)}" href="#">${escapeMarkdownHtml(alias ?? target)}</a>`;
+  });
+  text = text.replace(/\[\^([^\]\n]{1,200})\]/gu, (match, label) => {
+    const number4 = footnoteNumbers.get(label.toLocaleLowerCase());
+    return number4 === void 0 ? match : `<sup class="footnote-ref"><a href="#fn-${String(number4)}">${String(number4)}</a></sup>`;
+  });
+  text = text.replace(/\^\[([^\]\n]{1,2000})\]/gu, (_match, value) => hold(`<sup class="footnote-inline">${renderInline(value, footnoteNumbers)}</sup>`));
+  text = text.replace(/\$([^$\n]{1,20000})\$/gu, (_match, value) => `<span class="math-inline" role="math">${escapeMarkdownHtml(value)}</span>`);
+  text = text.replace(/==([^=\n]{1,20000})==/gu, "<mark>$1</mark>");
+  text = text.replace(/~~([^~\n]{1,20000})~~/gu, "<del>$1</del>");
+  text = text.replace(/\*\*([^*\n]{1,20000})\*\*/gu, "<strong>$1</strong>");
+  text = text.replace(/(?<!\*)\*([^*\n]{1,20000})\*(?!\*)/gu, "<em>$1</em>");
+  text = text.replace(/\u0000(\d+)\u0000/gu, (_match, index2) => tokens[Number(index2)] ?? "");
+  return text;
+}
+function stripLeadingFrontmatter(markdown) {
+  if (!markdown.startsWith("---\n") && !markdown.startsWith("---\r\n")) return markdown;
+  const lines = markdown.split(/\r?\n/u);
+  const end = lines.findIndex((line, index2) => index2 > 0 && (line === "---" || line === "..."));
+  return end < 0 ? markdown : lines.slice(end + 1).join("\n");
+}
+function stripComments(markdown) {
+  let result = "";
+  let index2 = 0;
+  while (index2 < markdown.length) {
+    const start = markdown.indexOf("%%", index2);
+    if (start < 0) return result + markdown.slice(index2);
+    const end = markdown.indexOf("%%", start + 2);
+    if (end < 0 || end - start > 1e5) return result + markdown.slice(index2);
+    result += markdown.slice(index2, start);
+    index2 = end + 2;
+  }
+  return result;
+}
+function collectFootnotes(lines) {
+  const definitions = [];
+  const numbers = /* @__PURE__ */ new Map();
+  const hidden = /* @__PURE__ */ new Set();
+  for (let index2 = 0; index2 < lines.length && definitions.length < MAX_RICH_MARKDOWN_FOOTNOTES; index2 += 1) {
+    const match = lines[index2]?.match(/^\[\^([^\]]{1,200})\]:\s*(.*)$/u);
+    if (match === void 0 || match === null) continue;
+    const key = match[1].toLocaleLowerCase();
+    if (numbers.has(key)) continue;
+    const number4 = definitions.length + 1;
+    numbers.set(key, number4);
+    definitions.push({ label: match[1], number: number4, text: match[2] });
+    hidden.add(index2);
+  }
+  return { definitions, numbers, hidden };
+}
+function tableDelimiter(line) {
+  const cells = line.trim().replace(/^\|/u, "").replace(/\|$/u, "").split("|");
+  return cells.length >= 2 && cells.every((cell) => /^\s*:?-{3,}:?\s*$/u.test(cell));
+}
+function tableCells(line) {
+  return line.trim().replace(/^\|/u, "").replace(/\|$/u, "").split("|").map((cell) => cell.trim());
+}
+function paragraphHtml(lines, strict, footnotes) {
+  if (lines.length === 0) return "";
+  let html = renderInline(lines[0].replace(/[ \t]+$/u, ""), footnotes);
+  for (let index2 = 1; index2 < lines.length; index2 += 1) {
+    const previous = lines[index2 - 1];
+    const separator = !strict || / {2,}$/u.test(previous) ? "<br>" : " ";
+    html += `${separator}${renderInline(lines[index2].replace(/[ \t]+$/u, ""), footnotes)}`;
+  }
+  return `<p>${html}</p>`;
+}
+function renderMarkdownHtml(markdown, options = {}) {
+  if (bytes(markdown) > MAX_RICH_MARKDOWN_BYTES) return `<pre>${escapeMarkdownHtml(markdown.slice(0, MAX_RICH_MARKDOWN_BYTES))}</pre>`;
+  const source = stripComments(stripLeadingFrontmatter(markdown)).replaceAll("\r\n", "\n").replaceAll("\r", "\n");
+  const lines = source.split("\n");
+  const footnotes = collectFootnotes(lines);
+  const blocks = [];
+  let paragraph = [];
+  let taskIndex = 0;
+  const flush = () => {
+    if (paragraph.length === 0) return;
+    blocks.push(paragraphHtml(paragraph, options.strictLineBreaks === true, footnotes.numbers));
+    paragraph = [];
+  };
+  for (let index2 = 0; index2 < lines.length && blocks.length < MAX_RICH_MARKDOWN_BLOCKS; index2 += 1) {
+    const line = lines[index2];
+    if (footnotes.hidden.has(index2)) {
+      flush();
+      continue;
+    }
+    const fence2 = line.match(/^ {0,3}(`{3,}|~{3,})\s*([^\s]*)\s*$/u);
+    if (fence2 !== null) {
+      flush();
+      const marker = fence2[1];
+      const language = fence2[2].toLocaleLowerCase();
+      const code = [];
+      index2 += 1;
+      while (index2 < lines.length && !new RegExp(`^ {0,3}${marker[0]}{${String(marker.length)},}\\s*$`, "u").test(lines[index2])) {
+        code.push(lines[index2]);
+        index2 += 1;
+      }
+      const escaped = escapeMarkdownHtml(code.join("\n"));
+      blocks.push(language === "mermaid" ? `<figure class="mermaid" data-language="mermaid"><pre>${escaped}</pre></figure>` : `<pre data-language="${escapeMarkdownHtml(language)}"><code>${escaped}</code></pre>`);
+      continue;
+    }
+    const displayMath = line.match(/^\s*\$\$(.{1,20000})\$\$\s*$/u);
+    if (displayMath !== null) {
+      flush();
+      blocks.push(`<div class="math-display" role="math">${escapeMarkdownHtml(displayMath[1])}</div>`);
+      continue;
+    }
+    const heading2 = line.match(/^ {0,3}(#{1,6})\s+(.+?)\s*#*\s*$/u);
+    if (heading2 !== null) {
+      flush();
+      const level = heading2[1].length;
+      blocks.push(`<h${String(level)}>${renderInline(heading2[2], footnotes.numbers)}</h${String(level)}>`);
+      continue;
+    }
+    const callout = line.match(/^>\s*\[!([A-Za-z0-9_-]+)\]([+-])?(?:\s+(.*))?$/u);
+    if (callout !== null) {
+      flush();
+      const body = [];
+      while (index2 + 1 < lines.length && /^> ?/u.test(lines[index2 + 1])) {
+        index2 += 1;
+        body.push(lines[index2].replace(/^> ?/u, ""));
+      }
+      const type = callout[1].toLocaleLowerCase();
+      const title = callout[3] ?? type[0].toLocaleUpperCase() + type.slice(1);
+      blocks.push(`<aside class="callout callout-${escapeMarkdownHtml(type)}" data-fold="${callout[2] === "-" ? "closed" : "open"}"><strong>${renderInline(title, footnotes.numbers)}</strong>${paragraphHtml(body, options.strictLineBreaks === true, footnotes.numbers)}</aside>`);
+      continue;
+    }
+    if (index2 + 1 < lines.length && line.includes("|") && tableDelimiter(lines[index2 + 1])) {
+      flush();
+      const headers = tableCells(line);
+      index2 += 1;
+      const rows = [];
+      while (index2 + 1 < lines.length && lines[index2 + 1].includes("|") && lines[index2 + 1].trim() !== "") {
+        index2 += 1;
+        rows.push(tableCells(lines[index2]));
+      }
+      blocks.push(`<table><thead><tr>${headers.map((cell) => `<th>${renderInline(cell, footnotes.numbers)}</th>`).join("")}</tr></thead><tbody>${rows.map((row) => `<tr>${headers.map((_header, cell) => `<td>${renderInline(row[cell] ?? "", footnotes.numbers)}</td>`).join("")}</tr>`).join("")}</tbody></table>`);
+      continue;
+    }
+    const task = line.match(/^\s{0,64}[-+*]\s+\[([^\]])\]\s*(.*)$/u);
+    if (task !== null) {
+      flush();
+      blocks.push(`<ul class="task-list"><li><input aria-label="Task" data-task-index="${String(taskIndex)}" type="checkbox"${task[1] === " " ? "" : " checked"}> ${renderInline(task[2], footnotes.numbers)}</li></ul>`);
+      taskIndex += 1;
+      continue;
+    }
+    const list = line.match(/^\s{0,64}([-+*]|\d{1,9}[.)])\s+(.*)$/u);
+    if (list !== null) {
+      flush();
+      const ordered = /^\d/u.test(list[1]);
+      blocks.push(`<${ordered ? "ol" : "ul"}><li>${renderInline(list[2], footnotes.numbers)}</li></${ordered ? "ol" : "ul"}>`);
+      continue;
+    }
+    if (/^ {0,3}(?:-{3,}|\*{3,}|_{3,})\s*$/u.test(line)) {
+      flush();
+      blocks.push("<hr>");
+      continue;
+    }
+    if (line.trim() === "") {
+      flush();
+      continue;
+    }
+    paragraph.push(line);
+  }
+  flush();
+  if (footnotes.definitions.length > 0) {
+    blocks.push(`<section class="footnotes"><ol>${footnotes.definitions.map((definition) => `<li id="fn-${String(definition.number)}">${renderInline(definition.text, footnotes.numbers)}</li>`).join("")}</ol></section>`);
+  }
+  return blocks.join("\n");
+}
+function buildMarkdownSlides(markdown, options = {}) {
+  if (bytes(markdown) > MAX_RICH_MARKDOWN_BYTES) return [renderMarkdownHtml(markdown, options)];
+  const lines = markdown.replaceAll("\r\n", "\n").replaceAll("\r", "\n").split("\n");
+  const slides = [];
+  let current = [];
+  let fence2 = null;
+  for (const line of lines) {
+    const marker = line.match(/^ {0,3}(`{3,}|~{3,})/u)?.[1];
+    if (marker !== void 0) {
+      if (fence2 === null) fence2 = { character: marker[0], length: marker.length };
+      else if (marker[0] === fence2.character && marker.length >= fence2.length && /^ {0,3}(?:`{3,}|~{3,})\s*$/u.test(line)) fence2 = null;
+      current.push(line);
+      continue;
+    }
+    if (fence2 === null && /^ {0,3}---\s*$/u.test(line)) {
+      slides.push(renderMarkdownHtml(current.join("\n"), options));
+      current = [];
+    } else current.push(line);
+  }
+  slides.push(renderMarkdownHtml(current.join("\n"), options));
+  return slides;
+}
+function buildMarkdownExportDocument(options) {
+  const title = escapeMarkdownHtml(options.title.slice(0, 1e3));
+  const body = renderMarkdownHtml(options.markdown, options);
+  return `<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data: blob:; media-src data: blob:; style-src 'unsafe-inline';"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title><style>body{font:16px/1.6 system-ui,sans-serif;max-width:780px;margin:40px auto;padding:0 24px;color:#202124}pre,code{font-family:ui-monospace,monospace}pre{overflow:auto;padding:12px;background:#f5f5f5}table{border-collapse:collapse;width:100%}th,td{border:1px solid #ccc;padding:6px}.callout{border-left:4px solid #6750a4;padding:8px 12px;background:#f7f5ff}.math-display{text-align:center}.footnotes{border-top:1px solid #ddd}</style></head><body>${body}</body></html>`;
+}
+
+// src/markdown.ts
 function sourceLines2(source) {
   const result = [];
   let start = 0;
@@ -21683,113 +21919,6 @@ function taskLocations(source) {
     });
   }
   return locations;
-}
-function inlineLinks(text) {
-  const links = [];
-  const pattern = /(!?)\[([^\]\n]{0,512})\]\(([^)\n]{1,4096})\)/gu;
-  for (const match of text.matchAll(pattern)) {
-    const resource = match[1] === "!";
-    const label = match[2] ?? "";
-    const target = match[3]?.trim() ?? "";
-    const safe = !resource && isSafeExternalUrl(target);
-    links.push({
-      label,
-      href: safe ? target : null,
-      inert: !safe,
-      resource
-    });
-  }
-  return links;
-}
-function containsUnsafeMarkup(text) {
-  return /<\/?(?:script|style|iframe|object|embed|form|img|audio|video|svg|link|meta)\b[^>]*>/iu.test(text);
-}
-function displayText(text) {
-  return text.replace(/^\s*[-*+]\s+/u, "").replace(/^\s*\d+[.)]\s+/u, "");
-}
-function projectReading(source) {
-  if (new TextEncoder().encode(source).byteLength > MAX_MARKDOWN_BYTES) {
-    return { status: "unsupported", reason: "Markdown document exceeds the reading limit." };
-  }
-  const lines = sourceLines2(source);
-  if (lines.length > MAX_MARKDOWN_LINES || lines.some((line) => line.text.length > MAX_MARKDOWN_LINE_LENGTH)) {
-    return { status: "unsupported", reason: "Markdown document exceeds the line limit." };
-  }
-  const blocks = [];
-  const warnings = [];
-  let commentOpen = false;
-  let fenceMarker2 = null;
-  let fenceLanguage = "";
-  let fenceLines = [];
-  let paragraph = [];
-  let taskIndex = 0;
-  const flushParagraph = () => {
-    if (paragraph.length === 0) return;
-    const text = paragraph.join("\n").trim();
-    paragraph = [];
-    if (text === "") return;
-    if (containsUnsafeMarkup(text)) warnings.push("Unsafe HTML is inert in Reading view.");
-    const links = inlineLinks(text);
-    if (links.some((link) => link.inert)) warnings.push("Local, credential-bearing, or resource links remain inert.");
-    blocks.push({ kind: "paragraph", text, links });
-  };
-  for (const line of lines) {
-    const masked = maskComments(line.text, commentOpen);
-    commentOpen = masked.open;
-    const visible = masked.text;
-    const fenceMatch = fence(visible);
-    if (fenceMarker2 !== null) {
-      if (fenceMatch !== null && fenceMatch.marker[0] === fenceMarker2[0] && fenceMatch.marker.length >= fenceMarker2.length && fenceMatch.rest.trim() === "") {
-        blocks.push({ kind: "code", language: fenceLanguage, text: fenceLines.join("\n") });
-        if (blocks.length > MAX_READING_BLOCKS) return { status: "unsupported", reason: "Reading projection exceeds the block limit." };
-        fenceMarker2 = null;
-        fenceLanguage = "";
-        fenceLines = [];
-      } else {
-        fenceLines.push(line.text);
-      }
-      continue;
-    }
-    if (fenceMatch !== null) {
-      flushParagraph();
-      fenceMarker2 = fenceMatch.marker;
-      fenceLanguage = fenceMatch.rest.trim().split(/\s+/u)[0] ?? "";
-      fenceLines = [];
-      continue;
-    }
-    const trimmed = visible.trim();
-    if (trimmed === "") {
-      flushParagraph();
-      continue;
-    }
-    const heading2 = /^(#{1,6})\s+(.+?)\s*#*$/u.exec(trimmed);
-    if (heading2 !== null) {
-      flushParagraph();
-      blocks.push({ kind: "heading", level: heading2[1].length, text: heading2[2] });
-      continue;
-    }
-    const task = taskMatch(visible);
-    if (task !== null) {
-      flushParagraph();
-      blocks.push({
-        kind: "task",
-        index: taskIndex,
-        text: task.body,
-        checked: task.marker !== " "
-      });
-      taskIndex += 1;
-      continue;
-    }
-    paragraph.push(displayText(visible));
-  }
-  if (fenceMarker2 !== null) {
-    blocks.push({ kind: "code", language: fenceLanguage, text: fenceLines.join("\n") });
-    warnings.push("Unclosed code fence remains a literal code block.");
-  } else {
-    flushParagraph();
-  }
-  if (blocks.length > MAX_READING_BLOCKS) return { status: "unsupported", reason: "Reading projection exceeds the block limit." };
-  return { status: "ready", source, blocks, warnings: [...new Set(warnings)] };
 }
 function toggleMarkdownTask(source, taskIndex) {
   if (!Number.isSafeInteger(taskIndex) || taskIndex < 0) return source;
@@ -22823,35 +22952,30 @@ ${text}`;
     this.listeners.clear();
   }
 };
-function ReadingBlockView(props) {
-  const { block } = props;
-  switch (block.kind) {
-    case "heading": {
-      const Tag = `h${String(block.level)}`;
-      return /* @__PURE__ */ (0, import_jsx_runtime21.jsxs)(Tag, { children: [
-        block.level === 1 && /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(ChevronDown, { "aria-hidden": "true" }),
-        block.text
-      ] });
+function RichReadingView(props) {
+  const html = (0, import_react5.useMemo)(() => {
+    const warning = /<\/?(?:script|style|iframe|object|embed|form|svg|link|meta)\b/iu.test(props.source) ? '<p class="tocktutor-warning" role="note">Unsafe HTML is inert in Reading view.</p>' : "";
+    return `${warning}${renderMarkdownHtml(props.source)}`;
+  }, [props.source]);
+  const onClick = (event) => {
+    const target = event.target;
+    if (target instanceof HTMLInputElement && target.dataset.taskIndex !== void 0) {
+      const index2 = Number(target.dataset.taskIndex);
+      if (Number.isSafeInteger(index2) && index2 >= 0) props.onToggleTask(index2);
+      return;
     }
-    case "paragraph":
-      return /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("p", { children: block.text });
-    case "code":
-      return /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("pre", { children: /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("code", { children: block.text }) });
-    case "task":
-      return /* @__PURE__ */ (0, import_jsx_runtime21.jsxs)(Label, { unstyled: true, className: "tocktutor-task my-2 flex items-start gap-2", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(
-          Checkbox3,
-          {
-            "aria-label": `Mark ${block.text} as ${block.checked ? "incomplete" : "complete"}`,
-            checked: block.checked,
-            onCheckedChange: () => {
-              props.onToggleTask(block.index);
-            }
-          }
-        ),
-        /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("span", { children: block.text })
-      ] });
-  }
+    if (target instanceof HTMLAnchorElement) event.preventDefault();
+  };
+  return /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(
+    "article",
+    {
+      "aria-label": "Reading View",
+      className: "tocktutor-reading mx-auto min-h-full w-[calc(100%-48px)] max-w-3xl pt-[18px] pb-[72px] [&_.callout]:my-4 [&_.callout]:rounded-md [&_.footnotes]:mt-8 [&_.math-display]:my-4 [&_.mermaid]:my-4 [&_.task-list]:pl-5 [&_h1]:mt-0 [&_h1]:mb-4 [&_h1]:text-[30px] [&_h1]:leading-tight [&_h1]:font-[650] [&_h2]:mt-6 [&_h2]:mb-3 [&_h2]:text-2xl [&_h3]:mt-5 [&_h3]:mb-2 [&_h3]:text-xl [&_mark]:bg-[color-mix(in_srgb,#fde047_55%,transparent)] [&_p]:mt-0 [&_p]:mb-4 [&_p]:text-lg [&_pre]:overflow-auto [&_pre]:rounded-md [&_pre]:border [&_pre]:border-[var(--tt-border)] [&_pre]:bg-[color-mix(in_srgb,var(--tt-text)_4%,var(--tt-panel))] [&_pre]:p-3 [&_table]:my-4 [&_table]:w-full [&_table]:border-collapse [&_td]:border [&_td]:border-[var(--tt-border)] [&_td]:p-2 [&_th]:border [&_th]:border-[var(--tt-border)] [&_th]:p-2",
+      dangerouslySetInnerHTML: { __html: html },
+      onClick,
+      tabIndex: -1
+    }
+  );
 }
 function LivePreviewView(props) {
   const projection = (0, import_react5.useMemo)(() => projectLivePreview(props.source), [props.source]);
@@ -23157,7 +23281,6 @@ function TreeEntries(props) {
 }
 function TockTutorRouteView(props) {
   const { snapshot } = props;
-  const reading = snapshot.path === null || snapshot.mode !== "reading" || snapshot.documentKind !== "markdown" ? null : projectReading(snapshot.source);
   const previewLabel = snapshot.documentKind === "canvas" ? "Canvas" : snapshot.documentKind === "base" ? "Base" : "Reading";
   const sourceLabel = snapshot.documentKind === "canvas" ? "Canvas Source" : snapshot.documentKind === "base" ? "Base Source" : "Markdown Source";
   const query = snapshot.searchQuery.trim().toLocaleLowerCase();
@@ -23569,17 +23692,7 @@ function TockTutorRouteView(props) {
                     onToggleTask: props.onToggleTask,
                     source: snapshot.source
                   }
-                ) : snapshot.documentKind === "canvas" ? /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(CanvasView, { onMove: props.onMoveCanvas, source: snapshot.source }) : snapshot.documentKind === "base" ? /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(BaseView, { source: snapshot.source }) : reading?.status === "ready" ? /* @__PURE__ */ (0, import_jsx_runtime21.jsxs)("article", { "aria-label": "Reading View", className: "tocktutor-reading mx-auto min-h-full w-[calc(100%-48px)] max-w-3xl pt-[18px] pb-[72px] [&_h1]:mt-0 [&_h1]:mb-4 [&_h1]:text-[30px] [&_h1]:leading-tight [&_h1]:font-[650] [&_h1>svg]:mr-1.5 [&_h1>svg]:ml-[-20px] [&_h1>svg]:inline-block [&_h1>svg]:size-3.5 [&_h1>svg]:-translate-y-[3px] [&_h1>svg]:text-[color-mix(in_srgb,var(--tt-muted)_45%,transparent)] [&_h2]:mt-0 [&_h2]:mb-4 [&_h2]:text-2xl [&_h2]:leading-tight [&_h2]:font-[650] [&_h3]:mt-0 [&_h3]:mb-4 [&_h3]:text-xl [&_h3]:leading-tight [&_h3]:font-[650] [&_p]:mt-0 [&_p]:mb-4 [&_p]:text-lg [&_pre]:overflow-auto [&_pre]:rounded-md [&_pre]:border [&_pre]:border-[var(--tt-border)] [&_pre]:bg-[color-mix(in_srgb,var(--tt-text)_4%,var(--tt-panel))] [&_pre]:p-3", tabIndex: -1, children: [
-                  reading.warnings.map((warning) => /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("p", { className: "tocktutor-warning border-l-[3px] border-[#b7791f] pl-2.5 text-[var(--tt-muted)]", role: "note", children: warning }, warning)),
-                  reading.blocks.map((block, index2) => /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(
-                    ReadingBlockView,
-                    {
-                      block,
-                      onToggleTask: props.onToggleTask
-                    },
-                    `${block.kind}-${String(index2)}`
-                  ))
-                ] }) : /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(Alert, { unstyled: true, children: reading?.reason ?? "Reading view is unavailable." }) }),
+                ) : snapshot.documentKind === "canvas" ? /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(CanvasView, { onMove: props.onMoveCanvas, source: snapshot.source }) : snapshot.documentKind === "base" ? /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(BaseView, { source: snapshot.source }) : snapshot.documentKind === "markdown" ? /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(RichReadingView, { onToggleTask: props.onToggleTask, source: snapshot.source }) : /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(Alert, { unstyled: true, children: "Reading view is unavailable." }) }),
                 /* @__PURE__ */ (0, import_jsx_runtime21.jsxs)("footer", { "aria-label": "TockTutor Status Bar", className: "tocktutor-statusbar flex min-w-0 items-center border-t border-[var(--tt-border)] px-2 text-xs text-[var(--tt-muted)]", role: "group", children: [
                   /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("output", { "aria-live": "polite", className: "tocktutor-message absolute size-px overflow-hidden whitespace-nowrap [clip:rect(0_0_0_0)] [clip-path:inset(50%)]", children: snapshot.message }),
                   snapshot.path !== null && /* @__PURE__ */ (0, import_jsx_runtime21.jsxs)("div", { className: "ml-auto flex items-center gap-[18px] whitespace-nowrap max-[760px]:gap-2", children: [
@@ -23925,7 +24038,6 @@ lucide-react/dist/esm/icons/arrow-right.js:
 lucide-react/dist/esm/icons/arrow-up.js:
 lucide-react/dist/esm/icons/bookmark.js:
 lucide-react/dist/esm/icons/check.js:
-lucide-react/dist/esm/icons/chevron-down.js:
 lucide-react/dist/esm/icons/chevron-left.js:
 lucide-react/dist/esm/icons/chevron-right.js:
 lucide-react/dist/esm/icons/ellipsis.js:

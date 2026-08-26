@@ -14,4 +14,5 @@ export * from "./canvas.js";
 export * from "./base.js";
 export * from "./markdown.js";
 export * from "./live-preview.js";
+export * from "./rich-markdown.js";
 //# sourceMappingURL=index.js.map
