@@ -2022,6 +2022,14 @@ test('passive backup authority lists, reads, and exclusively restores only inert
         }, signal),
         error => error instanceof NoteVaultError && error.code === 'exists',
       )
+      await assert.rejects(
+        loaded.context.noteVault.restorePassiveBackupEntry({
+          data: new Uint8Array(),
+          expectedVault,
+          path: '.obsidian/Ａ.json',
+        }, signal),
+        error => error instanceof NoteVaultError && error.code === 'exists',
+      )
       for (const rejected of ['main.js', 'module.wasm', 'native.node', 'icon.svg', '\u202e.json']) {
         await assert.rejects(
           loaded.context.noteVault.restorePassiveBackupEntry({
@@ -2060,6 +2068,23 @@ test('passive backup authority lists, reads, and exclusively restores only inert
         ),
       )
       await rm(join(vault, '.obsidian', 'plugins', 'demo', 'alias.json'))
+      const switched = loaded.context.noteVault.state
+      if (!switched.active) assert.fail('second vault must be active')
+      const rebound = loaded.context.noteVault.activate(vault, switched.generation)
+      if (!rebound.active) assert.fail('original vault must reactivate')
+      await duringFirstFileRead(
+        dataPath,
+        () => { loaded.context.noteVault.activate(secondVault, rebound.generation) },
+        async () => assert.rejects(
+          loaded.context.noteVault.restorePassiveBackupEntry({
+            data: new TextEncoder().encode('{"stale":true}\n'),
+            expectedVault: { id: rebound.id, generation: rebound.generation },
+            path: '.obsidian/preferences/stale.json',
+          }, signal),
+          error => error instanceof NoteVaultError && error.code === 'partial',
+        ),
+      )
+      assert.equal(await readFile(join(vault, '.obsidian', 'preferences', 'stale.json'), 'utf8'), '{"stale":true}\n')
     } finally {
       await dispose(loaded.context, loaded.root)
     }

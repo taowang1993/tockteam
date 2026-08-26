@@ -1537,6 +1537,9 @@ async function scanPassiveBackupEntries(root, config, signal) {
 }
 async function readPassiveBackupFile(root, request, signal) {
     signal.throwIfAborted();
+    if (NOFOLLOW === 0) {
+        throw new NoteVaultError('unavailable', 'Passive backup requires no-follow file access');
+    }
     const relativePath = normalizePassiveBackupPath(request.path);
     if (typeof request.expectedRevision !== 'string' || !/^file:[0-9a-f]{64}$/u.test(request.expectedRevision)) {
         throw new NoteVaultError('changed', 'Passive backup entry revision changed');
@@ -1585,10 +1588,46 @@ async function readPassiveBackupFile(root, request, signal) {
         await handle.close().catch(() => undefined);
     }
 }
-async function ensurePassiveBackupParent(root, relativePath) {
+async function assertPassiveSiblingUnaliased(directory, name, maxEntries) {
+    const expected = passiveBackupAliasKey(name);
+    let scanned = 0;
+    const stream = await opendir(directory);
+    for await (const entry of stream) {
+        scanned += 1;
+        if (scanned > maxEntries) {
+            throw new NoteVaultError('too-large', 'Passive backup destination exceeds the configured entry limit');
+        }
+        if (entry.name !== name && passiveBackupAliasKey(entry.name) === expected) {
+            throw new NoteVaultError('exists', 'A passive backup alias already exists at that path');
+        }
+    }
+}
+async function assertPassiveDestinationUnaliased(root, relativePath, maxEntries) {
+    const parts = relativePath.split('/');
+    let cursor = root;
+    for (const [index, part] of parts.entries()) {
+        await assertPassiveSiblingUnaliased(cursor, part, maxEntries);
+        if (index === parts.length - 1)
+            return;
+        cursor = path.join(cursor, part);
+        try {
+            const entry = await lstat(cursor, { bigint: true });
+            if (!entry.isDirectory() || entry.isSymbolicLink()) {
+                throw new NoteVaultError('unsafe-target', 'Passive backup folders must be regular directories');
+            }
+        }
+        catch (error) {
+            if (error.code === 'ENOENT')
+                return;
+            throw error;
+        }
+    }
+}
+async function ensurePassiveBackupParent(root, relativePath, maxEntries) {
     const parts = relativePath.split('/');
     let cursor = root;
     for (const part of parts.slice(0, -1)) {
+        await assertPassiveSiblingUnaliased(cursor, part, maxEntries);
         cursor = path.join(cursor, part);
         try {
             await mkdir(cursor, { mode: 0o700 });
@@ -1603,6 +1642,7 @@ async function ensurePassiveBackupParent(root, relativePath) {
         }
         assertInside(root, await realpath(cursor));
     }
+    await assertPassiveSiblingUnaliased(cursor, parts.at(-1), maxEntries);
     return await bindDestinationParent(root, path.join(root, ...parts));
 }
 function treeCursorKey(vault, maxEntries, maxDepth) {
@@ -2923,6 +2963,9 @@ export class NoteVaultRuntime extends Service {
     async restorePassiveBackupEntry(request, signal) {
         const { root, state } = this.captureExpectedVault(request.expectedVault);
         signal.throwIfAborted();
+        if (NOFOLLOW === 0) {
+            throw new NoteVaultError('unavailable', 'Passive backup requires no-follow file access');
+        }
         if (!(request.data instanceof Uint8Array)) {
             throw new NoteVaultError('invalid-content', 'Passive backup data must be a byte array');
         }
@@ -2934,12 +2977,13 @@ export class NoteVaultRuntime extends Service {
         assertInside(root, candidate);
         let committed = false;
         try {
-            const parent = await ensurePassiveBackupParent(root, relativePath);
+            const parent = await ensurePassiveBackupParent(root, relativePath, this.treeConfig.maxEntries);
             const data = Buffer.from(request.data);
             await writeDocumentAtomic(candidate, data, true, async () => {
                 signal.throwIfAborted();
                 this.assertCapturedVault(state, root);
                 await assertDestinationParentBound(root, parent);
+                await assertPassiveDestinationUnaliased(root, relativePath, this.treeConfig.maxEntries);
             });
             committed = true;
             const claimed = await lstat(candidate, { bigint: true });
@@ -2948,6 +2992,8 @@ export class NoteVaultRuntime extends Service {
                 expectedVault: request.expectedVault,
                 path: relativePath,
             }, POST_COMMIT_SIGNAL);
+            await assertPassiveDestinationUnaliased(root, relativePath, this.treeConfig.maxEntries);
+            this.assertCapturedVault(state, root);
             if (entry.digest !== `sha256:${createHash('sha256').update(data).digest('hex')}`) {
                 throw new NoteVaultError('partial', 'Passive backup entry was restored with unexpected bytes');
             }
