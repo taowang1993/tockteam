@@ -403,25 +403,44 @@ export function FileView({
   t: Translate<WorkspaceMessage>
 }): JSX.Element {
   const cwd = scope?.cwd
-  const [snapshot, setSnapshot] = useState<WorkspaceFilesResponse | null>(null)
-  const [error, setError] = useState('')
   const path = tab.resource
+  const requestKey = cwd === undefined || path === undefined || scope === undefined
+    ? ''
+    : `${scope.sessionId}\u0000${cwd}\u0000${path}`
+  const [file, setFile] = useState<{
+    error: string
+    key: string
+    snapshot: WorkspaceFilesResponse | null
+  }>({ error: '', key: '', snapshot: null })
+  const current = file.key === requestKey ? file : { error: '', key: requestKey, snapshot: null }
 
   useEffect(() => {
     if (cwd === undefined || path === undefined || scope === undefined) return
     const controller = new AbortController()
+    setFile({ error: '', key: requestKey, snapshot: null })
     void betterSidebarApi.fsRead(scope, path, controller.signal).then(
       result => {
-        setSnapshot(mapBetterSidebarFile(cwd, path, result))
-        setError('')
+        if (!controller.signal.aborted) {
+          setFile({
+            error: '',
+            key: requestKey,
+            snapshot: mapBetterSidebarFile(cwd, path, result),
+          })
+        }
       },
     ).catch((next: unknown) => {
       if (!controller.signal.aborted) {
-        setError(next instanceof Error ? next.message : String(next))
+        setFile({
+          error: next instanceof Error ? next.message : String(next),
+          key: requestKey,
+          snapshot: null,
+        })
       }
     })
     return () => { controller.abort() }
-  }, [cwd, path, scope?.sessionId])
+  }, [cwd, path, requestKey, scope?.sessionId])
+
+  const { error, snapshot } = current
 
   if (cwd === undefined || path === undefined) {
     return <Empty unstyled className="tockteam-side-empty p-[18px] text-[11px] text-[var(--dsw-alias-label-tertiary,#8c959f)]">{t('files.select-workspace')}</Empty>
