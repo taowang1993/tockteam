@@ -16121,7 +16121,7 @@ var TOCKTUTOR_WEB_VIEWER_PANEL_SLOT = "tockteam.tocktutor.workbench.web-viewer";
 // ../../../ui/src/alert.tsx
 var React = __toESM(require("react"), 1);
 
-// ../../node_modules/.pnpm/clsx@2.1.1/node_modules/clsx/dist/clsx.mjs
+// ../../../../node_modules/.pnpm/clsx@2.1.1/node_modules/clsx/dist/clsx.mjs
 function r(e) {
   var t, f, n = "";
   if ("string" == typeof e || "number" == typeof e) n += e;
@@ -16136,7 +16136,7 @@ function clsx() {
   return n;
 }
 
-// ../../node_modules/.pnpm/class-variance-authority@0.7.1/node_modules/class-variance-authority/dist/index.mjs
+// ../../../../node_modules/.pnpm/class-variance-authority@0.7.1/node_modules/class-variance-authority/dist/index.mjs
 var falsyToString = (value) => typeof value === "boolean" ? `${value}` : value === 0 ? "0" : value;
 var cx = clsx;
 var cva = (base, config2) => (props) => {
@@ -16262,10 +16262,10 @@ var Button = React2.forwardRef(function Button2({
   );
 });
 
-// ../../node_modules/.pnpm/@radix-ui+react-checkbox@1.3.11_@types+react-dom@18.3.7_@types+react@18.3.31__@types+re_d2d3b056ba3fe73f123b9078be168b78/node_modules/@radix-ui/react-checkbox/dist/index.mjs
+// ../../../../node_modules/.pnpm/@radix-ui+react-checkbox@1.3.11_@types+react-dom@18.3.7_@types+react@18.3.31__@types+re_d2d3b056ba3fe73f123b9078be168b78/node_modules/@radix-ui/react-checkbox/dist/index.mjs
 var React12 = __toESM(require("react"), 1);
 
-// ../../node_modules/.pnpm/@radix-ui+react-compose-refs@1.1.5_@types+react@18.3.31_react@18.3.1/node_modules/@radix-ui/react-compose-refs/dist/index.mjs
+// ../../../../node_modules/.pnpm/@radix-ui+react-compose-refs@1.1.5_@types+react@18.3.31_react@18.3.1/node_modules/@radix-ui/react-compose-refs/dist/index.mjs
 var React3 = __toESM(require("react"), 1);
 var __defProp2 = Object.defineProperty;
 var __name = (target, value) => __defProp2(target, "name", { value, configurable: true });
@@ -16307,7 +16307,7 @@ function useComposedRefs(...refs) {
 }
 __name(useComposedRefs, "useComposedRefs");
 
-// ../../node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.31_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.mjs
+// ../../../../node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.31_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.mjs
 var React4 = __toESM(require("react"), 1);
 var import_jsx_runtime3 = require("react/jsx-runtime");
 var __defProp3 = Object.defineProperty;
@@ -16400,7 +16400,7 @@ function composeContextScopes(...scopes) {
 }
 __name2(composeContextScopes, "composeContextScopes");
 
-// ../../node_modules/.pnpm/@radix-ui+primitive@1.1.7/node_modules/@radix-ui/primitive/dist/index.mjs
+// ../../../../node_modules/.pnpm/@radix-ui+primitive@1.1.7/node_modules/@radix-ui/primitive/dist/index.mjs
 var __defProp4 = Object.defineProperty;
 var __name3 = (target, value) => __defProp4(target, "name", { value, configurable: true });
 var canUseDOM = !!(typeof window !== "undefined" && window.document && window.document.createElement);
@@ -16452,21 +16452,21 @@ function isFrame(element) {
 }
 __name3(isFrame, "isFrame");
 
-// ../../node_modules/.pnpm/@radix-ui+react-use-controllable-state@1.2.6_@types+react@18.3.31_react@18.3.1/node_modules/@radix-ui/react-use-controllable-state/dist/index.mjs
+// ../../../../node_modules/.pnpm/@radix-ui+react-use-controllable-state@1.2.6_@types+react@18.3.31_react@18.3.1/node_modules/@radix-ui/react-use-controllable-state/dist/index.mjs
 var React7 = __toESM(require("react"), 1);
 
-// ../../node_modules/.pnpm/@radix-ui+primitive@1.1.7/node_modules/@radix-ui/primitive/dist/internal/is-development.false.mjs
+// ../../../../node_modules/.pnpm/@radix-ui+primitive@1.1.7/node_modules/@radix-ui/primitive/dist/internal/is-development.false.mjs
 var IS_DEVELOPMENT = false;
 
-// ../../node_modules/.pnpm/@radix-ui+react-use-layout-effect@1.1.4_@types+react@18.3.31_react@18.3.1/node_modules/@radix-ui/react-use-layout-effect/dist/index.mjs
+// ../../../../node_modules/.pnpm/@radix-ui+react-use-layout-effect@1.1.4_@types+react@18.3.31_react@18.3.1/node_modules/@radix-ui/react-use-layout-effect/dist/index.mjs
 var React5 = __toESM(require("react"), 1);
 var useLayoutEffect2 = globalThis?.document ? React5.useLayoutEffect : () => {
 };
 
-// ../../node_modules/.pnpm/@radix-ui+react-use-controllable-state@1.2.6_@types+react@18.3.31_react@18.3.1/node_modules/@radix-ui/react-use-controllable-state/dist/index.mjs
+// ../../../../node_modules/.pnpm/@radix-ui+react-use-controllable-state@1.2.6_@types+react@18.3.31_react@18.3.1/node_modules/@radix-ui/react-use-controllable-state/dist/index.mjs
 var React22 = __toESM(require("react"), 1);
 
-// ../../node_modules/.pnpm/@radix-ui+react-use-effect-event@0.0.5_@types+react@18.3.31_react@18.3.1/node_modules/@radix-ui/react-use-effect-event/dist/index.mjs
+// ../../../../node_modules/.pnpm/@radix-ui+react-use-effect-event@0.0.5_@types+react@18.3.31_react@18.3.1/node_modules/@radix-ui/react-use-effect-event/dist/index.mjs
 var React6 = __toESM(require("react"), 1);
 var __defProp5 = Object.defineProperty;
 var __name4 = (target, value) => __defProp5(target, "name", { value, configurable: true });
@@ -16492,7 +16492,7 @@ function useEffectEvent(callback) {
 }
 __name4(useEffectEvent, "useEffectEvent");
 
-// ../../node_modules/.pnpm/@radix-ui+react-use-controllable-state@1.2.6_@types+react@18.3.31_react@18.3.1/node_modules/@radix-ui/react-use-controllable-state/dist/index.mjs
+// ../../../../node_modules/.pnpm/@radix-ui+react-use-controllable-state@1.2.6_@types+react@18.3.31_react@18.3.1/node_modules/@radix-ui/react-use-controllable-state/dist/index.mjs
 var __defProp6 = Object.defineProperty;
 var __name5 = (target, value) => __defProp6(target, "name", { value, configurable: true });
 var useInsertionEffect = React7[" useInsertionEffect ".trim().toString()] || useLayoutEffect2;
@@ -16624,7 +16624,7 @@ function useControllableStateReducer(reducer, userArgs, initialArg, init) {
 }
 __name5(useControllableStateReducer, "useControllableStateReducer");
 
-// ../../node_modules/.pnpm/@radix-ui+react-use-size@1.1.4_@types+react@18.3.31_react@18.3.1/node_modules/@radix-ui/react-use-size/dist/index.mjs
+// ../../../../node_modules/.pnpm/@radix-ui+react-use-size@1.1.4_@types+react@18.3.31_react@18.3.1/node_modules/@radix-ui/react-use-size/dist/index.mjs
 var React8 = __toESM(require("react"), 1);
 var __defProp7 = Object.defineProperty;
 var __name6 = (target, value) => __defProp7(target, "name", { value, configurable: true });
@@ -16664,7 +16664,7 @@ function useSize(element) {
 }
 __name6(useSize, "useSize");
 
-// ../../node_modules/.pnpm/@radix-ui+react-presence@1.1.10_@types+react-dom@18.3.7_@types+react@18.3.31__@types+re_62e566fb7823886e0e3d5565144169f1/node_modules/@radix-ui/react-presence/dist/index.mjs
+// ../../../../node_modules/.pnpm/@radix-ui+react-presence@1.1.10_@types+react-dom@18.3.7_@types+react@18.3.31__@types+re_62e566fb7823886e0e3d5565144169f1/node_modules/@radix-ui/react-presence/dist/index.mjs
 var React23 = __toESM(require("react"), 1);
 var React9 = __toESM(require("react"), 1);
 var __defProp8 = Object.defineProperty;
@@ -16843,11 +16843,11 @@ function getElementRef(element) {
 }
 __name7(getElementRef, "getElementRef");
 
-// ../../node_modules/.pnpm/@radix-ui+react-primitive@2.1.10_@types+react-dom@18.3.7_@types+react@18.3.31__@types+r_dba614f83980a1ab9805a3f12c0d2bc2/node_modules/@radix-ui/react-primitive/dist/index.mjs
+// ../../../../node_modules/.pnpm/@radix-ui+react-primitive@2.1.10_@types+react-dom@18.3.7_@types+react@18.3.31__@types+r_dba614f83980a1ab9805a3f12c0d2bc2/node_modules/@radix-ui/react-primitive/dist/index.mjs
 var React11 = __toESM(require("react"), 1);
 var ReactDOM = __toESM(require("react-dom"), 1);
 
-// ../../node_modules/.pnpm/@radix-ui+react-slot@1.3.3_@types+react@18.3.31_react@18.3.1/node_modules/@radix-ui/react-slot/dist/index.mjs
+// ../../../../node_modules/.pnpm/@radix-ui+react-slot@1.3.3_@types+react@18.3.31_react@18.3.1/node_modules/@radix-ui/react-slot/dist/index.mjs
 var React10 = __toESM(require("react"), 1);
 var __defProp9 = Object.defineProperty;
 var __name8 = (target, value) => __defProp9(target, "name", { value, configurable: true });
@@ -16983,7 +16983,7 @@ var createSlottableError = /* @__PURE__ */ __name8((ownerName) => {
 }, "createSlottableError");
 var use = React10[" use ".trim().toString()];
 
-// ../../node_modules/.pnpm/@radix-ui+react-primitive@2.1.10_@types+react-dom@18.3.7_@types+react@18.3.31__@types+r_dba614f83980a1ab9805a3f12c0d2bc2/node_modules/@radix-ui/react-primitive/dist/index.mjs
+// ../../../../node_modules/.pnpm/@radix-ui+react-primitive@2.1.10_@types+react-dom@18.3.7_@types+react@18.3.31__@types+r_dba614f83980a1ab9805a3f12c0d2bc2/node_modules/@radix-ui/react-primitive/dist/index.mjs
 var import_jsx_runtime4 = require("react/jsx-runtime");
 var __defProp10 = Object.defineProperty;
 var __name9 = (target, value) => __defProp10(target, "name", { value, configurable: true });
@@ -17024,7 +17024,7 @@ function dispatchDiscreteCustomEvent(target, event) {
 }
 __name9(dispatchDiscreteCustomEvent, "dispatchDiscreteCustomEvent");
 
-// ../../node_modules/.pnpm/@radix-ui+react-checkbox@1.3.11_@types+react-dom@18.3.7_@types+react@18.3.31__@types+re_d2d3b056ba3fe73f123b9078be168b78/node_modules/@radix-ui/react-checkbox/dist/index.mjs
+// ../../../../node_modules/.pnpm/@radix-ui+react-checkbox@1.3.11_@types+react-dom@18.3.7_@types+react@18.3.31__@types+re_d2d3b056ba3fe73f123b9078be168b78/node_modules/@radix-ui/react-checkbox/dist/index.mjs
 var import_jsx_runtime5 = require("react/jsx-runtime");
 var __defProp11 = Object.defineProperty;
 var __name10 = (target, value) => __defProp11(target, "name", { value, configurable: true });
@@ -17311,19 +17311,19 @@ function getState(checked) {
 }
 __name10(getState, "getState");
 
-// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/createLucideIcon.js
+// ../../../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/createLucideIcon.js
 var import_react2 = require("react");
 
-// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/shared/src/utils.js
+// ../../../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/shared/src/utils.js
 var toKebabCase = (string4) => string4.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase();
 var mergeClasses = (...classes) => classes.filter((className, index2, array2) => {
   return Boolean(className) && className.trim() !== "" && array2.indexOf(className) === index2;
 }).join(" ").trim();
 
-// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/Icon.js
+// ../../../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/Icon.js
 var import_react = require("react");
 
-// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/defaultAttributes.js
+// ../../../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/defaultAttributes.js
 var defaultAttributes = {
   xmlns: "http://www.w3.org/2000/svg",
   width: 24,
@@ -17336,7 +17336,7 @@ var defaultAttributes = {
   strokeLinejoin: "round"
 };
 
-// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/Icon.js
+// ../../../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/Icon.js
 var Icon = (0, import_react.forwardRef)(
   ({
     color = "currentColor",
@@ -17368,7 +17368,7 @@ var Icon = (0, import_react.forwardRef)(
   }
 );
 
-// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/createLucideIcon.js
+// ../../../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/createLucideIcon.js
 var createLucideIcon = (iconName, iconNode) => {
   const Component = (0, import_react2.forwardRef)(
     ({ className, ...props }, ref) => (0, import_react2.createElement)(Icon, {
@@ -17382,134 +17382,20 @@ var createLucideIcon = (iconName, iconNode) => {
   return Component;
 };
 
-// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/bookmark.js
-var __iconNode = [
-  ["path", { d: "m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z", key: "1fy3hk" }]
-];
-var Bookmark = createLucideIcon("Bookmark", __iconNode);
+// ../../../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/check.js
+var __iconNode = [["path", { d: "M20 6 9 17l-5-5", key: "1gmf2c" }]];
+var Check = createLucideIcon("Check", __iconNode);
 
-// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/check.js
-var __iconNode2 = [["path", { d: "M20 6 9 17l-5-5", key: "1gmf2c" }]];
-var Check = createLucideIcon("Check", __iconNode2);
+// ../../../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/chevron-down.js
+var __iconNode2 = [["path", { d: "m6 9 6 6 6-6", key: "qrunsl" }]];
+var ChevronDown = createLucideIcon("ChevronDown", __iconNode2);
 
-// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/chevron-down.js
-var __iconNode3 = [["path", { d: "m6 9 6 6 6-6", key: "qrunsl" }]];
-var ChevronDown = createLucideIcon("ChevronDown", __iconNode3);
-
-// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/chevron-left.js
-var __iconNode4 = [["path", { d: "m15 18-6-6 6-6", key: "1wnfg3" }]];
-var ChevronLeft = createLucideIcon("ChevronLeft", __iconNode4);
-
-// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/chevron-right.js
-var __iconNode5 = [["path", { d: "m9 18 6-6-6-6", key: "mthhwq" }]];
-var ChevronRight = createLucideIcon("ChevronRight", __iconNode5);
-
-// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/ellipsis.js
-var __iconNode6 = [
-  ["circle", { cx: "12", cy: "12", r: "1", key: "41hilf" }],
-  ["circle", { cx: "19", cy: "12", r: "1", key: "1wjl8i" }],
-  ["circle", { cx: "5", cy: "12", r: "1", key: "1pcz8c" }]
-];
-var Ellipsis = createLucideIcon("Ellipsis", __iconNode6);
-
-// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/file-text.js
-var __iconNode7 = [
-  ["path", { d: "M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z", key: "1rqfz7" }],
-  ["path", { d: "M14 2v4a2 2 0 0 0 2 2h4", key: "tnqrlb" }],
-  ["path", { d: "M10 9H8", key: "b1mrlr" }],
-  ["path", { d: "M16 13H8", key: "t4e002" }],
-  ["path", { d: "M16 17H8", key: "z1uh3a" }]
-];
-var FileText = createLucideIcon("FileText", __iconNode7);
-
-// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/folder.js
-var __iconNode8 = [
-  [
-    "path",
-    {
-      d: "M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z",
-      key: "1kt360"
-    }
-  ]
-];
-var Folder = createLucideIcon("Folder", __iconNode8);
-
-// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/message-square.js
-var __iconNode9 = [
-  ["path", { d: "M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z", key: "1lielz" }]
-];
-var MessageSquare = createLucideIcon("MessageSquare", __iconNode9);
-
-// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/music.js
-var __iconNode10 = [
-  ["path", { d: "M9 18V5l12-2v13", key: "1jmyc2" }],
-  ["circle", { cx: "6", cy: "18", r: "3", key: "fqmcym" }],
-  ["circle", { cx: "18", cy: "16", r: "3", key: "1hluhg" }]
-];
-var Music = createLucideIcon("Music", __iconNode10);
-
-// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/panel-left.js
-var __iconNode11 = [
-  ["rect", { width: "18", height: "18", x: "3", y: "3", rx: "2", key: "afitv7" }],
-  ["path", { d: "M9 3v18", key: "fh3hqa" }]
-];
-var PanelLeft = createLucideIcon("PanelLeft", __iconNode11);
-
-// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/panel-right.js
-var __iconNode12 = [
-  ["rect", { width: "18", height: "18", x: "3", y: "3", rx: "2", key: "afitv7" }],
-  ["path", { d: "M15 3v18", key: "14nvp0" }]
-];
-var PanelRight = createLucideIcon("PanelRight", __iconNode12);
-
-// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/panel-top.js
-var __iconNode13 = [
-  ["rect", { width: "18", height: "18", x: "3", y: "3", rx: "2", key: "afitv7" }],
-  ["path", { d: "M3 9h18", key: "1pudct" }]
-];
-var PanelTop = createLucideIcon("PanelTop", __iconNode13);
-
-// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/pencil.js
-var __iconNode14 = [
-  [
-    "path",
-    {
-      d: "M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z",
-      key: "1a8usu"
-    }
-  ],
-  ["path", { d: "m15 5 4 4", key: "1mk7zo" }]
-];
-var Pencil = createLucideIcon("Pencil", __iconNode14);
-
-// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/plus.js
-var __iconNode15 = [
-  ["path", { d: "M5 12h14", key: "1ays0h" }],
-  ["path", { d: "M12 5v14", key: "s699le" }]
-];
-var Plus = createLucideIcon("Plus", __iconNode15);
-
-// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/search.js
-var __iconNode16 = [
-  ["circle", { cx: "11", cy: "11", r: "8", key: "4ej97u" }],
-  ["path", { d: "m21 21-4.3-4.3", key: "1qie3q" }]
-];
-var Search = createLucideIcon("Search", __iconNode16);
-
-// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/upload.js
-var __iconNode17 = [
-  ["path", { d: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4", key: "ih7n3h" }],
-  ["polyline", { points: "17 8 12 3 7 8", key: "t8dd8p" }],
-  ["line", { x1: "12", x2: "12", y1: "3", y2: "15", key: "widbto" }]
-];
-var Upload = createLucideIcon("Upload", __iconNode17);
-
-// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/x.js
-var __iconNode18 = [
+// ../../../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/x.js
+var __iconNode3 = [
   ["path", { d: "M18 6 6 18", key: "1bl5f8" }],
   ["path", { d: "m6 6 12 12", key: "d8bk6v" }]
 ];
-var X = createLucideIcon("X", __iconNode18);
+var X = createLucideIcon("X", __iconNode3);
 
 // ../../../ui/src/checkbox.tsx
 var import_jsx_runtime6 = require("react/jsx-runtime");
@@ -17525,10 +17411,10 @@ function Checkbox3({ className, ...props }) {
   );
 }
 
-// ../../node_modules/.pnpm/@radix-ui+react-dialog@1.1.23_@types+react-dom@18.3.7_@types+react@18.3.31__@types+reac_89c2a39b94a39c3c4bfcbd95c00244cd/node_modules/@radix-ui/react-dialog/dist/index.mjs
+// ../../../../node_modules/.pnpm/@radix-ui+react-dialog@1.1.23_@types+react-dom@18.3.7_@types+react@18.3.31__@types+reac_89c2a39b94a39c3c4bfcbd95c00244cd/node_modules/@radix-ui/react-dialog/dist/index.mjs
 var React28 = __toESM(require("react"), 1);
 
-// ../../node_modules/.pnpm/@radix-ui+react-id@1.1.4_@types+react@18.3.31_react@18.3.1/node_modules/@radix-ui/react-id/dist/index.mjs
+// ../../../../node_modules/.pnpm/@radix-ui+react-id@1.1.4_@types+react@18.3.31_react@18.3.1/node_modules/@radix-ui/react-id/dist/index.mjs
 var React13 = __toESM(require("react"), 1);
 var __defProp12 = Object.defineProperty;
 var __name11 = (target, value) => __defProp12(target, "name", { value, configurable: true });
@@ -17543,10 +17429,10 @@ function useId(deterministicId) {
 }
 __name11(useId, "useId");
 
-// ../../node_modules/.pnpm/@radix-ui+react-dismissable-layer@1.1.19_@types+react-dom@18.3.7_@types+react@18.3.31___4f2024a88a120e800aa2287adeb24710/node_modules/@radix-ui/react-dismissable-layer/dist/index.mjs
+// ../../../../node_modules/.pnpm/@radix-ui+react-dismissable-layer@1.1.19_@types+react-dom@18.3.7_@types+react@18.3.31___4f2024a88a120e800aa2287adeb24710/node_modules/@radix-ui/react-dismissable-layer/dist/index.mjs
 var React15 = __toESM(require("react"), 1);
 
-// ../../node_modules/.pnpm/@radix-ui+react-use-callback-ref@1.1.4_@types+react@18.3.31_react@18.3.1/node_modules/@radix-ui/react-use-callback-ref/dist/index.mjs
+// ../../../../node_modules/.pnpm/@radix-ui+react-use-callback-ref@1.1.4_@types+react@18.3.31_react@18.3.1/node_modules/@radix-ui/react-use-callback-ref/dist/index.mjs
 var React14 = __toESM(require("react"), 1);
 var __defProp13 = Object.defineProperty;
 var __name12 = (target, value) => __defProp13(target, "name", { value, configurable: true });
@@ -17559,7 +17445,7 @@ function useCallbackRef(callback) {
 }
 __name12(useCallbackRef, "useCallbackRef");
 
-// ../../node_modules/.pnpm/@radix-ui+react-dismissable-layer@1.1.19_@types+react-dom@18.3.7_@types+react@18.3.31___4f2024a88a120e800aa2287adeb24710/node_modules/@radix-ui/react-dismissable-layer/dist/index.mjs
+// ../../../../node_modules/.pnpm/@radix-ui+react-dismissable-layer@1.1.19_@types+react-dom@18.3.7_@types+react@18.3.31___4f2024a88a120e800aa2287adeb24710/node_modules/@radix-ui/react-dismissable-layer/dist/index.mjs
 var import_jsx_runtime7 = require("react/jsx-runtime");
 var __defProp14 = Object.defineProperty;
 var __name13 = (target, value) => __defProp14(target, "name", { value, configurable: true });
@@ -17892,7 +17778,7 @@ function handleAndDispatchCustomEvent(name2, handler, detail, { discrete }) {
 }
 __name13(handleAndDispatchCustomEvent, "handleAndDispatchCustomEvent");
 
-// ../../node_modules/.pnpm/@radix-ui+react-focus-scope@1.1.16_@types+react-dom@18.3.7_@types+react@18.3.31__@types_161760c0d51338f080e5b66a9ea35f08/node_modules/@radix-ui/react-focus-scope/dist/index.mjs
+// ../../../../node_modules/.pnpm/@radix-ui+react-focus-scope@1.1.16_@types+react-dom@18.3.7_@types+react@18.3.31__@types_161760c0d51338f080e5b66a9ea35f08/node_modules/@radix-ui/react-focus-scope/dist/index.mjs
 var React16 = __toESM(require("react"), 1);
 var import_jsx_runtime8 = require("react/jsx-runtime");
 var __defProp15 = Object.defineProperty;
@@ -18115,7 +18001,7 @@ function removeLinks(items) {
 }
 __name14(removeLinks, "removeLinks");
 
-// ../../node_modules/.pnpm/@radix-ui+react-portal@1.1.17_@types+react-dom@18.3.7_@types+react@18.3.31__@types+reac_35c248e3d41b4a33144a8517e72175a4/node_modules/@radix-ui/react-portal/dist/index.mjs
+// ../../../../node_modules/.pnpm/@radix-ui+react-portal@1.1.17_@types+react-dom@18.3.7_@types+react@18.3.31__@types+reac_35c248e3d41b4a33144a8517e72175a4/node_modules/@radix-ui/react-portal/dist/index.mjs
 var React17 = __toESM(require("react"), 1);
 var ReactDOM2 = __toESM(require("react-dom"), 1);
 var import_jsx_runtime9 = require("react/jsx-runtime");
@@ -18131,7 +18017,7 @@ var Portal = /* @__PURE__ */ React17.forwardRef(
   }, "Portal")
 );
 
-// ../../node_modules/.pnpm/@radix-ui+react-focus-guards@1.1.6_@types+react@18.3.31_react@18.3.1/node_modules/@radix-ui/react-focus-guards/dist/index.mjs
+// ../../../../node_modules/.pnpm/@radix-ui+react-focus-guards@1.1.6_@types+react@18.3.31_react@18.3.1/node_modules/@radix-ui/react-focus-guards/dist/index.mjs
 var React18 = __toESM(require("react"), 1);
 var __defProp17 = Object.defineProperty;
 var __name16 = (target, value) => __defProp17(target, "name", { value, configurable: true });
@@ -18178,7 +18064,7 @@ function createFocusGuard() {
 }
 __name16(createFocusGuard, "createFocusGuard");
 
-// ../../node_modules/.pnpm/tslib@2.8.1/node_modules/tslib/tslib.es6.mjs
+// ../../../../node_modules/.pnpm/tslib@2.8.1/node_modules/tslib/tslib.es6.mjs
 var __assign = function() {
   __assign = Object.assign || function __assign2(t) {
     for (var s, i = 1, n = arguments.length; i < n; i++) {
@@ -18210,19 +18096,19 @@ function __spreadArray(to, from, pack) {
   return to.concat(ar || Array.prototype.slice.call(from));
 }
 
-// ../../node_modules/.pnpm/react-remove-scroll@2.7.2_@types+react@18.3.31_react@18.3.1/node_modules/react-remove-scroll/dist/es2015/Combination.js
+// ../../../../node_modules/.pnpm/react-remove-scroll@2.7.2_@types+react@18.3.31_react@18.3.1/node_modules/react-remove-scroll/dist/es2015/Combination.js
 var React27 = __toESM(require("react"));
 
-// ../../node_modules/.pnpm/react-remove-scroll@2.7.2_@types+react@18.3.31_react@18.3.1/node_modules/react-remove-scroll/dist/es2015/UI.js
+// ../../../../node_modules/.pnpm/react-remove-scroll@2.7.2_@types+react@18.3.31_react@18.3.1/node_modules/react-remove-scroll/dist/es2015/UI.js
 var React21 = __toESM(require("react"));
 
-// ../../node_modules/.pnpm/react-remove-scroll-bar@2.3.8_@types+react@18.3.31_react@18.3.1/node_modules/react-remove-scroll-bar/dist/es2015/constants.js
+// ../../../../node_modules/.pnpm/react-remove-scroll-bar@2.3.8_@types+react@18.3.31_react@18.3.1/node_modules/react-remove-scroll-bar/dist/es2015/constants.js
 var zeroRightClassName = "right-scroll-bar-position";
 var fullWidthClassName = "width-before-scroll-bar";
 var noScrollbarsClassName = "with-scroll-bars-hidden";
 var removedBarSizeVariable = "--removed-body-scroll-bar-size";
 
-// ../../node_modules/.pnpm/use-callback-ref@1.3.3_@types+react@18.3.31_react@18.3.1/node_modules/use-callback-ref/dist/es2015/assignRef.js
+// ../../../../node_modules/.pnpm/use-callback-ref@1.3.3_@types+react@18.3.31_react@18.3.1/node_modules/use-callback-ref/dist/es2015/assignRef.js
 function assignRef(ref, value) {
   if (typeof ref === "function") {
     ref(value);
@@ -18232,7 +18118,7 @@ function assignRef(ref, value) {
   return ref;
 }
 
-// ../../node_modules/.pnpm/use-callback-ref@1.3.3_@types+react@18.3.31_react@18.3.1/node_modules/use-callback-ref/dist/es2015/useRef.js
+// ../../../../node_modules/.pnpm/use-callback-ref@1.3.3_@types+react@18.3.31_react@18.3.1/node_modules/use-callback-ref/dist/es2015/useRef.js
 var import_react3 = require("react");
 function useCallbackRef2(initialValue, callback) {
   var ref = (0, import_react3.useState)(function() {
@@ -18260,7 +18146,7 @@ function useCallbackRef2(initialValue, callback) {
   return ref.facade;
 }
 
-// ../../node_modules/.pnpm/use-callback-ref@1.3.3_@types+react@18.3.31_react@18.3.1/node_modules/use-callback-ref/dist/es2015/useMergeRef.js
+// ../../../../node_modules/.pnpm/use-callback-ref@1.3.3_@types+react@18.3.31_react@18.3.1/node_modules/use-callback-ref/dist/es2015/useMergeRef.js
 var React19 = __toESM(require("react"));
 var useIsomorphicLayoutEffect = typeof window !== "undefined" ? React19.useLayoutEffect : React19.useEffect;
 var currentValues = /* @__PURE__ */ new WeakMap();
@@ -18292,7 +18178,7 @@ function useMergeRefs(refs, defaultValue) {
   return callbackRef;
 }
 
-// ../../node_modules/.pnpm/use-sidecar@1.1.3_@types+react@18.3.31_react@18.3.1/node_modules/use-sidecar/dist/es2015/medium.js
+// ../../../../node_modules/.pnpm/use-sidecar@1.1.3_@types+react@18.3.31_react@18.3.1/node_modules/use-sidecar/dist/es2015/medium.js
 function ItoI(a) {
   return a;
 }
@@ -18378,7 +18264,7 @@ function createSidecarMedium(options) {
   return medium;
 }
 
-// ../../node_modules/.pnpm/use-sidecar@1.1.3_@types+react@18.3.31_react@18.3.1/node_modules/use-sidecar/dist/es2015/exports.js
+// ../../../../node_modules/.pnpm/use-sidecar@1.1.3_@types+react@18.3.31_react@18.3.1/node_modules/use-sidecar/dist/es2015/exports.js
 var React20 = __toESM(require("react"));
 var SideCar = function(_a3) {
   var sideCar = _a3.sideCar, rest = __rest(_a3, ["sideCar"]);
@@ -18397,10 +18283,10 @@ function exportSidecar(medium, exported) {
   return SideCar;
 }
 
-// ../../node_modules/.pnpm/react-remove-scroll@2.7.2_@types+react@18.3.31_react@18.3.1/node_modules/react-remove-scroll/dist/es2015/medium.js
+// ../../../../node_modules/.pnpm/react-remove-scroll@2.7.2_@types+react@18.3.31_react@18.3.1/node_modules/react-remove-scroll/dist/es2015/medium.js
 var effectCar = createSidecarMedium();
 
-// ../../node_modules/.pnpm/react-remove-scroll@2.7.2_@types+react@18.3.31_react@18.3.1/node_modules/react-remove-scroll/dist/es2015/UI.js
+// ../../../../node_modules/.pnpm/react-remove-scroll@2.7.2_@types+react@18.3.31_react@18.3.1/node_modules/react-remove-scroll/dist/es2015/UI.js
 var nothing = function() {
   return;
 };
@@ -18432,16 +18318,16 @@ RemoveScroll.classNames = {
   zeroRight: zeroRightClassName
 };
 
-// ../../node_modules/.pnpm/react-remove-scroll@2.7.2_@types+react@18.3.31_react@18.3.1/node_modules/react-remove-scroll/dist/es2015/SideEffect.js
+// ../../../../node_modules/.pnpm/react-remove-scroll@2.7.2_@types+react@18.3.31_react@18.3.1/node_modules/react-remove-scroll/dist/es2015/SideEffect.js
 var React26 = __toESM(require("react"));
 
-// ../../node_modules/.pnpm/react-remove-scroll-bar@2.3.8_@types+react@18.3.31_react@18.3.1/node_modules/react-remove-scroll-bar/dist/es2015/component.js
+// ../../../../node_modules/.pnpm/react-remove-scroll-bar@2.3.8_@types+react@18.3.31_react@18.3.1/node_modules/react-remove-scroll-bar/dist/es2015/component.js
 var React25 = __toESM(require("react"));
 
-// ../../node_modules/.pnpm/react-style-singleton@2.2.3_@types+react@18.3.31_react@18.3.1/node_modules/react-style-singleton/dist/es2015/hook.js
+// ../../../../node_modules/.pnpm/react-style-singleton@2.2.3_@types+react@18.3.31_react@18.3.1/node_modules/react-style-singleton/dist/es2015/hook.js
 var React24 = __toESM(require("react"));
 
-// ../../node_modules/.pnpm/get-nonce@1.0.1/node_modules/get-nonce/dist/es2015/index.js
+// ../../../../node_modules/.pnpm/get-nonce@1.0.1/node_modules/get-nonce/dist/es2015/index.js
 var currentNonce;
 var getNonce = function() {
   if (currentNonce) {
@@ -18453,7 +18339,7 @@ var getNonce = function() {
   return void 0;
 };
 
-// ../../node_modules/.pnpm/react-style-singleton@2.2.3_@types+react@18.3.31_react@18.3.1/node_modules/react-style-singleton/dist/es2015/singleton.js
+// ../../../../node_modules/.pnpm/react-style-singleton@2.2.3_@types+react@18.3.31_react@18.3.1/node_modules/react-style-singleton/dist/es2015/singleton.js
 function makeStyleTag() {
   if (!document)
     return null;
@@ -18499,7 +18385,7 @@ var stylesheetSingleton = function() {
   };
 };
 
-// ../../node_modules/.pnpm/react-style-singleton@2.2.3_@types+react@18.3.31_react@18.3.1/node_modules/react-style-singleton/dist/es2015/hook.js
+// ../../../../node_modules/.pnpm/react-style-singleton@2.2.3_@types+react@18.3.31_react@18.3.1/node_modules/react-style-singleton/dist/es2015/hook.js
 var styleHookSingleton = function() {
   var sheet = stylesheetSingleton();
   return function(styles, isDynamic) {
@@ -18512,7 +18398,7 @@ var styleHookSingleton = function() {
   };
 };
 
-// ../../node_modules/.pnpm/react-style-singleton@2.2.3_@types+react@18.3.31_react@18.3.1/node_modules/react-style-singleton/dist/es2015/component.js
+// ../../../../node_modules/.pnpm/react-style-singleton@2.2.3_@types+react@18.3.31_react@18.3.1/node_modules/react-style-singleton/dist/es2015/component.js
 var styleSingleton = function() {
   var useStyle = styleHookSingleton();
   var Sheet = function(_a3) {
@@ -18523,7 +18409,7 @@ var styleSingleton = function() {
   return Sheet;
 };
 
-// ../../node_modules/.pnpm/react-remove-scroll-bar@2.3.8_@types+react@18.3.31_react@18.3.1/node_modules/react-remove-scroll-bar/dist/es2015/utils.js
+// ../../../../node_modules/.pnpm/react-remove-scroll-bar@2.3.8_@types+react@18.3.31_react@18.3.1/node_modules/react-remove-scroll-bar/dist/es2015/utils.js
 var zeroGap = {
   left: 0,
   top: 0,
@@ -18558,7 +18444,7 @@ var getGapWidth = function(gapMode) {
   };
 };
 
-// ../../node_modules/.pnpm/react-remove-scroll-bar@2.3.8_@types+react@18.3.31_react@18.3.1/node_modules/react-remove-scroll-bar/dist/es2015/component.js
+// ../../../../node_modules/.pnpm/react-remove-scroll-bar@2.3.8_@types+react@18.3.31_react@18.3.1/node_modules/react-remove-scroll-bar/dist/es2015/component.js
 var Style = styleSingleton();
 var lockAttribute = "data-scroll-locked";
 var getStyles = function(_a3, allowRelative, gapMode, important) {
@@ -18598,7 +18484,7 @@ var RemoveScrollBar = function(_a3) {
   return React25.createElement(Style, { styles: getStyles(gap, !noRelative, gapMode, !noImportant ? "!important" : "") });
 };
 
-// ../../node_modules/.pnpm/react-remove-scroll@2.7.2_@types+react@18.3.31_react@18.3.1/node_modules/react-remove-scroll/dist/es2015/aggresiveCapture.js
+// ../../../../node_modules/.pnpm/react-remove-scroll@2.7.2_@types+react@18.3.31_react@18.3.1/node_modules/react-remove-scroll/dist/es2015/aggresiveCapture.js
 var passiveSupported = false;
 if (typeof window !== "undefined") {
   try {
@@ -18617,7 +18503,7 @@ if (typeof window !== "undefined") {
 var options;
 var nonPassive = passiveSupported ? { passive: false } : false;
 
-// ../../node_modules/.pnpm/react-remove-scroll@2.7.2_@types+react@18.3.31_react@18.3.1/node_modules/react-remove-scroll/dist/es2015/handleScroll.js
+// ../../../../node_modules/.pnpm/react-remove-scroll@2.7.2_@types+react@18.3.31_react@18.3.1/node_modules/react-remove-scroll/dist/es2015/handleScroll.js
 var alwaysContainsScroll = function(node) {
   return node.tagName === "TEXTAREA";
 };
@@ -18717,7 +18603,7 @@ var handleScroll = function(axis, endTarget, event, sourceDelta, noOverscroll) {
   return shouldCancelScroll;
 };
 
-// ../../node_modules/.pnpm/react-remove-scroll@2.7.2_@types+react@18.3.31_react@18.3.1/node_modules/react-remove-scroll/dist/es2015/SideEffect.js
+// ../../../../node_modules/.pnpm/react-remove-scroll@2.7.2_@types+react@18.3.31_react@18.3.1/node_modules/react-remove-scroll/dist/es2015/SideEffect.js
 var getTouchXY = function(event) {
   return "changedTouches" in event ? [event.changedTouches[0].clientX, event.changedTouches[0].clientY] : [0, 0];
 };
@@ -18888,17 +18774,17 @@ function getOutermostShadowParent(node) {
   return shadowParent;
 }
 
-// ../../node_modules/.pnpm/react-remove-scroll@2.7.2_@types+react@18.3.31_react@18.3.1/node_modules/react-remove-scroll/dist/es2015/sidecar.js
+// ../../../../node_modules/.pnpm/react-remove-scroll@2.7.2_@types+react@18.3.31_react@18.3.1/node_modules/react-remove-scroll/dist/es2015/sidecar.js
 var sidecar_default = exportSidecar(effectCar, RemoveScrollSideCar);
 
-// ../../node_modules/.pnpm/react-remove-scroll@2.7.2_@types+react@18.3.31_react@18.3.1/node_modules/react-remove-scroll/dist/es2015/Combination.js
+// ../../../../node_modules/.pnpm/react-remove-scroll@2.7.2_@types+react@18.3.31_react@18.3.1/node_modules/react-remove-scroll/dist/es2015/Combination.js
 var ReactRemoveScroll = React27.forwardRef(function(props, ref) {
   return React27.createElement(RemoveScroll, __assign({}, props, { ref, sideCar: sidecar_default }));
 });
 ReactRemoveScroll.classNames = RemoveScroll.classNames;
 var Combination_default = ReactRemoveScroll;
 
-// ../../node_modules/.pnpm/aria-hidden@1.2.6/node_modules/aria-hidden/dist/es2015/index.js
+// ../../../../node_modules/.pnpm/aria-hidden@1.2.6/node_modules/aria-hidden/dist/es2015/index.js
 var getDefaultParent = function(originalTarget) {
   if (typeof document === "undefined") {
     return null;
@@ -19019,7 +18905,7 @@ var hideOthers = function(originalTarget, parentNode, markerName) {
   return applyAttributeToOthers(targets, activeParentNode, markerName, "aria-hidden");
 };
 
-// ../../node_modules/.pnpm/@radix-ui+react-dialog@1.1.23_@types+react-dom@18.3.7_@types+react@18.3.31__@types+reac_89c2a39b94a39c3c4bfcbd95c00244cd/node_modules/@radix-ui/react-dialog/dist/index.mjs
+// ../../../../node_modules/.pnpm/@radix-ui+react-dialog@1.1.23_@types+react-dom@18.3.7_@types+react@18.3.31__@types+reac_89c2a39b94a39c3c4bfcbd95c00244cd/node_modules/@radix-ui/react-dialog/dist/index.mjs
 var import_jsx_runtime10 = require("react/jsx-runtime");
 var __defProp18 = Object.defineProperty;
 var __name17 = (target, value) => __defProp18(target, "name", { value, configurable: true });
@@ -19406,13 +19292,13 @@ var Textarea = React29.forwardRef(
 // ../../../ui/src/tooltip.tsx
 var React35 = __toESM(require("react"), 1);
 
-// ../../node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.7_@types+react@18.3.31__@types+rea_6bca503763256159376adbcc7b8f4fe8/node_modules/@radix-ui/react-tooltip/dist/index.mjs
+// ../../../../node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.7_@types+react@18.3.31__@types+rea_6bca503763256159376adbcc7b8f4fe8/node_modules/@radix-ui/react-tooltip/dist/index.mjs
 var React34 = __toESM(require("react"), 1);
 
-// ../../node_modules/.pnpm/@radix-ui+react-popper@1.3.7_@types+react-dom@18.3.7_@types+react@18.3.31__@types+react_eb61390ffeb98719c4501fa966467838/node_modules/@radix-ui/react-popper/dist/index.mjs
+// ../../../../node_modules/.pnpm/@radix-ui+react-popper@1.3.7_@types+react-dom@18.3.7_@types+react@18.3.31__@types+react_eb61390ffeb98719c4501fa966467838/node_modules/@radix-ui/react-popper/dist/index.mjs
 var React32 = __toESM(require("react"), 1);
 
-// ../../node_modules/.pnpm/@floating-ui+utils@0.2.12/node_modules/@floating-ui/utils/dist/floating-ui.utils.mjs
+// ../../../../node_modules/.pnpm/@floating-ui+utils@0.2.12/node_modules/@floating-ui/utils/dist/floating-ui.utils.mjs
 var sides = ["top", "right", "bottom", "left"];
 var min = Math.min;
 var max = Math.max;
@@ -19541,7 +19427,7 @@ function rectToClientRect(rect) {
   };
 }
 
-// ../../node_modules/.pnpm/@floating-ui+core@1.8.0/node_modules/@floating-ui/core/dist/floating-ui.core.mjs
+// ../../../../node_modules/.pnpm/@floating-ui+core@1.8.0/node_modules/@floating-ui/core/dist/floating-ui.core.mjs
 function computeCoordsFromPlacement(_ref, placement, rtl) {
   let {
     reference,
@@ -20239,7 +20125,7 @@ var size = function(options) {
   };
 };
 
-// ../../node_modules/.pnpm/@floating-ui+utils@0.2.12/node_modules/@floating-ui/utils/dist/floating-ui.utils.dom.mjs
+// ../../../../node_modules/.pnpm/@floating-ui+utils@0.2.12/node_modules/@floating-ui/utils/dist/floating-ui.utils.dom.mjs
 function hasWindow() {
   return typeof window !== "undefined";
 }
@@ -20395,7 +20281,7 @@ function getFrameElement(win) {
   return win.parent && Object.getPrototypeOf(win.parent) ? win.frameElement : null;
 }
 
-// ../../node_modules/.pnpm/@floating-ui+dom@1.8.0/node_modules/@floating-ui/dom/dist/floating-ui.dom.mjs
+// ../../../../node_modules/.pnpm/@floating-ui+dom@1.8.0/node_modules/@floating-ui/dom/dist/floating-ui.dom.mjs
 function getCssDimensions(element) {
   const css = getComputedStyle2(element);
   let width = parseFloat(css.width) || 0;
@@ -21004,7 +20890,7 @@ var computePosition2 = (reference, floating, options) => {
   });
 };
 
-// ../../node_modules/.pnpm/@floating-ui+react-dom@2.1.9_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/@floating-ui/react-dom/dist/floating-ui.react-dom.mjs
+// ../../../../node_modules/.pnpm/@floating-ui+react-dom@2.1.9_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/@floating-ui/react-dom/dist/floating-ui.react-dom.mjs
 var React30 = __toESM(require("react"), 1);
 var import_react4 = require("react");
 var ReactDOM3 = __toESM(require("react-dom"), 1);
@@ -21315,7 +21201,7 @@ var arrow3 = (options, deps) => {
   };
 };
 
-// ../../node_modules/.pnpm/@radix-ui+react-arrow@1.1.15_@types+react-dom@18.3.7_@types+react@18.3.31__@types+react_4adf567bd0450ecb7dbf3f22f0548dcb/node_modules/@radix-ui/react-arrow/dist/index.mjs
+// ../../../../node_modules/.pnpm/@radix-ui+react-arrow@1.1.15_@types+react-dom@18.3.7_@types+react@18.3.31__@types+react_4adf567bd0450ecb7dbf3f22f0548dcb/node_modules/@radix-ui/react-arrow/dist/index.mjs
 var React31 = __toESM(require("react"), 1);
 var import_jsx_runtime17 = require("react/jsx-runtime");
 var __defProp19 = Object.defineProperty;
@@ -21339,7 +21225,7 @@ var Arrow = /* @__PURE__ */ React31.forwardRef(
 );
 var Root = Arrow;
 
-// ../../node_modules/.pnpm/@radix-ui+react-popper@1.3.7_@types+react-dom@18.3.7_@types+react@18.3.31__@types+react_eb61390ffeb98719c4501fa966467838/node_modules/@radix-ui/react-popper/dist/index.mjs
+// ../../../../node_modules/.pnpm/@radix-ui+react-popper@1.3.7_@types+react-dom@18.3.7_@types+react@18.3.31__@types+react_eb61390ffeb98719c4501fa966467838/node_modules/@radix-ui/react-popper/dist/index.mjs
 var import_jsx_runtime18 = require("react/jsx-runtime");
 var __defProp20 = Object.defineProperty;
 var __name19 = (target, value) => __defProp20(target, "name", { value, configurable: true });
@@ -21668,7 +21554,7 @@ var Anchor = PopperAnchor;
 var Content = PopperContent;
 var Arrow3 = PopperArrow;
 
-// ../../node_modules/.pnpm/@radix-ui+react-visually-hidden@1.2.11_@types+react-dom@18.3.7_@types+react@18.3.31__@t_642d100dd60f054d3c0d9c38ece6c812/node_modules/@radix-ui/react-visually-hidden/dist/index.mjs
+// ../../../../node_modules/.pnpm/@radix-ui+react-visually-hidden@1.2.11_@types+react-dom@18.3.7_@types+react@18.3.31__@t_642d100dd60f054d3c0d9c38ece6c812/node_modules/@radix-ui/react-visually-hidden/dist/index.mjs
 var React33 = __toESM(require("react"), 1);
 var import_jsx_runtime19 = require("react/jsx-runtime");
 var __defProp21 = Object.defineProperty;
@@ -21700,7 +21586,7 @@ var VisuallyHidden = /* @__PURE__ */ React33.forwardRef(
 );
 var Root3 = VisuallyHidden;
 
-// ../../node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.7_@types+react@18.3.31__@types+rea_6bca503763256159376adbcc7b8f4fe8/node_modules/@radix-ui/react-tooltip/dist/index.mjs
+// ../../../../node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.7_@types+react@18.3.31__@types+rea_6bca503763256159376adbcc7b8f4fe8/node_modules/@radix-ui/react-tooltip/dist/index.mjs
 var import_jsx_runtime20 = require("react/jsx-runtime");
 var __defProp22 = Object.defineProperty;
 var __name21 = (target, value) => __defProp22(target, "name", { value, configurable: true });
@@ -22222,11 +22108,203 @@ var TooltipContent3 = React35.forwardRef(function TooltipContent4({ children, cl
 });
 
 // src/route.tsx
-var import_react7 = require("react");
+var import_react11 = require("react");
 var import_react_dom2 = require("react-dom");
 
-// src/base-executable-view.tsx
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/createLucideIcon.js
+var import_react6 = require("react");
+
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/shared/src/utils.js
+var toKebabCase2 = (string4) => string4.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase();
+var mergeClasses2 = (...classes) => classes.filter((className, index2, array2) => {
+  return Boolean(className) && className.trim() !== "" && array2.indexOf(className) === index2;
+}).join(" ").trim();
+
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/Icon.js
 var import_react5 = require("react");
+
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/defaultAttributes.js
+var defaultAttributes2 = {
+  xmlns: "http://www.w3.org/2000/svg",
+  width: 24,
+  height: 24,
+  viewBox: "0 0 24 24",
+  fill: "none",
+  stroke: "currentColor",
+  strokeWidth: 2,
+  strokeLinecap: "round",
+  strokeLinejoin: "round"
+};
+
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/Icon.js
+var Icon2 = (0, import_react5.forwardRef)(
+  ({
+    color = "currentColor",
+    size: size4 = 24,
+    strokeWidth = 2,
+    absoluteStrokeWidth,
+    className = "",
+    children,
+    iconNode,
+    ...rest
+  }, ref) => {
+    return (0, import_react5.createElement)(
+      "svg",
+      {
+        ref,
+        ...defaultAttributes2,
+        width: size4,
+        height: size4,
+        stroke: color,
+        strokeWidth: absoluteStrokeWidth ? Number(strokeWidth) * 24 / Number(size4) : strokeWidth,
+        className: mergeClasses2("lucide", className),
+        ...rest
+      },
+      [
+        ...iconNode.map(([tag, attrs]) => (0, import_react5.createElement)(tag, attrs)),
+        ...Array.isArray(children) ? children : [children]
+      ]
+    );
+  }
+);
+
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/createLucideIcon.js
+var createLucideIcon2 = (iconName, iconNode) => {
+  const Component = (0, import_react6.forwardRef)(
+    ({ className, ...props }, ref) => (0, import_react6.createElement)(Icon2, {
+      ref,
+      iconNode,
+      className: mergeClasses2(`lucide-${toKebabCase2(iconName)}`, className),
+      ...props
+    })
+  );
+  Component.displayName = `${iconName}`;
+  return Component;
+};
+
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/bookmark.js
+var __iconNode4 = [
+  ["path", { d: "m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z", key: "1fy3hk" }]
+];
+var Bookmark = createLucideIcon2("Bookmark", __iconNode4);
+
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/chevron-left.js
+var __iconNode5 = [["path", { d: "m15 18-6-6 6-6", key: "1wnfg3" }]];
+var ChevronLeft = createLucideIcon2("ChevronLeft", __iconNode5);
+
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/chevron-right.js
+var __iconNode6 = [["path", { d: "m9 18 6-6-6-6", key: "mthhwq" }]];
+var ChevronRight = createLucideIcon2("ChevronRight", __iconNode6);
+
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/ellipsis.js
+var __iconNode7 = [
+  ["circle", { cx: "12", cy: "12", r: "1", key: "41hilf" }],
+  ["circle", { cx: "19", cy: "12", r: "1", key: "1wjl8i" }],
+  ["circle", { cx: "5", cy: "12", r: "1", key: "1pcz8c" }]
+];
+var Ellipsis = createLucideIcon2("Ellipsis", __iconNode7);
+
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/file-text.js
+var __iconNode8 = [
+  ["path", { d: "M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z", key: "1rqfz7" }],
+  ["path", { d: "M14 2v4a2 2 0 0 0 2 2h4", key: "tnqrlb" }],
+  ["path", { d: "M10 9H8", key: "b1mrlr" }],
+  ["path", { d: "M16 13H8", key: "t4e002" }],
+  ["path", { d: "M16 17H8", key: "z1uh3a" }]
+];
+var FileText = createLucideIcon2("FileText", __iconNode8);
+
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/folder.js
+var __iconNode9 = [
+  [
+    "path",
+    {
+      d: "M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z",
+      key: "1kt360"
+    }
+  ]
+];
+var Folder = createLucideIcon2("Folder", __iconNode9);
+
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/message-square.js
+var __iconNode10 = [
+  ["path", { d: "M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z", key: "1lielz" }]
+];
+var MessageSquare = createLucideIcon2("MessageSquare", __iconNode10);
+
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/music.js
+var __iconNode11 = [
+  ["path", { d: "M9 18V5l12-2v13", key: "1jmyc2" }],
+  ["circle", { cx: "6", cy: "18", r: "3", key: "fqmcym" }],
+  ["circle", { cx: "18", cy: "16", r: "3", key: "1hluhg" }]
+];
+var Music = createLucideIcon2("Music", __iconNode11);
+
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/panel-left.js
+var __iconNode12 = [
+  ["rect", { width: "18", height: "18", x: "3", y: "3", rx: "2", key: "afitv7" }],
+  ["path", { d: "M9 3v18", key: "fh3hqa" }]
+];
+var PanelLeft = createLucideIcon2("PanelLeft", __iconNode12);
+
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/panel-right.js
+var __iconNode13 = [
+  ["rect", { width: "18", height: "18", x: "3", y: "3", rx: "2", key: "afitv7" }],
+  ["path", { d: "M15 3v18", key: "14nvp0" }]
+];
+var PanelRight = createLucideIcon2("PanelRight", __iconNode13);
+
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/panel-top.js
+var __iconNode14 = [
+  ["rect", { width: "18", height: "18", x: "3", y: "3", rx: "2", key: "afitv7" }],
+  ["path", { d: "M3 9h18", key: "1pudct" }]
+];
+var PanelTop = createLucideIcon2("PanelTop", __iconNode14);
+
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/pencil.js
+var __iconNode15 = [
+  [
+    "path",
+    {
+      d: "M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z",
+      key: "1a8usu"
+    }
+  ],
+  ["path", { d: "m15 5 4 4", key: "1mk7zo" }]
+];
+var Pencil = createLucideIcon2("Pencil", __iconNode15);
+
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/plus.js
+var __iconNode16 = [
+  ["path", { d: "M5 12h14", key: "1ays0h" }],
+  ["path", { d: "M12 5v14", key: "s699le" }]
+];
+var Plus = createLucideIcon2("Plus", __iconNode16);
+
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/search.js
+var __iconNode17 = [
+  ["circle", { cx: "11", cy: "11", r: "8", key: "4ej97u" }],
+  ["path", { d: "m21 21-4.3-4.3", key: "1qie3q" }]
+];
+var Search = createLucideIcon2("Search", __iconNode17);
+
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/upload.js
+var __iconNode18 = [
+  ["path", { d: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4", key: "ih7n3h" }],
+  ["polyline", { points: "17 8 12 3 7 8", key: "t8dd8p" }],
+  ["line", { x1: "12", x2: "12", y1: "3", y2: "15", key: "widbto" }]
+];
+var Upload = createLucideIcon2("Upload", __iconNode18);
+
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/x.js
+var __iconNode19 = [
+  ["path", { d: "M18 6 6 18", key: "1bl5f8" }],
+  ["path", { d: "m6 6 12 12", key: "d8bk6v" }]
+];
+var X2 = createLucideIcon2("X", __iconNode19);
+
+// src/base-executable-view.tsx
+var import_react7 = require("react");
 
 // src/NotesBaseFormulaDate.ts
 function pad(value, length = 2) {
@@ -26477,9 +26555,9 @@ function EditableCell(props) {
 }
 function ExecutableTable(props) {
   const { model } = props;
-  const [selected, setSelected] = (0, import_react5.useState)(null);
-  const [anchor, setAnchor] = (0, import_react5.useState)(null);
-  const refs = (0, import_react5.useRef)(/* @__PURE__ */ new Map());
+  const [selected, setSelected] = (0, import_react7.useState)(null);
+  const [anchor, setAnchor] = (0, import_react7.useState)(null);
+  const refs = (0, import_react7.useRef)(/* @__PURE__ */ new Map());
   const selectedRow = selected?.view === model.view.name ? model.rows.findIndex((row) => row.path === selected.path) : -1;
   const selectedVisible = selected !== null && selectedRow >= 0 && selected.column < model.columns.length;
   const anchorRow = anchor?.view === model.view.name ? model.rows.findIndex((row) => row.path === anchor.path) : -1;
@@ -26583,10 +26661,10 @@ function ExecutableTable(props) {
   ] }) });
 }
 function ExecutableBaseView(props) {
-  const document2 = (0, import_react5.useMemo)(() => parseExecutableBase(props.source), [props.source]);
+  const document2 = (0, import_react7.useMemo)(() => parseExecutableBase(props.source), [props.source]);
   const selectedName = document2.status === "ready" ? document2.views.find((view) => view.name === props.activeView)?.name ?? document2.views[0]?.name ?? "" : "";
   const search = props.searches?.[selectedName] ?? "";
-  const model = (0, import_react5.useMemo)(() => document2.status === "ready" ? createBaseViewModel(document2, props.files, selectedName, search, props.baseFile) : document2, [document2, props.files, selectedName, search, props.baseFile]);
+  const model = (0, import_react7.useMemo)(() => document2.status === "ready" ? createBaseViewModel(document2, props.files, selectedName, search, props.baseFile) : document2, [document2, props.files, selectedName, search, props.baseFile]);
   if (model.status !== "ready") return /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("p", { role: "alert", children: model.reason });
   const blocked = model.unsupported.length > 0;
   const tsv = blocked ? null : executableBaseViewTsv(model);
@@ -26657,7 +26735,7 @@ function ExecutableBaseView(props) {
 }
 
 // src/canvas-board.tsx
-var import_react6 = require("react");
+var import_react8 = require("react");
 
 // src/canvas-identity.ts
 function isRecord(value) {
@@ -27299,16 +27377,16 @@ function sideHandleStyle(side) {
   };
 }
 function CanvasBoard({ source, revision, onChange, disabled = false }) {
-  const parsed = (0, import_react6.useMemo)(() => parseCanvasDocument(source), [source]);
-  const [armed, setArmed] = (0, import_react6.useState)(null);
-  const [selectedNodeId, setSelectedNodeId] = (0, import_react6.useState)(null);
-  const [selectedEdgeId, setSelectedEdgeId] = (0, import_react6.useState)(null);
-  const [error51, setError] = (0, import_react6.useState)(null);
+  const parsed = (0, import_react8.useMemo)(() => parseCanvasDocument(source), [source]);
+  const [armed, setArmed] = (0, import_react8.useState)(null);
+  const [selectedNodeId, setSelectedNodeId] = (0, import_react8.useState)(null);
+  const [selectedEdgeId, setSelectedEdgeId] = (0, import_react8.useState)(null);
+  const [error51, setError] = (0, import_react8.useState)(null);
   const document2 = parsed.status === "ready" ? parsed.document : null;
-  const labels = (0, import_react6.useMemo)(() => new Map(
+  const labels = (0, import_react8.useMemo)(() => new Map(
     (document2?.nodes ?? []).map((node) => [node.id, nodeLabel(node)])
   ), [document2]);
-  (0, import_react6.useEffect)(() => {
+  (0, import_react8.useEffect)(() => {
     if (document2 === null) {
       setArmed(null);
       setSelectedNodeId(null);
@@ -27319,7 +27397,7 @@ function CanvasBoard({ source, revision, onChange, disabled = false }) {
     if (selectedNodeId !== null && !document2.nodes.some((node) => node.id === selectedNodeId)) setSelectedNodeId(null);
     if (selectedEdgeId !== null && !document2.edges?.some((edge) => edge.id === selectedEdgeId)) setSelectedEdgeId(null);
   }, [armed, document2, selectedEdgeId, selectedNodeId]);
-  const bounds = (0, import_react6.useMemo)(() => {
+  const bounds = (0, import_react8.useMemo)(() => {
     if (document2 === null || document2.nodes.length === 0) {
       return { minX: 0, minY: 0, width: 800, height: 500, supported: true };
     }
@@ -27511,6 +27589,9 @@ function CanvasBoard({ source, revision, onChange, disabled = false }) {
     }
   );
 }
+
+// src/editor-surface.tsx
+var import_react9 = require("react");
 
 // src/live-preview.ts
 var MAX_LIVE_PREVIEW_SOURCE_BYTES = 2e6;
@@ -27916,6 +27997,117 @@ function buildMarkdownExportDocument(options) {
   return `<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data: blob:; media-src data: blob:; style-src 'unsafe-inline';"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title></head><body>${body}</body></html>`;
 }
 
+// src/editor-surface.tsx
+var import_jsx_runtime24 = require("react/jsx-runtime");
+function RichReadingView(props) {
+  const html = (0, import_react9.useMemo)(() => {
+    const warning = /<\/?(?:script|style|iframe|object|embed|form|svg|link|meta)\b/iu.test(props.source) ? '<p class="tocktutor-warning" role="note">Unsafe HTML is inert in Reading view.</p>' : "";
+    return `${warning}${renderMarkdownHtml(props.source)}`;
+  }, [props.source]);
+  const onClick = (event) => {
+    const target = event.target;
+    if (target instanceof HTMLInputElement && target.dataset.taskIndex !== void 0) {
+      const index2 = Number(target.dataset.taskIndex);
+      if (Number.isSafeInteger(index2) && index2 >= 0) props.onToggleTask(index2);
+      return;
+    }
+    if (target instanceof HTMLAnchorElement) event.preventDefault();
+  };
+  return /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(
+    "article",
+    {
+      "aria-label": "Reading View",
+      className: "tocktutor-reading mx-auto min-h-full w-[calc(100%-48px)] max-w-3xl pt-[18px] pb-[72px] [&_.callout]:my-4 [&_.callout]:rounded-md [&_.footnotes]:mt-8 [&_.math-display]:my-4 [&_.mermaid]:my-4 [&_.task-list]:pl-5 [&_h1]:mt-0 [&_h1]:mb-4 [&_h1]:text-[30px] [&_h1]:leading-tight [&_h1]:font-[650] [&_h2]:mt-6 [&_h2]:mb-3 [&_h2]:text-2xl [&_h3]:mt-5 [&_h3]:mb-2 [&_h3]:text-xl [&_mark]:bg-[color-mix(in_srgb,#fde047_55%,transparent)] [&_p]:mt-0 [&_p]:mb-4 [&_p]:text-lg [&_pre]:overflow-auto [&_pre]:rounded-md [&_pre]:border [&_pre]:border-[var(--tt-border)] [&_pre]:bg-[color-mix(in_srgb,var(--tt-text)_4%,var(--tt-panel))] [&_pre]:p-3 [&_table]:my-4 [&_table]:w-full [&_table]:border-collapse [&_td]:border [&_td]:border-[var(--tt-border)] [&_td]:p-2 [&_th]:border [&_th]:border-[var(--tt-border)] [&_th]:p-2",
+      dangerouslySetInnerHTML: { __html: html },
+      onClick,
+      tabIndex: -1
+    }
+  );
+}
+function LivePreviewView(props) {
+  const projection = (0, import_react9.useMemo)(() => projectLivePreview(props.source), [props.source]);
+  const [folded, setFolded] = (0, import_react9.useState)(() => /* @__PURE__ */ new Set());
+  (0, import_react9.useEffect)(() => {
+    if (projection.status !== "ready") {
+      setFolded(/* @__PURE__ */ new Set());
+      return;
+    }
+    setFolded(new Set(projection.lines.filter((line) => line.folded === true).map((line) => line.index)));
+  }, [props.documentKey]);
+  if (projection.status !== "ready") return /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(Alert, { unstyled: true, children: projection.reason });
+  const hidden = /* @__PURE__ */ new Set();
+  for (const line of projection.lines) {
+    if (!folded.has(line.index) || line.foldEndLine === void 0) continue;
+    for (let index2 = line.index + 1; index2 <= line.foldEndLine; index2 += 1) hidden.add(index2);
+  }
+  const toggleFold = (index2) => {
+    setFolded((current) => {
+      const next = new Set(current);
+      if (next.has(index2)) next.delete(index2);
+      else next.add(index2);
+      return next;
+    });
+  };
+  return /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("section", { "aria-label": "Live Preview", className: "mx-auto grid min-h-full w-[calc(100%-32px)] max-w-3xl content-start gap-0.5 py-6", tabIndex: -1, children: [
+    projection.lines.map((line) => hidden.has(line.index) ? null : /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)(
+      "div",
+      {
+        className: "group flex min-h-7 items-start gap-2 rounded px-1.5 py-0.5 data-[kind=callout]:border-l-4 data-[kind=callout]:border-[var(--tt-accent)] data-[kind=callout]:bg-[var(--tt-selected)] data-[kind=code]:bg-[color-mix(in_srgb,var(--tt-text)_5%,var(--tt-panel))] data-[kind=comment]:text-[var(--tt-muted)] data-[kind=heading]:font-semibold data-[kind=property]:text-[var(--tt-muted)]",
+        "data-kind": line.kind,
+        children: [
+          line.foldEndLine !== void 0 ? /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(
+            Button,
+            {
+              unstyled: true,
+              "aria-expanded": !folded.has(line.index),
+              "aria-label": `${folded.has(line.index) ? "Expand" : "Collapse"} Line ${String(line.index + 1)}`,
+              className: "mt-1 size-5 shrink-0 rounded border-0 bg-transparent p-0 text-[var(--tt-muted)]",
+              onClick: () => {
+                toggleFold(line.index);
+              },
+              type: "button",
+              children: /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(ChevronRight, { "aria-hidden": "true", className: folded.has(line.index) ? "" : "rotate-90" })
+            }
+          ) : /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("span", { className: "w-5 shrink-0" }),
+          line.kind === "task" && line.taskIndex !== void 0 && /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(
+            Checkbox3,
+            {
+              "aria-label": `Mark Task on Line ${String(line.index + 1)} as ${line.checked === true ? "Incomplete" : "Complete"}`,
+              checked: line.checked === true,
+              className: "mt-1.5",
+              onCheckedChange: () => {
+                props.onToggleTask(line.taskIndex);
+              }
+            }
+          ),
+          /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(
+            Textarea,
+            {
+              unstyled: true,
+              "aria-label": `Live Preview Line ${String(line.index + 1)}`,
+              className: "min-h-7 flex-1 resize-none overflow-hidden border-0 bg-transparent px-1 py-0.5 text-inherit outline-none [font:inherit]",
+              onChange: (event) => {
+                props.onEdit(replaceLivePreviewLine(props.source, line.index, event.target.value));
+              },
+              rows: 1,
+              spellCheck: line.kind !== "code",
+              value: line.content
+            }
+          )
+        ]
+      },
+      line.index
+    )),
+    /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("details", { className: "mt-4 rounded border border-[var(--tt-border)] p-2", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("summary", { className: "cursor-pointer text-xs font-medium", children: "Rendered Preview" }),
+      /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("div", { "aria-label": "Live Preview Rendered Content", className: "mt-2", dangerouslySetInnerHTML: { __html: renderMarkdownHtml(props.source) } })
+    ] })
+  ] });
+}
+
+// src/utility-panel.tsx
+var import_react10 = require("react");
+
 // src/session.ts
 var MAX_PANE_GROUPS = 8;
 var MAX_NOTE_TABS = 20;
@@ -28174,6 +28366,553 @@ function closeNoteTab(source, groupId, path) {
   };
 }
 
+// src/capture.ts
+var MAX_TEMPLATE_BYTES = 1e6;
+var BUILTIN_TEMPLATES = Object.freeze({
+  "Cornell Notes": "# {{title}}\n\n## Cues\n\n## Notes\n\n## Summary\n",
+  "Lesson Plan": "# {{title}}\n\n## Objectives\n\n## Activities\n\n## Assessment\n",
+  "One-Pager": "# {{title}}\n\n## Big Idea\n\n## Evidence\n\n## Reflection\n",
+  "Reading Log": "# {{title}}\n\nDate: {{date}}\n\n## Notes\n\n## Response\n"
+});
+function pad2(value, length = 2) {
+  return String(value).padStart(length, "0");
+}
+function formatDate(value, format) {
+  const replacements = {
+    YYYY: String(value.getFullYear()),
+    MMMM: value.toLocaleString("en", { month: "long" }),
+    MMM: value.toLocaleString("en", { month: "short" }),
+    MM: pad2(value.getMonth() + 1),
+    DD: pad2(value.getDate()),
+    dddd: value.toLocaleString("en", { weekday: "long" }),
+    ddd: value.toLocaleString("en", { weekday: "short" }),
+    HH: pad2(value.getHours()),
+    hh: pad2(value.getHours() % 12 || 12),
+    mm: pad2(value.getMinutes()),
+    ss: pad2(value.getSeconds()),
+    SSS: pad2(value.getMilliseconds(), 3),
+    A: value.getHours() < 12 ? "AM" : "PM"
+  };
+  let output = "";
+  for (let index2 = 0; index2 < format.length; ) {
+    if (format[index2] === "[") {
+      const close = format.indexOf("]", index2 + 1);
+      if (close >= 0) {
+        output += format.slice(index2 + 1, close);
+        index2 = close + 1;
+        continue;
+      }
+    }
+    const token = Object.keys(replacements).toSorted((left, right) => right.length - left.length).find((candidate) => format.startsWith(candidate, index2));
+    if (token === void 0) {
+      output += format[index2];
+      index2 += 1;
+    } else {
+      output += replacements[token];
+      index2 += token.length;
+    }
+  }
+  return output;
+}
+function safeFolder(folder) {
+  if (!isSafeVaultRelativePath(folder) || /^[A-Za-z]:/u.test(folder)) throw new Error("The capture folder is invalid.");
+  return folder.replace(/\/$/u, "");
+}
+function slug(value) {
+  return value.normalize("NFKD").replace(/[\u0300-\u036f]/gu, "").toLocaleLowerCase().replace(/[^a-z0-9]+/gu, "-").replace(/^-|-$/gu, "").slice(0, 80) || "capture";
+}
+function collisionPath(path, existing) {
+  if (!existing.has(path)) return path;
+  const extension = path.match(/(\.[^./]+)$/u)?.[1] ?? "";
+  const stem = extension === "" ? path : path.slice(0, -extension.length);
+  for (let index2 = 2; index2 <= 1e3; index2 += 1) {
+    const candidate = `${stem}-${String(index2)}${extension}`;
+    if (!existing.has(candidate)) return candidate;
+  }
+  throw new Error("No collision-safe capture path is available.");
+}
+function expandTemplate(template, context) {
+  if (new TextEncoder().encode(template).byteLength > MAX_TEMPLATE_BYTES) throw new Error("The template is too large.");
+  return template.replace(/\{\{(title|newTitle|content|fromTitle|date|time)(?::([^}\r\n]{1,100}))?\}\}/gu, (source, name2, format) => {
+    if (name2 === "title" || name2 === "newTitle") return context.title;
+    if (name2 === "content") return context.content ?? "";
+    if (name2 === "fromTitle") return context.fromTitle ?? "";
+    if (name2 === "date") return formatDate(context.now, format ?? "YYYY-MM-DD");
+    if (name2 === "time") return formatDate(context.now, format ?? "HH:mm");
+    return source;
+  });
+}
+function buildCaptureNote(input) {
+  const title = input.title.trim().slice(0, 200);
+  if (title === "") throw new Error("Capture title is required.");
+  if (new TextEncoder().encode(input.body).byteLength > MAX_TEMPLATE_BYTES) throw new Error("Capture body is too large.");
+  const folder = safeFolder(input.folder ?? "Inbox");
+  const date6 = formatDate(input.now, "YYYY-MM-DD");
+  return {
+    content: `# ${title}
+
+${input.body}`,
+    path: collisionPath(`${folder}/${date6}-${slug(title)}.md`, input.existing)
+  };
+}
+function buildJournalNote(input) {
+  const folder = safeFolder(input.folder);
+  const date6 = formatDate(input.now, input.dateFormat ?? "YYYY-MM-DD");
+  if (date6.length === 0 || date6.length > 200 || /[\\/:*?"<>|]/u.test(date6)) throw new Error("The journal date format is invalid.");
+  return {
+    content: input.template === void 0 ? `---
+journal-date: ${formatDate(input.now, "YYYY-MM-DD")}
+---
+# ${date6}
+` : expandTemplate(input.template, { now: input.now, title: date6 }),
+    path: `${folder}/${date6}.md`
+  };
+}
+function uniqueNotePath(now, existing) {
+  const candidate = new Date(now);
+  candidate.setSeconds(0, 0);
+  for (let index2 = 0; index2 < 1440; index2 += 1) {
+    const path = `${formatDate(candidate, "YYYYMMDDHHmm")}.md`;
+    if (!existing.has(path)) return path;
+    candidate.setMinutes(candidate.getMinutes() + 1);
+  }
+  throw new Error("No unique-note timestamp is available within one day.");
+}
+
+// src/workbench-glyph.tsx
+var import_jsx_runtime25 = require("react/jsx-runtime");
+var GLYPHS = {
+  back: ChevronLeft,
+  bookmark: Bookmark,
+  chat: MessageSquare,
+  close: X2,
+  collapse: ChevronRight,
+  document: FileText,
+  folder: Folder,
+  forward: ChevronRight,
+  more: Ellipsis,
+  new: Plus,
+  panel: PanelLeft,
+  "panel-right": PanelRight,
+  pencil: Pencil,
+  search: Search
+};
+function WorkbenchGlyph({ kind: kind2 }) {
+  const Glyph = GLYPHS[kind2];
+  return /* @__PURE__ */ (0, import_jsx_runtime25.jsx)(Glyph, { "aria-hidden": "true" });
+}
+
+// src/utility-panel.tsx
+var import_jsx_runtime26 = require("react/jsx-runtime");
+function WorkbenchUtilities(props) {
+  const { activeProperties, snapshot } = props;
+  const [newVaultName, setNewVaultName] = (0, import_react10.useState)("");
+  return /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)(
+    "aside",
+    {
+      "aria-hidden": !props.open,
+      "aria-label": "Workbench Utilities",
+      className: "tocktutor-right-panel invisible grid min-w-0 w-0 translate-x-6 grid-rows-[40px_minmax(0,1fr)] overflow-auto border-l border-[var(--tt-border)] bg-[var(--tt-panel)] opacity-0 shadow-none transition-[width,opacity,transform,visibility] [transition-duration:420ms,300ms,460ms,0s] [transition-timing-function:cubic-bezier(.16,1,.3,1),cubic-bezier(.16,1,.3,1),cubic-bezier(.16,1,.3,1),linear] [transition-delay:0s,0s,0s,420ms] pointer-events-none data-[open=true]:visible data-[open=true]:w-[min(360px,calc(100vw-262px))] data-[open=true]:translate-x-0 data-[open=true]:opacity-100 data-[open=true]:[transition-delay:0s] data-[open=true]:pointer-events-auto [&>:not(.tocktutor-assistant-resize)]:min-w-[min(360px,calc(100vw-262px))]",
+      "data-open": props.open,
+      ...props.open ? {} : { inert: "" },
+      children: [
+        /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("header", { className: "flex items-center justify-between border-b border-[var(--tt-border)] px-3", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("h2", { className: "m-0 text-sm", children: "More Options" }),
+          /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)(Tooltip2, { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(TooltipTrigger3, { asChild: true, children: /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(Button, { unstyled: true, "aria-label": "Close More Options", className: "border-0 bg-transparent p-[5px]", onClick: props.onClose, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(WorkbenchGlyph, { kind: "close" }) }) }),
+            /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(TooltipContent3, { children: "Close More Options" })
+          ] })
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("section", { "aria-label": "Vaults", className: "border-t border-[var(--tt-border)] p-3", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("div", { className: "flex items-center justify-between gap-2", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("h2", { className: "m-0 text-sm", children: "Vaults" }),
+            /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs", onClick: props.onOpenSandboxVault, type: "button", children: "Open Sandbox Vault" })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("form", { className: "mt-2 flex gap-1", onSubmit: (event) => {
+            event.preventDefault();
+            if (newVaultName.trim() !== "") {
+              props.onCreateManagedVault?.(newVaultName);
+              setNewVaultName("");
+            }
+          }, children: [
+            /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(Input, { unstyled: true, "aria-label": "New Vault Name", className: "min-w-0 flex-1 rounded border border-[var(--tt-border)] bg-transparent p-1 text-xs", maxLength: 80, onChange: (event) => {
+              setNewVaultName(event.target.value);
+            }, value: newVaultName }),
+            /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs", disabled: newVaultName.trim() === "", type: "submit", children: "Create Vault" })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("div", { className: "mt-2 grid gap-1.5", children: [
+            (snapshot.recentVaults ?? []).map((vault, index2) => /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("div", { className: "grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-1", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("span", { className: "truncate text-xs", title: vault.id, children: [
+                "Recent Vault ",
+                String(index2 + 1),
+                snapshot.vault?.id === vault.id ? " \xB7 Active" : ""
+              ] }),
+              /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs", disabled: snapshot.vault?.id === vault.id, onClick: () => {
+                props.onActivateRecentVault?.(vault.id);
+              }, type: "button", children: "Open" }),
+              /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(Button, { unstyled: true, "aria-label": `Remove Recent Vault ${String(index2 + 1)}`, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs", onClick: () => {
+                props.onRemoveRecentVault?.(vault.id);
+              }, type: "button", children: "Remove" })
+            ] }, vault.id)),
+            (snapshot.recentVaults?.length ?? 0) === 0 && /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(Alert, { unstyled: true, role: "status", children: "No recent vaults." })
+          ] })
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("section", { "aria-label": "File Recovery", className: "border-t border-[var(--tt-border)] p-3", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("div", { className: "flex items-center justify-between gap-2", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("h2", { className: "m-0 text-sm", children: "File Recovery" }),
+            /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("span", { className: "flex gap-1", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs", disabled: snapshot.path === null, onClick: props.onCaptureSnapshot, type: "button", children: "Capture" }),
+              /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs", disabled: (snapshot.snapshots?.length ?? 0) === 0, onClick: props.onClearSnapshots, type: "button", children: "Clear" }),
+              /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs", onClick: props.onOpenRecovery, type: "button", children: "Refresh" })
+            ] })
+          ] }),
+          snapshot.draftRecovered === true && /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(Alert, { unstyled: true, className: "mt-2", role: "status", children: "A local draft was recovered for this note." }),
+          /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("div", { className: "mt-2 flex gap-2", children: /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs", disabled: snapshot.path === null, onClick: props.onTrashCurrent, type: "button", children: "Move Current File to Trash" }) }),
+          /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("h3", { className: "mt-3 mb-1 text-xs", children: "Snapshots" }),
+          /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("div", { className: "grid gap-1", children: [
+            (snapshot.snapshots ?? []).map((snapshotEntry, index2) => /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("div", { className: "grid grid-cols-[minmax(0,1fr)_auto_auto_auto] items-center gap-1", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("span", { className: "truncate text-xs", children: [
+                "Snapshot ",
+                String(index2 + 1),
+                " \xB7 ",
+                snapshotEntry.reason
+              ] }),
+              /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs", onClick: () => {
+                props.onReadSnapshot?.(snapshotEntry.id);
+              }, type: "button", children: "Preview" }),
+              /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs", onClick: () => {
+                props.onRestoreSnapshotOverwrite?.(snapshotEntry.id);
+              }, type: "button", children: "Restore Original" }),
+              /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs", onClick: () => {
+                props.onRestoreSnapshot?.(snapshotEntry.id);
+              }, type: "button", children: "Restore as New" })
+            ] }, snapshotEntry.id)),
+            (snapshot.snapshots?.length ?? 0) === 0 && /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("span", { className: "text-xs text-[var(--tt-muted)]", children: "No snapshots for the active file." })
+          ] }),
+          snapshot.selectedSnapshot !== null && snapshot.selectedSnapshot !== void 0 && /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("pre", { "aria-label": "Snapshot Preview", className: "mt-2 max-h-32 overflow-auto rounded border border-[var(--tt-border)] p-2 text-xs", children: snapshot.selectedSnapshot.content }),
+          /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("h3", { className: "mt-3 mb-1 text-xs", children: "Trash" }),
+          /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("div", { className: "grid gap-1", children: [
+            (snapshot.trash ?? []).map((entry, index2) => /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("div", { className: "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-1", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("span", { className: "truncate text-xs", children: entry.originalPath }),
+              /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(Button, { unstyled: true, "aria-label": `Restore Trash Entry ${String(index2 + 1)}`, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs", onClick: () => {
+                props.onRestoreTrash?.(entry.id);
+              }, type: "button", children: "Restore" })
+            ] }, entry.id)),
+            (snapshot.trash?.length ?? 0) === 0 && /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("span", { className: "text-xs text-[var(--tt-muted)]", children: "Trash is empty." })
+          ] })
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("section", { "aria-label": "Web Viewer", className: "min-h-80 border-t border-[var(--tt-border)] p-3", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("h2", { className: "m-0 text-sm", children: "Web Viewer" }),
+          /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("div", { className: "mt-2 flex min-h-72 flex-col", children: props.webViewerPanel ?? /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(Alert, { unstyled: true, role: "status", children: "Web Viewer is unavailable." }) })
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("section", { "aria-label": "Graph View", className: "border-t border-[var(--tt-border)] p-3", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("div", { className: "flex items-center justify-between gap-2", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("h2", { className: "m-0 text-sm", children: "Graph View" }),
+            /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("span", { className: "flex gap-1", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(Button, { unstyled: true, "aria-pressed": snapshot.graphMode === "global", className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs", onClick: () => {
+                props.onLoadGraph?.("global");
+              }, type: "button", children: "Global" }),
+              /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(Button, { unstyled: true, "aria-pressed": snapshot.graphMode === "local", className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs", disabled: snapshot.path === null, onClick: () => {
+                props.onLoadGraph?.("local");
+              }, type: "button", children: "Local" })
+            ] })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("div", { className: "mt-2 grid grid-cols-2 gap-1 text-xs", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)(Label, { unstyled: true, className: "flex items-center gap-1", children: [
+              "Orphans",
+              /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(Checkbox3, { checked: snapshot.settings?.graphIncludeOrphans ?? true, onCheckedChange: (checked) => {
+                props.onSettingsChange?.({ graphIncludeOrphans: checked === true });
+              } })
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)(Label, { unstyled: true, className: "flex items-center gap-1", children: [
+              "Tags",
+              /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(Checkbox3, { checked: snapshot.settings?.graphIncludeTags ?? false, onCheckedChange: (checked) => {
+                props.onSettingsChange?.({ graphIncludeTags: checked === true });
+              } })
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)(Label, { unstyled: true, className: "flex items-center gap-1", children: [
+              "Attachments",
+              /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(Checkbox3, { checked: snapshot.settings?.graphIncludeAttachments ?? false, onCheckedChange: (checked) => {
+                props.onSettingsChange?.({ graphIncludeAttachments: checked === true });
+              } })
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)(Label, { unstyled: true, className: "flex items-center gap-1", children: [
+              "Local Depth",
+              /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)(NativeSelect, { unstyled: true, value: String(snapshot.settings?.graphDepth ?? 2), onChange: (event) => {
+                const depth = Number(event.target.value);
+                if (depth === 1 || depth === 2 || depth === 3) props.onSettingsChange?.({ graphDepth: depth });
+              }, children: [
+                /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(NativeSelectOption, { value: "1", children: "1" }),
+                /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(NativeSelectOption, { value: "2", children: "2" }),
+                /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(NativeSelectOption, { value: "3", children: "3" })
+              ] })
+            ] })
+          ] }),
+          (snapshot.graphLayout?.length ?? 0) > 0 ? /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)(import_jsx_runtime26.Fragment, { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("div", { "aria-label": `${snapshot.graphMode === "local" ? "Local" : "Global"} Graph Canvas`, className: "relative mt-2 h-48 w-full overflow-hidden rounded border border-[var(--tt-border)]", role: "img", children: [
+              snapshot.graphLayout?.map((node) => /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("span", { className: "absolute size-2 rounded-full bg-[var(--tt-muted)] data-[active=true]:bg-[var(--tt-accent)]", "data-active": node.path === snapshot.graph?.path, style: { left: `calc(50% + ${String(node.x / 5)}px)`, top: `calc(50% + ${String(node.y / 5)}px)` }, title: node.path }, node.path)),
+              /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("span", { className: "sr-only", children: (snapshot.graph?.edges ?? []).map((edge) => `${edge.sourcePath} links to ${edge.targetPath}`).join(". ") })
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("div", { className: "mt-1 grid max-h-28 gap-1 overflow-auto", children: snapshot.graphLayout?.map((node) => /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(Button, { unstyled: true, className: "truncate rounded border-0 bg-transparent px-1 py-0.5 text-left text-xs", onClick: () => {
+              props.onSelect(node.path);
+            }, type: "button", children: node.path }, node.path)) })
+          ] }) : /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("span", { className: "mt-2 block text-xs text-[var(--tt-muted)]", children: "Open Global or Local Graph." })
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("section", { "aria-label": "Bookmarks", className: "border-t border-[var(--tt-border)] p-3", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("h2", { className: "m-0 text-sm", children: "Bookmarks" }),
+          /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("div", { className: "mt-2 grid gap-1", children: [
+            (snapshot.bookmarks ?? []).map((bookmark) => /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("div", { className: "grid grid-cols-[minmax(0,1fr)_auto] gap-1", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)(Button, { unstyled: true, className: "truncate rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-left text-xs", onClick: () => {
+                props.onOpenBookmark?.(bookmark.id);
+              }, type: "button", children: [
+                bookmark.title,
+                " \xB7 ",
+                bookmark.kind,
+                bookmark.missing === true ? " \xB7 Missing" : ""
+              ] }),
+              /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(Button, { unstyled: true, "aria-label": `Remove Bookmark ${bookmark.title}`, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs", onClick: () => {
+                props.onRemoveBookmark?.(bookmark.id);
+              }, type: "button", children: "Remove" })
+            ] }, bookmark.id)),
+            (snapshot.bookmarks?.length ?? 0) === 0 && /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("span", { className: "text-xs text-[var(--tt-muted)]", children: "No bookmarks." })
+          ] })
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("section", { "aria-label": "Smart Views and Tags", className: "border-t border-[var(--tt-border)] p-3", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("h2", { className: "m-0 text-sm", children: "Smart Views and Tags" }),
+          /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("div", { className: "mt-2 grid grid-cols-2 gap-1", children: ["recent", "tasks", "journals", "favorites", "collections", "tags"].map((kind2) => /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-left text-xs", onClick: () => {
+            props.onOpenSmartView?.(kind2);
+          }, type: "button", children: kind2[0].toLocaleUpperCase() + kind2.slice(1) }, kind2)) }),
+          (snapshot.facets?.tags.length ?? 0) > 0 && /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("div", { className: "mt-2 grid gap-1", "aria-label": "Tags", children: snapshot.facets?.tags.map((tag) => /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)(Button, { unstyled: true, className: "rounded border-0 bg-transparent px-1 py-0.5 text-left text-xs", onClick: () => {
+            props.onSearchChange?.(`tag:${tag.tag}`);
+            props.onRunSearch?.();
+          }, type: "button", children: [
+            "#",
+            tag.tag,
+            " \xB7 ",
+            String(tag.count)
+          ] }, tag.tag.toLocaleLowerCase())) })
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("section", { "aria-label": "Properties", className: "border-t border-[var(--tt-border)] p-3", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("h2", { className: "m-0 text-sm", children: "Properties" }),
+          /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("h3", { className: "mt-2 mb-1 text-xs", children: "File" }),
+          /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("div", { className: "grid gap-1", children: [
+            activeProperties.map((property) => /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)(Label, { unstyled: true, className: "grid grid-cols-[minmax(80px,.4fr)_minmax(0,1fr)] items-center gap-2 text-xs", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("span", { className: "truncate", children: [
+                property.key,
+                " \xB7 ",
+                property.type
+              ] }),
+              property.type === "checkbox" ? /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(Checkbox3, { "aria-label": `${property.key} Property`, checked: property.value === true, onCheckedChange: (checked) => {
+                props.onSetProperty?.(property.key, checked === true);
+              } }) : /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(Input, { unstyled: true, "aria-label": `${property.key} Property`, className: "min-w-0 rounded border border-[var(--tt-border)] bg-transparent p-1", defaultValue: Array.isArray(property.value) ? property.value.join(", ") : String(property.value ?? ""), onBlur: (event) => {
+                props.onSetProperty?.(property.key, property.type === "list" ? event.target.value.split(",").map((value) => value.trim()).filter(Boolean) : property.type === "number" && Number.isFinite(Number(event.target.value)) ? Number(event.target.value) : event.target.value);
+              } })
+            ] }, property.key)),
+            activeProperties.length === 0 && /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("span", { className: "text-xs text-[var(--tt-muted)]", children: "No file properties." })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("h3", { className: "mt-2 mb-1 text-xs", children: "All" }),
+          /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("div", { className: "grid gap-1", children: (snapshot.facets?.properties ?? []).map((property) => /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)(Button, { unstyled: true, className: "rounded border-0 bg-transparent px-1 py-0.5 text-left text-xs", onClick: () => {
+            props.onSearchChange?.(`[${property.key}]`);
+            props.onRunSearch?.();
+          }, type: "button", children: [
+            property.key,
+            " \xB7 ",
+            String(property.count),
+            " \xB7 ",
+            property.types.join(", ")
+          ] }, property.key.toLocaleLowerCase())) })
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("section", { "aria-label": "Note Relationships", className: "border-t border-[var(--tt-border)] p-3", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("h2", { className: "m-0 text-sm", children: "Outline and Relationships" }),
+          /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("h3", { className: "mt-2 mb-1 text-xs", children: "Outline" }),
+          /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("div", { className: "grid gap-1", children: [
+            (snapshot.outline?.headings ?? []).map((heading2) => /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)(Button, { unstyled: true, className: "rounded border-0 bg-transparent px-1 py-0.5 text-left text-xs", onClick: () => {
+              props.onJumpToLine?.(heading2.line);
+            }, type: "button", children: [
+              "\xB7".repeat(Math.max(1, heading2.level)),
+              " ",
+              heading2.text
+            ] }, `${heading2.line}-${heading2.selector}`)),
+            (snapshot.outline?.headings.length ?? 0) === 0 && /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("span", { className: "text-xs text-[var(--tt-muted)]", children: "No headings." })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("h3", { className: "mt-2 mb-1 text-xs", children: "Footnotes" }),
+          (snapshot.outline?.footnotes ?? []).map((footnote) => /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(Button, { unstyled: true, className: "block w-full rounded border-0 bg-transparent px-1 py-0.5 text-left text-xs", onClick: () => {
+            props.onJumpToLine?.(footnote.line);
+          }, type: "button", children: footnote.content }, `${footnote.line}-${footnote.ordinal}`)),
+          /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("h3", { className: "mt-2 mb-1 text-xs", children: "Backlinks" }),
+          (snapshot.links?.backlinkDetails ?? []).map((link2, index2) => /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)(Button, { unstyled: true, className: "block w-full rounded border-0 bg-transparent px-1 py-0.5 text-left text-xs", onClick: () => {
+            props.onSelect(link2.sourcePath);
+          }, type: "button", children: [
+            link2.sourcePath,
+            ":",
+            String(link2.line)
+          ] }, `${link2.sourcePath}-${String(link2.line)}-${String(index2)}`)),
+          /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("h3", { className: "mt-2 mb-1 text-xs", children: "Outgoing Links" }),
+          (snapshot.links?.outgoingDetails ?? []).map((link2, index2) => /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(Button, { unstyled: true, className: "block w-full rounded border-0 bg-transparent px-1 py-0.5 text-left text-xs", disabled: link2.resolvedPath === null, onClick: () => {
+            if (link2.resolvedPath !== null) props.onSelect(link2.resolvedPath);
+          }, type: "button", children: link2.displayText || link2.authoredTarget }, `${link2.authoredTarget}-${String(link2.line)}-${String(index2)}`)),
+          (snapshot.links?.unlinkedMentions ?? []).map((mention, index2) => /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("span", { className: "block text-xs text-[var(--tt-muted)]", children: [
+            "Mention: ",
+            mention.matchedText
+          ] }, `${mention.sourcePath}-${String(mention.line)}-${String(index2)}`))
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("section", { "aria-label": "Resolved Embeds", className: "border-t border-[var(--tt-border)] p-3", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("h2", { className: "m-0 text-sm", children: "Resolved Embeds" }),
+          /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("div", { className: "mt-2 grid gap-2", children: [
+            (snapshot.embeds ?? []).map((embed, index2) => /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("article", { className: "overflow-auto rounded border border-[var(--tt-border)] p-2", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("strong", { className: "block truncate text-xs", children: [
+                embed.target.path,
+                embed.target.fragment === null ? "" : `#${embed.target.fragment}`
+              ] }),
+              embed.target.kind === "media" && embed.mimeType?.startsWith("image/") && /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("img", { alt: embed.target.display ?? embed.target.path, className: "mt-1 max-h-48 max-w-full", src: `data:${embed.mimeType};base64,${embed.content}` }),
+              embed.target.kind === "media" && embed.mimeType?.startsWith("audio/") && /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("audio", { className: "mt-1 w-full", controls: true, src: `data:${embed.mimeType};base64,${embed.content}` }),
+              embed.target.kind === "media" && embed.mimeType?.startsWith("video/") && /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("video", { className: "mt-1 max-h-48 max-w-full", controls: true, src: `data:${embed.mimeType};base64,${embed.content}` }),
+              embed.target.kind === "media" && embed.mimeType === "application/pdf" && /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("iframe", { className: "mt-1 h-48 w-full", sandbox: "", src: `data:${embed.mimeType};base64,${embed.content}`, title: embed.target.path }),
+              embed.target.kind === "note" && /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("div", { className: "prose text-xs", dangerouslySetInnerHTML: { __html: renderMarkdownHtml(embed.content) } }),
+              embed.target.kind === "canvas" && /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(CanvasBoard, { disabled: true, onChange: () => {
+              }, revision: "embedded", source: embed.content }),
+              embed.target.kind === "base" && /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(ExecutableBaseView, { files: snapshot.baseFiles ?? [], source: embed.content })
+            ] }, `${embed.target.path}-${String(index2)}`)),
+            (snapshot.embeds?.length ?? 0) === 0 && /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("span", { className: "text-xs text-[var(--tt-muted)]", children: "No resolved embeds." })
+          ] })
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("section", { "aria-label": "Attachments", className: "border-t border-[var(--tt-border)] p-3", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("div", { className: "flex items-center justify-between gap-2", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("h2", { className: "m-0 text-sm", children: "Attachments" }),
+            /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)(Label, { unstyled: true, className: "cursor-pointer rounded border border-[var(--tt-border)] px-2 py-1 text-xs", children: [
+              "Add Files",
+              /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(Input, { unstyled: true, className: "sr-only", type: "file", accept: "image/*,audio/*,video/*,application/pdf", onChange: (event) => {
+                const file2 = event.target.files?.[0];
+                if (file2 === void 0) return;
+                const reader = new FileReader();
+                reader.addEventListener("load", () => {
+                  const value = typeof reader.result === "string" ? reader.result.split(",", 2)[1] : void 0;
+                  if (value !== void 0) props.onStoreAttachment?.(file2.name, value);
+                }, { once: true });
+                reader.readAsDataURL(file2);
+                event.target.value = "";
+              } })
+            ] })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("div", { className: "mt-2 grid gap-1", children: snapshot.entries.filter((entry) => entry.kind === "attachment").map((entry) => /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(Button, { unstyled: true, className: "truncate rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-left text-xs", onClick: () => {
+            props.onPreviewAttachment?.(entry.path);
+          }, type: "button", children: entry.path }, entry.path)) }),
+          snapshot.attachmentPreview !== null && snapshot.attachmentPreview !== void 0 && /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("div", { className: "mt-2 rounded border border-[var(--tt-border)] p-2", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("div", { className: "flex justify-between gap-2", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("strong", { className: "truncate text-xs", children: snapshot.attachmentPreview.path }),
+              /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(Button, { unstyled: true, "aria-label": "Close Attachment Preview", className: "border-0 bg-transparent", onClick: props.onCloseAttachmentPreview, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(WorkbenchGlyph, { kind: "close" }) })
+            ] }),
+            snapshot.attachmentPreview.mediaKind === "image" && /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("img", { alt: snapshot.attachmentPreview.path, className: "mt-2 max-h-48 max-w-full", src: `data:${snapshot.attachmentPreview.mimeType};base64,${snapshot.attachmentPreview.dataBase64}` }),
+            snapshot.attachmentPreview.mediaKind === "audio" && /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("audio", { className: "mt-2 w-full", controls: true, src: `data:${snapshot.attachmentPreview.mimeType};base64,${snapshot.attachmentPreview.dataBase64}` }),
+            snapshot.attachmentPreview.mediaKind === "video" && /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("video", { className: "mt-2 max-h-48 max-w-full", controls: true, src: `data:${snapshot.attachmentPreview.mimeType};base64,${snapshot.attachmentPreview.dataBase64}` }),
+            snapshot.attachmentPreview.mediaKind === "pdf" && /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("iframe", { className: "mt-2 h-48 w-full", sandbox: "", src: `data:${snapshot.attachmentPreview.mimeType};base64,${snapshot.attachmentPreview.dataBase64}`, title: snapshot.attachmentPreview.path })
+          ] })
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("section", { "aria-label": "Note Composer and Format Converter", className: "border-t border-[var(--tt-border)] p-3", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("h2", { className: "m-0 text-sm", children: "Note Composer and Format Converter" }),
+          /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("div", { className: "mt-2 flex gap-1", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs", disabled: snapshot.documentKind !== "markdown" || snapshot.mode === "reading" || (snapshot.selectionEnd ?? 0) <= (snapshot.selectionStart ?? 0), onClick: props.onExtractSelection, type: "button", children: "Extract Selection" }),
+            /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs", disabled: snapshot.documentKind !== "markdown" || snapshot.mode === "reading", onClick: props.onConvertActiveNote, type: "button", children: "Convert Formats" })
+          ] })
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("section", { "aria-label": "Templates and Journals", className: "border-t border-[var(--tt-border)] p-3", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("h2", { className: "m-0 text-sm", children: "Templates and Journals" }),
+          /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("div", { className: "mt-2 grid grid-cols-2 gap-1", children: [
+            Object.keys(BUILTIN_TEMPLATES).map((name2) => /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-left text-xs", onClick: () => {
+              props.onCreateBuiltinTemplate?.(name2);
+            }, type: "button", children: name2 }, name2)),
+            /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-left text-xs", disabled: snapshot.documentKind !== "markdown" || snapshot.mode === "reading", onClick: () => {
+              props.onInsertCurrentDateTime?.("date");
+            }, type: "button", children: "Insert Current Date" }),
+            /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-left text-xs", disabled: snapshot.documentKind !== "markdown" || snapshot.mode === "reading", onClick: () => {
+              props.onInsertCurrentDateTime?.("time");
+            }, type: "button", children: "Insert Current Time" })
+          ] })
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("section", { "aria-label": "Capture Organization", className: "border-t border-[var(--tt-border)] p-3", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("div", { className: "flex items-center justify-between gap-2", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("h2", { className: "m-0 text-sm", children: "Capture Organization" }),
+            /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs", disabled: snapshot.path === null || !/^Inbox\/.+\.md$/iu.test(snapshot.path), onClick: props.onPrepareOrganization, type: "button", children: "Prepare Review" })
+          ] }),
+          snapshot.organizationProposal !== null && snapshot.organizationProposal !== void 0 && /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("div", { className: "mt-2 rounded border border-[var(--tt-border)] p-2 text-xs", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("strong", { className: "block", children: snapshot.organizationProposal.title }),
+            /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("span", { className: "block truncate", children: snapshot.organizationProposal.destination }),
+            /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("pre", { className: "max-h-32 overflow-auto whitespace-pre-wrap", children: snapshot.organizationProposal.content }),
+            /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("div", { className: "flex justify-end gap-1", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1", onClick: props.onCancelOrganization, type: "button", children: "Cancel" }),
+              /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1", onClick: props.onApplyOrganization, type: "button", children: "Approve and Create" })
+            ] })
+          ] })
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("section", { "aria-label": "TockTutor Settings", className: "border-t border-[var(--tt-border)] p-3", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("div", { className: "flex items-center justify-between gap-2", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("h2", { className: "m-0 text-sm", children: "Settings and Workspaces" }),
+            /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs", disabled: snapshot.settings === void 0, onClick: props.onSaveWorkspace, type: "button", children: "Save Workspace" })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("div", { className: "mt-2 grid gap-2 text-xs", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)(Label, { unstyled: true, className: "flex items-center justify-between gap-2", children: [
+              "Page Preview",
+              /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(Checkbox3, { checked: snapshot.settings?.pagePreview ?? true, disabled: snapshot.settings === void 0, onCheckedChange: (checked) => {
+                props.onSettingsChange?.({ pagePreview: checked === true });
+              } })
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)(Label, { unstyled: true, className: "flex items-center justify-between gap-2", children: [
+              "Backlinks in Document",
+              /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(Checkbox3, { checked: snapshot.settings?.backlinksInDocument ?? false, disabled: snapshot.settings === void 0, onCheckedChange: (checked) => {
+                props.onSettingsChange?.({ backlinksInDocument: checked === true });
+              } })
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)(Label, { unstyled: true, className: "grid gap-1", children: [
+              "Default Editing Mode",
+              /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)(NativeSelect, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent p-1", disabled: snapshot.settings === void 0, onChange: (event) => {
+                props.onSettingsChange?.({ defaultEditingMode: event.target.value === "source" ? "source" : "live-preview" });
+              }, value: snapshot.settings?.defaultEditingMode ?? "live-preview", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(NativeSelectOption, { value: "live-preview", children: "Live Preview" }),
+                /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(NativeSelectOption, { value: "source", children: "Source" })
+              ] })
+            ] })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("div", { className: "mt-2 grid gap-1", children: [
+            (snapshot.workspaces ?? []).map((workspace) => /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-left text-xs", onClick: () => {
+              props.onLoadWorkspace?.(workspace.id);
+            }, type: "button", children: [
+              "Load ",
+              workspace.name
+            ] }, workspace.id)),
+            (snapshot.workspaces?.length ?? 0) === 0 && /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("span", { className: "text-xs text-[var(--tt-muted)]", children: "No saved workspaces." })
+          ] })
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("section", { "aria-label": "Pane Groups", className: "tocktutor-pane-groups border-t border-[var(--tt-border)] p-3", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("div", { className: "tocktutor-pane-heading flex items-center justify-between", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("h2", { className: "m-0 text-sm", children: "Pane Groups" }),
+            /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)(Tooltip2, { children: [
+              /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(TooltipTrigger3, { asChild: true, children: /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("span", { className: "inline-flex", children: /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(Button, { unstyled: true, "aria-label": "Add Pane", className: "size-[26px] rounded border border-[var(--tt-border)] bg-transparent", disabled: snapshot.panes.length >= MAX_PANE_GROUPS, onClick: props.onAddPane, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(WorkbenchGlyph, { kind: "new" }) }) }) }),
+              /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(TooltipContent3, { children: "Add Pane" })
+            ] })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("div", { className: "tocktutor-pane-list mt-2 grid grid-cols-2 gap-1.5", children: snapshot.panes.map((pane, index2) => /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)(Button, { unstyled: true, "aria-pressed": pane.id === snapshot.focusedPaneId, className: "overflow-hidden rounded-[5px] border border-[var(--tt-border)] bg-transparent p-1.5 text-left aria-pressed:border-[var(--tt-accent)] [&_small]:block [&_small]:truncate [&_small]:text-xs [&_small]:text-[var(--tt-muted)] [&_span]:block [&_span]:truncate", onClick: () => {
+            props.onFocusPane(pane.id);
+          }, title: pane.activePath ?? `Pane ${String(index2 + 1)}`, type: "button", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("span", { children: [
+              "Pane ",
+              String(index2 + 1)
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("small", { children: pane.activePath ?? "Empty" })
+          ] }, pane.id)) })
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("section", { "aria-label": "Shared Review Panel", className: "tocktutor-review border-t border-[var(--tt-border)] p-3", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("header", { children: /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("h2", { className: "m-0 text-sm", children: "Reviews" }) }),
+          /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("div", { className: "tocktutor-review-content min-h-0 overflow-auto text-xs text-[var(--tt-muted)]", children: props.reviewPanel ?? /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(Alert, { unstyled: true, role: "status", children: "No review workflow is active." }) })
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("section", { "aria-label": "Native Actions", className: "tocktutor-native-actions border-t border-[var(--tt-border)] p-3", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("header", { children: /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("h2", { className: "m-0 text-sm", children: "Native Actions" }) }),
+          /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("div", { className: "tocktutor-native-actions-content min-h-0 overflow-auto text-xs text-[var(--tt-muted)]", children: props.nativeActions ?? /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(Alert, { unstyled: true, role: "status", children: "No native actions are available." }) })
+        ] })
+      ]
+    }
+  );
+}
+
 // src/bookmarks.ts
 var MAX_BOOKMARK_ITEMS = 1e3;
 var MAX_BOOKMARK_BYTES = 1048576;
@@ -28373,119 +29112,6 @@ function layoutGraph(graph, options) {
     }
   }
   return positions.map((node) => ({ ...node, x: Math.round(node.x * 100) / 100, y: Math.round(node.y * 100) / 100 }));
-}
-
-// src/capture.ts
-var MAX_TEMPLATE_BYTES = 1e6;
-var BUILTIN_TEMPLATES = Object.freeze({
-  "Cornell Notes": "# {{title}}\n\n## Cues\n\n## Notes\n\n## Summary\n",
-  "Lesson Plan": "# {{title}}\n\n## Objectives\n\n## Activities\n\n## Assessment\n",
-  "One-Pager": "# {{title}}\n\n## Big Idea\n\n## Evidence\n\n## Reflection\n",
-  "Reading Log": "# {{title}}\n\nDate: {{date}}\n\n## Notes\n\n## Response\n"
-});
-function pad2(value, length = 2) {
-  return String(value).padStart(length, "0");
-}
-function formatDate(value, format) {
-  const replacements = {
-    YYYY: String(value.getFullYear()),
-    MMMM: value.toLocaleString("en", { month: "long" }),
-    MMM: value.toLocaleString("en", { month: "short" }),
-    MM: pad2(value.getMonth() + 1),
-    DD: pad2(value.getDate()),
-    dddd: value.toLocaleString("en", { weekday: "long" }),
-    ddd: value.toLocaleString("en", { weekday: "short" }),
-    HH: pad2(value.getHours()),
-    hh: pad2(value.getHours() % 12 || 12),
-    mm: pad2(value.getMinutes()),
-    ss: pad2(value.getSeconds()),
-    SSS: pad2(value.getMilliseconds(), 3),
-    A: value.getHours() < 12 ? "AM" : "PM"
-  };
-  let output = "";
-  for (let index2 = 0; index2 < format.length; ) {
-    if (format[index2] === "[") {
-      const close = format.indexOf("]", index2 + 1);
-      if (close >= 0) {
-        output += format.slice(index2 + 1, close);
-        index2 = close + 1;
-        continue;
-      }
-    }
-    const token = Object.keys(replacements).toSorted((left, right) => right.length - left.length).find((candidate) => format.startsWith(candidate, index2));
-    if (token === void 0) {
-      output += format[index2];
-      index2 += 1;
-    } else {
-      output += replacements[token];
-      index2 += token.length;
-    }
-  }
-  return output;
-}
-function safeFolder(folder) {
-  if (!isSafeVaultRelativePath(folder) || /^[A-Za-z]:/u.test(folder)) throw new Error("The capture folder is invalid.");
-  return folder.replace(/\/$/u, "");
-}
-function slug(value) {
-  return value.normalize("NFKD").replace(/[\u0300-\u036f]/gu, "").toLocaleLowerCase().replace(/[^a-z0-9]+/gu, "-").replace(/^-|-$/gu, "").slice(0, 80) || "capture";
-}
-function collisionPath(path, existing) {
-  if (!existing.has(path)) return path;
-  const extension = path.match(/(\.[^./]+)$/u)?.[1] ?? "";
-  const stem = extension === "" ? path : path.slice(0, -extension.length);
-  for (let index2 = 2; index2 <= 1e3; index2 += 1) {
-    const candidate = `${stem}-${String(index2)}${extension}`;
-    if (!existing.has(candidate)) return candidate;
-  }
-  throw new Error("No collision-safe capture path is available.");
-}
-function expandTemplate(template, context) {
-  if (new TextEncoder().encode(template).byteLength > MAX_TEMPLATE_BYTES) throw new Error("The template is too large.");
-  return template.replace(/\{\{(title|newTitle|content|fromTitle|date|time)(?::([^}\r\n]{1,100}))?\}\}/gu, (source, name2, format) => {
-    if (name2 === "title" || name2 === "newTitle") return context.title;
-    if (name2 === "content") return context.content ?? "";
-    if (name2 === "fromTitle") return context.fromTitle ?? "";
-    if (name2 === "date") return formatDate(context.now, format ?? "YYYY-MM-DD");
-    if (name2 === "time") return formatDate(context.now, format ?? "HH:mm");
-    return source;
-  });
-}
-function buildCaptureNote(input) {
-  const title = input.title.trim().slice(0, 200);
-  if (title === "") throw new Error("Capture title is required.");
-  if (new TextEncoder().encode(input.body).byteLength > MAX_TEMPLATE_BYTES) throw new Error("Capture body is too large.");
-  const folder = safeFolder(input.folder ?? "Inbox");
-  const date6 = formatDate(input.now, "YYYY-MM-DD");
-  return {
-    content: `# ${title}
-
-${input.body}`,
-    path: collisionPath(`${folder}/${date6}-${slug(title)}.md`, input.existing)
-  };
-}
-function buildJournalNote(input) {
-  const folder = safeFolder(input.folder);
-  const date6 = formatDate(input.now, input.dateFormat ?? "YYYY-MM-DD");
-  if (date6.length === 0 || date6.length > 200 || /[\\/:*?"<>|]/u.test(date6)) throw new Error("The journal date format is invalid.");
-  return {
-    content: input.template === void 0 ? `---
-journal-date: ${formatDate(input.now, "YYYY-MM-DD")}
----
-# ${date6}
-` : expandTemplate(input.template, { now: input.now, title: date6 }),
-    path: `${folder}/${date6}.md`
-  };
-}
-function uniqueNotePath(now, existing) {
-  const candidate = new Date(now);
-  candidate.setSeconds(0, 0);
-  for (let index2 = 0; index2 < 1440; index2 += 1) {
-    const path = `${formatDate(candidate, "YYYYMMDDHHmm")}.md`;
-    if (!existing.has(path)) return path;
-    candidate.setMinutes(candidate.getMinutes() + 1);
-  }
-  throw new Error("No unique-note timestamp is available within one day.");
 }
 
 // src/organize.ts
@@ -29217,7 +29843,7 @@ function subscribeNoteVaultChanges(remote, currentVault, listener) {
 }
 
 // src/route.tsx
-var import_jsx_runtime24 = require("react/jsx-runtime");
+var import_jsx_runtime27 = require("react/jsx-runtime");
 var ROUTE_PREFIX = "/tocktutor";
 var TREE_LIMIT = 200;
 var DEFAULT_SIDEBAR_WIDTH = 280;
@@ -30891,111 +31517,6 @@ var WorkbenchRouteController = class {
     this.listeners.clear();
   }
 };
-function RichReadingView(props) {
-  const html = (0, import_react7.useMemo)(() => {
-    const warning = /<\/?(?:script|style|iframe|object|embed|form|svg|link|meta)\b/iu.test(props.source) ? '<p class="tocktutor-warning" role="note">Unsafe HTML is inert in Reading view.</p>' : "";
-    return `${warning}${renderMarkdownHtml(props.source)}`;
-  }, [props.source]);
-  const onClick = (event) => {
-    const target = event.target;
-    if (target instanceof HTMLInputElement && target.dataset.taskIndex !== void 0) {
-      const index2 = Number(target.dataset.taskIndex);
-      if (Number.isSafeInteger(index2) && index2 >= 0) props.onToggleTask(index2);
-      return;
-    }
-    if (target instanceof HTMLAnchorElement) event.preventDefault();
-  };
-  return /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(
-    "article",
-    {
-      "aria-label": "Reading View",
-      className: "tocktutor-reading mx-auto min-h-full w-[calc(100%-48px)] max-w-3xl pt-[18px] pb-[72px] [&_.callout]:my-4 [&_.callout]:rounded-md [&_.footnotes]:mt-8 [&_.math-display]:my-4 [&_.mermaid]:my-4 [&_.task-list]:pl-5 [&_h1]:mt-0 [&_h1]:mb-4 [&_h1]:text-[30px] [&_h1]:leading-tight [&_h1]:font-[650] [&_h2]:mt-6 [&_h2]:mb-3 [&_h2]:text-2xl [&_h3]:mt-5 [&_h3]:mb-2 [&_h3]:text-xl [&_mark]:bg-[color-mix(in_srgb,#fde047_55%,transparent)] [&_p]:mt-0 [&_p]:mb-4 [&_p]:text-lg [&_pre]:overflow-auto [&_pre]:rounded-md [&_pre]:border [&_pre]:border-[var(--tt-border)] [&_pre]:bg-[color-mix(in_srgb,var(--tt-text)_4%,var(--tt-panel))] [&_pre]:p-3 [&_table]:my-4 [&_table]:w-full [&_table]:border-collapse [&_td]:border [&_td]:border-[var(--tt-border)] [&_td]:p-2 [&_th]:border [&_th]:border-[var(--tt-border)] [&_th]:p-2",
-      dangerouslySetInnerHTML: { __html: html },
-      onClick,
-      tabIndex: -1
-    }
-  );
-}
-function LivePreviewView(props) {
-  const projection = (0, import_react7.useMemo)(() => projectLivePreview(props.source), [props.source]);
-  const [folded, setFolded] = (0, import_react7.useState)(() => /* @__PURE__ */ new Set());
-  (0, import_react7.useEffect)(() => {
-    if (projection.status !== "ready") {
-      setFolded(/* @__PURE__ */ new Set());
-      return;
-    }
-    setFolded(new Set(projection.lines.filter((line) => line.folded === true).map((line) => line.index)));
-  }, [props.documentKey]);
-  if (projection.status !== "ready") return /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(Alert, { unstyled: true, children: projection.reason });
-  const hidden = /* @__PURE__ */ new Set();
-  for (const line of projection.lines) {
-    if (!folded.has(line.index) || line.foldEndLine === void 0) continue;
-    for (let index2 = line.index + 1; index2 <= line.foldEndLine; index2 += 1) hidden.add(index2);
-  }
-  const toggleFold = (index2) => {
-    setFolded((current) => {
-      const next = new Set(current);
-      if (next.has(index2)) next.delete(index2);
-      else next.add(index2);
-      return next;
-    });
-  };
-  return /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("section", { "aria-label": "Live Preview", className: "mx-auto grid min-h-full w-[calc(100%-32px)] max-w-3xl content-start gap-0.5 py-6", tabIndex: -1, children: [
-    projection.lines.map((line) => hidden.has(line.index) ? null : /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)(
-      "div",
-      {
-        className: "group flex min-h-7 items-start gap-2 rounded px-1.5 py-0.5 data-[kind=callout]:border-l-4 data-[kind=callout]:border-[var(--tt-accent)] data-[kind=callout]:bg-[var(--tt-selected)] data-[kind=code]:bg-[color-mix(in_srgb,var(--tt-text)_5%,var(--tt-panel))] data-[kind=comment]:text-[var(--tt-muted)] data-[kind=heading]:font-semibold data-[kind=property]:text-[var(--tt-muted)]",
-        "data-kind": line.kind,
-        children: [
-          line.foldEndLine !== void 0 ? /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(
-            Button,
-            {
-              unstyled: true,
-              "aria-expanded": !folded.has(line.index),
-              "aria-label": `${folded.has(line.index) ? "Expand" : "Collapse"} Line ${String(line.index + 1)}`,
-              className: "mt-1 size-5 shrink-0 rounded border-0 bg-transparent p-0 text-[var(--tt-muted)]",
-              onClick: () => {
-                toggleFold(line.index);
-              },
-              type: "button",
-              children: /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(ChevronRight, { "aria-hidden": "true", className: folded.has(line.index) ? "" : "rotate-90" })
-            }
-          ) : /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("span", { className: "w-5 shrink-0" }),
-          line.kind === "task" && line.taskIndex !== void 0 && /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(
-            Checkbox3,
-            {
-              "aria-label": `Mark Task on Line ${String(line.index + 1)} as ${line.checked === true ? "Incomplete" : "Complete"}`,
-              checked: line.checked === true,
-              className: "mt-1.5",
-              onCheckedChange: () => {
-                props.onToggleTask(line.taskIndex);
-              }
-            }
-          ),
-          /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(
-            Textarea,
-            {
-              unstyled: true,
-              "aria-label": `Live Preview Line ${String(line.index + 1)}`,
-              className: "min-h-7 flex-1 resize-none overflow-hidden border-0 bg-transparent px-1 py-0.5 text-inherit outline-none [font:inherit]",
-              onChange: (event) => {
-                props.onEdit(replaceLivePreviewLine(props.source, line.index, event.target.value));
-              },
-              rows: 1,
-              spellCheck: line.kind !== "code",
-              value: line.content
-            }
-          )
-        ]
-      },
-      line.index
-    )),
-    /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("details", { className: "mt-4 rounded border border-[var(--tt-border)] p-2", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("summary", { className: "cursor-pointer text-xs font-medium", children: "Rendered Preview" }),
-      /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("div", { "aria-label": "Live Preview Rendered Content", className: "mt-2", dangerouslySetInnerHTML: { __html: renderMarkdownHtml(props.source) } })
-    ] })
-  ] });
-}
 function NativeDispatchDialog(props) {
   const submit = (event) => {
     event.preventDefault();
@@ -31006,39 +31527,39 @@ function NativeDispatchDialog(props) {
     });
   };
   const label = props.kind === "new" ? "New Note" : "Quick Capture";
-  return /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(Dialog2, { open: true, onOpenChange: (open) => {
+  return /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(Dialog2, { open: true, onOpenChange: (open) => {
     if (!open) props.onCancel();
-  }, children: /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(
+  }, children: /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(
     DialogContent3,
     {
       unstyled: true,
       className: "tocktutor-dispatch-dialog fixed top-1/2 left-1/2 z-50 w-[calc(100%-48px)] max-w-[480px] -translate-1/2",
       showCloseButton: false,
-      children: /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("form", { className: "grid w-full gap-3.5 rounded-lg border border-[var(--tt-border)] bg-[var(--tt-panel)] p-5 [&_input]:rounded-[5px] [&_input]:border [&_input]:border-[var(--tt-border)] [&_input]:p-2 [&_input]:[font:inherit] [&_label]:grid [&_label]:gap-[5px] [&_label]:font-[650] [&_textarea]:rounded-[5px] [&_textarea]:border [&_textarea]:border-[var(--tt-border)] [&_textarea]:p-2 [&_textarea]:[font:inherit]", onSubmit: submit, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("header", { children: /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(DialogTitle3, { className: "m-0 text-[17px]", children: label }) }),
-        props.kind === "new" ? /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)(Label, { unstyled: true, children: [
+      children: /* @__PURE__ */ (0, import_jsx_runtime27.jsxs)("form", { className: "grid w-full gap-3.5 rounded-lg border border-[var(--tt-border)] bg-[var(--tt-panel)] p-5 [&_input]:rounded-[5px] [&_input]:border [&_input]:border-[var(--tt-border)] [&_input]:p-2 [&_input]:[font:inherit] [&_label]:grid [&_label]:gap-[5px] [&_label]:font-[650] [&_textarea]:rounded-[5px] [&_textarea]:border [&_textarea]:border-[var(--tt-border)] [&_textarea]:p-2 [&_textarea]:[font:inherit]", onSubmit: submit, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime27.jsx)("header", { children: /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(DialogTitle3, { className: "m-0 text-[17px]", children: label }) }),
+        props.kind === "new" ? /* @__PURE__ */ (0, import_jsx_runtime27.jsxs)(Label, { unstyled: true, children: [
           "Note Path",
-          /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(Input, { unstyled: true, "aria-label": "New Note Path", autoFocus: true, maxLength: 1e3, name: "path", required: true })
-        ] }) : /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)(import_jsx_runtime24.Fragment, { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)(Label, { unstyled: true, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(Input, { unstyled: true, "aria-label": "New Note Path", autoFocus: true, maxLength: 1e3, name: "path", required: true })
+        ] }) : /* @__PURE__ */ (0, import_jsx_runtime27.jsxs)(import_jsx_runtime27.Fragment, { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime27.jsxs)(Label, { unstyled: true, children: [
             "Title",
-            /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(Input, { unstyled: true, "aria-label": "Capture Title", autoFocus: true, maxLength: 200, name: "title", required: true })
+            /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(Input, { unstyled: true, "aria-label": "Capture Title", autoFocus: true, maxLength: 200, name: "title", required: true })
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)(Label, { unstyled: true, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime27.jsxs)(Label, { unstyled: true, children: [
             "Text",
-            /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(Textarea, { unstyled: true, "aria-label": "Capture Text", maxLength: 1e5, name: "text" })
+            /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(Textarea, { unstyled: true, "aria-label": "Capture Text", maxLength: 1e5, name: "text" })
           ] })
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("div", { className: "tocktutor-dialog-actions flex justify-end gap-2 [&_button]:cursor-pointer [&_button]:rounded-[5px] [&_button]:border [&_button]:border-[var(--tt-border)] [&_button]:bg-[var(--tt-panel)] [&_button]:px-2.5 [&_button]:py-[7px] [&_button]:text-inherit", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(Button, { unstyled: true, onClick: props.onCancel, type: "button", children: "Cancel" }),
-          /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(Button, { unstyled: true, type: "submit", children: "Create" })
+        /* @__PURE__ */ (0, import_jsx_runtime27.jsxs)("div", { className: "tocktutor-dialog-actions flex justify-end gap-2 [&_button]:cursor-pointer [&_button]:rounded-[5px] [&_button]:border [&_button]:border-[var(--tt-border)] [&_button]:bg-[var(--tt-panel)] [&_button]:px-2.5 [&_button]:py-[7px] [&_button]:text-inherit", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(Button, { unstyled: true, onClick: props.onCancel, type: "button", children: "Cancel" }),
+          /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(Button, { unstyled: true, type: "submit", children: "Create" })
         ] })
       ] })
     }
   ) });
 }
 function WorkbenchCommandPalette(props) {
-  const [query, setQuery] = (0, import_react7.useState)("");
+  const [query, setQuery] = (0, import_react11.useState)("");
   const editor = (command) => props.onEditorCommand === void 0 ? void 0 : () => {
     props.onEditorCommand?.(command);
   };
@@ -31058,17 +31579,17 @@ function WorkbenchCommandPalette(props) {
     { disabled: !props.editorEnabled, label: "Insert Tip Callout", run: editor("callout-tip") },
     { disabled: !props.editorEnabled, label: "Delete Current Line", run: editor("delete-line") }
   ].filter((command) => command.label.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()));
-  return /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(Dialog2, { open: true, onOpenChange: (open) => {
+  return /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(Dialog2, { open: true, onOpenChange: (open) => {
     if (!open) props.onClose();
-  }, children: /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)(
+  }, children: /* @__PURE__ */ (0, import_jsx_runtime27.jsxs)(
     DialogContent3,
     {
       unstyled: true,
       className: "fixed top-[18%] left-1/2 z-[2147483647] w-[calc(100%-32px)] max-w-xl -translate-x-1/2 rounded-lg border border-[var(--tt-border)] bg-[var(--tt-panel)] p-3 shadow-xl",
       showCloseButton: false,
       children: [
-        /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(DialogTitle3, { className: "mb-2 text-sm font-semibold", children: "Command Palette" }),
-        /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(
+        /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(DialogTitle3, { className: "mb-2 text-sm font-semibold", children: "Command Palette" }),
+        /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(
           Input,
           {
             unstyled: true,
@@ -31083,8 +31604,8 @@ function WorkbenchCommandPalette(props) {
             value: query
           }
         ),
-        /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("div", { className: "mt-2 grid max-h-80 gap-1 overflow-auto", role: "listbox", children: [
-          commands.map((command) => /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(
+        /* @__PURE__ */ (0, import_jsx_runtime27.jsxs)("div", { className: "mt-2 grid max-h-80 gap-1 overflow-auto", role: "listbox", children: [
+          commands.map((command) => /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(
             Button,
             {
               unstyled: true,
@@ -31100,31 +31621,11 @@ function WorkbenchCommandPalette(props) {
             },
             command.label
           )),
-          commands.length === 0 && /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(Alert, { unstyled: true, role: "status", children: "No matching commands." })
+          commands.length === 0 && /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(Alert, { unstyled: true, role: "status", children: "No matching commands." })
         ] })
       ]
     }
   ) });
-}
-var WORKBENCH_GLYPHS = {
-  back: ChevronLeft,
-  bookmark: Bookmark,
-  chat: MessageSquare,
-  close: X,
-  collapse: ChevronRight,
-  document: FileText,
-  folder: Folder,
-  forward: ChevronRight,
-  more: Ellipsis,
-  new: Plus,
-  panel: PanelLeft,
-  "panel-right": PanelRight,
-  pencil: Pencil,
-  search: Search
-};
-function WorkbenchGlyph({ kind: kind2 }) {
-  const Glyph = WORKBENCH_GLYPHS[kind2];
-  return /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(Glyph, { "aria-hidden": "true" });
 }
 function fileName2(path) {
   return path.split("/").at(-1) ?? path;
@@ -31138,15 +31639,15 @@ function TreeEntries(props) {
     if (left.kind !== right.kind) return left.kind === "directory" ? -1 : 1;
     return left.path.localeCompare(right.path, void 0, { sensitivity: "base" });
   });
-  return children.map((entry) => entry.kind === "directory" ? /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("li", { className: "tocktutor-tree-directory", role: "treeitem", "aria-expanded": "true", children: [
-    /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("div", { className: "tocktutor-tree-row grid min-h-8 w-full grid-cols-[12px_16px_minmax(0,1fr)_16px] items-center gap-[7px] overflow-hidden rounded bg-transparent px-[5px] py-1 text-left font-medium text-inherit hover:bg-[color-mix(in_srgb,var(--tt-text)_5%,transparent)] [&>span:not(.tocktutor-tree-indent)]:truncate [&>svg:first-child]:size-3 [&>svg:last-child]:ml-auto [&>svg:last-child]:size-3.5 [&>svg:last-child]:text-[var(--tt-muted)] [&>svg:last-child]:opacity-80", title: entry.path, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(WorkbenchGlyph, { kind: "collapse" }),
-      /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(WorkbenchGlyph, { kind: "folder" }),
-      /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("span", { children: fileName2(entry.path) }),
-      /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(WorkbenchGlyph, { kind: "more" })
+  return children.map((entry) => entry.kind === "directory" ? /* @__PURE__ */ (0, import_jsx_runtime27.jsxs)("li", { className: "tocktutor-tree-directory", role: "treeitem", "aria-expanded": "true", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime27.jsxs)("div", { className: "tocktutor-tree-row grid min-h-8 w-full grid-cols-[12px_16px_minmax(0,1fr)_16px] items-center gap-[7px] overflow-hidden rounded bg-transparent px-[5px] py-1 text-left font-medium text-inherit hover:bg-[color-mix(in_srgb,var(--tt-text)_5%,transparent)] [&>span:not(.tocktutor-tree-indent)]:truncate [&>svg:first-child]:size-3 [&>svg:last-child]:ml-auto [&>svg:last-child]:size-3.5 [&>svg:last-child]:text-[var(--tt-muted)] [&>svg:last-child]:opacity-80", title: entry.path, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(WorkbenchGlyph, { kind: "collapse" }),
+      /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(WorkbenchGlyph, { kind: "folder" }),
+      /* @__PURE__ */ (0, import_jsx_runtime27.jsx)("span", { children: fileName2(entry.path) }),
+      /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(WorkbenchGlyph, { kind: "more" })
     ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("ul", { className: "m-0 list-none p-0 pl-4", role: "group", children: /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(TreeEntries, { entries: props.entries, onSelect: props.onSelect, path: props.path, prefix: `${entry.path}/` }) })
-  ] }, entry.path) : /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("li", { role: "treeitem", "aria-selected": entry.path === props.path, children: /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)(
+    /* @__PURE__ */ (0, import_jsx_runtime27.jsx)("ul", { className: "m-0 list-none p-0 pl-4", role: "group", children: /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(TreeEntries, { entries: props.entries, onSelect: props.onSelect, path: props.path, prefix: `${entry.path}/` }) })
+  ] }, entry.path) : /* @__PURE__ */ (0, import_jsx_runtime27.jsx)("li", { role: "treeitem", "aria-selected": entry.path === props.path, children: /* @__PURE__ */ (0, import_jsx_runtime27.jsxs)(
     Button,
     {
       unstyled: true,
@@ -31158,10 +31659,10 @@ function TreeEntries(props) {
       title: entry.path,
       type: "button",
       children: [
-        /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("span", { className: "tocktutor-tree-indent w-3" }),
-        /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(WorkbenchGlyph, { kind: "document" }),
-        /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("span", { children: fileName2(entry.path) }),
-        /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(WorkbenchGlyph, { kind: "more" })
+        /* @__PURE__ */ (0, import_jsx_runtime27.jsx)("span", { className: "tocktutor-tree-indent w-3" }),
+        /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(WorkbenchGlyph, { kind: "document" }),
+        /* @__PURE__ */ (0, import_jsx_runtime27.jsx)("span", { children: fileName2(entry.path) }),
+        /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(WorkbenchGlyph, { kind: "more" })
       ]
     }
   ) }, entry.path));
@@ -31175,17 +31676,16 @@ function TockTutorRouteView(props) {
   const documents = snapshot.entries.filter((entry) => entry.kind === "document" && supportedDocument(entry.path) && (query === "" || entry.path.toLocaleLowerCase().includes(query)));
   const focusedPane = snapshot.panes.find((pane) => pane.id === snapshot.focusedPaneId);
   const visibleTreeEntries = query === "" ? snapshot.entries.filter((entry) => entry.kind === "directory" || entry.kind === "document" && supportedDocument(entry.path)) : snapshot.entries.filter((entry) => entry.kind === "directory" ? documents.some((document2) => document2.path.startsWith(`${entry.path}/`)) : documents.includes(entry));
-  const [panel, setPanel] = (0, import_react7.useState)(null);
-  const [newVaultName, setNewVaultName] = (0, import_react7.useState)("");
-  const [assistantPanelWidth, setAssistantPanelWidth] = (0, import_react7.useState)(DEFAULT_ASSISTANT_PANEL_WIDTH);
-  const [sidebarOpen, setSidebarOpen] = (0, import_react7.useState)(true);
-  const [sidebarWidth, setSidebarWidth] = (0, import_react7.useState)(DEFAULT_SIDEBAR_WIDTH);
+  const [panel, setPanel] = (0, import_react11.useState)(null);
+  const [assistantPanelWidth, setAssistantPanelWidth] = (0, import_react11.useState)(DEFAULT_ASSISTANT_PANEL_WIDTH);
+  const [sidebarOpen, setSidebarOpen] = (0, import_react11.useState)(true);
+  const [sidebarWidth, setSidebarWidth] = (0, import_react11.useState)(DEFAULT_SIDEBAR_WIDTH);
   const effectiveSidebarOpen = sidebarOpen && snapshot.focusMode !== true;
-  const previousSidebarOpen = (0, import_react7.useRef)(effectiveSidebarOpen);
+  const previousSidebarOpen = (0, import_react11.useRef)(effectiveSidebarOpen);
   const shouldAnimateSidebarColumns = previousSidebarOpen.current !== effectiveSidebarOpen;
   const contentColumns = `${String(effectiveSidebarOpen ? sidebarWidth : 0)}px minmax(0, 1fr) auto auto`;
   const titlebarColumns = `${String(effectiveSidebarOpen ? sidebarWidth : COLLAPSED_TITLEBAR_SIDEBAR_WIDTH)}px minmax(0, 1fr)`;
-  (0, import_react7.useEffect)(() => {
+  (0, import_react11.useEffect)(() => {
     previousSidebarOpen.current = effectiveSidebarOpen;
   }, [effectiveSidebarOpen]);
   const resizeSidebar = (width) => {
@@ -31254,7 +31754,7 @@ function TockTutorRouteView(props) {
   };
   const words = snapshot.source.match(/[\p{L}\p{N}]+(?:['’][\p{L}\p{N}]+)*/gu)?.length ?? 0;
   const characters = snapshot.source.length;
-  const titlebar = /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)(
+  const titlebar = /* @__PURE__ */ (0, import_jsx_runtime27.jsxs)(
     "section",
     {
       "aria-label": "TockTutor Title Bar",
@@ -31264,18 +31764,18 @@ function TockTutorRouteView(props) {
         transitionDuration: shouldAnimateSidebarColumns ? void 0 : "0ms"
       },
       children: [
-        /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("div", { className: "tocktutor-titlebar-sidebar flex min-w-0 items-center justify-start gap-2 border-r border-[var(--tt-border)] pr-2 pl-[46px] [&>button]:inline-flex [&>button]:h-7 [&>button]:w-[22px] [&>button]:items-center [&>button]:justify-center [&>button]:border-0 [&>button]:bg-transparent [&>button]:p-0 [&>button]:text-[var(--tt-muted)] [&>span]:inline-flex [&>span]:h-7 [&>span]:w-[22px] [&>span]:items-center [&>span]:justify-center [&>span]:border-0 [&>span]:bg-transparent [&>span]:p-0 [&>span]:text-[var(--tt-muted)]", children: [
-          effectiveSidebarOpen && /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)(import_jsx_runtime24.Fragment, { children: [
-            /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("span", { className: "tocktutor-titlebar-document rounded-[5px] bg-[color-mix(in_srgb,var(--tt-text)_8%,transparent)] text-[var(--tt-text)]", children: /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(WorkbenchGlyph, { kind: "document" }) }),
-            /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("span", { children: /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(WorkbenchGlyph, { kind: "document" }) }),
-            /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)(Tooltip2, { children: [
-              /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(TooltipTrigger3, { asChild: true, children: /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("span", { className: "inline-flex", children: /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(Button, { unstyled: true, "aria-label": "Search Notes", className: "border-0 bg-transparent p-0", disabled: props.onOpenSearch === void 0, onClick: props.onOpenSearch, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(WorkbenchGlyph, { kind: "search" }) }) }) }),
-              /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(TooltipContent3, { children: "Search Notes" })
+        /* @__PURE__ */ (0, import_jsx_runtime27.jsxs)("div", { className: "tocktutor-titlebar-sidebar flex min-w-0 items-center justify-start gap-2 border-r border-[var(--tt-border)] pr-2 pl-[46px] [&>button]:inline-flex [&>button]:h-7 [&>button]:w-[22px] [&>button]:items-center [&>button]:justify-center [&>button]:border-0 [&>button]:bg-transparent [&>button]:p-0 [&>button]:text-[var(--tt-muted)] [&>span]:inline-flex [&>span]:h-7 [&>span]:w-[22px] [&>span]:items-center [&>span]:justify-center [&>span]:border-0 [&>span]:bg-transparent [&>span]:p-0 [&>span]:text-[var(--tt-muted)]", children: [
+          effectiveSidebarOpen && /* @__PURE__ */ (0, import_jsx_runtime27.jsxs)(import_jsx_runtime27.Fragment, { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime27.jsx)("span", { className: "tocktutor-titlebar-document rounded-[5px] bg-[color-mix(in_srgb,var(--tt-text)_8%,transparent)] text-[var(--tt-text)]", children: /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(WorkbenchGlyph, { kind: "document" }) }),
+            /* @__PURE__ */ (0, import_jsx_runtime27.jsx)("span", { children: /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(WorkbenchGlyph, { kind: "document" }) }),
+            /* @__PURE__ */ (0, import_jsx_runtime27.jsxs)(Tooltip2, { children: [
+              /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(TooltipTrigger3, { asChild: true, children: /* @__PURE__ */ (0, import_jsx_runtime27.jsx)("span", { className: "inline-flex", children: /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(Button, { unstyled: true, "aria-label": "Search Notes", className: "border-0 bg-transparent p-0", disabled: props.onOpenSearch === void 0, onClick: props.onOpenSearch, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(WorkbenchGlyph, { kind: "search" }) }) }) }),
+              /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(TooltipContent3, { children: "Search Notes" })
             ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(Button, { unstyled: true, "aria-label": "Bookmark Active Note", className: "border-0 bg-transparent p-0", disabled: snapshot.path === null || props.onAddBookmark === void 0, onClick: props.onAddBookmark, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(WorkbenchGlyph, { kind: "bookmark" }) })
+            /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(Button, { unstyled: true, "aria-label": "Bookmark Active Note", className: "border-0 bg-transparent p-0", disabled: snapshot.path === null || props.onAddBookmark === void 0, onClick: props.onAddBookmark, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(WorkbenchGlyph, { kind: "bookmark" }) })
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)(Tooltip2, { children: [
-            /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(TooltipTrigger3, { asChild: true, children: /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(
+          /* @__PURE__ */ (0, import_jsx_runtime27.jsxs)(Tooltip2, { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(TooltipTrigger3, { asChild: true, children: /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(
               Button,
               {
                 unstyled: true,
@@ -31286,19 +31786,19 @@ function TockTutorRouteView(props) {
                   setSidebarOpen((open) => !open);
                 },
                 type: "button",
-                children: /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(WorkbenchGlyph, { kind: "panel" })
+                children: /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(WorkbenchGlyph, { kind: "panel" })
               }
             ) }),
-            /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(TooltipContent3, { children: "Toggle Files Sidebar" })
+            /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(TooltipContent3, { children: "Toggle Files Sidebar" })
           ] })
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("div", { className: "tocktutor-titlebar-main flex min-w-0 items-center gap-1 px-2", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("span", { className: "tocktutor-history mr-[18px] flex gap-[5px] px-1.5", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(Button, { unstyled: true, "aria-label": "Go Back", className: "border-0 bg-transparent p-1 text-[var(--tt-muted)] disabled:opacity-35", disabled: snapshot.canGoBack !== true, onClick: props.onBack, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(WorkbenchGlyph, { kind: "back" }) }),
-            /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(Button, { unstyled: true, "aria-label": "Go Forward", className: "border-0 bg-transparent p-1 text-[var(--tt-muted)] disabled:opacity-35", disabled: snapshot.canGoForward !== true, onClick: props.onForward, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(WorkbenchGlyph, { kind: "forward" }) })
+        /* @__PURE__ */ (0, import_jsx_runtime27.jsxs)("div", { className: "tocktutor-titlebar-main flex min-w-0 items-center gap-1 px-2", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime27.jsxs)("span", { className: "tocktutor-history mr-[18px] flex gap-[5px] px-1.5", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(Button, { unstyled: true, "aria-label": "Go Back", className: "border-0 bg-transparent p-1 text-[var(--tt-muted)] disabled:opacity-35", disabled: snapshot.canGoBack !== true, onClick: props.onBack, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(WorkbenchGlyph, { kind: "back" }) }),
+            /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(Button, { unstyled: true, "aria-label": "Go Forward", className: "border-0 bg-transparent p-1 text-[var(--tt-muted)] disabled:opacity-35", disabled: snapshot.canGoForward !== true, onClick: props.onForward, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(WorkbenchGlyph, { kind: "forward" }) })
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("div", { className: "tocktutor-tabs -mx-[calc(var(--tt-tab-curve)*2)] -mb-px flex min-w-0 self-stretch items-end gap-1 overflow-visible px-[calc(var(--tt-tab-curve)*2)] [--tt-tab-curve:10px]", ...focusedPane?.tabs.length ? { "aria-label": "Note Tabs", role: "tablist" } : {}, children: focusedPane?.tabs.map((tab, index2) => /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("div", { className: "relative", role: "presentation", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(
+          /* @__PURE__ */ (0, import_jsx_runtime27.jsx)("div", { className: "tocktutor-tabs -mx-[calc(var(--tt-tab-curve)*2)] -mb-px flex min-w-0 self-stretch items-end gap-1 overflow-visible px-[calc(var(--tt-tab-curve)*2)] [--tt-tab-curve:10px]", ...focusedPane?.tabs.length ? { "aria-label": "Note Tabs", role: "tablist" } : {}, children: focusedPane?.tabs.map((tab, index2) => /* @__PURE__ */ (0, import_jsx_runtime27.jsxs)("div", { className: "relative", role: "presentation", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(
               Button,
               {
                 unstyled: true,
@@ -31323,32 +31823,32 @@ function TockTutorRouteView(props) {
                 tabIndex: tab.path === focusedPane.activePath ? 0 : -1,
                 title: tab.path,
                 type: "button",
-                children: /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("span", { children: [
-                  tab.dirty && /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("span", { "aria-label": "Unsaved", children: "\u2022" }),
+                children: /* @__PURE__ */ (0, import_jsx_runtime27.jsxs)("span", { children: [
+                  tab.dirty && /* @__PURE__ */ (0, import_jsx_runtime27.jsx)("span", { "aria-label": "Unsaved", children: "\u2022" }),
                   fileName2(tab.path)
                 ] })
               }
             ),
-            /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("span", { className: "absolute top-1/2 right-1 z-2 flex -translate-y-1/2 gap-0.5", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(Button, { unstyled: true, "aria-label": `${tab.pinned === true ? "Unpin" : "Pin"} ${fileName2(tab.path)}`, className: "rounded border-0 bg-transparent p-0.5 text-[var(--tt-muted)]", onClick: () => {
+            /* @__PURE__ */ (0, import_jsx_runtime27.jsxs)("span", { className: "absolute top-1/2 right-1 z-2 flex -translate-y-1/2 gap-0.5", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(Button, { unstyled: true, "aria-label": `${tab.pinned === true ? "Unpin" : "Pin"} ${fileName2(tab.path)}`, className: "rounded border-0 bg-transparent p-0.5 text-[var(--tt-muted)]", onClick: () => {
                 props.onTogglePinTab?.(focusedPane.id, tab.path);
-              }, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(Bookmark, { "aria-hidden": "true" }) }),
-              /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(Button, { unstyled: true, "aria-label": `Close ${fileName2(tab.path)}`, className: "rounded border-0 bg-transparent p-0.5 text-[var(--tt-muted)]", onClick: () => {
+              }, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(Bookmark, { "aria-hidden": "true" }) }),
+              /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(Button, { unstyled: true, "aria-label": `Close ${fileName2(tab.path)}`, className: "rounded border-0 bg-transparent p-0.5 text-[var(--tt-muted)]", onClick: () => {
                 props.onCloseTab?.(focusedPane.id, tab.path);
-              }, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(WorkbenchGlyph, { kind: "close" }) })
+              }, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(WorkbenchGlyph, { kind: "close" }) })
             ] })
           ] }, tab.path)) }),
-          /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)(Tooltip2, { children: [
-            /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(TooltipTrigger3, { asChild: true, children: /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("span", { className: "inline-flex", children: /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(Button, { unstyled: true, "aria-label": "Command Palette", className: "border-0 bg-transparent p-1.5 text-[var(--tt-muted)]", disabled: props.onOpenCommandPalette === void 0, onClick: props.onOpenCommandPalette, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(WorkbenchGlyph, { kind: "search" }) }) }) }),
-            /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(TooltipContent3, { children: "Command Palette" })
+          /* @__PURE__ */ (0, import_jsx_runtime27.jsxs)(Tooltip2, { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(TooltipTrigger3, { asChild: true, children: /* @__PURE__ */ (0, import_jsx_runtime27.jsx)("span", { className: "inline-flex", children: /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(Button, { unstyled: true, "aria-label": "Command Palette", className: "border-0 bg-transparent p-1.5 text-[var(--tt-muted)]", disabled: props.onOpenCommandPalette === void 0, onClick: props.onOpenCommandPalette, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(WorkbenchGlyph, { kind: "search" }) }) }) }),
+            /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(TooltipContent3, { children: "Command Palette" })
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)(Tooltip2, { children: [
-            /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(TooltipTrigger3, { asChild: true, children: /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("span", { className: "inline-flex", children: /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(Button, { unstyled: true, "aria-label": "New Note", className: "tocktutor-new-tab border-0 bg-transparent p-1.5 text-[var(--tt-muted)]", disabled: props.onNewNote === void 0, onClick: props.onNewNote, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(WorkbenchGlyph, { kind: "new" }) }) }) }),
-            /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(TooltipContent3, { children: "New Note" })
+          /* @__PURE__ */ (0, import_jsx_runtime27.jsxs)(Tooltip2, { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(TooltipTrigger3, { asChild: true, children: /* @__PURE__ */ (0, import_jsx_runtime27.jsx)("span", { className: "inline-flex", children: /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(Button, { unstyled: true, "aria-label": "New Note", className: "tocktutor-new-tab border-0 bg-transparent p-1.5 text-[var(--tt-muted)]", disabled: props.onNewNote === void 0, onClick: props.onNewNote, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(WorkbenchGlyph, { kind: "new" }) }) }) }),
+            /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(TooltipContent3, { children: "New Note" })
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("span", { className: "tocktutor-titlebar-spacer flex-1" }),
-          /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)(Tooltip2, { children: [
-            /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(TooltipTrigger3, { asChild: true, children: /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(
+          /* @__PURE__ */ (0, import_jsx_runtime27.jsx)("span", { className: "tocktutor-titlebar-spacer flex-1" }),
+          /* @__PURE__ */ (0, import_jsx_runtime27.jsxs)(Tooltip2, { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(TooltipTrigger3, { asChild: true, children: /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(
               Button,
               {
                 unstyled: true,
@@ -31359,16 +31859,16 @@ function TockTutorRouteView(props) {
                   setPanel((current) => current === "assistant" ? null : "assistant");
                 },
                 type: "button",
-                children: /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(WorkbenchGlyph, { kind: "panel-right" })
+                children: /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(WorkbenchGlyph, { kind: "panel-right" })
               }
             ) }),
-            /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(TooltipContent3, { children: "Toggle Assistant Panel" })
+            /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(TooltipContent3, { children: "Toggle Assistant Panel" })
           ] })
         ] })
       ]
     }
   );
-  return /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(TooltipProvider2, { children: /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)(
+  return /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(TooltipProvider2, { children: /* @__PURE__ */ (0, import_jsx_runtime27.jsxs)(
     "main",
     {
       "aria-label": "TockTutor Workbench",
@@ -31378,7 +31878,7 @@ function TockTutorRouteView(props) {
       tabIndex: -1,
       children: [
         props.titlebarTarget === void 0 ? titlebar : (0, import_react_dom2.createPortal)(titlebar, props.titlebarTarget),
-        snapshot.dispatchDialog !== null && /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(
+        snapshot.dispatchDialog !== null && /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(
           NativeDispatchDialog,
           {
             kind: snapshot.dispatchDialog,
@@ -31390,7 +31890,7 @@ function TockTutorRouteView(props) {
             }
           }
         ),
-        snapshot.commandPaletteOpen === true && /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(
+        snapshot.commandPaletteOpen === true && /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(
           WorkbenchCommandPalette,
           {
             canGoBack: snapshot.canGoBack === true,
@@ -31409,7 +31909,7 @@ function TockTutorRouteView(props) {
             onToggleFocus: props.onToggleFocusMode
           }
         ),
-        /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)(
+        /* @__PURE__ */ (0, import_jsx_runtime27.jsxs)(
           "div",
           {
             className: "tocktutor-grid relative grid h-full min-h-0 grid-cols-[var(--tockteam-primary-sidebar-width,280px)_minmax(0,1fr)_auto_auto] transition-[grid-template-columns] duration-300 ease-out",
@@ -31418,7 +31918,7 @@ function TockTutorRouteView(props) {
               transitionDuration: shouldAnimateSidebarColumns ? void 0 : "0ms"
             },
             children: [
-              /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)(
+              /* @__PURE__ */ (0, import_jsx_runtime27.jsxs)(
                 "aside",
                 {
                   "aria-hidden": !effectiveSidebarOpen,
@@ -31427,18 +31927,18 @@ function TockTutorRouteView(props) {
                   "data-open": effectiveSidebarOpen,
                   ...effectiveSidebarOpen ? {} : { inert: "" },
                   children: [
-                    /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("header", { className: "tocktutor-sidebar-header flex items-center gap-2.5 border-b border-[var(--tt-border)] px-2.5 [&_svg]:size-3.5", children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("h1", { className: "mr-auto my-0 text-sm font-semibold", children: "Files" }),
-                      /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("span", { className: "inline-flex items-center justify-center text-sm text-[var(--tt-muted)]", children: /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(WorkbenchGlyph, { kind: "more" }) }),
-                      /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("span", { className: "inline-flex items-center justify-center text-sm text-[var(--tt-muted)]", children: /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(Upload, { "aria-hidden": "true" }) }),
-                      /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("span", { className: "inline-flex items-center justify-center text-sm text-[var(--tt-muted)]", children: /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(WorkbenchGlyph, { kind: "folder" }) }),
-                      /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("span", { className: "inline-flex items-center justify-center text-sm text-[var(--tt-muted)]", children: /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(PanelTop, { "aria-hidden": "true" }) })
+                    /* @__PURE__ */ (0, import_jsx_runtime27.jsxs)("header", { className: "tocktutor-sidebar-header flex items-center gap-2.5 border-b border-[var(--tt-border)] px-2.5 [&_svg]:size-3.5", children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime27.jsx)("h1", { className: "mr-auto my-0 text-sm font-semibold", children: "Files" }),
+                      /* @__PURE__ */ (0, import_jsx_runtime27.jsx)("span", { className: "inline-flex items-center justify-center text-sm text-[var(--tt-muted)]", children: /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(WorkbenchGlyph, { kind: "more" }) }),
+                      /* @__PURE__ */ (0, import_jsx_runtime27.jsx)("span", { className: "inline-flex items-center justify-center text-sm text-[var(--tt-muted)]", children: /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(Upload, { "aria-hidden": "true" }) }),
+                      /* @__PURE__ */ (0, import_jsx_runtime27.jsx)("span", { className: "inline-flex items-center justify-center text-sm text-[var(--tt-muted)]", children: /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(WorkbenchGlyph, { kind: "folder" }) }),
+                      /* @__PURE__ */ (0, import_jsx_runtime27.jsx)("span", { className: "inline-flex items-center justify-center text-sm text-[var(--tt-muted)]", children: /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(PanelTop, { "aria-hidden": "true" }) })
                     ] }),
-                    /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("div", { className: "tocktutor-sidebar-content min-h-0 overflow-auto px-[5px] py-[3px]", children: [
-                      snapshot.searchOpen && /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("section", { "aria-label": "Search Notes", className: "tocktutor-search mb-2 border-b border-[var(--tt-border)] px-[3px] pb-2", children: [
-                        /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(Label, { unstyled: true, className: "mb-[5px] block text-xs font-semibold", htmlFor: "tocktutor-search-query", children: "Search Notes" }),
-                        /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("div", { className: "flex gap-1", children: [
-                          /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(
+                    /* @__PURE__ */ (0, import_jsx_runtime27.jsxs)("div", { className: "tocktutor-sidebar-content min-h-0 overflow-auto px-[5px] py-[3px]", children: [
+                      snapshot.searchOpen && /* @__PURE__ */ (0, import_jsx_runtime27.jsxs)("section", { "aria-label": "Search Notes", className: "tocktutor-search mb-2 border-b border-[var(--tt-border)] px-[3px] pb-2", children: [
+                        /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(Label, { unstyled: true, className: "mb-[5px] block text-xs font-semibold", htmlFor: "tocktutor-search-query", children: "Search Notes" }),
+                        /* @__PURE__ */ (0, import_jsx_runtime27.jsxs)("div", { className: "flex gap-1", children: [
+                          /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(
                             Input,
                             {
                               unstyled: true,
@@ -31454,42 +31954,42 @@ function TockTutorRouteView(props) {
                               value: snapshot.searchQuery
                             }
                           ),
-                          /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)(Tooltip2, { children: [
-                            /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(TooltipTrigger3, { asChild: true, children: /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(Button, { unstyled: true, "aria-label": "Close Search", className: "w-7 rounded-[5px] border border-[var(--tt-border)] bg-transparent", onClick: () => {
+                          /* @__PURE__ */ (0, import_jsx_runtime27.jsxs)(Tooltip2, { children: [
+                            /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(TooltipTrigger3, { asChild: true, children: /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(Button, { unstyled: true, "aria-label": "Close Search", className: "w-7 rounded-[5px] border border-[var(--tt-border)] bg-transparent", onClick: () => {
                               props.onCloseSearch?.();
-                            }, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(WorkbenchGlyph, { kind: "close" }) }) }),
-                            /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(TooltipContent3, { children: "Close Search" })
+                            }, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(WorkbenchGlyph, { kind: "close" }) }) }),
+                            /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(TooltipContent3, { children: "Close Search" })
                           ] })
                         ] }),
-                        /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("div", { className: "mt-1 flex gap-1", children: [
-                          /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(Button, { unstyled: true, "aria-pressed": (snapshot.searchMode ?? "query") === "query", className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs aria-pressed:border-[var(--tt-accent)]", onClick: () => {
+                        /* @__PURE__ */ (0, import_jsx_runtime27.jsxs)("div", { className: "mt-1 flex gap-1", children: [
+                          /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(Button, { unstyled: true, "aria-pressed": (snapshot.searchMode ?? "query") === "query", className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs aria-pressed:border-[var(--tt-accent)]", onClick: () => {
                             props.onSearchMode?.("query");
                           }, type: "button", children: "Keyword" }),
-                          /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(Button, { unstyled: true, "aria-pressed": snapshot.searchMode === "related", className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs aria-pressed:border-[var(--tt-accent)]", onClick: () => {
+                          /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(Button, { unstyled: true, "aria-pressed": snapshot.searchMode === "related", className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs aria-pressed:border-[var(--tt-accent)]", onClick: () => {
                             props.onSearchMode?.("related");
                           }, type: "button", children: "Related" }),
-                          /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs", disabled: snapshot.searchLoading === true || snapshot.searchQuery.trim() === "", onClick: props.onRunSearch, type: "button", children: snapshot.searchLoading === true ? "Searching\u2026" : "Search" })
+                          /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs", disabled: snapshot.searchLoading === true || snapshot.searchQuery.trim() === "", onClick: props.onRunSearch, type: "button", children: snapshot.searchLoading === true ? "Searching\u2026" : "Search" })
                         ] }),
-                        /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(Alert, { unstyled: true, "aria-live": "polite", className: "mx-1 my-[7px] text-xs text-[var(--tt-muted)]", role: "status", children: (snapshot.searchMatches?.length ?? 0) > 0 ? `${String(snapshot.searchMatches?.length ?? 0)} vault results.` : `${String(documents.length)} matching note paths.` }),
-                        (snapshot.searchMatches?.length ?? 0) > 0 && /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("ul", { className: "m-0 grid list-none gap-1 p-0", "aria-label": "Vault Search Results", children: snapshot.searchMatches?.map((match, index2) => /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("li", { children: /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)(Button, { unstyled: true, className: "w-full rounded border border-[var(--tt-border)] bg-transparent p-1.5 text-left", onClick: () => {
+                        /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(Alert, { unstyled: true, "aria-live": "polite", className: "mx-1 my-[7px] text-xs text-[var(--tt-muted)]", role: "status", children: (snapshot.searchMatches?.length ?? 0) > 0 ? `${String(snapshot.searchMatches?.length ?? 0)} vault results.` : `${String(documents.length)} matching note paths.` }),
+                        (snapshot.searchMatches?.length ?? 0) > 0 && /* @__PURE__ */ (0, import_jsx_runtime27.jsx)("ul", { className: "m-0 grid list-none gap-1 p-0", "aria-label": "Vault Search Results", children: snapshot.searchMatches?.map((match, index2) => /* @__PURE__ */ (0, import_jsx_runtime27.jsx)("li", { children: /* @__PURE__ */ (0, import_jsx_runtime27.jsxs)(Button, { unstyled: true, className: "w-full rounded border border-[var(--tt-border)] bg-transparent p-1.5 text-left", onClick: () => {
                           props.onSelect(match.path);
                         }, type: "button", children: [
-                          /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("strong", { className: "block truncate text-xs", children: [
+                          /* @__PURE__ */ (0, import_jsx_runtime27.jsxs)("strong", { className: "block truncate text-xs", children: [
                             match.path,
                             match.line === null ? "" : `:${String(match.line)}`
                           ] }),
-                          /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("span", { className: "block truncate text-xs text-[var(--tt-muted)]", children: match.preview })
+                          /* @__PURE__ */ (0, import_jsx_runtime27.jsx)("span", { className: "block truncate text-xs text-[var(--tt-muted)]", children: match.preview })
                         ] }) }, `${match.path}-${String(match.line ?? 0)}-${String(index2)}`)) })
                       ] }),
-                      /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("nav", { "aria-label": "Vault Notes", children: [
-                        snapshot.phase === "loading" && /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("p", { className: "mx-1 my-[7px] text-xs text-[var(--tt-muted)]", children: "Loading notes\u2026" }),
-                        snapshot.phase === "inactive" && /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(Alert, { unstyled: true, className: "mx-1 my-[7px] text-xs text-[color-mix(in_srgb,var(--tt-muted)_90%,var(--tt-text))]", children: "No Active Vault" }),
-                        snapshot.phase === "error" && /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(Alert, { unstyled: true, className: "mx-1 my-[7px] text-xs text-[color-mix(in_srgb,var(--tt-muted)_90%,var(--tt-text))]", children: snapshot.message }),
-                        snapshot.phase === "ready" && documents.length === 0 && /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("p", { className: "mx-1 my-[7px] text-xs text-[var(--tt-muted)]", children: "No supported notes found." }),
-                        /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("ul", { className: "tocktutor-tree m-0 list-none p-0", role: visibleTreeEntries.length > 0 ? "tree" : void 0, children: /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(TreeEntries, { entries: visibleTreeEntries, onSelect: props.onSelect, path: snapshot.path }) })
+                      /* @__PURE__ */ (0, import_jsx_runtime27.jsxs)("nav", { "aria-label": "Vault Notes", children: [
+                        snapshot.phase === "loading" && /* @__PURE__ */ (0, import_jsx_runtime27.jsx)("p", { className: "mx-1 my-[7px] text-xs text-[var(--tt-muted)]", children: "Loading notes\u2026" }),
+                        snapshot.phase === "inactive" && /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(Alert, { unstyled: true, className: "mx-1 my-[7px] text-xs text-[color-mix(in_srgb,var(--tt-muted)_90%,var(--tt-text))]", children: "No Active Vault" }),
+                        snapshot.phase === "error" && /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(Alert, { unstyled: true, className: "mx-1 my-[7px] text-xs text-[color-mix(in_srgb,var(--tt-muted)_90%,var(--tt-text))]", children: snapshot.message }),
+                        snapshot.phase === "ready" && documents.length === 0 && /* @__PURE__ */ (0, import_jsx_runtime27.jsx)("p", { className: "mx-1 my-[7px] text-xs text-[var(--tt-muted)]", children: "No supported notes found." }),
+                        /* @__PURE__ */ (0, import_jsx_runtime27.jsx)("ul", { className: "tocktutor-tree m-0 list-none p-0", role: visibleTreeEntries.length > 0 ? "tree" : void 0, children: /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(TreeEntries, { entries: visibleTreeEntries, onSelect: props.onSelect, path: snapshot.path }) })
                       ] })
                     ] }),
-                    /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)(
+                    /* @__PURE__ */ (0, import_jsx_runtime27.jsxs)(
                       Button,
                       {
                         unstyled: true,
@@ -31500,16 +32000,16 @@ function TockTutorRouteView(props) {
                         },
                         type: "button",
                         children: [
-                          /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(WorkbenchGlyph, { kind: "collapse" }),
-                          /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("span", { children: snapshot.vault === null ? "Choose Vault" : "TockTutor Vault" }),
-                          /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(WorkbenchGlyph, { kind: "more" })
+                          /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(WorkbenchGlyph, { kind: "collapse" }),
+                          /* @__PURE__ */ (0, import_jsx_runtime27.jsx)("span", { children: snapshot.vault === null ? "Choose Vault" : "TockTutor Vault" }),
+                          /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(WorkbenchGlyph, { kind: "more" })
                         ]
                       }
                     )
                   ]
                 }
               ),
-              /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(
+              /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(
                 Button,
                 {
                   unstyled: true,
@@ -31523,11 +32023,11 @@ function TockTutorRouteView(props) {
                   type: "button"
                 }
               ),
-              /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("section", { "aria-label": "Note Editor", className: "tocktutor-editor grid min-h-0 grid-rows-[40px_minmax(0,1fr)_var(--tt-footer-height)] overflow-hidden bg-[var(--tt-panel)]", id: "tocktutor-note-editor", role: "tabpanel", children: [
-                /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("header", { className: "tocktutor-editor-header relative flex min-w-0 items-center justify-center border-b border-[var(--tt-border)] px-2.5", children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("h2", { className: "m-0 truncate text-[13px] font-medium text-[var(--tt-muted)]", children: noteTitle(snapshot.path) }),
-                  /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("div", { className: "tocktutor-editor-actions absolute right-2.5 flex items-center gap-1 [&_button]:inline-flex [&_button]:h-7 [&_button]:w-[26px] [&_button]:items-center [&_button]:justify-center [&_button]:border-0 [&_button]:bg-transparent [&_button]:p-0 [&_button]:text-[var(--tt-muted)] [&_span]:inline-flex [&_span]:h-7 [&_span]:w-[26px] [&_span]:items-center [&_span]:justify-center [&_span]:border-0 [&_span]:bg-transparent [&_span]:p-0 [&_span]:text-[var(--tt-muted)]", children: [
-                    snapshot.documentKind === "markdown" ? /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("span", { "aria-label": "Editor Mode", className: "flex", role: "group", children: ["reading", "live-preview", "source"].map((mode) => /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(
+              /* @__PURE__ */ (0, import_jsx_runtime27.jsxs)("section", { "aria-label": "Note Editor", className: "tocktutor-editor grid min-h-0 grid-rows-[40px_minmax(0,1fr)_var(--tt-footer-height)] overflow-hidden bg-[var(--tt-panel)]", id: "tocktutor-note-editor", role: "tabpanel", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime27.jsxs)("header", { className: "tocktutor-editor-header relative flex min-w-0 items-center justify-center border-b border-[var(--tt-border)] px-2.5", children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime27.jsx)("h2", { className: "m-0 truncate text-[13px] font-medium text-[var(--tt-muted)]", children: noteTitle(snapshot.path) }),
+                  /* @__PURE__ */ (0, import_jsx_runtime27.jsxs)("div", { className: "tocktutor-editor-actions absolute right-2.5 flex items-center gap-1 [&_button]:inline-flex [&_button]:h-7 [&_button]:w-[26px] [&_button]:items-center [&_button]:justify-center [&_button]:border-0 [&_button]:bg-transparent [&_button]:p-0 [&_button]:text-[var(--tt-muted)] [&_span]:inline-flex [&_span]:h-7 [&_span]:w-[26px] [&_span]:items-center [&_span]:justify-center [&_span]:border-0 [&_span]:bg-transparent [&_span]:p-0 [&_span]:text-[var(--tt-muted)]", children: [
+                    snapshot.documentKind === "markdown" ? /* @__PURE__ */ (0, import_jsx_runtime27.jsx)("span", { "aria-label": "Editor Mode", className: "flex", role: "group", children: ["reading", "live-preview", "source"].map((mode) => /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(
                       Button,
                       {
                         unstyled: true,
@@ -31538,10 +32038,10 @@ function TockTutorRouteView(props) {
                           props.onMode(mode);
                         },
                         type: "button",
-                        children: mode === "reading" ? /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(FileText, { "aria-hidden": "true" }) : mode === "live-preview" ? /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(Pencil, { "aria-hidden": "true" }) : /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(WorkbenchGlyph, { kind: "document" })
+                        children: mode === "reading" ? /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(FileText, { "aria-hidden": "true" }) : mode === "live-preview" ? /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(Pencil, { "aria-hidden": "true" }) : /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(WorkbenchGlyph, { kind: "document" })
                       },
                       mode
-                    )) }) : /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(
+                    )) }) : /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(
                       Button,
                       {
                         unstyled: true,
@@ -31550,13 +32050,13 @@ function TockTutorRouteView(props) {
                           props.onMode(snapshot.mode === "source" ? "reading" : "source");
                         },
                         type: "button",
-                        children: /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(WorkbenchGlyph, { kind: "pencil" })
+                        children: /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(WorkbenchGlyph, { kind: "pencil" })
                       }
                     ),
-                    /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("span", { children: /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(Music, { "aria-hidden": "true" }) }),
-                    /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("span", { children: /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(Folder, { "aria-hidden": "true" }) }),
-                    /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)(Tooltip2, { children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(TooltipTrigger3, { asChild: true, children: /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(
+                    /* @__PURE__ */ (0, import_jsx_runtime27.jsx)("span", { children: /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(Music, { "aria-hidden": "true" }) }),
+                    /* @__PURE__ */ (0, import_jsx_runtime27.jsx)("span", { children: /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(Folder, { "aria-hidden": "true" }) }),
+                    /* @__PURE__ */ (0, import_jsx_runtime27.jsxs)(Tooltip2, { children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(TooltipTrigger3, { asChild: true, children: /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(
                         Button,
                         {
                           unstyled: true,
@@ -31566,18 +32066,18 @@ function TockTutorRouteView(props) {
                             setPanel((current) => current === "utilities" ? null : "utilities");
                           },
                           type: "button",
-                          children: /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(WorkbenchGlyph, { kind: "more" })
+                          children: /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(WorkbenchGlyph, { kind: "more" })
                         }
                       ) }),
-                      /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(TooltipContent3, { children: "More Note Actions" })
+                      /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(TooltipContent3, { children: "More Note Actions" })
                     ] })
                   ] })
                 ] }),
-                /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("div", { className: "tocktutor-editor-body relative min-h-0 overflow-auto", children: snapshot.path === null ? /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(Empty, { unstyled: true, className: "tocktutor-empty absolute top-[45%] left-1/2 w-full max-w-[420px] -translate-1/2 p-8 text-center", children: /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)(EmptyHeader, { unstyled: true, children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("p", { className: "tocktutor-kicker mb-0.5 text-[11px] font-[650] tracking-[.08em] text-[var(--tt-muted)] uppercase", children: "Ready When You Are" }),
-                  /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(EmptyTitle, { unstyled: true, "aria-level": 2, className: "text-xl font-bold", role: "heading", children: "Select a Note" }),
-                  /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(EmptyDescription, { unstyled: true, className: "text-[var(--tt-muted)]", children: "Choose a Markdown note from the vault to read or edit its exact source." })
-                ] }) }) : snapshot.mode === "source" ? /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(
+                /* @__PURE__ */ (0, import_jsx_runtime27.jsx)("div", { className: "tocktutor-editor-body relative min-h-0 overflow-auto", children: snapshot.path === null ? /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(Empty, { unstyled: true, className: "tocktutor-empty absolute top-[45%] left-1/2 w-full max-w-[420px] -translate-1/2 p-8 text-center", children: /* @__PURE__ */ (0, import_jsx_runtime27.jsxs)(EmptyHeader, { unstyled: true, children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime27.jsx)("p", { className: "tocktutor-kicker mb-0.5 text-[11px] font-[650] tracking-[.08em] text-[var(--tt-muted)] uppercase", children: "Ready When You Are" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(EmptyTitle, { unstyled: true, "aria-level": 2, className: "text-xl font-bold", role: "heading", children: "Select a Note" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(EmptyDescription, { unstyled: true, className: "text-[var(--tt-muted)]", children: "Choose a Markdown note from the vault to read or edit its exact source." })
+                ] }) }) : snapshot.mode === "source" ? /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(
                   Textarea,
                   {
                     unstyled: true,
@@ -31592,7 +32092,7 @@ function TockTutorRouteView(props) {
                     spellCheck: "true",
                     value: snapshot.source
                   }
-                ) : snapshot.mode === "live-preview" && snapshot.documentKind === "markdown" ? /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(
+                ) : snapshot.mode === "live-preview" && snapshot.documentKind === "markdown" ? /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(
                   LivePreviewView,
                   {
                     documentKey: snapshot.path,
@@ -31600,7 +32100,7 @@ function TockTutorRouteView(props) {
                     onToggleTask: props.onToggleTask,
                     source: snapshot.source
                   }
-                ) : snapshot.documentKind === "canvas" ? /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(
+                ) : snapshot.documentKind === "canvas" ? /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(
                   CanvasBoard,
                   {
                     disabled: snapshot.revision === null || props.onCanvasChange === void 0,
@@ -31610,7 +32110,7 @@ function TockTutorRouteView(props) {
                     revision: snapshot.revision ?? "unavailable",
                     source: snapshot.source
                   }
-                ) : snapshot.documentKind === "base" ? /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(
+                ) : snapshot.documentKind === "base" ? /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(
                   ExecutableBaseView,
                   {
                     files: snapshot.baseFiles ?? [],
@@ -31619,22 +32119,22 @@ function TockTutorRouteView(props) {
                     ...props.onBaseExport === void 0 ? {} : { onExport: props.onBaseExport },
                     source: snapshot.source
                   }
-                ) : snapshot.documentKind === "markdown" ? /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(RichReadingView, { onToggleTask: props.onToggleTask, source: snapshot.source }) : /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(Alert, { unstyled: true, children: "Reading view is unavailable." }) }),
-                /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("footer", { "aria-label": "TockTutor Status Bar", className: "tocktutor-statusbar flex min-w-0 items-center border-t border-[var(--tt-border)] px-2 text-xs text-[var(--tt-muted)]", role: "group", children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("output", { "aria-live": "polite", className: "tocktutor-message absolute size-px overflow-hidden whitespace-nowrap [clip:rect(0_0_0_0)] [clip-path:inset(50%)]", children: snapshot.message }),
-                  snapshot.path !== null && /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("div", { className: "ml-auto flex items-center gap-[18px] whitespace-nowrap max-[760px]:gap-2", children: [
-                    /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("span", { children: "0 Backlinks" }),
-                    /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("span", { children: snapshot.mode === "reading" ? "Reading" : snapshot.mode === "live-preview" ? "Live Preview" : "Source" }),
-                    /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("span", { children: [
+                ) : snapshot.documentKind === "markdown" ? /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(RichReadingView, { onToggleTask: props.onToggleTask, source: snapshot.source }) : /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(Alert, { unstyled: true, children: "Reading view is unavailable." }) }),
+                /* @__PURE__ */ (0, import_jsx_runtime27.jsxs)("footer", { "aria-label": "TockTutor Status Bar", className: "tocktutor-statusbar flex min-w-0 items-center border-t border-[var(--tt-border)] px-2 text-xs text-[var(--tt-muted)]", role: "group", children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime27.jsx)("output", { "aria-live": "polite", className: "tocktutor-message absolute size-px overflow-hidden whitespace-nowrap [clip:rect(0_0_0_0)] [clip-path:inset(50%)]", children: snapshot.message }),
+                  snapshot.path !== null && /* @__PURE__ */ (0, import_jsx_runtime27.jsxs)("div", { className: "ml-auto flex items-center gap-[18px] whitespace-nowrap max-[760px]:gap-2", children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime27.jsx)("span", { children: "0 Backlinks" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime27.jsx)("span", { children: snapshot.mode === "reading" ? "Reading" : snapshot.mode === "live-preview" ? "Live Preview" : "Source" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime27.jsxs)("span", { children: [
                       String(words),
                       " Words"
                     ] }),
-                    /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("span", { children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime27.jsxs)("span", { children: [
                       String(characters),
                       " Characters"
                     ] }),
-                    /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)(Tooltip2, { children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(TooltipTrigger3, { asChild: true, children: /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(
+                    /* @__PURE__ */ (0, import_jsx_runtime27.jsxs)(Tooltip2, { children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(TooltipTrigger3, { asChild: true, children: /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(
                         Button,
                         {
                           unstyled: true,
@@ -31645,15 +32145,15 @@ function TockTutorRouteView(props) {
                           },
                           type: "button",
                           className: "border-0 bg-transparent px-0 py-0.5 text-[var(--tt-muted)] [&_svg]:size-[17px]",
-                          children: /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(WorkbenchGlyph, { kind: "chat" })
+                          children: /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(WorkbenchGlyph, { kind: "chat" })
                         }
                       ) }),
-                      /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(TooltipContent3, { children: "Open Assistant" })
+                      /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(TooltipContent3, { children: "Open Assistant" })
                     ] })
                   ] })
                 ] })
               ] }),
-              /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)(
+              /* @__PURE__ */ (0, import_jsx_runtime27.jsxs)(
                 "aside",
                 {
                   "aria-hidden": panel !== "assistant",
@@ -31663,7 +32163,7 @@ function TockTutorRouteView(props) {
                   style: { width: panel === "assistant" ? `${String(assistantPanelWidth)}px` : "0px" },
                   ...panel === "assistant" ? {} : { inert: "" },
                   children: [
-                    panel === "assistant" && /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(
+                    panel === "assistant" && /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(
                       Button,
                       {
                         unstyled: true,
@@ -31680,416 +32180,13 @@ function TockTutorRouteView(props) {
                         type: "button"
                       }
                     ),
-                    /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("div", { className: "tocktutor-assistant-content min-h-0 min-w-[min(240px,calc(100vw-262px))] overflow-hidden border-l border-[color-mix(in_srgb,var(--tt-text)_8%,var(--tt-border)_92%)] transition-colors duration-140 ease-[cubic-bezier(.16,1,.3,1)]", children: props.assistantPanel })
+                    /* @__PURE__ */ (0, import_jsx_runtime27.jsx)("div", { className: "tocktutor-assistant-content min-h-0 min-w-[min(240px,calc(100vw-262px))] overflow-hidden border-l border-[color-mix(in_srgb,var(--tt-text)_8%,var(--tt-border)_92%)] transition-colors duration-140 ease-[cubic-bezier(.16,1,.3,1)]", children: props.assistantPanel })
                   ]
                 }
               ),
-              /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)(
-                "aside",
-                {
-                  "aria-hidden": panel !== "utilities",
-                  "aria-label": "Workbench Utilities",
-                  className: "tocktutor-right-panel invisible grid min-w-0 w-0 translate-x-6 grid-rows-[40px_minmax(0,1fr)] overflow-auto border-l border-[var(--tt-border)] bg-[var(--tt-panel)] opacity-0 shadow-none transition-[width,opacity,transform,visibility] [transition-duration:420ms,300ms,460ms,0s] [transition-timing-function:cubic-bezier(.16,1,.3,1),cubic-bezier(.16,1,.3,1),cubic-bezier(.16,1,.3,1),linear] [transition-delay:0s,0s,0s,420ms] pointer-events-none data-[open=true]:visible data-[open=true]:w-[min(360px,calc(100vw-262px))] data-[open=true]:translate-x-0 data-[open=true]:opacity-100 data-[open=true]:[transition-delay:0s] data-[open=true]:pointer-events-auto [&>:not(.tocktutor-assistant-resize)]:min-w-[min(360px,calc(100vw-262px))]",
-                  "data-open": panel === "utilities",
-                  ...panel === "utilities" ? {} : { inert: "" },
-                  children: [
-                    /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("header", { className: "flex items-center justify-between border-b border-[var(--tt-border)] px-3", children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("h2", { className: "m-0 text-sm", children: "More Options" }),
-                      /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)(Tooltip2, { children: [
-                        /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(TooltipTrigger3, { asChild: true, children: /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(Button, { unstyled: true, "aria-label": "Close More Options", className: "border-0 bg-transparent p-[5px]", onClick: () => {
-                          setPanel(null);
-                        }, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(WorkbenchGlyph, { kind: "close" }) }) }),
-                        /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(TooltipContent3, { children: "Close More Options" })
-                      ] })
-                    ] }),
-                    /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("section", { "aria-label": "Vaults", className: "border-t border-[var(--tt-border)] p-3", children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("div", { className: "flex items-center justify-between gap-2", children: [
-                        /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("h2", { className: "m-0 text-sm", children: "Vaults" }),
-                        /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs", onClick: props.onOpenSandboxVault, type: "button", children: "Open Sandbox Vault" })
-                      ] }),
-                      /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("form", { className: "mt-2 flex gap-1", onSubmit: (event) => {
-                        event.preventDefault();
-                        if (newVaultName.trim() !== "") {
-                          props.onCreateManagedVault?.(newVaultName);
-                          setNewVaultName("");
-                        }
-                      }, children: [
-                        /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(Input, { unstyled: true, "aria-label": "New Vault Name", className: "min-w-0 flex-1 rounded border border-[var(--tt-border)] bg-transparent p-1 text-xs", maxLength: 80, onChange: (event) => {
-                          setNewVaultName(event.target.value);
-                        }, value: newVaultName }),
-                        /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs", disabled: newVaultName.trim() === "", type: "submit", children: "Create Vault" })
-                      ] }),
-                      /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("div", { className: "mt-2 grid gap-1.5", children: [
-                        (snapshot.recentVaults ?? []).map((vault, index2) => /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("div", { className: "grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-1", children: [
-                          /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("span", { className: "truncate text-xs", title: vault.id, children: [
-                            "Recent Vault ",
-                            String(index2 + 1),
-                            snapshot.vault?.id === vault.id ? " \xB7 Active" : ""
-                          ] }),
-                          /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs", disabled: snapshot.vault?.id === vault.id, onClick: () => {
-                            props.onActivateRecentVault?.(vault.id);
-                          }, type: "button", children: "Open" }),
-                          /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(Button, { unstyled: true, "aria-label": `Remove Recent Vault ${String(index2 + 1)}`, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs", onClick: () => {
-                            props.onRemoveRecentVault?.(vault.id);
-                          }, type: "button", children: "Remove" })
-                        ] }, vault.id)),
-                        (snapshot.recentVaults?.length ?? 0) === 0 && /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(Alert, { unstyled: true, role: "status", children: "No recent vaults." })
-                      ] })
-                    ] }),
-                    /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("section", { "aria-label": "File Recovery", className: "border-t border-[var(--tt-border)] p-3", children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("div", { className: "flex items-center justify-between gap-2", children: [
-                        /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("h2", { className: "m-0 text-sm", children: "File Recovery" }),
-                        /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("span", { className: "flex gap-1", children: [
-                          /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs", disabled: snapshot.path === null, onClick: props.onCaptureSnapshot, type: "button", children: "Capture" }),
-                          /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs", disabled: (snapshot.snapshots?.length ?? 0) === 0, onClick: props.onClearSnapshots, type: "button", children: "Clear" }),
-                          /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs", onClick: props.onOpenRecovery, type: "button", children: "Refresh" })
-                        ] })
-                      ] }),
-                      snapshot.draftRecovered === true && /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(Alert, { unstyled: true, className: "mt-2", role: "status", children: "A local draft was recovered for this note." }),
-                      /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("div", { className: "mt-2 flex gap-2", children: /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs", disabled: snapshot.path === null, onClick: props.onTrashCurrent, type: "button", children: "Move Current File to Trash" }) }),
-                      /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("h3", { className: "mt-3 mb-1 text-xs", children: "Snapshots" }),
-                      /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("div", { className: "grid gap-1", children: [
-                        (snapshot.snapshots ?? []).map((snapshotEntry, index2) => /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("div", { className: "grid grid-cols-[minmax(0,1fr)_auto_auto_auto] items-center gap-1", children: [
-                          /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("span", { className: "truncate text-xs", children: [
-                            "Snapshot ",
-                            String(index2 + 1),
-                            " \xB7 ",
-                            snapshotEntry.reason
-                          ] }),
-                          /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs", onClick: () => {
-                            props.onReadSnapshot?.(snapshotEntry.id);
-                          }, type: "button", children: "Preview" }),
-                          /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs", onClick: () => {
-                            props.onRestoreSnapshotOverwrite?.(snapshotEntry.id);
-                          }, type: "button", children: "Restore Original" }),
-                          /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs", onClick: () => {
-                            props.onRestoreSnapshot?.(snapshotEntry.id);
-                          }, type: "button", children: "Restore as New" })
-                        ] }, snapshotEntry.id)),
-                        (snapshot.snapshots?.length ?? 0) === 0 && /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("span", { className: "text-xs text-[var(--tt-muted)]", children: "No snapshots for the active file." })
-                      ] }),
-                      snapshot.selectedSnapshot !== null && snapshot.selectedSnapshot !== void 0 && /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("pre", { "aria-label": "Snapshot Preview", className: "mt-2 max-h-32 overflow-auto rounded border border-[var(--tt-border)] p-2 text-xs", children: snapshot.selectedSnapshot.content }),
-                      /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("h3", { className: "mt-3 mb-1 text-xs", children: "Trash" }),
-                      /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("div", { className: "grid gap-1", children: [
-                        (snapshot.trash ?? []).map((entry, index2) => /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("div", { className: "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-1", children: [
-                          /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("span", { className: "truncate text-xs", children: entry.originalPath }),
-                          /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(Button, { unstyled: true, "aria-label": `Restore Trash Entry ${String(index2 + 1)}`, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs", onClick: () => {
-                            props.onRestoreTrash?.(entry.id);
-                          }, type: "button", children: "Restore" })
-                        ] }, entry.id)),
-                        (snapshot.trash?.length ?? 0) === 0 && /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("span", { className: "text-xs text-[var(--tt-muted)]", children: "Trash is empty." })
-                      ] })
-                    ] }),
-                    /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("section", { "aria-label": "Web Viewer", className: "min-h-80 border-t border-[var(--tt-border)] p-3", children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("h2", { className: "m-0 text-sm", children: "Web Viewer" }),
-                      /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("div", { className: "mt-2 flex min-h-72 flex-col", children: props.webViewerPanel ?? /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(Alert, { unstyled: true, role: "status", children: "Web Viewer is unavailable." }) })
-                    ] }),
-                    /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("section", { "aria-label": "Graph View", className: "border-t border-[var(--tt-border)] p-3", children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("div", { className: "flex items-center justify-between gap-2", children: [
-                        /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("h2", { className: "m-0 text-sm", children: "Graph View" }),
-                        /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("span", { className: "flex gap-1", children: [
-                          /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(Button, { unstyled: true, "aria-pressed": snapshot.graphMode === "global", className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs", onClick: () => {
-                            props.onLoadGraph?.("global");
-                          }, type: "button", children: "Global" }),
-                          /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(Button, { unstyled: true, "aria-pressed": snapshot.graphMode === "local", className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs", disabled: snapshot.path === null, onClick: () => {
-                            props.onLoadGraph?.("local");
-                          }, type: "button", children: "Local" })
-                        ] })
-                      ] }),
-                      /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("div", { className: "mt-2 grid grid-cols-2 gap-1 text-xs", children: [
-                        /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)(Label, { unstyled: true, className: "flex items-center gap-1", children: [
-                          "Orphans",
-                          /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(Checkbox3, { checked: snapshot.settings?.graphIncludeOrphans ?? true, onCheckedChange: (checked) => {
-                            props.onSettingsChange?.({ graphIncludeOrphans: checked === true });
-                          } })
-                        ] }),
-                        /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)(Label, { unstyled: true, className: "flex items-center gap-1", children: [
-                          "Tags",
-                          /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(Checkbox3, { checked: snapshot.settings?.graphIncludeTags ?? false, onCheckedChange: (checked) => {
-                            props.onSettingsChange?.({ graphIncludeTags: checked === true });
-                          } })
-                        ] }),
-                        /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)(Label, { unstyled: true, className: "flex items-center gap-1", children: [
-                          "Attachments",
-                          /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(Checkbox3, { checked: snapshot.settings?.graphIncludeAttachments ?? false, onCheckedChange: (checked) => {
-                            props.onSettingsChange?.({ graphIncludeAttachments: checked === true });
-                          } })
-                        ] }),
-                        /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)(Label, { unstyled: true, className: "flex items-center gap-1", children: [
-                          "Local Depth",
-                          /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)(NativeSelect, { unstyled: true, value: String(snapshot.settings?.graphDepth ?? 2), onChange: (event) => {
-                            const depth = Number(event.target.value);
-                            if (depth === 1 || depth === 2 || depth === 3) props.onSettingsChange?.({ graphDepth: depth });
-                          }, children: [
-                            /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(NativeSelectOption, { value: "1", children: "1" }),
-                            /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(NativeSelectOption, { value: "2", children: "2" }),
-                            /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(NativeSelectOption, { value: "3", children: "3" })
-                          ] })
-                        ] })
-                      ] }),
-                      (snapshot.graphLayout?.length ?? 0) > 0 ? /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)(import_jsx_runtime24.Fragment, { children: [
-                        /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("div", { "aria-label": `${snapshot.graphMode === "local" ? "Local" : "Global"} Graph Canvas`, className: "relative mt-2 h-48 w-full overflow-hidden rounded border border-[var(--tt-border)]", role: "img", children: [
-                          snapshot.graphLayout?.map((node) => /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("span", { className: "absolute size-2 rounded-full bg-[var(--tt-muted)] data-[active=true]:bg-[var(--tt-accent)]", "data-active": node.path === snapshot.graph?.path, style: { left: `calc(50% + ${String(node.x / 5)}px)`, top: `calc(50% + ${String(node.y / 5)}px)` }, title: node.path }, node.path)),
-                          /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("span", { className: "sr-only", children: (snapshot.graph?.edges ?? []).map((edge) => `${edge.sourcePath} links to ${edge.targetPath}`).join(". ") })
-                        ] }),
-                        /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("div", { className: "mt-1 grid max-h-28 gap-1 overflow-auto", children: snapshot.graphLayout?.map((node) => /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(Button, { unstyled: true, className: "truncate rounded border-0 bg-transparent px-1 py-0.5 text-left text-xs", onClick: () => {
-                          props.onSelect(node.path);
-                        }, type: "button", children: node.path }, node.path)) })
-                      ] }) : /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("span", { className: "mt-2 block text-xs text-[var(--tt-muted)]", children: "Open Global or Local Graph." })
-                    ] }),
-                    /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("section", { "aria-label": "Bookmarks", className: "border-t border-[var(--tt-border)] p-3", children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("h2", { className: "m-0 text-sm", children: "Bookmarks" }),
-                      /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("div", { className: "mt-2 grid gap-1", children: [
-                        (snapshot.bookmarks ?? []).map((bookmark) => /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("div", { className: "grid grid-cols-[minmax(0,1fr)_auto] gap-1", children: [
-                          /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)(Button, { unstyled: true, className: "truncate rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-left text-xs", onClick: () => {
-                            props.onOpenBookmark?.(bookmark.id);
-                          }, type: "button", children: [
-                            bookmark.title,
-                            " \xB7 ",
-                            bookmark.kind,
-                            bookmark.missing === true ? " \xB7 Missing" : ""
-                          ] }),
-                          /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(Button, { unstyled: true, "aria-label": `Remove Bookmark ${bookmark.title}`, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs", onClick: () => {
-                            props.onRemoveBookmark?.(bookmark.id);
-                          }, type: "button", children: "Remove" })
-                        ] }, bookmark.id)),
-                        (snapshot.bookmarks?.length ?? 0) === 0 && /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("span", { className: "text-xs text-[var(--tt-muted)]", children: "No bookmarks." })
-                      ] })
-                    ] }),
-                    /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("section", { "aria-label": "Smart Views and Tags", className: "border-t border-[var(--tt-border)] p-3", children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("h2", { className: "m-0 text-sm", children: "Smart Views and Tags" }),
-                      /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("div", { className: "mt-2 grid grid-cols-2 gap-1", children: ["recent", "tasks", "journals", "favorites", "collections", "tags"].map((kind2) => /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-left text-xs", onClick: () => {
-                        props.onOpenSmartView?.(kind2);
-                      }, type: "button", children: kind2[0].toLocaleUpperCase() + kind2.slice(1) }, kind2)) }),
-                      (snapshot.facets?.tags.length ?? 0) > 0 && /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("div", { className: "mt-2 grid gap-1", "aria-label": "Tags", children: snapshot.facets?.tags.map((tag) => /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)(Button, { unstyled: true, className: "rounded border-0 bg-transparent px-1 py-0.5 text-left text-xs", onClick: () => {
-                        props.onSearchChange?.(`tag:${tag.tag}`);
-                        props.onRunSearch?.();
-                      }, type: "button", children: [
-                        "#",
-                        tag.tag,
-                        " \xB7 ",
-                        String(tag.count)
-                      ] }, tag.tag.toLocaleLowerCase())) })
-                    ] }),
-                    /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("section", { "aria-label": "Properties", className: "border-t border-[var(--tt-border)] p-3", children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("h2", { className: "m-0 text-sm", children: "Properties" }),
-                      /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("h3", { className: "mt-2 mb-1 text-xs", children: "File" }),
-                      /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("div", { className: "grid gap-1", children: [
-                        activeProperties.map((property) => /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)(Label, { unstyled: true, className: "grid grid-cols-[minmax(80px,.4fr)_minmax(0,1fr)] items-center gap-2 text-xs", children: [
-                          /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("span", { className: "truncate", children: [
-                            property.key,
-                            " \xB7 ",
-                            property.type
-                          ] }),
-                          property.type === "checkbox" ? /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(Checkbox3, { "aria-label": `${property.key} Property`, checked: property.value === true, onCheckedChange: (checked) => {
-                            props.onSetProperty?.(property.key, checked === true);
-                          } }) : /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(Input, { unstyled: true, "aria-label": `${property.key} Property`, className: "min-w-0 rounded border border-[var(--tt-border)] bg-transparent p-1", defaultValue: Array.isArray(property.value) ? property.value.join(", ") : String(property.value ?? ""), onBlur: (event) => {
-                            props.onSetProperty?.(property.key, property.type === "list" ? event.target.value.split(",").map((value) => value.trim()).filter(Boolean) : property.type === "number" && Number.isFinite(Number(event.target.value)) ? Number(event.target.value) : event.target.value);
-                          } })
-                        ] }, property.key)),
-                        activeProperties.length === 0 && /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("span", { className: "text-xs text-[var(--tt-muted)]", children: "No file properties." })
-                      ] }),
-                      /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("h3", { className: "mt-2 mb-1 text-xs", children: "All" }),
-                      /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("div", { className: "grid gap-1", children: (snapshot.facets?.properties ?? []).map((property) => /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)(Button, { unstyled: true, className: "rounded border-0 bg-transparent px-1 py-0.5 text-left text-xs", onClick: () => {
-                        props.onSearchChange?.(`[${property.key}]`);
-                        props.onRunSearch?.();
-                      }, type: "button", children: [
-                        property.key,
-                        " \xB7 ",
-                        String(property.count),
-                        " \xB7 ",
-                        property.types.join(", ")
-                      ] }, property.key.toLocaleLowerCase())) })
-                    ] }),
-                    /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("section", { "aria-label": "Note Relationships", className: "border-t border-[var(--tt-border)] p-3", children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("h2", { className: "m-0 text-sm", children: "Outline and Relationships" }),
-                      /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("h3", { className: "mt-2 mb-1 text-xs", children: "Outline" }),
-                      /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("div", { className: "grid gap-1", children: [
-                        (snapshot.outline?.headings ?? []).map((heading2) => /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)(Button, { unstyled: true, className: "rounded border-0 bg-transparent px-1 py-0.5 text-left text-xs", onClick: () => {
-                          props.onJumpToLine?.(heading2.line);
-                        }, type: "button", children: [
-                          "\xB7".repeat(Math.max(1, heading2.level)),
-                          " ",
-                          heading2.text
-                        ] }, `${heading2.line}-${heading2.selector}`)),
-                        (snapshot.outline?.headings.length ?? 0) === 0 && /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("span", { className: "text-xs text-[var(--tt-muted)]", children: "No headings." })
-                      ] }),
-                      /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("h3", { className: "mt-2 mb-1 text-xs", children: "Footnotes" }),
-                      (snapshot.outline?.footnotes ?? []).map((footnote) => /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(Button, { unstyled: true, className: "block w-full rounded border-0 bg-transparent px-1 py-0.5 text-left text-xs", onClick: () => {
-                        props.onJumpToLine?.(footnote.line);
-                      }, type: "button", children: footnote.content }, `${footnote.line}-${footnote.ordinal}`)),
-                      /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("h3", { className: "mt-2 mb-1 text-xs", children: "Backlinks" }),
-                      (snapshot.links?.backlinkDetails ?? []).map((link2, index2) => /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)(Button, { unstyled: true, className: "block w-full rounded border-0 bg-transparent px-1 py-0.5 text-left text-xs", onClick: () => {
-                        props.onSelect(link2.sourcePath);
-                      }, type: "button", children: [
-                        link2.sourcePath,
-                        ":",
-                        String(link2.line)
-                      ] }, `${link2.sourcePath}-${String(link2.line)}-${String(index2)}`)),
-                      /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("h3", { className: "mt-2 mb-1 text-xs", children: "Outgoing Links" }),
-                      (snapshot.links?.outgoingDetails ?? []).map((link2, index2) => /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(Button, { unstyled: true, className: "block w-full rounded border-0 bg-transparent px-1 py-0.5 text-left text-xs", disabled: link2.resolvedPath === null, onClick: () => {
-                        if (link2.resolvedPath !== null) props.onSelect(link2.resolvedPath);
-                      }, type: "button", children: link2.displayText || link2.authoredTarget }, `${link2.authoredTarget}-${String(link2.line)}-${String(index2)}`)),
-                      (snapshot.links?.unlinkedMentions ?? []).map((mention, index2) => /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("span", { className: "block text-xs text-[var(--tt-muted)]", children: [
-                        "Mention: ",
-                        mention.matchedText
-                      ] }, `${mention.sourcePath}-${String(mention.line)}-${String(index2)}`))
-                    ] }),
-                    /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("section", { "aria-label": "Resolved Embeds", className: "border-t border-[var(--tt-border)] p-3", children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("h2", { className: "m-0 text-sm", children: "Resolved Embeds" }),
-                      /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("div", { className: "mt-2 grid gap-2", children: [
-                        (snapshot.embeds ?? []).map((embed, index2) => /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("article", { className: "overflow-auto rounded border border-[var(--tt-border)] p-2", children: [
-                          /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("strong", { className: "block truncate text-xs", children: [
-                            embed.target.path,
-                            embed.target.fragment === null ? "" : `#${embed.target.fragment}`
-                          ] }),
-                          embed.target.kind === "media" && embed.mimeType?.startsWith("image/") && /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("img", { alt: embed.target.display ?? embed.target.path, className: "mt-1 max-h-48 max-w-full", src: `data:${embed.mimeType};base64,${embed.content}` }),
-                          embed.target.kind === "media" && embed.mimeType?.startsWith("audio/") && /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("audio", { className: "mt-1 w-full", controls: true, src: `data:${embed.mimeType};base64,${embed.content}` }),
-                          embed.target.kind === "media" && embed.mimeType?.startsWith("video/") && /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("video", { className: "mt-1 max-h-48 max-w-full", controls: true, src: `data:${embed.mimeType};base64,${embed.content}` }),
-                          embed.target.kind === "media" && embed.mimeType === "application/pdf" && /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("iframe", { className: "mt-1 h-48 w-full", sandbox: "", src: `data:${embed.mimeType};base64,${embed.content}`, title: embed.target.path }),
-                          embed.target.kind === "note" && /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("div", { className: "prose text-xs", dangerouslySetInnerHTML: { __html: renderMarkdownHtml(embed.content) } }),
-                          embed.target.kind === "canvas" && /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(CanvasBoard, { disabled: true, onChange: () => {
-                          }, revision: "embedded", source: embed.content }),
-                          embed.target.kind === "base" && /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(ExecutableBaseView, { files: snapshot.baseFiles ?? [], source: embed.content })
-                        ] }, `${embed.target.path}-${String(index2)}`)),
-                        (snapshot.embeds?.length ?? 0) === 0 && /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("span", { className: "text-xs text-[var(--tt-muted)]", children: "No resolved embeds." })
-                      ] })
-                    ] }),
-                    /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("section", { "aria-label": "Attachments", className: "border-t border-[var(--tt-border)] p-3", children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("div", { className: "flex items-center justify-between gap-2", children: [
-                        /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("h2", { className: "m-0 text-sm", children: "Attachments" }),
-                        /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)(Label, { unstyled: true, className: "cursor-pointer rounded border border-[var(--tt-border)] px-2 py-1 text-xs", children: [
-                          "Add Files",
-                          /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(Input, { unstyled: true, className: "sr-only", type: "file", accept: "image/*,audio/*,video/*,application/pdf", onChange: (event) => {
-                            const file2 = event.target.files?.[0];
-                            if (file2 === void 0) return;
-                            const reader = new FileReader();
-                            reader.addEventListener("load", () => {
-                              const value = typeof reader.result === "string" ? reader.result.split(",", 2)[1] : void 0;
-                              if (value !== void 0) props.onStoreAttachment?.(file2.name, value);
-                            }, { once: true });
-                            reader.readAsDataURL(file2);
-                            event.target.value = "";
-                          } })
-                        ] })
-                      ] }),
-                      /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("div", { className: "mt-2 grid gap-1", children: snapshot.entries.filter((entry) => entry.kind === "attachment").map((entry) => /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(Button, { unstyled: true, className: "truncate rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-left text-xs", onClick: () => {
-                        props.onPreviewAttachment?.(entry.path);
-                      }, type: "button", children: entry.path }, entry.path)) }),
-                      snapshot.attachmentPreview !== null && snapshot.attachmentPreview !== void 0 && /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("div", { className: "mt-2 rounded border border-[var(--tt-border)] p-2", children: [
-                        /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("div", { className: "flex justify-between gap-2", children: [
-                          /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("strong", { className: "truncate text-xs", children: snapshot.attachmentPreview.path }),
-                          /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(Button, { unstyled: true, "aria-label": "Close Attachment Preview", className: "border-0 bg-transparent", onClick: props.onCloseAttachmentPreview, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(WorkbenchGlyph, { kind: "close" }) })
-                        ] }),
-                        snapshot.attachmentPreview.mediaKind === "image" && /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("img", { alt: snapshot.attachmentPreview.path, className: "mt-2 max-h-48 max-w-full", src: `data:${snapshot.attachmentPreview.mimeType};base64,${snapshot.attachmentPreview.dataBase64}` }),
-                        snapshot.attachmentPreview.mediaKind === "audio" && /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("audio", { className: "mt-2 w-full", controls: true, src: `data:${snapshot.attachmentPreview.mimeType};base64,${snapshot.attachmentPreview.dataBase64}` }),
-                        snapshot.attachmentPreview.mediaKind === "video" && /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("video", { className: "mt-2 max-h-48 max-w-full", controls: true, src: `data:${snapshot.attachmentPreview.mimeType};base64,${snapshot.attachmentPreview.dataBase64}` }),
-                        snapshot.attachmentPreview.mediaKind === "pdf" && /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("iframe", { className: "mt-2 h-48 w-full", sandbox: "", src: `data:${snapshot.attachmentPreview.mimeType};base64,${snapshot.attachmentPreview.dataBase64}`, title: snapshot.attachmentPreview.path })
-                      ] })
-                    ] }),
-                    /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("section", { "aria-label": "Note Composer and Format Converter", className: "border-t border-[var(--tt-border)] p-3", children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("h2", { className: "m-0 text-sm", children: "Note Composer and Format Converter" }),
-                      /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("div", { className: "mt-2 flex gap-1", children: [
-                        /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs", disabled: snapshot.documentKind !== "markdown" || snapshot.mode === "reading" || (snapshot.selectionEnd ?? 0) <= (snapshot.selectionStart ?? 0), onClick: props.onExtractSelection, type: "button", children: "Extract Selection" }),
-                        /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs", disabled: snapshot.documentKind !== "markdown" || snapshot.mode === "reading", onClick: props.onConvertActiveNote, type: "button", children: "Convert Formats" })
-                      ] })
-                    ] }),
-                    /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("section", { "aria-label": "Templates and Journals", className: "border-t border-[var(--tt-border)] p-3", children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("h2", { className: "m-0 text-sm", children: "Templates and Journals" }),
-                      /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("div", { className: "mt-2 grid grid-cols-2 gap-1", children: [
-                        Object.keys(BUILTIN_TEMPLATES).map((name2) => /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-left text-xs", onClick: () => {
-                          props.onCreateBuiltinTemplate?.(name2);
-                        }, type: "button", children: name2 }, name2)),
-                        /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-left text-xs", disabled: snapshot.documentKind !== "markdown" || snapshot.mode === "reading", onClick: () => {
-                          props.onInsertCurrentDateTime?.("date");
-                        }, type: "button", children: "Insert Current Date" }),
-                        /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-left text-xs", disabled: snapshot.documentKind !== "markdown" || snapshot.mode === "reading", onClick: () => {
-                          props.onInsertCurrentDateTime?.("time");
-                        }, type: "button", children: "Insert Current Time" })
-                      ] })
-                    ] }),
-                    /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("section", { "aria-label": "Capture Organization", className: "border-t border-[var(--tt-border)] p-3", children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("div", { className: "flex items-center justify-between gap-2", children: [
-                        /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("h2", { className: "m-0 text-sm", children: "Capture Organization" }),
-                        /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs", disabled: snapshot.path === null || !/^Inbox\/.+\.md$/iu.test(snapshot.path), onClick: props.onPrepareOrganization, type: "button", children: "Prepare Review" })
-                      ] }),
-                      snapshot.organizationProposal !== null && snapshot.organizationProposal !== void 0 && /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("div", { className: "mt-2 rounded border border-[var(--tt-border)] p-2 text-xs", children: [
-                        /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("strong", { className: "block", children: snapshot.organizationProposal.title }),
-                        /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("span", { className: "block truncate", children: snapshot.organizationProposal.destination }),
-                        /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("pre", { className: "max-h-32 overflow-auto whitespace-pre-wrap", children: snapshot.organizationProposal.content }),
-                        /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("div", { className: "flex justify-end gap-1", children: [
-                          /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1", onClick: props.onCancelOrganization, type: "button", children: "Cancel" }),
-                          /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1", onClick: props.onApplyOrganization, type: "button", children: "Approve and Create" })
-                        ] })
-                      ] })
-                    ] }),
-                    /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("section", { "aria-label": "TockTutor Settings", className: "border-t border-[var(--tt-border)] p-3", children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("div", { className: "flex items-center justify-between gap-2", children: [
-                        /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("h2", { className: "m-0 text-sm", children: "Settings and Workspaces" }),
-                        /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs", disabled: snapshot.settings === void 0, onClick: props.onSaveWorkspace, type: "button", children: "Save Workspace" })
-                      ] }),
-                      /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("div", { className: "mt-2 grid gap-2 text-xs", children: [
-                        /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)(Label, { unstyled: true, className: "flex items-center justify-between gap-2", children: [
-                          "Page Preview",
-                          /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(Checkbox3, { checked: snapshot.settings?.pagePreview ?? true, disabled: snapshot.settings === void 0, onCheckedChange: (checked) => {
-                            props.onSettingsChange?.({ pagePreview: checked === true });
-                          } })
-                        ] }),
-                        /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)(Label, { unstyled: true, className: "flex items-center justify-between gap-2", children: [
-                          "Backlinks in Document",
-                          /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(Checkbox3, { checked: snapshot.settings?.backlinksInDocument ?? false, disabled: snapshot.settings === void 0, onCheckedChange: (checked) => {
-                            props.onSettingsChange?.({ backlinksInDocument: checked === true });
-                          } })
-                        ] }),
-                        /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)(Label, { unstyled: true, className: "grid gap-1", children: [
-                          "Default Editing Mode",
-                          /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)(NativeSelect, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent p-1", disabled: snapshot.settings === void 0, onChange: (event) => {
-                            props.onSettingsChange?.({ defaultEditingMode: event.target.value === "source" ? "source" : "live-preview" });
-                          }, value: snapshot.settings?.defaultEditingMode ?? "live-preview", children: [
-                            /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(NativeSelectOption, { value: "live-preview", children: "Live Preview" }),
-                            /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(NativeSelectOption, { value: "source", children: "Source" })
-                          ] })
-                        ] })
-                      ] }),
-                      /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("div", { className: "mt-2 grid gap-1", children: [
-                        (snapshot.workspaces ?? []).map((workspace) => /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-left text-xs", onClick: () => {
-                          props.onLoadWorkspace?.(workspace.id);
-                        }, type: "button", children: [
-                          "Load ",
-                          workspace.name
-                        ] }, workspace.id)),
-                        (snapshot.workspaces?.length ?? 0) === 0 && /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("span", { className: "text-xs text-[var(--tt-muted)]", children: "No saved workspaces." })
-                      ] })
-                    ] }),
-                    /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("section", { "aria-label": "Pane Groups", className: "tocktutor-pane-groups border-t border-[var(--tt-border)] p-3", children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("div", { className: "tocktutor-pane-heading flex items-center justify-between", children: [
-                        /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("h2", { className: "m-0 text-sm", children: "Pane Groups" }),
-                        /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)(Tooltip2, { children: [
-                          /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(TooltipTrigger3, { asChild: true, children: /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("span", { className: "inline-flex", children: /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(Button, { unstyled: true, "aria-label": "Add Pane", className: "size-[26px] rounded border border-[var(--tt-border)] bg-transparent", disabled: snapshot.panes.length >= MAX_PANE_GROUPS, onClick: props.onAddPane, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(WorkbenchGlyph, { kind: "new" }) }) }) }),
-                          /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(TooltipContent3, { children: "Add Pane" })
-                        ] })
-                      ] }),
-                      /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("div", { className: "tocktutor-pane-list mt-2 grid grid-cols-2 gap-1.5", children: snapshot.panes.map((pane, index2) => /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)(Button, { unstyled: true, "aria-pressed": pane.id === snapshot.focusedPaneId, className: "overflow-hidden rounded-[5px] border border-[var(--tt-border)] bg-transparent p-1.5 text-left aria-pressed:border-[var(--tt-accent)] [&_small]:block [&_small]:truncate [&_small]:text-xs [&_small]:text-[var(--tt-muted)] [&_span]:block [&_span]:truncate", onClick: () => {
-                        props.onFocusPane(pane.id);
-                      }, title: pane.activePath ?? `Pane ${String(index2 + 1)}`, type: "button", children: [
-                        /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("span", { children: [
-                          "Pane ",
-                          String(index2 + 1)
-                        ] }),
-                        /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("small", { children: pane.activePath ?? "Empty" })
-                      ] }, pane.id)) })
-                    ] }),
-                    /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("section", { "aria-label": "Shared Review Panel", className: "tocktutor-review border-t border-[var(--tt-border)] p-3", children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("header", { children: /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("h2", { className: "m-0 text-sm", children: "Reviews" }) }),
-                      /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("div", { className: "tocktutor-review-content min-h-0 overflow-auto text-xs text-[var(--tt-muted)]", children: props.reviewPanel ?? /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(Alert, { unstyled: true, role: "status", children: "No review workflow is active." }) })
-                    ] }),
-                    /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("section", { "aria-label": "Native Actions", className: "tocktutor-native-actions border-t border-[var(--tt-border)] p-3", children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("header", { children: /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("h2", { className: "m-0 text-sm", children: "Native Actions" }) }),
-                      /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("div", { className: "tocktutor-native-actions-content min-h-0 overflow-auto text-xs text-[var(--tt-muted)]", children: props.nativeActions ?? /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(Alert, { unstyled: true, role: "status", children: "No native actions are available." }) })
-                    ] })
-                  ]
-                }
-              )
+              /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(WorkbenchUtilities, { ...props, activeProperties, onClose: () => {
+                setPanel(null);
+              }, open: panel === "utilities" })
             ]
           }
         )
@@ -32109,7 +32206,7 @@ function TockTutorReviewPanelOutlet(props) {
     activePath: props.activePath,
     vault: props.vault
   }, {
-    fallback: /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(Alert, { unstyled: true, role: "status", children: "No review workflow is active." })
+    fallback: /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(Alert, { unstyled: true, role: "status", children: "No review workflow is active." })
   });
 }
 function TockTutorWebViewerOutlet(props) {
@@ -32119,7 +32216,7 @@ function TockTutorWebViewerOutlet(props) {
     vault: props.vault,
     webClipFolder: props.webClipFolder
   }, {
-    fallback: /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(Alert, { unstyled: true, role: "status", children: "Web Viewer is unavailable." })
+    fallback: /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(Alert, { unstyled: true, role: "status", children: "Web Viewer is unavailable." })
   });
 }
 function TockTutorNativeActionsOutlet(props) {
@@ -32129,30 +32226,30 @@ function TockTutorNativeActionsOutlet(props) {
     saveCurrent: props.saveCurrent,
     vault: props.vault
   }, {
-    fallback: /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(Alert, { unstyled: true, role: "status", children: "No native actions are available." })
+    fallback: /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(Alert, { unstyled: true, role: "status", children: "No native actions are available." })
   });
 }
 function TockTutorRoute(props) {
-  const controller = (0, import_react7.useMemo)(
+  const controller = (0, import_react11.useMemo)(
     () => new WorkbenchRouteController(props.remote, props.navigate),
     [props.navigate, props.remote]
   );
-  const snapshot = (0, import_react7.useSyncExternalStore)(controller.subscribe, controller.getSnapshot, controller.getSnapshot);
-  const root = (0, import_react7.useRef)(null);
-  (0, import_react7.useEffect)(() => {
+  const snapshot = (0, import_react11.useSyncExternalStore)(controller.subscribe, controller.getSnapshot, controller.getSnapshot);
+  const root = (0, import_react11.useRef)(null);
+  (0, import_react11.useEffect)(() => {
     void controller.syncLocation(props.location.pathname);
   }, [controller, props.location.pathname]);
-  (0, import_react7.useEffect)(() => () => {
+  (0, import_react11.useEffect)(() => () => {
     controller.dispose();
   }, [controller]);
-  (0, import_react7.useEffect)(() => {
+  (0, import_react11.useEffect)(() => {
     if (snapshot.path === null) return;
     root.current?.querySelector(snapshot.mode === "source" ? "textarea" : '[aria-label$="View"]')?.focus();
   }, [snapshot.mode, snapshot.path]);
-  (0, import_react7.useEffect)(() => {
+  (0, import_react11.useEffect)(() => {
     if (snapshot.searchOpen) root.current?.querySelector('[aria-label="Search Notes Query"]')?.focus();
   }, [snapshot.searchOpen]);
-  (0, import_react7.useEffect)(() => {
+  (0, import_react11.useEffect)(() => {
     if (snapshot.documentKind !== "markdown" || snapshot.path === null || snapshot.settings === void 0) return;
     const timer = setInterval(() => {
       void controller.captureRecoverySnapshot();
@@ -32161,7 +32258,7 @@ function TockTutorRoute(props) {
       clearInterval(timer);
     };
   }, [controller, snapshot.documentKind, snapshot.path, snapshot.settings]);
-  (0, import_react7.useEffect)(() => {
+  (0, import_react11.useEffect)(() => {
     const node = root.current;
     if (node === null) return;
     const onKeyDown = (event) => {
@@ -32193,10 +32290,10 @@ function TockTutorRoute(props) {
       node.removeEventListener("keydown", onKeyDown);
     };
   }, [controller]);
-  return /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("div", { className: "tocktutor-root h-full min-h-0", ref: root, children: /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(
+  return /* @__PURE__ */ (0, import_jsx_runtime27.jsx)("div", { className: "tocktutor-root h-full min-h-0", ref: root, children: /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(
     TockTutorRouteView,
     {
-      assistantPanel: /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(
+      assistantPanel: /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(
         TockTutorAssistantPanelOutlet,
         {
           activePath: snapshot.path,
@@ -32205,7 +32302,7 @@ function TockTutorRoute(props) {
           vault: snapshot.vault
         }
       ),
-      nativeActions: /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(
+      nativeActions: /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(
         TockTutorNativeActionsOutlet,
         {
           activePath: snapshot.path,
@@ -32412,7 +32509,7 @@ function TockTutorRoute(props) {
       onTrashCurrent: () => {
         void controller.trashCurrent();
       },
-      reviewPanel: /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(
+      reviewPanel: /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(
         TockTutorReviewPanelOutlet,
         {
           activePath: snapshot.path,
@@ -32421,7 +32518,7 @@ function TockTutorRoute(props) {
         }
       ),
       snapshot,
-      webViewerPanel: /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(
+      webViewerPanel: /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(
         TockTutorWebViewerOutlet,
         {
           activePath: snapshot.path,
@@ -32524,9 +32621,15 @@ lucide-react/dist/esm/shared/src/utils.js:
 lucide-react/dist/esm/defaultAttributes.js:
 lucide-react/dist/esm/Icon.js:
 lucide-react/dist/esm/createLucideIcon.js:
-lucide-react/dist/esm/icons/bookmark.js:
 lucide-react/dist/esm/icons/check.js:
 lucide-react/dist/esm/icons/chevron-down.js:
+lucide-react/dist/esm/icons/x.js:
+lucide-react/dist/esm/lucide-react.js:
+lucide-react/dist/esm/shared/src/utils.js:
+lucide-react/dist/esm/defaultAttributes.js:
+lucide-react/dist/esm/Icon.js:
+lucide-react/dist/esm/createLucideIcon.js:
+lucide-react/dist/esm/icons/bookmark.js:
 lucide-react/dist/esm/icons/chevron-left.js:
 lucide-react/dist/esm/icons/chevron-right.js:
 lucide-react/dist/esm/icons/ellipsis.js:
