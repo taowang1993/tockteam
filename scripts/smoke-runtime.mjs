@@ -13,6 +13,7 @@ import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import electronBinary from 'electron'
+import { stopChildProcess } from './process-cleanup.mjs'
 import { bundledRuntimePaths, runtimeSearchPath } from '../src/runtime-paths.ts'
 import {
   BUNDLED_DESKTOP_CLIENT_PLUGINS,
@@ -499,10 +500,6 @@ try {
   console.log('Better Sidebar Git API: ready, history and commit diff verified')
   console.log('Better Sidebar terminal PTY: ready, command execution verified')
 } finally {
-  if (child.exitCode === null) child.kill('SIGTERM')
-  await new Promise(resolve => {
-    if (child.exitCode !== null) resolve()
-    else child.once('exit', resolve)
-  })
+  await stopChildProcess(child)
   rmSync(smokeRoot, { recursive: true, force: true })
 }
