@@ -55,7 +55,7 @@ import {
 } from './web-clip-frame.ts'
 import { DshRuntimeSupervisor, runDshCommand, type DshRuntimeOptions, type RuntimeExit } from './runtime.ts'
 import { DesktopDispatchChannel } from './desktop-dispatch-channel.ts'
-import { isTockTutorProtocol, resolveTockTutorProtocolRequest } from './desktop-native-policy.ts'
+import { isTockTutorProtocol, parseSingleInstanceProtocolUrls, resolveTockTutorProtocolRequest } from './desktop-native-policy.ts'
 import { scrubDesktopAuthorityEnvironment } from './desktop-runtime-environment.ts'
 import { DesktopMicrophoneChannel } from './desktop-microphone-channel.ts'
 import { DesktopPopOutChannel } from './desktop-popout-channel.ts'
@@ -1449,14 +1449,16 @@ async function bootstrap(): Promise<void> {
     applicationVersion: PRODUCT_VERSION,
     version: `TockTeam plugin distribution ${PRODUCT_VERSION}`,
   })
-  const gotLock = app.requestSingleInstanceLock()
+  const gotLock = app.requestSingleInstanceLock({
+    tockTutorProtocolUrls: parseSingleInstanceProtocolUrls(process.argv, undefined),
+  })
   if (!gotLock) {
     app.quit()
     return
   }
-  app.on('second-instance', (_event, argv) => {
+  app.on('second-instance', (_event, argv, _workingDirectory, additionalData) => {
     const arguments_ = argv.slice(1).filter(argument => !argument.startsWith('-'))
-    queuedProtocolUrls.push(...arguments_.filter(isTockTutorProtocol))
+    queuedProtocolUrls.push(...parseSingleInstanceProtocolUrls(arguments_, additionalData))
     queuedPaths.push(...arguments_.filter(argument => !isTockTutorProtocol(argument)))
     if (mainWindow === undefined || mainWindow.isDestroyed()) {
       mainWindow = createWindow()

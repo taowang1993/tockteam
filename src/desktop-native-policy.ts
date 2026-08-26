@@ -249,6 +249,18 @@ export function isTockTutorProtocol(value: string): boolean {
   return value.slice(0, PROTOCOL_SCHEME.length).toLowerCase() === PROTOCOL_SCHEME
 }
 
+export function parseSingleInstanceProtocolUrls(
+  argv: readonly string[],
+  additionalData: unknown,
+): string[] {
+  const data = typeof additionalData === 'object' && additionalData !== null
+    ? (additionalData as Record<string, unknown>).tockTutorProtocolUrls
+    : undefined
+  const extra = Array.isArray(data) && data.length <= 16 ? data : []
+  return [...new Set([...argv.slice(0, 128), ...extra]
+    .filter((value): value is string => typeof value === 'string' && parseTockTutorProtocol(value) !== null))]
+}
+
 export function parseTockTutorProtocol(raw: string): TockTutorProtocolRequest | null {
   if (raw.length > MAX_PROTOCOL_URI_LENGTH || /%(?![0-9a-f]{2})/iu.test(raw)) return null
   const shorthandResult = shorthand(raw)

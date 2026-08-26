@@ -3,6 +3,7 @@ import { test } from 'node:test'
 import { DesktopDispatchOwner } from '../src/desktop-dispatch-owner.ts'
 import {
   isTockTutorProtocol,
+  parseSingleInstanceProtocolUrls,
   parseTockTutorProtocol,
   resolveTockTutorProtocolRequest,
 } from '../src/desktop-native-policy.ts'
@@ -40,6 +41,20 @@ test('classifies protocol arguments case-insensitively', () => {
   assert.equal(isTockTutorProtocol('tocktutor://open?vault=Notes'), true)
   assert.equal(isTockTutorProtocol('TockTutor://open?vault=Notes'), true)
   assert.equal(isTockTutorProtocol('/tmp/tocktutor:notes'), false)
+})
+
+test('recovers protocol URLs from single-instance launch data when macOS omits argv', () => {
+  assert.deepEqual(parseSingleInstanceProtocolUrls(
+    ['/Applications/TockTeam Desktop', '--user-data-dir=/tmp/profile'],
+    {
+      tockTutorProtocolUrls: [
+        'tocktutor://open?file=Nested.md&paneType=split',
+        'https://example.test',
+        'tocktutor://open?file=Nested.md&paneType=split',
+      ],
+    },
+  ), ['tocktutor://open?file=Nested.md&paneType=split'])
+  assert.deepEqual(parseSingleInstanceProtocolUrls([], { tockTutorProtocolUrls: 'tocktutor://open?file=No.md' }), [])
 })
 
 test('resolves named and absolute protocol selectors without exposing Host paths', () => {
