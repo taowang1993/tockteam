@@ -1923,6 +1923,137 @@ test('vault tree skips hidden and unsafe links while listing accepted attachment
   }
 })
 
+test('passive backup authority lists, reads, and exclusively restores only inert Obsidian config bytes', async () => {
+  const fixture = await mkdtemp(join(tmpdir(), 'note-vault-passive-backup-'))
+  const vault = join(fixture, 'Vault')
+  const secondVault = join(fixture, 'Second')
+  try {
+    await mkdir(join(vault, '.obsidian', 'plugins', 'demo'), { recursive: true })
+    await mkdir(join(vault, '.obsidian', '.cache'), { recursive: true })
+    await mkdir(join(vault, '.obsidian-dev', 'themes', 'Safe'), { recursive: true })
+    await mkdir(secondVault)
+    const dataPath = join(vault, '.obsidian', 'plugins', 'demo', 'data.json')
+    await writeFile(dataPath, '{"enabled":true}\n')
+    await writeFile(join(vault, '.obsidian-dev', 'themes', 'Safe', 'theme.css'), ':root {}\n')
+    await writeFile(join(vault, '.obsidian', 'plugins', 'demo', 'main.js'), 'throw new Error()')
+    await writeFile(join(vault, '.obsidian', 'plugins', 'demo', 'module.wasm'), 'wasm')
+    await writeFile(join(vault, '.obsidian', 'plugins', 'demo', 'native.node'), 'native')
+    await writeFile(join(vault, '.obsidian', 'plugins', 'demo', 'icon.svg'), '<svg/>')
+    await writeFile(join(vault, '.obsidian', '.cache', 'state.json'), '{}')
+    await writeFile(join(vault, '.obsidian', 'A.json'), '{}')
+    await writeFile(join(vault, '.obsidian', 'Ａ.json'), '{}')
+    await symlink(dataPath, join(vault, '.obsidian', 'plugins', 'demo', 'alias.json'))
+    await symlink(join(vault, '.obsidian'), join(vault, '.obsidian-alias'), process.platform === 'win32' ? 'junction' : 'dir')
+
+    const loaded = await load(`vaultRoot: ${JSON.stringify(vault)}`)
+    try {
+      const state = loaded.context.noteVault.state
+      if (!state.active) assert.fail('configured vault must be active')
+      const expectedVault = { id: state.id, generation: state.generation }
+      const signal = new AbortController().signal
+
+      await assert.rejects(
+        loaded.context.noteVault.listPassiveBackupEntries({ expectedVault }, signal),
+        error => error instanceof NoteVaultError && error.code === 'unsafe-target',
+      )
+      await rm(join(vault, '.obsidian', 'Ａ.json'))
+
+      const listed = await loaded.context.noteVault.listPassiveBackupEntries({ expectedVault }, signal)
+      assert.deepEqual(listed.entries.map(entry => entry.path), [
+        '.obsidian-dev/themes/Safe/theme.css',
+        '.obsidian/A.json',
+        '.obsidian/plugins/demo/data.json',
+      ])
+      assert.equal(listed.generation, state.generation)
+      assert.equal(JSON.stringify(listed).includes(vault), false)
+
+      const data = listed.entries.find(entry => entry.path.endsWith('/data.json'))
+      assert.ok(data)
+      const read = await loaded.context.noteVault.readPassiveBackupEntry({
+        expectedRevision: data.revision,
+        expectedVault,
+        path: data.path,
+      }, signal)
+      assert.equal(new TextDecoder().decode(read.data), '{"enabled":true}\n')
+      assert.equal(read.digest, 'sha256:a050ef06ea542b8fd8781f1e945f9adcd03c7ae5190719e66ba826e2059fce12')
+
+      await assert.rejects(
+        loaded.context.noteVault.readPassiveBackupEntry({
+          expectedRevision: 'file:changed',
+          expectedVault,
+          path: data.path,
+        }, signal),
+        error => error instanceof NoteVaultError && error.code === 'changed',
+      )
+      await assert.rejects(
+        loaded.context.noteVault.readPassiveBackupEntry({
+          expectedRevision: data.revision,
+          expectedVault,
+          path: '.obsidian/plugins/demo/alias.json',
+        }, signal),
+        error => error instanceof NoteVaultError && error.code === 'unsafe-target',
+      )
+
+      const restored = await loaded.context.noteVault.restorePassiveBackupEntry({
+        data: new TextEncoder().encode('{"restored":true}\n'),
+        expectedVault,
+        path: '.obsidian/preferences/imported.json',
+      }, signal)
+      assert.equal(restored.status, 'restored')
+      assert.equal(await readFile(join(vault, '.obsidian', 'preferences', 'imported.json'), 'utf8'), '{"restored":true}\n')
+      await assert.rejects(
+        loaded.context.noteVault.restorePassiveBackupEntry({
+          data: new Uint8Array(),
+          expectedVault,
+          path: '.obsidian/preferences/imported.json',
+        }, signal),
+        error => error instanceof NoteVaultError && error.code === 'exists',
+      )
+      for (const rejected of ['main.js', 'module.wasm', 'native.node', 'icon.svg']) {
+        await assert.rejects(
+          loaded.context.noteVault.restorePassiveBackupEntry({
+            data: new Uint8Array(),
+            expectedVault,
+            path: `.obsidian/${rejected}`,
+          }, signal),
+          error => error instanceof NoteVaultError && error.code === 'unsupported-type',
+        )
+      }
+      await assert.rejects(
+        loaded.context.noteVault.restorePassiveBackupEntry({
+          data: new Uint8Array(),
+          expectedVault,
+          path: '.obsidian/.hidden/state.json',
+        }, signal),
+        error => error instanceof NoteVaultError && error.code === 'unsupported-type',
+      )
+      await assert.rejects(
+        loaded.context.noteVault.listPassiveBackupEntries({
+          expectedVault: { ...expectedVault, generation: 0 },
+        }, signal),
+        error => error instanceof NoteVaultError && error.code === 'stale-vault',
+      )
+
+      await duringFirstFileRead(
+        dataPath,
+        () => { loaded.context.noteVault.activate(secondVault, state.generation) },
+        async () => assert.rejects(
+          loaded.context.noteVault.readPassiveBackupEntry({
+            expectedRevision: data.revision,
+            expectedVault,
+            path: data.path,
+          }, signal),
+          error => error instanceof NoteVaultError && error.code === 'stale-vault',
+        ),
+      )
+    } finally {
+      await dispose(loaded.context, loaded.root)
+    }
+  } finally {
+    await rm(fixture, { recursive: true, force: true })
+  }
+})
+
 test('vault tree reports entry and depth truncation with bound cursors', async () => {
   const fixture = await mkdtemp(join(tmpdir(), 'note-vault-tree-bounds-'))
   try {
