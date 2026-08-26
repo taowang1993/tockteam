@@ -58,7 +58,7 @@ import {
 } from './native-actions.ts'
 import { TOCKTUTOR_REVIEW_PANEL_SLOT } from './review-panel.ts'
 import { TOCKTUTOR_WEB_VIEWER_PANEL_SLOT } from './web-viewer-panel.ts'
-import { LivePreviewView, ResolvedEmbedsView, RichReadingView } from './editor-surface.tsx'
+import { LivePreviewView, RichReadingView } from './editor-surface.tsx'
 import { SourceEditor } from './source-editor.tsx'
 import { WorkbenchUtilities } from './utility-panel.tsx'
 import { WorkbenchGlyph } from './workbench-glyph.tsx'
@@ -2926,9 +2926,9 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
                   key={snapshot.path}
                   onContentChange={props.onEdit}
                   onSelectionChange={selection => { props.onSelectionChange?.(selection.main.from, selection.main.to) }}
+                  {...(snapshot.embeds === undefined ? {} : { resolvedEmbeds: snapshot.embeds })}
                   spellCheck
                 />
-                <ResolvedEmbedsView embeds={snapshot.embeds} onOpenExternalUrl={props.onOpenExternalUrl} />
               </div>
             ) : snapshot.mode === 'live-preview' && snapshot.documentKind === 'markdown' ? (
               <LivePreviewView

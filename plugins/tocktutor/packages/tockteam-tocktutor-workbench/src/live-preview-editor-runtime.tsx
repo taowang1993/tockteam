@@ -12,14 +12,13 @@ import {
   useEffect,
   useMemo,
   useRef,
-  useState,
-  type ChangeEvent,
   type ReactNode,
 } from 'react'
-import { projectLivePreview, replaceLivePreviewLine } from './live-preview.ts'
 import { projectEditorWidgets } from './editor-widgets.ts'
 import { runLivePreviewTableAction, type LivePreviewTableAction } from './milkdown-editor-commands.ts'
-import type { LivePreviewEditorProps, LivePreviewSelection } from './live-preview-editor.tsx'
+import { splitLivePreviewSource, type LivePreviewEditorProps, type LivePreviewSelection } from './live-preview-editor.tsx'
+import { buildLivePreviewEmbedPlugin, livePreviewEmbedPluginKey } from './live-preview-embed-widgets.ts'
+import { buildLivePreviewChromePlugin } from './live-preview-chrome.ts'
 
 function normalizeSource(source: string): string {
   return source.replace(/\r\n?/gu, '\n')
@@ -37,9 +36,32 @@ function sameSelection(left: LivePreviewSelection | null, right: LivePreviewSele
   return left?.from === right.from && left.to === right.to
 }
 
+function selectedTextblock(view: EditorView): { from: number; text: string; to: number } | null {
+  const selection = view.state.selection
+  if (!selection.empty || !selection.$from.parent.isTextblock || selection.$from.depth < 1) return null
+  return {
+    from: selection.$from.before(selection.$from.depth),
+    text: `${selection.$from.parent.textContent}\n`,
+    to: selection.$from.after(selection.$from.depth),
+  }
+}
+
+function deleteSelectedTextblock(view: EditorView): boolean {
+  const block = selectedTextblock(view)
+  if (block === null || !view.editable) return false
+  const transaction = block.from === 0 && block.to === view.state.doc.content.size
+    ? view.state.tr.replaceWith(0, view.state.doc.content.size, view.state.schema.nodes.paragraph.create())
+    : view.state.tr.delete(block.from, block.to)
+  view.dispatch(transaction.scrollIntoView())
+  return true
+}
+
 function LivePreviewEditorInner(props: LivePreviewEditorProps): ReactNode {
   const sourceRef = useRef(props.content)
+  const frontmatterRef = useRef(splitLivePreviewSource(props.content).prefix)
+  const embedsRef = useRef(props.resolvedEmbeds ?? [])
   const onMarkdownChangeRef = useRef(props.onMarkdownChange)
+  const onOpenExternalUrlRef = useRef(props.onOpenExternalUrl)
   const onSelectionChangeRef = useRef(props.onSelectionChange)
   const onWidgetStateRef = useRef(props.onWidgetState)
   const syncingRef = useRef(false)
@@ -47,6 +69,7 @@ function LivePreviewEditorInner(props: LivePreviewEditorProps): ReactNode {
   const internalEditorViewRef = useRef<EditorView | null>(null)
   const onEditorViewRef = props.editorViewRef ?? internalEditorViewRef
   onMarkdownChangeRef.current = props.onMarkdownChange
+  onOpenExternalUrlRef.current = props.onOpenExternalUrl
   onSelectionChangeRef.current = props.onSelectionChange
   onWidgetStateRef.current = props.onWidgetState
   const editor = useEditor((root) => {
@@ -71,13 +94,22 @@ function LivePreviewEditorInner(props: LivePreviewEditorProps): ReactNode {
         }
       },
     }))
+    const chrome = $prose(() => buildLivePreviewChromePlugin(() => onOpenExternalUrlRef.current))
+    const embedWidgets = $prose(() => buildLivePreviewEmbedPlugin(() => embedsRef.current))
     const editingShortcuts = $prose(() => new Plugin({
       props: {
         handleKeyDown: (view, event) => {
-          if (!view.editable || event.key !== 'Enter' || !event.shiftKey) return false
-          event.preventDefault()
-          view.dispatch(view.state.tr.insertText('  \n'))
-          return true
+          if (!view.editable) return false
+          if (event.key === 'Enter' && event.shiftKey) {
+            event.preventDefault()
+            view.dispatch(view.state.tr.insertText('  \n'))
+            return true
+          }
+          if (event.key.toLocaleLowerCase() === 'k' && event.shiftKey && (event.metaKey || event.ctrlKey)) {
+            event.preventDefault()
+            return deleteSelectedTextblock(view)
+          }
+          return false
         },
         handleDOMEvents: {
           keydown: (_view, event) => {
@@ -93,25 +125,41 @@ function LivePreviewEditorInner(props: LivePreviewEditorProps): ReactNode {
             view.dispatch(view.state.tr.insertText(text))
             return true
           },
+          copy: (view, event) => {
+            const block = selectedTextblock(view)
+            if (block === null || event.clipboardData === null) return false
+            event.clipboardData.setData('text/plain', block.text)
+            event.preventDefault()
+            return true
+          },
+          cut: (view, event) => {
+            const block = selectedTextblock(view)
+            if (block === null || event.clipboardData === null || !view.editable) return false
+            event.clipboardData.setData('text/plain', block.text)
+            event.preventDefault()
+            return deleteSelectedTextblock(view)
+          },
         },
       },
     }))
     return MilkdownEditorCore.make()
       .config(ctx => {
         ctx.set(rootCtx, root)
-        ctx.set(defaultValueCtx, normalizeSource(props.content))
+        ctx.set(defaultValueCtx, splitLivePreviewSource(props.content).body)
       })
       .use(commonmark)
       .use(gfm)
       .use(listener)
       .use(history)
       .use(editingShortcuts)
+      .use(chrome)
+      .use(embedWidgets)
       .use(lifecycle)
       .config(ctx => {
         const manager = ctx.get(listenerCtx) as unknown as { markdownUpdated(listener: (_ctx: unknown, markdown: string) => void): void }
         manager.markdownUpdated((_ctx: unknown, markdown: string) => {
           if (syncingRef.current) return
-          const next = preserveLineEndings(sourceRef.current, markdown)
+          const next = preserveLineEndings(sourceRef.current, `${frontmatterRef.current}${markdown}`)
           sourceRef.current = next
           onMarkdownChangeRef.current(next)
         })
@@ -121,7 +169,14 @@ function LivePreviewEditorInner(props: LivePreviewEditorProps): ReactNode {
   const loading = editor.loading
   useEffect(() => {
     sourceRef.current = props.content
+    frontmatterRef.current = splitLivePreviewSource(props.content).prefix
   }, [props.content])
+
+  useEffect(() => {
+    embedsRef.current = props.resolvedEmbeds ?? []
+    const view = onEditorViewRef.current
+    if (view !== null) view.dispatch(view.state.tr.setMeta(livePreviewEmbedPluginKey, true))
+  }, [onEditorViewRef, props.resolvedEmbeds])
 
   useEffect(() => {
     if (loading) return
@@ -129,35 +184,17 @@ function LivePreviewEditorInner(props: LivePreviewEditorProps): ReactNode {
     if (!instance) return
     try {
       const current = instance.action(ctx => getMarkdown()(ctx))
-      if (normalizeSource(current) === normalizeSource(props.content)) return
+      const body = splitLivePreviewSource(props.content).body
+      if (normalizeSource(current) === body) return
       syncingRef.current = true
-      instance.action(replaceAll(normalizeSource(props.content)))
+      instance.action(replaceAll(body))
       syncingRef.current = false
     } catch {
       syncingRef.current = false
     }
   }, [editor, loading, props.content])
 
-  const projection = useMemo(() => projectLivePreview(props.content), [props.content])
   const tableDocument = /^(?:\s*\|.*\|\s*)$/mu.test(props.content)
-  const [folded, setFolded] = useState<ReadonlySet<number>>(() => projection.status === 'ready'
-    ? new Set(projection.lines.filter(line => line.folded === true).map(line => line.index))
-    : new Set())
-  useEffect(() => {
-    if (projection.status === 'ready') setFolded(new Set(projection.lines.filter(line => line.folded === true).map(line => line.index)))
-    else setFolded(new Set())
-  }, [projection, props.content])
-  const editLine = (line: { index: number }, event: ChangeEvent<HTMLInputElement>): void => {
-    props.onMarkdownChange(replaceLivePreviewLine(props.content, line.index, event.target.value))
-  }
-  const toggleFold = (index: number): void => {
-    setFolded(current => {
-      const next = new Set(current)
-      if (next.has(index)) next.delete(index)
-      else next.add(index)
-      return next
-    })
-  }
   const tableAction = (action: LivePreviewTableAction): void => {
     const view = onEditorViewRef?.current
     if (view && runLivePreviewTableAction(view, action)) props.onTableAction?.(action)
@@ -167,43 +204,12 @@ function LivePreviewEditorInner(props: LivePreviewEditorProps): ReactNode {
     <div aria-label={props.ariaLabel ?? 'Live Preview Editor'} className={shellClass}>
       {tableDocument && (
         <div aria-label="Live Preview Table Commands" className="sticky top-0 z-1 flex flex-wrap gap-1 border-b border-[var(--tt-border)] bg-[var(--tt-panel)] p-1 text-xs">
-          {([['add-row-before', 'Add Row Above'], ['add-row-after', 'Add Row Below'], ['add-column-before', 'Add Column Left'], ['add-column-after', 'Add Column Right'], ['align-left', 'Align Left'], ['align-center', 'Align Center'], ['align-right', 'Align Right'], ['sort-ascending', 'Sort Ascending'], ['sort-descending', 'Sort Descending']] as const).map(([action, label]) => (
+          {([['add-row-before', 'Add Row Above'], ['add-row-after', 'Add Row Below'], ['move-row-up', 'Move Row Up'], ['move-row-down', 'Move Row Down'], ['delete-row', 'Delete Row'], ['add-column-before', 'Add Column Left'], ['add-column-after', 'Add Column Right'], ['move-column-left', 'Move Column Left'], ['move-column-right', 'Move Column Right'], ['delete-column', 'Delete Column'], ['align-default', 'Default Alignment'], ['align-left', 'Align Left'], ['align-center', 'Align Center'], ['align-right', 'Align Right'], ['sort-ascending', 'Sort Ascending'], ['sort-descending', 'Sort Descending']] as const).map(([action, label]) => (
             <button className="rounded border border-[var(--tt-border)] bg-transparent px-1.5 py-0.5 text-inherit" key={action} onClick={() => { tableAction(action) }} type="button">{label}</button>
           ))}
         </div>
       )}
       <Milkdown />
-      {projection.status === 'ready' && (
-        <div className="pointer-events-none absolute size-px overflow-hidden opacity-0" aria-label="Live Preview Compatibility Controls">
-          {projection.lines.map(line => (
-            <span key={line.index}>
-              {line.foldEndLine !== undefined && (
-                <button
-                  aria-expanded={!folded.has(line.index)}
-                  aria-label={`${folded.has(line.index) ? 'Expand' : 'Collapse'} Line ${String(line.index + 1)}`}
-                  onClick={() => { toggleFold(line.index) }}
-                  onMouseDown={event => { event.preventDefault() }}
-                  type="button"
-                />
-              )}
-              {line.kind === 'task' && line.taskIndex !== undefined && (
-                <input
-                  aria-label={`Mark Task on Line ${String(line.index + 1)} as ${line.checked === true ? 'Incomplete' : 'Complete'}`}
-                  checked={line.checked === true}
-                  onChange={() => { props.onToggleTask?.(line.taskIndex!) }}
-                  type="checkbox"
-                />
-              )}
-              <input
-                aria-label={`Live Preview Line ${String(line.index + 1)}`}
-                onChange={event => { editLine(line, event) }}
-                value={line.content}
-                onChangeCapture={() => { /* source-preserving compatibility edit surface */ }}
-              />
-            </span>
-          ))}
-        </div>
-      )}
     </div>
   )
 }

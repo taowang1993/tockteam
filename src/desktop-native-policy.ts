@@ -100,7 +100,12 @@ function callback(value: string | null): string | null | undefined {
   if (!trimmed || trimmed.length > MAX_PROTOCOL_CALLBACK_LENGTH) return null
   try {
     const parsed = new URL(trimmed)
-    return parsed.protocol === 'https:' || parsed.protocol === PROTOCOL_SCHEME ? trimmed : null
+    if (parsed.protocol === 'https:') return trimmed
+    return parsed.protocol === PROTOCOL_SCHEME
+      && !parsed.searchParams.has('x-success')
+      && !parsed.searchParams.has('x-error')
+      ? trimmed
+      : null
   } catch {
     return null
   }
@@ -343,7 +348,7 @@ export function resolveTockTutorProtocolRequest(
   if (content === null) return null
   const browserRequest: TockTutorBrowserProtocolRequest = {
     action: request.action,
-    ...(explicitTarget ? { vaultId: vault.id, vaultGeneration: vault.generation } : {}),
+    ...(explicitTarget ? { vaultId: vault.id } : {}),
     ...(file === undefined ? {} : { file }),
     ...(request.name === undefined ? {} : { name: request.name }),
     ...(content === undefined ? {} : { content }),

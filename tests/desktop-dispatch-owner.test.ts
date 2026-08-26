@@ -31,6 +31,7 @@ test('protocol parser accepts bounded TockTutor requests and rejects credentials
   })
   assert.equal(parseTockTutorProtocol('tocktutor://user:password@open?vault=Notes'), null)
   assert.equal(parseTockTutorProtocol('tocktutor://new?file=Plan.md&x-success=file%3A%2F%2Funsafe'), null)
+  assert.equal(parseTockTutorProtocol('tocktutor://open?file=Plan.md&x-success=tocktutor%3A%2F%2Fopen%3Ffile%3DLoop.md%26x-success%3Dhttps%253A%252F%252Fexample.test'), null)
   assert.equal(parseTockTutorProtocol(`tocktutor://search?query=${'x'.repeat(4097)}`), null)
   assert.equal(parseTockTutorProtocol('https://example.com'), null)
 })
@@ -55,18 +56,24 @@ test('resolves named and absolute protocol selectors without exposing Host paths
     request: {
       action: 'open',
       file: 'Notes/Plan.md',
-      vaultGeneration: 5,
       vaultId: known[1]!.id,
     },
   })
+  const nested = { generation: 6, id: `vault:${'c'.repeat(64)}`, name: 'Notes', path: '/vaults/work/Notes' }
   const absolute = resolveTockTutorProtocolRequest(
     parseTockTutorProtocol('tocktutor://open?path=%2Fvaults%2Fwork%2FNotes%2FPlan.md')!,
-    known,
+    [...known, nested],
     known[0],
   )
-  assert.equal(absolute?.request.file, 'Notes/Plan.md')
+  assert.equal(absolute?.request.file, 'Plan.md')
+  assert.equal(absolute?.request.vaultId, nested.id)
   assert.equal('path' in (absolute?.request ?? {}), false)
   assert.equal('vault' in (absolute?.request ?? {}), false)
+  assert.equal(resolveTockTutorProtocolRequest(
+    parseTockTutorProtocol('tocktutor://open?path=%2Foutside%2FPlan.md')!,
+    known,
+    known[0],
+  ), null)
 })
 
 test('delivers a named-vault request under the current boundary and completes under the activated boundary', async () => {

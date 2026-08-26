@@ -435,7 +435,7 @@ test('activates a named recent target through Runtime and resynchronizes Desktop
   try {
     assert.deepEqual(await state.gateway.activateVaultTarget('authorization-target', nextVault, new AbortController().signal), { status: 'activated' })
     assert.deepEqual(state.calls.map(call => call.method), ['claim', 'activateRecentVault'])
-    assert.equal(state.syncCalls(), 2)
+    assert.equal(state.syncCalls(), 1)
   } finally {
     await state.context.fiber.dispose()
   }

@@ -29,6 +29,9 @@ import {
   type SourceEditorProps,
   type SourceEditorSelection,
 } from './source-editor.tsx'
+import { buildSourceEmbedWidgetExtension, refreshSourceEmbedWidgets } from './source-embed-widgets.ts'
+import { applyEditorCommandToSelections, type EditorCommandId } from './editor-commands.ts'
+import { buildSourceTaskWidgetExtension } from './source-task-widgets.ts'
 
 function normalizeEditorSource(source: string): string {
   return source.replace(/\r\n?/gu, '\n')
@@ -92,6 +95,7 @@ function deleteCurrentLines(view: EditorView): boolean {
 function sourceDecorations(state: EditorState) {
   const decorations: Array<Range<Decoration>> = []
   let fenceOpen = false
+  let commentOpen = false
   for (let number = 1; number <= state.doc.lines; number += 1) {
     const line = state.doc.line(number)
     const text = line.text
@@ -100,10 +104,27 @@ function sourceDecorations(state: EditorState) {
     if (fenceOpen || /^\s*(?:[-+*]|\d+[.)])\s+\[[^\]]\]/u.test(text)) {
       decorations.push(Decoration.line({ class: fenceOpen ? 'cm-tock-code-line' : 'cm-tock-task-line' }).range(line.from))
     }
-    const commentStart = text.indexOf('%%')
-    if (commentStart >= 0) {
-      const commentEnd = text.lastIndexOf('%%') + 2
-      if (commentEnd > commentStart + 1) decorations.push(Decoration.mark({ class: 'cm-tock-comment' }).range(line.from + commentStart, line.from + commentEnd))
+    let cursor = 0
+    if (commentOpen) {
+      const close = text.indexOf('%%')
+      if (close < 0) decorations.push(Decoration.mark({ class: 'cm-tock-comment' }).range(line.from, line.to))
+      else {
+        decorations.push(Decoration.mark({ class: 'cm-tock-comment' }).range(line.from, line.from + close + 2))
+        commentOpen = false
+        cursor = close + 2
+      }
+    }
+    while (!commentOpen && cursor < text.length) {
+      const start = text.indexOf('%%', cursor)
+      if (start < 0) break
+      const end = text.indexOf('%%', start + 2)
+      if (end < 0) {
+        decorations.push(Decoration.mark({ class: 'cm-tock-comment' }).range(line.from + start, line.to))
+        commentOpen = true
+      } else {
+        decorations.push(Decoration.mark({ class: 'cm-tock-comment' }).range(line.from + start, line.from + end + 2))
+        cursor = end + 2
+      }
     }
   }
   return Decoration.set(decorations)
@@ -127,6 +148,16 @@ function buildEditorExtensions(props: {
     })))
     return true
   }
+  const markdownCommand = (command: EditorCommandId) => (view: EditorView): boolean => {
+    if (view.state.readOnly) return false
+    const result = applyEditorCommandToSelections(view.state.doc.toString(), command, view.state.selection.ranges)
+    if (result.source === view.state.doc.toString()) return false
+    view.dispatch({
+      changes: { from: 0, to: view.state.doc.length, insert: result.source },
+      selection: EditorSelection.create(result.ranges.map(range => EditorSelection.range(range.from, range.to)), view.state.selection.mainIndex),
+    })
+    return true
+  }
   let plainTextPaste = false
   const extensions: Extension[] = [
     minimalSetup,
@@ -142,7 +173,14 @@ function buildEditorExtensions(props: {
       EditorState.allowMultipleSelections.of(true),
       EditorView.clickAddsSelectionRange.of(shouldAddEditorSelectionRange),
       rectangularSelection({ eventFilter: shouldStartEditorRectangularSelection }),
-      keymap.of([{ key: 'Shift-Enter', run: hardBreak }]),
+      keymap.of([
+        { key: 'Shift-Enter', run: hardBreak },
+        { key: 'Mod-b', run: markdownCommand('bold') },
+        { key: 'Mod-i', run: markdownCommand('italic') },
+        { key: 'Shift-Mod-x', run: markdownCommand('strikethrough') },
+        { key: 'Shift-Mod-h', run: markdownCommand('highlight') },
+        { key: 'Shift-Mod-k', run: markdownCommand('delete-line') },
+      ]),
     ] : []),
     EditorView.lineWrapping,
     EditorView.contentAttributes.of({ spellcheck: props.spellCheck ? 'true' : 'false' }),
@@ -200,36 +238,11 @@ function buildEditorExtensions(props: {
   return extensions
 }
 
-function sourceTheme(showFoldGutter: boolean): Extension {
-  return EditorView.theme({
-    '&': {
-      height: '100%',
-      backgroundColor: 'var(--tt-panel)',
-      color: 'var(--tt-text)',
-      fontFamily: 'ui-monospace, SFMono-Regular, Consolas, monospace',
-      fontSize: '14px',
-      lineHeight: '1.65',
-    },
-    '&.cm-focused': { outline: 'none' },
-    '.cm-scroller': { overflow: 'auto' },
-    '.cm-gutters': { border: '0', backgroundColor: 'transparent' },
-    '.cm-lineNumbers': { color: 'color-mix(in srgb, var(--tt-muted) 55%, transparent)' },
-    '.cm-lineNumbers .cm-gutterElement': { padding: '0 10px 0 8px', minWidth: '2.25rem' },
-    '.cm-content': { padding: '30px 28px 72px 0' },
-    '.cm-line': { padding: '0' },
-    '.cm-activeLine': { backgroundColor: 'color-mix(in srgb, var(--tt-text) 4%, transparent)' },
-    '.cm-selectionBackground, .cm-content ::selection': { backgroundColor: 'color-mix(in srgb, var(--tt-accent) 22%, transparent)' },
-    '.cm-tock-task-line': { backgroundColor: 'color-mix(in srgb, var(--tt-accent) 3%, transparent)' },
-    '.cm-tock-code-line': { color: 'var(--tt-muted)' },
-    '.cm-tock-comment': { color: 'var(--tt-muted)' },
-    '.cm-foldGutter .cm-gutterElement': { display: showFoldGutter ? 'block' : 'none' },
-  })
-}
-
 export function SourceEditorRuntime(props: SourceEditorProps): ReactNode {
   const parentRef = useRef<HTMLDivElement | null>(null)
   const editorRef = useRef<EditorView | null>(null)
   const sourceRef = useRef(props.content)
+  const embedsRef = useRef(props.resolvedEmbeds ?? [])
   const onContentChangeRef = useRef(props.onContentChange)
   const onSelectionChangeRef = useRef(props.onSelectionChange)
   const onWidgetStateRef = useRef(props.onWidgetState)
@@ -237,8 +250,17 @@ export function SourceEditorRuntime(props: SourceEditorProps): ReactNode {
   const lastFoldIdRef = useRef<number | null>(null)
   const editable = props.editable !== false
   const showFoldGutter = props.showFoldGutter !== false
-  const extraExtensions = props.extraExtensions ?? EMPTY_EXTENSIONS
+  const userExtensions = props.extraExtensions ?? EMPTY_EXTENSIONS
+  const chromeExtensions = useMemo(() => [
+    ...buildSourceEmbedWidgetExtension(() => embedsRef.current),
+    ...buildSourceTaskWidgetExtension(),
+  ], [])
+  const extraExtensions = useMemo(() => [...chromeExtensions, ...userExtensions], [chromeExtensions, userExtensions])
   useEffect(() => { sourceRef.current = props.content }, [props.content])
+  useEffect(() => {
+    embedsRef.current = props.resolvedEmbeds ?? []
+    refreshSourceEmbedWidgets(editorRef.current)
+  }, [props.resolvedEmbeds])
   useEffect(() => { onContentChangeRef.current = props.onContentChange }, [props.onContentChange])
   useEffect(() => { onSelectionChangeRef.current = props.onSelectionChange }, [props.onSelectionChange])
   useEffect(() => { onWidgetStateRef.current = props.onWidgetState }, [props.onWidgetState])
@@ -259,7 +281,7 @@ export function SourceEditorRuntime(props: SourceEditorProps): ReactNode {
     if (!parent) return
     const view = new EditorView({
       parent,
-      state: EditorState.create({ doc: normalizeEditorSource(props.content), extensions: [extensions, sourceTheme(showFoldGutter)] }),
+      state: EditorState.create({ doc: normalizeEditorSource(props.content), extensions }),
     })
     editorRef.current = view
     if (props.editorViewRef) props.editorViewRef.current = view
@@ -306,5 +328,5 @@ export function SourceEditorRuntime(props: SourceEditorProps): ReactNode {
     view.focus()
   }, [props.foldRequest])
 
-  return <div aria-label={props.ariaLabel ?? 'Markdown Source Editor'} className={`tocktutor-source-editor flex min-h-0 min-w-0 flex-1 overflow-hidden ${props.className ?? ''}`} id={props.id}><div className="min-h-0 min-w-0 flex-1" ref={parentRef} /></div>
+  return <div aria-label={props.ariaLabel ?? 'Markdown Source Editor'} className={`tocktutor-source-editor flex min-h-0 min-w-0 flex-1 overflow-hidden focus-within:outline-2 focus-within:outline-offset-[-2px] focus-within:outline-[var(--tt-accent)] [&_.cm-editor]:h-full [&_.cm-editor]:bg-[var(--tt-panel)] [&_.cm-editor]:text-[var(--tt-text)] [&_.cm-editor]:[font:14px/1.65_ui-monospace,SFMono-Regular,Consolas,monospace] [&_.cm-scroller]:overflow-auto [&_.cm-gutters]:border-0 [&_.cm-gutters]:bg-transparent [&_.cm-content]:pt-[30px] [&_.cm-content]:pr-7 [&_.cm-content]:pb-[72px] [&_.cm-lineNumbers]:text-[var(--tt-muted)] [&_.cm-tock-code-line]:text-[var(--tt-muted)] [&_.cm-tock-comment]:text-[var(--tt-muted)] ${props.className ?? ''}`} id={props.id}><div className="min-h-0 min-w-0 flex-1" ref={parentRef} /></div>
 }

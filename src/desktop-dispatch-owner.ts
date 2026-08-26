@@ -132,11 +132,9 @@ export class DesktopDispatchOwner {
     const expectedVaultId = event.kind === 'protocol' && event.request.vaultId !== undefined
       ? event.request.vaultId
       : event.identity.vaultId
-    const expectedVaultGeneration = event.kind === 'protocol' && event.request.vaultGeneration !== undefined
-      ? event.request.vaultGeneration
-      : event.identity.vaultGeneration
+    const switchedVault = event.kind === 'protocol' && event.request.vaultId !== undefined
     if (current === undefined || current.vaultId !== expectedVaultId
-      || current.vaultGeneration !== expectedVaultGeneration
+      || !switchedVault && current.vaultGeneration !== event.identity.vaultGeneration
       || current.sessionId !== event.identity.sessionId || current.windowId !== event.identity.windowId) {
       this.superseded.delete(request.operationId)
       if (event.kind === 'protocol') this.notifyCallback(event.request, 'error')

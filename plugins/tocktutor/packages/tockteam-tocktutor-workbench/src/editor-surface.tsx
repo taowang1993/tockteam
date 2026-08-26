@@ -11,6 +11,18 @@ function embedLabel(embed: ResolvedEmbedNode): string {
   return `${embed.target.path}${embed.target.fragment === null ? '' : `#${embed.target.fragment}`}`
 }
 
+function handleRenderedClick(event: ReactMouseEvent<HTMLElement>, onOpenExternalUrl?: (url: string) => void): void {
+  const target = event.target instanceof Element ? event.target : null
+  const url = target?.closest<HTMLElement>('[data-external-url]')?.dataset.externalUrl
+  if (url !== undefined) {
+    event.preventDefault()
+    event.stopPropagation()
+    onOpenExternalUrl?.(url)
+  } else if (target?.closest('a') !== null) {
+    event.preventDefault()
+  }
+}
+
 export function ResolvedEmbedsView(props: {
   embeds?: readonly ResolvedEmbedNode[] | undefined
   onOpenExternalUrl?: ((url: string) => void) | undefined
@@ -34,15 +46,7 @@ export function ResolvedEmbedsView(props: {
             {audio && <audio aria-label={embed.target.display ?? embed.target.path} className="mt-2 w-full" controls preload="metadata" src={`data:${embed.mimeType};base64,${embed.content}`} />}
             {video && <video aria-label={embed.target.display ?? embed.target.path} className="mt-2 max-h-80 max-w-full" controls preload="metadata" src={`data:${embed.mimeType};base64,${embed.content}`} />}
             {pdf && <iframe className="mt-2 h-80 w-full" sandbox="" src={`data:${embed.mimeType};base64,${embed.content}`} title={embed.target.display ?? embed.target.path} />}
-            {embed.target.kind === 'note' && <div className="prose text-sm" dangerouslySetInnerHTML={{ __html: renderMarkdownHtml(embed.content, { externalEmbedMode: 'viewer' }) }} onClick={event => {
-              const target = event.target instanceof Element ? event.target.closest<HTMLElement>('[data-external-url]') : null
-              const url = target?.dataset.externalUrl
-              if (url !== undefined) {
-                event.preventDefault()
-                event.stopPropagation()
-                props.onOpenExternalUrl?.(url)
-              }
-            }} />}
+            {embed.target.kind === 'note' && <div className="prose text-sm" dangerouslySetInnerHTML={{ __html: renderMarkdownHtml(embed.content, { externalEmbedMode: 'viewer' }) }} onClick={event => { handleRenderedClick(event, props.onOpenExternalUrl) }} />}
             {(embed.target.kind === 'canvas' || embed.target.kind === 'base') && <pre className="mt-2 max-h-80 overflow-auto whitespace-pre-wrap text-xs">{embed.content}</pre>}
           </article>
         )
@@ -62,11 +66,7 @@ export function MarkdownSlidesView(props: {
       {slides.map((slide, index) => (
         <article className="rounded border border-[var(--tt-border)] p-3" data-slide-index={index} key={index}>
           <div className="mb-2 text-xs text-[var(--tt-muted)]">Slide {index + 1}</div>
-          <div dangerouslySetInnerHTML={{ __html: slide }} onClick={event => {
-            const target = event.target instanceof Element ? event.target.closest<HTMLElement>('[data-external-url]') : null
-            const url = target?.dataset.externalUrl
-            if (url !== undefined) props.onOpenExternalUrl?.(url)
-          }} />
+          <div dangerouslySetInnerHTML={{ __html: slide }} onClick={event => { handleRenderedClick(event, props.onOpenExternalUrl) }} />
         </article>
       ))}
       <ResolvedEmbedsView embeds={props.embeds} onOpenExternalUrl={props.onOpenExternalUrl} />
@@ -93,16 +93,7 @@ export function RichReadingView(props: {
       if (Number.isSafeInteger(index) && index >= 0) props.onToggleTask(index)
       return
     }
-    if (target instanceof HTMLElement) {
-      const external = target.closest<HTMLElement>('[data-external-url]')
-      const url = external?.dataset.externalUrl
-      if (url !== undefined) {
-        event.preventDefault()
-        props.onOpenExternalUrl?.(url)
-        return
-      }
-    }
-    if (target instanceof HTMLAnchorElement) event.preventDefault()
+    handleRenderedClick(event, props.onOpenExternalUrl)
   }
   return (
     <article
@@ -134,17 +125,14 @@ export function LivePreviewView(props: {
         content={props.source}
         key={props.documentKey}
         onMarkdownChange={props.onEdit}
+        {...(props.onOpenExternalUrl === undefined ? {} : { onOpenExternalUrl: props.onOpenExternalUrl })}
+        {...(props.embeds === undefined ? {} : { resolvedEmbeds: props.embeds })}
         {...(props.onSelectionChange === undefined ? {} : { onSelectionChange: props.onSelectionChange })}
         onToggleTask={props.onToggleTask}
       />
       <details className="mx-auto mb-6 mt-4 w-[calc(100%-32px)] max-w-3xl rounded border border-[var(--tt-border)] p-2">
         <summary className="cursor-pointer text-xs font-medium">Rendered Preview</summary>
-        <div aria-label="Live Preview Rendered Content" className="mt-2" dangerouslySetInnerHTML={{ __html: renderMarkdownHtml(props.source, { externalEmbedMode: 'viewer' }) }} onClick={event => {
-          const target = event.target instanceof Element ? event.target.closest<HTMLElement>('[data-external-url]') : null
-          const url = target?.dataset.externalUrl
-          if (url !== undefined) props.onOpenExternalUrl?.(url)
-        }} />
-        <ResolvedEmbedsView embeds={props.embeds} onOpenExternalUrl={props.onOpenExternalUrl} />
+        <div aria-label="Live Preview Rendered Content" className="mt-2" dangerouslySetInnerHTML={{ __html: renderMarkdownHtml(props.source, { externalEmbedMode: 'viewer' }) }} onClick={event => { handleRenderedClick(event, props.onOpenExternalUrl) }} />
         <details className="mt-3 rounded border border-[var(--tt-border)] p-2">
           <summary className="cursor-pointer text-xs font-medium">Slides Preview</summary>
           <MarkdownSlidesView embeds={props.embeds} onOpenExternalUrl={props.onOpenExternalUrl} source={props.source} />

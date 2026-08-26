@@ -93,6 +93,14 @@ test('sanitizes block raw text/table HTML and keeps external embeds inert by def
   assert.match(html, /tocktutor-external-embed-inert/u)
 })
 
+test('escapes malformed raw nesting and rejects protocol-relative image resources', () => {
+  const html = renderMarkdownHtml('<div>\n<table><tr><td>Cell</td></tr></table>\n</div>\n\n<div><span>Broken</div></span>\n\n![Remote](//evil.example/image.png)')
+  assert.match(html, /<div>\n<table>/u)
+  assert.match(html, /&lt;div&gt;&lt;span&gt;Broken&lt;\/div&gt;&lt;\/span&gt;/u)
+  assert.doesNotMatch(html, /src=|\\\\n/u)
+  assert.match(html, /!\[Remote\]\(\/\/evil\.example\/image\.png\)/u)
+})
+
 test('viewer mode emits inert buttons for the isolated Web Viewer handoff', () => {
   const html = renderMarkdownHtml('![Video](https://www.youtube.com/watch?v=NnTvZWp5Q7o)\n![Page](https://example.com/article)', { externalEmbedMode: 'viewer' })
   assert.match(html, /data-external-embed-kind="youtube"/u)

@@ -440,7 +440,7 @@ test('continues a named-vault dispatch with the freshly activated Workbench owne
     deliveryId: 'delivery-target',
     kind: 'protocol' as const,
     operationId: 'dispatch-target',
-    request: { action: 'open' as const, file: 'Folder/Target.md', vaultGeneration: target.generation, vaultId: target.id },
+    request: { action: 'open' as const, file: 'Folder/Target.md', vaultId: target.id },
   }
   let next = true
   let currentOwner: TockTutorNativeActionsOwnerProps = {
@@ -461,7 +461,7 @@ test('continues a named-vault dispatch with the freshly activated Workbench owne
         currentOwner = {
           activePath: null,
           async handleDispatch(delivery: unknown) {
-            assert.deepEqual(delivery, { kind: 'protocol', operationId: 'dispatch-target', request: event.request })
+            assert.deepEqual(delivery, { kind: 'protocol', operationId: 'dispatch-target', request: { ...event.request, vaultGeneration: target.generation } })
             return 'handled' as const
           },
           async saveCurrent() { return true },
@@ -475,6 +475,40 @@ test('continues a named-vault dispatch with the freshly activated Workbench owne
   await runDesktopDispatchLoop({ bridge, owner: () => currentOwner, remote })
 
   assert.deepEqual(completions, [{ deliveryId: 'delivery-target', operationId: 'dispatch-target', status: 'handled' }])
+})
+
+test('opens a newly created protocol window only after the Workbench publishes its path', async () => {
+  const completions: unknown[] = []
+  const opened: string[] = []
+  let next = true
+  let currentOwner: TockTutorNativeActionsOwnerProps
+  currentOwner = {
+    activePath: 'Folder/Current.md',
+    async handleDispatch() {
+      currentOwner = { ...currentOwner, activePath: 'Folder/New.md' }
+      return 'handled'
+    },
+    async saveCurrent() { return true },
+    vault,
+  }
+  const bridge: DesktopCallerBridge = {
+    async authorize() { return { authorization: 'popout-new' } },
+    async cancelDispatch() {},
+    async completeDispatch(value) { completions.push(value); return 'handled' },
+    async nextDispatch() {
+      if (!next) return null
+      next = false
+      return { deliveryId: 'delivery-new', kind: 'protocol', operationId: 'dispatch-new', request: { action: 'new', file: 'Folder/New.md', paneType: 'window' } }
+    },
+  }
+  const remote = { tocktutorDesktop: {
+    async openPopOut(_authorization: string, path: string) { opened.push(path); return { ok: true, value: { status: 'opened' } } },
+  } } as unknown as DesktopActionRemote
+
+  await runDesktopDispatchLoop({ bridge, owner: () => currentOwner, remote })
+
+  assert.deepEqual(opened, ['Folder/New.md'])
+  assert.deepEqual(completions, [{ deliveryId: 'delivery-new', operationId: 'dispatch-new', status: 'handled' }])
 })
 
 test('dispatches Workbench actions and keeps Desktop-owned vault/window actions caller-bound', async () => {

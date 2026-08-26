@@ -27,6 +27,7 @@ export interface SourceEditorProps {
   onSelectionChange?: (selection: SourceEditorSelection) => void
   onWidgetState?: (widgets: readonly import('./editor-widgets.ts').EditorWidgetTarget[]) => void
   placeholder?: string
+  resolvedEmbeds?: readonly import('./embeds.ts').ResolvedEmbedNode[]
   showFoldGutter?: boolean
   spellCheck?: boolean
   editorViewRef?: MutableRefObject<unknown | null>

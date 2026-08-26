@@ -47,6 +47,12 @@ function assertVault(value: VaultReference): void {
   ) throw new TypeError('Vault must identify one active vault generation.')
 }
 
+function assertVaultId(value: unknown): asserts value is string {
+  if (typeof value !== 'string' || !/^vault:[0-9a-f]{64}$/u.test(value)) {
+    throw new TypeError('Vault target must be one opaque recent vault id.')
+  }
+}
+
 function assertPath(value: string): void {
   if (
     typeof value !== 'string'
@@ -197,6 +203,7 @@ export class TockTutorDesktopGateway extends TypertRemoteService {
   }>()
   private readonly targetActivations = new Map<string, {
     identity: NativeOperationIdentity
+    requestedId: string
     target: VaultReference
   }>()
   private readonly lifetime = createNativeOwnerLifetime()
@@ -328,37 +335,41 @@ export class TockTutorDesktopGateway extends TypertRemoteService {
   @Remote
   async activateVaultTarget(
     authorization: string,
-    target: VaultReference,
+    target: { id: string },
     signal: AbortSignal,
   ): Promise<NativeActionResult> {
     assertAuthorization(authorization)
-    assertVault(target)
+    if (typeof target !== 'object' || target === null) throw new TypeError('Vault target is required.')
+    assertVaultId(target.id)
     return this.lifetime.run(async ownerSignal => {
-      const current = this.ctx.noteVault.state
-      if (!current.active) throw new Error('There is no active vault to switch from.')
-      const identity = await this.claimForVault(authorization, 'activate-vault', {
-        id: current.id,
-        generation: current.generation,
+      const identity = await this.ctx.tockTeamDesktopCaller.claim({
+        authorization,
+        operation: 'activate-vault',
       }, ownerSignal)
       const recovered = this.targetActivations.get(authorization)
       if (recovered !== undefined) {
-        if (!sameIdentity(recovered.identity, identity)
-          || recovered.target.id !== target.id
-          || recovered.target.generation !== target.generation) {
+        if (!sameIdentity(recovered.identity, identity) || recovered.requestedId !== target.id) {
           throw new Error('Desktop vault target changed during recovery.')
         }
-        assertCurrentVault(this.ctx.noteVault, target)
+        assertCurrentVault(this.ctx.noteVault, recovered.target)
         return { status: 'activated' }
       }
-      if (current.id !== target.id || current.generation !== target.generation) {
-        const activated = this.ctx.noteVault.activateRecentVault(target.id, current.generation)
-        if (!activated.active || activated.id !== target.id || activated.generation < target.generation) {
-          throw new Error('Desktop vault target activation returned stale state.')
-        }
+      assertIdentityCurrent(this.ctx.noteVault, identity)
+      const current = this.ctx.noteVault.state
+      if (!current.active) throw new Error('There is no active vault to switch from.')
+      const activated = current.id === target.id
+        ? current
+        : this.ctx.noteVault.activateRecentVault(target.id, current.generation)
+      if (!activated.active || activated.id !== target.id) {
+        throw new Error('Desktop vault target activation returned stale state.')
       }
       await this.ctx.noteVault.synchronizeDesktopSelection(ownerSignal)
-      assertCurrentVault(this.ctx.noteVault, target)
-      this.targetActivations.set(authorization, { identity, target })
+      const currentTarget = this.ctx.noteVault.state
+      if (!currentTarget.active || currentTarget.id !== target.id || currentTarget.generation !== activated.generation) {
+        throw new Error('Desktop vault target changed during synchronization.')
+      }
+      const targetVault = { id: currentTarget.id, generation: currentTarget.generation }
+      this.targetActivations.set(authorization, { identity, requestedId: target.id, target: targetVault })
       if (this.targetActivations.size > 128) this.targetActivations.delete(this.targetActivations.keys().next().value!)
       return { status: 'activated' }
     }, signal)

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   TockTutorRouteView,
@@ -181,7 +181,6 @@ describe('TockTutor titlebar panel controls', () => {
   it('renders editable source-preserving Live Preview chrome', async () => {
     const onEdit = vi.fn()
     const onMode = vi.fn()
-    const onToggleTask = vi.fn()
     const source = '# Lesson\n- [ ] Review\n> [!tip]- Fold\n> Body\n'
     renderRoute({
       documentKind: 'markdown',
@@ -190,16 +189,21 @@ describe('TockTutor titlebar panel controls', () => {
       path: 'Lesson.md',
       phase: 'ready',
       source,
-    }, { onEdit, onMode, onToggleTask })
+    }, { onEdit, onMode })
 
     expect(screen.getByRole('button', { name: 'Live Preview' }).getAttribute('aria-pressed')).toBe('true')
     fireEvent.click(screen.getByRole('button', { name: 'Source' }))
     expect(onMode).toHaveBeenCalledWith('source')
-    fireEvent.click(await screen.findByRole('checkbox', { name: /Mark Task on Line 2 as Complete/u }, { timeout: 5_000 }))
-    expect(onToggleTask).toHaveBeenCalledWith(0)
-    fireEvent.change(screen.getByLabelText('Live Preview Line 1'), { target: { value: '# Updated' } })
-    expect(onEdit).toHaveBeenCalledWith('# Updated\n- [ ] Review\n> [!tip]- Fold\n> Body\n')
-    expect(screen.getByRole('button', { name: 'Expand Line 3' })).toBeTruthy()
+    await waitFor(() => expect(document.querySelector('.ProseMirror')).toBeTruthy(), { timeout: 5_000 })
+    fireEvent.mouseDown(screen.getByRole('checkbox', { name: 'Mark Task as Complete' }))
+    await waitFor(() => expect(onEdit.mock.calls.some(([value]) => /[-*+] \[x\] Review/iu.test(String(value)))).toBe(true))
+    const calloutFold = screen.getByRole('button', { name: 'Expand Callout' })
+    fireEvent.mouseDown(calloutFold)
+    await waitFor(() => expect(onEdit.mock.calls.some(([value]) => /\[!tip\]\+/iu.test(String(value)))).toBe(true))
+    expect(document.querySelector('.tocktutor-live-callout')).toBeTruthy()
+    const fold = screen.getByRole('button', { name: 'Collapse Heading' })
+    fireEvent.mouseDown(fold)
+    expect(screen.getByRole('button', { name: 'Expand Heading' })).toBeTruthy()
   })
 
   it('opens opaque recent and sandbox vault controls without paths', () => {
