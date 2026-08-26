@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogTitle } from '@tockteam/ui/dialog'
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@tockteam/ui/empty'
 import { Input } from '@tockteam/ui/input'
 import { Label } from '@tockteam/ui/label'
+import { NativeSelect, NativeSelectOption } from '@tockteam/ui/native-select'
 import { Textarea } from '@tockteam/ui/textarea'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@tockteam/ui/tooltip'
 import {
@@ -2598,7 +2599,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
               title={tab.path}
               type="button"
             >
-              <span>{tab.dirty && <span aria-label="Unsaved">•</span>}{tab.pinned === true && <span aria-label="Pinned">◆</span>}{fileName(tab.path)}</span>
+              <span>{tab.dirty && <span aria-label="Unsaved">•</span>}{fileName(tab.path)}</span>
             </Button>
             <span className="absolute top-1/2 right-1 z-2 flex -translate-y-1/2 gap-0.5">
               <Button unstyled aria-label={`${tab.pinned === true ? 'Unpin' : 'Pin'} ${fileName(tab.path)}`} className="rounded border-0 bg-transparent p-0.5 text-[var(--tt-muted)]" onClick={() => { props.onTogglePinTab?.(focusedPane.id, tab.path) }} type="button"><Bookmark aria-hidden="true" /></Button>
@@ -2981,14 +2982,10 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
             </div>
             {(snapshot.graphLayout?.length ?? 0) > 0 ? (
               <>
-                <svg aria-label={`${snapshot.graphMode === 'local' ? 'Local' : 'Global'} Graph Canvas`} className="mt-2 h-48 w-full rounded border border-[var(--tt-border)]" role="img" viewBox="0 0 400 240">
-                  {(snapshot.graph?.edges ?? []).map((edge, index) => {
-                    const source = snapshot.graphLayout?.find(node => node.path === edge.sourcePath)
-                    const target = snapshot.graphLayout?.find(node => node.path === edge.targetPath)
-                    return source === undefined || target === undefined ? null : <line key={`${edge.sourcePath}-${edge.targetPath}-${String(index)}`} stroke="currentColor" strokeOpacity="0.35" x1={200 + source.x / 5} x2={200 + target.x / 5} y1={120 + source.y / 5} y2={120 + target.y / 5} />
-                  })}
-                  {snapshot.graphLayout?.map(node => <circle cx={200 + node.x / 5} cy={120 + node.y / 5} fill={node.path === snapshot.graph?.path ? 'var(--tt-accent)' : 'var(--tt-muted)'} key={node.path} r="5"><title>{node.path}</title></circle>)}
-                </svg>
+                <div aria-label={`${snapshot.graphMode === 'local' ? 'Local' : 'Global'} Graph Canvas`} className="relative mt-2 h-48 w-full overflow-hidden rounded border border-[var(--tt-border)]" role="img">
+                  {snapshot.graphLayout?.map(node => <span className="absolute size-2 rounded-full bg-[var(--tt-muted)] data-[active=true]:bg-[var(--tt-accent)]" data-active={node.path === snapshot.graph?.path} key={node.path} style={{ left: `calc(50% + ${String(node.x / 5)}px)`, top: `calc(50% + ${String(node.y / 5)}px)` }} title={node.path} />)}
+                  <span className="sr-only">{(snapshot.graph?.edges ?? []).map(edge => `${edge.sourcePath} links to ${edge.targetPath}`).join('. ')}</span>
+                </div>
                 <div className="mt-1 grid max-h-28 gap-1 overflow-auto">
                   {snapshot.graphLayout?.map(node => <Button unstyled className="truncate rounded border-0 bg-transparent px-1 py-0.5 text-left text-xs" key={node.path} onClick={() => { props.onSelect(node.path) }} type="button">{node.path}</Button>)}
                 </div>
@@ -3082,7 +3079,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
             <div className="flex items-center justify-between gap-2">
               <h2 className="m-0 text-sm">Attachments</h2>
               <Label unstyled className="cursor-pointer rounded border border-[var(--tt-border)] px-2 py-1 text-xs">Add Files
-                <input className="sr-only" type="file" accept="image/*,audio/*,video/*,application/pdf" onChange={event => {
+                <Input unstyled className="sr-only" type="file" accept="image/*,audio/*,video/*,application/pdf" onChange={event => {
                   const file = event.target.files?.[0]
                   if (file === undefined) return
                   const reader = new FileReader()
@@ -3141,10 +3138,10 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
               <Label unstyled className="flex items-center justify-between gap-2">Page Preview<Checkbox checked={snapshot.settings?.pagePreview ?? true} disabled={snapshot.settings === undefined} onCheckedChange={checked => { props.onSettingsChange?.({ pagePreview: checked === true }) }} /></Label>
               <Label unstyled className="flex items-center justify-between gap-2">Backlinks in Document<Checkbox checked={snapshot.settings?.backlinksInDocument ?? false} disabled={snapshot.settings === undefined} onCheckedChange={checked => { props.onSettingsChange?.({ backlinksInDocument: checked === true }) }} /></Label>
               <Label unstyled className="grid gap-1">Default Editing Mode
-                <select className="rounded border border-[var(--tt-border)] bg-transparent p-1" disabled={snapshot.settings === undefined} onChange={event => { props.onSettingsChange?.({ defaultEditingMode: event.target.value === 'source' ? 'source' : 'live-preview' }) }} value={snapshot.settings?.defaultEditingMode ?? 'live-preview'}>
-                  <option value="live-preview">Live Preview</option>
-                  <option value="source">Source</option>
-                </select>
+                <NativeSelect unstyled className="rounded border border-[var(--tt-border)] bg-transparent p-1" disabled={snapshot.settings === undefined} onChange={event => { props.onSettingsChange?.({ defaultEditingMode: event.target.value === 'source' ? 'source' : 'live-preview' }) }} value={snapshot.settings?.defaultEditingMode ?? 'live-preview'}>
+                  <NativeSelectOption value="live-preview">Live Preview</NativeSelectOption>
+                  <NativeSelectOption value="source">Source</NativeSelectOption>
+                </NativeSelect>
               </Label>
             </div>
             <div className="mt-2 grid gap-1">
