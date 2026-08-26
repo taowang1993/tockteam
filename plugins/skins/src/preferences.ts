@@ -1,11 +1,6 @@
-export const SKIN_IDS = [
-  'tockteam-skin-deep-current',
-  'tockteam-skin-jade-circuit',
-  'tockteam-skin-porcelain',
-  'tockteam-skin-ember-dusk',
-] as const
+import { SKIN_IDS, type SkinId } from './skin-ids.ts'
 
-export type SkinId = typeof SKIN_IDS[number]
+export { SKIN_IDS, type SkinId }
 export type FallbackTheme = 'light' | 'dark' | 'system'
 
 export interface SkinPreferences {
