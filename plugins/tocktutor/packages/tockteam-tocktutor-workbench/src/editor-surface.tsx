@@ -37,7 +37,11 @@ export function ResolvedEmbedsView(props: {
             {embed.target.kind === 'note' && <div className="prose text-sm" dangerouslySetInnerHTML={{ __html: renderMarkdownHtml(embed.content, { externalEmbedMode: 'viewer' }) }} onClick={event => {
               const target = event.target instanceof Element ? event.target.closest<HTMLElement>('[data-external-url]') : null
               const url = target?.dataset.externalUrl
-              if (url !== undefined) props.onOpenExternalUrl?.(url)
+              if (url !== undefined) {
+                event.preventDefault()
+                event.stopPropagation()
+                props.onOpenExternalUrl?.(url)
+              }
             }} />}
             {(embed.target.kind === 'canvas' || embed.target.kind === 'base') && <pre className="mt-2 max-h-80 overflow-auto whitespace-pre-wrap text-xs">{embed.content}</pre>}
           </article>
