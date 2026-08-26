@@ -20,6 +20,18 @@ test('runtime CI verifies the nested TockTutor workspace before staging', () => 
   assert.ok(workflow.indexOf('pnpm run build:tocktutor') < workflow.indexOf('pnpm run stage:dsh'))
 })
 
+test('CI actions are immutable and release write access is publish-only', () => {
+  for (const name of ['ci.yml', 'release.yml']) {
+    const workflow = readFileSync(join(root, '.github', 'workflows', name), 'utf8')
+    const actions = [...workflow.matchAll(/^\s*uses:\s*([^\s#]+)/gmu)].map(match => match[1])
+    assert.ok(actions.length > 0)
+    for (const action of actions) assert.match(action ?? '', /@[0-9a-f]{40}$/u)
+  }
+  const release = readFileSync(join(root, '.github', 'workflows', 'release.yml'), 'utf8')
+  assert.match(release, /permissions:\n  contents: read/u)
+  assert.match(release, /publish:[\s\S]*permissions:\n      contents: write/u)
+})
+
 test('tagged releases build and upload both TUI archive formats', () => {
   const workflow = readFileSync(
     join(root, '.github', 'workflows', 'release.yml'),
