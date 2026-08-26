@@ -79,7 +79,9 @@ The aggregate bundle does not activate this package's tool row. It retains the p
 - filesystem watching and the `note-vault/change` event;
 - Desktop reveal and caller-bound vault-selection seams.
 
-It also defines the abstract `tockTeamDesktopReveal` and `tockTeamDesktopVaultSelection` services. TockTeam Desktop supplies their native implementations. The default aggregate row sets `vaultRoot: null`; Desktop selection activates a vault instead of accepting browser-provided absolute paths.
+It also defines the abstract `tockTeamDesktopReveal` and `tockTeamDesktopVaultSelection` services. TockTeam Desktop supplies their native implementations. The aggregate row sets `vaultRoot: null`; Desktop selection activates a vault instead of accepting browser-provided absolute paths. The Desktop bundle evaluates `stateRoot` under `DSH_DESKTOP_APP_DATA/tocktutor`, so recent-vault bindings, drafts, snapshots, trash metadata, and managed-vault state survive Desktop restarts without writing into the workspace.
+
+The runtime can activate opaque recent selections, create a collision-safe sandbox, and create named managed vaults under the state root. Its passive-backup seam exposes only generation-bound, no-follow reads and exclusive restores for an inert allowlist under exact `.obsidian` and `.obsidian-*` roots. Hidden nested paths, aliases, links, executable/native/script payloads, and platforms without no-follow support fail closed.
 
 Important configuration includes read, attachment, draft, folder, tree, recent-vault, snapshot, state-root, vault-root, and restore limits. Keep their maximums intact.
 
@@ -95,14 +97,15 @@ The Host entry injects `noteVault` and mounts the `tocktutorWorkbench` Typert Re
 
 The browser client mounts that Remote and contributes the single `tockteam.tocktutor.route` slot. The route owns:
 
-- the `/tocktutor` browser route;
-- bounded note tabs and pane groups;
-- Markdown source/reading modes and task toggles;
-- inert Canvas and Base projections;
-- dirty-save and revision-conflict behavior;
-- snapshots and trash recovery;
-- native dispatch handling;
-- the nested assistant, native-action, and review-panel slots.
+- the `/tocktutor` browser route, bounded tabs, recently closed tabs, pinning, reordering, pane groups, focus mode, workspaces, and command palette;
+- Markdown Source, Live Preview, Reading, Slides, safe HTML/PDF projection, formatting/slash/table commands, Page Preview, and exact-source task toggles;
+- tree, keyword/Related search, Quick Switcher, Outline, Footnotes, Backlinks, Outgoing Links, unlinked mentions, Properties, Tags, Smart Views, bookmarks, capture, templates, journals, Note Composer, and reviewed organization;
+- deterministic finite Global and Local Graphs with persisted depth, semantic filters, query groups, viewport controls, and bounded node actions;
+- conflict-safe JSON Canvas and executable Base views, including card/group/edge edits and revision-preserving rollback;
+- bounded note, media, Canvas, and Base embed hydration while keeping authored embed source editable;
+- attachment ingestion, previews, location settings, and recorded-audio handoff through the Desktop microphone owner;
+- draft recovery, timed/manual snapshots, external-change preservation, trash, restore-as-new, and retention;
+- native dispatch handling and the nested assistant, native-action, review-panel, and Web Viewer slots.
 
 The route accepts only Markdown, Canvas, and Base documents. React text nodes render projected content; raw HTML is not inserted into the DOM. Local, credential-bearing, resource, and executable links remain inert.
 
@@ -130,7 +133,7 @@ The client contributes the **Native Actions** controls for:
 
 Every native operation starts with an opaque authorization minted by the isolated preload for the trusted main frame. The Host claims that authorization to obtain the main-owned session, window, operation, and active-vault identity. Browser payloads never supply absolute paths, Electron objects, native handles, or unrestricted IPC names.
 
-Unload aborts pending work and closes pop-outs opened by the adapter. Print and export content is bounded and escaped before the Desktop owner revalidates and renders it.
+Unload aborts pending work and closes pop-outs opened by the adapter. Dirty editors save before choose-vault, pop-out, print, HTML, or PDF authorization is claimed. Print and export content is bounded, sanitized, and rendered through the shared Markdown exporter before the Desktop owner revalidates it. Recorded audio returns only bounded bytes to the active Workbench owner, which rechecks the note and vault before the runtime stores it.
 
 ### `@tockteam/tocktutor-assistant`
 
@@ -147,13 +150,13 @@ Unload aborts pending work and closes pop-outs opened by the adapter. Print and 
 
 The child process receives a scrubbed environment, an empty temporary workspace, bounded JSON-RPC lines and requests, timeouts, restart limits, and lifecycle cleanup. It never receives direct vault filesystem authority.
 
-`writePermission` is `read-only` or `propose`. Proposed writes are bound to the exact vault generation, child instance, agent turn, request, provider, model, permission epoch, source revision, target revision, digest, expiry, and user approval. Only `tockbot-note-runtime` performs the accepted mutation and snapshot-backed save.
+`writePermission` is `read-only` or `propose`. Proposed writes are bound to the exact vault generation, child instance, agent turn, request, provider, model, permission epoch, source revision, target revision, digest, expiry, and user approval. Only `tockbot-note-runtime` performs the accepted mutation and snapshot-backed save. A decision keeps a transient reference to the exact live originating Agent so approval or rejection can submit one bounded follow-up; a stale Agent cannot revive the write or alter the durable audit result.
 
 ### `@tockteam/tocktutor-import-export`
 
 The Host gateway injects `noteVault`, `tockTeamDesktopCaller`, and `tockTeamDesktopPicker`. It owns reviewed import, restore, and backup engines plus the review-panel client contribution.
 
-Supported inputs include Markdown folders and ZIPs, HTML, CSV, Apple Journal, Bear, Evernote, Google Keep, Roam Research, Textbundle/Textpack, and TockTutor backup archives. Craft and compatible exports use the Markdown or HTML paths instead of separate parser stacks.
+Supported inputs include Markdown folders and ZIPs, HTML with bounded media/PDF resources, CSV, Apple Journal, Bear, Evernote, Google Keep, Roam Research, Textbundle/Textpack, and TockTutor backup archives. Craft, Notion, Apple Notes, and compatible exports delegate to the reviewed Markdown or HTML paths instead of adding parser stacks.
 
 The transaction is:
 
@@ -168,7 +171,7 @@ trusted caller authorization
   -> bounded result and recovery evidence
 ```
 
-ZIP parsing rejects traversal, aliases, symbolic links, executable entries, unsupported flags/methods, malformed headers, CRC mismatches, excessive depth, entry count, member size, aggregate size, parser time, and compression ratio. Backup archives include a deterministic version-2 manifest and verify every member independently before restore.
+ZIP parsing rejects traversal, aliases, symbolic links, executable entries, unsupported flags/methods, malformed headers, CRC mismatches, excessive depth, entry count, member size, aggregate size, parser time, and compression ratio. Backup archives use deterministic manifest version 3. Passive configuration is hashed and stored under opaque archive member names, follows the same inspect-preview-approve-apply transaction, and restores only through the runtime seam. Version-2 archives without passive members remain restorable.
 
 Existing vault files are never overwritten. Multi-file imports report committed, skipped, failed, and recovery-required entries rather than claiming rollback after partial success.
 
@@ -184,7 +187,7 @@ Existing vault files are never overwritten. Multi-file imports report committed,
 
 The Host accepts only credential-free HTTP(S), rejects local/private/reserved addresses and mixed DNS results, pins each request to a validated address, revalidates redirects, bypasses ambient proxies, disables compression, and bounds URLs, addresses, redirects, headers, bytes, decoded text, connection time, total time, and concurrency.
 
-Fetched HTML is reduced to bounded inert Reader text. Viewer HTML escapes the projection before TockTeam Desktop authorizes it for one isolated, script-disabled webview frame. API requests require same-origin POST JSON with bounded bodies.
+Fetched HTML is reduced to bounded inert Reader text. Viewer HTML escapes the projection before TockTeam Desktop authorizes it for one isolated, script-disabled webview frame. The lifecycle-owned Workbench panel supports persistent tabs, keyboard/drag reordering, Reader text size/width/spacing/appearance, shared bookmarks, and settings-backed clipping. API requests require same-origin POST JSON with bounded bodies.
 
 Clipping creates a one-use, expiring, digest-bound, destination-bound, vault-generation-bound preview. The browser must approve the exact preview before the runtime performs an exclusive Markdown create.
 
@@ -217,6 +220,12 @@ Do not move Electron authority, native path handling, or unrestricted filesystem
 - Treat every browser payload, persisted value, fetched document, archive, model result, and child-process message as untrusted.
 - Keep install state, review state, approval state, and applied state distinct.
 
+## Parity and Cutover Ledger
+
+`plugins/tocktutor/parity/ledger.json` is the machine-checked capability contract. It preserves all 122 observed rows from the pinned Obsidian checklist, the source's declared-123/observed-122 discrepancy, six additional Tockbot compatibility capabilities, exact owners, repository-relative evidence, and hostile fixtures. After the parity epic, all 88 included checklist rows and all six additional capabilities must be `proven`; the 34 unchecked rows stay `excluded` or `not-needed` rather than being invented as supported behavior.
+
+The in-scope cutover includes Desktop install/upgrade, disable/uninstall/rollback transaction safety, copied-vault compatibility, legacy recent-vault reads, passive configuration backup, accessibility gates, destructive recovery, generated-payload drift checks, packaged Loader composition, and real Electron flows. Retiring the old Tockbot browser route is a separate reviewable change. It removes route and navigation admission only; it does not delete vaults, local settings, backup compatibility, or rollback code.
+
 ## Known Operational Limits
 
 The standalone `tockbot-note-vault` filesystem adapter sorts the native directory inventory before producing deterministic cursor pages. Search bytes, inspected entries, files, results, and output remain bounded, but native directory enumeration itself scales with the vault. Split unusually wide vaults or use the active runtime; replace this adapter with a cursorable index only if measured vault size makes enumeration a real bottleneck.
@@ -231,9 +240,10 @@ The root workspace intentionally excludes `plugins/tocktutor`; that workspace ha
 
 ## Verification
 
-Run the focused package test first, then the TockTutor workspace gates:
+Run the parity validator and focused package test first, then the TockTutor workspace gates:
 
 ```sh
+pnpm -C plugins/tocktutor run validate:parity
 pnpm run install:tocktutor
 pnpm run typecheck:tocktutor
 pnpm run test:tocktutor
@@ -255,9 +265,11 @@ pnpm run build:dsh
 pnpm run stage:dsh
 pnpm run smoke:web
 pnpm run smoke:runtime
+pnpm run dist:mac:quick
+pnpm run smoke:app
 ```
 
-TockTutor Desktop behavior that depends on a real Electron window still needs the applicable packed Loader and Desktop smoke path; unit tests and `--dump-config` do not prove native authorization, webview, picker, microphone, pop-out, print, or export behavior.
+TockTutor Desktop behavior that depends on a real Electron window still needs the applicable packed Loader and Desktop smoke path; unit tests and `--dump-config` do not prove native authorization, isolated Web Viewer frames, picker, microphone, attachment ingestion, pop-out, print, export, managed-vault creation, or restart recovery. Use copied disposable user data for destructive cutover proof and stop every Electron/runtime process afterward.
 
 ## Change Checklist
 
