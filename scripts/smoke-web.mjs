@@ -16,6 +16,7 @@ import { ensureWebProfile, WEB_PROFILE } from '../src/profile.ts'
 import { bundledRuntimePaths, runtimeSearchPath } from '../src/runtime-paths.ts'
 import { resolveProductVersion } from '../src/version.ts'
 import { resolveNodeDistributionPlatform } from '../src/node-platform.ts'
+import { stopChildProcess } from './process-cleanup.mjs'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 
@@ -347,19 +348,6 @@ try {
   console.log('Better Sidebar Host API: ready, session/files/Git verified on the web surface')
   console.log('Better Sidebar terminal PTY: ready, command execution verified on the web surface')
 } finally {
-  if (child.exitCode === null) {
-    child.kill('SIGTERM')
-    await new Promise(resolve => {
-      const escalate = setTimeout(() => { child.kill('SIGKILL') }, 8_000)
-      child.once('exit', () => {
-        clearTimeout(escalate)
-        resolve()
-      })
-      child.once('error', () => {
-        clearTimeout(escalate)
-        resolve()
-      })
-    })
-  }
+  await stopChildProcess(child)
   rmSync(smokeRoot, { recursive: true, force: true })
 }
