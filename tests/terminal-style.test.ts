@@ -42,4 +42,6 @@ test('terminal is controlled only by the shared desktop toolbar', () => {
 
   assert.doesNotMatch(plugin, /TerminalTrigger|terminal-trigger-root/)
   assert.doesNotMatch(mounts, /terminal-trigger-root/)
+  assert.match(plugin, /previous\?\.scopeKey === 'new-session'[\s\S]*this\.surfaces\.delete\(previous\.scopeKey\)[\s\S]*previous\.scopeKey = session\.scopeKey/u)
+  assert.match(plugin, /key=\{surface\.renderKey\}/u)
 })

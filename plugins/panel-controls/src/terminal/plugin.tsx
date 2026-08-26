@@ -39,6 +39,7 @@ interface ClientContext {
 
 interface SessionSurface {
   scopeKey: string
+  readonly renderKey: string
   cwd: string | null
   store: DockStore
 }
@@ -163,6 +164,7 @@ class DesktopPanelService implements DesktopPanels {
     }
     const surface = {
       scopeKey,
+      renderKey: scopeKey,
       cwd,
       store: createDockStore(window.localStorage, scopeKey),
     }
@@ -174,7 +176,17 @@ class DesktopPanelService implements DesktopPanels {
     const session = currentSession(this.sessions)
     const previous = this.active
     const previousCwd = previous?.cwd
-    const next = this.surfaceFor(session.scopeKey, session.cwd)
+    let next: SessionSurface
+    if (previous?.scopeKey === 'new-session' && session.scopeKey !== 'new-session'
+      && !this.surfaces.has(session.scopeKey)) {
+      this.surfaces.delete(previous.scopeKey)
+      previous.scopeKey = session.scopeKey
+      previous.cwd = session.cwd
+      this.surfaces.set(session.scopeKey, previous)
+      next = previous
+    } else {
+      next = this.surfaceFor(session.scopeKey, session.cwd)
+    }
     if (previous === next && previousCwd === session.cwd) return
     if (previous !== next) {
       this.stopActiveStoreSubscription?.()
@@ -217,7 +229,7 @@ class DesktopPanelService implements DesktopPanels {
       <Fragment>
         {[...this.surfaces.values()].map(surface => (
           <div
-            key={surface.scopeKey}
+            key={surface.renderKey}
             className={surface === active ? 'contents' : 'hidden'}
           >
             <TerminalPanel
