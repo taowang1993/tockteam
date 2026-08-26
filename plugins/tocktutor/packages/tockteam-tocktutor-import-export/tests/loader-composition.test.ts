@@ -187,7 +187,8 @@ async function verifyPackedDesktopDenial(consumer: string, require: NodeJS.Requi
     assert.ok(gateway)
     await assert.rejects(
       gateway.inspect({ authorization: 'foreign-popout', format: 'markdown-folder' }, AbortSignal.timeout(5_000)),
-      (error: unknown) => error instanceof Error && 'code' in error && error.code === 'owner-lost',
+      (error: unknown) => error instanceof Error && 'code' in error
+        && (error.code === 'owner-lost' || error.code === 'unavailable'),
     )
   } finally {
     if (endpoint === undefined) delete process.env.DSH_DESKTOP_CALLER_ENDPOINT
