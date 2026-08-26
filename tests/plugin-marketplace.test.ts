@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
-import { homedir, tmpdir } from 'node:os'
+import { tmpdir } from 'node:os'
 import { dirname, join, win32 } from 'node:path'
 import { test } from 'node:test'
 import { fileURLToPath } from 'node:url'
@@ -480,7 +480,7 @@ test('preview sandbox denies host data and optional network access', {
     : false,
 }, () => {
   const root = mkdtempSync(join(tmpdir(), 'tockteam-preview-policy-'))
-  const outside = mkdtempSync(join(homedir(), '.tockteam-preview-secret-'))
+  const outside = mkdtempSync('/private/tmp/tockteam-preview-secret-')
   const secret = join(outside, 'secret.txt')
   const script = join(root, 'probe.mjs')
   try {

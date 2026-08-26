@@ -8,7 +8,7 @@ import {
   renameSync,
   writeFileSync,
 } from 'node:fs'
-import { homedir, tmpdir } from 'node:os'
+import { tmpdir } from 'node:os'
 import {
   dirname,
   isAbsolute,
@@ -289,7 +289,8 @@ export function previewSandboxPolicy(
     '(deny default)',
     '(allow process*)',
     '(allow file-read*)',
-    `(deny file-read-data (subpath "${seatbeltString(homedir())}"))`,
+    ...['/Users', '/Volumes', '/private/tmp', '/private/var/folders']
+      .map(path => `(deny file-read-data (subpath "${path}"))`),
     `(allow file-read* ${readablePaths})`,
     `(allow file-read-data ${readablePaths})`,
     ...(options.network === false ? [] : ['(allow network*)']),
@@ -393,6 +394,8 @@ export class ProductionMarketplacePlatform implements MarketplacePlatform {
       DSH_DESKTOP_APP_DATA: input.sandboxRoot,
       DSH_DESKTOP_PREVIEW: '1',
       PATH: this.#options.env.PATH,
+      TEMP: temporary,
+      TMP: temporary,
       TMPDIR: temporary,
     }
     const requested = new Set(input.scripts)
@@ -548,9 +551,12 @@ export class ProductionMarketplacePlatform implements MarketplacePlatform {
       DSH_DESKTOP_PREVIEW: '1',
       DSH_HOME: input.dshHome,
       PATH: this.#options.env.PATH,
+      TEMP: temporary,
+      TMP: temporary,
       TMPDIR: temporary,
     }
     const launcher = previewScriptCommand({
+      network: false,
       nodeArguments: [this.#options.cliEntry, ...input.args],
       nodeBinary: this.#options.nodeBinary,
       readRoots: [dirname(dirname(this.#options.nodeBinary)), dirname(this.#options.cliEntry)],

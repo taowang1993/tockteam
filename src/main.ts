@@ -564,6 +564,8 @@ function previewRuntimeOptions(input: {
         dshHome: input.dshHome,
         preview,
       }),
+      TEMP: temporary,
+      TMP: temporary,
       TMPDIR: temporary,
     },
     launcher,
