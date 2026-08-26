@@ -1,6 +1,10 @@
 /** Browser face of the TockTeam Web shell. */
 
-import { findHeroHeadlines, pruneDisconnected } from '../../plugins/shared/branding.ts'
+import {
+  brandingMutationRoots,
+  findHeroHeadlines,
+  pruneDisconnected,
+} from '../../plugins/shared/branding.ts'
 import {
   TOCKTEAM_SURFACE_VIEW_SERVICE,
   type TockTeamSurfaceView,
@@ -46,9 +50,9 @@ export function apply(ctx: ClientContext): void {
       '探索未至之境',
     ])
     const originalHeadlines = new Map<HTMLElement, string>()
-    const synchronize = (): void => {
+    const synchronize = (roots: readonly ParentNode[] = [document]): void => {
       pruneDisconnected(originalHeadlines)
-      for (const element of findHeroHeadlines()) {
+      for (const element of new Set(roots.flatMap(findHeroHeadlines))) {
         const text = element.textContent?.trim() ?? ''
         if (!headlineCopy.has(text)) continue
         if (!originalHeadlines.has(element)) originalHeadlines.set(element, text)
@@ -56,7 +60,9 @@ export function apply(ctx: ClientContext): void {
         element.dataset.tockteamWebHeroHeadline = 'true'
       }
     }
-    const observer = new MutationObserver(synchronize)
+    const observer = new MutationObserver(records => {
+      synchronize(brandingMutationRoots(records))
+    })
     observer.observe(document.body, {
       childList: true,
       characterData: true,

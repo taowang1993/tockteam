@@ -4,7 +4,12 @@ import type { DesktopBridge, DesktopCommand } from './contracts.ts'
 import type { DesktopPanels } from '../plugins/panel-controls/src/client.ts'
 import type { PinnedSummary } from '../plugins/pinned-summary/src/client.ts'
 import type { WorkspaceTools } from '../plugins/sidebar/src/client.ts'
-import { findHeroHeadlines, pruneDisconnected } from '../plugins/shared/branding.ts'
+import {
+  brandingMutationRoots,
+  findHeroHeadlines,
+  matchingElements,
+  pruneDisconnected,
+} from '../plugins/shared/branding.ts'
 import type {
   LocaleMessages,
   LocaleService,
@@ -104,26 +109,31 @@ function installBranding(): () => void {
   const originalHeadlines = new Map<HTMLElement, string>()
   const originalBrandMarks = new Map<SVGSVGElement, SVGSVGElement>()
   const originalSidebarNames = new Map<HTMLElement, string>()
-  const synchronize = (): void => {
+  const synchronize = (roots: readonly ParentNode[] = [document]): void => {
     pruneDisconnected(originalHeadlines)
     pruneDisconnected(originalBrandMarks)
     pruneDisconnected(originalSidebarNames)
-    for (const element of findHeroHeadlines()) {
+    for (const element of new Set(roots.flatMap(findHeroHeadlines))) {
       const text = element.textContent?.trim() ?? ''
       if (!headlineCopy.has(text)) continue
       if (!originalHeadlines.has(element)) originalHeadlines.set(element, text)
       element.textContent = 'TockTeam Desktop'
       element.dataset.tockteamHeroHeadline = 'true'
     }
-    for (const brand of document.querySelectorAll<HTMLElement>("[data-slot='sidebar.brand.name']")) {
+    for (const brand of new Set(roots.flatMap(root => (
+      matchingElements<HTMLElement>(root, "[data-slot='sidebar.brand.name']")
+    )))) {
       if (!originalSidebarNames.has(brand)) originalSidebarNames.set(brand, brand.innerHTML)
       if (brand.textContent !== 'TockTeam') brand.replaceChildren(document.createTextNode('TockTeam'))
       brand.dataset.tockteamSidebarBrand = 'true'
     }
-    for (const fish of document.querySelectorAll<SVGSVGElement>([
+    const fishSelector = [
       "[data-slot='sidebar.brand.mark'] > svg[viewBox='0 0 23.16 17.04']",
       "[data-slot='conversation.hero.brand.mark'] > svg[viewBox='0 0 23.16 17.04']",
-    ].join(','))) {
+    ].join(',')
+    for (const fish of new Set(roots.flatMap(root => (
+      matchingElements<SVGSVGElement>(root, fishSelector)
+    )))) {
       const container = document.createElement('span')
       container.innerHTML = TOCKTEAM_LOGO_MARK
       const mark = container.querySelector<SVGSVGElement>('svg')
@@ -137,7 +147,9 @@ function installBranding(): () => void {
       fish.replaceWith(mark)
     }
   }
-  const observer = new MutationObserver(synchronize)
+  const observer = new MutationObserver(records => {
+    synchronize(brandingMutationRoots(records))
+  })
   observer.observe(document.body, { childList: true, characterData: true, subtree: true })
   synchronize()
   return () => {
