@@ -56,6 +56,10 @@ test('preview and live Runtime environments never inherit native or marketplace 
   assert.equal(environment.DSH_MARKETPLACE_AGENT_TOKEN, undefined)
 })
 
+test('packaged Desktop preserves the standard user-data override for disposable profile proof', () => {
+  assert.match(main, /if \(!app\.commandLine\.hasSwitch\('user-data-dir'\)\) \{\s*app\.setPath\('userData'/u)
+})
+
 test('Runtime environment scrubs inherited authority before selecting owned live channels', () => {
   const scrub = main.indexOf('scrubDesktopAuthorityEnvironment(environment')
   const reveal = main.indexOf("const reveal = overrides.preview === undefined")

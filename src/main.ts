@@ -1420,7 +1420,10 @@ async function bootstrap(): Promise<void> {
   if (app.isPackaged) app.setAsDefaultProtocolClient('tocktutor')
   // The visible product name changed in 0.1.x. Keep the existing data path so
   // an in-place upgrade retains sessions, profiles, skins, and credentials.
-  app.setPath('userData', join(app.getPath('appData'), app.isPackaged ? DATA_DIRECTORY : `${DATA_DIRECTORY}-Dev`))
+  // Preserve Electron's standard explicit override for isolated test/deployment profiles.
+  if (!app.commandLine.hasSwitch('user-data-dir')) {
+    app.setPath('userData', join(app.getPath('appData'), app.isPackaged ? DATA_DIRECTORY : `${DATA_DIRECTORY}-Dev`))
+  }
   initializeDesktopPicker()
   app.setAboutPanelOptions({
     applicationName: PRODUCT_NAME,
