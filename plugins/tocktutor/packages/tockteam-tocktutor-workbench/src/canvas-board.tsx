@@ -1,10 +1,30 @@
-import { useEffect, useMemo, useState, type CSSProperties, type KeyboardEvent } from 'react'
+import { useEffect, useMemo, useState, type CSSProperties, type FormEvent, type KeyboardEvent, type ReactNode } from 'react'
 import { createCanvasChange, type CanvasChange } from './canvas-change.ts'
-import { createCanvasEdge, deleteCanvasEdge, isConnectableCanvasNode } from './canvas-edges.ts'
+import {
+  createCanvasEdge,
+  deleteCanvasEdge,
+  isConnectableCanvasNode,
+  reconnectCanvasEdge,
+  updateCanvasEdgeColor,
+  updateCanvasEdgeLabel,
+} from './canvas-edges.ts'
 import { CANVAS_GRID_SIZE, type CanvasSide } from './canvas-geometry.ts'
 import { tryNormalizeCanvasLinkUrl } from './canvas-links.ts'
-import { updateCanvasNodeGeometry } from './canvas-nodes.ts'
-import { parseCanvasDocument } from './canvas.ts'
+import {
+  createCanvasFileNode,
+  createCanvasGroupNode,
+  createCanvasLinkNode,
+  createCanvasTextNode,
+  deleteCanvasGroup,
+  deleteCanvasNode,
+  duplicateCanvasGroup,
+  duplicateCanvasNodes,
+  updateCanvasGroupLabel,
+  updateCanvasLinkNode,
+  updateCanvasNodeGeometry,
+  updateCanvasTextNode,
+} from './canvas-nodes.ts'
+import { parseCanvasDocument, type CanvasDocument } from './canvas.ts'
 
 const BOARD_PADDING = 40
 const MAX_CANVAS_BOARD_SPAN = 100_000
@@ -18,6 +38,73 @@ export interface CanvasBoardProps {
 }
 
 type ArmedConnection = { nodeId: string; side: CanvasSide }
+type NodeKind = 'file' | 'group' | 'link' | 'text'
+type NodeEditor = { mode: 'create'; kind: NodeKind } | { mode: 'edit'; nodeId: string }
+type EdgeEditor = { edgeId: string }
+
+const controlClass = 'rounded border border-[var(--tt-border)] bg-[var(--tt-panel)] px-2 py-1 text-xs text-inherit'
+
+function CanvasNodeEditor(props: {
+  document: CanvasDocument
+  editor: NodeEditor
+  onCancel(): void
+  onSubmit(event: FormEvent<HTMLFormElement>): void
+}): ReactNode {
+  const editedNodeId = props.editor.mode === 'edit' ? props.editor.nodeId : null
+  const node = editedNodeId === null
+    ? undefined
+    : props.document.nodes.find(candidate => candidate.id === editedNodeId)
+  const kind = props.editor.mode === 'create' ? props.editor.kind : node?.type as NodeKind | undefined
+  if (kind === undefined) return null
+  const editing = props.editor.mode === 'edit'
+  const value = kind === 'text' ? node?.text : kind === 'link' ? node?.url : kind === 'file' ? node?.file : node?.label
+  const label = editing ? kind === 'group' ? 'Group' : 'Card' : kind === 'group' ? 'Group' : 'Card'
+  return (
+    <form aria-label={`${label} Editor`} className="absolute top-12 left-2 z-40 grid min-w-64 gap-2 rounded-md border border-[var(--tt-border)] bg-[var(--tt-panel)] p-3 shadow-lg" onSubmit={props.onSubmit}>
+      <strong>{editing ? `Edit ${label}` : `Add ${kind === 'group' ? 'Group' : `${kind[0]!.toUpperCase()}${kind.slice(1)} Card`}`}</strong>
+      {kind === 'text' && <label className="grid gap-1 text-xs">Card Text<textarea aria-label="Card Text" className={controlClass} defaultValue={String(value ?? '')} maxLength={100_000} name="value" required /></label>}
+      {kind === 'link' && <label className="grid gap-1 text-xs">Card URL<input aria-label="Card URL" className={controlClass} defaultValue={String(value ?? '')} maxLength={2_000} name="value" required type="url" /></label>}
+      {kind === 'file' && <label className="grid gap-1 text-xs">Card File<input aria-label="Card File" className={controlClass} defaultValue={String(value ?? '')} maxLength={1_000} name="value" readOnly={editing} required /></label>}
+      {kind === 'group' && <label className="grid gap-1 text-xs">Group Label<input aria-label="Group Label" className={controlClass} defaultValue={String(value ?? 'Group')} maxLength={200} name="value" required /></label>}
+      {editing && node !== undefined && (
+        <fieldset className="grid grid-cols-2 gap-2 border-0 p-0">
+          <legend className="sr-only">Card Geometry</legend>
+          {(['x', 'y', 'width', 'height'] as const).map(key => <label className="grid gap-1 text-xs" key={key}>{`Card ${key[0]!.toUpperCase()}${key.slice(1)}`}<input aria-label={`Card ${key[0]!.toUpperCase()}${key.slice(1)}`} className={controlClass} defaultValue={String(node[key])} name={key} required type="number" /></label>)}
+        </fieldset>
+      )}
+      <div className="flex justify-end gap-2"><button className={controlClass} onClick={props.onCancel} type="button">Cancel</button><button className={controlClass} type="submit">{editing ? `Save ${label}` : `Create ${label}`}</button></div>
+    </form>
+  )
+}
+
+function CanvasEdgeEditor(props: {
+  document: CanvasDocument
+  edgeId: string
+  onCancel(): void
+  onSubmit(event: FormEvent<HTMLFormElement>): void
+}): ReactNode {
+  const edge = props.document.edges?.find(candidate => candidate.id === props.edgeId)
+  if (edge === undefined) return null
+  return (
+    <form aria-label="Connection Editor" className="absolute top-12 right-2 z-40 grid min-w-72 gap-2 rounded-md border border-[var(--tt-border)] bg-[var(--tt-panel)] p-3 shadow-lg" onSubmit={props.onSubmit}>
+      <strong>Edit Connection</strong>
+      <label className="grid gap-1 text-xs">Label<input aria-label="Connection Label" className={controlClass} defaultValue={typeof edge.label === 'string' ? edge.label : ''} maxLength={200} name="label" /></label>
+      <label className="grid gap-1 text-xs">Color<select aria-label="Connection Color" className={controlClass} defaultValue={typeof edge.color === 'string' ? edge.color : ''} name="color"><option value="">Default</option>{[1, 2, 3, 4, 5, 6].map(value => <option key={value} value={String(value)}>{String(value)}</option>)}</select></label>
+      {(['from', 'to'] as const).map(endpoint => {
+        const nodeId = endpoint === 'from' ? edge.fromNode : edge.toNode
+        const side = endpoint === 'from' ? edge.fromSide : edge.toSide
+        return (
+          <fieldset className="grid grid-cols-2 gap-2 border-0 p-0" key={endpoint}>
+            <legend className="sr-only">{endpoint === 'from' ? 'Connection Source' : 'Connection Target'}</legend>
+            <label className="grid gap-1 text-xs">{endpoint === 'from' ? 'Source Card' : 'Target Card'}<select aria-label={`Connection ${endpoint === 'from' ? 'Source' : 'Target'} Card`} className={controlClass} defaultValue={nodeId} name={`${endpoint}Node`}>{props.document.nodes.filter(isConnectableCanvasNode).map(node => <option key={node.id} value={node.id}>{nodeLabel(node)}</option>)}</select></label>
+            <label className="grid gap-1 text-xs">{endpoint === 'from' ? 'Source Side' : 'Target Side'}<select aria-label={`Connection ${endpoint === 'from' ? 'Source' : 'Target'} Side`} className={controlClass} defaultValue={typeof side === 'string' ? side : endpoint === 'from' ? 'right' : 'left'} name={`${endpoint}Side`}>{SIDES.map(value => <option key={value} value={value}>{titleCaseSide(value)}</option>)}</select></label>
+          </fieldset>
+        )
+      })}
+      <div className="flex justify-end gap-2"><button className={controlClass} onClick={props.onCancel} type="button">Cancel</button><button className={controlClass} type="submit">Save Connection</button></div>
+    </form>
+  )
+}
 
 function nodeLabel(node: Record<string, unknown>): string {
   if (node.type === 'file' && typeof node.file === 'string') return node.file
@@ -58,24 +145,32 @@ export function CanvasBoard({ source, revision, onChange, disabled = false }: Ca
   const [armed, setArmed] = useState<ArmedConnection | null>(null)
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null)
+  const [nodeEditor, setNodeEditor] = useState<NodeEditor | null>(null)
+  const [edgeEditor, setEdgeEditor] = useState<EdgeEditor | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const document = parsed.status === 'ready' ? parsed.document : null
   const labels = useMemo(() => new Map(
     (document?.nodes ?? []).map(node => [node.id, nodeLabel(node)]),
   ), [document])
+  const selectedNode = document?.nodes.find(node => node.id === selectedNodeId)
+  const selectedEdge = document?.edges?.find(edge => edge.id === selectedEdgeId)
 
   useEffect(() => {
     if (document === null) {
       setArmed(null)
       setSelectedNodeId(null)
       setSelectedEdgeId(null)
+      setNodeEditor(null)
+      setEdgeEditor(null)
       return
     }
     if (armed !== null && !document.nodes.some(node => node.id === armed.nodeId)) setArmed(null)
     if (selectedNodeId !== null && !document.nodes.some(node => node.id === selectedNodeId)) setSelectedNodeId(null)
     if (selectedEdgeId !== null && !document.edges?.some(edge => edge.id === selectedEdgeId)) setSelectedEdgeId(null)
-  }, [armed, document, selectedEdgeId, selectedNodeId])
+    if (nodeEditor?.mode === 'edit' && !document.nodes.some(node => node.id === nodeEditor.nodeId)) setNodeEditor(null)
+    if (edgeEditor !== null && !document.edges?.some(edge => edge.id === edgeEditor.edgeId)) setEdgeEditor(null)
+  }, [armed, document, edgeEditor, nodeEditor, selectedEdgeId, selectedNodeId])
 
   const bounds = useMemo(() => {
     if (document === null || document.nodes.length === 0) {
@@ -96,14 +191,93 @@ export function CanvasBoard({ source, revision, onChange, disabled = false }: Ca
     }
   }, [document])
 
-  const emit = (operation: CanvasChange['operation'], mutate: (content: string) => string): void => {
-    if (disabled) return
+  const emit = (operation: CanvasChange['operation'], mutate: (content: string) => string): boolean => {
+    if (disabled) return false
     try {
       setError(null)
       onChange(createCanvasChange(source, revision, operation, mutate))
+      return true
     } catch (nextError) {
       setError(nextError instanceof Error ? nextError.message : 'The Canvas change could not be prepared.')
+      return false
     }
+  }
+
+  const submitNodeEditor = (event: FormEvent<HTMLFormElement>): void => {
+    event.preventDefault()
+    if (nodeEditor === null || document === null) return
+    const form = new FormData(event.currentTarget)
+    const value = String(form.get('value') ?? '')
+    const prepared = nodeEditor.mode === 'create'
+      ? emit('create-node', content => {
+          if (nodeEditor.kind === 'text') {
+            const created = createCanvasTextNode(content)
+            return updateCanvasTextNode(created.content, created.nodeId, value)
+          }
+          if (nodeEditor.kind === 'link') return createCanvasLinkNode(content, value).content
+          if (nodeEditor.kind === 'file') return createCanvasFileNode(content, value).content
+          const created = createCanvasGroupNode(content)
+          return updateCanvasGroupLabel(created.content, created.nodeId, value)
+        })
+      : emit('update-node', content => {
+          const node = document.nodes.find(candidate => candidate.id === nodeEditor.nodeId)
+          if (node === undefined) throw new Error('The selected Canvas card no longer exists.')
+          let next = updateCanvasNodeGeometry(content, node.id, {
+            x: Number(form.get('x')),
+            y: Number(form.get('y')),
+            width: Number(form.get('width')),
+            height: Number(form.get('height')),
+          })
+          if (node.type === 'text') next = updateCanvasTextNode(next, node.id, value)
+          else if (node.type === 'link') next = updateCanvasLinkNode(next, node.id, value)
+          else if (node.type === 'group') next = updateCanvasGroupLabel(next, node.id, value)
+          return next
+        })
+    if (prepared) setNodeEditor(null)
+  }
+
+  const submitEdgeEditor = (event: FormEvent<HTMLFormElement>): void => {
+    event.preventDefault()
+    if (edgeEditor === null) return
+    const form = new FormData(event.currentTarget)
+    const prepared = emit('reconnect-edge', content => {
+      let next = reconnectCanvasEdge(content, {
+        edgeId: edgeEditor.edgeId,
+        endpoint: 'from',
+        nodeId: String(form.get('fromNode') ?? ''),
+        side: String(form.get('fromSide') ?? '') as CanvasSide,
+      })
+      next = reconnectCanvasEdge(next, {
+        edgeId: edgeEditor.edgeId,
+        endpoint: 'to',
+        nodeId: String(form.get('toNode') ?? ''),
+        side: String(form.get('toSide') ?? '') as CanvasSide,
+      })
+      next = updateCanvasEdgeLabel(next, edgeEditor.edgeId, String(form.get('label') ?? ''))
+      return updateCanvasEdgeColor(next, edgeEditor.edgeId, String(form.get('color') ?? ''))
+    })
+    if (prepared) setEdgeEditor(null)
+  }
+
+  const duplicateSelectedNode = (): void => {
+    if (document === null || selectedNodeId === null) return
+    const node = document.nodes.find(candidate => candidate.id === selectedNodeId)
+    if (node === undefined) return
+    const geometry = { x: node.x + CANVAS_GRID_SIZE, y: node.y + CANVAS_GRID_SIZE, width: node.width, height: node.height }
+    const prepared = emit('duplicate-node', content => node.type === 'group'
+      ? duplicateCanvasGroup(content, node.id, geometry).content
+      : duplicateCanvasNodes(content, [{ nodeId: node.id, geometry }]).content)
+    if (prepared) setSelectedNodeId(null)
+  }
+
+  const deleteSelectedNode = (): void => {
+    if (document === null || selectedNodeId === null) return
+    const node = document.nodes.find(candidate => candidate.id === selectedNodeId)
+    if (node === undefined) return
+    const prepared = emit('delete-node', content => node.type === 'group'
+      ? deleteCanvasGroup(content, node.id)
+      : deleteCanvasNode(content, node.id))
+    if (prepared) setSelectedNodeId(null)
   }
 
   const activateHandle = (nodeId: string, side: CanvasSide): void => {
@@ -169,6 +343,29 @@ export function CanvasBoard({ source, revision, onChange, disabled = false }: Ca
     >
       {armed !== null && <p className="sr-only" role="status">Choose a target side for {labels.get(armed.nodeId) ?? armed.nodeId}.</p>}
       {error !== null && <p className="m-3 text-sm text-red-600" role="note">{error}</p>}
+      {!disabled && (
+        <div aria-label="Canvas Actions" className="sticky top-2 left-2 z-30 m-2 flex w-fit max-w-[calc(100%-16px)] flex-wrap gap-1 rounded-md border border-[var(--tt-border)] bg-[var(--tt-panel)] p-1 shadow-sm" role="toolbar">
+          <button className={controlClass} onClick={() => { setNodeEditor({ kind: 'text', mode: 'create' }) }} type="button">Add Text Card</button>
+          <button className={controlClass} onClick={() => { setNodeEditor({ kind: 'link', mode: 'create' }) }} type="button">Add Link Card</button>
+          <button className={controlClass} onClick={() => { setNodeEditor({ kind: 'file', mode: 'create' }) }} type="button">Add File Card</button>
+          <button className={controlClass} onClick={() => { setNodeEditor({ kind: 'group', mode: 'create' }) }} type="button">Add Group</button>
+          {selectedNode !== undefined && (
+            <>
+              <button className={controlClass} onClick={() => { setNodeEditor({ mode: 'edit', nodeId: selectedNode.id }) }} type="button">Edit {selectedNode.type === 'group' ? 'Group' : 'Card'}</button>
+              <button className={controlClass} onClick={duplicateSelectedNode} type="button">Duplicate {selectedNode.type === 'group' ? 'Group' : 'Card'}</button>
+              <button className={controlClass} onClick={deleteSelectedNode} type="button">Delete {selectedNode.type === 'group' ? 'Group' : 'Card'}</button>
+            </>
+          )}
+          {selectedEdge !== undefined && (
+            <>
+              <button className={controlClass} onClick={() => { setEdgeEditor({ edgeId: selectedEdge.id }) }} type="button">Edit Connection</button>
+              <button className={controlClass} onClick={() => { if (emit('delete-edge', content => deleteCanvasEdge(content, selectedEdge.id))) setSelectedEdgeId(null) }} type="button">Delete Connection</button>
+            </>
+          )}
+        </div>
+      )}
+      {nodeEditor !== null && <CanvasNodeEditor document={document} editor={nodeEditor} onCancel={() => { setNodeEditor(null) }} onSubmit={submitNodeEditor} />}
+      {edgeEditor !== null && <CanvasEdgeEditor document={document} edgeId={edgeEditor.edgeId} onCancel={() => { setEdgeEditor(null) }} onSubmit={submitEdgeEditor} />}
       <div
         aria-label="Canvas Board Surface"
         className="relative"

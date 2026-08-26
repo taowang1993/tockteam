@@ -98,6 +98,89 @@ describe('CanvasBoard', () => {
     expect(JSON.parse(change.source).edges).toEqual([])
   })
 
+  it('creates, edits, duplicates, and deletes cards and groups through controlled changes', () => {
+    const onChange = vi.fn()
+    const view = render(<CanvasBoard source={source} revision="sha256:create" onChange={onChange} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add Text Card' }))
+    fireEvent.change(screen.getByRole('textbox', { name: 'Card Text' }), { target: { value: 'New Card' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Create Card' }))
+    const created = onChange.mock.calls.at(-1)?.[0]
+    expect(created.operation).toBe('create-node')
+    expect(JSON.parse(created.source).nodes.at(-1).text).toBe('New Card')
+
+    view.rerender(<CanvasBoard source={created.source} revision="sha256:edit" onChange={onChange} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Canvas Card New Card' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Card' }))
+    fireEvent.change(screen.getByRole('textbox', { name: 'Card Text' }), { target: { value: 'Edited Card' } })
+    fireEvent.change(screen.getByRole('spinbutton', { name: 'Card Width' }), { target: { value: '300' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save Card' }))
+    const edited = onChange.mock.calls.at(-1)?.[0]
+    expect(edited.operation).toBe('update-node')
+    expect(JSON.parse(edited.source).nodes.at(-1)).toMatchObject({ text: 'Edited Card', width: 300 })
+
+    view.rerender(<CanvasBoard source={edited.source} revision="sha256:duplicate" onChange={onChange} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Canvas Card Edited Card' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Duplicate Card' }))
+    const duplicated = onChange.mock.calls.at(-1)?.[0]
+    expect(duplicated.operation).toBe('duplicate-node')
+    expect(JSON.parse(duplicated.source).nodes).toHaveLength(5)
+
+    view.rerender(<CanvasBoard source={duplicated.source} revision="sha256:group" onChange={onChange} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Add Group' }))
+    fireEvent.change(screen.getByRole('textbox', { name: 'Group Label' }), { target: { value: 'Research' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Create Group' }))
+    const grouped = onChange.mock.calls.at(-1)?.[0]
+    expect(JSON.parse(grouped.source).nodes.at(-1)).toMatchObject({ type: 'group', label: 'Research' })
+
+    view.rerender(<CanvasBoard source={grouped.source} revision="sha256:group-duplicate" onChange={onChange} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Canvas Group Research' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Duplicate Group' }))
+    const duplicatedGroup = onChange.mock.calls.at(-1)?.[0]
+    expect(duplicatedGroup.operation).toBe('duplicate-node')
+    expect(JSON.parse(duplicatedGroup.source).nodes.filter((node: { type?: string }) => node.type === 'group')).toHaveLength(2)
+
+    view.rerender(<CanvasBoard source={duplicatedGroup.source} revision="sha256:delete" onChange={onChange} />)
+    fireEvent.click(screen.getAllByRole('button', { name: 'Canvas Group Research' })[0]!)
+    fireEvent.click(screen.getByRole('button', { name: 'Delete Group' }))
+    const deleted = onChange.mock.calls.at(-1)?.[0]
+    expect(deleted.operation).toBe('delete-node')
+    expect(JSON.parse(deleted.source).nodes.filter((node: { label?: string }) => node.label === 'Research')).toHaveLength(1)
+  })
+
+  it('edits edge labels, colors, and endpoints and exposes visible deletion', () => {
+    const connected = JSON.stringify({
+      ...JSON.parse(source),
+      nodes: [...JSON.parse(source).nodes, { id: 'target', type: 'text', x: 960, y: 0, width: 240, height: 120, text: 'Target' }],
+      edges: [{ id: 'edge-1', fromNode: 'text', fromSide: 'right', toNode: 'file', toSide: 'left', toEnd: 'arrow', extension: 'keep' }],
+    })
+    const onChange = vi.fn()
+    const view = render(<CanvasBoard source={connected} revision="sha256:edge-edit" onChange={onChange} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Canvas Edge Unlabeled from First to Notes/File.md' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Connection' }))
+    fireEvent.change(screen.getByRole('textbox', { name: 'Connection Label' }), { target: { value: 'Supports' } })
+    fireEvent.change(screen.getByRole('combobox', { name: 'Connection Color' }), { target: { value: '4' } })
+    fireEvent.change(screen.getByRole('combobox', { name: 'Connection Target Card' }), { target: { value: 'target' } })
+    fireEvent.change(screen.getByRole('combobox', { name: 'Connection Target Side' }), { target: { value: 'top' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save Connection' }))
+
+    const edited = onChange.mock.calls.at(-1)?.[0]
+    expect(edited.operation).toBe('reconnect-edge')
+    expect(JSON.parse(edited.source).edges[0]).toMatchObject({
+      color: '4',
+      extension: 'keep',
+      label: 'Supports',
+      toNode: 'target',
+      toSide: 'top',
+    })
+
+    view.rerender(<CanvasBoard source={edited.source} revision="sha256:edge-delete" onChange={onChange} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Canvas Edge Supports from First to Target' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Delete Connection' }))
+    expect(JSON.parse(onChange.mock.calls.at(-1)?.[0].source).edges).toEqual([])
+  })
+
   it('renders excessive board spans as unsupported instead of allocating an unbounded surface', () => {
     const excessive = JSON.stringify({
       nodes: [{ id: 'far', type: 'text', x: 900_000_000, y: 0, width: 120, height: 80, text: 'Far' }],

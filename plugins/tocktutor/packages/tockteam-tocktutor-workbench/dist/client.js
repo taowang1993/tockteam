@@ -27349,6 +27349,83 @@ var import_jsx_runtime23 = require("react/jsx-runtime");
 var BOARD_PADDING = 40;
 var MAX_CANVAS_BOARD_SPAN = 1e5;
 var SIDES = ["top", "right", "bottom", "left"];
+var controlClass = "rounded border border-[var(--tt-border)] bg-[var(--tt-panel)] px-2 py-1 text-xs text-inherit";
+function CanvasNodeEditor(props) {
+  const editedNodeId = props.editor.mode === "edit" ? props.editor.nodeId : null;
+  const node = editedNodeId === null ? void 0 : props.document.nodes.find((candidate) => candidate.id === editedNodeId);
+  const kind2 = props.editor.mode === "create" ? props.editor.kind : node?.type;
+  if (kind2 === void 0) return null;
+  const editing = props.editor.mode === "edit";
+  const value = kind2 === "text" ? node?.text : kind2 === "link" ? node?.url : kind2 === "file" ? node?.file : node?.label;
+  const label = editing ? kind2 === "group" ? "Group" : "Card" : kind2 === "group" ? "Group" : "Card";
+  return /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("form", { "aria-label": `${label} Editor`, className: "absolute top-12 left-2 z-40 grid min-w-64 gap-2 rounded-md border border-[var(--tt-border)] bg-[var(--tt-panel)] p-3 shadow-lg", onSubmit: props.onSubmit, children: [
+    /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("strong", { children: editing ? `Edit ${label}` : `Add ${kind2 === "group" ? "Group" : `${kind2[0].toUpperCase()}${kind2.slice(1)} Card`}` }),
+    kind2 === "text" && /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("label", { className: "grid gap-1 text-xs", children: [
+      "Card Text",
+      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("textarea", { "aria-label": "Card Text", className: controlClass, defaultValue: String(value ?? ""), maxLength: 1e5, name: "value", required: true })
+    ] }),
+    kind2 === "link" && /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("label", { className: "grid gap-1 text-xs", children: [
+      "Card URL",
+      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("input", { "aria-label": "Card URL", className: controlClass, defaultValue: String(value ?? ""), maxLength: 2e3, name: "value", required: true, type: "url" })
+    ] }),
+    kind2 === "file" && /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("label", { className: "grid gap-1 text-xs", children: [
+      "Card File",
+      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("input", { "aria-label": "Card File", className: controlClass, defaultValue: String(value ?? ""), maxLength: 1e3, name: "value", readOnly: editing, required: true })
+    ] }),
+    kind2 === "group" && /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("label", { className: "grid gap-1 text-xs", children: [
+      "Group Label",
+      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("input", { "aria-label": "Group Label", className: controlClass, defaultValue: String(value ?? "Group"), maxLength: 200, name: "value", required: true })
+    ] }),
+    editing && node !== void 0 && /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("fieldset", { className: "grid grid-cols-2 gap-2 border-0 p-0", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("legend", { className: "sr-only", children: "Card Geometry" }),
+      ["x", "y", "width", "height"].map((key2) => /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("label", { className: "grid gap-1 text-xs", children: [
+        `Card ${key2[0].toUpperCase()}${key2.slice(1)}`,
+        /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("input", { "aria-label": `Card ${key2[0].toUpperCase()}${key2.slice(1)}`, className: controlClass, defaultValue: String(node[key2]), name: key2, required: true, type: "number" })
+      ] }, key2))
+    ] }),
+    /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("div", { className: "flex justify-end gap-2", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("button", { className: controlClass, onClick: props.onCancel, type: "button", children: "Cancel" }),
+      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("button", { className: controlClass, type: "submit", children: editing ? `Save ${label}` : `Create ${label}` })
+    ] })
+  ] });
+}
+function CanvasEdgeEditor(props) {
+  const edge = props.document.edges?.find((candidate) => candidate.id === props.edgeId);
+  if (edge === void 0) return null;
+  return /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("form", { "aria-label": "Connection Editor", className: "absolute top-12 right-2 z-40 grid min-w-72 gap-2 rounded-md border border-[var(--tt-border)] bg-[var(--tt-panel)] p-3 shadow-lg", onSubmit: props.onSubmit, children: [
+    /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("strong", { children: "Edit Connection" }),
+    /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("label", { className: "grid gap-1 text-xs", children: [
+      "Label",
+      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("input", { "aria-label": "Connection Label", className: controlClass, defaultValue: typeof edge.label === "string" ? edge.label : "", maxLength: 200, name: "label" })
+    ] }),
+    /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("label", { className: "grid gap-1 text-xs", children: [
+      "Color",
+      /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("select", { "aria-label": "Connection Color", className: controlClass, defaultValue: typeof edge.color === "string" ? edge.color : "", name: "color", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("option", { value: "", children: "Default" }),
+        [1, 2, 3, 4, 5, 6].map((value) => /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("option", { value: String(value), children: String(value) }, value))
+      ] })
+    ] }),
+    ["from", "to"].map((endpoint) => {
+      const nodeId = endpoint === "from" ? edge.fromNode : edge.toNode;
+      const side = endpoint === "from" ? edge.fromSide : edge.toSide;
+      return /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("fieldset", { className: "grid grid-cols-2 gap-2 border-0 p-0", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("legend", { className: "sr-only", children: endpoint === "from" ? "Connection Source" : "Connection Target" }),
+        /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("label", { className: "grid gap-1 text-xs", children: [
+          endpoint === "from" ? "Source Card" : "Target Card",
+          /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("select", { "aria-label": `Connection ${endpoint === "from" ? "Source" : "Target"} Card`, className: controlClass, defaultValue: nodeId, name: `${endpoint}Node`, children: props.document.nodes.filter(isConnectableCanvasNode).map((node) => /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("option", { value: node.id, children: nodeLabel(node) }, node.id)) })
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("label", { className: "grid gap-1 text-xs", children: [
+          endpoint === "from" ? "Source Side" : "Target Side",
+          /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("select", { "aria-label": `Connection ${endpoint === "from" ? "Source" : "Target"} Side`, className: controlClass, defaultValue: typeof side === "string" ? side : endpoint === "from" ? "right" : "left", name: `${endpoint}Side`, children: SIDES.map((value) => /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("option", { value, children: titleCaseSide(value) }, value)) })
+        ] })
+      ] }, endpoint);
+    }),
+    /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("div", { className: "flex justify-end gap-2", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("button", { className: controlClass, onClick: props.onCancel, type: "button", children: "Cancel" }),
+      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("button", { className: controlClass, type: "submit", children: "Save Connection" })
+    ] })
+  ] });
+}
 function nodeLabel(node) {
   if (node.type === "file" && typeof node.file === "string") return node.file;
   if (node.type === "link" && typeof node.url === "string") return node.url;
@@ -27381,22 +27458,30 @@ function CanvasBoard({ source, revision, onChange, disabled = false }) {
   const [armed, setArmed] = (0, import_react8.useState)(null);
   const [selectedNodeId, setSelectedNodeId] = (0, import_react8.useState)(null);
   const [selectedEdgeId, setSelectedEdgeId] = (0, import_react8.useState)(null);
+  const [nodeEditor, setNodeEditor] = (0, import_react8.useState)(null);
+  const [edgeEditor, setEdgeEditor] = (0, import_react8.useState)(null);
   const [error51, setError] = (0, import_react8.useState)(null);
   const document2 = parsed.status === "ready" ? parsed.document : null;
   const labels = (0, import_react8.useMemo)(() => new Map(
     (document2?.nodes ?? []).map((node) => [node.id, nodeLabel(node)])
   ), [document2]);
+  const selectedNode = document2?.nodes.find((node) => node.id === selectedNodeId);
+  const selectedEdge = document2?.edges?.find((edge) => edge.id === selectedEdgeId);
   (0, import_react8.useEffect)(() => {
     if (document2 === null) {
       setArmed(null);
       setSelectedNodeId(null);
       setSelectedEdgeId(null);
+      setNodeEditor(null);
+      setEdgeEditor(null);
       return;
     }
     if (armed !== null && !document2.nodes.some((node) => node.id === armed.nodeId)) setArmed(null);
     if (selectedNodeId !== null && !document2.nodes.some((node) => node.id === selectedNodeId)) setSelectedNodeId(null);
     if (selectedEdgeId !== null && !document2.edges?.some((edge) => edge.id === selectedEdgeId)) setSelectedEdgeId(null);
-  }, [armed, document2, selectedEdgeId, selectedNodeId]);
+    if (nodeEditor?.mode === "edit" && !document2.nodes.some((node) => node.id === nodeEditor.nodeId)) setNodeEditor(null);
+    if (edgeEditor !== null && !document2.edges?.some((edge) => edge.id === edgeEditor.edgeId)) setEdgeEditor(null);
+  }, [armed, document2, edgeEditor, nodeEditor, selectedEdgeId, selectedNodeId]);
   const bounds = (0, import_react8.useMemo)(() => {
     if (document2 === null || document2.nodes.length === 0) {
       return { minX: 0, minY: 0, width: 800, height: 500, supported: true };
@@ -27416,13 +27501,82 @@ function CanvasBoard({ source, revision, onChange, disabled = false }) {
     };
   }, [document2]);
   const emit = (operation, mutate) => {
-    if (disabled) return;
+    if (disabled) return false;
     try {
       setError(null);
       onChange(createCanvasChange(source, revision, operation, mutate));
+      return true;
     } catch (nextError) {
       setError(nextError instanceof Error ? nextError.message : "The Canvas change could not be prepared.");
+      return false;
     }
+  };
+  const submitNodeEditor = (event) => {
+    event.preventDefault();
+    if (nodeEditor === null || document2 === null) return;
+    const form = new FormData(event.currentTarget);
+    const value = String(form.get("value") ?? "");
+    const prepared = nodeEditor.mode === "create" ? emit("create-node", (content) => {
+      if (nodeEditor.kind === "text") {
+        const created2 = createCanvasTextNode(content);
+        return updateCanvasTextNode(created2.content, created2.nodeId, value);
+      }
+      if (nodeEditor.kind === "link") return createCanvasLinkNode(content, value).content;
+      if (nodeEditor.kind === "file") return createCanvasFileNode(content, value).content;
+      const created = createCanvasGroupNode(content);
+      return updateCanvasGroupLabel(created.content, created.nodeId, value);
+    }) : emit("update-node", (content) => {
+      const node = document2.nodes.find((candidate) => candidate.id === nodeEditor.nodeId);
+      if (node === void 0) throw new Error("The selected Canvas card no longer exists.");
+      let next = updateCanvasNodeGeometry(content, node.id, {
+        x: Number(form.get("x")),
+        y: Number(form.get("y")),
+        width: Number(form.get("width")),
+        height: Number(form.get("height"))
+      });
+      if (node.type === "text") next = updateCanvasTextNode(next, node.id, value);
+      else if (node.type === "link") next = updateCanvasLinkNode(next, node.id, value);
+      else if (node.type === "group") next = updateCanvasGroupLabel(next, node.id, value);
+      return next;
+    });
+    if (prepared) setNodeEditor(null);
+  };
+  const submitEdgeEditor = (event) => {
+    event.preventDefault();
+    if (edgeEditor === null) return;
+    const form = new FormData(event.currentTarget);
+    const prepared = emit("reconnect-edge", (content) => {
+      let next = reconnectCanvasEdge(content, {
+        edgeId: edgeEditor.edgeId,
+        endpoint: "from",
+        nodeId: String(form.get("fromNode") ?? ""),
+        side: String(form.get("fromSide") ?? "")
+      });
+      next = reconnectCanvasEdge(next, {
+        edgeId: edgeEditor.edgeId,
+        endpoint: "to",
+        nodeId: String(form.get("toNode") ?? ""),
+        side: String(form.get("toSide") ?? "")
+      });
+      next = updateCanvasEdgeLabel(next, edgeEditor.edgeId, String(form.get("label") ?? ""));
+      return updateCanvasEdgeColor(next, edgeEditor.edgeId, String(form.get("color") ?? ""));
+    });
+    if (prepared) setEdgeEditor(null);
+  };
+  const duplicateSelectedNode = () => {
+    if (document2 === null || selectedNodeId === null) return;
+    const node = document2.nodes.find((candidate) => candidate.id === selectedNodeId);
+    if (node === void 0) return;
+    const geometry = { x: node.x + CANVAS_GRID_SIZE, y: node.y + CANVAS_GRID_SIZE, width: node.width, height: node.height };
+    const prepared = emit("duplicate-node", (content) => node.type === "group" ? duplicateCanvasGroup(content, node.id, geometry).content : duplicateCanvasNodes(content, [{ nodeId: node.id, geometry }]).content);
+    if (prepared) setSelectedNodeId(null);
+  };
+  const deleteSelectedNode = () => {
+    if (document2 === null || selectedNodeId === null) return;
+    const node = document2.nodes.find((candidate) => candidate.id === selectedNodeId);
+    if (node === void 0) return;
+    const prepared = emit("delete-node", (content) => node.type === "group" ? deleteCanvasGroup(content, node.id) : deleteCanvasNode(content, node.id));
+    if (prepared) setSelectedNodeId(null);
   };
   const activateHandle = (nodeId, side) => {
     if (disabled) return;
@@ -27484,6 +27638,50 @@ function CanvasBoard({ source, revision, onChange, disabled = false }) {
           "."
         ] }),
         error51 !== null && /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("p", { className: "m-3 text-sm text-red-600", role: "note", children: error51 }),
+        !disabled && /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("div", { "aria-label": "Canvas Actions", className: "sticky top-2 left-2 z-30 m-2 flex w-fit max-w-[calc(100%-16px)] flex-wrap gap-1 rounded-md border border-[var(--tt-border)] bg-[var(--tt-panel)] p-1 shadow-sm", role: "toolbar", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("button", { className: controlClass, onClick: () => {
+            setNodeEditor({ kind: "text", mode: "create" });
+          }, type: "button", children: "Add Text Card" }),
+          /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("button", { className: controlClass, onClick: () => {
+            setNodeEditor({ kind: "link", mode: "create" });
+          }, type: "button", children: "Add Link Card" }),
+          /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("button", { className: controlClass, onClick: () => {
+            setNodeEditor({ kind: "file", mode: "create" });
+          }, type: "button", children: "Add File Card" }),
+          /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("button", { className: controlClass, onClick: () => {
+            setNodeEditor({ kind: "group", mode: "create" });
+          }, type: "button", children: "Add Group" }),
+          selectedNode !== void 0 && /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)(import_jsx_runtime23.Fragment, { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("button", { className: controlClass, onClick: () => {
+              setNodeEditor({ mode: "edit", nodeId: selectedNode.id });
+            }, type: "button", children: [
+              "Edit ",
+              selectedNode.type === "group" ? "Group" : "Card"
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("button", { className: controlClass, onClick: duplicateSelectedNode, type: "button", children: [
+              "Duplicate ",
+              selectedNode.type === "group" ? "Group" : "Card"
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("button", { className: controlClass, onClick: deleteSelectedNode, type: "button", children: [
+              "Delete ",
+              selectedNode.type === "group" ? "Group" : "Card"
+            ] })
+          ] }),
+          selectedEdge !== void 0 && /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)(import_jsx_runtime23.Fragment, { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("button", { className: controlClass, onClick: () => {
+              setEdgeEditor({ edgeId: selectedEdge.id });
+            }, type: "button", children: "Edit Connection" }),
+            /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("button", { className: controlClass, onClick: () => {
+              if (emit("delete-edge", (content) => deleteCanvasEdge(content, selectedEdge.id))) setSelectedEdgeId(null);
+            }, type: "button", children: "Delete Connection" })
+          ] })
+        ] }),
+        nodeEditor !== null && /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(CanvasNodeEditor, { document: document2, editor: nodeEditor, onCancel: () => {
+          setNodeEditor(null);
+        }, onSubmit: submitNodeEditor }),
+        edgeEditor !== null && /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(CanvasEdgeEditor, { document: document2, edgeId: edgeEditor.edgeId, onCancel: () => {
+          setEdgeEditor(null);
+        }, onSubmit: submitEdgeEditor }),
         /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(
           "div",
           {
