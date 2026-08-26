@@ -98,6 +98,13 @@ const MAX_SOURCE_LIMIT = 1_024 * 1024 * 1024
 const MAX_RECOVERY_JOURNALS = 1024
 const MAX_RECOVERY_JOURNAL_BYTES = 64 * 1024
 const MAX_RECOVERY_TOTAL_BYTES = 64 * 1024 * 1024
+let recoveryDiagnosticWritten = false
+
+function recoveryDiagnostic(stage: string, details: unknown): void {
+  if (process.env.TOCKTEAM_RECOVERY_DIAGNOSTICS !== '1' || recoveryDiagnosticWritten) return
+  recoveryDiagnosticWritten = true
+  console.error('[desktop-picker-recovery]', stage, details)
+}
 
 type Stat = Awaited<ReturnType<typeof lstat>>
 type DialogKind = 'open' | 'save'
@@ -1835,8 +1842,16 @@ export class DesktopPickerOwner {
       !stat.isDirectory() ||
       stat.isSymbolicLink() ||
       (typeof process.getuid === 'function' && stat.uid !== process.getuid())
-    )
+    ) {
+      recoveryDiagnostic('ensure-root', {
+        canonical,
+        recoveryRoot: this.recoveryRoot,
+        stat: stat === undefined ? undefined : {
+          directory: stat.isDirectory(), mode: stat.mode, symbolic: stat.isSymbolicLink(), uid: stat.uid,
+        },
+      })
       return error('recovery-required')
+    }
     await chmod(this.recoveryRoot, 0o700)
   }
 
@@ -1876,7 +1891,17 @@ export class DesktopPickerOwner {
         || rootHandle !== undefined && revisionOf(fstatSync(rootHandle.fd)) !== revisionOf(rootStat)
         || (rootHandle === undefined
           ? ownedIdentityOf(pathRootStat) !== ownedIdentityOf(rootStat)
-          : revisionOf(pathRootStat) !== revisionOf(rootStat))) return error('recovery-required')
+          : revisionOf(pathRootStat) !== revisionOf(rootStat))) {
+        recoveryDiagnostic('revalidate-root', {
+          canonicalRoot,
+          recoveryRoot: this.recoveryRoot,
+          firstIdentity: ownedIdentityOf(rootStat),
+          finalIdentity: ownedIdentityOf(pathRootStat),
+          firstRevision: revisionOf(rootStat),
+          finalRevision: revisionOf(pathRootStat),
+        })
+        return error('recovery-required')
+      }
       return result
     } finally {
       await rootHandle?.close().catch(() => undefined)
@@ -1887,7 +1912,8 @@ export class DesktopPickerOwner {
     let entries: Array<{ name: string; path: string; size: number }>
     try {
       entries = await this.recoveryEntries()
-    } catch {
+    } catch (error) {
+      recoveryDiagnostic('enumerate-root', error)
       this.recoveryCorrupt = true
       return
     }
