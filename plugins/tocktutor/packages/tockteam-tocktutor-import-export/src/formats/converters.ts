@@ -515,7 +515,10 @@ export function planAppleJournal(files: InspectedSourceFile[]): PlannedSourceRes
     const metadata = journalMetadata(html)
     const prompt = classText(html, 'reflectionPrompt')[0]
     const body = [...classHtml(html, 'p2'), ...classHtml(html, 'p3')]
-      .map(value => journalFragment(value)).filter(Boolean)
+      .flatMap(value => {
+        const fragment = journalFragment(value)
+        return fragment === '' ? [] : [fragment]
+      })
     const frontmatter = [
       ...(date === undefined ? [] : [`date: ${date}`]),
       ...[...metadata].flatMap(([key, values]) => [`${key}:`, ...[...values].map(value => `  - ${JSON.stringify(value)}`)]),
@@ -751,7 +754,9 @@ function evernoteDate(value: string | undefined): string | undefined {
   const [year = 0, month = 0, day = 0, hour = 0, minute = 0, second = 0] = parts
   const date = new Date(Date.UTC(year, month - 1, day, hour, minute, second))
   const roundTrip = [date.getUTCFullYear(), date.getUTCMonth() + 1, date.getUTCDate(), date.getUTCHours(), date.getUTCMinutes(), date.getUTCSeconds()]
-  return roundTrip.every((part, index) => part === parts[index]) ? date.toISOString() : undefined
+  return roundTrip.length === parts.length && roundTrip.every((part, index) => part === parts[index])
+    ? date.toISOString()
+    : undefined
 }
 
 function evernoteRoot(sourceName: string): string {
