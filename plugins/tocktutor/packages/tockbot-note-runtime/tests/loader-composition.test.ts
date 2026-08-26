@@ -3281,10 +3281,17 @@ test('an injected consumer inspects previews and exclusively stores accepted att
       const stored = await loaded.context.noteVault.storeAttachment({
         data: Uint8Array.from([5, 6, 7]),
         expectedVault,
-        path: 'Stored.pdf',
+        path: 'Attachments/Nested/Stored.pdf',
       }, signal)
       assert.equal(stored.status, 'stored')
-      assert.deepEqual([...await readFile(join(fixture, 'Stored.pdf'))], [5, 6, 7])
+      assert.deepEqual([...await readFile(join(fixture, 'Attachments', 'Nested', 'Stored.pdf'))], [5, 6, 7])
+      const icon = await loaded.context.noteVault.storeAttachment({
+        data: Uint8Array.from([0, 0, 1, 0]),
+        expectedVault,
+        path: 'Attachments/Icon.ico',
+      }, signal)
+      assert.equal(icon.mediaKind, 'image')
+      assert.equal(icon.mimeType, 'image/x-icon')
     } finally {
       await dispose(loaded.context, loaded.root)
     }

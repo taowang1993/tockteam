@@ -95,7 +95,7 @@ function documentKind(filePath) {
 }
 const ATTACHMENT_KINDS = new Map(Object.entries({
     audio: ['.3gp', '.flac', '.m4a', '.mp3', '.ogg', '.wav', '.weba'],
-    image: ['.avif', '.bmp', '.gif', '.jpeg', '.jpg', '.png', '.svg', '.webp'],
+    image: ['.avif', '.bmp', '.gif', '.ico', '.jpeg', '.jpg', '.png', '.svg', '.webp'],
     pdf: ['.pdf'],
     video: ['.mkv', '.mov', '.mp4', '.ogv', '.webm'],
 }).flatMap(([kind, extensions]) => extensions.map(extension => ([extension, kind]))));
@@ -108,6 +108,7 @@ const ATTACHMENT_MIME_TYPES = new Map(Object.entries({
     '.bmp': 'image/bmp',
     '.flac': 'audio/flac',
     '.gif': 'image/gif',
+    '.ico': 'image/x-icon',
     '.jpeg': 'image/jpeg',
     '.jpg': 'image/jpeg',
     '.m4a': 'audio/mp4',
@@ -283,6 +284,26 @@ async function bindDestinationParent(root, candidate) {
     const realPath = await realpath(parentPath);
     assertInside(root, realPath);
     return { identity, path: parentPath, realPath };
+}
+async function ensureAttachmentParent(root, candidate) {
+    const relativeParent = path.relative(root, path.dirname(candidate));
+    let cursor = root;
+    for (const part of relativeParent.split(path.sep).filter(Boolean)) {
+        cursor = path.join(cursor, part);
+        try {
+            await mkdir(cursor, { mode: 0o700 });
+        }
+        catch (error) {
+            if (error.code !== 'EEXIST')
+                throw error;
+        }
+        const entry = await lstat(cursor, { bigint: true });
+        if (!entry.isDirectory() || entry.isSymbolicLink()) {
+            throw new NoteVaultError('unsafe-target', 'Vault attachment folders must be regular directories');
+        }
+        assertInside(root, await realpath(cursor));
+    }
+    return await bindDestinationParent(root, candidate);
 }
 async function assertDestinationParentBound(root, binding) {
     const current = await lstat(binding.path, { bigint: true });
@@ -3962,14 +3983,12 @@ export class NoteVaultRuntime extends Service {
         assertInside(root, candidate);
         let committed = false;
         try {
-            await assertNoDirectorySymlinks(root, candidate);
-            assertInside(root, await realpath(path.dirname(candidate)));
+            const parentBinding = await ensureAttachmentParent(root, candidate);
             const data = Buffer.from(request.data);
             await writeDocumentAtomic(candidate, data, true, async () => {
                 signal.throwIfAborted();
                 this.assertCapturedVault(state, root);
-                await assertNoDirectorySymlinks(root, candidate);
-                assertInside(root, await realpath(path.dirname(candidate)));
+                await assertDestinationParentBound(root, parentBinding);
             });
             committed = true;
             const attachment = await inspectVaultAttachment(root, relativePath, this.maxAttachmentBytes, POST_COMMIT_SIGNAL, false);
