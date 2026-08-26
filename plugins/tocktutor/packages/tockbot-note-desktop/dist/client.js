@@ -15016,7 +15016,7 @@ var typert_remote_client_default = TYPERT_REMOTE;
 // ../../../ui/src/alert.tsx
 var React = __toESM(require("react"), 1);
 
-// ../../node_modules/.pnpm/clsx@2.1.1/node_modules/clsx/dist/clsx.mjs
+// ../../../../node_modules/.pnpm/clsx@2.1.1/node_modules/clsx/dist/clsx.mjs
 function r(e) {
   var t, f, n = "";
   if ("string" == typeof e || "number" == typeof e) n += e;
@@ -15031,7 +15031,7 @@ function clsx() {
   return n;
 }
 
-// ../../node_modules/.pnpm/class-variance-authority@0.7.1/node_modules/class-variance-authority/dist/index.mjs
+// ../../../../node_modules/.pnpm/class-variance-authority@0.7.1/node_modules/class-variance-authority/dist/index.mjs
 var falsyToString = (value) => typeof value === "boolean" ? `${value}` : value === 0 ? "0" : value;
 var cx = clsx;
 var cva = (base, config2) => (props) => {
@@ -15393,7 +15393,11 @@ async function runDesktopDispatchLoop(options) {
   const active = options.active ?? (() => true);
   while (active() && !options.signal?.aborted) {
     const event = await options.bridge.nextDispatch();
-    if (event === null) return;
+    if (event === null) {
+      if (!active() || options.signal?.aborted) return;
+      await new Promise((resolve) => setTimeout(resolve, 25));
+      continue;
+    }
     if (!active()) {
       await completeDispatch(options.bridge, {
         deliveryId: event.deliveryId,

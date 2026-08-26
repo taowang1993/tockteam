@@ -407,7 +407,11 @@ export async function runDesktopDispatchLoop(options: DesktopDispatchLoopOptions
   const active = options.active ?? (() => true)
   while (active() && !options.signal?.aborted) {
     const event = await options.bridge.nextDispatch()
-    if (event === null) return
+    if (event === null) {
+      if (!active() || options.signal?.aborted) return
+      await new Promise(resolve => setTimeout(resolve, 25))
+      continue
+    }
     if (!active()) {
       await completeDispatch(options.bridge, {
         deliveryId: event.deliveryId,
