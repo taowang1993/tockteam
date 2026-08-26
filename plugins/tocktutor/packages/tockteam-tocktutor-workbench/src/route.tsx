@@ -732,11 +732,11 @@ export class WorkbenchRouteController {
     const operation = this.nextOperation()
     try {
       const graph = remoteValue(await this.remote.tocktutorWorkbench.graph({
-        ...(mode === 'local' ? { depth: 2 } : {}),
+        ...(mode === 'local' ? { depth: this.snapshot.settings?.graphDepth ?? 2 } : {}),
         direction: 'both',
         expectedVault: vault,
-        includeAttachments: false,
-        includeTags: false,
+        includeAttachments: this.snapshot.settings?.graphIncludeAttachments ?? false,
+        includeTags: this.snapshot.settings?.graphIncludeTags ?? false,
         limit: 180,
         ...(mode === 'local' && this.snapshot.path !== null ? { path: this.snapshot.path } : {}),
         scope: mode,
@@ -745,7 +745,7 @@ export class WorkbenchRouteController {
         || graph.generation !== vault.generation
         || !Array.isArray(graph.nodes)
         || !Array.isArray(graph.edges)) return false
-      const projected = projectGraph(graph, { includeOrphans: true, query: '' })
+      const projected = projectGraph(graph, { includeOrphans: this.snapshot.settings?.graphIncludeOrphans ?? true, query: '' })
       const graphLayout = layoutGraph(projected, {
         centerForce: 0.1,
         iterations: 32,
@@ -3099,6 +3099,12 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
                 <Button unstyled aria-pressed={snapshot.graphMode === 'global'} className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs" onClick={() => { props.onLoadGraph?.('global') }} type="button">Global</Button>
                 <Button unstyled aria-pressed={snapshot.graphMode === 'local'} className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs" disabled={snapshot.path === null} onClick={() => { props.onLoadGraph?.('local') }} type="button">Local</Button>
               </span>
+            </div>
+            <div className="mt-2 grid grid-cols-2 gap-1 text-xs">
+              <Label unstyled className="flex items-center gap-1">Orphans<Checkbox checked={snapshot.settings?.graphIncludeOrphans ?? true} onCheckedChange={checked => { props.onSettingsChange?.({ graphIncludeOrphans: checked === true }) }} /></Label>
+              <Label unstyled className="flex items-center gap-1">Tags<Checkbox checked={snapshot.settings?.graphIncludeTags ?? false} onCheckedChange={checked => { props.onSettingsChange?.({ graphIncludeTags: checked === true }) }} /></Label>
+              <Label unstyled className="flex items-center gap-1">Attachments<Checkbox checked={snapshot.settings?.graphIncludeAttachments ?? false} onCheckedChange={checked => { props.onSettingsChange?.({ graphIncludeAttachments: checked === true }) }} /></Label>
+              <Label unstyled className="flex items-center gap-1">Local Depth<NativeSelect unstyled value={String(snapshot.settings?.graphDepth ?? 2)} onChange={event => { const depth = Number(event.target.value); if (depth === 1 || depth === 2 || depth === 3) props.onSettingsChange?.({ graphDepth: depth }) }}><NativeSelectOption value="1">1</NativeSelectOption><NativeSelectOption value="2">2</NativeSelectOption><NativeSelectOption value="3">3</NativeSelectOption></NativeSelect></Label>
             </div>
             {(snapshot.graphLayout?.length ?? 0) > 0 ? (
               <>

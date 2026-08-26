@@ -11,6 +11,10 @@ export interface TockTutorSettings {
     attachmentFolder: string;
     backlinksInDocument: boolean;
     defaultEditingMode: 'live-preview' | 'source';
+    graphDepth: 1 | 2 | 3;
+    graphIncludeAttachments: boolean;
+    graphIncludeOrphans: boolean;
+    graphIncludeTags: boolean;
     journalFolder: string;
     pagePreview: boolean;
     recoveryIntervalMinutes: number;

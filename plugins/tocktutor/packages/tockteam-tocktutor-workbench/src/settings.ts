@@ -19,6 +19,10 @@ export interface TockTutorSettings {
   attachmentFolder: string
   backlinksInDocument: boolean
   defaultEditingMode: 'live-preview' | 'source'
+  graphDepth: 1 | 2 | 3
+  graphIncludeAttachments: boolean
+  graphIncludeOrphans: boolean
+  graphIncludeTags: boolean
   journalFolder: string
   pagePreview: boolean
   recoveryIntervalMinutes: number
@@ -45,6 +49,10 @@ const DEFAULT_SETTINGS: TockTutorSettings = Object.freeze({
   attachmentFolder: 'Attachments',
   backlinksInDocument: false,
   defaultEditingMode: 'live-preview',
+  graphDepth: 2,
+  graphIncludeAttachments: false,
+  graphIncludeOrphans: true,
+  graphIncludeTags: false,
   journalFolder: 'Journals',
   pagePreview: true,
   recoveryIntervalMinutes: 5,
@@ -82,6 +90,10 @@ function normalizeSettings(value: unknown): TockTutorSettings {
     attachmentFolder: safeFolder(record.attachmentFolder, DEFAULT_SETTINGS.attachmentFolder),
     backlinksInDocument: record.backlinksInDocument === true,
     defaultEditingMode: record.defaultEditingMode === 'source' ? 'source' : 'live-preview',
+    graphDepth: record.graphDepth === 1 || record.graphDepth === 3 ? record.graphDepth : 2,
+    graphIncludeAttachments: record.graphIncludeAttachments === true,
+    graphIncludeOrphans: record.graphIncludeOrphans !== false,
+    graphIncludeTags: record.graphIncludeTags === true,
     journalFolder: safeFolder(record.journalFolder, DEFAULT_SETTINGS.journalFolder),
     pagePreview: record.pagePreview !== false,
     recoveryIntervalMinutes: typeof record.recoveryIntervalMinutes === 'number' && Number.isSafeInteger(record.recoveryIntervalMinutes) && record.recoveryIntervalMinutes >= 1 && record.recoveryIntervalMinutes <= 1_440 ? record.recoveryIntervalMinutes : DEFAULT_SETTINGS.recoveryIntervalMinutes,

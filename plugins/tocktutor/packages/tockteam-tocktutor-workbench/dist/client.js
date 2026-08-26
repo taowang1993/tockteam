@@ -28770,6 +28770,10 @@ var DEFAULT_SETTINGS = Object.freeze({
   attachmentFolder: "Attachments",
   backlinksInDocument: false,
   defaultEditingMode: "live-preview",
+  graphDepth: 2,
+  graphIncludeAttachments: false,
+  graphIncludeOrphans: true,
+  graphIncludeTags: false,
   journalFolder: "Journals",
   pagePreview: true,
   recoveryIntervalMinutes: 5,
@@ -28795,6 +28799,10 @@ function normalizeSettings(value) {
     attachmentFolder: safeFolder2(record2.attachmentFolder, DEFAULT_SETTINGS.attachmentFolder),
     backlinksInDocument: record2.backlinksInDocument === true,
     defaultEditingMode: record2.defaultEditingMode === "source" ? "source" : "live-preview",
+    graphDepth: record2.graphDepth === 1 || record2.graphDepth === 3 ? record2.graphDepth : 2,
+    graphIncludeAttachments: record2.graphIncludeAttachments === true,
+    graphIncludeOrphans: record2.graphIncludeOrphans !== false,
+    graphIncludeTags: record2.graphIncludeTags === true,
     journalFolder: safeFolder2(record2.journalFolder, DEFAULT_SETTINGS.journalFolder),
     pagePreview: record2.pagePreview !== false,
     recoveryIntervalMinutes: typeof record2.recoveryIntervalMinutes === "number" && Number.isSafeInteger(record2.recoveryIntervalMinutes) && record2.recoveryIntervalMinutes >= 1 && record2.recoveryIntervalMinutes <= 1440 ? record2.recoveryIntervalMinutes : DEFAULT_SETTINGS.recoveryIntervalMinutes,
@@ -29581,17 +29589,17 @@ var WorkbenchRouteController = class {
     const operation = this.nextOperation();
     try {
       const graph = remoteValue(await this.remote.tocktutorWorkbench.graph({
-        ...mode === "local" ? { depth: 2 } : {},
+        ...mode === "local" ? { depth: this.snapshot.settings?.graphDepth ?? 2 } : {},
         direction: "both",
         expectedVault: vault,
-        includeAttachments: false,
-        includeTags: false,
+        includeAttachments: this.snapshot.settings?.graphIncludeAttachments ?? false,
+        includeTags: this.snapshot.settings?.graphIncludeTags ?? false,
         limit: 180,
         ...mode === "local" && this.snapshot.path !== null ? { path: this.snapshot.path } : {},
         scope: mode
       }, operation.signal));
       if (!this.current(operation.id, vault) || graph.generation !== vault.generation || !Array.isArray(graph.nodes) || !Array.isArray(graph.edges)) return false;
-      const projected = projectGraph(graph, { includeOrphans: true, query: "" });
+      const projected = projectGraph(graph, { includeOrphans: this.snapshot.settings?.graphIncludeOrphans ?? true, query: "" });
       const graphLayout = layoutGraph(projected, {
         centerForce: 0.1,
         iterations: 32,
@@ -31786,6 +31794,37 @@ function TockTutorRouteView(props) {
                           /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(Button, { unstyled: true, "aria-pressed": snapshot.graphMode === "local", className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs", disabled: snapshot.path === null, onClick: () => {
                             props.onLoadGraph?.("local");
                           }, type: "button", children: "Local" })
+                        ] })
+                      ] }),
+                      /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("div", { className: "mt-2 grid grid-cols-2 gap-1 text-xs", children: [
+                        /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)(Label, { unstyled: true, className: "flex items-center gap-1", children: [
+                          "Orphans",
+                          /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(Checkbox3, { checked: snapshot.settings?.graphIncludeOrphans ?? true, onCheckedChange: (checked) => {
+                            props.onSettingsChange?.({ graphIncludeOrphans: checked === true });
+                          } })
+                        ] }),
+                        /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)(Label, { unstyled: true, className: "flex items-center gap-1", children: [
+                          "Tags",
+                          /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(Checkbox3, { checked: snapshot.settings?.graphIncludeTags ?? false, onCheckedChange: (checked) => {
+                            props.onSettingsChange?.({ graphIncludeTags: checked === true });
+                          } })
+                        ] }),
+                        /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)(Label, { unstyled: true, className: "flex items-center gap-1", children: [
+                          "Attachments",
+                          /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(Checkbox3, { checked: snapshot.settings?.graphIncludeAttachments ?? false, onCheckedChange: (checked) => {
+                            props.onSettingsChange?.({ graphIncludeAttachments: checked === true });
+                          } })
+                        ] }),
+                        /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)(Label, { unstyled: true, className: "flex items-center gap-1", children: [
+                          "Local Depth",
+                          /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)(NativeSelect, { unstyled: true, value: String(snapshot.settings?.graphDepth ?? 2), onChange: (event) => {
+                            const depth = Number(event.target.value);
+                            if (depth === 1 || depth === 2 || depth === 3) props.onSettingsChange?.({ graphDepth: depth });
+                          }, children: [
+                            /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(NativeSelectOption, { value: "1", children: "1" }),
+                            /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(NativeSelectOption, { value: "2", children: "2" }),
+                            /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(NativeSelectOption, { value: "3", children: "3" })
+                          ] })
                         ] })
                       ] }),
                       (snapshot.graphLayout?.length ?? 0) > 0 ? /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)(import_jsx_runtime24.Fragment, { children: [
