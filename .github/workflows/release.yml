@@ -109,6 +109,7 @@ jobs:
           merge-multiple: true
 
       - name: Publish release
-        run: gh release create "${{ github.ref_name }}" artifacts/* --generate-notes
+        run: gh release create "$RELEASE_TAG" artifacts/* --generate-notes
         env:
           GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}

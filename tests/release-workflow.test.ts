@@ -30,6 +30,8 @@ test('CI actions are immutable and release write access is publish-only', () => 
   const release = readFileSync(join(root, '.github', 'workflows', 'release.yml'), 'utf8')
   assert.match(release, /permissions:\n  contents: read/u)
   assert.match(release, /publish:[\s\S]*permissions:\n      contents: write/u)
+  assert.match(release, /run: gh release create "\$RELEASE_TAG"/u)
+  assert.doesNotMatch(release, /run:.*\$\{\{ github\.ref_name \}\}/u)
 })
 
 test('tagged releases build and upload both TUI archive formats', () => {
