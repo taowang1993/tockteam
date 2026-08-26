@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { collectEmbedTargets, resolveNoteEmbedFragment } from '../dist/embeds.js'
+import { collectEmbedTargets, resolveEmbedTargetPath, resolveNoteEmbedFragment } from '../dist/embeds.js'
 
 test('collects bounded safe note, media, Canvas, and Base embeds outside code', () => {
   const source = [
@@ -22,6 +22,13 @@ test('collects bounded safe note, media, Canvas, and Base embeds outside code', 
     { display: null, fragment: null, kind: 'canvas', path: 'Board.canvas', source: '![[Board.canvas]]' },
     { display: null, fragment: 'Cards', kind: 'base', path: 'Table.base', source: '![[Table.base#Cards]]' },
   ])
+})
+
+test('prefers an exact embed path before an otherwise ambiguous basename', () => {
+  const entries = [{ path: 'Course/Note.md' }, { path: 'Archive/Note.md' }]
+  assert.equal(resolveEmbedTargetPath(entries, 'Course/Note.md'), 'Course/Note.md')
+  assert.equal(resolveEmbedTargetPath(entries, 'Note.md'), null)
+  assert.equal(resolveEmbedTargetPath([{ path: 'Course/Note.md' }], 'Note.md'), 'Course/Note.md')
 })
 
 test('extracts bounded note headings and block fragments without frontmatter', () => {

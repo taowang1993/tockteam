@@ -77,7 +77,7 @@ import { BUILTIN_TEMPLATES, buildCaptureNote, buildJournalNote, expandTemplate, 
 import { buildOrganizationProposal, type OrganizationProposal } from './organize.ts'
 import { convertMarkdownFormats, extractSelectionToNote } from './composer.ts'
 import { appendAttachmentMarkdown, attachmentTargetPath } from './attachments.ts'
-import { collectEmbedTargets, resolveNoteEmbedFragment, type EmbedTarget } from './embeds.ts'
+import { collectEmbedTargets, resolveEmbedTargetPath, resolveNoteEmbedFragment, type EmbedTarget } from './embeds.ts'
 import {
   createNamedWorkspace,
   loadTockTutorSettings,
@@ -1933,9 +1933,8 @@ export class WorkbenchRouteController {
     const operation = this.nextOperation()
     try {
       for (const target of targets) {
-        const candidates = entries.filter(entry => entry.path === target.path || entry.path.split('/').at(-1)?.toLocaleLowerCase() === target.path.split('/').at(-1)?.toLocaleLowerCase())
-        if (candidates.length !== 1) continue
-        const path = candidates[0]!.path
+        const path = resolveEmbedTargetPath(entries, target.path)
+        if (path === null) continue
         if (target.kind === 'media') {
           const preview = remoteValue(await this.remote.tocktutorWorkbench.previewAttachment(path, vault, operation.signal))
           if (!this.current(operation.id, vault) || this.snapshot.path !== sourcePath || preview.path !== path || preview.generation !== vault.generation) return false

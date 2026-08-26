@@ -9,5 +9,9 @@ export interface EmbedTarget {
     source: string;
 }
 export declare function collectEmbedTargets(source: string): EmbedTarget[];
+/** Resolve an authored path exactly before falling back to one unambiguous basename. */
+export declare function resolveEmbedTargetPath(entries: readonly {
+    path: string;
+}[], targetPath: string): string | null;
 export declare function resolveNoteEmbedFragment(source: string, fragment: string | null): string | null;
 //# sourceMappingURL=embeds.d.ts.map

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { DesktopPrintExportOwner } from '../src/desktop-print-export-owner.ts'
+import { buildMarkdownExportDocument } from '../plugins/tocktutor/packages/tockteam-tocktutor-workbench/dist/rich-markdown.js'
 import type { TockTeamDesktopPickerService } from '../src/host-contract.ts'
 
 const identity = {
@@ -63,6 +64,25 @@ test('print owner invokes bounded native print without destination authority', a
     status: 'printed',
   })
   assert.deepEqual(fixture.calls, [])
+})
+
+test('accepts the sanitized static Markdown export contract without network resources', async () => {
+  const fixture = picker()
+  let printed = ''
+  const owner = new DesktopPrintExportOwner({
+    isAvailable: () => true,
+    isCurrent: () => true,
+    native: { print: async html => { printed = html; return true }, renderPdf: async () => new Uint8Array() },
+    picker: fixture.value,
+  })
+  const html = buildMarkdownExportDocument({
+    embeds: [{ content: 'AQID', mimeType: 'image/png', target: { display: null, fragment: null, kind: 'media', path: 'image.png', source: '![[image.png]]' } }],
+    markdown: '[External](https://example.com)\n\n![Remote](https://example.com/image.png)',
+    title: 'Safe Export',
+  })
+  assert.equal((await owner.render({ format: 'print', html, identity, title: 'Safe Export' }, new AbortController().signal)).status, 'printed')
+  assert.doesNotMatch(printed, /https?:/u)
+  assert.match(printed, /data:image\/png;base64,AQID/u)
 })
 
 test('HTML export binds exact picker plan and writes reviewed bytes', async () => {

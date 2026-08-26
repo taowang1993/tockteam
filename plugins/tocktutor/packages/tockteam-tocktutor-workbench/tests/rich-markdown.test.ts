@@ -50,13 +50,13 @@ test('honors strict line breaks and builds fenced-aware slides', () => {
   assert.match(slides[1]!, /<pre/u)
 })
 
-test('builds a self-contained static export with a deny-by-default resource policy', () => {
-  const document = buildMarkdownExportDocument({ markdown: '# Export\n', title: 'A < B' })
-  assert.match(document, /default-src 'none'/u)
-  assert.match(document, /img-src data:/u)
-  assert.doesNotMatch(document, /blob:/u)
+test('builds a self-contained inert export accepted by the deny-by-default Desktop owner', () => {
+  const document = buildMarkdownExportDocument({
+    markdown: '# Export\n[External](https://example.com)\n![Remote](https://example.com/image.png)\n',
+    title: 'A < B',
+  })
   assert.match(document, /<title>A &lt; B<\/title>/u)
-  assert.doesNotMatch(document, /https?:\/\//u)
+  assert.doesNotMatch(document, /<meta|\s(?:href|src)=|https?:\/\//u)
 })
 
 test('includes bounded resolved embeds in static HTML without rewriting authored Markdown', () => {

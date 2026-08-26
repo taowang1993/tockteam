@@ -34,7 +34,7 @@ var __esDecorate = (this && this.__esDecorate) || function (ctor, descriptorIn, 
 };
 import { Remote, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol';
 import { createNativeOwnerLifetime, MAX_PRINT_EXPORT_HTML_BYTES, } from '@tockteam/desktop/host';
-import { buildMarkdownExportDocument, collectEmbedTargets, resolveNoteEmbedFragment, } from '@tockteam/tocktutor-workbench';
+import { buildMarkdownExportDocument, collectEmbedTargets, resolveEmbedTargetPath, resolveNoteEmbedFragment, } from '@tockteam/tocktutor-workbench';
 export const MAX_TRACKED_POPOUTS = 64;
 function assertVault(value) {
     if (typeof value !== 'object'
@@ -85,12 +85,10 @@ async function resolveExportEmbeds(runtime, source, expectedVault, signal) {
     const resolved = [];
     let aggregateBytes = 0;
     for (const target of targets) {
-        const targetName = target.path.split('/').at(-1)?.toLocaleLowerCase();
-        const candidates = entries.filter(entry => entry.path === target.path
-            || entry.path.split('/').at(-1)?.toLocaleLowerCase() === targetName);
-        if (candidates.length !== 1)
+        const path = resolveEmbedTargetPath(entries, target.path);
+        if (path === null)
             continue;
-        const entry = candidates[0];
+        const entry = entries.find(candidate => candidate.path === path);
         const projectedTarget = { ...target, path: entry.path };
         if (target.kind === 'media') {
             if (entry.kind !== 'attachment')

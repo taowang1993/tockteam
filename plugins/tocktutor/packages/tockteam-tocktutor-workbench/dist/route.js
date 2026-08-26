@@ -32,7 +32,7 @@ import { BUILTIN_TEMPLATES, buildCaptureNote, buildJournalNote, expandTemplate, 
 import { buildOrganizationProposal } from "./organize.js";
 import { convertMarkdownFormats, extractSelectionToNote } from "./composer.js";
 import { appendAttachmentMarkdown, attachmentTargetPath } from "./attachments.js";
-import { collectEmbedTargets, resolveNoteEmbedFragment } from "./embeds.js";
+import { collectEmbedTargets, resolveEmbedTargetPath, resolveNoteEmbedFragment } from "./embeds.js";
 import { createNamedWorkspace, loadTockTutorSettings, loadWorkbenchState, saveTockTutorSettings, saveWorkbenchState, } from "./settings.js";
 import { applyEditorCommand, resolvePlatformEditorCommand, } from "./editor-commands.js";
 import { editorStatusLabel, resolveEditorShortcut, toggleMarkdownTask, } from "./markdown.js";
@@ -1701,10 +1701,9 @@ export class WorkbenchRouteController {
         const operation = this.nextOperation();
         try {
             for (const target of targets) {
-                const candidates = entries.filter(entry => entry.path === target.path || entry.path.split('/').at(-1)?.toLocaleLowerCase() === target.path.split('/').at(-1)?.toLocaleLowerCase());
-                if (candidates.length !== 1)
+                const path = resolveEmbedTargetPath(entries, target.path);
+                if (path === null)
                     continue;
-                const path = candidates[0].path;
                 if (target.kind === 'media') {
                     const preview = remoteValue(await this.remote.tocktutorWorkbench.previewAttachment(path, vault, operation.signal));
                     if (!this.current(operation.id, vault) || this.snapshot.path !== sourcePath || preview.path !== path || preview.generation !== vault.generation)

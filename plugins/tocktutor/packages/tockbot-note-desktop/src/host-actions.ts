@@ -14,6 +14,7 @@ import type { NoteVaultRuntime } from 'tockbot-note-runtime'
 import {
   buildMarkdownExportDocument,
   collectEmbedTargets,
+  resolveEmbedTargetPath,
   resolveNoteEmbedFragment,
   type StaticMarkdownEmbed,
 } from '@tockteam/tocktutor-workbench'
@@ -91,11 +92,9 @@ async function resolveExportEmbeds(
   const resolved: StaticMarkdownEmbed[] = []
   let aggregateBytes = 0
   for (const target of targets) {
-    const targetName = target.path.split('/').at(-1)?.toLocaleLowerCase()
-    const candidates = entries.filter(entry => entry.path === target.path
-      || entry.path.split('/').at(-1)?.toLocaleLowerCase() === targetName)
-    if (candidates.length !== 1) continue
-    const entry = candidates[0]!
+    const path = resolveEmbedTargetPath(entries, target.path)
+    if (path === null) continue
+    const entry = entries.find(candidate => candidate.path === path)!
     const projectedTarget = { ...target, path: entry.path }
     if (target.kind === 'media') {
       if (entry.kind !== 'attachment') continue

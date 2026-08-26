@@ -285,11 +285,14 @@ export function buildMarkdownSlides(markdown, options = {}) {
     slides.push(renderMarkdownHtml(current.join('\n'), options));
     return slides;
 }
+function stripStaticResourceAttributes(html) {
+    return html.replace(/\s+(?:href|src)=(?:"[^"]*"|'[^']*')/giu, '');
+}
 function renderStaticEmbed(embed) {
     const path = escapeMarkdownHtml(embed.target.path);
     const label = escapeMarkdownHtml(embed.target.display ?? embed.target.path);
     if (embed.target.kind === 'note') {
-        const content = renderMarkdownHtml(embed.content).replace(/\s+href=(?:"[^"]*"|'[^']*')/gu, '');
+        const content = stripStaticResourceAttributes(renderMarkdownHtml(embed.content));
         return `<article data-embed-kind="note" data-embed-path="${path}"><h3>${label}</h3>${content}</article>`;
     }
     if (embed.target.kind === 'canvas' || embed.target.kind === 'base') {
@@ -306,11 +309,11 @@ function renderStaticEmbed(embed) {
 }
 export function buildMarkdownExportDocument(options) {
     const title = escapeMarkdownHtml(options.title.slice(0, 1000));
-    const body = renderMarkdownHtml(options.markdown, options).replace(/\s+href=(?:"[^"]*"|'[^']*')/gu, '');
+    const body = stripStaticResourceAttributes(renderMarkdownHtml(options.markdown, options));
     const embeds = (options.embeds ?? []).slice(0, 100).filter(embed => bytes(embed.content) <= MAX_RICH_MARKDOWN_BYTES);
     const resolved = embeds.length === 0
         ? ''
         : `<section aria-label="Resolved Embeds"><h2>Resolved Embeds</h2>${embeds.map(renderStaticEmbed).join('')}</section>`;
-    return `<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; style-src 'unsafe-inline';"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title></head><body>${body}${resolved}</body></html>`;
+    return `<!doctype html><html><head><title>${title}</title></head><body>${body}${resolved}</body></html>`;
 }
 //# sourceMappingURL=rich-markdown.js.map

@@ -14652,7 +14652,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "tockbot-note-desktop/types#NativeActionResult",
         schema: tockbot_note_desktop_tocktutorDesktop_activateVault_result$schema
       },
-      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 263, "column": 9 }
+      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 262, "column": 9 }
     },
     {
       id: "tockbot-note-desktop#tocktutorDesktop/closeAllPopOuts",
@@ -14688,7 +14688,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "tockbot-note-desktop/types#NativeActionResult",
         schema: tockbot_note_desktop_tocktutorDesktop_closeAllPopOuts_result$schema
       },
-      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 395, "column": 9 }
+      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 394, "column": 9 }
     },
     {
       id: "tockbot-note-desktop#tocktutorDesktop/closePopOut",
@@ -14734,7 +14734,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "tockbot-note-desktop/types#NativeActionResult",
         schema: tockbot_note_desktop_tocktutorDesktop_closePopOut_result$schema
       },
-      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 346, "column": 9 }
+      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 345, "column": 9 }
     },
     {
       id: "tockbot-note-desktop#tocktutorDesktop/exportNote",
@@ -14790,7 +14790,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "tockbot-note-desktop/types#NativeActionResult",
         schema: tockbot_note_desktop_tocktutorDesktop_exportNote_result$schema
       },
-      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 473, "column": 9 }
+      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 472, "column": 9 }
     },
     {
       id: "tockbot-note-desktop#tocktutorDesktop/openPopOut",
@@ -14836,7 +14836,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "tockbot-note-desktop/types#NativeActionResult",
         schema: tockbot_note_desktop_tocktutorDesktop_openPopOut_result$schema
       },
-      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 310, "column": 9 }
+      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 309, "column": 9 }
     },
     {
       id: "tockbot-note-desktop#tocktutorDesktop/printNote",
@@ -14882,7 +14882,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "tockbot-note-desktop/types#NativeActionResult",
         schema: tockbot_note_desktop_tocktutorDesktop_printNote_result$schema
       },
-      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 436, "column": 9 }
+      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 435, "column": 9 }
     },
     {
       id: "tockbot-note-desktop#tocktutorDesktop/requestMicrophone",
@@ -14918,7 +14918,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "tockbot-note-desktop/types#NativeActionResult",
         schema: tockbot_note_desktop_tocktutorDesktop_requestMicrophone_result$schema
       },
-      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 530, "column": 9 }
+      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 529, "column": 9 }
     },
     {
       id: "tockbot-note-desktop#tocktutorDesktop/revealEntry",
@@ -14964,7 +14964,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "tockbot-note-desktop/types#NativeActionResult",
         schema: tockbot_note_desktop_tocktutorDesktop_revealEntry_result$schema
       },
-      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 557, "column": 9 }
+      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 556, "column": 9 }
     }
   ]
 };
@@ -14973,7 +14973,7 @@ var typert_remote_client_default = TYPERT_REMOTE;
 // ../../../ui/src/alert.tsx
 var React = __toESM(require("react"), 1);
 
-// ../../../../node_modules/.pnpm/clsx@2.1.1/node_modules/clsx/dist/clsx.mjs
+// ../../node_modules/.pnpm/clsx@2.1.1/node_modules/clsx/dist/clsx.mjs
 function r(e) {
   var t, f, n = "";
   if ("string" == typeof e || "number" == typeof e) n += e;
@@ -14988,7 +14988,7 @@ function clsx() {
   return n;
 }
 
-// ../../../../node_modules/.pnpm/class-variance-authority@0.7.1/node_modules/class-variance-authority/dist/index.mjs
+// ../../node_modules/.pnpm/class-variance-authority@0.7.1/node_modules/class-variance-authority/dist/index.mjs
 var falsyToString = (value) => typeof value === "boolean" ? `${value}` : value === 0 ? "0" : value;
 var cx = clsx;
 var cva = (base, config2) => (props) => {
