@@ -51,6 +51,9 @@ describe('TockTutor titlebar panel controls', () => {
   it('opens and closes the Files sidebar and Assistant panel', () => {
     renderRoute()
 
+    const searchButton = screen.getByRole('button', { name: 'Search Notes' })
+    expect(searchButton.className).toContain('border-0')
+
     const sidebarButton = screen.getByRole('button', { name: 'Toggle Files Sidebar' })
     const sidebar = screen.getByRole('complementary', { name: 'Files' })
     const resizeHandle = screen.getByRole('button', { name: /Resize Files Sidebar/u })
@@ -82,9 +85,13 @@ describe('TockTutor titlebar panel controls', () => {
     expect(assistant.getAttribute('data-open')).toBe('true')
     expect(assistant.hasAttribute('inert')).toBe(false)
     const assistantResize = screen.getByRole('separator', { name: 'Resize Assistant Panel' })
-    expect(assistantResize.getAttribute('aria-valuenow')).toBe('420')
+    expect(assistantResize.getAttribute('aria-valuenow')).toBe('300')
+    fireEvent.pointerDown(assistantResize, { clientX: 700 })
+    expect(assistant.style.transitionDuration).toBe('0ms')
+    fireEvent.pointerUp(window)
+    expect(assistant.style.transitionDuration).toBe('')
     fireEvent.keyDown(assistantResize, { key: 'ArrowLeft' })
-    expect(assistantResize.getAttribute('aria-valuenow')).toBe('430')
+    expect(assistantResize.getAttribute('aria-valuenow')).toBe('310')
 
     fireEvent.click(assistantButton)
     expect(assistantButton.getAttribute('aria-expanded')).toBe('false')

@@ -94,9 +94,13 @@ const DEFAULT_SIDEBAR_WIDTH = 280
 const COLLAPSED_TITLEBAR_SIDEBAR_WIDTH = 84
 const MIN_SIDEBAR_WIDTH = 180
 const MAX_SIDEBAR_WIDTH = 480
-const DEFAULT_ASSISTANT_PANEL_WIDTH = 420
+const DEFAULT_ASSISTANT_PANEL_WIDTH = 300
 const MIN_ASSISTANT_PANEL_WIDTH = 240
 const MAX_ASSISTANT_PANEL_WIDTH = 720
+const clampAssistantPanelWidth = (width: number): number => Math.min(
+  MAX_ASSISTANT_PANEL_WIDTH,
+  Math.max(MIN_ASSISTANT_PANEL_WIDTH, width),
+)
 export const MAX_ROUTE_SOURCE_BYTES = 2_000_000
 
 export interface WorkbenchRouteRemote extends NoteVaultEventRemote {
@@ -1201,14 +1205,32 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
     resizeSidebar(sidebarWidth + (event.key === 'ArrowLeft' ? -10 : 10))
   }
   const resizeAssistantPanel = (width: number): void => {
-    setAssistantPanelWidth(Math.min(MAX_ASSISTANT_PANEL_WIDTH, Math.max(MIN_ASSISTANT_PANEL_WIDTH, width)))
+    setAssistantPanelWidth(clampAssistantPanelWidth(width))
   }
   const beginAssistantPanelResize = (event: ReactPointerEvent<HTMLButtonElement>): void => {
     event.preventDefault()
+    const handle = event.currentTarget
+    const panelElement = handle.parentElement
+    if (panelElement === null) return
     const startX = event.clientX
     const startWidth = assistantPanelWidth
-    const move = (next: PointerEvent): void => { resizeAssistantPanel(startWidth + startX - next.clientX) }
+    let frame = 0
+    let width = startWidth
+    panelElement.style.transitionDuration = '0ms'
+    const render = (): void => {
+      frame = 0
+      panelElement.style.width = `${String(width)}px`
+      handle.setAttribute('aria-valuenow', String(width))
+    }
+    const move = (next: PointerEvent): void => {
+      width = clampAssistantPanelWidth(startWidth + startX - next.clientX)
+      if (frame === 0) frame = requestAnimationFrame(render)
+    }
     const finish = (): void => {
+      if (frame !== 0) cancelAnimationFrame(frame)
+      render()
+      resizeAssistantPanel(width)
+      panelElement.style.removeProperty('transition-duration')
       window.removeEventListener('pointermove', move)
       window.removeEventListener('pointerup', finish)
       window.removeEventListener('pointercancel', finish)
@@ -1241,7 +1263,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
             <Tooltip>
               <TooltipTrigger asChild>
                 <span className="inline-flex">
-                  <Button unstyled aria-label="Search Notes" disabled={props.onOpenSearch === undefined} onClick={props.onOpenSearch} type="button"><WorkbenchGlyph kind="search" /></Button>
+                  <Button unstyled aria-label="Search Notes" className="border-0 bg-transparent p-0" disabled={props.onOpenSearch === undefined} onClick={props.onOpenSearch} type="button"><WorkbenchGlyph kind="search" /></Button>
                 </span>
               </TooltipTrigger>
               <TooltipContent>Search Notes</TooltipContent>
@@ -1493,7 +1515,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
         <aside
           aria-hidden={panel !== 'assistant'}
           aria-label="Assistant Panel"
-          className="tocktutor-right-panel tocktutor-right-panel-assistant relative invisible grid min-w-0 w-0 translate-x-6 grid-rows-[minmax(0,1fr)] overflow-hidden border-l-0 bg-[var(--tt-panel)] opacity-0 shadow-none transition-[width,opacity,transform,visibility] [transition-duration:420ms,300ms,460ms,0s] [transition-timing-function:cubic-bezier(.16,1,.3,1),cubic-bezier(.16,1,.3,1),cubic-bezier(.16,1,.3,1),linear] [transition-delay:0s,0s,0s,420ms] pointer-events-none data-[open=true]:visible data-[open=true]:translate-x-0 data-[open=true]:overflow-visible data-[open=true]:opacity-100 data-[open=true]:[transition-delay:0s] data-[open=true]:pointer-events-auto [&>:not(.tocktutor-assistant-resize)]:min-w-[min(360px,calc(100vw-262px))]"
+          className="tocktutor-right-panel tocktutor-right-panel-assistant relative invisible grid min-w-0 w-0 translate-x-6 grid-rows-[minmax(0,1fr)] overflow-hidden border-l-0 bg-[var(--tt-panel)] opacity-0 shadow-none transition-[width,opacity,transform,visibility] [transition-duration:420ms,300ms,460ms,0s] [transition-timing-function:cubic-bezier(.16,1,.3,1),cubic-bezier(.16,1,.3,1),cubic-bezier(.16,1,.3,1),linear] [transition-delay:0s,0s,0s,420ms] pointer-events-none data-[open=true]:visible data-[open=true]:translate-x-0 data-[open=true]:overflow-visible data-[open=true]:opacity-100 data-[open=true]:[transition-delay:0s] data-[open=true]:pointer-events-auto [&>:not(.tocktutor-assistant-resize)]:min-w-[min(240px,calc(100vw-262px))]"
           data-open={panel === 'assistant'}
           style={{ width: panel === 'assistant' ? `${String(assistantPanelWidth)}px` : '0px' }}
           {...(panel === 'assistant' ? {} : { inert: '' })}

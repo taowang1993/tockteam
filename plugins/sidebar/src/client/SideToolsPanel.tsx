@@ -42,6 +42,7 @@ import type {
   DesktopSidebarTabDescriptor,
 } from './sidebar-service.ts'
 import type { WorkspaceMessage } from './i18n.ts'
+import { clampSidebarWidth } from '../sidebar-preferences.ts'
 
 interface ElectronWebviewElement extends HTMLElement {
   canGoBack(): boolean
@@ -533,12 +534,29 @@ export function SideToolsPanel(props: SideToolsPanelProps): JSX.Element {
     : props.sidebar.getTab(activeTab.type)
   const beginResize = (event: ReactPointerEvent<HTMLDivElement>): void => {
     event.preventDefault()
+    const layout = event.currentTarget.closest<HTMLElement>('#tockteam-embedded-layout')
     const startX = event.clientX
     const startWidth = props.width
+    let frame = 0
+    let width = startWidth
+    if (layout !== null) layout.style.transitionDuration = '0ms'
+    const render = (): void => {
+      frame = 0
+      document.documentElement.style.setProperty('--tockteam-sidebar-width', `${String(width)}px`)
+      if (layout !== null) {
+        const track = window.matchMedia('(max-width: 900px)').matches ? 0 : width
+        layout.style.gridTemplateColumns = `var(--tockteam-rail-width) minmax(0, 1fr) ${String(track)}px`
+      }
+    }
     const move = (next: PointerEvent): void => {
-      props.onResize(startWidth + startX - next.clientX)
+      width = clampSidebarWidth(startWidth + startX - next.clientX)
+      if (frame === 0) frame = requestAnimationFrame(render)
     }
     const finish = (): void => {
+      if (frame !== 0) cancelAnimationFrame(frame)
+      render()
+      props.onResize(width)
+      layout?.style.removeProperty('transition-duration')
       window.removeEventListener('pointermove', move)
       window.removeEventListener('pointerup', finish)
       window.removeEventListener('pointercancel', finish)
