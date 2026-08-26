@@ -79,9 +79,9 @@ The aggregate bundle does not activate this package's tool row. It retains the p
 - filesystem watching and the `note-vault/change` event;
 - Desktop reveal and caller-bound vault-selection seams.
 
-It also defines the abstract `tockTeamDesktopReveal` and `tockTeamDesktopVaultSelection` services. TockTeam Desktop supplies their native implementations. The aggregate row sets `vaultRoot: null`; Desktop selection activates a vault instead of accepting browser-provided absolute paths. The Desktop bundle evaluates `stateRoot` under `DSH_DESKTOP_APP_DATA/tocktutor`, so recent-vault bindings, drafts, snapshots, trash metadata, and managed-vault state survive Desktop restarts without writing into the workspace.
+It also defines the abstract `tockTeamDesktopReveal` and `tockTeamDesktopVaultSelection` services. TockTeam Desktop supplies their native implementations. The aggregate row sets `vaultRoot: null`; Desktop selection activates a vault instead of accepting browser-provided absolute paths. Before a native action, the Runtime synchronizes an already authorized managed, sandbox, or recent vault through the authenticated Desktop owner; canonical paths never cross the browser or preload boundary. The Desktop bundle evaluates `stateRoot` under `DSH_DESKTOP_APP_DATA/tocktutor`, so recent-vault bindings, drafts, snapshots, trash metadata, and managed-vault state survive Desktop restarts without writing into the workspace.
 
-The runtime can activate opaque recent selections, create a collision-safe sandbox, and create named managed vaults under the state root. Its passive-backup seam exposes only generation-bound, no-follow reads and exclusive restores for an inert allowlist under exact `.obsidian` and `.obsidian-*` roots. Hidden nested paths, aliases, links, executable/native/script payloads, and platforms without no-follow support fail closed.
+The runtime can activate opaque recent selections, create a collision-safe sandbox, and create named managed vaults under the state root. Attachment storage creates missing relative parent folders one segment at a time, revalidates each as a real in-vault directory, and binds the final parent identity before the exclusive write. Its passive-backup seam exposes only generation-bound, no-follow reads and exclusive restores for an inert allowlist under exact `.obsidian` and `.obsidian-*` roots. Hidden nested paths, aliases, links, executable/native/script payloads, and platforms without no-follow support fail closed.
 
 Important configuration includes read, attachment, draft, folder, tree, recent-vault, snapshot, state-root, vault-root, and restore limits. Keep their maximums intact.
 
@@ -98,16 +98,16 @@ The Host entry injects `noteVault` and mounts the `tocktutorWorkbench` Typert Re
 The browser client mounts that Remote and contributes the single `tockteam.tocktutor.route` slot. The route owns:
 
 - the `/tocktutor` browser route, bounded tabs, recently closed tabs, pinning, reordering, pane groups, focus mode, workspaces, and command palette;
-- Markdown Source, Live Preview, Reading, Slides, safe HTML/PDF projection, formatting/slash/table commands, Page Preview, and exact-source task toggles;
+- Markdown Source, Live Preview, Reading, Slides, owner-compatible inert HTML/PDF projection, formatting/slash/table commands, Page Preview, and exact-source task toggles;
 - tree, keyword/Related search, Quick Switcher, Outline, Footnotes, Backlinks, Outgoing Links, unlinked mentions, Properties, Tags, Smart Views, bookmarks, capture, templates, journals, Note Composer, and reviewed organization;
 - deterministic finite Global and Local Graphs with persisted depth, semantic filters, query groups, viewport controls, and bounded node actions;
 - conflict-safe JSON Canvas and executable Base views, including card/group/edge edits and revision-preserving rollback;
-- bounded note, media, Canvas, and Base embed hydration while keeping authored embed source editable;
+- bounded note, media, Canvas, and Base embed hydration while keeping authored embed source editable, with exact paths preferred over an unambiguous basename fallback;
 - attachment ingestion, previews, location settings, and recorded-audio handoff through the Desktop microphone owner;
 - draft recovery, timed/manual snapshots, external-change preservation, trash, restore-as-new, and retention;
 - native dispatch handling and the nested assistant, native-action, review-panel, and Web Viewer slots.
 
-The route accepts only Markdown, Canvas, and Base documents. React text nodes render projected content; raw HTML is not inserted into the DOM. Local, credential-bearing, resource, and executable links remain inert.
+The route accepts only Markdown, Canvas, and Base documents. Authored raw HTML is escaped; the renderer inserts only its sanitized Markdown projection. Local, credential-bearing, resource, and executable links remain inert.
 
 Nested slots:
 
@@ -131,9 +131,9 @@ The client contributes the **Native Actions** controls for:
 - **Print Note**
 - **Export HTML** and **Export PDF**
 
-Every native operation starts with an opaque authorization minted by the isolated preload for the trusted main frame. The Host claims that authorization to obtain the main-owned session, window, operation, and active-vault identity. Browser payloads never supply absolute paths, Electron objects, native handles, or unrestricted IPC names.
+Every native operation starts with an opaque authorization minted by the isolated preload for the trusted main frame. For vault-bound operations, the authorization records the browser-observed opaque `{ id, generation }`; the trusted Host independently proves the same live Runtime vault, synchronizes the Desktop owner, and only then claims the authorization to obtain the main-owned session, window, and operation identity. A browser assertion cannot mint vault authority by itself. Browser payloads never supply absolute paths, Electron objects, native handles, or unrestricted IPC names.
 
-Unload aborts pending work and closes pop-outs opened by the adapter. Dirty editors save before choose-vault, pop-out, print, HTML, or PDF authorization is claimed. Print and export content is bounded, sanitized, and rendered through the shared Markdown exporter before the Desktop owner revalidates it. Recorded audio returns only bounded bytes to the active Workbench owner, which rechecks the note and vault before the runtime stores it.
+Unload aborts pending work and closes pop-outs opened by the adapter. Dirty editors save before choose-vault, pop-out, print, HTML, or PDF authorization is claimed. Print and export content is bounded, sanitized, stripped of network-bearing resource attributes, and rendered through the shared Markdown exporter before the Desktop owner revalidates it. The Host resolves first-level embeds through generation-bound runtime reads: note projections render safely, Canvas and Base sources stay escaped, bounded supported images become data URLs, and audio/video/PDF embeds remain metadata-only. Recorded audio returns only bounded bytes to the active Workbench owner, which rechecks the note and vault after byte conversion before the runtime stores it.
 
 ### `@tockteam/tocktutor-assistant`
 
@@ -202,7 +202,7 @@ Outside the plugin workspace:
 - `src/profile.ts` owns the Desktop aggregate bundle and retires old standalone bundle rows without removing unrelated user bundles.
 - `plugins/sidebar/src/client/tocktutor-route.ts` defines the bounded same-origin route contract.
 - `plugins/sidebar/src/client/plugin.tsx` mounts the Desktop-only route and app-rail entry.
-- `src/main.ts` owns native menus, protocol admission, dispatch delivery, pop-outs, theme lifecycle, and restricted IPC.
+- `src/main.ts` owns native menus, protocol admission, dispatch delivery, pop-outs, theme lifecycle, and restricted IPC. Pop-outs load the same-origin SPA root before a fixed main-authored History navigation, avoiding direct-route HTTP fallthrough without admitting arbitrary renderer code or routes.
 - `src/preload.ts` exposes only the bounded TockTutor bridge.
 - `src/desktop-*-owner.ts` modules own native identity, capability, and transaction checks.
 - `scripts/stage-dsh.mjs` copies tracked package payloads into the staged runtime.
@@ -231,6 +231,8 @@ The in-scope cutover includes Desktop install/upgrade, disable/uninstall/rollbac
 The standalone `tockbot-note-vault` filesystem adapter sorts the native directory inventory before producing deterministic cursor pages. Search bytes, inspected entries, files, results, and output remain bounded, but native directory enumeration itself scales with the vault. Split unusually wide vaults or use the active runtime; replace this adapter with a cursorable index only if measured vault size makes enumeration a real bottleneck.
 
 The assistant panel intentionally uses a render-time route epoch to prevent an aborted decision from reviving across an A → B → A navigation. Its component regression test protects that behavior; do not replace it with a route-key-only comparison.
+
+Static export resolves only the first embed level, matching the interactive projection. It does not recursively expand nested embeds or fetch network resources. Audio, video, PDF, BMP, and other non-allowlisted data-image payloads remain labeled metadata because the Desktop print/export owner accepts only bounded AVIF, GIF, JPEG, PNG, and WebP data URLs.
 
 ## Generated and Release Payloads
 
