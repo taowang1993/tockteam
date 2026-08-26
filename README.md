@@ -1,5 +1,8 @@
 <div align="center">
-  <img src="./assets/tockteam-logo.svg" width="136" alt="TockTeam logo">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="./assets/tockteam-logo-dark.svg">
+    <img src="./assets/tockteam-logo.svg" width="136" alt="TockTeam logo">
+  </picture>
   <h1>TockTeam</h1>
   <p><strong>One DSH runtime, independently installable interaction surfaces.</strong></p>
 </div>
