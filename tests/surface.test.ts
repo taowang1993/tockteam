@@ -61,9 +61,14 @@ test('every bundled plugin adapts explicitly per surface', () => {
   assert.match(webHost, /kind: 'web'/)
   assert.match(webHost, /TOCKTEAM_SURFACE_SERVICE/)
 
+  const desktopClient = readFileSync(join(root, 'src/client.ts'), 'utf8')
+  assert.match(desktopClient, /await removeSurface\?\.\(\)/)
+  assert.match(desktopClient, /await removeShell\?\.\(\)/)
+
   const webClient = readFileSync(join(root, 'web/src/client.ts'), 'utf8')
   assert.match(webClient, /kind: 'web'/)
   assert.match(webClient, /TOCKTEAM_SURFACE_VIEW_SERVICE/)
+  assert.match(webClient, /await removeSurface\?\.\(\)/)
 
   const tuiHost = readFileSync(join(root, 'plugins/tui/src/index.ts'), 'utf8')
   assert.match(tuiHost, /kind: 'tui'/)

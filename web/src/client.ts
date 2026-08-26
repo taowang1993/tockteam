@@ -6,7 +6,7 @@ import {
 } from '../../plugins/shared/surface.ts'
 
 interface ClientContext {
-  effect(effect: () => (() => void) | void, label?: string): void
+  effect(effect: () => (() => Promise<void> | void) | void, label?: string): void
   reflect: {
     provide(name: string, value: unknown, options?: unknown): (() => Promise<void> | void) | void
   }
@@ -15,9 +15,12 @@ interface ClientContext {
 /** Enroll the web shell identity and the client-plane surface contract. */
 export function apply(ctx: ClientContext): void {
   // The unified three-surface contract, client plane: the web shell.
-  ctx.reflect.provide(TOCKTEAM_SURFACE_VIEW_SERVICE, Object.freeze({
-    kind: 'web',
-  } satisfies TockTeamSurfaceView), undefined)
+  ctx.effect(() => {
+    const removeSurface = ctx.reflect.provide(TOCKTEAM_SURFACE_VIEW_SERVICE, Object.freeze({
+      kind: 'web',
+    } satisfies TockTeamSurfaceView), undefined)
+    return async () => { await removeSurface?.() }
+  }, 'tockteam-web: reflected surface service')
   ctx.effect(() => {
     const originalTitle = document.title
     const synchronizeTitle = (): void => {

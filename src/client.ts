@@ -37,9 +37,11 @@ interface WorkspacesService {
 }
 
 interface ClientContext {
-  effect(effect: () => (() => void) | void, label?: string): void
+  effect(effect: () => (() => Promise<void> | void) | void, label?: string): void
   get(name: string): unknown
-  reflect: { provide(name: string, value: unknown, options?: unknown): void }
+  reflect: {
+    provide(name: string, value: unknown, options?: unknown): (() => Promise<void> | void) | void
+  }
 }
 
 declare global {
@@ -263,11 +265,17 @@ export function apply(ctx: ClientContext): void {
     () => locale.register('tockteam.desktop', DESKTOP_SHELL_MESSAGES),
     'tockteam-desktop: shell dictionaries',
   )
-  ctx.reflect.provide('desktopShell', bridge, undefined)
-  // The unified three-surface contract, client plane: the desktop shell.
-  ctx.reflect.provide(TOCKTEAM_SURFACE_VIEW_SERVICE, Object.freeze({
-    kind: 'desktop',
-  } satisfies TockTeamSurfaceView), undefined)
+  ctx.effect(() => {
+    const removeShell = ctx.reflect.provide('desktopShell', bridge, undefined)
+    // The unified three-surface contract, client plane: the desktop shell.
+    const removeSurface = ctx.reflect.provide(TOCKTEAM_SURFACE_VIEW_SERVICE, Object.freeze({
+      kind: 'desktop',
+    } satisfies TockTeamSurfaceView), undefined)
+    return async () => {
+      await removeSurface?.()
+      await removeShell?.()
+    }
+  }, 'tockteam-desktop: reflected client services')
   ctx.effect(() => {
     let disposed = false
     let previewPluginId: string | null = null
