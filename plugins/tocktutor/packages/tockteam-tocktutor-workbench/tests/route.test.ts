@@ -545,6 +545,22 @@ test('dispatches approved daily and unique note defaults without inventing setti
   controller.dispose()
 })
 
+test('creates built-in template notes and inserts current date/time at the active selection', async () => {
+  const remote = new FakeRemote()
+  const controller = new WorkbenchRouteController(remote, () => {}, () => new Date(2026, 7, 26, 15, 4))
+  await controller.syncLocation('/tocktutor')
+  assert.equal(await controller.select('Folder/Note.md'), true)
+  controller.setSelection(2, 2)
+  assert.equal(controller.insertCurrentDateTime('date'), true)
+  assert.match(controller.getSnapshot().source, /^# 2026-08-26Before/u)
+  assert.equal(await controller.save(), true)
+  assert.equal(await controller.createBuiltinTemplateNote('Cornell Notes'), true)
+  const create = remote.calls.findLast(call => call.method === 'createDocument')?.parameters[0] as CreateDocumentRequest
+  assert.equal(create.path, 'Templates/Cornell Notes.md')
+  assert.match(create.content, /^# Cornell Notes/u)
+  controller.dispose()
+})
+
 test('owns bounded quick New, Capture, and Search route interactions', async () => {
   const remote = new FakeRemote()
   const controller = new WorkbenchRouteController(

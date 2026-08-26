@@ -13,6 +13,7 @@ import { TOCKTUTOR_WEB_VIEWER_PANEL_SLOT } from './web-viewer-panel.ts';
 import { type PropertyValue } from './properties.ts';
 import { type Bookmark as TockTutorBookmark } from './bookmarks.ts';
 import { type GraphPosition } from './graph.ts';
+import { BUILTIN_TEMPLATES } from './capture.ts';
 import { type OrganizationProposal } from './organize.ts';
 import { type EmbedTarget } from './embeds.ts';
 import { type KeyValueStorage, type NamedWorkspace, type TockTutorSettings } from './settings.ts';
@@ -234,6 +235,8 @@ export declare class WorkbenchRouteController {
     moveCanvasNode(nodeId: string, deltaX: number, deltaY: number): void;
     convertActiveNote(): boolean;
     extractActiveSelection(): Promise<boolean>;
+    createBuiltinTemplateNote(name: keyof typeof BUILTIN_TEMPLATES): Promise<boolean>;
+    insertCurrentDateTime(kind: 'date' | 'time'): boolean;
     prepareOrganization(): Promise<boolean>;
     cancelOrganization(): void;
     applyOrganization(): Promise<boolean>;
@@ -269,6 +272,7 @@ export interface TockTutorRouteViewProps {
     onCloseSearch?(): void;
     onCloseTab?(paneId: string, path: string): void;
     onConvertActiveNote?(): void;
+    onCreateBuiltinTemplate?(name: keyof typeof BUILTIN_TEMPLATES): void;
     onCreateManagedVault?(name: string): void;
     onAddPane(): void;
     onEdit(source: string): void;
@@ -276,6 +280,7 @@ export interface TockTutorRouteViewProps {
     onExtractSelection?(): void;
     onFocusPane(paneId: string): void;
     onForward?(): void;
+    onInsertCurrentDateTime?(kind: 'date' | 'time'): void;
     onJumpToLine?(line: number): void;
     onLoadGraph?(mode: 'global' | 'local'): void;
     onLoadWorkspace?(id: string): void;

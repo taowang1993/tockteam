@@ -1,5 +1,11 @@
 import { isSafeVaultRelativePath } from "./session.js";
 export const MAX_TEMPLATE_BYTES = 1_000_000;
+export const BUILTIN_TEMPLATES = Object.freeze({
+    'Cornell Notes': '# {{title}}\n\n## Cues\n\n## Notes\n\n## Summary\n',
+    'Lesson Plan': '# {{title}}\n\n## Objectives\n\n## Activities\n\n## Assessment\n',
+    'One-Pager': '# {{title}}\n\n## Big Idea\n\n## Evidence\n\n## Reflection\n',
+    'Reading Log': '# {{title}}\n\nDate: {{date}}\n\n## Notes\n\n## Response\n',
+});
 function pad(value, length = 2) {
     return String(value).padStart(length, '0');
 }

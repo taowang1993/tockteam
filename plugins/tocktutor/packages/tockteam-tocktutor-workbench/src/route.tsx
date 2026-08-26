@@ -70,7 +70,7 @@ import { renderMarkdownHtml } from './rich-markdown.ts'
 import { parseFrontmatterProperties, setFrontmatterProperty, type PropertyValue } from './properties.ts'
 import { addBookmark, loadBookmarks, saveBookmarks, type Bookmark as TockTutorBookmark } from './bookmarks.ts'
 import { layoutGraph, projectGraph, type GraphPosition } from './graph.ts'
-import { buildCaptureNote, buildJournalNote, uniqueNotePath } from './capture.ts'
+import { BUILTIN_TEMPLATES, buildCaptureNote, buildJournalNote, expandTemplate, uniqueNotePath } from './capture.ts'
 import { buildOrganizationProposal, type OrganizationProposal } from './organize.ts'
 import { convertMarkdownFormats, extractSelectionToNote } from './composer.ts'
 import { appendAttachmentMarkdown, attachmentTargetPath } from './attachments.ts'
@@ -1831,6 +1831,31 @@ export class WorkbenchRouteController {
     }
   }
 
+  async createBuiltinTemplateNote(name: keyof typeof BUILTIN_TEMPLATES): Promise<boolean> {
+    const vault = this.snapshot.vault
+    if (vault === null) return false
+    const path = `${this.snapshot.settings?.templateFolder ?? 'Templates'}/${name}.md`
+    try {
+      const content = expandTemplate(BUILTIN_TEMPLATES[name], { now: this.now(), title: name })
+      const created = remoteValue(await this.remote.tocktutorWorkbench.createDocument({ content, expectedVault: vault, path }))
+      if (created.status !== 'created' || created.path !== path || created.generation !== vault.generation) return false
+      await this.refreshTree(vault)
+      return await this.select(path)
+    } catch {
+      return false
+    }
+  }
+
+  insertCurrentDateTime(kind: 'date' | 'time'): boolean {
+    if (this.snapshot.path === null || this.snapshot.documentKind !== 'markdown' || this.snapshot.mode === 'reading') return false
+    const start = this.snapshot.selectionStart ?? this.snapshot.source.length
+    const end = this.snapshot.selectionEnd ?? start
+    const value = expandTemplate(kind === 'date' ? '{{date}}' : '{{time}}', { now: this.now(), title: noteTitle(this.snapshot.path) })
+    this.edit(`${this.snapshot.source.slice(0, start)}${value}${this.snapshot.source.slice(end)}`)
+    this.setSelection(start + value.length, start + value.length)
+    return true
+  }
+
   async prepareOrganization(): Promise<boolean> {
     const path = this.snapshot.path
     if (path === null || !/^Inbox\/.+\.md$/iu.test(path)) return false
@@ -2247,6 +2272,7 @@ export interface TockTutorRouteViewProps {
   onCloseSearch?(): void
   onCloseTab?(paneId: string, path: string): void
   onConvertActiveNote?(): void
+  onCreateBuiltinTemplate?(name: keyof typeof BUILTIN_TEMPLATES): void
   onCreateManagedVault?(name: string): void
   onAddPane(): void
   onEdit(source: string): void
@@ -2254,6 +2280,7 @@ export interface TockTutorRouteViewProps {
   onExtractSelection?(): void
   onFocusPane(paneId: string): void
   onForward?(): void
+  onInsertCurrentDateTime?(kind: 'date' | 'time'): void
   onJumpToLine?(line: number): void
   onLoadGraph?(mode: 'global' | 'local'): void
   onLoadWorkspace?(id: string): void
@@ -3201,6 +3228,14 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
               <Button unstyled className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs" disabled={snapshot.documentKind !== 'markdown' || snapshot.mode === 'reading'} onClick={props.onConvertActiveNote} type="button">Convert Formats</Button>
             </div>
           </section>
+          <section aria-label="Templates and Journals" className="border-t border-[var(--tt-border)] p-3">
+            <h2 className="m-0 text-sm">Templates and Journals</h2>
+            <div className="mt-2 grid grid-cols-2 gap-1">
+              {(Object.keys(BUILTIN_TEMPLATES) as Array<keyof typeof BUILTIN_TEMPLATES>).map(name => <Button unstyled className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-left text-xs" key={name} onClick={() => { props.onCreateBuiltinTemplate?.(name) }} type="button">{name}</Button>)}
+              <Button unstyled className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-left text-xs" disabled={snapshot.documentKind !== 'markdown' || snapshot.mode === 'reading'} onClick={() => { props.onInsertCurrentDateTime?.('date') }} type="button">Insert Current Date</Button>
+              <Button unstyled className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-left text-xs" disabled={snapshot.documentKind !== 'markdown' || snapshot.mode === 'reading'} onClick={() => { props.onInsertCurrentDateTime?.('time') }} type="button">Insert Current Time</Button>
+            </div>
+          </section>
           <section aria-label="Capture Organization" className="border-t border-[var(--tt-border)] p-3">
             <div className="flex items-center justify-between gap-2">
               <h2 className="m-0 text-sm">Capture Organization</h2>
@@ -3447,12 +3482,14 @@ export function TockTutorRoute(props: TockTutorRouteProps): ReactNode {
         onCloseSearch={() => { controller.closeSearch() }}
         onCloseTab={(paneId, path) => { void controller.closeTab(paneId, path) }}
         onConvertActiveNote={() => { controller.convertActiveNote() }}
+        onCreateBuiltinTemplate={name => { void controller.createBuiltinTemplateNote(name) }}
         onCreateManagedVault={name => { void controller.createManagedVault(name) }}
         onEdit={source => { controller.edit(source) }}
         onEditorCommand={command => { controller.runEditorCommand(command) }}
         onExtractSelection={() => { void controller.extractActiveSelection() }}
         onFocusPane={paneId => { void controller.focusPane(paneId) }}
         onForward={() => { void controller.goForward() }}
+        onInsertCurrentDateTime={kind => { controller.insertCurrentDateTime(kind) }}
         onJumpToLine={line => { controller.jumpToLine(line) }}
         onLoadGraph={mode => { void controller.loadGraph(mode) }}
         onLoadWorkspace={id => { void controller.loadWorkspace(id) }}

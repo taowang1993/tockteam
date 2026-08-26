@@ -31,6 +31,7 @@ var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: tru
 // src/client.ts
 var client_exports = {};
 __export(client_exports, {
+  BUILTIN_TEMPLATES: () => BUILTIN_TEMPLATES,
   CANVAS_DEFAULT_TEXT_CARD_SIZE: () => CANVAS_DEFAULT_TEXT_CARD_SIZE,
   CANVAS_GRID_SIZE: () => CANVAS_GRID_SIZE,
   CanvasBoard: () => CanvasBoard,
@@ -28361,6 +28362,12 @@ function layoutGraph(graph, options) {
 
 // src/capture.ts
 var MAX_TEMPLATE_BYTES = 1e6;
+var BUILTIN_TEMPLATES = Object.freeze({
+  "Cornell Notes": "# {{title}}\n\n## Cues\n\n## Notes\n\n## Summary\n",
+  "Lesson Plan": "# {{title}}\n\n## Objectives\n\n## Activities\n\n## Assessment\n",
+  "One-Pager": "# {{title}}\n\n## Big Idea\n\n## Evidence\n\n## Reflection\n",
+  "Reading Log": "# {{title}}\n\nDate: {{date}}\n\n## Notes\n\n## Response\n"
+});
 function pad2(value, length = 2) {
   return String(value).padStart(length, "0");
 }
@@ -30562,6 +30569,29 @@ var WorkbenchRouteController = class {
       return false;
     }
   }
+  async createBuiltinTemplateNote(name2) {
+    const vault = this.snapshot.vault;
+    if (vault === null) return false;
+    const path = `${this.snapshot.settings?.templateFolder ?? "Templates"}/${name2}.md`;
+    try {
+      const content = expandTemplate(BUILTIN_TEMPLATES[name2], { now: this.now(), title: name2 });
+      const created = remoteValue(await this.remote.tocktutorWorkbench.createDocument({ content, expectedVault: vault, path }));
+      if (created.status !== "created" || created.path !== path || created.generation !== vault.generation) return false;
+      await this.refreshTree(vault);
+      return await this.select(path);
+    } catch {
+      return false;
+    }
+  }
+  insertCurrentDateTime(kind2) {
+    if (this.snapshot.path === null || this.snapshot.documentKind !== "markdown" || this.snapshot.mode === "reading") return false;
+    const start = this.snapshot.selectionStart ?? this.snapshot.source.length;
+    const end = this.snapshot.selectionEnd ?? start;
+    const value = expandTemplate(kind2 === "date" ? "{{date}}" : "{{time}}", { now: this.now(), title: noteTitle(this.snapshot.path) });
+    this.edit(`${this.snapshot.source.slice(0, start)}${value}${this.snapshot.source.slice(end)}`);
+    this.setSelection(start + value.length, start + value.length);
+    return true;
+  }
   async prepareOrganization() {
     const path = this.snapshot.path;
     if (path === null || !/^Inbox\/.+\.md$/iu.test(path)) return false;
@@ -31904,6 +31934,20 @@ function TockTutorRouteView(props) {
                         /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs", disabled: snapshot.documentKind !== "markdown" || snapshot.mode === "reading", onClick: props.onConvertActiveNote, type: "button", children: "Convert Formats" })
                       ] })
                     ] }),
+                    /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("section", { "aria-label": "Templates and Journals", className: "border-t border-[var(--tt-border)] p-3", children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("h2", { className: "m-0 text-sm", children: "Templates and Journals" }),
+                      /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("div", { className: "mt-2 grid grid-cols-2 gap-1", children: [
+                        Object.keys(BUILTIN_TEMPLATES).map((name2) => /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-left text-xs", onClick: () => {
+                          props.onCreateBuiltinTemplate?.(name2);
+                        }, type: "button", children: name2 }, name2)),
+                        /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-left text-xs", disabled: snapshot.documentKind !== "markdown" || snapshot.mode === "reading", onClick: () => {
+                          props.onInsertCurrentDateTime?.("date");
+                        }, type: "button", children: "Insert Current Date" }),
+                        /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-left text-xs", disabled: snapshot.documentKind !== "markdown" || snapshot.mode === "reading", onClick: () => {
+                          props.onInsertCurrentDateTime?.("time");
+                        }, type: "button", children: "Insert Current Time" })
+                      ] })
+                    ] }),
                     /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("section", { "aria-label": "Capture Organization", className: "border-t border-[var(--tt-border)] p-3", children: [
                       /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("div", { className: "flex items-center justify-between gap-2", children: [
                         /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("h2", { className: "m-0 text-sm", children: "Capture Organization" }),
@@ -32173,6 +32217,9 @@ function TockTutorRoute(props) {
       onConvertActiveNote: () => {
         controller.convertActiveNote();
       },
+      onCreateBuiltinTemplate: (name2) => {
+        void controller.createBuiltinTemplateNote(name2);
+      },
       onCreateManagedVault: (name2) => {
         void controller.createManagedVault(name2);
       },
@@ -32190,6 +32237,9 @@ function TockTutorRoute(props) {
       },
       onForward: () => {
         void controller.goForward();
+      },
+      onInsertCurrentDateTime: (kind2) => {
+        controller.insertCurrentDateTime(kind2);
       },
       onJumpToLine: (line) => {
         controller.jumpToLine(line);
