@@ -35,6 +35,7 @@ test('desktop bundle registers every packaged DSH plugin', () => {
   )
   assert.doesNotMatch(patch, /tockbot-note-vault/)
   assert.doesNotMatch(aggregatePatch, /tockbot-note-vault/)
+  assert.match(patch, /- id: web-runtime\n  config:\n    openBrowser: false\n/)
   assert.equal((patch.match(/id: note-vault-runtime/g) ?? []).length, 1)
   assert.match(patch, /id: note-vault-runtime[\s\S]*stateRoot: null/)
   for (const plugin of BUNDLED_DESKTOP_PLUGINS) {
