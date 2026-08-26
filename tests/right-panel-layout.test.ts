@@ -65,6 +65,7 @@ test('desktop shell rail switches between TockCoder and TockTutor', () => {
   assert.match(workspace, /return <Notebook aria-hidden="true" \/>/)
   assert.match(workspace, /aria-label="Plugins"/)
   assert.match(workspace, /aria-label="Settings"/)
+  assert.match(workspace, /className="mt-auto flex flex-col gap-1 pb-1"/)
   assert.match(workspace, /<Blocks aria-hidden="true" \/>/)
   assert.match(workspace, /<Settings aria-hidden="true" \/>/)
   assert.match(workspace, /document\.querySelector\('\[data-tockteam-marketplace-nav\]'\)/)
@@ -146,6 +147,11 @@ test('desktop titlebar matches Tockbot chrome and stays draggable', () => {
   assert.match(workspace, /rail\.className = '[^']*border-r[^']*border-\[var\(--tockteam-shell-divider\)\]/u)
   assert.match(workspace, /tockteam-window-titlebar[^"\n]+border-b[^"\n]+border-\[var\(--tockteam-shell-divider\)\][^"\n]+bg-\[var\(--tockteam-shell-chrome\)\]/u)
   assert.match(css, /--tockteam-primary-sidebar-width: 280px;/)
+  assert.match(
+    workspace,
+    /document\.documentElement\.style\.setProperty\(\s*'--tockteam-primary-sidebar-width',\s*`\$\{String\(width\)\}px`,?\s*\)/u,
+  )
+  assert.match(workspace, /document\.documentElement\.style\.removeProperty\('--tockteam-primary-sidebar-width'\)/u)
   assert.match(workspace, /className="hidden \[html\[data-tockteam-tocktutor-active='true'\]_&\]:absolute[^"\n]+\]:block" id="tockteam-window-titlebar-slot"/u)
   assert.match(workspace, /tockteam-panel-toolbar[^"\n]+\[html\[data-tockteam-tocktutor-active='true'\]_&\]:hidden/u)
   assert.match(tockTutor, /tocktutor-titlebar absolute top-0/u)

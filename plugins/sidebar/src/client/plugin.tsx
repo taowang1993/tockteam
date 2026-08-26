@@ -355,12 +355,25 @@ function flattenRunningCalls(calls: readonly RunningToolCall[]): RunningToolCall
 }
 
 function installPrimarySidebarAdapter(): () => void {
+  const publishWidth = (width: number): void => {
+    document.documentElement.style.setProperty(
+      '--tockteam-primary-sidebar-width',
+      `${String(width)}px`,
+    )
+  }
   const collapse = (): void => {
-    const frame = document.querySelector<HTMLElement>('#root [data-sidebar-collapsed]')
-    if (frame === null) return
-    const tracks = frame.style.gridTemplateColumns
-    const collapsed = tracks.replace(/^[\d.]+px/u, '0px')
-    if (collapsed !== tracks) frame.style.gridTemplateColumns = collapsed
+    const collapsedFrame = document.querySelector<HTMLElement>('#root [data-sidebar-collapsed]')
+    const handle = document.querySelector<HTMLElement>('#root [data-side="sidebar"]')
+    const frame = collapsedFrame ?? handle?.parentElement
+    if (!(frame instanceof HTMLElement)) return
+    if (collapsedFrame !== null) {
+      const tracks = frame.style.gridTemplateColumns
+      const collapsed = tracks.replace(/^[\d.]+px/u, '0px')
+      if (collapsed !== tracks) frame.style.gridTemplateColumns = collapsed
+      return
+    }
+    const width = frame.children.item(0)?.getBoundingClientRect().width ?? 0
+    if (width > 0) publishWidth(Math.round(width))
   }
   const observer = new MutationObserver(collapse)
   observer.observe(document.getElementById('root') ?? document.body, {
@@ -404,6 +417,7 @@ function installPrimarySidebarAdapter(): () => void {
       }
       frame.style.gridTemplateColumns = `${String(width)}px minmax(0, 1fr) ${String(details)}px`
       target.style.left = `${String(width)}px`
+      publishWidth(width)
       if (sidebarContent instanceof HTMLElement) {
         sidebarContent.style.width = `${String(width)}px`
       }
@@ -458,6 +472,7 @@ function installPrimarySidebarAdapter(): () => void {
     observer.disconnect()
     stopActiveResize()
     document.removeEventListener('pointerdown', beginResize, true)
+    document.documentElement.style.removeProperty('--tockteam-primary-sidebar-width')
   }
 }
 
@@ -1984,7 +1999,7 @@ function DesktopAppRail({
           <TooltipContent side="right">TockTutor</TooltipContent>
         </Tooltip>
         {tockCoderActive && (
-          <div className="mt-auto flex flex-col gap-1">
+          <div className="mt-auto flex flex-col gap-1 pb-1">
             {pluginsAvailable && (
               <Tooltip>
                 <TooltipTrigger asChild>
