@@ -164,7 +164,10 @@ export function parseExecutableBase(source: string): ExecutableBaseParseResult {
         continue
       }
       const displayName = currentProperty !== '' && indent === 4 ? /^displayName:\s*(.+)$/u.exec(trimmed) : null
-      if (displayName !== null && Object.keys(properties).length < MAX_BASE_FIELDS) {
+      if (displayName !== null) {
+        if (Object.keys(properties).length >= MAX_BASE_FIELDS && properties[currentProperty] === undefined) {
+          return unsupported('Base document exceeds the property display-name limit.')
+        }
         properties[currentProperty] = cleanScalar(displayName[1] ?? '')
       }
       continue
@@ -172,9 +175,13 @@ export function parseExecutableBase(source: string): ExecutableBaseParseResult {
 
     if (section === 'formulas') {
       const formula = indent === 2 ? /^([A-Za-z_][\w-]*):\s*(.+)$/u.exec(trimmed) : null
-      if (formula !== null && Object.keys(formulas).length < MAX_EXECUTABLE_BASE_FORMULAS) {
+      if (formula !== null) {
+        const name = formula[1] ?? ''
+        if (Object.keys(formulas).length >= MAX_EXECUTABLE_BASE_FORMULAS && formulas[name] === undefined) {
+          return unsupported('Base document exceeds the formula limit.')
+        }
         const expression = cleanScalar(formula[2] ?? '')
-        if (expression !== '') formulas[formula[1] ?? ''] = expression
+        if (expression !== '') formulas[name] = expression
       }
       continue
     }
@@ -254,6 +261,17 @@ export function parseExecutableBase(source: string): ExecutableBaseParseResult {
           else currentView.sort.push(...inline)
         } else if (raw.trim() !== '') return unsupported(`Base ${key} must be a list.`)
       }
+      continue
+    }
+
+    const summaryAssignment = currentList === 'summaries' && indent >= 6
+      ? /^([\w.-]+):\s*([A-Za-z][\w-]*)$/u.exec(trimmed)
+      : null
+    if (summaryAssignment !== null) {
+      const property = cleanScalar(summaryAssignment[1] ?? '')
+      const name = cleanScalar(summaryAssignment[2] ?? '')
+      currentView.summaries.push({ expression: `${name.toLocaleLowerCase()}(${property})`, label: `${name}(${property})` })
+      if (!boundedList(currentView.summaries.map(summary => summary.expression))) return unsupported('Base view list exceeds its limit.')
       continue
     }
 

@@ -179,13 +179,24 @@ function validateFiles(files: readonly BaseHydratedFile[]): string | null {
   return null
 }
 
-function mutableRows(files: readonly BaseHydratedFile[]): MutableRow[] {
-  return files.map(file => {
+function mutableRows(files: readonly BaseHydratedFile[]): { error: string | null; rows: MutableRow[] } {
+  const rows: MutableRow[] = []
+  for (const file of files) {
     const parsed = parseFrontmatterProperties(file.source)
+    if (parsed.length > MAX_EXECUTABLE_BASE_PROPERTIES) {
+      return { error: `Base note ${JSON.stringify(file.path)} exceeds the property limit.`, rows: [] }
+    }
     const properties: Record<string, PropertyValue> = Object.create(null) as Record<string, PropertyValue>
-    for (const property of parsed.slice(0, MAX_EXECUTABLE_BASE_PROPERTIES)) properties[property.key] = property.value
-    return { file, formulaCache: new Map(), properties, values: Object.create(null) as Record<string, unknown> }
-  })
+    const keys = new Set<string>()
+    for (const property of parsed) {
+      const identity = property.key.toLocaleLowerCase()
+      if (keys.has(identity)) return { error: `Base note ${JSON.stringify(file.path)} contains duplicate properties.`, rows: [] }
+      keys.add(identity)
+      properties[property.key] = property.value
+    }
+    rows.push({ file, formulaCache: new Map(), properties, values: Object.create(null) as Record<string, unknown> })
+  }
+  return { error: null, rows }
 }
 
 function summariesForRows(
@@ -236,7 +247,9 @@ export function queryExecutableBaseView(
 ): ExecutableBaseQueryResult {
   const inputError = validateFiles(files)
   if (inputError !== null) return { rows: [], summaries: [], unsupported: [{ expression: inputError, kind: 'input' }] }
-  const allRows = mutableRows(files)
+  const hydrated = mutableRows(files)
+  if (hydrated.error !== null) return { rows: [], summaries: [], unsupported: [{ expression: hydrated.error, kind: 'input' }] }
+  const allRows = hydrated.rows
   const rowsByPath = new Map(allRows.map(row => [row.file.path, row]))
   const context = formulaContext(rowsByPath, baseFile)
   const unsupported: ExecutableBaseUnsupported[] = []

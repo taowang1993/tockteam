@@ -34,6 +34,7 @@ views:
     limit: 2
     summaries:
       - sum(note.score)
+      note.score: Average
   - type: list
     name: List
     order: [file.name, note.status]
@@ -102,14 +103,14 @@ test('parses and executes the bounded filter, sort, limit, formula, summary, and
   assert.deepEqual(query.unsupported, [])
   assert.deepEqual(query.rows.map(row => row.file.path), ['Beta.md', 'Alpha.md'])
   assert.equal(query.rows[0]?.values['formula.doubled'], 8)
-  assert.deepEqual(query.summaries.map(summary => summary.value), [6])
+  assert.deepEqual(query.summaries.map(summary => summary.value), [6, 3])
 
   const model = createBaseViewModel(parsed, files, 'Ranked', 'alpha')
   assert.equal(model.status, 'ready')
   if (model.status !== 'ready') return
   assert.equal(model.kind, 'table')
   assert.deepEqual(model.rows.map(row => row.path), ['Alpha.md'])
-  assert.deepEqual(model.summaries.map(summary => summary.value), [2])
+  assert.deepEqual(model.summaries.map(summary => summary.value), [2, 2])
 })
 
 test('projects table, list, cards, and bounded map-label models from the same row values', () => {
@@ -191,6 +192,11 @@ test('fails closed for unsupported filters, ambiguous definitions, and invalid h
   if (parsed.status === 'ready') {
     const invalid = queryExecutableBaseView(parsed, parsed.views[0]!, [{ ...files[0]!, revision: 'unsafe' }])
     assert.deepEqual(invalid.unsupported.map(entry => entry.kind), ['input'])
+    const duplicate = queryExecutableBaseView(parsed, parsed.views[0]!, [{
+      ...files[0]!,
+      source: '---\nstatus: one\nStatus: two\n---\n',
+    }])
+    assert.deepEqual(duplicate.unsupported.map(entry => entry.kind), ['input'])
     const excessive = queryExecutableBaseView(parsed, parsed.views[0]!, Array.from({ length: 2_001 }, (_, index) => ({
       path: `Note-${String(index)}.md`,
       revision: revision('d'),
