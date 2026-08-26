@@ -588,6 +588,12 @@ function resolveDependencyManifest(requireFromPackage, dependency) {
     }
     return manifestPath
   } catch (packageJsonError) {
+    for (const searchRoot of requireFromPackage.resolve.paths(dependency) ?? []) {
+      const candidate = join(searchRoot, ...dependency.split('/'), 'package.json')
+      if (!existsSync(candidate)) continue
+      const manifest = JSON.parse(readFileSync(candidate, 'utf8'))
+      if (manifest.name === dependency) return candidate
+    }
     for (const root of [dirname(requireFromPackage.resolve('./package.json')), runtime, dshSource, process.cwd()]) {
       const candidate = installedDependencyManifest(root, dependency)
       if (candidate !== undefined) return candidate
