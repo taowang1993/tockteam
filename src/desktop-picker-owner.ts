@@ -1829,6 +1829,7 @@ export class DesktopPickerOwner {
     const canonical = await this.safeRealpath(this.recoveryRoot)
     const stat = await this.safeLstat(this.recoveryRoot)
     if (
+      canonical === undefined ||
       !pathEqual(canonical, this.recoveryRoot) ||
       stat === undefined ||
       !stat.isDirectory() ||
