@@ -27,7 +27,6 @@ export class TerminalSocket {
   private readonly url: string | undefined
   private socket: WebSocket | undefined
   private status: 'connecting' | 'ready' | 'closed' = 'connecting'
-  private exitProbe = ''
 
   constructor(url?: string) {
     this.url = url
@@ -41,6 +40,7 @@ export class TerminalSocket {
   ): void {
     if (this.socket !== undefined) return
     const socket = new WebSocket(this.url ?? terminalWebSocketUrl(scope))
+    socket.binaryType = 'arraybuffer'
     this.socket = socket
     this.status = 'connecting'
     socket.onopen = () => {
@@ -49,13 +49,21 @@ export class TerminalSocket {
       this.sendControl({ type: 'resize', cols, rows })
     }
     socket.onmessage = (event) => {
-      if (typeof event.data !== 'string') return
-      handlers.onOutput(event.data)
-      this.exitProbe = (this.exitProbe + event.data).slice(-256)
-      const exit = /\[process exited with code (-?\d+)\]/.exec(this.exitProbe)
-      if (exit !== null && this.status !== 'closed') {
+      if (typeof event.data === 'string') {
+        handlers.onOutput(event.data)
+        return
+      }
+      if (!(event.data instanceof ArrayBuffer) || this.status === 'closed') return
+      try {
+        const control: unknown = JSON.parse(new TextDecoder().decode(event.data))
+        if (typeof control !== 'object' || control === null || Array.isArray(control)) return
+        const record = control as Record<string, unknown>
+        if (Object.keys(record).length !== 2 || record.type !== 'tockteam-terminal-exit'
+          || typeof record.code !== 'number' || !Number.isSafeInteger(record.code)) return
         this.status = 'closed'
-        handlers.onExit(Number(exit[1]))
+        handlers.onExit(record.code)
+      } catch {
+        // Binary frames are reserved for trusted Host control messages.
       }
     }
     socket.onclose = () => {

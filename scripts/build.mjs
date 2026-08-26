@@ -5,6 +5,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { build } from 'esbuild'
 import { resolveProductVersion } from '../src/version.ts'
+import { adaptBetterSidebarHost } from './better-sidebar-upstream-adapter.mjs'
 import { buildTailwindCss } from './tailwind.mjs'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
@@ -148,6 +149,21 @@ for (const plugin of pluginPackages) {
     outfile: join(output, 'index.js'),
     platform: 'node',
     format: 'esm',
+    plugins: plugin.directory === 'better-sidebar-runtime'
+      ? [{
+          name: 'tockteam-better-sidebar-adapter',
+          setup(esbuild) {
+            esbuild.onLoad({ filter: /index\.ts$/ }, args => args.path === hostEntry
+              ? {
+                  contents: adaptBetterSidebarHost(readFileSync(hostEntry, 'utf8')),
+                  loader: 'ts',
+                  resolveDir: dirname(hostEntry),
+                  watchFiles: [hostEntry],
+                }
+              : null)
+          },
+        }]
+      : [],
     external: plugin.directory === 'better-sidebar-runtime'
       ? ['@deepseek-ai/*', 'cordis', 'node-pty', 'schemastery', 'ws']
       : [],
