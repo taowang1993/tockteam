@@ -163,6 +163,19 @@ test('stages supported frontmatter edits with exact identity, revision, and roll
   assert.equal(createExecutableBaseFrontmatterEdit({ ...files[0]!, revision: 'stale' }, 'note.status', 'review'), null)
 })
 
+test('applies limit before current-view search and never searches hidden properties', () => {
+  const parsed = parseExecutableBase(`views:\n  - type: table\n    name: Limited\n    order: [file.name, note.status]\n    sort: [note.score desc]\n    limit: 1\n    summaries: [sum(note.score)]\n`)
+  assert.equal(parsed.status, 'ready')
+  if (parsed.status !== 'ready') return
+
+  const limitedOut = createBaseViewModel(parsed, files, 'Limited', 'alpha')
+  assert.equal(limitedOut.status, 'ready')
+  if (limitedOut.status === 'ready') assert.equal(limitedOut.rows.length, 0)
+  const hiddenOut = createBaseViewModel(parsed, files, 'Limited', '4')
+  assert.equal(hiddenOut.status, 'ready')
+  if (hiddenOut.status === 'ready') assert.equal(hiddenOut.rows.length, 0)
+})
+
 test('fails closed for unsupported filters, ambiguous definitions, and invalid hydration identities', () => {
   const unsupportedFilter = parseExecutableBase(`views:\n  - type: table\n    filters: 'fetch("https://example.com")'\n`)
   assert.equal(unsupportedFilter.status, 'ready')
@@ -178,5 +191,11 @@ test('fails closed for unsupported filters, ambiguous definitions, and invalid h
   if (parsed.status === 'ready') {
     const invalid = queryExecutableBaseView(parsed, parsed.views[0]!, [{ ...files[0]!, revision: 'unsafe' }])
     assert.deepEqual(invalid.unsupported.map(entry => entry.kind), ['input'])
+    const excessive = queryExecutableBaseView(parsed, parsed.views[0]!, Array.from({ length: 2_001 }, (_, index) => ({
+      path: `Note-${String(index)}.md`,
+      revision: revision('d'),
+      source: '',
+    })))
+    assert.deepEqual(excessive.unsupported.map(entry => entry.kind), ['input'])
   }
 })

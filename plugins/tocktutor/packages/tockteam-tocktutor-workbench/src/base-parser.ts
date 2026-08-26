@@ -16,7 +16,7 @@ export interface ExecutableBaseSummary {
   label: string
 }
 
-export interface ExecutableBaseView {
+export interface ExecutableBaseViewDefinition {
   coordinates: string | null
   filters: NotesBaseFilterTree[]
   index: number
@@ -34,7 +34,7 @@ export interface ExecutableBaseDocument {
   properties: Readonly<Record<string, string>>
   source: string
   status: 'ready'
-  views: readonly ExecutableBaseView[]
+  views: readonly ExecutableBaseViewDefinition[]
 }
 
 export type ExecutableBaseParseResult =
@@ -122,9 +122,9 @@ export function parseExecutableBase(source: string): ExecutableBaseParseResult {
   const formulas: Record<string, string> = Object.create(null) as Record<string, string>
   const properties: Record<string, string> = Object.create(null) as Record<string, string>
   const filters: NotesBaseFilterTree[] = []
-  const views: ExecutableBaseView[] = []
+  const views: ExecutableBaseViewDefinition[] = []
   let section = ''
-  let currentView: ExecutableBaseView | null = null
+  let currentView: ExecutableBaseViewDefinition | null = null
   let currentList: 'order' | 'sort' | 'summaries' | '' = ''
   let currentProperty = ''
 

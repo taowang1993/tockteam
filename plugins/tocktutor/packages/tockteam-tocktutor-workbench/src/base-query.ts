@@ -9,7 +9,7 @@ import {
 } from './NotesBaseFormula.ts'
 import { evaluateNotesBaseFilterTree } from './NotesBaseFilterTree.ts'
 import { notesBaseValueText } from './NotesBaseFormulaValue.ts'
-import type { ExecutableBaseDocument, ExecutableBaseSummary, ExecutableBaseView } from './base-parser.ts'
+import type { ExecutableBaseDocument, ExecutableBaseSummary, ExecutableBaseViewDefinition } from './base-parser.ts'
 import { parseFrontmatterProperties, type PropertyValue } from './properties.ts'
 
 export const MAX_EXECUTABLE_BASE_FILES = 2_000
@@ -212,7 +212,7 @@ function summariesForRows(
 /** Recompute configured summaries over an already-visible row set. */
 export function summarizeExecutableBaseRows(
   document: ExecutableBaseDocument,
-  view: ExecutableBaseView,
+  view: ExecutableBaseViewDefinition,
   rows: readonly ExecutableBaseRow[],
   baseFile?: NotesBaseFormulaContext['thisFile'],
 ): { summaries: readonly ExecutableBaseSummaryResult[]; unsupported: readonly ExecutableBaseUnsupported[] } {
@@ -230,7 +230,7 @@ export function summarizeExecutableBaseRows(
 /** Execute filters, sorts, limit, displayed formulas, and summaries for one bounded Base view. */
 export function queryExecutableBaseView(
   document: ExecutableBaseDocument,
-  view: ExecutableBaseView,
+  view: ExecutableBaseViewDefinition,
   files: readonly BaseHydratedFile[],
   baseFile?: NotesBaseFormulaContext['thisFile'],
 ): ExecutableBaseQueryResult {

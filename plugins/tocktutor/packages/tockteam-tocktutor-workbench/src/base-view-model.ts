@@ -1,5 +1,5 @@
 import { notesBaseValueText } from './NotesBaseFormulaValue.ts'
-import { MAX_EXECUTABLE_BASE_SEARCH_LENGTH, type ExecutableBaseDocument, type ExecutableBaseView } from './base-parser.ts'
+import { MAX_EXECUTABLE_BASE_SEARCH_LENGTH, type ExecutableBaseDocument, type ExecutableBaseViewDefinition } from './base-parser.ts'
 import {
   queryExecutableBaseView,
   summarizeExecutableBaseRows,
@@ -45,16 +45,16 @@ export type ExecutableBaseViewModel =
       status: 'ready'
       summaries: readonly ExecutableBaseSummaryResult[]
       unsupported: readonly ExecutableBaseUnsupported[]
-      view: ExecutableBaseView
+      view: ExecutableBaseViewDefinition
       views: readonly { kind: ExecutableBaseViewKind; name: string }[]
     }
 
-export function selectExecutableBaseView(document: ExecutableBaseDocument, name?: string | null): ExecutableBaseView {
+export function selectExecutableBaseView(document: ExecutableBaseDocument, name?: string | null): ExecutableBaseViewDefinition {
   const wanted = name?.trim().toLocaleLowerCase()
   return document.views.find(view => view.name.trim().toLocaleLowerCase() === wanted) ?? document.views[0]!
 }
 
-function viewKind(view: ExecutableBaseView): ExecutableBaseViewKind {
+function viewKind(view: ExecutableBaseViewDefinition): ExecutableBaseViewKind {
   return view.type === 'map' ? 'map-label' : view.type
 }
 
@@ -89,7 +89,7 @@ export function parseExecutableBaseCoordinates(value: unknown): { latitude: numb
 
 function modelRows(
   document: ExecutableBaseDocument,
-  view: ExecutableBaseView,
+  view: ExecutableBaseViewDefinition,
   query: ExecutableBaseQueryResult,
 ): ExecutableBaseRowModel[] {
   const columns = view.order.length > 0 ? view.order : ['file.name']
