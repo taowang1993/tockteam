@@ -15,11 +15,23 @@ export interface TockTutorRouteOwnerProps {
   navigate: (path: string, mode?: TockTutorNavigationMode) => void
 }
 
+export const TOCKCODER_ROUTE_PREFIX = '/tockcoder'
 export const TOCKTUTOR_ROUTE_PREFIX = '/tocktutor'
 
+function matchesRoute(pathname: string, prefix: string): boolean {
+  return pathname === prefix || pathname.startsWith(`${prefix}/`)
+}
+
+export function isTockCoderPath(pathname: string): boolean {
+  return matchesRoute(pathname, TOCKCODER_ROUTE_PREFIX)
+}
+
 export function isTockTutorPath(pathname: string): boolean {
-  return pathname === TOCKTUTOR_ROUTE_PREFIX
-    || pathname.startsWith(`${TOCKTUTOR_ROUTE_PREFIX}/`)
+  return matchesRoute(pathname, TOCKTUTOR_ROUTE_PREFIX)
+}
+
+export function canonicalTockTeamPath(pathname: string): string {
+  return pathname === '/' ? TOCKCODER_ROUTE_PREFIX : pathname
 }
 
 export function readTockTutorRouteLocation(): TockTutorRouteLocation {

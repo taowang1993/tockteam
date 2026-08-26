@@ -12,7 +12,7 @@ function sidebarTailwindSource(): string {
     .replaceAll('& ', '')
 }
 
-test('desktop shell rail switches between DeepSeek Harness and TockTutor', () => {
+test('desktop shell rail switches between TockCoder and TockTutor', () => {
   const workspace = readFileSync(
     join(root, 'plugins/sidebar/src/client/plugin.tsx'),
     'utf8',
@@ -52,8 +52,10 @@ test('desktop shell rail switches between DeepSeek Harness and TockTutor', () =>
   assert.doesNotMatch(workspace, /createRoot\(rail\)/)
   assert.match(workspace, /function DesktopAppRail/)
   assert.match(workspace, /<nav className="tockteam-app-rail [^"]+" aria-label="App Navigation">/u)
-  assert.match(workspace, /aria-label="DeepSeek Harness"/)
+  assert.match(workspace, /aria-label="TockCoder"/)
+  assert.doesNotMatch(workspace, /DeepSeek Harness/)
   assert.match(workspace, /aria-label="TockTutor"/)
+  assert.match(workspace, /navigate\(TOCKCODER_ROUTE_PREFIX\)/)
   assert.match(workspace, /<AppRailIcon kind="agent" \/>/)
   assert.match(workspace, /<AppRailIcon kind="notebook" \/>/)
   assert.match(workspace, /return <Notebook aria-hidden="true" \/>/)

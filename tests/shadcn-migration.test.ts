@@ -86,7 +86,7 @@ test('icon-only actions use shared tooltips instead of native titles', () => {
   for (const message of ['side.back', 'workspace.refresh', 'workspace.add', 'workspace.close-review', 'workspace.remove-comment']) {
     assert.match(sidebar, new RegExp(`<TooltipContent>\\{t\\('${message.replace('.', '\\.')}'\\)\\}<\\/TooltipContent>`))
   }
-  for (const label of ['DeepSeek Harness', 'TockTutor']) {
+  for (const label of ['TockCoder', 'TockTutor']) {
     assert.match(sidebar, new RegExp(`<TooltipContent side="right">${label}<\\/TooltipContent>`))
     assert.doesNotMatch(sidebar, new RegExp(`title="${label}"`))
   }

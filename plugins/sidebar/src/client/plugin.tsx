@@ -95,9 +95,12 @@ import {
   type SidebarRuntimePreferences,
 } from './runtime-settings.ts'
 import {
+  canonicalTockTeamPath,
+  isTockCoderPath,
   isTockTutorPath,
   readTockTutorRouteLocation,
   resolveTockTutorNavigation,
+  TOCKCODER_ROUTE_PREFIX,
   TOCKTUTOR_ROUTE_PREFIX,
   TOCKTUTOR_ROUTE_SLOT,
   type TockTutorRouteLocation,
@@ -1829,6 +1832,7 @@ function DesktopAppRail({
   location: TockTutorRouteLocation
   navigate: (path: string) => void
 }): ReactNode {
+  const tockCoderActive = isTockCoderPath(location.pathname)
   const tockTutorActive = isTockTutorPath(location.pathname)
   return (
     <TooltipProvider>
@@ -1837,12 +1841,12 @@ function DesktopAppRail({
           <TooltipTrigger asChild>
             <Button unstyled
               type="button"
-              aria-label="DeepSeek Harness"
-              aria-current={tockTutorActive ? undefined : 'page'}
-              onClick={() => { navigate('/') }}
+              aria-label="TockCoder"
+              aria-current={tockCoderActive ? 'page' : undefined}
+              onClick={() => { navigate(TOCKCODER_ROUTE_PREFIX) }}
             ><AppRailIcon kind="agent" /></Button>
           </TooltipTrigger>
-          <TooltipContent side="right">DeepSeek Harness</TooltipContent>
+          <TooltipContent side="right">TockCoder</TooltipContent>
         </Tooltip>
         <Tooltip>
           <TooltipTrigger asChild>
@@ -1901,6 +1905,12 @@ function TockTutorRouteHost(props: RouteHostProps, routeSlots: RouteSlotsService
     )
     props.actions.setLocation(readTockTutorRouteLocation())
   }, [props.actions])
+  useEffect(() => {
+    const canonicalPath = canonicalTockTeamPath(location.pathname)
+    if (canonicalPath !== location.pathname) {
+      navigate(`${canonicalPath}${location.search}${location.hash}`, 'replace')
+    }
+  }, [location.hash, location.pathname, location.search, navigate])
   useEffect(() => {
     const onPopState = (): void => { props.actions.setLocation(readTockTutorRouteLocation()) }
     window.addEventListener('popstate', onPopState)

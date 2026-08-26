@@ -2,9 +2,12 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
 import {
+  canonicalTockTeamPath,
+  isTockCoderPath,
   isTockTutorPath,
   readTockTutorRouteLocation,
   resolveTockTutorNavigation,
+  TOCKCODER_ROUTE_PREFIX,
   TOCKTUTOR_ROUTE_SLOT,
 } from '../plugins/sidebar/src/client/tocktutor-route.ts'
 
@@ -44,10 +47,21 @@ test('locks the Desktop TockTutor route seat and publishes its package type entr
   assert.equal(packageJson.exports['./client'].default, './dist/client.js')
   assert.ok(packageJson.files.includes('client.d.ts'))
   assert.equal(TOCKTUTOR_ROUTE_SLOT, 'tockteam.tocktutor.route')
+  assert.equal(TOCKCODER_ROUTE_PREFIX, '/tockcoder')
+  assert.equal(isTockCoderPath('/tockcoder'), true)
+  assert.equal(isTockCoderPath('/tockcoder/session/123'), true)
+  assert.equal(isTockCoderPath('/tockcoders'), false)
+  assert.equal(isTockCoderPath('/'), false)
   assert.equal(isTockTutorPath('/tocktutor'), true)
   assert.equal(isTockTutorPath('/tocktutor/notes/Plan.md'), true)
   assert.equal(isTockTutorPath('/tocktutors'), false)
   assert.equal(isTockTutorPath('/'), false)
+})
+
+test('TockTeam routes the legacy root entrance to TockCoder', () => {
+  assert.equal(canonicalTockTeamPath('/'), '/tockcoder')
+  assert.equal(canonicalTockTeamPath('/tockcoder'), '/tockcoder')
+  assert.equal(canonicalTockTeamPath('/tocktutor'), '/tocktutor')
 })
 
 test('TockTutor route synchronizes the trusted native frame without widening IPC', () => {
