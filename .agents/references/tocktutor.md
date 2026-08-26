@@ -271,7 +271,7 @@ pnpm run dist:mac:quick
 pnpm run smoke:app
 ```
 
-TockTutor Desktop behavior that depends on a real Electron window still needs the applicable packed Loader and Desktop smoke path; unit tests and `--dump-config` do not prove native authorization, isolated Web Viewer frames, picker, microphone, attachment ingestion, pop-out, print, export, managed-vault creation, or restart recovery. Use copied disposable user data for destructive cutover proof and stop every Electron/runtime process afterward.
+TockTutor Desktop behavior that depends on a real Electron window still needs the applicable packed Loader and Desktop smoke path; unit tests and `--dump-config` do not prove native authorization, isolated Web Viewer frames, picker, microphone, attachment ingestion, pop-out, print, export, managed-vault creation, or restart recovery. Packaged Desktop preserves Electron's standard `--user-data-dir` switch for copied-profile acceptance; without that explicit switch it retains the compatibility data root. Use copied disposable user data for destructive cutover proof and stop every Electron/runtime process afterward.
 
 ## Change Checklist
 
