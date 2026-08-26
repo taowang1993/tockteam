@@ -642,6 +642,7 @@ function notesSearchResult(
     snippet: string
     matchType?: 'semantic'
   }> = []
+  let citationMatches = 0
   for (const match of raw.matches) {
     if (!plainRecord(match) || typeof match.path !== 'string' || !/\.m(?:d|arkdown)$/iu.test(match.path)) {
       notesFailure('The Notes search returned an invalid bounded result.')
@@ -654,7 +655,9 @@ function notesSearchResult(
     if (typeof match.preview !== 'string' || match.preview.length > NOTES_MAX_PREVIEW_CHARS) {
       notesFailure('The Notes search returned an invalid bounded result.')
     }
-    if (match.line === null || citations.length >= args.limit) continue
+    if (match.line === null) continue
+    citationMatches += 1
+    if (citations.length >= args.limit) continue
     const snippet = boundedNotesText(match.preview, NOTES_MAX_PREVIEW_CHARS).text
     citations.push({
       path,
@@ -667,7 +670,7 @@ function notesSearchResult(
   const omittedFiles = raw.truncationReason === 'file-limit'
     ? raw.warnings.filter(warning => /(?:exceeds the per-file scan limit|could not be opened safely)/iu.test(warning)).length
     : 0
-  const truncated = raw.truncated || raw.matches.length > citations.length || raw.truncationReason !== null
+  const truncated = raw.truncated || citationMatches > citations.length || raw.truncationReason !== null
   return {
     vaultId: expected.id,
     query: redactNotesText(args.query),
