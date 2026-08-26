@@ -27,6 +27,7 @@ import { buildCaptureNote, buildJournalNote, uniqueNotePath } from "./capture.js
 import { buildOrganizationProposal } from "./organize.js";
 import { convertMarkdownFormats, extractSelectionToNote } from "./composer.js";
 import { appendAttachmentMarkdown, attachmentTargetPath } from "./attachments.js";
+import { collectEmbedTargets, resolveNoteEmbedFragment } from "./embeds.js";
 import { createNamedWorkspace, loadTockTutorSettings, loadWorkbenchState, saveTockTutorSettings, saveWorkbenchState, } from "./settings.js";
 import { applyEditorCommand, resolvePlatformEditorCommand, } from "./editor-commands.js";
 import { editorStatusLabel, resolveEditorShortcut, toggleMarkdownTask, } from "./markdown.js";
@@ -138,6 +139,7 @@ function initialSnapshot() {
         dispatchDialog: null,
         documentKind: null,
         draftRecovered: false,
+        embeds: Object.freeze([]),
         entries: Object.freeze([]),
         facets: null,
         focusedPaneId: 'pane-1',
@@ -652,6 +654,7 @@ export class WorkbenchRouteController {
             baseFiles: Object.freeze([]),
             documentKind: null,
             draftRecovered: false,
+            embeds: Object.freeze([]),
             links: null,
             message: 'Select a note from the vault.',
             organizationProposal: null,
@@ -715,6 +718,7 @@ export class WorkbenchRouteController {
             dispatchDialog: null,
             documentKind: null,
             draftRecovered: false,
+            embeds: Object.freeze([]),
             entries: Object.freeze([]),
             facets: null,
             focusedPaneId: 'pane-1',
@@ -1342,8 +1346,12 @@ export class WorkbenchRouteController {
                 this.recordDirty(true);
             if (navigate)
                 this.navigate(routeForPath(path));
-            if (documentKind(path) === 'markdown')
-                void this.loadRelationships();
+            if (documentKind(path) === 'markdown') {
+                void (async () => {
+                    if (await this.loadRelationships())
+                        await this.loadEmbeds();
+                })();
+            }
             else if (documentKind(path) === 'base')
                 void this.hydrateBaseRows(path);
             return true;
@@ -1533,6 +1541,60 @@ export class WorkbenchRouteController {
                 return false;
             this.update({ message: `${proposal.destination} created.`, organizationProposal: null });
             await this.refreshTree(vault);
+            return true;
+        }
+        catch {
+            return false;
+        }
+    }
+    async loadEmbeds() {
+        const vault = this.snapshot.vault;
+        const sourcePath = this.snapshot.path;
+        if (vault === null || sourcePath === null || this.snapshot.documentKind !== 'markdown')
+            return false;
+        let targets;
+        try {
+            targets = collectEmbedTargets(this.snapshot.source);
+        }
+        catch {
+            return false;
+        }
+        if (targets.length === 0) {
+            this.update({ embeds: Object.freeze([]) });
+            return true;
+        }
+        const entries = this.snapshot.entries;
+        const resolved = [];
+        let aggregate = 0;
+        const operation = this.nextOperation();
+        try {
+            for (const target of targets) {
+                const candidates = entries.filter(entry => entry.path === target.path || entry.path.split('/').at(-1)?.toLocaleLowerCase() === target.path.split('/').at(-1)?.toLocaleLowerCase());
+                if (candidates.length !== 1)
+                    continue;
+                const path = candidates[0].path;
+                if (target.kind === 'media') {
+                    const preview = remoteValue(await this.remote.tocktutorWorkbench.previewAttachment(path, vault, operation.signal));
+                    if (!this.current(operation.id, vault) || this.snapshot.path !== sourcePath || preview.path !== path || preview.generation !== vault.generation)
+                        return false;
+                    aggregate += preview.dataBase64.length;
+                    if (aggregate > 64 * 1024 * 1024)
+                        break;
+                    resolved.push({ content: preview.dataBase64, mimeType: preview.mimeType, target: { ...target, path } });
+                }
+                else {
+                    const opened = remoteValue(await this.remote.tocktutorWorkbench.openDocument(path, vault, operation.signal));
+                    if (!this.current(operation.id, vault) || this.snapshot.path !== sourcePath || opened.path !== path || opened.generation !== vault.generation)
+                        return false;
+                    aggregate += opened.content.length;
+                    if (aggregate > 25 * 1024 * 1024)
+                        break;
+                    const content = target.kind === 'note' ? resolveNoteEmbedFragment(opened.content, target.fragment) : opened.content;
+                    if (content !== null)
+                        resolved.push({ content, target: { ...target, path } });
+                }
+            }
+            this.update({ embeds: Object.freeze(resolved.map(embed => Object.freeze({ ...embed, target: Object.freeze({ ...embed.target }) }))) });
             return true;
         }
         catch {
@@ -2015,7 +2077,7 @@ export function TockTutorRouteView(props) {
                                                             const target = snapshot.graphLayout?.find(node => node.path === edge.targetPath);
                                                             return source === undefined || target === undefined ? null : _jsx("line", { stroke: "currentColor", strokeOpacity: "0.35", x1: 200 + source.x / 5, x2: 200 + target.x / 5, y1: 120 + source.y / 5, y2: 120 + target.y / 5 }, `${edge.sourcePath}-${edge.targetPath}-${String(index)}`);
                                                         }), snapshot.graphLayout?.map(node => _jsx("circle", { cx: 200 + node.x / 5, cy: 120 + node.y / 5, fill: node.path === snapshot.graph?.path ? 'var(--tt-accent)' : 'var(--tt-muted)', r: "5", children: _jsx("title", { children: node.path }) }, node.path))] }), _jsx("div", { className: "mt-1 grid max-h-28 gap-1 overflow-auto", children: snapshot.graphLayout?.map(node => _jsx(Button, { unstyled: true, className: "truncate rounded border-0 bg-transparent px-1 py-0.5 text-left text-xs", onClick: () => { props.onSelect(node.path); }, type: "button", children: node.path }, node.path)) })] })) : _jsx("span", { className: "mt-2 block text-xs text-[var(--tt-muted)]", children: "Open Global or Local Graph." })] }), _jsxs("section", { "aria-label": "Bookmarks", className: "border-t border-[var(--tt-border)] p-3", children: [_jsx("h2", { className: "m-0 text-sm", children: "Bookmarks" }), _jsxs("div", { className: "mt-2 grid gap-1", children: [(snapshot.bookmarks ?? []).map(bookmark => (_jsxs("div", { className: "grid grid-cols-[minmax(0,1fr)_auto] gap-1", children: [_jsxs(Button, { unstyled: true, className: "truncate rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-left text-xs", onClick: () => { props.onOpenBookmark?.(bookmark.id); }, type: "button", children: [bookmark.title, " \u00B7 ", bookmark.kind, bookmark.missing === true ? ' · Missing' : ''] }), _jsx(Button, { unstyled: true, "aria-label": `Remove Bookmark ${bookmark.title}`, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs", onClick: () => { props.onRemoveBookmark?.(bookmark.id); }, type: "button", children: "Remove" })] }, bookmark.id))), (snapshot.bookmarks?.length ?? 0) === 0 && _jsx("span", { className: "text-xs text-[var(--tt-muted)]", children: "No bookmarks." })] })] }), _jsxs("section", { "aria-label": "Smart Views and Tags", className: "border-t border-[var(--tt-border)] p-3", children: [_jsx("h2", { className: "m-0 text-sm", children: "Smart Views and Tags" }), _jsx("div", { className: "mt-2 grid grid-cols-2 gap-1", children: ['recent', 'tasks', 'journals', 'favorites', 'collections', 'tags'].map(kind => (_jsx(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-left text-xs", onClick: () => { props.onOpenSmartView?.(kind); }, type: "button", children: kind[0].toLocaleUpperCase() + kind.slice(1) }, kind))) }), (snapshot.facets?.tags.length ?? 0) > 0 && (_jsx("div", { className: "mt-2 grid gap-1", "aria-label": "Tags", children: snapshot.facets?.tags.map(tag => (_jsxs(Button, { unstyled: true, className: "rounded border-0 bg-transparent px-1 py-0.5 text-left text-xs", onClick: () => { props.onSearchChange?.(`tag:${tag.tag}`); props.onRunSearch?.(); }, type: "button", children: ["#", tag.tag, " \u00B7 ", String(tag.count)] }, tag.tag.toLocaleLowerCase()))) }))] }), _jsxs("section", { "aria-label": "Properties", className: "border-t border-[var(--tt-border)] p-3", children: [_jsx("h2", { className: "m-0 text-sm", children: "Properties" }), _jsx("h3", { className: "mt-2 mb-1 text-xs", children: "File" }), _jsxs("div", { className: "grid gap-1", children: [activeProperties.map(property => (_jsxs(Label, { unstyled: true, className: "grid grid-cols-[minmax(80px,.4fr)_minmax(0,1fr)] items-center gap-2 text-xs", children: [_jsxs("span", { className: "truncate", children: [property.key, " \u00B7 ", property.type] }), property.type === 'checkbox' ? (_jsx(Checkbox, { "aria-label": `${property.key} Property`, checked: property.value === true, onCheckedChange: checked => { props.onSetProperty?.(property.key, checked === true); } })) : (_jsx(Input, { unstyled: true, "aria-label": `${property.key} Property`, className: "min-w-0 rounded border border-[var(--tt-border)] bg-transparent p-1", defaultValue: Array.isArray(property.value) ? property.value.join(', ') : String(property.value ?? ''), onBlur: event => { props.onSetProperty?.(property.key, property.type === 'list' ? event.target.value.split(',').map(value => value.trim()).filter(Boolean) : property.type === 'number' && Number.isFinite(Number(event.target.value)) ? Number(event.target.value) : event.target.value); } }))] }, property.key))), activeProperties.length === 0 && _jsx("span", { className: "text-xs text-[var(--tt-muted)]", children: "No file properties." })] }), _jsx("h3", { className: "mt-2 mb-1 text-xs", children: "All" }), _jsx("div", { className: "grid gap-1", children: (snapshot.facets?.properties ?? []).map(property => _jsxs(Button, { unstyled: true, className: "rounded border-0 bg-transparent px-1 py-0.5 text-left text-xs", onClick: () => { props.onSearchChange?.(`[${property.key}]`); props.onRunSearch?.(); }, type: "button", children: [property.key, " \u00B7 ", String(property.count), " \u00B7 ", property.types.join(', ')] }, property.key.toLocaleLowerCase())) })] }), _jsxs("section", { "aria-label": "Note Relationships", className: "border-t border-[var(--tt-border)] p-3", children: [_jsx("h2", { className: "m-0 text-sm", children: "Outline and Relationships" }), _jsx("h3", { className: "mt-2 mb-1 text-xs", children: "Outline" }), _jsxs("div", { className: "grid gap-1", children: [(snapshot.outline?.headings ?? []).map((heading) => (_jsxs(Button, { unstyled: true, className: "rounded border-0 bg-transparent px-1 py-0.5 text-left text-xs", onClick: () => { props.onJumpToLine?.(heading.line); }, type: "button", children: ['·'.repeat(Math.max(1, heading.level)), " ", heading.text] }, `${heading.line}-${heading.selector}`))), (snapshot.outline?.headings.length ?? 0) === 0 && _jsx("span", { className: "text-xs text-[var(--tt-muted)]", children: "No headings." })] }), _jsx("h3", { className: "mt-2 mb-1 text-xs", children: "Footnotes" }), (snapshot.outline?.footnotes ?? []).map(footnote => _jsx(Button, { unstyled: true, className: "block w-full rounded border-0 bg-transparent px-1 py-0.5 text-left text-xs", onClick: () => { props.onJumpToLine?.(footnote.line); }, type: "button", children: footnote.content }, `${footnote.line}-${footnote.ordinal}`)), _jsx("h3", { className: "mt-2 mb-1 text-xs", children: "Backlinks" }), (snapshot.links?.backlinkDetails ?? []).map((link, index) => _jsxs(Button, { unstyled: true, className: "block w-full rounded border-0 bg-transparent px-1 py-0.5 text-left text-xs", onClick: () => { props.onSelect(link.sourcePath); }, type: "button", children: [link.sourcePath, ":", String(link.line)] }, `${link.sourcePath}-${String(link.line)}-${String(index)}`)), _jsx("h3", { className: "mt-2 mb-1 text-xs", children: "Outgoing Links" }), (snapshot.links?.outgoingDetails ?? []).map((link, index) => _jsx(Button, { unstyled: true, className: "block w-full rounded border-0 bg-transparent px-1 py-0.5 text-left text-xs", disabled: link.resolvedPath === null, onClick: () => { if (link.resolvedPath !== null)
-                                                props.onSelect(link.resolvedPath); }, type: "button", children: link.displayText || link.authoredTarget }, `${link.authoredTarget}-${String(link.line)}-${String(index)}`)), (snapshot.links?.unlinkedMentions ?? []).map((mention, index) => _jsxs("span", { className: "block text-xs text-[var(--tt-muted)]", children: ["Mention: ", mention.matchedText] }, `${mention.sourcePath}-${String(mention.line)}-${String(index)}`))] }), _jsxs("section", { "aria-label": "Attachments", className: "border-t border-[var(--tt-border)] p-3", children: [_jsxs("div", { className: "flex items-center justify-between gap-2", children: [_jsx("h2", { className: "m-0 text-sm", children: "Attachments" }), _jsxs(Label, { unstyled: true, className: "cursor-pointer rounded border border-[var(--tt-border)] px-2 py-1 text-xs", children: ["Add Files", _jsx("input", { className: "sr-only", type: "file", accept: "image/*,audio/*,video/*,application/pdf", onChange: event => {
+                                                props.onSelect(link.resolvedPath); }, type: "button", children: link.displayText || link.authoredTarget }, `${link.authoredTarget}-${String(link.line)}-${String(index)}`)), (snapshot.links?.unlinkedMentions ?? []).map((mention, index) => _jsxs("span", { className: "block text-xs text-[var(--tt-muted)]", children: ["Mention: ", mention.matchedText] }, `${mention.sourcePath}-${String(mention.line)}-${String(index)}`))] }), _jsxs("section", { "aria-label": "Resolved Embeds", className: "border-t border-[var(--tt-border)] p-3", children: [_jsx("h2", { className: "m-0 text-sm", children: "Resolved Embeds" }), _jsxs("div", { className: "mt-2 grid gap-2", children: [(snapshot.embeds ?? []).map((embed, index) => (_jsxs("article", { className: "overflow-auto rounded border border-[var(--tt-border)] p-2", children: [_jsxs("strong", { className: "block truncate text-xs", children: [embed.target.path, embed.target.fragment === null ? '' : `#${embed.target.fragment}`] }), embed.target.kind === 'media' && embed.mimeType?.startsWith('image/') && _jsx("img", { alt: embed.target.display ?? embed.target.path, className: "mt-1 max-h-48 max-w-full", src: `data:${embed.mimeType};base64,${embed.content}` }), embed.target.kind === 'media' && embed.mimeType?.startsWith('audio/') && _jsx("audio", { className: "mt-1 w-full", controls: true, src: `data:${embed.mimeType};base64,${embed.content}` }), embed.target.kind === 'media' && embed.mimeType?.startsWith('video/') && _jsx("video", { className: "mt-1 max-h-48 max-w-full", controls: true, src: `data:${embed.mimeType};base64,${embed.content}` }), embed.target.kind === 'media' && embed.mimeType === 'application/pdf' && _jsx("iframe", { className: "mt-1 h-48 w-full", sandbox: "", src: `data:${embed.mimeType};base64,${embed.content}`, title: embed.target.path }), embed.target.kind === 'note' && _jsx("div", { className: "prose text-xs", dangerouslySetInnerHTML: { __html: renderMarkdownHtml(embed.content) } }), embed.target.kind === 'canvas' && _jsx(CanvasBoard, { disabled: true, onChange: () => { }, revision: "embedded", source: embed.content }), embed.target.kind === 'base' && _jsx(ExecutableBaseView, { files: snapshot.baseFiles ?? [], source: embed.content })] }, `${embed.target.path}-${String(index)}`))), (snapshot.embeds?.length ?? 0) === 0 && _jsx("span", { className: "text-xs text-[var(--tt-muted)]", children: "No resolved embeds." })] })] }), _jsxs("section", { "aria-label": "Attachments", className: "border-t border-[var(--tt-border)] p-3", children: [_jsxs("div", { className: "flex items-center justify-between gap-2", children: [_jsx("h2", { className: "m-0 text-sm", children: "Attachments" }), _jsxs(Label, { unstyled: true, className: "cursor-pointer rounded border border-[var(--tt-border)] px-2 py-1 text-xs", children: ["Add Files", _jsx("input", { className: "sr-only", type: "file", accept: "image/*,audio/*,video/*,application/pdf", onChange: event => {
                                                                 const file = event.target.files?.[0];
                                                                 if (file === undefined)
                                                                     return;

@@ -69,6 +69,7 @@ export * from "./capture.js";
 export * from "./organize.js";
 export * from "./composer.js";
 export * from "./attachments.js";
+export * from "./embeds.js";
 export * from "./native-actions.js";
 export * from "./review-panel.js";
 export * from "./route.js";

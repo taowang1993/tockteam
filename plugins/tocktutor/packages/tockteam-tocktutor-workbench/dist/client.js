@@ -45,6 +45,8 @@ __export(client_exports, {
   MAX_CANVAS_LABEL_LENGTH: () => MAX_CANVAS_LABEL_LENGTH,
   MAX_CANVAS_NODES: () => MAX_CANVAS_NODES,
   MAX_EDITOR_COMMAND_SOURCE_BYTES: () => MAX_EDITOR_COMMAND_SOURCE_BYTES,
+  MAX_EMBED_CONTENT_BYTES: () => MAX_EMBED_CONTENT_BYTES,
+  MAX_EMBED_TARGETS: () => MAX_EMBED_TARGETS,
   MAX_EXECUTABLE_BASE_FILES: () => MAX_EXECUTABLE_BASE_FILES,
   MAX_EXECUTABLE_BASE_FILE_BYTES: () => MAX_EXECUTABLE_BASE_FILE_BYTES,
   MAX_EXECUTABLE_BASE_FORMULAS: () => MAX_EXECUTABLE_BASE_FORMULAS,
@@ -92,6 +94,7 @@ __export(client_exports, {
   buildOrganizationProposal: () => buildOrganizationProposal,
   calculateCanvasPointerValue: () => calculateCanvasPointerValue,
   calculateCanvasResizeGeometry: () => calculateCanvasResizeGeometry,
+  collectEmbedTargets: () => collectEmbedTargets,
   compileTockTutorCssSnippet: () => compileTockTutorCssSnippet,
   convertMarkdownFormats: () => convertMarkdownFormats,
   createBaseViewModel: () => createBaseViewModel,
@@ -152,6 +155,7 @@ __export(client_exports, {
   renamePropertiesRecoverably: () => renamePropertiesRecoverably,
   renderMarkdownHtml: () => renderMarkdownHtml,
   replaceLivePreviewLine: () => replaceLivePreviewLine,
+  resolveNoteEmbedFragment: () => resolveNoteEmbedFragment,
   resolvePlatformEditorCommand: () => resolvePlatformEditorCommand,
   resolveSlashCommand: () => resolveSlashCommand,
   saveBookmarks: () => saveBookmarks,
@@ -26184,8 +26188,8 @@ function resultCount(count3) {
 function cellKey(view, path, column) {
   return `${view}\0${path}\0${String(column)}`;
 }
-function readableKind(kind) {
-  return kind === "map-label" ? "Map Labels" : `${kind.slice(0, 1).toUpperCase()}${kind.slice(1)}`;
+function readableKind(kind2) {
+  return kind2 === "map-label" ? "Map Labels" : `${kind2.slice(0, 1).toUpperCase()}${kind2.slice(1)}`;
 }
 function SummaryList(props) {
   if (props.model.summaries.length === 0) return null;
@@ -26444,11 +26448,11 @@ var import_react6 = require("react");
 function isRecord(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
-function assertUniqueEntries(entries, kind) {
+function assertUniqueEntries(entries, kind2) {
   const ids = /* @__PURE__ */ new Set();
   for (const entry of entries) {
     if (!isRecord(entry) || typeof entry.id !== "string") continue;
-    if (ids.has(entry.id)) throw new Error(`This .canvas file contains duplicate Canvas ${kind} ids.`);
+    if (ids.has(entry.id)) throw new Error(`This .canvas file contains duplicate Canvas ${kind2} ids.`);
     ids.add(entry.id);
   }
 }
@@ -28333,9 +28337,9 @@ ${source.replace(/^\s+/u, "")}`;
   const separator = source === "" || /(?:\r\n|[\r\n]){2}$/u.test(source) ? "" : /(?:\r\n|[\r\n])$/u.test(source) ? "\n" : "\n\n";
   return `${source}${separator}${block.replace(/^\s+/u, "")}`;
 }
-function link(path, label, kind) {
-  if (kind === "none") return "";
-  if (kind === "embed") return `![[${path}]]`;
+function link(path, label, kind2) {
+  if (kind2 === "none") return "";
+  if (kind2 === "embed") return `![[${path}]]`;
   return `[[${path}|${label.replace(/[\[\]|\r\n]/gu, " ").trim().slice(0, 200) || path}]]`;
 }
 function extractSelectionToNote(input) {
@@ -28428,6 +28432,97 @@ function appendAttachmentMarkdown(source, markdown) {
   if (block === "") return source;
   const separator = source === "" ? "" : /(?:\r\n|[\r\n]){2}$/u.test(source) ? "" : /(?:\r\n|[\r\n])$/u.test(source) ? "\n" : "\n\n";
   return `${source}${separator}${block}
+`;
+}
+
+// src/embeds.ts
+var MAX_EMBED_TARGETS = 100;
+var MAX_EMBED_CONTENT_BYTES = 2e6;
+function kind(path) {
+  if (/\.canvas$/iu.test(path)) return "canvas";
+  if (/\.base$/iu.test(path)) return "base";
+  if (/\.(?:avif|bmp|gif|ico|jpe?g|png|webp|mp3|m4a|ogg|wav|webm|mp4|mov|pdf)$/iu.test(path)) return "media";
+  if (/\.(?:markdown|md)$/iu.test(path) || !/\.[^/]+$/u.test(path)) return "note";
+  return null;
+}
+function codeSpans(line) {
+  const ranges2 = [];
+  for (const match of line.matchAll(/(`+)([^`]*?)\1/gu)) {
+    if (match.index !== void 0) ranges2.push([match.index, match.index + match[0].length]);
+  }
+  return ranges2;
+}
+function collectEmbedTargets(source) {
+  if (new TextEncoder().encode(source).byteLength > MAX_EMBED_CONTENT_BYTES) throw new Error("Embed source exceeds the content limit.");
+  const targets = [];
+  const lines = source.split(/\r?\n/u);
+  let fence2 = null;
+  for (const line of lines) {
+    const marker = line.match(/^ {0,3}(`{3,}|~{3,})/u)?.[1];
+    if (marker !== void 0) {
+      if (fence2 === null) fence2 = { character: marker[0], length: marker.length };
+      else if (marker[0] === fence2.character && marker.length >= fence2.length && /^ {0,3}(?:`{3,}|~{3,})\s*$/u.test(line)) fence2 = null;
+      continue;
+    }
+    if (fence2 !== null) continue;
+    const code = codeSpans(line);
+    for (const match of line.matchAll(/!\[\[([^\]\r\n]{1,4096})\]\]/gu)) {
+      if (match.index === void 0 || code.some(([start, end]) => match.index >= start && match.index < end)) continue;
+      let slashes = 0;
+      for (let index2 = match.index - 1; index2 >= 0 && line[index2] === "\\"; index2 -= 1) slashes += 1;
+      if (slashes % 2 === 1) continue;
+      const [rawTarget, displayPart] = match[1].split("|", 2);
+      const targetPart = rawTarget ?? "";
+      const hash3 = targetPart.indexOf("#");
+      const path = (hash3 < 0 ? targetPart : targetPart.slice(0, hash3)).trim();
+      const fragment = hash3 < 0 ? null : targetPart.slice(hash3 + 1).trim() || null;
+      const targetKind = kind(path);
+      const normalizedPath = targetKind === "note" && !/\.(?:markdown|md)$/iu.test(path) ? `${path}.md` : path;
+      if (targetKind === null || !isSafeVaultRelativePath(normalizedPath)) continue;
+      targets.push({
+        display: displayPart?.trim() || null,
+        fragment,
+        kind: targetKind,
+        path: normalizedPath,
+        source: match[0]
+      });
+      if (targets.length > MAX_EMBED_TARGETS) throw new Error("Embed target limit exceeded.");
+    }
+  }
+  return targets;
+}
+function withoutFrontmatter(source) {
+  if (!source.startsWith("---\n") && !source.startsWith("---\r\n")) return source;
+  const lines = source.split(/\r?\n/u);
+  const end = lines.findIndex((line, index2) => index2 > 0 && (line === "---" || line === "..."));
+  return end < 0 ? source : lines.slice(end + 1).join("\n");
+}
+function resolveNoteEmbedFragment(source, fragment) {
+  if (new TextEncoder().encode(source).byteLength > MAX_EMBED_CONTENT_BYTES) return null;
+  const body = withoutFrontmatter(source);
+  if (fragment === null) return body;
+  if (fragment.startsWith("^")) {
+    const id = fragment.slice(1);
+    if (!/^[A-Za-z0-9-]{1,200}$/u.test(id)) return null;
+    const lines2 = body.split(/\r?\n/u);
+    const index3 = lines2.findIndex((line) => new RegExp(`(?:^|\\s)\\^${id}\\s*$`, "u").test(line));
+    return index3 < 0 ? null : `${lines2[index3].replace(new RegExp(`\\s*\\^${id}\\s*$`, "u"), "")}
+`;
+  }
+  const escaped = fragment.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
+  const lines = body.split(/\r?\n/u);
+  const index2 = lines.findIndex((line) => new RegExp(`^ {0,3}#{1,6}\\s+${escaped}\\s*#*\\s*$`, "iu").test(line));
+  if (index2 < 0) return null;
+  const level = lines[index2].match(/^ {0,3}(#{1,6})/u)[1].length;
+  let end = lines.length;
+  for (let cursor = index2 + 1; cursor < lines.length; cursor += 1) {
+    const next = lines[cursor].match(/^ {0,3}(#{1,6})\s+/u);
+    if (next !== null && next[1].length <= level) {
+      end = cursor;
+      break;
+    }
+  }
+  return `${lines.slice(index2, end).join("\n").replace(/\n+$/u, "")}
 `;
 }
 
@@ -28956,6 +29051,7 @@ function initialSnapshot() {
     dispatchDialog: null,
     documentKind: null,
     draftRecovered: false,
+    embeds: Object.freeze([]),
     entries: Object.freeze([]),
     facets: null,
     focusedPaneId: "pane-1",
@@ -29132,11 +29228,11 @@ var WorkbenchRouteController = class {
       return this.dispatchCurrent(revision, vault) ? "failed" : "stale";
     }
   }
-  openDispatchDialog(kind, operationId, revision, vault) {
+  openDispatchDialog(kind2, operationId, revision, vault) {
     this.settlePendingDispatch("stale");
-    this.update({ dispatchDialog: kind });
+    this.update({ dispatchDialog: kind2 });
     return new Promise((resolve) => {
-      this.pendingDispatch = { kind, operationId, resolve, revision, submitting: false, vault };
+      this.pendingDispatch = { kind: kind2, operationId, resolve, revision, submitting: false, vault };
     });
   }
   async submitDispatchDialog(draft) {
@@ -29267,15 +29363,15 @@ var WorkbenchRouteController = class {
       return false;
     }
   }
-  async openSmartView(kind) {
+  async openSmartView(kind2) {
     this.openSearch("");
-    if (kind === "recent") {
+    if (kind2 === "recent") {
       const matches = this.snapshot.entries.filter((entry) => entry.kind === "document" && /\.(?:markdown|md)$/iu.test(entry.path)).toSorted((left, right) => right.modifiedAt - left.modifiedAt || left.path.localeCompare(right.path)).slice(0, 100).map((entry) => ({ kind: "path", line: null, path: entry.path, preview: "Recently modified note." }));
       this.update({ searchMatches: Object.freeze(matches) });
       return true;
     }
-    if (kind === "tags") return await this.loadFacets();
-    const query = kind === "tasks" ? "task:todo" : kind === "journals" ? "path:Journals" : kind === "favorites" ? "[favorite:true]" : "[kind:collection]";
+    if (kind2 === "tags") return await this.loadFacets();
+    const query = kind2 === "tasks" ? "task:todo" : kind2 === "journals" ? "path:Journals" : kind2 === "favorites" ? "[favorite:true]" : "[kind:collection]";
     this.setSearchQuery(query);
     this.setSearchMode("query");
     return await this.runSearch();
@@ -29425,6 +29521,7 @@ var WorkbenchRouteController = class {
       baseFiles: Object.freeze([]),
       documentKind: null,
       draftRecovered: false,
+      embeds: Object.freeze([]),
       links: null,
       message: "Select a note from the vault.",
       organizationProposal: null,
@@ -29488,6 +29585,7 @@ var WorkbenchRouteController = class {
       dispatchDialog: null,
       documentKind: null,
       draftRecovered: false,
+      embeds: Object.freeze([]),
       entries: Object.freeze([]),
       facets: null,
       focusedPaneId: "pane-1",
@@ -30037,8 +30135,11 @@ var WorkbenchRouteController = class {
       this.recordOpen(path, recordHistory, previousPath);
       if (draftRecovered) this.recordDirty(true);
       if (navigate) this.navigate(routeForPath(path));
-      if (documentKind(path) === "markdown") void this.loadRelationships();
-      else if (documentKind(path) === "base") void this.hydrateBaseRows(path);
+      if (documentKind(path) === "markdown") {
+        void (async () => {
+          if (await this.loadRelationships()) await this.loadEmbeds();
+        })();
+      } else if (documentKind(path) === "base") void this.hydrateBaseRows(path);
       return true;
     } catch (error51) {
       if (this.current(operation.id, vault) && !operation.signal.aborted) {
@@ -30206,6 +30307,50 @@ var WorkbenchRouteController = class {
       if (created.status !== "created" || created.generation !== vault.generation || created.path !== proposal.destination) return false;
       this.update({ message: `${proposal.destination} created.`, organizationProposal: null });
       await this.refreshTree(vault);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  async loadEmbeds() {
+    const vault = this.snapshot.vault;
+    const sourcePath = this.snapshot.path;
+    if (vault === null || sourcePath === null || this.snapshot.documentKind !== "markdown") return false;
+    let targets;
+    try {
+      targets = collectEmbedTargets(this.snapshot.source);
+    } catch {
+      return false;
+    }
+    if (targets.length === 0) {
+      this.update({ embeds: Object.freeze([]) });
+      return true;
+    }
+    const entries = this.snapshot.entries;
+    const resolved = [];
+    let aggregate = 0;
+    const operation = this.nextOperation();
+    try {
+      for (const target of targets) {
+        const candidates = entries.filter((entry) => entry.path === target.path || entry.path.split("/").at(-1)?.toLocaleLowerCase() === target.path.split("/").at(-1)?.toLocaleLowerCase());
+        if (candidates.length !== 1) continue;
+        const path = candidates[0].path;
+        if (target.kind === "media") {
+          const preview = remoteValue(await this.remote.tocktutorWorkbench.previewAttachment(path, vault, operation.signal));
+          if (!this.current(operation.id, vault) || this.snapshot.path !== sourcePath || preview.path !== path || preview.generation !== vault.generation) return false;
+          aggregate += preview.dataBase64.length;
+          if (aggregate > 64 * 1024 * 1024) break;
+          resolved.push({ content: preview.dataBase64, mimeType: preview.mimeType, target: { ...target, path } });
+        } else {
+          const opened = remoteValue(await this.remote.tocktutorWorkbench.openDocument(path, vault, operation.signal));
+          if (!this.current(operation.id, vault) || this.snapshot.path !== sourcePath || opened.path !== path || opened.generation !== vault.generation) return false;
+          aggregate += opened.content.length;
+          if (aggregate > 25 * 1024 * 1024) break;
+          const content = target.kind === "note" ? resolveNoteEmbedFragment(opened.content, target.fragment) : opened.content;
+          if (content !== null) resolved.push({ content, target: { ...target, path } });
+        }
+      }
+      this.update({ embeds: Object.freeze(resolved.map((embed) => Object.freeze({ ...embed, target: Object.freeze({ ...embed.target }) }))) });
       return true;
     } catch {
       return false;
@@ -30618,8 +30763,8 @@ var WORKBENCH_GLYPHS = {
   pencil: Pencil,
   search: Search
 };
-function WorkbenchGlyph({ kind }) {
-  const Glyph = WORKBENCH_GLYPHS[kind];
+function WorkbenchGlyph({ kind: kind2 }) {
+  const Glyph = WORKBENCH_GLYPHS[kind2];
   return /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Glyph, { "aria-hidden": "true" });
 }
 function fileName2(path) {
@@ -31304,9 +31449,9 @@ function TockTutorRouteView(props) {
                     ] }),
                     /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("section", { "aria-label": "Smart Views and Tags", className: "border-t border-[var(--tt-border)] p-3", children: [
                       /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("h2", { className: "m-0 text-sm", children: "Smart Views and Tags" }),
-                      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("div", { className: "mt-2 grid grid-cols-2 gap-1", children: ["recent", "tasks", "journals", "favorites", "collections", "tags"].map((kind) => /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-left text-xs", onClick: () => {
-                        props.onOpenSmartView?.(kind);
-                      }, type: "button", children: kind[0].toLocaleUpperCase() + kind.slice(1) }, kind)) }),
+                      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("div", { className: "mt-2 grid grid-cols-2 gap-1", children: ["recent", "tasks", "journals", "favorites", "collections", "tags"].map((kind2) => /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-left text-xs", onClick: () => {
+                        props.onOpenSmartView?.(kind2);
+                      }, type: "button", children: kind2[0].toLocaleUpperCase() + kind2.slice(1) }, kind2)) }),
                       (snapshot.facets?.tags.length ?? 0) > 0 && /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("div", { className: "mt-2 grid gap-1", "aria-label": "Tags", children: snapshot.facets?.tags.map((tag) => /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)(Button, { unstyled: true, className: "rounded border-0 bg-transparent px-1 py-0.5 text-left text-xs", onClick: () => {
                         props.onSearchChange?.(`tag:${tag.tag}`);
                         props.onRunSearch?.();
@@ -31380,6 +31525,26 @@ function TockTutorRouteView(props) {
                         "Mention: ",
                         mention.matchedText
                       ] }, `${mention.sourcePath}-${String(mention.line)}-${String(index2)}`))
+                    ] }),
+                    /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("section", { "aria-label": "Resolved Embeds", className: "border-t border-[var(--tt-border)] p-3", children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("h2", { className: "m-0 text-sm", children: "Resolved Embeds" }),
+                      /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("div", { className: "mt-2 grid gap-2", children: [
+                        (snapshot.embeds ?? []).map((embed, index2) => /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("article", { className: "overflow-auto rounded border border-[var(--tt-border)] p-2", children: [
+                          /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("strong", { className: "block truncate text-xs", children: [
+                            embed.target.path,
+                            embed.target.fragment === null ? "" : `#${embed.target.fragment}`
+                          ] }),
+                          embed.target.kind === "media" && embed.mimeType?.startsWith("image/") && /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("img", { alt: embed.target.display ?? embed.target.path, className: "mt-1 max-h-48 max-w-full", src: `data:${embed.mimeType};base64,${embed.content}` }),
+                          embed.target.kind === "media" && embed.mimeType?.startsWith("audio/") && /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("audio", { className: "mt-1 w-full", controls: true, src: `data:${embed.mimeType};base64,${embed.content}` }),
+                          embed.target.kind === "media" && embed.mimeType?.startsWith("video/") && /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("video", { className: "mt-1 max-h-48 max-w-full", controls: true, src: `data:${embed.mimeType};base64,${embed.content}` }),
+                          embed.target.kind === "media" && embed.mimeType === "application/pdf" && /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("iframe", { className: "mt-1 h-48 w-full", sandbox: "", src: `data:${embed.mimeType};base64,${embed.content}`, title: embed.target.path }),
+                          embed.target.kind === "note" && /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("div", { className: "prose text-xs", dangerouslySetInnerHTML: { __html: renderMarkdownHtml(embed.content) } }),
+                          embed.target.kind === "canvas" && /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(CanvasBoard, { disabled: true, onChange: () => {
+                          }, revision: "embedded", source: embed.content }),
+                          embed.target.kind === "base" && /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(ExecutableBaseView, { files: snapshot.baseFiles ?? [], source: embed.content })
+                        ] }, `${embed.target.path}-${String(index2)}`)),
+                        (snapshot.embeds?.length ?? 0) === 0 && /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("span", { className: "text-xs text-[var(--tt-muted)]", children: "No resolved embeds." })
+                      ] })
                     ] }),
                     /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("section", { "aria-label": "Attachments", className: "border-t border-[var(--tt-border)] p-3", children: [
                       /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("div", { className: "flex items-center justify-between gap-2", children: [
@@ -31713,8 +31878,8 @@ function TockTutorRoute(props) {
       onOpenSearch: () => {
         controller.openSearch("");
       },
-      onOpenSmartView: (kind) => {
-        void controller.openSmartView(kind);
+      onOpenSmartView: (kind2) => {
+        void controller.openSmartView(kind2);
       },
       onPrepareOrganization: () => {
         void controller.prepareOrganization();

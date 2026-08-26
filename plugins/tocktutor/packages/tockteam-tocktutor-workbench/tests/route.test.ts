@@ -1249,6 +1249,18 @@ test('persists bounded settings, tabs, focus mode, and named workspaces per vaul
   second.dispose()
 })
 
+test('resolves note, media, Canvas, and Base embeds under source identity', async () => {
+  const remote = new FakeRemote()
+  const controller = new WorkbenchRouteController(remote, () => {})
+  await controller.syncLocation('/tocktutor')
+  assert.equal(await controller.select('Folder/Note.md'), true)
+  controller.edit('![[Second.md]]\n![[Attachments/existing.png]]\n![[Board.canvas]]\n![[Tasks.base]]\n')
+  assert.equal(await controller.loadEmbeds(), true)
+  assert.deepEqual(controller.getSnapshot().embeds?.map(embed => embed.target.kind), ['note', 'media', 'canvas', 'base'])
+  assert.equal(controller.getSnapshot().embeds?.find(embed => embed.target.kind === 'media')?.content, 'AQID')
+  controller.dispose()
+})
+
 test('stores, embeds, and previews bounded attachments under note identity', async () => {
   const remote = new FakeRemote()
   const controller = new WorkbenchRouteController(remote, () => {})

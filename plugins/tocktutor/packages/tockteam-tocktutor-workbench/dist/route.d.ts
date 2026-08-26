@@ -13,6 +13,7 @@ import { type PropertyValue } from './properties.ts';
 import { type Bookmark as TockTutorBookmark } from './bookmarks.ts';
 import { type GraphPosition } from './graph.ts';
 import { type OrganizationProposal } from './organize.ts';
+import { type EmbedTarget } from './embeds.ts';
 import { type KeyValueStorage, type NamedWorkspace, type TockTutorSettings } from './settings.ts';
 import { type EditorCommandId } from './editor-commands.ts';
 import { type EditorStatus } from './markdown.ts';
@@ -68,6 +69,11 @@ export interface RoutePaneSummary {
     id: string;
     tabs: readonly RouteTabSummary[];
 }
+export interface ResolvedEmbed {
+    content: string;
+    mimeType?: string;
+    target: EmbedTarget;
+}
 export interface WorkbenchRouteSnapshot {
     attachmentPreview?: AttachmentPreviewResult | null;
     baseFiles?: readonly BaseHydratedFile[];
@@ -78,6 +84,7 @@ export interface WorkbenchRouteSnapshot {
     dispatchDialog: 'capture' | 'new' | null;
     documentKind: RouteDocumentKind | null;
     draftRecovered?: boolean;
+    embeds?: readonly ResolvedEmbed[];
     entries: readonly VaultTreeEntry[];
     facets?: VaultFacetsResult | null;
     focusedPaneId: string;
@@ -220,6 +227,7 @@ export declare class WorkbenchRouteController {
     prepareOrganization(): Promise<boolean>;
     cancelOrganization(): void;
     applyOrganization(): Promise<boolean>;
+    loadEmbeds(): Promise<boolean>;
     hydrateBaseRows(basePath: string): Promise<boolean>;
     applyBaseEdit(request: ExecutableBaseFrontmatterEditRequest): Promise<boolean>;
     storeActiveAttachment(fileName: string, dataBase64: string): Promise<boolean>;

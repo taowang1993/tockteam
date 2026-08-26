@@ -47,4 +47,5 @@ export * from "./capture.js";
 export * from "./organize.js";
 export * from "./composer.js";
 export * from "./attachments.js";
+export * from "./embeds.js";
 //# sourceMappingURL=index.js.map

@@ -72,6 +72,7 @@ import { buildCaptureNote, buildJournalNote, uniqueNotePath } from './capture.ts
 import { buildOrganizationProposal, type OrganizationProposal } from './organize.ts'
 import { convertMarkdownFormats, extractSelectionToNote } from './composer.ts'
 import { appendAttachmentMarkdown, attachmentTargetPath } from './attachments.ts'
+import { collectEmbedTargets, resolveNoteEmbedFragment, type EmbedTarget } from './embeds.ts'
 import {
   createNamedWorkspace,
   loadTockTutorSettings,
@@ -228,6 +229,12 @@ export interface RoutePaneSummary {
   tabs: readonly RouteTabSummary[]
 }
 
+export interface ResolvedEmbed {
+  content: string
+  mimeType?: string
+  target: EmbedTarget
+}
+
 export interface WorkbenchRouteSnapshot {
   attachmentPreview?: AttachmentPreviewResult | null
   baseFiles?: readonly BaseHydratedFile[]
@@ -238,6 +245,7 @@ export interface WorkbenchRouteSnapshot {
   dispatchDialog: 'capture' | 'new' | null
   documentKind: RouteDocumentKind | null
   draftRecovered?: boolean
+  embeds?: readonly ResolvedEmbed[]
   entries: readonly VaultTreeEntry[]
   facets?: VaultFacetsResult | null
   focusedPaneId: string
@@ -387,6 +395,7 @@ function initialSnapshot(): WorkbenchRouteSnapshot {
     dispatchDialog: null,
     documentKind: null,
     draftRecovered: false,
+    embeds: Object.freeze([]),
     entries: Object.freeze([]),
     facets: null,
     focusedPaneId: 'pane-1',
@@ -930,6 +939,7 @@ export class WorkbenchRouteController {
       baseFiles: Object.freeze([]),
       documentKind: null,
       draftRecovered: false,
+      embeds: Object.freeze([]),
       links: null,
       message: 'Select a note from the vault.',
       organizationProposal: null,
@@ -999,6 +1009,7 @@ export class WorkbenchRouteController {
       dispatchDialog: null,
       documentKind: null,
       draftRecovered: false,
+      embeds: Object.freeze([]),
       entries: Object.freeze([]),
       facets: null,
       focusedPaneId: 'pane-1',
@@ -1588,8 +1599,11 @@ export class WorkbenchRouteController {
       this.recordOpen(path, recordHistory, previousPath)
       if (draftRecovered) this.recordDirty(true)
       if (navigate) this.navigate(routeForPath(path))
-      if (documentKind(path) === 'markdown') void this.loadRelationships()
-      else if (documentKind(path) === 'base') void this.hydrateBaseRows(path)
+      if (documentKind(path) === 'markdown') {
+        void (async () => {
+          if (await this.loadRelationships()) await this.loadEmbeds()
+        })()
+      } else if (documentKind(path) === 'base') void this.hydrateBaseRows(path)
       return true
     } catch (error) {
       if (this.current(operation.id, vault) && !operation.signal.aborted) {
@@ -1769,6 +1783,47 @@ export class WorkbenchRouteController {
       if (created.status !== 'created' || created.generation !== vault.generation || created.path !== proposal.destination) return false
       this.update({ message: `${proposal.destination} created.`, organizationProposal: null })
       await this.refreshTree(vault)
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  async loadEmbeds(): Promise<boolean> {
+    const vault = this.snapshot.vault
+    const sourcePath = this.snapshot.path
+    if (vault === null || sourcePath === null || this.snapshot.documentKind !== 'markdown') return false
+    let targets: EmbedTarget[]
+    try { targets = collectEmbedTargets(this.snapshot.source) } catch { return false }
+    if (targets.length === 0) {
+      this.update({ embeds: Object.freeze([]) })
+      return true
+    }
+    const entries = this.snapshot.entries
+    const resolved: ResolvedEmbed[] = []
+    let aggregate = 0
+    const operation = this.nextOperation()
+    try {
+      for (const target of targets) {
+        const candidates = entries.filter(entry => entry.path === target.path || entry.path.split('/').at(-1)?.toLocaleLowerCase() === target.path.split('/').at(-1)?.toLocaleLowerCase())
+        if (candidates.length !== 1) continue
+        const path = candidates[0]!.path
+        if (target.kind === 'media') {
+          const preview = remoteValue(await this.remote.tocktutorWorkbench.previewAttachment(path, vault, operation.signal))
+          if (!this.current(operation.id, vault) || this.snapshot.path !== sourcePath || preview.path !== path || preview.generation !== vault.generation) return false
+          aggregate += preview.dataBase64.length
+          if (aggregate > 64 * 1024 * 1024) break
+          resolved.push({ content: preview.dataBase64, mimeType: preview.mimeType, target: { ...target, path } })
+        } else {
+          const opened = remoteValue(await this.remote.tocktutorWorkbench.openDocument(path, vault, operation.signal))
+          if (!this.current(operation.id, vault) || this.snapshot.path !== sourcePath || opened.path !== path || opened.generation !== vault.generation) return false
+          aggregate += opened.content.length
+          if (aggregate > 25 * 1024 * 1024) break
+          const content = target.kind === 'note' ? resolveNoteEmbedFragment(opened.content, target.fragment) : opened.content
+          if (content !== null) resolved.push({ content, target: { ...target, path } })
+        }
+      }
+      this.update({ embeds: Object.freeze(resolved.map(embed => Object.freeze({ ...embed, target: Object.freeze({ ...embed.target }) }))) })
       return true
     } catch {
       return false
@@ -2980,6 +3035,24 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
             <h3 className="mt-2 mb-1 text-xs">Outgoing Links</h3>
             {(snapshot.links?.outgoingDetails ?? []).map((link, index) => <Button unstyled className="block w-full rounded border-0 bg-transparent px-1 py-0.5 text-left text-xs" disabled={link.resolvedPath === null} key={`${link.authoredTarget}-${String(link.line)}-${String(index)}`} onClick={() => { if (link.resolvedPath !== null) props.onSelect(link.resolvedPath) }} type="button">{link.displayText || link.authoredTarget}</Button>)}
             {(snapshot.links?.unlinkedMentions ?? []).map((mention, index) => <span className="block text-xs text-[var(--tt-muted)]" key={`${mention.sourcePath}-${String(mention.line)}-${String(index)}`}>Mention: {mention.matchedText}</span>)}
+          </section>
+          <section aria-label="Resolved Embeds" className="border-t border-[var(--tt-border)] p-3">
+            <h2 className="m-0 text-sm">Resolved Embeds</h2>
+            <div className="mt-2 grid gap-2">
+              {(snapshot.embeds ?? []).map((embed, index) => (
+                <article className="overflow-auto rounded border border-[var(--tt-border)] p-2" key={`${embed.target.path}-${String(index)}`}>
+                  <strong className="block truncate text-xs">{embed.target.path}{embed.target.fragment === null ? '' : `#${embed.target.fragment}`}</strong>
+                  {embed.target.kind === 'media' && embed.mimeType?.startsWith('image/') && <img alt={embed.target.display ?? embed.target.path} className="mt-1 max-h-48 max-w-full" src={`data:${embed.mimeType};base64,${embed.content}`} />}
+                  {embed.target.kind === 'media' && embed.mimeType?.startsWith('audio/') && <audio className="mt-1 w-full" controls src={`data:${embed.mimeType};base64,${embed.content}`} />}
+                  {embed.target.kind === 'media' && embed.mimeType?.startsWith('video/') && <video className="mt-1 max-h-48 max-w-full" controls src={`data:${embed.mimeType};base64,${embed.content}`} />}
+                  {embed.target.kind === 'media' && embed.mimeType === 'application/pdf' && <iframe className="mt-1 h-48 w-full" sandbox="" src={`data:${embed.mimeType};base64,${embed.content}`} title={embed.target.path} />}
+                  {embed.target.kind === 'note' && <div className="prose text-xs" dangerouslySetInnerHTML={{ __html: renderMarkdownHtml(embed.content) }} />}
+                  {embed.target.kind === 'canvas' && <CanvasBoard disabled onChange={() => {}} revision="embedded" source={embed.content} />}
+                  {embed.target.kind === 'base' && <ExecutableBaseView files={snapshot.baseFiles ?? []} source={embed.content} />}
+                </article>
+              ))}
+              {(snapshot.embeds?.length ?? 0) === 0 && <span className="text-xs text-[var(--tt-muted)]">No resolved embeds.</span>}
+            </div>
           </section>
           <section aria-label="Attachments" className="border-t border-[var(--tt-border)] p-3">
             <div className="flex items-center justify-between gap-2">

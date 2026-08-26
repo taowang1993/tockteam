@@ -43,6 +43,7 @@ export * from './capture.ts';
 export * from './organize.ts';
 export * from './composer.ts';
 export * from './attachments.ts';
+export * from './embeds.ts';
 export * from './native-actions.ts';
 export * from './review-panel.ts';
 export * from './route.tsx';
