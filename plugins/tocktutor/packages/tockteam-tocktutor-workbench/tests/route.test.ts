@@ -821,6 +821,24 @@ test('navigates note history and exposes command-palette and focus-mode shell st
   controller.dispose()
 })
 
+test('persists Reading, Live Preview, and Source mode independently per tab', async () => {
+  const remote = new FakeRemote()
+  const controller = new WorkbenchRouteController(remote, () => {})
+  await controller.syncLocation('/tocktutor')
+  assert.equal(await controller.select('Folder/Note.md'), true)
+  controller.setMode('live-preview')
+  assert.equal(controller.getSnapshot().mode, 'live-preview')
+  assert.equal(await controller.select('Second.md'), true)
+  controller.setMode('source')
+  assert.equal(await controller.activateTab('pane-1', 'Folder/Note.md'), true)
+  assert.equal(controller.getSnapshot().mode, 'live-preview')
+  assert.equal(await controller.activateTab('pane-1', 'Second.md'), true)
+  assert.equal(controller.getSnapshot().mode, 'source')
+  controller.setMode('reading')
+  assert.equal(controller.getSnapshot().mode, 'reading')
+  controller.dispose()
+})
+
 test('late note and vault completions cannot replace the active route identity', async () => {
   const remote = new FakeRemote()
   const first = deferred<{ ok: true; value: OpenDocumentResult }>()

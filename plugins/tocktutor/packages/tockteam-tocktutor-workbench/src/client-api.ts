@@ -67,6 +67,7 @@ export async function apply(ctx: Context): Promise<() => Promise<void>> {
 }
 
 export * from './assistant-panel.ts'
+export * from './live-preview.ts'
 export * from './native-actions.ts'
 export * from './review-panel.ts'
 export * from './route.tsx'

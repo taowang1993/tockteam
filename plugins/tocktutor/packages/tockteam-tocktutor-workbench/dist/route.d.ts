@@ -19,7 +19,7 @@ export interface WorkbenchRouteRemote extends NoteVaultEventRemote {
     };
 }
 export type RoutePhase = 'loading' | 'inactive' | 'ready' | 'error';
-export type RouteEditorMode = 'source' | 'reading';
+export type RouteEditorMode = 'source' | 'live-preview' | 'reading';
 export type RouteDocumentKind = 'markdown' | 'canvas' | 'base';
 export interface RouteTabSummary {
     dirty: boolean;

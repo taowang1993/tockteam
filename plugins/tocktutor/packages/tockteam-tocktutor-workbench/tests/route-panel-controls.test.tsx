@@ -33,11 +33,14 @@ function renderRoute(overrides: Partial<WorkbenchRouteSnapshot> = {}, props: {
   onCancelDispatch?(): void
   onCloseCommandPalette?(): void
   onCloseTab?(paneId: string, path: string): void
+  onEdit?(source: string): void
+  onMode?(mode: 'live-preview' | 'reading' | 'source'): void
   onMoveTab?(paneId: string, path: string, direction: -1 | 1): void
   onReopenClosedTab?(): void
   onSubmitDispatch?(draft: { path: string } | { text: string; title: string }): void
   onToggleFocusMode?(): void
   onTogglePinTab?(paneId: string, path: string): void
+  onToggleTask?(index: number): void
 } = {}): void {
   render(<TockTutorRouteView
     onActivateTab={() => {}}
@@ -157,6 +160,30 @@ describe('TockTutor titlebar panel controls', () => {
     fireEvent.click(screen.getByRole('option', { name: 'Toggle Focus Mode' }))
     expect(onToggleFocusMode).toHaveBeenCalledOnce()
     expect(onCloseCommandPalette).toHaveBeenCalledOnce()
+  })
+
+  it('renders editable source-preserving Live Preview chrome', () => {
+    const onEdit = vi.fn()
+    const onMode = vi.fn()
+    const onToggleTask = vi.fn()
+    const source = '# Lesson\n- [ ] Review\n> [!tip]- Fold\n> Body\n'
+    renderRoute({
+      documentKind: 'markdown',
+      mode: 'live-preview',
+      panes: [{ activePath: 'Lesson.md', id: 'main', tabs: [{ dirty: false, mode: 'live-preview', path: 'Lesson.md' }] }],
+      path: 'Lesson.md',
+      phase: 'ready',
+      source,
+    }, { onEdit, onMode, onToggleTask })
+
+    expect(screen.getByRole('button', { name: 'Live Preview' }).getAttribute('aria-pressed')).toBe('true')
+    fireEvent.click(screen.getByRole('button', { name: 'Source' }))
+    expect(onMode).toHaveBeenCalledWith('source')
+    fireEvent.click(screen.getByRole('checkbox', { name: /Mark Task on Line 2 as Complete/u }))
+    expect(onToggleTask).toHaveBeenCalledWith(0)
+    fireEvent.change(screen.getByLabelText('Live Preview Line 1'), { target: { value: '# Updated' } })
+    expect(onEdit).toHaveBeenCalledWith('# Updated\n- [ ] Review\n> [!tip]- Fold\n> Body\n')
+    expect(screen.getByRole('button', { name: 'Expand Line 3' })).toBeTruthy()
   })
 
   it('renders and submits the shadcn New Note dialog', () => {

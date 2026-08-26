@@ -11,4 +11,5 @@ export * from './session.ts';
 export * from './canvas.ts';
 export * from './base.ts';
 export * from './markdown.ts';
+export * from './live-preview.ts';
 //# sourceMappingURL=index.d.ts.map

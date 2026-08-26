@@ -31,6 +31,8 @@ var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: tru
 // src/client.ts
 var client_exports = {};
 __export(client_exports, {
+  MAX_LIVE_PREVIEW_LINE_BYTES: () => MAX_LIVE_PREVIEW_LINE_BYTES,
+  MAX_LIVE_PREVIEW_SOURCE_BYTES: () => MAX_LIVE_PREVIEW_SOURCE_BYTES,
   MAX_ROUTE_SOURCE_BYTES: () => MAX_ROUTE_SOURCE_BYTES,
   TOCKTUTOR_ASSISTANT_PANEL_SLOT: () => TOCKTUTOR_ASSISTANT_PANEL_SLOT,
   TOCKTUTOR_NATIVE_ACTIONS_SLOT: () => TOCKTUTOR_NATIVE_ACTIONS_SLOT,
@@ -43,6 +45,8 @@ __export(client_exports, {
   isNoteVaultChangeEvent: () => isNoteVaultChangeEvent,
   name: () => name,
   pathFromTockTutorLocation: () => pathFromTockTutorLocation,
+  projectLivePreview: () => projectLivePreview,
+  replaceLivePreviewLine: () => replaceLivePreviewLine,
   subscribeNoteVaultChanges: () => subscribeNoteVaultChanges
 });
 module.exports = __toCommonJS(client_exports);
@@ -21455,6 +21459,150 @@ function updateCanvasNodePosition(content, nodeId, x, y) {
 `;
 }
 
+// src/live-preview.ts
+var MAX_LIVE_PREVIEW_SOURCE_BYTES = 2e6;
+var MAX_LIVE_PREVIEW_LINE_BYTES = 1e5;
+function sourceLines(source) {
+  if (source.length === 0) return [{ content: "", end: 0, index: 0, separator: "", start: 0 }];
+  const lines = [];
+  let start = 0;
+  while (start < source.length) {
+    let end = start;
+    while (end < source.length && source[end] !== "\n" && source[end] !== "\r") end += 1;
+    const separator = source.startsWith("\r\n", end) ? "\r\n" : source[end] === "\n" || source[end] === "\r" ? source[end] : "";
+    lines.push({ content: source.slice(start, end), end: end + separator.length, index: lines.length, separator, start });
+    start = end + separator.length;
+  }
+  if (/(?:\r\n|[\n\r])$/u.test(source)) {
+    lines.push({ content: "", end: source.length, index: lines.length, separator: "", start: source.length });
+  }
+  return lines;
+}
+function byteLength2(value) {
+  return new TextEncoder().encode(value).byteLength;
+}
+function fenceMarker(content) {
+  const match = content.match(/^ {0,3}(`{3,}|~{3,})/u);
+  if (match === null) return null;
+  const marker = match[1];
+  return { character: marker[0], length: marker.length };
+}
+function heading(content) {
+  const match = content.match(/^ {0,3}(#{1,6})(?:\s+|$)/u);
+  return match?.[1]?.length ?? null;
+}
+function listIndent(content) {
+  const match = content.match(/^(\s*)(?:[-+*]|\d{1,9}[.)])\s+/u);
+  return match === null ? null : match[1].replaceAll("	", "    ").length;
+}
+function projectLivePreview(source) {
+  if (byteLength2(source) > MAX_LIVE_PREVIEW_SOURCE_BYTES) {
+    return { reason: "The Markdown source exceeds the Live Preview limit.", status: "unsupported" };
+  }
+  const raw = sourceLines(source);
+  const projected = [];
+  const frontmatterEnd = raw[0]?.content === "---" ? raw.findIndex((line, index2) => index2 > 0 && (line.content === "---" || line.content === "...")) : -1;
+  let openFence = null;
+  let inComment = false;
+  let taskIndex = 0;
+  for (const line of raw) {
+    const content = line.content;
+    if (openFence !== null) {
+      projected.push({ content, index: line.index, kind: "code" });
+      const close = content.match(/^ {0,3}(`+|~+)\s*$/u)?.[1];
+      if (close !== void 0 && close[0] === openFence.character && close.length >= openFence.length) openFence = null;
+      continue;
+    }
+    const opener = fenceMarker(content);
+    if (opener !== null) {
+      openFence = opener;
+      projected.push({ content, index: line.index, kind: "code" });
+      continue;
+    }
+    if (line.index <= frontmatterEnd) {
+      const property = line.index > 0 && line.index < frontmatterEnd && /^[A-Za-z_][A-Za-z0-9_-]{0,127}\s*:/u.test(content);
+      projected.push({ content, index: line.index, kind: property ? "property" : content === "" ? "blank" : "text" });
+      continue;
+    }
+    const commentMarkerCount = content.split("%%").length - 1;
+    if (inComment || commentMarkerCount > 0) {
+      projected.push({ content, index: line.index, kind: "comment" });
+      if (commentMarkerCount % 2 === 1) inComment = !inComment;
+      continue;
+    }
+    const task = content.match(/^\s{0,64}(?:[-+*]|\d{1,9}[.)])\s+\[([^\]])\]\s*(.*)$/u);
+    if (task !== null) {
+      projected.push({
+        checked: task[1] !== " ",
+        content,
+        index: line.index,
+        kind: "task",
+        taskIndex
+      });
+      taskIndex += 1;
+      continue;
+    }
+    const callout = content.match(/^>\s*\[!([A-Za-z0-9_-]+)\]([+-])?(?:\s+.*)?$/u);
+    if (callout !== null) {
+      projected.push({
+        content,
+        folded: callout[2] === "-",
+        index: line.index,
+        kind: "callout"
+      });
+      continue;
+    }
+    const level = heading(content);
+    if (level !== null) {
+      projected.push({ content, headingLevel: level, index: line.index, kind: "heading" });
+      continue;
+    }
+    if (listIndent(content) !== null) {
+      projected.push({ content, index: line.index, kind: "list" });
+      continue;
+    }
+    projected.push({ content, index: line.index, kind: content === "" ? "blank" : "text" });
+  }
+  for (const line of projected) {
+    if (line.kind === "heading") {
+      let end = line.index;
+      for (let index2 = line.index + 1; index2 < projected.length; index2 += 1) {
+        const candidate = projected[index2];
+        if (candidate.kind === "heading" && (candidate.headingLevel ?? 7) <= (line.headingLevel ?? 6)) break;
+        if (candidate.kind !== "blank") end = candidate.index;
+      }
+      if (end > line.index) line.foldEndLine = end;
+    } else if (line.kind === "callout") {
+      let end = line.index;
+      for (let index2 = line.index + 1; index2 < projected.length; index2 += 1) {
+        const candidate = projected[index2];
+        if (!/^> ?/u.test(candidate.content)) break;
+        end = candidate.index;
+      }
+      if (end > line.index) line.foldEndLine = end;
+    } else if (line.kind === "list") {
+      const indent = listIndent(line.content) ?? 0;
+      let end = line.index;
+      for (let index2 = line.index + 1; index2 < projected.length; index2 += 1) {
+        const candidate = projected[index2];
+        if (candidate.kind === "blank") continue;
+        const candidateIndent = listIndent(candidate.content);
+        if (candidateIndent === null || candidateIndent <= indent) break;
+        end = candidate.index;
+      }
+      if (end > line.index) line.foldEndLine = end;
+    }
+  }
+  return { lines: Object.freeze(projected.map((line) => Object.freeze(line))), status: "ready" };
+}
+function replaceLivePreviewLine(source, index2, replacement) {
+  if (!Number.isSafeInteger(index2) || index2 < 0 || /[\r\n]/u.test(replacement)) return source;
+  if (byteLength2(replacement) > MAX_LIVE_PREVIEW_LINE_BYTES) return source;
+  const line = sourceLines(source)[index2];
+  if (line === void 0) return source;
+  return `${source.slice(0, line.start)}${replacement}${line.separator}${source.slice(line.end)}`;
+}
+
 // src/markdown.ts
 var MAX_MARKDOWN_BYTES = 1e6;
 var MAX_MARKDOWN_LINES = 1e4;
@@ -21468,7 +21616,7 @@ function isSafeExternalUrl(value) {
     return false;
   }
 }
-function sourceLines(source) {
+function sourceLines2(source) {
   const result = [];
   let start = 0;
   for (let index2 = 0; index2 < source.length; index2 += 1) {
@@ -21513,17 +21661,17 @@ function taskMatch(value) {
 function taskLocations(source) {
   const locations = [];
   let commentOpen = false;
-  let fenceMarker = null;
-  for (const line of sourceLines(source)) {
+  let fenceMarker2 = null;
+  for (const line of sourceLines2(source)) {
     const masked = maskComments(line.text, commentOpen);
     commentOpen = masked.open;
     const fenceMatch = fence(masked.text);
-    if (fenceMarker !== null) {
-      if (fenceMatch !== null && fenceMatch.marker[0] === fenceMarker[0] && fenceMatch.marker.length >= fenceMarker.length && fenceMatch.rest.trim() === "") fenceMarker = null;
+    if (fenceMarker2 !== null) {
+      if (fenceMatch !== null && fenceMatch.marker[0] === fenceMarker2[0] && fenceMatch.marker.length >= fenceMarker2.length && fenceMatch.rest.trim() === "") fenceMarker2 = null;
       continue;
     }
     if (fenceMatch !== null) {
-      fenceMarker = fenceMatch.marker;
+      fenceMarker2 = fenceMatch.marker;
       continue;
     }
     const match = taskMatch(masked.text);
@@ -21563,14 +21711,14 @@ function projectReading(source) {
   if (new TextEncoder().encode(source).byteLength > MAX_MARKDOWN_BYTES) {
     return { status: "unsupported", reason: "Markdown document exceeds the reading limit." };
   }
-  const lines = sourceLines(source);
+  const lines = sourceLines2(source);
   if (lines.length > MAX_MARKDOWN_LINES || lines.some((line) => line.text.length > MAX_MARKDOWN_LINE_LENGTH)) {
     return { status: "unsupported", reason: "Markdown document exceeds the line limit." };
   }
   const blocks = [];
   const warnings = [];
   let commentOpen = false;
-  let fenceMarker = null;
+  let fenceMarker2 = null;
   let fenceLanguage = "";
   let fenceLines = [];
   let paragraph = [];
@@ -21590,11 +21738,11 @@ function projectReading(source) {
     commentOpen = masked.open;
     const visible = masked.text;
     const fenceMatch = fence(visible);
-    if (fenceMarker !== null) {
-      if (fenceMatch !== null && fenceMatch.marker[0] === fenceMarker[0] && fenceMatch.marker.length >= fenceMarker.length && fenceMatch.rest.trim() === "") {
+    if (fenceMarker2 !== null) {
+      if (fenceMatch !== null && fenceMatch.marker[0] === fenceMarker2[0] && fenceMatch.marker.length >= fenceMarker2.length && fenceMatch.rest.trim() === "") {
         blocks.push({ kind: "code", language: fenceLanguage, text: fenceLines.join("\n") });
         if (blocks.length > MAX_READING_BLOCKS) return { status: "unsupported", reason: "Reading projection exceeds the block limit." };
-        fenceMarker = null;
+        fenceMarker2 = null;
         fenceLanguage = "";
         fenceLines = [];
       } else {
@@ -21604,7 +21752,7 @@ function projectReading(source) {
     }
     if (fenceMatch !== null) {
       flushParagraph();
-      fenceMarker = fenceMatch.marker;
+      fenceMarker2 = fenceMatch.marker;
       fenceLanguage = fenceMatch.rest.trim().split(/\s+/u)[0] ?? "";
       fenceLines = [];
       continue;
@@ -21614,10 +21762,10 @@ function projectReading(source) {
       flushParagraph();
       continue;
     }
-    const heading = /^(#{1,6})\s+(.+?)\s*#*$/u.exec(trimmed);
-    if (heading !== null) {
+    const heading2 = /^(#{1,6})\s+(.+?)\s*#*$/u.exec(trimmed);
+    if (heading2 !== null) {
       flushParagraph();
-      blocks.push({ kind: "heading", level: heading[1].length, text: heading[2] });
+      blocks.push({ kind: "heading", level: heading2[1].length, text: heading2[2] });
       continue;
     }
     const task = taskMatch(visible);
@@ -21634,7 +21782,7 @@ function projectReading(source) {
     }
     paragraph.push(displayText(visible));
   }
-  if (fenceMarker !== null) {
+  if (fenceMarker2 !== null) {
     blocks.push({ kind: "code", language: fenceLanguage, text: fenceLines.join("\n") });
     warnings.push("Unclosed code fence remains a literal code block.");
   } else {
@@ -21925,6 +22073,12 @@ function documentKind(path) {
 function supportedDocument(path) {
   return documentKind(path) !== null;
 }
+function routeModeFromSession(mode) {
+  return mode === "wysiwyg" ? "live-preview" : mode;
+}
+function sessionModeFromRoute(mode) {
+  return mode === "live-preview" ? "wysiwyg" : mode;
+}
 function boundedSource(source) {
   return new TextEncoder().encode(source).byteLength <= MAX_ROUTE_SOURCE_BYTES;
 }
@@ -22189,7 +22343,7 @@ ${text}`;
       id: group.id,
       tabs: Object.freeze(group.tabs.map((tab) => Object.freeze({
         dirty: tab.dirty,
-        mode: tab.mode === "reading" ? "reading" : "source",
+        mode: routeModeFromSession(tab.mode),
         path: tab.path,
         pinned: tab.pinned
       })))
@@ -22218,7 +22372,7 @@ ${text}`;
       this.shellSession,
       this.shellSession.focusedGroupId,
       path,
-      { mode: this.snapshot.mode }
+      { mode: sessionModeFromRoute(this.snapshot.mode) }
     );
     this.shellSession = markTabDirty(this.shellSession, this.shellSession.focusedGroupId, path, false);
     this.syncShell();
@@ -22451,7 +22605,7 @@ ${text}`;
       this.recentlyClosed.length,
       {
         dirty: false,
-        mode: result.closed.mode === "reading" ? "reading" : "source",
+        mode: routeModeFromSession(result.closed.mode),
         path: result.closed.path,
         pinned: result.closed.pinned
       },
@@ -22475,7 +22629,7 @@ ${text}`;
       this.shellSession.focusedGroupId,
       candidate.path,
       {
-        ...candidate.mode === void 0 ? {} : { mode: candidate.mode },
+        ...candidate.mode === void 0 ? {} : { mode: sessionModeFromRoute(candidate.mode) },
         ...candidate.pinned === void 0 ? {} : { pinned: candidate.pinned }
       }
     );
@@ -22576,11 +22730,12 @@ ${text}`;
   }
   setMode(mode) {
     if (this.snapshot.path === null) return;
+    if (mode === "live-preview" && this.snapshot.documentKind !== "markdown") return;
     this.shellSession = setNoteTabMode(
       this.shellSession,
       this.shellSession.focusedGroupId,
       this.snapshot.path,
-      mode
+      sessionModeFromRoute(mode)
     );
     this.syncShell({ mode });
   }
@@ -22697,6 +22852,80 @@ function ReadingBlockView(props) {
         /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("span", { children: block.text })
       ] });
   }
+}
+function LivePreviewView(props) {
+  const projection = (0, import_react5.useMemo)(() => projectLivePreview(props.source), [props.source]);
+  const [folded, setFolded] = (0, import_react5.useState)(() => /* @__PURE__ */ new Set());
+  (0, import_react5.useEffect)(() => {
+    if (projection.status !== "ready") {
+      setFolded(/* @__PURE__ */ new Set());
+      return;
+    }
+    setFolded(new Set(projection.lines.filter((line) => line.folded === true).map((line) => line.index)));
+  }, [props.documentKey]);
+  if (projection.status !== "ready") return /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(Alert, { unstyled: true, children: projection.reason });
+  const hidden = /* @__PURE__ */ new Set();
+  for (const line of projection.lines) {
+    if (!folded.has(line.index) || line.foldEndLine === void 0) continue;
+    for (let index2 = line.index + 1; index2 <= line.foldEndLine; index2 += 1) hidden.add(index2);
+  }
+  const toggleFold = (index2) => {
+    setFolded((current) => {
+      const next = new Set(current);
+      if (next.has(index2)) next.delete(index2);
+      else next.add(index2);
+      return next;
+    });
+  };
+  return /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("section", { "aria-label": "Live Preview", className: "mx-auto grid min-h-full w-[calc(100%-32px)] max-w-3xl content-start gap-0.5 py-6", tabIndex: -1, children: projection.lines.map((line) => hidden.has(line.index) ? null : /* @__PURE__ */ (0, import_jsx_runtime21.jsxs)(
+    "div",
+    {
+      className: "group flex min-h-7 items-start gap-2 rounded px-1.5 py-0.5 data-[kind=callout]:border-l-4 data-[kind=callout]:border-[var(--tt-accent)] data-[kind=callout]:bg-[var(--tt-selected)] data-[kind=code]:bg-[color-mix(in_srgb,var(--tt-text)_5%,var(--tt-panel))] data-[kind=comment]:text-[var(--tt-muted)] data-[kind=heading]:font-semibold data-[kind=property]:text-[var(--tt-muted)]",
+      "data-kind": line.kind,
+      children: [
+        line.foldEndLine !== void 0 ? /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(
+          Button,
+          {
+            unstyled: true,
+            "aria-expanded": !folded.has(line.index),
+            "aria-label": `${folded.has(line.index) ? "Expand" : "Collapse"} Line ${String(line.index + 1)}`,
+            className: "mt-1 size-5 shrink-0 rounded border-0 bg-transparent p-0 text-[var(--tt-muted)]",
+            onClick: () => {
+              toggleFold(line.index);
+            },
+            type: "button",
+            children: /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(ChevronRight, { "aria-hidden": "true", className: folded.has(line.index) ? "" : "rotate-90" })
+          }
+        ) : /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("span", { className: "w-5 shrink-0" }),
+        line.kind === "task" && line.taskIndex !== void 0 && /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(
+          Checkbox3,
+          {
+            "aria-label": `Mark Task on Line ${String(line.index + 1)} as ${line.checked === true ? "Incomplete" : "Complete"}`,
+            checked: line.checked === true,
+            className: "mt-1.5",
+            onCheckedChange: () => {
+              props.onToggleTask(line.taskIndex);
+            }
+          }
+        ),
+        /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(
+          Textarea,
+          {
+            unstyled: true,
+            "aria-label": `Live Preview Line ${String(line.index + 1)}`,
+            className: "min-h-7 flex-1 resize-none overflow-hidden border-0 bg-transparent px-1 py-0.5 text-inherit outline-none [font:inherit]",
+            onChange: (event) => {
+              props.onEdit(replaceLivePreviewLine(props.source, line.index, event.target.value));
+            },
+            rows: 1,
+            spellCheck: line.kind !== "code",
+            value: line.content
+          }
+        )
+      ]
+    },
+    line.index
+  )) });
 }
 function CanvasView(props) {
   const projection = projectCanvas(parseCanvasDocument(props.source));
@@ -23270,7 +23499,21 @@ function TockTutorRouteView(props) {
                 /* @__PURE__ */ (0, import_jsx_runtime21.jsxs)("header", { className: "tocktutor-editor-header relative flex min-w-0 items-center justify-center border-b border-[var(--tt-border)] px-2.5", children: [
                   /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("h2", { className: "m-0 truncate text-[13px] font-medium text-[var(--tt-muted)]", children: noteTitle(snapshot.path) }),
                   /* @__PURE__ */ (0, import_jsx_runtime21.jsxs)("div", { className: "tocktutor-editor-actions absolute right-2.5 flex items-center gap-1 [&_button]:inline-flex [&_button]:h-7 [&_button]:w-[26px] [&_button]:items-center [&_button]:justify-center [&_button]:border-0 [&_button]:bg-transparent [&_button]:p-0 [&_button]:text-[var(--tt-muted)] [&_span]:inline-flex [&_span]:h-7 [&_span]:w-[26px] [&_span]:items-center [&_span]:justify-center [&_span]:border-0 [&_span]:bg-transparent [&_span]:p-0 [&_span]:text-[var(--tt-muted)]", children: [
-                    /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(
+                    snapshot.documentKind === "markdown" ? /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("span", { "aria-label": "Editor Mode", className: "flex", role: "group", children: ["reading", "live-preview", "source"].map((mode) => /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(
+                      Button,
+                      {
+                        unstyled: true,
+                        "aria-label": mode === "reading" ? "Reading" : mode === "live-preview" ? "Live Preview" : "Source",
+                        "aria-pressed": snapshot.mode === mode,
+                        className: "w-auto! px-1.5! aria-pressed:text-[var(--tt-accent)]",
+                        onClick: () => {
+                          props.onMode(mode);
+                        },
+                        type: "button",
+                        children: mode === "reading" ? /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(FileText, { "aria-hidden": "true" }) : mode === "live-preview" ? /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(Pencil, { "aria-hidden": "true" }) : /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(WorkbenchGlyph, { kind: "document" })
+                      },
+                      mode
+                    )) }) : /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(
                       Button,
                       {
                         unstyled: true,
@@ -23318,6 +23561,14 @@ function TockTutorRouteView(props) {
                     spellCheck: "true",
                     value: snapshot.source
                   }
+                ) : snapshot.mode === "live-preview" && snapshot.documentKind === "markdown" ? /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(
+                  LivePreviewView,
+                  {
+                    documentKey: snapshot.path,
+                    onEdit: props.onEdit,
+                    onToggleTask: props.onToggleTask,
+                    source: snapshot.source
+                  }
                 ) : snapshot.documentKind === "canvas" ? /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(CanvasView, { onMove: props.onMoveCanvas, source: snapshot.source }) : snapshot.documentKind === "base" ? /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(BaseView, { source: snapshot.source }) : reading?.status === "ready" ? /* @__PURE__ */ (0, import_jsx_runtime21.jsxs)("article", { "aria-label": "Reading View", className: "tocktutor-reading mx-auto min-h-full w-[calc(100%-48px)] max-w-3xl pt-[18px] pb-[72px] [&_h1]:mt-0 [&_h1]:mb-4 [&_h1]:text-[30px] [&_h1]:leading-tight [&_h1]:font-[650] [&_h1>svg]:mr-1.5 [&_h1>svg]:ml-[-20px] [&_h1>svg]:inline-block [&_h1>svg]:size-3.5 [&_h1>svg]:-translate-y-[3px] [&_h1>svg]:text-[color-mix(in_srgb,var(--tt-muted)_45%,transparent)] [&_h2]:mt-0 [&_h2]:mb-4 [&_h2]:text-2xl [&_h2]:leading-tight [&_h2]:font-[650] [&_h3]:mt-0 [&_h3]:mb-4 [&_h3]:text-xl [&_h3]:leading-tight [&_h3]:font-[650] [&_p]:mt-0 [&_p]:mb-4 [&_p]:text-lg [&_pre]:overflow-auto [&_pre]:rounded-md [&_pre]:border [&_pre]:border-[var(--tt-border)] [&_pre]:bg-[color-mix(in_srgb,var(--tt-text)_4%,var(--tt-panel))] [&_pre]:p-3", tabIndex: -1, children: [
                   reading.warnings.map((warning) => /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("p", { className: "tocktutor-warning border-l-[3px] border-[#b7791f] pl-2.5 text-[var(--tt-muted)]", role: "note", children: warning }, warning)),
                   reading.blocks.map((block, index2) => /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(
@@ -23333,7 +23584,7 @@ function TockTutorRouteView(props) {
                   /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("output", { "aria-live": "polite", className: "tocktutor-message absolute size-px overflow-hidden whitespace-nowrap [clip:rect(0_0_0_0)] [clip-path:inset(50%)]", children: snapshot.message }),
                   snapshot.path !== null && /* @__PURE__ */ (0, import_jsx_runtime21.jsxs)("div", { className: "ml-auto flex items-center gap-[18px] whitespace-nowrap max-[760px]:gap-2", children: [
                     /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("span", { children: "0 Backlinks" }),
-                    /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("span", { children: snapshot.mode === "reading" ? "Live Preview" : "Source" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("span", { children: snapshot.mode === "reading" ? "Reading" : snapshot.mode === "live-preview" ? "Live Preview" : "Source" }),
                     /* @__PURE__ */ (0, import_jsx_runtime21.jsxs)("span", { children: [
                       String(words),
                       " Words"

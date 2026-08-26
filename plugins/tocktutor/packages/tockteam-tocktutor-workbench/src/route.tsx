@@ -62,6 +62,10 @@ import {
   updateCanvasNodePosition,
 } from './canvas.ts'
 import {
+  projectLivePreview,
+  replaceLivePreviewLine,
+} from './live-preview.ts'
+import {
   editorStatusLabel,
   projectReading,
   resolveEditorShortcut,
@@ -135,7 +139,7 @@ export interface WorkbenchRouteRemote extends NoteVaultEventRemote {
 }
 
 export type RoutePhase = 'loading' | 'inactive' | 'ready' | 'error'
-export type RouteEditorMode = 'source' | 'reading'
+export type RouteEditorMode = 'source' | 'live-preview' | 'reading'
 export type RouteDocumentKind = 'markdown' | 'canvas' | 'base'
 
 export interface RouteTabSummary {
@@ -215,6 +219,14 @@ function documentKind(path: string): RouteDocumentKind | null {
 
 function supportedDocument(path: string): boolean {
   return documentKind(path) !== null
+}
+
+function routeModeFromSession(mode: 'reading' | 'source' | 'wysiwyg'): RouteEditorMode {
+  return mode === 'wysiwyg' ? 'live-preview' : mode
+}
+
+function sessionModeFromRoute(mode: RouteEditorMode): 'reading' | 'source' | 'wysiwyg' {
+  return mode === 'live-preview' ? 'wysiwyg' : mode
 }
 
 function boundedSource(source: string): boolean {
@@ -523,7 +535,7 @@ export class WorkbenchRouteController {
       id: group.id,
       tabs: Object.freeze(group.tabs.map(tab => Object.freeze({
         dirty: tab.dirty,
-        mode: tab.mode === 'reading' ? 'reading' as const : 'source' as const,
+        mode: routeModeFromSession(tab.mode),
         path: tab.path,
         pinned: tab.pinned,
       }))),
@@ -559,7 +571,7 @@ export class WorkbenchRouteController {
       this.shellSession,
       this.shellSession.focusedGroupId,
       path,
-      { mode: this.snapshot.mode },
+      { mode: sessionModeFromRoute(this.snapshot.mode) },
     )
     this.shellSession = markTabDirty(this.shellSession, this.shellSession.focusedGroupId, path, false)
     this.syncShell()
@@ -808,7 +820,7 @@ export class WorkbenchRouteController {
       this.recentlyClosed.length,
       {
         dirty: false,
-        mode: result.closed.mode === 'reading' ? 'reading' : 'source',
+        mode: routeModeFromSession(result.closed.mode),
         path: result.closed.path,
         pinned: result.closed.pinned,
       },
@@ -833,7 +845,7 @@ export class WorkbenchRouteController {
       this.shellSession.focusedGroupId,
       candidate.path,
       {
-        ...(candidate.mode === undefined ? {} : { mode: candidate.mode }),
+        ...(candidate.mode === undefined ? {} : { mode: sessionModeFromRoute(candidate.mode) }),
         ...(candidate.pinned === undefined ? {} : { pinned: candidate.pinned }),
       },
     )
@@ -949,11 +961,12 @@ export class WorkbenchRouteController {
 
   setMode(mode: RouteEditorMode): void {
     if (this.snapshot.path === null) return
+    if (mode === 'live-preview' && this.snapshot.documentKind !== 'markdown') return
     this.shellSession = setNoteTabMode(
       this.shellSession,
       this.shellSession.focusedGroupId,
       this.snapshot.path,
-      mode,
+      sessionModeFromRoute(mode),
     )
     this.syncShell({ mode })
   }
@@ -1073,6 +1086,76 @@ function ReadingBlockView(props: {
       </Label>
     )
   }
+}
+
+function LivePreviewView(props: {
+  documentKey: string
+  onEdit(source: string): void
+  onToggleTask(index: number): void
+  source: string
+}): ReactNode {
+  const projection = useMemo(() => projectLivePreview(props.source), [props.source])
+  const [folded, setFolded] = useState<ReadonlySet<number>>(() => new Set())
+  useEffect(() => {
+    if (projection.status !== 'ready') {
+      setFolded(new Set())
+      return
+    }
+    setFolded(new Set(projection.lines.filter(line => line.folded === true).map(line => line.index)))
+  }, [props.documentKey])
+  if (projection.status !== 'ready') return <Alert unstyled>{projection.reason}</Alert>
+  const hidden = new Set<number>()
+  for (const line of projection.lines) {
+    if (!folded.has(line.index) || line.foldEndLine === undefined) continue
+    for (let index = line.index + 1; index <= line.foldEndLine; index += 1) hidden.add(index)
+  }
+  const toggleFold = (index: number): void => {
+    setFolded(current => {
+      const next = new Set(current)
+      if (next.has(index)) next.delete(index)
+      else next.add(index)
+      return next
+    })
+  }
+  return (
+    <section aria-label="Live Preview" className="mx-auto grid min-h-full w-[calc(100%-32px)] max-w-3xl content-start gap-0.5 py-6" tabIndex={-1}>
+      {projection.lines.map(line => hidden.has(line.index) ? null : (
+        <div
+          className="group flex min-h-7 items-start gap-2 rounded px-1.5 py-0.5 data-[kind=callout]:border-l-4 data-[kind=callout]:border-[var(--tt-accent)] data-[kind=callout]:bg-[var(--tt-selected)] data-[kind=code]:bg-[color-mix(in_srgb,var(--tt-text)_5%,var(--tt-panel))] data-[kind=comment]:text-[var(--tt-muted)] data-[kind=heading]:font-semibold data-[kind=property]:text-[var(--tt-muted)]"
+          data-kind={line.kind}
+          key={line.index}
+        >
+          {line.foldEndLine !== undefined ? (
+            <Button
+              unstyled
+              aria-expanded={!folded.has(line.index)}
+              aria-label={`${folded.has(line.index) ? 'Expand' : 'Collapse'} Line ${String(line.index + 1)}`}
+              className="mt-1 size-5 shrink-0 rounded border-0 bg-transparent p-0 text-[var(--tt-muted)]"
+              onClick={() => { toggleFold(line.index) }}
+              type="button"
+            ><ChevronRight aria-hidden="true" className={folded.has(line.index) ? '' : 'rotate-90'} /></Button>
+          ) : <span className="w-5 shrink-0" />}
+          {line.kind === 'task' && line.taskIndex !== undefined && (
+            <Checkbox
+              aria-label={`Mark Task on Line ${String(line.index + 1)} as ${line.checked === true ? 'Incomplete' : 'Complete'}`}
+              checked={line.checked === true}
+              className="mt-1.5"
+              onCheckedChange={() => { props.onToggleTask(line.taskIndex!) }}
+            />
+          )}
+          <Textarea
+            unstyled
+            aria-label={`Live Preview Line ${String(line.index + 1)}`}
+            className="min-h-7 flex-1 resize-none overflow-hidden border-0 bg-transparent px-1 py-0.5 text-inherit outline-none [font:inherit]"
+            onChange={event => { props.onEdit(replaceLivePreviewLine(props.source, line.index, event.target.value)) }}
+            rows={1}
+            spellCheck={line.kind !== 'code'}
+            value={line.content}
+          />
+        </div>
+      ))}
+    </section>
+  )
 }
 
 function CanvasView(props: {
@@ -1695,11 +1778,27 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
           <header className="tocktutor-editor-header relative flex min-w-0 items-center justify-center border-b border-[var(--tt-border)] px-2.5">
             <h2 className="m-0 truncate text-[13px] font-medium text-[var(--tt-muted)]">{noteTitle(snapshot.path)}</h2>
             <div className="tocktutor-editor-actions absolute right-2.5 flex items-center gap-1 [&_button]:inline-flex [&_button]:h-7 [&_button]:w-[26px] [&_button]:items-center [&_button]:justify-center [&_button]:border-0 [&_button]:bg-transparent [&_button]:p-0 [&_button]:text-[var(--tt-muted)] [&_span]:inline-flex [&_span]:h-7 [&_span]:w-[26px] [&_span]:items-center [&_span]:justify-center [&_span]:border-0 [&_span]:bg-transparent [&_span]:p-0 [&_span]:text-[var(--tt-muted)]">
-              <Button unstyled
-                aria-label={snapshot.mode === 'source' ? previewLabel : sourceLabel}
-                onClick={() => { props.onMode(snapshot.mode === 'source' ? 'reading' : 'source') }}
-                type="button"
-              ><WorkbenchGlyph kind="pencil" /></Button>
+              {snapshot.documentKind === 'markdown' ? (
+                <span aria-label="Editor Mode" className="flex" role="group">
+                  {(['reading', 'live-preview', 'source'] as const).map(mode => (
+                    <Button
+                      unstyled
+                      aria-label={mode === 'reading' ? 'Reading' : mode === 'live-preview' ? 'Live Preview' : 'Source'}
+                      aria-pressed={snapshot.mode === mode}
+                      className="w-auto! px-1.5! aria-pressed:text-[var(--tt-accent)]"
+                      key={mode}
+                      onClick={() => { props.onMode(mode) }}
+                      type="button"
+                    >{mode === 'reading' ? <FileText aria-hidden="true" /> : mode === 'live-preview' ? <Pencil aria-hidden="true" /> : <WorkbenchGlyph kind="document" />}</Button>
+                  ))}
+                </span>
+              ) : (
+                <Button unstyled
+                  aria-label={snapshot.mode === 'source' ? previewLabel : sourceLabel}
+                  onClick={() => { props.onMode(snapshot.mode === 'source' ? 'reading' : 'source') }}
+                  type="button"
+                ><WorkbenchGlyph kind="pencil" /></Button>
+              )}
               <span><Music aria-hidden="true" /></span>
               <span><Folder aria-hidden="true" /></span>
               <Tooltip>
@@ -1732,6 +1831,13 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
                 spellCheck="true"
                 value={snapshot.source}
               />
+            ) : snapshot.mode === 'live-preview' && snapshot.documentKind === 'markdown' ? (
+              <LivePreviewView
+                documentKey={snapshot.path}
+                onEdit={props.onEdit}
+                onToggleTask={props.onToggleTask}
+                source={snapshot.source}
+              />
             ) : snapshot.documentKind === 'canvas' ? (
               <CanvasView onMove={props.onMoveCanvas} source={snapshot.source} />
             ) : snapshot.documentKind === 'base' ? (
@@ -1756,7 +1862,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
             {snapshot.path !== null && (
               <div className="ml-auto flex items-center gap-[18px] whitespace-nowrap max-[760px]:gap-2">
                 <span>0 Backlinks</span>
-                <span>{snapshot.mode === 'reading' ? 'Live Preview' : 'Source'}</span>
+                <span>{snapshot.mode === 'reading' ? 'Reading' : snapshot.mode === 'live-preview' ? 'Live Preview' : 'Source'}</span>
                 <span>{String(words)} Words</span>
                 <span>{String(characters)} Characters</span>
                 <Tooltip>
