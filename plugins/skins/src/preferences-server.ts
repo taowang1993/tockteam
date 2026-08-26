@@ -1,6 +1,7 @@
 import { randomBytes } from 'node:crypto'
 import {
   copyFile,
+  link,
   mkdir,
   readFile,
   rename,
@@ -74,8 +75,18 @@ export async function loadSkinPreferences(path: string): Promise<DesktopSkinPref
   const legacy = join(dirname(path), LEGACY_SKIN_PREFERENCES_FILE)
   try {
     const migrated = await readSkinPreferences(legacy)
-    await saveSkinPreferences(path, migrated)
-    return migrated
+    await mkdir(dirname(path), { recursive: true })
+    const temporary = `${path}.migrate-${randomBytes(6).toString('hex')}`
+    await writeFile(temporary, `${JSON.stringify(migrated, undefined, 2)}\n`, { mode: 0o600 })
+    try {
+      await link(temporary, path)
+      return migrated
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error
+      return await readSkinPreferences(path)
+    } finally {
+      await unlink(temporary).catch(() => undefined)
+    }
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
   }
