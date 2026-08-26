@@ -5,7 +5,7 @@ import type { ResolvedEmbedNode } from './embeds.ts'
 
 export const livePreviewEmbedPluginKey = new PluginKey('tocktutorLivePreviewEmbeds')
 
-function widgetDom(embed: ResolvedEmbedNode, from: number, to: number): HTMLElement {
+function widgetDom(embed: ResolvedEmbedNode, from: number, to: number, reveal: () => void): HTMLElement {
   const widget = document.createElement('span')
   widget.className = 'tocktutor-live-embed-widget inline-flex max-w-full flex-col gap-1 rounded border border-[var(--tt-border)] bg-[var(--tt-panel)] p-2 align-top text-[var(--tt-text)]'
   widget.dataset.embedFrom = String(from)
@@ -13,6 +13,13 @@ function widgetDom(embed: ResolvedEmbedNode, from: number, to: number): HTMLElem
   widget.dataset.embedKind = embed.target.kind
   widget.setAttribute('aria-label', `${embed.target.kind} Embed: ${embed.target.display ?? embed.target.path}`)
   widget.tabIndex = 0
+  widget.addEventListener('mousedown', event => { event.preventDefault(); event.stopPropagation(); reveal() })
+  widget.addEventListener('keydown', event => {
+    if (event.key !== 'Enter' && event.key !== ' ') return
+    event.preventDefault()
+    event.stopPropagation()
+    reveal()
+  })
   const label = document.createElement('strong')
   label.className = 'truncate text-xs'
   label.textContent = embed.target.display ?? embed.target.path
@@ -55,7 +62,7 @@ function widgetDom(embed: ResolvedEmbedNode, from: number, to: number): HTMLElem
   return widget
 }
 
-function decorationSet(state, embeds: readonly ResolvedEmbedNode[]): DecorationSet {
+function decorationSet(state, embeds: readonly ResolvedEmbedNode[], reveal: (from: number, to: number) => void): DecorationSet {
   const buckets = new Map<string, ResolvedEmbedNode[]>()
   for (const embed of embeds) {
     const bucket = buckets.get(embed.target.source) ?? []
@@ -77,7 +84,7 @@ function decorationSet(state, embeds: readonly ResolvedEmbedNode[]): DecorationS
         if (embed === undefined || state.selection.from <= to && state.selection.to >= from) continue
         decorations.push(
           Decoration.inline(from, to, { class: 'hidden' }, { embedSource: 'true' }),
-          Decoration.widget(from, () => widgetDom(embed, from, to), { side: -1, embedWidget: 'true' }),
+          Decoration.widget(from, () => widgetDom(embed, from, to, () => { reveal(from, to) }), { side: -1, embedWidget: 'true' }),
         )
       }
     }
@@ -86,6 +93,13 @@ function decorationSet(state, embeds: readonly ResolvedEmbedNode[]): DecorationS
 }
 
 export function buildLivePreviewEmbedPlugin(getEmbeds: () => readonly ResolvedEmbedNode[]): Plugin {
+  let currentView = null
+  const revealRange = (from: number, to: number): void => {
+    const view = currentView
+    if (view === null || from < 0 || to <= from || to > view.state.doc.content.size) return
+    view.dispatch(view.state.tr.setSelection(TextSelection.near(view.state.doc.resolve(Math.min(from + 3, to - 1)))))
+    view.focus()
+  }
   const reveal = (view, event: Event): boolean => {
     const widget = event.target instanceof Element ? event.target.closest<HTMLElement>('[data-embed-from][data-embed-to]') : null
     if (widget === null || event.type === 'keydown' && (event as KeyboardEvent).key !== 'Enter' && (event as KeyboardEvent).key !== ' ') return false
@@ -93,15 +107,18 @@ export function buildLivePreviewEmbedPlugin(getEmbeds: () => readonly ResolvedEm
     const to = Number(widget.dataset.embedTo)
     if (!Number.isSafeInteger(from) || !Number.isSafeInteger(to) || from < 0 || to <= from || to > view.state.doc.content.size) return false
     event.preventDefault()
-    view.dispatch(view.state.tr.setSelection(TextSelection.near(view.state.doc.resolve(Math.min(from + 3, to - 1)))))
-    view.focus()
+    revealRange(from, to)
     return true
   }
   return new Plugin({
     key: livePreviewEmbedPluginKey,
     props: {
-      decorations: state => decorationSet(state, getEmbeds()),
+      decorations: state => decorationSet(state, getEmbeds(), revealRange),
       handleDOMEvents: { mousedown: reveal, keydown: reveal },
+    },
+    view(view) {
+      currentView = view
+      return { destroy() { if (currentView === view) currentView = null } }
     },
   })
 }
