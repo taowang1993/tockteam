@@ -38,4 +38,5 @@ export * from './graph.ts';
 export * from './capture.ts';
 export * from './organize.ts';
 export * from './composer.ts';
+export * from './attachments.ts';
 //# sourceMappingURL=index.d.ts.map

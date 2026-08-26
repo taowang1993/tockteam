@@ -67,6 +67,18 @@ function assertRevision(value) {
         throw new TypeError('Expected revision must be one bounded file revision.');
     }
 }
+function assertAttachmentPath(value) {
+    if (!isSafeVaultRelativePath(value) || !/\.(?:avif|bmp|gif|ico|jpe?g|png|webp|mp3|m4a|ogg|wav|webm|mp4|mov|pdf)$/iu.test(value)) {
+        throw new TypeError('Attachment path must be one accepted vault-relative media path.');
+    }
+}
+function assertStoreAttachmentRequest(value) {
+    assertRecord(value, 'Attachment request');
+    assertVaultReference(value.expectedVault);
+    assertAttachmentPath(value.path);
+    if (typeof value.dataBase64 !== 'string' || value.dataBase64.length > 35_000_000 || !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/u.test(value.dataBase64))
+        throw new TypeError('Attachment data must be bounded base64.');
+}
 function assertContent(value) {
     if (typeof value !== 'string'
         || new TextEncoder().encode(value).byteLength > MAX_DOCUMENT_CONTENT_BYTES) {
@@ -252,6 +264,9 @@ let TockTutorWorkbenchGateway = (() => {
     let _activateRecentVault_decorators;
     let _removeRecentVault_decorators;
     let _openSandboxVault_decorators;
+    let _inspectAttachment_decorators;
+    let _previewAttachment_decorators;
+    let _storeAttachment_decorators;
     let _openDocument_decorators;
     let _listTree_decorators;
     let _createDocument_decorators;
@@ -278,6 +293,9 @@ let TockTutorWorkbenchGateway = (() => {
             _activateRecentVault_decorators = [Remote];
             _removeRecentVault_decorators = [Remote];
             _openSandboxVault_decorators = [Remote];
+            _inspectAttachment_decorators = [Remote];
+            _previewAttachment_decorators = [Remote];
+            _storeAttachment_decorators = [Remote];
             _openDocument_decorators = [Remote];
             _listTree_decorators = [Remote];
             _createDocument_decorators = [Remote];
@@ -301,6 +319,9 @@ let TockTutorWorkbenchGateway = (() => {
             __esDecorate(this, null, _activateRecentVault_decorators, { kind: "method", name: "activateRecentVault", static: false, private: false, access: { has: obj => "activateRecentVault" in obj, get: obj => obj.activateRecentVault }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _removeRecentVault_decorators, { kind: "method", name: "removeRecentVault", static: false, private: false, access: { has: obj => "removeRecentVault" in obj, get: obj => obj.removeRecentVault }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _openSandboxVault_decorators, { kind: "method", name: "openSandboxVault", static: false, private: false, access: { has: obj => "openSandboxVault" in obj, get: obj => obj.openSandboxVault }, metadata: _metadata }, null, _instanceExtraInitializers);
+            __esDecorate(this, null, _inspectAttachment_decorators, { kind: "method", name: "inspectAttachment", static: false, private: false, access: { has: obj => "inspectAttachment" in obj, get: obj => obj.inspectAttachment }, metadata: _metadata }, null, _instanceExtraInitializers);
+            __esDecorate(this, null, _previewAttachment_decorators, { kind: "method", name: "previewAttachment", static: false, private: false, access: { has: obj => "previewAttachment" in obj, get: obj => obj.previewAttachment }, metadata: _metadata }, null, _instanceExtraInitializers);
+            __esDecorate(this, null, _storeAttachment_decorators, { kind: "method", name: "storeAttachment", static: false, private: false, access: { has: obj => "storeAttachment" in obj, get: obj => obj.storeAttachment }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _openDocument_decorators, { kind: "method", name: "openDocument", static: false, private: false, access: { has: obj => "openDocument" in obj, get: obj => obj.openDocument }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _listTree_decorators, { kind: "method", name: "listTree", static: false, private: false, access: { has: obj => "listTree" in obj, get: obj => obj.listTree }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _createDocument_decorators, { kind: "method", name: "createDocument", static: false, private: false, access: { has: obj => "createDocument" in obj, get: obj => obj.createDocument }, metadata: _metadata }, null, _instanceExtraInitializers);
@@ -359,6 +380,28 @@ let TockTutorWorkbenchGateway = (() => {
             assertExpectedGeneration(request);
             signal.throwIfAborted();
             return activeReference(this.ctx.noteVault.openSandboxVault(request.expectedGeneration));
+        }
+        async inspectAttachment(path, expectedVault, signal) {
+            assertAttachmentPath(path);
+            assertVaultReference(expectedVault);
+            signal.throwIfAborted();
+            return this.ctx.noteVault.inspectAttachment(path, expectedVault, signal);
+        }
+        async previewAttachment(path, expectedVault, signal) {
+            assertAttachmentPath(path);
+            assertVaultReference(expectedVault);
+            signal.throwIfAborted();
+            const preview = await this.ctx.noteVault.previewAttachment(path, expectedVault, signal);
+            const { data, ...metadata } = preview;
+            return { ...metadata, dataBase64: Buffer.from(data).toString('base64') };
+        }
+        async storeAttachment(request, signal) {
+            assertStoreAttachmentRequest(request);
+            signal.throwIfAborted();
+            const data = Buffer.from(request.dataBase64, 'base64');
+            if (data.byteLength > 25 * 1024 * 1024)
+                throw new TypeError('Attachment data must not exceed 25 MiB.');
+            return this.ctx.noteVault.storeAttachment({ data, expectedVault: request.expectedVault, path: request.path }, signal);
         }
         async openDocument(path, expectedVault, signal) {
             assertDocumentPath(path);

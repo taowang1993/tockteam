@@ -69,6 +69,7 @@ import { layoutGraph, projectGraph, type GraphPosition } from './graph.ts'
 import { buildCaptureNote, buildJournalNote, uniqueNotePath } from './capture.ts'
 import { buildOrganizationProposal, type OrganizationProposal } from './organize.ts'
 import { convertMarkdownFormats, extractSelectionToNote } from './composer.ts'
+import { appendAttachmentMarkdown, attachmentTargetPath } from './attachments.ts'
 import {
   createNamedWorkspace,
   loadTockTutorSettings,
@@ -110,6 +111,7 @@ import {
 import { isNoteVaultChangeEvent, type NoteVaultEventRemote } from './vault-events.ts'
 import type {
   ActiveVaultResult,
+  AttachmentPreviewResult,
   CreateDocumentRequest,
   DraftMutationResult,
   DraftRequest,
@@ -129,6 +131,8 @@ import type {
   SaveDraftRequest,
   SnapshotContentResult,
   SnapshotInfo,
+  StoreAttachmentRequest,
+  StoreAttachmentResult,
   TrashEntryInfo,
   TrashEntryRequest,
   VaultFacetsRequest,
@@ -199,6 +203,8 @@ export interface WorkbenchRouteRemote extends NoteVaultEventRemote {
     outline(request: VaultOutlineRequest, signal?: AbortSignal): Promise<RemoteResult<VaultOutlineResult>>
     links(request: VaultLinksRequest, signal?: AbortSignal): Promise<RemoteResult<VaultLinksResult>>
     facets(request: VaultFacetsRequest, signal?: AbortSignal): Promise<RemoteResult<VaultFacetsResult>>
+    previewAttachment(path: string, expectedVault: VaultReference, signal?: AbortSignal): Promise<RemoteResult<AttachmentPreviewResult>>
+    storeAttachment(request: StoreAttachmentRequest, signal?: AbortSignal): Promise<RemoteResult<StoreAttachmentResult>>
     graph(request: VaultGraphRequest, signal?: AbortSignal): Promise<RemoteResult<VaultGraphResult>>
   }
 }
@@ -221,6 +227,7 @@ export interface RoutePaneSummary {
 }
 
 export interface WorkbenchRouteSnapshot {
+  attachmentPreview?: AttachmentPreviewResult | null
   bookmarks?: readonly TockTutorBookmark[]
   canGoBack?: boolean
   canGoForward?: boolean
@@ -368,6 +375,7 @@ function routeForPath(path: string): string {
 
 function initialSnapshot(): WorkbenchRouteSnapshot {
   return Object.freeze({
+    attachmentPreview: null,
     bookmarks: Object.freeze([]),
     canGoBack: false,
     canGoForward: false,
@@ -1760,6 +1768,54 @@ export class WorkbenchRouteController {
     }
   }
 
+  async storeActiveAttachment(fileName: string, dataBase64: string): Promise<boolean> {
+    const vault = this.snapshot.vault
+    const notePath = this.snapshot.path
+    const source = this.snapshot.source
+    const revision = this.snapshot.revision
+    if (vault === null || notePath === null || revision === null || this.snapshot.documentKind !== 'markdown' || dataBase64.length > 35_000_000) return false
+    let path: string
+    try {
+      path = attachmentTargetPath(
+        this.snapshot.settings?.attachmentFolder ?? 'Attachments',
+        fileName,
+        new Set(this.snapshot.entries.filter(entry => entry.kind === 'attachment').map(entry => entry.path)),
+      )
+    } catch {
+      return false
+    }
+    const operation = this.operation
+    try {
+      const stored = remoteValue(await this.remote.tocktutorWorkbench.storeAttachment({ dataBase64, expectedVault: vault, path }))
+      if (stored.status !== 'stored' || stored.generation !== vault.generation || stored.path !== path) return false
+      if (this.operation !== operation || !sameVault(this.snapshot.vault, vault) || this.snapshot.path !== notePath || this.snapshot.source !== source || this.snapshot.revision !== revision) return false
+      this.edit(appendAttachmentMarkdown(source, `![[${path}]]`))
+      const saved = await this.save()
+      if (saved) await this.refreshTree(vault)
+      return saved
+    } catch {
+      return false
+    }
+  }
+
+  async previewAttachment(path: string): Promise<boolean> {
+    const vault = this.snapshot.vault
+    if (vault === null || this.snapshot.entries.some(entry => entry.kind === 'attachment' && entry.path === path) !== true) return false
+    const operation = this.nextOperation()
+    try {
+      const preview = remoteValue(await this.remote.tocktutorWorkbench.previewAttachment(path, vault, operation.signal))
+      if (!this.current(operation.id, vault) || preview.generation !== vault.generation || preview.path !== path || preview.dataBase64.length > 35_000_000) return false
+      this.update({ attachmentPreview: preview })
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  closeAttachmentPreview(): void {
+    this.update({ attachmentPreview: null })
+  }
+
   async applyCanvasChange(change: CanvasChange): Promise<boolean> {
     const vault = this.snapshot.vault
     const path = this.snapshot.path
@@ -2006,6 +2062,7 @@ export interface TockTutorRouteViewProps {
   onCancelDispatch?(): void
   onCancelOrganization?(): void
   onCanvasChange?(change: CanvasChange): void
+  onCloseAttachmentPreview?(): void
   onCloseCommandPalette?(): void
   onCloseSearch?(): void
   onCloseTab?(paneId: string, path: string): void
@@ -2030,6 +2087,7 @@ export interface TockTutorRouteViewProps {
   onOpenSmartView?(kind: 'recent' | 'tasks' | 'journals' | 'favorites' | 'collections' | 'tags'): void
   onOpenSearch?(): void
   onPrepareOrganization?(): void
+  onPreviewAttachment?(path: string): void
   onReadSnapshot?(id: string): void
   onRemoveBookmark?(id: string): void
   onRemoveRecentVault?(id: string): void
@@ -2043,6 +2101,7 @@ export interface TockTutorRouteViewProps {
   onSearchMode?(mode: 'query' | 'related'): void
   onSettingsChange?(change: Partial<TockTutorSettings>): void
   onSelectionChange?(start: number, end: number): void
+  onStoreAttachment?(fileName: string, dataBase64: string): void
   onSetProperty?(key: string, value: PropertyValue): void
   onSelect(path: string): void
   onSubmitDispatch?(draft: NativeDispatchDraft): void
@@ -2888,6 +2947,36 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
             {(snapshot.links?.outgoingDetails ?? []).map((link, index) => <Button unstyled className="block w-full rounded border-0 bg-transparent px-1 py-0.5 text-left text-xs" disabled={link.resolvedPath === null} key={`${link.authoredTarget}-${String(link.line)}-${String(index)}`} onClick={() => { if (link.resolvedPath !== null) props.onSelect(link.resolvedPath) }} type="button">{link.displayText || link.authoredTarget}</Button>)}
             {(snapshot.links?.unlinkedMentions ?? []).map((mention, index) => <span className="block text-xs text-[var(--tt-muted)]" key={`${mention.sourcePath}-${String(mention.line)}-${String(index)}`}>Mention: {mention.matchedText}</span>)}
           </section>
+          <section aria-label="Attachments" className="border-t border-[var(--tt-border)] p-3">
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="m-0 text-sm">Attachments</h2>
+              <Label unstyled className="cursor-pointer rounded border border-[var(--tt-border)] px-2 py-1 text-xs">Add Files
+                <input className="sr-only" type="file" accept="image/*,audio/*,video/*,application/pdf" onChange={event => {
+                  const file = event.target.files?.[0]
+                  if (file === undefined) return
+                  const reader = new FileReader()
+                  reader.addEventListener('load', () => {
+                    const value = typeof reader.result === 'string' ? reader.result.split(',', 2)[1] : undefined
+                    if (value !== undefined) props.onStoreAttachment?.(file.name, value)
+                  }, { once: true })
+                  reader.readAsDataURL(file)
+                  event.target.value = ''
+                }} />
+              </Label>
+            </div>
+            <div className="mt-2 grid gap-1">
+              {snapshot.entries.filter(entry => entry.kind === 'attachment').map(entry => <Button unstyled className="truncate rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-left text-xs" key={entry.path} onClick={() => { props.onPreviewAttachment?.(entry.path) }} type="button">{entry.path}</Button>)}
+            </div>
+            {snapshot.attachmentPreview !== null && snapshot.attachmentPreview !== undefined && (
+              <div className="mt-2 rounded border border-[var(--tt-border)] p-2">
+                <div className="flex justify-between gap-2"><strong className="truncate text-xs">{snapshot.attachmentPreview.path}</strong><Button unstyled aria-label="Close Attachment Preview" className="border-0 bg-transparent" onClick={props.onCloseAttachmentPreview} type="button"><WorkbenchGlyph kind="close" /></Button></div>
+                {snapshot.attachmentPreview.mediaKind === 'image' && <img alt={snapshot.attachmentPreview.path} className="mt-2 max-h-48 max-w-full" src={`data:${snapshot.attachmentPreview.mimeType};base64,${snapshot.attachmentPreview.dataBase64}`} />}
+                {snapshot.attachmentPreview.mediaKind === 'audio' && <audio className="mt-2 w-full" controls src={`data:${snapshot.attachmentPreview.mimeType};base64,${snapshot.attachmentPreview.dataBase64}`} />}
+                {snapshot.attachmentPreview.mediaKind === 'video' && <video className="mt-2 max-h-48 max-w-full" controls src={`data:${snapshot.attachmentPreview.mimeType};base64,${snapshot.attachmentPreview.dataBase64}`} />}
+                {snapshot.attachmentPreview.mediaKind === 'pdf' && <iframe className="mt-2 h-48 w-full" sandbox="" src={`data:${snapshot.attachmentPreview.mimeType};base64,${snapshot.attachmentPreview.dataBase64}`} title={snapshot.attachmentPreview.path} />}
+              </div>
+            )}
+          </section>
           <section aria-label="Note Composer and Format Converter" className="border-t border-[var(--tt-border)] p-3">
             <h2 className="m-0 text-sm">Note Composer and Format Converter</h2>
             <div className="mt-2 flex gap-1">
@@ -3093,6 +3182,7 @@ export function TockTutorRoute(props: TockTutorRouteProps): ReactNode {
         onCancelDispatch={() => { controller.cancelDispatchDialog() }}
         onCancelOrganization={() => { controller.cancelOrganization() }}
         onCanvasChange={change => { void controller.applyCanvasChange(change) }}
+        onCloseAttachmentPreview={() => { controller.closeAttachmentPreview() }}
         onCloseCommandPalette={() => { controller.setCommandPaletteOpen(false) }}
         onCloseSearch={() => { controller.closeSearch() }}
         onCloseTab={(paneId, path) => { void controller.closeTab(paneId, path) }}
@@ -3116,6 +3206,7 @@ export function TockTutorRoute(props: TockTutorRouteProps): ReactNode {
         onOpenSearch={() => { controller.openSearch('') }}
         onOpenSmartView={kind => { void controller.openSmartView(kind) }}
         onPrepareOrganization={() => { void controller.prepareOrganization() }}
+        onPreviewAttachment={path => { void controller.previewAttachment(path) }}
         onReadSnapshot={id => { void controller.readRecoverySnapshot(id) }}
         onRemoveBookmark={id => { controller.removeBookmark(id) }}
         onRemoveRecentVault={id => { void controller.removeRecentVault(id) }}
@@ -3131,6 +3222,7 @@ export function TockTutorRoute(props: TockTutorRouteProps): ReactNode {
         onSelect={path => { void controller.select(path) }}
         onSelectionChange={(start, end) => { controller.setSelection(start, end) }}
         onSetProperty={(key, value) => { controller.setProperty(key, value) }}
+        onStoreAttachment={(fileName, dataBase64) => { void controller.storeActiveAttachment(fileName, dataBase64) }}
         onSubmitDispatch={draft => { void controller.submitDispatchDialog(draft) }}
         onToggleFocusMode={() => { controller.toggleFocusMode() }}
         onTogglePinTab={(paneId, path) => { controller.togglePinTab(paneId, path) }}

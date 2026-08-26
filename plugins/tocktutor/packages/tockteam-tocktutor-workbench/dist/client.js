@@ -68,10 +68,12 @@ __export(client_exports, {
   TockTutorRouteView: () => TockTutorRouteView,
   WorkbenchRouteController: () => WorkbenchRouteController,
   addBookmark: () => addBookmark,
+  appendAttachmentMarkdown: () => appendAttachmentMarkdown,
   apply: () => apply,
   applyEditorCommand: () => applyEditorCommand,
   applyTableCommand: () => applyTableCommand,
   assertUniqueCanvasDocumentIdentities: () => assertUniqueCanvasDocumentIdentities,
+  attachmentTargetPath: () => attachmentTargetPath,
   buildCaptureNote: () => buildCaptureNote,
   buildHighlightNote: () => buildHighlightNote,
   buildJournalNote: () => buildJournalNote,
@@ -14799,6 +14801,19 @@ var _tockteam_tocktutor_workbench_tocktutorWorkbench_graph_result$schema = exter
   "truncationReason": external_exports.union([external_exports.literal(null), external_exports.literal("entry-limit"), external_exports.literal("result-limit"), external_exports.literal("byte-limit"), external_exports.literal("file-limit"), external_exports.literal("metadata-limit")]),
   "warnings": external_exports.array(external_exports.string())
 });
+var _tockteam_tocktutor_workbench_tocktutorWorkbench_inspectAttachment_parameter_0$schema = external_exports.string();
+var _tockteam_tocktutor_workbench_tocktutorWorkbench_inspectAttachment_parameter_1$schema = external_exports.object({
+  "generation": external_exports.number(),
+  "id": external_exports.string()
+});
+var _tockteam_tocktutor_workbench_tocktutorWorkbench_inspectAttachment_result$schema = external_exports.object({
+  "generation": external_exports.number(),
+  "mediaKind": external_exports.union([external_exports.literal("audio"), external_exports.literal("image"), external_exports.literal("pdf"), external_exports.literal("video")]),
+  "mimeType": external_exports.string(),
+  "path": external_exports.string(),
+  "revision": external_exports.string(),
+  "size": external_exports.number()
+});
 var _tockteam_tocktutor_workbench_tocktutorWorkbench_links_parameter_0$schema = external_exports.object({
   "cursor": external_exports.union([external_exports.undefined(), external_exports.string()]).optional(),
   "expectedVault": external_exports.object({
@@ -14984,6 +14999,21 @@ var _tockteam_tocktutor_workbench_tocktutorWorkbench_outline_result$schema = ext
   "path": external_exports.string(),
   "truncated": external_exports.boolean()
 });
+var _tockteam_tocktutor_workbench_tocktutorWorkbench_previewAttachment_parameter_0$schema = external_exports.string();
+var _tockteam_tocktutor_workbench_tocktutorWorkbench_previewAttachment_parameter_1$schema = external_exports.object({
+  "generation": external_exports.number(),
+  "id": external_exports.string()
+});
+var _tockteam_tocktutor_workbench_tocktutorWorkbench_previewAttachment_result$schema = external_exports.object({
+  "dataBase64": external_exports.string(),
+  "digest": external_exports.string(),
+  "generation": external_exports.number(),
+  "mediaKind": external_exports.union([external_exports.literal("audio"), external_exports.literal("image"), external_exports.literal("pdf"), external_exports.literal("video")]),
+  "mimeType": external_exports.string(),
+  "path": external_exports.string(),
+  "revision": external_exports.string(),
+  "size": external_exports.number()
+});
 var _tockteam_tocktutor_workbench_tocktutorWorkbench_readDraft_parameter_0$schema = external_exports.object({
   "expectedVault": external_exports.object({
     "generation": external_exports.number(),
@@ -15147,6 +15177,24 @@ var _tockteam_tocktutor_workbench_tocktutorWorkbench_search_result$schema = exte
   "truncationReason": external_exports.union([external_exports.literal(null), external_exports.literal("entry-limit"), external_exports.literal("result-limit"), external_exports.literal("byte-limit"), external_exports.literal("file-limit"), external_exports.literal("metadata-limit")]),
   "warnings": external_exports.array(external_exports.string())
 });
+var _tockteam_tocktutor_workbench_tocktutorWorkbench_storeAttachment_parameter_0$schema = external_exports.object({
+  "dataBase64": external_exports.string(),
+  "expectedVault": external_exports.object({
+    "generation": external_exports.number(),
+    "id": external_exports.string()
+  }),
+  "path": external_exports.string()
+});
+var _tockteam_tocktutor_workbench_tocktutorWorkbench_storeAttachment_result$schema = external_exports.object({
+  "digest": external_exports.string(),
+  "status": external_exports.literal("stored"),
+  "generation": external_exports.number(),
+  "mediaKind": external_exports.union([external_exports.literal("audio"), external_exports.literal("image"), external_exports.literal("pdf"), external_exports.literal("video")]),
+  "mimeType": external_exports.string(),
+  "path": external_exports.string(),
+  "revision": external_exports.string(),
+  "size": external_exports.number()
+});
 var _tockteam_tocktutor_workbench_tocktutorWorkbench_trashEntry_parameter_0$schema = external_exports.object({
   "expectedRevision": external_exports.string(),
   "expectedVault": external_exports.object({
@@ -15191,7 +15239,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "@tockteam/tocktutor-workbench/client#VaultReference",
         schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_activateRecentVault_result$schema
       },
-      sourceLocation: { "file": "packages/workbench/src/host-read.ts", "line": 332, "column": 9 }
+      sourceLocation: { "file": "packages/workbench/src/host-read.ts", "line": 352, "column": 9 }
     },
     {
       id: "@tockteam/tocktutor-workbench#tocktutorWorkbench/clearDraft",
@@ -15217,7 +15265,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "@tockteam/tocktutor-workbench/client#DraftMutationResult",
         schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_clearDraft_result$schema
       },
-      sourceLocation: { "file": "packages/workbench/src/host-read.ts", "line": 449, "column": 9 }
+      sourceLocation: { "file": "packages/workbench/src/host-read.ts", "line": 496, "column": 9 }
     },
     {
       id: "@tockteam/tocktutor-workbench#tocktutorWorkbench/createDocument",
@@ -15243,7 +15291,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "@tockteam/tocktutor-workbench/client#WriteDocumentResult",
         schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_createDocument_result$schema
       },
-      sourceLocation: { "file": "packages/workbench/src/host-read.ts", "line": 375, "column": 9 }
+      sourceLocation: { "file": "packages/workbench/src/host-read.ts", "line": 422, "column": 9 }
     },
     {
       id: "@tockteam/tocktutor-workbench#tocktutorWorkbench/currentVault",
@@ -15258,7 +15306,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "@tockteam/tocktutor-workbench/client#ActiveVaultResult",
         schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_currentVault_result$schema
       },
-      sourceLocation: { "file": "packages/workbench/src/host-read.ts", "line": 313, "column": 9 }
+      sourceLocation: { "file": "packages/workbench/src/host-read.ts", "line": 333, "column": 9 }
     },
     {
       id: "@tockteam/tocktutor-workbench#tocktutorWorkbench/facets",
@@ -15284,7 +15332,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "@tockteam/tocktutor-workbench/client#VaultFacetsResult",
         schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_facets_result$schema
       },
-      sourceLocation: { "file": "packages/workbench/src/host-read.ts", "line": 403, "column": 9 }
+      sourceLocation: { "file": "packages/workbench/src/host-read.ts", "line": 450, "column": 9 }
     },
     {
       id: "@tockteam/tocktutor-workbench#tocktutorWorkbench/graph",
@@ -15310,7 +15358,43 @@ var TYPERT_REMOTE = {
         typeSymbol: "@tockteam/tocktutor-workbench/client#VaultGraphResult",
         schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_graph_result$schema
       },
-      sourceLocation: { "file": "packages/workbench/src/host-read.ts", "line": 395, "column": 9 }
+      sourceLocation: { "file": "packages/workbench/src/host-read.ts", "line": 442, "column": 9 }
+    },
+    {
+      id: "@tockteam/tocktutor-workbench#tocktutorWorkbench/inspectAttachment",
+      service: "tocktutorWorkbench",
+      namespace: "tocktutorWorkbench",
+      method: "inspectAttachment",
+      invocation: { kind: "direct" },
+      parameters: [
+        {
+          name: "path",
+          wire: "path",
+          source: "json",
+          codec: {
+            mode: "strict",
+            typeSymbol: "@tockteam/tocktutor-workbench#tocktutorWorkbench/inspectAttachment:path",
+            schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_inspectAttachment_parameter_0$schema
+          }
+        },
+        {
+          name: "expectedVault",
+          wire: "expectedVault",
+          source: "json",
+          codec: {
+            mode: "strict",
+            typeSymbol: "@tockteam/tocktutor-workbench/client#VaultReference",
+            schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_inspectAttachment_parameter_1$schema
+          }
+        }
+      ],
+      cancellation: { parameter: "signal" },
+      result: {
+        mode: "strict",
+        typeSymbol: "@tockteam/tocktutor-workbench/client#AttachmentMetadataResult",
+        schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_inspectAttachment_result$schema
+      },
+      sourceLocation: { "file": "packages/workbench/src/host-read.ts", "line": 376, "column": 9 }
     },
     {
       id: "@tockteam/tocktutor-workbench#tocktutorWorkbench/links",
@@ -15336,7 +15420,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "@tockteam/tocktutor-workbench/client#VaultLinksResult",
         schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_links_result$schema
       },
-      sourceLocation: { "file": "packages/workbench/src/host-read.ts", "line": 419, "column": 9 }
+      sourceLocation: { "file": "packages/workbench/src/host-read.ts", "line": 466, "column": 9 }
     },
     {
       id: "@tockteam/tocktutor-workbench#tocktutorWorkbench/listRecentVaults",
@@ -15351,7 +15435,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "@tockteam/tocktutor-workbench/client#RecentVaultListResult",
         schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_listRecentVaults_result$schema
       },
-      sourceLocation: { "file": "packages/workbench/src/host-read.ts", "line": 323, "column": 9 }
+      sourceLocation: { "file": "packages/workbench/src/host-read.ts", "line": 343, "column": 9 }
     },
     {
       id: "@tockteam/tocktutor-workbench#tocktutorWorkbench/listSnapshots",
@@ -15377,7 +15461,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "@tockteam/tocktutor-workbench/client#SnapshotListResult",
         schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_listSnapshots_result$schema
       },
-      sourceLocation: { "file": "packages/workbench/src/host-read.ts", "line": 456, "column": 9 }
+      sourceLocation: { "file": "packages/workbench/src/host-read.ts", "line": 503, "column": 9 }
     },
     {
       id: "@tockteam/tocktutor-workbench#tocktutorWorkbench/listTrash",
@@ -15403,7 +15487,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "@tockteam/tocktutor-workbench/client#TrashListResult",
         schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_listTrash_result$schema
       },
-      sourceLocation: { "file": "packages/workbench/src/host-read.ts", "line": 496, "column": 9 }
+      sourceLocation: { "file": "packages/workbench/src/host-read.ts", "line": 543, "column": 9 }
     },
     {
       id: "@tockteam/tocktutor-workbench#tocktutorWorkbench/listTree",
@@ -15429,7 +15513,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "@tockteam/tocktutor-workbench/client#VaultTreePage",
         schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_listTree_result$schema
       },
-      sourceLocation: { "file": "packages/workbench/src/host-read.ts", "line": 368, "column": 9 }
+      sourceLocation: { "file": "packages/workbench/src/host-read.ts", "line": 415, "column": 9 }
     },
     {
       id: "@tockteam/tocktutor-workbench#tocktutorWorkbench/openDocument",
@@ -15465,7 +15549,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "@tockteam/tocktutor-workbench/client#OpenDocumentResult",
         schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_openDocument_result$schema
       },
-      sourceLocation: { "file": "packages/workbench/src/host-read.ts", "line": 356, "column": 9 }
+      sourceLocation: { "file": "packages/workbench/src/host-read.ts", "line": 403, "column": 9 }
     },
     {
       id: "@tockteam/tocktutor-workbench#tocktutorWorkbench/openSandboxVault",
@@ -15491,7 +15575,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "@tockteam/tocktutor-workbench/client#VaultReference",
         schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_openSandboxVault_result$schema
       },
-      sourceLocation: { "file": "packages/workbench/src/host-read.ts", "line": 349, "column": 9 }
+      sourceLocation: { "file": "packages/workbench/src/host-read.ts", "line": 369, "column": 9 }
     },
     {
       id: "@tockteam/tocktutor-workbench#tocktutorWorkbench/outline",
@@ -15517,7 +15601,43 @@ var TYPERT_REMOTE = {
         typeSymbol: "@tockteam/tocktutor-workbench/client#VaultOutlineResult",
         schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_outline_result$schema
       },
-      sourceLocation: { "file": "packages/workbench/src/host-read.ts", "line": 411, "column": 9 }
+      sourceLocation: { "file": "packages/workbench/src/host-read.ts", "line": 458, "column": 9 }
+    },
+    {
+      id: "@tockteam/tocktutor-workbench#tocktutorWorkbench/previewAttachment",
+      service: "tocktutorWorkbench",
+      namespace: "tocktutorWorkbench",
+      method: "previewAttachment",
+      invocation: { kind: "direct" },
+      parameters: [
+        {
+          name: "path",
+          wire: "path",
+          source: "json",
+          codec: {
+            mode: "strict",
+            typeSymbol: "@tockteam/tocktutor-workbench#tocktutorWorkbench/previewAttachment:path",
+            schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_previewAttachment_parameter_0$schema
+          }
+        },
+        {
+          name: "expectedVault",
+          wire: "expectedVault",
+          source: "json",
+          codec: {
+            mode: "strict",
+            typeSymbol: "@tockteam/tocktutor-workbench/client#VaultReference",
+            schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_previewAttachment_parameter_1$schema
+          }
+        }
+      ],
+      cancellation: { parameter: "signal" },
+      result: {
+        mode: "strict",
+        typeSymbol: "@tockteam/tocktutor-workbench/client#AttachmentPreviewResult",
+        schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_previewAttachment_result$schema
+      },
+      sourceLocation: { "file": "packages/workbench/src/host-read.ts", "line": 384, "column": 9 }
     },
     {
       id: "@tockteam/tocktutor-workbench#tocktutorWorkbench/readDraft",
@@ -15543,7 +15663,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "@tockteam/tocktutor-workbench/client#DraftResult",
         schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_readDraft_result$schema
       },
-      sourceLocation: { "file": "packages/workbench/src/host-read.ts", "line": 435, "column": 9 }
+      sourceLocation: { "file": "packages/workbench/src/host-read.ts", "line": 482, "column": 9 }
     },
     {
       id: "@tockteam/tocktutor-workbench#tocktutorWorkbench/readSnapshot",
@@ -15569,7 +15689,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "@tockteam/tocktutor-workbench/client#SnapshotContentResult",
         schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_readSnapshot_result$schema
       },
-      sourceLocation: { "file": "packages/workbench/src/host-read.ts", "line": 466, "column": 9 }
+      sourceLocation: { "file": "packages/workbench/src/host-read.ts", "line": 513, "column": 9 }
     },
     {
       id: "@tockteam/tocktutor-workbench#tocktutorWorkbench/removeRecentVault",
@@ -15595,7 +15715,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "@tockteam/tocktutor-workbench/client#RecentVaultListResult",
         schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_removeRecentVault_result$schema
       },
-      sourceLocation: { "file": "packages/workbench/src/host-read.ts", "line": 339, "column": 9 }
+      sourceLocation: { "file": "packages/workbench/src/host-read.ts", "line": 359, "column": 9 }
     },
     {
       id: "@tockteam/tocktutor-workbench#tocktutorWorkbench/restoreSnapshotAsNew",
@@ -15621,7 +15741,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "@tockteam/tocktutor-workbench/client#WriteDocumentResult",
         schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_restoreSnapshotAsNew_result$schema
       },
-      sourceLocation: { "file": "packages/workbench/src/host-read.ts", "line": 476, "column": 9 }
+      sourceLocation: { "file": "packages/workbench/src/host-read.ts", "line": 523, "column": 9 }
     },
     {
       id: "@tockteam/tocktutor-workbench#tocktutorWorkbench/restoreTrash",
@@ -15647,7 +15767,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "@tockteam/tocktutor-workbench/client#RestoreTrashResult",
         schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_restoreTrash_result$schema
       },
-      sourceLocation: { "file": "packages/workbench/src/host-read.ts", "line": 503, "column": 9 }
+      sourceLocation: { "file": "packages/workbench/src/host-read.ts", "line": 550, "column": 9 }
     },
     {
       id: "@tockteam/tocktutor-workbench#tocktutorWorkbench/saveDocument",
@@ -15673,7 +15793,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "@tockteam/tocktutor-workbench/client#WriteDocumentResult",
         schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_saveDocument_result$schema
       },
-      sourceLocation: { "file": "packages/workbench/src/host-read.ts", "line": 385, "column": 9 }
+      sourceLocation: { "file": "packages/workbench/src/host-read.ts", "line": 432, "column": 9 }
     },
     {
       id: "@tockteam/tocktutor-workbench#tocktutorWorkbench/saveDraft",
@@ -15699,7 +15819,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "@tockteam/tocktutor-workbench/client#DraftMutationResult",
         schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_saveDraft_result$schema
       },
-      sourceLocation: { "file": "packages/workbench/src/host-read.ts", "line": 442, "column": 9 }
+      sourceLocation: { "file": "packages/workbench/src/host-read.ts", "line": 489, "column": 9 }
     },
     {
       id: "@tockteam/tocktutor-workbench#tocktutorWorkbench/search",
@@ -15725,7 +15845,33 @@ var TYPERT_REMOTE = {
         typeSymbol: "@tockteam/tocktutor-workbench/client#VaultSearchResult",
         schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_search_result$schema
       },
-      sourceLocation: { "file": "packages/workbench/src/host-read.ts", "line": 427, "column": 9 }
+      sourceLocation: { "file": "packages/workbench/src/host-read.ts", "line": 474, "column": 9 }
+    },
+    {
+      id: "@tockteam/tocktutor-workbench#tocktutorWorkbench/storeAttachment",
+      service: "tocktutorWorkbench",
+      namespace: "tocktutorWorkbench",
+      method: "storeAttachment",
+      invocation: { kind: "direct" },
+      parameters: [
+        {
+          name: "request",
+          wire: "request",
+          source: "json",
+          codec: {
+            mode: "strict",
+            typeSymbol: "@tockteam/tocktutor-workbench/client#StoreAttachmentRequest",
+            schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_storeAttachment_parameter_0$schema
+          }
+        }
+      ],
+      cancellation: { parameter: "signal" },
+      result: {
+        mode: "strict",
+        typeSymbol: "@tockteam/tocktutor-workbench/client#StoreAttachmentResult",
+        schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_storeAttachment_result$schema
+      },
+      sourceLocation: { "file": "packages/workbench/src/host-read.ts", "line": 394, "column": 9 }
     },
     {
       id: "@tockteam/tocktutor-workbench#tocktutorWorkbench/trashEntry",
@@ -15751,7 +15897,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "@tockteam/tocktutor-workbench/client#TrashMutationResult",
         schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_trashEntry_result$schema
       },
-      sourceLocation: { "file": "packages/workbench/src/host-read.ts", "line": 486, "column": 9 }
+      sourceLocation: { "file": "packages/workbench/src/host-read.ts", "line": 533, "column": 9 }
     }
   ]
 };
@@ -24092,6 +24238,31 @@ function convertMarkdownFormats(source, options) {
   return `${lines.join(eol)}${finalEol ? eol : ""}`;
 }
 
+// src/attachments.ts
+var ACCEPTED = /\.(?:avif|bmp|gif|ico|jpe?g|png|webp|mp3|m4a|ogg|wav|webm|mp4|mov|pdf)$/iu;
+function attachmentTargetPath(folder, fileName2, existing) {
+  if (!isSafeVaultRelativePath(folder) || /^[A-Za-z]:/u.test(folder)) throw new Error("Attachment folder is invalid.");
+  const name2 = fileName2.trim();
+  if (name2.length === 0 || name2.length > 255 || name2.includes("/") || name2.includes("\\") || name2 === "." || name2 === "..") throw new Error("Attachment name is invalid.");
+  if (!ACCEPTED.test(name2)) throw new Error("Attachment type is unsupported.");
+  const first = `${folder}/${name2}`;
+  if (!existing.has(first)) return first;
+  const extension = name2.match(/(\.[^.]+)$/u)[1];
+  const stem = name2.slice(0, -extension.length);
+  for (let index2 = 2; index2 <= 1e3; index2 += 1) {
+    const candidate = `${folder}/${stem} ${String(index2)}${extension}`;
+    if (!existing.has(candidate)) return candidate;
+  }
+  throw new Error("Attachment destination capacity is full.");
+}
+function appendAttachmentMarkdown(source, markdown) {
+  const block = markdown.replace(/^\s+|\s+$/gu, "");
+  if (block === "") return source;
+  const separator = source === "" ? "" : /(?:\r\n|[\r\n]){2}$/u.test(source) ? "" : /(?:\r\n|[\r\n])$/u.test(source) ? "\n" : "\n\n";
+  return `${source}${separator}${block}
+`;
+}
+
 // src/settings.ts
 var MAX_TOCKTUTOR_SETTINGS_BYTES = 1048576;
 var MAX_TOCKTUTOR_WORKSPACES = 32;
@@ -24608,6 +24779,7 @@ function routeForPath(path) {
 }
 function initialSnapshot() {
   return Object.freeze({
+    attachmentPreview: null,
     bookmarks: Object.freeze([]),
     canGoBack: false,
     canGoForward: false,
@@ -25867,6 +26039,51 @@ var WorkbenchRouteController = class {
       return false;
     }
   }
+  async storeActiveAttachment(fileName2, dataBase64) {
+    const vault = this.snapshot.vault;
+    const notePath = this.snapshot.path;
+    const source = this.snapshot.source;
+    const revision = this.snapshot.revision;
+    if (vault === null || notePath === null || revision === null || this.snapshot.documentKind !== "markdown" || dataBase64.length > 35e6) return false;
+    let path;
+    try {
+      path = attachmentTargetPath(
+        this.snapshot.settings?.attachmentFolder ?? "Attachments",
+        fileName2,
+        new Set(this.snapshot.entries.filter((entry) => entry.kind === "attachment").map((entry) => entry.path))
+      );
+    } catch {
+      return false;
+    }
+    const operation = this.operation;
+    try {
+      const stored = remoteValue(await this.remote.tocktutorWorkbench.storeAttachment({ dataBase64, expectedVault: vault, path }));
+      if (stored.status !== "stored" || stored.generation !== vault.generation || stored.path !== path) return false;
+      if (this.operation !== operation || !sameVault(this.snapshot.vault, vault) || this.snapshot.path !== notePath || this.snapshot.source !== source || this.snapshot.revision !== revision) return false;
+      this.edit(appendAttachmentMarkdown(source, `![[${path}]]`));
+      const saved = await this.save();
+      if (saved) await this.refreshTree(vault);
+      return saved;
+    } catch {
+      return false;
+    }
+  }
+  async previewAttachment(path) {
+    const vault = this.snapshot.vault;
+    if (vault === null || this.snapshot.entries.some((entry) => entry.kind === "attachment" && entry.path === path) !== true) return false;
+    const operation = this.nextOperation();
+    try {
+      const preview = remoteValue(await this.remote.tocktutorWorkbench.previewAttachment(path, vault, operation.signal));
+      if (!this.current(operation.id, vault) || preview.generation !== vault.generation || preview.path !== path || preview.dataBase64.length > 35e6) return false;
+      this.update({ attachmentPreview: preview });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  closeAttachmentPreview() {
+    this.update({ attachmentPreview: null });
+  }
   async applyCanvasChange(change) {
     const vault = this.snapshot.vault;
     const path = this.snapshot.path;
@@ -26962,6 +27179,38 @@ function TockTutorRouteView(props) {
                         mention.matchedText
                       ] }, `${mention.sourcePath}-${String(mention.line)}-${String(index2)}`))
                     ] }),
+                    /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("section", { "aria-label": "Attachments", className: "border-t border-[var(--tt-border)] p-3", children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("div", { className: "flex items-center justify-between gap-2", children: [
+                        /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("h2", { className: "m-0 text-sm", children: "Attachments" }),
+                        /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)(Label, { unstyled: true, className: "cursor-pointer rounded border border-[var(--tt-border)] px-2 py-1 text-xs", children: [
+                          "Add Files",
+                          /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("input", { className: "sr-only", type: "file", accept: "image/*,audio/*,video/*,application/pdf", onChange: (event) => {
+                            const file2 = event.target.files?.[0];
+                            if (file2 === void 0) return;
+                            const reader = new FileReader();
+                            reader.addEventListener("load", () => {
+                              const value = typeof reader.result === "string" ? reader.result.split(",", 2)[1] : void 0;
+                              if (value !== void 0) props.onStoreAttachment?.(file2.name, value);
+                            }, { once: true });
+                            reader.readAsDataURL(file2);
+                            event.target.value = "";
+                          } })
+                        ] })
+                      ] }),
+                      /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("div", { className: "mt-2 grid gap-1", children: snapshot.entries.filter((entry) => entry.kind === "attachment").map((entry) => /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(Button, { unstyled: true, className: "truncate rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-left text-xs", onClick: () => {
+                        props.onPreviewAttachment?.(entry.path);
+                      }, type: "button", children: entry.path }, entry.path)) }),
+                      snapshot.attachmentPreview !== null && snapshot.attachmentPreview !== void 0 && /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("div", { className: "mt-2 rounded border border-[var(--tt-border)] p-2", children: [
+                        /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("div", { className: "flex justify-between gap-2", children: [
+                          /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("strong", { className: "truncate text-xs", children: snapshot.attachmentPreview.path }),
+                          /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(Button, { unstyled: true, "aria-label": "Close Attachment Preview", className: "border-0 bg-transparent", onClick: props.onCloseAttachmentPreview, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(WorkbenchGlyph, { kind: "close" }) })
+                        ] }),
+                        snapshot.attachmentPreview.mediaKind === "image" && /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("img", { alt: snapshot.attachmentPreview.path, className: "mt-2 max-h-48 max-w-full", src: `data:${snapshot.attachmentPreview.mimeType};base64,${snapshot.attachmentPreview.dataBase64}` }),
+                        snapshot.attachmentPreview.mediaKind === "audio" && /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("audio", { className: "mt-2 w-full", controls: true, src: `data:${snapshot.attachmentPreview.mimeType};base64,${snapshot.attachmentPreview.dataBase64}` }),
+                        snapshot.attachmentPreview.mediaKind === "video" && /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("video", { className: "mt-2 max-h-48 max-w-full", controls: true, src: `data:${snapshot.attachmentPreview.mimeType};base64,${snapshot.attachmentPreview.dataBase64}` }),
+                        snapshot.attachmentPreview.mediaKind === "pdf" && /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("iframe", { className: "mt-2 h-48 w-full", sandbox: "", src: `data:${snapshot.attachmentPreview.mimeType};base64,${snapshot.attachmentPreview.dataBase64}`, title: snapshot.attachmentPreview.path })
+                      ] })
+                    ] }),
                     /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("section", { "aria-label": "Note Composer and Format Converter", className: "border-t border-[var(--tt-border)] p-3", children: [
                       /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("h2", { className: "m-0 text-sm", children: "Note Composer and Format Converter" }),
                       /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("div", { className: "mt-2 flex gap-1", children: [
@@ -27180,6 +27429,9 @@ function TockTutorRoute(props) {
       onCanvasChange: (change) => {
         void controller.applyCanvasChange(change);
       },
+      onCloseAttachmentPreview: () => {
+        controller.closeAttachmentPreview();
+      },
       onCloseCommandPalette: () => {
         controller.setCommandPaletteOpen(false);
       },
@@ -27249,6 +27501,9 @@ function TockTutorRoute(props) {
       onPrepareOrganization: () => {
         void controller.prepareOrganization();
       },
+      onPreviewAttachment: (path) => {
+        void controller.previewAttachment(path);
+      },
       onReadSnapshot: (id) => {
         void controller.readRecoverySnapshot(id);
       },
@@ -27293,6 +27548,9 @@ function TockTutorRoute(props) {
       },
       onSetProperty: (key2, value) => {
         controller.setProperty(key2, value);
+      },
+      onStoreAttachment: (fileName2, dataBase64) => {
+        void controller.storeActiveAttachment(fileName2, dataBase64);
       },
       onSubmitDispatch: (draft) => {
         void controller.submitDispatchDialog(draft);

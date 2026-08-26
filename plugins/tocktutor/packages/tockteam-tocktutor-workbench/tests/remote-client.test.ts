@@ -37,6 +37,7 @@ test('publishes deterministic strict read, tree, save, and recovery Remote artif
     'currentVault',
     'facets',
     'graph',
+    'inspectAttachment',
     'links',
     'listRecentVaults',
     'listSnapshots',
@@ -45,6 +46,7 @@ test('publishes deterministic strict read, tree, save, and recovery Remote artif
     'openDocument',
     'openSandboxVault',
     'outline',
+    'previewAttachment',
     'readDraft',
     'readSnapshot',
     'removeRecentVault',
@@ -53,6 +55,7 @@ test('publishes deterministic strict read, tree, save, and recovery Remote artif
     'saveDocument',
     'saveDraft',
     'search',
+    'storeAttachment',
     'trashEntry',
   ])
   for (const descriptor of remote.descriptors) {
@@ -65,7 +68,8 @@ test('publishes deterministic strict read, tree, save, and recovery Remote artif
       descriptor.parameters.map(parameter => parameter.name),
       descriptor.method === 'currentVault' || descriptor.method === 'listRecentVaults'
         ? []
-        : descriptor.method === 'openDocument' ? ['path', 'expectedVault'] : ['request'],
+        : descriptor.method === 'openDocument' || descriptor.method === 'inspectAttachment' || descriptor.method === 'previewAttachment'
+          ? ['path', 'expectedVault'] : ['request'],
     )
   }
 

@@ -14,7 +14,7 @@ import { type KeyValueStorage, type NamedWorkspace, type TockTutorSettings } fro
 import { type EditorCommandId } from './editor-commands.ts';
 import { type EditorStatus } from './markdown.ts';
 import { type NoteVaultEventRemote } from './vault-events.ts';
-import type { ActiveVaultResult, CreateDocumentRequest, DraftMutationResult, DraftRequest, DraftResult, ListSnapshotsRequest, ListTrashRequest, ListTreeRequest, OpenDocumentResult, RecentVaultInfo, RecentVaultListResult, ReadSnapshotRequest, RecentVaultRequest, RestoreSnapshotRequest, RestoreTrashRequest, SaveDocumentRequest, SaveDraftRequest, SnapshotContentResult, SnapshotInfo, TrashEntryInfo, TrashEntryRequest, VaultFacetsRequest, VaultFacetsResult, VaultGenerationRequest, VaultGraphRequest, VaultGraphResult, VaultLinksRequest, VaultLinksResult, VaultOutlineRequest, VaultOutlineResult, VaultReference, VaultSearchMatch, VaultSearchRequest, VaultSearchResult, VaultTreeEntry, VaultTreePage, WriteDocumentResult } from './types.ts';
+import type { ActiveVaultResult, AttachmentPreviewResult, CreateDocumentRequest, DraftMutationResult, DraftRequest, DraftResult, ListSnapshotsRequest, ListTrashRequest, ListTreeRequest, OpenDocumentResult, RecentVaultInfo, RecentVaultListResult, ReadSnapshotRequest, RecentVaultRequest, RestoreSnapshotRequest, RestoreTrashRequest, SaveDocumentRequest, SaveDraftRequest, SnapshotContentResult, SnapshotInfo, StoreAttachmentRequest, StoreAttachmentResult, TrashEntryInfo, TrashEntryRequest, VaultFacetsRequest, VaultFacetsResult, VaultGenerationRequest, VaultGraphRequest, VaultGraphResult, VaultLinksRequest, VaultLinksResult, VaultOutlineRequest, VaultOutlineResult, VaultReference, VaultSearchMatch, VaultSearchRequest, VaultSearchResult, VaultTreeEntry, VaultTreePage, WriteDocumentResult } from './types.ts';
 export declare const MAX_ROUTE_SOURCE_BYTES = 2000000;
 export interface WorkbenchRouteRemote extends NoteVaultEventRemote {
     tocktutorWorkbench: {
@@ -46,6 +46,8 @@ export interface WorkbenchRouteRemote extends NoteVaultEventRemote {
         outline(request: VaultOutlineRequest, signal?: AbortSignal): Promise<RemoteResult<VaultOutlineResult>>;
         links(request: VaultLinksRequest, signal?: AbortSignal): Promise<RemoteResult<VaultLinksResult>>;
         facets(request: VaultFacetsRequest, signal?: AbortSignal): Promise<RemoteResult<VaultFacetsResult>>;
+        previewAttachment(path: string, expectedVault: VaultReference, signal?: AbortSignal): Promise<RemoteResult<AttachmentPreviewResult>>;
+        storeAttachment(request: StoreAttachmentRequest, signal?: AbortSignal): Promise<RemoteResult<StoreAttachmentResult>>;
         graph(request: VaultGraphRequest, signal?: AbortSignal): Promise<RemoteResult<VaultGraphResult>>;
     };
 }
@@ -64,6 +66,7 @@ export interface RoutePaneSummary {
     tabs: readonly RouteTabSummary[];
 }
 export interface WorkbenchRouteSnapshot {
+    attachmentPreview?: AttachmentPreviewResult | null;
     bookmarks?: readonly TockTutorBookmark[];
     canGoBack?: boolean;
     canGoForward?: boolean;
@@ -213,6 +216,9 @@ export declare class WorkbenchRouteController {
     prepareOrganization(): Promise<boolean>;
     cancelOrganization(): void;
     applyOrganization(): Promise<boolean>;
+    storeActiveAttachment(fileName: string, dataBase64: string): Promise<boolean>;
+    previewAttachment(path: string): Promise<boolean>;
+    closeAttachmentPreview(): void;
     applyCanvasChange(change: CanvasChange): Promise<boolean>;
     save(): Promise<boolean>;
     private failureMessage;
@@ -229,6 +235,7 @@ export interface TockTutorRouteViewProps {
     onCancelDispatch?(): void;
     onCancelOrganization?(): void;
     onCanvasChange?(change: CanvasChange): void;
+    onCloseAttachmentPreview?(): void;
     onCloseCommandPalette?(): void;
     onCloseSearch?(): void;
     onCloseTab?(paneId: string, path: string): void;
@@ -253,6 +260,7 @@ export interface TockTutorRouteViewProps {
     onOpenSmartView?(kind: 'recent' | 'tasks' | 'journals' | 'favorites' | 'collections' | 'tags'): void;
     onOpenSearch?(): void;
     onPrepareOrganization?(): void;
+    onPreviewAttachment?(path: string): void;
     onReadSnapshot?(id: string): void;
     onRemoveBookmark?(id: string): void;
     onRemoveRecentVault?(id: string): void;
@@ -266,6 +274,7 @@ export interface TockTutorRouteViewProps {
     onSearchMode?(mode: 'query' | 'related'): void;
     onSettingsChange?(change: Partial<TockTutorSettings>): void;
     onSelectionChange?(start: number, end: number): void;
+    onStoreAttachment?(fileName: string, dataBase64: string): void;
     onSetProperty?(key: string, value: PropertyValue): void;
     onSelect(path: string): void;
     onSubmitDispatch?(draft: NativeDispatchDraft): void;

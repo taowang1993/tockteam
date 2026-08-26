@@ -4,6 +4,8 @@ import type { NoteVaultRuntime } from 'tockbot-note-runtime'
 import { isSafeVaultRelativePath } from './session.ts'
 import type {
   ActiveVaultResult,
+  AttachmentMetadataResult,
+  AttachmentPreviewResult,
   CreateDocumentRequest,
   DraftMutationResult,
   DraftRequest,
@@ -22,6 +24,8 @@ import type {
   SaveDraftRequest,
   SnapshotContentResult,
   SnapshotListResult,
+  StoreAttachmentRequest,
+  StoreAttachmentResult,
   TrashEntryRequest,
   TrashListResult,
   TrashMutationResult,
@@ -54,6 +58,7 @@ export type NoteVaultCapability = Pick<
   | 'createDocument'
   | 'facets'
   | 'graph'
+  | 'inspectAttachment'
   | 'listRecentVaults'
   | 'listSnapshots'
   | 'listTrash'
@@ -62,6 +67,7 @@ export type NoteVaultCapability = Pick<
   | 'openDocument'
   | 'outline'
   | 'openSandboxVault'
+  | 'previewAttachment'
   | 'readDraft'
   | 'readSnapshot'
   | 'removeRecentVault'
@@ -71,6 +77,7 @@ export type NoteVaultCapability = Pick<
   | 'saveDraft'
   | 'search'
   | 'state'
+  | 'storeAttachment'
   | 'trashEntry'
 >
 
@@ -115,6 +122,19 @@ function assertRevision(value: string): void {
   if (typeof value !== 'string' || !/^file:[0-9a-f]{64}$/u.test(value)) {
     throw new TypeError('Expected revision must be one bounded file revision.')
   }
+}
+
+function assertAttachmentPath(value: string): void {
+  if (!isSafeVaultRelativePath(value) || !/\.(?:avif|bmp|gif|ico|jpe?g|png|webp|mp3|m4a|ogg|wav|webm|mp4|mov|pdf)$/iu.test(value)) {
+    throw new TypeError('Attachment path must be one accepted vault-relative media path.')
+  }
+}
+
+function assertStoreAttachmentRequest(value: StoreAttachmentRequest): void {
+  assertRecord(value, 'Attachment request')
+  assertVaultReference(value.expectedVault)
+  assertAttachmentPath(value.path)
+  if (typeof value.dataBase64 !== 'string' || value.dataBase64.length > 35_000_000 || !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/u.test(value.dataBase64)) throw new TypeError('Attachment data must be bounded base64.')
 }
 
 function assertContent(value: string): void {
@@ -350,6 +370,33 @@ export class TockTutorWorkbenchGateway extends TypertRemoteService {
     assertExpectedGeneration(request)
     signal.throwIfAborted()
     return activeReference(this.ctx.noteVault.openSandboxVault(request.expectedGeneration))
+  }
+
+  @Remote
+  async inspectAttachment(path: string, expectedVault: VaultReference, signal: AbortSignal): Promise<AttachmentMetadataResult> {
+    assertAttachmentPath(path)
+    assertVaultReference(expectedVault)
+    signal.throwIfAborted()
+    return this.ctx.noteVault.inspectAttachment(path, expectedVault, signal)
+  }
+
+  @Remote
+  async previewAttachment(path: string, expectedVault: VaultReference, signal: AbortSignal): Promise<AttachmentPreviewResult> {
+    assertAttachmentPath(path)
+    assertVaultReference(expectedVault)
+    signal.throwIfAborted()
+    const preview = await this.ctx.noteVault.previewAttachment(path, expectedVault, signal)
+    const { data, ...metadata } = preview
+    return { ...metadata, dataBase64: Buffer.from(data).toString('base64') }
+  }
+
+  @Remote
+  async storeAttachment(request: StoreAttachmentRequest, signal: AbortSignal): Promise<StoreAttachmentResult> {
+    assertStoreAttachmentRequest(request)
+    signal.throwIfAborted()
+    const data = Buffer.from(request.dataBase64, 'base64')
+    if (data.byteLength > 25 * 1024 * 1024) throw new TypeError('Attachment data must not exceed 25 MiB.')
+    return this.ctx.noteVault.storeAttachment({ data, expectedVault: request.expectedVault, path: request.path }, signal)
   }
 
   @Remote

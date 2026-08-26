@@ -8,6 +8,10 @@ import {
   MAX_TREE_CURSOR_LENGTH,
   MAX_TREE_PAGE_SIZE,
   TockTutorWorkbenchGateway,
+  type AttachmentMetadataResult,
+  type AttachmentPreviewResult,
+  type StoreAttachmentRequest,
+  type StoreAttachmentResult,
   type ListTreeRequest,
   type OpenDocumentResult,
   type VaultFacetsRequest,
@@ -91,6 +95,21 @@ class FakeNoteVault extends Service {
     return { active: true as const, generation: expectedGeneration + 1, id: `vault:${'e'.repeat(64)}` }
   }
 
+  async inspectAttachment(path: string, expectedVault: VaultReference, signal: AbortSignal): Promise<AttachmentMetadataResult> {
+    this.calls.push({ method: 'inspectAttachment', parameters: [path, expectedVault, signal] })
+    return { generation: expectedVault.generation, mediaKind: 'image', mimeType: 'image/png', path, revision: `file:${'a'.repeat(64)}`, size: 3 }
+  }
+
+  async previewAttachment(path: string, expectedVault: VaultReference, signal: AbortSignal): Promise<AttachmentPreviewResult & { data: Uint8Array }> {
+    this.calls.push({ method: 'previewAttachment', parameters: [path, expectedVault, signal] })
+    return { data: Uint8Array.from([1, 2, 3]), dataBase64: 'AQID', digest: `sha256:${'b'.repeat(64)}`, generation: expectedVault.generation, mediaKind: 'image', mimeType: 'image/png', path, revision: `file:${'a'.repeat(64)}`, size: 3 }
+  }
+
+  async storeAttachment(request: StoreAttachmentRequest & { data: Uint8Array }, signal: AbortSignal): Promise<StoreAttachmentResult> {
+    this.calls.push({ method: 'storeAttachment', parameters: [request, signal] })
+    return { digest: `sha256:${'b'.repeat(64)}`, generation: request.expectedVault.generation, mediaKind: 'image', mimeType: 'image/png', path: request.path, revision: `file:${'a'.repeat(64)}`, size: request.data.byteLength, status: 'stored' }
+  }
+
   async openDocument(
     path: string,
     expectedVault: VaultReference,
@@ -169,6 +188,9 @@ test('registers only the accepted read/tree Remote methods and delegates exact r
       { invocation: { kind: 'direct' }, method: 'activateRecentVault' },
       { invocation: { kind: 'direct' }, method: 'removeRecentVault' },
       { invocation: { kind: 'direct' }, method: 'openSandboxVault' },
+      { invocation: { kind: 'direct' }, method: 'inspectAttachment' },
+      { invocation: { kind: 'direct' }, method: 'previewAttachment' },
+      { invocation: { kind: 'direct' }, method: 'storeAttachment' },
       { invocation: { kind: 'direct' }, method: 'openDocument' },
       { invocation: { kind: 'direct' }, method: 'listTree' },
       { invocation: { kind: 'direct' }, method: 'createDocument' },
@@ -204,6 +226,9 @@ test('registers only the accepted read/tree Remote methods and delegates exact r
       generation: 8,
       id: `vault:${'e'.repeat(64)}`,
     })
+    assert.equal((await state.gateway.inspectAttachment('Attachments/a.png', vault, signal)).size, 3)
+    assert.equal((await state.gateway.previewAttachment('Attachments/a.png', vault, signal)).dataBase64, 'AQID')
+    assert.equal((await state.gateway.storeAttachment({ dataBase64: 'AQID', expectedVault: vault, path: 'Attachments/b.png' }, signal)).status, 'stored')
     assert.strictEqual(await state.gateway.openDocument('Folder/Note.md', vault, signal), state.runtime.openResult)
     assert.strictEqual(await state.gateway.listTree({ expectedVault: vault, limit: 20 }, signal), state.runtime.treeResult)
     assert.equal((await state.gateway.graph({ expectedVault: vault, limit: 100, scope: 'global' }, signal)).complete, true)
@@ -216,6 +241,9 @@ test('registers only the accepted read/tree Remote methods and delegates exact r
       { method: 'activateRecentVault', parameters: [`vault:${'d'.repeat(64)}`, 7] },
       { method: 'removeRecentVault', parameters: [`vault:${'d'.repeat(64)}`, 7] },
       { method: 'openSandboxVault', parameters: [7] },
+      { method: 'inspectAttachment', parameters: ['Attachments/a.png', vault, signal] },
+      { method: 'previewAttachment', parameters: ['Attachments/a.png', vault, signal] },
+      { method: 'storeAttachment', parameters: [{ data: Buffer.from([1, 2, 3]), expectedVault: vault, path: 'Attachments/b.png' }, signal] },
       { method: 'openDocument', parameters: ['Folder/Note.md', vault, signal] },
       { method: 'listTree', parameters: [{ expectedVault: vault, limit: 20 }, signal] },
       { method: 'graph', parameters: [{ limit: 100, scope: 'global' }, vault, signal] },
@@ -244,6 +272,8 @@ test('fails closed on browser-controlled path, vault, cursor, and limit values',
     for (const path of ['', '/absolute.md', '../escape.md', 'Folder\\Note.md', 'note.txt']) {
       await assert.rejects(state.gateway.openDocument(path, vault, signal), /document path/i)
     }
+    await assert.rejects(state.gateway.previewAttachment('../escape.png', vault, signal), /attachment path/i)
+    await assert.rejects(state.gateway.storeAttachment({ dataBase64: '***', expectedVault: vault, path: 'Attachments/a.png' }, signal), /base64/i)
     await assert.rejects(
       state.gateway.listTree({ expectedVault: vault, cursor: 'x'.repeat(MAX_TREE_CURSOR_LENGTH + 1) }, signal),
       /cursor/i,

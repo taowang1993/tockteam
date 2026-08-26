@@ -40,4 +40,5 @@ export * from "./graph.js";
 export * from "./capture.js";
 export * from "./organize.js";
 export * from "./composer.js";
+export * from "./attachments.js";
 //# sourceMappingURL=index.js.map

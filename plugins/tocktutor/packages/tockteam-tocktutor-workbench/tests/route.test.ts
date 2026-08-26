@@ -86,9 +86,18 @@ function tree(vault: VaultReference): VaultTreePage {
         revision: firstRevision,
         size: 120,
       },
+      {
+        createdAt: 1,
+        kind: 'attachment',
+        mediaKind: 'image',
+        modifiedAt: 2,
+        path: 'Attachments/existing.png',
+        revision: firstRevision,
+        size: 3,
+      },
     ],
     generation: vault.generation,
-    scan: { entries: 4 },
+    scan: { entries: 5 },
     truncated: false,
     truncationReason: null,
     warnings: [],
@@ -160,6 +169,10 @@ class FakeRemote implements WorkbenchRouteRemote {
       this.calls.push({ method: 'openSandboxVault', parameters: [request, signal] })
       this.vault = sandboxVault
       return success(sandboxVault)
+    },
+    previewAttachment: (path: string, expectedVault: VaultReference, signal?: AbortSignal) => {
+      this.calls.push({ method: 'previewAttachment', parameters: [path, expectedVault, signal] })
+      return success({ dataBase64: 'AQID', digest: `sha256:${'a'.repeat(64)}`, generation: expectedVault.generation, mediaKind: 'image' as const, mimeType: 'image/png', path, revision: firstRevision, size: 3 })
     },
     readDraft: (request: { expectedVault: VaultReference; path: string }, signal?: AbortSignal) => {
       this.calls.push({ method: 'readDraft', parameters: [request, signal] })
@@ -322,6 +335,10 @@ class FakeRemote implements WorkbenchRouteRemote {
         status: 'saved',
       }
       return success(result)
+    },
+    storeAttachment: (request: { dataBase64: string; expectedVault: VaultReference; path: string }, signal?: AbortSignal) => {
+      this.calls.push({ method: 'storeAttachment', parameters: [request, signal] })
+      return success({ digest: `sha256:${'b'.repeat(64)}`, generation: request.expectedVault.generation, mediaKind: 'image' as const, mimeType: 'image/png', path: request.path, revision: secondRevision, size: 3, status: 'stored' as const })
     },
     trashEntry: (request: { expectedRevision: string; expectedVault: VaultReference; path: string }, signal?: AbortSignal) => {
       this.calls.push({ method: 'trashEntry', parameters: [request, signal] })
@@ -1221,6 +1238,22 @@ test('persists bounded settings, tabs, focus mode, and named workspaces per vaul
   assert.equal(await second.loadWorkspace('class-layout'), true)
   assert.equal(second.getSnapshot().focusMode, true)
   second.dispose()
+})
+
+test('stores, embeds, and previews bounded attachments under note identity', async () => {
+  const remote = new FakeRemote()
+  const controller = new WorkbenchRouteController(remote, () => {})
+  await controller.syncLocation('/tocktutor')
+  assert.equal(await controller.select('Folder/Note.md'), true)
+  assert.equal(await controller.storeActiveAttachment('image.png', 'AQID'), true)
+  const store = remote.calls.find(call => call.method === 'storeAttachment')?.parameters[0] as { path: string }
+  assert.equal(store.path, 'Attachments/image.png')
+  assert.match(controller.getSnapshot().source, /!\[\[Attachments\/image\.png\]\]/u)
+  assert.equal(await controller.previewAttachment('Attachments/existing.png'), true)
+  assert.equal(controller.getSnapshot().attachmentPreview?.dataBase64, 'AQID')
+  controller.closeAttachmentPreview()
+  assert.equal(controller.getSnapshot().attachmentPreview, null)
+  controller.dispose()
 })
 
 test('extracts the active selection and converts active-note formats through reviewed boundaries', async () => {

@@ -305,6 +305,27 @@ export interface DraftMutationResult {
     ok: true;
     updatedAt?: number;
 }
+export interface AttachmentMetadataResult {
+    generation: number;
+    mediaKind: 'audio' | 'image' | 'pdf' | 'video';
+    mimeType: string;
+    path: string;
+    revision: string;
+    size: number;
+}
+export interface AttachmentPreviewResult extends AttachmentMetadataResult {
+    dataBase64: string;
+    digest: string;
+}
+export interface StoreAttachmentRequest {
+    dataBase64: string;
+    expectedVault: VaultReference;
+    path: string;
+}
+export interface StoreAttachmentResult extends AttachmentMetadataResult {
+    digest: string;
+    status: 'stored';
+}
 export interface SnapshotInfo {
     createdAt: number;
     digest: string;

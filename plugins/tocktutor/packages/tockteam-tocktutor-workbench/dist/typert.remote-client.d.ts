@@ -3,7 +3,7 @@ import type {
   RemoteResult,
   TypertRemoteContribution,
 } from '@deepseek-ai/dsh-typert-protocol'
-import type { ActiveVaultResult, CreateDocumentRequest, DraftMutationResult, DraftRequest, DraftResult, ListSnapshotsRequest, ListTrashRequest, ListTreeRequest, OpenDocumentResult, ReadSnapshotRequest, RecentVaultListResult, RecentVaultRequest, RestoreSnapshotRequest, RestoreTrashRequest, RestoreTrashResult, SaveDocumentRequest, SaveDraftRequest, SnapshotContentResult, SnapshotListResult, TrashEntryRequest, TrashListResult, TrashMutationResult, VaultFacetsRequest, VaultFacetsResult, VaultGenerationRequest, VaultGraphRequest, VaultGraphResult, VaultLinksRequest, VaultLinksResult, VaultOutlineRequest, VaultOutlineResult, VaultReference, VaultSearchRequest, VaultSearchResult, VaultTreePage, WriteDocumentResult } from '@tockteam/tocktutor-workbench/client'
+import type { ActiveVaultResult, AttachmentMetadataResult, AttachmentPreviewResult, CreateDocumentRequest, DraftMutationResult, DraftRequest, DraftResult, ListSnapshotsRequest, ListTrashRequest, ListTreeRequest, OpenDocumentResult, ReadSnapshotRequest, RecentVaultListResult, RecentVaultRequest, RestoreSnapshotRequest, RestoreTrashRequest, RestoreTrashResult, SaveDocumentRequest, SaveDraftRequest, SnapshotContentResult, SnapshotListResult, StoreAttachmentRequest, StoreAttachmentResult, TrashEntryRequest, TrashListResult, TrashMutationResult, VaultFacetsRequest, VaultFacetsResult, VaultGenerationRequest, VaultGraphRequest, VaultGraphResult, VaultLinksRequest, VaultLinksResult, VaultOutlineRequest, VaultOutlineResult, VaultReference, VaultSearchRequest, VaultSearchResult, VaultTreePage, WriteDocumentResult } from '@tockteam/tocktutor-workbench/client'
 
 declare module '@deepseek-ai/dsh-typert-protocol' {
   interface TypertRemoteNamespace$746f636b7475746f72576f726b62656e6368 {
@@ -13,6 +13,7 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
     currentVault: (signal?: AbortSignal) => Promise<RemoteResult<ActiveVaultResult>>
     facets: (request: VaultFacetsRequest, signal?: AbortSignal) => Promise<RemoteResult<VaultFacetsResult>>
     graph: (request: VaultGraphRequest, signal?: AbortSignal) => Promise<RemoteResult<VaultGraphResult>>
+    inspectAttachment: (path: string, expectedVault: VaultReference, signal?: AbortSignal) => Promise<RemoteResult<AttachmentMetadataResult>>
     links: (request: VaultLinksRequest, signal?: AbortSignal) => Promise<RemoteResult<VaultLinksResult>>
     listRecentVaults: (signal?: AbortSignal) => Promise<RemoteResult<RecentVaultListResult>>
     listSnapshots: (request: ListSnapshotsRequest, signal?: AbortSignal) => Promise<RemoteResult<SnapshotListResult>>
@@ -21,6 +22,7 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
     openDocument: (path: string, expectedVault: VaultReference, signal?: AbortSignal) => Promise<RemoteResult<OpenDocumentResult>>
     openSandboxVault: (request: VaultGenerationRequest, signal?: AbortSignal) => Promise<RemoteResult<VaultReference>>
     outline: (request: VaultOutlineRequest, signal?: AbortSignal) => Promise<RemoteResult<VaultOutlineResult>>
+    previewAttachment: (path: string, expectedVault: VaultReference, signal?: AbortSignal) => Promise<RemoteResult<AttachmentPreviewResult>>
     readDraft: (request: DraftRequest, signal?: AbortSignal) => Promise<RemoteResult<DraftResult>>
     readSnapshot: (request: ReadSnapshotRequest, signal?: AbortSignal) => Promise<RemoteResult<SnapshotContentResult>>
     removeRecentVault: (request: RecentVaultRequest, signal?: AbortSignal) => Promise<RemoteResult<RecentVaultListResult>>
@@ -29,6 +31,7 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
     saveDocument: (request: SaveDocumentRequest, signal?: AbortSignal) => Promise<RemoteResult<WriteDocumentResult>>
     saveDraft: (request: SaveDraftRequest, signal?: AbortSignal) => Promise<RemoteResult<DraftMutationResult>>
     search: (request: VaultSearchRequest, signal?: AbortSignal) => Promise<RemoteResult<VaultSearchResult>>
+    storeAttachment: (request: StoreAttachmentRequest, signal?: AbortSignal) => Promise<RemoteResult<StoreAttachmentResult>>
     trashEntry: (request: TrashEntryRequest, signal?: AbortSignal) => Promise<RemoteResult<TrashMutationResult>>
   }
   interface TypertRemoteMap {
@@ -38,6 +41,7 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
     'tocktutorWorkbench/currentVault': (signal?: AbortSignal) => Promise<RemoteResult<ActiveVaultResult>>
     'tocktutorWorkbench/facets': (request: VaultFacetsRequest, signal?: AbortSignal) => Promise<RemoteResult<VaultFacetsResult>>
     'tocktutorWorkbench/graph': (request: VaultGraphRequest, signal?: AbortSignal) => Promise<RemoteResult<VaultGraphResult>>
+    'tocktutorWorkbench/inspectAttachment': (path: string, expectedVault: VaultReference, signal?: AbortSignal) => Promise<RemoteResult<AttachmentMetadataResult>>
     'tocktutorWorkbench/links': (request: VaultLinksRequest, signal?: AbortSignal) => Promise<RemoteResult<VaultLinksResult>>
     'tocktutorWorkbench/listRecentVaults': (signal?: AbortSignal) => Promise<RemoteResult<RecentVaultListResult>>
     'tocktutorWorkbench/listSnapshots': (request: ListSnapshotsRequest, signal?: AbortSignal) => Promise<RemoteResult<SnapshotListResult>>
@@ -46,6 +50,7 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
     'tocktutorWorkbench/openDocument': (path: string, expectedVault: VaultReference, signal?: AbortSignal) => Promise<RemoteResult<OpenDocumentResult>>
     'tocktutorWorkbench/openSandboxVault': (request: VaultGenerationRequest, signal?: AbortSignal) => Promise<RemoteResult<VaultReference>>
     'tocktutorWorkbench/outline': (request: VaultOutlineRequest, signal?: AbortSignal) => Promise<RemoteResult<VaultOutlineResult>>
+    'tocktutorWorkbench/previewAttachment': (path: string, expectedVault: VaultReference, signal?: AbortSignal) => Promise<RemoteResult<AttachmentPreviewResult>>
     'tocktutorWorkbench/readDraft': (request: DraftRequest, signal?: AbortSignal) => Promise<RemoteResult<DraftResult>>
     'tocktutorWorkbench/readSnapshot': (request: ReadSnapshotRequest, signal?: AbortSignal) => Promise<RemoteResult<SnapshotContentResult>>
     'tocktutorWorkbench/removeRecentVault': (request: RecentVaultRequest, signal?: AbortSignal) => Promise<RemoteResult<RecentVaultListResult>>
@@ -54,6 +59,7 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
     'tocktutorWorkbench/saveDocument': (request: SaveDocumentRequest, signal?: AbortSignal) => Promise<RemoteResult<WriteDocumentResult>>
     'tocktutorWorkbench/saveDraft': (request: SaveDraftRequest, signal?: AbortSignal) => Promise<RemoteResult<DraftMutationResult>>
     'tocktutorWorkbench/search': (request: VaultSearchRequest, signal?: AbortSignal) => Promise<RemoteResult<VaultSearchResult>>
+    'tocktutorWorkbench/storeAttachment': (request: StoreAttachmentRequest, signal?: AbortSignal) => Promise<RemoteResult<StoreAttachmentResult>>
     'tocktutorWorkbench/trashEntry': (request: TrashEntryRequest, signal?: AbortSignal) => Promise<RemoteResult<TrashMutationResult>>
   }
   interface TypertRemoteNamespaceMap {
