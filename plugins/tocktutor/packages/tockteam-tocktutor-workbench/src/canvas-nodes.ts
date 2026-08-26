@@ -159,6 +159,33 @@ export function updateCanvasNodeGeometries(content: string, updates: readonly Ca
   return serializeCanvasDocument(document)
 }
 
+/** Move a mixed card/group selection once, including unselected cards contained by selected groups. */
+export function moveCanvasNodes(content: string, nodeIds: readonly string[], deltaX: number, deltaY: number): string {
+  const document = parseCanvasForMutation(content)
+  const selected = new Set(nodeIds)
+  if (selected.size !== nodeIds.length) throw new Error('A Canvas card was selected more than once.')
+  if (selected.size === 0 || !Number.isFinite(deltaX) || !Number.isFinite(deltaY)) {
+    throw new Error('The Canvas selection movement is invalid.')
+  }
+  const selectedNodes = document.nodes.filter(node => selected.has(node.id))
+  if (selectedNodes.length !== selected.size || selectedNodes.some(node => !isSupportedCanvasCard(node) && node.type !== 'group')) {
+    throw new Error('A selected supported Canvas card no longer exists.')
+  }
+  const selectedGroups = selectedNodes.filter(node => node.type === 'group')
+  const moved = document.nodes.filter(node => selected.has(node.id)
+    || (node.type !== 'group' && selectedGroups.some(group => contains(group, node))))
+  for (const node of moved) {
+    if (!isBoundedCanvasGeometry({ ...node, x: node.x + deltaX, y: node.y + deltaY })) {
+      throw new Error('The Canvas selection movement is invalid.')
+    }
+  }
+  for (const node of moved) {
+    node.x += deltaX
+    node.y += deltaY
+  }
+  return serializeCanvasDocument(document)
+}
+
 function contains(group: CanvasNodeGeometry, node: CanvasNodeGeometry): boolean {
   return node.x >= group.x
     && node.y >= group.y

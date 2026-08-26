@@ -35,6 +35,8 @@ export declare function updateCanvasLinkNode(content: string, nodeId: string, va
 export declare function updateCanvasTextNode(content: string, nodeId: string, text: string): string;
 /** Validate every selected card before applying one atomic geometry update. */
 export declare function updateCanvasNodeGeometries(content: string, updates: readonly CanvasNodeGeometryUpdate[]): string;
+/** Move a mixed card/group selection once, including unselected cards contained by selected groups. */
+export declare function moveCanvasNodes(content: string, nodeIds: readonly string[], deltaX: number, deltaY: number): string;
 /** Move or resize a group; position-only moves translate fully contained non-group nodes. */
 export declare function updateCanvasGroupGeometry(content: string, nodeId: string, geometry: CanvasNodeGeometry): string;
 export declare function updateCanvasNodeGeometry(content: string, nodeId: string, geometry: CanvasNodeGeometry): string;

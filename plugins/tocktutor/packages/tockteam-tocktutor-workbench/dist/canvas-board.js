@@ -8,7 +8,7 @@ import { createCanvasChange } from "./canvas-change.js";
 import { createCanvasEdge, deleteCanvasEdge, isConnectableCanvasNode, reconnectCanvasEdge, updateCanvasEdgeColor, updateCanvasEdgeLabel, } from "./canvas-edges.js";
 import { calculateCanvasPointerValue, CANVAS_GRID_SIZE } from "./canvas-geometry.js";
 import { tryNormalizeCanvasLinkUrl } from "./canvas-links.js";
-import { createCanvasFileNode, createCanvasGroupNode, createCanvasLinkNode, createCanvasTextNode, deleteCanvasGroup, deleteCanvasNode, duplicateCanvasGroup, duplicateCanvasNodes, updateCanvasGroupLabel, updateCanvasLinkNode, updateCanvasNodeGeometry, updateCanvasTextNode, } from "./canvas-nodes.js";
+import { createCanvasFileNode, createCanvasGroupNode, createCanvasLinkNode, createCanvasTextNode, deleteCanvasGroup, deleteCanvasNode, duplicateCanvasGroup, duplicateCanvasNodes, moveCanvasNodes, updateCanvasGroupLabel, updateCanvasLinkNode, updateCanvasNodeGeometry, updateCanvasTextNode, } from "./canvas-nodes.js";
 import { parseCanvasDocument } from "./canvas.js";
 const BOARD_PADDING = 40;
 const MAX_CANVAS_BOARD_SPAN = 100_000;
@@ -76,9 +76,11 @@ export function CanvasBoard({ source, revision, onChange, disabled = false }) {
     const parsed = useMemo(() => parseCanvasDocument(source), [source]);
     const [armed, setArmed] = useState(null);
     const [selectedNodeId, setSelectedNodeId] = useState(null);
+    const [selectedNodeIds, setSelectedNodeIds] = useState(() => new Set());
     const [selectedEdgeId, setSelectedEdgeId] = useState(null);
     const [nodeEditor, setNodeEditor] = useState(null);
     const [edgeEditor, setEdgeEditor] = useState(null);
+    const [marquee, setMarquee] = useState(null);
     const [zoom, setZoom] = useState(1);
     const [error, setError] = useState(null);
     const pointerCleanup = useRef(null);
@@ -91,6 +93,7 @@ export function CanvasBoard({ source, revision, onChange, disabled = false }) {
         if (document === null) {
             setArmed(null);
             setSelectedNodeId(null);
+            setSelectedNodeIds(new Set());
             setSelectedEdgeId(null);
             setNodeEditor(null);
             setEdgeEditor(null);
@@ -100,13 +103,16 @@ export function CanvasBoard({ source, revision, onChange, disabled = false }) {
             setArmed(null);
         if (selectedNodeId !== null && !document.nodes.some(node => node.id === selectedNodeId))
             setSelectedNodeId(null);
+        if ([...selectedNodeIds].some(id => !document.nodes.some(node => node.id === id))) {
+            setSelectedNodeIds(new Set([...selectedNodeIds].filter(id => document.nodes.some(node => node.id === id))));
+        }
         if (selectedEdgeId !== null && !document.edges?.some(edge => edge.id === selectedEdgeId))
             setSelectedEdgeId(null);
         if (nodeEditor?.mode === 'edit' && !document.nodes.some(node => node.id === nodeEditor.nodeId))
             setNodeEditor(null);
         if (edgeEditor !== null && !document.edges?.some(edge => edge.id === edgeEditor.edgeId))
             setEdgeEditor(null);
-    }, [armed, document, edgeEditor, nodeEditor, selectedEdgeId, selectedNodeId]);
+    }, [armed, document, edgeEditor, nodeEditor, selectedEdgeId, selectedNodeId, selectedNodeIds]);
     const bounds = useMemo(() => {
         if (document === null || document.nodes.length === 0) {
             return { minX: 0, minY: 0, width: 800, height: 500, supported: true };
@@ -212,8 +218,10 @@ export function CanvasBoard({ source, revision, onChange, disabled = false }) {
         const prepared = emit('duplicate-node', content => node.type === 'group'
             ? duplicateCanvasGroup(content, node.id, geometry).content
             : duplicateCanvasNodes(content, [{ nodeId: node.id, geometry }]).content);
-        if (prepared)
+        if (prepared) {
+            setSelectedNodeIds(new Set());
             setSelectedNodeId(null);
+        }
     };
     const deleteSelectedNode = () => {
         if (document === null || selectedNodeId === null)
@@ -224,8 +232,10 @@ export function CanvasBoard({ source, revision, onChange, disabled = false }) {
         const prepared = emit('delete-node', content => node.type === 'group'
             ? deleteCanvasGroup(content, node.id)
             : deleteCanvasNode(content, node.id));
-        if (prepared)
+        if (prepared) {
+            setSelectedNodeIds(new Set());
             setSelectedNodeId(null);
+        }
     };
     const activateHandle = (nodeId, side) => {
         if (disabled)
@@ -256,12 +266,8 @@ export function CanvasBoard({ source, revision, onChange, disabled = false }) {
         if (node === undefined)
             return;
         event.preventDefault();
-        emit('move-node', content => updateCanvasNodeGeometry(content, nodeId, {
-            x: node.x + delta.x,
-            y: node.y + delta.y,
-            width: node.width,
-            height: node.height,
-        }));
+        const selected = selectedNodeIds.has(nodeId) ? [...selectedNodeIds] : [nodeId];
+        emit('move-node', content => moveCanvasNodes(content, selected, delta.x, delta.y));
     };
     const beginPointerGeometry = (node, event, mode) => {
         if (disabled || event.button !== 0)
@@ -288,9 +294,9 @@ export function CanvasBoard({ source, revision, onChange, disabled = false }) {
             cleanup();
             if (Math.abs(deltaX) < 1 && Math.abs(deltaY) < 1)
                 return;
-            emit(mode === 'move' ? 'move-node' : 'resize-node', content => updateCanvasNodeGeometry(content, node.id, mode === 'move'
-                ? { x: node.x + deltaX, y: node.y + deltaY, width: node.width, height: node.height }
-                : { x: node.x, y: node.y, width: node.width + deltaX, height: node.height + deltaY }));
+            emit(mode === 'move' ? 'move-node' : 'resize-node', content => mode === 'move'
+                ? moveCanvasNodes(content, selectedNodeIds.has(node.id) ? [...selectedNodeIds] : [node.id], deltaX, deltaY)
+                : updateCanvasNodeGeometry(content, node.id, { x: node.x, y: node.y, width: node.width + deltaX, height: node.height + deltaY }));
         };
         const cancel = () => { cleanup(); };
         pointerCleanup.current = cleanup;
@@ -298,11 +304,72 @@ export function CanvasBoard({ source, revision, onChange, disabled = false }) {
         window.addEventListener('pointerup', finish);
         window.addEventListener('pointercancel', cancel);
     };
-    const cancelConnection = (event) => {
-        if (event.key !== 'Escape' || armed === null)
+    const beginMarquee = (event) => {
+        if (disabled || event.button !== 0 || event.target !== event.currentTarget || document === null)
             return;
         event.preventDefault();
+        pointerCleanup.current?.();
+        const rectangle = event.currentTarget.getBoundingClientRect();
+        const startX = (event.clientX - rectangle.left) / zoom;
+        const startY = (event.clientY - rectangle.top) / zoom;
+        const additive = event.shiftKey;
+        let endX = startX;
+        let endY = startY;
+        const update = () => {
+            setMarquee({
+                height: Math.abs(endY - startY),
+                left: Math.min(startX, endX),
+                top: Math.min(startY, endY),
+                width: Math.abs(endX - startX),
+            });
+        };
+        const move = (next) => {
+            endX = (next.clientX - rectangle.left) / zoom;
+            endY = (next.clientY - rectangle.top) / zoom;
+            update();
+        };
+        const cleanup = () => {
+            window.removeEventListener('pointermove', move);
+            window.removeEventListener('pointerup', finish);
+            window.removeEventListener('pointercancel', cancel);
+            if (pointerCleanup.current === cleanup)
+                pointerCleanup.current = null;
+            setMarquee(null);
+        };
+        const finish = () => {
+            const left = Math.min(startX, endX);
+            const right = Math.max(startX, endX);
+            const top = Math.min(startY, endY);
+            const bottom = Math.max(startY, endY);
+            const matched = document.nodes.filter(node => {
+                const nodeLeft = node.x - bounds.minX + BOARD_PADDING;
+                const nodeTop = node.y - bounds.minY + BOARD_PADDING;
+                return nodeLeft < right && nodeLeft + node.width > left && nodeTop < bottom && nodeTop + node.height > top;
+            }).map(node => node.id);
+            const next = new Set(additive ? selectedNodeIds : []);
+            for (const id of matched)
+                next.add(id);
+            setSelectedNodeIds(next);
+            setSelectedNodeId(matched.at(-1) ?? (additive ? selectedNodeId : null));
+            setSelectedEdgeId(null);
+            cleanup();
+        };
+        const cancel = () => { cleanup(); };
+        pointerCleanup.current = cleanup;
+        update();
+        window.addEventListener('pointermove', move);
+        window.addEventListener('pointerup', finish);
+        window.addEventListener('pointercancel', cancel);
+    };
+    const cancelConnection = (event) => {
+        if (event.key !== 'Escape')
+            return;
+        if (armed === null && marquee === null)
+            return;
+        event.preventDefault();
+        pointerCleanup.current?.();
         setArmed(null);
+        setMarquee(null);
     };
     if (document === null) {
         const reason = parsed.status === 'unsupported' ? parsed.reason : 'This Canvas could not be displayed.';
@@ -312,22 +379,35 @@ export function CanvasBoard({ source, revision, onChange, disabled = false }) {
         return (_jsx("section", { "aria-label": "Canvas Board", role: "region", children: _jsx("p", { role: "note", children: "This Canvas exceeds the bounded board display limit." }) }));
     }
     return (_jsxs("section", { "aria-label": "Canvas Board", className: "relative min-h-0 overflow-auto bg-[var(--tt-bg)] text-[var(--tt-text)]", "data-canvas-revision": revision, onKeyDown: cancelConnection, role: "region", children: [armed !== null && _jsxs("p", { className: "sr-only", role: "status", children: ["Choose a target side for ", labels.get(armed.nodeId) ?? armed.nodeId, "."] }), error !== null && _jsx("p", { className: "m-3 text-sm text-red-600", role: "note", children: error }), !disabled && (_jsxs("div", { "aria-label": "Canvas Actions", className: "sticky top-2 left-2 z-30 m-2 flex w-fit max-w-[calc(100%-16px)] flex-wrap gap-1 rounded-md border border-[var(--tt-border)] bg-[var(--tt-panel)] p-1 shadow-sm", role: "toolbar", children: [_jsx(Button, { unstyled: true, className: controlClass, onClick: () => { setNodeEditor({ kind: 'text', mode: 'create' }); }, type: "button", children: "Add Text Card" }), _jsx(Button, { unstyled: true, className: controlClass, onClick: () => { setNodeEditor({ kind: 'link', mode: 'create' }); }, type: "button", children: "Add Link Card" }), _jsx(Button, { unstyled: true, className: controlClass, onClick: () => { setNodeEditor({ kind: 'file', mode: 'create' }); }, type: "button", children: "Add File Card" }), _jsx(Button, { unstyled: true, className: controlClass, onClick: () => { setNodeEditor({ kind: 'group', mode: 'create' }); }, type: "button", children: "Add Group" }), _jsx(Button, { unstyled: true, "aria-label": "Zoom Canvas Out", className: controlClass, disabled: zoom <= 0.5, onClick: () => { setZoom(value => Math.max(0.5, value - 0.25)); }, type: "button", children: "\u2212" }), _jsxs(Button, { unstyled: true, "aria-label": "Reset Canvas Zoom", className: controlClass, onClick: () => { setZoom(1); }, type: "button", children: [String(Math.round(zoom * 100)), "%"] }), _jsx(Button, { unstyled: true, "aria-label": "Zoom Canvas In", className: controlClass, disabled: zoom >= 2, onClick: () => { setZoom(value => Math.min(2, value + 0.25)); }, type: "button", children: "+" }), selectedNode !== undefined && (_jsxs(_Fragment, { children: [_jsxs(Button, { unstyled: true, className: controlClass, onClick: () => { setNodeEditor({ mode: 'edit', nodeId: selectedNode.id }); }, type: "button", children: ["Edit ", selectedNode.type === 'group' ? 'Group' : 'Card'] }), _jsxs(Button, { unstyled: true, className: controlClass, onClick: duplicateSelectedNode, type: "button", children: ["Duplicate ", selectedNode.type === 'group' ? 'Group' : 'Card'] }), _jsxs(Button, { unstyled: true, className: controlClass, onClick: deleteSelectedNode, type: "button", children: ["Delete ", selectedNode.type === 'group' ? 'Group' : 'Card'] })] })), selectedEdge !== undefined && (_jsxs(_Fragment, { children: [_jsx(Button, { unstyled: true, className: controlClass, onClick: () => { setEdgeEditor({ edgeId: selectedEdge.id }); }, type: "button", children: "Edit Connection" }), _jsx(Button, { unstyled: true, className: controlClass, onClick: () => { if (emit('delete-edge', content => deleteCanvasEdge(content, selectedEdge.id)))
-                                    setSelectedEdgeId(null); }, type: "button", children: "Delete Connection" })] }))] })), nodeEditor !== null && _jsx(CanvasNodeEditor, { document: document, editor: nodeEditor, onCancel: () => { setNodeEditor(null); }, onSubmit: submitNodeEditor }), edgeEditor !== null && _jsx(CanvasEdgeEditor, { document: document, edgeId: edgeEditor.edgeId, onCancel: () => { setEdgeEditor(null); }, onSubmit: submitEdgeEditor }), _jsx("div", { "aria-label": "Canvas Board Surface", className: "relative", style: { height: bounds.height, width: bounds.width, zoom }, children: document.nodes.map(node => {
-                    const label = labels.get(node.id) ?? node.id;
-                    const connectable = isConnectableCanvasNode(node);
-                    const safeLink = node.type === 'link' ? tryNormalizeCanvasLinkUrl(node.url) : undefined;
-                    const style = {
-                        height: node.height,
-                        left: node.x - bounds.minX + BOARD_PADDING,
-                        top: node.y - bounds.minY + BOARD_PADDING,
-                        width: node.width,
-                    };
-                    return (_jsxs("article", { "aria-label": `${node.type === 'group' ? 'Canvas Group' : 'Canvas Card'} ${label}`, className: "absolute rounded-md border border-[var(--tt-border)] bg-[var(--tt-panel)] p-2 shadow-sm", style: style, children: [_jsxs(Button, { unstyled: true, "aria-label": `${node.type === 'group' ? 'Canvas Group' : 'Canvas Card'} ${label}`, "aria-pressed": selectedNodeId === node.id, className: "h-full w-full border-0 bg-transparent p-1 text-left text-inherit outline-offset-2", "data-canvas-x": String(node.x), disabled: disabled || !connectable, onClick: () => {
-                                    setSelectedNodeId(node.id);
-                                    setSelectedEdgeId(null);
-                                }, onKeyDown: event => { moveNode(node.id, event); }, onPointerDown: event => { beginPointerGeometry(node, event, 'move'); }, type: "button", children: [_jsx("strong", { className: "block truncate", children: label }), node.type === 'text' && typeof node.text === 'string' && _jsx("span", { className: "block line-clamp-3 whitespace-pre-wrap text-xs", children: node.text }), node.type === 'link' && safeLink === undefined && _jsx("span", { className: "block text-xs", role: "note", children: "This unsafe link is inert." }), !connectable && _jsx("span", { className: "block text-xs", role: "note", children: "This unsupported card is inert." })] }), connectable && !disabled && _jsx(Button, { unstyled: true, "aria-label": `Resize ${node.type === 'group' ? 'Group' : 'Card'} ${label}`, className: "absolute right-0 bottom-0 z-10 size-5 translate-1/2 cursor-nwse-resize rounded border border-[var(--tt-border)] bg-[var(--tt-panel)] p-0", onPointerDown: event => { beginPointerGeometry(node, event, 'resize'); }, type: "button" }), connectable && (_jsxs("fieldset", { className: "contents", disabled: disabled, children: [_jsxs("legend", { className: "sr-only", children: ["Connect ", label] }), SIDES.map(side => (_jsx(Button, { unstyled: true, "aria-label": `${titleCaseSide(side)} Connection Handle for ${label}`, "aria-pressed": armed?.nodeId === node.id && armed.side === side, className: "absolute z-10 m-0 size-5 rounded-full border border-[var(--tt-border)] bg-[var(--tt-panel)] text-[10px]", onClick: () => { activateHandle(node.id, side); }, style: sideHandleStyle(side), type: "button", children: _jsx("span", { "aria-hidden": "true", children: side.slice(0, 1).toUpperCase() }) }, side)))] }))] }, node.id));
-                }) }), (document.edges?.length ?? 0) > 0 && (_jsx("ul", { "aria-label": "Canvas Connections", className: "absolute top-2 right-2 z-20 m-0 max-w-72 list-none rounded-md border border-[var(--tt-border)] bg-[var(--tt-panel)] p-1 text-xs shadow-sm", children: document.edges?.map(edge => (_jsx("li", { children: _jsxs(Button, { unstyled: true, "aria-pressed": selectedEdgeId === edge.id, className: "block w-full rounded-sm border-0 bg-transparent px-2 py-1 text-left text-inherit outline-offset-2", onClick: () => {
+                                    setSelectedEdgeId(null); }, type: "button", children: "Delete Connection" })] }))] })), nodeEditor !== null && _jsx(CanvasNodeEditor, { document: document, editor: nodeEditor, onCancel: () => { setNodeEditor(null); }, onSubmit: submitNodeEditor }), edgeEditor !== null && _jsx(CanvasEdgeEditor, { document: document, edgeId: edgeEditor.edgeId, onCancel: () => { setEdgeEditor(null); }, onSubmit: submitEdgeEditor }), _jsxs("div", { "aria-label": "Canvas Board Surface", className: "relative", onPointerDown: beginMarquee, style: { height: bounds.height, width: bounds.width, zoom }, children: [marquee !== null && _jsx("div", { "aria-label": "Canvas Marquee Selection", className: "pointer-events-none absolute z-20 border border-[var(--tt-accent)] bg-[color-mix(in_srgb,var(--tt-accent)_12%,transparent)]", role: "img", style: marquee }), document.nodes.map(node => {
+                        const label = labels.get(node.id) ?? node.id;
+                        const connectable = isConnectableCanvasNode(node);
+                        const safeLink = node.type === 'link' ? tryNormalizeCanvasLinkUrl(node.url) : undefined;
+                        const style = {
+                            height: node.height,
+                            left: node.x - bounds.minX + BOARD_PADDING,
+                            top: node.y - bounds.minY + BOARD_PADDING,
+                            width: node.width,
+                        };
+                        return (_jsxs("article", { "aria-label": `${node.type === 'group' ? 'Canvas Group' : 'Canvas Card'} ${label}`, className: "absolute rounded-md border border-[var(--tt-border)] bg-[var(--tt-panel)] p-2 shadow-sm", style: style, children: [_jsxs(Button, { unstyled: true, "aria-label": `${node.type === 'group' ? 'Canvas Group' : 'Canvas Card'} ${label}`, "aria-pressed": selectedNodeIds.has(node.id), className: "h-full w-full border-0 bg-transparent p-1 text-left text-inherit outline-offset-2", "data-canvas-x": String(node.x), disabled: disabled || !connectable, onClick: event => {
+                                        if (event.shiftKey) {
+                                            const next = new Set(selectedNodeIds);
+                                            if (next.has(node.id))
+                                                next.delete(node.id);
+                                            else
+                                                next.add(node.id);
+                                            setSelectedNodeIds(next);
+                                            setSelectedNodeId(next.has(node.id) ? node.id : [...next].at(-1) ?? null);
+                                        }
+                                        else {
+                                            setSelectedNodeIds(new Set([node.id]));
+                                            setSelectedNodeId(node.id);
+                                        }
+                                        setSelectedEdgeId(null);
+                                    }, onKeyDown: event => { moveNode(node.id, event); }, onPointerDown: event => { beginPointerGeometry(node, event, 'move'); }, type: "button", children: [_jsx("strong", { className: "block truncate", children: label }), node.type === 'text' && typeof node.text === 'string' && _jsx("span", { className: "block line-clamp-3 whitespace-pre-wrap text-xs", children: node.text }), node.type === 'link' && safeLink === undefined && _jsx("span", { className: "block text-xs", role: "note", children: "This unsafe link is inert." }), !connectable && _jsx("span", { className: "block text-xs", role: "note", children: "This unsupported card is inert." })] }), connectable && !disabled && _jsx(Button, { unstyled: true, "aria-label": `Resize ${node.type === 'group' ? 'Group' : 'Card'} ${label}`, className: "absolute right-0 bottom-0 z-10 size-5 translate-1/2 cursor-nwse-resize rounded border border-[var(--tt-border)] bg-[var(--tt-panel)] p-0", onPointerDown: event => { beginPointerGeometry(node, event, 'resize'); }, type: "button" }), connectable && (_jsxs("fieldset", { className: "contents", disabled: disabled, children: [_jsxs("legend", { className: "sr-only", children: ["Connect ", label] }), SIDES.map(side => (_jsx(Button, { unstyled: true, "aria-label": `${titleCaseSide(side)} Connection Handle for ${label}`, "aria-pressed": armed?.nodeId === node.id && armed.side === side, className: "absolute z-10 m-0 size-5 rounded-full border border-[var(--tt-border)] bg-[var(--tt-panel)] text-[10px]", onClick: () => { activateHandle(node.id, side); }, style: sideHandleStyle(side), type: "button", children: _jsx("span", { "aria-hidden": "true", children: side.slice(0, 1).toUpperCase() }) }, side)))] }))] }, node.id));
+                    })] }), (document.edges?.length ?? 0) > 0 && (_jsx("ul", { "aria-label": "Canvas Connections", className: "absolute top-2 right-2 z-20 m-0 max-w-72 list-none rounded-md border border-[var(--tt-border)] bg-[var(--tt-panel)] p-1 text-xs shadow-sm", children: document.edges?.map(edge => (_jsx("li", { children: _jsxs(Button, { unstyled: true, "aria-pressed": selectedEdgeId === edge.id, className: "block w-full rounded-sm border-0 bg-transparent px-2 py-1 text-left text-inherit outline-offset-2", onClick: () => {
                             setSelectedEdgeId(edge.id);
+                            setSelectedNodeIds(new Set());
                             setSelectedNodeId(null);
                         }, onKeyDown: event => {
                             if (event.key !== 'Delete' && event.key !== 'Backspace')

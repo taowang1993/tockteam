@@ -115,6 +115,35 @@ describe('CanvasBoard', () => {
     expect(onChange).toHaveBeenCalledTimes(emitted)
   })
 
+  it('Shift- and marquee-selects mixed cards and moves them through one rollback change', () => {
+    const onChange = vi.fn()
+    render(<CanvasBoard source={source} revision="sha256:mixed" onChange={onChange} />)
+    const first = screen.getByRole('button', { name: 'Canvas Card First' })
+    const file = screen.getByRole('button', { name: 'Canvas Card Notes/File.md' })
+
+    fireEvent.click(first)
+    fireEvent.click(file, { shiftKey: true })
+    expect(first.getAttribute('aria-pressed')).toBe('true')
+    expect(file.getAttribute('aria-pressed')).toBe('true')
+    fireEvent.keyDown(file, { key: 'ArrowRight' })
+    const shifted = onChange.mock.calls.at(-1)?.[0]
+    expect(shifted.operation).toBe('move-node')
+    expect(shifted.previousSource).toBe(source)
+    expect(JSON.parse(shifted.source).nodes.slice(0, 2).map((node: { x: number }) => node.x)).toEqual([20, 340])
+
+    onChange.mockClear()
+    const surface = screen.getByLabelText('Canvas Board Surface')
+    fireEvent.pointerDown(surface, { button: 0, clientX: 20, clientY: 20 })
+    fireEvent.pointerMove(window, { clientX: 620, clientY: 180 })
+    expect(screen.getByRole('img', { name: 'Canvas Marquee Selection' })).toBeTruthy()
+    fireEvent.pointerUp(window)
+    expect(first.getAttribute('aria-pressed')).toBe('true')
+    expect(file.getAttribute('aria-pressed')).toBe('true')
+    fireEvent.keyDown(first, { key: 'ArrowDown' })
+    const marqueeMoved = onChange.mock.calls.at(-1)?.[0]
+    expect(JSON.parse(marqueeMoved.source).nodes.slice(0, 2).map((node: { y: number }) => node.y)).toEqual([20, 20])
+  })
+
   it('selects and deletes a visible connection through the controlled change seam', () => {
     const connected = JSON.stringify({
       ...JSON.parse(source),

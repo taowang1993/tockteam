@@ -23,6 +23,7 @@ import {
   deleteCanvasNode,
   duplicateCanvasGroup,
   duplicateCanvasNodes,
+  moveCanvasNodes,
   updateCanvasGroupLabel,
   updateCanvasLinkNode,
   updateCanvasNodeGeometry,
@@ -45,6 +46,7 @@ type ArmedConnection = { nodeId: string; side: CanvasSide }
 type NodeKind = 'file' | 'group' | 'link' | 'text'
 type NodeEditor = { mode: 'create'; kind: NodeKind } | { mode: 'edit'; nodeId: string }
 type EdgeEditor = { edgeId: string }
+type Marquee = { height: number; left: number; top: number; width: number }
 
 const controlClass = 'rounded border border-[var(--tt-border)] bg-[var(--tt-panel)] px-2 py-1 text-xs text-inherit'
 
@@ -148,9 +150,11 @@ export function CanvasBoard({ source, revision, onChange, disabled = false }: Ca
   const parsed = useMemo(() => parseCanvasDocument(source), [source])
   const [armed, setArmed] = useState<ArmedConnection | null>(null)
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
+  const [selectedNodeIds, setSelectedNodeIds] = useState<ReadonlySet<string>>(() => new Set())
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null)
   const [nodeEditor, setNodeEditor] = useState<NodeEditor | null>(null)
   const [edgeEditor, setEdgeEditor] = useState<EdgeEditor | null>(null)
+  const [marquee, setMarquee] = useState<Marquee | null>(null)
   const [zoom, setZoom] = useState(1)
   const [error, setError] = useState<string | null>(null)
   const pointerCleanup = useRef<(() => void) | null>(null)
@@ -168,6 +172,7 @@ export function CanvasBoard({ source, revision, onChange, disabled = false }: Ca
     if (document === null) {
       setArmed(null)
       setSelectedNodeId(null)
+      setSelectedNodeIds(new Set())
       setSelectedEdgeId(null)
       setNodeEditor(null)
       setEdgeEditor(null)
@@ -175,10 +180,13 @@ export function CanvasBoard({ source, revision, onChange, disabled = false }: Ca
     }
     if (armed !== null && !document.nodes.some(node => node.id === armed.nodeId)) setArmed(null)
     if (selectedNodeId !== null && !document.nodes.some(node => node.id === selectedNodeId)) setSelectedNodeId(null)
+    if ([...selectedNodeIds].some(id => !document.nodes.some(node => node.id === id))) {
+      setSelectedNodeIds(new Set([...selectedNodeIds].filter(id => document.nodes.some(node => node.id === id))))
+    }
     if (selectedEdgeId !== null && !document.edges?.some(edge => edge.id === selectedEdgeId)) setSelectedEdgeId(null)
     if (nodeEditor?.mode === 'edit' && !document.nodes.some(node => node.id === nodeEditor.nodeId)) setNodeEditor(null)
     if (edgeEditor !== null && !document.edges?.some(edge => edge.id === edgeEditor.edgeId)) setEdgeEditor(null)
-  }, [armed, document, edgeEditor, nodeEditor, selectedEdgeId, selectedNodeId])
+  }, [armed, document, edgeEditor, nodeEditor, selectedEdgeId, selectedNodeId, selectedNodeIds])
 
   const bounds = useMemo(() => {
     if (document === null || document.nodes.length === 0) {
@@ -275,7 +283,10 @@ export function CanvasBoard({ source, revision, onChange, disabled = false }: Ca
     const prepared = emit('duplicate-node', content => node.type === 'group'
       ? duplicateCanvasGroup(content, node.id, geometry).content
       : duplicateCanvasNodes(content, [{ nodeId: node.id, geometry }]).content)
-    if (prepared) setSelectedNodeId(null)
+    if (prepared) {
+      setSelectedNodeIds(new Set())
+      setSelectedNodeId(null)
+    }
   }
 
   const deleteSelectedNode = (): void => {
@@ -285,7 +296,10 @@ export function CanvasBoard({ source, revision, onChange, disabled = false }: Ca
     const prepared = emit('delete-node', content => node.type === 'group'
       ? deleteCanvasGroup(content, node.id)
       : deleteCanvasNode(content, node.id))
-    if (prepared) setSelectedNodeId(null)
+    if (prepared) {
+      setSelectedNodeIds(new Set())
+      setSelectedNodeId(null)
+    }
   }
 
   const activateHandle = (nodeId: string, side: CanvasSide): void => {
@@ -315,12 +329,8 @@ export function CanvasBoard({ source, revision, onChange, disabled = false }: Ca
     const node = document.nodes.find(candidate => candidate.id === nodeId)
     if (node === undefined) return
     event.preventDefault()
-    emit('move-node', content => updateCanvasNodeGeometry(content, nodeId, {
-      x: node.x + delta.x,
-      y: node.y + delta.y,
-      width: node.width,
-      height: node.height,
-    }))
+    const selected = selectedNodeIds.has(nodeId) ? [...selectedNodeIds] : [nodeId]
+    emit('move-node', content => moveCanvasNodes(content, selected, delta.x, delta.y))
   }
 
   const beginPointerGeometry = (
@@ -349,9 +359,9 @@ export function CanvasBoard({ source, revision, onChange, disabled = false }: Ca
     const finish = (): void => {
       cleanup()
       if (Math.abs(deltaX) < 1 && Math.abs(deltaY) < 1) return
-      emit(mode === 'move' ? 'move-node' : 'resize-node', content => updateCanvasNodeGeometry(content, node.id, mode === 'move'
-        ? { x: node.x + deltaX, y: node.y + deltaY, width: node.width, height: node.height }
-        : { x: node.x, y: node.y, width: node.width + deltaX, height: node.height + deltaY }))
+      emit(mode === 'move' ? 'move-node' : 'resize-node', content => mode === 'move'
+        ? moveCanvasNodes(content, selectedNodeIds.has(node.id) ? [...selectedNodeIds] : [node.id], deltaX, deltaY)
+        : updateCanvasNodeGeometry(content, node.id, { x: node.x, y: node.y, width: node.width + deltaX, height: node.height + deltaY }))
     }
     const cancel = (): void => { cleanup() }
     pointerCleanup.current = cleanup
@@ -360,10 +370,68 @@ export function CanvasBoard({ source, revision, onChange, disabled = false }: Ca
     window.addEventListener('pointercancel', cancel)
   }
 
-  const cancelConnection = (event: KeyboardEvent<HTMLElement>): void => {
-    if (event.key !== 'Escape' || armed === null) return
+  const beginMarquee = (event: ReactPointerEvent<HTMLDivElement>): void => {
+    if (disabled || event.button !== 0 || event.target !== event.currentTarget || document === null) return
     event.preventDefault()
+    pointerCleanup.current?.()
+    const rectangle = event.currentTarget.getBoundingClientRect()
+    const startX = (event.clientX - rectangle.left) / zoom
+    const startY = (event.clientY - rectangle.top) / zoom
+    const additive = event.shiftKey
+    let endX = startX
+    let endY = startY
+    const update = (): void => {
+      setMarquee({
+        height: Math.abs(endY - startY),
+        left: Math.min(startX, endX),
+        top: Math.min(startY, endY),
+        width: Math.abs(endX - startX),
+      })
+    }
+    const move = (next: PointerEvent): void => {
+      endX = (next.clientX - rectangle.left) / zoom
+      endY = (next.clientY - rectangle.top) / zoom
+      update()
+    }
+    const cleanup = (): void => {
+      window.removeEventListener('pointermove', move)
+      window.removeEventListener('pointerup', finish)
+      window.removeEventListener('pointercancel', cancel)
+      if (pointerCleanup.current === cleanup) pointerCleanup.current = null
+      setMarquee(null)
+    }
+    const finish = (): void => {
+      const left = Math.min(startX, endX)
+      const right = Math.max(startX, endX)
+      const top = Math.min(startY, endY)
+      const bottom = Math.max(startY, endY)
+      const matched = document.nodes.filter(node => {
+        const nodeLeft = node.x - bounds.minX + BOARD_PADDING
+        const nodeTop = node.y - bounds.minY + BOARD_PADDING
+        return nodeLeft < right && nodeLeft + node.width > left && nodeTop < bottom && nodeTop + node.height > top
+      }).map(node => node.id)
+      const next = new Set(additive ? selectedNodeIds : [])
+      for (const id of matched) next.add(id)
+      setSelectedNodeIds(next)
+      setSelectedNodeId(matched.at(-1) ?? (additive ? selectedNodeId : null))
+      setSelectedEdgeId(null)
+      cleanup()
+    }
+    const cancel = (): void => { cleanup() }
+    pointerCleanup.current = cleanup
+    update()
+    window.addEventListener('pointermove', move)
+    window.addEventListener('pointerup', finish)
+    window.addEventListener('pointercancel', cancel)
+  }
+
+  const cancelConnection = (event: KeyboardEvent<HTMLElement>): void => {
+    if (event.key !== 'Escape') return
+    if (armed === null && marquee === null) return
+    event.preventDefault()
+    pointerCleanup.current?.()
     setArmed(null)
+    setMarquee(null)
   }
 
   if (document === null) {
@@ -417,8 +485,10 @@ export function CanvasBoard({ source, revision, onChange, disabled = false }: Ca
       <div
         aria-label="Canvas Board Surface"
         className="relative"
+        onPointerDown={beginMarquee}
         style={{ height: bounds.height, width: bounds.width, zoom }}
       >
+        {marquee !== null && <div aria-label="Canvas Marquee Selection" className="pointer-events-none absolute z-20 border border-[var(--tt-accent)] bg-[color-mix(in_srgb,var(--tt-accent)_12%,transparent)]" role="img" style={marquee} />}
         {document.nodes.map(node => {
           const label = labels.get(node.id) ?? node.id
           const connectable = isConnectableCanvasNode(node)
@@ -438,12 +508,21 @@ export function CanvasBoard({ source, revision, onChange, disabled = false }: Ca
             >
               <Button unstyled
                 aria-label={`${node.type === 'group' ? 'Canvas Group' : 'Canvas Card'} ${label}`}
-                aria-pressed={selectedNodeId === node.id}
+                aria-pressed={selectedNodeIds.has(node.id)}
                 className="h-full w-full border-0 bg-transparent p-1 text-left text-inherit outline-offset-2"
                 data-canvas-x={String(node.x)}
                 disabled={disabled || !connectable}
-                onClick={() => {
-                  setSelectedNodeId(node.id)
+                onClick={event => {
+                  if (event.shiftKey) {
+                    const next = new Set(selectedNodeIds)
+                    if (next.has(node.id)) next.delete(node.id)
+                    else next.add(node.id)
+                    setSelectedNodeIds(next)
+                    setSelectedNodeId(next.has(node.id) ? node.id : [...next].at(-1) ?? null)
+                  } else {
+                    setSelectedNodeIds(new Set([node.id]))
+                    setSelectedNodeId(node.id)
+                  }
                   setSelectedEdgeId(null)
                 }}
                 onKeyDown={event => { moveNode(node.id, event) }}
@@ -487,6 +566,7 @@ export function CanvasBoard({ source, revision, onChange, disabled = false }: Ca
                 className="block w-full rounded-sm border-0 bg-transparent px-2 py-1 text-left text-inherit outline-offset-2"
                 onClick={() => {
                   setSelectedEdgeId(edge.id)
+                  setSelectedNodeIds(new Set())
                   setSelectedNodeId(null)
                 }}
                 onKeyDown={event => {

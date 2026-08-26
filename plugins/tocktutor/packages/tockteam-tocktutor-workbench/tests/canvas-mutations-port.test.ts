@@ -19,6 +19,7 @@ import {
   deleteCanvasNodes,
   duplicateCanvasGroup,
   duplicateCanvasNodes,
+  moveCanvasNodes,
   updateCanvasGroupLabel,
   updateCanvasLinkNode,
   updateCanvasNodeGeometries,
@@ -112,6 +113,17 @@ test('wraps an exact supported selection in a snapped group', () => {
     id: 'group-2', type: 'group', x: -20, y: -20, width: 580, height: 160, label: 'Group',
   })
   assert.throws(() => createCanvasGroupFromSelection(source, ['missing']), /no longer exists/u)
+})
+
+test('moves mixed card and group selections once through one lossless mutation', () => {
+  const moved = moveCanvasNodes(source, ['group-1', 'file-1'], 20, 40)
+  assert.deepEqual(nodes(moved).map(node => ({ id: node.id, x: node.x, y: node.y })), [
+    { id: 'text-1', x: 20, y: 40 },
+    { id: 'file-1', x: 320, y: 40 },
+    { id: 'group-1', x: 0, y: 20 },
+  ])
+  assert.deepEqual(parse(moved).extension, { keep: true })
+  assert.throws(() => moveCanvasNodes(source, ['group-1', 'group-1'], 20, 0), /more than once/u)
 })
 
 test('updates card and group content atomically while retaining extension fields', () => {
