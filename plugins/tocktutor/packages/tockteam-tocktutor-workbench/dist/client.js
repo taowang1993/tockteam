@@ -76,6 +76,7 @@ __export(client_exports, {
   TOCKTUTOR_ASSISTANT_PANEL_SLOT: () => TOCKTUTOR_ASSISTANT_PANEL_SLOT,
   TOCKTUTOR_NATIVE_ACTIONS_SLOT: () => TOCKTUTOR_NATIVE_ACTIONS_SLOT,
   TOCKTUTOR_REVIEW_PANEL_SLOT: () => TOCKTUTOR_REVIEW_PANEL_SLOT,
+  TOCKTUTOR_WEB_VIEWER_PANEL_SLOT: () => TOCKTUTOR_WEB_VIEWER_PANEL_SLOT,
   TockTutorRoute: () => TockTutorRoute,
   TockTutorRouteView: () => TockTutorRouteView,
   WorkbenchRouteController: () => WorkbenchRouteController,
@@ -15938,6 +15939,9 @@ var TOCKTUTOR_NATIVE_ACTIONS_SLOT = "tockteam.tocktutor.workbench.native-actions
 // src/review-panel.ts
 var TOCKTUTOR_REVIEW_PANEL_SLOT = "tockteam.tocktutor.workbench.review";
 
+// src/web-viewer-panel.ts
+var TOCKTUTOR_WEB_VIEWER_PANEL_SLOT = "tockteam.tocktutor.workbench.web-viewer";
+
 // ../../../ui/src/alert.tsx
 var React = __toESM(require("react"), 1);
 
@@ -28536,7 +28540,8 @@ var DEFAULT_SETTINGS = Object.freeze({
   defaultEditingMode: "live-preview",
   journalFolder: "Journals",
   pagePreview: true,
-  templateFolder: "Templates"
+  templateFolder: "Templates",
+  webClipFolder: "Clips"
 });
 function validVaultId(value) {
   return /^vault:[0-9a-f]{64}$/u.test(value);
@@ -28558,7 +28563,8 @@ function normalizeSettings(value) {
     defaultEditingMode: record2.defaultEditingMode === "source" ? "source" : "live-preview",
     journalFolder: safeFolder2(record2.journalFolder, DEFAULT_SETTINGS.journalFolder),
     pagePreview: record2.pagePreview !== false,
-    templateFolder: safeFolder2(record2.templateFolder, DEFAULT_SETTINGS.templateFolder)
+    templateFolder: safeFolder2(record2.templateFolder, DEFAULT_SETTINGS.templateFolder),
+    webClipFolder: safeFolder2(record2.webClipFolder, DEFAULT_SETTINGS.webClipFolder)
   };
 }
 function readJson(storage, key2) {
@@ -30030,6 +30036,23 @@ var WorkbenchRouteController = class {
       return false;
     }
   }
+  addLinkBookmark(title, url2) {
+    const vault = this.snapshot.vault;
+    if (vault === null || this.storage === null) return false;
+    try {
+      this.bookmarks = addBookmark(this.bookmarks, {
+        id: `link-${this.now().getTime().toString(36)}`,
+        kind: "link",
+        title: title.trim().slice(0, 200) || "Web Link",
+        url: url2
+      });
+      if (!saveBookmarks(this.storage, vault.id, this.bookmarks)) return false;
+      this.update({ bookmarks: Object.freeze(this.bookmarks.map((bookmark) => Object.freeze({ ...bookmark }))) });
+      return true;
+    } catch {
+      return false;
+    }
+  }
   removeBookmark(id) {
     const vault = this.snapshot.vault;
     if (vault === null || this.storage === null) return false;
@@ -31402,6 +31425,10 @@ function TockTutorRouteView(props) {
                         (snapshot.trash?.length ?? 0) === 0 && /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("span", { className: "text-xs text-[var(--tt-muted)]", children: "Trash is empty." })
                       ] })
                     ] }),
+                    /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("section", { "aria-label": "Web Viewer", className: "min-h-80 border-t border-[var(--tt-border)] p-3", children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("h2", { className: "m-0 text-sm", children: "Web Viewer" }),
+                      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("div", { className: "mt-2 flex min-h-72 flex-col", children: props.webViewerPanel ?? /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Alert, { unstyled: true, role: "status", children: "Web Viewer is unavailable." }) })
+                    ] }),
                     /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("section", { "aria-label": "Graph View", className: "border-t border-[var(--tt-border)] p-3", children: [
                       /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("div", { className: "flex items-center justify-between gap-2", children: [
                         /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("h2", { className: "m-0 text-sm", children: "Graph View" }),
@@ -31689,6 +31716,16 @@ function TockTutorReviewPanelOutlet(props) {
     fallback: /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Alert, { unstyled: true, role: "status", children: "No review workflow is active." })
   });
 }
+function TockTutorWebViewerOutlet(props) {
+  return props.renderSlot(TOCKTUTOR_WEB_VIEWER_PANEL_SLOT, {
+    activePath: props.activePath,
+    addLinkBookmark: props.addLinkBookmark,
+    vault: props.vault,
+    webClipFolder: props.webClipFolder
+  }, {
+    fallback: /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Alert, { unstyled: true, role: "status", children: "Web Viewer is unavailable." })
+  });
+}
 function TockTutorNativeActionsOutlet(props) {
   return props.renderSlot(TOCKTUTOR_NATIVE_ACTIONS_SLOT, {
     activePath: props.activePath,
@@ -31961,6 +31998,16 @@ function TockTutorRoute(props) {
         }
       ),
       snapshot,
+      webViewerPanel: /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(
+        TockTutorWebViewerOutlet,
+        {
+          activePath: snapshot.path,
+          addLinkBookmark: (title, url2) => controller.addLinkBookmark(title, url2),
+          renderSlot: props.renderSlot,
+          vault: snapshot.vault,
+          webClipFolder: snapshot.settings?.webClipFolder ?? "Clips"
+        }
+      ),
       ...typeof document === "undefined" ? {} : { titlebarTarget: document.getElementById("tockteam-window-titlebar-slot") ?? document.body }
     }
   ) });
@@ -32026,7 +32073,8 @@ async function apply(ctx) {
           children: {
             [TOCKTUTOR_ASSISTANT_PANEL_SLOT]: { kind: "single", scope: "root" },
             [TOCKTUTOR_NATIVE_ACTIONS_SLOT]: { kind: "list", scope: "root" },
-            [TOCKTUTOR_REVIEW_PANEL_SLOT]: { kind: "list", scope: "root" }
+            [TOCKTUTOR_REVIEW_PANEL_SLOT]: { kind: "list", scope: "root" },
+            [TOCKTUTOR_WEB_VIEWER_PANEL_SLOT]: { kind: "single", scope: "root" }
           },
           inject: () => ({ remote }),
           name: import_client.TOCKTUTOR_ROUTE_SLOT,

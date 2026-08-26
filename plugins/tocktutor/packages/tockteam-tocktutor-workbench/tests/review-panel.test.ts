@@ -8,6 +8,7 @@ import { TockTutorRoute } from '../dist/route.js'
 import type { TockTutorReviewPanelOwnerProps } from '../src/review-panel.ts'
 
 const TOCKTUTOR_ASSISTANT_PANEL_SLOT = 'tockteam.tocktutor.workbench.assistant'
+const TOCKTUTOR_WEB_VIEWER_PANEL_SLOT = 'tockteam.tocktutor.workbench.web-viewer'
 const TOCKTUTOR_NATIVE_ACTIONS_SLOT = 'tockteam.tocktutor.workbench.native-actions'
 const TOCKTUTOR_REVIEW_PANEL_SLOT = 'tockteam.tocktutor.workbench.review'
 const vault = {
@@ -60,10 +61,11 @@ test('route renders an accessible empty Review panel without using the Assistant
   } as never))
   assert.deepEqual(dispatched.map(entry => entry.key), [
     TOCKTUTOR_ASSISTANT_PANEL_SLOT,
+    TOCKTUTOR_WEB_VIEWER_PANEL_SLOT,
     TOCKTUTOR_REVIEW_PANEL_SLOT,
     TOCKTUTOR_NATIVE_ACTIONS_SLOT,
   ])
-  assert.deepEqual(dispatched[1]?.owner, { activePath: null, vault: null })
+  assert.deepEqual(dispatched[2]?.owner, { activePath: null, vault: null })
   assert.equal(JSON.stringify(dispatched).includes('source'), false)
   assert.equal(JSON.stringify(dispatched).includes('content'), false)
   assert.match(html, /<aside[^>]+aria-label="Assistant Panel"/u)

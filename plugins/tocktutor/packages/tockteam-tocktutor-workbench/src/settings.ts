@@ -22,6 +22,7 @@ export interface TockTutorSettings {
   journalFolder: string
   pagePreview: boolean
   templateFolder: string
+  webClipFolder: string
 }
 
 export interface NamedWorkspace {
@@ -45,6 +46,7 @@ const DEFAULT_SETTINGS: TockTutorSettings = Object.freeze({
   journalFolder: 'Journals',
   pagePreview: true,
   templateFolder: 'Templates',
+  webClipFolder: 'Clips',
 })
 
 function validVaultId(value: string): boolean {
@@ -79,6 +81,7 @@ function normalizeSettings(value: unknown): TockTutorSettings {
     journalFolder: safeFolder(record.journalFolder, DEFAULT_SETTINGS.journalFolder),
     pagePreview: record.pagePreview !== false,
     templateFolder: safeFolder(record.templateFolder, DEFAULT_SETTINGS.templateFolder),
+    webClipFolder: safeFolder(record.webClipFolder, DEFAULT_SETTINGS.webClipFolder),
   }
 }
 

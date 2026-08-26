@@ -9,6 +9,7 @@ const DEFAULT_SETTINGS = Object.freeze({
     journalFolder: 'Journals',
     pagePreview: true,
     templateFolder: 'Templates',
+    webClipFolder: 'Clips',
 });
 function validVaultId(value) {
     return /^vault:[0-9a-f]{64}$/u.test(value);
@@ -38,6 +39,7 @@ function normalizeSettings(value) {
         journalFolder: safeFolder(record.journalFolder, DEFAULT_SETTINGS.journalFolder),
         pagePreview: record.pagePreview !== false,
         templateFolder: safeFolder(record.templateFolder, DEFAULT_SETTINGS.templateFolder),
+        webClipFolder: safeFolder(record.webClipFolder, DEFAULT_SETTINGS.webClipFolder),
     };
 }
 function readJson(storage, key) {

@@ -12,6 +12,7 @@ import type {
 } from '../src/native-actions.ts'
 
 const TOCKTUTOR_ASSISTANT_PANEL_SLOT = 'tockteam.tocktutor.workbench.assistant'
+const TOCKTUTOR_WEB_VIEWER_PANEL_SLOT = 'tockteam.tocktutor.workbench.web-viewer'
 const TOCKTUTOR_REVIEW_PANEL_SLOT = 'tockteam.tocktutor.workbench.review'
 const TOCKTUTOR_NATIVE_ACTIONS_SLOT = 'tockteam.tocktutor.workbench.native-actions'
 const vault = {
@@ -91,17 +92,18 @@ test('route renders an accessible Native Actions area with bounded owner props',
   } as never))
   assert.deepEqual(dispatched.map(entry => entry.key), [
     TOCKTUTOR_ASSISTANT_PANEL_SLOT,
+    TOCKTUTOR_WEB_VIEWER_PANEL_SLOT,
     TOCKTUTOR_REVIEW_PANEL_SLOT,
     TOCKTUTOR_NATIVE_ACTIONS_SLOT,
   ])
-  assert.deepEqual(Object.keys(dispatched[2]?.owner as object).sort(), [
+  assert.deepEqual(Object.keys(dispatched[3]?.owner as object).sort(), [
     'activePath',
     'handleDispatch',
     'saveCurrent',
     'vault',
   ])
-  assert.equal(typeof (dispatched[2]?.owner as { handleDispatch?: unknown }).handleDispatch, 'function')
-  assert.equal(typeof (dispatched[2]?.owner as { saveCurrent?: unknown }).saveCurrent, 'function')
+  assert.equal(typeof (dispatched[3]?.owner as { handleDispatch?: unknown }).handleDispatch, 'function')
+  assert.equal(typeof (dispatched[3]?.owner as { saveCurrent?: unknown }).saveCurrent, 'function')
   assert.equal(JSON.stringify(dispatched).includes('source'), false)
   assert.equal(JSON.stringify(dispatched).includes('content'), false)
   assert.equal(JSON.stringify(dispatched).includes('session'), false)

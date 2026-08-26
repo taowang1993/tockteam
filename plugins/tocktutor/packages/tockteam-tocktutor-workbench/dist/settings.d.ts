@@ -14,6 +14,7 @@ export interface TockTutorSettings {
     journalFolder: string;
     pagePreview: boolean;
     templateFolder: string;
+    webClipFolder: string;
 }
 export interface NamedWorkspace {
     createdAt: number;

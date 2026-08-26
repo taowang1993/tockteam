@@ -1,3 +1,5 @@
+import type { Context } from '@deepseek-ai/cordis'
+import type {} from '@deepseek-ai/dsh-client-runtime/client'
 import { Alert } from '@tockteam/ui/alert'
 import { Button } from '@tockteam/ui/button'
 import { Card } from '@tockteam/ui/card'
@@ -38,6 +40,9 @@ import {
 } from './viewer.ts'
 import type { ReaderViewResult } from './reader.ts'
 import type { ClipPreview } from './review.ts'
+import type { TockTutorWebViewerOwnerProps } from '@tockteam/tocktutor-workbench/client'
+
+const TOCKTUTOR_WEB_VIEWER_PANEL_SLOT = 'tockteam.tocktutor.workbench.web-viewer'
 
 interface WebClipDesktopBridge {
   authorizeDocument(frameId: number, html: string): Promise<string>
@@ -56,11 +61,6 @@ interface DesktopSidebar {
     single: boolean
     title: string
   }): () => void
-}
-
-interface ClientContext {
-  effect(effect: () => (() => void) | void, label?: string): void
-  get(name: string): unknown
 }
 
 declare global {
@@ -86,7 +86,7 @@ function cancelClipPreview(preview: ClipPreview | null): void {
   if (preview) void requestClipCancel(preview.reviewId, AbortSignal.timeout(5_000)).catch(() => undefined)
 }
 
-function WebViewer(): ReactNode {
+function WebViewer(props: Partial<Pick<TockTutorWebViewerOwnerProps, 'addLinkBookmark' | 'webClipFolder'>> = {}): ReactNode {
   const bridge = window.dshDesktop?.webClip
   const host = useRef<HTMLDivElement | null>(null)
   const webview = useRef<WebClipWebview | null>(null)
@@ -106,7 +106,7 @@ function WebViewer(): ReactNode {
   const [loading, setLoading] = useState(false)
   const [reader, setReader] = useState<ReaderViewResult | null>(null)
   const [readerLoading, setReaderLoading] = useState(false)
-  const [clipDestination, setClipDestination] = useState('')
+  const [clipDestination, setClipDestination] = useState(() => props.webClipFolder ?? 'Clips')
   const [clipPreview, setClipPreview] = useState<ClipPreview | null>(null)
   const [clipLoading, setClipLoading] = useState(false)
   const [clipApplying, setClipApplying] = useState(false)
@@ -347,6 +347,10 @@ function WebViewer(): ReactNode {
       }
     })
   }
+  useEffect(() => {
+    if (clipPreviewRef.current === null) setClipDestination(props.webClipFolder ?? 'Clips')
+  }, [props.webClipFolder])
+
   const setReaderPreference = <K extends keyof ReaderPreferences>(key: K, value: ReaderPreferences[K]): void => {
     const current = viewerRef.current
     applyViewer({
@@ -430,7 +434,10 @@ function WebViewer(): ReactNode {
         <Button unstyled disabled={loading || clipApplying} type="submit">{loading ? 'Loading…' : 'Go'}</Button>
         <Button unstyled
           disabled={!active?.url}
-          onClick={() => { applyViewer(addViewerBookmark(viewerRef.current)) }}
+          onClick={() => {
+            applyViewer(addViewerBookmark(viewerRef.current))
+            if (active?.url != null) props.addLinkBookmark?.(active.title ?? active.url, active.url)
+          }}
           type="button"
         >Bookmark</Button>
         <Button unstyled
@@ -521,27 +528,40 @@ function WebViewer(): ReactNode {
   )
 }
 
-export const inject = ['desktopSidebar', 'tockTeamSurface']
+export const name = 'tockbot-web-clip'
+export const inject = ['desktopSidebar', 'tockTeamSurface', 'slots']
 
-export function apply(ctx: ClientContext): void {
+export function apply(ctx: Context): void {
   const surface = ctx.get('tockTeamSurface') as { kind?: unknown } | undefined
   const sidebar = ctx.get('desktopSidebar') as DesktopSidebar | undefined
   const desktop = window.dshDesktop
   if (surface?.kind !== 'desktop' || !sidebar || !desktop?.webClip) return
   let disposed = false
-  let remove: (() => void) | undefined
+  let removeSidebar: (() => void) | undefined
+  let removePanel: (() => void) | undefined
   ctx.effect(() => () => {
     disposed = true
-    remove?.()
+    removePanel?.()
+    removeSidebar?.()
   }, 'tockbot-web-clip: Web Viewer')
   void desktop.getInfo().then(info => {
     if (disposed || info.version !== SUPPORTED_TOCKTEAM_DESKTOP_VERSION) return
-    remove = sidebar.registerTab({
+    removeSidebar = sidebar.registerTab({
       id: 'web-clip',
       order: 31,
       render: () => <WebViewer />,
       single: true,
       title: 'Web Viewer',
     })
+    removePanel = ctx.slots.inject(
+      TOCKTUTOR_WEB_VIEWER_PANEL_SLOT,
+      () => ctx.slots.register({
+        name: TOCKTUTOR_WEB_VIEWER_PANEL_SLOT,
+        registrant: name,
+      }, (owner: TockTutorWebViewerOwnerProps) => <WebViewer
+        addLinkBookmark={owner.addLinkBookmark}
+        webClipFolder={owner.webClipFolder}
+      />),
+    )
   }).catch(() => undefined)
 }

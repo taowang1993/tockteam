@@ -9,6 +9,7 @@ import workbenchRemote from '@tockteam/tocktutor-workbench/remote'
 import { TOCKTUTOR_ASSISTANT_PANEL_SLOT } from './assistant-panel.ts'
 import { TOCKTUTOR_NATIVE_ACTIONS_SLOT } from './native-actions.ts'
 import { TOCKTUTOR_REVIEW_PANEL_SLOT } from './review-panel.ts'
+import { TOCKTUTOR_WEB_VIEWER_PANEL_SLOT } from './web-viewer-panel.ts'
 import { TockTutorRoute, type WorkbenchRouteRemote } from './route.tsx'
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
@@ -45,6 +46,7 @@ export async function apply(ctx: Context): Promise<() => Promise<void>> {
             [TOCKTUTOR_ASSISTANT_PANEL_SLOT]: { kind: 'single', scope: 'root' },
             [TOCKTUTOR_NATIVE_ACTIONS_SLOT]: { kind: 'list', scope: 'root' },
             [TOCKTUTOR_REVIEW_PANEL_SLOT]: { kind: 'list', scope: 'root' },
+            [TOCKTUTOR_WEB_VIEWER_PANEL_SLOT]: { kind: 'single', scope: 'root' },
           },
           inject: () => ({ remote }),
           name: TOCKTUTOR_ROUTE_SLOT,
@@ -95,6 +97,7 @@ export * from './organize.ts'
 export * from './composer.ts'
 export * from './attachments.ts'
 export * from './embeds.ts'
+export * from './web-viewer-panel.ts'
 export * from './native-actions.ts'
 export * from './review-panel.ts'
 export * from './route.tsx'

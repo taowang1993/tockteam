@@ -76,7 +76,7 @@ import { WebFetchError, fetchPublicText, projectReaderView } from 'tockbot-web-c
 const nonce = ${JSON.stringify(nonce)}
 const root = process.cwd()
 const metadata = JSON.parse(await readFile(join(root, 'node_modules/tockbot-web-clip/package.json'), 'utf8'))
-assert.deepEqual(metadata.dsh.client.inject, ['@tockteam/desktop', '@tockteam/sidebar'])
+assert.deepEqual(metadata.dsh.client.inject, ['@tockteam/desktop', '@tockteam/sidebar', '@tockteam/tocktutor-workbench'])
 let clientRegistration
 Object.assign(globalThis, {
   window: { __ModuleLoader__: { load(value) { clientRegistration = value } } },

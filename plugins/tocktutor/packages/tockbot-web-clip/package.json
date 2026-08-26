@@ -27,7 +27,8 @@
     "client": {
       "inject": [
         "@tockteam/desktop",
-        "@tockteam/sidebar"
+        "@tockteam/sidebar",
+        "@tockteam/tocktutor-workbench"
       ],
       "platform": "web"
     }
@@ -44,8 +45,14 @@
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "4.0.1",
+    "@tockteam/tocktutor-workbench": "0.1.7",
     "react": "^18.2.0",
     "tockbot-note-runtime": "0.1.2"
+  },
+  "peerDependenciesMeta": {
+    "@tockteam/tocktutor-workbench": {
+      "optional": true
+    }
   },
   "dependencies": {
     "@deepseek-ai/schemastery": "3.18.1",
@@ -55,6 +62,9 @@
     "@deepseek-ai/cordis": "4.0.1",
     "@deepseek-ai/cordis-plugin-include": "1.0.6",
     "@deepseek-ai/cordis-plugin-loader": "1.0.2",
+    "@deepseek-ai/dsh-client-runtime": "0.1.1-rc.2",
+    "@deepseek-ai/dsh-client-ui-slots": "0.1.1-rc.2",
+    "@tockteam/tocktutor-workbench": "workspace:0.1.7",
     "@tockteam/ui": "workspace:*",
     "@types/node": "22.20.0",
     "@types/react": "18.3.1",

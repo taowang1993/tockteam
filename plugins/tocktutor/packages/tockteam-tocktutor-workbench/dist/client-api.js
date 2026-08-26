@@ -3,6 +3,7 @@ import workbenchRemote from '@tockteam/tocktutor-workbench/remote';
 import { TOCKTUTOR_ASSISTANT_PANEL_SLOT } from "./assistant-panel.js";
 import { TOCKTUTOR_NATIVE_ACTIONS_SLOT } from "./native-actions.js";
 import { TOCKTUTOR_REVIEW_PANEL_SLOT } from "./review-panel.js";
+import { TOCKTUTOR_WEB_VIEWER_PANEL_SLOT } from "./web-viewer-panel.js";
 import { TockTutorRoute } from "./route.js";
 /** Browser Loader identity for the native TockTutor workbench. */
 export const name = '@tockteam/tocktutor-workbench';
@@ -22,6 +23,7 @@ export async function apply(ctx) {
                 [TOCKTUTOR_ASSISTANT_PANEL_SLOT]: { kind: 'single', scope: 'root' },
                 [TOCKTUTOR_NATIVE_ACTIONS_SLOT]: { kind: 'list', scope: 'root' },
                 [TOCKTUTOR_REVIEW_PANEL_SLOT]: { kind: 'list', scope: 'root' },
+                [TOCKTUTOR_WEB_VIEWER_PANEL_SLOT]: { kind: 'single', scope: 'root' },
             },
             inject: () => ({ remote }),
             name: TOCKTUTOR_ROUTE_SLOT,
@@ -70,6 +72,7 @@ export * from "./organize.js";
 export * from "./composer.js";
 export * from "./attachments.js";
 export * from "./embeds.js";
+export * from "./web-viewer-panel.js";
 export * from "./native-actions.js";
 export * from "./review-panel.js";
 export * from "./route.js";

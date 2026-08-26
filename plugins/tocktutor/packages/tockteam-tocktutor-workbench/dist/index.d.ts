@@ -46,4 +46,5 @@ export * from './organize.ts';
 export * from './composer.ts';
 export * from './attachments.ts';
 export * from './embeds.ts';
+export * from './web-viewer-panel.ts';
 //# sourceMappingURL=index.d.ts.map

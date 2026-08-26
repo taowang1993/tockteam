@@ -56,6 +56,7 @@ import {
   type TockTutorNativeActionsOwnerProps,
 } from './native-actions.ts'
 import { TOCKTUTOR_REVIEW_PANEL_SLOT } from './review-panel.ts'
+import { TOCKTUTOR_WEB_VIEWER_PANEL_SLOT } from './web-viewer-panel.ts'
 import {
   parseCanvasDocument,
   updateCanvasNodePosition,
@@ -1481,6 +1482,24 @@ export class WorkbenchRouteController {
     }
   }
 
+  addLinkBookmark(title: string, url: string): boolean {
+    const vault = this.snapshot.vault
+    if (vault === null || this.storage === null) return false
+    try {
+      this.bookmarks = addBookmark(this.bookmarks, {
+        id: `link-${this.now().getTime().toString(36)}`,
+        kind: 'link',
+        title: title.trim().slice(0, 200) || 'Web Link',
+        url,
+      })
+      if (!saveBookmarks(this.storage, vault.id, this.bookmarks)) return false
+      this.update({ bookmarks: Object.freeze(this.bookmarks.map(bookmark => Object.freeze({ ...bookmark }))) })
+      return true
+    } catch {
+      return false
+    }
+  }
+
   removeBookmark(id: string): boolean {
     const vault = this.snapshot.vault
     if (vault === null || this.storage === null) return false
@@ -2194,6 +2213,7 @@ export interface TockTutorRouteViewProps {
   onToggleTask(index: number): void
   reviewPanel?: ReactNode
   snapshot: WorkbenchRouteSnapshot
+  webViewerPanel?: ReactNode
   titlebarTarget?: Element
 }
 
@@ -2947,6 +2967,10 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
               {(snapshot.trash?.length ?? 0) === 0 && <span className="text-xs text-[var(--tt-muted)]">Trash is empty.</span>}
             </div>
           </section>
+          <section aria-label="Web Viewer" className="min-h-80 border-t border-[var(--tt-border)] p-3">
+            <h2 className="m-0 text-sm">Web Viewer</h2>
+            <div className="mt-2 flex min-h-72 flex-col">{props.webViewerPanel ?? <Alert unstyled role="status">Web Viewer is unavailable.</Alert>}</div>
+          </section>
           <section aria-label="Graph View" className="border-t border-[var(--tt-border)] p-3">
             <div className="flex items-center justify-between gap-2">
               <h2 className="m-0 text-sm">Graph View</h2>
@@ -3170,6 +3194,7 @@ export type TockTutorRouteProps = TockTutorRouteOwnerProps &
     | typeof TOCKTUTOR_ASSISTANT_PANEL_SLOT
     | typeof TOCKTUTOR_NATIVE_ACTIONS_SLOT
     | typeof TOCKTUTOR_REVIEW_PANEL_SLOT
+    | typeof TOCKTUTOR_WEB_VIEWER_PANEL_SLOT
   > & {
     remote: WorkbenchRouteRemote
   }
@@ -3197,6 +3222,23 @@ function TockTutorReviewPanelOutlet(props: {
     vault: props.vault,
   }, {
     fallback: <Alert unstyled role="status">No review workflow is active.</Alert>,
+  })
+}
+
+function TockTutorWebViewerOutlet(props: {
+  activePath: string | null
+  addLinkBookmark(title: string, url: string): boolean
+  renderSlot: TockTutorRouteProps['renderSlot']
+  vault: VaultReference | null
+  webClipFolder: string
+}): ReactNode {
+  return props.renderSlot(TOCKTUTOR_WEB_VIEWER_PANEL_SLOT, {
+    activePath: props.activePath,
+    addLinkBookmark: props.addLinkBookmark,
+    vault: props.vault,
+    webClipFolder: props.webClipFolder,
+  }, {
+    fallback: <Alert unstyled role="status">Web Viewer is unavailable.</Alert>,
   })
 }
 
@@ -3361,6 +3403,15 @@ export function TockTutorRoute(props: TockTutorRouteProps): ReactNode {
           />
         )}
         snapshot={snapshot}
+        webViewerPanel={(
+          <TockTutorWebViewerOutlet
+            activePath={snapshot.path}
+            addLinkBookmark={(title, url) => controller.addLinkBookmark(title, url)}
+            renderSlot={props.renderSlot}
+            vault={snapshot.vault}
+            webClipFolder={snapshot.settings?.webClipFolder ?? 'Clips'}
+          />
+        )}
         {...(typeof document === 'undefined'
           ? {}
           : { titlebarTarget: document.getElementById('tockteam-window-titlebar-slot') ?? document.body })}

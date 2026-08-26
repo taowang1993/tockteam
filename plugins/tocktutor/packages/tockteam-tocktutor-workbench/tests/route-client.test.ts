@@ -68,6 +68,7 @@ test('client contribution mounts Remote and the exact lifecycle-owned route seat
     'tockteam.tocktutor.workbench.assistant': { kind: 'single', scope: 'root' },
     'tockteam.tocktutor.workbench.native-actions': { kind: 'list', scope: 'root' },
     'tockteam.tocktutor.workbench.review': { kind: 'list', scope: 'root' },
+    'tockteam.tocktutor.workbench.web-viewer': { kind: 'single', scope: 'root' },
   })
   assert.equal(options.registrant, '@tockteam/tocktutor-workbench')
   const routeRemote = options.inject?.().remote as {

@@ -189,11 +189,13 @@ async function verifyPackedClient(
       TOCKTUTOR_ASSISTANT_PANEL_SLOT: string
       TOCKTUTOR_NATIVE_ACTIONS_SLOT: string
       TOCKTUTOR_REVIEW_PANEL_SLOT: string
+      TOCKTUTOR_WEB_VIEWER_PANEL_SLOT: string
     }
     assert.equal(client.name, packageName)
     assert.equal(client.TOCKTUTOR_ASSISTANT_PANEL_SLOT, 'tockteam.tocktutor.workbench.assistant')
     assert.equal(client.TOCKTUTOR_NATIVE_ACTIONS_SLOT, 'tockteam.tocktutor.workbench.native-actions')
     assert.equal(client.TOCKTUTOR_REVIEW_PANEL_SLOT, 'tockteam.tocktutor.workbench.review')
+    assert.equal(client.TOCKTUTOR_WEB_VIEWER_PANEL_SLOT, 'tockteam.tocktutor.workbench.web-viewer')
 
     const cleanup: string[] = []
     const registered: Array<{
@@ -264,6 +266,7 @@ async function verifyPackedClient(
       'tockteam.tocktutor.workbench.assistant': { kind: 'single', scope: 'root' },
       'tockteam.tocktutor.workbench.native-actions': { kind: 'list', scope: 'root' },
       'tockteam.tocktutor.workbench.review': { kind: 'list', scope: 'root' },
+      'tockteam.tocktutor.workbench.web-viewer': { kind: 'single', scope: 'root' },
     })
 
     let nativeOwner: {

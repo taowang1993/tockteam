@@ -184,6 +184,15 @@ importers:
       '@deepseek-ai/cordis-plugin-loader':
         specifier: 1.0.2
         version: 1.0.2(@deepseek-ai/cordis@..+.cache+dsh-source+b150a551b8d4+vendor+cordis)
+      '@deepseek-ai/dsh-client-runtime':
+        specifier: link:../../../../.cache/dsh-source/b150a551b8d4/packages/client/runtime
+        version: link:../../../../.cache/dsh-source/b150a551b8d4/packages/client/runtime
+      '@deepseek-ai/dsh-client-ui-slots':
+        specifier: link:../../../../.cache/dsh-source/b150a551b8d4/packages/client/ui-slots
+        version: link:../../../../.cache/dsh-source/b150a551b8d4/packages/client/ui-slots
+      '@tockteam/tocktutor-workbench':
+        specifier: workspace:0.1.7
+        version: link:../tockteam-tocktutor-workbench
       '@tockteam/ui':
         specifier: workspace:*
         version: link:../../../ui

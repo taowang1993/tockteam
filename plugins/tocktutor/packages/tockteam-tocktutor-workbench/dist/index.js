@@ -48,4 +48,5 @@ export * from "./organize.js";
 export * from "./composer.js";
 export * from "./attachments.js";
 export * from "./embeds.js";
+export * from "./web-viewer-panel.js";
 //# sourceMappingURL=index.js.map

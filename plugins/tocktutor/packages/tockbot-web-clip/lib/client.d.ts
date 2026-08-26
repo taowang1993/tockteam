@@ -1,9 +1,6 @@
+import type { Context } from '@deepseek-ai/cordis';
 interface WebClipDesktopBridge {
     authorizeDocument(frameId: number, html: string): Promise<string>;
-}
-interface ClientContext {
-    effect(effect: () => (() => void) | void, label?: string): void;
-    get(name: string): unknown;
 }
 declare global {
     interface Window {
@@ -15,6 +12,7 @@ declare global {
         };
     }
 }
+export declare const name = "tockbot-web-clip";
 export declare const inject: string[];
-export declare function apply(ctx: ClientContext): void;
+export declare function apply(ctx: Context): void;
 export {};

@@ -9,6 +9,7 @@ import type { BaseHydratedFile } from './base-query.ts';
 import type { CanvasChange } from './canvas-change.ts';
 import { TOCKTUTOR_NATIVE_ACTIONS_SLOT, type TockTutorNativeActionsDispatchEvent, type TockTutorNativeActionsDispatchResult } from './native-actions.ts';
 import { TOCKTUTOR_REVIEW_PANEL_SLOT } from './review-panel.ts';
+import { TOCKTUTOR_WEB_VIEWER_PANEL_SLOT } from './web-viewer-panel.ts';
 import { type PropertyValue } from './properties.ts';
 import { type Bookmark as TockTutorBookmark } from './bookmarks.ts';
 import { type GraphPosition } from './graph.ts';
@@ -211,6 +212,7 @@ export declare class WorkbenchRouteController {
     updateSettings(change: Partial<TockTutorSettings>): boolean;
     saveCurrentWorkspace(name?: string): boolean;
     addActiveBookmark(): boolean;
+    addLinkBookmark(title: string, url: string): boolean;
     removeBookmark(id: string): boolean;
     openBookmark(id: string): Promise<boolean>;
     loadWorkspace(id: string): Promise<boolean>;
@@ -301,11 +303,12 @@ export interface TockTutorRouteViewProps {
     onToggleTask(index: number): void;
     reviewPanel?: ReactNode;
     snapshot: WorkbenchRouteSnapshot;
+    webViewerPanel?: ReactNode;
     titlebarTarget?: Element;
 }
 /** Semantic, authority-free view for the route state machine. */
 export declare function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode;
-export type TockTutorRouteProps = TockTutorRouteOwnerProps & PropsRenderSlots<typeof TOCKTUTOR_ASSISTANT_PANEL_SLOT | typeof TOCKTUTOR_NATIVE_ACTIONS_SLOT | typeof TOCKTUTOR_REVIEW_PANEL_SLOT> & {
+export type TockTutorRouteProps = TockTutorRouteOwnerProps & PropsRenderSlots<typeof TOCKTUTOR_ASSISTANT_PANEL_SLOT | typeof TOCKTUTOR_NATIVE_ACTIONS_SLOT | typeof TOCKTUTOR_REVIEW_PANEL_SLOT | typeof TOCKTUTOR_WEB_VIEWER_PANEL_SLOT> & {
     remote: WorkbenchRouteRemote;
 };
 /** Root-scoped component contributed to TockTeam's exact Desktop route seat. */

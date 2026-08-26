@@ -7,8 +7,8 @@ var __getOwnPropNames = Object.getOwnPropertyNames;
 var __getProtoOf = Object.getPrototypeOf;
 var __hasOwnProp = Object.prototype.hasOwnProperty;
 var __export = (target, all) => {
-  for (var name in all)
-    __defProp(target, name, { get: all[name], enumerable: true });
+  for (var name2 in all)
+    __defProp(target, name2, { get: all[name2], enumerable: true });
 };
 var __copyProps = (to, from, except, desc) => {
   if (from && typeof from === "object" || typeof from === "function") {
@@ -32,7 +32,8 @@ var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: tru
 var client_exports = {};
 __export(client_exports, {
   apply: () => apply,
-  inject: () => inject
+  inject: () => inject,
+  name: () => name
 });
 module.exports = __toCommonJS(client_exports);
 
@@ -723,6 +724,7 @@ async function requestClipCancel(reviewId, signal) {
 
 // src/client.tsx
 var import_jsx_runtime7 = require("react/jsx-runtime");
+var TOCKTUTOR_WEB_VIEWER_PANEL_SLOT = "tockteam.tocktutor.workbench.web-viewer";
 var VIEWER_STORAGE_KEY = "tocktutor.webViewer.v1";
 function storedViewerState() {
   try {
@@ -734,7 +736,7 @@ function storedViewerState() {
 function cancelClipPreview(preview) {
   if (preview) void requestClipCancel(preview.reviewId, AbortSignal.timeout(5e3)).catch(() => void 0);
 }
-function WebViewer() {
+function WebViewer(props = {}) {
   const bridge = window.dshDesktop?.webClip;
   const host = (0, import_react3.useRef)(null);
   const webview = (0, import_react3.useRef)(null);
@@ -755,7 +757,7 @@ function WebViewer() {
   const [loading, setLoading] = (0, import_react3.useState)(false);
   const [reader, setReader] = (0, import_react3.useState)(null);
   const [readerLoading, setReaderLoading] = (0, import_react3.useState)(false);
-  const [clipDestination, setClipDestination] = (0, import_react3.useState)("");
+  const [clipDestination, setClipDestination] = (0, import_react3.useState)(() => props.webClipFolder ?? "Clips");
   const [clipPreview, setClipPreview] = (0, import_react3.useState)(null);
   const [clipLoading, setClipLoading] = (0, import_react3.useState)(false);
   const [clipApplying, setClipApplying] = (0, import_react3.useState)(false);
@@ -990,6 +992,9 @@ function WebViewer() {
       }
     });
   };
+  (0, import_react3.useEffect)(() => {
+    if (clipPreviewRef.current === null) setClipDestination(props.webClipFolder ?? "Clips");
+  }, [props.webClipFolder]);
   const setReaderPreference = (key, value) => {
     const current = viewerRef.current;
     applyViewer({
@@ -1127,6 +1132,7 @@ function WebViewer() {
               disabled: !active?.url,
               onClick: () => {
                 applyViewer(addViewerBookmark(viewerRef.current));
+                if (active?.url != null) props.addLinkBookmark?.(active.title ?? active.url, active.url);
               },
               type: "button",
               children: "Bookmark"
@@ -1307,27 +1313,43 @@ function WebViewer() {
     /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: reader ? "hidden" : "flex min-h-0 flex-1", ref: host })
   ] });
 }
-var inject = ["desktopSidebar", "tockTeamSurface"];
+var name = "tockbot-web-clip";
+var inject = ["desktopSidebar", "tockTeamSurface", "slots"];
 function apply(ctx) {
   const surface = ctx.get("tockTeamSurface");
   const sidebar = ctx.get("desktopSidebar");
   const desktop = window.dshDesktop;
   if (surface?.kind !== "desktop" || !sidebar || !desktop?.webClip) return;
   let disposed = false;
-  let remove;
+  let removeSidebar;
+  let removePanel;
   ctx.effect(() => () => {
     disposed = true;
-    remove?.();
+    removePanel?.();
+    removeSidebar?.();
   }, "tockbot-web-clip: Web Viewer");
   void desktop.getInfo().then((info) => {
     if (disposed || info.version !== SUPPORTED_TOCKTEAM_DESKTOP_VERSION) return;
-    remove = sidebar.registerTab({
+    removeSidebar = sidebar.registerTab({
       id: "web-clip",
       order: 31,
       render: () => /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(WebViewer, {}),
       single: true,
       title: "Web Viewer"
     });
+    removePanel = ctx.slots.inject(
+      TOCKTUTOR_WEB_VIEWER_PANEL_SLOT,
+      () => ctx.slots.register({
+        name: TOCKTUTOR_WEB_VIEWER_PANEL_SLOT,
+        registrant: name
+      }, (owner) => /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
+        WebViewer,
+        {
+          addLinkBookmark: owner.addLinkBookmark,
+          webClipFolder: owner.webClipFolder
+        }
+      ))
+    );
   }).catch(() => void 0);
 }
 /*! Bundled license information:
