@@ -66,9 +66,11 @@ export class DesktopMicrophoneProvider implements TockTeamDesktopMicrophone {
       }
       return result
     } catch {
-      return signal.aborted
-        ? { operationId: request.identity.operationId, status: 'cancelled' }
-        : { operationId: request.identity.operationId, status: 'unavailable' }
+      if (signal.aborted) {
+        await this.nativeRequest({ disposeProvider: true }).catch(() => undefined)
+        return { operationId: request.identity.operationId, status: 'cancelled' }
+      }
+      return { operationId: request.identity.operationId, status: 'unavailable' }
     } finally {
       this.pending.delete(work)
     }
