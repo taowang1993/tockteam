@@ -6,6 +6,7 @@ import { TOCKTUTOR_ASSISTANT_PANEL_SLOT } from './assistant-panel.ts';
 import type { CanvasChange } from './canvas-change.ts';
 import { TOCKTUTOR_NATIVE_ACTIONS_SLOT, type TockTutorNativeActionsDispatchEvent, type TockTutorNativeActionsDispatchResult } from './native-actions.ts';
 import { TOCKTUTOR_REVIEW_PANEL_SLOT } from './review-panel.ts';
+import { type PropertyValue } from './properties.ts';
 import { type KeyValueStorage, type NamedWorkspace, type TockTutorSettings } from './settings.ts';
 import { type EditorCommandId } from './editor-commands.ts';
 import { type EditorStatus } from './markdown.ts';
@@ -188,6 +189,7 @@ export declare class WorkbenchRouteController {
     select(path: string, navigate?: boolean, dispatchRevision?: number, recordHistory?: boolean): Promise<boolean>;
     edit(source: string): void;
     setSelection(start: number, end: number): void;
+    setProperty(key: string, value: PropertyValue): boolean;
     runEditorCommand(command: EditorCommandId): void;
     setMode(mode: RouteEditorMode): void;
     toggleTask(index: number): void;
@@ -236,6 +238,7 @@ export interface TockTutorRouteViewProps {
     onSearchMode?(mode: 'query' | 'related'): void;
     onSettingsChange?(change: Partial<TockTutorSettings>): void;
     onSelectionChange?(start: number, end: number): void;
+    onSetProperty?(key: string, value: PropertyValue): void;
     onSelect(path: string): void;
     onSubmitDispatch?(draft: NativeDispatchDraft): void;
     onToggleFocusMode?(): void;

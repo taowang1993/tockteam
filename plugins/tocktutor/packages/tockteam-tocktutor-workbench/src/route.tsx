@@ -63,6 +63,7 @@ import {
   replaceLivePreviewLine,
 } from './live-preview.ts'
 import { renderMarkdownHtml } from './rich-markdown.ts'
+import { parseFrontmatterProperties, setFrontmatterProperty, type PropertyValue } from './properties.ts'
 import {
   createNamedWorkspace,
   loadTockTutorSettings,
@@ -1496,6 +1497,18 @@ export class WorkbenchRouteController {
     this.update({ selectionEnd, selectionStart })
   }
 
+  setProperty(key: string, value: PropertyValue): boolean {
+    if (this.snapshot.documentKind !== 'markdown' || this.snapshot.path === null || this.snapshot.mode === 'reading') return false
+    try {
+      const source = setFrontmatterProperty(this.snapshot.source, key, value)
+      if (source === this.snapshot.source) return false
+      this.edit(source)
+      return true
+    } catch {
+      return false
+    }
+  }
+
   runEditorCommand(command: EditorCommandId): void {
     if (this.snapshot.path === null || this.snapshot.documentKind !== 'markdown' || this.snapshot.mode === 'reading') return
     const result = applyEditorCommand(
@@ -1814,6 +1827,7 @@ export interface TockTutorRouteViewProps {
   onSearchMode?(mode: 'query' | 'related'): void
   onSettingsChange?(change: Partial<TockTutorSettings>): void
   onSelectionChange?(start: number, end: number): void
+  onSetProperty?(key: string, value: PropertyValue): void
   onSelect(path: string): void
   onSubmitDispatch?(draft: NativeDispatchDraft): void
   onToggleFocusMode?(): void
@@ -2052,6 +2066,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
     ? 'Canvas Source'
     : snapshot.documentKind === 'base' ? 'Base Source' : 'Markdown Source'
   const query = snapshot.searchQuery.trim().toLocaleLowerCase()
+  const activeProperties = snapshot.documentKind === 'markdown' ? parseFrontmatterProperties(snapshot.source) : []
   const documents = snapshot.entries.filter(entry => entry.kind === 'document'
     && supportedDocument(entry.path)
     && (query === '' || entry.path.toLocaleLowerCase().includes(query)))
@@ -2583,6 +2598,27 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
               </div>
             )}
           </section>
+          <section aria-label="Properties" className="border-t border-[var(--tt-border)] p-3">
+            <h2 className="m-0 text-sm">Properties</h2>
+            <h3 className="mt-2 mb-1 text-xs">File</h3>
+            <div className="grid gap-1">
+              {activeProperties.map(property => (
+                <Label unstyled className="grid grid-cols-[minmax(80px,.4fr)_minmax(0,1fr)] items-center gap-2 text-xs" key={property.key}>
+                  <span className="truncate">{property.key} · {property.type}</span>
+                  {property.type === 'checkbox' ? (
+                    <Checkbox aria-label={`${property.key} Property`} checked={property.value === true} onCheckedChange={checked => { props.onSetProperty?.(property.key, checked === true) }} />
+                  ) : (
+                    <Input unstyled aria-label={`${property.key} Property`} className="min-w-0 rounded border border-[var(--tt-border)] bg-transparent p-1" defaultValue={Array.isArray(property.value) ? property.value.join(', ') : String(property.value ?? '')} onBlur={event => { props.onSetProperty?.(property.key, property.type === 'list' ? event.target.value.split(',').map(value => value.trim()).filter(Boolean) : property.type === 'number' && Number.isFinite(Number(event.target.value)) ? Number(event.target.value) : event.target.value) }} />
+                  )}
+                </Label>
+              ))}
+              {activeProperties.length === 0 && <span className="text-xs text-[var(--tt-muted)]">No file properties.</span>}
+            </div>
+            <h3 className="mt-2 mb-1 text-xs">All</h3>
+            <div className="grid gap-1">
+              {(snapshot.facets?.properties ?? []).map(property => <Button unstyled className="rounded border-0 bg-transparent px-1 py-0.5 text-left text-xs" key={property.key.toLocaleLowerCase()} onClick={() => { props.onSearchChange?.(`[${property.key}]`); props.onRunSearch?.() }} type="button">{property.key} · {String(property.count)} · {property.types.join(', ')}</Button>)}
+            </div>
+          </section>
           <section aria-label="Note Relationships" className="border-t border-[var(--tt-border)] p-3">
             <h2 className="m-0 text-sm">Outline and Relationships</h2>
             <h3 className="mt-2 mb-1 text-xs">Outline</h3>
@@ -2809,6 +2845,7 @@ export function TockTutorRoute(props: TockTutorRouteProps): ReactNode {
         onSettingsChange={change => { controller.updateSettings(change) }}
         onSelect={path => { void controller.select(path) }}
         onSelectionChange={(start, end) => { controller.setSelection(start, end) }}
+        onSetProperty={(key, value) => { controller.setProperty(key, value) }}
         onSubmitDispatch={draft => { void controller.submitDispatchDialog(draft) }}
         onToggleFocusMode={() => { controller.toggleFocusMode() }}
         onTogglePinTab={(paneId, path) => { controller.togglePinTab(paneId, path) }}

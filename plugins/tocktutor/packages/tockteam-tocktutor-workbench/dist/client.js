@@ -85,6 +85,7 @@ __export(client_exports, {
   duplicateCanvasGroup: () => duplicateCanvasGroup,
   duplicateCanvasNodes: () => duplicateCanvasNodes,
   escapeMarkdownHtml: () => escapeMarkdownHtml,
+  inferPropertyType: () => inferPropertyType,
   inject: () => inject,
   internalLinkDropMarkdown: () => internalLinkDropMarkdown,
   isBoundedCanvasGeometry: () => isBoundedCanvasGeometry,
@@ -100,10 +101,13 @@ __export(client_exports, {
   pagePreviewTargetAtOffset: () => pagePreviewTargetAtOffset,
   parseCanvasDocument: () => parseCanvasDocument,
   parseCanvasForMutation: () => parseCanvasForMutation,
+  parseFrontmatterProperties: () => parseFrontmatterProperties,
   pathFromTockTutorLocation: () => pathFromTockTutorLocation,
   projectCanvas: () => projectCanvas,
   projectLivePreview: () => projectLivePreview,
   reconnectCanvasEdge: () => reconnectCanvasEdge,
+  renameFrontmatterProperty: () => renameFrontmatterProperty,
+  renamePropertiesRecoverably: () => renamePropertiesRecoverably,
   renderMarkdownHtml: () => renderMarkdownHtml,
   replaceLivePreviewLine: () => replaceLivePreviewLine,
   resolvePlatformEditorCommand: () => resolvePlatformEditorCommand,
@@ -111,6 +115,7 @@ __export(client_exports, {
   saveTockTutorSettings: () => saveTockTutorSettings,
   saveWorkbenchState: () => saveWorkbenchState,
   serializeCanvasDocument: () => serializeCanvasDocument,
+  setFrontmatterProperty: () => setFrontmatterProperty,
   subscribeNoteVaultChanges: () => subscribeNoteVaultChanges,
   tryNormalizeCanvasLinkUrl: () => tryNormalizeCanvasLinkUrl,
   updateCanvasEdgeColor: () => updateCanvasEdgeColor,
@@ -23127,6 +23132,142 @@ function buildMarkdownExportDocument(options) {
   return `<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data: blob:; media-src data: blob:; style-src 'unsafe-inline';"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title><style>body{font:16px/1.6 system-ui,sans-serif;max-width:780px;margin:40px auto;padding:0 24px;color:#202124}pre,code{font-family:ui-monospace,monospace}pre{overflow:auto;padding:12px;background:#f5f5f5}table{border-collapse:collapse;width:100%}th,td{border:1px solid #ccc;padding:6px}.callout{border-left:4px solid #6750a4;padding:8px 12px;background:#f7f5ff}.math-display{text-align:center}.footnotes{border-top:1px solid #ddd}</style></head><body>${body}</body></html>`;
 }
 
+// src/properties.ts
+var MAX_FRONTMATTER_BYTES = 1e6;
+var MAX_PROPERTIES = 1e3;
+var KEY = /^[A-Za-z_][A-Za-z0-9_-]{0,127}$/u;
+function frontmatter(source) {
+  if (new TextEncoder().encode(source).byteLength > MAX_FRONTMATTER_BYTES) return null;
+  const opening = source.match(/^---(?:\r\n|\n|\r)/u);
+  if (opening === null) return null;
+  const start = opening[0].length;
+  const close = /(?:^|\r\n|\n|\r)(?:---|\.\.\.)(?=\r\n|\n|\r|$)/gmu;
+  close.lastIndex = start;
+  const match = close.exec(source);
+  if (match === null) return null;
+  const markerOffset = match.index + (match[0].startsWith("\r\n") ? 2 : match[0].startsWith("\n") || match[0].startsWith("\r") ? 1 : 0);
+  const markerEnd = markerOffset + (source.startsWith("...", markerOffset) ? 3 : 3);
+  const separator = source.startsWith("\r\n", markerEnd) ? 2 : source[markerEnd] === "\n" || source[markerEnd] === "\r" ? 1 : 0;
+  return { bodyStart: markerEnd + separator, content: source.slice(start, markerOffset), start };
+}
+function decodeQuoted(value) {
+  const trimmed = value.trim();
+  if (trimmed.startsWith('"') && trimmed.endsWith('"')) {
+    try {
+      return JSON.parse(trimmed);
+    } catch {
+      return trimmed.slice(1, -1);
+    }
+  }
+  if (trimmed.startsWith("'") && trimmed.endsWith("'")) return trimmed.slice(1, -1).replaceAll("''", "'");
+  return trimmed;
+}
+function inferPropertyType(value) {
+  if (Array.isArray(value)) return "list";
+  if (typeof value === "number") return "number";
+  if (typeof value === "boolean") return "checkbox";
+  if (typeof value !== "string") return "mixed";
+  if (/^\d{4}-\d{2}-\d{2}$/u.test(value)) return "date";
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,3})?)?(?:Z|[+-]\d{2}:\d{2})?$/u.test(value)) return "datetime";
+  return "text";
+}
+function scalar2(value) {
+  const decoded = decodeQuoted(value);
+  if (decoded === "true") return true;
+  if (decoded === "false") return false;
+  if (decoded === "null" || decoded === "~") return null;
+  if (/^-?(?:0|[1-9]\d*)(?:\.\d+)?$/u.test(decoded)) {
+    const number4 = Number(decoded);
+    if (Number.isFinite(number4)) return number4;
+  }
+  return decoded;
+}
+function ranges(source) {
+  const block = frontmatter(source);
+  if (block === null) return [];
+  const lines = [...block.content.matchAll(/.*(?:\r\n|\n|\r|$)/gu)].filter((match) => match[0] !== "");
+  const properties = [];
+  let offset4 = block.start;
+  for (let index2 = 0; index2 < lines.length && properties.length < MAX_PROPERTIES; index2 += 1) {
+    const line = lines[index2][0];
+    const content = line.replace(/(?:\r\n|\n|\r)$/u, "");
+    const match = content.match(/^([A-Za-z_][A-Za-z0-9_-]{0,127}):(?:\s*(.*))?$/u);
+    if (match === null) {
+      offset4 += line.length;
+      continue;
+    }
+    const key = match[1];
+    let end = offset4 + line.length;
+    const items = [];
+    let next = index2 + 1;
+    while (next < lines.length && /^\s{2,}-\s+/u.test(lines[next][0])) {
+      items.push(decodeQuoted(lines[next][0].replace(/^\s{2,}-\s+/u, "").replace(/(?:\r\n|\n|\r)$/u, "")));
+      end += lines[next][0].length;
+      next += 1;
+    }
+    const value = items.length > 0 ? items : scalar2(match[2] ?? "");
+    properties.push({ end, key, start: offset4, type: inferPropertyType(value), value });
+    index2 = next - 1;
+    offset4 = end;
+  }
+  return properties;
+}
+function parseFrontmatterProperties(source) {
+  return ranges(source).map(({ key, type, value }) => ({ key, type, value }));
+}
+function quoteText(value) {
+  if (value === "" || /^(?:true|false|null|~|-?(?:0|[1-9]\d*)(?:\.\d+)?|\d{4}-\d{2}-\d{2}(?:T.*)?)$/iu.test(value) || /[:#\[\]{},&*!|>'"%@`]/u.test(value) || /^\s|\s$/u.test(value)) return JSON.stringify(value);
+  return value;
+}
+function serializedProperty(key, value, eol) {
+  if (Array.isArray(value)) return `${key}:${eol}${value.map((item) => `  - ${quoteText(item)}`).join(eol)}${eol}`;
+  const encoded = value === null ? "null" : typeof value === "string" ? quoteText(value) : String(value);
+  return `${key}: ${encoded}${eol}`;
+}
+function setFrontmatterProperty(source, key, value) {
+  if (!KEY.test(key)) throw new Error("The property name is invalid.");
+  const eol = source.includes("\r\n") ? "\r\n" : "\n";
+  const existing = ranges(source).find((property) => property.key.toLocaleLowerCase() === key.toLocaleLowerCase());
+  const serialized = serializedProperty(key, value, eol);
+  if (existing !== void 0) return `${source.slice(0, existing.start)}${serialized}${source.slice(existing.end)}`;
+  const block = frontmatter(source);
+  if (block === null) return `---${eol}${serialized}---${eol}${source}`;
+  const insertion = block.bodyStart - (source.startsWith("\r\n", block.bodyStart - 2) ? 5 : 4);
+  return `${source.slice(0, insertion)}${serialized}${source.slice(insertion)}`;
+}
+function renameFrontmatterProperty(source, from, to) {
+  if (!KEY.test(from) || !KEY.test(to)) throw new Error("The property name is invalid.");
+  const properties = ranges(source);
+  const sourceProperty = properties.find((property) => property.key.toLocaleLowerCase() === from.toLocaleLowerCase());
+  if (sourceProperty === void 0) return source;
+  if (properties.some((property) => property.key.toLocaleLowerCase() === to.toLocaleLowerCase() && property !== sourceProperty)) {
+    throw new Error("The target property already exists.");
+  }
+  const prefixLength = sourceProperty.key.length;
+  return `${source.slice(0, sourceProperty.start)}${to}${source.slice(sourceProperty.start + prefixLength)}`;
+}
+async function renamePropertiesRecoverably(files, from, to, operations) {
+  const planned = files.map((file2) => ({ ...file2, nextSource: renameFrontmatterProperty(file2.source, from, to) })).filter((file2) => file2.nextSource !== file2.source);
+  const saved = [];
+  try {
+    for (const file2 of planned) {
+      const result = await operations.save(file2);
+      saved.push({ ...file2, savedRevision: result.revision });
+    }
+    return { paths: saved.map((file2) => file2.path), status: "saved" };
+  } catch {
+    const rollbackFailures = [];
+    for (const file2 of [...saved].reverse()) {
+      try {
+        await operations.rollback(file2);
+      } catch {
+        rollbackFailures.push(file2.path);
+      }
+    }
+    return rollbackFailures.length === 0 ? { paths: saved.map((file2) => file2.path), status: "rolled-back" } : { paths: saved.map((file2) => file2.path), rollbackFailures, status: "partial" };
+  }
+}
+
 // src/session.ts
 var MAX_PANE_GROUPS = 8;
 var MAX_NOTE_TABS = 20;
@@ -23682,15 +23823,15 @@ function internalLinkDropMarkdown(path, label) {
   return safeLabel ? `[[${target}|${safeLabel}]]` : `[[${target}]]`;
 }
 function codeRanges(source) {
-  const ranges = [];
+  const ranges2 = [];
   const fence2 = /^ {0,3}(`{3,}|~{3,}).*$(?:\r?\n|\r)([\s\S]*?)^ {0,3}\1\s*$/gmu;
   for (const match of source.matchAll(fence2)) {
-    if (match.index !== void 0) ranges.push([match.index, match.index + match[0].length]);
+    if (match.index !== void 0) ranges2.push([match.index, match.index + match[0].length]);
   }
   for (const match of source.matchAll(/`[^`\r\n]*`/gu)) {
-    if (match.index !== void 0) ranges.push([match.index, match.index + match[0].length]);
+    if (match.index !== void 0) ranges2.push([match.index, match.index + match[0].length]);
   }
-  return ranges;
+  return ranges2;
 }
 function pagePreviewTargetAtOffset(source, offset4) {
   if (!Number.isSafeInteger(offset4) || offset4 < 0 || offset4 > source.length || byteLength3(source) > MAX_EDITOR_COMMAND_SOURCE_BYTES) return null;
@@ -24925,6 +25066,17 @@ ${text}`;
     const selectionEnd = Number.isSafeInteger(end) ? Math.max(selectionStart, Math.min(end, this.snapshot.source.length)) : selectionStart;
     this.update({ selectionEnd, selectionStart });
   }
+  setProperty(key, value) {
+    if (this.snapshot.documentKind !== "markdown" || this.snapshot.path === null || this.snapshot.mode === "reading") return false;
+    try {
+      const source = setFrontmatterProperty(this.snapshot.source, key, value);
+      if (source === this.snapshot.source) return false;
+      this.edit(source);
+      return true;
+    } catch {
+      return false;
+    }
+  }
   runEditorCommand(command) {
     if (this.snapshot.path === null || this.snapshot.documentKind !== "markdown" || this.snapshot.mode === "reading") return;
     const result = applyEditorCommand(
@@ -25355,6 +25507,7 @@ function TockTutorRouteView(props) {
   const previewLabel = snapshot.documentKind === "canvas" ? "Canvas" : snapshot.documentKind === "base" ? "Base" : "Reading";
   const sourceLabel = snapshot.documentKind === "canvas" ? "Canvas Source" : snapshot.documentKind === "base" ? "Base Source" : "Markdown Source";
   const query = snapshot.searchQuery.trim().toLocaleLowerCase();
+  const activeProperties = snapshot.documentKind === "markdown" ? parseFrontmatterProperties(snapshot.source) : [];
   const documents = snapshot.entries.filter((entry) => entry.kind === "document" && supportedDocument(entry.path) && (query === "" || entry.path.toLocaleLowerCase().includes(query)));
   const focusedPane = snapshot.panes.find((pane) => pane.id === snapshot.focusedPaneId);
   const visibleTreeEntries = query === "" ? snapshot.entries.filter((entry) => entry.kind === "directory" || entry.kind === "document" && supportedDocument(entry.path)) : snapshot.entries.filter((entry) => entry.kind === "directory" ? documents.some((document2) => document2.path.startsWith(`${entry.path}/`)) : documents.includes(entry));
@@ -25950,6 +26103,36 @@ function TockTutorRouteView(props) {
                         String(tag.count)
                       ] }, tag.tag.toLocaleLowerCase())) })
                     ] }),
+                    /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("section", { "aria-label": "Properties", className: "border-t border-[var(--tt-border)] p-3", children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("h2", { className: "m-0 text-sm", children: "Properties" }),
+                      /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("h3", { className: "mt-2 mb-1 text-xs", children: "File" }),
+                      /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("div", { className: "grid gap-1", children: [
+                        activeProperties.map((property) => /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)(Label, { unstyled: true, className: "grid grid-cols-[minmax(80px,.4fr)_minmax(0,1fr)] items-center gap-2 text-xs", children: [
+                          /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("span", { className: "truncate", children: [
+                            property.key,
+                            " \xB7 ",
+                            property.type
+                          ] }),
+                          property.type === "checkbox" ? /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(Checkbox3, { "aria-label": `${property.key} Property`, checked: property.value === true, onCheckedChange: (checked) => {
+                            props.onSetProperty?.(property.key, checked === true);
+                          } }) : /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(Input, { unstyled: true, "aria-label": `${property.key} Property`, className: "min-w-0 rounded border border-[var(--tt-border)] bg-transparent p-1", defaultValue: Array.isArray(property.value) ? property.value.join(", ") : String(property.value ?? ""), onBlur: (event) => {
+                            props.onSetProperty?.(property.key, property.type === "list" ? event.target.value.split(",").map((value) => value.trim()).filter(Boolean) : property.type === "number" && Number.isFinite(Number(event.target.value)) ? Number(event.target.value) : event.target.value);
+                          } })
+                        ] }, property.key)),
+                        activeProperties.length === 0 && /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("span", { className: "text-xs text-[var(--tt-muted)]", children: "No file properties." })
+                      ] }),
+                      /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("h3", { className: "mt-2 mb-1 text-xs", children: "All" }),
+                      /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("div", { className: "grid gap-1", children: (snapshot.facets?.properties ?? []).map((property) => /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)(Button, { unstyled: true, className: "rounded border-0 bg-transparent px-1 py-0.5 text-left text-xs", onClick: () => {
+                        props.onSearchChange?.(`[${property.key}]`);
+                        props.onRunSearch?.();
+                      }, type: "button", children: [
+                        property.key,
+                        " \xB7 ",
+                        String(property.count),
+                        " \xB7 ",
+                        property.types.join(", ")
+                      ] }, property.key.toLocaleLowerCase())) })
+                    ] }),
                     /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("section", { "aria-label": "Note Relationships", className: "border-t border-[var(--tt-border)] p-3", children: [
                       /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("h2", { className: "m-0 text-sm", children: "Outline and Relationships" }),
                       /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("h3", { className: "mt-2 mb-1 text-xs", children: "Outline" }),
@@ -26263,6 +26446,9 @@ function TockTutorRoute(props) {
       },
       onSelectionChange: (start, end) => {
         controller.setSelection(start, end);
+      },
+      onSetProperty: (key, value) => {
+        controller.setProperty(key, value);
       },
       onSubmitDispatch: (draft) => {
         void controller.submitDispatchDialog(draft);
