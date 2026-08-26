@@ -209,17 +209,20 @@ class DesktopPanelService implements DesktopPanels {
   }
 
   private mountDock(column: HTMLElement): void {
+    let changed = false
     if (this.dock.element === null) {
       const element = document.createElement('div')
       element.id = 'tockteam-terminal-root'
       element.className = 'contents'
       this.dock.element = element
       this.dock.root = createRoot(element)
+      changed = true
     }
     if (this.dock.element.parentElement !== column || column.lastElementChild !== this.dock.element) {
       column.append(this.dock.element)
+      changed = true
     }
-    this.renderDock()
+    if (changed) this.renderDock()
   }
 
   private renderDock(): void {
