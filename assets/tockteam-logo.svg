@@ -4,27 +4,6 @@
   height="1024"
   viewBox="0 0 1024 1024"
 >
-  <defs>
-    <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
-      <feDropShadow
-        dx="0"
-        dy="8"
-        stdDeviation="40"
-        flood-color="#000000"
-        flood-opacity="0.3"
-      />
-    </filter>
-
-  </defs>
-  <rect
-    x="0"
-    y="0"
-    width="1024"
-    height="1024"
-    rx="230"
-    fill="#fafafa"
-    filter="url(#shadow)"
-  />
   <svg x="128" y="128" width="768" height="768" viewBox="0 0 20 20" fill="none">
     <path
       fill-rule="evenodd"

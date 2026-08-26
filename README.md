@@ -1,8 +1,3 @@
-<p align="center">
-  <a href="./README.md">简体中文</a> ·
-  <strong>English</strong>
-</p>
-
 <div align="center">
   <img src="./assets/tockteam-logo.svg" width="136" alt="TockTeam logo">
   <h1>TockTeam</h1>
