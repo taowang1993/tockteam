@@ -1,5 +1,6 @@
-import { randomBytes, timingSafeEqual } from 'node:crypto'
+import { randomBytes } from 'node:crypto'
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http'
+import { desktopBearerAuthorized } from './desktop-loopback.ts'
 import { DesktopMicrophoneOwner } from './desktop-microphone-owner.ts'
 import type { DesktopMicrophoneRequest } from './host-contract.ts'
 
@@ -9,13 +10,6 @@ const MAX_BODY_BYTES = 8 * 1024
 export interface DesktopMicrophoneChannelEnvironment {
   endpoint: string
   token: string
-}
-
-function authorized(value: string | undefined, expected: string): boolean {
-  if (value === undefined) return false
-  const actual = Buffer.from(value)
-  const target = Buffer.from(expected)
-  return actual.length === target.length && timingSafeEqual(actual, target)
 }
 
 async function body(request: IncomingMessage): Promise<unknown> {
@@ -106,7 +100,7 @@ export class DesktopMicrophoneChannel {
       response.writeHead(404).end()
       return
     }
-    if (!authorized(request.headers.authorization, `Bearer ${token}`)) {
+    if (!desktopBearerAuthorized(request.headers.authorization, `Bearer ${token}`)) {
       response.writeHead(401).end()
       return
     }

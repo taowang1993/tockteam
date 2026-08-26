@@ -1,5 +1,6 @@
-import { randomBytes, timingSafeEqual } from 'node:crypto'
+import { randomBytes } from 'node:crypto'
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http'
+import { desktopBearerAuthorized } from './desktop-loopback.ts'
 import {
   DESKTOP_REVEAL_CHANNEL_PATH,
   MAX_DESKTOP_REVEAL_BODY_BYTES,
@@ -18,13 +19,6 @@ export interface DesktopRevealChannelEnvironment {
 export interface DesktopRevealChannelOptions {
   isAvailable(): boolean
   onReveal(input: DesktopRevealInput, signal: AbortSignal): Promise<DesktopRevealResult>
-}
-
-function authorized(value: string | undefined, expected: string): boolean {
-  if (value === undefined) return false
-  const actual = Buffer.from(value)
-  const target = Buffer.from(expected)
-  return actual.length === target.length && timingSafeEqual(actual, target)
 }
 
 function closeRequest(request: IncomingMessage, response: ServerResponse, status: number): void {
@@ -187,7 +181,7 @@ export class DesktopRevealChannel {
       closeRequest(request, response, 404)
       return
     }
-    if (!authorized(request.headers.authorization, `Bearer ${token}`)) {
+    if (!desktopBearerAuthorized(request.headers.authorization, `Bearer ${token}`)) {
       closeRequest(request, response, 401)
       return
     }
