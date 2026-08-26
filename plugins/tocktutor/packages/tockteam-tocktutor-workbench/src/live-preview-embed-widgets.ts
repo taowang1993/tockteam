@@ -62,15 +62,7 @@ function widgetDom(embed: ResolvedEmbedNode, from: number, to: number, reveal: (
   return widget
 }
 
-function revealRange(view, from: number, to: number): void {
-  if (from < 0 || to <= from || to > view.state.doc.content.size) return
-  view.dispatch(view.state.tr
-    .setSelection(TextSelection.create(view.state.doc, from, to))
-    .setMeta(livePreviewEmbedPluginKey, { reveal: `${String(from)}:${String(to)}` }))
-  view.focus()
-}
-
-function decorationSet(state, embeds: readonly ResolvedEmbedNode[], revealed: ReadonlySet<string>): DecorationSet {
+function decorationSet(state, embeds: readonly ResolvedEmbedNode[], revealed: ReadonlySet<string>, reveal: (view: unknown, from: number, to: number) => void): DecorationSet {
   const buckets = new Map<string, ResolvedEmbedNode[]>()
   for (const embed of embeds) {
     const bucket = buckets.get(embed.target.source) ?? []
@@ -93,7 +85,7 @@ function decorationSet(state, embeds: readonly ResolvedEmbedNode[], revealed: Re
           || state.selection.from <= to && state.selection.to >= from) continue
         decorations.push(
           Decoration.inline(from, to, { class: 'hidden' }, { embedSource: 'true' }),
-          Decoration.widget(from, view => widgetDom(embed, from, to, () => { revealRange(view, from, to) }), { side: -1, embedWidget: 'true' }),
+          Decoration.widget(from, view => widgetDom(embed, from, to, () => { reveal(view, from, to) }), { side: -1, embedWidget: 'true' }),
         )
       }
     }
@@ -102,6 +94,13 @@ function decorationSet(state, embeds: readonly ResolvedEmbedNode[], revealed: Re
 }
 
 export function buildLivePreviewEmbedPlugin(getEmbeds: () => readonly ResolvedEmbedNode[]): Plugin {
+  const revealed = new Set<string>()
+  const revealRange = (view, from: number, to: number): void => {
+    if (from < 0 || to <= from || to > view.state.doc.content.size) return
+    revealed.add(`${String(from)}:${String(to)}`)
+    view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, from, to)))
+    view.focus()
+  }
   const reveal = (view, event: Event): boolean => {
     const widget = event.target instanceof Element ? event.target.closest<HTMLElement>('[data-embed-from][data-embed-to]') : null
     if (widget === null || event.type === 'keydown' && (event as KeyboardEvent).key !== 'Enter' && (event as KeyboardEvent).key !== ' ') return false
@@ -115,15 +114,11 @@ export function buildLivePreviewEmbedPlugin(getEmbeds: () => readonly ResolvedEm
   return new Plugin({
     key: livePreviewEmbedPluginKey,
     state: {
-      init: () => new Set<string>(),
-      apply(transaction, value: ReadonlySet<string>) {
-        if (transaction.docChanged) return new Set<string>()
-        const meta = transaction.getMeta(livePreviewEmbedPluginKey) as { reveal?: unknown } | undefined
-        return typeof meta?.reveal === 'string' ? new Set([...value, meta.reveal]) : value
-      },
+      init: () => null,
+      apply(transaction) { if (transaction.docChanged) revealed.clear(); return null },
     },
     props: {
-      decorations: state => decorationSet(state, getEmbeds(), livePreviewEmbedPluginKey.getState(state) ?? new Set()),
+      decorations: state => decorationSet(state, getEmbeds(), revealed, revealRange),
       handleDOMEvents: { mousedown: reveal, keydown: reveal },
     },
   })
