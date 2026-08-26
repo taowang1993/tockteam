@@ -68,10 +68,10 @@ function LivePreviewEditorInner(props: LivePreviewEditorProps): ReactNode {
   const lastSelectionRef = useRef<LivePreviewSelection | null>(null)
   const internalEditorViewRef = useRef<EditorView | null>(null)
   const onEditorViewRef = props.editorViewRef ?? internalEditorViewRef
-  onMarkdownChangeRef.current = props.onMarkdownChange
-  onOpenExternalUrlRef.current = props.onOpenExternalUrl
-  onSelectionChangeRef.current = props.onSelectionChange
-  onWidgetStateRef.current = props.onWidgetState
+  useEffect(() => { onMarkdownChangeRef.current = props.onMarkdownChange }, [props.onMarkdownChange])
+  useEffect(() => { onOpenExternalUrlRef.current = props.onOpenExternalUrl }, [props.onOpenExternalUrl])
+  useEffect(() => { onSelectionChangeRef.current = props.onSelectionChange }, [props.onSelectionChange])
+  useEffect(() => { onWidgetStateRef.current = props.onWidgetState }, [props.onWidgetState])
   const editor = useEditor((root) => {
     const lifecycle = $prose(() => new Plugin({
       view: view => {
