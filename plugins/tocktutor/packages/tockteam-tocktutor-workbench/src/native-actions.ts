@@ -5,7 +5,10 @@ export const TOCKTUTOR_NATIVE_ACTIONS_SLOT = 'tockteam.tocktutor.workbench.nativ
 
 export type TockTutorProtocolRequest = {
   action: 'open' | 'new' | 'daily' | 'unique' | 'search' | 'choose-vault'
+  /** Legacy Host-only selector; browser bridge requests use vaultId/vaultGeneration. */
   vault?: string
+  vaultId?: string
+  vaultGeneration?: number
   file?: string
   name?: string
   content?: string

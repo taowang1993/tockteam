@@ -139,7 +139,12 @@ test('desktop titlebar matches Tockbot chrome and stays draggable', () => {
   )
   assert.match(
     tailwind,
-    /\[data-slot='sidebar'\] button:is\([\s\S]*?aria-label='New session'[\s\S]*?aria-label='新建会话'[\s\S]*?\):not\(:has\(\[data-slot='sidebar\.brand\.name'\]\)\)\s*\{[^}]*display: none !important;/s,
+    /\[data-slot='sidebar'\] button:is\([\s\S]*?aria-label='New session'[\s\S]*?aria-label='新建会话'[\s\S]*?\)\s*\{[^}]*display: none !important;/s,
+  )
+  assert.doesNotMatch(tailwind, /aria-label='新建会话'\]\):not\(:has\(\[data-slot='sidebar\.brand\.name'\]\)\)/s)
+  assert.match(
+    tailwind,
+    /\[data-slot='sidebar'\] \*:has\(> button \[data-slot='sidebar\.brand\.name'\]\),[\s\S]*?display: none !important;/s,
   )
   assert.match(workspace, /panels\.toggleSidebar\(\)/)
   assert.match(
@@ -151,6 +156,8 @@ test('desktop titlebar matches Tockbot chrome and stays draggable', () => {
   assert.match(workspace, /rail\.className = '[^']*border-r[^']*border-\[var\(--tockteam-shell-divider\)\]/u)
   assert.match(workspace, /tockteam-window-titlebar[^"\n]+border-b[^"\n]+border-\[var\(--tockteam-shell-divider\)\][^"\n]+bg-\[var\(--tockteam-shell-chrome\)\]/u)
   assert.match(css, /--tockteam-primary-sidebar-width: 280px;/)
+  assert.match(workspace, /const TOCKTEAM_PRIMARY_SIDEBAR_MIN_WIDTH = 200/u)
+  assert.match(workspace, /const DSH_PRIMARY_SIDEBAR_MIN_WIDTH = 264/u)
   assert.match(
     workspace,
     /document\.documentElement\.style\.setProperty\(\s*'--tockteam-primary-sidebar-width',\s*`\$\{String\(width\)\}px`,?\s*\)/u,

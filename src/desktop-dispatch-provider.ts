@@ -24,7 +24,13 @@ function validEvent(value: unknown): value is DesktopDispatchEvent {
   if (typeof generation !== 'number' || !Number.isSafeInteger(generation) || generation < 0) return false
   if (identity.vaultId !== null && typeof identity.vaultId !== 'string') return false
   if (event.kind === 'quick-action') return ['new', 'daily', 'capture', 'search'].includes(String(event.action))
-  return event.kind === 'protocol' && typeof event.request === 'object' && event.request !== null
+  if (event.kind !== 'protocol' || typeof event.request !== 'object' || event.request === null) return false
+  const request = event.request as Record<string, unknown>
+  if (Object.hasOwn(request, 'vault') || Object.hasOwn(request, 'path') || Object.hasOwn(request, 'clipboard')) return false
+  if ((request.vaultId !== undefined || request.vaultGeneration !== undefined)
+    && (typeof request.vaultId !== 'string' || !/^vault:[0-9a-f]{64}$/u.test(request.vaultId)
+      || typeof request.vaultGeneration !== 'number' || !Number.isSafeInteger(request.vaultGeneration) || request.vaultGeneration < 0)) return false
+  return true
 }
 
 /** Host-side polling adapter for the Desktop dispatch queue. */

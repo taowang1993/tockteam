@@ -195,6 +195,10 @@ export class TockTutorDesktopGateway extends TypertRemoteService {
     identity: NativeOperationIdentity
     vault: VaultReference
   }>()
+  private readonly targetActivations = new Map<string, {
+    identity: NativeOperationIdentity
+    target: VaultReference
+  }>()
   private readonly lifetime = createNativeOwnerLifetime()
   private readonly recoveredResults = new Map<string, {
     fingerprint: string
@@ -221,6 +225,7 @@ export class TockTutorDesktopGateway extends TypertRemoteService {
         [...this.popOuts.values()].map(record => [record.windowId, record] as const),
       )
       this.activations.clear()
+      this.targetActivations.clear()
       this.popOutClosures.clear()
       this.popOuts.clear()
       this.recoveredResults.clear()
@@ -316,6 +321,45 @@ export class TockTutorDesktopGateway extends TypertRemoteService {
         vault: { generation: result.vaultGeneration, id: result.vaultId },
       })
       if (this.activations.size > 128) this.activations.delete(this.activations.keys().next().value!)
+      return { status: 'activated' }
+    }, signal)
+  }
+
+  @Remote
+  async activateVaultTarget(
+    authorization: string,
+    target: VaultReference,
+    signal: AbortSignal,
+  ): Promise<NativeActionResult> {
+    assertAuthorization(authorization)
+    assertVault(target)
+    return this.lifetime.run(async ownerSignal => {
+      const current = this.ctx.noteVault.state
+      if (!current.active) throw new Error('There is no active vault to switch from.')
+      const identity = await this.claimForVault(authorization, 'activate-vault', {
+        id: current.id,
+        generation: current.generation,
+      }, ownerSignal)
+      const recovered = this.targetActivations.get(authorization)
+      if (recovered !== undefined) {
+        if (!sameIdentity(recovered.identity, identity)
+          || recovered.target.id !== target.id
+          || recovered.target.generation !== target.generation) {
+          throw new Error('Desktop vault target changed during recovery.')
+        }
+        assertCurrentVault(this.ctx.noteVault, target)
+        return { status: 'activated' }
+      }
+      if (current.id !== target.id || current.generation !== target.generation) {
+        const activated = this.ctx.noteVault.activateRecentVault(target.id, current.generation)
+        if (activated.id !== target.id || activated.generation < target.generation) {
+          throw new Error('Desktop vault target activation returned stale state.')
+        }
+      }
+      await this.ctx.noteVault.synchronizeDesktopSelection(ownerSignal)
+      assertCurrentVault(this.ctx.noteVault, target)
+      this.targetActivations.set(authorization, { identity, target })
+      if (this.targetActivations.size > 128) this.targetActivations.delete(this.targetActivations.keys().next().value!)
       return { status: 'activated' }
     }, signal)
   }

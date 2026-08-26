@@ -545,6 +545,33 @@ test('dispatches approved daily and unique note defaults without inventing setti
   controller.dispose()
 })
 
+test('routes split panes, heading targets, and existing-file policies through the save gate', async () => {
+  const remote = new FakeRemote()
+  const controller = new WorkbenchRouteController(remote, () => {})
+  await controller.syncLocation('/tocktutor')
+  assert.equal(await controller.handleDispatch({
+    kind: 'protocol',
+    operationId: 'split-open',
+    request: { action: 'open', file: 'Folder/Note.md', paneType: 'split' },
+  }), 'handled')
+  assert.equal(controller.getSnapshot().panes.length, 2)
+  assert.equal(controller.getSnapshot().path, 'Folder/Note.md')
+  assert.equal(await controller.handleDispatch({
+    kind: 'protocol',
+    operationId: 'heading-open-decoded',
+    request: { action: 'open', file: 'Folder/Note.md#Before' },
+  }), 'handled')
+  assert.equal(controller.getSnapshot().selectionStart, '# Before\\n'.length)
+  assert.equal(await controller.handleDispatch({
+    kind: 'protocol',
+    operationId: 'append-existing',
+    request: { action: 'new', file: 'Existing.md', content: 'Added', ifExists: 'append', silent: true },
+  }), 'handled')
+  const save = remote.calls.filter(call => call.method === 'saveDocument').at(-1)?.parameters[0] as { content: string }
+  assert.match(save.content, /Added/u)
+  controller.dispose()
+})
+
 test('creates built-in template notes and inserts current date/time at the active selection', async () => {
   const remote = new FakeRemote()
   const controller = new WorkbenchRouteController(remote, () => {}, () => new Date(2026, 7, 26, 15, 4))

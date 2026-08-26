@@ -55,7 +55,7 @@ import {
 } from './web-clip-frame.ts'
 import { DshRuntimeSupervisor, runDshCommand, type DshRuntimeOptions, type RuntimeExit } from './runtime.ts'
 import { DesktopDispatchChannel } from './desktop-dispatch-channel.ts'
-import { isTockTutorProtocol } from './desktop-native-policy.ts'
+import { isTockTutorProtocol, resolveTockTutorProtocolRequest } from './desktop-native-policy.ts'
 import { scrubDesktopAuthorityEnvironment } from './desktop-runtime-environment.ts'
 import { DesktopMicrophoneChannel } from './desktop-microphone-channel.ts'
 import { DesktopPopOutChannel } from './desktop-popout-channel.ts'
@@ -125,6 +125,15 @@ function pickerDialogFilters(options: DesktopPickerDialogOptions): Electron.File
   return options.extensions.length === 0
     ? []
     : [{ name: options.extensions.map(extension => `.${extension}`).join(', '), extensions: options.extensions }]
+}
+
+function readBoundedDesktopClipboard(): string | null {
+  try {
+    const text = clipboard.readText()
+    return text.length <= 4_096 ? text : null
+  } catch {
+    return null
+  }
 }
 
 function printDocument(title: string, html: string): string {
@@ -295,16 +304,31 @@ function initializeDesktopPicker(): void {
     },
   })
   desktopDispatchChannel = new DesktopDispatchChannel({
-    identity: (operationId, requestId, channelSessionId) => {
+    identity: (operationId, requestId, channelSessionId, target) => {
       if (mainWindow === undefined || mainWindow.isDestroyed()) return undefined
-      return desktopPickerOwner.nativeIdentity(
+      const identity = desktopPickerOwner.nativeIdentity(
         operationId,
         requestId,
         String(mainWindow.webContents.id),
         channelSessionId,
       )
+      return target === undefined ? identity : {
+        ...identity,
+        vaultGeneration: target.generation,
+        vaultId: target.id,
+      }
     },
     isAvailable: () => isEligibleDesktopRevealWindow(),
+    onCallback: (url) => { void shell.openExternal(url) },
+    resolveProtocol: request => {
+      const records = desktopPickerOwner.protocolVaults()
+      const active = records.find(record => {
+        const snapshot = desktopPickerOwner.nativeVaultSnapshot()
+        return record.id === snapshot.id && record.generation === snapshot.generation
+      })
+      return resolveTockTutorProtocolRequest(request, records, active,
+        request.clipboard === true ? readBoundedDesktopClipboard() : undefined)
+    },
     onDeliveryExpired: (operationId, consumerId) => {
       const lease = mainDispatchLeases.get(operationId)
       if (lease?.consumerId === consumerId) releaseMainDispatchLease(operationId, false)

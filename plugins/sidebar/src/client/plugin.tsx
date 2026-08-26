@@ -354,7 +354,11 @@ function flattenRunningCalls(calls: readonly RunningToolCall[]): RunningToolCall
   return result
 }
 
+const TOCKTEAM_PRIMARY_SIDEBAR_MIN_WIDTH = 200
+const DSH_PRIMARY_SIDEBAR_MIN_WIDTH = 264
+
 function installPrimarySidebarAdapter(): () => void {
+  let overriddenWidth: number | undefined
   const publishWidth = (width: number): void => {
     document.documentElement.style.setProperty(
       '--tockteam-primary-sidebar-width',
@@ -373,7 +377,21 @@ function installPrimarySidebarAdapter(): () => void {
       return
     }
     const width = Number.parseFloat(frame.style.gridTemplateColumns)
-    if (width > 0) publishWidth(Math.round(width))
+    if (width <= 0) return
+    if (overriddenWidth === undefined) {
+      publishWidth(Math.round(width))
+      return
+    }
+    const pixelWidth = `${String(overriddenWidth)}px`
+    const tracks = frame.style.gridTemplateColumns
+    const overriddenTracks = tracks.replace(/^[\d.]+px/u, pixelWidth)
+    if (overriddenTracks !== tracks) frame.style.gridTemplateColumns = overriddenTracks
+    if (handle !== null && handle.style.left !== pixelWidth) handle.style.left = pixelWidth
+    const sidebarContent = frame.children.item(0)?.firstElementChild
+    if (sidebarContent instanceof HTMLElement && sidebarContent.style.width !== pixelWidth) {
+      sidebarContent.style.width = pixelWidth
+    }
+    publishWidth(overriddenWidth)
   }
   const observer = new MutationObserver(collapse)
   observer.observe(document.getElementById('root') ?? document.body, {
@@ -408,8 +426,9 @@ function installPrimarySidebarAdapter(): () => void {
     target.style.transitionDuration = '0ms'
     const render = (): void => {
       animationFrame = 0
-      // Match the pinned DSH layout's sidebar and center-column limits.
-      width = Math.min(420, Math.max(264, Math.round(startWidth + latestX - startX)))
+      // Keep DSH's upper and center-column limits while allowing TockTeam's denser minimum.
+      width = Math.min(420, Math.max(TOCKTEAM_PRIMARY_SIDEBAR_MIN_WIDTH, Math.round(startWidth + latestX - startX)))
+      overriddenWidth = width < DSH_PRIMARY_SIDEBAR_MIN_WIDTH ? width : undefined
       let details = detailsWidth
       if (details > 0 && width + details + 640 > frameWidth) {
         details = Math.max(300, frameWidth - width - 640)
@@ -445,17 +464,18 @@ function installPrimarySidebarAdapter(): () => void {
       render()
       cleanup()
       next.stopImmediatePropagation()
+      const upstreamX = startX + width - Math.max(DSH_PRIMARY_SIDEBAR_MIN_WIDTH, startWidth)
       target.dispatchEvent(new PointerEvent('pointermove', {
         bubbles: true,
         buttons: 1,
-        clientX: latestX,
+        clientX: upstreamX,
         isPrimary: true,
         pointerId,
         pointerType: 'mouse',
       }))
       target.dispatchEvent(new PointerEvent('pointerup', {
         bubbles: true,
-        clientX: latestX,
+        clientX: upstreamX,
         isPrimary: true,
         pointerId,
         pointerType: 'mouse',

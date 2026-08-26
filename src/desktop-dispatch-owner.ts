@@ -3,21 +3,29 @@ import {
   type DesktopDispatchCompletionRequest,
   type DesktopDispatchCompletionResult,
   type DesktopDispatchEvent,
+  type DesktopProtocolVaultTarget,
   type DesktopQuickAction,
   type NativeOperationIdentity,
+  type TockTutorBrowserProtocolRequest,
+  type TockTutorProtocolRequest,
 } from './host-contract.ts'
-import { parseTockTutorProtocol } from './desktop-native-policy.ts'
+import {
+  parseTockTutorProtocol,
+  type ResolvedTockTutorProtocolRequest,
+} from './desktop-native-policy.ts'
 
 const MAX_PENDING_EVENTS = 64
 const MAX_ID_BYTES = 256
 const DELIVERY_LIFETIME_MS = 5 * 60 * 1000
 
 export interface DesktopDispatchOwnerOptions {
-  identity(operationId: string, requestId: string): NativeOperationIdentity | undefined
+  identity(operationId: string, requestId: string, target?: DesktopProtocolVaultTarget): NativeOperationIdentity | undefined
   isAvailable(): boolean
+  onCallback?(url: string, status: 'success' | 'error'): void
   onDeliveryExpired?(operationId: string, consumerId: string): void
   randomId?: () => string
   now?: () => number
+  resolveProtocol?(request: TockTutorProtocolRequest): ResolvedTockTutorProtocolRequest | null
 }
 
 interface DeliveredEvent {
@@ -65,12 +73,15 @@ export class DesktopDispatchOwner {
   }
 
   publishProtocol(raw: string): boolean {
-    const request = parseTockTutorProtocol(raw)
-    if (request === null) return false
+    const parsed = parseTockTutorProtocol(raw)
+    if (parsed === null) return false
+    const resolved = this.options.resolveProtocol?.(parsed)
+      ?? this.resolveWithoutSensitiveFields(parsed)
+    if (resolved === null) return false
     return this.publish(operationId => ({
-      identity: this.identity(operationId),
+      identity: this.identity(operationId, resolved.target),
       kind: 'protocol',
-      request,
+      request: resolved.request,
     }))
   }
 
@@ -123,12 +134,18 @@ export class DesktopDispatchOwner {
       || current.vaultGeneration !== event.identity.vaultGeneration
       || current.sessionId !== event.identity.sessionId || current.windowId !== event.identity.windowId) {
       this.superseded.delete(request.operationId)
+      if (event.kind === 'protocol') this.notifyCallback(event.request, 'error')
       return { operationId: request.operationId, status: 'stale' }
     }
     if (this.superseded.delete(request.operationId) || request.status === 'stale') {
+      if (event.kind === 'protocol') this.notifyCallback(event.request, 'error')
       return { operationId: request.operationId, status: 'stale' }
     }
-    if (request.status === 'failed') return { operationId: request.operationId, status: 'unavailable' }
+    if (request.status === 'failed') {
+      if (event.kind === 'protocol') this.notifyCallback(event.request, 'error')
+      return { operationId: request.operationId, status: 'unavailable' }
+    }
+    if (event.kind === 'protocol') this.notifyCallback(event.request, 'success')
     return { operationId: request.operationId, status: 'handled' }
   }
 
@@ -203,28 +220,42 @@ export class DesktopDispatchOwner {
     while (this.queue.length > MAX_PENDING_EVENTS) this.queue.pop()
   }
 
-  private identity(operationId: string): NativeOperationIdentity {
+  private identity(operationId: string, target?: DesktopProtocolVaultTarget): NativeOperationIdentity {
     const requestId = this.options.randomId()
-    const identity = this.options.identity(operationId, requestId)
+    const identity = this.options.identity(operationId, requestId, target)
     if (identity === undefined) throw new Error('Desktop dispatch identity is unavailable')
     return identity
+  }
+
+  private resolveWithoutSensitiveFields(request: TockTutorProtocolRequest): ResolvedTockTutorProtocolRequest | null {
+    if (request.vault !== undefined || request.path !== undefined || request.clipboard === true) return null
+    const { vault: _vault, path: _path, clipboard: _clipboard, ...safe } = request
+    return { request: safe as TockTutorBrowserProtocolRequest }
+  }
+
+  private notifyCallback(request: TockTutorBrowserProtocolRequest, status: 'success' | 'error'): void {
+    const url = status === 'success' ? request.xSuccess : request.xError
+    if (url !== undefined) this.options.onCallback?.(url, status)
   }
 
   private publish(create: (operationId: string) => DesktopDispatchEvent): boolean {
     if (this.disposed || !this.options.isAvailable()) return false
     let event: DesktopDispatchEvent
     try { event = create(this.options.randomId()) } catch { return false }
-    const supersedable = event.kind === 'protocol' && event.request.action === 'choose-vault'
+    const supersedable = event.kind === 'protocol'
+      && (event.request.action === 'choose-vault' || event.request.vaultId !== undefined)
     if (supersedable) {
       for (const queued of this.queue.splice(0, this.queue.length)) {
-        if (queued.kind === 'protocol' && queued.request.action === 'choose-vault') {
+        if (queued.kind === 'protocol'
+          && (queued.request.action === 'choose-vault' || queued.request.vaultId !== undefined)) {
           this.rememberSuperseded(queued.identity.operationId)
         } else {
           this.queue.push(queued)
         }
       }
       for (const { event: delivered } of this.delivered.values()) {
-        if (delivered.kind === 'protocol' && delivered.request.action === 'choose-vault') {
+        if (delivered.kind === 'protocol'
+          && (delivered.request.action === 'choose-vault' || delivered.request.vaultId !== undefined)) {
           this.rememberSuperseded(delivered.identity.operationId)
         }
       }

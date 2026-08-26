@@ -6,9 +6,12 @@ import type {
   DesktopDispatchCompletionRequest,
   DesktopDispatchCompletionResult,
   DesktopDispatchEvent,
+  DesktopProtocolVaultTarget,
   DesktopQuickAction,
   NativeOperationIdentity,
+  TockTutorProtocolRequest,
 } from './host-contract.ts'
+import type { ResolvedTockTutorProtocolRequest } from './desktop-native-policy.ts'
 
 export const DESKTOP_DISPATCH_CHANNEL_PATH = '/tockteam/desktop-dispatch'
 const MAX_BODY_BYTES = 64 * 1024
@@ -19,9 +22,11 @@ export interface DesktopDispatchChannelEnvironment {
 }
 
 export interface DesktopDispatchChannelOptions {
-  identity(operationId: string, requestId: string, channelSessionId: string): NativeOperationIdentity | undefined
+  identity(operationId: string, requestId: string, channelSessionId: string, target?: DesktopProtocolVaultTarget): NativeOperationIdentity | undefined
   isAvailable(): boolean
+  onCallback?(url: string, status: 'success' | 'error'): void
   onDeliveryExpired?(operationId: string, consumerId: string): void
+  resolveProtocol?(request: TockTutorProtocolRequest): ResolvedTockTutorProtocolRequest | null
 }
 
 function json(response: ServerResponse, status: number, value: unknown): void {
@@ -96,8 +101,10 @@ export class DesktopDispatchChannel {
     const channelSessionId = randomBytes(24).toString('base64url')
     const providerConsumerId = `host-provider-${randomBytes(24).toString('base64url')}`
     const owner = new DesktopDispatchOwner({
-      identity: (operationId, requestId) => this.options.identity(operationId, requestId, channelSessionId),
+      identity: (operationId, requestId, target) => this.options.identity(operationId, requestId, channelSessionId, target),
       isAvailable: this.options.isAvailable,
+      ...(this.options.onCallback === undefined ? {} : { onCallback: this.options.onCallback }),
+      ...(this.options.resolveProtocol === undefined ? {} : { resolveProtocol: this.options.resolveProtocol }),
       ...(this.options.onDeliveryExpired === undefined
         ? {}
         : { onDeliveryExpired: this.options.onDeliveryExpired }),

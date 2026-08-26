@@ -2,7 +2,7 @@ import type { PluginMarketplaceBridge } from '../plugins/plugin-marketplace/src/
 import type {
   DesktopCallerOperation,
   DesktopQuickAction,
-  TockTutorProtocolRequest,
+  TockTutorBrowserProtocolRequest,
 } from './host-contract.ts'
 
 /** Commands sent from Electron's native chrome to the DSH client plugin. */
@@ -56,7 +56,7 @@ export type TockTutorDesktopDispatchEvent = {
   deliveryId: string
   kind: 'protocol'
   operationId: string
-  request: TockTutorProtocolRequest
+  request: TockTutorBrowserProtocolRequest
 }
 
 export interface TockTutorDesktopDispatchCompletionRequest {

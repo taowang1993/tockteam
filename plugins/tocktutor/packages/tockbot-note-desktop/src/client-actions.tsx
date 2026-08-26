@@ -21,6 +21,11 @@ export type DesktopCallerBridge = TockTutorDesktopCallerBridge
 export interface DesktopActionRemote {
   tocktutorDesktop: {
     activateVault(authorization: string, signal?: AbortSignal): Promise<RemoteResult<NativeActionResult>>
+    activateVaultTarget(
+      authorization: string,
+      target: { id: string; generation: number },
+      signal?: AbortSignal,
+    ): Promise<RemoteResult<NativeActionResult>>
     closeAllPopOuts(
       authorization: string,
       expectedVault: VaultReference,
@@ -132,6 +137,19 @@ function workbenchEvent(event: DesktopDispatchDelivery): TockTutorNativeActionsD
     : { kind: 'protocol', operationId: event.operationId, request: event.request }
 }
 
+async function waitForVault(
+  owner: TockTutorNativeActionsOwnerProps,
+  target: { id: string; generation: number },
+  signal?: AbortSignal,
+): Promise<boolean> {
+  for (let attempt = 0; attempt < 200; attempt += 1) {
+    if (owner.vault?.id === target.id && owner.vault.generation === target.generation) return true
+    if (signal?.aborted === true) return false
+    await new Promise(resolve => setTimeout(resolve, 25))
+  }
+  return false
+}
+
 async function handleDesktopDispatch(
   event: DesktopDispatchDelivery,
   owner: TockTutorNativeActionsOwnerProps,
@@ -140,16 +158,38 @@ async function handleDesktopDispatch(
   signal?: AbortSignal,
 ): Promise<TockTutorNativeActionsDispatchResult> {
   if (event.kind !== 'protocol') return owner.handleDispatch(workbenchEvent(event))
+  const target = event.request.vaultId !== undefined || event.request.vaultGeneration !== undefined
+    ? { id: event.request.vaultId ?? '', generation: event.request.vaultGeneration ?? -1 }
+    : undefined
+  if (target !== undefined) {
+    if (!/^vault:[0-9a-f]{64}$/u.test(target.id) || !Number.isSafeInteger(target.generation) || target.generation < 0) return 'failed'
+    if (owner.vault?.id !== target.id || owner.vault.generation !== target.generation) {
+      if (!await saveCurrent(owner)) return 'failed'
+      const activated = dispatchStatus(await nativeCall(bridge, 'activate-vault', signal, (authorization, ownerSignal) => (
+        remote.tocktutorDesktop.activateVaultTarget(authorization, target, ownerSignal)
+      )))
+      if (activated !== 'handled' || !await waitForVault(owner, target, signal)) return activated === 'stale' ? 'stale' : 'failed'
+    }
+  }
   if (event.request.action === 'choose-vault') {
     if (!await saveCurrent(owner)) return 'failed'
     return dispatchStatus(await nativeCall(bridge, 'activate-vault', signal, (authorization, ownerSignal) => (
       remote.tocktutorDesktop.activateVault(authorization, ownerSignal)
     )))
   }
-  if (event.request.action === 'open' && event.request.paneType === 'window') {
-    if (owner.vault === null || event.request.file === undefined || !await saveCurrent(owner)) return 'failed'
+  if (event.request.paneType === 'window') {
+    if (owner.vault === null || !await saveCurrent(owner)) return 'failed'
+    if (event.request.action === 'open') {
+      if (event.request.file === undefined) return 'failed'
+      return dispatchStatus(await nativeCall(bridge, 'popout-open', signal, (authorization, ownerSignal) => (
+        remote.tocktutorDesktop.openPopOut(authorization, event.request.file!, owner.vault!, ownerSignal)
+      ), owner.vault))
+    }
+    const routed = { ...event, request: { ...event.request, paneType: undefined } }
+    const created = await owner.handleDispatch(routed)
+    if (created !== 'handled' || owner.activePath === null || owner.vault === null) return created
     return dispatchStatus(await nativeCall(bridge, 'popout-open', signal, (authorization, ownerSignal) => (
-      remote.tocktutorDesktop.openPopOut(authorization, event.request.file!, owner.vault!, ownerSignal)
+      remote.tocktutorDesktop.openPopOut(authorization, owner.activePath!, owner.vault!, ownerSignal)
     ), owner.vault))
   }
   return owner.handleDispatch(workbenchEvent(event))

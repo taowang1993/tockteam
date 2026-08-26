@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { DesktopDispatchOwner } from '../src/desktop-dispatch-owner.ts'
-import { isTockTutorProtocol, parseTockTutorProtocol } from '../src/desktop-native-policy.ts'
+import {
+  isTockTutorProtocol,
+  parseTockTutorProtocol,
+  resolveTockTutorProtocolRequest,
+} from '../src/desktop-native-policy.ts'
 
 function owner(): DesktopDispatchOwner {
   let id = 0
@@ -35,6 +39,50 @@ test('classifies protocol arguments case-insensitively', () => {
   assert.equal(isTockTutorProtocol('tocktutor://open?vault=Notes'), true)
   assert.equal(isTockTutorProtocol('TockTutor://open?vault=Notes'), true)
   assert.equal(isTockTutorProtocol('/tmp/tocktutor:notes'), false)
+})
+
+test('resolves named and absolute protocol selectors without exposing Host paths', () => {
+  const known = [
+    { generation: 4, id: `vault:${'a'.repeat(64)}`, name: 'Archive', path: '/vaults/archive' },
+    { generation: 5, id: `vault:${'b'.repeat(64)}`, name: 'Work', path: '/vaults/work' },
+  ]
+  const named = resolveTockTutorProtocolRequest(
+    parseTockTutorProtocol('tocktutor://open?vault=Work&file=Notes%2FPlan.md')!,
+    known,
+    known[0],
+  )
+  assert.deepEqual(named, {
+    request: {
+      action: 'open',
+      file: 'Notes/Plan.md',
+      vaultGeneration: 5,
+      vaultId: known[1]!.id,
+    },
+    target: { generation: 5, id: known[1]!.id },
+  })
+  const absolute = resolveTockTutorProtocolRequest(
+    parseTockTutorProtocol('tocktutor://open?path=%2Fvaults%2Fwork%2FNotes%2FPlan.md')!,
+    known,
+    known[0],
+  )
+  assert.equal(absolute?.request.file, 'Notes/Plan.md')
+  assert.equal('path' in (absolute?.request ?? {}), false)
+  assert.equal('vault' in (absolute?.request ?? {}), false)
+})
+
+test('dispatch callbacks are emitted once after final completion', async () => {
+  const callbacks: string[] = []
+  const dispatch = new DesktopDispatchOwner({
+    identity: (operationId, requestId) => ({ operationId, requestId, sessionId: 'session', vaultGeneration: 1, vaultId: 'vault', windowId: 'window' }),
+    isAvailable: () => true,
+    onCallback: (url, status) => { callbacks.push(`${status}:${url}`) },
+  })
+  assert.equal(dispatch.publishProtocol('tocktutor://open?file=Note.md&x-success=https%3A%2F%2Fexample.test%2Fdone'), true)
+  const event = await dispatch.next(new AbortController().signal)
+  assert.ok(event)
+  assert.equal((await dispatch.complete({ operationId: event!.identity.operationId, status: 'handled' }, new AbortController().signal)).status, 'handled')
+  assert.equal((await dispatch.complete({ operationId: event!.identity.operationId, status: 'handled' }, new AbortController().signal)).status, 'stale')
+  assert.deepEqual(callbacks, ['success:https://example.test/done'])
 })
 
 test('dispatch owner delivers typed quick actions and matches one completion', async () => {

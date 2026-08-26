@@ -329,6 +329,26 @@ function sameVault(left: VaultReference | null, right: VaultReference): boolean 
   return left !== null && left.id === right.id && left.generation === right.generation
 }
 
+function protocolFileTarget(file: string): { path: string; fragment?: string } | null {
+  const marker = file.search(/[#^]/u)
+  const path = marker < 0 ? file : file.slice(0, marker)
+  const fragment = marker < 0 ? undefined : file.slice(marker + 1)
+  if (!isSafeVaultRelativePath(path) || (fragment !== undefined && (fragment.length === 0 || fragment.length > 512))) return null
+  return fragment === undefined ? { path } : { fragment, path }
+}
+
+function targetLine(source: string, fragment: string): number | null {
+  const block = fragment.startsWith('^') ? fragment.slice(1) : ''
+  const heading = fragment.startsWith('#') ? fragment.slice(1).trim() : fragment.trim()
+  const lines = source.split(/\n/u)
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index]!.replace(/\r$/u, '')
+    if (block !== '' && new RegExp(`(?:^|\\s)\\^${block.replace(/[.*+?^${}()|[\\]\\\\]/gu, '\\\\$&')}(?:$|\\s)`, 'u').test(line)) return index + 1
+    if (heading !== '' && new RegExp(`^#{1,6}\\s+${heading.replace(/[.*+?^${}()|[\\]\\\\]/gu, '\\\\$&')}\\s*$`, 'iu').test(line)) return index + 1
+  }
+  return null
+}
+
 function validRecentVaults(value: RecentVaultListResult): boolean {
   return Number.isSafeInteger(value?.generation)
     && value.generation >= 0
@@ -507,12 +527,17 @@ export class WorkbenchRouteController {
       ? event.request
       : event.action === 'daily' ? { action: 'daily' as const } : undefined
     if (request === undefined) return 'failed'
-    if (request.action === 'choose-vault' || request.vault !== undefined || request.paneType === 'window') return 'failed'
+    if (request.action === 'choose-vault' || request.vault !== undefined || request.clipboard === true || request.paneType === 'window') return 'failed'
+    if (request.vaultId !== undefined
+      && (!/^vault:[0-9a-f]{64}$/u.test(request.vaultId)
+        || request.vaultGeneration !== vault.generation
+        || request.vaultId !== vault.id)) return 'stale'
     if (request.action === 'search') {
       if (request.query !== undefined && request.query.length > 1_000) return 'failed'
       this.openSearch(request.query ?? '')
       return 'handled'
     }
+    if (request.paneType === 'split' && !await this.prepareDispatchPane()) return 'failed'
     if (request.action === 'open') {
       if (request.file === undefined) {
         if (this.snapshot.saveStatus !== 'saved' && !await this.save()) return 'failed'
@@ -520,9 +545,16 @@ export class WorkbenchRouteController {
         this.navigate(ROUTE_PREFIX)
         return 'handled'
       }
-      const opened = await this.select(request.file, true, revision)
+      const target = protocolFileTarget(request.file)
+      if (target === null) return 'failed'
+      const opened = await this.select(target.path, true, revision)
       if (!this.dispatchCurrent(revision, vault)) return 'stale'
-      return opened ? 'handled' : 'failed'
+      if (!opened) return 'failed'
+      if (target.fragment !== undefined) {
+        const line = targetLine(this.snapshot.source, target.fragment)
+        if (line !== null) this.jumpToLine(line)
+      }
+      return 'handled'
     }
     if (request.action === 'daily') {
       const journal = buildJournalNote({
@@ -531,8 +563,8 @@ export class WorkbenchRouteController {
       })
       const path = journal.path
       const exists = this.snapshot.path === path || this.snapshot.entries.some(entry => entry.path === path)
-      if (exists) {
-        if (request.content !== undefined || request.ifExists !== undefined) return 'failed'
+      if (exists && request.ifExists === undefined) {
+        if (request.content !== undefined) return 'failed'
         if (request.silent === true) return 'handled'
         const opened = await this.select(path, true, revision)
         if (!this.dispatchCurrent(revision, vault)) return 'stale'
@@ -544,6 +576,7 @@ export class WorkbenchRouteController {
         request.silent === true,
         revision,
         vault,
+        request.ifExists,
       )
     }
     if (request.action === 'unique') {
@@ -568,7 +601,22 @@ export class WorkbenchRouteController {
       request.silent === true,
       revision,
       vault,
+      request.ifExists,
     )
+  }
+
+  private async prepareDispatchPane(): Promise<boolean> {
+    if (this.snapshot.panes.length >= MAX_PANE_GROUPS) return false
+    if (this.snapshot.saveStatus !== 'saved' && !await this.save()) return false
+    const used = new Set(this.snapshot.panes.map(pane => pane.id))
+    const id = Array.from({ length: MAX_PANE_GROUPS }, (_, index) => `pane-${String(index + 1)}`)
+      .find(candidate => !used.has(candidate))
+    if (id === undefined) return false
+    this.shellSession = addPaneGroup(this.shellSession, id).session
+    this.syncShell()
+    this.clearDocument()
+    this.navigate(ROUTE_PREFIX)
+    return true
   }
 
   private async createDispatchedDocument(
@@ -577,26 +625,51 @@ export class WorkbenchRouteController {
     silent: boolean,
     revision: number,
     vault: VaultReference,
+    ifExists?: 'prepend' | 'append' | 'overwrite',
   ): Promise<TockTutorNativeActionsDispatchResult> {
     if (!isSafeVaultRelativePath(path) || !/\.md$/iu.test(path) || !boundedSource(content)) return 'failed'
     const previousPath = this.snapshot.path
     if (this.snapshot.saveStatus !== 'saved' && !await this.save()) return 'failed'
     if (!this.dispatchCurrent(revision, vault)) return 'stale'
     try {
-      const created = remoteValue(await this.remote.tocktutorWorkbench.createDocument({
-        content,
-        expectedVault: vault,
-        path,
-      }))
+      let result: WriteDocumentResult
+      let operation = 'created'
+      if (ifExists !== undefined) {
+        const existingResult = await this.remote.tocktutorWorkbench.openDocument(path, vault)
+        let existing: OpenDocumentResult | null = null
+        try { existing = remoteValue(existingResult) } catch (error) {
+          if (!(error instanceof RemoteCallError) || error.code !== 'not-found') throw error
+        }
+        if (existing !== null) {
+          if (existing.generation !== vault.generation || existing.path !== path) return 'stale'
+          const merged = ifExists === 'overwrite' ? content
+            : ifExists === 'prepend' ? `${content}${content.endsWith('\\n') || existing.content.startsWith('\\n') ? '' : '\\n'}${existing.content}`
+              : `${existing.content}${existing.content.endsWith('\\n') || content.startsWith('\\n') ? '' : '\\n'}${content}`
+          if (!boundedSource(merged)) return 'failed'
+          result = remoteValue(await this.remote.tocktutorWorkbench.saveDocument({
+            content: merged,
+            expectedRevision: existing.revision,
+            expectedVault: vault,
+            path,
+          }))
+          operation = 'updated'
+          content = merged
+        } else {
+          result = remoteValue(await this.remote.tocktutorWorkbench.createDocument({ content, expectedVault: vault, path }))
+        }
+      } else {
+        result = remoteValue(await this.remote.tocktutorWorkbench.createDocument({ content, expectedVault: vault, path }))
+      }
       if (!this.dispatchCurrent(revision, vault)) return 'stale'
-      if (created.generation !== vault.generation || created.path !== path || created.status !== 'created') return 'failed'
+      if (result.generation !== vault.generation || result.path !== path
+        || (operation === 'created' ? result.status !== 'created' : result.status !== 'saved')) return 'failed'
       if (silent) return 'handled'
       this.update({
         documentKind: 'markdown',
-        message: `${path} created.`,
+        message: `${path} ${operation}.`,
         mode: 'source',
         path,
-        revision: created.revision,
+        revision: result.revision,
         saveStatus: 'saved',
         source: content,
       })

@@ -60,6 +60,12 @@ async function loaded(): Promise<{
             vaultId: nextVault.id,
           }
         },
+        activateRecentVault(id: string, expectedGeneration: number) {
+          calls.push({ method: 'activateRecentVault', parameters: [id, expectedGeneration] })
+          if (id !== nextVault.id || expectedGeneration !== vault.generation) throw new Error('unexpected target')
+          state = { active: true, ...nextVault }
+          return state
+        },
         async revealEntry(...parameters: unknown[]) {
           calls.push({ method: 'revealEntry', parameters })
           if (stateAfterReveal !== undefined) state = stateAfterReveal
@@ -418,6 +424,16 @@ test('closes all caller-bound pop-outs for the active vault', async () => {
       },
       { method: 'popOut.closeAll', value: { identity } },
     ])
+  } finally {
+    await state.context.fiber.dispose()
+  }
+})
+
+test('activates a named recent target through Runtime and resynchronizes Desktop ownership', async () => {
+  const state = await loaded()
+  try {
+    assert.deepEqual(await state.gateway.activateVaultTarget('authorization-target', nextVault, new AbortController().signal), { status: 'activated' })
+    assert.deepEqual(state.calls.map(call => call.method), ['synchronizeDesktopSelection', 'claim', 'activateRecentVault', 'synchronizeDesktopSelection'])
   } finally {
     await state.context.fiber.dispose()
   }

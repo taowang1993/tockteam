@@ -49,6 +49,7 @@ import {
   type DesktopGrantErrorCode,
   type DesktopPickerLabel,
   type DesktopPickerRequest,
+  type DesktopProtocolVault,
   type DesktopPickerResult,
   type DesktopPrintExportRequest,
   type DesktopSafeRelativePath,
@@ -477,6 +478,7 @@ export class DesktopPickerOwner {
   private readonly cleanupTasks = new Set<Promise<unknown>>()
   private readonly closedDestinations = new Map<string, AbortDesktopDestinationResult>()
   private activeVault: ActiveVaultBoundary | undefined
+  private readonly knownProtocolVaults = new Map<string, DesktopProtocolVault>()
   private disposed = false
   private expiryTimer: NodeJS.Timeout | undefined
   private readonly recoveryRoot: string
@@ -515,6 +517,22 @@ export class DesktopPickerOwner {
       generation: this.activeVault?.generation ?? 0,
       id: this.activeVault?.id ?? null,
     }
+  }
+
+  /** Main-only canonical vault records used to resolve protocol selectors. */
+  protocolVaults(): readonly DesktopProtocolVault[] {
+    const active = this.activeVault
+    if (active !== undefined) this.rememberProtocolVault(active)
+    return Object.freeze([...this.knownProtocolVaults.values()].map(vault => Object.freeze({ ...vault })))
+  }
+
+  private rememberProtocolVault(vault: Pick<ActiveVaultBoundary, 'id' | 'generation' | 'path'>): void {
+    this.knownProtocolVaults.set(`${vault.id}:${String(vault.generation)}`, {
+      generation: vault.generation,
+      id: vault.id,
+      name: basename(vault.path),
+      path: vault.path,
+    })
   }
 
   nativeIdentity(
@@ -689,6 +707,7 @@ export class DesktopPickerOwner {
         ino,
         path: canonicalPath,
       }
+      this.rememberProtocolVault(this.activeVault)
       return { operationId, status: 'bound' }
     } catch (cause) {
       const status = cause instanceof TockTeamDesktopGrantError && cause.code === 'stale'
@@ -734,6 +753,7 @@ export class DesktopPickerOwner {
         ino: claim.ino,
         path: claim.path,
       }
+      this.rememberProtocolVault(this.activeVault)
       claim.bound = { generation: request.vaultGeneration, id: request.vaultId }
       return { operationId, status: 'bound' }
     } catch {
