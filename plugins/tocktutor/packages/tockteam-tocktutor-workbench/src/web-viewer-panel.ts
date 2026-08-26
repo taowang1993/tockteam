@@ -5,6 +5,7 @@ export const TOCKTUTOR_WEB_VIEWER_PANEL_SLOT = 'tockteam.tocktutor.workbench.web
 export interface TockTutorWebViewerOwnerProps {
   activePath: string | null
   addLinkBookmark(title: string, url: string): boolean
+  externalUrl?: string | null | undefined
   vault: VaultReference | null
   webClipFolder: string
 }

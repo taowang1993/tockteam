@@ -79,3 +79,24 @@ test('includes bounded resolved embeds in static HTML without rewriting authored
   assert.match(document, /data-target="Second\.md#Part"/u)
   assert.doesNotMatch(document, /<audio|<script/u)
 })
+
+test('sanitizes block raw text/table HTML and keeps external embeds inert by default', () => {
+  const html = renderMarkdownHtml([
+    '<p class="lesson" onclick="alert(1)">Safe <strong>text</strong></p>',
+    '<table><tr><td>Cell</td><td><img src="https://evil.example/x"></td></tr></table>',
+    '![Video](https://www.youtube.com/watch?v=NnTvZWp5Q7o)',
+    '![Remote](https://images.example/remote.png)',
+  ].join('\n'))
+  assert.match(html, /<p class="lesson">Safe <strong>text<\/strong><\/p>/u)
+  assert.match(html, /<table>/u)
+  assert.doesNotMatch(html, /onclick|<img|<iframe|https:\/\//u)
+  assert.match(html, /tocktutor-external-embed-inert/u)
+})
+
+test('viewer mode emits inert buttons for the isolated Web Viewer handoff', () => {
+  const html = renderMarkdownHtml('![Video](https://www.youtube.com/watch?v=NnTvZWp5Q7o)\n![Page](https://example.com/article)', { externalEmbedMode: 'viewer' })
+  assert.match(html, /data-external-embed-kind="youtube"/u)
+  assert.match(html, /data-external-url="https:\/\/www\.youtube-nocookie\.com\/embed\/NnTvZWp5Q7o"/u)
+  assert.match(html, /data-external-embed-kind="image"/u)
+  assert.doesNotMatch(html, /<img[^>]+src="https:\/\//u)
+})

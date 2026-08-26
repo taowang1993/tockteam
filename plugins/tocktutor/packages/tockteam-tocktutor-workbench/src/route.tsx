@@ -58,8 +58,7 @@ import {
 } from './native-actions.ts'
 import { TOCKTUTOR_REVIEW_PANEL_SLOT } from './review-panel.ts'
 import { TOCKTUTOR_WEB_VIEWER_PANEL_SLOT } from './web-viewer-panel.ts'
-import { LivePreviewView, RichReadingView } from './editor-surface.tsx'
-import { LivePreviewEditor } from './live-preview-editor.tsx'
+import { LivePreviewView, ResolvedEmbedsView, RichReadingView } from './editor-surface.tsx'
 import { SourceEditor } from './source-editor.tsx'
 import { WorkbenchUtilities } from './utility-panel.tsx'
 import { WorkbenchGlyph } from './workbench-glyph.tsx'
@@ -79,7 +78,7 @@ import { BUILTIN_TEMPLATES, buildCaptureNote, buildJournalNote, expandTemplate, 
 import { buildOrganizationProposal, type OrganizationProposal } from './organize.ts'
 import { convertMarkdownFormats, extractSelectionToNote } from './composer.ts'
 import { appendAttachmentMarkdown, attachmentTargetPath } from './attachments.ts'
-import { collectEmbedTargets, resolveEmbedTargetPath, resolveNoteEmbedFragment, type EmbedTarget } from './embeds.ts'
+import { collectEmbedTargets, resolveEmbedGraph, type EmbedTarget } from './embeds.ts'
 import {
   createNamedWorkspace,
   loadTockTutorSettings,
@@ -246,7 +245,9 @@ export interface RoutePaneSummary {
 
 export interface ResolvedEmbed {
   content: string
+  depth?: number
   mimeType?: string
+  parentPath?: string
   target: EmbedTarget
 }
 
@@ -1929,30 +1930,35 @@ export class WorkbenchRouteController {
       this.update({ embeds: Object.freeze([]) })
       return true
     }
-    const entries = this.snapshot.entries
-    const resolved: ResolvedEmbed[] = []
-    let aggregate = 0
     const operation = this.nextOperation()
     try {
-      for (const target of targets) {
-        const path = resolveEmbedTargetPath(entries, target.path)
-        if (path === null) continue
-        if (target.kind === 'media') {
+      const result = await resolveEmbedGraph({
+        entries: this.snapshot.entries,
+        isCurrent: () => this.current(operation.id, vault) && this.snapshot.path === sourcePath,
+        readAttachment: async path => {
           const preview = remoteValue(await this.remote.tocktutorWorkbench.previewAttachment(path, vault, operation.signal))
-          if (!this.current(operation.id, vault) || this.snapshot.path !== sourcePath || preview.path !== path || preview.generation !== vault.generation) return false
-          aggregate += preview.dataBase64.length
-          if (aggregate > 64 * 1024 * 1024) break
-          resolved.push({ content: preview.dataBase64, mimeType: preview.mimeType, target: { ...target, path } })
-        } else {
+          if (preview.path !== path || preview.generation !== vault.generation) throw new Error('Embed attachment identity changed.')
+          return preview
+        },
+        readDocument: async path => {
           const opened = remoteValue(await this.remote.tocktutorWorkbench.openDocument(path, vault, operation.signal))
-          if (!this.current(operation.id, vault) || this.snapshot.path !== sourcePath || opened.path !== path || opened.generation !== vault.generation) return false
-          aggregate += opened.content.length
-          if (aggregate > 25 * 1024 * 1024) break
-          const content = target.kind === 'note' ? resolveNoteEmbedFragment(opened.content, target.fragment) : opened.content
-          if (content !== null) resolved.push({ content, target: { ...target, path } })
-        }
-      }
-      this.update({ embeds: Object.freeze(resolved.map(embed => Object.freeze({ ...embed, target: Object.freeze({ ...embed.target }) }))) })
+          if (opened.path !== path || opened.generation !== vault.generation) throw new Error('Embed document identity changed.')
+          return opened
+        },
+        signal: operation.signal,
+        source: this.snapshot.source,
+      })
+      if (result.status !== 'ready' || !this.current(operation.id, vault) || this.snapshot.path !== sourcePath) return false
+      this.update({
+        embeds: Object.freeze(result.embeds.map(embed => Object.freeze({
+          content: embed.content,
+          ...(embed.depth === 0 ? {} : { depth: embed.depth }),
+          ...(embed.mimeType === undefined ? {} : { mimeType: embed.mimeType }),
+          ...(embed.parentPath === undefined ? {} : { parentPath: embed.parentPath }),
+          target: Object.freeze({ ...embed.target }),
+        }))),
+        warnings: Object.freeze([...this.snapshot.warnings, ...result.warnings].slice(-32)),
+      })
       return true
     } catch {
       return false
@@ -2229,6 +2235,7 @@ export interface TockTutorRouteViewProps {
   onOpenRecovery?(): void
   onOpenSandboxVault?(): void
   onOpenSmartView?(kind: 'recent' | 'tasks' | 'journals' | 'favorites' | 'collections' | 'tags'): void
+  onOpenExternalUrl?(url: string): void
   onOpenSearch?(): void
   onPrepareOrganization?(): void
   onPreviewAttachment?(path: string): void
@@ -2835,22 +2842,27 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
                 </EmptyHeader>
               </Empty>
             ) : snapshot.mode === 'source' ? (
-              <SourceEditor
-                ariaLabel={sourceLabel}
-                className="h-full"
-                content={snapshot.source}
-                onContentChange={props.onEdit}
-                onSelectionChange={selection => { props.onSelectionChange?.(selection.main.from, selection.main.to) }}
-                spellCheck
-              />
+              <div className="flex h-full min-h-0 flex-col">
+                <SourceEditor
+                  ariaLabel={sourceLabel}
+                  className="h-full"
+                  content={snapshot.source}
+                  key={snapshot.path}
+                  onContentChange={props.onEdit}
+                  onSelectionChange={selection => { props.onSelectionChange?.(selection.main.from, selection.main.to) }}
+                  spellCheck
+                />
+                <ResolvedEmbedsView embeds={snapshot.embeds} onOpenExternalUrl={props.onOpenExternalUrl} />
+              </div>
             ) : snapshot.mode === 'live-preview' && snapshot.documentKind === 'markdown' ? (
-              <LivePreviewEditor
-                ariaLabel="Live Preview Editor"
-                className="h-full"
-                content={snapshot.source}
-                onMarkdownChange={props.onEdit}
+              <LivePreviewView
+                documentKey={snapshot.path}
+                embeds={snapshot.embeds}
+                onEdit={props.onEdit}
+                onOpenExternalUrl={props.onOpenExternalUrl}
                 onSelectionChange={selection => { props.onSelectionChange?.(selection.from, selection.to) }}
                 onToggleTask={props.onToggleTask}
+                source={snapshot.source}
               />
             ) : snapshot.documentKind === 'canvas' ? (
               <CanvasBoard
@@ -2868,7 +2880,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
                 source={snapshot.source}
               />
             ) : snapshot.documentKind === 'markdown' ? (
-              <RichReadingView onToggleTask={props.onToggleTask} source={snapshot.source} />
+              <RichReadingView embeds={snapshot.embeds} onOpenExternalUrl={props.onOpenExternalUrl} onToggleTask={props.onToggleTask} source={snapshot.source} />
             ) : (
               <Alert unstyled>Reading view is unavailable.</Alert>
             )}
@@ -2968,6 +2980,7 @@ function TockTutorReviewPanelOutlet(props: {
 function TockTutorWebViewerOutlet(props: {
   activePath: string | null
   addLinkBookmark(title: string, url: string): boolean
+  externalUrl?: string | null
   renderSlot: TockTutorRouteProps['renderSlot']
   vault: VaultReference | null
   webClipFolder: string
@@ -2975,6 +2988,7 @@ function TockTutorWebViewerOutlet(props: {
   return props.renderSlot(TOCKTUTOR_WEB_VIEWER_PANEL_SLOT, {
     activePath: props.activePath,
     addLinkBookmark: props.addLinkBookmark,
+    externalUrl: props.externalUrl,
     vault: props.vault,
     webClipFolder: props.webClipFolder,
   }, {
@@ -3009,6 +3023,7 @@ export function TockTutorRoute(props: TockTutorRouteProps): ReactNode {
   )
   const snapshot = useSyncExternalStore(controller.subscribe, controller.getSnapshot, controller.getSnapshot)
   const root = useRef<HTMLDivElement>(null)
+  const [externalUrl, setExternalUrl] = useState<string | null>(null)
   useEffect(() => {
     void controller.syncLocation(props.location.pathname)
   }, [controller, props.location.pathname])
@@ -3123,6 +3138,7 @@ export function TockTutorRoute(props: TockTutorRouteProps): ReactNode {
         onNewNote={() => { void controller.handleDispatch({ action: 'new', kind: 'quick-action', operationId: crypto.randomUUID() }) }}
         onOpenBookmark={id => { void controller.openBookmark(id) }}
         onOpenCommandPalette={() => { controller.setCommandPaletteOpen(true) }}
+        onOpenExternalUrl={url => { setExternalUrl(url) }}
         onOpenGraphNode={(path, mode) => { void controller.openGraphNode(path, mode) }}
         onOpenRecovery={() => { void controller.setRecoveryOpen(true) }}
         onOpenSandboxVault={() => { void controller.openSandboxVault() }}
@@ -3164,6 +3180,7 @@ export function TockTutorRoute(props: TockTutorRouteProps): ReactNode {
           <TockTutorWebViewerOutlet
             activePath={snapshot.path}
             addLinkBookmark={(title, url) => controller.addLinkBookmark(title, url)}
+            externalUrl={externalUrl}
             renderSlot={props.renderSlot}
             vault={snapshot.vault}
             webClipFolder={snapshot.settings?.webClipFolder ?? 'Clips'}

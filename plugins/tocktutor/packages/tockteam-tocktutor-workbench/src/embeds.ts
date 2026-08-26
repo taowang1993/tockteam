@@ -18,7 +18,7 @@ export interface EmbedTarget {
 
 export interface ResolvedEmbedNode {
   content: string
-  depth: number
+  depth?: number
   mimeType?: string
   parentPath?: string
   target: EmbedTarget
