@@ -99,6 +99,17 @@ export async function startMarketplaceAgentGateway(
       const command = parseMarketplaceCommand(record.command)
       if (deferredPending) throw new Error('a marketplace restart action is already pending')
       if (!isDeferred(command)) {
+        if (command.type === 'preview') {
+          const plan = manager.getSnapshot().plan
+          const expected = command.expectedPlan
+          if (plan === null || expected === undefined
+            || plan.action !== expected.action
+            || plan.manifestHash !== expected.manifestHash
+            || plan.pluginId !== expected.pluginId
+            || plan.resolvedCommit !== expected.resolvedCommit) {
+            throw new Error('the prepared marketplace plan changed before preview approval')
+          }
+        }
         const snapshot = await manager.dispatch(command)
         json(response, 200, { accepted: true, deferred: false, snapshot })
         return
@@ -106,6 +117,10 @@ export async function startMarketplaceAgentGateway(
       const snapshot = manager.getSnapshot()
       if (command.type === 'apply' && snapshot.preview === null) {
         throw new Error('there is no isolated preview to apply')
+      }
+      if (command.type === 'apply'
+        && command.expectedTransactionId !== snapshot.preview?.transactionId) {
+        throw new Error('the marketplace preview changed before apply approval')
       }
       if (command.type === 'undo' && !snapshot.undoAvailable) {
         throw new Error('there is no previous profile to recover')

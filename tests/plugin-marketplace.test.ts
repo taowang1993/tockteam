@@ -608,11 +608,17 @@ test('Agent gateway authenticates and defers runtime-restarting applies', async 
       method: 'POST',
     })
     assert.equal(prepare.status, 200)
-    const prepared = await prepare.json() as { snapshot: { preview: { pluginId: string } | null } }
+    const prepared = await prepare.json() as { snapshot: { preview: { pluginId: string; transactionId: string } | null } }
     assert.equal(prepared.snapshot.preview?.pluginId, 'safe-demo')
 
     const apply = await fetch(gateway.url, {
-      body: JSON.stringify({ type: 'dispatch', command: { type: 'apply' } }),
+      body: JSON.stringify({
+        type: 'dispatch',
+        command: {
+          type: 'apply',
+          expectedTransactionId: prepared.snapshot.preview?.transactionId,
+        },
+      }),
       headers: { authorization: `Bearer ${gateway.token}` },
       method: 'POST',
     })
@@ -649,7 +655,10 @@ test('Agent gateway binds deferred apply to the acknowledged preview', async () 
     await setup.manager.dispatch({ type: 'prepare', action: 'install', pluginId: 'safe-demo' })
     const acknowledged = setup.manager.getSnapshot().preview?.transactionId
     assert.ok(acknowledged)
-    assert.equal((await dispatch({ type: 'apply' })).status, 202)
+    assert.equal((await dispatch({
+      type: 'apply',
+      expectedTransactionId: acknowledged,
+    })).status, 202)
     assert.equal((await dispatch({ type: 'discard' })).status, 400)
 
     await setup.manager.dispatch({ type: 'discard' })

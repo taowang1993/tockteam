@@ -246,6 +246,10 @@ test('desktop Agent tools share the guarded marketplace transaction owner', asyn
   assert.equal(first.parameters.properties.query?.required, undefined)
   assert.deepEqual(first.output.schema.required, ['summary', 'data'])
   assert.equal(first.output.schema.properties.summary?.required, undefined)
+  const preview = definitions[3] as { parameters: { required: string[] } }
+  const apply = definitions[5] as { parameters: { required: string[] } }
+  assert.deepEqual(preview.parameters.required, ['confirmations', 'expectedPlan'])
+  assert.deepEqual(apply.parameters.required, ['expectedTransactionId'])
   assert.ok(policy)
   assert.deepEqual(
     await policy({ name: 'desktop_plugin_apply' }, async () => ({ kind: 'allow' })),

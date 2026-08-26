@@ -2,6 +2,7 @@ import type {
   MarketplaceAction,
   MarketplaceCommand,
   MarketplaceConfirmation,
+  MarketplacePlanIdentity,
   MarketplacePlugin,
   MarketplaceSnapshot,
 } from '../plugins/plugin-marketplace/src/protocol.ts'
@@ -172,8 +173,9 @@ function marketplaceTool(
   const properties = Object.fromEntries(Object.entries(definition.parameters).map(([name, raw]) => {
     if (raw === null || typeof raw !== 'object' || Array.isArray(raw)) return [name, raw]
     const property = { ...raw as Record<string, unknown> }
-    if (property.required === true) required.push(name)
-    delete property.required
+    if (property.required === true || property.requiredInput === true) required.push(name)
+    if (property.required === true) delete property.required
+    delete property.requiredInput
     return [name, property]
   }))
   return {
@@ -298,7 +300,7 @@ export function mountMarketplaceAgentTools(
 
   ctx.tools.register(marketplaceTool({
     name: 'desktop_plugin_preview',
-    description: 'Launch the already prepared risky action in the isolated desktop preview. Pass only confirmations that the user explicitly accepted.',
+    description: 'Launch the exact prepared risky action in the isolated desktop preview. Pass its identity and only confirmations that the user explicitly accepted.',
     parameters: {
       confirmations: {
         type: 'array',
@@ -308,12 +310,25 @@ export function mountMarketplaceAgentTools(
           enum: ['allow-build-scripts', 'accept-high-risk', 'accept-source-change'],
         },
       },
+      expectedPlan: {
+        type: 'object',
+        requiredInput: true,
+        additionalProperties: false,
+        properties: {
+          action: { type: 'string', enum: ['install', 'update', 'enable', 'disable', 'uninstall'] },
+          manifestHash: { type: 'string' },
+          pluginId: { type: 'string' },
+          resolvedCommit: { type: 'string' },
+        },
+        required: ['action', 'manifestHash', 'pluginId', 'resolvedCommit'],
+      },
     },
     async execute(args) {
       const confirmations = Array.isArray(args.confirmations)
         ? args.confirmations as MarketplaceConfirmation[]
         : []
-      const info = await snapshot(credentials, { type: 'preview', confirmations })
+      const expectedPlan = args.expectedPlan as MarketplacePlanIdentity
+      const info = await snapshot(credentials, { type: 'preview', confirmations, expectedPlan })
       return result(
         `Isolated preview started for ${info.preview?.pluginId ?? 'the prepared plugin'}.`,
         { lifecycle: info.lifecycle, plan: info.plan },
@@ -333,12 +348,21 @@ export function mountMarketplaceAgentTools(
 
   ctx.tools.register(marketplaceTool({
     name: 'desktop_plugin_apply',
-    description: 'After human approval, atomically apply the active isolated preview and keep the previous profile recoverable. This restarts the live DSH runtime.',
-    parameters: {},
-    async execute(_args, exec) {
+    description: 'After human approval, atomically apply the exact active isolated preview and keep the previous profile recoverable. This restarts the live DSH runtime.',
+    parameters: {
+      expectedTransactionId: {
+        type: 'string',
+        required: true,
+        description: 'Transaction id returned for the approved isolated preview.',
+      },
+    },
+    async execute(args, exec) {
       const response = await gateway(credentials, {
         type: 'dispatch',
-        command: { type: 'apply' },
+        command: {
+          type: 'apply',
+          expectedTransactionId: requireString(args, 'expectedTransactionId'),
+        },
       })
       if (response.deferred !== true) throw new Error('desktop apply was not scheduled')
       exec.concludeTurn()
