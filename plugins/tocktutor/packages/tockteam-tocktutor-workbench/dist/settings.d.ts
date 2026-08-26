@@ -13,6 +13,8 @@ export interface TockTutorSettings {
     defaultEditingMode: 'live-preview' | 'source';
     journalFolder: string;
     pagePreview: boolean;
+    recoveryIntervalMinutes: number;
+    snapshotRetentionDays: number;
     templateFolder: string;
     webClipFolder: string;
 }

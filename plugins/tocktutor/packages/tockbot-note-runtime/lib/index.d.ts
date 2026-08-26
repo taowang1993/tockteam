@@ -287,10 +287,22 @@ export interface SnapshotListResult {
 export interface ReadSnapshotRequest extends ListSnapshotsRequest {
     snapshotId: string;
 }
+export interface CaptureSnapshotRequest extends ListSnapshotsRequest {
+    content: string;
+    reason?: string;
+}
+export interface RestoreSnapshotOverwriteRequest extends ReadSnapshotRequest {
+    expectedRevision: string;
+}
 export interface SnapshotContentResult {
     content: string;
     generation: number;
     snapshot: SnapshotInfo;
+}
+export interface SnapshotMutationResult {
+    generation: number;
+    removed?: number;
+    snapshot?: SnapshotInfo;
 }
 export interface RestoreSnapshotRequest extends ReadSnapshotRequest {
     toPath: string;
@@ -440,6 +452,9 @@ export declare class NoteVaultRuntime extends Service {
     private captureRecoverySnapshot;
     listSnapshots(request: ListSnapshotsRequest, signal: AbortSignal): Promise<SnapshotListResult>;
     readSnapshot(request: ReadSnapshotRequest, signal: AbortSignal): Promise<SnapshotContentResult>;
+    captureSnapshot(request: CaptureSnapshotRequest, signal: AbortSignal): Promise<SnapshotMutationResult>;
+    clearSnapshots(request: ListSnapshotsRequest, signal: AbortSignal): Promise<SnapshotMutationResult>;
+    restoreSnapshot(request: RestoreSnapshotOverwriteRequest, signal: AbortSignal): Promise<WriteDocumentResult>;
     restoreSnapshotAsNew(request: RestoreSnapshotRequest, signal: AbortSignal): Promise<WriteDocumentResult>;
     trashEntry(request: TrashEntryRequest, signal: AbortSignal): Promise<TrashMutationResult>;
     listTrash(request: {

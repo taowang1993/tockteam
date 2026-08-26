@@ -21,6 +21,8 @@ export interface TockTutorSettings {
   defaultEditingMode: 'live-preview' | 'source'
   journalFolder: string
   pagePreview: boolean
+  recoveryIntervalMinutes: number
+  snapshotRetentionDays: number
   templateFolder: string
   webClipFolder: string
 }
@@ -45,6 +47,8 @@ const DEFAULT_SETTINGS: TockTutorSettings = Object.freeze({
   defaultEditingMode: 'live-preview',
   journalFolder: 'Journals',
   pagePreview: true,
+  recoveryIntervalMinutes: 5,
+  snapshotRetentionDays: 7,
   templateFolder: 'Templates',
   webClipFolder: 'Clips',
 })
@@ -80,6 +84,8 @@ function normalizeSettings(value: unknown): TockTutorSettings {
     defaultEditingMode: record.defaultEditingMode === 'source' ? 'source' : 'live-preview',
     journalFolder: safeFolder(record.journalFolder, DEFAULT_SETTINGS.journalFolder),
     pagePreview: record.pagePreview !== false,
+    recoveryIntervalMinutes: typeof record.recoveryIntervalMinutes === 'number' && Number.isSafeInteger(record.recoveryIntervalMinutes) && record.recoveryIntervalMinutes >= 1 && record.recoveryIntervalMinutes <= 1_440 ? record.recoveryIntervalMinutes : DEFAULT_SETTINGS.recoveryIntervalMinutes,
+    snapshotRetentionDays: typeof record.snapshotRetentionDays === 'number' && Number.isSafeInteger(record.snapshotRetentionDays) && record.snapshotRetentionDays >= 1 && record.snapshotRetentionDays <= 365 ? record.snapshotRetentionDays : DEFAULT_SETTINGS.snapshotRetentionDays,
     templateFolder: safeFolder(record.templateFolder, DEFAULT_SETTINGS.templateFolder),
     webClipFolder: safeFolder(record.webClipFolder, DEFAULT_SETTINGS.webClipFolder),
   }

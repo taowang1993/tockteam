@@ -8,6 +8,7 @@ import type {
   AttachmentPreviewResult,
   CreateDocumentRequest,
   CreateManagedVaultRequest,
+  CaptureSnapshotRequest,
   DraftMutationResult,
   DraftRequest,
   DraftResult,
@@ -18,6 +19,7 @@ import type {
   ReadSnapshotRequest,
   RecentVaultListResult,
   RecentVaultRequest,
+  RestoreSnapshotOverwriteRequest,
   RestoreSnapshotRequest,
   RestoreTrashRequest,
   RestoreTrashResult,
@@ -25,6 +27,7 @@ import type {
   SaveDraftRequest,
   SnapshotContentResult,
   SnapshotListResult,
+  SnapshotMutationResult,
   StoreAttachmentRequest,
   StoreAttachmentResult,
   TrashEntryRequest,
@@ -55,7 +58,9 @@ export const MAX_TREE_PAGE_SIZE = 200
 export type NoteVaultCapability = Pick<
   NoteVaultRuntime,
   | 'activateRecentVault'
+  | 'captureSnapshot'
   | 'clearDraft'
+  | 'clearSnapshots'
   | 'createDocument'
   | 'createManagedVault'
   | 'facets'
@@ -73,6 +78,7 @@ export type NoteVaultCapability = Pick<
   | 'readDraft'
   | 'readSnapshot'
   | 'removeRecentVault'
+  | 'restoreSnapshot'
   | 'restoreSnapshotAsNew'
   | 'restoreTrash'
   | 'saveDocument'
@@ -301,9 +307,20 @@ function assertSnapshotListRequest(value: ListSnapshotsRequest): void {
   assertDocumentPath(value.path)
 }
 
+function assertCaptureSnapshotRequest(value: CaptureSnapshotRequest): void {
+  assertSnapshotListRequest(value)
+  assertContent(value.content)
+  if (value.reason !== undefined && (typeof value.reason !== 'string' || value.reason.trim().length === 0 || value.reason.length > 200)) throw new TypeError('Snapshot reason must be bounded.')
+}
+
 function assertReadSnapshotRequest(value: ReadSnapshotRequest): void {
   assertSnapshotListRequest(value)
   assertSnapshotId(value.snapshotId)
+}
+
+function assertRestoreSnapshotOverwriteRequest(value: RestoreSnapshotOverwriteRequest): void {
+  assertReadSnapshotRequest(value)
+  assertRevision(value.expectedRevision)
 }
 
 function assertRestoreSnapshotRequest(value: RestoreSnapshotRequest): void {
@@ -516,6 +533,20 @@ export class TockTutorWorkbenchGateway extends TypertRemoteService {
   }
 
   @Remote
+  async captureSnapshot(request: CaptureSnapshotRequest, signal: AbortSignal): Promise<SnapshotMutationResult> {
+    assertCaptureSnapshotRequest(request)
+    signal.throwIfAborted()
+    return this.ctx.noteVault.captureSnapshot(request, signal)
+  }
+
+  @Remote
+  async clearSnapshots(request: ListSnapshotsRequest, signal: AbortSignal): Promise<SnapshotMutationResult> {
+    assertSnapshotListRequest(request)
+    signal.throwIfAborted()
+    return this.ctx.noteVault.clearSnapshots(request, signal)
+  }
+
+  @Remote
   async listSnapshots(
     request: ListSnapshotsRequest,
     signal: AbortSignal,
@@ -533,6 +564,16 @@ export class TockTutorWorkbenchGateway extends TypertRemoteService {
     assertReadSnapshotRequest(request)
     signal.throwIfAborted()
     return this.ctx.noteVault.readSnapshot(request, signal)
+  }
+
+  @Remote
+  async restoreSnapshot(
+    request: RestoreSnapshotOverwriteRequest,
+    signal: AbortSignal,
+  ): Promise<WriteDocumentResult> {
+    assertRestoreSnapshotOverwriteRequest(request)
+    signal.throwIfAborted()
+    return this.ctx.noteVault.restoreSnapshot(request, signal)
   }
 
   @Remote

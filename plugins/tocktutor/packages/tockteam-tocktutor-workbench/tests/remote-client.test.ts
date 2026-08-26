@@ -32,7 +32,9 @@ test('publishes deterministic strict read, tree, save, and recovery Remote artif
   assert.equal(remote.package, '@tockteam/tocktutor-workbench')
   assert.deepEqual(remote.descriptors.map(descriptor => descriptor.method), [
     'activateRecentVault',
+    'captureSnapshot',
     'clearDraft',
+    'clearSnapshots',
     'createDocument',
     'createManagedVault',
     'currentVault',
@@ -51,6 +53,7 @@ test('publishes deterministic strict read, tree, save, and recovery Remote artif
     'readDraft',
     'readSnapshot',
     'removeRecentVault',
+    'restoreSnapshot',
     'restoreSnapshotAsNew',
     'restoreTrash',
     'saveDocument',

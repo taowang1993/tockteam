@@ -147,10 +147,22 @@ class FakeRemote implements WorkbenchRouteRemote {
       this.calls.push({ method: 'currentVault', parameters: [signal] })
       return success(this.vault)
     },
+    captureSnapshot: (request: { content: string; expectedVault: VaultReference; path: string; reason?: string }, signal?: AbortSignal) => {
+      this.calls.push({ method: 'captureSnapshot', parameters: [request, signal] })
+      const snapshot = { createdAt: 3, digest: `sha256:${'c'.repeat(64)}`, id: '2026-08-26T00-00-00-000Z-deadbeef', path: request.path, reason: request.reason ?? 'manual', size: request.content.length }
+      this.snapshots = [snapshot]
+      return success({ generation: request.expectedVault.generation, snapshot })
+    },
     clearDraft: (request: { expectedVault: VaultReference; path: string }, signal?: AbortSignal) => {
       this.calls.push({ method: 'clearDraft', parameters: [request, signal] })
       this.draftContent = null
       return success({ generation: request.expectedVault.generation, ok: true as const })
+    },
+    clearSnapshots: (request: { expectedVault: VaultReference; path: string }, signal?: AbortSignal) => {
+      this.calls.push({ method: 'clearSnapshots', parameters: [request, signal] })
+      const removed = this.snapshots.length
+      this.snapshots = []
+      return success({ generation: request.expectedVault.generation, removed })
     },
     listRecentVaults: (signal?: AbortSignal) => {
       this.calls.push({ method: 'listRecentVaults', parameters: [signal] })
@@ -237,6 +249,10 @@ class FakeRemote implements WorkbenchRouteRemote {
           .filter(vault => vault.id !== request.id)
           .map(vault => ({ id: vault.id, lastOpenedAt: vault.generation })),
       })
+    },
+    restoreSnapshot: (request: { expectedRevision: string; expectedVault: VaultReference; path: string; snapshotId: string }, signal?: AbortSignal) => {
+      this.calls.push({ method: 'restoreSnapshot', parameters: [request, signal] })
+      return success({ digest: `sha256:${'a'.repeat(64)}`, generation: request.expectedVault.generation, path: request.path, revision: secondRevision, snapshotId: request.snapshotId, status: 'saved' as const })
     },
     restoreSnapshotAsNew: (request: { expectedVault: VaultReference; path: string; snapshotId: string; toPath: string }, signal?: AbortSignal) => {
       this.calls.push({ method: 'restoreSnapshotAsNew', parameters: [request, signal] })
@@ -1034,6 +1050,12 @@ test('loads bounded recovery state and drives preview, restore, trash, and recov
   assert.equal(controller.getSnapshot().selectedSnapshot?.content, '# Snapshot\n')
   assert.equal(await controller.restoreRecoverySnapshot(snapshotId), true)
   assert.equal(remote.calls.some(call => call.method === 'restoreSnapshotAsNew'), true)
+  assert.equal(await controller.restoreRecoverySnapshotOverwrite(snapshotId), true)
+  assert.equal(remote.calls.some(call => call.method === 'restoreSnapshot'), true)
+  assert.equal(await controller.captureRecoverySnapshot(), true)
+  assert.equal(remote.calls.some(call => call.method === 'captureSnapshot'), true)
+  assert.equal(await controller.clearRecoverySnapshots(), true)
+  assert.equal(controller.getSnapshot().snapshots?.length, 0)
   assert.equal(await controller.restoreTrashEntry(trashId), true)
   assert.equal(remote.calls.some(call => call.method === 'restoreTrash'), true)
   assert.equal(await controller.trashCurrent(), true)

@@ -3,12 +3,14 @@ import type {
   RemoteResult,
   TypertRemoteContribution,
 } from '@deepseek-ai/dsh-typert-protocol'
-import type { ActiveVaultResult, AttachmentMetadataResult, AttachmentPreviewResult, CreateDocumentRequest, CreateManagedVaultRequest, DraftMutationResult, DraftRequest, DraftResult, ListSnapshotsRequest, ListTrashRequest, ListTreeRequest, OpenDocumentResult, ReadSnapshotRequest, RecentVaultListResult, RecentVaultRequest, RestoreSnapshotRequest, RestoreTrashRequest, RestoreTrashResult, SaveDocumentRequest, SaveDraftRequest, SnapshotContentResult, SnapshotListResult, StoreAttachmentRequest, StoreAttachmentResult, TrashEntryRequest, TrashListResult, TrashMutationResult, VaultFacetsRequest, VaultFacetsResult, VaultGenerationRequest, VaultGraphRequest, VaultGraphResult, VaultLinksRequest, VaultLinksResult, VaultOutlineRequest, VaultOutlineResult, VaultReference, VaultSearchRequest, VaultSearchResult, VaultTreePage, WriteDocumentResult } from '@tockteam/tocktutor-workbench/client'
+import type { ActiveVaultResult, AttachmentMetadataResult, AttachmentPreviewResult, CaptureSnapshotRequest, CreateDocumentRequest, CreateManagedVaultRequest, DraftMutationResult, DraftRequest, DraftResult, ListSnapshotsRequest, ListTrashRequest, ListTreeRequest, OpenDocumentResult, ReadSnapshotRequest, RecentVaultListResult, RecentVaultRequest, RestoreSnapshotOverwriteRequest, RestoreSnapshotRequest, RestoreTrashRequest, RestoreTrashResult, SaveDocumentRequest, SaveDraftRequest, SnapshotContentResult, SnapshotListResult, SnapshotMutationResult, StoreAttachmentRequest, StoreAttachmentResult, TrashEntryRequest, TrashListResult, TrashMutationResult, VaultFacetsRequest, VaultFacetsResult, VaultGenerationRequest, VaultGraphRequest, VaultGraphResult, VaultLinksRequest, VaultLinksResult, VaultOutlineRequest, VaultOutlineResult, VaultReference, VaultSearchRequest, VaultSearchResult, VaultTreePage, WriteDocumentResult } from '@tockteam/tocktutor-workbench/client'
 
 declare module '@deepseek-ai/dsh-typert-protocol' {
   interface TypertRemoteNamespace$746f636b7475746f72576f726b62656e6368 {
     activateRecentVault: (request: RecentVaultRequest, signal?: AbortSignal) => Promise<RemoteResult<VaultReference>>
+    captureSnapshot: (request: CaptureSnapshotRequest, signal?: AbortSignal) => Promise<RemoteResult<SnapshotMutationResult>>
     clearDraft: (request: DraftRequest, signal?: AbortSignal) => Promise<RemoteResult<DraftMutationResult>>
+    clearSnapshots: (request: ListSnapshotsRequest, signal?: AbortSignal) => Promise<RemoteResult<SnapshotMutationResult>>
     createDocument: (request: CreateDocumentRequest, signal?: AbortSignal) => Promise<RemoteResult<WriteDocumentResult>>
     createManagedVault: (request: CreateManagedVaultRequest, signal?: AbortSignal) => Promise<RemoteResult<VaultReference>>
     currentVault: (signal?: AbortSignal) => Promise<RemoteResult<ActiveVaultResult>>
@@ -27,6 +29,7 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
     readDraft: (request: DraftRequest, signal?: AbortSignal) => Promise<RemoteResult<DraftResult>>
     readSnapshot: (request: ReadSnapshotRequest, signal?: AbortSignal) => Promise<RemoteResult<SnapshotContentResult>>
     removeRecentVault: (request: RecentVaultRequest, signal?: AbortSignal) => Promise<RemoteResult<RecentVaultListResult>>
+    restoreSnapshot: (request: RestoreSnapshotOverwriteRequest, signal?: AbortSignal) => Promise<RemoteResult<WriteDocumentResult>>
     restoreSnapshotAsNew: (request: RestoreSnapshotRequest, signal?: AbortSignal) => Promise<RemoteResult<WriteDocumentResult>>
     restoreTrash: (request: RestoreTrashRequest, signal?: AbortSignal) => Promise<RemoteResult<RestoreTrashResult>>
     saveDocument: (request: SaveDocumentRequest, signal?: AbortSignal) => Promise<RemoteResult<WriteDocumentResult>>
@@ -37,7 +40,9 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
   }
   interface TypertRemoteMap {
     'tocktutorWorkbench/activateRecentVault': (request: RecentVaultRequest, signal?: AbortSignal) => Promise<RemoteResult<VaultReference>>
+    'tocktutorWorkbench/captureSnapshot': (request: CaptureSnapshotRequest, signal?: AbortSignal) => Promise<RemoteResult<SnapshotMutationResult>>
     'tocktutorWorkbench/clearDraft': (request: DraftRequest, signal?: AbortSignal) => Promise<RemoteResult<DraftMutationResult>>
+    'tocktutorWorkbench/clearSnapshots': (request: ListSnapshotsRequest, signal?: AbortSignal) => Promise<RemoteResult<SnapshotMutationResult>>
     'tocktutorWorkbench/createDocument': (request: CreateDocumentRequest, signal?: AbortSignal) => Promise<RemoteResult<WriteDocumentResult>>
     'tocktutorWorkbench/createManagedVault': (request: CreateManagedVaultRequest, signal?: AbortSignal) => Promise<RemoteResult<VaultReference>>
     'tocktutorWorkbench/currentVault': (signal?: AbortSignal) => Promise<RemoteResult<ActiveVaultResult>>
@@ -56,6 +61,7 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
     'tocktutorWorkbench/readDraft': (request: DraftRequest, signal?: AbortSignal) => Promise<RemoteResult<DraftResult>>
     'tocktutorWorkbench/readSnapshot': (request: ReadSnapshotRequest, signal?: AbortSignal) => Promise<RemoteResult<SnapshotContentResult>>
     'tocktutorWorkbench/removeRecentVault': (request: RecentVaultRequest, signal?: AbortSignal) => Promise<RemoteResult<RecentVaultListResult>>
+    'tocktutorWorkbench/restoreSnapshot': (request: RestoreSnapshotOverwriteRequest, signal?: AbortSignal) => Promise<RemoteResult<WriteDocumentResult>>
     'tocktutorWorkbench/restoreSnapshotAsNew': (request: RestoreSnapshotRequest, signal?: AbortSignal) => Promise<RemoteResult<WriteDocumentResult>>
     'tocktutorWorkbench/restoreTrash': (request: RestoreTrashRequest, signal?: AbortSignal) => Promise<RemoteResult<RestoreTrashResult>>
     'tocktutorWorkbench/saveDocument': (request: SaveDocumentRequest, signal?: AbortSignal) => Promise<RemoteResult<WriteDocumentResult>>

@@ -465,10 +465,25 @@ export interface ReadSnapshotRequest extends ListSnapshotsRequest {
   snapshotId: string
 }
 
+export interface CaptureSnapshotRequest extends ListSnapshotsRequest {
+  content: string
+  reason?: string
+}
+
+export interface RestoreSnapshotOverwriteRequest extends ReadSnapshotRequest {
+  expectedRevision: string
+}
+
 export interface SnapshotContentResult {
   content: string
   generation: number
   snapshot: SnapshotInfo
+}
+
+export interface SnapshotMutationResult {
+  generation: number
+  removed?: number
+  snapshot?: SnapshotInfo
 }
 
 export interface RestoreSnapshotRequest extends ReadSnapshotRequest {
@@ -4385,6 +4400,53 @@ export class NoteVaultRuntime extends Service {
       generation: state.generation,
       snapshot: record.info,
     }
+  }
+
+  async captureSnapshot(
+    request: CaptureSnapshotRequest,
+    signal: AbortSignal,
+  ): Promise<SnapshotMutationResult> {
+    const { root, state } = this.captureExpectedVault(request.expectedVault)
+    signal.throwIfAborted()
+    const relativePath = normalizeDocumentPath(request.path)
+    const reason = request.reason?.trim() || 'manual'
+    if (reason.length > 200) throw new NoteVaultError('invalid-content', 'Snapshot reason is too long')
+    const snapshot = await this.captureRecoverySnapshot(relativePath, request.content, state, reason)
+    this.assertCapturedVault(state, root)
+    signal.throwIfAborted()
+    return { generation: state.generation, snapshot }
+  }
+
+  async clearSnapshots(
+    request: ListSnapshotsRequest,
+    signal: AbortSignal,
+  ): Promise<SnapshotMutationResult> {
+    const { root, state } = this.captureExpectedVault(request.expectedVault)
+    signal.throwIfAborted()
+    if (this.stateRoot === null) throw new NoteVaultError('recovery-unavailable', 'Recovery storage is not configured')
+    const relativePath = normalizeDocumentPath(request.path)
+    const records = await listSnapshotRecords(this.stateRoot, { id: state.id, generation: state.generation }, relativePath, this.maxReadBytes)
+    for (const record of records) {
+      signal.throwIfAborted()
+      this.assertCapturedVault(state, root)
+      await rm(record.bodyPath, { force: true })
+      await rm(record.metaPath, { force: true })
+    }
+    this.assertCapturedVault(state, root)
+    return { generation: state.generation, removed: records.length }
+  }
+
+  async restoreSnapshot(
+    request: RestoreSnapshotOverwriteRequest,
+    signal: AbortSignal,
+  ): Promise<WriteDocumentResult> {
+    const snapshot = await this.readSnapshot(request, signal)
+    return await this.saveDocument({
+      content: snapshot.content,
+      expectedRevision: request.expectedRevision,
+      expectedVault: request.expectedVault,
+      path: request.path,
+    }, signal)
   }
 
   async restoreSnapshotAsNew(

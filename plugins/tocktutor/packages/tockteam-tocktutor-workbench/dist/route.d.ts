@@ -19,7 +19,7 @@ import { type KeyValueStorage, type NamedWorkspace, type TockTutorSettings } fro
 import { type EditorCommandId } from './editor-commands.ts';
 import { type EditorStatus } from './markdown.ts';
 import { type NoteVaultEventRemote } from './vault-events.ts';
-import type { ActiveVaultResult, AttachmentPreviewResult, CreateDocumentRequest, CreateManagedVaultRequest, DraftMutationResult, DraftRequest, DraftResult, ListSnapshotsRequest, ListTrashRequest, ListTreeRequest, OpenDocumentResult, RecentVaultInfo, RecentVaultListResult, ReadSnapshotRequest, RecentVaultRequest, RestoreSnapshotRequest, RestoreTrashRequest, SaveDocumentRequest, SaveDraftRequest, SnapshotContentResult, SnapshotInfo, StoreAttachmentRequest, StoreAttachmentResult, TrashEntryInfo, TrashEntryRequest, VaultFacetsRequest, VaultFacetsResult, VaultGenerationRequest, VaultGraphRequest, VaultGraphResult, VaultLinksRequest, VaultLinksResult, VaultOutlineRequest, VaultOutlineResult, VaultReference, VaultSearchMatch, VaultSearchRequest, VaultSearchResult, VaultTreeEntry, VaultTreePage, WriteDocumentResult } from './types.ts';
+import type { ActiveVaultResult, AttachmentPreviewResult, CreateDocumentRequest, CreateManagedVaultRequest, CaptureSnapshotRequest, DraftMutationResult, DraftRequest, DraftResult, ListSnapshotsRequest, ListTrashRequest, ListTreeRequest, OpenDocumentResult, RecentVaultInfo, RecentVaultListResult, ReadSnapshotRequest, RecentVaultRequest, RestoreSnapshotOverwriteRequest, RestoreSnapshotRequest, RestoreTrashRequest, SaveDocumentRequest, SaveDraftRequest, SnapshotContentResult, SnapshotInfo, SnapshotMutationResult, StoreAttachmentRequest, StoreAttachmentResult, TrashEntryInfo, TrashEntryRequest, VaultFacetsRequest, VaultFacetsResult, VaultGenerationRequest, VaultGraphRequest, VaultGraphResult, VaultLinksRequest, VaultLinksResult, VaultOutlineRequest, VaultOutlineResult, VaultReference, VaultSearchMatch, VaultSearchRequest, VaultSearchResult, VaultTreeEntry, VaultTreePage, WriteDocumentResult } from './types.ts';
 export declare const MAX_ROUTE_SOURCE_BYTES = 2000000;
 export interface WorkbenchRouteRemote extends NoteVaultEventRemote {
     tocktutorWorkbench: {
@@ -36,11 +36,14 @@ export interface WorkbenchRouteRemote extends NoteVaultEventRemote {
         readDraft(request: DraftRequest, signal?: AbortSignal): Promise<RemoteResult<DraftResult>>;
         saveDraft(request: SaveDraftRequest, signal?: AbortSignal): Promise<RemoteResult<DraftMutationResult>>;
         clearDraft(request: DraftRequest, signal?: AbortSignal): Promise<RemoteResult<DraftMutationResult>>;
+        captureSnapshot(request: CaptureSnapshotRequest, signal?: AbortSignal): Promise<RemoteResult<SnapshotMutationResult>>;
+        clearSnapshots(request: ListSnapshotsRequest, signal?: AbortSignal): Promise<RemoteResult<SnapshotMutationResult>>;
         listSnapshots(request: ListSnapshotsRequest, signal?: AbortSignal): Promise<RemoteResult<{
             generation: number;
             snapshots: SnapshotInfo[];
         }>>;
         readSnapshot(request: ReadSnapshotRequest, signal?: AbortSignal): Promise<RemoteResult<SnapshotContentResult>>;
+        restoreSnapshot(request: RestoreSnapshotOverwriteRequest, signal?: AbortSignal): Promise<RemoteResult<WriteDocumentResult>>;
         restoreSnapshotAsNew(request: RestoreSnapshotRequest, signal?: AbortSignal): Promise<RemoteResult<WriteDocumentResult>>;
         trashEntry(request: TrashEntryRequest, signal?: AbortSignal): Promise<RemoteResult<unknown>>;
         listTrash(request: ListTrashRequest, signal?: AbortSignal): Promise<RemoteResult<{
@@ -197,6 +200,9 @@ export declare class WorkbenchRouteController {
     openSandboxVault(): Promise<boolean>;
     setRecoveryOpen(open: boolean): Promise<void>;
     readRecoverySnapshot(snapshotId: string): Promise<boolean>;
+    captureRecoverySnapshot(): Promise<boolean>;
+    clearRecoverySnapshots(): Promise<boolean>;
+    restoreRecoverySnapshotOverwrite(snapshotId: string): Promise<boolean>;
     restoreRecoverySnapshot(snapshotId: string): Promise<boolean>;
     trashCurrent(): Promise<boolean>;
     restoreTrashEntry(id: string): Promise<boolean>;
@@ -256,6 +262,8 @@ export interface TockTutorRouteViewProps {
     onCancelDispatch?(): void;
     onCancelOrganization?(): void;
     onCanvasChange?(change: CanvasChange): void;
+    onCaptureSnapshot?(): void;
+    onClearSnapshots?(): void;
     onCloseAttachmentPreview?(): void;
     onCloseCommandPalette?(): void;
     onCloseSearch?(): void;
@@ -288,6 +296,7 @@ export interface TockTutorRouteViewProps {
     onRemoveRecentVault?(id: string): void;
     onReopenClosedTab?(): void;
     onRestoreSnapshot?(id: string): void;
+    onRestoreSnapshotOverwrite?(id: string): void;
     onRestoreTrash?(id: string): void;
     onSave(): void;
     onRunSearch?(): void;

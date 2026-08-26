@@ -236,9 +236,19 @@ function assertSnapshotListRequest(value) {
     assertVaultReference(value.expectedVault);
     assertDocumentPath(value.path);
 }
+function assertCaptureSnapshotRequest(value) {
+    assertSnapshotListRequest(value);
+    assertContent(value.content);
+    if (value.reason !== undefined && (typeof value.reason !== 'string' || value.reason.trim().length === 0 || value.reason.length > 200))
+        throw new TypeError('Snapshot reason must be bounded.');
+}
 function assertReadSnapshotRequest(value) {
     assertSnapshotListRequest(value);
     assertSnapshotId(value.snapshotId);
+}
+function assertRestoreSnapshotOverwriteRequest(value) {
+    assertReadSnapshotRequest(value);
+    assertRevision(value.expectedRevision);
 }
 function assertRestoreSnapshotRequest(value) {
     assertReadSnapshotRequest(value);
@@ -286,8 +296,11 @@ let TockTutorWorkbenchGateway = (() => {
     let _readDraft_decorators;
     let _saveDraft_decorators;
     let _clearDraft_decorators;
+    let _captureSnapshot_decorators;
+    let _clearSnapshots_decorators;
     let _listSnapshots_decorators;
     let _readSnapshot_decorators;
+    let _restoreSnapshot_decorators;
     let _restoreSnapshotAsNew_decorators;
     let _trashEntry_decorators;
     let _listTrash_decorators;
@@ -316,8 +329,11 @@ let TockTutorWorkbenchGateway = (() => {
             _readDraft_decorators = [Remote];
             _saveDraft_decorators = [Remote];
             _clearDraft_decorators = [Remote];
+            _captureSnapshot_decorators = [Remote];
+            _clearSnapshots_decorators = [Remote];
             _listSnapshots_decorators = [Remote];
             _readSnapshot_decorators = [Remote];
+            _restoreSnapshot_decorators = [Remote];
             _restoreSnapshotAsNew_decorators = [Remote];
             _trashEntry_decorators = [Remote];
             _listTrash_decorators = [Remote];
@@ -343,8 +359,11 @@ let TockTutorWorkbenchGateway = (() => {
             __esDecorate(this, null, _readDraft_decorators, { kind: "method", name: "readDraft", static: false, private: false, access: { has: obj => "readDraft" in obj, get: obj => obj.readDraft }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _saveDraft_decorators, { kind: "method", name: "saveDraft", static: false, private: false, access: { has: obj => "saveDraft" in obj, get: obj => obj.saveDraft }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _clearDraft_decorators, { kind: "method", name: "clearDraft", static: false, private: false, access: { has: obj => "clearDraft" in obj, get: obj => obj.clearDraft }, metadata: _metadata }, null, _instanceExtraInitializers);
+            __esDecorate(this, null, _captureSnapshot_decorators, { kind: "method", name: "captureSnapshot", static: false, private: false, access: { has: obj => "captureSnapshot" in obj, get: obj => obj.captureSnapshot }, metadata: _metadata }, null, _instanceExtraInitializers);
+            __esDecorate(this, null, _clearSnapshots_decorators, { kind: "method", name: "clearSnapshots", static: false, private: false, access: { has: obj => "clearSnapshots" in obj, get: obj => obj.clearSnapshots }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _listSnapshots_decorators, { kind: "method", name: "listSnapshots", static: false, private: false, access: { has: obj => "listSnapshots" in obj, get: obj => obj.listSnapshots }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _readSnapshot_decorators, { kind: "method", name: "readSnapshot", static: false, private: false, access: { has: obj => "readSnapshot" in obj, get: obj => obj.readSnapshot }, metadata: _metadata }, null, _instanceExtraInitializers);
+            __esDecorate(this, null, _restoreSnapshot_decorators, { kind: "method", name: "restoreSnapshot", static: false, private: false, access: { has: obj => "restoreSnapshot" in obj, get: obj => obj.restoreSnapshot }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _restoreSnapshotAsNew_decorators, { kind: "method", name: "restoreSnapshotAsNew", static: false, private: false, access: { has: obj => "restoreSnapshotAsNew" in obj, get: obj => obj.restoreSnapshotAsNew }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _trashEntry_decorators, { kind: "method", name: "trashEntry", static: false, private: false, access: { has: obj => "trashEntry" in obj, get: obj => obj.trashEntry }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _listTrash_decorators, { kind: "method", name: "listTrash", static: false, private: false, access: { has: obj => "listTrash" in obj, get: obj => obj.listTrash }, metadata: _metadata }, null, _instanceExtraInitializers);
@@ -483,6 +502,16 @@ let TockTutorWorkbenchGateway = (() => {
             signal.throwIfAborted();
             return this.ctx.noteVault.clearDraft(request, signal);
         }
+        async captureSnapshot(request, signal) {
+            assertCaptureSnapshotRequest(request);
+            signal.throwIfAborted();
+            return this.ctx.noteVault.captureSnapshot(request, signal);
+        }
+        async clearSnapshots(request, signal) {
+            assertSnapshotListRequest(request);
+            signal.throwIfAborted();
+            return this.ctx.noteVault.clearSnapshots(request, signal);
+        }
         async listSnapshots(request, signal) {
             assertSnapshotListRequest(request);
             signal.throwIfAborted();
@@ -492,6 +521,11 @@ let TockTutorWorkbenchGateway = (() => {
             assertReadSnapshotRequest(request);
             signal.throwIfAborted();
             return this.ctx.noteVault.readSnapshot(request, signal);
+        }
+        async restoreSnapshot(request, signal) {
+            assertRestoreSnapshotOverwriteRequest(request);
+            signal.throwIfAborted();
+            return this.ctx.noteVault.restoreSnapshot(request, signal);
         }
         async restoreSnapshotAsNew(request, signal) {
             assertRestoreSnapshotRequest(request);

@@ -354,10 +354,25 @@ export interface ReadSnapshotRequest extends ListSnapshotsRequest {
   snapshotId: string
 }
 
+export interface CaptureSnapshotRequest extends ListSnapshotsRequest {
+  content: string
+  reason?: string
+}
+
+export interface RestoreSnapshotOverwriteRequest extends ReadSnapshotRequest {
+  expectedRevision: string
+}
+
 export interface SnapshotContentResult {
   content: string
   generation: number
   snapshot: SnapshotInfo
+}
+
+export interface SnapshotMutationResult {
+  generation: number
+  removed?: number
+  snapshot?: SnapshotInfo
 }
 
 export interface RestoreSnapshotRequest extends ReadSnapshotRequest {

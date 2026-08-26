@@ -1,12 +1,12 @@
 import type { Context } from '@deepseek-ai/cordis';
 import { TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol';
 import type { NoteVaultRuntime } from 'tockbot-note-runtime';
-import type { ActiveVaultResult, AttachmentMetadataResult, AttachmentPreviewResult, CreateDocumentRequest, CreateManagedVaultRequest, DraftMutationResult, DraftRequest, DraftResult, ListSnapshotsRequest, ListTrashRequest, ListTreeRequest, OpenDocumentResult, ReadSnapshotRequest, RecentVaultListResult, RecentVaultRequest, RestoreSnapshotRequest, RestoreTrashRequest, RestoreTrashResult, SaveDocumentRequest, SaveDraftRequest, SnapshotContentResult, SnapshotListResult, StoreAttachmentRequest, StoreAttachmentResult, TrashEntryRequest, TrashListResult, TrashMutationResult, VaultFacetsRequest, VaultFacetsResult, VaultGenerationRequest, VaultGraphRequest, VaultGraphResult, VaultLinksRequest, VaultLinksResult, VaultOutlineRequest, VaultOutlineResult, VaultReference, VaultSearchRequest, VaultSearchResult, VaultTreePage, WriteDocumentResult } from './types.ts';
+import type { ActiveVaultResult, AttachmentMetadataResult, AttachmentPreviewResult, CreateDocumentRequest, CreateManagedVaultRequest, CaptureSnapshotRequest, DraftMutationResult, DraftRequest, DraftResult, ListSnapshotsRequest, ListTrashRequest, ListTreeRequest, OpenDocumentResult, ReadSnapshotRequest, RecentVaultListResult, RecentVaultRequest, RestoreSnapshotOverwriteRequest, RestoreSnapshotRequest, RestoreTrashRequest, RestoreTrashResult, SaveDocumentRequest, SaveDraftRequest, SnapshotContentResult, SnapshotListResult, SnapshotMutationResult, StoreAttachmentRequest, StoreAttachmentResult, TrashEntryRequest, TrashListResult, TrashMutationResult, VaultFacetsRequest, VaultFacetsResult, VaultGenerationRequest, VaultGraphRequest, VaultGraphResult, VaultLinksRequest, VaultLinksResult, VaultOutlineRequest, VaultOutlineResult, VaultReference, VaultSearchRequest, VaultSearchResult, VaultTreePage, WriteDocumentResult } from './types.ts';
 export type * from './types.ts';
 export declare const MAX_DOCUMENT_CONTENT_BYTES = 2000000;
 export declare const MAX_TREE_CURSOR_LENGTH = 512;
 export declare const MAX_TREE_PAGE_SIZE = 200;
-export type NoteVaultCapability = Pick<NoteVaultRuntime, 'activateRecentVault' | 'clearDraft' | 'createDocument' | 'createManagedVault' | 'facets' | 'graph' | 'inspectAttachment' | 'listRecentVaults' | 'listSnapshots' | 'listTrash' | 'links' | 'listTree' | 'openDocument' | 'outline' | 'openSandboxVault' | 'previewAttachment' | 'readDraft' | 'readSnapshot' | 'removeRecentVault' | 'restoreSnapshotAsNew' | 'restoreTrash' | 'saveDocument' | 'saveDraft' | 'search' | 'state' | 'storeAttachment' | 'trashEntry'>;
+export type NoteVaultCapability = Pick<NoteVaultRuntime, 'activateRecentVault' | 'captureSnapshot' | 'clearDraft' | 'clearSnapshots' | 'createDocument' | 'createManagedVault' | 'facets' | 'graph' | 'inspectAttachment' | 'listRecentVaults' | 'listSnapshots' | 'listTrash' | 'links' | 'listTree' | 'openDocument' | 'outline' | 'openSandboxVault' | 'previewAttachment' | 'readDraft' | 'readSnapshot' | 'removeRecentVault' | 'restoreSnapshot' | 'restoreSnapshotAsNew' | 'restoreTrash' | 'saveDocument' | 'saveDraft' | 'search' | 'state' | 'storeAttachment' | 'trashEntry'>;
 declare module '@deepseek-ai/cordis' {
     interface Context {
         tocktutorWorkbench: TockTutorWorkbenchGateway;
@@ -37,8 +37,11 @@ export declare class TockTutorWorkbenchGateway extends TypertRemoteService {
     readDraft(request: DraftRequest, signal: AbortSignal): Promise<DraftResult>;
     saveDraft(request: SaveDraftRequest, signal: AbortSignal): Promise<DraftMutationResult>;
     clearDraft(request: DraftRequest, signal: AbortSignal): Promise<DraftMutationResult>;
+    captureSnapshot(request: CaptureSnapshotRequest, signal: AbortSignal): Promise<SnapshotMutationResult>;
+    clearSnapshots(request: ListSnapshotsRequest, signal: AbortSignal): Promise<SnapshotMutationResult>;
     listSnapshots(request: ListSnapshotsRequest, signal: AbortSignal): Promise<SnapshotListResult>;
     readSnapshot(request: ReadSnapshotRequest, signal: AbortSignal): Promise<SnapshotContentResult>;
+    restoreSnapshot(request: RestoreSnapshotOverwriteRequest, signal: AbortSignal): Promise<WriteDocumentResult>;
     restoreSnapshotAsNew(request: RestoreSnapshotRequest, signal: AbortSignal): Promise<WriteDocumentResult>;
     trashEntry(request: TrashEntryRequest, signal: AbortSignal): Promise<TrashMutationResult>;
     listTrash(request: ListTrashRequest, signal: AbortSignal): Promise<TrashListResult>;

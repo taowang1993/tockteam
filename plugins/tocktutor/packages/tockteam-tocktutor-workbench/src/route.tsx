@@ -119,6 +119,7 @@ import type {
   AttachmentPreviewResult,
   CreateDocumentRequest,
   CreateManagedVaultRequest,
+  CaptureSnapshotRequest,
   DraftMutationResult,
   DraftRequest,
   DraftResult,
@@ -131,12 +132,14 @@ import type {
   RecentVaultListResult,
   ReadSnapshotRequest,
   RecentVaultRequest,
+  RestoreSnapshotOverwriteRequest,
   RestoreSnapshotRequest,
   RestoreTrashRequest,
   SaveDocumentRequest,
   SaveDraftRequest,
   SnapshotContentResult,
   SnapshotInfo,
+  SnapshotMutationResult,
   StoreAttachmentRequest,
   StoreAttachmentResult,
   TrashEntryInfo,
@@ -200,8 +203,11 @@ export interface WorkbenchRouteRemote extends NoteVaultEventRemote {
     readDraft(request: DraftRequest, signal?: AbortSignal): Promise<RemoteResult<DraftResult>>
     saveDraft(request: SaveDraftRequest, signal?: AbortSignal): Promise<RemoteResult<DraftMutationResult>>
     clearDraft(request: DraftRequest, signal?: AbortSignal): Promise<RemoteResult<DraftMutationResult>>
+    captureSnapshot(request: CaptureSnapshotRequest, signal?: AbortSignal): Promise<RemoteResult<SnapshotMutationResult>>
+    clearSnapshots(request: ListSnapshotsRequest, signal?: AbortSignal): Promise<RemoteResult<SnapshotMutationResult>>
     listSnapshots(request: ListSnapshotsRequest, signal?: AbortSignal): Promise<RemoteResult<{ generation: number; snapshots: SnapshotInfo[] }>>
     readSnapshot(request: ReadSnapshotRequest, signal?: AbortSignal): Promise<RemoteResult<SnapshotContentResult>>
+    restoreSnapshot(request: RestoreSnapshotOverwriteRequest, signal?: AbortSignal): Promise<RemoteResult<WriteDocumentResult>>
     restoreSnapshotAsNew(request: RestoreSnapshotRequest, signal?: AbortSignal): Promise<RemoteResult<WriteDocumentResult>>
     trashEntry(request: TrashEntryRequest, signal?: AbortSignal): Promise<RemoteResult<unknown>>
     listTrash(request: ListTrashRequest, signal?: AbortSignal): Promise<RemoteResult<{ entries: TrashEntryInfo[]; generation: number }>>
@@ -1263,6 +1269,59 @@ export class WorkbenchRouteController {
     }
   }
 
+  async captureRecoverySnapshot(): Promise<boolean> {
+    const vault = this.snapshot.vault
+    const path = this.snapshot.path
+    if (vault === null || path === null) return false
+    try {
+      const result = remoteValue(await this.remote.tocktutorWorkbench.captureSnapshot({
+        content: this.snapshot.source,
+        expectedVault: vault,
+        path,
+        reason: 'manual',
+      }))
+      if (result.generation !== vault.generation || result.snapshot?.path !== path) return false
+      await this.setRecoveryOpen(true)
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  async clearRecoverySnapshots(): Promise<boolean> {
+    const vault = this.snapshot.vault
+    const path = this.snapshot.path
+    if (vault === null || path === null) return false
+    try {
+      const result = remoteValue(await this.remote.tocktutorWorkbench.clearSnapshots({ expectedVault: vault, path }))
+      if (result.generation !== vault.generation) return false
+      this.update({ selectedSnapshot: null, snapshots: Object.freeze([]) })
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  async restoreRecoverySnapshotOverwrite(snapshotId: string): Promise<boolean> {
+    const vault = this.snapshot.vault
+    const path = this.snapshot.path
+    const revision = this.snapshot.revision
+    if (vault === null || path === null || revision === null || this.snapshot.snapshots?.some(snapshot => snapshot.id === snapshotId) !== true) return false
+    try {
+      const restored = remoteValue(await this.remote.tocktutorWorkbench.restoreSnapshot({
+        expectedRevision: revision,
+        expectedVault: vault,
+        path,
+        snapshotId,
+      }))
+      if (restored.status !== 'saved' || restored.generation !== vault.generation || restored.path !== path) return false
+      this.clearDocument()
+      return await this.select(path, false)
+    } catch {
+      return false
+    }
+  }
+
   async restoreRecoverySnapshot(snapshotId: string): Promise<boolean> {
     const vault = this.snapshot.vault
     const path = this.snapshot.path
@@ -2181,6 +2240,8 @@ export interface TockTutorRouteViewProps {
   onCancelDispatch?(): void
   onCancelOrganization?(): void
   onCanvasChange?(change: CanvasChange): void
+  onCaptureSnapshot?(): void
+  onClearSnapshots?(): void
   onCloseAttachmentPreview?(): void
   onCloseCommandPalette?(): void
   onCloseSearch?(): void
@@ -2213,6 +2274,7 @@ export interface TockTutorRouteViewProps {
   onRemoveRecentVault?(id: string): void
   onReopenClosedTab?(): void
   onRestoreSnapshot?(id: string): void
+  onRestoreSnapshotOverwrite?(id: string): void
   onRestoreTrash?(id: string): void
   onSave(): void
   onRunSearch?(): void
@@ -2959,7 +3021,11 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
           <section aria-label="File Recovery" className="border-t border-[var(--tt-border)] p-3">
             <div className="flex items-center justify-between gap-2">
               <h2 className="m-0 text-sm">File Recovery</h2>
-              <Button unstyled className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs" onClick={props.onOpenRecovery} type="button">Refresh</Button>
+              <span className="flex gap-1">
+                <Button unstyled className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs" disabled={snapshot.path === null} onClick={props.onCaptureSnapshot} type="button">Capture</Button>
+                <Button unstyled className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs" disabled={(snapshot.snapshots?.length ?? 0) === 0} onClick={props.onClearSnapshots} type="button">Clear</Button>
+                <Button unstyled className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs" onClick={props.onOpenRecovery} type="button">Refresh</Button>
+              </span>
             </div>
             {snapshot.draftRecovered === true && <Alert unstyled className="mt-2" role="status">A local draft was recovered for this note.</Alert>}
             <div className="mt-2 flex gap-2">
@@ -2968,9 +3034,10 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
             <h3 className="mt-3 mb-1 text-xs">Snapshots</h3>
             <div className="grid gap-1">
               {(snapshot.snapshots ?? []).map((snapshotEntry, index) => (
-                <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-1" key={snapshotEntry.id}>
+                <div className="grid grid-cols-[minmax(0,1fr)_auto_auto_auto] items-center gap-1" key={snapshotEntry.id}>
                   <span className="truncate text-xs">Snapshot {String(index + 1)} · {snapshotEntry.reason}</span>
                   <Button unstyled className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs" onClick={() => { props.onReadSnapshot?.(snapshotEntry.id) }} type="button">Preview</Button>
+                  <Button unstyled className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs" onClick={() => { props.onRestoreSnapshotOverwrite?.(snapshotEntry.id) }} type="button">Restore Original</Button>
                   <Button unstyled className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs" onClick={() => { props.onRestoreSnapshot?.(snapshotEntry.id) }} type="button">Restore as New</Button>
                 </div>
               ))}
@@ -3298,6 +3365,11 @@ export function TockTutorRoute(props: TockTutorRouteProps): ReactNode {
     if (snapshot.searchOpen) root.current?.querySelector<HTMLInputElement>('[aria-label="Search Notes Query"]')?.focus()
   }, [snapshot.searchOpen])
   useEffect(() => {
+    if (snapshot.documentKind !== 'markdown' || snapshot.path === null || snapshot.settings === undefined) return
+    const timer = setInterval(() => { void controller.captureRecoverySnapshot() }, snapshot.settings.recoveryIntervalMinutes * 60_000)
+    return () => { clearInterval(timer) }
+  }, [controller, snapshot.documentKind, snapshot.path, snapshot.settings])
+  useEffect(() => {
     const node = root.current
     if (node === null) return
     const onKeyDown = (event: KeyboardEvent): void => {
@@ -3368,6 +3440,8 @@ export function TockTutorRoute(props: TockTutorRouteProps): ReactNode {
         onCancelDispatch={() => { controller.cancelDispatchDialog() }}
         onCancelOrganization={() => { controller.cancelOrganization() }}
         onCanvasChange={change => { void controller.applyCanvasChange(change) }}
+        onCaptureSnapshot={() => { void controller.captureRecoverySnapshot() }}
+        onClearSnapshots={() => { void controller.clearRecoverySnapshots() }}
         onCloseAttachmentPreview={() => { controller.closeAttachmentPreview() }}
         onCloseCommandPalette={() => { controller.setCommandPaletteOpen(false) }}
         onCloseSearch={() => { controller.closeSearch() }}
@@ -3399,6 +3473,7 @@ export function TockTutorRoute(props: TockTutorRouteProps): ReactNode {
         onRemoveRecentVault={id => { void controller.removeRecentVault(id) }}
         onReopenClosedTab={() => { void controller.reopenClosedTab() }}
         onRestoreSnapshot={id => { void controller.restoreRecoverySnapshot(id) }}
+        onRestoreSnapshotOverwrite={id => { void controller.restoreRecoverySnapshotOverwrite(id) }}
         onRestoreTrash={id => { void controller.restoreTrashEntry(id) }}
         onRunSearch={() => { void controller.runSearch() }}
         onSave={() => { void controller.save() }}

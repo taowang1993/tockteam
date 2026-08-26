@@ -6,18 +6,21 @@ import {
   TockTutorWorkbenchGateway,
 } from '../dist/host-read.js'
 import type {
+  CaptureSnapshotRequest,
   CreateDocumentRequest,
   DraftMutationResult,
   DraftRequest,
   DraftResult,
   ListSnapshotsRequest,
   ReadSnapshotRequest,
+  RestoreSnapshotOverwriteRequest,
   RestoreSnapshotRequest,
   RestoreTrashRequest,
   SaveDocumentRequest,
   SaveDraftRequest,
   SnapshotContentResult,
   SnapshotListResult,
+  SnapshotMutationResult,
   TrashEntryRequest,
   TrashListResult,
   TrashMutationResult,
@@ -84,6 +87,17 @@ class FakeRecoveryVault extends Service {
     })
   }
 
+  captureSnapshot(request: CaptureSnapshotRequest, operationSignal: AbortSignal): Promise<SnapshotMutationResult> {
+    return this.result('captureSnapshot', [request, operationSignal], {
+      generation: vault.generation,
+      snapshot: { createdAt: 1, digest: `sha256:${'6'.repeat(64)}`, id: snapshotId, path: request.path, reason: request.reason ?? 'manual', size: request.content.length },
+    })
+  }
+
+  clearSnapshots(request: ListSnapshotsRequest, operationSignal: AbortSignal): Promise<SnapshotMutationResult> {
+    return this.result('clearSnapshots', [request, operationSignal], { generation: vault.generation, removed: 1 })
+  }
+
   listSnapshots(request: ListSnapshotsRequest, operationSignal: AbortSignal): Promise<SnapshotListResult> {
     return this.result('listSnapshots', [request, operationSignal], {
       generation: vault.generation,
@@ -110,6 +124,17 @@ class FakeRecoveryVault extends Service {
         reason: 'before-save',
         size: 10,
       },
+    })
+  }
+
+  restoreSnapshot(request: RestoreSnapshotOverwriteRequest, operationSignal: AbortSignal): Promise<WriteDocumentResult> {
+    return this.result('restoreSnapshot', [request, operationSignal], {
+      digest: `sha256:${'7'.repeat(64)}`,
+      generation: vault.generation,
+      path: request.path,
+      revision: `file:${'8'.repeat(64)}`,
+      snapshotId,
+      status: 'saved',
     })
   }
 
@@ -186,8 +211,11 @@ test('delegates exact create, snapshot save, recovery, trash, and restore record
     const draft = { expectedVault: vault, path: 'Note.md' }
     const saveDraft = { ...draft, content: '# Draft\n', revision: `file:${'b'.repeat(64)}` }
     const listSnapshots = { expectedVault: vault, path: 'Note.md' }
+    const captureSnapshot = { ...listSnapshots, content: '# Draft\n', reason: 'manual' }
+    const clearSnapshots = listSnapshots
     const readSnapshot = { ...listSnapshots, snapshotId }
     const restoreSnapshot = { ...readSnapshot, toPath: 'Recovered.md' }
+    const restoreSnapshotOverwrite = { ...readSnapshot, expectedRevision: `file:${'b'.repeat(64)}` }
     const trash = { expectedRevision: `file:${'c'.repeat(64)}`, expectedVault: vault, path: 'Note.md' }
     const listTrash = { expectedVault: vault }
     const restoreTrash = { expectedVault: vault, id: trashId, toPath: 'Restored.md' }
@@ -199,9 +227,12 @@ test('delegates exact create, snapshot save, recovery, trash, and restore record
     assert.equal((await state.gateway.readDraft(draft, signal)).draft?.content, '# Draft\n')
     assert.equal((await state.gateway.saveDraft(saveDraft, signal)).ok, true)
     assert.equal((await state.gateway.clearDraft(draft, signal)).ok, true)
+    assert.equal((await state.gateway.captureSnapshot(captureSnapshot, signal)).snapshot?.id, snapshotId)
     assert.equal((await state.gateway.listSnapshots(listSnapshots, signal)).snapshots[0]?.id, snapshotId)
     assert.equal((await state.gateway.readSnapshot(readSnapshot, signal)).content, '# Before\n')
+    assert.equal((await state.gateway.restoreSnapshot(restoreSnapshotOverwrite, signal)).status, 'saved')
     assert.equal((await state.gateway.restoreSnapshotAsNew(restoreSnapshot, signal)).status, 'created')
+    assert.equal((await state.gateway.clearSnapshots(clearSnapshots, signal)).removed, 1)
     assert.equal((await state.gateway.trashEntry(trash, signal)).status, 'trashed')
     assert.equal((await state.gateway.listTrash(listTrash, signal)).entries[0]?.id, trashId)
     assert.equal((await state.gateway.restoreTrash(restoreTrash, signal)).status, 'restored')
@@ -212,9 +243,12 @@ test('delegates exact create, snapshot save, recovery, trash, and restore record
       { method: 'readDraft', parameters: [draft, signal] },
       { method: 'saveDraft', parameters: [saveDraft, signal] },
       { method: 'clearDraft', parameters: [draft, signal] },
+      { method: 'captureSnapshot', parameters: [captureSnapshot, signal] },
       { method: 'listSnapshots', parameters: [listSnapshots, signal] },
       { method: 'readSnapshot', parameters: [readSnapshot, signal] },
+      { method: 'restoreSnapshot', parameters: [restoreSnapshotOverwrite, signal] },
       { method: 'restoreSnapshotAsNew', parameters: [restoreSnapshot, signal] },
+      { method: 'clearSnapshots', parameters: [clearSnapshots, signal] },
       { method: 'trashEntry', parameters: [trash, signal] },
       { method: 'listTrash', parameters: [listTrash, signal] },
       { method: 'restoreTrash', parameters: [restoreTrash, signal] },
@@ -238,6 +272,7 @@ test('fails closed before runtime calls for excessive or unsafe recovery inputs'
     await assert.rejects(state.gateway.saveDraft({ content: 'x'.repeat(MAX_DOCUMENT_CONTENT_BYTES + 1), expectedVault: vault, path: 'Note.md' }, signal), /content/i)
     await assert.rejects(state.gateway.clearDraft({ expectedVault: vault, path: '/absolute.md' }, signal), /path/i)
     await assert.rejects(state.gateway.listSnapshots({ expectedVault: vault, path: '../escape.md' }, signal), /path/i)
+    await assert.rejects(state.gateway.captureSnapshot({ content: 'x'.repeat(MAX_DOCUMENT_CONTENT_BYTES + 1), expectedVault: vault, path: 'Note.md' }, signal), /content/i)
     await assert.rejects(state.gateway.readSnapshot({
       expectedVault: vault, path: 'Note.md', snapshotId: 'unsafe',
     }, signal), /snapshot/i)

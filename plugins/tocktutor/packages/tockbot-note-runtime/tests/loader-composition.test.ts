@@ -3484,6 +3484,23 @@ test('every save captures a bounded recovery snapshot and restores it exclusivel
         error => error instanceof NoteVaultError && error.code === 'exists',
       )
 
+      const manual = await loaded.context.noteVault.captureSnapshot({
+        content: 'manual draft',
+        expectedVault,
+        path: 'Note.md',
+        reason: 'manual',
+      }, signal)
+      assert.equal(manual.snapshot?.reason, 'manual')
+      opened = await loaded.context.noteVault.openDocument('Note.md', expectedVault, signal)
+      const overwrite = await loaded.context.noteVault.restoreSnapshot({
+        expectedRevision: opened.revision,
+        expectedVault,
+        path: 'Note.md',
+        snapshotId: firstSave.snapshotId,
+      }, signal)
+      assert.equal(overwrite.status, 'saved')
+      assert.equal(await readFile(join(fixture, 'Note.md'), 'utf8'), 'one')
+
       for (const content of ['three', 'four']) {
         opened = await loaded.context.noteVault.openDocument('Note.md', expectedVault, signal)
         await loaded.context.noteVault.saveDocument({
@@ -3495,6 +3512,9 @@ test('every save captures a bounded recovery snapshot and restores it exclusivel
       }
       snapshots = await loaded.context.noteVault.listSnapshots({ expectedVault, path: 'Note.md' }, signal)
       assert.equal(snapshots.snapshots.length, 2)
+      const cleared = await loaded.context.noteVault.clearSnapshots({ expectedVault, path: 'Note.md' }, signal)
+      assert.equal(cleared.removed, 2)
+      assert.equal((await loaded.context.noteVault.listSnapshots({ expectedVault, path: 'Note.md' }, signal)).snapshots.length, 0)
     } finally {
       await dispose(loaded.context, loaded.root)
     }
