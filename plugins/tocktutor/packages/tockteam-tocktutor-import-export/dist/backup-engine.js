@@ -21,6 +21,7 @@ async function treeSnapshot(runtime, vault, signal) {
     assertVault(runtime.state, vault);
     const entries = [];
     let cursor = null;
+    let complete = false;
     for (let pages = 0; pages <= 100; pages += 1) {
         signal.throwIfAborted();
         const page = await runtime.listTree({ cursor, expectedVault: vault, limit: TREE_PAGE_SIZE }, signal);
@@ -37,15 +38,27 @@ async function treeSnapshot(runtime, vault, signal) {
                 throw new ImportExportError('limit-exceeded');
         }
         if (page.complete) {
-            assertVault(runtime.state, vault);
-            entries.sort((left, right) => left.path.localeCompare(right.path));
-            return { entries, fingerprint: sha256(stableJson(entries)) };
+            complete = true;
+            break;
         }
         if (page.cursor === null || page.cursor === cursor)
             throw new ImportExportError('stale-vault');
         cursor = page.cursor;
     }
-    throw new ImportExportError('limit-exceeded');
+    if (!complete)
+        throw new ImportExportError('limit-exceeded');
+    const passive = await runtime.listPassiveBackupEntries({ expectedVault: vault }, signal);
+    signal.throwIfAborted();
+    if (passive.generation !== vault.generation)
+        throw new ImportExportError('stale-vault');
+    for (const entry of passive.entries) {
+        entries.push({ kind: 'passive', path: entry.path, revision: entry.revision, size: entry.size });
+        if (entries.length > 20_000)
+            throw new ImportExportError('limit-exceeded');
+    }
+    assertVault(runtime.state, vault);
+    entries.sort((left, right) => left.path.localeCompare(right.path));
+    return { entries, fingerprint: sha256(stableJson(entries)) };
 }
 async function captureEntries(runtime, vault, snapshot, signal) {
     const output = [];
@@ -75,6 +88,22 @@ async function captureEntries(runtime, vault, snapshot, signal) {
                 || result.data.byteLength !== entry.size)
                 throw new ImportExportError('stale-vault');
             output.push({ bytes: result.data, kind: 'attachment', path: entry.path, revision: entry.revision });
+            totalBytes += result.data.byteLength;
+        }
+        else if (entry.kind === 'passive') {
+            const result = await runtime.readPassiveBackupEntry({
+                expectedRevision: entry.revision,
+                expectedVault: vault,
+                path: entry.path,
+            }, signal);
+            signal.throwIfAborted();
+            assertVault(runtime.state, vault);
+            if (result.path !== entry.path || result.revision !== entry.revision
+                || result.generation !== vault.generation || result.digest !== sha256(result.data)
+                || result.data.byteLength !== entry.size || result.size !== entry.size) {
+                throw new ImportExportError('stale-vault');
+            }
+            output.push({ bytes: result.data, kind: 'passive', path: entry.path, revision: entry.revision });
             totalBytes += result.data.byteLength;
         }
         if (totalBytes > 500 * 1024 * 1024)

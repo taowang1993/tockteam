@@ -27,7 +27,7 @@ export interface SourceBinding {
 export interface PlannedFile {
     bytes: Uint8Array;
     destination: string;
-    kind: 'attachment' | 'document';
+    kind: 'attachment' | 'document' | 'passive';
     sourceKey: string;
 }
 export interface SkippedEntry {

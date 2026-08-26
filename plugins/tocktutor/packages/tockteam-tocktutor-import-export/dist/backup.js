@@ -1,7 +1,8 @@
+import { isPassiveBackupPath } from 'tockbot-note-runtime';
 import { createDeterministicZip, parseZip } from "./archive.js";
 import { destinationAliasKey, ImportExportError, normalizeRelativePath, sha256, stableJson, } from "./core.js";
 export const BACKUP_FORMAT = 'tockbot-vault-backup';
-export const BACKUP_VERSION = 2;
+export const BACKUP_VERSION = 3;
 export const BACKUP_ARCHIVE_LIMITS = {
     maxArchiveBytes: 512 * 1024 * 1024,
     maxCompressionRatio: 100,
@@ -28,13 +29,28 @@ function safeInteger(value, maximum = Number.MAX_SAFE_INTEGER) {
         && value >= 0 && value <= maximum && !Object.is(value, -0);
 }
 function supported(path, kind) {
+    if (kind === 'passive')
+        return isPassiveBackupPath(path);
     const extension = path.split('/').at(-1)?.split('.').at(-1)?.toLocaleLowerCase('en-US') ?? '';
     return kind === 'document'
         ? ['base', 'canvas', 'markdown', 'md'].includes(extension)
         : ['3gp', 'avif', 'bmp', 'flac', 'gif', 'jpeg', 'jpg', 'm4a', 'mkv', 'mov', 'mp3', 'mp4', 'ogg', 'ogv', 'pdf', 'png', 'wav', 'webm', 'webp'].includes(extension);
 }
+function backupPath(path, kind) {
+    if (kind === 'passive') {
+        if (!isPassiveBackupPath(path))
+            invalidManifest();
+        return path;
+    }
+    return normalizeRelativePath(path);
+}
+function payloadPath(entry) {
+    return entry.kind === 'passive'
+        ? `backup/passive/${sha256(entry.path).slice('sha256:'.length)}`
+        : `backup/files/${entry.path}`;
+}
 function manifestEntry(entry) {
-    const path = normalizeRelativePath(entry.path);
+    const path = backupPath(entry.path, entry.kind);
     if (!(entry.bytes instanceof Uint8Array)
         || entry.bytes.byteLength > BACKUP_ARCHIVE_LIMITS.maxEntryBytes
         || typeof entry.revision !== 'string'
@@ -58,7 +74,7 @@ export function createBackupArchive(input) {
         || input.entries.length === 0
         || input.entries.length > MAX_BACKUP_ENTRIES)
         invalidManifest();
-    const byPath = new Map(input.entries.map(entry => [normalizeRelativePath(entry.path), entry]));
+    const byPath = new Map(input.entries.map(entry => [backupPath(entry.path, entry.kind), entry]));
     if (byPath.size !== input.entries.length)
         invalidManifest();
     const aliases = new Set();
@@ -88,7 +104,7 @@ export function createBackupArchive(input) {
         { bytes: manifestBytes, path: 'backup/manifest.json' },
         ...manifestEntries.map(entry => ({
             bytes: byPath.get(entry.path).bytes,
-            path: `backup/files/${entry.path}`,
+            path: payloadPath(entry),
         })),
     ], BACKUP_ARCHIVE_LIMITS.maxCompressionRatio);
 }
@@ -104,7 +120,7 @@ function parseManifest(bytes) {
     }
     if (!exact(value, ['createdAt', 'entries', 'format', 'totalBytes', 'vault', 'version'])
         || value.format !== BACKUP_FORMAT
-        || value.version !== BACKUP_VERSION
+        || (value.version !== 2 && value.version !== BACKUP_VERSION)
         || !safeInteger(value.createdAt)
         || !safeInteger(value.totalBytes, 500 * 1024 * 1024)
         || !exact(value.vault, ['generation', 'id'])
@@ -121,7 +137,8 @@ function parseManifest(bytes) {
     let previous = '';
     for (const raw of value.entries) {
         if (!exact(raw, ['kind', 'path', 'revision', 'sha256', 'size'])
-            || (raw.kind !== 'attachment' && raw.kind !== 'document')
+            || (raw.kind !== 'attachment' && raw.kind !== 'document' && raw.kind !== 'passive')
+            || (raw.kind === 'passive' && value.version !== BACKUP_VERSION)
             || typeof raw.path !== 'string'
             || typeof raw.revision !== 'string'
             || raw.revision.length === 0
@@ -132,7 +149,7 @@ function parseManifest(bytes) {
             invalidManifest();
         let path;
         try {
-            path = normalizeRelativePath(raw.path);
+            path = backupPath(raw.path, raw.kind);
         }
         catch {
             return invalidManifest();
@@ -155,7 +172,7 @@ function parseManifest(bytes) {
         format: BACKUP_FORMAT,
         totalBytes,
         vault: { generation: value.vault.generation, id: value.vault.id },
-        version: BACKUP_VERSION,
+        version: value.version,
     };
 }
 export function verifyBackupArchive(bytes, signal) {
@@ -174,7 +191,7 @@ export function verifyBackupArchive(bytes, signal) {
     const entries = [];
     for (const declared of manifest.entries) {
         signal?.throwIfAborted();
-        const member = members.get(`backup/files/${declared.path}`);
+        const member = members.get(payloadPath(declared));
         if (member === undefined
             || member.bytes.byteLength !== declared.size
             || sha256(member.bytes) !== declared.sha256)

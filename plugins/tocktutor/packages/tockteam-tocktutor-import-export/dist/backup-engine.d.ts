@@ -1,12 +1,14 @@
 import { type AbortDesktopDestinationRequest, type AbortDesktopDestinationResult, type BeginDesktopDestinationRequest, type BeginDesktopDestinationResult, type DesktopPickerRequest, type NativeOperationIdentity, type DesktopPickerResult, type FinalizeDesktopDestinationRequest, type FinalizeDesktopDestinationResult, type LockDesktopDestinationPlanRequest, type LockDesktopDestinationPlanResult, type RevokeDesktopDestinationPlanRequest, type RevokeDesktopDestinationPlanResult, type WriteDesktopDestinationChunkRequest, type WriteDesktopDestinationChunkResult } from '@tockteam/desktop/host';
-import type { AttachmentPreviewResult, ListTreeRequest, NoteVaultState, OpenDocumentResult, VaultReference, VaultTreePage } from 'tockbot-note-runtime';
+import type { AttachmentPreviewResult, ListPassiveBackupEntriesRequest, ListTreeRequest, NoteVaultState, OpenDocumentResult, PassiveBackupContentResult, PassiveBackupListResult, ReadPassiveBackupEntryRequest, VaultReference, VaultTreePage } from 'tockbot-note-runtime';
 import type { BackupPlanView, BackupPublishResult, ReviewBindingRequest, ReviewCancellationRequest } from './types.ts';
 export type { BackupPlanView, BackupPublishResult } from './types.ts';
 export interface BackupRuntimePort {
     readonly state: NoteVaultState;
+    listPassiveBackupEntries(request: ListPassiveBackupEntriesRequest, signal: AbortSignal): Promise<PassiveBackupListResult>;
     listTree(request: ListTreeRequest, signal: AbortSignal): Promise<VaultTreePage>;
     openDocument(path: string, expectedVault: VaultReference, signal: AbortSignal): Promise<OpenDocumentResult>;
     previewAttachment(path: string, expectedVault: VaultReference, signal: AbortSignal): Promise<AttachmentPreviewResult>;
+    readPassiveBackupEntry(request: ReadPassiveBackupEntryRequest, signal: AbortSignal): Promise<PassiveBackupContentResult>;
 }
 export interface BackupDesktopPort {
     abortDestination(request: AbortDesktopDestinationRequest): Promise<AbortDesktopDestinationResult>;

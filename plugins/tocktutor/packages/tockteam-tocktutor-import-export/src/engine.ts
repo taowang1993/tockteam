@@ -18,8 +18,12 @@ import type {
 } from '@tockteam/desktop/host'
 import type {
   CreateDocumentRequest,
+  ListPassiveBackupEntriesRequest,
   ListTreeRequest,
   NoteVaultState,
+  PassiveBackupListResult,
+  PassiveBackupMutationResult,
+  RestorePassiveBackupEntryRequest,
   StoreAttachmentRequest,
   VaultTreePage,
   WriteDocumentResult,
@@ -102,7 +106,9 @@ export interface DesktopPickerPort {
 export interface RuntimePort {
   readonly state: NoteVaultState
   createDocument(request: CreateDocumentRequest, signal: AbortSignal): Promise<WriteDocumentResult>
+  listPassiveBackupEntries(request: ListPassiveBackupEntriesRequest, signal: AbortSignal): Promise<PassiveBackupListResult>
   listTree(request: ListTreeRequest, signal: AbortSignal): Promise<VaultTreePage>
+  restorePassiveBackupEntry(request: RestorePassiveBackupEntryRequest, signal: AbortSignal): Promise<PassiveBackupMutationResult>
   storeAttachment(request: StoreAttachmentRequest, signal: AbortSignal): Promise<StoreAttachmentResult>
 }
 
@@ -310,6 +316,7 @@ async function existingDestinations(
   assertVault(runtime.state, vault)
   const aliases = new Set<string>()
   let cursor: string | null = null
+  let complete = false
   for (let pages = 0; pages <= 100; pages += 1) {
     signal.throwIfAborted()
     const page = await runtime.listTree({ cursor, expectedVault: vault, limit: TREE_PAGE_SIZE }, signal)
@@ -319,11 +326,20 @@ async function existingDestinations(
       throw new ImportExportError('stale-vault')
     }
     for (const entry of page.entries) aliases.add(destinationAliasKey(entry.path))
-    if (page.complete) return aliases
+    if (page.complete) {
+      complete = true
+      break
+    }
     if (page.cursor === null || page.cursor === cursor) throw new ImportExportError('stale-vault')
     cursor = page.cursor
   }
-  throw new ImportExportError('limit-exceeded')
+  if (!complete) throw new ImportExportError('limit-exceeded')
+  const passive = await runtime.listPassiveBackupEntries({ expectedVault: vault }, signal)
+  signal.throwIfAborted()
+  if (passive.generation !== vault.generation) throw new ImportExportError('stale-vault')
+  for (const entry of passive.entries) aliases.add(destinationAliasKey(entry.path))
+  assertVault(runtime.state, vault)
+  return aliases
 }
 
 function onlyFile(source: HeldSource): InspectedSourceFile {
@@ -621,11 +637,17 @@ export class ReviewedOperationEngine {
                 expectedVault: vault,
                 path: file.destination,
               }, combined)
-            : await this.options.runtime.storeAttachment({
-                data: file.bytes,
-                expectedVault: vault,
-                path: file.destination,
-              }, combined)
+            : file.kind === 'attachment'
+              ? await this.options.runtime.storeAttachment({
+                  data: file.bytes,
+                  expectedVault: vault,
+                  path: file.destination,
+                }, combined)
+              : await this.options.runtime.restorePassiveBackupEntry({
+                  data: file.bytes,
+                  expectedVault: vault,
+                  path: file.destination,
+                }, combined)
           if (result.digest !== item.digest || result.path !== file.destination
             || result.generation !== vault.generation) {
             failed.push({ destination: file.destination, reason: 'digest-mismatch' })

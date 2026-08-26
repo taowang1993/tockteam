@@ -1,5 +1,5 @@
 import type { BeginDesktopSourceRequest, BeginDesktopSourceResult, DesktopPickerRequest, DesktopPickerResult, ListDesktopSourceRequest, ListDesktopSourceResult, NativeOperationIdentity, ReadDesktopSourceRequest, ReadDesktopSourceResult, ReleaseDesktopSourceRequest, ReleaseDesktopSourceResult, RevalidateDesktopSourceRequest, RevalidateDesktopSourceResult } from '@tockteam/desktop/host';
-import type { CreateDocumentRequest, ListTreeRequest, NoteVaultState, StoreAttachmentRequest, VaultTreePage, WriteDocumentResult, StoreAttachmentResult } from 'tockbot-note-runtime';
+import type { CreateDocumentRequest, ListPassiveBackupEntriesRequest, ListTreeRequest, NoteVaultState, PassiveBackupListResult, PassiveBackupMutationResult, RestorePassiveBackupEntryRequest, StoreAttachmentRequest, VaultTreePage, WriteDocumentResult, StoreAttachmentResult } from 'tockbot-note-runtime';
 import type { CommitResult, ImportInspectFormat, ReviewBindingRequest, ReviewCancellationRequest, ReviewPlanView } from './types.ts';
 export type { CommitEntryResult, CommitFailedResult, CommitResult, CommitSkippedResult, ImportInspectFormat, ReviewBindingRequest, ReviewCancellationRequest, ReviewPlanView, } from './types.ts';
 export interface DesktopPickerPort {
@@ -13,7 +13,9 @@ export interface DesktopPickerPort {
 export interface RuntimePort {
     readonly state: NoteVaultState;
     createDocument(request: CreateDocumentRequest, signal: AbortSignal): Promise<WriteDocumentResult>;
+    listPassiveBackupEntries(request: ListPassiveBackupEntriesRequest, signal: AbortSignal): Promise<PassiveBackupListResult>;
     listTree(request: ListTreeRequest, signal: AbortSignal): Promise<VaultTreePage>;
+    restorePassiveBackupEntry(request: RestorePassiveBackupEntryRequest, signal: AbortSignal): Promise<PassiveBackupMutationResult>;
     storeAttachment(request: StoreAttachmentRequest, signal: AbortSignal): Promise<StoreAttachmentResult>;
 }
 export interface ClaimedInspectRequest {

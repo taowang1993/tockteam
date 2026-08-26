@@ -1957,6 +1957,18 @@ test('passive backup authority lists, reads, and exclusively restores only inert
         error => error instanceof NoteVaultError && error.code === 'unsafe-target',
       )
       await rm(join(vault, '.obsidian', 'Ａ.json'))
+      await assert.rejects(
+        loaded.context.noteVault.listPassiveBackupEntries({ expectedVault }, signal),
+        error => error instanceof NoteVaultError && error.code === 'unsafe-target',
+      )
+      await rm(join(vault, '.obsidian', 'plugins', 'demo', 'alias.json'))
+      await rm(join(vault, '.obsidian-alias'))
+      await writeFile(join(vault, '.obsidian-file'), 'not a directory')
+      await assert.rejects(
+        loaded.context.noteVault.listPassiveBackupEntries({ expectedVault }, signal),
+        error => error instanceof NoteVaultError && error.code === 'unsafe-target',
+      )
+      await rm(join(vault, '.obsidian-file'))
 
       const listed = await loaded.context.noteVault.listPassiveBackupEntries({ expectedVault }, signal)
       assert.deepEqual(listed.entries.map(entry => entry.path), [
@@ -1985,6 +1997,7 @@ test('passive backup authority lists, reads, and exclusively restores only inert
         }, signal),
         error => error instanceof NoteVaultError && error.code === 'changed',
       )
+      await symlink(dataPath, join(vault, '.obsidian', 'plugins', 'demo', 'alias.json'))
       await assert.rejects(
         loaded.context.noteVault.readPassiveBackupEntry({
           expectedRevision: data.revision,
@@ -2009,7 +2022,7 @@ test('passive backup authority lists, reads, and exclusively restores only inert
         }, signal),
         error => error instanceof NoteVaultError && error.code === 'exists',
       )
-      for (const rejected of ['main.js', 'module.wasm', 'native.node', 'icon.svg']) {
+      for (const rejected of ['main.js', 'module.wasm', 'native.node', 'icon.svg', '\u202e.json']) {
         await assert.rejects(
           loaded.context.noteVault.restorePassiveBackupEntry({
             data: new Uint8Array(),
@@ -2046,8 +2059,26 @@ test('passive backup authority lists, reads, and exclusively restores only inert
           error => error instanceof NoteVaultError && error.code === 'stale-vault',
         ),
       )
+      await rm(join(vault, '.obsidian', 'plugins', 'demo', 'alias.json'))
     } finally {
       await dispose(loaded.context, loaded.root)
+    }
+
+    const shallow = await load([
+      `vaultRoot: ${JSON.stringify(vault)}`,
+      'maxTreeDepth: 1',
+    ].join('\n'))
+    try {
+      const state = shallow.context.noteVault.state
+      if (!state.active) assert.fail('configured vault must be active')
+      await assert.rejects(
+        shallow.context.noteVault.listPassiveBackupEntries({
+          expectedVault: { id: state.id, generation: state.generation },
+        }, new AbortController().signal),
+        error => error instanceof NoteVaultError && error.code === 'too-large',
+      )
+    } finally {
+      await dispose(shallow.context, shallow.root)
     }
   } finally {
     await rm(fixture, { recursive: true, force: true })

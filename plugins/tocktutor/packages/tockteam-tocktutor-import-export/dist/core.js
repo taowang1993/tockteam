@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { isPassiveBackupPath } from 'tockbot-note-runtime';
 export const PLAN_SCHEMA_VERSION = 1;
 export const MAX_PLAN_ITEMS = 5_000;
 export const MAX_PLAN_BYTES = 500 * 1024 * 1024;
@@ -70,8 +71,17 @@ export function normalizeRelativePath(value) {
     }
     return parts.map(part => part.normalize('NFC')).join('/');
 }
+function normalizePlannedPath(value, kind) {
+    if (kind !== 'passive')
+        return normalizeRelativePath(value);
+    if (!boundedText(value, MAX_RELATIVE_PATH_BYTES) || !isPassiveBackupPath(value)) {
+        throw new ImportExportError('invalid-path');
+    }
+    return value;
+}
 export function destinationAliasKey(destination) {
-    return normalizeRelativePath(destination).normalize('NFKC').toLocaleLowerCase('en-US');
+    const normalized = isPassiveBackupPath(destination) ? destination : normalizeRelativePath(destination);
+    return normalized.normalize('NFKC').toLocaleLowerCase('en-US');
 }
 function stable(value) {
     if (Array.isArray(value))
@@ -112,7 +122,7 @@ export function createReviewedPlan(input) {
     let browserPlanBytes = 0;
     let totalBytes = 0;
     const files = input.files.map(file => {
-        const destination = normalizeRelativePath(file.destination);
+        const destination = normalizePlannedPath(file.destination, file.kind);
         const alias = destinationAliasKey(destination);
         if (aliases.has(alias))
             throw new ImportExportError('destination-collision');

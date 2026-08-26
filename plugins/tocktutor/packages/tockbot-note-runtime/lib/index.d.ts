@@ -201,6 +201,38 @@ export interface VaultTreePage {
     truncationReason: TreeTruncationReason;
     warnings: string[];
 }
+export interface ListPassiveBackupEntriesRequest {
+    expectedVault: VaultReference;
+}
+export interface PassiveBackupEntry {
+    path: string;
+    revision: string;
+    size: number;
+}
+export interface PassiveBackupListResult {
+    entries: PassiveBackupEntry[];
+    generation: number;
+}
+export interface ReadPassiveBackupEntryRequest {
+    expectedRevision: string;
+    expectedVault: VaultReference;
+    path: string;
+}
+export interface PassiveBackupContentResult extends PassiveBackupEntry {
+    data: Uint8Array;
+    digest: string;
+    generation: number;
+}
+export interface RestorePassiveBackupEntryRequest {
+    data: Uint8Array;
+    expectedVault: VaultReference;
+    path: string;
+}
+export interface PassiveBackupMutationResult extends PassiveBackupEntry {
+    digest: string;
+    generation: number;
+    status: 'restored';
+}
 export type NoteVaultChangeEvent = Readonly<{
     action: 'activated';
     kind: 'vault';
@@ -374,6 +406,7 @@ export declare class NoteVaultError extends Error {
     readonly code: NoteVaultErrorCode;
     constructor(code: NoteVaultErrorCode, message: string);
 }
+export declare function isPassiveBackupPath(relativePath: string): boolean;
 export declare class NoteVaultRuntime extends Service {
     static Config: Schema<Config>;
     private activeDesktopSelectionClaim;
@@ -436,6 +469,9 @@ export declare class NoteVaultRuntime extends Service {
     clearDraft(request: DraftRequest, signal: AbortSignal): Promise<DraftMutationResult>;
     openDocument(requestedPath: string, expectedVault: VaultReference, signal: AbortSignal): Promise<OpenDocumentResult>;
     listTree(request: ListTreeRequest, signal: AbortSignal): Promise<VaultTreePage>;
+    listPassiveBackupEntries(request: ListPassiveBackupEntriesRequest, signal: AbortSignal): Promise<PassiveBackupListResult>;
+    readPassiveBackupEntry(request: ReadPassiveBackupEntryRequest, signal: AbortSignal): Promise<PassiveBackupContentResult>;
+    restorePassiveBackupEntry(request: RestorePassiveBackupEntryRequest, signal: AbortSignal): Promise<PassiveBackupMutationResult>;
     private moveAttachmentInternal;
     private moveFileInternal;
     moveFile(request: FileMutationRequest, signal: AbortSignal): Promise<FileMutationResult>;

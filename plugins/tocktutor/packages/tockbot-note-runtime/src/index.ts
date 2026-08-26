@@ -76,6 +76,7 @@ const DEFAULT_MAX_TREE_RESULTS = 200
 const MAX_TREE_RESULTS = 1_000
 const MAX_TREE_WARNINGS = 20
 const MAX_PASSIVE_BACKUP_ENTRY_BYTES = 50 * 1024 * 1024
+const MAX_PASSIVE_BACKUP_TOTAL_BYTES = 500 * 1024 * 1024
 const MAX_REVEAL_PATH_BYTES = 4 * 1024
 const SNAPSHOT_METADATA_MAX_BYTES = 64 * 1024
 const SNAPSHOT_SCAN_LIMIT = 1_000
@@ -739,15 +740,22 @@ const PASSIVE_BACKUP_EXTENSIONS = new Set([
 
 function passiveBackupRoot(name: string): boolean {
   return name === '.obsidian'
-    || (name === name.trim() && /^\.obsidian-[^./\\\s][^/\\]*$/u.test(name))
+    || (name === name.trim()
+      && name === name.normalize('NFC')
+      && !/[\\/:*?"<>|\u0000-\u001f\u007f\u200b-\u200f\u202a-\u202e\u2060-\u206f\ufeff]/u.test(name)
+      && /^\.obsidian-[^./\\\s][^/\\]*$/u.test(name))
 }
 
-function passiveBackupPath(relativePath: string): boolean {
-  if (relativePath !== relativePath.normalize('NFC')) return false
+export function isPassiveBackupPath(relativePath: string): boolean {
+  if (Buffer.byteLength(relativePath, 'utf8') > MAX_REVEAL_PATH_BYTES
+    || relativePath !== relativePath.normalize('NFC')) return false
   const parts = relativePath.split('/')
   if (parts.length < 2
     || !passiveBackupRoot(parts[0] ?? '')
-    || parts.slice(1).some(part => part.length === 0 || part.startsWith('.') || part !== part.trim())) return false
+    || parts.slice(1).some(part => part.length === 0
+      || part.startsWith('.')
+      || part !== part.trim()
+      || /[\\:*?"<>|\u0000-\u001f\u007f\u200b-\u200f\u202a-\u202e\u2060-\u206f\ufeff]/u.test(part))) return false
   const basename = parts.at(-1)!.toLocaleLowerCase('en-US')
   return PASSIVE_BACKUP_BASENAMES.has(basename)
     || PASSIVE_BACKUP_EXTENSIONS.has(path.posix.extname(basename))
@@ -759,7 +767,7 @@ function normalizePassiveBackupPath(requestedPath: string): string {
   if (relativePath !== requestedPath || relativePath !== relativePath.normalize('NFC')) {
     throw new NoteVaultError('invalid-path', 'Passive backup paths must use exact normalized vault-relative names')
   }
-  if (!passiveBackupPath(relativePath)) {
+  if (!isPassiveBackupPath(relativePath)) {
     throw new NoteVaultError('unsupported-type', 'Passive backup supports only inert Obsidian configuration files')
   }
   return relativePath
@@ -2344,15 +2352,19 @@ async function scanVaultTree(
 
 async function scanPassiveBackupEntries(
   root: string,
-  maxEntries: number,
+  config: TreeScanConfig,
   signal: AbortSignal,
 ): Promise<PassiveBackupEntry[]> {
   const output: PassiveBackupEntry[] = []
   const aliases = new Set<string>()
+  let bytes = 0
   let scanned = 0
 
-  const visit = async (directory: string, relativeDirectory: string): Promise<void> => {
+  const visit = async (directory: string, relativeDirectory: string, depth: number): Promise<void> => {
     signal.throwIfAborted()
+    if (depth > config.maxDepth) {
+      throw new NoteVaultError('too-large', 'Passive backup exceeds the configured depth limit')
+    }
     const before = await lstat(directory, { bigint: true })
     if (!before.isDirectory() || before.isSymbolicLink()) {
       throw new NoteVaultError('unsafe-target', 'Passive backup folders cannot be symbolic links')
@@ -2360,31 +2372,43 @@ async function scanPassiveBackupEntries(
     assertInside(root, await realpath(directory))
     const dirents = []
     const stream = await opendir(directory)
-    for await (const dirent of stream) dirents.push(dirent)
+    for await (const dirent of stream) {
+      if (scanned + dirents.length >= config.maxEntries) {
+        throw new NoteVaultError('too-large', 'Passive backup exceeds the configured entry limit')
+      }
+      dirents.push(dirent)
+    }
     dirents.sort((left, right) => compareVaultPaths(left.name, right.name))
 
     for (const dirent of dirents) {
       signal.throwIfAborted()
       scanned += 1
-      if (scanned > maxEntries) {
-        throw new NoteVaultError('too-large', 'Passive backup exceeds the configured entry limit')
-      }
-      const relativePath = relativeDirectory
-        ? `${relativeDirectory}/${dirent.name}`
-        : dirent.name
+      const relativePath = `${relativeDirectory}/${dirent.name}`
       const candidate = path.join(directory, dirent.name)
       const entry = await lstat(candidate, { bigint: true })
-      if (entry.isSymbolicLink()) continue
+      if (entry.isSymbolicLink()) {
+        throw new NoteVaultError('unsafe-target', 'Passive backup entries cannot be symbolic links')
+      }
       if (entry.isDirectory()) {
-        if ((relativeDirectory === '' && passiveBackupRoot(relativePath))
-          || (relativeDirectory !== '' && !dirent.name.startsWith('.'))) {
-          await visit(candidate, relativePath)
+        if (!dirent.name.startsWith('.')) await visit(candidate, relativePath, depth + 1)
+        continue
+      }
+      if (!entry.isFile()) {
+        if (isPassiveBackupPath(relativePath)) {
+          throw new NoteVaultError('unsafe-target', 'Passive backup entries must be regular files')
         }
         continue
       }
-      if (!entry.isFile() || entry.nlink !== 1n || !passiveBackupPath(relativePath)) continue
+      if (!isPassiveBackupPath(relativePath)) continue
+      if (entry.nlink !== 1n) {
+        throw new NoteVaultError('unsafe-target', 'Passive backup entries cannot be file aliases')
+      }
       if (entry.size > BigInt(MAX_PASSIVE_BACKUP_ENTRY_BYTES)) {
         throw new NoteVaultError('too-large', 'Passive backup entry exceeds the configured byte limit')
+      }
+      bytes += Number(entry.size)
+      if (bytes > MAX_PASSIVE_BACKUP_TOTAL_BYTES) {
+        throw new NoteVaultError('too-large', 'Passive backup exceeds the configured byte limit')
       }
       assertInside(root, await realpath(candidate))
       const alias = passiveBackupAliasKey(relativePath)
@@ -2410,13 +2434,15 @@ async function scanPassiveBackupEntries(
   for (const name of roots.sort(compareVaultPaths)) {
     signal.throwIfAborted()
     scanned += 1
-    if (scanned > maxEntries) {
+    if (scanned > config.maxEntries) {
       throw new NoteVaultError('too-large', 'Passive backup exceeds the configured entry limit')
     }
     const candidate = path.join(root, name)
     const entry = await lstat(candidate, { bigint: true })
-    if (!entry.isDirectory() || entry.isSymbolicLink()) continue
-    await visit(candidate, name)
+    if (!entry.isDirectory() || entry.isSymbolicLink()) {
+      throw new NoteVaultError('unsafe-target', 'Passive backup roots must be regular directories')
+    }
+    await visit(candidate, name, 1)
   }
   return output.sort((left, right) => compareVaultPaths(left.path, right.path))
 }
@@ -3929,7 +3955,7 @@ export class NoteVaultRuntime extends Service {
     const { root, state } = this.captureExpectedVault(request.expectedVault)
     signal.throwIfAborted()
     try {
-      const entries = await scanPassiveBackupEntries(root, this.treeConfig.maxEntries, signal)
+      const entries = await scanPassiveBackupEntries(root, this.treeConfig, signal)
       this.assertCapturedVault(state, root)
       return { entries, generation: state.generation }
     } catch (error) {

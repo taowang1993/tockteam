@@ -1,3 +1,4 @@
+import { isPassiveBackupPath } from 'tockbot-note-runtime'
 import { createDeterministicZip, parseZip, type ArchiveLimits } from './archive.ts'
 import {
   destinationAliasKey,
@@ -11,7 +12,7 @@ import {
 import type { PlannedSourceResult } from './formats/markdown.ts'
 
 export const BACKUP_FORMAT = 'tockbot-vault-backup' as const
-export const BACKUP_VERSION = 2 as const
+export const BACKUP_VERSION = 3 as const
 export const BACKUP_ARCHIVE_LIMITS: ArchiveLimits = {
   maxArchiveBytes: 512 * 1024 * 1024,
   maxCompressionRatio: 100,
@@ -27,7 +28,7 @@ const MAX_BACKUP_ENTRIES = 20_000
 
 export interface BackupSnapshotEntry {
   bytes: Uint8Array
-  kind: 'attachment' | 'document'
+  kind: 'attachment' | 'document' | 'passive'
   path: string
   revision: string
 }
@@ -46,7 +47,7 @@ export interface BackupManifest {
   format: typeof BACKUP_FORMAT
   totalBytes: number
   vault: VaultBinding
-  version: typeof BACKUP_VERSION
+  version: 2 | typeof BACKUP_VERSION
 }
 
 export interface VerifiedBackup {
@@ -72,14 +73,29 @@ function safeInteger(value: unknown, maximum = Number.MAX_SAFE_INTEGER): value i
 }
 
 function supported(path: string, kind: BackupSnapshotEntry['kind']): boolean {
+  if (kind === 'passive') return isPassiveBackupPath(path)
   const extension = path.split('/').at(-1)?.split('.').at(-1)?.toLocaleLowerCase('en-US') ?? ''
   return kind === 'document'
     ? ['base', 'canvas', 'markdown', 'md'].includes(extension)
     : ['3gp', 'avif', 'bmp', 'flac', 'gif', 'jpeg', 'jpg', 'm4a', 'mkv', 'mov', 'mp3', 'mp4', 'ogg', 'ogv', 'pdf', 'png', 'wav', 'webm', 'webp'].includes(extension)
 }
 
+function backupPath(path: string, kind: BackupSnapshotEntry['kind']): string {
+  if (kind === 'passive') {
+    if (!isPassiveBackupPath(path)) invalidManifest()
+    return path
+  }
+  return normalizeRelativePath(path)
+}
+
+function payloadPath(entry: Pick<BackupManifestEntry, 'kind' | 'path'>): string {
+  return entry.kind === 'passive'
+    ? `backup/passive/${sha256(entry.path).slice('sha256:'.length)}`
+    : `backup/files/${entry.path}`
+}
+
 function manifestEntry(entry: BackupSnapshotEntry): BackupManifestEntry {
-  const path = normalizeRelativePath(entry.path)
+  const path = backupPath(entry.path, entry.kind)
   if (!(entry.bytes instanceof Uint8Array)
     || entry.bytes.byteLength > BACKUP_ARCHIVE_LIMITS.maxEntryBytes
     || typeof entry.revision !== 'string'
@@ -106,7 +122,7 @@ export function createBackupArchive(input: {
     || input.vault.id.length === 0
     || input.entries.length === 0
     || input.entries.length > MAX_BACKUP_ENTRIES) invalidManifest()
-  const byPath = new Map(input.entries.map(entry => [normalizeRelativePath(entry.path), entry]))
+  const byPath = new Map(input.entries.map(entry => [backupPath(entry.path, entry.kind), entry]))
   if (byPath.size !== input.entries.length) invalidManifest()
   const aliases = new Set<string>()
   const manifestEntries = input.entries.map(manifestEntry).sort((left, right) => left.path.localeCompare(right.path))
@@ -132,7 +148,7 @@ export function createBackupArchive(input: {
     { bytes: manifestBytes, path: 'backup/manifest.json' },
     ...manifestEntries.map(entry => ({
       bytes: byPath.get(entry.path)!.bytes,
-      path: `backup/files/${entry.path}`,
+      path: payloadPath(entry),
     })),
   ], BACKUP_ARCHIVE_LIMITS.maxCompressionRatio)
 }
@@ -143,7 +159,7 @@ function parseManifest(bytes: Uint8Array): BackupManifest {
   try { value = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes)) } catch { return invalidManifest() }
   if (!exact(value, ['createdAt', 'entries', 'format', 'totalBytes', 'vault', 'version'])
     || value.format !== BACKUP_FORMAT
-    || value.version !== BACKUP_VERSION
+    || (value.version !== 2 && value.version !== BACKUP_VERSION)
     || !safeInteger(value.createdAt)
     || !safeInteger(value.totalBytes, 500 * 1024 * 1024)
     || !exact(value.vault, ['generation', 'id'])
@@ -159,7 +175,8 @@ function parseManifest(bytes: Uint8Array): BackupManifest {
   let previous = ''
   for (const raw of value.entries) {
     if (!exact(raw, ['kind', 'path', 'revision', 'sha256', 'size'])
-      || (raw.kind !== 'attachment' && raw.kind !== 'document')
+      || (raw.kind !== 'attachment' && raw.kind !== 'document' && raw.kind !== 'passive')
+      || (raw.kind === 'passive' && value.version !== BACKUP_VERSION)
       || typeof raw.path !== 'string'
       || typeof raw.revision !== 'string'
       || raw.revision.length === 0
@@ -168,7 +185,7 @@ function parseManifest(bytes: Uint8Array): BackupManifest {
       || !/^sha256:[0-9a-f]{64}$/u.test(raw.sha256)
       || !safeInteger(raw.size, BACKUP_ARCHIVE_LIMITS.maxEntryBytes)) invalidManifest()
     let path: string
-    try { path = normalizeRelativePath(raw.path) } catch { return invalidManifest() }
+    try { path = backupPath(raw.path, raw.kind) } catch { return invalidManifest() }
     if (path !== raw.path || !supported(path, raw.kind)) invalidManifest()
     const alias = destinationAliasKey(path)
     if (aliases.has(alias) || (previous !== '' && previous.localeCompare(path) >= 0)) invalidManifest()
@@ -184,7 +201,7 @@ function parseManifest(bytes: Uint8Array): BackupManifest {
     format: BACKUP_FORMAT,
     totalBytes,
     vault: { generation: value.vault.generation, id: value.vault.id },
-    version: BACKUP_VERSION,
+    version: value.version,
   }
 }
 
@@ -201,7 +218,7 @@ export function verifyBackupArchive(bytes: Uint8Array, signal?: AbortSignal): Ve
   const entries: BackupSnapshotEntry[] = []
   for (const declared of manifest.entries) {
     signal?.throwIfAborted()
-    const member = members.get(`backup/files/${declared.path}`)
+    const member = members.get(payloadPath(declared))
     if (member === undefined
       || member.bytes.byteLength !== declared.size
       || sha256(member.bytes) !== declared.sha256) invalidManifest()

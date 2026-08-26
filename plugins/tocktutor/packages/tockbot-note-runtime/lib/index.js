@@ -22,6 +22,8 @@ const MAX_TREE_ENTRIES = 100_000;
 const DEFAULT_MAX_TREE_RESULTS = 200;
 const MAX_TREE_RESULTS = 1_000;
 const MAX_TREE_WARNINGS = 20;
+const MAX_PASSIVE_BACKUP_ENTRY_BYTES = 50 * 1024 * 1024;
+const MAX_PASSIVE_BACKUP_TOTAL_BYTES = 500 * 1024 * 1024;
 const MAX_REVEAL_PATH_BYTES = 4 * 1024;
 const SNAPSHOT_METADATA_MAX_BYTES = 64 * 1024;
 const SNAPSHOT_SCAN_LIMIT = 1_000;
@@ -119,6 +121,58 @@ const ATTACHMENT_MIME_TYPES = new Map(Object.entries({
     '.webm': 'video/webm',
     '.webp': 'image/webp',
 }));
+const PASSIVE_BACKUP_BASENAMES = new Set([
+    'license',
+    'license_foxit',
+    'license_liberation',
+    'license_openjpeg',
+    'license_pdfjs_openjpeg',
+    'license_pdfjs_qcms',
+    'license_qcms',
+]);
+const PASSIVE_BACKUP_EXTENSIONS = new Set([
+    '.ani', '.avif', '.bcmap', '.bmp', '.css', '.csv', '.cur', '.eot', '.gif', '.icc',
+    '.ico', '.ini', '.jpeg', '.jpg', '.json', '.lock', '.map', '.md', '.mm', '.otf',
+    '.pfb', '.png', '.properties', '.toml', '.ttf', '.txt', '.webp', '.woff', '.woff2',
+    '.xml', '.yaml', '.yml',
+]);
+function passiveBackupRoot(name) {
+    return name === '.obsidian'
+        || (name === name.trim()
+            && name === name.normalize('NFC')
+            && !/[\\/:*?"<>|\u0000-\u001f\u007f\u200b-\u200f\u202a-\u202e\u2060-\u206f\ufeff]/u.test(name)
+            && /^\.obsidian-[^./\\\s][^/\\]*$/u.test(name));
+}
+export function isPassiveBackupPath(relativePath) {
+    if (Buffer.byteLength(relativePath, 'utf8') > MAX_REVEAL_PATH_BYTES
+        || relativePath !== relativePath.normalize('NFC'))
+        return false;
+    const parts = relativePath.split('/');
+    if (parts.length < 2
+        || !passiveBackupRoot(parts[0] ?? '')
+        || parts.slice(1).some(part => part.length === 0
+            || part.startsWith('.')
+            || part !== part.trim()
+            || /[\\:*?"<>|\u0000-\u001f\u007f\u200b-\u200f\u202a-\u202e\u2060-\u206f\ufeff]/u.test(part)))
+        return false;
+    const basename = parts.at(-1).toLocaleLowerCase('en-US');
+    return PASSIVE_BACKUP_BASENAMES.has(basename)
+        || PASSIVE_BACKUP_EXTENSIONS.has(path.posix.extname(basename))
+        || basename.endsWith('.d.ts');
+}
+function normalizePassiveBackupPath(requestedPath) {
+    const relativePath = normalizeEntryPath(requestedPath);
+    if (relativePath !== requestedPath || relativePath !== relativePath.normalize('NFC')) {
+        throw new NoteVaultError('invalid-path', 'Passive backup paths must use exact normalized vault-relative names');
+    }
+    if (!isPassiveBackupPath(relativePath)) {
+        throw new NoteVaultError('unsupported-type', 'Passive backup supports only inert Obsidian configuration files');
+    }
+    return relativePath;
+}
+function passiveBackupAliasKey(relativePath) {
+    return relativePath.normalize('NFKC').toLocaleLowerCase('en-US');
+}
 function preMoveReferrerPath(postMovePath, oldPath, newPath, isDirectory) {
     if (isDirectory) {
         if (postMovePath === newPath)
@@ -1389,6 +1443,167 @@ async function scanVaultTree(root, config, signal) {
     await visit(root, 1);
     entries.sort((left, right) => compareVaultPaths(left.path, right.path));
     return { entries, scanned, truncationReason, warnings };
+}
+async function scanPassiveBackupEntries(root, config, signal) {
+    const output = [];
+    const aliases = new Set();
+    let bytes = 0;
+    let scanned = 0;
+    const visit = async (directory, relativeDirectory, depth) => {
+        signal.throwIfAborted();
+        if (depth > config.maxDepth) {
+            throw new NoteVaultError('too-large', 'Passive backup exceeds the configured depth limit');
+        }
+        const before = await lstat(directory, { bigint: true });
+        if (!before.isDirectory() || before.isSymbolicLink()) {
+            throw new NoteVaultError('unsafe-target', 'Passive backup folders cannot be symbolic links');
+        }
+        assertInside(root, await realpath(directory));
+        const dirents = [];
+        const stream = await opendir(directory);
+        for await (const dirent of stream) {
+            if (scanned + dirents.length >= config.maxEntries) {
+                throw new NoteVaultError('too-large', 'Passive backup exceeds the configured entry limit');
+            }
+            dirents.push(dirent);
+        }
+        dirents.sort((left, right) => compareVaultPaths(left.name, right.name));
+        for (const dirent of dirents) {
+            signal.throwIfAborted();
+            scanned += 1;
+            const relativePath = `${relativeDirectory}/${dirent.name}`;
+            const candidate = path.join(directory, dirent.name);
+            const entry = await lstat(candidate, { bigint: true });
+            if (entry.isSymbolicLink()) {
+                throw new NoteVaultError('unsafe-target', 'Passive backup entries cannot be symbolic links');
+            }
+            if (entry.isDirectory()) {
+                if (!dirent.name.startsWith('.'))
+                    await visit(candidate, relativePath, depth + 1);
+                continue;
+            }
+            if (!entry.isFile()) {
+                if (isPassiveBackupPath(relativePath)) {
+                    throw new NoteVaultError('unsafe-target', 'Passive backup entries must be regular files');
+                }
+                continue;
+            }
+            if (!isPassiveBackupPath(relativePath))
+                continue;
+            if (entry.nlink !== 1n) {
+                throw new NoteVaultError('unsafe-target', 'Passive backup entries cannot be file aliases');
+            }
+            if (entry.size > BigInt(MAX_PASSIVE_BACKUP_ENTRY_BYTES)) {
+                throw new NoteVaultError('too-large', 'Passive backup entry exceeds the configured byte limit');
+            }
+            bytes += Number(entry.size);
+            if (bytes > MAX_PASSIVE_BACKUP_TOTAL_BYTES) {
+                throw new NoteVaultError('too-large', 'Passive backup exceeds the configured byte limit');
+            }
+            assertInside(root, await realpath(candidate));
+            const alias = passiveBackupAliasKey(relativePath);
+            if (aliases.has(alias)) {
+                throw new NoteVaultError('unsafe-target', 'Passive backup paths contain an ambiguous alias');
+            }
+            aliases.add(alias);
+            output.push({ path: relativePath, revision: fileRevision(entry), size: Number(entry.size) });
+        }
+        const after = await lstat(directory, { bigint: true });
+        if (!after.isDirectory() || after.isSymbolicLink() || !sameStableFile(before, after)) {
+            throw new NoteVaultError('changed', 'Passive backup folders changed while they were listed');
+        }
+        assertInside(root, await realpath(directory));
+    };
+    const roots = [];
+    const stream = await opendir(root);
+    for await (const dirent of stream) {
+        if (passiveBackupRoot(dirent.name))
+            roots.push(dirent.name);
+    }
+    for (const name of roots.sort(compareVaultPaths)) {
+        signal.throwIfAborted();
+        scanned += 1;
+        if (scanned > config.maxEntries) {
+            throw new NoteVaultError('too-large', 'Passive backup exceeds the configured entry limit');
+        }
+        const candidate = path.join(root, name);
+        const entry = await lstat(candidate, { bigint: true });
+        if (!entry.isDirectory() || entry.isSymbolicLink()) {
+            throw new NoteVaultError('unsafe-target', 'Passive backup roots must be regular directories');
+        }
+        await visit(candidate, name, 1);
+    }
+    return output.sort((left, right) => compareVaultPaths(left.path, right.path));
+}
+async function readPassiveBackupFile(root, request, signal) {
+    signal.throwIfAborted();
+    const relativePath = normalizePassiveBackupPath(request.path);
+    if (typeof request.expectedRevision !== 'string' || !/^file:[0-9a-f]{64}$/u.test(request.expectedRevision)) {
+        throw new NoteVaultError('changed', 'Passive backup entry revision changed');
+    }
+    const candidate = path.join(root, ...relativePath.split('/'));
+    assertInside(root, candidate);
+    await assertNoDirectorySymlinks(root, candidate);
+    const expected = await lstat(candidate, { bigint: true });
+    if (!expected.isFile() || expected.isSymbolicLink() || expected.nlink !== 1n) {
+        throw new NoteVaultError('unsafe-target', 'Passive backup entries must be unaliased regular files');
+    }
+    if (fileRevision(expected) !== request.expectedRevision) {
+        throw new NoteVaultError('changed', 'Passive backup entry changed before it was read');
+    }
+    const handle = await open(candidate, fsConstants.O_RDONLY | NOFOLLOW);
+    try {
+        const opened = await handle.stat({ bigint: true });
+        if (!opened.isFile() || opened.nlink !== 1n || !sameStableFile(expected, opened)) {
+            throw new NoteVaultError('changed', 'Passive backup entry changed while it was opened');
+        }
+        if (opened.size > BigInt(MAX_PASSIVE_BACKUP_ENTRY_BYTES)) {
+            throw new NoteVaultError('too-large', 'Passive backup entry exceeds the configured byte limit');
+        }
+        const data = await readBounded(handle, MAX_PASSIVE_BACKUP_ENTRY_BYTES, Number(opened.size), signal);
+        if (data === null)
+            throw new NoteVaultError('too-large', 'Passive backup entry exceeds the configured byte limit');
+        const final = await handle.stat({ bigint: true });
+        const current = await lstat(candidate, { bigint: true });
+        if (!final.isFile() || final.nlink !== 1n || current.isSymbolicLink() || current.nlink !== 1n
+            || !sameStableFile(opened, final) || !sameStableFile(opened, current)
+            || fileRevision(final) !== request.expectedRevision) {
+            throw new NoteVaultError('changed', 'Passive backup entry changed while it was read');
+        }
+        await assertNoDirectorySymlinks(root, candidate);
+        assertInside(root, await realpath(candidate));
+        signal.throwIfAborted();
+        return {
+            data: new Uint8Array(data),
+            digest: `sha256:${createHash('sha256').update(data).digest('hex')}`,
+            path: relativePath,
+            revision: fileRevision(final),
+            size: data.byteLength,
+        };
+    }
+    finally {
+        await handle.close().catch(() => undefined);
+    }
+}
+async function ensurePassiveBackupParent(root, relativePath) {
+    const parts = relativePath.split('/');
+    let cursor = root;
+    for (const part of parts.slice(0, -1)) {
+        cursor = path.join(cursor, part);
+        try {
+            await mkdir(cursor, { mode: 0o700 });
+        }
+        catch (error) {
+            if (error.code !== 'EEXIST')
+                throw error;
+        }
+        const entry = await lstat(cursor, { bigint: true });
+        if (!entry.isDirectory() || entry.isSymbolicLink()) {
+            throw new NoteVaultError('unsafe-target', 'Passive backup folders must be regular directories');
+        }
+        assertInside(root, await realpath(cursor));
+    }
+    return await bindDestinationParent(root, path.join(root, ...parts));
 }
 function treeCursorKey(vault, maxEntries, maxDepth) {
     return createHash('sha256')
@@ -2672,6 +2887,91 @@ export class NoteVaultRuntime extends Service {
             truncationReason: scan.truncationReason ?? (hasMore ? 'result-limit' : null),
             warnings: scan.warnings,
         };
+    }
+    async listPassiveBackupEntries(request, signal) {
+        const { root, state } = this.captureExpectedVault(request.expectedVault);
+        signal.throwIfAborted();
+        try {
+            const entries = await scanPassiveBackupEntries(root, this.treeConfig, signal);
+            this.assertCapturedVault(state, root);
+            return { entries, generation: state.generation };
+        }
+        catch (error) {
+            this.assertCapturedVault(state, root);
+            if (error instanceof NoteVaultError || (error instanceof Error && error.name === 'AbortError'))
+                throw error;
+            throw new NoteVaultError('unsafe-target', 'Passive backup entries could not be listed safely');
+        }
+    }
+    async readPassiveBackupEntry(request, signal) {
+        const { root, state } = this.captureExpectedVault(request.expectedVault);
+        try {
+            const entry = await readPassiveBackupFile(root, request, signal);
+            this.assertCapturedVault(state, root);
+            return { ...entry, generation: state.generation };
+        }
+        catch (error) {
+            this.assertCapturedVault(state, root);
+            if (error instanceof NoteVaultError || (error instanceof Error && error.name === 'AbortError'))
+                throw error;
+            if (error.code === 'ENOENT') {
+                throw new NoteVaultError('not-found', 'Passive backup entry not found');
+            }
+            throw new NoteVaultError('unsafe-target', 'Passive backup entry could not be read safely');
+        }
+    }
+    async restorePassiveBackupEntry(request, signal) {
+        const { root, state } = this.captureExpectedVault(request.expectedVault);
+        signal.throwIfAborted();
+        if (!(request.data instanceof Uint8Array)) {
+            throw new NoteVaultError('invalid-content', 'Passive backup data must be a byte array');
+        }
+        if (request.data.byteLength > MAX_PASSIVE_BACKUP_ENTRY_BYTES) {
+            throw new NoteVaultError('too-large', 'Passive backup data exceeds the configured byte limit');
+        }
+        const relativePath = normalizePassiveBackupPath(request.path);
+        const candidate = path.join(root, ...relativePath.split('/'));
+        assertInside(root, candidate);
+        let committed = false;
+        try {
+            const parent = await ensurePassiveBackupParent(root, relativePath);
+            const data = Buffer.from(request.data);
+            await writeDocumentAtomic(candidate, data, true, async () => {
+                signal.throwIfAborted();
+                this.assertCapturedVault(state, root);
+                await assertDestinationParentBound(root, parent);
+            });
+            committed = true;
+            const claimed = await lstat(candidate, { bigint: true });
+            const entry = await readPassiveBackupFile(root, {
+                expectedRevision: fileRevision(claimed),
+                expectedVault: request.expectedVault,
+                path: relativePath,
+            }, POST_COMMIT_SIGNAL);
+            if (entry.digest !== `sha256:${createHash('sha256').update(data).digest('hex')}`) {
+                throw new NoteVaultError('partial', 'Passive backup entry was restored with unexpected bytes');
+            }
+            const result = {
+                digest: entry.digest,
+                generation: state.generation,
+                path: entry.path,
+                revision: entry.revision,
+                size: entry.size,
+                status: 'restored',
+            };
+            this.emitEntryChange('stored', result.path, state);
+            return result;
+        }
+        catch (error) {
+            if (committed)
+                throw new NoteVaultError('partial', 'Passive backup entry was restored but could not be inspected');
+            if (error instanceof NoteVaultError || (error instanceof Error && error.name === 'AbortError'))
+                throw error;
+            if (error.code === 'EEXIST') {
+                throw new NoteVaultError('exists', 'A passive backup entry already exists at that path');
+            }
+            throw new NoteVaultError('unsafe-target', 'Passive backup entry could not be restored safely');
+        }
     }
     async moveAttachmentInternal(request, signal) {
         const { root, state } = this.captureExpectedVault(request.expectedVault);

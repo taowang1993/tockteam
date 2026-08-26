@@ -23,9 +23,13 @@ import {
 } from '@tockteam/desktop/host'
 import type {
   AttachmentPreviewResult,
+  ListPassiveBackupEntriesRequest,
   ListTreeRequest,
   NoteVaultState,
   OpenDocumentResult,
+  PassiveBackupContentResult,
+  PassiveBackupListResult,
+  ReadPassiveBackupEntryRequest,
   VaultReference,
   VaultTreePage,
 } from 'tockbot-note-runtime'
@@ -49,9 +53,11 @@ const TREE_PAGE_SIZE = 1_000
 
 export interface BackupRuntimePort {
   readonly state: NoteVaultState
+  listPassiveBackupEntries(request: ListPassiveBackupEntriesRequest, signal: AbortSignal): Promise<PassiveBackupListResult>
   listTree(request: ListTreeRequest, signal: AbortSignal): Promise<VaultTreePage>
   openDocument(path: string, expectedVault: VaultReference, signal: AbortSignal): Promise<OpenDocumentResult>
   previewAttachment(path: string, expectedVault: VaultReference, signal: AbortSignal): Promise<AttachmentPreviewResult>
+  readPassiveBackupEntry(request: ReadPassiveBackupEntryRequest, signal: AbortSignal): Promise<PassiveBackupContentResult>
 }
 
 export interface BackupDesktopPort {
@@ -125,6 +131,7 @@ async function treeSnapshot(runtime: BackupRuntimePort, vault: VaultBinding, sig
   assertVault(runtime.state, vault)
   const entries: TreeSnapshot['entries'] = []
   let cursor: string | null = null
+  let complete = false
   for (let pages = 0; pages <= 100; pages += 1) {
     signal.throwIfAborted()
     const page = await runtime.listTree({ cursor, expectedVault: vault, limit: TREE_PAGE_SIZE }, signal)
@@ -138,14 +145,23 @@ async function treeSnapshot(runtime: BackupRuntimePort, vault: VaultBinding, sig
       if (entries.length > 20_000) throw new ImportExportError('limit-exceeded')
     }
     if (page.complete) {
-      assertVault(runtime.state, vault)
-      entries.sort((left, right) => left.path.localeCompare(right.path))
-      return { entries, fingerprint: sha256(stableJson(entries)) }
+      complete = true
+      break
     }
     if (page.cursor === null || page.cursor === cursor) throw new ImportExportError('stale-vault')
     cursor = page.cursor
   }
-  throw new ImportExportError('limit-exceeded')
+  if (!complete) throw new ImportExportError('limit-exceeded')
+  const passive = await runtime.listPassiveBackupEntries({ expectedVault: vault }, signal)
+  signal.throwIfAborted()
+  if (passive.generation !== vault.generation) throw new ImportExportError('stale-vault')
+  for (const entry of passive.entries) {
+    entries.push({ kind: 'passive', path: entry.path, revision: entry.revision, size: entry.size })
+    if (entries.length > 20_000) throw new ImportExportError('limit-exceeded')
+  }
+  assertVault(runtime.state, vault)
+  entries.sort((left, right) => left.path.localeCompare(right.path))
+  return { entries, fingerprint: sha256(stableJson(entries)) }
 }
 
 async function captureEntries(
@@ -177,6 +193,21 @@ async function captureEntries(
         || result.generation !== vault.generation || result.digest !== sha256(result.data)
         || result.data.byteLength !== entry.size) throw new ImportExportError('stale-vault')
       output.push({ bytes: result.data, kind: 'attachment', path: entry.path, revision: entry.revision })
+      totalBytes += result.data.byteLength
+    } else if (entry.kind === 'passive') {
+      const result = await runtime.readPassiveBackupEntry({
+        expectedRevision: entry.revision,
+        expectedVault: vault,
+        path: entry.path,
+      }, signal)
+      signal.throwIfAborted()
+      assertVault(runtime.state, vault)
+      if (result.path !== entry.path || result.revision !== entry.revision
+        || result.generation !== vault.generation || result.digest !== sha256(result.data)
+        || result.data.byteLength !== entry.size || result.size !== entry.size) {
+        throw new ImportExportError('stale-vault')
+      }
+      output.push({ bytes: result.data, kind: 'passive', path: entry.path, revision: entry.revision })
       totalBytes += result.data.byteLength
     }
     if (totalBytes > 500 * 1024 * 1024) throw new ImportExportError('limit-exceeded')

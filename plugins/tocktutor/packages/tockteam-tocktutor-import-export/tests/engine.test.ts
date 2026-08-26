@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 
 import { TockTeamDesktopGrantError, type NativeOperationIdentity } from '@tockteam/desktop/host'
+import { createBackupArchive } from '../src/backup.ts'
 import { ImportExportError, sha256 } from '../src/core.ts'
 import {
   ReviewedOperationEngine,
@@ -27,6 +28,7 @@ const secondIdentity: NativeOperationIdentity = {
 
 class FakePicker implements DesktopPickerPort {
   afterRevalidate: (() => void) | undefined
+  backup: Uint8Array | null = null
   changed = false
   expiresAt = 500_000
   operationId = identity.operationId
@@ -50,24 +52,29 @@ class FakePicker implements DesktopPickerPort {
   }
 
   async listSource(): Promise<never> {
+    const entries = this.backup === null
+      ? [
+          { entryId: 'image', kind: 'file', relativePath: 'image.png', revision: 'file-image', size: 3 },
+          { entryId: 'a', kind: 'file', relativePath: 'A.md', revision: 'file-a', size: 4 },
+          { kind: 'rejected', label: 'unsafe-link', reason: 'symlink' },
+        ]
+      : [{ entryId: 'backup', kind: 'file', relativePath: 'backup.zip', revision: 'file-backup', size: this.backup.byteLength }]
     return {
       complete: true,
       cursor: null,
-      entries: [
-        { entryId: 'image', kind: 'file', relativePath: 'image.png', revision: 'file-image', size: 3 },
-        { entryId: 'a', kind: 'file', relativePath: 'A.md', revision: 'file-a', size: 4 },
-        { kind: 'rejected', label: 'unsafe-link', reason: 'symlink' },
-      ],
+      entries,
       rootRevision: 'root-1',
-      scannedBytes: 7,
-      scannedEntries: 3,
+      scannedBytes: this.backup?.byteLength ?? 7,
+      scannedEntries: entries.length,
       truncated: false,
       truncationReason: null,
     } as never
   }
 
   async readSource(request: { entryId: string; offset: number }): Promise<never> {
-    const file = this.files.get(request.entryId)
+    const file = request.entryId === 'backup' && this.backup !== null
+      ? { bytes: this.backup, path: 'backup.zip', revision: 'file-backup' }
+      : this.files.get(request.entryId)
     assert.ok(file)
     assert.equal(request.offset, 0)
     return {
@@ -94,7 +101,9 @@ class FakePicker implements DesktopPickerPort {
 
 class FakeRuntime implements RuntimePort {
   readonly created: string[] = []
+  readonly passiveRestored: string[] = []
   existing = new Set<string>()
+  passive = new Set<string>()
   failCode = 'unavailable'
   failPath: string | null = null
   state: { active: true; generation: number; id: string } = { active: true, ...vault }
@@ -120,6 +129,13 @@ class FakeRuntime implements RuntimePort {
     } as never
   }
 
+  async listPassiveBackupEntries(): Promise<never> {
+    return {
+      entries: [...this.passive].map(path => ({ path, revision: `revision:${path}`, size: 1 })),
+      generation: vault.generation,
+    } as never
+  }
+
   async createDocument(request: { content: string; path: string }): Promise<never> {
     if (this.failPath === request.path) {
       if (this.failCode === 'partial') {
@@ -132,6 +148,13 @@ class FakeRuntime implements RuntimePort {
     this.existing.add(request.path)
     this.created.push(request.path)
     return { digest: sha256(request.content), generation: vault.generation, path: request.path, revision: 'created', status: 'created' } as never
+  }
+
+  async restorePassiveBackupEntry(request: { data: Uint8Array; path: string }): Promise<never> {
+    if (this.passive.has(request.path)) throw Object.assign(new Error('exists'), { code: 'exists' })
+    this.passive.add(request.path)
+    this.passiveRestored.push(request.path)
+    return { digest: sha256(request.data), generation: vault.generation, path: request.path, revision: 'restored', size: request.data.byteLength, status: 'restored' } as never
   }
 
   async storeAttachment(request: { data: Uint8Array; path: string }): Promise<never> {
@@ -162,6 +185,32 @@ function engine(picker = new FakePicker(), runtime = new FakeRuntime()) {
     }),
   }
 }
+
+test('reviews and exclusively restores passive backup bytes while preserving existing config', async () => {
+  const picker = new FakePicker()
+  picker.backup = createBackupArchive({
+    createdAt: 1_000,
+    entries: [
+      { bytes: encode('{}\n'), kind: 'passive', path: '.obsidian/app.json', revision: 'app-rev' },
+      { bytes: encode('{"theme":"dark"}\n'), kind: 'passive', path: '.obsidian/preferences/theme.json', revision: 'theme-rev' },
+    ],
+    vault,
+  })
+  const runtime = new FakeRuntime()
+  runtime.passive.add('.obsidian/app.json')
+  const { service } = engine(picker, runtime)
+  const preview = await service.inspect({ format: 'restore-backup', identity }, AbortSignal.timeout(5_000))
+  assert.deepEqual(preview.items.map(item => [item.destination, item.kind]), [
+    ['.obsidian/preferences/theme.json', 'passive'],
+  ])
+  assert.deepEqual(preview.skipped, [{ label: '.obsidian/app.json', reason: 'destination-exists' }])
+  const binding = { operationId: preview.operationId, planDigest: preview.planDigest, reviewToken: preview.reviewToken }
+  await service.approve(binding)
+  const result = await service.commit(binding, AbortSignal.timeout(5_000))
+  assert.equal(result.status, 'committed')
+  assert.deepEqual(runtime.passiveRestored, ['.obsidian/preferences/theme.json'])
+  assert.deepEqual(runtime.created, [])
+})
 
 test('coalesces an in-flight inspection retry without opening another picker', async () => {
   const { picker, service } = engine()

@@ -2,11 +2,11 @@ import { type ArchiveLimits } from './archive.ts';
 import { type VaultBinding } from './core.ts';
 import type { PlannedSourceResult } from './formats/markdown.ts';
 export declare const BACKUP_FORMAT: "tockbot-vault-backup";
-export declare const BACKUP_VERSION: 2;
+export declare const BACKUP_VERSION: 3;
 export declare const BACKUP_ARCHIVE_LIMITS: ArchiveLimits;
 export interface BackupSnapshotEntry {
     bytes: Uint8Array;
-    kind: 'attachment' | 'document';
+    kind: 'attachment' | 'document' | 'passive';
     path: string;
     revision: string;
 }
@@ -23,7 +23,7 @@ export interface BackupManifest {
     format: typeof BACKUP_FORMAT;
     totalBytes: number;
     vault: VaultBinding;
-    version: typeof BACKUP_VERSION;
+    version: 2 | typeof BACKUP_VERSION;
 }
 export interface VerifiedBackup {
     entries: BackupSnapshotEntry[];

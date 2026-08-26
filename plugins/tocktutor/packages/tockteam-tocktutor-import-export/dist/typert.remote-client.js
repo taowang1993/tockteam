@@ -115,7 +115,7 @@ const _tockteam_tocktutor_import_export_tocktutor_import_export_inspect_result$s
   'destination': z.string(),
   'digest': z.string(),
   'id': z.string(),
-  'kind': z.union([z.literal("attachment"), z.literal("document")]),
+  'kind': z.union([z.literal("attachment"), z.literal("document"), z.literal("passive")]),
   'size': z.number(),
 })),
   'operationId': z.string(),

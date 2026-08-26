@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto'
+import { isPassiveBackupPath } from 'tockbot-note-runtime'
 
 export const PLAN_SCHEMA_VERSION = 1 as const
 export const MAX_PLAN_ITEMS = 5_000
@@ -92,7 +93,7 @@ export interface SourceBinding {
 export interface PlannedFile {
   bytes: Uint8Array
   destination: string
-  kind: 'attachment' | 'document'
+  kind: 'attachment' | 'document' | 'passive'
   sourceKey: string
 }
 
@@ -175,8 +176,17 @@ export function normalizeRelativePath(value: string): string {
   return parts.map(part => part.normalize('NFC')).join('/')
 }
 
+function normalizePlannedPath(value: string, kind: PlannedFile['kind']): string {
+  if (kind !== 'passive') return normalizeRelativePath(value)
+  if (!boundedText(value, MAX_RELATIVE_PATH_BYTES) || !isPassiveBackupPath(value)) {
+    throw new ImportExportError('invalid-path')
+  }
+  return value
+}
+
 export function destinationAliasKey(destination: string): string {
-  return normalizeRelativePath(destination).normalize('NFKC').toLocaleLowerCase('en-US')
+  const normalized = isPassiveBackupPath(destination) ? destination : normalizeRelativePath(destination)
+  return normalized.normalize('NFKC').toLocaleLowerCase('en-US')
 }
 
 function stable(value: unknown): unknown {
@@ -222,7 +232,7 @@ export function createReviewedPlan(input: CreateReviewedPlanInput): ReviewedPlan
   let browserPlanBytes = 0
   let totalBytes = 0
   const files = input.files.map(file => {
-    const destination = normalizeRelativePath(file.destination)
+    const destination = normalizePlannedPath(file.destination, file.kind)
     const alias = destinationAliasKey(destination)
     if (aliases.has(alias)) throw new ImportExportError('destination-collision')
     aliases.add(alias)

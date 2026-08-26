@@ -44,8 +44,20 @@ class FakeRuntime implements BackupRuntimePort {
     } as never
   }
 
+  async listPassiveBackupEntries(): Promise<never> {
+    return {
+      entries: [{ path: '.obsidian/app.json', revision: this.changed ? 'changed' : 'config-rev', size: 17 }],
+      generation: vault.generation,
+    } as never
+  }
+
   async openDocument(): Promise<never> {
     return { content: '# Note\n', digest: sha256('# Note\n'), generation: vault.generation, path: 'Folder/Note.md', revision: 'note-rev' } as never
+  }
+
+  async readPassiveBackupEntry(): Promise<never> {
+    const data = new TextEncoder().encode('{"theme":"dark"}\n')
+    return { data, digest: sha256(data), generation: vault.generation, path: '.obsidian/app.json', revision: 'config-rev', size: 17 } as never
   }
 
   async previewAttachment(): Promise<never> {
@@ -135,7 +147,7 @@ test('prepares and publishes once while response-loss retries return the same ev
   assert.equal(preparing, repeatedPreparation)
   resumePick()
   const preview = await preparing
-  assert.equal(preview.entries, 2)
+  assert.equal(preview.entries, 3)
   assert.equal(preview.destinationLabel, 'backup.zip')
   assert.equal(JSON.stringify(preview).includes('selection'), false)
   assert.deepEqual(
@@ -159,7 +171,11 @@ test('prepares and publishes once while response-loss retries return the same ev
   assert.deepEqual(desktop.calls, ['pick', 'lock', 'begin', 'write', 'finalize'])
   assert.deepEqual(await service.commit(binding, AbortSignal.timeout(5_000)), result)
   assert.deepEqual(desktop.calls, ['pick', 'lock', 'begin', 'write', 'finalize'])
-  assert.deepEqual(verifyBackupArchive(desktop.written).manifest.entries.map(entry => entry.path), ['Folder/Note.md', 'image.png'])
+  assert.deepEqual(verifyBackupArchive(desktop.written).manifest.entries.map(entry => [entry.path, entry.kind]), [
+    ['.obsidian/app.json', 'passive'],
+    ['Folder/Note.md', 'document'],
+    ['image.png', 'attachment'],
+  ])
 
   desktop.operationId = secondIdentity.operationId
   desktop.written = new Uint8Array()

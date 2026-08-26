@@ -16,7 +16,7 @@ Every operation is inspected, previewed, explicitly approved, revalidated, and t
 - Google Keep: Takeout JSON notes, top-level tasks, labels, state metadata, and referenced accepted attachments. Reminders, collaborators, drawings, OCR, and nested checklist structure are omitted.
 - Roam Research: bounded page/block JSON converted to Markdown. Remote attachments and graph metadata are omitted.
 - Textbundle/Textpack: Markdown packages and accepted assets. Unsupported package types and assets are reported.
-- Backup/restore: deterministic version-2 ZIP archives with a complete nested manifest and independent member verification. The backup set is the complete runtime-visible Markdown/Canvas/Base and accepted attachment snapshot; hidden application configuration and arbitrary vault binaries are not advertised or silently included.
+- Backup/restore: deterministic version-3 ZIP archives with a complete nested manifest and independent member verification; version-2 archives remain restorable. The backup includes the complete runtime-visible Markdown/Canvas/Base and accepted attachment snapshot plus inert, no-follow files under exact `.obsidian` and `.obsidian-*` roots. Nested hidden paths, aliases, executable/native/WebAssembly files, SVG, and arbitrary vault binaries are excluded.
 
 ## Trust Boundaries
 
