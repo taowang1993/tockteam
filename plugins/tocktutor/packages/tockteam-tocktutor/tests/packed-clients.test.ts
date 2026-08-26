@@ -120,7 +120,7 @@ const releases: ReleaseArtifact[] = [
   },
   {
     client: {
-      inject: ['@tockteam/desktop', '@tockteam/sidebar'],
+      inject: ['@tockteam/desktop', '@tockteam/sidebar', '@tockteam/tocktutor-workbench'],
       platform: 'web',
     },
     directory: 'tockbot-web-clip',
