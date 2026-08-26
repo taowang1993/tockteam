@@ -9,7 +9,7 @@ import { type KeyValueStorage, type NamedWorkspace, type TockTutorSettings } fro
 import { type EditorCommandId } from './editor-commands.ts';
 import { type EditorStatus } from './markdown.ts';
 import { type NoteVaultEventRemote } from './vault-events.ts';
-import type { ActiveVaultResult, CreateDocumentRequest, DraftMutationResult, DraftRequest, DraftResult, ListSnapshotsRequest, ListTrashRequest, ListTreeRequest, OpenDocumentResult, RecentVaultInfo, RecentVaultListResult, ReadSnapshotRequest, RecentVaultRequest, RestoreSnapshotRequest, RestoreTrashRequest, SaveDocumentRequest, SaveDraftRequest, SnapshotContentResult, SnapshotInfo, TrashEntryInfo, TrashEntryRequest, VaultGenerationRequest, VaultReference, VaultTreeEntry, VaultTreePage, WriteDocumentResult } from './types.ts';
+import type { ActiveVaultResult, CreateDocumentRequest, DraftMutationResult, DraftRequest, DraftResult, ListSnapshotsRequest, ListTrashRequest, ListTreeRequest, OpenDocumentResult, RecentVaultInfo, RecentVaultListResult, ReadSnapshotRequest, RecentVaultRequest, RestoreSnapshotRequest, RestoreTrashRequest, SaveDocumentRequest, SaveDraftRequest, SnapshotContentResult, SnapshotInfo, TrashEntryInfo, TrashEntryRequest, VaultGenerationRequest, VaultReference, VaultSearchMatch, VaultSearchRequest, VaultSearchResult, VaultTreeEntry, VaultTreePage, WriteDocumentResult } from './types.ts';
 export declare const MAX_ROUTE_SOURCE_BYTES = 2000000;
 export interface WorkbenchRouteRemote extends NoteVaultEventRemote {
     tocktutorWorkbench: {
@@ -37,6 +37,7 @@ export interface WorkbenchRouteRemote extends NoteVaultEventRemote {
             generation: number;
         }>>;
         restoreTrash(request: RestoreTrashRequest, signal?: AbortSignal): Promise<RemoteResult<unknown>>;
+        search(request: VaultSearchRequest, signal?: AbortSignal): Promise<RemoteResult<VaultSearchResult>>;
     };
 }
 export type RoutePhase = 'loading' | 'inactive' | 'ready' | 'error';
@@ -72,6 +73,9 @@ export interface WorkbenchRouteSnapshot {
     recoveryOpen?: boolean;
     revision: string | null;
     saveStatus: EditorStatus;
+    searchLoading?: boolean;
+    searchMatches?: readonly VaultSearchMatch[];
+    searchMode?: 'query' | 'related';
     searchOpen: boolean;
     searchQuery: string;
     selectedSnapshot?: SnapshotContentResult | null;
@@ -128,6 +132,8 @@ export declare class WorkbenchRouteController {
     setSearchQuery(query: string): void;
     closeSearch(): void;
     openSearch(query: string): void;
+    setSearchMode(mode: 'query' | 'related'): void;
+    runSearch(): Promise<boolean>;
     private settlePendingDispatch;
     private dispatchCurrent;
     private invalidateDispatch;
@@ -209,8 +215,10 @@ export interface TockTutorRouteViewProps {
     onRestoreSnapshot?(id: string): void;
     onRestoreTrash?(id: string): void;
     onSave(): void;
+    onRunSearch?(): void;
     onSaveWorkspace?(): void;
     onSearchChange?(query: string): void;
+    onSearchMode?(mode: 'query' | 'related'): void;
     onSettingsChange?(change: Partial<TockTutorSettings>): void;
     onSelectionChange?(start: number, end: number): void;
     onSelect(path: string): void;

@@ -11,6 +11,8 @@ import {
   type ListTreeRequest,
   type OpenDocumentResult,
   type VaultReference,
+  type VaultSearchRequest,
+  type VaultSearchResult,
   type VaultTreePage,
 } from '../dist/host-read.js'
 
@@ -91,6 +93,20 @@ class FakeNoteVault extends Service {
     return this.openResult
   }
 
+  async search(args: Omit<VaultSearchRequest, 'expectedVault'>, expectedVault: VaultReference, signal: AbortSignal): Promise<VaultSearchResult> {
+    this.calls.push({ method: 'search', parameters: [args, expectedVault, signal] })
+    return {
+      cursor: null,
+      generation: expectedVault.generation,
+      matches: [{ kind: 'content', line: 1, path: 'Folder/Note.md', preview: 'match' }],
+      query: args.query,
+      scan: { bytes: 15, entries: 2, files: 1 },
+      truncated: false,
+      truncationReason: null,
+      warnings: [],
+    }
+  }
+
   async listTree(request: ListTreeRequest, signal: AbortSignal): Promise<VaultTreePage> {
     this.calls.push({ method: 'listTree', parameters: [request, signal] })
     if (this.failure !== null) throw this.failure
@@ -129,6 +145,7 @@ test('registers only the accepted read/tree Remote methods and delegates exact r
       { invocation: { kind: 'direct' }, method: 'listTree' },
       { invocation: { kind: 'direct' }, method: 'createDocument' },
       { invocation: { kind: 'direct' }, method: 'saveDocument' },
+      { invocation: { kind: 'direct' }, method: 'search' },
       { invocation: { kind: 'direct' }, method: 'readDraft' },
       { invocation: { kind: 'direct' }, method: 'saveDraft' },
       { invocation: { kind: 'direct' }, method: 'clearDraft' },
@@ -157,6 +174,7 @@ test('registers only the accepted read/tree Remote methods and delegates exact r
     })
     assert.strictEqual(await state.gateway.openDocument('Folder/Note.md', vault, signal), state.runtime.openResult)
     assert.strictEqual(await state.gateway.listTree({ expectedVault: vault, limit: 20 }, signal), state.runtime.treeResult)
+    assert.equal((await state.gateway.search({ expectedVault: vault, mode: 'query', query: 'match' }, signal)).matches.length, 1)
     assert.deepEqual(state.runtime.calls, [
       { method: 'listRecentVaults', parameters: [] },
       { method: 'activateRecentVault', parameters: [`vault:${'d'.repeat(64)}`, 7] },
@@ -164,6 +182,7 @@ test('registers only the accepted read/tree Remote methods and delegates exact r
       { method: 'openSandboxVault', parameters: [7] },
       { method: 'openDocument', parameters: ['Folder/Note.md', vault, signal] },
       { method: 'listTree', parameters: [{ expectedVault: vault, limit: 20 }, signal] },
+      { method: 'search', parameters: [{ mode: 'query', query: 'match' }, vault, signal] },
     ])
   } finally {
     await state.context.fiber.dispose()
@@ -189,6 +208,8 @@ test('fails closed on browser-controlled path, vault, cursor, and limit values',
       state.gateway.listTree({ expectedVault: vault, cursor: 'x'.repeat(MAX_TREE_CURSOR_LENGTH + 1) }, signal),
       /cursor/i,
     )
+    await assert.rejects(state.gateway.search({ expectedVault: vault, query: 'x'.repeat(1_001) }, signal), /query/i)
+    await assert.rejects(state.gateway.search({ expectedVault: vault, query: 'ok', regex: 'yes' as unknown as boolean }, signal), /Boolean/i)
     await assert.rejects(state.gateway.activateRecentVault({ expectedGeneration: -1, id: vault.id }, signal), /generation/i)
     await assert.rejects(state.gateway.removeRecentVault({ expectedGeneration: 7, id: 'unsafe' }, signal), /recent vault/i)
     await assert.rejects(state.gateway.openSandboxVault({ expectedGeneration: -1 }, signal), /generation/i)

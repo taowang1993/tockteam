@@ -105,6 +105,42 @@ export type NoteVaultChangeEvent = Readonly<{
     path: string;
     vault: VaultReference;
 }>;
+export interface VaultSearchRequest {
+    caseSensitive?: boolean;
+    cursor?: string;
+    directory?: string;
+    expectedVault: VaultReference;
+    limit?: number;
+    mode?: 'literal' | 'query' | 'related';
+    query: string;
+    regex?: boolean;
+    scope?: 'all' | 'content' | 'path' | 'properties';
+    wholeWord?: boolean;
+}
+export interface VaultSearchMatch {
+    kind: 'base' | 'block' | 'canvas' | 'content' | 'line' | 'path' | 'property' | 'section' | 'tag' | 'task';
+    line: number | null;
+    lineEnd?: number | null;
+    operator?: 'any' | 'block' | 'content' | 'file' | 'line' | 'path' | 'property' | 'related' | 'section' | 'tag' | 'task' | 'task-done' | 'task-todo';
+    path: string;
+    preview: string;
+    provenance?: 'body' | 'canvas' | 'frontmatter' | 'path' | 'section' | 'task';
+    score?: number;
+}
+export interface VaultSearchResult {
+    cursor: string | null;
+    generation: number;
+    matches: VaultSearchMatch[];
+    query: string;
+    scan: {
+        bytes: number;
+        entries: number;
+        files: number;
+    };
+    truncated: boolean;
+    truncationReason: 'byte-limit' | 'entry-limit' | 'file-limit' | 'metadata-limit' | 'result-limit' | null;
+    warnings: string[];
+}
 export interface DraftRequest {
     expectedVault: VaultReference;
     path: string;

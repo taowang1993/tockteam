@@ -44,6 +44,8 @@ function renderRoute(overrides: Partial<WorkbenchRouteSnapshot> = {}, props: {
   onReopenClosedTab?(): void
   onRestoreSnapshot?(id: string): void
   onRestoreTrash?(id: string): void
+  onRunSearch?(): void
+  onSearchMode?(mode: 'query' | 'related'): void
   onSubmitDispatch?(draft: { path: string } | { text: string; title: string }): void
   onToggleFocusMode?(): void
   onTogglePinTab?(paneId: string, path: string): void
@@ -246,6 +248,23 @@ describe('TockTutor titlebar panel controls', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Move Current File to Trash' }))
     expect(onTrashCurrent).toHaveBeenCalledOnce()
     expect(screen.getByLabelText('Snapshot Preview').textContent).toContain('# Before')
+  })
+
+  it('renders bounded keyword and Related search results', () => {
+    const onRunSearch = vi.fn()
+    const onSearchMode = vi.fn()
+    renderRoute({
+      searchMatches: [{ kind: 'content', line: 2, path: 'Note.md', preview: 'Lesson match' }],
+      searchMode: 'query',
+      searchOpen: true,
+      searchQuery: 'lesson',
+    }, { onRunSearch, onSearchMode })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Related' }))
+    expect(onSearchMode).toHaveBeenCalledWith('related')
+    fireEvent.click(screen.getByRole('button', { name: 'Search' }))
+    expect(onRunSearch).toHaveBeenCalledOnce()
+    expect(screen.getByRole('list', { name: 'Vault Search Results' }).textContent).toContain('Lesson match')
   })
 
   it('renders and submits the shadcn New Note dialog', () => {

@@ -129,6 +129,27 @@ function assertSaveRequest(value) {
     assertCreateRequest(value);
     assertRevision(value.expectedRevision);
 }
+function assertSearchRequest(value) {
+    assertRecord(value, 'Search request');
+    assertVaultReference(value.expectedVault);
+    if (typeof value.query !== 'string' || value.query.length > 1_000 || /[\u0000-\u001f\u007f]/u.test(value.query)) {
+        throw new TypeError('Search query must be bounded text.');
+    }
+    if (value.mode !== undefined && value.mode !== 'literal' && value.mode !== 'query' && value.mode !== 'related')
+        throw new TypeError('Search mode is unsupported.');
+    if (value.scope !== undefined && value.scope !== 'all' && value.scope !== 'content' && value.scope !== 'path' && value.scope !== 'properties')
+        throw new TypeError('Search scope is unsupported.');
+    if (value.directory !== undefined)
+        assertEntryPath(value.directory);
+    if (value.limit !== undefined && (!Number.isSafeInteger(value.limit) || value.limit < 1 || value.limit > 100))
+        throw new TypeError('Search limit must be from 1 through 100.');
+    if (value.cursor !== undefined && (typeof value.cursor !== 'string' || value.cursor.length === 0 || value.cursor.length > MAX_TREE_CURSOR_LENGTH))
+        throw new TypeError('Search cursor must be bounded.');
+    for (const option of [value.caseSensitive, value.regex, value.wholeWord]) {
+        if (option !== undefined && typeof option !== 'boolean')
+            throw new TypeError('Search options must be Boolean.');
+    }
+}
 function assertDraftRequest(value) {
     assertRecord(value, 'Draft request');
     assertVaultReference(value.expectedVault);
@@ -183,6 +204,7 @@ let TockTutorWorkbenchGateway = (() => {
     let _listTree_decorators;
     let _createDocument_decorators;
     let _saveDocument_decorators;
+    let _search_decorators;
     let _readDraft_decorators;
     let _saveDraft_decorators;
     let _clearDraft_decorators;
@@ -204,6 +226,7 @@ let TockTutorWorkbenchGateway = (() => {
             _listTree_decorators = [Remote];
             _createDocument_decorators = [Remote];
             _saveDocument_decorators = [Remote];
+            _search_decorators = [Remote];
             _readDraft_decorators = [Remote];
             _saveDraft_decorators = [Remote];
             _clearDraft_decorators = [Remote];
@@ -222,6 +245,7 @@ let TockTutorWorkbenchGateway = (() => {
             __esDecorate(this, null, _listTree_decorators, { kind: "method", name: "listTree", static: false, private: false, access: { has: obj => "listTree" in obj, get: obj => obj.listTree }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _createDocument_decorators, { kind: "method", name: "createDocument", static: false, private: false, access: { has: obj => "createDocument" in obj, get: obj => obj.createDocument }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _saveDocument_decorators, { kind: "method", name: "saveDocument", static: false, private: false, access: { has: obj => "saveDocument" in obj, get: obj => obj.saveDocument }, metadata: _metadata }, null, _instanceExtraInitializers);
+            __esDecorate(this, null, _search_decorators, { kind: "method", name: "search", static: false, private: false, access: { has: obj => "search" in obj, get: obj => obj.search }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _readDraft_decorators, { kind: "method", name: "readDraft", static: false, private: false, access: { has: obj => "readDraft" in obj, get: obj => obj.readDraft }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _saveDraft_decorators, { kind: "method", name: "saveDraft", static: false, private: false, access: { has: obj => "saveDraft" in obj, get: obj => obj.saveDraft }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _clearDraft_decorators, { kind: "method", name: "clearDraft", static: false, private: false, access: { has: obj => "clearDraft" in obj, get: obj => obj.clearDraft }, metadata: _metadata }, null, _instanceExtraInitializers);
@@ -292,6 +316,12 @@ let TockTutorWorkbenchGateway = (() => {
             assertSaveRequest(request);
             signal.throwIfAborted();
             return this.ctx.noteVault.saveDocument(request, signal);
+        }
+        async search(request, signal) {
+            assertSearchRequest(request);
+            signal.throwIfAborted();
+            const { expectedVault, ...args } = request;
+            return this.ctx.noteVault.search(args, expectedVault, signal);
         }
         async readDraft(request, signal) {
             assertDraftRequest(request);

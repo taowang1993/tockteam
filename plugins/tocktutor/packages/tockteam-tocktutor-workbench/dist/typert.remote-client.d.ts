@@ -3,7 +3,7 @@ import type {
   RemoteResult,
   TypertRemoteContribution,
 } from '@deepseek-ai/dsh-typert-protocol'
-import type { ActiveVaultResult, CreateDocumentRequest, DraftMutationResult, DraftRequest, DraftResult, ListSnapshotsRequest, ListTrashRequest, ListTreeRequest, OpenDocumentResult, ReadSnapshotRequest, RecentVaultListResult, RecentVaultRequest, RestoreSnapshotRequest, RestoreTrashRequest, RestoreTrashResult, SaveDocumentRequest, SaveDraftRequest, SnapshotContentResult, SnapshotListResult, TrashEntryRequest, TrashListResult, TrashMutationResult, VaultGenerationRequest, VaultReference, VaultTreePage, WriteDocumentResult } from '@tockteam/tocktutor-workbench/client'
+import type { ActiveVaultResult, CreateDocumentRequest, DraftMutationResult, DraftRequest, DraftResult, ListSnapshotsRequest, ListTrashRequest, ListTreeRequest, OpenDocumentResult, ReadSnapshotRequest, RecentVaultListResult, RecentVaultRequest, RestoreSnapshotRequest, RestoreTrashRequest, RestoreTrashResult, SaveDocumentRequest, SaveDraftRequest, SnapshotContentResult, SnapshotListResult, TrashEntryRequest, TrashListResult, TrashMutationResult, VaultGenerationRequest, VaultReference, VaultSearchRequest, VaultSearchResult, VaultTreePage, WriteDocumentResult } from '@tockteam/tocktutor-workbench/client'
 
 declare module '@deepseek-ai/dsh-typert-protocol' {
   interface TypertRemoteNamespace$746f636b7475746f72576f726b62656e6368 {
@@ -24,6 +24,7 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
     restoreTrash: (request: RestoreTrashRequest, signal?: AbortSignal) => Promise<RemoteResult<RestoreTrashResult>>
     saveDocument: (request: SaveDocumentRequest, signal?: AbortSignal) => Promise<RemoteResult<WriteDocumentResult>>
     saveDraft: (request: SaveDraftRequest, signal?: AbortSignal) => Promise<RemoteResult<DraftMutationResult>>
+    search: (request: VaultSearchRequest, signal?: AbortSignal) => Promise<RemoteResult<VaultSearchResult>>
     trashEntry: (request: TrashEntryRequest, signal?: AbortSignal) => Promise<RemoteResult<TrashMutationResult>>
   }
   interface TypertRemoteMap {
@@ -44,6 +45,7 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
     'tocktutorWorkbench/restoreTrash': (request: RestoreTrashRequest, signal?: AbortSignal) => Promise<RemoteResult<RestoreTrashResult>>
     'tocktutorWorkbench/saveDocument': (request: SaveDocumentRequest, signal?: AbortSignal) => Promise<RemoteResult<WriteDocumentResult>>
     'tocktutorWorkbench/saveDraft': (request: SaveDraftRequest, signal?: AbortSignal) => Promise<RemoteResult<DraftMutationResult>>
+    'tocktutorWorkbench/search': (request: VaultSearchRequest, signal?: AbortSignal) => Promise<RemoteResult<VaultSearchResult>>
     'tocktutorWorkbench/trashEntry': (request: TrashEntryRequest, signal?: AbortSignal) => Promise<RemoteResult<TrashMutationResult>>
   }
   interface TypertRemoteNamespaceMap {

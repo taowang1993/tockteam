@@ -130,6 +130,9 @@ import type {
   TrashEntryRequest,
   VaultGenerationRequest,
   VaultReference,
+  VaultSearchMatch,
+  VaultSearchRequest,
+  VaultSearchResult,
   VaultTreeEntry,
   VaultTreePage,
   WriteDocumentResult,
@@ -180,6 +183,7 @@ export interface WorkbenchRouteRemote extends NoteVaultEventRemote {
     trashEntry(request: TrashEntryRequest, signal?: AbortSignal): Promise<RemoteResult<unknown>>
     listTrash(request: ListTrashRequest, signal?: AbortSignal): Promise<RemoteResult<{ entries: TrashEntryInfo[]; generation: number }>>
     restoreTrash(request: RestoreTrashRequest, signal?: AbortSignal): Promise<RemoteResult<unknown>>
+    search(request: VaultSearchRequest, signal?: AbortSignal): Promise<RemoteResult<VaultSearchResult>>
   }
 }
 
@@ -219,6 +223,9 @@ export interface WorkbenchRouteSnapshot {
   recoveryOpen?: boolean
   revision: string | null
   saveStatus: EditorStatus
+  searchLoading?: boolean
+  searchMatches?: readonly VaultSearchMatch[]
+  searchMode?: 'query' | 'related'
   searchOpen: boolean
   searchQuery: string
   selectedSnapshot?: SnapshotContentResult | null
@@ -272,6 +279,17 @@ function validRecentVaults(value: RecentVaultListResult): boolean {
     && value.vaults.every(vault => /^vault:[0-9a-f]{64}$/u.test(vault.id)
       && Number.isFinite(vault.lastOpenedAt)
       && vault.lastOpenedAt >= 0)
+}
+
+function validSearchResult(value: VaultSearchResult, vault: VaultReference): boolean {
+  return value?.generation === vault.generation
+    && typeof value.query === 'string'
+    && Array.isArray(value.matches)
+    && value.matches.length <= 100
+    && value.matches.every(match => isSafeVaultRelativePath(match.path)
+      && typeof match.preview === 'string'
+      && match.preview.length <= 4_096
+      && (match.line === null || Number.isSafeInteger(match.line)))
 }
 
 function documentKind(path: string): RouteDocumentKind | null {
@@ -356,6 +374,9 @@ function initialSnapshot(): WorkbenchRouteSnapshot {
     recoveryOpen: false,
     revision: null,
     saveStatus: 'saved',
+    searchLoading: false,
+    searchMatches: Object.freeze([]),
+    searchMode: 'query',
     searchOpen: false,
     searchQuery: '',
     selectedSnapshot: null,
@@ -581,11 +602,47 @@ export class WorkbenchRouteController {
   }
 
   closeSearch(): void {
-    this.update({ searchOpen: false, searchQuery: '' })
+    this.update({ searchLoading: false, searchMatches: Object.freeze([]), searchOpen: false, searchQuery: '' })
   }
 
   openSearch(query: string): void {
-    this.update({ searchOpen: true, searchQuery: query })
+    this.update({ searchMatches: Object.freeze([]), searchOpen: true, searchQuery: query })
+  }
+
+  setSearchMode(mode: 'query' | 'related'): void {
+    this.update({ searchMode: mode })
+  }
+
+  async runSearch(): Promise<boolean> {
+    const vault = this.snapshot.vault
+    const query = this.snapshot.searchQuery.trim()
+    if (vault === null || query.length === 0 || query.length > 1_000) {
+      this.update({ searchMatches: Object.freeze([]) })
+      return false
+    }
+    const mode = this.snapshot.searchMode ?? 'query'
+    const operation = this.nextOperation()
+    this.update({ searchLoading: true })
+    try {
+      const result = remoteValue(await this.remote.tocktutorWorkbench.search({
+        expectedVault: vault,
+        limit: 100,
+        mode,
+        query,
+      }, operation.signal))
+      if (!this.current(operation.id, vault) || !validSearchResult(result, vault)) return false
+      this.update({
+        message: result.truncated ? 'Search returned a bounded partial result.' : `${String(result.matches.length)} search results.`,
+        searchLoading: false,
+        searchMatches: Object.freeze(result.matches.map(match => Object.freeze({ ...match }))),
+      })
+      return true
+    } catch {
+      if (this.current(operation.id, vault) && !operation.signal.aborted) {
+        this.update({ message: 'Search could not be completed.', searchLoading: false })
+      }
+      return false
+    }
   }
 
   private settlePendingDispatch(result: TockTutorNativeActionsDispatchResult): void {
@@ -786,6 +843,9 @@ export class WorkbenchRouteController {
       recentlyClosed: Object.freeze([]),
       revision: null,
       saveStatus: 'saved',
+      searchLoading: false,
+      searchMatches: Object.freeze([]),
+      searchMode: 'query',
       searchOpen: false,
       searchQuery: '',
       selectionEnd: 0,
@@ -1656,8 +1716,10 @@ export interface TockTutorRouteViewProps {
   onRestoreSnapshot?(id: string): void
   onRestoreTrash?(id: string): void
   onSave(): void
+  onRunSearch?(): void
   onSaveWorkspace?(): void
   onSearchChange?(query: string): void
+  onSearchMode?(mode: 'query' | 'related'): void
   onSettingsChange?(change: Partial<TockTutorSettings>): void
   onSelectionChange?(start: number, end: number): void
   onSelect(path: string): void
@@ -2168,7 +2230,24 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
                     <TooltipContent>Close Search</TooltipContent>
                   </Tooltip>
                 </div>
-                <Alert unstyled aria-live="polite" className="mx-1 my-[7px] text-xs text-[var(--tt-muted)]" role="status">{documents.length} matching notes.</Alert>
+                <div className="mt-1 flex gap-1">
+                  <Button unstyled aria-pressed={(snapshot.searchMode ?? 'query') === 'query'} className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs aria-pressed:border-[var(--tt-accent)]" onClick={() => { props.onSearchMode?.('query') }} type="button">Keyword</Button>
+                  <Button unstyled aria-pressed={snapshot.searchMode === 'related'} className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs aria-pressed:border-[var(--tt-accent)]" onClick={() => { props.onSearchMode?.('related') }} type="button">Related</Button>
+                  <Button unstyled className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs" disabled={snapshot.searchLoading === true || snapshot.searchQuery.trim() === ''} onClick={props.onRunSearch} type="button">{snapshot.searchLoading === true ? 'Searching…' : 'Search'}</Button>
+                </div>
+                <Alert unstyled aria-live="polite" className="mx-1 my-[7px] text-xs text-[var(--tt-muted)]" role="status">{(snapshot.searchMatches?.length ?? 0) > 0 ? `${String(snapshot.searchMatches?.length ?? 0)} vault results.` : `${String(documents.length)} matching note paths.`}</Alert>
+                {(snapshot.searchMatches?.length ?? 0) > 0 && (
+                  <ul className="m-0 grid list-none gap-1 p-0" aria-label="Vault Search Results">
+                    {snapshot.searchMatches?.map((match, index) => (
+                      <li key={`${match.path}-${String(match.line ?? 0)}-${String(index)}`}>
+                        <Button unstyled className="w-full rounded border border-[var(--tt-border)] bg-transparent p-1.5 text-left" onClick={() => { props.onSelect(match.path) }} type="button">
+                          <strong className="block truncate text-xs">{match.path}{match.line === null ? '' : `:${String(match.line)}`}</strong>
+                          <span className="block truncate text-xs text-[var(--tt-muted)]">{match.preview}</span>
+                        </Button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </section>
             )}
             <nav aria-label="Vault Notes">
@@ -2590,9 +2669,11 @@ export function TockTutorRoute(props: TockTutorRouteProps): ReactNode {
         onReopenClosedTab={() => { void controller.reopenClosedTab() }}
         onRestoreSnapshot={id => { void controller.restoreRecoverySnapshot(id) }}
         onRestoreTrash={id => { void controller.restoreTrashEntry(id) }}
+        onRunSearch={() => { void controller.runSearch() }}
         onSave={() => { void controller.save() }}
         onSaveWorkspace={() => { controller.saveCurrentWorkspace() }}
         onSearchChange={query => { controller.setSearchQuery(query) }}
+        onSearchMode={mode => { controller.setSearchMode(mode) }}
         onSettingsChange={change => { controller.updateSettings(change) }}
         onSelect={path => { void controller.select(path) }}
         onSelectionChange={(start, end) => { controller.setSelection(start, end) }}

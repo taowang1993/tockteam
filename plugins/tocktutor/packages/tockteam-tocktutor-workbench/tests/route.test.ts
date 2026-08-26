@@ -230,6 +230,19 @@ class FakeRemote implements WorkbenchRouteRemote {
       this.draftContent = request.content
       return success({ generation: request.expectedVault.generation, ok: true as const, updatedAt: 2 })
     },
+    search: (request: { expectedVault: VaultReference; limit?: number; mode?: string; query: string }, signal?: AbortSignal) => {
+      this.calls.push({ method: 'search', parameters: [request, signal] })
+      return success({
+        cursor: null,
+        generation: request.expectedVault.generation,
+        matches: [{ kind: 'content' as const, line: 2, path: 'Folder/Note.md', preview: `Match ${request.query}` }],
+        query: request.query,
+        scan: { bytes: 30, entries: 4, files: 2 },
+        truncated: false,
+        truncationReason: null,
+        warnings: [],
+      })
+    },
     saveDocument: (request: {
       content: string
       expectedRevision: string
@@ -1032,6 +1045,26 @@ test('runs editor commands against the captured Source selection', async () => {
   const unchanged = controller.getSnapshot().source
   controller.runEditorCommand('delete-line')
   assert.equal(controller.getSnapshot().source, unchanged)
+  controller.dispose()
+})
+
+test('runs bounded vault search and Related results against the captured generation', async () => {
+  const remote = new FakeRemote()
+  const controller = new WorkbenchRouteController(remote, () => {})
+  await controller.syncLocation('/tocktutor')
+  controller.openSearch('lesson')
+  controller.setSearchMode('related')
+  assert.equal(await controller.runSearch(), true)
+  assert.equal(controller.getSnapshot().searchMatches?.[0]?.path, 'Folder/Note.md')
+  assert.equal(controller.getSnapshot().searchMatches?.[0]?.line, 2)
+  assert.deepEqual(remote.calls.findLast(call => call.method === 'search')?.parameters[0], {
+    expectedVault: firstVault,
+    limit: 100,
+    mode: 'related',
+    query: 'lesson',
+  })
+  controller.closeSearch()
+  assert.equal(controller.getSnapshot().searchMatches?.length, 0)
   controller.dispose()
 })
 

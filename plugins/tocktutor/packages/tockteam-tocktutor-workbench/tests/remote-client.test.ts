@@ -48,6 +48,7 @@ test('publishes deterministic strict read, tree, save, and recovery Remote artif
     'restoreTrash',
     'saveDocument',
     'saveDraft',
+    'search',
     'trashEntry',
   ])
   for (const descriptor of remote.descriptors) {

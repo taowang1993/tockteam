@@ -27,6 +27,8 @@ import type {
   TrashMutationResult,
   VaultGenerationRequest,
   VaultReference,
+  VaultSearchRequest,
+  VaultSearchResult,
   VaultTreePage,
   WriteDocumentResult,
 } from './types.ts'
@@ -55,6 +57,7 @@ export type NoteVaultCapability = Pick<
   | 'restoreTrash'
   | 'saveDocument'
   | 'saveDraft'
+  | 'search'
   | 'state'
   | 'trashEntry'
 >
@@ -180,6 +183,22 @@ function assertCreateRequest(value: CreateDocumentRequest): void {
 function assertSaveRequest(value: SaveDocumentRequest): void {
   assertCreateRequest(value)
   assertRevision(value.expectedRevision)
+}
+
+function assertSearchRequest(value: VaultSearchRequest): void {
+  assertRecord(value, 'Search request')
+  assertVaultReference(value.expectedVault)
+  if (typeof value.query !== 'string' || value.query.length > 1_000 || /[\u0000-\u001f\u007f]/u.test(value.query)) {
+    throw new TypeError('Search query must be bounded text.')
+  }
+  if (value.mode !== undefined && value.mode !== 'literal' && value.mode !== 'query' && value.mode !== 'related') throw new TypeError('Search mode is unsupported.')
+  if (value.scope !== undefined && value.scope !== 'all' && value.scope !== 'content' && value.scope !== 'path' && value.scope !== 'properties') throw new TypeError('Search scope is unsupported.')
+  if (value.directory !== undefined) assertEntryPath(value.directory)
+  if (value.limit !== undefined && (!Number.isSafeInteger(value.limit) || value.limit < 1 || value.limit > 100)) throw new TypeError('Search limit must be from 1 through 100.')
+  if (value.cursor !== undefined && (typeof value.cursor !== 'string' || value.cursor.length === 0 || value.cursor.length > MAX_TREE_CURSOR_LENGTH)) throw new TypeError('Search cursor must be bounded.')
+  for (const option of [value.caseSensitive, value.regex, value.wholeWord]) {
+    if (option !== undefined && typeof option !== 'boolean') throw new TypeError('Search options must be Boolean.')
+  }
 }
 
 function assertDraftRequest(value: DraftRequest): void {
@@ -317,6 +336,14 @@ export class TockTutorWorkbenchGateway extends TypertRemoteService {
     assertSaveRequest(request)
     signal.throwIfAborted()
     return this.ctx.noteVault.saveDocument(request, signal)
+  }
+
+  @Remote
+  async search(request: VaultSearchRequest, signal: AbortSignal): Promise<VaultSearchResult> {
+    assertSearchRequest(request)
+    signal.throwIfAborted()
+    const { expectedVault, ...args } = request
+    return this.ctx.noteVault.search(args, expectedVault, signal)
   }
 
   @Remote
