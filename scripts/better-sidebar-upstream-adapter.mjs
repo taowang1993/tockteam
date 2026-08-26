@@ -10,10 +10,11 @@ const BINARY_EXIT = `const onExit = ({ exitCode }: { exitCode: number; signal?: 
     }`
 
 export function adaptBetterSidebarHost(source) {
-  const start = source.indexOf(SESSION_TERMINAL_ANCHOR)
-  const end = source.indexOf(SESSION_TERMINAL_END, start)
+  const normalized = source.replaceAll('\r\n', '\n')
+  const start = normalized.indexOf(SESSION_TERMINAL_ANCHOR)
+  const end = normalized.indexOf(SESSION_TERMINAL_END, start)
   if (start < 0 || end < 0) throw new Error('Better Sidebar session terminal seam changed upstream')
-  const section = source.slice(start, end)
+  const section = normalized.slice(start, end)
   if (!section.includes(TEXT_EXIT)) throw new Error('Better Sidebar session exit seam changed upstream')
-  return `${source.slice(0, start)}${section.replace(TEXT_EXIT, BINARY_EXIT)}${source.slice(end)}`
+  return `${normalized.slice(0, start)}${section.replace(TEXT_EXIT, BINARY_EXIT)}${normalized.slice(end)}`
 }
