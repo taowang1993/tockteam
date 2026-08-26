@@ -5,6 +5,7 @@ export interface LivePreviewSelection {
     from: number;
     to: number;
 }
+export declare function isLivePreviewSourceProtected(source: string): boolean;
 export declare function splitLivePreviewSource(source: string): {
     body: string;
     prefix: string;

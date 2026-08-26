@@ -8,7 +8,7 @@ import { AgentContinuationRouter, } from "./agent-continuation.js";
 import { registerAssistantReadTools } from "./read-tool-registration.js";
 import { PennivoReadAdapter, REVIEWED_PENNIVO_READ_TOOLS, } from "./read-tools.js";
 import { AssistantTurnBindingError, AssistantTurnBindingRegistry, } from "./turn-bindings.js";
-import { registerAssistantWriteTools } from "./write-tool-registration.js";
+import { organizedCaptureContent, publicTockDriverWriteResult, registerAssistantWriteTools, registerMainTockDriverWriteTools, } from "./write-tool-registration.js";
 import { TockTutorAssistantGateway, } from "./remote.js";
 import { PennivoChildManager, } from "./pennivo-child.js";
 import { ProductionAssistantTurnBinder, } from "./production-turns.js";
@@ -25,6 +25,7 @@ export * from "./text-turn.js";
 export * from "./turn-bindings.js";
 export * from "./write-tool-registration.js";
 const IDENTIFIER_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:/-]*$/u;
+const MAIN_TOCKDRIVER_BINDING = 'tockdriver-main';
 export const Config = Schema.object({
     provider: Schema.string().min(1).max(128).pattern(IDENTIFIER_PATTERN).default('deepseek-official'),
     model: Schema.string().min(1).max(256).pattern(IDENTIFIER_PATTERN).default('deepseek-v4-flash'),
@@ -56,6 +57,7 @@ export class NoteAssistant extends Service {
     proposalPersistence = Promise.resolve();
     decisionTasks = new Set();
     decisionAdmissionOpen = true;
+    mainTockDriverDispose;
     constructor(ctx, config) {
         super(ctx, 'noteAssistant');
         this.agents = ctx.agents;
@@ -77,6 +79,7 @@ export class NoteAssistant extends Service {
             bind: (agent, turn, messageId, signal) => this.bindProductionTurn(agent, turn, messageId, signal),
             requestConfig: (agent, turn, signal, config) => this.productionRequestConfig(agent, turn, signal, config),
         });
+        this.syncMainTockDriverTools();
         ctx.on('settings/updated', (namespace) => {
             if (namespace === ASSISTANT_SETTINGS_NAMESPACE)
                 this.observeSettings(this.settings.get());
@@ -118,6 +121,8 @@ export class NoteAssistant extends Service {
             this.childAbort.abort(new Error('Assistant child disposed.'));
             this.productionTurns.dispose();
             this.turnBindings.dispose();
+            this.mainTockDriverDispose?.();
+            this.mainTockDriverDispose = undefined;
             await this.vaultBarrier.catch(() => undefined);
             await this.pennivoChild.dispose();
             await Promise.allSettled(this.decisionTasks);
@@ -202,6 +207,95 @@ export class NoteAssistant extends Service {
             throw error;
         }
     }
+    syncMainTockDriverTools() {
+        const enabled = this.settings.get().writePermission === 'propose';
+        if (enabled && this.mainTockDriverDispose === undefined) {
+            this.mainTockDriverDispose = registerMainTockDriverWriteTools(this.ctx.tools, {
+                organize: (args, signal) => this.organizeMainTockDriverCapture(args, signal),
+                stage: (args, signal) => this.stageMainTockDriverWrite(args, signal),
+            });
+        }
+        else if (!enabled && this.mainTockDriverDispose !== undefined) {
+            this.mainTockDriverDispose();
+            this.mainTockDriverDispose = undefined;
+        }
+    }
+    mainTockDriverFacts(signal, vaultId) {
+        if (signal.aborted)
+            throw new AssistantTurnBindingError('ABORTED');
+        const settings = this.settings.get();
+        this.observeSettings(settings);
+        const state = this.noteVault.state;
+        if (settings.writePermission !== 'propose' || !state.active || vaultId !== undefined && vaultId !== state.id) {
+            throw new AssistantTurnBindingError('TOOL_UNAVAILABLE');
+        }
+        return { settings, vault: { generation: state.generation, id: state.id } };
+    }
+    async stageMainTockDriverProposal(input, facts, signal) {
+        const current = this.mainTockDriverFacts(signal, facts.vault.id);
+        if (current.vault.generation !== facts.vault.generation
+            || current.settings.provider !== facts.settings.provider
+            || current.settings.model !== facts.settings.model)
+            throw new AssistantTurnBindingError('STALE_TURN');
+        const summary = this.proposalQueue.stage({
+            vaultId: facts.vault.id,
+            vaultGeneration: facts.vault.generation,
+            destination: input.destination,
+            operation: input.operation,
+            ...(input.source === undefined ? {} : { source: input.source }),
+            expectedTarget: input.expectedTarget,
+            content: input.content,
+            childInstanceId: MAIN_TOCKDRIVER_BINDING,
+            turnId: MAIN_TOCKDRIVER_BINDING,
+            requestId: MAIN_TOCKDRIVER_BINDING,
+            provider: facts.settings.provider,
+            model: facts.settings.model,
+            writePermission: 'propose',
+            permissionEpoch: this.permissionEpoch,
+        });
+        await this.persistProposalState();
+        return summary;
+    }
+    async stageMainTockDriverWrite(args, signal) {
+        const facts = this.mainTockDriverFacts(signal, args.vaultId);
+        let source;
+        let expectedTarget = { exists: false };
+        if (args.operation === 'update') {
+            const opened = await this.noteVault.openDocument(args.path, facts.vault, signal);
+            if (opened.generation !== facts.vault.generation || opened.path !== args.path || !opened.digest.startsWith('sha256:')) {
+                throw new Error('The Notes update source changed during staging.');
+            }
+            source = { relativePath: opened.path, identity: opened.revision, contentDigest: opened.digest.slice('sha256:'.length) };
+            expectedTarget = { exists: true, identity: opened.revision };
+        }
+        const summary = await this.stageMainTockDriverProposal({
+            content: args.content,
+            destination: args.path,
+            operation: args.operation,
+            ...(source === undefined ? {} : { source }),
+            expectedTarget,
+        }, facts, signal);
+        return publicTockDriverWriteResult(summary, { vaultId: facts.vault.id }, args.path, args.path.slice(args.path.lastIndexOf('/') + 1).replace(/\.(?:md|markdown)$/iu, ''), args.operation);
+    }
+    async organizeMainTockDriverCapture(args, signal) {
+        const facts = this.mainTockDriverFacts(signal, args.vaultId);
+        const opened = await this.noteVault.openDocument(args.path, facts.vault, signal);
+        if (opened.generation !== facts.vault.generation || opened.path !== args.path || !opened.digest.startsWith('sha256:')) {
+            throw new Error('The Inbox capture changed during staging.');
+        }
+        const organized = organizedCaptureContent(args.path, opened.content, new Date());
+        if (new TextEncoder().encode(organized.content).byteLength > 1024 * 1024) {
+            throw new Error('The organized note exceeds the safe staging limit.');
+        }
+        const summary = await this.stageMainTockDriverProposal({
+            content: organized.content,
+            destination: organized.destination,
+            operation: 'create',
+            source: { relativePath: opened.path, identity: opened.revision, contentDigest: opened.digest.slice('sha256:'.length) },
+            expectedTarget: { exists: false },
+        }, facts, signal);
+        return publicTockDriverWriteResult(summary, { vaultId: facts.vault.id }, organized.destination, organized.title, 'create');
+    }
     async stageBoundProposal(proposal) {
         this.observeSettings(this.settings.get());
         if (!this.turnBindings.isCurrentProposal({
@@ -241,6 +335,28 @@ export class NoteAssistant extends Service {
             return;
         void this.persistProposalState().catch(() => undefined);
     }
+    async restoredCreateTargetExists(proposal, signal) {
+        const expectedVault = { id: proposal.vaultId, generation: proposal.vaultGeneration };
+        const cursors = new Set();
+        let cursor = null;
+        for (let pageIndex = 0; pageIndex < 100; pageIndex += 1) {
+            const page = await this.noteVault.listTree({
+                expectedVault,
+                limit: 1_000,
+                ...(cursor === null ? {} : { cursor }),
+            }, signal);
+            if (page.generation !== proposal.vaultGeneration
+                || page.entries.some(entry => entry.path === proposal.destination))
+                return true;
+            if (page.complete && page.cursor === null)
+                return false;
+            if (page.cursor === null || cursors.has(page.cursor))
+                return true;
+            cursors.add(page.cursor);
+            cursor = page.cursor;
+        }
+        return true;
+    }
     async restoredProposalMismatch(proposal) {
         const state = this.noteVault.state;
         if (!state.active
@@ -260,18 +376,24 @@ export class NoteAssistant extends Service {
                 return 'SOURCE_CHANGED';
             }
         }
-        try {
-            const target = await this.noteVault.openDocument(proposal.destination, expectedVault, signal);
-            if (proposal.operation === 'create'
-                || target.revision !== proposal.expectedTarget.identity)
+        if (proposal.operation === 'create') {
+            try {
+                if (await this.restoredCreateTargetExists(proposal, signal))
+                    return 'TARGET_CHANGED';
+            }
+            catch {
                 return 'TARGET_CHANGED';
+            }
         }
-        catch (error) {
-            const code = error instanceof Error
-                ? error.code
-                : undefined;
-            if (proposal.operation === 'update' || code !== 'not-found')
+        else {
+            try {
+                const target = await this.noteVault.openDocument(proposal.destination, expectedVault, signal);
+                if (target.revision !== proposal.expectedTarget.identity)
+                    return 'TARGET_CHANGED';
+            }
+            catch {
                 return 'TARGET_CHANGED';
+            }
         }
         const settings = this.settings.get();
         this.observeSettings(settings);
@@ -281,6 +403,11 @@ export class NoteAssistant extends Service {
         if (settings.provider !== proposal.provider || settings.model !== proposal.model) {
             return 'PROVIDER_MISMATCH';
         }
+        const mainBinding = proposal.childInstanceId === MAIN_TOCKDRIVER_BINDING
+            && proposal.turnId === MAIN_TOCKDRIVER_BINDING
+            && proposal.requestId === MAIN_TOCKDRIVER_BINDING;
+        if (mainBinding)
+            return undefined;
         if (!this.turnBindings.isCurrentProposal({
             vaultId: proposal.vaultId,
             vaultGeneration: proposal.vaultGeneration,
@@ -319,6 +446,7 @@ export class NoteAssistant extends Service {
             this.turnBindings.invalidatePermission(next.writePermission, this.permissionEpoch);
             this.quiesceChild();
         }
+        this.syncMainTockDriverTools();
     }
     quiesceChild() {
         const previous = this.vaultBarrier;
@@ -484,19 +612,22 @@ export class NoteAssistant extends Service {
             const state = this.noteVault.state;
             const settings = this.settings.get();
             this.observeSettings(settings);
+            const mainBinding = proposal?.childInstanceId === MAIN_TOCKDRIVER_BINDING;
             return {
                 vaultId: state.active ? state.id : 'inactive-vault',
                 vaultGeneration: state.generation,
-                childInstanceId: this.pennivoChild.active()?.instanceId ?? 'missing-child',
-                turnId: proposal?.turnId ?? 'missing-turn',
-                requestId: proposal?.requestId ?? 'missing-request',
+                childInstanceId: mainBinding ? MAIN_TOCKDRIVER_BINDING : this.pennivoChild.active()?.instanceId ?? 'missing-child',
+                turnId: mainBinding ? MAIN_TOCKDRIVER_BINDING : proposal?.turnId ?? 'missing-turn',
+                requestId: mainBinding ? MAIN_TOCKDRIVER_BINDING : proposal?.requestId ?? 'missing-request',
                 provider: settings.provider,
                 model: settings.model,
                 writePermission: settings.writePermission,
                 permissionEpoch: this.permissionEpoch,
             };
         }, () => this.persistProposalState());
-        const decisionSignal = AbortSignal.any([signal, settingsSignal, childSignal]);
+        const decisionSignal = proposal?.childInstanceId === MAIN_TOCKDRIVER_BINDING
+            ? AbortSignal.any([signal, settingsSignal])
+            : AbortSignal.any([signal, settingsSignal, childSignal]);
         const task = executor.approve(proposalId, decisionSignal).then(result => {
             const agent = this.proposalAgents.get(proposalId);
             this.proposalAgents.delete(proposalId);

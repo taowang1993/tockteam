@@ -2,7 +2,7 @@
 import { Plugin, PluginKey, TextSelection } from '@milkdown/prose/state';
 import { Decoration, DecorationSet } from '@milkdown/prose/view';
 export const livePreviewEmbedPluginKey = new PluginKey('tocktutorLivePreviewEmbeds');
-function widgetDom(embed, from, to) {
+function widgetDom(embed, from, to, reveal) {
     const widget = document.createElement('span');
     widget.className = 'tocktutor-live-embed-widget inline-flex max-w-full flex-col gap-1 rounded border border-[var(--tt-border)] bg-[var(--tt-panel)] p-2 align-top text-[var(--tt-text)]';
     widget.dataset.embedFrom = String(from);
@@ -10,6 +10,14 @@ function widgetDom(embed, from, to) {
     widget.dataset.embedKind = embed.target.kind;
     widget.setAttribute('aria-label', `${embed.target.kind} Embed: ${embed.target.display ?? embed.target.path}`);
     widget.tabIndex = 0;
+    widget.addEventListener('mousedown', event => { event.preventDefault(); event.stopPropagation(); reveal(); });
+    widget.addEventListener('keydown', event => {
+        if (event.key !== 'Enter' && event.key !== ' ')
+            return;
+        event.preventDefault();
+        event.stopPropagation();
+        reveal();
+    });
     const label = document.createElement('strong');
     label.className = 'truncate text-xs';
     label.textContent = embed.target.display ?? embed.target.path;
@@ -54,7 +62,7 @@ function widgetDom(embed, from, to) {
     }
     return widget;
 }
-function decorationSet(state, embeds) {
+function decorationSet(state, embeds, revealed, reveal) {
     const buckets = new Map();
     for (const embed of embeds) {
         const bucket = buckets.get(embed.target.source) ?? [];
@@ -75,15 +83,26 @@ function decorationSet(state, embeds) {
                 const to = from + source.length;
                 offset = index + source.length;
                 const embed = bucket.shift();
-                if (embed === undefined || state.selection.from <= to && state.selection.to >= from)
+                if (embed === undefined || revealed.has(`${String(from)}:${String(to)}`)
+                    || state.selection.from <= to && state.selection.to >= from)
                     continue;
-                decorations.push(Decoration.inline(from, to, { class: 'hidden' }, { embedSource: 'true' }), Decoration.widget(from, () => widgetDom(embed, from, to), { side: -1, embedWidget: 'true' }));
+                decorations.push(Decoration.inline(from, to, { class: 'hidden' }, { embedSource: 'true' }), Decoration.widget(from, view => widgetDom(embed, from, to, () => { reveal(view, from, to); }), { side: -1, embedWidget: 'true' }));
             }
         }
     });
     return DecorationSet.create(state.doc, decorations);
 }
 export function buildLivePreviewEmbedPlugin(getEmbeds) {
+    const revealed = new Set();
+    const revealRange = (view, from, to) => {
+        if (from < 0 || to <= from || to > view.state.doc.content.size)
+            return;
+        revealed.add(`${String(from)}:${String(to)}`);
+        view.dispatch(view.state.tr
+            .setSelection(TextSelection.create(view.state.doc, from, to))
+            .setMeta(livePreviewEmbedPluginKey, { refresh: true }));
+        view.focus();
+    };
     const reveal = (view, event) => {
         const widget = event.target instanceof Element ? event.target.closest('[data-embed-from][data-embed-to]') : null;
         if (widget === null || event.type === 'keydown' && event.key !== 'Enter' && event.key !== ' ')
@@ -93,14 +112,17 @@ export function buildLivePreviewEmbedPlugin(getEmbeds) {
         if (!Number.isSafeInteger(from) || !Number.isSafeInteger(to) || from < 0 || to <= from || to > view.state.doc.content.size)
             return false;
         event.preventDefault();
-        view.dispatch(view.state.tr.setSelection(TextSelection.near(view.state.doc.resolve(Math.min(from + 3, to - 1)))));
-        view.focus();
+        revealRange(view, from, to);
         return true;
     };
     return new Plugin({
         key: livePreviewEmbedPluginKey,
+        state: {
+            init: () => null,
+            apply() { return null; },
+        },
         props: {
-            decorations: state => decorationSet(state, getEmbeds()),
+            decorations: state => decorationSet(state, getEmbeds(), revealed, revealRange),
             handleDOMEvents: { mousedown: reveal, keydown: reveal },
         },
     });
