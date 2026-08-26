@@ -4,6 +4,25 @@
   height="1024"
   viewBox="0 0 1024 1024"
 >
+  <style>
+    path[fill="#0a0a0a"] {
+      fill: #0a0a0a;
+    }
+
+    path[stroke="#0a0a0a"] {
+      stroke: #0a0a0a;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      path[fill="#0a0a0a"] {
+        fill: #fafafa;
+      }
+
+      path[stroke="#0a0a0a"] {
+        stroke: #fafafa;
+      }
+    }
+  </style>
   <svg x="128" y="128" width="768" height="768" viewBox="0 0 20 20" fill="none">
     <path
       fill-rule="evenodd"
