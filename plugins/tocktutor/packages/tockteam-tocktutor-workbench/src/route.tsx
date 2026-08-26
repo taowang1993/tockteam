@@ -22,10 +22,6 @@ import {
 } from 'react'
 import { createPortal } from 'react-dom'
 import {
-  ArrowDown,
-  ArrowLeft,
-  ArrowRight,
-  ArrowUp,
   Bookmark,
   ChevronLeft,
   ChevronRight,
@@ -49,6 +45,8 @@ import type { PropsRenderSlots } from '@deepseek-ai/dsh-client-ui-slots'
 import type { RemoteResult } from '@deepseek-ai/dsh-typert-protocol'
 import { TOCKTUTOR_ASSISTANT_PANEL_SLOT } from './assistant-panel.ts'
 import { projectBase } from './base.ts'
+import { CanvasBoard } from './canvas-board.tsx'
+import type { CanvasChange } from './canvas-change.ts'
 import {
   TOCKTUTOR_NATIVE_ACTIONS_SLOT,
   type TockTutorNativeActionsDispatchEvent,
@@ -58,7 +56,6 @@ import {
 import { TOCKTUTOR_REVIEW_PANEL_SLOT } from './review-panel.ts'
 import {
   parseCanvasDocument,
-  projectCanvas,
   updateCanvasNodePosition,
 } from './canvas.ts'
 import {
@@ -1543,6 +1540,31 @@ export class WorkbenchRouteController {
     }
   }
 
+  async applyCanvasChange(change: CanvasChange): Promise<boolean> {
+    const vault = this.snapshot.vault
+    const path = this.snapshot.path
+    if (vault === null
+      || path === null
+      || this.snapshot.documentKind !== 'canvas'
+      || this.snapshot.revision !== change.expectedRevision
+      || this.snapshot.source !== change.previousSource) return false
+    const operation = this.operation
+    this.edit(change.source)
+    const saved = await this.save()
+    if (saved) return true
+    if (this.operation !== operation
+      || !sameVault(this.snapshot.vault, vault)
+      || this.snapshot.path !== path
+      || this.snapshot.source !== change.source) return false
+    this.update({
+      message: 'The Canvas change failed and its previous preview was restored.',
+      saveStatus: 'save-failed',
+      source: change.previousSource,
+    })
+    this.recordDirty(false)
+    return false
+  }
+
   save(): Promise<boolean> {
     if (this.saving !== null) return this.saving
     if (this.snapshot.saveStatus === 'saved') return Promise.resolve(true)
@@ -1726,42 +1748,6 @@ function LivePreviewView(props: {
   )
 }
 
-function CanvasView(props: {
-  onMove(nodeId: string, deltaX: number, deltaY: number): void
-  source: string
-}): ReactNode {
-  const projection = projectCanvas(parseCanvasDocument(props.source))
-  if (projection.status !== 'ready') return <Alert unstyled>{projection.reason}</Alert>
-  return (
-    <section aria-label="Canvas View" className="tocktutor-projection min-h-0 overflow-auto p-6" tabIndex={-1}>
-      <header>
-        <p className="tocktutor-kicker mb-0.5 text-[11px] font-[650] tracking-[.08em] text-[var(--tt-muted)] uppercase">Canvas</p>
-        <h3 className="mt-0 mb-[18px] text-[17px]">{projection.nodes.length} Nodes · {projection.edges.length} Edges</h3>
-      </header>
-      <div className="tocktutor-canvas-grid grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-3">
-        {projection.nodes.map(node => {
-          const label = node.text ?? node.file ?? `${node.type} node`
-          return (
-            <article className="tocktutor-canvas-node min-w-0 rounded-lg border border-[var(--tt-border)] bg-[var(--tt-bg)] p-3.5 [&>h4]:mt-0 [&>h4]:mb-2 [&>h4]:text-sm [&>h4]:[overflow-wrap:anywhere] [&>p:not(.tocktutor-kicker)]:text-xs [&>p:not(.tocktutor-kicker)]:text-[var(--tt-muted)]" key={node.id}>
-              <p className="tocktutor-kicker mb-0.5 text-[11px] font-[650] tracking-[.08em] text-[var(--tt-muted)] uppercase">{node.type}</p>
-              <h4>{label}</h4>
-              <p>Position {String(node.x)}, {String(node.y)}</p>
-              {!node.supported && <p role="note">Unsupported node fields remain inert.</p>}
-              <fieldset className="tocktutor-node-actions mt-2.5 flex gap-1 border-0 p-0 [&_button]:cursor-pointer [&_button]:rounded-[5px] [&_button]:border [&_button]:border-[var(--tt-border)] [&_button]:bg-[var(--tt-panel)] [&_button]:px-2.5 [&_button]:py-[7px] [&_button]:text-inherit">
-                <legend className="tocktutor-visually-hidden absolute size-px overflow-hidden whitespace-nowrap [clip:rect(0_0_0_0)] [clip-path:inset(50%)]">Move {label}</legend>
-                <Button unstyled aria-label={`Move ${label} left`} onClick={() => { props.onMove(node.id, -20, 0) }} type="button"><ArrowLeft aria-hidden="true" /></Button>
-                <Button unstyled aria-label={`Move ${label} up`} onClick={() => { props.onMove(node.id, 0, -20) }} type="button"><ArrowUp aria-hidden="true" /></Button>
-                <Button unstyled aria-label={`Move ${label} down`} onClick={() => { props.onMove(node.id, 0, 20) }} type="button"><ArrowDown aria-hidden="true" /></Button>
-                <Button unstyled aria-label={`Move ${label} right`} onClick={() => { props.onMove(node.id, 20, 0) }} type="button"><ArrowRight aria-hidden="true" /></Button>
-              </fieldset>
-            </article>
-          )
-        })}
-      </div>
-    </section>
-  )
-}
-
 function BaseView(props: { source: string }): ReactNode {
   const projection = projectBase(props.source)
   if (projection.status !== 'ready') return <Alert unstyled>{projection.reason}</Alert>
@@ -1796,6 +1782,7 @@ export interface TockTutorRouteViewProps {
   onActivateTab(paneId: string, path: string): void
   onBack?(): void
   onCancelDispatch?(): void
+  onCanvasChange?(change: CanvasChange): void
   onCloseCommandPalette?(): void
   onCloseSearch?(): void
   onCloseTab?(paneId: string, path: string): void
@@ -2452,7 +2439,12 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
                 source={snapshot.source}
               />
             ) : snapshot.documentKind === 'canvas' ? (
-              <CanvasView onMove={props.onMoveCanvas} source={snapshot.source} />
+              <CanvasBoard
+                disabled={snapshot.revision === null || props.onCanvasChange === undefined}
+                onChange={change => { props.onCanvasChange?.(change) }}
+                revision={snapshot.revision ?? 'unavailable'}
+                source={snapshot.source}
+              />
             ) : snapshot.documentKind === 'base' ? (
               <BaseView source={snapshot.source} />
             ) : snapshot.documentKind === 'markdown' ? (
@@ -2785,6 +2777,7 @@ export function TockTutorRoute(props: TockTutorRouteProps): ReactNode {
         onAddPane={() => { void controller.addPane() }}
         onBack={() => { void controller.goBack() }}
         onCancelDispatch={() => { controller.cancelDispatchDialog() }}
+        onCanvasChange={change => { void controller.applyCanvasChange(change) }}
         onCloseCommandPalette={() => { controller.setCommandPaletteOpen(false) }}
         onCloseSearch={() => { controller.closeSearch() }}
         onCloseTab={(paneId, path) => { void controller.closeTab(paneId, path) }}

@@ -2,6 +2,8 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
+import { createCanvasChange } from '../dist/canvas-change.js'
+import { updateCanvasNodeGeometry } from '../dist/canvas-nodes.js'
 import {
   MAX_ROUTE_SOURCE_BYTES,
   pathFromTockTutorLocation,
@@ -791,7 +793,7 @@ test('enforces the route tab bound before dispatching another open', async () =>
   controller.dispose()
 })
 
-test('Canvas and Base projections stay inert and save only known Canvas geometry', async () => {
+test('Canvas board preserves unknown fields while Base projection remains inert', async () => {
   const remote = new FakeRemote()
   const controller = new WorkbenchRouteController(remote, () => {})
   await controller.syncLocation('/tocktutor')
@@ -821,8 +823,9 @@ test('Canvas and Base projections stay inert and save only known Canvas geometry
     onToggleTask() {},
     snapshot: controller.getSnapshot(),
   }))
-  assert.match(html, /aria-label="Canvas View"/u)
-  assert.match(html, /Move Plan right/u)
+  assert.match(html, /aria-label="Canvas Board"/u)
+  assert.match(html, /aria-label="Canvas Card Plan"/u)
+  assert.match(html, /Right Connection Handle for Plan/u)
 
   assert.equal(await controller.select('Tasks.base'), true)
   assert.equal(controller.getSnapshot().documentKind, 'base')
@@ -842,6 +845,26 @@ test('Canvas and Base projections stay inert and save only known Canvas geometry
   assert.match(html, /aria-label="Base View"/u)
   assert.match(html, /Base formula is inert and is not evaluated\./u)
   assert.match(html, /status == &quot;open&quot;/u)
+  controller.dispose()
+})
+
+test('applies Canvas changes through the canonical save gate and restores failed previews', async () => {
+  const remote = new FakeRemote()
+  const controller = new WorkbenchRouteController(remote, () => {})
+  await controller.syncLocation('/tocktutor')
+  assert.equal(await controller.select('Board.canvas'), true)
+  const previous = controller.getSnapshot().source
+  const revision = controller.getSnapshot().revision!
+  const moved = createCanvasChange(previous, revision, 'move-node', source => updateCanvasNodeGeometry(source, 'node-1', { x: 30, y: 20, width: 120, height: 80 }))
+  assert.equal(await controller.applyCanvasChange(moved), true)
+  assert.match(controller.getSnapshot().source, /"x": 30/u)
+
+  const beforeFailure = controller.getSnapshot().source
+  const failed = createCanvasChange(beforeFailure, controller.getSnapshot().revision!, 'move-node', source => updateCanvasNodeGeometry(source, 'node-1', { x: 50, y: 20, width: 120, height: 80 }))
+  remote.saveFailure = { code: 'conflict', message: 'changed' }
+  assert.equal(await controller.applyCanvasChange(failed), false)
+  assert.equal(controller.getSnapshot().source, beforeFailure)
+  assert.match(controller.getSnapshot().message, /previous preview was restored/u)
   controller.dispose()
 })
 

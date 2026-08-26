@@ -3,6 +3,7 @@ import type { TockTutorRouteOwnerProps } from '@tockteam/desktop/client';
 import type { PropsRenderSlots } from '@deepseek-ai/dsh-client-ui-slots';
 import type { RemoteResult } from '@deepseek-ai/dsh-typert-protocol';
 import { TOCKTUTOR_ASSISTANT_PANEL_SLOT } from './assistant-panel.ts';
+import type { CanvasChange } from './canvas-change.ts';
 import { TOCKTUTOR_NATIVE_ACTIONS_SLOT, type TockTutorNativeActionsDispatchEvent, type TockTutorNativeActionsDispatchResult } from './native-actions.ts';
 import { TOCKTUTOR_REVIEW_PANEL_SLOT } from './review-panel.ts';
 import { type KeyValueStorage, type NamedWorkspace, type TockTutorSettings } from './settings.ts';
@@ -191,6 +192,7 @@ export declare class WorkbenchRouteController {
     setMode(mode: RouteEditorMode): void;
     toggleTask(index: number): void;
     moveCanvasNode(nodeId: string, deltaX: number, deltaY: number): void;
+    applyCanvasChange(change: CanvasChange): Promise<boolean>;
     save(): Promise<boolean>;
     private failureMessage;
     dispose(): void;
@@ -202,6 +204,7 @@ export interface TockTutorRouteViewProps {
     onActivateTab(paneId: string, path: string): void;
     onBack?(): void;
     onCancelDispatch?(): void;
+    onCanvasChange?(change: CanvasChange): void;
     onCloseCommandPalette?(): void;
     onCloseSearch?(): void;
     onCloseTab?(paneId: string, path: string): void;
