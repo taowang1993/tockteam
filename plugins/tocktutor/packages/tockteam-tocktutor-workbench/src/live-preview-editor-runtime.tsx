@@ -16,7 +16,7 @@ import {
 } from 'react'
 import { projectEditorWidgets } from './editor-widgets.ts'
 import { runLivePreviewTableAction, type LivePreviewTableAction } from './milkdown-editor-commands.ts'
-import { splitLivePreviewSource, type LivePreviewEditorProps, type LivePreviewSelection } from './live-preview-editor.tsx'
+import { isLivePreviewSourceProtected, splitLivePreviewSource, type LivePreviewEditorProps, type LivePreviewSelection } from './live-preview-editor.tsx'
 import { buildLivePreviewEmbedPlugin, livePreviewEmbedPluginKey } from './live-preview-embed-widgets.ts'
 import { buildLivePreviewChromePlugin } from './live-preview-chrome.ts'
 
@@ -56,13 +56,32 @@ function deleteSelectedTextblock(view: EditorView): boolean {
   return true
 }
 
+function toggleCalloutFold(source: string, targetIndex: number): string {
+  let index = 0
+  let offset = 0
+  for (const line of source.split(/(?<=\n)/u)) {
+    const match = line.match(/^(\s*>\s*\[![A-Za-z][\w-]*\])([+-])/u)
+    if (match !== null) {
+      if (index === targetIndex) {
+        const from = offset + match[1]!.length
+        return `${source.slice(0, from)}${match[2] === '-' ? '+' : '-'}${source.slice(from + 1)}`
+      }
+      index += 1
+    } else if (/^\s*>\s*\[![A-Za-z][\w-]*\]/u.test(line)) index += 1
+    offset += line.length
+  }
+  return source
+}
+
 function LivePreviewEditorInner(props: LivePreviewEditorProps): ReactNode {
   const sourceRef = useRef(props.content)
   const frontmatterRef = useRef(splitLivePreviewSource(props.content).prefix)
   const embedsRef = useRef(props.resolvedEmbeds ?? [])
+  const protectedRef = useRef(isLivePreviewSourceProtected(props.content))
   const onMarkdownChangeRef = useRef(props.onMarkdownChange)
   const onOpenExternalUrlRef = useRef(props.onOpenExternalUrl)
   const onSelectionChangeRef = useRef(props.onSelectionChange)
+  const onToggleTaskRef = useRef(props.onToggleTask)
   const onWidgetStateRef = useRef(props.onWidgetState)
   const syncingRef = useRef(false)
   const lastSelectionRef = useRef<LivePreviewSelection | null>(null)
@@ -71,6 +90,7 @@ function LivePreviewEditorInner(props: LivePreviewEditorProps): ReactNode {
   useEffect(() => { onMarkdownChangeRef.current = props.onMarkdownChange }, [props.onMarkdownChange])
   useEffect(() => { onOpenExternalUrlRef.current = props.onOpenExternalUrl }, [props.onOpenExternalUrl])
   useEffect(() => { onSelectionChangeRef.current = props.onSelectionChange }, [props.onSelectionChange])
+  useEffect(() => { onToggleTaskRef.current = props.onToggleTask }, [props.onToggleTask])
   useEffect(() => { onWidgetStateRef.current = props.onWidgetState }, [props.onWidgetState])
   const editor = useEditor((root) => {
     const lifecycle = $prose(() => new Plugin({
@@ -94,7 +114,18 @@ function LivePreviewEditorInner(props: LivePreviewEditorProps): ReactNode {
         }
       },
     }))
-    const chrome = $prose(() => buildLivePreviewChromePlugin(() => onOpenExternalUrlRef.current))
+    const chrome = $prose(() => buildLivePreviewChromePlugin({
+      isProtected: () => protectedRef.current,
+      onOpenExternalUrl: () => onOpenExternalUrlRef.current,
+      onToggleCallout: index => {
+        const next = toggleCalloutFold(sourceRef.current, index)
+        if (next !== sourceRef.current) {
+          sourceRef.current = next
+          onMarkdownChangeRef.current(next)
+        }
+      },
+      onToggleTask: index => { onToggleTaskRef.current?.(index) },
+    }))
     const embedWidgets = $prose(() => buildLivePreviewEmbedPlugin(() => embedsRef.current))
     const editingShortcuts = $prose(() => new Plugin({
       props: {
@@ -158,7 +189,7 @@ function LivePreviewEditorInner(props: LivePreviewEditorProps): ReactNode {
       .config(ctx => {
         const manager = ctx.get(listenerCtx) as unknown as { markdownUpdated(listener: (_ctx: unknown, markdown: string) => void): void }
         manager.markdownUpdated((_ctx: unknown, markdown: string) => {
-          if (syncingRef.current) return
+          if (syncingRef.current || protectedRef.current) return
           const next = preserveLineEndings(sourceRef.current, `${frontmatterRef.current}${markdown}`)
           sourceRef.current = next
           onMarkdownChangeRef.current(next)
@@ -170,6 +201,7 @@ function LivePreviewEditorInner(props: LivePreviewEditorProps): ReactNode {
   useEffect(() => {
     sourceRef.current = props.content
     frontmatterRef.current = splitLivePreviewSource(props.content).prefix
+    protectedRef.current = isLivePreviewSourceProtected(props.content)
   }, [props.content])
 
   useEffect(() => {

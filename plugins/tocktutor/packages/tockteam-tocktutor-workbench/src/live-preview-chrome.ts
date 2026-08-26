@@ -78,23 +78,25 @@ function staticWidget(kind: 'base' | 'math' | 'mermaid', content: string, from: 
   return widget
 }
 
-function calloutFoldButton(pos: number, collapsed: boolean, title: string): HTMLButtonElement {
+function calloutFoldButton(pos: number, index: number, collapsed: boolean, title: string): HTMLButtonElement {
   const button = document.createElement('button')
   button.type = 'button'
   button.className = 'tocktutor-live-callout-fold mr-1 inline-flex size-5 items-center justify-center rounded border-0 bg-transparent text-[var(--tt-muted)]'
   button.dataset.calloutFoldPos = String(pos)
+  button.dataset.calloutIndex = String(index)
   button.setAttribute('aria-expanded', String(!collapsed))
   button.setAttribute('aria-label', collapsed ? 'Expand Callout' : 'Collapse Callout')
   button.textContent = collapsed ? `› ${title}` : '⌄'
   return button
 }
 
-function taskCheckbox(pos: number, checked: boolean): HTMLInputElement {
+function taskCheckbox(pos: number, index: number, checked: boolean): HTMLInputElement {
   const input = document.createElement('input')
   input.type = 'checkbox'
   input.className = 'tocktutor-live-task mr-1 align-middle'
   input.checked = checked
   input.dataset.taskPos = String(pos)
+  input.dataset.taskIndex = String(index)
   input.setAttribute('aria-label', checked ? 'Mark Task as Incomplete' : 'Mark Task as Complete')
   input.tabIndex = -1
   return input
@@ -115,6 +117,8 @@ function decorations(state, folded: ReadonlySet<number>): DecorationSet {
     })
   }
   let commentOpen = false
+  let calloutIndex = 0
+  let taskIndex = 0
   state.doc.descendants((node, pos) => {
     if (node.type.name === 'code_block') {
       const language = String(node.attrs.language ?? node.attrs.lang ?? '').toLocaleLowerCase()
@@ -130,17 +134,21 @@ function decorations(state, folded: ReadonlySet<number>): DecorationSet {
       values.push(Decoration.node(pos, pos + node.nodeSize, {
         class: 'tocktutor-live-callout rounded border-l-4 border-[var(--tt-accent)] bg-[var(--tt-selected)] px-3 py-2',
       }))
+      const index = calloutIndex
+      calloutIndex += 1
       const marker = node.textContent.match(/^\[![A-Za-z][\w-]*\]([+-])/u)
       if (marker !== null) {
         const collapsed = marker[1] === '-'
         const firstLine = node.firstChild?.textBetween(0, node.firstChild.content.size, '\n', '\n').split('\n')[0] ?? ''
         const title = firstLine.replace(/^\[![A-Za-z][\w-]*\][+-]?\s*/u, '').trim() || 'Callout'
-        values.push(Decoration.widget(pos, () => calloutFoldButton(pos, collapsed, title), { side: -1 }))
+        values.push(Decoration.widget(pos, () => calloutFoldButton(pos, index, collapsed, title), { side: -1 }))
         if (collapsed) values.push(Decoration.node(pos, pos + node.nodeSize, { class: 'hidden' }))
       }
     }
     if (node.type.name === 'list_item' && node.attrs.checked !== null && node.attrs.checked !== undefined) {
-      values.push(Decoration.widget(pos + 1, () => taskCheckbox(pos, Boolean(node.attrs.checked)), { side: -1 }))
+      const index = taskIndex
+      taskIndex += 1
+      values.push(Decoration.widget(pos + 1, () => taskCheckbox(pos, index, Boolean(node.attrs.checked)), { side: -1 }))
     }
     if (!node.isText || !node.text || node.marks.some(mark => mark.type.name === 'code')) return
     for (const match of node.text.matchAll(/\$\$(.{1,20000})\$\$/gu)) {
@@ -179,7 +187,12 @@ function decorations(state, folded: ReadonlySet<number>): DecorationSet {
   return DecorationSet.create(state.doc, values)
 }
 
-export function buildLivePreviewChromePlugin(onOpenExternalUrl: () => ((url: string) => void) | undefined): Plugin<ChromeState> {
+export function buildLivePreviewChromePlugin(options: {
+  isProtected(): boolean
+  onOpenExternalUrl(): ((url: string) => void) | undefined
+  onToggleCallout(index: number): void
+  onToggleTask(index: number): void
+}): Plugin<ChromeState> {
   return new Plugin<ChromeState>({
     key: chromeKey,
     state: {
@@ -196,6 +209,7 @@ export function buildLivePreviewChromePlugin(onOpenExternalUrl: () => ((url: str
     },
     props: {
       decorations: state => decorations(state, chromeKey.getState(state)?.folded ?? new Set()),
+      editable: () => !options.isProtected(),
       nodeViews: {
         image(node) {
           const src = typeof node.attrs.src === 'string' ? node.attrs.src : ''
@@ -220,13 +234,18 @@ export function buildLivePreviewChromePlugin(onOpenExternalUrl: () => ((url: str
           const externalUrl = target?.closest<HTMLElement>('[data-external-url]')?.dataset.externalUrl
           if (externalUrl !== undefined) {
             event.preventDefault()
-            onOpenExternalUrl()?.(externalUrl)
+            options.onOpenExternalUrl()?.(externalUrl)
             return true
           }
           const callout = target?.closest<HTMLElement>('[data-callout-fold-pos]')
           if (callout !== null && callout !== undefined) {
             event.preventDefault()
             const pos = Number(callout.dataset.calloutFoldPos)
+            const index = Number(callout.dataset.calloutIndex)
+            if (options.isProtected()) {
+              if (Number.isSafeInteger(index) && index >= 0) options.onToggleCallout(index)
+              return true
+            }
             const node = Number.isSafeInteger(pos) ? view.state.doc.nodeAt(pos) : null
             const marker = node?.textContent.match(/^\[![A-Za-z][\w-]*\]([+-])/u)
             if (node?.type.name === 'blockquote' && marker !== null && marker !== undefined) {
@@ -240,6 +259,11 @@ export function buildLivePreviewChromePlugin(onOpenExternalUrl: () => ((url: str
           if (task !== null && task !== undefined) {
             event.preventDefault()
             const pos = Number(task.dataset.taskPos)
+            const index = Number(task.dataset.taskIndex)
+            if (options.isProtected()) {
+              if (Number.isSafeInteger(index) && index >= 0) options.onToggleTask(index)
+              return true
+            }
             const node = view.state.doc.nodeAt(pos)
             if (node?.type.name === 'list_item' && node.attrs.checked !== null && node.attrs.checked !== undefined) {
               view.dispatch(view.state.tr.setNodeMarkup(pos, undefined, { ...node.attrs, checked: !node.attrs.checked }))

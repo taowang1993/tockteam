@@ -181,6 +181,7 @@ describe('TockTutor titlebar panel controls', () => {
   it('renders editable source-preserving Live Preview chrome', async () => {
     const onEdit = vi.fn()
     const onMode = vi.fn()
+    const onToggleTask = vi.fn()
     const source = '# Lesson\n- [ ] Review\n> [!tip]- Fold\n> Body\n'
     renderRoute({
       documentKind: 'markdown',
@@ -189,22 +190,23 @@ describe('TockTutor titlebar panel controls', () => {
       path: 'Lesson.md',
       phase: 'ready',
       source,
-    }, { onEdit, onMode })
+    }, { onEdit, onMode, onToggleTask })
 
     expect(screen.getByRole('button', { name: 'Live Preview' }).getAttribute('aria-pressed')).toBe('true')
     fireEvent.click(screen.getByRole('button', { name: 'Source' }))
     expect(onMode).toHaveBeenCalledWith('source')
     await waitFor(() => expect(document.querySelector('.ProseMirror')).toBeTruthy(), { timeout: 5_000 })
+    expect(document.querySelector('.ProseMirror')?.getAttribute('contenteditable')).toBe('false')
+    expect(screen.getByRole('note').textContent).toMatch(/Protected Markdown stays exact/u)
     fireEvent.mouseDown(screen.getByRole('checkbox', { name: 'Mark Task as Complete' }))
-    await waitFor(() => expect(onEdit.mock.calls.some(([value]) => /[-*+] \[x\] Review/iu.test(String(value)))).toBe(true))
+    expect(onToggleTask).toHaveBeenCalledWith(0)
     const callout = document.querySelector('.tocktutor-live-callout')
     expect(callout?.classList.contains('hidden')).toBe(true)
     expect(callout?.textContent).toContain('Body')
     const calloutFold = screen.getByRole('button', { name: 'Expand Callout' })
     fireEvent.mouseDown(calloutFold)
-    await waitFor(() => expect(onEdit.mock.calls.some(([value]) => /\[!tip\]\+/iu.test(String(value)))).toBe(true))
+    await waitFor(() => expect(onEdit).toHaveBeenCalledWith(source.replace('[!tip]-', '[!tip]+')))
     expect(callout).toBeTruthy()
-    await waitFor(() => expect(callout?.classList.contains('hidden')).toBe(false))
     const fold = screen.getByRole('button', { name: 'Collapse Heading' })
     fireEvent.mouseDown(fold)
     expect(screen.getByRole('button', { name: 'Expand Heading' })).toBeTruthy()

@@ -14,6 +14,10 @@ export interface LivePreviewSelection {
   to: number
 }
 
+export function isLivePreviewSourceProtected(source: string): boolean {
+  return /(?:^|\n)\s*>\s*\[![A-Za-z][\w-]*\][+-]?|%%|\$\$|!\[\[|(?:^|\n) {0,3}(?:`{3,}|~{3,})\s*(?:base|mermaid)\b|<\/?[A-Za-z][^>]*>/u.test(source)
+}
+
 export function splitLivePreviewSource(source: string): { body: string; prefix: string } {
   const normalized = source.replace(/\r\n?/gu, '\n')
   const match = normalized.match(/^---\n[\s\S]*?\n(?:---|\.\.\.)(?:\n|$)/u)
@@ -41,6 +45,7 @@ const LazyLivePreviewEditor = lazy(async () => {
 
 export function LivePreviewEditor(props: LivePreviewEditorProps): ReactNode {
   const properties = useMemo(() => parseFrontmatterProperties(props.content), [props.content])
+  const protectedSource = useMemo(() => isLivePreviewSourceProtected(props.content), [props.content])
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       {properties.length > 0 && (
@@ -53,6 +58,7 @@ export function LivePreviewEditor(props: LivePreviewEditorProps): ReactNode {
           ))}
         </dl>
       )}
+      {protectedSource && <p className="m-0 border-b border-[var(--tt-border)] px-4 py-2 text-xs text-[var(--tt-muted)]" role="note">Protected Markdown stays exact in Live Preview. Use Source mode for free-form edits; task and fold controls remain available.</p>}
       <Suspense fallback={<div aria-label={props.ariaLabel ?? 'Live Preview Editor'} className={props.className}>Loading Live Preview…</div>}>
         <LazyLivePreviewEditor {...props} />
       </Suspense>
