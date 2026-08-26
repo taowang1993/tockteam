@@ -61,12 +61,48 @@ async function loaded(): Promise<{
         },
         async openDocument(...parameters: unknown[]) {
           calls.push({ method: 'openDocument', parameters })
+          const path = String(parameters[0])
+          const content = path === 'Folder/Embedded.md'
+            ? '# Export\n![[Attachments/image.png]]\n![[Second.md#Part]]\n![[Board.canvas]]\n'
+            : path === 'Second.md' ? '# Part\nSafe <script>alert(1)</script>\n# Next\n'
+              : path === 'Board.canvas' ? '{"nodes":[]}' : '# Exact & <source>\n'
           return {
-            content: '# Exact & <source>\n',
+            content,
             digest: `sha256:${'c'.repeat(64)}`,
             generation: vault.generation,
-            path: 'Folder/Note.md',
+            path,
             revision: `file:${'d'.repeat(64)}`,
+          }
+        },
+        async listTree(...parameters: unknown[]) {
+          calls.push({ method: 'listTree', parameters })
+          return {
+            complete: true,
+            cursor: null,
+            entries: [
+              { createdAt: 1, kind: 'document', modifiedAt: 1, path: 'Folder/Embedded.md', revision: 'file:embedded', size: 80 },
+              { createdAt: 1, kind: 'attachment', mediaKind: 'image', modifiedAt: 1, path: 'Attachments/image.png', revision: 'file:image', size: 3 },
+              { createdAt: 1, kind: 'document', modifiedAt: 1, path: 'Second.md', revision: 'file:second', size: 64 },
+              { createdAt: 1, kind: 'document', modifiedAt: 1, path: 'Board.canvas', revision: 'file:canvas', size: 12 },
+            ],
+            generation: vault.generation,
+            scan: { entries: 4 },
+            truncated: false,
+            truncationReason: null,
+            warnings: [],
+          }
+        },
+        async previewAttachment(...parameters: unknown[]) {
+          calls.push({ method: 'previewAttachment', parameters })
+          return {
+            data: Uint8Array.from([1, 2, 3]),
+            digest: `sha256:${'e'.repeat(64)}`,
+            generation: vault.generation,
+            mediaKind: 'image',
+            mimeType: 'image/png',
+            path: String(parameters[0]),
+            revision: 'file:image',
+            size: 3,
           }
         },
       } as never)
@@ -417,6 +453,29 @@ test('recovers microphone and export results without repeating native effects', 
       'pick',
       'printExport.render',
       'claim',
+    ])
+  } finally {
+    await state.context.fiber.dispose()
+  }
+})
+
+test('resolves bounded note, image, and Canvas embeds into static HTML and PDF input', async () => {
+  const state = await loaded()
+  try {
+    const signal = new AbortController().signal
+    assert.deepEqual(
+      await state.gateway.exportNote('authorization-embeds', 'pdf', 'Folder/Embedded.md', vault, signal),
+      { status: 'exported' },
+    )
+    const request = state.calls.find(call => call.method === 'printExport.render')?.parameters[0] as { format: string; html: string }
+    assert.equal(request.format, 'pdf')
+    assert.match(request.html, /aria-label="Resolved Embeds"/u)
+    assert.match(request.html, /data:image\/png;base64,AQID/u)
+    assert.match(request.html, /Safe &lt;script&gt;alert\(1\)&lt;\/script&gt;/u)
+    assert.match(request.html, /<pre>\{&quot;nodes&quot;:\[\]\}<\/pre>/u)
+    assert.doesNotMatch(request.html, /<script|href=/u)
+    assert.deepEqual(state.calls.map(call => call.method), [
+      'claim', 'openDocument', 'pick', 'listTree', 'previewAttachment', 'openDocument', 'openDocument', 'printExport.render',
     ])
   } finally {
     await state.context.fiber.dispose()

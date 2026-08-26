@@ -7,7 +7,20 @@ export interface RenderMarkdownOptions {
   strictLineBreaks?: boolean
 }
 
+export interface StaticMarkdownEmbed {
+  content: string
+  mimeType?: string
+  target: {
+    display: string | null
+    fragment: string | null
+    kind: 'base' | 'canvas' | 'media' | 'note'
+    path: string
+    source: string
+  }
+}
+
 export interface BuildMarkdownExportDocumentOptions extends RenderMarkdownOptions {
+  embeds?: readonly StaticMarkdownEmbed[]
   markdown: string
   title: string
 }
@@ -295,8 +308,32 @@ export function buildMarkdownSlides(markdown: string, options: RenderMarkdownOpt
   return slides
 }
 
+function renderStaticEmbed(embed: StaticMarkdownEmbed): string {
+  const path = escapeMarkdownHtml(embed.target.path)
+  const label = escapeMarkdownHtml(embed.target.display ?? embed.target.path)
+  if (embed.target.kind === 'note') {
+    const content = renderMarkdownHtml(embed.content).replace(/\s+href=(?:"[^"]*"|'[^']*')/gu, '')
+    return `<article data-embed-kind="note" data-embed-path="${path}"><h3>${label}</h3>${content}</article>`
+  }
+  if (embed.target.kind === 'canvas' || embed.target.kind === 'base') {
+    return `<article data-embed-kind="${embed.target.kind}" data-embed-path="${path}"><h3>${label}</h3><pre>${escapeMarkdownHtml(embed.content)}</pre></article>`
+  }
+  const mimeType = embed.mimeType?.toLowerCase() ?? ''
+  if (/^image\/(?:avif|gif|jpeg|png|webp)$/u.test(mimeType)
+    && embed.content.length <= 2_000_000
+    && /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/u.test(embed.content)) {
+    return `<figure data-embed-kind="media" data-embed-path="${path}"><img alt="${label}" src="data:${mimeType};base64,${embed.content}"><figcaption>${label}</figcaption></figure>`
+  }
+  const media = mimeType.startsWith('audio/') ? 'Audio' : mimeType.startsWith('video/') ? 'Video' : mimeType === 'application/pdf' ? 'PDF' : 'Media'
+  return `<article data-embed-kind="media" data-embed-path="${path}"><p>${media} Embed: ${label}</p></article>`
+}
+
 export function buildMarkdownExportDocument(options: BuildMarkdownExportDocumentOptions): string {
   const title = escapeMarkdownHtml(options.title.slice(0, 1000))
-  const body = renderMarkdownHtml(options.markdown, options)
-  return `<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data: blob:; media-src data: blob:; style-src 'unsafe-inline';"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title></head><body>${body}</body></html>`
+  const body = renderMarkdownHtml(options.markdown, options).replace(/\s+href=(?:"[^"]*"|'[^']*')/gu, '')
+  const embeds = (options.embeds ?? []).slice(0, 100).filter(embed => bytes(embed.content) <= MAX_RICH_MARKDOWN_BYTES)
+  const resolved = embeds.length === 0
+    ? ''
+    : `<section aria-label="Resolved Embeds"><h2>Resolved Embeds</h2>${embeds.map(renderStaticEmbed).join('')}</section>`
+  return `<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; style-src 'unsafe-inline';"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title></head><body>${body}${resolved}</body></html>`
 }

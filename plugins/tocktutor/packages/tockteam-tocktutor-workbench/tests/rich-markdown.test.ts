@@ -53,7 +53,29 @@ test('honors strict line breaks and builds fenced-aware slides', () => {
 test('builds a self-contained static export with a deny-by-default resource policy', () => {
   const document = buildMarkdownExportDocument({ markdown: '# Export\n', title: 'A < B' })
   assert.match(document, /default-src 'none'/u)
-  assert.match(document, /img-src data: blob:/u)
+  assert.match(document, /img-src data:/u)
+  assert.doesNotMatch(document, /blob:/u)
   assert.match(document, /<title>A &lt; B<\/title>/u)
   assert.doesNotMatch(document, /https?:\/\//u)
+})
+
+test('includes bounded resolved embeds in static HTML without rewriting authored Markdown', () => {
+  const markdown = '# Export\n![[Attachments/image.png]]\n![[Second.md#Part]]\n![[Board.canvas]]\n![[voice.weba]]\n'
+  const document = buildMarkdownExportDocument({
+    markdown,
+    title: 'Embeds',
+    embeds: [
+      { content: 'AQID', mimeType: 'image/png', target: { display: null, fragment: null, kind: 'media', path: 'Attachments/image.png', source: '![[Attachments/image.png]]' } },
+      { content: '## Part\n<script>alert(1)</script>\n', target: { display: null, fragment: 'Part', kind: 'note', path: 'Second.md', source: '![[Second.md#Part]]' } },
+      { content: '{"nodes":[]}', target: { display: null, fragment: null, kind: 'canvas', path: 'Board.canvas', source: '![[Board.canvas]]' } },
+      { content: '', mimeType: 'audio/webm', target: { display: null, fragment: null, kind: 'media', path: 'voice.weba', source: '![[voice.weba]]' } },
+    ],
+  })
+  assert.match(document, /<section[^>]+aria-label="Resolved Embeds"/u)
+  assert.match(document, /<img[^>]+src="data:image\/png;base64,AQID"/u)
+  assert.match(document, /&lt;script&gt;alert\(1\)&lt;\/script&gt;/u)
+  assert.match(document, /<pre>\{&quot;nodes&quot;:\[\]\}<\/pre>/u)
+  assert.match(document, /Audio Embed: voice\.weba/u)
+  assert.match(document, /data-target="Second\.md#Part"/u)
+  assert.doesNotMatch(document, /<audio|<script/u)
 })

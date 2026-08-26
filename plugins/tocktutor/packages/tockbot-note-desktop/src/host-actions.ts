@@ -11,7 +11,12 @@ import {
   type TockTeamDesktopPrintExport,
 } from '@tockteam/desktop/host'
 import type { NoteVaultRuntime } from 'tockbot-note-runtime'
-import { buildMarkdownExportDocument } from '@tockteam/tocktutor-workbench'
+import {
+  buildMarkdownExportDocument,
+  collectEmbedTargets,
+  resolveNoteEmbedFragment,
+  type StaticMarkdownEmbed,
+} from '@tockteam/tocktutor-workbench'
 import type { DesktopVaultReference as VaultReference, NativeActionResult } from './types.ts'
 
 export type { NativeActionResult } from './types.ts'
@@ -63,9 +68,75 @@ function popOutKey(vault: VaultReference, path: string): string {
   return `${vault.id}:${String(vault.generation)}:${path}`
 }
 
-function renderNote(path: string, content: string): { html: string; title: string } {
+async function resolveExportEmbeds(
+  runtime: NoteVaultRuntime,
+  source: string,
+  expectedVault: VaultReference,
+  signal: AbortSignal,
+): Promise<StaticMarkdownEmbed[]> {
+  const targets = collectEmbedTargets(source)
+  if (targets.length === 0) return []
+  const entries: Array<{ kind: string; mediaKind?: string; path: string }> = []
+  let cursor: string | null = null
+  for (let pageIndex = 0; pageIndex < 10; pageIndex += 1) {
+    const page = await runtime.listTree({ cursor, expectedVault, limit: 500 }, signal)
+    assertCurrentVault(runtime, expectedVault)
+    if (page.generation !== expectedVault.generation) throw new Error('The active vault changed while resolving embeds.')
+    entries.push(...page.entries)
+    if (page.complete || page.cursor === null) break
+    if (page.cursor === cursor || pageIndex === 9) throw new Error('The bounded embed tree scan did not complete.')
+    cursor = page.cursor
+  }
+
+  const resolved: StaticMarkdownEmbed[] = []
+  let aggregateBytes = 0
+  for (const target of targets) {
+    const targetName = target.path.split('/').at(-1)?.toLocaleLowerCase()
+    const candidates = entries.filter(entry => entry.path === target.path
+      || entry.path.split('/').at(-1)?.toLocaleLowerCase() === targetName)
+    if (candidates.length !== 1) continue
+    const entry = candidates[0]!
+    const projectedTarget = { ...target, path: entry.path }
+    if (target.kind === 'media') {
+      if (entry.kind !== 'attachment') continue
+      if (entry.mediaKind !== 'image') {
+        resolved.push({
+          content: '',
+          mimeType: entry.mediaKind === 'audio' ? 'audio/unknown' : entry.mediaKind === 'video' ? 'video/unknown' : 'application/pdf',
+          target: projectedTarget,
+        })
+        continue
+      }
+      const preview = await runtime.previewAttachment(entry.path, expectedVault, signal)
+      assertCurrentVault(runtime, expectedVault)
+      if (preview.generation !== expectedVault.generation || preview.path !== entry.path || preview.data.byteLength > 1_500_000) continue
+      aggregateBytes += preview.data.byteLength
+      if (aggregateBytes > 6_000_000) break
+      resolved.push({ content: Buffer.from(preview.data).toString('base64'), mimeType: preview.mimeType, target: projectedTarget })
+      continue
+    }
+    if (entry.kind !== 'document') continue
+    const opened = await runtime.openDocument(entry.path, expectedVault, signal)
+    assertCurrentVault(runtime, expectedVault)
+    if (opened.generation !== expectedVault.generation || opened.path !== entry.path) throw new Error('An embedded document changed during export.')
+    aggregateBytes += new TextEncoder().encode(opened.content).byteLength
+    if (aggregateBytes > 6_000_000) break
+    const content = target.kind === 'note' ? resolveNoteEmbedFragment(opened.content, target.fragment) : opened.content
+    if (content !== null) resolved.push({ content, target: projectedTarget })
+  }
+  return resolved
+}
+
+async function renderNote(
+  runtime: NoteVaultRuntime,
+  path: string,
+  content: string,
+  expectedVault: VaultReference,
+  signal: AbortSignal,
+): Promise<{ html: string; title: string }> {
   const title = Array.from(path).slice(-128).join('')
-  const html = buildMarkdownExportDocument({ markdown: content, title })
+  const embeds = await resolveExportEmbeds(runtime, content, expectedVault, signal)
+  const html = buildMarkdownExportDocument({ embeds, markdown: content, title })
   if (new TextEncoder().encode(html).byteLength > MAX_PRINT_EXPORT_HTML_BYTES) {
     throw new TypeError('The active note is too large to print or export safely.')
   }
@@ -383,9 +454,11 @@ export class TockTutorDesktopGateway extends TypertRemoteService {
       if (recovered !== undefined) return recovered
       const document = await this.ctx.noteVault.openDocument(path, expectedVault, ownerSignal)
       assertClaim(this.ctx.noteVault, expectedVault, identity)
+      const note = await renderNote(this.ctx.noteVault, document.path, document.content, expectedVault, ownerSignal)
+      assertClaim(this.ctx.noteVault, expectedVault, identity)
       const result = await this.ctx.tockTeamDesktopPrintExport.render({
         format: 'print',
-        ...renderNote(document.path, document.content),
+        ...note,
         identity,
       }, ownerSignal)
       assertClaim(this.ctx.noteVault, expectedVault, identity)
@@ -430,7 +503,8 @@ export class TockTutorDesktopGateway extends TypertRemoteService {
       if (selection.operationId !== identity.operationId) {
         throw new Error('Desktop picker returned a mismatched operation.')
       }
-      const note = renderNote(document.path, document.content)
+      const note = await renderNote(this.ctx.noteVault, document.path, document.content, expectedVault, ownerSignal)
+      assertClaim(this.ctx.noteVault, expectedVault, identity)
       const result = await this.ctx.tockTeamDesktopPrintExport.render(format === 'html' ? {
         authorization: selection.authorization,
         format: 'html',
