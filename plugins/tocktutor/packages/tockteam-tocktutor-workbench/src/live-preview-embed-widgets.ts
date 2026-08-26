@@ -62,7 +62,7 @@ function widgetDom(embed: ResolvedEmbedNode, from: number, to: number, reveal: (
   return widget
 }
 
-function decorationSet(state, embeds: readonly ResolvedEmbedNode[], reveal: (from: number, to: number) => void): DecorationSet {
+function decorationSet(state, embeds: readonly ResolvedEmbedNode[], reveal: (from: number, to: number) => void, revealed: ReadonlySet<string>): DecorationSet {
   const buckets = new Map<string, ResolvedEmbedNode[]>()
   for (const embed of embeds) {
     const bucket = buckets.get(embed.target.source) ?? []
@@ -81,7 +81,8 @@ function decorationSet(state, embeds: readonly ResolvedEmbedNode[], reveal: (fro
         const to = from + source.length
         offset = index + source.length
         const embed = bucket.shift()
-        if (embed === undefined || state.selection.from <= to && state.selection.to >= from) continue
+        if (embed === undefined || revealed.has(`${String(from)}:${String(to)}`)
+          || state.selection.from <= to && state.selection.to >= from) continue
         decorations.push(
           Decoration.inline(from, to, { class: 'hidden' }, { embedSource: 'true' }),
           Decoration.widget(from, () => widgetDom(embed, from, to, () => { reveal(from, to) }), { side: -1, embedWidget: 'true' }),
@@ -97,7 +98,9 @@ export function buildLivePreviewEmbedPlugin(getEmbeds: () => readonly ResolvedEm
   const revealRange = (from: number, to: number): void => {
     const view = currentView
     if (view === null || from < 0 || to <= from || to > view.state.doc.content.size) return
-    view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, from, to)))
+    view.dispatch(view.state.tr
+      .setSelection(TextSelection.create(view.state.doc, from, to))
+      .setMeta(livePreviewEmbedPluginKey, { reveal: `${String(from)}:${String(to)}` }))
     view.focus()
   }
   const reveal = (view, event: Event): boolean => {
@@ -112,8 +115,16 @@ export function buildLivePreviewEmbedPlugin(getEmbeds: () => readonly ResolvedEm
   }
   return new Plugin({
     key: livePreviewEmbedPluginKey,
+    state: {
+      init: () => new Set<string>(),
+      apply(transaction, value: ReadonlySet<string>) {
+        if (transaction.docChanged) return new Set<string>()
+        const meta = transaction.getMeta(livePreviewEmbedPluginKey) as { reveal?: unknown } | undefined
+        return typeof meta?.reveal === 'string' ? new Set([...value, meta.reveal]) : value
+      },
+    },
     props: {
-      decorations: state => decorationSet(state, getEmbeds(), revealRange),
+      decorations: state => decorationSet(state, getEmbeds(), revealRange, livePreviewEmbedPluginKey.getState(state) ?? new Set()),
       handleDOMEvents: { mousedown: reveal, keydown: reveal },
     },
     view(view) {
