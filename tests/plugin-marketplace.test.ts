@@ -993,6 +993,22 @@ test('the marketplace refuses to modify protected desktop plugins', async () => 
   }
 })
 
+test('marketplace state fails closed on malformed receipts or source locks', () => {
+  const setup = fixture()
+  try {
+    const managed = join(setup.profileDir, '.tockteam')
+    mkdirSync(managed, { recursive: true })
+    writeFileSync(join(managed, 'marketplace.json'), JSON.stringify({
+      entries: [],
+      locks: [{ pluginId: 'missing-security-fields' }],
+      version: 2,
+    }))
+    assert.throws(() => setup.manager.getSnapshot(), /invalid marketplace source lock/u)
+  } finally {
+    setup.cleanup()
+  }
+})
+
 test('the marketplace protects legacy alias receipts by installed package name', async () => {
   const setup = fixture()
   try {

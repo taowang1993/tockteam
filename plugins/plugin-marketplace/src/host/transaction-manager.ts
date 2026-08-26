@@ -146,9 +146,12 @@ function readMarketplaceState(profileDir: string): MarketplaceStateFile {
     if (!isRecord(parsed) || !Array.isArray(parsed.entries)) {
       throw new Error('unsupported marketplace state version')
     }
+    if (!parsed.entries.every(validateInstalledEntry)) {
+      throw new Error('invalid marketplace installed entry')
+    }
     if (parsed.version === 1) {
       return {
-        entries: parsed.entries.filter(validateInstalledEntry),
+        entries: parsed.entries,
         locks: [],
         version: STATE_VERSION,
       }
@@ -156,9 +159,12 @@ function readMarketplaceState(profileDir: string): MarketplaceStateFile {
     if (parsed.version !== STATE_VERSION || !Array.isArray(parsed.locks)) {
       throw new Error('unsupported marketplace state version')
     }
+    if (!parsed.locks.every(validateSourceLock)) {
+      throw new Error('invalid marketplace source lock')
+    }
     return {
-      entries: parsed.entries.filter(validateInstalledEntry),
-      locks: parsed.locks.filter(validateSourceLock),
+      entries: parsed.entries,
+      locks: parsed.locks,
       version: STATE_VERSION,
     }
   } catch (error) {
