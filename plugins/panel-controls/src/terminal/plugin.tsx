@@ -38,8 +38,7 @@ interface ClientContext {
 }
 
 interface SessionSurface {
-  scopeKey: string
-  readonly renderKey: string
+  readonly scopeKey: string
   cwd: string | null
   store: DockStore
 }
@@ -59,13 +58,12 @@ export interface DesktopPanels {
 
 export const inject = ['layout', 'locale', 'sessions']
 
-function currentSession(sessions: SessionsService): { scopeKey: string; cwd: string | null } {
+function currentSession(sessions: SessionsService): { scopeKey: string; cwd: string | null } | undefined {
   const snapshot = sessions.list.getSnapshot()
   const sessionId = snapshot.current
-  return {
-    scopeKey: sessionId ?? 'new-session',
-    cwd: sessionId === undefined ? null : snapshot.byId[sessionId]?.cwd ?? null,
-  }
+  return sessionId === undefined
+    ? undefined
+    : { scopeKey: sessionId, cwd: snapshot.byId[sessionId]?.cwd ?? null }
 }
 
 function findConversationColumn(): HTMLElement | null {
@@ -164,7 +162,6 @@ class DesktopPanelService implements DesktopPanels {
     }
     const surface = {
       scopeKey,
-      renderKey: scopeKey,
       cwd,
       store: createDockStore(window.localStorage, scopeKey),
     }
@@ -175,18 +172,17 @@ class DesktopPanelService implements DesktopPanels {
   private syncActiveSession(): void {
     const session = currentSession(this.sessions)
     const previous = this.active
-    const previousCwd = previous?.cwd
-    let next: SessionSurface
-    if (previous?.scopeKey === 'new-session' && session.scopeKey !== 'new-session'
-      && !this.surfaces.has(session.scopeKey)) {
-      this.surfaces.delete(previous.scopeKey)
-      previous.scopeKey = session.scopeKey
-      previous.cwd = session.cwd
-      this.surfaces.set(session.scopeKey, previous)
-      next = previous
-    } else {
-      next = this.surfaceFor(session.scopeKey, session.cwd)
+    if (session === undefined) {
+      if (previous === undefined) return
+      this.stopActiveStoreSubscription?.()
+      this.stopActiveStoreSubscription = undefined
+      this.active = undefined
+      this.renderDock()
+      this.notify()
+      return
     }
+    const previousCwd = previous?.cwd
+    const next = this.surfaceFor(session.scopeKey, session.cwd)
     if (previous === next && previousCwd === session.cwd) return
     if (previous !== next) {
       this.stopActiveStoreSubscription?.()
@@ -227,12 +223,12 @@ class DesktopPanelService implements DesktopPanels {
 
   private renderDock(): void {
     const active = this.active
-    if (this.dock.root === null || active === undefined) return
+    if (this.dock.root === null) return
     this.dock.root.render(
       <Fragment>
         {[...this.surfaces.values()].map(surface => (
           <div
-            key={surface.renderKey}
+            key={surface.scopeKey}
             className={surface === active ? 'contents' : 'hidden'}
           >
             <TerminalPanel
