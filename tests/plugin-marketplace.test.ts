@@ -551,6 +551,29 @@ test('a client reconnect during apply does not leave a sticky busy error', async
   }
 })
 
+test('marketplace rejects concurrent mutations instead of acknowledging dropped work', async () => {
+  const setup = fixture()
+  try {
+    let release!: () => void
+    const gate = new Promise<void>(resolve => { release = resolve })
+    setup.platform.loadCatalog = async (): Promise<unknown> => {
+      await gate
+      return catalogDocument()
+    }
+    const refresh = setup.manager.dispatch({ type: 'refresh' })
+    await new Promise<void>(resolve => { setImmediate(resolve) })
+    await assert.rejects(
+      setup.manager.dispatch({ type: 'prepare', action: 'install', pluginId: 'safe-demo' }),
+      /transaction is already in progress/u,
+    )
+    release()
+    await refresh
+    assert.equal(setup.manager.getSnapshot().preview, null)
+  } finally {
+    setup.cleanup()
+  }
+})
+
 test('Agent gateway authenticates and defers runtime-restarting applies', async () => {
   const setup = fixture()
   const gateway = await startMarketplaceAgentGateway(setup.manager, { deferMs: 5 })

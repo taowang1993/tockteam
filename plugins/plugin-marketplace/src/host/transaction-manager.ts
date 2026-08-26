@@ -598,7 +598,10 @@ export class PluginMarketplaceManager {
   }
 
   async dispatch(command: MarketplaceCommand): Promise<MarketplaceSnapshot> {
-    if (this.#busy) return this.getSnapshot()
+    if (this.#busy) {
+      if (command.type === 'refresh') return this.getSnapshot()
+      throw new Error('a marketplace transaction is already in progress')
+    }
     this.#busy = true
     this.#error = null
     try {
