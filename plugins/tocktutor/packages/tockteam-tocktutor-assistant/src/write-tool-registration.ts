@@ -1,7 +1,7 @@
 import { Buffer } from 'node:buffer'
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import { defineTool } from '@deepseek-ai/dsh-tools'
-import { assertSafeRelativePath } from './context.ts'
+import { assertSafeRelativePath, redactBoundaryText } from './context.ts'
 import {
   ProposalError,
   type ProposalSummary,
@@ -277,7 +277,7 @@ function publicTockDriverWriteResult(
     inlineAssistantMcp: false,
     vaultId: binding.vaultId,
     relativePath: path,
-    title,
+    title: redactBoundaryText(title).slice(0, MAX_CAPTURE_TITLE_CHARS),
     operation,
     createdAt: summary.createdAt ?? Date.now(),
   }
