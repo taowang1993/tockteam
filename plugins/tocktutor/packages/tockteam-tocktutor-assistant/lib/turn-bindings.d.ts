@@ -1,7 +1,9 @@
 import type { Agent } from '@deepseek-ai/dsh-agent';
 import type { CallId } from '@deepseek-ai/dsh-llm';
 import { type PennivoReadTool, type ReadBinding } from './read-tools.ts';
-export type AssistantToolName = PennivoReadTool | 'create_file' | 'write_file';
+export declare const TOCKDRIVER_WRITE_TOOL_NAMES: readonly ["notes_stage_write", "notes_organize_capture"];
+export type TockDriverWriteTool = typeof TOCKDRIVER_WRITE_TOOL_NAMES[number];
+export type AssistantToolName = PennivoReadTool | 'create_file' | 'write_file' | 'notes_search' | 'notes_read' | TockDriverWriteTool;
 export type AssistantTurnPermission = 'read-only' | 'propose';
 export interface AssistantTurnBindingInput {
     agent: Agent;

@@ -8,6 +8,7 @@ import type { DesktopVaultReference, NativeActionResult } from 'tockbot-note-des
 declare module '@deepseek-ai/dsh-typert-protocol' {
   interface TypertRemoteNamespace$746f636b7475746f724465736b746f70 {
     activateVault: (authorization: string, signal?: AbortSignal) => Promise<RemoteResult<NativeActionResult>>
+    activateVaultTarget: (authorization: string, target: { id: string; }, signal?: AbortSignal) => Promise<RemoteResult<NativeActionResult>>
     closeAllPopOuts: (authorization: string, expectedVault: DesktopVaultReference, signal?: AbortSignal) => Promise<RemoteResult<NativeActionResult>>
     closePopOut: (authorization: string, path: string, expectedVault: DesktopVaultReference, signal?: AbortSignal) => Promise<RemoteResult<NativeActionResult>>
     exportNote: (authorization: string, format: 'html' | 'pdf', path: string, expectedVault: DesktopVaultReference, signal?: AbortSignal) => Promise<RemoteResult<NativeActionResult>>
@@ -18,6 +19,7 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
   }
   interface TypertRemoteMap {
     'tocktutorDesktop/activateVault': (authorization: string, signal?: AbortSignal) => Promise<RemoteResult<NativeActionResult>>
+    'tocktutorDesktop/activateVaultTarget': (authorization: string, target: { id: string; }, signal?: AbortSignal) => Promise<RemoteResult<NativeActionResult>>
     'tocktutorDesktop/closeAllPopOuts': (authorization: string, expectedVault: DesktopVaultReference, signal?: AbortSignal) => Promise<RemoteResult<NativeActionResult>>
     'tocktutorDesktop/closePopOut': (authorization: string, path: string, expectedVault: DesktopVaultReference, signal?: AbortSignal) => Promise<RemoteResult<NativeActionResult>>
     'tocktutorDesktop/exportNote': (authorization: string, format: 'html' | 'pdf', path: string, expectedVault: DesktopVaultReference, signal?: AbortSignal) => Promise<RemoteResult<NativeActionResult>>

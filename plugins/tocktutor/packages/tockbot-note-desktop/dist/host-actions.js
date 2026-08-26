@@ -45,6 +45,11 @@ function assertVault(value) {
         || !/^vault:[0-9a-f]{64}$/u.test(value.id))
         throw new TypeError('Vault must identify one active vault generation.');
 }
+function assertVaultId(value) {
+    if (typeof value !== 'string' || !/^vault:[0-9a-f]{64}$/u.test(value)) {
+        throw new TypeError('Vault target must be one opaque recent vault id.');
+    }
+}
 function assertPath(value) {
     if (typeof value !== 'string'
         || value.length === 0
@@ -169,6 +174,7 @@ let TockTutorDesktopGateway = (() => {
     let _classSuper = TypertRemoteService;
     let _instanceExtraInitializers = [];
     let _activateVault_decorators;
+    let _activateVaultTarget_decorators;
     let _openPopOut_decorators;
     let _closePopOut_decorators;
     let _closeAllPopOuts_decorators;
@@ -180,6 +186,7 @@ let TockTutorDesktopGateway = (() => {
         static {
             const _metadata = typeof Symbol === "function" && Symbol.metadata ? Object.create(_classSuper[Symbol.metadata] ?? null) : void 0;
             _activateVault_decorators = [Remote];
+            _activateVaultTarget_decorators = [Remote];
             _openPopOut_decorators = [Remote];
             _closePopOut_decorators = [Remote];
             _closeAllPopOuts_decorators = [Remote];
@@ -188,6 +195,7 @@ let TockTutorDesktopGateway = (() => {
             _requestMicrophone_decorators = [Remote];
             _revealEntry_decorators = [Remote];
             __esDecorate(this, null, _activateVault_decorators, { kind: "method", name: "activateVault", static: false, private: false, access: { has: obj => "activateVault" in obj, get: obj => obj.activateVault }, metadata: _metadata }, null, _instanceExtraInitializers);
+            __esDecorate(this, null, _activateVaultTarget_decorators, { kind: "method", name: "activateVaultTarget", static: false, private: false, access: { has: obj => "activateVaultTarget" in obj, get: obj => obj.activateVaultTarget }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _openPopOut_decorators, { kind: "method", name: "openPopOut", static: false, private: false, access: { has: obj => "openPopOut" in obj, get: obj => obj.openPopOut }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _closePopOut_decorators, { kind: "method", name: "closePopOut", static: false, private: false, access: { has: obj => "closePopOut" in obj, get: obj => obj.closePopOut }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _closeAllPopOuts_decorators, { kind: "method", name: "closeAllPopOuts", static: false, private: false, access: { has: obj => "closeAllPopOuts" in obj, get: obj => obj.closeAllPopOuts }, metadata: _metadata }, null, _instanceExtraInitializers);
@@ -206,6 +214,7 @@ let TockTutorDesktopGateway = (() => {
             'tockTeamDesktopPrintExport',
         ];
         activations = (__runInitializers(this, _instanceExtraInitializers), new Map());
+        targetActivations = new Map();
         lifetime = createNativeOwnerLifetime();
         recoveredResults = new Map();
         popOutClosures = new Map();
@@ -217,6 +226,7 @@ let TockTutorDesktopGateway = (() => {
                 await this.lifetime.dispose();
                 const opened = new Map([...this.popOuts.values()].map(record => [record.windowId, record]));
                 this.activations.clear();
+                this.targetActivations.clear();
                 this.popOutClosures.clear();
                 this.popOuts.clear();
                 this.recoveredResults.clear();
@@ -290,6 +300,46 @@ let TockTutorDesktopGateway = (() => {
                 });
                 if (this.activations.size > 128)
                     this.activations.delete(this.activations.keys().next().value);
+                return { status: 'activated' };
+            }, signal);
+        }
+        async activateVaultTarget(authorization, target, signal) {
+            assertAuthorization(authorization);
+            if (typeof target !== 'object' || target === null)
+                throw new TypeError('Vault target is required.');
+            assertVaultId(target.id);
+            return this.lifetime.run(async (ownerSignal) => {
+                const identity = await this.ctx.tockTeamDesktopCaller.claim({
+                    authorization,
+                    operation: 'activate-vault',
+                }, ownerSignal);
+                const recovered = this.targetActivations.get(authorization);
+                if (recovered !== undefined) {
+                    if (!sameIdentity(recovered.identity, identity) || recovered.requestedId !== target.id) {
+                        throw new Error('Desktop vault target changed during recovery.');
+                    }
+                    assertCurrentVault(this.ctx.noteVault, recovered.target);
+                    return { status: 'activated' };
+                }
+                assertIdentityCurrent(this.ctx.noteVault, identity);
+                const current = this.ctx.noteVault.state;
+                if (!current.active)
+                    throw new Error('There is no active vault to switch from.');
+                const activated = current.id === target.id
+                    ? current
+                    : this.ctx.noteVault.activateRecentVault(target.id, current.generation);
+                if (!activated.active || activated.id !== target.id) {
+                    throw new Error('Desktop vault target activation returned stale state.');
+                }
+                await this.ctx.noteVault.synchronizeDesktopSelection(ownerSignal);
+                const currentTarget = this.ctx.noteVault.state;
+                if (!currentTarget.active || currentTarget.id !== target.id || currentTarget.generation !== activated.generation) {
+                    throw new Error('Desktop vault target changed during synchronization.');
+                }
+                const targetVault = { id: currentTarget.id, generation: currentTarget.generation };
+                this.targetActivations.set(authorization, { identity, requestedId: target.id, target: targetVault });
+                if (this.targetActivations.size > 128)
+                    this.targetActivations.delete(this.targetActivations.keys().next().value);
                 return { status: 'activated' };
             }, signal);
         }

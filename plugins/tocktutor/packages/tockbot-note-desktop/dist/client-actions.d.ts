@@ -8,6 +8,9 @@ export type DesktopCallerBridge = TockTutorDesktopCallerBridge;
 export interface DesktopActionRemote {
     tocktutorDesktop: {
         activateVault(authorization: string, signal?: AbortSignal): Promise<RemoteResult<NativeActionResult>>;
+        activateVaultTarget(authorization: string, target: {
+            id: string;
+        }, signal?: AbortSignal): Promise<RemoteResult<NativeActionResult>>;
         closeAllPopOuts(authorization: string, expectedVault: VaultReference, signal?: AbortSignal): Promise<RemoteResult<NativeActionResult>>;
         closePopOut(authorization: string, path: string, expectedVault: VaultReference, signal?: AbortSignal): Promise<RemoteResult<NativeActionResult>>;
         exportNote(authorization: string, format: 'html' | 'pdf', path: string, expectedVault: VaultReference, signal?: AbortSignal): Promise<RemoteResult<NativeActionResult>>;

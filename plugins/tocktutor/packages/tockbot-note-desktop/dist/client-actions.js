@@ -51,20 +51,82 @@ function workbenchEvent(event) {
         ? { action: event.action, kind: 'quick-action', operationId: event.operationId }
         : { kind: 'protocol', operationId: event.operationId, request: event.request };
 }
-async function handleDesktopDispatch(event, owner, bridge, remote, signal) {
+async function waitForVault(currentOwner, target, signal) {
+    for (let attempt = 0; attempt < 200; attempt += 1) {
+        const owner = currentOwner();
+        if (owner?.vault?.id === target.id)
+            return owner;
+        if (signal?.aborted === true)
+            return undefined;
+        await new Promise(resolve => setTimeout(resolve, 25));
+    }
+    return undefined;
+}
+async function waitForActivePath(currentOwner, vaultId, expectedPath, previousPath, signal) {
+    for (let attempt = 0; attempt < 200; attempt += 1) {
+        const owner = currentOwner();
+        if (owner?.vault?.id === vaultId && owner.activePath !== null
+            && (expectedPath === undefined ? owner.activePath !== previousPath : owner.activePath === expectedPath))
+            return owner;
+        if (signal?.aborted === true)
+            return undefined;
+        await new Promise(resolve => setTimeout(resolve, 25));
+    }
+    return undefined;
+}
+async function handleDesktopDispatch(event, initialOwner, currentOwner, bridge, remote, signal) {
+    let owner = initialOwner;
     if (event.kind !== 'protocol')
         return owner.handleDispatch(workbenchEvent(event));
-    if (event.request.action === 'choose-vault') {
+    let request = event.request;
+    const target = request.vaultId === undefined ? undefined : { id: request.vaultId };
+    if (request.vaultGeneration !== undefined && target === undefined)
+        return 'failed';
+    if (target !== undefined) {
+        if (!/^vault:[0-9a-f]{64}$/u.test(target.id))
+            return 'failed';
+        if (owner.vault?.id !== target.id) {
+            if (!await saveCurrent(owner))
+                return 'failed';
+            const activated = dispatchStatus(await nativeCall(bridge, 'activate-vault', signal, (authorization, ownerSignal) => (remote.tocktutorDesktop.activateVaultTarget(authorization, target, ownerSignal))));
+            if (activated !== 'handled')
+                return activated === 'stale' ? 'stale' : 'failed';
+            const activatedOwner = await waitForVault(currentOwner, target, signal);
+            if (activatedOwner === undefined)
+                return signal?.aborted === true ? 'stale' : 'failed';
+            owner = activatedOwner;
+        }
+        if (owner.vault === null)
+            return 'stale';
+        request = { ...request, vaultGeneration: owner.vault.generation };
+    }
+    if (request.action === 'choose-vault') {
         if (!await saveCurrent(owner))
             return 'failed';
         return dispatchStatus(await nativeCall(bridge, 'activate-vault', signal, (authorization, ownerSignal) => (remote.tocktutorDesktop.activateVault(authorization, ownerSignal))));
     }
-    if (event.request.action === 'open' && event.request.paneType === 'window') {
-        if (owner.vault === null || event.request.file === undefined || !await saveCurrent(owner))
+    if (request.paneType === 'window') {
+        if (owner.vault === null || !await saveCurrent(owner))
             return 'failed';
-        return dispatchStatus(await nativeCall(bridge, 'popout-open', signal, (authorization, ownerSignal) => (remote.tocktutorDesktop.openPopOut(authorization, event.request.file, owner.vault, ownerSignal)), owner.vault));
+        if (request.action === 'open') {
+            if (request.file === undefined)
+                return 'failed';
+            return dispatchStatus(await nativeCall(bridge, 'popout-open', signal, (authorization, ownerSignal) => (remote.tocktutorDesktop.openPopOut(authorization, request.file, owner.vault, ownerSignal)), owner.vault));
+        }
+        const { paneType: _paneType, silent: _silent, ...windowRequest } = request;
+        const previousPath = owner.activePath;
+        const created = await owner.handleDispatch({ kind: 'protocol', operationId: event.operationId, request: windowRequest });
+        if (created !== 'handled')
+            return created;
+        const updatedOwner = await waitForActivePath(currentOwner, owner.vault.id, request.file, previousPath, signal);
+        if (updatedOwner === undefined || updatedOwner.vault === null || updatedOwner.activePath === null)
+            return signal?.aborted === true ? 'stale' : 'failed';
+        owner = updatedOwner;
+        const activePath = updatedOwner.activePath;
+        const activeVault = updatedOwner.vault;
+        return dispatchStatus(await nativeCall(bridge, 'popout-open', signal, (authorization, ownerSignal) => (remote.tocktutorDesktop.openPopOut(authorization, activePath, activeVault, ownerSignal)), activeVault));
     }
-    return owner.handleDispatch(workbenchEvent(event));
+    return owner.handleDispatch({ kind: 'protocol', operationId: event.operationId, request });
 }
 /** Complete permission only while the initiating note and vault remain current. */
 export async function requestMicrophoneAccess(authorization, path, vault, current, request, mediaDevices) {
@@ -221,7 +283,7 @@ export async function runDesktopDispatchLoop(options) {
         const owner = options.owner();
         if (owner !== undefined) {
             try {
-                status = await handleDesktopDispatch(event, owner, options.bridge, options.remote, options.signal);
+                status = await handleDesktopDispatch(event, owner, options.owner, options.bridge, options.remote, options.signal);
             }
             catch {
                 status = 'failed';

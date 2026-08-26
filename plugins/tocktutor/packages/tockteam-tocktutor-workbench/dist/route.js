@@ -20,6 +20,7 @@ import { TOCKTUTOR_NATIVE_ACTIONS_SLOT, } from "./native-actions.js";
 import { TOCKTUTOR_REVIEW_PANEL_SLOT } from "./review-panel.js";
 import { TOCKTUTOR_WEB_VIEWER_PANEL_SLOT } from "./web-viewer-panel.js";
 import { LivePreviewView, RichReadingView } from "./editor-surface.js";
+import { SourceEditor } from "./source-editor.js";
 import { WorkbenchUtilities } from "./utility-panel.js";
 import { WorkbenchGlyph } from "./workbench-glyph.js";
 import { parseCanvasDocument, updateCanvasNodePosition, } from "./canvas.js";
@@ -32,7 +33,7 @@ import { BUILTIN_TEMPLATES, buildCaptureNote, buildJournalNote, expandTemplate, 
 import { buildOrganizationProposal } from "./organize.js";
 import { convertMarkdownFormats, extractSelectionToNote } from "./composer.js";
 import { appendAttachmentMarkdown, attachmentTargetPath } from "./attachments.js";
-import { collectEmbedTargets, resolveEmbedTargetPath, resolveNoteEmbedFragment } from "./embeds.js";
+import { collectEmbedTargets, resolveEmbedGraph } from "./embeds.js";
 import { createNamedWorkspace, loadTockTutorSettings, loadWorkbenchState, saveTockTutorSettings, saveWorkbenchState, } from "./settings.js";
 import { applyEditorCommand, resolvePlatformEditorCommand, } from "./editor-commands.js";
 import { editorStatusLabel, resolveEditorShortcut, toggleMarkdownTask, } from "./markdown.js";
@@ -63,6 +64,30 @@ function remoteValue(result) {
 }
 function sameVault(left, right) {
     return left !== null && left.id === right.id && left.generation === right.generation;
+}
+function protocolFileTarget(file) {
+    const marker = file.indexOf('#');
+    const path = marker < 0 ? file : file.slice(0, marker);
+    const fragment = marker < 0 ? undefined : file.slice(marker);
+    if (!isSafeVaultRelativePath(path) || (fragment !== undefined && (fragment.length < 2 || fragment.length > 512)))
+        return null;
+    return fragment === undefined ? { path } : { fragment, path };
+}
+function escapeRegex(value) {
+    return value.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&');
+}
+function targetLine(source, fragment) {
+    const block = fragment.startsWith('#^') ? fragment.slice(2) : '';
+    const heading = fragment.startsWith('#') && !fragment.startsWith('#^') ? fragment.slice(1).trim() : '';
+    const lines = source.split(/\n/u);
+    for (let index = 0; index < lines.length; index += 1) {
+        const line = lines[index].replace(/\r$/u, '');
+        if (block !== '' && new RegExp(`(?:^|\\s)\\^${escapeRegex(block)}(?:$|\\s)`, 'u').test(line))
+            return index + 1;
+        if (heading !== '' && new RegExp(`^#{1,6}\\s+${escapeRegex(heading)}\\s*$`, 'iu').test(line))
+            return index + 1;
+    }
+    return null;
 }
 function validRecentVaults(value) {
     return Number.isSafeInteger(value?.generation)
@@ -241,14 +266,21 @@ export class WorkbenchRouteController {
             : event.action === 'daily' ? { action: 'daily' } : undefined;
         if (request === undefined)
             return 'failed';
-        if (request.action === 'choose-vault' || request.vault !== undefined || request.paneType === 'window')
+        if (request.action === 'choose-vault' || request.vault !== undefined || request.clipboard === true || request.paneType === 'window')
             return 'failed';
+        if (request.vaultId !== undefined
+            && (!/^vault:[0-9a-f]{64}$/u.test(request.vaultId)
+                || request.vaultGeneration !== vault.generation
+                || request.vaultId !== vault.id))
+            return 'stale';
         if (request.action === 'search') {
             if (request.query !== undefined && request.query.length > 1_000)
                 return 'failed';
             this.openSearch(request.query ?? '');
             return 'handled';
         }
+        if (request.paneType === 'split' && !await this.prepareDispatchPane())
+            return 'failed';
         if (request.action === 'open') {
             if (request.file === undefined) {
                 if (this.snapshot.saveStatus !== 'saved' && !await this.save())
@@ -258,10 +290,20 @@ export class WorkbenchRouteController {
                 this.navigate(ROUTE_PREFIX);
                 return 'handled';
             }
-            const opened = await this.select(request.file, true, revision);
+            const target = protocolFileTarget(request.file);
+            if (target === null)
+                return 'failed';
+            const opened = await this.select(target.path, true, revision);
             if (!this.dispatchCurrent(revision, vault))
                 return 'stale';
-            return opened ? 'handled' : 'failed';
+            if (!opened)
+                return 'failed';
+            if (target.fragment !== undefined) {
+                const line = targetLine(this.snapshot.source, target.fragment);
+                if (line !== null)
+                    this.jumpToLine(line);
+            }
+            return 'handled';
         }
         if (request.action === 'daily') {
             const journal = buildJournalNote({
@@ -270,8 +312,8 @@ export class WorkbenchRouteController {
             });
             const path = journal.path;
             const exists = this.snapshot.path === path || this.snapshot.entries.some(entry => entry.path === path);
-            if (exists) {
-                if (request.content !== undefined || request.ifExists !== undefined)
+            if (exists && request.ifExists === undefined) {
+                if (request.content !== undefined)
                     return 'failed';
                 if (request.silent === true)
                     return 'handled';
@@ -280,7 +322,7 @@ export class WorkbenchRouteController {
                     return 'stale';
                 return opened ? 'handled' : 'failed';
             }
-            return await this.createDispatchedDocument(path, request.content ?? journal.content, request.silent === true, revision, vault);
+            return await this.createDispatchedDocument(path, request.content ?? journal.content, request.silent === true, revision, vault, request.ifExists);
         }
         if (request.action === 'unique') {
             const existing = new Set(this.snapshot.entries.filter(entry => entry.kind === 'document').map(entry => entry.path));
@@ -295,9 +337,23 @@ export class WorkbenchRouteController {
             : /\.md$/iu.test(request.name) ? request.name : `${request.name}.md`);
         if (path === undefined || !isSafeVaultRelativePath(path) || !/\.md$/iu.test(path))
             return 'failed';
-        return await this.createDispatchedDocument(path, request.content ?? '', request.silent === true, revision, vault);
+        return await this.createDispatchedDocument(path, request.content ?? '', request.silent === true, revision, vault, request.ifExists);
     }
-    async createDispatchedDocument(path, content, silent, revision, vault) {
+    async prepareDispatchPane() {
+        if (this.snapshot.panes.length >= MAX_PANE_GROUPS)
+            return false;
+        if (this.snapshot.saveStatus !== 'saved' && !await this.save())
+            return false;
+        const used = new Set(this.snapshot.panes.map(pane => pane.id));
+        const id = Array.from({ length: MAX_PANE_GROUPS }, (_, index) => `pane-${String(index + 1)}`)
+            .find(candidate => !used.has(candidate));
+        if (id === undefined)
+            return false;
+        this.shellSession = addPaneGroup(this.shellSession, id).session;
+        this.syncShell();
+        return true;
+    }
+    async createDispatchedDocument(path, content, silent, revision, vault, ifExists) {
         if (!isSafeVaultRelativePath(path) || !/\.md$/iu.test(path) || !boundedSource(content))
             return 'failed';
         const previousPath = this.snapshot.path;
@@ -306,23 +362,56 @@ export class WorkbenchRouteController {
         if (!this.dispatchCurrent(revision, vault))
             return 'stale';
         try {
-            const created = remoteValue(await this.remote.tocktutorWorkbench.createDocument({
-                content,
-                expectedVault: vault,
-                path,
-            }));
+            let result;
+            let operation = 'created';
+            if (ifExists !== undefined) {
+                const existingResult = await this.remote.tocktutorWorkbench.openDocument(path, vault);
+                let existing = null;
+                try {
+                    existing = remoteValue(existingResult);
+                }
+                catch (error) {
+                    if (!(error instanceof RemoteCallError) || error.code !== 'not-found')
+                        throw error;
+                }
+                if (existing !== null) {
+                    if (existing.generation !== vault.generation || existing.path !== path)
+                        return 'stale';
+                    const merged = ifExists === 'overwrite' ? content
+                        : content === '' ? existing.content
+                            : ifExists === 'prepend' ? `${content}${content.endsWith('\n') || existing.content.startsWith('\n') ? '' : '\n'}${existing.content}`
+                                : `${existing.content}${existing.content.endsWith('\n') || content.startsWith('\n') ? '' : '\n'}${content}`;
+                    if (!boundedSource(merged))
+                        return 'failed';
+                    result = remoteValue(await this.remote.tocktutorWorkbench.saveDocument({
+                        content: merged,
+                        expectedRevision: existing.revision,
+                        expectedVault: vault,
+                        path,
+                    }));
+                    operation = 'updated';
+                    content = merged;
+                }
+                else {
+                    result = remoteValue(await this.remote.tocktutorWorkbench.createDocument({ content, expectedVault: vault, path }));
+                }
+            }
+            else {
+                result = remoteValue(await this.remote.tocktutorWorkbench.createDocument({ content, expectedVault: vault, path }));
+            }
             if (!this.dispatchCurrent(revision, vault))
                 return 'stale';
-            if (created.generation !== vault.generation || created.path !== path || created.status !== 'created')
+            if (result.generation !== vault.generation || result.path !== path
+                || (operation === 'created' ? result.status !== 'created' : result.status !== 'saved'))
                 return 'failed';
             if (silent)
                 return 'handled';
             this.update({
                 documentKind: 'markdown',
-                message: `${path} created.`,
+                message: `${path} ${operation}.`,
                 mode: 'source',
                 path,
-                revision: created.revision,
+                revision: result.revision,
                 saveStatus: 'saved',
                 source: content,
             });
@@ -1695,37 +1784,38 @@ export class WorkbenchRouteController {
             this.update({ embeds: Object.freeze([]) });
             return true;
         }
-        const entries = this.snapshot.entries;
-        const resolved = [];
-        let aggregate = 0;
         const operation = this.nextOperation();
         try {
-            for (const target of targets) {
-                const path = resolveEmbedTargetPath(entries, target.path);
-                if (path === null)
-                    continue;
-                if (target.kind === 'media') {
+            const result = await resolveEmbedGraph({
+                entries: this.snapshot.entries,
+                isCurrent: () => this.current(operation.id, vault) && this.snapshot.path === sourcePath,
+                readAttachment: async (path) => {
                     const preview = remoteValue(await this.remote.tocktutorWorkbench.previewAttachment(path, vault, operation.signal));
-                    if (!this.current(operation.id, vault) || this.snapshot.path !== sourcePath || preview.path !== path || preview.generation !== vault.generation)
-                        return false;
-                    aggregate += preview.dataBase64.length;
-                    if (aggregate > 64 * 1024 * 1024)
-                        break;
-                    resolved.push({ content: preview.dataBase64, mimeType: preview.mimeType, target: { ...target, path } });
-                }
-                else {
+                    if (preview.path !== path || preview.generation !== vault.generation)
+                        throw new Error('Embed attachment identity changed.');
+                    return preview;
+                },
+                readDocument: async (path) => {
                     const opened = remoteValue(await this.remote.tocktutorWorkbench.openDocument(path, vault, operation.signal));
-                    if (!this.current(operation.id, vault) || this.snapshot.path !== sourcePath || opened.path !== path || opened.generation !== vault.generation)
-                        return false;
-                    aggregate += opened.content.length;
-                    if (aggregate > 25 * 1024 * 1024)
-                        break;
-                    const content = target.kind === 'note' ? resolveNoteEmbedFragment(opened.content, target.fragment) : opened.content;
-                    if (content !== null)
-                        resolved.push({ content, target: { ...target, path } });
-                }
-            }
-            this.update({ embeds: Object.freeze(resolved.map(embed => Object.freeze({ ...embed, target: Object.freeze({ ...embed.target }) }))) });
+                    if (opened.path !== path || opened.generation !== vault.generation)
+                        throw new Error('Embed document identity changed.');
+                    return opened;
+                },
+                signal: operation.signal,
+                source: this.snapshot.source,
+            });
+            if (result.status !== 'ready' || !this.current(operation.id, vault) || this.snapshot.path !== sourcePath)
+                return false;
+            this.update({
+                embeds: Object.freeze(result.embeds.map(embed => Object.freeze({
+                    content: embed.content,
+                    ...(embed.depth === 0 ? {} : { depth: embed.depth }),
+                    ...(embed.mimeType === undefined ? {} : { mimeType: embed.mimeType }),
+                    ...(embed.parentPath === undefined ? {} : { parentPath: embed.parentPath }),
+                    target: Object.freeze({ ...embed.target }),
+                }))),
+                warnings: Object.freeze([...this.snapshot.warnings, ...result.warnings].slice(-32)),
+            });
             return true;
         }
         catch {
@@ -2168,7 +2258,7 @@ export function TockTutorRouteView(props) {
                                         if (event.clipboardData.files.length === 0)
                                             return;
                                         props.onAttachFiles?.(event.clipboardData.files);
-                                    }, children: snapshot.path === null ? (_jsx(Empty, { unstyled: true, className: "tocktutor-empty absolute top-[45%] left-1/2 w-full max-w-[420px] -translate-1/2 p-8 text-center", children: _jsxs(EmptyHeader, { unstyled: true, children: [_jsx("p", { className: "tocktutor-kicker mb-0.5 text-[11px] font-[650] tracking-[.08em] text-[var(--tt-muted)] uppercase", children: "Ready When You Are" }), _jsx(EmptyTitle, { unstyled: true, "aria-level": 2, className: "text-xl font-bold", role: "heading", children: "Select a Note" }), _jsx(EmptyDescription, { unstyled: true, className: "text-[var(--tt-muted)]", children: "Choose a Markdown note from the vault to read or edit its exact source." })] }) })) : snapshot.mode === 'source' ? (_jsx(Textarea, { unstyled: true, "aria-label": sourceLabel, className: "h-full min-h-0 w-full resize-none border-0 bg-[var(--tt-panel)] px-[max(28px,calc((100%-768px)/2))] py-9 text-[var(--tt-text)] outline-none [tab-size:2] [font:14px/1.65_ui-monospace,SFMono-Regular,Consolas,monospace]", onChange: (event) => { props.onEdit(event.target.value); }, onSelect: event => { props.onSelectionChange?.(event.currentTarget.selectionStart, event.currentTarget.selectionEnd); }, spellCheck: "true", value: snapshot.source })) : snapshot.mode === 'live-preview' && snapshot.documentKind === 'markdown' ? (_jsx(LivePreviewView, { documentKey: snapshot.path, onEdit: props.onEdit, onToggleTask: props.onToggleTask, source: snapshot.source })) : snapshot.documentKind === 'canvas' ? (_jsx(CanvasBoard, { disabled: snapshot.revision === null || props.onCanvasChange === undefined, onChange: change => { props.onCanvasChange?.(change); }, revision: snapshot.revision ?? 'unavailable', source: snapshot.source })) : snapshot.documentKind === 'base' ? (_jsx(ExecutableBaseView, { files: snapshot.baseFiles ?? [], ...(props.onBaseCopy === undefined ? {} : { onCopy: props.onBaseCopy }), ...(props.onBaseEdit === undefined ? {} : { onEdit: props.onBaseEdit }), ...(props.onBaseExport === undefined ? {} : { onExport: props.onBaseExport }), source: snapshot.source })) : snapshot.documentKind === 'markdown' ? (_jsx(RichReadingView, { onToggleTask: props.onToggleTask, source: snapshot.source })) : (_jsx(Alert, { unstyled: true, children: "Reading view is unavailable." })) }), _jsxs("footer", { "aria-label": "TockTutor Status Bar", className: "tocktutor-statusbar flex min-w-0 items-center border-t border-[var(--tt-border)] px-2 text-xs text-[var(--tt-muted)]", role: "group", children: [_jsx("output", { "aria-live": "polite", className: "tocktutor-message absolute size-px overflow-hidden whitespace-nowrap [clip:rect(0_0_0_0)] [clip-path:inset(50%)]", children: snapshot.message }), snapshot.path !== null && (_jsxs("div", { className: "ml-auto flex items-center gap-[18px] whitespace-nowrap max-[760px]:gap-2", children: [_jsx("span", { children: "0 Backlinks" }), _jsx("span", { children: snapshot.mode === 'reading' ? 'Reading' : snapshot.mode === 'live-preview' ? 'Live Preview' : 'Source' }), _jsxs("span", { children: [String(words), " Words"] }), _jsxs("span", { children: [String(characters), " Characters"] }), _jsxs(Tooltip, { children: [_jsx(TooltipTrigger, { asChild: true, children: _jsx(Button, { unstyled: true, "aria-label": "Open Assistant", "aria-expanded": panel === 'assistant', onClick: () => { setPanel(current => current === 'assistant' ? null : 'assistant'); }, type: "button", className: "border-0 bg-transparent px-0 py-0.5 text-[var(--tt-muted)] [&_svg]:size-[17px]", children: _jsx(WorkbenchGlyph, { kind: "chat" }) }) }), _jsx(TooltipContent, { children: "Open Assistant" })] })] }))] })] }), _jsxs("aside", { "aria-hidden": panel !== 'assistant', "aria-label": "Assistant Panel", className: "tocktutor-right-panel tocktutor-right-panel-assistant relative invisible grid min-w-0 w-0 translate-x-6 grid-rows-[minmax(0,1fr)] overflow-hidden border-l-0 bg-[var(--tt-panel)] opacity-0 shadow-none transition-[width,opacity,transform,visibility] [transition-duration:420ms,300ms,460ms,0s] [transition-timing-function:cubic-bezier(.16,1,.3,1),cubic-bezier(.16,1,.3,1),cubic-bezier(.16,1,.3,1),linear] [transition-delay:0s,0s,0s,420ms] pointer-events-none data-[open=true]:visible data-[open=true]:translate-x-0 data-[open=true]:overflow-visible data-[open=true]:opacity-100 data-[open=true]:[transition-delay:0s] data-[open=true]:pointer-events-auto [&>:not(.tocktutor-assistant-resize)]:min-w-[min(240px,calc(100vw-262px))]", "data-open": panel === 'assistant', style: { width: panel === 'assistant' ? `${String(assistantPanelWidth)}px` : '0px' }, ...(panel === 'assistant' ? {} : { inert: '' }), children: [panel === 'assistant' && (_jsx(Button, { unstyled: true, "aria-label": "Resize Assistant Panel", "aria-orientation": "vertical", "aria-valuemax": MAX_ASSISTANT_PANEL_WIDTH, "aria-valuemin": MIN_ASSISTANT_PANEL_WIDTH, "aria-valuenow": assistantPanelWidth, className: "tocktutor-assistant-resize absolute top-0 bottom-0 left-0 z-3 w-4 -translate-x-1/2 touch-none cursor-col-resize border-0 bg-transparent p-0 outline-none before:absolute before:top-1/2 before:left-1/2 before:h-10 before:w-2 before:-translate-1/2 before:rounded-full before:border before:border-[color-mix(in_srgb,var(--tt-text)_32%,var(--tt-border)_68%)] before:bg-[color-mix(in_srgb,var(--tt-text)_8%,var(--tt-panel))] before:shadow-[0_4px_12px_-7px_color-mix(in_srgb,var(--tt-text)_42%,transparent),0_0_0_1px_color-mix(in_srgb,var(--tt-panel)_82%,transparent)] before:transition-colors before:duration-140 before:ease-[cubic-bezier(.16,1,.3,1)] before:content-[''] hover:before:border-[color-mix(in_srgb,var(--tt-accent)_58%,var(--tt-border)_42%)] active:before:border-[color-mix(in_srgb,var(--tt-accent)_58%,var(--tt-border)_42%)] focus-visible:before:border-[color-mix(in_srgb,var(--tt-accent)_58%,var(--tt-border)_42%)] hover:[&+.tocktutor-assistant-content]:border-l-[var(--tt-accent)] active:[&+.tocktutor-assistant-content]:border-l-[var(--tt-accent)] focus-visible:[&+.tocktutor-assistant-content]:border-l-[var(--tt-accent)]", onKeyDown: resizeAssistantPanelWithKeyboard, onPointerDown: beginAssistantPanelResize, role: "separator", title: "Drag or Use Left and Right Arrow Keys", type: "button" })), _jsx("div", { className: "tocktutor-assistant-content min-h-0 min-w-[min(240px,calc(100vw-262px))] overflow-hidden border-l border-[color-mix(in_srgb,var(--tt-text)_8%,var(--tt-border)_92%)] transition-colors duration-140 ease-[cubic-bezier(.16,1,.3,1)]", children: props.assistantPanel })] }), _jsx(WorkbenchUtilities, { ...props, activeProperties: activeProperties, onClose: () => { setPanel(null); }, open: panel === 'utilities' })] })] }) }));
+                                    }, children: snapshot.path === null ? (_jsx(Empty, { unstyled: true, className: "tocktutor-empty absolute top-[45%] left-1/2 w-full max-w-[420px] -translate-1/2 p-8 text-center", children: _jsxs(EmptyHeader, { unstyled: true, children: [_jsx("p", { className: "tocktutor-kicker mb-0.5 text-[11px] font-[650] tracking-[.08em] text-[var(--tt-muted)] uppercase", children: "Ready When You Are" }), _jsx(EmptyTitle, { unstyled: true, "aria-level": 2, className: "text-xl font-bold", role: "heading", children: "Select a Note" }), _jsx(EmptyDescription, { unstyled: true, className: "text-[var(--tt-muted)]", children: "Choose a Markdown note from the vault to read or edit its exact source." })] }) })) : snapshot.mode === 'source' ? (_jsx("div", { className: "flex h-full min-h-0 flex-col", children: _jsx(SourceEditor, { ariaLabel: sourceLabel, className: "h-full", content: snapshot.source, onContentChange: props.onEdit, onSelectionChange: selection => { props.onSelectionChange?.(selection.main.from, selection.main.to); }, ...(snapshot.embeds === undefined ? {} : { resolvedEmbeds: snapshot.embeds }), spellCheck: true }, snapshot.path) })) : snapshot.mode === 'live-preview' && snapshot.documentKind === 'markdown' ? (_jsx(LivePreviewView, { documentKey: snapshot.path, embeds: snapshot.embeds, onEdit: props.onEdit, onOpenExternalUrl: props.onOpenExternalUrl, onSelectionChange: selection => { props.onSelectionChange?.(selection.from, selection.to); }, onToggleTask: props.onToggleTask, source: snapshot.source })) : snapshot.documentKind === 'canvas' ? (_jsx(CanvasBoard, { disabled: snapshot.revision === null || props.onCanvasChange === undefined, onChange: change => { props.onCanvasChange?.(change); }, revision: snapshot.revision ?? 'unavailable', source: snapshot.source })) : snapshot.documentKind === 'base' ? (_jsx(ExecutableBaseView, { files: snapshot.baseFiles ?? [], ...(props.onBaseCopy === undefined ? {} : { onCopy: props.onBaseCopy }), ...(props.onBaseEdit === undefined ? {} : { onEdit: props.onBaseEdit }), ...(props.onBaseExport === undefined ? {} : { onExport: props.onBaseExport }), source: snapshot.source })) : snapshot.documentKind === 'markdown' ? (_jsx(RichReadingView, { embeds: snapshot.embeds, onOpenExternalUrl: props.onOpenExternalUrl, onToggleTask: props.onToggleTask, source: snapshot.source })) : (_jsx(Alert, { unstyled: true, children: "Reading view is unavailable." })) }), _jsxs("footer", { "aria-label": "TockTutor Status Bar", className: "tocktutor-statusbar flex min-w-0 items-center border-t border-[var(--tt-border)] px-2 text-xs text-[var(--tt-muted)]", role: "group", children: [_jsx("output", { "aria-live": "polite", className: "tocktutor-message absolute size-px overflow-hidden whitespace-nowrap [clip:rect(0_0_0_0)] [clip-path:inset(50%)]", children: snapshot.message }), snapshot.path !== null && (_jsxs("div", { className: "ml-auto flex items-center gap-[18px] whitespace-nowrap max-[760px]:gap-2", children: [_jsx("span", { children: "0 Backlinks" }), _jsx("span", { children: snapshot.mode === 'reading' ? 'Reading' : snapshot.mode === 'live-preview' ? 'Live Preview' : 'Source' }), _jsxs("span", { children: [String(words), " Words"] }), _jsxs("span", { children: [String(characters), " Characters"] }), _jsxs(Tooltip, { children: [_jsx(TooltipTrigger, { asChild: true, children: _jsx(Button, { unstyled: true, "aria-label": "Open Assistant", "aria-expanded": panel === 'assistant', onClick: () => { setPanel(current => current === 'assistant' ? null : 'assistant'); }, type: "button", className: "border-0 bg-transparent px-0 py-0.5 text-[var(--tt-muted)] [&_svg]:size-[17px]", children: _jsx(WorkbenchGlyph, { kind: "chat" }) }) }), _jsx(TooltipContent, { children: "Open Assistant" })] })] }))] })] }), _jsxs("aside", { "aria-hidden": panel !== 'assistant', "aria-label": "Assistant Panel", className: "tocktutor-right-panel tocktutor-right-panel-assistant relative invisible grid min-w-0 w-0 translate-x-6 grid-rows-[minmax(0,1fr)] overflow-hidden border-l-0 bg-[var(--tt-panel)] opacity-0 shadow-none transition-[width,opacity,transform,visibility] [transition-duration:420ms,300ms,460ms,0s] [transition-timing-function:cubic-bezier(.16,1,.3,1),cubic-bezier(.16,1,.3,1),cubic-bezier(.16,1,.3,1),linear] [transition-delay:0s,0s,0s,420ms] pointer-events-none data-[open=true]:visible data-[open=true]:translate-x-0 data-[open=true]:overflow-visible data-[open=true]:opacity-100 data-[open=true]:[transition-delay:0s] data-[open=true]:pointer-events-auto [&>:not(.tocktutor-assistant-resize)]:min-w-[min(240px,calc(100vw-262px))]", "data-open": panel === 'assistant', style: { width: panel === 'assistant' ? `${String(assistantPanelWidth)}px` : '0px' }, ...(panel === 'assistant' ? {} : { inert: '' }), children: [panel === 'assistant' && (_jsx(Button, { unstyled: true, "aria-label": "Resize Assistant Panel", "aria-orientation": "vertical", "aria-valuemax": MAX_ASSISTANT_PANEL_WIDTH, "aria-valuemin": MIN_ASSISTANT_PANEL_WIDTH, "aria-valuenow": assistantPanelWidth, className: "tocktutor-assistant-resize absolute top-0 bottom-0 left-0 z-3 w-4 -translate-x-1/2 touch-none cursor-col-resize border-0 bg-transparent p-0 outline-none before:absolute before:top-1/2 before:left-1/2 before:h-10 before:w-2 before:-translate-1/2 before:rounded-full before:border before:border-[color-mix(in_srgb,var(--tt-text)_32%,var(--tt-border)_68%)] before:bg-[color-mix(in_srgb,var(--tt-text)_8%,var(--tt-panel))] before:shadow-[0_4px_12px_-7px_color-mix(in_srgb,var(--tt-text)_42%,transparent),0_0_0_1px_color-mix(in_srgb,var(--tt-panel)_82%,transparent)] before:transition-colors before:duration-140 before:ease-[cubic-bezier(.16,1,.3,1)] before:content-[''] hover:before:border-[color-mix(in_srgb,var(--tt-accent)_58%,var(--tt-border)_42%)] active:before:border-[color-mix(in_srgb,var(--tt-accent)_58%,var(--tt-border)_42%)] focus-visible:before:border-[color-mix(in_srgb,var(--tt-accent)_58%,var(--tt-border)_42%)] hover:[&+.tocktutor-assistant-content]:border-l-[var(--tt-accent)] active:[&+.tocktutor-assistant-content]:border-l-[var(--tt-accent)] focus-visible:[&+.tocktutor-assistant-content]:border-l-[var(--tt-accent)]", onKeyDown: resizeAssistantPanelWithKeyboard, onPointerDown: beginAssistantPanelResize, role: "separator", title: "Drag or Use Left and Right Arrow Keys", type: "button" })), _jsx("div", { className: "tocktutor-assistant-content min-h-0 min-w-[min(240px,calc(100vw-262px))] overflow-hidden border-l border-[color-mix(in_srgb,var(--tt-text)_8%,var(--tt-border)_92%)] transition-colors duration-140 ease-[cubic-bezier(.16,1,.3,1)]", children: props.assistantPanel })] }), _jsx(WorkbenchUtilities, { ...props, activeProperties: activeProperties, onClose: () => { setPanel(null); }, open: panel === 'utilities' })] })] }) }));
 }
 function TockTutorAssistantPanelOutlet(props) {
     return props.renderSlot(TOCKTUTOR_ASSISTANT_PANEL_SLOT, {
@@ -2189,6 +2279,7 @@ function TockTutorWebViewerOutlet(props) {
     return props.renderSlot(TOCKTUTOR_WEB_VIEWER_PANEL_SLOT, {
         activePath: props.activePath,
         addLinkBookmark: props.addLinkBookmark,
+        externalUrl: props.externalUrl,
         vault: props.vault,
         webClipFolder: props.webClipFolder,
     }, {
@@ -2211,6 +2302,7 @@ export function TockTutorRoute(props) {
     const controller = useMemo(() => new WorkbenchRouteController(props.remote, props.navigate), [props.navigate, props.remote]);
     const snapshot = useSyncExternalStore(controller.subscribe, controller.getSnapshot, controller.getSnapshot);
     const root = useRef(null);
+    const [externalUrl, setExternalUrl] = useState(null);
     useEffect(() => {
         void controller.syncLocation(props.location.pathname);
     }, [controller, props.location.pathname]);
@@ -2218,7 +2310,7 @@ export function TockTutorRoute(props) {
     useEffect(() => {
         if (snapshot.path === null)
             return;
-        root.current?.querySelector(snapshot.mode === 'source' ? 'textarea' : '[aria-label$="View"]')?.focus();
+        root.current?.querySelector(snapshot.mode === 'source' ? '.cm-content' : snapshot.mode === 'live-preview' ? '.ProseMirror' : '[aria-label$="View"]')?.focus();
     }, [snapshot.mode, snapshot.path]);
     useEffect(() => {
         if (snapshot.searchOpen)
@@ -2271,7 +2363,7 @@ export function TockTutorRoute(props) {
                 anchor.download = request.filename;
                 anchor.click();
                 URL.revokeObjectURL(url);
-            }, onCancelDispatch: () => { controller.cancelDispatchDialog(); }, onCancelOrganization: () => { controller.cancelOrganization(); }, onCanvasChange: change => { void controller.applyCanvasChange(change); }, onCaptureSnapshot: () => { void controller.captureRecoverySnapshot(); }, onClearSnapshots: () => { void controller.clearRecoverySnapshots(); }, onCloseAttachmentPreview: () => { controller.closeAttachmentPreview(); }, onCloseCommandPalette: () => { controller.setCommandPaletteOpen(false); }, onCloseSearch: () => { controller.closeSearch(); }, onCloseTab: (paneId, path) => { void controller.closeTab(paneId, path); }, onConvertActiveNote: () => { controller.convertActiveNote(); }, onCopyGraphPath: path => { void globalThis.navigator?.clipboard?.writeText(path); }, onCreateBuiltinTemplate: name => { void controller.createBuiltinTemplateNote(name); }, onCreateManagedVault: name => { void controller.createManagedVault(name); }, onEdit: source => { controller.edit(source); }, onEditorCommand: command => { controller.runEditorCommand(command); }, onExtractSelection: () => { void controller.extractActiveSelection(); }, onFocusPane: paneId => { void controller.focusPane(paneId); }, onForward: () => { void controller.goForward(); }, onInsertCurrentDateTime: kind => { controller.insertCurrentDateTime(kind); }, onJumpToLine: line => { controller.jumpToLine(line); }, onLoadGraph: mode => { void controller.loadGraph(mode); }, onLoadWorkspace: id => { void controller.loadWorkspace(id); }, onMode: mode => { controller.setMode(mode); }, onMoveCanvas: (nodeId, deltaX, deltaY) => { controller.moveCanvasNode(nodeId, deltaX, deltaY); }, onMoveTab: (paneId, path, direction) => { controller.moveTab(paneId, path, direction); }, onNewNote: () => { void controller.handleDispatch({ action: 'new', kind: 'quick-action', operationId: crypto.randomUUID() }); }, onOpenBookmark: id => { void controller.openBookmark(id); }, onOpenCommandPalette: () => { controller.setCommandPaletteOpen(true); }, onOpenGraphNode: (path, mode) => { void controller.openGraphNode(path, mode); }, onOpenRecovery: () => { void controller.setRecoveryOpen(true); }, onOpenSandboxVault: () => { void controller.openSandboxVault(); }, onOpenSearch: () => { controller.openSearch(''); }, onOpenSmartView: kind => { void controller.openSmartView(kind); }, onPrepareOrganization: () => { void controller.prepareOrganization(); }, onPreviewAttachment: path => { void controller.previewAttachment(path); }, onReadSnapshot: id => { void controller.readRecoverySnapshot(id); }, onRemoveBookmark: id => { controller.removeBookmark(id); }, onRemoveRecentVault: id => { void controller.removeRecentVault(id); }, onReopenClosedTab: () => { void controller.reopenClosedTab(); }, onRestoreSnapshot: id => { void controller.restoreRecoverySnapshot(id); }, onRestoreSnapshotOverwrite: id => { void controller.restoreRecoverySnapshotOverwrite(id); }, onRestoreTrash: id => { void controller.restoreTrashEntry(id); }, onRunSearch: () => { void controller.runSearch(); }, onSave: () => { void controller.save(); }, onSaveWorkspace: () => { controller.saveCurrentWorkspace(); }, onSearchChange: query => { controller.setSearchQuery(query); }, onSearchMode: mode => { controller.setSearchMode(mode); }, onSettingsChange: change => { controller.updateSettings(change); }, onSelect: path => { void controller.select(path); }, onSelectionChange: (start, end) => { controller.setSelection(start, end); }, onSetProperty: (key, value) => { controller.setProperty(key, value); }, onStoreAttachment: (fileName, dataBase64) => { void controller.storeActiveAttachment(fileName, dataBase64); }, onSubmitDispatch: draft => { void controller.submitDispatchDialog(draft); }, onToggleFocusMode: () => { controller.toggleFocusMode(); }, onTogglePinTab: (paneId, path) => { controller.togglePinTab(paneId, path); }, onToggleTask: index => { controller.toggleTask(index); }, onTrashCurrent: () => { void controller.trashCurrent(); }, reviewPanel: (_jsx(TockTutorReviewPanelOutlet, { activePath: snapshot.path, renderSlot: props.renderSlot, vault: snapshot.vault })), snapshot: snapshot, webViewerPanel: (_jsx(TockTutorWebViewerOutlet, { activePath: snapshot.path, addLinkBookmark: (title, url) => controller.addLinkBookmark(title, url), renderSlot: props.renderSlot, vault: snapshot.vault, webClipFolder: snapshot.settings?.webClipFolder ?? 'Clips' })), ...(typeof document === 'undefined'
+            }, onCancelDispatch: () => { controller.cancelDispatchDialog(); }, onCancelOrganization: () => { controller.cancelOrganization(); }, onCanvasChange: change => { void controller.applyCanvasChange(change); }, onCaptureSnapshot: () => { void controller.captureRecoverySnapshot(); }, onClearSnapshots: () => { void controller.clearRecoverySnapshots(); }, onCloseAttachmentPreview: () => { controller.closeAttachmentPreview(); }, onCloseCommandPalette: () => { controller.setCommandPaletteOpen(false); }, onCloseSearch: () => { controller.closeSearch(); }, onCloseTab: (paneId, path) => { void controller.closeTab(paneId, path); }, onConvertActiveNote: () => { controller.convertActiveNote(); }, onCopyGraphPath: path => { void globalThis.navigator?.clipboard?.writeText(path); }, onCreateBuiltinTemplate: name => { void controller.createBuiltinTemplateNote(name); }, onCreateManagedVault: name => { void controller.createManagedVault(name); }, onEdit: source => { controller.edit(source); }, onEditorCommand: command => { controller.runEditorCommand(command); }, onExtractSelection: () => { void controller.extractActiveSelection(); }, onFocusPane: paneId => { void controller.focusPane(paneId); }, onForward: () => { void controller.goForward(); }, onInsertCurrentDateTime: kind => { controller.insertCurrentDateTime(kind); }, onJumpToLine: line => { controller.jumpToLine(line); }, onLoadGraph: mode => { void controller.loadGraph(mode); }, onLoadWorkspace: id => { void controller.loadWorkspace(id); }, onMode: mode => { controller.setMode(mode); }, onMoveCanvas: (nodeId, deltaX, deltaY) => { controller.moveCanvasNode(nodeId, deltaX, deltaY); }, onMoveTab: (paneId, path, direction) => { controller.moveTab(paneId, path, direction); }, onNewNote: () => { void controller.handleDispatch({ action: 'new', kind: 'quick-action', operationId: crypto.randomUUID() }); }, onOpenBookmark: id => { void controller.openBookmark(id); }, onOpenCommandPalette: () => { controller.setCommandPaletteOpen(true); }, onOpenExternalUrl: url => { setExternalUrl(url); }, onOpenGraphNode: (path, mode) => { void controller.openGraphNode(path, mode); }, onOpenRecovery: () => { void controller.setRecoveryOpen(true); }, onOpenSandboxVault: () => { void controller.openSandboxVault(); }, onOpenSearch: () => { controller.openSearch(''); }, onOpenSmartView: kind => { void controller.openSmartView(kind); }, onPrepareOrganization: () => { void controller.prepareOrganization(); }, onPreviewAttachment: path => { void controller.previewAttachment(path); }, onReadSnapshot: id => { void controller.readRecoverySnapshot(id); }, onRemoveBookmark: id => { controller.removeBookmark(id); }, onRemoveRecentVault: id => { void controller.removeRecentVault(id); }, onReopenClosedTab: () => { void controller.reopenClosedTab(); }, onRestoreSnapshot: id => { void controller.restoreRecoverySnapshot(id); }, onRestoreSnapshotOverwrite: id => { void controller.restoreRecoverySnapshotOverwrite(id); }, onRestoreTrash: id => { void controller.restoreTrashEntry(id); }, onRunSearch: () => { void controller.runSearch(); }, onSave: () => { void controller.save(); }, onSaveWorkspace: () => { controller.saveCurrentWorkspace(); }, onSearchChange: query => { controller.setSearchQuery(query); }, onSearchMode: mode => { controller.setSearchMode(mode); }, onSettingsChange: change => { controller.updateSettings(change); }, onSelect: path => { void controller.select(path); }, onSelectionChange: (start, end) => { controller.setSelection(start, end); }, onSetProperty: (key, value) => { controller.setProperty(key, value); }, onStoreAttachment: (fileName, dataBase64) => { void controller.storeActiveAttachment(fileName, dataBase64); }, onSubmitDispatch: draft => { void controller.submitDispatchDialog(draft); }, onToggleFocusMode: () => { controller.toggleFocusMode(); }, onTogglePinTab: (paneId, path) => { controller.togglePinTab(paneId, path); }, onToggleTask: index => { controller.toggleTask(index); }, onTrashCurrent: () => { void controller.trashCurrent(); }, reviewPanel: (_jsx(TockTutorReviewPanelOutlet, { activePath: snapshot.path, renderSlot: props.renderSlot, vault: snapshot.vault })), snapshot: snapshot, webViewerPanel: (_jsx(TockTutorWebViewerOutlet, { activePath: snapshot.path, addLinkBookmark: (title, url) => controller.addLinkBookmark(title, url), externalUrl: externalUrl, renderSlot: props.renderSlot, vault: snapshot.vault, webClipFolder: snapshot.settings?.webClipFolder ?? 'Clips' })), ...(typeof document === 'undefined'
                 ? {}
                 : { titlebarTarget: document.getElementById('tockteam-window-titlebar-slot') ?? document.body }) }) }));
 }

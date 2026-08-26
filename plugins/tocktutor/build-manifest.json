@@ -11,19 +11,19 @@
     },
     {
       "path": "packages/tockbot-note-desktop/dist/client-actions.d.ts",
-      "sha256": "9059fc0afc1ce0a5a10e5f750363ac290fe0e80c3dd5bcb5ec2aa5685f7cd40f"
+      "sha256": "2bf53568f601a0626b7c470c5c19ab8b3b6ed73e12c93c87a638814d2f4a2a07"
     },
     {
       "path": "packages/tockbot-note-desktop/dist/client-actions.d.ts.map",
-      "sha256": "5f04ac2caeeec073228656d870a62d51787b344a94beac5e77cab9ebeab1a7cf"
+      "sha256": "08504ef7068efb38558c20459b1633b5d8138cd0e81ca0e87eda917f67dcdef7"
     },
     {
       "path": "packages/tockbot-note-desktop/dist/client-actions.js",
-      "sha256": "2e70f35a1c05953cb7a5484c70cfe20cef9c2b6aaf99f287214f924badf10f7f"
+      "sha256": "268eefb36426149302e51c05e3a51154e6e9bf30c3eb0fabe648b15985464bdf"
     },
     {
       "path": "packages/tockbot-note-desktop/dist/client-actions.js.map",
-      "sha256": "cb5d05f6e9adc4cb485dd0247e7feb5e74cf3c9bb244c0c2655dbdd46a21ffc9"
+      "sha256": "f2da4b4fe8b16934dd42b7537cd7aa47fdd1e71e8e966f3c0389fd49bb473139"
     },
     {
       "path": "packages/tockbot-note-desktop/dist/client-api.d.ts",
@@ -51,11 +51,11 @@
     },
     {
       "path": "packages/tockbot-note-desktop/dist/client.js",
-      "sha256": "6135b195cda9b3fd2d587dce4cb91df3821583410414b773bd76e535a40aef65"
+      "sha256": "011fba7c8d08eaca7fb07149bde60f5ba138c4c3837e64bda3274df3b6e8acf0"
     },
     {
       "path": "packages/tockbot-note-desktop/dist/client.js.map",
-      "sha256": "aa499e6bc87377f4a8e7555599bdfeed1228271cd8bc85ec7703c7a5229665eb"
+      "sha256": "12172b9f6b1be3c854226f5dc08c7e9c119b224c71e4d14d09857bae1e84b8ae"
     },
     {
       "path": "packages/tockbot-note-desktop/dist/guard.d.ts",
@@ -75,19 +75,19 @@
     },
     {
       "path": "packages/tockbot-note-desktop/dist/host-actions.d.ts",
-      "sha256": "36930b20b0f2fecad91242fda363ef2abab0e83ac099c344f71f99a3e8b148a7"
+      "sha256": "cd81d76858208557ae312014fcc4de7fb0eb55a17faa6438166e468123639be2"
     },
     {
       "path": "packages/tockbot-note-desktop/dist/host-actions.d.ts.map",
-      "sha256": "13dc44613e5ec890c64d3d5054c32560a25061040af4a13592787079013114a0"
+      "sha256": "e3d3222c44776c3c8c4f821058a8523a78db0fdf5cf4bb7881e0b6a2689374db"
     },
     {
       "path": "packages/tockbot-note-desktop/dist/host-actions.js",
-      "sha256": "6d5540147675afb5d18ec7e20dd86b976c0d417228a6461818ac7286e6c7af3a"
+      "sha256": "c278353e3af797f2f92f15641162ea6ed54e57ab258af752cac1ba63cd580e45"
     },
     {
       "path": "packages/tockbot-note-desktop/dist/host-actions.js.map",
-      "sha256": "2678c95e3a56c4611774cf76ffbd797b2043d7acc61f479885496019e51d95e6"
+      "sha256": "b47ea7d78bb262e817523c690090d2ac68240f94c2b0d65099b0635cbf929d22"
     },
     {
       "path": "packages/tockbot-note-desktop/dist/index.d.ts",
@@ -111,19 +111,19 @@
     },
     {
       "path": "packages/tockbot-note-desktop/dist/typert.host.js",
-      "sha256": "6c6dbc77a1ab790add3ba61d5371e842c22be26026a6ae0282f3cadb7bf4620b"
+      "sha256": "3688ebca9419dec0cfa3d49ac2e0b111588edc2dd721494f2bbbbfd6eed1e4f8"
     },
     {
       "path": "packages/tockbot-note-desktop/dist/typert.remote-client.d.ts",
-      "sha256": "85aac5249e4f1d18633f70f6480a1d385f0e8d47155adc65babd9846963ba8da"
+      "sha256": "ee1e86abc5db626b3d447b505abd9b876b52269477445563e06d84f990a15efe"
     },
     {
       "path": "packages/tockbot-note-desktop/dist/typert.remote-client.d.ts.map",
-      "sha256": "45e6e9b79012ef5994914e99296bf3a22025081349b1b888c3c695db7a403acf"
+      "sha256": "ad368f19f2c6ebad4635c1887eeacd1773f28b13851e8b6105ca9160c325104a"
     },
     {
       "path": "packages/tockbot-note-desktop/dist/typert.remote-client.js",
-      "sha256": "4fc99222edf85a8d6f06aea02f0d7e54801a68fe54d88ac960679509f23e34b0"
+      "sha256": "48c8536e548be6bd9d7c56440e6905624ac37dc36043f18fa7a24f041dbb89cc"
     },
     {
       "path": "packages/tockbot-note-desktop/dist/types.d.ts",
@@ -155,7 +155,7 @@
     },
     {
       "path": "packages/tockbot-note-desktop/src/client-actions.tsx",
-      "sha256": "15db8f7f17f763b690e6eb35f88eb4de6aa664d243d30b600664f9f01162dcef"
+      "sha256": "5b941dbeaa01955a2b4d20e73595b809f4f3cddb89442330eaf1f39df9f40f75"
     },
     {
       "path": "packages/tockbot-note-desktop/src/client-api.ts",
@@ -171,7 +171,7 @@
     },
     {
       "path": "packages/tockbot-note-desktop/src/host-actions.ts",
-      "sha256": "77927de0f95c6d6c4c8d6400260a6c28cca6364f5d894ce308ee7a478acfc680"
+      "sha256": "c115c0b3f79e9a5e213305aa10dbfa6023ade87affb167359d28dddb87c12eab"
     },
     {
       "path": "packages/tockbot-note-desktop/src/index.ts",
@@ -255,11 +255,11 @@
     },
     {
       "path": "packages/tockbot-web-clip/lib/client.js",
-      "sha256": "8a968b3443e89ca2e0f2792347acf2fd9e7938f37df00eaa9eef90d115b88e1f"
+      "sha256": "7e3cc8f67a3b46212ac4774526164365b3ed3f264a444c9482eb40965baf51b8"
     },
     {
       "path": "packages/tockbot-web-clip/lib/client.js.map",
-      "sha256": "ec45db331eee38927c3aba742c3eba6007860cf7fe7cdbcdb7ad058b1d3eb520"
+      "sha256": "36b987cbfed0845a81cfe8d621abc958351da15bed7a2c7a0ba26b9e2fb6cbb5"
     },
     {
       "path": "packages/tockbot-web-clip/lib/fetch.d.ts",
@@ -323,7 +323,7 @@
     },
     {
       "path": "packages/tockbot-web-clip/src/client.tsx",
-      "sha256": "aab11d4c3ad94f7ab1bf486601d667798476778c8fd69440b85af133849899cd"
+      "sha256": "f2af98c0e2afe7aab6cf34cf4b72b07d84b83eba3b9fe2de4395d592a920ee13"
     },
     {
       "path": "packages/tockbot-web-clip/src/fetch.ts",
@@ -367,7 +367,7 @@
     },
     {
       "path": "packages/tockteam-note-vault-tools/lib/index.js",
-      "sha256": "6d68de5f178a0447b0ec7f88c34728625c81ff3db6bcf15ea16f9ad3ea17f101"
+      "sha256": "888df8a6d3e20291d9f807b2c11bdbd8595d11f362b5ed52912de32e090945e3"
     },
     {
       "path": "packages/tockteam-note-vault-tools/package.json",
@@ -375,7 +375,7 @@
     },
     {
       "path": "packages/tockteam-note-vault-tools/src/index.ts",
-      "sha256": "2ea63cac387e54f6c54ece3cd7945521c5a001060cb62f7f60e9c41397024bf6"
+      "sha256": "11526b18feab4672cd68c44ea4fddb9f8c2c8a39a863b2873a582d82b9a1260b"
     },
     {
       "path": "packages/tockteam-note-vault-tools/tsconfig.build.json",
@@ -439,11 +439,11 @@
     },
     {
       "path": "packages/tockteam-tocktutor-assistant/lib/client-bundle.js",
-      "sha256": "0a211f52e0c122b02909857fc6ebf66e33af54003828c0897fb46c644627c474"
+      "sha256": "a251c870b8c8ef34a87b4a2334dff2dfa7465c78ca37ece48c52de1df90fa4b9"
     },
     {
       "path": "packages/tockteam-tocktutor-assistant/lib/client-bundle.js.map",
-      "sha256": "fb89ecc0c2b349e7b053310d5e90e31bcd8412412e3c52b32b03fbc9143c1dd0"
+      "sha256": "ab47a7a94d216d58aeab9b93eeb27923a4925485a648f4915f13d5cf707a231c"
     },
     {
       "path": "packages/tockteam-tocktutor-assistant/lib/client.d.ts",
@@ -483,15 +483,15 @@
     },
     {
       "path": "packages/tockteam-tocktutor-assistant/lib/index.d.ts.map",
-      "sha256": "75973bb964d7bcec8e1c1dbf085cc58f83e9bc1187a7e02bc7da1a7b0fa35d81"
+      "sha256": "a396ebcace04fc79df47e74c0b0934733ef69657e787d2e9b99edf7c271cd940"
     },
     {
       "path": "packages/tockteam-tocktutor-assistant/lib/index.js",
-      "sha256": "92ad61e1fe6a50379326e3fb51c795236f8b4ad8a3691e8eeccda1ed995748bf"
+      "sha256": "33f19738df8cd2052dde0fabd390b370d5bc33f27ac2f6d0ecd97a818e06996d"
     },
     {
       "path": "packages/tockteam-tocktutor-assistant/lib/index.js.map",
-      "sha256": "1b1246c1f5f18479a50e513459a0b5390f6a77376b49160bb9ffee3bca95e3df"
+      "sha256": "81657ae618bba384fd81b69b8223ebcacb22f23f3d0014ab4b439c3d49cfdb38"
     },
     {
       "path": "packages/tockteam-tocktutor-assistant/lib/pennivo-child.d.ts",
@@ -559,11 +559,11 @@
     },
     {
       "path": "packages/tockteam-tocktutor-assistant/lib/read-tool-registration.d.ts",
-      "sha256": "6d17e5c64eb3c594cf3da41149e18e1f37e450c7f900d928d449823365f16c09"
+      "sha256": "81540a8d626d75056911d2d1b3992399d731e5e6d89419f69ccebabf7c2e5e83"
     },
     {
       "path": "packages/tockteam-tocktutor-assistant/lib/read-tool-registration.d.ts.map",
-      "sha256": "88d279473870577abcf066a3d3cc2a4bc87e168c27e0d30df31ff5cd6312ff78"
+      "sha256": "bf479632d3b670c60acda0f8d58651d9c5ec838f5cd8388517946824eef54b5a"
     },
     {
       "path": "packages/tockteam-tocktutor-assistant/lib/read-tool-registration.js",
@@ -571,23 +571,23 @@
     },
     {
       "path": "packages/tockteam-tocktutor-assistant/lib/read-tool-registration.js.map",
-      "sha256": "3e1c6ed704b8ae40d151d6f7ef1151413ea6a4538bfc272fa8575575d1295962"
+      "sha256": "d186b06bdfc626c8942e54f950009035bd31bc09ec7328911ebf4293337d540c"
     },
     {
       "path": "packages/tockteam-tocktutor-assistant/lib/read-tools.d.ts",
-      "sha256": "81b1e8198a5ee6a25db827237f9115e6f24feb45d48fe4fcd2d90e06c73422b7"
+      "sha256": "d5285187f97afe3ad67c7702fe25932134fbc84f658a965d75dc1d387bbd7760"
     },
     {
       "path": "packages/tockteam-tocktutor-assistant/lib/read-tools.d.ts.map",
-      "sha256": "70e1229a4a47d3cd11c7f947988a85eda0178f8a4d357ec245dcceeb6937c8c8"
+      "sha256": "df880c42e1b477cf6f03325d8e529c1d1ac56ee908a87f21699cb63ac291b3ea"
     },
     {
       "path": "packages/tockteam-tocktutor-assistant/lib/read-tools.js",
-      "sha256": "3108b54d05d2806f5f2b5ed93ae2c2c63ffc12711745997ee701007294a5efe2"
+      "sha256": "9d28231e11f671947f7aa592e47b57febda534dd6594b3eff48fee4acb6c82bc"
     },
     {
       "path": "packages/tockteam-tocktutor-assistant/lib/read-tools.js.map",
-      "sha256": "580886016d93bca97edd0ceea558f37aa2bb265586c0167a54b0e473fe4eefe9"
+      "sha256": "51aed93e3988126d8fca07f08751885f88921dd5b1b8297ebd0f5d1718e8ae16"
     },
     {
       "path": "packages/tockteam-tocktutor-assistant/lib/remote-model.d.ts",
@@ -655,19 +655,19 @@
     },
     {
       "path": "packages/tockteam-tocktutor-assistant/lib/turn-bindings.d.ts",
-      "sha256": "6ef8eeff5a2fc9aa4c2e8a880df20569f577e3f0461638eea7c3bd6c9e977bee"
+      "sha256": "92b70339480ade9046f4028d0dcb45b4ace6cffbee6aa841c92954bbffd233c5"
     },
     {
       "path": "packages/tockteam-tocktutor-assistant/lib/turn-bindings.d.ts.map",
-      "sha256": "4c7e988704247d90ab2af2c859bd27bfe0bfec60f9f113a15f31dad18eefcffe"
+      "sha256": "200ce2698bb6cebdd168123c2374752091d89a0af7f16878ec9d40573f165cfd"
     },
     {
       "path": "packages/tockteam-tocktutor-assistant/lib/turn-bindings.js",
-      "sha256": "e5827f8552b40bd9e5c0ca0f1fc6c075d856d2515110f8eb2cd3563efb7a9f63"
+      "sha256": "d97a72625d6631d81f8819e9c2bab7a8da1ecbd545ea1274e1fac6ce977bc7ed"
     },
     {
       "path": "packages/tockteam-tocktutor-assistant/lib/turn-bindings.js.map",
-      "sha256": "13ddba29e331d17695d797c84bc4d0cf1eed45f367f5a08ce7e80a82f12f0077"
+      "sha256": "71f3a013bac6e8b58ba4ee5ed9b580b0dfb58cdb1ebe73c3291d1967ad6ef496"
     },
     {
       "path": "packages/tockteam-tocktutor-assistant/lib/typert.host.d.ts",
@@ -691,19 +691,19 @@
     },
     {
       "path": "packages/tockteam-tocktutor-assistant/lib/write-tool-registration.d.ts",
-      "sha256": "16257b700e85f87f484969b5271ecac22524584835f25d01ba267d5a5fce9ada"
+      "sha256": "b03bd741ed68d7d5aa25800c85d813cd905824952fe02d903a879e8e3112cd5e"
     },
     {
       "path": "packages/tockteam-tocktutor-assistant/lib/write-tool-registration.d.ts.map",
-      "sha256": "3d77356326e0541c99bb83f6394490ea6e0c3f51aef0701197e7d68e53cd54b9"
+      "sha256": "5e61a055bb0fc7fbe7351b772cd47d9ccb5bb485a6dd0805def2ff25c6b2921f"
     },
     {
       "path": "packages/tockteam-tocktutor-assistant/lib/write-tool-registration.js",
-      "sha256": "0f3a0ccae127ace9a7f5b3b2ebc24b24d83fe796ee03b99b884ffc97b0a79ac1"
+      "sha256": "49ef1476c768761a71f631a9a75e0de6090f338ec1b7c43b3208fad6a1022c88"
     },
     {
       "path": "packages/tockteam-tocktutor-assistant/lib/write-tool-registration.js.map",
-      "sha256": "f22076f04a8afbaff0c0359e54497fc66a2a5e1696cab25a3c4c1dd5b2ce2fe7"
+      "sha256": "befecce0b50fec359bab110ef4ca4e6925ba52ee7a0497b1c1ea642877c0c9d2"
     },
     {
       "path": "packages/tockteam-tocktutor-assistant/package.json",
@@ -739,7 +739,7 @@
     },
     {
       "path": "packages/tockteam-tocktutor-assistant/src/index.ts",
-      "sha256": "4b67d34920594ad6b5e74b0b01b53f955a8111137aa5514f6e0c0b9a322e02b7"
+      "sha256": "49de38870b9af5de9e0ca6f862dd35b01b6dcced5f3d660312ac5f703bc3cb12"
     },
     {
       "path": "packages/tockteam-tocktutor-assistant/src/pennivo-child.ts",
@@ -759,11 +759,11 @@
     },
     {
       "path": "packages/tockteam-tocktutor-assistant/src/read-tool-registration.ts",
-      "sha256": "5fa43f54c8adb4dd8ee5cb92f37dc2d5e758ef941f61a73015de898e1bfd8dd3"
+      "sha256": "c3574ffecd7b2c61505583913e39e309fc9267eae9fa04f0597f3c5dfed90a8a"
     },
     {
       "path": "packages/tockteam-tocktutor-assistant/src/read-tools.ts",
-      "sha256": "ee4103aee8aea3aa8a55e36b862bf043a44a844625d5a89457822560d42f3338"
+      "sha256": "c0a31f08ad8682e1b2905468c6ab64798f4189f57971bf72a060d7c3ad23eb99"
     },
     {
       "path": "packages/tockteam-tocktutor-assistant/src/remote-model.ts",
@@ -783,11 +783,11 @@
     },
     {
       "path": "packages/tockteam-tocktutor-assistant/src/turn-bindings.ts",
-      "sha256": "3f798ea5f9bceac6960285296a55520d3fe4ae66a10b91897559067538a67470"
+      "sha256": "38a6f7ca4e61949e6a38e763ab3838495da00c49e4e6813d95f72e7a6e9dd16c"
     },
     {
       "path": "packages/tockteam-tocktutor-assistant/src/write-tool-registration.ts",
-      "sha256": "1f878cd99e001345f2e609a7eaeb7930a23ea142ee6aed123cc1ef4c1a819fb8"
+      "sha256": "7fb30258060aa8d1105d4e35905041c051342ad8bbd00bb6d49ca4af7bf20e93"
     },
     {
       "path": "packages/tockteam-tocktutor-assistant/tsconfig.build.json",
@@ -883,11 +883,11 @@
     },
     {
       "path": "packages/tockteam-tocktutor-import-export/dist/client.js",
-      "sha256": "b1bbfa932d70afde4be2badbeeb0987cc2e0c3323eb31b8184f5411f8bf0f91a"
+      "sha256": "eea5290bd6b421a9cfd9d905589cb5e008909de46603b59823f866553366b344"
     },
     {
       "path": "packages/tockteam-tocktutor-import-export/dist/client.js.map",
-      "sha256": "59c4eb14998cf335b2f0e6bd89b184921c6835a2a1bb9f09487ccead6fad1906"
+      "sha256": "a43aa602c5af55eac06602fa91693ff15eda8513c8438fbf22096b5b13d0668b"
     },
     {
       "path": "packages/tockteam-tocktutor-import-export/dist/core.d.ts",
@@ -1451,19 +1451,19 @@
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/client-api.d.ts",
-      "sha256": "70841751c998d68825e1799f9746dfdf795e21f4703f2ca25aa3ee7b419f722d"
+      "sha256": "86314428d5342ed4d884588151c6a72dbcf9b7c1048def0745f0756864623cd2"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/client-api.d.ts.map",
-      "sha256": "e7a5319eff23a38776369fe16860b4caa9a5e6d5c8914c48012b3ac70b2e60ec"
+      "sha256": "ecabec3f8addba8084d8629bdd2905bf892b3c4ff688ec0ffdf6893569e39559"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/client-api.js",
-      "sha256": "571e0a809512774667f7f3696c363b89b44f7f226a7585236499ff5ceb56c8ee"
+      "sha256": "c4fc648303fbb1286369d5d80befdb1100162157fcfd7a5d93736fce644484ad"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/client-api.js.map",
-      "sha256": "77dcdce13a7c211933e31bc3a5ad3d9b37c60ed01967213b0f4781ec4feac136"
+      "sha256": "f147196987e4380296c3b6c5f2c021dabc083443c9eb5e0fbbc784f5c11d3b4f"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/client.d.ts",
@@ -1475,11 +1475,11 @@
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/client.js",
-      "sha256": "a3bbce7ca661912a14300d54816909df353d139ba50645c8033c7fe5adc53fca"
+      "sha256": "90af648b815ea20027aa3dc31509e6fb62f2982cf489a2a9c01355bd67efe099"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/client.js.map",
-      "sha256": "82190dcbd9bec068099aa51947814c7855efa5bd059b5ec858a10315c6624fb4"
+      "sha256": "8a78273273ce76d6cb67de6c786f699ac445eed6de6cceb20fc05e4467675163"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/composer.d.ts",
@@ -1499,51 +1499,83 @@
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/editor-commands.d.ts",
-      "sha256": "9325566ac5d884f23783134d8fd251b983e2fc9b2bb9097bb34afb1a028fb191"
+      "sha256": "f1939376af6a6802b960dd659163d8d302d7dd2081a3ee9e0151429cd00df0cb"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/editor-commands.d.ts.map",
-      "sha256": "7bd1cb5a606f3d164c13c4415810b30dcfb8a69a7c78cb6573569a35ef184144"
+      "sha256": "88eb242e848c423226d55316b8e48c8b1858cf4958fc19fd6e039c21aaf3abdf"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/editor-commands.js",
-      "sha256": "f9b560cc63ee497cbd8c9cd183c358dc458503f1db2f65ecf90e39c6ff8cc417"
+      "sha256": "0eb78c42548dbf171b561e6e0baab8c69e7df0907c549077f23f8f09cec6be5e"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/editor-commands.js.map",
-      "sha256": "de9bc4a4b975a9e4fd3056011e44d6650ee6cb7cf4cbfc4c644368ae48182ae6"
+      "sha256": "006c17641b865cbd7c9b8686122f9cb7bd4593182f495c33321e956a736665f7"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/editor-surface.d.ts",
-      "sha256": "823b14259d8fb86c7a58663bb7bc244ebaef99df2608f9ec99e24fa94b9c56f2"
+      "sha256": "36adefba821770bbd912bd5af96998c2fe18d8b931cc964556f8d8c212bc6855"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/editor-surface.d.ts.map",
-      "sha256": "cf24bd4ea63d5d5ce8fe67f26ae0ca8bc6bf7151489cbe4f56ed8f054189539e"
+      "sha256": "1c497b3594a4aff916b5616b31b76e2b8711c771815eba7094659202ccd560f9"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/editor-surface.js",
-      "sha256": "306faac7eaefbe3f1faf217a496b88532573d7eb7a502782ba2b443112355730"
+      "sha256": "381fdf982e5ac1524b99b35f27b9b42c819aa8a071bb57c1b261c78836c0a364"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/editor-surface.js.map",
-      "sha256": "99779aa28e65bd8487579f5fc431d95dc456b65a64cd70c23b33f8168932190b"
+      "sha256": "be2e70b7a957ce68fe8f73b07ca25d72ece764f00a83a8637fc1e19262472db3"
+    },
+    {
+      "path": "packages/tockteam-tocktutor-workbench/dist/editor-widgets.d.ts",
+      "sha256": "cbff71a61de35dd538bcd0bffc121939769ee3fa90eae0d7b5235797a9b2425a"
+    },
+    {
+      "path": "packages/tockteam-tocktutor-workbench/dist/editor-widgets.d.ts.map",
+      "sha256": "077b7269c8b2fecd7ee58cff4395191878b6556ed4709f09e45aaf5672b378c1"
+    },
+    {
+      "path": "packages/tockteam-tocktutor-workbench/dist/editor-widgets.js",
+      "sha256": "2a4a919aec4294945d03713dfd41e044d17bf8e9744f272393312017b4a8eb1b"
+    },
+    {
+      "path": "packages/tockteam-tocktutor-workbench/dist/editor-widgets.js.map",
+      "sha256": "98b9188c16672a19547e34119aa928e4ea1af8f7ca085822e0de57e89698a53d"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/embeds.d.ts",
-      "sha256": "c528d40640fbdb89ac6f4a13e3588377ca956d865b6efa825c5d1d25ca0c2fee"
+      "sha256": "7ac1dc261a3cc57f28573f8af833dff4bcb89c085d1b70f5eb0ff9c08357dd24"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/embeds.d.ts.map",
-      "sha256": "a3db6fe1c095a68457d0f41a96361854fc6003378b5960ed9aa5d0b83d73a2db"
+      "sha256": "6818b50109c5e67153f688347ae487aaacc29d42b35c417843f7f31ae298b6bb"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/embeds.js",
-      "sha256": "cefed30f998f8e871d852d393e9ac488c74d5e8acefa2ac2cee7219a8b65586d"
+      "sha256": "45f973a50fc16e83ba0a9630b47edc2e9ef0ce0f41aad22710c96b0a78ef3d0d"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/embeds.js.map",
-      "sha256": "b87aa68ae2b3e217f16a5c56505fedf8eedae998911ecae51311778779d0fcc2"
+      "sha256": "3a05b031d06e30f7220ad66a7f8f5f2f1cd4109adfbe941642cb8687920a97cf"
+    },
+    {
+      "path": "packages/tockteam-tocktutor-workbench/dist/external-embeds.d.ts",
+      "sha256": "d1ac187f5b2cf433b6e55999b556f3b1b3e9d672d01d887ae04cb4d8fab046f6"
+    },
+    {
+      "path": "packages/tockteam-tocktutor-workbench/dist/external-embeds.d.ts.map",
+      "sha256": "6a059b512d4d3118da200b4b2e50d75dbf987c29f8e6617402c9d8cd919a2d57"
+    },
+    {
+      "path": "packages/tockteam-tocktutor-workbench/dist/external-embeds.js",
+      "sha256": "5a945579b9337aa22ce780479262f90c25c54639cae8e11a1280fb4b80f4051c"
+    },
+    {
+      "path": "packages/tockteam-tocktutor-workbench/dist/external-embeds.js.map",
+      "sha256": "6c6150caa81b4f6b579dae98fd1de386fbbdcd26a31d1fa24f21cc94a1e91843"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/graph.d.ts",
@@ -1579,19 +1611,83 @@
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/index.d.ts",
-      "sha256": "f207fd7e087a6d7cd1879faae30c8d56288325ac423d457fe88eface9bc1b036"
+      "sha256": "e34749dc8f6e65d45106e4dfb7462746fca3dd0b139ee2d97b00cf937a030d83"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/index.d.ts.map",
-      "sha256": "238e61909d9281bfff636c5ede684e8a4f54c94e14ba16d4cf6acf3f2378ecb7"
+      "sha256": "2500a7e1c788e12e3c9aa6a8f01f0757c3c310c527a6a4645d43addea15e816d"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/index.js",
-      "sha256": "91e2f422690180316f2ffb25a7108fd2643f2cc256cc6923c3d4286c39b6c366"
+      "sha256": "b8964df1f5524c61725d31cc8eaccbc4d36edb4f7b95caed3ca0f87f0dd72d7e"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/index.js.map",
-      "sha256": "77c441a1ad7225d52931eb9d3ed6960f15f4b987a034ba171999ec70d54eb9c8"
+      "sha256": "449725be04b99bdc3d5c8b2e1907a8133d7ba57dcfe16f69e8fbb80ef466d5c8"
+    },
+    {
+      "path": "packages/tockteam-tocktutor-workbench/dist/live-preview-chrome.d.ts",
+      "sha256": "6abaa2061f1dc04a2ad7e97354636d86f371a770a39bac86e57864b78941f1ae"
+    },
+    {
+      "path": "packages/tockteam-tocktutor-workbench/dist/live-preview-chrome.d.ts.map",
+      "sha256": "ae525796c06a29233cc2cc5015a2c1762998a609191731f40d71ceae1e7d4c20"
+    },
+    {
+      "path": "packages/tockteam-tocktutor-workbench/dist/live-preview-chrome.js",
+      "sha256": "9fd903b5d62e512950739800d4f188c10379fa8a98cbc7a6edcedeaa03cf21e7"
+    },
+    {
+      "path": "packages/tockteam-tocktutor-workbench/dist/live-preview-chrome.js.map",
+      "sha256": "39eef0cb130d1d2b30f83211fcc6fbab5997fb577e0f5e5ccdfcc028935d96df"
+    },
+    {
+      "path": "packages/tockteam-tocktutor-workbench/dist/live-preview-editor-runtime.d.ts",
+      "sha256": "6833e07dcfc49c37fd094717c4d3a176d996efc5cf8a96a83412f57c711980cd"
+    },
+    {
+      "path": "packages/tockteam-tocktutor-workbench/dist/live-preview-editor-runtime.d.ts.map",
+      "sha256": "95dd9b085eb4ddb069bcd6ea437a5c635031a3daca0655d6432a095fc91b590b"
+    },
+    {
+      "path": "packages/tockteam-tocktutor-workbench/dist/live-preview-editor-runtime.js",
+      "sha256": "4849424f8b8a31cad3726895849fa2ccbf9a56690a3e54ecb6f774a23ffa2a88"
+    },
+    {
+      "path": "packages/tockteam-tocktutor-workbench/dist/live-preview-editor-runtime.js.map",
+      "sha256": "92fd0462eb352ae080a9e802347adb627accb206c1de13e1bce4088003035d7a"
+    },
+    {
+      "path": "packages/tockteam-tocktutor-workbench/dist/live-preview-editor.d.ts",
+      "sha256": "622933e5e0ad9c7db306ed0ed78876a1278bede62625554f8952aac4693a2bb3"
+    },
+    {
+      "path": "packages/tockteam-tocktutor-workbench/dist/live-preview-editor.d.ts.map",
+      "sha256": "b5ce342a27e07c3a6ba63af939a18fe24c18f625d8c0ebb7fdad4294e1070001"
+    },
+    {
+      "path": "packages/tockteam-tocktutor-workbench/dist/live-preview-editor.js",
+      "sha256": "27b012837e4758676e7ae88a1cc192d2fc7be90b03dfe55f35cc7dad36d86379"
+    },
+    {
+      "path": "packages/tockteam-tocktutor-workbench/dist/live-preview-editor.js.map",
+      "sha256": "5fd9dd6f1e9405cf66f408212323cd7e8e6b25e140cddb4a498fe7deceac2241"
+    },
+    {
+      "path": "packages/tockteam-tocktutor-workbench/dist/live-preview-embed-widgets.d.ts",
+      "sha256": "a1a32ef87e82efc02c2cfe7354d857952a570ec6dec34c0e89f9fe25f9b13d24"
+    },
+    {
+      "path": "packages/tockteam-tocktutor-workbench/dist/live-preview-embed-widgets.d.ts.map",
+      "sha256": "e0b4c75c9bd654c391f9d51280bdde4edab9b35c30d46c114731657d42c5ed54"
+    },
+    {
+      "path": "packages/tockteam-tocktutor-workbench/dist/live-preview-embed-widgets.js",
+      "sha256": "24dee643e85ec13dded7a4946d4e362d17be82cf08623f35fbae15b0a1e0d499"
+    },
+    {
+      "path": "packages/tockteam-tocktutor-workbench/dist/live-preview-embed-widgets.js.map",
+      "sha256": "8c4bec1a48983e95605134bd5513bfc7415dc24d1b18c9d7a225b042be688709"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/live-preview.d.ts",
@@ -1626,12 +1722,28 @@
       "sha256": "74abe577ff292f4a7cceecccabc6b13e0ccf44c3072de617196e9e99aee6a155"
     },
     {
+      "path": "packages/tockteam-tocktutor-workbench/dist/milkdown-editor-commands.d.ts",
+      "sha256": "094bfe8692786752ac37817bd453ac59f01d616b71b8ba90b63df2f52e1f6680"
+    },
+    {
+      "path": "packages/tockteam-tocktutor-workbench/dist/milkdown-editor-commands.d.ts.map",
+      "sha256": "48501cb2248c414087c85166cb762722b4cdafb6203f8f637ef1c1f485cc4ee2"
+    },
+    {
+      "path": "packages/tockteam-tocktutor-workbench/dist/milkdown-editor-commands.js",
+      "sha256": "0cd4eef8fa3d946a20ffc6db6eef960ccc26f4fb918aca2a158958ab8e2db3f4"
+    },
+    {
+      "path": "packages/tockteam-tocktutor-workbench/dist/milkdown-editor-commands.js.map",
+      "sha256": "eeb6abe0747a450db4b691a951a67df1884cbf1179ecfcaeb986b6d4fa304561"
+    },
+    {
       "path": "packages/tockteam-tocktutor-workbench/dist/native-actions.d.ts",
-      "sha256": "db3f5869b3d24b9c3784b048959398efc7270abd835979a21a1fb65425d623a2"
+      "sha256": "5e84d6de209a06ffe2bb4e088d687642f6ebb84d920ce5e0203df36f31658f37"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/native-actions.d.ts.map",
-      "sha256": "d376cecde89d3d8a7849a401adca7f235549847491458b542964b2a407f12c1b"
+      "sha256": "e5d54278805116fc99e1a148c48c1d2c6efd21fd528b30cda2c9b690c49e395e"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/native-actions.js",
@@ -1963,35 +2075,35 @@
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/rich-markdown.d.ts",
-      "sha256": "4cc627b3546e03d576b5ac91761e4bc232d42a9523c8783e8982b5b17e842ef7"
+      "sha256": "0aa5621c686fd43a9b26794b745235d0d8c5a427d87de6b331490dafa32d4be2"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/rich-markdown.d.ts.map",
-      "sha256": "57d59710da84475889f12ece6c20aecb4d96ce1390ea7d24d5e384b0afdca23f"
+      "sha256": "91240c8411f29083858b01b9a52880af4c26b026c3b76ddf204c1171b777ff3c"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/rich-markdown.js",
-      "sha256": "5cdaf8e79b72faef29b970c21901c6dc5f272364a46c048c5cdf679f6055e89f"
+      "sha256": "9606132f6e68ad7f327ea0307327bb19f6cbca0782f001fce8452b6f97c95ee4"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/rich-markdown.js.map",
-      "sha256": "c51fbe63c71a92ea81420f3f8e009222dfe49e8bd73b634cdae99bbc776b328e"
+      "sha256": "183d3179f24e088b446054c7bc5f93f6d3caadf050b62370ef152bd6a2c10802"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/route.d.ts",
-      "sha256": "7abc8f973141d11a730c29dbc413ec461e3451538fbd508630796406470b4070"
+      "sha256": "578326221dab4f17595e8ea3994585e54d3fe89954fb7a1675856a3f19a7e81c"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/route.d.ts.map",
-      "sha256": "2af6a1d2483bae014ed1e157481cdeabc498a4bf65b520198c060a6337797f17"
+      "sha256": "4dc9f30c6e59e984119f9c8f2f7309321fdfed163c428a39e305f23d725f131a"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/route.js",
-      "sha256": "b76d90c76fcb164ce6a4201804b4d5d0761c36c18a4b5ea85725319fffc04716"
+      "sha256": "3d45471d5d9d498114dcb8a69d7fb84184c4fb0202665d9c64af43c9ac73ef72"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/route.js.map",
-      "sha256": "733961a260e042847868e68ed9048e57e4a7b1119ca8e8c96797da3954d04cf3"
+      "sha256": "a0057c1d93aa9d4b7073a1e439e22260c43ed896f06f9524495a7bfb60885c50"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/session.d.ts",
@@ -2024,6 +2136,70 @@
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/settings.js.map",
       "sha256": "7944819301d0f5a6cd0fff932f697c2296ce4a2df83f9e0ba37570c81117501f"
+    },
+    {
+      "path": "packages/tockteam-tocktutor-workbench/dist/source-editor-runtime.d.ts",
+      "sha256": "40ccb1d6a707fa425116ea5762d019d0533abf664309864890c76e94b0ece217"
+    },
+    {
+      "path": "packages/tockteam-tocktutor-workbench/dist/source-editor-runtime.d.ts.map",
+      "sha256": "c89bf9c7566b18cf2c1121fa285a6fd3ee42a924c85873971b93944626e3b1f0"
+    },
+    {
+      "path": "packages/tockteam-tocktutor-workbench/dist/source-editor-runtime.js",
+      "sha256": "e0bf69b7ac8da54a7970d337b8eb208a405a485812ae608b20ae1ee3bbb92b27"
+    },
+    {
+      "path": "packages/tockteam-tocktutor-workbench/dist/source-editor-runtime.js.map",
+      "sha256": "f6e72d307a5f36f7f2b61f496d4d323b23a1cfbd447d0a46e7a621375450252c"
+    },
+    {
+      "path": "packages/tockteam-tocktutor-workbench/dist/source-editor.d.ts",
+      "sha256": "51197a6d3bce6c6f1dea644810d857881e49d5314ed3dcb1a82020e5cb84ece5"
+    },
+    {
+      "path": "packages/tockteam-tocktutor-workbench/dist/source-editor.d.ts.map",
+      "sha256": "88bc49bccc88c8724961ced4f84701a8185b9fc201eed37aeadb055b99c3c79d"
+    },
+    {
+      "path": "packages/tockteam-tocktutor-workbench/dist/source-editor.js",
+      "sha256": "1b096ef95dc9e10297fbdde3f8f9a91544af84d302c06d0d77847fbe87913358"
+    },
+    {
+      "path": "packages/tockteam-tocktutor-workbench/dist/source-editor.js.map",
+      "sha256": "dfb5c4b8a6157141dc23b3c6405d6dc820356e9518aedc390ac6418805724aa4"
+    },
+    {
+      "path": "packages/tockteam-tocktutor-workbench/dist/source-embed-widgets.d.ts",
+      "sha256": "2a54f477b3577278b8b303d2ff4d484174e51e9f32c63d406d9552c9e8733b99"
+    },
+    {
+      "path": "packages/tockteam-tocktutor-workbench/dist/source-embed-widgets.d.ts.map",
+      "sha256": "74a13365ebbbe3a0c49ed19c20ebd31297850f7109774e5d553d215ca47060c7"
+    },
+    {
+      "path": "packages/tockteam-tocktutor-workbench/dist/source-embed-widgets.js",
+      "sha256": "524479e0c848c252c1a17c68157a96af8159ad65b2f664fee2ad962e85da6b68"
+    },
+    {
+      "path": "packages/tockteam-tocktutor-workbench/dist/source-embed-widgets.js.map",
+      "sha256": "e0dcb2073aa6ebf54baa79e7ecf1e32676fafbc3d99d46012e3ca252d81a0bd8"
+    },
+    {
+      "path": "packages/tockteam-tocktutor-workbench/dist/source-task-widgets.d.ts",
+      "sha256": "581c54020052866cc27827c0a6f9dc5981ac9e18802f97d9780683b2ff80fb0b"
+    },
+    {
+      "path": "packages/tockteam-tocktutor-workbench/dist/source-task-widgets.d.ts.map",
+      "sha256": "d50ade2db6709629108727dd419033f1540007be5dbd5db16c82d78a6a38f897"
+    },
+    {
+      "path": "packages/tockteam-tocktutor-workbench/dist/source-task-widgets.js",
+      "sha256": "d68cbdbef2387b3828dce8edce50d076acd8c8e6ee663a0b685dc92e07e3955f"
+    },
+    {
+      "path": "packages/tockteam-tocktutor-workbench/dist/source-task-widgets.js.map",
+      "sha256": "746311945fb20ee8465d93ee01d1deb4bc0cea2340be54e6c1b812e39c83139b"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/typert.host.d.ts",
@@ -2095,11 +2271,11 @@
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/web-viewer-panel.d.ts",
-      "sha256": "ac2020f7912478b756496d461caa2b11bb7f20b67d598f01471b5d2b9b35e05e"
+      "sha256": "dcc51c8331cc877bc798bb4f44c3c9f9c731d64b9f8af37fd79d8152d68cb600"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/web-viewer-panel.d.ts.map",
-      "sha256": "0fa57ffce8ea00bf2b1f198230e5c079aec8627eac1b02e78f9795d9df5140ab"
+      "sha256": "1d0c395f71a41b59745938eadbda163bd18564871c3728cbb59fb32025e9e9a0"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/web-viewer-panel.js",
@@ -2127,11 +2303,11 @@
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/package.json",
-      "sha256": "bc04e5ba7c3deabef0841826033ec9f9334fee1cfd3865fdb7911aa11abadff9"
+      "sha256": "faf2ba94d49b2622e23d874abca14662bf2118d35f09951d4e84b66020cb1548"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/scripts/build-client.mjs",
-      "sha256": "2f71c5afd145eccfa0e9f52a2f5b0cbe4b7fac144d2fc21883b8d79c3782fe78"
+      "sha256": "8bae62ba22f466c06e543e5e15e1fdd9ca187655ccbb5d555c0322dff7f2702a"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/scripts/generate-typert.mjs",
@@ -2227,7 +2403,7 @@
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/src/client-api.ts",
-      "sha256": "0dc0a225233ac309b92cf41157cfac34db2603b217cf329ef09adad30222bd75"
+      "sha256": "ce1cd0a45232d3ae46add1f4a949928b72dbea19ba5cafd8d07a2f42908924fe"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/src/client.ts",
@@ -2239,15 +2415,23 @@
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/src/editor-commands.ts",
-      "sha256": "9222898c949fb65acb9800db6690b8f22c6ae887fb70577022093fad90ab7919"
+      "sha256": "34615b0a98368b212a97d9258b3f81a4a7382a6b876c7e00e2d79c5519eae631"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/src/editor-surface.tsx",
-      "sha256": "f24682ecc36f4d8167e89e9ef1faac9a8c2991c7736a8f295babf0bb78c4f271"
+      "sha256": "d65da41ceac170cc1aa18c69e720d0f9bcf0f139118fbf27a9305f73844b913d"
+    },
+    {
+      "path": "packages/tockteam-tocktutor-workbench/src/editor-widgets.ts",
+      "sha256": "035ecd2194c4b6266c6af9fecabab4f315693dba74407ba31728b19ebd751293"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/src/embeds.ts",
-      "sha256": "cbc698a91a4339f74c0df029d9aa10faeca5c577c221b53d3d3435f78cdd918e"
+      "sha256": "27bd37328c357ac114420305151a2b4e654a1db6a20eecbef84b7fc7b987115e"
+    },
+    {
+      "path": "packages/tockteam-tocktutor-workbench/src/external-embeds.ts",
+      "sha256": "8301f75a471d3c8bc55f79029985ae1aaede6f63ed94994a0c760c5fae0e6122"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/src/graph.ts",
@@ -2259,7 +2443,23 @@
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/src/index.ts",
-      "sha256": "cf58362a13b2554df922cab5dda985a5188b6f31f6312170706b1941b6be069c"
+      "sha256": "478327b8f0de4a6011eab4ea989da8ed97730418bcd8f41f75b73b8965a5bf89"
+    },
+    {
+      "path": "packages/tockteam-tocktutor-workbench/src/live-preview-chrome.ts",
+      "sha256": "bc919af1fe77b0919a499f74bc4bc90f68616ffc473e6dbaf5a40557f2d488a1"
+    },
+    {
+      "path": "packages/tockteam-tocktutor-workbench/src/live-preview-editor-runtime.tsx",
+      "sha256": "03f900654388c696fe98f820c6211a346a5deb094eb7fb4c58cbc5b61062c1d9"
+    },
+    {
+      "path": "packages/tockteam-tocktutor-workbench/src/live-preview-editor.tsx",
+      "sha256": "d5aaab83375134837a6e7ca3870416d7bdf6360371835c212590a179a4113f57"
+    },
+    {
+      "path": "packages/tockteam-tocktutor-workbench/src/live-preview-embed-widgets.ts",
+      "sha256": "0176ae780a0cb3f641ed105a1c2684813b44d3e74cc84690b91c0b8273bbde4f"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/src/live-preview.ts",
@@ -2270,8 +2470,16 @@
       "sha256": "c1b8bcffd01548ccaa5f22f2ed38864fd39e1ee2ddded03ce3057cce90b676e1"
     },
     {
+      "path": "packages/tockteam-tocktutor-workbench/src/milkdown-editor-commands.ts",
+      "sha256": "aebc70a86e57c52d1afa77d388de87e4ed6538a3a2444303fdab715bf0520b60"
+    },
+    {
+      "path": "packages/tockteam-tocktutor-workbench/src/milkdown-node-next.d.ts",
+      "sha256": "c7a51a9d6554c11372f5a23be5c5d53bf7bdd1954f2d2e5fefa5dcee04b7821d"
+    },
+    {
       "path": "packages/tockteam-tocktutor-workbench/src/native-actions.ts",
-      "sha256": "586b2b0e56c59b69bd54e3259ca23987eb04b32990f5748087be4589f9dad4ad"
+      "sha256": "b55ec6b05fe9d304735b3b65d272ca5ac5fcfb013c75d070e14ba726d27b32ee"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/src/NotesBaseFilterTree.ts",
@@ -2355,11 +2563,11 @@
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/src/rich-markdown.ts",
-      "sha256": "0aae5ed325ad6c7fd6a1cfc4a0b0316820ad0f5e5dbb0a65ac11913575b00b2e"
+      "sha256": "39961576068bbd964e5d94ff6642918d8ebaa6054c4da12de1889547711b730a"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/src/route.tsx",
-      "sha256": "1616cb3bb49201cb9c8aea4f58332c7545302cf02a69629735a7f4ebd466f42c"
+      "sha256": "03f42973aab0fb3e74669e63bf627f2f785e78cab02d4ebed5933415d09e705f"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/src/session.ts",
@@ -2368,6 +2576,22 @@
     {
       "path": "packages/tockteam-tocktutor-workbench/src/settings.ts",
       "sha256": "87b3a9faef00b2d10f8d9210f44ef88f4ada9a2eca2dddb264295b0b59f0cee1"
+    },
+    {
+      "path": "packages/tockteam-tocktutor-workbench/src/source-editor-runtime.tsx",
+      "sha256": "0f5d51eefd3a26869233d7ef6949122e33a7bee856aea9d23c67b3bf031441b8"
+    },
+    {
+      "path": "packages/tockteam-tocktutor-workbench/src/source-editor.tsx",
+      "sha256": "1ce7235abcf256d699100867967d21095700acd12586072a201ff3372f4b167a"
+    },
+    {
+      "path": "packages/tockteam-tocktutor-workbench/src/source-embed-widgets.ts",
+      "sha256": "590096d4c03d231b8c2c44bd1822ea1a9d845e29b7d5c6f825ad4b6231c3bc9e"
+    },
+    {
+      "path": "packages/tockteam-tocktutor-workbench/src/source-task-widgets.ts",
+      "sha256": "d6103a7b3e3b9c180bf3b5e34323cfb0fc116d660812b94f7e908c87460bd9e5"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/src/types.ts",
@@ -2383,7 +2607,7 @@
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/src/web-viewer-panel.ts",
-      "sha256": "3baa2c374e7bc1351e6b94b22c7f88b152d3ec9f007f049a8d7aa9a4ed4eccda"
+      "sha256": "b05f45fe6aff0a35b659d26f3da638ff26e92a99aed1a87993359af815bacef6"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/src/workbench-glyph.tsx",
@@ -2399,7 +2623,7 @@
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/vitest.config.ts",
-      "sha256": "571d87e3ba1f205f7b5116de4d6ade7b0f865a781d55697e5b1e13956caa111c"
+      "sha256": "5273e4b22b85aa22bc95bd076433162be61aad43a3e5f3049e49819d9ee65533"
     },
     {
       "path": "packages/tockteam-tocktutor/cordis.patch.yml",
@@ -2439,15 +2663,15 @@
     },
     {
       "path": "parity/ledger.json",
-      "sha256": "4dd4f773065138501bd3890589ffe2c0b034cf273b43b9cf8d8c3915177c92d9"
+      "sha256": "4b9c01598ad8268267826dde29b743bbb735a6e303e8dc68e6723e113bdc93a7"
     },
     {
       "path": "parity/validate.mjs",
-      "sha256": "a06f43e88723731e0ebb5b8dc059e30ba8d2a98aeccb4caa68d75f8001c932cb"
+      "sha256": "8f2855d69ae7f2fb10a9f7bc63ba731362f9cf227d016691d3040ce1729743f1"
     },
     {
       "path": "pnpm-lock.yaml",
-      "sha256": "ddfe7a9db4048434d4d61fcd6b964cedad9d80699c5735a1bd2b0adfc604a5ac"
+      "sha256": "3ba894104b6f269d3c432c000db4ac7709f5ed5fd3a821e770fdb918e516ec99"
     },
     {
       "path": "pnpm-workspace.yaml",

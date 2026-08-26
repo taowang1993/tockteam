@@ -1,4 +1,8 @@
 import { REVIEWED_PENNIVO_READ_TOOLS, } from "./read-tools.js";
+export const TOCKDRIVER_WRITE_TOOL_NAMES = [
+    'notes_stage_write',
+    'notes_organize_capture',
+];
 const OPAQUE_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:/~-]{7,255}$/u;
 const CALL_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{7,511}$/u;
 const PROVIDER_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:/-]*$/u;
@@ -8,8 +12,15 @@ const AVAILABLE_TOOLS = new Set([
     ...REVIEWED_PENNIVO_READ_TOOLS.filter(tool => tool !== 'list_workspaces'),
     'create_file',
     'write_file',
+    'notes_search',
+    'notes_read',
+    ...TOCKDRIVER_WRITE_TOOL_NAMES,
 ]);
-const WRITE_TOOLS = new Set(['create_file', 'write_file']);
+const WRITE_TOOLS = new Set([
+    'create_file',
+    'write_file',
+    ...TOCKDRIVER_WRITE_TOOL_NAMES,
+]);
 const ERROR_MESSAGES = {
     ABORTED: 'The assistant tool call was cancelled.',
     CALL_REPLAY: 'The assistant tool call was already used.',

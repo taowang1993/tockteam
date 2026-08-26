@@ -19,6 +19,7 @@ declare module '@deepseek-ai/cordis' {
 export declare class TockTutorDesktopGateway extends TypertRemoteService {
     static inject: string[];
     private readonly activations;
+    private readonly targetActivations;
     private readonly lifetime;
     private readonly recoveredResults;
     private readonly popOutClosures;
@@ -29,6 +30,9 @@ export declare class TockTutorDesktopGateway extends TypertRemoteService {
     private recoverResult;
     private rememberResult;
     activateVault(authorization: string, signal: AbortSignal): Promise<NativeActionResult>;
+    activateVaultTarget(authorization: string, target: {
+        id: string;
+    }, signal: AbortSignal): Promise<NativeActionResult>;
     openPopOut(authorization: string, path: string, expectedVault: VaultReference, signal: AbortSignal): Promise<NativeActionResult>;
     closePopOut(authorization: string, path: string, expectedVault: VaultReference, signal: AbortSignal): Promise<NativeActionResult>;
     closeAllPopOuts(authorization: string, expectedVault: VaultReference, signal: AbortSignal): Promise<NativeActionResult>;

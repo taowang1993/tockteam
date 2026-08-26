@@ -14563,6 +14563,13 @@ var tockbot_note_desktop_tocktutorDesktop_activateVault_parameter_0$schema = ext
 var tockbot_note_desktop_tocktutorDesktop_activateVault_result$schema = external_exports.object({
   "status": external_exports.union([external_exports.literal("cancelled"), external_exports.literal("denied"), external_exports.literal("stale"), external_exports.literal("unavailable"), external_exports.literal("activated"), external_exports.literal("closed"), external_exports.literal("exported"), external_exports.literal("focused"), external_exports.literal("granted"), external_exports.literal("opened"), external_exports.literal("printed"), external_exports.literal("revealed")])
 });
+var tockbot_note_desktop_tocktutorDesktop_activateVaultTarget_parameter_0$schema = external_exports.string();
+var tockbot_note_desktop_tocktutorDesktop_activateVaultTarget_parameter_1$schema = external_exports.object({
+  "id": external_exports.string()
+});
+var tockbot_note_desktop_tocktutorDesktop_activateVaultTarget_result$schema = external_exports.object({
+  "status": external_exports.union([external_exports.literal("cancelled"), external_exports.literal("denied"), external_exports.literal("stale"), external_exports.literal("unavailable"), external_exports.literal("activated"), external_exports.literal("closed"), external_exports.literal("exported"), external_exports.literal("focused"), external_exports.literal("granted"), external_exports.literal("opened"), external_exports.literal("printed"), external_exports.literal("revealed")])
+});
 var tockbot_note_desktop_tocktutorDesktop_closeAllPopOuts_parameter_0$schema = external_exports.string();
 var tockbot_note_desktop_tocktutorDesktop_closeAllPopOuts_parameter_1$schema = external_exports.object({
   "generation": external_exports.number(),
@@ -14652,7 +14659,43 @@ var TYPERT_REMOTE = {
         typeSymbol: "tockbot-note-desktop/types#NativeActionResult",
         schema: tockbot_note_desktop_tocktutorDesktop_activateVault_result$schema
       },
-      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 277, "column": 9 }
+      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 289, "column": 9 }
+    },
+    {
+      id: "tockbot-note-desktop#tocktutorDesktop/activateVaultTarget",
+      service: "tocktutorDesktop",
+      namespace: "tocktutorDesktop",
+      method: "activateVaultTarget",
+      invocation: { kind: "direct" },
+      parameters: [
+        {
+          name: "authorization",
+          wire: "authorization",
+          source: "json",
+          codec: {
+            mode: "strict",
+            typeSymbol: "tockbot-note-desktop#tocktutorDesktop/activateVaultTarget:authorization",
+            schema: tockbot_note_desktop_tocktutorDesktop_activateVaultTarget_parameter_0$schema
+          }
+        },
+        {
+          name: "target",
+          wire: "target",
+          source: "json",
+          codec: {
+            mode: "strict",
+            typeSymbol: "tockbot-note-desktop#tocktutorDesktop/activateVaultTarget:target",
+            schema: tockbot_note_desktop_tocktutorDesktop_activateVaultTarget_parameter_1$schema
+          }
+        }
+      ],
+      cancellation: { parameter: "signal" },
+      result: {
+        mode: "strict",
+        typeSymbol: "tockbot-note-desktop/types#NativeActionResult",
+        schema: tockbot_note_desktop_tocktutorDesktop_activateVaultTarget_result$schema
+      },
+      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 336, "column": 9 }
     },
     {
       id: "tockbot-note-desktop#tocktutorDesktop/closeAllPopOuts",
@@ -14688,7 +14731,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "tockbot-note-desktop/types#NativeActionResult",
         schema: tockbot_note_desktop_tocktutorDesktop_closeAllPopOuts_result$schema
       },
-      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 401, "column": 9 }
+      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 456, "column": 9 }
     },
     {
       id: "tockbot-note-desktop#tocktutorDesktop/closePopOut",
@@ -14734,7 +14777,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "tockbot-note-desktop/types#NativeActionResult",
         schema: tockbot_note_desktop_tocktutorDesktop_closePopOut_result$schema
       },
-      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 356, "column": 9 }
+      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 411, "column": 9 }
     },
     {
       id: "tockbot-note-desktop#tocktutorDesktop/exportNote",
@@ -14790,7 +14833,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "tockbot-note-desktop/types#NativeActionResult",
         schema: tockbot_note_desktop_tocktutorDesktop_exportNote_result$schema
       },
-      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 471, "column": 9 }
+      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 526, "column": 9 }
     },
     {
       id: "tockbot-note-desktop#tocktutorDesktop/openPopOut",
@@ -14836,7 +14879,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "tockbot-note-desktop/types#NativeActionResult",
         schema: tockbot_note_desktop_tocktutorDesktop_openPopOut_result$schema
       },
-      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 324, "column": 9 }
+      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 379, "column": 9 }
     },
     {
       id: "tockbot-note-desktop#tocktutorDesktop/printNote",
@@ -14882,7 +14925,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "tockbot-note-desktop/types#NativeActionResult",
         schema: tockbot_note_desktop_tocktutorDesktop_printNote_result$schema
       },
-      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 438, "column": 9 }
+      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 493, "column": 9 }
     },
     {
       id: "tockbot-note-desktop#tocktutorDesktop/requestMicrophone",
@@ -14918,7 +14961,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "tockbot-note-desktop/types#NativeActionResult",
         schema: tockbot_note_desktop_tocktutorDesktop_requestMicrophone_result$schema
       },
-      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 527, "column": 9 }
+      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 582, "column": 9 }
     },
     {
       id: "tockbot-note-desktop#tocktutorDesktop/revealEntry",
@@ -14964,7 +15007,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "tockbot-note-desktop/types#NativeActionResult",
         schema: tockbot_note_desktop_tocktutorDesktop_revealEntry_result$schema
       },
-      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 550, "column": 9 }
+      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 605, "column": 9 }
     }
   ]
 };
@@ -14973,7 +15016,7 @@ var typert_remote_client_default = TYPERT_REMOTE;
 // ../../../ui/src/alert.tsx
 var React = __toESM(require("react"), 1);
 
-// ../../../../node_modules/.pnpm/clsx@2.1.1/node_modules/clsx/dist/clsx.mjs
+// ../../node_modules/.pnpm/clsx@2.1.1/node_modules/clsx/dist/clsx.mjs
 function r(e) {
   var t, f, n = "";
   if ("string" == typeof e || "number" == typeof e) n += e;
@@ -14988,7 +15031,7 @@ function clsx() {
   return n;
 }
 
-// ../../../../node_modules/.pnpm/class-variance-authority@0.7.1/node_modules/class-variance-authority/dist/index.mjs
+// ../../node_modules/.pnpm/class-variance-authority@0.7.1/node_modules/class-variance-authority/dist/index.mjs
 var falsyToString = (value) => typeof value === "boolean" ? `${value}` : value === 0 ? "0" : value;
 var cx = clsx;
 var cva = (base, config2) => (props) => {
@@ -15156,17 +15199,65 @@ async function saveCurrent(owner) {
 function workbenchEvent(event) {
   return event.kind === "quick-action" ? { action: event.action, kind: "quick-action", operationId: event.operationId } : { kind: "protocol", operationId: event.operationId, request: event.request };
 }
-async function handleDesktopDispatch(event, owner, bridge, remote, signal) {
+async function waitForVault(currentOwner, target, signal) {
+  for (let attempt = 0; attempt < 200; attempt += 1) {
+    const owner = currentOwner();
+    if (owner?.vault?.id === target.id) return owner;
+    if (signal?.aborted === true) return void 0;
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+  return void 0;
+}
+async function waitForActivePath(currentOwner, vaultId, expectedPath, previousPath, signal) {
+  for (let attempt = 0; attempt < 200; attempt += 1) {
+    const owner = currentOwner();
+    if (owner?.vault?.id === vaultId && owner.activePath !== null && (expectedPath === void 0 ? owner.activePath !== previousPath : owner.activePath === expectedPath)) return owner;
+    if (signal?.aborted === true) return void 0;
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+  return void 0;
+}
+async function handleDesktopDispatch(event, initialOwner, currentOwner, bridge, remote, signal) {
+  let owner = initialOwner;
   if (event.kind !== "protocol") return owner.handleDispatch(workbenchEvent(event));
-  if (event.request.action === "choose-vault") {
+  let request = event.request;
+  const target = request.vaultId === void 0 ? void 0 : { id: request.vaultId };
+  if (request.vaultGeneration !== void 0 && target === void 0) return "failed";
+  if (target !== void 0) {
+    if (!/^vault:[0-9a-f]{64}$/u.test(target.id)) return "failed";
+    if (owner.vault?.id !== target.id) {
+      if (!await saveCurrent(owner)) return "failed";
+      const activated = dispatchStatus(await nativeCall(bridge, "activate-vault", signal, (authorization, ownerSignal) => remote.tocktutorDesktop.activateVaultTarget(authorization, target, ownerSignal)));
+      if (activated !== "handled") return activated === "stale" ? "stale" : "failed";
+      const activatedOwner = await waitForVault(currentOwner, target, signal);
+      if (activatedOwner === void 0) return signal?.aborted === true ? "stale" : "failed";
+      owner = activatedOwner;
+    }
+    if (owner.vault === null) return "stale";
+    request = { ...request, vaultGeneration: owner.vault.generation };
+  }
+  if (request.action === "choose-vault") {
     if (!await saveCurrent(owner)) return "failed";
     return dispatchStatus(await nativeCall(bridge, "activate-vault", signal, (authorization, ownerSignal) => remote.tocktutorDesktop.activateVault(authorization, ownerSignal)));
   }
-  if (event.request.action === "open" && event.request.paneType === "window") {
-    if (owner.vault === null || event.request.file === void 0 || !await saveCurrent(owner)) return "failed";
-    return dispatchStatus(await nativeCall(bridge, "popout-open", signal, (authorization, ownerSignal) => remote.tocktutorDesktop.openPopOut(authorization, event.request.file, owner.vault, ownerSignal), owner.vault));
+  if (request.paneType === "window") {
+    if (owner.vault === null || !await saveCurrent(owner)) return "failed";
+    if (request.action === "open") {
+      if (request.file === void 0) return "failed";
+      return dispatchStatus(await nativeCall(bridge, "popout-open", signal, (authorization, ownerSignal) => remote.tocktutorDesktop.openPopOut(authorization, request.file, owner.vault, ownerSignal), owner.vault));
+    }
+    const { paneType: _paneType, silent: _silent, ...windowRequest } = request;
+    const previousPath = owner.activePath;
+    const created = await owner.handleDispatch({ kind: "protocol", operationId: event.operationId, request: windowRequest });
+    if (created !== "handled") return created;
+    const updatedOwner = await waitForActivePath(currentOwner, owner.vault.id, request.file, previousPath, signal);
+    if (updatedOwner === void 0 || updatedOwner.vault === null || updatedOwner.activePath === null) return signal?.aborted === true ? "stale" : "failed";
+    owner = updatedOwner;
+    const activePath = updatedOwner.activePath;
+    const activeVault = updatedOwner.vault;
+    return dispatchStatus(await nativeCall(bridge, "popout-open", signal, (authorization, ownerSignal) => remote.tocktutorDesktop.openPopOut(authorization, activePath, activeVault, ownerSignal), activeVault));
   }
-  return owner.handleDispatch(workbenchEvent(event));
+  return owner.handleDispatch({ kind: "protocol", operationId: event.operationId, request });
 }
 async function requestMicrophoneAccess(authorization, path, vault, current, request, mediaDevices) {
   const result = await request(authorization, vault);
@@ -15318,6 +15409,7 @@ async function runDesktopDispatchLoop(options) {
         status = await handleDesktopDispatch(
           event,
           owner,
+          options.owner,
           options.bridge,
           options.remote,
           options.signal

@@ -5,9 +5,11 @@ export interface NativeRequestIdentity {
     vaultId: string | null;
     vaultGeneration: number;
 }
+/** Parsed protocol request. This shape stays Host/main-only until it is resolved. */
 export type TockTutorProtocolRequest = {
     action: 'open' | 'new' | 'daily' | 'unique' | 'search' | 'choose-vault';
     vault?: string;
+    path?: string;
     file?: string;
     name?: string;
     content?: string;
@@ -19,6 +21,29 @@ export type TockTutorProtocolRequest = {
     xSuccess?: string;
     xError?: string;
 };
+/** Browser-safe protocol request. Human vault selectors and absolute paths are never serialized here. */
+export type TockTutorBrowserProtocolRequest = {
+    action: TockTutorProtocolRequest['action'];
+    vaultId?: string;
+    vaultGeneration?: number;
+    file?: string;
+    name?: string;
+    content?: string;
+    query?: string;
+    ifExists?: 'prepend' | 'append' | 'overwrite';
+    silent?: true;
+    paneType?: 'tab' | 'split' | 'window';
+    xSuccess?: string;
+    xError?: string;
+};
+export interface DesktopProtocolVaultTarget {
+    id: string;
+    generation: number;
+}
+export interface DesktopProtocolVault extends DesktopProtocolVaultTarget {
+    name: string;
+    path: string;
+}
 export declare const TOCKTEAM_DESKTOP_CALLER_SERVICE: "tockTeamDesktopCaller";
 export declare const TOCKTEAM_DESKTOP_PICKER_SERVICE: "tockTeamDesktopPicker";
 export declare const TOCKTEAM_DESKTOP_DISPATCH_SERVICE: "tockTeamDesktopDispatch";
@@ -428,7 +453,7 @@ export type DesktopDispatchEvent = {
 } | {
     identity: NativeOperationIdentity;
     kind: 'protocol';
-    request: TockTutorProtocolRequest;
+    request: TockTutorBrowserProtocolRequest;
 };
 export interface DesktopDispatchCompletionRequest {
     operationId: string;

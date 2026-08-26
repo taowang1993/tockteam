@@ -1,12 +1,16 @@
 import { isSafeVaultRelativePath } from "./session.js";
 export const MAX_EMBED_TARGETS = 100;
 export const MAX_EMBED_CONTENT_BYTES = 2_000_000;
+export const MAX_EMBED_DEPTH = 3;
+export const MAX_EMBED_TOTAL_BYTES = 25 * 1024 * 1024;
+export const MAX_EMBED_MEDIA_BYTES = 64 * 1024 * 1024;
+export const MAX_EMBED_WARNINGS = 32;
 function kind(path) {
     if (/\.canvas$/iu.test(path))
         return 'canvas';
     if (/\.base$/iu.test(path))
         return 'base';
-    if (/\.(?:avif|bmp|gif|ico|jpe?g|png|webp|mp3|m4a|ogg|wav|weba|webm|mp4|mov|pdf)$/iu.test(path))
+    if (/\.(?:3gp|avif|bmp|flac|gif|ico|jpe?g|m4a|mkv|mp3|mov|mp4|ogv|ogg|pdf|png|svg|wav|weba|webm|webp)$/iu.test(path))
         return 'media';
     if (/\.(?:markdown|md)$/iu.test(path) || !/\.[^/]+$/u.test(path))
         return 'note';
@@ -19,6 +23,12 @@ function codeSpans(line) {
             ranges.push([match.index, match.index + match[0].length]);
     }
     return ranges;
+}
+function escapedAt(line, index) {
+    let slashes = 0;
+    for (let cursor = index - 1; cursor >= 0 && line[cursor] === '\\'; cursor -= 1)
+        slashes += 1;
+    return slashes % 2 === 1;
 }
 export function collectEmbedTargets(source) {
     if (new TextEncoder().encode(source).byteLength > MAX_EMBED_CONTENT_BYTES)
@@ -39,12 +49,7 @@ export function collectEmbedTargets(source) {
             continue;
         const code = codeSpans(line);
         for (const match of line.matchAll(/!\[\[([^\]\r\n]{1,4096})\]\]/gu)) {
-            if (match.index === undefined || code.some(([start, end]) => match.index >= start && match.index < end))
-                continue;
-            let slashes = 0;
-            for (let index = match.index - 1; index >= 0 && line[index] === '\\'; index -= 1)
-                slashes += 1;
-            if (slashes % 2 === 1)
+            if (match.index === undefined || code.some(([start, end]) => match.index >= start && match.index < end) || escapedAt(line, match.index))
                 continue;
             const [rawTarget, displayPart] = match[1].split('|', 2);
             const targetPart = rawTarget ?? '';
@@ -59,7 +64,7 @@ export function collectEmbedTargets(source) {
                 display: displayPart?.trim() || null,
                 fragment,
                 kind: targetKind,
-                path: normalizedPath,
+                path: normalizedPath.replaceAll('\\', '/'),
                 source: match[0],
             });
             if (targets.length > MAX_EMBED_TARGETS)
@@ -68,52 +73,345 @@ export function collectEmbedTargets(source) {
     }
     return targets;
 }
-function withoutFrontmatter(source) {
-    if (!source.startsWith('---\n') && !source.startsWith('---\r\n'))
-        return source;
-    const lines = source.split(/\r?\n/u);
-    const end = lines.findIndex((line, index) => index > 0 && (line === '---' || line === '...'));
-    return end < 0 ? source : lines.slice(end + 1).join('\n');
+function normalizeIdentifier(value) {
+    try {
+        return decodeURIComponent(value).trim().replaceAll('\\', '/').replace(/^\.\//u, '').replace(/\s+$/u, '').toLocaleLowerCase();
+    }
+    catch {
+        return value.trim().replaceAll('\\', '/').replace(/^\.\//u, '').replace(/\s+$/u, '').toLocaleLowerCase();
+    }
 }
-/** Resolve an authored path exactly before falling back to one unambiguous basename. */
+function withoutExtension(value) {
+    return value.replace(/\.(?:markdown|md)$/iu, '');
+}
+function entryIdentifiers(entry) {
+    const values = [entry.path, entry.name ?? '', withoutExtension(entry.path), ...(entry.aliases ?? [])];
+    return new Set(values.map(normalizeIdentifier).filter(Boolean));
+}
+/** Resolve an authored path exactly before falling back to one unambiguous basename or alias. */
 export function resolveEmbedTargetPath(entries, targetPath) {
-    const exact = entries.find(entry => entry.path === targetPath);
+    const wanted = normalizeIdentifier(targetPath);
+    if (!wanted)
+        return null;
+    const exact = entries.find(entry => normalizeIdentifier(entry.path) === wanted);
     if (exact !== undefined)
         return exact.path;
-    const targetName = targetPath.split('/').at(-1)?.toLowerCase();
-    if (targetName === undefined)
+    const extensionless = normalizeIdentifier(withoutExtension(targetPath));
+    const exactStem = entries.filter(entry => normalizeIdentifier(withoutExtension(entry.path)) === extensionless);
+    if (exactStem.length === 1)
+        return exactStem[0].path;
+    const basename = wanted.split('/').at(-1);
+    if (basename === undefined)
         return null;
-    const matches = entries.filter(entry => entry.path.split('/').at(-1)?.toLowerCase() === targetName);
+    const basenameStem = normalizeIdentifier(withoutExtension(basename));
+    const matches = entries.filter(entry => {
+        const identifiers = entryIdentifiers(entry);
+        const entryBasename = normalizeIdentifier(entry.path.split('/').at(-1) ?? entry.path);
+        const entryBasenameStem = normalizeIdentifier(withoutExtension(entryBasename));
+        return identifiers.has(wanted) || identifiers.has(extensionless) || identifiers.has(basename)
+            || identifiers.has(basenameStem) || entryBasename === basename || entryBasenameStem === basenameStem;
+    });
     return matches.length === 1 ? matches[0]?.path ?? null : null;
+}
+function codeLines(source) {
+    const lines = source.replace(/\r\n?/gu, '\n').split('\n');
+    const result = new Set();
+    let fence = null;
+    lines.forEach((line, index) => {
+        const match = line.match(/^ {0,3}(`{3,}|~{3,})(.*)$/u);
+        const marker = match?.[1];
+        if (fence !== null) {
+            result.add(index);
+            if (marker !== undefined && marker[0] === fence.character && marker.length >= fence.length && (match?.[2] ?? '').trim() === '')
+                fence = null;
+            return;
+        }
+        if (marker !== undefined) {
+            result.add(index);
+            fence = { character: marker[0], length: marker.length };
+        }
+    });
+    return result;
+}
+function escapeRegExp(value) { return value.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&'); }
+function stripTrailingBlockId(line, blockId) {
+    return line.replace(new RegExp(`(?:^|\\s)\\^${escapeRegExp(blockId)}(?=$|\\s)`, 'u'), ' ').replace(/\s+$/u, '').trimEnd();
+}
+function listMarker(line) {
+    const match = /^(\s*)([-*+]|\d+[.)])\s+/u.exec(line);
+    if (match === null)
+        return null;
+    return { indent: match[1].length, kind: /^\d/u.test(match[2]) ? 'ordered' : `bullet:${match[2]}` };
+}
+function extractListBlock(lines, end) {
+    let start = end;
+    let rootIndent = Number.POSITIVE_INFINITY;
+    let rootKind = null;
+    let blanks = 0;
+    for (let index = end; index >= 0; index -= 1) {
+        const line = lines[index];
+        if (line.trim() === '') {
+            blanks += 1;
+            if (blanks > 1)
+                break;
+            continue;
+        }
+        blanks = 0;
+        const marker = listMarker(line);
+        if (marker === null) {
+            if (/^\s+\S/u.test(line))
+                continue;
+            break;
+        }
+        if (marker.indent < rootIndent) {
+            rootIndent = marker.indent;
+            rootKind = marker.kind;
+            start = index;
+        }
+        else if (marker.indent === rootIndent) {
+            if (rootKind !== marker.kind)
+                break;
+            start = index;
+        }
+    }
+    return rootIndent < Number.POSITIVE_INFINITY ? lines.slice(start, end + 1).join('\n').trimEnd() : null;
 }
 export function resolveNoteEmbedFragment(source, fragment) {
     if (new TextEncoder().encode(source).byteLength > MAX_EMBED_CONTENT_BYTES)
         return null;
-    const body = withoutFrontmatter(source);
+    const body = withoutFrontmatter(source).replace(/\r\n?/gu, '\n');
     if (fragment === null)
         return body;
+    const lines = body.split('\n');
+    const fenced = codeLines(body);
     if (fragment.startsWith('^')) {
-        const id = fragment.slice(1);
+        const id = fragment.slice(1).trim();
         if (!/^[A-Za-z0-9-]{1,200}$/u.test(id))
             return null;
-        const lines = body.split(/\r?\n/u);
-        const index = lines.findIndex(line => new RegExp(`(?:^|\\s)\\^${id}\\s*$`, 'u').test(line));
-        return index < 0 ? null : `${lines[index].replace(new RegExp(`\\s*\\^${id}\\s*$`, 'u'), '')}\n`;
-    }
-    const escaped = fragment.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&');
-    const lines = body.split(/\r?\n/u);
-    const index = lines.findIndex(line => new RegExp(`^ {0,3}#{1,6}\\s+${escaped}\\s*#*\\s*$`, 'iu').test(line));
-    if (index < 0)
+        for (let index = 0; index < lines.length; index += 1) {
+            if (fenced.has(index))
+                continue;
+            const line = lines[index];
+            if (new RegExp(`^\\s*\\^${escapeRegExp(id)}\\s*$`, 'u').test(line)) {
+                let cursor = index - 1;
+                while (cursor >= 0 && lines[cursor].trim() === '')
+                    cursor -= 1;
+                if (cursor < 0)
+                    return null;
+                const list = extractListBlock(lines, cursor);
+                if (list !== null)
+                    return list;
+                let start = cursor;
+                while (start > 0 && lines[start - 1].trim() !== '')
+                    start -= 1;
+                return lines.slice(start, index).map(row => stripTrailingBlockId(row, id)).join('\n').trimEnd();
+            }
+            const inline = new RegExp(`(?:^|\\s)\\^${escapeRegExp(id)}(?=$|\\s)`, 'u').exec(line);
+            if (inline !== null && !escapedAt(line, inline.index))
+                return `${stripTrailingBlockId(line, id).trim()}\n`;
+        }
         return null;
-    const level = lines[index].match(/^ {0,3}(#{1,6})/u)[1].length;
-    let end = lines.length;
-    for (let cursor = index + 1; cursor < lines.length; cursor += 1) {
-        const next = lines[cursor].match(/^ {0,3}(#{1,6})\s+/u);
-        if (next !== null && next[1].length <= level) {
-            end = cursor;
+    }
+    const wanted = normalizeIdentifier(fragment.replace(/^#+/u, '').split('#').filter(Boolean).at(-1) ?? '');
+    if (!wanted)
+        return null;
+    let start = -1;
+    let level = 0;
+    for (let index = 0; index < lines.length; index += 1) {
+        if (fenced.has(index))
+            continue;
+        const heading = lines[index].match(/^ {0,3}(#{1,6})\s+(.+?)\s*#*\s*$/u);
+        if (heading !== null && normalizeIdentifier(heading[2]) === wanted) {
+            start = index;
+            level = heading[1].length;
             break;
         }
     }
-    return `${lines.slice(index, end).join('\n').replace(/\n+$/u, '')}\n`;
+    if (start < 0)
+        return null;
+    let end = lines.length;
+    for (let index = start + 1; index < lines.length; index += 1) {
+        if (fenced.has(index))
+            continue;
+        const heading = lines[index].match(/^ {0,3}(#{1,6})\s+/u);
+        if (heading !== null && heading[1].length <= level) {
+            end = index;
+            break;
+        }
+    }
+    return `${lines.slice(start, end).join('\n').replace(/\n+$/u, '')}\n`;
 }
+function withoutFrontmatter(source) {
+    if (!/^---\r?\n/u.test(source))
+        return source;
+    const lines = source.replace(/\r\n?/gu, '\n').split('\n');
+    const end = lines.findIndex((line, index) => index > 0 && (line === '---' || line === '...'));
+    return end < 0 ? source : lines.slice(end + 1).join('\n');
+}
+function allowedMime(mimeType, target) {
+    const mime = mimeType.toLocaleLowerCase().split(';', 1)[0].trim();
+    if (target.kind !== 'media')
+        return false;
+    return /^image\/(?:avif|bmp|gif|jpeg|png|svg\+xml|webp)$/u.test(mime)
+        || /^audio\/(?:3gpp|flac|mp4|mpeg|ogg|wav|webm)$/u.test(mime)
+        || /^video\/(?:3gpp|mp4|mpeg|ogg|quicktime|webm)$/u.test(mime)
+        || mime === 'application/pdf';
+}
+function freezeTarget(target) {
+    return Object.freeze({ ...target });
+}
+/**
+ * Resolve local embed content as one bounded, cancellable graph. Reads are
+ * cached by canonical path, while each occurrence keeps its own target and
+ * depth so presentation modes can preserve source order. `isCurrent` is
+ * checked after every await to prevent late work crossing a route identity.
+ */
+export async function resolveEmbedGraph(options) {
+    const signal = options.signal ?? new AbortController().signal;
+    const maxDepth = Math.min(MAX_EMBED_DEPTH, Math.max(0, Math.floor(options.maxDepth ?? MAX_EMBED_DEPTH)));
+    const maxNodes = Math.min(MAX_EMBED_TARGETS, Math.max(0, Math.floor(options.maxNodes ?? MAX_EMBED_TARGETS)));
+    const maxTotalBytes = Math.min(MAX_EMBED_TOTAL_BYTES, Math.max(0, Math.floor(options.maxTotalBytes ?? MAX_EMBED_TOTAL_BYTES)));
+    const maxMediaBytes = Math.min(MAX_EMBED_MEDIA_BYTES, Math.max(0, Math.floor(options.maxMediaBytes ?? MAX_EMBED_MEDIA_BYTES)));
+    const documents = new Map();
+    const attachments = new Map();
+    const embeds = [];
+    const warnings = [];
+    const seenWarnings = new Set();
+    let totalBytes = 0;
+    let mediaBytes = 0;
+    let truncated = false;
+    const warn = (message) => {
+        if (warnings.length >= MAX_EMBED_WARNINGS || seenWarnings.has(message))
+            return;
+        seenWarnings.add(message);
+        warnings.push(message);
+    };
+    const current = () => options.isCurrent?.() !== false;
+    const check = () => {
+        signal.throwIfAborted();
+        if (!current())
+            throw new StaleEmbedError();
+    };
+    const readDocument = (path) => {
+        const cached = documents.get(path);
+        if (cached !== undefined)
+            return cached;
+        const promise = options.readDocument(path, signal);
+        documents.set(path, promise);
+        return promise;
+    };
+    const readAttachment = (path) => {
+        const cached = attachments.get(path);
+        if (cached !== undefined)
+            return cached;
+        const promise = options.readAttachment(path, signal);
+        attachments.set(path, promise);
+        return promise;
+    };
+    const visit = async (target, depth, stack, parentPath) => {
+        check();
+        if (embeds.length >= maxNodes) {
+            truncated = true;
+            warn('Embed node limit reached.');
+            return;
+        }
+        const path = resolveEmbedTargetPath(options.entries, target.path);
+        if (path === null) {
+            warn(`Embed not found: ${target.path}`);
+            return;
+        }
+        if (stack.includes(path)) {
+            warn(`Embed cycle ignored: ${path}`);
+            return;
+        }
+        try {
+            if (target.kind === 'media') {
+                const value = await readAttachment(path);
+                check();
+                if (value.path !== undefined && value.path !== path) {
+                    warn(`Embed path mismatch: ${path}`);
+                    return;
+                }
+                if (!allowedMime(value.mimeType, target)) {
+                    warn(`Unsupported media type: ${path}`);
+                    return;
+                }
+                const encodedBytes = new TextEncoder().encode(value.dataBase64).byteLength;
+                if (encodedBytes > maxMediaBytes - mediaBytes || encodedBytes > MAX_EMBED_MEDIA_BYTES) {
+                    truncated = true;
+                    warn('Embed media budget reached.');
+                    return;
+                }
+                mediaBytes += encodedBytes;
+                embeds.push({
+                    content: value.dataBase64,
+                    depth,
+                    mimeType: value.mimeType,
+                    ...(parentPath === undefined ? {} : { parentPath }),
+                    target: freezeTarget({ ...target, path }),
+                });
+                return;
+            }
+            const value = await readDocument(path);
+            check();
+            if (value.path !== undefined && value.path !== path) {
+                warn(`Embed path mismatch: ${path}`);
+                return;
+            }
+            if (new TextEncoder().encode(value.content).byteLength > MAX_EMBED_CONTENT_BYTES) {
+                warn(`Embed content is too large: ${path}`);
+                return;
+            }
+            const content = target.kind === 'note' ? resolveNoteEmbedFragment(value.content, target.fragment) : value.content;
+            if (content === null) {
+                warn(`Embed section not found: ${path}`);
+                return;
+            }
+            const contentBytes = new TextEncoder().encode(content).byteLength;
+            if (contentBytes > maxTotalBytes - totalBytes) {
+                truncated = true;
+                warn('Embed content budget reached.');
+                return;
+            }
+            totalBytes += contentBytes;
+            embeds.push({
+                content,
+                depth,
+                ...(parentPath === undefined ? {} : { parentPath }),
+                target: freezeTarget({ ...target, path }),
+            });
+            if (depth >= maxDepth) {
+                if (collectEmbedTargets(content).length > 0)
+                    warn(`Embed depth limit reached: ${path}`);
+                return;
+            }
+            for (const child of collectEmbedTargets(content))
+                await visit(child, depth + 1, [...stack, path], path);
+        }
+        catch (error) {
+            if (error instanceof StaleEmbedError)
+                throw error;
+            if (signal.aborted)
+                throw error;
+            warn(`Embed could not be read: ${path}`);
+        }
+    };
+    try {
+        for (const target of collectEmbedTargets(options.source))
+            await visit(target, 0, []);
+        check();
+        return { embeds: Object.freeze(embeds.map(embed => Object.freeze(embed))), status: 'ready', truncated, warnings: Object.freeze([...warnings]) };
+    }
+    catch (error) {
+        if (signal.aborted)
+            return { embeds: Object.freeze([]), status: 'cancelled', truncated, warnings: Object.freeze([...warnings]) };
+        if (error instanceof StaleEmbedError)
+            return { embeds: Object.freeze([]), status: 'stale', truncated, warnings: Object.freeze([...warnings]) };
+        throw error;
+    }
+}
+class StaleEmbedError extends Error {
+}
+/** Alias kept short for consumers that treat this operation as a resolver. */
+export const resolveEmbeds = resolveEmbedGraph;
 //# sourceMappingURL=embeds.js.map

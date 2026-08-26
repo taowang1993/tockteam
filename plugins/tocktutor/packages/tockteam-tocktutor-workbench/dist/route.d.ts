@@ -77,7 +77,9 @@ export interface RoutePaneSummary {
 }
 export interface ResolvedEmbed {
     content: string;
+    depth?: number;
     mimeType?: string;
+    parentPath?: string;
     target: EmbedTarget;
 }
 export interface WorkbenchRouteSnapshot {
@@ -163,6 +165,7 @@ export declare class WorkbenchRouteController {
     constructor(remote: WorkbenchRouteRemote, navigate: TockTutorRouteOwnerProps['navigate'], now?: () => Date, storage?: KeyValueStorage | null);
     getSnapshot: () => WorkbenchRouteSnapshot;
     handleDispatch(event: TockTutorNativeActionsDispatchEvent): Promise<TockTutorNativeActionsDispatchResult>;
+    private prepareDispatchPane;
     private createDispatchedDocument;
     private openDispatchDialog;
     submitDispatchDialog(draft: NativeDispatchDraft): Promise<void>;
@@ -298,6 +301,7 @@ export interface TockTutorRouteViewProps {
     onOpenRecovery?(): void;
     onOpenSandboxVault?(): void;
     onOpenSmartView?(kind: 'recent' | 'tasks' | 'journals' | 'favorites' | 'collections' | 'tags'): void;
+    onOpenExternalUrl?(url: string): void;
     onOpenSearch?(): void;
     onPrepareOrganization?(): void;
     onPreviewAttachment?(path: string): void;

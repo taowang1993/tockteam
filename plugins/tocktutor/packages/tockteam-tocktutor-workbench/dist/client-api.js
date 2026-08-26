@@ -72,6 +72,7 @@ export * from "./organize.js";
 export * from "./composer.js";
 export * from "./attachments.js";
 export * from "./embeds.js";
+export * from "./external-embeds.js";
 export * from "./web-viewer-panel.js";
 export * from "./native-actions.js";
 export * from "./review-panel.js";

@@ -5,6 +5,14 @@ export interface EditorCommandResult {
     selectionStart: number;
     source: string;
 }
+export interface EditorSelectionRange {
+    from: number;
+    to: number;
+}
+export interface MultiEditorCommandResult {
+    ranges: readonly EditorSelectionRange[];
+    source: string;
+}
 export type TableCommand = {
     column: number;
     kind: 'align-center' | 'align-default' | 'align-left' | 'align-right' | 'delete-column' | 'sort-ascending' | 'sort-descending';
@@ -23,6 +31,8 @@ interface ShortcutLike {
     shiftKey: boolean;
 }
 export declare function applyEditorCommand(source: string, command: EditorCommandId, selectionStart: number, selectionEnd: number): EditorCommandResult;
+/** Apply one Markdown command to every range in one atomic source transaction. */
+export declare function applyEditorCommandToSelections(source: string, command: EditorCommandId, selections: readonly EditorSelectionRange[]): MultiEditorCommandResult;
 export declare function applyTableCommand(source: string, command: TableCommand): string;
 export declare function resolveSlashCommand(value: string): EditorCommandId | null;
 export declare function resolvePlatformEditorCommand(event: ShortcutLike, isMac: boolean): EditorCommandId | null;

@@ -57,6 +57,57 @@ export function applyEditorCommand(source, command, selectionStart, selectionEnd
         source: `${source.slice(0, start)}${value}${source.slice(end)}`,
     };
 }
+/** Apply one Markdown command to every range in one atomic source transaction. */
+export function applyEditorCommandToSelections(source, command, selections) {
+    const ranges = selections
+        .map(range => {
+        const [from, to] = boundedRange(source, range.from, range.to);
+        return { from, to };
+    })
+        .sort((left, right) => left.from - right.from || left.to - right.to);
+    if (ranges.length === 0)
+        return { ranges: Object.freeze([]), source };
+    if (command === 'delete-line') {
+        const lines = new Map();
+        for (const range of ranges) {
+            const from = Math.max(source.lastIndexOf('\n', Math.max(0, range.from - 1)), source.lastIndexOf('\r', Math.max(0, range.from - 1))) + 1;
+            let to = source.length;
+            for (let index = range.to; index < source.length; index += 1) {
+                if (source[index] !== '\n' && source[index] !== '\r')
+                    continue;
+                to = index + (source.startsWith('\r\n', index) ? 2 : 1);
+                break;
+            }
+            lines.set(from, { from, to });
+        }
+        const ordered = [...lines.values()].sort((left, right) => left.from - right.from);
+        let next = source;
+        for (const line of [...ordered].reverse())
+            next = `${next.slice(0, line.from)}${next.slice(line.to)}`;
+        return { ranges: Object.freeze(ordered.map(line => ({ from: line.from, to: Math.min(line.from, next.length) }))), source: next };
+    }
+    let next = source;
+    const result = [];
+    for (let original = ranges.length - 1; original >= 0; original -= 1) {
+        const range = ranges[original];
+        const commandResult = applyEditorCommand(next, command, range.from, range.to);
+        const changed = commandResult.source !== next;
+        const delta = changed ? commandResult.source.length - next.length : 0;
+        if (changed) {
+            for (const entry of result) {
+                if (entry.range.from >= range.to) {
+                    entry.range = { from: entry.range.from + delta, to: entry.range.to + delta };
+                }
+            }
+        }
+        next = commandResult.source;
+        result.push({ original, range: changed
+                ? { from: commandResult.selectionStart, to: commandResult.selectionEnd }
+                : { from: range.from, to: range.to } });
+    }
+    result.sort((left, right) => left.original - right.original);
+    return { ranges: Object.freeze(result.map(entry => entry.range)), source: next };
+}
 function parseTable(source) {
     if (byteLength(source) > MAX_EDITOR_COMMAND_SOURCE_BYTES)
         return null;

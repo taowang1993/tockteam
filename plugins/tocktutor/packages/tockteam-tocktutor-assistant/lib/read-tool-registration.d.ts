@@ -1,8 +1,14 @@
 import type { Agent } from '@deepseek-ai/dsh-agent';
 import { type PennivoReadTool, type ReadBinding, type ReadToolOutcome } from './read-tools.ts';
 import { type AssistantTurnBindingRegistry } from './turn-bindings.ts';
+export interface AssistantReadDocument {
+    readonly content: string;
+    readonly source: ReadToolOutcome['source'];
+}
 export interface AssistantReadToolExecutor {
     execute(tool: unknown, args: unknown, binding: ReadBinding, signal: AbortSignal): Promise<ReadToolOutcome>;
+    /** Host-private full bounded content for transformations that are not model reads. */
+    readDocument?(path: string, binding: ReadBinding, signal: AbortSignal): Promise<AssistantReadDocument>;
 }
 /** Register only the reviewed, runtime-backed reads in the caller's existing DSH tool scope. */
 export declare function registerAssistantReadTools(agent: Agent, executor: AssistantReadToolExecutor, turns: AssistantTurnBindingRegistry, allowedTools: readonly PennivoReadTool[]): () => void;

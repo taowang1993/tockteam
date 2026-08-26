@@ -5,6 +5,13 @@ const tockbot_note_desktop_tocktutorDesktop_activateVault_parameter_0$schema = z
 const tockbot_note_desktop_tocktutorDesktop_activateVault_result$schema = z.object({
   'status': z.union([z.literal("cancelled"), z.literal("denied"), z.literal("stale"), z.literal("unavailable"), z.literal("activated"), z.literal("closed"), z.literal("exported"), z.literal("focused"), z.literal("granted"), z.literal("opened"), z.literal("printed"), z.literal("revealed")]),
 })
+const tockbot_note_desktop_tocktutorDesktop_activateVaultTarget_parameter_0$schema = z.string()
+const tockbot_note_desktop_tocktutorDesktop_activateVaultTarget_parameter_1$schema = z.object({
+  'id': z.string(),
+})
+const tockbot_note_desktop_tocktutorDesktop_activateVaultTarget_result$schema = z.object({
+  'status': z.union([z.literal("cancelled"), z.literal("denied"), z.literal("stale"), z.literal("unavailable"), z.literal("activated"), z.literal("closed"), z.literal("exported"), z.literal("focused"), z.literal("granted"), z.literal("opened"), z.literal("printed"), z.literal("revealed")]),
+})
 const tockbot_note_desktop_tocktutorDesktop_closeAllPopOuts_parameter_0$schema = z.string()
 const tockbot_note_desktop_tocktutorDesktop_closeAllPopOuts_parameter_1$schema = z.object({
   'generation': z.number(),
@@ -95,7 +102,43 @@ export const TYPERT_REMOTE = {
         typeSymbol: 'tockbot-note-desktop/types#NativeActionResult',
         schema: tockbot_note_desktop_tocktutorDesktop_activateVault_result$schema,
       },
-      sourceLocation: {"file":"packages/desktop-adapter/src/host-actions.ts","line":277,"column":9},
+      sourceLocation: {"file":"packages/desktop-adapter/src/host-actions.ts","line":289,"column":9},
+    },
+    {
+      id: 'tockbot-note-desktop#tocktutorDesktop/activateVaultTarget',
+      service: 'tocktutorDesktop',
+      namespace: 'tocktutorDesktop',
+      method: 'activateVaultTarget',
+      invocation: { kind: 'direct' },
+      parameters: [
+        {
+          name: 'authorization',
+          wire: 'authorization',
+          source: 'json',
+          codec: {
+            mode: 'strict',
+            typeSymbol: 'tockbot-note-desktop#tocktutorDesktop/activateVaultTarget:authorization',
+            schema: tockbot_note_desktop_tocktutorDesktop_activateVaultTarget_parameter_0$schema,
+          },
+        },
+        {
+          name: 'target',
+          wire: 'target',
+          source: 'json',
+          codec: {
+            mode: 'strict',
+            typeSymbol: 'tockbot-note-desktop#tocktutorDesktop/activateVaultTarget:target',
+            schema: tockbot_note_desktop_tocktutorDesktop_activateVaultTarget_parameter_1$schema,
+          },
+        },
+      ],
+      cancellation: { parameter: 'signal' },
+      result: {
+        mode: 'strict',
+        typeSymbol: 'tockbot-note-desktop/types#NativeActionResult',
+        schema: tockbot_note_desktop_tocktutorDesktop_activateVaultTarget_result$schema,
+      },
+      sourceLocation: {"file":"packages/desktop-adapter/src/host-actions.ts","line":336,"column":9},
     },
     {
       id: 'tockbot-note-desktop#tocktutorDesktop/closeAllPopOuts',
@@ -131,7 +174,7 @@ export const TYPERT_REMOTE = {
         typeSymbol: 'tockbot-note-desktop/types#NativeActionResult',
         schema: tockbot_note_desktop_tocktutorDesktop_closeAllPopOuts_result$schema,
       },
-      sourceLocation: {"file":"packages/desktop-adapter/src/host-actions.ts","line":401,"column":9},
+      sourceLocation: {"file":"packages/desktop-adapter/src/host-actions.ts","line":456,"column":9},
     },
     {
       id: 'tockbot-note-desktop#tocktutorDesktop/closePopOut',
@@ -177,7 +220,7 @@ export const TYPERT_REMOTE = {
         typeSymbol: 'tockbot-note-desktop/types#NativeActionResult',
         schema: tockbot_note_desktop_tocktutorDesktop_closePopOut_result$schema,
       },
-      sourceLocation: {"file":"packages/desktop-adapter/src/host-actions.ts","line":356,"column":9},
+      sourceLocation: {"file":"packages/desktop-adapter/src/host-actions.ts","line":411,"column":9},
     },
     {
       id: 'tockbot-note-desktop#tocktutorDesktop/exportNote',
@@ -233,7 +276,7 @@ export const TYPERT_REMOTE = {
         typeSymbol: 'tockbot-note-desktop/types#NativeActionResult',
         schema: tockbot_note_desktop_tocktutorDesktop_exportNote_result$schema,
       },
-      sourceLocation: {"file":"packages/desktop-adapter/src/host-actions.ts","line":471,"column":9},
+      sourceLocation: {"file":"packages/desktop-adapter/src/host-actions.ts","line":526,"column":9},
     },
     {
       id: 'tockbot-note-desktop#tocktutorDesktop/openPopOut',
@@ -279,7 +322,7 @@ export const TYPERT_REMOTE = {
         typeSymbol: 'tockbot-note-desktop/types#NativeActionResult',
         schema: tockbot_note_desktop_tocktutorDesktop_openPopOut_result$schema,
       },
-      sourceLocation: {"file":"packages/desktop-adapter/src/host-actions.ts","line":324,"column":9},
+      sourceLocation: {"file":"packages/desktop-adapter/src/host-actions.ts","line":379,"column":9},
     },
     {
       id: 'tockbot-note-desktop#tocktutorDesktop/printNote',
@@ -325,7 +368,7 @@ export const TYPERT_REMOTE = {
         typeSymbol: 'tockbot-note-desktop/types#NativeActionResult',
         schema: tockbot_note_desktop_tocktutorDesktop_printNote_result$schema,
       },
-      sourceLocation: {"file":"packages/desktop-adapter/src/host-actions.ts","line":438,"column":9},
+      sourceLocation: {"file":"packages/desktop-adapter/src/host-actions.ts","line":493,"column":9},
     },
     {
       id: 'tockbot-note-desktop#tocktutorDesktop/requestMicrophone',
@@ -361,7 +404,7 @@ export const TYPERT_REMOTE = {
         typeSymbol: 'tockbot-note-desktop/types#NativeActionResult',
         schema: tockbot_note_desktop_tocktutorDesktop_requestMicrophone_result$schema,
       },
-      sourceLocation: {"file":"packages/desktop-adapter/src/host-actions.ts","line":527,"column":9},
+      sourceLocation: {"file":"packages/desktop-adapter/src/host-actions.ts","line":582,"column":9},
     },
     {
       id: 'tockbot-note-desktop#tocktutorDesktop/revealEntry',
@@ -407,7 +450,7 @@ export const TYPERT_REMOTE = {
         typeSymbol: 'tockbot-note-desktop/types#NativeActionResult',
         schema: tockbot_note_desktop_tocktutorDesktop_revealEntry_result$schema,
       },
-      sourceLocation: {"file":"packages/desktop-adapter/src/host-actions.ts","line":550,"column":9},
+      sourceLocation: {"file":"packages/desktop-adapter/src/host-actions.ts","line":605,"column":9},
     },
   ],
 }

@@ -763,6 +763,50 @@ export class PennivoReadAdapter {
             truncated,
         });
     }
+    /** Return full bounded source only to Host-owned transformations, never model output. */
+    async readDocument(requestedPath, requestedBinding, signal) {
+        let binding;
+        try {
+            binding = snapshotBinding(requestedBinding);
+            assertSafeRelativePath(requestedPath);
+        }
+        catch (error) {
+            if (error instanceof ReadToolError)
+                throw error;
+            throw failure('INVALID_ARGUMENTS');
+        }
+        this.assertCurrent(binding);
+        if (signal.aborted)
+            throw failure('ABORTED');
+        let opened;
+        try {
+            opened = await this.runtime.openDocument(requestedPath, Object.freeze({ id: binding.vaultId, generation: binding.vaultGeneration }), signal);
+        }
+        catch (error) {
+            throw runtimeError(error, signal);
+        }
+        if (signal.aborted)
+            throw failure('ABORTED');
+        let document;
+        try {
+            document = validateResult(opened, requestedPath, binding);
+        }
+        catch (error) {
+            if (error instanceof ReadToolError)
+                throw error;
+            throw failure('INVALID_RESULT');
+        }
+        this.assertCurrent(binding);
+        return Object.freeze({
+            content: document.content,
+            source: Object.freeze({
+                path: document.path,
+                digest: document.digest,
+                revision: document.revision,
+                generation: document.generation,
+            }),
+        });
+    }
     async getOutline(path, binding, signal) {
         this.assertCurrent(binding);
         if (signal.aborted)

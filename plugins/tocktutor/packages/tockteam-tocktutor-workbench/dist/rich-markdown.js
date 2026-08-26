@@ -1,3 +1,4 @@
+import { classifyExternalEmbed, externalEmbedButtonHtml, externalEmbedInertHtml, } from "./external-embeds.js";
 // Bounded TockTeam renderer informed by Tockbot's source-detached NotesExportHtml contract.
 export const MAX_RICH_MARKDOWN_BYTES = 2000_000;
 export const MAX_RICH_MARKDOWN_BLOCKS = 20000;
@@ -15,7 +16,7 @@ export function escapeMarkdownHtml(value) {
 }
 function safeUrl(value) {
     const trimmed = value.trim();
-    if (trimmed.length === 0 || trimmed.length > 4096 || /[\u0000-\u001f\u007f]/u.test(trimmed))
+    if (trimmed.length === 0 || trimmed.length > 4096 || trimmed.startsWith('//') || /[\u0000-\u001f\u007f]/u.test(trimmed))
         return null;
     if (/^(?:https?:|mailto:)/iu.test(trimmed)) {
         try {
@@ -33,7 +34,80 @@ function safeUrl(value) {
     return null;
 }
 const SAFE_RAW_TAG = /^<\/?(?:br|code|del|em|kbd|mark|s|small|strong|sub|sup|u)>$/iu;
-function renderInline(source, footnoteNumbers) {
+const SAFE_RAW_BLOCK_TAGS = new Set(['a', 'br', 'code', 'del', 'div', 'em', 'mark', 'p', 's', 'span', 'strong', 'table', 'tbody', 'td', 'tfoot', 'th', 'thead', 'tr', 'u']);
+const SAFE_RAW_VOID_TAGS = new Set(['br']);
+function rawHtmlAttributes(source) {
+    const attributes = {};
+    for (const match of source.matchAll(/([A-Za-z][\w:-]*)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+))/gu)) {
+        const name = match[1]?.toLocaleLowerCase();
+        if (name !== undefined)
+            attributes[name] = match[2] ?? match[3] ?? match[4] ?? '';
+    }
+    return attributes;
+}
+function sanitizeRawHtmlTag(tag) {
+    const match = tag.match(/^<\s*(\/)?\s*([A-Za-z][\w:-]*)([^>]*)>$/u);
+    if (match === null)
+        return escapeMarkdownHtml(tag);
+    const closing = match[1] !== undefined;
+    const name = match[2].toLocaleLowerCase();
+    if (!SAFE_RAW_BLOCK_TAGS.has(name))
+        return '';
+    if (closing)
+        return SAFE_RAW_VOID_TAGS.has(name) ? '' : `</${name}>`;
+    if (SAFE_RAW_VOID_TAGS.has(name))
+        return `<${name}>`;
+    const attrs = rawHtmlAttributes(match[3] ?? '');
+    const safe = [];
+    if (attrs.class !== undefined && /^[A-Za-z0-9 _-]{1,200}$/u.test(attrs.class))
+        safe.push(`class="${escapeMarkdownHtml(attrs.class.trim())}"`);
+    if (attrs.title !== undefined && attrs.title.length <= 200)
+        safe.push(`title="${escapeMarkdownHtml(attrs.title)}"`);
+    if (name === 'a' && attrs.href !== undefined) {
+        const href = safeUrl(attrs.href);
+        if (href !== null)
+            safe.push(`href="${escapeMarkdownHtml(href)}" rel="noopener noreferrer"`);
+    }
+    for (const attribute of ['colspan', 'rowspan', 'width', 'height']) {
+        if (attrs[attribute] !== undefined && /^\d{1,4}$/u.test(attrs[attribute]))
+            safe.push(`${attribute}="${attrs[attribute]}"`);
+    }
+    return `<${name}${safe.length === 0 ? '' : ` ${safe.join(' ')}`}>`;
+}
+function renderSafeRawHtmlBlock(source) {
+    if (bytes(source) > 100_000 || !/^\s*</u.test(source))
+        return null;
+    const withoutActive = source
+        .replace(/<!--[\s\S]*?-->/gu, '')
+        .replace(/<(?:script|style|iframe|object|embed|form|svg|math)\b[^>]*>[\s\S]*?(?:<\/\s*(?:script|style|iframe|object|embed|form|svg|math)\s*>|$)/giu, '');
+    let result = '';
+    let cursor = 0;
+    const stack = [];
+    for (const match of withoutActive.matchAll(/<[^>]{1,200}>/gu)) {
+        const parsed = match[0].match(/^<\s*(\/)?\s*([A-Za-z][\w:-]*)([^>]*)>$/u);
+        if (parsed !== null) {
+            const name = parsed[2].toLocaleLowerCase();
+            if (SAFE_RAW_BLOCK_TAGS.has(name) && !SAFE_RAW_VOID_TAGS.has(name)) {
+                if (parsed[1] === undefined)
+                    stack.push(name);
+                else if (stack.pop() !== name)
+                    return escapeMarkdownHtml(source);
+            }
+        }
+        result += escapeMarkdownHtml(withoutActive.slice(cursor, match.index));
+        result += sanitizeRawHtmlTag(match[0]);
+        cursor = (match.index ?? cursor) + match[0].length;
+    }
+    if (stack.length > 0)
+        return escapeMarkdownHtml(source);
+    result += escapeMarkdownHtml(withoutActive.slice(cursor));
+    return result.trim() === '' ? '' : result;
+}
+function rawHtmlBlockName(line) {
+    const name = line.trim().match(/^<\s*([A-Za-z][\w:-]*)(?:\s|>|\/)/u)?.[1]?.toLocaleLowerCase();
+    return name !== undefined && SAFE_RAW_BLOCK_TAGS.has(name) && name !== 'a' && name !== 'br' ? name : null;
+}
+function renderInline(source, footnoteNumbers, externalEmbedMode = 'inert') {
     const tokens = [];
     const hold = (html) => {
         const token = `\u0000${String(tokens.length)}\u0000`;
@@ -45,6 +119,11 @@ function renderInline(source, footnoteNumbers) {
     text = text.replace(/`([^`\n]{0,10000})`/gu, (_match, code) => hold(`<code>${escapeMarkdownHtml(code)}</code>`));
     text = escapeMarkdownHtml(text);
     text = text.replace(/!\[([^\]\n]{0,1000})\]\(([^)\n]{1,4096})\)/gu, (match, alt, target) => {
+        const external = classifyExternalEmbed(target);
+        if (external !== null) {
+            const image = external.kind === 'youtube' || external.kind === 'twitter' ? external : { ...external, kind: 'image' };
+            return externalEmbedMode === 'viewer' ? externalEmbedButtonHtml(alt, image) : externalEmbedInertHtml(alt, image);
+        }
         const url = safeUrl(target);
         return url === null || !/^(?:data:image\/|(?:https?:)?\/|\.\.?\/|[^:]+$)/iu.test(url)
             ? escapeMarkdownHtml(match)
@@ -66,7 +145,7 @@ function renderInline(source, footnoteNumbers) {
         const number = footnoteNumbers.get(label.toLocaleLowerCase());
         return number === undefined ? match : `<sup class="footnote-ref"><a href="#fn-${String(number)}">${String(number)}</a></sup>`;
     });
-    text = text.replace(/\^\[([^\]\n]{1,2000})\]/gu, (_match, value) => hold(`<sup class="footnote-inline">${renderInline(value, footnoteNumbers)}</sup>`));
+    text = text.replace(/\^\[([^\]\n]{1,2000})\]/gu, (_match, value) => hold(`<sup class="footnote-inline">${renderInline(value, footnoteNumbers, externalEmbedMode)}</sup>`));
     text = text.replace(/\$([^$\n]{1,20000})\$/gu, (_match, value) => `<span class="math-inline" role="math">${escapeMarkdownHtml(value)}</span>`);
     text = text.replace(/==([^=\n]{1,20000})==/gu, '<mark>$1</mark>');
     text = text.replace(/~~([^~\n]{1,20000})~~/gu, '<del>$1</del>');
@@ -139,14 +218,14 @@ function tableDelimiter(line) {
 function tableCells(line) {
     return line.trim().replace(/^\|/u, '').replace(/\|$/u, '').split('|').map(cell => cell.trim());
 }
-function paragraphHtml(lines, strict, footnotes) {
+function paragraphHtml(lines, strict, footnotes, externalEmbedMode) {
     if (lines.length === 0)
         return '';
-    let html = renderInline(lines[0].replace(/[ \t]+$/u, ''), footnotes);
+    let html = renderInline(lines[0].replace(/[ \t]+$/u, ''), footnotes, externalEmbedMode);
     for (let index = 1; index < lines.length; index += 1) {
         const previous = lines[index - 1];
         const separator = !strict || / {2,}$/u.test(previous) ? '<br>' : ' ';
-        html += `${separator}${renderInline(lines[index].replace(/[ \t]+$/u, ''), footnotes)}`;
+        html += `${separator}${renderInline(lines[index].replace(/[ \t]+$/u, ''), footnotes, externalEmbedMode)}`;
     }
     return `<p>${html}</p>`;
 }
@@ -156,17 +235,32 @@ export function renderMarkdownHtml(markdown, options = {}) {
     const source = stripComments(stripLeadingFrontmatter(markdown)).replaceAll('\r\n', '\n').replaceAll('\r', '\n');
     const lines = source.split('\n');
     const footnotes = collectFootnotes(lines);
+    const externalEmbedMode = options.externalEmbedMode ?? 'inert';
     const blocks = [];
     let paragraph = [];
     let taskIndex = 0;
     const flush = () => {
         if (paragraph.length === 0)
             return;
-        blocks.push(paragraphHtml(paragraph, options.strictLineBreaks === true, footnotes.numbers));
+        blocks.push(paragraphHtml(paragraph, options.strictLineBreaks === true, footnotes.numbers, externalEmbedMode));
         paragraph = [];
     };
     for (let index = 0; index < lines.length && blocks.length < MAX_RICH_MARKDOWN_BLOCKS; index += 1) {
         const line = lines[index];
+        const rawName = rawHtmlBlockName(line);
+        if (rawName !== null) {
+            flush();
+            const rawLines = [line];
+            index += 1;
+            const close = new RegExp(`</\\s*${rawName}\\s*>`, 'iu');
+            while (index < lines.length && !close.test(rawLines.at(-1) ?? '')) {
+                rawLines.push(lines[index]);
+                index += 1;
+            }
+            blocks.push(renderSafeRawHtmlBlock(rawLines.join('\n')) ?? paragraphHtml(rawLines, options.strictLineBreaks === true, footnotes.numbers, externalEmbedMode));
+            index -= 1;
+            continue;
+        }
         if (footnotes.hidden.has(index)) {
             flush();
             continue;
@@ -199,7 +293,7 @@ export function renderMarkdownHtml(markdown, options = {}) {
         if (heading !== null) {
             flush();
             const level = heading[1].length;
-            blocks.push(`<h${String(level)}>${renderInline(heading[2], footnotes.numbers)}</h${String(level)}>`);
+            blocks.push(`<h${String(level)}>${renderInline(heading[2], footnotes.numbers, externalEmbedMode)}</h${String(level)}>`);
             continue;
         }
         const callout = line.match(/^>\s*\[!([A-Za-z0-9_-]+)\]([+-])?(?:\s+(.*))?$/u);
@@ -212,7 +306,7 @@ export function renderMarkdownHtml(markdown, options = {}) {
             }
             const type = callout[1].toLocaleLowerCase();
             const title = callout[3] ?? type[0].toLocaleUpperCase() + type.slice(1);
-            blocks.push(`<aside class="callout callout-${escapeMarkdownHtml(type)}" data-fold="${callout[2] === '-' ? 'closed' : 'open'}"><strong>${renderInline(title, footnotes.numbers)}</strong>${paragraphHtml(body, options.strictLineBreaks === true, footnotes.numbers)}</aside>`);
+            blocks.push(`<aside class="callout callout-${escapeMarkdownHtml(type)}" data-fold="${callout[2] === '-' ? 'closed' : 'open'}"><strong>${renderInline(title, footnotes.numbers, externalEmbedMode)}</strong>${paragraphHtml(body, options.strictLineBreaks === true, footnotes.numbers, externalEmbedMode)}</aside>`);
             continue;
         }
         if (index + 1 < lines.length && line.includes('|') && tableDelimiter(lines[index + 1])) {
@@ -224,13 +318,13 @@ export function renderMarkdownHtml(markdown, options = {}) {
                 index += 1;
                 rows.push(tableCells(lines[index]));
             }
-            blocks.push(`<table><thead><tr>${headers.map(cell => `<th>${renderInline(cell, footnotes.numbers)}</th>`).join('')}</tr></thead><tbody>${rows.map(row => `<tr>${headers.map((_header, cell) => `<td>${renderInline(row[cell] ?? '', footnotes.numbers)}</td>`).join('')}</tr>`).join('')}</tbody></table>`);
+            blocks.push(`<table><thead><tr>${headers.map(cell => `<th>${renderInline(cell, footnotes.numbers, externalEmbedMode)}</th>`).join('')}</tr></thead><tbody>${rows.map(row => `<tr>${headers.map((_header, cell) => `<td>${renderInline(row[cell] ?? '', footnotes.numbers, externalEmbedMode)}</td>`).join('')}</tr>`).join('')}</tbody></table>`);
             continue;
         }
         const task = line.match(/^\s{0,64}[-+*]\s+\[([^\]])\]\s*(.*)$/u);
         if (task !== null) {
             flush();
-            blocks.push(`<ul class="task-list"><li><input aria-label="Task" data-task-index="${String(taskIndex)}" type="checkbox"${task[1] === ' ' ? '' : ' checked'}> ${renderInline(task[2], footnotes.numbers)}</li></ul>`);
+            blocks.push(`<ul class="task-list"><li><input aria-label="Task" data-task-index="${String(taskIndex)}" type="checkbox"${task[1] === ' ' ? '' : ' checked'}> ${renderInline(task[2], footnotes.numbers, externalEmbedMode)}</li></ul>`);
             taskIndex += 1;
             continue;
         }
@@ -238,7 +332,7 @@ export function renderMarkdownHtml(markdown, options = {}) {
         if (list !== null) {
             flush();
             const ordered = /^\d/u.test(list[1]);
-            blocks.push(`<${ordered ? 'ol' : 'ul'}><li>${renderInline(list[2], footnotes.numbers)}</li></${ordered ? 'ol' : 'ul'}>`);
+            blocks.push(`<${ordered ? 'ol' : 'ul'}><li>${renderInline(list[2], footnotes.numbers, externalEmbedMode)}</li></${ordered ? 'ol' : 'ul'}>`);
             continue;
         }
         if (/^ {0,3}(?:-{3,}|\*{3,}|_{3,})\s*$/u.test(line)) {
@@ -254,7 +348,7 @@ export function renderMarkdownHtml(markdown, options = {}) {
     }
     flush();
     if (footnotes.definitions.length > 0) {
-        blocks.push(`<section class="footnotes"><ol>${footnotes.definitions.map(definition => `<li id="fn-${String(definition.number)}">${renderInline(definition.text, footnotes.numbers)}</li>`).join('')}</ol></section>`);
+        blocks.push(`<section class="footnotes"><ol>${footnotes.definitions.map(definition => `<li id="fn-${String(definition.number)}">${renderInline(definition.text, footnotes.numbers, externalEmbedMode)}</li>`).join('')}</ol></section>`);
     }
     return blocks.join('\n');
 }

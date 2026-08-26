@@ -2,6 +2,8 @@ export declare const MAX_RICH_MARKDOWN_BYTES = 2000000;
 export declare const MAX_RICH_MARKDOWN_BLOCKS = 20000;
 export declare const MAX_RICH_MARKDOWN_FOOTNOTES = 1000;
 export interface RenderMarkdownOptions {
+    /** External HTTP(S) media is inert by default; viewer mode emits a button for the isolated Web Viewer. */
+    externalEmbedMode?: 'inert' | 'viewer';
     strictLineBreaks?: boolean;
 }
 export interface StaticMarkdownEmbed {

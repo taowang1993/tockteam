@@ -170,7 +170,10 @@ export class NoteAssistant extends Service {
         });
         try {
             const readTools = input.allowedTools.filter((tool) => (REVIEWED_PENNIVO_READ_TOOLS.includes(tool) && tool !== 'list_workspaces'));
-            const writeTools = input.allowedTools.filter(tool => tool === 'create_file' || tool === 'write_file');
+            const writeTools = input.allowedTools.filter(tool => (tool === 'create_file'
+                || tool === 'write_file'
+                || tool === 'notes_stage_write'
+                || tool === 'notes_organize_capture'));
             if (readTools.length > 0) {
                 lease.addCleanup(registerAssistantReadTools(input.agent, this.readAdapter, this.turnBindings, readTools));
             }
@@ -372,7 +375,11 @@ export class NoteAssistant extends Service {
             throw new AssistantTurnBindingError('STALE_TURN');
         const allowedTools = [
             ...REVIEWED_PENNIVO_READ_TOOLS.filter(tool => tool !== 'list_workspaces'),
-            ...(settings.writePermission === 'propose' ? ['create_file', 'write_file'] : []),
+            'notes_search',
+            'notes_read',
+            ...(settings.writePermission === 'propose'
+                ? ['create_file', 'write_file', 'notes_stage_write', 'notes_organize_capture']
+                : []),
         ];
         return {
             lease: this.bindAgentTurn({

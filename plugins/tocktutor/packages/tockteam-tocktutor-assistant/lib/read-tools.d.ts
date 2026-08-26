@@ -48,6 +48,11 @@ export declare class PennivoReadAdapter {
     private readonly isCurrent;
     constructor(runtime: RuntimeDocumentReader, isCurrent: (binding: ReadBinding) => boolean);
     execute(tool: unknown, args: unknown, requestedBinding: ReadBinding, signal: AbortSignal): Promise<ReadToolOutcome>;
+    /** Return full bounded source only to Host-owned transformations, never model output. */
+    readDocument(requestedPath: string, requestedBinding: ReadBinding, signal: AbortSignal): Promise<{
+        readonly content: string;
+        readonly source: ReadSourceIdentity;
+    }>;
     private getOutline;
     private findBacklinks;
     private search;
