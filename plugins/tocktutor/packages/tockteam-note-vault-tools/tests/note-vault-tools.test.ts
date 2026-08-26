@@ -459,7 +459,7 @@ test('notes_search adapts the active generation into TockDriver citations withou
     const tool = loaded.tools.definitions.get('notes_search')
     assert.ok(tool)
     assert.deepEqual(tool.parameters, {
-      vaultId: { type: 'string', description: 'Opaque id of the active Notes vault.', required: true },
+      vaultId: { type: 'string', description: 'Optional opaque id; omitted means the active Notes vault.' },
       query: { type: 'string', description: 'Text or terms to search.', required: true },
       mode: {
         type: 'string',
@@ -470,7 +470,6 @@ test('notes_search adapts the active generation into TockDriver citations withou
     })
     const signal = new AbortController().signal
     const result = await tool.execute({
-      vaultId: 'vault:test',
       query: 'launch',
       mode: 'semantic',
       limit: 4,

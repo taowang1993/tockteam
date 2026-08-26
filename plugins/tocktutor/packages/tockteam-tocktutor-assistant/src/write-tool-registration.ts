@@ -105,7 +105,7 @@ function writeArguments(value: unknown): { path: string; content: string } {
 }
 
 function notesWriteArguments(value: unknown): {
-  vaultId: string
+  vaultId?: string
   path: string
   content: string
   operation: 'create' | 'update'
@@ -118,9 +118,7 @@ function notesWriteArguments(value: unknown): {
   ) throw new TockDriverWriteError('The TockDriver write arguments are invalid.')
   const args = value as Record<string, unknown>
   if (
-    typeof args.vaultId !== 'string'
-    || args.vaultId.length < 8
-    || args.vaultId.length > 256
+    args.vaultId !== undefined && (typeof args.vaultId !== 'string' || args.vaultId.length < 8 || args.vaultId.length > 256)
     || typeof args.path !== 'string'
     || typeof args.content !== 'string'
     || (args.operation !== 'create' && args.operation !== 'update')
@@ -137,14 +135,14 @@ function notesWriteArguments(value: unknown): {
     || args.content.includes('\0')
   ) throw new TockDriverWriteError('The TockDriver write arguments are invalid.')
   return {
-    vaultId: args.vaultId,
+    ...(args.vaultId === undefined ? {} : { vaultId: args.vaultId }),
     path: args.path,
     content: args.content,
     operation: args.operation,
   }
 }
 
-function organizeCaptureArguments(value: unknown): { vaultId: string; path: string } {
+function organizeCaptureArguments(value: unknown): { vaultId?: string; path: string } {
   if (
     typeof value !== 'object'
     || value === null
@@ -153,9 +151,7 @@ function organizeCaptureArguments(value: unknown): { vaultId: string; path: stri
   ) throw new TockDriverWriteError('The TockDriver capture arguments are invalid.')
   const args = value as Record<string, unknown>
   if (
-    typeof args.vaultId !== 'string'
-    || args.vaultId.length < 8
-    || args.vaultId.length > 256
+    args.vaultId !== undefined && (typeof args.vaultId !== 'string' || args.vaultId.length < 8 || args.vaultId.length > 256)
     || typeof args.path !== 'string'
     || !/^Inbox\/.+\.(?:md|markdown)$/u.test(args.path)
   ) throw new TockDriverWriteError('The TockDriver capture arguments are invalid.')
@@ -164,7 +160,7 @@ function organizeCaptureArguments(value: unknown): { vaultId: string; path: stri
   } catch {
     throw new TockDriverWriteError('The TockDriver capture arguments are invalid.')
   }
-  return { vaultId: args.vaultId, path: args.path }
+  return { ...(args.vaultId === undefined ? {} : { vaultId: args.vaultId }), path: args.path }
 }
 
 function titleFromPath(relativePath: string): string {
@@ -388,7 +384,7 @@ export function registerAssistantWriteTools(
         name: 'notes_stage_write',
         description: 'Stage a TockDriver note create or update for explicit user approval. This never writes before approval.',
         parameters: {
-          vaultId: { type: 'string', required: true, description: 'Opaque id of the active Notes vault.' },
+          vaultId: { type: 'string', description: 'Optional opaque id; omitted means the active Notes vault.' },
           path: { type: 'string', required: true, description: 'Vault-relative Markdown path.' },
           content: { type: 'string', required: true, description: 'Complete proposed Markdown content.' },
           operation: { type: 'string', required: true, enum: ['create', 'update'] },
@@ -409,7 +405,7 @@ export function registerAssistantWriteTools(
               signal: exec.signal,
               tool: 'notes_stage_write',
             })
-            if (turn.permission !== 'propose' || args.vaultId !== turn.readBinding.vaultId) {
+            if (turn.permission !== 'propose' || args.vaultId !== undefined && args.vaultId !== turn.readBinding.vaultId) {
               throw new AssistantTurnBindingError('TOOL_UNAVAILABLE')
             }
             let source: StageProposalInput['source']
@@ -466,7 +462,7 @@ export function registerAssistantWriteTools(
         name: 'notes_organize_capture',
         description: 'Stage an organized Markdown note from an Inbox capture for explicit user approval. This never writes before approval.',
         parameters: {
-          vaultId: { type: 'string', required: true, description: 'Opaque id of the active Notes vault.' },
+          vaultId: { type: 'string', description: 'Optional opaque id; omitted means the active Notes vault.' },
           path: { type: 'string', required: true, description: 'Vault-relative Inbox Markdown path.' },
         },
         output: {
@@ -485,7 +481,7 @@ export function registerAssistantWriteTools(
               signal: exec.signal,
               tool: 'notes_organize_capture',
             })
-            if (turn.permission !== 'propose' || args.vaultId !== turn.readBinding.vaultId) {
+            if (turn.permission !== 'propose' || args.vaultId !== undefined && args.vaultId !== turn.readBinding.vaultId) {
               throw new AssistantTurnBindingError('TOOL_UNAVAILABLE')
             }
             const read = await readDocumentForWrite(reader, args.path, turn.readBinding, exec.signal)

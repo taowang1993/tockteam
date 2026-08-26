@@ -210,7 +210,6 @@ test('TockDriver writes stage redacted proposals and organize Inbox captures thr
     const staged = await context.tools.execute({
       agent,
       arguments: {
-        vaultId: 'vault:write-12345678',
         path: 'notes/new.md',
         content: '# Private TockDriver Draft',
         operation: 'create',

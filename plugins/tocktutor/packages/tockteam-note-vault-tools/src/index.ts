@@ -493,9 +493,9 @@ function activeVault(ctx: AdapterContext): VaultReference {
   return { generation: state.generation, id: state.id }
 }
 
-function requestedNotesVault(ctx: AdapterContext, vaultId: string): VaultReference {
+function requestedNotesVault(ctx: AdapterContext, vaultId?: string): VaultReference {
   const expected = activeVault(ctx)
-  if (vaultId !== expected.id) notesFailure('The requested Notes vault is not the active vault.')
+  if (vaultId !== undefined && vaultId !== expected.id) notesFailure('The requested Notes vault is not the active vault.')
   return expected
 }
 
@@ -539,7 +539,7 @@ function notesVaultId(value: unknown): string {
 }
 
 function notesSearchArguments(value: unknown): {
-  vaultId: string
+  vaultId?: string
   query: string
   mode: 'keyword' | 'semantic'
   limit: number
@@ -547,7 +547,7 @@ function notesSearchArguments(value: unknown): {
   if (!plainRecord(value) || Object.keys(value).some(key => !['vaultId', 'query', 'mode', 'limit'].includes(key))) {
     notesFailure('The Notes search arguments are invalid.')
   }
-  const vaultId = notesVaultId(value.vaultId)
+  const vaultId = value.vaultId === undefined ? undefined : notesVaultId(value.vaultId)
   if (
     typeof value.query !== 'string'
     || value.query.length === 0
@@ -565,18 +565,18 @@ function notesSearchArguments(value: unknown): {
       || value.limit > NOTES_MAX_RESULT_COUNT)
   ) notesFailure('The Notes search limit is invalid.')
   return {
-    vaultId,
+    ...(vaultId === undefined ? {} : { vaultId }),
     query: value.query,
     mode: value.mode ?? 'keyword',
     limit: value.limit ?? 10,
   }
 }
 
-function notesReadArguments(value: unknown): { vaultId: string; path: string } {
+function notesReadArguments(value: unknown): { vaultId?: string; path: string } {
   if (!plainRecord(value) || Object.keys(value).some(key => !['vaultId', 'path'].includes(key))) {
     notesFailure('The Notes read arguments are invalid.')
   }
-  return { vaultId: notesVaultId(value.vaultId), path: notesPath(value.path, 'The Notes path') }
+  return { ...(value.vaultId === undefined ? {} : { vaultId: notesVaultId(value.vaultId) }), path: notesPath(value.path, 'The Notes path') }
 }
 
 function redactNotesText(value: string): string {
@@ -821,7 +821,7 @@ export function apply(context: Context): void {
     name: 'notes_search',
     description: 'Search the active local Notes vault. Results cite Markdown path, title, line, and snippet; this is read-only.',
     parameters: {
-      vaultId: { type: 'string', description: 'Opaque id of the active Notes vault.', required: true },
+      vaultId: { type: 'string', description: 'Optional opaque id; omitted means the active Notes vault.' },
       query: { type: 'string', description: 'Text or terms to search.', required: true },
       mode: {
         type: 'string',
@@ -844,7 +844,7 @@ export function apply(context: Context): void {
     name: 'notes_read',
     description: 'Read one Markdown note from the active local Notes vault. Access is read-only and bounded.',
     parameters: {
-      vaultId: { type: 'string', description: 'Opaque id of the active Notes vault.', required: true },
+      vaultId: { type: 'string', description: 'Optional opaque id; omitted means the active Notes vault.' },
       path: { type: 'string', description: 'Vault-relative Markdown path.', required: true },
     },
     output: {
