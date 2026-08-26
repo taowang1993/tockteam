@@ -484,14 +484,14 @@ test('dispatches approved daily and unique note defaults without inventing setti
     request: { action: 'unique' },
   }), 'handled')
   const firstUnique = remote.calls.filter(call => call.method === 'createDocument').at(-1)?.parameters[0] as CreateDocumentRequest
-  assert.match(firstUnique.path, /^202608241405-[0-9a-f-]{36}\.md$/u)
+  assert.equal(firstUnique.path, '202608241405.md')
   assert.equal(await controller.handleDispatch({
     kind: 'protocol',
     operationId: 'unique-again',
     request: { action: 'unique' },
   }), 'handled')
   const secondUnique = remote.calls.filter(call => call.method === 'createDocument').at(-1)?.parameters[0] as CreateDocumentRequest
-  assert.match(secondUnique.path, /^202608241405-[0-9a-f-]{36}\.md$/u)
+  assert.equal(secondUnique.path, '202608241406.md')
   assert.notEqual(secondUnique.path, firstUnique.path)
   assert.equal(await controller.handleDispatch({
     kind: 'protocol',

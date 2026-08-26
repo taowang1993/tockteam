@@ -35,4 +35,5 @@ export * from './settings.ts';
 export * from './properties.ts';
 export * from './bookmarks.ts';
 export * from './graph.ts';
+export * from './capture.ts';
 //# sourceMappingURL=index.d.ts.map

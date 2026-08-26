@@ -52,6 +52,7 @@ __export(client_exports, {
   MAX_RICH_MARKDOWN_BYTES: () => MAX_RICH_MARKDOWN_BYTES,
   MAX_RICH_MARKDOWN_FOOTNOTES: () => MAX_RICH_MARKDOWN_FOOTNOTES,
   MAX_ROUTE_SOURCE_BYTES: () => MAX_ROUTE_SOURCE_BYTES,
+  MAX_TEMPLATE_BYTES: () => MAX_TEMPLATE_BYTES,
   MAX_TOCKTUTOR_CSS_BYTES: () => MAX_TOCKTUTOR_CSS_BYTES,
   MAX_TOCKTUTOR_SETTINGS_BYTES: () => MAX_TOCKTUTOR_SETTINGS_BYTES,
   MAX_TOCKTUTOR_WORKSPACES: () => MAX_TOCKTUTOR_WORKSPACES,
@@ -69,6 +70,8 @@ __export(client_exports, {
   applyEditorCommand: () => applyEditorCommand,
   applyTableCommand: () => applyTableCommand,
   assertUniqueCanvasDocumentIdentities: () => assertUniqueCanvasDocumentIdentities,
+  buildCaptureNote: () => buildCaptureNote,
+  buildJournalNote: () => buildJournalNote,
   buildMarkdownExportDocument: () => buildMarkdownExportDocument,
   buildMarkdownSlides: () => buildMarkdownSlides,
   calculateCanvasPointerValue: () => calculateCanvasPointerValue,
@@ -90,6 +93,7 @@ __export(client_exports, {
   duplicateCanvasGroup: () => duplicateCanvasGroup,
   duplicateCanvasNodes: () => duplicateCanvasNodes,
   escapeMarkdownHtml: () => escapeMarkdownHtml,
+  expandTemplate: () => expandTemplate,
   inferPropertyType: () => inferPropertyType,
   inject: () => inject,
   internalLinkDropMarkdown: () => internalLinkDropMarkdown,
@@ -128,6 +132,7 @@ __export(client_exports, {
   setFrontmatterProperty: () => setFrontmatterProperty,
   subscribeNoteVaultChanges: () => subscribeNoteVaultChanges,
   tryNormalizeCanvasLinkUrl: () => tryNormalizeCanvasLinkUrl,
+  uniqueNotePath: () => uniqueNotePath,
   updateCanvasEdgeColor: () => updateCanvasEdgeColor,
   updateCanvasEdgeLabel: () => updateCanvasEdgeLabel,
   updateCanvasGroupGeometry: () => updateCanvasGroupGeometry,
@@ -2781,8 +2786,8 @@ function isValidBase64URL(data) {
   if (!base64url.test(data))
     return false;
   const base643 = data.replace(/[-_]/g, (c) => c === "-" ? "+" : "/");
-  const padded2 = base643.padEnd(Math.ceil(base643.length / 4) * 4, "=");
-  return isValidBase64(padded2);
+  const padded = base643.padEnd(Math.ceil(base643.length / 4) * 4, "=");
+  return isValidBase64(padded);
 }
 var $ZodBase64URL = /* @__PURE__ */ $constructor("$ZodBase64URL", (inst, def) => {
   def.pattern ?? (def.pattern = base64url);
@@ -23815,6 +23820,113 @@ function layoutGraph(graph, options) {
   return positions.map((node) => ({ ...node, x: Math.round(node.x * 100) / 100, y: Math.round(node.y * 100) / 100 }));
 }
 
+// src/capture.ts
+var MAX_TEMPLATE_BYTES = 1e6;
+function pad(value, length = 2) {
+  return String(value).padStart(length, "0");
+}
+function formatDate(value, format) {
+  const replacements = {
+    YYYY: String(value.getFullYear()),
+    MMMM: value.toLocaleString("en", { month: "long" }),
+    MMM: value.toLocaleString("en", { month: "short" }),
+    MM: pad(value.getMonth() + 1),
+    DD: pad(value.getDate()),
+    dddd: value.toLocaleString("en", { weekday: "long" }),
+    ddd: value.toLocaleString("en", { weekday: "short" }),
+    HH: pad(value.getHours()),
+    hh: pad(value.getHours() % 12 || 12),
+    mm: pad(value.getMinutes()),
+    ss: pad(value.getSeconds()),
+    SSS: pad(value.getMilliseconds(), 3),
+    A: value.getHours() < 12 ? "AM" : "PM"
+  };
+  let output = "";
+  for (let index2 = 0; index2 < format.length; ) {
+    if (format[index2] === "[") {
+      const close = format.indexOf("]", index2 + 1);
+      if (close >= 0) {
+        output += format.slice(index2 + 1, close);
+        index2 = close + 1;
+        continue;
+      }
+    }
+    const token = Object.keys(replacements).toSorted((left, right) => right.length - left.length).find((candidate) => format.startsWith(candidate, index2));
+    if (token === void 0) {
+      output += format[index2];
+      index2 += 1;
+    } else {
+      output += replacements[token];
+      index2 += token.length;
+    }
+  }
+  return output;
+}
+function safeFolder(folder) {
+  if (!isSafeVaultRelativePath(folder) || /^[A-Za-z]:/u.test(folder)) throw new Error("The capture folder is invalid.");
+  return folder.replace(/\/$/u, "");
+}
+function slug(value) {
+  return value.normalize("NFKD").replace(/[\u0300-\u036f]/gu, "").toLocaleLowerCase().replace(/[^a-z0-9]+/gu, "-").replace(/^-|-$/gu, "").slice(0, 80) || "capture";
+}
+function collisionPath(path, existing) {
+  if (!existing.has(path)) return path;
+  const extension = path.match(/(\.[^./]+)$/u)?.[1] ?? "";
+  const stem = extension === "" ? path : path.slice(0, -extension.length);
+  for (let index2 = 2; index2 <= 1e3; index2 += 1) {
+    const candidate = `${stem}-${String(index2)}${extension}`;
+    if (!existing.has(candidate)) return candidate;
+  }
+  throw new Error("No collision-safe capture path is available.");
+}
+function expandTemplate(template, context) {
+  if (new TextEncoder().encode(template).byteLength > MAX_TEMPLATE_BYTES) throw new Error("The template is too large.");
+  return template.replace(/\{\{(title|content|fromTitle|date|time)(?::([^}\r\n]{1,100}))?\}\}/gu, (source, name2, format) => {
+    if (name2 === "title") return context.title;
+    if (name2 === "content") return context.content ?? "";
+    if (name2 === "fromTitle") return context.fromTitle ?? "";
+    if (name2 === "date") return formatDate(context.now, format ?? "YYYY-MM-DD");
+    if (name2 === "time") return formatDate(context.now, format ?? "HH:mm");
+    return source;
+  });
+}
+function buildCaptureNote(input) {
+  const title = input.title.trim().slice(0, 200);
+  if (title === "") throw new Error("Capture title is required.");
+  if (new TextEncoder().encode(input.body).byteLength > MAX_TEMPLATE_BYTES) throw new Error("Capture body is too large.");
+  const folder = safeFolder(input.folder ?? "Inbox");
+  const date5 = formatDate(input.now, "YYYY-MM-DD");
+  return {
+    content: `# ${title}
+
+${input.body}`,
+    path: collisionPath(`${folder}/${date5}-${slug(title)}.md`, input.existing)
+  };
+}
+function buildJournalNote(input) {
+  const folder = safeFolder(input.folder);
+  const date5 = formatDate(input.now, input.dateFormat ?? "YYYY-MM-DD");
+  if (date5.length === 0 || date5.length > 200 || /[\\/:*?"<>|]/u.test(date5)) throw new Error("The journal date format is invalid.");
+  return {
+    content: input.template === void 0 ? `---
+journal-date: ${formatDate(input.now, "YYYY-MM-DD")}
+---
+# ${date5}
+` : expandTemplate(input.template, { now: input.now, title: date5 }),
+    path: `${folder}/${date5}.md`
+  };
+}
+function uniqueNotePath(now, existing) {
+  const candidate = new Date(now);
+  candidate.setSeconds(0, 0);
+  for (let index2 = 0; index2 < 1440; index2 += 1) {
+    const path = `${formatDate(candidate, "YYYYMMDDHHmm")}.md`;
+    if (!existing.has(path)) return path;
+    candidate.setMinutes(candidate.getMinutes() + 1);
+  }
+  throw new Error("No unique-note timestamp is available within one day.");
+}
+
 // src/settings.ts
 var MAX_TOCKTUTOR_SETTINGS_BYTES = 1048576;
 var MAX_TOCKTUTOR_WORKSPACES = 32;
@@ -23836,18 +23948,18 @@ function settingsKey(vaultId) {
 function stateKey(vaultId) {
   return `tocktutor.workbench.v1.${validVaultId(vaultId) ? vaultId : "invalid"}`;
 }
-function safeFolder(value, fallback) {
+function safeFolder2(value, fallback) {
   return typeof value === "string" && value.length <= 1e3 && isSafeVaultRelativePath(value) && !/^[A-Za-z]:/u.test(value) ? value : fallback;
 }
 function normalizeSettings(value) {
   const record2 = typeof value === "object" && value !== null && !Array.isArray(value) ? value : {};
   return {
-    attachmentFolder: safeFolder(record2.attachmentFolder, DEFAULT_SETTINGS.attachmentFolder),
+    attachmentFolder: safeFolder2(record2.attachmentFolder, DEFAULT_SETTINGS.attachmentFolder),
     backlinksInDocument: record2.backlinksInDocument === true,
     defaultEditingMode: record2.defaultEditingMode === "source" ? "source" : "live-preview",
-    journalFolder: safeFolder(record2.journalFolder, DEFAULT_SETTINGS.journalFolder),
+    journalFolder: safeFolder2(record2.journalFolder, DEFAULT_SETTINGS.journalFolder),
     pagePreview: record2.pagePreview !== false,
-    templateFolder: safeFolder(record2.templateFolder, DEFAULT_SETTINGS.templateFolder)
+    templateFolder: safeFolder2(record2.templateFolder, DEFAULT_SETTINGS.templateFolder)
   };
 }
 function readJson(storage, key2) {
@@ -24329,15 +24441,6 @@ function pathFromTockTutorLocation(pathname) {
 function routeForPath(path) {
   return `${ROUTE_PREFIX}/${path.split("/").map((segment) => encodeURIComponent(segment)).join("/")}`;
 }
-function padded(value) {
-  return String(value).padStart(2, "0");
-}
-function dateStamp(value) {
-  return `${String(value.getFullYear())}-${padded(value.getMonth() + 1)}-${padded(value.getDate())}`;
-}
-function minuteStamp(value) {
-  return `${dateStamp(value).replaceAll("-", "")}${padded(value.getHours())}${padded(value.getMinutes())}`;
-}
 function initialSnapshot() {
   return Object.freeze({
     bookmarks: Object.freeze([]),
@@ -24449,8 +24552,11 @@ var WorkbenchRouteController = class {
       return opened ? "handled" : "failed";
     }
     if (request.action === "daily") {
-      const day = dateStamp(this.now());
-      const path2 = `Journals/${day}.md`;
+      const journal = buildJournalNote({
+        folder: this.snapshot.settings?.journalFolder ?? "Journals",
+        now: this.now()
+      });
+      const path2 = journal.path;
       const exists = this.snapshot.path === path2 || this.snapshot.entries.some((entry) => entry.path === path2);
       if (exists) {
         if (request.content !== void 0 || request.ifExists !== void 0) return "failed";
@@ -24461,19 +24567,17 @@ var WorkbenchRouteController = class {
       }
       return await this.createDispatchedDocument(
         path2,
-        request.content ?? `---
-journal-date: ${day}
----
-# ${day}
-`,
+        request.content ?? journal.content,
         request.silent === true,
         revision,
         vault
       );
     }
     if (request.action === "unique") {
+      const existing = new Set(this.snapshot.entries.filter((entry) => entry.kind === "document").map((entry) => entry.path));
+      if (this.snapshot.path !== null) existing.add(this.snapshot.path);
       return await this.createDispatchedDocument(
-        `${minuteStamp(this.now())}-${crypto.randomUUID()}.md`,
+        uniqueNotePath(this.now(), existing),
         request.content ?? "",
         request.silent === true,
         revision,
@@ -24539,16 +24643,24 @@ journal-date: ${day}
       content = "";
     } else {
       const title = draft.title?.trim() ?? "";
-      const text = draft.text?.trim() ?? "";
-      const slug = title.normalize("NFKD").replace(/[\u0300-\u036f]/gu, "").toLowerCase().replace(/[^a-z0-9]+/gu, "-").replace(/^-|-$/gu, "").slice(0, 80);
-      if (title.length === 0 || title.length > 200 || text.length > 1e5 || slug.length === 0) {
+      const text = draft.text ?? "";
+      if (title.length === 0 || title.length > 200 || text.length > 1e5) {
         this.settlePendingDispatch("failed");
         return;
       }
-      path = `Inbox/${dateStamp(this.now())}-${slug}.md`;
-      content = `# ${title}
-
-${text}`;
+      try {
+        const capture = buildCaptureNote({
+          body: text,
+          existing: new Set(this.snapshot.entries.filter((entry) => entry.kind === "document").map((entry) => entry.path)),
+          now: this.now(),
+          title
+        });
+        path = capture.path;
+        content = capture.content;
+      } catch {
+        this.settlePendingDispatch("failed");
+        return;
+      }
     }
     const result = await this.createDispatchedDocument(
       path,

@@ -22,6 +22,7 @@ import { renderMarkdownHtml } from "./rich-markdown.js";
 import { parseFrontmatterProperties, setFrontmatterProperty } from "./properties.js";
 import { addBookmark, loadBookmarks, saveBookmarks } from "./bookmarks.js";
 import { layoutGraph, projectGraph } from "./graph.js";
+import { buildCaptureNote, buildJournalNote, uniqueNotePath } from "./capture.js";
 import { createNamedWorkspace, loadTockTutorSettings, loadWorkbenchState, saveTockTutorSettings, saveWorkbenchState, } from "./settings.js";
 import { applyEditorCommand, resolvePlatformEditorCommand, } from "./editor-commands.js";
 import { editorStatusLabel, resolveEditorShortcut, toggleMarkdownTask, } from "./markdown.js";
@@ -121,15 +122,6 @@ export function pathFromTockTutorLocation(pathname) {
 }
 function routeForPath(path) {
     return `${ROUTE_PREFIX}/${path.split('/').map(segment => encodeURIComponent(segment)).join('/')}`;
-}
-function padded(value) {
-    return String(value).padStart(2, '0');
-}
-function dateStamp(value) {
-    return `${String(value.getFullYear())}-${padded(value.getMonth() + 1)}-${padded(value.getDate())}`;
-}
-function minuteStamp(value) {
-    return `${dateStamp(value).replaceAll('-', '')}${padded(value.getHours())}${padded(value.getMinutes())}`;
 }
 function initialSnapshot() {
     return Object.freeze({
@@ -258,8 +250,11 @@ export class WorkbenchRouteController {
             return opened ? 'handled' : 'failed';
         }
         if (request.action === 'daily') {
-            const day = dateStamp(this.now());
-            const path = `Journals/${day}.md`;
+            const journal = buildJournalNote({
+                folder: this.snapshot.settings?.journalFolder ?? 'Journals',
+                now: this.now(),
+            });
+            const path = journal.path;
             const exists = this.snapshot.path === path || this.snapshot.entries.some(entry => entry.path === path);
             if (exists) {
                 if (request.content !== undefined || request.ifExists !== undefined)
@@ -271,10 +266,13 @@ export class WorkbenchRouteController {
                     return 'stale';
                 return opened ? 'handled' : 'failed';
             }
-            return await this.createDispatchedDocument(path, request.content ?? `---\njournal-date: ${day}\n---\n# ${day}\n`, request.silent === true, revision, vault);
+            return await this.createDispatchedDocument(path, request.content ?? journal.content, request.silent === true, revision, vault);
         }
         if (request.action === 'unique') {
-            return await this.createDispatchedDocument(`${minuteStamp(this.now())}-${crypto.randomUUID()}.md`, request.content ?? '', request.silent === true, revision, vault);
+            const existing = new Set(this.snapshot.entries.filter(entry => entry.kind === 'document').map(entry => entry.path));
+            if (this.snapshot.path !== null)
+                existing.add(this.snapshot.path);
+            return await this.createDispatchedDocument(uniqueNotePath(this.now(), existing), request.content ?? '', request.silent === true, revision, vault);
         }
         if (request.action !== 'new')
             return 'failed';
@@ -342,19 +340,25 @@ export class WorkbenchRouteController {
         }
         else {
             const title = draft.title?.trim() ?? '';
-            const text = draft.text?.trim() ?? '';
-            const slug = title.normalize('NFKD')
-                .replace(/[\u0300-\u036f]/gu, '')
-                .toLowerCase()
-                .replace(/[^a-z0-9]+/gu, '-')
-                .replace(/^-|-$/gu, '')
-                .slice(0, 80);
-            if (title.length === 0 || title.length > 200 || text.length > 100_000 || slug.length === 0) {
+            const text = draft.text ?? '';
+            if (title.length === 0 || title.length > 200 || text.length > 100_000) {
                 this.settlePendingDispatch('failed');
                 return;
             }
-            path = `Inbox/${dateStamp(this.now())}-${slug}.md`;
-            content = `# ${title}\n\n${text}`;
+            try {
+                const capture = buildCaptureNote({
+                    body: text,
+                    existing: new Set(this.snapshot.entries.filter(entry => entry.kind === 'document').map(entry => entry.path)),
+                    now: this.now(),
+                    title,
+                });
+                path = capture.path;
+                content = capture.content;
+            }
+            catch {
+                this.settlePendingDispatch('failed');
+                return;
+            }
         }
         const result = await this.createDispatchedDocument(path, content, false, pending.revision, pending.vault);
         if (this.pendingDispatch === pending)

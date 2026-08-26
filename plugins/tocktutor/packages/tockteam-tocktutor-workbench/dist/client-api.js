@@ -58,6 +58,7 @@ export * from "./settings.js";
 export * from "./properties.js";
 export * from "./bookmarks.js";
 export * from "./graph.js";
+export * from "./capture.js";
 export * from "./native-actions.js";
 export * from "./review-panel.js";
 export * from "./route.js";

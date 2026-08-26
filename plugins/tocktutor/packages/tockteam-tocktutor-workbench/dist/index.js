@@ -37,4 +37,5 @@ export * from "./settings.js";
 export * from "./properties.js";
 export * from "./bookmarks.js";
 export * from "./graph.js";
+export * from "./capture.js";
 //# sourceMappingURL=index.js.map
