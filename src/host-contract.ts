@@ -288,19 +288,11 @@ export type DesktopDestinationState = { status: 'absent' }
  * observation at the exact retained-fd write syscall is outside the Desktop
  * Host threat model; ordinary parent drift still fails closed.
  */
-export type DesktopDestinationPlan =
-  | {
-      entries: readonly [DesktopSelectedFilePlanEntry]
-      publicationName?: never
-      purpose: 'export-html' | 'export-pdf'
-      totalBytes: number
-    }
-  | {
-      entries: readonly [DesktopSelectedFilePlanEntry]
-      publicationName?: never
-      purpose: 'vault-backup'
-      totalBytes: number
-    }
+export interface DesktopDestinationPlan {
+  entries: readonly [DesktopSelectedFilePlanEntry]
+  purpose: 'export-html' | 'export-pdf' | 'vault-backup'
+  totalBytes: number
+}
 
 function hasExactKeys(value: object, required: readonly string[], optional: readonly string[] = []): boolean {
   const keys = Object.keys(value)
@@ -319,7 +311,7 @@ function isSafeInteger(value: unknown, maximum: number): value is number {
 /** Validate and hash the exact ordered destination plan reviewed by the user. */
 export function computeDesktopDestinationPlanDigest(input: DesktopDestinationPlan): DesktopSha256 {
   if (typeof input !== 'object' || input === null
-    || !hasExactKeys(input, ['entries', 'purpose', 'totalBytes'], ['publicationName'])
+    || !hasExactKeys(input, ['entries', 'purpose', 'totalBytes'])
     || !Array.isArray(input.entries)) throw new TockTeamDesktopGrantError('invalid-entry')
   if (input.purpose !== 'export-html' && input.purpose !== 'export-pdf' && input.purpose !== 'vault-backup') {
     throw new TockTeamDesktopGrantError('purpose-mismatch')
@@ -328,53 +320,35 @@ export function computeDesktopDestinationPlanDigest(input: DesktopDestinationPla
   if (entries.length === 0 || entries.length > MAX_DESKTOP_SOURCE_ENTRIES) {
     throw new TockTeamDesktopGrantError('limit-exceeded')
   }
+  if (entries.length !== 1) throw new TockTeamDesktopGrantError('purpose-mismatch')
   if (!isSafeInteger(input.totalBytes, MAX_DESKTOP_SOURCE_TOTAL_BYTES)) {
     throw new TockTeamDesktopGrantError('limit-exceeded')
   }
 
-  let totalBytes = 0
-  for (const entry of entries) {
-    if (typeof entry !== 'object' || entry === null
-      || !hasExactKeys(entry, ['digest', 'size', 'target'])) {
-      throw new TockTeamDesktopGrantError('invalid-entry')
-    }
-    if (!/^[0-9a-f]{64}$/u.test(entry.digest)) {
-      throw new TockTeamDesktopGrantError('digest-mismatch')
-    }
-    if (!isSafeInteger(entry.size, MAX_DESKTOP_SOURCE_ENTRY_BYTES)) {
-      throw new TockTeamDesktopGrantError('limit-exceeded')
-    }
-    totalBytes += entry.size
-    if (totalBytes > MAX_DESKTOP_SOURCE_TOTAL_BYTES) {
-      throw new TockTeamDesktopGrantError('limit-exceeded')
-    }
-    if (typeof entry.target !== 'object' || entry.target === null) {
-      throw new TockTeamDesktopGrantError('unsafe-target')
-    }
-    if (entry.target.kind !== 'selected-file' || !hasExactKeys(entry.target, ['kind'])) {
-      throw new TockTeamDesktopGrantError('unsafe-target')
-    }
+  const entry = entries[0]!
+  if (typeof entry !== 'object' || entry === null
+    || !hasExactKeys(entry, ['digest', 'size', 'target'])) {
+    throw new TockTeamDesktopGrantError('invalid-entry')
   }
-  if (totalBytes !== input.totalBytes) throw new TockTeamDesktopGrantError('size-mismatch')
-
-  if (entries.length !== 1
-    || entries[0]?.target.kind !== 'selected-file'
-    || Object.hasOwn(input, 'publicationName')) {
-    throw new TockTeamDesktopGrantError('purpose-mismatch')
+  if (!/^[0-9a-f]{64}$/u.test(entry.digest)) {
+    throw new TockTeamDesktopGrantError('digest-mismatch')
+  }
+  if (!isSafeInteger(entry.size, MAX_DESKTOP_SOURCE_ENTRY_BYTES)) {
+    throw new TockTeamDesktopGrantError('limit-exceeded')
+  }
+  if (entry.size !== input.totalBytes) throw new TockTeamDesktopGrantError('size-mismatch')
+  if (typeof entry.target !== 'object' || entry.target === null
+    || entry.target.kind !== 'selected-file' || !hasExactKeys(entry.target, ['kind'])) {
+    throw new TockTeamDesktopGrantError('unsafe-target')
   }
 
   const canonical = [
     'tockteam-destination-plan',
     DESKTOP_DESTINATION_PLAN_VERSION,
     input.purpose,
-    input.publicationName ?? null,
+    null,
     input.totalBytes,
-    entries.map(entry => [
-      entry.target.kind,
-      null,
-      entry.size,
-      entry.digest,
-    ]),
+    [[entry.target.kind, null, entry.size, entry.digest]],
   ]
   return createHash('sha256').update(JSON.stringify(canonical), 'utf8').digest('hex') as DesktopSha256
 }
