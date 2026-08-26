@@ -2110,6 +2110,7 @@ function TockTutorNativeActionsOutlet(props) {
     return props.renderSlot(TOCKTUTOR_NATIVE_ACTIONS_SLOT, {
         activePath: props.activePath,
         handleDispatch: props.handleDispatch,
+        saveCurrent: props.saveCurrent,
         vault: props.vault,
     }, {
         fallback: _jsx(Alert, { unstyled: true, role: "status", children: "No native actions are available." }),
@@ -2167,7 +2168,7 @@ export function TockTutorRoute(props) {
     }, [controller]);
     return (_jsx("div", { className: "tocktutor-root h-full min-h-0", ref: root, children: _jsx(TockTutorRouteView, { assistantPanel: (_jsx(TockTutorAssistantPanelOutlet, { activePath: snapshot.path, renderSlot: props.renderSlot, ...((snapshot.selectionEnd ?? 0) > (snapshot.selectionStart ?? 0)
                     ? { selectedText: snapshot.source.slice(snapshot.selectionStart, Math.min(snapshot.selectionEnd ?? 0, (snapshot.selectionStart ?? 0) + 10_000)) }
-                    : {}), vault: snapshot.vault })), nativeActions: (_jsx(TockTutorNativeActionsOutlet, { activePath: snapshot.path, handleDispatch: event => controller.handleDispatch(event), renderSlot: props.renderSlot, vault: snapshot.vault })), onActivateRecentVault: id => { void controller.activateRecentVault(id); }, onActivateTab: (paneId, path) => { void controller.activateTab(paneId, path); }, onAddBookmark: () => { controller.addActiveBookmark(); }, onApplyOrganization: () => { void controller.applyOrganization(); }, onAddPane: () => { void controller.addPane(); }, onBack: () => { void controller.goBack(); }, onBaseCopy: request => { void globalThis.navigator?.clipboard?.writeText(request.text); }, onBaseEdit: request => { void controller.applyBaseEdit(request); }, onBaseExport: request => {
+                    : {}), vault: snapshot.vault })), nativeActions: (_jsx(TockTutorNativeActionsOutlet, { activePath: snapshot.path, handleDispatch: event => controller.handleDispatch(event), renderSlot: props.renderSlot, saveCurrent: () => controller.save(), vault: snapshot.vault })), onActivateRecentVault: id => { void controller.activateRecentVault(id); }, onActivateTab: (paneId, path) => { void controller.activateTab(paneId, path); }, onAddBookmark: () => { controller.addActiveBookmark(); }, onApplyOrganization: () => { void controller.applyOrganization(); }, onAddPane: () => { void controller.addPane(); }, onBack: () => { void controller.goBack(); }, onBaseCopy: request => { void globalThis.navigator?.clipboard?.writeText(request.text); }, onBaseEdit: request => { void controller.applyBaseEdit(request); }, onBaseExport: request => {
                 const url = URL.createObjectURL(new Blob([request.text], { type: 'text/csv;charset=utf-8' }));
                 const anchor = document.createElement('a');
                 anchor.href = url;

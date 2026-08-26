@@ -29,6 +29,7 @@ export type TockTutorNativeActionsDispatchResult = 'handled' | 'failed' | 'stale
 export interface TockTutorNativeActionsOwnerProps {
     activePath: string | null;
     handleDispatch(event: TockTutorNativeActionsDispatchEvent): Promise<TockTutorNativeActionsDispatchResult>;
+    saveCurrent?(): Promise<boolean>;
     vault: VaultReference | null;
 }
 declare module '@deepseek-ai/dsh-client-ui-slots' {

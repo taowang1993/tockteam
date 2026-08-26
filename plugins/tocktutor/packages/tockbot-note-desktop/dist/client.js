@@ -15149,16 +15149,20 @@ function dispatchStatus(result) {
   if (result.status === "stale") return "stale";
   return result.status === "activated" || result.status === "focused" || result.status === "opened" ? "handled" : "failed";
 }
+async function saveCurrent(owner) {
+  return owner.saveCurrent === void 0 ? true : await owner.saveCurrent();
+}
 function workbenchEvent(event) {
   return event.kind === "quick-action" ? { action: event.action, kind: "quick-action", operationId: event.operationId } : { kind: "protocol", operationId: event.operationId, request: event.request };
 }
 async function handleDesktopDispatch(event, owner, bridge, remote, signal) {
   if (event.kind !== "protocol") return owner.handleDispatch(workbenchEvent(event));
   if (event.request.action === "choose-vault") {
+    if (!await saveCurrent(owner)) return "failed";
     return dispatchStatus(await nativeCall(bridge, "activate-vault", signal, (authorization, ownerSignal) => remote.tocktutorDesktop.activateVault(authorization, ownerSignal)));
   }
   if (event.request.action === "open" && event.request.paneType === "window") {
-    if (owner.vault === null || event.request.file === void 0) return "failed";
+    if (owner.vault === null || event.request.file === void 0 || !await saveCurrent(owner)) return "failed";
     return dispatchStatus(await nativeCall(bridge, "popout-open", signal, (authorization, ownerSignal) => remote.tocktutorDesktop.openPopOut(authorization, event.request.file, owner.vault, ownerSignal)));
   }
   return owner.handleDispatch(workbenchEvent(event));
@@ -15298,8 +15302,8 @@ function TockTutorNativeActions(props) {
       if (!signal.aborted) setBusy(null);
     }
   };
-  const withNote = (label, operation, call) => async () => {
-    if (props.activePath === null || props.vault === null) return;
+  const withNote = (label, operation, call, saveFirst = false) => async () => {
+    if (props.activePath === null || props.vault === null || saveFirst && !await saveCurrent(props)) return;
     await run(label, operation, (authorization, signal) => call(authorization, props.activePath, props.vault, signal));
   };
   const button = (label, action, enabled = true) => /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
@@ -15319,10 +15323,11 @@ function TockTutorNativeActions(props) {
   return /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { "aria-label": "Desktop Note Actions", className: "tocktutor-desktop-actions grid gap-2 px-[18px] pt-3.5 pb-[18px]", role: "group", children: [
     /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "tocktutor-desktop-actions-grid grid grid-cols-2 gap-2", children: [
       button("Choose Vault", async () => {
+        if (!await saveCurrent(props)) return;
         await run("Choosing Vault", "activate-vault", (authorization, signal) => props.remote.tocktutorDesktop.activateVault(authorization, signal));
       }),
       button("Reveal Entry", withNote("Revealing Entry", "reveal-entry", (authorization, path, vault, signal) => props.remote.tocktutorDesktop.revealEntry(authorization, path, vault, signal)), hasNote),
-      button("Open Pop-Out", withNote("Opening Pop-Out", "popout-open", (authorization, path, vault, signal) => props.remote.tocktutorDesktop.openPopOut(authorization, path, vault, signal)), hasNote),
+      button("Open Pop-Out", withNote("Opening Pop-Out", "popout-open", (authorization, path, vault, signal) => props.remote.tocktutorDesktop.openPopOut(authorization, path, vault, signal), true), hasNote),
       button("Close Pop-Out", withNote("Closing Pop-Out", "popout-close", (authorization, path, vault, signal) => props.remote.tocktutorDesktop.closePopOut(authorization, path, vault, signal)), hasNote),
       button("Close All Pop-Outs", async () => {
         if (props.vault === null) return;
@@ -15340,9 +15345,9 @@ function TockTutorNativeActions(props) {
         ),
         navigator.mediaDevices
       )), hasNote),
-      button("Print Note", withNote("Printing Note", "print", (authorization, path, vault, signal) => props.remote.tocktutorDesktop.printNote(authorization, path, vault, signal)), hasNote),
-      button("Export HTML", withNote("Exporting HTML", "export-html", (authorization, path, vault, signal) => props.remote.tocktutorDesktop.exportNote(authorization, "html", path, vault, signal)), hasNote),
-      button("Export PDF", withNote("Exporting PDF", "export-pdf", (authorization, path, vault, signal) => props.remote.tocktutorDesktop.exportNote(authorization, "pdf", path, vault, signal)), hasNote)
+      button("Print Note", withNote("Printing Note", "print", (authorization, path, vault, signal) => props.remote.tocktutorDesktop.printNote(authorization, path, vault, signal), true), hasNote),
+      button("Export HTML", withNote("Exporting HTML", "export-html", (authorization, path, vault, signal) => props.remote.tocktutorDesktop.exportNote(authorization, "html", path, vault, signal), true), hasNote),
+      button("Export PDF", withNote("Exporting PDF", "export-pdf", (authorization, path, vault, signal) => props.remote.tocktutorDesktop.exportNote(authorization, "pdf", path, vault, signal), true), hasNote)
     ] }),
     /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(Alert, { unstyled: true, "aria-live": "polite", className: "mt-1 mb-0 text-[var(--tt-muted,#667085)]", role: "status", children: message })
   ] });

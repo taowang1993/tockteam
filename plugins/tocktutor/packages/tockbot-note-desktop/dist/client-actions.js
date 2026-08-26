@@ -43,6 +43,9 @@ function dispatchStatus(result) {
         ? 'handled'
         : 'failed';
 }
+async function saveCurrent(owner) {
+    return owner.saveCurrent === undefined ? true : await owner.saveCurrent();
+}
 function workbenchEvent(event) {
     return event.kind === 'quick-action'
         ? { action: event.action, kind: 'quick-action', operationId: event.operationId }
@@ -52,10 +55,12 @@ async function handleDesktopDispatch(event, owner, bridge, remote, signal) {
     if (event.kind !== 'protocol')
         return owner.handleDispatch(workbenchEvent(event));
     if (event.request.action === 'choose-vault') {
+        if (!await saveCurrent(owner))
+            return 'failed';
         return dispatchStatus(await nativeCall(bridge, 'activate-vault', signal, (authorization, ownerSignal) => (remote.tocktutorDesktop.activateVault(authorization, ownerSignal))));
     }
     if (event.request.action === 'open' && event.request.paneType === 'window') {
-        if (owner.vault === null || event.request.file === undefined)
+        if (owner.vault === null || event.request.file === undefined || !await saveCurrent(owner))
             return 'failed';
         return dispatchStatus(await nativeCall(bridge, 'popout-open', signal, (authorization, ownerSignal) => (remote.tocktutorDesktop.openPopOut(authorization, event.request.file, owner.vault, ownerSignal))));
     }
@@ -191,18 +196,20 @@ export function TockTutorNativeActions(props) {
                 setBusy(null);
         }
     };
-    const withNote = (label, operation, call) => async () => {
-        if (props.activePath === null || props.vault === null)
+    const withNote = (label, operation, call, saveFirst = false) => async () => {
+        if (props.activePath === null || props.vault === null || (saveFirst && !await saveCurrent(props)))
             return;
         await run(label, operation, (authorization, signal) => (call(authorization, props.activePath, props.vault, signal)));
     };
     const button = (label, action, enabled = true) => (_jsx(Button, { unstyled: true, className: "min-h-9 cursor-pointer rounded-lg border border-[var(--tt-border,#d9dde5)] bg-[var(--tt-bg,#f7f8fa)] px-2.5 py-[7px] text-left text-inherit enabled:hover:border-[var(--tt-accent,#2457d6)] focus-visible:border-[var(--tt-accent,#2457d6)] focus-visible:outline-none focus-visible:shadow-[0_0_0_2px_color-mix(in_srgb,var(--tt-accent,#2457d6)_28%,transparent)] disabled:cursor-not-allowed disabled:opacity-50", disabled: !enabled || busy !== null, onClick: () => { void action(); }, type: "button", children: busy === label ? `${label}…` : label }, label));
     return (_jsxs("div", { "aria-label": "Desktop Note Actions", className: "tocktutor-desktop-actions grid gap-2 px-[18px] pt-3.5 pb-[18px]", role: "group", children: [_jsxs("div", { className: "tocktutor-desktop-actions-grid grid grid-cols-2 gap-2", children: [button('Choose Vault', async () => {
+                        if (!await saveCurrent(props))
+                            return;
                         await run('Choosing Vault', 'activate-vault', (authorization, signal) => (props.remote.tocktutorDesktop.activateVault(authorization, signal)));
-                    }), button('Reveal Entry', withNote('Revealing Entry', 'reveal-entry', (authorization, path, vault, signal) => (props.remote.tocktutorDesktop.revealEntry(authorization, path, vault, signal))), hasNote), button('Open Pop-Out', withNote('Opening Pop-Out', 'popout-open', (authorization, path, vault, signal) => (props.remote.tocktutorDesktop.openPopOut(authorization, path, vault, signal))), hasNote), button('Close Pop-Out', withNote('Closing Pop-Out', 'popout-close', (authorization, path, vault, signal) => (props.remote.tocktutorDesktop.closePopOut(authorization, path, vault, signal))), hasNote), button('Close All Pop-Outs', async () => {
+                    }), button('Reveal Entry', withNote('Revealing Entry', 'reveal-entry', (authorization, path, vault, signal) => (props.remote.tocktutorDesktop.revealEntry(authorization, path, vault, signal))), hasNote), button('Open Pop-Out', withNote('Opening Pop-Out', 'popout-open', (authorization, path, vault, signal) => (props.remote.tocktutorDesktop.openPopOut(authorization, path, vault, signal)), true), hasNote), button('Close Pop-Out', withNote('Closing Pop-Out', 'popout-close', (authorization, path, vault, signal) => (props.remote.tocktutorDesktop.closePopOut(authorization, path, vault, signal))), hasNote), button('Close All Pop-Outs', async () => {
                         if (props.vault === null)
                             return;
                         await run('Closing Pop-Outs', 'popout-close-all', (authorization, signal) => (props.remote.tocktutorDesktop.closeAllPopOuts(authorization, props.vault, signal)));
-                    }, props.vault !== null), button('Request Microphone', withNote('Requesting Microphone', 'microphone', (authorization, path, vault, signal) => requestMicrophoneAccess(authorization, path, vault, () => owner.current, (token, expectedVault) => props.remote.tocktutorDesktop.requestMicrophone(token, expectedVault, signal), navigator.mediaDevices)), hasNote), button('Print Note', withNote('Printing Note', 'print', (authorization, path, vault, signal) => (props.remote.tocktutorDesktop.printNote(authorization, path, vault, signal))), hasNote), button('Export HTML', withNote('Exporting HTML', 'export-html', (authorization, path, vault, signal) => (props.remote.tocktutorDesktop.exportNote(authorization, 'html', path, vault, signal))), hasNote), button('Export PDF', withNote('Exporting PDF', 'export-pdf', (authorization, path, vault, signal) => (props.remote.tocktutorDesktop.exportNote(authorization, 'pdf', path, vault, signal))), hasNote)] }), _jsx(Alert, { unstyled: true, "aria-live": "polite", className: "mt-1 mb-0 text-[var(--tt-muted,#667085)]", role: "status", children: message })] }));
+                    }, props.vault !== null), button('Request Microphone', withNote('Requesting Microphone', 'microphone', (authorization, path, vault, signal) => requestMicrophoneAccess(authorization, path, vault, () => owner.current, (token, expectedVault) => props.remote.tocktutorDesktop.requestMicrophone(token, expectedVault, signal), navigator.mediaDevices)), hasNote), button('Print Note', withNote('Printing Note', 'print', (authorization, path, vault, signal) => (props.remote.tocktutorDesktop.printNote(authorization, path, vault, signal)), true), hasNote), button('Export HTML', withNote('Exporting HTML', 'export-html', (authorization, path, vault, signal) => (props.remote.tocktutorDesktop.exportNote(authorization, 'html', path, vault, signal)), true), hasNote), button('Export PDF', withNote('Exporting PDF', 'export-pdf', (authorization, path, vault, signal) => (props.remote.tocktutorDesktop.exportNote(authorization, 'pdf', path, vault, signal)), true), hasNote)] }), _jsx(Alert, { unstyled: true, "aria-live": "polite", className: "mt-1 mb-0 text-[var(--tt-muted,#667085)]", role: "status", children: message })] }));
 }
 //# sourceMappingURL=client-actions.js.map

@@ -121,6 +121,10 @@ function dispatchStatus(result: NativeActionResult): TockTutorNativeActionsDispa
     : 'failed'
 }
 
+async function saveCurrent(owner: TockTutorNativeActionsOwnerProps): Promise<boolean> {
+  return owner.saveCurrent === undefined ? true : await owner.saveCurrent()
+}
+
 function workbenchEvent(event: DesktopDispatchDelivery): TockTutorNativeActionsDispatchEvent {
   return event.kind === 'quick-action'
     ? { action: event.action, kind: 'quick-action', operationId: event.operationId }
@@ -136,12 +140,13 @@ async function handleDesktopDispatch(
 ): Promise<TockTutorNativeActionsDispatchResult> {
   if (event.kind !== 'protocol') return owner.handleDispatch(workbenchEvent(event))
   if (event.request.action === 'choose-vault') {
+    if (!await saveCurrent(owner)) return 'failed'
     return dispatchStatus(await nativeCall(bridge, 'activate-vault', signal, (authorization, ownerSignal) => (
       remote.tocktutorDesktop.activateVault(authorization, ownerSignal)
     )))
   }
   if (event.request.action === 'open' && event.request.paneType === 'window') {
-    if (owner.vault === null || event.request.file === undefined) return 'failed'
+    if (owner.vault === null || event.request.file === undefined || !await saveCurrent(owner)) return 'failed'
     return dispatchStatus(await nativeCall(bridge, 'popout-open', signal, (authorization, ownerSignal) => (
       remote.tocktutorDesktop.openPopOut(authorization, event.request.file!, owner.vault!, ownerSignal)
     )))
@@ -313,8 +318,9 @@ export function TockTutorNativeActions(props: TockTutorNativeActionsProps): Reac
       vault: VaultReference,
       signal: AbortSignal,
     ) => Promise<RemoteResult<NativeActionResult>>,
+    saveFirst = false,
   ) => async (): Promise<void> => {
-    if (props.activePath === null || props.vault === null) return
+    if (props.activePath === null || props.vault === null || (saveFirst && !await saveCurrent(props))) return
     await run(label, operation, (authorization, signal) => (
       call(authorization, props.activePath!, props.vault!, signal)
     ))
@@ -336,6 +342,7 @@ export function TockTutorNativeActions(props: TockTutorNativeActionsProps): Reac
     <div aria-label="Desktop Note Actions" className="tocktutor-desktop-actions grid gap-2 px-[18px] pt-3.5 pb-[18px]" role="group">
       <div className="tocktutor-desktop-actions-grid grid grid-cols-2 gap-2">
         {button('Choose Vault', async () => {
+          if (!await saveCurrent(props)) return
           await run('Choosing Vault', 'activate-vault', (authorization, signal) => (
             props.remote.tocktutorDesktop.activateVault(authorization, signal)
           ))
@@ -345,7 +352,7 @@ export function TockTutorNativeActions(props: TockTutorNativeActionsProps): Reac
         )), hasNote)}
         {button('Open Pop-Out', withNote('Opening Pop-Out', 'popout-open', (authorization, path, vault, signal) => (
           props.remote.tocktutorDesktop.openPopOut(authorization, path, vault, signal)
-        )), hasNote)}
+        ), true), hasNote)}
         {button('Close Pop-Out', withNote('Closing Pop-Out', 'popout-close', (authorization, path, vault, signal) => (
           props.remote.tocktutorDesktop.closePopOut(authorization, path, vault, signal)
         )), hasNote)}
@@ -374,13 +381,13 @@ export function TockTutorNativeActions(props: TockTutorNativeActionsProps): Reac
         )), hasNote)}
         {button('Print Note', withNote('Printing Note', 'print', (authorization, path, vault, signal) => (
           props.remote.tocktutorDesktop.printNote(authorization, path, vault, signal)
-        )), hasNote)}
+        ), true), hasNote)}
         {button('Export HTML', withNote('Exporting HTML', 'export-html', (authorization, path, vault, signal) => (
           props.remote.tocktutorDesktop.exportNote(authorization, 'html', path, vault, signal)
-        )), hasNote)}
+        ), true), hasNote)}
         {button('Export PDF', withNote('Exporting PDF', 'export-pdf', (authorization, path, vault, signal) => (
           props.remote.tocktutorDesktop.exportNote(authorization, 'pdf', path, vault, signal)
-        )), hasNote)}
+        ), true), hasNote)}
       </div>
       <Alert unstyled aria-live="polite" className="mt-1 mb-0 text-[var(--tt-muted,#667085)]" role="status">{message}</Alert>
     </div>

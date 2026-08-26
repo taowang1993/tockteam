@@ -377,6 +377,10 @@ test('dispatches Workbench actions and keeps Desktop-owned vault/window actions 
       calls.push({ method: 'handleDispatch', value: event })
       return 'handled' as const
     },
+    async saveCurrent() {
+      calls.push({ method: 'saveCurrent', value: true })
+      return true
+    },
     vault,
   }
 
@@ -388,12 +392,14 @@ test('dispatches Workbench actions and keeps Desktop-owned vault/window actions 
       method: 'completeDispatch',
       value: { deliveryId: 'delivery-1', operationId: 'dispatch-1', status: 'handled' },
     },
+    { method: 'saveCurrent', value: true },
     { method: 'authorize', value: 'activate-vault' },
     { method: 'activateVault', value: 'activate-vault-authorization' },
     {
       method: 'completeDispatch',
       value: { deliveryId: 'delivery-2', operationId: 'dispatch-2', status: 'handled' },
     },
+    { method: 'saveCurrent', value: true },
     { method: 'authorize', value: 'popout-open' },
     {
       method: 'openPopOut',

@@ -31693,6 +31693,7 @@ function TockTutorNativeActionsOutlet(props) {
   return props.renderSlot(TOCKTUTOR_NATIVE_ACTIONS_SLOT, {
     activePath: props.activePath,
     handleDispatch: props.handleDispatch,
+    saveCurrent: props.saveCurrent,
     vault: props.vault
   }, {
     fallback: /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Alert, { unstyled: true, role: "status", children: "No native actions are available." })
@@ -31768,6 +31769,7 @@ function TockTutorRoute(props) {
           activePath: snapshot.path,
           handleDispatch: (event) => controller.handleDispatch(event),
           renderSlot: props.renderSlot,
+          saveCurrent: () => controller.save(),
           vault: snapshot.vault
         }
       ),

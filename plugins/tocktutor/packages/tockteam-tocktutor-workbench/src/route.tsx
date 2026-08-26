@@ -3204,11 +3204,13 @@ function TockTutorNativeActionsOutlet(props: {
   activePath: string | null
   handleDispatch: TockTutorNativeActionsOwnerProps['handleDispatch']
   renderSlot: TockTutorRouteProps['renderSlot']
+  saveCurrent(): Promise<boolean>
   vault: VaultReference | null
 }): ReactNode {
   return props.renderSlot(TOCKTUTOR_NATIVE_ACTIONS_SLOT, {
     activePath: props.activePath,
     handleDispatch: props.handleDispatch,
+    saveCurrent: props.saveCurrent,
     vault: props.vault,
   }, {
     fallback: <Alert unstyled role="status">No native actions are available.</Alert>,
@@ -3282,6 +3284,7 @@ export function TockTutorRoute(props: TockTutorRouteProps): ReactNode {
             activePath={snapshot.path}
             handleDispatch={event => controller.handleDispatch(event)}
             renderSlot={props.renderSlot}
+            saveCurrent={() => controller.save()}
             vault={snapshot.vault}
           />
         )}
