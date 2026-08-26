@@ -59,6 +59,7 @@ export declare class AssistantTurnBindingRegistry {
     });
     get activeCount(): number;
     begin(value: unknown): AssistantTurnLease;
+    agentForTurn(turnId: string): Agent | undefined;
     current(agent: Agent): ResolvedAssistantTurn;
     resolve(execution: AssistantToolExecutionIdentity): ResolvedAssistantTurn;
     isCurrent(binding: ReadBinding): boolean;

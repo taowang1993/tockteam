@@ -365,6 +365,7 @@ test('the real Loader owns and cleans the packaged Pennivo child', { timeout: 15
       status: 'created',
     })
     assert.equal(await readFile(join(root, 'vault', 'staged-only.md'), 'utf8'), '# Never Written Before Approval')
+    assert.match(JSON.stringify(delivered.at(-1)?.content), /proposal .* approved with status created/u)
 
     const rejectedStage = await context.tools.execute({
       agent,
@@ -384,6 +385,7 @@ test('the real Loader owns and cleans the packaged Pennivo child', { timeout: 15
       proposalId: rejectedProposal.proposalId,
       auditCorrelationId: rejectedProposal.auditCorrelationId,
     })
+    assert.match(JSON.stringify(delivered.at(-1)?.content), /proposal .* rejected by the user/u)
     await assert.rejects(readFile(join(root, 'vault', 'rejected-only.md')), { code: 'ENOENT' })
     await assert.rejects(
       context.tocktutorAssistant.approveProposal(

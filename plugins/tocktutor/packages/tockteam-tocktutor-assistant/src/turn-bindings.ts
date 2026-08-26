@@ -265,6 +265,12 @@ export class AssistantTurnBindingRegistry {
     })
   }
 
+  agentForTurn(turnId: string): Agent | undefined {
+    const entry = this.byTurn.get(turnId)
+    if (entry === undefined || entry.signal.aborted || !validAgent(entry.agent)) return undefined
+    return entry.agent
+  }
+
   current(agent: Agent): ResolvedAssistantTurn {
     if (this.disposed) throw failure('DISPOSED')
     const entry = this.byAgent.get(agent)

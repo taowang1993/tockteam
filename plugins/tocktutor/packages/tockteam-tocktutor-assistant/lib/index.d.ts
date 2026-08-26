@@ -71,6 +71,7 @@ export declare class NoteAssistant extends Service implements AssistantRemoteHos
     private vaultBarrier;
     private permissionEpoch;
     private proposalQueue;
+    private readonly proposalAgents;
     private proposalState?;
     private proposalPersistence;
     private readonly decisionTasks;

@@ -66,6 +66,7 @@ test('resolves one immutable allowed call to the exact Host-bound assistant turn
   assert.equal(Object.isFrozen(resolved), true)
   assert.equal(Object.isFrozen(resolved.readBinding), true)
   assert.equal(registry.isCurrent(resolved.readBinding), true)
+  assert.equal(registry.agentForTurn('turn-12345678'), agent)
   assert.deepEqual(lease, {
     turnId: 'turn-12345678',
     addCleanup: lease.addCleanup,
@@ -73,6 +74,7 @@ test('resolves one immutable allowed call to the exact Host-bound assistant turn
   })
   lease.end()
   assert.equal(registry.isCurrent(resolved.readBinding), false)
+  assert.equal(registry.agentForTurn('turn-12345678'), undefined)
 })
 
 test('requires exact live agent identity, allowed tool scope, and unused call correlation', () => {

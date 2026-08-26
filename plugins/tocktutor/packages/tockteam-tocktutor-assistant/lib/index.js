@@ -51,6 +51,7 @@ export class NoteAssistant extends Service {
     vaultBarrier = Promise.resolve();
     permissionEpoch = 0;
     proposalQueue = new ProposalQueue();
+    proposalAgents = new Map();
     proposalState;
     proposalPersistence = Promise.resolve();
     decisionTasks = new Set();
@@ -129,6 +130,7 @@ export class NoteAssistant extends Service {
         const restored = this.proposalState.load();
         this.permissionEpoch = restored.permissionEpoch;
         this.proposalQueue = restored.queue;
+        this.proposalAgents.clear();
         await this.proposalQueue.invalidateRestored(proposal => this.restoredProposalMismatch(proposal));
         await this.persistProposalState();
     }
@@ -211,7 +213,13 @@ export class NoteAssistant extends Service {
             permissionEpoch: proposal.permissionEpoch,
         }))
             throw new AssistantTurnBindingError('STALE_TURN');
+        const agent = this.turnBindings.agentForTurn(proposal.turnId);
         const summary = this.proposalQueue.stage(proposal);
+        if (agent !== undefined) {
+            if (this.proposalAgents.size >= 100)
+                this.proposalAgents.clear();
+            this.proposalAgents.set(summary.proposalId, agent);
+        }
         await this.persistProposalState();
         return summary;
     }
@@ -418,6 +426,11 @@ export class NoteAssistant extends Service {
     }
     async listProposals() {
         const proposals = this.proposalQueue.list();
+        const pending = new Set(proposals.map(proposal => proposal.proposalId));
+        for (const proposalId of this.proposalAgents.keys()) {
+            if (!pending.has(proposalId))
+                this.proposalAgents.delete(proposalId);
+        }
         await this.persistProposalState();
         return proposals;
     }
@@ -476,7 +489,21 @@ export class NoteAssistant extends Service {
                 permissionEpoch: this.permissionEpoch,
             };
         }, () => this.persistProposalState());
-        const task = executor.approve(proposalId, AbortSignal.any([signal, settingsSignal, childSignal]));
+        const decisionSignal = AbortSignal.any([signal, settingsSignal, childSignal]);
+        const task = executor.approve(proposalId, decisionSignal).then(result => {
+            const agent = this.proposalAgents.get(proposalId);
+            this.proposalAgents.delete(proposalId);
+            if (agent !== undefined && !decisionSignal.aborted) {
+                try {
+                    this.continueBoundAgent(agent, {
+                        mode: 'followup',
+                        text: `TockTutor write proposal ${proposalId} was approved with status ${result.status}.`,
+                    }, decisionSignal);
+                }
+                catch { /* A stale originating Agent does not roll back an approved vault write. */ }
+            }
+            return result;
+        });
         this.decisionTasks.add(task);
         return task.finally(() => { this.decisionTasks.delete(task); });
     }
@@ -487,6 +514,17 @@ export class NoteAssistant extends Service {
         const task = (async () => {
             const result = this.proposalQueue.reject(proposalId, reason);
             await this.persistProposalState();
+            const agent = this.proposalAgents.get(proposalId);
+            this.proposalAgents.delete(proposalId);
+            if (agent !== undefined) {
+                try {
+                    this.continueBoundAgent(agent, {
+                        mode: 'followup',
+                        text: `TockTutor write proposal ${proposalId} was rejected by the user.`,
+                    }, new AbortController().signal);
+                }
+                catch { /* A stale originating Agent has nothing left to resume. */ }
+            }
             return result;
         })();
         this.decisionTasks.add(task);
