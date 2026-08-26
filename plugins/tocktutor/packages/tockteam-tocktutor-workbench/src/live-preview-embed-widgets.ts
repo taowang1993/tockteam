@@ -98,7 +98,9 @@ export function buildLivePreviewEmbedPlugin(getEmbeds: () => readonly ResolvedEm
   const revealRange = (view, from: number, to: number): void => {
     if (from < 0 || to <= from || to > view.state.doc.content.size) return
     revealed.add(`${String(from)}:${String(to)}`)
-    view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, from, to)))
+    view.dispatch(view.state.tr
+      .setSelection(TextSelection.create(view.state.doc, from, to))
+      .setMeta(livePreviewEmbedPluginKey, { refresh: true }))
     view.focus()
   }
   const reveal = (view, event: Event): boolean => {
