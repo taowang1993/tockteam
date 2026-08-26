@@ -3,6 +3,9 @@ import type { TockTutorRouteOwnerProps } from '@tockteam/desktop/client';
 import type { PropsRenderSlots } from '@deepseek-ai/dsh-client-ui-slots';
 import type { RemoteResult } from '@deepseek-ai/dsh-typert-protocol';
 import { TOCKTUTOR_ASSISTANT_PANEL_SLOT } from './assistant-panel.ts';
+import { type ExecutableBaseCopyRequest, type ExecutableBaseExportRequest } from './base-executable-view.tsx';
+import { type ExecutableBaseFrontmatterEditRequest } from './base-edit.ts';
+import type { BaseHydratedFile } from './base-query.ts';
 import type { CanvasChange } from './canvas-change.ts';
 import { TOCKTUTOR_NATIVE_ACTIONS_SLOT, type TockTutorNativeActionsDispatchEvent, type TockTutorNativeActionsDispatchResult } from './native-actions.ts';
 import { TOCKTUTOR_REVIEW_PANEL_SLOT } from './review-panel.ts';
@@ -67,6 +70,7 @@ export interface RoutePaneSummary {
 }
 export interface WorkbenchRouteSnapshot {
     attachmentPreview?: AttachmentPreviewResult | null;
+    baseFiles?: readonly BaseHydratedFile[];
     bookmarks?: readonly TockTutorBookmark[];
     canGoBack?: boolean;
     canGoForward?: boolean;
@@ -216,6 +220,8 @@ export declare class WorkbenchRouteController {
     prepareOrganization(): Promise<boolean>;
     cancelOrganization(): void;
     applyOrganization(): Promise<boolean>;
+    hydrateBaseRows(basePath: string): Promise<boolean>;
+    applyBaseEdit(request: ExecutableBaseFrontmatterEditRequest): Promise<boolean>;
     storeActiveAttachment(fileName: string, dataBase64: string): Promise<boolean>;
     previewAttachment(path: string): Promise<boolean>;
     closeAttachmentPreview(): void;
@@ -232,6 +238,9 @@ export interface TockTutorRouteViewProps {
     onActivateTab(paneId: string, path: string): void;
     onApplyOrganization?(): void;
     onBack?(): void;
+    onBaseCopy?(request: ExecutableBaseCopyRequest): void;
+    onBaseEdit?(request: ExecutableBaseFrontmatterEditRequest): void;
+    onBaseExport?(request: ExecutableBaseExportRequest): void;
     onCancelDispatch?(): void;
     onCancelOrganization?(): void;
     onCanvasChange?(change: CanvasChange): void;

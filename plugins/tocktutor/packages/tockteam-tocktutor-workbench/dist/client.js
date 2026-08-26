@@ -22003,5610 +22003,14 @@ var TooltipContent3 = React35.forwardRef(function TooltipContent4({ children, cl
 });
 
 // src/route.tsx
-var import_react6 = require("react");
+var import_react7 = require("react");
 var import_react_dom2 = require("react-dom");
 
-// src/base.ts
-var MAX_BASE_BYTES = 2e6;
-var MAX_BASE_LINES = 4096;
-var MAX_BASE_LINE_LENGTH = 4096;
-var MAX_BASE_VIEWS = 64;
-var MAX_BASE_FIELDS = 128;
-function isUnsafeYamlLine(line) {
-  return line.includes("	") || /!![A-Za-z]/u.test(line) || /(^|\s)[&*][A-Za-z0-9_-]+/u.test(line) || /(^|\s)![A-Za-z][A-Za-z0-9_-]*/u.test(line);
-}
-function scalar(value) {
-  const trimmed = value.trim();
-  if (trimmed.length >= 2) {
-    const first = trimmed[0];
-    const last = trimmed.at(-1);
-    if (first === '"' && last === '"' || first === "'" && last === "'") {
-      return trimmed.slice(1, -1).replaceAll(first === '"' ? '\\"' : "''", first === '"' ? '"' : "'");
-    }
-  }
-  return trimmed;
-}
-function leadingSpaces(line) {
-  let count3 = 0;
-  while (count3 < line.length && line[count3] === " ") count3 += 1;
-  return count3;
-}
-function splitInlineList(value) {
-  const trimmed = value.trim();
-  if (!trimmed.startsWith("[") || !trimmed.endsWith("]")) return [];
-  return trimmed.slice(1, -1).split(",").map(scalar).filter(Boolean);
-}
-function unsupported(reason) {
-  return { status: "unsupported", reason };
-}
-function projectBase(content) {
-  if (new TextEncoder().encode(content).byteLength > MAX_BASE_BYTES) {
-    return unsupported("Base document exceeds the byte limit.");
-  }
-  const lines = content.split(/\r\n|\n/u);
-  if (lines.length > MAX_BASE_LINES) return unsupported("Base document exceeds the line limit.");
-  if (lines.some((line) => line.length > MAX_BASE_LINE_LENGTH || isUnsafeYamlLine(line))) {
-    return unsupported("Base document contains unsupported YAML syntax.");
-  }
-  let inViews = false;
-  let sawViews = false;
-  let current = null;
-  const views = [];
-  const warnings = [];
-  let malformed = false;
-  const closeCurrent = () => {
-    if (current === null) return;
-    if (current.type === "") {
-      current.status = "unsupported";
-      current.warnings.push("View type is missing.");
-    }
-    views.push(current);
-    current = null;
-  };
-  for (const line of lines) {
-    if (line.trim() === "" || line.trim().startsWith("#")) continue;
-    const indent = leadingSpaces(line);
-    if (indent % 2 !== 0) {
-      malformed = true;
-      break;
-    }
-    const trimmed = line.trim();
-    const topLevel = indent === 0 ? /^([A-Za-z][\w.-]*):(?:\s*(.*))?$/u.exec(trimmed) : null;
-    if (topLevel !== null) {
-      closeCurrent();
-      inViews = topLevel[1] === "views";
-      sawViews ||= inViews;
-      continue;
-    }
-    if (!inViews) continue;
-    if (indent === 2 && trimmed.startsWith("-")) {
-      closeCurrent();
-      if (views.length >= MAX_BASE_VIEWS) {
-        malformed = true;
-        break;
-      }
-      current = {
-        status: "ready",
-        type: "",
-        name: `View ${String(views.length + 1)}`,
-        fields: {},
-        order: [],
-        warnings: []
-      };
-      const inline3 = /^-\s*([A-Za-z][\w.-]*):(?:\s*(.*))?$/u.exec(trimmed);
-      if (inline3 !== null && current !== null) {
-        assignField(current, inline3[1], inline3[2] ?? "");
-      }
-      continue;
-    }
-    if (current === null || indent < 4) {
-      malformed = true;
-      break;
-    }
-    const field = /^([A-Za-z][\w.-]*):(?:\s*(.*))?$/u.exec(trimmed);
-    if (field !== null && indent === 4) {
-      assignField(current, field[1], field[2] ?? "");
-      continue;
-    }
-    if (indent >= 6 && current.fields.order === "" && trimmed.startsWith("-")) {
-      current.order.push(scalar(trimmed.slice(1)));
-      continue;
-    }
-    if (indent >= 6) {
-      current.status = "unsupported";
-      current.warnings.push("Nested Base syntax is inert.");
-      continue;
-    }
-    malformed = true;
-    break;
-  }
-  closeCurrent();
-  if (malformed || !sawViews || views.length === 0) return unsupported("Base document has unsupported or missing views syntax.");
-  return { status: "ready", views, warnings };
-}
-function assignField(view, key2, rawValue) {
-  if (Object.keys(view.fields).length >= MAX_BASE_FIELDS && view.fields[key2] === void 0) {
-    view.status = "unsupported";
-    view.warnings.push("View field limit exceeded.");
-    return;
-  }
-  const value = scalar(rawValue);
-  if (key2 === "type") {
-    view.type = value;
-    if (!["table", "list", "cards", "map"].includes(value)) {
-      view.status = "unsupported";
-      view.warnings.push(`Unsupported view type ${JSON.stringify(value)} is inert.`);
-    }
-  } else if (key2 === "name") {
-    if (value.length === 0 || value.length > MAX_BASE_LINE_LENGTH) {
-      view.status = "unsupported";
-      view.warnings.push("View name is invalid.");
-    } else {
-      view.name = value;
-    }
-  } else if (key2 === "order") {
-    const inline3 = splitInlineList(rawValue);
-    view.order.push(...inline3);
-  }
-  view.fields[key2] = value;
-  if (key2 === "formula" || key2 === "filter" || key2 === "where" || /\b(?:eval|Function|import)\s*[(]/u.test(value)) {
-    view.status = "unsupported";
-    view.warnings.push(`Base ${key2} is inert and is not evaluated.`);
-  }
-}
-
-// src/canvas-board.tsx
+// src/base-executable-view.tsx
 var import_react5 = require("react");
 
-// src/canvas-identity.ts
-function isRecord(value) {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-function assertUniqueEntries(entries, kind) {
-  const ids = /* @__PURE__ */ new Set();
-  for (const entry of entries) {
-    if (!isRecord(entry) || typeof entry.id !== "string") continue;
-    if (ids.has(entry.id)) throw new Error(`This .canvas file contains duplicate Canvas ${kind} ids.`);
-    ids.add(entry.id);
-  }
-}
-function assertUniqueCanvasDocumentIdentities(document2) {
-  if (Array.isArray(document2.nodes)) assertUniqueEntries(document2.nodes, "node");
-  if (Array.isArray(document2.edges)) assertUniqueEntries(document2.edges, "edge");
-}
-
-// src/canvas.ts
-var MAX_CANVAS_BYTES = 2e6;
-var MAX_CANVAS_NODES = 2e3;
-var MAX_CANVAS_EDGES = 4e3;
-var MAX_CANVAS_ID_LENGTH = 256;
-var MAX_CANVAS_LABEL_LENGTH = 32768;
-var MAX_CANVAS_COORDINATE = 1e9;
-function isRecord2(value) {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-function isSafeId(value) {
-  return typeof value === "string" && value.length > 0 && value.length <= MAX_CANVAS_ID_LENGTH && !/[\0\r\n]/u.test(value);
-}
-function isFiniteCoordinate(value) {
-  return typeof value === "number" && Number.isFinite(value) && Math.abs(value) <= MAX_CANVAS_COORDINATE;
-}
-function isSafeLabel(value) {
-  return typeof value === "string" && value.length <= MAX_CANVAS_LABEL_LENGTH;
-}
-function byteLength(value) {
-  return new TextEncoder().encode(value).byteLength;
-}
-function unsupported2(reason) {
-  return { status: "unsupported", reason };
-}
-function parseNode(value) {
-  if (!isRecord2(value) || !isSafeId(value.id) || typeof value.type !== "string" || value.type.length === 0 || value.type.length > 64 || !isFiniteCoordinate(value.x) || !isFiniteCoordinate(value.y) || !isFiniteCoordinate(value.width) || !isFiniteCoordinate(value.height) || value.width <= 0 || value.height <= 0) return null;
-  if (value.text !== void 0 && !isSafeLabel(value.text)) return null;
-  if (value.file !== void 0 && !isSafeLabel(value.file)) return null;
-  if (value.url !== void 0 && !isSafeLabel(value.url)) return null;
-  return value;
-}
-function parseEdge(value) {
-  if (!isRecord2(value) || !isSafeId(value.id) || !isSafeId(value.fromNode) || !isSafeId(value.toNode)) return null;
-  if (value.label !== void 0 && !isSafeLabel(value.label)) return null;
-  return value;
-}
-function parseCanvasDocument(content) {
-  if (byteLength(content) > MAX_CANVAS_BYTES) return unsupported2("Canvas document exceeds the byte limit.");
-  let value;
-  try {
-    value = JSON.parse(content);
-  } catch {
-    return unsupported2("Canvas document is not valid JSON.");
-  }
-  if (!isRecord2(value) || !Array.isArray(value.nodes)) return unsupported2("Canvas document must contain a nodes array.");
-  try {
-    assertUniqueCanvasDocumentIdentities(value);
-  } catch (error51) {
-    return unsupported2(error51 instanceof Error ? error51.message : "Canvas document contains duplicate identities.");
-  }
-  if (value.nodes.length > MAX_CANVAS_NODES) return unsupported2("Canvas document exceeds the node limit.");
-  if (value.edges !== void 0 && !Array.isArray(value.edges)) return unsupported2("Canvas edges must be an array.");
-  if (Array.isArray(value.edges) && value.edges.length > MAX_CANVAS_EDGES) return unsupported2("Canvas document exceeds the edge limit.");
-  const ids = /* @__PURE__ */ new Set();
-  const nodes = [];
-  for (const entry of value.nodes) {
-    const node = parseNode(entry);
-    if (node === null || ids.has(node.id)) return unsupported2("Canvas document contains an invalid or duplicate node.");
-    ids.add(node.id);
-    nodes.push(node);
-  }
-  const edges = [];
-  if (Array.isArray(value.edges)) {
-    for (const entry of value.edges) {
-      const edge = parseEdge(entry);
-      if (edge === null || ids.has(edge.id) || !ids.has(edge.fromNode) || !ids.has(edge.toNode)) {
-        return unsupported2("Canvas document contains an invalid, duplicate, or dangling edge.");
-      }
-      ids.add(edge.id);
-      edges.push(edge);
-    }
-  }
-  return {
-    status: "ready",
-    document: {
-      ...value,
-      nodes,
-      ...value.edges === void 0 ? {} : { edges }
-    }
-  };
-}
-var SUPPORTED_NODE_TYPES = /* @__PURE__ */ new Set(["text", "file", "link", "group"]);
-function isCredentialFreeCanvasLink(value) {
-  if (typeof value !== "string" || value.length > MAX_CANVAS_LABEL_LENGTH) return false;
-  try {
-    const url2 = new URL(value);
-    return (url2.protocol === "http:" || url2.protocol === "https:") && url2.username === "" && url2.password === "";
-  } catch {
-    return false;
-  }
-}
-function projectCanvas(parsed) {
-  if (parsed.status !== "ready") return parsed;
-  const { document: document2 } = parsed;
-  const nodes = document2.nodes.map((node) => ({
-    id: node.id,
-    type: node.type,
-    x: node.x,
-    y: node.y,
-    width: node.width,
-    height: node.height,
-    supported: SUPPORTED_NODE_TYPES.has(node.type),
-    text: typeof node.text === "string" ? node.text : null,
-    file: typeof node.file === "string" ? node.file : null,
-    linkSafe: node.type === "link" && isCredentialFreeCanvasLink(node.url)
-  }));
-  const edges = (document2.edges ?? []).map((edge) => ({
-    id: edge.id,
-    fromNode: edge.fromNode,
-    toNode: edge.toNode,
-    label: typeof edge.label === "string" ? edge.label : null
-  }));
-  return { status: "ready", nodes, edges, document: document2 };
-}
-function parseCanvasForMutation(content) {
-  const parsed = parseCanvasDocument(content);
-  if (parsed.status !== "ready") throw new Error(parsed.reason);
-  return parsed.document;
-}
-function serializeCanvasDocument(document2) {
-  const content = `${JSON.stringify(document2, null, 2)}
-`;
-  const parsed = parseCanvasDocument(content);
-  if (parsed.status !== "ready") throw new Error(parsed.reason);
-  return content;
-}
-function updateCanvasNodePosition(content, nodeId, x, y) {
-  if (!isSafeId(nodeId) || !isFiniteCoordinate(x) || !isFiniteCoordinate(y)) {
-    throw new Error("Canvas node position is invalid.");
-  }
-  const document2 = parseCanvasForMutation(content);
-  const node = document2.nodes.find((candidate) => candidate.id === nodeId);
-  if (node === void 0) throw new Error("Canvas node no longer exists.");
-  node.x = x;
-  node.y = y;
-  return serializeCanvasDocument(document2);
-}
-
-// src/canvas-change.ts
-function createCanvasChange(previousSource, expectedRevision, operation, mutate) {
-  if (!expectedRevision || expectedRevision.length > 512 || /[\0\r\n]/u.test(expectedRevision)) {
-    throw new Error("The Canvas source revision is invalid.");
-  }
-  parseCanvasForMutation(previousSource);
-  const source = mutate(previousSource);
-  parseCanvasForMutation(source);
-  return { previousSource, source, expectedRevision, operation };
-}
-
-// src/canvas-geometry.ts
-var CANVAS_GRID_SIZE = 20;
-var MIN_CANVAS_NODE_WIDTH = 120;
-var MIN_CANVAS_NODE_HEIGHT = 80;
-function isCanvasSide(value) {
-  return value === "top" || value === "right" || value === "bottom" || value === "left";
-}
-function isBoundedCanvasGeometry(value) {
-  return [value.x, value.y, value.width, value.height].every((candidate) => Number.isFinite(candidate) && Math.abs(candidate) <= MAX_CANVAS_COORDINATE) && value.width > 0 && value.height > 0;
-}
-function calculateCanvasPointerValue(start, delta, snappingDisabled) {
-  const value = start + delta;
-  return snappingDisabled ? Math.round(value) : Math.round(value / CANVAS_GRID_SIZE) * CANVAS_GRID_SIZE;
-}
-function calculateCanvasResizeGeometry(start, delta, aspectRatioLocked, snappingDisabled) {
-  if (!aspectRatioLocked) {
-    return {
-      ...start,
-      width: Math.max(MIN_CANVAS_NODE_WIDTH, calculateCanvasPointerValue(start.width, delta.x, snappingDisabled)),
-      height: Math.max(MIN_CANVAS_NODE_HEIGHT, calculateCanvasPointerValue(start.height, delta.y, snappingDisabled))
-    };
-  }
-  const aspectRatio = start.width / start.height;
-  const widthDominant = Math.abs(delta.x) >= Math.abs(delta.y * aspectRatio);
-  if (widthDominant) {
-    const width = Math.max(
-      MIN_CANVAS_NODE_WIDTH,
-      MIN_CANVAS_NODE_HEIGHT * aspectRatio,
-      calculateCanvasPointerValue(start.width, delta.x, snappingDisabled)
-    );
-    return { ...start, width, height: width / aspectRatio };
-  }
-  const height = Math.max(
-    MIN_CANVAS_NODE_HEIGHT,
-    MIN_CANVAS_NODE_WIDTH / aspectRatio,
-    calculateCanvasPointerValue(start.height, delta.y, snappingDisabled)
-  );
-  return { ...start, width: height * aspectRatio, height };
-}
-
-// src/canvas-links.ts
-var CanvasLinkUrlError = class extends Error {
-  code;
-  constructor(code, message) {
-    super(message);
-    this.name = "CanvasLinkUrlError";
-    this.code = code;
-  }
-};
-function normalizeCanvasLinkUrl(value) {
-  const trimmed = value.trim();
-  const candidate = /^[a-z][a-z\d+.-]*:(?!\d)/iu.test(trimmed) ? trimmed : `https://${trimmed}`;
-  let url2;
-  try {
-    url2 = new URL(candidate);
-  } catch {
-    throw new CanvasLinkUrlError("invalid", "Enter a valid web page URL.");
-  }
-  if (url2.protocol !== "http:" && url2.protocol !== "https:") {
-    throw new CanvasLinkUrlError("http-only", "Canvas link cards require an HTTP or HTTPS URL.");
-  }
-  if (url2.username || url2.password) {
-    throw new CanvasLinkUrlError("credential-bearing", "Canvas link cards cannot include usernames or passwords.");
-  }
-  return url2.toString();
-}
-function tryNormalizeCanvasLinkUrl(value) {
-  if (typeof value !== "string") return void 0;
-  const trimmed = value.trim();
-  try {
-    const normalized = normalizeCanvasLinkUrl(trimmed);
-    return /^https?:\/\//iu.test(trimmed) ? trimmed : normalized;
-  } catch {
-    return void 0;
-  }
-}
-
-// src/canvas-nodes.ts
-var SUPPORTED_CANVAS_CARD_TYPES = /* @__PURE__ */ new Set(["text", "file", "link"]);
-var CANVAS_DEFAULT_TEXT_CARD_SIZE = { width: 260, height: 140 };
-function isSupportedCanvasCard(node) {
-  return typeof node.type === "string" && SUPPORTED_CANVAS_CARD_TYPES.has(node.type);
-}
-function nextCanvasId(document2, prefix) {
-  const existingIds = /* @__PURE__ */ new Set([
-    ...document2.nodes.map((node) => node.id),
-    ...(document2.edges ?? []).map((edge) => edge.id)
-  ]);
-  let index2 = 1;
-  while (existingIds.has(`${prefix}-${String(index2)}`)) index2 += 1;
-  return `${prefix}-${String(index2)}`;
-}
-function createCanvasNode(content, prefix, fields, size4 = CANVAS_DEFAULT_TEXT_CARD_SIZE) {
-  const document2 = parseCanvasForMutation(content);
-  const rightmost = document2.nodes.reduce(
-    (right, node) => Math.max(right, node.x + Math.max(MIN_CANVAS_NODE_WIDTH, node.width)),
-    0
-  );
-  const nodeId = nextCanvasId(document2, prefix);
-  document2.nodes.push({
-    id: nodeId,
-    x: rightmost ? rightmost + 40 : 0,
-    y: 0,
-    ...size4,
-    ...fields
-  });
-  return { nodeId, content: serializeCanvasDocument(document2) };
-}
-function createCanvasTextNode(content, position) {
-  if (position !== void 0 && ![position.x, position.y].every(Number.isFinite)) {
-    throw new Error("The Canvas card position is invalid.");
-  }
-  return createCanvasNode(content, "text", {
-    type: "text",
-    text: "",
-    ...position === void 0 ? {} : {
-      x: calculateCanvasPointerValue(0, position.x, false),
-      y: calculateCanvasPointerValue(0, position.y, false)
-    }
-  });
-}
-function createCanvasGroupNode(content) {
-  return createCanvasNode(content, "group", { type: "group", label: "Group" }, { width: 420, height: 260 });
-}
-function createCanvasGroupFromSelection(content, nodeIds) {
-  const document2 = parseCanvasForMutation(content);
-  const selectedIds = new Set(nodeIds);
-  const selectedNodes = document2.nodes.filter((node) => selectedIds.has(node.id));
-  if (selectedIds.size === 0 || selectedIds.size !== nodeIds.length || selectedNodes.length !== selectedIds.size || selectedNodes.some((node) => !isSupportedCanvasCard(node))) {
-    throw new Error("A selected supported Canvas card no longer exists.");
-  }
-  const left = Math.min(...selectedNodes.map((node) => node.x));
-  const top = Math.min(...selectedNodes.map((node) => node.y));
-  const right = Math.max(...selectedNodes.map((node) => node.x + node.width));
-  const bottom = Math.max(...selectedNodes.map((node) => node.y + node.height));
-  const x = Math.floor((left - CANVAS_GRID_SIZE) / CANVAS_GRID_SIZE) * CANVAS_GRID_SIZE;
-  const y = Math.floor((top - CANVAS_GRID_SIZE) / CANVAS_GRID_SIZE) * CANVAS_GRID_SIZE;
-  const outerRight = Math.ceil((right + CANVAS_GRID_SIZE) / CANVAS_GRID_SIZE) * CANVAS_GRID_SIZE;
-  const outerBottom = Math.ceil((bottom + CANVAS_GRID_SIZE) / CANVAS_GRID_SIZE) * CANVAS_GRID_SIZE;
-  const geometry = {
-    x,
-    y,
-    width: Math.max(MIN_CANVAS_NODE_WIDTH, outerRight - x),
-    height: Math.max(MIN_CANVAS_NODE_HEIGHT, outerBottom - y)
-  };
-  if (!isBoundedCanvasGeometry(geometry)) throw new Error("The Canvas group geometry is invalid.");
-  const nodeId = nextCanvasId(document2, "group");
-  document2.nodes.push({ id: nodeId, type: "group", ...geometry, label: "Group" });
-  return { nodeId, content: serializeCanvasDocument(document2) };
-}
-function createCanvasFileNode(content, relativePath) {
-  const normalizedPath = relativePath.trim().replaceAll("\\", "/").replace(/^\.\//u, "");
-  if (!normalizedPath || normalizedPath.startsWith("/") || normalizedPath.split("/").some((segment) => segment === ".." || segment === "")) {
-    throw new Error("Canvas file cards require a safe vault-relative file path.");
-  }
-  return createCanvasNode(content, "file", { type: "file", file: normalizedPath });
-}
-function createCanvasLinkNode(content, value) {
-  return createCanvasNode(content, "link", { type: "link", url: normalizeCanvasLinkUrl(value) });
-}
-function updateCanvasLinkNode(content, nodeId, value) {
-  const document2 = parseCanvasForMutation(content);
-  const node = document2.nodes.find((candidate) => candidate.id === nodeId);
-  if (node?.type !== "link") throw new Error("The selected Canvas link card no longer exists.");
-  node.url = normalizeCanvasLinkUrl(value);
-  return serializeCanvasDocument(document2);
-}
-function updateCanvasTextNode(content, nodeId, text2) {
-  const document2 = parseCanvasForMutation(content);
-  const node = document2.nodes.find((candidate) => candidate.id === nodeId);
-  if (node?.type !== "text") throw new Error("The selected Canvas text card no longer exists.");
-  node.text = text2;
-  return serializeCanvasDocument(document2);
-}
-function updateCanvasNodeGeometries(content, updates) {
-  const document2 = parseCanvasForMutation(content);
-  if (new Set(updates.map((update) => update.nodeId)).size !== updates.length) {
-    throw new Error("A Canvas card was selected more than once.");
-  }
-  const nodesById = new Map(document2.nodes.map((node) => [node.id, node]));
-  for (const update of updates) {
-    const node = nodesById.get(update.nodeId);
-    if (node === void 0 || !isSupportedCanvasCard(node)) {
-      throw new Error("A selected supported Canvas card no longer exists.");
-    }
-    if (!isBoundedCanvasGeometry(update.geometry)) throw new Error("The Canvas card geometry is invalid.");
-  }
-  for (const update of updates) {
-    Object.assign(nodesById.get(update.nodeId), {
-      ...update.geometry,
-      width: Math.max(MIN_CANVAS_NODE_WIDTH, update.geometry.width),
-      height: Math.max(MIN_CANVAS_NODE_HEIGHT, update.geometry.height)
-    });
-  }
-  return serializeCanvasDocument(document2);
-}
-function contains(group, node) {
-  return node.x >= group.x && node.y >= group.y && node.x + node.width <= group.x + group.width && node.y + node.height <= group.y + group.height;
-}
-function updateCanvasGroupGeometry(content, nodeId, geometry) {
-  const document2 = parseCanvasForMutation(content);
-  const group = document2.nodes.find((node) => node.id === nodeId);
-  if (group?.type !== "group") throw new Error("The selected Canvas group no longer exists.");
-  if (!isBoundedCanvasGeometry(geometry)) throw new Error("The Canvas group geometry is invalid.");
-  const startingGeometry = { x: group.x, y: group.y, width: group.width, height: group.height };
-  const deltaX = geometry.x - group.x;
-  const deltaY = geometry.y - group.y;
-  const positionOnly = geometry.width === group.width && geometry.height === group.height;
-  const contained = positionOnly ? document2.nodes.filter((node) => node !== group && node.type !== "group" && contains(startingGeometry, node)) : [];
-  for (const node of contained) {
-    if (!isBoundedCanvasGeometry({ ...node, x: node.x + deltaX, y: node.y + deltaY })) {
-      throw new Error("The Canvas group geometry is invalid.");
-    }
-  }
-  for (const node of contained) {
-    node.x += deltaX;
-    node.y += deltaY;
-  }
-  Object.assign(group, {
-    ...geometry,
-    width: Math.max(MIN_CANVAS_NODE_WIDTH, geometry.width),
-    height: Math.max(MIN_CANVAS_NODE_HEIGHT, geometry.height)
-  });
-  return serializeCanvasDocument(document2);
-}
-function updateCanvasNodeGeometry(content, nodeId, geometry) {
-  const document2 = parseCanvasForMutation(content);
-  const node = document2.nodes.find((candidate) => candidate.id === nodeId);
-  if (node?.type === "group") return updateCanvasGroupGeometry(content, nodeId, geometry);
-  return updateCanvasNodeGeometries(content, [{ nodeId, geometry }]);
-}
-function updateCanvasGroupLabel(content, nodeId, label) {
-  const document2 = parseCanvasForMutation(content);
-  const node = document2.nodes.find((candidate) => candidate.id === nodeId);
-  if (node?.type !== "group") throw new Error("The selected Canvas group no longer exists.");
-  const normalizedLabel = label.trim();
-  if (!normalizedLabel) throw new Error("The Canvas group label cannot be empty.");
-  node.label = normalizedLabel;
-  return serializeCanvasDocument(document2);
-}
-function deleteCanvasGroup(content, nodeId) {
-  const document2 = parseCanvasForMutation(content);
-  const nodeIndex = document2.nodes.findIndex((node) => node.id === nodeId);
-  if (nodeIndex < 0 || document2.nodes[nodeIndex]?.type !== "group") {
-    throw new Error("The selected Canvas group no longer exists.");
-  }
-  document2.nodes.splice(nodeIndex, 1);
-  if (document2.edges !== void 0) {
-    document2.edges = document2.edges.filter((edge) => edge.fromNode !== nodeId && edge.toNode !== nodeId);
-  }
-  return serializeCanvasDocument(document2);
-}
-function deleteCanvasNodes(content, nodeIds) {
-  const document2 = parseCanvasForMutation(content);
-  const selectedIds = new Set(nodeIds);
-  const selectedNodes = document2.nodes.filter((node) => selectedIds.has(node.id));
-  if (selectedIds.size !== nodeIds.length || selectedNodes.length !== selectedIds.size || selectedNodes.some((node) => !isSupportedCanvasCard(node))) {
-    throw new Error("A selected supported Canvas card no longer exists.");
-  }
-  document2.nodes = document2.nodes.filter((node) => !selectedIds.has(node.id));
-  if (document2.edges !== void 0) {
-    document2.edges = document2.edges.filter((edge) => !selectedIds.has(edge.fromNode) && !selectedIds.has(edge.toNode));
-  }
-  return serializeCanvasDocument(document2);
-}
-function deleteCanvasNode(content, nodeId) {
-  return deleteCanvasNodes(content, [nodeId]);
-}
-function nextCopyId(sourceId, existingIds) {
-  const base = `${sourceId}-copy`;
-  let candidate = base;
-  let index2 = 2;
-  while (existingIds.has(candidate)) {
-    candidate = `${base}-${String(index2)}`;
-    index2 += 1;
-  }
-  existingIds.add(candidate);
-  return candidate;
-}
-function duplicateCanvasGroup(content, nodeId, geometry) {
-  const document2 = parseCanvasForMutation(content);
-  const source = document2.nodes.find((node) => node.id === nodeId);
-  if (source?.type !== "group") throw new Error("The selected Canvas group no longer exists.");
-  if (!isBoundedCanvasGeometry(geometry)) throw new Error("The Canvas group geometry is invalid.");
-  const ids = /* @__PURE__ */ new Set([...document2.nodes.map((node) => node.id), ...(document2.edges ?? []).map((edge) => edge.id)]);
-  const copiedNodeId = nextCopyId(nodeId, ids);
-  document2.nodes.push({
-    ...source,
-    id: copiedNodeId,
-    ...geometry,
-    width: Math.max(MIN_CANVAS_NODE_WIDTH, geometry.width),
-    height: Math.max(MIN_CANVAS_NODE_HEIGHT, geometry.height)
-  });
-  return { nodeId: copiedNodeId, content: serializeCanvasDocument(document2) };
-}
-function duplicateCanvasNodes(content, updates) {
-  const document2 = parseCanvasForMutation(content);
-  const selectedIds = new Set(updates.map((update) => update.nodeId));
-  if (selectedIds.size !== updates.length) throw new Error("A Canvas card was selected more than once.");
-  const nodesById = new Map(document2.nodes.map((node) => [node.id, node]));
-  for (const update of updates) {
-    const node = nodesById.get(update.nodeId);
-    if (node === void 0 || !isSupportedCanvasCard(node)) {
-      throw new Error("A selected supported Canvas card no longer exists.");
-    }
-    if (!isBoundedCanvasGeometry(update.geometry)) throw new Error("The Canvas card geometry is invalid.");
-  }
-  const ids = /* @__PURE__ */ new Set([...document2.nodes.map((node) => node.id), ...(document2.edges ?? []).map((edge) => edge.id)]);
-  const copiedNodeIds = /* @__PURE__ */ new Map();
-  for (const update of updates) copiedNodeIds.set(update.nodeId, nextCopyId(update.nodeId, ids));
-  for (const update of updates) {
-    const source = nodesById.get(update.nodeId);
-    document2.nodes.push({
-      ...source,
-      id: copiedNodeIds.get(update.nodeId),
-      ...update.geometry,
-      width: Math.max(MIN_CANVAS_NODE_WIDTH, update.geometry.width),
-      height: Math.max(MIN_CANVAS_NODE_HEIGHT, update.geometry.height)
-    });
-  }
-  const copiedEdges = (document2.edges ?? []).flatMap((edge) => {
-    const fromNode = copiedNodeIds.get(edge.fromNode);
-    const toNode = copiedNodeIds.get(edge.toNode);
-    return fromNode !== void 0 && toNode !== void 0 ? [{ ...edge, id: nextCopyId(edge.id, ids), fromNode, toNode }] : [];
-  });
-  if (copiedEdges.length > 0) document2.edges = [...document2.edges ?? [], ...copiedEdges];
-  return {
-    nodeIds: updates.map((update) => copiedNodeIds.get(update.nodeId)),
-    content: serializeCanvasDocument(document2)
-  };
-}
-
-// src/canvas-edges.ts
-function isConnectableCanvasNode(node) {
-  return isSupportedCanvasCard(node) || node.type === "group";
-}
-function nodeMap(document2) {
-  return new Map(document2.nodes.map((node) => [node.id, node]));
-}
-function createCanvasEdge(content, connection) {
-  const document2 = parseCanvasForMutation(content);
-  const nodes = nodeMap(document2);
-  const fromNode = nodes.get(connection.fromNode);
-  const toNode = nodes.get(connection.toNode);
-  if (fromNode === void 0 || toNode === void 0 || !isConnectableCanvasNode(fromNode) || !isConnectableCanvasNode(toNode)) {
-    throw new Error("Canvas connections require two supported nodes.");
-  }
-  if (connection.fromNode === connection.toNode) {
-    throw new Error("Canvas connections require two different nodes.");
-  }
-  if (!isCanvasSide(connection.fromSide) || !isCanvasSide(connection.toSide)) {
-    throw new Error("Canvas connections require valid node sides.");
-  }
-  const existingIds = /* @__PURE__ */ new Set([
-    ...document2.nodes.map((node) => node.id),
-    ...(document2.edges ?? []).map((edge) => edge.id)
-  ]);
-  let index2 = 1;
-  while (existingIds.has(`edge-${String(index2)}`)) index2 += 1;
-  const edgeId = `edge-${String(index2)}`;
-  document2.edges = [
-    ...document2.edges ?? [],
-    { id: edgeId, ...connection, toEnd: "arrow" }
-  ];
-  return { edgeId, content: serializeCanvasDocument(document2) };
-}
-function createCanvasConnectedTextNode(content, connection) {
-  if (!isCanvasSide(connection.fromSide)) throw new Error("Canvas connections require valid node sides.");
-  const { width, height } = CANVAS_DEFAULT_TEXT_CARD_SIZE;
-  const toSide = { top: "bottom", right: "left", bottom: "top", left: "right" }[connection.fromSide];
-  const position = {
-    x: connection.position.x - (toSide === "right" ? width : toSide === "top" || toSide === "bottom" ? width / 2 : 0),
-    y: connection.position.y - (toSide === "bottom" ? height : toSide === "left" || toSide === "right" ? height / 2 : 0)
-  };
-  const node = createCanvasTextNode(content, position);
-  const edge = createCanvasEdge(node.content, {
-    fromNode: connection.fromNode,
-    fromSide: connection.fromSide,
-    toNode: node.nodeId,
-    toSide
-  });
-  return { nodeId: node.nodeId, edgeId: edge.edgeId, content: edge.content };
-}
-function reconnectCanvasEdge(content, update) {
-  const document2 = parseCanvasForMutation(content);
-  const edge = document2.edges?.find((candidate) => candidate.id === update.edgeId);
-  if (edge === void 0) throw new Error("The selected Canvas edge no longer exists.");
-  if (update.endpoint !== "from" && update.endpoint !== "to" || !isCanvasSide(update.side)) {
-    throw new Error("Canvas connections require a valid endpoint and node side.");
-  }
-  const nodes = nodeMap(document2);
-  const nextNode = nodes.get(update.nodeId);
-  const fixedNodeId = update.endpoint === "from" ? edge.toNode : edge.fromNode;
-  const fixedNode = nodes.get(fixedNodeId);
-  if (nextNode === void 0 || fixedNode === void 0 || !isConnectableCanvasNode(nextNode) || !isConnectableCanvasNode(fixedNode)) {
-    throw new Error("Canvas connections require two supported nodes.");
-  }
-  if (update.nodeId === fixedNodeId) throw new Error("Canvas connections require two different nodes.");
-  if (update.endpoint === "from") {
-    edge.fromNode = update.nodeId;
-    edge.fromSide = update.side;
-  } else {
-    edge.toNode = update.nodeId;
-    edge.toSide = update.side;
-  }
-  return serializeCanvasDocument(document2);
-}
-function edgeDocument(content) {
-  const document2 = parseCanvasForMutation(content);
-  if (document2.edges === void 0) throw new Error("This .canvas file does not contain Canvas edges.");
-  return document2;
-}
-function updateCanvasEdgeLabel(content, edgeId, label) {
-  const document2 = edgeDocument(content);
-  const edge = document2.edges.find((candidate) => candidate.id === edgeId);
-  if (edge === void 0) throw new Error("The selected Canvas edge no longer exists.");
-  const normalizedLabel = label.trim();
-  if (normalizedLabel) edge.label = normalizedLabel;
-  else delete edge.label;
-  return serializeCanvasDocument(document2);
-}
-function updateCanvasEdgeColor(content, edgeId, color) {
-  const document2 = edgeDocument(content);
-  const edge = document2.edges.find((candidate) => candidate.id === edgeId);
-  if (edge === void 0) throw new Error("The selected Canvas edge no longer exists.");
-  if (color && !/^[1-6]$/u.test(color)) {
-    throw new Error("The selected color is not a supported JSON Canvas color.");
-  }
-  if (color) edge.color = color;
-  else delete edge.color;
-  return serializeCanvasDocument(document2);
-}
-function deleteCanvasEdge(content, edgeId) {
-  const document2 = edgeDocument(content);
-  const edgeIndex = document2.edges.findIndex((edge) => edge.id === edgeId);
-  if (edgeIndex < 0) throw new Error("The selected Canvas edge no longer exists.");
-  document2.edges.splice(edgeIndex, 1);
-  return serializeCanvasDocument(document2);
-}
-
-// src/canvas-board.tsx
-var import_jsx_runtime21 = require("react/jsx-runtime");
-var BOARD_PADDING = 40;
-var MAX_CANVAS_BOARD_SPAN = 1e5;
-var SIDES = ["top", "right", "bottom", "left"];
-function nodeLabel(node) {
-  if (node.type === "file" && typeof node.file === "string") return node.file;
-  if (node.type === "link" && typeof node.url === "string") return node.url;
-  if (node.type === "group" && typeof node.label === "string") return node.label;
-  if (typeof node.text === "string") {
-    const first = node.text.trim().split(/\r?\n/u)[0]?.replace(/^#{1,6}\s+/u, "").trim();
-    if (first) return first;
-  }
-  return typeof node.id === "string" ? node.id : "Canvas Card";
-}
-function titleCaseSide(side) {
-  return `${side.slice(0, 1).toUpperCase()}${side.slice(1)}`;
-}
-function sideHandleStyle(side) {
-  return {
-    bottom: side === "bottom" ? 0 : void 0,
-    left: side === "left" ? 0 : side === "top" || side === "bottom" ? "50%" : void 0,
-    right: side === "right" ? 0 : void 0,
-    top: side === "top" ? 0 : side === "left" || side === "right" ? "50%" : void 0,
-    transform: {
-      top: "translate(-50%, -50%)",
-      right: "translate(50%, -50%)",
-      bottom: "translate(-50%, 50%)",
-      left: "translate(-50%, -50%)"
-    }[side]
-  };
-}
-function CanvasBoard({ source, revision, onChange, disabled = false }) {
-  const parsed = (0, import_react5.useMemo)(() => parseCanvasDocument(source), [source]);
-  const [armed, setArmed] = (0, import_react5.useState)(null);
-  const [selectedNodeId, setSelectedNodeId] = (0, import_react5.useState)(null);
-  const [selectedEdgeId, setSelectedEdgeId] = (0, import_react5.useState)(null);
-  const [error51, setError] = (0, import_react5.useState)(null);
-  const document2 = parsed.status === "ready" ? parsed.document : null;
-  const labels = (0, import_react5.useMemo)(() => new Map(
-    (document2?.nodes ?? []).map((node) => [node.id, nodeLabel(node)])
-  ), [document2]);
-  (0, import_react5.useEffect)(() => {
-    if (document2 === null) {
-      setArmed(null);
-      setSelectedNodeId(null);
-      setSelectedEdgeId(null);
-      return;
-    }
-    if (armed !== null && !document2.nodes.some((node) => node.id === armed.nodeId)) setArmed(null);
-    if (selectedNodeId !== null && !document2.nodes.some((node) => node.id === selectedNodeId)) setSelectedNodeId(null);
-    if (selectedEdgeId !== null && !document2.edges?.some((edge) => edge.id === selectedEdgeId)) setSelectedEdgeId(null);
-  }, [armed, document2, selectedEdgeId, selectedNodeId]);
-  const bounds = (0, import_react5.useMemo)(() => {
-    if (document2 === null || document2.nodes.length === 0) {
-      return { minX: 0, minY: 0, width: 800, height: 500, supported: true };
-    }
-    const minX = Math.min(0, ...document2.nodes.map((node) => node.x));
-    const minY = Math.min(0, ...document2.nodes.map((node) => node.y));
-    const maxX = Math.max(...document2.nodes.map((node) => node.x + node.width));
-    const maxY = Math.max(...document2.nodes.map((node) => node.y + node.height));
-    const width = maxX - minX + BOARD_PADDING * 2;
-    const height = maxY - minY + BOARD_PADDING * 2;
-    return {
-      minX,
-      minY,
-      width: Math.max(800, width),
-      height: Math.max(500, height),
-      supported: width <= MAX_CANVAS_BOARD_SPAN && height <= MAX_CANVAS_BOARD_SPAN
-    };
-  }, [document2]);
-  const emit = (operation, mutate) => {
-    if (disabled) return;
-    try {
-      setError(null);
-      onChange(createCanvasChange(source, revision, operation, mutate));
-    } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : "The Canvas change could not be prepared.");
-    }
-  };
-  const activateHandle = (nodeId, side) => {
-    if (disabled) return;
-    if (armed === null) {
-      setError(null);
-      setArmed({ nodeId, side });
-      return;
-    }
-    emit("create-edge", (content) => createCanvasEdge(content, {
-      fromNode: armed.nodeId,
-      fromSide: armed.side,
-      toNode: nodeId,
-      toSide: side
-    }).content);
-    setArmed(null);
-  };
-  const moveNode = (nodeId, event) => {
-    const delta = {
-      ArrowDown: { x: 0, y: CANVAS_GRID_SIZE },
-      ArrowLeft: { x: -CANVAS_GRID_SIZE, y: 0 },
-      ArrowRight: { x: CANVAS_GRID_SIZE, y: 0 },
-      ArrowUp: { x: 0, y: -CANVAS_GRID_SIZE }
-    }[event.key];
-    if (delta === void 0 || document2 === null) return;
-    const node = document2.nodes.find((candidate) => candidate.id === nodeId);
-    if (node === void 0) return;
-    event.preventDefault();
-    emit("move-node", (content) => updateCanvasNodeGeometry(content, nodeId, {
-      x: node.x + delta.x,
-      y: node.y + delta.y,
-      width: node.width,
-      height: node.height
-    }));
-  };
-  const cancelConnection = (event) => {
-    if (event.key !== "Escape" || armed === null) return;
-    event.preventDefault();
-    setArmed(null);
-  };
-  if (document2 === null) {
-    const reason = parsed.status === "unsupported" ? parsed.reason : "This Canvas could not be displayed.";
-    return /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("section", { "aria-label": "Canvas Board", role: "region", children: /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("p", { role: "note", children: reason }) });
-  }
-  if (!bounds.supported) {
-    return /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("section", { "aria-label": "Canvas Board", role: "region", children: /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("p", { role: "note", children: "This Canvas exceeds the bounded board display limit." }) });
-  }
-  return /* @__PURE__ */ (0, import_jsx_runtime21.jsxs)(
-    "section",
-    {
-      "aria-label": "Canvas Board",
-      className: "relative min-h-0 overflow-auto bg-[var(--tt-bg)] text-[var(--tt-text)]",
-      "data-canvas-revision": revision,
-      onKeyDown: cancelConnection,
-      role: "region",
-      children: [
-        armed !== null && /* @__PURE__ */ (0, import_jsx_runtime21.jsxs)("p", { className: "sr-only", role: "status", children: [
-          "Choose a target side for ",
-          labels.get(armed.nodeId) ?? armed.nodeId,
-          "."
-        ] }),
-        error51 !== null && /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("p", { className: "m-3 text-sm text-red-600", role: "note", children: error51 }),
-        /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(
-          "div",
-          {
-            "aria-label": "Canvas Board Surface",
-            className: "relative",
-            style: { height: bounds.height, width: bounds.width },
-            children: document2.nodes.map((node) => {
-              const label = labels.get(node.id) ?? node.id;
-              const connectable = isConnectableCanvasNode(node);
-              const safeLink = node.type === "link" ? tryNormalizeCanvasLinkUrl(node.url) : void 0;
-              const style = {
-                height: node.height,
-                left: node.x - bounds.minX + BOARD_PADDING,
-                top: node.y - bounds.minY + BOARD_PADDING,
-                width: node.width
-              };
-              return /* @__PURE__ */ (0, import_jsx_runtime21.jsxs)(
-                "article",
-                {
-                  "aria-label": `${node.type === "group" ? "Canvas Group" : "Canvas Card"} ${label}`,
-                  className: "absolute rounded-md border border-[var(--tt-border)] bg-[var(--tt-panel)] p-2 shadow-sm",
-                  style,
-                  children: [
-                    /* @__PURE__ */ (0, import_jsx_runtime21.jsxs)(
-                      "button",
-                      {
-                        "aria-label": `${node.type === "group" ? "Canvas Group" : "Canvas Card"} ${label}`,
-                        "aria-pressed": selectedNodeId === node.id,
-                        className: "h-full w-full border-0 bg-transparent p-1 text-left text-inherit outline-offset-2",
-                        "data-canvas-x": String(node.x),
-                        disabled: disabled || !connectable,
-                        onClick: () => {
-                          setSelectedNodeId(node.id);
-                          setSelectedEdgeId(null);
-                        },
-                        onKeyDown: (event) => {
-                          moveNode(node.id, event);
-                        },
-                        type: "button",
-                        children: [
-                          /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("strong", { className: "block truncate", children: label }),
-                          node.type === "text" && typeof node.text === "string" && /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("span", { className: "block line-clamp-3 whitespace-pre-wrap text-xs", children: node.text }),
-                          node.type === "link" && safeLink === void 0 && /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("span", { className: "block text-xs", role: "note", children: "This unsafe link is inert." }),
-                          !connectable && /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("span", { className: "block text-xs", role: "note", children: "This unsupported card is inert." })
-                        ]
-                      }
-                    ),
-                    connectable && /* @__PURE__ */ (0, import_jsx_runtime21.jsxs)("fieldset", { className: "contents", disabled, children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime21.jsxs)("legend", { className: "sr-only", children: [
-                        "Connect ",
-                        label
-                      ] }),
-                      SIDES.map((side) => /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(
-                        "button",
-                        {
-                          "aria-label": `${titleCaseSide(side)} Connection Handle for ${label}`,
-                          "aria-pressed": armed?.nodeId === node.id && armed.side === side,
-                          className: "absolute z-10 m-0 size-5 rounded-full border border-[var(--tt-border)] bg-[var(--tt-panel)] text-[10px]",
-                          onClick: () => {
-                            activateHandle(node.id, side);
-                          },
-                          style: sideHandleStyle(side),
-                          type: "button",
-                          children: /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("span", { "aria-hidden": "true", children: side.slice(0, 1).toUpperCase() })
-                        },
-                        side
-                      ))
-                    ] })
-                  ]
-                },
-                node.id
-              );
-            })
-          }
-        ),
-        (document2.edges?.length ?? 0) > 0 && /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("ul", { "aria-label": "Canvas Connections", className: "absolute top-2 right-2 z-20 m-0 max-w-72 list-none rounded-md border border-[var(--tt-border)] bg-[var(--tt-panel)] p-1 text-xs shadow-sm", children: document2.edges?.map((edge) => /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("li", { children: /* @__PURE__ */ (0, import_jsx_runtime21.jsxs)(
-          "button",
-          {
-            "aria-pressed": selectedEdgeId === edge.id,
-            className: "block w-full rounded-sm border-0 bg-transparent px-2 py-1 text-left text-inherit outline-offset-2",
-            onClick: () => {
-              setSelectedEdgeId(edge.id);
-              setSelectedNodeId(null);
-            },
-            onKeyDown: (event) => {
-              if (event.key !== "Delete" && event.key !== "Backspace") return;
-              event.preventDefault();
-              emit("delete-edge", (content) => deleteCanvasEdge(content, edge.id));
-              setSelectedEdgeId(null);
-            },
-            type: "button",
-            children: [
-              "Canvas Edge ",
-              typeof edge.label === "string" ? edge.label : "Unlabeled",
-              " from ",
-              labels.get(edge.fromNode) ?? edge.fromNode,
-              " to ",
-              labels.get(edge.toNode) ?? edge.toNode
-            ]
-          }
-        ) }, edge.id)) })
-      ]
-    }
-  );
-}
-
-// src/live-preview.ts
-var MAX_LIVE_PREVIEW_SOURCE_BYTES = 2e6;
-var MAX_LIVE_PREVIEW_LINE_BYTES = 1e5;
-function sourceLines(source) {
-  if (source.length === 0) return [{ content: "", end: 0, index: 0, separator: "", start: 0 }];
-  const lines = [];
-  let start = 0;
-  while (start < source.length) {
-    let end = start;
-    while (end < source.length && source[end] !== "\n" && source[end] !== "\r") end += 1;
-    const separator = source.startsWith("\r\n", end) ? "\r\n" : source[end] === "\n" || source[end] === "\r" ? source[end] : "";
-    lines.push({ content: source.slice(start, end), end: end + separator.length, index: lines.length, separator, start });
-    start = end + separator.length;
-  }
-  if (/(?:\r\n|[\n\r])$/u.test(source)) {
-    lines.push({ content: "", end: source.length, index: lines.length, separator: "", start: source.length });
-  }
-  return lines;
-}
-function byteLength2(value) {
-  return new TextEncoder().encode(value).byteLength;
-}
-function fenceMarker(content) {
-  const match = content.match(/^ {0,3}(`{3,}|~{3,})/u);
-  if (match === null) return null;
-  const marker = match[1];
-  return { character: marker[0], length: marker.length };
-}
-function heading(content) {
-  const match = content.match(/^ {0,3}(#{1,6})(?:\s+|$)/u);
-  return match?.[1]?.length ?? null;
-}
-function listIndent(content) {
-  const match = content.match(/^(\s*)(?:[-+*]|\d{1,9}[.)])\s+/u);
-  return match === null ? null : match[1].replaceAll("	", "    ").length;
-}
-function projectLivePreview(source) {
-  if (byteLength2(source) > MAX_LIVE_PREVIEW_SOURCE_BYTES) {
-    return { reason: "The Markdown source exceeds the Live Preview limit.", status: "unsupported" };
-  }
-  const raw = sourceLines(source);
-  const projected = [];
-  const frontmatterEnd = raw[0]?.content === "---" ? raw.findIndex((line, index2) => index2 > 0 && (line.content === "---" || line.content === "...")) : -1;
-  let openFence = null;
-  let inComment = false;
-  let taskIndex = 0;
-  for (const line of raw) {
-    const content = line.content;
-    if (openFence !== null) {
-      projected.push({ content, index: line.index, kind: "code" });
-      const close = content.match(/^ {0,3}(`+|~+)\s*$/u)?.[1];
-      if (close !== void 0 && close[0] === openFence.character && close.length >= openFence.length) openFence = null;
-      continue;
-    }
-    const opener = fenceMarker(content);
-    if (opener !== null) {
-      openFence = opener;
-      projected.push({ content, index: line.index, kind: "code" });
-      continue;
-    }
-    if (line.index <= frontmatterEnd) {
-      const property = line.index > 0 && line.index < frontmatterEnd && /^[A-Za-z_][A-Za-z0-9_-]{0,127}\s*:/u.test(content);
-      projected.push({ content, index: line.index, kind: property ? "property" : content === "" ? "blank" : "text" });
-      continue;
-    }
-    const commentMarkerCount = content.split("%%").length - 1;
-    if (inComment || commentMarkerCount > 0) {
-      projected.push({ content, index: line.index, kind: "comment" });
-      if (commentMarkerCount % 2 === 1) inComment = !inComment;
-      continue;
-    }
-    const task = content.match(/^\s{0,64}(?:[-+*]|\d{1,9}[.)])\s+\[([^\]])\]\s*(.*)$/u);
-    if (task !== null) {
-      projected.push({
-        checked: task[1] !== " ",
-        content,
-        index: line.index,
-        kind: "task",
-        taskIndex
-      });
-      taskIndex += 1;
-      continue;
-    }
-    const callout = content.match(/^>\s*\[!([A-Za-z0-9_-]+)\]([+-])?(?:\s+.*)?$/u);
-    if (callout !== null) {
-      projected.push({
-        content,
-        folded: callout[2] === "-",
-        index: line.index,
-        kind: "callout"
-      });
-      continue;
-    }
-    const level = heading(content);
-    if (level !== null) {
-      projected.push({ content, headingLevel: level, index: line.index, kind: "heading" });
-      continue;
-    }
-    if (listIndent(content) !== null) {
-      projected.push({ content, index: line.index, kind: "list" });
-      continue;
-    }
-    projected.push({ content, index: line.index, kind: content === "" ? "blank" : "text" });
-  }
-  for (const line of projected) {
-    if (line.kind === "heading") {
-      let end = line.index;
-      for (let index2 = line.index + 1; index2 < projected.length; index2 += 1) {
-        const candidate = projected[index2];
-        if (candidate.kind === "heading" && (candidate.headingLevel ?? 7) <= (line.headingLevel ?? 6)) break;
-        if (candidate.kind !== "blank") end = candidate.index;
-      }
-      if (end > line.index) line.foldEndLine = end;
-    } else if (line.kind === "callout") {
-      let end = line.index;
-      for (let index2 = line.index + 1; index2 < projected.length; index2 += 1) {
-        const candidate = projected[index2];
-        if (!/^> ?/u.test(candidate.content)) break;
-        end = candidate.index;
-      }
-      if (end > line.index) line.foldEndLine = end;
-    } else if (line.kind === "list") {
-      const indent = listIndent(line.content) ?? 0;
-      let end = line.index;
-      for (let index2 = line.index + 1; index2 < projected.length; index2 += 1) {
-        const candidate = projected[index2];
-        if (candidate.kind === "blank") continue;
-        const candidateIndent = listIndent(candidate.content);
-        if (candidateIndent === null || candidateIndent <= indent) break;
-        end = candidate.index;
-      }
-      if (end > line.index) line.foldEndLine = end;
-    }
-  }
-  return { lines: Object.freeze(projected.map((line) => Object.freeze(line))), status: "ready" };
-}
-function replaceLivePreviewLine(source, index2, replacement) {
-  if (!Number.isSafeInteger(index2) || index2 < 0 || /[\r\n]/u.test(replacement)) return source;
-  if (byteLength2(replacement) > MAX_LIVE_PREVIEW_LINE_BYTES) return source;
-  const line = sourceLines(source)[index2];
-  if (line === void 0) return source;
-  return `${source.slice(0, line.start)}${replacement}${line.separator}${source.slice(line.end)}`;
-}
-
-// src/rich-markdown.ts
-var MAX_RICH_MARKDOWN_BYTES = 2e6;
-var MAX_RICH_MARKDOWN_BLOCKS = 2e4;
-var MAX_RICH_MARKDOWN_FOOTNOTES = 1e3;
-function bytes(value) {
-  return new TextEncoder().encode(value).byteLength;
-}
-function escapeMarkdownHtml(value) {
-  return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#39;");
-}
-function safeUrl(value) {
-  const trimmed = value.trim();
-  if (trimmed.length === 0 || trimmed.length > 4096 || /[\u0000-\u001f\u007f]/u.test(trimmed)) return null;
-  if (/^(?:https?:|mailto:)/iu.test(trimmed)) {
-    try {
-      const url2 = new URL(trimmed);
-      if ((url2.protocol === "http:" || url2.protocol === "https:") && (url2.username !== "" || url2.password !== "")) return null;
-      return url2.toString();
-    } catch {
-      return null;
-    }
-  }
-  if (/^(?:#|\.\.?\/|\/)?[^:\s\\]+(?:[/?#][^\s\\]*)?$/u.test(trimmed) && !trimmed.split("/").includes("..")) return trimmed;
-  return null;
-}
-var SAFE_RAW_TAG = /^<\/?(?:br|code|del|em|kbd|mark|s|small|strong|sub|sup|u)>$/iu;
-function renderInline(source, footnoteNumbers) {
-  const tokens = [];
-  const hold = (html) => {
-    const token = `\0${String(tokens.length)}\0`;
-    tokens.push(html);
-    return token;
-  };
-  let text2 = source;
-  text2 = text2.replace(/<[^>]{1,200}>/gu, (tag) => SAFE_RAW_TAG.test(tag) ? hold(tag.toLocaleLowerCase()) : tag);
-  text2 = text2.replace(/`([^`\n]{0,10000})`/gu, (_match, code) => hold(`<code>${escapeMarkdownHtml(code)}</code>`));
-  text2 = escapeMarkdownHtml(text2);
-  text2 = text2.replace(/!\[([^\]\n]{0,1000})\]\(([^)\n]{1,4096})\)/gu, (match, alt, target) => {
-    const url2 = safeUrl(target);
-    return url2 === null || !/^(?:data:image\/|(?:https?:)?\/|\.\.?\/|[^:]+$)/iu.test(url2) ? escapeMarkdownHtml(match) : `<img alt="${escapeMarkdownHtml(alt)}" loading="lazy" referrerpolicy="no-referrer" src="${escapeMarkdownHtml(url2)}">`;
-  });
-  text2 = text2.replace(/\[([^\]\n]{1,2000})\]\(([^)\n]{1,4096})\)/gu, (match, label, target) => {
-    const url2 = safeUrl(target);
-    return url2 === null ? escapeMarkdownHtml(match) : `<a href="${escapeMarkdownHtml(url2)}" rel="noopener noreferrer">${label}</a>`;
-  });
-  text2 = text2.replace(/\[\[([^\]\n]{1,2000})(?:\|([^\]\n]{0,2000}))?\]\]/gu, (_match, target, alias) => {
-    const path = safeUrl(target);
-    return path === null ? escapeMarkdownHtml(`[[${target}${alias === void 0 ? "" : `|${alias}`}]]`) : `<a class="internal-link" data-target="${escapeMarkdownHtml(path)}" href="#">${escapeMarkdownHtml(alias ?? target)}</a>`;
-  });
-  text2 = text2.replace(/\[\^([^\]\n]{1,200})\]/gu, (match, label) => {
-    const number4 = footnoteNumbers.get(label.toLocaleLowerCase());
-    return number4 === void 0 ? match : `<sup class="footnote-ref"><a href="#fn-${String(number4)}">${String(number4)}</a></sup>`;
-  });
-  text2 = text2.replace(/\^\[([^\]\n]{1,2000})\]/gu, (_match, value) => hold(`<sup class="footnote-inline">${renderInline(value, footnoteNumbers)}</sup>`));
-  text2 = text2.replace(/\$([^$\n]{1,20000})\$/gu, (_match, value) => `<span class="math-inline" role="math">${escapeMarkdownHtml(value)}</span>`);
-  text2 = text2.replace(/==([^=\n]{1,20000})==/gu, "<mark>$1</mark>");
-  text2 = text2.replace(/~~([^~\n]{1,20000})~~/gu, "<del>$1</del>");
-  text2 = text2.replace(/\*\*([^*\n]{1,20000})\*\*/gu, "<strong>$1</strong>");
-  text2 = text2.replace(/(?<!\*)\*([^*\n]{1,20000})\*(?!\*)/gu, "<em>$1</em>");
-  text2 = text2.replace(/\u0000(\d+)\u0000/gu, (_match, index2) => tokens[Number(index2)] ?? "");
-  return text2;
-}
-function stripLeadingFrontmatter(markdown) {
-  if (!markdown.startsWith("---\n") && !markdown.startsWith("---\r\n")) return markdown;
-  const lines = markdown.split(/\r?\n/u);
-  const end = lines.findIndex((line, index2) => index2 > 0 && (line === "---" || line === "..."));
-  return end < 0 ? markdown : lines.slice(end + 1).join("\n");
-}
-function stripComments(markdown) {
-  let result = "";
-  let index2 = 0;
-  while (index2 < markdown.length) {
-    const start = markdown.indexOf("%%", index2);
-    if (start < 0) return result + markdown.slice(index2);
-    const end = markdown.indexOf("%%", start + 2);
-    if (end < 0 || end - start > 1e5) return result + markdown.slice(index2);
-    result += markdown.slice(index2, start);
-    index2 = end + 2;
-  }
-  return result;
-}
-function collectFootnotes(lines) {
-  const definitions = [];
-  const numbers = /* @__PURE__ */ new Map();
-  const hidden = /* @__PURE__ */ new Set();
-  for (let index2 = 0; index2 < lines.length && definitions.length < MAX_RICH_MARKDOWN_FOOTNOTES; index2 += 1) {
-    const match = lines[index2]?.match(/^\[\^([^\]]{1,200})\]:\s*(.*)$/u);
-    if (match === void 0 || match === null) continue;
-    const key2 = match[1].toLocaleLowerCase();
-    if (numbers.has(key2)) continue;
-    const number4 = definitions.length + 1;
-    numbers.set(key2, number4);
-    definitions.push({ label: match[1], number: number4, text: match[2] });
-    hidden.add(index2);
-  }
-  return { definitions, numbers, hidden };
-}
-function tableDelimiter(line) {
-  const cells = line.trim().replace(/^\|/u, "").replace(/\|$/u, "").split("|");
-  return cells.length >= 2 && cells.every((cell) => /^\s*:?-{3,}:?\s*$/u.test(cell));
-}
-function tableCells(line) {
-  return line.trim().replace(/^\|/u, "").replace(/\|$/u, "").split("|").map((cell) => cell.trim());
-}
-function paragraphHtml(lines, strict, footnotes) {
-  if (lines.length === 0) return "";
-  let html = renderInline(lines[0].replace(/[ \t]+$/u, ""), footnotes);
-  for (let index2 = 1; index2 < lines.length; index2 += 1) {
-    const previous = lines[index2 - 1];
-    const separator = !strict || / {2,}$/u.test(previous) ? "<br>" : " ";
-    html += `${separator}${renderInline(lines[index2].replace(/[ \t]+$/u, ""), footnotes)}`;
-  }
-  return `<p>${html}</p>`;
-}
-function renderMarkdownHtml(markdown, options = {}) {
-  if (bytes(markdown) > MAX_RICH_MARKDOWN_BYTES) return `<pre>${escapeMarkdownHtml(markdown.slice(0, MAX_RICH_MARKDOWN_BYTES))}</pre>`;
-  const source = stripComments(stripLeadingFrontmatter(markdown)).replaceAll("\r\n", "\n").replaceAll("\r", "\n");
-  const lines = source.split("\n");
-  const footnotes = collectFootnotes(lines);
-  const blocks = [];
-  let paragraph = [];
-  let taskIndex = 0;
-  const flush = () => {
-    if (paragraph.length === 0) return;
-    blocks.push(paragraphHtml(paragraph, options.strictLineBreaks === true, footnotes.numbers));
-    paragraph = [];
-  };
-  for (let index2 = 0; index2 < lines.length && blocks.length < MAX_RICH_MARKDOWN_BLOCKS; index2 += 1) {
-    const line = lines[index2];
-    if (footnotes.hidden.has(index2)) {
-      flush();
-      continue;
-    }
-    const fence2 = line.match(/^ {0,3}(`{3,}|~{3,})\s*([^\s]*)\s*$/u);
-    if (fence2 !== null) {
-      flush();
-      const marker = fence2[1];
-      const language = fence2[2].toLocaleLowerCase();
-      const code = [];
-      index2 += 1;
-      while (index2 < lines.length && !new RegExp(`^ {0,3}${marker[0]}{${String(marker.length)},}\\s*$`, "u").test(lines[index2])) {
-        code.push(lines[index2]);
-        index2 += 1;
-      }
-      const escaped = escapeMarkdownHtml(code.join("\n"));
-      blocks.push(language === "mermaid" ? `<figure class="mermaid" data-language="mermaid"><pre>${escaped}</pre></figure>` : `<pre data-language="${escapeMarkdownHtml(language)}"><code>${escaped}</code></pre>`);
-      continue;
-    }
-    const displayMath = line.match(/^\s*\$\$(.{1,20000})\$\$\s*$/u);
-    if (displayMath !== null) {
-      flush();
-      blocks.push(`<div class="math-display" role="math">${escapeMarkdownHtml(displayMath[1])}</div>`);
-      continue;
-    }
-    const heading2 = line.match(/^ {0,3}(#{1,6})\s+(.+?)\s*#*\s*$/u);
-    if (heading2 !== null) {
-      flush();
-      const level = heading2[1].length;
-      blocks.push(`<h${String(level)}>${renderInline(heading2[2], footnotes.numbers)}</h${String(level)}>`);
-      continue;
-    }
-    const callout = line.match(/^>\s*\[!([A-Za-z0-9_-]+)\]([+-])?(?:\s+(.*))?$/u);
-    if (callout !== null) {
-      flush();
-      const body = [];
-      while (index2 + 1 < lines.length && /^> ?/u.test(lines[index2 + 1])) {
-        index2 += 1;
-        body.push(lines[index2].replace(/^> ?/u, ""));
-      }
-      const type = callout[1].toLocaleLowerCase();
-      const title = callout[3] ?? type[0].toLocaleUpperCase() + type.slice(1);
-      blocks.push(`<aside class="callout callout-${escapeMarkdownHtml(type)}" data-fold="${callout[2] === "-" ? "closed" : "open"}"><strong>${renderInline(title, footnotes.numbers)}</strong>${paragraphHtml(body, options.strictLineBreaks === true, footnotes.numbers)}</aside>`);
-      continue;
-    }
-    if (index2 + 1 < lines.length && line.includes("|") && tableDelimiter(lines[index2 + 1])) {
-      flush();
-      const headers = tableCells(line);
-      index2 += 1;
-      const rows = [];
-      while (index2 + 1 < lines.length && lines[index2 + 1].includes("|") && lines[index2 + 1].trim() !== "") {
-        index2 += 1;
-        rows.push(tableCells(lines[index2]));
-      }
-      blocks.push(`<table><thead><tr>${headers.map((cell) => `<th>${renderInline(cell, footnotes.numbers)}</th>`).join("")}</tr></thead><tbody>${rows.map((row) => `<tr>${headers.map((_header, cell) => `<td>${renderInline(row[cell] ?? "", footnotes.numbers)}</td>`).join("")}</tr>`).join("")}</tbody></table>`);
-      continue;
-    }
-    const task = line.match(/^\s{0,64}[-+*]\s+\[([^\]])\]\s*(.*)$/u);
-    if (task !== null) {
-      flush();
-      blocks.push(`<ul class="task-list"><li><input aria-label="Task" data-task-index="${String(taskIndex)}" type="checkbox"${task[1] === " " ? "" : " checked"}> ${renderInline(task[2], footnotes.numbers)}</li></ul>`);
-      taskIndex += 1;
-      continue;
-    }
-    const list = line.match(/^\s{0,64}([-+*]|\d{1,9}[.)])\s+(.*)$/u);
-    if (list !== null) {
-      flush();
-      const ordered = /^\d/u.test(list[1]);
-      blocks.push(`<${ordered ? "ol" : "ul"}><li>${renderInline(list[2], footnotes.numbers)}</li></${ordered ? "ol" : "ul"}>`);
-      continue;
-    }
-    if (/^ {0,3}(?:-{3,}|\*{3,}|_{3,})\s*$/u.test(line)) {
-      flush();
-      blocks.push("<hr>");
-      continue;
-    }
-    if (line.trim() === "") {
-      flush();
-      continue;
-    }
-    paragraph.push(line);
-  }
-  flush();
-  if (footnotes.definitions.length > 0) {
-    blocks.push(`<section class="footnotes"><ol>${footnotes.definitions.map((definition) => `<li id="fn-${String(definition.number)}">${renderInline(definition.text, footnotes.numbers)}</li>`).join("")}</ol></section>`);
-  }
-  return blocks.join("\n");
-}
-function buildMarkdownSlides(markdown, options = {}) {
-  if (bytes(markdown) > MAX_RICH_MARKDOWN_BYTES) return [renderMarkdownHtml(markdown, options)];
-  const lines = markdown.replaceAll("\r\n", "\n").replaceAll("\r", "\n").split("\n");
-  const slides = [];
-  let current = [];
-  let fence2 = null;
-  for (const line of lines) {
-    const marker = line.match(/^ {0,3}(`{3,}|~{3,})/u)?.[1];
-    if (marker !== void 0) {
-      if (fence2 === null) fence2 = { character: marker[0], length: marker.length };
-      else if (marker[0] === fence2.character && marker.length >= fence2.length && /^ {0,3}(?:`{3,}|~{3,})\s*$/u.test(line)) fence2 = null;
-      current.push(line);
-      continue;
-    }
-    if (fence2 === null && /^ {0,3}---\s*$/u.test(line)) {
-      slides.push(renderMarkdownHtml(current.join("\n"), options));
-      current = [];
-    } else current.push(line);
-  }
-  slides.push(renderMarkdownHtml(current.join("\n"), options));
-  return slides;
-}
-function buildMarkdownExportDocument(options) {
-  const title = escapeMarkdownHtml(options.title.slice(0, 1e3));
-  const body = renderMarkdownHtml(options.markdown, options);
-  return `<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data: blob:; media-src data: blob:; style-src 'unsafe-inline';"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title><style>body{font:16px/1.6 system-ui,sans-serif;max-width:780px;margin:40px auto;padding:0 24px;color:#202124}pre,code{font-family:ui-monospace,monospace}pre{overflow:auto;padding:12px;background:#f5f5f5}table{border-collapse:collapse;width:100%}th,td{border:1px solid #ccc;padding:6px}.callout{border-left:4px solid #6750a4;padding:8px 12px;background:#f7f5ff}.math-display{text-align:center}.footnotes{border-top:1px solid #ddd}</style></head><body>${body}</body></html>`;
-}
-
-// src/properties.ts
-var MAX_FRONTMATTER_BYTES = 1e6;
-var MAX_PROPERTIES = 1e3;
-var KEY = /^[A-Za-z_][A-Za-z0-9_-]{0,127}$/u;
-function frontmatter(source) {
-  if (new TextEncoder().encode(source).byteLength > MAX_FRONTMATTER_BYTES) return null;
-  const opening = source.match(/^---(?:\r\n|\n|\r)/u);
-  if (opening === null) return null;
-  const start = opening[0].length;
-  const close = /(?:^|\r\n|\n|\r)(?:---|\.\.\.)(?=\r\n|\n|\r|$)/gmu;
-  close.lastIndex = start;
-  const match = close.exec(source);
-  if (match === null) return null;
-  const markerOffset = match.index + (match[0].startsWith("\r\n") ? 2 : match[0].startsWith("\n") || match[0].startsWith("\r") ? 1 : 0);
-  const markerEnd = markerOffset + (source.startsWith("...", markerOffset) ? 3 : 3);
-  const separator = source.startsWith("\r\n", markerEnd) ? 2 : source[markerEnd] === "\n" || source[markerEnd] === "\r" ? 1 : 0;
-  return { bodyStart: markerEnd + separator, content: source.slice(start, markerOffset), start };
-}
-function decodeQuoted(value) {
-  const trimmed = value.trim();
-  if (trimmed.startsWith('"') && trimmed.endsWith('"')) {
-    try {
-      return JSON.parse(trimmed);
-    } catch {
-      return trimmed.slice(1, -1);
-    }
-  }
-  if (trimmed.startsWith("'") && trimmed.endsWith("'")) return trimmed.slice(1, -1).replaceAll("''", "'");
-  return trimmed;
-}
-function inferPropertyType(value) {
-  if (Array.isArray(value)) return "list";
-  if (typeof value === "number") return "number";
-  if (typeof value === "boolean") return "checkbox";
-  if (typeof value !== "string") return "mixed";
-  if (/^\d{4}-\d{2}-\d{2}$/u.test(value)) return "date";
-  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,3})?)?(?:Z|[+-]\d{2}:\d{2})?$/u.test(value)) return "datetime";
-  return "text";
-}
-function scalar2(value) {
-  const decoded = decodeQuoted(value);
-  if (decoded === "true") return true;
-  if (decoded === "false") return false;
-  if (decoded === "null" || decoded === "~") return null;
-  if (/^-?(?:0|[1-9]\d*)(?:\.\d+)?$/u.test(decoded)) {
-    const number4 = Number(decoded);
-    if (Number.isFinite(number4)) return number4;
-  }
-  return decoded;
-}
-function ranges(source) {
-  const block = frontmatter(source);
-  if (block === null) return [];
-  const lines = [...block.content.matchAll(/.*(?:\r\n|\n|\r|$)/gu)].filter((match) => match[0] !== "");
-  const properties = [];
-  let offset4 = block.start;
-  for (let index2 = 0; index2 < lines.length && properties.length < MAX_PROPERTIES; index2 += 1) {
-    const line = lines[index2][0];
-    const content = line.replace(/(?:\r\n|\n|\r)$/u, "");
-    const match = content.match(/^([A-Za-z_][A-Za-z0-9_-]{0,127}):(?:\s*(.*))?$/u);
-    if (match === null) {
-      offset4 += line.length;
-      continue;
-    }
-    const key2 = match[1];
-    let end = offset4 + line.length;
-    const items = [];
-    let next = index2 + 1;
-    while (next < lines.length && /^\s{2,}-\s+/u.test(lines[next][0])) {
-      items.push(decodeQuoted(lines[next][0].replace(/^\s{2,}-\s+/u, "").replace(/(?:\r\n|\n|\r)$/u, "")));
-      end += lines[next][0].length;
-      next += 1;
-    }
-    const value = items.length > 0 ? items : scalar2(match[2] ?? "");
-    properties.push({ end, key: key2, start: offset4, type: inferPropertyType(value), value });
-    index2 = next - 1;
-    offset4 = end;
-  }
-  return properties;
-}
-function parseFrontmatterProperties(source) {
-  return ranges(source).map(({ key: key2, type, value }) => ({ key: key2, type, value }));
-}
-function quoteText(value) {
-  if (value === "" || /^(?:true|false|null|~|-?(?:0|[1-9]\d*)(?:\.\d+)?|\d{4}-\d{2}-\d{2}(?:T.*)?)$/iu.test(value) || /[:#\[\]{},&*!|>'"%@`]/u.test(value) || /^\s|\s$/u.test(value)) return JSON.stringify(value);
-  return value;
-}
-function serializedProperty(key2, value, eol) {
-  if (Array.isArray(value)) return `${key2}:${eol}${value.map((item) => `  - ${quoteText(item)}`).join(eol)}${eol}`;
-  const encoded = value === null ? "null" : typeof value === "string" ? quoteText(value) : String(value);
-  return `${key2}: ${encoded}${eol}`;
-}
-function setFrontmatterProperty(source, key2, value) {
-  if (!KEY.test(key2)) throw new Error("The property name is invalid.");
-  const eol = source.includes("\r\n") ? "\r\n" : "\n";
-  const existing = ranges(source).find((property) => property.key.toLocaleLowerCase() === key2.toLocaleLowerCase());
-  const serialized = serializedProperty(key2, value, eol);
-  if (existing !== void 0) return `${source.slice(0, existing.start)}${serialized}${source.slice(existing.end)}`;
-  const block = frontmatter(source);
-  if (block === null) return `---${eol}${serialized}---${eol}${source}`;
-  const insertion = block.bodyStart - (source.startsWith("\r\n", block.bodyStart - 2) ? 5 : 4);
-  return `${source.slice(0, insertion)}${serialized}${source.slice(insertion)}`;
-}
-function renameFrontmatterProperty(source, from, to) {
-  if (!KEY.test(from) || !KEY.test(to)) throw new Error("The property name is invalid.");
-  const properties = ranges(source);
-  const sourceProperty = properties.find((property) => property.key.toLocaleLowerCase() === from.toLocaleLowerCase());
-  if (sourceProperty === void 0) return source;
-  if (properties.some((property) => property.key.toLocaleLowerCase() === to.toLocaleLowerCase() && property !== sourceProperty)) {
-    throw new Error("The target property already exists.");
-  }
-  const prefixLength = sourceProperty.key.length;
-  return `${source.slice(0, sourceProperty.start)}${to}${source.slice(sourceProperty.start + prefixLength)}`;
-}
-async function renamePropertiesRecoverably(files, from, to, operations) {
-  const planned = files.map((file2) => ({ ...file2, nextSource: renameFrontmatterProperty(file2.source, from, to) })).filter((file2) => file2.nextSource !== file2.source);
-  const saved = [];
-  try {
-    for (const file2 of planned) {
-      const result = await operations.save(file2);
-      saved.push({ ...file2, savedRevision: result.revision });
-    }
-    return { paths: saved.map((file2) => file2.path), status: "saved" };
-  } catch {
-    const rollbackFailures = [];
-    for (const file2 of [...saved].reverse()) {
-      try {
-        await operations.rollback(file2);
-      } catch {
-        rollbackFailures.push(file2.path);
-      }
-    }
-    return rollbackFailures.length === 0 ? { paths: saved.map((file2) => file2.path), status: "rolled-back" } : { paths: saved.map((file2) => file2.path), rollbackFailures, status: "partial" };
-  }
-}
-
-// src/session.ts
-var MAX_PANE_GROUPS = 8;
-var MAX_NOTE_TABS = 20;
-var MAX_ID_LENGTH = 128;
-var MAX_VAULT_PATH_LENGTH = 4096;
-var MAX_ROUTE_ID_LENGTH = 128;
-var DEFAULT_MODE = "wysiwyg";
-var DEFAULT_EDITING_MODE = "wysiwyg";
-function isRecord3(value) {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-function boundedString(value, max2) {
-  return typeof value === "string" && value.length > 0 && value.length <= max2;
-}
-function isSafeId2(value) {
-  return boundedString(value, MAX_ID_LENGTH) && !/[\0\r\n]/u.test(value);
-}
-function isSafeVaultRelativePath(value) {
-  if (!boundedString(value, MAX_VAULT_PATH_LENGTH)) return false;
-  if (value.startsWith("/") || value.startsWith("\\") || value.includes("\\") || value.includes("\0")) return false;
-  if (/^[A-Za-z][A-Za-z\d+.-]*:/u.test(value)) return false;
-  return value.split("/").every((segment) => segment !== "" && segment !== "." && segment !== "..");
-}
-function isEditorMode(value) {
-  return value === "reading" || value === "wysiwyg" || value === "source";
-}
-function isEditingMode(value) {
-  return value === "wysiwyg" || value === "source";
-}
-function boundedRevision(value) {
-  return typeof value === "number" && Number.isSafeInteger(value) && value >= 0 ? value : 0;
-}
-function tabDirty(revision, savedRevision) {
-  return revision !== savedRevision;
-}
-function makeTab(input) {
-  return {
-    ...input,
-    get dirty() {
-      return tabDirty(this.revision, this.savedRevision);
-    }
-  };
-}
-function cloneTab(tab) {
-  return makeTab({
-    id: tab.id,
-    path: tab.path,
-    pinned: tab.pinned,
-    mode: tab.mode,
-    lastEditingMode: tab.lastEditingMode,
-    revision: tab.revision,
-    savedRevision: tab.savedRevision
-  });
-}
-function cloneGroup(group) {
-  return {
-    id: group.id,
-    activeTabId: group.activeTabId,
-    tabs: group.tabs.map(cloneTab)
-  };
-}
-function cloneSession(session) {
-  return {
-    routeId: session.routeId,
-    vault: session.vault === null ? null : { ...session.vault },
-    focusedGroupId: session.focusedGroupId,
-    groups: session.groups.map(cloneGroup),
-    editorRevision: session.editorRevision
-  };
-}
-function nextId(prefix, used) {
-  for (let index2 = 1; index2 <= MAX_NOTE_TABS * MAX_PANE_GROUPS; index2 += 1) {
-    const candidate = `${prefix}-${index2}`;
-    if (!used.has(candidate)) return candidate;
-  }
-  return `${prefix}-${Date.now().toString(36)}`.slice(0, MAX_ID_LENGTH);
-}
-function normalizeVault(value) {
-  if (!isRecord3(value) || !isSafeId2(value.id)) return null;
-  const generation = boundedRevision(value.generation);
-  return { id: value.id, generation };
-}
-function parseTab(value, ids) {
-  if (!isRecord3(value) || !isSafeId2(value.id) || ids.has(value.id) || !isSafeVaultRelativePath(value.path)) return null;
-  const mode = isEditorMode(value.mode) ? value.mode : DEFAULT_MODE;
-  const lastEditingMode = isEditingMode(value.lastEditingMode) ? value.lastEditingMode : mode === "reading" ? DEFAULT_EDITING_MODE : mode;
-  const revision = boundedRevision(value.revision);
-  const savedRevision = Math.min(boundedRevision(value.savedRevision), revision);
-  ids.add(value.id);
-  return makeTab({
-    id: value.id,
-    path: value.path,
-    pinned: value.pinned === true,
-    mode,
-    lastEditingMode,
-    revision,
-    savedRevision
-  });
-}
-function parseGroup(value, groupIds, tabIds) {
-  if (!isRecord3(value) || !isSafeId2(value.id) || groupIds.has(value.id) || !Array.isArray(value.tabs)) return null;
-  groupIds.add(value.id);
-  const tabs = [];
-  const paths = /* @__PURE__ */ new Set();
-  for (const item of value.tabs.slice(0, MAX_NOTE_TABS)) {
-    const tab = parseTab(item, tabIds);
-    if (tab === null || paths.has(tab.path)) continue;
-    paths.add(tab.path);
-    tabs.push(tab);
-  }
-  const requestedActive = typeof value.activeTabId === "string" ? value.activeTabId : null;
-  const activeTabId = tabs.some((tab) => tab.id === requestedActive) ? requestedActive : tabs[0]?.id ?? null;
-  return { id: value.id, activeTabId, tabs };
-}
-function createWorkbenchSession(routeId, vault = null, initialGroupId = "group-1") {
-  const safeRouteId = boundedString(routeId, MAX_ROUTE_ID_LENGTH) ? routeId : "tocktutor";
-  const groupId = isSafeId2(initialGroupId) ? initialGroupId : "group-1";
-  return {
-    routeId: safeRouteId,
-    vault: vault === null ? null : { ...vault },
-    focusedGroupId: groupId,
-    groups: [{ id: groupId, activeTabId: null, tabs: [] }],
-    editorRevision: 0
-  };
-}
-function hydrateWorkbenchSession(value) {
-  if (!isRecord3(value)) return createWorkbenchSession("tocktutor");
-  const routeId = boundedString(value.routeId, MAX_ROUTE_ID_LENGTH) ? value.routeId : "tocktutor";
-  const vault = normalizeVault(value.vault);
-  const groups = [];
-  const groupIds = /* @__PURE__ */ new Set();
-  const tabIds = /* @__PURE__ */ new Set();
-  if (Array.isArray(value.groups)) {
-    for (const item of value.groups.slice(0, MAX_PANE_GROUPS)) {
-      const group = parseGroup(item, groupIds, tabIds);
-      if (group !== null) groups.push(group);
-    }
-  }
-  if (groups.length === 0) groups.push({ id: "group-1", activeTabId: null, tabs: [] });
-  const requestedFocus = typeof value.focusedGroupId === "string" ? value.focusedGroupId : "";
-  const focusedGroupId = groups.some((group) => group.id === requestedFocus) ? requestedFocus : groups[0].id;
-  return {
-    routeId,
-    vault,
-    focusedGroupId,
-    groups,
-    editorRevision: boundedRevision(value.editorRevision)
-  };
-}
-function addPaneGroup(source, requestedId) {
-  const session = cloneSession(source);
-  if (session.groups.length >= MAX_PANE_GROUPS) return { session, groupId: session.focusedGroupId };
-  const used = new Set(session.groups.map((group) => group.id));
-  const groupId = requestedId !== void 0 && isSafeId2(requestedId) && !used.has(requestedId) ? requestedId : nextId("group", used);
-  session.groups.push({ id: groupId, activeTabId: null, tabs: [] });
-  session.focusedGroupId = groupId;
-  return { session, groupId };
-}
-function groupOf(session, groupId) {
-  return session.groups.find((group) => group.id === groupId);
-}
-function openNoteTab(source, groupId, path, options = {}) {
-  if (!isSafeVaultRelativePath(path)) return cloneSession(source);
-  const session = cloneSession(source);
-  const group = groupOf(session, groupId);
-  if (group === void 0) return session;
-  session.focusedGroupId = groupId;
-  const existing = group.tabs.find((tab2) => tab2.path === path);
-  if (existing !== void 0) {
-    group.activeTabId = existing.id;
-    return session;
-  }
-  if (group.tabs.length >= MAX_NOTE_TABS) return session;
-  const ids = new Set(session.groups.flatMap((candidate) => candidate.tabs.map((tab2) => tab2.id)));
-  const mode = isEditorMode(options.mode) ? options.mode : DEFAULT_MODE;
-  const lastEditingMode = isEditingMode(options.lastEditingMode) ? options.lastEditingMode : mode === "reading" ? DEFAULT_EDITING_MODE : mode;
-  const tab = makeTab({
-    id: nextId("tab", ids),
-    path,
-    pinned: options.pinned === true,
-    mode,
-    lastEditingMode,
-    revision: 0,
-    savedRevision: 0
-  });
-  group.tabs.push(tab);
-  group.activeTabId = tab.id;
-  return session;
-}
-function markTabDirty(source, groupId, path, dirty) {
-  const session = cloneSession(source);
-  const group = groupOf(session, groupId);
-  const tab = group?.tabs.find((candidate) => candidate.path === path);
-  if (tab === void 0) return session;
-  if (dirty) {
-    session.editorRevision += 1;
-    tab.revision = Math.max(tab.revision + 1, session.editorRevision);
-  } else {
-    tab.savedRevision = tab.revision;
-  }
-  return session;
-}
-function setActiveNoteTab(source, groupId, path) {
-  const session = cloneSession(source);
-  const group = groupOf(session, groupId);
-  if (group === void 0) return session;
-  group.activeTabId = path === null ? null : group.tabs.find((tab) => tab.path === path)?.id ?? group.activeTabId;
-  return session;
-}
-function focusPaneGroup(source, groupId) {
-  const session = cloneSession(source);
-  if (groupOf(session, groupId) !== void 0) session.focusedGroupId = groupId;
-  return session;
-}
-function setNoteTabMode(source, groupId, path, mode) {
-  const session = cloneSession(source);
-  const tab = groupOf(session, groupId)?.tabs.find((candidate) => candidate.path === path);
-  if (tab === void 0 || !isEditorMode(mode)) return session;
-  tab.mode = mode;
-  if (mode !== "reading") tab.lastEditingMode = mode;
-  return session;
-}
-function setTabPinned(source, groupId, path, pinned) {
-  const session = cloneSession(source);
-  const tab = groupOf(session, groupId)?.tabs.find((candidate) => candidate.path === path);
-  if (tab !== void 0) tab.pinned = pinned ?? !tab.pinned;
-  return session;
-}
-function moveNoteTab(source, groupId, path, direction) {
-  const session = cloneSession(source);
-  const tabs = groupOf(session, groupId)?.tabs;
-  if (tabs === void 0) return session;
-  const index2 = tabs.findIndex((tab2) => tab2.path === path);
-  const destination = index2 + direction;
-  if (index2 < 0 || destination < 0 || destination >= tabs.length) return session;
-  const [tab] = tabs.splice(index2, 1);
-  if (tab !== void 0) tabs.splice(destination, 0, tab);
-  return session;
-}
-function closeNoteTab(source, groupId, path) {
-  const session = cloneSession(source);
-  const group = groupOf(session, groupId);
-  if (group === void 0) return { closed: null, nextPath: null, session };
-  const index2 = group.tabs.findIndex((tab) => tab.path === path);
-  if (index2 < 0) return { closed: null, nextPath: group.tabs.find((tab) => tab.id === group.activeTabId)?.path ?? null, session };
-  const [closed] = group.tabs.splice(index2, 1);
-  if (closed === void 0) return { closed: null, nextPath: null, session };
-  if (group.activeTabId === closed.id) {
-    const next = group.tabs[index2] ?? group.tabs[index2 - 1];
-    group.activeTabId = next?.id ?? null;
-  }
-  return {
-    closed,
-    nextPath: group.tabs.find((tab) => tab.id === group.activeTabId)?.path ?? null,
-    session
-  };
-}
-
-// src/bookmarks.ts
-var MAX_BOOKMARK_ITEMS = 1e3;
-var MAX_BOOKMARK_BYTES = 1048576;
-function key(vaultId) {
-  return `tocktutor.bookmarks.v1.${vaultId}`;
-}
-function validBase(value) {
-  if (typeof value.id !== "string" || !/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/u.test(value.id)) return null;
-  if (typeof value.title !== "string" || value.title.trim().length === 0 || value.title.length > 200) return null;
-  return { id: value.id, ...value.missing === true ? { missing: true } : {}, title: value.title.trim() };
-}
-function normalizedLink(value) {
-  if (typeof value !== "string" || value.length > 4096) return null;
-  try {
-    const url2 = new URL(/^https?:\/\//iu.test(value) ? value : `https://${value}`);
-    if (url2.protocol !== "http:" && url2.protocol !== "https:" || url2.username !== "" || url2.password !== "") return null;
-    return url2.toString();
-  } catch {
-    return null;
-  }
-}
-function parseBookmark(value, allowGroup) {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) return null;
-  const record2 = value;
-  const base = validBase(record2);
-  if (base === null || typeof record2.kind !== "string") return null;
-  if (record2.kind === "note" || record2.kind === "folder") {
-    return typeof record2.path === "string" && isSafeVaultRelativePath(record2.path) ? { ...base, kind: record2.kind, path: record2.path } : null;
-  }
-  if (record2.kind === "search") {
-    return typeof record2.query === "string" && record2.query.length > 0 && record2.query.length <= 1e3 ? { ...base, kind: "search", query: record2.query } : null;
-  }
-  if (record2.kind === "graph") return { ...base, kind: "graph" };
-  if (record2.kind === "heading") {
-    return typeof record2.path === "string" && isSafeVaultRelativePath(record2.path) && Number.isSafeInteger(record2.line) && record2.line > 0 ? { ...base, kind: "heading", line: record2.line, path: record2.path } : null;
-  }
-  if (record2.kind === "block") {
-    return typeof record2.path === "string" && isSafeVaultRelativePath(record2.path) && typeof record2.blockId === "string" && /^[A-Za-z0-9-]{1,200}$/u.test(record2.blockId) ? { ...base, blockId: record2.blockId, kind: "block", path: record2.path } : null;
-  }
-  if (record2.kind === "link") {
-    const url2 = normalizedLink(record2.url);
-    return url2 === null ? null : { ...base, kind: "link", url: url2 };
-  }
-  if (record2.kind === "group" && allowGroup && Array.isArray(record2.children) && record2.children.length <= MAX_BOOKMARK_ITEMS) {
-    const children = [];
-    for (const child of record2.children) {
-      const parsed = parseBookmark(child, false);
-      if (parsed === null || parsed.kind === "group") return null;
-      children.push(parsed);
-    }
-    return { ...base, children, kind: "group" };
-  }
-  return null;
-}
-function flattenCount(bookmarks) {
-  return bookmarks.reduce((count3, bookmark) => count3 + 1 + (bookmark.kind === "group" ? bookmark.children.length : 0), 0);
-}
-function loadBookmarks(storage, vaultId) {
-  if (!/^vault:[0-9a-f]{64}$/u.test(vaultId)) return [];
-  try {
-    const raw = storage.getItem(key(vaultId));
-    if (raw === null || new TextEncoder().encode(raw).byteLength > MAX_BOOKMARK_BYTES) return [];
-    const value = JSON.parse(raw);
-    if (!Array.isArray(value)) return [];
-    const bookmarks = [];
-    const ids = /* @__PURE__ */ new Set();
-    for (const candidate of value) {
-      const bookmark = parseBookmark(candidate, true);
-      if (bookmark === null || ids.has(bookmark.id)) continue;
-      if (flattenCount([...bookmarks, bookmark]) > MAX_BOOKMARK_ITEMS) break;
-      ids.add(bookmark.id);
-      bookmarks.push(bookmark);
-    }
-    return bookmarks;
-  } catch {
-    return [];
-  }
-}
-function saveBookmarks(storage, vaultId, bookmarks) {
-  if (!/^vault:[0-9a-f]{64}$/u.test(vaultId) || flattenCount(bookmarks) > MAX_BOOKMARK_ITEMS) return false;
-  const parsed = bookmarks.map((bookmark) => parseBookmark(bookmark, true));
-  if (parsed.some((bookmark) => bookmark === null)) return false;
-  try {
-    const raw = JSON.stringify(parsed);
-    if (new TextEncoder().encode(raw).byteLength > MAX_BOOKMARK_BYTES) return false;
-    storage.setItem(key(vaultId), raw);
-    return true;
-  } catch {
-    return false;
-  }
-}
-function addBookmark(bookmarks, bookmark) {
-  const parsed = parseBookmark(bookmark, true);
-  if (parsed === null) throw new Error(bookmark.kind === "link" ? "Bookmark URL is invalid." : "Bookmark is invalid.");
-  const next = [...bookmarks.filter((candidate) => candidate.id !== parsed.id), parsed];
-  if (flattenCount(next) > MAX_BOOKMARK_ITEMS) throw new Error("Bookmark capacity is full.");
-  return next;
-}
-function remap(path, fromPath, toPath) {
-  return path === fromPath ? toPath : path.startsWith(`${fromPath}/`) ? `${toPath}${path.slice(fromPath.length)}` : path;
-}
-function remapBookmarks(bookmarks, fromPath, toPath) {
-  if (!isSafeVaultRelativePath(fromPath) || !isSafeVaultRelativePath(toPath)) return [...bookmarks];
-  const one = (bookmark) => {
-    if (bookmark.kind === "group") return { ...bookmark, children: bookmark.children.map((child) => one(child)) };
-    if ("path" in bookmark) return { ...bookmark, path: remap(bookmark.path, fromPath, toPath) };
-    return { ...bookmark };
-  };
-  return bookmarks.map(one);
-}
-
-// src/graph.ts
-var MAX_GRAPH_NODES = 180;
-var MAX_GRAPH_EDGES = 512;
-function safePath(path) {
-  return path.length > 0 && path.length <= 4096 && !path.startsWith("/") && !path.includes("\\") && !path.split("/").some((segment) => segment === "" || segment === "." || segment === "..");
-}
-function projectGraph(result, options) {
-  if (!Array.isArray(result.nodes) || result.nodes.length > MAX_GRAPH_NODES) throw new Error("Graph node limit exceeded.");
-  if (!Array.isArray(result.edges) || result.edges.length > MAX_GRAPH_EDGES) throw new Error("Graph edge limit exceeded.");
-  const query = options.query.trim().toLocaleLowerCase().slice(0, 1e3);
-  const orphanSet = new Set(result.orphans);
-  const nodes = result.nodes.filter((node) => safePath(node.path) && (options.includeOrphans || !orphanSet.has(node.path)) && (query === "" || node.path.toLocaleLowerCase().includes(query))).toSorted((left, right) => left.path.localeCompare(right.path));
-  const paths = new Set(nodes.map((node) => node.path));
-  const edges = result.edges.filter((edge) => paths.has(edge.sourcePath) && paths.has(edge.targetPath) && safePath(edge.sourcePath) && safePath(edge.targetPath)).toSorted((left, right) => left.sourcePath.localeCompare(right.sourcePath) || left.targetPath.localeCompare(right.targetPath) || left.line - right.line);
-  return { activePath: result.path, edges, nodes };
-}
-function hash2(value) {
-  let result = 2166136261;
-  for (const character of value) result = Math.imul(result ^ character.codePointAt(0), 16777619) >>> 0;
-  return result;
-}
-function bounded(value, min2, max2, fallback) {
-  return Number.isFinite(value) ? Math.min(max2, Math.max(min2, value)) : fallback;
-}
-function layoutGraph(graph, options) {
-  if (graph.nodes.length > MAX_GRAPH_NODES || graph.edges.length > MAX_GRAPH_EDGES) throw new Error("Graph layout limit exceeded.");
-  const iterations = Math.round(bounded(options.iterations, 1, 64, 32));
-  const repel = bounded(options.repelForce, 0, 1e4, 1800);
-  const linkForce = bounded(options.linkForce, 0, 1, 0.08);
-  const linkDistance = bounded(options.linkDistance, 20, 500, 120);
-  const centerForce = bounded(options.centerForce, 0, 1, 0.1);
-  const positions = graph.nodes.map((node, index2) => {
-    if (node.path === graph.activePath) return { ...node, x: 0, y: 0 };
-    const angle = hash2(node.path) % 3600 / 3600 * Math.PI * 2;
-    const radius = 80 + index2 % 12 * 18;
-    return { ...node, x: Math.cos(angle) * radius, y: Math.sin(angle) * radius };
-  });
-  const indexByPath = new Map(positions.map((node, index2) => [node.path, index2]));
-  for (let iteration = 0; iteration < iterations; iteration += 1) {
-    const delta = positions.map(() => ({ x: 0, y: 0 }));
-    for (let left = 0; left < positions.length; left += 1) {
-      for (let right = left + 1; right < positions.length; right += 1) {
-        const a = positions[left];
-        const b = positions[right];
-        let dx = a.x - b.x;
-        let dy = a.y - b.y;
-        let distanceSquared = dx * dx + dy * dy;
-        if (distanceSquared < 1) {
-          dx = (hash2(`${a.path}:${b.path}`) % 200 - 100) / 100;
-          dy = (hash2(`${b.path}:${a.path}`) % 200 - 100) / 100;
-          distanceSquared = Math.max(1, dx * dx + dy * dy);
-        }
-        const force = repel / distanceSquared;
-        delta[left].x += dx * force;
-        delta[left].y += dy * force;
-        delta[right].x -= dx * force;
-        delta[right].y -= dy * force;
-      }
-    }
-    for (const edge of graph.edges) {
-      const source = indexByPath.get(edge.sourcePath);
-      const target = indexByPath.get(edge.targetPath);
-      if (source === void 0 || target === void 0) continue;
-      const a = positions[source];
-      const b = positions[target];
-      const dx = b.x - a.x;
-      const dy = b.y - a.y;
-      const distance = Math.max(1, Math.hypot(dx, dy));
-      const force = (distance - linkDistance) * linkForce;
-      const x = dx / distance * force;
-      const y = dy / distance * force;
-      delta[source].x += x;
-      delta[source].y += y;
-      delta[target].x -= x;
-      delta[target].y -= y;
-    }
-    for (let index2 = 0; index2 < positions.length; index2 += 1) {
-      const node = positions[index2];
-      if (node.path === graph.activePath) {
-        node.x = 0;
-        node.y = 0;
-        continue;
-      }
-      node.x = bounded(node.x + delta[index2].x - node.x * centerForce, -2e3, 2e3, 0);
-      node.y = bounded(node.y + delta[index2].y - node.y * centerForce, -2e3, 2e3, 0);
-    }
-  }
-  return positions.map((node) => ({ ...node, x: Math.round(node.x * 100) / 100, y: Math.round(node.y * 100) / 100 }));
-}
-
-// src/capture.ts
-var MAX_TEMPLATE_BYTES = 1e6;
-function pad(value, length = 2) {
-  return String(value).padStart(length, "0");
-}
-function formatDate(value, format) {
-  const replacements = {
-    YYYY: String(value.getFullYear()),
-    MMMM: value.toLocaleString("en", { month: "long" }),
-    MMM: value.toLocaleString("en", { month: "short" }),
-    MM: pad(value.getMonth() + 1),
-    DD: pad(value.getDate()),
-    dddd: value.toLocaleString("en", { weekday: "long" }),
-    ddd: value.toLocaleString("en", { weekday: "short" }),
-    HH: pad(value.getHours()),
-    hh: pad(value.getHours() % 12 || 12),
-    mm: pad(value.getMinutes()),
-    ss: pad(value.getSeconds()),
-    SSS: pad(value.getMilliseconds(), 3),
-    A: value.getHours() < 12 ? "AM" : "PM"
-  };
-  let output = "";
-  for (let index2 = 0; index2 < format.length; ) {
-    if (format[index2] === "[") {
-      const close = format.indexOf("]", index2 + 1);
-      if (close >= 0) {
-        output += format.slice(index2 + 1, close);
-        index2 = close + 1;
-        continue;
-      }
-    }
-    const token = Object.keys(replacements).toSorted((left, right) => right.length - left.length).find((candidate) => format.startsWith(candidate, index2));
-    if (token === void 0) {
-      output += format[index2];
-      index2 += 1;
-    } else {
-      output += replacements[token];
-      index2 += token.length;
-    }
-  }
-  return output;
-}
-function safeFolder(folder) {
-  if (!isSafeVaultRelativePath(folder) || /^[A-Za-z]:/u.test(folder)) throw new Error("The capture folder is invalid.");
-  return folder.replace(/\/$/u, "");
-}
-function slug(value) {
-  return value.normalize("NFKD").replace(/[\u0300-\u036f]/gu, "").toLocaleLowerCase().replace(/[^a-z0-9]+/gu, "-").replace(/^-|-$/gu, "").slice(0, 80) || "capture";
-}
-function collisionPath(path, existing) {
-  if (!existing.has(path)) return path;
-  const extension = path.match(/(\.[^./]+)$/u)?.[1] ?? "";
-  const stem = extension === "" ? path : path.slice(0, -extension.length);
-  for (let index2 = 2; index2 <= 1e3; index2 += 1) {
-    const candidate = `${stem}-${String(index2)}${extension}`;
-    if (!existing.has(candidate)) return candidate;
-  }
-  throw new Error("No collision-safe capture path is available.");
-}
-function expandTemplate(template, context) {
-  if (new TextEncoder().encode(template).byteLength > MAX_TEMPLATE_BYTES) throw new Error("The template is too large.");
-  return template.replace(/\{\{(title|newTitle|content|fromTitle|date|time)(?::([^}\r\n]{1,100}))?\}\}/gu, (source, name2, format) => {
-    if (name2 === "title" || name2 === "newTitle") return context.title;
-    if (name2 === "content") return context.content ?? "";
-    if (name2 === "fromTitle") return context.fromTitle ?? "";
-    if (name2 === "date") return formatDate(context.now, format ?? "YYYY-MM-DD");
-    if (name2 === "time") return formatDate(context.now, format ?? "HH:mm");
-    return source;
-  });
-}
-function buildCaptureNote(input) {
-  const title = input.title.trim().slice(0, 200);
-  if (title === "") throw new Error("Capture title is required.");
-  if (new TextEncoder().encode(input.body).byteLength > MAX_TEMPLATE_BYTES) throw new Error("Capture body is too large.");
-  const folder = safeFolder(input.folder ?? "Inbox");
-  const date6 = formatDate(input.now, "YYYY-MM-DD");
-  return {
-    content: `# ${title}
-
-${input.body}`,
-    path: collisionPath(`${folder}/${date6}-${slug(title)}.md`, input.existing)
-  };
-}
-function buildJournalNote(input) {
-  const folder = safeFolder(input.folder);
-  const date6 = formatDate(input.now, input.dateFormat ?? "YYYY-MM-DD");
-  if (date6.length === 0 || date6.length > 200 || /[\\/:*?"<>|]/u.test(date6)) throw new Error("The journal date format is invalid.");
-  return {
-    content: input.template === void 0 ? `---
-journal-date: ${formatDate(input.now, "YYYY-MM-DD")}
----
-# ${date6}
-` : expandTemplate(input.template, { now: input.now, title: date6 }),
-    path: `${folder}/${date6}.md`
-  };
-}
-function uniqueNotePath(now, existing) {
-  const candidate = new Date(now);
-  candidate.setSeconds(0, 0);
-  for (let index2 = 0; index2 < 1440; index2 += 1) {
-    const path = `${formatDate(candidate, "YYYYMMDDHHmm")}.md`;
-    if (!existing.has(path)) return path;
-    candidate.setMinutes(candidate.getMinutes() + 1);
-  }
-  throw new Error("No unique-note timestamp is available within one day.");
-}
-
-// src/organize.ts
-var MAX_ORGANIZE_BYTES = 1e6;
-var MAX_ORGANIZE_CAPTURES = 100;
-function bytes2(value) {
-  return new TextEncoder().encode(value).byteLength;
-}
-function date5(value) {
-  return `${String(value.getFullYear())}-${String(value.getMonth() + 1).padStart(2, "0")}-${String(value.getDate()).padStart(2, "0")}`;
-}
-function slug2(value) {
-  return value.normalize("NFKD").replace(/[\u0300-\u036f]/gu, "").toLocaleLowerCase().replace(/[^a-z0-9]+/gu, "-").replace(/^-|-$/gu, "").slice(0, 80) || "note";
-}
-function safeUrl2(value) {
-  if (value === void 0 || value.trim() === "") return null;
-  try {
-    const url2 = new URL(value);
-    return (url2.protocol === "http:" || url2.protocol === "https:") && url2.username === "" && url2.password === "" ? url2.toString() : null;
-  } catch {
-    return null;
-  }
-}
-function digest(value) {
-  let hash3 = 2166136261;
-  for (const character of value) hash3 = Math.imul(hash3 ^ character.codePointAt(0), 16777619) >>> 0;
-  return hash3.toString(16).padStart(8, "0");
-}
-function buildHighlightNote(input) {
-  const title = input.title.trim().slice(0, 200);
-  if (title === "" || input.highlights.length === 0 || input.highlights.length > 1e3) throw new Error("Highlight input is invalid.");
-  const url2 = safeUrl2(input.sourceUrl);
-  if (input.sourceUrl !== void 0 && input.sourceUrl.trim() !== "" && url2 === null) throw new Error("Highlight source URL is invalid.");
-  const body = input.highlights.map((highlight) => {
-    if (bytes2(highlight) > MAX_ORGANIZE_BYTES) throw new Error("Highlight input is too large.");
-    return highlight.split(/\r?\n/u).map((line) => `> ${line}`).join("\n");
-  }).join("\n\n");
-  const content = [
-    "---",
-    ...url2 === null ? [] : [`source: ${JSON.stringify(url2)}`],
-    `title: ${JSON.stringify(title)}`,
-    "---",
-    `# ${title}`,
-    "",
-    body,
-    ""
-  ].join("\n");
-  if (bytes2(content) > MAX_ORGANIZE_BYTES) throw new Error("Highlight input is too large.");
-  return { content, path: `Highlights/${date5(input.now)}-${slug2(title)}.md` };
-}
-function buildOrganizationProposal(input) {
-  if (input.captures.length === 0 || input.captures.length > MAX_ORGANIZE_CAPTURES) throw new Error("Organization requires bounded captures.");
-  const title = input.title.trim().slice(0, 200);
-  if (title === "") throw new Error("Organization title is required.");
-  const seen = /* @__PURE__ */ new Set();
-  for (const capture of input.captures) {
-    if (!isSafeVaultRelativePath(capture.path) || !/^Inbox\/.+\.md$/iu.test(capture.path)) throw new Error("Capture path is invalid.");
-    if (seen.has(capture.path) || bytes2(capture.content) > MAX_ORGANIZE_BYTES) throw new Error("Capture input is invalid or too large.");
-    seen.add(capture.path);
-  }
-  const sections = input.captures.map((capture) => {
-    const heading2 = capture.content.match(/^#\s+(.+)$/mu)?.[1]?.trim() || capture.path.split("/").at(-1).replace(/\.md$/iu, "");
-    const body = capture.content.replace(/^---[\s\S]*?^---\s*/mu, "").replace(/^#\s+.*(?:\r?\n|$)/u, "").trim();
-    return `## ${heading2}
-
-Source: [[${capture.path}]]
-
-${body}`;
-  });
-  const destination = `Organized/${date5(input.now)}-${slug2(title)}.md`;
-  const content = `# ${title}
-
-${sections.join("\n\n")}
-`;
-  if (bytes2(content) > MAX_ORGANIZE_BYTES) throw new Error("Organization output is too large.");
-  const canonical = JSON.stringify({ captures: [...seen], content, destination, title });
-  return { captures: Object.freeze([...seen]), content, destination, id: `organize-${digest(canonical)}`, title };
-}
-
-// src/composer.ts
-function appendBlock(source, block, prepend = false) {
-  if (prepend) return `${block.replace(/\s+$/u, "")}
-
-${source.replace(/^\s+/u, "")}`;
-  const separator = source === "" || /(?:\r\n|[\r\n]){2}$/u.test(source) ? "" : /(?:\r\n|[\r\n])$/u.test(source) ? "\n" : "\n\n";
-  return `${source}${separator}${block.replace(/^\s+/u, "")}`;
-}
-function link(path, label, kind) {
-  if (kind === "none") return "";
-  if (kind === "embed") return `![[${path}]]`;
-  return `[[${path}|${label.replace(/[\[\]|\r\n]/gu, " ").trim().slice(0, 200) || path}]]`;
-}
-function extractSelectionToNote(input) {
-  if (!isSafeVaultRelativePath(input.destinationPath) || !/\.md$/iu.test(input.destinationPath)) throw new Error("Composer destination is invalid.");
-  if (!Number.isSafeInteger(input.start) || !Number.isSafeInteger(input.end) || input.start < 0 || input.end <= input.start || input.end > input.source.length) throw new Error("Composer selection is invalid.");
-  const selected = input.source.slice(input.start, input.end);
-  const replacement = link(input.destinationPath, selected, input.leftover);
-  const destinationContent = input.template === void 0 ? `${selected.replace(/^\s+|\s+$/gu, "")}
-` : expandTemplate(input.template, {
-    content: selected.replace(/^\s+|\s+$/gu, ""),
-    fromTitle: input.sourceTitle,
-    now: /* @__PURE__ */ new Date(),
-    title: input.destinationTitle
-  }).replace(/\s+$/u, "");
-  return {
-    destinationContent,
-    sourceContent: `${input.source.slice(0, input.start)}${replacement}${input.source.slice(input.end)}`
-  };
-}
-function mergeNotes(input) {
-  if (!isSafeVaultRelativePath(input.destinationPath) || !isSafeVaultRelativePath(input.sourcePath) || input.destinationPath === input.sourcePath) throw new Error("Composer merge paths are invalid.");
-  return {
-    destinationContent: appendBlock(input.destination, input.source, input.placement === "prepend"),
-    sourceContent: `${link(input.destinationPath, input.destinationPath.replace(/\.md$/iu, ""), input.leftover)}
-`
-  };
-}
-function convertFrontmatter(lines) {
-  if (lines[0] !== "---") return;
-  const end = lines.findIndex((line, index2) => index2 > 0 && (line === "---" || line === "..."));
-  if (end < 0) return;
-  const replacements = /* @__PURE__ */ new Map([["alias", "aliases"], ["tag", "tags"], ["cssclass", "cssclasses"]]);
-  for (let index2 = 1; index2 < end; index2 += 1) {
-    const match = lines[index2]?.match(/^([A-Za-z_][A-Za-z0-9_-]*):(.*)$/u);
-    const replacement = match === null || match === void 0 ? void 0 : replacements.get(match[1].toLocaleLowerCase());
-    if (replacement !== void 0) lines[index2] = `${replacement}:${match[2]}`;
-  }
-}
-function convertMarkdownFormats(source, options) {
-  if (new TextEncoder().encode(source).byteLength > 2e6) throw new Error("Format conversion source is too large.");
-  const eol = source.includes("\r\n") ? "\r\n" : "\n";
-  const finalEol = /(?:\r\n|[\r\n])$/u.test(source);
-  const lines = source.split(/\r?\n/u);
-  if (finalEol) lines.pop();
-  if (options.deprecatedProperties === true) convertFrontmatter(lines);
-  let fence2 = null;
-  for (let index2 = 0; index2 < lines.length; index2 += 1) {
-    let line = lines[index2];
-    const marker = line.match(/^ {0,3}(`{3,}|~{3,})/u)?.[1];
-    if (marker !== void 0) {
-      if (fence2 === null) fence2 = { character: marker[0], length: marker.length };
-      else if (marker[0] === fence2.character && marker.length >= fence2.length && /^ {0,3}(?:`{3,}|~{3,})\s*$/u.test(line)) fence2 = null;
-      continue;
-    }
-    if (fence2 !== null) continue;
-    if (options.roamBear === true) {
-      line = line.replace(/^(\s*[-+*]\s+)TODO\s+/u, "$1[ ] ");
-      line = line.replace(/\^\^([^\r\n^]{1,100000})\^\^/gu, "==$1==");
-    }
-    if (options.zettelkasten !== void 0) {
-      line = line.replace(/\[\[(\d{8,14})\]\]/gu, (original, uid) => {
-        const path = options.zettelkasten?.get(uid);
-        return path !== void 0 && isSafeVaultRelativePath(path) ? `[[${path}|${uid}]]` : original;
-      });
-    }
-    lines[index2] = line;
-  }
-  return `${lines.join(eol)}${finalEol ? eol : ""}`;
-}
-
-// src/attachments.ts
-var ACCEPTED = /\.(?:avif|bmp|gif|ico|jpe?g|png|webp|mp3|m4a|ogg|wav|webm|mp4|mov|pdf)$/iu;
-function attachmentTargetPath(folder, fileName3, existing) {
-  if (!isSafeVaultRelativePath(folder) || /^[A-Za-z]:/u.test(folder)) throw new Error("Attachment folder is invalid.");
-  const name2 = fileName3.trim();
-  if (name2.length === 0 || name2.length > 255 || name2.includes("/") || name2.includes("\\") || name2 === "." || name2 === "..") throw new Error("Attachment name is invalid.");
-  if (!ACCEPTED.test(name2)) throw new Error("Attachment type is unsupported.");
-  const first = `${folder}/${name2}`;
-  if (!existing.has(first)) return first;
-  const extension = name2.match(/(\.[^.]+)$/u)[1];
-  const stem = name2.slice(0, -extension.length);
-  for (let index2 = 2; index2 <= 1e3; index2 += 1) {
-    const candidate = `${folder}/${stem} ${String(index2)}${extension}`;
-    if (!existing.has(candidate)) return candidate;
-  }
-  throw new Error("Attachment destination capacity is full.");
-}
-function appendAttachmentMarkdown(source, markdown) {
-  const block = markdown.replace(/^\s+|\s+$/gu, "");
-  if (block === "") return source;
-  const separator = source === "" ? "" : /(?:\r\n|[\r\n]){2}$/u.test(source) ? "" : /(?:\r\n|[\r\n])$/u.test(source) ? "\n" : "\n\n";
-  return `${source}${separator}${block}
-`;
-}
-
-// src/settings.ts
-var MAX_TOCKTUTOR_SETTINGS_BYTES = 1048576;
-var MAX_TOCKTUTOR_WORKSPACES = 32;
-var MAX_TOCKTUTOR_CSS_BYTES = 524288;
-var DEFAULT_SETTINGS = Object.freeze({
-  attachmentFolder: "Attachments",
-  backlinksInDocument: false,
-  defaultEditingMode: "live-preview",
-  journalFolder: "Journals",
-  pagePreview: true,
-  templateFolder: "Templates"
-});
-function validVaultId(value) {
-  return /^vault:[0-9a-f]{64}$/u.test(value);
-}
-function settingsKey(vaultId) {
-  return `tocktutor.settings.v1.${validVaultId(vaultId) ? vaultId : "invalid"}`;
-}
-function stateKey(vaultId) {
-  return `tocktutor.workbench.v1.${validVaultId(vaultId) ? vaultId : "invalid"}`;
-}
-function safeFolder2(value, fallback) {
-  return typeof value === "string" && value.length <= 1e3 && isSafeVaultRelativePath(value) && !/^[A-Za-z]:/u.test(value) ? value : fallback;
-}
-function normalizeSettings(value) {
-  const record2 = typeof value === "object" && value !== null && !Array.isArray(value) ? value : {};
-  return {
-    attachmentFolder: safeFolder2(record2.attachmentFolder, DEFAULT_SETTINGS.attachmentFolder),
-    backlinksInDocument: record2.backlinksInDocument === true,
-    defaultEditingMode: record2.defaultEditingMode === "source" ? "source" : "live-preview",
-    journalFolder: safeFolder2(record2.journalFolder, DEFAULT_SETTINGS.journalFolder),
-    pagePreview: record2.pagePreview !== false,
-    templateFolder: safeFolder2(record2.templateFolder, DEFAULT_SETTINGS.templateFolder)
-  };
-}
-function readJson(storage, key2) {
-  try {
-    const raw = storage.getItem(key2);
-    if (raw === null || new TextEncoder().encode(raw).byteLength > MAX_TOCKTUTOR_SETTINGS_BYTES) return null;
-    return JSON.parse(raw);
-  } catch {
-    return null;
-  }
-}
-function writeJson(storage, key2, value) {
-  try {
-    const raw = JSON.stringify(value);
-    if (new TextEncoder().encode(raw).byteLength > MAX_TOCKTUTOR_SETTINGS_BYTES) return false;
-    storage.setItem(key2, raw);
-    return true;
-  } catch {
-    return false;
-  }
-}
-function loadTockTutorSettings(storage, vaultId) {
-  if (!validVaultId(vaultId)) return { ...DEFAULT_SETTINGS };
-  return normalizeSettings(readJson(storage, settingsKey(vaultId)));
-}
-function saveTockTutorSettings(storage, vaultId, change) {
-  if (!validVaultId(vaultId)) return { ...DEFAULT_SETTINGS };
-  const settings = normalizeSettings({ ...loadTockTutorSettings(storage, vaultId), ...change });
-  writeJson(storage, settingsKey(vaultId), settings);
-  return settings;
-}
-function workspaceId(name2) {
-  return name2.normalize("NFKD").replace(/[\u0300-\u036f]/gu, "").toLocaleLowerCase().replace(/[^a-z0-9]+/gu, "-").replace(/^-|-$/gu, "").slice(0, 64) || "workspace";
-}
-function normalizeWorkspace(value, vaultId) {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) return null;
-  const record2 = value;
-  if (typeof record2.id !== "string" || !/^[a-z0-9](?:[a-z0-9-]{0,63})$/u.test(record2.id)) return null;
-  if (typeof record2.name !== "string" || record2.name.trim().length === 0 || record2.name.length > 100) return null;
-  const session = hydrateWorkbenchSession(record2.session);
-  if (session.vault?.id !== vaultId) return null;
-  const createdAt = typeof record2.createdAt === "number" && Number.isFinite(record2.createdAt) && record2.createdAt >= 0 ? record2.createdAt : 0;
-  return { createdAt, focusMode: record2.focusMode === true, id: record2.id, name: record2.name.trim(), session };
-}
-function createNamedWorkspace(current, name2, session, createdAt = Date.now(), focusMode = false) {
-  const safeName = name2.trim().slice(0, 100) || "Workspace";
-  const base = workspaceId(safeName);
-  const used = new Set(current.map((workspace) => workspace.id));
-  let id = base;
-  for (let index2 = 2; used.has(id) && index2 <= MAX_TOCKTUTOR_WORKSPACES + 1; index2 += 1) id = `${base.slice(0, 60)}-${String(index2)}`;
-  if (used.has(id) || current.length >= MAX_TOCKTUTOR_WORKSPACES) return [...current];
-  return [...current, { createdAt, focusMode, id, name: safeName, session: hydrateWorkbenchSession(session) }];
-}
-function loadWorkbenchState(storage, vaultId) {
-  const fallback = { focusMode: false, session: createWorkbenchSession("/tocktutor", validVaultId(vaultId) ? { generation: 0, id: vaultId } : null, "pane-1"), workspaces: [] };
-  if (!validVaultId(vaultId)) return fallback;
-  const value = readJson(storage, stateKey(vaultId));
-  if (typeof value !== "object" || value === null || Array.isArray(value)) return fallback;
-  const record2 = value;
-  const session = hydrateWorkbenchSession(record2.session);
-  if (session.vault?.id !== vaultId) return fallback;
-  const workspaces = [];
-  const ids = /* @__PURE__ */ new Set();
-  if (Array.isArray(record2.workspaces)) {
-    for (const candidate of record2.workspaces.slice(0, MAX_TOCKTUTOR_WORKSPACES)) {
-      const workspace = normalizeWorkspace(candidate, vaultId);
-      if (workspace !== null && !ids.has(workspace.id)) {
-        ids.add(workspace.id);
-        workspaces.push(workspace);
-      }
-    }
-  }
-  return { focusMode: record2.focusMode === true, session, workspaces };
-}
-function saveWorkbenchState(storage, vaultId, state) {
-  if (!validVaultId(vaultId) || state.session.vault?.id !== vaultId) return false;
-  return writeJson(storage, stateKey(vaultId), {
-    focusMode: state.focusMode === true,
-    session: hydrateWorkbenchSession(state.session),
-    workspaces: state.workspaces.slice(0, MAX_TOCKTUTOR_WORKSPACES)
-  });
-}
-function safeSnippetId(value) {
-  return value.toLocaleLowerCase().replace(/[^a-z0-9_-]+/gu, "-").replace(/^-|-$/gu, "").slice(0, 64) || "snippet";
-}
-function compileTockTutorCssSnippet(id, source) {
-  if (typeof source !== "string" || new TextEncoder().encode(source).byteLength > MAX_TOCKTUTOR_CSS_BYTES) return null;
-  const stripped = source.replace(/\/\*[\s\S]*?\*\//gu, "").trim();
-  if (stripped === "") return "";
-  if (/@|url\s*\(|expression\s*\(|javascript:|[<>]/iu.test(stripped)) return null;
-  const output = [];
-  let cursor = 0;
-  let rules = 0;
-  while (cursor < stripped.length) {
-    const open = stripped.indexOf("{", cursor);
-    const close = open < 0 ? -1 : stripped.indexOf("}", open + 1);
-    if (open < 0 || close < 0 || stripped.slice(close + 1).includes("{") && stripped.slice(close + 1).indexOf("}") < stripped.slice(close + 1).indexOf("{")) return null;
-    const selector = stripped.slice(cursor, open).trim();
-    const body = stripped.slice(open + 1, close).trim();
-    if (selector === "" || body === "" || body.includes("{") || body.includes("}")) return null;
-    const selectors = selector.split(",").map((value) => value.trim());
-    if (selectors.some((value) => value === "" || value.length > 1e3)) return null;
-    output.push(`${selectors.map((value) => `.tocktutor-editor-scope ${value}`).join(", ")} { ${body} }`);
-    rules += 1;
-    if (rules > 1e3) return null;
-    cursor = close + 1;
-    while (/\s/u.test(stripped[cursor] ?? "")) cursor += 1;
-  }
-  void safeSnippetId(id);
-  return output.join("\n");
-}
-
-// src/editor-commands.ts
-var MAX_EDITOR_COMMAND_SOURCE_BYTES = 2e6;
-function byteLength3(value) {
-  return new TextEncoder().encode(value).byteLength;
-}
-function boundedRange(source, start, end) {
-  const safeStart = Number.isSafeInteger(start) ? Math.max(0, Math.min(start, source.length)) : 0;
-  const safeEnd = Number.isSafeInteger(end) ? Math.max(safeStart, Math.min(end, source.length)) : safeStart;
-  return [safeStart, safeEnd];
-}
-function replaceRange(source, start, end, value, selectOffset = 0) {
-  const next = `${source.slice(0, start)}${value}${source.slice(end)}`;
-  if (byteLength3(next) > MAX_EDITOR_COMMAND_SOURCE_BYTES) return { selectionEnd: end, selectionStart: start, source };
-  return {
-    selectionEnd: start + value.length - selectOffset,
-    selectionStart: start + selectOffset,
-    source: next
-  };
-}
-function applyEditorCommand(source, command, selectionStart, selectionEnd) {
-  const [start, end] = boundedRange(source, selectionStart, selectionEnd);
-  const selected = source.slice(start, end);
-  if (command === "delete-line") {
-    const lineStart = Math.max(source.lastIndexOf("\n", Math.max(0, start - 1)), source.lastIndexOf("\r", Math.max(0, start - 1))) + 1;
-    let lineEnd = source.length;
-    for (let index2 = start; index2 < source.length; index2 += 1) {
-      if (source[index2] !== "\n" && source[index2] !== "\r") continue;
-      lineEnd = index2 + (source.startsWith("\r\n", index2) ? 2 : 1);
-      break;
-    }
-    return replaceRange(source, lineStart, lineEnd, "");
-  }
-  if (command === "insert-table") {
-    const prefix = start > 0 && !/(?:\r\n|[\r\n]){2}$/u.test(source.slice(0, start)) ? "\n\n" : "";
-    const suffix = end < source.length && !/^(?:\r\n|[\r\n]){2}/u.test(source.slice(end)) ? "\n" : "";
-    const table = `${prefix}| Column 1 | Column 2 |
-| --- | --- |
-|  |  |
-${suffix}`;
-    return replaceRange(source, start, end, table, prefix.length + 2);
-  }
-  if (command === "callout-tip") {
-    const content = (selected || "Tip").split(/\r?\n/u).map((line) => `> ${line}`).join("\n");
-    return replaceRange(source, start, end, `> [!tip]
-${content}
-`);
-  }
-  const wrappers = {
-    bold: ["**", "**"],
-    highlight: ["==", "=="],
-    italic: ["*", "*"],
-    link: ["[", "](Target.md)"],
-    strikethrough: ["~~", "~~"]
-  };
-  const [before, after] = wrappers[command];
-  const value = `${before}${selected || "text"}${after}`;
-  return {
-    selectionEnd: start + before.length + (selected || "text").length,
-    selectionStart: start + before.length,
-    source: `${source.slice(0, start)}${value}${source.slice(end)}`
-  };
-}
-function parseTable(source) {
-  if (byteLength3(source) > MAX_EDITOR_COMMAND_SOURCE_BYTES) return null;
-  const eol = source.includes("\r\n") ? "\r\n" : "\n";
-  const finalEol = /(?:\r\n|[\r\n])$/u.test(source);
-  const lines = source.split(/\r?\n/u);
-  if (finalEol) lines.pop();
-  if (lines.length < 2) return null;
-  const cells = lines.map((line) => line.trim().replace(/^\|/u, "").replace(/\|$/u, "").split("|").map((cell) => cell.trim()));
-  const width = cells[0]?.length ?? 0;
-  if (width < 1 || cells.some((row) => row.length !== width)) return null;
-  if (!cells[1]?.every((cell) => /^:?-{3,}:?$/u.test(cell))) return null;
-  return { cells, eol, finalEol };
-}
-function serializeTable(cells, eol, finalEol) {
-  return `${cells.map((row) => `| ${row.join(" | ")} |`).join(eol)}${finalEol ? eol : ""}`;
-}
-function compareCells(left, right) {
-  const leftNumber = Number(left);
-  const rightNumber = Number(right);
-  if (left.trim() !== "" && right.trim() !== "" && Number.isFinite(leftNumber) && Number.isFinite(rightNumber)) {
-    return leftNumber - rightNumber;
-  }
-  return left.localeCompare(right, void 0, { sensitivity: "base" });
-}
-function applyTableCommand(source, command) {
-  const parsed = parseTable(source);
-  if (parsed === null) return source;
-  const cells = parsed.cells.map((row) => [...row]);
-  const width = cells[0].length;
-  if (command.kind === "add-row") {
-    const index2 = Math.max(0, Math.min(command.row, cells.length - 2)) + 2;
-    cells.splice(index2, 0, Array.from({ length: width }, () => ""));
-  } else if (command.kind === "delete-row" || command.kind === "move-row-down" || command.kind === "move-row-up") {
-    const index2 = command.row + 2;
-    if (index2 < 2 || index2 >= cells.length) return source;
-    if (command.kind === "delete-row") cells.splice(index2, 1);
-    else {
-      const destination = index2 + (command.kind === "move-row-up" ? -1 : 1);
-      if (destination < 2 || destination >= cells.length) return source;
-      const [row] = cells.splice(index2, 1);
-      if (row !== void 0) cells.splice(destination, 0, row);
-    }
-  } else {
-    if (!("column" in command)) return source;
-    if (!Number.isSafeInteger(command.column) || command.column < 0 || command.column >= width) return source;
-    if (command.kind === "delete-column") {
-      if (width === 1) return source;
-      for (const row of cells) row.splice(command.column, 1);
-    } else if (command.kind.startsWith("align-")) {
-      const marker = command.kind === "align-center" ? ":---:" : command.kind === "align-left" ? ":---" : command.kind === "align-right" ? "---:" : "---";
-      cells[1][command.column] = marker;
-    } else {
-      const direction = command.kind === "sort-descending" ? -1 : 1;
-      const rows = cells.slice(2).map((row, index2) => ({ index: index2, row }));
-      rows.sort((left, right) => direction * compareCells(left.row[command.column] ?? "", right.row[command.column] ?? "") || left.index - right.index);
-      cells.splice(2, cells.length - 2, ...rows.map((entry) => entry.row));
-    }
-  }
-  return serializeTable(cells, parsed.eol, parsed.finalEol);
-}
-var SLASH_COMMANDS = /* @__PURE__ */ new Map([
-  ["/bold", "bold"],
-  ["/callout", "callout-tip"],
-  ["/highlight", "highlight"],
-  ["/italic", "italic"],
-  ["/link", "link"],
-  ["/strike", "strikethrough"],
-  ["/table", "insert-table"]
-]);
-function resolveSlashCommand(value) {
-  return SLASH_COMMANDS.get(value.trim().toLocaleLowerCase()) ?? null;
-}
-function resolvePlatformEditorCommand(event, isMac) {
-  const primary = isMac ? event.metaKey : event.ctrlKey;
-  if (!primary || event.altKey) return null;
-  const key2 = event.key.toLocaleLowerCase();
-  if (!event.shiftKey && key2 === "b") return "bold";
-  if (!event.shiftKey && key2 === "i") return "italic";
-  if (event.shiftKey && key2 === "x") return "strikethrough";
-  if (event.shiftKey && key2 === "h") return "highlight";
-  if (event.shiftKey && key2 === "k") return "delete-line";
-  return null;
-}
-function internalLinkDropMarkdown(path, label) {
-  if (!isSafeVaultRelativePath(path)) return null;
-  const target = path;
-  const safeLabel = label?.replace(/[\[\]|\r\n]/gu, "").trim().slice(0, 1e3);
-  return safeLabel ? `[[${target}|${safeLabel}]]` : `[[${target}]]`;
-}
-function codeRanges(source) {
-  const ranges2 = [];
-  const fence2 = /^ {0,3}(`{3,}|~{3,}).*$(?:\r?\n|\r)([\s\S]*?)^ {0,3}\1\s*$/gmu;
-  for (const match of source.matchAll(fence2)) {
-    if (match.index !== void 0) ranges2.push([match.index, match.index + match[0].length]);
-  }
-  for (const match of source.matchAll(/`[^`\r\n]*`/gu)) {
-    if (match.index !== void 0) ranges2.push([match.index, match.index + match[0].length]);
-  }
-  return ranges2;
-}
-function pagePreviewTargetAtOffset(source, offset4) {
-  if (!Number.isSafeInteger(offset4) || offset4 < 0 || offset4 > source.length || byteLength3(source) > MAX_EDITOR_COMMAND_SOURCE_BYTES) return null;
-  if (codeRanges(source).some(([start, end]) => offset4 >= start && offset4 < end)) return null;
-  for (const match of source.matchAll(/\[\[([^\]|\r\n]{1,2000})(?:\|[^\]\r\n]{0,2000})?\]\]/gu)) {
-    if (match.index === void 0 || offset4 < match.index || offset4 >= match.index + match[0].length) continue;
-    const [path, fragment] = match[1].split("#", 2);
-    if (!isSafeVaultRelativePath(/\.md$/iu.test(path) ? path : `${path}.md`)) return null;
-    return { fragment: fragment?.replace(/^\^/u, "") || null, path };
-  }
-  return null;
-}
-
-// src/markdown.ts
-function sourceLines2(source) {
-  const result = [];
-  let start = 0;
-  for (let index2 = 0; index2 < source.length; index2 += 1) {
-    const character = source[index2];
-    if (character !== "\n" && character !== "\r") continue;
-    result.push({ text: source.slice(start, index2), start });
-    if (character === "\r" && source[index2 + 1] === "\n") index2 += 1;
-    start = index2 + 1;
-  }
-  result.push({ text: source.slice(start), start });
-  return result;
-}
-function maskComments(line, open) {
-  const chars = line.split("");
-  let cursor = 0;
-  let inside = open;
-  while (cursor < line.length) {
-    const marker = line.indexOf("%%", cursor);
-    if (marker < 0) {
-      if (inside) for (let index2 = cursor; index2 < line.length; index2 += 1) chars[index2] = " ";
-      break;
-    }
-    if (inside) {
-      for (let index2 = cursor; index2 < marker + 2; index2 += 1) chars[index2] = " ";
-      inside = false;
-    } else {
-      for (let index2 = marker; index2 < marker + 2; index2 += 1) chars[index2] = " ";
-      inside = true;
-    }
-    cursor = marker + 2;
-  }
-  return { text: chars.join(""), open: inside };
-}
-function fence(value) {
-  const match = /^ {0,3}(`{3,}|~{3,})(.*)$/u.exec(value);
-  return match === null ? null : { marker: match[1], rest: match[2] };
-}
-function taskMatch(value) {
-  const match = /^(\s*[-*+]\s+)\[([^\]\n])\](?:\s+)(.*)$/u.exec(value);
-  return match === null ? null : { prefix: match[1], marker: match[2], body: match[3] };
-}
-function taskLocations(source) {
-  const locations = [];
-  let commentOpen = false;
-  let fenceMarker2 = null;
-  for (const line of sourceLines2(source)) {
-    const masked = maskComments(line.text, commentOpen);
-    commentOpen = masked.open;
-    const fenceMatch = fence(masked.text);
-    if (fenceMarker2 !== null) {
-      if (fenceMatch !== null && fenceMatch.marker[0] === fenceMarker2[0] && fenceMatch.marker.length >= fenceMarker2.length && fenceMatch.rest.trim() === "") fenceMarker2 = null;
-      continue;
-    }
-    if (fenceMatch !== null) {
-      fenceMarker2 = fenceMatch.marker;
-      continue;
-    }
-    const match = taskMatch(masked.text);
-    if (match === null) continue;
-    locations.push({
-      index: locations.length,
-      markerStart: line.start + match.prefix.length,
-      marker: match.marker
-    });
-  }
-  return locations;
-}
-function toggleMarkdownTask(source, taskIndex) {
-  if (!Number.isSafeInteger(taskIndex) || taskIndex < 0) return source;
-  const location = taskLocations(source).find((task) => task.index === taskIndex);
-  if (location === void 0) return source;
-  const next = location.marker === " " ? "x" : " ";
-  return `${source.slice(0, location.markerStart)}[${next}]${source.slice(location.markerStart + 3)}`;
-}
-function resolveEditorShortcut(event, isMac) {
-  const modifier = isMac ? event.metaKey && !event.ctrlKey : event.ctrlKey && !event.metaKey;
-  if (event.altKey) return null;
-  if (modifier && !event.shiftKey && event.key.toLowerCase() === "s") return "save";
-  if (modifier && !event.shiftKey && event.key.toLowerCase() === "p") return "command-palette";
-  if (modifier && event.shiftKey && event.key.toLowerCase() === "k") return "delete-line";
-  if (!modifier && !event.shiftKey && !event.metaKey && !event.ctrlKey && event.key === "Escape") {
-    return "simplify-selection";
-  }
-  return null;
-}
-
-// src/vault-events.ts
-function isRecord4(value) {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-function hasExactKeys(value, keys) {
-  const actual = Object.keys(value).toSorted();
-  const expected = keys.toSorted();
-  return actual.length === expected.length && actual.every((key2, index2) => key2 === expected[index2]);
-}
-function isVaultReference(value) {
-  return isRecord4(value) && hasExactKeys(value, ["generation", "id"]) && Number.isSafeInteger(value.generation) && value.generation >= 0 && typeof value.id === "string" && /^vault:[0-9a-f]{64}$/u.test(value.id);
-}
-function isNoteVaultChangeEvent(value) {
-  if (!isRecord4(value) || !isVaultReference(value.vault)) return false;
-  if (value.kind === "vault") {
-    return value.action === "activated" && hasExactKeys(value, ["action", "kind", "vault"]);
-  }
-  if (value.kind === "tree") {
-    return (value.action === "changed" || value.action === "watcher-error") && hasExactKeys(value, ["action", "kind", "vault"]);
-  }
-  if (value.kind !== "entry" || !isSafeVaultRelativePath(value.path)) return false;
-  if (value.action === "created" || value.action === "external-change" || value.action === "external-rename" || value.action === "stored" || value.action === "updated") return hasExactKeys(value, ["action", "kind", "path", "vault"]);
-  return (value.action === "duplicated" || value.action === "moved" || value.action === "restored" || value.action === "trashed") && isSafeVaultRelativePath(value.fromPath) && hasExactKeys(value, ["action", "fromPath", "kind", "path", "vault"]);
-}
-function subscribeNoteVaultChanges(remote, currentVault, listener) {
-  return remote.$on("note-vault/change", (event) => {
-    if (!isNoteVaultChangeEvent(event)) return;
-    const current = currentVault();
-    if (current === null || event.vault.id !== current.id || event.vault.generation !== current.generation) return;
-    listener(event);
-  });
-}
-
-// src/route.tsx
-var import_jsx_runtime22 = require("react/jsx-runtime");
-var ROUTE_PREFIX = "/tocktutor";
-var TREE_LIMIT = 200;
-var DEFAULT_SIDEBAR_WIDTH = 280;
-var COLLAPSED_TITLEBAR_SIDEBAR_WIDTH = 84;
-var MIN_SIDEBAR_WIDTH = 180;
-var MAX_SIDEBAR_WIDTH = 480;
-var DEFAULT_ASSISTANT_PANEL_WIDTH = 300;
-var MIN_ASSISTANT_PANEL_WIDTH = 240;
-var MAX_ASSISTANT_PANEL_WIDTH = 720;
-var clampAssistantPanelWidth = (width) => Math.min(
-  MAX_ASSISTANT_PANEL_WIDTH,
-  Math.max(MIN_ASSISTANT_PANEL_WIDTH, width)
-);
-var MAX_ROUTE_SOURCE_BYTES = 2e6;
-var RemoteCallError = class extends Error {
-  constructor(code, message) {
-    super(message);
-    this.code = code;
-  }
-};
-function remoteValue(result) {
-  if (result.ok) return result.value;
-  throw new RemoteCallError(result.error.code, result.error.message);
-}
-function sameVault(left, right) {
-  return left !== null && left.id === right.id && left.generation === right.generation;
-}
-function validRecentVaults(value) {
-  return Number.isSafeInteger(value?.generation) && value.generation >= 0 && Array.isArray(value.vaults) && value.vaults.length <= 20 && value.vaults.every((vault) => /^vault:[0-9a-f]{64}$/u.test(vault.id) && Number.isFinite(vault.lastOpenedAt) && vault.lastOpenedAt >= 0);
-}
-function validSearchResult(value, vault) {
-  return value?.generation === vault.generation && typeof value.query === "string" && Array.isArray(value.matches) && value.matches.length <= 100 && value.matches.every((match) => isSafeVaultRelativePath(match.path) && typeof match.preview === "string" && match.preview.length <= 4096 && (match.line === null || Number.isSafeInteger(match.line)));
-}
-function documentKind(path) {
-  if (!isSafeVaultRelativePath(path)) return null;
-  if (/\.(?:markdown|md)$/iu.test(path)) return "markdown";
-  if (/\.canvas$/iu.test(path)) return "canvas";
-  if (/\.base$/iu.test(path)) return "base";
-  return null;
-}
-function supportedDocument(path) {
-  return documentKind(path) !== null;
-}
-function routeModeFromSession(mode) {
-  return mode === "wysiwyg" ? "live-preview" : mode;
-}
-function sessionModeFromRoute(mode) {
-  return mode === "live-preview" ? "wysiwyg" : mode;
-}
-function boundedSource(source) {
-  return new TextEncoder().encode(source).byteLength <= MAX_ROUTE_SOURCE_BYTES;
-}
-function defaultWorkbenchStorage() {
-  try {
-    return typeof globalThis.localStorage === "undefined" ? null : globalThis.localStorage;
-  } catch {
-    return null;
-  }
-}
-function pathFromTockTutorLocation(pathname) {
-  if (pathname === ROUTE_PREFIX || pathname === `${ROUTE_PREFIX}/`) return null;
-  if (!pathname.startsWith(`${ROUTE_PREFIX}/`)) return null;
-  try {
-    const path = pathname.slice(ROUTE_PREFIX.length + 1).split("/").map((segment) => decodeURIComponent(segment)).join("/");
-    return supportedDocument(path) ? path : null;
-  } catch {
-    return null;
-  }
-}
-function routeForPath(path) {
-  return `${ROUTE_PREFIX}/${path.split("/").map((segment) => encodeURIComponent(segment)).join("/")}`;
-}
-function initialSnapshot() {
-  return Object.freeze({
-    attachmentPreview: null,
-    bookmarks: Object.freeze([]),
-    canGoBack: false,
-    canGoForward: false,
-    commandPaletteOpen: false,
-    dispatchDialog: null,
-    documentKind: null,
-    draftRecovered: false,
-    entries: Object.freeze([]),
-    facets: null,
-    focusedPaneId: "pane-1",
-    focusMode: false,
-    graph: null,
-    graphLayout: Object.freeze([]),
-    graphMode: "global",
-    links: null,
-    message: "Loading the active vault.",
-    outline: null,
-    mode: "source",
-    organizationProposal: null,
-    path: null,
-    phase: "loading",
-    recentVaults: Object.freeze([]),
-    recentlyClosed: Object.freeze([]),
-    recoveryOpen: false,
-    revision: null,
-    saveStatus: "saved",
-    searchLoading: false,
-    searchMatches: Object.freeze([]),
-    searchMode: "query",
-    searchOpen: false,
-    searchQuery: "",
-    selectedSnapshot: null,
-    selectionEnd: 0,
-    selectionStart: 0,
-    snapshots: Object.freeze([]),
-    source: "",
-    trash: Object.freeze([]),
-    panes: Object.freeze([Object.freeze({
-      activePath: null,
-      id: "pane-1",
-      tabs: Object.freeze([])
-    })]),
-    vault: null,
-    warnings: Object.freeze([]),
-    workspaces: Object.freeze([])
-  });
-}
-var WorkbenchRouteController = class {
-  constructor(remote, navigate, now = () => /* @__PURE__ */ new Date(), storage = defaultWorkbenchStorage()) {
-    this.remote = remote;
-    this.navigate = navigate;
-    this.now = now;
-    this.storage = storage;
-  }
-  snapshot = initialSnapshot();
-  listeners = /* @__PURE__ */ new Set();
-  vaultGeneration = 0;
-  shellSession = createWorkbenchSession(ROUTE_PREFIX, null, "pane-1");
-  recentlyClosed = [];
-  historyBack = [];
-  historyForward = [];
-  bookmarks = [];
-  workspaces = [];
-  operation = 0;
-  dispatchRevision = 0;
-  operationAbort = null;
-  saveAbort = null;
-  saving = null;
-  draftAbort = null;
-  draftTimer = null;
-  eventDispose = null;
-  pendingDispatch = null;
-  pathname = ROUTE_PREFIX;
-  started = false;
-  disposed = false;
-  getSnapshot = () => this.snapshot;
-  async handleDispatch(event) {
-    const vault = this.snapshot.vault;
-    if (this.disposed || this.snapshot.phase !== "ready" || vault === null) return "stale";
-    const revision = this.dispatchRevision;
-    if (event.operationId.length === 0 || event.operationId.length > 256 || /[\u0000-\u001f\u007f]/u.test(event.operationId)) return "failed";
-    if (event.kind === "quick-action") {
-      if (event.action === "new" || event.action === "capture") {
-        return await this.openDispatchDialog(event.action, event.operationId, revision, vault);
-      }
-      if (event.action === "search") {
-        this.openSearch("");
-        return "handled";
-      }
-    }
-    const request = event.kind === "protocol" ? event.request : event.action === "daily" ? { action: "daily" } : void 0;
-    if (request === void 0) return "failed";
-    if (request.action === "choose-vault" || request.vault !== void 0 || request.paneType === "window") return "failed";
-    if (request.action === "search") {
-      if (request.query !== void 0 && request.query.length > 1e3) return "failed";
-      this.openSearch(request.query ?? "");
-      return "handled";
-    }
-    if (request.action === "open") {
-      if (request.file === void 0) {
-        if (this.snapshot.saveStatus !== "saved" && !await this.save()) return "failed";
-        if (!this.dispatchCurrent(revision, vault)) return "stale";
-        this.navigate(ROUTE_PREFIX);
-        return "handled";
-      }
-      const opened = await this.select(request.file, true, revision);
-      if (!this.dispatchCurrent(revision, vault)) return "stale";
-      return opened ? "handled" : "failed";
-    }
-    if (request.action === "daily") {
-      const journal = buildJournalNote({
-        folder: this.snapshot.settings?.journalFolder ?? "Journals",
-        now: this.now()
-      });
-      const path2 = journal.path;
-      const exists = this.snapshot.path === path2 || this.snapshot.entries.some((entry) => entry.path === path2);
-      if (exists) {
-        if (request.content !== void 0 || request.ifExists !== void 0) return "failed";
-        if (request.silent === true) return "handled";
-        const opened = await this.select(path2, true, revision);
-        if (!this.dispatchCurrent(revision, vault)) return "stale";
-        return opened ? "handled" : "failed";
-      }
-      return await this.createDispatchedDocument(
-        path2,
-        request.content ?? journal.content,
-        request.silent === true,
-        revision,
-        vault
-      );
-    }
-    if (request.action === "unique") {
-      const existing = new Set(this.snapshot.entries.filter((entry) => entry.kind === "document").map((entry) => entry.path));
-      if (this.snapshot.path !== null) existing.add(this.snapshot.path);
-      return await this.createDispatchedDocument(
-        uniqueNotePath(this.now(), existing),
-        request.content ?? "",
-        request.silent === true,
-        revision,
-        vault
-      );
-    }
-    if (request.action !== "new") return "failed";
-    const path = request.file ?? (request.name === void 0 ? void 0 : /\.md$/iu.test(request.name) ? request.name : `${request.name}.md`);
-    if (path === void 0 || !isSafeVaultRelativePath(path) || !/\.md$/iu.test(path)) return "failed";
-    return await this.createDispatchedDocument(
-      path,
-      request.content ?? "",
-      request.silent === true,
-      revision,
-      vault
-    );
-  }
-  async createDispatchedDocument(path, content, silent, revision, vault) {
-    if (!isSafeVaultRelativePath(path) || !/\.md$/iu.test(path) || !boundedSource(content)) return "failed";
-    const previousPath = this.snapshot.path;
-    if (this.snapshot.saveStatus !== "saved" && !await this.save()) return "failed";
-    if (!this.dispatchCurrent(revision, vault)) return "stale";
-    try {
-      const created = remoteValue(await this.remote.tocktutorWorkbench.createDocument({
-        content,
-        expectedVault: vault,
-        path
-      }));
-      if (!this.dispatchCurrent(revision, vault)) return "stale";
-      if (created.generation !== vault.generation || created.path !== path || created.status !== "created") return "failed";
-      if (silent) return "handled";
-      this.update({
-        documentKind: "markdown",
-        message: `${path} created.`,
-        mode: "source",
-        path,
-        revision: created.revision,
-        saveStatus: "saved",
-        source: content
-      });
-      this.recordOpen(path, true, previousPath);
-      this.navigate(routeForPath(path));
-      return "handled";
-    } catch {
-      return this.dispatchCurrent(revision, vault) ? "failed" : "stale";
-    }
-  }
-  openDispatchDialog(kind, operationId, revision, vault) {
-    this.settlePendingDispatch("stale");
-    this.update({ dispatchDialog: kind });
-    return new Promise((resolve) => {
-      this.pendingDispatch = { kind, operationId, resolve, revision, submitting: false, vault };
-    });
-  }
-  async submitDispatchDialog(draft) {
-    const pending = this.pendingDispatch;
-    if (pending === null || pending.submitting) return;
-    pending.submitting = true;
-    let path;
-    let content;
-    if (pending.kind === "new") {
-      path = draft.path?.trim() ?? "";
-      content = "";
-    } else {
-      const title = draft.title?.trim() ?? "";
-      const text2 = draft.text ?? "";
-      if (title.length === 0 || title.length > 200 || text2.length > 1e5) {
-        this.settlePendingDispatch("failed");
-        return;
-      }
-      try {
-        const capture = buildCaptureNote({
-          body: text2,
-          existing: new Set(this.snapshot.entries.filter((entry) => entry.kind === "document").map((entry) => entry.path)),
-          now: this.now(),
-          title
-        });
-        path = capture.path;
-        content = capture.content;
-      } catch {
-        this.settlePendingDispatch("failed");
-        return;
-      }
-    }
-    const result = await this.createDispatchedDocument(
-      path,
-      content,
-      false,
-      pending.revision,
-      pending.vault
-    );
-    if (this.pendingDispatch === pending) this.settlePendingDispatch(result);
-  }
-  cancelDispatchDialog() {
-    this.settlePendingDispatch("failed");
-  }
-  setSearchQuery(query) {
-    if (query.length <= 1e3) this.update({ searchQuery: query });
-  }
-  closeSearch() {
-    this.update({ searchLoading: false, searchMatches: Object.freeze([]), searchOpen: false, searchQuery: "" });
-  }
-  openSearch(query) {
-    this.update({ searchMatches: Object.freeze([]), searchOpen: true, searchQuery: query });
-  }
-  setSearchMode(mode) {
-    this.update({ searchMode: mode });
-  }
-  async runSearch() {
-    const vault = this.snapshot.vault;
-    const query = this.snapshot.searchQuery.trim();
-    if (vault === null || query.length === 0 || query.length > 1e3) {
-      this.update({ searchMatches: Object.freeze([]) });
-      return false;
-    }
-    const mode = this.snapshot.searchMode ?? "query";
-    const operation = this.nextOperation();
-    this.update({ searchLoading: true });
-    try {
-      const result = remoteValue(await this.remote.tocktutorWorkbench.search({
-        expectedVault: vault,
-        limit: 100,
-        mode,
-        query
-      }, operation.signal));
-      if (!this.current(operation.id, vault) || !validSearchResult(result, vault)) return false;
-      this.update({
-        message: result.truncated ? "Search returned a bounded partial result." : `${String(result.matches.length)} search results.`,
-        searchLoading: false,
-        searchMatches: Object.freeze(result.matches.map((match) => Object.freeze({ ...match })))
-      });
-      return true;
-    } catch {
-      if (this.current(operation.id, vault) && !operation.signal.aborted) {
-        this.update({ message: "Search could not be completed.", searchLoading: false });
-      }
-      return false;
-    }
-  }
-  async loadFacets() {
-    const vault = this.snapshot.vault;
-    if (vault === null) return false;
-    const operation = this.nextOperation();
-    try {
-      const facets = remoteValue(await this.remote.tocktutorWorkbench.facets({ expectedVault: vault, limit: 1e3 }, operation.signal));
-      if (!this.current(operation.id, vault) || facets.generation !== vault.generation || !Array.isArray(facets.tags) || !Array.isArray(facets.properties) || facets.tags.length > 1e3 || facets.properties.length > 1e3) return false;
-      this.update({ facets });
-      return true;
-    } catch {
-      return false;
-    }
-  }
-  async loadGraph(mode) {
-    const vault = this.snapshot.vault;
-    if (vault === null || mode === "local" && this.snapshot.path === null) return false;
-    const operation = this.nextOperation();
-    try {
-      const graph = remoteValue(await this.remote.tocktutorWorkbench.graph({
-        ...mode === "local" ? { depth: 2 } : {},
-        direction: "both",
-        expectedVault: vault,
-        includeAttachments: false,
-        includeTags: false,
-        limit: 180,
-        ...mode === "local" && this.snapshot.path !== null ? { path: this.snapshot.path } : {},
-        scope: mode
-      }, operation.signal));
-      if (!this.current(operation.id, vault) || graph.generation !== vault.generation || !Array.isArray(graph.nodes) || !Array.isArray(graph.edges)) return false;
-      const projected = projectGraph(graph, { includeOrphans: true, query: "" });
-      const graphLayout = layoutGraph(projected, {
-        centerForce: 0.1,
-        iterations: 32,
-        linkDistance: 120,
-        linkForce: 0.08,
-        repelForce: 1800
-      });
-      this.update({ graph, graphLayout: Object.freeze(graphLayout.map((node) => Object.freeze(node))), graphMode: mode });
-      return true;
-    } catch {
-      return false;
-    }
-  }
-  async openSmartView(kind) {
-    this.openSearch("");
-    if (kind === "recent") {
-      const matches = this.snapshot.entries.filter((entry) => entry.kind === "document" && /\.(?:markdown|md)$/iu.test(entry.path)).toSorted((left, right) => right.modifiedAt - left.modifiedAt || left.path.localeCompare(right.path)).slice(0, 100).map((entry) => ({ kind: "path", line: null, path: entry.path, preview: "Recently modified note." }));
-      this.update({ searchMatches: Object.freeze(matches) });
-      return true;
-    }
-    if (kind === "tags") return await this.loadFacets();
-    const query = kind === "tasks" ? "task:todo" : kind === "journals" ? "path:Journals" : kind === "favorites" ? "[favorite:true]" : "[kind:collection]";
-    this.setSearchQuery(query);
-    this.setSearchMode("query");
-    return await this.runSearch();
-  }
-  async loadRelationships() {
-    const vault = this.snapshot.vault;
-    const path = this.snapshot.path;
-    if (vault === null || path === null || this.snapshot.documentKind !== "markdown") return false;
-    const operation = this.nextOperation();
-    try {
-      const [outlineResult, linksResult] = await Promise.all([
-        this.remote.tocktutorWorkbench.outline({ expectedVault: vault, includeFootnotes: true, path }, operation.signal),
-        this.remote.tocktutorWorkbench.links({ expectedVault: vault, includeUnlinked: true, path }, operation.signal)
-      ]);
-      const outline = remoteValue(outlineResult);
-      const links = remoteValue(linksResult);
-      if (!this.current(operation.id, vault) || this.snapshot.path !== path || outline.generation !== vault.generation || links.generation !== vault.generation || outline.path !== path || links.path !== path || !Array.isArray(outline.headings) || !Array.isArray(links.backlinkDetails) || !Array.isArray(links.outgoingDetails)) return false;
-      this.update({ links, outline });
-      return true;
-    } catch {
-      return false;
-    }
-  }
-  jumpToLine(line) {
-    if (!Number.isSafeInteger(line) || line < 1 || this.snapshot.path === null) return false;
-    let offset4 = 0;
-    for (let current = 1; current < line; current += 1) {
-      const next = this.snapshot.source.indexOf("\n", offset4);
-      if (next < 0) return false;
-      offset4 = next + 1;
-    }
-    this.setMode("source");
-    this.setSelection(offset4, offset4);
-    return true;
-  }
-  settlePendingDispatch(result) {
-    const pending = this.pendingDispatch;
-    if (pending === null) return;
-    this.pendingDispatch = null;
-    this.update({ dispatchDialog: null });
-    pending.resolve(result);
-  }
-  dispatchCurrent(revision, vault) {
-    return !this.disposed && revision === this.dispatchRevision && sameVault(this.snapshot.vault, vault);
-  }
-  invalidateDispatch() {
-    this.dispatchRevision += 1;
-    this.settlePendingDispatch("stale");
-  }
-  subscribe = (listener) => {
-    this.listeners.add(listener);
-    return () => {
-      this.listeners.delete(listener);
-    };
-  };
-  update(change) {
-    if (this.disposed) return;
-    this.snapshot = Object.freeze({ ...this.snapshot, ...change });
-    for (const listener of this.listeners) listener();
-  }
-  shellPanes() {
-    return Object.freeze(this.shellSession.groups.map((group) => Object.freeze({
-      activePath: group.tabs.find((tab) => tab.id === group.activeTabId)?.path ?? null,
-      id: group.id,
-      tabs: Object.freeze(group.tabs.map((tab) => Object.freeze({
-        dirty: tab.dirty,
-        mode: routeModeFromSession(tab.mode),
-        path: tab.path,
-        pinned: tab.pinned
-      })))
-    })));
-  }
-  syncShell(change = {}) {
-    this.update({
-      canGoBack: this.historyBack.length > 0,
-      canGoForward: this.historyForward.length > 0,
-      focusedPaneId: this.shellSession.focusedGroupId,
-      panes: this.shellPanes(),
-      recentlyClosed: Object.freeze(this.recentlyClosed.map((tab) => Object.freeze({ ...tab }))),
-      workspaces: Object.freeze(this.workspaces.map((workspace) => Object.freeze({ ...workspace }))),
-      ...change
-    });
-    const vaultId = this.shellSession.vault?.id;
-    if (this.storage !== null && vaultId !== void 0) {
-      saveWorkbenchState(this.storage, vaultId, {
-        focusMode: this.snapshot.focusMode === true,
-        session: this.shellSession,
-        workspaces: this.workspaces
-      });
-    }
-  }
-  pane(id = this.snapshot.focusedPaneId) {
-    return this.snapshot.panes.find((candidate) => candidate.id === id);
-  }
-  recordOpen(path, recordHistory = true, previous = this.snapshot.path) {
-    if (recordHistory && previous !== null && previous !== path) {
-      this.historyBack.push(previous);
-      if (this.historyBack.length > MAX_NOTE_TABS * MAX_PANE_GROUPS) this.historyBack.shift();
-      this.historyForward.length = 0;
-    }
-    this.shellSession = openNoteTab(
-      this.shellSession,
-      this.shellSession.focusedGroupId,
-      path,
-      { mode: sessionModeFromRoute(this.snapshot.mode) }
-    );
-    this.shellSession = markTabDirty(this.shellSession, this.shellSession.focusedGroupId, path, false);
-    this.syncShell();
-  }
-  recordDirty(dirty) {
-    const path = this.snapshot.path;
-    if (path === null) return;
-    this.shellSession = markTabDirty(
-      this.shellSession,
-      this.shellSession.focusedGroupId,
-      path,
-      dirty
-    );
-    this.syncShell();
-  }
-  scheduleDraft() {
-    if (this.draftTimer !== null) clearTimeout(this.draftTimer);
-    this.draftAbort?.abort();
-    const vault = this.snapshot.vault;
-    const path = this.snapshot.path;
-    const revision = this.snapshot.revision;
-    const content = this.snapshot.source;
-    if (vault === null || path === null) return;
-    const abort = new AbortController();
-    this.draftAbort = abort;
-    this.draftTimer = setTimeout(() => {
-      this.draftTimer = null;
-      void this.remote.tocktutorWorkbench.saveDraft({
-        content,
-        expectedVault: vault,
-        path,
-        ...revision === null ? {} : { revision }
-      }, abort.signal).catch(() => void 0).finally(() => {
-        if (this.draftAbort === abort) this.draftAbort = null;
-      });
-    }, 400);
-  }
-  clearDocument() {
-    this.invalidateDispatch();
-    this.nextOperation();
-    this.update({
-      documentKind: null,
-      draftRecovered: false,
-      links: null,
-      message: "Select a note from the vault.",
-      organizationProposal: null,
-      outline: null,
-      path: null,
-      revision: null,
-      saveStatus: "saved",
-      source: ""
-    });
-  }
-  nextOperation() {
-    this.operationAbort?.abort();
-    this.operationAbort = new AbortController();
-    this.operation += 1;
-    return { id: this.operation, signal: this.operationAbort.signal };
-  }
-  current(id, vault) {
-    return !this.disposed && id === this.operation && (vault === void 0 || sameVault(this.snapshot.vault, vault));
-  }
-  async syncLocation(pathname) {
-    this.pathname = pathname;
-    if (!this.started) {
-      this.started = true;
-      await this.reload();
-      return;
-    }
-    const path = pathFromTockTutorLocation(pathname);
-    if (this.snapshot.phase !== "ready" || path === this.snapshot.path) return;
-    if (path !== null) {
-      await this.select(path, false);
-      return;
-    }
-    if (this.snapshot.saveStatus !== "saved" && !await this.save()) {
-      if (this.snapshot.path !== null) this.navigate(routeForPath(this.snapshot.path), "replace");
-      return;
-    }
-    this.shellSession = setActiveNoteTab(
-      this.shellSession,
-      this.shellSession.focusedGroupId,
-      null
-    );
-    this.syncShell();
-    this.clearDocument();
-  }
-  async reload() {
-    this.invalidateDispatch();
-    const operation = this.nextOperation();
-    this.shellSession = createWorkbenchSession(ROUTE_PREFIX, null, "pane-1");
-    this.bookmarks = [];
-    this.vaultGeneration = 0;
-    this.recentlyClosed.length = 0;
-    this.historyBack.length = 0;
-    this.historyForward.length = 0;
-    this.eventDispose?.();
-    this.eventDispose = null;
-    this.update({
-      bookmarks: Object.freeze([]),
-      canGoBack: false,
-      canGoForward: false,
-      dispatchDialog: null,
-      documentKind: null,
-      draftRecovered: false,
-      entries: Object.freeze([]),
-      facets: null,
-      focusedPaneId: "pane-1",
-      graph: null,
-      graphLayout: Object.freeze([]),
-      graphMode: "global",
-      links: null,
-      message: "Loading the active vault.",
-      organizationProposal: null,
-      outline: null,
-      path: null,
-      phase: "loading",
-      recentVaults: Object.freeze([]),
-      recentlyClosed: Object.freeze([]),
-      revision: null,
-      saveStatus: "saved",
-      searchLoading: false,
-      searchMatches: Object.freeze([]),
-      searchMode: "query",
-      searchOpen: false,
-      searchQuery: "",
-      selectionEnd: 0,
-      selectionStart: 0,
-      source: "",
-      panes: this.shellPanes(),
-      vault: null,
-      warnings: Object.freeze([])
-    });
-    try {
-      const recent = remoteValue(await this.remote.tocktutorWorkbench.listRecentVaults(operation.signal));
-      if (!this.current(operation.id) || !validRecentVaults(recent)) return;
-      this.vaultGeneration = recent.generation;
-      const recentVaults = Object.freeze(recent.vaults.map((vault2) => Object.freeze({ ...vault2 })));
-      const vault = remoteValue(await this.remote.tocktutorWorkbench.currentVault(operation.signal));
-      if (!this.current(operation.id)) return;
-      if (vault === null) {
-        this.update({ message: "No active TockTutor vault is available.", phase: "inactive", recentVaults });
-        return;
-      }
-      if (vault.generation !== recent.generation) return await this.reload();
-      const page = remoteValue(await this.remote.tocktutorWorkbench.listTree({
-        expectedVault: vault,
-        limit: TREE_LIMIT
-      }, operation.signal));
-      if (!this.current(operation.id) || page.generation !== vault.generation) return;
-      const openable = new Set(page.entries.filter((entry) => entry.kind === "document" && supportedDocument(entry.path)).map((entry) => entry.path));
-      let settings;
-      let restoredFocusMode = false;
-      if (this.storage === null) {
-        this.shellSession = createWorkbenchSession(ROUTE_PREFIX, vault, "pane-1");
-        this.bookmarks = [];
-        this.workspaces = [];
-      } else {
-        const restored = loadWorkbenchState(this.storage, vault.id);
-        this.shellSession = hydrateWorkbenchSession({
-          ...restored.session,
-          vault,
-          groups: restored.session.groups.map((group) => ({
-            ...group,
-            tabs: group.tabs.filter((tab) => openable.has(tab.path))
-          }))
-        });
-        this.bookmarks = loadBookmarks(this.storage, vault.id);
-        this.workspaces = restored.workspaces;
-        restoredFocusMode = restored.focusMode;
-        settings = loadTockTutorSettings(this.storage, vault.id);
-      }
-      this.update({
-        bookmarks: Object.freeze(this.bookmarks.map((bookmark) => Object.freeze({ ...bookmark }))),
-        entries: Object.freeze(page.entries.toSorted((left, right) => left.path.localeCompare(right.path))),
-        focusedPaneId: this.shellSession.focusedGroupId,
-        focusMode: restoredFocusMode,
-        message: page.truncated ? "The vault tree is truncated to a bounded result." : "Vault ready.",
-        panes: this.shellPanes(),
-        phase: "ready",
-        recentVaults,
-        ...settings === void 0 ? {} : { settings },
-        vault,
-        warnings: Object.freeze(page.warnings),
-        workspaces: Object.freeze(this.workspaces.map((workspace) => Object.freeze({ ...workspace })))
-      });
-      this.eventDispose = this.remote.$on("note-vault/change", (event) => {
-        this.onVaultChange(event);
-      });
-      const path = pathFromTockTutorLocation(this.pathname) ?? this.pane()?.activePath ?? null;
-      if (path !== null) await this.select(path, false);
-    } catch (error51) {
-      if (!this.current(operation.id) || operation.signal.aborted) return;
-      this.update({ message: this.failureMessage(error51, "The vault could not be loaded."), phase: "error" });
-    }
-  }
-  onVaultChange(value) {
-    if (!isNoteVaultChangeEvent(value)) return;
-    if (value.action === "activated") {
-      if (!sameVault(this.snapshot.vault, value.vault)) void this.reload();
-      return;
-    }
-    if (!sameVault(this.snapshot.vault, value.vault)) return;
-    if (value.kind === "tree") {
-      void this.refreshTree(value.vault);
-      return;
-    }
-    const selected = this.snapshot.path;
-    if (selected !== null && this.snapshot.saveStatus !== "saved" && (value.path === selected || "fromPath" in value && value.fromPath === selected)) {
-      this.update({ message: "External Change: The active file changed on disk. Your local draft remains unsaved." });
-      void this.refreshTree(value.vault);
-      return;
-    }
-    if (selected !== null && this.snapshot.saveStatus === "saved" && (value.path === selected || "fromPath" in value && value.fromPath === selected)) {
-      const nextPath = value.path === selected ? selected : value.path;
-      if (supportedDocument(nextPath)) {
-        void this.select(nextPath, false);
-      } else {
-        const closed = closeNoteTab(this.shellSession, this.shellSession.focusedGroupId, selected);
-        this.shellSession = closed.session;
-        this.syncShell();
-        this.clearDocument();
-        this.navigate(ROUTE_PREFIX, "replace");
-        void this.refreshTree(value.vault);
-      }
-    } else {
-      void this.refreshTree(value.vault);
-    }
-  }
-  async refreshTree(vault) {
-    const operation = this.nextOperation();
-    try {
-      const page = remoteValue(await this.remote.tocktutorWorkbench.listTree({
-        expectedVault: vault,
-        limit: TREE_LIMIT
-      }, operation.signal));
-      if (!this.current(operation.id, vault) || page.generation !== vault.generation) return;
-      this.update({
-        entries: Object.freeze(page.entries.toSorted((left, right) => left.path.localeCompare(right.path))),
-        warnings: Object.freeze(page.warnings)
-      });
-    } catch (error51) {
-      if (this.current(operation.id, vault) && !operation.signal.aborted) {
-        this.update({ message: this.failureMessage(error51, "The vault tree could not be refreshed.") });
-      }
-    }
-  }
-  async activateRecentVault(id) {
-    if (!/^vault:[0-9a-f]{64}$/u.test(id) || this.snapshot.recentVaults?.some((vault) => vault.id === id) !== true) return false;
-    if (this.snapshot.saveStatus !== "saved" && !await this.save()) return false;
-    const operation = this.nextOperation();
-    const expectedGeneration = this.vaultGeneration;
-    try {
-      const vault = remoteValue(await this.remote.tocktutorWorkbench.activateRecentVault({
-        expectedGeneration,
-        id
-      }, operation.signal));
-      if (!this.current(operation.id) || vault.generation < expectedGeneration || vault.id !== id) return false;
-      await this.reload();
-      return sameVault(this.snapshot.vault, vault);
-    } catch {
-      return false;
-    }
-  }
-  async removeRecentVault(id) {
-    if (!/^vault:[0-9a-f]{64}$/u.test(id) || this.snapshot.recentVaults?.some((vault) => vault.id === id) !== true) return false;
-    const operation = this.nextOperation();
-    try {
-      const result = remoteValue(await this.remote.tocktutorWorkbench.removeRecentVault({
-        expectedGeneration: this.vaultGeneration,
-        id
-      }, operation.signal));
-      if (!this.current(operation.id) || !validRecentVaults(result) || result.generation !== this.vaultGeneration) return false;
-      this.update({ recentVaults: Object.freeze(result.vaults.map((vault) => Object.freeze({ ...vault }))) });
-      return true;
-    } catch {
-      return false;
-    }
-  }
-  async openSandboxVault() {
-    if (this.snapshot.saveStatus !== "saved" && !await this.save()) return false;
-    const operation = this.nextOperation();
-    const expectedGeneration = this.vaultGeneration;
-    try {
-      const vault = remoteValue(await this.remote.tocktutorWorkbench.openSandboxVault({ expectedGeneration }, operation.signal));
-      if (!this.current(operation.id) || vault.generation < expectedGeneration) return false;
-      await this.reload();
-      return sameVault(this.snapshot.vault, vault);
-    } catch {
-      return false;
-    }
-  }
-  async setRecoveryOpen(open) {
-    this.update({ recoveryOpen: open, selectedSnapshot: open ? this.snapshot.selectedSnapshot ?? null : null });
-    if (!open) return;
-    const vault = this.snapshot.vault;
-    if (vault === null) return;
-    const path = this.snapshot.path;
-    const operation = this.nextOperation();
-    try {
-      const trash = remoteValue(await this.remote.tocktutorWorkbench.listTrash({ expectedVault: vault }, operation.signal));
-      if (!this.current(operation.id, vault) || trash.generation !== vault.generation || !Array.isArray(trash.entries)) return;
-      let snapshots = [];
-      if (path !== null) {
-        const result = remoteValue(await this.remote.tocktutorWorkbench.listSnapshots({ expectedVault: vault, path }, operation.signal));
-        if (!this.current(operation.id, vault) || result.generation !== vault.generation || !Array.isArray(result.snapshots)) return;
-        snapshots = result.snapshots;
-      }
-      this.update({
-        snapshots: Object.freeze(snapshots.map((snapshot) => Object.freeze({ ...snapshot }))),
-        trash: Object.freeze(trash.entries.map((entry) => Object.freeze({ ...entry })))
-      });
-    } catch {
-      if (this.current(operation.id, vault) && !operation.signal.aborted) this.update({ message: "Recovery data could not be loaded." });
-    }
-  }
-  async readRecoverySnapshot(snapshotId) {
-    const vault = this.snapshot.vault;
-    const path = this.snapshot.path;
-    if (vault === null || path === null || this.snapshot.snapshots?.some((snapshot) => snapshot.id === snapshotId) !== true) return false;
-    const operation = this.nextOperation();
-    try {
-      const snapshot = remoteValue(await this.remote.tocktutorWorkbench.readSnapshot({ expectedVault: vault, path, snapshotId }, operation.signal));
-      if (!this.current(operation.id, vault) || snapshot.generation !== vault.generation || snapshot.snapshot.id !== snapshotId) return false;
-      this.update({ selectedSnapshot: snapshot });
-      return true;
-    } catch {
-      return false;
-    }
-  }
-  async restoreRecoverySnapshot(snapshotId) {
-    const vault = this.snapshot.vault;
-    const path = this.snapshot.path;
-    if (vault === null || path === null || this.snapshot.snapshots?.some((snapshot) => snapshot.id === snapshotId) !== true) return false;
-    const basename = path.split("/").at(-1) ?? "Recovered.md";
-    const stem = basename.replace(/\.(?:base|canvas|markdown|md)$/iu, "");
-    const extension = basename.slice(stem.length) || ".md";
-    const toPath = `Recovered/${stem} Recovery${extension}`;
-    try {
-      const restored = remoteValue(await this.remote.tocktutorWorkbench.restoreSnapshotAsNew({
-        expectedVault: vault,
-        path,
-        snapshotId,
-        toPath
-      }));
-      if (restored.status !== "created" || restored.generation !== vault.generation || restored.path !== toPath) return false;
-      this.update({ message: `${toPath} restored.` });
-      await this.refreshTree(vault);
-      return true;
-    } catch {
-      return false;
-    }
-  }
-  async trashCurrent() {
-    const vault = this.snapshot.vault;
-    const path = this.snapshot.path;
-    const revision = this.snapshot.revision;
-    if (vault === null || path === null || revision === null) return false;
-    if (this.snapshot.saveStatus !== "saved" && !await this.save()) return false;
-    try {
-      remoteValue(await this.remote.tocktutorWorkbench.trashEntry({ expectedRevision: revision, expectedVault: vault, path }));
-      const closed = closeNoteTab(this.shellSession, this.shellSession.focusedGroupId, path);
-      this.shellSession = closed.session;
-      this.syncShell();
-      this.clearDocument();
-      this.navigate(ROUTE_PREFIX);
-      await this.setRecoveryOpen(true);
-      return true;
-    } catch {
-      return false;
-    }
-  }
-  async restoreTrashEntry(id) {
-    const vault = this.snapshot.vault;
-    if (vault === null || this.snapshot.trash?.some((entry) => entry.id === id) !== true) return false;
-    try {
-      remoteValue(await this.remote.tocktutorWorkbench.restoreTrash({ expectedVault: vault, id }));
-      await this.setRecoveryOpen(true);
-      await this.refreshTree(vault);
-      return true;
-    } catch {
-      return false;
-    }
-  }
-  async addPane() {
-    if (this.snapshot.phase !== "ready" || this.snapshot.panes.length >= MAX_PANE_GROUPS) return false;
-    if (this.snapshot.saveStatus !== "saved" && !await this.save()) return false;
-    const used = new Set(this.snapshot.panes.map((pane) => pane.id));
-    let id = "";
-    for (let index2 = 1; index2 <= MAX_PANE_GROUPS; index2 += 1) {
-      const candidate = `pane-${String(index2)}`;
-      if (!used.has(candidate)) {
-        id = candidate;
-        break;
-      }
-    }
-    if (id === "") return false;
-    const added = addPaneGroup(this.shellSession, id);
-    this.shellSession = added.session;
-    this.syncShell();
-    this.clearDocument();
-    this.navigate(ROUTE_PREFIX);
-    return true;
-  }
-  async focusPane(id, pathOverride) {
-    const target = this.pane(id);
-    if (target === void 0 || this.snapshot.phase !== "ready") return false;
-    const path = pathOverride ?? target.activePath;
-    if (id === this.snapshot.focusedPaneId && path === this.snapshot.path) return true;
-    if (this.snapshot.saveStatus !== "saved" && !await this.save()) return false;
-    this.shellSession = focusPaneGroup(this.shellSession, id);
-    if (path === null) this.shellSession = setActiveNoteTab(this.shellSession, id, null);
-    this.syncShell();
-    this.clearDocument();
-    if (path === null) {
-      this.navigate(ROUTE_PREFIX);
-      return true;
-    }
-    return this.select(path);
-  }
-  async activateTab(paneId, path) {
-    const pane = this.pane(paneId);
-    if (pane === void 0 || !pane.tabs.some((tab) => tab.path === path)) return false;
-    return this.focusPane(paneId, path);
-  }
-  togglePinTab(paneId, path) {
-    if (this.pane(paneId)?.tabs.some((tab) => tab.path === path) !== true) return;
-    this.shellSession = setTabPinned(this.shellSession, paneId, path);
-    this.syncShell();
-  }
-  moveTab(paneId, path, direction) {
-    this.shellSession = moveNoteTab(this.shellSession, paneId, path, direction);
-    this.syncShell();
-  }
-  async closeTab(paneId, path) {
-    const pane = this.pane(paneId);
-    const tab = pane?.tabs.find((candidate) => candidate.path === path);
-    if (tab === void 0) return false;
-    const active = paneId === this.snapshot.focusedPaneId && path === this.snapshot.path;
-    if (active && this.snapshot.saveStatus !== "saved" && !await this.save()) return false;
-    const result = closeNoteTab(this.shellSession, paneId, path);
-    if (result.closed === null) return false;
-    this.shellSession = result.session;
-    this.recentlyClosed.splice(
-      0,
-      this.recentlyClosed.length,
-      {
-        dirty: false,
-        mode: routeModeFromSession(result.closed.mode),
-        path: result.closed.path,
-        pinned: result.closed.pinned
-      },
-      ...this.recentlyClosed.filter((candidate) => candidate.path !== result.closed?.path)
-    );
-    this.recentlyClosed.length = Math.min(this.recentlyClosed.length, MAX_NOTE_TABS);
-    this.syncShell();
-    if (!active) return true;
-    this.clearDocument();
-    if (result.nextPath === null) {
-      this.navigate(ROUTE_PREFIX);
-      return true;
-    }
-    return await this.select(result.nextPath);
-  }
-  async reopenClosedTab() {
-    const candidate = this.recentlyClosed.shift();
-    if (candidate === void 0) return false;
-    this.shellSession = openNoteTab(
-      this.shellSession,
-      this.shellSession.focusedGroupId,
-      candidate.path,
-      {
-        ...candidate.mode === void 0 ? {} : { mode: sessionModeFromRoute(candidate.mode) },
-        ...candidate.pinned === void 0 ? {} : { pinned: candidate.pinned }
-      }
-    );
-    this.syncShell();
-    if (await this.select(candidate.path)) return true;
-    const closed = closeNoteTab(this.shellSession, this.shellSession.focusedGroupId, candidate.path);
-    this.shellSession = closed.session;
-    this.recentlyClosed.unshift(candidate);
-    this.syncShell();
-    return false;
-  }
-  async goBack() {
-    const target = this.historyBack.at(-1);
-    const current = this.snapshot.path;
-    if (target === void 0 || current === null) return false;
-    if (!await this.select(target, true, void 0, false)) return false;
-    this.historyBack.pop();
-    this.historyForward.push(current);
-    this.syncShell();
-    return true;
-  }
-  async goForward() {
-    const target = this.historyForward.at(-1);
-    const current = this.snapshot.path;
-    if (target === void 0 || current === null) return false;
-    if (!await this.select(target, true, void 0, false)) return false;
-    this.historyForward.pop();
-    this.historyBack.push(current);
-    this.syncShell();
-    return true;
-  }
-  setCommandPaletteOpen(open) {
-    this.update({ commandPaletteOpen: open });
-  }
-  toggleFocusMode() {
-    this.syncShell({ focusMode: this.snapshot.focusMode !== true });
-  }
-  updateSettings(change) {
-    const vault = this.snapshot.vault;
-    if (vault === null || this.storage === null) return false;
-    const settings = saveTockTutorSettings(this.storage, vault.id, change);
-    this.update({ settings });
-    return true;
-  }
-  saveCurrentWorkspace(name2) {
-    if (this.snapshot.vault === null || this.storage === null) return false;
-    const next = createNamedWorkspace(
-      this.workspaces,
-      name2 ?? `Workspace ${String(this.workspaces.length + 1)}`,
-      this.shellSession,
-      this.now().getTime(),
-      this.snapshot.focusMode === true
-    );
-    if (next.length === this.workspaces.length) return false;
-    this.workspaces = next;
-    this.syncShell();
-    return true;
-  }
-  addActiveBookmark() {
-    const vault = this.snapshot.vault;
-    const path = this.snapshot.path;
-    if (vault === null || path === null || this.storage === null) return false;
-    try {
-      this.bookmarks = addBookmark(this.bookmarks, {
-        id: `note-${this.now().getTime().toString(36)}`,
-        kind: "note",
-        path,
-        title: noteTitle(path)
-      });
-      if (!saveBookmarks(this.storage, vault.id, this.bookmarks)) return false;
-      this.update({ bookmarks: Object.freeze(this.bookmarks.map((bookmark) => Object.freeze({ ...bookmark }))) });
-      return true;
-    } catch {
-      return false;
-    }
-  }
-  removeBookmark(id) {
-    const vault = this.snapshot.vault;
-    if (vault === null || this.storage === null) return false;
-    const next = this.bookmarks.filter((bookmark) => bookmark.id !== id);
-    if (next.length === this.bookmarks.length || !saveBookmarks(this.storage, vault.id, next)) return false;
-    this.bookmarks = next;
-    this.update({ bookmarks: Object.freeze(next.map((bookmark) => Object.freeze({ ...bookmark }))) });
-    return true;
-  }
-  async openBookmark(id) {
-    const bookmark = this.bookmarks.find((candidate) => candidate.id === id);
-    if (bookmark === void 0) return false;
-    if (bookmark.kind === "note" || bookmark.kind === "heading" || bookmark.kind === "block") {
-      if (!await this.select(bookmark.path)) return false;
-      if (bookmark.kind === "heading") this.jumpToLine(bookmark.line);
-      return true;
-    }
-    if (bookmark.kind === "folder") {
-      this.openSearch(`path:${bookmark.path}`);
-      return await this.runSearch();
-    }
-    if (bookmark.kind === "search") {
-      this.openSearch(bookmark.query);
-      return await this.runSearch();
-    }
-    if (bookmark.kind === "graph") return false;
-    if (bookmark.kind === "link") return false;
-    return false;
-  }
-  async loadWorkspace(id) {
-    const workspace = this.workspaces.find((candidate) => candidate.id === id);
-    const vault = this.snapshot.vault;
-    if (workspace === void 0 || vault === null) return false;
-    if (this.snapshot.saveStatus !== "saved" && !await this.save()) return false;
-    const openable = new Set(this.snapshot.entries.filter((entry) => entry.kind === "document" && supportedDocument(entry.path)).map((entry) => entry.path));
-    this.shellSession = hydrateWorkbenchSession({
-      ...workspace.session,
-      vault,
-      groups: workspace.session.groups.map((group) => ({ ...group, tabs: group.tabs.filter((tab) => openable.has(tab.path)) }))
-    });
-    this.syncShell({ focusMode: workspace.focusMode });
-    const path = this.pane()?.activePath ?? null;
-    this.clearDocument();
-    if (path === null) {
-      this.navigate(ROUTE_PREFIX);
-      return true;
-    }
-    return await this.select(path);
-  }
-  async select(path, navigate = true, dispatchRevision, recordHistory = true) {
-    const activeVault = this.snapshot.vault;
-    if (!supportedDocument(path) || activeVault === null || this.snapshot.phase !== "ready") return false;
-    const previousPath = this.snapshot.path;
-    if (dispatchRevision === void 0) this.invalidateDispatch();
-    else if (!this.dispatchCurrent(dispatchRevision, activeVault)) return false;
-    if (path === this.snapshot.path) return true;
-    const pane = this.pane();
-    if (pane === void 0 || !pane.tabs.some((tab) => tab.path === path) && pane.tabs.length >= MAX_NOTE_TABS) {
-      this.update({ message: `This pane is limited to ${String(MAX_NOTE_TABS)} note tabs.` });
-      return false;
-    }
-    if (this.snapshot.saveStatus !== "saved" && !await this.save()) {
-      if (this.snapshot.path !== null) this.navigate(routeForPath(this.snapshot.path), "replace");
-      return false;
-    }
-    const vault = activeVault;
-    const operation = this.nextOperation();
-    this.update({ message: `Opening ${path}.` });
-    try {
-      const opened = remoteValue(await this.remote.tocktutorWorkbench.openDocument(path, vault, operation.signal));
-      if (!this.current(operation.id, vault) || opened.generation !== vault.generation || opened.path !== path) return false;
-      if (!boundedSource(opened.content)) {
-        this.update({ message: `${path} exceeds the editor size limit.` });
-        return false;
-      }
-      let content = opened.content;
-      let draftRecovered = false;
-      if (documentKind(path) === "markdown") {
-        try {
-          const draft = remoteValue(await this.remote.tocktutorWorkbench.readDraft({ expectedVault: vault, path }, operation.signal));
-          if (!this.current(operation.id, vault) || draft.generation !== vault.generation) return false;
-          if (draft.draft !== null && (draft.draft.revision === void 0 || draft.draft.revision === opened.revision) && boundedSource(draft.draft.content)) {
-            content = draft.draft.content;
-            draftRecovered = content !== opened.content;
-          }
-        } catch {
-          if (!this.current(operation.id, vault) || operation.signal.aborted) return false;
-        }
-      }
-      const mode = pane.tabs.find((tab) => tab.path === path)?.mode ?? this.snapshot.mode;
-      this.update({
-        documentKind: documentKind(path),
-        draftRecovered,
-        message: draftRecovered ? `${path} opened with its recovered draft.` : `${path} opened.`,
-        mode,
-        path,
-        revision: opened.revision,
-        saveStatus: draftRecovered ? "unsaved" : "saved",
-        selectionEnd: 0,
-        selectionStart: 0,
-        source: content
-      });
-      this.recordOpen(path, recordHistory, previousPath);
-      if (draftRecovered) this.recordDirty(true);
-      if (navigate) this.navigate(routeForPath(path));
-      if (documentKind(path) === "markdown") void this.loadRelationships();
-      return true;
-    } catch (error51) {
-      if (this.current(operation.id, vault) && !operation.signal.aborted) {
-        this.update({ message: this.failureMessage(error51, `${path} could not be opened.`) });
-      }
-      return false;
-    }
-  }
-  edit(source) {
-    if (this.snapshot.path === null || this.snapshot.phase !== "ready") return;
-    if (!boundedSource(source)) {
-      this.update({ message: "The edit exceeds the bounded source limit." });
-      return;
-    }
-    if (source === this.snapshot.source) return;
-    this.invalidateDispatch();
-    this.update({
-      message: "Unsaved changes.",
-      saveStatus: "unsaved",
-      source
-    });
-    this.recordDirty(true);
-    this.scheduleDraft();
-  }
-  setSelection(start, end) {
-    if (this.snapshot.path === null) return;
-    const selectionStart = Number.isSafeInteger(start) ? Math.max(0, Math.min(start, this.snapshot.source.length)) : 0;
-    const selectionEnd = Number.isSafeInteger(end) ? Math.max(selectionStart, Math.min(end, this.snapshot.source.length)) : selectionStart;
-    this.update({ selectionEnd, selectionStart });
-  }
-  setProperty(key2, value) {
-    if (this.snapshot.documentKind !== "markdown" || this.snapshot.path === null || this.snapshot.mode === "reading") return false;
-    try {
-      const source = setFrontmatterProperty(this.snapshot.source, key2, value);
-      if (source === this.snapshot.source) return false;
-      this.edit(source);
-      return true;
-    } catch {
-      return false;
-    }
-  }
-  runEditorCommand(command) {
-    if (this.snapshot.path === null || this.snapshot.documentKind !== "markdown" || this.snapshot.mode === "reading") return;
-    const result = applyEditorCommand(
-      this.snapshot.source,
-      command,
-      this.snapshot.selectionStart ?? this.snapshot.source.length,
-      this.snapshot.selectionEnd ?? this.snapshot.source.length
-    );
-    if (result.source === this.snapshot.source) return;
-    this.edit(result.source);
-    this.update({ selectionEnd: result.selectionEnd, selectionStart: result.selectionStart });
-  }
-  setMode(mode) {
-    if (this.snapshot.path === null) return;
-    if (mode === "live-preview" && this.snapshot.documentKind !== "markdown") return;
-    this.shellSession = setNoteTabMode(
-      this.shellSession,
-      this.shellSession.focusedGroupId,
-      this.snapshot.path,
-      sessionModeFromRoute(mode)
-    );
-    this.syncShell({ mode });
-  }
-  toggleTask(index2) {
-    if (this.snapshot.documentKind !== "markdown") return;
-    const source = toggleMarkdownTask(this.snapshot.source, index2);
-    if (source !== this.snapshot.source) this.edit(source);
-  }
-  moveCanvasNode(nodeId, deltaX, deltaY) {
-    if (this.snapshot.documentKind !== "canvas") return;
-    const parsed = parseCanvasDocument(this.snapshot.source);
-    if (parsed.status !== "ready") return;
-    const node = parsed.document.nodes.find((candidate) => candidate.id === nodeId);
-    if (node === void 0) return;
-    try {
-      this.edit(updateCanvasNodePosition(this.snapshot.source, nodeId, node.x + deltaX, node.y + deltaY));
-    } catch {
-      this.update({ message: "The Canvas node could not be moved within the bounded workspace." });
-    }
-  }
-  convertActiveNote() {
-    if (this.snapshot.documentKind !== "markdown" || this.snapshot.path === null || this.snapshot.mode === "reading") return false;
-    try {
-      const source = convertMarkdownFormats(this.snapshot.source, { deprecatedProperties: true, roamBear: true });
-      if (source === this.snapshot.source) return false;
-      this.edit(source);
-      return true;
-    } catch {
-      return false;
-    }
-  }
-  async extractActiveSelection() {
-    const vault = this.snapshot.vault;
-    const path = this.snapshot.path;
-    const start = this.snapshot.selectionStart ?? 0;
-    const end = this.snapshot.selectionEnd ?? 0;
-    if (vault === null || path === null || this.snapshot.documentKind !== "markdown" || end <= start) return false;
-    const destinationPath = `Extracted/${noteTitle(path)} Extract.md`;
-    try {
-      const extraction = extractSelectionToNote({
-        destinationPath,
-        destinationTitle: `${noteTitle(path)} Extract`,
-        end,
-        leftover: "link",
-        source: this.snapshot.source,
-        sourceTitle: noteTitle(path),
-        start
-      });
-      const created = remoteValue(await this.remote.tocktutorWorkbench.createDocument({
-        content: extraction.destinationContent,
-        expectedVault: vault,
-        path: destinationPath
-      }));
-      if (created.status !== "created" || created.generation !== vault.generation || created.path !== destinationPath) return false;
-      this.edit(extraction.sourceContent);
-      this.update({ message: `${destinationPath} created; save the source note to finish extraction.` });
-      return true;
-    } catch {
-      return false;
-    }
-  }
-  async prepareOrganization() {
-    const path = this.snapshot.path;
-    if (path === null || !/^Inbox\/.+\.md$/iu.test(path)) return false;
-    if (this.snapshot.saveStatus !== "saved" && !await this.save()) return false;
-    try {
-      const title = noteTitle(path);
-      const proposal = buildOrganizationProposal({
-        captures: [{ content: this.snapshot.source, path }],
-        now: this.now(),
-        title: `${title} Review`
-      });
-      this.update({ organizationProposal: proposal });
-      return true;
-    } catch {
-      return false;
-    }
-  }
-  cancelOrganization() {
-    this.update({ organizationProposal: null });
-  }
-  async applyOrganization() {
-    const proposal = this.snapshot.organizationProposal;
-    const vault = this.snapshot.vault;
-    const path = this.snapshot.path;
-    if (proposal === null || proposal === void 0 || vault === null || path === null || proposal.captures[0] !== path) return false;
-    let current;
-    try {
-      current = buildOrganizationProposal({
-        captures: [{ content: this.snapshot.source, path }],
-        now: this.now(),
-        title: proposal.title
-      });
-    } catch {
-      return false;
-    }
-    if (current.id !== proposal.id || current.destination !== proposal.destination) return false;
-    try {
-      const created = remoteValue(await this.remote.tocktutorWorkbench.createDocument({
-        content: proposal.content,
-        expectedVault: vault,
-        path: proposal.destination
-      }));
-      if (created.status !== "created" || created.generation !== vault.generation || created.path !== proposal.destination) return false;
-      this.update({ message: `${proposal.destination} created.`, organizationProposal: null });
-      await this.refreshTree(vault);
-      return true;
-    } catch {
-      return false;
-    }
-  }
-  async storeActiveAttachment(fileName3, dataBase64) {
-    const vault = this.snapshot.vault;
-    const notePath = this.snapshot.path;
-    const source = this.snapshot.source;
-    const revision = this.snapshot.revision;
-    if (vault === null || notePath === null || revision === null || this.snapshot.documentKind !== "markdown" || dataBase64.length > 35e6) return false;
-    let path;
-    try {
-      path = attachmentTargetPath(
-        this.snapshot.settings?.attachmentFolder ?? "Attachments",
-        fileName3,
-        new Set(this.snapshot.entries.filter((entry) => entry.kind === "attachment").map((entry) => entry.path))
-      );
-    } catch {
-      return false;
-    }
-    const operation = this.operation;
-    try {
-      const stored = remoteValue(await this.remote.tocktutorWorkbench.storeAttachment({ dataBase64, expectedVault: vault, path }));
-      if (stored.status !== "stored" || stored.generation !== vault.generation || stored.path !== path) return false;
-      if (this.operation !== operation || !sameVault(this.snapshot.vault, vault) || this.snapshot.path !== notePath || this.snapshot.source !== source || this.snapshot.revision !== revision) return false;
-      this.edit(appendAttachmentMarkdown(source, `![[${path}]]`));
-      const saved = await this.save();
-      if (saved) await this.refreshTree(vault);
-      return saved;
-    } catch {
-      return false;
-    }
-  }
-  async previewAttachment(path) {
-    const vault = this.snapshot.vault;
-    if (vault === null || this.snapshot.entries.some((entry) => entry.kind === "attachment" && entry.path === path) !== true) return false;
-    const operation = this.nextOperation();
-    try {
-      const preview = remoteValue(await this.remote.tocktutorWorkbench.previewAttachment(path, vault, operation.signal));
-      if (!this.current(operation.id, vault) || preview.generation !== vault.generation || preview.path !== path || preview.dataBase64.length > 35e6) return false;
-      this.update({ attachmentPreview: preview });
-      return true;
-    } catch {
-      return false;
-    }
-  }
-  closeAttachmentPreview() {
-    this.update({ attachmentPreview: null });
-  }
-  async applyCanvasChange(change) {
-    const vault = this.snapshot.vault;
-    const path = this.snapshot.path;
-    if (vault === null || path === null || this.snapshot.documentKind !== "canvas" || this.snapshot.revision !== change.expectedRevision || this.snapshot.source !== change.previousSource) return false;
-    const operation = this.operation;
-    this.edit(change.source);
-    const saved = await this.save();
-    if (saved) return true;
-    if (this.operation !== operation || !sameVault(this.snapshot.vault, vault) || this.snapshot.path !== path || this.snapshot.source !== change.source) return false;
-    this.update({
-      message: "The Canvas change failed and its previous preview was restored.",
-      saveStatus: "save-failed",
-      source: change.previousSource
-    });
-    this.recordDirty(false);
-    return false;
-  }
-  save() {
-    if (this.saving !== null) return this.saving;
-    if (this.snapshot.saveStatus === "saved") return Promise.resolve(true);
-    const vault = this.snapshot.vault;
-    const path = this.snapshot.path;
-    const revision = this.snapshot.revision;
-    if (vault === null || path === null || revision === null) return Promise.resolve(false);
-    const source = this.snapshot.source;
-    const abort = new AbortController();
-    this.saveAbort?.abort();
-    this.saveAbort = abort;
-    this.update({ message: `Saving ${path}.`, saveStatus: "saving" });
-    const request = {
-      content: source,
-      expectedRevision: revision,
-      expectedVault: vault,
-      path
-    };
-    this.saving = this.remote.tocktutorWorkbench.saveDocument(request, abort.signal).then((result) => {
-      const saved = remoteValue(result);
-      if (this.disposed || !sameVault(this.snapshot.vault, vault) || this.snapshot.path !== path) return false;
-      if (saved.status !== "saved" || saved.generation !== vault.generation || saved.path !== path) {
-        throw new RemoteCallError("invalid-result", "The save response did not match the active note.");
-      }
-      const unchanged = this.snapshot.source === source;
-      this.update({
-        draftRecovered: unchanged ? false : this.snapshot.draftRecovered === true,
-        message: unchanged ? `${path} saved.` : "Newer changes remain unsaved.",
-        revision: saved.revision,
-        saveStatus: unchanged ? "saved" : "unsaved"
-      });
-      this.recordDirty(!unchanged);
-      if (unchanged) {
-        if (this.draftTimer !== null) clearTimeout(this.draftTimer);
-        this.draftTimer = null;
-        this.draftAbort?.abort();
-        this.draftAbort = null;
-        void this.remote.tocktutorWorkbench.clearDraft({ expectedVault: vault, path }).catch(() => void 0);
-      }
-      return unchanged;
-    }).catch((error51) => {
-      if (!this.disposed && !abort.signal.aborted && sameVault(this.snapshot.vault, vault) && this.snapshot.path === path) {
-        this.update({
-          message: this.failureMessage(error51, `${path} could not be saved.`),
-          saveStatus: "save-failed"
-        });
-      }
-      return false;
-    }).finally(() => {
-      if (this.saveAbort === abort) this.saveAbort = null;
-      this.saving = null;
-    });
-    return this.saving;
-  }
-  failureMessage(error51, fallback) {
-    if (error51 instanceof RemoteCallError) {
-      if (error51.code === "conflict" || error51.code === "changed") {
-        return "Save Conflict: The note changed outside this editor. Your source remains unsaved.";
-      }
-      return error51.message || fallback;
-    }
-    return error51 instanceof Error && error51.message !== "" ? error51.message : fallback;
-  }
-  dispose() {
-    if (this.disposed) return;
-    this.settlePendingDispatch("stale");
-    this.disposed = true;
-    this.dispatchRevision += 1;
-    this.operation += 1;
-    this.operationAbort?.abort();
-    this.saveAbort?.abort();
-    this.draftAbort?.abort();
-    if (this.draftTimer !== null) clearTimeout(this.draftTimer);
-    this.eventDispose?.();
-    this.listeners.clear();
-  }
-};
-function RichReadingView(props) {
-  const html = (0, import_react6.useMemo)(() => {
-    const warning = /<\/?(?:script|style|iframe|object|embed|form|svg|link|meta)\b/iu.test(props.source) ? '<p class="tocktutor-warning" role="note">Unsafe HTML is inert in Reading view.</p>' : "";
-    return `${warning}${renderMarkdownHtml(props.source)}`;
-  }, [props.source]);
-  const onClick = (event) => {
-    const target = event.target;
-    if (target instanceof HTMLInputElement && target.dataset.taskIndex !== void 0) {
-      const index2 = Number(target.dataset.taskIndex);
-      if (Number.isSafeInteger(index2) && index2 >= 0) props.onToggleTask(index2);
-      return;
-    }
-    if (target instanceof HTMLAnchorElement) event.preventDefault();
-  };
-  return /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(
-    "article",
-    {
-      "aria-label": "Reading View",
-      className: "tocktutor-reading mx-auto min-h-full w-[calc(100%-48px)] max-w-3xl pt-[18px] pb-[72px] [&_.callout]:my-4 [&_.callout]:rounded-md [&_.footnotes]:mt-8 [&_.math-display]:my-4 [&_.mermaid]:my-4 [&_.task-list]:pl-5 [&_h1]:mt-0 [&_h1]:mb-4 [&_h1]:text-[30px] [&_h1]:leading-tight [&_h1]:font-[650] [&_h2]:mt-6 [&_h2]:mb-3 [&_h2]:text-2xl [&_h3]:mt-5 [&_h3]:mb-2 [&_h3]:text-xl [&_mark]:bg-[color-mix(in_srgb,#fde047_55%,transparent)] [&_p]:mt-0 [&_p]:mb-4 [&_p]:text-lg [&_pre]:overflow-auto [&_pre]:rounded-md [&_pre]:border [&_pre]:border-[var(--tt-border)] [&_pre]:bg-[color-mix(in_srgb,var(--tt-text)_4%,var(--tt-panel))] [&_pre]:p-3 [&_table]:my-4 [&_table]:w-full [&_table]:border-collapse [&_td]:border [&_td]:border-[var(--tt-border)] [&_td]:p-2 [&_th]:border [&_th]:border-[var(--tt-border)] [&_th]:p-2",
-      dangerouslySetInnerHTML: { __html: html },
-      onClick,
-      tabIndex: -1
-    }
-  );
-}
-function LivePreviewView(props) {
-  const projection = (0, import_react6.useMemo)(() => projectLivePreview(props.source), [props.source]);
-  const [folded, setFolded] = (0, import_react6.useState)(() => /* @__PURE__ */ new Set());
-  (0, import_react6.useEffect)(() => {
-    if (projection.status !== "ready") {
-      setFolded(/* @__PURE__ */ new Set());
-      return;
-    }
-    setFolded(new Set(projection.lines.filter((line) => line.folded === true).map((line) => line.index)));
-  }, [props.documentKey]);
-  if (projection.status !== "ready") return /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(Alert, { unstyled: true, children: projection.reason });
-  const hidden = /* @__PURE__ */ new Set();
-  for (const line of projection.lines) {
-    if (!folded.has(line.index) || line.foldEndLine === void 0) continue;
-    for (let index2 = line.index + 1; index2 <= line.foldEndLine; index2 += 1) hidden.add(index2);
-  }
-  const toggleFold = (index2) => {
-    setFolded((current) => {
-      const next = new Set(current);
-      if (next.has(index2)) next.delete(index2);
-      else next.add(index2);
-      return next;
-    });
-  };
-  return /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("section", { "aria-label": "Live Preview", className: "mx-auto grid min-h-full w-[calc(100%-32px)] max-w-3xl content-start gap-0.5 py-6", tabIndex: -1, children: projection.lines.map((line) => hidden.has(line.index) ? null : /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)(
-    "div",
-    {
-      className: "group flex min-h-7 items-start gap-2 rounded px-1.5 py-0.5 data-[kind=callout]:border-l-4 data-[kind=callout]:border-[var(--tt-accent)] data-[kind=callout]:bg-[var(--tt-selected)] data-[kind=code]:bg-[color-mix(in_srgb,var(--tt-text)_5%,var(--tt-panel))] data-[kind=comment]:text-[var(--tt-muted)] data-[kind=heading]:font-semibold data-[kind=property]:text-[var(--tt-muted)]",
-      "data-kind": line.kind,
-      children: [
-        line.foldEndLine !== void 0 ? /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(
-          Button,
-          {
-            unstyled: true,
-            "aria-expanded": !folded.has(line.index),
-            "aria-label": `${folded.has(line.index) ? "Expand" : "Collapse"} Line ${String(line.index + 1)}`,
-            className: "mt-1 size-5 shrink-0 rounded border-0 bg-transparent p-0 text-[var(--tt-muted)]",
-            onClick: () => {
-              toggleFold(line.index);
-            },
-            type: "button",
-            children: /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(ChevronRight, { "aria-hidden": "true", className: folded.has(line.index) ? "" : "rotate-90" })
-          }
-        ) : /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("span", { className: "w-5 shrink-0" }),
-        line.kind === "task" && line.taskIndex !== void 0 && /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(
-          Checkbox3,
-          {
-            "aria-label": `Mark Task on Line ${String(line.index + 1)} as ${line.checked === true ? "Incomplete" : "Complete"}`,
-            checked: line.checked === true,
-            className: "mt-1.5",
-            onCheckedChange: () => {
-              props.onToggleTask(line.taskIndex);
-            }
-          }
-        ),
-        /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(
-          Textarea,
-          {
-            unstyled: true,
-            "aria-label": `Live Preview Line ${String(line.index + 1)}`,
-            className: "min-h-7 flex-1 resize-none overflow-hidden border-0 bg-transparent px-1 py-0.5 text-inherit outline-none [font:inherit]",
-            onChange: (event) => {
-              props.onEdit(replaceLivePreviewLine(props.source, line.index, event.target.value));
-            },
-            rows: 1,
-            spellCheck: line.kind !== "code",
-            value: line.content
-          }
-        )
-      ]
-    },
-    line.index
-  )) });
-}
-function BaseView(props) {
-  const projection = projectBase(props.source);
-  if (projection.status !== "ready") return /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(Alert, { unstyled: true, children: projection.reason });
-  return /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("section", { "aria-label": "Base View", className: "tocktutor-projection min-h-0 overflow-auto p-6", tabIndex: -1, children: [
-    /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("header", { children: [
-      /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("p", { className: "tocktutor-kicker mb-0.5 text-[11px] font-[650] tracking-[.08em] text-[var(--tt-muted)] uppercase", children: "Base" }),
-      /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("h3", { className: "mt-0 mb-[18px] text-[17px]", children: [
-        projection.views.length,
-        " Views"
-      ] })
-    ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("div", { className: "tocktutor-base-grid grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-3", children: projection.views.map((view, index2) => /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("article", { className: "tocktutor-base-view min-w-0 rounded-lg border border-[var(--tt-border)] bg-[var(--tt-bg)] p-3.5 [&>h4]:mt-0 [&>h4]:mb-2 [&>h4]:text-sm [&>h4]:[overflow-wrap:anywhere] [&>p:not(.tocktutor-kicker)]:text-xs [&>p:not(.tocktutor-kicker)]:text-[var(--tt-muted)]", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("p", { className: "tocktutor-kicker mb-0.5 text-[11px] font-[650] tracking-[.08em] text-[var(--tt-muted)] uppercase", children: view.type || "Unknown Type" }),
-      /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("h4", { children: view.name }),
-      /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("dl", { className: "m-0", children: Object.entries(view.fields).map(([field, value]) => /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("div", { className: "grid grid-cols-[minmax(72px,.35fr)_minmax(0,1fr)] gap-2 border-t border-[var(--tt-border)] py-[7px]", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("dt", { className: "text-[var(--tt-muted)]", children: field }),
-        /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("dd", { className: "m-0 [overflow-wrap:anywhere]", children: value || "\u2014" })
-      ] }, field)) }),
-      view.warnings.map((warning) => /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("p", { role: "note", children: warning }, warning))
-    ] }, `${view.name}-${String(index2)}`)) })
-  ] });
-}
-function NativeDispatchDialog(props) {
-  const submit = (event) => {
-    event.preventDefault();
-    const form = new FormData(event.currentTarget);
-    props.onSubmit(props.kind === "new" ? { path: String(form.get("path") ?? "") } : {
-      text: String(form.get("text") ?? ""),
-      title: String(form.get("title") ?? "")
-    });
-  };
-  const label = props.kind === "new" ? "New Note" : "Quick Capture";
-  return /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(Dialog2, { open: true, onOpenChange: (open) => {
-    if (!open) props.onCancel();
-  }, children: /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(
-    DialogContent3,
-    {
-      unstyled: true,
-      className: "tocktutor-dispatch-dialog fixed top-1/2 left-1/2 z-50 w-[calc(100%-48px)] max-w-[480px] -translate-1/2",
-      showCloseButton: false,
-      children: /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("form", { className: "grid w-full gap-3.5 rounded-lg border border-[var(--tt-border)] bg-[var(--tt-panel)] p-5 [&_input]:rounded-[5px] [&_input]:border [&_input]:border-[var(--tt-border)] [&_input]:p-2 [&_input]:[font:inherit] [&_label]:grid [&_label]:gap-[5px] [&_label]:font-[650] [&_textarea]:rounded-[5px] [&_textarea]:border [&_textarea]:border-[var(--tt-border)] [&_textarea]:p-2 [&_textarea]:[font:inherit]", onSubmit: submit, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("header", { children: /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(DialogTitle3, { className: "m-0 text-[17px]", children: label }) }),
-        props.kind === "new" ? /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)(Label, { unstyled: true, children: [
-          "Note Path",
-          /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(Input, { unstyled: true, "aria-label": "New Note Path", autoFocus: true, maxLength: 1e3, name: "path", required: true })
-        ] }) : /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)(import_jsx_runtime22.Fragment, { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)(Label, { unstyled: true, children: [
-            "Title",
-            /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(Input, { unstyled: true, "aria-label": "Capture Title", autoFocus: true, maxLength: 200, name: "title", required: true })
-          ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)(Label, { unstyled: true, children: [
-            "Text",
-            /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(Textarea, { unstyled: true, "aria-label": "Capture Text", maxLength: 1e5, name: "text" })
-          ] })
-        ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("div", { className: "tocktutor-dialog-actions flex justify-end gap-2 [&_button]:cursor-pointer [&_button]:rounded-[5px] [&_button]:border [&_button]:border-[var(--tt-border)] [&_button]:bg-[var(--tt-panel)] [&_button]:px-2.5 [&_button]:py-[7px] [&_button]:text-inherit", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(Button, { unstyled: true, onClick: props.onCancel, type: "button", children: "Cancel" }),
-          /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(Button, { unstyled: true, type: "submit", children: "Create" })
-        ] })
-      ] })
-    }
-  ) });
-}
-function WorkbenchCommandPalette(props) {
-  const [query, setQuery] = (0, import_react6.useState)("");
-  const editor = (command) => props.onEditorCommand === void 0 ? void 0 : () => {
-    props.onEditorCommand?.(command);
-  };
-  const commands = [
-    { label: "New Note", run: props.onNewNote },
-    { label: "Search Notes", run: props.onSearch },
-    { label: "Toggle Focus Mode", run: props.onToggleFocus },
-    { disabled: !props.canGoBack, label: "Go Back", run: props.onBack },
-    { disabled: !props.canGoForward, label: "Go Forward", run: props.onForward },
-    { disabled: !props.canReopen, label: "Reopen Closed Note", run: props.onReopen },
-    { disabled: !props.editorEnabled, label: "Bold Text", run: editor("bold") },
-    { disabled: !props.editorEnabled, label: "Italic Text", run: editor("italic") },
-    { disabled: !props.editorEnabled, label: "Strikethrough Text", run: editor("strikethrough") },
-    { disabled: !props.editorEnabled, label: "Highlight Text", run: editor("highlight") },
-    { disabled: !props.editorEnabled, label: "Add Internal Link", run: editor("link") },
-    { disabled: !props.editorEnabled, label: "Insert Table", run: editor("insert-table") },
-    { disabled: !props.editorEnabled, label: "Insert Tip Callout", run: editor("callout-tip") },
-    { disabled: !props.editorEnabled, label: "Delete Current Line", run: editor("delete-line") }
-  ].filter((command) => command.label.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()));
-  return /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(Dialog2, { open: true, onOpenChange: (open) => {
-    if (!open) props.onClose();
-  }, children: /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)(
-    DialogContent3,
-    {
-      unstyled: true,
-      className: "fixed top-[18%] left-1/2 z-50 w-[calc(100%-32px)] max-w-xl -translate-x-1/2 rounded-lg border border-[var(--tt-border)] bg-[var(--tt-panel)] p-3 shadow-xl",
-      showCloseButton: false,
-      children: [
-        /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(DialogTitle3, { className: "mb-2 text-sm font-semibold", children: "Command Palette" }),
-        /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(
-          Input,
-          {
-            unstyled: true,
-            "aria-label": "Search Commands",
-            autoFocus: true,
-            className: "w-full rounded border border-[var(--tt-border)] px-2 py-1.5",
-            maxLength: 200,
-            onChange: (event) => {
-              setQuery(event.target.value);
-            },
-            placeholder: "Search commands",
-            value: query
-          }
-        ),
-        /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("div", { className: "mt-2 grid max-h-80 gap-1 overflow-auto", role: "listbox", children: [
-          commands.map((command) => /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(
-            Button,
-            {
-              unstyled: true,
-              className: "rounded border-0 bg-transparent px-2 py-1.5 text-left hover:bg-[var(--tt-selected)] disabled:opacity-50",
-              disabled: command.disabled === true || command.run === void 0,
-              onClick: () => {
-                command.run?.();
-                props.onClose();
-              },
-              role: "option",
-              type: "button",
-              children: command.label
-            },
-            command.label
-          )),
-          commands.length === 0 && /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(Alert, { unstyled: true, role: "status", children: "No matching commands." })
-        ] })
-      ]
-    }
-  ) });
-}
-var WORKBENCH_GLYPHS = {
-  back: ChevronLeft,
-  bookmark: Bookmark,
-  chat: MessageSquare,
-  close: X,
-  collapse: ChevronRight,
-  document: FileText,
-  folder: Folder,
-  forward: ChevronRight,
-  more: Ellipsis,
-  new: Plus,
-  panel: PanelLeft,
-  "panel-right": PanelRight,
-  pencil: Pencil,
-  search: Search
-};
-function WorkbenchGlyph({ kind }) {
-  const Glyph = WORKBENCH_GLYPHS[kind];
-  return /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(Glyph, { "aria-hidden": "true" });
-}
-function fileName(path) {
-  return path.split("/").at(-1) ?? path;
-}
-function noteTitle(path) {
-  return path === null ? "TockTutor" : fileName(path).replace(/\.(?:base|canvas|markdown|md)$/iu, "");
-}
-function TreeEntries(props) {
-  const prefix = props.prefix ?? "";
-  const children = props.entries.filter((entry) => entry.path.startsWith(prefix) && !entry.path.slice(prefix.length).includes("/") && (entry.kind === "directory" || entry.kind === "document")).toSorted((left, right) => {
-    if (left.kind !== right.kind) return left.kind === "directory" ? -1 : 1;
-    return left.path.localeCompare(right.path, void 0, { sensitivity: "base" });
-  });
-  return children.map((entry) => entry.kind === "directory" ? /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("li", { className: "tocktutor-tree-directory", role: "treeitem", "aria-expanded": "true", children: [
-    /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("div", { className: "tocktutor-tree-row grid min-h-8 w-full grid-cols-[12px_16px_minmax(0,1fr)_16px] items-center gap-[7px] overflow-hidden rounded bg-transparent px-[5px] py-1 text-left font-medium text-inherit hover:bg-[color-mix(in_srgb,var(--tt-text)_5%,transparent)] [&>span:not(.tocktutor-tree-indent)]:truncate [&>svg:first-child]:size-3 [&>svg:last-child]:ml-auto [&>svg:last-child]:size-3.5 [&>svg:last-child]:text-[var(--tt-muted)] [&>svg:last-child]:opacity-80", title: entry.path, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(WorkbenchGlyph, { kind: "collapse" }),
-      /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(WorkbenchGlyph, { kind: "folder" }),
-      /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("span", { children: fileName(entry.path) }),
-      /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(WorkbenchGlyph, { kind: "more" })
-    ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("ul", { className: "m-0 list-none p-0 pl-4", role: "group", children: /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(TreeEntries, { entries: props.entries, onSelect: props.onSelect, path: props.path, prefix: `${entry.path}/` }) })
-  ] }, entry.path) : /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("li", { role: "treeitem", "aria-selected": entry.path === props.path, children: /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)(
-    Button,
-    {
-      unstyled: true,
-      "aria-current": entry.path === props.path ? "page" : void 0,
-      className: "tocktutor-tree-row grid min-h-8 w-full grid-cols-[12px_16px_minmax(0,1fr)_16px] items-center gap-[7px] overflow-hidden rounded border-0 bg-transparent px-[5px] py-1 text-left font-medium text-inherit hover:bg-[color-mix(in_srgb,var(--tt-text)_5%,transparent)] aria-current:bg-[var(--tt-selected)] aria-current:[&>svg:last-child]:text-[var(--tt-text)] [&>span:not(.tocktutor-tree-indent)]:truncate [&>svg:first-child]:size-3 [&>svg:last-child]:ml-auto [&>svg:last-child]:size-3.5 [&>svg:last-child]:text-[var(--tt-muted)] [&>svg:last-child]:opacity-80",
-      onClick: () => {
-        props.onSelect(entry.path);
-      },
-      title: entry.path,
-      type: "button",
-      children: [
-        /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("span", { className: "tocktutor-tree-indent w-3" }),
-        /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(WorkbenchGlyph, { kind: "document" }),
-        /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("span", { children: fileName(entry.path) }),
-        /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(WorkbenchGlyph, { kind: "more" })
-      ]
-    }
-  ) }, entry.path));
-}
-function TockTutorRouteView(props) {
-  const { snapshot } = props;
-  const previewLabel = snapshot.documentKind === "canvas" ? "Canvas" : snapshot.documentKind === "base" ? "Base" : "Reading";
-  const sourceLabel = snapshot.documentKind === "canvas" ? "Canvas Source" : snapshot.documentKind === "base" ? "Base Source" : "Markdown Source";
-  const query = snapshot.searchQuery.trim().toLocaleLowerCase();
-  const activeProperties = snapshot.documentKind === "markdown" ? parseFrontmatterProperties(snapshot.source) : [];
-  const documents = snapshot.entries.filter((entry) => entry.kind === "document" && supportedDocument(entry.path) && (query === "" || entry.path.toLocaleLowerCase().includes(query)));
-  const focusedPane = snapshot.panes.find((pane) => pane.id === snapshot.focusedPaneId);
-  const visibleTreeEntries = query === "" ? snapshot.entries.filter((entry) => entry.kind === "directory" || entry.kind === "document" && supportedDocument(entry.path)) : snapshot.entries.filter((entry) => entry.kind === "directory" ? documents.some((document2) => document2.path.startsWith(`${entry.path}/`)) : documents.includes(entry));
-  const [panel, setPanel] = (0, import_react6.useState)(null);
-  const [assistantPanelWidth, setAssistantPanelWidth] = (0, import_react6.useState)(DEFAULT_ASSISTANT_PANEL_WIDTH);
-  const [sidebarOpen, setSidebarOpen] = (0, import_react6.useState)(true);
-  const [sidebarWidth, setSidebarWidth] = (0, import_react6.useState)(DEFAULT_SIDEBAR_WIDTH);
-  const effectiveSidebarOpen = sidebarOpen && snapshot.focusMode !== true;
-  const previousSidebarOpen = (0, import_react6.useRef)(effectiveSidebarOpen);
-  const shouldAnimateSidebarColumns = previousSidebarOpen.current !== effectiveSidebarOpen;
-  const contentColumns = `${String(effectiveSidebarOpen ? sidebarWidth : 0)}px minmax(0, 1fr) auto auto`;
-  const titlebarColumns = `${String(effectiveSidebarOpen ? sidebarWidth : COLLAPSED_TITLEBAR_SIDEBAR_WIDTH)}px minmax(0, 1fr)`;
-  (0, import_react6.useEffect)(() => {
-    previousSidebarOpen.current = effectiveSidebarOpen;
-  }, [effectiveSidebarOpen]);
-  const resizeSidebar = (width) => {
-    setSidebarWidth(Math.min(MAX_SIDEBAR_WIDTH, Math.max(MIN_SIDEBAR_WIDTH, width)));
-  };
-  const beginSidebarResize = (event) => {
-    event.preventDefault();
-    const startX = event.clientX;
-    const startWidth = sidebarWidth;
-    const move = (next) => {
-      resizeSidebar(startWidth + next.clientX - startX);
-    };
-    const finish = () => {
-      window.removeEventListener("pointermove", move);
-      window.removeEventListener("pointerup", finish);
-      window.removeEventListener("pointercancel", finish);
-    };
-    window.addEventListener("pointermove", move);
-    window.addEventListener("pointerup", finish);
-    window.addEventListener("pointercancel", finish);
-  };
-  const resizeSidebarWithKeyboard = (event) => {
-    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
-    event.preventDefault();
-    resizeSidebar(sidebarWidth + (event.key === "ArrowLeft" ? -10 : 10));
-  };
-  const resizeAssistantPanel = (width) => {
-    setAssistantPanelWidth(clampAssistantPanelWidth(width));
-  };
-  const beginAssistantPanelResize = (event) => {
-    event.preventDefault();
-    const handle = event.currentTarget;
-    const panelElement = handle.parentElement;
-    if (panelElement === null) return;
-    const startX = event.clientX;
-    const startWidth = assistantPanelWidth;
-    let frame = 0;
-    let width = startWidth;
-    panelElement.style.transitionDuration = "0ms";
-    const render = () => {
-      frame = 0;
-      panelElement.style.width = `${String(width)}px`;
-      handle.setAttribute("aria-valuenow", String(width));
-    };
-    const move = (next) => {
-      width = clampAssistantPanelWidth(startWidth + startX - next.clientX);
-      if (frame === 0) frame = requestAnimationFrame(render);
-    };
-    const finish = () => {
-      if (frame !== 0) cancelAnimationFrame(frame);
-      render();
-      resizeAssistantPanel(width);
-      panelElement.style.removeProperty("transition-duration");
-      window.removeEventListener("pointermove", move);
-      window.removeEventListener("pointerup", finish);
-      window.removeEventListener("pointercancel", finish);
-    };
-    window.addEventListener("pointermove", move);
-    window.addEventListener("pointerup", finish);
-    window.addEventListener("pointercancel", finish);
-  };
-  const resizeAssistantPanelWithKeyboard = (event) => {
-    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
-    event.preventDefault();
-    resizeAssistantPanel(assistantPanelWidth + (event.key === "ArrowLeft" ? 10 : -10));
-  };
-  const words = snapshot.source.match(/[\p{L}\p{N}]+(?:['’][\p{L}\p{N}]+)*/gu)?.length ?? 0;
-  const characters = snapshot.source.length;
-  const titlebar = /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)(
-    "section",
-    {
-      "aria-label": "TockTutor Title Bar",
-      className: "tocktutor-titlebar absolute top-0 right-0 left-0 z-[2147483647] grid h-[var(--tockteam-titlebar-height,40px)] grid-cols-[var(--tockteam-primary-sidebar-width,280px)_minmax(0,1fr)] border-b border-[var(--tt-tab-border)] bg-[var(--tockteam-shell-chrome,var(--tt-panel))] text-[var(--tt-text)] transition-[grid-template-columns] duration-300 ease-out [--tt-accent:var(--dsw-alias-accent-primary,#533afd)] [--tt-border:var(--dsw-alias-border-l1,var(--dsw-alias-border-subtle,#e1e3e7))] [--tt-muted:var(--dsw-alias-fg-muted,#71717a)] [--tt-panel:var(--dsw-alias-bg-elevated,#fff)] [--tt-tab-border:#d1d5db] [--tt-text:var(--dsw-alias-fg-primary,#27272a)] [-webkit-app-region:drag] [font:14px/1.45_ui-sans-serif,-apple-system,BlinkMacSystemFont,'Segoe_UI',sans-serif] [&_*]:box-border [&_*::after]:box-border [&_*::before]:box-border [&_button]:text-inherit [&_button]:[font:inherit] [&_button]:[-webkit-app-region:no-drag] [&_svg]:block [&_svg]:size-[18px]",
-      style: {
-        gridTemplateColumns: titlebarColumns,
-        transitionDuration: shouldAnimateSidebarColumns ? void 0 : "0ms"
-      },
-      children: [
-        /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("div", { className: "tocktutor-titlebar-sidebar flex min-w-0 items-center justify-start gap-2 border-r border-[var(--tt-border)] pr-2 pl-[46px] [&>button]:inline-flex [&>button]:h-7 [&>button]:w-[22px] [&>button]:items-center [&>button]:justify-center [&>button]:border-0 [&>button]:bg-transparent [&>button]:p-0 [&>button]:text-[var(--tt-muted)] [&>span]:inline-flex [&>span]:h-7 [&>span]:w-[22px] [&>span]:items-center [&>span]:justify-center [&>span]:border-0 [&>span]:bg-transparent [&>span]:p-0 [&>span]:text-[var(--tt-muted)]", children: [
-          effectiveSidebarOpen && /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)(import_jsx_runtime22.Fragment, { children: [
-            /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("span", { className: "tocktutor-titlebar-document rounded-[5px] bg-[color-mix(in_srgb,var(--tt-text)_8%,transparent)] text-[var(--tt-text)]", children: /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(WorkbenchGlyph, { kind: "document" }) }),
-            /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("span", { children: /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(WorkbenchGlyph, { kind: "document" }) }),
-            /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)(Tooltip2, { children: [
-              /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(TooltipTrigger3, { asChild: true, children: /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("span", { className: "inline-flex", children: /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(Button, { unstyled: true, "aria-label": "Search Notes", className: "border-0 bg-transparent p-0", disabled: props.onOpenSearch === void 0, onClick: props.onOpenSearch, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(WorkbenchGlyph, { kind: "search" }) }) }) }),
-              /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(TooltipContent3, { children: "Search Notes" })
-            ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(Button, { unstyled: true, "aria-label": "Bookmark Active Note", className: "border-0 bg-transparent p-0", disabled: snapshot.path === null || props.onAddBookmark === void 0, onClick: props.onAddBookmark, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(WorkbenchGlyph, { kind: "bookmark" }) })
-          ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)(Tooltip2, { children: [
-            /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(TooltipTrigger3, { asChild: true, children: /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(
-              Button,
-              {
-                unstyled: true,
-                "aria-expanded": effectiveSidebarOpen,
-                "aria-label": "Toggle Files Sidebar",
-                className: "tocktutor-panel-icon ml-auto border-0 bg-transparent p-1.5 text-[var(--tt-muted)]",
-                onClick: () => {
-                  setSidebarOpen((open) => !open);
-                },
-                type: "button",
-                children: /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(WorkbenchGlyph, { kind: "panel" })
-              }
-            ) }),
-            /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(TooltipContent3, { children: "Toggle Files Sidebar" })
-          ] })
-        ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("div", { className: "tocktutor-titlebar-main flex min-w-0 items-center gap-1 px-2", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("span", { className: "tocktutor-history mr-[18px] flex gap-[5px] px-1.5", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(Button, { unstyled: true, "aria-label": "Go Back", className: "border-0 bg-transparent p-1 text-[var(--tt-muted)] disabled:opacity-35", disabled: snapshot.canGoBack !== true, onClick: props.onBack, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(WorkbenchGlyph, { kind: "back" }) }),
-            /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(Button, { unstyled: true, "aria-label": "Go Forward", className: "border-0 bg-transparent p-1 text-[var(--tt-muted)] disabled:opacity-35", disabled: snapshot.canGoForward !== true, onClick: props.onForward, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(WorkbenchGlyph, { kind: "forward" }) })
-          ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("div", { className: "tocktutor-tabs -mx-[calc(var(--tt-tab-curve)*2)] -mb-px flex min-w-0 self-stretch items-end gap-1 overflow-visible px-[calc(var(--tt-tab-curve)*2)] [--tt-tab-curve:10px]", ...focusedPane?.tabs.length ? { "aria-label": "Note Tabs", role: "tablist" } : {}, children: focusedPane?.tabs.map((tab, index2) => /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("div", { className: "relative", role: "presentation", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(
-              Button,
-              {
-                unstyled: true,
-                "aria-selected": tab.path === focusedPane.activePath,
-                className: "relative z-1 -mb-px flex h-[30px] min-w-[118px] max-w-[220px] items-center gap-3 rounded-t-[10px] border border-b-0 border-[var(--tt-tab-border)] bg-[var(--tt-panel)] px-2.5 shadow-[inset_0_1px_0_rgb(255_255_255_/_18%)] aria-[selected=false]:mb-0.5 aria-[selected=false]:border-b aria-[selected=false]:bg-[color-mix(in_srgb,var(--tt-panel)_70%,transparent)] aria-[selected=false]:text-[var(--tt-muted)] aria-[selected=false]:shadow-none aria-selected:before:pointer-events-none aria-selected:before:absolute aria-selected:before:bottom-[-1px] aria-selected:before:left-[calc(var(--tt-tab-curve)*-2)] aria-selected:before:h-[calc(var(--tt-tab-curve)*2)] aria-selected:before:w-[calc(var(--tt-tab-curve)*2)] aria-selected:before:rounded-full aria-selected:before:content-[''] aria-selected:before:[clip-path:inset(50%_calc(var(--tt-tab-curve)*-1)_0_50%)] aria-selected:before:[box-shadow:inset_0_0_0_1px_var(--tt-tab-border),0_0_0_calc(var(--tt-tab-curve)*4)_var(--tt-panel)] aria-selected:after:pointer-events-none aria-selected:after:absolute aria-selected:after:right-[calc(var(--tt-tab-curve)*-2)] aria-selected:after:bottom-[-1px] aria-selected:after:h-[calc(var(--tt-tab-curve)*2)] aria-selected:after:w-[calc(var(--tt-tab-curve)*2)] aria-selected:after:rounded-full aria-selected:after:content-[''] aria-selected:after:[clip-path:inset(50%_50%_0_calc(var(--tt-tab-curve)*-1))] aria-selected:after:[box-shadow:inset_0_0_0_1px_var(--tt-tab-border),0_0_0_calc(var(--tt-tab-curve)*4)_var(--tt-panel)] [&>span]:truncate [&_svg]:ml-auto [&_svg]:size-3.5",
-                onClick: () => {
-                  props.onActivateTab(focusedPane.id, tab.path);
-                },
-                onKeyDown: (event) => {
-                  if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
-                  event.preventDefault();
-                  const offset4 = event.key === "ArrowLeft" ? -1 : 1;
-                  if (event.altKey) {
-                    props.onMoveTab?.(focusedPane.id, tab.path, offset4);
-                    return;
-                  }
-                  const next = focusedPane.tabs[(index2 + offset4 + focusedPane.tabs.length) % focusedPane.tabs.length];
-                  if (next !== void 0) props.onActivateTab(focusedPane.id, next.path);
-                },
-                "aria-controls": "tocktutor-note-editor",
-                role: "tab",
-                tabIndex: tab.path === focusedPane.activePath ? 0 : -1,
-                title: tab.path,
-                type: "button",
-                children: /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("span", { children: [
-                  tab.dirty && /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("span", { "aria-label": "Unsaved", children: "\u2022" }),
-                  tab.pinned === true && /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("span", { "aria-label": "Pinned", children: "\u25C6" }),
-                  fileName(tab.path)
-                ] })
-              }
-            ),
-            /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("span", { className: "absolute top-1/2 right-1 z-2 flex -translate-y-1/2 gap-0.5", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(Button, { unstyled: true, "aria-label": `${tab.pinned === true ? "Unpin" : "Pin"} ${fileName(tab.path)}`, className: "rounded border-0 bg-transparent p-0.5 text-[var(--tt-muted)]", onClick: () => {
-                props.onTogglePinTab?.(focusedPane.id, tab.path);
-              }, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(Bookmark, { "aria-hidden": "true" }) }),
-              /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(Button, { unstyled: true, "aria-label": `Close ${fileName(tab.path)}`, className: "rounded border-0 bg-transparent p-0.5 text-[var(--tt-muted)]", onClick: () => {
-                props.onCloseTab?.(focusedPane.id, tab.path);
-              }, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(WorkbenchGlyph, { kind: "close" }) })
-            ] })
-          ] }, tab.path)) }),
-          /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)(Tooltip2, { children: [
-            /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(TooltipTrigger3, { asChild: true, children: /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("span", { className: "inline-flex", children: /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(Button, { unstyled: true, "aria-label": "Command Palette", className: "border-0 bg-transparent p-1.5 text-[var(--tt-muted)]", disabled: props.onOpenCommandPalette === void 0, onClick: props.onOpenCommandPalette, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(WorkbenchGlyph, { kind: "search" }) }) }) }),
-            /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(TooltipContent3, { children: "Command Palette" })
-          ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)(Tooltip2, { children: [
-            /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(TooltipTrigger3, { asChild: true, children: /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("span", { className: "inline-flex", children: /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(Button, { unstyled: true, "aria-label": "New Note", className: "tocktutor-new-tab border-0 bg-transparent p-1.5 text-[var(--tt-muted)]", disabled: props.onNewNote === void 0, onClick: props.onNewNote, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(WorkbenchGlyph, { kind: "new" }) }) }) }),
-            /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(TooltipContent3, { children: "New Note" })
-          ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("span", { className: "tocktutor-titlebar-spacer flex-1" }),
-          /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)(Tooltip2, { children: [
-            /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(TooltipTrigger3, { asChild: true, children: /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(
-              Button,
-              {
-                unstyled: true,
-                "aria-expanded": panel === "assistant",
-                "aria-label": "Toggle Assistant Panel",
-                className: "tocktutor-panel-icon border-0 bg-transparent p-1.5 text-[var(--tt-muted)]",
-                onClick: () => {
-                  setPanel((current) => current === "assistant" ? null : "assistant");
-                },
-                type: "button",
-                children: /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(WorkbenchGlyph, { kind: "panel-right" })
-              }
-            ) }),
-            /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(TooltipContent3, { children: "Toggle Assistant Panel" })
-          ] })
-        ] })
-      ]
-    }
-  );
-  return /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(TooltipProvider2, { children: /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)(
-    "main",
-    {
-      "aria-label": "TockTutor Workbench",
-      className: "tocktutor-workbench h-full min-h-0 box-border bg-[var(--tt-bg)] pt-0 text-[var(--tt-text)] [--tt-accent:var(--dsw-alias-accent-primary,#533afd)] [--tt-bg:var(--dsw-alias-bg-base,#fff)] [--tt-border:var(--dsw-alias-border-l1,var(--dsw-alias-border-subtle,#e1e3e7))] [--tt-footer-height:28px] [--tt-muted:var(--dsw-alias-fg-muted,#71717a)] [--tt-panel:var(--dsw-alias-bg-elevated,#fff)] [--tt-selected:color-mix(in_srgb,var(--tt-accent)_14%,var(--tt-panel))] [--tt-text:var(--dsw-alias-fg-primary,#27272a)] [font:14px/1.45_ui-sans-serif,-apple-system,BlinkMacSystemFont,'Segoe_UI',sans-serif] [&_*]:box-border [&_*::after]:box-border [&_*::before]:box-border [&_[hidden]]:!hidden [&_button]:text-inherit [&_button]:[font:inherit] [&_button:focus-visible]:outline-2 [&_button:focus-visible]:outline-offset-2 [&_button:focus-visible]:outline-[var(--tt-accent)] [&_input:focus-visible]:outline-2 [&_input:focus-visible]:outline-offset-2 [&_input:focus-visible]:outline-[var(--tt-accent)] [&_svg]:block [&_svg]:size-4 [&_textarea:focus-visible]:outline-2 [&_textarea:focus-visible]:outline-offset-2 [&_textarea:focus-visible]:outline-[var(--tt-accent)] motion-reduce:[&_*]:!scroll-auto motion-reduce:[&_*]:!delay-0 motion-reduce:[&_*]:!duration-0 motion-reduce:[&_*::after]:!delay-0 motion-reduce:[&_*::after]:!duration-0 motion-reduce:[&_*::before]:!delay-0 motion-reduce:[&_*::before]:!duration-0",
-      "data-focus-mode": snapshot.focusMode === true,
-      "data-phase": snapshot.phase,
-      tabIndex: -1,
-      children: [
-        props.titlebarTarget === void 0 ? titlebar : (0, import_react_dom2.createPortal)(titlebar, props.titlebarTarget),
-        snapshot.dispatchDialog !== null && /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(
-          NativeDispatchDialog,
-          {
-            kind: snapshot.dispatchDialog,
-            onCancel: () => {
-              props.onCancelDispatch?.();
-            },
-            onSubmit: (draft) => {
-              props.onSubmitDispatch?.(draft);
-            }
-          }
-        ),
-        snapshot.commandPaletteOpen === true && /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(
-          WorkbenchCommandPalette,
-          {
-            canGoBack: snapshot.canGoBack === true,
-            canGoForward: snapshot.canGoForward === true,
-            canReopen: (snapshot.recentlyClosed?.length ?? 0) > 0,
-            editorEnabled: snapshot.documentKind === "markdown" && snapshot.mode !== "reading",
-            onBack: props.onBack,
-            onClose: () => {
-              props.onCloseCommandPalette?.();
-            },
-            onEditorCommand: props.onEditorCommand,
-            onForward: props.onForward,
-            onNewNote: props.onNewNote,
-            onReopen: props.onReopenClosedTab,
-            onSearch: props.onOpenSearch,
-            onToggleFocus: props.onToggleFocusMode
-          }
-        ),
-        /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)(
-          "div",
-          {
-            className: "tocktutor-grid relative grid h-full min-h-0 grid-cols-[var(--tockteam-primary-sidebar-width,280px)_minmax(0,1fr)_auto_auto] transition-[grid-template-columns] duration-300 ease-out",
-            style: {
-              gridTemplateColumns: contentColumns,
-              transitionDuration: shouldAnimateSidebarColumns ? void 0 : "0ms"
-            },
-            children: [
-              /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)(
-                "aside",
-                {
-                  "aria-hidden": !effectiveSidebarOpen,
-                  "aria-label": "Files",
-                  className: "tocktutor-sidebar grid min-h-0 grid-rows-[40px_minmax(0,1fr)_var(--tt-footer-height)] overflow-hidden border-r border-[var(--tt-border)] bg-[var(--tockteam-shell-chrome,var(--tt-panel))] data-[open=false]:invisible data-[open=false]:[transition:visibility_0s_linear_300ms]",
-                  "data-open": effectiveSidebarOpen,
-                  ...effectiveSidebarOpen ? {} : { inert: "" },
-                  children: [
-                    /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("header", { className: "tocktutor-sidebar-header flex items-center gap-2.5 border-b border-[var(--tt-border)] px-2.5 [&_svg]:size-3.5", children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("h1", { className: "mr-auto my-0 text-sm font-semibold", children: "Files" }),
-                      /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("span", { className: "inline-flex items-center justify-center text-sm text-[var(--tt-muted)]", children: /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(WorkbenchGlyph, { kind: "more" }) }),
-                      /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("span", { className: "inline-flex items-center justify-center text-sm text-[var(--tt-muted)]", children: /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(Upload, { "aria-hidden": "true" }) }),
-                      /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("span", { className: "inline-flex items-center justify-center text-sm text-[var(--tt-muted)]", children: /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(WorkbenchGlyph, { kind: "folder" }) }),
-                      /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("span", { className: "inline-flex items-center justify-center text-sm text-[var(--tt-muted)]", children: /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(PanelTop, { "aria-hidden": "true" }) })
-                    ] }),
-                    /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("div", { className: "tocktutor-sidebar-content min-h-0 overflow-auto px-[5px] py-[3px]", children: [
-                      snapshot.searchOpen && /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("section", { "aria-label": "Search Notes", className: "tocktutor-search mb-2 border-b border-[var(--tt-border)] px-[3px] pb-2", children: [
-                        /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(Label, { unstyled: true, className: "mb-[5px] block text-xs font-semibold", htmlFor: "tocktutor-search-query", children: "Search Notes" }),
-                        /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("div", { className: "flex gap-1", children: [
-                          /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(
-                            Input,
-                            {
-                              unstyled: true,
-                              "aria-label": "Search Notes Query",
-                              autoFocus: true,
-                              className: "w-full min-w-0 rounded-[5px] border border-[var(--tt-border)] px-[7px] py-[5px] [font:inherit]",
-                              id: "tocktutor-search-query",
-                              maxLength: 1e3,
-                              onChange: (event) => {
-                                props.onSearchChange?.(event.target.value);
-                              },
-                              type: "search",
-                              value: snapshot.searchQuery
-                            }
-                          ),
-                          /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)(Tooltip2, { children: [
-                            /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(TooltipTrigger3, { asChild: true, children: /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(Button, { unstyled: true, "aria-label": "Close Search", className: "w-7 rounded-[5px] border border-[var(--tt-border)] bg-transparent", onClick: () => {
-                              props.onCloseSearch?.();
-                            }, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(WorkbenchGlyph, { kind: "close" }) }) }),
-                            /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(TooltipContent3, { children: "Close Search" })
-                          ] })
-                        ] }),
-                        /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("div", { className: "mt-1 flex gap-1", children: [
-                          /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(Button, { unstyled: true, "aria-pressed": (snapshot.searchMode ?? "query") === "query", className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs aria-pressed:border-[var(--tt-accent)]", onClick: () => {
-                            props.onSearchMode?.("query");
-                          }, type: "button", children: "Keyword" }),
-                          /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(Button, { unstyled: true, "aria-pressed": snapshot.searchMode === "related", className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs aria-pressed:border-[var(--tt-accent)]", onClick: () => {
-                            props.onSearchMode?.("related");
-                          }, type: "button", children: "Related" }),
-                          /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs", disabled: snapshot.searchLoading === true || snapshot.searchQuery.trim() === "", onClick: props.onRunSearch, type: "button", children: snapshot.searchLoading === true ? "Searching\u2026" : "Search" })
-                        ] }),
-                        /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(Alert, { unstyled: true, "aria-live": "polite", className: "mx-1 my-[7px] text-xs text-[var(--tt-muted)]", role: "status", children: (snapshot.searchMatches?.length ?? 0) > 0 ? `${String(snapshot.searchMatches?.length ?? 0)} vault results.` : `${String(documents.length)} matching note paths.` }),
-                        (snapshot.searchMatches?.length ?? 0) > 0 && /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("ul", { className: "m-0 grid list-none gap-1 p-0", "aria-label": "Vault Search Results", children: snapshot.searchMatches?.map((match, index2) => /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("li", { children: /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)(Button, { unstyled: true, className: "w-full rounded border border-[var(--tt-border)] bg-transparent p-1.5 text-left", onClick: () => {
-                          props.onSelect(match.path);
-                        }, type: "button", children: [
-                          /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("strong", { className: "block truncate text-xs", children: [
-                            match.path,
-                            match.line === null ? "" : `:${String(match.line)}`
-                          ] }),
-                          /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("span", { className: "block truncate text-xs text-[var(--tt-muted)]", children: match.preview })
-                        ] }) }, `${match.path}-${String(match.line ?? 0)}-${String(index2)}`)) })
-                      ] }),
-                      /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("nav", { "aria-label": "Vault Notes", children: [
-                        snapshot.phase === "loading" && /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("p", { className: "mx-1 my-[7px] text-xs text-[var(--tt-muted)]", children: "Loading notes\u2026" }),
-                        snapshot.phase === "inactive" && /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(Alert, { unstyled: true, className: "mx-1 my-[7px] text-xs text-[color-mix(in_srgb,var(--tt-muted)_90%,var(--tt-text))]", children: "No Active Vault" }),
-                        snapshot.phase === "error" && /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(Alert, { unstyled: true, className: "mx-1 my-[7px] text-xs text-[color-mix(in_srgb,var(--tt-muted)_90%,var(--tt-text))]", children: snapshot.message }),
-                        snapshot.phase === "ready" && documents.length === 0 && /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("p", { className: "mx-1 my-[7px] text-xs text-[var(--tt-muted)]", children: "No supported notes found." }),
-                        /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("ul", { className: "tocktutor-tree m-0 list-none p-0", role: visibleTreeEntries.length > 0 ? "tree" : void 0, children: /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(TreeEntries, { entries: visibleTreeEntries, onSelect: props.onSelect, path: snapshot.path }) })
-                      ] })
-                    ] }),
-                    /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)(
-                      Button,
-                      {
-                        unstyled: true,
-                        "aria-expanded": panel === "utilities",
-                        className: "tocktutor-vault-switcher grid grid-cols-[14px_minmax(0,1fr)_16px] items-center gap-1.5 border-0 border-t border-[var(--tt-border)] bg-[var(--tockteam-shell-chrome,var(--tt-panel))] px-2.5 text-left [&>span]:truncate [&_svg]:size-[13px]",
-                        onClick: () => {
-                          setPanel((current) => current === "utilities" ? null : "utilities");
-                        },
-                        type: "button",
-                        children: [
-                          /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(WorkbenchGlyph, { kind: "collapse" }),
-                          /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("span", { children: snapshot.vault === null ? "Choose Vault" : "TockTutor Vault" }),
-                          /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(WorkbenchGlyph, { kind: "more" })
-                        ]
-                      }
-                    )
-                  ]
-                }
-              ),
-              /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(
-                Button,
-                {
-                  unstyled: true,
-                  "aria-label": `Resize Files Sidebar, ${String(sidebarWidth)} Pixels`,
-                  className: "tocktutor-sidebar-resize absolute top-0 bottom-0 z-5 m-0 w-2 touch-none cursor-ew-resize border-0 bg-transparent p-0 outline-none after:absolute after:top-0 after:bottom-0 after:left-[3px] after:w-0.5 after:bg-transparent after:content-[''] focus-visible:after:bg-[var(--tt-accent)]",
-                  hidden: !effectiveSidebarOpen,
-                  onKeyDown: resizeSidebarWithKeyboard,
-                  onPointerDown: beginSidebarResize,
-                  style: { left: sidebarWidth - 4 },
-                  title: "Drag or Use Left and Right Arrow Keys",
-                  type: "button"
-                }
-              ),
-              /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("section", { "aria-label": "Note Editor", className: "tocktutor-editor grid min-h-0 grid-rows-[40px_minmax(0,1fr)_var(--tt-footer-height)] overflow-hidden bg-[var(--tt-panel)]", id: "tocktutor-note-editor", role: "tabpanel", children: [
-                /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("header", { className: "tocktutor-editor-header relative flex min-w-0 items-center justify-center border-b border-[var(--tt-border)] px-2.5", children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("h2", { className: "m-0 truncate text-[13px] font-medium text-[var(--tt-muted)]", children: noteTitle(snapshot.path) }),
-                  /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("div", { className: "tocktutor-editor-actions absolute right-2.5 flex items-center gap-1 [&_button]:inline-flex [&_button]:h-7 [&_button]:w-[26px] [&_button]:items-center [&_button]:justify-center [&_button]:border-0 [&_button]:bg-transparent [&_button]:p-0 [&_button]:text-[var(--tt-muted)] [&_span]:inline-flex [&_span]:h-7 [&_span]:w-[26px] [&_span]:items-center [&_span]:justify-center [&_span]:border-0 [&_span]:bg-transparent [&_span]:p-0 [&_span]:text-[var(--tt-muted)]", children: [
-                    snapshot.documentKind === "markdown" ? /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("span", { "aria-label": "Editor Mode", className: "flex", role: "group", children: ["reading", "live-preview", "source"].map((mode) => /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(
-                      Button,
-                      {
-                        unstyled: true,
-                        "aria-label": mode === "reading" ? "Reading" : mode === "live-preview" ? "Live Preview" : "Source",
-                        "aria-pressed": snapshot.mode === mode,
-                        className: "w-auto! px-1.5! aria-pressed:text-[var(--tt-accent)]",
-                        onClick: () => {
-                          props.onMode(mode);
-                        },
-                        type: "button",
-                        children: mode === "reading" ? /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(FileText, { "aria-hidden": "true" }) : mode === "live-preview" ? /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(Pencil, { "aria-hidden": "true" }) : /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(WorkbenchGlyph, { kind: "document" })
-                      },
-                      mode
-                    )) }) : /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(
-                      Button,
-                      {
-                        unstyled: true,
-                        "aria-label": snapshot.mode === "source" ? previewLabel : sourceLabel,
-                        onClick: () => {
-                          props.onMode(snapshot.mode === "source" ? "reading" : "source");
-                        },
-                        type: "button",
-                        children: /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(WorkbenchGlyph, { kind: "pencil" })
-                      }
-                    ),
-                    /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("span", { children: /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(Music, { "aria-hidden": "true" }) }),
-                    /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("span", { children: /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(Folder, { "aria-hidden": "true" }) }),
-                    /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)(Tooltip2, { children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(TooltipTrigger3, { asChild: true, children: /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(
-                        Button,
-                        {
-                          unstyled: true,
-                          "aria-label": "More Note Actions",
-                          "aria-expanded": panel === "utilities",
-                          onClick: () => {
-                            setPanel((current) => current === "utilities" ? null : "utilities");
-                          },
-                          type: "button",
-                          children: /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(WorkbenchGlyph, { kind: "more" })
-                        }
-                      ) }),
-                      /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(TooltipContent3, { children: "More Note Actions" })
-                    ] })
-                  ] })
-                ] }),
-                /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("div", { className: "tocktutor-editor-body relative min-h-0 overflow-auto", children: snapshot.path === null ? /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(Empty, { unstyled: true, className: "tocktutor-empty absolute top-[45%] left-1/2 w-full max-w-[420px] -translate-1/2 p-8 text-center", children: /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)(EmptyHeader, { unstyled: true, children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("p", { className: "tocktutor-kicker mb-0.5 text-[11px] font-[650] tracking-[.08em] text-[var(--tt-muted)] uppercase", children: "Ready When You Are" }),
-                  /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(EmptyTitle, { unstyled: true, "aria-level": 2, className: "text-xl font-bold", role: "heading", children: "Select a Note" }),
-                  /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(EmptyDescription, { unstyled: true, className: "text-[var(--tt-muted)]", children: "Choose a Markdown note from the vault to read or edit its exact source." })
-                ] }) }) : snapshot.mode === "source" ? /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(
-                  Textarea,
-                  {
-                    unstyled: true,
-                    "aria-label": sourceLabel,
-                    className: "h-full min-h-0 w-full resize-none border-0 bg-[var(--tt-panel)] px-[max(28px,calc((100%-768px)/2))] py-9 text-[var(--tt-text)] outline-none [tab-size:2] [font:14px/1.65_ui-monospace,SFMono-Regular,Consolas,monospace]",
-                    onChange: (event) => {
-                      props.onEdit(event.target.value);
-                    },
-                    onSelect: (event) => {
-                      props.onSelectionChange?.(event.currentTarget.selectionStart, event.currentTarget.selectionEnd);
-                    },
-                    spellCheck: "true",
-                    value: snapshot.source
-                  }
-                ) : snapshot.mode === "live-preview" && snapshot.documentKind === "markdown" ? /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(
-                  LivePreviewView,
-                  {
-                    documentKey: snapshot.path,
-                    onEdit: props.onEdit,
-                    onToggleTask: props.onToggleTask,
-                    source: snapshot.source
-                  }
-                ) : snapshot.documentKind === "canvas" ? /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(
-                  CanvasBoard,
-                  {
-                    disabled: snapshot.revision === null || props.onCanvasChange === void 0,
-                    onChange: (change) => {
-                      props.onCanvasChange?.(change);
-                    },
-                    revision: snapshot.revision ?? "unavailable",
-                    source: snapshot.source
-                  }
-                ) : snapshot.documentKind === "base" ? /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(BaseView, { source: snapshot.source }) : snapshot.documentKind === "markdown" ? /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(RichReadingView, { onToggleTask: props.onToggleTask, source: snapshot.source }) : /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(Alert, { unstyled: true, children: "Reading view is unavailable." }) }),
-                /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("footer", { "aria-label": "TockTutor Status Bar", className: "tocktutor-statusbar flex min-w-0 items-center border-t border-[var(--tt-border)] px-2 text-xs text-[var(--tt-muted)]", role: "group", children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("output", { "aria-live": "polite", className: "tocktutor-message absolute size-px overflow-hidden whitespace-nowrap [clip:rect(0_0_0_0)] [clip-path:inset(50%)]", children: snapshot.message }),
-                  snapshot.path !== null && /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("div", { className: "ml-auto flex items-center gap-[18px] whitespace-nowrap max-[760px]:gap-2", children: [
-                    /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("span", { children: "0 Backlinks" }),
-                    /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("span", { children: snapshot.mode === "reading" ? "Reading" : snapshot.mode === "live-preview" ? "Live Preview" : "Source" }),
-                    /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("span", { children: [
-                      String(words),
-                      " Words"
-                    ] }),
-                    /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("span", { children: [
-                      String(characters),
-                      " Characters"
-                    ] }),
-                    /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)(Tooltip2, { children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(TooltipTrigger3, { asChild: true, children: /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(
-                        Button,
-                        {
-                          unstyled: true,
-                          "aria-label": "Open Assistant",
-                          "aria-expanded": panel === "assistant",
-                          onClick: () => {
-                            setPanel((current) => current === "assistant" ? null : "assistant");
-                          },
-                          type: "button",
-                          className: "border-0 bg-transparent px-0 py-0.5 text-[var(--tt-muted)] [&_svg]:size-[17px]",
-                          children: /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(WorkbenchGlyph, { kind: "chat" })
-                        }
-                      ) }),
-                      /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(TooltipContent3, { children: "Open Assistant" })
-                    ] })
-                  ] })
-                ] })
-              ] }),
-              /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)(
-                "aside",
-                {
-                  "aria-hidden": panel !== "assistant",
-                  "aria-label": "Assistant Panel",
-                  className: "tocktutor-right-panel tocktutor-right-panel-assistant relative invisible grid min-w-0 w-0 translate-x-6 grid-rows-[minmax(0,1fr)] overflow-hidden border-l-0 bg-[var(--tt-panel)] opacity-0 shadow-none transition-[width,opacity,transform,visibility] [transition-duration:420ms,300ms,460ms,0s] [transition-timing-function:cubic-bezier(.16,1,.3,1),cubic-bezier(.16,1,.3,1),cubic-bezier(.16,1,.3,1),linear] [transition-delay:0s,0s,0s,420ms] pointer-events-none data-[open=true]:visible data-[open=true]:translate-x-0 data-[open=true]:overflow-visible data-[open=true]:opacity-100 data-[open=true]:[transition-delay:0s] data-[open=true]:pointer-events-auto [&>:not(.tocktutor-assistant-resize)]:min-w-[min(240px,calc(100vw-262px))]",
-                  "data-open": panel === "assistant",
-                  style: { width: panel === "assistant" ? `${String(assistantPanelWidth)}px` : "0px" },
-                  ...panel === "assistant" ? {} : { inert: "" },
-                  children: [
-                    panel === "assistant" && /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(
-                      Button,
-                      {
-                        unstyled: true,
-                        "aria-label": "Resize Assistant Panel",
-                        "aria-orientation": "vertical",
-                        "aria-valuemax": MAX_ASSISTANT_PANEL_WIDTH,
-                        "aria-valuemin": MIN_ASSISTANT_PANEL_WIDTH,
-                        "aria-valuenow": assistantPanelWidth,
-                        className: "tocktutor-assistant-resize absolute top-0 bottom-0 left-0 z-3 w-4 -translate-x-1/2 touch-none cursor-col-resize border-0 bg-transparent p-0 outline-none before:absolute before:top-1/2 before:left-1/2 before:h-10 before:w-2 before:-translate-1/2 before:rounded-full before:border before:border-[color-mix(in_srgb,var(--tt-text)_32%,var(--tt-border)_68%)] before:bg-[color-mix(in_srgb,var(--tt-text)_8%,var(--tt-panel))] before:shadow-[0_4px_12px_-7px_color-mix(in_srgb,var(--tt-text)_42%,transparent),0_0_0_1px_color-mix(in_srgb,var(--tt-panel)_82%,transparent)] before:transition-colors before:duration-140 before:ease-[cubic-bezier(.16,1,.3,1)] before:content-[''] hover:before:border-[color-mix(in_srgb,var(--tt-accent)_58%,var(--tt-border)_42%)] active:before:border-[color-mix(in_srgb,var(--tt-accent)_58%,var(--tt-border)_42%)] focus-visible:before:border-[color-mix(in_srgb,var(--tt-accent)_58%,var(--tt-border)_42%)] hover:[&+.tocktutor-assistant-content]:border-l-[var(--tt-accent)] active:[&+.tocktutor-assistant-content]:border-l-[var(--tt-accent)] focus-visible:[&+.tocktutor-assistant-content]:border-l-[var(--tt-accent)]",
-                        onKeyDown: resizeAssistantPanelWithKeyboard,
-                        onPointerDown: beginAssistantPanelResize,
-                        role: "separator",
-                        title: "Drag or Use Left and Right Arrow Keys",
-                        type: "button"
-                      }
-                    ),
-                    /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("div", { className: "tocktutor-assistant-content min-h-0 min-w-[min(240px,calc(100vw-262px))] overflow-hidden border-l border-[color-mix(in_srgb,var(--tt-text)_8%,var(--tt-border)_92%)] transition-colors duration-140 ease-[cubic-bezier(.16,1,.3,1)]", children: props.assistantPanel })
-                  ]
-                }
-              ),
-              /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)(
-                "aside",
-                {
-                  "aria-hidden": panel !== "utilities",
-                  "aria-label": "Workbench Utilities",
-                  className: "tocktutor-right-panel invisible grid min-w-0 w-0 translate-x-6 grid-rows-[40px_minmax(0,1fr)] overflow-auto border-l border-[var(--tt-border)] bg-[var(--tt-panel)] opacity-0 shadow-none transition-[width,opacity,transform,visibility] [transition-duration:420ms,300ms,460ms,0s] [transition-timing-function:cubic-bezier(.16,1,.3,1),cubic-bezier(.16,1,.3,1),cubic-bezier(.16,1,.3,1),linear] [transition-delay:0s,0s,0s,420ms] pointer-events-none data-[open=true]:visible data-[open=true]:w-[min(360px,calc(100vw-262px))] data-[open=true]:translate-x-0 data-[open=true]:opacity-100 data-[open=true]:[transition-delay:0s] data-[open=true]:pointer-events-auto [&>:not(.tocktutor-assistant-resize)]:min-w-[min(360px,calc(100vw-262px))]",
-                  "data-open": panel === "utilities",
-                  ...panel === "utilities" ? {} : { inert: "" },
-                  children: [
-                    /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("header", { className: "flex items-center justify-between border-b border-[var(--tt-border)] px-3", children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("h2", { className: "m-0 text-sm", children: "More Options" }),
-                      /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)(Tooltip2, { children: [
-                        /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(TooltipTrigger3, { asChild: true, children: /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(Button, { unstyled: true, "aria-label": "Close More Options", className: "border-0 bg-transparent p-[5px]", onClick: () => {
-                          setPanel(null);
-                        }, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(WorkbenchGlyph, { kind: "close" }) }) }),
-                        /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(TooltipContent3, { children: "Close More Options" })
-                      ] })
-                    ] }),
-                    /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("section", { "aria-label": "Vaults", className: "border-t border-[var(--tt-border)] p-3", children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("div", { className: "flex items-center justify-between gap-2", children: [
-                        /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("h2", { className: "m-0 text-sm", children: "Vaults" }),
-                        /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs", onClick: props.onOpenSandboxVault, type: "button", children: "Open Sandbox Vault" })
-                      ] }),
-                      /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("div", { className: "mt-2 grid gap-1.5", children: [
-                        (snapshot.recentVaults ?? []).map((vault, index2) => /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("div", { className: "grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-1", children: [
-                          /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("span", { className: "truncate text-xs", title: vault.id, children: [
-                            "Recent Vault ",
-                            String(index2 + 1),
-                            snapshot.vault?.id === vault.id ? " \xB7 Active" : ""
-                          ] }),
-                          /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs", disabled: snapshot.vault?.id === vault.id, onClick: () => {
-                            props.onActivateRecentVault?.(vault.id);
-                          }, type: "button", children: "Open" }),
-                          /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(Button, { unstyled: true, "aria-label": `Remove Recent Vault ${String(index2 + 1)}`, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs", onClick: () => {
-                            props.onRemoveRecentVault?.(vault.id);
-                          }, type: "button", children: "Remove" })
-                        ] }, vault.id)),
-                        (snapshot.recentVaults?.length ?? 0) === 0 && /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(Alert, { unstyled: true, role: "status", children: "No recent vaults." })
-                      ] })
-                    ] }),
-                    /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("section", { "aria-label": "File Recovery", className: "border-t border-[var(--tt-border)] p-3", children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("div", { className: "flex items-center justify-between gap-2", children: [
-                        /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("h2", { className: "m-0 text-sm", children: "File Recovery" }),
-                        /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs", onClick: props.onOpenRecovery, type: "button", children: "Refresh" })
-                      ] }),
-                      snapshot.draftRecovered === true && /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(Alert, { unstyled: true, className: "mt-2", role: "status", children: "A local draft was recovered for this note." }),
-                      /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("div", { className: "mt-2 flex gap-2", children: /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs", disabled: snapshot.path === null, onClick: props.onTrashCurrent, type: "button", children: "Move Current File to Trash" }) }),
-                      /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("h3", { className: "mt-3 mb-1 text-xs", children: "Snapshots" }),
-                      /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("div", { className: "grid gap-1", children: [
-                        (snapshot.snapshots ?? []).map((snapshotEntry, index2) => /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("div", { className: "grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-1", children: [
-                          /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("span", { className: "truncate text-xs", children: [
-                            "Snapshot ",
-                            String(index2 + 1),
-                            " \xB7 ",
-                            snapshotEntry.reason
-                          ] }),
-                          /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs", onClick: () => {
-                            props.onReadSnapshot?.(snapshotEntry.id);
-                          }, type: "button", children: "Preview" }),
-                          /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs", onClick: () => {
-                            props.onRestoreSnapshot?.(snapshotEntry.id);
-                          }, type: "button", children: "Restore as New" })
-                        ] }, snapshotEntry.id)),
-                        (snapshot.snapshots?.length ?? 0) === 0 && /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("span", { className: "text-xs text-[var(--tt-muted)]", children: "No snapshots for the active file." })
-                      ] }),
-                      snapshot.selectedSnapshot !== null && snapshot.selectedSnapshot !== void 0 && /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("pre", { "aria-label": "Snapshot Preview", className: "mt-2 max-h-32 overflow-auto rounded border border-[var(--tt-border)] p-2 text-xs", children: snapshot.selectedSnapshot.content }),
-                      /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("h3", { className: "mt-3 mb-1 text-xs", children: "Trash" }),
-                      /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("div", { className: "grid gap-1", children: [
-                        (snapshot.trash ?? []).map((entry, index2) => /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("div", { className: "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-1", children: [
-                          /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("span", { className: "truncate text-xs", children: entry.originalPath }),
-                          /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(Button, { unstyled: true, "aria-label": `Restore Trash Entry ${String(index2 + 1)}`, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs", onClick: () => {
-                            props.onRestoreTrash?.(entry.id);
-                          }, type: "button", children: "Restore" })
-                        ] }, entry.id)),
-                        (snapshot.trash?.length ?? 0) === 0 && /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("span", { className: "text-xs text-[var(--tt-muted)]", children: "Trash is empty." })
-                      ] })
-                    ] }),
-                    /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("section", { "aria-label": "Graph View", className: "border-t border-[var(--tt-border)] p-3", children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("div", { className: "flex items-center justify-between gap-2", children: [
-                        /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("h2", { className: "m-0 text-sm", children: "Graph View" }),
-                        /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("span", { className: "flex gap-1", children: [
-                          /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(Button, { unstyled: true, "aria-pressed": snapshot.graphMode === "global", className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs", onClick: () => {
-                            props.onLoadGraph?.("global");
-                          }, type: "button", children: "Global" }),
-                          /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(Button, { unstyled: true, "aria-pressed": snapshot.graphMode === "local", className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs", disabled: snapshot.path === null, onClick: () => {
-                            props.onLoadGraph?.("local");
-                          }, type: "button", children: "Local" })
-                        ] })
-                      ] }),
-                      (snapshot.graphLayout?.length ?? 0) > 0 ? /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)(import_jsx_runtime22.Fragment, { children: [
-                        /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("svg", { "aria-label": `${snapshot.graphMode === "local" ? "Local" : "Global"} Graph Canvas`, className: "mt-2 h-48 w-full rounded border border-[var(--tt-border)]", role: "img", viewBox: "0 0 400 240", children: [
-                          (snapshot.graph?.edges ?? []).map((edge, index2) => {
-                            const source = snapshot.graphLayout?.find((node) => node.path === edge.sourcePath);
-                            const target = snapshot.graphLayout?.find((node) => node.path === edge.targetPath);
-                            return source === void 0 || target === void 0 ? null : /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("line", { stroke: "currentColor", strokeOpacity: "0.35", x1: 200 + source.x / 5, x2: 200 + target.x / 5, y1: 120 + source.y / 5, y2: 120 + target.y / 5 }, `${edge.sourcePath}-${edge.targetPath}-${String(index2)}`);
-                          }),
-                          snapshot.graphLayout?.map((node) => /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("circle", { cx: 200 + node.x / 5, cy: 120 + node.y / 5, fill: node.path === snapshot.graph?.path ? "var(--tt-accent)" : "var(--tt-muted)", r: "5", children: /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("title", { children: node.path }) }, node.path))
-                        ] }),
-                        /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("div", { className: "mt-1 grid max-h-28 gap-1 overflow-auto", children: snapshot.graphLayout?.map((node) => /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(Button, { unstyled: true, className: "truncate rounded border-0 bg-transparent px-1 py-0.5 text-left text-xs", onClick: () => {
-                          props.onSelect(node.path);
-                        }, type: "button", children: node.path }, node.path)) })
-                      ] }) : /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("span", { className: "mt-2 block text-xs text-[var(--tt-muted)]", children: "Open Global or Local Graph." })
-                    ] }),
-                    /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("section", { "aria-label": "Bookmarks", className: "border-t border-[var(--tt-border)] p-3", children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("h2", { className: "m-0 text-sm", children: "Bookmarks" }),
-                      /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("div", { className: "mt-2 grid gap-1", children: [
-                        (snapshot.bookmarks ?? []).map((bookmark) => /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("div", { className: "grid grid-cols-[minmax(0,1fr)_auto] gap-1", children: [
-                          /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)(Button, { unstyled: true, className: "truncate rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-left text-xs", onClick: () => {
-                            props.onOpenBookmark?.(bookmark.id);
-                          }, type: "button", children: [
-                            bookmark.title,
-                            " \xB7 ",
-                            bookmark.kind,
-                            bookmark.missing === true ? " \xB7 Missing" : ""
-                          ] }),
-                          /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(Button, { unstyled: true, "aria-label": `Remove Bookmark ${bookmark.title}`, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs", onClick: () => {
-                            props.onRemoveBookmark?.(bookmark.id);
-                          }, type: "button", children: "Remove" })
-                        ] }, bookmark.id)),
-                        (snapshot.bookmarks?.length ?? 0) === 0 && /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("span", { className: "text-xs text-[var(--tt-muted)]", children: "No bookmarks." })
-                      ] })
-                    ] }),
-                    /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("section", { "aria-label": "Smart Views and Tags", className: "border-t border-[var(--tt-border)] p-3", children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("h2", { className: "m-0 text-sm", children: "Smart Views and Tags" }),
-                      /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("div", { className: "mt-2 grid grid-cols-2 gap-1", children: ["recent", "tasks", "journals", "favorites", "collections", "tags"].map((kind) => /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-left text-xs", onClick: () => {
-                        props.onOpenSmartView?.(kind);
-                      }, type: "button", children: kind[0].toLocaleUpperCase() + kind.slice(1) }, kind)) }),
-                      (snapshot.facets?.tags.length ?? 0) > 0 && /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("div", { className: "mt-2 grid gap-1", "aria-label": "Tags", children: snapshot.facets?.tags.map((tag) => /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)(Button, { unstyled: true, className: "rounded border-0 bg-transparent px-1 py-0.5 text-left text-xs", onClick: () => {
-                        props.onSearchChange?.(`tag:${tag.tag}`);
-                        props.onRunSearch?.();
-                      }, type: "button", children: [
-                        "#",
-                        tag.tag,
-                        " \xB7 ",
-                        String(tag.count)
-                      ] }, tag.tag.toLocaleLowerCase())) })
-                    ] }),
-                    /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("section", { "aria-label": "Properties", className: "border-t border-[var(--tt-border)] p-3", children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("h2", { className: "m-0 text-sm", children: "Properties" }),
-                      /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("h3", { className: "mt-2 mb-1 text-xs", children: "File" }),
-                      /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("div", { className: "grid gap-1", children: [
-                        activeProperties.map((property) => /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)(Label, { unstyled: true, className: "grid grid-cols-[minmax(80px,.4fr)_minmax(0,1fr)] items-center gap-2 text-xs", children: [
-                          /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("span", { className: "truncate", children: [
-                            property.key,
-                            " \xB7 ",
-                            property.type
-                          ] }),
-                          property.type === "checkbox" ? /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(Checkbox3, { "aria-label": `${property.key} Property`, checked: property.value === true, onCheckedChange: (checked) => {
-                            props.onSetProperty?.(property.key, checked === true);
-                          } }) : /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(Input, { unstyled: true, "aria-label": `${property.key} Property`, className: "min-w-0 rounded border border-[var(--tt-border)] bg-transparent p-1", defaultValue: Array.isArray(property.value) ? property.value.join(", ") : String(property.value ?? ""), onBlur: (event) => {
-                            props.onSetProperty?.(property.key, property.type === "list" ? event.target.value.split(",").map((value) => value.trim()).filter(Boolean) : property.type === "number" && Number.isFinite(Number(event.target.value)) ? Number(event.target.value) : event.target.value);
-                          } })
-                        ] }, property.key)),
-                        activeProperties.length === 0 && /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("span", { className: "text-xs text-[var(--tt-muted)]", children: "No file properties." })
-                      ] }),
-                      /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("h3", { className: "mt-2 mb-1 text-xs", children: "All" }),
-                      /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("div", { className: "grid gap-1", children: (snapshot.facets?.properties ?? []).map((property) => /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)(Button, { unstyled: true, className: "rounded border-0 bg-transparent px-1 py-0.5 text-left text-xs", onClick: () => {
-                        props.onSearchChange?.(`[${property.key}]`);
-                        props.onRunSearch?.();
-                      }, type: "button", children: [
-                        property.key,
-                        " \xB7 ",
-                        String(property.count),
-                        " \xB7 ",
-                        property.types.join(", ")
-                      ] }, property.key.toLocaleLowerCase())) })
-                    ] }),
-                    /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("section", { "aria-label": "Note Relationships", className: "border-t border-[var(--tt-border)] p-3", children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("h2", { className: "m-0 text-sm", children: "Outline and Relationships" }),
-                      /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("h3", { className: "mt-2 mb-1 text-xs", children: "Outline" }),
-                      /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("div", { className: "grid gap-1", children: [
-                        (snapshot.outline?.headings ?? []).map((heading2) => /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)(Button, { unstyled: true, className: "rounded border-0 bg-transparent px-1 py-0.5 text-left text-xs", onClick: () => {
-                          props.onJumpToLine?.(heading2.line);
-                        }, type: "button", children: [
-                          "\xB7".repeat(Math.max(1, heading2.level)),
-                          " ",
-                          heading2.text
-                        ] }, `${heading2.line}-${heading2.selector}`)),
-                        (snapshot.outline?.headings.length ?? 0) === 0 && /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("span", { className: "text-xs text-[var(--tt-muted)]", children: "No headings." })
-                      ] }),
-                      /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("h3", { className: "mt-2 mb-1 text-xs", children: "Footnotes" }),
-                      (snapshot.outline?.footnotes ?? []).map((footnote) => /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(Button, { unstyled: true, className: "block w-full rounded border-0 bg-transparent px-1 py-0.5 text-left text-xs", onClick: () => {
-                        props.onJumpToLine?.(footnote.line);
-                      }, type: "button", children: footnote.content }, `${footnote.line}-${footnote.ordinal}`)),
-                      /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("h3", { className: "mt-2 mb-1 text-xs", children: "Backlinks" }),
-                      (snapshot.links?.backlinkDetails ?? []).map((link2, index2) => /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)(Button, { unstyled: true, className: "block w-full rounded border-0 bg-transparent px-1 py-0.5 text-left text-xs", onClick: () => {
-                        props.onSelect(link2.sourcePath);
-                      }, type: "button", children: [
-                        link2.sourcePath,
-                        ":",
-                        String(link2.line)
-                      ] }, `${link2.sourcePath}-${String(link2.line)}-${String(index2)}`)),
-                      /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("h3", { className: "mt-2 mb-1 text-xs", children: "Outgoing Links" }),
-                      (snapshot.links?.outgoingDetails ?? []).map((link2, index2) => /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(Button, { unstyled: true, className: "block w-full rounded border-0 bg-transparent px-1 py-0.5 text-left text-xs", disabled: link2.resolvedPath === null, onClick: () => {
-                        if (link2.resolvedPath !== null) props.onSelect(link2.resolvedPath);
-                      }, type: "button", children: link2.displayText || link2.authoredTarget }, `${link2.authoredTarget}-${String(link2.line)}-${String(index2)}`)),
-                      (snapshot.links?.unlinkedMentions ?? []).map((mention, index2) => /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("span", { className: "block text-xs text-[var(--tt-muted)]", children: [
-                        "Mention: ",
-                        mention.matchedText
-                      ] }, `${mention.sourcePath}-${String(mention.line)}-${String(index2)}`))
-                    ] }),
-                    /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("section", { "aria-label": "Attachments", className: "border-t border-[var(--tt-border)] p-3", children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("div", { className: "flex items-center justify-between gap-2", children: [
-                        /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("h2", { className: "m-0 text-sm", children: "Attachments" }),
-                        /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)(Label, { unstyled: true, className: "cursor-pointer rounded border border-[var(--tt-border)] px-2 py-1 text-xs", children: [
-                          "Add Files",
-                          /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("input", { className: "sr-only", type: "file", accept: "image/*,audio/*,video/*,application/pdf", onChange: (event) => {
-                            const file2 = event.target.files?.[0];
-                            if (file2 === void 0) return;
-                            const reader = new FileReader();
-                            reader.addEventListener("load", () => {
-                              const value = typeof reader.result === "string" ? reader.result.split(",", 2)[1] : void 0;
-                              if (value !== void 0) props.onStoreAttachment?.(file2.name, value);
-                            }, { once: true });
-                            reader.readAsDataURL(file2);
-                            event.target.value = "";
-                          } })
-                        ] })
-                      ] }),
-                      /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("div", { className: "mt-2 grid gap-1", children: snapshot.entries.filter((entry) => entry.kind === "attachment").map((entry) => /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(Button, { unstyled: true, className: "truncate rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-left text-xs", onClick: () => {
-                        props.onPreviewAttachment?.(entry.path);
-                      }, type: "button", children: entry.path }, entry.path)) }),
-                      snapshot.attachmentPreview !== null && snapshot.attachmentPreview !== void 0 && /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("div", { className: "mt-2 rounded border border-[var(--tt-border)] p-2", children: [
-                        /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("div", { className: "flex justify-between gap-2", children: [
-                          /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("strong", { className: "truncate text-xs", children: snapshot.attachmentPreview.path }),
-                          /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(Button, { unstyled: true, "aria-label": "Close Attachment Preview", className: "border-0 bg-transparent", onClick: props.onCloseAttachmentPreview, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(WorkbenchGlyph, { kind: "close" }) })
-                        ] }),
-                        snapshot.attachmentPreview.mediaKind === "image" && /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("img", { alt: snapshot.attachmentPreview.path, className: "mt-2 max-h-48 max-w-full", src: `data:${snapshot.attachmentPreview.mimeType};base64,${snapshot.attachmentPreview.dataBase64}` }),
-                        snapshot.attachmentPreview.mediaKind === "audio" && /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("audio", { className: "mt-2 w-full", controls: true, src: `data:${snapshot.attachmentPreview.mimeType};base64,${snapshot.attachmentPreview.dataBase64}` }),
-                        snapshot.attachmentPreview.mediaKind === "video" && /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("video", { className: "mt-2 max-h-48 max-w-full", controls: true, src: `data:${snapshot.attachmentPreview.mimeType};base64,${snapshot.attachmentPreview.dataBase64}` }),
-                        snapshot.attachmentPreview.mediaKind === "pdf" && /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("iframe", { className: "mt-2 h-48 w-full", sandbox: "", src: `data:${snapshot.attachmentPreview.mimeType};base64,${snapshot.attachmentPreview.dataBase64}`, title: snapshot.attachmentPreview.path })
-                      ] })
-                    ] }),
-                    /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("section", { "aria-label": "Note Composer and Format Converter", className: "border-t border-[var(--tt-border)] p-3", children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("h2", { className: "m-0 text-sm", children: "Note Composer and Format Converter" }),
-                      /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("div", { className: "mt-2 flex gap-1", children: [
-                        /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs", disabled: snapshot.documentKind !== "markdown" || snapshot.mode === "reading" || (snapshot.selectionEnd ?? 0) <= (snapshot.selectionStart ?? 0), onClick: props.onExtractSelection, type: "button", children: "Extract Selection" }),
-                        /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs", disabled: snapshot.documentKind !== "markdown" || snapshot.mode === "reading", onClick: props.onConvertActiveNote, type: "button", children: "Convert Formats" })
-                      ] })
-                    ] }),
-                    /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("section", { "aria-label": "Capture Organization", className: "border-t border-[var(--tt-border)] p-3", children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("div", { className: "flex items-center justify-between gap-2", children: [
-                        /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("h2", { className: "m-0 text-sm", children: "Capture Organization" }),
-                        /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs", disabled: snapshot.path === null || !/^Inbox\/.+\.md$/iu.test(snapshot.path), onClick: props.onPrepareOrganization, type: "button", children: "Prepare Review" })
-                      ] }),
-                      snapshot.organizationProposal !== null && snapshot.organizationProposal !== void 0 && /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("div", { className: "mt-2 rounded border border-[var(--tt-border)] p-2 text-xs", children: [
-                        /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("strong", { className: "block", children: snapshot.organizationProposal.title }),
-                        /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("span", { className: "block truncate", children: snapshot.organizationProposal.destination }),
-                        /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("pre", { className: "max-h-32 overflow-auto whitespace-pre-wrap", children: snapshot.organizationProposal.content }),
-                        /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("div", { className: "flex justify-end gap-1", children: [
-                          /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1", onClick: props.onCancelOrganization, type: "button", children: "Cancel" }),
-                          /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1", onClick: props.onApplyOrganization, type: "button", children: "Approve and Create" })
-                        ] })
-                      ] })
-                    ] }),
-                    /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("section", { "aria-label": "TockTutor Settings", className: "border-t border-[var(--tt-border)] p-3", children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("div", { className: "flex items-center justify-between gap-2", children: [
-                        /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("h2", { className: "m-0 text-sm", children: "Settings and Workspaces" }),
-                        /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs", disabled: snapshot.settings === void 0, onClick: props.onSaveWorkspace, type: "button", children: "Save Workspace" })
-                      ] }),
-                      /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("div", { className: "mt-2 grid gap-2 text-xs", children: [
-                        /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)(Label, { unstyled: true, className: "flex items-center justify-between gap-2", children: [
-                          "Page Preview",
-                          /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(Checkbox3, { checked: snapshot.settings?.pagePreview ?? true, disabled: snapshot.settings === void 0, onCheckedChange: (checked) => {
-                            props.onSettingsChange?.({ pagePreview: checked === true });
-                          } })
-                        ] }),
-                        /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)(Label, { unstyled: true, className: "flex items-center justify-between gap-2", children: [
-                          "Backlinks in Document",
-                          /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(Checkbox3, { checked: snapshot.settings?.backlinksInDocument ?? false, disabled: snapshot.settings === void 0, onCheckedChange: (checked) => {
-                            props.onSettingsChange?.({ backlinksInDocument: checked === true });
-                          } })
-                        ] }),
-                        /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)(Label, { unstyled: true, className: "grid gap-1", children: [
-                          "Default Editing Mode",
-                          /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("select", { className: "rounded border border-[var(--tt-border)] bg-transparent p-1", disabled: snapshot.settings === void 0, onChange: (event) => {
-                            props.onSettingsChange?.({ defaultEditingMode: event.target.value === "source" ? "source" : "live-preview" });
-                          }, value: snapshot.settings?.defaultEditingMode ?? "live-preview", children: [
-                            /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("option", { value: "live-preview", children: "Live Preview" }),
-                            /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("option", { value: "source", children: "Source" })
-                          ] })
-                        ] })
-                      ] }),
-                      /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("div", { className: "mt-2 grid gap-1", children: [
-                        (snapshot.workspaces ?? []).map((workspace) => /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-left text-xs", onClick: () => {
-                          props.onLoadWorkspace?.(workspace.id);
-                        }, type: "button", children: [
-                          "Load ",
-                          workspace.name
-                        ] }, workspace.id)),
-                        (snapshot.workspaces?.length ?? 0) === 0 && /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("span", { className: "text-xs text-[var(--tt-muted)]", children: "No saved workspaces." })
-                      ] })
-                    ] }),
-                    /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("section", { "aria-label": "Pane Groups", className: "tocktutor-pane-groups border-t border-[var(--tt-border)] p-3", children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("div", { className: "tocktutor-pane-heading flex items-center justify-between", children: [
-                        /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("h2", { className: "m-0 text-sm", children: "Pane Groups" }),
-                        /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)(Tooltip2, { children: [
-                          /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(TooltipTrigger3, { asChild: true, children: /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("span", { className: "inline-flex", children: /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(Button, { unstyled: true, "aria-label": "Add Pane", className: "size-[26px] rounded border border-[var(--tt-border)] bg-transparent", disabled: snapshot.panes.length >= MAX_PANE_GROUPS, onClick: props.onAddPane, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(WorkbenchGlyph, { kind: "new" }) }) }) }),
-                          /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(TooltipContent3, { children: "Add Pane" })
-                        ] })
-                      ] }),
-                      /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("div", { className: "tocktutor-pane-list mt-2 grid grid-cols-2 gap-1.5", children: snapshot.panes.map((pane, index2) => /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)(Button, { unstyled: true, "aria-pressed": pane.id === snapshot.focusedPaneId, className: "overflow-hidden rounded-[5px] border border-[var(--tt-border)] bg-transparent p-1.5 text-left aria-pressed:border-[var(--tt-accent)] [&_small]:block [&_small]:truncate [&_small]:text-xs [&_small]:text-[var(--tt-muted)] [&_span]:block [&_span]:truncate", onClick: () => {
-                        props.onFocusPane(pane.id);
-                      }, title: pane.activePath ?? `Pane ${String(index2 + 1)}`, type: "button", children: [
-                        /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("span", { children: [
-                          "Pane ",
-                          String(index2 + 1)
-                        ] }),
-                        /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("small", { children: pane.activePath ?? "Empty" })
-                      ] }, pane.id)) })
-                    ] }),
-                    /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("section", { "aria-label": "Shared Review Panel", className: "tocktutor-review border-t border-[var(--tt-border)] p-3", children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("header", { children: /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("h2", { className: "m-0 text-sm", children: "Reviews" }) }),
-                      /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("div", { className: "tocktutor-review-content min-h-0 overflow-auto text-xs text-[var(--tt-muted)]", children: props.reviewPanel ?? /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(Alert, { unstyled: true, role: "status", children: "No review workflow is active." }) })
-                    ] }),
-                    /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("section", { "aria-label": "Native Actions", className: "tocktutor-native-actions border-t border-[var(--tt-border)] p-3", children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("header", { children: /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("h2", { className: "m-0 text-sm", children: "Native Actions" }) }),
-                      /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("div", { className: "tocktutor-native-actions-content min-h-0 overflow-auto text-xs text-[var(--tt-muted)]", children: props.nativeActions ?? /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(Alert, { unstyled: true, role: "status", children: "No native actions are available." }) })
-                    ] })
-                  ]
-                }
-              )
-            ]
-          }
-        )
-      ]
-    }
-  ) });
-}
-function TockTutorAssistantPanelOutlet(props) {
-  return props.renderSlot(TOCKTUTOR_ASSISTANT_PANEL_SLOT, {
-    activePath: props.activePath,
-    ...props.selectedText === void 0 ? {} : { selectedText: props.selectedText },
-    vault: props.vault
-  });
-}
-function TockTutorReviewPanelOutlet(props) {
-  return props.renderSlot(TOCKTUTOR_REVIEW_PANEL_SLOT, {
-    activePath: props.activePath,
-    vault: props.vault
-  }, {
-    fallback: /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(Alert, { unstyled: true, role: "status", children: "No review workflow is active." })
-  });
-}
-function TockTutorNativeActionsOutlet(props) {
-  return props.renderSlot(TOCKTUTOR_NATIVE_ACTIONS_SLOT, {
-    activePath: props.activePath,
-    handleDispatch: props.handleDispatch,
-    vault: props.vault
-  }, {
-    fallback: /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(Alert, { unstyled: true, role: "status", children: "No native actions are available." })
-  });
-}
-function TockTutorRoute(props) {
-  const controller = (0, import_react6.useMemo)(
-    () => new WorkbenchRouteController(props.remote, props.navigate),
-    [props.navigate, props.remote]
-  );
-  const snapshot = (0, import_react6.useSyncExternalStore)(controller.subscribe, controller.getSnapshot, controller.getSnapshot);
-  const root = (0, import_react6.useRef)(null);
-  (0, import_react6.useEffect)(() => {
-    void controller.syncLocation(props.location.pathname);
-  }, [controller, props.location.pathname]);
-  (0, import_react6.useEffect)(() => () => {
-    controller.dispose();
-  }, [controller]);
-  (0, import_react6.useEffect)(() => {
-    if (snapshot.path === null) return;
-    root.current?.querySelector(snapshot.mode === "source" ? "textarea" : '[aria-label$="View"]')?.focus();
-  }, [snapshot.mode, snapshot.path]);
-  (0, import_react6.useEffect)(() => {
-    if (snapshot.searchOpen) root.current?.querySelector('[aria-label="Search Notes Query"]')?.focus();
-  }, [snapshot.searchOpen]);
-  (0, import_react6.useEffect)(() => {
-    const node = root.current;
-    if (node === null) return;
-    const onKeyDown = (event) => {
-      const isMac = /Mac|iPhone|iPad/u.test(globalThis.navigator?.platform ?? "");
-      const primary = isMac ? event.metaKey : event.ctrlKey;
-      if (primary && !event.altKey && event.key.toLocaleLowerCase() === "p") {
-        event.preventDefault();
-        controller.setCommandPaletteOpen(true);
-        return;
-      }
-      if (primary && event.shiftKey && !event.altKey && event.key.toLocaleLowerCase() === "t") {
-        event.preventDefault();
-        void controller.reopenClosedTab();
-        return;
-      }
-      const editorCommand = resolvePlatformEditorCommand(event, isMac);
-      if (editorCommand !== null) {
-        event.preventDefault();
-        controller.runEditorCommand(editorCommand);
-        return;
-      }
-      const shortcut = resolveEditorShortcut(event, isMac);
-      if (shortcut !== "save") return;
-      event.preventDefault();
-      void controller.save();
-    };
-    node.addEventListener("keydown", onKeyDown);
-    return () => {
-      node.removeEventListener("keydown", onKeyDown);
-    };
-  }, [controller]);
-  return /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("div", { className: "tocktutor-root h-full min-h-0", ref: root, children: /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(
-    TockTutorRouteView,
-    {
-      assistantPanel: /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(
-        TockTutorAssistantPanelOutlet,
-        {
-          activePath: snapshot.path,
-          renderSlot: props.renderSlot,
-          ...(snapshot.selectionEnd ?? 0) > (snapshot.selectionStart ?? 0) ? { selectedText: snapshot.source.slice(snapshot.selectionStart, Math.min(snapshot.selectionEnd ?? 0, (snapshot.selectionStart ?? 0) + 1e4)) } : {},
-          vault: snapshot.vault
-        }
-      ),
-      nativeActions: /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(
-        TockTutorNativeActionsOutlet,
-        {
-          activePath: snapshot.path,
-          handleDispatch: (event) => controller.handleDispatch(event),
-          renderSlot: props.renderSlot,
-          vault: snapshot.vault
-        }
-      ),
-      onActivateRecentVault: (id) => {
-        void controller.activateRecentVault(id);
-      },
-      onActivateTab: (paneId, path) => {
-        void controller.activateTab(paneId, path);
-      },
-      onAddBookmark: () => {
-        controller.addActiveBookmark();
-      },
-      onApplyOrganization: () => {
-        void controller.applyOrganization();
-      },
-      onAddPane: () => {
-        void controller.addPane();
-      },
-      onBack: () => {
-        void controller.goBack();
-      },
-      onCancelDispatch: () => {
-        controller.cancelDispatchDialog();
-      },
-      onCancelOrganization: () => {
-        controller.cancelOrganization();
-      },
-      onCanvasChange: (change) => {
-        void controller.applyCanvasChange(change);
-      },
-      onCloseAttachmentPreview: () => {
-        controller.closeAttachmentPreview();
-      },
-      onCloseCommandPalette: () => {
-        controller.setCommandPaletteOpen(false);
-      },
-      onCloseSearch: () => {
-        controller.closeSearch();
-      },
-      onCloseTab: (paneId, path) => {
-        void controller.closeTab(paneId, path);
-      },
-      onConvertActiveNote: () => {
-        controller.convertActiveNote();
-      },
-      onEdit: (source) => {
-        controller.edit(source);
-      },
-      onEditorCommand: (command) => {
-        controller.runEditorCommand(command);
-      },
-      onExtractSelection: () => {
-        void controller.extractActiveSelection();
-      },
-      onFocusPane: (paneId) => {
-        void controller.focusPane(paneId);
-      },
-      onForward: () => {
-        void controller.goForward();
-      },
-      onJumpToLine: (line) => {
-        controller.jumpToLine(line);
-      },
-      onLoadGraph: (mode) => {
-        void controller.loadGraph(mode);
-      },
-      onLoadWorkspace: (id) => {
-        void controller.loadWorkspace(id);
-      },
-      onMode: (mode) => {
-        controller.setMode(mode);
-      },
-      onMoveCanvas: (nodeId, deltaX, deltaY) => {
-        controller.moveCanvasNode(nodeId, deltaX, deltaY);
-      },
-      onMoveTab: (paneId, path, direction) => {
-        controller.moveTab(paneId, path, direction);
-      },
-      onNewNote: () => {
-        void controller.handleDispatch({ action: "new", kind: "quick-action", operationId: crypto.randomUUID() });
-      },
-      onOpenBookmark: (id) => {
-        void controller.openBookmark(id);
-      },
-      onOpenCommandPalette: () => {
-        controller.setCommandPaletteOpen(true);
-      },
-      onOpenRecovery: () => {
-        void controller.setRecoveryOpen(true);
-      },
-      onOpenSandboxVault: () => {
-        void controller.openSandboxVault();
-      },
-      onOpenSearch: () => {
-        controller.openSearch("");
-      },
-      onOpenSmartView: (kind) => {
-        void controller.openSmartView(kind);
-      },
-      onPrepareOrganization: () => {
-        void controller.prepareOrganization();
-      },
-      onPreviewAttachment: (path) => {
-        void controller.previewAttachment(path);
-      },
-      onReadSnapshot: (id) => {
-        void controller.readRecoverySnapshot(id);
-      },
-      onRemoveBookmark: (id) => {
-        controller.removeBookmark(id);
-      },
-      onRemoveRecentVault: (id) => {
-        void controller.removeRecentVault(id);
-      },
-      onReopenClosedTab: () => {
-        void controller.reopenClosedTab();
-      },
-      onRestoreSnapshot: (id) => {
-        void controller.restoreRecoverySnapshot(id);
-      },
-      onRestoreTrash: (id) => {
-        void controller.restoreTrashEntry(id);
-      },
-      onRunSearch: () => {
-        void controller.runSearch();
-      },
-      onSave: () => {
-        void controller.save();
-      },
-      onSaveWorkspace: () => {
-        controller.saveCurrentWorkspace();
-      },
-      onSearchChange: (query) => {
-        controller.setSearchQuery(query);
-      },
-      onSearchMode: (mode) => {
-        controller.setSearchMode(mode);
-      },
-      onSettingsChange: (change) => {
-        controller.updateSettings(change);
-      },
-      onSelect: (path) => {
-        void controller.select(path);
-      },
-      onSelectionChange: (start, end) => {
-        controller.setSelection(start, end);
-      },
-      onSetProperty: (key2, value) => {
-        controller.setProperty(key2, value);
-      },
-      onStoreAttachment: (fileName3, dataBase64) => {
-        void controller.storeActiveAttachment(fileName3, dataBase64);
-      },
-      onSubmitDispatch: (draft) => {
-        void controller.submitDispatchDialog(draft);
-      },
-      onToggleFocusMode: () => {
-        controller.toggleFocusMode();
-      },
-      onTogglePinTab: (paneId, path) => {
-        controller.togglePinTab(paneId, path);
-      },
-      onToggleTask: (index2) => {
-        controller.toggleTask(index2);
-      },
-      onTrashCurrent: () => {
-        void controller.trashCurrent();
-      },
-      reviewPanel: /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(
-        TockTutorReviewPanelOutlet,
-        {
-          activePath: snapshot.path,
-          renderSlot: props.renderSlot,
-          vault: snapshot.vault
-        }
-      ),
-      snapshot,
-      ...typeof document === "undefined" ? {} : { titlebarTarget: document.getElementById("tockteam-window-titlebar-slot") ?? document.body }
-    }
-  ) });
-}
-
 // src/NotesBaseFormulaDate.ts
-function pad2(value, length = 2) {
+function pad(value, length = 2) {
   return String(value).padStart(length, "0");
 }
 function padSigned(value, length, forceSign = false) {
@@ -27629,7 +22033,7 @@ function formatTimezoneOffset(date6, separator) {
   const totalMinutes = -date6.getTimezoneOffset();
   const sign = totalMinutes >= 0 ? "+" : "-";
   const absoluteMinutes = Math.abs(totalMinutes);
-  return `${sign}${pad2(Math.floor(absoluteMinutes / 60))}${separator}${pad2(absoluteMinutes % 60)}`;
+  return `${sign}${pad(Math.floor(absoluteMinutes / 60))}${separator}${pad(absoluteMinutes % 60)}`;
 }
 function localDayOfYear(date6) {
   const year = date6.getFullYear();
@@ -27686,12 +22090,12 @@ function formatNotesTemplateDate(now, format) {
   const hour12 = hour % 12 || 12;
   const hour24 = hour === 0 ? 24 : hour;
   const meridiem = hour < 12 ? "AM" : "PM";
-  const localizedTime = `${hour12}:${pad2(now.getMinutes())} ${meridiem}`;
+  const localizedTime = `${hour12}:${pad(now.getMinutes())} ${meridiem}`;
   const dayOfYear = localDayOfYear(now);
   const monthName = MONTH_NAMES[now.getMonth()] ?? "";
   const weekday = now.getDay();
   const weekdayName = WEEKDAY_NAMES[weekday] ?? "";
-  const fractionalSeconds = pad2(now.getMilliseconds(), 3);
+  const fractionalSeconds = pad(now.getMilliseconds(), 3);
   const quarter = Math.floor(now.getMonth() / 3) + 1;
   const { week: localeWeek, year: localeWeekYear } = localDefaultEnglishCalendar(now);
   const { week: isoWeek, year: isoWeekYear } = localIsoCalendar(now);
@@ -27702,11 +22106,11 @@ function formatNotesTemplateDate(now, format) {
     YYYYYY: padSigned(year, 6, true),
     YYYYY: padSigned(year, 5),
     YYYY: calendarYear,
-    YY: pad2(year % 100),
+    YY: pad(year % 100),
     Y: year > 9999 ? `+${year}` : calendarYear,
-    yyyy: pad2(eraYear, 4),
-    yyy: pad2(eraYear, 3),
-    yy: pad2(eraYear, 2),
+    yyyy: pad(eraYear, 4),
+    yyy: pad(eraYear, 3),
+    yy: pad(eraYear, 2),
     yo: formatEnglishOrdinal(eraYear),
     y: String(eraYear),
     NNNNN: eraAbbreviation,
@@ -27717,8 +22121,8 @@ function formatNotesTemplateDate(now, format) {
     LLLL: `${weekdayName}, ${monthName} ${now.getDate()}, ${calendarYear} ${localizedTime}`,
     LLL: `${monthName} ${now.getDate()}, ${calendarYear} ${localizedTime}`,
     LL: `${monthName} ${now.getDate()}, ${calendarYear}`,
-    L: `${pad2(now.getMonth() + 1)}/${pad2(now.getDate())}/${calendarYear}`,
-    LTS: `${hour12}:${pad2(now.getMinutes())}:${pad2(now.getSeconds())} ${meridiem}`,
+    L: `${pad(now.getMonth() + 1)}/${pad(now.getDate())}/${calendarYear}`,
+    LTS: `${hour12}:${pad(now.getMinutes())}:${pad(now.getSeconds())} ${meridiem}`,
     LT: localizedTime,
     llll: `${weekdayName.slice(0, 3)}, ${monthName.slice(0, 3)} ${now.getDate()}, ${calendarYear} ${localizedTime}`,
     lll: `${monthName.slice(0, 3)} ${now.getDate()}, ${calendarYear} ${localizedTime}`,
@@ -27727,13 +22131,13 @@ function formatNotesTemplateDate(now, format) {
     MMMM: monthName,
     MMM: monthName.slice(0, 3),
     Mo: formatEnglishOrdinal(now.getMonth() + 1),
-    MM: pad2(now.getMonth() + 1),
+    MM: pad(now.getMonth() + 1),
     M: String(now.getMonth() + 1),
     DDDo: formatEnglishOrdinal(dayOfYear),
-    DDDD: pad2(dayOfYear, 3),
+    DDDD: pad(dayOfYear, 3),
     DDD: String(dayOfYear),
     Do: formatEnglishOrdinal(now.getDate()),
-    DD: pad2(now.getDate()),
+    DD: pad(now.getDate()),
     D: String(now.getDate()),
     dddd: weekdayName,
     ddd: weekdayName.slice(0, 3),
@@ -27744,25 +22148,25 @@ function formatNotesTemplateDate(now, format) {
     E: String(weekday === 0 ? 7 : weekday),
     GGGGG: padSigned(isoWeekYear, 5),
     GGGG: String(isoWeekYear),
-    GG: pad2(isoWeekYear % 100),
+    GG: pad(isoWeekYear % 100),
     ggggg: padSigned(localeWeekYear, 5),
     gggg: String(localeWeekYear),
-    gg: pad2(localeWeekYear % 100),
+    gg: pad(localeWeekYear % 100),
     wo: formatEnglishOrdinal(localeWeek),
-    ww: pad2(localeWeek),
+    ww: pad(localeWeek),
     w: String(localeWeek),
     Wo: formatEnglishOrdinal(isoWeek),
-    WW: pad2(isoWeek),
+    WW: pad(isoWeek),
     W: String(isoWeek),
-    HH: pad2(hour),
+    HH: pad(hour),
     H: String(hour),
-    kk: pad2(hour24),
+    kk: pad(hour24),
     k: String(hour24),
-    hh: pad2(hour12),
+    hh: pad(hour12),
     h: String(hour12),
-    mm: pad2(now.getMinutes()),
+    mm: pad(now.getMinutes()),
     m: String(now.getMinutes()),
-    ss: pad2(now.getSeconds()),
+    ss: pad(now.getSeconds()),
     s: String(now.getSeconds()),
     A: meridiem,
     a: meridiem.toLowerCase(),
@@ -30948,6 +25352,142 @@ function notesBaseValueText(value) {
   return Array.isArray(value) ? value.map(notesBaseScalarValueText).join(", ") : notesBaseScalarValueText(value);
 }
 
+// src/properties.ts
+var MAX_FRONTMATTER_BYTES = 1e6;
+var MAX_PROPERTIES = 1e3;
+var KEY = /^[A-Za-z_][A-Za-z0-9_-]{0,127}$/u;
+function frontmatter(source) {
+  if (new TextEncoder().encode(source).byteLength > MAX_FRONTMATTER_BYTES) return null;
+  const opening = source.match(/^---(?:\r\n|\n|\r)/u);
+  if (opening === null) return null;
+  const start = opening[0].length;
+  const close = /(?:^|\r\n|\n|\r)(?:---|\.\.\.)(?=\r\n|\n|\r|$)/gmu;
+  close.lastIndex = start;
+  const match = close.exec(source);
+  if (match === null) return null;
+  const markerOffset = match.index + (match[0].startsWith("\r\n") ? 2 : match[0].startsWith("\n") || match[0].startsWith("\r") ? 1 : 0);
+  const markerEnd = markerOffset + (source.startsWith("...", markerOffset) ? 3 : 3);
+  const separator = source.startsWith("\r\n", markerEnd) ? 2 : source[markerEnd] === "\n" || source[markerEnd] === "\r" ? 1 : 0;
+  return { bodyStart: markerEnd + separator, content: source.slice(start, markerOffset), start };
+}
+function decodeQuoted(value) {
+  const trimmed = value.trim();
+  if (trimmed.startsWith('"') && trimmed.endsWith('"')) {
+    try {
+      return JSON.parse(trimmed);
+    } catch {
+      return trimmed.slice(1, -1);
+    }
+  }
+  if (trimmed.startsWith("'") && trimmed.endsWith("'")) return trimmed.slice(1, -1).replaceAll("''", "'");
+  return trimmed;
+}
+function inferPropertyType(value) {
+  if (Array.isArray(value)) return "list";
+  if (typeof value === "number") return "number";
+  if (typeof value === "boolean") return "checkbox";
+  if (typeof value !== "string") return "mixed";
+  if (/^\d{4}-\d{2}-\d{2}$/u.test(value)) return "date";
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,3})?)?(?:Z|[+-]\d{2}:\d{2})?$/u.test(value)) return "datetime";
+  return "text";
+}
+function scalar(value) {
+  const decoded = decodeQuoted(value);
+  if (decoded === "true") return true;
+  if (decoded === "false") return false;
+  if (decoded === "null" || decoded === "~") return null;
+  if (/^-?(?:0|[1-9]\d*)(?:\.\d+)?$/u.test(decoded)) {
+    const number4 = Number(decoded);
+    if (Number.isFinite(number4)) return number4;
+  }
+  return decoded;
+}
+function ranges(source) {
+  const block = frontmatter(source);
+  if (block === null) return [];
+  const lines = [...block.content.matchAll(/.*(?:\r\n|\n|\r|$)/gu)].filter((match) => match[0] !== "");
+  const properties = [];
+  let offset4 = block.start;
+  for (let index2 = 0; index2 < lines.length && properties.length < MAX_PROPERTIES; index2 += 1) {
+    const line = lines[index2][0];
+    const content = line.replace(/(?:\r\n|\n|\r)$/u, "");
+    const match = content.match(/^([A-Za-z_][A-Za-z0-9_-]{0,127}):(?:\s*(.*))?$/u);
+    if (match === null) {
+      offset4 += line.length;
+      continue;
+    }
+    const key2 = match[1];
+    let end = offset4 + line.length;
+    const items = [];
+    let next = index2 + 1;
+    while (next < lines.length && /^\s{2,}-\s+/u.test(lines[next][0])) {
+      items.push(decodeQuoted(lines[next][0].replace(/^\s{2,}-\s+/u, "").replace(/(?:\r\n|\n|\r)$/u, "")));
+      end += lines[next][0].length;
+      next += 1;
+    }
+    const value = items.length > 0 ? items : scalar(match[2] ?? "");
+    properties.push({ end, key: key2, start: offset4, type: inferPropertyType(value), value });
+    index2 = next - 1;
+    offset4 = end;
+  }
+  return properties;
+}
+function parseFrontmatterProperties(source) {
+  return ranges(source).map(({ key: key2, type, value }) => ({ key: key2, type, value }));
+}
+function quoteText(value) {
+  if (value === "" || /^(?:true|false|null|~|-?(?:0|[1-9]\d*)(?:\.\d+)?|\d{4}-\d{2}-\d{2}(?:T.*)?)$/iu.test(value) || /[:#\[\]{},&*!|>'"%@`]/u.test(value) || /^\s|\s$/u.test(value)) return JSON.stringify(value);
+  return value;
+}
+function serializedProperty(key2, value, eol) {
+  if (Array.isArray(value)) return `${key2}:${eol}${value.map((item) => `  - ${quoteText(item)}`).join(eol)}${eol}`;
+  const encoded = value === null ? "null" : typeof value === "string" ? quoteText(value) : String(value);
+  return `${key2}: ${encoded}${eol}`;
+}
+function setFrontmatterProperty(source, key2, value) {
+  if (!KEY.test(key2)) throw new Error("The property name is invalid.");
+  const eol = source.includes("\r\n") ? "\r\n" : "\n";
+  const existing = ranges(source).find((property) => property.key.toLocaleLowerCase() === key2.toLocaleLowerCase());
+  const serialized = serializedProperty(key2, value, eol);
+  if (existing !== void 0) return `${source.slice(0, existing.start)}${serialized}${source.slice(existing.end)}`;
+  const block = frontmatter(source);
+  if (block === null) return `---${eol}${serialized}---${eol}${source}`;
+  const insertion = block.bodyStart - (source.startsWith("\r\n", block.bodyStart - 2) ? 5 : 4);
+  return `${source.slice(0, insertion)}${serialized}${source.slice(insertion)}`;
+}
+function renameFrontmatterProperty(source, from, to) {
+  if (!KEY.test(from) || !KEY.test(to)) throw new Error("The property name is invalid.");
+  const properties = ranges(source);
+  const sourceProperty = properties.find((property) => property.key.toLocaleLowerCase() === from.toLocaleLowerCase());
+  if (sourceProperty === void 0) return source;
+  if (properties.some((property) => property.key.toLocaleLowerCase() === to.toLocaleLowerCase() && property !== sourceProperty)) {
+    throw new Error("The target property already exists.");
+  }
+  const prefixLength = sourceProperty.key.length;
+  return `${source.slice(0, sourceProperty.start)}${to}${source.slice(sourceProperty.start + prefixLength)}`;
+}
+async function renamePropertiesRecoverably(files, from, to, operations) {
+  const planned = files.map((file2) => ({ ...file2, nextSource: renameFrontmatterProperty(file2.source, from, to) })).filter((file2) => file2.nextSource !== file2.source);
+  const saved = [];
+  try {
+    for (const file2 of planned) {
+      const result = await operations.save(file2);
+      saved.push({ ...file2, savedRevision: result.revision });
+    }
+    return { paths: saved.map((file2) => file2.path), status: "saved" };
+  } catch {
+    const rollbackFailures = [];
+    for (const file2 of [...saved].reverse()) {
+      try {
+        await operations.rollback(file2);
+      } catch {
+        rollbackFailures.push(file2.path);
+      }
+    }
+    return rollbackFailures.length === 0 ? { paths: saved.map((file2) => file2.path), status: "rolled-back" } : { paths: saved.map((file2) => file2.path), rollbackFailures, status: "partial" };
+  }
+}
+
 // src/base-query.ts
 var MAX_EXECUTABLE_BASE_FILES = 2e3;
 var MAX_EXECUTABLE_BASE_FILE_BYTES = 1e6;
@@ -30956,7 +25496,7 @@ var MAX_EXECUTABLE_BASE_PROPERTIES = 256;
 var MAX_EXECUTABLE_BASE_FORMULA_DEPTH = 32;
 var SAFE_PATH = /^(?!\/)(?!.*(?:^|\/)\.\.(?:\/|$))(?!.*[\\\0\r\n])[\p{L}\p{N} ._()\-\/[\]]+$/u;
 var REVISION = /^file:[0-9a-f]{64}$/u;
-function fileName2(path) {
+function fileName(path) {
   return (path.split("/").at(-1) ?? path).replace(/\.md$/iu, "");
 }
 function fileFolder(path) {
@@ -30975,7 +25515,7 @@ function fileTags(properties, source) {
 }
 function propertyValue(row, property) {
   const key2 = property.trim();
-  if (key2 === "file.name" || key2 === "file.basename") return fileName2(row.file.path);
+  if (key2 === "file.name" || key2 === "file.basename") return fileName(row.file.path);
   if (key2 === "file.file" || key2 === "file.path") return row.file.path;
   if (key2 === "file.folder") return fileFolder(row.file.path);
   if (key2 === "file.ext") return row.file.path.split(".").at(-1) ?? "";
@@ -31077,7 +25617,7 @@ function mutableRows(files) {
 }
 function summariesForRows(document2, summaries, rows, context) {
   const results = [];
-  const unsupported4 = [];
+  const unsupported3 = [];
   for (const summary of summaries) {
     let formulasSupported = true;
     const result = evaluateNotesBaseSummary(summary.expression, [...rows], (row, property) => {
@@ -31085,10 +25625,10 @@ function summariesForRows(document2, summaries, rows, context) {
       if (!value.supported) formulasSupported = false;
       return value.supported ? value.value : void 0;
     });
-    if (!result.supported || !formulasSupported) unsupported4.push({ expression: summary.expression, kind: "summary" });
+    if (!result.supported || !formulasSupported) unsupported3.push({ expression: summary.expression, kind: "summary" });
     else results.push({ expression: summary.expression, label: summary.label, value: result.value });
   }
-  return { results, unsupported: unsupported4 };
+  return { results, unsupported: unsupported3 };
 }
 function summarizeExecutableBaseRows(document2, view, rows, baseFile) {
   const mutable = rows.map((row) => ({
@@ -31109,7 +25649,7 @@ function queryExecutableBaseView(document2, view, files, baseFile) {
   const allRows = hydrated.rows;
   const rowsByPath = new Map(allRows.map((row) => [row.file.path, row]));
   const context = formulaContext(rowsByPath, baseFile);
-  const unsupported4 = [];
+  const unsupported3 = [];
   let rows = allRows;
   for (const tree of [...document2.filters, ...view.filters]) {
     const matching = [];
@@ -31129,7 +25669,7 @@ function queryExecutableBaseView(document2, view, files, baseFile) {
       if (outcome.matched) matching.push(row);
     }
     if (failure !== null) {
-      unsupported4.push(failure);
+      unsupported3.push(failure);
       rows = [];
       break;
     }
@@ -31138,10 +25678,10 @@ function queryExecutableBaseView(document2, view, files, baseFile) {
   const sortSpecs = [];
   for (const source of view.sort) {
     const match = /^([\w.-]+)(?:\s+(asc|desc))?$/iu.exec(source);
-    if (match === null) unsupported4.push({ expression: source, kind: "sort" });
+    if (match === null) unsupported3.push({ expression: source, kind: "sort" });
     else sortSpecs.push({ column: match[1] ?? "file.name", direction: (match[2] ?? "asc").toLowerCase() === "desc" ? -1 : 1 });
   }
-  if (unsupported4.length === 0 && sortSpecs.length > 0) {
+  if (unsupported3.length === 0 && sortSpecs.length > 0) {
     const projected = rows.map((row, index2) => ({
       index: index2,
       row,
@@ -31149,10 +25689,10 @@ function queryExecutableBaseView(document2, view, files, baseFile) {
     }));
     for (let index2 = 0; index2 < sortSpecs.length; index2 += 1) {
       if (projected.some((entry) => entry.values[index2]?.supported !== true)) {
-        unsupported4.push({ expression: sortSpecs[index2]?.column ?? "", kind: "formula" });
+        unsupported3.push({ expression: sortSpecs[index2]?.column ?? "", kind: "formula" });
       }
     }
-    if (unsupported4.length === 0) {
+    if (unsupported3.length === 0) {
       rows = projected.sort((left, right) => {
         for (let index2 = 0; index2 < sortSpecs.length; index2 += 1) {
           const leftValue = left.values[index2];
@@ -31172,13 +25712,13 @@ function queryExecutableBaseView(document2, view, files, baseFile) {
   for (const row of rows) {
     for (const column of /* @__PURE__ */ new Set([...columns, ...view.coordinates === null ? [] : [view.coordinates]])) {
       const value = columnValue(document2, row, column, context);
-      if (!value.supported) unsupported4.push({ expression: column, kind: "formula" });
+      if (!value.supported) unsupported3.push({ expression: column, kind: "formula" });
       else row.values[column] = value.value;
     }
   }
-  if (unsupported4.length > 0) return { rows: [], summaries: [], unsupported: unsupported4 };
+  if (unsupported3.length > 0) return { rows: [], summaries: [], unsupported: unsupported3 };
   const summary = summariesForRows(document2, view.summaries, rows, context);
-  unsupported4.push(...summary.unsupported);
+  unsupported3.push(...summary.unsupported);
   return {
     rows: Object.freeze(rows.map((row) => Object.freeze({
       file: Object.freeze({ ...row.file }),
@@ -31186,7 +25726,7 @@ function queryExecutableBaseView(document2, view, files, baseFile) {
       values: Object.freeze({ ...row.values })
     }))),
     summaries: Object.freeze(summary.results.map((result) => Object.freeze({ ...result }))),
-    unsupported: Object.freeze(unsupported4.map((entry) => Object.freeze({ ...entry })))
+    unsupported: Object.freeze(unsupported3.map((entry) => Object.freeze({ ...entry })))
   };
 }
 
@@ -31237,17 +25777,21 @@ function createExecutableBaseFrontmatterEdit(file2, column, rawValue) {
   };
 }
 
-// src/base-executable-view.tsx
-var import_react7 = require("react");
+// src/base.ts
+var MAX_BASE_BYTES = 2e6;
+var MAX_BASE_LINES = 4096;
+var MAX_BASE_LINE_LENGTH = 4096;
+var MAX_BASE_VIEWS = 64;
+var MAX_BASE_FIELDS = 128;
 
 // src/base-parser.ts
 var MAX_EXECUTABLE_BASE_LIST_ITEMS = 256;
 var MAX_EXECUTABLE_BASE_FORMULAS = 128;
 var MAX_EXECUTABLE_BASE_SEARCH_LENGTH = 1e3;
-function unsupported3(reason) {
+function unsupported(reason) {
   return { reason, status: "unsupported" };
 }
-function leadingSpaces2(line) {
+function leadingSpaces(line) {
   return /^ */u.exec(line)?.[0].length ?? 0;
 }
 function cleanScalar(value) {
@@ -31262,7 +25806,7 @@ function cleanScalar(value) {
   }
   return trimmed.startsWith("'") && trimmed.endsWith("'") ? trimmed.slice(1, -1).replaceAll("''", "'") : trimmed;
 }
-function splitInlineList2(value) {
+function splitInlineList(value) {
   const trimmed = value.trim();
   if (!trimmed.startsWith("[") || !trimmed.endsWith("]")) return null;
   const items = [];
@@ -31306,11 +25850,11 @@ function parseFilterLines(lines) {
   }));
 }
 function parseExecutableBase(source) {
-  if (new TextEncoder().encode(source).byteLength > MAX_BASE_BYTES) return unsupported3("Base document exceeds the byte limit.");
+  if (new TextEncoder().encode(source).byteLength > MAX_BASE_BYTES) return unsupported("Base document exceeds the byte limit.");
   const lines = source.split(/\r\n|\n|\r/u);
-  if (lines.length > MAX_BASE_LINES) return unsupported3("Base document exceeds the line limit.");
-  if (lines.some((line) => !safeLine(line) || leadingSpaces2(line) % 2 !== 0)) {
-    return unsupported3("Base document contains unsupported YAML syntax.");
+  if (lines.length > MAX_BASE_LINES) return unsupported("Base document exceeds the line limit.");
+  if (lines.some((line) => !safeLine(line) || leadingSpaces(line) % 2 !== 0)) {
+    return unsupported("Base document contains unsupported YAML syntax.");
   }
   const formulas = /* @__PURE__ */ Object.create(null);
   const properties = /* @__PURE__ */ Object.create(null);
@@ -31324,7 +25868,7 @@ function parseExecutableBase(source) {
     const line = lines[index2] ?? "";
     const trimmed = line.trim();
     if (trimmed === "" || trimmed.startsWith("#")) continue;
-    const indent = leadingSpaces2(line);
+    const indent = leadingSpaces(line);
     const topLevel = indent === 0 ? /^([A-Za-z][\w.-]*):\s*(.*)$/u.exec(trimmed) : null;
     if (topLevel !== null) {
       section = topLevel[1] ?? "";
@@ -31337,7 +25881,7 @@ function parseExecutableBase(source) {
         else {
           const block = [];
           let next = index2 + 1;
-          while (next < lines.length && (lines[next]?.trim() === "" || leadingSpaces2(lines[next] ?? "") > 0)) {
+          while (next < lines.length && (lines[next]?.trim() === "" || leadingSpaces(lines[next] ?? "") > 0)) {
             block.push(lines[next] ?? "");
             next += 1;
           }
@@ -31357,7 +25901,7 @@ function parseExecutableBase(source) {
       const displayName = currentProperty !== "" && indent === 4 ? /^displayName:\s*(.+)$/u.exec(trimmed) : null;
       if (displayName !== null) {
         if (Object.keys(properties).length >= MAX_BASE_FIELDS && properties[currentProperty] === void 0) {
-          return unsupported3("Base document exceeds the property display-name limit.");
+          return unsupported("Base document exceeds the property display-name limit.");
         }
         properties[currentProperty] = cleanScalar(displayName[1] ?? "");
       }
@@ -31368,7 +25912,7 @@ function parseExecutableBase(source) {
       if (formula !== null) {
         const name2 = formula[1] ?? "";
         if (Object.keys(formulas).length >= MAX_EXECUTABLE_BASE_FORMULAS && formulas[name2] === void 0) {
-          return unsupported3("Base document exceeds the formula limit.");
+          return unsupported("Base document exceeds the formula limit.");
         }
         const expression = cleanScalar(formula[2] ?? "");
         if (expression !== "") formulas[name2] = expression;
@@ -31378,7 +25922,7 @@ function parseExecutableBase(source) {
     if (section !== "views") continue;
     const newView = indent === 2 ? /^-\s*(?:(type|name):\s*(.+))?$/u.exec(trimmed) : null;
     if (newView !== null) {
-      if (views.length >= MAX_BASE_VIEWS) return unsupported3("Base document exceeds the view limit.");
+      if (views.length >= MAX_BASE_VIEWS) return unsupported("Base document exceeds the view limit.");
       currentView = {
         coordinates: null,
         filters: [],
@@ -31393,7 +25937,7 @@ function parseExecutableBase(source) {
       if (newView[1] === "type") {
         const type = cleanScalar(newView[2] ?? "");
         if (type !== "table" && type !== "list" && type !== "cards" && type !== "map") {
-          return unsupported3(`Unsupported Base view type ${JSON.stringify(type)}.`);
+          return unsupported(`Unsupported Base view type ${JSON.stringify(type)}.`);
         }
         currentView.type = type;
       } else if (newView[1] === "name") {
@@ -31403,7 +25947,7 @@ function parseExecutableBase(source) {
       currentList = "";
       continue;
     }
-    if (currentView === null) return unsupported3("Base views contain malformed syntax.");
+    if (currentView === null) return unsupported("Base views contain malformed syntax.");
     const field = indent === 4 ? /^([A-Za-z][\w.-]*):\s*(.*)$/u.exec(trimmed) : null;
     if (field !== null) {
       const key2 = field[1] ?? "";
@@ -31412,27 +25956,27 @@ function parseExecutableBase(source) {
       currentList = key2 === "order" || key2 === "sort" || key2 === "summaries" ? key2 : "";
       if (key2 === "type") {
         if (value !== "table" && value !== "list" && value !== "cards" && value !== "map") {
-          return unsupported3(`Unsupported Base view type ${JSON.stringify(value)}.`);
+          return unsupported(`Unsupported Base view type ${JSON.stringify(value)}.`);
         }
         currentView.type = value;
       } else if (key2 === "name") {
-        if (value === "") return unsupported3("Base view names must not be empty.");
+        if (value === "") return unsupported("Base view names must not be empty.");
         currentView.name = value;
       } else if (key2 === "limit") {
-        if (!/^\d+$/u.test(value)) return unsupported3("Base view limit is invalid.");
+        if (!/^\d+$/u.test(value)) return unsupported("Base view limit is invalid.");
         const limit = Number(value);
-        if (!Number.isSafeInteger(limit) || limit > 2e3) return unsupported3("Base view limit is invalid.");
+        if (!Number.isSafeInteger(limit) || limit > 2e3) return unsupported("Base view limit is invalid.");
         currentView.limit = limit;
       } else if (key2 === "coordinates") {
         currentView.coordinates = /^[\w.-]+$/u.test(value) ? value : null;
-        if (value !== "" && currentView.coordinates === null) return unsupported3("Base map coordinates property is invalid.");
+        if (value !== "" && currentView.coordinates === null) return unsupported("Base map coordinates property is invalid.");
       } else if (key2 === "filters") {
         currentList = "";
         if (value !== "") currentView.filters.push({ kind: "statement", statement: value });
         else {
           const block = [];
           let next = index2 + 1;
-          while (next < lines.length && (lines[next]?.trim() === "" || leadingSpaces2(lines[next] ?? "") > 4)) {
+          while (next < lines.length && (lines[next]?.trim() === "" || leadingSpaces(lines[next] ?? "") > 4)) {
             block.push(lines[next] ?? "");
             next += 1;
           }
@@ -31440,14 +25984,14 @@ function parseExecutableBase(source) {
           index2 = next - 1;
         }
       } else if (currentList !== "") {
-        const inline3 = splitInlineList2(raw);
+        const inline3 = splitInlineList(raw);
         if (inline3 !== null) {
-          if (!boundedList(inline3)) return unsupported3("Base view list exceeds its limit.");
+          if (!boundedList(inline3)) return unsupported("Base view list exceeds its limit.");
           if (currentList === "summaries") {
             currentView.summaries.push(...inline3.map((expression) => ({ expression, label: expression })));
           } else if (currentList === "order") currentView.order.push(...inline3);
           else currentView.sort.push(...inline3);
-        } else if (raw.trim() !== "") return unsupported3(`Base ${key2} must be a list.`);
+        } else if (raw.trim() !== "") return unsupported(`Base ${key2} must be a list.`);
       }
       continue;
     }
@@ -31456,27 +26000,27 @@ function parseExecutableBase(source) {
       const property = cleanScalar(summaryAssignment[1] ?? "");
       const name2 = cleanScalar(summaryAssignment[2] ?? "");
       currentView.summaries.push({ expression: `${name2.toLocaleLowerCase()}(${property})`, label: `${name2}(${property})` });
-      if (!boundedList(currentView.summaries.map((summary) => summary.expression))) return unsupported3("Base view list exceeds its limit.");
+      if (!boundedList(currentView.summaries.map((summary) => summary.expression))) return unsupported("Base view list exceeds its limit.");
       continue;
     }
     const listItem = currentList !== "" && indent >= 6 ? /^-\s*(.+)$/u.exec(trimmed) : null;
     if (listItem !== null) {
       const value = cleanScalar(listItem[1] ?? "");
-      if (value === "") return unsupported3("Base view list item is empty.");
+      if (value === "") return unsupported("Base view list item is empty.");
       if (currentList === "summaries") currentView.summaries.push({ expression: value, label: value });
       else if (currentList === "order") currentView.order.push(value);
       else currentView.sort.push(value);
       const values = currentList === "summaries" ? currentView.summaries.map((summary) => summary.expression) : currentList === "order" ? currentView.order : currentView.sort;
-      if (!boundedList(values)) return unsupported3("Base view list exceeds its limit.");
+      if (!boundedList(values)) return unsupported("Base view list exceeds its limit.");
       continue;
     }
-    if (indent >= 4) return unsupported3("Base views contain unsupported nested syntax.");
+    if (indent >= 4) return unsupported("Base views contain unsupported nested syntax.");
   }
-  if (views.length === 0) return unsupported3("Base document has no executable views.");
+  if (views.length === 0) return unsupported("Base document has no executable views.");
   const names = /* @__PURE__ */ new Set();
   for (const view of views) {
     const name2 = view.name.trim().toLocaleLowerCase();
-    if (name2 === "" || names.has(name2)) return unsupported3("Base view names must be unique.");
+    if (name2 === "" || names.has(name2)) return unsupported("Base view names must be unique.");
     names.add(name2);
   }
   return {
@@ -31617,8 +26161,8 @@ function createBaseViewModel(document2, files, selectedView, search = "", baseFi
   const normalizedSearch = search.trim().toLocaleLowerCase();
   const searchedRows = normalizedSearch === "" || query.unsupported.length > 0 ? query.rows : query.rows.filter((row) => columns.some((column) => notesBaseValueText(row.values[column]).toLocaleLowerCase().includes(normalizedSearch)));
   const summary = normalizedSearch === "" || query.unsupported.length > 0 ? { summaries: query.summaries, unsupported: [] } : summarizeExecutableBaseRows(document2, view, searchedRows, baseFile);
-  const unsupported4 = [...query.unsupported, ...summary.unsupported];
-  const searchedQuery = { rows: searchedRows, summaries: summary.summaries, unsupported: unsupported4 };
+  const unsupported3 = [...query.unsupported, ...summary.unsupported];
+  const searchedQuery = { rows: searchedRows, summaries: summary.summaries, unsupported: unsupported3 };
   return {
     columns: Object.freeze(columns.map((key2) => Object.freeze({ key: key2, label: document2.properties[key2] ?? key2 }))),
     kind: viewKind(view),
@@ -31626,14 +26170,14 @@ function createBaseViewModel(document2, files, selectedView, search = "", baseFi
     search,
     status: "ready",
     summaries: Object.freeze([...summary.summaries]),
-    unsupported: Object.freeze(unsupported4.map((entry) => Object.freeze({ ...entry }))),
+    unsupported: Object.freeze(unsupported3.map((entry) => Object.freeze({ ...entry }))),
     view,
     views: Object.freeze(document2.views.map((candidate) => Object.freeze({ kind: viewKind(candidate), name: candidate.name })))
   };
 }
 
 // src/base-executable-view.tsx
-var import_jsx_runtime23 = require("react/jsx-runtime");
+var import_jsx_runtime21 = require("react/jsx-runtime");
 function resultCount(count3) {
   return `${String(count3)} ${count3 === 1 ? "Result" : "Results"}`;
 }
@@ -31645,25 +26189,25 @@ function readableKind(kind) {
 }
 function SummaryList(props) {
   if (props.model.summaries.length === 0) return null;
-  return /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("dl", { "aria-label": `${props.model.view.name} Summaries`, className: "flex flex-wrap gap-2", children: props.model.summaries.map((summary) => /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("div", { className: "rounded-md border border-[var(--tt-border)] px-2 py-1 text-xs", children: [
-    /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("dt", { className: "inline font-medium", children: [
+  return /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("dl", { "aria-label": `${props.model.view.name} Summaries`, className: "flex flex-wrap gap-2", children: props.model.summaries.map((summary) => /* @__PURE__ */ (0, import_jsx_runtime21.jsxs)("div", { className: "rounded-md border border-[var(--tt-border)] px-2 py-1 text-xs", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime21.jsxs)("dt", { className: "inline font-medium", children: [
       summary.label,
       ": "
     ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("dd", { className: "inline", children: String(summary.value ?? "") })
+    /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("dd", { className: "inline", children: String(summary.value ?? "") })
   ] }, summary.expression)) });
 }
 function ReadonlyLayouts(props) {
   const { model } = props;
   if (model.kind === "list") {
-    return /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("ul", { "aria-label": `${model.view.name} Results`, className: "space-y-1.5", children: model.rows.map((row) => /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("li", { className: "rounded-md border border-[var(--tt-border)] p-2", children: row.cells.map((cell, index2) => /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("span", { children: [
-      index2 > 0 ? /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("span", { "aria-hidden": "true", children: " \xB7 " }) : null,
-      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("span", { className: index2 === 0 ? "font-medium" : "text-[var(--tt-muted)]", children: cell.text })
+    return /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("ul", { "aria-label": `${model.view.name} Results`, className: "space-y-1.5", children: model.rows.map((row) => /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("li", { className: "rounded-md border border-[var(--tt-border)] p-2", children: row.cells.map((cell, index2) => /* @__PURE__ */ (0, import_jsx_runtime21.jsxs)("span", { children: [
+      index2 > 0 ? /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("span", { "aria-hidden": "true", children: " \xB7 " }) : null,
+      /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("span", { className: index2 === 0 ? "font-medium" : "text-[var(--tt-muted)]", children: cell.text })
     ] }, cell.column)) }, row.path)) });
   }
   if (model.kind === "cards") {
-    return /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("ul", { "aria-label": `${model.view.name} Results`, className: "grid list-none grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-2 p-0", children: model.rows.map((row) => /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("li", { className: "rounded-lg border border-[var(--tt-border)] p-3", children: row.cells.map((cell) => /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("p", { className: "m-0 text-sm", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("strong", { children: [
+    return /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("ul", { "aria-label": `${model.view.name} Results`, className: "grid list-none grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-2 p-0", children: model.rows.map((row) => /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("li", { className: "rounded-lg border border-[var(--tt-border)] p-3", children: row.cells.map((cell) => /* @__PURE__ */ (0, import_jsx_runtime21.jsxs)("p", { className: "m-0 text-sm", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime21.jsxs)("strong", { children: [
         cell.label,
         ":"
       ] }),
@@ -31671,11 +26215,11 @@ function ReadonlyLayouts(props) {
       cell.text
     ] }, cell.column)) }, row.path)) });
   }
-  return /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("ul", { "aria-label": `${model.view.name} Map Labels`, className: "space-y-1.5", children: model.rows.map((row) => {
+  return /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("ul", { "aria-label": `${model.view.name} Map Labels`, className: "space-y-1.5", children: model.rows.map((row) => {
     const coordinateCell = model.view.coordinates === null ? void 0 : row.cells.find((cell) => cell.column === model.view.coordinates);
-    return /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("li", { className: "flex flex-wrap items-baseline justify-between gap-2 rounded-md border border-[var(--tt-border)] p-2", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("span", { className: "font-medium", children: row.cells[0]?.text || row.path }),
-      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("span", { className: "text-xs text-[var(--tt-muted)]", children: row.coordinates === null ? "Coordinates Unavailable" : coordinateCell?.text ?? `${String(row.coordinates.latitude)}, ${String(row.coordinates.longitude)}` })
+    return /* @__PURE__ */ (0, import_jsx_runtime21.jsxs)("li", { className: "flex flex-wrap items-baseline justify-between gap-2 rounded-md border border-[var(--tt-border)] p-2", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("span", { className: "font-medium", children: row.cells[0]?.text || row.path }),
+      /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("span", { className: "text-xs text-[var(--tt-muted)]", children: row.coordinates === null ? "Coordinates Unavailable" : coordinateCell?.text ?? `${String(row.coordinates.latitude)}, ${String(row.coordinates.longitude)}` })
     ] }, row.path);
   }) });
 }
@@ -31688,7 +26232,7 @@ function EditableCell(props) {
     if (request !== null) props.onEdit?.(request);
   };
   if (cell.inputType === "checkbox") {
-    return /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(
+    return /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(
       "input",
       {
         "aria-label": label,
@@ -31698,7 +26242,7 @@ function EditableCell(props) {
       }
     );
   }
-  return /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(
+  return /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(
     "input",
     {
       "aria-label": label,
@@ -31714,9 +26258,9 @@ function EditableCell(props) {
 }
 function ExecutableTable(props) {
   const { model } = props;
-  const [selected, setSelected] = (0, import_react7.useState)(null);
-  const [anchor, setAnchor] = (0, import_react7.useState)(null);
-  const refs = (0, import_react7.useRef)(/* @__PURE__ */ new Map());
+  const [selected, setSelected] = (0, import_react5.useState)(null);
+  const [anchor, setAnchor] = (0, import_react5.useState)(null);
+  const refs = (0, import_react5.useRef)(/* @__PURE__ */ new Map());
   const selectedRow = selected?.view === model.view.name ? model.rows.findIndex((row) => row.path === selected.path) : -1;
   const selectedVisible = selected !== null && selectedRow >= 0 && selected.column < model.columns.length;
   const anchorRow = anchor?.view === model.view.name ? model.rows.findIndex((row) => row.path === anchor.path) : -1;
@@ -31787,12 +26331,12 @@ function ExecutableTable(props) {
     event.preventDefault();
     focusCell(nextRow, nextColumn, event.shiftKey && event.key.startsWith("Arrow"));
   };
-  return /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("div", { className: "overflow-auto", children: /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("table", { "aria-label": `${model.view.name} Results`, className: "w-full border-collapse text-sm", role: "grid", children: [
-    /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("thead", { children: /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("tr", { children: model.columns.map((column) => /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("th", { className: "border border-[var(--tt-border)] p-2 text-left", children: column.label }, column.key)) }) }),
-    /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("tbody", { children: model.rows.map((row, rowIndex) => /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("tr", { children: row.cells.map((cell, columnIndex) => {
+  return /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("div", { className: "overflow-auto", children: /* @__PURE__ */ (0, import_jsx_runtime21.jsxs)("table", { "aria-label": `${model.view.name} Results`, className: "w-full border-collapse text-sm", role: "grid", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("thead", { children: /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("tr", { children: model.columns.map((column) => /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("th", { className: "border border-[var(--tt-border)] p-2 text-left", children: column.label }, column.key)) }) }),
+    /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("tbody", { children: model.rows.map((row, rowIndex) => /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("tr", { children: row.cells.map((cell, columnIndex) => {
       const active = selectedVisible && selected?.path === row.path && selected.column === columnIndex;
       const inRange = selectedVisible && (range === null ? active : rowIndex >= range.rowStart && rowIndex <= range.rowEnd && columnIndex >= range.columnStart && columnIndex <= range.columnEnd);
-      return /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(
+      return /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(
         "td",
         {
           "aria-selected": inRange ? "true" : void 0,
@@ -31812,7 +26356,7 @@ function ExecutableTable(props) {
           },
           onFocus: () => setSelected({ column: columnIndex, path: row.path, view: model.view.name }),
           onKeyDown: (event) => handleKeyDown(event, rowIndex, columnIndex),
-          children: /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(EditableCell, { cell, row, onEdit: props.onEdit })
+          children: /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(EditableCell, { cell, row, onEdit: props.onEdit })
         },
         cell.column
       );
@@ -31820,26 +26364,26 @@ function ExecutableTable(props) {
   ] }) });
 }
 function ExecutableBaseView(props) {
-  const document2 = (0, import_react7.useMemo)(() => parseExecutableBase(props.source), [props.source]);
+  const document2 = (0, import_react5.useMemo)(() => parseExecutableBase(props.source), [props.source]);
   const selectedName = document2.status === "ready" ? document2.views.find((view) => view.name === props.activeView)?.name ?? document2.views[0]?.name ?? "" : "";
   const search = props.searches?.[selectedName] ?? "";
-  const model = (0, import_react7.useMemo)(() => document2.status === "ready" ? createBaseViewModel(document2, props.files, selectedName, search, props.baseFile) : document2, [document2, props.files, selectedName, search, props.baseFile]);
-  if (model.status !== "ready") return /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("p", { role: "alert", children: model.reason });
+  const model = (0, import_react5.useMemo)(() => document2.status === "ready" ? createBaseViewModel(document2, props.files, selectedName, search, props.baseFile) : document2, [document2, props.files, selectedName, search, props.baseFile]);
+  if (model.status !== "ready") return /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("p", { role: "alert", children: model.reason });
   const blocked = model.unsupported.length > 0;
   const tsv = blocked ? null : executableBaseViewTsv(model);
   const csv = blocked ? null : executableBaseViewCsv(model);
-  return /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("section", { "aria-label": "Executable Base", className: "flex min-h-0 flex-col gap-3 overflow-auto p-4", children: [
-    /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("header", { className: "flex flex-wrap items-end gap-3", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("label", { className: "grid gap-1 text-xs font-medium", children: [
+  return /* @__PURE__ */ (0, import_jsx_runtime21.jsxs)("section", { "aria-label": "Executable Base", className: "flex min-h-0 flex-col gap-3 overflow-auto p-4", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime21.jsxs)("header", { className: "flex flex-wrap items-end gap-3", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime21.jsxs)("label", { className: "grid gap-1 text-xs font-medium", children: [
         "Base View",
-        /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(
+        /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(
           "select",
           {
             "aria-label": "Base View",
             className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1.5 text-sm",
             value: model.view.name,
             onChange: (event) => props.onActiveViewChange?.(event.currentTarget.value),
-            children: model.views.map((view) => /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("option", { value: view.name, children: [
+            children: model.views.map((view) => /* @__PURE__ */ (0, import_jsx_runtime21.jsxs)("option", { value: view.name, children: [
               view.name,
               " \u2014 ",
               readableKind(view.kind)
@@ -31847,9 +26391,9 @@ function ExecutableBaseView(props) {
           }
         )
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("label", { className: "grid min-w-48 flex-1 gap-1 text-xs font-medium", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime21.jsxs)("label", { className: "grid min-w-48 flex-1 gap-1 text-xs font-medium", children: [
         "Search This View",
-        /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(
+        /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(
           "input",
           {
             "aria-label": `Search ${model.view.name}`,
@@ -31861,8 +26405,8 @@ function ExecutableBaseView(props) {
           }
         )
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("p", { "aria-live": "polite", className: "m-0 text-sm text-[var(--tt-muted)]", children: resultCount(model.rows.length) }),
-      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(
+      /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("p", { "aria-live": "polite", className: "m-0 text-sm text-[var(--tt-muted)]", children: resultCount(model.rows.length) }),
+      /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(
         "button",
         {
           disabled: tsv === null || props.onCopy === void 0,
@@ -31873,7 +26417,7 @@ function ExecutableBaseView(props) {
           children: "Copy Visible Results"
         }
       ),
-      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(
+      /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(
         "button",
         {
           disabled: csv === null || props.onExport === void 0,
@@ -31885,12 +26429,5374 @@ function ExecutableBaseView(props) {
         }
       )
     ] }),
-    blocked ? /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("p", { role: "alert", children: [
+    blocked ? /* @__PURE__ */ (0, import_jsx_runtime21.jsxs)("p", { role: "alert", children: [
       "Unsupported Base expression: ",
       model.unsupported.map((entry) => entry.expression).join(", ")
-    ] }) : model.rows.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("p", { children: "No notes match this view." }) : model.kind === "table" ? /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(ExecutableTable, { model, onCopy: props.onCopy, onEdit: props.onEdit }) : /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(ReadonlyLayouts, { model }),
-    /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(SummaryList, { model })
+    ] }) : model.rows.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("p", { children: "No notes match this view." }) : model.kind === "table" ? /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(ExecutableTable, { model, onCopy: props.onCopy, onEdit: props.onEdit }) : /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(ReadonlyLayouts, { model }),
+    /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(SummaryList, { model })
   ] });
+}
+
+// src/canvas-board.tsx
+var import_react6 = require("react");
+
+// src/canvas-identity.ts
+function isRecord(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+function assertUniqueEntries(entries, kind) {
+  const ids = /* @__PURE__ */ new Set();
+  for (const entry of entries) {
+    if (!isRecord(entry) || typeof entry.id !== "string") continue;
+    if (ids.has(entry.id)) throw new Error(`This .canvas file contains duplicate Canvas ${kind} ids.`);
+    ids.add(entry.id);
+  }
+}
+function assertUniqueCanvasDocumentIdentities(document2) {
+  if (Array.isArray(document2.nodes)) assertUniqueEntries(document2.nodes, "node");
+  if (Array.isArray(document2.edges)) assertUniqueEntries(document2.edges, "edge");
+}
+
+// src/canvas.ts
+var MAX_CANVAS_BYTES = 2e6;
+var MAX_CANVAS_NODES = 2e3;
+var MAX_CANVAS_EDGES = 4e3;
+var MAX_CANVAS_ID_LENGTH = 256;
+var MAX_CANVAS_LABEL_LENGTH = 32768;
+var MAX_CANVAS_COORDINATE = 1e9;
+function isRecord2(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+function isSafeId(value) {
+  return typeof value === "string" && value.length > 0 && value.length <= MAX_CANVAS_ID_LENGTH && !/[\0\r\n]/u.test(value);
+}
+function isFiniteCoordinate(value) {
+  return typeof value === "number" && Number.isFinite(value) && Math.abs(value) <= MAX_CANVAS_COORDINATE;
+}
+function isSafeLabel(value) {
+  return typeof value === "string" && value.length <= MAX_CANVAS_LABEL_LENGTH;
+}
+function byteLength(value) {
+  return new TextEncoder().encode(value).byteLength;
+}
+function unsupported2(reason) {
+  return { status: "unsupported", reason };
+}
+function parseNode(value) {
+  if (!isRecord2(value) || !isSafeId(value.id) || typeof value.type !== "string" || value.type.length === 0 || value.type.length > 64 || !isFiniteCoordinate(value.x) || !isFiniteCoordinate(value.y) || !isFiniteCoordinate(value.width) || !isFiniteCoordinate(value.height) || value.width <= 0 || value.height <= 0) return null;
+  if (value.text !== void 0 && !isSafeLabel(value.text)) return null;
+  if (value.file !== void 0 && !isSafeLabel(value.file)) return null;
+  if (value.url !== void 0 && !isSafeLabel(value.url)) return null;
+  return value;
+}
+function parseEdge(value) {
+  if (!isRecord2(value) || !isSafeId(value.id) || !isSafeId(value.fromNode) || !isSafeId(value.toNode)) return null;
+  if (value.label !== void 0 && !isSafeLabel(value.label)) return null;
+  return value;
+}
+function parseCanvasDocument(content) {
+  if (byteLength(content) > MAX_CANVAS_BYTES) return unsupported2("Canvas document exceeds the byte limit.");
+  let value;
+  try {
+    value = JSON.parse(content);
+  } catch {
+    return unsupported2("Canvas document is not valid JSON.");
+  }
+  if (!isRecord2(value) || !Array.isArray(value.nodes)) return unsupported2("Canvas document must contain a nodes array.");
+  try {
+    assertUniqueCanvasDocumentIdentities(value);
+  } catch (error51) {
+    return unsupported2(error51 instanceof Error ? error51.message : "Canvas document contains duplicate identities.");
+  }
+  if (value.nodes.length > MAX_CANVAS_NODES) return unsupported2("Canvas document exceeds the node limit.");
+  if (value.edges !== void 0 && !Array.isArray(value.edges)) return unsupported2("Canvas edges must be an array.");
+  if (Array.isArray(value.edges) && value.edges.length > MAX_CANVAS_EDGES) return unsupported2("Canvas document exceeds the edge limit.");
+  const ids = /* @__PURE__ */ new Set();
+  const nodes = [];
+  for (const entry of value.nodes) {
+    const node = parseNode(entry);
+    if (node === null || ids.has(node.id)) return unsupported2("Canvas document contains an invalid or duplicate node.");
+    ids.add(node.id);
+    nodes.push(node);
+  }
+  const edges = [];
+  if (Array.isArray(value.edges)) {
+    for (const entry of value.edges) {
+      const edge = parseEdge(entry);
+      if (edge === null || ids.has(edge.id) || !ids.has(edge.fromNode) || !ids.has(edge.toNode)) {
+        return unsupported2("Canvas document contains an invalid, duplicate, or dangling edge.");
+      }
+      ids.add(edge.id);
+      edges.push(edge);
+    }
+  }
+  return {
+    status: "ready",
+    document: {
+      ...value,
+      nodes,
+      ...value.edges === void 0 ? {} : { edges }
+    }
+  };
+}
+var SUPPORTED_NODE_TYPES = /* @__PURE__ */ new Set(["text", "file", "link", "group"]);
+function isCredentialFreeCanvasLink(value) {
+  if (typeof value !== "string" || value.length > MAX_CANVAS_LABEL_LENGTH) return false;
+  try {
+    const url2 = new URL(value);
+    return (url2.protocol === "http:" || url2.protocol === "https:") && url2.username === "" && url2.password === "";
+  } catch {
+    return false;
+  }
+}
+function projectCanvas(parsed) {
+  if (parsed.status !== "ready") return parsed;
+  const { document: document2 } = parsed;
+  const nodes = document2.nodes.map((node) => ({
+    id: node.id,
+    type: node.type,
+    x: node.x,
+    y: node.y,
+    width: node.width,
+    height: node.height,
+    supported: SUPPORTED_NODE_TYPES.has(node.type),
+    text: typeof node.text === "string" ? node.text : null,
+    file: typeof node.file === "string" ? node.file : null,
+    linkSafe: node.type === "link" && isCredentialFreeCanvasLink(node.url)
+  }));
+  const edges = (document2.edges ?? []).map((edge) => ({
+    id: edge.id,
+    fromNode: edge.fromNode,
+    toNode: edge.toNode,
+    label: typeof edge.label === "string" ? edge.label : null
+  }));
+  return { status: "ready", nodes, edges, document: document2 };
+}
+function parseCanvasForMutation(content) {
+  const parsed = parseCanvasDocument(content);
+  if (parsed.status !== "ready") throw new Error(parsed.reason);
+  return parsed.document;
+}
+function serializeCanvasDocument(document2) {
+  const content = `${JSON.stringify(document2, null, 2)}
+`;
+  const parsed = parseCanvasDocument(content);
+  if (parsed.status !== "ready") throw new Error(parsed.reason);
+  return content;
+}
+function updateCanvasNodePosition(content, nodeId, x, y) {
+  if (!isSafeId(nodeId) || !isFiniteCoordinate(x) || !isFiniteCoordinate(y)) {
+    throw new Error("Canvas node position is invalid.");
+  }
+  const document2 = parseCanvasForMutation(content);
+  const node = document2.nodes.find((candidate) => candidate.id === nodeId);
+  if (node === void 0) throw new Error("Canvas node no longer exists.");
+  node.x = x;
+  node.y = y;
+  return serializeCanvasDocument(document2);
+}
+
+// src/canvas-change.ts
+function createCanvasChange(previousSource, expectedRevision, operation, mutate) {
+  if (!expectedRevision || expectedRevision.length > 512 || /[\0\r\n]/u.test(expectedRevision)) {
+    throw new Error("The Canvas source revision is invalid.");
+  }
+  parseCanvasForMutation(previousSource);
+  const source = mutate(previousSource);
+  parseCanvasForMutation(source);
+  return { previousSource, source, expectedRevision, operation };
+}
+
+// src/canvas-geometry.ts
+var CANVAS_GRID_SIZE = 20;
+var MIN_CANVAS_NODE_WIDTH = 120;
+var MIN_CANVAS_NODE_HEIGHT = 80;
+function isCanvasSide(value) {
+  return value === "top" || value === "right" || value === "bottom" || value === "left";
+}
+function isBoundedCanvasGeometry(value) {
+  return [value.x, value.y, value.width, value.height].every((candidate) => Number.isFinite(candidate) && Math.abs(candidate) <= MAX_CANVAS_COORDINATE) && value.width > 0 && value.height > 0;
+}
+function calculateCanvasPointerValue(start, delta, snappingDisabled) {
+  const value = start + delta;
+  return snappingDisabled ? Math.round(value) : Math.round(value / CANVAS_GRID_SIZE) * CANVAS_GRID_SIZE;
+}
+function calculateCanvasResizeGeometry(start, delta, aspectRatioLocked, snappingDisabled) {
+  if (!aspectRatioLocked) {
+    return {
+      ...start,
+      width: Math.max(MIN_CANVAS_NODE_WIDTH, calculateCanvasPointerValue(start.width, delta.x, snappingDisabled)),
+      height: Math.max(MIN_CANVAS_NODE_HEIGHT, calculateCanvasPointerValue(start.height, delta.y, snappingDisabled))
+    };
+  }
+  const aspectRatio = start.width / start.height;
+  const widthDominant = Math.abs(delta.x) >= Math.abs(delta.y * aspectRatio);
+  if (widthDominant) {
+    const width = Math.max(
+      MIN_CANVAS_NODE_WIDTH,
+      MIN_CANVAS_NODE_HEIGHT * aspectRatio,
+      calculateCanvasPointerValue(start.width, delta.x, snappingDisabled)
+    );
+    return { ...start, width, height: width / aspectRatio };
+  }
+  const height = Math.max(
+    MIN_CANVAS_NODE_HEIGHT,
+    MIN_CANVAS_NODE_WIDTH / aspectRatio,
+    calculateCanvasPointerValue(start.height, delta.y, snappingDisabled)
+  );
+  return { ...start, width: height * aspectRatio, height };
+}
+
+// src/canvas-links.ts
+var CanvasLinkUrlError = class extends Error {
+  code;
+  constructor(code, message) {
+    super(message);
+    this.name = "CanvasLinkUrlError";
+    this.code = code;
+  }
+};
+function normalizeCanvasLinkUrl(value) {
+  const trimmed = value.trim();
+  const candidate = /^[a-z][a-z\d+.-]*:(?!\d)/iu.test(trimmed) ? trimmed : `https://${trimmed}`;
+  let url2;
+  try {
+    url2 = new URL(candidate);
+  } catch {
+    throw new CanvasLinkUrlError("invalid", "Enter a valid web page URL.");
+  }
+  if (url2.protocol !== "http:" && url2.protocol !== "https:") {
+    throw new CanvasLinkUrlError("http-only", "Canvas link cards require an HTTP or HTTPS URL.");
+  }
+  if (url2.username || url2.password) {
+    throw new CanvasLinkUrlError("credential-bearing", "Canvas link cards cannot include usernames or passwords.");
+  }
+  return url2.toString();
+}
+function tryNormalizeCanvasLinkUrl(value) {
+  if (typeof value !== "string") return void 0;
+  const trimmed = value.trim();
+  try {
+    const normalized = normalizeCanvasLinkUrl(trimmed);
+    return /^https?:\/\//iu.test(trimmed) ? trimmed : normalized;
+  } catch {
+    return void 0;
+  }
+}
+
+// src/canvas-nodes.ts
+var SUPPORTED_CANVAS_CARD_TYPES = /* @__PURE__ */ new Set(["text", "file", "link"]);
+var CANVAS_DEFAULT_TEXT_CARD_SIZE = { width: 260, height: 140 };
+function isSupportedCanvasCard(node) {
+  return typeof node.type === "string" && SUPPORTED_CANVAS_CARD_TYPES.has(node.type);
+}
+function nextCanvasId(document2, prefix) {
+  const existingIds = /* @__PURE__ */ new Set([
+    ...document2.nodes.map((node) => node.id),
+    ...(document2.edges ?? []).map((edge) => edge.id)
+  ]);
+  let index2 = 1;
+  while (existingIds.has(`${prefix}-${String(index2)}`)) index2 += 1;
+  return `${prefix}-${String(index2)}`;
+}
+function createCanvasNode(content, prefix, fields, size4 = CANVAS_DEFAULT_TEXT_CARD_SIZE) {
+  const document2 = parseCanvasForMutation(content);
+  const rightmost = document2.nodes.reduce(
+    (right, node) => Math.max(right, node.x + Math.max(MIN_CANVAS_NODE_WIDTH, node.width)),
+    0
+  );
+  const nodeId = nextCanvasId(document2, prefix);
+  document2.nodes.push({
+    id: nodeId,
+    x: rightmost ? rightmost + 40 : 0,
+    y: 0,
+    ...size4,
+    ...fields
+  });
+  return { nodeId, content: serializeCanvasDocument(document2) };
+}
+function createCanvasTextNode(content, position) {
+  if (position !== void 0 && ![position.x, position.y].every(Number.isFinite)) {
+    throw new Error("The Canvas card position is invalid.");
+  }
+  return createCanvasNode(content, "text", {
+    type: "text",
+    text: "",
+    ...position === void 0 ? {} : {
+      x: calculateCanvasPointerValue(0, position.x, false),
+      y: calculateCanvasPointerValue(0, position.y, false)
+    }
+  });
+}
+function createCanvasGroupNode(content) {
+  return createCanvasNode(content, "group", { type: "group", label: "Group" }, { width: 420, height: 260 });
+}
+function createCanvasGroupFromSelection(content, nodeIds) {
+  const document2 = parseCanvasForMutation(content);
+  const selectedIds = new Set(nodeIds);
+  const selectedNodes = document2.nodes.filter((node) => selectedIds.has(node.id));
+  if (selectedIds.size === 0 || selectedIds.size !== nodeIds.length || selectedNodes.length !== selectedIds.size || selectedNodes.some((node) => !isSupportedCanvasCard(node))) {
+    throw new Error("A selected supported Canvas card no longer exists.");
+  }
+  const left = Math.min(...selectedNodes.map((node) => node.x));
+  const top = Math.min(...selectedNodes.map((node) => node.y));
+  const right = Math.max(...selectedNodes.map((node) => node.x + node.width));
+  const bottom = Math.max(...selectedNodes.map((node) => node.y + node.height));
+  const x = Math.floor((left - CANVAS_GRID_SIZE) / CANVAS_GRID_SIZE) * CANVAS_GRID_SIZE;
+  const y = Math.floor((top - CANVAS_GRID_SIZE) / CANVAS_GRID_SIZE) * CANVAS_GRID_SIZE;
+  const outerRight = Math.ceil((right + CANVAS_GRID_SIZE) / CANVAS_GRID_SIZE) * CANVAS_GRID_SIZE;
+  const outerBottom = Math.ceil((bottom + CANVAS_GRID_SIZE) / CANVAS_GRID_SIZE) * CANVAS_GRID_SIZE;
+  const geometry = {
+    x,
+    y,
+    width: Math.max(MIN_CANVAS_NODE_WIDTH, outerRight - x),
+    height: Math.max(MIN_CANVAS_NODE_HEIGHT, outerBottom - y)
+  };
+  if (!isBoundedCanvasGeometry(geometry)) throw new Error("The Canvas group geometry is invalid.");
+  const nodeId = nextCanvasId(document2, "group");
+  document2.nodes.push({ id: nodeId, type: "group", ...geometry, label: "Group" });
+  return { nodeId, content: serializeCanvasDocument(document2) };
+}
+function createCanvasFileNode(content, relativePath) {
+  const normalizedPath = relativePath.trim().replaceAll("\\", "/").replace(/^\.\//u, "");
+  if (!normalizedPath || normalizedPath.startsWith("/") || normalizedPath.split("/").some((segment) => segment === ".." || segment === "")) {
+    throw new Error("Canvas file cards require a safe vault-relative file path.");
+  }
+  return createCanvasNode(content, "file", { type: "file", file: normalizedPath });
+}
+function createCanvasLinkNode(content, value) {
+  return createCanvasNode(content, "link", { type: "link", url: normalizeCanvasLinkUrl(value) });
+}
+function updateCanvasLinkNode(content, nodeId, value) {
+  const document2 = parseCanvasForMutation(content);
+  const node = document2.nodes.find((candidate) => candidate.id === nodeId);
+  if (node?.type !== "link") throw new Error("The selected Canvas link card no longer exists.");
+  node.url = normalizeCanvasLinkUrl(value);
+  return serializeCanvasDocument(document2);
+}
+function updateCanvasTextNode(content, nodeId, text2) {
+  const document2 = parseCanvasForMutation(content);
+  const node = document2.nodes.find((candidate) => candidate.id === nodeId);
+  if (node?.type !== "text") throw new Error("The selected Canvas text card no longer exists.");
+  node.text = text2;
+  return serializeCanvasDocument(document2);
+}
+function updateCanvasNodeGeometries(content, updates) {
+  const document2 = parseCanvasForMutation(content);
+  if (new Set(updates.map((update) => update.nodeId)).size !== updates.length) {
+    throw new Error("A Canvas card was selected more than once.");
+  }
+  const nodesById = new Map(document2.nodes.map((node) => [node.id, node]));
+  for (const update of updates) {
+    const node = nodesById.get(update.nodeId);
+    if (node === void 0 || !isSupportedCanvasCard(node)) {
+      throw new Error("A selected supported Canvas card no longer exists.");
+    }
+    if (!isBoundedCanvasGeometry(update.geometry)) throw new Error("The Canvas card geometry is invalid.");
+  }
+  for (const update of updates) {
+    Object.assign(nodesById.get(update.nodeId), {
+      ...update.geometry,
+      width: Math.max(MIN_CANVAS_NODE_WIDTH, update.geometry.width),
+      height: Math.max(MIN_CANVAS_NODE_HEIGHT, update.geometry.height)
+    });
+  }
+  return serializeCanvasDocument(document2);
+}
+function contains(group, node) {
+  return node.x >= group.x && node.y >= group.y && node.x + node.width <= group.x + group.width && node.y + node.height <= group.y + group.height;
+}
+function updateCanvasGroupGeometry(content, nodeId, geometry) {
+  const document2 = parseCanvasForMutation(content);
+  const group = document2.nodes.find((node) => node.id === nodeId);
+  if (group?.type !== "group") throw new Error("The selected Canvas group no longer exists.");
+  if (!isBoundedCanvasGeometry(geometry)) throw new Error("The Canvas group geometry is invalid.");
+  const startingGeometry = { x: group.x, y: group.y, width: group.width, height: group.height };
+  const deltaX = geometry.x - group.x;
+  const deltaY = geometry.y - group.y;
+  const positionOnly = geometry.width === group.width && geometry.height === group.height;
+  const contained = positionOnly ? document2.nodes.filter((node) => node !== group && node.type !== "group" && contains(startingGeometry, node)) : [];
+  for (const node of contained) {
+    if (!isBoundedCanvasGeometry({ ...node, x: node.x + deltaX, y: node.y + deltaY })) {
+      throw new Error("The Canvas group geometry is invalid.");
+    }
+  }
+  for (const node of contained) {
+    node.x += deltaX;
+    node.y += deltaY;
+  }
+  Object.assign(group, {
+    ...geometry,
+    width: Math.max(MIN_CANVAS_NODE_WIDTH, geometry.width),
+    height: Math.max(MIN_CANVAS_NODE_HEIGHT, geometry.height)
+  });
+  return serializeCanvasDocument(document2);
+}
+function updateCanvasNodeGeometry(content, nodeId, geometry) {
+  const document2 = parseCanvasForMutation(content);
+  const node = document2.nodes.find((candidate) => candidate.id === nodeId);
+  if (node?.type === "group") return updateCanvasGroupGeometry(content, nodeId, geometry);
+  return updateCanvasNodeGeometries(content, [{ nodeId, geometry }]);
+}
+function updateCanvasGroupLabel(content, nodeId, label) {
+  const document2 = parseCanvasForMutation(content);
+  const node = document2.nodes.find((candidate) => candidate.id === nodeId);
+  if (node?.type !== "group") throw new Error("The selected Canvas group no longer exists.");
+  const normalizedLabel = label.trim();
+  if (!normalizedLabel) throw new Error("The Canvas group label cannot be empty.");
+  node.label = normalizedLabel;
+  return serializeCanvasDocument(document2);
+}
+function deleteCanvasGroup(content, nodeId) {
+  const document2 = parseCanvasForMutation(content);
+  const nodeIndex = document2.nodes.findIndex((node) => node.id === nodeId);
+  if (nodeIndex < 0 || document2.nodes[nodeIndex]?.type !== "group") {
+    throw new Error("The selected Canvas group no longer exists.");
+  }
+  document2.nodes.splice(nodeIndex, 1);
+  if (document2.edges !== void 0) {
+    document2.edges = document2.edges.filter((edge) => edge.fromNode !== nodeId && edge.toNode !== nodeId);
+  }
+  return serializeCanvasDocument(document2);
+}
+function deleteCanvasNodes(content, nodeIds) {
+  const document2 = parseCanvasForMutation(content);
+  const selectedIds = new Set(nodeIds);
+  const selectedNodes = document2.nodes.filter((node) => selectedIds.has(node.id));
+  if (selectedIds.size !== nodeIds.length || selectedNodes.length !== selectedIds.size || selectedNodes.some((node) => !isSupportedCanvasCard(node))) {
+    throw new Error("A selected supported Canvas card no longer exists.");
+  }
+  document2.nodes = document2.nodes.filter((node) => !selectedIds.has(node.id));
+  if (document2.edges !== void 0) {
+    document2.edges = document2.edges.filter((edge) => !selectedIds.has(edge.fromNode) && !selectedIds.has(edge.toNode));
+  }
+  return serializeCanvasDocument(document2);
+}
+function deleteCanvasNode(content, nodeId) {
+  return deleteCanvasNodes(content, [nodeId]);
+}
+function nextCopyId(sourceId, existingIds) {
+  const base = `${sourceId}-copy`;
+  let candidate = base;
+  let index2 = 2;
+  while (existingIds.has(candidate)) {
+    candidate = `${base}-${String(index2)}`;
+    index2 += 1;
+  }
+  existingIds.add(candidate);
+  return candidate;
+}
+function duplicateCanvasGroup(content, nodeId, geometry) {
+  const document2 = parseCanvasForMutation(content);
+  const source = document2.nodes.find((node) => node.id === nodeId);
+  if (source?.type !== "group") throw new Error("The selected Canvas group no longer exists.");
+  if (!isBoundedCanvasGeometry(geometry)) throw new Error("The Canvas group geometry is invalid.");
+  const ids = /* @__PURE__ */ new Set([...document2.nodes.map((node) => node.id), ...(document2.edges ?? []).map((edge) => edge.id)]);
+  const copiedNodeId = nextCopyId(nodeId, ids);
+  document2.nodes.push({
+    ...source,
+    id: copiedNodeId,
+    ...geometry,
+    width: Math.max(MIN_CANVAS_NODE_WIDTH, geometry.width),
+    height: Math.max(MIN_CANVAS_NODE_HEIGHT, geometry.height)
+  });
+  return { nodeId: copiedNodeId, content: serializeCanvasDocument(document2) };
+}
+function duplicateCanvasNodes(content, updates) {
+  const document2 = parseCanvasForMutation(content);
+  const selectedIds = new Set(updates.map((update) => update.nodeId));
+  if (selectedIds.size !== updates.length) throw new Error("A Canvas card was selected more than once.");
+  const nodesById = new Map(document2.nodes.map((node) => [node.id, node]));
+  for (const update of updates) {
+    const node = nodesById.get(update.nodeId);
+    if (node === void 0 || !isSupportedCanvasCard(node)) {
+      throw new Error("A selected supported Canvas card no longer exists.");
+    }
+    if (!isBoundedCanvasGeometry(update.geometry)) throw new Error("The Canvas card geometry is invalid.");
+  }
+  const ids = /* @__PURE__ */ new Set([...document2.nodes.map((node) => node.id), ...(document2.edges ?? []).map((edge) => edge.id)]);
+  const copiedNodeIds = /* @__PURE__ */ new Map();
+  for (const update of updates) copiedNodeIds.set(update.nodeId, nextCopyId(update.nodeId, ids));
+  for (const update of updates) {
+    const source = nodesById.get(update.nodeId);
+    document2.nodes.push({
+      ...source,
+      id: copiedNodeIds.get(update.nodeId),
+      ...update.geometry,
+      width: Math.max(MIN_CANVAS_NODE_WIDTH, update.geometry.width),
+      height: Math.max(MIN_CANVAS_NODE_HEIGHT, update.geometry.height)
+    });
+  }
+  const copiedEdges = (document2.edges ?? []).flatMap((edge) => {
+    const fromNode = copiedNodeIds.get(edge.fromNode);
+    const toNode = copiedNodeIds.get(edge.toNode);
+    return fromNode !== void 0 && toNode !== void 0 ? [{ ...edge, id: nextCopyId(edge.id, ids), fromNode, toNode }] : [];
+  });
+  if (copiedEdges.length > 0) document2.edges = [...document2.edges ?? [], ...copiedEdges];
+  return {
+    nodeIds: updates.map((update) => copiedNodeIds.get(update.nodeId)),
+    content: serializeCanvasDocument(document2)
+  };
+}
+
+// src/canvas-edges.ts
+function isConnectableCanvasNode(node) {
+  return isSupportedCanvasCard(node) || node.type === "group";
+}
+function nodeMap(document2) {
+  return new Map(document2.nodes.map((node) => [node.id, node]));
+}
+function createCanvasEdge(content, connection) {
+  const document2 = parseCanvasForMutation(content);
+  const nodes = nodeMap(document2);
+  const fromNode = nodes.get(connection.fromNode);
+  const toNode = nodes.get(connection.toNode);
+  if (fromNode === void 0 || toNode === void 0 || !isConnectableCanvasNode(fromNode) || !isConnectableCanvasNode(toNode)) {
+    throw new Error("Canvas connections require two supported nodes.");
+  }
+  if (connection.fromNode === connection.toNode) {
+    throw new Error("Canvas connections require two different nodes.");
+  }
+  if (!isCanvasSide(connection.fromSide) || !isCanvasSide(connection.toSide)) {
+    throw new Error("Canvas connections require valid node sides.");
+  }
+  const existingIds = /* @__PURE__ */ new Set([
+    ...document2.nodes.map((node) => node.id),
+    ...(document2.edges ?? []).map((edge) => edge.id)
+  ]);
+  let index2 = 1;
+  while (existingIds.has(`edge-${String(index2)}`)) index2 += 1;
+  const edgeId = `edge-${String(index2)}`;
+  document2.edges = [
+    ...document2.edges ?? [],
+    { id: edgeId, ...connection, toEnd: "arrow" }
+  ];
+  return { edgeId, content: serializeCanvasDocument(document2) };
+}
+function createCanvasConnectedTextNode(content, connection) {
+  if (!isCanvasSide(connection.fromSide)) throw new Error("Canvas connections require valid node sides.");
+  const { width, height } = CANVAS_DEFAULT_TEXT_CARD_SIZE;
+  const toSide = { top: "bottom", right: "left", bottom: "top", left: "right" }[connection.fromSide];
+  const position = {
+    x: connection.position.x - (toSide === "right" ? width : toSide === "top" || toSide === "bottom" ? width / 2 : 0),
+    y: connection.position.y - (toSide === "bottom" ? height : toSide === "left" || toSide === "right" ? height / 2 : 0)
+  };
+  const node = createCanvasTextNode(content, position);
+  const edge = createCanvasEdge(node.content, {
+    fromNode: connection.fromNode,
+    fromSide: connection.fromSide,
+    toNode: node.nodeId,
+    toSide
+  });
+  return { nodeId: node.nodeId, edgeId: edge.edgeId, content: edge.content };
+}
+function reconnectCanvasEdge(content, update) {
+  const document2 = parseCanvasForMutation(content);
+  const edge = document2.edges?.find((candidate) => candidate.id === update.edgeId);
+  if (edge === void 0) throw new Error("The selected Canvas edge no longer exists.");
+  if (update.endpoint !== "from" && update.endpoint !== "to" || !isCanvasSide(update.side)) {
+    throw new Error("Canvas connections require a valid endpoint and node side.");
+  }
+  const nodes = nodeMap(document2);
+  const nextNode = nodes.get(update.nodeId);
+  const fixedNodeId = update.endpoint === "from" ? edge.toNode : edge.fromNode;
+  const fixedNode = nodes.get(fixedNodeId);
+  if (nextNode === void 0 || fixedNode === void 0 || !isConnectableCanvasNode(nextNode) || !isConnectableCanvasNode(fixedNode)) {
+    throw new Error("Canvas connections require two supported nodes.");
+  }
+  if (update.nodeId === fixedNodeId) throw new Error("Canvas connections require two different nodes.");
+  if (update.endpoint === "from") {
+    edge.fromNode = update.nodeId;
+    edge.fromSide = update.side;
+  } else {
+    edge.toNode = update.nodeId;
+    edge.toSide = update.side;
+  }
+  return serializeCanvasDocument(document2);
+}
+function edgeDocument(content) {
+  const document2 = parseCanvasForMutation(content);
+  if (document2.edges === void 0) throw new Error("This .canvas file does not contain Canvas edges.");
+  return document2;
+}
+function updateCanvasEdgeLabel(content, edgeId, label) {
+  const document2 = edgeDocument(content);
+  const edge = document2.edges.find((candidate) => candidate.id === edgeId);
+  if (edge === void 0) throw new Error("The selected Canvas edge no longer exists.");
+  const normalizedLabel = label.trim();
+  if (normalizedLabel) edge.label = normalizedLabel;
+  else delete edge.label;
+  return serializeCanvasDocument(document2);
+}
+function updateCanvasEdgeColor(content, edgeId, color) {
+  const document2 = edgeDocument(content);
+  const edge = document2.edges.find((candidate) => candidate.id === edgeId);
+  if (edge === void 0) throw new Error("The selected Canvas edge no longer exists.");
+  if (color && !/^[1-6]$/u.test(color)) {
+    throw new Error("The selected color is not a supported JSON Canvas color.");
+  }
+  if (color) edge.color = color;
+  else delete edge.color;
+  return serializeCanvasDocument(document2);
+}
+function deleteCanvasEdge(content, edgeId) {
+  const document2 = edgeDocument(content);
+  const edgeIndex = document2.edges.findIndex((edge) => edge.id === edgeId);
+  if (edgeIndex < 0) throw new Error("The selected Canvas edge no longer exists.");
+  document2.edges.splice(edgeIndex, 1);
+  return serializeCanvasDocument(document2);
+}
+
+// src/canvas-board.tsx
+var import_jsx_runtime22 = require("react/jsx-runtime");
+var BOARD_PADDING = 40;
+var MAX_CANVAS_BOARD_SPAN = 1e5;
+var SIDES = ["top", "right", "bottom", "left"];
+function nodeLabel(node) {
+  if (node.type === "file" && typeof node.file === "string") return node.file;
+  if (node.type === "link" && typeof node.url === "string") return node.url;
+  if (node.type === "group" && typeof node.label === "string") return node.label;
+  if (typeof node.text === "string") {
+    const first = node.text.trim().split(/\r?\n/u)[0]?.replace(/^#{1,6}\s+/u, "").trim();
+    if (first) return first;
+  }
+  return typeof node.id === "string" ? node.id : "Canvas Card";
+}
+function titleCaseSide(side) {
+  return `${side.slice(0, 1).toUpperCase()}${side.slice(1)}`;
+}
+function sideHandleStyle(side) {
+  return {
+    bottom: side === "bottom" ? 0 : void 0,
+    left: side === "left" ? 0 : side === "top" || side === "bottom" ? "50%" : void 0,
+    right: side === "right" ? 0 : void 0,
+    top: side === "top" ? 0 : side === "left" || side === "right" ? "50%" : void 0,
+    transform: {
+      top: "translate(-50%, -50%)",
+      right: "translate(50%, -50%)",
+      bottom: "translate(-50%, 50%)",
+      left: "translate(-50%, -50%)"
+    }[side]
+  };
+}
+function CanvasBoard({ source, revision, onChange, disabled = false }) {
+  const parsed = (0, import_react6.useMemo)(() => parseCanvasDocument(source), [source]);
+  const [armed, setArmed] = (0, import_react6.useState)(null);
+  const [selectedNodeId, setSelectedNodeId] = (0, import_react6.useState)(null);
+  const [selectedEdgeId, setSelectedEdgeId] = (0, import_react6.useState)(null);
+  const [error51, setError] = (0, import_react6.useState)(null);
+  const document2 = parsed.status === "ready" ? parsed.document : null;
+  const labels = (0, import_react6.useMemo)(() => new Map(
+    (document2?.nodes ?? []).map((node) => [node.id, nodeLabel(node)])
+  ), [document2]);
+  (0, import_react6.useEffect)(() => {
+    if (document2 === null) {
+      setArmed(null);
+      setSelectedNodeId(null);
+      setSelectedEdgeId(null);
+      return;
+    }
+    if (armed !== null && !document2.nodes.some((node) => node.id === armed.nodeId)) setArmed(null);
+    if (selectedNodeId !== null && !document2.nodes.some((node) => node.id === selectedNodeId)) setSelectedNodeId(null);
+    if (selectedEdgeId !== null && !document2.edges?.some((edge) => edge.id === selectedEdgeId)) setSelectedEdgeId(null);
+  }, [armed, document2, selectedEdgeId, selectedNodeId]);
+  const bounds = (0, import_react6.useMemo)(() => {
+    if (document2 === null || document2.nodes.length === 0) {
+      return { minX: 0, minY: 0, width: 800, height: 500, supported: true };
+    }
+    const minX = Math.min(0, ...document2.nodes.map((node) => node.x));
+    const minY = Math.min(0, ...document2.nodes.map((node) => node.y));
+    const maxX = Math.max(...document2.nodes.map((node) => node.x + node.width));
+    const maxY = Math.max(...document2.nodes.map((node) => node.y + node.height));
+    const width = maxX - minX + BOARD_PADDING * 2;
+    const height = maxY - minY + BOARD_PADDING * 2;
+    return {
+      minX,
+      minY,
+      width: Math.max(800, width),
+      height: Math.max(500, height),
+      supported: width <= MAX_CANVAS_BOARD_SPAN && height <= MAX_CANVAS_BOARD_SPAN
+    };
+  }, [document2]);
+  const emit = (operation, mutate) => {
+    if (disabled) return;
+    try {
+      setError(null);
+      onChange(createCanvasChange(source, revision, operation, mutate));
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : "The Canvas change could not be prepared.");
+    }
+  };
+  const activateHandle = (nodeId, side) => {
+    if (disabled) return;
+    if (armed === null) {
+      setError(null);
+      setArmed({ nodeId, side });
+      return;
+    }
+    emit("create-edge", (content) => createCanvasEdge(content, {
+      fromNode: armed.nodeId,
+      fromSide: armed.side,
+      toNode: nodeId,
+      toSide: side
+    }).content);
+    setArmed(null);
+  };
+  const moveNode = (nodeId, event) => {
+    const delta = {
+      ArrowDown: { x: 0, y: CANVAS_GRID_SIZE },
+      ArrowLeft: { x: -CANVAS_GRID_SIZE, y: 0 },
+      ArrowRight: { x: CANVAS_GRID_SIZE, y: 0 },
+      ArrowUp: { x: 0, y: -CANVAS_GRID_SIZE }
+    }[event.key];
+    if (delta === void 0 || document2 === null) return;
+    const node = document2.nodes.find((candidate) => candidate.id === nodeId);
+    if (node === void 0) return;
+    event.preventDefault();
+    emit("move-node", (content) => updateCanvasNodeGeometry(content, nodeId, {
+      x: node.x + delta.x,
+      y: node.y + delta.y,
+      width: node.width,
+      height: node.height
+    }));
+  };
+  const cancelConnection = (event) => {
+    if (event.key !== "Escape" || armed === null) return;
+    event.preventDefault();
+    setArmed(null);
+  };
+  if (document2 === null) {
+    const reason = parsed.status === "unsupported" ? parsed.reason : "This Canvas could not be displayed.";
+    return /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("section", { "aria-label": "Canvas Board", role: "region", children: /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("p", { role: "note", children: reason }) });
+  }
+  if (!bounds.supported) {
+    return /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("section", { "aria-label": "Canvas Board", role: "region", children: /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("p", { role: "note", children: "This Canvas exceeds the bounded board display limit." }) });
+  }
+  return /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)(
+    "section",
+    {
+      "aria-label": "Canvas Board",
+      className: "relative min-h-0 overflow-auto bg-[var(--tt-bg)] text-[var(--tt-text)]",
+      "data-canvas-revision": revision,
+      onKeyDown: cancelConnection,
+      role: "region",
+      children: [
+        armed !== null && /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("p", { className: "sr-only", role: "status", children: [
+          "Choose a target side for ",
+          labels.get(armed.nodeId) ?? armed.nodeId,
+          "."
+        ] }),
+        error51 !== null && /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("p", { className: "m-3 text-sm text-red-600", role: "note", children: error51 }),
+        /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(
+          "div",
+          {
+            "aria-label": "Canvas Board Surface",
+            className: "relative",
+            style: { height: bounds.height, width: bounds.width },
+            children: document2.nodes.map((node) => {
+              const label = labels.get(node.id) ?? node.id;
+              const connectable = isConnectableCanvasNode(node);
+              const safeLink = node.type === "link" ? tryNormalizeCanvasLinkUrl(node.url) : void 0;
+              const style = {
+                height: node.height,
+                left: node.x - bounds.minX + BOARD_PADDING,
+                top: node.y - bounds.minY + BOARD_PADDING,
+                width: node.width
+              };
+              return /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)(
+                "article",
+                {
+                  "aria-label": `${node.type === "group" ? "Canvas Group" : "Canvas Card"} ${label}`,
+                  className: "absolute rounded-md border border-[var(--tt-border)] bg-[var(--tt-panel)] p-2 shadow-sm",
+                  style,
+                  children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)(
+                      "button",
+                      {
+                        "aria-label": `${node.type === "group" ? "Canvas Group" : "Canvas Card"} ${label}`,
+                        "aria-pressed": selectedNodeId === node.id,
+                        className: "h-full w-full border-0 bg-transparent p-1 text-left text-inherit outline-offset-2",
+                        "data-canvas-x": String(node.x),
+                        disabled: disabled || !connectable,
+                        onClick: () => {
+                          setSelectedNodeId(node.id);
+                          setSelectedEdgeId(null);
+                        },
+                        onKeyDown: (event) => {
+                          moveNode(node.id, event);
+                        },
+                        type: "button",
+                        children: [
+                          /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("strong", { className: "block truncate", children: label }),
+                          node.type === "text" && typeof node.text === "string" && /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("span", { className: "block line-clamp-3 whitespace-pre-wrap text-xs", children: node.text }),
+                          node.type === "link" && safeLink === void 0 && /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("span", { className: "block text-xs", role: "note", children: "This unsafe link is inert." }),
+                          !connectable && /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("span", { className: "block text-xs", role: "note", children: "This unsupported card is inert." })
+                        ]
+                      }
+                    ),
+                    connectable && /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("fieldset", { className: "contents", disabled, children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("legend", { className: "sr-only", children: [
+                        "Connect ",
+                        label
+                      ] }),
+                      SIDES.map((side) => /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(
+                        "button",
+                        {
+                          "aria-label": `${titleCaseSide(side)} Connection Handle for ${label}`,
+                          "aria-pressed": armed?.nodeId === node.id && armed.side === side,
+                          className: "absolute z-10 m-0 size-5 rounded-full border border-[var(--tt-border)] bg-[var(--tt-panel)] text-[10px]",
+                          onClick: () => {
+                            activateHandle(node.id, side);
+                          },
+                          style: sideHandleStyle(side),
+                          type: "button",
+                          children: /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("span", { "aria-hidden": "true", children: side.slice(0, 1).toUpperCase() })
+                        },
+                        side
+                      ))
+                    ] })
+                  ]
+                },
+                node.id
+              );
+            })
+          }
+        ),
+        (document2.edges?.length ?? 0) > 0 && /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("ul", { "aria-label": "Canvas Connections", className: "absolute top-2 right-2 z-20 m-0 max-w-72 list-none rounded-md border border-[var(--tt-border)] bg-[var(--tt-panel)] p-1 text-xs shadow-sm", children: document2.edges?.map((edge) => /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("li", { children: /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)(
+          "button",
+          {
+            "aria-pressed": selectedEdgeId === edge.id,
+            className: "block w-full rounded-sm border-0 bg-transparent px-2 py-1 text-left text-inherit outline-offset-2",
+            onClick: () => {
+              setSelectedEdgeId(edge.id);
+              setSelectedNodeId(null);
+            },
+            onKeyDown: (event) => {
+              if (event.key !== "Delete" && event.key !== "Backspace") return;
+              event.preventDefault();
+              emit("delete-edge", (content) => deleteCanvasEdge(content, edge.id));
+              setSelectedEdgeId(null);
+            },
+            type: "button",
+            children: [
+              "Canvas Edge ",
+              typeof edge.label === "string" ? edge.label : "Unlabeled",
+              " from ",
+              labels.get(edge.fromNode) ?? edge.fromNode,
+              " to ",
+              labels.get(edge.toNode) ?? edge.toNode
+            ]
+          }
+        ) }, edge.id)) })
+      ]
+    }
+  );
+}
+
+// src/live-preview.ts
+var MAX_LIVE_PREVIEW_SOURCE_BYTES = 2e6;
+var MAX_LIVE_PREVIEW_LINE_BYTES = 1e5;
+function sourceLines(source) {
+  if (source.length === 0) return [{ content: "", end: 0, index: 0, separator: "", start: 0 }];
+  const lines = [];
+  let start = 0;
+  while (start < source.length) {
+    let end = start;
+    while (end < source.length && source[end] !== "\n" && source[end] !== "\r") end += 1;
+    const separator = source.startsWith("\r\n", end) ? "\r\n" : source[end] === "\n" || source[end] === "\r" ? source[end] : "";
+    lines.push({ content: source.slice(start, end), end: end + separator.length, index: lines.length, separator, start });
+    start = end + separator.length;
+  }
+  if (/(?:\r\n|[\n\r])$/u.test(source)) {
+    lines.push({ content: "", end: source.length, index: lines.length, separator: "", start: source.length });
+  }
+  return lines;
+}
+function byteLength2(value) {
+  return new TextEncoder().encode(value).byteLength;
+}
+function fenceMarker(content) {
+  const match = content.match(/^ {0,3}(`{3,}|~{3,})/u);
+  if (match === null) return null;
+  const marker = match[1];
+  return { character: marker[0], length: marker.length };
+}
+function heading(content) {
+  const match = content.match(/^ {0,3}(#{1,6})(?:\s+|$)/u);
+  return match?.[1]?.length ?? null;
+}
+function listIndent(content) {
+  const match = content.match(/^(\s*)(?:[-+*]|\d{1,9}[.)])\s+/u);
+  return match === null ? null : match[1].replaceAll("	", "    ").length;
+}
+function projectLivePreview(source) {
+  if (byteLength2(source) > MAX_LIVE_PREVIEW_SOURCE_BYTES) {
+    return { reason: "The Markdown source exceeds the Live Preview limit.", status: "unsupported" };
+  }
+  const raw = sourceLines(source);
+  const projected = [];
+  const frontmatterEnd = raw[0]?.content === "---" ? raw.findIndex((line, index2) => index2 > 0 && (line.content === "---" || line.content === "...")) : -1;
+  let openFence = null;
+  let inComment = false;
+  let taskIndex = 0;
+  for (const line of raw) {
+    const content = line.content;
+    if (openFence !== null) {
+      projected.push({ content, index: line.index, kind: "code" });
+      const close = content.match(/^ {0,3}(`+|~+)\s*$/u)?.[1];
+      if (close !== void 0 && close[0] === openFence.character && close.length >= openFence.length) openFence = null;
+      continue;
+    }
+    const opener = fenceMarker(content);
+    if (opener !== null) {
+      openFence = opener;
+      projected.push({ content, index: line.index, kind: "code" });
+      continue;
+    }
+    if (line.index <= frontmatterEnd) {
+      const property = line.index > 0 && line.index < frontmatterEnd && /^[A-Za-z_][A-Za-z0-9_-]{0,127}\s*:/u.test(content);
+      projected.push({ content, index: line.index, kind: property ? "property" : content === "" ? "blank" : "text" });
+      continue;
+    }
+    const commentMarkerCount = content.split("%%").length - 1;
+    if (inComment || commentMarkerCount > 0) {
+      projected.push({ content, index: line.index, kind: "comment" });
+      if (commentMarkerCount % 2 === 1) inComment = !inComment;
+      continue;
+    }
+    const task = content.match(/^\s{0,64}(?:[-+*]|\d{1,9}[.)])\s+\[([^\]])\]\s*(.*)$/u);
+    if (task !== null) {
+      projected.push({
+        checked: task[1] !== " ",
+        content,
+        index: line.index,
+        kind: "task",
+        taskIndex
+      });
+      taskIndex += 1;
+      continue;
+    }
+    const callout = content.match(/^>\s*\[!([A-Za-z0-9_-]+)\]([+-])?(?:\s+.*)?$/u);
+    if (callout !== null) {
+      projected.push({
+        content,
+        folded: callout[2] === "-",
+        index: line.index,
+        kind: "callout"
+      });
+      continue;
+    }
+    const level = heading(content);
+    if (level !== null) {
+      projected.push({ content, headingLevel: level, index: line.index, kind: "heading" });
+      continue;
+    }
+    if (listIndent(content) !== null) {
+      projected.push({ content, index: line.index, kind: "list" });
+      continue;
+    }
+    projected.push({ content, index: line.index, kind: content === "" ? "blank" : "text" });
+  }
+  for (const line of projected) {
+    if (line.kind === "heading") {
+      let end = line.index;
+      for (let index2 = line.index + 1; index2 < projected.length; index2 += 1) {
+        const candidate = projected[index2];
+        if (candidate.kind === "heading" && (candidate.headingLevel ?? 7) <= (line.headingLevel ?? 6)) break;
+        if (candidate.kind !== "blank") end = candidate.index;
+      }
+      if (end > line.index) line.foldEndLine = end;
+    } else if (line.kind === "callout") {
+      let end = line.index;
+      for (let index2 = line.index + 1; index2 < projected.length; index2 += 1) {
+        const candidate = projected[index2];
+        if (!/^> ?/u.test(candidate.content)) break;
+        end = candidate.index;
+      }
+      if (end > line.index) line.foldEndLine = end;
+    } else if (line.kind === "list") {
+      const indent = listIndent(line.content) ?? 0;
+      let end = line.index;
+      for (let index2 = line.index + 1; index2 < projected.length; index2 += 1) {
+        const candidate = projected[index2];
+        if (candidate.kind === "blank") continue;
+        const candidateIndent = listIndent(candidate.content);
+        if (candidateIndent === null || candidateIndent <= indent) break;
+        end = candidate.index;
+      }
+      if (end > line.index) line.foldEndLine = end;
+    }
+  }
+  return { lines: Object.freeze(projected.map((line) => Object.freeze(line))), status: "ready" };
+}
+function replaceLivePreviewLine(source, index2, replacement) {
+  if (!Number.isSafeInteger(index2) || index2 < 0 || /[\r\n]/u.test(replacement)) return source;
+  if (byteLength2(replacement) > MAX_LIVE_PREVIEW_LINE_BYTES) return source;
+  const line = sourceLines(source)[index2];
+  if (line === void 0) return source;
+  return `${source.slice(0, line.start)}${replacement}${line.separator}${source.slice(line.end)}`;
+}
+
+// src/rich-markdown.ts
+var MAX_RICH_MARKDOWN_BYTES = 2e6;
+var MAX_RICH_MARKDOWN_BLOCKS = 2e4;
+var MAX_RICH_MARKDOWN_FOOTNOTES = 1e3;
+function bytes(value) {
+  return new TextEncoder().encode(value).byteLength;
+}
+function escapeMarkdownHtml(value) {
+  return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#39;");
+}
+function safeUrl(value) {
+  const trimmed = value.trim();
+  if (trimmed.length === 0 || trimmed.length > 4096 || /[\u0000-\u001f\u007f]/u.test(trimmed)) return null;
+  if (/^(?:https?:|mailto:)/iu.test(trimmed)) {
+    try {
+      const url2 = new URL(trimmed);
+      if ((url2.protocol === "http:" || url2.protocol === "https:") && (url2.username !== "" || url2.password !== "")) return null;
+      return url2.toString();
+    } catch {
+      return null;
+    }
+  }
+  if (/^(?:#|\.\.?\/|\/)?[^:\s\\]+(?:[/?#][^\s\\]*)?$/u.test(trimmed) && !trimmed.split("/").includes("..")) return trimmed;
+  return null;
+}
+var SAFE_RAW_TAG = /^<\/?(?:br|code|del|em|kbd|mark|s|small|strong|sub|sup|u)>$/iu;
+function renderInline(source, footnoteNumbers) {
+  const tokens = [];
+  const hold = (html) => {
+    const token = `\0${String(tokens.length)}\0`;
+    tokens.push(html);
+    return token;
+  };
+  let text2 = source;
+  text2 = text2.replace(/<[^>]{1,200}>/gu, (tag) => SAFE_RAW_TAG.test(tag) ? hold(tag.toLocaleLowerCase()) : tag);
+  text2 = text2.replace(/`([^`\n]{0,10000})`/gu, (_match, code) => hold(`<code>${escapeMarkdownHtml(code)}</code>`));
+  text2 = escapeMarkdownHtml(text2);
+  text2 = text2.replace(/!\[([^\]\n]{0,1000})\]\(([^)\n]{1,4096})\)/gu, (match, alt, target) => {
+    const url2 = safeUrl(target);
+    return url2 === null || !/^(?:data:image\/|(?:https?:)?\/|\.\.?\/|[^:]+$)/iu.test(url2) ? escapeMarkdownHtml(match) : `<img alt="${escapeMarkdownHtml(alt)}" loading="lazy" referrerpolicy="no-referrer" src="${escapeMarkdownHtml(url2)}">`;
+  });
+  text2 = text2.replace(/\[([^\]\n]{1,2000})\]\(([^)\n]{1,4096})\)/gu, (match, label, target) => {
+    const url2 = safeUrl(target);
+    return url2 === null ? escapeMarkdownHtml(match) : `<a href="${escapeMarkdownHtml(url2)}" rel="noopener noreferrer">${label}</a>`;
+  });
+  text2 = text2.replace(/\[\[([^\]\n]{1,2000})(?:\|([^\]\n]{0,2000}))?\]\]/gu, (_match, target, alias) => {
+    const path = safeUrl(target);
+    return path === null ? escapeMarkdownHtml(`[[${target}${alias === void 0 ? "" : `|${alias}`}]]`) : `<a class="internal-link" data-target="${escapeMarkdownHtml(path)}" href="#">${escapeMarkdownHtml(alias ?? target)}</a>`;
+  });
+  text2 = text2.replace(/\[\^([^\]\n]{1,200})\]/gu, (match, label) => {
+    const number4 = footnoteNumbers.get(label.toLocaleLowerCase());
+    return number4 === void 0 ? match : `<sup class="footnote-ref"><a href="#fn-${String(number4)}">${String(number4)}</a></sup>`;
+  });
+  text2 = text2.replace(/\^\[([^\]\n]{1,2000})\]/gu, (_match, value) => hold(`<sup class="footnote-inline">${renderInline(value, footnoteNumbers)}</sup>`));
+  text2 = text2.replace(/\$([^$\n]{1,20000})\$/gu, (_match, value) => `<span class="math-inline" role="math">${escapeMarkdownHtml(value)}</span>`);
+  text2 = text2.replace(/==([^=\n]{1,20000})==/gu, "<mark>$1</mark>");
+  text2 = text2.replace(/~~([^~\n]{1,20000})~~/gu, "<del>$1</del>");
+  text2 = text2.replace(/\*\*([^*\n]{1,20000})\*\*/gu, "<strong>$1</strong>");
+  text2 = text2.replace(/(?<!\*)\*([^*\n]{1,20000})\*(?!\*)/gu, "<em>$1</em>");
+  text2 = text2.replace(/\u0000(\d+)\u0000/gu, (_match, index2) => tokens[Number(index2)] ?? "");
+  return text2;
+}
+function stripLeadingFrontmatter(markdown) {
+  if (!markdown.startsWith("---\n") && !markdown.startsWith("---\r\n")) return markdown;
+  const lines = markdown.split(/\r?\n/u);
+  const end = lines.findIndex((line, index2) => index2 > 0 && (line === "---" || line === "..."));
+  return end < 0 ? markdown : lines.slice(end + 1).join("\n");
+}
+function stripComments(markdown) {
+  let result = "";
+  let index2 = 0;
+  while (index2 < markdown.length) {
+    const start = markdown.indexOf("%%", index2);
+    if (start < 0) return result + markdown.slice(index2);
+    const end = markdown.indexOf("%%", start + 2);
+    if (end < 0 || end - start > 1e5) return result + markdown.slice(index2);
+    result += markdown.slice(index2, start);
+    index2 = end + 2;
+  }
+  return result;
+}
+function collectFootnotes(lines) {
+  const definitions = [];
+  const numbers = /* @__PURE__ */ new Map();
+  const hidden = /* @__PURE__ */ new Set();
+  for (let index2 = 0; index2 < lines.length && definitions.length < MAX_RICH_MARKDOWN_FOOTNOTES; index2 += 1) {
+    const match = lines[index2]?.match(/^\[\^([^\]]{1,200})\]:\s*(.*)$/u);
+    if (match === void 0 || match === null) continue;
+    const key2 = match[1].toLocaleLowerCase();
+    if (numbers.has(key2)) continue;
+    const number4 = definitions.length + 1;
+    numbers.set(key2, number4);
+    definitions.push({ label: match[1], number: number4, text: match[2] });
+    hidden.add(index2);
+  }
+  return { definitions, numbers, hidden };
+}
+function tableDelimiter(line) {
+  const cells = line.trim().replace(/^\|/u, "").replace(/\|$/u, "").split("|");
+  return cells.length >= 2 && cells.every((cell) => /^\s*:?-{3,}:?\s*$/u.test(cell));
+}
+function tableCells(line) {
+  return line.trim().replace(/^\|/u, "").replace(/\|$/u, "").split("|").map((cell) => cell.trim());
+}
+function paragraphHtml(lines, strict, footnotes) {
+  if (lines.length === 0) return "";
+  let html = renderInline(lines[0].replace(/[ \t]+$/u, ""), footnotes);
+  for (let index2 = 1; index2 < lines.length; index2 += 1) {
+    const previous = lines[index2 - 1];
+    const separator = !strict || / {2,}$/u.test(previous) ? "<br>" : " ";
+    html += `${separator}${renderInline(lines[index2].replace(/[ \t]+$/u, ""), footnotes)}`;
+  }
+  return `<p>${html}</p>`;
+}
+function renderMarkdownHtml(markdown, options = {}) {
+  if (bytes(markdown) > MAX_RICH_MARKDOWN_BYTES) return `<pre>${escapeMarkdownHtml(markdown.slice(0, MAX_RICH_MARKDOWN_BYTES))}</pre>`;
+  const source = stripComments(stripLeadingFrontmatter(markdown)).replaceAll("\r\n", "\n").replaceAll("\r", "\n");
+  const lines = source.split("\n");
+  const footnotes = collectFootnotes(lines);
+  const blocks = [];
+  let paragraph = [];
+  let taskIndex = 0;
+  const flush = () => {
+    if (paragraph.length === 0) return;
+    blocks.push(paragraphHtml(paragraph, options.strictLineBreaks === true, footnotes.numbers));
+    paragraph = [];
+  };
+  for (let index2 = 0; index2 < lines.length && blocks.length < MAX_RICH_MARKDOWN_BLOCKS; index2 += 1) {
+    const line = lines[index2];
+    if (footnotes.hidden.has(index2)) {
+      flush();
+      continue;
+    }
+    const fence2 = line.match(/^ {0,3}(`{3,}|~{3,})\s*([^\s]*)\s*$/u);
+    if (fence2 !== null) {
+      flush();
+      const marker = fence2[1];
+      const language = fence2[2].toLocaleLowerCase();
+      const code = [];
+      index2 += 1;
+      while (index2 < lines.length && !new RegExp(`^ {0,3}${marker[0]}{${String(marker.length)},}\\s*$`, "u").test(lines[index2])) {
+        code.push(lines[index2]);
+        index2 += 1;
+      }
+      const escaped = escapeMarkdownHtml(code.join("\n"));
+      blocks.push(language === "mermaid" ? `<figure class="mermaid" data-language="mermaid"><pre>${escaped}</pre></figure>` : `<pre data-language="${escapeMarkdownHtml(language)}"><code>${escaped}</code></pre>`);
+      continue;
+    }
+    const displayMath = line.match(/^\s*\$\$(.{1,20000})\$\$\s*$/u);
+    if (displayMath !== null) {
+      flush();
+      blocks.push(`<div class="math-display" role="math">${escapeMarkdownHtml(displayMath[1])}</div>`);
+      continue;
+    }
+    const heading2 = line.match(/^ {0,3}(#{1,6})\s+(.+?)\s*#*\s*$/u);
+    if (heading2 !== null) {
+      flush();
+      const level = heading2[1].length;
+      blocks.push(`<h${String(level)}>${renderInline(heading2[2], footnotes.numbers)}</h${String(level)}>`);
+      continue;
+    }
+    const callout = line.match(/^>\s*\[!([A-Za-z0-9_-]+)\]([+-])?(?:\s+(.*))?$/u);
+    if (callout !== null) {
+      flush();
+      const body = [];
+      while (index2 + 1 < lines.length && /^> ?/u.test(lines[index2 + 1])) {
+        index2 += 1;
+        body.push(lines[index2].replace(/^> ?/u, ""));
+      }
+      const type = callout[1].toLocaleLowerCase();
+      const title = callout[3] ?? type[0].toLocaleUpperCase() + type.slice(1);
+      blocks.push(`<aside class="callout callout-${escapeMarkdownHtml(type)}" data-fold="${callout[2] === "-" ? "closed" : "open"}"><strong>${renderInline(title, footnotes.numbers)}</strong>${paragraphHtml(body, options.strictLineBreaks === true, footnotes.numbers)}</aside>`);
+      continue;
+    }
+    if (index2 + 1 < lines.length && line.includes("|") && tableDelimiter(lines[index2 + 1])) {
+      flush();
+      const headers = tableCells(line);
+      index2 += 1;
+      const rows = [];
+      while (index2 + 1 < lines.length && lines[index2 + 1].includes("|") && lines[index2 + 1].trim() !== "") {
+        index2 += 1;
+        rows.push(tableCells(lines[index2]));
+      }
+      blocks.push(`<table><thead><tr>${headers.map((cell) => `<th>${renderInline(cell, footnotes.numbers)}</th>`).join("")}</tr></thead><tbody>${rows.map((row) => `<tr>${headers.map((_header, cell) => `<td>${renderInline(row[cell] ?? "", footnotes.numbers)}</td>`).join("")}</tr>`).join("")}</tbody></table>`);
+      continue;
+    }
+    const task = line.match(/^\s{0,64}[-+*]\s+\[([^\]])\]\s*(.*)$/u);
+    if (task !== null) {
+      flush();
+      blocks.push(`<ul class="task-list"><li><input aria-label="Task" data-task-index="${String(taskIndex)}" type="checkbox"${task[1] === " " ? "" : " checked"}> ${renderInline(task[2], footnotes.numbers)}</li></ul>`);
+      taskIndex += 1;
+      continue;
+    }
+    const list = line.match(/^\s{0,64}([-+*]|\d{1,9}[.)])\s+(.*)$/u);
+    if (list !== null) {
+      flush();
+      const ordered = /^\d/u.test(list[1]);
+      blocks.push(`<${ordered ? "ol" : "ul"}><li>${renderInline(list[2], footnotes.numbers)}</li></${ordered ? "ol" : "ul"}>`);
+      continue;
+    }
+    if (/^ {0,3}(?:-{3,}|\*{3,}|_{3,})\s*$/u.test(line)) {
+      flush();
+      blocks.push("<hr>");
+      continue;
+    }
+    if (line.trim() === "") {
+      flush();
+      continue;
+    }
+    paragraph.push(line);
+  }
+  flush();
+  if (footnotes.definitions.length > 0) {
+    blocks.push(`<section class="footnotes"><ol>${footnotes.definitions.map((definition) => `<li id="fn-${String(definition.number)}">${renderInline(definition.text, footnotes.numbers)}</li>`).join("")}</ol></section>`);
+  }
+  return blocks.join("\n");
+}
+function buildMarkdownSlides(markdown, options = {}) {
+  if (bytes(markdown) > MAX_RICH_MARKDOWN_BYTES) return [renderMarkdownHtml(markdown, options)];
+  const lines = markdown.replaceAll("\r\n", "\n").replaceAll("\r", "\n").split("\n");
+  const slides = [];
+  let current = [];
+  let fence2 = null;
+  for (const line of lines) {
+    const marker = line.match(/^ {0,3}(`{3,}|~{3,})/u)?.[1];
+    if (marker !== void 0) {
+      if (fence2 === null) fence2 = { character: marker[0], length: marker.length };
+      else if (marker[0] === fence2.character && marker.length >= fence2.length && /^ {0,3}(?:`{3,}|~{3,})\s*$/u.test(line)) fence2 = null;
+      current.push(line);
+      continue;
+    }
+    if (fence2 === null && /^ {0,3}---\s*$/u.test(line)) {
+      slides.push(renderMarkdownHtml(current.join("\n"), options));
+      current = [];
+    } else current.push(line);
+  }
+  slides.push(renderMarkdownHtml(current.join("\n"), options));
+  return slides;
+}
+function buildMarkdownExportDocument(options) {
+  const title = escapeMarkdownHtml(options.title.slice(0, 1e3));
+  const body = renderMarkdownHtml(options.markdown, options);
+  return `<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data: blob:; media-src data: blob:; style-src 'unsafe-inline';"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title><style>body{font:16px/1.6 system-ui,sans-serif;max-width:780px;margin:40px auto;padding:0 24px;color:#202124}pre,code{font-family:ui-monospace,monospace}pre{overflow:auto;padding:12px;background:#f5f5f5}table{border-collapse:collapse;width:100%}th,td{border:1px solid #ccc;padding:6px}.callout{border-left:4px solid #6750a4;padding:8px 12px;background:#f7f5ff}.math-display{text-align:center}.footnotes{border-top:1px solid #ddd}</style></head><body>${body}</body></html>`;
+}
+
+// src/session.ts
+var MAX_PANE_GROUPS = 8;
+var MAX_NOTE_TABS = 20;
+var MAX_ID_LENGTH = 128;
+var MAX_VAULT_PATH_LENGTH = 4096;
+var MAX_ROUTE_ID_LENGTH = 128;
+var DEFAULT_MODE = "wysiwyg";
+var DEFAULT_EDITING_MODE = "wysiwyg";
+function isRecord3(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+function boundedString(value, max2) {
+  return typeof value === "string" && value.length > 0 && value.length <= max2;
+}
+function isSafeId2(value) {
+  return boundedString(value, MAX_ID_LENGTH) && !/[\0\r\n]/u.test(value);
+}
+function isSafeVaultRelativePath(value) {
+  if (!boundedString(value, MAX_VAULT_PATH_LENGTH)) return false;
+  if (value.startsWith("/") || value.startsWith("\\") || value.includes("\\") || value.includes("\0")) return false;
+  if (/^[A-Za-z][A-Za-z\d+.-]*:/u.test(value)) return false;
+  return value.split("/").every((segment) => segment !== "" && segment !== "." && segment !== "..");
+}
+function isEditorMode(value) {
+  return value === "reading" || value === "wysiwyg" || value === "source";
+}
+function isEditingMode(value) {
+  return value === "wysiwyg" || value === "source";
+}
+function boundedRevision(value) {
+  return typeof value === "number" && Number.isSafeInteger(value) && value >= 0 ? value : 0;
+}
+function tabDirty(revision, savedRevision) {
+  return revision !== savedRevision;
+}
+function makeTab(input) {
+  return {
+    ...input,
+    get dirty() {
+      return tabDirty(this.revision, this.savedRevision);
+    }
+  };
+}
+function cloneTab(tab) {
+  return makeTab({
+    id: tab.id,
+    path: tab.path,
+    pinned: tab.pinned,
+    mode: tab.mode,
+    lastEditingMode: tab.lastEditingMode,
+    revision: tab.revision,
+    savedRevision: tab.savedRevision
+  });
+}
+function cloneGroup(group) {
+  return {
+    id: group.id,
+    activeTabId: group.activeTabId,
+    tabs: group.tabs.map(cloneTab)
+  };
+}
+function cloneSession(session) {
+  return {
+    routeId: session.routeId,
+    vault: session.vault === null ? null : { ...session.vault },
+    focusedGroupId: session.focusedGroupId,
+    groups: session.groups.map(cloneGroup),
+    editorRevision: session.editorRevision
+  };
+}
+function nextId(prefix, used) {
+  for (let index2 = 1; index2 <= MAX_NOTE_TABS * MAX_PANE_GROUPS; index2 += 1) {
+    const candidate = `${prefix}-${index2}`;
+    if (!used.has(candidate)) return candidate;
+  }
+  return `${prefix}-${Date.now().toString(36)}`.slice(0, MAX_ID_LENGTH);
+}
+function normalizeVault(value) {
+  if (!isRecord3(value) || !isSafeId2(value.id)) return null;
+  const generation = boundedRevision(value.generation);
+  return { id: value.id, generation };
+}
+function parseTab(value, ids) {
+  if (!isRecord3(value) || !isSafeId2(value.id) || ids.has(value.id) || !isSafeVaultRelativePath(value.path)) return null;
+  const mode = isEditorMode(value.mode) ? value.mode : DEFAULT_MODE;
+  const lastEditingMode = isEditingMode(value.lastEditingMode) ? value.lastEditingMode : mode === "reading" ? DEFAULT_EDITING_MODE : mode;
+  const revision = boundedRevision(value.revision);
+  const savedRevision = Math.min(boundedRevision(value.savedRevision), revision);
+  ids.add(value.id);
+  return makeTab({
+    id: value.id,
+    path: value.path,
+    pinned: value.pinned === true,
+    mode,
+    lastEditingMode,
+    revision,
+    savedRevision
+  });
+}
+function parseGroup(value, groupIds, tabIds) {
+  if (!isRecord3(value) || !isSafeId2(value.id) || groupIds.has(value.id) || !Array.isArray(value.tabs)) return null;
+  groupIds.add(value.id);
+  const tabs = [];
+  const paths = /* @__PURE__ */ new Set();
+  for (const item of value.tabs.slice(0, MAX_NOTE_TABS)) {
+    const tab = parseTab(item, tabIds);
+    if (tab === null || paths.has(tab.path)) continue;
+    paths.add(tab.path);
+    tabs.push(tab);
+  }
+  const requestedActive = typeof value.activeTabId === "string" ? value.activeTabId : null;
+  const activeTabId = tabs.some((tab) => tab.id === requestedActive) ? requestedActive : tabs[0]?.id ?? null;
+  return { id: value.id, activeTabId, tabs };
+}
+function createWorkbenchSession(routeId, vault = null, initialGroupId = "group-1") {
+  const safeRouteId = boundedString(routeId, MAX_ROUTE_ID_LENGTH) ? routeId : "tocktutor";
+  const groupId = isSafeId2(initialGroupId) ? initialGroupId : "group-1";
+  return {
+    routeId: safeRouteId,
+    vault: vault === null ? null : { ...vault },
+    focusedGroupId: groupId,
+    groups: [{ id: groupId, activeTabId: null, tabs: [] }],
+    editorRevision: 0
+  };
+}
+function hydrateWorkbenchSession(value) {
+  if (!isRecord3(value)) return createWorkbenchSession("tocktutor");
+  const routeId = boundedString(value.routeId, MAX_ROUTE_ID_LENGTH) ? value.routeId : "tocktutor";
+  const vault = normalizeVault(value.vault);
+  const groups = [];
+  const groupIds = /* @__PURE__ */ new Set();
+  const tabIds = /* @__PURE__ */ new Set();
+  if (Array.isArray(value.groups)) {
+    for (const item of value.groups.slice(0, MAX_PANE_GROUPS)) {
+      const group = parseGroup(item, groupIds, tabIds);
+      if (group !== null) groups.push(group);
+    }
+  }
+  if (groups.length === 0) groups.push({ id: "group-1", activeTabId: null, tabs: [] });
+  const requestedFocus = typeof value.focusedGroupId === "string" ? value.focusedGroupId : "";
+  const focusedGroupId = groups.some((group) => group.id === requestedFocus) ? requestedFocus : groups[0].id;
+  return {
+    routeId,
+    vault,
+    focusedGroupId,
+    groups,
+    editorRevision: boundedRevision(value.editorRevision)
+  };
+}
+function addPaneGroup(source, requestedId) {
+  const session = cloneSession(source);
+  if (session.groups.length >= MAX_PANE_GROUPS) return { session, groupId: session.focusedGroupId };
+  const used = new Set(session.groups.map((group) => group.id));
+  const groupId = requestedId !== void 0 && isSafeId2(requestedId) && !used.has(requestedId) ? requestedId : nextId("group", used);
+  session.groups.push({ id: groupId, activeTabId: null, tabs: [] });
+  session.focusedGroupId = groupId;
+  return { session, groupId };
+}
+function groupOf(session, groupId) {
+  return session.groups.find((group) => group.id === groupId);
+}
+function openNoteTab(source, groupId, path, options = {}) {
+  if (!isSafeVaultRelativePath(path)) return cloneSession(source);
+  const session = cloneSession(source);
+  const group = groupOf(session, groupId);
+  if (group === void 0) return session;
+  session.focusedGroupId = groupId;
+  const existing = group.tabs.find((tab2) => tab2.path === path);
+  if (existing !== void 0) {
+    group.activeTabId = existing.id;
+    return session;
+  }
+  if (group.tabs.length >= MAX_NOTE_TABS) return session;
+  const ids = new Set(session.groups.flatMap((candidate) => candidate.tabs.map((tab2) => tab2.id)));
+  const mode = isEditorMode(options.mode) ? options.mode : DEFAULT_MODE;
+  const lastEditingMode = isEditingMode(options.lastEditingMode) ? options.lastEditingMode : mode === "reading" ? DEFAULT_EDITING_MODE : mode;
+  const tab = makeTab({
+    id: nextId("tab", ids),
+    path,
+    pinned: options.pinned === true,
+    mode,
+    lastEditingMode,
+    revision: 0,
+    savedRevision: 0
+  });
+  group.tabs.push(tab);
+  group.activeTabId = tab.id;
+  return session;
+}
+function markTabDirty(source, groupId, path, dirty) {
+  const session = cloneSession(source);
+  const group = groupOf(session, groupId);
+  const tab = group?.tabs.find((candidate) => candidate.path === path);
+  if (tab === void 0) return session;
+  if (dirty) {
+    session.editorRevision += 1;
+    tab.revision = Math.max(tab.revision + 1, session.editorRevision);
+  } else {
+    tab.savedRevision = tab.revision;
+  }
+  return session;
+}
+function setActiveNoteTab(source, groupId, path) {
+  const session = cloneSession(source);
+  const group = groupOf(session, groupId);
+  if (group === void 0) return session;
+  group.activeTabId = path === null ? null : group.tabs.find((tab) => tab.path === path)?.id ?? group.activeTabId;
+  return session;
+}
+function focusPaneGroup(source, groupId) {
+  const session = cloneSession(source);
+  if (groupOf(session, groupId) !== void 0) session.focusedGroupId = groupId;
+  return session;
+}
+function setNoteTabMode(source, groupId, path, mode) {
+  const session = cloneSession(source);
+  const tab = groupOf(session, groupId)?.tabs.find((candidate) => candidate.path === path);
+  if (tab === void 0 || !isEditorMode(mode)) return session;
+  tab.mode = mode;
+  if (mode !== "reading") tab.lastEditingMode = mode;
+  return session;
+}
+function setTabPinned(source, groupId, path, pinned) {
+  const session = cloneSession(source);
+  const tab = groupOf(session, groupId)?.tabs.find((candidate) => candidate.path === path);
+  if (tab !== void 0) tab.pinned = pinned ?? !tab.pinned;
+  return session;
+}
+function moveNoteTab(source, groupId, path, direction) {
+  const session = cloneSession(source);
+  const tabs = groupOf(session, groupId)?.tabs;
+  if (tabs === void 0) return session;
+  const index2 = tabs.findIndex((tab2) => tab2.path === path);
+  const destination = index2 + direction;
+  if (index2 < 0 || destination < 0 || destination >= tabs.length) return session;
+  const [tab] = tabs.splice(index2, 1);
+  if (tab !== void 0) tabs.splice(destination, 0, tab);
+  return session;
+}
+function closeNoteTab(source, groupId, path) {
+  const session = cloneSession(source);
+  const group = groupOf(session, groupId);
+  if (group === void 0) return { closed: null, nextPath: null, session };
+  const index2 = group.tabs.findIndex((tab) => tab.path === path);
+  if (index2 < 0) return { closed: null, nextPath: group.tabs.find((tab) => tab.id === group.activeTabId)?.path ?? null, session };
+  const [closed] = group.tabs.splice(index2, 1);
+  if (closed === void 0) return { closed: null, nextPath: null, session };
+  if (group.activeTabId === closed.id) {
+    const next = group.tabs[index2] ?? group.tabs[index2 - 1];
+    group.activeTabId = next?.id ?? null;
+  }
+  return {
+    closed,
+    nextPath: group.tabs.find((tab) => tab.id === group.activeTabId)?.path ?? null,
+    session
+  };
+}
+
+// src/bookmarks.ts
+var MAX_BOOKMARK_ITEMS = 1e3;
+var MAX_BOOKMARK_BYTES = 1048576;
+function key(vaultId) {
+  return `tocktutor.bookmarks.v1.${vaultId}`;
+}
+function validBase(value) {
+  if (typeof value.id !== "string" || !/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/u.test(value.id)) return null;
+  if (typeof value.title !== "string" || value.title.trim().length === 0 || value.title.length > 200) return null;
+  return { id: value.id, ...value.missing === true ? { missing: true } : {}, title: value.title.trim() };
+}
+function normalizedLink(value) {
+  if (typeof value !== "string" || value.length > 4096) return null;
+  try {
+    const url2 = new URL(/^https?:\/\//iu.test(value) ? value : `https://${value}`);
+    if (url2.protocol !== "http:" && url2.protocol !== "https:" || url2.username !== "" || url2.password !== "") return null;
+    return url2.toString();
+  } catch {
+    return null;
+  }
+}
+function parseBookmark(value, allowGroup) {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return null;
+  const record2 = value;
+  const base = validBase(record2);
+  if (base === null || typeof record2.kind !== "string") return null;
+  if (record2.kind === "note" || record2.kind === "folder") {
+    return typeof record2.path === "string" && isSafeVaultRelativePath(record2.path) ? { ...base, kind: record2.kind, path: record2.path } : null;
+  }
+  if (record2.kind === "search") {
+    return typeof record2.query === "string" && record2.query.length > 0 && record2.query.length <= 1e3 ? { ...base, kind: "search", query: record2.query } : null;
+  }
+  if (record2.kind === "graph") return { ...base, kind: "graph" };
+  if (record2.kind === "heading") {
+    return typeof record2.path === "string" && isSafeVaultRelativePath(record2.path) && Number.isSafeInteger(record2.line) && record2.line > 0 ? { ...base, kind: "heading", line: record2.line, path: record2.path } : null;
+  }
+  if (record2.kind === "block") {
+    return typeof record2.path === "string" && isSafeVaultRelativePath(record2.path) && typeof record2.blockId === "string" && /^[A-Za-z0-9-]{1,200}$/u.test(record2.blockId) ? { ...base, blockId: record2.blockId, kind: "block", path: record2.path } : null;
+  }
+  if (record2.kind === "link") {
+    const url2 = normalizedLink(record2.url);
+    return url2 === null ? null : { ...base, kind: "link", url: url2 };
+  }
+  if (record2.kind === "group" && allowGroup && Array.isArray(record2.children) && record2.children.length <= MAX_BOOKMARK_ITEMS) {
+    const children = [];
+    for (const child of record2.children) {
+      const parsed = parseBookmark(child, false);
+      if (parsed === null || parsed.kind === "group") return null;
+      children.push(parsed);
+    }
+    return { ...base, children, kind: "group" };
+  }
+  return null;
+}
+function flattenCount(bookmarks) {
+  return bookmarks.reduce((count3, bookmark) => count3 + 1 + (bookmark.kind === "group" ? bookmark.children.length : 0), 0);
+}
+function loadBookmarks(storage, vaultId) {
+  if (!/^vault:[0-9a-f]{64}$/u.test(vaultId)) return [];
+  try {
+    const raw = storage.getItem(key(vaultId));
+    if (raw === null || new TextEncoder().encode(raw).byteLength > MAX_BOOKMARK_BYTES) return [];
+    const value = JSON.parse(raw);
+    if (!Array.isArray(value)) return [];
+    const bookmarks = [];
+    const ids = /* @__PURE__ */ new Set();
+    for (const candidate of value) {
+      const bookmark = parseBookmark(candidate, true);
+      if (bookmark === null || ids.has(bookmark.id)) continue;
+      if (flattenCount([...bookmarks, bookmark]) > MAX_BOOKMARK_ITEMS) break;
+      ids.add(bookmark.id);
+      bookmarks.push(bookmark);
+    }
+    return bookmarks;
+  } catch {
+    return [];
+  }
+}
+function saveBookmarks(storage, vaultId, bookmarks) {
+  if (!/^vault:[0-9a-f]{64}$/u.test(vaultId) || flattenCount(bookmarks) > MAX_BOOKMARK_ITEMS) return false;
+  const parsed = bookmarks.map((bookmark) => parseBookmark(bookmark, true));
+  if (parsed.some((bookmark) => bookmark === null)) return false;
+  try {
+    const raw = JSON.stringify(parsed);
+    if (new TextEncoder().encode(raw).byteLength > MAX_BOOKMARK_BYTES) return false;
+    storage.setItem(key(vaultId), raw);
+    return true;
+  } catch {
+    return false;
+  }
+}
+function addBookmark(bookmarks, bookmark) {
+  const parsed = parseBookmark(bookmark, true);
+  if (parsed === null) throw new Error(bookmark.kind === "link" ? "Bookmark URL is invalid." : "Bookmark is invalid.");
+  const next = [...bookmarks.filter((candidate) => candidate.id !== parsed.id), parsed];
+  if (flattenCount(next) > MAX_BOOKMARK_ITEMS) throw new Error("Bookmark capacity is full.");
+  return next;
+}
+function remap(path, fromPath, toPath) {
+  return path === fromPath ? toPath : path.startsWith(`${fromPath}/`) ? `${toPath}${path.slice(fromPath.length)}` : path;
+}
+function remapBookmarks(bookmarks, fromPath, toPath) {
+  if (!isSafeVaultRelativePath(fromPath) || !isSafeVaultRelativePath(toPath)) return [...bookmarks];
+  const one = (bookmark) => {
+    if (bookmark.kind === "group") return { ...bookmark, children: bookmark.children.map((child) => one(child)) };
+    if ("path" in bookmark) return { ...bookmark, path: remap(bookmark.path, fromPath, toPath) };
+    return { ...bookmark };
+  };
+  return bookmarks.map(one);
+}
+
+// src/graph.ts
+var MAX_GRAPH_NODES = 180;
+var MAX_GRAPH_EDGES = 512;
+function safePath(path) {
+  return path.length > 0 && path.length <= 4096 && !path.startsWith("/") && !path.includes("\\") && !path.split("/").some((segment) => segment === "" || segment === "." || segment === "..");
+}
+function projectGraph(result, options) {
+  if (!Array.isArray(result.nodes) || result.nodes.length > MAX_GRAPH_NODES) throw new Error("Graph node limit exceeded.");
+  if (!Array.isArray(result.edges) || result.edges.length > MAX_GRAPH_EDGES) throw new Error("Graph edge limit exceeded.");
+  const query = options.query.trim().toLocaleLowerCase().slice(0, 1e3);
+  const orphanSet = new Set(result.orphans);
+  const nodes = result.nodes.filter((node) => safePath(node.path) && (options.includeOrphans || !orphanSet.has(node.path)) && (query === "" || node.path.toLocaleLowerCase().includes(query))).toSorted((left, right) => left.path.localeCompare(right.path));
+  const paths = new Set(nodes.map((node) => node.path));
+  const edges = result.edges.filter((edge) => paths.has(edge.sourcePath) && paths.has(edge.targetPath) && safePath(edge.sourcePath) && safePath(edge.targetPath)).toSorted((left, right) => left.sourcePath.localeCompare(right.sourcePath) || left.targetPath.localeCompare(right.targetPath) || left.line - right.line);
+  return { activePath: result.path, edges, nodes };
+}
+function hash2(value) {
+  let result = 2166136261;
+  for (const character of value) result = Math.imul(result ^ character.codePointAt(0), 16777619) >>> 0;
+  return result;
+}
+function bounded(value, min2, max2, fallback) {
+  return Number.isFinite(value) ? Math.min(max2, Math.max(min2, value)) : fallback;
+}
+function layoutGraph(graph, options) {
+  if (graph.nodes.length > MAX_GRAPH_NODES || graph.edges.length > MAX_GRAPH_EDGES) throw new Error("Graph layout limit exceeded.");
+  const iterations = Math.round(bounded(options.iterations, 1, 64, 32));
+  const repel = bounded(options.repelForce, 0, 1e4, 1800);
+  const linkForce = bounded(options.linkForce, 0, 1, 0.08);
+  const linkDistance = bounded(options.linkDistance, 20, 500, 120);
+  const centerForce = bounded(options.centerForce, 0, 1, 0.1);
+  const positions = graph.nodes.map((node, index2) => {
+    if (node.path === graph.activePath) return { ...node, x: 0, y: 0 };
+    const angle = hash2(node.path) % 3600 / 3600 * Math.PI * 2;
+    const radius = 80 + index2 % 12 * 18;
+    return { ...node, x: Math.cos(angle) * radius, y: Math.sin(angle) * radius };
+  });
+  const indexByPath = new Map(positions.map((node, index2) => [node.path, index2]));
+  for (let iteration = 0; iteration < iterations; iteration += 1) {
+    const delta = positions.map(() => ({ x: 0, y: 0 }));
+    for (let left = 0; left < positions.length; left += 1) {
+      for (let right = left + 1; right < positions.length; right += 1) {
+        const a = positions[left];
+        const b = positions[right];
+        let dx = a.x - b.x;
+        let dy = a.y - b.y;
+        let distanceSquared = dx * dx + dy * dy;
+        if (distanceSquared < 1) {
+          dx = (hash2(`${a.path}:${b.path}`) % 200 - 100) / 100;
+          dy = (hash2(`${b.path}:${a.path}`) % 200 - 100) / 100;
+          distanceSquared = Math.max(1, dx * dx + dy * dy);
+        }
+        const force = repel / distanceSquared;
+        delta[left].x += dx * force;
+        delta[left].y += dy * force;
+        delta[right].x -= dx * force;
+        delta[right].y -= dy * force;
+      }
+    }
+    for (const edge of graph.edges) {
+      const source = indexByPath.get(edge.sourcePath);
+      const target = indexByPath.get(edge.targetPath);
+      if (source === void 0 || target === void 0) continue;
+      const a = positions[source];
+      const b = positions[target];
+      const dx = b.x - a.x;
+      const dy = b.y - a.y;
+      const distance = Math.max(1, Math.hypot(dx, dy));
+      const force = (distance - linkDistance) * linkForce;
+      const x = dx / distance * force;
+      const y = dy / distance * force;
+      delta[source].x += x;
+      delta[source].y += y;
+      delta[target].x -= x;
+      delta[target].y -= y;
+    }
+    for (let index2 = 0; index2 < positions.length; index2 += 1) {
+      const node = positions[index2];
+      if (node.path === graph.activePath) {
+        node.x = 0;
+        node.y = 0;
+        continue;
+      }
+      node.x = bounded(node.x + delta[index2].x - node.x * centerForce, -2e3, 2e3, 0);
+      node.y = bounded(node.y + delta[index2].y - node.y * centerForce, -2e3, 2e3, 0);
+    }
+  }
+  return positions.map((node) => ({ ...node, x: Math.round(node.x * 100) / 100, y: Math.round(node.y * 100) / 100 }));
+}
+
+// src/capture.ts
+var MAX_TEMPLATE_BYTES = 1e6;
+function pad2(value, length = 2) {
+  return String(value).padStart(length, "0");
+}
+function formatDate(value, format) {
+  const replacements = {
+    YYYY: String(value.getFullYear()),
+    MMMM: value.toLocaleString("en", { month: "long" }),
+    MMM: value.toLocaleString("en", { month: "short" }),
+    MM: pad2(value.getMonth() + 1),
+    DD: pad2(value.getDate()),
+    dddd: value.toLocaleString("en", { weekday: "long" }),
+    ddd: value.toLocaleString("en", { weekday: "short" }),
+    HH: pad2(value.getHours()),
+    hh: pad2(value.getHours() % 12 || 12),
+    mm: pad2(value.getMinutes()),
+    ss: pad2(value.getSeconds()),
+    SSS: pad2(value.getMilliseconds(), 3),
+    A: value.getHours() < 12 ? "AM" : "PM"
+  };
+  let output = "";
+  for (let index2 = 0; index2 < format.length; ) {
+    if (format[index2] === "[") {
+      const close = format.indexOf("]", index2 + 1);
+      if (close >= 0) {
+        output += format.slice(index2 + 1, close);
+        index2 = close + 1;
+        continue;
+      }
+    }
+    const token = Object.keys(replacements).toSorted((left, right) => right.length - left.length).find((candidate) => format.startsWith(candidate, index2));
+    if (token === void 0) {
+      output += format[index2];
+      index2 += 1;
+    } else {
+      output += replacements[token];
+      index2 += token.length;
+    }
+  }
+  return output;
+}
+function safeFolder(folder) {
+  if (!isSafeVaultRelativePath(folder) || /^[A-Za-z]:/u.test(folder)) throw new Error("The capture folder is invalid.");
+  return folder.replace(/\/$/u, "");
+}
+function slug(value) {
+  return value.normalize("NFKD").replace(/[\u0300-\u036f]/gu, "").toLocaleLowerCase().replace(/[^a-z0-9]+/gu, "-").replace(/^-|-$/gu, "").slice(0, 80) || "capture";
+}
+function collisionPath(path, existing) {
+  if (!existing.has(path)) return path;
+  const extension = path.match(/(\.[^./]+)$/u)?.[1] ?? "";
+  const stem = extension === "" ? path : path.slice(0, -extension.length);
+  for (let index2 = 2; index2 <= 1e3; index2 += 1) {
+    const candidate = `${stem}-${String(index2)}${extension}`;
+    if (!existing.has(candidate)) return candidate;
+  }
+  throw new Error("No collision-safe capture path is available.");
+}
+function expandTemplate(template, context) {
+  if (new TextEncoder().encode(template).byteLength > MAX_TEMPLATE_BYTES) throw new Error("The template is too large.");
+  return template.replace(/\{\{(title|newTitle|content|fromTitle|date|time)(?::([^}\r\n]{1,100}))?\}\}/gu, (source, name2, format) => {
+    if (name2 === "title" || name2 === "newTitle") return context.title;
+    if (name2 === "content") return context.content ?? "";
+    if (name2 === "fromTitle") return context.fromTitle ?? "";
+    if (name2 === "date") return formatDate(context.now, format ?? "YYYY-MM-DD");
+    if (name2 === "time") return formatDate(context.now, format ?? "HH:mm");
+    return source;
+  });
+}
+function buildCaptureNote(input) {
+  const title = input.title.trim().slice(0, 200);
+  if (title === "") throw new Error("Capture title is required.");
+  if (new TextEncoder().encode(input.body).byteLength > MAX_TEMPLATE_BYTES) throw new Error("Capture body is too large.");
+  const folder = safeFolder(input.folder ?? "Inbox");
+  const date6 = formatDate(input.now, "YYYY-MM-DD");
+  return {
+    content: `# ${title}
+
+${input.body}`,
+    path: collisionPath(`${folder}/${date6}-${slug(title)}.md`, input.existing)
+  };
+}
+function buildJournalNote(input) {
+  const folder = safeFolder(input.folder);
+  const date6 = formatDate(input.now, input.dateFormat ?? "YYYY-MM-DD");
+  if (date6.length === 0 || date6.length > 200 || /[\\/:*?"<>|]/u.test(date6)) throw new Error("The journal date format is invalid.");
+  return {
+    content: input.template === void 0 ? `---
+journal-date: ${formatDate(input.now, "YYYY-MM-DD")}
+---
+# ${date6}
+` : expandTemplate(input.template, { now: input.now, title: date6 }),
+    path: `${folder}/${date6}.md`
+  };
+}
+function uniqueNotePath(now, existing) {
+  const candidate = new Date(now);
+  candidate.setSeconds(0, 0);
+  for (let index2 = 0; index2 < 1440; index2 += 1) {
+    const path = `${formatDate(candidate, "YYYYMMDDHHmm")}.md`;
+    if (!existing.has(path)) return path;
+    candidate.setMinutes(candidate.getMinutes() + 1);
+  }
+  throw new Error("No unique-note timestamp is available within one day.");
+}
+
+// src/organize.ts
+var MAX_ORGANIZE_BYTES = 1e6;
+var MAX_ORGANIZE_CAPTURES = 100;
+function bytes2(value) {
+  return new TextEncoder().encode(value).byteLength;
+}
+function date5(value) {
+  return `${String(value.getFullYear())}-${String(value.getMonth() + 1).padStart(2, "0")}-${String(value.getDate()).padStart(2, "0")}`;
+}
+function slug2(value) {
+  return value.normalize("NFKD").replace(/[\u0300-\u036f]/gu, "").toLocaleLowerCase().replace(/[^a-z0-9]+/gu, "-").replace(/^-|-$/gu, "").slice(0, 80) || "note";
+}
+function safeUrl2(value) {
+  if (value === void 0 || value.trim() === "") return null;
+  try {
+    const url2 = new URL(value);
+    return (url2.protocol === "http:" || url2.protocol === "https:") && url2.username === "" && url2.password === "" ? url2.toString() : null;
+  } catch {
+    return null;
+  }
+}
+function digest(value) {
+  let hash3 = 2166136261;
+  for (const character of value) hash3 = Math.imul(hash3 ^ character.codePointAt(0), 16777619) >>> 0;
+  return hash3.toString(16).padStart(8, "0");
+}
+function buildHighlightNote(input) {
+  const title = input.title.trim().slice(0, 200);
+  if (title === "" || input.highlights.length === 0 || input.highlights.length > 1e3) throw new Error("Highlight input is invalid.");
+  const url2 = safeUrl2(input.sourceUrl);
+  if (input.sourceUrl !== void 0 && input.sourceUrl.trim() !== "" && url2 === null) throw new Error("Highlight source URL is invalid.");
+  const body = input.highlights.map((highlight) => {
+    if (bytes2(highlight) > MAX_ORGANIZE_BYTES) throw new Error("Highlight input is too large.");
+    return highlight.split(/\r?\n/u).map((line) => `> ${line}`).join("\n");
+  }).join("\n\n");
+  const content = [
+    "---",
+    ...url2 === null ? [] : [`source: ${JSON.stringify(url2)}`],
+    `title: ${JSON.stringify(title)}`,
+    "---",
+    `# ${title}`,
+    "",
+    body,
+    ""
+  ].join("\n");
+  if (bytes2(content) > MAX_ORGANIZE_BYTES) throw new Error("Highlight input is too large.");
+  return { content, path: `Highlights/${date5(input.now)}-${slug2(title)}.md` };
+}
+function buildOrganizationProposal(input) {
+  if (input.captures.length === 0 || input.captures.length > MAX_ORGANIZE_CAPTURES) throw new Error("Organization requires bounded captures.");
+  const title = input.title.trim().slice(0, 200);
+  if (title === "") throw new Error("Organization title is required.");
+  const seen = /* @__PURE__ */ new Set();
+  for (const capture of input.captures) {
+    if (!isSafeVaultRelativePath(capture.path) || !/^Inbox\/.+\.md$/iu.test(capture.path)) throw new Error("Capture path is invalid.");
+    if (seen.has(capture.path) || bytes2(capture.content) > MAX_ORGANIZE_BYTES) throw new Error("Capture input is invalid or too large.");
+    seen.add(capture.path);
+  }
+  const sections = input.captures.map((capture) => {
+    const heading2 = capture.content.match(/^#\s+(.+)$/mu)?.[1]?.trim() || capture.path.split("/").at(-1).replace(/\.md$/iu, "");
+    const body = capture.content.replace(/^---[\s\S]*?^---\s*/mu, "").replace(/^#\s+.*(?:\r?\n|$)/u, "").trim();
+    return `## ${heading2}
+
+Source: [[${capture.path}]]
+
+${body}`;
+  });
+  const destination = `Organized/${date5(input.now)}-${slug2(title)}.md`;
+  const content = `# ${title}
+
+${sections.join("\n\n")}
+`;
+  if (bytes2(content) > MAX_ORGANIZE_BYTES) throw new Error("Organization output is too large.");
+  const canonical = JSON.stringify({ captures: [...seen], content, destination, title });
+  return { captures: Object.freeze([...seen]), content, destination, id: `organize-${digest(canonical)}`, title };
+}
+
+// src/composer.ts
+function appendBlock(source, block, prepend = false) {
+  if (prepend) return `${block.replace(/\s+$/u, "")}
+
+${source.replace(/^\s+/u, "")}`;
+  const separator = source === "" || /(?:\r\n|[\r\n]){2}$/u.test(source) ? "" : /(?:\r\n|[\r\n])$/u.test(source) ? "\n" : "\n\n";
+  return `${source}${separator}${block.replace(/^\s+/u, "")}`;
+}
+function link(path, label, kind) {
+  if (kind === "none") return "";
+  if (kind === "embed") return `![[${path}]]`;
+  return `[[${path}|${label.replace(/[\[\]|\r\n]/gu, " ").trim().slice(0, 200) || path}]]`;
+}
+function extractSelectionToNote(input) {
+  if (!isSafeVaultRelativePath(input.destinationPath) || !/\.md$/iu.test(input.destinationPath)) throw new Error("Composer destination is invalid.");
+  if (!Number.isSafeInteger(input.start) || !Number.isSafeInteger(input.end) || input.start < 0 || input.end <= input.start || input.end > input.source.length) throw new Error("Composer selection is invalid.");
+  const selected = input.source.slice(input.start, input.end);
+  const replacement = link(input.destinationPath, selected, input.leftover);
+  const destinationContent = input.template === void 0 ? `${selected.replace(/^\s+|\s+$/gu, "")}
+` : expandTemplate(input.template, {
+    content: selected.replace(/^\s+|\s+$/gu, ""),
+    fromTitle: input.sourceTitle,
+    now: /* @__PURE__ */ new Date(),
+    title: input.destinationTitle
+  }).replace(/\s+$/u, "");
+  return {
+    destinationContent,
+    sourceContent: `${input.source.slice(0, input.start)}${replacement}${input.source.slice(input.end)}`
+  };
+}
+function mergeNotes(input) {
+  if (!isSafeVaultRelativePath(input.destinationPath) || !isSafeVaultRelativePath(input.sourcePath) || input.destinationPath === input.sourcePath) throw new Error("Composer merge paths are invalid.");
+  return {
+    destinationContent: appendBlock(input.destination, input.source, input.placement === "prepend"),
+    sourceContent: `${link(input.destinationPath, input.destinationPath.replace(/\.md$/iu, ""), input.leftover)}
+`
+  };
+}
+function convertFrontmatter(lines) {
+  if (lines[0] !== "---") return;
+  const end = lines.findIndex((line, index2) => index2 > 0 && (line === "---" || line === "..."));
+  if (end < 0) return;
+  const replacements = /* @__PURE__ */ new Map([["alias", "aliases"], ["tag", "tags"], ["cssclass", "cssclasses"]]);
+  for (let index2 = 1; index2 < end; index2 += 1) {
+    const match = lines[index2]?.match(/^([A-Za-z_][A-Za-z0-9_-]*):(.*)$/u);
+    const replacement = match === null || match === void 0 ? void 0 : replacements.get(match[1].toLocaleLowerCase());
+    if (replacement !== void 0) lines[index2] = `${replacement}:${match[2]}`;
+  }
+}
+function convertMarkdownFormats(source, options) {
+  if (new TextEncoder().encode(source).byteLength > 2e6) throw new Error("Format conversion source is too large.");
+  const eol = source.includes("\r\n") ? "\r\n" : "\n";
+  const finalEol = /(?:\r\n|[\r\n])$/u.test(source);
+  const lines = source.split(/\r?\n/u);
+  if (finalEol) lines.pop();
+  if (options.deprecatedProperties === true) convertFrontmatter(lines);
+  let fence2 = null;
+  for (let index2 = 0; index2 < lines.length; index2 += 1) {
+    let line = lines[index2];
+    const marker = line.match(/^ {0,3}(`{3,}|~{3,})/u)?.[1];
+    if (marker !== void 0) {
+      if (fence2 === null) fence2 = { character: marker[0], length: marker.length };
+      else if (marker[0] === fence2.character && marker.length >= fence2.length && /^ {0,3}(?:`{3,}|~{3,})\s*$/u.test(line)) fence2 = null;
+      continue;
+    }
+    if (fence2 !== null) continue;
+    if (options.roamBear === true) {
+      line = line.replace(/^(\s*[-+*]\s+)TODO\s+/u, "$1[ ] ");
+      line = line.replace(/\^\^([^\r\n^]{1,100000})\^\^/gu, "==$1==");
+    }
+    if (options.zettelkasten !== void 0) {
+      line = line.replace(/\[\[(\d{8,14})\]\]/gu, (original, uid) => {
+        const path = options.zettelkasten?.get(uid);
+        return path !== void 0 && isSafeVaultRelativePath(path) ? `[[${path}|${uid}]]` : original;
+      });
+    }
+    lines[index2] = line;
+  }
+  return `${lines.join(eol)}${finalEol ? eol : ""}`;
+}
+
+// src/attachments.ts
+var ACCEPTED = /\.(?:avif|bmp|gif|ico|jpe?g|png|webp|mp3|m4a|ogg|wav|webm|mp4|mov|pdf)$/iu;
+function attachmentTargetPath(folder, fileName3, existing) {
+  if (!isSafeVaultRelativePath(folder) || /^[A-Za-z]:/u.test(folder)) throw new Error("Attachment folder is invalid.");
+  const name2 = fileName3.trim();
+  if (name2.length === 0 || name2.length > 255 || name2.includes("/") || name2.includes("\\") || name2 === "." || name2 === "..") throw new Error("Attachment name is invalid.");
+  if (!ACCEPTED.test(name2)) throw new Error("Attachment type is unsupported.");
+  const first = `${folder}/${name2}`;
+  if (!existing.has(first)) return first;
+  const extension = name2.match(/(\.[^.]+)$/u)[1];
+  const stem = name2.slice(0, -extension.length);
+  for (let index2 = 2; index2 <= 1e3; index2 += 1) {
+    const candidate = `${folder}/${stem} ${String(index2)}${extension}`;
+    if (!existing.has(candidate)) return candidate;
+  }
+  throw new Error("Attachment destination capacity is full.");
+}
+function appendAttachmentMarkdown(source, markdown) {
+  const block = markdown.replace(/^\s+|\s+$/gu, "");
+  if (block === "") return source;
+  const separator = source === "" ? "" : /(?:\r\n|[\r\n]){2}$/u.test(source) ? "" : /(?:\r\n|[\r\n])$/u.test(source) ? "\n" : "\n\n";
+  return `${source}${separator}${block}
+`;
+}
+
+// src/settings.ts
+var MAX_TOCKTUTOR_SETTINGS_BYTES = 1048576;
+var MAX_TOCKTUTOR_WORKSPACES = 32;
+var MAX_TOCKTUTOR_CSS_BYTES = 524288;
+var DEFAULT_SETTINGS = Object.freeze({
+  attachmentFolder: "Attachments",
+  backlinksInDocument: false,
+  defaultEditingMode: "live-preview",
+  journalFolder: "Journals",
+  pagePreview: true,
+  templateFolder: "Templates"
+});
+function validVaultId(value) {
+  return /^vault:[0-9a-f]{64}$/u.test(value);
+}
+function settingsKey(vaultId) {
+  return `tocktutor.settings.v1.${validVaultId(vaultId) ? vaultId : "invalid"}`;
+}
+function stateKey(vaultId) {
+  return `tocktutor.workbench.v1.${validVaultId(vaultId) ? vaultId : "invalid"}`;
+}
+function safeFolder2(value, fallback) {
+  return typeof value === "string" && value.length <= 1e3 && isSafeVaultRelativePath(value) && !/^[A-Za-z]:/u.test(value) ? value : fallback;
+}
+function normalizeSettings(value) {
+  const record2 = typeof value === "object" && value !== null && !Array.isArray(value) ? value : {};
+  return {
+    attachmentFolder: safeFolder2(record2.attachmentFolder, DEFAULT_SETTINGS.attachmentFolder),
+    backlinksInDocument: record2.backlinksInDocument === true,
+    defaultEditingMode: record2.defaultEditingMode === "source" ? "source" : "live-preview",
+    journalFolder: safeFolder2(record2.journalFolder, DEFAULT_SETTINGS.journalFolder),
+    pagePreview: record2.pagePreview !== false,
+    templateFolder: safeFolder2(record2.templateFolder, DEFAULT_SETTINGS.templateFolder)
+  };
+}
+function readJson(storage, key2) {
+  try {
+    const raw = storage.getItem(key2);
+    if (raw === null || new TextEncoder().encode(raw).byteLength > MAX_TOCKTUTOR_SETTINGS_BYTES) return null;
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+function writeJson(storage, key2, value) {
+  try {
+    const raw = JSON.stringify(value);
+    if (new TextEncoder().encode(raw).byteLength > MAX_TOCKTUTOR_SETTINGS_BYTES) return false;
+    storage.setItem(key2, raw);
+    return true;
+  } catch {
+    return false;
+  }
+}
+function loadTockTutorSettings(storage, vaultId) {
+  if (!validVaultId(vaultId)) return { ...DEFAULT_SETTINGS };
+  return normalizeSettings(readJson(storage, settingsKey(vaultId)));
+}
+function saveTockTutorSettings(storage, vaultId, change) {
+  if (!validVaultId(vaultId)) return { ...DEFAULT_SETTINGS };
+  const settings = normalizeSettings({ ...loadTockTutorSettings(storage, vaultId), ...change });
+  writeJson(storage, settingsKey(vaultId), settings);
+  return settings;
+}
+function workspaceId(name2) {
+  return name2.normalize("NFKD").replace(/[\u0300-\u036f]/gu, "").toLocaleLowerCase().replace(/[^a-z0-9]+/gu, "-").replace(/^-|-$/gu, "").slice(0, 64) || "workspace";
+}
+function normalizeWorkspace(value, vaultId) {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return null;
+  const record2 = value;
+  if (typeof record2.id !== "string" || !/^[a-z0-9](?:[a-z0-9-]{0,63})$/u.test(record2.id)) return null;
+  if (typeof record2.name !== "string" || record2.name.trim().length === 0 || record2.name.length > 100) return null;
+  const session = hydrateWorkbenchSession(record2.session);
+  if (session.vault?.id !== vaultId) return null;
+  const createdAt = typeof record2.createdAt === "number" && Number.isFinite(record2.createdAt) && record2.createdAt >= 0 ? record2.createdAt : 0;
+  return { createdAt, focusMode: record2.focusMode === true, id: record2.id, name: record2.name.trim(), session };
+}
+function createNamedWorkspace(current, name2, session, createdAt = Date.now(), focusMode = false) {
+  const safeName = name2.trim().slice(0, 100) || "Workspace";
+  const base = workspaceId(safeName);
+  const used = new Set(current.map((workspace) => workspace.id));
+  let id = base;
+  for (let index2 = 2; used.has(id) && index2 <= MAX_TOCKTUTOR_WORKSPACES + 1; index2 += 1) id = `${base.slice(0, 60)}-${String(index2)}`;
+  if (used.has(id) || current.length >= MAX_TOCKTUTOR_WORKSPACES) return [...current];
+  return [...current, { createdAt, focusMode, id, name: safeName, session: hydrateWorkbenchSession(session) }];
+}
+function loadWorkbenchState(storage, vaultId) {
+  const fallback = { focusMode: false, session: createWorkbenchSession("/tocktutor", validVaultId(vaultId) ? { generation: 0, id: vaultId } : null, "pane-1"), workspaces: [] };
+  if (!validVaultId(vaultId)) return fallback;
+  const value = readJson(storage, stateKey(vaultId));
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return fallback;
+  const record2 = value;
+  const session = hydrateWorkbenchSession(record2.session);
+  if (session.vault?.id !== vaultId) return fallback;
+  const workspaces = [];
+  const ids = /* @__PURE__ */ new Set();
+  if (Array.isArray(record2.workspaces)) {
+    for (const candidate of record2.workspaces.slice(0, MAX_TOCKTUTOR_WORKSPACES)) {
+      const workspace = normalizeWorkspace(candidate, vaultId);
+      if (workspace !== null && !ids.has(workspace.id)) {
+        ids.add(workspace.id);
+        workspaces.push(workspace);
+      }
+    }
+  }
+  return { focusMode: record2.focusMode === true, session, workspaces };
+}
+function saveWorkbenchState(storage, vaultId, state) {
+  if (!validVaultId(vaultId) || state.session.vault?.id !== vaultId) return false;
+  return writeJson(storage, stateKey(vaultId), {
+    focusMode: state.focusMode === true,
+    session: hydrateWorkbenchSession(state.session),
+    workspaces: state.workspaces.slice(0, MAX_TOCKTUTOR_WORKSPACES)
+  });
+}
+function safeSnippetId(value) {
+  return value.toLocaleLowerCase().replace(/[^a-z0-9_-]+/gu, "-").replace(/^-|-$/gu, "").slice(0, 64) || "snippet";
+}
+function compileTockTutorCssSnippet(id, source) {
+  if (typeof source !== "string" || new TextEncoder().encode(source).byteLength > MAX_TOCKTUTOR_CSS_BYTES) return null;
+  const stripped = source.replace(/\/\*[\s\S]*?\*\//gu, "").trim();
+  if (stripped === "") return "";
+  if (/@|url\s*\(|expression\s*\(|javascript:|[<>]/iu.test(stripped)) return null;
+  const output = [];
+  let cursor = 0;
+  let rules = 0;
+  while (cursor < stripped.length) {
+    const open = stripped.indexOf("{", cursor);
+    const close = open < 0 ? -1 : stripped.indexOf("}", open + 1);
+    if (open < 0 || close < 0 || stripped.slice(close + 1).includes("{") && stripped.slice(close + 1).indexOf("}") < stripped.slice(close + 1).indexOf("{")) return null;
+    const selector = stripped.slice(cursor, open).trim();
+    const body = stripped.slice(open + 1, close).trim();
+    if (selector === "" || body === "" || body.includes("{") || body.includes("}")) return null;
+    const selectors = selector.split(",").map((value) => value.trim());
+    if (selectors.some((value) => value === "" || value.length > 1e3)) return null;
+    output.push(`${selectors.map((value) => `.tocktutor-editor-scope ${value}`).join(", ")} { ${body} }`);
+    rules += 1;
+    if (rules > 1e3) return null;
+    cursor = close + 1;
+    while (/\s/u.test(stripped[cursor] ?? "")) cursor += 1;
+  }
+  void safeSnippetId(id);
+  return output.join("\n");
+}
+
+// src/editor-commands.ts
+var MAX_EDITOR_COMMAND_SOURCE_BYTES = 2e6;
+function byteLength3(value) {
+  return new TextEncoder().encode(value).byteLength;
+}
+function boundedRange(source, start, end) {
+  const safeStart = Number.isSafeInteger(start) ? Math.max(0, Math.min(start, source.length)) : 0;
+  const safeEnd = Number.isSafeInteger(end) ? Math.max(safeStart, Math.min(end, source.length)) : safeStart;
+  return [safeStart, safeEnd];
+}
+function replaceRange(source, start, end, value, selectOffset = 0) {
+  const next = `${source.slice(0, start)}${value}${source.slice(end)}`;
+  if (byteLength3(next) > MAX_EDITOR_COMMAND_SOURCE_BYTES) return { selectionEnd: end, selectionStart: start, source };
+  return {
+    selectionEnd: start + value.length - selectOffset,
+    selectionStart: start + selectOffset,
+    source: next
+  };
+}
+function applyEditorCommand(source, command, selectionStart, selectionEnd) {
+  const [start, end] = boundedRange(source, selectionStart, selectionEnd);
+  const selected = source.slice(start, end);
+  if (command === "delete-line") {
+    const lineStart = Math.max(source.lastIndexOf("\n", Math.max(0, start - 1)), source.lastIndexOf("\r", Math.max(0, start - 1))) + 1;
+    let lineEnd = source.length;
+    for (let index2 = start; index2 < source.length; index2 += 1) {
+      if (source[index2] !== "\n" && source[index2] !== "\r") continue;
+      lineEnd = index2 + (source.startsWith("\r\n", index2) ? 2 : 1);
+      break;
+    }
+    return replaceRange(source, lineStart, lineEnd, "");
+  }
+  if (command === "insert-table") {
+    const prefix = start > 0 && !/(?:\r\n|[\r\n]){2}$/u.test(source.slice(0, start)) ? "\n\n" : "";
+    const suffix = end < source.length && !/^(?:\r\n|[\r\n]){2}/u.test(source.slice(end)) ? "\n" : "";
+    const table = `${prefix}| Column 1 | Column 2 |
+| --- | --- |
+|  |  |
+${suffix}`;
+    return replaceRange(source, start, end, table, prefix.length + 2);
+  }
+  if (command === "callout-tip") {
+    const content = (selected || "Tip").split(/\r?\n/u).map((line) => `> ${line}`).join("\n");
+    return replaceRange(source, start, end, `> [!tip]
+${content}
+`);
+  }
+  const wrappers = {
+    bold: ["**", "**"],
+    highlight: ["==", "=="],
+    italic: ["*", "*"],
+    link: ["[", "](Target.md)"],
+    strikethrough: ["~~", "~~"]
+  };
+  const [before, after] = wrappers[command];
+  const value = `${before}${selected || "text"}${after}`;
+  return {
+    selectionEnd: start + before.length + (selected || "text").length,
+    selectionStart: start + before.length,
+    source: `${source.slice(0, start)}${value}${source.slice(end)}`
+  };
+}
+function parseTable(source) {
+  if (byteLength3(source) > MAX_EDITOR_COMMAND_SOURCE_BYTES) return null;
+  const eol = source.includes("\r\n") ? "\r\n" : "\n";
+  const finalEol = /(?:\r\n|[\r\n])$/u.test(source);
+  const lines = source.split(/\r?\n/u);
+  if (finalEol) lines.pop();
+  if (lines.length < 2) return null;
+  const cells = lines.map((line) => line.trim().replace(/^\|/u, "").replace(/\|$/u, "").split("|").map((cell) => cell.trim()));
+  const width = cells[0]?.length ?? 0;
+  if (width < 1 || cells.some((row) => row.length !== width)) return null;
+  if (!cells[1]?.every((cell) => /^:?-{3,}:?$/u.test(cell))) return null;
+  return { cells, eol, finalEol };
+}
+function serializeTable(cells, eol, finalEol) {
+  return `${cells.map((row) => `| ${row.join(" | ")} |`).join(eol)}${finalEol ? eol : ""}`;
+}
+function compareCells(left, right) {
+  const leftNumber = Number(left);
+  const rightNumber = Number(right);
+  if (left.trim() !== "" && right.trim() !== "" && Number.isFinite(leftNumber) && Number.isFinite(rightNumber)) {
+    return leftNumber - rightNumber;
+  }
+  return left.localeCompare(right, void 0, { sensitivity: "base" });
+}
+function applyTableCommand(source, command) {
+  const parsed = parseTable(source);
+  if (parsed === null) return source;
+  const cells = parsed.cells.map((row) => [...row]);
+  const width = cells[0].length;
+  if (command.kind === "add-row") {
+    const index2 = Math.max(0, Math.min(command.row, cells.length - 2)) + 2;
+    cells.splice(index2, 0, Array.from({ length: width }, () => ""));
+  } else if (command.kind === "delete-row" || command.kind === "move-row-down" || command.kind === "move-row-up") {
+    const index2 = command.row + 2;
+    if (index2 < 2 || index2 >= cells.length) return source;
+    if (command.kind === "delete-row") cells.splice(index2, 1);
+    else {
+      const destination = index2 + (command.kind === "move-row-up" ? -1 : 1);
+      if (destination < 2 || destination >= cells.length) return source;
+      const [row] = cells.splice(index2, 1);
+      if (row !== void 0) cells.splice(destination, 0, row);
+    }
+  } else {
+    if (!("column" in command)) return source;
+    if (!Number.isSafeInteger(command.column) || command.column < 0 || command.column >= width) return source;
+    if (command.kind === "delete-column") {
+      if (width === 1) return source;
+      for (const row of cells) row.splice(command.column, 1);
+    } else if (command.kind.startsWith("align-")) {
+      const marker = command.kind === "align-center" ? ":---:" : command.kind === "align-left" ? ":---" : command.kind === "align-right" ? "---:" : "---";
+      cells[1][command.column] = marker;
+    } else {
+      const direction = command.kind === "sort-descending" ? -1 : 1;
+      const rows = cells.slice(2).map((row, index2) => ({ index: index2, row }));
+      rows.sort((left, right) => direction * compareCells(left.row[command.column] ?? "", right.row[command.column] ?? "") || left.index - right.index);
+      cells.splice(2, cells.length - 2, ...rows.map((entry) => entry.row));
+    }
+  }
+  return serializeTable(cells, parsed.eol, parsed.finalEol);
+}
+var SLASH_COMMANDS = /* @__PURE__ */ new Map([
+  ["/bold", "bold"],
+  ["/callout", "callout-tip"],
+  ["/highlight", "highlight"],
+  ["/italic", "italic"],
+  ["/link", "link"],
+  ["/strike", "strikethrough"],
+  ["/table", "insert-table"]
+]);
+function resolveSlashCommand(value) {
+  return SLASH_COMMANDS.get(value.trim().toLocaleLowerCase()) ?? null;
+}
+function resolvePlatformEditorCommand(event, isMac) {
+  const primary = isMac ? event.metaKey : event.ctrlKey;
+  if (!primary || event.altKey) return null;
+  const key2 = event.key.toLocaleLowerCase();
+  if (!event.shiftKey && key2 === "b") return "bold";
+  if (!event.shiftKey && key2 === "i") return "italic";
+  if (event.shiftKey && key2 === "x") return "strikethrough";
+  if (event.shiftKey && key2 === "h") return "highlight";
+  if (event.shiftKey && key2 === "k") return "delete-line";
+  return null;
+}
+function internalLinkDropMarkdown(path, label) {
+  if (!isSafeVaultRelativePath(path)) return null;
+  const target = path;
+  const safeLabel = label?.replace(/[\[\]|\r\n]/gu, "").trim().slice(0, 1e3);
+  return safeLabel ? `[[${target}|${safeLabel}]]` : `[[${target}]]`;
+}
+function codeRanges(source) {
+  const ranges2 = [];
+  const fence2 = /^ {0,3}(`{3,}|~{3,}).*$(?:\r?\n|\r)([\s\S]*?)^ {0,3}\1\s*$/gmu;
+  for (const match of source.matchAll(fence2)) {
+    if (match.index !== void 0) ranges2.push([match.index, match.index + match[0].length]);
+  }
+  for (const match of source.matchAll(/`[^`\r\n]*`/gu)) {
+    if (match.index !== void 0) ranges2.push([match.index, match.index + match[0].length]);
+  }
+  return ranges2;
+}
+function pagePreviewTargetAtOffset(source, offset4) {
+  if (!Number.isSafeInteger(offset4) || offset4 < 0 || offset4 > source.length || byteLength3(source) > MAX_EDITOR_COMMAND_SOURCE_BYTES) return null;
+  if (codeRanges(source).some(([start, end]) => offset4 >= start && offset4 < end)) return null;
+  for (const match of source.matchAll(/\[\[([^\]|\r\n]{1,2000})(?:\|[^\]\r\n]{0,2000})?\]\]/gu)) {
+    if (match.index === void 0 || offset4 < match.index || offset4 >= match.index + match[0].length) continue;
+    const [path, fragment] = match[1].split("#", 2);
+    if (!isSafeVaultRelativePath(/\.md$/iu.test(path) ? path : `${path}.md`)) return null;
+    return { fragment: fragment?.replace(/^\^/u, "") || null, path };
+  }
+  return null;
+}
+
+// src/markdown.ts
+function sourceLines2(source) {
+  const result = [];
+  let start = 0;
+  for (let index2 = 0; index2 < source.length; index2 += 1) {
+    const character = source[index2];
+    if (character !== "\n" && character !== "\r") continue;
+    result.push({ text: source.slice(start, index2), start });
+    if (character === "\r" && source[index2 + 1] === "\n") index2 += 1;
+    start = index2 + 1;
+  }
+  result.push({ text: source.slice(start), start });
+  return result;
+}
+function maskComments(line, open) {
+  const chars = line.split("");
+  let cursor = 0;
+  let inside = open;
+  while (cursor < line.length) {
+    const marker = line.indexOf("%%", cursor);
+    if (marker < 0) {
+      if (inside) for (let index2 = cursor; index2 < line.length; index2 += 1) chars[index2] = " ";
+      break;
+    }
+    if (inside) {
+      for (let index2 = cursor; index2 < marker + 2; index2 += 1) chars[index2] = " ";
+      inside = false;
+    } else {
+      for (let index2 = marker; index2 < marker + 2; index2 += 1) chars[index2] = " ";
+      inside = true;
+    }
+    cursor = marker + 2;
+  }
+  return { text: chars.join(""), open: inside };
+}
+function fence(value) {
+  const match = /^ {0,3}(`{3,}|~{3,})(.*)$/u.exec(value);
+  return match === null ? null : { marker: match[1], rest: match[2] };
+}
+function taskMatch(value) {
+  const match = /^(\s*[-*+]\s+)\[([^\]\n])\](?:\s+)(.*)$/u.exec(value);
+  return match === null ? null : { prefix: match[1], marker: match[2], body: match[3] };
+}
+function taskLocations(source) {
+  const locations = [];
+  let commentOpen = false;
+  let fenceMarker2 = null;
+  for (const line of sourceLines2(source)) {
+    const masked = maskComments(line.text, commentOpen);
+    commentOpen = masked.open;
+    const fenceMatch = fence(masked.text);
+    if (fenceMarker2 !== null) {
+      if (fenceMatch !== null && fenceMatch.marker[0] === fenceMarker2[0] && fenceMatch.marker.length >= fenceMarker2.length && fenceMatch.rest.trim() === "") fenceMarker2 = null;
+      continue;
+    }
+    if (fenceMatch !== null) {
+      fenceMarker2 = fenceMatch.marker;
+      continue;
+    }
+    const match = taskMatch(masked.text);
+    if (match === null) continue;
+    locations.push({
+      index: locations.length,
+      markerStart: line.start + match.prefix.length,
+      marker: match.marker
+    });
+  }
+  return locations;
+}
+function toggleMarkdownTask(source, taskIndex) {
+  if (!Number.isSafeInteger(taskIndex) || taskIndex < 0) return source;
+  const location = taskLocations(source).find((task) => task.index === taskIndex);
+  if (location === void 0) return source;
+  const next = location.marker === " " ? "x" : " ";
+  return `${source.slice(0, location.markerStart)}[${next}]${source.slice(location.markerStart + 3)}`;
+}
+function resolveEditorShortcut(event, isMac) {
+  const modifier = isMac ? event.metaKey && !event.ctrlKey : event.ctrlKey && !event.metaKey;
+  if (event.altKey) return null;
+  if (modifier && !event.shiftKey && event.key.toLowerCase() === "s") return "save";
+  if (modifier && !event.shiftKey && event.key.toLowerCase() === "p") return "command-palette";
+  if (modifier && event.shiftKey && event.key.toLowerCase() === "k") return "delete-line";
+  if (!modifier && !event.shiftKey && !event.metaKey && !event.ctrlKey && event.key === "Escape") {
+    return "simplify-selection";
+  }
+  return null;
+}
+
+// src/vault-events.ts
+function isRecord4(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+function hasExactKeys(value, keys) {
+  const actual = Object.keys(value).toSorted();
+  const expected = keys.toSorted();
+  return actual.length === expected.length && actual.every((key2, index2) => key2 === expected[index2]);
+}
+function isVaultReference(value) {
+  return isRecord4(value) && hasExactKeys(value, ["generation", "id"]) && Number.isSafeInteger(value.generation) && value.generation >= 0 && typeof value.id === "string" && /^vault:[0-9a-f]{64}$/u.test(value.id);
+}
+function isNoteVaultChangeEvent(value) {
+  if (!isRecord4(value) || !isVaultReference(value.vault)) return false;
+  if (value.kind === "vault") {
+    return value.action === "activated" && hasExactKeys(value, ["action", "kind", "vault"]);
+  }
+  if (value.kind === "tree") {
+    return (value.action === "changed" || value.action === "watcher-error") && hasExactKeys(value, ["action", "kind", "vault"]);
+  }
+  if (value.kind !== "entry" || !isSafeVaultRelativePath(value.path)) return false;
+  if (value.action === "created" || value.action === "external-change" || value.action === "external-rename" || value.action === "stored" || value.action === "updated") return hasExactKeys(value, ["action", "kind", "path", "vault"]);
+  return (value.action === "duplicated" || value.action === "moved" || value.action === "restored" || value.action === "trashed") && isSafeVaultRelativePath(value.fromPath) && hasExactKeys(value, ["action", "fromPath", "kind", "path", "vault"]);
+}
+function subscribeNoteVaultChanges(remote, currentVault, listener) {
+  return remote.$on("note-vault/change", (event) => {
+    if (!isNoteVaultChangeEvent(event)) return;
+    const current = currentVault();
+    if (current === null || event.vault.id !== current.id || event.vault.generation !== current.generation) return;
+    listener(event);
+  });
+}
+
+// src/route.tsx
+var import_jsx_runtime23 = require("react/jsx-runtime");
+var ROUTE_PREFIX = "/tocktutor";
+var TREE_LIMIT = 200;
+var DEFAULT_SIDEBAR_WIDTH = 280;
+var COLLAPSED_TITLEBAR_SIDEBAR_WIDTH = 84;
+var MIN_SIDEBAR_WIDTH = 180;
+var MAX_SIDEBAR_WIDTH = 480;
+var DEFAULT_ASSISTANT_PANEL_WIDTH = 300;
+var MIN_ASSISTANT_PANEL_WIDTH = 240;
+var MAX_ASSISTANT_PANEL_WIDTH = 720;
+var clampAssistantPanelWidth = (width) => Math.min(
+  MAX_ASSISTANT_PANEL_WIDTH,
+  Math.max(MIN_ASSISTANT_PANEL_WIDTH, width)
+);
+var MAX_ROUTE_SOURCE_BYTES = 2e6;
+var RemoteCallError = class extends Error {
+  constructor(code, message) {
+    super(message);
+    this.code = code;
+  }
+};
+function remoteValue(result) {
+  if (result.ok) return result.value;
+  throw new RemoteCallError(result.error.code, result.error.message);
+}
+function sameVault(left, right) {
+  return left !== null && left.id === right.id && left.generation === right.generation;
+}
+function validRecentVaults(value) {
+  return Number.isSafeInteger(value?.generation) && value.generation >= 0 && Array.isArray(value.vaults) && value.vaults.length <= 20 && value.vaults.every((vault) => /^vault:[0-9a-f]{64}$/u.test(vault.id) && Number.isFinite(vault.lastOpenedAt) && vault.lastOpenedAt >= 0);
+}
+function validSearchResult(value, vault) {
+  return value?.generation === vault.generation && typeof value.query === "string" && Array.isArray(value.matches) && value.matches.length <= 100 && value.matches.every((match) => isSafeVaultRelativePath(match.path) && typeof match.preview === "string" && match.preview.length <= 4096 && (match.line === null || Number.isSafeInteger(match.line)));
+}
+function documentKind(path) {
+  if (!isSafeVaultRelativePath(path)) return null;
+  if (/\.(?:markdown|md)$/iu.test(path)) return "markdown";
+  if (/\.canvas$/iu.test(path)) return "canvas";
+  if (/\.base$/iu.test(path)) return "base";
+  return null;
+}
+function supportedDocument(path) {
+  return documentKind(path) !== null;
+}
+function routeModeFromSession(mode) {
+  return mode === "wysiwyg" ? "live-preview" : mode;
+}
+function sessionModeFromRoute(mode) {
+  return mode === "live-preview" ? "wysiwyg" : mode;
+}
+function boundedSource(source) {
+  return new TextEncoder().encode(source).byteLength <= MAX_ROUTE_SOURCE_BYTES;
+}
+function defaultWorkbenchStorage() {
+  try {
+    return typeof globalThis.localStorage === "undefined" ? null : globalThis.localStorage;
+  } catch {
+    return null;
+  }
+}
+function pathFromTockTutorLocation(pathname) {
+  if (pathname === ROUTE_PREFIX || pathname === `${ROUTE_PREFIX}/`) return null;
+  if (!pathname.startsWith(`${ROUTE_PREFIX}/`)) return null;
+  try {
+    const path = pathname.slice(ROUTE_PREFIX.length + 1).split("/").map((segment) => decodeURIComponent(segment)).join("/");
+    return supportedDocument(path) ? path : null;
+  } catch {
+    return null;
+  }
+}
+function routeForPath(path) {
+  return `${ROUTE_PREFIX}/${path.split("/").map((segment) => encodeURIComponent(segment)).join("/")}`;
+}
+function initialSnapshot() {
+  return Object.freeze({
+    attachmentPreview: null,
+    baseFiles: Object.freeze([]),
+    bookmarks: Object.freeze([]),
+    canGoBack: false,
+    canGoForward: false,
+    commandPaletteOpen: false,
+    dispatchDialog: null,
+    documentKind: null,
+    draftRecovered: false,
+    entries: Object.freeze([]),
+    facets: null,
+    focusedPaneId: "pane-1",
+    focusMode: false,
+    graph: null,
+    graphLayout: Object.freeze([]),
+    graphMode: "global",
+    links: null,
+    message: "Loading the active vault.",
+    outline: null,
+    mode: "source",
+    organizationProposal: null,
+    path: null,
+    phase: "loading",
+    recentVaults: Object.freeze([]),
+    recentlyClosed: Object.freeze([]),
+    recoveryOpen: false,
+    revision: null,
+    saveStatus: "saved",
+    searchLoading: false,
+    searchMatches: Object.freeze([]),
+    searchMode: "query",
+    searchOpen: false,
+    searchQuery: "",
+    selectedSnapshot: null,
+    selectionEnd: 0,
+    selectionStart: 0,
+    snapshots: Object.freeze([]),
+    source: "",
+    trash: Object.freeze([]),
+    panes: Object.freeze([Object.freeze({
+      activePath: null,
+      id: "pane-1",
+      tabs: Object.freeze([])
+    })]),
+    vault: null,
+    warnings: Object.freeze([]),
+    workspaces: Object.freeze([])
+  });
+}
+var WorkbenchRouteController = class {
+  constructor(remote, navigate, now = () => /* @__PURE__ */ new Date(), storage = defaultWorkbenchStorage()) {
+    this.remote = remote;
+    this.navigate = navigate;
+    this.now = now;
+    this.storage = storage;
+  }
+  snapshot = initialSnapshot();
+  listeners = /* @__PURE__ */ new Set();
+  vaultGeneration = 0;
+  shellSession = createWorkbenchSession(ROUTE_PREFIX, null, "pane-1");
+  recentlyClosed = [];
+  historyBack = [];
+  historyForward = [];
+  bookmarks = [];
+  workspaces = [];
+  operation = 0;
+  dispatchRevision = 0;
+  operationAbort = null;
+  saveAbort = null;
+  saving = null;
+  draftAbort = null;
+  draftTimer = null;
+  eventDispose = null;
+  pendingDispatch = null;
+  pathname = ROUTE_PREFIX;
+  started = false;
+  disposed = false;
+  getSnapshot = () => this.snapshot;
+  async handleDispatch(event) {
+    const vault = this.snapshot.vault;
+    if (this.disposed || this.snapshot.phase !== "ready" || vault === null) return "stale";
+    const revision = this.dispatchRevision;
+    if (event.operationId.length === 0 || event.operationId.length > 256 || /[\u0000-\u001f\u007f]/u.test(event.operationId)) return "failed";
+    if (event.kind === "quick-action") {
+      if (event.action === "new" || event.action === "capture") {
+        return await this.openDispatchDialog(event.action, event.operationId, revision, vault);
+      }
+      if (event.action === "search") {
+        this.openSearch("");
+        return "handled";
+      }
+    }
+    const request = event.kind === "protocol" ? event.request : event.action === "daily" ? { action: "daily" } : void 0;
+    if (request === void 0) return "failed";
+    if (request.action === "choose-vault" || request.vault !== void 0 || request.paneType === "window") return "failed";
+    if (request.action === "search") {
+      if (request.query !== void 0 && request.query.length > 1e3) return "failed";
+      this.openSearch(request.query ?? "");
+      return "handled";
+    }
+    if (request.action === "open") {
+      if (request.file === void 0) {
+        if (this.snapshot.saveStatus !== "saved" && !await this.save()) return "failed";
+        if (!this.dispatchCurrent(revision, vault)) return "stale";
+        this.navigate(ROUTE_PREFIX);
+        return "handled";
+      }
+      const opened = await this.select(request.file, true, revision);
+      if (!this.dispatchCurrent(revision, vault)) return "stale";
+      return opened ? "handled" : "failed";
+    }
+    if (request.action === "daily") {
+      const journal = buildJournalNote({
+        folder: this.snapshot.settings?.journalFolder ?? "Journals",
+        now: this.now()
+      });
+      const path2 = journal.path;
+      const exists = this.snapshot.path === path2 || this.snapshot.entries.some((entry) => entry.path === path2);
+      if (exists) {
+        if (request.content !== void 0 || request.ifExists !== void 0) return "failed";
+        if (request.silent === true) return "handled";
+        const opened = await this.select(path2, true, revision);
+        if (!this.dispatchCurrent(revision, vault)) return "stale";
+        return opened ? "handled" : "failed";
+      }
+      return await this.createDispatchedDocument(
+        path2,
+        request.content ?? journal.content,
+        request.silent === true,
+        revision,
+        vault
+      );
+    }
+    if (request.action === "unique") {
+      const existing = new Set(this.snapshot.entries.filter((entry) => entry.kind === "document").map((entry) => entry.path));
+      if (this.snapshot.path !== null) existing.add(this.snapshot.path);
+      return await this.createDispatchedDocument(
+        uniqueNotePath(this.now(), existing),
+        request.content ?? "",
+        request.silent === true,
+        revision,
+        vault
+      );
+    }
+    if (request.action !== "new") return "failed";
+    const path = request.file ?? (request.name === void 0 ? void 0 : /\.md$/iu.test(request.name) ? request.name : `${request.name}.md`);
+    if (path === void 0 || !isSafeVaultRelativePath(path) || !/\.md$/iu.test(path)) return "failed";
+    return await this.createDispatchedDocument(
+      path,
+      request.content ?? "",
+      request.silent === true,
+      revision,
+      vault
+    );
+  }
+  async createDispatchedDocument(path, content, silent, revision, vault) {
+    if (!isSafeVaultRelativePath(path) || !/\.md$/iu.test(path) || !boundedSource(content)) return "failed";
+    const previousPath = this.snapshot.path;
+    if (this.snapshot.saveStatus !== "saved" && !await this.save()) return "failed";
+    if (!this.dispatchCurrent(revision, vault)) return "stale";
+    try {
+      const created = remoteValue(await this.remote.tocktutorWorkbench.createDocument({
+        content,
+        expectedVault: vault,
+        path
+      }));
+      if (!this.dispatchCurrent(revision, vault)) return "stale";
+      if (created.generation !== vault.generation || created.path !== path || created.status !== "created") return "failed";
+      if (silent) return "handled";
+      this.update({
+        documentKind: "markdown",
+        message: `${path} created.`,
+        mode: "source",
+        path,
+        revision: created.revision,
+        saveStatus: "saved",
+        source: content
+      });
+      this.recordOpen(path, true, previousPath);
+      this.navigate(routeForPath(path));
+      return "handled";
+    } catch {
+      return this.dispatchCurrent(revision, vault) ? "failed" : "stale";
+    }
+  }
+  openDispatchDialog(kind, operationId, revision, vault) {
+    this.settlePendingDispatch("stale");
+    this.update({ dispatchDialog: kind });
+    return new Promise((resolve) => {
+      this.pendingDispatch = { kind, operationId, resolve, revision, submitting: false, vault };
+    });
+  }
+  async submitDispatchDialog(draft) {
+    const pending = this.pendingDispatch;
+    if (pending === null || pending.submitting) return;
+    pending.submitting = true;
+    let path;
+    let content;
+    if (pending.kind === "new") {
+      path = draft.path?.trim() ?? "";
+      content = "";
+    } else {
+      const title = draft.title?.trim() ?? "";
+      const text2 = draft.text ?? "";
+      if (title.length === 0 || title.length > 200 || text2.length > 1e5) {
+        this.settlePendingDispatch("failed");
+        return;
+      }
+      try {
+        const capture = buildCaptureNote({
+          body: text2,
+          existing: new Set(this.snapshot.entries.filter((entry) => entry.kind === "document").map((entry) => entry.path)),
+          now: this.now(),
+          title
+        });
+        path = capture.path;
+        content = capture.content;
+      } catch {
+        this.settlePendingDispatch("failed");
+        return;
+      }
+    }
+    const result = await this.createDispatchedDocument(
+      path,
+      content,
+      false,
+      pending.revision,
+      pending.vault
+    );
+    if (this.pendingDispatch === pending) this.settlePendingDispatch(result);
+  }
+  cancelDispatchDialog() {
+    this.settlePendingDispatch("failed");
+  }
+  setSearchQuery(query) {
+    if (query.length <= 1e3) this.update({ searchQuery: query });
+  }
+  closeSearch() {
+    this.update({ searchLoading: false, searchMatches: Object.freeze([]), searchOpen: false, searchQuery: "" });
+  }
+  openSearch(query) {
+    this.update({ searchMatches: Object.freeze([]), searchOpen: true, searchQuery: query });
+  }
+  setSearchMode(mode) {
+    this.update({ searchMode: mode });
+  }
+  async runSearch() {
+    const vault = this.snapshot.vault;
+    const query = this.snapshot.searchQuery.trim();
+    if (vault === null || query.length === 0 || query.length > 1e3) {
+      this.update({ searchMatches: Object.freeze([]) });
+      return false;
+    }
+    const mode = this.snapshot.searchMode ?? "query";
+    const operation = this.nextOperation();
+    this.update({ searchLoading: true });
+    try {
+      const result = remoteValue(await this.remote.tocktutorWorkbench.search({
+        expectedVault: vault,
+        limit: 100,
+        mode,
+        query
+      }, operation.signal));
+      if (!this.current(operation.id, vault) || !validSearchResult(result, vault)) return false;
+      this.update({
+        message: result.truncated ? "Search returned a bounded partial result." : `${String(result.matches.length)} search results.`,
+        searchLoading: false,
+        searchMatches: Object.freeze(result.matches.map((match) => Object.freeze({ ...match })))
+      });
+      return true;
+    } catch {
+      if (this.current(operation.id, vault) && !operation.signal.aborted) {
+        this.update({ message: "Search could not be completed.", searchLoading: false });
+      }
+      return false;
+    }
+  }
+  async loadFacets() {
+    const vault = this.snapshot.vault;
+    if (vault === null) return false;
+    const operation = this.nextOperation();
+    try {
+      const facets = remoteValue(await this.remote.tocktutorWorkbench.facets({ expectedVault: vault, limit: 1e3 }, operation.signal));
+      if (!this.current(operation.id, vault) || facets.generation !== vault.generation || !Array.isArray(facets.tags) || !Array.isArray(facets.properties) || facets.tags.length > 1e3 || facets.properties.length > 1e3) return false;
+      this.update({ facets });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  async loadGraph(mode) {
+    const vault = this.snapshot.vault;
+    if (vault === null || mode === "local" && this.snapshot.path === null) return false;
+    const operation = this.nextOperation();
+    try {
+      const graph = remoteValue(await this.remote.tocktutorWorkbench.graph({
+        ...mode === "local" ? { depth: 2 } : {},
+        direction: "both",
+        expectedVault: vault,
+        includeAttachments: false,
+        includeTags: false,
+        limit: 180,
+        ...mode === "local" && this.snapshot.path !== null ? { path: this.snapshot.path } : {},
+        scope: mode
+      }, operation.signal));
+      if (!this.current(operation.id, vault) || graph.generation !== vault.generation || !Array.isArray(graph.nodes) || !Array.isArray(graph.edges)) return false;
+      const projected = projectGraph(graph, { includeOrphans: true, query: "" });
+      const graphLayout = layoutGraph(projected, {
+        centerForce: 0.1,
+        iterations: 32,
+        linkDistance: 120,
+        linkForce: 0.08,
+        repelForce: 1800
+      });
+      this.update({ graph, graphLayout: Object.freeze(graphLayout.map((node) => Object.freeze(node))), graphMode: mode });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  async openSmartView(kind) {
+    this.openSearch("");
+    if (kind === "recent") {
+      const matches = this.snapshot.entries.filter((entry) => entry.kind === "document" && /\.(?:markdown|md)$/iu.test(entry.path)).toSorted((left, right) => right.modifiedAt - left.modifiedAt || left.path.localeCompare(right.path)).slice(0, 100).map((entry) => ({ kind: "path", line: null, path: entry.path, preview: "Recently modified note." }));
+      this.update({ searchMatches: Object.freeze(matches) });
+      return true;
+    }
+    if (kind === "tags") return await this.loadFacets();
+    const query = kind === "tasks" ? "task:todo" : kind === "journals" ? "path:Journals" : kind === "favorites" ? "[favorite:true]" : "[kind:collection]";
+    this.setSearchQuery(query);
+    this.setSearchMode("query");
+    return await this.runSearch();
+  }
+  async loadRelationships() {
+    const vault = this.snapshot.vault;
+    const path = this.snapshot.path;
+    if (vault === null || path === null || this.snapshot.documentKind !== "markdown") return false;
+    const operation = this.nextOperation();
+    try {
+      const [outlineResult, linksResult] = await Promise.all([
+        this.remote.tocktutorWorkbench.outline({ expectedVault: vault, includeFootnotes: true, path }, operation.signal),
+        this.remote.tocktutorWorkbench.links({ expectedVault: vault, includeUnlinked: true, path }, operation.signal)
+      ]);
+      const outline = remoteValue(outlineResult);
+      const links = remoteValue(linksResult);
+      if (!this.current(operation.id, vault) || this.snapshot.path !== path || outline.generation !== vault.generation || links.generation !== vault.generation || outline.path !== path || links.path !== path || !Array.isArray(outline.headings) || !Array.isArray(links.backlinkDetails) || !Array.isArray(links.outgoingDetails)) return false;
+      this.update({ links, outline });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  jumpToLine(line) {
+    if (!Number.isSafeInteger(line) || line < 1 || this.snapshot.path === null) return false;
+    let offset4 = 0;
+    for (let current = 1; current < line; current += 1) {
+      const next = this.snapshot.source.indexOf("\n", offset4);
+      if (next < 0) return false;
+      offset4 = next + 1;
+    }
+    this.setMode("source");
+    this.setSelection(offset4, offset4);
+    return true;
+  }
+  settlePendingDispatch(result) {
+    const pending = this.pendingDispatch;
+    if (pending === null) return;
+    this.pendingDispatch = null;
+    this.update({ dispatchDialog: null });
+    pending.resolve(result);
+  }
+  dispatchCurrent(revision, vault) {
+    return !this.disposed && revision === this.dispatchRevision && sameVault(this.snapshot.vault, vault);
+  }
+  invalidateDispatch() {
+    this.dispatchRevision += 1;
+    this.settlePendingDispatch("stale");
+  }
+  subscribe = (listener) => {
+    this.listeners.add(listener);
+    return () => {
+      this.listeners.delete(listener);
+    };
+  };
+  update(change) {
+    if (this.disposed) return;
+    this.snapshot = Object.freeze({ ...this.snapshot, ...change });
+    for (const listener of this.listeners) listener();
+  }
+  shellPanes() {
+    return Object.freeze(this.shellSession.groups.map((group) => Object.freeze({
+      activePath: group.tabs.find((tab) => tab.id === group.activeTabId)?.path ?? null,
+      id: group.id,
+      tabs: Object.freeze(group.tabs.map((tab) => Object.freeze({
+        dirty: tab.dirty,
+        mode: routeModeFromSession(tab.mode),
+        path: tab.path,
+        pinned: tab.pinned
+      })))
+    })));
+  }
+  syncShell(change = {}) {
+    this.update({
+      canGoBack: this.historyBack.length > 0,
+      canGoForward: this.historyForward.length > 0,
+      focusedPaneId: this.shellSession.focusedGroupId,
+      panes: this.shellPanes(),
+      recentlyClosed: Object.freeze(this.recentlyClosed.map((tab) => Object.freeze({ ...tab }))),
+      workspaces: Object.freeze(this.workspaces.map((workspace) => Object.freeze({ ...workspace }))),
+      ...change
+    });
+    const vaultId = this.shellSession.vault?.id;
+    if (this.storage !== null && vaultId !== void 0) {
+      saveWorkbenchState(this.storage, vaultId, {
+        focusMode: this.snapshot.focusMode === true,
+        session: this.shellSession,
+        workspaces: this.workspaces
+      });
+    }
+  }
+  pane(id = this.snapshot.focusedPaneId) {
+    return this.snapshot.panes.find((candidate) => candidate.id === id);
+  }
+  recordOpen(path, recordHistory = true, previous = this.snapshot.path) {
+    if (recordHistory && previous !== null && previous !== path) {
+      this.historyBack.push(previous);
+      if (this.historyBack.length > MAX_NOTE_TABS * MAX_PANE_GROUPS) this.historyBack.shift();
+      this.historyForward.length = 0;
+    }
+    this.shellSession = openNoteTab(
+      this.shellSession,
+      this.shellSession.focusedGroupId,
+      path,
+      { mode: sessionModeFromRoute(this.snapshot.mode) }
+    );
+    this.shellSession = markTabDirty(this.shellSession, this.shellSession.focusedGroupId, path, false);
+    this.syncShell();
+  }
+  recordDirty(dirty) {
+    const path = this.snapshot.path;
+    if (path === null) return;
+    this.shellSession = markTabDirty(
+      this.shellSession,
+      this.shellSession.focusedGroupId,
+      path,
+      dirty
+    );
+    this.syncShell();
+  }
+  scheduleDraft() {
+    if (this.draftTimer !== null) clearTimeout(this.draftTimer);
+    this.draftAbort?.abort();
+    const vault = this.snapshot.vault;
+    const path = this.snapshot.path;
+    const revision = this.snapshot.revision;
+    const content = this.snapshot.source;
+    if (vault === null || path === null) return;
+    const abort = new AbortController();
+    this.draftAbort = abort;
+    this.draftTimer = setTimeout(() => {
+      this.draftTimer = null;
+      void this.remote.tocktutorWorkbench.saveDraft({
+        content,
+        expectedVault: vault,
+        path,
+        ...revision === null ? {} : { revision }
+      }, abort.signal).catch(() => void 0).finally(() => {
+        if (this.draftAbort === abort) this.draftAbort = null;
+      });
+    }, 400);
+  }
+  clearDocument() {
+    this.invalidateDispatch();
+    this.nextOperation();
+    this.update({
+      baseFiles: Object.freeze([]),
+      documentKind: null,
+      draftRecovered: false,
+      links: null,
+      message: "Select a note from the vault.",
+      organizationProposal: null,
+      outline: null,
+      path: null,
+      revision: null,
+      saveStatus: "saved",
+      source: ""
+    });
+  }
+  nextOperation() {
+    this.operationAbort?.abort();
+    this.operationAbort = new AbortController();
+    this.operation += 1;
+    return { id: this.operation, signal: this.operationAbort.signal };
+  }
+  current(id, vault) {
+    return !this.disposed && id === this.operation && (vault === void 0 || sameVault(this.snapshot.vault, vault));
+  }
+  async syncLocation(pathname) {
+    this.pathname = pathname;
+    if (!this.started) {
+      this.started = true;
+      await this.reload();
+      return;
+    }
+    const path = pathFromTockTutorLocation(pathname);
+    if (this.snapshot.phase !== "ready" || path === this.snapshot.path) return;
+    if (path !== null) {
+      await this.select(path, false);
+      return;
+    }
+    if (this.snapshot.saveStatus !== "saved" && !await this.save()) {
+      if (this.snapshot.path !== null) this.navigate(routeForPath(this.snapshot.path), "replace");
+      return;
+    }
+    this.shellSession = setActiveNoteTab(
+      this.shellSession,
+      this.shellSession.focusedGroupId,
+      null
+    );
+    this.syncShell();
+    this.clearDocument();
+  }
+  async reload() {
+    this.invalidateDispatch();
+    const operation = this.nextOperation();
+    this.shellSession = createWorkbenchSession(ROUTE_PREFIX, null, "pane-1");
+    this.bookmarks = [];
+    this.vaultGeneration = 0;
+    this.recentlyClosed.length = 0;
+    this.historyBack.length = 0;
+    this.historyForward.length = 0;
+    this.eventDispose?.();
+    this.eventDispose = null;
+    this.update({
+      baseFiles: Object.freeze([]),
+      bookmarks: Object.freeze([]),
+      canGoBack: false,
+      canGoForward: false,
+      dispatchDialog: null,
+      documentKind: null,
+      draftRecovered: false,
+      entries: Object.freeze([]),
+      facets: null,
+      focusedPaneId: "pane-1",
+      graph: null,
+      graphLayout: Object.freeze([]),
+      graphMode: "global",
+      links: null,
+      message: "Loading the active vault.",
+      organizationProposal: null,
+      outline: null,
+      path: null,
+      phase: "loading",
+      recentVaults: Object.freeze([]),
+      recentlyClosed: Object.freeze([]),
+      revision: null,
+      saveStatus: "saved",
+      searchLoading: false,
+      searchMatches: Object.freeze([]),
+      searchMode: "query",
+      searchOpen: false,
+      searchQuery: "",
+      selectionEnd: 0,
+      selectionStart: 0,
+      source: "",
+      panes: this.shellPanes(),
+      vault: null,
+      warnings: Object.freeze([])
+    });
+    try {
+      const recent = remoteValue(await this.remote.tocktutorWorkbench.listRecentVaults(operation.signal));
+      if (!this.current(operation.id) || !validRecentVaults(recent)) return;
+      this.vaultGeneration = recent.generation;
+      const recentVaults = Object.freeze(recent.vaults.map((vault2) => Object.freeze({ ...vault2 })));
+      const vault = remoteValue(await this.remote.tocktutorWorkbench.currentVault(operation.signal));
+      if (!this.current(operation.id)) return;
+      if (vault === null) {
+        this.update({ message: "No active TockTutor vault is available.", phase: "inactive", recentVaults });
+        return;
+      }
+      if (vault.generation !== recent.generation) return await this.reload();
+      const page = remoteValue(await this.remote.tocktutorWorkbench.listTree({
+        expectedVault: vault,
+        limit: TREE_LIMIT
+      }, operation.signal));
+      if (!this.current(operation.id) || page.generation !== vault.generation) return;
+      const openable = new Set(page.entries.filter((entry) => entry.kind === "document" && supportedDocument(entry.path)).map((entry) => entry.path));
+      let settings;
+      let restoredFocusMode = false;
+      if (this.storage === null) {
+        this.shellSession = createWorkbenchSession(ROUTE_PREFIX, vault, "pane-1");
+        this.bookmarks = [];
+        this.workspaces = [];
+      } else {
+        const restored = loadWorkbenchState(this.storage, vault.id);
+        this.shellSession = hydrateWorkbenchSession({
+          ...restored.session,
+          vault,
+          groups: restored.session.groups.map((group) => ({
+            ...group,
+            tabs: group.tabs.filter((tab) => openable.has(tab.path))
+          }))
+        });
+        this.bookmarks = loadBookmarks(this.storage, vault.id);
+        this.workspaces = restored.workspaces;
+        restoredFocusMode = restored.focusMode;
+        settings = loadTockTutorSettings(this.storage, vault.id);
+      }
+      this.update({
+        bookmarks: Object.freeze(this.bookmarks.map((bookmark) => Object.freeze({ ...bookmark }))),
+        entries: Object.freeze(page.entries.toSorted((left, right) => left.path.localeCompare(right.path))),
+        focusedPaneId: this.shellSession.focusedGroupId,
+        focusMode: restoredFocusMode,
+        message: page.truncated ? "The vault tree is truncated to a bounded result." : "Vault ready.",
+        panes: this.shellPanes(),
+        phase: "ready",
+        recentVaults,
+        ...settings === void 0 ? {} : { settings },
+        vault,
+        warnings: Object.freeze(page.warnings),
+        workspaces: Object.freeze(this.workspaces.map((workspace) => Object.freeze({ ...workspace })))
+      });
+      this.eventDispose = this.remote.$on("note-vault/change", (event) => {
+        this.onVaultChange(event);
+      });
+      const path = pathFromTockTutorLocation(this.pathname) ?? this.pane()?.activePath ?? null;
+      if (path !== null) await this.select(path, false);
+    } catch (error51) {
+      if (!this.current(operation.id) || operation.signal.aborted) return;
+      this.update({ message: this.failureMessage(error51, "The vault could not be loaded."), phase: "error" });
+    }
+  }
+  onVaultChange(value) {
+    if (!isNoteVaultChangeEvent(value)) return;
+    if (value.action === "activated") {
+      if (!sameVault(this.snapshot.vault, value.vault)) void this.reload();
+      return;
+    }
+    if (!sameVault(this.snapshot.vault, value.vault)) return;
+    if (value.kind === "tree") {
+      void this.refreshTree(value.vault);
+      return;
+    }
+    const selected = this.snapshot.path;
+    if (selected !== null && this.snapshot.saveStatus !== "saved" && (value.path === selected || "fromPath" in value && value.fromPath === selected)) {
+      this.update({ message: "External Change: The active file changed on disk. Your local draft remains unsaved." });
+      void this.refreshTree(value.vault);
+      return;
+    }
+    if (selected !== null && this.snapshot.saveStatus === "saved" && (value.path === selected || "fromPath" in value && value.fromPath === selected)) {
+      const nextPath = value.path === selected ? selected : value.path;
+      if (supportedDocument(nextPath)) {
+        void this.select(nextPath, false);
+      } else {
+        const closed = closeNoteTab(this.shellSession, this.shellSession.focusedGroupId, selected);
+        this.shellSession = closed.session;
+        this.syncShell();
+        this.clearDocument();
+        this.navigate(ROUTE_PREFIX, "replace");
+        void this.refreshTree(value.vault);
+      }
+    } else {
+      void this.refreshTree(value.vault);
+    }
+  }
+  async refreshTree(vault) {
+    const operation = this.nextOperation();
+    try {
+      const page = remoteValue(await this.remote.tocktutorWorkbench.listTree({
+        expectedVault: vault,
+        limit: TREE_LIMIT
+      }, operation.signal));
+      if (!this.current(operation.id, vault) || page.generation !== vault.generation) return;
+      this.update({
+        entries: Object.freeze(page.entries.toSorted((left, right) => left.path.localeCompare(right.path))),
+        warnings: Object.freeze(page.warnings)
+      });
+    } catch (error51) {
+      if (this.current(operation.id, vault) && !operation.signal.aborted) {
+        this.update({ message: this.failureMessage(error51, "The vault tree could not be refreshed.") });
+      }
+    }
+  }
+  async activateRecentVault(id) {
+    if (!/^vault:[0-9a-f]{64}$/u.test(id) || this.snapshot.recentVaults?.some((vault) => vault.id === id) !== true) return false;
+    if (this.snapshot.saveStatus !== "saved" && !await this.save()) return false;
+    const operation = this.nextOperation();
+    const expectedGeneration = this.vaultGeneration;
+    try {
+      const vault = remoteValue(await this.remote.tocktutorWorkbench.activateRecentVault({
+        expectedGeneration,
+        id
+      }, operation.signal));
+      if (!this.current(operation.id) || vault.generation < expectedGeneration || vault.id !== id) return false;
+      await this.reload();
+      return sameVault(this.snapshot.vault, vault);
+    } catch {
+      return false;
+    }
+  }
+  async removeRecentVault(id) {
+    if (!/^vault:[0-9a-f]{64}$/u.test(id) || this.snapshot.recentVaults?.some((vault) => vault.id === id) !== true) return false;
+    const operation = this.nextOperation();
+    try {
+      const result = remoteValue(await this.remote.tocktutorWorkbench.removeRecentVault({
+        expectedGeneration: this.vaultGeneration,
+        id
+      }, operation.signal));
+      if (!this.current(operation.id) || !validRecentVaults(result) || result.generation !== this.vaultGeneration) return false;
+      this.update({ recentVaults: Object.freeze(result.vaults.map((vault) => Object.freeze({ ...vault }))) });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  async openSandboxVault() {
+    if (this.snapshot.saveStatus !== "saved" && !await this.save()) return false;
+    const operation = this.nextOperation();
+    const expectedGeneration = this.vaultGeneration;
+    try {
+      const vault = remoteValue(await this.remote.tocktutorWorkbench.openSandboxVault({ expectedGeneration }, operation.signal));
+      if (!this.current(operation.id) || vault.generation < expectedGeneration) return false;
+      await this.reload();
+      return sameVault(this.snapshot.vault, vault);
+    } catch {
+      return false;
+    }
+  }
+  async setRecoveryOpen(open) {
+    this.update({ recoveryOpen: open, selectedSnapshot: open ? this.snapshot.selectedSnapshot ?? null : null });
+    if (!open) return;
+    const vault = this.snapshot.vault;
+    if (vault === null) return;
+    const path = this.snapshot.path;
+    const operation = this.nextOperation();
+    try {
+      const trash = remoteValue(await this.remote.tocktutorWorkbench.listTrash({ expectedVault: vault }, operation.signal));
+      if (!this.current(operation.id, vault) || trash.generation !== vault.generation || !Array.isArray(trash.entries)) return;
+      let snapshots = [];
+      if (path !== null) {
+        const result = remoteValue(await this.remote.tocktutorWorkbench.listSnapshots({ expectedVault: vault, path }, operation.signal));
+        if (!this.current(operation.id, vault) || result.generation !== vault.generation || !Array.isArray(result.snapshots)) return;
+        snapshots = result.snapshots;
+      }
+      this.update({
+        snapshots: Object.freeze(snapshots.map((snapshot) => Object.freeze({ ...snapshot }))),
+        trash: Object.freeze(trash.entries.map((entry) => Object.freeze({ ...entry })))
+      });
+    } catch {
+      if (this.current(operation.id, vault) && !operation.signal.aborted) this.update({ message: "Recovery data could not be loaded." });
+    }
+  }
+  async readRecoverySnapshot(snapshotId) {
+    const vault = this.snapshot.vault;
+    const path = this.snapshot.path;
+    if (vault === null || path === null || this.snapshot.snapshots?.some((snapshot) => snapshot.id === snapshotId) !== true) return false;
+    const operation = this.nextOperation();
+    try {
+      const snapshot = remoteValue(await this.remote.tocktutorWorkbench.readSnapshot({ expectedVault: vault, path, snapshotId }, operation.signal));
+      if (!this.current(operation.id, vault) || snapshot.generation !== vault.generation || snapshot.snapshot.id !== snapshotId) return false;
+      this.update({ selectedSnapshot: snapshot });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  async restoreRecoverySnapshot(snapshotId) {
+    const vault = this.snapshot.vault;
+    const path = this.snapshot.path;
+    if (vault === null || path === null || this.snapshot.snapshots?.some((snapshot) => snapshot.id === snapshotId) !== true) return false;
+    const basename = path.split("/").at(-1) ?? "Recovered.md";
+    const stem = basename.replace(/\.(?:base|canvas|markdown|md)$/iu, "");
+    const extension = basename.slice(stem.length) || ".md";
+    const toPath = `Recovered/${stem} Recovery${extension}`;
+    try {
+      const restored = remoteValue(await this.remote.tocktutorWorkbench.restoreSnapshotAsNew({
+        expectedVault: vault,
+        path,
+        snapshotId,
+        toPath
+      }));
+      if (restored.status !== "created" || restored.generation !== vault.generation || restored.path !== toPath) return false;
+      this.update({ message: `${toPath} restored.` });
+      await this.refreshTree(vault);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  async trashCurrent() {
+    const vault = this.snapshot.vault;
+    const path = this.snapshot.path;
+    const revision = this.snapshot.revision;
+    if (vault === null || path === null || revision === null) return false;
+    if (this.snapshot.saveStatus !== "saved" && !await this.save()) return false;
+    try {
+      remoteValue(await this.remote.tocktutorWorkbench.trashEntry({ expectedRevision: revision, expectedVault: vault, path }));
+      const closed = closeNoteTab(this.shellSession, this.shellSession.focusedGroupId, path);
+      this.shellSession = closed.session;
+      this.syncShell();
+      this.clearDocument();
+      this.navigate(ROUTE_PREFIX);
+      await this.setRecoveryOpen(true);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  async restoreTrashEntry(id) {
+    const vault = this.snapshot.vault;
+    if (vault === null || this.snapshot.trash?.some((entry) => entry.id === id) !== true) return false;
+    try {
+      remoteValue(await this.remote.tocktutorWorkbench.restoreTrash({ expectedVault: vault, id }));
+      await this.setRecoveryOpen(true);
+      await this.refreshTree(vault);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  async addPane() {
+    if (this.snapshot.phase !== "ready" || this.snapshot.panes.length >= MAX_PANE_GROUPS) return false;
+    if (this.snapshot.saveStatus !== "saved" && !await this.save()) return false;
+    const used = new Set(this.snapshot.panes.map((pane) => pane.id));
+    let id = "";
+    for (let index2 = 1; index2 <= MAX_PANE_GROUPS; index2 += 1) {
+      const candidate = `pane-${String(index2)}`;
+      if (!used.has(candidate)) {
+        id = candidate;
+        break;
+      }
+    }
+    if (id === "") return false;
+    const added = addPaneGroup(this.shellSession, id);
+    this.shellSession = added.session;
+    this.syncShell();
+    this.clearDocument();
+    this.navigate(ROUTE_PREFIX);
+    return true;
+  }
+  async focusPane(id, pathOverride) {
+    const target = this.pane(id);
+    if (target === void 0 || this.snapshot.phase !== "ready") return false;
+    const path = pathOverride ?? target.activePath;
+    if (id === this.snapshot.focusedPaneId && path === this.snapshot.path) return true;
+    if (this.snapshot.saveStatus !== "saved" && !await this.save()) return false;
+    this.shellSession = focusPaneGroup(this.shellSession, id);
+    if (path === null) this.shellSession = setActiveNoteTab(this.shellSession, id, null);
+    this.syncShell();
+    this.clearDocument();
+    if (path === null) {
+      this.navigate(ROUTE_PREFIX);
+      return true;
+    }
+    return this.select(path);
+  }
+  async activateTab(paneId, path) {
+    const pane = this.pane(paneId);
+    if (pane === void 0 || !pane.tabs.some((tab) => tab.path === path)) return false;
+    return this.focusPane(paneId, path);
+  }
+  togglePinTab(paneId, path) {
+    if (this.pane(paneId)?.tabs.some((tab) => tab.path === path) !== true) return;
+    this.shellSession = setTabPinned(this.shellSession, paneId, path);
+    this.syncShell();
+  }
+  moveTab(paneId, path, direction) {
+    this.shellSession = moveNoteTab(this.shellSession, paneId, path, direction);
+    this.syncShell();
+  }
+  async closeTab(paneId, path) {
+    const pane = this.pane(paneId);
+    const tab = pane?.tabs.find((candidate) => candidate.path === path);
+    if (tab === void 0) return false;
+    const active = paneId === this.snapshot.focusedPaneId && path === this.snapshot.path;
+    if (active && this.snapshot.saveStatus !== "saved" && !await this.save()) return false;
+    const result = closeNoteTab(this.shellSession, paneId, path);
+    if (result.closed === null) return false;
+    this.shellSession = result.session;
+    this.recentlyClosed.splice(
+      0,
+      this.recentlyClosed.length,
+      {
+        dirty: false,
+        mode: routeModeFromSession(result.closed.mode),
+        path: result.closed.path,
+        pinned: result.closed.pinned
+      },
+      ...this.recentlyClosed.filter((candidate) => candidate.path !== result.closed?.path)
+    );
+    this.recentlyClosed.length = Math.min(this.recentlyClosed.length, MAX_NOTE_TABS);
+    this.syncShell();
+    if (!active) return true;
+    this.clearDocument();
+    if (result.nextPath === null) {
+      this.navigate(ROUTE_PREFIX);
+      return true;
+    }
+    return await this.select(result.nextPath);
+  }
+  async reopenClosedTab() {
+    const candidate = this.recentlyClosed.shift();
+    if (candidate === void 0) return false;
+    this.shellSession = openNoteTab(
+      this.shellSession,
+      this.shellSession.focusedGroupId,
+      candidate.path,
+      {
+        ...candidate.mode === void 0 ? {} : { mode: sessionModeFromRoute(candidate.mode) },
+        ...candidate.pinned === void 0 ? {} : { pinned: candidate.pinned }
+      }
+    );
+    this.syncShell();
+    if (await this.select(candidate.path)) return true;
+    const closed = closeNoteTab(this.shellSession, this.shellSession.focusedGroupId, candidate.path);
+    this.shellSession = closed.session;
+    this.recentlyClosed.unshift(candidate);
+    this.syncShell();
+    return false;
+  }
+  async goBack() {
+    const target = this.historyBack.at(-1);
+    const current = this.snapshot.path;
+    if (target === void 0 || current === null) return false;
+    if (!await this.select(target, true, void 0, false)) return false;
+    this.historyBack.pop();
+    this.historyForward.push(current);
+    this.syncShell();
+    return true;
+  }
+  async goForward() {
+    const target = this.historyForward.at(-1);
+    const current = this.snapshot.path;
+    if (target === void 0 || current === null) return false;
+    if (!await this.select(target, true, void 0, false)) return false;
+    this.historyForward.pop();
+    this.historyBack.push(current);
+    this.syncShell();
+    return true;
+  }
+  setCommandPaletteOpen(open) {
+    this.update({ commandPaletteOpen: open });
+  }
+  toggleFocusMode() {
+    this.syncShell({ focusMode: this.snapshot.focusMode !== true });
+  }
+  updateSettings(change) {
+    const vault = this.snapshot.vault;
+    if (vault === null || this.storage === null) return false;
+    const settings = saveTockTutorSettings(this.storage, vault.id, change);
+    this.update({ settings });
+    return true;
+  }
+  saveCurrentWorkspace(name2) {
+    if (this.snapshot.vault === null || this.storage === null) return false;
+    const next = createNamedWorkspace(
+      this.workspaces,
+      name2 ?? `Workspace ${String(this.workspaces.length + 1)}`,
+      this.shellSession,
+      this.now().getTime(),
+      this.snapshot.focusMode === true
+    );
+    if (next.length === this.workspaces.length) return false;
+    this.workspaces = next;
+    this.syncShell();
+    return true;
+  }
+  addActiveBookmark() {
+    const vault = this.snapshot.vault;
+    const path = this.snapshot.path;
+    if (vault === null || path === null || this.storage === null) return false;
+    try {
+      this.bookmarks = addBookmark(this.bookmarks, {
+        id: `note-${this.now().getTime().toString(36)}`,
+        kind: "note",
+        path,
+        title: noteTitle(path)
+      });
+      if (!saveBookmarks(this.storage, vault.id, this.bookmarks)) return false;
+      this.update({ bookmarks: Object.freeze(this.bookmarks.map((bookmark) => Object.freeze({ ...bookmark }))) });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  removeBookmark(id) {
+    const vault = this.snapshot.vault;
+    if (vault === null || this.storage === null) return false;
+    const next = this.bookmarks.filter((bookmark) => bookmark.id !== id);
+    if (next.length === this.bookmarks.length || !saveBookmarks(this.storage, vault.id, next)) return false;
+    this.bookmarks = next;
+    this.update({ bookmarks: Object.freeze(next.map((bookmark) => Object.freeze({ ...bookmark }))) });
+    return true;
+  }
+  async openBookmark(id) {
+    const bookmark = this.bookmarks.find((candidate) => candidate.id === id);
+    if (bookmark === void 0) return false;
+    if (bookmark.kind === "note" || bookmark.kind === "heading" || bookmark.kind === "block") {
+      if (!await this.select(bookmark.path)) return false;
+      if (bookmark.kind === "heading") this.jumpToLine(bookmark.line);
+      return true;
+    }
+    if (bookmark.kind === "folder") {
+      this.openSearch(`path:${bookmark.path}`);
+      return await this.runSearch();
+    }
+    if (bookmark.kind === "search") {
+      this.openSearch(bookmark.query);
+      return await this.runSearch();
+    }
+    if (bookmark.kind === "graph") return false;
+    if (bookmark.kind === "link") return false;
+    return false;
+  }
+  async loadWorkspace(id) {
+    const workspace = this.workspaces.find((candidate) => candidate.id === id);
+    const vault = this.snapshot.vault;
+    if (workspace === void 0 || vault === null) return false;
+    if (this.snapshot.saveStatus !== "saved" && !await this.save()) return false;
+    const openable = new Set(this.snapshot.entries.filter((entry) => entry.kind === "document" && supportedDocument(entry.path)).map((entry) => entry.path));
+    this.shellSession = hydrateWorkbenchSession({
+      ...workspace.session,
+      vault,
+      groups: workspace.session.groups.map((group) => ({ ...group, tabs: group.tabs.filter((tab) => openable.has(tab.path)) }))
+    });
+    this.syncShell({ focusMode: workspace.focusMode });
+    const path = this.pane()?.activePath ?? null;
+    this.clearDocument();
+    if (path === null) {
+      this.navigate(ROUTE_PREFIX);
+      return true;
+    }
+    return await this.select(path);
+  }
+  async select(path, navigate = true, dispatchRevision, recordHistory = true) {
+    const activeVault = this.snapshot.vault;
+    if (!supportedDocument(path) || activeVault === null || this.snapshot.phase !== "ready") return false;
+    const previousPath = this.snapshot.path;
+    if (dispatchRevision === void 0) this.invalidateDispatch();
+    else if (!this.dispatchCurrent(dispatchRevision, activeVault)) return false;
+    if (path === this.snapshot.path) return true;
+    const pane = this.pane();
+    if (pane === void 0 || !pane.tabs.some((tab) => tab.path === path) && pane.tabs.length >= MAX_NOTE_TABS) {
+      this.update({ message: `This pane is limited to ${String(MAX_NOTE_TABS)} note tabs.` });
+      return false;
+    }
+    if (this.snapshot.saveStatus !== "saved" && !await this.save()) {
+      if (this.snapshot.path !== null) this.navigate(routeForPath(this.snapshot.path), "replace");
+      return false;
+    }
+    const vault = activeVault;
+    const operation = this.nextOperation();
+    this.update({ message: `Opening ${path}.` });
+    try {
+      const opened = remoteValue(await this.remote.tocktutorWorkbench.openDocument(path, vault, operation.signal));
+      if (!this.current(operation.id, vault) || opened.generation !== vault.generation || opened.path !== path) return false;
+      if (!boundedSource(opened.content)) {
+        this.update({ message: `${path} exceeds the editor size limit.` });
+        return false;
+      }
+      let content = opened.content;
+      let draftRecovered = false;
+      if (documentKind(path) === "markdown") {
+        try {
+          const draft = remoteValue(await this.remote.tocktutorWorkbench.readDraft({ expectedVault: vault, path }, operation.signal));
+          if (!this.current(operation.id, vault) || draft.generation !== vault.generation) return false;
+          if (draft.draft !== null && (draft.draft.revision === void 0 || draft.draft.revision === opened.revision) && boundedSource(draft.draft.content)) {
+            content = draft.draft.content;
+            draftRecovered = content !== opened.content;
+          }
+        } catch {
+          if (!this.current(operation.id, vault) || operation.signal.aborted) return false;
+        }
+      }
+      const mode = pane.tabs.find((tab) => tab.path === path)?.mode ?? this.snapshot.mode;
+      this.update({
+        documentKind: documentKind(path),
+        draftRecovered,
+        message: draftRecovered ? `${path} opened with its recovered draft.` : `${path} opened.`,
+        mode,
+        path,
+        revision: opened.revision,
+        saveStatus: draftRecovered ? "unsaved" : "saved",
+        selectionEnd: 0,
+        selectionStart: 0,
+        source: content
+      });
+      this.recordOpen(path, recordHistory, previousPath);
+      if (draftRecovered) this.recordDirty(true);
+      if (navigate) this.navigate(routeForPath(path));
+      if (documentKind(path) === "markdown") void this.loadRelationships();
+      else if (documentKind(path) === "base") void this.hydrateBaseRows(path);
+      return true;
+    } catch (error51) {
+      if (this.current(operation.id, vault) && !operation.signal.aborted) {
+        this.update({ message: this.failureMessage(error51, `${path} could not be opened.`) });
+      }
+      return false;
+    }
+  }
+  edit(source) {
+    if (this.snapshot.path === null || this.snapshot.phase !== "ready") return;
+    if (!boundedSource(source)) {
+      this.update({ message: "The edit exceeds the bounded source limit." });
+      return;
+    }
+    if (source === this.snapshot.source) return;
+    this.invalidateDispatch();
+    this.update({
+      message: "Unsaved changes.",
+      saveStatus: "unsaved",
+      source
+    });
+    this.recordDirty(true);
+    this.scheduleDraft();
+  }
+  setSelection(start, end) {
+    if (this.snapshot.path === null) return;
+    const selectionStart = Number.isSafeInteger(start) ? Math.max(0, Math.min(start, this.snapshot.source.length)) : 0;
+    const selectionEnd = Number.isSafeInteger(end) ? Math.max(selectionStart, Math.min(end, this.snapshot.source.length)) : selectionStart;
+    this.update({ selectionEnd, selectionStart });
+  }
+  setProperty(key2, value) {
+    if (this.snapshot.documentKind !== "markdown" || this.snapshot.path === null || this.snapshot.mode === "reading") return false;
+    try {
+      const source = setFrontmatterProperty(this.snapshot.source, key2, value);
+      if (source === this.snapshot.source) return false;
+      this.edit(source);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  runEditorCommand(command) {
+    if (this.snapshot.path === null || this.snapshot.documentKind !== "markdown" || this.snapshot.mode === "reading") return;
+    const result = applyEditorCommand(
+      this.snapshot.source,
+      command,
+      this.snapshot.selectionStart ?? this.snapshot.source.length,
+      this.snapshot.selectionEnd ?? this.snapshot.source.length
+    );
+    if (result.source === this.snapshot.source) return;
+    this.edit(result.source);
+    this.update({ selectionEnd: result.selectionEnd, selectionStart: result.selectionStart });
+  }
+  setMode(mode) {
+    if (this.snapshot.path === null) return;
+    if (mode === "live-preview" && this.snapshot.documentKind !== "markdown") return;
+    this.shellSession = setNoteTabMode(
+      this.shellSession,
+      this.shellSession.focusedGroupId,
+      this.snapshot.path,
+      sessionModeFromRoute(mode)
+    );
+    this.syncShell({ mode });
+  }
+  toggleTask(index2) {
+    if (this.snapshot.documentKind !== "markdown") return;
+    const source = toggleMarkdownTask(this.snapshot.source, index2);
+    if (source !== this.snapshot.source) this.edit(source);
+  }
+  moveCanvasNode(nodeId, deltaX, deltaY) {
+    if (this.snapshot.documentKind !== "canvas") return;
+    const parsed = parseCanvasDocument(this.snapshot.source);
+    if (parsed.status !== "ready") return;
+    const node = parsed.document.nodes.find((candidate) => candidate.id === nodeId);
+    if (node === void 0) return;
+    try {
+      this.edit(updateCanvasNodePosition(this.snapshot.source, nodeId, node.x + deltaX, node.y + deltaY));
+    } catch {
+      this.update({ message: "The Canvas node could not be moved within the bounded workspace." });
+    }
+  }
+  convertActiveNote() {
+    if (this.snapshot.documentKind !== "markdown" || this.snapshot.path === null || this.snapshot.mode === "reading") return false;
+    try {
+      const source = convertMarkdownFormats(this.snapshot.source, { deprecatedProperties: true, roamBear: true });
+      if (source === this.snapshot.source) return false;
+      this.edit(source);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  async extractActiveSelection() {
+    const vault = this.snapshot.vault;
+    const path = this.snapshot.path;
+    const start = this.snapshot.selectionStart ?? 0;
+    const end = this.snapshot.selectionEnd ?? 0;
+    if (vault === null || path === null || this.snapshot.documentKind !== "markdown" || end <= start) return false;
+    const destinationPath = `Extracted/${noteTitle(path)} Extract.md`;
+    try {
+      const extraction = extractSelectionToNote({
+        destinationPath,
+        destinationTitle: `${noteTitle(path)} Extract`,
+        end,
+        leftover: "link",
+        source: this.snapshot.source,
+        sourceTitle: noteTitle(path),
+        start
+      });
+      const created = remoteValue(await this.remote.tocktutorWorkbench.createDocument({
+        content: extraction.destinationContent,
+        expectedVault: vault,
+        path: destinationPath
+      }));
+      if (created.status !== "created" || created.generation !== vault.generation || created.path !== destinationPath) return false;
+      this.edit(extraction.sourceContent);
+      this.update({ message: `${destinationPath} created; save the source note to finish extraction.` });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  async prepareOrganization() {
+    const path = this.snapshot.path;
+    if (path === null || !/^Inbox\/.+\.md$/iu.test(path)) return false;
+    if (this.snapshot.saveStatus !== "saved" && !await this.save()) return false;
+    try {
+      const title = noteTitle(path);
+      const proposal = buildOrganizationProposal({
+        captures: [{ content: this.snapshot.source, path }],
+        now: this.now(),
+        title: `${title} Review`
+      });
+      this.update({ organizationProposal: proposal });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  cancelOrganization() {
+    this.update({ organizationProposal: null });
+  }
+  async applyOrganization() {
+    const proposal = this.snapshot.organizationProposal;
+    const vault = this.snapshot.vault;
+    const path = this.snapshot.path;
+    if (proposal === null || proposal === void 0 || vault === null || path === null || proposal.captures[0] !== path) return false;
+    let current;
+    try {
+      current = buildOrganizationProposal({
+        captures: [{ content: this.snapshot.source, path }],
+        now: this.now(),
+        title: proposal.title
+      });
+    } catch {
+      return false;
+    }
+    if (current.id !== proposal.id || current.destination !== proposal.destination) return false;
+    try {
+      const created = remoteValue(await this.remote.tocktutorWorkbench.createDocument({
+        content: proposal.content,
+        expectedVault: vault,
+        path: proposal.destination
+      }));
+      if (created.status !== "created" || created.generation !== vault.generation || created.path !== proposal.destination) return false;
+      this.update({ message: `${proposal.destination} created.`, organizationProposal: null });
+      await this.refreshTree(vault);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  async hydrateBaseRows(basePath) {
+    const vault = this.snapshot.vault;
+    if (vault === null || this.snapshot.path !== basePath || this.snapshot.documentKind !== "base") return false;
+    const entries = this.snapshot.entries.filter((entry) => entry.kind === "document" && /\.(?:markdown|md)$/iu.test(entry.path)).slice(0, 2e3);
+    const operation = this.nextOperation();
+    const files = [];
+    try {
+      for (let index2 = 0; index2 < entries.length; index2 += 8) {
+        const batch = entries.slice(index2, index2 + 8);
+        const opened = await Promise.all(batch.map((entry) => this.remote.tocktutorWorkbench.openDocument(entry.path, vault, operation.signal).then(remoteValue)));
+        if (!this.current(operation.id, vault) || this.snapshot.path !== basePath) return false;
+        for (let offset4 = 0; offset4 < opened.length; offset4 += 1) {
+          const document2 = opened[offset4];
+          const entry = batch[offset4];
+          if (document2.generation !== vault.generation || document2.path !== entry.path || !boundedSource(document2.content)) return false;
+          files.push({ createdAt: entry.createdAt, modifiedAt: entry.modifiedAt, path: entry.path, revision: document2.revision, sizeBytes: entry.size, source: document2.content });
+        }
+      }
+      this.update({ baseFiles: Object.freeze(files.map((file2) => Object.freeze({ ...file2 }))) });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  async applyBaseEdit(request) {
+    const vault = this.snapshot.vault;
+    const basePath = this.snapshot.path;
+    if (vault === null || basePath === null || this.snapshot.documentKind !== "base") return false;
+    const operation = this.operation;
+    try {
+      const current = remoteValue(await this.remote.tocktutorWorkbench.openDocument(request.path, vault));
+      if (current.generation !== vault.generation || current.path !== request.path || current.revision !== request.expectedRevision || current.content !== request.previousSource) return false;
+      const property = parseFrontmatterProperties(current.content).find((entry) => entry.key === request.property);
+      if (property === void 0 || executableBasePropertyIdentity(property.key, property.value) !== request.expectedPropertyIdentity) return false;
+      const saved = remoteValue(await this.remote.tocktutorWorkbench.saveDocument({ content: request.source, expectedRevision: request.expectedRevision, expectedVault: vault, path: request.path }));
+      if (saved.status !== "saved" || saved.generation !== vault.generation || saved.path !== request.path) return false;
+      if (this.operation !== operation || !sameVault(this.snapshot.vault, vault) || this.snapshot.path !== basePath) return true;
+      this.update({ baseFiles: Object.freeze((this.snapshot.baseFiles ?? []).map((file2) => file2.path === request.path ? Object.freeze({ ...file2, revision: saved.revision, source: request.source }) : file2)) });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  async storeActiveAttachment(fileName3, dataBase64) {
+    const vault = this.snapshot.vault;
+    const notePath = this.snapshot.path;
+    const source = this.snapshot.source;
+    const revision = this.snapshot.revision;
+    if (vault === null || notePath === null || revision === null || this.snapshot.documentKind !== "markdown" || dataBase64.length > 35e6) return false;
+    let path;
+    try {
+      path = attachmentTargetPath(
+        this.snapshot.settings?.attachmentFolder ?? "Attachments",
+        fileName3,
+        new Set(this.snapshot.entries.filter((entry) => entry.kind === "attachment").map((entry) => entry.path))
+      );
+    } catch {
+      return false;
+    }
+    const operation = this.operation;
+    try {
+      const stored = remoteValue(await this.remote.tocktutorWorkbench.storeAttachment({ dataBase64, expectedVault: vault, path }));
+      if (stored.status !== "stored" || stored.generation !== vault.generation || stored.path !== path) return false;
+      if (this.operation !== operation || !sameVault(this.snapshot.vault, vault) || this.snapshot.path !== notePath || this.snapshot.source !== source || this.snapshot.revision !== revision) return false;
+      this.edit(appendAttachmentMarkdown(source, `![[${path}]]`));
+      const saved = await this.save();
+      if (saved) await this.refreshTree(vault);
+      return saved;
+    } catch {
+      return false;
+    }
+  }
+  async previewAttachment(path) {
+    const vault = this.snapshot.vault;
+    if (vault === null || this.snapshot.entries.some((entry) => entry.kind === "attachment" && entry.path === path) !== true) return false;
+    const operation = this.nextOperation();
+    try {
+      const preview = remoteValue(await this.remote.tocktutorWorkbench.previewAttachment(path, vault, operation.signal));
+      if (!this.current(operation.id, vault) || preview.generation !== vault.generation || preview.path !== path || preview.dataBase64.length > 35e6) return false;
+      this.update({ attachmentPreview: preview });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  closeAttachmentPreview() {
+    this.update({ attachmentPreview: null });
+  }
+  async applyCanvasChange(change) {
+    const vault = this.snapshot.vault;
+    const path = this.snapshot.path;
+    if (vault === null || path === null || this.snapshot.documentKind !== "canvas" || this.snapshot.revision !== change.expectedRevision || this.snapshot.source !== change.previousSource) return false;
+    const operation = this.operation;
+    this.edit(change.source);
+    const saved = await this.save();
+    if (saved) return true;
+    if (this.operation !== operation || !sameVault(this.snapshot.vault, vault) || this.snapshot.path !== path || this.snapshot.source !== change.source) return false;
+    this.update({
+      message: "The Canvas change failed and its previous preview was restored.",
+      saveStatus: "save-failed",
+      source: change.previousSource
+    });
+    this.recordDirty(false);
+    return false;
+  }
+  save() {
+    if (this.saving !== null) return this.saving;
+    if (this.snapshot.saveStatus === "saved") return Promise.resolve(true);
+    const vault = this.snapshot.vault;
+    const path = this.snapshot.path;
+    const revision = this.snapshot.revision;
+    if (vault === null || path === null || revision === null) return Promise.resolve(false);
+    const source = this.snapshot.source;
+    const abort = new AbortController();
+    this.saveAbort?.abort();
+    this.saveAbort = abort;
+    this.update({ message: `Saving ${path}.`, saveStatus: "saving" });
+    const request = {
+      content: source,
+      expectedRevision: revision,
+      expectedVault: vault,
+      path
+    };
+    this.saving = this.remote.tocktutorWorkbench.saveDocument(request, abort.signal).then((result) => {
+      const saved = remoteValue(result);
+      if (this.disposed || !sameVault(this.snapshot.vault, vault) || this.snapshot.path !== path) return false;
+      if (saved.status !== "saved" || saved.generation !== vault.generation || saved.path !== path) {
+        throw new RemoteCallError("invalid-result", "The save response did not match the active note.");
+      }
+      const unchanged = this.snapshot.source === source;
+      this.update({
+        draftRecovered: unchanged ? false : this.snapshot.draftRecovered === true,
+        message: unchanged ? `${path} saved.` : "Newer changes remain unsaved.",
+        revision: saved.revision,
+        saveStatus: unchanged ? "saved" : "unsaved"
+      });
+      this.recordDirty(!unchanged);
+      if (unchanged) {
+        if (this.draftTimer !== null) clearTimeout(this.draftTimer);
+        this.draftTimer = null;
+        this.draftAbort?.abort();
+        this.draftAbort = null;
+        void this.remote.tocktutorWorkbench.clearDraft({ expectedVault: vault, path }).catch(() => void 0);
+      }
+      return unchanged;
+    }).catch((error51) => {
+      if (!this.disposed && !abort.signal.aborted && sameVault(this.snapshot.vault, vault) && this.snapshot.path === path) {
+        this.update({
+          message: this.failureMessage(error51, `${path} could not be saved.`),
+          saveStatus: "save-failed"
+        });
+      }
+      return false;
+    }).finally(() => {
+      if (this.saveAbort === abort) this.saveAbort = null;
+      this.saving = null;
+    });
+    return this.saving;
+  }
+  failureMessage(error51, fallback) {
+    if (error51 instanceof RemoteCallError) {
+      if (error51.code === "conflict" || error51.code === "changed") {
+        return "Save Conflict: The note changed outside this editor. Your source remains unsaved.";
+      }
+      return error51.message || fallback;
+    }
+    return error51 instanceof Error && error51.message !== "" ? error51.message : fallback;
+  }
+  dispose() {
+    if (this.disposed) return;
+    this.settlePendingDispatch("stale");
+    this.disposed = true;
+    this.dispatchRevision += 1;
+    this.operation += 1;
+    this.operationAbort?.abort();
+    this.saveAbort?.abort();
+    this.draftAbort?.abort();
+    if (this.draftTimer !== null) clearTimeout(this.draftTimer);
+    this.eventDispose?.();
+    this.listeners.clear();
+  }
+};
+function RichReadingView(props) {
+  const html = (0, import_react7.useMemo)(() => {
+    const warning = /<\/?(?:script|style|iframe|object|embed|form|svg|link|meta)\b/iu.test(props.source) ? '<p class="tocktutor-warning" role="note">Unsafe HTML is inert in Reading view.</p>' : "";
+    return `${warning}${renderMarkdownHtml(props.source)}`;
+  }, [props.source]);
+  const onClick = (event) => {
+    const target = event.target;
+    if (target instanceof HTMLInputElement && target.dataset.taskIndex !== void 0) {
+      const index2 = Number(target.dataset.taskIndex);
+      if (Number.isSafeInteger(index2) && index2 >= 0) props.onToggleTask(index2);
+      return;
+    }
+    if (target instanceof HTMLAnchorElement) event.preventDefault();
+  };
+  return /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(
+    "article",
+    {
+      "aria-label": "Reading View",
+      className: "tocktutor-reading mx-auto min-h-full w-[calc(100%-48px)] max-w-3xl pt-[18px] pb-[72px] [&_.callout]:my-4 [&_.callout]:rounded-md [&_.footnotes]:mt-8 [&_.math-display]:my-4 [&_.mermaid]:my-4 [&_.task-list]:pl-5 [&_h1]:mt-0 [&_h1]:mb-4 [&_h1]:text-[30px] [&_h1]:leading-tight [&_h1]:font-[650] [&_h2]:mt-6 [&_h2]:mb-3 [&_h2]:text-2xl [&_h3]:mt-5 [&_h3]:mb-2 [&_h3]:text-xl [&_mark]:bg-[color-mix(in_srgb,#fde047_55%,transparent)] [&_p]:mt-0 [&_p]:mb-4 [&_p]:text-lg [&_pre]:overflow-auto [&_pre]:rounded-md [&_pre]:border [&_pre]:border-[var(--tt-border)] [&_pre]:bg-[color-mix(in_srgb,var(--tt-text)_4%,var(--tt-panel))] [&_pre]:p-3 [&_table]:my-4 [&_table]:w-full [&_table]:border-collapse [&_td]:border [&_td]:border-[var(--tt-border)] [&_td]:p-2 [&_th]:border [&_th]:border-[var(--tt-border)] [&_th]:p-2",
+      dangerouslySetInnerHTML: { __html: html },
+      onClick,
+      tabIndex: -1
+    }
+  );
+}
+function LivePreviewView(props) {
+  const projection = (0, import_react7.useMemo)(() => projectLivePreview(props.source), [props.source]);
+  const [folded, setFolded] = (0, import_react7.useState)(() => /* @__PURE__ */ new Set());
+  (0, import_react7.useEffect)(() => {
+    if (projection.status !== "ready") {
+      setFolded(/* @__PURE__ */ new Set());
+      return;
+    }
+    setFolded(new Set(projection.lines.filter((line) => line.folded === true).map((line) => line.index)));
+  }, [props.documentKey]);
+  if (projection.status !== "ready") return /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Alert, { unstyled: true, children: projection.reason });
+  const hidden = /* @__PURE__ */ new Set();
+  for (const line of projection.lines) {
+    if (!folded.has(line.index) || line.foldEndLine === void 0) continue;
+    for (let index2 = line.index + 1; index2 <= line.foldEndLine; index2 += 1) hidden.add(index2);
+  }
+  const toggleFold = (index2) => {
+    setFolded((current) => {
+      const next = new Set(current);
+      if (next.has(index2)) next.delete(index2);
+      else next.add(index2);
+      return next;
+    });
+  };
+  return /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("section", { "aria-label": "Live Preview", className: "mx-auto grid min-h-full w-[calc(100%-32px)] max-w-3xl content-start gap-0.5 py-6", tabIndex: -1, children: projection.lines.map((line) => hidden.has(line.index) ? null : /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)(
+    "div",
+    {
+      className: "group flex min-h-7 items-start gap-2 rounded px-1.5 py-0.5 data-[kind=callout]:border-l-4 data-[kind=callout]:border-[var(--tt-accent)] data-[kind=callout]:bg-[var(--tt-selected)] data-[kind=code]:bg-[color-mix(in_srgb,var(--tt-text)_5%,var(--tt-panel))] data-[kind=comment]:text-[var(--tt-muted)] data-[kind=heading]:font-semibold data-[kind=property]:text-[var(--tt-muted)]",
+      "data-kind": line.kind,
+      children: [
+        line.foldEndLine !== void 0 ? /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(
+          Button,
+          {
+            unstyled: true,
+            "aria-expanded": !folded.has(line.index),
+            "aria-label": `${folded.has(line.index) ? "Expand" : "Collapse"} Line ${String(line.index + 1)}`,
+            className: "mt-1 size-5 shrink-0 rounded border-0 bg-transparent p-0 text-[var(--tt-muted)]",
+            onClick: () => {
+              toggleFold(line.index);
+            },
+            type: "button",
+            children: /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(ChevronRight, { "aria-hidden": "true", className: folded.has(line.index) ? "" : "rotate-90" })
+          }
+        ) : /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("span", { className: "w-5 shrink-0" }),
+        line.kind === "task" && line.taskIndex !== void 0 && /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(
+          Checkbox3,
+          {
+            "aria-label": `Mark Task on Line ${String(line.index + 1)} as ${line.checked === true ? "Incomplete" : "Complete"}`,
+            checked: line.checked === true,
+            className: "mt-1.5",
+            onCheckedChange: () => {
+              props.onToggleTask(line.taskIndex);
+            }
+          }
+        ),
+        /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(
+          Textarea,
+          {
+            unstyled: true,
+            "aria-label": `Live Preview Line ${String(line.index + 1)}`,
+            className: "min-h-7 flex-1 resize-none overflow-hidden border-0 bg-transparent px-1 py-0.5 text-inherit outline-none [font:inherit]",
+            onChange: (event) => {
+              props.onEdit(replaceLivePreviewLine(props.source, line.index, event.target.value));
+            },
+            rows: 1,
+            spellCheck: line.kind !== "code",
+            value: line.content
+          }
+        )
+      ]
+    },
+    line.index
+  )) });
+}
+function NativeDispatchDialog(props) {
+  const submit = (event) => {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    props.onSubmit(props.kind === "new" ? { path: String(form.get("path") ?? "") } : {
+      text: String(form.get("text") ?? ""),
+      title: String(form.get("title") ?? "")
+    });
+  };
+  const label = props.kind === "new" ? "New Note" : "Quick Capture";
+  return /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Dialog2, { open: true, onOpenChange: (open) => {
+    if (!open) props.onCancel();
+  }, children: /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(
+    DialogContent3,
+    {
+      unstyled: true,
+      className: "tocktutor-dispatch-dialog fixed top-1/2 left-1/2 z-50 w-[calc(100%-48px)] max-w-[480px] -translate-1/2",
+      showCloseButton: false,
+      children: /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("form", { className: "grid w-full gap-3.5 rounded-lg border border-[var(--tt-border)] bg-[var(--tt-panel)] p-5 [&_input]:rounded-[5px] [&_input]:border [&_input]:border-[var(--tt-border)] [&_input]:p-2 [&_input]:[font:inherit] [&_label]:grid [&_label]:gap-[5px] [&_label]:font-[650] [&_textarea]:rounded-[5px] [&_textarea]:border [&_textarea]:border-[var(--tt-border)] [&_textarea]:p-2 [&_textarea]:[font:inherit]", onSubmit: submit, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("header", { children: /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(DialogTitle3, { className: "m-0 text-[17px]", children: label }) }),
+        props.kind === "new" ? /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)(Label, { unstyled: true, children: [
+          "Note Path",
+          /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Input, { unstyled: true, "aria-label": "New Note Path", autoFocus: true, maxLength: 1e3, name: "path", required: true })
+        ] }) : /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)(import_jsx_runtime23.Fragment, { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)(Label, { unstyled: true, children: [
+            "Title",
+            /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Input, { unstyled: true, "aria-label": "Capture Title", autoFocus: true, maxLength: 200, name: "title", required: true })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)(Label, { unstyled: true, children: [
+            "Text",
+            /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Textarea, { unstyled: true, "aria-label": "Capture Text", maxLength: 1e5, name: "text" })
+          ] })
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("div", { className: "tocktutor-dialog-actions flex justify-end gap-2 [&_button]:cursor-pointer [&_button]:rounded-[5px] [&_button]:border [&_button]:border-[var(--tt-border)] [&_button]:bg-[var(--tt-panel)] [&_button]:px-2.5 [&_button]:py-[7px] [&_button]:text-inherit", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Button, { unstyled: true, onClick: props.onCancel, type: "button", children: "Cancel" }),
+          /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Button, { unstyled: true, type: "submit", children: "Create" })
+        ] })
+      ] })
+    }
+  ) });
+}
+function WorkbenchCommandPalette(props) {
+  const [query, setQuery] = (0, import_react7.useState)("");
+  const editor = (command) => props.onEditorCommand === void 0 ? void 0 : () => {
+    props.onEditorCommand?.(command);
+  };
+  const commands = [
+    { label: "New Note", run: props.onNewNote },
+    { label: "Search Notes", run: props.onSearch },
+    { label: "Toggle Focus Mode", run: props.onToggleFocus },
+    { disabled: !props.canGoBack, label: "Go Back", run: props.onBack },
+    { disabled: !props.canGoForward, label: "Go Forward", run: props.onForward },
+    { disabled: !props.canReopen, label: "Reopen Closed Note", run: props.onReopen },
+    { disabled: !props.editorEnabled, label: "Bold Text", run: editor("bold") },
+    { disabled: !props.editorEnabled, label: "Italic Text", run: editor("italic") },
+    { disabled: !props.editorEnabled, label: "Strikethrough Text", run: editor("strikethrough") },
+    { disabled: !props.editorEnabled, label: "Highlight Text", run: editor("highlight") },
+    { disabled: !props.editorEnabled, label: "Add Internal Link", run: editor("link") },
+    { disabled: !props.editorEnabled, label: "Insert Table", run: editor("insert-table") },
+    { disabled: !props.editorEnabled, label: "Insert Tip Callout", run: editor("callout-tip") },
+    { disabled: !props.editorEnabled, label: "Delete Current Line", run: editor("delete-line") }
+  ].filter((command) => command.label.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()));
+  return /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Dialog2, { open: true, onOpenChange: (open) => {
+    if (!open) props.onClose();
+  }, children: /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)(
+    DialogContent3,
+    {
+      unstyled: true,
+      className: "fixed top-[18%] left-1/2 z-50 w-[calc(100%-32px)] max-w-xl -translate-x-1/2 rounded-lg border border-[var(--tt-border)] bg-[var(--tt-panel)] p-3 shadow-xl",
+      showCloseButton: false,
+      children: [
+        /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(DialogTitle3, { className: "mb-2 text-sm font-semibold", children: "Command Palette" }),
+        /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(
+          Input,
+          {
+            unstyled: true,
+            "aria-label": "Search Commands",
+            autoFocus: true,
+            className: "w-full rounded border border-[var(--tt-border)] px-2 py-1.5",
+            maxLength: 200,
+            onChange: (event) => {
+              setQuery(event.target.value);
+            },
+            placeholder: "Search commands",
+            value: query
+          }
+        ),
+        /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("div", { className: "mt-2 grid max-h-80 gap-1 overflow-auto", role: "listbox", children: [
+          commands.map((command) => /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(
+            Button,
+            {
+              unstyled: true,
+              className: "rounded border-0 bg-transparent px-2 py-1.5 text-left hover:bg-[var(--tt-selected)] disabled:opacity-50",
+              disabled: command.disabled === true || command.run === void 0,
+              onClick: () => {
+                command.run?.();
+                props.onClose();
+              },
+              role: "option",
+              type: "button",
+              children: command.label
+            },
+            command.label
+          )),
+          commands.length === 0 && /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Alert, { unstyled: true, role: "status", children: "No matching commands." })
+        ] })
+      ]
+    }
+  ) });
+}
+var WORKBENCH_GLYPHS = {
+  back: ChevronLeft,
+  bookmark: Bookmark,
+  chat: MessageSquare,
+  close: X,
+  collapse: ChevronRight,
+  document: FileText,
+  folder: Folder,
+  forward: ChevronRight,
+  more: Ellipsis,
+  new: Plus,
+  panel: PanelLeft,
+  "panel-right": PanelRight,
+  pencil: Pencil,
+  search: Search
+};
+function WorkbenchGlyph({ kind }) {
+  const Glyph = WORKBENCH_GLYPHS[kind];
+  return /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Glyph, { "aria-hidden": "true" });
+}
+function fileName2(path) {
+  return path.split("/").at(-1) ?? path;
+}
+function noteTitle(path) {
+  return path === null ? "TockTutor" : fileName2(path).replace(/\.(?:base|canvas|markdown|md)$/iu, "");
+}
+function TreeEntries(props) {
+  const prefix = props.prefix ?? "";
+  const children = props.entries.filter((entry) => entry.path.startsWith(prefix) && !entry.path.slice(prefix.length).includes("/") && (entry.kind === "directory" || entry.kind === "document")).toSorted((left, right) => {
+    if (left.kind !== right.kind) return left.kind === "directory" ? -1 : 1;
+    return left.path.localeCompare(right.path, void 0, { sensitivity: "base" });
+  });
+  return children.map((entry) => entry.kind === "directory" ? /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("li", { className: "tocktutor-tree-directory", role: "treeitem", "aria-expanded": "true", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("div", { className: "tocktutor-tree-row grid min-h-8 w-full grid-cols-[12px_16px_minmax(0,1fr)_16px] items-center gap-[7px] overflow-hidden rounded bg-transparent px-[5px] py-1 text-left font-medium text-inherit hover:bg-[color-mix(in_srgb,var(--tt-text)_5%,transparent)] [&>span:not(.tocktutor-tree-indent)]:truncate [&>svg:first-child]:size-3 [&>svg:last-child]:ml-auto [&>svg:last-child]:size-3.5 [&>svg:last-child]:text-[var(--tt-muted)] [&>svg:last-child]:opacity-80", title: entry.path, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(WorkbenchGlyph, { kind: "collapse" }),
+      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(WorkbenchGlyph, { kind: "folder" }),
+      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("span", { children: fileName2(entry.path) }),
+      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(WorkbenchGlyph, { kind: "more" })
+    ] }),
+    /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("ul", { className: "m-0 list-none p-0 pl-4", role: "group", children: /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(TreeEntries, { entries: props.entries, onSelect: props.onSelect, path: props.path, prefix: `${entry.path}/` }) })
+  ] }, entry.path) : /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("li", { role: "treeitem", "aria-selected": entry.path === props.path, children: /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)(
+    Button,
+    {
+      unstyled: true,
+      "aria-current": entry.path === props.path ? "page" : void 0,
+      className: "tocktutor-tree-row grid min-h-8 w-full grid-cols-[12px_16px_minmax(0,1fr)_16px] items-center gap-[7px] overflow-hidden rounded border-0 bg-transparent px-[5px] py-1 text-left font-medium text-inherit hover:bg-[color-mix(in_srgb,var(--tt-text)_5%,transparent)] aria-current:bg-[var(--tt-selected)] aria-current:[&>svg:last-child]:text-[var(--tt-text)] [&>span:not(.tocktutor-tree-indent)]:truncate [&>svg:first-child]:size-3 [&>svg:last-child]:ml-auto [&>svg:last-child]:size-3.5 [&>svg:last-child]:text-[var(--tt-muted)] [&>svg:last-child]:opacity-80",
+      onClick: () => {
+        props.onSelect(entry.path);
+      },
+      title: entry.path,
+      type: "button",
+      children: [
+        /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("span", { className: "tocktutor-tree-indent w-3" }),
+        /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(WorkbenchGlyph, { kind: "document" }),
+        /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("span", { children: fileName2(entry.path) }),
+        /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(WorkbenchGlyph, { kind: "more" })
+      ]
+    }
+  ) }, entry.path));
+}
+function TockTutorRouteView(props) {
+  const { snapshot } = props;
+  const previewLabel = snapshot.documentKind === "canvas" ? "Canvas" : snapshot.documentKind === "base" ? "Base" : "Reading";
+  const sourceLabel = snapshot.documentKind === "canvas" ? "Canvas Source" : snapshot.documentKind === "base" ? "Base Source" : "Markdown Source";
+  const query = snapshot.searchQuery.trim().toLocaleLowerCase();
+  const activeProperties = snapshot.documentKind === "markdown" ? parseFrontmatterProperties(snapshot.source) : [];
+  const documents = snapshot.entries.filter((entry) => entry.kind === "document" && supportedDocument(entry.path) && (query === "" || entry.path.toLocaleLowerCase().includes(query)));
+  const focusedPane = snapshot.panes.find((pane) => pane.id === snapshot.focusedPaneId);
+  const visibleTreeEntries = query === "" ? snapshot.entries.filter((entry) => entry.kind === "directory" || entry.kind === "document" && supportedDocument(entry.path)) : snapshot.entries.filter((entry) => entry.kind === "directory" ? documents.some((document2) => document2.path.startsWith(`${entry.path}/`)) : documents.includes(entry));
+  const [panel, setPanel] = (0, import_react7.useState)(null);
+  const [assistantPanelWidth, setAssistantPanelWidth] = (0, import_react7.useState)(DEFAULT_ASSISTANT_PANEL_WIDTH);
+  const [sidebarOpen, setSidebarOpen] = (0, import_react7.useState)(true);
+  const [sidebarWidth, setSidebarWidth] = (0, import_react7.useState)(DEFAULT_SIDEBAR_WIDTH);
+  const effectiveSidebarOpen = sidebarOpen && snapshot.focusMode !== true;
+  const previousSidebarOpen = (0, import_react7.useRef)(effectiveSidebarOpen);
+  const shouldAnimateSidebarColumns = previousSidebarOpen.current !== effectiveSidebarOpen;
+  const contentColumns = `${String(effectiveSidebarOpen ? sidebarWidth : 0)}px minmax(0, 1fr) auto auto`;
+  const titlebarColumns = `${String(effectiveSidebarOpen ? sidebarWidth : COLLAPSED_TITLEBAR_SIDEBAR_WIDTH)}px minmax(0, 1fr)`;
+  (0, import_react7.useEffect)(() => {
+    previousSidebarOpen.current = effectiveSidebarOpen;
+  }, [effectiveSidebarOpen]);
+  const resizeSidebar = (width) => {
+    setSidebarWidth(Math.min(MAX_SIDEBAR_WIDTH, Math.max(MIN_SIDEBAR_WIDTH, width)));
+  };
+  const beginSidebarResize = (event) => {
+    event.preventDefault();
+    const startX = event.clientX;
+    const startWidth = sidebarWidth;
+    const move = (next) => {
+      resizeSidebar(startWidth + next.clientX - startX);
+    };
+    const finish = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", finish);
+      window.removeEventListener("pointercancel", finish);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", finish);
+    window.addEventListener("pointercancel", finish);
+  };
+  const resizeSidebarWithKeyboard = (event) => {
+    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+    event.preventDefault();
+    resizeSidebar(sidebarWidth + (event.key === "ArrowLeft" ? -10 : 10));
+  };
+  const resizeAssistantPanel = (width) => {
+    setAssistantPanelWidth(clampAssistantPanelWidth(width));
+  };
+  const beginAssistantPanelResize = (event) => {
+    event.preventDefault();
+    const handle = event.currentTarget;
+    const panelElement = handle.parentElement;
+    if (panelElement === null) return;
+    const startX = event.clientX;
+    const startWidth = assistantPanelWidth;
+    let frame = 0;
+    let width = startWidth;
+    panelElement.style.transitionDuration = "0ms";
+    const render = () => {
+      frame = 0;
+      panelElement.style.width = `${String(width)}px`;
+      handle.setAttribute("aria-valuenow", String(width));
+    };
+    const move = (next) => {
+      width = clampAssistantPanelWidth(startWidth + startX - next.clientX);
+      if (frame === 0) frame = requestAnimationFrame(render);
+    };
+    const finish = () => {
+      if (frame !== 0) cancelAnimationFrame(frame);
+      render();
+      resizeAssistantPanel(width);
+      panelElement.style.removeProperty("transition-duration");
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", finish);
+      window.removeEventListener("pointercancel", finish);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", finish);
+    window.addEventListener("pointercancel", finish);
+  };
+  const resizeAssistantPanelWithKeyboard = (event) => {
+    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+    event.preventDefault();
+    resizeAssistantPanel(assistantPanelWidth + (event.key === "ArrowLeft" ? 10 : -10));
+  };
+  const words = snapshot.source.match(/[\p{L}\p{N}]+(?:['’][\p{L}\p{N}]+)*/gu)?.length ?? 0;
+  const characters = snapshot.source.length;
+  const titlebar = /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)(
+    "section",
+    {
+      "aria-label": "TockTutor Title Bar",
+      className: "tocktutor-titlebar absolute top-0 right-0 left-0 z-[2147483647] grid h-[var(--tockteam-titlebar-height,40px)] grid-cols-[var(--tockteam-primary-sidebar-width,280px)_minmax(0,1fr)] border-b border-[var(--tt-tab-border)] bg-[var(--tockteam-shell-chrome,var(--tt-panel))] text-[var(--tt-text)] transition-[grid-template-columns] duration-300 ease-out [--tt-accent:var(--dsw-alias-accent-primary,#533afd)] [--tt-border:var(--dsw-alias-border-l1,var(--dsw-alias-border-subtle,#e1e3e7))] [--tt-muted:var(--dsw-alias-fg-muted,#71717a)] [--tt-panel:var(--dsw-alias-bg-elevated,#fff)] [--tt-tab-border:#d1d5db] [--tt-text:var(--dsw-alias-fg-primary,#27272a)] [-webkit-app-region:drag] [font:14px/1.45_ui-sans-serif,-apple-system,BlinkMacSystemFont,'Segoe_UI',sans-serif] [&_*]:box-border [&_*::after]:box-border [&_*::before]:box-border [&_button]:text-inherit [&_button]:[font:inherit] [&_button]:[-webkit-app-region:no-drag] [&_svg]:block [&_svg]:size-[18px]",
+      style: {
+        gridTemplateColumns: titlebarColumns,
+        transitionDuration: shouldAnimateSidebarColumns ? void 0 : "0ms"
+      },
+      children: [
+        /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("div", { className: "tocktutor-titlebar-sidebar flex min-w-0 items-center justify-start gap-2 border-r border-[var(--tt-border)] pr-2 pl-[46px] [&>button]:inline-flex [&>button]:h-7 [&>button]:w-[22px] [&>button]:items-center [&>button]:justify-center [&>button]:border-0 [&>button]:bg-transparent [&>button]:p-0 [&>button]:text-[var(--tt-muted)] [&>span]:inline-flex [&>span]:h-7 [&>span]:w-[22px] [&>span]:items-center [&>span]:justify-center [&>span]:border-0 [&>span]:bg-transparent [&>span]:p-0 [&>span]:text-[var(--tt-muted)]", children: [
+          effectiveSidebarOpen && /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)(import_jsx_runtime23.Fragment, { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("span", { className: "tocktutor-titlebar-document rounded-[5px] bg-[color-mix(in_srgb,var(--tt-text)_8%,transparent)] text-[var(--tt-text)]", children: /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(WorkbenchGlyph, { kind: "document" }) }),
+            /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("span", { children: /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(WorkbenchGlyph, { kind: "document" }) }),
+            /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)(Tooltip2, { children: [
+              /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(TooltipTrigger3, { asChild: true, children: /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("span", { className: "inline-flex", children: /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Button, { unstyled: true, "aria-label": "Search Notes", className: "border-0 bg-transparent p-0", disabled: props.onOpenSearch === void 0, onClick: props.onOpenSearch, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(WorkbenchGlyph, { kind: "search" }) }) }) }),
+              /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(TooltipContent3, { children: "Search Notes" })
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Button, { unstyled: true, "aria-label": "Bookmark Active Note", className: "border-0 bg-transparent p-0", disabled: snapshot.path === null || props.onAddBookmark === void 0, onClick: props.onAddBookmark, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(WorkbenchGlyph, { kind: "bookmark" }) })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)(Tooltip2, { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(TooltipTrigger3, { asChild: true, children: /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(
+              Button,
+              {
+                unstyled: true,
+                "aria-expanded": effectiveSidebarOpen,
+                "aria-label": "Toggle Files Sidebar",
+                className: "tocktutor-panel-icon ml-auto border-0 bg-transparent p-1.5 text-[var(--tt-muted)]",
+                onClick: () => {
+                  setSidebarOpen((open) => !open);
+                },
+                type: "button",
+                children: /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(WorkbenchGlyph, { kind: "panel" })
+              }
+            ) }),
+            /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(TooltipContent3, { children: "Toggle Files Sidebar" })
+          ] })
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("div", { className: "tocktutor-titlebar-main flex min-w-0 items-center gap-1 px-2", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("span", { className: "tocktutor-history mr-[18px] flex gap-[5px] px-1.5", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Button, { unstyled: true, "aria-label": "Go Back", className: "border-0 bg-transparent p-1 text-[var(--tt-muted)] disabled:opacity-35", disabled: snapshot.canGoBack !== true, onClick: props.onBack, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(WorkbenchGlyph, { kind: "back" }) }),
+            /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Button, { unstyled: true, "aria-label": "Go Forward", className: "border-0 bg-transparent p-1 text-[var(--tt-muted)] disabled:opacity-35", disabled: snapshot.canGoForward !== true, onClick: props.onForward, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(WorkbenchGlyph, { kind: "forward" }) })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("div", { className: "tocktutor-tabs -mx-[calc(var(--tt-tab-curve)*2)] -mb-px flex min-w-0 self-stretch items-end gap-1 overflow-visible px-[calc(var(--tt-tab-curve)*2)] [--tt-tab-curve:10px]", ...focusedPane?.tabs.length ? { "aria-label": "Note Tabs", role: "tablist" } : {}, children: focusedPane?.tabs.map((tab, index2) => /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("div", { className: "relative", role: "presentation", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(
+              Button,
+              {
+                unstyled: true,
+                "aria-selected": tab.path === focusedPane.activePath,
+                className: "relative z-1 -mb-px flex h-[30px] min-w-[118px] max-w-[220px] items-center gap-3 rounded-t-[10px] border border-b-0 border-[var(--tt-tab-border)] bg-[var(--tt-panel)] px-2.5 shadow-[inset_0_1px_0_rgb(255_255_255_/_18%)] aria-[selected=false]:mb-0.5 aria-[selected=false]:border-b aria-[selected=false]:bg-[color-mix(in_srgb,var(--tt-panel)_70%,transparent)] aria-[selected=false]:text-[var(--tt-muted)] aria-[selected=false]:shadow-none aria-selected:before:pointer-events-none aria-selected:before:absolute aria-selected:before:bottom-[-1px] aria-selected:before:left-[calc(var(--tt-tab-curve)*-2)] aria-selected:before:h-[calc(var(--tt-tab-curve)*2)] aria-selected:before:w-[calc(var(--tt-tab-curve)*2)] aria-selected:before:rounded-full aria-selected:before:content-[''] aria-selected:before:[clip-path:inset(50%_calc(var(--tt-tab-curve)*-1)_0_50%)] aria-selected:before:[box-shadow:inset_0_0_0_1px_var(--tt-tab-border),0_0_0_calc(var(--tt-tab-curve)*4)_var(--tt-panel)] aria-selected:after:pointer-events-none aria-selected:after:absolute aria-selected:after:right-[calc(var(--tt-tab-curve)*-2)] aria-selected:after:bottom-[-1px] aria-selected:after:h-[calc(var(--tt-tab-curve)*2)] aria-selected:after:w-[calc(var(--tt-tab-curve)*2)] aria-selected:after:rounded-full aria-selected:after:content-[''] aria-selected:after:[clip-path:inset(50%_50%_0_calc(var(--tt-tab-curve)*-1))] aria-selected:after:[box-shadow:inset_0_0_0_1px_var(--tt-tab-border),0_0_0_calc(var(--tt-tab-curve)*4)_var(--tt-panel)] [&>span]:truncate [&_svg]:ml-auto [&_svg]:size-3.5",
+                onClick: () => {
+                  props.onActivateTab(focusedPane.id, tab.path);
+                },
+                onKeyDown: (event) => {
+                  if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+                  event.preventDefault();
+                  const offset4 = event.key === "ArrowLeft" ? -1 : 1;
+                  if (event.altKey) {
+                    props.onMoveTab?.(focusedPane.id, tab.path, offset4);
+                    return;
+                  }
+                  const next = focusedPane.tabs[(index2 + offset4 + focusedPane.tabs.length) % focusedPane.tabs.length];
+                  if (next !== void 0) props.onActivateTab(focusedPane.id, next.path);
+                },
+                "aria-controls": "tocktutor-note-editor",
+                role: "tab",
+                tabIndex: tab.path === focusedPane.activePath ? 0 : -1,
+                title: tab.path,
+                type: "button",
+                children: /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("span", { children: [
+                  tab.dirty && /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("span", { "aria-label": "Unsaved", children: "\u2022" }),
+                  tab.pinned === true && /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("span", { "aria-label": "Pinned", children: "\u25C6" }),
+                  fileName2(tab.path)
+                ] })
+              }
+            ),
+            /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("span", { className: "absolute top-1/2 right-1 z-2 flex -translate-y-1/2 gap-0.5", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Button, { unstyled: true, "aria-label": `${tab.pinned === true ? "Unpin" : "Pin"} ${fileName2(tab.path)}`, className: "rounded border-0 bg-transparent p-0.5 text-[var(--tt-muted)]", onClick: () => {
+                props.onTogglePinTab?.(focusedPane.id, tab.path);
+              }, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Bookmark, { "aria-hidden": "true" }) }),
+              /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Button, { unstyled: true, "aria-label": `Close ${fileName2(tab.path)}`, className: "rounded border-0 bg-transparent p-0.5 text-[var(--tt-muted)]", onClick: () => {
+                props.onCloseTab?.(focusedPane.id, tab.path);
+              }, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(WorkbenchGlyph, { kind: "close" }) })
+            ] })
+          ] }, tab.path)) }),
+          /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)(Tooltip2, { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(TooltipTrigger3, { asChild: true, children: /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("span", { className: "inline-flex", children: /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Button, { unstyled: true, "aria-label": "Command Palette", className: "border-0 bg-transparent p-1.5 text-[var(--tt-muted)]", disabled: props.onOpenCommandPalette === void 0, onClick: props.onOpenCommandPalette, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(WorkbenchGlyph, { kind: "search" }) }) }) }),
+            /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(TooltipContent3, { children: "Command Palette" })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)(Tooltip2, { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(TooltipTrigger3, { asChild: true, children: /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("span", { className: "inline-flex", children: /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Button, { unstyled: true, "aria-label": "New Note", className: "tocktutor-new-tab border-0 bg-transparent p-1.5 text-[var(--tt-muted)]", disabled: props.onNewNote === void 0, onClick: props.onNewNote, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(WorkbenchGlyph, { kind: "new" }) }) }) }),
+            /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(TooltipContent3, { children: "New Note" })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("span", { className: "tocktutor-titlebar-spacer flex-1" }),
+          /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)(Tooltip2, { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(TooltipTrigger3, { asChild: true, children: /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(
+              Button,
+              {
+                unstyled: true,
+                "aria-expanded": panel === "assistant",
+                "aria-label": "Toggle Assistant Panel",
+                className: "tocktutor-panel-icon border-0 bg-transparent p-1.5 text-[var(--tt-muted)]",
+                onClick: () => {
+                  setPanel((current) => current === "assistant" ? null : "assistant");
+                },
+                type: "button",
+                children: /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(WorkbenchGlyph, { kind: "panel-right" })
+              }
+            ) }),
+            /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(TooltipContent3, { children: "Toggle Assistant Panel" })
+          ] })
+        ] })
+      ]
+    }
+  );
+  return /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(TooltipProvider2, { children: /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)(
+    "main",
+    {
+      "aria-label": "TockTutor Workbench",
+      className: "tocktutor-workbench h-full min-h-0 box-border bg-[var(--tt-bg)] pt-0 text-[var(--tt-text)] [--tt-accent:var(--dsw-alias-accent-primary,#533afd)] [--tt-bg:var(--dsw-alias-bg-base,#fff)] [--tt-border:var(--dsw-alias-border-l1,var(--dsw-alias-border-subtle,#e1e3e7))] [--tt-footer-height:28px] [--tt-muted:var(--dsw-alias-fg-muted,#71717a)] [--tt-panel:var(--dsw-alias-bg-elevated,#fff)] [--tt-selected:color-mix(in_srgb,var(--tt-accent)_14%,var(--tt-panel))] [--tt-text:var(--dsw-alias-fg-primary,#27272a)] [font:14px/1.45_ui-sans-serif,-apple-system,BlinkMacSystemFont,'Segoe_UI',sans-serif] [&_*]:box-border [&_*::after]:box-border [&_*::before]:box-border [&_[hidden]]:!hidden [&_button]:text-inherit [&_button]:[font:inherit] [&_button:focus-visible]:outline-2 [&_button:focus-visible]:outline-offset-2 [&_button:focus-visible]:outline-[var(--tt-accent)] [&_input:focus-visible]:outline-2 [&_input:focus-visible]:outline-offset-2 [&_input:focus-visible]:outline-[var(--tt-accent)] [&_svg]:block [&_svg]:size-4 [&_textarea:focus-visible]:outline-2 [&_textarea:focus-visible]:outline-offset-2 [&_textarea:focus-visible]:outline-[var(--tt-accent)] motion-reduce:[&_*]:!scroll-auto motion-reduce:[&_*]:!delay-0 motion-reduce:[&_*]:!duration-0 motion-reduce:[&_*::after]:!delay-0 motion-reduce:[&_*::after]:!duration-0 motion-reduce:[&_*::before]:!delay-0 motion-reduce:[&_*::before]:!duration-0",
+      "data-focus-mode": snapshot.focusMode === true,
+      "data-phase": snapshot.phase,
+      tabIndex: -1,
+      children: [
+        props.titlebarTarget === void 0 ? titlebar : (0, import_react_dom2.createPortal)(titlebar, props.titlebarTarget),
+        snapshot.dispatchDialog !== null && /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(
+          NativeDispatchDialog,
+          {
+            kind: snapshot.dispatchDialog,
+            onCancel: () => {
+              props.onCancelDispatch?.();
+            },
+            onSubmit: (draft) => {
+              props.onSubmitDispatch?.(draft);
+            }
+          }
+        ),
+        snapshot.commandPaletteOpen === true && /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(
+          WorkbenchCommandPalette,
+          {
+            canGoBack: snapshot.canGoBack === true,
+            canGoForward: snapshot.canGoForward === true,
+            canReopen: (snapshot.recentlyClosed?.length ?? 0) > 0,
+            editorEnabled: snapshot.documentKind === "markdown" && snapshot.mode !== "reading",
+            onBack: props.onBack,
+            onClose: () => {
+              props.onCloseCommandPalette?.();
+            },
+            onEditorCommand: props.onEditorCommand,
+            onForward: props.onForward,
+            onNewNote: props.onNewNote,
+            onReopen: props.onReopenClosedTab,
+            onSearch: props.onOpenSearch,
+            onToggleFocus: props.onToggleFocusMode
+          }
+        ),
+        /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)(
+          "div",
+          {
+            className: "tocktutor-grid relative grid h-full min-h-0 grid-cols-[var(--tockteam-primary-sidebar-width,280px)_minmax(0,1fr)_auto_auto] transition-[grid-template-columns] duration-300 ease-out",
+            style: {
+              gridTemplateColumns: contentColumns,
+              transitionDuration: shouldAnimateSidebarColumns ? void 0 : "0ms"
+            },
+            children: [
+              /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)(
+                "aside",
+                {
+                  "aria-hidden": !effectiveSidebarOpen,
+                  "aria-label": "Files",
+                  className: "tocktutor-sidebar grid min-h-0 grid-rows-[40px_minmax(0,1fr)_var(--tt-footer-height)] overflow-hidden border-r border-[var(--tt-border)] bg-[var(--tockteam-shell-chrome,var(--tt-panel))] data-[open=false]:invisible data-[open=false]:[transition:visibility_0s_linear_300ms]",
+                  "data-open": effectiveSidebarOpen,
+                  ...effectiveSidebarOpen ? {} : { inert: "" },
+                  children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("header", { className: "tocktutor-sidebar-header flex items-center gap-2.5 border-b border-[var(--tt-border)] px-2.5 [&_svg]:size-3.5", children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("h1", { className: "mr-auto my-0 text-sm font-semibold", children: "Files" }),
+                      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("span", { className: "inline-flex items-center justify-center text-sm text-[var(--tt-muted)]", children: /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(WorkbenchGlyph, { kind: "more" }) }),
+                      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("span", { className: "inline-flex items-center justify-center text-sm text-[var(--tt-muted)]", children: /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Upload, { "aria-hidden": "true" }) }),
+                      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("span", { className: "inline-flex items-center justify-center text-sm text-[var(--tt-muted)]", children: /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(WorkbenchGlyph, { kind: "folder" }) }),
+                      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("span", { className: "inline-flex items-center justify-center text-sm text-[var(--tt-muted)]", children: /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(PanelTop, { "aria-hidden": "true" }) })
+                    ] }),
+                    /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("div", { className: "tocktutor-sidebar-content min-h-0 overflow-auto px-[5px] py-[3px]", children: [
+                      snapshot.searchOpen && /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("section", { "aria-label": "Search Notes", className: "tocktutor-search mb-2 border-b border-[var(--tt-border)] px-[3px] pb-2", children: [
+                        /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Label, { unstyled: true, className: "mb-[5px] block text-xs font-semibold", htmlFor: "tocktutor-search-query", children: "Search Notes" }),
+                        /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("div", { className: "flex gap-1", children: [
+                          /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(
+                            Input,
+                            {
+                              unstyled: true,
+                              "aria-label": "Search Notes Query",
+                              autoFocus: true,
+                              className: "w-full min-w-0 rounded-[5px] border border-[var(--tt-border)] px-[7px] py-[5px] [font:inherit]",
+                              id: "tocktutor-search-query",
+                              maxLength: 1e3,
+                              onChange: (event) => {
+                                props.onSearchChange?.(event.target.value);
+                              },
+                              type: "search",
+                              value: snapshot.searchQuery
+                            }
+                          ),
+                          /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)(Tooltip2, { children: [
+                            /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(TooltipTrigger3, { asChild: true, children: /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Button, { unstyled: true, "aria-label": "Close Search", className: "w-7 rounded-[5px] border border-[var(--tt-border)] bg-transparent", onClick: () => {
+                              props.onCloseSearch?.();
+                            }, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(WorkbenchGlyph, { kind: "close" }) }) }),
+                            /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(TooltipContent3, { children: "Close Search" })
+                          ] })
+                        ] }),
+                        /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("div", { className: "mt-1 flex gap-1", children: [
+                          /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Button, { unstyled: true, "aria-pressed": (snapshot.searchMode ?? "query") === "query", className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs aria-pressed:border-[var(--tt-accent)]", onClick: () => {
+                            props.onSearchMode?.("query");
+                          }, type: "button", children: "Keyword" }),
+                          /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Button, { unstyled: true, "aria-pressed": snapshot.searchMode === "related", className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs aria-pressed:border-[var(--tt-accent)]", onClick: () => {
+                            props.onSearchMode?.("related");
+                          }, type: "button", children: "Related" }),
+                          /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs", disabled: snapshot.searchLoading === true || snapshot.searchQuery.trim() === "", onClick: props.onRunSearch, type: "button", children: snapshot.searchLoading === true ? "Searching\u2026" : "Search" })
+                        ] }),
+                        /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Alert, { unstyled: true, "aria-live": "polite", className: "mx-1 my-[7px] text-xs text-[var(--tt-muted)]", role: "status", children: (snapshot.searchMatches?.length ?? 0) > 0 ? `${String(snapshot.searchMatches?.length ?? 0)} vault results.` : `${String(documents.length)} matching note paths.` }),
+                        (snapshot.searchMatches?.length ?? 0) > 0 && /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("ul", { className: "m-0 grid list-none gap-1 p-0", "aria-label": "Vault Search Results", children: snapshot.searchMatches?.map((match, index2) => /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("li", { children: /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)(Button, { unstyled: true, className: "w-full rounded border border-[var(--tt-border)] bg-transparent p-1.5 text-left", onClick: () => {
+                          props.onSelect(match.path);
+                        }, type: "button", children: [
+                          /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("strong", { className: "block truncate text-xs", children: [
+                            match.path,
+                            match.line === null ? "" : `:${String(match.line)}`
+                          ] }),
+                          /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("span", { className: "block truncate text-xs text-[var(--tt-muted)]", children: match.preview })
+                        ] }) }, `${match.path}-${String(match.line ?? 0)}-${String(index2)}`)) })
+                      ] }),
+                      /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("nav", { "aria-label": "Vault Notes", children: [
+                        snapshot.phase === "loading" && /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("p", { className: "mx-1 my-[7px] text-xs text-[var(--tt-muted)]", children: "Loading notes\u2026" }),
+                        snapshot.phase === "inactive" && /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Alert, { unstyled: true, className: "mx-1 my-[7px] text-xs text-[color-mix(in_srgb,var(--tt-muted)_90%,var(--tt-text))]", children: "No Active Vault" }),
+                        snapshot.phase === "error" && /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Alert, { unstyled: true, className: "mx-1 my-[7px] text-xs text-[color-mix(in_srgb,var(--tt-muted)_90%,var(--tt-text))]", children: snapshot.message }),
+                        snapshot.phase === "ready" && documents.length === 0 && /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("p", { className: "mx-1 my-[7px] text-xs text-[var(--tt-muted)]", children: "No supported notes found." }),
+                        /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("ul", { className: "tocktutor-tree m-0 list-none p-0", role: visibleTreeEntries.length > 0 ? "tree" : void 0, children: /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(TreeEntries, { entries: visibleTreeEntries, onSelect: props.onSelect, path: snapshot.path }) })
+                      ] })
+                    ] }),
+                    /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)(
+                      Button,
+                      {
+                        unstyled: true,
+                        "aria-expanded": panel === "utilities",
+                        className: "tocktutor-vault-switcher grid grid-cols-[14px_minmax(0,1fr)_16px] items-center gap-1.5 border-0 border-t border-[var(--tt-border)] bg-[var(--tockteam-shell-chrome,var(--tt-panel))] px-2.5 text-left [&>span]:truncate [&_svg]:size-[13px]",
+                        onClick: () => {
+                          setPanel((current) => current === "utilities" ? null : "utilities");
+                        },
+                        type: "button",
+                        children: [
+                          /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(WorkbenchGlyph, { kind: "collapse" }),
+                          /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("span", { children: snapshot.vault === null ? "Choose Vault" : "TockTutor Vault" }),
+                          /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(WorkbenchGlyph, { kind: "more" })
+                        ]
+                      }
+                    )
+                  ]
+                }
+              ),
+              /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(
+                Button,
+                {
+                  unstyled: true,
+                  "aria-label": `Resize Files Sidebar, ${String(sidebarWidth)} Pixels`,
+                  className: "tocktutor-sidebar-resize absolute top-0 bottom-0 z-5 m-0 w-2 touch-none cursor-ew-resize border-0 bg-transparent p-0 outline-none after:absolute after:top-0 after:bottom-0 after:left-[3px] after:w-0.5 after:bg-transparent after:content-[''] focus-visible:after:bg-[var(--tt-accent)]",
+                  hidden: !effectiveSidebarOpen,
+                  onKeyDown: resizeSidebarWithKeyboard,
+                  onPointerDown: beginSidebarResize,
+                  style: { left: sidebarWidth - 4 },
+                  title: "Drag or Use Left and Right Arrow Keys",
+                  type: "button"
+                }
+              ),
+              /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("section", { "aria-label": "Note Editor", className: "tocktutor-editor grid min-h-0 grid-rows-[40px_minmax(0,1fr)_var(--tt-footer-height)] overflow-hidden bg-[var(--tt-panel)]", id: "tocktutor-note-editor", role: "tabpanel", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("header", { className: "tocktutor-editor-header relative flex min-w-0 items-center justify-center border-b border-[var(--tt-border)] px-2.5", children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("h2", { className: "m-0 truncate text-[13px] font-medium text-[var(--tt-muted)]", children: noteTitle(snapshot.path) }),
+                  /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("div", { className: "tocktutor-editor-actions absolute right-2.5 flex items-center gap-1 [&_button]:inline-flex [&_button]:h-7 [&_button]:w-[26px] [&_button]:items-center [&_button]:justify-center [&_button]:border-0 [&_button]:bg-transparent [&_button]:p-0 [&_button]:text-[var(--tt-muted)] [&_span]:inline-flex [&_span]:h-7 [&_span]:w-[26px] [&_span]:items-center [&_span]:justify-center [&_span]:border-0 [&_span]:bg-transparent [&_span]:p-0 [&_span]:text-[var(--tt-muted)]", children: [
+                    snapshot.documentKind === "markdown" ? /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("span", { "aria-label": "Editor Mode", className: "flex", role: "group", children: ["reading", "live-preview", "source"].map((mode) => /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(
+                      Button,
+                      {
+                        unstyled: true,
+                        "aria-label": mode === "reading" ? "Reading" : mode === "live-preview" ? "Live Preview" : "Source",
+                        "aria-pressed": snapshot.mode === mode,
+                        className: "w-auto! px-1.5! aria-pressed:text-[var(--tt-accent)]",
+                        onClick: () => {
+                          props.onMode(mode);
+                        },
+                        type: "button",
+                        children: mode === "reading" ? /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(FileText, { "aria-hidden": "true" }) : mode === "live-preview" ? /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Pencil, { "aria-hidden": "true" }) : /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(WorkbenchGlyph, { kind: "document" })
+                      },
+                      mode
+                    )) }) : /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(
+                      Button,
+                      {
+                        unstyled: true,
+                        "aria-label": snapshot.mode === "source" ? previewLabel : sourceLabel,
+                        onClick: () => {
+                          props.onMode(snapshot.mode === "source" ? "reading" : "source");
+                        },
+                        type: "button",
+                        children: /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(WorkbenchGlyph, { kind: "pencil" })
+                      }
+                    ),
+                    /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("span", { children: /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Music, { "aria-hidden": "true" }) }),
+                    /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("span", { children: /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Folder, { "aria-hidden": "true" }) }),
+                    /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)(Tooltip2, { children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(TooltipTrigger3, { asChild: true, children: /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(
+                        Button,
+                        {
+                          unstyled: true,
+                          "aria-label": "More Note Actions",
+                          "aria-expanded": panel === "utilities",
+                          onClick: () => {
+                            setPanel((current) => current === "utilities" ? null : "utilities");
+                          },
+                          type: "button",
+                          children: /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(WorkbenchGlyph, { kind: "more" })
+                        }
+                      ) }),
+                      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(TooltipContent3, { children: "More Note Actions" })
+                    ] })
+                  ] })
+                ] }),
+                /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("div", { className: "tocktutor-editor-body relative min-h-0 overflow-auto", children: snapshot.path === null ? /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Empty, { unstyled: true, className: "tocktutor-empty absolute top-[45%] left-1/2 w-full max-w-[420px] -translate-1/2 p-8 text-center", children: /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)(EmptyHeader, { unstyled: true, children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("p", { className: "tocktutor-kicker mb-0.5 text-[11px] font-[650] tracking-[.08em] text-[var(--tt-muted)] uppercase", children: "Ready When You Are" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(EmptyTitle, { unstyled: true, "aria-level": 2, className: "text-xl font-bold", role: "heading", children: "Select a Note" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(EmptyDescription, { unstyled: true, className: "text-[var(--tt-muted)]", children: "Choose a Markdown note from the vault to read or edit its exact source." })
+                ] }) }) : snapshot.mode === "source" ? /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(
+                  Textarea,
+                  {
+                    unstyled: true,
+                    "aria-label": sourceLabel,
+                    className: "h-full min-h-0 w-full resize-none border-0 bg-[var(--tt-panel)] px-[max(28px,calc((100%-768px)/2))] py-9 text-[var(--tt-text)] outline-none [tab-size:2] [font:14px/1.65_ui-monospace,SFMono-Regular,Consolas,monospace]",
+                    onChange: (event) => {
+                      props.onEdit(event.target.value);
+                    },
+                    onSelect: (event) => {
+                      props.onSelectionChange?.(event.currentTarget.selectionStart, event.currentTarget.selectionEnd);
+                    },
+                    spellCheck: "true",
+                    value: snapshot.source
+                  }
+                ) : snapshot.mode === "live-preview" && snapshot.documentKind === "markdown" ? /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(
+                  LivePreviewView,
+                  {
+                    documentKey: snapshot.path,
+                    onEdit: props.onEdit,
+                    onToggleTask: props.onToggleTask,
+                    source: snapshot.source
+                  }
+                ) : snapshot.documentKind === "canvas" ? /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(
+                  CanvasBoard,
+                  {
+                    disabled: snapshot.revision === null || props.onCanvasChange === void 0,
+                    onChange: (change) => {
+                      props.onCanvasChange?.(change);
+                    },
+                    revision: snapshot.revision ?? "unavailable",
+                    source: snapshot.source
+                  }
+                ) : snapshot.documentKind === "base" ? /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(
+                  ExecutableBaseView,
+                  {
+                    files: snapshot.baseFiles ?? [],
+                    ...props.onBaseCopy === void 0 ? {} : { onCopy: props.onBaseCopy },
+                    ...props.onBaseEdit === void 0 ? {} : { onEdit: props.onBaseEdit },
+                    ...props.onBaseExport === void 0 ? {} : { onExport: props.onBaseExport },
+                    source: snapshot.source
+                  }
+                ) : snapshot.documentKind === "markdown" ? /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(RichReadingView, { onToggleTask: props.onToggleTask, source: snapshot.source }) : /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Alert, { unstyled: true, children: "Reading view is unavailable." }) }),
+                /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("footer", { "aria-label": "TockTutor Status Bar", className: "tocktutor-statusbar flex min-w-0 items-center border-t border-[var(--tt-border)] px-2 text-xs text-[var(--tt-muted)]", role: "group", children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("output", { "aria-live": "polite", className: "tocktutor-message absolute size-px overflow-hidden whitespace-nowrap [clip:rect(0_0_0_0)] [clip-path:inset(50%)]", children: snapshot.message }),
+                  snapshot.path !== null && /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("div", { className: "ml-auto flex items-center gap-[18px] whitespace-nowrap max-[760px]:gap-2", children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("span", { children: "0 Backlinks" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("span", { children: snapshot.mode === "reading" ? "Reading" : snapshot.mode === "live-preview" ? "Live Preview" : "Source" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("span", { children: [
+                      String(words),
+                      " Words"
+                    ] }),
+                    /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("span", { children: [
+                      String(characters),
+                      " Characters"
+                    ] }),
+                    /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)(Tooltip2, { children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(TooltipTrigger3, { asChild: true, children: /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(
+                        Button,
+                        {
+                          unstyled: true,
+                          "aria-label": "Open Assistant",
+                          "aria-expanded": panel === "assistant",
+                          onClick: () => {
+                            setPanel((current) => current === "assistant" ? null : "assistant");
+                          },
+                          type: "button",
+                          className: "border-0 bg-transparent px-0 py-0.5 text-[var(--tt-muted)] [&_svg]:size-[17px]",
+                          children: /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(WorkbenchGlyph, { kind: "chat" })
+                        }
+                      ) }),
+                      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(TooltipContent3, { children: "Open Assistant" })
+                    ] })
+                  ] })
+                ] })
+              ] }),
+              /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)(
+                "aside",
+                {
+                  "aria-hidden": panel !== "assistant",
+                  "aria-label": "Assistant Panel",
+                  className: "tocktutor-right-panel tocktutor-right-panel-assistant relative invisible grid min-w-0 w-0 translate-x-6 grid-rows-[minmax(0,1fr)] overflow-hidden border-l-0 bg-[var(--tt-panel)] opacity-0 shadow-none transition-[width,opacity,transform,visibility] [transition-duration:420ms,300ms,460ms,0s] [transition-timing-function:cubic-bezier(.16,1,.3,1),cubic-bezier(.16,1,.3,1),cubic-bezier(.16,1,.3,1),linear] [transition-delay:0s,0s,0s,420ms] pointer-events-none data-[open=true]:visible data-[open=true]:translate-x-0 data-[open=true]:overflow-visible data-[open=true]:opacity-100 data-[open=true]:[transition-delay:0s] data-[open=true]:pointer-events-auto [&>:not(.tocktutor-assistant-resize)]:min-w-[min(240px,calc(100vw-262px))]",
+                  "data-open": panel === "assistant",
+                  style: { width: panel === "assistant" ? `${String(assistantPanelWidth)}px` : "0px" },
+                  ...panel === "assistant" ? {} : { inert: "" },
+                  children: [
+                    panel === "assistant" && /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(
+                      Button,
+                      {
+                        unstyled: true,
+                        "aria-label": "Resize Assistant Panel",
+                        "aria-orientation": "vertical",
+                        "aria-valuemax": MAX_ASSISTANT_PANEL_WIDTH,
+                        "aria-valuemin": MIN_ASSISTANT_PANEL_WIDTH,
+                        "aria-valuenow": assistantPanelWidth,
+                        className: "tocktutor-assistant-resize absolute top-0 bottom-0 left-0 z-3 w-4 -translate-x-1/2 touch-none cursor-col-resize border-0 bg-transparent p-0 outline-none before:absolute before:top-1/2 before:left-1/2 before:h-10 before:w-2 before:-translate-1/2 before:rounded-full before:border before:border-[color-mix(in_srgb,var(--tt-text)_32%,var(--tt-border)_68%)] before:bg-[color-mix(in_srgb,var(--tt-text)_8%,var(--tt-panel))] before:shadow-[0_4px_12px_-7px_color-mix(in_srgb,var(--tt-text)_42%,transparent),0_0_0_1px_color-mix(in_srgb,var(--tt-panel)_82%,transparent)] before:transition-colors before:duration-140 before:ease-[cubic-bezier(.16,1,.3,1)] before:content-[''] hover:before:border-[color-mix(in_srgb,var(--tt-accent)_58%,var(--tt-border)_42%)] active:before:border-[color-mix(in_srgb,var(--tt-accent)_58%,var(--tt-border)_42%)] focus-visible:before:border-[color-mix(in_srgb,var(--tt-accent)_58%,var(--tt-border)_42%)] hover:[&+.tocktutor-assistant-content]:border-l-[var(--tt-accent)] active:[&+.tocktutor-assistant-content]:border-l-[var(--tt-accent)] focus-visible:[&+.tocktutor-assistant-content]:border-l-[var(--tt-accent)]",
+                        onKeyDown: resizeAssistantPanelWithKeyboard,
+                        onPointerDown: beginAssistantPanelResize,
+                        role: "separator",
+                        title: "Drag or Use Left and Right Arrow Keys",
+                        type: "button"
+                      }
+                    ),
+                    /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("div", { className: "tocktutor-assistant-content min-h-0 min-w-[min(240px,calc(100vw-262px))] overflow-hidden border-l border-[color-mix(in_srgb,var(--tt-text)_8%,var(--tt-border)_92%)] transition-colors duration-140 ease-[cubic-bezier(.16,1,.3,1)]", children: props.assistantPanel })
+                  ]
+                }
+              ),
+              /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)(
+                "aside",
+                {
+                  "aria-hidden": panel !== "utilities",
+                  "aria-label": "Workbench Utilities",
+                  className: "tocktutor-right-panel invisible grid min-w-0 w-0 translate-x-6 grid-rows-[40px_minmax(0,1fr)] overflow-auto border-l border-[var(--tt-border)] bg-[var(--tt-panel)] opacity-0 shadow-none transition-[width,opacity,transform,visibility] [transition-duration:420ms,300ms,460ms,0s] [transition-timing-function:cubic-bezier(.16,1,.3,1),cubic-bezier(.16,1,.3,1),cubic-bezier(.16,1,.3,1),linear] [transition-delay:0s,0s,0s,420ms] pointer-events-none data-[open=true]:visible data-[open=true]:w-[min(360px,calc(100vw-262px))] data-[open=true]:translate-x-0 data-[open=true]:opacity-100 data-[open=true]:[transition-delay:0s] data-[open=true]:pointer-events-auto [&>:not(.tocktutor-assistant-resize)]:min-w-[min(360px,calc(100vw-262px))]",
+                  "data-open": panel === "utilities",
+                  ...panel === "utilities" ? {} : { inert: "" },
+                  children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("header", { className: "flex items-center justify-between border-b border-[var(--tt-border)] px-3", children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("h2", { className: "m-0 text-sm", children: "More Options" }),
+                      /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)(Tooltip2, { children: [
+                        /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(TooltipTrigger3, { asChild: true, children: /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Button, { unstyled: true, "aria-label": "Close More Options", className: "border-0 bg-transparent p-[5px]", onClick: () => {
+                          setPanel(null);
+                        }, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(WorkbenchGlyph, { kind: "close" }) }) }),
+                        /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(TooltipContent3, { children: "Close More Options" })
+                      ] })
+                    ] }),
+                    /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("section", { "aria-label": "Vaults", className: "border-t border-[var(--tt-border)] p-3", children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("div", { className: "flex items-center justify-between gap-2", children: [
+                        /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("h2", { className: "m-0 text-sm", children: "Vaults" }),
+                        /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs", onClick: props.onOpenSandboxVault, type: "button", children: "Open Sandbox Vault" })
+                      ] }),
+                      /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("div", { className: "mt-2 grid gap-1.5", children: [
+                        (snapshot.recentVaults ?? []).map((vault, index2) => /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("div", { className: "grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-1", children: [
+                          /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("span", { className: "truncate text-xs", title: vault.id, children: [
+                            "Recent Vault ",
+                            String(index2 + 1),
+                            snapshot.vault?.id === vault.id ? " \xB7 Active" : ""
+                          ] }),
+                          /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs", disabled: snapshot.vault?.id === vault.id, onClick: () => {
+                            props.onActivateRecentVault?.(vault.id);
+                          }, type: "button", children: "Open" }),
+                          /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Button, { unstyled: true, "aria-label": `Remove Recent Vault ${String(index2 + 1)}`, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs", onClick: () => {
+                            props.onRemoveRecentVault?.(vault.id);
+                          }, type: "button", children: "Remove" })
+                        ] }, vault.id)),
+                        (snapshot.recentVaults?.length ?? 0) === 0 && /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Alert, { unstyled: true, role: "status", children: "No recent vaults." })
+                      ] })
+                    ] }),
+                    /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("section", { "aria-label": "File Recovery", className: "border-t border-[var(--tt-border)] p-3", children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("div", { className: "flex items-center justify-between gap-2", children: [
+                        /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("h2", { className: "m-0 text-sm", children: "File Recovery" }),
+                        /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs", onClick: props.onOpenRecovery, type: "button", children: "Refresh" })
+                      ] }),
+                      snapshot.draftRecovered === true && /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Alert, { unstyled: true, className: "mt-2", role: "status", children: "A local draft was recovered for this note." }),
+                      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("div", { className: "mt-2 flex gap-2", children: /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs", disabled: snapshot.path === null, onClick: props.onTrashCurrent, type: "button", children: "Move Current File to Trash" }) }),
+                      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("h3", { className: "mt-3 mb-1 text-xs", children: "Snapshots" }),
+                      /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("div", { className: "grid gap-1", children: [
+                        (snapshot.snapshots ?? []).map((snapshotEntry, index2) => /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("div", { className: "grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-1", children: [
+                          /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("span", { className: "truncate text-xs", children: [
+                            "Snapshot ",
+                            String(index2 + 1),
+                            " \xB7 ",
+                            snapshotEntry.reason
+                          ] }),
+                          /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs", onClick: () => {
+                            props.onReadSnapshot?.(snapshotEntry.id);
+                          }, type: "button", children: "Preview" }),
+                          /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs", onClick: () => {
+                            props.onRestoreSnapshot?.(snapshotEntry.id);
+                          }, type: "button", children: "Restore as New" })
+                        ] }, snapshotEntry.id)),
+                        (snapshot.snapshots?.length ?? 0) === 0 && /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("span", { className: "text-xs text-[var(--tt-muted)]", children: "No snapshots for the active file." })
+                      ] }),
+                      snapshot.selectedSnapshot !== null && snapshot.selectedSnapshot !== void 0 && /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("pre", { "aria-label": "Snapshot Preview", className: "mt-2 max-h-32 overflow-auto rounded border border-[var(--tt-border)] p-2 text-xs", children: snapshot.selectedSnapshot.content }),
+                      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("h3", { className: "mt-3 mb-1 text-xs", children: "Trash" }),
+                      /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("div", { className: "grid gap-1", children: [
+                        (snapshot.trash ?? []).map((entry, index2) => /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("div", { className: "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-1", children: [
+                          /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("span", { className: "truncate text-xs", children: entry.originalPath }),
+                          /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Button, { unstyled: true, "aria-label": `Restore Trash Entry ${String(index2 + 1)}`, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs", onClick: () => {
+                            props.onRestoreTrash?.(entry.id);
+                          }, type: "button", children: "Restore" })
+                        ] }, entry.id)),
+                        (snapshot.trash?.length ?? 0) === 0 && /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("span", { className: "text-xs text-[var(--tt-muted)]", children: "Trash is empty." })
+                      ] })
+                    ] }),
+                    /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("section", { "aria-label": "Graph View", className: "border-t border-[var(--tt-border)] p-3", children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("div", { className: "flex items-center justify-between gap-2", children: [
+                        /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("h2", { className: "m-0 text-sm", children: "Graph View" }),
+                        /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("span", { className: "flex gap-1", children: [
+                          /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Button, { unstyled: true, "aria-pressed": snapshot.graphMode === "global", className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs", onClick: () => {
+                            props.onLoadGraph?.("global");
+                          }, type: "button", children: "Global" }),
+                          /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Button, { unstyled: true, "aria-pressed": snapshot.graphMode === "local", className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs", disabled: snapshot.path === null, onClick: () => {
+                            props.onLoadGraph?.("local");
+                          }, type: "button", children: "Local" })
+                        ] })
+                      ] }),
+                      (snapshot.graphLayout?.length ?? 0) > 0 ? /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)(import_jsx_runtime23.Fragment, { children: [
+                        /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("svg", { "aria-label": `${snapshot.graphMode === "local" ? "Local" : "Global"} Graph Canvas`, className: "mt-2 h-48 w-full rounded border border-[var(--tt-border)]", role: "img", viewBox: "0 0 400 240", children: [
+                          (snapshot.graph?.edges ?? []).map((edge, index2) => {
+                            const source = snapshot.graphLayout?.find((node) => node.path === edge.sourcePath);
+                            const target = snapshot.graphLayout?.find((node) => node.path === edge.targetPath);
+                            return source === void 0 || target === void 0 ? null : /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("line", { stroke: "currentColor", strokeOpacity: "0.35", x1: 200 + source.x / 5, x2: 200 + target.x / 5, y1: 120 + source.y / 5, y2: 120 + target.y / 5 }, `${edge.sourcePath}-${edge.targetPath}-${String(index2)}`);
+                          }),
+                          snapshot.graphLayout?.map((node) => /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("circle", { cx: 200 + node.x / 5, cy: 120 + node.y / 5, fill: node.path === snapshot.graph?.path ? "var(--tt-accent)" : "var(--tt-muted)", r: "5", children: /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("title", { children: node.path }) }, node.path))
+                        ] }),
+                        /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("div", { className: "mt-1 grid max-h-28 gap-1 overflow-auto", children: snapshot.graphLayout?.map((node) => /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Button, { unstyled: true, className: "truncate rounded border-0 bg-transparent px-1 py-0.5 text-left text-xs", onClick: () => {
+                          props.onSelect(node.path);
+                        }, type: "button", children: node.path }, node.path)) })
+                      ] }) : /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("span", { className: "mt-2 block text-xs text-[var(--tt-muted)]", children: "Open Global or Local Graph." })
+                    ] }),
+                    /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("section", { "aria-label": "Bookmarks", className: "border-t border-[var(--tt-border)] p-3", children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("h2", { className: "m-0 text-sm", children: "Bookmarks" }),
+                      /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("div", { className: "mt-2 grid gap-1", children: [
+                        (snapshot.bookmarks ?? []).map((bookmark) => /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("div", { className: "grid grid-cols-[minmax(0,1fr)_auto] gap-1", children: [
+                          /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)(Button, { unstyled: true, className: "truncate rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-left text-xs", onClick: () => {
+                            props.onOpenBookmark?.(bookmark.id);
+                          }, type: "button", children: [
+                            bookmark.title,
+                            " \xB7 ",
+                            bookmark.kind,
+                            bookmark.missing === true ? " \xB7 Missing" : ""
+                          ] }),
+                          /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Button, { unstyled: true, "aria-label": `Remove Bookmark ${bookmark.title}`, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs", onClick: () => {
+                            props.onRemoveBookmark?.(bookmark.id);
+                          }, type: "button", children: "Remove" })
+                        ] }, bookmark.id)),
+                        (snapshot.bookmarks?.length ?? 0) === 0 && /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("span", { className: "text-xs text-[var(--tt-muted)]", children: "No bookmarks." })
+                      ] })
+                    ] }),
+                    /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("section", { "aria-label": "Smart Views and Tags", className: "border-t border-[var(--tt-border)] p-3", children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("h2", { className: "m-0 text-sm", children: "Smart Views and Tags" }),
+                      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("div", { className: "mt-2 grid grid-cols-2 gap-1", children: ["recent", "tasks", "journals", "favorites", "collections", "tags"].map((kind) => /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-left text-xs", onClick: () => {
+                        props.onOpenSmartView?.(kind);
+                      }, type: "button", children: kind[0].toLocaleUpperCase() + kind.slice(1) }, kind)) }),
+                      (snapshot.facets?.tags.length ?? 0) > 0 && /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("div", { className: "mt-2 grid gap-1", "aria-label": "Tags", children: snapshot.facets?.tags.map((tag) => /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)(Button, { unstyled: true, className: "rounded border-0 bg-transparent px-1 py-0.5 text-left text-xs", onClick: () => {
+                        props.onSearchChange?.(`tag:${tag.tag}`);
+                        props.onRunSearch?.();
+                      }, type: "button", children: [
+                        "#",
+                        tag.tag,
+                        " \xB7 ",
+                        String(tag.count)
+                      ] }, tag.tag.toLocaleLowerCase())) })
+                    ] }),
+                    /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("section", { "aria-label": "Properties", className: "border-t border-[var(--tt-border)] p-3", children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("h2", { className: "m-0 text-sm", children: "Properties" }),
+                      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("h3", { className: "mt-2 mb-1 text-xs", children: "File" }),
+                      /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("div", { className: "grid gap-1", children: [
+                        activeProperties.map((property) => /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)(Label, { unstyled: true, className: "grid grid-cols-[minmax(80px,.4fr)_minmax(0,1fr)] items-center gap-2 text-xs", children: [
+                          /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("span", { className: "truncate", children: [
+                            property.key,
+                            " \xB7 ",
+                            property.type
+                          ] }),
+                          property.type === "checkbox" ? /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Checkbox3, { "aria-label": `${property.key} Property`, checked: property.value === true, onCheckedChange: (checked) => {
+                            props.onSetProperty?.(property.key, checked === true);
+                          } }) : /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Input, { unstyled: true, "aria-label": `${property.key} Property`, className: "min-w-0 rounded border border-[var(--tt-border)] bg-transparent p-1", defaultValue: Array.isArray(property.value) ? property.value.join(", ") : String(property.value ?? ""), onBlur: (event) => {
+                            props.onSetProperty?.(property.key, property.type === "list" ? event.target.value.split(",").map((value) => value.trim()).filter(Boolean) : property.type === "number" && Number.isFinite(Number(event.target.value)) ? Number(event.target.value) : event.target.value);
+                          } })
+                        ] }, property.key)),
+                        activeProperties.length === 0 && /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("span", { className: "text-xs text-[var(--tt-muted)]", children: "No file properties." })
+                      ] }),
+                      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("h3", { className: "mt-2 mb-1 text-xs", children: "All" }),
+                      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("div", { className: "grid gap-1", children: (snapshot.facets?.properties ?? []).map((property) => /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)(Button, { unstyled: true, className: "rounded border-0 bg-transparent px-1 py-0.5 text-left text-xs", onClick: () => {
+                        props.onSearchChange?.(`[${property.key}]`);
+                        props.onRunSearch?.();
+                      }, type: "button", children: [
+                        property.key,
+                        " \xB7 ",
+                        String(property.count),
+                        " \xB7 ",
+                        property.types.join(", ")
+                      ] }, property.key.toLocaleLowerCase())) })
+                    ] }),
+                    /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("section", { "aria-label": "Note Relationships", className: "border-t border-[var(--tt-border)] p-3", children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("h2", { className: "m-0 text-sm", children: "Outline and Relationships" }),
+                      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("h3", { className: "mt-2 mb-1 text-xs", children: "Outline" }),
+                      /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("div", { className: "grid gap-1", children: [
+                        (snapshot.outline?.headings ?? []).map((heading2) => /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)(Button, { unstyled: true, className: "rounded border-0 bg-transparent px-1 py-0.5 text-left text-xs", onClick: () => {
+                          props.onJumpToLine?.(heading2.line);
+                        }, type: "button", children: [
+                          "\xB7".repeat(Math.max(1, heading2.level)),
+                          " ",
+                          heading2.text
+                        ] }, `${heading2.line}-${heading2.selector}`)),
+                        (snapshot.outline?.headings.length ?? 0) === 0 && /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("span", { className: "text-xs text-[var(--tt-muted)]", children: "No headings." })
+                      ] }),
+                      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("h3", { className: "mt-2 mb-1 text-xs", children: "Footnotes" }),
+                      (snapshot.outline?.footnotes ?? []).map((footnote) => /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Button, { unstyled: true, className: "block w-full rounded border-0 bg-transparent px-1 py-0.5 text-left text-xs", onClick: () => {
+                        props.onJumpToLine?.(footnote.line);
+                      }, type: "button", children: footnote.content }, `${footnote.line}-${footnote.ordinal}`)),
+                      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("h3", { className: "mt-2 mb-1 text-xs", children: "Backlinks" }),
+                      (snapshot.links?.backlinkDetails ?? []).map((link2, index2) => /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)(Button, { unstyled: true, className: "block w-full rounded border-0 bg-transparent px-1 py-0.5 text-left text-xs", onClick: () => {
+                        props.onSelect(link2.sourcePath);
+                      }, type: "button", children: [
+                        link2.sourcePath,
+                        ":",
+                        String(link2.line)
+                      ] }, `${link2.sourcePath}-${String(link2.line)}-${String(index2)}`)),
+                      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("h3", { className: "mt-2 mb-1 text-xs", children: "Outgoing Links" }),
+                      (snapshot.links?.outgoingDetails ?? []).map((link2, index2) => /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Button, { unstyled: true, className: "block w-full rounded border-0 bg-transparent px-1 py-0.5 text-left text-xs", disabled: link2.resolvedPath === null, onClick: () => {
+                        if (link2.resolvedPath !== null) props.onSelect(link2.resolvedPath);
+                      }, type: "button", children: link2.displayText || link2.authoredTarget }, `${link2.authoredTarget}-${String(link2.line)}-${String(index2)}`)),
+                      (snapshot.links?.unlinkedMentions ?? []).map((mention, index2) => /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("span", { className: "block text-xs text-[var(--tt-muted)]", children: [
+                        "Mention: ",
+                        mention.matchedText
+                      ] }, `${mention.sourcePath}-${String(mention.line)}-${String(index2)}`))
+                    ] }),
+                    /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("section", { "aria-label": "Attachments", className: "border-t border-[var(--tt-border)] p-3", children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("div", { className: "flex items-center justify-between gap-2", children: [
+                        /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("h2", { className: "m-0 text-sm", children: "Attachments" }),
+                        /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)(Label, { unstyled: true, className: "cursor-pointer rounded border border-[var(--tt-border)] px-2 py-1 text-xs", children: [
+                          "Add Files",
+                          /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("input", { className: "sr-only", type: "file", accept: "image/*,audio/*,video/*,application/pdf", onChange: (event) => {
+                            const file2 = event.target.files?.[0];
+                            if (file2 === void 0) return;
+                            const reader = new FileReader();
+                            reader.addEventListener("load", () => {
+                              const value = typeof reader.result === "string" ? reader.result.split(",", 2)[1] : void 0;
+                              if (value !== void 0) props.onStoreAttachment?.(file2.name, value);
+                            }, { once: true });
+                            reader.readAsDataURL(file2);
+                            event.target.value = "";
+                          } })
+                        ] })
+                      ] }),
+                      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("div", { className: "mt-2 grid gap-1", children: snapshot.entries.filter((entry) => entry.kind === "attachment").map((entry) => /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Button, { unstyled: true, className: "truncate rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-left text-xs", onClick: () => {
+                        props.onPreviewAttachment?.(entry.path);
+                      }, type: "button", children: entry.path }, entry.path)) }),
+                      snapshot.attachmentPreview !== null && snapshot.attachmentPreview !== void 0 && /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("div", { className: "mt-2 rounded border border-[var(--tt-border)] p-2", children: [
+                        /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("div", { className: "flex justify-between gap-2", children: [
+                          /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("strong", { className: "truncate text-xs", children: snapshot.attachmentPreview.path }),
+                          /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Button, { unstyled: true, "aria-label": "Close Attachment Preview", className: "border-0 bg-transparent", onClick: props.onCloseAttachmentPreview, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(WorkbenchGlyph, { kind: "close" }) })
+                        ] }),
+                        snapshot.attachmentPreview.mediaKind === "image" && /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("img", { alt: snapshot.attachmentPreview.path, className: "mt-2 max-h-48 max-w-full", src: `data:${snapshot.attachmentPreview.mimeType};base64,${snapshot.attachmentPreview.dataBase64}` }),
+                        snapshot.attachmentPreview.mediaKind === "audio" && /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("audio", { className: "mt-2 w-full", controls: true, src: `data:${snapshot.attachmentPreview.mimeType};base64,${snapshot.attachmentPreview.dataBase64}` }),
+                        snapshot.attachmentPreview.mediaKind === "video" && /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("video", { className: "mt-2 max-h-48 max-w-full", controls: true, src: `data:${snapshot.attachmentPreview.mimeType};base64,${snapshot.attachmentPreview.dataBase64}` }),
+                        snapshot.attachmentPreview.mediaKind === "pdf" && /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("iframe", { className: "mt-2 h-48 w-full", sandbox: "", src: `data:${snapshot.attachmentPreview.mimeType};base64,${snapshot.attachmentPreview.dataBase64}`, title: snapshot.attachmentPreview.path })
+                      ] })
+                    ] }),
+                    /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("section", { "aria-label": "Note Composer and Format Converter", className: "border-t border-[var(--tt-border)] p-3", children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("h2", { className: "m-0 text-sm", children: "Note Composer and Format Converter" }),
+                      /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("div", { className: "mt-2 flex gap-1", children: [
+                        /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs", disabled: snapshot.documentKind !== "markdown" || snapshot.mode === "reading" || (snapshot.selectionEnd ?? 0) <= (snapshot.selectionStart ?? 0), onClick: props.onExtractSelection, type: "button", children: "Extract Selection" }),
+                        /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs", disabled: snapshot.documentKind !== "markdown" || snapshot.mode === "reading", onClick: props.onConvertActiveNote, type: "button", children: "Convert Formats" })
+                      ] })
+                    ] }),
+                    /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("section", { "aria-label": "Capture Organization", className: "border-t border-[var(--tt-border)] p-3", children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("div", { className: "flex items-center justify-between gap-2", children: [
+                        /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("h2", { className: "m-0 text-sm", children: "Capture Organization" }),
+                        /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs", disabled: snapshot.path === null || !/^Inbox\/.+\.md$/iu.test(snapshot.path), onClick: props.onPrepareOrganization, type: "button", children: "Prepare Review" })
+                      ] }),
+                      snapshot.organizationProposal !== null && snapshot.organizationProposal !== void 0 && /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("div", { className: "mt-2 rounded border border-[var(--tt-border)] p-2 text-xs", children: [
+                        /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("strong", { className: "block", children: snapshot.organizationProposal.title }),
+                        /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("span", { className: "block truncate", children: snapshot.organizationProposal.destination }),
+                        /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("pre", { className: "max-h-32 overflow-auto whitespace-pre-wrap", children: snapshot.organizationProposal.content }),
+                        /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("div", { className: "flex justify-end gap-1", children: [
+                          /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1", onClick: props.onCancelOrganization, type: "button", children: "Cancel" }),
+                          /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1", onClick: props.onApplyOrganization, type: "button", children: "Approve and Create" })
+                        ] })
+                      ] })
+                    ] }),
+                    /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("section", { "aria-label": "TockTutor Settings", className: "border-t border-[var(--tt-border)] p-3", children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("div", { className: "flex items-center justify-between gap-2", children: [
+                        /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("h2", { className: "m-0 text-sm", children: "Settings and Workspaces" }),
+                        /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs", disabled: snapshot.settings === void 0, onClick: props.onSaveWorkspace, type: "button", children: "Save Workspace" })
+                      ] }),
+                      /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("div", { className: "mt-2 grid gap-2 text-xs", children: [
+                        /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)(Label, { unstyled: true, className: "flex items-center justify-between gap-2", children: [
+                          "Page Preview",
+                          /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Checkbox3, { checked: snapshot.settings?.pagePreview ?? true, disabled: snapshot.settings === void 0, onCheckedChange: (checked) => {
+                            props.onSettingsChange?.({ pagePreview: checked === true });
+                          } })
+                        ] }),
+                        /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)(Label, { unstyled: true, className: "flex items-center justify-between gap-2", children: [
+                          "Backlinks in Document",
+                          /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Checkbox3, { checked: snapshot.settings?.backlinksInDocument ?? false, disabled: snapshot.settings === void 0, onCheckedChange: (checked) => {
+                            props.onSettingsChange?.({ backlinksInDocument: checked === true });
+                          } })
+                        ] }),
+                        /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)(Label, { unstyled: true, className: "grid gap-1", children: [
+                          "Default Editing Mode",
+                          /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("select", { className: "rounded border border-[var(--tt-border)] bg-transparent p-1", disabled: snapshot.settings === void 0, onChange: (event) => {
+                            props.onSettingsChange?.({ defaultEditingMode: event.target.value === "source" ? "source" : "live-preview" });
+                          }, value: snapshot.settings?.defaultEditingMode ?? "live-preview", children: [
+                            /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("option", { value: "live-preview", children: "Live Preview" }),
+                            /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("option", { value: "source", children: "Source" })
+                          ] })
+                        ] })
+                      ] }),
+                      /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("div", { className: "mt-2 grid gap-1", children: [
+                        (snapshot.workspaces ?? []).map((workspace) => /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-left text-xs", onClick: () => {
+                          props.onLoadWorkspace?.(workspace.id);
+                        }, type: "button", children: [
+                          "Load ",
+                          workspace.name
+                        ] }, workspace.id)),
+                        (snapshot.workspaces?.length ?? 0) === 0 && /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("span", { className: "text-xs text-[var(--tt-muted)]", children: "No saved workspaces." })
+                      ] })
+                    ] }),
+                    /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("section", { "aria-label": "Pane Groups", className: "tocktutor-pane-groups border-t border-[var(--tt-border)] p-3", children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("div", { className: "tocktutor-pane-heading flex items-center justify-between", children: [
+                        /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("h2", { className: "m-0 text-sm", children: "Pane Groups" }),
+                        /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)(Tooltip2, { children: [
+                          /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(TooltipTrigger3, { asChild: true, children: /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("span", { className: "inline-flex", children: /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Button, { unstyled: true, "aria-label": "Add Pane", className: "size-[26px] rounded border border-[var(--tt-border)] bg-transparent", disabled: snapshot.panes.length >= MAX_PANE_GROUPS, onClick: props.onAddPane, type: "button", children: /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(WorkbenchGlyph, { kind: "new" }) }) }) }),
+                          /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(TooltipContent3, { children: "Add Pane" })
+                        ] })
+                      ] }),
+                      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("div", { className: "tocktutor-pane-list mt-2 grid grid-cols-2 gap-1.5", children: snapshot.panes.map((pane, index2) => /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)(Button, { unstyled: true, "aria-pressed": pane.id === snapshot.focusedPaneId, className: "overflow-hidden rounded-[5px] border border-[var(--tt-border)] bg-transparent p-1.5 text-left aria-pressed:border-[var(--tt-accent)] [&_small]:block [&_small]:truncate [&_small]:text-xs [&_small]:text-[var(--tt-muted)] [&_span]:block [&_span]:truncate", onClick: () => {
+                        props.onFocusPane(pane.id);
+                      }, title: pane.activePath ?? `Pane ${String(index2 + 1)}`, type: "button", children: [
+                        /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("span", { children: [
+                          "Pane ",
+                          String(index2 + 1)
+                        ] }),
+                        /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("small", { children: pane.activePath ?? "Empty" })
+                      ] }, pane.id)) })
+                    ] }),
+                    /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("section", { "aria-label": "Shared Review Panel", className: "tocktutor-review border-t border-[var(--tt-border)] p-3", children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("header", { children: /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("h2", { className: "m-0 text-sm", children: "Reviews" }) }),
+                      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("div", { className: "tocktutor-review-content min-h-0 overflow-auto text-xs text-[var(--tt-muted)]", children: props.reviewPanel ?? /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Alert, { unstyled: true, role: "status", children: "No review workflow is active." }) })
+                    ] }),
+                    /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("section", { "aria-label": "Native Actions", className: "tocktutor-native-actions border-t border-[var(--tt-border)] p-3", children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("header", { children: /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("h2", { className: "m-0 text-sm", children: "Native Actions" }) }),
+                      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("div", { className: "tocktutor-native-actions-content min-h-0 overflow-auto text-xs text-[var(--tt-muted)]", children: props.nativeActions ?? /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Alert, { unstyled: true, role: "status", children: "No native actions are available." }) })
+                    ] })
+                  ]
+                }
+              )
+            ]
+          }
+        )
+      ]
+    }
+  ) });
+}
+function TockTutorAssistantPanelOutlet(props) {
+  return props.renderSlot(TOCKTUTOR_ASSISTANT_PANEL_SLOT, {
+    activePath: props.activePath,
+    ...props.selectedText === void 0 ? {} : { selectedText: props.selectedText },
+    vault: props.vault
+  });
+}
+function TockTutorReviewPanelOutlet(props) {
+  return props.renderSlot(TOCKTUTOR_REVIEW_PANEL_SLOT, {
+    activePath: props.activePath,
+    vault: props.vault
+  }, {
+    fallback: /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Alert, { unstyled: true, role: "status", children: "No review workflow is active." })
+  });
+}
+function TockTutorNativeActionsOutlet(props) {
+  return props.renderSlot(TOCKTUTOR_NATIVE_ACTIONS_SLOT, {
+    activePath: props.activePath,
+    handleDispatch: props.handleDispatch,
+    vault: props.vault
+  }, {
+    fallback: /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Alert, { unstyled: true, role: "status", children: "No native actions are available." })
+  });
+}
+function TockTutorRoute(props) {
+  const controller = (0, import_react7.useMemo)(
+    () => new WorkbenchRouteController(props.remote, props.navigate),
+    [props.navigate, props.remote]
+  );
+  const snapshot = (0, import_react7.useSyncExternalStore)(controller.subscribe, controller.getSnapshot, controller.getSnapshot);
+  const root = (0, import_react7.useRef)(null);
+  (0, import_react7.useEffect)(() => {
+    void controller.syncLocation(props.location.pathname);
+  }, [controller, props.location.pathname]);
+  (0, import_react7.useEffect)(() => () => {
+    controller.dispose();
+  }, [controller]);
+  (0, import_react7.useEffect)(() => {
+    if (snapshot.path === null) return;
+    root.current?.querySelector(snapshot.mode === "source" ? "textarea" : '[aria-label$="View"]')?.focus();
+  }, [snapshot.mode, snapshot.path]);
+  (0, import_react7.useEffect)(() => {
+    if (snapshot.searchOpen) root.current?.querySelector('[aria-label="Search Notes Query"]')?.focus();
+  }, [snapshot.searchOpen]);
+  (0, import_react7.useEffect)(() => {
+    const node = root.current;
+    if (node === null) return;
+    const onKeyDown = (event) => {
+      const isMac = /Mac|iPhone|iPad/u.test(globalThis.navigator?.platform ?? "");
+      const primary = isMac ? event.metaKey : event.ctrlKey;
+      if (primary && !event.altKey && event.key.toLocaleLowerCase() === "p") {
+        event.preventDefault();
+        controller.setCommandPaletteOpen(true);
+        return;
+      }
+      if (primary && event.shiftKey && !event.altKey && event.key.toLocaleLowerCase() === "t") {
+        event.preventDefault();
+        void controller.reopenClosedTab();
+        return;
+      }
+      const editorCommand = resolvePlatformEditorCommand(event, isMac);
+      if (editorCommand !== null) {
+        event.preventDefault();
+        controller.runEditorCommand(editorCommand);
+        return;
+      }
+      const shortcut = resolveEditorShortcut(event, isMac);
+      if (shortcut !== "save") return;
+      event.preventDefault();
+      void controller.save();
+    };
+    node.addEventListener("keydown", onKeyDown);
+    return () => {
+      node.removeEventListener("keydown", onKeyDown);
+    };
+  }, [controller]);
+  return /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("div", { className: "tocktutor-root h-full min-h-0", ref: root, children: /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(
+    TockTutorRouteView,
+    {
+      assistantPanel: /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(
+        TockTutorAssistantPanelOutlet,
+        {
+          activePath: snapshot.path,
+          renderSlot: props.renderSlot,
+          ...(snapshot.selectionEnd ?? 0) > (snapshot.selectionStart ?? 0) ? { selectedText: snapshot.source.slice(snapshot.selectionStart, Math.min(snapshot.selectionEnd ?? 0, (snapshot.selectionStart ?? 0) + 1e4)) } : {},
+          vault: snapshot.vault
+        }
+      ),
+      nativeActions: /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(
+        TockTutorNativeActionsOutlet,
+        {
+          activePath: snapshot.path,
+          handleDispatch: (event) => controller.handleDispatch(event),
+          renderSlot: props.renderSlot,
+          vault: snapshot.vault
+        }
+      ),
+      onActivateRecentVault: (id) => {
+        void controller.activateRecentVault(id);
+      },
+      onActivateTab: (paneId, path) => {
+        void controller.activateTab(paneId, path);
+      },
+      onAddBookmark: () => {
+        controller.addActiveBookmark();
+      },
+      onApplyOrganization: () => {
+        void controller.applyOrganization();
+      },
+      onAddPane: () => {
+        void controller.addPane();
+      },
+      onBack: () => {
+        void controller.goBack();
+      },
+      onBaseCopy: (request) => {
+        void globalThis.navigator?.clipboard?.writeText(request.text);
+      },
+      onBaseEdit: (request) => {
+        void controller.applyBaseEdit(request);
+      },
+      onBaseExport: (request) => {
+        const url2 = URL.createObjectURL(new Blob([request.text], { type: "text/csv;charset=utf-8" }));
+        const anchor = document.createElement("a");
+        anchor.href = url2;
+        anchor.download = request.filename;
+        anchor.click();
+        URL.revokeObjectURL(url2);
+      },
+      onCancelDispatch: () => {
+        controller.cancelDispatchDialog();
+      },
+      onCancelOrganization: () => {
+        controller.cancelOrganization();
+      },
+      onCanvasChange: (change) => {
+        void controller.applyCanvasChange(change);
+      },
+      onCloseAttachmentPreview: () => {
+        controller.closeAttachmentPreview();
+      },
+      onCloseCommandPalette: () => {
+        controller.setCommandPaletteOpen(false);
+      },
+      onCloseSearch: () => {
+        controller.closeSearch();
+      },
+      onCloseTab: (paneId, path) => {
+        void controller.closeTab(paneId, path);
+      },
+      onConvertActiveNote: () => {
+        controller.convertActiveNote();
+      },
+      onEdit: (source) => {
+        controller.edit(source);
+      },
+      onEditorCommand: (command) => {
+        controller.runEditorCommand(command);
+      },
+      onExtractSelection: () => {
+        void controller.extractActiveSelection();
+      },
+      onFocusPane: (paneId) => {
+        void controller.focusPane(paneId);
+      },
+      onForward: () => {
+        void controller.goForward();
+      },
+      onJumpToLine: (line) => {
+        controller.jumpToLine(line);
+      },
+      onLoadGraph: (mode) => {
+        void controller.loadGraph(mode);
+      },
+      onLoadWorkspace: (id) => {
+        void controller.loadWorkspace(id);
+      },
+      onMode: (mode) => {
+        controller.setMode(mode);
+      },
+      onMoveCanvas: (nodeId, deltaX, deltaY) => {
+        controller.moveCanvasNode(nodeId, deltaX, deltaY);
+      },
+      onMoveTab: (paneId, path, direction) => {
+        controller.moveTab(paneId, path, direction);
+      },
+      onNewNote: () => {
+        void controller.handleDispatch({ action: "new", kind: "quick-action", operationId: crypto.randomUUID() });
+      },
+      onOpenBookmark: (id) => {
+        void controller.openBookmark(id);
+      },
+      onOpenCommandPalette: () => {
+        controller.setCommandPaletteOpen(true);
+      },
+      onOpenRecovery: () => {
+        void controller.setRecoveryOpen(true);
+      },
+      onOpenSandboxVault: () => {
+        void controller.openSandboxVault();
+      },
+      onOpenSearch: () => {
+        controller.openSearch("");
+      },
+      onOpenSmartView: (kind) => {
+        void controller.openSmartView(kind);
+      },
+      onPrepareOrganization: () => {
+        void controller.prepareOrganization();
+      },
+      onPreviewAttachment: (path) => {
+        void controller.previewAttachment(path);
+      },
+      onReadSnapshot: (id) => {
+        void controller.readRecoverySnapshot(id);
+      },
+      onRemoveBookmark: (id) => {
+        controller.removeBookmark(id);
+      },
+      onRemoveRecentVault: (id) => {
+        void controller.removeRecentVault(id);
+      },
+      onReopenClosedTab: () => {
+        void controller.reopenClosedTab();
+      },
+      onRestoreSnapshot: (id) => {
+        void controller.restoreRecoverySnapshot(id);
+      },
+      onRestoreTrash: (id) => {
+        void controller.restoreTrashEntry(id);
+      },
+      onRunSearch: () => {
+        void controller.runSearch();
+      },
+      onSave: () => {
+        void controller.save();
+      },
+      onSaveWorkspace: () => {
+        controller.saveCurrentWorkspace();
+      },
+      onSearchChange: (query) => {
+        controller.setSearchQuery(query);
+      },
+      onSearchMode: (mode) => {
+        controller.setSearchMode(mode);
+      },
+      onSettingsChange: (change) => {
+        controller.updateSettings(change);
+      },
+      onSelect: (path) => {
+        void controller.select(path);
+      },
+      onSelectionChange: (start, end) => {
+        controller.setSelection(start, end);
+      },
+      onSetProperty: (key2, value) => {
+        controller.setProperty(key2, value);
+      },
+      onStoreAttachment: (fileName3, dataBase64) => {
+        void controller.storeActiveAttachment(fileName3, dataBase64);
+      },
+      onSubmitDispatch: (draft) => {
+        void controller.submitDispatchDialog(draft);
+      },
+      onToggleFocusMode: () => {
+        controller.toggleFocusMode();
+      },
+      onTogglePinTab: (paneId, path) => {
+        controller.togglePinTab(paneId, path);
+      },
+      onToggleTask: (index2) => {
+        controller.toggleTask(index2);
+      },
+      onTrashCurrent: () => {
+        void controller.trashCurrent();
+      },
+      reviewPanel: /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(
+        TockTutorReviewPanelOutlet,
+        {
+          activePath: snapshot.path,
+          renderSlot: props.renderSlot,
+          vault: snapshot.vault
+        }
+      ),
+      snapshot,
+      ...typeof document === "undefined" ? {} : { titlebarTarget: document.getElementById("tockteam-window-titlebar-slot") ?? document.body }
+    }
+  ) });
 }
 
 // src/base-view-provenance.ts

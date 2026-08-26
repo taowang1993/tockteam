@@ -44,7 +44,9 @@ import type { TockTutorRouteOwnerProps } from '@tockteam/desktop/client'
 import type { PropsRenderSlots } from '@deepseek-ai/dsh-client-ui-slots'
 import type { RemoteResult } from '@deepseek-ai/dsh-typert-protocol'
 import { TOCKTUTOR_ASSISTANT_PANEL_SLOT } from './assistant-panel.ts'
-import { projectBase } from './base.ts'
+import { ExecutableBaseView, type ExecutableBaseCopyRequest, type ExecutableBaseExportRequest } from './base-executable-view.tsx'
+import { executableBasePropertyIdentity, type ExecutableBaseFrontmatterEditRequest } from './base-edit.ts'
+import type { BaseHydratedFile } from './base-query.ts'
 import { CanvasBoard } from './canvas-board.tsx'
 import type { CanvasChange } from './canvas-change.ts'
 import {
@@ -228,6 +230,7 @@ export interface RoutePaneSummary {
 
 export interface WorkbenchRouteSnapshot {
   attachmentPreview?: AttachmentPreviewResult | null
+  baseFiles?: readonly BaseHydratedFile[]
   bookmarks?: readonly TockTutorBookmark[]
   canGoBack?: boolean
   canGoForward?: boolean
@@ -376,6 +379,7 @@ function routeForPath(path: string): string {
 function initialSnapshot(): WorkbenchRouteSnapshot {
   return Object.freeze({
     attachmentPreview: null,
+    baseFiles: Object.freeze([]),
     bookmarks: Object.freeze([]),
     canGoBack: false,
     canGoForward: false,
@@ -923,6 +927,7 @@ export class WorkbenchRouteController {
     this.invalidateDispatch()
     this.nextOperation()
     this.update({
+      baseFiles: Object.freeze([]),
       documentKind: null,
       draftRecovered: false,
       links: null,
@@ -987,6 +992,7 @@ export class WorkbenchRouteController {
     this.eventDispose?.()
     this.eventDispose = null
     this.update({
+      baseFiles: Object.freeze([]),
       bookmarks: Object.freeze([]),
       canGoBack: false,
       canGoForward: false,
@@ -1583,6 +1589,7 @@ export class WorkbenchRouteController {
       if (draftRecovered) this.recordDirty(true)
       if (navigate) this.navigate(routeForPath(path))
       if (documentKind(path) === 'markdown') void this.loadRelationships()
+      else if (documentKind(path) === 'base') void this.hydrateBaseRows(path)
       return true
     } catch (error) {
       if (this.current(operation.id, vault) && !operation.signal.aborted) {
@@ -1762,6 +1769,51 @@ export class WorkbenchRouteController {
       if (created.status !== 'created' || created.generation !== vault.generation || created.path !== proposal.destination) return false
       this.update({ message: `${proposal.destination} created.`, organizationProposal: null })
       await this.refreshTree(vault)
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  async hydrateBaseRows(basePath: string): Promise<boolean> {
+    const vault = this.snapshot.vault
+    if (vault === null || this.snapshot.path !== basePath || this.snapshot.documentKind !== 'base') return false
+    const entries = this.snapshot.entries.filter((entry): entry is Extract<VaultTreeEntry, { kind: 'document' }> => entry.kind === 'document' && /\.(?:markdown|md)$/iu.test(entry.path)).slice(0, 2_000)
+    const operation = this.nextOperation()
+    const files: BaseHydratedFile[] = []
+    try {
+      for (let index = 0; index < entries.length; index += 8) {
+        const batch = entries.slice(index, index + 8)
+        const opened = await Promise.all(batch.map(entry => this.remote.tocktutorWorkbench.openDocument(entry.path, vault, operation.signal).then(remoteValue)))
+        if (!this.current(operation.id, vault) || this.snapshot.path !== basePath) return false
+        for (let offset = 0; offset < opened.length; offset += 1) {
+          const document = opened[offset]!
+          const entry = batch[offset]!
+          if (document.generation !== vault.generation || document.path !== entry.path || !boundedSource(document.content)) return false
+          files.push({ createdAt: entry.createdAt, modifiedAt: entry.modifiedAt, path: entry.path, revision: document.revision, sizeBytes: entry.size, source: document.content })
+        }
+      }
+      this.update({ baseFiles: Object.freeze(files.map(file => Object.freeze({ ...file }))) })
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  async applyBaseEdit(request: ExecutableBaseFrontmatterEditRequest): Promise<boolean> {
+    const vault = this.snapshot.vault
+    const basePath = this.snapshot.path
+    if (vault === null || basePath === null || this.snapshot.documentKind !== 'base') return false
+    const operation = this.operation
+    try {
+      const current = remoteValue(await this.remote.tocktutorWorkbench.openDocument(request.path, vault))
+      if (current.generation !== vault.generation || current.path !== request.path || current.revision !== request.expectedRevision || current.content !== request.previousSource) return false
+      const property = parseFrontmatterProperties(current.content).find(entry => entry.key === request.property)
+      if (property === undefined || executableBasePropertyIdentity(property.key, property.value) !== request.expectedPropertyIdentity) return false
+      const saved = remoteValue(await this.remote.tocktutorWorkbench.saveDocument({ content: request.source, expectedRevision: request.expectedRevision, expectedVault: vault, path: request.path }))
+      if (saved.status !== 'saved' || saved.generation !== vault.generation || saved.path !== request.path) return false
+      if (this.operation !== operation || !sameVault(this.snapshot.vault, vault) || this.snapshot.path !== basePath) return true
+      this.update({ baseFiles: Object.freeze((this.snapshot.baseFiles ?? []).map(file => file.path === request.path ? Object.freeze({ ...file, revision: saved.revision, source: request.source }) : file)) })
       return true
     } catch {
       return false
@@ -2024,33 +2076,6 @@ function LivePreviewView(props: {
   )
 }
 
-function BaseView(props: { source: string }): ReactNode {
-  const projection = projectBase(props.source)
-  if (projection.status !== 'ready') return <Alert unstyled>{projection.reason}</Alert>
-  return (
-    <section aria-label="Base View" className="tocktutor-projection min-h-0 overflow-auto p-6" tabIndex={-1}>
-      <header>
-        <p className="tocktutor-kicker mb-0.5 text-[11px] font-[650] tracking-[.08em] text-[var(--tt-muted)] uppercase">Base</p>
-        <h3 className="mt-0 mb-[18px] text-[17px]">{projection.views.length} Views</h3>
-      </header>
-      <div className="tocktutor-base-grid grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-3">
-        {projection.views.map((view, index) => (
-          <article className="tocktutor-base-view min-w-0 rounded-lg border border-[var(--tt-border)] bg-[var(--tt-bg)] p-3.5 [&>h4]:mt-0 [&>h4]:mb-2 [&>h4]:text-sm [&>h4]:[overflow-wrap:anywhere] [&>p:not(.tocktutor-kicker)]:text-xs [&>p:not(.tocktutor-kicker)]:text-[var(--tt-muted)]" key={`${view.name}-${String(index)}`}>
-            <p className="tocktutor-kicker mb-0.5 text-[11px] font-[650] tracking-[.08em] text-[var(--tt-muted)] uppercase">{view.type || 'Unknown Type'}</p>
-            <h4>{view.name}</h4>
-            <dl className="m-0">
-              {Object.entries(view.fields).map(([field, value]) => (
-                <div className="grid grid-cols-[minmax(72px,.35fr)_minmax(0,1fr)] gap-2 border-t border-[var(--tt-border)] py-[7px]" key={field}><dt className="text-[var(--tt-muted)]">{field}</dt><dd className="m-0 [overflow-wrap:anywhere]">{value || '—'}</dd></div>
-              ))}
-            </dl>
-            {view.warnings.map(warning => <p key={warning} role="note">{warning}</p>)}
-          </article>
-        ))}
-      </div>
-    </section>
-  )
-}
-
 export interface TockTutorRouteViewProps {
   assistantPanel?: ReactNode
   nativeActions?: ReactNode
@@ -2059,6 +2084,9 @@ export interface TockTutorRouteViewProps {
   onActivateTab(paneId: string, path: string): void
   onApplyOrganization?(): void
   onBack?(): void
+  onBaseCopy?(request: ExecutableBaseCopyRequest): void
+  onBaseEdit?(request: ExecutableBaseFrontmatterEditRequest): void
+  onBaseExport?(request: ExecutableBaseExportRequest): void
   onCancelDispatch?(): void
   onCancelOrganization?(): void
   onCanvasChange?(change: CanvasChange): void
@@ -2736,7 +2764,13 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
                 source={snapshot.source}
               />
             ) : snapshot.documentKind === 'base' ? (
-              <BaseView source={snapshot.source} />
+              <ExecutableBaseView
+                files={snapshot.baseFiles ?? []}
+                {...(props.onBaseCopy === undefined ? {} : { onCopy: props.onBaseCopy })}
+                {...(props.onBaseEdit === undefined ? {} : { onEdit: props.onBaseEdit })}
+                {...(props.onBaseExport === undefined ? {} : { onExport: props.onBaseExport })}
+                source={snapshot.source}
+              />
             ) : snapshot.documentKind === 'markdown' ? (
               <RichReadingView onToggleTask={props.onToggleTask} source={snapshot.source} />
             ) : (
@@ -3184,6 +3218,16 @@ export function TockTutorRoute(props: TockTutorRouteProps): ReactNode {
         onApplyOrganization={() => { void controller.applyOrganization() }}
         onAddPane={() => { void controller.addPane() }}
         onBack={() => { void controller.goBack() }}
+        onBaseCopy={request => { void globalThis.navigator?.clipboard?.writeText(request.text) }}
+        onBaseEdit={request => { void controller.applyBaseEdit(request) }}
+        onBaseExport={request => {
+          const url = URL.createObjectURL(new Blob([request.text], { type: 'text/csv;charset=utf-8' }))
+          const anchor = document.createElement('a')
+          anchor.href = url
+          anchor.download = request.filename
+          anchor.click()
+          URL.revokeObjectURL(url)
+        }}
         onCancelDispatch={() => { controller.cancelDispatchDialog() }}
         onCancelOrganization={() => { controller.cancelOrganization() }}
         onCanvasChange={change => { void controller.applyCanvasChange(change) }}

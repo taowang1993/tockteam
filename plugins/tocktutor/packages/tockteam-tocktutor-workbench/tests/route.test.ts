@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
+import { createExecutableBaseFrontmatterEdit } from '../dist/base-edit.js'
 import { createCanvasChange } from '../dist/canvas-change.js'
 import { updateCanvasNodeGeometry } from '../dist/canvas-nodes.js'
 import {
@@ -215,8 +216,8 @@ class FakeRemote implements WorkbenchRouteRemote {
                 }],
               })
             : path === 'Tasks.base'
-              ? 'views:\n  - type: table\n    name: Tasks\n    formula: status == "open"\n'
-              : '# Second\n',
+              ? 'views:\n  - type: table\n    name: Tasks\n    order:\n      - file.name\n      - note.status\n'
+              : '---\nstatus: open\n---\n# Second\n',
         digest: `sha256:${'c'.repeat(64)}`,
         generation: expectedVault.generation,
         path,
@@ -828,7 +829,7 @@ test('enforces the route tab bound before dispatching another open', async () =>
   controller.dispose()
 })
 
-test('Canvas board preserves unknown fields while Base projection remains inert', async () => {
+test('Canvas board and executable Base preserve bounded source identities', async () => {
   const remote = new FakeRemote()
   const controller = new WorkbenchRouteController(remote, () => {})
   await controller.syncLocation('/tocktutor')
@@ -865,6 +866,7 @@ test('Canvas board preserves unknown fields while Base projection remains inert'
   assert.equal(await controller.select('Tasks.base'), true)
   assert.equal(controller.getSnapshot().documentKind, 'base')
   controller.setMode('reading')
+  await new Promise(resolve => setImmediate(resolve))
   html = renderToStaticMarkup(createElement(TockTutorRouteView, {
     onActivateTab() {},
     onAddPane() {},
@@ -877,9 +879,15 @@ test('Canvas board preserves unknown fields while Base projection remains inert'
     onToggleTask() {},
     snapshot: controller.getSnapshot(),
   }))
-  assert.match(html, /aria-label="Base View"/u)
-  assert.match(html, /Base formula is inert and is not evaluated\./u)
-  assert.match(html, /status == &quot;open&quot;/u)
+  assert.match(html, /aria-label="Executable Base"/u)
+  assert.match(html, /aria-label="Tasks Results"/u)
+  assert.match(html, /Second/u)
+  const row = controller.getSnapshot().baseFiles?.find(file => file.path === 'Second.md')
+  assert.ok(row)
+  const edit = createExecutableBaseFrontmatterEdit(row, 'note.status', 'done')
+  assert.ok(edit)
+  assert.equal(await controller.applyBaseEdit(edit), true)
+  assert.match(controller.getSnapshot().baseFiles?.find(file => file.path === 'Second.md')?.source ?? '', /status: done/u)
   controller.dispose()
 })
 
