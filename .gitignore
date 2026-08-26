@@ -3,6 +3,7 @@ dist/
 !plugins/tocktutor/packages/*/dist/
 !plugins/tocktutor/packages/*/dist/**
 plugins/tocktutor/packages/*/*.tgz
+/*.tgz
 .stage/
 .cache/
 /.local/

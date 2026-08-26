@@ -12,7 +12,12 @@ export const dshRoot = join(repositoryRoot, '.cache', 'dsh-source', 'b150a551b8d
 const desktopPackage = JSON.parse(await readFile(join(repositoryRoot, 'package.json'), 'utf8')) as {
   version: string
 }
-export const desktopArtifact = join(repositoryRoot, `tockteam-desktop-${desktopPackage.version}.tgz`)
+export const desktopArtifact = join(
+  repositoryRoot,
+  '.cache',
+  'tocktutor-tests',
+  `tockteam-desktop-${desktopPackage.version}.tgz`,
+)
 
 export function pluginRoot(directory: string): string {
   return join(workspaceRoot, 'packages', directory)
