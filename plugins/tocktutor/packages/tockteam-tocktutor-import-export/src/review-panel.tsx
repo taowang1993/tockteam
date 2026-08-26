@@ -477,7 +477,8 @@ export function ImportExportReviewPanel(
   const vaultId = props.vault?.id ?? null
   const controller = useMemo(
     () => new ImportExportReviewController(props.remote, {
-      authorize: async operation => await callerBridge.authorize(operation, props.vault ?? undefined),
+      authorize: async operation => await callerBridge.authorize(operation,
+        vaultGeneration === null || vaultId === null ? undefined : { generation: vaultGeneration, id: vaultId }),
     }),
     [props.remote, vaultGeneration, vaultId],
   )

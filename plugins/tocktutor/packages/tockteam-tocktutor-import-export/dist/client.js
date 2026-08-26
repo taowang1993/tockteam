@@ -15686,7 +15686,10 @@ function ImportExportReviewPanel(props) {
   const vaultId = props.vault?.id ?? null;
   const controller = (0, import_react3.useMemo)(
     () => new ImportExportReviewController(props.remote, {
-      authorize: async (operation) => await callerBridge.authorize(operation, props.vault ?? void 0)
+      authorize: async (operation) => await callerBridge.authorize(
+        operation,
+        vaultGeneration === null || vaultId === null ? void 0 : { generation: vaultGeneration, id: vaultId }
+      )
     }),
     [props.remote, vaultGeneration, vaultId]
   );

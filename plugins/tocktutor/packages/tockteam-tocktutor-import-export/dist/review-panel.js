@@ -307,7 +307,7 @@ export function ImportExportReviewPanel(props) {
     const vaultGeneration = props.vault?.generation ?? null;
     const vaultId = props.vault?.id ?? null;
     const controller = useMemo(() => new ImportExportReviewController(props.remote, {
-        authorize: async (operation) => await callerBridge.authorize(operation, props.vault ?? undefined),
+        authorize: async (operation) => await callerBridge.authorize(operation, vaultGeneration === null || vaultId === null ? undefined : { generation: vaultGeneration, id: vaultId }),
     }), [props.remote, vaultGeneration, vaultId]);
     const snapshot = useSyncExternalStore(controller.subscribe, controller.getSnapshot, controller.getSnapshot);
     useEffect(() => { void controller.cancel(); }, [controller, vaultGeneration, vaultId]);
