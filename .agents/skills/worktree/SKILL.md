@@ -38,21 +38,21 @@ Do not silently use local `main`, `origin/main`, or another feature branch. If t
 
 ## 3. Create One Worktree
 
-Use the user's domain name exactly. Do not normalize, abbreviate, or silently add separators. Place manually created TockTeam worktrees under:
+Use the user's domain name exactly. Do not normalize, abbreviate, or silently add separators. Place manually created TockTeam worktrees directly under:
 
 ```text
-/Users/max/projects/worktrees/tockteam/<domain>
+/Users/max/projects/worktrees/<domain>
 ```
 
 Create worktrees serially because parallel `git worktree add` operations can race on shared Git metadata:
 
 ```sh
 REPO=/Users/max/projects/tockteam
-WORKTREE=/Users/max/projects/worktrees/tockteam/<domain>
+WORKTREE=/Users/max/projects/worktrees/<domain>
 BRANCH=<branch>
 BASE=<exact-commit-or-origin/main>
 
-mkdir -p /Users/max/projects/worktrees/tockteam
+mkdir -p /Users/max/projects/worktrees
 git -C "$REPO" worktree add -b "$BRANCH" "$WORKTREE" "$BASE"
 ```
 
