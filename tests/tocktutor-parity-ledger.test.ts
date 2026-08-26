@@ -86,12 +86,16 @@ test('the validator rejects a residual row that loses its exact oracle or an umb
     /oracle\.commit/u,
   )
 
-  const missingChildren = structuredClone(ledger) as Ledger
-  const partial = missingChildren.additionalCapabilities.find(row => row.status === 'partial')
-  assert.ok(partial)
-  partial.children = []
+  const unresolvedChild = structuredClone(ledger) as Ledger
+  const aggregate = unresolvedChild.additionalCapabilities.find(row => (
+    row.status === 'proven' && Array.isArray(row.children) && row.children.length > 0
+  ))
+  assert.ok(aggregate)
+  const child = unresolvedChild.residualCapabilities.find(row => row.id === (aggregate.children as string[])[0])
+  assert.ok(child)
+  child.status = 'gap'
   await assert.rejects(
-    validateLedger(missingChildren, manifest, { repositoryRoot: root, parityRoot }),
-    /children/u,
+    validateLedger(unresolvedChild, manifest, { repositoryRoot: root, parityRoot }),
+    /cannot be proven/u,
   )
 })
