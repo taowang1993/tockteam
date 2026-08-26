@@ -4,19 +4,12 @@ import type {
   TockTeamDesktopMicrophone,
 } from './host-contract.ts'
 import { TockTeamDesktopGrantError } from './host-contract.ts'
+import { desktopLoopbackEndpoint } from './desktop-loopback.ts'
 import type { DesktopPickerCurrentVault } from './desktop-picker-provider.ts'
 
 export interface DesktopMicrophoneProviderEnvironment {
   endpoint?: string | undefined
   token?: string | undefined
-}
-
-function endpointOf(environment: DesktopMicrophoneProviderEnvironment): URL | undefined {
-  if (environment.endpoint === undefined || environment.token === undefined) return undefined
-  try {
-    const endpoint = new URL(environment.endpoint)
-    return endpoint.protocol === 'http:' && endpoint.hostname === '127.0.0.1' ? endpoint : undefined
-  } catch { return undefined }
 }
 
 export class DesktopMicrophoneProvider implements TockTeamDesktopMicrophone {
@@ -38,7 +31,7 @@ export class DesktopMicrophoneProvider implements TockTeamDesktopMicrophone {
     fetcher: typeof fetch = fetch,
     currentVault: DesktopPickerCurrentVault = () => undefined,
   ) {
-    this.endpoint = endpointOf(environment)
+    this.endpoint = desktopLoopbackEndpoint(environment)
     this.token = environment.token
     this.fetcher = fetcher
     this.currentVault = currentVault

@@ -1,11 +1,8 @@
 import type { DesktopPrintExportRequest, DesktopPrintExportResult, TockTeamDesktopPrintExport } from './host-contract.ts'
+import { desktopLoopbackEndpoint } from './desktop-loopback.ts'
 import type { DesktopPickerCurrentVault } from './desktop-picker-provider.ts'
 
 export interface DesktopPrintExportProviderEnvironment { endpoint?: string | undefined; token?: string | undefined }
-function endpointOf(environment: DesktopPrintExportProviderEnvironment): URL | undefined {
-  if (environment.endpoint === undefined || environment.token === undefined) return undefined
-  try { const value = new URL(environment.endpoint); return value.protocol === 'http:' && value.hostname === '127.0.0.1' ? value : undefined } catch { return undefined }
-}
 
 export class DesktopPrintExportProvider implements TockTeamDesktopPrintExport {
   private readonly endpoint: URL | undefined
@@ -20,7 +17,7 @@ export class DesktopPrintExportProvider implements TockTeamDesktopPrintExport {
     environment: DesktopPrintExportProviderEnvironment = { endpoint: process.env.DSH_DESKTOP_PRINT_EXPORT_ENDPOINT, token: process.env.DSH_DESKTOP_PRINT_EXPORT_TOKEN },
     fetcher: typeof fetch = fetch,
     currentVault: DesktopPickerCurrentVault = () => undefined,
-  ) { this.endpoint = endpointOf(environment); this.token = environment.token; this.fetcher = fetcher; this.currentVault = currentVault }
+  ) { this.endpoint = desktopLoopbackEndpoint(environment); this.token = environment.token; this.fetcher = fetcher; this.currentVault = currentVault }
 
   async render(request: DesktopPrintExportRequest, signal: AbortSignal): Promise<DesktopPrintExportResult> {
     const state = this.currentVault()

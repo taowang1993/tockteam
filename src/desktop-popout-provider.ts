@@ -6,18 +6,11 @@ import type {
   DesktopPopOutWindowRequest,
   TockTeamDesktopPopOut,
 } from './host-contract.ts'
+import { desktopLoopbackEndpoint } from './desktop-loopback.ts'
 import type { DesktopPickerCurrentVault } from './desktop-picker-provider.ts'
 import { TockTeamDesktopGrantError } from './host-contract.ts'
 
 export interface DesktopPopOutProviderEnvironment { endpoint?: string | undefined; token?: string | undefined }
-
-function endpointOf(environment: DesktopPopOutProviderEnvironment): URL | undefined {
-  if (environment.endpoint === undefined || environment.token === undefined) return undefined
-  try {
-    const value = new URL(environment.endpoint)
-    return value.protocol === 'http:' && value.hostname === '127.0.0.1' ? value : undefined
-  } catch { return undefined }
-}
 
 export class DesktopPopOutProvider implements TockTeamDesktopPopOut {
   private readonly endpoint: URL | undefined
@@ -37,7 +30,7 @@ export class DesktopPopOutProvider implements TockTeamDesktopPopOut {
     fetcher: typeof fetch = fetch,
     currentVault: DesktopPickerCurrentVault = () => undefined,
   ) {
-    this.endpoint = endpointOf(environment)
+    this.endpoint = desktopLoopbackEndpoint(environment)
     this.token = environment.token
     this.fetcher = fetcher
     this.currentVault = currentVault

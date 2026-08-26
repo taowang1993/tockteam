@@ -5,19 +5,12 @@ import {
   type DesktopDispatchEvent,
   type TockTeamDesktopDispatch,
 } from './host-contract.ts'
+import { desktopLoopbackEndpoint } from './desktop-loopback.ts'
 import type { DesktopPickerCurrentVault } from './desktop-picker-provider.ts'
 
 export interface DesktopDispatchProviderEnvironment {
   endpoint?: string | undefined
   token?: string | undefined
-}
-
-function endpointOf(environment: DesktopDispatchProviderEnvironment): URL | undefined {
-  if (environment.endpoint === undefined || environment.token === undefined) return undefined
-  try {
-    const endpoint = new URL(environment.endpoint)
-    return endpoint.protocol === 'http:' && endpoint.hostname === '127.0.0.1' ? endpoint : undefined
-  } catch { return undefined }
 }
 
 function validEvent(value: unknown): value is DesktopDispatchEvent {
@@ -56,7 +49,7 @@ export class DesktopDispatchProvider implements TockTeamDesktopDispatch {
     fetcher: typeof fetch = fetch,
     currentVault: DesktopPickerCurrentVault = () => undefined,
   ) {
-    this.endpoint = endpointOf(environment)
+    this.endpoint = desktopLoopbackEndpoint(environment)
     this.token = environment.token
     this.fetcher = fetcher
     this.currentVault = currentVault

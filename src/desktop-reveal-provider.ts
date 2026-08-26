@@ -8,6 +8,7 @@ import {
   type DesktopRevealResult,
   type TockTeamDesktopRevealService,
 } from './desktop-reveal.ts'
+import { desktopLoopbackEndpoint } from './desktop-loopback.ts'
 
 export interface DesktopRevealProviderEnvironment {
   endpoint?: string | undefined
@@ -29,17 +30,6 @@ function isAbort(error: unknown): boolean {
     || error instanceof Error && error.name === 'AbortError'
 }
 
-function endpointOf(environment: DesktopRevealProviderEnvironment): URL | undefined {
-  if (environment.endpoint === undefined || environment.token === undefined) return undefined
-  try {
-    const endpoint = new URL(environment.endpoint)
-    if (endpoint.protocol !== 'http:' || endpoint.hostname !== '127.0.0.1') return undefined
-    return endpoint
-  } catch {
-    return undefined
-  }
-}
-
 /** Host-side transport that forwards only the locked reveal operation to Electron. */
 export function createDesktopRevealProvider(
   environment: DesktopRevealProviderEnvironment = {
@@ -48,7 +38,7 @@ export function createDesktopRevealProvider(
   },
   fetcher: typeof fetch = fetch,
 ): DesktopRevealProviderTransport {
-  const endpoint = endpointOf(environment)
+  const endpoint = desktopLoopbackEndpoint(environment)
   const token = environment.token
   const lifetime = new AbortController()
   let disposed = false

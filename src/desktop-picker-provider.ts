@@ -39,6 +39,7 @@ import {
   type WriteDesktopDestinationChunkRequest,
   type WriteDesktopDestinationChunkResult,
 } from './host-contract.ts'
+import { desktopLoopbackEndpoint } from './desktop-loopback.ts'
 
 export interface DesktopPickerProviderEnvironment {
   endpoint?: string | undefined
@@ -51,17 +52,6 @@ export type DesktopPickerCurrentVault = () =>
   | undefined
 
 const MAX_ERROR_TEXT = 256
-
-function endpointOf(environment: DesktopPickerProviderEnvironment): URL | undefined {
-  if (environment.endpoint === undefined || environment.token === undefined) return undefined
-  try {
-    const endpoint = new URL(environment.endpoint)
-    if (endpoint.protocol !== 'http:' || endpoint.hostname !== '127.0.0.1') return undefined
-    return endpoint
-  } catch {
-    return undefined
-  }
-}
 
 function isAbort(error: unknown): boolean {
   return error instanceof DOMException && error.name === 'AbortError'
@@ -102,7 +92,7 @@ export class DesktopPickerProvider implements TockTeamDesktopPickerService {
     fetcher: typeof fetch = fetch,
     currentVault?: DesktopPickerCurrentVault,
   ) {
-    this.endpoint = endpointOf(environment)
+    this.endpoint = desktopLoopbackEndpoint(environment)
     this.token = environment.token
     this.fetcher = fetcher
     this.currentVault = currentVault
