@@ -12,6 +12,8 @@ import {
   type OpenDocumentResult,
   type VaultFacetsRequest,
   type VaultFacetsResult,
+  type VaultGraphRequest,
+  type VaultGraphResult,
   type VaultLinksRequest,
   type VaultLinksResult,
   type VaultOutlineRequest,
@@ -99,6 +101,11 @@ class FakeNoteVault extends Service {
     return this.openResult
   }
 
+  async graph(args: Omit<VaultGraphRequest, 'expectedVault'>, expectedVault: VaultReference, signal: AbortSignal): Promise<VaultGraphResult> {
+    this.calls.push({ method: 'graph', parameters: [args, expectedVault, signal] })
+    return { complete: true, edges: [], generation: expectedVault.generation, missing: [], nodes: [], orphans: [], path: args.path ?? null, scan: { bytes: 0, entries: 0, files: 0 }, truncated: false, truncationReason: null, warnings: [] }
+  }
+
   async facets(args: Omit<VaultFacetsRequest, 'expectedVault'>, expectedVault: VaultReference, signal: AbortSignal): Promise<VaultFacetsResult> {
     this.calls.push({ method: 'facets', parameters: [args, expectedVault, signal] })
     return { complete: true, cursor: null, generation: expectedVault.generation, properties: [], scan: { bytes: 0, entries: 0, files: 0 }, tags: [], truncated: false, truncationReason: null, warnings: [] }
@@ -166,6 +173,7 @@ test('registers only the accepted read/tree Remote methods and delegates exact r
       { invocation: { kind: 'direct' }, method: 'listTree' },
       { invocation: { kind: 'direct' }, method: 'createDocument' },
       { invocation: { kind: 'direct' }, method: 'saveDocument' },
+      { invocation: { kind: 'direct' }, method: 'graph' },
       { invocation: { kind: 'direct' }, method: 'facets' },
       { invocation: { kind: 'direct' }, method: 'outline' },
       { invocation: { kind: 'direct' }, method: 'links' },
@@ -198,6 +206,7 @@ test('registers only the accepted read/tree Remote methods and delegates exact r
     })
     assert.strictEqual(await state.gateway.openDocument('Folder/Note.md', vault, signal), state.runtime.openResult)
     assert.strictEqual(await state.gateway.listTree({ expectedVault: vault, limit: 20 }, signal), state.runtime.treeResult)
+    assert.equal((await state.gateway.graph({ expectedVault: vault, limit: 100, scope: 'global' }, signal)).complete, true)
     assert.equal((await state.gateway.facets({ expectedVault: vault, limit: 100 }, signal)).complete, true)
     assert.equal((await state.gateway.outline({ expectedVault: vault, includeFootnotes: true, path: 'Folder/Note.md' }, signal)).path, 'Folder/Note.md')
     assert.equal((await state.gateway.links({ expectedVault: vault, includeUnlinked: true, path: 'Folder/Note.md' }, signal)).path, 'Folder/Note.md')
@@ -209,6 +218,7 @@ test('registers only the accepted read/tree Remote methods and delegates exact r
       { method: 'openSandboxVault', parameters: [7] },
       { method: 'openDocument', parameters: ['Folder/Note.md', vault, signal] },
       { method: 'listTree', parameters: [{ expectedVault: vault, limit: 20 }, signal] },
+      { method: 'graph', parameters: [{ limit: 100, scope: 'global' }, vault, signal] },
       { method: 'facets', parameters: [{ limit: 100 }, vault, signal] },
       { method: 'outline', parameters: [{ includeFootnotes: true, path: 'Folder/Note.md' }, vault, signal] },
       { method: 'links', parameters: [{ includeUnlinked: true, path: 'Folder/Note.md' }, vault, signal] },
@@ -238,6 +248,7 @@ test('fails closed on browser-controlled path, vault, cursor, and limit values',
       state.gateway.listTree({ expectedVault: vault, cursor: 'x'.repeat(MAX_TREE_CURSOR_LENGTH + 1) }, signal),
       /cursor/i,
     )
+    await assert.rejects(state.gateway.graph({ depth: 4, expectedVault: vault, scope: 'local' }, signal), /depth/i)
     await assert.rejects(state.gateway.facets({ expectedVault: vault, limit: 1_001 }, signal), /limit/i)
     await assert.rejects(state.gateway.outline({ expectedVault: vault, path: '../escape.md' }, signal), /path/i)
     await assert.rejects(state.gateway.links({ expectedVault: vault, includeUnlinked: 'yes' as unknown as boolean, path: 'Folder/Note.md' }, signal), /Boolean/i)

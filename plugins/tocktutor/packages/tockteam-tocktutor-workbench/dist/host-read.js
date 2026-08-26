@@ -129,6 +129,28 @@ function assertSaveRequest(value) {
     assertCreateRequest(value);
     assertRevision(value.expectedRevision);
 }
+function assertGraphRequest(value) {
+    assertRecord(value, 'Graph request');
+    assertVaultReference(value.expectedVault);
+    if (value.path !== undefined)
+        assertDocumentPath(value.path);
+    if (value.scope !== undefined && value.scope !== 'local' && value.scope !== 'global')
+        throw new TypeError('Graph scope is unsupported.');
+    if (value.direction !== undefined && value.direction !== 'outgoing' && value.direction !== 'backlinks' && value.direction !== 'both')
+        throw new TypeError('Graph direction is unsupported.');
+    if (value.depth !== undefined && (!Number.isSafeInteger(value.depth) || value.depth < 1 || value.depth > 3))
+        throw new TypeError('Graph depth must be from 1 through 3.');
+    if (value.limit !== undefined && (!Number.isSafeInteger(value.limit) || value.limit < 1 || value.limit > 180))
+        throw new TypeError('Graph limit must be bounded.');
+    if (value.cursor !== undefined && (typeof value.cursor !== 'string' || value.cursor.length === 0 || value.cursor.length > MAX_TREE_CURSOR_LENGTH))
+        throw new TypeError('Graph cursor must be bounded.');
+    if (value.tag !== undefined && (typeof value.tag !== 'string' || value.tag.length === 0 || value.tag.length > 256))
+        throw new TypeError('Graph tag must be bounded.');
+    for (const option of [value.includeAttachments, value.includeTags]) {
+        if (option !== undefined && typeof option !== 'boolean')
+            throw new TypeError('Graph options must be Boolean.');
+    }
+}
 function assertFacetsRequest(value) {
     assertRecord(value, 'Facets request');
     assertVaultReference(value.expectedVault);
@@ -234,6 +256,7 @@ let TockTutorWorkbenchGateway = (() => {
     let _listTree_decorators;
     let _createDocument_decorators;
     let _saveDocument_decorators;
+    let _graph_decorators;
     let _facets_decorators;
     let _outline_decorators;
     let _links_decorators;
@@ -259,6 +282,7 @@ let TockTutorWorkbenchGateway = (() => {
             _listTree_decorators = [Remote];
             _createDocument_decorators = [Remote];
             _saveDocument_decorators = [Remote];
+            _graph_decorators = [Remote];
             _facets_decorators = [Remote];
             _outline_decorators = [Remote];
             _links_decorators = [Remote];
@@ -281,6 +305,7 @@ let TockTutorWorkbenchGateway = (() => {
             __esDecorate(this, null, _listTree_decorators, { kind: "method", name: "listTree", static: false, private: false, access: { has: obj => "listTree" in obj, get: obj => obj.listTree }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _createDocument_decorators, { kind: "method", name: "createDocument", static: false, private: false, access: { has: obj => "createDocument" in obj, get: obj => obj.createDocument }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _saveDocument_decorators, { kind: "method", name: "saveDocument", static: false, private: false, access: { has: obj => "saveDocument" in obj, get: obj => obj.saveDocument }, metadata: _metadata }, null, _instanceExtraInitializers);
+            __esDecorate(this, null, _graph_decorators, { kind: "method", name: "graph", static: false, private: false, access: { has: obj => "graph" in obj, get: obj => obj.graph }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _facets_decorators, { kind: "method", name: "facets", static: false, private: false, access: { has: obj => "facets" in obj, get: obj => obj.facets }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _outline_decorators, { kind: "method", name: "outline", static: false, private: false, access: { has: obj => "outline" in obj, get: obj => obj.outline }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _links_decorators, { kind: "method", name: "links", static: false, private: false, access: { has: obj => "links" in obj, get: obj => obj.links }, metadata: _metadata }, null, _instanceExtraInitializers);
@@ -355,6 +380,12 @@ let TockTutorWorkbenchGateway = (() => {
             assertSaveRequest(request);
             signal.throwIfAborted();
             return this.ctx.noteVault.saveDocument(request, signal);
+        }
+        async graph(request, signal) {
+            assertGraphRequest(request);
+            signal.throwIfAborted();
+            const { expectedVault, ...args } = request;
+            return this.ctx.noteVault.graph(args, expectedVault, signal);
         }
         async facets(request, signal) {
             assertFacetsRequest(request);

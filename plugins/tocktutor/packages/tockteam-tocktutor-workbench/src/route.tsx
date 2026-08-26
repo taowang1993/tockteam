@@ -65,6 +65,7 @@ import {
 import { renderMarkdownHtml } from './rich-markdown.ts'
 import { parseFrontmatterProperties, setFrontmatterProperty, type PropertyValue } from './properties.ts'
 import { addBookmark, loadBookmarks, saveBookmarks, type Bookmark as TockTutorBookmark } from './bookmarks.ts'
+import { layoutGraph, projectGraph, type GraphPosition } from './graph.ts'
 import {
   createNamedWorkspace,
   loadTockTutorSettings,
@@ -130,6 +131,8 @@ import type {
   VaultFacetsRequest,
   VaultFacetsResult,
   VaultGenerationRequest,
+  VaultGraphRequest,
+  VaultGraphResult,
   VaultHeading,
   VaultLinksRequest,
   VaultLinksResult,
@@ -193,6 +196,7 @@ export interface WorkbenchRouteRemote extends NoteVaultEventRemote {
     outline(request: VaultOutlineRequest, signal?: AbortSignal): Promise<RemoteResult<VaultOutlineResult>>
     links(request: VaultLinksRequest, signal?: AbortSignal): Promise<RemoteResult<VaultLinksResult>>
     facets(request: VaultFacetsRequest, signal?: AbortSignal): Promise<RemoteResult<VaultFacetsResult>>
+    graph(request: VaultGraphRequest, signal?: AbortSignal): Promise<RemoteResult<VaultGraphResult>>
   }
 }
 
@@ -225,6 +229,9 @@ export interface WorkbenchRouteSnapshot {
   facets?: VaultFacetsResult | null
   focusedPaneId: string
   focusMode?: boolean
+  graph?: VaultGraphResult | null
+  graphLayout?: readonly GraphPosition[]
+  graphMode?: 'global' | 'local'
   links?: VaultLinksResult | null
   message: string
   mode: RouteEditorMode
@@ -380,6 +387,9 @@ function initialSnapshot(): WorkbenchRouteSnapshot {
     facets: null,
     focusedPaneId: 'pane-1',
     focusMode: false,
+    graph: null,
+    graphLayout: Object.freeze([]),
+    graphMode: 'global',
     links: null,
     message: 'Loading the active vault.',
     outline: null,
@@ -682,6 +692,40 @@ export class WorkbenchRouteController {
     }
   }
 
+  async loadGraph(mode: 'global' | 'local'): Promise<boolean> {
+    const vault = this.snapshot.vault
+    if (vault === null || (mode === 'local' && this.snapshot.path === null)) return false
+    const operation = this.nextOperation()
+    try {
+      const graph = remoteValue(await this.remote.tocktutorWorkbench.graph({
+        ...(mode === 'local' ? { depth: 2 } : {}),
+        direction: 'both',
+        expectedVault: vault,
+        includeAttachments: false,
+        includeTags: false,
+        limit: 180,
+        ...(mode === 'local' && this.snapshot.path !== null ? { path: this.snapshot.path } : {}),
+        scope: mode,
+      }, operation.signal))
+      if (!this.current(operation.id, vault)
+        || graph.generation !== vault.generation
+        || !Array.isArray(graph.nodes)
+        || !Array.isArray(graph.edges)) return false
+      const projected = projectGraph(graph, { includeOrphans: true, query: '' })
+      const graphLayout = layoutGraph(projected, {
+        centerForce: 0.1,
+        iterations: 32,
+        linkDistance: 120,
+        linkForce: 0.08,
+        repelForce: 1_800,
+      })
+      this.update({ graph, graphLayout: Object.freeze(graphLayout.map(node => Object.freeze(node))), graphMode: mode })
+      return true
+    } catch {
+      return false
+    }
+  }
+
   async openSmartView(kind: 'recent' | 'tasks' | 'journals' | 'favorites' | 'collections' | 'tags'): Promise<boolean> {
     this.openSearch('')
     if (kind === 'recent') {
@@ -940,6 +984,9 @@ export class WorkbenchRouteController {
       entries: Object.freeze([]),
       facets: null,
       focusedPaneId: 'pane-1',
+      graph: null,
+      graphLayout: Object.freeze([]),
+      graphMode: 'global',
       links: null,
       message: 'Loading the active vault.',
       outline: null,
@@ -1865,6 +1912,7 @@ export interface TockTutorRouteViewProps {
   onFocusPane(paneId: string): void
   onForward?(): void
   onJumpToLine?(line: number): void
+  onLoadGraph?(mode: 'global' | 'local'): void
   onLoadWorkspace?(id: string): void
   onMoveCanvas(nodeId: string, deltaX: number, deltaY: number): void
   onMoveTab?(paneId: string, path: string, direction: -1 | 1): void
@@ -2645,6 +2693,30 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
               {(snapshot.trash?.length ?? 0) === 0 && <span className="text-xs text-[var(--tt-muted)]">Trash is empty.</span>}
             </div>
           </section>
+          <section aria-label="Graph View" className="border-t border-[var(--tt-border)] p-3">
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="m-0 text-sm">Graph View</h2>
+              <span className="flex gap-1">
+                <Button unstyled aria-pressed={snapshot.graphMode === 'global'} className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs" onClick={() => { props.onLoadGraph?.('global') }} type="button">Global</Button>
+                <Button unstyled aria-pressed={snapshot.graphMode === 'local'} className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs" disabled={snapshot.path === null} onClick={() => { props.onLoadGraph?.('local') }} type="button">Local</Button>
+              </span>
+            </div>
+            {(snapshot.graphLayout?.length ?? 0) > 0 ? (
+              <>
+                <svg aria-label={`${snapshot.graphMode === 'local' ? 'Local' : 'Global'} Graph Canvas`} className="mt-2 h-48 w-full rounded border border-[var(--tt-border)]" role="img" viewBox="0 0 400 240">
+                  {(snapshot.graph?.edges ?? []).map((edge, index) => {
+                    const source = snapshot.graphLayout?.find(node => node.path === edge.sourcePath)
+                    const target = snapshot.graphLayout?.find(node => node.path === edge.targetPath)
+                    return source === undefined || target === undefined ? null : <line key={`${edge.sourcePath}-${edge.targetPath}-${String(index)}`} stroke="currentColor" strokeOpacity="0.35" x1={200 + source.x / 5} x2={200 + target.x / 5} y1={120 + source.y / 5} y2={120 + target.y / 5} />
+                  })}
+                  {snapshot.graphLayout?.map(node => <circle cx={200 + node.x / 5} cy={120 + node.y / 5} fill={node.path === snapshot.graph?.path ? 'var(--tt-accent)' : 'var(--tt-muted)'} key={node.path} r="5"><title>{node.path}</title></circle>)}
+                </svg>
+                <div className="mt-1 grid max-h-28 gap-1 overflow-auto">
+                  {snapshot.graphLayout?.map(node => <Button unstyled className="truncate rounded border-0 bg-transparent px-1 py-0.5 text-left text-xs" key={node.path} onClick={() => { props.onSelect(node.path) }} type="button">{node.path}</Button>)}
+                </div>
+              </>
+            ) : <span className="mt-2 block text-xs text-[var(--tt-muted)]">Open Global or Local Graph.</span>}
+          </section>
           <section aria-label="Bookmarks" className="border-t border-[var(--tt-border)] p-3">
             <h2 className="m-0 text-sm">Bookmarks</h2>
             <div className="mt-2 grid gap-1">
@@ -2897,6 +2969,7 @@ export function TockTutorRoute(props: TockTutorRouteProps): ReactNode {
         onFocusPane={paneId => { void controller.focusPane(paneId) }}
         onForward={() => { void controller.goForward() }}
         onJumpToLine={line => { controller.jumpToLine(line) }}
+        onLoadGraph={mode => { void controller.loadGraph(mode) }}
         onLoadWorkspace={id => { void controller.loadWorkspace(id) }}
         onMode={mode => { controller.setMode(mode) }}
         onMoveCanvas={(nodeId, deltaX, deltaY) => { controller.moveCanvasNode(nodeId, deltaX, deltaY) }}

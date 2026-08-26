@@ -31,6 +31,7 @@ export * from './editor-commands.ts';
 export * from './settings.ts';
 export * from './properties.ts';
 export * from './bookmarks.ts';
+export * from './graph.ts';
 export * from './native-actions.ts';
 export * from './review-panel.ts';
 export * from './route.tsx';

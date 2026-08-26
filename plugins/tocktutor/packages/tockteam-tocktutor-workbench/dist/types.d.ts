@@ -105,6 +105,45 @@ export type NoteVaultChangeEvent = Readonly<{
     path: string;
     vault: VaultReference;
 }>;
+export interface VaultGraphRequest {
+    cursor?: string;
+    depth?: number;
+    direction?: 'outgoing' | 'backlinks' | 'both';
+    expectedVault: VaultReference;
+    includeAttachments?: boolean;
+    includeTags?: boolean;
+    limit?: number;
+    path?: string;
+    scope?: 'local' | 'global';
+    tag?: string;
+}
+export interface VaultGraphResult {
+    complete: boolean;
+    cursor?: string | null;
+    edges: Array<{
+        fragment: string | null;
+        kind: VaultLinkRecord['kind'];
+        line: number;
+        sourcePath: string;
+        targetPath: string;
+    }>;
+    generation: number;
+    missing: VaultLinkRecord[];
+    nodes: Array<{
+        depth: number | null;
+        path: string;
+    }>;
+    orphans: string[];
+    path: string | null;
+    scan: {
+        bytes: number;
+        entries: number;
+        files: number;
+    };
+    truncated: boolean;
+    truncationReason: 'byte-limit' | 'entry-limit' | 'file-limit' | 'metadata-limit' | 'result-limit' | null;
+    warnings: string[];
+}
 export interface VaultFacetsRequest {
     cursor?: string;
     directory?: string;

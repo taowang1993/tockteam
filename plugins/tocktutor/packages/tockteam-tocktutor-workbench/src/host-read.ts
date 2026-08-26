@@ -28,6 +28,8 @@ import type {
   VaultFacetsRequest,
   VaultFacetsResult,
   VaultGenerationRequest,
+  VaultGraphRequest,
+  VaultGraphResult,
   VaultLinksRequest,
   VaultLinksResult,
   VaultOutlineRequest,
@@ -51,6 +53,7 @@ export type NoteVaultCapability = Pick<
   | 'clearDraft'
   | 'createDocument'
   | 'facets'
+  | 'graph'
   | 'listRecentVaults'
   | 'listSnapshots'
   | 'listTrash'
@@ -192,6 +195,21 @@ function assertCreateRequest(value: CreateDocumentRequest): void {
 function assertSaveRequest(value: SaveDocumentRequest): void {
   assertCreateRequest(value)
   assertRevision(value.expectedRevision)
+}
+
+function assertGraphRequest(value: VaultGraphRequest): void {
+  assertRecord(value, 'Graph request')
+  assertVaultReference(value.expectedVault)
+  if (value.path !== undefined) assertDocumentPath(value.path)
+  if (value.scope !== undefined && value.scope !== 'local' && value.scope !== 'global') throw new TypeError('Graph scope is unsupported.')
+  if (value.direction !== undefined && value.direction !== 'outgoing' && value.direction !== 'backlinks' && value.direction !== 'both') throw new TypeError('Graph direction is unsupported.')
+  if (value.depth !== undefined && (!Number.isSafeInteger(value.depth) || value.depth < 1 || value.depth > 3)) throw new TypeError('Graph depth must be from 1 through 3.')
+  if (value.limit !== undefined && (!Number.isSafeInteger(value.limit) || value.limit < 1 || value.limit > 180)) throw new TypeError('Graph limit must be bounded.')
+  if (value.cursor !== undefined && (typeof value.cursor !== 'string' || value.cursor.length === 0 || value.cursor.length > MAX_TREE_CURSOR_LENGTH)) throw new TypeError('Graph cursor must be bounded.')
+  if (value.tag !== undefined && (typeof value.tag !== 'string' || value.tag.length === 0 || value.tag.length > 256)) throw new TypeError('Graph tag must be bounded.')
+  for (const option of [value.includeAttachments, value.includeTags]) {
+    if (option !== undefined && typeof option !== 'boolean') throw new TypeError('Graph options must be Boolean.')
+  }
 }
 
 function assertFacetsRequest(value: VaultFacetsRequest): void {
@@ -371,6 +389,14 @@ export class TockTutorWorkbenchGateway extends TypertRemoteService {
     assertSaveRequest(request)
     signal.throwIfAborted()
     return this.ctx.noteVault.saveDocument(request, signal)
+  }
+
+  @Remote
+  async graph(request: VaultGraphRequest, signal: AbortSignal): Promise<VaultGraphResult> {
+    assertGraphRequest(request)
+    signal.throwIfAborted()
+    const { expectedVault, ...args } = request
+    return this.ctx.noteVault.graph(args, expectedVault, signal)
   }
 
   @Remote

@@ -8,11 +8,12 @@ import { TOCKTUTOR_NATIVE_ACTIONS_SLOT, type TockTutorNativeActionsDispatchEvent
 import { TOCKTUTOR_REVIEW_PANEL_SLOT } from './review-panel.ts';
 import { type PropertyValue } from './properties.ts';
 import { type Bookmark as TockTutorBookmark } from './bookmarks.ts';
+import { type GraphPosition } from './graph.ts';
 import { type KeyValueStorage, type NamedWorkspace, type TockTutorSettings } from './settings.ts';
 import { type EditorCommandId } from './editor-commands.ts';
 import { type EditorStatus } from './markdown.ts';
 import { type NoteVaultEventRemote } from './vault-events.ts';
-import type { ActiveVaultResult, CreateDocumentRequest, DraftMutationResult, DraftRequest, DraftResult, ListSnapshotsRequest, ListTrashRequest, ListTreeRequest, OpenDocumentResult, RecentVaultInfo, RecentVaultListResult, ReadSnapshotRequest, RecentVaultRequest, RestoreSnapshotRequest, RestoreTrashRequest, SaveDocumentRequest, SaveDraftRequest, SnapshotContentResult, SnapshotInfo, TrashEntryInfo, TrashEntryRequest, VaultFacetsRequest, VaultFacetsResult, VaultGenerationRequest, VaultLinksRequest, VaultLinksResult, VaultOutlineRequest, VaultOutlineResult, VaultReference, VaultSearchMatch, VaultSearchRequest, VaultSearchResult, VaultTreeEntry, VaultTreePage, WriteDocumentResult } from './types.ts';
+import type { ActiveVaultResult, CreateDocumentRequest, DraftMutationResult, DraftRequest, DraftResult, ListSnapshotsRequest, ListTrashRequest, ListTreeRequest, OpenDocumentResult, RecentVaultInfo, RecentVaultListResult, ReadSnapshotRequest, RecentVaultRequest, RestoreSnapshotRequest, RestoreTrashRequest, SaveDocumentRequest, SaveDraftRequest, SnapshotContentResult, SnapshotInfo, TrashEntryInfo, TrashEntryRequest, VaultFacetsRequest, VaultFacetsResult, VaultGenerationRequest, VaultGraphRequest, VaultGraphResult, VaultLinksRequest, VaultLinksResult, VaultOutlineRequest, VaultOutlineResult, VaultReference, VaultSearchMatch, VaultSearchRequest, VaultSearchResult, VaultTreeEntry, VaultTreePage, WriteDocumentResult } from './types.ts';
 export declare const MAX_ROUTE_SOURCE_BYTES = 2000000;
 export interface WorkbenchRouteRemote extends NoteVaultEventRemote {
     tocktutorWorkbench: {
@@ -44,6 +45,7 @@ export interface WorkbenchRouteRemote extends NoteVaultEventRemote {
         outline(request: VaultOutlineRequest, signal?: AbortSignal): Promise<RemoteResult<VaultOutlineResult>>;
         links(request: VaultLinksRequest, signal?: AbortSignal): Promise<RemoteResult<VaultLinksResult>>;
         facets(request: VaultFacetsRequest, signal?: AbortSignal): Promise<RemoteResult<VaultFacetsResult>>;
+        graph(request: VaultGraphRequest, signal?: AbortSignal): Promise<RemoteResult<VaultGraphResult>>;
     };
 }
 export type RoutePhase = 'loading' | 'inactive' | 'ready' | 'error';
@@ -72,6 +74,9 @@ export interface WorkbenchRouteSnapshot {
     facets?: VaultFacetsResult | null;
     focusedPaneId: string;
     focusMode?: boolean;
+    graph?: VaultGraphResult | null;
+    graphLayout?: readonly GraphPosition[];
+    graphMode?: 'global' | 'local';
     links?: VaultLinksResult | null;
     message: string;
     mode: RouteEditorMode;
@@ -146,6 +151,7 @@ export declare class WorkbenchRouteController {
     setSearchMode(mode: 'query' | 'related'): void;
     runSearch(): Promise<boolean>;
     loadFacets(): Promise<boolean>;
+    loadGraph(mode: 'global' | 'local'): Promise<boolean>;
     openSmartView(kind: 'recent' | 'tasks' | 'journals' | 'favorites' | 'collections' | 'tags'): Promise<boolean>;
     loadRelationships(): Promise<boolean>;
     jumpToLine(line: number): boolean;
@@ -223,6 +229,7 @@ export interface TockTutorRouteViewProps {
     onFocusPane(paneId: string): void;
     onForward?(): void;
     onJumpToLine?(line: number): void;
+    onLoadGraph?(mode: 'global' | 'local'): void;
     onLoadWorkspace?(id: string): void;
     onMoveCanvas(nodeId: string, deltaX: number, deltaY: number): void;
     onMoveTab?(paneId: string, path: string, direction: -1 | 1): void;

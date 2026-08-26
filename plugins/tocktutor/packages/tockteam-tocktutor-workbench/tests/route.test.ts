@@ -246,6 +246,23 @@ class FakeRemote implements WorkbenchRouteRemote {
         warnings: [],
       })
     },
+    graph: (request: { expectedVault: VaultReference; path?: string; scope?: 'local' | 'global' }, signal?: AbortSignal) => {
+      this.calls.push({ method: 'graph', parameters: [request, signal] })
+      return success({
+        complete: true,
+        cursor: null,
+        edges: [{ fragment: null, kind: 'wiki' as const, line: 1, sourcePath: 'Folder/Note.md', targetPath: 'Second.md' }],
+        generation: request.expectedVault.generation,
+        missing: [],
+        nodes: [{ depth: request.scope === 'local' ? 0 : null, path: 'Folder/Note.md' }, { depth: 1, path: 'Second.md' }],
+        orphans: [],
+        path: request.path ?? null,
+        scan: { bytes: 30, entries: 2, files: 2 },
+        truncated: false,
+        truncationReason: null,
+        warnings: [],
+      })
+    },
     links: (request: { expectedVault: VaultReference; includeUnlinked?: boolean; path: string }, signal?: AbortSignal) => {
       this.calls.push({ method: 'links', parameters: [request, signal] })
       return success({
@@ -1110,6 +1127,20 @@ test('runs editor commands against the captured Source selection', async () => {
   const unchanged = controller.getSnapshot().source
   controller.runEditorCommand('delete-line')
   assert.equal(controller.getSnapshot().source, unchanged)
+  controller.dispose()
+})
+
+test('loads deterministic bounded Global and Local Graph projections', async () => {
+  const remote = new FakeRemote()
+  const controller = new WorkbenchRouteController(remote, () => {})
+  await controller.syncLocation('/tocktutor')
+  assert.equal(await controller.loadGraph('global'), true)
+  assert.equal(controller.getSnapshot().graphLayout?.length, 2)
+  assert.equal(controller.getSnapshot().graphMode, 'global')
+  assert.equal(await controller.select('Folder/Note.md'), true)
+  assert.equal(await controller.loadGraph('local'), true)
+  assert.equal(controller.getSnapshot().graph?.path, 'Folder/Note.md')
+  assert.equal(controller.getSnapshot().graphMode, 'local')
   controller.dispose()
 })
 

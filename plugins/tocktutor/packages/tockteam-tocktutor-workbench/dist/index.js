@@ -36,4 +36,5 @@ export * from "./editor-commands.js";
 export * from "./settings.js";
 export * from "./properties.js";
 export * from "./bookmarks.js";
+export * from "./graph.js";
 //# sourceMappingURL=index.js.map

@@ -34,4 +34,5 @@ export * from './editor-commands.ts';
 export * from './settings.ts';
 export * from './properties.ts';
 export * from './bookmarks.ts';
+export * from './graph.ts';
 //# sourceMappingURL=index.d.ts.map
