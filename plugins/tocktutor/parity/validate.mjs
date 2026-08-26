@@ -46,11 +46,10 @@ for (const [index, row] of ledger.rows.entries()) {
   assert.ok(typeof row.owner === 'string' && row.owner.length > 0)
   if (row.scope === 'included') {
     assert.ok(row.status === 'proven' || row.status === 'gap')
-    if (row.status === 'gap') {
+    if (row.status === 'gap') assert.match(row.issueId, issuePattern)
+    if (row.issueId !== null) {
       assert.match(row.issueId, issuePattern)
       assignedIssues.add(row.issueId)
-    } else {
-      assert.equal(row.issueId, null)
     }
   } else {
     assert.equal(row.status, 'excluded')
@@ -62,7 +61,7 @@ for (const [index, row] of ledger.rows.entries()) {
 for (const capability of ledger.additionalCapabilities) {
   assert.ok(typeof capability.id === 'string' && capability.id.length > 0)
   assert.equal(capability.scope, 'included')
-  assert.equal(capability.status, 'gap')
+  assert.ok(capability.status === 'proven' || capability.status === 'gap')
   assert.match(capability.issueId, issuePattern)
   assert.ok(Array.isArray(capability.evidence) && capability.evidence.length > 0)
   assignedIssues.add(capability.issueId)
@@ -116,4 +115,9 @@ for (const kind of ['path', 'url', 'canvas', 'base', 'filesystem']) {
   assert.ok(hostile.cases.some(entry => entry.kind === kind), `hostile fixture lacks ${kind}`)
 }
 
-console.log(`TockTutor parity ledger: ${String(ledger.rows.length)} checklist rows, ${String(ledger.rows.filter(row => row.status === 'proven').length)} proven, ${String(ledger.rows.filter(row => row.status === 'gap').length + ledger.additionalCapabilities.length)} assigned gaps, ${String(ledger.rows.filter(row => row.status === 'excluded').length)} excluded.`)
+const proven = ledger.rows.filter(row => row.status === 'proven').length
+  + ledger.additionalCapabilities.filter(capability => capability.status === 'proven').length
+const gaps = ledger.rows.filter(row => row.status === 'gap').length
+  + ledger.additionalCapabilities.filter(capability => capability.status === 'gap').length
+assert.equal(gaps, 0, 'the completed parity ledger cannot retain assigned gaps')
+console.log(`TockTutor parity ledger: ${String(ledger.rows.length)} checklist rows plus ${String(ledger.additionalCapabilities.length)} additional capabilities, ${String(proven)} proven, ${String(gaps)} gaps, ${String(ledger.rows.filter(row => row.status === 'excluded').length)} excluded.`)
