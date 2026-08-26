@@ -345,6 +345,15 @@ export class ImportExportReviewController {
   }
 }
 
+export const IMPORT_CHOOSER_DELEGATIONS = [
+  { format: 'markdown-folder', id: 'craft-folder', label: 'Craft Markdown Folder' },
+  { format: 'markdown-zip', id: 'craft-zip', label: 'Craft Markdown ZIP' },
+  { format: 'html', id: 'notion-html', label: 'Notion HTML Export' },
+  { format: 'markdown-folder', id: 'apple-notes-folder', label: 'Apple Notes Markdown Folder' },
+  { format: 'markdown-zip', id: 'apple-notes-zip', label: 'Apple Notes Markdown ZIP' },
+  { format: 'html', id: 'apple-notes-html', label: 'Apple Notes HTML Export' },
+] as const satisfies ReadonlyArray<{ format: ImportInspectFormat; id: string; label: string }>
+
 const FORMAT_LABELS: ReadonlyArray<[ImportInspectFormat, string]> = [
   ['markdown-folder', 'Markdown Folder'],
   ['markdown-zip', 'Markdown ZIP'],
@@ -363,7 +372,7 @@ export function ImportExportReviewPanelView(props: {
   onApprove(): void
   onCancel(): void
   onFormat(format: ImportInspectFormat): void
-  onStart(): void
+  onStart(format?: ImportInspectFormat): void
   onStartBackup?(): void
   snapshot: ReviewPanelSnapshot
 }): ReactNode {
@@ -379,21 +388,33 @@ export function ImportExportReviewPanelView(props: {
         <p className="tocktutor-import-export-kicker text-[11px] font-bold tracking-[.08em] text-[var(--tt-muted)] uppercase">Reviewed Operations</p>
         <h2>Import, Backup, and Restore</h2>
       </header>
-      <p>Craft exports use the reviewed Markdown Folder or Markdown ZIP path; no Craft-specific parser changes your files.</p>
+      <p>Choose the export shape you downloaded. Each source uses the existing reviewed Markdown or HTML transaction.</p>
       {(snapshot.phase === 'idle' || snapshot.phase === 'complete' || (snapshot.phase === 'error' && preview === null)) && (
-        <div className="tocktutor-import-export-start flex flex-wrap gap-2">
-          <Label unstyled className="grid flex-[1_1_220px] gap-1 text-xs">
-            Import Format
-            <NativeSelect unstyled
-              onChange={event => { props.onFormat(event.currentTarget.value as ImportInspectFormat) }}
-              value={snapshot.format}
-            >
-              {FORMAT_LABELS.map(([format, label]) => <NativeSelectOption key={format} value={format}>{label}</NativeSelectOption>)}
-            </NativeSelect>
-          </Label>
-          <Button unstyled onClick={props.onStart} type="button">Inspect Import</Button>
-          <Button unstyled onClick={props.onStartBackup} type="button">Create Vault Backup</Button>
-        </div>
+        <>
+          <fieldset className="m-0 grid gap-2 rounded-md border border-[var(--tt-border)] p-2.5">
+            <legend className="px-1 text-xs font-medium">Popular Export Sources</legend>
+            <div className="flex flex-wrap gap-2">
+              {IMPORT_CHOOSER_DELEGATIONS.map(delegation => (
+                <Button unstyled key={delegation.id} onClick={() => { props.onStart(delegation.format) }} type="button">
+                  {delegation.label}
+                </Button>
+              ))}
+            </div>
+          </fieldset>
+          <div className="tocktutor-import-export-start flex flex-wrap gap-2">
+            <Label unstyled className="grid flex-[1_1_220px] gap-1 text-xs">
+              Other Import Format
+              <NativeSelect unstyled
+                onChange={event => { props.onFormat(event.currentTarget.value as ImportInspectFormat) }}
+                value={snapshot.format}
+              >
+                {FORMAT_LABELS.map(([format, label]) => <NativeSelectOption key={format} value={format}>{label}</NativeSelectOption>)}
+              </NativeSelect>
+            </Label>
+            <Button unstyled onClick={() => { props.onStart() }} type="button">Inspect Selected Format</Button>
+            <Button unstyled onClick={props.onStartBackup} type="button">Create Vault Backup</Button>
+          </div>
+        </>
       )}
       {busy && (
         <div className="tocktutor-import-export-actions flex flex-wrap gap-2">
@@ -467,7 +488,7 @@ export function ImportExportReviewPanel(
       onApprove={() => { void controller.approveAndCommit() }}
       onCancel={() => { void controller.cancel() }}
       onFormat={format => { controller.setFormat(format) }}
-      onStart={() => { void controller.startImport() }}
+      onStart={format => { void controller.startImport(format) }}
       onStartBackup={() => { void controller.startBackup() }}
       snapshot={snapshot}
     />

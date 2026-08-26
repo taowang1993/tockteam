@@ -4,6 +4,7 @@ import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import type { RemoteResult } from '@deepseek-ai/dsh-typert-protocol'
 import {
+  IMPORT_CHOOSER_DELEGATIONS,
   ImportExportReviewController,
   ImportExportReviewPanelView,
   type ReviewPanelRemote,
@@ -243,6 +244,35 @@ test('disposal cancels a held reviewed plan before dropping local state', async 
   assert.equal(controller.getSnapshot().phase, 'idle')
 })
 
+test('delegates explicit Craft, Notion, and Apple Notes choices to existing reviewed formats', async () => {
+  assert.deepEqual(IMPORT_CHOOSER_DELEGATIONS, [
+    { format: 'markdown-folder', id: 'craft-folder', label: 'Craft Markdown Folder' },
+    { format: 'markdown-zip', id: 'craft-zip', label: 'Craft Markdown ZIP' },
+    { format: 'html', id: 'notion-html', label: 'Notion HTML Export' },
+    { format: 'markdown-folder', id: 'apple-notes-folder', label: 'Apple Notes Markdown Folder' },
+    { format: 'markdown-zip', id: 'apple-notes-zip', label: 'Apple Notes Markdown ZIP' },
+    { format: 'html', id: 'apple-notes-html', label: 'Apple Notes HTML Export' },
+  ])
+  for (const delegation of IMPORT_CHOOSER_DELEGATIONS) {
+    const remote = new FakeRemote()
+    const controller = new ImportExportReviewController(remote, {
+      authorize: async () => ({ authorization: `trusted-${delegation.id}` }),
+    })
+    await controller.startImport(delegation.format)
+    assert.deepEqual(remote.inspectRequests, [{ authorization: `trusted-${delegation.id}`, format: delegation.format }])
+    assert.deepEqual(Object.keys(remote.inspectRequests[0]!).sort(), ['authorization', 'format'])
+    controller.dispose()
+  }
+  const html = renderToStaticMarkup(createElement(ImportExportReviewPanelView, {
+    onApprove() {},
+    onCancel() {},
+    onFormat() {},
+    onStart() {},
+    snapshot: { error: null, format: 'markdown-folder', kind: 'import', phase: 'idle', preview: null, result: null },
+  }))
+  for (const delegation of IMPORT_CHOOSER_DELEGATIONS) assert.match(html, new RegExp(delegation.label, 'u'))
+})
+
 test('renders an accessible bounded review without tokens, paths, or unrestricted content', () => {
   const html = renderToStaticMarkup(createElement(ImportExportReviewPanelView, {
     onApprove() {},
@@ -262,7 +292,6 @@ test('renders an accessible bounded review without tokens, paths, or unrestricte
   assert.match(html, /Review 1 Planned Item/u)
   assert.match(html, /One source entry was skipped\./u)
   assert.match(html, /Approve and Commit/u)
-  assert.match(html, /Craft exports use the reviewed Markdown Folder or Markdown ZIP path/u)
   assert.doesNotMatch(html, /secret|# A|\/Users\//u)
 })
 
