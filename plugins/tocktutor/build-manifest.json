@@ -883,11 +883,11 @@
     },
     {
       "path": "packages/tockteam-tocktutor-import-export/dist/client.js",
-      "sha256": "d918a1c4513683d3d4d86c420ce95a2e5e11c0c6848d7c200c83754609e89a70"
+      "sha256": "57b46f00e19a5cb584e6e92c9a9ca6e478ec1ff1b15b427af77bdab36e2c12dd"
     },
     {
       "path": "packages/tockteam-tocktutor-import-export/dist/client.js.map",
-      "sha256": "1b94154ddc4d4051f26b15373f6e1a7ff73787029dbe6051ba9530f42f894bbe"
+      "sha256": "6da52c0b9447696cfae8ef40c08b1998fd537e2d3280630086299faba8f2b889"
     },
     {
       "path": "packages/tockteam-tocktutor-import-export/dist/core.d.ts",
@@ -927,15 +927,15 @@
     },
     {
       "path": "packages/tockteam-tocktutor-import-export/dist/formats/converters.d.ts.map",
-      "sha256": "4094057b151afae874342c2e8549188571e7f49fbb034b81cdc14b5d69194234"
+      "sha256": "f2df9b4406546ae603c7b6cf4cf135ffedb9ee6e0da833feacfb2522a71b33e6"
     },
     {
       "path": "packages/tockteam-tocktutor-import-export/dist/formats/converters.js",
-      "sha256": "8d6551217d9b480a280a098f136f544d1bcfa7756639045d5ec466617f9e2fc1"
+      "sha256": "dae926aff2488bc1e9e485b43236f9ee652d0e1cb2466cac46841e6daa1f1f91"
     },
     {
       "path": "packages/tockteam-tocktutor-import-export/dist/formats/converters.js.map",
-      "sha256": "34317488bad047c4f529486dbf50ed9ee46b4ad6e6c8a966b25d49dfdd583606"
+      "sha256": "0d2321c3c0c43e3de56d9cca5719941258364e7f3917d3717aa454eaaa7ed390"
     },
     {
       "path": "packages/tockteam-tocktutor-import-export/dist/formats/markdown.d.ts",
@@ -1063,7 +1063,7 @@
     },
     {
       "path": "packages/tockteam-tocktutor-import-export/src/formats/converters.ts",
-      "sha256": "b3c943257d40269743551bde3cf4af9efc4a929e315eb6bf8e6e44cff2200312"
+      "sha256": "13df050029223ce356903a3b5ca833db8be60f3b4dd94d72122897bae496ba1e"
     },
     {
       "path": "packages/tockteam-tocktutor-import-export/src/formats/markdown.ts",
