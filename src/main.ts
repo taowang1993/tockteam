@@ -372,7 +372,16 @@ function initializeDesktopPicker(): void {
           if (ownsRoute) onClosed()
         })
         try {
-          await window.loadURL(target.href)
+          await window.loadURL(runtimeUrl.href)
+          const pathname = JSON.stringify(target.pathname)
+          await window.webContents.executeJavaScript(
+            `window.history.replaceState(null, '', ${pathname}); window.dispatchEvent(new PopStateEvent('popstate'))`,
+            true,
+          )
+          if (originOf(window.webContents.getURL()) !== runtimeOrigin
+            || new URL(window.webContents.getURL()).pathname !== target.pathname) {
+            throw new Error('Desktop pop-out route bootstrap failed')
+          }
           window.show()
           return windowId
         } catch (error) {
