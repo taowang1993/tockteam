@@ -1,4 +1,5 @@
 import { spawnSync } from 'node:child_process'
+import { createHash, timingSafeEqual } from 'node:crypto'
 import {
   chmodSync,
   existsSync,
@@ -15,13 +16,16 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 
 function readSourceSpec() {
   const value = JSON.parse(readFileSync(join(root, 'dsh-source.json'), 'utf8'))
-  for (const field of ['repository', 'ref', 'revision', 'version']) {
+  for (const field of ['repository', 'ref', 'revision', 'version', 'pnpmIntegrity']) {
     if (typeof value[field] !== 'string' || value[field] === '') {
       throw new Error(`dsh-source.json ${field} must be a non-empty string`)
     }
   }
   if (!/^[0-9a-f]{40}$/.test(value.revision)) {
     throw new Error('dsh-source.json revision must be a full Git commit')
+  }
+  if (!/^sha512-[A-Za-z0-9+/]+={0,2}$/.test(value.pnpmIntegrity)) {
+    throw new Error('dsh-source.json pnpmIntegrity must be a SHA-512 SRI digest')
   }
   return Object.freeze(value)
 }
@@ -44,6 +48,14 @@ function capture(command, args, cwd) {
     throw new Error(result.stderr || `${command} ${args.join(' ')} failed`)
   }
   return result.stdout.trim()
+}
+
+export function verifySha512(path, integrity) {
+  const expected = Buffer.from(integrity.slice('sha512-'.length), 'base64')
+  const actual = createHash('sha512').update(readFileSync(path)).digest()
+  if (expected.length !== actual.length || !timingSafeEqual(expected, actual)) {
+    throw new Error(`${path} integrity mismatch`)
+  }
 }
 
 /**
@@ -73,6 +85,7 @@ export function resolvePinnedPnpm(source) {
     rmSync(archive, { force: true })
     run('curl', ['--fail', '--location', '--silent', '--show-error', '--output', archive,
       `https://registry.npmjs.org/pnpm/-/pnpm-${version}.tgz`])
+    verifySha512(archive, DSH_SOURCE_SPEC.pnpmIntegrity)
     const extraction = join(cache, `.pnpm-extract-${String(process.pid)}`)
     rmSync(extraction, { recursive: true, force: true })
     mkdirSync(extraction, { recursive: true })

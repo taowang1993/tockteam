@@ -2,5 +2,6 @@
   "repository": "https://github.com/deepseek-ai/deepseek-harness.git",
   "ref": "b150a551b8d465e31e418e1b2eaf5e79bbb7d28e",
   "revision": "b150a551b8d465e31e418e1b2eaf5e79bbb7d28e",
-  "version": "0.1.1-rc.2"
+  "version": "0.1.1-rc.2",
+  "pnpmIntegrity": "sha512-GcyFLBIMcSV2DyRD7mvgyltA+fUFmN4aCaHxd1A+AQ5Xwjx3ZG4B52HeWb+HT7IqM5jDOrlpH8E+uUa28PTWIA=="
 }
