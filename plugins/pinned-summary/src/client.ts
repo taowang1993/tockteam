@@ -124,6 +124,7 @@ class PinnedSummaryService implements PinnedSummary {
   #source: HTMLElement | undefined
   #text: HTMLElement | undefined
   #currentId: string | undefined
+  #currentSession: ObservableSnapshot<unknown> | undefined
   #unsubscribeList: (() => void) | undefined
   #unsubscribeSession: (() => void) | undefined
   #unsubscribeLocale: (() => void) | undefined
@@ -233,12 +234,16 @@ class PinnedSummaryService implements PinnedSummary {
   private bindAndRender(): void {
     const list = this.#sessions.list.getSnapshot()
     const currentId = list.current
-    if (currentId !== this.#currentId) {
+    const currentSession = currentId === undefined
+      ? undefined
+      : this.#sessions.binding(currentId)?.session
+    if (currentId !== this.#currentId || currentSession !== this.#currentSession) {
       this.#unsubscribeSession?.()
       this.#unsubscribeSession = undefined
       this.#currentId = currentId
-      if (currentId !== undefined) {
-        this.#unsubscribeSession = this.#sessions.binding(currentId)?.session.subscribe(() => { this.render() })
+      this.#currentSession = currentSession
+      if (currentSession !== undefined) {
+        this.#unsubscribeSession = currentSession.subscribe(() => { this.render() })
       }
     }
     this.render()
