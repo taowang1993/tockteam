@@ -17,6 +17,10 @@ test('desktop shell rail switches between TockCoder and TockTutor', () => {
     join(root, 'plugins/sidebar/src/client/plugin.tsx'),
     'utf8',
   )
+  const marketplace = readFileSync(
+    join(root, 'plugins/plugin-marketplace/src/client/plugin.tsx'),
+    'utf8',
+  )
   const css = sidebarTailwindSource()
 
   assert.match(css, /--tockteam-rail-width: 40px;/)
@@ -59,6 +63,12 @@ test('desktop shell rail switches between TockCoder and TockTutor', () => {
   assert.match(workspace, /<AppRailIcon kind="agent" \/>/)
   assert.match(workspace, /<AppRailIcon kind="notebook" \/>/)
   assert.match(workspace, /return <Notebook aria-hidden="true" \/>/)
+  assert.match(workspace, /aria-label="Plugins"/)
+  assert.match(workspace, /aria-label="Settings"/)
+  assert.match(workspace, /<Blocks aria-hidden="true" \/>/)
+  assert.match(workspace, /<Settings aria-hidden="true" \/>/)
+  assert.match(workspace, /document\.querySelector\('\[data-tockteam-marketplace-nav\]'\)/)
+  assert.match(workspace, /document\.querySelector\('\[data-slot="settings\.trigger"\]'\)/)
   assert.match(workspace, /M10 5\.5C6\.96243 5\.5/)
   assert.doesNotMatch(workspace, /location\.pathname !== '\/'/)
   assert.match(workspace, /appRoot\.inert = true/)
@@ -73,6 +83,17 @@ test('desktop shell rail switches between TockCoder and TockTutor', () => {
     /`var\(--tockteam-rail-width\) minmax\(0, 1fr\) \$\{String\(track\)\}px`/,
   )
   assert.match(workspace, /\[&_button\[aria-current='page'\]\]:bg-\[color-mix/u)
+  assert.match(
+    css,
+    /\[data-slot='sidebar'\] button:has\(\[data-slot='settings\.trigger'\]\)[\s\S]*?\[data-slot='sidebar'\] \[data-tockteam-marketplace-nav\][\s\S]*?display: none !important;/s,
+  )
+  assert.match(workspace, /function installPrimarySidebarAdapter\(\): \(\) => void/)
+  assert.match(workspace, /replace\(\/\^\[\\d\.\]\+px\/u, '0px'\)/)
+  assert.match(workspace, /next\.stopImmediatePropagation\(\)/)
+  assert.match(workspace, /requestAnimationFrame\(render\)/)
+  assert.match(workspace, /new PointerEvent\('pointermove'/)
+  assert.match(marketplace, /const rail = document\.getElementById\('tockteam-rail-root'\)/)
+  assert.match(marketplace, /Math\.round\(rail\.getBoundingClientRect\(\)\.right\)/)
 })
 
 test('desktop titlebar matches Tockbot chrome and stays draggable', () => {
@@ -135,7 +156,7 @@ test('desktop titlebar matches Tockbot chrome and stays draggable', () => {
   assert.match(workspace, /tockteam-titlebar-leading[^"\n]+items-center[^"\n]+justify-end/u)
   assert.match(workspace, /tockteam-titlebar-leading ml-\[var\(--tockteam-rail-width\)\]/u)
   assert.match(workspace, /tockteam-titlebar-leading[^"\n]+border-r/u)
-  assert.match(workspace, /\[body:has\(\[data-sidebar-collapsed\]\)_&\]:w-\[84px\][^"\n]+\[body:has\(\[data-sidebar-collapsed\]\)_&\]:border-r-0/u)
+  assert.match(workspace, /\[body:has\(\[data-sidebar-collapsed\]\)_&\]:w-9[^"\n]+\[body:has\(\[data-sidebar-collapsed\]\)_&\]:border-r-0/u)
   assert.match(workspace, /tockteam-titlebar-leading[^"\n]+\[&_button\]:size-9/u)
   assert.match(workspace, /tockteam-titlebar-leading[^"\n]+\[&_svg\]:size-\[18px\]/u)
   assert.match(workspace, /tockteam-panel-toolbar[^"\n]+\[&_svg\]:size-\[18px\]/u)

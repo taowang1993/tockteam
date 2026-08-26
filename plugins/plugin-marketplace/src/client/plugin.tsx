@@ -353,6 +353,18 @@ class PluginMarketplaceViewService implements PluginMarketplaceView {
   }
 
   private synchronizeGeometry(): void {
+    const rail = document.getElementById('tockteam-rail-root')
+    if (rail !== null) {
+      this.#footerStack?.removeAttribute(FOOTER_STACK_ATTRIBUTE)
+      this.#footerStack = null
+      this.#resizeObserver?.disconnect()
+      this.#resizeObserver?.observe(rail)
+      document.documentElement.style.setProperty(
+        '--tockteam-marketplace-left',
+        `${String(Math.round(rail.getBoundingClientRect().right))}px`,
+      )
+      return
+    }
     const declared = document.querySelector<HTMLElement>('[data-slot="sidebar"]')
     const settings = settingsButton()
     const footerStack = settings === null ? null : marketplaceFooter(settings)

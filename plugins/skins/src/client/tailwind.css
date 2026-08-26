@@ -68,6 +68,11 @@
     display: none !important;
   }
 
+  & [data-slot='sidebar'] button:has([data-slot='settings.trigger']),
+  & [data-slot='sidebar'] [data-tockteam-marketplace-nav] {
+    display: none !important;
+  }
+
   & body::before {
     position: fixed;
     z-index: 2147483647;

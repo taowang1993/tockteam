@@ -18,6 +18,7 @@ import {
 } from 'react'
 import { defineStore } from '@deepseek-ai/dsh-client-runtime/client'
 import {
+  Blocks,
   ChevronDown,
   ChevronLeft,
   ChevronUp,
@@ -34,6 +35,7 @@ import {
   PanelRight,
   Plus,
   RefreshCw,
+  Settings,
   SquareTerminal,
   X,
   type LucideIcon,
@@ -352,6 +354,113 @@ function flattenRunningCalls(calls: readonly RunningToolCall[]): RunningToolCall
   return result
 }
 
+function installPrimarySidebarAdapter(): () => void {
+  const collapse = (): void => {
+    const frame = document.querySelector<HTMLElement>('#root [data-sidebar-collapsed]')
+    if (frame === null) return
+    const tracks = frame.style.gridTemplateColumns
+    const collapsed = tracks.replace(/^[\d.]+px/u, '0px')
+    if (collapsed !== tracks) frame.style.gridTemplateColumns = collapsed
+  }
+  const observer = new MutationObserver(collapse)
+  observer.observe(document.getElementById('root') ?? document.body, {
+    attributeFilter: ['data-sidebar-collapsed', 'style'],
+    attributes: true,
+    childList: true,
+    subtree: true,
+  })
+  collapse()
+
+  let stopActiveResize = (): void => {}
+  const beginResize = (event: PointerEvent): void => {
+    const target = event.target instanceof Element
+      ? event.target.closest<HTMLElement>('[data-side="sidebar"]')
+      : null
+    const frame = target?.parentElement
+    if (target === null || !(frame instanceof HTMLElement)
+      || frame.closest('#root') === null) return
+    const pointerId = event.pointerId
+    const startX = event.clientX
+    const sidebarColumn = frame.children.item(0)
+    const detailsColumn = frame.children.item(2)
+    const sidebarContent = sidebarColumn?.firstElementChild
+    const startWidth = sidebarColumn?.getBoundingClientRect().width ?? 0
+    const detailsWidth = detailsColumn?.getBoundingClientRect().width ?? 0
+    const frameWidth = frame.getBoundingClientRect().width
+    if (startWidth === 0 || frameWidth === 0) return
+    let width = startWidth
+    let latestX = startX
+    let animationFrame = 0
+    frame.style.transitionDuration = '0ms'
+    target.style.transitionDuration = '0ms'
+    const render = (): void => {
+      animationFrame = 0
+      // Match the pinned DSH layout's sidebar and center-column limits.
+      width = Math.min(420, Math.max(264, Math.round(startWidth + latestX - startX)))
+      let details = detailsWidth
+      if (details > 0 && width + details + 640 > frameWidth) {
+        details = Math.max(300, frameWidth - width - 640)
+        if (width + details + 640 > frameWidth) details = 0
+      }
+      frame.style.gridTemplateColumns = `${String(width)}px minmax(0, 1fr) ${String(details)}px`
+      target.style.left = `${String(width)}px`
+      if (sidebarContent instanceof HTMLElement) {
+        sidebarContent.style.width = `${String(width)}px`
+      }
+    }
+    const move = (next: PointerEvent): void => {
+      if (next.pointerId !== pointerId) return
+      next.preventDefault()
+      next.stopImmediatePropagation()
+      latestX = next.clientX
+      if (animationFrame === 0) animationFrame = requestAnimationFrame(render)
+    }
+    const cleanup = (): void => {
+      if (animationFrame !== 0) cancelAnimationFrame(animationFrame)
+      animationFrame = 0
+      frame.style.removeProperty('transition-duration')
+      target.style.removeProperty('transition-duration')
+      document.removeEventListener('pointermove', move, true)
+      document.removeEventListener('pointerup', finish, true)
+      document.removeEventListener('pointercancel', finish, true)
+      stopActiveResize = (): void => {}
+    }
+    const finish = (next: PointerEvent): void => {
+      if (next.pointerId !== pointerId) return
+      if (animationFrame !== 0) cancelAnimationFrame(animationFrame)
+      render()
+      cleanup()
+      next.stopImmediatePropagation()
+      target.dispatchEvent(new PointerEvent('pointermove', {
+        bubbles: true,
+        buttons: 1,
+        clientX: latestX,
+        isPrimary: true,
+        pointerId,
+        pointerType: 'mouse',
+      }))
+      target.dispatchEvent(new PointerEvent('pointerup', {
+        bubbles: true,
+        clientX: latestX,
+        isPrimary: true,
+        pointerId,
+        pointerType: 'mouse',
+      }))
+    }
+    stopActiveResize()
+    stopActiveResize = cleanup
+    document.addEventListener('pointermove', move, true)
+    document.addEventListener('pointerup', finish, true)
+    document.addEventListener('pointercancel', finish, true)
+  }
+  document.addEventListener('pointerdown', beginResize, true)
+  return () => {
+    observer.disconnect()
+    stopActiveResize()
+    document.removeEventListener('pointerdown', beginResize, true)
+  }
+}
+
 class WorkspaceToolsService implements WorkspaceTools {
   private state: WorkspaceToolsState
   private readonly listeners = new Set<() => void>()
@@ -360,6 +469,7 @@ class WorkspaceToolsService implements WorkspaceTools {
   private appRoot: HTMLElement | undefined
   private root: Root | undefined
   private stopSidebar: (() => void) | undefined
+  private stopPrimarySidebarAdapter: (() => void) | undefined
   private readonly narrowViewport = window.matchMedia('(max-width: 900px)')
   private readonly handleViewportChange = (): void => { this.applyLayout() }
   private readonly handleShortcut = (event: KeyboardEvent): void => {
@@ -526,11 +636,15 @@ class WorkspaceToolsService implements WorkspaceTools {
     )
     this.narrowViewport.addEventListener('change', this.handleViewportChange)
     window.addEventListener('keydown', this.handleShortcut, true)
+    if (this.showDesktopChrome) {
+      this.stopPrimarySidebarAdapter = installPrimarySidebarAdapter()
+    }
     this.applyLayout()
   }
 
   dispose(): void {
     this.stopSidebar?.()
+    this.stopPrimarySidebarAdapter?.()
     window.removeEventListener('keydown', this.handleShortcut, true)
     this.narrowViewport.removeEventListener('change', this.handleViewportChange)
     this.root?.unmount()
@@ -708,7 +822,7 @@ function DesktopWindowTitlebar({
   return (
     <header className="tockteam-window-titlebar fixed top-0 right-0 left-0 z-[2147483647] grid h-[var(--tockteam-titlebar-height,40px)] grid-cols-[minmax(120px,1fr)_minmax(0,auto)_minmax(120px,1fr)] items-center border-b border-[var(--tockteam-shell-divider)] bg-[var(--tockteam-shell-chrome)] shadow-[0_1px_0_rgb(0_0_0_/_2%)] select-none [-webkit-app-region:drag]">
       <TooltipProvider>
-        <div className="tockteam-titlebar-leading ml-[var(--tockteam-rail-width)] flex h-full w-[var(--tockteam-primary-sidebar-width)] box-border items-center justify-end border-r border-[var(--tockteam-shell-divider)] pr-1 [body:has([data-sidebar-collapsed])_&]:w-[84px] [body:has([data-sidebar-collapsed])_&]:border-r-0 [html[data-tockteam-tocktutor-active='true']_&]:invisible [&_button]:grid [&_button]:size-9 [&_button]:cursor-pointer [&_button]:place-items-center [&_button]:rounded-lg [&_button]:border-0 [&_button]:bg-transparent [&_button]:p-0 [&_button]:text-[var(--dsw-alias-label-secondary,#57606a)] [&_button]:[-webkit-app-region:no-drag] [&_button:hover]:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))] [&_button:hover]:text-[var(--dsw-alias-label-primary,#1f2328)] [&_svg]:size-[18px] [&_svg]:fill-none [&_svg]:stroke-current [&_svg]:stroke-[1.7] [&_svg]:[stroke-linecap:round] [&_svg]:[stroke-linejoin:round]">
+        <div className="tockteam-titlebar-leading ml-[var(--tockteam-rail-width)] flex h-full w-[var(--tockteam-primary-sidebar-width)] box-border items-center justify-end border-r border-[var(--tockteam-shell-divider)] pr-1 [body:has([data-sidebar-collapsed])_&]:w-9 [body:has([data-sidebar-collapsed])_&]:border-r-0 [html[data-tockteam-tocktutor-active='true']_&]:invisible [&_button]:grid [&_button]:size-9 [&_button]:cursor-pointer [&_button]:place-items-center [&_button]:rounded-lg [&_button]:border-0 [&_button]:bg-transparent [&_button]:p-0 [&_button]:text-[var(--dsw-alias-label-secondary,#57606a)] [&_button]:[-webkit-app-region:no-drag] [&_button:hover]:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))] [&_button:hover]:text-[var(--dsw-alias-label-primary,#1f2328)] [&_svg]:size-[18px] [&_svg]:fill-none [&_svg]:stroke-current [&_svg]:stroke-[1.7] [&_svg]:[stroke-linecap:round] [&_svg]:[stroke-linejoin:round]">
           <Tooltip>
             <TooltipTrigger asChild>
               <Button unstyled
@@ -1834,6 +1948,16 @@ function DesktopAppRail({
 }): ReactNode {
   const tockCoderActive = isTockCoderPath(location.pathname)
   const tockTutorActive = isTockTutorPath(location.pathname)
+  const [pluginsAvailable, setPluginsAvailable] = useState(false)
+  useEffect(() => {
+    const sync = (): void => {
+      setPluginsAvailable(document.querySelector('[data-tockteam-marketplace-nav]') !== null)
+    }
+    const observer = new MutationObserver(sync)
+    observer.observe(document.body, { childList: true, subtree: true })
+    sync()
+    return () => { observer.disconnect() }
+  }, [])
   return (
     <TooltipProvider>
       <nav className="tockteam-app-rail flex h-full flex-col items-center gap-1 px-1 py-2 [&_button]:grid [&_button]:size-8 [&_button]:flex-none [&_button]:cursor-pointer [&_button]:place-items-center [&_button]:rounded-[7px] [&_button]:border-0 [&_button]:bg-transparent [&_button]:p-0 [&_button]:text-[color-mix(in_srgb,var(--dsw-alias-label-primary,#1f2328)_62%,transparent)] [&_button:hover]:bg-[color-mix(in_srgb,var(--dsw-alias-label-primary,#1f2328)_7%,transparent)] [&_button:hover]:text-[var(--dsw-alias-label-primary,#1f2328)] [&_button[aria-current='page']]:bg-[color-mix(in_srgb,var(--dsw-alias-label-primary,#1f2328)_11%,transparent)] [&_button[aria-current='page']]:text-[var(--dsw-alias-label-primary,#1f2328)] [&_button:focus-visible]:outline-2 [&_button:focus-visible]:outline-offset-1 [&_button:focus-visible]:outline-[var(--dsw-alias-border-focus,#315efb)] [&_svg]:size-[18px]" aria-label="App Navigation">
@@ -1859,6 +1983,38 @@ function DesktopAppRail({
           </TooltipTrigger>
           <TooltipContent side="right">TockTutor</TooltipContent>
         </Tooltip>
+        {tockCoderActive && (
+          <div className="mt-auto flex flex-col gap-1">
+            {pluginsAvailable && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button unstyled
+                    type="button"
+                    aria-label="Plugins"
+                    onClick={() => {
+                      const target = document.querySelector('[data-tockteam-marketplace-nav]')
+                      if (target instanceof HTMLButtonElement) target.click()
+                    }}
+                  ><Blocks aria-hidden="true" /></Button>
+                </TooltipTrigger>
+                <TooltipContent side="right">Plugins</TooltipContent>
+              </Tooltip>
+            )}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button unstyled
+                  type="button"
+                  aria-label="Settings"
+                  onClick={() => {
+                    document.querySelector('[data-slot="settings.trigger"]')
+                      ?.closest<HTMLButtonElement>('button')?.click()
+                  }}
+                ><Settings aria-hidden="true" /></Button>
+              </TooltipTrigger>
+              <TooltipContent side="right">Settings</TooltipContent>
+            </Tooltip>
+          </div>
+        )}
       </nav>
     </TooltipProvider>
   )
