@@ -16,6 +16,15 @@ export declare const inject: string[];
 /** Mount strict transport first, then contribute one lifecycle-owned Desktop route. */
 export declare function apply(ctx: Context): Promise<() => Promise<void>>;
 export * from './assistant-panel.ts';
+export * from './canvas-board.tsx';
+export * from './canvas-change.ts';
+export * from './canvas-edges.ts';
+export * from './canvas-geometry.ts';
+export * from './canvas-identity.ts';
+export * from './canvas-links.ts';
+export * from './canvas-nodes.ts';
+export * from './canvas-provenance.ts';
+export * from './canvas.ts';
 export * from './live-preview.ts';
 export * from './rich-markdown.ts';
 export * from './editor-commands.ts';

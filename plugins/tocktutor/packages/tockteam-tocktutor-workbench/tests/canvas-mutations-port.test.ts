@@ -175,10 +175,13 @@ test('deletes only selected cards, incident edges, or a group boundary', () => {
   assert.equal(edges(deleted).some(edge => edge.id === 'edge-1'), false)
   assert.equal(nodes(deleted).some(node => node.id === 'group-1'), true)
 
-  const withoutGroup = deleteCanvasGroup(source, 'group-1')
+  const groupConnected = createCanvasEdge(source, {
+    fromNode: 'group-1', fromSide: 'right', toNode: 'file-1', toSide: 'left',
+  }).content
+  const withoutGroup = deleteCanvasGroup(groupConnected, 'group-1')
   assert.equal(nodes(withoutGroup).some(node => node.id === 'group-1'), false)
   assert.equal(nodes(withoutGroup).some(node => node.id === 'text-1'), true)
-  assert.equal(edges(withoutGroup).some(edge => edge.id === 'edge-1'), true)
+  assert.deepEqual(edges(withoutGroup).map(edge => edge.id), ['edge-1'])
 })
 
 test('creates, reconnects, labels, colors, and deletes directed edges losslessly', () => {

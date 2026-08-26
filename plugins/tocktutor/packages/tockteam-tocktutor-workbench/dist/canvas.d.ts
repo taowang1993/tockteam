@@ -64,5 +64,7 @@ export declare function projectCanvas(parsed: {
     status: 'ready';
 }>;
 export declare function projectCanvas(parsed: CanvasParseResult): CanvasProjection;
+export declare function parseCanvasForMutation(content: string): CanvasDocument;
+export declare function serializeCanvasDocument(document: CanvasDocument): string;
 export declare function updateCanvasNodePosition(content: string, nodeId: string, x: number, y: number): string;
 //# sourceMappingURL=canvas.d.ts.map

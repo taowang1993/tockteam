@@ -222,6 +222,9 @@ export function deleteCanvasGroup(content: string, nodeId: string): string {
     throw new Error('The selected Canvas group no longer exists.')
   }
   document.nodes.splice(nodeIndex, 1)
+  if (document.edges !== undefined) {
+    document.edges = document.edges.filter(edge => edge.fromNode !== nodeId && edge.toNode !== nodeId)
+  }
   return serializeCanvasDocument(document)
 }
 

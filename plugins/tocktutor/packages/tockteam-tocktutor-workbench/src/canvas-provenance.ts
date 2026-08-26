@@ -16,5 +16,6 @@ export const TOCKBOT_CANVAS_PROVENANCE = Object.freeze({
     'Retain TockTeam cross-category node/edge identity uniqueness in addition to Tockbot duplicate checks.',
     'Extract pure mutations from NotesCanvasView.tsx without porting its React shell or native authority.',
     'Expose controlled change requests with exact previous source and expected revision for caller-owned rollback.',
+    'Replace the upstream route-coupled view with a bounded controlled board seam for later route integration.',
   ]),
 })

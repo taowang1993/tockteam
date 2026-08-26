@@ -31,6 +31,16 @@ var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: tru
 // src/client.ts
 var client_exports = {};
 __export(client_exports, {
+  CANVAS_DEFAULT_TEXT_CARD_SIZE: () => CANVAS_DEFAULT_TEXT_CARD_SIZE,
+  CANVAS_GRID_SIZE: () => CANVAS_GRID_SIZE,
+  CanvasBoard: () => CanvasBoard,
+  CanvasLinkUrlError: () => CanvasLinkUrlError,
+  MAX_CANVAS_BYTES: () => MAX_CANVAS_BYTES,
+  MAX_CANVAS_COORDINATE: () => MAX_CANVAS_COORDINATE,
+  MAX_CANVAS_EDGES: () => MAX_CANVAS_EDGES,
+  MAX_CANVAS_ID_LENGTH: () => MAX_CANVAS_ID_LENGTH,
+  MAX_CANVAS_LABEL_LENGTH: () => MAX_CANVAS_LABEL_LENGTH,
+  MAX_CANVAS_NODES: () => MAX_CANVAS_NODES,
   MAX_EDITOR_COMMAND_SOURCE_BYTES: () => MAX_EDITOR_COMMAND_SOURCE_BYTES,
   MAX_LIVE_PREVIEW_LINE_BYTES: () => MAX_LIVE_PREVIEW_LINE_BYTES,
   MAX_LIVE_PREVIEW_SOURCE_BYTES: () => MAX_LIVE_PREVIEW_SOURCE_BYTES,
@@ -41,6 +51,9 @@ __export(client_exports, {
   MAX_TOCKTUTOR_CSS_BYTES: () => MAX_TOCKTUTOR_CSS_BYTES,
   MAX_TOCKTUTOR_SETTINGS_BYTES: () => MAX_TOCKTUTOR_SETTINGS_BYTES,
   MAX_TOCKTUTOR_WORKSPACES: () => MAX_TOCKTUTOR_WORKSPACES,
+  MIN_CANVAS_NODE_HEIGHT: () => MIN_CANVAS_NODE_HEIGHT,
+  MIN_CANVAS_NODE_WIDTH: () => MIN_CANVAS_NODE_WIDTH,
+  TOCKBOT_CANVAS_PROVENANCE: () => TOCKBOT_CANVAS_PROVENANCE,
   TOCKTUTOR_ASSISTANT_PANEL_SLOT: () => TOCKTUTOR_ASSISTANT_PANEL_SLOT,
   TOCKTUTOR_NATIVE_ACTIONS_SLOT: () => TOCKTUTOR_NATIVE_ACTIONS_SLOT,
   TOCKTUTOR_REVIEW_PANEL_SLOT: () => TOCKTUTOR_REVIEW_PANEL_SLOT,
@@ -50,27 +63,65 @@ __export(client_exports, {
   apply: () => apply,
   applyEditorCommand: () => applyEditorCommand,
   applyTableCommand: () => applyTableCommand,
+  assertUniqueCanvasDocumentIdentities: () => assertUniqueCanvasDocumentIdentities,
   buildMarkdownExportDocument: () => buildMarkdownExportDocument,
   buildMarkdownSlides: () => buildMarkdownSlides,
+  calculateCanvasPointerValue: () => calculateCanvasPointerValue,
+  calculateCanvasResizeGeometry: () => calculateCanvasResizeGeometry,
   compileTockTutorCssSnippet: () => compileTockTutorCssSnippet,
+  createCanvasChange: () => createCanvasChange,
+  createCanvasConnectedTextNode: () => createCanvasConnectedTextNode,
+  createCanvasEdge: () => createCanvasEdge,
+  createCanvasFileNode: () => createCanvasFileNode,
+  createCanvasGroupFromSelection: () => createCanvasGroupFromSelection,
+  createCanvasGroupNode: () => createCanvasGroupNode,
+  createCanvasLinkNode: () => createCanvasLinkNode,
+  createCanvasTextNode: () => createCanvasTextNode,
   createNamedWorkspace: () => createNamedWorkspace,
+  deleteCanvasEdge: () => deleteCanvasEdge,
+  deleteCanvasGroup: () => deleteCanvasGroup,
+  deleteCanvasNode: () => deleteCanvasNode,
+  deleteCanvasNodes: () => deleteCanvasNodes,
+  duplicateCanvasGroup: () => duplicateCanvasGroup,
+  duplicateCanvasNodes: () => duplicateCanvasNodes,
   escapeMarkdownHtml: () => escapeMarkdownHtml,
   inject: () => inject,
   internalLinkDropMarkdown: () => internalLinkDropMarkdown,
+  isBoundedCanvasGeometry: () => isBoundedCanvasGeometry,
+  isCanvasSide: () => isCanvasSide,
+  isConnectableCanvasNode: () => isConnectableCanvasNode,
+  isCredentialFreeCanvasLink: () => isCredentialFreeCanvasLink,
   isNoteVaultChangeEvent: () => isNoteVaultChangeEvent,
+  isSupportedCanvasCard: () => isSupportedCanvasCard,
   loadTockTutorSettings: () => loadTockTutorSettings,
   loadWorkbenchState: () => loadWorkbenchState,
   name: () => name,
+  normalizeCanvasLinkUrl: () => normalizeCanvasLinkUrl,
   pagePreviewTargetAtOffset: () => pagePreviewTargetAtOffset,
+  parseCanvasDocument: () => parseCanvasDocument,
+  parseCanvasForMutation: () => parseCanvasForMutation,
   pathFromTockTutorLocation: () => pathFromTockTutorLocation,
+  projectCanvas: () => projectCanvas,
   projectLivePreview: () => projectLivePreview,
+  reconnectCanvasEdge: () => reconnectCanvasEdge,
   renderMarkdownHtml: () => renderMarkdownHtml,
   replaceLivePreviewLine: () => replaceLivePreviewLine,
   resolvePlatformEditorCommand: () => resolvePlatformEditorCommand,
   resolveSlashCommand: () => resolveSlashCommand,
   saveTockTutorSettings: () => saveTockTutorSettings,
   saveWorkbenchState: () => saveWorkbenchState,
-  subscribeNoteVaultChanges: () => subscribeNoteVaultChanges
+  serializeCanvasDocument: () => serializeCanvasDocument,
+  subscribeNoteVaultChanges: () => subscribeNoteVaultChanges,
+  tryNormalizeCanvasLinkUrl: () => tryNormalizeCanvasLinkUrl,
+  updateCanvasEdgeColor: () => updateCanvasEdgeColor,
+  updateCanvasEdgeLabel: () => updateCanvasEdgeLabel,
+  updateCanvasGroupGeometry: () => updateCanvasGroupGeometry,
+  updateCanvasGroupLabel: () => updateCanvasGroupLabel,
+  updateCanvasLinkNode: () => updateCanvasLinkNode,
+  updateCanvasNodeGeometries: () => updateCanvasNodeGeometries,
+  updateCanvasNodeGeometry: () => updateCanvasNodeGeometry,
+  updateCanvasNodePosition: () => updateCanvasNodePosition,
+  updateCanvasTextNode: () => updateCanvasTextNode
 });
 module.exports = __toCommonJS(client_exports);
 
@@ -21859,6 +21910,23 @@ function assignField(view, key, rawValue) {
   }
 }
 
+// src/canvas-identity.ts
+function isRecord(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+function assertUniqueEntries(entries, kind) {
+  const ids = /* @__PURE__ */ new Set();
+  for (const entry of entries) {
+    if (!isRecord(entry) || typeof entry.id !== "string") continue;
+    if (ids.has(entry.id)) throw new Error(`This .canvas file contains duplicate Canvas ${kind} ids.`);
+    ids.add(entry.id);
+  }
+}
+function assertUniqueCanvasDocumentIdentities(document2) {
+  if (Array.isArray(document2.nodes)) assertUniqueEntries(document2.nodes, "node");
+  if (Array.isArray(document2.edges)) assertUniqueEntries(document2.edges, "edge");
+}
+
 // src/canvas.ts
 var MAX_CANVAS_BYTES = 2e6;
 var MAX_CANVAS_NODES = 2e3;
@@ -21866,7 +21934,7 @@ var MAX_CANVAS_EDGES = 4e3;
 var MAX_CANVAS_ID_LENGTH = 256;
 var MAX_CANVAS_LABEL_LENGTH = 32768;
 var MAX_CANVAS_COORDINATE = 1e9;
-function isRecord(value) {
+function isRecord2(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 function isSafeId(value) {
@@ -21885,14 +21953,14 @@ function unsupported2(reason) {
   return { status: "unsupported", reason };
 }
 function parseNode(value) {
-  if (!isRecord(value) || !isSafeId(value.id) || typeof value.type !== "string" || value.type.length === 0 || value.type.length > 64 || !isFiniteCoordinate(value.x) || !isFiniteCoordinate(value.y) || !isFiniteCoordinate(value.width) || !isFiniteCoordinate(value.height) || value.width <= 0 || value.height <= 0) return null;
+  if (!isRecord2(value) || !isSafeId(value.id) || typeof value.type !== "string" || value.type.length === 0 || value.type.length > 64 || !isFiniteCoordinate(value.x) || !isFiniteCoordinate(value.y) || !isFiniteCoordinate(value.width) || !isFiniteCoordinate(value.height) || value.width <= 0 || value.height <= 0) return null;
   if (value.text !== void 0 && !isSafeLabel(value.text)) return null;
   if (value.file !== void 0 && !isSafeLabel(value.file)) return null;
   if (value.url !== void 0 && !isSafeLabel(value.url)) return null;
   return value;
 }
 function parseEdge(value) {
-  if (!isRecord(value) || !isSafeId(value.id) || !isSafeId(value.fromNode) || !isSafeId(value.toNode)) return null;
+  if (!isRecord2(value) || !isSafeId(value.id) || !isSafeId(value.fromNode) || !isSafeId(value.toNode)) return null;
   if (value.label !== void 0 && !isSafeLabel(value.label)) return null;
   return value;
 }
@@ -21904,7 +21972,12 @@ function parseCanvasDocument(content) {
   } catch {
     return unsupported2("Canvas document is not valid JSON.");
   }
-  if (!isRecord(value) || !Array.isArray(value.nodes)) return unsupported2("Canvas document must contain a nodes array.");
+  if (!isRecord2(value) || !Array.isArray(value.nodes)) return unsupported2("Canvas document must contain a nodes array.");
+  try {
+    assertUniqueCanvasDocumentIdentities(value);
+  } catch (error51) {
+    return unsupported2(error51 instanceof Error ? error51.message : "Canvas document contains duplicate identities.");
+  }
   if (value.nodes.length > MAX_CANVAS_NODES) return unsupported2("Canvas document exceeds the node limit.");
   if (value.edges !== void 0 && !Array.isArray(value.edges)) return unsupported2("Canvas edges must be an array.");
   if (Array.isArray(value.edges) && value.edges.length > MAX_CANVAS_EDGES) return unsupported2("Canvas document exceeds the edge limit.");
@@ -21969,18 +22042,28 @@ function projectCanvas(parsed) {
   }));
   return { status: "ready", nodes, edges, document: document2 };
 }
+function parseCanvasForMutation(content) {
+  const parsed = parseCanvasDocument(content);
+  if (parsed.status !== "ready") throw new Error(parsed.reason);
+  return parsed.document;
+}
+function serializeCanvasDocument(document2) {
+  const content = `${JSON.stringify(document2, null, 2)}
+`;
+  const parsed = parseCanvasDocument(content);
+  if (parsed.status !== "ready") throw new Error(parsed.reason);
+  return content;
+}
 function updateCanvasNodePosition(content, nodeId, x, y) {
   if (!isSafeId(nodeId) || !isFiniteCoordinate(x) || !isFiniteCoordinate(y)) {
     throw new Error("Canvas node position is invalid.");
   }
-  const parsed = parseCanvasDocument(content);
-  if (parsed.status !== "ready") throw new Error(parsed.reason);
-  const node = parsed.document.nodes.find((candidate) => candidate.id === nodeId);
+  const document2 = parseCanvasForMutation(content);
+  const node = document2.nodes.find((candidate) => candidate.id === nodeId);
   if (node === void 0) throw new Error("Canvas node no longer exists.");
   node.x = x;
   node.y = y;
-  return `${JSON.stringify(parsed.document, null, 2)}
-`;
+  return serializeCanvasDocument(document2);
 }
 
 // src/live-preview.ts
@@ -22380,7 +22463,7 @@ var MAX_VAULT_PATH_LENGTH = 4096;
 var MAX_ROUTE_ID_LENGTH = 128;
 var DEFAULT_MODE = "wysiwyg";
 var DEFAULT_EDITING_MODE = "wysiwyg";
-function isRecord2(value) {
+function isRecord3(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 function boundedString(value, max2) {
@@ -22450,12 +22533,12 @@ function nextId(prefix, used) {
   return `${prefix}-${Date.now().toString(36)}`.slice(0, MAX_ID_LENGTH);
 }
 function normalizeVault(value) {
-  if (!isRecord2(value) || !isSafeId2(value.id)) return null;
+  if (!isRecord3(value) || !isSafeId2(value.id)) return null;
   const generation = boundedRevision(value.generation);
   return { id: value.id, generation };
 }
 function parseTab(value, ids) {
-  if (!isRecord2(value) || !isSafeId2(value.id) || ids.has(value.id) || !isSafeVaultRelativePath(value.path)) return null;
+  if (!isRecord3(value) || !isSafeId2(value.id) || ids.has(value.id) || !isSafeVaultRelativePath(value.path)) return null;
   const mode = isEditorMode(value.mode) ? value.mode : DEFAULT_MODE;
   const lastEditingMode = isEditingMode(value.lastEditingMode) ? value.lastEditingMode : mode === "reading" ? DEFAULT_EDITING_MODE : mode;
   const revision = boundedRevision(value.revision);
@@ -22472,7 +22555,7 @@ function parseTab(value, ids) {
   });
 }
 function parseGroup(value, groupIds, tabIds) {
-  if (!isRecord2(value) || !isSafeId2(value.id) || groupIds.has(value.id) || !Array.isArray(value.tabs)) return null;
+  if (!isRecord3(value) || !isSafeId2(value.id) || groupIds.has(value.id) || !Array.isArray(value.tabs)) return null;
   groupIds.add(value.id);
   const tabs = [];
   const paths = /* @__PURE__ */ new Set();
@@ -22498,7 +22581,7 @@ function createWorkbenchSession(routeId, vault = null, initialGroupId = "group-1
   };
 }
 function hydrateWorkbenchSession(value) {
-  if (!isRecord2(value)) return createWorkbenchSession("tocktutor");
+  if (!isRecord3(value)) return createWorkbenchSession("tocktutor");
   const routeId = boundedString(value.routeId, MAX_ROUTE_ID_LENGTH) ? value.routeId : "tocktutor";
   const vault = normalizeVault(value.vault);
   const groups = [];
@@ -23038,7 +23121,7 @@ function resolveEditorShortcut(event, isMac) {
 }
 
 // src/vault-events.ts
-function isRecord3(value) {
+function isRecord4(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 function hasExactKeys(value, keys) {
@@ -23047,10 +23130,10 @@ function hasExactKeys(value, keys) {
   return actual.length === expected.length && actual.every((key, index2) => key === expected[index2]);
 }
 function isVaultReference(value) {
-  return isRecord3(value) && hasExactKeys(value, ["generation", "id"]) && Number.isSafeInteger(value.generation) && value.generation >= 0 && typeof value.id === "string" && /^vault:[0-9a-f]{64}$/u.test(value.id);
+  return isRecord4(value) && hasExactKeys(value, ["generation", "id"]) && Number.isSafeInteger(value.generation) && value.generation >= 0 && typeof value.id === "string" && /^vault:[0-9a-f]{64}$/u.test(value.id);
 }
 function isNoteVaultChangeEvent(value) {
-  if (!isRecord3(value) || !isVaultReference(value.vault)) return false;
+  if (!isRecord4(value) || !isVaultReference(value.vault)) return false;
   if (value.kind === "vault") {
     return value.action === "activated" && hasExactKeys(value, ["action", "kind", "vault"]);
   }
@@ -25554,6 +25637,729 @@ function TockTutorRoute(props) {
     }
   ) });
 }
+
+// src/canvas-board.tsx
+var import_react6 = require("react");
+
+// src/canvas-change.ts
+function createCanvasChange(previousSource, expectedRevision, operation, mutate) {
+  if (!expectedRevision || expectedRevision.length > 512 || /[\0\r\n]/u.test(expectedRevision)) {
+    throw new Error("The Canvas source revision is invalid.");
+  }
+  parseCanvasForMutation(previousSource);
+  const source = mutate(previousSource);
+  parseCanvasForMutation(source);
+  return { previousSource, source, expectedRevision, operation };
+}
+
+// src/canvas-geometry.ts
+var CANVAS_GRID_SIZE = 20;
+var MIN_CANVAS_NODE_WIDTH = 120;
+var MIN_CANVAS_NODE_HEIGHT = 80;
+function isCanvasSide(value) {
+  return value === "top" || value === "right" || value === "bottom" || value === "left";
+}
+function isBoundedCanvasGeometry(value) {
+  return [value.x, value.y, value.width, value.height].every((candidate) => Number.isFinite(candidate) && Math.abs(candidate) <= MAX_CANVAS_COORDINATE) && value.width > 0 && value.height > 0;
+}
+function calculateCanvasPointerValue(start, delta, snappingDisabled) {
+  const value = start + delta;
+  return snappingDisabled ? Math.round(value) : Math.round(value / CANVAS_GRID_SIZE) * CANVAS_GRID_SIZE;
+}
+function calculateCanvasResizeGeometry(start, delta, aspectRatioLocked, snappingDisabled) {
+  if (!aspectRatioLocked) {
+    return {
+      ...start,
+      width: Math.max(MIN_CANVAS_NODE_WIDTH, calculateCanvasPointerValue(start.width, delta.x, snappingDisabled)),
+      height: Math.max(MIN_CANVAS_NODE_HEIGHT, calculateCanvasPointerValue(start.height, delta.y, snappingDisabled))
+    };
+  }
+  const aspectRatio = start.width / start.height;
+  const widthDominant = Math.abs(delta.x) >= Math.abs(delta.y * aspectRatio);
+  if (widthDominant) {
+    const width = Math.max(
+      MIN_CANVAS_NODE_WIDTH,
+      MIN_CANVAS_NODE_HEIGHT * aspectRatio,
+      calculateCanvasPointerValue(start.width, delta.x, snappingDisabled)
+    );
+    return { ...start, width, height: width / aspectRatio };
+  }
+  const height = Math.max(
+    MIN_CANVAS_NODE_HEIGHT,
+    MIN_CANVAS_NODE_WIDTH / aspectRatio,
+    calculateCanvasPointerValue(start.height, delta.y, snappingDisabled)
+  );
+  return { ...start, width: height * aspectRatio, height };
+}
+
+// src/canvas-links.ts
+var CanvasLinkUrlError = class extends Error {
+  code;
+  constructor(code, message) {
+    super(message);
+    this.name = "CanvasLinkUrlError";
+    this.code = code;
+  }
+};
+function normalizeCanvasLinkUrl(value) {
+  const trimmed = value.trim();
+  const candidate = /^[a-z][a-z\d+.-]*:(?!\d)/iu.test(trimmed) ? trimmed : `https://${trimmed}`;
+  let url2;
+  try {
+    url2 = new URL(candidate);
+  } catch {
+    throw new CanvasLinkUrlError("invalid", "Enter a valid web page URL.");
+  }
+  if (url2.protocol !== "http:" && url2.protocol !== "https:") {
+    throw new CanvasLinkUrlError("http-only", "Canvas link cards require an HTTP or HTTPS URL.");
+  }
+  if (url2.username || url2.password) {
+    throw new CanvasLinkUrlError("credential-bearing", "Canvas link cards cannot include usernames or passwords.");
+  }
+  return url2.toString();
+}
+function tryNormalizeCanvasLinkUrl(value) {
+  if (typeof value !== "string") return void 0;
+  const trimmed = value.trim();
+  try {
+    const normalized = normalizeCanvasLinkUrl(trimmed);
+    return /^https?:\/\//iu.test(trimmed) ? trimmed : normalized;
+  } catch {
+    return void 0;
+  }
+}
+
+// src/canvas-nodes.ts
+var SUPPORTED_CANVAS_CARD_TYPES = /* @__PURE__ */ new Set(["text", "file", "link"]);
+var CANVAS_DEFAULT_TEXT_CARD_SIZE = { width: 260, height: 140 };
+function isSupportedCanvasCard(node) {
+  return typeof node.type === "string" && SUPPORTED_CANVAS_CARD_TYPES.has(node.type);
+}
+function nextCanvasId(document2, prefix) {
+  const existingIds = /* @__PURE__ */ new Set([
+    ...document2.nodes.map((node) => node.id),
+    ...(document2.edges ?? []).map((edge) => edge.id)
+  ]);
+  let index2 = 1;
+  while (existingIds.has(`${prefix}-${String(index2)}`)) index2 += 1;
+  return `${prefix}-${String(index2)}`;
+}
+function createCanvasNode(content, prefix, fields, size4 = CANVAS_DEFAULT_TEXT_CARD_SIZE) {
+  const document2 = parseCanvasForMutation(content);
+  const rightmost = document2.nodes.reduce(
+    (right, node) => Math.max(right, node.x + Math.max(MIN_CANVAS_NODE_WIDTH, node.width)),
+    0
+  );
+  const nodeId = nextCanvasId(document2, prefix);
+  document2.nodes.push({
+    id: nodeId,
+    x: rightmost ? rightmost + 40 : 0,
+    y: 0,
+    ...size4,
+    ...fields
+  });
+  return { nodeId, content: serializeCanvasDocument(document2) };
+}
+function createCanvasTextNode(content, position) {
+  if (position !== void 0 && ![position.x, position.y].every(Number.isFinite)) {
+    throw new Error("The Canvas card position is invalid.");
+  }
+  return createCanvasNode(content, "text", {
+    type: "text",
+    text: "",
+    ...position === void 0 ? {} : {
+      x: calculateCanvasPointerValue(0, position.x, false),
+      y: calculateCanvasPointerValue(0, position.y, false)
+    }
+  });
+}
+function createCanvasGroupNode(content) {
+  return createCanvasNode(content, "group", { type: "group", label: "Group" }, { width: 420, height: 260 });
+}
+function createCanvasGroupFromSelection(content, nodeIds) {
+  const document2 = parseCanvasForMutation(content);
+  const selectedIds = new Set(nodeIds);
+  const selectedNodes = document2.nodes.filter((node) => selectedIds.has(node.id));
+  if (selectedIds.size === 0 || selectedIds.size !== nodeIds.length || selectedNodes.length !== selectedIds.size || selectedNodes.some((node) => !isSupportedCanvasCard(node))) {
+    throw new Error("A selected supported Canvas card no longer exists.");
+  }
+  const left = Math.min(...selectedNodes.map((node) => node.x));
+  const top = Math.min(...selectedNodes.map((node) => node.y));
+  const right = Math.max(...selectedNodes.map((node) => node.x + node.width));
+  const bottom = Math.max(...selectedNodes.map((node) => node.y + node.height));
+  const x = Math.floor((left - CANVAS_GRID_SIZE) / CANVAS_GRID_SIZE) * CANVAS_GRID_SIZE;
+  const y = Math.floor((top - CANVAS_GRID_SIZE) / CANVAS_GRID_SIZE) * CANVAS_GRID_SIZE;
+  const outerRight = Math.ceil((right + CANVAS_GRID_SIZE) / CANVAS_GRID_SIZE) * CANVAS_GRID_SIZE;
+  const outerBottom = Math.ceil((bottom + CANVAS_GRID_SIZE) / CANVAS_GRID_SIZE) * CANVAS_GRID_SIZE;
+  const geometry = {
+    x,
+    y,
+    width: Math.max(MIN_CANVAS_NODE_WIDTH, outerRight - x),
+    height: Math.max(MIN_CANVAS_NODE_HEIGHT, outerBottom - y)
+  };
+  if (!isBoundedCanvasGeometry(geometry)) throw new Error("The Canvas group geometry is invalid.");
+  const nodeId = nextCanvasId(document2, "group");
+  document2.nodes.push({ id: nodeId, type: "group", ...geometry, label: "Group" });
+  return { nodeId, content: serializeCanvasDocument(document2) };
+}
+function createCanvasFileNode(content, relativePath) {
+  const normalizedPath = relativePath.trim().replaceAll("\\", "/").replace(/^\.\//u, "");
+  if (!normalizedPath || normalizedPath.startsWith("/") || normalizedPath.split("/").some((segment) => segment === ".." || segment === "")) {
+    throw new Error("Canvas file cards require a safe vault-relative file path.");
+  }
+  return createCanvasNode(content, "file", { type: "file", file: normalizedPath });
+}
+function createCanvasLinkNode(content, value) {
+  return createCanvasNode(content, "link", { type: "link", url: normalizeCanvasLinkUrl(value) });
+}
+function updateCanvasLinkNode(content, nodeId, value) {
+  const document2 = parseCanvasForMutation(content);
+  const node = document2.nodes.find((candidate) => candidate.id === nodeId);
+  if (node?.type !== "link") throw new Error("The selected Canvas link card no longer exists.");
+  node.url = normalizeCanvasLinkUrl(value);
+  return serializeCanvasDocument(document2);
+}
+function updateCanvasTextNode(content, nodeId, text) {
+  const document2 = parseCanvasForMutation(content);
+  const node = document2.nodes.find((candidate) => candidate.id === nodeId);
+  if (node?.type !== "text") throw new Error("The selected Canvas text card no longer exists.");
+  node.text = text;
+  return serializeCanvasDocument(document2);
+}
+function updateCanvasNodeGeometries(content, updates) {
+  const document2 = parseCanvasForMutation(content);
+  if (new Set(updates.map((update) => update.nodeId)).size !== updates.length) {
+    throw new Error("A Canvas card was selected more than once.");
+  }
+  const nodesById = new Map(document2.nodes.map((node) => [node.id, node]));
+  for (const update of updates) {
+    const node = nodesById.get(update.nodeId);
+    if (node === void 0 || !isSupportedCanvasCard(node)) {
+      throw new Error("A selected supported Canvas card no longer exists.");
+    }
+    if (!isBoundedCanvasGeometry(update.geometry)) throw new Error("The Canvas card geometry is invalid.");
+  }
+  for (const update of updates) {
+    Object.assign(nodesById.get(update.nodeId), {
+      ...update.geometry,
+      width: Math.max(MIN_CANVAS_NODE_WIDTH, update.geometry.width),
+      height: Math.max(MIN_CANVAS_NODE_HEIGHT, update.geometry.height)
+    });
+  }
+  return serializeCanvasDocument(document2);
+}
+function contains(group, node) {
+  return node.x >= group.x && node.y >= group.y && node.x + node.width <= group.x + group.width && node.y + node.height <= group.y + group.height;
+}
+function updateCanvasGroupGeometry(content, nodeId, geometry) {
+  const document2 = parseCanvasForMutation(content);
+  const group = document2.nodes.find((node) => node.id === nodeId);
+  if (group?.type !== "group") throw new Error("The selected Canvas group no longer exists.");
+  if (!isBoundedCanvasGeometry(geometry)) throw new Error("The Canvas group geometry is invalid.");
+  const startingGeometry = { x: group.x, y: group.y, width: group.width, height: group.height };
+  const deltaX = geometry.x - group.x;
+  const deltaY = geometry.y - group.y;
+  const positionOnly = geometry.width === group.width && geometry.height === group.height;
+  const contained = positionOnly ? document2.nodes.filter((node) => node !== group && node.type !== "group" && contains(startingGeometry, node)) : [];
+  for (const node of contained) {
+    if (!isBoundedCanvasGeometry({ ...node, x: node.x + deltaX, y: node.y + deltaY })) {
+      throw new Error("The Canvas group geometry is invalid.");
+    }
+  }
+  for (const node of contained) {
+    node.x += deltaX;
+    node.y += deltaY;
+  }
+  Object.assign(group, {
+    ...geometry,
+    width: Math.max(MIN_CANVAS_NODE_WIDTH, geometry.width),
+    height: Math.max(MIN_CANVAS_NODE_HEIGHT, geometry.height)
+  });
+  return serializeCanvasDocument(document2);
+}
+function updateCanvasNodeGeometry(content, nodeId, geometry) {
+  const document2 = parseCanvasForMutation(content);
+  const node = document2.nodes.find((candidate) => candidate.id === nodeId);
+  if (node?.type === "group") return updateCanvasGroupGeometry(content, nodeId, geometry);
+  return updateCanvasNodeGeometries(content, [{ nodeId, geometry }]);
+}
+function updateCanvasGroupLabel(content, nodeId, label) {
+  const document2 = parseCanvasForMutation(content);
+  const node = document2.nodes.find((candidate) => candidate.id === nodeId);
+  if (node?.type !== "group") throw new Error("The selected Canvas group no longer exists.");
+  const normalizedLabel = label.trim();
+  if (!normalizedLabel) throw new Error("The Canvas group label cannot be empty.");
+  node.label = normalizedLabel;
+  return serializeCanvasDocument(document2);
+}
+function deleteCanvasGroup(content, nodeId) {
+  const document2 = parseCanvasForMutation(content);
+  const nodeIndex = document2.nodes.findIndex((node) => node.id === nodeId);
+  if (nodeIndex < 0 || document2.nodes[nodeIndex]?.type !== "group") {
+    throw new Error("The selected Canvas group no longer exists.");
+  }
+  document2.nodes.splice(nodeIndex, 1);
+  if (document2.edges !== void 0) {
+    document2.edges = document2.edges.filter((edge) => edge.fromNode !== nodeId && edge.toNode !== nodeId);
+  }
+  return serializeCanvasDocument(document2);
+}
+function deleteCanvasNodes(content, nodeIds) {
+  const document2 = parseCanvasForMutation(content);
+  const selectedIds = new Set(nodeIds);
+  const selectedNodes = document2.nodes.filter((node) => selectedIds.has(node.id));
+  if (selectedIds.size !== nodeIds.length || selectedNodes.length !== selectedIds.size || selectedNodes.some((node) => !isSupportedCanvasCard(node))) {
+    throw new Error("A selected supported Canvas card no longer exists.");
+  }
+  document2.nodes = document2.nodes.filter((node) => !selectedIds.has(node.id));
+  if (document2.edges !== void 0) {
+    document2.edges = document2.edges.filter((edge) => !selectedIds.has(edge.fromNode) && !selectedIds.has(edge.toNode));
+  }
+  return serializeCanvasDocument(document2);
+}
+function deleteCanvasNode(content, nodeId) {
+  return deleteCanvasNodes(content, [nodeId]);
+}
+function nextCopyId(sourceId, existingIds) {
+  const base = `${sourceId}-copy`;
+  let candidate = base;
+  let index2 = 2;
+  while (existingIds.has(candidate)) {
+    candidate = `${base}-${String(index2)}`;
+    index2 += 1;
+  }
+  existingIds.add(candidate);
+  return candidate;
+}
+function duplicateCanvasGroup(content, nodeId, geometry) {
+  const document2 = parseCanvasForMutation(content);
+  const source = document2.nodes.find((node) => node.id === nodeId);
+  if (source?.type !== "group") throw new Error("The selected Canvas group no longer exists.");
+  if (!isBoundedCanvasGeometry(geometry)) throw new Error("The Canvas group geometry is invalid.");
+  const ids = /* @__PURE__ */ new Set([...document2.nodes.map((node) => node.id), ...(document2.edges ?? []).map((edge) => edge.id)]);
+  const copiedNodeId = nextCopyId(nodeId, ids);
+  document2.nodes.push({
+    ...source,
+    id: copiedNodeId,
+    ...geometry,
+    width: Math.max(MIN_CANVAS_NODE_WIDTH, geometry.width),
+    height: Math.max(MIN_CANVAS_NODE_HEIGHT, geometry.height)
+  });
+  return { nodeId: copiedNodeId, content: serializeCanvasDocument(document2) };
+}
+function duplicateCanvasNodes(content, updates) {
+  const document2 = parseCanvasForMutation(content);
+  const selectedIds = new Set(updates.map((update) => update.nodeId));
+  if (selectedIds.size !== updates.length) throw new Error("A Canvas card was selected more than once.");
+  const nodesById = new Map(document2.nodes.map((node) => [node.id, node]));
+  for (const update of updates) {
+    const node = nodesById.get(update.nodeId);
+    if (node === void 0 || !isSupportedCanvasCard(node)) {
+      throw new Error("A selected supported Canvas card no longer exists.");
+    }
+    if (!isBoundedCanvasGeometry(update.geometry)) throw new Error("The Canvas card geometry is invalid.");
+  }
+  const ids = /* @__PURE__ */ new Set([...document2.nodes.map((node) => node.id), ...(document2.edges ?? []).map((edge) => edge.id)]);
+  const copiedNodeIds = /* @__PURE__ */ new Map();
+  for (const update of updates) copiedNodeIds.set(update.nodeId, nextCopyId(update.nodeId, ids));
+  for (const update of updates) {
+    const source = nodesById.get(update.nodeId);
+    document2.nodes.push({
+      ...source,
+      id: copiedNodeIds.get(update.nodeId),
+      ...update.geometry,
+      width: Math.max(MIN_CANVAS_NODE_WIDTH, update.geometry.width),
+      height: Math.max(MIN_CANVAS_NODE_HEIGHT, update.geometry.height)
+    });
+  }
+  const copiedEdges = (document2.edges ?? []).flatMap((edge) => {
+    const fromNode = copiedNodeIds.get(edge.fromNode);
+    const toNode = copiedNodeIds.get(edge.toNode);
+    return fromNode !== void 0 && toNode !== void 0 ? [{ ...edge, id: nextCopyId(edge.id, ids), fromNode, toNode }] : [];
+  });
+  if (copiedEdges.length > 0) document2.edges = [...document2.edges ?? [], ...copiedEdges];
+  return {
+    nodeIds: updates.map((update) => copiedNodeIds.get(update.nodeId)),
+    content: serializeCanvasDocument(document2)
+  };
+}
+
+// src/canvas-edges.ts
+function isConnectableCanvasNode(node) {
+  return isSupportedCanvasCard(node) || node.type === "group";
+}
+function nodeMap(document2) {
+  return new Map(document2.nodes.map((node) => [node.id, node]));
+}
+function createCanvasEdge(content, connection) {
+  const document2 = parseCanvasForMutation(content);
+  const nodes = nodeMap(document2);
+  const fromNode = nodes.get(connection.fromNode);
+  const toNode = nodes.get(connection.toNode);
+  if (fromNode === void 0 || toNode === void 0 || !isConnectableCanvasNode(fromNode) || !isConnectableCanvasNode(toNode)) {
+    throw new Error("Canvas connections require two supported nodes.");
+  }
+  if (connection.fromNode === connection.toNode) {
+    throw new Error("Canvas connections require two different nodes.");
+  }
+  if (!isCanvasSide(connection.fromSide) || !isCanvasSide(connection.toSide)) {
+    throw new Error("Canvas connections require valid node sides.");
+  }
+  const existingIds = /* @__PURE__ */ new Set([
+    ...document2.nodes.map((node) => node.id),
+    ...(document2.edges ?? []).map((edge) => edge.id)
+  ]);
+  let index2 = 1;
+  while (existingIds.has(`edge-${String(index2)}`)) index2 += 1;
+  const edgeId = `edge-${String(index2)}`;
+  document2.edges = [
+    ...document2.edges ?? [],
+    { id: edgeId, ...connection, toEnd: "arrow" }
+  ];
+  return { edgeId, content: serializeCanvasDocument(document2) };
+}
+function createCanvasConnectedTextNode(content, connection) {
+  if (!isCanvasSide(connection.fromSide)) throw new Error("Canvas connections require valid node sides.");
+  const { width, height } = CANVAS_DEFAULT_TEXT_CARD_SIZE;
+  const toSide = { top: "bottom", right: "left", bottom: "top", left: "right" }[connection.fromSide];
+  const position = {
+    x: connection.position.x - (toSide === "right" ? width : toSide === "top" || toSide === "bottom" ? width / 2 : 0),
+    y: connection.position.y - (toSide === "bottom" ? height : toSide === "left" || toSide === "right" ? height / 2 : 0)
+  };
+  const node = createCanvasTextNode(content, position);
+  const edge = createCanvasEdge(node.content, {
+    fromNode: connection.fromNode,
+    fromSide: connection.fromSide,
+    toNode: node.nodeId,
+    toSide
+  });
+  return { nodeId: node.nodeId, edgeId: edge.edgeId, content: edge.content };
+}
+function reconnectCanvasEdge(content, update) {
+  const document2 = parseCanvasForMutation(content);
+  const edge = document2.edges?.find((candidate) => candidate.id === update.edgeId);
+  if (edge === void 0) throw new Error("The selected Canvas edge no longer exists.");
+  if (update.endpoint !== "from" && update.endpoint !== "to" || !isCanvasSide(update.side)) {
+    throw new Error("Canvas connections require a valid endpoint and node side.");
+  }
+  const nodes = nodeMap(document2);
+  const nextNode = nodes.get(update.nodeId);
+  const fixedNodeId = update.endpoint === "from" ? edge.toNode : edge.fromNode;
+  const fixedNode = nodes.get(fixedNodeId);
+  if (nextNode === void 0 || fixedNode === void 0 || !isConnectableCanvasNode(nextNode) || !isConnectableCanvasNode(fixedNode)) {
+    throw new Error("Canvas connections require two supported nodes.");
+  }
+  if (update.nodeId === fixedNodeId) throw new Error("Canvas connections require two different nodes.");
+  if (update.endpoint === "from") {
+    edge.fromNode = update.nodeId;
+    edge.fromSide = update.side;
+  } else {
+    edge.toNode = update.nodeId;
+    edge.toSide = update.side;
+  }
+  return serializeCanvasDocument(document2);
+}
+function edgeDocument(content) {
+  const document2 = parseCanvasForMutation(content);
+  if (document2.edges === void 0) throw new Error("This .canvas file does not contain Canvas edges.");
+  return document2;
+}
+function updateCanvasEdgeLabel(content, edgeId, label) {
+  const document2 = edgeDocument(content);
+  const edge = document2.edges.find((candidate) => candidate.id === edgeId);
+  if (edge === void 0) throw new Error("The selected Canvas edge no longer exists.");
+  const normalizedLabel = label.trim();
+  if (normalizedLabel) edge.label = normalizedLabel;
+  else delete edge.label;
+  return serializeCanvasDocument(document2);
+}
+function updateCanvasEdgeColor(content, edgeId, color) {
+  const document2 = edgeDocument(content);
+  const edge = document2.edges.find((candidate) => candidate.id === edgeId);
+  if (edge === void 0) throw new Error("The selected Canvas edge no longer exists.");
+  if (color && !/^[1-6]$/u.test(color)) {
+    throw new Error("The selected color is not a supported JSON Canvas color.");
+  }
+  if (color) edge.color = color;
+  else delete edge.color;
+  return serializeCanvasDocument(document2);
+}
+function deleteCanvasEdge(content, edgeId) {
+  const document2 = edgeDocument(content);
+  const edgeIndex = document2.edges.findIndex((edge) => edge.id === edgeId);
+  if (edgeIndex < 0) throw new Error("The selected Canvas edge no longer exists.");
+  document2.edges.splice(edgeIndex, 1);
+  return serializeCanvasDocument(document2);
+}
+
+// src/canvas-board.tsx
+var import_jsx_runtime22 = require("react/jsx-runtime");
+var BOARD_PADDING = 40;
+var MAX_CANVAS_BOARD_SPAN = 1e5;
+var SIDES = ["top", "right", "bottom", "left"];
+function nodeLabel(node) {
+  if (node.type === "file" && typeof node.file === "string") return node.file;
+  if (node.type === "link" && typeof node.url === "string") return node.url;
+  if (node.type === "group" && typeof node.label === "string") return node.label;
+  if (typeof node.text === "string") {
+    const first = node.text.trim().split(/\r?\n/u)[0]?.replace(/^#{1,6}\s+/u, "").trim();
+    if (first) return first;
+  }
+  return typeof node.id === "string" ? node.id : "Canvas Card";
+}
+function titleCaseSide(side) {
+  return `${side.slice(0, 1).toUpperCase()}${side.slice(1)}`;
+}
+function sideHandleStyle(side) {
+  return {
+    bottom: side === "bottom" ? 0 : void 0,
+    left: side === "left" ? 0 : side === "top" || side === "bottom" ? "50%" : void 0,
+    right: side === "right" ? 0 : void 0,
+    top: side === "top" ? 0 : side === "left" || side === "right" ? "50%" : void 0,
+    transform: {
+      top: "translate(-50%, -50%)",
+      right: "translate(50%, -50%)",
+      bottom: "translate(-50%, 50%)",
+      left: "translate(-50%, -50%)"
+    }[side]
+  };
+}
+function CanvasBoard({ source, revision, onChange, disabled = false }) {
+  const parsed = (0, import_react6.useMemo)(() => parseCanvasDocument(source), [source]);
+  const [armed, setArmed] = (0, import_react6.useState)(null);
+  const [selectedNodeId, setSelectedNodeId] = (0, import_react6.useState)(null);
+  const [selectedEdgeId, setSelectedEdgeId] = (0, import_react6.useState)(null);
+  const [error51, setError] = (0, import_react6.useState)(null);
+  const document2 = parsed.status === "ready" ? parsed.document : null;
+  const labels = (0, import_react6.useMemo)(() => new Map(
+    (document2?.nodes ?? []).map((node) => [node.id, nodeLabel(node)])
+  ), [document2]);
+  (0, import_react6.useEffect)(() => {
+    if (document2 === null) {
+      setArmed(null);
+      setSelectedNodeId(null);
+      setSelectedEdgeId(null);
+      return;
+    }
+    if (armed !== null && !document2.nodes.some((node) => node.id === armed.nodeId)) setArmed(null);
+    if (selectedNodeId !== null && !document2.nodes.some((node) => node.id === selectedNodeId)) setSelectedNodeId(null);
+    if (selectedEdgeId !== null && !document2.edges?.some((edge) => edge.id === selectedEdgeId)) setSelectedEdgeId(null);
+  }, [armed, document2, selectedEdgeId, selectedNodeId]);
+  const bounds = (0, import_react6.useMemo)(() => {
+    if (document2 === null || document2.nodes.length === 0) {
+      return { minX: 0, minY: 0, width: 800, height: 500, supported: true };
+    }
+    const minX = Math.min(0, ...document2.nodes.map((node) => node.x));
+    const minY = Math.min(0, ...document2.nodes.map((node) => node.y));
+    const maxX = Math.max(...document2.nodes.map((node) => node.x + node.width));
+    const maxY = Math.max(...document2.nodes.map((node) => node.y + node.height));
+    const width = maxX - minX + BOARD_PADDING * 2;
+    const height = maxY - minY + BOARD_PADDING * 2;
+    return {
+      minX,
+      minY,
+      width: Math.max(800, width),
+      height: Math.max(500, height),
+      supported: width <= MAX_CANVAS_BOARD_SPAN && height <= MAX_CANVAS_BOARD_SPAN
+    };
+  }, [document2]);
+  const emit = (operation, mutate) => {
+    if (disabled) return;
+    try {
+      setError(null);
+      onChange(createCanvasChange(source, revision, operation, mutate));
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : "The Canvas change could not be prepared.");
+    }
+  };
+  const activateHandle = (nodeId, side) => {
+    if (disabled) return;
+    if (armed === null) {
+      setError(null);
+      setArmed({ nodeId, side });
+      return;
+    }
+    emit("create-edge", (content) => createCanvasEdge(content, {
+      fromNode: armed.nodeId,
+      fromSide: armed.side,
+      toNode: nodeId,
+      toSide: side
+    }).content);
+    setArmed(null);
+  };
+  const moveNode = (nodeId, event) => {
+    const delta = {
+      ArrowDown: { x: 0, y: CANVAS_GRID_SIZE },
+      ArrowLeft: { x: -CANVAS_GRID_SIZE, y: 0 },
+      ArrowRight: { x: CANVAS_GRID_SIZE, y: 0 },
+      ArrowUp: { x: 0, y: -CANVAS_GRID_SIZE }
+    }[event.key];
+    if (delta === void 0 || document2 === null) return;
+    const node = document2.nodes.find((candidate) => candidate.id === nodeId);
+    if (node === void 0) return;
+    event.preventDefault();
+    emit("move-node", (content) => updateCanvasNodeGeometry(content, nodeId, {
+      x: node.x + delta.x,
+      y: node.y + delta.y,
+      width: node.width,
+      height: node.height
+    }));
+  };
+  const cancelConnection = (event) => {
+    if (event.key !== "Escape" || armed === null) return;
+    event.preventDefault();
+    setArmed(null);
+  };
+  if (document2 === null) {
+    const reason = parsed.status === "unsupported" ? parsed.reason : "This Canvas could not be displayed.";
+    return /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("section", { "aria-label": "Canvas Board", role: "region", children: /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("p", { role: "note", children: reason }) });
+  }
+  if (!bounds.supported) {
+    return /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("section", { "aria-label": "Canvas Board", role: "region", children: /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("p", { role: "note", children: "This Canvas exceeds the bounded board display limit." }) });
+  }
+  return /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)(
+    "section",
+    {
+      "aria-label": "Canvas Board",
+      className: "relative min-h-0 overflow-auto bg-[var(--tt-bg)] text-[var(--tt-text)]",
+      "data-canvas-revision": revision,
+      onKeyDown: cancelConnection,
+      role: "region",
+      children: [
+        armed !== null && /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("p", { className: "sr-only", role: "status", children: [
+          "Choose a target side for ",
+          labels.get(armed.nodeId) ?? armed.nodeId,
+          "."
+        ] }),
+        error51 !== null && /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("p", { className: "m-3 text-sm text-red-600", role: "note", children: error51 }),
+        /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(
+          "div",
+          {
+            "aria-label": "Canvas Board Surface",
+            className: "relative",
+            style: { height: bounds.height, width: bounds.width },
+            children: document2.nodes.map((node) => {
+              const label = labels.get(node.id) ?? node.id;
+              const connectable = isConnectableCanvasNode(node);
+              const safeLink = node.type === "link" ? tryNormalizeCanvasLinkUrl(node.url) : void 0;
+              const style = {
+                height: node.height,
+                left: node.x - bounds.minX + BOARD_PADDING,
+                top: node.y - bounds.minY + BOARD_PADDING,
+                width: node.width
+              };
+              return /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)(
+                "article",
+                {
+                  "aria-label": `${node.type === "group" ? "Canvas Group" : "Canvas Card"} ${label}`,
+                  className: "absolute rounded-md border border-[var(--tt-border)] bg-[var(--tt-panel)] p-2 shadow-sm",
+                  style,
+                  children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)(
+                      "button",
+                      {
+                        "aria-label": `${node.type === "group" ? "Canvas Group" : "Canvas Card"} ${label}`,
+                        "aria-pressed": selectedNodeId === node.id,
+                        className: "h-full w-full border-0 bg-transparent p-1 text-left text-inherit outline-offset-2",
+                        "data-canvas-x": String(node.x),
+                        disabled: disabled || !connectable,
+                        onClick: () => {
+                          setSelectedNodeId(node.id);
+                          setSelectedEdgeId(null);
+                        },
+                        onKeyDown: (event) => {
+                          moveNode(node.id, event);
+                        },
+                        type: "button",
+                        children: [
+                          /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("strong", { className: "block truncate", children: label }),
+                          node.type === "text" && typeof node.text === "string" && /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("span", { className: "block line-clamp-3 whitespace-pre-wrap text-xs", children: node.text }),
+                          node.type === "link" && safeLink === void 0 && /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("span", { className: "block text-xs", role: "note", children: "This unsafe link is inert." }),
+                          !connectable && /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("span", { className: "block text-xs", role: "note", children: "This unsupported card is inert." })
+                        ]
+                      }
+                    ),
+                    connectable && /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("fieldset", { className: "contents", disabled, children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("legend", { className: "sr-only", children: [
+                        "Connect ",
+                        label
+                      ] }),
+                      SIDES.map((side) => /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(
+                        "button",
+                        {
+                          "aria-label": `${titleCaseSide(side)} Connection Handle for ${label}`,
+                          "aria-pressed": armed?.nodeId === node.id && armed.side === side,
+                          className: "absolute z-10 m-0 size-5 rounded-full border border-[var(--tt-border)] bg-[var(--tt-panel)] text-[10px]",
+                          onClick: () => {
+                            activateHandle(node.id, side);
+                          },
+                          style: sideHandleStyle(side),
+                          type: "button",
+                          children: /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("span", { "aria-hidden": "true", children: side.slice(0, 1).toUpperCase() })
+                        },
+                        side
+                      ))
+                    ] })
+                  ]
+                },
+                node.id
+              );
+            })
+          }
+        ),
+        (document2.edges?.length ?? 0) > 0 && /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("ul", { "aria-label": "Canvas Connections", className: "absolute top-2 right-2 z-20 m-0 max-w-72 list-none rounded-md border border-[var(--tt-border)] bg-[var(--tt-panel)] p-1 text-xs shadow-sm", children: document2.edges?.map((edge) => /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("li", { children: /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)(
+          "button",
+          {
+            "aria-pressed": selectedEdgeId === edge.id,
+            className: "block w-full rounded-sm border-0 bg-transparent px-2 py-1 text-left text-inherit outline-offset-2",
+            onClick: () => {
+              setSelectedEdgeId(edge.id);
+              setSelectedNodeId(null);
+            },
+            onKeyDown: (event) => {
+              if (event.key !== "Delete" && event.key !== "Backspace") return;
+              event.preventDefault();
+              emit("delete-edge", (content) => deleteCanvasEdge(content, edge.id));
+              setSelectedEdgeId(null);
+            },
+            type: "button",
+            children: [
+              "Canvas Edge ",
+              typeof edge.label === "string" ? edge.label : "Unlabeled",
+              " from ",
+              labels.get(edge.fromNode) ?? edge.fromNode,
+              " to ",
+              labels.get(edge.toNode) ?? edge.toNode
+            ]
+          }
+        ) }, edge.id)) })
+      ]
+    }
+  );
+}
+
+// src/canvas-provenance.ts
+var TOCKBOT_CANVAS_PROVENANCE = Object.freeze({
+  repository: "https://github.com/taowang1993/tockbot",
+  revision: "af214b2d1a5df8ca23bf99fad9f0408a07c2e4ba",
+  sourceFiles: Object.freeze([
+    "apps/web/src/components/notes/NotesCanvasDuplication.ts",
+    "apps/web/src/components/notes/NotesCanvasEdges.ts",
+    "apps/web/src/components/notes/NotesCanvasGeometry.ts",
+    "apps/web/src/components/notes/NotesCanvasIdentity.ts",
+    "apps/web/src/components/notes/NotesCanvasLinks.ts",
+    "apps/web/src/components/notes/NotesCanvasNodes.ts",
+    "apps/web/src/components/notes/NotesCanvasView.tsx"
+  ]),
+  adaptations: Object.freeze([
+    "Use NodeNext .ts import extensions and unknown-valued JSON records instead of Convex Value annotations.",
+    "Run every mutation through TockTeam bounded parsing and output validation without weakening existing limits.",
+    "Retain TockTeam cross-category node/edge identity uniqueness in addition to Tockbot duplicate checks.",
+    "Extract pure mutations from NotesCanvasView.tsx without porting its React shell or native authority.",
+    "Expose controlled change requests with exact previous source and expected revision for caller-owned rollback.",
+    "Replace the upstream route-coupled view with a bounded controlled board seam for later route integration."
+  ])
+});
 
 // src/client-api.ts
 var name = "@tockteam/tocktutor-workbench";
