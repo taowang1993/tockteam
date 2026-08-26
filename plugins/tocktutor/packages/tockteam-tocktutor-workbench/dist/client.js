@@ -15081,7 +15081,7 @@ var TOCKTUTOR_REVIEW_PANEL_SLOT = "tockteam.tocktutor.workbench.review";
 // ../../../ui/src/alert.tsx
 var React = __toESM(require("react"), 1);
 
-// ../../node_modules/.pnpm/clsx@2.1.1/node_modules/clsx/dist/clsx.mjs
+// ../../../../node_modules/.pnpm/clsx@2.1.1/node_modules/clsx/dist/clsx.mjs
 function r(e) {
   var t, f, n = "";
   if ("string" == typeof e || "number" == typeof e) n += e;
@@ -15096,7 +15096,7 @@ function clsx() {
   return n;
 }
 
-// ../../node_modules/.pnpm/class-variance-authority@0.7.1/node_modules/class-variance-authority/dist/index.mjs
+// ../../../../node_modules/.pnpm/class-variance-authority@0.7.1/node_modules/class-variance-authority/dist/index.mjs
 var falsyToString = (value) => typeof value === "boolean" ? `${value}` : value === 0 ? "0" : value;
 var cx = clsx;
 var cva = (base, config2) => (props) => {
@@ -15222,10 +15222,10 @@ var Button = React2.forwardRef(function Button2({
   );
 });
 
-// ../../node_modules/.pnpm/@radix-ui+react-checkbox@1.3.11_@types+react-dom@18.3.7_@types+react@18.3.31__@types+re_d2d3b056ba3fe73f123b9078be168b78/node_modules/@radix-ui/react-checkbox/dist/index.mjs
+// ../../../../node_modules/.pnpm/@radix-ui+react-checkbox@1.3.11_@types+react-dom@18.3.7_@types+react@18.3.31__@types+re_d2d3b056ba3fe73f123b9078be168b78/node_modules/@radix-ui/react-checkbox/dist/index.mjs
 var React12 = __toESM(require("react"), 1);
 
-// ../../node_modules/.pnpm/@radix-ui+react-compose-refs@1.1.5_@types+react@18.3.31_react@18.3.1/node_modules/@radix-ui/react-compose-refs/dist/index.mjs
+// ../../../../node_modules/.pnpm/@radix-ui+react-compose-refs@1.1.5_@types+react@18.3.31_react@18.3.1/node_modules/@radix-ui/react-compose-refs/dist/index.mjs
 var React3 = __toESM(require("react"), 1);
 var __defProp2 = Object.defineProperty;
 var __name = (target, value) => __defProp2(target, "name", { value, configurable: true });
@@ -15267,7 +15267,7 @@ function useComposedRefs(...refs) {
 }
 __name(useComposedRefs, "useComposedRefs");
 
-// ../../node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.31_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.mjs
+// ../../../../node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.31_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.mjs
 var React4 = __toESM(require("react"), 1);
 var import_jsx_runtime3 = require("react/jsx-runtime");
 var __defProp3 = Object.defineProperty;
@@ -15360,7 +15360,7 @@ function composeContextScopes(...scopes) {
 }
 __name2(composeContextScopes, "composeContextScopes");
 
-// ../../node_modules/.pnpm/@radix-ui+primitive@1.1.7/node_modules/@radix-ui/primitive/dist/index.mjs
+// ../../../../node_modules/.pnpm/@radix-ui+primitive@1.1.7/node_modules/@radix-ui/primitive/dist/index.mjs
 var __defProp4 = Object.defineProperty;
 var __name3 = (target, value) => __defProp4(target, "name", { value, configurable: true });
 var canUseDOM = !!(typeof window !== "undefined" && window.document && window.document.createElement);
@@ -15412,21 +15412,21 @@ function isFrame(element) {
 }
 __name3(isFrame, "isFrame");
 
-// ../../node_modules/.pnpm/@radix-ui+react-use-controllable-state@1.2.6_@types+react@18.3.31_react@18.3.1/node_modules/@radix-ui/react-use-controllable-state/dist/index.mjs
+// ../../../../node_modules/.pnpm/@radix-ui+react-use-controllable-state@1.2.6_@types+react@18.3.31_react@18.3.1/node_modules/@radix-ui/react-use-controllable-state/dist/index.mjs
 var React7 = __toESM(require("react"), 1);
 
-// ../../node_modules/.pnpm/@radix-ui+primitive@1.1.7/node_modules/@radix-ui/primitive/dist/internal/is-development.false.mjs
+// ../../../../node_modules/.pnpm/@radix-ui+primitive@1.1.7/node_modules/@radix-ui/primitive/dist/internal/is-development.false.mjs
 var IS_DEVELOPMENT = false;
 
-// ../../node_modules/.pnpm/@radix-ui+react-use-layout-effect@1.1.4_@types+react@18.3.31_react@18.3.1/node_modules/@radix-ui/react-use-layout-effect/dist/index.mjs
+// ../../../../node_modules/.pnpm/@radix-ui+react-use-layout-effect@1.1.4_@types+react@18.3.31_react@18.3.1/node_modules/@radix-ui/react-use-layout-effect/dist/index.mjs
 var React5 = __toESM(require("react"), 1);
 var useLayoutEffect2 = globalThis?.document ? React5.useLayoutEffect : () => {
 };
 
-// ../../node_modules/.pnpm/@radix-ui+react-use-controllable-state@1.2.6_@types+react@18.3.31_react@18.3.1/node_modules/@radix-ui/react-use-controllable-state/dist/index.mjs
+// ../../../../node_modules/.pnpm/@radix-ui+react-use-controllable-state@1.2.6_@types+react@18.3.31_react@18.3.1/node_modules/@radix-ui/react-use-controllable-state/dist/index.mjs
 var React22 = __toESM(require("react"), 1);
 
-// ../../node_modules/.pnpm/@radix-ui+react-use-effect-event@0.0.5_@types+react@18.3.31_react@18.3.1/node_modules/@radix-ui/react-use-effect-event/dist/index.mjs
+// ../../../../node_modules/.pnpm/@radix-ui+react-use-effect-event@0.0.5_@types+react@18.3.31_react@18.3.1/node_modules/@radix-ui/react-use-effect-event/dist/index.mjs
 var React6 = __toESM(require("react"), 1);
 var __defProp5 = Object.defineProperty;
 var __name4 = (target, value) => __defProp5(target, "name", { value, configurable: true });
@@ -15452,7 +15452,7 @@ function useEffectEvent(callback) {
 }
 __name4(useEffectEvent, "useEffectEvent");
 
-// ../../node_modules/.pnpm/@radix-ui+react-use-controllable-state@1.2.6_@types+react@18.3.31_react@18.3.1/node_modules/@radix-ui/react-use-controllable-state/dist/index.mjs
+// ../../../../node_modules/.pnpm/@radix-ui+react-use-controllable-state@1.2.6_@types+react@18.3.31_react@18.3.1/node_modules/@radix-ui/react-use-controllable-state/dist/index.mjs
 var __defProp6 = Object.defineProperty;
 var __name5 = (target, value) => __defProp6(target, "name", { value, configurable: true });
 var useInsertionEffect = React7[" useInsertionEffect ".trim().toString()] || useLayoutEffect2;
@@ -15584,7 +15584,7 @@ function useControllableStateReducer(reducer, userArgs, initialArg, init) {
 }
 __name5(useControllableStateReducer, "useControllableStateReducer");
 
-// ../../node_modules/.pnpm/@radix-ui+react-use-size@1.1.4_@types+react@18.3.31_react@18.3.1/node_modules/@radix-ui/react-use-size/dist/index.mjs
+// ../../../../node_modules/.pnpm/@radix-ui+react-use-size@1.1.4_@types+react@18.3.31_react@18.3.1/node_modules/@radix-ui/react-use-size/dist/index.mjs
 var React8 = __toESM(require("react"), 1);
 var __defProp7 = Object.defineProperty;
 var __name6 = (target, value) => __defProp7(target, "name", { value, configurable: true });
@@ -15624,7 +15624,7 @@ function useSize(element) {
 }
 __name6(useSize, "useSize");
 
-// ../../node_modules/.pnpm/@radix-ui+react-presence@1.1.10_@types+react-dom@18.3.7_@types+react@18.3.31__@types+re_62e566fb7823886e0e3d5565144169f1/node_modules/@radix-ui/react-presence/dist/index.mjs
+// ../../../../node_modules/.pnpm/@radix-ui+react-presence@1.1.10_@types+react-dom@18.3.7_@types+react@18.3.31__@types+re_62e566fb7823886e0e3d5565144169f1/node_modules/@radix-ui/react-presence/dist/index.mjs
 var React23 = __toESM(require("react"), 1);
 var React9 = __toESM(require("react"), 1);
 var __defProp8 = Object.defineProperty;
@@ -15803,11 +15803,11 @@ function getElementRef(element) {
 }
 __name7(getElementRef, "getElementRef");
 
-// ../../node_modules/.pnpm/@radix-ui+react-primitive@2.1.10_@types+react-dom@18.3.7_@types+react@18.3.31__@types+r_dba614f83980a1ab9805a3f12c0d2bc2/node_modules/@radix-ui/react-primitive/dist/index.mjs
+// ../../../../node_modules/.pnpm/@radix-ui+react-primitive@2.1.10_@types+react-dom@18.3.7_@types+react@18.3.31__@types+r_dba614f83980a1ab9805a3f12c0d2bc2/node_modules/@radix-ui/react-primitive/dist/index.mjs
 var React11 = __toESM(require("react"), 1);
 var ReactDOM = __toESM(require("react-dom"), 1);
 
-// ../../node_modules/.pnpm/@radix-ui+react-slot@1.3.3_@types+react@18.3.31_react@18.3.1/node_modules/@radix-ui/react-slot/dist/index.mjs
+// ../../../../node_modules/.pnpm/@radix-ui+react-slot@1.3.3_@types+react@18.3.31_react@18.3.1/node_modules/@radix-ui/react-slot/dist/index.mjs
 var React10 = __toESM(require("react"), 1);
 var __defProp9 = Object.defineProperty;
 var __name8 = (target, value) => __defProp9(target, "name", { value, configurable: true });
@@ -15943,7 +15943,7 @@ var createSlottableError = /* @__PURE__ */ __name8((ownerName) => {
 }, "createSlottableError");
 var use = React10[" use ".trim().toString()];
 
-// ../../node_modules/.pnpm/@radix-ui+react-primitive@2.1.10_@types+react-dom@18.3.7_@types+react@18.3.31__@types+r_dba614f83980a1ab9805a3f12c0d2bc2/node_modules/@radix-ui/react-primitive/dist/index.mjs
+// ../../../../node_modules/.pnpm/@radix-ui+react-primitive@2.1.10_@types+react-dom@18.3.7_@types+react@18.3.31__@types+r_dba614f83980a1ab9805a3f12c0d2bc2/node_modules/@radix-ui/react-primitive/dist/index.mjs
 var import_jsx_runtime4 = require("react/jsx-runtime");
 var __defProp10 = Object.defineProperty;
 var __name9 = (target, value) => __defProp10(target, "name", { value, configurable: true });
@@ -15984,7 +15984,7 @@ function dispatchDiscreteCustomEvent(target, event) {
 }
 __name9(dispatchDiscreteCustomEvent, "dispatchDiscreteCustomEvent");
 
-// ../../node_modules/.pnpm/@radix-ui+react-checkbox@1.3.11_@types+react-dom@18.3.7_@types+react@18.3.31__@types+re_d2d3b056ba3fe73f123b9078be168b78/node_modules/@radix-ui/react-checkbox/dist/index.mjs
+// ../../../../node_modules/.pnpm/@radix-ui+react-checkbox@1.3.11_@types+react-dom@18.3.7_@types+react@18.3.31__@types+re_d2d3b056ba3fe73f123b9078be168b78/node_modules/@radix-ui/react-checkbox/dist/index.mjs
 var import_jsx_runtime5 = require("react/jsx-runtime");
 var __defProp11 = Object.defineProperty;
 var __name10 = (target, value) => __defProp11(target, "name", { value, configurable: true });
@@ -16271,19 +16271,19 @@ function getState(checked) {
 }
 __name10(getState, "getState");
 
-// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/createLucideIcon.js
+// ../../../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/createLucideIcon.js
 var import_react2 = require("react");
 
-// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/shared/src/utils.js
+// ../../../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/shared/src/utils.js
 var toKebabCase = (string4) => string4.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase();
 var mergeClasses = (...classes) => classes.filter((className, index2, array2) => {
   return Boolean(className) && className.trim() !== "" && array2.indexOf(className) === index2;
 }).join(" ").trim();
 
-// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/Icon.js
+// ../../../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/Icon.js
 var import_react = require("react");
 
-// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/defaultAttributes.js
+// ../../../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/defaultAttributes.js
 var defaultAttributes = {
   xmlns: "http://www.w3.org/2000/svg",
   width: 24,
@@ -16296,7 +16296,7 @@ var defaultAttributes = {
   strokeLinejoin: "round"
 };
 
-// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/Icon.js
+// ../../../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/Icon.js
 var Icon = (0, import_react.forwardRef)(
   ({
     color = "currentColor",
@@ -16328,7 +16328,7 @@ var Icon = (0, import_react.forwardRef)(
   }
 );
 
-// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/createLucideIcon.js
+// ../../../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/createLucideIcon.js
 var createLucideIcon = (iconName, iconNode) => {
   const Component = (0, import_react2.forwardRef)(
     ({ className, ...props }, ref) => (0, import_react2.createElement)(Icon, {
@@ -16342,162 +16342,16 @@ var createLucideIcon = (iconName, iconNode) => {
   return Component;
 };
 
-// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/arrow-down.js
-var __iconNode = [
-  ["path", { d: "M12 5v14", key: "s699le" }],
-  ["path", { d: "m19 12-7 7-7-7", key: "1idqje" }]
-];
-var ArrowDown = createLucideIcon("ArrowDown", __iconNode);
+// ../../../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/check.js
+var __iconNode = [["path", { d: "M20 6 9 17l-5-5", key: "1gmf2c" }]];
+var Check = createLucideIcon("Check", __iconNode);
 
-// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/arrow-left.js
+// ../../../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/x.js
 var __iconNode2 = [
-  ["path", { d: "m12 19-7-7 7-7", key: "1l729n" }],
-  ["path", { d: "M19 12H5", key: "x3x0zl" }]
-];
-var ArrowLeft = createLucideIcon("ArrowLeft", __iconNode2);
-
-// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/arrow-right.js
-var __iconNode3 = [
-  ["path", { d: "M5 12h14", key: "1ays0h" }],
-  ["path", { d: "m12 5 7 7-7 7", key: "xquz4c" }]
-];
-var ArrowRight = createLucideIcon("ArrowRight", __iconNode3);
-
-// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/arrow-up.js
-var __iconNode4 = [
-  ["path", { d: "m5 12 7-7 7 7", key: "hav0vg" }],
-  ["path", { d: "M12 19V5", key: "x0mq9r" }]
-];
-var ArrowUp = createLucideIcon("ArrowUp", __iconNode4);
-
-// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/bookmark.js
-var __iconNode5 = [
-  ["path", { d: "m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z", key: "1fy3hk" }]
-];
-var Bookmark = createLucideIcon("Bookmark", __iconNode5);
-
-// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/check.js
-var __iconNode6 = [["path", { d: "M20 6 9 17l-5-5", key: "1gmf2c" }]];
-var Check = createLucideIcon("Check", __iconNode6);
-
-// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/chevron-down.js
-var __iconNode7 = [["path", { d: "m6 9 6 6 6-6", key: "qrunsl" }]];
-var ChevronDown = createLucideIcon("ChevronDown", __iconNode7);
-
-// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/chevron-left.js
-var __iconNode8 = [["path", { d: "m15 18-6-6 6-6", key: "1wnfg3" }]];
-var ChevronLeft = createLucideIcon("ChevronLeft", __iconNode8);
-
-// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/chevron-right.js
-var __iconNode9 = [["path", { d: "m9 18 6-6-6-6", key: "mthhwq" }]];
-var ChevronRight = createLucideIcon("ChevronRight", __iconNode9);
-
-// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/ellipsis.js
-var __iconNode10 = [
-  ["circle", { cx: "12", cy: "12", r: "1", key: "41hilf" }],
-  ["circle", { cx: "19", cy: "12", r: "1", key: "1wjl8i" }],
-  ["circle", { cx: "5", cy: "12", r: "1", key: "1pcz8c" }]
-];
-var Ellipsis = createLucideIcon("Ellipsis", __iconNode10);
-
-// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/file-text.js
-var __iconNode11 = [
-  ["path", { d: "M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z", key: "1rqfz7" }],
-  ["path", { d: "M14 2v4a2 2 0 0 0 2 2h4", key: "tnqrlb" }],
-  ["path", { d: "M10 9H8", key: "b1mrlr" }],
-  ["path", { d: "M16 13H8", key: "t4e002" }],
-  ["path", { d: "M16 17H8", key: "z1uh3a" }]
-];
-var FileText = createLucideIcon("FileText", __iconNode11);
-
-// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/folder.js
-var __iconNode12 = [
-  [
-    "path",
-    {
-      d: "M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z",
-      key: "1kt360"
-    }
-  ]
-];
-var Folder = createLucideIcon("Folder", __iconNode12);
-
-// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/message-square.js
-var __iconNode13 = [
-  ["path", { d: "M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z", key: "1lielz" }]
-];
-var MessageSquare = createLucideIcon("MessageSquare", __iconNode13);
-
-// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/music.js
-var __iconNode14 = [
-  ["path", { d: "M9 18V5l12-2v13", key: "1jmyc2" }],
-  ["circle", { cx: "6", cy: "18", r: "3", key: "fqmcym" }],
-  ["circle", { cx: "18", cy: "16", r: "3", key: "1hluhg" }]
-];
-var Music = createLucideIcon("Music", __iconNode14);
-
-// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/panel-left.js
-var __iconNode15 = [
-  ["rect", { width: "18", height: "18", x: "3", y: "3", rx: "2", key: "afitv7" }],
-  ["path", { d: "M9 3v18", key: "fh3hqa" }]
-];
-var PanelLeft = createLucideIcon("PanelLeft", __iconNode15);
-
-// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/panel-right.js
-var __iconNode16 = [
-  ["rect", { width: "18", height: "18", x: "3", y: "3", rx: "2", key: "afitv7" }],
-  ["path", { d: "M15 3v18", key: "14nvp0" }]
-];
-var PanelRight = createLucideIcon("PanelRight", __iconNode16);
-
-// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/panel-top.js
-var __iconNode17 = [
-  ["rect", { width: "18", height: "18", x: "3", y: "3", rx: "2", key: "afitv7" }],
-  ["path", { d: "M3 9h18", key: "1pudct" }]
-];
-var PanelTop = createLucideIcon("PanelTop", __iconNode17);
-
-// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/pencil.js
-var __iconNode18 = [
-  [
-    "path",
-    {
-      d: "M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z",
-      key: "1a8usu"
-    }
-  ],
-  ["path", { d: "m15 5 4 4", key: "1mk7zo" }]
-];
-var Pencil = createLucideIcon("Pencil", __iconNode18);
-
-// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/plus.js
-var __iconNode19 = [
-  ["path", { d: "M5 12h14", key: "1ays0h" }],
-  ["path", { d: "M12 5v14", key: "s699le" }]
-];
-var Plus = createLucideIcon("Plus", __iconNode19);
-
-// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/search.js
-var __iconNode20 = [
-  ["circle", { cx: "11", cy: "11", r: "8", key: "4ej97u" }],
-  ["path", { d: "m21 21-4.3-4.3", key: "1qie3q" }]
-];
-var Search = createLucideIcon("Search", __iconNode20);
-
-// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/upload.js
-var __iconNode21 = [
-  ["path", { d: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4", key: "ih7n3h" }],
-  ["polyline", { points: "17 8 12 3 7 8", key: "t8dd8p" }],
-  ["line", { x1: "12", x2: "12", y1: "3", y2: "15", key: "widbto" }]
-];
-var Upload = createLucideIcon("Upload", __iconNode21);
-
-// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/x.js
-var __iconNode22 = [
   ["path", { d: "M18 6 6 18", key: "1bl5f8" }],
   ["path", { d: "m6 6 12 12", key: "d8bk6v" }]
 ];
-var X = createLucideIcon("X", __iconNode22);
+var X = createLucideIcon("X", __iconNode2);
 
 // ../../../ui/src/checkbox.tsx
 var import_jsx_runtime6 = require("react/jsx-runtime");
@@ -16513,10 +16367,10 @@ function Checkbox3({ className, ...props }) {
   );
 }
 
-// ../../node_modules/.pnpm/@radix-ui+react-dialog@1.1.23_@types+react-dom@18.3.7_@types+react@18.3.31__@types+reac_89c2a39b94a39c3c4bfcbd95c00244cd/node_modules/@radix-ui/react-dialog/dist/index.mjs
+// ../../../../node_modules/.pnpm/@radix-ui+react-dialog@1.1.23_@types+react-dom@18.3.7_@types+react@18.3.31__@types+reac_89c2a39b94a39c3c4bfcbd95c00244cd/node_modules/@radix-ui/react-dialog/dist/index.mjs
 var React28 = __toESM(require("react"), 1);
 
-// ../../node_modules/.pnpm/@radix-ui+react-id@1.1.4_@types+react@18.3.31_react@18.3.1/node_modules/@radix-ui/react-id/dist/index.mjs
+// ../../../../node_modules/.pnpm/@radix-ui+react-id@1.1.4_@types+react@18.3.31_react@18.3.1/node_modules/@radix-ui/react-id/dist/index.mjs
 var React13 = __toESM(require("react"), 1);
 var __defProp12 = Object.defineProperty;
 var __name11 = (target, value) => __defProp12(target, "name", { value, configurable: true });
@@ -16531,10 +16385,10 @@ function useId(deterministicId) {
 }
 __name11(useId, "useId");
 
-// ../../node_modules/.pnpm/@radix-ui+react-dismissable-layer@1.1.19_@types+react-dom@18.3.7_@types+react@18.3.31___4f2024a88a120e800aa2287adeb24710/node_modules/@radix-ui/react-dismissable-layer/dist/index.mjs
+// ../../../../node_modules/.pnpm/@radix-ui+react-dismissable-layer@1.1.19_@types+react-dom@18.3.7_@types+react@18.3.31___4f2024a88a120e800aa2287adeb24710/node_modules/@radix-ui/react-dismissable-layer/dist/index.mjs
 var React15 = __toESM(require("react"), 1);
 
-// ../../node_modules/.pnpm/@radix-ui+react-use-callback-ref@1.1.4_@types+react@18.3.31_react@18.3.1/node_modules/@radix-ui/react-use-callback-ref/dist/index.mjs
+// ../../../../node_modules/.pnpm/@radix-ui+react-use-callback-ref@1.1.4_@types+react@18.3.31_react@18.3.1/node_modules/@radix-ui/react-use-callback-ref/dist/index.mjs
 var React14 = __toESM(require("react"), 1);
 var __defProp13 = Object.defineProperty;
 var __name12 = (target, value) => __defProp13(target, "name", { value, configurable: true });
@@ -16547,7 +16401,7 @@ function useCallbackRef(callback) {
 }
 __name12(useCallbackRef, "useCallbackRef");
 
-// ../../node_modules/.pnpm/@radix-ui+react-dismissable-layer@1.1.19_@types+react-dom@18.3.7_@types+react@18.3.31___4f2024a88a120e800aa2287adeb24710/node_modules/@radix-ui/react-dismissable-layer/dist/index.mjs
+// ../../../../node_modules/.pnpm/@radix-ui+react-dismissable-layer@1.1.19_@types+react-dom@18.3.7_@types+react@18.3.31___4f2024a88a120e800aa2287adeb24710/node_modules/@radix-ui/react-dismissable-layer/dist/index.mjs
 var import_jsx_runtime7 = require("react/jsx-runtime");
 var __defProp14 = Object.defineProperty;
 var __name13 = (target, value) => __defProp14(target, "name", { value, configurable: true });
@@ -16880,7 +16734,7 @@ function handleAndDispatchCustomEvent(name2, handler, detail, { discrete }) {
 }
 __name13(handleAndDispatchCustomEvent, "handleAndDispatchCustomEvent");
 
-// ../../node_modules/.pnpm/@radix-ui+react-focus-scope@1.1.16_@types+react-dom@18.3.7_@types+react@18.3.31__@types_161760c0d51338f080e5b66a9ea35f08/node_modules/@radix-ui/react-focus-scope/dist/index.mjs
+// ../../../../node_modules/.pnpm/@radix-ui+react-focus-scope@1.1.16_@types+react-dom@18.3.7_@types+react@18.3.31__@types_161760c0d51338f080e5b66a9ea35f08/node_modules/@radix-ui/react-focus-scope/dist/index.mjs
 var React16 = __toESM(require("react"), 1);
 var import_jsx_runtime8 = require("react/jsx-runtime");
 var __defProp15 = Object.defineProperty;
@@ -17103,7 +16957,7 @@ function removeLinks(items) {
 }
 __name14(removeLinks, "removeLinks");
 
-// ../../node_modules/.pnpm/@radix-ui+react-portal@1.1.17_@types+react-dom@18.3.7_@types+react@18.3.31__@types+reac_35c248e3d41b4a33144a8517e72175a4/node_modules/@radix-ui/react-portal/dist/index.mjs
+// ../../../../node_modules/.pnpm/@radix-ui+react-portal@1.1.17_@types+react-dom@18.3.7_@types+react@18.3.31__@types+reac_35c248e3d41b4a33144a8517e72175a4/node_modules/@radix-ui/react-portal/dist/index.mjs
 var React17 = __toESM(require("react"), 1);
 var ReactDOM2 = __toESM(require("react-dom"), 1);
 var import_jsx_runtime9 = require("react/jsx-runtime");
@@ -17119,7 +16973,7 @@ var Portal = /* @__PURE__ */ React17.forwardRef(
   }, "Portal")
 );
 
-// ../../node_modules/.pnpm/@radix-ui+react-focus-guards@1.1.6_@types+react@18.3.31_react@18.3.1/node_modules/@radix-ui/react-focus-guards/dist/index.mjs
+// ../../../../node_modules/.pnpm/@radix-ui+react-focus-guards@1.1.6_@types+react@18.3.31_react@18.3.1/node_modules/@radix-ui/react-focus-guards/dist/index.mjs
 var React18 = __toESM(require("react"), 1);
 var __defProp17 = Object.defineProperty;
 var __name16 = (target, value) => __defProp17(target, "name", { value, configurable: true });
@@ -17166,7 +17020,7 @@ function createFocusGuard() {
 }
 __name16(createFocusGuard, "createFocusGuard");
 
-// ../../node_modules/.pnpm/tslib@2.8.1/node_modules/tslib/tslib.es6.mjs
+// ../../../../node_modules/.pnpm/tslib@2.8.1/node_modules/tslib/tslib.es6.mjs
 var __assign = function() {
   __assign = Object.assign || function __assign2(t) {
     for (var s, i = 1, n = arguments.length; i < n; i++) {
@@ -17198,19 +17052,19 @@ function __spreadArray(to, from, pack) {
   return to.concat(ar || Array.prototype.slice.call(from));
 }
 
-// ../../node_modules/.pnpm/react-remove-scroll@2.7.2_@types+react@18.3.31_react@18.3.1/node_modules/react-remove-scroll/dist/es2015/Combination.js
+// ../../../../node_modules/.pnpm/react-remove-scroll@2.7.2_@types+react@18.3.31_react@18.3.1/node_modules/react-remove-scroll/dist/es2015/Combination.js
 var React27 = __toESM(require("react"));
 
-// ../../node_modules/.pnpm/react-remove-scroll@2.7.2_@types+react@18.3.31_react@18.3.1/node_modules/react-remove-scroll/dist/es2015/UI.js
+// ../../../../node_modules/.pnpm/react-remove-scroll@2.7.2_@types+react@18.3.31_react@18.3.1/node_modules/react-remove-scroll/dist/es2015/UI.js
 var React21 = __toESM(require("react"));
 
-// ../../node_modules/.pnpm/react-remove-scroll-bar@2.3.8_@types+react@18.3.31_react@18.3.1/node_modules/react-remove-scroll-bar/dist/es2015/constants.js
+// ../../../../node_modules/.pnpm/react-remove-scroll-bar@2.3.8_@types+react@18.3.31_react@18.3.1/node_modules/react-remove-scroll-bar/dist/es2015/constants.js
 var zeroRightClassName = "right-scroll-bar-position";
 var fullWidthClassName = "width-before-scroll-bar";
 var noScrollbarsClassName = "with-scroll-bars-hidden";
 var removedBarSizeVariable = "--removed-body-scroll-bar-size";
 
-// ../../node_modules/.pnpm/use-callback-ref@1.3.3_@types+react@18.3.31_react@18.3.1/node_modules/use-callback-ref/dist/es2015/assignRef.js
+// ../../../../node_modules/.pnpm/use-callback-ref@1.3.3_@types+react@18.3.31_react@18.3.1/node_modules/use-callback-ref/dist/es2015/assignRef.js
 function assignRef(ref, value) {
   if (typeof ref === "function") {
     ref(value);
@@ -17220,7 +17074,7 @@ function assignRef(ref, value) {
   return ref;
 }
 
-// ../../node_modules/.pnpm/use-callback-ref@1.3.3_@types+react@18.3.31_react@18.3.1/node_modules/use-callback-ref/dist/es2015/useRef.js
+// ../../../../node_modules/.pnpm/use-callback-ref@1.3.3_@types+react@18.3.31_react@18.3.1/node_modules/use-callback-ref/dist/es2015/useRef.js
 var import_react3 = require("react");
 function useCallbackRef2(initialValue, callback) {
   var ref = (0, import_react3.useState)(function() {
@@ -17248,7 +17102,7 @@ function useCallbackRef2(initialValue, callback) {
   return ref.facade;
 }
 
-// ../../node_modules/.pnpm/use-callback-ref@1.3.3_@types+react@18.3.31_react@18.3.1/node_modules/use-callback-ref/dist/es2015/useMergeRef.js
+// ../../../../node_modules/.pnpm/use-callback-ref@1.3.3_@types+react@18.3.31_react@18.3.1/node_modules/use-callback-ref/dist/es2015/useMergeRef.js
 var React19 = __toESM(require("react"));
 var useIsomorphicLayoutEffect = typeof window !== "undefined" ? React19.useLayoutEffect : React19.useEffect;
 var currentValues = /* @__PURE__ */ new WeakMap();
@@ -17280,7 +17134,7 @@ function useMergeRefs(refs, defaultValue) {
   return callbackRef;
 }
 
-// ../../node_modules/.pnpm/use-sidecar@1.1.3_@types+react@18.3.31_react@18.3.1/node_modules/use-sidecar/dist/es2015/medium.js
+// ../../../../node_modules/.pnpm/use-sidecar@1.1.3_@types+react@18.3.31_react@18.3.1/node_modules/use-sidecar/dist/es2015/medium.js
 function ItoI(a) {
   return a;
 }
@@ -17366,7 +17220,7 @@ function createSidecarMedium(options) {
   return medium;
 }
 
-// ../../node_modules/.pnpm/use-sidecar@1.1.3_@types+react@18.3.31_react@18.3.1/node_modules/use-sidecar/dist/es2015/exports.js
+// ../../../../node_modules/.pnpm/use-sidecar@1.1.3_@types+react@18.3.31_react@18.3.1/node_modules/use-sidecar/dist/es2015/exports.js
 var React20 = __toESM(require("react"));
 var SideCar = function(_a3) {
   var sideCar = _a3.sideCar, rest = __rest(_a3, ["sideCar"]);
@@ -17385,10 +17239,10 @@ function exportSidecar(medium, exported) {
   return SideCar;
 }
 
-// ../../node_modules/.pnpm/react-remove-scroll@2.7.2_@types+react@18.3.31_react@18.3.1/node_modules/react-remove-scroll/dist/es2015/medium.js
+// ../../../../node_modules/.pnpm/react-remove-scroll@2.7.2_@types+react@18.3.31_react@18.3.1/node_modules/react-remove-scroll/dist/es2015/medium.js
 var effectCar = createSidecarMedium();
 
-// ../../node_modules/.pnpm/react-remove-scroll@2.7.2_@types+react@18.3.31_react@18.3.1/node_modules/react-remove-scroll/dist/es2015/UI.js
+// ../../../../node_modules/.pnpm/react-remove-scroll@2.7.2_@types+react@18.3.31_react@18.3.1/node_modules/react-remove-scroll/dist/es2015/UI.js
 var nothing = function() {
   return;
 };
@@ -17420,16 +17274,16 @@ RemoveScroll.classNames = {
   zeroRight: zeroRightClassName
 };
 
-// ../../node_modules/.pnpm/react-remove-scroll@2.7.2_@types+react@18.3.31_react@18.3.1/node_modules/react-remove-scroll/dist/es2015/SideEffect.js
+// ../../../../node_modules/.pnpm/react-remove-scroll@2.7.2_@types+react@18.3.31_react@18.3.1/node_modules/react-remove-scroll/dist/es2015/SideEffect.js
 var React26 = __toESM(require("react"));
 
-// ../../node_modules/.pnpm/react-remove-scroll-bar@2.3.8_@types+react@18.3.31_react@18.3.1/node_modules/react-remove-scroll-bar/dist/es2015/component.js
+// ../../../../node_modules/.pnpm/react-remove-scroll-bar@2.3.8_@types+react@18.3.31_react@18.3.1/node_modules/react-remove-scroll-bar/dist/es2015/component.js
 var React25 = __toESM(require("react"));
 
-// ../../node_modules/.pnpm/react-style-singleton@2.2.3_@types+react@18.3.31_react@18.3.1/node_modules/react-style-singleton/dist/es2015/hook.js
+// ../../../../node_modules/.pnpm/react-style-singleton@2.2.3_@types+react@18.3.31_react@18.3.1/node_modules/react-style-singleton/dist/es2015/hook.js
 var React24 = __toESM(require("react"));
 
-// ../../node_modules/.pnpm/get-nonce@1.0.1/node_modules/get-nonce/dist/es2015/index.js
+// ../../../../node_modules/.pnpm/get-nonce@1.0.1/node_modules/get-nonce/dist/es2015/index.js
 var currentNonce;
 var getNonce = function() {
   if (currentNonce) {
@@ -17441,7 +17295,7 @@ var getNonce = function() {
   return void 0;
 };
 
-// ../../node_modules/.pnpm/react-style-singleton@2.2.3_@types+react@18.3.31_react@18.3.1/node_modules/react-style-singleton/dist/es2015/singleton.js
+// ../../../../node_modules/.pnpm/react-style-singleton@2.2.3_@types+react@18.3.31_react@18.3.1/node_modules/react-style-singleton/dist/es2015/singleton.js
 function makeStyleTag() {
   if (!document)
     return null;
@@ -17487,7 +17341,7 @@ var stylesheetSingleton = function() {
   };
 };
 
-// ../../node_modules/.pnpm/react-style-singleton@2.2.3_@types+react@18.3.31_react@18.3.1/node_modules/react-style-singleton/dist/es2015/hook.js
+// ../../../../node_modules/.pnpm/react-style-singleton@2.2.3_@types+react@18.3.31_react@18.3.1/node_modules/react-style-singleton/dist/es2015/hook.js
 var styleHookSingleton = function() {
   var sheet = stylesheetSingleton();
   return function(styles, isDynamic) {
@@ -17500,7 +17354,7 @@ var styleHookSingleton = function() {
   };
 };
 
-// ../../node_modules/.pnpm/react-style-singleton@2.2.3_@types+react@18.3.31_react@18.3.1/node_modules/react-style-singleton/dist/es2015/component.js
+// ../../../../node_modules/.pnpm/react-style-singleton@2.2.3_@types+react@18.3.31_react@18.3.1/node_modules/react-style-singleton/dist/es2015/component.js
 var styleSingleton = function() {
   var useStyle = styleHookSingleton();
   var Sheet = function(_a3) {
@@ -17511,7 +17365,7 @@ var styleSingleton = function() {
   return Sheet;
 };
 
-// ../../node_modules/.pnpm/react-remove-scroll-bar@2.3.8_@types+react@18.3.31_react@18.3.1/node_modules/react-remove-scroll-bar/dist/es2015/utils.js
+// ../../../../node_modules/.pnpm/react-remove-scroll-bar@2.3.8_@types+react@18.3.31_react@18.3.1/node_modules/react-remove-scroll-bar/dist/es2015/utils.js
 var zeroGap = {
   left: 0,
   top: 0,
@@ -17546,7 +17400,7 @@ var getGapWidth = function(gapMode) {
   };
 };
 
-// ../../node_modules/.pnpm/react-remove-scroll-bar@2.3.8_@types+react@18.3.31_react@18.3.1/node_modules/react-remove-scroll-bar/dist/es2015/component.js
+// ../../../../node_modules/.pnpm/react-remove-scroll-bar@2.3.8_@types+react@18.3.31_react@18.3.1/node_modules/react-remove-scroll-bar/dist/es2015/component.js
 var Style = styleSingleton();
 var lockAttribute = "data-scroll-locked";
 var getStyles = function(_a3, allowRelative, gapMode, important) {
@@ -17586,7 +17440,7 @@ var RemoveScrollBar = function(_a3) {
   return React25.createElement(Style, { styles: getStyles(gap, !noRelative, gapMode, !noImportant ? "!important" : "") });
 };
 
-// ../../node_modules/.pnpm/react-remove-scroll@2.7.2_@types+react@18.3.31_react@18.3.1/node_modules/react-remove-scroll/dist/es2015/aggresiveCapture.js
+// ../../../../node_modules/.pnpm/react-remove-scroll@2.7.2_@types+react@18.3.31_react@18.3.1/node_modules/react-remove-scroll/dist/es2015/aggresiveCapture.js
 var passiveSupported = false;
 if (typeof window !== "undefined") {
   try {
@@ -17605,7 +17459,7 @@ if (typeof window !== "undefined") {
 var options;
 var nonPassive = passiveSupported ? { passive: false } : false;
 
-// ../../node_modules/.pnpm/react-remove-scroll@2.7.2_@types+react@18.3.31_react@18.3.1/node_modules/react-remove-scroll/dist/es2015/handleScroll.js
+// ../../../../node_modules/.pnpm/react-remove-scroll@2.7.2_@types+react@18.3.31_react@18.3.1/node_modules/react-remove-scroll/dist/es2015/handleScroll.js
 var alwaysContainsScroll = function(node) {
   return node.tagName === "TEXTAREA";
 };
@@ -17705,7 +17559,7 @@ var handleScroll = function(axis, endTarget, event, sourceDelta, noOverscroll) {
   return shouldCancelScroll;
 };
 
-// ../../node_modules/.pnpm/react-remove-scroll@2.7.2_@types+react@18.3.31_react@18.3.1/node_modules/react-remove-scroll/dist/es2015/SideEffect.js
+// ../../../../node_modules/.pnpm/react-remove-scroll@2.7.2_@types+react@18.3.31_react@18.3.1/node_modules/react-remove-scroll/dist/es2015/SideEffect.js
 var getTouchXY = function(event) {
   return "changedTouches" in event ? [event.changedTouches[0].clientX, event.changedTouches[0].clientY] : [0, 0];
 };
@@ -17876,17 +17730,17 @@ function getOutermostShadowParent(node) {
   return shadowParent;
 }
 
-// ../../node_modules/.pnpm/react-remove-scroll@2.7.2_@types+react@18.3.31_react@18.3.1/node_modules/react-remove-scroll/dist/es2015/sidecar.js
+// ../../../../node_modules/.pnpm/react-remove-scroll@2.7.2_@types+react@18.3.31_react@18.3.1/node_modules/react-remove-scroll/dist/es2015/sidecar.js
 var sidecar_default = exportSidecar(effectCar, RemoveScrollSideCar);
 
-// ../../node_modules/.pnpm/react-remove-scroll@2.7.2_@types+react@18.3.31_react@18.3.1/node_modules/react-remove-scroll/dist/es2015/Combination.js
+// ../../../../node_modules/.pnpm/react-remove-scroll@2.7.2_@types+react@18.3.31_react@18.3.1/node_modules/react-remove-scroll/dist/es2015/Combination.js
 var ReactRemoveScroll = React27.forwardRef(function(props, ref) {
   return React27.createElement(RemoveScroll, __assign({}, props, { ref, sideCar: sidecar_default }));
 });
 ReactRemoveScroll.classNames = RemoveScroll.classNames;
 var Combination_default = ReactRemoveScroll;
 
-// ../../node_modules/.pnpm/aria-hidden@1.2.6/node_modules/aria-hidden/dist/es2015/index.js
+// ../../../../node_modules/.pnpm/aria-hidden@1.2.6/node_modules/aria-hidden/dist/es2015/index.js
 var getDefaultParent = function(originalTarget) {
   if (typeof document === "undefined") {
     return null;
@@ -18007,7 +17861,7 @@ var hideOthers = function(originalTarget, parentNode, markerName) {
   return applyAttributeToOthers(targets, activeParentNode, markerName, "aria-hidden");
 };
 
-// ../../node_modules/.pnpm/@radix-ui+react-dialog@1.1.23_@types+react-dom@18.3.7_@types+react@18.3.31__@types+reac_89c2a39b94a39c3c4bfcbd95c00244cd/node_modules/@radix-ui/react-dialog/dist/index.mjs
+// ../../../../node_modules/.pnpm/@radix-ui+react-dialog@1.1.23_@types+react-dom@18.3.7_@types+react@18.3.31__@types+reac_89c2a39b94a39c3c4bfcbd95c00244cd/node_modules/@radix-ui/react-dialog/dist/index.mjs
 var import_jsx_runtime10 = require("react/jsx-runtime");
 var __defProp18 = Object.defineProperty;
 var __name17 = (target, value) => __defProp18(target, "name", { value, configurable: true });
@@ -18344,28 +18198,32 @@ function Label({ className, unstyled = false, ...props }) {
 }
 
 // ../../../ui/src/textarea.tsx
+var React29 = __toESM(require("react"), 1);
 var import_jsx_runtime15 = require("react/jsx-runtime");
-function Textarea({ className, unstyled = false, ...props }) {
-  return /* @__PURE__ */ (0, import_jsx_runtime15.jsx)(
-    "textarea",
-    {
-      "data-slot": "textarea",
-      className: unstyled ? className : cn("field-sizing-content min-h-16 w-full rounded-lg border border-input bg-transparent px-2.5 py-2 text-sm text-foreground outline-none transition-[background-color,border-color,box-shadow] placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20", className),
-      ...props
-    }
-  );
-}
+var Textarea = React29.forwardRef(
+  function Textarea2({ className, unstyled = false, ...props }, ref) {
+    return /* @__PURE__ */ (0, import_jsx_runtime15.jsx)(
+      "textarea",
+      {
+        ref,
+        "data-slot": "textarea",
+        className: unstyled ? className : cn("field-sizing-content min-h-16 w-full rounded-lg border border-input bg-transparent px-2.5 py-2 text-sm text-foreground outline-none transition-[background-color,border-color,box-shadow] placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20", className),
+        ...props
+      }
+    );
+  }
+);
 
 // ../../../ui/src/tooltip.tsx
+var React35 = __toESM(require("react"), 1);
+
+// ../../../../node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.7_@types+react@18.3.31__@types+rea_6bca503763256159376adbcc7b8f4fe8/node_modules/@radix-ui/react-tooltip/dist/index.mjs
 var React34 = __toESM(require("react"), 1);
 
-// ../../node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.7_@types+react@18.3.31__@types+rea_6bca503763256159376adbcc7b8f4fe8/node_modules/@radix-ui/react-tooltip/dist/index.mjs
-var React33 = __toESM(require("react"), 1);
+// ../../../../node_modules/.pnpm/@radix-ui+react-popper@1.3.7_@types+react-dom@18.3.7_@types+react@18.3.31__@types+react_eb61390ffeb98719c4501fa966467838/node_modules/@radix-ui/react-popper/dist/index.mjs
+var React32 = __toESM(require("react"), 1);
 
-// ../../node_modules/.pnpm/@radix-ui+react-popper@1.3.7_@types+react-dom@18.3.7_@types+react@18.3.31__@types+react_eb61390ffeb98719c4501fa966467838/node_modules/@radix-ui/react-popper/dist/index.mjs
-var React31 = __toESM(require("react"), 1);
-
-// ../../node_modules/.pnpm/@floating-ui+utils@0.2.12/node_modules/@floating-ui/utils/dist/floating-ui.utils.mjs
+// ../../../../node_modules/.pnpm/@floating-ui+utils@0.2.12/node_modules/@floating-ui/utils/dist/floating-ui.utils.mjs
 var sides = ["top", "right", "bottom", "left"];
 var min = Math.min;
 var max = Math.max;
@@ -18494,7 +18352,7 @@ function rectToClientRect(rect) {
   };
 }
 
-// ../../node_modules/.pnpm/@floating-ui+core@1.8.0/node_modules/@floating-ui/core/dist/floating-ui.core.mjs
+// ../../../../node_modules/.pnpm/@floating-ui+core@1.8.0/node_modules/@floating-ui/core/dist/floating-ui.core.mjs
 function computeCoordsFromPlacement(_ref, placement, rtl) {
   let {
     reference,
@@ -19192,7 +19050,7 @@ var size = function(options) {
   };
 };
 
-// ../../node_modules/.pnpm/@floating-ui+utils@0.2.12/node_modules/@floating-ui/utils/dist/floating-ui.utils.dom.mjs
+// ../../../../node_modules/.pnpm/@floating-ui+utils@0.2.12/node_modules/@floating-ui/utils/dist/floating-ui.utils.dom.mjs
 function hasWindow() {
   return typeof window !== "undefined";
 }
@@ -19348,7 +19206,7 @@ function getFrameElement(win) {
   return win.parent && Object.getPrototypeOf(win.parent) ? win.frameElement : null;
 }
 
-// ../../node_modules/.pnpm/@floating-ui+dom@1.8.0/node_modules/@floating-ui/dom/dist/floating-ui.dom.mjs
+// ../../../../node_modules/.pnpm/@floating-ui+dom@1.8.0/node_modules/@floating-ui/dom/dist/floating-ui.dom.mjs
 function getCssDimensions(element) {
   const css = getComputedStyle2(element);
   let width = parseFloat(css.width) || 0;
@@ -19957,8 +19815,8 @@ var computePosition2 = (reference, floating, options) => {
   });
 };
 
-// ../../node_modules/.pnpm/@floating-ui+react-dom@2.1.9_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/@floating-ui/react-dom/dist/floating-ui.react-dom.mjs
-var React29 = __toESM(require("react"), 1);
+// ../../../../node_modules/.pnpm/@floating-ui+react-dom@2.1.9_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/@floating-ui/react-dom/dist/floating-ui.react-dom.mjs
+var React30 = __toESM(require("react"), 1);
 var import_react4 = require("react");
 var ReactDOM3 = __toESM(require("react-dom"), 1);
 var isClient = typeof document !== "undefined";
@@ -20024,7 +19882,7 @@ function roundByDPR(element, value) {
   return Math.round(value * dpr) / dpr;
 }
 function useLatestRef(value) {
-  const ref = React29.useRef(value);
+  const ref = React30.useRef(value);
   index(() => {
     ref.current = value;
   });
@@ -20047,7 +19905,7 @@ function useFloating(options) {
     whileElementsMounted,
     open
   } = options;
-  const [data, setData] = React29.useState({
+  const [data, setData] = React30.useState({
     x: 0,
     y: 0,
     strategy,
@@ -20055,19 +19913,19 @@ function useFloating(options) {
     middlewareData: {},
     isPositioned: false
   });
-  const [latestMiddleware, setLatestMiddleware] = React29.useState(middleware);
+  const [latestMiddleware, setLatestMiddleware] = React30.useState(middleware);
   if (!deepEqual(latestMiddleware, middleware)) {
     setLatestMiddleware(middleware);
   }
-  const [_reference, _setReference] = React29.useState(null);
-  const [_floating, _setFloating] = React29.useState(null);
-  const setReference = React29.useCallback((node) => {
+  const [_reference, _setReference] = React30.useState(null);
+  const [_floating, _setFloating] = React30.useState(null);
+  const setReference = React30.useCallback((node) => {
     if (node !== referenceRef.current) {
       referenceRef.current = node;
       _setReference(node);
     }
   }, []);
-  const setFloating = React29.useCallback((node) => {
+  const setFloating = React30.useCallback((node) => {
     if (node !== floatingRef.current) {
       floatingRef.current = node;
       _setFloating(node);
@@ -20075,14 +19933,14 @@ function useFloating(options) {
   }, []);
   const referenceEl = externalReference || _reference;
   const floatingEl = externalFloating || _floating;
-  const referenceRef = React29.useRef(null);
-  const floatingRef = React29.useRef(null);
-  const dataRef = React29.useRef(data);
+  const referenceRef = React30.useRef(null);
+  const floatingRef = React30.useRef(null);
+  const dataRef = React30.useRef(data);
   const hasWhileElementsMounted = whileElementsMounted != null;
   const whileElementsMountedRef = useLatestRef(whileElementsMounted);
   const platformRef = useLatestRef(platform2);
   const openRef = useLatestRef(open);
-  const update = React29.useCallback(() => {
+  const update = React30.useCallback(() => {
     if (!referenceRef.current || !floatingRef.current) {
       return;
     }
@@ -20120,7 +19978,7 @@ function useFloating(options) {
       }));
     }
   }, [open]);
-  const isMountedRef = React29.useRef(false);
+  const isMountedRef = React30.useRef(false);
   index(() => {
     isMountedRef.current = true;
     return () => {
@@ -20137,17 +19995,17 @@ function useFloating(options) {
       update();
     }
   }, [referenceEl, floatingEl, update, whileElementsMountedRef, hasWhileElementsMounted]);
-  const refs = React29.useMemo(() => ({
+  const refs = React30.useMemo(() => ({
     reference: referenceRef,
     floating: floatingRef,
     setReference,
     setFloating
   }), [setReference, setFloating]);
-  const elements = React29.useMemo(() => ({
+  const elements = React30.useMemo(() => ({
     reference: referenceEl,
     floating: floatingEl
   }), [referenceEl, floatingEl]);
-  const floatingStyles = React29.useMemo(() => {
+  const floatingStyles = React30.useMemo(() => {
     const initialStyles = {
       position: strategy,
       left: 0,
@@ -20173,7 +20031,7 @@ function useFloating(options) {
       top: y
     };
   }, [strategy, transform2, elements.floating, data.x, data.y]);
-  return React29.useMemo(() => ({
+  return React30.useMemo(() => ({
     ...data,
     update,
     refs,
@@ -20268,12 +20126,12 @@ var arrow3 = (options, deps) => {
   };
 };
 
-// ../../node_modules/.pnpm/@radix-ui+react-arrow@1.1.15_@types+react-dom@18.3.7_@types+react@18.3.31__@types+react_4adf567bd0450ecb7dbf3f22f0548dcb/node_modules/@radix-ui/react-arrow/dist/index.mjs
-var React30 = __toESM(require("react"), 1);
+// ../../../../node_modules/.pnpm/@radix-ui+react-arrow@1.1.15_@types+react-dom@18.3.7_@types+react@18.3.31__@types+react_4adf567bd0450ecb7dbf3f22f0548dcb/node_modules/@radix-ui/react-arrow/dist/index.mjs
+var React31 = __toESM(require("react"), 1);
 var import_jsx_runtime16 = require("react/jsx-runtime");
 var __defProp19 = Object.defineProperty;
 var __name18 = (target, value) => __defProp19(target, "name", { value, configurable: true });
-var Arrow = /* @__PURE__ */ React30.forwardRef(
+var Arrow = /* @__PURE__ */ React31.forwardRef(
   /* @__PURE__ */ __name18(function Arrow2(props, forwardedRef) {
     const { children, width = 10, height = 5, ...arrowProps } = props;
     return /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(
@@ -20292,7 +20150,7 @@ var Arrow = /* @__PURE__ */ React30.forwardRef(
 );
 var Root = Arrow;
 
-// ../../node_modules/.pnpm/@radix-ui+react-popper@1.3.7_@types+react-dom@18.3.7_@types+react@18.3.31__@types+react_eb61390ffeb98719c4501fa966467838/node_modules/@radix-ui/react-popper/dist/index.mjs
+// ../../../../node_modules/.pnpm/@radix-ui+react-popper@1.3.7_@types+react-dom@18.3.7_@types+react@18.3.31__@types+react_eb61390ffeb98719c4501fa966467838/node_modules/@radix-ui/react-popper/dist/index.mjs
 var import_jsx_runtime17 = require("react/jsx-runtime");
 var __defProp20 = Object.defineProperty;
 var __name19 = (target, value) => __defProp20(target, "name", { value, configurable: true });
@@ -20301,8 +20159,8 @@ var [createPopperContext, createPopperScope] = createContextScope(POPPER_NAME);
 var [PopperProvider, usePopperContext] = createPopperContext(POPPER_NAME);
 var Popper = /* @__PURE__ */ __name19((props) => {
   const { __scopePopper, children } = props;
-  const [anchor, setAnchor] = React31.useState(null);
-  const [placementState, setPlacementState] = React31.useState(void 0);
+  const [anchor, setAnchor] = React32.useState(null);
+  const [placementState, setPlacementState] = React32.useState(void 0);
   return /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(
     PopperProvider,
     {
@@ -20316,13 +20174,13 @@ var Popper = /* @__PURE__ */ __name19((props) => {
   );
 }, "Popper");
 var ANCHOR_NAME = "PopperAnchor";
-var PopperAnchor = /* @__PURE__ */ React31.forwardRef(
+var PopperAnchor = /* @__PURE__ */ React32.forwardRef(
   /* @__PURE__ */ __name19(function PopperAnchor2(props, forwardedRef) {
     const { __scopePopper, virtualRef, ...anchorProps } = props;
     const context = usePopperContext(ANCHOR_NAME, __scopePopper);
-    const ref = React31.useRef(null);
+    const ref = React32.useRef(null);
     const onAnchorChange = context.onAnchorChange;
-    const callbackRef = React31.useCallback(
+    const callbackRef = React32.useCallback(
       (node) => {
         ref.current = node;
         if (node) {
@@ -20332,8 +20190,8 @@ var PopperAnchor = /* @__PURE__ */ React31.forwardRef(
       [onAnchorChange]
     );
     const composedRefs = useComposedRefs(forwardedRef, callbackRef);
-    const anchorRef = React31.useRef(null);
-    React31.useEffect(() => {
+    const anchorRef = React32.useRef(null);
+    React32.useEffect(() => {
       if (!virtualRef) {
         return;
       }
@@ -20359,7 +20217,7 @@ var PopperAnchor = /* @__PURE__ */ React31.forwardRef(
 );
 var CONTENT_NAME2 = "PopperContent";
 var [PopperContentProvider, useContentContext] = createPopperContext(CONTENT_NAME2);
-var PopperContent = /* @__PURE__ */ React31.forwardRef(
+var PopperContent = /* @__PURE__ */ React32.forwardRef(
   /* @__PURE__ */ __name19(function PopperContent2(props, forwardedRef) {
     const {
       __scopePopper,
@@ -20378,9 +20236,9 @@ var PopperContent = /* @__PURE__ */ React31.forwardRef(
       ...contentProps
     } = props;
     const context = usePopperContext(CONTENT_NAME2, __scopePopper);
-    const [content, setContent] = React31.useState(null);
+    const [content, setContent] = React32.useState(null);
     const composedRefs = useComposedRefs(forwardedRef, setContent);
-    const [arrow4, setArrow] = React31.useState(null);
+    const [arrow4, setArrow] = React32.useState(null);
     const arrowSize = useSize(arrow4);
     const arrowWidth = arrowSize?.width ?? 0;
     const arrowHeight = arrowSize?.height ?? 0;
@@ -20460,7 +20318,7 @@ var PopperContent = /* @__PURE__ */ React31.forwardRef(
     const arrowX = middlewareData.arrow?.x;
     const arrowY = middlewareData.arrow?.y;
     const cannotCenterArrow = middlewareData.arrow?.centerOffset !== 0;
-    const [contentZIndex, setContentZIndex] = React31.useState();
+    const [contentZIndex, setContentZIndex] = React32.useState();
     useLayoutEffect2(() => {
       if (content) setContentZIndex(window.getComputedStyle(content).zIndex);
     }, [content]);
@@ -20527,7 +20385,7 @@ var OPPOSITE_SIDE = {
   bottom: "top",
   left: "right"
 };
-var PopperArrow = /* @__PURE__ */ React31.forwardRef(
+var PopperArrow = /* @__PURE__ */ React32.forwardRef(
   /* @__PURE__ */ __name19(function PopperArrow2(props, forwardedRef) {
     const { __scopePopper, ...arrowProps } = props;
     const contentContext = useContentContext(ARROW_NAME, __scopePopper);
@@ -20621,8 +20479,8 @@ var Anchor = PopperAnchor;
 var Content = PopperContent;
 var Arrow3 = PopperArrow;
 
-// ../../node_modules/.pnpm/@radix-ui+react-visually-hidden@1.2.11_@types+react-dom@18.3.7_@types+react@18.3.31__@t_642d100dd60f054d3c0d9c38ece6c812/node_modules/@radix-ui/react-visually-hidden/dist/index.mjs
-var React32 = __toESM(require("react"), 1);
+// ../../../../node_modules/.pnpm/@radix-ui+react-visually-hidden@1.2.11_@types+react-dom@18.3.7_@types+react@18.3.31__@t_642d100dd60f054d3c0d9c38ece6c812/node_modules/@radix-ui/react-visually-hidden/dist/index.mjs
+var React33 = __toESM(require("react"), 1);
 var import_jsx_runtime18 = require("react/jsx-runtime");
 var __defProp21 = Object.defineProperty;
 var __name20 = (target, value) => __defProp21(target, "name", { value, configurable: true });
@@ -20639,7 +20497,7 @@ var VISUALLY_HIDDEN_STYLES = Object.freeze({
   whiteSpace: "nowrap",
   wordWrap: "normal"
 });
-var VisuallyHidden = /* @__PURE__ */ React32.forwardRef(
+var VisuallyHidden = /* @__PURE__ */ React33.forwardRef(
   /* @__PURE__ */ __name20(function VisuallyHidden2(props, forwardedRef) {
     return /* @__PURE__ */ (0, import_jsx_runtime18.jsx)(
       Primitive.span,
@@ -20653,7 +20511,7 @@ var VisuallyHidden = /* @__PURE__ */ React32.forwardRef(
 );
 var Root3 = VisuallyHidden;
 
-// ../../node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.7_@types+react@18.3.31__@types+rea_6bca503763256159376adbcc7b8f4fe8/node_modules/@radix-ui/react-tooltip/dist/index.mjs
+// ../../../../node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.7_@types+react@18.3.31__@types+rea_6bca503763256159376adbcc7b8f4fe8/node_modules/@radix-ui/react-tooltip/dist/index.mjs
 var import_jsx_runtime19 = require("react/jsx-runtime");
 var __defProp22 = Object.defineProperty;
 var __name21 = (target, value) => __defProp22(target, "name", { value, configurable: true });
@@ -20673,10 +20531,10 @@ var TooltipProvider = /* @__PURE__ */ __name21((props) => {
     disableHoverableContent = false,
     children
   } = props;
-  const isOpenDelayedRef = React33.useRef(true);
-  const isPointerInTransitRef = React33.useRef(false);
-  const skipDelayTimerRef = React33.useRef(0);
-  React33.useEffect(() => {
+  const isOpenDelayedRef = React34.useRef(true);
+  const isPointerInTransitRef = React34.useRef(false);
+  const skipDelayTimerRef = React34.useRef(0);
+  React34.useEffect(() => {
     const skipDelayTimer = skipDelayTimerRef.current;
     return () => window.clearTimeout(skipDelayTimer);
   }, []);
@@ -20686,12 +20544,12 @@ var TooltipProvider = /* @__PURE__ */ __name21((props) => {
       scope: __scopeTooltip,
       isOpenDelayedRef,
       delayDuration,
-      onOpen: React33.useCallback(() => {
+      onOpen: React34.useCallback(() => {
         if (skipDelayDuration <= 0) return;
         window.clearTimeout(skipDelayTimerRef.current);
         isOpenDelayedRef.current = false;
       }, [skipDelayDuration]),
-      onClose: React33.useCallback(() => {
+      onClose: React34.useCallback(() => {
         if (skipDelayDuration <= 0) return;
         window.clearTimeout(skipDelayTimerRef.current);
         skipDelayTimerRef.current = window.setTimeout(
@@ -20700,7 +20558,7 @@ var TooltipProvider = /* @__PURE__ */ __name21((props) => {
         );
       }, [skipDelayDuration]),
       isPointerInTransitRef,
-      onPointerInTransitChange: React33.useCallback((inTransit) => {
+      onPointerInTransitChange: React34.useCallback((inTransit) => {
         isPointerInTransitRef.current = inTransit;
       }, []),
       disableHoverableContent,
@@ -20722,13 +20580,13 @@ var Tooltip = /* @__PURE__ */ __name21((props) => {
   } = props;
   const providerContext = useTooltipProviderContext(TOOLTIP_NAME, props.__scopeTooltip);
   const popperScope = usePopperScope(__scopeTooltip);
-  const [trigger, setTrigger] = React33.useState(null);
-  const [contentIdState, setContentId] = React33.useState(void 0);
+  const [trigger, setTrigger] = React34.useState(null);
+  const [contentIdState, setContentId] = React34.useState(void 0);
   const generatedContentId = useId();
-  const openTimerRef = React33.useRef(0);
+  const openTimerRef = React34.useRef(0);
   const disableHoverableContent = disableHoverableContentProp ?? providerContext.disableHoverableContent;
   const delayDuration = delayDurationProp ?? providerContext.delayDuration;
-  const wasOpenDelayedRef = React33.useRef(false);
+  const wasOpenDelayedRef = React34.useRef(false);
   const [open, setOpen] = useControllableState({
     prop: openProp,
     defaultProp: defaultOpen ?? false,
@@ -20743,21 +20601,21 @@ var Tooltip = /* @__PURE__ */ __name21((props) => {
     }, "onChange"),
     caller: TOOLTIP_NAME
   });
-  const stateAttribute = React33.useMemo(() => {
+  const stateAttribute = React34.useMemo(() => {
     return open ? wasOpenDelayedRef.current ? "delayed-open" : "instant-open" : "closed";
   }, [open]);
-  const handleOpen = React33.useCallback(() => {
+  const handleOpen = React34.useCallback(() => {
     window.clearTimeout(openTimerRef.current);
     openTimerRef.current = 0;
     wasOpenDelayedRef.current = false;
     setOpen(true);
   }, [setOpen]);
-  const handleClose = React33.useCallback(() => {
+  const handleClose = React34.useCallback(() => {
     window.clearTimeout(openTimerRef.current);
     openTimerRef.current = 0;
     setOpen(false);
   }, [setOpen]);
-  const handleDelayedOpen = React33.useCallback(() => {
+  const handleDelayedOpen = React34.useCallback(() => {
     window.clearTimeout(openTimerRef.current);
     openTimerRef.current = window.setTimeout(() => {
       wasOpenDelayedRef.current = true;
@@ -20765,7 +20623,7 @@ var Tooltip = /* @__PURE__ */ __name21((props) => {
       openTimerRef.current = 0;
     }, delayDuration);
   }, [delayDuration, setOpen]);
-  React33.useEffect(() => {
+  React34.useEffect(() => {
     return () => {
       if (openTimerRef.current) {
         window.clearTimeout(openTimerRef.current);
@@ -20784,11 +20642,11 @@ var Tooltip = /* @__PURE__ */ __name21((props) => {
       stateAttribute,
       trigger,
       onTriggerChange: setTrigger,
-      onTriggerEnter: React33.useCallback(() => {
+      onTriggerEnter: React34.useCallback(() => {
         if (providerContext.isOpenDelayedRef.current) handleDelayedOpen();
         else handleOpen();
       }, [providerContext.isOpenDelayedRef, handleDelayedOpen, handleOpen]),
-      onTriggerLeave: React33.useCallback(() => {
+      onTriggerLeave: React34.useCallback(() => {
         if (disableHoverableContent) {
           handleClose();
         } else {
@@ -20804,18 +20662,18 @@ var Tooltip = /* @__PURE__ */ __name21((props) => {
   ) });
 }, "Tooltip");
 var TRIGGER_NAME2 = "TooltipTrigger";
-var TooltipTrigger = /* @__PURE__ */ React33.forwardRef(
+var TooltipTrigger = /* @__PURE__ */ React34.forwardRef(
   /* @__PURE__ */ __name21(function TooltipTrigger2(props, forwardedRef) {
     const { __scopeTooltip, ...triggerProps } = props;
     const context = useTooltipContext(TRIGGER_NAME2, __scopeTooltip);
     const providerContext = useTooltipProviderContext(TRIGGER_NAME2, __scopeTooltip);
     const popperScope = usePopperScope(__scopeTooltip);
-    const ref = React33.useRef(null);
+    const ref = React34.useRef(null);
     const composedRefs = useComposedRefs(forwardedRef, ref, context.onTriggerChange);
-    const isPointerDownRef = React33.useRef(false);
-    const hasPointerMoveOpenedRef = React33.useRef(false);
-    const handlePointerUp = React33.useCallback(() => isPointerDownRef.current = false, []);
-    React33.useEffect(() => {
+    const isPointerDownRef = React34.useRef(false);
+    const hasPointerMoveOpenedRef = React34.useRef(false);
+    const handlePointerUp = React34.useCallback(() => isPointerDownRef.current = false, []);
+    React34.useEffect(() => {
       return () => document.removeEventListener("pointerup", handlePointerUp);
     }, [handlePointerUp]);
     return /* @__PURE__ */ (0, import_jsx_runtime19.jsx)(Anchor, { asChild: true, ...popperScope, children: /* @__PURE__ */ (0, import_jsx_runtime19.jsx)(
@@ -20862,7 +20720,7 @@ var TooltipPortal = /* @__PURE__ */ __name21((props) => {
   return /* @__PURE__ */ (0, import_jsx_runtime19.jsx)(PortalProvider2, { scope: __scopeTooltip, forceMount, children: /* @__PURE__ */ (0, import_jsx_runtime19.jsx)(Presence, { present: forceMount || context.open, children: /* @__PURE__ */ (0, import_jsx_runtime19.jsx)(Portal, { asChild: true, container, children }) }) });
 }, "TooltipPortal");
 var CONTENT_NAME3 = "TooltipContent";
-var TooltipContent = /* @__PURE__ */ React33.forwardRef(
+var TooltipContent = /* @__PURE__ */ React34.forwardRef(
   /* @__PURE__ */ __name21(function TooltipContent2(props, forwardedRef) {
     const portalContext = usePortalContext2(CONTENT_NAME3, props.__scopeTooltip);
     const { forceMount = portalContext.forceMount, side = "top", ...contentProps } = props;
@@ -20870,20 +20728,20 @@ var TooltipContent = /* @__PURE__ */ React33.forwardRef(
     return /* @__PURE__ */ (0, import_jsx_runtime19.jsx)(Presence, { present: forceMount || context.open, children: context.disableHoverableContent ? /* @__PURE__ */ (0, import_jsx_runtime19.jsx)(TooltipContentImpl, { side, ...contentProps, ref: forwardedRef }) : /* @__PURE__ */ (0, import_jsx_runtime19.jsx)(TooltipContentHoverable, { side, ...contentProps, ref: forwardedRef }) });
   }, "TooltipContent")
 );
-var TooltipContentHoverable = /* @__PURE__ */ React33.forwardRef(/* @__PURE__ */ __name21(function TooltipContentHoverable2(props, forwardedRef) {
+var TooltipContentHoverable = /* @__PURE__ */ React34.forwardRef(/* @__PURE__ */ __name21(function TooltipContentHoverable2(props, forwardedRef) {
   const context = useTooltipContext(CONTENT_NAME3, props.__scopeTooltip);
   const providerContext = useTooltipProviderContext(CONTENT_NAME3, props.__scopeTooltip);
-  const ref = React33.useRef(null);
+  const ref = React34.useRef(null);
   const composedRefs = useComposedRefs(forwardedRef, ref);
-  const [pointerGraceArea, setPointerGraceArea] = React33.useState(null);
+  const [pointerGraceArea, setPointerGraceArea] = React34.useState(null);
   const { trigger, onClose } = context;
   const content = ref.current;
   const { onPointerInTransitChange } = providerContext;
-  const handleRemoveGraceArea = React33.useCallback(() => {
+  const handleRemoveGraceArea = React34.useCallback(() => {
     setPointerGraceArea(null);
     onPointerInTransitChange(false);
   }, [onPointerInTransitChange]);
-  const handleCreateGraceArea = React33.useCallback(
+  const handleCreateGraceArea = React34.useCallback(
     (event, hoverTarget) => {
       const currentTarget = event.currentTarget;
       const exitPoint = { x: event.clientX, y: event.clientY };
@@ -20896,10 +20754,10 @@ var TooltipContentHoverable = /* @__PURE__ */ React33.forwardRef(/* @__PURE__ */
     },
     [onPointerInTransitChange]
   );
-  React33.useEffect(() => {
+  React34.useEffect(() => {
     return () => handleRemoveGraceArea();
   }, [handleRemoveGraceArea]);
-  React33.useEffect(() => {
+  React34.useEffect(() => {
     if (trigger && content) {
       const handleTriggerLeave = /* @__PURE__ */ __name21((event) => handleCreateGraceArea(event, content), "handleTriggerLeave");
       const handleContentLeave = /* @__PURE__ */ __name21((event) => handleCreateGraceArea(event, trigger), "handleContentLeave");
@@ -20911,7 +20769,7 @@ var TooltipContentHoverable = /* @__PURE__ */ React33.forwardRef(/* @__PURE__ */
       };
     }
   }, [trigger, content, handleCreateGraceArea, handleRemoveGraceArea]);
-  React33.useEffect(() => {
+  React34.useEffect(() => {
     if (pointerGraceArea) {
       const handleTrackPointerGrace = /* @__PURE__ */ __name21((event) => {
         const target = event.target;
@@ -20932,7 +20790,7 @@ var TooltipContentHoverable = /* @__PURE__ */ React33.forwardRef(/* @__PURE__ */
   return /* @__PURE__ */ (0, import_jsx_runtime19.jsx)(TooltipContentImpl, { ...props, ref: composedRefs });
 }, "TooltipContentHoverable"));
 var Slottable = createSlottable("TooltipContent");
-var TooltipContentImpl = /* @__PURE__ */ React33.forwardRef(
+var TooltipContentImpl = /* @__PURE__ */ React34.forwardRef(
   // blank line to reduce diff noise
   /* @__PURE__ */ __name21(function TooltipContentImpl2(props, forwardedRef) {
     const {
@@ -20947,11 +20805,11 @@ var TooltipContentImpl = /* @__PURE__ */ React33.forwardRef(
     const context = useTooltipContext(CONTENT_NAME3, __scopeTooltip);
     const popperScope = usePopperScope(__scopeTooltip);
     const { onClose } = context;
-    React33.useEffect(() => {
+    React34.useEffect(() => {
       document.addEventListener(TOOLTIP_OPEN, onClose);
       return () => document.removeEventListener(TOOLTIP_OPEN, onClose);
     }, [onClose]);
-    React33.useEffect(() => {
+    React34.useEffect(() => {
       if (context.trigger) {
         const handleScroll2 = /* @__PURE__ */ __name21((event) => {
           if (event.target instanceof Node && event.target.contains(context.trigger)) {
@@ -21008,7 +20866,7 @@ var TooltipContentImpl = /* @__PURE__ */ React33.forwardRef(
     );
   }, "TooltipContentImpl")
 );
-var TooltipArrow = /* @__PURE__ */ React33.forwardRef(
+var TooltipArrow = /* @__PURE__ */ React34.forwardRef(
   /* @__PURE__ */ __name21(function TooltipArrow2(props, forwardedRef) {
     const { __scopeTooltip, ...arrowProps } = props;
     const popperScope = usePopperScope(__scopeTooltip);
@@ -21154,18 +21012,14 @@ function TooltipProvider2({
 function Tooltip2(props) {
   return /* @__PURE__ */ (0, import_jsx_runtime20.jsx)(Root32, { "data-slot": "tooltip", ...props });
 }
-var TooltipTrigger3 = React34.forwardRef(function TooltipTrigger4(props, ref) {
+var TooltipTrigger3 = React35.forwardRef(function TooltipTrigger4(props, ref) {
   return /* @__PURE__ */ (0, import_jsx_runtime20.jsx)(Trigger, { ref, "data-slot": "tooltip-trigger", ...props });
 });
-function TooltipContent3({
-  children,
-  className,
-  sideOffset = 4,
-  ...props
-}) {
+var TooltipContent3 = React35.forwardRef(function TooltipContent4({ children, className, sideOffset = 4, ...props }, ref) {
   return /* @__PURE__ */ (0, import_jsx_runtime20.jsx)(Portal3, { children: /* @__PURE__ */ (0, import_jsx_runtime20.jsxs)(
     Content2,
     {
+      ref,
       "data-slot": "tooltip-content",
       sideOffset,
       className: cn("z-[2147483647] inline-flex w-fit max-w-xs items-center rounded-md bg-foreground px-2 py-1 text-xs text-background shadow-sm", className),
@@ -21176,11 +21030,235 @@ function TooltipContent3({
       ]
     }
   ) });
-}
+});
 
 // src/route.tsx
-var import_react5 = require("react");
+var import_react7 = require("react");
 var import_react_dom2 = require("react-dom");
+
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/createLucideIcon.js
+var import_react6 = require("react");
+
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/shared/src/utils.js
+var toKebabCase2 = (string4) => string4.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase();
+var mergeClasses2 = (...classes) => classes.filter((className, index2, array2) => {
+  return Boolean(className) && className.trim() !== "" && array2.indexOf(className) === index2;
+}).join(" ").trim();
+
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/Icon.js
+var import_react5 = require("react");
+
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/defaultAttributes.js
+var defaultAttributes2 = {
+  xmlns: "http://www.w3.org/2000/svg",
+  width: 24,
+  height: 24,
+  viewBox: "0 0 24 24",
+  fill: "none",
+  stroke: "currentColor",
+  strokeWidth: 2,
+  strokeLinecap: "round",
+  strokeLinejoin: "round"
+};
+
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/Icon.js
+var Icon2 = (0, import_react5.forwardRef)(
+  ({
+    color = "currentColor",
+    size: size4 = 24,
+    strokeWidth = 2,
+    absoluteStrokeWidth,
+    className = "",
+    children,
+    iconNode,
+    ...rest
+  }, ref) => {
+    return (0, import_react5.createElement)(
+      "svg",
+      {
+        ref,
+        ...defaultAttributes2,
+        width: size4,
+        height: size4,
+        stroke: color,
+        strokeWidth: absoluteStrokeWidth ? Number(strokeWidth) * 24 / Number(size4) : strokeWidth,
+        className: mergeClasses2("lucide", className),
+        ...rest
+      },
+      [
+        ...iconNode.map(([tag, attrs]) => (0, import_react5.createElement)(tag, attrs)),
+        ...Array.isArray(children) ? children : [children]
+      ]
+    );
+  }
+);
+
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/createLucideIcon.js
+var createLucideIcon2 = (iconName, iconNode) => {
+  const Component = (0, import_react6.forwardRef)(
+    ({ className, ...props }, ref) => (0, import_react6.createElement)(Icon2, {
+      ref,
+      iconNode,
+      className: mergeClasses2(`lucide-${toKebabCase2(iconName)}`, className),
+      ...props
+    })
+  );
+  Component.displayName = `${iconName}`;
+  return Component;
+};
+
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/arrow-down.js
+var __iconNode3 = [
+  ["path", { d: "M12 5v14", key: "s699le" }],
+  ["path", { d: "m19 12-7 7-7-7", key: "1idqje" }]
+];
+var ArrowDown = createLucideIcon2("ArrowDown", __iconNode3);
+
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/arrow-left.js
+var __iconNode4 = [
+  ["path", { d: "m12 19-7-7 7-7", key: "1l729n" }],
+  ["path", { d: "M19 12H5", key: "x3x0zl" }]
+];
+var ArrowLeft = createLucideIcon2("ArrowLeft", __iconNode4);
+
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/arrow-right.js
+var __iconNode5 = [
+  ["path", { d: "M5 12h14", key: "1ays0h" }],
+  ["path", { d: "m12 5 7 7-7 7", key: "xquz4c" }]
+];
+var ArrowRight = createLucideIcon2("ArrowRight", __iconNode5);
+
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/arrow-up.js
+var __iconNode6 = [
+  ["path", { d: "m5 12 7-7 7 7", key: "hav0vg" }],
+  ["path", { d: "M12 19V5", key: "x0mq9r" }]
+];
+var ArrowUp = createLucideIcon2("ArrowUp", __iconNode6);
+
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/bookmark.js
+var __iconNode7 = [
+  ["path", { d: "m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z", key: "1fy3hk" }]
+];
+var Bookmark = createLucideIcon2("Bookmark", __iconNode7);
+
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/chevron-down.js
+var __iconNode8 = [["path", { d: "m6 9 6 6 6-6", key: "qrunsl" }]];
+var ChevronDown = createLucideIcon2("ChevronDown", __iconNode8);
+
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/chevron-left.js
+var __iconNode9 = [["path", { d: "m15 18-6-6 6-6", key: "1wnfg3" }]];
+var ChevronLeft = createLucideIcon2("ChevronLeft", __iconNode9);
+
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/chevron-right.js
+var __iconNode10 = [["path", { d: "m9 18 6-6-6-6", key: "mthhwq" }]];
+var ChevronRight = createLucideIcon2("ChevronRight", __iconNode10);
+
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/ellipsis.js
+var __iconNode11 = [
+  ["circle", { cx: "12", cy: "12", r: "1", key: "41hilf" }],
+  ["circle", { cx: "19", cy: "12", r: "1", key: "1wjl8i" }],
+  ["circle", { cx: "5", cy: "12", r: "1", key: "1pcz8c" }]
+];
+var Ellipsis = createLucideIcon2("Ellipsis", __iconNode11);
+
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/file-text.js
+var __iconNode12 = [
+  ["path", { d: "M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z", key: "1rqfz7" }],
+  ["path", { d: "M14 2v4a2 2 0 0 0 2 2h4", key: "tnqrlb" }],
+  ["path", { d: "M10 9H8", key: "b1mrlr" }],
+  ["path", { d: "M16 13H8", key: "t4e002" }],
+  ["path", { d: "M16 17H8", key: "z1uh3a" }]
+];
+var FileText = createLucideIcon2("FileText", __iconNode12);
+
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/folder.js
+var __iconNode13 = [
+  [
+    "path",
+    {
+      d: "M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z",
+      key: "1kt360"
+    }
+  ]
+];
+var Folder = createLucideIcon2("Folder", __iconNode13);
+
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/message-square.js
+var __iconNode14 = [
+  ["path", { d: "M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z", key: "1lielz" }]
+];
+var MessageSquare = createLucideIcon2("MessageSquare", __iconNode14);
+
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/music.js
+var __iconNode15 = [
+  ["path", { d: "M9 18V5l12-2v13", key: "1jmyc2" }],
+  ["circle", { cx: "6", cy: "18", r: "3", key: "fqmcym" }],
+  ["circle", { cx: "18", cy: "16", r: "3", key: "1hluhg" }]
+];
+var Music = createLucideIcon2("Music", __iconNode15);
+
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/panel-left.js
+var __iconNode16 = [
+  ["rect", { width: "18", height: "18", x: "3", y: "3", rx: "2", key: "afitv7" }],
+  ["path", { d: "M9 3v18", key: "fh3hqa" }]
+];
+var PanelLeft = createLucideIcon2("PanelLeft", __iconNode16);
+
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/panel-right.js
+var __iconNode17 = [
+  ["rect", { width: "18", height: "18", x: "3", y: "3", rx: "2", key: "afitv7" }],
+  ["path", { d: "M15 3v18", key: "14nvp0" }]
+];
+var PanelRight = createLucideIcon2("PanelRight", __iconNode17);
+
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/panel-top.js
+var __iconNode18 = [
+  ["rect", { width: "18", height: "18", x: "3", y: "3", rx: "2", key: "afitv7" }],
+  ["path", { d: "M3 9h18", key: "1pudct" }]
+];
+var PanelTop = createLucideIcon2("PanelTop", __iconNode18);
+
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/pencil.js
+var __iconNode19 = [
+  [
+    "path",
+    {
+      d: "M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z",
+      key: "1a8usu"
+    }
+  ],
+  ["path", { d: "m15 5 4 4", key: "1mk7zo" }]
+];
+var Pencil = createLucideIcon2("Pencil", __iconNode19);
+
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/plus.js
+var __iconNode20 = [
+  ["path", { d: "M5 12h14", key: "1ays0h" }],
+  ["path", { d: "M12 5v14", key: "s699le" }]
+];
+var Plus = createLucideIcon2("Plus", __iconNode20);
+
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/search.js
+var __iconNode21 = [
+  ["circle", { cx: "11", cy: "11", r: "8", key: "4ej97u" }],
+  ["path", { d: "m21 21-4.3-4.3", key: "1qie3q" }]
+];
+var Search = createLucideIcon2("Search", __iconNode21);
+
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/upload.js
+var __iconNode22 = [
+  ["path", { d: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4", key: "ih7n3h" }],
+  ["polyline", { points: "17 8 12 3 7 8", key: "t8dd8p" }],
+  ["line", { x1: "12", x2: "12", y1: "3", y2: "15", key: "widbto" }]
+];
+var Upload = createLucideIcon2("Upload", __iconNode22);
+
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/x.js
+var __iconNode23 = [
+  ["path", { d: "M18 6 6 18", key: "1bl5f8" }],
+  ["path", { d: "m6 6 12 12", key: "d8bk6v" }]
+];
+var X2 = createLucideIcon2("X", __iconNode23);
 
 // src/base.ts
 var MAX_BASE_BYTES = 2e6;
@@ -22503,7 +22581,7 @@ var WORKBENCH_GLYPHS = {
   back: ChevronLeft,
   bookmark: Bookmark,
   chat: MessageSquare,
-  close: X,
+  close: X2,
   collapse: ChevronRight,
   document: FileText,
   folder: Folder,
@@ -22568,15 +22646,15 @@ function TockTutorRouteView(props) {
   const documents = snapshot.entries.filter((entry) => entry.kind === "document" && supportedDocument(entry.path) && (query === "" || entry.path.toLocaleLowerCase().includes(query)));
   const focusedPane = snapshot.panes.find((pane) => pane.id === snapshot.focusedPaneId);
   const visibleTreeEntries = query === "" ? snapshot.entries.filter((entry) => entry.kind === "directory" || entry.kind === "document" && supportedDocument(entry.path)) : snapshot.entries.filter((entry) => entry.kind === "directory" ? documents.some((document2) => document2.path.startsWith(`${entry.path}/`)) : documents.includes(entry));
-  const [panel, setPanel] = (0, import_react5.useState)(null);
-  const [assistantPanelWidth, setAssistantPanelWidth] = (0, import_react5.useState)(DEFAULT_ASSISTANT_PANEL_WIDTH);
-  const [sidebarOpen, setSidebarOpen] = (0, import_react5.useState)(true);
-  const [sidebarWidth, setSidebarWidth] = (0, import_react5.useState)(DEFAULT_SIDEBAR_WIDTH);
-  const previousSidebarOpen = (0, import_react5.useRef)(sidebarOpen);
+  const [panel, setPanel] = (0, import_react7.useState)(null);
+  const [assistantPanelWidth, setAssistantPanelWidth] = (0, import_react7.useState)(DEFAULT_ASSISTANT_PANEL_WIDTH);
+  const [sidebarOpen, setSidebarOpen] = (0, import_react7.useState)(true);
+  const [sidebarWidth, setSidebarWidth] = (0, import_react7.useState)(DEFAULT_SIDEBAR_WIDTH);
+  const previousSidebarOpen = (0, import_react7.useRef)(sidebarOpen);
   const shouldAnimateSidebarColumns = previousSidebarOpen.current !== sidebarOpen;
   const contentColumns = `${String(sidebarOpen ? sidebarWidth : 0)}px minmax(0, 1fr) auto auto`;
   const titlebarColumns = `${String(sidebarOpen ? sidebarWidth : COLLAPSED_TITLEBAR_SIDEBAR_WIDTH)}px minmax(0, 1fr)`;
-  (0, import_react5.useEffect)(() => {
+  (0, import_react7.useEffect)(() => {
     previousSidebarOpen.current = sidebarOpen;
   }, [sidebarOpen]);
   const resizeSidebar = (width) => {
@@ -23054,26 +23132,26 @@ function TockTutorNativeActionsOutlet(props) {
   });
 }
 function TockTutorRoute(props) {
-  const controller = (0, import_react5.useMemo)(
+  const controller = (0, import_react7.useMemo)(
     () => new WorkbenchRouteController(props.remote, props.navigate),
     [props.navigate, props.remote]
   );
-  const snapshot = (0, import_react5.useSyncExternalStore)(controller.subscribe, controller.getSnapshot, controller.getSnapshot);
-  const root = (0, import_react5.useRef)(null);
-  (0, import_react5.useEffect)(() => {
+  const snapshot = (0, import_react7.useSyncExternalStore)(controller.subscribe, controller.getSnapshot, controller.getSnapshot);
+  const root = (0, import_react7.useRef)(null);
+  (0, import_react7.useEffect)(() => {
     void controller.syncLocation(props.location.pathname);
   }, [controller, props.location.pathname]);
-  (0, import_react5.useEffect)(() => () => {
+  (0, import_react7.useEffect)(() => () => {
     controller.dispose();
   }, [controller]);
-  (0, import_react5.useEffect)(() => {
+  (0, import_react7.useEffect)(() => {
     if (snapshot.path === null) return;
     root.current?.querySelector(snapshot.mode === "source" ? "textarea" : '[aria-label$="View"]')?.focus();
   }, [snapshot.mode, snapshot.path]);
-  (0, import_react5.useEffect)(() => {
+  (0, import_react7.useEffect)(() => {
     if (snapshot.searchOpen) root.current?.querySelector('[aria-label="Search Notes Query"]')?.focus();
   }, [snapshot.searchOpen]);
-  (0, import_react5.useEffect)(() => {
+  (0, import_react7.useEffect)(() => {
     const node = root.current;
     if (node === null) return;
     const onKeyDown = (event) => {
@@ -23212,12 +23290,18 @@ lucide-react/dist/esm/shared/src/utils.js:
 lucide-react/dist/esm/defaultAttributes.js:
 lucide-react/dist/esm/Icon.js:
 lucide-react/dist/esm/createLucideIcon.js:
+lucide-react/dist/esm/icons/check.js:
+lucide-react/dist/esm/icons/x.js:
+lucide-react/dist/esm/lucide-react.js:
+lucide-react/dist/esm/shared/src/utils.js:
+lucide-react/dist/esm/defaultAttributes.js:
+lucide-react/dist/esm/Icon.js:
+lucide-react/dist/esm/createLucideIcon.js:
 lucide-react/dist/esm/icons/arrow-down.js:
 lucide-react/dist/esm/icons/arrow-left.js:
 lucide-react/dist/esm/icons/arrow-right.js:
 lucide-react/dist/esm/icons/arrow-up.js:
 lucide-react/dist/esm/icons/bookmark.js:
-lucide-react/dist/esm/icons/check.js:
 lucide-react/dist/esm/icons/chevron-down.js:
 lucide-react/dist/esm/icons/chevron-left.js:
 lucide-react/dist/esm/icons/chevron-right.js:
