@@ -1,5 +1,6 @@
-import { randomBytes, timingSafeEqual } from 'node:crypto'
+import { randomBytes } from 'node:crypto'
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http'
+import { desktopBearerAuthorized } from './desktop-loopback.ts'
 import { DesktopPopOutOwner } from './desktop-popout-owner.ts'
 
 export const DESKTOP_POPOUT_CHANNEL_PATH = '/tockteam/desktop-popout'
@@ -8,13 +9,6 @@ const MAX_BODY_BYTES = 16 * 1024
 export interface DesktopPopOutChannelEnvironment { endpoint: string; token: string }
 
 type PopOutMethod = 'open' | 'close' | 'closeAll' | 'disposeProvider'
-
-function authorized(value: string | undefined, expected: string): boolean {
-  if (value === undefined) return false
-  const actual = Buffer.from(value)
-  const target = Buffer.from(expected)
-  return actual.length === target.length && timingSafeEqual(actual, target)
-}
 
 async function body(request: IncomingMessage): Promise<Record<string, unknown>> {
   let size = 0
@@ -83,7 +77,7 @@ export class DesktopPopOutChannel {
 
   private async handle(request: IncomingMessage, response: ServerResponse, token: string): Promise<void> {
     if (request.method !== 'POST' || request.url !== DESKTOP_POPOUT_CHANNEL_PATH) { response.writeHead(404).end(); return }
-    if (!authorized(request.headers.authorization, `Bearer ${token}`)) { response.writeHead(401).end(); return }
+    if (!desktopBearerAuthorized(request.headers.authorization, `Bearer ${token}`)) { response.writeHead(401).end(); return }
     const controller = new AbortController()
     const abort = (): void => { controller.abort(); request.destroy() }
     this.lifetime.signal.addEventListener('abort', abort, { once: true })

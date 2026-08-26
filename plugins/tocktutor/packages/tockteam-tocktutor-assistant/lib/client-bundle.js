@@ -19987,26 +19987,30 @@ function PopoverContent3({
 }
 
 // ../../../ui/src/textarea.tsx
+var React32 = __toESM(require("react"), 1);
 var import_jsx_runtime16 = require("react/jsx-runtime");
-function Textarea({ className, unstyled = false, ...props }) {
-  return /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(
-    "textarea",
-    {
-      "data-slot": "textarea",
-      className: unstyled ? className : cn("field-sizing-content min-h-16 w-full rounded-lg border border-input bg-transparent px-2.5 py-2 text-sm text-foreground outline-none transition-[background-color,border-color,box-shadow] placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20", className),
-      ...props
-    }
-  );
-}
+var Textarea = React32.forwardRef(
+  function Textarea2({ className, unstyled = false, ...props }, ref) {
+    return /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(
+      "textarea",
+      {
+        ref,
+        "data-slot": "textarea",
+        className: unstyled ? className : cn("field-sizing-content min-h-16 w-full rounded-lg border border-input bg-transparent px-2.5 py-2 text-sm text-foreground outline-none transition-[background-color,border-color,box-shadow] placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20", className),
+        ...props
+      }
+    );
+  }
+);
 
 // ../../../ui/src/tooltip.tsx
-var React34 = __toESM(require("react"), 1);
+var React35 = __toESM(require("react"), 1);
 
 // ../../node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.7_@types+react@18.3.31__@types+rea_6bca503763256159376adbcc7b8f4fe8/node_modules/@radix-ui/react-tooltip/dist/index.mjs
-var React33 = __toESM(require("react"), 1);
+var React34 = __toESM(require("react"), 1);
 
 // ../../node_modules/.pnpm/@radix-ui+react-visually-hidden@1.2.11_@types+react-dom@18.3.7_@types+react@18.3.31__@t_642d100dd60f054d3c0d9c38ece6c812/node_modules/@radix-ui/react-visually-hidden/dist/index.mjs
-var React32 = __toESM(require("react"), 1);
+var React33 = __toESM(require("react"), 1);
 var import_jsx_runtime17 = require("react/jsx-runtime");
 var __defProp20 = Object.defineProperty;
 var __name19 = (target, value) => __defProp20(target, "name", { value, configurable: true });
@@ -20023,7 +20027,7 @@ var VISUALLY_HIDDEN_STYLES = Object.freeze({
   whiteSpace: "nowrap",
   wordWrap: "normal"
 });
-var VisuallyHidden = /* @__PURE__ */ React32.forwardRef(
+var VisuallyHidden = /* @__PURE__ */ React33.forwardRef(
   /* @__PURE__ */ __name19(function VisuallyHidden2(props, forwardedRef) {
     return /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(
       Primitive.span,
@@ -20057,10 +20061,10 @@ var TooltipProvider = /* @__PURE__ */ __name20((props) => {
     disableHoverableContent = false,
     children
   } = props;
-  const isOpenDelayedRef = React33.useRef(true);
-  const isPointerInTransitRef = React33.useRef(false);
-  const skipDelayTimerRef = React33.useRef(0);
-  React33.useEffect(() => {
+  const isOpenDelayedRef = React34.useRef(true);
+  const isPointerInTransitRef = React34.useRef(false);
+  const skipDelayTimerRef = React34.useRef(0);
+  React34.useEffect(() => {
     const skipDelayTimer = skipDelayTimerRef.current;
     return () => window.clearTimeout(skipDelayTimer);
   }, []);
@@ -20070,12 +20074,12 @@ var TooltipProvider = /* @__PURE__ */ __name20((props) => {
       scope: __scopeTooltip,
       isOpenDelayedRef,
       delayDuration,
-      onOpen: React33.useCallback(() => {
+      onOpen: React34.useCallback(() => {
         if (skipDelayDuration <= 0) return;
         window.clearTimeout(skipDelayTimerRef.current);
         isOpenDelayedRef.current = false;
       }, [skipDelayDuration]),
-      onClose: React33.useCallback(() => {
+      onClose: React34.useCallback(() => {
         if (skipDelayDuration <= 0) return;
         window.clearTimeout(skipDelayTimerRef.current);
         skipDelayTimerRef.current = window.setTimeout(
@@ -20084,7 +20088,7 @@ var TooltipProvider = /* @__PURE__ */ __name20((props) => {
         );
       }, [skipDelayDuration]),
       isPointerInTransitRef,
-      onPointerInTransitChange: React33.useCallback((inTransit) => {
+      onPointerInTransitChange: React34.useCallback((inTransit) => {
         isPointerInTransitRef.current = inTransit;
       }, []),
       disableHoverableContent,
@@ -20106,13 +20110,13 @@ var Tooltip = /* @__PURE__ */ __name20((props) => {
   } = props;
   const providerContext = useTooltipProviderContext(TOOLTIP_NAME, props.__scopeTooltip);
   const popperScope = usePopperScope2(__scopeTooltip);
-  const [trigger, setTrigger] = React33.useState(null);
-  const [contentIdState, setContentId] = React33.useState(void 0);
+  const [trigger, setTrigger] = React34.useState(null);
+  const [contentIdState, setContentId] = React34.useState(void 0);
   const generatedContentId = useId();
-  const openTimerRef = React33.useRef(0);
+  const openTimerRef = React34.useRef(0);
   const disableHoverableContent = disableHoverableContentProp ?? providerContext.disableHoverableContent;
   const delayDuration = delayDurationProp ?? providerContext.delayDuration;
-  const wasOpenDelayedRef = React33.useRef(false);
+  const wasOpenDelayedRef = React34.useRef(false);
   const [open, setOpen] = useControllableState({
     prop: openProp,
     defaultProp: defaultOpen ?? false,
@@ -20127,21 +20131,21 @@ var Tooltip = /* @__PURE__ */ __name20((props) => {
     }, "onChange"),
     caller: TOOLTIP_NAME
   });
-  const stateAttribute = React33.useMemo(() => {
+  const stateAttribute = React34.useMemo(() => {
     return open ? wasOpenDelayedRef.current ? "delayed-open" : "instant-open" : "closed";
   }, [open]);
-  const handleOpen = React33.useCallback(() => {
+  const handleOpen = React34.useCallback(() => {
     window.clearTimeout(openTimerRef.current);
     openTimerRef.current = 0;
     wasOpenDelayedRef.current = false;
     setOpen(true);
   }, [setOpen]);
-  const handleClose = React33.useCallback(() => {
+  const handleClose = React34.useCallback(() => {
     window.clearTimeout(openTimerRef.current);
     openTimerRef.current = 0;
     setOpen(false);
   }, [setOpen]);
-  const handleDelayedOpen = React33.useCallback(() => {
+  const handleDelayedOpen = React34.useCallback(() => {
     window.clearTimeout(openTimerRef.current);
     openTimerRef.current = window.setTimeout(() => {
       wasOpenDelayedRef.current = true;
@@ -20149,7 +20153,7 @@ var Tooltip = /* @__PURE__ */ __name20((props) => {
       openTimerRef.current = 0;
     }, delayDuration);
   }, [delayDuration, setOpen]);
-  React33.useEffect(() => {
+  React34.useEffect(() => {
     return () => {
       if (openTimerRef.current) {
         window.clearTimeout(openTimerRef.current);
@@ -20168,11 +20172,11 @@ var Tooltip = /* @__PURE__ */ __name20((props) => {
       stateAttribute,
       trigger,
       onTriggerChange: setTrigger,
-      onTriggerEnter: React33.useCallback(() => {
+      onTriggerEnter: React34.useCallback(() => {
         if (providerContext.isOpenDelayedRef.current) handleDelayedOpen();
         else handleOpen();
       }, [providerContext.isOpenDelayedRef, handleDelayedOpen, handleOpen]),
-      onTriggerLeave: React33.useCallback(() => {
+      onTriggerLeave: React34.useCallback(() => {
         if (disableHoverableContent) {
           handleClose();
         } else {
@@ -20188,18 +20192,18 @@ var Tooltip = /* @__PURE__ */ __name20((props) => {
   ) });
 }, "Tooltip");
 var TRIGGER_NAME2 = "TooltipTrigger";
-var TooltipTrigger = /* @__PURE__ */ React33.forwardRef(
+var TooltipTrigger = /* @__PURE__ */ React34.forwardRef(
   /* @__PURE__ */ __name20(function TooltipTrigger2(props, forwardedRef) {
     const { __scopeTooltip, ...triggerProps } = props;
     const context = useTooltipContext(TRIGGER_NAME2, __scopeTooltip);
     const providerContext = useTooltipProviderContext(TRIGGER_NAME2, __scopeTooltip);
     const popperScope = usePopperScope2(__scopeTooltip);
-    const ref = React33.useRef(null);
+    const ref = React34.useRef(null);
     const composedRefs = useComposedRefs(forwardedRef, ref, context.onTriggerChange);
-    const isPointerDownRef = React33.useRef(false);
-    const hasPointerMoveOpenedRef = React33.useRef(false);
-    const handlePointerUp = React33.useCallback(() => isPointerDownRef.current = false, []);
-    React33.useEffect(() => {
+    const isPointerDownRef = React34.useRef(false);
+    const hasPointerMoveOpenedRef = React34.useRef(false);
+    const handlePointerUp = React34.useCallback(() => isPointerDownRef.current = false, []);
+    React34.useEffect(() => {
       return () => document.removeEventListener("pointerup", handlePointerUp);
     }, [handlePointerUp]);
     return /* @__PURE__ */ (0, import_jsx_runtime18.jsx)(Anchor, { asChild: true, ...popperScope, children: /* @__PURE__ */ (0, import_jsx_runtime18.jsx)(
@@ -20246,7 +20250,7 @@ var TooltipPortal = /* @__PURE__ */ __name20((props) => {
   return /* @__PURE__ */ (0, import_jsx_runtime18.jsx)(PortalProvider2, { scope: __scopeTooltip, forceMount, children: /* @__PURE__ */ (0, import_jsx_runtime18.jsx)(Presence, { present: forceMount || context.open, children: /* @__PURE__ */ (0, import_jsx_runtime18.jsx)(Portal, { asChild: true, container, children }) }) });
 }, "TooltipPortal");
 var CONTENT_NAME3 = "TooltipContent";
-var TooltipContent = /* @__PURE__ */ React33.forwardRef(
+var TooltipContent = /* @__PURE__ */ React34.forwardRef(
   /* @__PURE__ */ __name20(function TooltipContent2(props, forwardedRef) {
     const portalContext = usePortalContext2(CONTENT_NAME3, props.__scopeTooltip);
     const { forceMount = portalContext.forceMount, side = "top", ...contentProps } = props;
@@ -20254,20 +20258,20 @@ var TooltipContent = /* @__PURE__ */ React33.forwardRef(
     return /* @__PURE__ */ (0, import_jsx_runtime18.jsx)(Presence, { present: forceMount || context.open, children: context.disableHoverableContent ? /* @__PURE__ */ (0, import_jsx_runtime18.jsx)(TooltipContentImpl, { side, ...contentProps, ref: forwardedRef }) : /* @__PURE__ */ (0, import_jsx_runtime18.jsx)(TooltipContentHoverable, { side, ...contentProps, ref: forwardedRef }) });
   }, "TooltipContent")
 );
-var TooltipContentHoverable = /* @__PURE__ */ React33.forwardRef(/* @__PURE__ */ __name20(function TooltipContentHoverable2(props, forwardedRef) {
+var TooltipContentHoverable = /* @__PURE__ */ React34.forwardRef(/* @__PURE__ */ __name20(function TooltipContentHoverable2(props, forwardedRef) {
   const context = useTooltipContext(CONTENT_NAME3, props.__scopeTooltip);
   const providerContext = useTooltipProviderContext(CONTENT_NAME3, props.__scopeTooltip);
-  const ref = React33.useRef(null);
+  const ref = React34.useRef(null);
   const composedRefs = useComposedRefs(forwardedRef, ref);
-  const [pointerGraceArea, setPointerGraceArea] = React33.useState(null);
+  const [pointerGraceArea, setPointerGraceArea] = React34.useState(null);
   const { trigger, onClose } = context;
   const content = ref.current;
   const { onPointerInTransitChange } = providerContext;
-  const handleRemoveGraceArea = React33.useCallback(() => {
+  const handleRemoveGraceArea = React34.useCallback(() => {
     setPointerGraceArea(null);
     onPointerInTransitChange(false);
   }, [onPointerInTransitChange]);
-  const handleCreateGraceArea = React33.useCallback(
+  const handleCreateGraceArea = React34.useCallback(
     (event, hoverTarget) => {
       const currentTarget = event.currentTarget;
       const exitPoint = { x: event.clientX, y: event.clientY };
@@ -20280,10 +20284,10 @@ var TooltipContentHoverable = /* @__PURE__ */ React33.forwardRef(/* @__PURE__ */
     },
     [onPointerInTransitChange]
   );
-  React33.useEffect(() => {
+  React34.useEffect(() => {
     return () => handleRemoveGraceArea();
   }, [handleRemoveGraceArea]);
-  React33.useEffect(() => {
+  React34.useEffect(() => {
     if (trigger && content) {
       const handleTriggerLeave = /* @__PURE__ */ __name20((event) => handleCreateGraceArea(event, content), "handleTriggerLeave");
       const handleContentLeave = /* @__PURE__ */ __name20((event) => handleCreateGraceArea(event, trigger), "handleContentLeave");
@@ -20295,7 +20299,7 @@ var TooltipContentHoverable = /* @__PURE__ */ React33.forwardRef(/* @__PURE__ */
       };
     }
   }, [trigger, content, handleCreateGraceArea, handleRemoveGraceArea]);
-  React33.useEffect(() => {
+  React34.useEffect(() => {
     if (pointerGraceArea) {
       const handleTrackPointerGrace = /* @__PURE__ */ __name20((event) => {
         const target = event.target;
@@ -20316,7 +20320,7 @@ var TooltipContentHoverable = /* @__PURE__ */ React33.forwardRef(/* @__PURE__ */
   return /* @__PURE__ */ (0, import_jsx_runtime18.jsx)(TooltipContentImpl, { ...props, ref: composedRefs });
 }, "TooltipContentHoverable"));
 var Slottable = createSlottable("TooltipContent");
-var TooltipContentImpl = /* @__PURE__ */ React33.forwardRef(
+var TooltipContentImpl = /* @__PURE__ */ React34.forwardRef(
   // blank line to reduce diff noise
   /* @__PURE__ */ __name20(function TooltipContentImpl2(props, forwardedRef) {
     const {
@@ -20331,11 +20335,11 @@ var TooltipContentImpl = /* @__PURE__ */ React33.forwardRef(
     const context = useTooltipContext(CONTENT_NAME3, __scopeTooltip);
     const popperScope = usePopperScope2(__scopeTooltip);
     const { onClose } = context;
-    React33.useEffect(() => {
+    React34.useEffect(() => {
       document.addEventListener(TOOLTIP_OPEN, onClose);
       return () => document.removeEventListener(TOOLTIP_OPEN, onClose);
     }, [onClose]);
-    React33.useEffect(() => {
+    React34.useEffect(() => {
       if (context.trigger) {
         const handleScroll2 = /* @__PURE__ */ __name20((event) => {
           if (event.target instanceof Node && event.target.contains(context.trigger)) {
@@ -20392,7 +20396,7 @@ var TooltipContentImpl = /* @__PURE__ */ React33.forwardRef(
     );
   }, "TooltipContentImpl")
 );
-var TooltipArrow = /* @__PURE__ */ React33.forwardRef(
+var TooltipArrow = /* @__PURE__ */ React34.forwardRef(
   /* @__PURE__ */ __name20(function TooltipArrow2(props, forwardedRef) {
     const { __scopeTooltip, ...arrowProps } = props;
     const popperScope = usePopperScope2(__scopeTooltip);
@@ -20538,18 +20542,14 @@ function TooltipProvider2({
 function Tooltip2(props) {
   return /* @__PURE__ */ (0, import_jsx_runtime19.jsx)(Root32, { "data-slot": "tooltip", ...props });
 }
-var TooltipTrigger3 = React34.forwardRef(function TooltipTrigger4(props, ref) {
+var TooltipTrigger3 = React35.forwardRef(function TooltipTrigger4(props, ref) {
   return /* @__PURE__ */ (0, import_jsx_runtime19.jsx)(Trigger2, { ref, "data-slot": "tooltip-trigger", ...props });
 });
-function TooltipContent3({
-  children,
-  className,
-  sideOffset = 4,
-  ...props
-}) {
+var TooltipContent3 = React35.forwardRef(function TooltipContent4({ children, className, sideOffset = 4, ...props }, ref) {
   return /* @__PURE__ */ (0, import_jsx_runtime19.jsx)(Portal4, { children: /* @__PURE__ */ (0, import_jsx_runtime19.jsxs)(
     Content22,
     {
+      ref,
       "data-slot": "tooltip-content",
       sideOffset,
       className: cn("z-[2147483647] inline-flex w-fit max-w-xs items-center rounded-md bg-foreground px-2 py-1 text-xs text-background shadow-sm", className),
@@ -20560,7 +20560,7 @@ function TooltipContent3({
       ]
     }
   ) });
-}
+});
 
 // src/assistant-panel.tsx
 var import_react5 = require("react");

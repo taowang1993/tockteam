@@ -1,4 +1,5 @@
 import { execFile } from 'node:child_process'
+import { randomBytes } from 'node:crypto'
 import {
   access,
   mkdir,
@@ -82,13 +83,22 @@ export async function replaceMacBundle(options) {
   const validateBundle = options.validateBundle ?? validateMacBundle
   const pending = join(
     dirname(destination),
-    `.${basename(destination)}.install-${String(process.pid)}`,
+    `.${basename(destination)}.install-${String(process.pid)}-${randomBytes(6).toString('hex')}`,
   )
+  const lock = join(dirname(destination), `.${basename(destination)}.install.lock`)
   let backup
   let previousMoved = false
+  let promoted = false
 
   await validateBundle(source)
-  await rm(pending, { force: true, recursive: true })
+  try {
+    await mkdir(lock)
+  } catch (error) {
+    if (error !== null && typeof error === 'object' && error.code === 'EEXIST') {
+      throw new Error('another TockTeam Desktop install is already in progress')
+    }
+    throw error
+  }
   try {
     await copyBundle(source, pending)
     await validateBundle(pending)
@@ -100,16 +110,23 @@ export async function replaceMacBundle(options) {
     }
     try {
       await rename(pending, destination)
+      promoted = true
+      await validateBundle(destination)
     } catch (error) {
-      if (previousMoved && backup !== undefined) {
-        await rename(backup, destination)
+      try {
+        if (promoted) await rm(destination, { force: true, recursive: true })
+        if (previousMoved && backup !== undefined && !await exists(destination)) {
+          await rename(backup, destination)
+        }
+      } catch (rollbackError) {
+        throw new AggregateError([error, rollbackError], 'TockTeam Desktop install and rollback both failed')
       }
       throw error
     }
-    await validateBundle(destination)
     return { backup, destination }
   } finally {
     await rm(pending, { force: true, recursive: true })
+    await rm(lock, { force: true, recursive: true })
   }
 }
 

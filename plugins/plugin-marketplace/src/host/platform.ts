@@ -86,9 +86,20 @@ function repositoryContentPath(repository: string, path: string): string {
   return `repos/${repository}/contents/${segments.map(encodeURIComponent).join('/')}`
 }
 
+class CommandError extends Error {
+  readonly stderr: string
+  readonly stdout: string
+
+  constructor(command: string, args: readonly string[], stderr: string, stdout: string) {
+    const detail = stderr.trim() || stdout.trim() || 'command returned a non-zero status'
+    super(`${command} ${args.join(' ')} failed: ${detail}`)
+    this.stderr = stderr
+    this.stdout = stdout
+  }
+}
+
 function commandError(command: string, args: readonly string[], stderr: string, stdout: string): Error {
-  const detail = stderr.trim() || stdout.trim() || 'command returned a non-zero status'
-  return new Error(`${command} ${args.join(' ')} failed: ${detail}`)
+  return new CommandError(command, args, stderr, stdout)
 }
 
 async function runCommand(
@@ -248,31 +259,79 @@ function seatbeltString(value: string): string {
   return value.replaceAll('\\', '\\\\').replaceAll('"', '\\"')
 }
 
-/** Deny writes outside the disposable preview tree while allowing DSH to run. */
-export function previewSandboxPolicy(root: string): string {
-  const writableRoots = new Set([resolve(root)])
-  if (existsSync(root)) writableRoots.add(realpathSync(root))
-  const writablePaths = [...writableRoots]
-    .flatMap(path => [path, join(path, '.tmp')])
-    .map(path => `(subpath "${seatbeltString(path)}")`)
+/** Deny host-data reads and writes outside the disposable preview tree. */
+export function previewSandboxPolicy(
+  root: string,
+  options: { network?: boolean; readRoots?: readonly string[] } = {},
+): string {
+  const canonical = (paths: readonly string[]): string[] => {
+    const roots = new Set(paths.map(path => resolve(path)))
+    for (const path of [...roots]) if (existsSync(path)) roots.add(realpathSync(path))
+    return [...roots]
+  }
+  const writablePaths = canonical([root])
+    .flatMap(path => [path, join(path, '.tmp')]
+      .map(writable => `(subpath "${seatbeltString(writable)}")`))
     .join(' ')
+  const readablePaths = canonical([
+    root,
+    ...(options.readRoots ?? []),
+    '/System',
+    '/Library/Apple',
+    '/bin',
+    '/dev',
+    '/private/var/db',
+    '/sbin',
+    '/usr',
+  ]).map(path => `(subpath "${seatbeltString(path)}")`).join(' ')
   return [
     '(version 1)',
     '(deny default)',
     '(allow process*)',
     '(allow file-read*)',
-    '(allow network*)',
+    ...['/Users', '/Volumes', '/private/tmp', '/private/var/folders']
+      .map(path => `(deny file-read-data (subpath "${path}"))`),
+    `(allow file-read* ${readablePaths})`,
+    `(allow file-read-data ${readablePaths})`,
+    ...(options.network === false ? [] : ['(allow network*)']),
     '(allow mach-lookup)',
     '(allow sysctl-read)',
     `(allow file-write* (literal "/dev/null") ${writablePaths})`,
   ].join('')
 }
 
+export function previewSandboxLauncher(input: {
+  network?: boolean
+  pathExists?: (path: string) => boolean
+  platform?: NodeJS.Platform
+  readRoots?: readonly string[]
+  root: string
+  sandbox?: string
+}): { args: string[]; command: string } {
+  const platform = input.platform ?? process.platform
+  const sandbox = input.sandbox ?? '/usr/bin/sandbox-exec'
+  const pathExists = input.pathExists ?? existsSync
+  if (platform !== 'darwin' || !pathExists(sandbox)) {
+    throw new Error(
+      `marketplace previews require a process sandbox, which is unavailable on ${platform}`,
+    )
+  }
+  return {
+    args: ['-p', previewSandboxPolicy(input.root, {
+      ...(input.network === undefined ? {} : { network: input.network }),
+      ...(input.readRoots === undefined ? {} : { readRoots: input.readRoots }),
+    })],
+    command: sandbox,
+  }
+}
+
 interface PreviewScriptCommandInput {
+  network?: boolean
   nodeArguments: string[]
   nodeBinary: string
   pathExists?: (path: string) => boolean
   platform?: NodeJS.Platform
+  readRoots?: readonly string[]
   root: string
   sandbox?: string
 }
@@ -281,22 +340,10 @@ interface PreviewScriptCommandInput {
 export function previewScriptCommand(
   input: PreviewScriptCommandInput,
 ): { args: string[]; command: string } {
-  const platform = input.platform ?? process.platform
-  const sandbox = input.sandbox ?? '/usr/bin/sandbox-exec'
-  const pathExists = input.pathExists ?? existsSync
-  if (platform !== 'darwin' || !pathExists(sandbox)) {
-    throw new Error(
-      `scripted marketplace previews require a write-restricted process sandbox, which is unavailable on ${platform}`,
-    )
-  }
+  const launcher = previewSandboxLauncher(input)
   return {
-    args: [
-      '-p',
-      previewSandboxPolicy(input.root),
-      input.nodeBinary,
-      ...input.nodeArguments,
-    ],
-    command: sandbox,
+    args: [...launcher.args, input.nodeBinary, ...input.nodeArguments],
+    command: launcher.command,
   }
 }
 
@@ -347,6 +394,8 @@ export class ProductionMarketplacePlatform implements MarketplacePlatform {
       DSH_DESKTOP_APP_DATA: input.sandboxRoot,
       DSH_DESKTOP_PREVIEW: '1',
       PATH: this.#options.env.PATH,
+      TEMP: temporary,
+      TMP: temporary,
       TMPDIR: temporary,
     }
     const requested = new Set(input.scripts)
@@ -378,8 +427,13 @@ export class ProductionMarketplacePlatform implements MarketplacePlatform {
     ]
     for (const command of commands) {
       const launcher = previewScriptCommand({
+        network: command.label === 'pnpm install --ignore-scripts',
         nodeArguments: command.args,
         nodeBinary: this.#options.nodeBinary,
+        readRoots: [
+          dirname(dirname(this.#options.nodeBinary)),
+          dirname(dirname(this.#options.pnpmEntry)),
+        ],
         root: input.sandboxRoot,
       })
       this.#options.onLog?.(`marketplace build: ${command.label}`)
@@ -462,7 +516,8 @@ export class ProductionMarketplacePlatform implements MarketplacePlatform {
       ], { env: this.#options.env, timeoutMs: 30_000 })
       return Buffer.from(result.stdout.replaceAll(/\s/g, ''), 'base64').toString('utf8')
     } catch (error) {
-      if (error instanceof Error && /404|Not Found/i.test(error.message)) return null
+      if (error instanceof CommandError
+        && /(?:HTTP\s+404|Not Found)/iu.test(`${error.stderr}\n${error.stdout}`)) return null
       throw error
     }
   }
@@ -496,17 +551,22 @@ export class ProductionMarketplacePlatform implements MarketplacePlatform {
       DSH_DESKTOP_PREVIEW: '1',
       DSH_HOME: input.dshHome,
       PATH: this.#options.env.PATH,
+      TEMP: temporary,
+      TMP: temporary,
       TMPDIR: temporary,
     }
-    const nodeArguments = [this.#options.cliEntry, ...input.args]
-    const sandbox = '/usr/bin/sandbox-exec'
-    const command = process.platform === 'darwin' && existsSync(sandbox) ? sandbox : this.#options.nodeBinary
-    const args = command === sandbox
-      ? ['-p', previewSandboxPolicy(input.sandboxRoot), this.#options.nodeBinary, ...nodeArguments]
-      : nodeArguments
+    const launcher = previewScriptCommand({
+      network: false,
+      nodeArguments: [this.#options.cliEntry, ...input.args],
+      nodeBinary: this.#options.nodeBinary,
+      readRoots: [dirname(dirname(this.#options.nodeBinary)), dirname(this.#options.cliEntry)],
+      root: input.sandboxRoot,
+    })
+    const workspace = join(input.sandboxRoot, 'workspace')
+    mkdirSync(workspace, { recursive: true, mode: 0o700 })
     this.#options.onLog?.(`marketplace command: dsh ${input.args.join(' ')}`)
-    const result = await runCommand(command, args, {
-      cwd: this.#options.cwd,
+    const result = await runCommand(launcher.command, launcher.args, {
+      cwd: workspace,
       env,
       timeoutMs: 180_000,
     })

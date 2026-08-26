@@ -232,17 +232,11 @@ export type DesktopDestinationState = {
  * observation at the exact retained-fd write syscall is outside the Desktop
  * Host threat model; ordinary parent drift still fails closed.
  */
-export type DesktopDestinationPlan = {
+export interface DesktopDestinationPlan {
     entries: readonly [DesktopSelectedFilePlanEntry];
-    publicationName?: never;
-    purpose: 'export-html' | 'export-pdf';
+    purpose: 'export-html' | 'export-pdf' | 'vault-backup';
     totalBytes: number;
-} | {
-    entries: readonly [DesktopSelectedFilePlanEntry];
-    publicationName?: never;
-    purpose: 'vault-backup';
-    totalBytes: number;
-};
+}
 /** Validate and hash the exact ordered destination plan reviewed by the user. */
 export declare function computeDesktopDestinationPlanDigest(input: DesktopDestinationPlan): DesktopSha256;
 type DesktopDestinationPlanRequestBase = {

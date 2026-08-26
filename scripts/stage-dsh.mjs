@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process'
-import { createHash } from 'node:crypto'
+import { createHash, randomBytes } from 'node:crypto'
 import { createRequire } from 'node:module'
 import {
   chmodSync,
@@ -10,6 +10,7 @@ import {
   mkdirSync,
   readFileSync,
   readlinkSync,
+  renameSync,
   readdirSync,
   realpathSync,
   rmSync,
@@ -84,12 +85,17 @@ function portableSymlink(target, link) {
 }
 
 function download(url, target) {
-  const temporary = `${target}.download-${String(process.pid)}`
-  rmSync(temporary, { force: true })
-  run('curl', ['--fail', '--location', '--silent', '--show-error', url, '--output', temporary])
-  rmSync(target, { force: true })
-  writeFileSync(target, readFileSync(temporary))
-  rmSync(temporary, { force: true })
+  const temporary = `${target}.download-${String(process.pid)}-${randomBytes(6).toString('hex')}`
+  try {
+    run('curl', ['--fail', '--location', '--silent', '--show-error', url, '--output', temporary])
+    try {
+      renameSync(temporary, target)
+    } catch (error) {
+      if (!existsSync(target)) throw error
+    }
+  } finally {
+    rmSync(temporary, { force: true })
+  }
 }
 
 function sha256(path) {
@@ -100,17 +106,30 @@ function ensureNodeRuntime() {
   mkdirSync(cache, { recursive: true })
   const base = `https://nodejs.org/dist/v${nodeVersion}`
   const sumsPath = join(cache, `SHASUMS256-v${nodeVersion}.txt`)
-  if (!existsSync(nodeArchive)) download(`${base}/${nodeArchiveName}`, nodeArchive)
-  if (!existsSync(sumsPath)) download(`${base}/SHASUMS256.txt`, sumsPath)
-  const expectedLine = readFileSync(sumsPath, 'utf8').split('\n')
-    .find(line => line.endsWith(`  ${nodeArchiveName}`))
-  if (expectedLine === undefined) throw new Error(`Node checksum entry missing for ${nodeArchiveName}`)
-  const expected = expectedLine.split(/\s+/)[0]
-  const actual = sha256(nodeArchive)
-  if (actual !== expected) {
-    throw new Error(`Node archive checksum mismatch: expected ${expected}, received ${actual}`)
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    if (!existsSync(nodeArchive)) download(`${base}/${nodeArchiveName}`, nodeArchive)
+    if (!existsSync(sumsPath)) download(`${base}/SHASUMS256.txt`, sumsPath)
+    try {
+      const expectedLine = readFileSync(sumsPath, 'utf8').split('\n')
+        .find(line => line.endsWith(`  ${nodeArchiveName}`))
+      if (expectedLine === undefined) throw new Error(`Node checksum entry missing for ${nodeArchiveName}`)
+      const expected = expectedLine.split(/\s+/)[0]
+      const actual = sha256(nodeArchive)
+      if (actual !== expected) {
+        throw new Error(`Node archive checksum mismatch: expected ${expected}, received ${actual}`)
+      }
+      break
+    } catch (error) {
+      rmSync(nodeArchive, { force: true })
+      rmSync(sumsPath, { force: true })
+      if (attempt === 1) throw error
+    }
   }
-  if (!existsSync(nodeExecutable)) {
+  const cachedVersion = existsSync(nodeExecutable)
+    ? spawnSync(nodeExecutable, ['--version'], { encoding: 'utf8' })
+    : undefined
+  if (cachedVersion?.status !== 0 || cachedVersion.stdout.trim() !== `v${nodeVersion}`) {
+    rmSync(nodeCache, { recursive: true, force: true })
     const extraction = join(cache, `.node-extract-${String(process.pid)}`)
     rmSync(extraction, { recursive: true, force: true })
     mkdirSync(extraction, { recursive: true })
@@ -120,13 +139,16 @@ function ensureNodeRuntime() {
     } else {
       run('tar', ['-xzf', nodeArchive, '-C', extraction])
     }
-    rmSync(nodeCache, { recursive: true, force: true })
-    cpSync(join(extraction, nodeFolder), nodeCache, {
-      recursive: true,
-      preserveTimestamps: true,
-      verbatimSymlinks: true,
-    })
-    rmSync(extraction, { recursive: true, force: true })
+    try {
+      renameSync(join(extraction, nodeFolder), nodeCache)
+    } catch (error) {
+      const winner = existsSync(nodeExecutable)
+        ? spawnSync(nodeExecutable, ['--version'], { encoding: 'utf8' })
+        : undefined
+      if (winner?.status !== 0 || winner.stdout.trim() !== `v${nodeVersion}`) throw error
+    } finally {
+      rmSync(extraction, { recursive: true, force: true })
+    }
   }
   if (!isWindowsNode) {
     for (const [name, target] of [

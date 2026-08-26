@@ -12,7 +12,6 @@ test('vault backup rejects member paths because Desktop accepts only one opaque 
         size: bytes.length,
         target: { kind: 'relative-file', relativePath: 'files/Projects/Plan.md' as never },
       }],
-      publicationName: 'backup' as never,
       purpose: 'vault-backup',
       totalBytes: bytes.length,
     } as never),

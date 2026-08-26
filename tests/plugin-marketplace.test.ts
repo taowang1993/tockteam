@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict'
+import { spawnSync } from 'node:child_process'
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join, win32 } from 'node:path'
+import { dirname, join, win32 } from 'node:path'
 import { test } from 'node:test'
 import { fileURLToPath } from 'node:url'
 import { parseMarketplaceCatalog } from '../plugins/plugin-marketplace/src/catalog.ts'
@@ -14,6 +15,7 @@ import type {
 } from '../plugins/plugin-marketplace/src/host/platform.ts'
 import {
   findGitHubCli,
+  previewSandboxPolicy,
   previewScriptCommand,
   ProductionMarketplacePlatform,
   withGitHubCredentials,
@@ -335,6 +337,20 @@ test('GitHub CLI discovery follows Windows PATH syntax and executable names', ()
   }
 })
 
+test('repository names containing 404 do not hide unrelated command failures', async () => {
+  const platform = new ProductionMarketplacePlatform({
+    cliEntry: '/unused/dsh.mjs',
+    cwd: tmpdir(),
+    env: { DSH_DESKTOP_GH_PATH: process.execPath, PATH: '' },
+    nodeBinary: process.execPath,
+    pnpmEntry: '/unused/pnpm.mjs',
+  })
+  await assert.rejects(
+    platform.readRepositoryFile('owner/404-tools', 'package.json', COMMIT),
+    /failed/u,
+  )
+})
+
 test('public catalogs load anonymously without GitHub CLI', async () => {
   let requested = ''
   const platform = new ProductionMarketplacePlatform({
@@ -458,6 +474,39 @@ test('production bundle build runs approved hooks in its own workspace', {
   }
 })
 
+test('preview sandbox denies host data and optional network access', {
+  skip: process.platform !== 'darwin' || !existsSync('/usr/bin/sandbox-exec')
+    ? 'requires macOS Seatbelt'
+    : false,
+}, () => {
+  const root = mkdtempSync(join(tmpdir(), 'tockteam-preview-policy-'))
+  const outside = mkdtempSync('/private/tmp/tockteam-preview-secret-')
+  const secret = join(outside, 'secret.txt')
+  const script = join(root, 'probe.mjs')
+  try {
+    writeFileSync(secret, 'host secret')
+    writeFileSync(script, [
+      "import { readFileSync, writeFileSync } from 'node:fs'",
+      `try { readFileSync(${JSON.stringify(secret)}); throw new Error('host data was readable') }`,
+      "catch (error) { if (error instanceof Error && error.message === 'host data was readable') throw error }",
+      "writeFileSync(new URL('./denied', import.meta.url), 'denied')",
+    ].join('\n'))
+    const policy = previewSandboxPolicy(root, {
+      network: false,
+      readRoots: [dirname(dirname(process.execPath))],
+    })
+    assert.doesNotMatch(policy, /allow network/u)
+    const result = spawnSync('/usr/bin/sandbox-exec', [
+      '-p', policy, process.execPath, script,
+    ], { encoding: 'utf8' })
+    assert.equal(result.status, 0, result.stderr)
+    assert.equal(readFileSync(join(root, 'denied'), 'utf8'), 'denied')
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+    rmSync(outside, { recursive: true, force: true })
+  }
+})
+
 test('scripted bundle previews fail closed without a write sandbox', () => {
   for (const platform of ['linux', 'win32'] as const) {
     assert.throws(() => previewScriptCommand({
@@ -516,6 +565,29 @@ test('a client reconnect during apply does not leave a sticky busy error', async
   }
 })
 
+test('marketplace rejects concurrent mutations instead of acknowledging dropped work', async () => {
+  const setup = fixture()
+  try {
+    let release!: () => void
+    const gate = new Promise<void>(resolve => { release = resolve })
+    setup.platform.loadCatalog = async (): Promise<unknown> => {
+      await gate
+      return catalogDocument()
+    }
+    const refresh = setup.manager.dispatch({ type: 'refresh' })
+    await new Promise<void>(resolve => { setImmediate(resolve) })
+    await assert.rejects(
+      setup.manager.dispatch({ type: 'prepare', action: 'install', pluginId: 'safe-demo' }),
+      /transaction is already in progress/u,
+    )
+    release()
+    await refresh
+    assert.equal(setup.manager.getSnapshot().preview, null)
+  } finally {
+    setup.cleanup()
+  }
+})
+
 test('Agent gateway authenticates and defers runtime-restarting applies', async () => {
   const setup = fixture()
   const gateway = await startMarketplaceAgentGateway(setup.manager, { deferMs: 5 })
@@ -536,11 +608,17 @@ test('Agent gateway authenticates and defers runtime-restarting applies', async 
       method: 'POST',
     })
     assert.equal(prepare.status, 200)
-    const prepared = await prepare.json() as { snapshot: { preview: { pluginId: string } | null } }
+    const prepared = await prepare.json() as { snapshot: { preview: { pluginId: string; transactionId: string } | null } }
     assert.equal(prepared.snapshot.preview?.pluginId, 'safe-demo')
 
     const apply = await fetch(gateway.url, {
-      body: JSON.stringify({ type: 'dispatch', command: { type: 'apply' } }),
+      body: JSON.stringify({
+        type: 'dispatch',
+        command: {
+          type: 'apply',
+          expectedTransactionId: prepared.snapshot.preview?.transactionId,
+        },
+      }),
       headers: { authorization: `Bearer ${gateway.token}` },
       method: 'POST',
     })
@@ -554,6 +632,43 @@ test('Agent gateway authenticates and defers runtime-restarting applies', async 
     }
     assert.equal(setup.manager.getSnapshot().preview, null)
     assert.equal(setup.manager.getSnapshot().installed[0]?.pluginId, 'safe-demo')
+  } finally {
+    await gateway.close()
+    setup.cleanup()
+  }
+})
+
+test('Agent gateway binds deferred apply to the acknowledged preview', async () => {
+  const setup = fixture()
+  const errors: unknown[] = []
+  const gateway = await startMarketplaceAgentGateway(setup.manager, {
+    deferMs: 50,
+    onError: error => { errors.push(error) },
+  })
+  const dispatch = async (command: object) => await fetch(gateway.url, {
+    body: JSON.stringify({ type: 'dispatch', command }),
+    headers: { authorization: `Bearer ${gateway.token}` },
+    method: 'POST',
+  })
+  try {
+    await setup.manager.dispatch({ type: 'refresh' })
+    await setup.manager.dispatch({ type: 'prepare', action: 'install', pluginId: 'safe-demo' })
+    const acknowledged = setup.manager.getSnapshot().preview?.transactionId
+    assert.ok(acknowledged)
+    assert.equal((await dispatch({
+      type: 'apply',
+      expectedTransactionId: acknowledged,
+    })).status, 202)
+    assert.equal((await dispatch({ type: 'discard' })).status, 400)
+
+    await setup.manager.dispatch({ type: 'discard' })
+    await setup.manager.dispatch({ type: 'prepare', action: 'install', pluginId: 'safe-demo' })
+    assert.notEqual(setup.manager.getSnapshot().preview?.transactionId, acknowledged)
+    await new Promise(resolve => { setTimeout(resolve, 80) })
+
+    assert.equal(setup.manager.getSnapshot().installed.length, 0)
+    assert.notEqual(setup.manager.getSnapshot().preview, null)
+    assert.match(String(errors[0]), /preview changed before deferred apply/u)
   } finally {
     await gateway.close()
     setup.cleanup()
@@ -896,6 +1011,22 @@ test('the marketplace refuses to modify protected desktop plugins', async () => 
       snapshot.catalog.find(plugin => plugin.id === 'tockteam-desktop')?.protected,
       true,
     )
+  } finally {
+    setup.cleanup()
+  }
+})
+
+test('marketplace state fails closed on malformed receipts or source locks', () => {
+  const setup = fixture()
+  try {
+    const managed = join(setup.profileDir, '.tockteam')
+    mkdirSync(managed, { recursive: true })
+    writeFileSync(join(managed, 'marketplace.json'), JSON.stringify({
+      entries: [],
+      locks: [{ pluginId: 'missing-security-fields' }],
+      version: 2,
+    }))
+    assert.throws(() => setup.manager.getSnapshot(), /invalid marketplace source lock/u)
   } finally {
     setup.cleanup()
   }

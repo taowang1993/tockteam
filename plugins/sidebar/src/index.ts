@@ -1,7 +1,8 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
+import { isTrustedBrowserRequest, webRuntimeTrustedHosts } from '../../shared/request-trust.ts'
 import type { WorkspaceHostMutation } from './protocol.ts'
 import { WORKSPACE_API_PATH } from './protocol.ts'
-import { mutateWorkspace, readWorkspaceFacts } from './git-workspace.ts'
+import { mutateWorkspace, normalizeWorkspacePath, readWorkspaceFacts } from './git-workspace.ts'
 import {
   mountSidebarPreferences,
   type SidebarDesktopCapability,
@@ -11,6 +12,10 @@ import {
   TOCKTEAM_SURFACE_SERVICE,
   type TockTeamSurface,
 } from '../../shared/surface.ts'
+
+interface HostSession {
+  header: { cwd?: string }
+}
 
 interface HostContext {
   effect(effect: () => (() => void) | void, label?: string): void
@@ -25,10 +30,29 @@ interface HostContext {
   logger: {
     warn(message: string): void
   }
+  sessions: { get(id: string): HostSession | undefined }
 }
 
 export const name = 'tockteam-sidebar'
-export const inject = ['webServer']
+export const inject = ['sessions', 'webServer']
+
+export function authorizedSessionWorkspace(
+  sessions: HostContext['sessions'],
+  sessionId: string | null,
+  cwd: string | undefined,
+): string | undefined {
+  if (sessionId === null || sessionId.length === 0 || sessionId.length > 256
+    || /[\u0000-\u001f\u007f]/u.test(sessionId)) return undefined
+  try {
+    const requested = normalizeWorkspacePath(cwd)
+    const authorized = sessions.get(sessionId)?.header.cwd
+    return authorized !== undefined && normalizeWorkspacePath(authorized) === requested
+      ? requested
+      : undefined
+  } catch {
+    return undefined
+  }
+}
 
 function sendJson(response: ServerResponse, status: number, payload: unknown): void {
   response.writeHead(status, {
@@ -36,17 +60,6 @@ function sendJson(response: ServerResponse, status: number, payload: unknown): v
     'content-type': 'application/json; charset=utf-8',
   })
   response.end(JSON.stringify(payload))
-}
-
-function sameOrigin(request: IncomingMessage): boolean {
-  const origin = request.headers.origin
-  const host = request.headers.host
-  if (origin === undefined || host === undefined) return false
-  try {
-    return new URL(origin).host === host
-  } catch {
-    return false
-  }
 }
 
 async function readJsonBody(request: IncomingMessage): Promise<unknown> {
@@ -79,6 +92,7 @@ export function apply(ctx: HostContext): void {
     return
   }
   const dataRoot = surface?.dataRoot ?? legacy?.appDataPath ?? ''
+  const trustedHosts = webRuntimeTrustedHosts(ctx)
   if (dataRoot !== '') {
     ctx.effect(
       () => mountSidebarPreferences(ctx, { appDataPath: dataRoot }),
@@ -92,18 +106,24 @@ export function apply(ctx: HostContext): void {
       try {
         const url = new URL(request.url ?? '/', 'http://tockteam.internal')
         const cwd = url.searchParams.get('cwd') ?? undefined
+        const sessionId = url.searchParams.get('sessionId')
+        if (!isTrustedBrowserRequest(request, trustedHosts)) {
+          sendJson(response, 403, { error: 'untrusted workspace request' })
+          return
+        }
+        const workspace = authorizedSessionWorkspace(ctx.sessions, sessionId, cwd)
+        if (workspace === undefined) {
+          sendJson(response, 403, { error: 'workspace is not authorized for this session' })
+          return
+        }
         if (request.method === 'GET') {
-          sendJson(response, 200, await readWorkspaceFacts(cwd))
+          sendJson(response, 200, await readWorkspaceFacts(workspace))
           return
         }
         if (request.method === 'POST') {
-          if (!sameOrigin(request)) {
-            sendJson(response, 403, { error: 'untrusted workspace mutation origin' })
-            return
-          }
           const mutation = await readJsonBody(request)
           if (!isMutation(mutation)) throw new Error('invalid workspace mutation')
-          sendJson(response, 200, await mutateWorkspace(cwd, mutation))
+          sendJson(response, 200, await mutateWorkspace(workspace, mutation))
           return
         }
         response.writeHead(405, { allow: 'GET, POST' })

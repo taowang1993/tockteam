@@ -92,8 +92,8 @@ type ExpectedGrantErrorCode =
   | 'unsafe-source'
   | 'unsafe-target'
 
-type StaticDestination = Extract<DesktopDestinationPlan, { purpose: 'export-html' | 'export-pdf' }>
-type BackupDestination = Extract<DesktopDestinationPlan, { purpose: 'vault-backup' }>
+type StaticDestination = DesktopDestinationPlan & { purpose: 'export-html' | 'export-pdf' }
+type BackupDestination = DesktopDestinationPlan & { purpose: 'vault-backup' }
 type PrintOnly = Extract<DesktopPrintExportRequest, { format: 'print' }>
 type ManagedCleanup = Exclude<DesktopCleanupEvidence, { status: 'complete' }>
 
@@ -143,10 +143,10 @@ export type DesktopHostContractAssertions = [
   Assert<Equal<StaticDestination['purpose'], 'export-html' | 'export-pdf'>>,
   Assert<Equal<StaticDestination['entries']['length'], 1>>,
   Assert<Equal<StaticDestination['entries'][0]['target']['kind'], 'selected-file'>>,
-  Assert<Equal<Exclude<StaticDestination['publicationName'], undefined>, never>>,
+  Assert<Equal<HasKey<StaticDestination, 'publicationName'>, false>>,
   Assert<Equal<BackupDestination['entries']['length'], 1>>,
   Assert<Equal<BackupDestination['entries'][0]['target']['kind'], 'selected-file'>>,
-  Assert<Equal<Exclude<BackupDestination['publicationName'], undefined>, never>>,
+  Assert<Equal<HasKey<BackupDestination, 'publicationName'>, false>>,
   Assert<Equal<Exclude<PrintOnly['authorization'], undefined>, never>>,
   Assert<Equal<Exclude<PrintOnly['purpose'], undefined>, never>>,
 ]

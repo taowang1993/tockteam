@@ -30,7 +30,7 @@ import {
 import {
   findGitHubCli,
   previewRuntimeBaseEnvironment,
-  previewSandboxPolicy,
+  previewSandboxLauncher,
   ProductionMarketplacePlatform,
   withGitHubCredentials,
 } from '../plugins/plugin-marketplace/src/host/platform.ts'
@@ -38,6 +38,7 @@ import { parseMarketplaceCommand } from '../plugins/plugin-marketplace/src/proto
 import type { DesktopCommand, DesktopInfo, DesktopRuntimeSnapshot } from './contracts.ts'
 import { DesktopCallerAuthorizations } from './desktop-caller-authorization.ts'
 import { DesktopCallerChannel } from './desktop-caller-channel.ts'
+import { isAllowedBrowserNavigation, isAllowedRuntimeNavigation } from './desktop-navigation.ts'
 import type {
   DesktopCallerOperation,
   DesktopDispatchCompletionRequest,
@@ -371,9 +372,16 @@ function initializeDesktopPicker(): void {
           popOutRouteTokens.delete(windowId)
           if (ownsRoute) onClosed()
         })
-        await window.loadURL(target.href)
-        window.show()
-        return windowId
+        try {
+          await window.loadURL(target.href)
+          window.show()
+          return windowId
+        } catch (error) {
+          popOutWindows.delete(windowId)
+          popOutRouteTokens.delete(windowId)
+          if (!window.isDestroyed()) window.destroy()
+          throw error
+        }
       },
     },
   })
@@ -542,10 +550,10 @@ function previewRuntimeOptions(input: {
   if (!existsSync(paths.nodeBinary)) throw new Error(`packaged Node runtime is missing: ${paths.nodeBinary}`)
   if (!existsSync(paths.cliEntry)) throw new Error(`packaged DSH CLI is missing: ${paths.cliEntry}`)
   const preview = { pluginId: input.pluginId, transactionId: input.transactionId }
-  const sandbox = '/usr/bin/sandbox-exec'
-  const launcher = process.platform === 'darwin' && existsSync(sandbox)
-    ? { args: ['-p', previewSandboxPolicy(input.sandboxRoot)], command: sandbox }
-    : undefined
+  const launcher = previewSandboxLauncher({
+    readRoots: [paths.runtimeRoot, dirname(paths.nodeBinDirectory)],
+    root: input.sandboxRoot,
+  })
   return {
     args: ['--profile', DESKTOP_PROFILE],
     cliEntry: paths.cliEntry,
@@ -556,9 +564,11 @@ function previewRuntimeOptions(input: {
         dshHome: input.dshHome,
         preview,
       }),
+      TEMP: temporary,
+      TMP: temporary,
       TMPDIR: temporary,
     },
-    ...(launcher === undefined ? {} : { launcher }),
+    launcher,
     nodeBinary: paths.nodeBinary,
     onLog: (stream, line) => { appendLog(stream, `[preview:${input.pluginId}] ${line}`) },
     readyTimeoutMs: 90_000,
@@ -569,27 +579,6 @@ function isEligibleDesktopRevealWindow(): boolean {
   if (mainWindow === undefined || mainWindow.isDestroyed() || mainWindow.webContents.isDestroyed()) return false
   if (runtimeOrigin === undefined) return false
   return originOf(mainWindow.webContents.getURL()) === runtimeOrigin
-}
-
-function isAllowedRuntimeNavigation(target: string, allowedOrigin: string | undefined): boolean {
-  if (target.startsWith('file:')) return true
-  if (allowedOrigin === undefined) return false
-  try {
-    return new URL(target).origin === allowedOrigin
-  } catch {
-    return false
-  }
-}
-
-function isAllowedBrowserNavigation(target: string): boolean {
-  if (target === 'about:blank') return true
-  try {
-    const url = new URL(target)
-    if (url.protocol !== 'https:' && url.protocol !== 'http:') return false
-    return url.origin !== runtimeOrigin && url.origin !== previewOrigin
-  } catch {
-    return false
-  }
 }
 
 function configureWebClipGuest(embedder: WebContents, contents: WebContents): void {
@@ -749,7 +738,7 @@ function createWindow(options: { preview?: boolean; title?: string } = {}): Brow
     const webClipGuest = isWebClipPartition(params.partition)
     if (webClipGuest
       ? params.src !== undefined && params.src !== '' && params.src !== 'about:blank'
-      : !isAllowedBrowserNavigation(params.src ?? 'about:blank')) {
+      : !isAllowedBrowserNavigation(params.src ?? 'about:blank', runtimeOrigin, previewOrigin)) {
       event.preventDefault()
       return
     }
@@ -783,7 +772,7 @@ function createWindow(options: { preview?: boolean; title?: string } = {}): Brow
       return { action: 'deny' }
     })
     contents.on('will-navigate', (event, url) => {
-      if (isAllowedBrowserNavigation(url)) return
+      if (isAllowedBrowserNavigation(url, runtimeOrigin, previewOrigin)) return
       event.preventDefault()
     })
   })
@@ -799,7 +788,7 @@ function createWindow(options: { preview?: boolean; title?: string } = {}): Brow
   })
   window.webContents.on('will-navigate', (event, url) => {
     const allowedOrigin = options.preview === true ? previewOrigin : runtimeOrigin
-    if (isAllowedRuntimeNavigation(url, allowedOrigin)) return
+    if (isAllowedRuntimeNavigation(url, allowedOrigin, splashPath)) return
     event.preventDefault()
     if (url.startsWith('https:') || url.startsWith('http:')) void shell.openExternal(url)
   })

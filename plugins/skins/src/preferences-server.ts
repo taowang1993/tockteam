@@ -1,6 +1,7 @@
 import { randomBytes } from 'node:crypto'
 import {
   copyFile,
+  link,
   mkdir,
   readFile,
   rename,
@@ -9,6 +10,7 @@ import {
 } from 'node:fs/promises'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { dirname, join } from 'node:path'
+import { isTrustedBrowserRequest, webRuntimeTrustedHosts } from '../../shared/request-trust.ts'
 import {
   DEFAULT_SKIN_PREFERENCES,
   PREFERENCES_API_PATH,
@@ -23,6 +25,7 @@ export interface DesktopCapability {
 }
 
 export interface DesktopSkinPreferencesHostContext {
+  get(name: string): unknown
   webServer: {
     register(route: {
       kind: 'exact'
@@ -49,17 +52,6 @@ function sendJson(response: ServerResponse, status: number, payload: unknown): v
   response.end(JSON.stringify(payload))
 }
 
-function sameOrigin(request: IncomingMessage): boolean {
-  const origin = request.headers.origin
-  const host = request.headers.host
-  if (origin === undefined || host === undefined) return false
-  try {
-    return new URL(origin).host === host
-  } catch {
-    return false
-  }
-}
-
 async function readJson(request: IncomingMessage): Promise<unknown> {
   const chunks: Buffer[] = []
   let size = 0
@@ -83,8 +75,18 @@ export async function loadSkinPreferences(path: string): Promise<DesktopSkinPref
   const legacy = join(dirname(path), LEGACY_SKIN_PREFERENCES_FILE)
   try {
     const migrated = await readSkinPreferences(legacy)
-    await saveSkinPreferences(path, migrated)
-    return migrated
+    await mkdir(dirname(path), { recursive: true })
+    const temporary = `${path}.migrate-${randomBytes(6).toString('hex')}`
+    await writeFile(temporary, `${JSON.stringify(migrated, undefined, 2)}\n`, { mode: 0o600 })
+    try {
+      await link(temporary, path)
+      return migrated
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error
+      return await readSkinPreferences(path)
+    } finally {
+      await unlink(temporary).catch(() => undefined)
+    }
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
   }
@@ -119,6 +121,7 @@ export function mountDesktopSkinPreferences(
     throw new Error('skins: desktop application data path is unavailable')
   }
   const path = join(desktop.appDataPath, 'skins.json')
+  const trustedHosts = webRuntimeTrustedHosts(ctx)
   return ctx.webServer.register({
     kind: 'exact',
     path: PREFERENCES_API_PATH,
@@ -129,7 +132,7 @@ export function mountDesktopSkinPreferences(
           return
         }
         if (request.method === 'PUT') {
-          if (!sameOrigin(request)) {
+          if (!isTrustedBrowserRequest(request, trustedHosts)) {
             sendJson(response, 403, { error: 'untrusted desktop skin preferences origin' })
             return
           }

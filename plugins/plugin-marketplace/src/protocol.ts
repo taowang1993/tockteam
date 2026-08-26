@@ -183,6 +183,13 @@ export interface MarketplaceSnapshot {
   undoAvailable: boolean
 }
 
+export interface MarketplacePlanIdentity {
+  action: MarketplaceAction
+  manifestHash: string
+  pluginId: string
+  resolvedCommit: string
+}
+
 export type MarketplaceCommand =
   | { type: 'refresh' }
   | { type: 'inspect'; action: MarketplaceAction; pluginId: string }
@@ -190,11 +197,12 @@ export type MarketplaceCommand =
   | {
     type: 'preview'
     confirmations?: MarketplaceConfirmation[]
+    expectedPlan?: MarketplacePlanIdentity
     /** @deprecated Accepted while older renderers reconnect during an upgrade. */
     allowBuildScripts?: boolean
   }
   | { type: 'discard' }
-  | { type: 'apply' }
+  | { type: 'apply'; expectedTransactionId?: string }
   | { type: 'undo' }
 
 export interface PluginMarketplaceBridge {
@@ -211,9 +219,21 @@ export function parseMarketplaceCommand(value: unknown): MarketplaceCommand {
   if (!isRecord(value) || typeof value.type !== 'string') {
     throw new Error('marketplace command must be an object with a type')
   }
-  if (value.type === 'refresh' || value.type === 'discard'
-    || value.type === 'apply' || value.type === 'undo') {
+  if (value.type === 'refresh' || value.type === 'discard' || value.type === 'undo') {
     return { type: value.type }
+  }
+  if (value.type === 'apply') {
+    if (Object.keys(value).some(key => key !== 'type' && key !== 'expectedTransactionId')
+      || value.expectedTransactionId !== undefined
+        && (typeof value.expectedTransactionId !== 'string' || value.expectedTransactionId.length === 0)) {
+      throw new Error('invalid marketplace apply command')
+    }
+    return {
+      type: 'apply',
+      ...(value.expectedTransactionId === undefined ? {} : {
+        expectedTransactionId: value.expectedTransactionId,
+      }),
+    }
   }
   if (value.type === 'inspect' || value.type === 'prepare') {
     if (!['install', 'update', 'enable', 'disable', 'uninstall'].includes(String(value.action))
@@ -227,6 +247,9 @@ export function parseMarketplaceCommand(value: unknown): MarketplaceCommand {
     }
   }
   if (value.type === 'preview') {
+    if (Object.keys(value).some(key => !['allowBuildScripts', 'confirmations', 'expectedPlan', 'type'].includes(key))) {
+      throw new Error('invalid marketplace preview command')
+    }
     const valid = new Set<MarketplaceConfirmation>([
       'allow-build-scripts',
       'accept-high-risk',
@@ -242,12 +265,28 @@ export function parseMarketplaceCommand(value: unknown): MarketplaceCommand {
       && typeof value.allowBuildScripts !== 'boolean') {
       throw new Error('invalid marketplace preview compatibility flag')
     }
+    let expectedPlan: MarketplacePlanIdentity | undefined
+    if (value.expectedPlan !== undefined) {
+      if (!isRecord(value.expectedPlan)
+        || Object.keys(value.expectedPlan).some(key => !['action', 'manifestHash', 'pluginId', 'resolvedCommit'].includes(key))
+        || typeof value.expectedPlan.pluginId !== 'string'
+        || !['install', 'update', 'enable', 'disable', 'uninstall'].includes(String(value.expectedPlan.action))
+        || typeof value.expectedPlan.manifestHash !== 'string'
+        || typeof value.expectedPlan.resolvedCommit !== 'string') {
+        throw new Error('invalid marketplace preview plan identity')
+      }
+      expectedPlan = value.expectedPlan as unknown as MarketplacePlanIdentity
+    }
     const confirmations = Array.isArray(value.confirmations)
       ? value.confirmations as MarketplaceConfirmation[]
       : value.allowBuildScripts === true
         ? ['allow-build-scripts'] satisfies MarketplaceConfirmation[]
         : [] satisfies MarketplaceConfirmation[]
-    return { type: 'preview', confirmations }
+    return {
+      type: 'preview',
+      confirmations,
+      ...(expectedPlan === undefined ? {} : { expectedPlan }),
+    }
   }
   throw new Error(`unsupported marketplace command: ${value.type}`)
 }

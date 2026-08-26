@@ -9,6 +9,21 @@ import {
   formatReviewRequest,
 } from '../plugins/sidebar/src/client/review-comments.ts'
 
+test('Git review paths decode quoted UTF-8 names', () => {
+  const files = parseGitReviewDiff([
+    'diff --git "a/notes/\\346\\265\\213\\350\\257\\225 file.md" "b/notes/\\346\\265\\213\\350\\257\\225 file.md"',
+    '--- "a/notes/\\346\\265\\213\\350\\257\\225 file.md"',
+    '+++ "b/notes/\\346\\265\\213\\350\\257\\225 file.md"',
+    '@@ -1 +1 @@',
+    '-old',
+    '+new',
+  ].join('\n'))
+
+  assert.equal(files.length, 1)
+  assert.equal(files[0]?.oldPath, 'notes/测试 file.md')
+  assert.equal(files[0]?.path, 'notes/测试 file.md')
+})
+
 test('Better Sidebar commit patches become line-addressable reviews', () => {
   const diff = [
     'diff --git a/src/value.ts b/src/value.ts',

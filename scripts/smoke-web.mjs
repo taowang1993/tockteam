@@ -16,6 +16,7 @@ import { ensureWebProfile, WEB_PROFILE } from '../src/profile.ts'
 import { bundledRuntimePaths, runtimeSearchPath } from '../src/runtime-paths.ts'
 import { resolveProductVersion } from '../src/version.ts'
 import { resolveNodeDistributionPlatform } from '../src/node-platform.ts'
+import { stopChildProcess } from './process-cleanup.mjs'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 
@@ -256,10 +257,25 @@ try {
   git('commit', '-m', 'web smoke baseline')
   writeFileSync(join(smokeRoot, 'web-smoke.txt'), 'after\n')
 
-  const workspaceFactsResponse = await fetch(new URL(
-    `/tockteam/workspace?cwd=${encodeURIComponent(smokeRoot)}`,
-    base,
-  ))
+  const sessionResponse = await fetch(new URL('/api/session.create', base), {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      type: 'client-request',
+      rpcId: 'web-smoke-session',
+      method: 'session.create',
+      payload: { cwd: smokeRoot },
+    }),
+  })
+  const sessionEnvelope = await sessionResponse.json()
+  assert.equal(sessionResponse.status, 200)
+  assert.equal(sessionEnvelope.result?.ok, true, JSON.stringify(sessionEnvelope))
+  const sessionId = sessionEnvelope.result.value.sessionId
+
+  const workspaceFactsUrl = new URL('/tockteam/workspace', base)
+  workspaceFactsUrl.searchParams.set('cwd', smokeRoot)
+  workspaceFactsUrl.searchParams.set('sessionId', sessionId)
+  const workspaceFactsResponse = await fetch(workspaceFactsUrl)
   const workspaceFacts = await workspaceFactsResponse.json()
   assert.equal(workspaceFactsResponse.status, 200)
   assert.equal(workspaceFacts.kind, 'repository')
@@ -278,7 +294,7 @@ try {
     assert.equal(envelope.ok, true, JSON.stringify(envelope))
     return envelope.value
   }
-  const sidebarScope = { sessionId: 'web-smoke', cwd: smokeRoot }
+  const sidebarScope = { sessionId, cwd: smokeRoot }
   const sessionCwd = await sidebarCall('session.cwd', sidebarScope)
   assert.equal(sessionCwd.cwd, smokeRoot)
   const workspaceTree = await sidebarCall('fs.tree', sidebarScope)
@@ -347,19 +363,6 @@ try {
   console.log('Better Sidebar Host API: ready, session/files/Git verified on the web surface')
   console.log('Better Sidebar terminal PTY: ready, command execution verified on the web surface')
 } finally {
-  if (child.exitCode === null) {
-    child.kill('SIGTERM')
-    await new Promise(resolve => {
-      const escalate = setTimeout(() => { child.kill('SIGKILL') }, 8_000)
-      child.once('exit', () => {
-        clearTimeout(escalate)
-        resolve()
-      })
-      child.once('error', () => {
-        clearTimeout(escalate)
-        resolve()
-      })
-    })
-  }
+  await stopChildProcess(child)
   rmSync(smokeRoot, { recursive: true, force: true })
 }

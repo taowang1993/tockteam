@@ -42,12 +42,17 @@ void app.whenReady().then(async () => {
   const startedAt = Date.now()
   let navigationReadyAt = null
   let settled = false
+  let watchdog
 
   const settle = error => {
     if (settled) return
     settled = true
+    clearTimeout(watchdog)
     finish(window, error)
   }
+  watchdog = setTimeout(() => {
+    settle(new Error('DSH Chromium client graph timed out during navigation or renderer execution'))
+  }, timeoutMs)
 
   window.webContents.on('render-process-gone', (_event, details) => {
     settle(new Error(`Chromium renderer exited: ${details.reason}`))

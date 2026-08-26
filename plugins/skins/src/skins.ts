@@ -1,5 +1,5 @@
 import type { DesktopSkinsMessage } from './client/i18n.ts'
-import type { DesktopSkinId } from './preferences.ts'
+import { SKIN_ID, type SkinId } from './skin-ids.ts'
 
 export type SkinColorScheme = 'light' | 'dark'
 
@@ -8,7 +8,7 @@ export type TuiSkinColors = Readonly<Record<string, string>>
 
 /** One surface-neutral TockTeam skin with browser and terminal adapters. */
 export interface TockTeamSkin {
-  id: DesktopSkinId
+  id: SkinId
   colorScheme: SkinColorScheme
   tokens: Readonly<Record<string, string>>
   tui: TuiSkinColors
@@ -217,7 +217,7 @@ const EMBER_DUSK_TOKENS = {
 
 export const TOCKTEAM_SKINS: readonly TockTeamSkin[] = Object.freeze([
   Object.freeze({
-    id: 'tockteam-skin-deep-current',
+    id: SKIN_ID.deepCurrent,
     colorScheme: 'dark',
     tokens: DEEP_CURRENT_TOKENS,
     tui: tuiColors(DEEP_CURRENT_TOKENS, '#b995f5'),
@@ -227,7 +227,7 @@ export const TOCKTEAM_SKINS: readonly TockTeamSkin[] = Object.freeze([
     label: 'skins.name.deep-current',
   }),
   Object.freeze({
-    id: 'tockteam-skin-jade-circuit',
+    id: SKIN_ID.jadeCircuit,
     colorScheme: 'dark',
     tokens: JADE_CIRCUIT_TOKENS,
     tui: tuiColors(JADE_CIRCUIT_TOKENS, '#a78bfa'),
@@ -237,7 +237,7 @@ export const TOCKTEAM_SKINS: readonly TockTeamSkin[] = Object.freeze([
     label: 'skins.name.jade-circuit',
   }),
   Object.freeze({
-    id: 'tockteam-skin-porcelain',
+    id: SKIN_ID.porcelain,
     colorScheme: 'light',
     tokens: PORCELAIN_TOKENS,
     tui: tuiColors(PORCELAIN_TOKENS, '#8a6faf'),
@@ -247,7 +247,7 @@ export const TOCKTEAM_SKINS: readonly TockTeamSkin[] = Object.freeze([
     label: 'skins.name.porcelain',
   }),
   Object.freeze({
-    id: 'tockteam-skin-ember-dusk',
+    id: SKIN_ID.emberDusk,
     colorScheme: 'dark',
     tokens: EMBER_DUSK_TOKENS,
     tui: tuiColors(EMBER_DUSK_TOKENS, '#c79cff'),

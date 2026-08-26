@@ -40,6 +40,25 @@ test('pop-out channel authenticates and provider forwards only current vault rou
   await channel.stop()
 })
 
+test('pop-out close keeps failed native windows tracked for retry', async () => {
+  const windows = new Set<string>()
+  let closeWorks = false
+  const owner = new DesktopPopOutOwner({
+    isAvailable: () => true,
+    isCurrent: () => true,
+    native: {
+      close: id => { if (closeWorks) windows.delete(id) },
+      focus: id => windows.has(id),
+      isOpen: id => windows.has(id),
+      open: async () => { windows.add('popout'); return 'popout' },
+    },
+  })
+  assert.equal((await owner.open({ identity, relativePath: 'Plan.md' }, new AbortController().signal)).status, 'opened')
+  assert.equal((await owner.close({ identity: { ...identity, operationId: 'close-1' }, windowId: 'popout' }, new AbortController().signal)).status, 'unavailable')
+  closeWorks = true
+  assert.equal((await owner.close({ identity: { ...identity, operationId: 'close-2' }, windowId: 'popout' }, new AbortController().signal)).status, 'closed')
+})
+
 test('pop-out provider unload drains a gated open reply and closes the owned window', async () => {
   const openWindows = new Set<string>()
   const closed: string[] = []

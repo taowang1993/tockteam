@@ -23,18 +23,28 @@ export function TerminalView(props: TerminalViewProps): JSX.Element {
   const containerRef = useRef<HTMLDivElement>(null)
   const terminalRef = useRef<Terminal | null>(null)
   const fitAddonRef = useRef<FitAddon | null>(null)
+  const cwdRef = useRef(props.cwd)
+  const fontFamilyRef = useRef(props.fontFamily)
+  const fontSizeRef = useRef(props.fontSize)
   const onReadyRef = useRef(props.onReady)
   const onStatusRef = useRef(props.onStatus)
-  onReadyRef.current = props.onReady
-  onStatusRef.current = props.onStatus
+  const tRef = useRef(props.t)
+  useEffect(() => {
+    cwdRef.current = props.cwd
+    fontFamilyRef.current = props.fontFamily
+    fontSizeRef.current = props.fontSize
+    onReadyRef.current = props.onReady
+    onStatusRef.current = props.onStatus
+    tRef.current = props.t
+  }, [props.cwd, props.fontFamily, props.fontSize, props.onReady, props.onStatus, props.t])
 
   useEffect(() => {
     const container = containerRef.current
     if (container === null) return
     const terminal = new Terminal({
       cursorBlink: true,
-      fontFamily: props.fontFamily,
-      fontSize: props.fontSize,
+      fontFamily: fontFamilyRef.current,
+      fontSize: fontSizeRef.current,
       scrollback: 5000,
       theme: resolveTerminalTheme(),
     })
@@ -62,11 +72,11 @@ export function TerminalView(props: TerminalViewProps): JSX.Element {
       if (exited) return
       exited = true
       onStatusRef.current('exited', code)
-      terminal.write(`\r\n\x1b[90m[${props.t('terminal.process-exited', {
-        code: code ?? props.t('terminal.unknown'),
+      terminal.write(`\r\n\x1b[90m[${tRef.current('terminal.process-exited', {
+        code: code ?? tRef.current('terminal.unknown'),
       })}]\x1b[0m\r\n`)
     }
-    const requestedCwd = props.cwd?.trim()
+    const requestedCwd = cwdRef.current?.trim()
     socket.connect(terminal.cols, terminal.rows, {
       onOutput: data => { terminal.write(data) },
       onReady: cwd => {
@@ -76,7 +86,7 @@ export function TerminalView(props: TerminalViewProps): JSX.Element {
       onExit: markExited,
       onError: message => {
         if (!exited) onStatusRef.current('error')
-        terminal.write(`\r\n\x1b[31m[${props.t('terminal.error', { message })}]\x1b[0m\r\n`)
+        terminal.write(`\r\n\x1b[31m[${tRef.current('terminal.error', { message })}]\x1b[0m\r\n`)
       },
     }, {
       sessionId: props.sessionId,
@@ -109,7 +119,8 @@ export function TerminalView(props: TerminalViewProps): JSX.Element {
       if (fitAddonRef.current === fitAddon) fitAddonRef.current = null
       terminal.dispose()
     }
-  }, [props.cwd, props.sessionId, props.tabId])
+  // CWD initializes a tab; later session metadata must not replace its live PTY.
+  }, [props.sessionId, props.tabId])
 
   useEffect(() => {
     const terminal = terminalRef.current

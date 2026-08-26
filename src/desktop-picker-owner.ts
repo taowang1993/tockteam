@@ -1738,6 +1738,7 @@ export class DesktopPickerOwner {
   }
 
   private async syncDirectory(path: string): Promise<void> {
+    if (process.platform === 'win32') return
     const handle = await open(path, fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW)
     try { await handle.sync() } finally { await handle.close() }
   }
@@ -1820,15 +1821,19 @@ export class DesktopPickerOwner {
   private async ensureRecoveryRoot(): Promise<void> {
     await mkdir(this.recoveryRoot, { recursive: true, mode: 0o700 })
     const canonical = await this.safeRealpath(this.recoveryRoot)
-    const stat = await this.safeLstat(this.recoveryRoot)
+    const [stat, canonicalStat] = await Promise.all([
+      this.safeLstat(this.recoveryRoot),
+      canonical === undefined ? undefined : this.safeLstat(canonical),
+    ])
     if (
-      canonical !== this.recoveryRoot ||
+      canonical === undefined ||
       stat === undefined ||
+      canonicalStat === undefined ||
+      identityOf(stat) !== identityOf(canonicalStat) ||
       !stat.isDirectory() ||
       stat.isSymbolicLink() ||
       (typeof process.getuid === 'function' && stat.uid !== process.getuid())
-    )
-      return error('recovery-required')
+    ) return error('recovery-required')
     await chmod(this.recoveryRoot, 0o700)
   }
 
@@ -1838,15 +1843,19 @@ export class DesktopPickerOwner {
     await this.ensureRecoveryRoot()
     let rootHandle: Awaited<ReturnType<typeof open>> | undefined
     try {
-      rootHandle = await open(
-        this.recoveryRoot,
-        fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW | fsConstants.O_NONBLOCK | fsConstants.O_DIRECTORY,
-      )
-      const rootStat = await rootHandle.stat()
-      if (!rootStat.isDirectory()) return error('recovery-required')
+      if (process.platform !== 'win32') {
+        rootHandle = await open(
+          this.recoveryRoot,
+          fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW | fsConstants.O_NONBLOCK | fsConstants.O_DIRECTORY,
+        )
+      }
+      const directory = await opendir(this.recoveryRoot)
+      const rootStat = rootHandle === undefined
+        ? await lstat(this.recoveryRoot)
+        : await rootHandle.stat()
+      if (!rootStat.isDirectory() || rootStat.isSymbolicLink()) return error('recovery-required')
       const result: Array<{ name: string; path: string; size: number }> = []
       let aggregateBytes = 0
-      const directory = await opendir(this.recoveryRoot)
       for await (const entry of directory) {
         if (!entry.name.startsWith('destination-') || !entry.name.endsWith('.json')) return error('recovery-required')
         const path = join(this.recoveryRoot, entry.name)
@@ -1858,15 +1867,17 @@ export class DesktopPickerOwner {
         if (result.length > MAX_RECOVERY_JOURNALS
           || aggregateBytes > MAX_RECOVERY_TOTAL_BYTES) return error('recovery-required')
       }
-      const finalRootStat = fstatSync(rootHandle.fd)
       const canonicalRoot = realpathSync(this.recoveryRoot)
       const pathRootStat = lstatSync(this.recoveryRoot)
-      if (canonicalRoot !== this.recoveryRoot || pathRootStat.isSymbolicLink()
-        || revisionOf(finalRootStat) !== revisionOf(rootStat)
-        || revisionOf(pathRootStat) !== revisionOf(rootStat)) return error('recovery-required')
+      const canonicalRootStat = lstatSync(canonicalRoot)
+      if (identityOf(canonicalRootStat) !== identityOf(pathRootStat) || pathRootStat.isSymbolicLink()
+        || rootHandle !== undefined && revisionOf(fstatSync(rootHandle.fd)) !== revisionOf(rootStat)
+        || (rootHandle === undefined
+          ? ownedIdentityOf(pathRootStat) !== ownedIdentityOf(rootStat)
+          : revisionOf(pathRootStat) !== revisionOf(rootStat))) return error('recovery-required')
       return result
     } finally {
-      if (rootHandle !== undefined) void rootHandle.close().catch(() => undefined)
+      await rootHandle?.close().catch(() => undefined)
     }
   }
 
@@ -1893,7 +1904,7 @@ export class DesktopPickerOwner {
       journalHandle = await open(path, fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW | fsConstants.O_NONBLOCK)
       const journalStat = await journalHandle.stat()
       if (!journalStat.isFile() || Number(journalStat.size) > MAX_RECOVERY_JOURNAL_BYTES
-        || (Number(journalStat.mode) & 0o777) !== 0o600
+        || process.platform !== 'win32' && (Number(journalStat.mode) & 0o777) !== 0o600
         || typeof process.getuid === 'function' && journalStat.uid !== process.getuid()) return this.markRecoveryCorrupt()
       const journalBytes = Buffer.alloc(Number(journalStat.size))
       const read = await journalHandle.read(journalBytes, 0, journalBytes.length, 0)
@@ -1961,7 +1972,8 @@ export class DesktopPickerOwner {
         const finalStat = fstatSync(item.handle.fd)
         const canonicalPath = realpathSync(item.residue.path)
         const pathStat = lstatSync(item.residue.path)
-        if (pathStat.isSymbolicLink() || canonicalPath !== item.residue.path
+        const canonicalStat = lstatSync(canonicalPath)
+        if (pathStat.isSymbolicLink() || identityOf(canonicalStat) !== identityOf(pathStat)
           || revisionOf(finalStat) !== revisionOf(item.stat)
           || revisionOf(pathStat) !== revisionOf(item.stat)
           || !pathStat.isFile()) return false
@@ -1969,7 +1981,9 @@ export class DesktopPickerOwner {
       const finalJournalStat = fstatSync(journalHandle.fd)
       const canonicalJournalPath = realpathSync(journalPath)
       const journalPathStat = lstatSync(journalPath)
-      return !journalPathStat.isSymbolicLink() && canonicalJournalPath === journalPath
+      const canonicalJournalStat = lstatSync(canonicalJournalPath)
+      return !journalPathStat.isSymbolicLink()
+        && identityOf(canonicalJournalStat) === identityOf(journalPathStat)
         && revisionOf(finalJournalStat) === revisionOf(journalStat)
         && revisionOf(journalPathStat) === revisionOf(journalStat)
     } catch {

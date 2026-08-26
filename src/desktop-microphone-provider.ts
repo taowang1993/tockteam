@@ -4,19 +4,12 @@ import type {
   TockTeamDesktopMicrophone,
 } from './host-contract.ts'
 import { TockTeamDesktopGrantError } from './host-contract.ts'
+import { desktopLoopbackEndpoint } from './desktop-loopback.ts'
 import type { DesktopPickerCurrentVault } from './desktop-picker-provider.ts'
 
 export interface DesktopMicrophoneProviderEnvironment {
   endpoint?: string | undefined
   token?: string | undefined
-}
-
-function endpointOf(environment: DesktopMicrophoneProviderEnvironment): URL | undefined {
-  if (environment.endpoint === undefined || environment.token === undefined) return undefined
-  try {
-    const endpoint = new URL(environment.endpoint)
-    return endpoint.protocol === 'http:' && endpoint.hostname === '127.0.0.1' ? endpoint : undefined
-  } catch { return undefined }
 }
 
 export class DesktopMicrophoneProvider implements TockTeamDesktopMicrophone {
@@ -38,7 +31,7 @@ export class DesktopMicrophoneProvider implements TockTeamDesktopMicrophone {
     fetcher: typeof fetch = fetch,
     currentVault: DesktopPickerCurrentVault = () => undefined,
   ) {
-    this.endpoint = endpointOf(environment)
+    this.endpoint = desktopLoopbackEndpoint(environment)
     this.token = environment.token
     this.fetcher = fetcher
     this.currentVault = currentVault
@@ -56,7 +49,7 @@ export class DesktopMicrophoneProvider implements TockTeamDesktopMicrophone {
       return { operationId: request.identity.operationId, status: 'unavailable' }
     }
     this.admitted = true
-    const work = this.nativeRequest(request, this.lifetime.signal)
+    const work = this.nativeRequest(request, AbortSignal.any([signal, this.lifetime.signal]))
     this.pending.add(work)
     try {
       const result = await work as DesktopMicrophoneResult
@@ -66,9 +59,11 @@ export class DesktopMicrophoneProvider implements TockTeamDesktopMicrophone {
       }
       return result
     } catch {
-      return signal.aborted
-        ? { operationId: request.identity.operationId, status: 'cancelled' }
-        : { operationId: request.identity.operationId, status: 'unavailable' }
+      if (signal.aborted) {
+        await this.nativeRequest({ disposeProvider: true }).catch(() => undefined)
+        return { operationId: request.identity.operationId, status: 'cancelled' }
+      }
+      return { operationId: request.identity.operationId, status: 'unavailable' }
     } finally {
       this.pending.delete(work)
     }
@@ -82,14 +77,11 @@ export class DesktopMicrophoneProvider implements TockTeamDesktopMicrophone {
   }
 
   private async finishDispose(): Promise<void> {
+    this.lifetime.abort()
     await Promise.allSettled([...this.pending])
-    try {
-      if (this.admitted && this.endpoint !== undefined && this.token !== undefined) {
-        const result = await this.nativeRequest({ disposeProvider: true }) as { status?: string }
-        if (result.status !== 'closed') throw new Error('TockTeam Desktop microphone cleanup was incomplete')
-      }
-    } finally {
-      this.lifetime.abort()
+    if (this.admitted && this.endpoint !== undefined && this.token !== undefined) {
+      const result = await this.nativeRequest({ disposeProvider: true }) as { status?: string }
+      if (result.status !== 'closed') throw new Error('TockTeam Desktop microphone cleanup was incomplete')
     }
   }
 

@@ -1,6 +1,7 @@
-import { randomBytes, timingSafeEqual } from 'node:crypto'
+import { randomBytes } from 'node:crypto'
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http'
 import { DesktopDispatchOwner } from './desktop-dispatch-owner.ts'
+import { desktopBearerAuthorized } from './desktop-loopback.ts'
 import type {
   DesktopDispatchCompletionRequest,
   DesktopDispatchCompletionResult,
@@ -21,13 +22,6 @@ export interface DesktopDispatchChannelOptions {
   identity(operationId: string, requestId: string, channelSessionId: string): NativeOperationIdentity | undefined
   isAvailable(): boolean
   onDeliveryExpired?(operationId: string, consumerId: string): void
-}
-
-function authorized(value: string | undefined, expected: string): boolean {
-  if (value === undefined) return false
-  const actual = Buffer.from(value)
-  const target = Buffer.from(expected)
-  return actual.length === target.length && timingSafeEqual(actual, target)
 }
 
 function json(response: ServerResponse, status: number, value: unknown): void {
@@ -162,7 +156,7 @@ export class DesktopDispatchChannel {
       response.writeHead(404).end()
       return
     }
-    if (!authorized(request.headers.authorization, `Bearer ${token}`)) {
+    if (!desktopBearerAuthorized(request.headers.authorization, `Bearer ${token}`)) {
       response.writeHead(401).end()
       return
     }

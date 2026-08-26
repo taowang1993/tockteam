@@ -1,3 +1,4 @@
+import { desktopLoopbackEndpoint } from './desktop-loopback.ts'
 import type { DesktopPickerCurrentVault } from './desktop-picker-provider.ts'
 import {
   TockTeamDesktopGrantError,
@@ -9,14 +10,6 @@ import {
 export interface DesktopCallerProviderEnvironment {
   endpoint?: string | undefined
   token?: string | undefined
-}
-
-function endpointOf(environment: DesktopCallerProviderEnvironment): URL | undefined {
-  if (environment.endpoint === undefined || environment.token === undefined) return undefined
-  try {
-    const endpoint = new URL(environment.endpoint)
-    return endpoint.protocol === 'http:' && endpoint.hostname === '127.0.0.1' ? endpoint : undefined
-  } catch { return undefined }
 }
 
 function identity(value: unknown): value is NativeOperationIdentity {
@@ -54,7 +47,7 @@ export class DesktopCallerProvider implements TockTeamDesktopCaller {
     fetcher: typeof fetch = fetch,
     currentVault: DesktopPickerCurrentVault = () => undefined,
   ) {
-    this.endpoint = endpointOf(environment)
+    this.endpoint = desktopLoopbackEndpoint(environment)
     this.token = environment.token
     this.fetcher = fetcher
     this.currentVault = currentVault

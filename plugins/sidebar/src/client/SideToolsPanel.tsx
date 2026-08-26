@@ -29,6 +29,7 @@ import {
 } from 'lucide-react'
 import type { Translate } from '../../../shared/i18n.ts'
 import type { WorkspaceFilesResponse, WorkspaceFileKind } from '../protocol.ts'
+import { initialBrowserUrl, normalizeBrowserUrl } from './browser-url.ts'
 import {
   betterSidebarApi,
   mapBetterSidebarFile,
@@ -165,21 +166,6 @@ function SideMenu(props: SideToolsPanelProps): JSX.Element {
   )
 }
 
-function normalizeBrowserUrl(
-  raw: string,
-  t: Translate<WorkspaceMessage>,
-): string {
-  const value = raw.trim()
-  if (value === '') throw new Error(t('browser.enter-url'))
-  const url = new URL(/^[a-z][a-z\d+.-]*:/i.test(value)
-    ? value
-    : `https://${value}`)
-  if (url.protocol !== 'https:' && url.protocol !== 'http:') {
-    throw new Error(t('browser.http-only'))
-  }
-  return url.href
-}
-
 export function BrowserView({
   patch,
   t,
@@ -199,7 +185,9 @@ export function BrowserView({
     const element = document.createElement('webview') as unknown as ElectronWebviewElement
     element.className = 'tockteam-browser-webview flex h-full w-full'
     element.setAttribute('partition', 'persist:tockteam-browser')
-    element.setAttribute('src', tab.resource ?? 'about:blank')
+    const initial = initialBrowserUrl(tab.resource, t)
+    element.setAttribute('src', initial.url)
+    if (initial.error !== undefined) setError(initial.error)
     const update = (event: Event): void => {
       const next = 'url' in event && typeof event.url === 'string'
         ? event.url
@@ -238,6 +226,10 @@ export function BrowserView({
     host.append(element)
     webview.current = element
     return () => {
+      element.removeEventListener('did-navigate', update)
+      element.removeEventListener('did-navigate-in-page', update)
+      element.removeEventListener('will-navigate', guard)
+      element.removeEventListener('did-fail-load', failed)
       webview.current = null
       element.remove()
     }
@@ -415,25 +407,45 @@ export function FileView({
   t: Translate<WorkspaceMessage>
 }): JSX.Element {
   const cwd = scope?.cwd
-  const [snapshot, setSnapshot] = useState<WorkspaceFilesResponse | null>(null)
-  const [error, setError] = useState('')
+  const sessionId = scope?.sessionId
   const path = tab.resource
+  const requestKey = cwd === undefined || path === undefined || sessionId === undefined
+    ? ''
+    : `${sessionId}\u0000${cwd}\u0000${path}`
+  const [file, setFile] = useState<{
+    error: string
+    key: string
+    snapshot: WorkspaceFilesResponse | null
+  }>({ error: '', key: '', snapshot: null })
+  const current = file.key === requestKey ? file : { error: '', key: requestKey, snapshot: null }
 
   useEffect(() => {
-    if (cwd === undefined || path === undefined || scope === undefined) return
+    if (cwd === undefined || path === undefined || sessionId === undefined) return
     const controller = new AbortController()
-    void betterSidebarApi.fsRead(scope, path, controller.signal).then(
+    setFile({ error: '', key: requestKey, snapshot: null })
+    void betterSidebarApi.fsRead({ cwd, sessionId }, path, controller.signal).then(
       result => {
-        setSnapshot(mapBetterSidebarFile(cwd, path, result))
-        setError('')
+        if (!controller.signal.aborted) {
+          setFile({
+            error: '',
+            key: requestKey,
+            snapshot: mapBetterSidebarFile(cwd, path, result),
+          })
+        }
       },
     ).catch((next: unknown) => {
       if (!controller.signal.aborted) {
-        setError(next instanceof Error ? next.message : String(next))
+        setFile({
+          error: next instanceof Error ? next.message : String(next),
+          key: requestKey,
+          snapshot: null,
+        })
       }
     })
     return () => { controller.abort() }
-  }, [cwd, path, scope?.sessionId])
+  }, [cwd, path, requestKey, sessionId])
+
+  const { error, snapshot } = current
 
   if (cwd === undefined || path === undefined) {
     return <Empty unstyled className="tockteam-side-empty p-[18px] text-[11px] text-[var(--dsw-alias-label-tertiary,#8c959f)]">{t('files.select-workspace')}</Empty>

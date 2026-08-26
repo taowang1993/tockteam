@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { readFileSync, readdirSync } from 'node:fs'
-import { join, relative } from 'node:path'
+import { join, relative, sep } from 'node:path'
 import test from 'node:test'
 import { fileURLToPath } from 'node:url'
 import { buildTailwindCss } from '../scripts/tailwind.mjs'
@@ -54,7 +54,7 @@ test('Tailwind is the only first-party browser stylesheet', () => {
   ]
   const localStylesheets = files
     .filter(file => file.endsWith('.css'))
-    .map(file => relative(root, file))
+    .map(file => relative(root, file).split(sep).join('/'))
     .sort()
   assert.deepEqual(localStylesheets, ['plugins/skins/src/client/tailwind.css'])
 
@@ -65,7 +65,7 @@ test('Tailwind is the only first-party browser stylesheet', () => {
   assert.deepEqual(embeddedCss, [])
   const styleElements = browserSources
     .filter(file => /<style[\s>]/u.test(readFileSync(file, 'utf8')))
-    .map(file => relative(root, file))
+    .map(file => relative(root, file).split(sep).join('/'))
   assert.deepEqual(styleElements, ['src/splash.html'])
   assert.match(readFileSync(join(root, 'src', 'splash.html'), 'utf8'), /__TOCKTEAM_TAILWIND_CSS__/u)
 })

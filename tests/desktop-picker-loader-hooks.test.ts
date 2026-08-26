@@ -5,6 +5,7 @@ import { link, lstat, mkdtemp, readFile, readdir, realpath, writeFile } from 'no
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
+import { fileURLToPath } from 'node:url'
 
 const temp = async (prefix: string) => await realpath(await mkdtemp(join(tmpdir(), prefix)))
 const sha = (value: string | Uint8Array) => createHash('sha256').update(value).digest('hex')
@@ -38,8 +39,8 @@ test('managed picker production has no path deletion, replacement, or obsolete r
 
 function runHook(mode: string, destination: string, recoveryRoot: string, vault: string, result: string, foreign: string, stage?: string) {
   return spawnSync(process.execPath, [
-    '--import', new URL('./fixtures/desktop-picker-no-delete-hook.mjs', import.meta.url).pathname,
-    new URL('./fixtures/desktop-picker-hook-runner.ts', import.meta.url).pathname,
+    '--import', new URL('./fixtures/desktop-picker-no-delete-hook.mjs', import.meta.url).href,
+    fileURLToPath(new URL('./fixtures/desktop-picker-hook-runner.ts', import.meta.url)),
     mode, destination, recoveryRoot, vault, result,
   ], {
     encoding: 'utf8',
@@ -112,7 +113,9 @@ test('startup journal growth, same-size rewrite, and shrink block globally', asy
     assert.equal(child.status, 0, child.stderr || child.stdout)
     assert.equal(JSON.parse(await readFile(result, 'utf8')).outcome, 'error:recovery-required')
     assert.equal((await readFile(stage)).byteLength, 0)
-    if (mode === 'startup-journal-growth') assert.ok((await lstat(journal)).size > 64 * 1024)
+    if (mode === 'startup-journal-growth' && process.platform !== 'win32') {
+      assert.ok((await lstat(journal)).size > 64 * 1024)
+    }
   }
 })
 

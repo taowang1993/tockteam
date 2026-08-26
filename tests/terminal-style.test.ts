@@ -14,6 +14,8 @@ test('terminal viewport cannot expose xterm default black behind the themed scre
   assert.match(panel, /border-\[var\(--tockteam-shell-divider,/)
   assert.match(view, /px-3 py-\[9px\]/)
   assert.doesNotMatch(view, /\[&_\.xterm\]:p[xy]?-/)
+  assert.match(view, /const requestedCwd = cwdRef\.current\?\.trim\(\)/)
+  assert.doesNotMatch(view, /\}, \[props\.cwd, props\.sessionId, props\.tabId\]\)/)
 })
 
 test('TockTutor owns keyboard focus while its route is active', () => {
@@ -40,4 +42,9 @@ test('terminal is controlled only by the shared desktop toolbar', () => {
 
   assert.doesNotMatch(plugin, /TerminalTrigger|terminal-trigger-root/)
   assert.doesNotMatch(mounts, /terminal-trigger-root/)
+  assert.match(mounts, /\[\.\.\.record\.removedNodes\]\.some\(isOwnedRoot\)/u)
+  assert.match(plugin, /sessionId === undefined\s*\? undefined/u)
+  assert.doesNotMatch(plugin, /new-session/u)
+  assert.match(plugin, /key=\{surface\.scopeKey\}/u)
+  assert.match(plugin, /if \(changed\) this\.renderDock\(\)/u)
 })

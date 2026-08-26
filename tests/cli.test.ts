@@ -113,6 +113,13 @@ test('desktop launch resolves paths with target platform semantics', () => {
   })
 })
 
+test('Windows fallback launches the executable without command-shell parsing', () => {
+  assert.deepEqual(desktopLaunchSpec(['x&calc.exe'], {}, 'win32'), {
+    args: ['x&calc.exe'],
+    command: 'TockTeam Desktop.exe',
+  })
+})
+
 test('packaged Windows launcher resolves the adjacent desktop executable', () => {
   const launcher = readFileSync(new URL('../bin/tockteam.cmd', import.meta.url), 'utf8')
   assert.match(

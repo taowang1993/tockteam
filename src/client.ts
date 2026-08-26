@@ -4,6 +4,12 @@ import type { DesktopBridge, DesktopCommand } from './contracts.ts'
 import type { DesktopPanels } from '../plugins/panel-controls/src/client.ts'
 import type { PinnedSummary } from '../plugins/pinned-summary/src/client.ts'
 import type { WorkspaceTools } from '../plugins/sidebar/src/client.ts'
+import {
+  brandingMutationRoots,
+  findHeroHeadlines,
+  matchingElements,
+  pruneDisconnected,
+} from '../plugins/shared/branding.ts'
 import type {
   LocaleMessages,
   LocaleService,
@@ -37,9 +43,11 @@ interface WorkspacesService {
 }
 
 interface ClientContext {
-  effect(effect: () => (() => void) | void, label?: string): void
+  effect(effect: () => (() => Promise<void> | void) | void, label?: string): void
   get(name: string): unknown
-  reflect: { provide(name: string, value: unknown, options?: unknown): void }
+  reflect: {
+    provide(name: string, value: unknown, options?: unknown): (() => Promise<void> | void) | void
+  }
 }
 
 declare global {
@@ -101,23 +109,31 @@ function installBranding(): () => void {
   const originalHeadlines = new Map<HTMLElement, string>()
   const originalBrandMarks = new Map<SVGSVGElement, SVGSVGElement>()
   const originalSidebarNames = new Map<HTMLElement, string>()
-  const synchronize = (): void => {
-    for (const element of document.querySelectorAll<HTMLElement>('span')) {
+  const synchronize = (roots: readonly ParentNode[] = [document]): void => {
+    pruneDisconnected(originalHeadlines)
+    pruneDisconnected(originalBrandMarks)
+    pruneDisconnected(originalSidebarNames)
+    for (const element of new Set(roots.flatMap(findHeroHeadlines))) {
       const text = element.textContent?.trim() ?? ''
       if (!headlineCopy.has(text)) continue
       if (!originalHeadlines.has(element)) originalHeadlines.set(element, text)
       element.textContent = 'TockTeam Desktop'
       element.dataset.tockteamHeroHeadline = 'true'
     }
-    for (const brand of document.querySelectorAll<HTMLElement>("[data-slot='sidebar.brand.name']")) {
+    for (const brand of new Set(roots.flatMap(root => (
+      matchingElements<HTMLElement>(root, "[data-slot='sidebar.brand.name']")
+    )))) {
       if (!originalSidebarNames.has(brand)) originalSidebarNames.set(brand, brand.innerHTML)
       if (brand.textContent !== 'TockTeam') brand.replaceChildren(document.createTextNode('TockTeam'))
       brand.dataset.tockteamSidebarBrand = 'true'
     }
-    for (const fish of document.querySelectorAll<SVGSVGElement>([
+    const fishSelector = [
       "[data-slot='sidebar.brand.mark'] > svg[viewBox='0 0 23.16 17.04']",
       "[data-slot='conversation.hero.brand.mark'] > svg[viewBox='0 0 23.16 17.04']",
-    ].join(','))) {
+    ].join(',')
+    for (const fish of new Set(roots.flatMap(root => (
+      matchingElements<SVGSVGElement>(root, fishSelector)
+    )))) {
       const container = document.createElement('span')
       container.innerHTML = TOCKTEAM_LOGO_MARK
       const mark = container.querySelector<SVGSVGElement>('svg')
@@ -131,7 +147,9 @@ function installBranding(): () => void {
       fish.replaceWith(mark)
     }
   }
-  const observer = new MutationObserver(synchronize)
+  const observer = new MutationObserver(records => {
+    synchronize(brandingMutationRoots(records))
+  })
   observer.observe(document.body, { childList: true, characterData: true, subtree: true })
   synchronize()
   return () => {
@@ -263,11 +281,17 @@ export function apply(ctx: ClientContext): void {
     () => locale.register('tockteam.desktop', DESKTOP_SHELL_MESSAGES),
     'tockteam-desktop: shell dictionaries',
   )
-  ctx.reflect.provide('desktopShell', bridge, undefined)
-  // The unified three-surface contract, client plane: the desktop shell.
-  ctx.reflect.provide(TOCKTEAM_SURFACE_VIEW_SERVICE, Object.freeze({
-    kind: 'desktop',
-  } satisfies TockTeamSurfaceView), undefined)
+  ctx.effect(() => {
+    const removeShell = ctx.reflect.provide('desktopShell', bridge, undefined)
+    // The unified three-surface contract, client plane: the desktop shell.
+    const removeSurface = ctx.reflect.provide(TOCKTEAM_SURFACE_VIEW_SERVICE, Object.freeze({
+      kind: 'desktop',
+    } satisfies TockTeamSurfaceView), undefined)
+    return async () => {
+      await removeSurface?.()
+      await removeShell?.()
+    }
+  }, 'tockteam-desktop: reflected client services')
   ctx.effect(() => {
     let disposed = false
     let previewPluginId: string | null = null

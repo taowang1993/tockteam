@@ -13,6 +13,7 @@ import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import electronBinary from 'electron'
+import { stopChildProcess } from './process-cleanup.mjs'
 import { bundledRuntimePaths, runtimeSearchPath } from '../src/runtime-paths.ts'
 import {
   BUNDLED_DESKTOP_CLIENT_PLUGINS,
@@ -408,6 +409,21 @@ try {
     )
   }
 
+  const sessionResponse = await fetch(new URL('/api/session.create', base), {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      type: 'client-request',
+      rpcId: 'desktop-smoke-session',
+      method: 'session.create',
+      payload: { cwd: smokeRoot },
+    }),
+  })
+  const sessionEnvelope = await sessionResponse.json()
+  assert.equal(sessionResponse.status, 200)
+  assert.equal(sessionEnvelope.result?.ok, true, JSON.stringify(sessionEnvelope))
+  const sessionId = sessionEnvelope.result.value.sessionId
+
   const sidebarCall = async (method, payload) => {
     const response = await fetch(new URL(`/sidebar/api/${method}`, base), {
       method: 'POST',
@@ -419,7 +435,7 @@ try {
     assert.equal(envelope.ok, true, JSON.stringify(envelope))
     return envelope.value
   }
-  const sidebarScope = { sessionId: 'desktop-smoke', cwd: smokeRoot }
+  const sidebarScope = { sessionId, cwd: smokeRoot }
   const sessionCwd = await sidebarCall('session.cwd', sidebarScope)
   assert.equal(sessionCwd.cwd, smokeRoot)
   const workspaceTree = await sidebarCall('fs.tree', sidebarScope)
@@ -441,10 +457,10 @@ try {
   })
   assert.match(commitDiff.diff, /review-smoke\.txt/)
 
-  const workspaceFactsResponse = await fetch(new URL(
-    `/tockteam/workspace?cwd=${encodeURIComponent(smokeRoot)}`,
-    base,
-  ))
+  const workspaceFactsUrl = new URL('/tockteam/workspace', base)
+  workspaceFactsUrl.searchParams.set('cwd', smokeRoot)
+  workspaceFactsUrl.searchParams.set('sessionId', sessionId)
+  const workspaceFactsResponse = await fetch(workspaceFactsUrl)
   const workspaceFacts = await workspaceFactsResponse.json()
   assert.equal(workspaceFactsResponse.status, 200)
   assert.equal(workspaceFacts.kind, 'repository')
@@ -499,10 +515,6 @@ try {
   console.log('Better Sidebar Git API: ready, history and commit diff verified')
   console.log('Better Sidebar terminal PTY: ready, command execution verified')
 } finally {
-  if (child.exitCode === null) child.kill('SIGTERM')
-  await new Promise(resolve => {
-    if (child.exitCode !== null) resolve()
-    else child.once('exit', resolve)
-  })
+  await stopChildProcess(child)
   rmSync(smokeRoot, { recursive: true, force: true })
 }

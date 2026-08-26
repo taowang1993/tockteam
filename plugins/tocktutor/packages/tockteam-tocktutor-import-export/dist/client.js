@@ -15265,10 +15265,11 @@ function NativeSelectOption({ className, ...props }) {
 }
 
 // ../../../ui/src/spinner.tsx
+var React3 = __toESM(require("react"), 1);
 var import_jsx_runtime6 = require("react/jsx-runtime");
-function Spinner({ className, ...props }) {
-  return /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(LoaderCircle, { "aria-label": "Loading", role: "status", "data-slot": "spinner", className: cn("size-4 animate-spin motion-reduce:animate-none", className), ...props });
-}
+var Spinner = React3.forwardRef(function Spinner2({ className, ...props }, ref) {
+  return /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(LoaderCircle, { ref, "aria-label": "Loading", role: "status", "data-slot": "spinner", className: cn("size-4 animate-spin motion-reduce:animate-none", className), ...props });
+});
 
 // src/review-panel.tsx
 var import_react3 = require("react");

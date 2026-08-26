@@ -1,5 +1,6 @@
-import { randomBytes, timingSafeEqual } from 'node:crypto'
+import { randomBytes } from 'node:crypto'
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http'
+import { desktopBearerAuthorized } from './desktop-loopback.ts'
 import {
   DESKTOP_REVEAL_CHANNEL_PATH,
   MAX_DESKTOP_REVEAL_BODY_BYTES,
@@ -20,11 +21,9 @@ export interface DesktopRevealChannelOptions {
   onReveal(input: DesktopRevealInput, signal: AbortSignal): Promise<DesktopRevealResult>
 }
 
-function authorized(value: string | undefined, expected: string): boolean {
-  if (value === undefined) return false
-  const actual = Buffer.from(value)
-  const target = Buffer.from(expected)
-  return actual.length === target.length && timingSafeEqual(actual, target)
+function closeRequest(request: IncomingMessage, response: ServerResponse, status: number): void {
+  response.writeHead(status, { connection: 'close' })
+  response.end(() => { request.destroy() })
 }
 
 function jsonResponse(response: ServerResponse, status: number, value: unknown): void {
@@ -37,19 +36,57 @@ function jsonResponse(response: ServerResponse, status: number, value: unknown):
   response.end(body)
 }
 
-async function bodyOf(request: IncomingMessage): Promise<string | undefined> {
-  let size = 0
-  const chunks: Buffer[] = []
-  for await (const chunk of request) {
-    const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)
-    size += buffer.length
-    if (size > MAX_DESKTOP_REVEAL_BODY_BYTES) {
-      request.destroy()
-      return undefined
+type RequestBody =
+  | { status: 'aborted' }
+  | { status: 'ready'; value: string }
+  | { status: 'too-large' }
+
+async function bodyOf(request: IncomingMessage, signal: AbortSignal): Promise<RequestBody> {
+  return await new Promise<RequestBody>((resolve, reject) => {
+    let size = 0
+    const chunks: Buffer[] = []
+    let settled = false
+    const cleanup = (): void => {
+      request.removeListener('data', onData)
+      request.removeListener('end', onEnd)
+      request.removeListener('error', onError)
+      signal.removeEventListener('abort', onAbort)
     }
-    chunks.push(buffer)
-  }
-  return Buffer.concat(chunks).toString('utf8')
+    const finish = (result: RequestBody): void => {
+      if (settled) return
+      settled = true
+      cleanup()
+      resolve(result)
+    }
+    const onData = (chunk: Buffer | string): void => {
+      const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)
+      size += buffer.length
+      if (size > MAX_DESKTOP_REVEAL_BODY_BYTES) {
+        request.pause()
+        finish({ status: 'too-large' })
+      } else {
+        chunks.push(buffer)
+      }
+    }
+    const onEnd = (): void => {
+      finish({ status: 'ready', value: Buffer.concat(chunks).toString('utf8') })
+    }
+    const onError = (error: Error): void => {
+      if (settled) return
+      settled = true
+      cleanup()
+      reject(error)
+    }
+    const onAbort = (): void => {
+      request.destroy()
+      finish({ status: 'aborted' })
+    }
+    request.on('data', onData)
+    request.once('end', onEnd)
+    request.once('error', onError)
+    signal.addEventListener('abort', onAbort, { once: true })
+    if (signal.aborted) onAbort()
+  })
 }
 
 /** One authenticated, reveal-only request channel for the current DSH child. */
@@ -60,6 +97,7 @@ export class DesktopRevealChannel {
   private readonly consumed = new Set<string>()
   private readonly pending = new Set<Promise<void>>()
   private lifetime = new AbortController()
+  private starting = false
   private stopping = false
 
   constructor(options: DesktopRevealChannelOptions) {
@@ -71,42 +109,51 @@ export class DesktopRevealChannel {
   }
 
   async start(): Promise<DesktopRevealChannelEnvironment> {
-    if (this.server !== undefined) throw new Error('Desktop reveal channel is already running')
+    if (this.server !== undefined || this.starting) throw new Error('Desktop reveal channel is already running')
+    this.starting = true
     this.stopping = false
     this.lifetime = new AbortController()
     const token = randomBytes(32).toString('base64url')
     const server = createServer((request, response) => {
       const work = this.handle(request, response, token)
       this.pending.add(work)
-      void work.then(
-        () => { this.pending.delete(work) },
-        () => { this.pending.delete(work) },
-      )
+      void work.catch(() => {
+        if (!response.headersSent) response.writeHead(500).end()
+        else if (!response.writableEnded) response.destroy()
+      }).finally(() => { this.pending.delete(work) })
     })
-    await new Promise<void>((resolve, reject) => {
-      const onError = (error: Error): void => {
-        server.removeListener('listening', onListening)
-        reject(error)
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const onError = (error: Error): void => {
+          server.removeListener('listening', onListening)
+          reject(error)
+        }
+        const onListening = (): void => {
+          server.removeListener('error', onError)
+          resolve()
+        }
+        server.once('error', onError)
+        server.once('listening', onListening)
+        server.listen(0, '127.0.0.1')
+      })
+      if (this.stopping) {
+        await new Promise<void>(resolve => { server.close(() => { resolve() }) })
+        throw new Error('Desktop reveal channel was stopped while starting')
       }
-      const onListening = (): void => {
-        server.removeListener('error', onError)
-        resolve()
+      const address = server.address()
+      if (address === null || typeof address === 'string') {
+        server.close()
+        throw new Error('Desktop reveal channel did not receive a TCP address')
       }
-      server.once('error', onError)
-      server.once('listening', onListening)
-      server.listen(0, '127.0.0.1')
-    })
-    const address = server.address()
-    if (address === null || typeof address === 'string') {
-      server.close()
-      throw new Error('Desktop reveal channel did not receive a TCP address')
+      this.server = server
+      this.environmentValue = {
+        endpoint: `http://127.0.0.1:${String(address.port)}${DESKTOP_REVEAL_CHANNEL_PATH}`,
+        token,
+      }
+      return this.environmentValue
+    } finally {
+      this.starting = false
     }
-    this.server = server
-    this.environmentValue = {
-      endpoint: `http://127.0.0.1:${String(address.port)}${DESKTOP_REVEAL_CHANNEL_PATH}`,
-      token,
-    }
-    return this.environmentValue
   }
 
   async stop(): Promise<void> {
@@ -131,11 +178,11 @@ export class DesktopRevealChannel {
     token: string,
   ): Promise<void> {
     if (request.method !== 'POST' || request.url !== DESKTOP_REVEAL_CHANNEL_PATH) {
-      response.writeHead(404).end()
+      closeRequest(request, response, 404)
       return
     }
-    if (!authorized(request.headers.authorization, `Bearer ${token}`)) {
-      response.writeHead(401).end()
+    if (!desktopBearerAuthorized(request.headers.authorization, `Bearer ${token}`)) {
+      closeRequest(request, response, 401)
       return
     }
     const requestLifetime = new AbortController()
@@ -164,14 +211,16 @@ export class DesktopRevealChannel {
     response: ServerResponse,
     signal: AbortSignal,
   ): Promise<void> {
-    const body = await bodyOf(request)
-    if (body === undefined) {
-      response.writeHead(413).end()
+    const body = await bodyOf(request, signal)
+    if (body.status === 'aborted') return
+    if (body.status === 'too-large') {
+      response.writeHead(413, { connection: 'close' })
+      response.end(() => { request.destroy() })
       return
     }
     let raw: unknown
     try {
-      raw = JSON.parse(body)
+      raw = JSON.parse(body.value)
     } catch {
       response.writeHead(400).end()
       return

@@ -51,7 +51,11 @@ function mountSurface(ctx: HostContext): void {
       return
     }
     browserCtx.effect(
-      () => mountDesktopSkinPreferences({ logger: browserCtx.logger, webServer }, {
+      () => mountDesktopSkinPreferences({
+        get: name => browserCtx.get(name),
+        logger: browserCtx.logger,
+        webServer,
+      }, {
         appDataPath: dataRoot,
       }),
       'tockteam-skins: skin preferences',

@@ -3,11 +3,13 @@ dist/
 !plugins/tocktutor/packages/*/dist/
 !plugins/tocktutor/packages/*/dist/**
 plugins/tocktutor/packages/*/*.tgz
+/*.tgz
 .stage/
 .cache/
 /.local/
 release/
 tmp/
+.clawpatch/
 *.log
 .DS_Store
 .direnv/

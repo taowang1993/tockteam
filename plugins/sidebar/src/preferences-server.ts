@@ -1,7 +1,8 @@
 import { randomBytes } from 'node:crypto'
-import { mkdir, readFile, rename, unlink, writeFile } from 'node:fs/promises'
+import { link, mkdir, readFile, rename, unlink, writeFile } from 'node:fs/promises'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { dirname, join } from 'node:path'
+import { isTrustedBrowserRequest, webRuntimeTrustedHosts } from '../../shared/request-trust.ts'
 import {
   DEFAULT_SIDEBAR_PREFERENCES,
   parseSidebarPreferences,
@@ -16,6 +17,7 @@ export interface SidebarDesktopCapability {
 }
 
 export interface SidebarPreferencesHostContext {
+  get(name: string): unknown
   webServer: {
     register(route: {
       kind: 'exact'
@@ -47,17 +49,6 @@ function sendJson(response: ServerResponse, status: number, value: unknown): voi
   response.end(JSON.stringify(value))
 }
 
-function sameOrigin(request: IncomingMessage): boolean {
-  const origin = request.headers.origin
-  const host = request.headers.host
-  if (origin === undefined || host === undefined) return false
-  try {
-    return new URL(origin).host === host
-  } catch {
-    return false
-  }
-}
-
 async function readJson(request: IncomingMessage): Promise<unknown> {
   const chunks: Buffer[] = []
   let size = 0
@@ -83,8 +74,18 @@ export async function loadSidebarPreferences(
   const legacy = join(dirname(path), LEGACY_SIDEBAR_PREFERENCES_FILE)
   try {
     const migrated = await readSidebarPreferences(legacy)
-    await saveSidebarPreferences(path, migrated)
-    return migrated
+    await mkdir(dirname(path), { recursive: true })
+    const temporary = `${path}.migrate-${randomBytes(6).toString('hex')}`
+    await writeFile(temporary, `${JSON.stringify(migrated, undefined, 2)}\n`, { mode: 0o600 })
+    try {
+      await link(temporary, path)
+      return migrated
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error
+      return await readSidebarPreferences(path)
+    } finally {
+      await unlink(temporary).catch(() => undefined)
+    }
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
   }
@@ -116,6 +117,7 @@ export function mountSidebarPreferences(
     throw new Error('sidebar: application data path is unavailable')
   }
   const path = join(desktop.appDataPath, 'sidebar.json')
+  const trustedHosts = webRuntimeTrustedHosts(ctx)
   return ctx.webServer.register({
     kind: 'exact',
     path: SIDEBAR_PREFERENCES_API_PATH,
@@ -126,7 +128,7 @@ export function mountSidebarPreferences(
           return
         }
         if (request.method === 'PUT') {
-          if (!sameOrigin(request)) {
+          if (!isTrustedBrowserRequest(request, trustedHosts)) {
             sendJson(response, 403, { error: 'untrusted sidebar origin' })
             return
           }

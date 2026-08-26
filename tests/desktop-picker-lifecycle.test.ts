@@ -6,6 +6,7 @@ import { createServer } from 'node:net'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
+import { fileURLToPath } from 'node:url'
 import {
   MAX_DESKTOP_SOURCE_DEPTH,
   MAX_DESKTOP_SOURCE_ENTRIES,
@@ -194,8 +195,9 @@ test('nested symlink, hardlink, and socket entries are rejected and never follow
   await writeFile(file, 'safe')
   await link(file, hard)
   await symlink(file, symbolic)
-  const server = createServer()
+  const server = process.platform === 'win32' ? undefined : createServer()
   await new Promise<void>((resolve, reject) => {
+    if (server === undefined) return resolve()
     server.once('error', reject)
     server.listen(socket, resolve)
   })
@@ -213,11 +215,11 @@ test('nested symlink, hardlink, and socket entries are rejected and never follow
     const reasons = listed.entries.flatMap(entry => entry.kind === 'rejected' ? [entry.reason] : [])
     assert.ok(reasons.includes('hardlink'))
     assert.ok(reasons.includes('symlink'))
-    assert.ok(reasons.includes('special-file'))
+    if (server !== undefined) assert.ok(reasons.includes('special-file'))
     assert.equal(listed.entries.some(entry => entry.kind === 'file'), false)
     await owner.dispose()
   } finally {
-    await new Promise<void>(resolve => server.close(() => resolve()))
+    if (server !== undefined) await new Promise<void>(resolve => server.close(() => resolve()))
   }
 })
 
@@ -344,7 +346,11 @@ test('journal checkpoint stage drift is rebound before any payload write', async
   await owner.dispose()
 })
 
-test('moved destination parent reports unresolved residue instead of false scrubbed cleanup', async () => {
+test('moved destination parent reports unresolved residue instead of false scrubbed cleanup', {
+  skip: process.platform === 'win32'
+    ? 'Windows prevents renaming a directory that contains an open destination handle'
+    : false,
+}, async () => {
   const root = await canonicalTemp('tockteam-picker-moved-parent-')
   const moved = `${root}-moved`
   const activeVault = await canonicalTemp('tockteam-picker-active-')
@@ -538,7 +544,7 @@ test('crash recovery preserves evidence and validates resolved tombstones idempo
     const activeVault = await canonicalTemp('tockteam-picker-active-')
     const destinationPath = join(root, 'output.html')
     const child = spawnSync(process.execPath, [
-      new URL('./fixtures/desktop-picker-crash.ts', import.meta.url).pathname,
+      fileURLToPath(new URL('./fixtures/desktop-picker-crash.ts', import.meta.url)),
       checkpoint,
       destinationPath,
       recoveryRoot,

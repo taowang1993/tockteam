@@ -745,10 +745,11 @@ test('the package publishes a browser client contribution without Host behavior'
   await dispose()
   assert.equal(disposed, 1)
   const manifest = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8')) as {
-    dsh?: { client?: { inject?: string[]; platform?: string } }
+    dsh?: { client?: { external?: string[]; inject?: string[]; platform?: string } }
     exports?: Record<string, { default?: string; types?: string }>
   }
   assert.deepEqual(manifest.dsh?.client, {
+    external: ['@tockteam/tocktutor-workbench/client'],
     inject: ['@deepseek-ai/dsh-client-runtime', '@tockteam/tocktutor-workbench'],
     platform: 'web',
     immediately: true,

@@ -2,16 +2,13 @@ import { spawnSync } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { resolveMacPackageArchitecture } from '../src/node-platform.ts'
 import { resolveProductVersion } from '../src/version.ts'
 import { ensureElectronInstalled } from './electron-runtime.mjs'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const version = resolveProductVersion(root)
-const requestedArch = process.argv[2]
-const arch = requestedArch ?? { arm64: 'arm64', x64: 'x64' }[process.arch] ?? process.arch
-if (arch !== 'arm64' && arch !== 'x64') {
-  throw new Error(`unsupported macOS architecture: ${arch}`)
-}
+const arch = resolveMacPackageArchitecture(process.argv[2])
 ensureElectronInstalled()
 
 const icon = join(root, 'assets', 'TockTeam-Desktop.icns')

@@ -7,7 +7,7 @@ import { test } from 'node:test'
 import { DesktopPickerChannel } from '../src/desktop-picker-channel.ts'
 import { DesktopPickerOwner } from '../src/desktop-picker-owner.ts'
 import { DesktopPickerProvider } from '../src/desktop-picker-provider.ts'
-import { computeDesktopDestinationPlanDigest, type NativeOperationIdentity } from '../src/host-contract.ts'
+import { computeDesktopDestinationPlanDigest, TockTeamDesktopGrantError, type NativeOperationIdentity } from '../src/host-contract.ts'
 
 async function canonicalTemp(prefix: string): Promise<string> {
   return await realpath(await mkdtemp(join(tmpdir(), prefix)))
@@ -91,6 +91,36 @@ test('picker channel authenticates, forwards opaque sessions, and rejects replay
   await assert.rejects(
     provider.listSource({ limit: 1, session: begun.session }, new AbortController().signal),
   )
+})
+
+test('provider releases a source allocated after its vault becomes stale', async () => {
+  let current = { active: true as const, generation: 1, id: 'vault-1' }
+  const methods: string[] = []
+  const provider = new DesktopPickerProvider({
+    endpoint: 'http://127.0.0.1:43210/picker',
+    token: 'token',
+  }, async (_input, init) => {
+    const request = JSON.parse(String(init?.body)) as { method: string }
+    methods.push(request.method)
+    if (request.method === 'beginSource') {
+      current = { active: true, generation: 2, id: 'vault-2' }
+      return Response.json({ ok: true, value: { expiresAt: Date.now() + 1000, root: {}, session: 'stale-session' } })
+    }
+    if (request.method === 'disposeProvider') {
+      return Response.json({ ok: true, value: { cleanup: { status: 'complete' } } })
+    }
+    return Response.json({ ok: true, value: { status: 'released' } })
+  }, () => current)
+  await assert.rejects(provider.beginSource({
+    authorization: 'selection' as never,
+    identity: identity('stale-source'),
+    limits: { maxDepth: 1, maxEntries: 1, maxEntryBytes: 1, maxRelativePathBytes: 1, maxTotalBytes: 1 },
+    purpose: 'markdown-folder',
+  }, new AbortController().signal), (error: unknown) => (
+    error instanceof TockTeamDesktopGrantError && error.code === 'stale'
+  ))
+  assert.deepEqual(methods, ['beginSource', 'releaseSource'])
+  await provider.dispose()
 })
 
 test('provider unload closes admission before its cleanup snapshot', async () => {

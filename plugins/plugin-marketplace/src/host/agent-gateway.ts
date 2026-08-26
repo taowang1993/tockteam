@@ -97,22 +97,49 @@ export async function startMarketplaceAgentGateway(
         throw new Error('unsupported marketplace agent request')
       }
       const command = parseMarketplaceCommand(record.command)
+      if (deferredPending) throw new Error('a marketplace restart action is already pending')
       if (!isDeferred(command)) {
+        if (command.type === 'preview') {
+          const plan = manager.getSnapshot().plan
+          const expected = command.expectedPlan
+          if (plan === null || expected === undefined
+            || plan.action !== expected.action
+            || plan.manifestHash !== expected.manifestHash
+            || plan.pluginId !== expected.pluginId
+            || plan.resolvedCommit !== expected.resolvedCommit) {
+            throw new Error('the prepared marketplace plan changed before preview approval')
+          }
+        }
         const snapshot = await manager.dispatch(command)
         json(response, 200, { accepted: true, deferred: false, snapshot })
         return
       }
-      if (deferredPending) throw new Error('a marketplace restart action is already pending')
       const snapshot = manager.getSnapshot()
       if (command.type === 'apply' && snapshot.preview === null) {
         throw new Error('there is no isolated preview to apply')
       }
+      if (command.type === 'apply'
+        && command.expectedTransactionId !== snapshot.preview?.transactionId) {
+        throw new Error('the marketplace preview changed before apply approval')
+      }
       if (command.type === 'undo' && !snapshot.undoAvailable) {
         throw new Error('there is no previous profile to recover')
       }
+      const transactionId = command.type === 'apply'
+        ? snapshot.preview!.transactionId
+        : snapshot.lifecycle.previous!.transactionId
       deferredPending = true
       json(response, 202, { accepted: true, deferred: true, snapshot })
       setTimeout(() => {
+        const current = manager.getSnapshot()
+        const currentTransactionId = command.type === 'apply'
+          ? current.preview?.transactionId
+          : current.lifecycle.previous?.transactionId
+        if (currentTransactionId !== transactionId) {
+          options.onError?.(new Error(`${command.type === 'apply' ? 'preview' : 'recovery point'} changed before deferred ${command.type}`))
+          deferredPending = false
+          return
+        }
         void manager.dispatch(command)
           .then(result => {
             if (result.error !== null) options.onError?.(new Error(result.error))

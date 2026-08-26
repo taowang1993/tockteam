@@ -11,6 +11,7 @@ import {
   createClipCancelHandler,
   createClipReviewHandler,
   createViewerHandler,
+  isTrustedDesktopRequest,
   type ViewerPageResult,
 } from '../src/server.ts'
 
@@ -35,6 +36,15 @@ async function withServer(run: (origin: string) => Promise<void>) {
     await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()))
   }
 }
+
+test('desktop Web Clip routes reject rebound browser authorities', () => {
+  const request = (host: string, origin: string) => ({
+    headers: { host, origin },
+    socket: { encrypted: false },
+  })
+  assert.equal(isTrustedDesktopRequest(request('127.0.0.1:3080', 'http://127.0.0.1:3080') as never), true)
+  assert.equal(isTrustedDesktopRequest(request('attacker.example:3080', 'http://attacker.example:3080') as never), false)
+})
 
 test('serves one same-origin bounded viewer request', async () => {
   await withServer(async origin => {

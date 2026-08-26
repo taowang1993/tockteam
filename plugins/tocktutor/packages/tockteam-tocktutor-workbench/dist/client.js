@@ -18344,26 +18344,30 @@ function Label({ className, unstyled = false, ...props }) {
 }
 
 // ../../../ui/src/textarea.tsx
+var React29 = __toESM(require("react"), 1);
 var import_jsx_runtime15 = require("react/jsx-runtime");
-function Textarea({ className, unstyled = false, ...props }) {
-  return /* @__PURE__ */ (0, import_jsx_runtime15.jsx)(
-    "textarea",
-    {
-      "data-slot": "textarea",
-      className: unstyled ? className : cn("field-sizing-content min-h-16 w-full rounded-lg border border-input bg-transparent px-2.5 py-2 text-sm text-foreground outline-none transition-[background-color,border-color,box-shadow] placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20", className),
-      ...props
-    }
-  );
-}
+var Textarea = React29.forwardRef(
+  function Textarea2({ className, unstyled = false, ...props }, ref) {
+    return /* @__PURE__ */ (0, import_jsx_runtime15.jsx)(
+      "textarea",
+      {
+        ref,
+        "data-slot": "textarea",
+        className: unstyled ? className : cn("field-sizing-content min-h-16 w-full rounded-lg border border-input bg-transparent px-2.5 py-2 text-sm text-foreground outline-none transition-[background-color,border-color,box-shadow] placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20", className),
+        ...props
+      }
+    );
+  }
+);
 
 // ../../../ui/src/tooltip.tsx
-var React34 = __toESM(require("react"), 1);
+var React35 = __toESM(require("react"), 1);
 
 // ../../node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.7_@types+react@18.3.31__@types+rea_6bca503763256159376adbcc7b8f4fe8/node_modules/@radix-ui/react-tooltip/dist/index.mjs
-var React33 = __toESM(require("react"), 1);
+var React34 = __toESM(require("react"), 1);
 
 // ../../node_modules/.pnpm/@radix-ui+react-popper@1.3.7_@types+react-dom@18.3.7_@types+react@18.3.31__@types+react_eb61390ffeb98719c4501fa966467838/node_modules/@radix-ui/react-popper/dist/index.mjs
-var React31 = __toESM(require("react"), 1);
+var React32 = __toESM(require("react"), 1);
 
 // ../../node_modules/.pnpm/@floating-ui+utils@0.2.12/node_modules/@floating-ui/utils/dist/floating-ui.utils.mjs
 var sides = ["top", "right", "bottom", "left"];
@@ -19958,7 +19962,7 @@ var computePosition2 = (reference, floating, options) => {
 };
 
 // ../../node_modules/.pnpm/@floating-ui+react-dom@2.1.9_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/@floating-ui/react-dom/dist/floating-ui.react-dom.mjs
-var React29 = __toESM(require("react"), 1);
+var React30 = __toESM(require("react"), 1);
 var import_react4 = require("react");
 var ReactDOM3 = __toESM(require("react-dom"), 1);
 var isClient = typeof document !== "undefined";
@@ -20024,7 +20028,7 @@ function roundByDPR(element, value) {
   return Math.round(value * dpr) / dpr;
 }
 function useLatestRef(value) {
-  const ref = React29.useRef(value);
+  const ref = React30.useRef(value);
   index(() => {
     ref.current = value;
   });
@@ -20047,7 +20051,7 @@ function useFloating(options) {
     whileElementsMounted,
     open
   } = options;
-  const [data, setData] = React29.useState({
+  const [data, setData] = React30.useState({
     x: 0,
     y: 0,
     strategy,
@@ -20055,19 +20059,19 @@ function useFloating(options) {
     middlewareData: {},
     isPositioned: false
   });
-  const [latestMiddleware, setLatestMiddleware] = React29.useState(middleware);
+  const [latestMiddleware, setLatestMiddleware] = React30.useState(middleware);
   if (!deepEqual(latestMiddleware, middleware)) {
     setLatestMiddleware(middleware);
   }
-  const [_reference, _setReference] = React29.useState(null);
-  const [_floating, _setFloating] = React29.useState(null);
-  const setReference = React29.useCallback((node) => {
+  const [_reference, _setReference] = React30.useState(null);
+  const [_floating, _setFloating] = React30.useState(null);
+  const setReference = React30.useCallback((node) => {
     if (node !== referenceRef.current) {
       referenceRef.current = node;
       _setReference(node);
     }
   }, []);
-  const setFloating = React29.useCallback((node) => {
+  const setFloating = React30.useCallback((node) => {
     if (node !== floatingRef.current) {
       floatingRef.current = node;
       _setFloating(node);
@@ -20075,14 +20079,14 @@ function useFloating(options) {
   }, []);
   const referenceEl = externalReference || _reference;
   const floatingEl = externalFloating || _floating;
-  const referenceRef = React29.useRef(null);
-  const floatingRef = React29.useRef(null);
-  const dataRef = React29.useRef(data);
+  const referenceRef = React30.useRef(null);
+  const floatingRef = React30.useRef(null);
+  const dataRef = React30.useRef(data);
   const hasWhileElementsMounted = whileElementsMounted != null;
   const whileElementsMountedRef = useLatestRef(whileElementsMounted);
   const platformRef = useLatestRef(platform2);
   const openRef = useLatestRef(open);
-  const update = React29.useCallback(() => {
+  const update = React30.useCallback(() => {
     if (!referenceRef.current || !floatingRef.current) {
       return;
     }
@@ -20120,7 +20124,7 @@ function useFloating(options) {
       }));
     }
   }, [open]);
-  const isMountedRef = React29.useRef(false);
+  const isMountedRef = React30.useRef(false);
   index(() => {
     isMountedRef.current = true;
     return () => {
@@ -20137,17 +20141,17 @@ function useFloating(options) {
       update();
     }
   }, [referenceEl, floatingEl, update, whileElementsMountedRef, hasWhileElementsMounted]);
-  const refs = React29.useMemo(() => ({
+  const refs = React30.useMemo(() => ({
     reference: referenceRef,
     floating: floatingRef,
     setReference,
     setFloating
   }), [setReference, setFloating]);
-  const elements = React29.useMemo(() => ({
+  const elements = React30.useMemo(() => ({
     reference: referenceEl,
     floating: floatingEl
   }), [referenceEl, floatingEl]);
-  const floatingStyles = React29.useMemo(() => {
+  const floatingStyles = React30.useMemo(() => {
     const initialStyles = {
       position: strategy,
       left: 0,
@@ -20173,7 +20177,7 @@ function useFloating(options) {
       top: y
     };
   }, [strategy, transform2, elements.floating, data.x, data.y]);
-  return React29.useMemo(() => ({
+  return React30.useMemo(() => ({
     ...data,
     update,
     refs,
@@ -20269,11 +20273,11 @@ var arrow3 = (options, deps) => {
 };
 
 // ../../node_modules/.pnpm/@radix-ui+react-arrow@1.1.15_@types+react-dom@18.3.7_@types+react@18.3.31__@types+react_4adf567bd0450ecb7dbf3f22f0548dcb/node_modules/@radix-ui/react-arrow/dist/index.mjs
-var React30 = __toESM(require("react"), 1);
+var React31 = __toESM(require("react"), 1);
 var import_jsx_runtime16 = require("react/jsx-runtime");
 var __defProp19 = Object.defineProperty;
 var __name18 = (target, value) => __defProp19(target, "name", { value, configurable: true });
-var Arrow = /* @__PURE__ */ React30.forwardRef(
+var Arrow = /* @__PURE__ */ React31.forwardRef(
   /* @__PURE__ */ __name18(function Arrow2(props, forwardedRef) {
     const { children, width = 10, height = 5, ...arrowProps } = props;
     return /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(
@@ -20301,8 +20305,8 @@ var [createPopperContext, createPopperScope] = createContextScope(POPPER_NAME);
 var [PopperProvider, usePopperContext] = createPopperContext(POPPER_NAME);
 var Popper = /* @__PURE__ */ __name19((props) => {
   const { __scopePopper, children } = props;
-  const [anchor, setAnchor] = React31.useState(null);
-  const [placementState, setPlacementState] = React31.useState(void 0);
+  const [anchor, setAnchor] = React32.useState(null);
+  const [placementState, setPlacementState] = React32.useState(void 0);
   return /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(
     PopperProvider,
     {
@@ -20316,13 +20320,13 @@ var Popper = /* @__PURE__ */ __name19((props) => {
   );
 }, "Popper");
 var ANCHOR_NAME = "PopperAnchor";
-var PopperAnchor = /* @__PURE__ */ React31.forwardRef(
+var PopperAnchor = /* @__PURE__ */ React32.forwardRef(
   /* @__PURE__ */ __name19(function PopperAnchor2(props, forwardedRef) {
     const { __scopePopper, virtualRef, ...anchorProps } = props;
     const context = usePopperContext(ANCHOR_NAME, __scopePopper);
-    const ref = React31.useRef(null);
+    const ref = React32.useRef(null);
     const onAnchorChange = context.onAnchorChange;
-    const callbackRef = React31.useCallback(
+    const callbackRef = React32.useCallback(
       (node) => {
         ref.current = node;
         if (node) {
@@ -20332,8 +20336,8 @@ var PopperAnchor = /* @__PURE__ */ React31.forwardRef(
       [onAnchorChange]
     );
     const composedRefs = useComposedRefs(forwardedRef, callbackRef);
-    const anchorRef = React31.useRef(null);
-    React31.useEffect(() => {
+    const anchorRef = React32.useRef(null);
+    React32.useEffect(() => {
       if (!virtualRef) {
         return;
       }
@@ -20359,7 +20363,7 @@ var PopperAnchor = /* @__PURE__ */ React31.forwardRef(
 );
 var CONTENT_NAME2 = "PopperContent";
 var [PopperContentProvider, useContentContext] = createPopperContext(CONTENT_NAME2);
-var PopperContent = /* @__PURE__ */ React31.forwardRef(
+var PopperContent = /* @__PURE__ */ React32.forwardRef(
   /* @__PURE__ */ __name19(function PopperContent2(props, forwardedRef) {
     const {
       __scopePopper,
@@ -20378,9 +20382,9 @@ var PopperContent = /* @__PURE__ */ React31.forwardRef(
       ...contentProps
     } = props;
     const context = usePopperContext(CONTENT_NAME2, __scopePopper);
-    const [content, setContent] = React31.useState(null);
+    const [content, setContent] = React32.useState(null);
     const composedRefs = useComposedRefs(forwardedRef, setContent);
-    const [arrow4, setArrow] = React31.useState(null);
+    const [arrow4, setArrow] = React32.useState(null);
     const arrowSize = useSize(arrow4);
     const arrowWidth = arrowSize?.width ?? 0;
     const arrowHeight = arrowSize?.height ?? 0;
@@ -20460,7 +20464,7 @@ var PopperContent = /* @__PURE__ */ React31.forwardRef(
     const arrowX = middlewareData.arrow?.x;
     const arrowY = middlewareData.arrow?.y;
     const cannotCenterArrow = middlewareData.arrow?.centerOffset !== 0;
-    const [contentZIndex, setContentZIndex] = React31.useState();
+    const [contentZIndex, setContentZIndex] = React32.useState();
     useLayoutEffect2(() => {
       if (content) setContentZIndex(window.getComputedStyle(content).zIndex);
     }, [content]);
@@ -20527,7 +20531,7 @@ var OPPOSITE_SIDE = {
   bottom: "top",
   left: "right"
 };
-var PopperArrow = /* @__PURE__ */ React31.forwardRef(
+var PopperArrow = /* @__PURE__ */ React32.forwardRef(
   /* @__PURE__ */ __name19(function PopperArrow2(props, forwardedRef) {
     const { __scopePopper, ...arrowProps } = props;
     const contentContext = useContentContext(ARROW_NAME, __scopePopper);
@@ -20622,7 +20626,7 @@ var Content = PopperContent;
 var Arrow3 = PopperArrow;
 
 // ../../node_modules/.pnpm/@radix-ui+react-visually-hidden@1.2.11_@types+react-dom@18.3.7_@types+react@18.3.31__@t_642d100dd60f054d3c0d9c38ece6c812/node_modules/@radix-ui/react-visually-hidden/dist/index.mjs
-var React32 = __toESM(require("react"), 1);
+var React33 = __toESM(require("react"), 1);
 var import_jsx_runtime18 = require("react/jsx-runtime");
 var __defProp21 = Object.defineProperty;
 var __name20 = (target, value) => __defProp21(target, "name", { value, configurable: true });
@@ -20639,7 +20643,7 @@ var VISUALLY_HIDDEN_STYLES = Object.freeze({
   whiteSpace: "nowrap",
   wordWrap: "normal"
 });
-var VisuallyHidden = /* @__PURE__ */ React32.forwardRef(
+var VisuallyHidden = /* @__PURE__ */ React33.forwardRef(
   /* @__PURE__ */ __name20(function VisuallyHidden2(props, forwardedRef) {
     return /* @__PURE__ */ (0, import_jsx_runtime18.jsx)(
       Primitive.span,
@@ -20673,10 +20677,10 @@ var TooltipProvider = /* @__PURE__ */ __name21((props) => {
     disableHoverableContent = false,
     children
   } = props;
-  const isOpenDelayedRef = React33.useRef(true);
-  const isPointerInTransitRef = React33.useRef(false);
-  const skipDelayTimerRef = React33.useRef(0);
-  React33.useEffect(() => {
+  const isOpenDelayedRef = React34.useRef(true);
+  const isPointerInTransitRef = React34.useRef(false);
+  const skipDelayTimerRef = React34.useRef(0);
+  React34.useEffect(() => {
     const skipDelayTimer = skipDelayTimerRef.current;
     return () => window.clearTimeout(skipDelayTimer);
   }, []);
@@ -20686,12 +20690,12 @@ var TooltipProvider = /* @__PURE__ */ __name21((props) => {
       scope: __scopeTooltip,
       isOpenDelayedRef,
       delayDuration,
-      onOpen: React33.useCallback(() => {
+      onOpen: React34.useCallback(() => {
         if (skipDelayDuration <= 0) return;
         window.clearTimeout(skipDelayTimerRef.current);
         isOpenDelayedRef.current = false;
       }, [skipDelayDuration]),
-      onClose: React33.useCallback(() => {
+      onClose: React34.useCallback(() => {
         if (skipDelayDuration <= 0) return;
         window.clearTimeout(skipDelayTimerRef.current);
         skipDelayTimerRef.current = window.setTimeout(
@@ -20700,7 +20704,7 @@ var TooltipProvider = /* @__PURE__ */ __name21((props) => {
         );
       }, [skipDelayDuration]),
       isPointerInTransitRef,
-      onPointerInTransitChange: React33.useCallback((inTransit) => {
+      onPointerInTransitChange: React34.useCallback((inTransit) => {
         isPointerInTransitRef.current = inTransit;
       }, []),
       disableHoverableContent,
@@ -20722,13 +20726,13 @@ var Tooltip = /* @__PURE__ */ __name21((props) => {
   } = props;
   const providerContext = useTooltipProviderContext(TOOLTIP_NAME, props.__scopeTooltip);
   const popperScope = usePopperScope(__scopeTooltip);
-  const [trigger, setTrigger] = React33.useState(null);
-  const [contentIdState, setContentId] = React33.useState(void 0);
+  const [trigger, setTrigger] = React34.useState(null);
+  const [contentIdState, setContentId] = React34.useState(void 0);
   const generatedContentId = useId();
-  const openTimerRef = React33.useRef(0);
+  const openTimerRef = React34.useRef(0);
   const disableHoverableContent = disableHoverableContentProp ?? providerContext.disableHoverableContent;
   const delayDuration = delayDurationProp ?? providerContext.delayDuration;
-  const wasOpenDelayedRef = React33.useRef(false);
+  const wasOpenDelayedRef = React34.useRef(false);
   const [open, setOpen] = useControllableState({
     prop: openProp,
     defaultProp: defaultOpen ?? false,
@@ -20743,21 +20747,21 @@ var Tooltip = /* @__PURE__ */ __name21((props) => {
     }, "onChange"),
     caller: TOOLTIP_NAME
   });
-  const stateAttribute = React33.useMemo(() => {
+  const stateAttribute = React34.useMemo(() => {
     return open ? wasOpenDelayedRef.current ? "delayed-open" : "instant-open" : "closed";
   }, [open]);
-  const handleOpen = React33.useCallback(() => {
+  const handleOpen = React34.useCallback(() => {
     window.clearTimeout(openTimerRef.current);
     openTimerRef.current = 0;
     wasOpenDelayedRef.current = false;
     setOpen(true);
   }, [setOpen]);
-  const handleClose = React33.useCallback(() => {
+  const handleClose = React34.useCallback(() => {
     window.clearTimeout(openTimerRef.current);
     openTimerRef.current = 0;
     setOpen(false);
   }, [setOpen]);
-  const handleDelayedOpen = React33.useCallback(() => {
+  const handleDelayedOpen = React34.useCallback(() => {
     window.clearTimeout(openTimerRef.current);
     openTimerRef.current = window.setTimeout(() => {
       wasOpenDelayedRef.current = true;
@@ -20765,7 +20769,7 @@ var Tooltip = /* @__PURE__ */ __name21((props) => {
       openTimerRef.current = 0;
     }, delayDuration);
   }, [delayDuration, setOpen]);
-  React33.useEffect(() => {
+  React34.useEffect(() => {
     return () => {
       if (openTimerRef.current) {
         window.clearTimeout(openTimerRef.current);
@@ -20784,11 +20788,11 @@ var Tooltip = /* @__PURE__ */ __name21((props) => {
       stateAttribute,
       trigger,
       onTriggerChange: setTrigger,
-      onTriggerEnter: React33.useCallback(() => {
+      onTriggerEnter: React34.useCallback(() => {
         if (providerContext.isOpenDelayedRef.current) handleDelayedOpen();
         else handleOpen();
       }, [providerContext.isOpenDelayedRef, handleDelayedOpen, handleOpen]),
-      onTriggerLeave: React33.useCallback(() => {
+      onTriggerLeave: React34.useCallback(() => {
         if (disableHoverableContent) {
           handleClose();
         } else {
@@ -20804,18 +20808,18 @@ var Tooltip = /* @__PURE__ */ __name21((props) => {
   ) });
 }, "Tooltip");
 var TRIGGER_NAME2 = "TooltipTrigger";
-var TooltipTrigger = /* @__PURE__ */ React33.forwardRef(
+var TooltipTrigger = /* @__PURE__ */ React34.forwardRef(
   /* @__PURE__ */ __name21(function TooltipTrigger2(props, forwardedRef) {
     const { __scopeTooltip, ...triggerProps } = props;
     const context = useTooltipContext(TRIGGER_NAME2, __scopeTooltip);
     const providerContext = useTooltipProviderContext(TRIGGER_NAME2, __scopeTooltip);
     const popperScope = usePopperScope(__scopeTooltip);
-    const ref = React33.useRef(null);
+    const ref = React34.useRef(null);
     const composedRefs = useComposedRefs(forwardedRef, ref, context.onTriggerChange);
-    const isPointerDownRef = React33.useRef(false);
-    const hasPointerMoveOpenedRef = React33.useRef(false);
-    const handlePointerUp = React33.useCallback(() => isPointerDownRef.current = false, []);
-    React33.useEffect(() => {
+    const isPointerDownRef = React34.useRef(false);
+    const hasPointerMoveOpenedRef = React34.useRef(false);
+    const handlePointerUp = React34.useCallback(() => isPointerDownRef.current = false, []);
+    React34.useEffect(() => {
       return () => document.removeEventListener("pointerup", handlePointerUp);
     }, [handlePointerUp]);
     return /* @__PURE__ */ (0, import_jsx_runtime19.jsx)(Anchor, { asChild: true, ...popperScope, children: /* @__PURE__ */ (0, import_jsx_runtime19.jsx)(
@@ -20862,7 +20866,7 @@ var TooltipPortal = /* @__PURE__ */ __name21((props) => {
   return /* @__PURE__ */ (0, import_jsx_runtime19.jsx)(PortalProvider2, { scope: __scopeTooltip, forceMount, children: /* @__PURE__ */ (0, import_jsx_runtime19.jsx)(Presence, { present: forceMount || context.open, children: /* @__PURE__ */ (0, import_jsx_runtime19.jsx)(Portal, { asChild: true, container, children }) }) });
 }, "TooltipPortal");
 var CONTENT_NAME3 = "TooltipContent";
-var TooltipContent = /* @__PURE__ */ React33.forwardRef(
+var TooltipContent = /* @__PURE__ */ React34.forwardRef(
   /* @__PURE__ */ __name21(function TooltipContent2(props, forwardedRef) {
     const portalContext = usePortalContext2(CONTENT_NAME3, props.__scopeTooltip);
     const { forceMount = portalContext.forceMount, side = "top", ...contentProps } = props;
@@ -20870,20 +20874,20 @@ var TooltipContent = /* @__PURE__ */ React33.forwardRef(
     return /* @__PURE__ */ (0, import_jsx_runtime19.jsx)(Presence, { present: forceMount || context.open, children: context.disableHoverableContent ? /* @__PURE__ */ (0, import_jsx_runtime19.jsx)(TooltipContentImpl, { side, ...contentProps, ref: forwardedRef }) : /* @__PURE__ */ (0, import_jsx_runtime19.jsx)(TooltipContentHoverable, { side, ...contentProps, ref: forwardedRef }) });
   }, "TooltipContent")
 );
-var TooltipContentHoverable = /* @__PURE__ */ React33.forwardRef(/* @__PURE__ */ __name21(function TooltipContentHoverable2(props, forwardedRef) {
+var TooltipContentHoverable = /* @__PURE__ */ React34.forwardRef(/* @__PURE__ */ __name21(function TooltipContentHoverable2(props, forwardedRef) {
   const context = useTooltipContext(CONTENT_NAME3, props.__scopeTooltip);
   const providerContext = useTooltipProviderContext(CONTENT_NAME3, props.__scopeTooltip);
-  const ref = React33.useRef(null);
+  const ref = React34.useRef(null);
   const composedRefs = useComposedRefs(forwardedRef, ref);
-  const [pointerGraceArea, setPointerGraceArea] = React33.useState(null);
+  const [pointerGraceArea, setPointerGraceArea] = React34.useState(null);
   const { trigger, onClose } = context;
   const content = ref.current;
   const { onPointerInTransitChange } = providerContext;
-  const handleRemoveGraceArea = React33.useCallback(() => {
+  const handleRemoveGraceArea = React34.useCallback(() => {
     setPointerGraceArea(null);
     onPointerInTransitChange(false);
   }, [onPointerInTransitChange]);
-  const handleCreateGraceArea = React33.useCallback(
+  const handleCreateGraceArea = React34.useCallback(
     (event, hoverTarget) => {
       const currentTarget = event.currentTarget;
       const exitPoint = { x: event.clientX, y: event.clientY };
@@ -20896,10 +20900,10 @@ var TooltipContentHoverable = /* @__PURE__ */ React33.forwardRef(/* @__PURE__ */
     },
     [onPointerInTransitChange]
   );
-  React33.useEffect(() => {
+  React34.useEffect(() => {
     return () => handleRemoveGraceArea();
   }, [handleRemoveGraceArea]);
-  React33.useEffect(() => {
+  React34.useEffect(() => {
     if (trigger && content) {
       const handleTriggerLeave = /* @__PURE__ */ __name21((event) => handleCreateGraceArea(event, content), "handleTriggerLeave");
       const handleContentLeave = /* @__PURE__ */ __name21((event) => handleCreateGraceArea(event, trigger), "handleContentLeave");
@@ -20911,7 +20915,7 @@ var TooltipContentHoverable = /* @__PURE__ */ React33.forwardRef(/* @__PURE__ */
       };
     }
   }, [trigger, content, handleCreateGraceArea, handleRemoveGraceArea]);
-  React33.useEffect(() => {
+  React34.useEffect(() => {
     if (pointerGraceArea) {
       const handleTrackPointerGrace = /* @__PURE__ */ __name21((event) => {
         const target = event.target;
@@ -20932,7 +20936,7 @@ var TooltipContentHoverable = /* @__PURE__ */ React33.forwardRef(/* @__PURE__ */
   return /* @__PURE__ */ (0, import_jsx_runtime19.jsx)(TooltipContentImpl, { ...props, ref: composedRefs });
 }, "TooltipContentHoverable"));
 var Slottable = createSlottable("TooltipContent");
-var TooltipContentImpl = /* @__PURE__ */ React33.forwardRef(
+var TooltipContentImpl = /* @__PURE__ */ React34.forwardRef(
   // blank line to reduce diff noise
   /* @__PURE__ */ __name21(function TooltipContentImpl2(props, forwardedRef) {
     const {
@@ -20947,11 +20951,11 @@ var TooltipContentImpl = /* @__PURE__ */ React33.forwardRef(
     const context = useTooltipContext(CONTENT_NAME3, __scopeTooltip);
     const popperScope = usePopperScope(__scopeTooltip);
     const { onClose } = context;
-    React33.useEffect(() => {
+    React34.useEffect(() => {
       document.addEventListener(TOOLTIP_OPEN, onClose);
       return () => document.removeEventListener(TOOLTIP_OPEN, onClose);
     }, [onClose]);
-    React33.useEffect(() => {
+    React34.useEffect(() => {
       if (context.trigger) {
         const handleScroll2 = /* @__PURE__ */ __name21((event) => {
           if (event.target instanceof Node && event.target.contains(context.trigger)) {
@@ -21008,7 +21012,7 @@ var TooltipContentImpl = /* @__PURE__ */ React33.forwardRef(
     );
   }, "TooltipContentImpl")
 );
-var TooltipArrow = /* @__PURE__ */ React33.forwardRef(
+var TooltipArrow = /* @__PURE__ */ React34.forwardRef(
   /* @__PURE__ */ __name21(function TooltipArrow2(props, forwardedRef) {
     const { __scopeTooltip, ...arrowProps } = props;
     const popperScope = usePopperScope(__scopeTooltip);
@@ -21154,18 +21158,14 @@ function TooltipProvider2({
 function Tooltip2(props) {
   return /* @__PURE__ */ (0, import_jsx_runtime20.jsx)(Root32, { "data-slot": "tooltip", ...props });
 }
-var TooltipTrigger3 = React34.forwardRef(function TooltipTrigger4(props, ref) {
+var TooltipTrigger3 = React35.forwardRef(function TooltipTrigger4(props, ref) {
   return /* @__PURE__ */ (0, import_jsx_runtime20.jsx)(Trigger, { ref, "data-slot": "tooltip-trigger", ...props });
 });
-function TooltipContent3({
-  children,
-  className,
-  sideOffset = 4,
-  ...props
-}) {
+var TooltipContent3 = React35.forwardRef(function TooltipContent4({ children, className, sideOffset = 4, ...props }, ref) {
   return /* @__PURE__ */ (0, import_jsx_runtime20.jsx)(Portal3, { children: /* @__PURE__ */ (0, import_jsx_runtime20.jsxs)(
     Content2,
     {
+      ref,
       "data-slot": "tooltip-content",
       sideOffset,
       className: cn("z-[2147483647] inline-flex w-fit max-w-xs items-center rounded-md bg-foreground px-2 py-1 text-xs text-background shadow-sm", className),
@@ -21176,7 +21176,7 @@ function TooltipContent3({
       ]
     }
   ) });
-}
+});
 
 // src/route.tsx
 var import_react5 = require("react");

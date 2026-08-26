@@ -13,11 +13,20 @@ const original = {
   open: fs.promises.open.bind(fs.promises),
   opendir: fs.promises.opendir.bind(fs.promises),
   readFileSync: fs.readFileSync.bind(fs),
+  realpathSync: fs.realpathSync.bind(fs),
   renameSync: fs.renameSync.bind(fs),
   rmdirSync: fs.rmdirSync.bind(fs),
   symlinkSync: fs.symlinkSync.bind(fs),
   truncateSync: fs.truncateSync.bind(fs),
   writeFileSync: fs.writeFileSync.bind(fs),
+}
+
+const samePath = (left, right) => {
+  try {
+    return original.realpathSync(left).toLowerCase() === original.realpathSync(right).toLowerCase()
+  } catch {
+    return String(left).toLowerCase() === String(right).toLowerCase()
+  }
 }
 
 if (mode === 'link-source-swap' || mode === 'link-destination-occupy') {
@@ -43,7 +52,7 @@ if (mode === 'startup-stage-swap' || mode === 'startup-journal-open-swap' || mod
       original.renameSync(stage, `${stage}-recorded-owner`)
       original.writeFileSync(stage, foreign, { mode: 0o600 })
     }
-    if (mode === 'startup-residue-ancestor-swap' && !attacked && stage !== undefined && String(path) === stage) {
+    if (mode === 'startup-residue-ancestor-swap' && !attacked && stage !== undefined && samePath(path, stage)) {
       attacked = true
       const root = dirname(stage)
       const moved = `${root}-recorded-owner`
@@ -63,7 +72,7 @@ if (mode === 'startup-stage-swap' || mode === 'startup-journal-open-swap' || mod
         return await read(...readArgs)
       }
     }
-    if (mode === 'startup-resolved-stage-open-swap' && !attacked && stage !== undefined && String(path) === stage) {
+    if (mode === 'startup-resolved-stage-open-swap' && !attacked && stage !== undefined && samePath(path, stage)) {
       attacked = true
       original.renameSync(stage, `${stage}-recorded-owner`)
       original.writeFileSync(stage, foreign, { mode: 0o600 })

@@ -146,9 +146,12 @@ function readMarketplaceState(profileDir: string): MarketplaceStateFile {
     if (!isRecord(parsed) || !Array.isArray(parsed.entries)) {
       throw new Error('unsupported marketplace state version')
     }
+    if (!parsed.entries.every(validateInstalledEntry)) {
+      throw new Error('invalid marketplace installed entry')
+    }
     if (parsed.version === 1) {
       return {
-        entries: parsed.entries.filter(validateInstalledEntry),
+        entries: parsed.entries,
         locks: [],
         version: STATE_VERSION,
       }
@@ -156,9 +159,12 @@ function readMarketplaceState(profileDir: string): MarketplaceStateFile {
     if (parsed.version !== STATE_VERSION || !Array.isArray(parsed.locks)) {
       throw new Error('unsupported marketplace state version')
     }
+    if (!parsed.locks.every(validateSourceLock)) {
+      throw new Error('invalid marketplace source lock')
+    }
     return {
-      entries: parsed.entries.filter(validateInstalledEntry),
-      locks: parsed.locks.filter(validateSourceLock),
+      entries: parsed.entries,
+      locks: parsed.locks,
       version: STATE_VERSION,
     }
   } catch (error) {
@@ -548,9 +554,15 @@ export class PluginMarketplaceManager {
 
   getSnapshot(): MarketplaceSnapshot {
     const state = readMarketplaceState(this.#profileDir)
-    const receipts = state.entries
-    const installed = receipts.filter(entry => entry.mechanism === 'repository'
-      || bundleInstalled(this.#profileDir, entry.packageName))
+    const manifest = profileManifest(this.#profileDir)
+    const dependencies = isRecord(manifest.dependencies) ? manifest.dependencies : {}
+    const enabledBundles = new Set(profileBundles(manifest))
+    const patchPath = join(this.#profileDir, 'cordis.patch.yml')
+    const enabledRepositories = new Set(repositorySources(
+      existsSync(patchPath) ? readFileSync(patchPath, 'utf8') : '',
+    ))
+    const installed = state.entries.filter(entry => entry.mechanism === 'repository'
+      || entry.packageName !== null && typeof dependencies[entry.packageName] === 'string')
     const installedById = new Map(installed.map(entry => [entry.pluginId, entry]))
     return cloneSnapshot({
       auth: this.#auth,
@@ -561,8 +573,8 @@ export class PluginMarketplaceManager {
         const enabled = receipt === undefined
           ? false
           : receipt.mechanism === 'bundle'
-            ? bundleEnabled(this.#profileDir, receipt.packageName)
-            : repositoryEnabled(this.#profileDir, receipt)
+            ? receipt.packageName !== null && enabledBundles.has(receipt.packageName)
+            : enabledRepositories.has(receipt.source)
         return {
           ...plugin,
           currentCommit: receipt?.resolvedCommit ?? null,
@@ -598,7 +610,10 @@ export class PluginMarketplaceManager {
   }
 
   async dispatch(command: MarketplaceCommand): Promise<MarketplaceSnapshot> {
-    if (this.#busy) return this.getSnapshot()
+    if (this.#busy) {
+      if (command.type === 'refresh') return this.getSnapshot()
+      throw new Error('a marketplace transaction is already in progress')
+    }
     this.#busy = true
     this.#error = null
     try {

@@ -23,6 +23,7 @@ export type ReaderPageLoader = (url: string, signal: AbortSignal) => Promise<Rea
 export type ClipReviewLoader = (input: ClipReviewRequest, signal: AbortSignal) => Promise<ClipPreview>;
 export type ClipApplyLoader = (approval: ClipApproval, signal: AbortSignal) => Promise<WriteDocumentResult>;
 export type ClipCancelLoader = (reviewId: string) => boolean;
+export declare function isTrustedDesktopRequest(request: IncomingMessage): boolean;
 export declare function createViewerHandler(load: ViewerPageLoader, options?: ApiHandlerOptions): (request: IncomingMessage, response: ServerResponse) => Promise<void>;
 export declare function createReaderHandler(load: ReaderPageLoader, options?: ApiHandlerOptions): (request: IncomingMessage, response: ServerResponse) => Promise<void>;
 export declare function createClipReviewHandler(load: ClipReviewLoader, options?: ApiHandlerOptions): (request: IncomingMessage, response: ServerResponse) => Promise<void>;

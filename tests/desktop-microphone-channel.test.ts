@@ -51,7 +51,30 @@ test('microphone provider rejects stale vault before native request', async () =
   await provider.dispose()
 })
 
-test('microphone provider unload revokes a grant whose reply was gated', async () => {
+test('microphone provider propagates caller cancellation to native work', async () => {
+  let requestSignal: AbortSignal | null | undefined
+  const provider = new DesktopMicrophoneProvider({
+    endpoint: 'http://127.0.0.1:1/microphone',
+    token: 'token',
+  }, async (_input, init) => {
+    if (String(init?.body).includes('disposeProvider')) {
+      return new Response(JSON.stringify({ status: 'closed' }))
+    }
+    requestSignal = init?.signal
+    return await new Promise<Response>((_resolve, reject) => {
+      requestSignal?.addEventListener('abort', () => { reject(requestSignal?.reason) }, { once: true })
+    })
+  }, () => ({ active: true, generation: 1, id: 'vault' }))
+  const controller = new AbortController()
+  const request = provider.request({ identity }, controller.signal)
+  await new Promise<void>(resolve => { setImmediate(resolve) })
+  controller.abort()
+  assert.deepEqual(await request, { operationId: identity.operationId, status: 'cancelled' })
+  assert.equal(requestSignal?.aborted, true)
+  await provider.dispose()
+})
+
+test('microphone provider unload aborts an admitted request and revokes its grant', async () => {
   const owner = new DesktopMicrophoneOwner({ isAvailable: () => true, isCurrent: () => true, requestAccess: async () => true })
   let granted!: () => void
   const nativeGranted = new Promise<void>(resolve => { granted = resolve })
@@ -73,7 +96,7 @@ test('microphone provider unload revokes a grant whose reply was gated', async (
   await new Promise<void>(resolve => { setImmediate(resolve) })
   assert.equal(disposeSettled, false)
   releaseReply()
-  assert.equal((await requesting).status, 'granted')
+  assert.equal((await requesting).status, 'unavailable')
   await disposing
   assert.equal(owner.checkPermission(), false)
   assert.equal(owner.consumePermission(), false)

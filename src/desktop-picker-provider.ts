@@ -39,6 +39,7 @@ import {
   type WriteDesktopDestinationChunkRequest,
   type WriteDesktopDestinationChunkResult,
 } from './host-contract.ts'
+import { desktopLoopbackEndpoint } from './desktop-loopback.ts'
 
 export interface DesktopPickerProviderEnvironment {
   endpoint?: string | undefined
@@ -51,17 +52,6 @@ export type DesktopPickerCurrentVault = () =>
   | undefined
 
 const MAX_ERROR_TEXT = 256
-
-function endpointOf(environment: DesktopPickerProviderEnvironment): URL | undefined {
-  if (environment.endpoint === undefined || environment.token === undefined) return undefined
-  try {
-    const endpoint = new URL(environment.endpoint)
-    if (endpoint.protocol !== 'http:' || endpoint.hostname !== '127.0.0.1') return undefined
-    return endpoint
-  } catch {
-    return undefined
-  }
-}
 
 function isAbort(error: unknown): boolean {
   return error instanceof DOMException && error.name === 'AbortError'
@@ -102,7 +92,7 @@ export class DesktopPickerProvider implements TockTeamDesktopPickerService {
     fetcher: typeof fetch = fetch,
     currentVault?: DesktopPickerCurrentVault,
   ) {
-    this.endpoint = endpointOf(environment)
+    this.endpoint = desktopLoopbackEndpoint(environment)
     this.token = environment.token
     this.fetcher = fetcher
     this.currentVault = currentVault
@@ -116,29 +106,43 @@ export class DesktopPickerProvider implements TockTeamDesktopPickerService {
 
   async beginSource(request: BeginDesktopSourceRequest, signal: AbortSignal): Promise<BeginDesktopSourceResult> {
     this.assertCurrentVault(request.identity)
-    return await this.call('beginSource', request, signal, result => {
-      this.sourceSessions.set((result as BeginDesktopSourceResult).session, request.identity)
-    }) as BeginDesktopSourceResult
+    const result = await this.call('beginSource', request, signal) as BeginDesktopSourceResult
+    try {
+      this.assertCurrentVault(request.identity)
+    } catch (cause) {
+      await this.call('releaseSource', { session: result.session }).catch(() => undefined)
+      throw cause
+    }
+    this.sourceSessions.set(result.session, request.identity)
+    return result
   }
 
   async listSource(request: ListDesktopSourceRequest, signal: AbortSignal): Promise<ListDesktopSourceResult> {
     await this.assertSourceSession(request.session)
-    return await this.call('listSource', request, signal) as ListDesktopSourceResult
+    const result = await this.call('listSource', request, signal) as ListDesktopSourceResult
+    await this.assertSourceSession(request.session)
+    return result
   }
 
   async statSource(request: StatDesktopSourceRequest, signal: AbortSignal): Promise<StatDesktopSourceResult> {
     await this.assertSourceSession(request.session)
-    return await this.call('statSource', request, signal) as StatDesktopSourceResult
+    const result = await this.call('statSource', request, signal) as StatDesktopSourceResult
+    await this.assertSourceSession(request.session)
+    return result
   }
 
   async readSource(request: ReadDesktopSourceRequest, signal: AbortSignal): Promise<ReadDesktopSourceResult> {
     await this.assertSourceSession(request.session)
-    return await this.call('readSource', request, signal) as ReadDesktopSourceResult
+    const result = await this.call('readSource', request, signal) as ReadDesktopSourceResult
+    await this.assertSourceSession(request.session)
+    return result
   }
 
   async revalidateSource(request: RevalidateDesktopSourceRequest, signal: AbortSignal): Promise<RevalidateDesktopSourceResult> {
     await this.assertSourceSession(request.session)
-    return await this.call('revalidateSource', request, signal) as RevalidateDesktopSourceResult
+    const result = await this.call('revalidateSource', request, signal) as RevalidateDesktopSourceResult
+    await this.assertSourceSession(request.session)
+    return result
   }
 
   async releaseSource(request: ReleaseDesktopSourceRequest): Promise<ReleaseDesktopSourceResult> {
@@ -153,9 +157,15 @@ export class DesktopPickerProvider implements TockTeamDesktopPickerService {
     signal: AbortSignal,
   ): Promise<LockDesktopDestinationPlanResult> {
     this.assertCurrentVault(request.identity)
-    return await this.call('lockDestinationPlan', request, signal, result => {
-      this.destinationPlans.set((result as LockDesktopDestinationPlanResult).authorization, request.identity)
-    }) as LockDesktopDestinationPlanResult
+    const result = await this.call('lockDestinationPlan', request, signal) as LockDesktopDestinationPlanResult
+    try {
+      this.assertCurrentVault(request.identity)
+    } catch (cause) {
+      await this.call('revokeDestinationPlan', { authorization: result.authorization }).catch(() => undefined)
+      throw cause
+    }
+    this.destinationPlans.set(result.authorization, request.identity)
+    return result
   }
 
   async revokeDestinationPlan(
@@ -172,25 +182,37 @@ export class DesktopPickerProvider implements TockTeamDesktopPickerService {
     const planIdentity = this.destinationPlans.get(request.authorization)
     if (planIdentity === undefined || planIdentity.vaultId !== request.identity.vaultId
       || planIdentity.vaultGeneration !== request.identity.vaultGeneration) throw new TockTeamDesktopGrantError('stale')
-    return await this.call('beginDestination', request, signal, result => {
-      this.destinationPlans.delete(request.authorization)
-      this.destinationSessions.set((result as BeginDesktopDestinationResult).session, request.identity)
-    }) as BeginDesktopDestinationResult
+    const result = await this.call('beginDestination', request, signal) as BeginDesktopDestinationResult
+    this.destinationPlans.delete(request.authorization)
+    try {
+      this.assertCurrentVault(request.identity)
+    } catch (cause) {
+      await this.call('abortDestination', { session: result.session }, undefined, cleanup => {
+        this.rememberDestination(result.session, cleanup as AbortDesktopDestinationResult)
+      }).catch(() => undefined)
+      throw cause
+    }
+    this.destinationSessions.set(result.session, request.identity)
+    return result
   }
 
   async writeDestinationChunk(request: WriteDesktopDestinationChunkRequest, signal: AbortSignal): Promise<WriteDesktopDestinationChunkResult> {
     await this.assertDestinationSession(request.session)
-    return await this.call('writeDestinationChunk', {
+    const result = await this.call('writeDestinationChunk', {
       ...request,
       bytes: Buffer.from(request.bytes).toString('base64'),
     }, signal) as WriteDesktopDestinationChunkResult
+    await this.assertDestinationSession(request.session)
+    return result
   }
 
   async finalizeDestination(request: FinalizeDesktopDestinationRequest, signal: AbortSignal): Promise<FinalizeDesktopDestinationResult> {
     await this.assertDestinationSession(request.session)
-    return await this.call('finalizeDestination', request, signal, () => {
-      this.destinationSessions.delete(request.session)
-    }) as FinalizeDesktopDestinationResult
+    const identity = this.destinationSessions.get(request.session)!
+    const result = await this.call('finalizeDestination', request, signal) as FinalizeDesktopDestinationResult
+    this.destinationSessions.delete(request.session)
+    this.assertCurrentVault(identity)
+    return result
   }
 
   async abortDestination(request: AbortDesktopDestinationRequest): Promise<AbortDesktopDestinationResult> {

@@ -38,7 +38,7 @@ interface ClientContext {
 }
 
 interface SessionSurface {
-  scopeKey: string
+  readonly scopeKey: string
   cwd: string | null
   store: DockStore
 }
@@ -58,13 +58,12 @@ export interface DesktopPanels {
 
 export const inject = ['layout', 'locale', 'sessions']
 
-function currentSession(sessions: SessionsService): { scopeKey: string; cwd: string | null } {
+function currentSession(sessions: SessionsService): { scopeKey: string; cwd: string | null } | undefined {
   const snapshot = sessions.list.getSnapshot()
   const sessionId = snapshot.current
-  return {
-    scopeKey: sessionId ?? 'new-session',
-    cwd: sessionId === undefined ? null : snapshot.byId[sessionId]?.cwd ?? null,
-  }
+  return sessionId === undefined
+    ? undefined
+    : { scopeKey: sessionId, cwd: snapshot.byId[sessionId]?.cwd ?? null }
 }
 
 function findConversationColumn(): HTMLElement | null {
@@ -173,6 +172,15 @@ class DesktopPanelService implements DesktopPanels {
   private syncActiveSession(): void {
     const session = currentSession(this.sessions)
     const previous = this.active
+    if (session === undefined) {
+      if (previous === undefined) return
+      this.stopActiveStoreSubscription?.()
+      this.stopActiveStoreSubscription = undefined
+      this.active = undefined
+      this.renderDock()
+      this.notify()
+      return
+    }
     const previousCwd = previous?.cwd
     const next = this.surfaceFor(session.scopeKey, session.cwd)
     if (previous === next && previousCwd === session.cwd) return
@@ -197,22 +205,25 @@ class DesktopPanelService implements DesktopPanels {
   }
 
   private mountDock(column: HTMLElement): void {
+    let changed = false
     if (this.dock.element === null) {
       const element = document.createElement('div')
       element.id = 'tockteam-terminal-root'
       element.className = 'contents'
       this.dock.element = element
       this.dock.root = createRoot(element)
+      changed = true
     }
     if (this.dock.element.parentElement !== column || column.lastElementChild !== this.dock.element) {
       column.append(this.dock.element)
+      changed = true
     }
-    this.renderDock()
+    if (changed) this.renderDock()
   }
 
   private renderDock(): void {
     const active = this.active
-    if (this.dock.root === null || active === undefined) return
+    if (this.dock.root === null) return
     this.dock.root.render(
       <Fragment>
         {[...this.surfaces.values()].map(surface => (

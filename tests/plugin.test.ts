@@ -16,6 +16,9 @@ test('desktop client replaces upstream branding with TockTeam', () => {
   assert.match(client, /\['Into the Unknown', '探索未知之境', '探索未至之境'\]/)
   assert.match(client, /brand\.dataset\.tockteamSidebarBrand = 'true'/u)
   assert.match(client, /tockteamHeroHeadline/)
+  assert.match(client, /findHeroHeadlines/)
+  assert.match(client, /pruneDisconnected/)
+  assert.doesNotMatch(client, /querySelectorAll<HTMLElement>\('span'\)/)
   assert.match(client, /originalBrandMarks/)
   assert.match(client, /originalSidebarNames/)
   assert.match(client, /viewBox="0 0 20 20"/)
@@ -243,12 +246,23 @@ test('desktop Agent tools share the guarded marketplace transaction owner', asyn
   assert.equal(first.parameters.properties.query?.required, undefined)
   assert.deepEqual(first.output.schema.required, ['summary', 'data'])
   assert.equal(first.output.schema.properties.summary?.required, undefined)
+  const preview = definitions[3] as { parameters: { required: string[] } }
+  const apply = definitions[5] as { parameters: { required: string[] } }
+  assert.deepEqual(preview.parameters.required, ['confirmations', 'expectedPlan'])
+  assert.deepEqual(apply.parameters.required, ['expectedTransactionId'])
   assert.ok(policy)
   assert.deepEqual(
     await policy({ name: 'desktop_plugin_apply' }, async () => ({ kind: 'allow' })),
     {
       kind: 'ask',
       reason: 'Apply the tested plugin preview to TockTeam Desktop?',
+    },
+  )
+  assert.deepEqual(
+    await policy({ name: 'desktop_plugin_preview' }, async () => ({ kind: 'allow' })),
+    {
+      kind: 'ask',
+      reason: 'Approve the prepared plugin risks before starting its isolated preview?',
     },
   )
   assert.deepEqual(

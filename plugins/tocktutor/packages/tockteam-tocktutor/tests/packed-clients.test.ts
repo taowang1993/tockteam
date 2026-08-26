@@ -23,7 +23,7 @@ const { loadOverlayPatches } = await import(pathToFileURL(
 ).href)
 
 interface ReleaseArtifact {
-  client?: { immediately?: boolean; inject: string[]; platform: 'web' }
+  client?: { external?: string[]; immediately?: boolean; inject: string[]; platform: 'web' }
   directory: string
   name: string
   peers?: Record<string, string>
@@ -91,6 +91,7 @@ const releases: ReleaseArtifact[] = [
   },
   {
     client: {
+      external: ['@tockteam/tocktutor-workbench/client'],
       inject: ['@deepseek-ai/dsh-client-runtime', '@tockteam/tocktutor-workbench'],
       platform: 'web',
       immediately: true,
