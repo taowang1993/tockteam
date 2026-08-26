@@ -71,11 +71,36 @@ export declare class ImportExportReviewController {
     private fail;
     private update;
 }
+export declare const IMPORT_CHOOSER_DELEGATIONS: readonly [{
+    readonly format: "markdown-folder";
+    readonly id: "craft-folder";
+    readonly label: "Craft Markdown Folder";
+}, {
+    readonly format: "markdown-zip";
+    readonly id: "craft-zip";
+    readonly label: "Craft Markdown ZIP";
+}, {
+    readonly format: "html";
+    readonly id: "notion-html";
+    readonly label: "Notion HTML Export";
+}, {
+    readonly format: "markdown-folder";
+    readonly id: "apple-notes-folder";
+    readonly label: "Apple Notes Markdown Folder";
+}, {
+    readonly format: "markdown-zip";
+    readonly id: "apple-notes-zip";
+    readonly label: "Apple Notes Markdown ZIP";
+}, {
+    readonly format: "html";
+    readonly id: "apple-notes-html";
+    readonly label: "Apple Notes HTML Export";
+}];
 export declare function ImportExportReviewPanelView(props: {
     onApprove(): void;
     onCancel(): void;
     onFormat(format: ImportInspectFormat): void;
-    onStart(): void;
+    onStart(format?: ImportInspectFormat): void;
     onStartBackup?(): void;
     snapshot: ReviewPanelSnapshot;
 }): ReactNode;

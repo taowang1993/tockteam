@@ -225,7 +225,14 @@ function stripResidualMarkup(value) {
         .replace(/<[^>\n]*>/gu, '');
 }
 function relativeSource(base, reference) {
-    const cleaned = reference.split(/[?#]/u, 1)[0] ?? '';
+    const raw = reference.split(/[?#]/u, 1)[0] ?? '';
+    let cleaned;
+    try {
+        cleaned = decodeURIComponent(raw);
+    }
+    catch {
+        return null;
+    }
     if (cleaned === '' || /^[a-z][a-z\d+.-]*:/iu.test(cleaned) || cleaned.startsWith('//') || cleaned.startsWith('/'))
         return null;
     const stack = base.split('/').slice(0, -1);
@@ -247,6 +254,13 @@ function relativeSource(base, reference) {
         return null;
     }
 }
+function relativeSuffix(reference) {
+    const index = reference.search(/[?#]/u);
+    return index < 0 ? '' : reference.slice(index).replace(/[\u0000-\u001f\u007f"'<>]/gu, '');
+}
+function markdownRelativePath(path) {
+    return path.split('/').map(segment => segment === '..' ? segment : encodeURIComponent(segment)).join('/');
+}
 function relativeOutput(from, to) {
     const fromParts = from.split('/').slice(0, -1);
     const toParts = to.split('/');
@@ -261,20 +275,45 @@ function htmlMarkdown(html, sourcePath, outputRoot, noteMap, skipped) {
         .replace(/<(?:script|style|iframe|object|embed|svg)\b[^>]*>[^]*?<\/(?:script|style|iframe|object|embed|svg)>/giu, '');
     const resources = [];
     const currentDestination = noteMap.get(sourcePath) ?? `${outputRoot}/Imported.md`;
+    const resource = (reference, kind, label = '') => {
+        const decoded = decodeEntities(reference);
+        const local = relativeSource(sourcePath, decoded);
+        if (local === null) {
+            skipped.push({ label: reference.slice(0, 512), reason: 'remote-resource' });
+            return label;
+        }
+        resources.push(local);
+        const relative = relativeOutput(currentDestination, `${outputRoot}/${local}`);
+        return kind === 'media'
+            ? `![[${relative}]]`
+            : `[${label || local.split('/').at(-1) || 'Resource'}](${markdownRelativePath(relative)}${relativeSuffix(decoded)})`;
+    };
+    value = value.replace(/<(audio|video)\b([^>]*)>([^]*?)<\/\1>/giu, (_match, _tag, attributes, inner) => {
+        const reference = /\bsrc\s*=\s*["']([^"']+)["']/iu.exec(attributes)?.[1]
+            ?? /<source\b[^>]*\bsrc\s*=\s*["']([^"']+)["'][^>]*>/iu.exec(inner)?.[1];
+        return reference === undefined ? '' : resource(reference, 'media');
+    });
+    value = value.replace(/<(?:audio|video)\b[^>]*\bsrc\s*=\s*["']([^"']+)["'][^>]*\/?>/giu, (_match, reference) => resource(reference, 'media'));
     value = value.replace(/<img\b[^>]*\bsrc\s*=\s*["']([^"']+)["'][^>]*>/giu, (_match, reference) => {
-        const local = relativeSource(sourcePath, decodeEntities(reference));
+        const decoded = decodeEntities(reference);
+        const local = relativeSource(sourcePath, decoded);
         if (local === null) {
             skipped.push({ label: reference.slice(0, 512), reason: 'remote-resource' });
             return '';
         }
         resources.push(local);
-        return `![](${relativeOutput(currentDestination, `${outputRoot}/${local}`)})`;
+        return `![](${markdownRelativePath(relativeOutput(currentDestination, `${outputRoot}/${local}`))})`;
     });
     value = value.replace(/<a\b[^>]*\bhref\s*=\s*["']([^"']+)["'][^>]*>([^]*?)<\/a>/giu, (_match, reference, label) => {
-        const local = relativeSource(sourcePath, decodeEntities(reference));
+        const decoded = decodeEntities(reference);
+        const local = relativeSource(sourcePath, decoded);
         const destination = local === null ? undefined : noteMap.get(local);
         const text = decodeEntities(label.replace(/<[^>]+>/gu, '')).trim();
-        return destination === undefined ? text : `[${text}](${relativeOutput(currentDestination, destination)})`;
+        if (destination !== undefined)
+            return `[${text}](${markdownRelativePath(relativeOutput(currentDestination, destination))}${relativeSuffix(decoded)})`;
+        if (local !== null)
+            return resource(reference, 'link', text);
+        return text;
     });
     value = value
         .replace(/<h1\b[^>]*>([^]*?)<\/h1>/giu, '\n# $1\n')
@@ -339,13 +378,138 @@ export function planHtmlZip(bytes, rootName) {
         path: entry.path,
     })), rootName);
 }
+const JOURNAL_VOID_TAGS = new Set(['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'param', 'source', 'track', 'wbr']);
+function journalAttribute(openingTag, name) {
+    const match = new RegExp(`\\s${name}\\s*=\\s*(?:"([^"]*)"|'([^']*)'|([^\\s>]+))`, 'iu').exec(openingTag);
+    return decodeEntities(match?.[1] ?? match?.[2] ?? match?.[3] ?? '').trim();
+}
+function journalClasses(openingTag) {
+    return journalAttribute(openingTag, 'class').split(/\s+/u).filter(Boolean);
+}
+function journalElementsByClass(source, classes) {
+    const elements = [];
+    const pattern = /<(\/)?([a-z][\w:-]*)\b[^>]*>/giu;
+    let match;
+    while ((match = pattern.exec(source)) !== null) {
+        if (match[1] !== undefined)
+            continue;
+        const openingTag = match[0];
+        if (!journalClasses(openingTag).some(className => classes.has(className)))
+            continue;
+        const tagName = (match[2] ?? '').toLocaleLowerCase('en-US');
+        if (JOURNAL_VOID_TAGS.has(tagName) || openingTag.endsWith('/>')) {
+            elements.push({ innerHtml: '', openingTag });
+            continue;
+        }
+        const innerStart = pattern.lastIndex;
+        let depth = 1;
+        let closingStart = source.length;
+        let nested;
+        while ((nested = pattern.exec(source)) !== null) {
+            if ((nested[2] ?? '').toLocaleLowerCase('en-US') !== tagName)
+                continue;
+            if (nested[1] !== undefined) {
+                depth -= 1;
+                if (depth === 0) {
+                    closingStart = nested.index;
+                    break;
+                }
+            }
+            else if (!JOURNAL_VOID_TAGS.has(tagName) && !nested[0].endsWith('/>'))
+                depth += 1;
+        }
+        elements.push({ innerHtml: source.slice(innerStart, closingStart), openingTag });
+    }
+    return elements;
+}
+function classHtml(html, className) {
+    return journalElementsByClass(html, new Set([className])).map(element => element.innerHtml);
+}
 function classText(html, className) {
-    const escaped = className.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&');
-    return [...html.matchAll(new RegExp(`<[^>]+class=["'][^"']*\\b${escaped}\\b[^"']*["'][^>]*>([^]*?)<\\/[^>]+>`, 'giu'))]
-        .flatMap(match => {
-        const value = stripResidualMarkup((match[1] ?? '').replace(/<[^>]+>/gu, '')).trim();
+    return classHtml(html, className).flatMap(raw => {
+        const value = stripResidualMarkup(raw.replace(/<[^>]+>/gu, '')).replace(/\s+/gu, ' ').trim();
         return value === '' ? [] : [value];
     });
+}
+const JOURNAL_MONTHS = new Map([
+    ['january', 1], ['february', 2], ['march', 3], ['april', 4], ['may', 5], ['june', 6],
+    ['july', 7], ['august', 8], ['september', 9], ['october', 10], ['november', 11], ['december', 12],
+]);
+const JOURNAL_ASSET_ALIASES = new Map([['generic-map', 'location'], ['multi-pin-map', 'location']]);
+const JOURNAL_IGNORED_ASSETS = new Set(['live-photo', 'photo', 'video']);
+const JOURNAL_OVERLAY_CLASSES = ['activityMetrics', 'activityMetricsCalories', 'activityMetricsDistance', 'activityMetricsDuration', 'activityType', 'gridItemOverlayFooter', 'gridItemOverlayHeader', 'gridItemOverlayText', 'mediaArtist', 'mediaCategory', 'mediaTitle'];
+function journalDate(value) {
+    if (value === undefined)
+        return undefined;
+    let year;
+    let month;
+    let day;
+    const iso = /^(\d{4})-(\d{2})-(\d{2})$/u.exec(value);
+    const long = /^(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday),\s+(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})$/u.exec(value);
+    if (iso !== null) {
+        year = Number(iso[1]);
+        month = Number(iso[2]);
+        day = Number(iso[3]);
+    }
+    else if (long !== null) {
+        day = Number(long[1]);
+        month = JOURNAL_MONTHS.get((long[2] ?? '').toLocaleLowerCase('en-US')) ?? 0;
+        year = Number(long[3]);
+    }
+    else
+        return undefined;
+    const parsed = new Date(Date.UTC(year, month - 1, day));
+    if (parsed.getUTCFullYear() !== year || parsed.getUTCMonth() !== month - 1 || parsed.getUTCDate() !== day)
+        return undefined;
+    return `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
+function journalFragment(html) {
+    return stripResidualMarkup(decodeEntities(html
+        .replace(/<(?:script|style)\b[^>]*>[^]*?<\/(?:script|style)>/giu, '')
+        .replace(/<!--[^]*?-->/gu, '')
+        .replace(/<(strong|b)\b[^>]*>([^]*?)<\/\1>/giu, '**$2**')
+        .replace(/<(em|i)\b[^>]*>([^]*?)<\/\1>/giu, '*$2*')
+        .replace(/<a\b[^>]*href=["'](https?:\/\/[^"']+)["'][^>]*>([^]*?)<\/a>/giu, '[$2]($1)')
+        .replace(/<br\s*\/?>/giu, '\n')
+        .replace(/<[^>]+>/gu, '')))
+        .replace(/[ \t]+\n/gu, '\n')
+        .replace(/\n{3,}/gu, '\n\n')
+        .trim();
+}
+function journalMetadata(html) {
+    const metadata = new Map();
+    const assetGrid = journalElementsByClass(html, new Set(['assetGrid']))[0];
+    for (const item of journalElementsByClass(assetGrid?.innerHtml ?? html, new Set(['gridItem']))) {
+        const rawType = journalClasses(item.openingTag).find(className => className.startsWith('assetType_'))?.slice('assetType_'.length) ?? '';
+        const normalized = rawType.replace(/(\w)([A-Z])/gu, '$1-$2').replace(/_/gu, '-').toLocaleLowerCase('en-US').replace(/-+/gu, '-').replace(/^-+|-+$/gu, '');
+        const key = JOURNAL_ASSET_ALIASES.get(normalized) ?? normalized;
+        if (!/^[a-z][a-z0-9-]*$/u.test(key) || JOURNAL_IGNORED_ASSETS.has(key))
+            continue;
+        const tokens = new Set();
+        for (const className of JOURNAL_OVERLAY_CLASSES) {
+            for (const value of classText(item.innerHtml, className))
+                for (const token of value.split(','))
+                    if (token.trim() !== '')
+                        tokens.add(token.trim());
+        }
+        for (const tag of item.innerHtml.match(/<[a-z][\w:-]*\b[^>]*>/giu) ?? []) {
+            for (const name of ['aria-label', 'title', 'alt']) {
+                for (const token of journalAttribute(tag, name).split(','))
+                    if (token.trim() !== '')
+                        tokens.add(token.trim());
+            }
+        }
+        if (tokens.size === 0)
+            continue;
+        const values = metadata.get(key) ?? new Set();
+        for (const token of tokens)
+            if (values.size < 100)
+                values.add(token.slice(0, 512));
+        metadata.set(key, values);
+        if (metadata.size >= 64)
+            break;
+    }
+    return metadata;
 }
 export function planAppleJournal(files) {
     const used = new Set();
@@ -355,26 +519,20 @@ export function planAppleJournal(files) {
         if (!/\.html?$/iu.test(file.path))
             continue;
         const html = decode(file.bytes, 10 * 1024 * 1024);
-        const date = classText(html, 'pageHeader')[0];
-        if (date !== undefined) {
-            const parsed = new Date(`${date}T00:00:00.000Z`);
-            if (!/^\d{4}-\d{2}-\d{2}$/u.test(date) || Number.isNaN(parsed.getTime())
-                || parsed.toISOString().slice(0, 10) !== date)
-                throw new ImportExportError('unsupported-type');
-        }
+        const date = journalDate(classText(html, 'pageHeader')[0]);
+        const metadata = journalMetadata(html);
         const prompt = classText(html, 'reflectionPrompt')[0];
-        const body = [...classText(html, 'p2'), ...classText(html, 'p3')];
-        const content = [
-            ...(date === undefined && prompt === undefined ? [] : ['---']),
+        const body = [...classHtml(html, 'p2'), ...classHtml(html, 'p3')]
+            .map(value => journalFragment(value)).filter(Boolean);
+        const frontmatter = [
             ...(date === undefined ? [] : [`date: ${date}`]),
-            ...(prompt === undefined ? [] : [`reflection-prompt: ${yamlScalar(prompt)}`]),
-            ...(date === undefined && prompt === undefined ? [] : ['---', '']),
-            ...body,
-            '',
-        ].join('\n');
+            ...[...metadata].flatMap(([key, values]) => [`${key}:`, ...[...values].map(value => `  - ${JSON.stringify(value)}`)]),
+        ];
+        const sections = [prompt, ...body].filter((value) => value !== undefined && value !== '');
+        const content = `${frontmatter.length === 0 ? '' : `---\n${frontmatter.join('\n')}\n---\n\n`}${sections.join('\n\n')}${sections.length === 0 ? '' : '\n'}`;
         const destination = uniqueDestination(`Journal/${safeSegment(stem(file.path))}.md`, used);
         output.push({ bytes: encoder.encode(content), destination, kind: 'document', sourceKey: file.fingerprint });
-        if (/data-asset-type=["'](?:photo|video|live-photo)["']/iu.test(html)) {
+        if (/data-asset-type=["'](?:photo|video|live-photo)["']/iu.test(html) || /\bassetType_(?:photo|video|live[-_]?[Pp]hoto)\b/u.test(html)) {
             skipped.push({ label: `${file.path} media`, reason: 'unsupported-media' });
         }
     }
@@ -430,6 +588,20 @@ export function planRoam(bytes) {
     }
     return finalize(files, skipped, value.length);
 }
+function keepTimestamp(value) {
+    if (typeof value !== 'string' && typeof value !== 'number')
+        return undefined;
+    const microseconds = Number(value);
+    if (!Number.isFinite(microseconds) || microseconds < 0)
+        return undefined;
+    const date = new Date(microseconds / 1_000);
+    try {
+        return date.toISOString();
+    }
+    catch {
+        return undefined;
+    }
+}
 export function planGoogleKeep(bytes) {
     const entries = parseZip(bytes, { ...GENERAL_ARCHIVE_LIMITS, maxArchiveBytes: 200 * 1024 * 1024, maxEntries: 5_000, maxTotalBytes: 250 * 1024 * 1024 });
     const byPath = new Map(entries.map(entry => [entry.path, entry]));
@@ -437,6 +609,7 @@ export function planGoogleKeep(bytes) {
     const files = [];
     const skipped = [];
     const referenced = new Set();
+    const attachmentTargets = new Map();
     let notes = 0;
     for (const entry of entries) {
         if (!/(?:^|\/)Keep\/[^/]+\.json$/u.test(entry.path))
@@ -453,12 +626,17 @@ export function planGoogleKeep(bytes) {
         }
         const title = safeSegment(typeof note.title === 'string' ? note.title : '', 'Untitled Keep Note');
         const labels = Array.isArray(note.labels)
-            ? note.labels.flatMap(label => label !== null && typeof label === 'object' && typeof label.name === 'string' ? [label.name] : [])
+            ? [...new Set(note.labels.flatMap(label => label !== null && typeof label === 'object' && typeof label.name === 'string'
+                    ? [safeSegment(label.name.replace(/^#+/u, '').replace(/[\s,]+/gu, '-'))]
+                    : []))]
             : [];
         const tasks = Array.isArray(note.listContent)
-            ? note.listContent.flatMap(item => item !== null && typeof item === 'object'
-                ? [`- ${item.isChecked === true ? '[x]' : '[ ]'} ${String(item.text ?? '')}`]
-                : [])
+            ? note.listContent.flatMap(item => {
+                if (item === null || typeof item !== 'object' || typeof item.text !== 'string')
+                    return [];
+                const value = item.text.trim().replace(/\s+/gu, ' ');
+                return value === '' ? [] : [`- ${item.isChecked === true ? '[x]' : '[ ]'} ${value}`];
+            })
             : [];
         const attachments = Array.isArray(note.attachments) ? note.attachments : [];
         const attachmentLinks = [];
@@ -469,26 +647,35 @@ export function planGoogleKeep(bytes) {
             const directory = entry.path.slice(0, entry.path.lastIndexOf('/') + 1);
             const path = `${directory}${reference}`;
             referenced.add(path);
-            attachmentLinks.push(`![[Attachments/${safeSegment(reference)}]]`);
+            const source = byPath.get(path);
+            if (source === undefined || !ACCEPTED_ASSETS.has(extension(path))) {
+                skipped.push({ label: path, reason: 'unsupported-attachment' });
+                continue;
+            }
+            let target = attachmentTargets.get(path);
+            if (target === undefined) {
+                target = uniqueDestination(`Imported/Google Keep/Attachments/${safeSegment(path.split('/').at(-1) ?? 'asset')}`, used);
+                attachmentTargets.set(path, target);
+                files.push({ bytes: source.bytes, destination: target, kind: 'attachment', sourceKey: path });
+            }
+            attachmentLinks.push(`![[${target.slice('Imported/Google Keep/'.length)}]]`);
         }
-        const body = typeof note.textContent === 'string' ? note.textContent : tasks.join('\n');
+        const body = [typeof note.textContent === 'string' ? note.textContent.trim() : '', tasks.join('\n')].filter(Boolean).join('\n\n');
+        const created = keepTimestamp(note.createdTimestampUsec);
+        const updated = keepTimestamp(note.userEditedTimestampUsec);
+        const color = typeof note.color === 'string' && /^[a-z]+$/iu.test(note.color) ? note.color.toLocaleLowerCase('en-US') : undefined;
         const content = [
             '---',
+            ...(created === undefined ? [] : [`created: ${yamlScalar(created)}`]),
+            ...(updated === undefined ? [] : [`updated: ${yamlScalar(updated)}`]),
             ...(labels.length === 0 ? [] : ['tags:', ...labels.map(label => `  - ${safeSegment(label)}`)]),
             ...(note.isPinned === true ? ['pinned: true'] : []),
             ...(note.isArchived === true ? ['archived: true'] : []),
             ...(note.isTrashed === true ? ['trashed: true'] : []),
+            ...(color === undefined ? [] : [`keep-color: ${color}`]),
             '---', '', `# ${title}`, '', body, ...attachmentLinks, '',
         ].join('\n');
         files.push({ bytes: encoder.encode(content), destination: uniqueDestination(`Imported/Google Keep/${title}.md`, used), kind: 'document', sourceKey: entry.path });
-    }
-    for (const path of [...referenced].sort()) {
-        const entry = byPath.get(path);
-        if (entry === undefined || !ACCEPTED_ASSETS.has(extension(path))) {
-            skipped.push({ label: path, reason: 'unsupported-attachment' });
-            continue;
-        }
-        files.push({ bytes: entry.bytes, destination: uniqueDestination(`Imported/Google Keep/Attachments/${safeSegment(path.split('/').at(-1) ?? 'asset')}`, used), kind: 'attachment', sourceKey: path });
     }
     for (const entry of entries) {
         if (/(?:^|\/)Keep\/[^/]+\.json$/u.test(entry.path) || referenced.has(entry.path))
@@ -594,6 +781,24 @@ function assertWellFormedXml(xml) {
     if (stack.length !== 0 || /[<>]/u.test(scrubbed.slice(cursor)))
         throw new ImportExportError('unsupported-type');
 }
+function evernoteDate(value) {
+    const match = /^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z$/u.exec(value ?? '');
+    if (match === null)
+        return undefined;
+    const parts = match.slice(1).map(Number);
+    const [year = 0, month = 0, day = 0, hour = 0, minute = 0, second = 0] = parts;
+    const date = new Date(Date.UTC(year, month - 1, day, hour, minute, second));
+    const roundTrip = [date.getUTCFullYear(), date.getUTCMonth() + 1, date.getUTCDate(), date.getUTCHours(), date.getUTCMinutes(), date.getUTCSeconds()];
+    return roundTrip.every((part, index) => part === parts[index]) ? date.toISOString() : undefined;
+}
+function evernoteRoot(sourceName) {
+    const sourceStem = stem(sourceName);
+    const parts = sourceStem.split('@@@');
+    const folders = parts.length === 2 && parts.every(part => part.trim() !== '')
+        ? parts.map((part, index) => safeSegment(part, index === 0 ? 'Stack' : 'Notebook'))
+        : [safeSegment(sourceStem, 'Evernote')];
+    return `Imported/Evernote/${folders.join('/')}`;
+}
 export function planEvernote(bytes, sourceName) {
     const xml = decode(bytes, 100 * 1024 * 1024);
     if (/<!DOCTYPE|<!ENTITY/iu.test(xml))
@@ -602,7 +807,7 @@ export function planEvernote(bytes, sourceName) {
     const noteMatches = [...xml.matchAll(/<note>([^]*?)<\/note>/giu)];
     if (noteMatches.length === 0 || noteMatches.length > 5_000)
         throw new ImportExportError('unsupported-type');
-    const root = `Imported/Evernote/${safeSegment(stem(sourceName), 'Evernote')}`;
+    const root = evernoteRoot(sourceName);
     const used = new Set();
     const output = [];
     const skipped = [];
@@ -639,16 +844,95 @@ export function planEvernote(bytes, sourceName) {
         }
         body = body.replace(/__EN_MEDIA_[0-9a-f]+__/gu, '');
         const tags = [...note.matchAll(/<tag>([^]*?)<\/tag>/giu)].map(tag => safeSegment(decodeEntities(tag[1] ?? '')));
-        const created = xmlText(note, 'created');
+        const created = evernoteDate(xmlText(note, 'created'));
+        const updated = evernoteDate(xmlText(note, 'updated'));
+        const sourceUrlValue = xmlText(note, 'source-url');
+        const sourceUrl = sourceUrlValue !== undefined && sourceUrlValue.length <= 2_048 ? sourceUrlValue : undefined;
         const content = [
             '---',
             ...(created === undefined ? [] : [`created: ${yamlScalar(created)}`]),
+            ...(updated === undefined ? [] : [`updated: ${yamlScalar(updated)}`]),
+            ...(sourceUrl === undefined ? [] : [`source-url: ${yamlScalar(sourceUrl)}`]),
             ...(tags.length === 0 ? [] : ['tags:', ...tags.map(tag => `  - ${tag}`)]),
             '---', '', `# ${title}`, '', body, '',
         ].join('\n');
         output.push({ bytes: encoder.encode(content), destination: uniqueDestination(`${root}/${title}.md`, used), kind: 'document', sourceKey: `note:${String(index)}` });
     }
     return finalize(output, skipped, noteMatches.length);
+}
+function bearDate(value) {
+    if (typeof value !== 'string' && typeof value !== 'number')
+        return undefined;
+    const date = new Date(value);
+    try {
+        return date.toISOString();
+    }
+    catch {
+        return undefined;
+    }
+}
+function bearMetadata(info) {
+    const nested = info['net.shinyfrog.bear'];
+    const source = nested !== null && typeof nested === 'object' && !Array.isArray(nested) ? nested : info;
+    const archived = source.archived === true || source.archived === 1;
+    const trashed = source.trashed === true || source.trashed === 1;
+    const id = typeof source.uniqueIdentifier === 'string' && source.uniqueIdentifier.trim() !== '' ? source.uniqueIdentifier.trim() : undefined;
+    const tags = Array.isArray(info.tags) ? info.tags.filter((tag) => typeof tag === 'string') : [];
+    const archivedAt = archived ? bearDate(source.archivedDate) : undefined;
+    const created = bearDate(source.creationDate ?? info.created);
+    const trashedAt = trashed ? bearDate(source.trashedDate) : undefined;
+    const updated = bearDate(source.modificationDate ?? info.updated);
+    return {
+        archived,
+        ...(archivedAt === undefined ? {} : { archivedAt }),
+        ...(created === undefined ? {} : { created }),
+        ...(id === undefined ? {} : { id }),
+        tags,
+        trashed,
+        ...(trashedAt === undefined ? {} : { trashedAt }),
+        ...(updated === undefined ? {} : { updated }),
+    };
+}
+function transformBearMarkdown(markdown, transform) {
+    let fence = null;
+    return markdown.split('\n').map(line => {
+        const marker = /^ {0,3}(`{3,}|~{3,})/u.exec(line)?.[1];
+        if (fence !== null) {
+            if (marker?.startsWith(fence.marker) && marker.length >= fence.length && line.slice(marker.length).trim() === '')
+                fence = null;
+            return line;
+        }
+        if (marker !== undefined) {
+            fence = { length: marker.length, marker: marker[0] === '`' ? '`' : '~' };
+            return line;
+        }
+        let output = '';
+        let cursor = 0;
+        for (const code of line.matchAll(/(`+)[^]*?\1/gu)) {
+            const index = code.index ?? 0;
+            output += transform(line.slice(cursor, index)) + code[0];
+            cursor = index + code[0].length;
+        }
+        return output + transform(line.slice(cursor));
+    }).join('\n');
+}
+function bearWikiTarget(destination) {
+    return destination.slice('Imported/Bear/'.length).replace(/\.md$/iu, '');
+}
+function rewriteBearLinks(markdown, targets) {
+    return transformBearMarkdown(markdown, text => {
+        const linked = text.replace(/\[([^\]]*)\]\(bear:\/\/x-callback-url\/open-note\?id=([A-Z0-9-]+)(?:&[^)]*)?\)/giu, (match, label, id) => {
+            const target = targets.get(id.toLocaleUpperCase('en-US'));
+            if (target === undefined)
+                return match;
+            const alias = label.replace(/[|[\]]/gu, ' ').replace(/\s+/gu, ' ').trim() || target.split('/').at(-1) || target;
+            return `[[${target}|${alias}]]`;
+        });
+        return linked.replace(/bear:\/\/x-callback-url\/open-note\?id=([A-Z0-9-]+)(?:&[^\s)]+)?/giu, (match, id) => {
+            const target = targets.get(id.toLocaleUpperCase('en-US'));
+            return target === undefined ? match : `[[${target}]]`;
+        });
+    });
 }
 export function planBear(bytes) {
     const entries = parseZip(bytes, GENERAL_ARCHIVE_LIMITS);
@@ -657,6 +941,7 @@ export function planBear(bytes) {
     const output = [];
     const skipped = [];
     const consumed = new Set();
+    const notes = [];
     for (const entry of entries) {
         if (!/(?:^|\/)text\.md$/iu.test(entry.path))
             continue;
@@ -674,19 +959,13 @@ export function planBear(bytes) {
                 throw new ImportExportError('unsupported-type');
             }
         }
-        const sourceMarkdown = decode(entry.bytes, 5 * 1024 * 1024);
-        const heading = /^#\s+(.+)$/mu.exec(sourceMarkdown)?.[1];
+        const source = decode(entry.bytes, 5 * 1024 * 1024);
+        const heading = /^#\s+(.+)$/mu.exec(source)?.[1];
         const title = safeSegment(typeof info.title === 'string' ? info.title : heading ?? '', 'Bear Note');
-        const folder = info.trashed === true ? 'Trash/' : info.archived === true ? 'Archive/' : '';
-        const tags = Array.isArray(info.tags) ? info.tags.filter((tag) => typeof tag === 'string') : [];
-        const frontmatter = [
-            '---',
-            ...(tags.length === 0 ? [] : ['tags:', ...tags.map(tag => `  - ${safeSegment(tag)}`)]),
-            ...(info.archived === true ? ['archived: true'] : []),
-            ...(info.trashed === true ? ['trashed: true'] : []),
-            '---', '',
-        ].join('\n');
-        output.push({ bytes: encoder.encode(`${frontmatter}${sourceMarkdown.replace(/^\s*/u, '')}`), destination: uniqueDestination(`Imported/Bear/${folder}${title}.md`, used), kind: 'document', sourceKey: entry.path });
+        const metadata = bearMetadata(info);
+        const folder = metadata.trashed ? 'Trash/' : metadata.archived ? 'Archive/' : '';
+        const destination = uniqueDestination(`Imported/Bear/${folder}${title}.md`, used);
+        notes.push({ destination, entry, metadata, source, title });
         const assetPrefix = `${directory}assets/`;
         for (const asset of entries.filter(candidate => candidate.path.startsWith(assetPrefix))) {
             consumed.add(asset.path);
@@ -697,6 +976,32 @@ export function planBear(bytes) {
             const name = safeSegment(asset.path.slice(assetPrefix.length));
             output.push({ bytes: asset.bytes, destination: uniqueDestination(`Imported/Bear/Attachments/${title}/${name}`, used), kind: 'attachment', sourceKey: asset.path });
         }
+    }
+    const idTargets = new Map();
+    const ambiguous = new Set();
+    for (const note of notes) {
+        if (note.metadata.id === undefined)
+            continue;
+        const id = note.metadata.id.toLocaleUpperCase('en-US');
+        if (idTargets.has(id)) {
+            idTargets.delete(id);
+            ambiguous.add(id);
+        }
+        else if (!ambiguous.has(id))
+            idTargets.set(id, bearWikiTarget(note.destination));
+    }
+    for (const note of notes) {
+        const metadata = note.metadata;
+        const frontmatter = [
+            '---',
+            ...(metadata.created === undefined ? [] : [`created: ${yamlScalar(metadata.created)}`]),
+            ...(metadata.updated === undefined ? [] : [`updated: ${yamlScalar(metadata.updated)}`]),
+            ...(metadata.tags.length === 0 ? [] : ['tags:', ...metadata.tags.map(tag => `  - ${safeSegment(tag)}`)]),
+            ...(metadata.archived ? [`archived: ${metadata.archivedAt === undefined ? 'true' : yamlScalar(metadata.archivedAt)}`] : []),
+            ...(metadata.trashed ? [`trashed: ${metadata.trashedAt === undefined ? 'true' : yamlScalar(metadata.trashedAt)}`] : []),
+            '---', '',
+        ].join('\n');
+        output.push({ bytes: encoder.encode(`${frontmatter}${rewriteBearLinks(note.source.replace(/^\s*/u, ''), idTargets)}`), destination: note.destination, kind: 'document', sourceKey: note.entry.path });
     }
     for (const entry of entries)
         if (!consumed.has(entry.path))

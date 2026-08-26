@@ -31,6 +31,7 @@ var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: tru
 // src/client.ts
 var client_exports = {};
 __export(client_exports, {
+  IMPORT_CHOOSER_DELEGATIONS: () => IMPORT_CHOOSER_DELEGATIONS,
   IMPORT_INSPECT_FORMATS: () => IMPORT_INSPECT_FORMATS,
   ImportExportReviewController: () => ImportExportReviewController,
   ImportExportReviewPanel: () => ImportExportReviewPanel,
@@ -14994,7 +14995,7 @@ var typert_remote_client_default = TYPERT_REMOTE;
 // ../../../ui/src/alert.tsx
 var React = __toESM(require("react"), 1);
 
-// ../../node_modules/.pnpm/clsx@2.1.1/node_modules/clsx/dist/clsx.mjs
+// ../../../../node_modules/.pnpm/clsx@2.1.1/node_modules/clsx/dist/clsx.mjs
 function r(e) {
   var t, f, n = "";
   if ("string" == typeof e || "number" == typeof e) n += e;
@@ -15009,7 +15010,7 @@ function clsx() {
   return n;
 }
 
-// ../../node_modules/.pnpm/class-variance-authority@0.7.1/node_modules/class-variance-authority/dist/index.mjs
+// ../../../../node_modules/.pnpm/class-variance-authority@0.7.1/node_modules/class-variance-authority/dist/index.mjs
 var falsyToString = (value) => typeof value === "boolean" ? `${value}` : value === 0 ? "0" : value;
 var cx = clsx;
 var cva = (base, config2) => (props) => {
@@ -15154,19 +15155,19 @@ function Label({ className, unstyled = false, ...props }) {
   );
 }
 
-// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/createLucideIcon.js
+// ../../../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/createLucideIcon.js
 var import_react2 = require("react");
 
-// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/shared/src/utils.js
+// ../../../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/shared/src/utils.js
 var toKebabCase = (string4) => string4.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase();
 var mergeClasses = (...classes) => classes.filter((className, index, array2) => {
   return Boolean(className) && className.trim() !== "" && array2.indexOf(className) === index;
 }).join(" ").trim();
 
-// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/Icon.js
+// ../../../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/Icon.js
 var import_react = require("react");
 
-// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/defaultAttributes.js
+// ../../../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/defaultAttributes.js
 var defaultAttributes = {
   xmlns: "http://www.w3.org/2000/svg",
   width: 24,
@@ -15179,7 +15180,7 @@ var defaultAttributes = {
   strokeLinejoin: "round"
 };
 
-// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/Icon.js
+// ../../../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/Icon.js
 var Icon = (0, import_react.forwardRef)(
   ({
     color = "currentColor",
@@ -15211,7 +15212,7 @@ var Icon = (0, import_react.forwardRef)(
   }
 );
 
-// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/createLucideIcon.js
+// ../../../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/createLucideIcon.js
 var createLucideIcon = (iconName, iconNode) => {
   const Component = (0, import_react2.forwardRef)(
     ({ className, ...props }, ref) => (0, import_react2.createElement)(Icon, {
@@ -15225,11 +15226,11 @@ var createLucideIcon = (iconName, iconNode) => {
   return Component;
 };
 
-// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/chevron-down.js
+// ../../../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/chevron-down.js
 var __iconNode = [["path", { d: "m6 9 6 6 6-6", key: "qrunsl" }]];
 var ChevronDown = createLucideIcon("ChevronDown", __iconNode);
 
-// ../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/loader-circle.js
+// ../../../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/loader-circle.js
 var __iconNode2 = [["path", { d: "M21 12a9 9 0 1 1-6.219-8.56", key: "13zald" }]];
 var LoaderCircle = createLucideIcon("LoaderCircle", __iconNode2);
 
@@ -15511,6 +15512,14 @@ var ImportExportReviewController = class {
     for (const listener of this.listeners) listener();
   }
 };
+var IMPORT_CHOOSER_DELEGATIONS = [
+  { format: "markdown-folder", id: "craft-folder", label: "Craft Markdown Folder" },
+  { format: "markdown-zip", id: "craft-zip", label: "Craft Markdown ZIP" },
+  { format: "html", id: "notion-html", label: "Notion HTML Export" },
+  { format: "markdown-folder", id: "apple-notes-folder", label: "Apple Notes Markdown Folder" },
+  { format: "markdown-zip", id: "apple-notes-zip", label: "Apple Notes Markdown ZIP" },
+  { format: "html", id: "apple-notes-html", label: "Apple Notes HTML Export" }
+];
 var FORMAT_LABELS = [
   ["markdown-folder", "Markdown Folder"],
   ["markdown-zip", "Markdown ZIP"],
@@ -15536,24 +15545,34 @@ function ImportExportReviewPanelView(props) {
       /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("p", { className: "tocktutor-import-export-kicker text-[11px] font-bold tracking-[.08em] text-[var(--tt-muted)] uppercase", children: "Reviewed Operations" }),
       /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("h2", { children: "Import, Backup, and Restore" })
     ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("p", { children: "Craft exports use the reviewed Markdown Folder or Markdown ZIP path; no Craft-specific parser changes your files." }),
-    (snapshot.phase === "idle" || snapshot.phase === "complete" || snapshot.phase === "error" && preview === null) && /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "tocktutor-import-export-start flex flex-wrap gap-2", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(Label, { unstyled: true, className: "grid flex-[1_1_220px] gap-1 text-xs", children: [
-        "Import Format",
-        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
-          NativeSelect,
-          {
-            unstyled: true,
-            onChange: (event) => {
-              props.onFormat(event.currentTarget.value);
-            },
-            value: snapshot.format,
-            children: FORMAT_LABELS.map(([format, label]) => /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(NativeSelectOption, { value: format, children: label }, format))
-          }
-        )
+    /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("p", { children: "Choose the export shape you downloaded. Each source uses the existing reviewed Markdown or HTML transaction." }),
+    (snapshot.phase === "idle" || snapshot.phase === "complete" || snapshot.phase === "error" && preview === null) && /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(import_jsx_runtime7.Fragment, { children: [
+      /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("fieldset", { className: "m-0 grid gap-2 rounded-md border border-[var(--tt-border)] p-2.5", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("legend", { className: "px-1 text-xs font-medium", children: "Popular Export Sources" }),
+        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: "flex flex-wrap gap-2", children: IMPORT_CHOOSER_DELEGATIONS.map((delegation) => /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(Button, { unstyled: true, onClick: () => {
+          props.onStart(delegation.format);
+        }, type: "button", children: delegation.label }, delegation.id)) })
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(Button, { unstyled: true, onClick: props.onStart, type: "button", children: "Inspect Import" }),
-      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(Button, { unstyled: true, onClick: props.onStartBackup, type: "button", children: "Create Vault Backup" })
+      /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "tocktutor-import-export-start flex flex-wrap gap-2", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(Label, { unstyled: true, className: "grid flex-[1_1_220px] gap-1 text-xs", children: [
+          "Other Import Format",
+          /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
+            NativeSelect,
+            {
+              unstyled: true,
+              onChange: (event) => {
+                props.onFormat(event.currentTarget.value);
+              },
+              value: snapshot.format,
+              children: FORMAT_LABELS.map(([format, label]) => /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(NativeSelectOption, { value: format, children: label }, format))
+            }
+          )
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(Button, { unstyled: true, onClick: () => {
+          props.onStart();
+        }, type: "button", children: "Inspect Selected Format" }),
+        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(Button, { unstyled: true, onClick: props.onStartBackup, type: "button", children: "Create Vault Backup" })
+      ] })
     ] }),
     busy && /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "tocktutor-import-export-actions flex flex-wrap gap-2", children: [
       /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(Alert, { unstyled: true, "aria-live": "polite", className: "flex items-center gap-2", role: "status", children: [
@@ -15689,8 +15708,8 @@ function ImportExportReviewPanel(props) {
       onFormat: (format) => {
         controller.setFormat(format);
       },
-      onStart: () => {
-        void controller.startImport();
+      onStart: (format) => {
+        void controller.startImport(format);
       },
       onStartBackup: () => {
         void controller.startBackup();
