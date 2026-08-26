@@ -70,6 +70,43 @@ test('local mac install never exposes a partially copied app bundle', async () =
   )
 })
 
+test('local mac install rejects concurrent replacement without touching the winner', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'tockteam-install-concurrent-'))
+  const firstSource = join(root, 'first.app')
+  const secondSource = join(root, 'second.app')
+  const destination = join(root, 'Applications', 'TockTeam Desktop.app')
+  const backups = join(root, 'Trash')
+  await makeBundle(firstSource, 'first')
+  await makeBundle(secondSource, 'second')
+  await makeBundle(destination, 'old')
+  let release!: () => void
+  const blocked = new Promise<void>(resolve => { release = resolve })
+  let copying!: () => void
+  const started = new Promise<void>(resolve => { copying = resolve })
+  const first = replaceMacBundle({
+    source: firstSource,
+    destination,
+    backupDirectory: backups,
+    copyBundle: async (from: string, pending: string) => {
+      copying()
+      await blocked
+      await cp(from, pending, { recursive: true })
+    },
+    validateBundle: makeBundleValidation,
+  })
+  await started
+  await assert.rejects(replaceMacBundle({
+    source: secondSource,
+    destination,
+    backupDirectory: backups,
+    copyBundle: async (from: string, pending: string) => { await cp(from, pending, { recursive: true }) },
+    validateBundle: makeBundleValidation,
+  }), /install is already in progress/u)
+  release()
+  await first
+  assert.equal(await readFile(join(destination, 'Contents', 'Resources', 'app.asar'), 'utf8'), 'first')
+})
+
 test('local mac install restores the previous app when final validation fails', async () => {
   const root = await mkdtemp(join(tmpdir(), 'tockteam-install-rollback-'))
   const source = join(root, 'source.app')
