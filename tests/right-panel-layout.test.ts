@@ -55,7 +55,7 @@ test('desktop shell rail switches between TockCoder and TockTutor', () => {
   assert.match(workspace, /layout\.append\(rail, appRoot, this\.element\)/)
   assert.doesNotMatch(workspace, /createRoot\(rail\)/)
   assert.match(workspace, /function DesktopAppRail/)
-  assert.match(workspace, /<nav className="tockteam-app-rail [^"]+" aria-label="App Navigation">/u)
+  assert.match(workspace, /<nav className="tockteam-app-rail flex h-full box-border [^"]+" aria-label="App Navigation">/u)
   assert.match(workspace, /aria-label="TockCoder"/)
   assert.doesNotMatch(workspace, /DeepSeek Harness/)
   assert.match(workspace, /aria-label="TockTutor"/)
@@ -151,6 +151,8 @@ test('desktop titlebar matches Tockbot chrome and stays draggable', () => {
     workspace,
     /document\.documentElement\.style\.setProperty\(\s*'--tockteam-primary-sidebar-width',\s*`\$\{String\(width\)\}px`,?\s*\)/u,
   )
+  assert.match(workspace, /const width = Number\.parseFloat\(frame\.style\.gridTemplateColumns\)/u)
+  assert.doesNotMatch(workspace, /frame\.children\.item\(0\)\?\.getBoundingClientRect\(\)\.width/u)
   assert.match(workspace, /document\.documentElement\.style\.removeProperty\('--tockteam-primary-sidebar-width'\)/u)
   assert.match(workspace, /className="hidden \[html\[data-tockteam-tocktutor-active='true'\]_&\]:absolute[^"\n]+\]:block" id="tockteam-window-titlebar-slot"/u)
   assert.match(workspace, /tockteam-panel-toolbar[^"\n]+\[html\[data-tockteam-tocktutor-active='true'\]_&\]:hidden/u)
@@ -162,7 +164,7 @@ test('desktop titlebar matches Tockbot chrome and stays draggable', () => {
   assert.match(workspace, /tockteam-titlebar-leading[^"\n]+items-center[^"\n]+justify-end/u)
   assert.match(workspace, /tockteam-titlebar-leading ml-\[var\(--tockteam-rail-width\)\]/u)
   assert.match(workspace, /tockteam-titlebar-leading[^"\n]+border-r/u)
-  assert.match(workspace, /\[body:has\(\[data-sidebar-collapsed\]\)_&\]:w-9[^"\n]+\[body:has\(\[data-sidebar-collapsed\]\)_&\]:border-r-0/u)
+  assert.match(workspace, /\[body:has\(\[data-sidebar-collapsed\]\)_&\]:w-\[84px\][^"\n]+\[body:has\(\[data-sidebar-collapsed\]\)_&\]:border-r-0/u)
   assert.match(workspace, /tockteam-titlebar-leading[^"\n]+\[&_button\]:size-9/u)
   assert.match(workspace, /tockteam-titlebar-leading[^"\n]+\[&_svg\]:size-\[18px\]/u)
   assert.match(workspace, /tockteam-panel-toolbar[^"\n]+\[&_svg\]:size-\[18px\]/u)
