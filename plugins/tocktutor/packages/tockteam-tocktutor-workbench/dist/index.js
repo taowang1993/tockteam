@@ -26,4 +26,5 @@ export * from "./markdown.js";
 export * from "./live-preview.js";
 export * from "./rich-markdown.js";
 export * from "./editor-commands.js";
+export * from "./settings.js";
 //# sourceMappingURL=index.js.map

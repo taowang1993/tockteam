@@ -34,6 +34,13 @@ function failure(code: string, message: string) {
   })
 }
 
+class MemoryStorage {
+  readonly values = new Map<string, string>()
+  getItem(key: string) { return this.values.get(key) ?? null }
+  setItem(key: string, value: string) { this.values.set(key, value) }
+  removeItem(key: string) { this.values.delete(key) }
+}
+
 function deferred<T>() {
   let resolve!: (value: T) => void
   const promise = new Promise<T>(next => { resolve = next })
@@ -1026,6 +1033,35 @@ test('runs editor commands against the captured Source selection', async () => {
   controller.runEditorCommand('delete-line')
   assert.equal(controller.getSnapshot().source, unchanged)
   controller.dispose()
+})
+
+test('persists bounded settings, tabs, focus mode, and named workspaces per vault', async () => {
+  const storage = new MemoryStorage()
+  const firstRemote = new FakeRemote()
+  const first = new WorkbenchRouteController(firstRemote, () => {}, () => new Date(10), storage)
+  await first.syncLocation('/tocktutor')
+  assert.equal(await first.select('Folder/Note.md'), true)
+  first.setMode('live-preview')
+  first.togglePinTab('pane-1', 'Folder/Note.md')
+  first.toggleFocusMode()
+  assert.equal(first.updateSettings({ backlinksInDocument: true, defaultEditingMode: 'source' }), true)
+  assert.equal(first.saveCurrentWorkspace('Class Layout'), true)
+  first.dispose()
+
+  const secondRemote = new FakeRemote()
+  const second = new WorkbenchRouteController(secondRemote, () => {}, () => new Date(11), storage)
+  await second.syncLocation('/tocktutor')
+  assert.equal(second.getSnapshot().path, 'Folder/Note.md')
+  assert.equal(second.getSnapshot().mode, 'live-preview')
+  assert.equal(second.getSnapshot().panes[0]?.tabs[0]?.pinned, true)
+  assert.equal(second.getSnapshot().focusMode, true)
+  assert.equal(second.getSnapshot().settings?.defaultEditingMode, 'source')
+  assert.equal(second.getSnapshot().settings?.backlinksInDocument, true)
+  assert.equal(second.getSnapshot().workspaces?.[0]?.id, 'class-layout')
+  second.toggleFocusMode()
+  assert.equal(await second.loadWorkspace('class-layout'), true)
+  assert.equal(second.getSnapshot().focusMode, true)
+  second.dispose()
 })
 
 test('late note and vault completions cannot replace the active route identity', async () => {

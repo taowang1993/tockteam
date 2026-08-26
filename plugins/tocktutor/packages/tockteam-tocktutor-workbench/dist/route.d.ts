@@ -5,6 +5,7 @@ import type { RemoteResult } from '@deepseek-ai/dsh-typert-protocol';
 import { TOCKTUTOR_ASSISTANT_PANEL_SLOT } from './assistant-panel.ts';
 import { TOCKTUTOR_NATIVE_ACTIONS_SLOT, type TockTutorNativeActionsDispatchEvent, type TockTutorNativeActionsDispatchResult } from './native-actions.ts';
 import { TOCKTUTOR_REVIEW_PANEL_SLOT } from './review-panel.ts';
+import { type KeyValueStorage, type NamedWorkspace, type TockTutorSettings } from './settings.ts';
 import { type EditorCommandId } from './editor-commands.ts';
 import { type EditorStatus } from './markdown.ts';
 import { type NoteVaultEventRemote } from './vault-events.ts';
@@ -76,12 +77,14 @@ export interface WorkbenchRouteSnapshot {
     selectedSnapshot?: SnapshotContentResult | null;
     selectionEnd?: number;
     selectionStart?: number;
+    settings?: TockTutorSettings;
     snapshots?: readonly SnapshotInfo[];
     source: string;
     trash?: readonly TrashEntryInfo[];
     panes: readonly RoutePaneSummary[];
     vault: VaultReference | null;
     warnings: readonly string[];
+    workspaces?: readonly NamedWorkspace[];
 }
 export interface NativeDispatchDraft {
     path?: string;
@@ -94,6 +97,7 @@ export declare class WorkbenchRouteController {
     private readonly remote;
     private readonly navigate;
     private readonly now;
+    private readonly storage;
     private snapshot;
     private readonly listeners;
     private vaultGeneration;
@@ -101,6 +105,7 @@ export declare class WorkbenchRouteController {
     private readonly recentlyClosed;
     private readonly historyBack;
     private readonly historyForward;
+    private workspaces;
     private operation;
     private dispatchRevision;
     private operationAbort;
@@ -113,7 +118,7 @@ export declare class WorkbenchRouteController {
     private pathname;
     private started;
     private disposed;
-    constructor(remote: WorkbenchRouteRemote, navigate: TockTutorRouteOwnerProps['navigate'], now?: () => Date);
+    constructor(remote: WorkbenchRouteRemote, navigate: TockTutorRouteOwnerProps['navigate'], now?: () => Date, storage?: KeyValueStorage | null);
     getSnapshot: () => WorkbenchRouteSnapshot;
     handleDispatch(event: TockTutorNativeActionsDispatchEvent): Promise<TockTutorNativeActionsDispatchResult>;
     private createDispatchedDocument;
@@ -160,6 +165,9 @@ export declare class WorkbenchRouteController {
     goForward(): Promise<boolean>;
     setCommandPaletteOpen(open: boolean): void;
     toggleFocusMode(): void;
+    updateSettings(change: Partial<TockTutorSettings>): boolean;
+    saveCurrentWorkspace(name?: string): boolean;
+    loadWorkspace(id: string): Promise<boolean>;
     select(path: string, navigate?: boolean, dispatchRevision?: number, recordHistory?: boolean): Promise<boolean>;
     edit(source: string): void;
     setSelection(start: number, end: number): void;
@@ -186,6 +194,7 @@ export interface TockTutorRouteViewProps {
     onEditorCommand?(command: EditorCommandId): void;
     onFocusPane(paneId: string): void;
     onForward?(): void;
+    onLoadWorkspace?(id: string): void;
     onMoveCanvas(nodeId: string, deltaX: number, deltaY: number): void;
     onMoveTab?(paneId: string, path: string, direction: -1 | 1): void;
     onMode(mode: RouteEditorMode): void;
@@ -200,7 +209,9 @@ export interface TockTutorRouteViewProps {
     onRestoreSnapshot?(id: string): void;
     onRestoreTrash?(id: string): void;
     onSave(): void;
+    onSaveWorkspace?(): void;
     onSearchChange?(query: string): void;
+    onSettingsChange?(change: Partial<TockTutorSettings>): void;
     onSelectionChange?(start: number, end: number): void;
     onSelect(path: string): void;
     onSubmitDispatch?(draft: NativeDispatchDraft): void;

@@ -24,4 +24,5 @@ export * from './markdown.ts';
 export * from './live-preview.ts';
 export * from './rich-markdown.ts';
 export * from './editor-commands.ts';
+export * from './settings.ts';
 //# sourceMappingURL=index.d.ts.map

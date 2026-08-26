@@ -38,6 +38,9 @@ __export(client_exports, {
   MAX_RICH_MARKDOWN_BYTES: () => MAX_RICH_MARKDOWN_BYTES,
   MAX_RICH_MARKDOWN_FOOTNOTES: () => MAX_RICH_MARKDOWN_FOOTNOTES,
   MAX_ROUTE_SOURCE_BYTES: () => MAX_ROUTE_SOURCE_BYTES,
+  MAX_TOCKTUTOR_CSS_BYTES: () => MAX_TOCKTUTOR_CSS_BYTES,
+  MAX_TOCKTUTOR_SETTINGS_BYTES: () => MAX_TOCKTUTOR_SETTINGS_BYTES,
+  MAX_TOCKTUTOR_WORKSPACES: () => MAX_TOCKTUTOR_WORKSPACES,
   TOCKTUTOR_ASSISTANT_PANEL_SLOT: () => TOCKTUTOR_ASSISTANT_PANEL_SLOT,
   TOCKTUTOR_NATIVE_ACTIONS_SLOT: () => TOCKTUTOR_NATIVE_ACTIONS_SLOT,
   TOCKTUTOR_REVIEW_PANEL_SLOT: () => TOCKTUTOR_REVIEW_PANEL_SLOT,
@@ -49,10 +52,14 @@ __export(client_exports, {
   applyTableCommand: () => applyTableCommand,
   buildMarkdownExportDocument: () => buildMarkdownExportDocument,
   buildMarkdownSlides: () => buildMarkdownSlides,
+  compileTockTutorCssSnippet: () => compileTockTutorCssSnippet,
+  createNamedWorkspace: () => createNamedWorkspace,
   escapeMarkdownHtml: () => escapeMarkdownHtml,
   inject: () => inject,
   internalLinkDropMarkdown: () => internalLinkDropMarkdown,
   isNoteVaultChangeEvent: () => isNoteVaultChangeEvent,
+  loadTockTutorSettings: () => loadTockTutorSettings,
+  loadWorkbenchState: () => loadWorkbenchState,
   name: () => name,
   pagePreviewTargetAtOffset: () => pagePreviewTargetAtOffset,
   pathFromTockTutorLocation: () => pathFromTockTutorLocation,
@@ -61,6 +68,8 @@ __export(client_exports, {
   replaceLivePreviewLine: () => replaceLivePreviewLine,
   resolvePlatformEditorCommand: () => resolvePlatformEditorCommand,
   resolveSlashCommand: () => resolveSlashCommand,
+  saveTockTutorSettings: () => saveTockTutorSettings,
+  saveWorkbenchState: () => saveWorkbenchState,
   subscribeNoteVaultChanges: () => subscribeNoteVaultChanges
 });
 module.exports = __toCommonJS(client_exports);
@@ -22112,6 +22121,9 @@ var MAX_VAULT_PATH_LENGTH = 4096;
 var MAX_ROUTE_ID_LENGTH = 128;
 var DEFAULT_MODE = "wysiwyg";
 var DEFAULT_EDITING_MODE = "wysiwyg";
+function isRecord2(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
 function boundedString(value, max2) {
   return typeof value === "string" && value.length > 0 && value.length <= max2;
 }
@@ -22129,6 +22141,9 @@ function isEditorMode(value) {
 }
 function isEditingMode(value) {
   return value === "wysiwyg" || value === "source";
+}
+function boundedRevision(value) {
+  return typeof value === "number" && Number.isSafeInteger(value) && value >= 0 ? value : 0;
 }
 function tabDirty(revision, savedRevision) {
   return revision !== savedRevision;
@@ -22175,6 +22190,43 @@ function nextId(prefix, used) {
   }
   return `${prefix}-${Date.now().toString(36)}`.slice(0, MAX_ID_LENGTH);
 }
+function normalizeVault(value) {
+  if (!isRecord2(value) || !isSafeId2(value.id)) return null;
+  const generation = boundedRevision(value.generation);
+  return { id: value.id, generation };
+}
+function parseTab(value, ids) {
+  if (!isRecord2(value) || !isSafeId2(value.id) || ids.has(value.id) || !isSafeVaultRelativePath(value.path)) return null;
+  const mode = isEditorMode(value.mode) ? value.mode : DEFAULT_MODE;
+  const lastEditingMode = isEditingMode(value.lastEditingMode) ? value.lastEditingMode : mode === "reading" ? DEFAULT_EDITING_MODE : mode;
+  const revision = boundedRevision(value.revision);
+  const savedRevision = Math.min(boundedRevision(value.savedRevision), revision);
+  ids.add(value.id);
+  return makeTab({
+    id: value.id,
+    path: value.path,
+    pinned: value.pinned === true,
+    mode,
+    lastEditingMode,
+    revision,
+    savedRevision
+  });
+}
+function parseGroup(value, groupIds, tabIds) {
+  if (!isRecord2(value) || !isSafeId2(value.id) || groupIds.has(value.id) || !Array.isArray(value.tabs)) return null;
+  groupIds.add(value.id);
+  const tabs = [];
+  const paths = /* @__PURE__ */ new Set();
+  for (const item of value.tabs.slice(0, MAX_NOTE_TABS)) {
+    const tab = parseTab(item, tabIds);
+    if (tab === null || paths.has(tab.path)) continue;
+    paths.add(tab.path);
+    tabs.push(tab);
+  }
+  const requestedActive = typeof value.activeTabId === "string" ? value.activeTabId : null;
+  const activeTabId = tabs.some((tab) => tab.id === requestedActive) ? requestedActive : tabs[0]?.id ?? null;
+  return { id: value.id, activeTabId, tabs };
+}
 function createWorkbenchSession(routeId, vault = null, initialGroupId = "group-1") {
   const safeRouteId = boundedString(routeId, MAX_ROUTE_ID_LENGTH) ? routeId : "tocktutor";
   const groupId = isSafeId2(initialGroupId) ? initialGroupId : "group-1";
@@ -22184,6 +22236,30 @@ function createWorkbenchSession(routeId, vault = null, initialGroupId = "group-1
     focusedGroupId: groupId,
     groups: [{ id: groupId, activeTabId: null, tabs: [] }],
     editorRevision: 0
+  };
+}
+function hydrateWorkbenchSession(value) {
+  if (!isRecord2(value)) return createWorkbenchSession("tocktutor");
+  const routeId = boundedString(value.routeId, MAX_ROUTE_ID_LENGTH) ? value.routeId : "tocktutor";
+  const vault = normalizeVault(value.vault);
+  const groups = [];
+  const groupIds = /* @__PURE__ */ new Set();
+  const tabIds = /* @__PURE__ */ new Set();
+  if (Array.isArray(value.groups)) {
+    for (const item of value.groups.slice(0, MAX_PANE_GROUPS)) {
+      const group = parseGroup(item, groupIds, tabIds);
+      if (group !== null) groups.push(group);
+    }
+  }
+  if (groups.length === 0) groups.push({ id: "group-1", activeTabId: null, tabs: [] });
+  const requestedFocus = typeof value.focusedGroupId === "string" ? value.focusedGroupId : "";
+  const focusedGroupId = groups.some((group) => group.id === requestedFocus) ? requestedFocus : groups[0].id;
+  return {
+    routeId,
+    vault,
+    focusedGroupId,
+    groups,
+    editorRevision: boundedRevision(value.editorRevision)
   };
 }
 function addPaneGroup(source, requestedId) {
@@ -22293,6 +22369,151 @@ function closeNoteTab(source, groupId, path) {
     nextPath: group.tabs.find((tab) => tab.id === group.activeTabId)?.path ?? null,
     session
   };
+}
+
+// src/settings.ts
+var MAX_TOCKTUTOR_SETTINGS_BYTES = 1048576;
+var MAX_TOCKTUTOR_WORKSPACES = 32;
+var MAX_TOCKTUTOR_CSS_BYTES = 524288;
+var DEFAULT_SETTINGS = Object.freeze({
+  attachmentFolder: "Attachments",
+  backlinksInDocument: false,
+  defaultEditingMode: "live-preview",
+  journalFolder: "Journals",
+  pagePreview: true,
+  templateFolder: "Templates"
+});
+function validVaultId(value) {
+  return /^vault:[0-9a-f]{64}$/u.test(value);
+}
+function settingsKey(vaultId) {
+  return `tocktutor.settings.v1.${validVaultId(vaultId) ? vaultId : "invalid"}`;
+}
+function stateKey(vaultId) {
+  return `tocktutor.workbench.v1.${validVaultId(vaultId) ? vaultId : "invalid"}`;
+}
+function safeFolder(value, fallback) {
+  return typeof value === "string" && value.length <= 1e3 && isSafeVaultRelativePath(value) && !/^[A-Za-z]:/u.test(value) ? value : fallback;
+}
+function normalizeSettings(value) {
+  const record2 = typeof value === "object" && value !== null && !Array.isArray(value) ? value : {};
+  return {
+    attachmentFolder: safeFolder(record2.attachmentFolder, DEFAULT_SETTINGS.attachmentFolder),
+    backlinksInDocument: record2.backlinksInDocument === true,
+    defaultEditingMode: record2.defaultEditingMode === "source" ? "source" : "live-preview",
+    journalFolder: safeFolder(record2.journalFolder, DEFAULT_SETTINGS.journalFolder),
+    pagePreview: record2.pagePreview !== false,
+    templateFolder: safeFolder(record2.templateFolder, DEFAULT_SETTINGS.templateFolder)
+  };
+}
+function readJson(storage, key) {
+  try {
+    const raw = storage.getItem(key);
+    if (raw === null || new TextEncoder().encode(raw).byteLength > MAX_TOCKTUTOR_SETTINGS_BYTES) return null;
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+function writeJson(storage, key, value) {
+  try {
+    const raw = JSON.stringify(value);
+    if (new TextEncoder().encode(raw).byteLength > MAX_TOCKTUTOR_SETTINGS_BYTES) return false;
+    storage.setItem(key, raw);
+    return true;
+  } catch {
+    return false;
+  }
+}
+function loadTockTutorSettings(storage, vaultId) {
+  if (!validVaultId(vaultId)) return { ...DEFAULT_SETTINGS };
+  return normalizeSettings(readJson(storage, settingsKey(vaultId)));
+}
+function saveTockTutorSettings(storage, vaultId, change) {
+  if (!validVaultId(vaultId)) return { ...DEFAULT_SETTINGS };
+  const settings = normalizeSettings({ ...loadTockTutorSettings(storage, vaultId), ...change });
+  writeJson(storage, settingsKey(vaultId), settings);
+  return settings;
+}
+function workspaceId(name2) {
+  return name2.normalize("NFKD").replace(/[\u0300-\u036f]/gu, "").toLocaleLowerCase().replace(/[^a-z0-9]+/gu, "-").replace(/^-|-$/gu, "").slice(0, 64) || "workspace";
+}
+function normalizeWorkspace(value, vaultId) {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return null;
+  const record2 = value;
+  if (typeof record2.id !== "string" || !/^[a-z0-9](?:[a-z0-9-]{0,63})$/u.test(record2.id)) return null;
+  if (typeof record2.name !== "string" || record2.name.trim().length === 0 || record2.name.length > 100) return null;
+  const session = hydrateWorkbenchSession(record2.session);
+  if (session.vault?.id !== vaultId) return null;
+  const createdAt = typeof record2.createdAt === "number" && Number.isFinite(record2.createdAt) && record2.createdAt >= 0 ? record2.createdAt : 0;
+  return { createdAt, focusMode: record2.focusMode === true, id: record2.id, name: record2.name.trim(), session };
+}
+function createNamedWorkspace(current, name2, session, createdAt = Date.now(), focusMode = false) {
+  const safeName = name2.trim().slice(0, 100) || "Workspace";
+  const base = workspaceId(safeName);
+  const used = new Set(current.map((workspace) => workspace.id));
+  let id = base;
+  for (let index2 = 2; used.has(id) && index2 <= MAX_TOCKTUTOR_WORKSPACES + 1; index2 += 1) id = `${base.slice(0, 60)}-${String(index2)}`;
+  if (used.has(id) || current.length >= MAX_TOCKTUTOR_WORKSPACES) return [...current];
+  return [...current, { createdAt, focusMode, id, name: safeName, session: hydrateWorkbenchSession(session) }];
+}
+function loadWorkbenchState(storage, vaultId) {
+  const fallback = { focusMode: false, session: createWorkbenchSession("/tocktutor", validVaultId(vaultId) ? { generation: 0, id: vaultId } : null, "pane-1"), workspaces: [] };
+  if (!validVaultId(vaultId)) return fallback;
+  const value = readJson(storage, stateKey(vaultId));
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return fallback;
+  const record2 = value;
+  const session = hydrateWorkbenchSession(record2.session);
+  if (session.vault?.id !== vaultId) return fallback;
+  const workspaces = [];
+  const ids = /* @__PURE__ */ new Set();
+  if (Array.isArray(record2.workspaces)) {
+    for (const candidate of record2.workspaces.slice(0, MAX_TOCKTUTOR_WORKSPACES)) {
+      const workspace = normalizeWorkspace(candidate, vaultId);
+      if (workspace !== null && !ids.has(workspace.id)) {
+        ids.add(workspace.id);
+        workspaces.push(workspace);
+      }
+    }
+  }
+  return { focusMode: record2.focusMode === true, session, workspaces };
+}
+function saveWorkbenchState(storage, vaultId, state) {
+  if (!validVaultId(vaultId) || state.session.vault?.id !== vaultId) return false;
+  return writeJson(storage, stateKey(vaultId), {
+    focusMode: state.focusMode === true,
+    session: hydrateWorkbenchSession(state.session),
+    workspaces: state.workspaces.slice(0, MAX_TOCKTUTOR_WORKSPACES)
+  });
+}
+function safeSnippetId(value) {
+  return value.toLocaleLowerCase().replace(/[^a-z0-9_-]+/gu, "-").replace(/^-|-$/gu, "").slice(0, 64) || "snippet";
+}
+function compileTockTutorCssSnippet(id, source) {
+  if (typeof source !== "string" || new TextEncoder().encode(source).byteLength > MAX_TOCKTUTOR_CSS_BYTES) return null;
+  const stripped = source.replace(/\/\*[\s\S]*?\*\//gu, "").trim();
+  if (stripped === "") return "";
+  if (/@|url\s*\(|expression\s*\(|javascript:|[<>]/iu.test(stripped)) return null;
+  const output = [];
+  let cursor = 0;
+  let rules = 0;
+  while (cursor < stripped.length) {
+    const open = stripped.indexOf("{", cursor);
+    const close = open < 0 ? -1 : stripped.indexOf("}", open + 1);
+    if (open < 0 || close < 0 || stripped.slice(close + 1).includes("{") && stripped.slice(close + 1).indexOf("}") < stripped.slice(close + 1).indexOf("{")) return null;
+    const selector = stripped.slice(cursor, open).trim();
+    const body = stripped.slice(open + 1, close).trim();
+    if (selector === "" || body === "" || body.includes("{") || body.includes("}")) return null;
+    const selectors = selector.split(",").map((value) => value.trim());
+    if (selectors.some((value) => value === "" || value.length > 1e3)) return null;
+    output.push(`${selectors.map((value) => `.tocktutor-editor-scope ${value}`).join(", ")} { ${body} }`);
+    rules += 1;
+    if (rules > 1e3) return null;
+    cursor = close + 1;
+    while (/\s/u.test(stripped[cursor] ?? "")) cursor += 1;
+  }
+  void safeSnippetId(id);
+  return output.join("\n");
 }
 
 // src/editor-commands.ts
@@ -22558,7 +22779,7 @@ function resolveEditorShortcut(event, isMac) {
 }
 
 // src/vault-events.ts
-function isRecord2(value) {
+function isRecord3(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 function hasExactKeys(value, keys) {
@@ -22567,10 +22788,10 @@ function hasExactKeys(value, keys) {
   return actual.length === expected.length && actual.every((key, index2) => key === expected[index2]);
 }
 function isVaultReference(value) {
-  return isRecord2(value) && hasExactKeys(value, ["generation", "id"]) && Number.isSafeInteger(value.generation) && value.generation >= 0 && typeof value.id === "string" && /^vault:[0-9a-f]{64}$/u.test(value.id);
+  return isRecord3(value) && hasExactKeys(value, ["generation", "id"]) && Number.isSafeInteger(value.generation) && value.generation >= 0 && typeof value.id === "string" && /^vault:[0-9a-f]{64}$/u.test(value.id);
 }
 function isNoteVaultChangeEvent(value) {
-  if (!isRecord2(value) || !isVaultReference(value.vault)) return false;
+  if (!isRecord3(value) || !isVaultReference(value.vault)) return false;
   if (value.kind === "vault") {
     return value.action === "activated" && hasExactKeys(value, ["action", "kind", "vault"]);
   }
@@ -22641,6 +22862,13 @@ function sessionModeFromRoute(mode) {
 function boundedSource(source) {
   return new TextEncoder().encode(source).byteLength <= MAX_ROUTE_SOURCE_BYTES;
 }
+function defaultWorkbenchStorage() {
+  try {
+    return typeof globalThis.localStorage === "undefined" ? null : globalThis.localStorage;
+  } catch {
+    return null;
+  }
+}
 function pathFromTockTutorLocation(pathname) {
   if (pathname === ROUTE_PREFIX || pathname === `${ROUTE_PREFIX}/`) return null;
   if (!pathname.startsWith(`${ROUTE_PREFIX}/`)) return null;
@@ -22697,14 +22925,16 @@ function initialSnapshot() {
       tabs: Object.freeze([])
     })]),
     vault: null,
-    warnings: Object.freeze([])
+    warnings: Object.freeze([]),
+    workspaces: Object.freeze([])
   });
 }
 var WorkbenchRouteController = class {
-  constructor(remote, navigate, now = () => /* @__PURE__ */ new Date()) {
+  constructor(remote, navigate, now = () => /* @__PURE__ */ new Date(), storage = defaultWorkbenchStorage()) {
     this.remote = remote;
     this.navigate = navigate;
     this.now = now;
+    this.storage = storage;
   }
   snapshot = initialSnapshot();
   listeners = /* @__PURE__ */ new Set();
@@ -22713,6 +22943,7 @@ var WorkbenchRouteController = class {
   recentlyClosed = [];
   historyBack = [];
   historyForward = [];
+  workspaces = [];
   operation = 0;
   dispatchRevision = 0;
   operationAbort = null;
@@ -22926,8 +23157,17 @@ ${text}`;
       focusedPaneId: this.shellSession.focusedGroupId,
       panes: this.shellPanes(),
       recentlyClosed: Object.freeze(this.recentlyClosed.map((tab) => Object.freeze({ ...tab }))),
+      workspaces: Object.freeze(this.workspaces.map((workspace) => Object.freeze({ ...workspace }))),
       ...change
     });
+    const vaultId = this.shellSession.vault?.id;
+    if (this.storage !== null && vaultId !== void 0) {
+      saveWorkbenchState(this.storage, vaultId, {
+        focusMode: this.snapshot.focusMode === true,
+        session: this.shellSession,
+        workspaces: this.workspaces
+      });
+    }
   }
   pane(id = this.snapshot.focusedPaneId) {
     return this.snapshot.panes.find((candidate) => candidate.id === id);
@@ -23078,21 +23318,43 @@ ${text}`;
         limit: TREE_LIMIT
       }, operation.signal));
       if (!this.current(operation.id) || page.generation !== vault.generation) return;
-      this.shellSession = createWorkbenchSession(ROUTE_PREFIX, vault, "pane-1");
+      const openable = new Set(page.entries.filter((entry) => entry.kind === "document" && supportedDocument(entry.path)).map((entry) => entry.path));
+      let settings;
+      let restoredFocusMode = false;
+      if (this.storage === null) {
+        this.shellSession = createWorkbenchSession(ROUTE_PREFIX, vault, "pane-1");
+        this.workspaces = [];
+      } else {
+        const restored = loadWorkbenchState(this.storage, vault.id);
+        this.shellSession = hydrateWorkbenchSession({
+          ...restored.session,
+          vault,
+          groups: restored.session.groups.map((group) => ({
+            ...group,
+            tabs: group.tabs.filter((tab) => openable.has(tab.path))
+          }))
+        });
+        this.workspaces = restored.workspaces;
+        restoredFocusMode = restored.focusMode;
+        settings = loadTockTutorSettings(this.storage, vault.id);
+      }
       this.update({
         entries: Object.freeze(page.entries.toSorted((left, right) => left.path.localeCompare(right.path))),
         focusedPaneId: this.shellSession.focusedGroupId,
+        focusMode: restoredFocusMode,
         message: page.truncated ? "The vault tree is truncated to a bounded result." : "Vault ready.",
         panes: this.shellPanes(),
         phase: "ready",
         recentVaults,
+        ...settings === void 0 ? {} : { settings },
         vault,
-        warnings: Object.freeze(page.warnings)
+        warnings: Object.freeze(page.warnings),
+        workspaces: Object.freeze(this.workspaces.map((workspace) => Object.freeze({ ...workspace })))
       });
       this.eventDispose = this.remote.$on("note-vault/change", (event) => {
         this.onVaultChange(event);
       });
-      const path = pathFromTockTutorLocation(this.pathname);
+      const path = pathFromTockTutorLocation(this.pathname) ?? this.pane()?.activePath ?? null;
       if (path !== null) await this.select(path, false);
     } catch (error51) {
       if (!this.current(operation.id) || operation.signal.aborted) return;
@@ -23411,7 +23673,48 @@ ${text}`;
     this.update({ commandPaletteOpen: open });
   }
   toggleFocusMode() {
-    this.update({ focusMode: this.snapshot.focusMode !== true });
+    this.syncShell({ focusMode: this.snapshot.focusMode !== true });
+  }
+  updateSettings(change) {
+    const vault = this.snapshot.vault;
+    if (vault === null || this.storage === null) return false;
+    const settings = saveTockTutorSettings(this.storage, vault.id, change);
+    this.update({ settings });
+    return true;
+  }
+  saveCurrentWorkspace(name2) {
+    if (this.snapshot.vault === null || this.storage === null) return false;
+    const next = createNamedWorkspace(
+      this.workspaces,
+      name2 ?? `Workspace ${String(this.workspaces.length + 1)}`,
+      this.shellSession,
+      this.now().getTime(),
+      this.snapshot.focusMode === true
+    );
+    if (next.length === this.workspaces.length) return false;
+    this.workspaces = next;
+    this.syncShell();
+    return true;
+  }
+  async loadWorkspace(id) {
+    const workspace = this.workspaces.find((candidate) => candidate.id === id);
+    const vault = this.snapshot.vault;
+    if (workspace === void 0 || vault === null) return false;
+    if (this.snapshot.saveStatus !== "saved" && !await this.save()) return false;
+    const openable = new Set(this.snapshot.entries.filter((entry) => entry.kind === "document" && supportedDocument(entry.path)).map((entry) => entry.path));
+    this.shellSession = hydrateWorkbenchSession({
+      ...workspace.session,
+      vault,
+      groups: workspace.session.groups.map((group) => ({ ...group, tabs: group.tabs.filter((tab) => openable.has(tab.path)) }))
+    });
+    this.syncShell({ focusMode: workspace.focusMode });
+    const path = this.pane()?.activePath ?? null;
+    this.clearDocument();
+    if (path === null) {
+      this.navigate(ROUTE_PREFIX);
+      return true;
+    }
+    return await this.select(path);
   }
   async select(path, navigate = true, dispatchRevision, recordHistory = true) {
     const activeVault = this.snapshot.vault;
@@ -24514,6 +24817,44 @@ function TockTutorRouteView(props) {
                         (snapshot.trash?.length ?? 0) === 0 && /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("span", { className: "text-xs text-[var(--tt-muted)]", children: "Trash is empty." })
                       ] })
                     ] }),
+                    /* @__PURE__ */ (0, import_jsx_runtime21.jsxs)("section", { "aria-label": "TockTutor Settings", className: "border-t border-[var(--tt-border)] p-3", children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime21.jsxs)("div", { className: "flex items-center justify-between gap-2", children: [
+                        /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("h2", { className: "m-0 text-sm", children: "Settings and Workspaces" }),
+                        /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs", disabled: snapshot.settings === void 0, onClick: props.onSaveWorkspace, type: "button", children: "Save Workspace" })
+                      ] }),
+                      /* @__PURE__ */ (0, import_jsx_runtime21.jsxs)("div", { className: "mt-2 grid gap-2 text-xs", children: [
+                        /* @__PURE__ */ (0, import_jsx_runtime21.jsxs)(Label, { unstyled: true, className: "flex items-center justify-between gap-2", children: [
+                          "Page Preview",
+                          /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(Checkbox3, { checked: snapshot.settings?.pagePreview ?? true, disabled: snapshot.settings === void 0, onCheckedChange: (checked) => {
+                            props.onSettingsChange?.({ pagePreview: checked === true });
+                          } })
+                        ] }),
+                        /* @__PURE__ */ (0, import_jsx_runtime21.jsxs)(Label, { unstyled: true, className: "flex items-center justify-between gap-2", children: [
+                          "Backlinks in Document",
+                          /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(Checkbox3, { checked: snapshot.settings?.backlinksInDocument ?? false, disabled: snapshot.settings === void 0, onCheckedChange: (checked) => {
+                            props.onSettingsChange?.({ backlinksInDocument: checked === true });
+                          } })
+                        ] }),
+                        /* @__PURE__ */ (0, import_jsx_runtime21.jsxs)(Label, { unstyled: true, className: "grid gap-1", children: [
+                          "Default Editing Mode",
+                          /* @__PURE__ */ (0, import_jsx_runtime21.jsxs)("select", { className: "rounded border border-[var(--tt-border)] bg-transparent p-1", disabled: snapshot.settings === void 0, onChange: (event) => {
+                            props.onSettingsChange?.({ defaultEditingMode: event.target.value === "source" ? "source" : "live-preview" });
+                          }, value: snapshot.settings?.defaultEditingMode ?? "live-preview", children: [
+                            /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("option", { value: "live-preview", children: "Live Preview" }),
+                            /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("option", { value: "source", children: "Source" })
+                          ] })
+                        ] })
+                      ] }),
+                      /* @__PURE__ */ (0, import_jsx_runtime21.jsxs)("div", { className: "mt-2 grid gap-1", children: [
+                        (snapshot.workspaces ?? []).map((workspace) => /* @__PURE__ */ (0, import_jsx_runtime21.jsxs)(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-left text-xs", onClick: () => {
+                          props.onLoadWorkspace?.(workspace.id);
+                        }, type: "button", children: [
+                          "Load ",
+                          workspace.name
+                        ] }, workspace.id)),
+                        (snapshot.workspaces?.length ?? 0) === 0 && /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("span", { className: "text-xs text-[var(--tt-muted)]", children: "No saved workspaces." })
+                      ] })
+                    ] }),
                     /* @__PURE__ */ (0, import_jsx_runtime21.jsxs)("section", { "aria-label": "Pane Groups", className: "tocktutor-pane-groups border-t border-[var(--tt-border)] p-3", children: [
                       /* @__PURE__ */ (0, import_jsx_runtime21.jsxs)("div", { className: "tocktutor-pane-heading flex items-center justify-between", children: [
                         /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("h2", { className: "m-0 text-sm", children: "Pane Groups" }),
@@ -24681,6 +25022,9 @@ function TockTutorRoute(props) {
       onForward: () => {
         void controller.goForward();
       },
+      onLoadWorkspace: (id) => {
+        void controller.loadWorkspace(id);
+      },
       onMode: (mode) => {
         controller.setMode(mode);
       },
@@ -24723,8 +25067,14 @@ function TockTutorRoute(props) {
       onSave: () => {
         void controller.save();
       },
+      onSaveWorkspace: () => {
+        controller.saveCurrentWorkspace();
+      },
       onSearchChange: (query) => {
         controller.setSearchQuery(query);
+      },
+      onSettingsChange: (change) => {
+        controller.updateSettings(change);
       },
       onSelect: (path) => {
         void controller.select(path);

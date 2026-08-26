@@ -67,6 +67,16 @@ import {
 } from './live-preview.ts'
 import { renderMarkdownHtml } from './rich-markdown.ts'
 import {
+  createNamedWorkspace,
+  loadTockTutorSettings,
+  loadWorkbenchState,
+  saveTockTutorSettings,
+  saveWorkbenchState,
+  type KeyValueStorage,
+  type NamedWorkspace,
+  type TockTutorSettings,
+} from './settings.ts'
+import {
   applyEditorCommand,
   resolvePlatformEditorCommand,
   type EditorCommandId,
@@ -91,6 +101,7 @@ import {
   setActiveNoteTab,
   setNoteTabMode,
   setTabPinned,
+  hydrateWorkbenchSession,
   type WorkbenchSession,
 } from './session.ts'
 import { isNoteVaultChangeEvent, type NoteVaultEventRemote } from './vault-events.ts'
@@ -213,12 +224,14 @@ export interface WorkbenchRouteSnapshot {
   selectedSnapshot?: SnapshotContentResult | null
   selectionEnd?: number
   selectionStart?: number
+  settings?: TockTutorSettings
   snapshots?: readonly SnapshotInfo[]
   source: string
   trash?: readonly TrashEntryInfo[]
   panes: readonly RoutePaneSummary[]
   vault: VaultReference | null
   warnings: readonly string[]
+  workspaces?: readonly NamedWorkspace[]
 }
 
 interface PendingNativeDispatch {
@@ -283,6 +296,14 @@ function sessionModeFromRoute(mode: RouteEditorMode): 'reading' | 'source' | 'wy
 
 function boundedSource(source: string): boolean {
   return new TextEncoder().encode(source).byteLength <= MAX_ROUTE_SOURCE_BYTES
+}
+
+function defaultWorkbenchStorage(): KeyValueStorage | null {
+  try {
+    return typeof globalThis.localStorage === 'undefined' ? null : globalThis.localStorage
+  } catch {
+    return null
+  }
 }
 
 export function pathFromTockTutorLocation(pathname: string): string | null {
@@ -350,6 +371,7 @@ function initialSnapshot(): WorkbenchRouteSnapshot {
     })]),
     vault: null,
     warnings: Object.freeze([]),
+    workspaces: Object.freeze([]),
   })
 }
 
@@ -362,6 +384,7 @@ export class WorkbenchRouteController {
   private readonly recentlyClosed: RouteTabSummary[] = []
   private readonly historyBack: string[] = []
   private readonly historyForward: string[] = []
+  private workspaces: NamedWorkspace[] = []
   private operation = 0
   private dispatchRevision = 0
   private operationAbort: AbortController | null = null
@@ -379,6 +402,7 @@ export class WorkbenchRouteController {
     private readonly remote: WorkbenchRouteRemote,
     private readonly navigate: TockTutorRouteOwnerProps['navigate'],
     private readonly now: () => Date = () => new Date(),
+    private readonly storage: KeyValueStorage | null = defaultWorkbenchStorage(),
   ) {}
 
   getSnapshot = (): WorkbenchRouteSnapshot => this.snapshot
@@ -612,8 +636,17 @@ export class WorkbenchRouteController {
       focusedPaneId: this.shellSession.focusedGroupId,
       panes: this.shellPanes(),
       recentlyClosed: Object.freeze(this.recentlyClosed.map(tab => Object.freeze({ ...tab }))),
+      workspaces: Object.freeze(this.workspaces.map(workspace => Object.freeze({ ...workspace }))),
       ...change,
     })
+    const vaultId = this.shellSession.vault?.id
+    if (this.storage !== null && vaultId !== undefined) {
+      saveWorkbenchState(this.storage, vaultId, {
+        focusMode: this.snapshot.focusMode === true,
+        session: this.shellSession,
+        workspaces: this.workspaces,
+      })
+    }
   }
 
   private pane(id = this.snapshot.focusedPaneId): RoutePaneSummary | undefined {
@@ -779,19 +812,41 @@ export class WorkbenchRouteController {
         limit: TREE_LIMIT,
       }, operation.signal))
       if (!this.current(operation.id) || page.generation !== vault.generation) return
-      this.shellSession = createWorkbenchSession(ROUTE_PREFIX, vault, 'pane-1')
+      const openable = new Set(page.entries.filter(entry => entry.kind === 'document' && supportedDocument(entry.path)).map(entry => entry.path))
+      let settings: TockTutorSettings | undefined
+      let restoredFocusMode = false
+      if (this.storage === null) {
+        this.shellSession = createWorkbenchSession(ROUTE_PREFIX, vault, 'pane-1')
+        this.workspaces = []
+      } else {
+        const restored = loadWorkbenchState(this.storage, vault.id)
+        this.shellSession = hydrateWorkbenchSession({
+          ...restored.session,
+          vault,
+          groups: restored.session.groups.map(group => ({
+            ...group,
+            tabs: group.tabs.filter(tab => openable.has(tab.path)),
+          })),
+        })
+        this.workspaces = restored.workspaces
+        restoredFocusMode = restored.focusMode
+        settings = loadTockTutorSettings(this.storage, vault.id)
+      }
       this.update({
         entries: Object.freeze(page.entries.toSorted((left, right) => left.path.localeCompare(right.path))),
         focusedPaneId: this.shellSession.focusedGroupId,
+        focusMode: restoredFocusMode,
         message: page.truncated ? 'The vault tree is truncated to a bounded result.' : 'Vault ready.',
         panes: this.shellPanes(),
         phase: 'ready',
         recentVaults,
+        ...(settings === undefined ? {} : { settings }),
         vault,
         warnings: Object.freeze(page.warnings),
+        workspaces: Object.freeze(this.workspaces.map(workspace => Object.freeze({ ...workspace }))),
       })
       this.eventDispose = this.remote.$on('note-vault/change', event => { this.onVaultChange(event) })
-      const path = pathFromTockTutorLocation(this.pathname)
+      const path = pathFromTockTutorLocation(this.pathname) ?? this.pane()?.activePath ?? null
       if (path !== null) await this.select(path, false)
     } catch (error) {
       if (!this.current(operation.id) || operation.signal.aborted) return
@@ -1135,7 +1190,51 @@ export class WorkbenchRouteController {
   }
 
   toggleFocusMode(): void {
-    this.update({ focusMode: this.snapshot.focusMode !== true })
+    this.syncShell({ focusMode: this.snapshot.focusMode !== true })
+  }
+
+  updateSettings(change: Partial<TockTutorSettings>): boolean {
+    const vault = this.snapshot.vault
+    if (vault === null || this.storage === null) return false
+    const settings = saveTockTutorSettings(this.storage, vault.id, change)
+    this.update({ settings })
+    return true
+  }
+
+  saveCurrentWorkspace(name?: string): boolean {
+    if (this.snapshot.vault === null || this.storage === null) return false
+    const next = createNamedWorkspace(
+      this.workspaces,
+      name ?? `Workspace ${String(this.workspaces.length + 1)}`,
+      this.shellSession,
+      this.now().getTime(),
+      this.snapshot.focusMode === true,
+    )
+    if (next.length === this.workspaces.length) return false
+    this.workspaces = next
+    this.syncShell()
+    return true
+  }
+
+  async loadWorkspace(id: string): Promise<boolean> {
+    const workspace = this.workspaces.find(candidate => candidate.id === id)
+    const vault = this.snapshot.vault
+    if (workspace === undefined || vault === null) return false
+    if (this.snapshot.saveStatus !== 'saved' && !await this.save()) return false
+    const openable = new Set(this.snapshot.entries.filter(entry => entry.kind === 'document' && supportedDocument(entry.path)).map(entry => entry.path))
+    this.shellSession = hydrateWorkbenchSession({
+      ...workspace.session,
+      vault,
+      groups: workspace.session.groups.map(group => ({ ...group, tabs: group.tabs.filter(tab => openable.has(tab.path)) })),
+    })
+    this.syncShell({ focusMode: workspace.focusMode })
+    const path = this.pane()?.activePath ?? null
+    this.clearDocument()
+    if (path === null) {
+      this.navigate(ROUTE_PREFIX)
+      return true
+    }
+    return await this.select(path)
   }
 
   async select(
@@ -1542,6 +1641,7 @@ export interface TockTutorRouteViewProps {
   onEditorCommand?(command: EditorCommandId): void
   onFocusPane(paneId: string): void
   onForward?(): void
+  onLoadWorkspace?(id: string): void
   onMoveCanvas(nodeId: string, deltaX: number, deltaY: number): void
   onMoveTab?(paneId: string, path: string, direction: -1 | 1): void
   onMode(mode: RouteEditorMode): void
@@ -1556,7 +1656,9 @@ export interface TockTutorRouteViewProps {
   onRestoreSnapshot?(id: string): void
   onRestoreTrash?(id: string): void
   onSave(): void
+  onSaveWorkspace?(): void
   onSearchChange?(query: string): void
+  onSettingsChange?(change: Partial<TockTutorSettings>): void
   onSelectionChange?(start: number, end: number): void
   onSelect(path: string): void
   onSubmitDispatch?(draft: NativeDispatchDraft): void
@@ -2290,6 +2392,28 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
               {(snapshot.trash?.length ?? 0) === 0 && <span className="text-xs text-[var(--tt-muted)]">Trash is empty.</span>}
             </div>
           </section>
+          <section aria-label="TockTutor Settings" className="border-t border-[var(--tt-border)] p-3">
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="m-0 text-sm">Settings and Workspaces</h2>
+              <Button unstyled className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs" disabled={snapshot.settings === undefined} onClick={props.onSaveWorkspace} type="button">Save Workspace</Button>
+            </div>
+            <div className="mt-2 grid gap-2 text-xs">
+              <Label unstyled className="flex items-center justify-between gap-2">Page Preview<Checkbox checked={snapshot.settings?.pagePreview ?? true} disabled={snapshot.settings === undefined} onCheckedChange={checked => { props.onSettingsChange?.({ pagePreview: checked === true }) }} /></Label>
+              <Label unstyled className="flex items-center justify-between gap-2">Backlinks in Document<Checkbox checked={snapshot.settings?.backlinksInDocument ?? false} disabled={snapshot.settings === undefined} onCheckedChange={checked => { props.onSettingsChange?.({ backlinksInDocument: checked === true }) }} /></Label>
+              <Label unstyled className="grid gap-1">Default Editing Mode
+                <select className="rounded border border-[var(--tt-border)] bg-transparent p-1" disabled={snapshot.settings === undefined} onChange={event => { props.onSettingsChange?.({ defaultEditingMode: event.target.value === 'source' ? 'source' : 'live-preview' }) }} value={snapshot.settings?.defaultEditingMode ?? 'live-preview'}>
+                  <option value="live-preview">Live Preview</option>
+                  <option value="source">Source</option>
+                </select>
+              </Label>
+            </div>
+            <div className="mt-2 grid gap-1">
+              {(snapshot.workspaces ?? []).map(workspace => (
+                <Button unstyled className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-left text-xs" key={workspace.id} onClick={() => { props.onLoadWorkspace?.(workspace.id) }} type="button">Load {workspace.name}</Button>
+              ))}
+              {(snapshot.workspaces?.length ?? 0) === 0 && <span className="text-xs text-[var(--tt-muted)]">No saved workspaces.</span>}
+            </div>
+          </section>
           <section aria-label="Pane Groups" className="tocktutor-pane-groups border-t border-[var(--tt-border)] p-3">
             <div className="tocktutor-pane-heading flex items-center justify-between">
               <h2 className="m-0 text-sm">Pane Groups</h2>
@@ -2452,6 +2576,7 @@ export function TockTutorRoute(props: TockTutorRouteProps): ReactNode {
         onEditorCommand={command => { controller.runEditorCommand(command) }}
         onFocusPane={paneId => { void controller.focusPane(paneId) }}
         onForward={() => { void controller.goForward() }}
+        onLoadWorkspace={id => { void controller.loadWorkspace(id) }}
         onMode={mode => { controller.setMode(mode) }}
         onMoveCanvas={(nodeId, deltaX, deltaY) => { controller.moveCanvasNode(nodeId, deltaX, deltaY) }}
         onMoveTab={(paneId, path, direction) => { controller.moveTab(paneId, path, direction) }}
@@ -2466,7 +2591,9 @@ export function TockTutorRoute(props: TockTutorRouteProps): ReactNode {
         onRestoreSnapshot={id => { void controller.restoreRecoverySnapshot(id) }}
         onRestoreTrash={id => { void controller.restoreTrashEntry(id) }}
         onSave={() => { void controller.save() }}
+        onSaveWorkspace={() => { controller.saveCurrentWorkspace() }}
         onSearchChange={query => { controller.setSearchQuery(query) }}
+        onSettingsChange={change => { controller.updateSettings(change) }}
         onSelect={path => { void controller.select(path) }}
         onSelectionChange={(start, end) => { controller.setSelection(start, end) }}
         onSubmitDispatch={draft => { void controller.submitDispatchDialog(draft) }}
