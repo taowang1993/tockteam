@@ -29757,7 +29757,7 @@ var MAX_EMBED_CONTENT_BYTES = 2e6;
 function kind(path) {
   if (/\.canvas$/iu.test(path)) return "canvas";
   if (/\.base$/iu.test(path)) return "base";
-  if (/\.(?:avif|bmp|gif|ico|jpe?g|png|webp|mp3|m4a|ogg|wav|webm|mp4|mov|pdf)$/iu.test(path)) return "media";
+  if (/\.(?:avif|bmp|gif|ico|jpe?g|png|webp|mp3|m4a|ogg|wav|weba|webm|mp4|mov|pdf)$/iu.test(path)) return "media";
   if (/\.(?:markdown|md)$/iu.test(path) || !/\.[^/]+$/u.test(path)) return "note";
   return null;
 }

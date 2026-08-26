@@ -6,6 +6,7 @@ test('collects bounded safe note, media, Canvas, and Base embeds outside code', 
   const source = [
     '![[Note.md#Part]]',
     '![[image.png|200x100]]',
+    '![[voice.weba]]',
     '![[Board.canvas]]',
     '![[Table.base#Cards]]',
     '`![[Inline.md]]`',
@@ -17,6 +18,7 @@ test('collects bounded safe note, media, Canvas, and Base embeds outside code', 
   assert.deepEqual(collectEmbedTargets(source), [
     { display: null, fragment: 'Part', kind: 'note', path: 'Note.md', source: '![[Note.md#Part]]' },
     { display: '200x100', fragment: null, kind: 'media', path: 'image.png', source: '![[image.png|200x100]]' },
+    { display: null, fragment: null, kind: 'media', path: 'voice.weba', source: '![[voice.weba]]' },
     { display: null, fragment: null, kind: 'canvas', path: 'Board.canvas', source: '![[Board.canvas]]' },
     { display: null, fragment: 'Cards', kind: 'base', path: 'Table.base', source: '![[Table.base#Cards]]' },
   ])
