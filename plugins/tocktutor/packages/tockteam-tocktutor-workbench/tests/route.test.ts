@@ -230,6 +230,20 @@ class FakeRemote implements WorkbenchRouteRemote {
       this.draftContent = request.content
       return success({ generation: request.expectedVault.generation, ok: true as const, updatedAt: 2 })
     },
+    facets: (request: { expectedVault: VaultReference; limit?: number }, signal?: AbortSignal) => {
+      this.calls.push({ method: 'facets', parameters: [request, signal] })
+      return success({
+        complete: true,
+        cursor: null,
+        generation: request.expectedVault.generation,
+        properties: [{ count: 2, key: 'status', types: ['string' as const] }],
+        scan: { bytes: 30, entries: 2, files: 2 },
+        tags: [{ count: 2, tag: 'lesson/intro' }],
+        truncated: false,
+        truncationReason: null,
+        warnings: [],
+      })
+    },
     links: (request: { expectedVault: VaultReference; includeUnlinked?: boolean; path: string }, signal?: AbortSignal) => {
       this.calls.push({ method: 'links', parameters: [request, signal] })
       return success({
@@ -1073,6 +1087,20 @@ test('runs editor commands against the captured Source selection', async () => {
   const unchanged = controller.getSnapshot().source
   controller.runEditorCommand('delete-line')
   assert.equal(controller.getSnapshot().source, unchanged)
+  controller.dispose()
+})
+
+test('projects bounded Smart Views and Tags over shared tree, search, and facets owners', async () => {
+  const remote = new FakeRemote()
+  const controller = new WorkbenchRouteController(remote, () => {})
+  await controller.syncLocation('/tocktutor')
+  assert.equal(await controller.openSmartView('recent'), true)
+  assert.deepEqual(controller.getSnapshot().searchMatches?.map(match => match.path), ['Folder/Note.md', 'Second.md'])
+  assert.equal(await controller.openSmartView('tasks'), true)
+  assert.equal(controller.getSnapshot().searchQuery, 'task:todo')
+  assert.equal(await controller.openSmartView('tags'), true)
+  assert.equal(controller.getSnapshot().facets?.tags[0]?.tag, 'lesson/intro')
+  assert.equal(controller.getSnapshot().facets?.properties[0]?.key, 'status')
   controller.dispose()
 })
 

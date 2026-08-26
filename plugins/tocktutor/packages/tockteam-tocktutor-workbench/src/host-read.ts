@@ -25,6 +25,8 @@ import type {
   TrashEntryRequest,
   TrashListResult,
   TrashMutationResult,
+  VaultFacetsRequest,
+  VaultFacetsResult,
   VaultGenerationRequest,
   VaultLinksRequest,
   VaultLinksResult,
@@ -48,6 +50,7 @@ export type NoteVaultCapability = Pick<
   | 'activateRecentVault'
   | 'clearDraft'
   | 'createDocument'
+  | 'facets'
   | 'listRecentVaults'
   | 'listSnapshots'
   | 'listTrash'
@@ -189,6 +192,14 @@ function assertCreateRequest(value: CreateDocumentRequest): void {
 function assertSaveRequest(value: SaveDocumentRequest): void {
   assertCreateRequest(value)
   assertRevision(value.expectedRevision)
+}
+
+function assertFacetsRequest(value: VaultFacetsRequest): void {
+  assertRecord(value, 'Facets request')
+  assertVaultReference(value.expectedVault)
+  if (value.directory !== undefined) assertEntryPath(value.directory)
+  if (value.limit !== undefined && (!Number.isSafeInteger(value.limit) || value.limit < 1 || value.limit > 1_000)) throw new TypeError('Facets limit must be bounded.')
+  if (value.cursor !== undefined && (typeof value.cursor !== 'string' || value.cursor.length === 0 || value.cursor.length > MAX_TREE_CURSOR_LENGTH)) throw new TypeError('Facets cursor must be bounded.')
 }
 
 function assertOutlineRequest(value: VaultOutlineRequest): void {
@@ -360,6 +371,14 @@ export class TockTutorWorkbenchGateway extends TypertRemoteService {
     assertSaveRequest(request)
     signal.throwIfAborted()
     return this.ctx.noteVault.saveDocument(request, signal)
+  }
+
+  @Remote
+  async facets(request: VaultFacetsRequest, signal: AbortSignal): Promise<VaultFacetsResult> {
+    assertFacetsRequest(request)
+    signal.throwIfAborted()
+    const { expectedVault, ...args } = request
+    return this.ctx.noteVault.facets(args, expectedVault, signal)
   }
 
   @Remote

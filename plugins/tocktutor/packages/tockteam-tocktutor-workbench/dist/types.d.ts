@@ -105,6 +105,34 @@ export type NoteVaultChangeEvent = Readonly<{
     path: string;
     vault: VaultReference;
 }>;
+export interface VaultFacetsRequest {
+    cursor?: string;
+    directory?: string;
+    expectedVault: VaultReference;
+    limit?: number;
+}
+export interface VaultFacetsResult {
+    complete: boolean;
+    cursor: string | null;
+    generation: number;
+    properties: Array<{
+        count: number;
+        key: string;
+        types: Array<'null' | 'string' | 'number' | 'boolean' | 'date' | 'datetime' | 'list'>;
+    }>;
+    scan: {
+        bytes: number;
+        entries: number;
+        files: number;
+    };
+    tags: Array<{
+        count: number;
+        tag: string;
+    }>;
+    truncated: boolean;
+    truncationReason: 'byte-limit' | 'entry-limit' | 'file-limit' | 'metadata-limit' | 'result-limit' | null;
+    warnings: string[];
+}
 export interface VaultOutlineRequest {
     expectedVault: VaultReference;
     includeFootnotes?: boolean;

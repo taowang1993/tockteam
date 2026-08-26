@@ -128,6 +128,8 @@ import type {
   SnapshotInfo,
   TrashEntryInfo,
   TrashEntryRequest,
+  VaultFacetsRequest,
+  VaultFacetsResult,
   VaultGenerationRequest,
   VaultHeading,
   VaultLinksRequest,
@@ -191,6 +193,7 @@ export interface WorkbenchRouteRemote extends NoteVaultEventRemote {
     search(request: VaultSearchRequest, signal?: AbortSignal): Promise<RemoteResult<VaultSearchResult>>
     outline(request: VaultOutlineRequest, signal?: AbortSignal): Promise<RemoteResult<VaultOutlineResult>>
     links(request: VaultLinksRequest, signal?: AbortSignal): Promise<RemoteResult<VaultLinksResult>>
+    facets(request: VaultFacetsRequest, signal?: AbortSignal): Promise<RemoteResult<VaultFacetsResult>>
   }
 }
 
@@ -219,6 +222,7 @@ export interface WorkbenchRouteSnapshot {
   documentKind: RouteDocumentKind | null
   draftRecovered?: boolean
   entries: readonly VaultTreeEntry[]
+  facets?: VaultFacetsResult | null
   focusedPaneId: string
   focusMode?: boolean
   links?: VaultLinksResult | null
@@ -372,6 +376,7 @@ function initialSnapshot(): WorkbenchRouteSnapshot {
     documentKind: null,
     draftRecovered: false,
     entries: Object.freeze([]),
+    facets: null,
     focusedPaneId: 'pane-1',
     focusMode: false,
     links: null,
@@ -656,6 +661,46 @@ export class WorkbenchRouteController {
     }
   }
 
+  async loadFacets(): Promise<boolean> {
+    const vault = this.snapshot.vault
+    if (vault === null) return false
+    const operation = this.nextOperation()
+    try {
+      const facets = remoteValue(await this.remote.tocktutorWorkbench.facets({ expectedVault: vault, limit: 1_000 }, operation.signal))
+      if (!this.current(operation.id, vault)
+        || facets.generation !== vault.generation
+        || !Array.isArray(facets.tags)
+        || !Array.isArray(facets.properties)
+        || facets.tags.length > 1_000
+        || facets.properties.length > 1_000) return false
+      this.update({ facets })
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  async openSmartView(kind: 'recent' | 'tasks' | 'journals' | 'favorites' | 'collections' | 'tags'): Promise<boolean> {
+    this.openSearch('')
+    if (kind === 'recent') {
+      const matches: VaultSearchMatch[] = this.snapshot.entries
+        .filter((entry): entry is Extract<VaultTreeEntry, { kind: 'document' }> => entry.kind === 'document' && /\.(?:markdown|md)$/iu.test(entry.path))
+        .toSorted((left, right) => right.modifiedAt - left.modifiedAt || left.path.localeCompare(right.path))
+        .slice(0, 100)
+        .map(entry => ({ kind: 'path', line: null, path: entry.path, preview: 'Recently modified note.' }))
+      this.update({ searchMatches: Object.freeze(matches) })
+      return true
+    }
+    if (kind === 'tags') return await this.loadFacets()
+    const query = kind === 'tasks' ? 'task:todo'
+      : kind === 'journals' ? 'path:Journals'
+        : kind === 'favorites' ? '[favorite:true]'
+          : '[kind:collection]'
+    this.setSearchQuery(query)
+    this.setSearchMode('query')
+    return await this.runSearch()
+  }
+
   async loadRelationships(): Promise<boolean> {
     const vault = this.snapshot.vault
     const path = this.snapshot.path
@@ -889,6 +934,7 @@ export class WorkbenchRouteController {
       documentKind: null,
       draftRecovered: false,
       entries: Object.freeze([]),
+      facets: null,
       focusedPaneId: 'pane-1',
       links: null,
       message: 'Loading the active vault.',
@@ -1767,6 +1813,7 @@ export interface TockTutorRouteViewProps {
   onOpenCommandPalette?(): void
   onOpenRecovery?(): void
   onOpenSandboxVault?(): void
+  onOpenSmartView?(kind: 'recent' | 'tasks' | 'journals' | 'favorites' | 'collections' | 'tags'): void
   onOpenSearch?(): void
   onReadSnapshot?(id: string): void
   onRemoveRecentVault?(id: string): void
@@ -2529,6 +2576,21 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
               {(snapshot.trash?.length ?? 0) === 0 && <span className="text-xs text-[var(--tt-muted)]">Trash is empty.</span>}
             </div>
           </section>
+          <section aria-label="Smart Views and Tags" className="border-t border-[var(--tt-border)] p-3">
+            <h2 className="m-0 text-sm">Smart Views and Tags</h2>
+            <div className="mt-2 grid grid-cols-2 gap-1">
+              {(['recent', 'tasks', 'journals', 'favorites', 'collections', 'tags'] as const).map(kind => (
+                <Button unstyled className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-left text-xs" key={kind} onClick={() => { props.onOpenSmartView?.(kind) }} type="button">{kind[0]!.toLocaleUpperCase() + kind.slice(1)}</Button>
+              ))}
+            </div>
+            {(snapshot.facets?.tags.length ?? 0) > 0 && (
+              <div className="mt-2 grid gap-1" aria-label="Tags">
+                {snapshot.facets?.tags.map(tag => (
+                  <Button unstyled className="rounded border-0 bg-transparent px-1 py-0.5 text-left text-xs" key={tag.tag.toLocaleLowerCase()} onClick={() => { props.onSearchChange?.(`tag:${tag.tag}`); props.onRunSearch?.() }} type="button">#{tag.tag} · {String(tag.count)}</Button>
+                ))}
+              </div>
+            )}
+          </section>
           <section aria-label="Note Relationships" className="border-t border-[var(--tt-border)] p-3">
             <h2 className="m-0 text-sm">Outline and Relationships</h2>
             <h3 className="mt-2 mb-1 text-xs">Outline</h3>
@@ -2740,6 +2802,7 @@ export function TockTutorRoute(props: TockTutorRouteProps): ReactNode {
         onOpenRecovery={() => { void controller.setRecoveryOpen(true) }}
         onOpenSandboxVault={() => { void controller.openSandboxVault() }}
         onOpenSearch={() => { controller.openSearch('') }}
+        onOpenSmartView={kind => { void controller.openSmartView(kind) }}
         onReadSnapshot={id => { void controller.readRecoverySnapshot(id) }}
         onRemoveRecentVault={id => { void controller.removeRecentVault(id) }}
         onReopenClosedTab={() => { void controller.reopenClosedTab() }}

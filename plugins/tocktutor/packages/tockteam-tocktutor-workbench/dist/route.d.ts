@@ -9,7 +9,7 @@ import { type KeyValueStorage, type NamedWorkspace, type TockTutorSettings } fro
 import { type EditorCommandId } from './editor-commands.ts';
 import { type EditorStatus } from './markdown.ts';
 import { type NoteVaultEventRemote } from './vault-events.ts';
-import type { ActiveVaultResult, CreateDocumentRequest, DraftMutationResult, DraftRequest, DraftResult, ListSnapshotsRequest, ListTrashRequest, ListTreeRequest, OpenDocumentResult, RecentVaultInfo, RecentVaultListResult, ReadSnapshotRequest, RecentVaultRequest, RestoreSnapshotRequest, RestoreTrashRequest, SaveDocumentRequest, SaveDraftRequest, SnapshotContentResult, SnapshotInfo, TrashEntryInfo, TrashEntryRequest, VaultGenerationRequest, VaultLinksRequest, VaultLinksResult, VaultOutlineRequest, VaultOutlineResult, VaultReference, VaultSearchMatch, VaultSearchRequest, VaultSearchResult, VaultTreeEntry, VaultTreePage, WriteDocumentResult } from './types.ts';
+import type { ActiveVaultResult, CreateDocumentRequest, DraftMutationResult, DraftRequest, DraftResult, ListSnapshotsRequest, ListTrashRequest, ListTreeRequest, OpenDocumentResult, RecentVaultInfo, RecentVaultListResult, ReadSnapshotRequest, RecentVaultRequest, RestoreSnapshotRequest, RestoreTrashRequest, SaveDocumentRequest, SaveDraftRequest, SnapshotContentResult, SnapshotInfo, TrashEntryInfo, TrashEntryRequest, VaultFacetsRequest, VaultFacetsResult, VaultGenerationRequest, VaultLinksRequest, VaultLinksResult, VaultOutlineRequest, VaultOutlineResult, VaultReference, VaultSearchMatch, VaultSearchRequest, VaultSearchResult, VaultTreeEntry, VaultTreePage, WriteDocumentResult } from './types.ts';
 export declare const MAX_ROUTE_SOURCE_BYTES = 2000000;
 export interface WorkbenchRouteRemote extends NoteVaultEventRemote {
     tocktutorWorkbench: {
@@ -40,6 +40,7 @@ export interface WorkbenchRouteRemote extends NoteVaultEventRemote {
         search(request: VaultSearchRequest, signal?: AbortSignal): Promise<RemoteResult<VaultSearchResult>>;
         outline(request: VaultOutlineRequest, signal?: AbortSignal): Promise<RemoteResult<VaultOutlineResult>>;
         links(request: VaultLinksRequest, signal?: AbortSignal): Promise<RemoteResult<VaultLinksResult>>;
+        facets(request: VaultFacetsRequest, signal?: AbortSignal): Promise<RemoteResult<VaultFacetsResult>>;
     };
 }
 export type RoutePhase = 'loading' | 'inactive' | 'ready' | 'error';
@@ -64,6 +65,7 @@ export interface WorkbenchRouteSnapshot {
     documentKind: RouteDocumentKind | null;
     draftRecovered?: boolean;
     entries: readonly VaultTreeEntry[];
+    facets?: VaultFacetsResult | null;
     focusedPaneId: string;
     focusMode?: boolean;
     links?: VaultLinksResult | null;
@@ -138,6 +140,8 @@ export declare class WorkbenchRouteController {
     openSearch(query: string): void;
     setSearchMode(mode: 'query' | 'related'): void;
     runSearch(): Promise<boolean>;
+    loadFacets(): Promise<boolean>;
+    openSmartView(kind: 'recent' | 'tasks' | 'journals' | 'favorites' | 'collections' | 'tags'): Promise<boolean>;
     loadRelationships(): Promise<boolean>;
     jumpToLine(line: number): boolean;
     private settlePendingDispatch;
@@ -215,6 +219,7 @@ export interface TockTutorRouteViewProps {
     onOpenCommandPalette?(): void;
     onOpenRecovery?(): void;
     onOpenSandboxVault?(): void;
+    onOpenSmartView?(kind: 'recent' | 'tasks' | 'journals' | 'favorites' | 'collections' | 'tags'): void;
     onOpenSearch?(): void;
     onReadSnapshot?(id: string): void;
     onRemoveRecentVault?(id: string): void;

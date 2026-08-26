@@ -1,12 +1,12 @@
 import type { Context } from '@deepseek-ai/cordis';
 import { TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol';
 import type { NoteVaultRuntime } from 'tockbot-note-runtime';
-import type { ActiveVaultResult, CreateDocumentRequest, DraftMutationResult, DraftRequest, DraftResult, ListSnapshotsRequest, ListTrashRequest, ListTreeRequest, OpenDocumentResult, ReadSnapshotRequest, RecentVaultListResult, RecentVaultRequest, RestoreSnapshotRequest, RestoreTrashRequest, RestoreTrashResult, SaveDocumentRequest, SaveDraftRequest, SnapshotContentResult, SnapshotListResult, TrashEntryRequest, TrashListResult, TrashMutationResult, VaultGenerationRequest, VaultLinksRequest, VaultLinksResult, VaultOutlineRequest, VaultOutlineResult, VaultReference, VaultSearchRequest, VaultSearchResult, VaultTreePage, WriteDocumentResult } from './types.ts';
+import type { ActiveVaultResult, CreateDocumentRequest, DraftMutationResult, DraftRequest, DraftResult, ListSnapshotsRequest, ListTrashRequest, ListTreeRequest, OpenDocumentResult, ReadSnapshotRequest, RecentVaultListResult, RecentVaultRequest, RestoreSnapshotRequest, RestoreTrashRequest, RestoreTrashResult, SaveDocumentRequest, SaveDraftRequest, SnapshotContentResult, SnapshotListResult, TrashEntryRequest, TrashListResult, TrashMutationResult, VaultFacetsRequest, VaultFacetsResult, VaultGenerationRequest, VaultLinksRequest, VaultLinksResult, VaultOutlineRequest, VaultOutlineResult, VaultReference, VaultSearchRequest, VaultSearchResult, VaultTreePage, WriteDocumentResult } from './types.ts';
 export type * from './types.ts';
 export declare const MAX_DOCUMENT_CONTENT_BYTES = 2000000;
 export declare const MAX_TREE_CURSOR_LENGTH = 512;
 export declare const MAX_TREE_PAGE_SIZE = 200;
-export type NoteVaultCapability = Pick<NoteVaultRuntime, 'activateRecentVault' | 'clearDraft' | 'createDocument' | 'listRecentVaults' | 'listSnapshots' | 'listTrash' | 'links' | 'listTree' | 'openDocument' | 'outline' | 'openSandboxVault' | 'readDraft' | 'readSnapshot' | 'removeRecentVault' | 'restoreSnapshotAsNew' | 'restoreTrash' | 'saveDocument' | 'saveDraft' | 'search' | 'state' | 'trashEntry'>;
+export type NoteVaultCapability = Pick<NoteVaultRuntime, 'activateRecentVault' | 'clearDraft' | 'createDocument' | 'facets' | 'listRecentVaults' | 'listSnapshots' | 'listTrash' | 'links' | 'listTree' | 'openDocument' | 'outline' | 'openSandboxVault' | 'readDraft' | 'readSnapshot' | 'removeRecentVault' | 'restoreSnapshotAsNew' | 'restoreTrash' | 'saveDocument' | 'saveDraft' | 'search' | 'state' | 'trashEntry'>;
 declare module '@deepseek-ai/cordis' {
     interface Context {
         tocktutorWorkbench: TockTutorWorkbenchGateway;
@@ -25,6 +25,7 @@ export declare class TockTutorWorkbenchGateway extends TypertRemoteService {
     listTree(request: ListTreeRequest, signal: AbortSignal): Promise<VaultTreePage>;
     createDocument(request: CreateDocumentRequest, signal: AbortSignal): Promise<WriteDocumentResult>;
     saveDocument(request: SaveDocumentRequest, signal: AbortSignal): Promise<WriteDocumentResult>;
+    facets(request: VaultFacetsRequest, signal: AbortSignal): Promise<VaultFacetsResult>;
     outline(request: VaultOutlineRequest, signal: AbortSignal): Promise<VaultOutlineResult>;
     links(request: VaultLinksRequest, signal: AbortSignal): Promise<VaultLinksResult>;
     search(request: VaultSearchRequest, signal: AbortSignal): Promise<VaultSearchResult>;

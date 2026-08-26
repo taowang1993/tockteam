@@ -129,6 +129,16 @@ function assertSaveRequest(value) {
     assertCreateRequest(value);
     assertRevision(value.expectedRevision);
 }
+function assertFacetsRequest(value) {
+    assertRecord(value, 'Facets request');
+    assertVaultReference(value.expectedVault);
+    if (value.directory !== undefined)
+        assertEntryPath(value.directory);
+    if (value.limit !== undefined && (!Number.isSafeInteger(value.limit) || value.limit < 1 || value.limit > 1_000))
+        throw new TypeError('Facets limit must be bounded.');
+    if (value.cursor !== undefined && (typeof value.cursor !== 'string' || value.cursor.length === 0 || value.cursor.length > MAX_TREE_CURSOR_LENGTH))
+        throw new TypeError('Facets cursor must be bounded.');
+}
 function assertOutlineRequest(value) {
     assertRecord(value, 'Outline request');
     assertVaultReference(value.expectedVault);
@@ -224,6 +234,7 @@ let TockTutorWorkbenchGateway = (() => {
     let _listTree_decorators;
     let _createDocument_decorators;
     let _saveDocument_decorators;
+    let _facets_decorators;
     let _outline_decorators;
     let _links_decorators;
     let _search_decorators;
@@ -248,6 +259,7 @@ let TockTutorWorkbenchGateway = (() => {
             _listTree_decorators = [Remote];
             _createDocument_decorators = [Remote];
             _saveDocument_decorators = [Remote];
+            _facets_decorators = [Remote];
             _outline_decorators = [Remote];
             _links_decorators = [Remote];
             _search_decorators = [Remote];
@@ -269,6 +281,7 @@ let TockTutorWorkbenchGateway = (() => {
             __esDecorate(this, null, _listTree_decorators, { kind: "method", name: "listTree", static: false, private: false, access: { has: obj => "listTree" in obj, get: obj => obj.listTree }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _createDocument_decorators, { kind: "method", name: "createDocument", static: false, private: false, access: { has: obj => "createDocument" in obj, get: obj => obj.createDocument }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _saveDocument_decorators, { kind: "method", name: "saveDocument", static: false, private: false, access: { has: obj => "saveDocument" in obj, get: obj => obj.saveDocument }, metadata: _metadata }, null, _instanceExtraInitializers);
+            __esDecorate(this, null, _facets_decorators, { kind: "method", name: "facets", static: false, private: false, access: { has: obj => "facets" in obj, get: obj => obj.facets }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _outline_decorators, { kind: "method", name: "outline", static: false, private: false, access: { has: obj => "outline" in obj, get: obj => obj.outline }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _links_decorators, { kind: "method", name: "links", static: false, private: false, access: { has: obj => "links" in obj, get: obj => obj.links }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _search_decorators, { kind: "method", name: "search", static: false, private: false, access: { has: obj => "search" in obj, get: obj => obj.search }, metadata: _metadata }, null, _instanceExtraInitializers);
@@ -342,6 +355,12 @@ let TockTutorWorkbenchGateway = (() => {
             assertSaveRequest(request);
             signal.throwIfAborted();
             return this.ctx.noteVault.saveDocument(request, signal);
+        }
+        async facets(request, signal) {
+            assertFacetsRequest(request);
+            signal.throwIfAborted();
+            const { expectedVault, ...args } = request;
+            return this.ctx.noteVault.facets(args, expectedVault, signal);
         }
         async outline(request, signal) {
             assertOutlineRequest(request);
