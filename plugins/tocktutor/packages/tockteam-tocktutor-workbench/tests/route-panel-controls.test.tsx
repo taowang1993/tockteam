@@ -169,7 +169,9 @@ describe('TockTutor titlebar panel controls', () => {
       onToggleFocusMode,
     })
 
-    expect(screen.getByRole('dialog', { name: 'Command Palette' })).toBeTruthy()
+    const dialog = screen.getByRole('dialog', { name: 'Command Palette' })
+    expect(dialog.className).toContain('z-[2147483647]')
+    expect(document.querySelector('[data-slot="dialog-overlay"]')?.className).toContain('z-[2147483646]')
     fireEvent.change(screen.getByLabelText('Search Commands'), { target: { value: 'focus' } })
     fireEvent.click(screen.getByRole('option', { name: 'Toggle Focus Mode' }))
     expect(onToggleFocusMode).toHaveBeenCalledOnce()
@@ -340,7 +342,9 @@ describe('TockTutor titlebar panel controls', () => {
     const onSubmitDispatch = vi.fn()
     renderRoute({ dispatchDialog: 'new' }, { onSubmitDispatch })
 
-    expect(screen.getByRole('dialog', { name: 'New Note' })).toBeTruthy()
+    const dialog = screen.getByRole('dialog', { name: 'New Note' })
+    expect(dialog.className).toContain('z-[2147483647]')
+    expect(document.querySelector('[data-slot="dialog-overlay"]')?.className).toContain('z-[2147483646]')
     fireEvent.change(screen.getByLabelText('New Note Path'), { target: { value: 'Notes/New.md' } })
     fireEvent.click(screen.getByRole('button', { name: 'Create' }))
 

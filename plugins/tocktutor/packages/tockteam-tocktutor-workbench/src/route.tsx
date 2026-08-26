@@ -2278,7 +2278,8 @@ function NativeDispatchDialog(props: {
     <Dialog open onOpenChange={open => { if (!open) props.onCancel() }}>
       <DialogContent
         unstyled
-        className="tocktutor-dispatch-dialog fixed top-1/2 left-1/2 z-50 w-[calc(100%-48px)] max-w-[480px] -translate-1/2"
+        className="tocktutor-dispatch-dialog fixed top-1/2 left-1/2 z-[2147483647] w-[calc(100%-48px)] max-w-[480px] -translate-1/2"
+        overlayClassName="z-[2147483646]"
         showCloseButton={false}
       >
         <form className="grid w-full gap-3.5 rounded-lg border border-[var(--tt-border)] bg-[var(--tt-panel)] p-5 [&_input]:rounded-[5px] [&_input]:border [&_input]:border-[var(--tt-border)] [&_input]:p-2 [&_input]:[font:inherit] [&_label]:grid [&_label]:gap-[5px] [&_label]:font-[650] [&_textarea]:rounded-[5px] [&_textarea]:border [&_textarea]:border-[var(--tt-border)] [&_textarea]:p-2 [&_textarea]:[font:inherit]" onSubmit={submit}>
@@ -2349,6 +2350,7 @@ function WorkbenchCommandPalette(props: {
       <DialogContent
         unstyled
         className="fixed top-[18%] left-1/2 z-[2147483647] w-[calc(100%-32px)] max-w-xl -translate-x-1/2 rounded-lg border border-[var(--tt-border)] bg-[var(--tt-panel)] p-3 shadow-xl"
+        overlayClassName="z-[2147483646]"
         showCloseButton={false}
       >
         <DialogTitle className="mb-2 text-sm font-semibold">Command Palette</DialogTitle>
