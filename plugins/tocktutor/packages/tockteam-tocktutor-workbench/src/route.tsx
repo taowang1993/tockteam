@@ -59,6 +59,8 @@ import {
 import { TOCKTUTOR_REVIEW_PANEL_SLOT } from './review-panel.ts'
 import { TOCKTUTOR_WEB_VIEWER_PANEL_SLOT } from './web-viewer-panel.ts'
 import { LivePreviewView, RichReadingView } from './editor-surface.tsx'
+import { LivePreviewEditor } from './live-preview-editor.tsx'
+import { SourceEditor } from './source-editor.tsx'
 import { WorkbenchUtilities } from './utility-panel.tsx'
 import { WorkbenchGlyph } from './workbench-glyph.tsx'
 import {
@@ -2833,20 +2835,21 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
                 </EmptyHeader>
               </Empty>
             ) : snapshot.mode === 'source' ? (
-              <Textarea unstyled
-                aria-label={sourceLabel}
-                className="h-full min-h-0 w-full resize-none border-0 bg-[var(--tt-panel)] px-[max(28px,calc((100%-768px)/2))] py-9 text-[var(--tt-text)] outline-none [tab-size:2] [font:14px/1.65_ui-monospace,SFMono-Regular,Consolas,monospace]"
-                onChange={(event: ChangeEvent<HTMLTextAreaElement>) => { props.onEdit(event.target.value) }}
-                onSelect={event => { props.onSelectionChange?.(event.currentTarget.selectionStart, event.currentTarget.selectionEnd) }}
-                spellCheck="true"
-                value={snapshot.source}
+              <SourceEditor
+                ariaLabel={sourceLabel}
+                className="h-full"
+                content={snapshot.source}
+                onContentChange={props.onEdit}
+                onSelectionChange={selection => { props.onSelectionChange?.(selection.main.from, selection.main.to) }}
+                spellCheck
               />
             ) : snapshot.mode === 'live-preview' && snapshot.documentKind === 'markdown' ? (
-              <LivePreviewView
-                documentKey={snapshot.path}
-                onEdit={props.onEdit}
-                onToggleTask={props.onToggleTask}
-                source={snapshot.source}
+              <LivePreviewEditor
+                ariaLabel="Live Preview Editor"
+                className="h-full"
+                content={snapshot.source}
+                onMarkdownChange={props.onEdit}
+                onSelectionChange={selection => { props.onSelectionChange?.(selection.from, selection.to) }}
               />
             ) : snapshot.documentKind === 'canvas' ? (
               <CanvasBoard
@@ -3011,7 +3014,7 @@ export function TockTutorRoute(props: TockTutorRouteProps): ReactNode {
   useEffect(() => () => { controller.dispose() }, [controller])
   useEffect(() => {
     if (snapshot.path === null) return
-    root.current?.querySelector<HTMLElement>(snapshot.mode === 'source' ? 'textarea' : '[aria-label$="View"]')?.focus()
+    root.current?.querySelector<HTMLElement>(snapshot.mode === 'source' ? '.cm-content' : snapshot.mode === 'live-preview' ? '.ProseMirror' : '[aria-label$="View"]')?.focus()
   }, [snapshot.mode, snapshot.path])
   useEffect(() => {
     if (snapshot.searchOpen) root.current?.querySelector<HTMLInputElement>('[aria-label="Search Notes Query"]')?.focus()
