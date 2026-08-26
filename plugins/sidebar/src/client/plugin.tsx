@@ -721,7 +721,7 @@ function DesktopWindowTitlebar({
           </Tooltip>
         </div>
       </TooltipProvider>
-      <span className="tockteam-window-title min-w-0 truncate text-center text-sm leading-none font-normal text-[color-mix(in_srgb,var(--dsw-alias-label-primary,#1f2328)_90%,var(--tockteam-shell-chrome,#fff)_10%)] [html[data-tockteam-tocktutor-active='true']_&]:invisible">TockTeam</span>
+      <span className="tockteam-window-title min-w-0 truncate text-center text-sm leading-none font-normal text-[color-mix(in_srgb,var(--dsw-alias-label-primary,#1f2328)_90%,var(--tockteam-shell-chrome,#fff)_10%)] [html[data-tockteam-tocktutor-active='true']_&]:invisible">TockCoder</span>
       <div className="hidden [html[data-tockteam-tocktutor-active='true']_&]:absolute [html[data-tockteam-tocktutor-active='true']_&]:inset-[0_0_0_var(--tockteam-rail-width)] [html[data-tockteam-tocktutor-active='true']_&]:z-1 [html[data-tockteam-tocktutor-active='true']_&]:block" id="tockteam-window-titlebar-slot" />
     </header>
   )

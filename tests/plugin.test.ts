@@ -7,12 +7,13 @@ import {
   requireHealthyMarketplaceSnapshot,
 } from '../src/marketplace-tools.ts'
 
-test('desktop client replaces upstream branding with TockTeam', () => {
+test('desktop client brands the coding route as TockCoder', () => {
   const client = readFileSync(new URL('../src/client.ts', import.meta.url), 'utf8')
   const main = readFileSync(new URL('../src/main.ts', import.meta.url), 'utf8')
   const splash = readFileSync(new URL('../src/splash.html', import.meta.url), 'utf8')
 
-  assert.match(client, /element\.textContent = 'TockTeam Desktop'/)
+  assert.match(client, /document\.title !== 'TockCoder'/)
+  assert.match(client, /element\.textContent = 'TockCoder'/)
   assert.match(client, /\['Into the Unknown', '探索未知之境', '探索未至之境'\]/)
   assert.match(client, /brand\.dataset\.tockteamSidebarBrand = 'true'/u)
   assert.match(client, /tockteamHeroHeadline/)
@@ -32,7 +33,7 @@ test('desktop client replaces upstream branding with TockTeam', () => {
     client,
     /\[data-slot='conversation\.hero\.brand\.mark'\] > svg\[viewBox='0 0 23\.16 17\.04'\]/,
   )
-  assert.match(client, /brand\.replaceChildren\(document\.createTextNode\('TockTeam'\)\)/)
+  assert.match(client, /brand\.replaceChildren\(document\.createTextNode\('TockCoder'\)\)/)
   assert.match(client, /mark\.setAttribute\('class', className\)/)
   assert.match(client, /fish\.replaceWith\(mark\)/)
   assert.match(client, /if \(mark\.isConnected\) mark\.replaceWith\(original\)/)
@@ -43,6 +44,7 @@ test('desktop client replaces upstream branding with TockTeam', () => {
   assert.doesNotMatch(client, /tockteamSidebarFish|tockteamHeroLogo/)
   assert.equal(client.match(/M10 5\.5C6\.96243 5\.5 4\.5 7\.96243 4\.5 11/g)?.length, 1)
   assert.doesNotMatch(client, /data-tockteam-hero-preview/)
+  assert.doesNotMatch(client, /preview\.label|tockteamPreviewLabel/)
   assert.doesNotMatch(client, /html\[data-tockteam-preview='true'\] body::after/)
   assert.doesNotMatch(`${main}\n${splash}`, /DeepSeek Harness/)
   assert.doesNotMatch(splash, />DSH</)
@@ -73,7 +75,6 @@ test('desktop Settings stays below portaled menus and above desktop surfaces', (
 test('every bundled TockTeam client follows the native locale service', () => {
   const clients = [
     '../plugins/skins/src/client/plugin.tsx',
-    '../src/client.ts',
     '../plugins/panel-controls/src/terminal/plugin.tsx',
     '../plugins/pinned-summary/src/client.ts',
     '../plugins/plugin-marketplace/src/client/plugin.tsx',

@@ -101,7 +101,7 @@ test('desktop titlebar matches Tockbot chrome and stays draggable', () => {
   )
   assert.match(main, /if \(options\.preview !== true\) window\.maximize\(\)/)
   assert.match(workspace, /<header className="tockteam-window-titlebar [^"]+">/u)
-  assert.match(workspace, /<span className="tockteam-window-title [^"]+">TockTeam<\/span>/u)
+  assert.match(workspace, /<span className="tockteam-window-title [^"]+">TockCoder<\/span>/u)
   assert.match(workspace, /<div className="[^"]+" id="tockteam-window-titlebar-slot" \/>/u)
   assert.match(tockTutor, /document\.getElementById\('tockteam-window-titlebar-slot'\) \?\? document\.body/)
   assert.doesNotMatch(workspace, /displayTitle/)

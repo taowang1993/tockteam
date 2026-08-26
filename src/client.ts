@@ -10,11 +10,6 @@ import {
   matchingElements,
   pruneDisconnected,
 } from '../plugins/shared/branding.ts'
-import type {
-  LocaleMessages,
-  LocaleService,
-  Translate,
-} from '../plugins/shared/i18n.ts'
 import {
   TOCKTEAM_SURFACE_VIEW_SERVICE,
   type TockTeamSurfaceView,
@@ -57,23 +52,12 @@ declare global {
 }
 
 /** Wait for the DSH services used by native menu commands. */
-export const inject = ['locale', 'workspaces', 'desktopPanels', 'pinnedSummary']
-
-type DesktopShellMessage = 'preview.label'
-
-const DESKTOP_SHELL_MESSAGES: LocaleMessages<DesktopShellMessage> = {
-  en: {
-    'preview.label': 'Isolated plugin preview · {plugin}',
-  },
-  zh: {
-    'preview.label': '隔离插件预览 · {plugin}',
-  },
-}
+export const inject = ['workspaces', 'desktopPanels', 'pinnedSummary']
 
 function installDesktopChrome(): () => void {
   const originalTitle = document.title
   const synchronizeTitle = (): void => {
-    if (document.title !== 'TockTeam Desktop') document.title = 'TockTeam Desktop'
+    if (document.title !== 'TockCoder') document.title = 'TockCoder'
   }
   const titleObserver = new MutationObserver(synchronizeTitle)
   titleObserver.observe(document.head, {
@@ -117,14 +101,14 @@ function installBranding(): () => void {
       const text = element.textContent?.trim() ?? ''
       if (!headlineCopy.has(text)) continue
       if (!originalHeadlines.has(element)) originalHeadlines.set(element, text)
-      element.textContent = 'TockTeam Desktop'
+      element.textContent = 'TockCoder'
       element.dataset.tockteamHeroHeadline = 'true'
     }
     for (const brand of new Set(roots.flatMap(root => (
       matchingElements<HTMLElement>(root, "[data-slot='sidebar.brand.name']")
     )))) {
       if (!originalSidebarNames.has(brand)) originalSidebarNames.set(brand, brand.innerHTML)
-      if (brand.textContent !== 'TockTeam') brand.replaceChildren(document.createTextNode('TockTeam'))
+      if (brand.textContent !== 'TockCoder') brand.replaceChildren(document.createTextNode('TockCoder'))
       brand.dataset.tockteamSidebarBrand = 'true'
     }
     const fishSelector = [
@@ -155,14 +139,14 @@ function installBranding(): () => void {
   return () => {
     observer.disconnect()
     for (const [element, original] of originalHeadlines) {
-      if (element.isConnected && element.textContent === 'TockTeam Desktop') element.textContent = original
+      if (element.isConnected && element.textContent === 'TockCoder') element.textContent = original
       delete element.dataset.tockteamHeroHeadline
     }
     for (const [mark, original] of originalBrandMarks) {
       if (mark.isConnected) mark.replaceWith(original)
     }
     for (const [brand, original] of originalSidebarNames) {
-      if (brand.isConnected && brand.textContent === 'TockTeam') brand.innerHTML = original
+      if (brand.isConnected && brand.textContent === 'TockCoder') brand.innerHTML = original
       delete brand.dataset.tockteamSidebarBrand
     }
   }
@@ -273,14 +257,8 @@ export function apply(ctx: ClientContext): void {
     throw new Error('tockteam-desktop: preload bridge is unavailable outside TockTeam Desktop')
   }
   const workspaces = ctx.get('workspaces') as WorkspacesService
-  const locale = ctx.get('locale') as LocaleService
-  const t: Translate<DesktopShellMessage> = locale.bind('tockteam.desktop')
   const panels = ctx.get('desktopPanels') as DesktopPanels
   const pinnedSummary = ctx.get('pinnedSummary') as PinnedSummary
-  ctx.effect(
-    () => locale.register('tockteam.desktop', DESKTOP_SHELL_MESSAGES),
-    'tockteam-desktop: shell dictionaries',
-  )
   ctx.effect(() => {
     const removeShell = ctx.reflect.provide('desktopShell', bridge, undefined)
     // The unified three-surface contract, client plane: the desktop shell.
@@ -293,25 +271,8 @@ export function apply(ctx: ClientContext): void {
     }
   }, 'tockteam-desktop: reflected client services')
   ctx.effect(() => {
-    let disposed = false
-    let previewPluginId: string | null = null
-    const renderPreviewLabel = (): void => {
-      if (previewPluginId === null) return
-      document.body.dataset.tockteamPreviewLabel = t('preview.label', {
-        plugin: previewPluginId,
-      })
-    }
     const removeDesktopChrome = installDesktopChrome()
     const removeBranding = installBranding()
-    const unsubscribeLocale = locale.subscribe(renderPreviewLabel)
-    void bridge.getInfo().then(info => {
-      if (disposed || info.preview === null) return
-      previewPluginId = info.preview.pluginId
-      document.documentElement.dataset.tockteamPreview = 'true'
-      renderPreviewLabel()
-    }).catch((error: unknown) => {
-      console.error('tockteam-desktop: failed to read preview identity', error)
-    })
     const unsubscribe = bridge.onCommand((command) => {
       dispatch(
         command,
@@ -322,13 +283,9 @@ export function apply(ctx: ClientContext): void {
       )
     })
     return () => {
-      disposed = true
       unsubscribe()
-      unsubscribeLocale()
       removeBranding()
       removeDesktopChrome()
-      delete document.documentElement.dataset.tockteamPreview
-      delete document.body.dataset.tockteamPreviewLabel
     }
   }, 'tockteam-desktop: native command bridge')
 }
