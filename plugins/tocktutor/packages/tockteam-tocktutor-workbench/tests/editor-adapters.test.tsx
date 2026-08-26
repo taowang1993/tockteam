@@ -46,6 +46,17 @@ describe('CodeMirror Source editor', () => {
     await waitFor(() => expect(onChange).toHaveBeenCalledWith('- [x] Review\n'))
   })
 
+  it('renders fenced Source previews without invalid block decorations', async () => {
+    const source = '```mermaid\ngraph TD; A-->B\n```\nAfter\n'
+    const editorViewRef = { current: null }
+    const { container } = render(<SourceEditor content={source} editorViewRef={editorViewRef} onContentChange={() => {}} />)
+    await waitFor(() => expect(container.querySelector('.cm-content')).toBeTruthy(), { timeout: 5_000 })
+    const view = editorViewRef.current as unknown as { dispatch(spec: unknown): void }
+    view.dispatch({ selection: { anchor: source.length } })
+    await waitFor(() => expect(container.querySelector('[aria-label="Mermaid Diagram Preview"]')).toBeTruthy())
+    expect(container.querySelector('.cm-content')?.textContent).toContain('Mermaid Diagram')
+  })
+
   it('renders resolved embed widgets without replacing their selected source', async () => {
     const source = 'Before ![[Target.md]] after'
     const { container } = render(<SourceEditor content={source} onContentChange={() => {}} resolvedEmbeds={[{
