@@ -45,6 +45,28 @@ Do not hand-edit generated or installed paths: `dist/`, `.stage/`, `.cache/`, `.
 
 Do not edit code inside `upstream/*` for TockTeam behavior. Move a submodule pointer only as an explicit dependency update. Better Sidebar Host code is built from `upstream/DSH-better-sidebar`; TUI branding and data-path changes belong in `scripts/tui-upstream-adapter.mjs`, whose exact-match guards intentionally fail when an upstream seam changes.
 
+## References
+
+Folder: `docs/`
+
+| Document | Purpose |
+| --- | --- |
+| `architecture.md` | Surface architecture, distribution boundaries, and bundled plugins |
+| `usage.md` | Installation, operations, and troubleshooting |
+
+Folder: `.agents/references/`
+
+| Document | Purpose |
+| --- | --- |
+| `self-evolving.md` | Reversible Cordis composition philosophy |
+| `tocktutor.md` | TockTutor plugin and package contracts |
+
+Folder: `.pi/rules/`
+
+| Rule File | Purpose |
+| --- | --- |
+| `web.md` | Browser UI design rules for Desktop and Web |
+
 ## Cordis and DSH Rules
 
 Cordis provides temporal composability through reversible effects and spatial composability through declared, reactive dependencies. Preserve both:
