@@ -26,7 +26,7 @@ export function terminalWebSocketUrl(scope: TerminalSocketScope): string {
 export class TerminalSocket {
   private readonly url: string | undefined
   private socket: WebSocket | undefined
-  private status: 'connecting' | 'ready' | 'closed' = 'connecting'
+  private status: 'connecting' | 'ready' | 'error' | 'closed' = 'connecting'
 
   constructor(url?: string) {
     this.url = url
@@ -67,11 +67,15 @@ export class TerminalSocket {
       }
     }
     socket.onclose = () => {
-      if (this.status === 'closed') return
+      if (this.status === 'closed' || this.status === 'error') return
       this.status = 'closed'
       handlers.onExit(null)
     }
-    socket.onerror = () => { handlers.onError('connection failed') }
+    socket.onerror = () => {
+      if (this.status === 'closed' || this.status === 'error') return
+      this.status = 'error'
+      handlers.onError('connection failed')
+    }
   }
 
   sendInput(data: string): void {
