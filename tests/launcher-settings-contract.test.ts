@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 import { LAUNCHER_SETTINGS_CATALOG } from '../src/launcher-setting-catalog.ts'
+import { resolveLauncherSettingDefault } from '../src/launcher-settings-defaults.ts'
 import {
   LAUNCHER_MAIN_OWNED_SETTING_KEYS,
   LAUNCHER_RUNTIME_SETTING_KEYS,
@@ -123,6 +125,32 @@ test('TockLauncher keeps the generated 100-row catalog and exact 102-key runtime
   for (const key of LAUNCHER_RUNTIME_SETTING_KEYS) assert.ok(Object.hasOwn(valid, key), key)
 })
 
+test('generated catalog order and source metadata match every pinned Ueli row', () => {
+  const manifest = JSON.parse(readFileSync(new URL('../scripts/ueli/parity-catalogs.json', import.meta.url), 'utf8')) as {
+    catalogs: { settings: Array<{ applicability: string[]; id: string; issue: string; owner: string; source: string }> }
+  }
+  assert.deepEqual(
+    LAUNCHER_SETTINGS_CATALOG.map(({ applicability, issue, order, owner, source, sourceId }) => ({ applicability, id: sourceId, issue, order, owner, source })),
+    manifest.catalogs.settings.map((row, order) => ({ applicability: row.applicability, id: row.id, issue: row.issue, order, owner: row.owner, source: row.source })),
+  )
+})
+
+test('every catalog default resolves or remains absent according to its declared kind', () => {
+  const context = { appDataPath: '/Users/test/Library/Application Support/TockTeam', environment: {}, homePath: '/Users/test', locale: 'en-US', platform: 'macOS' as const }
+  const divergences: Readonly<Record<string, unknown>> = {
+    'window.alwaysOnTop': true,
+    'window.showOnStartup': false,
+    'window.visibleOnAllWorkspaces': true,
+  }
+  for (const row of LAUNCHER_SETTINGS_CATALOG) {
+    const resolved = resolveLauncherSettingDefault(row.key, context)
+    if (row.defaultKind === 'absent') assert.equal(resolved, undefined, row.key)
+    else if (Object.hasOwn(divergences, row.key)) assert.deepEqual(resolved, divergences[row.key], row.key)
+    else if (row.defaultKind === 'literal') assert.deepEqual(resolved, row.defaultValue, row.key)
+    else assert.notEqual(resolved, undefined, row.key)
+  }
+})
+
 test('every manifest representative passes its bounded validator and malformed values fail', () => {
   for (const [key, value] of Object.entries(valid)) assert.equal(isLauncherRendererSettingValue(key, value), true, key)
   assert.throws(() => parseLauncherSettingUpdateArgs({ key: 'unknown', value: true }))
@@ -130,6 +158,9 @@ test('every manifest representative passes its bounded validator and malformed v
   assert.throws(() => parseLauncherSettingUpdateArgs({ key: 'general.browser.customWebBrowser.executableFilePath', value: '/tmp/browser' }))
   assert.equal(LAUNCHER_SENSITIVE_SETTING_KEYS[0], 'extension[DeeplTranslator].apiKey')
   assert.deepEqual(LAUNCHER_MAIN_OWNED_SETTING_KEYS, ['general.browser.customWebBrowser.executableFilePath', 'general.browser.customWebBrowserName'])
+  for (const url of ['https://[::1]/{{query}}', 'https://[fd00::1]/{{query}}', 'https://internal/{{query}}']) {
+    assert.equal(isLauncherRendererSettingValue('extension[CustomWebSearch].customSearchEngines', [{ encodeSearchTerm: true, id: 'private', name: 'Private', prefix: 'p', url }]), false, url)
+  }
 })
 
 test('snapshot parser rejects secret, browser identity, invalid values, and mutable output', () => {

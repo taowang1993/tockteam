@@ -109,6 +109,41 @@ test('workbench settings handlers guard before parsing and keep native effects a
   ].sort())
 })
 
+test('workbench settings handlers replace path-bearing operation errors with a fixed renderer-safe failure', async () => {
+  const ipcMain = new FakeIpcMain()
+  const missingPath = '/private/user/secrets/missing.json'
+  const failing = async (): Promise<Readonly<{ ok: true }>> => { throw new Error(`ENOENT: ${missingPath}`) }
+  const dispose = registerWorkbenchLauncherIpcHandlers({
+    assertTrustedMainIpc: () => {},
+    controller: { getState: () => ({ visible: false } as never), show: async () => {} },
+    ipcMain,
+    settings: {
+      getSnapshot: () => { throw new Error(`snapshot ${missingPath}`) },
+      updateSetting: async () => await failing(),
+      importSettings: failing,
+      exportSettings: failing,
+      resetSettings: failing,
+      selectExternalSettings: failing,
+      revokeExternalSettings: failing,
+      selectCustomBrowser: failing,
+      revokeCustomBrowser: failing,
+    },
+  })
+  assert.throws(
+    () => ipcMain.handlers.get(LAUNCHER_SETTINGS_IPC_CHANNELS.getSnapshot)?.({}),
+    error => error instanceof Error && error.message === 'TockLauncher settings operation failed' && !error.message.includes(missingPath),
+  )
+  await assert.rejects(
+    Promise.resolve(ipcMain.handlers.get(LAUNCHER_SETTINGS_IPC_CHANNELS.importSettings)?.({})),
+    error => error instanceof Error && error.message === 'TockLauncher settings operation failed' && !error.message.includes(missingPath),
+  )
+  await assert.rejects(
+    Promise.resolve(ipcMain.handlers.get(LAUNCHER_SETTINGS_IPC_CHANNELS.updateSetting)?.({}, { key: 'general.language', value: 'fr-FR' })),
+    error => error instanceof Error && error.message === 'TockLauncher settings operation failed' && !error.message.includes(missingPath),
+  )
+  dispose()
+})
+
 test('workbench launcher handlers deliver readiness and finite theme facts', async () => {
   const ipcMain = new FakeIpcMain()
   let ready = 0

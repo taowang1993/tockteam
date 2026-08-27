@@ -242,5 +242,12 @@ export class LauncherCustomBrowserController {
     await next
   }
 
+  async close(): Promise<void> {
+    if (this.#disposed) { await this.#mutationTail; return }
+    this.#disposed = true
+    await this.#mutationTail
+    this.#grant = undefined
+  }
+
   dispose(): void { this.#disposed = true; this.#grant = undefined }
 }

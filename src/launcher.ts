@@ -13,6 +13,7 @@ import {
 } from 'lucide'
 import type { IconNode } from 'lucide'
 import type { LauncherPublicAction, LauncherPublicResultItem } from './launcher-actions.ts'
+import type { LauncherSurfaceSettings } from './launcher-contract.ts'
 import type { LauncherPreloadBridge } from './launcher-preload-bridge.ts'
 import type { LauncherThemeProjection } from './launcher-theme.ts'
 import { tockTeamSkin } from '../plugins/skins/src/skins.ts'
@@ -113,13 +114,16 @@ async function bootstrap(): Promise<void> {
   let actionMenuOpen = false
   let historyOpen = false
   let invoking = false
-  let history: string[] = []
-  try {
-    const surface = await bridge.getSurfaceSettings()
-    history = [...surface.history]
-  } catch {
-    history = []
-  }
+  let surfaceSettings: LauncherSurfaceSettings = Object.freeze({
+    fuzziness: 0.5,
+    history: Object.freeze([]),
+    historyEnabled: false,
+    historyLimit: 10,
+    maxSearchResultItems: 50,
+    searchEngineId: 'fuzzysort',
+  })
+  try { surfaceSettings = await bridge.getSurfaceSettings() } catch { /* retain bounded defaults */ }
+  let history: string[] = surfaceSettings.historyEnabled ? [...surfaceSettings.history] : []
 
   const setStatus = (message: string, tone: 'error' | 'muted' | 'ready' = 'muted'): void => {
     status.textContent = message
@@ -156,6 +160,14 @@ async function bootstrap(): Promise<void> {
   }
 
   const renderHistory = (): void => {
+    historyToggle.hidden = !surfaceSettings.historyEnabled
+    historyToggle.disabled = !surfaceSettings.historyEnabled
+    if (!surfaceSettings.historyEnabled) {
+      history = []
+      historyOpen = false
+      historyPanel.hidden = true
+      historyToggle.setAttribute('aria-expanded', 'false')
+    }
     historyPanel.replaceChildren()
     if (history.length === 0) {
       const empty = document.createElement('button')
@@ -199,7 +211,12 @@ async function bootstrap(): Promise<void> {
     historyOpen = false
     historyPanel.hidden = true
     historyToggle.setAttribute('aria-expanded', 'false')
-    renderHistory()
+    void bridge.getSurfaceSettings().then(current => {
+      surfaceSettings = current
+      history = current.historyEnabled ? [...current.history] : []
+      renderHistory()
+      void renderSearch(search.value)
+    }).catch(() => { renderHistory() })
     renderDetails()
     restoreSearchFocus()
   }
@@ -208,8 +225,8 @@ async function bootstrap(): Promise<void> {
     const raw = search.value
     if (raw.trim().length === 0) return
     try {
-      const surface = await bridge.recordSearch(raw)
-      history = [...surface.history]
+      surfaceSettings = await bridge.recordSearch(raw)
+      history = surfaceSettings.historyEnabled ? [...surfaceSettings.history] : []
       renderHistory()
     } catch {
       // Search invocation remains usable when history persistence is unavailable.
@@ -404,9 +421,9 @@ async function bootstrap(): Promise<void> {
     setStatus('Searching…', 'muted')
     try {
       const response = await bridge.search(term, {
-        fuzziness: 0.5,
-        maxSearchResultItems: 50,
-        searchEngineId: 'fuzzysort',
+        fuzziness: surfaceSettings.fuzziness,
+        maxSearchResultItems: surfaceSettings.maxSearchResultItems,
+        searchEngineId: surfaceSettings.searchEngineId,
       })
       if (currentRevision !== revision) return false
       const previous = selectedItemId
@@ -436,6 +453,7 @@ async function bootstrap(): Promise<void> {
   close.addEventListener('click', () => { void bridge.dismiss().catch(() => undefined) })
   settings.addEventListener('click', () => { void bridge.openSettings().catch(() => undefined) })
   historyToggle.addEventListener('click', () => {
+    if (!surfaceSettings.historyEnabled) return
     historyOpen = !historyOpen
     historyPanel.hidden = !historyOpen
     historyToggle.setAttribute('aria-expanded', String(historyOpen))

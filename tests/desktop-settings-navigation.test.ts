@@ -26,6 +26,23 @@ test('settings opening waits for the active TockCoder surface and retries bounde
   assert.equal(scheduled.length, 0)
 })
 
+test('settings selection is idempotent when the shell is already open', () => {
+  const scheduled: Array<() => void> = []
+  let clicks = 0
+  let selected = 0
+  deferSettingsOpen({
+    findButton: () => ({ click: () => { clicks += 1 } }),
+    isOpen: () => true,
+    isTockCoder: () => true,
+    isTockTutorActive: () => false,
+    onOpened: () => { selected += 1 },
+    schedule: callback => { scheduled.push(callback) },
+  })
+  while (scheduled.length > 0) scheduled.shift()!()
+  assert.equal(clicks, 0)
+  assert.equal(selected, 1)
+})
+
 test('settings retry stops at its bounded ceiling without clicking a stale surface', () => {
   const scheduled: Array<() => void> = []
   deferSettingsOpen({

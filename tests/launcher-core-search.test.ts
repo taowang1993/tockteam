@@ -202,6 +202,38 @@ test('core search serializes concurrent favorite and exclusion persistence', asy
   assert.deepEqual(result.after.map(value => value.id), ['c'])
 })
 
+test('persisted cache cannot publish actions when current providers fail validation', async () => {
+  const core = createLauncherCoreSearch({
+    initialIndexedItems: [{
+      ...item('evil-item', 'Cached Item'),
+      defaultAction: { argument: 'evil-item', description: 'Add Favorite', handlerKey: LAUNCHER_CORE_ACTION_HANDLERS.addFavorite },
+    }],
+    loadIndexedItems: async () => { throw new Error('provider unavailable') },
+  })
+  const result = await core.search('', { ...options, maxSearchResultItems: 50 })
+  assert.deepEqual(result.before, [])
+  assert.deepEqual(result.after, [])
+  assert.equal(result.status.rescanStatus, 'error')
+})
+
+test('core flush waits for accepted rescans and close fences new work', async () => {
+  let release: ((items: readonly LauncherInternalResultItem[]) => void) | undefined
+  const core = createLauncherCoreSearch({
+    loadIndexedItems: async () => await new Promise(resolve => { release = resolve }),
+  })
+  const rescan = core.rescan()
+  while (release === undefined) await new Promise<void>(resolve => { setImmediate(resolve) })
+  let flushed = false
+  const flush = core.flush().then(() => { flushed = true })
+  await new Promise<void>(resolve => { setImmediate(resolve) })
+  assert.equal(flushed, false)
+  release([item('current', 'Current')])
+  await Promise.all([rescan, flush])
+  await core.close()
+  await assert.rejects(core.rescan(), /closed/u)
+  await assert.rejects(core.search('', options), /closed/u)
+})
+
 test('core search rejects slow instant results from a superseded index generation', async () => {
   let releaseInstant: (() => void) | undefined
   const instantReady = new Promise<void>(resolve => { releaseInstant = resolve })

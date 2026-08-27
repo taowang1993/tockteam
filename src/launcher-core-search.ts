@@ -99,6 +99,7 @@ function coreAction(
 }
 
 export function createLauncherCoreSearch(options: LauncherCoreSearchOptions): Readonly<{
+  close: () => Promise<void>
   executeAction: (record: LauncherActionRecord) => Promise<boolean>
   flush: () => Promise<void>
   replacePersistentSettings: (settings: Readonly<{
@@ -111,6 +112,7 @@ export function createLauncherCoreSearch(options: LauncherCoreSearchOptions): Re
   const commandModifier = options.platform === 'macOS' ? 'Cmd' : 'Ctrl'
   let indexedItems: readonly LauncherInternalResultItem[] = Object.freeze([...(options.initialIndexedItems ?? [])])
   let indexLoaded = false
+  let hasValidatedIndex = false
   let lastError: string | undefined
   let latestSearchToken: object | undefined
   let activeRescan: Readonly<{ controller: AbortController; token: object }> | undefined
@@ -121,6 +123,8 @@ export function createLauncherCoreSearch(options: LauncherCoreSearchOptions): Re
   let indexGeneration = 0
   let indexWriteTail: Promise<void> = Promise.resolve()
   let settingsMutationTail: Promise<void> = Promise.resolve()
+  let closed = false
+  const activeOperations = new Set<Promise<unknown>>()
 
   const status = (): LauncherCoreStatus => Object.freeze({
     indexedItemCount: indexedItems.length,
@@ -157,11 +161,18 @@ export function createLauncherCoreSearch(options: LauncherCoreSearchOptions): Re
       if (options.persistIndex !== undefined) await queueIndexPersistence(nextItems)
       if (activeRescan?.token !== token) return status()
       indexLoaded = true
+      hasValidatedIndex = true
       lastError = undefined
       rescanStatus = 'idle'
     } catch (error) {
       if (activeRescan?.token !== token || controller.signal.aborted) return status()
       indexLoaded = true
+      if (!hasValidatedIndex) {
+        // A persisted cache improves recovery evidence but never grants action authority.
+        indexedItems = Object.freeze([])
+        knownItemIds.clear()
+        indexGeneration += 1
+      }
       lastError = errorMessage(error)
       rescanStatus = 'error'
       await options.appendLog?.('ERROR', lastError)
@@ -292,11 +303,38 @@ export function createLauncherCoreSearch(options: LauncherCoreSearchOptions): Re
     settings.favoriteItemIds.forEach(id => favorites.add(id))
   }
 
+  const track = <T>(operation: () => Promise<T>): Promise<T> => {
+    if (closed) return Promise.reject(new Error('TockLauncher core search is closed'))
+    const active = operation()
+    activeOperations.add(active)
+    active.then(
+      () => { activeOperations.delete(active) },
+      () => { activeOperations.delete(active) },
+    )
+    return active
+  }
+
   const flush = async (): Promise<void> => {
+    while (activeOperations.size > 0) await Promise.allSettled([...activeOperations])
     await Promise.all([indexWriteTail, settingsMutationTail])
   }
 
-  return Object.freeze({ executeAction, flush, replacePersistentSettings, rescan, search })
+  const close = async (): Promise<void> => {
+    if (closed) { await flush(); return }
+    closed = true
+    latestSearchToken = undefined
+    activeRescan?.controller.abort(new Error('TockLauncher core search is closed'))
+    await flush()
+  }
+
+  return Object.freeze({
+    close,
+    executeAction: (record: LauncherActionRecord) => track(async () => await executeAction(record)),
+    flush,
+    replacePersistentSettings,
+    rescan: () => track(rescan),
+    search: (searchTerm: string, searchOptions: LauncherSearchOptions) => track(async () => await search(searchTerm, searchOptions)),
+  })
 }
 
 export { LAUNCHER_MAX_RESULT_ITEMS }

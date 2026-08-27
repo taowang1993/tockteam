@@ -175,13 +175,18 @@ async function syncDirectory(directory: string): Promise<void> {
 }
 
 /** Managed app-owned atomic file writer. It never follows a temporary symlink. */
-async function atomicWrite(filePath: string, contents: string, options: Readonly<{ backup?: boolean }> = {}): Promise<void> {
+async function atomicWrite(filePath: string, contents: string, options: Readonly<{
+  backup?: boolean
+  backupMaxBytes?: number
+  validateBackup?: (contents: string) => void
+}> = {}): Promise<void> {
   const directory = path.dirname(filePath)
   await mkdir(directory, { recursive: true, mode: 0o700 })
   await chmod(directory, 0o700)
   if (options.backup !== false && await exists(filePath)) {
     try {
-      const previous = await readBoundedRegularFile(filePath, MAX_LAUNCHER_INDEX_BYTES)
+      const previous = await readBoundedRegularFile(filePath, options.backupMaxBytes ?? MAX_LAUNCHER_INDEX_BYTES)
+      options.validateBackup?.(previous)
       await atomicWrite(`${filePath}.bak`, previous, { backup: false })
     } catch { /* invalid primary is not copied over a known-good backup */ }
   }
@@ -209,7 +214,7 @@ function parseIndexAction(value: unknown): void {
     || Object.keys(value).some(key => !INDEX_ACTION_KEYS.includes(key))
     || typeof value.argument !== 'string' || value.argument.length === 0 || value.argument.length > 16_384 || /[\0\r\n]/u.test(value.argument)
     || typeof value.description !== 'string' || value.description.length === 0 || value.description.length > 512 || /[\0\r\n]/u.test(value.description)
-    || typeof value.handlerKey !== 'string' || value.handlerKey.length === 0 || value.handlerKey.length > 128 || /[\0\r\n]/u.test(value.handlerKey)
+    || typeof value.handlerKey !== 'string' || !/^[a-z][a-z0-9-]{0,63}$/u.test(value.handlerKey)
     || (value.hideWindowAfterInvocation !== undefined && typeof value.hideWindowAfterInvocation !== 'boolean')
     || (value.keyboardShortcut !== undefined && (typeof value.keyboardShortcut !== 'string' || value.keyboardShortcut.length === 0 || value.keyboardShortcut.length > 128))
     || (value.requiresConfirmation !== undefined && typeof value.requiresConfirmation !== 'boolean')) throw new Error('TockLauncher index action is invalid')
@@ -240,7 +245,11 @@ function parseIndex(value: unknown): LauncherInternalResultItem[] {
 }
 
 function parseLogs(value: unknown): string[] {
-  if (!Array.isArray(value) || value.length > MAX_LAUNCHER_LOG_ENTRIES || value.some(entry => typeof entry !== 'string' || entry.length > MAX_LOG_MESSAGE_LENGTH + 64)) throw new Error('TockLauncher logs are invalid')
+  if (!Array.isArray(value)
+    || value.length > MAX_LAUNCHER_LOG_ENTRIES
+    || value.some(entry => typeof entry !== 'string' || entry.length > MAX_LOG_MESSAGE_LENGTH + 64 || /[\0\r\n]/u.test(entry))) {
+    throw new Error('TockLauncher logs are invalid')
+  }
   return [...value]
 }
 
@@ -401,6 +410,7 @@ export class LauncherPersistenceRepository {
           try { ciphertext = this.#secretCodec.encrypt(String(value)) } catch (error) { throw new Error('TockLauncher secure storage failed', { cause: error }) }
           next[key] = envelope(ciphertext)
         } else next[key] = cloneJson(value)
+        if (key === 'general.searchHistory.enabled' && value === false) next['general.searchHistory.history'] = []
       }
       parseStoredSettings(next)
       await this.#writeSettings(next)
@@ -411,11 +421,33 @@ export class LauncherPersistenceRepository {
     await this.#enqueue(async () => { await this.#writeSettings({}) })
   }
 
+  async recordSearch(query: string, defaults: Readonly<{ historyEnabled: boolean; historyLimit: number }>): Promise<void> {
+    const normalized = query.trim()
+    if (normalized.length === 0 || normalized.length > 512 || /[\0\r\n]/u.test(normalized)) return
+    await this.#enqueue(async () => {
+      const enabled = typeof this.#settings['general.searchHistory.enabled'] === 'boolean'
+        ? this.#settings['general.searchHistory.enabled'] as boolean
+        : defaults.historyEnabled
+      if (!enabled) return
+      const storedLimit = this.#settings['general.searchHistory.limit']
+      const historyLimit = typeof storedLimit === 'number' && Number.isSafeInteger(storedLimit)
+        ? Math.min(100, Math.max(1, storedLimit))
+        : Math.min(100, Math.max(1, defaults.historyLimit))
+      const storedHistory = this.#settings['general.searchHistory.history']
+      const history = Array.isArray(storedHistory) ? storedHistory.filter(entry => typeof entry === 'string') : []
+      const next = [normalized, ...history.filter(entry => entry !== normalized)].slice(0, historyLimit)
+      await this.#writeSettings({ ...this.#settings, 'general.searchHistory.history': next })
+    })
+  }
+
   async writeIndex(items: readonly LauncherInternalResultItem[]): Promise<void> {
     await this.#enqueue(async () => {
       const sanitized = items.map(item => { const copy = { ...item }; delete copy.imageUrl; return copy })
       const parsed = parseIndex(sanitized)
-      await atomicWrite(this.#indexPath, JSON.stringify(parsed, null, 2))
+      await atomicWrite(this.#indexPath, JSON.stringify(parsed, null, 2), {
+        backupMaxBytes: MAX_LAUNCHER_INDEX_BYTES,
+        validateBackup: contents => { parseIndex(JSON.parse(contents) as unknown) },
+      })
       this.#index = parsed; this.#indexAvailable = true
     })
   }
@@ -426,7 +458,10 @@ export class LauncherPersistenceRepository {
       const next = [...this.#logs, `[${new Date().toISOString()}][${level}] ${bounded}`].slice(-MAX_LOG_ENTRIES)
       const encoded = JSON.stringify(next, null, 2)
       if (Buffer.byteLength(encoded, 'utf8') > MAX_LAUNCHER_LOG_BYTES) next.splice(0, Math.max(0, next.length - 1))
-      await atomicWrite(this.#logsPath, JSON.stringify(next, null, 2)); this.#logs = next
+      await atomicWrite(this.#logsPath, JSON.stringify(next, null, 2), {
+        backupMaxBytes: MAX_LAUNCHER_LOG_BYTES,
+        validateBackup: contents => { parseLogs(JSON.parse(contents) as unknown) },
+      }); this.#logs = next
     })
   }
 
@@ -459,7 +494,7 @@ export class LauncherPersistenceRepository {
       // Re-open/revalidate inside the serialized mutation before adopting the path.
       const current = await this.#createGrant(grant.path)
       if (!this.#sameGrant(current, grant)) throw new Error('TockLauncher external settings file changed')
-      await atomicWrite(this.#grantPath, JSON.stringify(grant, null, 2))
+      await atomicWrite(this.#grantPath, JSON.stringify(grant, null, 2), { backup: false })
       this.#externalGrant = grant; this.#externalGrantStatus = 'active'; this.#settingsSource = 'external'; this.#settings = settings
     })
   }
@@ -496,6 +531,7 @@ export class LauncherPersistenceRepository {
       if (!this.#externalWriteAvailable) throw new Error('TockLauncher external settings writes are unavailable on this platform')
       try {
         const previous = await readBoundedRegularFile(grant.path, MAX_LAUNCHER_SETTINGS_BYTES, grant)
+        parseStoredSettings(JSON.parse(previous) as unknown)
         await atomicWrite(this.#externalBackupPath(grant), previous, { backup: false })
         await this.#writeExternalDescriptor(grant, serialized, previous)
       } catch (error) {
@@ -503,7 +539,10 @@ export class LauncherPersistenceRepository {
         this.#settings = await this.#recoverJson(this.#managedSettingsPath, MAX_LAUNCHER_SETTINGS_BYTES, value => parseStoredSettings(value), {})
         throw new Error('TockLauncher external settings grant changed or was revoked', { cause: error })
       }
-    } else await atomicWrite(this.#managedSettingsPath, serialized)
+    } else await atomicWrite(this.#managedSettingsPath, serialized, {
+      backupMaxBytes: MAX_LAUNCHER_SETTINGS_BYTES,
+      validateBackup: contents => { parseStoredSettings(JSON.parse(contents) as unknown) },
+    })
     this.#settings = cloneJson(settings, MAX_LAUNCHER_SETTINGS_BYTES)
   }
 

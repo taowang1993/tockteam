@@ -6,6 +6,7 @@ export type SettingsTrigger = Readonly<{
 /** Defer a settings click until the route owner has rendered TockCoder. */
 export function deferSettingsOpen(args: Readonly<{
   findButton: () => SettingsTrigger | undefined
+  isOpen?: () => boolean
   isTockCoder: () => boolean
   isTockTutorActive: () => boolean
   maxAttempts?: number
@@ -15,6 +16,10 @@ export function deferSettingsOpen(args: Readonly<{
   const maxAttempts = args.maxAttempts ?? 60
   let attempts = 0
   const attempt = (): void => {
+    if (args.isTockCoder() && !args.isTockTutorActive() && args.isOpen?.() === true) {
+      args.onOpened?.()
+      return
+    }
     const button = args.findButton()
     if (args.isTockCoder() && !args.isTockTutorActive() && button?.disabled !== true) {
       button?.click()

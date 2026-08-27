@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdtemp, readFile, rename, rm, symlink, writeFile, lstat } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, rename, rm, symlink, writeFile, lstat } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { test } from 'node:test'
@@ -81,6 +81,54 @@ test('external settings accepts regular files, preserves replacement, and fails 
     await readonly.grantExternalSettingsFile(external)
     await assert.rejects(readonly.updateSetting('general.language', 'en-US'), /unavailable|platform/i)
     await readonly.close()
+  } finally { await rm(userDataPath, { recursive: true, force: true }) }
+})
+
+test('history records serialize and disabling history clears persisted queries', async () => {
+  const userDataPath = await root()
+  try {
+    const repository = await LauncherPersistenceRepository.open({ userDataPath })
+    await repository.updateSetting('general.searchHistory.enabled', true)
+    await Promise.all([
+      repository.recordSearch('alpha', { historyEnabled: false, historyLimit: 10 }),
+      repository.recordSearch('beta', { historyEnabled: false, historyLimit: 10 }),
+    ])
+    assert.deepEqual(new Set(repository.getSetting('general.searchHistory.history', [])), new Set(['alpha', 'beta']))
+    await repository.updateSetting('general.searchHistory.enabled', false)
+    assert.deepEqual(repository.getSetting('general.searchHistory.history', ['stale']), [])
+    await repository.recordSearch('ignored', { historyEnabled: true, historyLimit: 10 })
+    assert.deepEqual(repository.getSetting('general.searchHistory.history', ['stale']), [])
+    await repository.close()
+  } finally { await rm(userDataPath, { recursive: true, force: true }) }
+})
+
+test('logs recover independently when the primary contains renderer-unsafe text', async () => {
+  const userDataPath = await root()
+  try {
+    const launcherRoot = path.join(userDataPath, 'launcher')
+    await mkdir(launcherRoot, { recursive: true })
+    await writeFile(path.join(launcherRoot, 'logs.json'), JSON.stringify(['bad\nlog']), 'utf8')
+    await writeFile(path.join(launcherRoot, 'logs.json.bak'), JSON.stringify(['[2026-01-01T00:00:00.000Z][INFO] safe']), 'utf8')
+    const repository = await LauncherPersistenceRepository.open({ userDataPath })
+    assert.deepEqual(repository.snapshot().logs, ['[2026-01-01T00:00:00.000Z][INFO] safe'])
+    await repository.close()
+  } finally { await rm(userDataPath, { recursive: true, force: true }) }
+})
+
+test('artifact backups retain the last validated settings bytes', async () => {
+  const userDataPath = await root()
+  try {
+    const repository = await LauncherPersistenceRepository.open({ userDataPath })
+    await repository.updateSetting('general.language', 'fr-FR')
+    await repository.updateSetting('general.language', 'de-CH')
+    const settingsPath = path.join(userDataPath, 'launcher', 'settings.json')
+    await writeFile(settingsPath, JSON.stringify({ 'appearance.searchBarPlaceholderText': 'x'.repeat(2 * 1024 * 1024) }), 'utf8')
+    await repository.updateSetting('general.language', 'ja-JP')
+    await repository.close()
+    await writeFile(settingsPath, '{bad', 'utf8')
+    const recovered = await LauncherPersistenceRepository.open({ userDataPath })
+    assert.equal(recovered.getSetting('general.language', 'en-US'), 'fr-FR')
+    await recovered.close()
   } finally { await rm(userDataPath, { recursive: true, force: true }) }
 })
 

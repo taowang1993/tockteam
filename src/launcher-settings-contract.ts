@@ -125,7 +125,7 @@ function publicHttpsTemplate(value: unknown): value is string {
   try {
     const parsed = new URL(value.replace('{{query}}', 'tockteam-query-placeholder'))
     const host = parsed.hostname.toLocaleLowerCase('en-US').replace(/\.$/u, '')
-    if (parsed.protocol !== 'https:' || !host || parsed.username || parsed.password || host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.local') || host.includes('tockteam-query-placeholder')) return false
+    if (parsed.protocol !== 'https:' || !host || parsed.username || parsed.password || host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.local') || host.includes('tockteam-query-placeholder') || host.includes(':') || !host.includes('.')) return false
     const ipv4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/u.exec(host)
     if (!ipv4) return true
     const parts = ipv4.slice(1).map(Number)

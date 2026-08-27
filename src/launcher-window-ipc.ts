@@ -180,17 +180,20 @@ export function registerWorkbenchLauncherIpcHandlers(args: Readonly<{
   ])
   const settings = args.settings
   if (settings !== undefined) {
+    const operationFailure = (): Error => new Error('TockLauncher settings operation failed')
     registrations.push(
       [LAUNCHER_SETTINGS_IPC_CHANNELS.getSnapshot, (event: unknown, ...rawArgs: unknown[]): unknown => {
         args.assertTrustedMainIpc(event)
         assertNoLauncherIpcArguments(rawArgs)
-        return settings.getSnapshot()
+        try { return settings.getSnapshot() }
+        catch { throw operationFailure() }
       }],
       [LAUNCHER_SETTINGS_IPC_CHANNELS.updateSetting, async (event: unknown, raw: unknown, ...rawArgs: unknown[]): Promise<Readonly<{ ok: true }>> => {
         args.assertTrustedMainIpc(event)
         assertNoLauncherIpcArguments(rawArgs)
         const update = parseLauncherSettingUpdateArgs(raw)
-        await settings.updateSetting(update.key, update.value)
+        try { await settings.updateSetting(update.key, update.value) }
+        catch { throw operationFailure() }
         return Object.freeze({ ok: true })
       }],
     )
@@ -198,7 +201,8 @@ export function registerWorkbenchLauncherIpcHandlers(args: Readonly<{
       registrations.push([channel, async (event: unknown, ...rawArgs: unknown[]): Promise<Readonly<{ canceled?: boolean; ok: true }>> => {
         args.assertTrustedMainIpc(event)
         assertNoLauncherIpcArguments(rawArgs)
-        return await operation()
+        try { return await operation() }
+        catch { throw operationFailure() }
       }])
     }
     native(LAUNCHER_SETTINGS_IPC_CHANNELS.importSettings, settings.importSettings)

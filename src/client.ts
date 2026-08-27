@@ -216,6 +216,10 @@ function findSettingsButton(): HTMLButtonElement | undefined {
     .sort((left, right) => right.getBoundingClientRect().bottom - left.getBoundingClientRect().bottom)[0]
 }
 
+function isSettingsShellOpen(): boolean {
+  return document.querySelector('[role="dialog"]') !== null
+}
+
 function showSettingsAfterRoute(section?: 'tocklauncher'): void {
   const schedule = (callback: () => void): void => {
     if (typeof window.requestAnimationFrame === 'function') {
@@ -227,6 +231,7 @@ function showSettingsAfterRoute(section?: 'tocklauncher'): void {
   if (section !== 'tocklauncher') {
     deferSettingsOpen({
       findButton: findSettingsButton,
+      isOpen: isSettingsShellOpen,
       isTockCoder: () => isTockCoderPath(window.location.pathname),
       isTockTutorActive: () => document.documentElement.dataset.tockteamTocktutorActive === 'true',
       schedule: callback => {
@@ -256,6 +261,7 @@ function showSettingsAfterRoute(section?: 'tocklauncher'): void {
   }
   deferSettingsOpen({
     findButton: findSettingsButton,
+    isOpen: isSettingsShellOpen,
     isTockCoder: () => isTockCoderPath(window.location.pathname),
     isTockTutorActive: () => document.documentElement.dataset.tockteamTocktutorActive === 'true',
     onOpened: selectLauncherSection,

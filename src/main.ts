@@ -174,6 +174,8 @@ let launcherCoreFlush: (() => Promise<void>) | undefined
 let launcherPersistence: LauncherPersistenceRepository | undefined
 let launcherCustomBrowser: LauncherCustomBrowserController | undefined
 let launcherPersistentSetsSync: (() => void) | undefined
+let launcherSettingsOperationsClosed = false
+const activeLauncherSettingsOperations = new Set<Promise<unknown>>()
 const runtimeStartGate = new RuntimeStartGate<void>()
 const launcherWindowRegistry = new LauncherWindowRegistry()
 const launcherToggleQueue = new LauncherToggleIntentQueue()
@@ -861,6 +863,24 @@ function requireLauncherPersistence(): LauncherPersistenceRepository {
   return launcherPersistence
 }
 
+function runLauncherSettingsOperation<T>(operation: () => Promise<T>): Promise<T> {
+  if (launcherSettingsOperationsClosed || quitting) return Promise.reject(new Error('TockLauncher settings operations are closed'))
+  const active = operation()
+  activeLauncherSettingsOperations.add(active)
+  active.then(
+    () => { activeLauncherSettingsOperations.delete(active) },
+    () => { activeLauncherSettingsOperations.delete(active) },
+  )
+  return active
+}
+
+async function closeLauncherSettingsOperations(): Promise<void> {
+  launcherSettingsOperationsClosed = true
+  while (activeLauncherSettingsOperations.size > 0) {
+    await Promise.allSettled([...activeLauncherSettingsOperations])
+  }
+}
+
 function launcherSettingsSnapshot(): ReturnType<LauncherPersistenceRepository['snapshot']> {
   const repository = requireLauncherPersistence()
   const snapshot = repository.snapshot()
@@ -882,7 +902,7 @@ function launcherSurfaceSettings(): import('./launcher-contract.ts').LauncherSur
   const historyEnabled = boolValue('general.searchHistory.enabled', false)
   const historyLimit = Math.min(100, Math.max(1, numberValue('general.searchHistory.limit', 10)))
   const rawHistory = values['general.searchHistory.history']
-  const history = Array.isArray(rawHistory) ? rawHistory.filter(item => typeof item === 'string').slice(0, historyLimit) : []
+  const history = historyEnabled && Array.isArray(rawHistory) ? rawHistory.filter(item => typeof item === 'string').slice(0, historyLimit) : []
   const state = {
     preferences: {
       fuzziness: Math.min(1, Math.max(0, numberValue('searchEngine.fuzziness', 0.5))),
@@ -905,11 +925,10 @@ function launcherSurfaceSettings(): import('./launcher-contract.ts').LauncherSur
 
 async function recordLauncherSearch(query: string): Promise<import('./launcher-contract.ts').LauncherSurfaceSettings> {
   const current = launcherSurfaceSettings()
-  if (!current.historyEnabled) return current
-  const normalized = query.trim()
-  if (normalized.length === 0) return current
-  const history = [normalized, ...current.history.filter(item => item !== normalized)].slice(0, current.historyLimit)
-  await requireLauncherPersistence().updateSetting('general.searchHistory.history', history)
+  await requireLauncherPersistence().recordSearch(query, {
+    historyEnabled: current.historyEnabled,
+    historyLimit: current.historyLimit,
+  })
   return launcherSurfaceSettings()
 }
 
@@ -1014,7 +1033,7 @@ function initializeLauncher(): void {
   })
   controller = nextController
   launcherController = nextController
-  launcherCoreFlush = coreSearch.flush
+  launcherCoreFlush = coreSearch.close
   launcherPersistentSetsSync = () => { syncLauncherPersistentSets(coreSearch) }
   const launcherGuard = createLauncherIpcGuard({
     launcherSession,
@@ -1035,10 +1054,17 @@ function initializeLauncher(): void {
       guard: launcherGuard,
       ipcMain,
       rescan: coreSearch.rescan,
-      search: coreSearch.search,
+      search: async (searchTerm) => {
+        const surface = launcherSurfaceSettings()
+        return await coreSearch.search(searchTerm, {
+          fuzziness: surface.fuzziness,
+          maxSearchResultItems: surface.maxSearchResultItems,
+          searchEngineId: surface.searchEngineId,
+        })
+      },
       surface: {
         getSettings: launcherSurfaceSettings,
-        recordSearch: recordLauncherSearch,
+        recordSearch: async query => await runLauncherSettingsOperation(async () => await recordLauncherSearch(query)),
       },
     })
     launcherIpcDisposer = () => {
@@ -1054,21 +1080,21 @@ function initializeLauncher(): void {
     controller: nextController,
     ipcMain,
     settings: {
-      exportSettings: exportLauncherSettings,
+      exportSettings: async () => await runLauncherSettingsOperation(exportLauncherSettings),
       getSnapshot: launcherSettingsSnapshot,
-      importSettings: importLauncherSettings,
-      resetSettings: resetLauncherSettings,
-      revokeCustomBrowser: revokeCustomLauncherBrowser,
-      revokeExternalSettings: revokeExternalLauncherSettings,
-      selectCustomBrowser: selectCustomLauncherBrowser,
-      selectExternalSettings: selectExternalLauncherSettings,
-      updateSetting: async (key, value) => {
+      importSettings: async () => await runLauncherSettingsOperation(importLauncherSettings),
+      resetSettings: async () => await runLauncherSettingsOperation(resetLauncherSettings),
+      revokeCustomBrowser: async () => await runLauncherSettingsOperation(revokeCustomLauncherBrowser),
+      revokeExternalSettings: async () => await runLauncherSettingsOperation(revokeExternalLauncherSettings),
+      selectCustomBrowser: async () => await runLauncherSettingsOperation(selectCustomLauncherBrowser),
+      selectExternalSettings: async () => await runLauncherSettingsOperation(selectExternalLauncherSettings),
+      updateSetting: async (key, value) => await runLauncherSettingsOperation(async () => {
         await requireLauncherPersistence().updateSetting(key, value)
         launcherPersistentSetsSync?.()
         await launcherLifecycle?.sync()
         if (key === 'extensions.enabledExtensionIds') await launcherRescan?.()
         return settingsOperation()
-      },
+      }),
     },
     onRouteReady: event => {
       const sender = (event as Electron.IpcMainInvokeEvent).sender
@@ -1986,15 +2012,19 @@ function requestSecureQuit(_reason: 'native-quit' | 'tray' | 'launcher-command-q
     workbenchLauncherIpcDisposer?.()
     workbenchLauncherIpcDisposer = undefined
     launcherUpdater = undefined
-    const coreFlushResult = await Promise.allSettled([launcherCoreFlush?.() ?? Promise.resolve()])
-    for (const result of coreFlushResult) {
-      if (result.status === 'rejected') appendLog('desktop', result.reason instanceof Error ? result.reason.message : String(result.reason))
+    const settingsGateResult = await Promise.allSettled([closeLauncherSettingsOperations()])
+    if (settingsGateResult[0]?.status === 'rejected') appendLog('desktop', 'TockLauncher settings shutdown failed')
+    const launcherCloseResults = await Promise.allSettled([
+      launcherCoreFlush?.() ?? Promise.resolve(),
+      launcherCustomBrowser?.close() ?? Promise.resolve(),
+    ])
+    for (const result of launcherCloseResults) {
+      if (result.status === 'rejected') appendLog('desktop', 'TockLauncher shutdown operation failed')
     }
     const repositoryCloseResult = await Promise.allSettled([launcherPersistence?.close() ?? Promise.resolve()])
     for (const result of repositoryCloseResult) {
       if (result.status === 'rejected') appendLog('desktop', result.reason instanceof Error ? result.reason.message : String(result.reason))
     }
-    launcherCustomBrowser?.dispose()
     const results = await Promise.allSettled([
       stopRuntimeAndChannels(),
       stopPreviewSurface(),
