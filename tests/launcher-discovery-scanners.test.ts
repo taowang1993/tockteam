@@ -93,6 +93,19 @@ test('uses one fixed PowerShell script and data-only settings arguments', () => 
   assert.ok(!String(safe.args[3]).includes("'shell:AppsFolder\\\\' + $appId"))
 })
 
+test('falls back to bounded configured macOS application folders for unindexed fixtures', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'tockteam-macos-apps-'))
+  try {
+    await mkdir(join(root, 'Fixture.app'), { recursive: true })
+    const scanner = createLauncherDiscoveryScanners({ execFile: async () => ({ stdout: '' }) })
+    const entries = await scanner.ApplicationSearch(context({
+      platform: 'macOS',
+      getSetting: <T>(key: string, fallback: T) => key.endsWith('.macOsFolders') ? [root] as T : fallback,
+    }))
+    assert.deepEqual(entries.map(entry => 'path' in entry ? entry.path : ''), [join(root, 'Fixture.app')])
+  } finally { await rm(root, { recursive: true, force: true }) }
+})
+
 test('keeps macOS applications with exact .app path-component filtering', async () => {
   const scanner = createLauncherDiscoveryScanners({ execFile: async () => ({ stdout: '/Applications/Foo.app-data/Bar.app\n/Applications/Foo.app/Bar.app\n/Applications/Good.app\n' }) })
   const entries = await scanner.ApplicationSearch(context({

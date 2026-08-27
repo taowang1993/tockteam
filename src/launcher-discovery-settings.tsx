@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react'
 import type { FocusEvent, ReactNode } from 'react'
 import { Globe2, Laptop, Route, Search } from 'lucide-react'
 import { Input } from '@tockteam/ui/input'
@@ -34,6 +35,10 @@ function Field({ label, children }: Readonly<{ label: string; children: ReactNod
   return <label className="flex min-w-0 flex-wrap items-center justify-between gap-3 border-b border-border/60 py-2 last:border-b-0"><span className="text-sm text-foreground">{label}</span><span className="flex min-w-0 shrink-0 items-center gap-2">{children}</span></label>
 }
 
+function sameStringArray(left: readonly string[], right: readonly string[]): boolean {
+  return left.length === right.length && left.every((value, index) => value === right[index])
+}
+
 function saveArray(event: FocusEvent<HTMLTextAreaElement>, key: string, save: DiscoverySettingsProps['save']): void {
   try {
     const parsed: unknown = JSON.parse(event.currentTarget.value)
@@ -46,10 +51,34 @@ function saveArray(event: FocusEvent<HTMLTextAreaElement>, key: string, save: Di
 export function LauncherDiscoverySettings({ busy, save, snapshot }: DiscoverySettingsProps): ReactNode {
   const defaults = DISCOVERY_RENDERER_DEFAULTS
   const application = defaults.ApplicationSearch
-  const browserSelection = stored<readonly string[]>(snapshot, 'extension[BrowserBookmarks].browsers', defaults.BrowserBookmarks.browsers)
+  const snapshotBrowserSelection = stored<readonly string[]>(snapshot, 'extension[BrowserBookmarks].browsers', defaults.BrowserBookmarks.browsers)
+  const [browserSelection, setBrowserSelection] = useState<readonly string[]>(snapshotBrowserSelection)
+  const browserSelectionRef = useRef<readonly string[]>(snapshotBrowserSelection)
+  const pendingBrowserSelection = useRef<readonly string[] | undefined>(undefined)
+  useEffect(() => {
+    const pending = pendingBrowserSelection.current
+    if (pending !== undefined && !sameStringArray(snapshotBrowserSelection, pending)) return
+    if (pending !== undefined) pendingBrowserSelection.current = undefined
+    browserSelectionRef.current = snapshotBrowserSelection
+    setBrowserSelection(snapshotBrowserSelection)
+  }, [snapshotBrowserSelection])
   const toggleBrowser = (browser: string, checked: boolean): void => {
-    const next = BROWSERS.filter(candidate => candidate === browser ? checked : browserSelection.includes(candidate))
-    void save('extension[BrowserBookmarks].browsers', next)
+    const next = BROWSERS.filter(candidate => candidate === browser ? checked : browserSelectionRef.current.includes(candidate))
+    browserSelectionRef.current = next
+    pendingBrowserSelection.current = next
+    setBrowserSelection(next)
+    void save('extension[BrowserBookmarks].browsers', next).then(success => {
+      if (success || pendingBrowserSelection.current !== next) return
+      pendingBrowserSelection.current = undefined
+      const fallback = stored<readonly string[]>(snapshot, 'extension[BrowserBookmarks].browsers', defaults.BrowserBookmarks.browsers)
+      browserSelectionRef.current = fallback
+      setBrowserSelection(fallback)
+    }).catch(() => {
+      if (pendingBrowserSelection.current !== next) return
+      pendingBrowserSelection.current = undefined
+      browserSelectionRef.current = snapshotBrowserSelection
+      setBrowserSelection(snapshotBrowserSelection)
+    })
   }
   return <section className="space-y-3" data-testid="tocklauncher-discovery-settings">
     <div><h2 className="text-base font-semibold text-foreground">Application, Bookmark, and IDE Discovery</h2><p className="mt-1 text-xs text-muted-foreground">Discover bounded local applications and recent projects in Electron main. The renderer receives display data and opaque actions only.</p></div>

@@ -369,7 +369,25 @@ async function scanApplications(context: LauncherDiscoveryScanContext, execFile:
     const folders = boundedStringArray(context.getSetting('extension[ApplicationSearch].macOsFolders', defaults.macOsFolders), defaults.macOsFolders)
     const invocation = filters[configuredFilter] ?? filters[defaults.mdfindFilterOption]!
     const { stdout } = await execFile('/usr/bin/mdfind', [invocation], { maxBuffer: MAX_DISCOVERY_EXEC_BUFFER, signal: context.signal, timeout: 10_000 })
-    return Object.freeze(stdout.split(/\r?\n/u).map(value => value.trim()).filter(value => boundedDiscoveryString(value, 4_096) && isAbsolute(value) && value.toLocaleLowerCase('en-US').endsWith('.app') && folders.some(folder => isWithin(folder, value)) && !isNestedMacApplication(value)).slice(0, MAX_DISCOVERED_ITEMS).map(value => Object.freeze({ id: `applications:${value}`, kind: 'application' as const, name: path.basename(value, '.app'), path: value })))
+    const paths = stdout.split(/\r?\n/u).map(value => value.trim()).filter(value => boundedDiscoveryString(value, 4_096) && isAbsolute(value) && value.toLocaleLowerCase('en-US').endsWith('.app') && folders.some(folder => isWithin(folder, value)) && !isNestedMacApplication(value)).slice(0, MAX_DISCOVERED_ITEMS)
+    if (paths.length === 0) {
+      let visits = 0
+      for (const folder of folders) {
+        if (visits >= MAX_DISCOVERY_DIRECTORY_VISITS || paths.length >= MAX_DISCOVERED_ITEMS) break
+        let directory
+        try { directory = await opendir(folder) } catch { continue }
+        try {
+          while (visits < MAX_DISCOVERY_DIRECTORY_VISITS && paths.length < MAX_DISCOVERED_ITEMS) {
+            throwIfAborted(context.signal)
+            const entry = await directory.read()
+            if (entry === null) break
+            visits++
+            if (entry.isDirectory() && entry.name.toLocaleLowerCase('en-US').endsWith('.app')) paths.push(path.join(folder, entry.name))
+          }
+        } finally { await directory.close().catch(() => undefined) }
+      }
+    }
+    return Object.freeze(paths.map(value => Object.freeze({ id: `applications:${value}`, kind: 'application' as const, name: path.basename(value, '.app'), path: value })))
   }
   if (context.platform === 'Windows') {
     const invocation = windowsApplicationScanInvocation({

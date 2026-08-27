@@ -461,6 +461,18 @@ try {
     }
   })()`)
   assert.deepEqual(settingsFacts, { bridgeFrozen: true, catalog: true, hasSecret: false, hasBrowserPath: false, hasBrowserName: false, hasHistorySwitch: true, hasReset: true, liveStatus: true, extensionSwitches: 24, hasDiscoverySettings: true, hasApplicationFolders: true, hasBrowserBookmarks: true, hasVscodeSettings: true })
+  const rapidBrowserToggle = await workbenchConnection.evaluate(`(() => {
+    const chrome = document.querySelector('[aria-label="Enable Google Chrome bookmarks"]')
+    const firefox = document.querySelector('[aria-label="Enable Firefox bookmarks"]')
+    if (!(chrome instanceof HTMLButtonElement) || !(firefox instanceof HTMLButtonElement)) return false
+    chrome.click(); firefox.click()
+    return true
+  })()`)
+  assert.equal(rapidBrowserToggle, true)
+  await waitFor(
+    () => workbenchConnection.evaluate('(async () => { const snapshot = await window.dshDesktop?.launcher?.settings?.getSnapshot(); return snapshot?.values?.["extension[BrowserBookmarks].browsers"] ?? [] })()'),
+    browsers => Array.isArray(browsers) && browsers.includes('Google Chrome') && browsers.includes('Firefox'),
+  )
   await workbenchConnection.evaluate(`(async () => {
     await window.dshDesktop?.launcher?.settings?.updateSetting('general.searchHistory.enabled', true)
     await window.dshDesktop?.launcher?.settings?.updateSetting('searchEngine.fuzziness', 0.6)
