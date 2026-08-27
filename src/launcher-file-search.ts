@@ -23,6 +23,7 @@ const HANDLERS = Object.freeze({
 })
 const MAX_SIMPLE_RESULTS = 200
 const MAX_FILE_SEARCH_RESULTS = 100
+const MAX_RESULT_DETAILS = 8_192
 const MAX_ARGUMENT_TEXT = 16_384
 const QUERY_TIMEOUT_MS = 8_000
 const ACTION_VALIDATION_TIMEOUT_MS = 1_000
@@ -281,7 +282,7 @@ export function createLauncherFileSearchExtensions(options: FileSearchOptions): 
     const api = pathApi(options.platform)
     const target = api.normalize(entry.path)
     const name = api.basename(target)
-    if (!bounded(name, 512)) return undefined
+    const details = api.dirname(target)
     const open = pathAction(HANDLERS.open, `Open ${entry.type}`, target, true)
     const reveal = pathAction(
       HANDLERS.reveal,
@@ -290,6 +291,8 @@ export function createLauncherFileSearchExtensions(options: FileSearchOptions): 
       false,
       options.platform === 'macOS' ? 'Cmd+O' : 'Ctrl+O',
     )
+    if (!bounded(target) || !bounded(name, 512) || !bounded(details, MAX_RESULT_DETAILS)
+      || !bounded(open.argument, MAX_ARGUMENT_TEXT) || !bounded(reveal.argument, MAX_ARGUMENT_TEXT)) return undefined
     actions.add(open.argument); actions.add(reveal.argument)
     const knownEntry = Object.freeze({ entry: Object.freeze({ ...entry, path: target }), ...(root === undefined ? null : { root }) })
     known.set(open.argument, knownEntry)
@@ -303,7 +306,7 @@ export function createLauncherFileSearchExtensions(options: FileSearchOptions): 
         ? 'file-search-folder'
         : `simple-file-search-${options.platform === 'macOS' ? 'macos' : options.platform.toLocaleLowerCase('en-US')}`,
       name,
-      details: api.dirname(target),
+      details,
       sourceExtension: extensionId,
     })
   }

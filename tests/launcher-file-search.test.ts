@@ -338,6 +338,80 @@ test('Simple File Search actions use real scanner validation for open and reveal
   } finally { await rm(home, { force: true, recursive: true }) }
 })
 
+function boundaryTarget(platform: 'Windows' | 'macOS', detailLength: number, segment = 'd'): string {
+  const prefix = platform === 'Windows' ? 'C:\\Users\\Max\\' : '/home/max/'
+  const separator = platform === 'Windows' ? '\\' : '/'
+  return `${prefix}${segment.repeat(detailLength - prefix.length)}${separator}file.txt`
+}
+
+function serializedTarget(platform: 'Windows' | 'macOS', argumentLength: number): string {
+  const prefix = platform === 'Windows' ? 'C:\\Users\\Max\\' : '/home/max/'
+  const separator = platform === 'Windows' ? '\\' : '/'
+  for (let quoteCount = 0; quoteCount < 9_000; quoteCount += 1) {
+    for (const suffix of ['', 'a']) {
+      const target = `${prefix}${'"'.repeat(quoteCount)}${suffix}${separator}file.txt`
+      if (JSON.stringify({ kind: 'path', target, version: 1 }).length === argumentLength) return target
+    }
+  }
+  throw new Error(`Unable to construct a ${argumentLength}-character path argument`)
+}
+
+function boundaryProvider(platform: 'Windows' | 'macOS', target: string, opened: string[]): ReturnType<typeof createLauncherFileSearchExtensions> {
+  const homePath = platform === 'Windows' ? 'C:\\Users\\Max' : '/home/max'
+  return createLauncherFileSearchExtensions({
+    effects: { openPath: path => { opened.push(path) }, revealPath: () => undefined },
+    enabledExtensionIds: () => ['FileSearch'], getSetting: settings, homePath, platform,
+    scanners: {
+      queryFileSearch: async () => [{ path: target, type: 'file', identity: { dev: '1', ino: '1' } }],
+      scanSimpleFolder: async () => [], validatePath: async () => true,
+    },
+  })
+}
+
+test('FileSearch rejects overlong details before private action publication on POSIX and Windows', async () => {
+  for (const platform of ['macOS', 'Windows'] as const) {
+    const opened: string[] = []
+    const accepted = boundaryTarget(platform, 8_192)
+    const acceptedProvider = boundaryProvider(platform, accepted, opened)
+    const acceptedResult = (await acceptedProvider.searchInstant(`${LAUNCHER_FILE_SEARCH_QUERY_PREFIX} boundary`)).after[0]
+    assert.ok(acceptedResult)
+    assert.equal(acceptedResult.details?.length, 8_192)
+    await acceptedProvider.close()
+
+    const rejected = boundaryTarget(platform, 8_193)
+    const rejectedProvider = boundaryProvider(platform, rejected, opened)
+    const rejectedResult = await rejectedProvider.searchInstant(`${LAUNCHER_FILE_SEARCH_QUERY_PREFIX} boundary`)
+    assert.deepEqual(rejectedResult.after, [])
+    const rejectedArgument = JSON.stringify({ kind: 'path', target: rejected, version: 1 })
+    await assert.rejects(rejectedProvider.executeAction({
+      actionId: 'launcher-action:boundary', argument: rejectedArgument, expiresAt: Date.now() + 10_000,
+      handlerKey: 'open-file-search-path', hideWindowAfterInvocation: true,
+      owner: { role: 'launcher', webContentsId: 1 }, requiresConfirmation: false,
+      resultSetId: 'launcher-results:boundary', sourceExtension: 'FileSearch',
+    }), /main-owned result set/u)
+    assert.deepEqual(opened, [])
+    await rejectedProvider.close()
+  }
+})
+
+test('FileSearch enforces the 16384-character serialized path bound on POSIX and Windows', async () => {
+  for (const platform of ['macOS', 'Windows'] as const) {
+    const acceptedTarget = serializedTarget(platform, 16_384)
+    const acceptedProvider = boundaryProvider(platform, acceptedTarget, [])
+    const accepted = (await acceptedProvider.searchInstant(`${LAUNCHER_FILE_SEARCH_QUERY_PREFIX} boundary`)).after[0]
+    assert.ok(accepted)
+    assert.equal(accepted.defaultAction.argument.length, 16_384)
+    assert.ok((accepted.details?.length ?? 0) <= 8_192)
+    await acceptedProvider.close()
+
+    const rejectedTarget = serializedTarget(platform, 16_385)
+    const rejectedProvider = boundaryProvider(platform, rejectedTarget, [])
+    const rejected = await rejectedProvider.searchInstant(`${LAUNCHER_FILE_SEARCH_QUERY_PREFIX} boundary`)
+    assert.deepEqual(rejected.after, [])
+    await rejectedProvider.close()
+  }
+})
+
 test('FileSearch actions use home-scope canonical revalidation without a strict root', async () => {
   const { mkdtemp, rm, writeFile } = await import('node:fs/promises')
   const { tmpdir } = await import('node:os')
