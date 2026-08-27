@@ -9,6 +9,7 @@ export declare function compareCatalog(
 export declare function auditParityCatalogs(options?: {
   repoRoot?: string
   sourceOverrides?: Record<string, string>
+  manifestPath?: string
 }): Promise<{
   counts: Record<string, number>
   unclassified: string[]

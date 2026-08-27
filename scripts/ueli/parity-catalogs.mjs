@@ -44,7 +44,10 @@ async function listFiles(root, prefix = "") {
 }
 
 function matches(source, expression, map) {
-  return [...source.matchAll(expression)].map(map);
+  return [...source.matchAll(expression)].map((match) => ({
+    ...map(match),
+    sourceOffset: match.index ?? 0,
+  }));
 }
 
 function discoverBridgeMethods(source) {
@@ -63,7 +66,11 @@ function discoverBridgeMethods(source) {
     const id = ts.isIdentifier(member.name) || ts.isStringLiteralLike(member.name)
       ? member.name.text
       : member.name.getText(sourceFile);
-    return [{ id, source: "src/common/Core/ContextBridge.ts" }];
+    return [{
+      id,
+      source: "src/common/Core/ContextBridge.ts",
+      sourceOffset: member.getStart(sourceFile),
+    }];
   });
 }
 
@@ -96,7 +103,11 @@ function discoverIpcChannels(file, source) {
         } else if (renderer && argument && ts.isIdentifier(argument) && argument.text === "channel") {
           channel = "<dynamic-channel>";
         }
-        if (channel) rows.push({ id: `${main ? "main" : "renderer"}:${method}:${channel}`, source: file });
+        if (channel) rows.push({
+          id: `${main ? "main" : "renderer"}:${method}:${channel}`,
+          source: file,
+          sourceOffset: node.getStart(sourceFile),
+        });
       }
     }
     ts.forEachChild(node, visit);
@@ -115,13 +126,21 @@ function discoverRendererSurfaces(file, source) {
       ));
       if (attribute && ts.isJsxAttribute(attribute) && attribute.initializer
         && ts.isStringLiteral(attribute.initializer)) {
-        rows.push({ id: `route:${attribute.initializer.text}`, source: file });
+        rows.push({
+          id: `route:${attribute.initializer.text}`,
+          source: file,
+          sourceOffset: node.getStart(sourceFile),
+        });
       }
     }
     if (ts.isPropertyAssignment(node)
       && node.name.getText(sourceFile) === "absolutePath"
       && ts.isStringLiteralLike(node.initializer)) {
-      rows.push({ id: `settings-route:${node.initializer.text}`, source: file });
+      rows.push({
+        id: `settings-route:${node.initializer.text}`,
+        source: file,
+        sourceOffset: node.getStart(sourceFile),
+      });
     }
     ts.forEachChild(node, visit);
   };
@@ -129,15 +148,42 @@ function discoverRendererSurfaces(file, source) {
   return rows;
 }
 
-function uniqueRows(rows, shouldSort = true) {
+const OCCURRENCE_CATALOGS = new Set([
+  "bootstrap",
+  "extensions",
+  "actionHandlers",
+  "bridgeMethods",
+  "ipcChannels",
+  "rendererSurfaces",
+  "registries",
+]);
+
+function compareCodePoints(left, right) {
+  const leftPoints = [...String(left)].map((character) => character.codePointAt(0) ?? 0);
+  const rightPoints = [...String(right)].map((character) => character.codePointAt(0) ?? 0);
+  const length = Math.min(leftPoints.length, rightPoints.length);
+  for (let index = 0; index < length; index += 1) {
+    if (leftPoints[index] !== rightPoints[index]) return leftPoints[index] - rightPoints[index];
+  }
+  return leftPoints.length - rightPoints.length;
+}
+
+function uniqueRows(rows, catalog, shouldSort = true) {
   const byIdentity = new Map();
   for (const row of rows) {
-    byIdentity.set(`${row.id}\u0000${row.source}`, row);
+    const identity = `${row.id}\u0000${row.source}`;
+    const existing = byIdentity.get(identity);
+    if (existing) {
+      if (OCCURRENCE_CATALOGS.has(catalog) && existing.sourceOffset !== row.sourceOffset) {
+        throw new Error(`Ueli parity catalog duplicate ${catalog} occurrence for ${row.id} (${row.source})`);
+      }
+      continue;
+    }
+    byIdentity.set(identity, row);
   }
   const result = [...byIdentity.values()];
-  return shouldSort
-    ? result.sort((left, right) => rowIdentity(left).localeCompare(rowIdentity(right)))
-    : result;
+  if (shouldSort) result.sort((left, right) => compareCodePoints(rowIdentity(left), rowIdentity(right)));
+  return result.map(({ sourceOffset, ...row }) => row);
 }
 
 function sourceReader(vendorRoot, sourceOverrides) {
@@ -220,6 +266,28 @@ async function discoverSettings(files, readSource) {
         }
       }
 
+      if (ts.isBinaryExpression(node)
+        && node.operatorToken.kind === ts.SyntaxKind.EqualsToken
+        && ts.isPropertyAccessExpression(node.left)
+        && node.left.expression.getText(sourceFile) === "defaultSettings"
+        && extension) {
+        let ancestor = node.parent;
+        while (ancestor) {
+          if (ts.isIfStatement(ancestor)) {
+            const value = textOf(node.right);
+            if (value) addSetting(
+              `extension:${extension}`,
+              node.left.name.text,
+              `${value} when ${textOf(ancestor.expression)}`,
+              file,
+            );
+            break;
+          }
+          if (ts.isFunctionLike(ancestor)) break;
+          ancestor = ancestor.parent;
+        }
+      }
+
       const isDefaultDeclaration = (ts.isVariableDeclaration(node) || ts.isPropertyDeclaration(node))
         && /default(?:settings|values)/iu.test(node.name.getText(sourceFile))
         && node.initializer
@@ -254,14 +322,24 @@ async function discoverSettings(files, readSource) {
 
   return [...settings.values()].map(({ id, sources, defaults }) => ({
     id,
-    source: [...sources].sort().join(";"),
-    defaultValue: [...defaults].sort().join(" | ") || "upstream-default-not-declared",
+    source: [...sources].sort(compareCodePoints).join(";"),
+    defaultValue: [...defaults].sort(compareCodePoints).join(" | ") || "upstream-default-not-declared",
   }));
+}
+
+function discoverArchitectures(builderConfig) {
+  return [...builderConfig.matchAll(/arch:\s*\[([^\]]+)\]/gu)].flatMap((match) => (
+    [...match[1].matchAll(/["']([^"']+)["']/gu)].map((architecture) => ({
+      id: `architecture:${architecture[1]}`,
+      source: "electron-builder.config.js",
+      sourceOffset: (match.index ?? 0) + (architecture.index ?? 0),
+    }))
+  ));
 }
 
 async function discoverCatalogs({ vendorRoot, sourceOverrides = {} }) {
   const trackedFiles = await listFiles(vendorRoot);
-  const files = [...new Set([...trackedFiles, ...Object.keys(sourceOverrides)])].sort();
+  const files = [...new Set([...trackedFiles, ...Object.keys(sourceOverrides)])].sort(compareCodePoints);
   const readSource = sourceReader(vendorRoot, sourceOverrides);
   const mainIndex = await readSource("src/main/index.ts");
   const extensionLoader = await readSource("src/main/Extensions/ExtensionLoader.ts");
@@ -311,6 +389,7 @@ async function discoverCatalogs({ vendorRoot, sourceOverrides = {} }) {
       catalogs.rendererSurfaces.push({
         id: `extension-settings:${file.split("/")[3]}`,
         source: file,
+        sourceOffset: 0,
       });
     }
   }
@@ -353,16 +432,12 @@ async function discoverCatalogs({ vendorRoot, sourceOverrides = {} }) {
       id: `package-target:${target}`,
       source: "electron-builder.config.js",
     })),
-    ...matches(builderConfig, /arch:\s*\[([^\]]+)\]/gu, ([, architectures]) => architectures)
-      .flatMap((architectures) => matches(architectures, /["']([^"']+)["']/gu, ([, architecture]) => ({
-        id: `architecture:${architecture}`,
-        source: "electron-builder.config.js",
-      }))),
+    ...discoverArchitectures(builderConfig),
   );
 
   return Object.fromEntries(CATALOG_NAMES.map((name) => [
     name,
-    uniqueRows(catalogs[name], !["bootstrap", "extensions"].includes(name)).map((row, order) =>
+    uniqueRows(catalogs[name], name, !["bootstrap", "extensions"].includes(name)).map((row, order) =>
       ["bootstrap", "extensions"].includes(name) ? { ...row, order } : row),
   ]));
 }
@@ -377,32 +452,86 @@ const extensionIssues = new Map([
   ["WorkflowExtensionModule", "tockteam-tl.12"],
 ]);
 
+const ALL_PLATFORMS = Object.freeze(["macOS", "Windows", "Linux"]);
+
 const extensionApplicability = new Map([
-  ["AppearanceSwitcherModule", ["macOS", "Windows"]],
-  ["BrowserBookmarksModule", ["macOS", "Windows"]],
-  ["FileSearchModule", ["macOS", "Windows"]],
-  ["SystemSettingsModule", ["macOS", "Windows"]],
-  ["TerminalLauncherModule", ["macOS", "Windows"]],
-  ["WindowsControlPanelModule", ["Windows"]],
+  ["AppearanceSwitcherModule", Object.freeze(["macOS", "Windows"])],
+  ["BrowserBookmarksModule", Object.freeze(["macOS", "Windows"])],
+  ["FileSearchModule", Object.freeze(["macOS", "Windows"])],
+  ["SystemSettingsModule", Object.freeze(["macOS", "Windows"])],
+  ["TerminalLauncherModule", Object.freeze(["macOS", "Windows"])],
+  ["WindowsControlPanelModule", Object.freeze(["Windows"])],
+]);
+
+const packageTargetApplicability = new Map([
+  ["AppImage", Object.freeze(["Linux"])],
+  ["appx", Object.freeze(["Windows"])],
+  ["deb", Object.freeze(["Linux"])],
+  ["dmg", Object.freeze(["macOS"])],
+  ["msi", Object.freeze(["Windows"])],
+  ["nsis", Object.freeze(["Windows"])],
+  ["rpm", Object.freeze(["Linux"])],
+  ["zip", ALL_PLATFORMS],
+]);
+
+const platformApplicability = new Map([
+  ["darwin", Object.freeze(["macOS"])],
+  ["linux", Object.freeze(["Linux"])],
+  ["win32", Object.freeze(["Windows"])],
 ]);
 
 const terminalApplicability = new Map([
-  ["CommandPrompt", ["Windows"]],
-  ["Iterm", ["macOS"]],
-  ["MacOsTerminal", ["macOS"]],
-  ["Powershell", ["Windows"]],
-  ["PowershellCore", ["Windows"]],
-  ["Wsl", ["Windows"]],
+  ["CommandPrompt", Object.freeze(["Windows"])],
+  ["Iterm", Object.freeze(["macOS"])],
+  ["MacOsTerminal", Object.freeze(["macOS"])],
+  ["Powershell", Object.freeze(["Windows"])],
+  ["PowershellCore", Object.freeze(["Windows"])],
+  ["Wsl", Object.freeze(["Windows"])],
+]);
+
+const terminalAssetApplicability = new Map([
+  ["command-prompt.png", Object.freeze(["Windows"])],
+  ["iterm.png", Object.freeze(["macOS"])],
+  ["powershell-core.svg", Object.freeze(["Windows"])],
+  ["powershell.png", Object.freeze(["Windows"])],
+  ["terminal.png", Object.freeze(["macOS"])],
+  ["windows-terminal.png", Object.freeze(["Windows"])],
+  ["wsl.png", Object.freeze(["Windows"])],
+]);
+
+const browserAssetApplicability = new Map([
+  ["arc.png", Object.freeze(["macOS", "Windows"])],
+  ["brave-browser.png", Object.freeze(["macOS", "Windows"])],
+  ["firefox.png", Object.freeze(["macOS", "Windows"])],
+  ["google-chrome.png", Object.freeze(["macOS", "Windows"])],
+  ["microsoft-edge.png", Object.freeze(["macOS", "Windows"])],
+  ["yandex-browser.svg", Object.freeze(["macOS", "Windows"])],
+  ["zen.png", Object.freeze(["macOS", "Windows"])],
 ]);
 
 const globalSettingApplicability = new Map([
-  ["appearance.showAppIconInDock", ["macOS"]],
-  ["general.browser.customWebBrowser.commandlineArguments", ["Windows"]],
-  ["window.acrylicOpacity", ["Windows"]],
-  ["window.backgroundMaterial", ["Windows"]],
-  ["window.vibrancy", ["macOS"]],
-  ["window.visibleOnAllWorkspaces", ["macOS", "Linux"]],
+  ["appearance.showAppIconInDock", Object.freeze(["macOS"])],
+  ["general.browser.customWebBrowser.commandlineArguments", Object.freeze(["Windows"])],
+  ["window.acrylicOpacity", Object.freeze(["Windows"])],
+  ["window.backgroundMaterial", Object.freeze(["Windows"])],
+  ["window.vibrancy", Object.freeze(["macOS"])],
+  ["window.visibleOnAllWorkspaces", Object.freeze(["macOS", "Linux"])],
 ]);
+
+function extensionNameForRow(row) {
+  const sourceExtension = String(row.source ?? "").match(/(?:^|\/)Extensions\/([^/]+)/u)?.[1];
+  if (sourceExtension) return sourceExtension;
+  if (typeof row.id === "string" && row.id.startsWith("extension:")) return row.id.split(":")[1];
+  return undefined;
+}
+
+function extensionPlatforms(extension) {
+  return extensionApplicability.get(`${extension}Module`) ?? ALL_PLATFORMS;
+}
+
+function intersectPlatforms(supported, clues) {
+  return clues.length > 0 ? supported.filter((platform) => clues.includes(platform)) : supported;
+}
 
 function inferredApplicability(row) {
   const value = `${row.id} ${row.source}`.toLowerCase();
@@ -414,15 +543,25 @@ function inferredApplicability(row) {
 }
 
 function applicability(catalog, row) {
-  if (catalog === "extensions" && extensionApplicability.has(row.id)) {
-    return extensionApplicability.get(row.id);
+  if (catalog === "platforms") {
+    if (row.id.startsWith("architecture:")) return ALL_PLATFORMS;
+    const target = row.id.match(/^package-target:(.+)$/u)?.[1];
+    if (target && packageTargetApplicability.has(target)) return packageTargetApplicability.get(target);
+    const platform = row.id.match(/^platform:(.+)$/u)?.[1];
+    if (platform && platformApplicability.has(platform)) return platformApplicability.get(platform);
   }
-  if (catalog === "settings" && row.id.startsWith("extension:")) {
-    const extension = row.id.split(":")[1];
-    const extensionPlatforms = extensionApplicability.get(`${extension}Module`) ?? ["macOS", "Windows", "Linux"];
-    const inferredPlatforms = inferredApplicability(row);
-    const intersection = extensionPlatforms.filter((platform) => inferredPlatforms.includes(platform));
-    return intersection.length > 0 ? intersection : extensionPlatforms;
+  if (catalog === "assets" && row.id.startsWith("assets/Core/Terminal/")) {
+    const asset = row.id.slice("assets/Core/Terminal/".length);
+    if (terminalAssetApplicability.has(asset)) return terminalAssetApplicability.get(asset);
+  }
+  if (catalog === "assets" && row.id.startsWith("assets/Core/WebBrowser/")) {
+    const asset = row.id.slice("assets/Core/WebBrowser/".length);
+    if (browserAssetApplicability.has(asset)) return browserAssetApplicability.get(asset);
+  }
+  if (catalog === "extensions") return extensionPlatforms(row.id.replace(/(?:Extension)?Module$/u, ""));
+  if (["actionHandlers", "rendererSurfaces", "settings", "assets"].includes(catalog)) {
+    const extension = extensionNameForRow(row);
+    if (extension) return intersectPlatforms(extensionPlatforms(extension), inferredApplicability(row));
   }
   if (catalog === "settings" && row.id.startsWith("global:")) {
     const key = row.id.slice("global:".length);
@@ -432,17 +571,23 @@ function applicability(catalog, row) {
     const name = row.id.slice("terminal:".length);
     if (terminalApplicability.has(name)) return terminalApplicability.get(name);
   }
-  if (catalog === "registries" && row.id.startsWith("browser:")) {
-    return ["macOS", "Windows"];
-  }
+  if (catalog === "registries" && row.id.startsWith("browser:")) return Object.freeze(["macOS", "Windows"]);
   const operatingSystems = inferredApplicability(row);
-  return operatingSystems.length > 0 ? operatingSystems : ["macOS", "Windows", "Linux"];
+  return operatingSystems.length > 0 ? operatingSystems : ALL_PLATFORMS;
 }
 
 function extensionIssueForName(extension) {
   return extensionIssues.get(`${extension}Module`)
     ?? extensionIssues.get(`${extension}ExtensionModule`)
     ?? "tockteam-tl.3";
+}
+
+function issueWithProvider(baseIssue, row) {
+  const extension = extensionNameForRow(row);
+  const providerIssue = extension && extensionIssueForName(extension);
+  return providerIssue && providerIssue !== "tockteam-tl.3"
+    ? `${baseIssue},${providerIssue}`
+    : baseIssue;
 }
 
 function ownerFor(catalog, row) {
@@ -471,17 +616,17 @@ function issueFor(catalog, row) {
     return extension ? `tockteam-tl.3,${extensionIssueForName(extension)}` : "tockteam-tl.3";
   }
   if (catalog === "bridgeMethods" || catalog === "ipcChannels") return "tockteam-tl.3";
-  if (catalog === "rendererSurfaces") return row.id.startsWith("settings-route:")
-    || row.id.startsWith("extension-settings:")
-    || row.source.includes("/Settings/")
-    ? "tockteam-tl.5,tockteam-tl.13"
-    : "tockteam-tl.3,tockteam-tl.13";
+  if (catalog === "rendererSurfaces") return issueWithProvider(
+    row.id.startsWith("settings-route:")
+      || row.id.startsWith("extension-settings:")
+      || row.source.includes("/Settings/")
+      ? "tockteam-tl.5,tockteam-tl.13"
+      : "tockteam-tl.3,tockteam-tl.13",
+    row,
+  );
   if (catalog === "registries") return "tockteam-tl.11";
-  if (catalog === "settings") {
-    const extension = row.id.startsWith("extension:") ? row.id.split(":")[1] : undefined;
-    return extension ? `tockteam-tl.5,${extensionIssueForName(extension)}` : "tockteam-tl.5";
-  }
-  if (catalog === "assets") return "tockteam-tl.14";
+  if (catalog === "settings") return issueWithProvider("tockteam-tl.5", row);
+  if (catalog === "assets") return issueWithProvider("tockteam-tl.14", row);
   if (catalog === "dependencies" || catalog === "platforms") return "tockteam-tl.14,tockteam-tl.15";
   return "tockteam-tl.2";
 }
@@ -533,20 +678,35 @@ export function compareCatalog(name, expected, actual) {
   }
 }
 
-export async function auditParityCatalogs({ repoRoot = defaultRepoRoot, sourceOverrides = {} } = {}) {
+export async function auditParityCatalogs({
+  repoRoot = defaultRepoRoot,
+  sourceOverrides = {},
+  manifestPath: requestedManifestPath,
+} = {}) {
   const vendorRoot = path.join(repoRoot, "vendor/ueli");
-  const manifest = JSON.parse(await readFile(path.join(repoRoot, "scripts/ueli/parity-catalogs.json"), "utf8"));
+  const manifest = JSON.parse(await readFile(
+    requestedManifestPath ?? path.join(repoRoot, "scripts/ueli/parity-catalogs.json"),
+    "utf8",
+  ));
   if (manifest.schemaVersion !== pinnedBaseline.schemaVersion
     || manifest.baseline?.tag !== pinnedBaseline.tag
     || manifest.baseline?.commit !== pinnedBaseline.commit) {
     throw new Error(`Ueli parity manifest baseline drift: expected ${pinnedBaseline.tag} ${pinnedBaseline.commit}`);
   }
+  const manifestCatalogs = manifest.catalogs;
+  const manifestCatalogNames = manifestCatalogs && typeof manifestCatalogs === "object"
+    ? Object.keys(manifestCatalogs)
+    : [];
+  if (manifestCatalogNames.length !== CATALOG_NAMES.length
+    || manifestCatalogNames.some((name, index) => name !== CATALOG_NAMES[index])) {
+    throw new Error(`Ueli parity manifest must contain exactly the 11 known catalog keys: ${CATALOG_NAMES.join(", ")}`);
+  }
   const actual = classifiedCatalogs(await discoverCatalogs({ vendorRoot, sourceOverrides }));
   const unclassified = [];
 
   for (const name of CATALOG_NAMES) {
-    compareCatalog(name, manifest.catalogs[name] ?? [], actual[name]);
-    for (const row of manifest.catalogs[name] ?? []) {
+    compareCatalog(name, manifestCatalogs[name], actual[name]);
+    for (const row of manifestCatalogs[name]) {
       const requiredFields = ["applicability", "capabilities", "securityDisposition", "divergence", "owner", "issue", "evidence"];
       if (name === "settings") requiredFields.push("defaultValue");
       for (const field of requiredFields) {
