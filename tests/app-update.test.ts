@@ -44,6 +44,24 @@ test('development and missing metadata stay disabled without touching updater', 
   assert.equal(updater.checkCalls, 0)
 })
 
+test('packaged builds without update metadata stay disabled and never load the adapter', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'tockteam-update-'))
+  let loaded = 0
+  const owner = createDesktopAppUpdater({
+    app: fakeApp(root, true),
+    updaterFactory: async () => {
+      loaded += 1
+      throw new Error('adapter must not load')
+    },
+  })
+  assert.equal(owner.getState().status, 'disabled')
+  assert.equal((await owner.check()).accepted, false)
+  owner.start()
+  await new Promise(resolve => setTimeout(resolve, 0))
+  assert.equal(loaded, 0)
+  owner.dispose()
+})
+
 test('enabled updater configures manual finite transitions and serializes actions', async () => {
   const root = mkdtempSync(join(tmpdir(), 'tockteam-update-'))
   mkdirSync(join(root, 'resources'))

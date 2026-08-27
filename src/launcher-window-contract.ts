@@ -1,11 +1,34 @@
+import type { LauncherThemeProjection, LauncherThemeSource } from './launcher-theme.ts'
+
 export const LAUNCHER_WINDOW_IPC_CHANNELS = Object.freeze({
   dismiss: 'launcher-window:dismiss',
   focusSearch: 'launcher-window:focus-search',
   getState: 'launcher-window:getState',
+  getTheme: 'launcher-window:get-theme',
+  openSettings: 'launcher-window:open-settings',
+  routeReady: 'launcher:workbench-route-ready',
   show: 'launcher-window:show',
+  syncTheme: 'launcher:theme-sync',
+  theme: 'launcher-window:theme',
+  getThemeSource: 'launcher-window:get-theme',
+  syncThemeSource: 'launcher:theme-sync',
 })
 
 export type LauncherRendererRole = 'launcher'
+export {
+  parseLauncherThemeProjection,
+  parseLauncherThemeSource,
+} from './launcher-theme.ts'
+export {
+  LAUNCHER_WORKBENCH_ROUTE_CHANNEL,
+  LAUNCHER_WORKBENCH_ROUTE_READY_CHANNEL,
+  parseLauncherDestination,
+  parseLauncherRouteDestination,
+  parseLauncherWorkbenchRoute,
+  parseLauncherWorkbenchRouteEvent,
+} from './launcher-navigation.ts'
+export type { LauncherThemeProjection, LauncherThemeSource } from './launcher-theme.ts'
+export type { LauncherWorkbenchRoute, TockTeamDestination } from './launcher-navigation.ts'
 
 export type LauncherShortcutState = Readonly<{
   accelerator: string

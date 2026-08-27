@@ -24,7 +24,7 @@ test('launcher routes are finite and strict', () => {
 test('route delivery keeps one latest route until a window is ready', () => {
   const first = {}
   const sent: Array<{ window: object; route: unknown }> = []
-  const delivery = createLauncherWorkbenchRouteDelivery<object>((window, route) => {
+  const delivery = createLauncherWorkbenchRouteDelivery<object>((window: object, route: { destination: 'tockcoder' | 'tocktutor' }) => {
     sent.push({ window, route })
   })
   delivery.deliver(first, { destination: 'tockcoder' })
@@ -39,11 +39,24 @@ test('route delivery keeps one latest route until a window is ready', () => {
   assert.equal(sent.length, 1)
 })
 
+test('route delivery also supports the typed channel/payload seam', () => {
+  const window = {}
+  const sent: Array<{ channel: string; payload: unknown }> = []
+  const delivery = createLauncherWorkbenchRouteDelivery<object>((target: object, channel: string, payload: { destination: 'tockcoder' | 'tocktutor' }) => {
+    assert.equal(target, window)
+    sent.push({ channel, payload })
+  })
+  delivery.deliver(window, LAUNCHER_WORKBENCH_ROUTE_CHANNEL, { destination: 'tocktutor' })
+  assert.deepEqual(sent, [])
+  delivery.markReady(window)
+  assert.deepEqual(sent, [{ channel: LAUNCHER_WORKBENCH_ROUTE_CHANNEL, payload: { destination: 'tocktutor' } }])
+})
+
 test('command delivery preserves bounded FIFO order and rebinds recreated windows', () => {
   const first = {}
   const second = {}
   const sent: Array<{ window: object; value: string }> = []
-  const delivery = createLauncherWorkbenchCommandDelivery<object, string>((window, value) => {
+  const delivery = createLauncherWorkbenchCommandDelivery<object, string>((window: object, value: string) => {
     sent.push({ window, value })
   }, 3)
   delivery.deliver(first, 'paths')
@@ -62,6 +75,26 @@ test('command delivery preserves bounded FIFO order and rebinds recreated window
   assert.equal(LAUNCHER_WORKBENCH_ROUTE_CHANNEL, 'launcher:workbench-route')
 })
 
+test('route dispatch recreates a missing workbench and focuses it', () => {
+  const calls: string[] = []
+  const window = {
+    isDestroyed: () => false,
+    isMinimized: () => false,
+    restore: () => { calls.push('restore') },
+    show: () => { calls.push('show') },
+    focus: () => { calls.push('focus') },
+  }
+  let created = 0
+  dispatchLauncherRouteToWorkbench({
+    createWorkbench: () => { created += 1; return window },
+    destination: 'tockcoder',
+    send: (_window: typeof window, route: { destination: 'tockcoder' | 'tocktutor' }) => { calls.push(`route:${route.destination}`) },
+    workbenchWindow: null,
+  })
+  assert.equal(created, 1)
+  assert.deepEqual(calls, ['show', 'focus', 'route:tockcoder'])
+})
+
 test('route dispatch restores and focuses the canonical workbench without reloading', () => {
   const calls: string[] = []
   const window = {
@@ -76,7 +109,7 @@ test('route dispatch restores and focuses the canonical workbench without reload
   const target = dispatchLauncherRouteToWorkbench({
     createWorkbench: () => { created += 1; return window },
     destination: 'tocktutor',
-    send: (_window, route) => { calls.push(`route:${route.destination}`) },
+    send: (_window: typeof window, route: { destination: 'tockcoder' | 'tocktutor' }) => { calls.push(`route:${route.destination}`) },
     workbenchWindow: window,
   })
   assert.equal(target, window)

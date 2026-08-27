@@ -219,7 +219,7 @@ try {
     require: 'undefined',
     dshDesktop: 'undefined',
     electronAPI: 'undefined',
-    launcherApiKeys: ['dismiss', 'invokeAction', 'rescan', 'search'],
+    launcherApiKeys: ['dismiss', 'getTheme', 'invokeAction', 'onTheme', 'openSettings', 'rescan', 'search'],
     launcherApiFrozen: true,
     csp: launcherCsp,
     fitsViewport: true,
@@ -245,6 +245,81 @@ try {
     historyIconSize: document.querySelector('#launcher-history-toggle svg')?.getAttribute('width'),
   })`)
   assert.deepEqual(iconFacts, { selected: true, searchIconSize: '18', historyIconSize: '18' })
+  const updateState = await workbenchConnection.evaluate('(async () => await window.dshDesktop?.appUpdate?.getState())()')
+  assert.equal(updateState?.enabled, false)
+  assert.equal(updateState?.status, 'disabled')
+  const initialTheme = await launcherConnection.evaluate('window.tockteamLauncher?.getTheme()')
+  assert.ok(initialTheme?.mode === 'light' || initialTheme?.mode === 'dark')
+  assert.ok(initialTheme?.skinId === null || /^tockteam-skin-/u.test(initialTheme.skinId))
+
+  await launcherConnection.evaluate(`(() => {
+    const input = document.getElementById('launcher-search')
+    if (!(input instanceof HTMLInputElement)) return false
+    input.value = 'tutor'
+    input.dispatchEvent(new Event('input', { bubbles: true }))
+    return true
+  })()`)
+  await waitFor(
+    () => launcherConnection.evaluate(`([...document.querySelectorAll('[data-result-id]')].some(node => node.textContent?.includes('TockTutor')))`) ,
+    found => found === true,
+  )
+  await launcherConnection.evaluate(`(() => {
+    const button = [...document.querySelectorAll('#launcher-details button')]
+      .find(node => node.textContent?.includes('Open TockTutor'))
+    if (!(button instanceof HTMLButtonElement)) return false
+    button.click()
+    return true
+  })()`)
+  await waitFor(
+    () => workbenchConnection.evaluate('location.pathname'),
+    pathname => pathname === '/tocktutor',
+  )
+  assert.equal(await workbenchConnection.evaluate('window.__tockteamLauncherSmokeMarker'), workbenchMarker)
+  const tutorLauncherButton = await workbenchConnection.evaluate(`(() => {
+    const button = document.querySelector('button[aria-label="Open TockLauncher"]')
+    return button instanceof HTMLButtonElement && !button.disabled
+  })()`)
+  assert.equal(tutorLauncherButton, true)
+  await showLauncherFromWorkbench(workbenchConnection)
+  await launcherConnection.evaluate(`(() => {
+    const input = document.getElementById('launcher-search')
+    if (!(input instanceof HTMLInputElement)) return false
+    input.value = 'coder'
+    input.dispatchEvent(new Event('input', { bubbles: true }))
+    return true
+  })()`)
+  await waitFor(
+    () => launcherConnection.evaluate(`([...document.querySelectorAll('[data-result-id]')].some(node => node.textContent?.includes('TockCoder')))`) ,
+    found => found === true,
+  )
+  await launcherConnection.evaluate(`(() => {
+    const button = [...document.querySelectorAll('#launcher-details button')]
+      .find(node => node.textContent?.includes('Open TockCoder'))
+    if (!(button instanceof HTMLButtonElement)) return false
+    button.click()
+    return true
+  })()`)
+  await waitFor(
+    () => workbenchConnection.evaluate('location.pathname'),
+    pathname => pathname === '/tockcoder',
+  )
+  await showLauncherFromWorkbench(workbenchConnection)
+  const settingsClicked = await launcherConnection.evaluate(`(() => {
+    const button = document.getElementById('launcher-settings')
+    if (!(button instanceof HTMLButtonElement)) return false
+    button.click()
+    return true
+  })()`)
+  assert.equal(settingsClicked, true)
+  await waitFor(
+    () => workbenchConnection.evaluate('(async () => (await window.dshDesktop?.launcher?.getState())?.visible)()'),
+    visible => visible === false,
+  )
+  await waitFor(
+    () => workbenchConnection.evaluate('location.pathname'),
+    pathname => pathname === '/tockcoder',
+  )
+  await showLauncherFromWorkbench(workbenchConnection)
 
   const emptyHistoryOpened = await launcherConnection.evaluate(`(() => {
     const button = document.getElementById('launcher-history-toggle')
@@ -260,7 +335,7 @@ try {
       label: item?.textContent,
     }
   })()`)
-  assert.deepEqual(emptyHistory, { disabled: true, label: 'No Recent Searches' })
+  assert.deepEqual(emptyHistory, { disabled: false, label: 'coder' })
   await launcherConnection.evaluate(`(() => {
     document.getElementById('launcher-history')?.dispatchEvent(new KeyboardEvent('keydown', {
       bubbles: true,
@@ -447,9 +522,33 @@ try {
     () => launcherConnection.evaluate(`([...document.querySelectorAll('#launcher-history [role="menuitem"]')].some(node => node.textContent?.includes('coder')))`),
     found => found === true,
   )
-  console.log('launcher Electron smoke passed: sandbox/preload/CSP/geometry/focus/reuse/search/invoke/history/workbench preservation')
+  await launcherConnection.evaluate('window.tockteamLauncher?.dismiss()')
+  await waitFor(
+    () => workbenchConnection.evaluate('(async () => (await window.dshDesktop?.launcher?.getState())?.visible)()'),
+    visible => visible === false,
+  )
+  const invokeSecondInstanceToggle = async (visible) => {
+    const toggle = spawn(electron, ['.', '--toggle', `--user-data-dir=${userData}`], {
+      cwd: root,
+      stdio: 'ignore',
+    })
+    try {
+      await waitFor(
+        () => workbenchConnection.evaluate('(async () => (await window.dshDesktop?.launcher?.getState())?.visible)()'),
+        state => state === visible,
+        10_000,
+      )
+    } finally {
+      if (toggle.exitCode === null && toggle.pid !== undefined) {
+        await stopChildProcess(toggle, 1_000, 1_000).catch(() => {})
+      }
+    }
+  }
+  await invokeSecondInstanceToggle(true)
+  await invokeSecondInstanceToggle(false)
+  console.log('launcher Electron smoke passed: sandbox/preload/CSP/geometry/focus/reuse/search/invoke/history/routes/theme/updater/second-instance-toggle')
 } catch (error) {
-  throw new Error(`${error instanceof Error ? error.message : String(error)}\nElectron output:\n${output}`)
+  throw new Error(`${error instanceof Error ? error.stack ?? error.message : String(error)}\nElectron output:\n${output}`)
 } finally {
   launcherConnection?.close()
   workbenchConnection?.close()

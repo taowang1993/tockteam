@@ -1,5 +1,8 @@
 export {
+  canonicalTockTeamPath,
+  isTockCoderPath,
   isTockTutorPath,
+  TOCKCODER_ROUTE_PREFIX,
   readTockTutorRouteLocation,
   resolveTockTutorNavigation,
   TOCKTUTOR_ROUTE_PREFIX,

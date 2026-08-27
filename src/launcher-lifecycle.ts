@@ -139,6 +139,7 @@ export class LauncherLifecycleController {
   private startupDecisionMade = false
   private ready = false
   private disposed = false
+  private updater: Readonly<{ start: () => void; dispose: () => void }> | undefined
   private readonly args: Readonly<{
     getSetting: LauncherLifecycleSettingReader
     openWorkbenchSettings: () => Promise<void> | void
@@ -173,6 +174,16 @@ export class LauncherLifecycleController {
 
   get resolvedSettings(): LauncherLifecycleSettings | null {
     return this.settings
+  }
+
+  attachUpdater(updater: Readonly<{ start: () => void; dispose: () => void }>): void {
+    if (this.disposed) {
+      updater.dispose()
+      return
+    }
+    this.updater?.dispose()
+    this.updater = updater
+    updater.start()
   }
 
   async sync(): Promise<LauncherLifecycleSettings> {
@@ -258,6 +269,8 @@ export class LauncherLifecycleController {
     if (this.disposed) return
     this.disposed = true
     this.ready = false
+    this.updater?.dispose()
+    this.updater = undefined
     this.args.setTrayVisible(false)
   }
 }

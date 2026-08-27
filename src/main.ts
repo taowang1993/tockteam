@@ -12,6 +12,7 @@ import {
   session,
   shell,
   systemPreferences,
+  Tray,
   type MenuItemConstructorOptions,
   type Session,
   type WebContents,
@@ -97,6 +98,30 @@ import {
   registerWorkbenchLauncherIpcHandlers,
 } from './launcher-window-ipc.ts'
 import { LauncherWindowRegistry, type LauncherRegistryWindow } from './launcher-window-registry.ts'
+import {
+  createLauncherWorkbenchCommandDelivery,
+  createLauncherWorkbenchRouteDelivery,
+  dispatchLauncherRouteToWorkbench,
+} from './launcher-workbench-navigation.ts'
+import {
+  LAUNCHER_WORKBENCH_ROUTE_CHANNEL,
+  parseLauncherWorkbenchRoute,
+  type LauncherWorkbenchRoute,
+} from './launcher-navigation.ts'
+import {
+  LauncherLifecycleController,
+  LauncherToggleIntentQueue,
+  SingleOwnedTray,
+  readLaunchOnStart,
+  setLaunchOnStart,
+} from './launcher-lifecycle.ts'
+import { createLauncherThemeProjector } from './launcher-theme.ts'
+import {
+  DESKTOP_APP_UPDATE_CHANNELS,
+  parseDesktopAppUpdateActionResult,
+  parseDesktopAppUpdateState,
+} from './desktop-app-update.ts'
+import { createDesktopAppUpdater, type DesktopAppUpdater } from './app-update.ts'
 
 const PRODUCT_NAME = 'TockTeam Desktop'
 const DATA_DIRECTORY = 'TockTeam-Desktop'
@@ -125,9 +150,26 @@ let queuedPaths: string[] = []
 let queuedProtocolUrls: string[] = []
 let tockTutorPreviousThemeSource: 'system' | 'light' | 'dark' | undefined
 let launcherController: LauncherOverlayController | undefined
+let launcherLifecycle: LauncherLifecycleController | undefined
+let launcherUpdater: DesktopAppUpdater | undefined
 let launcherIpcDisposer: (() => void) | undefined
 let workbenchLauncherIpcDisposer: (() => void) | undefined
+let secureTeardownPromise: Promise<void> | undefined
+let launcherUpdaterRuntimeWasActive = false
+let launcherRescan: (() => Promise<unknown>) | undefined
 const launcherWindowRegistry = new LauncherWindowRegistry()
+const launcherToggleQueue = new LauncherToggleIntentQueue()
+let launcherTrayOwner: SingleOwnedTray<Tray> | undefined
+const launcherThemeProjector = createLauncherThemeProjector()
+const workbenchRouteDelivery = createLauncherWorkbenchRouteDelivery<BrowserWindow>((window: BrowserWindow, route: LauncherWorkbenchRoute) => {
+  window.webContents.send(LAUNCHER_WORKBENCH_ROUTE_CHANNEL, route)
+})
+const workbenchCommandDelivery = createLauncherWorkbenchCommandDelivery<BrowserWindow, DesktopCommand>((window, command) => {
+  window.webContents.send('desktop:command', command)
+})
+const commandsBeforeWorkbenchWindow: DesktopCommand[] = []
+let workbenchGeneration = 0
+let workbenchReadyGeneration = -1
 const logTail: string[] = []
 const desktopCallerAuthorizations = new DesktopCallerAuthorizations()
 const webClipFrames = new WebClipFrameAuthorizations()
@@ -806,21 +848,19 @@ function initializeLauncher(): void {
     platform: launcherPlatform,
   })
   let controller: LauncherOverlayController | undefined
+  launcherRescan = coreSearch.rescan
   const actions = new LauncherActionStore({
     execute: async record => {
       if (await coreSearch.executeAction(record)) return
-      await executeTockTeamDestination(record, isEligibleDesktopRevealWindow, () => {
-        if (!isEligibleDesktopRevealWindow()) throw new Error('TockTeam workbench is not on an active runtime page')
-        const workbench = mainWindow
-        if (workbench === undefined || workbench.isDestroyed()) {
-          throw new Error('TockTeam workbench is unavailable')
-        }
-        if (workbench.isMinimized()) workbench.restore()
-        workbench.show()
-        workbench.focus()
-        sendCommand({ type: 'focus-composer' })
+      await executeTockTeamDestination(record, () => {
+        if (runtimeUrl === undefined) return false
+        return mainWindow === undefined || mainWindow.isDestroyed()
+          ? true
+          : isEligibleDesktopRevealWindow()
+      }, destination => {
+        dispatchWorkbenchRoute({ destination })
       })
-      if (record.hideWindowAfterInvocation) controller?.hide()
+      if (record.hideWindowAfterInvocation) controller?.hideAfterInvocation(record.owner.webContentsId)
     },
   })
   const nextController = new LauncherOverlayController({
@@ -829,6 +869,7 @@ function initializeLauncher(): void {
     globalShortcut,
     loadWindow: window => window.loadURL(urlPolicy.entryUrl).then(() => undefined),
     onWindowCleared: window => actions.clearOwner({ role: 'launcher', webContentsId: window.webContents.id }),
+    getThemeProjection: () => launcherThemeProjector.get(),
     platform: process.platform,
     registerWindow: (_role, window) => launcherWindowRegistry.register(
       'launcher',
@@ -845,8 +886,10 @@ function initializeLauncher(): void {
   })
   const disposeWindowIpc = registerLauncherWindowIpcHandlers({
     controller: nextController,
+    getTheme: () => launcherThemeProjector.get(),
     guard: launcherGuard,
     ipcMain,
+    openSettings: openWorkbenchSettings,
   })
   try {
     const disposeSearchIpc = registerLauncherIpcHandlers({
@@ -868,8 +911,129 @@ function initializeLauncher(): void {
     assertTrustedMainIpc: event => { assertTrustedMainIpc(event as Electron.IpcMainInvokeEvent) },
     controller: nextController,
     ipcMain,
+    onRouteReady: event => {
+      const sender = (event as Electron.IpcMainInvokeEvent).sender
+      if (sender !== mainWindow?.webContents) throw new Error('Desktop route readiness sender is unavailable')
+      const window = mainWindow
+      if (window === undefined || window.isDestroyed()) throw new Error('Desktop workbench is unavailable')
+      markWorkbenchReady(window)
+    },
+    syncTheme: (event, source) => {
+      const sender = (event as Electron.IpcMainInvokeEvent).sender
+      const window = mainWindow
+      if (window === undefined || window.isDestroyed()
+        || sender !== window.webContents
+        || !workbenchRouteDelivery.isReady(window)
+        || workbenchReadyGeneration !== workbenchGeneration) {
+        throw new Error('Desktop theme sync is unavailable while the workbench is navigating')
+      }
+      const projection = launcherThemeProjector.update(source)
+      broadcastLauncherTheme(projection)
+      return Object.freeze({ ok: true as const })
+    },
   })
   nextController.registerShortcut()
+}
+
+async function initializeLauncherLifecycle(): Promise<void> {
+  if (launcherLifecycle !== undefined) return
+  initializeLauncherTray()
+  const overlay = launcherController
+  if (overlay === undefined) throw new Error('TockLauncher overlay is not initialized')
+  launcherLifecycle = new LauncherLifecycleController({
+    getSetting: (_key, fallback) => fallback,
+    openWorkbenchSettings,
+    overlay,
+    queue: launcherToggleQueue,
+    queueSecureRelaunch,
+    requestSecureQuit: reason => { requestSecureQuit(reason) },
+    rescan: async () => await launcherRescan?.(),
+    setDockVisible: setLauncherDockVisible,
+    setTrayVisible: setLauncherTrayVisible,
+    updateSetting: async () => {},
+  })
+  try {
+    await launcherLifecycle.sync()
+  } catch (error) {
+    appendLog('desktop', `failed to initialize launcher lifecycle: ${error instanceof Error ? error.message : String(error)}`)
+  }
+}
+
+function markWorkbenchReady(window: BrowserWindow): void {
+  workbenchReadyGeneration = workbenchGeneration
+  workbenchRouteDelivery.markReady(window)
+  workbenchCommandDelivery.markReady(window)
+  void launcherLifecycle?.markReady().catch(error => {
+    appendLog('desktop', `failed to mark launcher ready: ${error instanceof Error ? error.message : String(error)}`)
+  })
+}
+
+function assignMainWindow(window: BrowserWindow): BrowserWindow {
+  workbenchGeneration += 1
+  workbenchReadyGeneration = -1
+  mainWindow = window
+  workbenchRouteDelivery.markUnready(window)
+  workbenchCommandDelivery.markUnready(window)
+  const pending = commandsBeforeWorkbenchWindow.splice(0)
+  for (const command of pending) workbenchCommandDelivery.deliver(window, command)
+  return window
+}
+
+function activateWorkbench(): void {
+  if (mainWindow === undefined || mainWindow.isDestroyed()) {
+    if (runtimeUrl === undefined) {
+      void showSplash({ error: true, message: 'TockTeam 未运行，请从“DSH”菜单重新启动。' })
+      return
+    }
+    const window = assignMainWindow(createWindow())
+    void window.loadURL(runtimeUrl.href).then(flushQueuedOpenRequests).catch(error => {
+      appendLog('desktop', `failed to activate workbench: ${error instanceof Error ? error.message : String(error)}`)
+    })
+    return
+  }
+  if (mainWindow.isMinimized()) mainWindow.restore()
+  mainWindow.show()
+  mainWindow.focus()
+}
+
+function dispatchWorkbenchRoute(route: LauncherWorkbenchRoute): void {
+  const parsedRoute = parseLauncherWorkbenchRoute(route)
+  if (runtimeUrl === undefined) throw new Error('TockTeam workbench is not on an active runtime page')
+  if (mainWindow !== undefined && !mainWindow.isDestroyed() && !isEligibleDesktopRevealWindow()) {
+    throw new Error('TockTeam workbench is not on an active runtime page')
+  }
+  const target = dispatchLauncherRouteToWorkbench({
+    createWorkbench: () => {
+      if (runtimeUrl === undefined) throw new Error('TockTeam runtime is unavailable')
+      const window = assignMainWindow(createWindow())
+      void window.loadURL(runtimeUrl.href).catch(error => {
+        appendLog('desktop', `failed to load workbench route: ${error instanceof Error ? error.message : String(error)}`)
+      })
+      return window
+    },
+    destination: parsedRoute.destination,
+    send: (window: BrowserWindow, nextRoute: LauncherWorkbenchRoute) => { workbenchRouteDelivery.deliver(window, nextRoute) },
+    workbenchWindow: mainWindow,
+  })
+  if (mainWindow !== target) assignMainWindow(target)
+}
+
+async function ensureWorkbenchWindow(): Promise<void> {
+  if (runtimeUrl === undefined) throw new Error('TockTeam workbench is unavailable')
+  const current = mainWindow
+  const window = current === undefined || current.isDestroyed()
+    ? assignMainWindow(createWindow())
+    : current
+  if (!isEligibleDesktopRevealWindow()) await window.loadURL(runtimeUrl.href)
+  if (window.isMinimized()) window.restore()
+  window.show()
+  window.focus()
+}
+
+async function openWorkbenchSettings(): Promise<void> {
+  await ensureWorkbenchWindow()
+  dispatchWorkbenchRoute({ destination: 'tockcoder' })
+  sendCommand({ type: 'show-settings' })
 }
 
 function createWindow(options: { preview?: boolean; title?: string } = {}): BrowserWindow {
@@ -911,6 +1075,8 @@ function createWindow(options: { preview?: boolean; title?: string } = {}): Brow
     if (mainWindow === window) {
       launcherController?.destroyWindow()
       desktopCallerAuthorizations.revokeWindow(windowId)
+      workbenchRouteDelivery.clear(window)
+      workbenchCommandDelivery.clear(window)
       resetTockTutorTheme(window)
       mainWindow = undefined
     }
@@ -972,15 +1138,30 @@ function createWindow(options: { preview?: boolean; title?: string } = {}): Brow
       event.preventDefault()
     })
   })
-  window.webContents.on('did-start-navigation', (_event, _url, _inPlace, isMainFrame) => {
+  window.webContents.on('did-finish-load', () => {
+    if (mainWindow !== window || runtimeOrigin === undefined) return
+    if (originOf(window.webContents.getURL()) !== runtimeOrigin) return
+    markWorkbenchReady(window)
+  })
+  window.webContents.on('did-start-navigation', (_event, _url, inPlace, isMainFrame) => {
     if (isMainFrame) {
       desktopCallerAuthorizations.revokeWindow(windowId)
-      if (mainWindow === window) resetTockTutorTheme(window)
+      if (!inPlace && mainWindow === window) {
+        workbenchGeneration += 1
+        workbenchReadyGeneration = -1
+        workbenchRouteDelivery.markUnready(window)
+        workbenchCommandDelivery.markUnready(window)
+        resetTockTutorTheme(window)
+      }
     }
   })
   window.webContents.on('render-process-gone', () => {
     desktopCallerAuthorizations.revokeWindow(windowId)
-    if (mainWindow === window) resetTockTutorTheme(window)
+    if (mainWindow === window) {
+      workbenchRouteDelivery.markUnready(window)
+      workbenchCommandDelivery.markUnready(window)
+      resetTockTutorTheme(window)
+    }
   })
   window.webContents.on('will-navigate', (event, url) => {
     const allowedOrigin = options.preview === true ? previewOrigin : runtimeOrigin
@@ -992,17 +1173,31 @@ function createWindow(options: { preview?: boolean; title?: string } = {}): Brow
 }
 
 async function showSplash(options: { detail?: string; error?: boolean; message?: string } = {}): Promise<void> {
-  if (mainWindow === undefined || mainWindow.isDestroyed()) mainWindow = createWindow()
+  if (mainWindow === undefined || mainWindow.isDestroyed()) assignMainWindow(createWindow())
   const query: Record<string, string> = {}
   if (options.error === true) query.state = 'error'
   if (options.message !== undefined) query.message = options.message
   if (options.detail !== undefined) query.detail = options.detail.slice(0, 4_000)
-  await mainWindow.loadFile(splashPath, { query })
+  const window = mainWindow
+  if (window === undefined || window.isDestroyed()) throw new Error('TockTeam workbench is unavailable')
+  await window.loadFile(splashPath, { query })
 }
 
 function sendCommand(command: DesktopCommand): void {
-  if (mainWindow === undefined || mainWindow.isDestroyed()) return
-  mainWindow.webContents.send('desktop:command', command)
+  const window = mainWindow
+  if (window === undefined || window.isDestroyed()) {
+    if (commandsBeforeWorkbenchWindow.length >= 128) {
+      appendLog('desktop', 'workbench command queue is full')
+      return
+    }
+    commandsBeforeWorkbenchWindow.push(command)
+    return
+  }
+  try {
+    workbenchCommandDelivery.deliver(window, command)
+  } catch (error) {
+    appendLog('desktop', `failed to queue workbench command: ${error instanceof Error ? error.message : String(error)}`)
+  }
 }
 
 function normalizeWorkspacePaths(paths: readonly string[]): string[] {
@@ -1052,21 +1247,40 @@ function flushQueuedOpenRequests(): void {
   flushQueuedProtocols()
 }
 
+let runtimeStopPromise: Promise<void> | undefined
+
+async function stopRuntimeAndChannels(): Promise<void> {
+  if (runtimeStopPromise !== undefined) return await runtimeStopPromise
+  const supervisor = runtime
+  runtime = undefined
+  runtimeUrl = undefined
+  runtimeOrigin = undefined
+  const operation = (async (): Promise<void> => {
+    const results = await Promise.allSettled([
+      supervisor?.stop() ?? Promise.resolve(),
+      desktopPrintExportChannel.stop(),
+      desktopPopOutChannel.stop(),
+      desktopMicrophoneChannel.stop(),
+      stopDesktopDispatchChannel(),
+      desktopCallerChannel.stop(),
+      desktopPickerChannel.stop(),
+      desktopRevealChannel.stop(),
+    ])
+    const failed = results.find(result => result.status === 'rejected')
+    if (failed?.status === 'rejected') throw failed.reason
+  })()
+  const tracked = operation.finally(() => {
+    if (runtimeStopPromise === tracked) runtimeStopPromise = undefined
+  })
+  runtimeStopPromise = tracked
+  return await runtimeStopPromise
+}
+
 function handleRuntimeExit(exit: RuntimeExit): void {
   appendLog('desktop', `DSH runtime exited: code=${String(exit.code)} signal=${String(exit.signal)}`)
   if (quitting || transitioning) return
   transitioning = true
-  runtimeUrl = undefined
-  runtimeOrigin = undefined
-  void Promise.allSettled([
-    desktopRevealChannel.stop(),
-    desktopPickerChannel.stop(),
-    desktopCallerChannel.stop(),
-    stopDesktopDispatchChannel(),
-    desktopMicrophoneChannel.stop(),
-    desktopPopOutChannel.stop(),
-    desktopPrintExportChannel.stop(),
-  ]).then(async () => {
+  void stopRuntimeAndChannels().then(async () => {
     await showSplash({
       error: true,
       message: 'TockTeam 已停止。可从“DSH”菜单重新启动。',
@@ -1092,17 +1306,13 @@ async function startRuntime(): Promise<void> {
     const url = await supervisor.start()
     runtimeUrl = url
     runtimeOrigin = url.origin
-    if (mainWindow === undefined || mainWindow.isDestroyed()) mainWindow = createWindow()
-    await mainWindow.loadURL(url.href)
+    if (mainWindow === undefined || mainWindow.isDestroyed()) assignMainWindow(createWindow())
+    const window = mainWindow
+    if (window === undefined || window.isDestroyed()) throw new Error('TockTeam workbench is unavailable')
+    await window.loadURL(url.href)
     flushQueuedOpenRequests()
   } catch (error) {
-    await desktopPrintExportChannel.stop()
-    await desktopPopOutChannel.stop()
-    await desktopMicrophoneChannel.stop()
-    await stopDesktopDispatchChannel()
-    await desktopCallerChannel.stop()
-    await desktopPickerChannel.stop()
-    await desktopRevealChannel.stop()
+    await stopRuntimeAndChannels().catch(() => {})
     throw error
   }
 }
@@ -1161,17 +1371,7 @@ async function startPreviewSurface(input: {
 async function stopLiveForMarketplace(): Promise<void> {
   transitioning = true
   await showSplash({ message: '正在应用插件 Profile…' })
-  await runtime?.stop()
-  await desktopPrintExportChannel.stop()
-  await desktopPopOutChannel.stop()
-  await desktopMicrophoneChannel.stop()
-  await stopDesktopDispatchChannel()
-  await desktopCallerChannel.stop()
-  await desktopPickerChannel.stop()
-  await desktopRevealChannel.stop()
-  runtime = undefined
-  runtimeUrl = undefined
-  runtimeOrigin = undefined
+  await stopRuntimeAndChannels()
 }
 
 async function startLiveForMarketplace(): Promise<void> {
@@ -1187,17 +1387,7 @@ async function restartRuntime(message = '正在重新启动 TockTeam…'): Promi
   transitioning = true
   try {
     await showSplash({ message })
-    await runtime?.stop()
-    await desktopPrintExportChannel.stop()
-    await desktopPopOutChannel.stop()
-    await desktopMicrophoneChannel.stop()
-    await stopDesktopDispatchChannel()
-    await desktopCallerChannel.stop()
-    await desktopPickerChannel.stop()
-    await desktopRevealChannel.stop()
-    runtime = undefined
-    runtimeUrl = undefined
-    runtimeOrigin = undefined
+    await stopRuntimeAndChannels()
     await startRuntime()
   } catch (error) {
     appendLog('desktop', error instanceof Error ? error.stack ?? error.message : String(error))
@@ -1243,15 +1433,7 @@ async function installLocalPlugin(): Promise<void> {
   transitioning = true
   try {
     await showSplash({ message: '正在安装 DSH 插件…' })
-    await runtime?.stop()
-    await desktopPrintExportChannel.stop()
-    await desktopPopOutChannel.stop()
-    await desktopMicrophoneChannel.stop()
-    await stopDesktopDispatchChannel()
-    await desktopCallerChannel.stop()
-    await desktopPickerChannel.stop()
-    await desktopRevealChannel.stop()
-    runtime = undefined
+    await stopRuntimeAndChannels()
     const options = runtimeOptions()
     await runDshCommand(options, ['plugin', '--profile', DESKTOP_PROFILE, 'add', pluginPath])
     await startRuntime()
@@ -1353,6 +1535,109 @@ function labels() {
   }
 }
 
+function setLauncherDockVisible(visible: boolean): void {
+  if (process.platform !== 'darwin' || app.dock === undefined) return
+  try {
+    if (visible) app.dock.show()
+    else app.dock.hide()
+  } catch (error) {
+    appendLog('desktop', `Dock visibility update failed: ${error instanceof Error ? error.message : String(error)}`)
+  }
+}
+
+function setLauncherTrayVisible(visible: boolean): void {
+  if (launcherTrayOwner === undefined) return
+  try {
+    launcherTrayOwner.setVisible(visible)
+  } catch (error) {
+    appendLog('desktop', `tray visibility update failed: ${error instanceof Error ? error.message : String(error)}`)
+  }
+}
+
+function initializeLauncherTray(): void {
+  if (launcherTrayOwner !== undefined) return
+  launcherTrayOwner = new SingleOwnedTray(() => {
+    const icon = windowIconPath()
+    if (icon === undefined) throw new Error('TockTeam tray icon is unavailable')
+    const tray = new Tray(icon)
+    try {
+      tray.setToolTip(PRODUCT_NAME)
+      tray.setContextMenu(Menu.buildFromTemplate([
+        { label: 'Show Workbench', click: () => { activateWorkbench() } },
+        { label: 'Show TockLauncher', click: () => { void launcherController?.show().catch(() => {}) } },
+        { label: 'Settings', click: () => { void openWorkbenchSettings().catch(() => {}) } },
+        { type: 'separator' },
+        { label: 'Quit TockTeam', click: () => { requestSecureQuit('tray') } },
+      ]))
+      tray.on('click', () => { activateWorkbench() })
+      return tray
+    } catch (error) {
+      try { tray.destroy() } catch { /* local native cleanup is best effort */ }
+      throw error
+    }
+  })
+}
+
+function requestSecureQuit(_reason: 'native-quit' | 'tray' | 'launcher-command-quit' | 'updater-install'): void {
+  if (secureTeardownPromise !== undefined) return
+  secureTeardownPromise = (async () => {
+    quitting = true
+    launcherLifecycle?.dispose()
+    launcherController?.dispose()
+    launcherIpcDisposer?.()
+    launcherIpcDisposer = undefined
+    workbenchLauncherIpcDisposer?.()
+    workbenchLauncherIpcDisposer = undefined
+    launcherUpdater = undefined
+    const results = await Promise.allSettled([
+      stopRuntimeAndChannels(),
+      stopPreviewSurface(),
+      marketplaceAgentGateway?.close() ?? Promise.resolve(),
+    ])
+    for (const result of results) {
+      if (result.status === 'rejected') {
+        appendLog('desktop', result.reason instanceof Error ? result.reason.message : String(result.reason))
+      }
+    }
+    logStream?.end()
+    app.quit()
+  })()
+  void secureTeardownPromise.catch(error => {
+    appendLog('desktop', `secure quit failed: ${error instanceof Error ? error.message : String(error)}`)
+    app.quit()
+  })
+}
+
+function queueSecureRelaunch(reason: 'launcher-settings-import' | 'launcher-settings-reset'): void {
+  if (quitting) return
+  try { app.relaunch() } catch (error) {
+    appendLog('desktop', `relaunch requested by ${reason} failed: ${error instanceof Error ? error.message : String(error)}`)
+  }
+  requestSecureQuit('native-quit')
+}
+
+async function prepareUpdaterInstall(): Promise<void> {
+  launcherUpdaterRuntimeWasActive = runtime !== undefined && runtimeUrl !== undefined
+  await stopRuntimeAndChannels()
+}
+
+async function recoverUpdaterInstall(): Promise<void> {
+  if (!launcherUpdaterRuntimeWasActive || quitting) return
+  launcherUpdaterRuntimeWasActive = false
+  await startRuntime()
+}
+
+function broadcastLauncherTheme(projection: ReturnType<typeof launcherThemeProjector.get>): void {
+  launcherController?.sendTheme(projection)
+}
+
+function broadcastDesktopAppUpdateState(state: ReturnType<DesktopAppUpdater['getState']>): void {
+  const window = mainWindow
+  if (window === undefined || window.isDestroyed() || window.webContents.isDestroyed()) return
+  if (runtimeOrigin === undefined || originOf(window.webContents.getURL()) !== runtimeOrigin) return
+  window.webContents.send(DESKTOP_APP_UPDATE_CHANNELS.state, state)
+}
+
 function buildMenu(): void {
   const text = labels()
   const info = desktopInfo()
@@ -1363,7 +1648,7 @@ function buildMenu(): void {
       submenu: [
         { role: 'about' },
         { type: 'separator' },
-        { label: text.settings, accelerator: 'CmdOrCtrl+,', click: () => { sendCommand({ type: 'show-settings' }) } },
+        { label: text.settings, accelerator: 'CmdOrCtrl+,', click: () => { void openWorkbenchSettings().catch(() => {}) } },
         ...(process.platform === 'darwin'
           ? [
             { type: 'separator' as const },
@@ -1481,6 +1766,35 @@ function installIpc(): void {
   ipcMain.handle('desktop:get-runtime-snapshot', event => {
     assertTrustedMainIpc(event)
     return desktopRuntimeSnapshot()
+  })
+  ipcMain.handle(DESKTOP_APP_UPDATE_CHANNELS.getState, event => {
+    assertTrustedMainIpc(event)
+    if (launcherUpdater === undefined) throw new Error('Desktop updater is not initialized')
+    return parseDesktopAppUpdateState(launcherUpdater.getState())
+  })
+  ipcMain.handle(DESKTOP_APP_UPDATE_CHANNELS.check, async event => {
+    assertTrustedMainIpc(event)
+    if (launcherUpdater === undefined) throw new Error('Desktop updater is not initialized')
+    return parseDesktopAppUpdateActionResult(await launcherUpdater.check())
+  })
+  ipcMain.handle(DESKTOP_APP_UPDATE_CHANNELS.download, async event => {
+    assertTrustedMainIpc(event)
+    if (launcherUpdater === undefined) throw new Error('Desktop updater is not initialized')
+    return parseDesktopAppUpdateActionResult(await launcherUpdater.download())
+  })
+  ipcMain.handle(DESKTOP_APP_UPDATE_CHANNELS.install, async event => {
+    assertTrustedMainIpc(event)
+    if (launcherUpdater === undefined) throw new Error('Desktop updater is not initialized')
+    return parseDesktopAppUpdateActionResult(await launcherUpdater.install())
+  })
+  ipcMain.handle('desktop:launch-on-start:get', event => {
+    assertTrustedMainIpc(event)
+    return readLaunchOnStart(app)
+  })
+  ipcMain.handle('desktop:launch-on-start:set', (event, raw: unknown) => {
+    assertTrustedMainIpc(event)
+    if (typeof raw !== 'boolean') throw new Error('Launch on Start must be a boolean')
+    return setLaunchOnStart(app, raw)
   })
   ipcMain.handle('desktop:set-tocktutor-active', (event, raw: unknown) => {
     assertTrustedMainIpc(event)
@@ -1618,6 +1932,9 @@ async function bootstrap(): Promise<void> {
     applicationVersion: PRODUCT_VERSION,
     version: `TockTeam plugin distribution ${PRODUCT_VERSION}`,
   })
+  // Capture the launcher intent before app/runtime readiness; repeated intents
+  // collapse into one toggle and never become workspace paths.
+  launcherToggleQueue.capture(process.argv)
   const gotLock = app.requestSingleInstanceLock({
     tockTutorProtocolUrls: parseSingleInstanceProtocolUrls(process.argv, undefined),
   })
@@ -1626,17 +1943,19 @@ async function bootstrap(): Promise<void> {
     return
   }
   app.on('second-instance', (_event, argv, _workingDirectory, additionalData) => {
-    const arguments_ = argv.slice(1).filter(argument => !argument.startsWith('-'))
+    const toggle = argv.includes('--toggle')
+    const arguments_ = argv.slice(1).filter(argument => !argument.startsWith('-') && argument !== '--toggle')
     queuedProtocolUrls.push(...parseSingleInstanceProtocolUrls(arguments_, additionalData))
     queuedPaths.push(...arguments_.filter(argument => !isTockTutorProtocol(argument)))
-    if (mainWindow === undefined || mainWindow.isDestroyed()) {
-      mainWindow = createWindow()
-      if (runtimeUrl !== undefined) void mainWindow.loadURL(runtimeUrl.href).then(flushQueuedOpenRequests)
-    } else {
-      mainWindow.show()
-      mainWindow.focus()
-      flushQueuedOpenRequests()
+    if (toggle) {
+      if (launcherLifecycle === undefined) launcherToggleQueue.capture(argv)
+      else void launcherLifecycle.handleSecondInstance(argv, activateWorkbench).catch(error => {
+        appendLog('desktop', `second-instance toggle failed: ${error instanceof Error ? error.message : String(error)}`)
+      })
+      return
     }
+    activateWorkbench()
+    flushQueuedOpenRequests()
   })
   app.on('open-url', (event, url) => {
     event.preventDefault()
@@ -1660,6 +1979,19 @@ async function bootstrap(): Promise<void> {
     onError: error => { appendLog('desktop', `[marketplace-agent] ${String(error)}`) },
   })
   initializeLauncher()
+  await initializeLauncherLifecycle()
+  launcherUpdater = createDesktopAppUpdater({
+    app: {
+      getVersion: () => app.getVersion(),
+      isPackaged: app.isPackaged,
+      resourcesPath: process.resourcesPath,
+      getPath: name => app.getPath(name as Parameters<typeof app.getPath>[0]),
+    },
+    onStateChange: broadcastDesktopAppUpdateState,
+    prepareInstall: prepareUpdaterInstall,
+    recoverInstallFailure: recoverUpdaterInstall,
+  })
+  launcherLifecycle?.attachUpdater(launcherUpdater)
   installIpc()
   session.defaultSession.setPermissionRequestHandler((webContents, permission, callback, details) => {
     if (permission === 'media' && 'mediaTypes' in details && allowsRuntimeMicrophone({
@@ -1701,54 +2033,22 @@ async function bootstrap(): Promise<void> {
   browserSession.setPermissionRequestHandler((_webContents, _permission, callback) => { callback(false) })
   browserSession.setPermissionCheckHandler(() => false)
   buildMenu()
-  mainWindow = createWindow()
+  assignMainWindow(createWindow())
   await showSplash()
   const initialArguments = process.argv.slice(app.isPackaged ? 1 : 2)
-    .filter(argument => !argument.startsWith('-'))
+    .filter(argument => !argument.startsWith('-') && argument !== '--toggle')
   queuedProtocolUrls.push(...initialArguments.filter(isTockTutorProtocol))
   queuedPaths.push(...initialArguments.filter(argument => !isTockTutorProtocol(argument)))
   await restartRuntime()
 
-  app.on('activate', () => {
-    if (mainWindow !== undefined && !mainWindow.isDestroyed()) {
-      mainWindow.show()
-      return
-    }
-    mainWindow = createWindow()
-    if (runtimeUrl !== undefined) void mainWindow.loadURL(runtimeUrl.href).then(flushQueuedOpenRequests)
-    else void showSplash({ error: true, message: 'TockTeam 未运行，请从“DSH”菜单重新启动。' })
-  })
+  app.on('activate', () => { activateWorkbench() })
   app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') app.quit()
   })
-  app.on('before-quit', (event) => {
+  app.on('before-quit', event => {
     if (quitting) return
     event.preventDefault()
-    quitting = true
-    launcherController?.dispose()
-    launcherIpcDisposer?.()
-    workbenchLauncherIpcDisposer?.()
-    void Promise.allSettled([
-      runtime?.stop() ?? Promise.resolve(),
-      desktopPrintExportChannel.stop(),
-      desktopPopOutChannel.stop(),
-      desktopMicrophoneChannel.stop(),
-      stopDesktopDispatchChannel(),
-      desktopCallerChannel.stop(),
-      desktopPickerChannel.stop(),
-      desktopRevealChannel.stop(),
-      stopPreviewSurface(),
-      marketplaceAgentGateway?.close() ?? Promise.resolve(),
-    ]).then(results => {
-      for (const result of results) {
-        if (result.status === 'rejected') {
-          appendLog('desktop', result.reason instanceof Error ? result.reason.message : String(result.reason))
-        }
-      }
-    }).finally(() => {
-      logStream?.end()
-      app.quit()
-    })
+    requestSecureQuit('native-quit')
   })
 }
 

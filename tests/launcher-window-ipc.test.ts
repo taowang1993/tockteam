@@ -40,6 +40,52 @@ test('launcher IPC registration owns only dismiss and disposes idempotently', as
   assert.deepEqual(ipcMain.removed, [LAUNCHER_WINDOW_IPC_CHANNELS.dismiss])
 })
 
+test('launcher theme and settings operations remain owner-bound and strict', async () => {
+  const ipcMain = new FakeIpcMain()
+  let hides = 0
+  let settings = 0
+  const dispose = registerLauncherWindowIpcHandlers({
+    controller: { hide: () => { hides += 1 } },
+    getTheme: () => ({ mode: 'dark', skinId: null, revision: 3 }),
+    guard: { assert: () => ({ role: 'launcher', webContentsId: 2 }) },
+    ipcMain,
+    openSettings: () => { settings += 1 },
+  })
+  const getTheme = ipcMain.handlers.get(LAUNCHER_WINDOW_IPC_CHANNELS.getTheme)
+  const openSettings = ipcMain.handlers.get(LAUNCHER_WINDOW_IPC_CHANNELS.openSettings)
+  assert.deepEqual(await getTheme?.({}), { mode: 'dark', skinId: null, revision: 3 })
+  await openSettings?.({})
+  assert.equal(hides, 1)
+  assert.equal(settings, 1)
+  await assert.rejects(async () => await getTheme?.({}, 'extra'), /arguments/u)
+  dispose()
+})
+
+test('workbench launcher handlers deliver readiness and finite theme facts', async () => {
+  const ipcMain = new FakeIpcMain()
+  let ready = 0
+  let synced: unknown
+  const dispose = registerWorkbenchLauncherIpcHandlers({
+    assertTrustedMainIpc: () => {},
+    controller: {
+      getState: () => ({ visible: false } as never),
+      show: async () => {},
+    },
+    ipcMain,
+    onRouteReady: () => { ready += 1 },
+    syncTheme: (_event, source) => { synced = source; return { ok: true } },
+  })
+  await ipcMain.handlers.get(LAUNCHER_WINDOW_IPC_CHANNELS.routeReady)?.({})
+  await ipcMain.handlers.get(LAUNCHER_WINDOW_IPC_CHANNELS.syncTheme)?.({}, { mode: 'light', skinId: null })
+  assert.equal(ready, 1)
+  assert.deepEqual(synced, { mode: 'light', skinId: null })
+  await assert.rejects(
+    async () => await ipcMain.handlers.get(LAUNCHER_WINDOW_IPC_CHANNELS.syncTheme)?.({}, { mode: 'light', skinId: 'unknown' }),
+    /skin/u,
+  )
+  dispose()
+})
+
 test('workbench launcher handlers guard before side effects and reject arguments', async () => {
   const ipcMain = new FakeIpcMain()
   let trusted = true

@@ -4,6 +4,7 @@ import {
   ListFilter,
   RefreshCw,
   Search,
+  Settings,
   Star,
   StarOff,
   Trash2,
@@ -13,6 +14,8 @@ import {
 import type { IconNode } from 'lucide'
 import type { LauncherPublicAction, LauncherPublicResultItem } from './launcher-actions.ts'
 import type { LauncherPreloadBridge } from './launcher-preload-bridge.ts'
+import type { LauncherThemeProjection } from './launcher-theme.ts'
+import { tockTeamSkin } from '../plugins/skins/src/skins.ts'
 
 type LauncherBridge = LauncherPreloadBridge
 
@@ -25,6 +28,26 @@ declare global {
 const FOCUS_SEARCH_EVENT = 'tockteam-launcher-focus-search'
 let focusSearchHandler = (): void => { document.getElementById('launcher-search')?.focus() }
 document.addEventListener(FOCUS_SEARCH_EVENT, () => { focusSearchHandler() })
+
+let appliedThemeTokens = new Set<string>()
+let appliedThemeRevision = -1
+
+function applyLauncherTheme(projection: LauncherThemeProjection): void {
+  if (projection.revision < appliedThemeRevision) return
+  appliedThemeRevision = projection.revision
+  const root = document.documentElement
+  root.style.colorScheme = projection.mode
+  if (projection.skinId === null) delete root.dataset.tockteamSkin
+  else root.dataset.tockteamSkin = projection.skinId
+  for (const token of appliedThemeTokens) root.style.removeProperty(token)
+  appliedThemeTokens = new Set<string>()
+  const skin = projection.skinId === null ? undefined : tockTeamSkin(projection.skinId)
+  if (skin === undefined) return
+  for (const [token, value] of Object.entries(skin.tokens)) {
+    root.style.setProperty(token, value)
+    appliedThemeTokens.add(token)
+  }
+}
 
 function setReady(ready: boolean): void {
   const value = String(ready)
@@ -47,6 +70,7 @@ async function bootstrap(): Promise<void> {
   const search = document.getElementById('launcher-search') as HTMLInputElement
   const searchIcon = document.getElementById('launcher-search-icon') as HTMLElement
   const close = document.getElementById('launcher-close') as HTMLButtonElement
+  const settings = document.getElementById('launcher-settings') as HTMLButtonElement
   const results = document.getElementById('launcher-results') as HTMLUListElement
   const status = document.getElementById('launcher-status') as HTMLElement
   const historyToggle = document.getElementById('launcher-history-toggle') as HTMLButtonElement
@@ -58,6 +82,7 @@ async function bootstrap(): Promise<void> {
     || !(search instanceof HTMLInputElement)
     || !(searchIcon instanceof HTMLElement)
     || !(close instanceof HTMLButtonElement)
+    || !(settings instanceof HTMLButtonElement)
     || !(results instanceof HTMLUListElement)
     || !(status instanceof HTMLElement)
     || !(historyToggle instanceof HTMLButtonElement)
@@ -72,6 +97,9 @@ async function bootstrap(): Promise<void> {
   historyToggle.prepend(icon(HistoryIcon))
   rescan.prepend(icon(RefreshCw))
   close.prepend(icon(X))
+  settings.prepend(icon(Settings))
+  bridge.onTheme(applyLauncherTheme)
+  void bridge.getTheme().then(applyLauncherTheme).catch(() => {})
 
   const isMac = navigator.platform.startsWith('Mac')
   const modifier = isMac ? 'Meta' : 'Control'
@@ -396,6 +424,7 @@ async function bootstrap(): Promise<void> {
   }
 
   close.addEventListener('click', () => { void bridge.dismiss().catch(() => undefined) })
+  settings.addEventListener('click', () => { void bridge.openSettings().catch(() => undefined) })
   historyToggle.addEventListener('click', () => {
     historyOpen = !historyOpen
     historyPanel.hidden = !historyOpen

@@ -4,6 +4,7 @@ import {
   type DesktopLauncherState,
   type LauncherShortcutState,
 } from './launcher-window-contract.ts'
+import type { LauncherThemeProjection } from './launcher-theme.ts'
 
 export const TOCKLAUNCHER_PRODUCT_NAME = 'TockLauncher'
 export const LAUNCHER_WORK_AREA_MARGIN = 16
@@ -17,7 +18,7 @@ export const TOCKLAUNCHER_WINDOW_SIZE = Object.freeze({
 type LauncherWebContents = Readonly<{
   id: number
   on: (...args: any[]) => unknown
-  send: (channel: string) => void
+  send: (channel: string, payload?: unknown) => void
 }>
 
 export type LauncherOverlayWindow = Readonly<{
@@ -48,7 +49,7 @@ type LauncherGlobalShortcut = Readonly<{
   unregister: (accelerator: string) => void
 }>
 
-const DEFAULT_HIDE_WINDOW_ON = Object.freeze(['blur'])
+const DEFAULT_HIDE_WINDOW_ON = Object.freeze(['blur', 'afterInvocation'])
 const DISPOSED_SHORTCUT_MESSAGE = 'The launcher is unavailable. Use the TockLauncher button in the TockTeam titlebar.'
 
 export function resolveLauncherShortcut(platform: NodeJS.Platform): string {
@@ -88,6 +89,7 @@ export class LauncherOverlayController {
       window: LauncherOverlayWindow,
     ) => void | (() => void)
     onWindowCleared?: (window: LauncherOverlayWindow) => void
+    getThemeProjection?: () => LauncherThemeProjection
   }>
   private window: LauncherOverlayWindow | null = null
   private windowDisposer: (() => void) | undefined
@@ -95,12 +97,13 @@ export class LauncherOverlayController {
   private togglePromise: Promise<void> = Promise.resolve()
   private pendingLoad: { window: LauncherOverlayWindow; reject: (error: Error) => void } | undefined
   private ownsShortcut = false
+  private shortcutEnabled = true
   private shortcutState: LauncherShortcutState
   private disposed = false
-  private readonly windowPreferences = Object.freeze({
+  private readonly windowPreferences = {
     alwaysOnTop: true,
     visibleOnAllWorkspaces: true,
-  })
+  }
 
   constructor(args: Readonly<{
     createWindow: () => LauncherOverlayWindow
@@ -114,6 +117,7 @@ export class LauncherOverlayController {
       window: LauncherOverlayWindow,
     ) => void | (() => void)
     onWindowCleared?: (window: LauncherOverlayWindow) => void
+    getThemeProjection?: () => LauncherThemeProjection
   }>) {
     this.args = args
     this.shortcutState = Object.freeze({
@@ -129,6 +133,14 @@ export class LauncherOverlayController {
       this.shortcutState = Object.freeze({
         accelerator,
         message: DISPOSED_SHORTCUT_MESSAGE,
+        status: 'unavailable',
+      })
+      return this.shortcutState
+    }
+    if (!this.shortcutEnabled) {
+      this.shortcutState = Object.freeze({
+        accelerator,
+        message: `${accelerator} is disabled. Use the TockLauncher button in the TockTeam titlebar.`,
         status: 'unavailable',
       })
       return this.shortcutState
@@ -173,7 +185,56 @@ export class LauncherOverlayController {
     window.setBounds(resolveLauncherBounds(this.args.getDisplayWorkArea()))
     window.show()
     window.focus()
+    this.sendTheme()
     window.webContents.send(LAUNCHER_WINDOW_IPC_CHANNELS.focusSearch)
+  }
+
+  /** Apply lifecycle preferences immediately to a live overlay and future windows. */
+  applyWindowPreferences(preferences: Readonly<{
+    alwaysOnTop: boolean
+    visibleOnAllWorkspaces: boolean
+  }>): void {
+    if (typeof preferences.alwaysOnTop !== 'boolean' || typeof preferences.visibleOnAllWorkspaces !== 'boolean') {
+      throw new Error('Invalid TockLauncher window preferences')
+    }
+    this.windowPreferences.alwaysOnTop = preferences.alwaysOnTop
+    this.windowPreferences.visibleOnAllWorkspaces = preferences.visibleOnAllWorkspaces
+    const window = this.liveWindow()
+    if (window === null) return
+    window.setAlwaysOnTop(preferences.alwaysOnTop)
+    this.applyWorkspaceVisibility(window)
+  }
+
+  setShortcutEnabled(enabled: boolean): void {
+    if (typeof enabled !== 'boolean') throw new Error('TockLauncher shortcut state must be a boolean')
+    this.shortcutEnabled = enabled
+    if (!enabled) {
+      if (this.ownsShortcut) {
+        this.args.globalShortcut.unregister(this.shortcutState.accelerator)
+        this.ownsShortcut = false
+      }
+      this.shortcutState = Object.freeze({
+        accelerator: resolveLauncherShortcut(this.args.platform),
+        message: `${resolveLauncherShortcut(this.args.platform)} is disabled. Use the TockLauncher button in the TockTeam titlebar.`,
+        status: 'unavailable',
+      })
+      return
+    }
+    this.registerShortcut()
+  }
+
+  hideAfterInvocation(ownerWebContentsId: number): void {
+    const window = this.liveWindow()
+    if (window === null || window.webContents.id !== ownerWebContentsId) return
+    if (this.shouldHideOn('afterInvocation')) window.hide()
+  }
+
+  sendTheme(projection?: LauncherThemeProjection): void {
+    const window = this.liveWindow()
+    if (window === null) return
+    const next = projection ?? this.args.getThemeProjection?.()
+    if (next === undefined) return
+    window.webContents.send(LAUNCHER_WINDOW_IPC_CHANNELS.theme, next)
   }
 
   toggle(): Promise<void> {
@@ -291,6 +352,7 @@ export class LauncherOverlayController {
         if (this.window !== window || window.isDestroyed()) {
           throw new Error('Launcher window was destroyed while loading')
         }
+        this.sendTheme()
         return window
       } catch (error) {
         this.clearWindow(window)

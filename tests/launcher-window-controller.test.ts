@@ -255,6 +255,26 @@ test('renderer failure and disposal reject an in-flight load and destroy only la
   releaseOnDispose?.()
 })
 
+test('window preferences apply live and shortcut enablement stays owner-scoped', async () => {
+  const result = setup()
+  result.controller.registerShortcut()
+  result.controller.applyWindowPreferences({ alwaysOnTop: false, visibleOnAllWorkspaces: false })
+  await result.controller.show()
+  const window = result.windows[0]!
+  assert.equal(window.alwaysOnTop, false)
+  assert.equal(window.allWorkspaces, false)
+  result.controller.setShortcutEnabled(false)
+  assert.equal(result.controller.getState().shortcut.status, 'unavailable')
+  assert.deepEqual(result.unregistered, ['Alt+Space'])
+  result.controller.setShortcutEnabled(true)
+  assert.equal(result.controller.getState().shortcut.status, 'registered')
+  assert.equal(result.callbacks.length, 2)
+  result.controller.hideAfterInvocation(999)
+  assert.equal(window.visible, true)
+  result.controller.hideAfterInvocation(window.webContents.id)
+  assert.equal(window.visible, false)
+})
+
 test('shortcut conflicts preserve fallback and disposal unregisters only owned shortcut', () => {
   const conflict = setup()
   conflict.setRegisterResult(false)

@@ -1,12 +1,17 @@
 import type { IpcMain } from 'electron'
 import type {
   DesktopLauncherState,
+  LauncherThemeProjection,
+  LauncherThemeSource,
   LauncherWindowAcknowledgement,
 } from './launcher-window-contract.ts'
 import {
   LAUNCHER_WINDOW_IPC_CHANNELS,
   assertNoLauncherIpcArguments,
+  parseLauncherThemeProjection,
+  parseLauncherThemeSource,
 } from './launcher-window-contract.ts'
+import type { LauncherWorkbenchRoute } from './launcher-navigation.ts'
 import type { LauncherIpcIdentity } from './launcher-security.ts'
 
 export { LAUNCHER_WINDOW_IPC_CHANNELS } from './launcher-window-contract.ts'
@@ -23,6 +28,8 @@ export type LauncherIpcGuard = Readonly<{
 
 export type LauncherIpcMain = Pick<IpcMain, 'handle' | 'removeHandler'>
 export type LauncherIpcHandler = (...args: any[]) => unknown
+
+type WorkbenchWindow = Readonly<{ webContents: Readonly<{ id: number }> }>
 
 const ownedHandlers = new WeakMap<object, Map<string, LauncherIpcHandler>>()
 
@@ -76,10 +83,12 @@ export function registerLauncherOwnedIpcHandlers(
 
 export function registerLauncherWindowIpcHandlers(args: Readonly<{
   controller: Pick<LauncherWindowIpcController, 'hide'>
+  getTheme?: () => LauncherThemeProjection
   guard: LauncherIpcGuard
   ipcMain: LauncherIpcMain
+  openSettings?: () => Promise<void> | void
 }>): () => void {
-  return registerAll(args.ipcMain, [[
+  const registrations: Array<[string, LauncherIpcHandler]> = [[
     LAUNCHER_WINDOW_IPC_CHANNELS.dismiss,
     (event: unknown, ...rawArgs: unknown[]): LauncherWindowAcknowledgement => {
       args.guard.assert(event, 'launcher')
@@ -87,15 +96,36 @@ export function registerLauncherWindowIpcHandlers(args: Readonly<{
       args.controller.hide()
       return Object.freeze({ ok: true })
     },
-  ]])
+  ]]
+  if (args.getTheme !== undefined) registrations.push([
+    LAUNCHER_WINDOW_IPC_CHANNELS.getThemeSource,
+    (event: unknown, ...rawArgs: unknown[]): LauncherThemeProjection => {
+      args.guard.assert(event, 'launcher')
+      assertNoLauncherIpcArguments(rawArgs)
+      return parseLauncherThemeProjection(args.getTheme?.())
+    },
+  ])
+  if (args.openSettings !== undefined) registrations.push([
+    LAUNCHER_WINDOW_IPC_CHANNELS.openSettings,
+    async (event: unknown, ...rawArgs: unknown[]): Promise<LauncherWindowAcknowledgement> => {
+      args.guard.assert(event, 'launcher')
+      assertNoLauncherIpcArguments(rawArgs)
+      args.controller.hide()
+      await args.openSettings?.()
+      return Object.freeze({ ok: true })
+    },
+  ])
+  return registerAll(args.ipcMain, registrations)
 }
 
 export function registerWorkbenchLauncherIpcHandlers(args: Readonly<{
   assertTrustedMainIpc: (event: unknown) => void
   controller: Pick<LauncherWindowIpcController, 'getState' | 'show'>
   ipcMain: LauncherIpcMain
+  onRouteReady?: (event: unknown) => void
+  syncTheme?: (event: unknown, source: LauncherThemeSource) => LauncherWindowAcknowledgement
 }>): () => void {
-  return registerAll(args.ipcMain, [
+  const registrations: Array<[string, LauncherIpcHandler]> = [
     [
       LAUNCHER_WINDOW_IPC_CHANNELS.getState,
       (event: unknown, ...rawArgs: unknown[]): DesktopLauncherState => {
@@ -113,5 +143,25 @@ export function registerWorkbenchLauncherIpcHandlers(args: Readonly<{
         return args.controller.getState()
       },
     ],
+  ]
+  if (args.onRouteReady !== undefined) registrations.push([
+    LAUNCHER_WINDOW_IPC_CHANNELS.routeReady,
+    (event: unknown, ...rawArgs: unknown[]): LauncherWindowAcknowledgement => {
+      args.assertTrustedMainIpc(event)
+      assertNoLauncherIpcArguments(rawArgs)
+      args.onRouteReady?.(event)
+      return Object.freeze({ ok: true })
+    },
   ])
+  if (args.syncTheme !== undefined) registrations.push([
+    LAUNCHER_WINDOW_IPC_CHANNELS.syncThemeSource,
+    (event: unknown, raw: unknown, ...rawArgs: unknown[]): LauncherWindowAcknowledgement => {
+      args.assertTrustedMainIpc(event)
+      assertNoLauncherIpcArguments(rawArgs)
+      return args.syncTheme?.(event, parseLauncherThemeSource(raw)) ?? Object.freeze({ ok: true })
+    },
+  ])
+  return registerAll(args.ipcMain, registrations)
 }
+
+export type { LauncherWorkbenchRoute, WorkbenchWindow }

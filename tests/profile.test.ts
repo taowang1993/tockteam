@@ -63,6 +63,7 @@ test('desktop profile pins the released TockTutor runtime and peer package', () 
   assert.deepEqual(packageJson.dependencies, {
     'fuse.js': '7.1.0',
     fuzzysort: '3.1.0',
+    'electron-updater': '6.8.3',
   })
   assert.equal(
     packageJson.scripts['install:tocktutor'],

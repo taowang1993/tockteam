@@ -11,21 +11,56 @@ export type LauncherWorkbenchWindow = Readonly<{
   show?: () => void
   isMinimized: () => boolean
   restore: () => void
-}> 
+}>
+
+export type LauncherWorkbenchRouteSender<TWindow extends object> =
+  | ((window: TWindow, route: LauncherWorkbenchRoute) => void)
+  | ((window: TWindow, channel: string, payload: LauncherWorkbenchRoute) => void)
+
+function sendRoute<TWindow extends object>(
+  send: LauncherWorkbenchRouteSender<TWindow>,
+  window: TWindow,
+  route: LauncherWorkbenchRoute,
+): void {
+  if (send.length >= 3) {
+    ;(send as (window: TWindow, channel: string, payload: LauncherWorkbenchRoute) => void)(
+      window,
+      LAUNCHER_WORKBENCH_ROUTE_CHANNEL,
+      route,
+    )
+    return
+  }
+  ;(send as (window: TWindow, route: LauncherWorkbenchRoute) => void)(window, route)
+}
+
+function routeFromDeliveryArguments(
+  channelOrRoute: string | LauncherWorkbenchRoute,
+  payload: unknown,
+): LauncherWorkbenchRoute {
+  if (typeof channelOrRoute === 'string') {
+    if (channelOrRoute !== LAUNCHER_WORKBENCH_ROUTE_CHANNEL) throw new Error('Invalid launcher workbench route channel')
+    return parseLauncherWorkbenchRoute(payload)
+  }
+  return parseLauncherWorkbenchRoute(channelOrRoute)
+}
 
 /**
  * Per-window route readiness. A route is a latest-intent operation, so one
  * pending route is retained while a workbench renderer is navigating.
  */
 export function createLauncherWorkbenchRouteDelivery<TWindow extends object>(
-  send: (window: TWindow, route: LauncherWorkbenchRoute) => void,
+  send: LauncherWorkbenchRouteSender<TWindow>,
 ) {
   const pending = new WeakMap<TWindow, LauncherWorkbenchRoute>()
   const ready = new WeakSet<TWindow>()
   return Object.freeze({
-    deliver(window: TWindow, route: LauncherWorkbenchRoute): void {
-      const parsed = parseLauncherWorkbenchRoute(route)
-      if (ready.has(window)) send(window, parsed)
+    deliver(
+      window: TWindow,
+      channelOrRoute: string | LauncherWorkbenchRoute,
+      payload?: unknown,
+    ): void {
+      const parsed = routeFromDeliveryArguments(channelOrRoute, payload)
+      if (ready.has(window)) sendRoute(send, window, parsed)
       else pending.set(window, parsed)
     },
     markReady(window: TWindow): void {
@@ -33,7 +68,7 @@ export function createLauncherWorkbenchRouteDelivery<TWindow extends object>(
       const queued = pending.get(window)
       if (queued === undefined) return
       pending.delete(window)
-      send(window, queued)
+      sendRoute(send, window, queued)
     },
     markUnready(window: TWindow): void {
       ready.delete(window)
@@ -96,7 +131,7 @@ export function createLauncherWorkbenchCommandDelivery<
 export function dispatchLauncherRouteToWorkbench<TWindow extends LauncherWorkbenchWindow>(args: Readonly<{
   createWorkbench: () => TWindow
   destination: TockTeamDestination
-  send: (window: TWindow, route: LauncherWorkbenchRoute) => void
+  send: LauncherWorkbenchRouteSender<TWindow>
   workbenchWindow: TWindow | null | undefined
 }>): TWindow {
   const reusableWindow = args.workbenchWindow !== null
@@ -108,7 +143,11 @@ export function dispatchLauncherRouteToWorkbench<TWindow extends LauncherWorkben
   if (targetWindow.isMinimized()) targetWindow.restore()
   targetWindow.show?.()
   targetWindow.focus()
-  args.send(targetWindow, Object.freeze({ destination: parseLauncherWorkbenchRoute({ destination: args.destination }).destination }))
+  sendRoute(
+    args.send,
+    targetWindow,
+    Object.freeze({ destination: parseLauncherWorkbenchRoute({ destination: args.destination }).destination }),
+  )
   return targetWindow
 }
 

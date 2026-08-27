@@ -24,28 +24,62 @@ const EXPECTED_TARGETS = Object.freeze([
 const EXPECTED_LAUNCHER_DEPENDENCIES = Object.freeze({
   'fuse.js': '7.1.0',
   fuzzysort: '3.1.0',
+  'electron-updater': '6.8.3',
 })
-const EXPECTED_LAUNCHER_DEPENDENCY_LIST = Object.freeze(['fuse.js@7.1.0', 'fuzzysort@3.1.0'])
+const EXPECTED_LAUNCHER_DEPENDENCY_LIST = Object.freeze(['fuse.js@7.1.0', 'fuzzysort@3.1.0', 'electron-updater@6.8.3'])
+const EXPECTED_LAUNCHER_RUNTIME_CLOSURE = Object.freeze([
+  'argparse@2.0.1',
+  'builder-util-runtime@9.5.1',
+  'debug@4.4.3',
+  'electron-updater@6.8.3',
+  'fs-extra@10.1.0',
+  'graceful-fs@4.2.11',
+  'js-yaml@4.3.1',
+  'jsonfile@6.2.1',
+  'lazy-val@1.0.5',
+  'lodash.escaperegexp@4.1.2',
+  'lodash.isequal@4.5.0',
+  'ms@2.1.3',
+  'sax@1.6.1',
+  'semver@7.7.4',
+  'tiny-typed-emitter@2.1.0',
+  'universalify@2.0.1',
+])
 const EXPECTED_LAUNCHER_LOCKFILE = Object.freeze({
   path: 'pnpm-lock.yaml',
   rootImporter: Object.freeze({
     'fuse.js': Object.freeze({ specifier: '7.1.0', version: '7.1.0' }),
     fuzzysort: Object.freeze({ specifier: '3.1.0', version: '3.1.0' }),
+    'electron-updater': Object.freeze({ specifier: '6.8.3', version: '6.8.3(supports-color@7.2.0)' }),
   }),
   packages: Object.freeze({
     'fuse.js@7.1.0': Object.freeze({ integrity: 'sha512-trLf4SzuuUxfusZADLINj+dE8clK1frKdmqiJNb1Es75fmI5oY6X2mxLVUciLLjxqw/xr72Dhy+lER6dGd02FQ==' }),
     'fuzzysort@3.1.0': Object.freeze({ integrity: 'sha512-sR9BNCjBg6LNgwvxlBd0sBABvQitkLzoVY9MYYROQVX/FvfJ4Mai9LsGhDgd8qYdds0bY77VzYd5iuB+v5rwQQ==' }),
+    'electron-updater@6.8.3': Object.freeze({ integrity: 'sha512-Z6sgw3jgbikWKXei1ENdqFOxBP0WlXg3TtKfz0rgw2vIZFJUyI4pD7ZN7jrkm7EoMK+tcm/qTnPUdqfZukBlBQ==' }),
   }),
   snapshots: Object.freeze({
     'fuse.js@7.1.0': Object.freeze({}),
     'fuzzysort@3.1.0': Object.freeze({}),
+    'electron-updater@6.8.3(supports-color@7.2.0)': Object.freeze({
+      dependencies: Object.freeze({
+        'builder-util-runtime': '9.5.1(supports-color@7.2.0)',
+        'fs-extra': '10.1.0',
+        'js-yaml': '4.3.1',
+        'lazy-val': '1.0.5',
+        'lodash.escaperegexp': '4.1.2',
+        'lodash.isequal': '4.5.0',
+        semver: '7.7.4',
+        'tiny-typed-emitter': '2.1.0',
+      }),
+      transitivePeerDependencies: Object.freeze(['supports-color']),
+    }),
   }),
 })
 const EXPECTED_FOUNDATION = Object.freeze({
   launcherImplemented: true,
   launcherPackaged: false,
   admittedRuntimeDependencies: EXPECTED_LAUNCHER_DEPENDENCY_LIST,
-  runtimeDependencyClosure: EXPECTED_LAUNCHER_DEPENDENCY_LIST,
+  runtimeDependencyClosure: EXPECTED_LAUNCHER_RUNTIME_CLOSURE,
   launcherAssets: Object.freeze([]),
   launcherNotices: Object.freeze([]),
   shippedVendorSource: false,
@@ -64,7 +98,7 @@ const EXPECTED_UELI_INTEGRATION = Object.freeze({
   baseline: 'v9.29.0',
   peeledCommit: 'c9670d61cb2576802adf99d95622c58538d265f3',
   admittedRuntimeDependencies: EXPECTED_LAUNCHER_DEPENDENCY_LIST,
-  runtimeDependencyClosure: EXPECTED_LAUNCHER_DEPENDENCY_LIST,
+  runtimeDependencyClosure: EXPECTED_LAUNCHER_RUNTIME_CLOSURE,
   shippedVendorSource: false,
   importedIdentity: false,
 })
@@ -150,12 +184,30 @@ function validateLauncherLockfile(lockfile, lockfileText, failures) {
     )
   }
   const snapshots = lockfileText.match(/^snapshots:\n([\s\S]*)$/m)?.[1] ?? ''
-  for (const name of Object.keys(EXPECTED_LAUNCHER_LOCKFILE.snapshots)) {
-    addFailure(
-      failures,
-      new RegExp(`^  ${escapeRegExp(name)}: \\{\\}$`, 'mu').test(snapshots),
-      `launcher lockfile snapshot is not empty for ${name}`,
-    )
+  for (const [name, expected] of Object.entries(EXPECTED_LAUNCHER_LOCKFILE.snapshots)) {
+    if (Object.keys(expected).length === 0) {
+      addFailure(
+        failures,
+        new RegExp(`^  ${escapeRegExp(name)}: \\{\\}$`, 'mu').test(snapshots),
+        `launcher lockfile snapshot is not empty for ${name}`,
+      )
+      continue
+    }
+    const block = `${snapshots}\n  __launcher_lockfile_end__: {}`.match(new RegExp(`^  ${escapeRegExp(name)}:\\n([\\s\\S]*?)(?=^  \\S)`, 'mu'))?.[1] ?? ''
+    for (const [dependency, version] of Object.entries(expected.dependencies ?? {})) {
+      addFailure(
+        failures,
+        new RegExp(`^    dependencies:\\n(?:      .*\\n)*      ${escapeRegExp(dependency)}: ${escapeRegExp(version)}$`, 'mu').test(block),
+        `launcher lockfile snapshot dependency differs for ${name}: ${dependency}`,
+      )
+    }
+    for (const peer of expected.transitivePeerDependencies ?? []) {
+      addFailure(
+        failures,
+        new RegExp(`^    transitivePeerDependencies:\\n(?:      .*\\n)*      - ${escapeRegExp(peer)}$`, 'mu').test(block),
+        `launcher lockfile snapshot peer differs for ${name}: ${peer}`,
+      )
+    }
   }
 }
 
@@ -295,7 +347,7 @@ export function inspectLauncherPackageFeasibility(inputs) {
   addFailure(failures, foundation.launcherImplemented === true, 'launcher implementation must be recorded in foundation')
   addFailure(failures, foundation.launcherPackaged === false, 'launcher must not be packaged in foundation')
   addFailure(failures, sameJson(foundation.admittedRuntimeDependencies, EXPECTED_LAUNCHER_DEPENDENCY_LIST), 'Ueli-derived runtime dependencies differ from the approved launcher set')
-  addFailure(failures, sameJson(foundation.runtimeDependencyClosure, EXPECTED_LAUNCHER_DEPENDENCY_LIST), 'runtime dependency closure differs from the approved launcher set')
+  addFailure(failures, sameJson(foundation.runtimeDependencyClosure, EXPECTED_LAUNCHER_RUNTIME_CLOSURE), 'runtime dependency closure differs from the approved launcher set')
   addFailure(failures, Array.isArray(foundation.launcherAssets) && foundation.launcherAssets.length === 0, 'launcher asset admission must remain empty in foundation')
   addFailure(failures, Array.isArray(foundation.launcherNotices) && foundation.launcherNotices.length === 0, 'launcher notice admission must remain empty in foundation')
   addFailure(failures, foundation.shippedVendorSource === false, 'foundation must not ship vendor source')

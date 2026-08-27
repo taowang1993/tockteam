@@ -11,16 +11,23 @@ import {
 import {
   LAUNCHER_WINDOW_IPC_CHANNELS,
   parseLauncherWindowAcknowledgement,
+  parseLauncherThemeProjection,
+  type LauncherThemeProjection,
 } from './launcher-window-contract.ts'
 import type { LauncherCoreStatus, LauncherSearchOptions } from './launcher-core-search.ts'
 
 type IpcInvoker = Readonly<{
   invoke: (channel: string, args?: unknown) => Promise<unknown>
+  on?: (channel: string, listener: (...args: any[]) => void) => unknown
+  removeListener?: (channel: string, listener: (...args: any[]) => void) => unknown
 }>
 
 export type LauncherPreloadBridge = Readonly<{
   dismiss: (...args: unknown[]) => Promise<void>
+  getTheme: (...args: unknown[]) => Promise<LauncherThemeProjection>
   invokeAction: (actionId: string) => Promise<LauncherInvokeResult>
+  onTheme: (listener: (projection: LauncherThemeProjection) => void) => () => void
+  openSettings: (...args: unknown[]) => Promise<void>
   rescan: () => Promise<LauncherCoreStatus>
   search: (searchTerm: string, options: LauncherSearchOptions) => Promise<LauncherSearchResponse>
 }>
@@ -34,15 +41,43 @@ function assertArity(method: string, args: readonly unknown[], expected: number)
 }
 
 export function createLauncherPreloadBridge(ipcRenderer: IpcInvoker): LauncherPreloadBridge {
+  const themeListeners = new Set<(projection: LauncherThemeProjection) => void>()
+  let latestTheme: LauncherThemeProjection | undefined
+  const receiveTheme = (_event: unknown, raw: unknown): void => {
+    let projection: LauncherThemeProjection
+    try {
+      projection = parseLauncherThemeProjection(raw)
+    } catch {
+      return
+    }
+    if (latestTheme !== undefined && projection.revision < latestTheme.revision) return
+    latestTheme = projection
+    for (const listener of themeListeners) listener(projection)
+  }
+  ipcRenderer.on?.(LAUNCHER_WINDOW_IPC_CHANNELS.theme, receiveTheme)
   return Object.freeze({
     dismiss: async (...args: unknown[]): Promise<void> => {
       assertArity('dismiss', args, 0)
       parseLauncherWindowAcknowledgement(await ipcRenderer.invoke(LAUNCHER_WINDOW_IPC_CHANNELS.dismiss))
     },
+    getTheme: async (...args: unknown[]): Promise<LauncherThemeProjection> => {
+      assertArity('getTheme', args, 0)
+      return parseLauncherThemeProjection(await ipcRenderer.invoke(LAUNCHER_WINDOW_IPC_CHANNELS.getThemeSource))
+    },
     invokeAction: async (actionId: unknown, ...extra: unknown[]): Promise<LauncherInvokeResult> => {
       assertArity('invokeAction', [actionId, ...extra], 1)
       const input = parseLauncherInvokeActionArgs({ actionId })
       return parseLauncherInvokeResult(await ipcRenderer.invoke(LAUNCHER_IPC_CHANNELS.invokeAction, input))
+    },
+    onTheme: (listener: (projection: LauncherThemeProjection) => void): (() => void) => {
+      if (typeof listener !== 'function') throw new Error('TockLauncher theme listener is invalid')
+      themeListeners.add(listener)
+      if (latestTheme !== undefined) listener(latestTheme)
+      return () => { themeListeners.delete(listener) }
+    },
+    openSettings: async (...args: unknown[]): Promise<void> => {
+      assertArity('openSettings', args, 0)
+      parseLauncherWindowAcknowledgement(await ipcRenderer.invoke(LAUNCHER_WINDOW_IPC_CHANNELS.openSettings))
     },
     rescan: async (...args: unknown[]): Promise<LauncherCoreStatus> => {
       assertArity('rescan', args, 0)

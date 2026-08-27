@@ -1,5 +1,11 @@
 import type { PluginMarketplaceBridge } from '../plugins/plugin-marketplace/src/protocol.ts'
+import type {
+  DesktopAppUpdateActionResult,
+  DesktopAppUpdateState,
+} from './desktop-app-update.ts'
 import type { DesktopLauncherState } from './launcher-window-contract.ts'
+import type { LauncherThemeSource } from './launcher-theme.ts'
+import type { LauncherWorkbenchRoute } from './launcher-navigation.ts'
 
 export type { DesktopLauncherState } from './launcher-window-contract.ts'
 import type {
@@ -83,6 +89,19 @@ export interface DesktopLauncherBridge {
   show(): Promise<DesktopLauncherState>
 }
 
+export interface DesktopAppUpdateBridge {
+  getState(): Promise<DesktopAppUpdateState>
+  check(): Promise<DesktopAppUpdateActionResult>
+  download(): Promise<DesktopAppUpdateActionResult>
+  install(): Promise<DesktopAppUpdateActionResult>
+  onStateChange(listener: (state: DesktopAppUpdateState) => void): () => void
+}
+
+export interface DesktopLaunchOnStartBridge {
+  get(): Promise<boolean>
+  set(enabled: boolean): Promise<boolean>
+}
+
 export interface WebClipDesktopBridge {
   authorizeDocument(frameId: number, html: string): Promise<string>
   onNavigationBlocked(listener: (navigation: WebClipBlockedNavigation) => void): () => void
@@ -92,9 +111,13 @@ export interface WebClipDesktopBridge {
 export interface DesktopBridge {
   chooseWorkspace(): Promise<string[]>
   launcher: DesktopLauncherBridge
+  appUpdate: DesktopAppUpdateBridge
+  launchOnStart: DesktopLaunchOnStartBridge
   getInfo(): Promise<DesktopInfo>
   getRuntimeSnapshot(): Promise<DesktopRuntimeSnapshot>
   onCommand(listener: (command: DesktopCommand) => void): () => void
+  onRoute(listener: (route: LauncherWorkbenchRoute) => void): () => void
+  syncLauncherTheme(source: LauncherThemeSource): Promise<void>
   openExternal(url: string): Promise<void>
   setTockTutorActive(active: boolean): Promise<void>
   pluginMarketplace: PluginMarketplaceBridge

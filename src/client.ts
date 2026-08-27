@@ -1,6 +1,11 @@
 /** Browser face for the native TockTeam Desktop bridge. */
 
 import type { DesktopBridge, DesktopCommand } from './contracts.ts'
+import { projectLauncherThemeSource } from './launcher-theme.ts'
+import {
+  resolveLauncherRoutePath,
+  type LauncherWorkbenchRoute,
+} from './launcher-navigation.ts'
 import type { DesktopPanels } from '../plugins/panel-controls/src/client.ts'
 import type { PinnedSummary } from '../plugins/pinned-summary/src/client.ts'
 import type { WorkspaceTools } from '../plugins/sidebar/src/client.ts'
@@ -16,7 +21,10 @@ import {
 } from '../plugins/shared/surface.ts'
 
 export {
+  canonicalTockTeamPath,
+  isTockCoderPath,
   isTockTutorPath,
+  TOCKCODER_ROUTE_PREFIX,
   readTockTutorRouteLocation,
   resolveTockTutorNavigation,
   TOCKTUTOR_ROUTE_PREFIX,
@@ -37,9 +45,18 @@ interface WorkspacesService {
   startSession(workspaceId?: string): void
 }
 
+interface ThemeSnapshot {
+  active: Readonly<{ id: string; colorScheme: 'light' | 'dark' }>
+}
+
+interface ThemeService {
+  getTheme: () => ThemeSnapshot
+}
+
 interface ClientContext {
   effect(effect: () => (() => Promise<void> | void) | void, label?: string): void
   get(name: string): unknown
+  on(event: 'theme/change', listener: (snapshot: ThemeSnapshot) => void): () => void
   reflect: {
     provide(name: string, value: unknown, options?: unknown): (() => Promise<void> | void) | void
   }
@@ -52,7 +69,7 @@ declare global {
 }
 
 /** Wait for the DSH services used by native menu commands. */
-export const inject = ['workspaces', 'desktopPanels', 'pinnedSummary']
+export const inject = ['workspaces', 'desktopPanels', 'pinnedSummary', 'theme']
 
 function installDesktopChrome(): () => void {
   const originalTitle = document.title
@@ -194,6 +211,19 @@ function showSettings(): void {
   findSettingsButton()?.click()
 }
 
+function navigateLauncherRoute(route: LauncherWorkbenchRoute): void {
+  const pathname = resolveLauncherRoutePath(route.destination)
+  const current = `${window.location.pathname}${window.location.search}${window.location.hash}`
+  if (current === pathname) {
+    window.dispatchEvent(new PopStateEvent('popstate'))
+    if (route.destination === 'tockcoder') window.setTimeout(focusComposer, 0)
+    return
+  }
+  window.history.pushState(window.history.state, '', pathname)
+  window.dispatchEvent(new PopStateEvent('popstate'))
+  if (route.destination === 'tockcoder') window.setTimeout(focusComposer, 0)
+}
+
 async function openPaths(workspaces: WorkspacesService, paths: readonly string[]): Promise<void> {
   for (const path of paths) {
     const workspace = await workspaces.create({ path })
@@ -287,7 +317,7 @@ export function apply(ctx: ClientContext): void {
   ctx.effect(() => {
     const removeDesktopChrome = installDesktopChrome()
     const removeBranding = installBranding()
-    const unsubscribe = bridge.onCommand((command) => {
+    const unsubscribeCommand = bridge.onCommand((command) => {
       dispatch(
         command,
         workspaces,
@@ -296,10 +326,21 @@ export function apply(ctx: ClientContext): void {
         ctx.get('workspaceTools') as WorkspaceTools,
       )
     })
+    const unsubscribeRoute = bridge.onRoute((route) => { navigateLauncherRoute(route) })
+    const theme = ctx.get('theme') as ThemeService
+    const syncTheme = (): void => {
+      void bridge.syncLauncherTheme(projectLauncherThemeSource(theme.getTheme())).catch(() => {})
+    }
+    syncTheme()
+    const unsubscribeTheme = ctx.on('theme/change', snapshot => {
+      void bridge.syncLauncherTheme(projectLauncherThemeSource(snapshot)).catch(() => {})
+    })
     return () => {
-      unsubscribe()
+      unsubscribeTheme()
+      unsubscribeRoute()
+      unsubscribeCommand()
       removeBranding()
       removeDesktopChrome()
     }
-  }, 'tockteam-desktop: native command bridge')
+  }, 'tockteam-desktop: native command, route, and theme bridge')
 }

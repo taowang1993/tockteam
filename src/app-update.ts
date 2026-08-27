@@ -1,11 +1,8 @@
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import {
-  canChangeDesktopAppUpdateChannel,
   createDisabledDesktopAppUpdateState,
-  parseDesktopAppUpdateChannel,
   type DesktopAppUpdateActionResult,
-  type DesktopAppUpdateChannel,
   type DesktopAppUpdateErrorContext,
   type DesktopAppUpdateState,
 } from './desktop-app-update.ts'
@@ -45,10 +42,6 @@ export type DesktopAppUpdater = Readonly<{
   onStateChange: (listener: (state: DesktopAppUpdateState) => void) => () => void
   start: () => void
   dispose: () => void
-  /** Compatibility aliases for callers using the updater's long form names. */
-  checkForUpdate: () => Promise<DesktopAppUpdateActionResult>
-  downloadUpdate: () => Promise<DesktopAppUpdateActionResult>
-  installUpdate: () => Promise<DesktopAppUpdateActionResult>
 }>
 
 const STARTUP_DELAY_MS = 15_000
@@ -122,6 +115,8 @@ function actionResult(
 export function createDesktopAppUpdater(args: Readonly<{
   app: DesktopUpdateApp
   updater?: AutoUpdaterPort
+  /** Compatibility name for tests/adapters that mirror electron-updater. */
+  autoUpdater?: AutoUpdaterPort
   updaterFactory?: UpdaterFactory
   onStateChange?: (state: DesktopAppUpdateState) => void
   prepareInstall?: () => Promise<void>
@@ -131,7 +126,7 @@ export function createDesktopAppUpdater(args: Readonly<{
   now?: () => Date
 }>): DesktopAppUpdater {
   let state = initialState(args.app)
-  let adapter: AutoUpdaterPort | undefined = args.updater
+  let adapter: AutoUpdaterPort | undefined = args.updater ?? args.autoUpdater
   let adapterPromise: Promise<AutoUpdaterPort> | undefined
   let activeAction: 'check' | 'download' | 'install' | null = null
   let startupTimer: ReturnType<typeof setTimeout> | undefined
@@ -348,35 +343,6 @@ export function createDesktopAppUpdater(args: Readonly<{
     }
   }
 
-  const setChannel = async (value: unknown): Promise<DesktopAppUpdateActionResult> => {
-    const channel = parseDesktopAppUpdateChannel(value)
-    if (disposed || channel === state.channel || activeAction !== null || !canChangeDesktopAppUpdateChannel(state)) {
-      return actionResult(false, false, state)
-    }
-    try {
-      const target = adapter
-      if (target !== undefined) {
-        target.channel = channel === 'early-access' ? 'beta' : 'latest'
-        target.allowPrerelease = channel === 'early-access'
-        target.allowDowngrade = state.channel === 'early-access' && channel === 'stable'
-      }
-      return actionResult(true, true, setState({
-        ...state,
-        channel,
-        status: state.enabled ? 'idle' : 'disabled',
-        availableVersion: null,
-        downloadedVersion: null,
-        downloadPercent: null,
-        message: state.enabled ? null : state.message,
-        errorContext: null,
-        checkedAt: null,
-        canRetry: state.enabled,
-      }))
-    } catch (error) {
-      return actionResult(true, false, setError(error, 'channel'))
-    }
-  }
-
   const start = (): void => {
     if (disposed || started || !state.enabled) return
     started = true
@@ -413,11 +379,6 @@ export function createDesktopAppUpdater(args: Readonly<{
     },
     start,
     dispose,
-    checkForUpdate: check,
-    downloadUpdate: download,
-    installUpdate: install,
   }
-  // Preserve the stable in-memory channel fallback without starting a network call.
-  void setChannel
   return Object.freeze(updater)
 }

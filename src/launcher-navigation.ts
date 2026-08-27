@@ -10,10 +10,12 @@ export const LAUNCHER_ROUTE_DESTINATIONS = Object.freeze([
 ] as const)
 
 export type TockTeamDestination = (typeof LAUNCHER_ROUTE_DESTINATIONS)[number]
+export type LauncherRouteDestination = TockTeamDestination
 export type LauncherWorkbenchRoute = Readonly<{ destination: TockTeamDestination }>
+export type LauncherWorkbenchRouteEvent = LauncherWorkbenchRoute
 
 export const LAUNCHER_WORKBENCH_ROUTE_CHANNEL = 'launcher:workbench-route' as const
-export const LAUNCHER_WORKBENCH_ROUTE_READY_CHANNEL = 'launcher-window:route-ready' as const
+export const LAUNCHER_WORKBENCH_ROUTE_READY_CHANNEL = 'launcher:workbench-route-ready' as const
 
 const ROUTE_PATHS: Readonly<Record<TockTeamDestination, string>> = Object.freeze({
   tockcoder: TOCKCODER_ROUTE_PREFIX,
@@ -40,6 +42,16 @@ export function parseLauncherWorkbenchRoute(value: unknown): LauncherWorkbenchRo
   }
   return Object.freeze({ destination: parseLauncherDestination(value.destination) })
 }
+
+export function parseLauncherRouteDestination(value: unknown): TockTeamDestination {
+  return parseLauncherDestination(value)
+}
+
+export function parseLauncherWorkbenchRouteEvent(value: unknown): LauncherWorkbenchRoute {
+  return parseLauncherWorkbenchRoute(value)
+}
+
+export const LAUNCHER_ROUTE_PATHS = ROUTE_PATHS
 
 export function resolveLauncherRoutePath(destination: TockTeamDestination): string {
   return ROUTE_PATHS[parseLauncherDestination(destination)]

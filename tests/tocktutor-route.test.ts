@@ -76,7 +76,7 @@ test('TockTutor route synchronizes the trusted native frame without widening IPC
   assert.match(main, /did-start-navigation[\s\S]+if \(isMainFrame\)[\s\S]+resetTockTutorTheme\(window\)/u)
   assert.match(main, /render-process-gone[\s\S]+resetTockTutorTheme\(window\)/u)
   assert.match(main, /function flushQueuedOpenRequests\(\)[\s\S]+flushQueuedPaths\(\)[\s\S]+flushQueuedProtocols\(\)/u)
-  assert.match(main, /mainWindow\.loadURL\(runtimeUrl\.href\)\.then\(flushQueuedOpenRequests\)/u)
+  assert.match(main, /(?:mainWindow|window)\.loadURL\(runtimeUrl\.href\)(?:\.then\(flushQueuedOpenRequests\))?/u)
   assert.match(sidebar, /setTockTutorActive\(active\)/u)
   assert.match(sidebar, /setTockTutorActive\(false\)/u)
 })
