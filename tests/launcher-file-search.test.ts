@@ -130,6 +130,36 @@ test('superseded FileSearch queries abort and stale results cannot replace curre
   assert.equal((await second).after[0]?.name, 'second.txt')
 })
 
+test('a slow Simple rescan cannot replace newer FileSearch actions', async () => {
+  let releaseScan: (() => void) | undefined
+  let scanStarted: (() => void) | undefined
+  const scanReady = new Promise<void>(resolve => { scanStarted = resolve })
+  const opened: string[] = []
+  const provider = createLauncherFileSearchExtensions({
+    effects: { openPath: target => { opened.push(target) }, revealPath: () => undefined },
+    enabledExtensionIds: () => ['FileSearch', 'SimpleFileSearch'], getSetting: settings, homePath: '/home/max', platform: 'macOS',
+    scanners: {
+      queryFileSearch: async () => [{ path: '/home/max/query.txt', type: 'file', identity: { dev: '1', ino: '2' } }],
+      scanSimpleFolder: async ({ signal }) => {
+        scanStarted?.()
+        return await new Promise<readonly never[]>(resolve => {
+          releaseScan = () => { resolve([]) }
+          signal.addEventListener('abort', () => resolve([]), { once: true })
+        })
+      },
+      validatePath: async () => true,
+    },
+  })
+  const scan = provider.loadIndexedItems(new AbortController().signal)
+  await scanReady
+  const result = (await provider.searchInstant(`${LAUNCHER_FILE_SEARCH_QUERY_PREFIX} query`)).after[0]
+  assert.ok(result)
+  releaseScan?.()
+  await scan
+  await provider.executeAction(record(result))
+  assert.deepEqual(opened, ['/home/max/query.txt'])
+})
+
 test('in-flight file actions are aborted and rechecked when query state changes', async () => {
   let validationSignal: AbortSignal | undefined
   let releaseValidation: (() => void) | undefined

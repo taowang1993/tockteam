@@ -313,6 +313,8 @@ export function createLauncherFileSearchExtensions(options: FileSearchOptions): 
     activeQuery?.controller.abort(new Error('TockLauncher file search scan superseded'))
     activeQuery = undefined
     clearActions()
+    const simpleActionGenerationAtStart = simpleActionGeneration
+    const fileActionGenerationAtStart = fileActionGeneration
     clearProviderError('FileSearch')
     clearProviderError('SimpleFileSearch')
     const scanController = new AbortController()
@@ -373,8 +375,14 @@ export function createLauncherFileSearchExtensions(options: FileSearchOptions): 
         if (count >= MAX_SIMPLE_RESULTS) break
       }
       throwIfNotCurrent(scanController.signal, generation, scanGeneration)
-      simpleActions = nextSimpleActions; fileActions = nextFileActions
-      knownSimple = nextSimple; knownFile = nextFile
+      if (simpleActionGeneration === simpleActionGenerationAtStart) {
+        simpleActions = nextSimpleActions
+        knownSimple = nextSimple
+      }
+      if (fileActionGeneration === fileActionGenerationAtStart) {
+        fileActions = nextFileActions
+        knownFile = nextFile
+      }
       return Object.freeze(items)
     } finally {
       activeScanControllers.delete(scanController)
