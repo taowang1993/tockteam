@@ -168,18 +168,17 @@ test('the feasibility audit rejects launcher lockfile specifier, resolution, and
   const inputs = await loadLauncherPackageFeasibilityInputs({ repoRoot })
   const lockfileText = await readFile(join(repoRoot, 'pnpm-lock.yaml'), 'utf8')
   for (const mutate of [
-    lockfile => lockfile.replace(
+    (lockfile: string) => lockfile.replace(
       '      fuse.js:\n        specifier: 7.1.0\n        version: 7.1.0',
       '      fuse.js:\n        specifier: 7.0.0\n        version: 7.1.0',
     ),
-    lockfile => lockfile.replace(
+    (lockfile: string) => lockfile.replace(
       'sha512-trLf4SzuuUxfusZADLINj+dE8clK1frKdmqiJNb1Es75fmI5oY6X2mxLVUciLLjxqw/xr72Dhy+lER6dGd02FQ==',
       'sha512-mutated',
     ),
-    lockfile => lockfile.replace('  fuzzysort@3.1.0: {}', '  fuzzysort@3.1.0:\n    dependencies:\n      unexpected: 1.0.0'),
+    (lockfile: string) => lockfile.replace('  fuzzysort@3.1.0: {}', '  fuzzysort@3.1.0:\n    dependencies:\n      unexpected: 1.0.0'),
   ]) {
-    const mutation = structuredClone(inputs)
-    mutation.lockfileText = mutate(lockfileText)
+    const mutation = { ...structuredClone(inputs), lockfileText: mutate(lockfileText) }
     assert.match(
       inspectLauncherPackageFeasibility(mutation).failures.join('\n'),
       /lockfile/u,
