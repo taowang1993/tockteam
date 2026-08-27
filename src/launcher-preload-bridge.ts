@@ -39,18 +39,17 @@ export function createLauncherPreloadBridge(ipcRenderer: IpcInvoker): LauncherPr
       assertArity('dismiss', args, 0)
       parseLauncherWindowAcknowledgement(await ipcRenderer.invoke(LAUNCHER_WINDOW_IPC_CHANNELS.dismiss))
     },
-    invokeAction: async (...args: unknown[]): Promise<LauncherInvokeResult> => {
-      assertArity('invokeAction', args, 1)
-      const input = parseLauncherInvokeActionArgs({ actionId: args[0] })
+    invokeAction: async (actionId: unknown, ...extra: unknown[]): Promise<LauncherInvokeResult> => {
+      assertArity('invokeAction', [actionId, ...extra], 1)
+      const input = parseLauncherInvokeActionArgs({ actionId })
       return parseLauncherInvokeResult(await ipcRenderer.invoke(LAUNCHER_IPC_CHANNELS.invokeAction, input))
     },
     rescan: async (...args: unknown[]): Promise<LauncherCoreStatus> => {
       assertArity('rescan', args, 0)
       return parseLauncherCoreStatus(await ipcRenderer.invoke(LAUNCHER_IPC_CHANNELS.rescan))
     },
-    search: async (...args: unknown[]): Promise<LauncherSearchResponse> => {
-      assertArity('search', args, 2)
-      const [searchTerm, options] = args
+    search: async (searchTerm: unknown, options: unknown, ...extra: unknown[]): Promise<LauncherSearchResponse> => {
+      assertArity('search', [searchTerm, options, ...extra], 2)
       const optionRecord = isRecord(options) ? options : {}
       if (Object.prototype.hasOwnProperty.call(optionRecord, 'searchTerm')) {
         throw new Error('TockLauncher search options must not include searchTerm')

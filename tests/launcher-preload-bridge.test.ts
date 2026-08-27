@@ -23,6 +23,9 @@ test('launcher preload exposes only typed search, invoke, rescan, and dismiss me
     },
   })
   assert.deepEqual(Object.keys(bridge).sort(), ['dismiss', 'invokeAction', 'rescan', 'search'])
+  assert.equal(bridge.invokeAction.length, 1)
+  assert.equal(bridge.rescan.length, 0)
+  assert.equal(bridge.search.length, 2)
   await bridge.search('coder', { fuzziness: 0.5, maxSearchResultItems: 50, searchEngineId: 'fuzzysort' })
   await bridge.rescan()
   await bridge.invokeAction('launcher-action:one')
