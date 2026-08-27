@@ -28,6 +28,7 @@ export function assertSafeRelativePath(value, field = 'path') {
 export function redactBoundaryText(value) {
     return value
         .replace(/\bBearer\s+\S+/giu, 'Bearer [REDACTED]')
+        .replace(/((["'])(?:(?:[A-Za-z0-9]+[_-])*(?:api[_-]?key|access[_-]?token|password|secret|token))\2\s*:\s*)(["'])(?:\\.|(?!\3)[^\\\r\n])*\3/giu, '$1$3[REDACTED]$3')
         .replace(/\b((?:(?:[A-Za-z0-9]+[_-])*(?:api[_-]?key|access[_-]?token|password|secret|token))\s*[:=]\s*)\S+/giu, '$1[REDACTED]')
         .replace(/\b(?:sk|ghp|github_pat)_[A-Za-z0-9_-]{12,}\b/gu, '[REDACTED]')
         .replace(/\bfile:\/\/[^\s<>'"`]+/giu, '[REDACTED]')

@@ -20638,7 +20638,7 @@ var Sparkles = createLucideIcon2("Sparkles", __iconNode8);
 
 // src/context.ts
 function redactBoundaryText(value) {
-  return value.replace(/\bBearer\s+\S+/giu, "Bearer [REDACTED]").replace(/\b((?:(?:[A-Za-z0-9]+[_-])*(?:api[_-]?key|access[_-]?token|password|secret|token))\s*[:=]\s*)\S+/giu, "$1[REDACTED]").replace(/\b(?:sk|ghp|github_pat)_[A-Za-z0-9_-]{12,}\b/gu, "[REDACTED]").replace(/\bfile:\/\/[^\s<>'"`]+/giu, "[REDACTED]").replace(/(?:[A-Za-z]:[\\/]|\\\\)[^\s<>'"`]+/gu, "[REDACTED]").replace(/(^|[\s("'`=:[{,])\/(?!\/)[^\s<>'"`]*/gu, "$1[REDACTED]");
+  return value.replace(/\bBearer\s+\S+/giu, "Bearer [REDACTED]").replace(/((["'])(?:(?:[A-Za-z0-9]+[_-])*(?:api[_-]?key|access[_-]?token|password|secret|token))\2\s*:\s*)(["'])(?:\\.|(?!\3)[^\\\r\n])*\3/giu, "$1$3[REDACTED]$3").replace(/\b((?:(?:[A-Za-z0-9]+[_-])*(?:api[_-]?key|access[_-]?token|password|secret|token))\s*[:=]\s*)\S+/giu, "$1[REDACTED]").replace(/\b(?:sk|ghp|github_pat)_[A-Za-z0-9_-]{12,}\b/gu, "[REDACTED]").replace(/\bfile:\/\/[^\s<>'"`]+/giu, "[REDACTED]").replace(/(?:[A-Za-z]:[\\/]|\\\\)[^\s<>'"`]+/gu, "[REDACTED]").replace(/(^|[\s("'`=:[{,])\/(?!\/)[^\s<>'"`]*/gu, "$1[REDACTED]");
 }
 
 // src/assistant-panel.tsx

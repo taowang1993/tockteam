@@ -277,10 +277,10 @@ test('prompt and tool text redact credentials and absolute paths', () => {
   assert.match(combined, /\[REDACTED\]/)
   assert.doesNotMatch(boundToolText('/private/tmp/vault/Note.md TOKEN=abc123', 80), /private\/tmp|abc123/)
   const assigned = boundToolText(
-    'OPENAI_API_KEY=top-secret path=/Users/alice/private AWS_ACCESS_TOKEN:another-secret',
+    'OPENAI_API_KEY=top-secret path=/Users/alice/private AWS_ACCESS_TOKEN:another-secret {"password":"json-password-secret"}',
     200,
   )
-  assert.doesNotMatch(assigned, /top-secret|Users\/alice|another-secret/u)
+  assert.doesNotMatch(assigned, /top-secret|Users\/alice|another-secret|json-password-secret/u)
   assert.match(assigned, /OPENAI_API_KEY=\[REDACTED\]/u)
   assert.match(assigned, /path=\[REDACTED\]/u)
 })
