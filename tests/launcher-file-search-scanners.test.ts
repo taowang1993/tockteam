@@ -82,6 +82,43 @@ test('Simple File Search rejects home and symlink roots and honors cancellation'
   } finally { await rm(home, { force: true, recursive: true }); await rm(outside, { force: true, recursive: true }) }
 })
 
+test('Windows File Search uses the allowlisted executable and fixed bounded argv', async () => {
+  let invocation: { executable: string; args: readonly string[]; options: unknown } | undefined
+  const scanners = createLauncherFileSearchScanners({
+    validateEverythingCliPath: async () => true,
+    runFile: async (executable, args, options) => { invocation = { executable, args, options }; return { stdout: '' } },
+  })
+  await scanners.queryFileSearch({
+    everythingCliFilePath: 'C:\\Program Files\\Everything\\es.exe', homePath: 'C:\\Users\\max', maxResults: 20,
+    platform: 'Windows', searchTerm: 'report & | > < ^ " spaces', signal: signal(),
+  })
+  assert.equal(invocation?.executable, 'C:\\Program Files\\Everything\\es.exe')
+  assert.deepEqual(invocation?.args, ['-max-results', '20', 'path:"C:\\Users\\max\\" "report & | > < ^  spaces"'])
+  assert.deepEqual(invocation?.options, { maxBuffer: 2 * 1024 * 1024, shell: false, signal: invocation?.options && (invocation.options as { signal: AbortSignal }).signal, timeout: 8_000, windowsHide: true })
+})
+
+test('Simple File Search applies result, visit, type, and recursive bounds during enumeration', async () => {
+  const home = await mkdtemp(join(tmpdir(), 'tockteam-simple-bounds-'))
+  try {
+    await mkdir(join(home, 'root', 'folder-a'), { recursive: true })
+    await mkdir(join(home, 'root', 'folder-b'), { recursive: true })
+    await writeFile(join(home, 'root', 'a.txt'), 'a', 'utf8')
+    await writeFile(join(home, 'root', 'b.txt'), 'b', 'utf8')
+    await writeFile(join(home, 'root', 'folder-a', 'child.txt'), 'child', 'utf8')
+    const entries = await scanSimpleFileSearchFolder({
+      folder: { id: 'root', path: join(home, 'root'), recursive: true, searchFor: 'folders' },
+      homePath: home, maxResults: 1, maxVisitedEntries: 1, signal: signal(),
+    })
+    assert.equal(entries.length, 1)
+    assert.equal(entries[0]?.type, 'folder')
+    const files = await scanSimpleFileSearchFolder({
+      folder: { id: 'root', path: join(home, 'root'), recursive: false, searchFor: 'files' },
+      homePath: home, maxResults: 200, maxVisitedEntries: 10_000, signal: signal(),
+    })
+    assert.deepEqual(files.map(entry => entry.path), [join(home, 'root', 'a.txt'), join(home, 'root', 'b.txt')])
+  } finally { await rm(home, { force: true, recursive: true }) }
+})
+
 test('File Search rejects unsupported Linux and malformed query terms before invoking a child', async () => {
   let calls = 0
   const scanners = createLauncherFileSearchScanners({ runFile: async () => { calls++; return { stdout: '' } } })
