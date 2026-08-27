@@ -161,6 +161,25 @@ test('does not let an older instant search overwrite the current VS Code action 
   await provider.executeAction(record(current))
 })
 
+test('passes hostile VS Code URI characters only as direct executable arguments', async () => {
+  const hostileUri = 'vscode-remote://ssh/work%20space%26%7C%3C%3E%5E%22%25%21'
+  const launches: Array<{ executable: string; args: readonly string[] }> = []
+  const provider = createLauncherDiscoveryExtensions({
+    ...baseOptions,
+    enabledExtensionIds: () => ['VSCode'],
+    scanners: { ...entries, VSCode: async () => [{ commandArg: '--folder-uri' as const, fileType: 'Folder', id: 'hostile', kind: 'vscode' as const, label: 'hostile', path: hostileUri, uri: hostileUri }] },
+    resolveExecutable: async () => 'C:\\Program Files\\Microsoft VS Code\\Code.exe',
+    effects: { confirmOpenApplicationAsAdministrator: async () => false, copyText: () => {}, launchExecutable: async (executable, args) => { launches.push({ executable, args }) }, openApplication: () => {}, openApplicationAsAdministrator: () => {}, openExternal: () => {}, revealPath: () => {} },
+  })
+  await provider.loadIndexedItems(new AbortController().signal)
+  const item = (await provider.searchInstant('vscode hostile')).after[0]!
+  await provider.executeAction(record(item))
+  assert.equal(launches.length, 1)
+  assert.equal(launches[0]?.executable.toLocaleLowerCase('en-US').endsWith('.exe'), true)
+  assert.equal(launches[0]?.executable.toLocaleLowerCase('en-US').endsWith('.cmd'), false)
+  assert.deepEqual(launches[0]?.args, ['--folder-uri', hostileUri])
+})
+
 test('revalidates application, bookmark, reveal, IDE and VS Code targets immediately before effects', async () => {
   const calls: string[] = []
   const effects = {

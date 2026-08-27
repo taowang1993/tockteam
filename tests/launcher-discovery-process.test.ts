@@ -10,7 +10,6 @@ import {
   revalidateLauncherPath,
   revalidateLauncherUrl,
   resolveLauncherExecutable,
-  resolveLauncherExecutableInvocation,
   revalidateLauncherWindowsStoreId,
   revalidateLauncherVscodeUri,
 } from '../src/launcher-discovery-process.ts'
@@ -35,24 +34,22 @@ test('detached launch uses argument arrays and hidden detached children', async 
   assert.deepEqual(calls, [['code', ['--folder-uri', 'file:///work/tockteam'], { detached: true, stdio: 'ignore', windowsHide: true }], 'unref'])
 })
 
-test('resolves only finite PATH VS Code executable candidates', async () => {
+test('resolves finite Windows VS Code requests to the concrete Code.exe install target', async () => {
   const root = await mkdtemp(join(tmpdir(), 'tockteam-code-'))
   try {
-    await writeFile(join(root, 'code.cmd'), 'code', 'utf8')
-    assert.equal(await resolveLauncherExecutable('code', 'Windows', { PATH: root }), join(root, 'code.cmd'))
-    assert.equal(await resolveLauncherExecutable('code.cmd', 'Windows', { PATH: root }), join(root, 'code.cmd'))
-    assert.equal(await resolveLauncherExecutable('code;evil', 'Windows', { PATH: root }), undefined)
+    const install = join(root, 'Microsoft VS Code')
+    const bin = join(install, 'bin')
+    const executable = join(install, 'Code.exe')
+    await mkdir(bin, { recursive: true })
+    await writeFile(join(bin, 'code.cmd'), 'echo should never execute', 'utf8')
+    await writeFile(executable, 'Code executable', 'utf8')
+    assert.equal(await resolveLauncherExecutable('code', 'Windows', { PATH: bin }), executable)
+    assert.equal(await resolveLauncherExecutable('code.cmd', 'Windows', { PATH: bin }), executable)
+    assert.equal(await resolveLauncherExecutable('code.exe', 'Windows', { PATH: bin }), executable)
+    assert.equal((await resolveLauncherExecutable('code', 'Windows', { PATH: bin }))?.toLocaleLowerCase('en-US').endsWith('.cmd'), false)
+    assert.equal(await resolveLauncherExecutable('code;evil', 'Windows', { PATH: bin }), undefined)
     assert.equal(await resolveLauncherExecutable('code', 'Windows', { PATH: '' }), undefined)
   } finally { await rm(root, { recursive: true, force: true }) }
-})
-
-test('launches Windows command files through one fixed PowerShell data adapter', () => {
-  const invocation = resolveLauncherExecutableInvocation('C:\\Program Files\\Microsoft VS Code\\bin\\code.cmd', ['--folder-uri', 'vscode-remote://ssh/work'])
-  assert.equal(invocation.executable, 'powershell.exe')
-  assert.equal(invocation.args.at(-2), '--folder-uri')
-  assert.equal(invocation.args.at(-1), 'vscode-remote://ssh/work')
-  assert.match(String(invocation.args[4]), /Start-Process -FilePath \$target/u)
-  assert.doesNotMatch(String(invocation.args[4]), /code\\.cmd/u)
 })
 
 test('path and URL revalidation rejects drift immediately before effect', async () => {

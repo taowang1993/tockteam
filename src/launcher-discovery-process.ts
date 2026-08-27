@@ -53,41 +53,67 @@ function pathEqual(left: string, right: string): boolean {
   return normalize(left) === normalize(right)
 }
 
+function isRegularExecutable(stats: { isFile(): boolean; isSymbolicLink(): boolean }): boolean {
+  return stats.isFile() && !stats.isSymbolicLink()
+}
+
+function knownWindowsVSCodeInstallRoot(directory: string, implementation: typeof path | typeof path.win32): string | undefined {
+  const base = implementation.basename(directory)
+  if (/^Microsoft VS Code(?: Insiders)?$/iu.test(base)) return directory
+  if (base.toLocaleLowerCase('en-US') !== 'bin') return undefined
+  const root = implementation.dirname(directory)
+  return /^Microsoft VS Code(?: Insiders)?$/iu.test(implementation.basename(root)) ? root : undefined
+}
+
+async function regularFile(target: string): Promise<string | undefined> {
+  try {
+    const selected = await lstat(target)
+    return isRegularExecutable(selected) ? target : undefined
+  } catch { return undefined }
+}
+
 export async function resolveLauncherExecutable(
   command: unknown,
   platform: 'Linux' | 'macOS' | 'Windows',
   environment: Readonly<Record<string, string | undefined>> = process.env,
 ): Promise<string | undefined> {
   if (!bounded(command, 1_024)) return undefined
+  if (platform === 'Windows') {
+    const direct = isAbsolute(command)
+    if (direct) {
+      const implementation = isWindowsAbsolute(command) ? path.win32 : path
+      const base = implementation.basename(command)
+      const parent = implementation.dirname(command)
+      const root = knownWindowsVSCodeInstallRoot(parent, implementation) ?? knownWindowsVSCodeInstallRoot(implementation.dirname(parent), implementation)
+      if (root === undefined || !/^(?:code|code\.cmd|code\.exe|Code\.exe)$/iu.test(base)) return undefined
+      return await regularFile(implementation.join(root, 'Code.exe'))
+    }
+    if (!/^(?:code|code\.cmd|code\.exe)$/iu.test(command)) return undefined
+  } else if (!/^code$/iu.test(command) && !isAbsolute(command)) return undefined
   if (isAbsolute(command)) return command
-  if (!/^(?:code|code\.cmd|code\.exe)$/iu.test(command) || (platform !== 'Windows' && !/^code$/iu.test(command))) return undefined
   const pathValue = environment.PATH ?? environment.Path
   if (!bounded(pathValue, 16_384)) return undefined
-  const candidates = platform === 'Windows' && /^code$/iu.test(command) ? ['code.cmd', 'code.exe', 'code'] : [command]
+  const markers = platform === 'Windows' ? ['code.cmd', 'code.exe'] : [command]
   for (const directory of pathValue.split(platform === 'Windows' ? ';' : ':').slice(0, 64)) {
     if (!bounded(directory, 4_096) || !isAbsolute(directory)) continue
     const implementation = isWindowsAbsolute(directory) ? path.win32 : path
-    for (const candidateName of candidates) {
-      const candidate = implementation.join(directory, candidateName)
-      try {
-        const selected = await lstat(candidate)
-        if (selected.isFile() && !selected.isSymbolicLink()) return implementation.normalize(candidate)
-      } catch { /* inaccessible PATH entries are skipped */ }
+    if (platform === 'Windows') {
+      const root = knownWindowsVSCodeInstallRoot(directory, implementation)
+      if (root === undefined) continue
+      let markerFound = false
+      for (const marker of markers) {
+        if (await regularFile(implementation.join(directory, marker)) !== undefined) { markerFound = true; break }
+      }
+      if (markerFound) {
+        const executable = await regularFile(implementation.join(root, 'Code.exe'))
+        if (executable !== undefined) return implementation.normalize(executable)
+      }
+      continue
     }
+    const executable = await regularFile(implementation.join(directory, command))
+    if (executable !== undefined) return implementation.normalize(executable)
   }
   return undefined
-}
-
-const POWERSHELL_COMMAND_FILE_SCRIPT = "$target=$args[0]; if ([string]::IsNullOrWhiteSpace($target)) { throw 'Missing executable' }; $argumentList=@($args | Select-Object -Skip 1); Start-Process -FilePath $target -ArgumentList $argumentList"
-
-export function resolveLauncherExecutableInvocation(executable: string, args: readonly string[]): LauncherFixedInvocation {
-  if (!bounded(executable, 4_096) || !Array.isArray(args) || args.length > 16 || args.some(argument => !bounded(argument))) throw new Error('Invalid launcher executable invocation')
-  if (path.win32.extname(executable).toLocaleLowerCase('en-US') !== '.cmd') return Object.freeze({ executable, args: Object.freeze([...args]) })
-  if (!path.win32.isAbsolute(executable)) throw new Error('Windows command file must be absolute')
-  return Object.freeze({
-    args: Object.freeze([...POWERSHELL_PREFIX, POWERSHELL_COMMAND_FILE_SCRIPT, executable, ...args]),
-    executable: 'powershell.exe',
-  })
 }
 
 export function isLauncherPathWithin(root: string, candidate: string): boolean {
