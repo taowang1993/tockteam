@@ -44,8 +44,9 @@ export function registerLauncherIpcHandlers(args: LauncherSearchIpcArgs): () => 
   return registerLauncherOwnedIpcHandlers(args.ipcMain, [
     [
       LAUNCHER_IPC_CHANNELS.search,
-      async (event: unknown, input: unknown): Promise<LauncherSearchResponse> => {
+      async (event: unknown, input: unknown, ...extra: unknown[]): Promise<LauncherSearchResponse> => {
         const owner = args.guard.assert(event, 'launcher')
+        assertNoArguments(LAUNCHER_IPC_CHANNELS.search, extra)
         const request = parseLauncherSearchArgs(input)
         const token = Object.freeze({})
         const id = senderId(event, owner)
@@ -83,8 +84,9 @@ export function registerLauncherIpcHandlers(args: LauncherSearchIpcArgs): () => 
     ],
     [
       LAUNCHER_IPC_CHANNELS.invokeAction,
-      async (event: unknown, input: unknown): Promise<Readonly<{ ok: true } | { ok: false; reason: 'expired' }>> => {
+      async (event: unknown, input: unknown, ...extra: unknown[]): Promise<Readonly<{ ok: true } | { ok: false; reason: 'expired' }>> => {
         const owner = args.guard.assert(event, 'launcher')
+        assertNoArguments(LAUNCHER_IPC_CHANNELS.invokeAction, extra)
         const { actionId } = parseLauncherInvokeActionArgs(input)
         try {
           return await args.actions.invoke({ actionId, owner })

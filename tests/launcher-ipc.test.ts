@@ -43,6 +43,8 @@ test('launcher search IPC guards, publishes opaque actions, rejects stale reques
   await assert.rejects(stale, /superseded/u)
   assert.equal(published, 1)
   await assert.rejects(ipc.handlers.get(LAUNCHER_IPC_CHANNELS.rescan)!(event, 'extra') as Promise<unknown>, /arguments/u)
+  await assert.rejects(ipc.handlers.get(LAUNCHER_IPC_CHANNELS.search)!(event, input('extra'), 'extra') as Promise<unknown>, /arguments/u)
+  await assert.rejects(ipc.handlers.get(LAUNCHER_IPC_CHANNELS.invokeAction)!(event, { actionId: 'launcher-action:opaque' }, 'extra') as Promise<unknown>, /arguments/u)
   dispose()
   assert.deepEqual(ipc.removed.sort(), Object.values(LAUNCHER_IPC_CHANNELS).sort())
 })
