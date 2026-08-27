@@ -62,7 +62,7 @@ const EXPECTED_NOTICE_ENTRIES = Object.freeze([
     source: 'vendor/ueli/assets/Extensions/ApplicationSearch/LICENSE',
     license: 'CC BY-SA 3.0',
     sha256: 'ed29c8f605a1a27368c832b47816405bc6bb18f1d3ec53372cc5c40e64ae680d',
-    attribution: 'http://www.gnome.org',
+    attribution: 'https://www.gnome.org',
     disposition: 'provenance-only',
   }),
   Object.freeze({

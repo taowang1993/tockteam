@@ -98,7 +98,7 @@ test('the notice ledger keeps exact attribution in provenance without adding cro
   ])
   assert.deepEqual(ledger.entries.map(({ id, attribution }) => ({ id, attribution })), [
     { id: 'ueli-mit', attribution: 'https://github.com/oliverschwendener/ueli' },
-    { id: 'gnome-application-search-icons', attribution: 'http://www.gnome.org' },
+    { id: 'gnome-application-search-icons', attribution: 'https://www.gnome.org' },
     { id: 'openmoji-custom-web-search-icon', attribution: 'https://openmoji.org/' },
     { id: 'ueli-dependency-graph', attribution: 'Ueli package dependency graph' },
   ])
