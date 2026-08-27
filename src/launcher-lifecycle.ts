@@ -61,7 +61,12 @@ export class LauncherToggleIntentQueue {
   async drain(toggle: () => Promise<void> | void): Promise<void> {
     if (!this.pending) return
     this.pending = false
-    await toggle()
+    try {
+      await toggle()
+    } catch (error) {
+      this.pending = true
+      throw error
+    }
   }
 }
 
@@ -82,6 +87,21 @@ export function setLaunchOnStart(app: LoginItemApp, enabled: boolean): boolean {
   if (typeof enabled !== 'boolean') throw new Error('Launch on Start must be a boolean')
   app.setLoginItemSettings({ openAtLogin: enabled })
   return readLaunchOnStart(app)
+}
+
+export function attemptSecureRelaunch(args: Readonly<{
+  relaunch: () => void
+  report: (error: unknown) => void
+  requestQuit: () => void
+}>): boolean {
+  try {
+    args.relaunch()
+  } catch (error) {
+    args.report(error)
+    return false
+  }
+  args.requestQuit()
+  return true
 }
 
 /** Owns one native tray and never destroys a tray it did not create. */

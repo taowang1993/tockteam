@@ -87,6 +87,39 @@ test('enabled updater configures manual finite transitions and serializes action
   assert.equal(updater.installCalls, 1)
 })
 
+test('async install errors recover once and retain the downloaded retry authority', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'tockteam-update-'))
+  mkdirSync(join(root, 'resources'))
+  writeFileSync(join(root, 'resources', 'app-update.yml'), 'provider: generic\n')
+  const updater = new FakeUpdater()
+  let recovered = 0
+  const owner = createDesktopAppUpdater({
+    app: { ...fakeApp(root, true), resourcesPath: join(root, 'resources') },
+    updater,
+    recoverInstallFailure: async () => { recovered += 1 },
+  })
+  updater.emit('update-available', { version: '1.3.0' })
+  updater.emit('update-downloaded', { version: '1.3.0' })
+  assert.equal((await owner.install()).accepted, true)
+  updater.emit('error', new Error('install failed after quitAndInstall returned'))
+  await new Promise<void>(resolve => { setImmediate(resolve) })
+  assert.equal(recovered, 1)
+  assert.equal(owner.getState().status, 'downloaded')
+  assert.equal(owner.getState().downloadedVersion, '1.3.0')
+  assert.equal(owner.getState().canRetry, true)
+  updater.emit('update-available', { version: '1.4.0' })
+  updater.emit('update-not-available')
+  updater.emit('update-downloaded', { version: '1.4.0' })
+  assert.equal(owner.getState().status, 'downloaded')
+  assert.equal(owner.getState().downloadedVersion, '1.3.0')
+  updater.emit('error', new Error('duplicate late error'))
+  await new Promise<void>(resolve => { setImmediate(resolve) })
+  assert.equal(recovered, 1)
+  assert.equal((await owner.check()).accepted, false)
+  assert.equal((await owner.download()).accepted, false)
+  owner.dispose()
+})
+
 test('failed check/download/install remain retryable and recovery runs', async () => {
   const root = mkdtempSync(join(tmpdir(), 'tockteam-update-'))
   mkdirSync(join(root, 'resources'))

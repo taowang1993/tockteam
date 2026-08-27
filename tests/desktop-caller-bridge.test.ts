@@ -6,6 +6,7 @@ import type { DesktopBridge } from '../src/contracts.ts'
 const main = readFileSync(new URL('../src/main.ts', import.meta.url), 'utf8')
 const preload = readFileSync(new URL('../src/preload.ts', import.meta.url), 'utf8')
 const contracts = readFileSync(new URL('../src/contracts.ts', import.meta.url), 'utf8')
+const windowIpc = readFileSync(new URL('../src/launcher-window-ipc.ts', import.meta.url), 'utf8')
 
 const bridge: Pick<DesktopBridge, 'tockTutor'> = {
   tockTutor: {
@@ -31,6 +32,9 @@ test('isolated preload exposes only bounded TockTutor caller and dispatch method
   assert.match(preload, /ipcRenderer\.invoke\('desktop:tocktutor-dispatch-cancel'\)/u)
   assert.match(preload, /ipcRenderer\.invoke\('desktop:tocktutor-dispatch-next'\)/u)
   assert.match(preload, /ipcRenderer\.invoke\('desktop:tocktutor-dispatch-complete', request\)/u)
+  assert.match(preload, /getState: async \(\.\.\.args: unknown\[\]\)/u)
+  assert.match(preload, /syncLauncherTheme: async \(source: LauncherThemeSource, \.\.\.extra: unknown\[\]\)/u)
+  assert.match(preload, /syncWorkbenchDestination: async \(destination: TockTeamDestination, \.\.\.extra: unknown\[\]\)/u)
 })
 
 test('main issues caller authorization only after the trusted-main IPC guard', () => {
@@ -58,6 +62,15 @@ test('main issues caller authorization only after the trusted-main IPC guard', (
   assert.match(cancel, /assertTrustedMainIpc\(event\)/u)
   assert.match(cancel, /abortMainDispatchConsumer/u)
   assert.match(main, /overrides\.preview === undefined \? desktopCallerChannel\.environment : undefined/u)
+  const readiness = windowIpc.match(/LAUNCHER_WINDOW_IPC_CHANNELS\.routeReady,[\s\S]*?assertNoLauncherIpcArguments\(rawArgs\)/u)?.[0]
+  assert.ok(readiness)
+  assert.match(readiness, /assertNoLauncherIpcArguments\(rawArgs\)/u)
+  assert.match(windowIpc, /LAUNCHER_WINDOW_IPC_CHANNELS\.syncThemeSource,[\s\S]+raw: unknown,[\s\S]+assertNoLauncherIpcArguments\(rawArgs\)/u)
+  assert.match(main, /DESKTOP_APP_UPDATE_CHANNELS\.getState, \(event, \.\.\.rawArgs: unknown\[\]\)/u)
+  assert.match(main, /DESKTOP_APP_UPDATE_CHANNELS\.check, async \(event, \.\.\.rawArgs: unknown\[\]\)/u)
+  assert.match(main, /DESKTOP_APP_UPDATE_CHANNELS\.download, async \(event, \.\.\.rawArgs: unknown\[\]\)/u)
+  assert.match(main, /DESKTOP_APP_UPDATE_CHANNELS\.install, async \(event, \.\.\.rawArgs: unknown\[\]\)/u)
+  assert.match(main, /desktop:workbench-destination', \(event, raw: unknown, \.\.\.rawArgs: unknown\[\]\)/u)
 })
 
 test('runtime and window teardown revoke caller leases on every owned lifecycle', () => {
@@ -67,6 +80,6 @@ test('runtime and window teardown revoke caller leases on every owned lifecycle'
   assert.match(createWindow, /window\.on\('closed'[\s\S]*desktopCallerAuthorizations\.revokeWindow\(windowId\)/u)
   assert.ok((createWindow.match(/desktopCallerAuthorizations\.revokeWindow\(windowId\)/g) ?? []).length >= 3)
   assert.match(createWindow, /webContents\.on\('render-process-gone'[\s\S]*desktopCallerAuthorizations\.revokeWindow\(windowId\)/u)
-  assert.match(main, /async function stopRuntimeAndChannels\(\)[\s\S]*desktopCallerChannel\.stop\(\)/u)
+  assert.match(main, /async function stopRuntimeAndChannels\([^)]*\)[\s\S]*desktopCallerChannel\.stop\(\)/u)
   assert.equal((main.match(/desktopCallerChannel\.start\(\)/g) ?? []).length, 1)
 })

@@ -154,6 +154,7 @@ const child = spawn(electron, [
   '.',
   `--remote-debugging-port=${String(port)}`,
   `--user-data-dir=${userData}`,
+  '--toggle',
 ], {
   cwd: root,
   detached: true,
@@ -176,20 +177,32 @@ try {
   assert.ok(workbench)
   workbenchConnection = await CdpPage.connect(workbench.webSocketDebuggerUrl)
   await clearStartupDialogs(workbenchConnection)
-  await clickWorkbenchFallback(workbenchConnection)
-
   pages = await waitFor(
     () => electronPages(port),
     current => current.filter(page => page.title === 'TockLauncher').length === 1,
   )
   launcher = pages.find(page => page.title === 'TockLauncher')
   assert.ok(launcher)
+  launcherConnection = await CdpPage.connect(launcher.webSocketDebuggerUrl)
+  await waitFor(
+    () => workbenchConnection.evaluate('(async () => (await window.dshDesktop?.launcher?.getState())?.visible)()'),
+    visible => visible === true,
+  )
+  await launcherConnection.evaluate('window.tockteamLauncher?.dismiss()')
+  await waitFor(
+    () => workbenchConnection.evaluate('(async () => (await window.dshDesktop?.launcher?.getState())?.visible)()'),
+    visible => visible === false,
+  )
+  await clickWorkbenchFallback(workbenchConnection)
+  await waitFor(
+    () => workbenchConnection.evaluate('(async () => (await window.dshDesktop?.launcher?.getState())?.visible)()'),
+    visible => visible === true,
+  )
   const workbenchUrl = await workbenchConnection.evaluate('location.href')
   const workbenchMarker = await workbenchConnection.evaluate(`(() => {
     window.__tockteamLauncherSmokeMarker = 'same-workbench-renderer'
     return window.__tockteamLauncherSmokeMarker
   })()`)
-  launcherConnection = await CdpPage.connect(launcher.webSocketDebuggerUrl)
   const firstLauncherId = launcher.id
   await waitFor(
     () => launcherConnection.evaluate('document.documentElement.dataset.launcherReady'),
@@ -251,6 +264,39 @@ try {
   const initialTheme = await launcherConnection.evaluate('window.tockteamLauncher?.getTheme()')
   assert.ok(initialTheme?.mode === 'light' || initialTheme?.mode === 'dark')
   assert.ok(initialTheme?.skinId === null || /^tockteam-skin-/u.test(initialTheme.skinId))
+  await workbenchConnection.evaluate(`(async () => {
+    await window.dshDesktop?.syncLauncherTheme({ mode: 'dark', skinId: 'tockteam-skin-deep-current' })
+  })()`)
+  await waitFor(
+    () => launcherConnection.evaluate(`({
+      colorScheme: document.documentElement.style.colorScheme,
+      skin: document.documentElement.dataset.tockteamSkin,
+    })`),
+    theme => theme.colorScheme === 'dark' && theme.skin === 'tockteam-skin-deep-current',
+  )
+  const darkThemeFacts = await launcherConnection.evaluate(`({
+    colorScheme: document.documentElement.style.colorScheme,
+    skin: document.documentElement.dataset.tockteamSkin,
+    brand: getComputedStyle(document.documentElement).getPropertyValue('--dsw-alias-brand-primary').trim(),
+  })`)
+  assert.equal(darkThemeFacts.colorScheme, 'dark')
+  assert.equal(darkThemeFacts.skin, 'tockteam-skin-deep-current')
+  assert.equal(darkThemeFacts.brand, '#49c8eb')
+  await workbenchConnection.evaluate(`(async () => {
+    await window.dshDesktop?.syncLauncherTheme({ mode: 'light', skinId: null })
+  })()`)
+  await waitFor(
+    () => launcherConnection.evaluate(`({
+      colorScheme: document.documentElement.style.colorScheme,
+      skin: document.documentElement.dataset.tockteamSkin ?? null,
+    })`),
+    theme => theme.colorScheme === 'light' && theme.skin === null,
+  )
+  const lightThemeFacts = await launcherConnection.evaluate(`({
+    colorScheme: document.documentElement.style.colorScheme,
+    skin: document.documentElement.dataset.tockteamSkin ?? null,
+  })`)
+  assert.deepEqual(lightThemeFacts, { colorScheme: 'light', skin: null })
 
   await launcherConnection.evaluate(`(() => {
     const input = document.getElementById('launcher-search')
@@ -275,11 +321,25 @@ try {
     pathname => pathname === '/tocktutor',
   )
   assert.equal(await workbenchConnection.evaluate('window.__tockteamLauncherSmokeMarker'), workbenchMarker)
+  const tutorFacts = await workbenchConnection.evaluate(`({
+    launcherButtons: document.querySelectorAll('button[aria-label="Open TockLauncher"]').length,
+    titlebars: document.querySelectorAll('[aria-label="TockTutor Title Bar"]').length,
+  })`)
+  assert.deepEqual(tutorFacts, { launcherButtons: 1, titlebars: 1 })
   const tutorLauncherButton = await workbenchConnection.evaluate(`(() => {
     const button = document.querySelector('button[aria-label="Open TockLauncher"]')
     return button instanceof HTMLButtonElement && !button.disabled
   })()`)
   assert.equal(tutorLauncherButton, true)
+  await workbenchConnection.evaluate(`(() => {
+    window.history.pushState(window.history.state, '', '/tocktutor?smoke-session=1')
+    window.dispatchEvent(new PopStateEvent('popstate'))
+    sessionStorage.setItem('tockteam-smoke-session', 'preserved')
+  })()`)
+  await waitFor(
+    () => workbenchConnection.evaluate('location.search'),
+    search => search === '?smoke-session=1',
+  )
   await showLauncherFromWorkbench(workbenchConnection)
   await launcherConnection.evaluate(`(() => {
     const input = document.getElementById('launcher-search')
@@ -303,6 +363,58 @@ try {
     () => workbenchConnection.evaluate('location.pathname'),
     pathname => pathname === '/tockcoder',
   )
+  const coderFacts = await workbenchConnection.evaluate(`({
+    tutorTitlebars: [...document.querySelectorAll('[aria-label="TockTutor Title Bar"]')].filter(node => node.closest('[hidden]') === null).length,
+    launcherFallbacks: [...document.querySelectorAll('button')].filter(node => node.textContent?.includes('TockLauncher')).length,
+  })`)
+  assert.deepEqual(coderFacts, { tutorTitlebars: 0, launcherFallbacks: 1 })
+  await showLauncherFromWorkbench(workbenchConnection)
+  await launcherConnection.evaluate(`(() => {
+    const input = document.getElementById('launcher-search')
+    if (!(input instanceof HTMLInputElement)) return false
+    input.value = 'tutor'
+    input.dispatchEvent(new Event('input', { bubbles: true }))
+    return true
+  })()`)
+  await waitFor(
+    () => launcherConnection.evaluate(`([...document.querySelectorAll('[data-result-id]')].some(node => node.textContent?.includes('TockTutor')))`) ,
+    found => found === true,
+  )
+  await launcherConnection.evaluate(`(() => {
+    const button = [...document.querySelectorAll('#launcher-details button')]
+      .find(node => node.textContent?.includes('Open TockTutor'))
+    if (!(button instanceof HTMLButtonElement)) return false
+    button.click()
+    return true
+  })()`)
+  await waitFor(
+    () => workbenchConnection.evaluate('location.href'),
+    href => typeof href === 'string' && href.endsWith('/tocktutor?smoke-session=1'),
+  )
+  const tutorAfterSwitch = await workbenchConnection.evaluate(`({
+    marker: window.__tockteamLauncherSmokeMarker,
+    titlebars: document.querySelectorAll('[aria-label="TockTutor Title Bar"]').length,
+  })`)
+  assert.deepEqual(tutorAfterSwitch, { marker: workbenchMarker, titlebars: 1 })
+  await workbenchConnection.evaluate(`(() => {
+    window.history.replaceState(window.history.state, '', '/')
+  })()`)
+  await workbenchConnection.call('Page.reload')
+  await waitFor(
+    () => workbenchConnection.evaluate('location.pathname'),
+    pathname => pathname === '/tocktutor',
+  )
+  await waitFor(
+    () => workbenchConnection.evaluate(`({
+      marker: sessionStorage.getItem('tockteam-smoke-session'),
+      location: location.href,
+      titlebars: document.querySelectorAll('[aria-label="TockTutor Title Bar"]').length,
+      routeHidden: document.querySelector('[data-tockteam-tocktutor-route]')?.matches('[hidden]') ?? null,
+      active: document.documentElement.dataset.tockteamTocktutorActive ?? null,
+    })`),
+    state => state.marker === 'preserved' && state.titlebars === 1,
+  )
+  await clearStartupDialogs(workbenchConnection)
   await showLauncherFromWorkbench(workbenchConnection)
   const settingsClicked = await launcherConnection.evaluate(`(() => {
     const button = document.getElementById('launcher-settings')
@@ -318,6 +430,10 @@ try {
   await waitFor(
     () => workbenchConnection.evaluate('location.pathname'),
     pathname => pathname === '/tockcoder',
+  )
+  await waitFor(
+    () => workbenchConnection.evaluate(`document.querySelectorAll('[role="dialog"]').length`),
+    count => count > 0,
   )
   await showLauncherFromWorkbench(workbenchConnection)
 
@@ -497,7 +613,7 @@ try {
     visible => visible === false,
   )
   assert.equal(await workbenchConnection.evaluate('location.href'), workbenchUrl)
-  assert.equal(await workbenchConnection.evaluate('window.__tockteamLauncherSmokeMarker'), workbenchMarker)
+  assert.equal(await workbenchConnection.evaluate('sessionStorage.getItem("tockteam-smoke-session")'), 'preserved')
 
   const closeReopen = await showLauncherFromWorkbench(workbenchConnection)
   assert.equal(closeReopen?.visible, true)
@@ -527,8 +643,8 @@ try {
     () => workbenchConnection.evaluate('(async () => (await window.dshDesktop?.launcher?.getState())?.visible)()'),
     visible => visible === false,
   )
-  const invokeSecondInstanceToggle = async (visible) => {
-    const toggle = spawn(electron, ['.', '--toggle', `--user-data-dir=${userData}`], {
+  const invokeSecondInstanceToggle = async (visible, extraArguments = []) => {
+    const toggle = spawn(electron, ['.', '--toggle', ...extraArguments, `--user-data-dir=${userData}`], {
       cwd: root,
       stdio: 'ignore',
     })
@@ -544,21 +660,36 @@ try {
       }
     }
   }
-  await invokeSecondInstanceToggle(true)
+  const queuedWorkspace = await mkdtemp(join(userData, 'queued-workspace-'))
+  await invokeSecondInstanceToggle(true, [queuedWorkspace])
+  await waitFor(
+    () => workbenchConnection.evaluate('document.body.textContent ?? ""'),
+    text => typeof text === 'string' && text.includes(queuedWorkspace),
+    10_000,
+  )
   await invokeSecondInstanceToggle(false)
-  console.log('launcher Electron smoke passed: sandbox/preload/CSP/geometry/focus/reuse/search/invoke/history/routes/theme/updater/second-instance-toggle')
+  await workbenchConnection.call('Browser.close').catch(() => {})
+  await waitFor(
+    () => Promise.resolve(child.exitCode),
+    exitCode => exitCode !== null,
+    5_000,
+  )
+  console.log('launcher Electron smoke passed: fresh-toggle/sandbox/preload/CSP/geometry/focus/reuse/search/invoke/history/routes/reload/session/theme/skin/settings/updater/second-instance-intents/graceful-quit')
 } catch (error) {
   throw new Error(`${error instanceof Error ? error.stack ?? error.message : String(error)}\nElectron output:\n${output}`)
 } finally {
   launcherConnection?.close()
   workbenchConnection?.close()
-  if (child.pid !== undefined) {
+  if (child.pid !== undefined && child.exitCode === null) {
     if (process.platform === 'win32') {
       await stopChildProcess(child, 1_000, 1_000).catch(() => {})
     } else {
       try { process.kill(-child.pid, 'SIGTERM') } catch {}
-      await sleep(1_000)
-      try { process.kill(-child.pid, 'SIGKILL') } catch {}
+      const deadline = Date.now() + 3_000
+      while (child.exitCode === null && Date.now() < deadline) await sleep(100)
+      if (child.exitCode === null) {
+        try { process.kill(-child.pid, 'SIGKILL') } catch {}
+      }
     }
   }
   await rm(userData, { recursive: true, force: true })

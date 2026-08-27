@@ -4,6 +4,7 @@ import {
   LauncherLifecycleController,
   LauncherToggleIntentQueue,
   SingleOwnedTray,
+  attemptSecureRelaunch,
   readLaunchOnStart,
   resolveLauncherLifecycleSettings,
   setLaunchOnStart,
@@ -37,6 +38,27 @@ test('toggle intents coalesce before readiness and drain once', async () => {
   await queue.drain(async () => { toggles += 1 })
   assert.equal(toggles, 1)
   assert.equal(queue.capture(['app', '--other']), false)
+})
+
+test('toggle intent remains pending when startup toggle fails', async () => {
+  const queue = new LauncherToggleIntentQueue()
+  queue.capture(['app', '--toggle'])
+  await assert.rejects(queue.drain(() => { throw new Error('overlay unavailable') }), /overlay unavailable/u)
+  assert.equal(queue.hasPending(), true)
+  let toggles = 0
+  await queue.drain(() => { toggles += 1 })
+  assert.equal(toggles, 1)
+  assert.equal(queue.hasPending(), false)
+})
+
+test('relaunch failure reports without requesting quit', () => {
+  const calls: string[] = []
+  assert.equal(attemptSecureRelaunch({
+    relaunch: () => { throw new Error('relaunch unavailable') },
+    report: error => { calls.push(error instanceof Error ? error.message : String(error)) },
+    requestQuit: () => { calls.push('quit') },
+  }), false)
+  assert.deepEqual(calls, ['relaunch unavailable'])
 })
 
 test('owned tray is singleton and destroys only its own instance', () => {

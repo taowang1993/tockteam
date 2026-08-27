@@ -10,7 +10,6 @@ import {
 export type DesktopUpdateApp = Readonly<{
   getVersion: () => string
   isPackaged: boolean
-  getPath?: (name: string) => string
   resourcesPath?: string
 }>
 
@@ -129,6 +128,8 @@ export function createDesktopAppUpdater(args: Readonly<{
   let adapter: AutoUpdaterPort | undefined = args.updater ?? args.autoUpdater
   let adapterPromise: Promise<AutoUpdaterPort> | undefined
   let activeAction: 'check' | 'download' | 'install' | null = null
+  let installPrepared = false
+  let installRecoveryRunning = false
   let startupTimer: ReturnType<typeof setTimeout> | undefined
   let pollTimer: ReturnType<typeof setInterval> | undefined
   let started = false
@@ -160,6 +161,26 @@ export function createDesktopAppUpdater(args: Readonly<{
     canRetry: true,
   })
 
+  async function recoverPreparedInstall(error: unknown): Promise<void> {
+    if (!installPrepared || installRecoveryRunning) return
+    installPrepared = false
+    installRecoveryRunning = true
+    setState({
+      ...state,
+      status: 'downloaded',
+      message: boundedText(error instanceof Error ? error.message : error),
+      errorContext: 'install',
+      canRetry: true,
+    })
+    try {
+      await args.recoverInstallFailure?.()
+    } catch {
+      // The downloaded installer remains the retry authority even if runtime recovery fails.
+    } finally {
+      installRecoveryRunning = false
+    }
+  }
+
   const configure = (target: AutoUpdaterPort): void => {
     target.autoDownload = false
     target.autoInstallOnAppQuit = false
@@ -175,7 +196,7 @@ export function createDesktopAppUpdater(args: Readonly<{
       adapterListeners.push({ event, listener })
     }
     bind('update-available', (info: UpdateInfo) => {
-      if (disposed) return
+      if (disposed || installPrepared || installRecoveryRunning || state.downloadedVersion !== null) return
       activeAction = null
       setState({
         ...state,
@@ -191,7 +212,7 @@ export function createDesktopAppUpdater(args: Readonly<{
       })
     })
     bind('update-not-available', () => {
-      if (disposed) return
+      if (disposed || installPrepared || installRecoveryRunning || state.downloadedVersion !== null) return
       activeAction = null
       setState({
         ...state,
@@ -206,7 +227,7 @@ export function createDesktopAppUpdater(args: Readonly<{
       })
     })
     bind('download-progress', (progress: DownloadProgress) => {
-      if (disposed) return
+      if (disposed || (state.downloadedVersion !== null && activeAction !== 'download')) return
       const raw = progress?.percent
       const percent = typeof raw === 'number' && Number.isFinite(raw)
         ? Math.max(0, Math.min(100, raw))
@@ -221,7 +242,7 @@ export function createDesktopAppUpdater(args: Readonly<{
       })
     })
     bind('update-downloaded', (info: UpdateInfo) => {
-      if (disposed) return
+      if (disposed || installPrepared || installRecoveryRunning || state.downloadedVersion !== null) return
       activeAction = null
       const version = versionOf(info, state.availableVersion)
       setState({
@@ -236,7 +257,13 @@ export function createDesktopAppUpdater(args: Readonly<{
       })
     })
     bind('error', (error: unknown) => {
-      if (disposed) return
+      if (disposed || installRecoveryRunning) return
+      if (installPrepared) {
+        activeAction = null
+        void recoverPreparedInstall(error)
+        return
+      }
+      if (state.downloadedVersion !== null && activeAction === null) return
       const context = activeAction === 'check' || activeAction === 'download' || activeAction === 'install'
         ? activeAction
         : null
@@ -266,7 +293,7 @@ export function createDesktopAppUpdater(args: Readonly<{
   }
 
   const check = async (): Promise<DesktopAppUpdateActionResult> => {
-    if (disposed || !state.enabled || activeAction !== null || state.status === 'downloaded') {
+    if (disposed || !state.enabled || activeAction !== null || state.downloadedVersion !== null) {
       return actionResult(false, false, state)
     }
     activeAction = 'check'
@@ -300,7 +327,7 @@ export function createDesktopAppUpdater(args: Readonly<{
   const download = async (): Promise<DesktopAppUpdateActionResult> => {
     const canDownload = state.status === 'available'
       || (state.status === 'error' && state.errorContext === 'download' && state.availableVersion !== null)
-    if (disposed || !state.enabled || !canDownload || activeAction !== null) {
+    if (disposed || !state.enabled || state.downloadedVersion !== null || !canDownload || activeAction !== null) {
       return actionResult(false, false, state)
     }
     activeAction = 'download'
@@ -326,17 +353,21 @@ export function createDesktopAppUpdater(args: Readonly<{
   const install = async (): Promise<DesktopAppUpdateActionResult> => {
     const canInstall = state.status === 'downloaded'
       || (state.status === 'error' && state.errorContext === 'install' && state.downloadedVersion !== null)
-    if (disposed || !state.enabled || !canInstall || activeAction !== null) {
+    if (disposed || !state.enabled || installRecoveryRunning || !canInstall || activeAction !== null) {
       return actionResult(false, false, state)
     }
     activeAction = 'install'
     try {
       const target = await loadAdapter()
+      installPrepared = true
       await args.prepareInstall?.()
       target.quitAndInstall(true, true)
       return actionResult(true, false, state)
     } catch (error) {
-      try { await args.recoverInstallFailure?.() } catch { /* retain the original retryable error */ }
+      if (installPrepared) {
+        await recoverPreparedInstall(error)
+        return actionResult(true, false, state)
+      }
       return actionResult(true, false, setError(error, 'install'))
     } finally {
       if (activeAction === 'install') activeAction = null
@@ -366,6 +397,8 @@ export function createDesktopAppUpdater(args: Readonly<{
     }
     adapterListeners.splice(0)
     listeners.clear()
+    installPrepared = false
+    installRecoveryRunning = false
   }
 
   const updater: DesktopAppUpdater = {
