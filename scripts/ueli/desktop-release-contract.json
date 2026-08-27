@@ -48,6 +48,13 @@
     "asar": true,
     "npmFiles": [
       "dist/plugin.js",
+      "dist/launcher.html",
+      "dist/launcher.js",
+      "dist/launcher.js.map",
+      "dist/launcher.css",
+      "dist/launcher-preload.cjs",
+      "dist/launcher-preload.cjs.map",
+      "dist/launcher-assets/**",
       "dist/client.js",
       "dist/client.js.map",
       "dist/client-api.js",
@@ -75,6 +82,13 @@
     "builderFiles": [
       "dist/main.js",
       "dist/preload.cjs",
+      "dist/launcher.html",
+      "dist/launcher.js",
+      "dist/launcher.js.map",
+      "dist/launcher.css",
+      "dist/launcher-preload.cjs",
+      "dist/launcher-preload.cjs.map",
+      "dist/launcher-assets/**",
       "dist/splash.html",
       "LICENSE",
       "THIRD_PARTY_NOTICES.md",
@@ -241,7 +255,7 @@
   },
   "foundation": {
     "launcherImplemented": true,
-    "launcherPackaged": false,
+    "launcherPackaged": true,
     "admittedRuntimeDependencies": [
       "color@4.2.3",
       "fast-xml-parser@5.7.0",
@@ -294,8 +308,147 @@
       "uuid@14.0.0",
       "xml-naming@0.1.0"
     ],
-    "launcherAssets": [],
-    "launcherNotices": [],
+    "launcherAssets": [
+      {
+        "key": "Base64Conversion",
+        "path": "dist/launcher-assets/base64-conversion.png",
+        "sha256": "4ec2ab60efec30d53dd04b48038dc5bfc97eee7c9e92c3c0fb6d1d8612a769a8"
+      },
+      {
+        "key": "Calculator",
+        "path": "dist/launcher-assets/calculator.png",
+        "sha256": "e0a078797184e5ebc584d305cefd201f83e7c3ea41383fbe1cdf5de668cd9391"
+      },
+      {
+        "key": "ColorConverter",
+        "path": "dist/launcher-assets/color-converter.png",
+        "sha256": "ae6d518c491a2451ff714c3d7329725db258d2d8bec861a9c0adde669e81bfd0"
+      },
+      {
+        "key": "PasswordGenerator",
+        "path": "dist/launcher-assets/password-generator.png",
+        "sha256": "8d317883865b625a35b50d1e1150afec2a2cf8392584e482aa5d09117f7aa9ca"
+      },
+      {
+        "key": "QuickFormatter",
+        "path": "dist/launcher-assets/quick-formatter.png",
+        "sha256": "5e1e438c834c0b37afc0106a47b7315d6090f089d5c10d271315c243c2d0c186"
+      },
+      {
+        "key": "RowlandTextEditor",
+        "path": "dist/launcher-assets/rowland-texteditor.png",
+        "sha256": "cb6bdcd60962680bb35be8db49469162951e1e5091d013b6dc11b149bd10700f"
+      },
+      {
+        "key": "UuidGenerator",
+        "path": "dist/launcher-assets/uuid-generator.png",
+        "sha256": "2a4b0aef1d383d3927c431031290b7f6cc6c9993aa6ca600e6459b51f4e5de75"
+      },
+      {
+        "key": "application-linux",
+        "path": "dist/launcher-assets/application-linux.png",
+        "sha256": "9571f48a26daa759c4243e28d1a427cfd459564d2a26e576b551d987be50d37f"
+      },
+      {
+        "key": "application-linux-generic",
+        "path": "dist/launcher-assets/application-linux-generic.png",
+        "sha256": "954a84019db2c87f0c3465aa564e4b6ed6167a7b1765ec866cbd4bacafb7e892"
+      },
+      {
+        "key": "application-macos",
+        "path": "dist/launcher-assets/application-macos.png",
+        "sha256": "da0027a559a037e662b38a8ede779b6a2e31bd4ac1bce7fceca0c8ea62a512cb"
+      },
+      {
+        "key": "application-macos-generic",
+        "path": "dist/launcher-assets/application-macos-generic.png",
+        "sha256": "8eaae03ecc49a1aa393cd5b256bae52a86a0a63ba16c3fa5ac32063bfd320b2b"
+      },
+      {
+        "key": "application-windows-dark",
+        "path": "dist/launcher-assets/application-windows-dark.png",
+        "sha256": "454a47d635d60ebbab44344ba66450cf52346e823ca76ca31bcbda0997eda5fa"
+      },
+      {
+        "key": "application-windows-light",
+        "path": "dist/launcher-assets/application-windows-light.png",
+        "sha256": "ac3070b1ded77ae1dadc4f5aed1714128fab73f9a380a92c41b40329d3b3d4d2"
+      },
+      {
+        "key": "application-windows-generic",
+        "path": "dist/launcher-assets/application-windows-generic.png",
+        "sha256": "000068955c67ab474df5b258a01a60f3bba2919d3c17326cade34a358a4912cc"
+      },
+      {
+        "key": "browser-bookmarks",
+        "path": "dist/launcher-assets/browser-bookmarks.png",
+        "sha256": "c2075df1fcf0e4e7e886e46ddd445e3c04b889dda20f5aca2566f7de0863a354"
+      },
+      {
+        "key": "jetbrains-toolbox",
+        "path": "dist/launcher-assets/jetbrains-toolbox.png",
+        "sha256": "4793800c7cd1b793aac93b33e6a38c1a18e0008ebeecaf04c9a8b838f632c1b5"
+      },
+      {
+        "key": "vscode-file",
+        "path": "dist/launcher-assets/vscode-file.png",
+        "sha256": "954a84019db2c87f0c3465aa564e4b6ed6167a7b1765ec866cbd4bacafb7e892"
+      },
+      {
+        "key": "vscode",
+        "path": "dist/launcher-assets/vscode.png",
+        "sha256": "7ac29e00cd66e549acc2ea6a99a813f92cb23a6d165293be6959845670f0c5a4"
+      },
+      {
+        "key": "browser-arc",
+        "path": "dist/launcher-assets/browser-arc.png",
+        "sha256": "c8e0daa8bab62d9f71c00cf0637ec2ab557862bbab7c8d9859dce04bc095e755"
+      },
+      {
+        "key": "browser-brave",
+        "path": "dist/launcher-assets/browser-brave-browser.png",
+        "sha256": "ba9f99c1a35042f3b20e365e477d2cf5da72feed28ff3e735f54940ffd47643c"
+      },
+      {
+        "key": "browser-firefox",
+        "path": "dist/launcher-assets/browser-firefox.png",
+        "sha256": "28651899a25e6665e1bd65ccf7a5302417a2822dc658263c12d57c9a247d51aa"
+      },
+      {
+        "key": "browser-google-chrome",
+        "path": "dist/launcher-assets/browser-google-chrome.png",
+        "sha256": "68e998cddd32341a776e2fb5e0c2ad26748594cf44cd3635ccc2974f0d84ba27"
+      },
+      {
+        "key": "browser-microsoft-edge",
+        "path": "dist/launcher-assets/browser-microsoft-edge.png",
+        "sha256": "a94a9d74adf95e9bdab3b19c13de497d525aa5d85743f8a98e885d3934010e94"
+      },
+      {
+        "key": "browser-yandex",
+        "path": "dist/launcher-assets/browser-yandex.svg",
+        "sha256": "29afe7aba01ff139dde1c22db8dad0300a5a8b6fea1c26e90bc3b20a3ac888b4"
+      },
+      {
+        "key": "browser-zen",
+        "path": "dist/launcher-assets/browser-zen.png",
+        "sha256": "e6893025a3f607b3d12b0c5abf8c36b643e453731886d97d0933358fc11fd2c9"
+      }
+    ],
+    "launcherNotices": [
+      {
+        "id": "ueli-mit",
+        "source": "THIRD_PARTY_NOTICES.md",
+        "license": "MIT",
+        "attribution": "https://github.com/oliverschwendener/ueli"
+      },
+      {
+        "id": "gnome-application-search-icons",
+        "source": "THIRD_PARTY_NOTICES.md",
+        "license": "CC BY-SA 3.0",
+        "attribution": "https://www.gnome.org"
+      }
+    ],
     "shippedVendorSource": false,
     "importedUeliIdentity": false
   },

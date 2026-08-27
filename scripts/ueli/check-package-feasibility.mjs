@@ -126,13 +126,44 @@ const EXPECTED_LAUNCHER_LOCKFILE = Object.freeze({
     }),
   }),
 })
+const EXPECTED_LAUNCHER_ASSETS = Object.freeze([
+  ['Base64Conversion', 'base64-conversion.png', '4ec2ab60efec30d53dd04b48038dc5bfc97eee7c9e92c3c0fb6d1d8612a769a8'],
+  ['Calculator', 'calculator.png', 'e0a078797184e5ebc584d305cefd201f83e7c3ea41383fbe1cdf5de668cd9391'],
+  ['ColorConverter', 'color-converter.png', 'ae6d518c491a2451ff714c3d7329725db258d2d8bec861a9c0adde669e81bfd0'],
+  ['PasswordGenerator', 'password-generator.png', '8d317883865b625a35b50d1e1150afec2a2cf8392584e482aa5d09117f7aa9ca'],
+  ['QuickFormatter', 'quick-formatter.png', '5e1e438c834c0b37afc0106a47b7315d6090f089d5c10d271315c243c2d0c186'],
+  ['RowlandTextEditor', 'rowland-texteditor.png', 'cb6bdcd60962680bb35be8db49469162951e1e5091d013b6dc11b149bd10700f'],
+  ['UuidGenerator', 'uuid-generator.png', '2a4b0aef1d383d3927c431031290b7f6cc6c9993aa6ca600e6459b51f4e5de75'],
+  ['application-linux', 'application-linux.png', '9571f48a26daa759c4243e28d1a427cfd459564d2a26e576b551d987be50d37f'],
+  ['application-linux-generic', 'application-linux-generic.png', '954a84019db2c87f0c3465aa564e4b6ed6167a7b1765ec866cbd4bacafb7e892'],
+  ['application-macos', 'application-macos.png', 'da0027a559a037e662b38a8ede779b6a2e31bd4ac1bce7fceca0c8ea62a512cb'],
+  ['application-macos-generic', 'application-macos-generic.png', '8eaae03ecc49a1aa393cd5b256bae52a86a0a63ba16c3fa5ac32063bfd320b2b'],
+  ['application-windows-dark', 'application-windows-dark.png', '454a47d635d60ebbab44344ba66450cf52346e823ca76ca31bcbda0997eda5fa'],
+  ['application-windows-light', 'application-windows-light.png', 'ac3070b1ded77ae1dadc4f5aed1714128fab73f9a380a92c41b40329d3b3d4d2'],
+  ['application-windows-generic', 'application-windows-generic.png', '000068955c67ab474df5b258a01a60f3bba2919d3c17326cade34a358a4912cc'],
+  ['browser-bookmarks', 'browser-bookmarks.png', 'c2075df1fcf0e4e7e886e46ddd445e3c04b889dda20f5aca2566f7de0863a354'],
+  ['jetbrains-toolbox', 'jetbrains-toolbox.png', '4793800c7cd1b793aac93b33e6a38c1a18e0008ebeecaf04c9a8b838f632c1b5'],
+  ['vscode-file', 'vscode-file.png', '954a84019db2c87f0c3465aa564e4b6ed6167a7b1765ec866cbd4bacafb7e892'],
+  ['vscode', 'vscode.png', '7ac29e00cd66e549acc2ea6a99a813f92cb23a6d165293be6959845670f0c5a4'],
+  ['browser-arc', 'browser-arc.png', 'c8e0daa8bab62d9f71c00cf0637ec2ab557862bbab7c8d9859dce04bc095e755'],
+  ['browser-brave', 'browser-brave-browser.png', 'ba9f99c1a35042f3b20e365e477d2cf5da72feed28ff3e735f54940ffd47643c'],
+  ['browser-firefox', 'browser-firefox.png', '28651899a25e6665e1bd65ccf7a5302417a2822dc658263c12d57c9a247d51aa'],
+  ['browser-google-chrome', 'browser-google-chrome.png', '68e998cddd32341a776e2fb5e0c2ad26748594cf44cd3635ccc2974f0d84ba27'],
+  ['browser-microsoft-edge', 'browser-microsoft-edge.png', 'a94a9d74adf95e9bdab3b19c13de497d525aa5d85743f8a98e885d3934010e94'],
+  ['browser-yandex', 'browser-yandex.svg', '29afe7aba01ff139dde1c22db8dad0300a5a8b6fea1c26e90bc3b20a3ac888b4'],
+  ['browser-zen', 'browser-zen.png', 'e6893025a3f607b3d12b0c5abf8c36b643e453731886d97d0933358fc11fd2c9'],
+].map(([key, fileName, sha256]) => Object.freeze({ key, path: `dist/launcher-assets/${fileName}`, sha256 })))
+const EXPECTED_LAUNCHER_NOTICES = Object.freeze([
+  Object.freeze({ id: 'ueli-mit', source: 'THIRD_PARTY_NOTICES.md', license: 'MIT', attribution: 'https://github.com/oliverschwendener/ueli' }),
+  Object.freeze({ id: 'gnome-application-search-icons', source: 'THIRD_PARTY_NOTICES.md', license: 'CC BY-SA 3.0', attribution: 'https://www.gnome.org' }),
+])
 const EXPECTED_FOUNDATION = Object.freeze({
   launcherImplemented: true,
-  launcherPackaged: false,
+  launcherPackaged: true,
   admittedRuntimeDependencies: EXPECTED_LAUNCHER_DEPENDENCY_LIST,
   runtimeDependencyClosure: EXPECTED_LAUNCHER_RUNTIME_CLOSURE,
-  launcherAssets: Object.freeze([]),
-  launcherNotices: Object.freeze([]),
+  launcherAssets: EXPECTED_LAUNCHER_ASSETS,
+  launcherNotices: EXPECTED_LAUNCHER_NOTICES,
   shippedVendorSource: false,
   importedUeliIdentity: false,
 })
@@ -396,11 +427,11 @@ export function inspectLauncherPackageFeasibility(inputs) {
 
   const foundation = contract?.foundation ?? {}
   addFailure(failures, foundation.launcherImplemented === true, 'launcher implementation must be recorded in foundation')
-  addFailure(failures, foundation.launcherPackaged === false, 'launcher must not be packaged in foundation')
+  addFailure(failures, foundation.launcherPackaged === true, 'launcher must be packaged in foundation')
   addFailure(failures, sameJson(foundation.admittedRuntimeDependencies, EXPECTED_LAUNCHER_DEPENDENCY_LIST), 'Ueli-derived runtime dependencies differ from the approved launcher set')
   addFailure(failures, sameJson(foundation.runtimeDependencyClosure, EXPECTED_LAUNCHER_RUNTIME_CLOSURE), 'runtime dependency closure differs from the approved launcher set')
-  addFailure(failures, Array.isArray(foundation.launcherAssets) && foundation.launcherAssets.length === 0, 'launcher asset admission must remain empty in foundation')
-  addFailure(failures, Array.isArray(foundation.launcherNotices) && foundation.launcherNotices.length === 0, 'launcher notice admission must remain empty in foundation')
+  addFailure(failures, sameJson(foundation.launcherAssets, EXPECTED_LAUNCHER_ASSETS), 'launcher asset admission differs from the reviewed asset provenance')
+  addFailure(failures, sameJson(foundation.launcherNotices, EXPECTED_LAUNCHER_NOTICES), 'launcher notice admission differs from the reviewed notice rows')
   addFailure(failures, foundation.shippedVendorSource === false, 'foundation must not ship vendor source')
   addFailure(failures, foundation.importedUeliIdentity === false, 'foundation must not import Ueli identity')
   addFailure(failures, sameJson(foundation, EXPECTED_FOUNDATION), 'foundation contract differs from the reviewed empty-launcher state')

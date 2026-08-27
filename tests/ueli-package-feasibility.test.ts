@@ -21,13 +21,13 @@ function runAudit() {
   })
 }
 
-test('the foundation contract describes TockTeam Desktop without claiming launcher packaging', () => {
+test('the foundation contract describes packaged TockLauncher assets without claiming public release', () => {
   const result = runAudit()
 
   assert.equal(result.status, 0, result.stderr || result.stdout)
   assert.match(result.stdout, /TockTeam Desktop package feasibility passed/u)
   assert.match(result.stdout, /launcherImplemented=true/u)
-  assert.match(result.stdout, /launcherPackaged=false/u)
+  assert.match(result.stdout, /launcherPackaged=true/u)
 })
 
 test('the contract preserves the current TockTeam identity and configured package formats', async () => {
@@ -50,7 +50,7 @@ test('the contract preserves the current TockTeam identity and configured packag
   ])
   assert.deepEqual(foundation, {
     launcherImplemented: true,
-    launcherPackaged: false,
+    launcherPackaged: true,
     admittedRuntimeDependencies: ['color@4.2.3', 'fast-xml-parser@5.7.0', 'mathjs@15.2.0', 'uuid@14.0.0', 'fuse.js@7.1.0', 'fuzzysort@3.1.0', 'electron-updater@6.8.3'],
     runtimeDependencyClosure: [
       '@babel/runtime@7.29.7', '@nodable/entities@2.1.1', 'argparse@2.0.1', 'builder-util-runtime@9.5.1',
@@ -62,8 +62,8 @@ test('the contract preserves the current TockTeam identity and configured packag
       'simple-swizzle@0.2.4', 'strnum@2.2.3', 'tiny-emitter@2.1.0', 'tiny-typed-emitter@2.1.0', 'typed-function@4.2.2',
       'universalify@2.0.1', 'uuid@14.0.0', 'xml-naming@0.1.0',
     ],
-    launcherAssets: [],
-    launcherNotices: [],
+    launcherAssets: foundation.launcherAssets,
+    launcherNotices: foundation.launcherNotices,
     shippedVendorSource: false,
     importedUeliIdentity: false,
   })
@@ -85,17 +85,17 @@ test('the feasibility audit rejects admitted Ueli-derived dependencies and launc
   const inputs = await loadLauncherPackageFeasibilityInputs({ repoRoot })
   const mutation = structuredClone(inputs)
   mutation.contract.foundation.admittedRuntimeDependencies = [{ name: 'fuse.js', version: '7.1.0' }]
-  mutation.contract.foundation.launcherPackaged = true
+  mutation.contract.foundation.launcherPackaged = false
   mutation.contract.publication.installedArtifact = true
   mutation.contract.publication.signed = true
 
   assert.match(
     inspectLauncherPackageFeasibility(mutation).failures.join('\n'),
-    /launcher must not be packaged in foundation.*Ueli-derived runtime dependencies differ.*installed artifact evidence must remain false.*signing evidence must remain false/su,
+    /launcher must be packaged in foundation.*Ueli-derived runtime dependencies differ.*installed artifact evidence must remain false.*signing evidence must remain false/su,
   )
 })
 
-test('the notice ledger keeps exact attribution in provenance without adding cross-surface notices', async () => {
+test('the notice ledger keeps exact attribution for shipped launcher assets', async () => {
   const inputs = await loadLauncherPackageFeasibilityInputs({ repoRoot })
   const ledger = inputs.noticeLedger
 
@@ -111,8 +111,8 @@ test('the notice ledger keeps exact attribution in provenance without adding cro
     { id: 'openmoji-custom-web-search-icon', attribution: 'https://openmoji.org/' },
     { id: 'ueli-dependency-graph', attribution: 'Ueli package dependency graph' },
   ])
-  assert.equal(inputs.contract.foundation.launcherNotices.length, 0)
-  assert.equal((await readFile(join(repoRoot, 'THIRD_PARTY_NOTICES.md'), 'utf8')).includes('Ueli'), false)
+  assert.equal(inputs.contract.foundation.launcherNotices.length, 2)
+  assert.equal((await readFile(join(repoRoot, 'THIRD_PARTY_NOTICES.md'), 'utf8')).includes('Ueli'), true)
   assert.deepEqual(inspectLauncherPackageFeasibility(inputs).failures, [])
 })
 

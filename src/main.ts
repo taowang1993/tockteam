@@ -899,12 +899,12 @@ function launcherSettingsSnapshot(): ReturnType<LauncherPersistenceRepository['s
   const snapshot = repository.snapshot()
   const context = launcherDefaultContext()
   const values = { ...snapshot.values }
-  for (const key of [
-    'extension[ApplicationSearch].linuxFolders',
-    'extension[ApplicationSearch].macOsFolders',
-    'extension[ApplicationSearch].windowsFolders',
-    'extension[VSCode].command',
-  ]) {
+  const dynamicKeys = context.platform === 'Linux'
+    ? ['extension[ApplicationSearch].linuxFolders']
+    : context.platform === 'Windows'
+      ? ['extension[ApplicationSearch].windowsFolders']
+      : ['extension[ApplicationSearch].macOsFolders']
+  for (const key of [...dynamicKeys, 'extension[VSCode].command']) {
     if (Object.hasOwn(values, key)) continue
     const fallback = resolveLauncherSettingDefault(key, context)
     if (fallback !== undefined) values[key] = fallback
