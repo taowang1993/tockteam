@@ -15391,13 +15391,17 @@ async function startAudioRecording(authorization, path, vault, current, request,
 }
 async function runDesktopDispatchLoop(options) {
   const active = options.active ?? (() => true);
+  let unavailablePolls = 0;
   while (active() && !options.signal?.aborted) {
     const event = await options.bridge.nextDispatch();
     if (event === null) {
-      if (!options.retryUnavailable || !active() || options.signal?.aborted) return;
-      await new Promise((resolve) => setTimeout(resolve, 25));
+      const retryLimit = options.unavailableRetryLimit ?? 0;
+      if (!active() || options.signal?.aborted || unavailablePolls >= retryLimit) return;
+      unavailablePolls += 1;
+      await new Promise((resolve) => setTimeout(resolve, Math.min(25 * 2 ** (unavailablePolls - 1), 250)));
       continue;
     }
+    unavailablePolls = 0;
     if (!active()) {
       await completeDispatch(options.bridge, {
         deliveryId: event.deliveryId,
@@ -15486,8 +15490,8 @@ function TockTutorNativeActions(props) {
       bridge: props.bridge,
       owner: () => owner.current,
       remote: props.remote,
-      retryUnavailable: true,
-      signal: controller.signal
+      signal: controller.signal,
+      unavailableRetryLimit: 20
     }).catch(() => {
       if (active) setMessage("Desktop dispatch is unavailable.");
     });

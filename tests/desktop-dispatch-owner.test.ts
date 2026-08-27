@@ -84,6 +84,15 @@ test('resolves named and absolute protocol selectors without exposing Host paths
   assert.equal(absolute?.request.vaultId, nested.id)
   assert.equal('path' in (absolute?.request ?? {}), false)
   assert.equal('vault' in (absolute?.request ?? {}), false)
+  const aliased = resolveTockTutorProtocolRequest(
+    parseTockTutorProtocol('tocktutor://open?path=%2Ftmp%2Fvaults%2Fwork%2FPlan.md')!,
+    known,
+    known[0],
+    undefined,
+    path => path.replace(/^\/tmp\/vaults/u, '/vaults'),
+  )
+  assert.equal(aliased?.request.file, 'Plan.md')
+  assert.equal(aliased?.request.vaultId, known[1]!.id)
   assert.equal(resolveTockTutorProtocolRequest(
     parseTockTutorProtocol('tocktutor://open?path=%2Foutside%2FPlan.md')!,
     known,
@@ -133,6 +142,18 @@ test('reports a superseded queued vault callback exactly once', () => {
   assert.equal(dispatch.publishProtocol('tocktutor://open?vault=Work&file=One.md&x-error=https%3A%2F%2Fexample.test%2Fone-error'), true)
   assert.equal(dispatch.publishProtocol('tocktutor://open?vault=Work&file=Two.md&x-error=https%3A%2F%2Fexample.test%2Ftwo-error'), true)
   assert.deepEqual(callbacks, ['error:https://example.test/one-error'])
+})
+
+test('reports a rejected sensitive selector through its error callback', () => {
+  const callbacks: string[] = []
+  const dispatch = new DesktopDispatchOwner({
+    identity: (operationId, requestId) => ({ operationId, requestId, sessionId: 'session', vaultGeneration: 1, vaultId: 'vault', windowId: 'window' }),
+    isAvailable: () => true,
+    onCallback: (url, status) => { callbacks.push(`${status}:${url}`) },
+    resolveProtocol: () => null,
+  })
+  assert.equal(dispatch.publishProtocol('tocktutor://open?path=%2Foutside%2FNote.md&x-error=https%3A%2F%2Fexample.test%2Frejected'), false)
+  assert.deepEqual(callbacks, ['error:https://example.test/rejected'])
 })
 
 test('dispatch callbacks are emitted once after final completion', async () => {

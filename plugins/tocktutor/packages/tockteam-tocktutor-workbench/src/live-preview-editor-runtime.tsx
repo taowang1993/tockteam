@@ -126,7 +126,10 @@ function LivePreviewEditorInner(props: LivePreviewEditorProps): ReactNode {
       },
       onToggleTask: index => { onToggleTaskRef.current?.(index) },
     }))
-    const embedWidgets = $prose(() => buildLivePreviewEmbedPlugin(() => embedsRef.current))
+    const embedWidgets = $prose(() => buildLivePreviewEmbedPlugin(
+      () => embedsRef.current,
+      () => sourceRef.current,
+    ))
     const editingShortcuts = $prose(() => new Plugin({
       props: {
         handleKeyDown: (view, event) => {

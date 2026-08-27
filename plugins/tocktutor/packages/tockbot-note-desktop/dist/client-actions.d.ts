@@ -25,8 +25,8 @@ export interface DesktopDispatchLoopOptions {
     bridge: DesktopCallerBridge;
     owner: () => TockTutorNativeActionsOwnerProps | undefined;
     remote: DesktopActionRemote;
-    retryUnavailable?: boolean;
     signal?: AbortSignal;
+    unavailableRetryLimit?: number;
 }
 export interface AudioMediaDevices {
     getUserMedia(constraints: {

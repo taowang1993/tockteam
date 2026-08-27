@@ -76,7 +76,10 @@ export class DesktopDispatchOwner {
     if (parsed === null) return false
     const resolved = this.options.resolveProtocol?.(parsed)
       ?? this.resolveWithoutSensitiveFields(parsed)
-    if (resolved === null) return false
+    if (resolved === null) {
+      if (parsed.xError !== undefined) this.options.onCallback?.(parsed.xError, 'error')
+      return false
+    }
     return this.publish(operationId => ({
       identity: this.identity(operationId),
       kind: 'protocol',

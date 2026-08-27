@@ -144,6 +144,14 @@ describe('Milkdown Live Preview editor', () => {
     fireEvent.mouseDown(widget)
     await waitFor(() => expect(container.querySelector('.tocktutor-live-embed-widget')).toBeNull())
     expect(container.querySelector('.ProseMirror')?.textContent).toContain('![[Target.md]]')
+    const nextSource = 'Before ![[Second.md]] after'
+    const nextEmbeds = [{
+      content: '# Second\nBody\n',
+      target: { display: null, fragment: null, kind: 'note' as const, path: 'Second.md', source: '![[Second.md]]' },
+    }]
+    rerender(<LivePreviewEditor content={nextSource} onMarkdownChange={() => {}} onWidgetState={onWidgetState} resolvedEmbeds={nextEmbeds} />)
+    await waitFor(() => expect(container.querySelector('.tocktutor-live-embed-widget')?.textContent).toContain('Second'))
+    expect(container.querySelector('.ProseMirror')).toBe(editor)
     expect(screen.getByLabelText('Live Preview Editor')).toBeTruthy()
   })
 })

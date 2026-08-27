@@ -15,10 +15,10 @@ import {
   type Session,
   type WebContents,
 } from 'electron'
-import { createWriteStream, existsSync, mkdirSync, statSync, type WriteStream } from 'node:fs'
+import { createWriteStream, existsSync, mkdirSync, realpathSync, statSync, type WriteStream } from 'node:fs'
 import { lstat, realpath } from 'node:fs/promises'
 import { homedir } from 'node:os'
-import { dirname, join, resolve } from 'node:path'
+import { basename, dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { PluginMarketplaceManager } from '../plugins/plugin-marketplace/src/host/transaction-manager.ts'
 import {
@@ -133,6 +133,18 @@ function readBoundedDesktopClipboard(): string | null {
     return text.length <= 4_096 ? text : null
   } catch {
     return null
+  }
+}
+
+function canonicalDesktopProtocolPath(path: string): string {
+  try {
+    return realpathSync.native(path)
+  } catch {
+    try {
+      return join(realpathSync.native(dirname(path)), basename(path))
+    } catch {
+      return resolve(path)
+    }
   }
 }
 
@@ -321,8 +333,13 @@ function initializeDesktopPicker(): void {
         const snapshot = desktopPickerOwner.nativeVaultSnapshot()
         return record.id === snapshot.id && record.generation === snapshot.generation
       })
-      return resolveTockTutorProtocolRequest(request, records, active,
-        request.clipboard === true ? readBoundedDesktopClipboard() : undefined)
+      return resolveTockTutorProtocolRequest(
+        request,
+        records,
+        active,
+        request.clipboard === true ? readBoundedDesktopClipboard() : undefined,
+        canonicalDesktopProtocolPath,
+      )
     },
     onDeliveryExpired: (operationId, consumerId) => {
       const lease = mainDispatchLeases.get(operationId)

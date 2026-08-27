@@ -237,7 +237,7 @@ test('keeps polling after Desktop is briefly unavailable during client startup',
       vault,
     }),
     remote: { tocktutorDesktop: {} } as DesktopActionRemote,
-    retryUnavailable: true,
+    unavailableRetryLimit: 2,
   })
   assert.equal(polls, 2)
   assert.deepEqual(completions, [{
@@ -245,6 +245,22 @@ test('keeps polling after Desktop is briefly unavailable during client startup',
     operationId: 'dispatch-after-startup',
     status: 'handled',
   }])
+})
+
+test('stops polling when Desktop stays unavailable through the startup retry budget', async () => {
+  let polls = 0
+  await runDesktopDispatchLoop({
+    bridge: {
+      async authorize() { return { authorization: 'unused' } },
+      async cancelDispatch() {},
+      async completeDispatch() { return 'stale' as const },
+      async nextDispatch() { polls += 1; return null },
+    },
+    owner: () => undefined,
+    remote: { tocktutorDesktop: {} } as DesktopActionRemote,
+    unavailableRetryLimit: 1,
+  })
+  assert.equal(polls, 2)
 })
 
 test('settles a Workbench completion as stale after the slot is disposed', async () => {

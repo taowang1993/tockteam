@@ -1,6 +1,7 @@
 // @ts-nocheck -- Milkdown 7.20's extensionless declarations are incompatible with the pinned NodeNext analyzer.
 import { Plugin, PluginKey, TextSelection } from '@milkdown/prose/state';
 import { Decoration, DecorationSet } from '@milkdown/prose/view';
+import { MAX_EMBED_TARGETS } from "./embeds.js";
 export const livePreviewEmbedPluginKey = new PluginKey('tocktutorLivePreviewEmbeds');
 function widgetDom(embed, from, to, reveal) {
     const widget = document.createElement('span');
@@ -92,12 +93,27 @@ function decorationSet(state, embeds, revealed, reveal) {
     });
     return DecorationSet.create(state.doc, decorations);
 }
-export function buildLivePreviewEmbedPlugin(getEmbeds) {
+export function buildLivePreviewEmbedPlugin(getEmbeds, getDocumentKey) {
     const revealed = new Set();
+    let revealedDocument = getDocumentKey();
+    const syncDocument = () => {
+        const document = getDocumentKey();
+        if (document === revealedDocument)
+            return;
+        revealedDocument = document;
+        revealed.clear();
+    };
     const revealRange = (view, from, to) => {
         if (from < 0 || to <= from || to > view.state.doc.content.size)
             return;
-        revealed.add(`${String(from)}:${String(to)}`);
+        syncDocument();
+        const range = `${String(from)}:${String(to)}`;
+        if (!revealed.has(range) && revealed.size >= MAX_EMBED_TARGETS) {
+            const oldest = revealed.values().next().value;
+            if (oldest !== undefined)
+                revealed.delete(oldest);
+        }
+        revealed.add(range);
         view.dispatch(view.state.tr
             .setSelection(TextSelection.create(view.state.doc, from, to))
             .setMeta(livePreviewEmbedPluginKey, { refresh: true }));
@@ -122,7 +138,10 @@ export function buildLivePreviewEmbedPlugin(getEmbeds) {
             apply() { return null; },
         },
         props: {
-            decorations: state => decorationSet(state, getEmbeds(), revealed, revealRange),
+            decorations: state => {
+                syncDocument();
+                return decorationSet(state, getEmbeds(), revealed, revealRange);
+            },
             handleDOMEvents: { mousedown: reveal, keydown: reveal },
         },
     });
