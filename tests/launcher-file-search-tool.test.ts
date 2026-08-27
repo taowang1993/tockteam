@@ -79,6 +79,7 @@ test('non-hiding reveal rerender restores keyboard focus to the live action menu
   input.value = 'report'
   input.dispatch('input')
   await flush()
+  assert.equal(find(tool, element => element.textContent === item.details)?.textContent, item.details)
   const toggle = find(tool, element => element.getAttribute('data-file-search-result-id') === item.id)!
   toggle.dispatch('click')
   const reveal = find(tool, element => element.getAttribute('role') === 'menuitem' && element.getAttribute('aria-label') === 'Show in Finder')!
