@@ -132,6 +132,33 @@ test('artifact backups retain the last validated settings bytes', async () => {
   } finally { await rm(userDataPath, { recursive: true, force: true }) }
 })
 
+test('index and external recovery retain only last validated artifacts', async () => {
+  const userDataPath = await root()
+  try {
+    const repository = await LauncherPersistenceRepository.open({ userDataPath, externalWriteAvailable: true })
+    await repository.writeIndex([{ ...item, id: 'first', name: 'First' }])
+    await repository.writeIndex([{ ...item, id: 'second', name: 'Second' }])
+    const indexPath = path.join(userDataPath, 'launcher', 'search-index.json')
+    await writeFile(indexPath, JSON.stringify([{ ...item, defaultAction: { ...item.defaultAction, handlerKey: 'INVALID HANDLER' } }]), 'utf8')
+    await repository.writeIndex([{ ...item, id: 'third', name: 'Third' }])
+
+    const external = path.join(userDataPath, 'external.json')
+    await writeFile(external, JSON.stringify({ 'general.language': 'de-CH' }), { mode: 0o600 })
+    await repository.grantExternalSettingsFile(external)
+    await repository.updateSetting('general.language', 'fr-FR')
+    await repository.close()
+
+    await writeFile(indexPath, '{bad', 'utf8')
+    await writeFile(external, '{bad', 'utf8')
+    const recovered = await LauncherPersistenceRepository.open({ userDataPath, externalWriteAvailable: true })
+    assert.equal(recovered.readIndex()[0]?.id, 'first')
+    assert.equal(recovered.getSetting('general.language', 'en-US'), 'fr-FR')
+    assert.equal(recovered.snapshot().recoveredSettings, true)
+    assert.deepEqual(JSON.parse(await readFile(external, 'utf8')), { 'general.language': 'fr-FR' })
+    await recovered.close()
+  } finally { await rm(userDataPath, { recursive: true, force: true }) }
+})
+
 test('secure storage failure is fail-closed and reset removes the envelope', async () => {
   const userDataPath = await root()
   try {

@@ -248,6 +248,4 @@ export class LauncherCustomBrowserController {
     await this.#mutationTail
     this.#grant = undefined
   }
-
-  dispose(): void { this.#disposed = true; this.#grant = undefined }
 }

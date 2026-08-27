@@ -70,10 +70,6 @@ function cloneJson<T>(value: T, maxBytes = MAX_LAUNCHER_SETTING_VALUE_BYTES): T 
   return JSON.parse(encoded) as T
 }
 
-function safeMessage(error: unknown): string {
-  return error instanceof Error && error.message.length > 0 ? error.message.slice(0, MAX_LOG_MESSAGE_LENGTH) : 'TockLauncher persistence operation failed'
-}
-
 function freezeJson<T>(value: T): T {
   if (typeof value !== 'object' || value === null || Object.isFrozen(value)) return value
   for (const child of Object.values(value as Record<string, unknown>)) freezeJson(child)
@@ -532,8 +528,10 @@ export class LauncherPersistenceRepository {
       try {
         const previous = await readBoundedRegularFile(grant.path, MAX_LAUNCHER_SETTINGS_BYTES, grant)
         parseStoredSettings(JSON.parse(previous) as unknown)
-        await atomicWrite(this.#externalBackupPath(grant), previous, { backup: false })
+        const backupPath = this.#externalBackupPath(grant)
+        await atomicWrite(backupPath, previous, { backup: false })
         await this.#writeExternalDescriptor(grant, serialized, previous)
+        await atomicWrite(backupPath, serialized, { backup: false })
       } catch (error) {
         this.#externalGrant = undefined; this.#externalGrantStatus = 'revoked'; this.#settingsSource = 'managed'
         this.#settings = await this.#recoverJson(this.#managedSettingsPath, MAX_LAUNCHER_SETTINGS_BYTES, value => parseStoredSettings(value), {})
@@ -590,5 +588,3 @@ export function createLauncherSecretCodec(options: Readonly<{
     isAvailable: options.isAvailable,
   })
 }
-
-export function launcherPersistenceErrorMessage(error: unknown): string { return safeMessage(error) }

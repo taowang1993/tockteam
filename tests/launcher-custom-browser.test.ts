@@ -50,6 +50,8 @@ test('custom-browser grants keep identity private and revoke replacement', async
     assert.equal(await readFile(executable, 'utf8'), 'replacement')
     await controller.revoke()
     assert.equal(controller.snapshot().status, 'none')
+    await controller.close()
+    await assert.rejects(controller.select(executable), /disposed/u)
   } finally { await rm(userDataPath, { recursive: true, force: true }) }
 })
 

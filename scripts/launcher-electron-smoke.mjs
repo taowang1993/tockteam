@@ -2,7 +2,7 @@
 
 import assert from 'node:assert/strict'
 import { createServer } from 'node:net'
-import { mkdtemp, rm } from 'node:fs/promises'
+import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -450,14 +450,30 @@ try {
       hasSecret: Object.hasOwn(snapshot?.values ?? {}, 'extension[DeeplTranslator].apiKey'),
       hasBrowserPath: Object.hasOwn(snapshot?.values ?? {}, 'general.browser.customWebBrowser.executableFilePath'),
       hasBrowserName: Object.hasOwn(snapshot?.values ?? {}, 'general.browser.customWebBrowserName'),
+      hasHistorySwitch: document.querySelector('[aria-label="Enable search history"]') !== null,
+      hasReset: [...document.querySelectorAll('button')].some(button => button.textContent?.trim() === 'Reset'),
+      liveStatus: document.querySelector('[aria-live="polite"]') !== null,
+      extensionSwitches: document.querySelectorAll('[data-testid="tocklauncher-extension-toggles"] button[role="switch"]').length,
     }
   })()`)
-  assert.deepEqual(settingsFacts, { bridgeFrozen: true, catalog: true, hasSecret: false, hasBrowserPath: false, hasBrowserName: false })
+  assert.deepEqual(settingsFacts, { bridgeFrozen: true, catalog: true, hasSecret: false, hasBrowserPath: false, hasBrowserName: false, hasHistorySwitch: true, hasReset: true, liveStatus: true, extensionSwitches: 24 })
   await workbenchConnection.evaluate(`(async () => {
     await window.dshDesktop?.launcher?.settings?.updateSetting('general.searchHistory.enabled', true)
     await window.dshDesktop?.launcher?.settings?.updateSetting('searchEngine.fuzziness', 0.6)
+    await window.dshDesktop?.launcher?.settings?.updateSetting('searchEngine.id', 'Fuse.js')
+    await window.dshDesktop?.launcher?.settings?.updateSetting('searchEngine.maxResultLength', 1)
   })()`)
   await showLauncherFromWorkbench(workbenchConnection)
+
+  const effectiveSearchCount = await launcherConnection.evaluate(`(async () => {
+    const result = await window.tockteamLauncher?.search('', {
+      fuzziness: 0,
+      maxSearchResultItems: 200,
+      searchEngineId: 'fuzzysort',
+    })
+    return (result?.before.length ?? 0) + (result?.after.length ?? 0)
+  })()`)
+  assert.equal(effectiveSearchCount, 1)
 
   const emptyHistoryOpened = await launcherConnection.evaluate(`(() => {
     const button = document.getElementById('launcher-history-toggle')
@@ -689,6 +705,19 @@ try {
   // only recipient of --toggle and never receives this path as a query.
   assert.equal(await launcherConnection.evaluate(`document.body.textContent?.includes(${JSON.stringify(queuedWorkspace)}) ?? false`), false)
   await invokeSecondInstanceToggle(false)
+  await workbenchConnection.evaluate(`(async () => {
+    await window.dshDesktop?.launcher?.settings?.updateSetting('general.searchHistory.enabled', false)
+    await window.dshDesktop?.launcher?.settings?.updateSetting('general.language', 'en-US')
+  })()`)
+  await showLauncherFromWorkbench(workbenchConnection)
+  await waitFor(
+    () => launcherConnection.evaluate(`(async () => ({
+      hidden: document.getElementById('launcher-history-toggle')?.hidden,
+      history: (await window.tockteamLauncher?.getSurfaceSettings())?.history,
+    }))()`),
+    state => state.hidden === true && Array.isArray(state.history) && state.history.length === 0,
+  )
+  await launcherConnection.evaluate('window.tockteamLauncher?.dismiss()')
   await workbenchConnection.call('Browser.close').catch(() => {})
   await waitFor(
     () => Promise.resolve(child.exitCode),
@@ -696,6 +725,7 @@ try {
     5_000,
   )
 
+  await writeFile(join(userData, 'launcher', 'settings.json'), '{corrupt-primary', 'utf8')
   const restartPort = await freePort()
   restartedChild = spawn(electron, ['.', `--remote-debugging-port=${String(restartPort)}`, `--user-data-dir=${userData}`], {
     cwd: root,
@@ -709,7 +739,11 @@ try {
   restartedWorkbenchConnection = await CdpPage.connect(restartedWorkbench.webSocketDebuggerUrl)
   const persistedSettings = await waitFor(
     () => restartedWorkbenchConnection.evaluate(`(async () => await window.dshDesktop?.launcher?.settings?.getSnapshot())()`),
-    snapshot => snapshot?.values?.['searchEngine.fuzziness'] === 0.6 && snapshot?.values?.['general.searchHistory.enabled'] === true,
+    snapshot => snapshot?.values?.['searchEngine.fuzziness'] === 0.6
+      && snapshot?.values?.['searchEngine.id'] === 'Fuse.js'
+      && snapshot?.values?.['searchEngine.maxResultLength'] === 1
+      && snapshot?.values?.['general.searchHistory.enabled'] === false
+      && snapshot?.recoveredSettings === true,
   )
   assert.equal(persistedSettings.values['extension[DeeplTranslator].apiKey'], undefined)
   await restartedWorkbenchConnection.evaluate('window.dshDesktop?.launcher?.show()')
@@ -721,11 +755,11 @@ try {
   assert.ok(restartedLauncher)
   restartedLauncherConnection = await CdpPage.connect(restartedLauncher.webSocketDebuggerUrl)
   await waitFor(() => restartedLauncherConnection.evaluate('document.documentElement.dataset.launcherReady'), ready => ready === 'true')
-  await restartedLauncherConnection.evaluate(`(() => { document.getElementById('launcher-history-toggle')?.click() })()`)
-  await waitFor(
-    () => restartedLauncherConnection.evaluate(`([...document.querySelectorAll('#launcher-history [role="menuitem"]')].some(node => node.textContent?.includes('coder')))`),
-    found => found === true,
-  )
+  const disabledHistory = await restartedLauncherConnection.evaluate(`(async () => ({
+    history: (await window.tockteamLauncher?.getSurfaceSettings())?.history,
+    hidden: document.getElementById('launcher-history-toggle')?.hidden,
+  }))()`)
+  assert.deepEqual(disabledHistory, { history: [], hidden: true })
   await restartedWorkbenchConnection.call('Browser.close').catch(() => {})
   await waitFor(() => Promise.resolve(restartedChild.exitCode), exitCode => exitCode !== null, 5_000)
   console.log('launcher Electron smoke passed: fresh-toggle/sandbox/preload/CSP/geometry/focus/reuse/search/invoke/history/routes/reload/session/theme/skin/settings/updater/second-instance-intents/restart-persistence/graceful-quit')
