@@ -88,7 +88,7 @@ function safeSeparator(value: string, fallback: string): string {
 const MAX_CALCULATOR_COLLECTION_ITEMS = 10_000
 const CALCULATOR_COLLECTION_CALL = /\b(ones|zeros|identity|random|randomInt|range)\s*\(([^()]*)\)/giu
 const CALCULATOR_UNBOUNDED_CALL = /\b(?:ones|zeros|identity|random|randomInt|range|reshape|resize|matrixFromFunction)\s*\(/giu
-const CALCULATOR_DISALLOWED_CALL = /\b(?:combinations|concat|eigs|fft|filter|forEach|ifft|kron|lusolve|map|matrixFromFunction|partitionSelect|permutations|reshape|resize|solveODE)\s*\(/iu
+const CALCULATOR_DISALLOWED_CALL = /\b(?:bignumber|combinations|concat|eigs|factorial|fft|filter|forEach|ifft|kron|lusolve|map|matrixFromFunction|partitionSelect|permutations|reshape|resize|solveODE)\s*\(/iu
 
 function numericArguments(value: string): number[] | undefined {
   const normalized = value.trim().replace(/^\[|\]$/gu, '')

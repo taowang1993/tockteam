@@ -116,6 +116,8 @@ test('calculator rejects resource-amplifying constructors before evaluation', ()
   assert.equal(isLauncherCalculatorExpressionBounded('ones(1000000)'), false)
   assert.equal(isLauncherCalculatorExpressionBounded('ones(10^9)'), false)
   assert.equal(isLauncherCalculatorExpressionBounded('kron(ones(100, 100), ones(100, 100))'), false)
+  assert.equal(isLauncherCalculatorExpressionBounded('factorial(100000000)'), false)
+  assert.equal(isLauncherCalculatorExpressionBounded('factorial(bignumber(100000000))'), false)
   assert.equal(isLauncherCalculatorExpressionBounded('[1:1000000]'), false)
   assert.equal(isLauncherCalculatorExpressionBounded('[1:10^9]'), false)
 })
@@ -139,6 +141,26 @@ test('Unicode password symbols count code points instead of UTF-16 units', async
   const generated = result.before.find(item => item.sourceExtension === 'PasswordGenerator')?.name
   assert.equal(generated, '🚀🚀🚀')
   assert.equal([...(generated ?? '')].length, 3)
+})
+
+test('similar-character removal applies to the complete configured alphabet', async () => {
+  const result = await search('pw', {
+    ...options,
+    getSetting: <T>(key: string, fallback: T) => {
+      const values: Record<string, unknown> = {
+        'extension[PasswordGenerator].includeLowercaseCharacters': false,
+        'extension[PasswordGenerator].includeNumbers': false,
+        'extension[PasswordGenerator].includeSymbols': true,
+        'extension[PasswordGenerator].includeUppercaseCharacters': false,
+        'extension[PasswordGenerator].noSimilarCharacters': true,
+        'extension[PasswordGenerator].passwordLength': 1,
+        'extension[PasswordGenerator].quantity': 1,
+        'extension[PasswordGenerator].symbols': 'io',
+      }
+      return (values[key] ?? fallback) as T
+    },
+  })
+  assert.equal(result.before.some(item => item.sourceExtension === 'PasswordGenerator'), false)
 })
 
 test('malformed enablement arrays fall back atomically', () => {
