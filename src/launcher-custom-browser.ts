@@ -85,6 +85,14 @@ function identityOf(stats: { dev: unknown; ino: unknown }): { dev: string; ino: 
   return { dev, ino }
 }
 
+function identityMatches(left: { dev: unknown; ino: unknown }, right: { dev: unknown; ino: unknown }): boolean {
+  return identityPart(left.dev) === identityPart(right.dev) && identityPart(left.ino) === identityPart(right.ino)
+}
+
+function identityPart(value: unknown): string | undefined {
+  return decimalIdentity(value)
+}
+
 async function validateBrowserTarget(target: string, platform: DesktopBrowserPlatform): Promise<Grant> {
   if (typeof target !== 'string' || target.length === 0 || target.length > 16_384 || /[\0\r\n]/u.test(target)
     || (!path.isAbsolute(target) && !path.win32.isAbsolute(target))) throw new Error('Custom browser selection must be an absolute path')
@@ -115,16 +123,23 @@ async function revalidateGrant(grant: Grant): Promise<void> {
 }
 
 async function readGrant(filePath: string): Promise<Grant | undefined> {
-  let handle
-  try { handle = await open(filePath, HAS_NOFOLLOW ? constants.O_RDONLY | NOFOLLOW : constants.O_RDONLY) }
+  let before
+  try { before = await lstat(filePath, { bigint: true }) }
   catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') return undefined
     throw error
   }
+  if (before.isSymbolicLink() || !before.isFile()) throw new Error('Custom browser grant file is invalid')
+  let handle
+  try { handle = await open(filePath, HAS_NOFOLLOW ? constants.O_RDONLY | NOFOLLOW : constants.O_RDONLY) }
+  catch (error) { throw new Error('Custom browser grant file is unavailable', { cause: error }) }
   try {
     const stats = await handle.stat({ bigint: true })
-    if (!stats.isFile() || stats.size > BigInt(MAX_GRANT_BYTES)) throw new Error('Custom browser grant file is invalid')
-    return parseGrant(JSON.parse(await handle.readFile('utf8')) as unknown)
+    if (!stats.isFile() || stats.size > BigInt(MAX_GRANT_BYTES) || !identityMatches(stats, before)) throw new Error('Custom browser grant file is invalid')
+    const parsed = parseGrant(JSON.parse(await handle.readFile('utf8')) as unknown)
+    const after = await lstat(filePath, { bigint: true })
+    if (after.isSymbolicLink() || !identityMatches(after, before)) throw new Error('Custom browser grant file changed')
+    return parsed
   } finally { await handle.close() }
 }
 

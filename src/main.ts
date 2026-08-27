@@ -865,7 +865,12 @@ function launcherSettingsSnapshot(): ReturnType<LauncherPersistenceRepository['s
   const repository = requireLauncherPersistence()
   const snapshot = repository.snapshot()
   const customBrowserStatus = launcherCustomBrowser?.snapshot().status ?? 'none'
-  return Object.freeze({ ...snapshot, customBrowserStatus })
+  return Object.freeze({
+    ...snapshot,
+    customBrowserStatus,
+    externalWriteAvailable: repository.externalWriteAvailable,
+    secureStorageAvailable: repository.secureStorageAvailable,
+  })
 }
 
 function launcherSurfaceSettings(): import('./launcher-contract.ts').LauncherSurfaceSettings {

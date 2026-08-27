@@ -252,7 +252,7 @@ export class LauncherPersistenceRepository {
   readonly #grantPath: string
   readonly #externalBackupRoot: string
   readonly #secretCodec: LauncherSecretCodec | undefined
-  readonly #secureStorageAvailable: boolean
+  readonly #secureStorageAvailable: boolean | undefined
   readonly #externalWriteAvailable: boolean
   #settings: StoredSettings = {}
   #settingsSource: LauncherSettingsSnapshot['settingsSource'] = 'managed'
@@ -273,7 +273,7 @@ export class LauncherPersistenceRepository {
     this.#grantPath = path.join(this.#rootPath, 'external-settings-grant.json')
     this.#externalBackupRoot = path.join(this.#rootPath, 'external-backups')
     this.#secretCodec = options.secretCodec
-    this.#secureStorageAvailable = options.secureStorageAvailable ?? (options.secretCodec?.isAvailable?.() ?? true)
+    this.#secureStorageAvailable = options.secureStorageAvailable
     this.#externalWriteAvailable = options.externalWriteAvailable ?? (HAS_NOFOLLOW && process.platform !== 'win32')
   }
 
@@ -333,6 +333,7 @@ export class LauncherPersistenceRepository {
   #externalBackupPath(grant: ExternalGrant): string { return path.join(this.#externalBackupRoot, `${grant.dev}-${grant.ino}.bak`) }
 
   get externalWriteAvailable(): boolean { return this.#externalWriteAvailable }
+  get secureStorageAvailable(): boolean { return this.#secureStorageUsable() }
   get isClosed(): boolean { return this.#closed }
 
   getSetting<T>(key: string, defaultValue: T): T {
@@ -341,7 +342,11 @@ export class LauncherPersistenceRepository {
     const stored = this.#settings[key]
     if (LAUNCHER_SENSITIVE_SETTING_KEYS.includes(key as never)) {
       if (!isEncryptedEnvelope(stored) || this.#secretCodec === undefined || !this.#secureStorageUsable()) return cloneJson(defaultValue)
-      try { return cloneJson(this.#secretCodec.decrypt(stored[ENVELOPE_KEY].ciphertext) as T) }
+      try {
+        const plaintext = this.#secretCodec.decrypt(stored[ENVELOPE_KEY].ciphertext)
+        if (!isLauncherRendererSettingValue(key, plaintext)) return cloneJson(defaultValue)
+        return cloneJson(plaintext as T)
+      }
       catch { return cloneJson(defaultValue) }
     }
     return cloneJson(stored) as T
@@ -351,7 +356,10 @@ export class LauncherPersistenceRepository {
   hasPersistedIndex(): boolean { return this.#indexAvailable }
 
   #secureStorageUsable(): boolean {
-    try { return this.#secureStorageAvailable && (this.#secretCodec?.isAvailable?.() ?? true) }
+    try {
+      if (this.#secureStorageAvailable === false) return false
+      return this.#secretCodec?.isAvailable?.() ?? this.#secureStorageAvailable ?? true
+    }
     catch { return false }
   }
 
@@ -365,16 +373,16 @@ export class LauncherPersistenceRepository {
     const missingSensitiveKeys = LAUNCHER_SENSITIVE_SETTING_KEYS.filter(key => {
       const stored = this.#settings[key]
       if (!isEncryptedEnvelope(stored) || this.#secretCodec === undefined || !this.#secureStorageUsable()) return true
-      try { this.#secretCodec.decrypt(stored[ENVELOPE_KEY].ciphertext); return false } catch { return true }
+      try {
+        const plaintext = this.#secretCodec.decrypt(stored[ENVELOPE_KEY].ciphertext)
+        return !isLauncherRendererSettingValue(key, plaintext)
+      } catch { return true }
     })
     return Object.freeze({
-      customBrowserStatus: 'none',
       externalGrantStatus: this.#externalGrantStatus,
-      externalWriteAvailable: this.#externalWriteAvailable,
       logs: Object.freeze([...this.#logs]),
       missingSensitiveKeys: Object.freeze(missingSensitiveKeys),
       recoveredSettings: this.#recoveredSettings,
-      secureStorageAvailable: this.#secureStorageUsable(),
       settingsSource: this.#settingsSource,
       values: Object.freeze(values),
     })
