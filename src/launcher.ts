@@ -76,7 +76,7 @@ async function bootstrap(): Promise<void> {
   const isMac = navigator.platform.startsWith('Mac')
   const modifier = isMac ? 'Meta' : 'Control'
   const hasPrimaryModifier = (event: KeyboardEvent): boolean => (
-    modifier === 'Meta' ? event.metaKey : event.ctrlKey
+    modifier === 'Meta' ? event.metaKey && !event.ctrlKey : event.ctrlKey && !event.metaKey
   )
   let revision = 0
   let selectedItemId = ''
