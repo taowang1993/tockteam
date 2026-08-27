@@ -435,8 +435,24 @@ try {
     () => workbenchConnection.evaluate(`document.querySelectorAll('[role="dialog"]').length`),
     count => count > 0,
   )
+  await waitFor(
+    () => workbenchConnection.evaluate(`([...document.querySelectorAll('[role="dialog"] button')].find(node => node.textContent?.trim() === 'TockLauncher')?.getAttribute('aria-current') ?? null)`),
+    current => current === 'true',
+  )
+  const settingsFacts = await workbenchConnection.evaluate(`(async () => {
+    const snapshot = await window.dshDesktop?.launcher?.settings?.getSnapshot()
+    return {
+      bridgeFrozen: Object.isFrozen(window.dshDesktop?.launcher?.settings),
+      catalog: document.body.textContent?.includes('100 rows · 102 runtime keys') ?? false,
+      hasSecret: Object.hasOwn(snapshot?.values ?? {}, 'extension[DeeplTranslator].apiKey'),
+      hasBrowserPath: Object.hasOwn(snapshot?.values ?? {}, 'general.browser.customWebBrowser.executableFilePath'),
+      hasBrowserName: Object.hasOwn(snapshot?.values ?? {}, 'general.browser.customWebBrowserName'),
+    }
+  })()`)
+  assert.deepEqual(settingsFacts, { bridgeFrozen: true, catalog: true, hasSecret: false, hasBrowserPath: false, hasBrowserName: false })
   await workbenchConnection.evaluate(`(async () => {
     await window.dshDesktop?.launcher?.settings?.updateSetting('general.searchHistory.enabled', true)
+    await window.dshDesktop?.launcher?.settings?.updateSetting('searchEngine.fuzziness', 0.6)
   })()`)
   await showLauncherFromWorkbench(workbenchConnection)
 

@@ -15,15 +15,15 @@ export const LAUNCHER_WINDOW_IPC_CHANNELS = Object.freeze({
 })
 
 export const LAUNCHER_SETTINGS_IPC_CHANNELS = Object.freeze({
-  exportSettings: 'launcher-settings:export',
-  getSnapshot: 'launcher-settings:get-snapshot',
-  importSettings: 'launcher-settings:import',
-  resetSettings: 'launcher-settings:reset',
-  revokeCustomBrowser: 'launcher-settings:revoke-custom-browser',
-  revokeExternalSettings: 'launcher-settings:revoke-external-settings',
-  selectCustomBrowser: 'launcher-settings:select-custom-browser',
-  selectExternalSettings: 'launcher-settings:select-external-settings',
-  updateSetting: 'launcher-settings:update-setting',
+  exportSettings: 'launcher-window:settings:export',
+  getSnapshot: 'launcher-window:settings:get',
+  importSettings: 'launcher-window:settings:import',
+  resetSettings: 'launcher-window:settings:reset',
+  revokeCustomBrowser: 'launcher-window:settings:revoke-custom-browser',
+  revokeExternalSettings: 'launcher-window:settings:revoke-external-file',
+  selectCustomBrowser: 'launcher-window:settings:select-custom-browser',
+  selectExternalSettings: 'launcher-window:settings:select-external-file',
+  updateSetting: 'launcher-window:settings:update',
 })
 
 export type LauncherRendererRole = 'launcher'

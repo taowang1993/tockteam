@@ -74,6 +74,12 @@ function safeMessage(error: unknown): string {
   return error instanceof Error && error.message.length > 0 ? error.message.slice(0, MAX_LOG_MESSAGE_LENGTH) : 'TockLauncher persistence operation failed'
 }
 
+function freezeJson<T>(value: T): T {
+  if (typeof value !== 'object' || value === null || Object.isFrozen(value)) return value
+  for (const child of Object.values(value as Record<string, unknown>)) freezeJson(child)
+  return Object.freeze(value)
+}
+
 function isEncryptedEnvelope(value: unknown): value is StoredSecretEnvelope {
   if (!isRecord(value) || Object.keys(value).length !== 1 || !Object.hasOwn(value, ENVELOPE_KEY)) return false
   const envelope = value[ENVELOPE_KEY]
@@ -355,6 +361,7 @@ export class LauncherPersistenceRepository {
       if (LAUNCHER_SENSITIVE_SETTING_KEYS.includes(key as never) || LAUNCHER_MAIN_OWNED_SETTING_KEYS.includes(key as never)) continue
       values[key] = cloneJson(value)
     }
+    freezeJson(values)
     const missingSensitiveKeys = LAUNCHER_SENSITIVE_SETTING_KEYS.filter(key => {
       const stored = this.#settings[key]
       if (!isEncryptedEnvelope(stored) || this.#secretCodec === undefined || !this.#secureStorageUsable()) return true
