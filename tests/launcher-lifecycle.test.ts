@@ -51,6 +51,76 @@ test('toggle intent remains pending when startup toggle fails', async () => {
   assert.equal(queue.hasPending(), false)
 })
 
+test('startup decision remains retryable after a retained toggle failure', async () => {
+  const queue = new LauncherToggleIntentQueue()
+  queue.capture(['app', '--toggle'])
+  let fail = true
+  let toggles = 0
+  const lifecycle = new LauncherLifecycleController({
+    getSetting: (_key, fallback) => fallback,
+    openWorkbenchSettings: () => {},
+    overlay: {
+      applyWindowPreferences: () => {},
+      setShortcutEnabled: () => {},
+      show: async () => {},
+      toggle: async () => {
+        toggles += 1
+        if (fail) throw new Error('overlay unavailable')
+      },
+    },
+    queue,
+    requestSecureQuit: () => {},
+    rescan: async () => {},
+    setDockVisible: () => {},
+    setTrayVisible: () => {},
+    updateSetting: async () => {},
+  })
+  await assert.rejects(lifecycle.markReady(), /overlay unavailable/u)
+  queue.capture(['app', '--toggle'])
+  fail = false
+  await lifecycle.markReady()
+  assert.equal(toggles, 2)
+  assert.equal(queue.hasPending(), false)
+})
+
+test('startup captures arriving during the toggle remain pending for the next readiness pass', async () => {
+  const queue = new LauncherToggleIntentQueue()
+  queue.capture(['app', '--toggle'])
+  let toggles = 0
+  let release!: () => void
+  const entered = new Promise<void>(resolve => { release = resolve })
+  const lifecycle = new LauncherLifecycleController({
+    getSetting: (_key, fallback) => fallback,
+    openWorkbenchSettings: () => {},
+    overlay: {
+      applyWindowPreferences: () => {},
+      setShortcutEnabled: () => {},
+      show: async () => {},
+      toggle: async () => {
+        toggles += 1
+        if (toggles === 1) {
+          release()
+          await new Promise<void>(resolve => { setImmediate(resolve) })
+        }
+      },
+    },
+    queue,
+    requestSecureQuit: () => {},
+    rescan: async () => {},
+    setDockVisible: () => {},
+    setTrayVisible: () => {},
+    updateSetting: async () => {},
+  })
+  const ready = lifecycle.markReady()
+  await entered
+  queue.capture(['app', '--toggle'])
+  await ready
+  assert.equal(queue.hasPending(), true)
+  await lifecycle.markReady()
+  assert.equal(toggles, 2)
+  assert.equal(queue.hasPending(), false)
+})
+
 test('relaunch failure reports without requesting quit', () => {
   const calls: string[] = []
   assert.equal(attemptSecureRelaunch({

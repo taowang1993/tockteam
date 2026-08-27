@@ -353,7 +353,7 @@ export function createDesktopAppUpdater(args: Readonly<{
   const install = async (): Promise<DesktopAppUpdateActionResult> => {
     const canInstall = state.status === 'downloaded'
       || (state.status === 'error' && state.errorContext === 'install' && state.downloadedVersion !== null)
-    if (disposed || !state.enabled || installRecoveryRunning || !canInstall || activeAction !== null) {
+    if (disposed || !state.enabled || installPrepared || installRecoveryRunning || !canInstall || activeAction !== null) {
       return actionResult(false, false, state)
     }
     activeAction = 'install'

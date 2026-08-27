@@ -56,6 +56,8 @@ test('main assembles one launcher owner without branching the DSH workbench fact
   assert.match(main, /flushQueuedProtocols[\s\S]+publishProtocol\(pending\[index\]!\)[\s\S]+queuedProtocolUrls\.push/u)
   assert.match(main, /if \(toggle\)[\s\S]+flushQueuedOpenRequests\(\)[\s\S]+return/u)
   assert.match(main, /async function startLiveForMarketplace\(\)[\s\S]+if \(quitting\) return/u)
+  assert.match(main, /handleUnexpectedRuntimeExit/u)
+  assert.match(main, /stopLiveRuntimeForMarketplace/u)
   assert.match(client, /unsubscribeTheme\(\)[\s\S]+unsubscribeRoute\(\)[\s\S]+unsubscribeCommand\(\)/u)
   assert.match(client, /deferSettingsOpen\([\s\S]+requestAnimationFrame[\s\S]+queueMicrotask/u)
   assert.doesNotMatch(main, /createWindow\([^)]*launcher/u)

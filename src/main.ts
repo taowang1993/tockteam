@@ -127,6 +127,10 @@ import {
 } from './desktop-app-update.ts'
 import { createDesktopAppUpdater, type DesktopAppUpdater } from './app-update.ts'
 import { RuntimeStartCancelledError, RuntimeStartGate } from './runtime-start-gate.ts'
+import {
+  handleUnexpectedRuntimeExit,
+  stopLiveRuntimeForMarketplace,
+} from './runtime-lifecycle.ts'
 
 const PRODUCT_NAME = 'TockTeam Desktop'
 const DATA_DIRECTORY = 'TockTeam-Desktop'
@@ -1383,13 +1387,21 @@ function handleRuntimeExit(exit: RuntimeExit): void {
   appendLog('desktop', `DSH runtime exited: code=${String(exit.code)} signal=${String(exit.signal)}`)
   if (quitting || transitioning) return
   transitioning = true
-  void stopRuntimeAndChannels().then(async () => {
-    await showSplash({
+  void handleUnexpectedRuntimeExit({
+    log: error => {
+      appendLog('desktop', error instanceof Error ? error.stack ?? error.message : String(error))
+    },
+    setTransitioning: value => { transitioning = value },
+    showStoppedSplash: () => showSplash({
       error: true,
       message: 'TockTeam 已停止。可从“DSH”菜单重新启动。',
       detail: logTail.slice(-12).join('\n'),
-    })
-  }).finally(() => { transitioning = false })
+    }),
+    stopRuntime: () => stopRuntimeAndChannels(),
+  }).catch(error => {
+    appendLog('desktop', error instanceof Error ? error.stack ?? error.message : String(error))
+    transitioning = false
+  })
 }
 
 async function startRuntimeOwned(token: Readonly<{ isCurrent: () => boolean }>): Promise<void> {
@@ -1493,9 +1505,11 @@ async function startPreviewSurface(input: {
 
 async function stopLiveForMarketplace(): Promise<void> {
   if (quitting) return
-  transitioning = true
-  await showSplash({ message: '正在应用插件 Profile…' })
-  await stopRuntimeAndChannels()
+  await stopLiveRuntimeForMarketplace({
+    setTransitioning: value => { transitioning = value },
+    showSplash: () => showSplash({ message: '正在应用插件 Profile…' }),
+    stopRuntime: () => stopRuntimeAndChannels(),
+  })
 }
 
 async function startLiveForMarketplace(): Promise<void> {

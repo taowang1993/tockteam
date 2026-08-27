@@ -228,9 +228,10 @@ export class LauncherLifecycleController {
     if (this.disposed || this.startupDecisionMade) return
     const settings = this.settings ?? await this.sync()
     this.ready = true
-    this.startupDecisionMade = true
     if (settings.showOnStartup) await this.args.overlay.show()
     await this.args.queue.drain(() => this.args.overlay.toggle())
+    if (this.args.queue.hasPending()) return
+    this.startupDecisionMade = true
   }
 
   async handleSecondInstance(argv: readonly string[], activateWorkbench: () => void): Promise<void> {

@@ -120,6 +120,31 @@ test('async install errors recover once and retain the downloaded retry authorit
   owner.dispose()
 })
 
+test('duplicate install is rejected until asynchronous recovery resets authority', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'tockteam-update-'))
+  mkdirSync(join(root, 'resources'))
+  writeFileSync(join(root, 'resources', 'app-update.yml'), 'provider: generic\n')
+  const updater = new FakeUpdater()
+  let prepared = 0
+  const owner = createDesktopAppUpdater({
+    app: { ...fakeApp(root, true), resourcesPath: join(root, 'resources') },
+    updater,
+    prepareInstall: async () => { prepared += 1 },
+  })
+  updater.emit('update-available', { version: '1.3.0' })
+  updater.emit('update-downloaded', { version: '1.3.0' })
+  assert.equal((await owner.install()).accepted, true)
+  assert.equal((await owner.install()).accepted, false)
+  assert.equal(prepared, 1)
+  assert.equal(updater.installCalls, 1)
+  updater.emit('error', new Error('install failed after quitAndInstall returned'))
+  await new Promise<void>(resolve => { setImmediate(resolve) })
+  assert.equal((await owner.install()).accepted, true)
+  assert.equal(prepared, 2)
+  assert.equal(updater.installCalls, 2)
+  owner.dispose()
+})
+
 test('failed check/download/install remain retryable and recovery runs', async () => {
   const root = mkdtempSync(join(tmpdir(), 'tockteam-update-'))
   mkdirSync(join(root, 'resources'))
