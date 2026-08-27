@@ -1,0 +1,152 @@
+{
+  "schemaVersion": 1,
+  "identity": {
+    "packageName": "@tockteam/desktop",
+    "productName": "TockTeam Desktop",
+    "appId": "ai.deepseek.tockteam-desktop",
+    "executableName": "tockteam-desktop",
+    "desktopName": "tockteam-desktop.desktop",
+    "protocols": [
+      "tocktutor"
+    ],
+    "dataDirectory": "TockTeam-Desktop"
+  },
+  "targets": [
+    {
+      "platform": "mac",
+      "formats": [
+        "dmg",
+        "zip"
+      ],
+      "architectures": [
+        "arm64",
+        "x64"
+      ]
+    },
+    {
+      "platform": "linux",
+      "formats": [
+        "AppImage",
+        "deb"
+      ],
+      "architectures": [
+        "arm64",
+        "x64"
+      ]
+    },
+    {
+      "platform": "win",
+      "formats": [
+        "dir"
+      ],
+      "architectures": [
+        "x64"
+      ]
+    }
+  ],
+  "resources": {
+    "asar": true,
+    "npmFiles": [
+      "dist/plugin.js",
+      "dist/client.js",
+      "dist/client.js.map",
+      "dist/client-api.js",
+      "client.d.ts",
+      "dist/host.js",
+      "host.d.ts",
+      "dist/cordis.patch.yml",
+      "plugins/tocktutor/README.md",
+      "plugins/tocktutor/packages/*/package.json",
+      "plugins/tocktutor/packages/*/cordis.patch.yml",
+      "plugins/tocktutor/packages/*/lib/**",
+      "plugins/tocktutor/packages/*/dist/**",
+      "plugins/tocktutor/packages/tockbot-note-vault/index.js",
+      "plugins/tocktutor/packages/tockbot-note-vault/inspection.js",
+      "plugins/tocktutor/packages/tockbot-note-vault/inspection.d.ts",
+      "plugins/tocktutor/packages/tockbot-note-vault/LICENSE",
+      "plugins/tocktutor/packages/tockbot-note-vault/README.md",
+      "plugins/tocktutor/packages/tockteam-tocktutor-assistant/PENNIVO_PROVENANCE.md",
+      "plugins/tocktutor/packages/tockteam-tocktutor-assistant/THIRD_PARTY_NOTICES",
+      "plugins/tocktutor/packages/tockteam-tocktutor-import-export/README.md",
+      "dist/tockteam.js",
+      "bin/tockteam",
+      "bin/tockteam.cmd"
+    ],
+    "builderFiles": [
+      "dist/main.js",
+      "dist/preload.cjs",
+      "dist/splash.html",
+      "LICENSE",
+      "THIRD_PARTY_NOTICES.md",
+      "package.json"
+    ],
+    "builderExtraResources": [
+      {
+        "from": ".stage",
+        "to": ".",
+        "filter": [
+          "dsh-runtime/**/*",
+          "node-runtime/**/*"
+        ]
+      },
+      {
+        "from": "assets/icons/512x512.png",
+        "to": "tockteam-desktop.png"
+      },
+      {
+        "from": "dist/tockteam.js",
+        "to": "lib/tockteam/cli.js"
+      },
+      {
+        "from": "dist/release-package.json",
+        "to": "lib/tockteam/package.json"
+      },
+      {
+        "from": "bin",
+        "to": "bin",
+        "filter": [
+          "tockteam",
+          "tockteam.cmd"
+        ]
+      }
+    ]
+  },
+  "foundation": {
+    "launcherImplemented": false,
+    "launcherPackaged": false,
+    "admittedRuntimeDependencies": [],
+    "runtimeDependencyClosure": [],
+    "launcherAssets": [],
+    "launcherNotices": [],
+    "shippedVendorSource": false,
+    "importedUeliIdentity": false
+  },
+  "publication": {
+    "configuredTargets": [
+      "macOS arm64",
+      "macOS x64",
+      "Linux arm64",
+      "Linux x64",
+      "Windows x64"
+    ],
+    "workflowArtifacts": [
+      "macOS arm64",
+      "macOS x64",
+      "Linux x64"
+    ],
+    "launcherArtifacts": [],
+    "installedArtifact": false,
+    "signed": false,
+    "notarized": false,
+    "publicDistribution": false
+  },
+  "ueliIntegration": {
+    "baseline": "v9.29.0",
+    "peeledCommit": "c9670d61cb2576802adf99d95622c58538d265f3",
+    "admittedRuntimeDependencies": [],
+    "runtimeDependencyClosure": [],
+    "shippedVendorSource": false,
+    "importedIdentity": false
+  },
+  "noticeLedger": "scripts/ueli/notice-ledger.json"
+}
