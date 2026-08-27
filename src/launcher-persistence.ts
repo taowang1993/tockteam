@@ -190,25 +190,38 @@ async function atomicWrite(filePath: string, contents: string, options: Readonly
   }
 }
 
+const INDEX_ACTION_KEYS = ['argument', 'description', 'handlerKey', 'hideWindowAfterInvocation', 'keyboardShortcut', 'requiresConfirmation']
+const INDEX_ITEM_KEYS = ['additionalActions', 'defaultAction', 'description', 'details', 'id', 'imageKey', 'name', 'sourceExtension']
+
+function parseIndexAction(value: unknown): void {
+  if (!isRecord(value)
+    || Object.keys(value).some(key => !INDEX_ACTION_KEYS.includes(key))
+    || typeof value.argument !== 'string' || value.argument.length === 0 || value.argument.length > 16_384
+    || typeof value.description !== 'string' || value.description.length === 0 || value.description.length > 512
+    || typeof value.handlerKey !== 'string' || value.handlerKey.length === 0 || value.handlerKey.length > 128
+    || (value.hideWindowAfterInvocation !== undefined && typeof value.hideWindowAfterInvocation !== 'boolean')
+    || (value.keyboardShortcut !== undefined && (typeof value.keyboardShortcut !== 'string' || value.keyboardShortcut.length === 0 || value.keyboardShortcut.length > 128))
+    || (value.requiresConfirmation !== undefined && typeof value.requiresConfirmation !== 'boolean')) throw new Error('TockLauncher index action is invalid')
+}
+
 function parseIndex(value: unknown): LauncherInternalResultItem[] {
   if (!Array.isArray(value) || value.length > MAX_INDEX_ITEMS) throw new Error('TockLauncher index is invalid')
   const parsed: LauncherInternalResultItem[] = []
   for (const raw of value) {
-    if (!isRecord(raw) || typeof raw.id !== 'string' || raw.id.length === 0 || raw.id.length > 512
+    if (!isRecord(raw)
+      || Object.keys(raw).some(key => !INDEX_ITEM_KEYS.includes(key))
+      || typeof raw.id !== 'string' || raw.id.length === 0 || raw.id.length > 512
       || typeof raw.name !== 'string' || raw.name.length === 0 || raw.name.length > 512
       || typeof raw.description !== 'string' || raw.description.length === 0 || raw.description.length > 2_048
       || typeof raw.sourceExtension !== 'string' || raw.sourceExtension.length === 0 || raw.sourceExtension.length > 128
-      || raw.imageUrl !== undefined || !isRecord(raw.defaultAction)) throw new Error('TockLauncher index item is invalid')
-    const action = raw.defaultAction
-    if (typeof action.argument !== 'string' || action.argument.length > 16_384 || action.argument.length === 0
-      || typeof action.description !== 'string' || action.description.length === 0 || action.description.length > 512
-      || typeof action.handlerKey !== 'string' || action.handlerKey.length === 0 || action.handlerKey.length > 128
-      || Object.keys(action).some(key => !['argument', 'description', 'handlerKey', 'hideWindowAfterInvocation', 'keyboardShortcut', 'requiresConfirmation'].includes(key))) throw new Error('TockLauncher index action is invalid')
+      || (raw.imageKey !== undefined && (typeof raw.imageKey !== 'string' || !/^[a-z][a-z0-9-]{0,63}$/u.test(raw.imageKey)))
+      || (raw.details !== undefined && (typeof raw.details !== 'string' || raw.details.length > 8_192))
+      || !isRecord(raw.defaultAction)) throw new Error('TockLauncher index item is invalid')
+    parseIndexAction(raw.defaultAction)
     const additional = raw.additionalActions
     if (additional !== undefined && (!Array.isArray(additional) || additional.length > 16)) throw new Error('TockLauncher index actions are invalid')
-    const item = { ...raw } as Record<string, unknown>
-    delete item.imageUrl
-    parsed.push(cloneJson(item, MAX_LAUNCHER_INDEX_BYTES) as LauncherInternalResultItem)
+    additional?.forEach(parseIndexAction)
+    parsed.push(cloneJson(raw, MAX_LAUNCHER_INDEX_BYTES) as LauncherInternalResultItem)
   }
   const encoded = JSON.stringify(parsed)
   if (encoded === undefined || Buffer.byteLength(encoded, 'utf8') > MAX_LAUNCHER_INDEX_BYTES) throw new Error('TockLauncher index is too large')
@@ -249,7 +262,7 @@ export class LauncherPersistenceRepository {
     this.#grantPath = path.join(this.#rootPath, 'external-settings-grant.json')
     this.#externalBackupRoot = path.join(this.#rootPath, 'external-backups')
     this.#secretCodec = options.secretCodec
-    this.#secureStorageAvailable = options.secureStorageAvailable ?? options.secretCodec?.isAvailable?.() === true
+    this.#secureStorageAvailable = options.secureStorageAvailable ?? (options.secretCodec?.isAvailable?.() ?? true)
     this.#externalWriteAvailable = options.externalWriteAvailable ?? (HAS_NOFOLLOW && process.platform !== 'win32')
   }
 
@@ -409,8 +422,10 @@ export class LauncherPersistenceRepository {
       const stats = await lstat(absolute)
       if (stats.isSymbolicLink() || !stats.isFile()) throw new Error('TockLauncher export target is invalid')
     }
-    const exported = parseLauncherSettingsRecord(this.#settings, { omitMainOwned: true, omitSensitive: true })
-    await atomicWrite(absolute, JSON.stringify(exported, null, 2), { backup: false })
+    await this.#enqueue(async () => {
+      const exported = parseLauncherSettingsRecord(this.#settings, { omitMainOwned: true, omitSensitive: true })
+      await atomicWrite(absolute, JSON.stringify(exported, null, 2), { backup: false })
+    })
   }
 
   async grantExternalSettingsFile(filePath: string): Promise<void> {

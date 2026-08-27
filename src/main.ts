@@ -89,7 +89,6 @@ import {
 import { LauncherActionStore } from './launcher-actions.ts'
 import { LauncherPersistenceRepository, createLauncherSecretCodec } from './launcher-persistence.ts'
 import { LauncherCustomBrowserController } from './launcher-custom-browser.ts'
-import { readPersistedLauncherState } from './launcher-settings-model.ts'
 import { resolveLauncherSettingDefault } from './launcher-settings-defaults.ts'
 import { assertNoLauncherIpcArguments } from './launcher-window-contract.ts'
 import { createLauncherCoreSearch } from './launcher-core-search.ts'
@@ -870,7 +869,25 @@ function launcherSettingsSnapshot(): ReturnType<LauncherPersistenceRepository['s
 }
 
 function launcherSurfaceSettings(): import('./launcher-contract.ts').LauncherSurfaceSettings {
-  const state = readPersistedLauncherState(launcherSettingsSnapshot(), [], launcherDefaultContext())
+  const snapshot = launcherSettingsSnapshot()
+  const values = snapshot.values
+  const context = launcherDefaultContext()
+  const boolValue = (key: string, fallback: boolean): boolean => typeof values[key] === 'boolean' ? values[key] as boolean : Boolean(resolveLauncherSettingDefault(key, context) ?? fallback)
+  const numberValue = (key: string, fallback: number): number => typeof values[key] === 'number' && Number.isFinite(values[key]) ? values[key] as number : Number(resolveLauncherSettingDefault(key, context) ?? fallback)
+  const historyEnabled = boolValue('general.searchHistory.enabled', false)
+  const historyLimit = Math.min(100, Math.max(1, numberValue('general.searchHistory.limit', 10)))
+  const rawHistory = values['general.searchHistory.history']
+  const history = Array.isArray(rawHistory) ? rawHistory.filter(item => typeof item === 'string').slice(0, historyLimit) : []
+  const state = {
+    preferences: {
+      fuzziness: Math.min(1, Math.max(0, numberValue('searchEngine.fuzziness', 0.5))),
+      historyEnabled,
+      historyLimit,
+      maxSearchResultItems: Math.min(200, Math.max(1, numberValue('searchEngine.maxResultLength', 50))),
+      searchEngineId: values['searchEngine.id'] === 'Fuse.js' ? 'Fuse.js' as const : 'fuzzysort' as const,
+    },
+    history,
+  }
   return Object.freeze({
     fuzziness: state.preferences.fuzziness,
     history: Object.freeze([...state.history]),

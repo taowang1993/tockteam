@@ -35,14 +35,19 @@ test('launcher preload exposes only typed search, theme, settings, invoke, resca
       if (channel === LAUNCHER_WINDOW_IPC_CHANNELS.dismiss) return { ok: true }
       if (channel === LAUNCHER_WINDOW_IPC_CHANNELS.openSettings) return { ok: true }
       if (channel === LAUNCHER_WINDOW_IPC_CHANNELS.getTheme) return { mode: 'light', skinId: null, revision: 0 }
+      if (channel === 'launcher:surface-settings' || channel === 'launcher:record-search') return { fuzziness: 0.5, history: [], historyEnabled: true, historyLimit: 10, maxSearchResultItems: 50, searchEngineId: 'fuzzysort' }
       return { ok: true }
     },
   })
-  assert.deepEqual(Object.keys(bridge).sort(), ['dismiss', 'getTheme', 'invokeAction', 'onTheme', 'openSettings', 'rescan', 'search'])
+  assert.deepEqual(Object.keys(bridge).sort(), ['dismiss', 'getSurfaceSettings', 'getTheme', 'invokeAction', 'onTheme', 'openSettings', 'recordSearch', 'rescan', 'search'])
+  assert.equal(bridge.getSurfaceSettings.length, 0)
   assert.equal(bridge.getTheme.length, 0)
   assert.equal(bridge.invokeAction.length, 1)
+  assert.equal(bridge.recordSearch.length, 1)
   assert.equal(bridge.rescan.length, 0)
   assert.equal(bridge.search.length, 2)
+  await bridge.getSurfaceSettings()
+  await bridge.recordSearch('coder')
   await bridge.getTheme()
   await bridge.search('coder', { fuzziness: 0.5, maxSearchResultItems: 50, searchEngineId: 'fuzzysort' })
   await bridge.rescan()
@@ -50,6 +55,8 @@ test('launcher preload exposes only typed search, theme, settings, invoke, resca
   await bridge.dismiss()
   await bridge.openSettings()
   assert.deepEqual(calls, [
+    { channel: 'launcher:surface-settings' },
+    { channel: 'launcher:record-search', input: 'coder' },
     { channel: LAUNCHER_WINDOW_IPC_CHANNELS.getTheme },
     {
       channel: LAUNCHER_IPC_CHANNELS.search,

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import {
+  LAUNCHER_SETTINGS_IPC_CHANNELS,
   LAUNCHER_WINDOW_IPC_CHANNELS,
   registerLauncherWindowIpcHandlers,
   registerWorkbenchLauncherIpcHandlers,
@@ -59,6 +60,53 @@ test('launcher theme and settings operations remain owner-bound and strict', asy
   assert.equal(settings, 1)
   await assert.rejects(async () => await getTheme?.({}, 'extra'), /arguments/u)
   dispose()
+})
+
+test('workbench settings handlers guard before parsing and keep native effects argument-free', async () => {
+  const ipcMain = new FakeIpcMain()
+  let trusted = true
+  const calls: string[] = []
+  const dispose = registerWorkbenchLauncherIpcHandlers({
+    assertTrustedMainIpc: () => { if (!trusted) throw new Error('untrusted') },
+    controller: { getState: () => ({ visible: false } as never), show: async () => {} },
+    ipcMain,
+    settings: {
+      getSnapshot: () => ({ externalGrantStatus: 'none', logs: [], missingSensitiveKeys: [], recoveredSettings: false, settingsSource: 'managed', values: {} }),
+      updateSetting: async (key, value) => { calls.push(`${key}:${String(value)}`); return { ok: true } },
+      importSettings: async () => { calls.push('import'); return { ok: true } },
+      exportSettings: async () => { calls.push('export'); return { canceled: true, ok: true } },
+      resetSettings: async () => { calls.push('reset'); return { ok: true } },
+      selectExternalSettings: async () => { calls.push('select-external'); return { ok: true } },
+      revokeExternalSettings: async () => { calls.push('revoke-external'); return { ok: true } },
+      selectCustomBrowser: async () => { calls.push('select-browser'); return { ok: true } },
+      revokeCustomBrowser: async () => { calls.push('revoke-browser'); return { ok: true } },
+    },
+  })
+  const get = ipcMain.handlers.get(LAUNCHER_SETTINGS_IPC_CHANNELS.getSnapshot)!
+  const update = ipcMain.handlers.get(LAUNCHER_SETTINGS_IPC_CHANNELS.updateSetting)!
+  const exportSettings = ipcMain.handlers.get(LAUNCHER_SETTINGS_IPC_CHANNELS.exportSettings)!
+  assert.deepEqual(get({}), { externalGrantStatus: 'none', logs: [], missingSensitiveKeys: [], recoveredSettings: false, settingsSource: 'managed', values: {} })
+  await (update({}, { key: 'general.language', value: 'fr-FR' }) as Promise<unknown>)
+  await assert.rejects(Promise.resolve(update({}, { key: 'general.language', value: 'fr-FR' }, 'extra')), /arguments/u)
+  await assert.rejects(Promise.resolve(update({}, { key: 'general.browser.customWebBrowserName', value: 'spoof' })), /Invalid launcher setting/u)
+  await assert.deepEqual(await Promise.resolve(exportSettings({})), { canceled: true, ok: true })
+  trusted = false
+  assert.throws(() => get({}), /untrusted/u)
+  assert.deepEqual(calls, ['general.language:fr-FR', 'export'])
+  dispose()
+  assert.deepEqual(ipcMain.removed.sort(), [
+    LAUNCHER_SETTINGS_IPC_CHANNELS.exportSettings,
+    LAUNCHER_SETTINGS_IPC_CHANNELS.getSnapshot,
+    LAUNCHER_SETTINGS_IPC_CHANNELS.importSettings,
+    LAUNCHER_SETTINGS_IPC_CHANNELS.resetSettings,
+    LAUNCHER_SETTINGS_IPC_CHANNELS.revokeCustomBrowser,
+    LAUNCHER_SETTINGS_IPC_CHANNELS.revokeExternalSettings,
+    LAUNCHER_SETTINGS_IPC_CHANNELS.selectCustomBrowser,
+    LAUNCHER_SETTINGS_IPC_CHANNELS.selectExternalSettings,
+    LAUNCHER_SETTINGS_IPC_CHANNELS.updateSetting,
+    LAUNCHER_WINDOW_IPC_CHANNELS.show,
+    LAUNCHER_WINDOW_IPC_CHANNELS.getState,
+  ].sort())
 })
 
 test('workbench launcher handlers deliver readiness and finite theme facts', async () => {
