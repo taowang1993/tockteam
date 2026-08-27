@@ -440,7 +440,7 @@ test('notes_search adapts the active generation into TockDriver citations withou
           path: 'Notes/Launch.md',
           kind: 'content',
           line: 3,
-          preview: 'Bearer private /Users/max/secret launch plan',
+          preview: '{"apiKey":"json-search-secret"} Bearer private /Users/max/secret launch plan',
         },
         {
           path: 'Notes/Launch.md',
@@ -487,7 +487,7 @@ test('notes_search adapts the active generation into TockDriver citations withou
         path: 'Notes/Launch.md',
         title: 'Launch',
         line: 3,
-        snippet: 'Bearer [REDACTED] [REDACTED] launch plan',
+        snippet: '{"apiKey":"[REDACTED]"} Bearer [REDACTED] [REDACTED] launch plan',
         matchType: 'semantic',
       }],
       omittedFiles: 1,
@@ -498,7 +498,7 @@ test('notes_search adapts the active generation into TockDriver citations withou
       expectedVault: { generation: 7, id: 'vault:test' },
       signal,
     })
-    assert.doesNotMatch(JSON.stringify(result), /\/Users\/max|private|secret/u)
+    assert.doesNotMatch(JSON.stringify(result), /\/Users\/max|private|json-search-secret/u)
     assert.deepEqual(
       tool.output.render({}, result as never),
       [{ type: 'text', text: JSON.stringify(result, undefined, 2) }],
@@ -511,7 +511,7 @@ test('notes_search adapts the active generation into TockDriver citations withou
 test('notes_read returns a bounded redacted canonical note result and rejects another vault', async () => {
   const loaded = await load()
   try {
-    loaded.noteVault.notesReadContent = `# Launch\n\nBearer private /Users/max/secret\n${'x'.repeat(70_000)}`
+    loaded.noteVault.notesReadContent = `# Launch\n\nBearer private /Users/max/secret\n{"apiKey":"json-api-secret","password":"json-password-secret"}\n${'x'.repeat(70_000)}`
     const tool = loaded.tools.definitions.get('notes_read')
     assert.ok(tool)
     const signal = new AbortController().signal
@@ -527,7 +527,7 @@ test('notes_read returns a bounded redacted canonical note result and rejects an
     assert.equal(result.title, 'Launch')
     assert.equal(result.truncated, true)
     assert.ok(result.content.length <= 64_000)
-    assert.doesNotMatch(JSON.stringify(result), /\/Users\/max|private|secret/u)
+    assert.doesNotMatch(JSON.stringify(result), /\/Users\/max|private|json-api-secret|json-password-secret/u)
     assert.deepEqual(loaded.noteVault.reads.at(-1), {
       args: { path: 'Notes/Launch.md' },
       expectedVault: { generation: 7, id: 'vault:test' },
