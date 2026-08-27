@@ -112,7 +112,7 @@ test('failed workbench intents transfer to a replacement readiness handshake', (
   const replacement = {}
   const routes: string[] = []
   let routeFailure = true
-  const routeDelivery = createLauncherWorkbenchRouteDelivery<object>((_window, route) => {
+  const routeDelivery = createLauncherWorkbenchRouteDelivery<object>((_window: object, route: { destination: 'tockcoder' | 'tocktutor' }) => {
     if (routeFailure) {
       routeFailure = false
       throw new Error('first renderer gone')
@@ -129,7 +129,7 @@ test('failed workbench intents transfer to a replacement readiness handshake', (
 
   const commands: string[] = []
   let commandFailure = true
-  const commandDelivery = createLauncherWorkbenchCommandDelivery<object, string>((_window, command) => {
+  const commandDelivery = createLauncherWorkbenchCommandDelivery<object, string>((_window: object, command: string) => {
     if (commandFailure) {
       commandFailure = false
       throw new Error('first renderer gone')
