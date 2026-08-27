@@ -394,7 +394,7 @@ export class LauncherPersistenceRepository {
       externalGrantStatus: this.#externalGrantStatus,
       logs: Object.freeze([...this.#logs]),
       missingSensitiveKeys: Object.freeze(missingSensitiveKeys),
-      recoveredArtifacts: Object.freeze([...this.#recoveredArtifacts].sort()),
+      recoveredArtifacts: Object.freeze([...this.#recoveredArtifacts].toSorted()),
       recoveredSettings: this.#recoveredSettings,
       settingsSource: this.#settingsSource,
       values: Object.freeze(values),
