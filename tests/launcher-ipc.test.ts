@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
+import { LauncherActionExpiredError } from '../src/launcher-actions.ts'
 import { LAUNCHER_IPC_CHANNELS } from '../src/launcher-contract.ts'
 import { registerLauncherIpcHandlers } from '../src/launcher-ipc.ts'
 
@@ -44,4 +45,46 @@ test('launcher search IPC guards, publishes opaque actions, rejects stale reques
   await assert.rejects(ipc.handlers.get(LAUNCHER_IPC_CHANNELS.rescan)!(event, 'extra') as Promise<unknown>, /arguments/u)
   dispose()
   assert.deepEqual(ipc.removed.sort(), Object.values(LAUNCHER_IPC_CHANNELS).sort())
+})
+
+test('launcher IPC rechecks ownership after search and maps expiry without exposing internals', async () => {
+  const ipc = new FakeIpc()
+  let release: (() => void) | undefined
+  const pending = new Promise<void>(resolve => { release = resolve })
+  let guardCalls = 0
+  let published = 0
+  const dispose = registerLauncherIpcHandlers({
+    actions: {
+      invoke: async () => { throw new LauncherActionExpiredError() },
+      publish: () => {
+        published += 1
+        return { items: [], resultSetId: 'launcher-results:1' }
+      },
+    },
+    guard: {
+      assert: () => {
+        guardCalls += 1
+        if (guardCalls > 1) throw new Error('launcher window was replaced')
+        return { role: 'launcher', webContentsId: 41 }
+      },
+    },
+    ipcMain: ipc,
+    rescan: async () => ({ indexedItemCount: 0, rescanStatus: 'idle' as const }),
+    search: async () => {
+      await pending
+      return { after: [], before: [], status: { indexedItemCount: 0, rescanStatus: 'idle' as const } }
+    },
+  })
+  const search = ipc.handlers.get(LAUNCHER_IPC_CHANNELS.search)!
+  const event = { sender: {} }
+  const request = search(event, { fuzziness: 0.5, maxSearchResultItems: 50, searchEngineId: 'fuzzysort', searchTerm: 'coder' }) as Promise<unknown>
+  release?.()
+  await assert.rejects(request, /replaced/u)
+  assert.equal(published, 0)
+  guardCalls = 0
+
+  const invoke = ipc.handlers.get(LAUNCHER_IPC_CHANNELS.invokeAction)!
+  const result = await invoke(event, { actionId: 'launcher-action:expired' })
+  assert.deepEqual(result, { ok: false, reason: 'expired' })
+  dispose()
 })
