@@ -1,11 +1,12 @@
 import assert from 'node:assert/strict'
 import type { Dir } from 'node:fs'
-import { lstat, mkdtemp, mkdir, rm, stat, symlink, writeFile } from 'node:fs/promises'
+import { lstat, mkdtemp, mkdir, opendir, rm, stat, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
 import {
   createLauncherFileSearchScanners,
+  LAUNCHER_FILE_SEARCH_LIMITS,
   macFileSearchInvocation,
   scanSimpleFileSearchFolder,
   windowsFileSearchInvocation,
@@ -236,6 +237,102 @@ test('Simple File Search enforces independent result and visit caps', async () =
     })
     assert.equal(visited.length, 200)
   } finally { await rm(home, { force: true, recursive: true }) }
+})
+
+test('Simple File Search enforces the real queued-directory cap', async () => {
+  const home = await mkdtemp(join(tmpdir(), 'tockteam-simple-queue-cap-'))
+  try {
+    const root = join(home, 'root')
+    await mkdir(root)
+    await Promise.all(Array.from({ length: LAUNCHER_FILE_SEARCH_LIMITS.maxQueue + 1 }, async (_, index) => {
+      const folder = join(root, `queued-${String(index).padStart(4, '0')}`)
+      await mkdir(folder)
+      if (index === LAUNCHER_FILE_SEARCH_LIMITS.maxQueue) await writeFile(join(folder, 'late.txt'), 'late', 'utf8')
+    }))
+    const results = await scanSimpleFileSearchFolder({
+      folder: { id: 'root', path: root, recursive: true, searchFor: 'files' },
+      homePath: home, maxResults: 1, maxVisitedEntries: 10_000, signal: signal(),
+    })
+    assert.equal(results.some(entry => entry.path.endsWith('late.txt')), false)
+  } finally { await rm(home, { force: true, recursive: true }) }
+})
+
+test('Simple File Search cancels after a delayed directory read and closes the handle', async () => {
+  const home = await mkdtemp(join(tmpdir(), 'tockteam-simple-delayed-read-'))
+  const controller = new AbortController()
+  let readStarted: (() => void) | undefined
+  let closed = false
+  const readReady = new Promise<void>(resolve => { readStarted = resolve })
+  try {
+    const root = join(home, 'root')
+    await mkdir(root)
+    await writeFile(join(root, 'entry.txt'), 'entry', 'utf8')
+    const scanning = scanSimpleFileSearchFolder({
+      folder: { id: 'root', path: root, recursive: false, searchFor: 'files' },
+      homePath: home, maxResults: 1, maxVisitedEntries: 10, openDirectory: async directoryPath => {
+        const directory = await opendir(directoryPath)
+        return {
+          close: async () => { closed = true; await directory.close() },
+          read: async () => { readStarted?.(); await new Promise<void>(resolve => setImmediate(resolve)); return await directory.read() },
+        } as unknown as import('node:fs').Dir
+      }, signal: controller.signal,
+    })
+    await readReady
+    controller.abort(new Error('delayed traversal canceled'))
+    await assert.rejects(scanning, /delayed traversal canceled/u)
+    assert.equal(closed, true)
+  } finally { await rm(home, { force: true, recursive: true }) }
+})
+
+test('Simple File Search times out during a delayed directory read', async () => {
+  const home = await mkdtemp(join(tmpdir(), 'tockteam-simple-delayed-timeout-'))
+  try {
+    const root = join(home, 'root')
+    await mkdir(root)
+    await writeFile(join(root, 'entry.txt'), 'entry', 'utf8')
+    await assert.rejects(scanSimpleFileSearchFolder({
+      folder: { id: 'root', path: root, recursive: false, searchFor: 'files' },
+      homePath: home, maxResults: 1, maxVisitedEntries: 10, scanTimeoutMs: 1, openDirectory: async directoryPath => {
+        const directory = await opendir(directoryPath)
+        return {
+          close: async () => { await directory.close() },
+          read: async () => { await new Promise<void>(resolve => setTimeout(resolve, 20)); return await directory.read() },
+        } as unknown as import('node:fs').Dir
+      }, signal: signal(),
+    }), /timed out/u)
+  } finally { await rm(home, { force: true, recursive: true }) }
+})
+
+test('Simple File Search rejects a queued directory retargeted to a symlink', async () => {
+  const home = await mkdtemp(join(tmpdir(), 'tockteam-simple-queued-race-'))
+  const outside = await mkdtemp(join(tmpdir(), 'tockteam-simple-queued-race-outside-'))
+  try {
+    const root = join(home, 'root'); const queued = join(root, 'queued'); const escape = join(outside, 'escape.txt')
+    await mkdir(root); await mkdir(queued); await writeFile(join(queued, 'inside.txt'), 'inside', 'utf8'); await writeFile(escape, 'escape', 'utf8')
+    let retargeted = false
+    let readRetargetedPath = false
+    const results = await scanSimpleFileSearchFolder({
+      folder: { id: 'root', path: root, recursive: true, searchFor: 'files' },
+      homePath: home, maxResults: 10, maxVisitedEntries: 100, openDirectory: async directoryPath => {
+        if (directoryPath === queued && !retargeted) {
+          retargeted = true
+          await rm(queued, { recursive: true, force: true })
+          await symlink(outside, queued)
+        }
+        const directory = await opendir(directoryPath)
+        if (directoryPath === queued && (await lstat(directoryPath)).isSymbolicLink()) {
+          return {
+            close: async () => await directory.close(),
+            read: async () => { readRetargetedPath = true; return await directory.read() },
+          } as unknown as import('node:fs').Dir
+        }
+        return directory
+      }, signal: signal(),
+    })
+    assert.equal(retargeted, true)
+    assert.equal(readRetargetedPath, false)
+    assert.equal(results.some(entry => entry.path === escape), false)
+  } finally { await rm(home, { force: true, recursive: true }); await rm(outside, { force: true, recursive: true }) }
 })
 
 test('Simple File Search stops recursion at its depth bound', async () => {

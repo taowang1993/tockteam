@@ -312,6 +312,10 @@ export async function scanSimpleFileSearchFolder(input: Readonly<{
           opened = await (input.openDirectory ?? opendir)(current.directoryPath)
           activeDirectories.add(opened)
           throwIfAborted(input.signal); assertNotTimedOut(deadline)
+          if (!await ensureTrustedDirectory(platform, input.homePath, current.directoryPath, input.signal, deadline)) {
+            await closeDirectory(opened)
+            continue
+          }
           directory = opened
         } catch (reason) {
           if (opened !== undefined) await closeDirectory(opened)
