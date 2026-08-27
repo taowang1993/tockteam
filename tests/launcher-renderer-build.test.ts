@@ -68,6 +68,7 @@ test('local tools stay finite and browser-safe', () => {
   assert.match(localTools, /maxLength/u)
   assert.doesNotMatch(localTools, /node:|ipcRenderer|dshDesktop|fetch\s*\(|localStorage|sessionStorage/u)
   assert.match(fileSearchTool, /LAUNCHER_FILE_SEARCH_QUERY_PREFIX|File Search Input/u)
+  assert.match(fileSearchTool, /LAUNCHER_MAX_SEARCH_TERM_LENGTH|maxInputLength/u)
   assert.match(fileSearchTool, /additionalActions/u)
   assert.match(fileSearchTool, /menuitem/u)
   assert.match(fileSearchTool, /ArrowDown|ArrowUp/u)
