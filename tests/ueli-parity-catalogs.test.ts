@@ -80,6 +80,12 @@ function manifestCatalogs() {
   return JSON.parse(readFileSync(manifestPath, 'utf8')).catalogs as Record<string, Array<Record<string, unknown>>>
 }
 
+function catalogRows(catalog: string) {
+  const rows = manifestCatalogs()[catalog]
+  assert.ok(rows, `missing catalog ${catalog}`)
+  return rows
+}
+
 test('the pinned Ueli source matches every TockTeam parity catalog', async () => {
   const result = await auditParityCatalogs({ repoRoot })
 
@@ -90,8 +96,7 @@ test('the pinned Ueli source matches every TockTeam parity catalog', async () =>
 
 for (const catalog of CATALOG_NAMES) {
   test(`${catalog} catalog rejects an in-memory addition`, () => {
-    const catalogs = manifestCatalogs()
-    const expected = catalogs[catalog]
+    const expected = catalogRows(catalog)
     const actual = [...expected, {
       id: `synthetic-${catalog}`,
       source: `synthetic/${catalog}`,
@@ -109,27 +114,24 @@ for (const catalog of CATALOG_NAMES) {
   })
 
   test(`${catalog} catalog rejects an in-memory removal`, () => {
-    const catalogs = manifestCatalogs()
-    const expected = catalogs[catalog]
+    const expected = catalogRows(catalog)
     const actual = expected.slice(1)
 
     assert.throws(() => compareCatalog(catalog, expected, actual), new RegExp(`Ueli parity catalog ${catalog} drift`, 'u'))
   })
 
   test(`${catalog} catalog rejects an in-memory row swap`, () => {
-    const catalogs = manifestCatalogs()
-    const expected = catalogs[catalog]
+    const expected = catalogRows(catalog)
     const actual = [...expected]
-    ;[actual[0], actual[1]] = [actual[1], actual[0]]
+    ;[actual[0], actual[1]] = [actual[1]!, actual[0]!]
 
     assert.throws(() => compareCatalog(catalog, expected, actual), /classification or source order changed/u)
   })
 
   test(`${catalog} catalog rejects an in-memory classification mutation`, () => {
-    const catalogs = manifestCatalogs()
-    const expected = catalogs[catalog]
+    const expected = catalogRows(catalog)
     const actual = structuredClone(expected)
-    actual[0].issue = 'tockteam-tl.15'
+    actual[0]!.issue = 'tockteam-tl.15'
 
     assert.throws(() => compareCatalog(catalog, expected, actual), /classification or source order changed/u)
   })
