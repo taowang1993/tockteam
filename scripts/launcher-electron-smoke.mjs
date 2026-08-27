@@ -509,7 +509,7 @@ try {
       return true
     })()`)
     assert.equal(clicked, true)
-    await waitFor(() => launcherConnection.evaluate(`document.querySelector('[aria-label=${JSON.stringify(`${label} tool`)}]') !== null`), found => found === true)
+    await waitFor(() => launcherConnection.evaluate(`document.querySelector('[aria-label=${JSON.stringify(`${label} Tool`)}]') !== null`), found => found === true)
     const inputs = input === undefined ? [] : Array.isArray(input) ? input : [input]
     for (const controlInput of inputs) await launcherConnection.evaluate(`(() => {
       const control = document.querySelector(${JSON.stringify(controlInput.selector)})
@@ -527,7 +527,7 @@ try {
       return true
     })()`)
     assert.equal(closed, true)
-    await waitFor(() => launcherConnection.evaluate(`document.querySelector('[aria-label=${JSON.stringify(`${label} tool`)}]') === null && document.activeElement?.id === 'launcher-search'`), restored => restored === true)
+    await waitFor(() => launcherConnection.evaluate(`document.querySelector('[aria-label=${JSON.stringify(`${label} Tool`)}]') === null && document.activeElement?.id === 'launcher-search'`), restored => restored === true)
   }
   await openLocalTool('Base64 Conversion', 'Base64 Conversion', { selector: '[aria-label="Base64 Input"]', value: 'TockTeam' }, { selector: '[aria-label="Base64 Output"]', value: 'VG9ja1RlYW0=' })
   await openLocalTool('Rowland Text Editor', 'Rowland Text Editor', [
