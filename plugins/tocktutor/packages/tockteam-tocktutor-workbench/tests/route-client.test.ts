@@ -2,7 +2,11 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { Context } from '@deepseek-ai/cordis'
 import type { TypertRemoteContribution } from '@deepseek-ai/dsh-typert-protocol'
-import { TockTutorRoute, trackTockTutorRouteFlush } from '../dist/route.js'
+import {
+  TockTutorRoute,
+  trackTockTutorRouteFlush,
+  waitForTockTutorRouteFlushes,
+} from '../dist/route.js'
 
 function injectedFiber(
   context: unknown,
@@ -122,6 +126,16 @@ test('client disposal waits for tracked route flushes before disposing Remote', 
   release()
   await disposing
   assert.deepEqual(events, ['route', 'flush', 'remote'])
+})
+
+test('route flush waiting is bounded when a transport never settles', async () => {
+  let release!: () => void
+  trackTockTutorRouteFlush(new Promise<void>(resolve => { release = resolve }))
+  const started = Date.now()
+  await waitForTockTutorRouteFlushes(1)
+  assert.ok(Date.now() - started < 250)
+  release()
+  await waitForTockTutorRouteFlushes()
 })
 
 test('keeps the route inside a literal Remote namespace child across loss and reload', async () => {
