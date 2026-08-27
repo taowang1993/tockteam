@@ -93,7 +93,7 @@ function LauncherSettingsPage({ close: _close }: SettingsSectionProps): ReactNod
   const [secret, setSecret] = useState('')
   const [launchOnStart, setLaunchOnStart] = useState<boolean | null>(null)
   const [updater, setUpdater] = useState<UpdaterState | null>(null)
-  const writeTail = useRef<Promise<void>>(Promise.resolve())
+  const writeTail = useRef<Promise<void> | undefined>(undefined)
 
   const reload = useCallback(async (): Promise<LauncherSettingsSnapshot | null> => {
     if (!settings) return null
@@ -130,7 +130,7 @@ function LauncherSettingsPage({ close: _close }: SettingsSectionProps): ReactNod
       ...previous,
       values: Object.freeze({ ...previous.values, [key]: value }),
     }))
-    const operation = writeTail.current.catch(() => undefined).then(async () => {
+    const operation = (writeTail.current ?? Promise.resolve()).catch(() => undefined).then(async () => {
       await settings.updateSetting(key, value)
       await reload()
     })
