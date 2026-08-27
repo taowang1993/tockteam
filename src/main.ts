@@ -809,7 +809,8 @@ function initializeLauncher(): void {
   const actions = new LauncherActionStore({
     execute: async record => {
       if (await coreSearch.executeAction(record)) return
-      await executeTockTeamDestination(record, () => {
+      await executeTockTeamDestination(record, isEligibleDesktopRevealWindow, () => {
+        if (!isEligibleDesktopRevealWindow()) throw new Error('TockTeam workbench is not on an active runtime page')
         const workbench = mainWindow
         if (workbench === undefined || workbench.isDestroyed()) {
           throw new Error('TockTeam workbench is unavailable')

@@ -17,9 +17,21 @@ test('TockTeam launcher indexes only the finite TockCoder destination', async ()
 
 test('TockCoder route action validates its destination before focusing the workbench', async () => {
   let focused = 0
-  const store = new LauncherActionStore({ execute: async record => await executeTockTeamDestination(record, () => { focused += 1 }) })
+  const store = new LauncherActionStore({ execute: async record => await executeTockTeamDestination(record, () => true, () => { focused += 1 }) })
   const owner = { role: 'launcher' as const, webContentsId: 1 }
   const published = store.publish({ items: (await createTockTeamDestinationResults('')).before, owner })
   await store.invoke({ actionId: published.items[0]!.defaultAction.actionId, owner })
   assert.equal(focused, 1)
+})
+
+test('TockCoder route action rejects the splash page before consuming success', async () => {
+  let focused = 0
+  const store = new LauncherActionStore({ execute: async record => await executeTockTeamDestination(record, () => false, () => { focused += 1 }) })
+  const owner = { role: 'launcher' as const, webContentsId: 1 }
+  const published = store.publish({ items: (await createTockTeamDestinationResults('')).before, owner })
+  await assert.rejects(
+    store.invoke({ actionId: published.items[0]!.defaultAction.actionId, owner }),
+    /active runtime/u,
+  )
+  assert.equal(focused, 0)
 })

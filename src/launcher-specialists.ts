@@ -37,11 +37,13 @@ export function parseTockTeamDestination(value: unknown): TockTeamDestination {
 
 export async function executeTockTeamDestination(
   record: LauncherActionRecord,
+  isActiveRuntime: () => boolean,
   focusTockCoder: () => Promise<void> | void,
 ): Promise<void> {
   if (record.handlerKey !== TOCKTEAM_WORKBENCH_HANDLER) {
     throw new Error('TockTeam launcher action handler is not registered')
   }
   parseTockTeamDestination(record.argument)
+  if (!isActiveRuntime()) throw new Error('TockTeam workbench is not on an active runtime page')
   await focusTockCoder()
 }
