@@ -91,6 +91,8 @@ import {
 import { LauncherActionStore } from './launcher-actions.ts'
 import { createLauncherDiscoveryExtensions } from './launcher-discovery-extensions.ts'
 import { createLauncherDiscoveryScanners, launcherNodeSqliteAvailable } from './launcher-discovery-scanners.ts'
+import { createLauncherFileSearchExtensions } from './launcher-file-search.ts'
+import { createLauncherFileSearchScanners } from './launcher-file-search-scanners.ts'
 import {
   launchDetachedLauncherExecutable,
   revalidateLauncherExecutable,
@@ -1174,10 +1176,28 @@ function initializeLauncher(): void {
     },
     scanners: createLauncherDiscoveryScanners({ onProviderError: reportDiscoveryError }),
   })
+  const fileSearch = createLauncherFileSearchExtensions({
+    effects: {
+      openPath: async target => {
+        const error = await shell.openPath(target)
+        if (error) throw new Error(error)
+      },
+      revealPath: target => { shell.showItemInFolder(target) },
+    },
+    enabledExtensionIds: launcherEnabledLocalExtensionIds,
+    getSetting: (key, fallback) => repository.getSetting(key, fallback),
+    homePath: app.getPath('home'),
+    onProviderError: (extensionId, error) => {
+      appendLog('desktop', `TockLauncher provider ${extensionId} failed: ${error instanceof Error ? error.name : 'unknown error'}`)
+    },
+    platform,
+    scanners: createLauncherFileSearchScanners(),
+  })
   const discoverySettingKeys = new Set([
     'extension[ApplicationSearch].includeWindowsStoreApps', 'extension[ApplicationSearch].linuxFolders', 'extension[ApplicationSearch].macOsFolders',
     'extension[ApplicationSearch].mdfindFilterOption', 'extension[ApplicationSearch].windowsFileExtensions', 'extension[ApplicationSearch].windowsFolders',
     'extension[BrowserBookmarks].browsers', 'extension[BrowserBookmarks].iconType', 'extension[BrowserBookmarks].searchResultStyle',
+    'extension[FileSearch].everythingCliFilePath', 'extension[FileSearch].maxSearchResultCount', 'extension[SimpleFileSearch].folders',
     'extension[VSCode].command', 'extension[VSCode].prefix', 'extension[VSCode].showPath',
   ])
   const coreSearch = createLauncherCoreSearch({
@@ -1187,13 +1207,15 @@ function initializeLauncher(): void {
     appendLog: async (_level, message) => { await repository.appendLog('ERROR', message) },
     loadIndexedItems: async signal => {
       const result = await createTockTeamDestinationResults('')
-      return [...result.before, ...result.after, ...await local.loadIndexedItems(), ...await discovery.loadIndexedItems(signal)]
+      return [...result.before, ...result.after, ...await local.loadIndexedItems(), ...await discovery.loadIndexedItems(signal), ...await fileSearch.loadIndexedItems(signal)]
     },
     searchInstant: async searchTerm => {
-      const [localResults, discoveryResults] = await Promise.all([local.searchInstant(searchTerm), discovery.searchInstant(searchTerm)])
+      const [localResults, discoveryResults, fileResults] = await Promise.all([
+        local.searchInstant(searchTerm), discovery.searchInstant(searchTerm), fileSearch.searchInstant(searchTerm),
+      ])
       return Object.freeze({
-        after: Object.freeze([...localResults.after, ...discoveryResults.after]),
-        before: Object.freeze([...localResults.before, ...discoveryResults.before]),
+        after: Object.freeze([...localResults.after, ...discoveryResults.after, ...fileResults.after]),
+        before: Object.freeze([...localResults.before, ...discoveryResults.before, ...fileResults.before]),
       })
     },
     persistIndex: async items => { await repository.writeIndex(items) },
@@ -1209,6 +1231,7 @@ function initializeLauncher(): void {
       if (await coreSearch.executeAction(record)) return
       if (await local.executeAction(record)) return
       if (await discovery.executeAction(record)) return
+      if (await fileSearch.executeAction(record)) return
       await executeTockTeamDestination(record, () => {
         if (runtimeUrl === undefined) return false
         return mainWindow === undefined || mainWindow.isDestroyed()
@@ -1240,7 +1263,10 @@ function initializeLauncher(): void {
   })
   controller = nextController
   launcherController = nextController
-  launcherCoreFlush = coreSearch.close
+  launcherCoreFlush = async () => {
+    await coreSearch.close()
+    await fileSearch.close()
+  }
   launcherPersistentSetsSync = () => { syncLauncherPersistentSets(coreSearch) }
   const launcherGuard = createLauncherIpcGuard({
     launcherSession,

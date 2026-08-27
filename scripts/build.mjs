@@ -10,6 +10,7 @@ import {
   LAUNCHER_LOCAL_EXTENSION_IMAGE_KEYS,
 } from '../src/launcher-local-extension-assets.ts'
 import { LAUNCHER_DISCOVERY_ASSETS } from '../src/launcher-discovery-assets.ts'
+import { LAUNCHER_FILE_SEARCH_ASSETS } from '../src/launcher-file-search-assets.ts'
 import { resolveProductVersion } from '../src/version.ts'
 import { adaptBetterSidebarHost } from './better-sidebar-upstream-adapter.mjs'
 import { buildTailwindCss } from './tailwind.mjs'
@@ -256,6 +257,12 @@ for (const asset of LAUNCHER_DISCOVERY_ASSETS) {
   const source = join(root, asset.source)
   const digest = createHash('sha256').update(readFileSync(source)).digest('hex')
   if (digest !== asset.hash) throw new Error(`TockLauncher discovery asset drifted: ${asset.key}`)
+  copyFileSync(source, join(dist, 'launcher-assets', asset.fileName))
+}
+for (const asset of LAUNCHER_FILE_SEARCH_ASSETS) {
+  const source = join(root, asset.source)
+  const digest = createHash('sha256').update(readFileSync(source)).digest('hex')
+  if (digest !== asset.hash) throw new Error(`TockLauncher file-search asset drifted: ${asset.key}`)
   copyFileSync(source, join(dist, 'launcher-assets', asset.fileName))
 }
 

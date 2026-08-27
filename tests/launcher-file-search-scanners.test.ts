@@ -40,7 +40,7 @@ test('file-search query uses fixed bounded process options and filters stale/out
     }), [{ path: valid, type: 'file', identity: { dev: String(metadata.dev), ino: String(metadata.ino) } }])
     assert.equal(options?.maxBuffer, 2 * 1024 * 1024)
     assert.equal(options?.timeout, 8_000)
-    assert.equal(options?.shell, undefined)
+    assert.equal(options?.shell, false)
   } finally {
     await rm(home, { force: true, recursive: true }); await rm(outside, { force: true, recursive: true })
   }

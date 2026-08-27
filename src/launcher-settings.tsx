@@ -11,6 +11,7 @@ import { Switch } from '@tockteam/ui/switch'
 import { LAUNCHER_COMPOSITION } from './launcher-contract.ts'
 import { LauncherLocalSettings } from './launcher-local-settings.tsx'
 import { LauncherDiscoverySettings } from './launcher-discovery-settings.tsx'
+import { LauncherFileSearchSettings } from './launcher-file-search-settings.tsx'
 import type { DesktopBridge } from './contracts.ts'
 import { LAUNCHER_SENSITIVE_SETTING_KEYS, type LauncherSettingsSnapshot } from './launcher-settings-contract.ts'
 import { readPersistedLauncherState } from './launcher-settings-model.ts'
@@ -242,6 +243,10 @@ function LauncherSettingsPage({ close: _close }: SettingsSectionProps): ReactNod
 
       <SectionCard icon={<Search aria-hidden="true" className="size-4" />} title="Discovery Providers" description="Configure bounded applications, bookmarks, JetBrains projects, and VS Code recents.">
         <LauncherDiscoverySettings key={snapshotRevision} busy={busy} save={save} snapshot={snapshot} />
+      </SectionCard>
+
+      <SectionCard icon={<Search aria-hidden="true" className="size-4" />} title="File Search" description="Configure bounded indexed and home-contained file search providers.">
+        <LauncherFileSearchSettings key={snapshotRevision} busy={busy} save={save} snapshot={snapshot} />
       </SectionCard>
 
       <SectionCard icon={<Database aria-hidden="true" className="size-4" />} title="Storage and Privacy" description="Managed files and external grants are owned by Electron main; no filesystem path crosses this page.">

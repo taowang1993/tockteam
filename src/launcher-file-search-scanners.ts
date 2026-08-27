@@ -22,6 +22,7 @@ export type LauncherSimpleFileSearchFolder = Readonly<{
 
 export type LauncherExecFileOptions = Readonly<{
   maxBuffer: number
+  shell?: false
   signal: AbortSignal
   timeout: number
   windowsHide?: boolean
@@ -316,6 +317,7 @@ async function queryFileSearch(
   }
   const result = await execute(invocation.executable, invocation.args, {
     maxBuffer: MAX_QUERY_OUTPUT_BYTES,
+    shell: false,
     signal: input.signal,
     timeout: QUERY_TIMEOUT_MS,
     ...(input.platform === 'Windows' ? { windowsHide: true } : null),
