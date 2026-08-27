@@ -81,13 +81,18 @@ export async function waitForTockTutorRouteFlushes(timeoutMs = ROUTE_FLUSH_TIMEO
         const pending = [...pendingTockTutorRouteFlushes];
         let timer;
         try {
-            await Promise.race([
-                Promise.all(pending),
+            const result = await Promise.race([
+                Promise.all(pending).then(() => 'done'),
                 new Promise(resolve => {
-                    timer = setTimeout(resolve, remaining);
+                    timer = setTimeout(() => { resolve('timeout'); }, remaining);
                     timer.unref?.();
                 }),
             ]);
+            if (result === 'timeout') {
+                for (const flush of pending)
+                    pendingTockTutorRouteFlushes.delete(flush);
+                return;
+            }
         }
         finally {
             if (timer !== undefined)
