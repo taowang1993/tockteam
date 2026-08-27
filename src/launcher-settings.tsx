@@ -274,7 +274,7 @@ function LauncherSettingsPage({ close: _close }: SettingsSectionProps): ReactNod
           <div className="flex flex-wrap justify-end gap-2">
             <Button size="sm" variant="outline" disabled={busy} onClick={() => { void operation('Import', settings.importSettings, true, true) }}><Upload aria-hidden="true" />Import</Button>
             <Button size="sm" variant="outline" disabled={busy} onClick={() => { void operation('Export', settings.exportSettings, false) }}><Download aria-hidden="true" />Export</Button>
-            <Button size="sm" variant="outline" disabled={busy} onClick={() => { void operation('External selection', settings.selectExternalSettings) }}>Choose external file</Button>
+            <Button size="sm" variant="outline" disabled={busy} onClick={() => { void operation('External selection', settings.selectExternalSettings, true, true) }}>Choose external file</Button>
             <Button size="sm" variant="outline" disabled={busy || snapshot.externalGrantStatus === 'none'} onClick={() => { void operation('External revocation', settings.revokeExternalSettings) }}>Revoke external file</Button>
           </div>
         </Field>
