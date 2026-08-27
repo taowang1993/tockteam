@@ -217,7 +217,7 @@ function findSettingsButton(): HTMLButtonElement | undefined {
 }
 
 function isSettingsShellOpen(): boolean {
-  return document.querySelector('[role="dialog"]') !== null
+  return document.querySelector('[role="dialog"] button[aria-current]') !== null
 }
 
 function showSettingsAfterRoute(section?: 'tocklauncher'): void {
