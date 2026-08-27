@@ -454,9 +454,13 @@ try {
       hasReset: [...document.querySelectorAll('button')].some(button => button.textContent?.trim() === 'Reset'),
       liveStatus: document.querySelector('[aria-live="polite"]') !== null,
       extensionSwitches: document.querySelectorAll('[data-testid="tocklauncher-extension-toggles"] button[role="switch"]').length,
+      hasDiscoverySettings: document.querySelector('[data-testid="tocklauncher-discovery-settings"]') !== null,
+      hasApplicationFolders: document.querySelector('[aria-label="macOS Application Folders"]') !== null,
+      hasBrowserBookmarks: document.querySelector('[aria-label="Enable Google Chrome bookmarks"]') !== null,
+      hasVscodeSettings: document.querySelector('[aria-label="VS Code Command Template"]') !== null,
     }
   })()`)
-  assert.deepEqual(settingsFacts, { bridgeFrozen: true, catalog: true, hasSecret: false, hasBrowserPath: false, hasBrowserName: false, hasHistorySwitch: true, hasReset: true, liveStatus: true, extensionSwitches: 24 })
+  assert.deepEqual(settingsFacts, { bridgeFrozen: true, catalog: true, hasSecret: false, hasBrowserPath: false, hasBrowserName: false, hasHistorySwitch: true, hasReset: true, liveStatus: true, extensionSwitches: 24, hasDiscoverySettings: true, hasApplicationFolders: true, hasBrowserBookmarks: true, hasVscodeSettings: true })
   await workbenchConnection.evaluate(`(async () => {
     await window.dshDesktop?.launcher?.settings?.updateSetting('general.searchHistory.enabled', true)
     await window.dshDesktop?.launcher?.settings?.updateSetting('searchEngine.fuzziness', 0.6)
