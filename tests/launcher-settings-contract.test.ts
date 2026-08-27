@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 import { LAUNCHER_SETTINGS_CATALOG } from '../src/launcher-setting-catalog.ts'
@@ -135,20 +136,35 @@ test('generated catalog order and source metadata match every pinned Ueli row', 
   )
 })
 
-test('every catalog default resolves or remains absent according to its declared kind', () => {
-  const context = { appDataPath: '/Users/test/Library/Application Support/TockTeam', environment: {}, homePath: '/Users/test', locale: 'en-US', platform: 'macOS' as const }
+test('full generated catalog metadata stays locked to its reviewed golden digest', () => {
+  assert.equal(
+    createHash('sha256').update(JSON.stringify(LAUNCHER_SETTINGS_CATALOG)).digest('hex'),
+    'ce79bfd724fe7853af69f8a40b5a90f99b905d12448212f95a994cc712be69b5',
+  )
+})
+
+test('every catalog default resolves or remains absent across bounded platform contexts', () => {
+  const contexts = [
+    { appDataPath: '/home/test/.local/share/TockTeam', environment: { XDG_DATA_DIRS: `/usr/share:${'x'.repeat(10_000)}:/opt/share` }, homePath: '/home/test', locale: 'en-US', platform: 'Linux' as const },
+    { appDataPath: '/Users/test/Library/Application Support/TockTeam', environment: {}, homePath: '/Users/test', locale: 'fr-FR', platform: 'macOS' as const },
+    { appDataPath: 'C:\\Users\\test\\AppData\\Roaming\\TockTeam', environment: {}, homePath: 'C:\\Users\\test', locale: 'zh-CN', platform: 'Windows' as const },
+  ]
   const divergences: Readonly<Record<string, unknown>> = {
     'window.alwaysOnTop': true,
     'window.showOnStartup': false,
     'window.visibleOnAllWorkspaces': true,
   }
-  for (const row of LAUNCHER_SETTINGS_CATALOG) {
-    const resolved = resolveLauncherSettingDefault(row.key, context)
-    if (row.defaultKind === 'absent') assert.equal(resolved, undefined, row.key)
-    else if (Object.hasOwn(divergences, row.key)) assert.deepEqual(resolved, divergences[row.key], row.key)
-    else if (row.defaultKind === 'literal') assert.deepEqual(resolved, row.defaultValue, row.key)
-    else assert.notEqual(resolved, undefined, row.key)
+  for (const context of contexts) {
+    for (const row of LAUNCHER_SETTINGS_CATALOG) {
+      const resolved = resolveLauncherSettingDefault(row.key, context)
+      if (row.defaultKind === 'absent') assert.equal(resolved, undefined, `${context.platform}:${row.key}`)
+      else if (Object.hasOwn(divergences, row.key)) assert.deepEqual(resolved, divergences[row.key], `${context.platform}:${row.key}`)
+      else if (row.defaultKind === 'literal') assert.deepEqual(resolved, row.defaultValue, `${context.platform}:${row.key}`)
+      else assert.notEqual(resolved, undefined, `${context.platform}:${row.key}`)
+    }
   }
+  const hostile = resolveLauncherSettingDefault('extension[ApplicationSearch].linuxFolders', contexts[0]!)
+  assert.equal(Array.isArray(hostile) && hostile.every(folder => typeof folder === 'string' && folder.length <= 4_096), true)
 })
 
 test('every manifest representative passes its bounded validator and malformed values fail', () => {

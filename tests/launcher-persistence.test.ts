@@ -111,6 +111,7 @@ test('logs recover independently when the primary contains renderer-unsafe text'
     await writeFile(path.join(launcherRoot, 'logs.json.bak'), JSON.stringify(['[2026-01-01T00:00:00.000Z][INFO] safe']), 'utf8')
     const repository = await LauncherPersistenceRepository.open({ userDataPath })
     assert.deepEqual(repository.snapshot().logs, ['[2026-01-01T00:00:00.000Z][INFO] safe'])
+    assert.deepEqual(repository.snapshot().recoveredArtifacts, ['logs'])
     await repository.close()
   } finally { await rm(userDataPath, { recursive: true, force: true }) }
 })
@@ -154,6 +155,7 @@ test('index and external recovery retain only last validated artifacts', async (
     assert.equal(recovered.readIndex()[0]?.id, 'first')
     assert.equal(recovered.getSetting('general.language', 'en-US'), 'fr-FR')
     assert.equal(recovered.snapshot().recoveredSettings, true)
+    assert.deepEqual(recovered.snapshot().recoveredArtifacts, ['external', 'index'])
     assert.deepEqual(JSON.parse(await readFile(external, 'utf8')), { 'general.language': 'fr-FR' })
     await recovered.close()
   } finally { await rm(userDataPath, { recursive: true, force: true }) }

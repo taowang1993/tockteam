@@ -209,6 +209,11 @@ export class LauncherActionStore {
     return Object.freeze({ ok: true as const })
   }
 
+  clear(): void {
+    this.actions.clear()
+    this.currentResultSets.clear()
+  }
+
   clearOwner(owner: LauncherActionOwner): void {
     assertOwner(owner)
     const key = ownerKey(owner)

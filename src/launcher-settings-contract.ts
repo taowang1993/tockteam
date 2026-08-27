@@ -269,6 +269,7 @@ export type LauncherSettingsSnapshot = Readonly<{
   externalWriteAvailable?: boolean
   logs: readonly string[]
   missingSensitiveKeys: readonly string[]
+  recoveredArtifacts?: readonly ('external' | 'index' | 'logs' | 'settings')[]
   recoveredSettings: boolean
   secureStorageAvailable?: boolean
   settingsSource: 'external' | 'managed'
@@ -314,7 +315,7 @@ export function parseLauncherSettingUpdateArgs(value: unknown): Readonly<{ key: 
 
 export function parseLauncherSettingsSnapshot(value: unknown): LauncherSettingsSnapshot {
   if (!isRecord(value)) throw new Error('Invalid launcher settings snapshot')
-  const allowed = ['customBrowserStatus', 'externalGrantStatus', 'externalWriteAvailable', 'logs', 'missingSensitiveKeys', 'recoveredSettings', 'secureStorageAvailable', 'settingsSource', 'values']
+  const allowed = ['customBrowserStatus', 'externalGrantStatus', 'externalWriteAvailable', 'logs', 'missingSensitiveKeys', 'recoveredArtifacts', 'recoveredSettings', 'secureStorageAvailable', 'settingsSource', 'values']
   if (Object.keys(value).some(key => !allowed.includes(key))
     || !hasExactKeys(value, Object.keys(value))
     || (value.externalGrantStatus !== 'active' && value.externalGrantStatus !== 'none' && value.externalGrantStatus !== 'revoked')
@@ -326,6 +327,9 @@ export function parseLauncherSettingsSnapshot(value: unknown): LauncherSettingsS
     || !Array.isArray(value.logs) || value.logs.length > MAX_LAUNCHER_LOG_ENTRIES || value.logs.some(entry => typeof entry !== 'string' || entry.length > 576 || /[\0\r\n]/u.test(entry))
     || !Array.isArray(value.missingSensitiveKeys) || new Set(value.missingSensitiveKeys).size !== value.missingSensitiveKeys.length
     || value.missingSensitiveKeys.some(key => !LAUNCHER_SENSITIVE_SETTING_KEYS.includes(key as never))
+    || (value.recoveredArtifacts !== undefined && (!Array.isArray(value.recoveredArtifacts)
+      || new Set(value.recoveredArtifacts).size !== value.recoveredArtifacts.length
+      || value.recoveredArtifacts.some(artifact => artifact !== 'external' && artifact !== 'index' && artifact !== 'logs' && artifact !== 'settings')))
     || !isRecord(value.values)) throw new Error('Invalid launcher settings snapshot')
   const values: LauncherSettingsRecord = {}
   for (const [key, settingValue] of Object.entries(value.values)) {
@@ -339,6 +343,7 @@ export function parseLauncherSettingsSnapshot(value: unknown): LauncherSettingsS
     ...(value.externalWriteAvailable === undefined ? {} : { externalWriteAvailable: value.externalWriteAvailable }),
     logs: [...value.logs],
     missingSensitiveKeys: [...value.missingSensitiveKeys],
+    ...(value.recoveredArtifacts === undefined ? {} : { recoveredArtifacts: [...value.recoveredArtifacts] }),
     recoveredSettings: value.recoveredSettings,
     ...(value.secureStorageAvailable === undefined ? {} : { secureStorageAvailable: value.secureStorageAvailable }),
     settingsSource: value.settingsSource,

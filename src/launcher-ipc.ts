@@ -21,7 +21,7 @@ export type LauncherSearchProvider = (
   status: LauncherCoreStatus
 }>>
 
-type LauncherActions = Pick<LauncherActionStore, 'invoke' | 'publish'>
+type LauncherActions = Pick<LauncherActionStore, 'clearOwner' | 'invoke' | 'publish'>
 
 type LauncherSearchIpcArgs = Readonly<{
   actions: LauncherActions
@@ -45,6 +45,10 @@ function assertNoArguments(channel: string, args: readonly unknown[]): void {
   if (args.length !== 0) throw new Error(`${channel} does not accept arguments`)
 }
 
+function operationFailure(): Error {
+  return new Error('TockLauncher operation failed')
+}
+
 export function registerLauncherIpcHandlers(args: LauncherSearchIpcArgs): () => void {
   const latestSearchTokens = new Map<number, object>()
   const registrations: Array<[string, (...args: any[]) => unknown]> = [
@@ -57,21 +61,27 @@ export function registerLauncherIpcHandlers(args: LauncherSearchIpcArgs): () => 
         const token = Object.freeze({})
         const id = senderId(event, owner)
         latestSearchTokens.set(id, token)
-        const result = await args.search(request.searchTerm, {
-          fuzziness: request.fuzziness,
-          maxSearchResultItems: request.maxSearchResultItems,
-          searchEngineId: request.searchEngineId,
-        })
+        let result
+        try {
+          result = await args.search(request.searchTerm, {
+            fuzziness: request.fuzziness,
+            maxSearchResultItems: request.maxSearchResultItems,
+            searchEngineId: request.searchEngineId,
+          })
+        } catch { throw operationFailure() }
         if (latestSearchTokens.get(id) !== token) throw new Error('TockLauncher search was superseded')
         const activeOwner = args.guard.assert(event, 'launcher')
         if (activeOwner.webContentsId !== owner.webContentsId) {
           throw new Error('TockLauncher search owner changed')
         }
         const beforeCount = result.before.length
-        const published = args.actions.publish({
-          items: [...result.before, ...result.after],
-          owner: activeOwner,
-        })
+        let published
+        try {
+          published = args.actions.publish({
+            items: [...result.before, ...result.after],
+            owner: activeOwner,
+          })
+        } catch { throw operationFailure() }
         return Object.freeze({
           after: Object.freeze(published.items.slice(beforeCount)),
           before: Object.freeze(published.items.slice(0, beforeCount)),
@@ -83,9 +93,11 @@ export function registerLauncherIpcHandlers(args: LauncherSearchIpcArgs): () => 
     [
       LAUNCHER_IPC_CHANNELS.rescan,
       async (event: unknown, ...rawArgs: unknown[]): Promise<LauncherCoreStatus> => {
-        args.guard.assert(event, 'launcher')
+        const owner = args.guard.assert(event, 'launcher')
         assertNoArguments(LAUNCHER_IPC_CHANNELS.rescan, rawArgs)
-        return await args.rescan()
+        args.actions.clearOwner(owner)
+        try { return await args.rescan() }
+        catch { throw operationFailure() }
       },
     ],
     [
@@ -98,7 +110,7 @@ export function registerLauncherIpcHandlers(args: LauncherSearchIpcArgs): () => 
           return await args.actions.invoke({ actionId, owner })
         } catch (error) {
           if (error instanceof LauncherActionExpiredError) return Object.freeze({ ok: false as const, reason: 'expired' as const })
-          throw error
+          throw operationFailure()
         }
       },
     ],
@@ -108,13 +120,15 @@ export function registerLauncherIpcHandlers(args: LauncherSearchIpcArgs): () => 
       [LAUNCHER_SURFACE_IPC_CHANNELS.getSettings, (event: unknown, ...rawArgs: unknown[]): LauncherSurfaceSettings => {
         args.guard.assert(event, 'launcher')
         assertNoArguments(LAUNCHER_SURFACE_IPC_CHANNELS.getSettings, rawArgs)
-        return args.surface!.getSettings()
+        try { return args.surface!.getSettings() }
+        catch { throw operationFailure() }
       }],
       [LAUNCHER_SURFACE_IPC_CHANNELS.recordSearch, async (event: unknown, rawQuery: unknown, ...extra: unknown[]): Promise<LauncherSurfaceSettings> => {
         args.guard.assert(event, 'launcher')
         assertNoArguments(LAUNCHER_SURFACE_IPC_CHANNELS.recordSearch, extra)
         if (typeof rawQuery !== 'string' || rawQuery.length > 512 || /[\0\r\n]/u.test(rawQuery)) throw new Error('Invalid launcher search history query')
-        return await args.surface!.recordSearch(rawQuery)
+        try { return await args.surface!.recordSearch(rawQuery) }
+        catch { throw operationFailure() }
       }],
     )
   }

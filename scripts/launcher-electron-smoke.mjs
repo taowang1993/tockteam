@@ -743,7 +743,8 @@ try {
       && snapshot?.values?.['searchEngine.id'] === 'Fuse.js'
       && snapshot?.values?.['searchEngine.maxResultLength'] === 1
       && snapshot?.values?.['general.searchHistory.enabled'] === false
-      && snapshot?.recoveredSettings === true,
+      && snapshot?.recoveredSettings === true
+      && snapshot?.recoveredArtifacts?.includes('settings') === true,
   )
   assert.equal(persistedSettings.values['extension[DeeplTranslator].apiKey'], undefined)
   await restartedWorkbenchConnection.evaluate('window.dshDesktop?.launcher?.show()')

@@ -216,6 +216,34 @@ test('persisted cache cannot publish actions when current providers fail validat
   assert.equal(result.status.rescanStatus, 'error')
 })
 
+test('rescan start immediately revokes core actions from the previous generation', async () => {
+  let loads = 0
+  let release: ((items: readonly LauncherInternalResultItem[]) => void) | undefined
+  const core = createLauncherCoreSearch({
+    loadIndexedItems: async () => {
+      loads += 1
+      if (loads === 1) return [item('old', 'Old')]
+      return await new Promise(resolve => { release = resolve })
+    },
+  })
+  await core.search('', { ...options, maxSearchResultItems: 50 })
+  const pending = core.rescan()
+  while (release === undefined) await new Promise<void>(resolve => { setImmediate(resolve) })
+  await assert.rejects(core.executeAction({
+    actionId: 'launcher-action:old',
+    argument: 'old',
+    expiresAt: 2_000,
+    handlerKey: LAUNCHER_CORE_ACTION_HANDLERS.addFavorite,
+    hideWindowAfterInvocation: false,
+    owner: { role: 'launcher', webContentsId: 1 },
+    requiresConfirmation: false,
+    resultSetId: 'launcher-results:1',
+    sourceExtension: 'TockTeam',
+  }), /unknown/u)
+  release([])
+  await pending
+})
+
 test('core flush waits for accepted rescans and close fences new work', async () => {
   let release: ((items: readonly LauncherInternalResultItem[]) => void) | undefined
   const core = createLauncherCoreSearch({

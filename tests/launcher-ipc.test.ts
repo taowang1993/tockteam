@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { LauncherActionExpiredError } from '../src/launcher-actions.ts'
-import { LAUNCHER_IPC_CHANNELS } from '../src/launcher-contract.ts'
+import { LAUNCHER_IPC_CHANNELS, LAUNCHER_SURFACE_IPC_CHANNELS } from '../src/launcher-contract.ts'
 import { registerLauncherIpcHandlers } from '../src/launcher-ipc.ts'
 
 class FakeIpc {
@@ -19,6 +19,7 @@ test('launcher search IPC guards, publishes opaque actions, rejects stale reques
   let published = 0
   const dispose = registerLauncherIpcHandlers({
     actions: {
+      clearOwner: () => {},
       invoke: async () => ({ ok: true as const }),
       publish: ({ owner }) => {
         published += 1
@@ -57,6 +58,7 @@ test('launcher IPC rechecks ownership after search and maps expiry without expos
   let published = 0
   const dispose = registerLauncherIpcHandlers({
     actions: {
+      clearOwner: () => {},
       invoke: async () => { throw new LauncherActionExpiredError() },
       publish: () => {
         published += 1
@@ -88,5 +90,38 @@ test('launcher IPC rechecks ownership after search and maps expiry without expos
   const invoke = ipc.handlers.get(LAUNCHER_IPC_CHANNELS.invokeAction)!
   const result = await invoke(event, { actionId: 'launcher-action:expired' })
   assert.deepEqual(result, { ok: false, reason: 'expired' })
+  dispose()
+})
+
+test('overlay operations invalidate actions on rescan and hide downstream path errors', async () => {
+  const ipc = new FakeIpc()
+  const cleared: number[] = []
+  const path = '/private/user/secrets/settings.json'
+  const dispose = registerLauncherIpcHandlers({
+    actions: {
+      clearOwner: owner => { cleared.push(owner.webContentsId) },
+      invoke: async () => { throw new Error(`EACCES ${path}`) },
+      publish: () => ({ items: [], resultSetId: 'launcher-results:1' }),
+    },
+    guard: { assert: () => ({ role: 'launcher', webContentsId: 41 }) },
+    ipcMain: ipc,
+    rescan: async () => { throw new Error(`ENOENT ${path}`) },
+    search: async () => { throw new Error(`lstat ${path}`) },
+    surface: {
+      getSettings: () => { throw new Error(`read ${path}`) },
+      recordSearch: async () => { throw new Error(`write ${path}`) },
+    },
+  })
+  const event = { sender: {} }
+  const safe = (error: unknown): boolean => error instanceof Error && error.message === 'TockLauncher operation failed' && !error.message.includes(path)
+  await assert.rejects(
+    ipc.handlers.get(LAUNCHER_IPC_CHANNELS.search)!(event, { fuzziness: 0.5, maxSearchResultItems: 50, searchEngineId: 'fuzzysort', searchTerm: '' }),
+    safe,
+  )
+  await assert.rejects(ipc.handlers.get(LAUNCHER_IPC_CHANNELS.rescan)!(event), safe)
+  assert.deepEqual(cleared, [41])
+  await assert.rejects(ipc.handlers.get(LAUNCHER_IPC_CHANNELS.invokeAction)!(event, { actionId: 'launcher-action:opaque' }), safe)
+  assert.throws(() => ipc.handlers.get(LAUNCHER_SURFACE_IPC_CHANNELS.getSettings)!(event), safe)
+  await assert.rejects(ipc.handlers.get(LAUNCHER_SURFACE_IPC_CHANNELS.recordSearch)!(event, 'query'), safe)
   dispose()
 })

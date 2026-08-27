@@ -175,7 +175,8 @@ let launcherPersistence: LauncherPersistenceRepository | undefined
 let launcherCustomBrowser: LauncherCustomBrowserController | undefined
 let launcherPersistentSetsSync: (() => void) | undefined
 let launcherSettingsOperationsClosed = false
-const activeLauncherSettingsOperations = new Set<Promise<unknown>>()
+let launcherSettingsMutationsBlocked = false
+let launcherSettingsOperationTail: Promise<void> = Promise.resolve()
 const runtimeStartGate = new RuntimeStartGate<void>()
 const launcherWindowRegistry = new LauncherWindowRegistry()
 const launcherToggleQueue = new LauncherToggleIntentQueue()
@@ -863,22 +864,25 @@ function requireLauncherPersistence(): LauncherPersistenceRepository {
   return launcherPersistence
 }
 
-function runLauncherSettingsOperation<T>(operation: () => Promise<T>): Promise<T> {
+function runLauncherSettingsOperation<T>(
+  operation: () => Promise<T>,
+  options: Readonly<{ blockMutationsAfterSuccess?: boolean; mutation?: boolean }> = {},
+): Promise<T> {
   if (launcherSettingsOperationsClosed || quitting) return Promise.reject(new Error('TockLauncher settings operations are closed'))
-  const active = operation()
-  activeLauncherSettingsOperations.add(active)
-  active.then(
-    () => { activeLauncherSettingsOperations.delete(active) },
-    () => { activeLauncherSettingsOperations.delete(active) },
-  )
+  const active = launcherSettingsOperationTail.then(async () => {
+    if (options.mutation && launcherSettingsMutationsBlocked) throw new Error('TockLauncher settings mutations are closed')
+    const result = await operation()
+    const canceled = typeof result === 'object' && result !== null && 'canceled' in result && result.canceled === true
+    if (options.blockMutationsAfterSuccess && !canceled) launcherSettingsMutationsBlocked = true
+    return result
+  })
+  launcherSettingsOperationTail = active.then(() => undefined, () => undefined)
   return active
 }
 
 async function closeLauncherSettingsOperations(): Promise<void> {
   launcherSettingsOperationsClosed = true
-  while (activeLauncherSettingsOperations.size > 0) {
-    await Promise.allSettled([...activeLauncherSettingsOperations])
-  }
+  await launcherSettingsOperationTail
 }
 
 function launcherSettingsSnapshot(): ReturnType<LauncherPersistenceRepository['snapshot']> {
@@ -1003,7 +1007,6 @@ function initializeLauncher(): void {
     platform,
   })
   let controller: LauncherOverlayController | undefined
-  launcherRescan = coreSearch.rescan
   const actions = new LauncherActionStore({
     execute: async record => {
       if (await coreSearch.executeAction(record)) return
@@ -1018,6 +1021,11 @@ function initializeLauncher(): void {
       if (record.hideWindowAfterInvocation) controller?.hideAfterInvocation(record.owner.webContentsId)
     },
   })
+  const rescan = async () => {
+    actions.clear()
+    return await coreSearch.rescan()
+  }
+  launcherRescan = rescan
   const nextController = new LauncherOverlayController({
     createWindow: () => createLauncherWindow({ launcherSession, urlPolicy }),
     getDisplayWorkArea: () => screen.getDisplayNearestPoint(screen.getCursorScreenPoint()).workArea,
@@ -1053,7 +1061,7 @@ function initializeLauncher(): void {
       actions,
       guard: launcherGuard,
       ipcMain,
-      rescan: coreSearch.rescan,
+      rescan,
       search: async (searchTerm) => {
         const surface = launcherSurfaceSettings()
         return await coreSearch.search(searchTerm, {
@@ -1064,7 +1072,7 @@ function initializeLauncher(): void {
       },
       surface: {
         getSettings: launcherSurfaceSettings,
-        recordSearch: async query => await runLauncherSettingsOperation(async () => await recordLauncherSearch(query)),
+        recordSearch: async query => await runLauncherSettingsOperation(async () => await recordLauncherSearch(query), { mutation: true }),
       },
     })
     launcherIpcDisposer = () => {
@@ -1082,19 +1090,19 @@ function initializeLauncher(): void {
     settings: {
       exportSettings: async () => await runLauncherSettingsOperation(exportLauncherSettings),
       getSnapshot: launcherSettingsSnapshot,
-      importSettings: async () => await runLauncherSettingsOperation(importLauncherSettings),
-      resetSettings: async () => await runLauncherSettingsOperation(resetLauncherSettings),
-      revokeCustomBrowser: async () => await runLauncherSettingsOperation(revokeCustomLauncherBrowser),
-      revokeExternalSettings: async () => await runLauncherSettingsOperation(revokeExternalLauncherSettings),
-      selectCustomBrowser: async () => await runLauncherSettingsOperation(selectCustomLauncherBrowser),
-      selectExternalSettings: async () => await runLauncherSettingsOperation(selectExternalLauncherSettings),
+      importSettings: async () => await runLauncherSettingsOperation(importLauncherSettings, { blockMutationsAfterSuccess: true, mutation: true }),
+      resetSettings: async () => await runLauncherSettingsOperation(resetLauncherSettings, { blockMutationsAfterSuccess: true, mutation: true }),
+      revokeCustomBrowser: async () => await runLauncherSettingsOperation(revokeCustomLauncherBrowser, { mutation: true }),
+      revokeExternalSettings: async () => await runLauncherSettingsOperation(revokeExternalLauncherSettings, { mutation: true }),
+      selectCustomBrowser: async () => await runLauncherSettingsOperation(selectCustomLauncherBrowser, { mutation: true }),
+      selectExternalSettings: async () => await runLauncherSettingsOperation(selectExternalLauncherSettings, { blockMutationsAfterSuccess: true, mutation: true }),
       updateSetting: async (key, value) => await runLauncherSettingsOperation(async () => {
         await requireLauncherPersistence().updateSetting(key, value)
         launcherPersistentSetsSync?.()
         await launcherLifecycle?.sync()
         if (key === 'extensions.enabledExtensionIds') await launcherRescan?.()
         return settingsOperation()
-      }),
+      }, { mutation: true }),
     },
     onRouteReady: event => {
       const sender = (event as Electron.IpcMainInvokeEvent).sender

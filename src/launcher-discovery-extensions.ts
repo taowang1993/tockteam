@@ -36,7 +36,9 @@ export function LAUNCHER_DISCOVERY_DEFAULTS(
   environment: Readonly<Record<string, string | undefined>> = process.env,
 ): LauncherDiscoveryDefaults {
   const linuxDirs = (environment.XDG_DATA_DIRS || '/usr/local/share:/usr/share')
-    .split(':').filter(Boolean).slice(0, 32)
+    .split(':')
+    .filter(dir => path.isAbsolute(dir) && dir.length <= 4_000 && !/[\0\r\n]/u.test(dir))
+    .slice(0, 32)
   return Object.freeze({
     ApplicationSearch: Object.freeze({
       includeWindowsStoreApps: true,

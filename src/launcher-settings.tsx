@@ -149,6 +149,7 @@ function LauncherSettingsPage({ close: _close }: SettingsSectionProps): ReactNod
     setBusy(true)
     setStatus(`${label}…`)
     try {
+      await writeTail.current?.catch(() => undefined)
       const result = await action()
       if (result.canceled) setStatus(`${label} canceled.`)
       else {
@@ -232,7 +233,7 @@ function LauncherSettingsPage({ close: _close }: SettingsSectionProps): ReactNod
       <SectionCard icon={<Database aria-hidden="true" className="size-4" />} title="Storage and Privacy" description="Managed files and external grants are owned by Electron main; no filesystem path crosses this page.">
         <Field title="Settings source" description={statusLabel(snapshot)}><Badge variant={snapshot.settingsSource === 'external' ? 'default' : 'secondary'}>{snapshot.settingsSource === 'external' ? 'External' : 'Managed'}</Badge></Field>
         <Field title="External write capability" description="Unsupported platforms stay readable and revocable but reject writes before touching the file."><Badge variant={snapshot.externalWriteAvailable === false ? 'outline' : 'secondary'}>{snapshot.externalWriteAvailable === false ? 'Read-only' : 'Available'}</Badge></Field>
-        <Field title="Recovery" description="Each settings, index, and log artifact has an independent managed backup."><Badge variant={snapshot.recoveredSettings ? 'default' : 'secondary'}>{snapshot.recoveredSettings ? 'Recovered' : 'Healthy'}</Badge></Field>
+        <Field title="Recovery" description={snapshot.recoveredArtifacts?.length ? `Recovered: ${snapshot.recoveredArtifacts.join(', ')}.` : 'Each settings, index, and log artifact has an independent managed backup.'}><Badge variant={snapshot.recoveredArtifacts?.length ? 'default' : 'secondary'}>{snapshot.recoveredArtifacts?.length ? 'Recovered' : 'Healthy'}</Badge></Field>
         <Field title="Secure storage" description="Sensitive values are encrypted in Electron main and are never hydrated into this renderer."><Badge variant={snapshot.secureStorageAvailable === false ? 'outline' : 'secondary'}>{snapshot.secureStorageAvailable === false ? 'Unavailable' : 'Available'}</Badge></Field>
         <Field title="Settings files">
           <div className="flex flex-wrap justify-end gap-2">

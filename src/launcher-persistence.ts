@@ -266,6 +266,7 @@ export class LauncherPersistenceRepository {
   #index: LauncherInternalResultItem[] = []
   #indexAvailable = false
   #logs: string[] = []
+  #recoveredArtifacts = new Set<'external' | 'index' | 'logs' | 'settings'>()
   #recoveredSettings = false
   #mutationTail: Promise<void> = Promise.resolve()
   #closed = false
@@ -290,10 +291,16 @@ export class LauncherPersistenceRepository {
 
   async #initialize(): Promise<void> {
     await mkdir(this.#rootPath, { recursive: true, mode: 0o700 }); await chmod(this.#rootPath, 0o700)
-    this.#settings = await this.#recoverJson(this.#managedSettingsPath, MAX_LAUNCHER_SETTINGS_BYTES, value => parseStoredSettings(value), {}, recovered => { this.#recoveredSettings ||= recovered })
-    const index = await this.#recoverJson(this.#indexPath, MAX_LAUNCHER_INDEX_BYTES, parseIndex, undefined)
+    this.#settings = await this.#recoverJson(this.#managedSettingsPath, MAX_LAUNCHER_SETTINGS_BYTES, value => parseStoredSettings(value), {}, recovered => {
+      if (recovered) { this.#recoveredSettings = true; this.#recoveredArtifacts.add('settings') }
+    })
+    const index = await this.#recoverJson(this.#indexPath, MAX_LAUNCHER_INDEX_BYTES, parseIndex, undefined, recovered => {
+      if (recovered) this.#recoveredArtifacts.add('index')
+    })
     this.#index = index ?? []; this.#indexAvailable = index !== undefined
-    this.#logs = await this.#recoverJson(this.#logsPath, MAX_LAUNCHER_LOG_BYTES, parseLogs, [])
+    this.#logs = await this.#recoverJson(this.#logsPath, MAX_LAUNCHER_LOG_BYTES, parseLogs, [], recovered => {
+      if (recovered) this.#recoveredArtifacts.add('logs')
+    })
     if (!await exists(this.#grantPath)) return
     try {
       const grant = await readJson(this.#grantPath, MAX_GRANT_BYTES, parseGrant)
@@ -331,7 +338,7 @@ export class LauncherPersistenceRepository {
       if (!await exists(backupPath)) throw new Error('External settings source is invalid')
       const backup = await readJson(backupPath, MAX_LAUNCHER_SETTINGS_BYTES, value => parseStoredSettings(value))
       await this.#writeExternalDescriptor(grant, JSON.stringify(backup, null, 2), undefined)
-      this.#externalGrant = grant; this.#externalGrantStatus = 'active'; this.#settingsSource = 'external'; this.#settings = backup; this.#recoveredSettings = true
+      this.#externalGrant = grant; this.#externalGrantStatus = 'active'; this.#settingsSource = 'external'; this.#settings = backup; this.#recoveredSettings = true; this.#recoveredArtifacts.add('external')
     }
   }
 
@@ -387,6 +394,7 @@ export class LauncherPersistenceRepository {
       externalGrantStatus: this.#externalGrantStatus,
       logs: Object.freeze([...this.#logs]),
       missingSensitiveKeys: Object.freeze(missingSensitiveKeys),
+      recoveredArtifacts: Object.freeze([...this.#recoveredArtifacts].sort()),
       recoveredSettings: this.#recoveredSettings,
       settingsSource: this.#settingsSource,
       values: Object.freeze(values),

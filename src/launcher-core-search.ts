@@ -147,6 +147,7 @@ export function createLauncherCoreSearch(options: LauncherCoreSearchOptions): Re
   }
 
   const rescan = async (): Promise<LauncherCoreStatus> => {
+    knownItemIds.clear()
     activeRescan?.controller.abort(new Error('TockLauncher rescan was superseded'))
     const controller = new AbortController()
     const token = Object.freeze({})
