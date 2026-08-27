@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdtemp, mkdir, rm, stat, symlink, writeFile } from 'node:fs/promises'
+import { lstat, mkdtemp, mkdir, rm, stat, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
@@ -135,6 +135,33 @@ test('Simple File Search applies result, visit, type, and recursive bounds durin
     })
     assert.deepEqual(files.map(entry => entry.path), [join(home, 'root', 'a.txt'), join(home, 'root', 'b.txt')])
   } finally { await rm(home, { force: true, recursive: true }) }
+})
+
+test('Simple File Search stops on a deadline while traversing a bounded fixture', async () => {
+  const home = await mkdtemp(join(tmpdir(), 'tockteam-file-timeout-'))
+  try {
+    await mkdir(join(home, 'root'))
+    await Promise.all(Array.from({ length: 256 }, (_, index) => writeFile(join(home, 'root', `entry-${index}.txt`), 'entry', 'utf8')))
+    await assert.rejects(scanSimpleFileSearchFolder({
+      folder: { id: 'root', path: join(home, 'root'), recursive: false, searchFor: 'files' },
+      homePath: home, maxResults: 200, maxVisitedEntries: 10_000, scanTimeoutMs: 1, signal: signal(),
+    }), /timed out/u)
+  } finally { await rm(home, { force: true, recursive: true }) }
+})
+
+test('path revalidation rejects kind changes and a retargeted configured root', async () => {
+  const home = await mkdtemp(join(tmpdir(), 'tockteam-file-revalidation-'))
+  const outside = await mkdtemp(join(tmpdir(), 'tockteam-file-revalidation-outside-'))
+  try {
+    const root = join(home, 'root'); const target = join(root, 'target.txt')
+    await mkdir(root); await writeFile(target, 'target', 'utf8')
+    const metadata = await lstat(target, { bigint: true })
+    const scanners = createLauncherFileSearchScanners()
+    assert.equal(await scanners.validatePath({ expectedKind: 'file', homePath: home, identity: { dev: String(metadata.dev), ino: String(metadata.ino) }, path: target, platform: 'macOS', root, signal: signal() }), true)
+    assert.equal(await scanners.validatePath({ expectedKind: 'folder', homePath: home, identity: { dev: String(metadata.dev), ino: String(metadata.ino) }, path: target, platform: 'macOS', root, signal: signal() }), false)
+    await rm(root, { force: true, recursive: true }); await symlink(outside, root)
+    assert.equal(await scanners.validatePath({ expectedKind: 'file', homePath: home, identity: { dev: String(metadata.dev), ino: String(metadata.ino) }, path: target, platform: 'macOS', root, signal: signal() }), false)
+  } finally { await rm(home, { force: true, recursive: true }); await rm(outside, { force: true, recursive: true }) }
 })
 
 test('File Search rejects unsupported Linux and malformed query terms before invoking a child', async () => {

@@ -340,16 +340,16 @@ export async function scanSimpleFileSearchFolder(input: Readonly<{
   }
 }
 
-async function validateEverythingExecutable(filePath: string): Promise<LauncherFileSearchIdentity | undefined> {
+async function validateEverythingExecutable(filePath: string, signal?: AbortSignal): Promise<LauncherFileSearchIdentity | undefined> {
   if (!isAllowedLauncherEverythingCliPath(filePath) || filePath.length === 0) return undefined
   try {
-    const selected = await lstat(filePath, { bigint: true })
+    const selected = await awaitFileSystem(lstat(filePath, { bigint: true }), signal)
     if (selected.isSymbolicLink() || !selected.isFile()) return undefined
     const identity = captureIdentity(selected)
     if (identity === undefined) return undefined
-    const canonical = await realpath(filePath)
+    const canonical = await awaitFileSystem(realpath(filePath), signal)
     if (path.win32.normalize(canonical).toLocaleLowerCase('en-US') !== path.win32.normalize(filePath).toLocaleLowerCase('en-US')) return undefined
-    const final = await lstat(filePath, { bigint: true })
+    const final = await awaitFileSystem(lstat(filePath, { bigint: true }), signal)
     if (final.isSymbolicLink() || !final.isFile()) return undefined
     const finalIdentity = captureIdentity(final)
     return finalIdentity === undefined || !sameIdentity(identity, finalIdentity) ? undefined : finalIdentity
@@ -359,7 +359,7 @@ async function validateEverythingExecutable(filePath: string): Promise<LauncherF
 async function queryFileSearch(
   input: Parameters<LauncherFileSearchScanners['queryFileSearch']>[0],
   execute: LauncherExecFile,
-  validateExecutable: (filePath: string) => Promise<LauncherFileSearchIdentity | undefined>,
+  validateExecutable: (filePath: string, signal?: AbortSignal) => Promise<LauncherFileSearchIdentity | undefined>,
 ): Promise<readonly LauncherFileSearchEntry[]> {
   throwIfAborted(input.signal)
   const searchTerm = input.searchTerm.trim()
@@ -369,10 +369,10 @@ async function queryFileSearch(
   let invocation: Readonly<{ args: readonly string[]; executable: string }>
   if (input.platform === 'macOS') invocation = macFileSearchInvocation(searchTerm)
   else {
-    const configuredIdentity = await validateExecutable(input.everythingCliFilePath)
+    const configuredIdentity = await validateExecutable(input.everythingCliFilePath, input.signal)
     if (configuredIdentity === undefined) throw new Error('Everything CLI file path is unavailable or not allowlisted')
     invocation = windowsFileSearchInvocation(input.everythingCliFilePath, input.homePath, searchTerm, maxResults)
-    const spawnIdentity = await validateExecutable(invocation.executable)
+    const spawnIdentity = await validateExecutable(invocation.executable, input.signal)
     if (spawnIdentity === undefined || !sameIdentity(configuredIdentity, spawnIdentity)) {
       throw new Error('Everything CLI executable changed before spawn')
     }
@@ -405,7 +405,7 @@ async function queryFileSearch(
 
 export function createLauncherFileSearchScanners(options: Readonly<{
   runFile?: LauncherExecFile
-  validateEverythingCliPath?: (filePath: string) => Promise<LauncherFileSearchIdentity | undefined>
+  validateEverythingCliPath?: (filePath: string, signal?: AbortSignal) => Promise<LauncherFileSearchIdentity | undefined>
 }> = {}): LauncherFileSearchScanners {
   const execute = options.runFile ?? defaultExecFile
   const validateExecutable = options.validateEverythingCliPath ?? validateEverythingExecutable
