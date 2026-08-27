@@ -4,6 +4,8 @@ export interface VendorIntegrityOptions {
   revision?: string
 }
 
+export declare function resolveGitPath(repoRoot: string, gitPath: string): string
+
 export declare function verifyVendorTree(options?: VendorIntegrityOptions): Promise<{
   trackedFileCount: number
 }>
