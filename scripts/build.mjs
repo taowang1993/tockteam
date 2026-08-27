@@ -160,6 +160,7 @@ const builds = [
     target: 'es2022',
     sourcemap: true,
     logLevel: 'info',
+    external: ['react', 'react-dom', 'react/jsx-runtime'],
     banner: {
       js: 'window.__ModuleLoader__.load({ id: "@tockteam/desktop", factory: (require) => { var module = { exports: {} }; var exports = module.exports;',
     },

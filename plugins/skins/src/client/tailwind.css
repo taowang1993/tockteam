@@ -3,6 +3,7 @@
 @import 'tailwindcss/utilities.css' source(none);
 
 @source '../../../../src/client.ts';
+@source '../../../../src/launcher-settings.tsx';
 @source '../../../../src/splash.html';
 @source '../../../../web/src/client.ts';
 @source '../../../skins/src/**/*.{ts,tsx}';

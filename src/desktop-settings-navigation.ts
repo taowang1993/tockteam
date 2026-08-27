@@ -9,6 +9,7 @@ export function deferSettingsOpen(args: Readonly<{
   isTockCoder: () => boolean
   isTockTutorActive: () => boolean
   maxAttempts?: number
+  onOpened?: () => void
   schedule: (callback: () => void) => void
 }>): void {
   const maxAttempts = args.maxAttempts ?? 60
@@ -17,6 +18,7 @@ export function deferSettingsOpen(args: Readonly<{
     const button = args.findButton()
     if (args.isTockCoder() && !args.isTockTutorActive() && button?.disabled !== true) {
       button?.click()
+      args.onOpened?.()
       return
     }
     if (attempts >= maxAttempts) return

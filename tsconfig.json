@@ -21,6 +21,7 @@
   "include": [
     "plugins/**/*",
     "src/**/*.ts",
+    "src/**/*.tsx",
     "tests/**/*.ts",
     "scripts/**/*.mjs"
   ],

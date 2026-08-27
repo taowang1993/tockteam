@@ -64,6 +64,9 @@
       "inject": [
         "@deepseek-ai/dsh-client-runtime",
         "@deepseek-ai/dsh-client-ui-layout",
+        "@deepseek-ai/dsh-client-locale",
+        "@deepseek-ai/dsh-client-ui-settings-general",
+        "@deepseek-ai/dsh-client-ui-slots",
         "@tockteam/panel-controls",
         "@tockteam/pinned-summary",
         "@tockteam/sidebar",
@@ -122,12 +125,16 @@
     "@deepseek-ai/cordis-plugin-loader": "1.0.2",
     "@pennivo/mcp-server": "1.4.0",
     "@tockteam/note-vault-tools": "file:plugins/tocktutor/packages/tockteam-note-vault-tools",
+    "@tockteam/ui": "workspace:*",
     "@types/node": "^24.10.0",
+    "@types/react": "~18.3.31",
     "electron": "42.3.0",
     "electron-builder": "^26.0.12",
     "esbuild": "^0.25.12",
     "lucide": "0.473.0",
+    "lucide-react": "0.473.0",
     "pnpm": "11.21.0",
+    "react": "^18.3.1",
     "tockbot-note-runtime": "file:plugins/tocktutor/packages/tockbot-note-runtime",
     "tockbot-note-vault": "file:plugins/tocktutor/packages/tockbot-note-vault",
     "typescript": "^6.0.3"
@@ -241,8 +248,8 @@
     "artifactName": "TockTeam-Desktop-${version}-${arch}.${ext}"
   },
   "dependencies": {
+    "electron-updater": "6.8.3",
     "fuse.js": "7.1.0",
-    "fuzzysort": "3.1.0",
-    "electron-updater": "6.8.3"
+    "fuzzysort": "3.1.0"
   }
 }

@@ -1,6 +1,7 @@
 /** Browser face for the native TockTeam Desktop bridge. */
 
 import type { DesktopBridge, DesktopCommand } from './contracts.ts'
+import { apply as applyLauncherSettings, inject as launcherSettingsInject } from './launcher-settings.tsx'
 import { projectLauncherThemeSource } from './launcher-theme.ts'
 import { deferSettingsOpen } from './desktop-settings-navigation.ts'
 import {
@@ -77,7 +78,7 @@ declare global {
 }
 
 /** Wait for the DSH services used by native menu commands. */
-export const inject = ['workspaces', 'desktopPanels', 'pinnedSummary', 'theme']
+export const inject = ['workspaces', 'desktopPanels', 'pinnedSummary', 'theme', ...launcherSettingsInject]
 
 function installDesktopChrome(): () => void {
   const originalTitle = document.title
@@ -216,17 +217,34 @@ function findSettingsButton(): HTMLButtonElement | undefined {
 }
 
 function showSettingsAfterRoute(): void {
+  const schedule = (callback: () => void): void => {
+    if (typeof window.requestAnimationFrame === 'function') {
+      window.requestAnimationFrame(() => { queueMicrotask(callback) })
+    } else {
+      queueMicrotask(callback)
+    }
+  }
+  const selectLauncherSection = (): void => {
+    let attempts = 0
+    const attempt = (): void => {
+      const section = [...document.querySelectorAll<HTMLButtonElement>('[role="dialog"] button')]
+        .find(button => button.textContent?.trim() === 'TockLauncher')
+      if (section !== undefined) {
+        section.click()
+        return
+      }
+      if (attempts >= 60) return
+      attempts += 1
+      schedule(attempt)
+    }
+    schedule(attempt)
+  }
   deferSettingsOpen({
     findButton: findSettingsButton,
     isTockCoder: () => isTockCoderPath(window.location.pathname),
     isTockTutorActive: () => document.documentElement.dataset.tockteamTocktutorActive === 'true',
-    schedule: callback => {
-      if (typeof window.requestAnimationFrame === 'function') {
-        window.requestAnimationFrame(() => { queueMicrotask(callback) })
-      } else {
-        queueMicrotask(callback)
-      }
-    },
+    onOpened: selectLauncherSection,
+    schedule,
   })
 }
 
@@ -327,6 +345,7 @@ export function apply(ctx: ClientContext): void {
   const workspaces = ctx.get('workspaces') as WorkspacesService
   const panels = ctx.get('desktopPanels') as DesktopPanels
   const pinnedSummary = ctx.get('pinnedSummary') as PinnedSummary
+  applyLauncherSettings(ctx)
   ctx.effect(() => {
     const removeShell = ctx.reflect.provide('desktopShell', bridge, undefined)
     // The unified three-surface contract, client plane: the desktop shell.
