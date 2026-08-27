@@ -102,7 +102,7 @@ test('the notice ledger keeps exact attribution for shipped launcher assets', as
   assert.deepEqual(ledger.entries.map(({ id, disposition }) => ({ id, disposition })), [
     { id: 'ueli-mit', disposition: 'provenance-only' },
     { id: 'gnome-application-search-icons', disposition: 'provenance-only' },
-    { id: 'openmoji-custom-web-search-icon', disposition: 'deferred-until-asset-shipped' },
+    { id: 'openmoji-custom-web-search-icon', disposition: 'shipped' },
     { id: 'ueli-dependency-graph', disposition: 'not-admitted' },
   ])
   assert.deepEqual(ledger.entries.map(({ id, attribution }) => ({ id, attribution })), [
@@ -111,7 +111,7 @@ test('the notice ledger keeps exact attribution for shipped launcher assets', as
     { id: 'openmoji-custom-web-search-icon', attribution: 'https://openmoji.org/' },
     { id: 'ueli-dependency-graph', attribution: 'Ueli package dependency graph' },
   ])
-  assert.equal(inputs.contract.foundation.launcherNotices.length, 2)
+  assert.equal(inputs.contract.foundation.launcherNotices.length, 3)
   assert.equal((await readFile(join(repoRoot, 'THIRD_PARTY_NOTICES.md'), 'utf8')).includes('Ueli'), true)
   assert.deepEqual(inspectLauncherPackageFeasibility(inputs).failures, [])
 })

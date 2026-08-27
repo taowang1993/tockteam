@@ -157,10 +157,17 @@ const EXPECTED_LAUNCHER_ASSETS = Object.freeze([
   ['simple-file-search-macos', 'simple-file-search-macos.png', '59f8ff6242b8d79e6e8dba650ab1c7b0c55122472fb3e39ad4b56a21d4c0060a'],
   ['simple-file-search', 'simple-file-search.png', 'dc608686196c635d1fe0b55adb4e09f54fa5b1b238c839aa180dcb5d89c26f2f'],
   ['simple-file-search-windows', 'simple-file-search-windows.ico', 'd9b23fb20914aa0eb49de9df379c1628934bf0d77d274f0ba5391cfd4e596f2b'],
+  ['currency-conversion', 'currency-conversion.png', '6a87b37bf251565739e90a82614cd01838a84038866834cfcc432e2d3c7a3316'],
+  ['custom-web-search', 'custom-web-search.svg', 'b7ce4cc6685aaf4f0b8e6ec3420d2f9d36a48af0acc721181010cdb0c06518e3'],
+  ['deepl-translator', 'deepl-translator.svg', 'b36e136107ca67812c0dc9265afd95951bde1ef9cc4736ff980a8ac0bccf496f'],
+  ['web-search-duckduckgo', 'web-search-duckduckgo.svg', 'a552810b288ab1511f5ad547957de90d44b4245c364b60a2a90a437532e16f21'],
+  ['web-search-google', 'web-search-google.png', 'e2087f585c3b213ba537a56c8bc8e6134c69d6fa1a5728d306df56d697b4e7ab'],
+  ['web-search', 'web-search.png', '37667bef690d961232b7d290de1cdac56f8f33e23d4a7a732b95de2a7de3218a'],
 ].map(([key, fileName, sha256]) => Object.freeze({ key, path: `dist/launcher-assets/${fileName}`, sha256 })))
 const EXPECTED_LAUNCHER_NOTICES = Object.freeze([
   Object.freeze({ id: 'ueli-mit', source: 'THIRD_PARTY_NOTICES.md', license: 'MIT', attribution: 'https://github.com/oliverschwendener/ueli' }),
   Object.freeze({ id: 'gnome-application-search-icons', source: 'THIRD_PARTY_NOTICES.md', license: 'CC BY-SA 3.0', attribution: 'https://www.gnome.org' }),
+  Object.freeze({ id: 'openmoji-custom-web-search-icon', source: 'THIRD_PARTY_NOTICES.md', license: 'CC BY-SA 4.0', attribution: 'https://openmoji.org/' }),
 ])
 const EXPECTED_FOUNDATION = Object.freeze({
   launcherImplemented: true,
@@ -212,7 +219,7 @@ const EXPECTED_NOTICE_ENTRIES = Object.freeze([
     license: 'CC BY-SA 4.0',
     sha256: '377515334214846e9564c3dfb03d9a8e50f31e8d590fad20c6f09c165fa35244',
     attribution: 'https://openmoji.org/',
-    disposition: 'deferred-until-asset-shipped',
+    disposition: 'shipped',
   }),
   Object.freeze({
     id: 'ueli-dependency-graph',

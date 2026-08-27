@@ -458,6 +458,36 @@
         "key": "simple-file-search-windows",
         "path": "dist/launcher-assets/simple-file-search-windows.ico",
         "sha256": "d9b23fb20914aa0eb49de9df379c1628934bf0d77d274f0ba5391cfd4e596f2b"
+      },
+      {
+        "key": "currency-conversion",
+        "path": "dist/launcher-assets/currency-conversion.png",
+        "sha256": "6a87b37bf251565739e90a82614cd01838a84038866834cfcc432e2d3c7a3316"
+      },
+      {
+        "key": "custom-web-search",
+        "path": "dist/launcher-assets/custom-web-search.svg",
+        "sha256": "b7ce4cc6685aaf4f0b8e6ec3420d2f9d36a48af0acc721181010cdb0c06518e3"
+      },
+      {
+        "key": "deepl-translator",
+        "path": "dist/launcher-assets/deepl-translator.svg",
+        "sha256": "b36e136107ca67812c0dc9265afd95951bde1ef9cc4736ff980a8ac0bccf496f"
+      },
+      {
+        "key": "web-search-duckduckgo",
+        "path": "dist/launcher-assets/web-search-duckduckgo.svg",
+        "sha256": "a552810b288ab1511f5ad547957de90d44b4245c364b60a2a90a437532e16f21"
+      },
+      {
+        "key": "web-search-google",
+        "path": "dist/launcher-assets/web-search-google.png",
+        "sha256": "e2087f585c3b213ba537a56c8bc8e6134c69d6fa1a5728d306df56d697b4e7ab"
+      },
+      {
+        "key": "web-search",
+        "path": "dist/launcher-assets/web-search.png",
+        "sha256": "37667bef690d961232b7d290de1cdac56f8f33e23d4a7a732b95de2a7de3218a"
       }
     ],
     "launcherNotices": [
@@ -472,6 +502,12 @@
         "source": "THIRD_PARTY_NOTICES.md",
         "license": "CC BY-SA 3.0",
         "attribution": "https://www.gnome.org"
+      },
+      {
+        "id": "openmoji-custom-web-search-icon",
+        "source": "THIRD_PARTY_NOTICES.md",
+        "license": "CC BY-SA 4.0",
+        "attribution": "https://openmoji.org/"
       }
     ],
     "shippedVendorSource": false,
