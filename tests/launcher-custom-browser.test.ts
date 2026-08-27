@@ -7,12 +7,12 @@ import { LauncherCustomBrowserController, parseLauncherCustomBrowserArgumentTemp
 
 async function root(): Promise<string> { return await mkdtemp(path.join(tmpdir(), 'tockteam-browser-')) }
 
-function harness(platform: 'Linux' | 'macOS' | 'Windows', userDataPath: string, settings: Record<string, unknown> = {}) {
+function harness(platform: 'Linux' | 'macOS' | 'Windows', userDataPath: string, settings: Record<string, unknown> = {}, launchOverride?: (executable: string, args: readonly string[]) => Promise<void>) {
   const launches: Array<{ executable: string; args: readonly string[] }> = []
   const defaults: string[] = []
   const options = {
     getSetting: <T>(key: string, fallback: T): T => Object.hasOwn(settings, key) ? settings[key] as T : fallback,
-    launch: async (executable: string, args: readonly string[]) => { launches.push({ executable, args }) },
+    launch: launchOverride ?? (async (executable: string, args: readonly string[]) => { launches.push({ executable, args }) }),
     openDefault: async (url: string) => { defaults.push(url) },
     platform,
     userDataPath,
@@ -52,6 +52,34 @@ test('custom-browser grants keep identity private and revoke replacement', async
     assert.equal(controller.snapshot().status, 'none')
     await controller.close()
     await assert.rejects(controller.select(executable), /disposed/u)
+  } finally { await rm(userDataPath, { recursive: true, force: true }) }
+})
+
+test('serializes custom-browser revocation behind an in-flight launch', async () => {
+  const userDataPath = await root()
+  try {
+    const executable = path.join(userDataPath, 'browser.exe')
+    await writeFile(executable, 'approved', { mode: 0o700 })
+    let startedResolve: (() => void) | undefined
+    let releaseResolve: (() => void) | undefined
+    const started = new Promise<void>(resolve => { startedResolve = resolve })
+    const release = new Promise<void>(resolve => { releaseResolve = resolve })
+    const fixture = harness('Windows', userDataPath, { 'general.browser.useDefaultWebBrowser': false }, async () => {
+      startedResolve?.()
+      await release
+    })
+    const controller = await fixture.open()
+    await controller.select(executable)
+    const opening = controller.openUrl('https://example.com')
+    await started
+    const revoking = controller.revoke()
+    await new Promise(resolve => setTimeout(resolve, 10))
+    assert.equal(controller.snapshot().status, 'active')
+    releaseResolve?.()
+    await opening
+    await revoking
+    assert.equal(controller.snapshot().status, 'none')
+    await controller.close()
   } finally { await rm(userDataPath, { recursive: true, force: true }) }
 })
 
