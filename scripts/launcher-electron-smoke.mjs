@@ -202,6 +202,19 @@ try {
     electronAPI: 'undefined',
     csp: launcherCsp,
   })
+  const attackFacts = await launcherConnection.evaluate(`({
+    notification: typeof Notification === 'undefined' ? 'unavailable' : Notification.permission,
+    popupDenied: window.open('https://example.com') === null,
+  })`)
+  assert.equal(attackFacts.notification, 'denied')
+  assert.equal(attackFacts.popupDenied, true)
+  try {
+    await launcherConnection.evaluate("location.assign('https://example.com')")
+  } catch {
+    // Chromium may report a client-side navigation cancellation through CDP.
+  }
+  await sleep(250)
+  assert.equal(await launcherConnection.evaluate('location.href'), launcher.url)
   assert.equal(workbenchConnection ? await workbenchConnection.evaluate('location.href') : '', workbenchUrl)
 
   await launcherConnection.call('Input.dispatchKeyEvent', {
