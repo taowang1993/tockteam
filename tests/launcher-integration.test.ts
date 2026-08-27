@@ -41,6 +41,8 @@ test('workbench bridge and Desktop titlebar expose only finite launcher operatio
   assert.match(sidebar, /bridge\.getState\(\)/u)
   assert.match(sidebar, /bridge\.show\(\)/u)
   assert.match(sidebar, /Shortcut Unavailable|launcher\.shortcut-unavailable/u)
+  assert.ok(sidebar.includes('aria-label={accessibleLabel}'))
+  assert.ok(sidebar.includes("[body:has([data-sidebar-collapsed])_&]:!w-9"))
   assert.match(i18n, /'launcher\.button'/u)
   assert.match(i18n, /'launcher\.shortcut-unavailable'/u)
   assert.doesNotMatch(sidebar, /inject[^\n]*desktopShell/u)
