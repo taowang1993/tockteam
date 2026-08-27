@@ -462,9 +462,7 @@ try {
     await window.dshDesktop?.launcher?.settings?.updateSetting('searchEngine.fuzziness', 0.6)
     await window.dshDesktop?.launcher?.settings?.updateSetting('searchEngine.id', 'Fuse.js')
     await window.dshDesktop?.launcher?.settings?.updateSetting('searchEngine.maxResultLength', 50)
-    for (const id of ['Base64Conversion', 'Calculator', 'ColorConverter', 'PasswordGenerator', 'QuickFormatter', 'RowlandTextEditor', 'UuidGenerator']) {
-      await window.dshDesktop?.launcher?.settings?.updateSetting('extensions.enabledExtensionIds', ['AppearanceSwitcher', 'ApplicationSearch', 'Base64Conversion', 'BrowserBookmarks', 'Calculator', 'ColorConverter', 'CurrencyConversion', 'CustomWebSearch', 'DeeplTranslator', 'FileSearch', 'JetBrainsToolbox', 'PasswordGenerator', 'QuickFormatter', 'RowlandTextEditor', 'SimpleFileSearch', 'SystemCommands', 'SystemSettings', 'TerminalLauncher', 'UeliCommand', 'UuidGenerator', 'VSCode', 'WebSearch', 'WindowsControlPanel', 'Workflow'])
-    }
+    await window.dshDesktop?.launcher?.settings?.updateSetting('extensions.enabledExtensionIds', ['AppearanceSwitcher', 'ApplicationSearch', 'Base64Conversion', 'BrowserBookmarks', 'Calculator', 'ColorConverter', 'CurrencyConversion', 'CustomWebSearch', 'DeeplTranslator', 'FileSearch', 'JetBrainsToolbox', 'PasswordGenerator', 'QuickFormatter', 'RowlandTextEditor', 'SimpleFileSearch', 'SystemCommands', 'SystemSettings', 'TerminalLauncher', 'UeliCommand', 'UuidGenerator', 'VSCode', 'WebSearch', 'WindowsControlPanel', 'Workflow'])
   })()`)
   await showLauncherFromWorkbench(workbenchConnection)
 
@@ -480,6 +478,7 @@ try {
       () => launcherConnection.evaluate(`document.body.textContent?.includes(${JSON.stringify(expected)}) ?? false`),
       found => found === true,
     )
+    await sleep(500)
   }
   await localSearch('b64e TockTeam', 'VG9ja1RlYW0=')
   await localSearch('2 + 2', '4')
@@ -501,6 +500,8 @@ try {
 
   const openLocalTool = async (term, label, input, output) => {
     await localSearch(term, label)
+    const selectedLocalItem = await launcherConnection.evaluate('document.querySelector(\'[data-result-id][aria-selected="true"]\')?.getAttribute(\'data-result-id\') ?? null')
+    assert.equal(selectedLocalItem, `ueli-local:${label === 'Base64 Conversion' ? 'Base64Conversion' : label === 'Rowland Text Editor' ? 'RowlandTextEditor' : 'UuidGenerator'}`)
     const clicked = await launcherConnection.evaluate(`(() => {
       const button = [...document.querySelectorAll('#launcher-details button')].find(node => node.textContent?.includes(${JSON.stringify(`Open ${label}`)}))
       if (!(button instanceof HTMLButtonElement)) return false
@@ -530,7 +531,11 @@ try {
   await openLocalTool('Rowland Text Editor', 'Rowland Text Editor', { selector: '[aria-label="Rowland input"]', value: 'Hello\\tWorld' }, undefined)
   await openLocalTool('UUID / GUID Generator', 'UUID / GUID Generator', undefined, undefined)
 
-  await workbenchConnection.evaluate(`(async () => await window.dshDesktop?.launcher?.settings?.updateSetting('searchEngine.maxResultLength', 1))()`)
+  await workbenchConnection.evaluate(`(async () => {
+    await window.dshDesktop?.launcher?.settings?.updateSetting('general.searchHistory.enabled', false)
+    await window.dshDesktop?.launcher?.settings?.updateSetting('general.searchHistory.enabled', true)
+    await window.dshDesktop?.launcher?.settings?.updateSetting('searchEngine.maxResultLength', 1)
+  })()`)
   await showLauncherFromWorkbench(workbenchConnection)
 
   const effectiveSearchCount = await launcherConnection.evaluate(`(async () => {
