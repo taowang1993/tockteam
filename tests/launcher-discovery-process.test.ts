@@ -10,6 +10,7 @@ import {
   revalidateLauncherPath,
   revalidateLauncherUrl,
   resolveLauncherExecutable,
+  resolveLauncherExecutableInvocation,
   revalidateLauncherWindowsStoreId,
   revalidateLauncherVscodeUri,
 } from '../src/launcher-discovery-process.ts'
@@ -43,6 +44,15 @@ test('resolves only finite PATH VS Code executable candidates', async () => {
     assert.equal(await resolveLauncherExecutable('code;evil', 'Windows', { PATH: root }), undefined)
     assert.equal(await resolveLauncherExecutable('code', 'Windows', { PATH: '' }), undefined)
   } finally { await rm(root, { recursive: true, force: true }) }
+})
+
+test('launches Windows command files through one fixed PowerShell data adapter', () => {
+  const invocation = resolveLauncherExecutableInvocation('C:\\Program Files\\Microsoft VS Code\\bin\\code.cmd', ['--folder-uri', 'vscode-remote://ssh/work'])
+  assert.equal(invocation.executable, 'powershell.exe')
+  assert.equal(invocation.args.at(-2), '--folder-uri')
+  assert.equal(invocation.args.at(-1), 'vscode-remote://ssh/work')
+  assert.match(String(invocation.args[4]), /Start-Process -FilePath \$target/u)
+  assert.doesNotMatch(String(invocation.args[4]), /code\\.cmd/u)
 })
 
 test('path and URL revalidation rejects drift immediately before effect', async () => {

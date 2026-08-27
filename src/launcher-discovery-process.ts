@@ -78,6 +78,18 @@ export async function resolveLauncherExecutable(
   return undefined
 }
 
+const POWERSHELL_COMMAND_FILE_SCRIPT = "$target=$args[0]; if ([string]::IsNullOrWhiteSpace($target)) { throw 'Missing executable' }; $argumentList=@($args | Select-Object -Skip 1); Start-Process -FilePath $target -ArgumentList $argumentList"
+
+export function resolveLauncherExecutableInvocation(executable: string, args: readonly string[]): LauncherFixedInvocation {
+  if (!bounded(executable, 4_096) || !Array.isArray(args) || args.length > 16 || args.some(argument => !bounded(argument))) throw new Error('Invalid launcher executable invocation')
+  if (path.win32.extname(executable).toLocaleLowerCase('en-US') !== '.cmd') return Object.freeze({ executable, args: Object.freeze([...args]) })
+  if (!path.win32.isAbsolute(executable)) throw new Error('Windows command file must be absolute')
+  return Object.freeze({
+    args: Object.freeze([...POWERSHELL_PREFIX, POWERSHELL_COMMAND_FILE_SCRIPT, executable, ...args]),
+    executable: 'powershell.exe',
+  })
+}
+
 export function isLauncherPathWithin(root: string, candidate: string): boolean {
   if (!bounded(root) || !bounded(candidate) || !isAbsolute(root) || !isAbsolute(candidate)) return false
   const implementation = isWindowsAbsolute(root) || isWindowsAbsolute(candidate) ? path.win32 : path

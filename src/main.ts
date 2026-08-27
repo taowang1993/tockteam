@@ -93,6 +93,7 @@ import { createLauncherDiscoveryExtensions } from './launcher-discovery-extensio
 import { createLauncherDiscoveryScanners, launcherNodeSqliteAvailable } from './launcher-discovery-scanners.ts'
 import {
   launchDetachedLauncherExecutable,
+  resolveLauncherExecutableInvocation,
   revalidateLauncherExecutable,
   revalidateLauncherPath,
   revalidateLauncherUrl,
@@ -1109,7 +1110,10 @@ function initializeLauncher(): void {
         return result.response === 0
       },
       copyText: text => clipboard.writeText(text),
-      launchExecutable: launchDetachedLauncherExecutable,
+      launchExecutable: async (executable, args) => {
+        const invocation = platform === 'Windows' ? resolveLauncherExecutableInvocation(executable, args) : { executable, args }
+        await launchDetachedLauncherExecutable(invocation.executable, invocation.args)
+      },
       openApplication: async target => {
         if (platform === 'Linux' && target.endsWith('.desktop')) {
           const invocation = resolveLinuxDesktopEntryInvocation(target)
