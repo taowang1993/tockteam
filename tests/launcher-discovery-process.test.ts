@@ -64,6 +64,7 @@ test('canonicalizes POSIX VS Code symlinks and rejects retargeted identities', a
     for (const platform of ['Linux', 'macOS'] as const) {
       const resolved = await resolveLauncherExecutable('code', platform, { PATH: root })
       assert.equal(resolved, await realpath(target))
+      assert.equal(await resolveLauncherExecutable(link, platform, { PATH: '' }), await realpath(target))
       const stats = await lstat(target, { bigint: true })
       assert.equal(await revalidateLauncherPath(resolved!, { kind: 'file', identity: { dev: String(stats.dev), ino: String(stats.ino) } }), true)
     }
