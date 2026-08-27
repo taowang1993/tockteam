@@ -216,13 +216,28 @@ function findSettingsButton(): HTMLButtonElement | undefined {
     .sort((left, right) => right.getBoundingClientRect().bottom - left.getBoundingClientRect().bottom)[0]
 }
 
-function showSettingsAfterRoute(): void {
+function showSettingsAfterRoute(section?: 'tocklauncher'): void {
   const schedule = (callback: () => void): void => {
     if (typeof window.requestAnimationFrame === 'function') {
       window.requestAnimationFrame(() => { queueMicrotask(callback) })
     } else {
       queueMicrotask(callback)
     }
+  }
+  if (section !== 'tocklauncher') {
+    deferSettingsOpen({
+      findButton: findSettingsButton,
+      isTockCoder: () => isTockCoderPath(window.location.pathname),
+      isTockTutorActive: () => document.documentElement.dataset.tockteamTocktutorActive === 'true',
+      schedule: callback => {
+        if (typeof window.requestAnimationFrame === 'function') {
+          window.requestAnimationFrame(() => { queueMicrotask(callback) })
+        } else {
+          queueMicrotask(callback)
+        }
+      },
+    })
+    return
   }
   const selectLauncherSection = (): void => {
     let attempts = 0
@@ -299,7 +314,7 @@ function dispatch(
       })
       return
     case 'show-settings':
-      showSettingsAfterRoute()
+      showSettingsAfterRoute(command.section)
       return
     case 'toggle-sidebar':
       panels.toggleSidebar()

@@ -207,9 +207,9 @@ const INDEX_ITEM_KEYS = ['additionalActions', 'defaultAction', 'description', 'd
 function parseIndexAction(value: unknown): void {
   if (!isRecord(value)
     || Object.keys(value).some(key => !INDEX_ACTION_KEYS.includes(key))
-    || typeof value.argument !== 'string' || value.argument.length === 0 || value.argument.length > 16_384
-    || typeof value.description !== 'string' || value.description.length === 0 || value.description.length > 512
-    || typeof value.handlerKey !== 'string' || value.handlerKey.length === 0 || value.handlerKey.length > 128
+    || typeof value.argument !== 'string' || value.argument.length === 0 || value.argument.length > 16_384 || /[\0\r\n]/u.test(value.argument)
+    || typeof value.description !== 'string' || value.description.length === 0 || value.description.length > 512 || /[\0\r\n]/u.test(value.description)
+    || typeof value.handlerKey !== 'string' || value.handlerKey.length === 0 || value.handlerKey.length > 128 || /[\0\r\n]/u.test(value.handlerKey)
     || (value.hideWindowAfterInvocation !== undefined && typeof value.hideWindowAfterInvocation !== 'boolean')
     || (value.keyboardShortcut !== undefined && (typeof value.keyboardShortcut !== 'string' || value.keyboardShortcut.length === 0 || value.keyboardShortcut.length > 128))
     || (value.requiresConfirmation !== undefined && typeof value.requiresConfirmation !== 'boolean')) throw new Error('TockLauncher index action is invalid')
@@ -221,12 +221,12 @@ function parseIndex(value: unknown): LauncherInternalResultItem[] {
   for (const raw of value) {
     if (!isRecord(raw)
       || Object.keys(raw).some(key => !INDEX_ITEM_KEYS.includes(key))
-      || typeof raw.id !== 'string' || raw.id.length === 0 || raw.id.length > 512
-      || typeof raw.name !== 'string' || raw.name.length === 0 || raw.name.length > 512
-      || typeof raw.description !== 'string' || raw.description.length === 0 || raw.description.length > 2_048
-      || typeof raw.sourceExtension !== 'string' || raw.sourceExtension.length === 0 || raw.sourceExtension.length > 128
+      || typeof raw.id !== 'string' || raw.id.length === 0 || raw.id.length > 512 || /[\0\r\n]/u.test(raw.id)
+      || typeof raw.name !== 'string' || raw.name.length === 0 || raw.name.length > 512 || /[\0\r\n]/u.test(raw.name)
+      || typeof raw.description !== 'string' || raw.description.length === 0 || raw.description.length > 2_048 || /[\0\r\n]/u.test(raw.description)
+      || typeof raw.sourceExtension !== 'string' || raw.sourceExtension.length === 0 || raw.sourceExtension.length > 128 || /[\0\r\n]/u.test(raw.sourceExtension)
       || (raw.imageKey !== undefined && (typeof raw.imageKey !== 'string' || !/^[a-z][a-z0-9-]{0,63}$/u.test(raw.imageKey)))
-      || (raw.details !== undefined && (typeof raw.details !== 'string' || raw.details.length > 8_192))
+      || (raw.details !== undefined && (typeof raw.details !== 'string' || raw.details.length > 8_192 || /[\0\r\n]/u.test(raw.details)))
       || !isRecord(raw.defaultAction)) throw new Error('TockLauncher index item is invalid')
     parseIndexAction(raw.defaultAction)
     const additional = raw.additionalActions
@@ -512,7 +512,8 @@ export class LauncherPersistenceRepository {
       await handle.sync()
       const after = await handle.stat({ bigint: true })
       const current = await lstat(grant.path, { bigint: true })
-      if (!sameIdentity(after, grant) || !sameIdentity(current, grant)) throw new Error('TockLauncher external settings file changed')
+      const parentAfter = await realpath(path.dirname(grant.path))
+      if (!sameIdentity(after, grant) || !sameIdentity(current, grant) || parentAfter !== grant.parentRealPath) throw new Error('TockLauncher external settings file changed')
     } finally { await handle.close() }
   }
 

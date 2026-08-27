@@ -106,7 +106,13 @@ const rows: readonly LauncherSettingCatalogEntry[] = [
   Object.freeze({"key":"window.visibleOnAllWorkspaces","sourceId":"global:window.visibleOnAllWorkspaces","source":"src/main/Core/SearchWindow/SearchWindowModule.ts;src/renderer/Core/Settings/Pages/Window/WorkspaceVisibility.tsx","order":99,"applicability":["macOS","Linux"],"owner":"electron-main","issue":"tockteam-tl.5","defaultKind":"literal","defaultValue":false,"divergence":"TockTeam deliberate divergence: desktop consistency default true (Ueli false)."}),
 ]
 
-export const LAUNCHER_SETTINGS_CATALOG = Object.freeze(rows)
+function freezeCatalogValue<T>(value: T): T {
+  if (typeof value !== 'object' || value === null) return value
+  for (const child of Object.values(value as Record<string, unknown>)) freezeCatalogValue(child)
+  return Object.freeze(value)
+}
+
+export const LAUNCHER_SETTINGS_CATALOG = Object.freeze(rows.map(row => freezeCatalogValue(row)))
 export const LAUNCHER_UPSTREAM_SETTINGS_CATALOG = LAUNCHER_SETTINGS_CATALOG
 export const LAUNCHER_SETTING_CATALOG_COUNT = 100 as const
 

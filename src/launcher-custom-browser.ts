@@ -158,9 +158,13 @@ export class LauncherCustomBrowserController {
   readonly #grantPath: string
   #grant: Grant | undefined
   #status: LauncherCustomBrowserSnapshot['status']
+  #mutationTail: Promise<void> = Promise.resolve()
   #disposed = false
 
-  private constructor(private readonly options: ControllerOptions, grant: Grant | undefined, status: LauncherCustomBrowserSnapshot['status']) {
+  private readonly options: ControllerOptions
+
+  private constructor(options: ControllerOptions, grant: Grant | undefined, status: LauncherCustomBrowserSnapshot['status']) {
+    this.options = options
     this.#grantPath = path.join(options.userDataPath, 'launcher', 'custom-browser-grant.json')
     this.#grant = grant
     this.#status = status
@@ -185,17 +189,21 @@ export class LauncherCustomBrowserController {
     if (this.#disposed) throw new Error('Custom browser controller is disposed')
     if (this.options.platform === 'Linux') throw new Error('Custom browsers are not supported on Linux')
     if (!HAS_NOFOLLOW && this.options.identitySafeEffects !== true) throw new Error('Custom browser selection is unavailable on this platform')
-    const grant = await validateBrowserTarget(target, this.options.platform)
-    await writeGrant(this.#grantPath, grant)
-    this.#grant = grant
-    this.#status = 'active'
+    await this.#enqueue(async () => {
+      const grant = await validateBrowserTarget(target, this.options.platform as DesktopBrowserPlatform)
+      await writeGrant(this.#grantPath, grant)
+      this.#grant = grant
+      this.#status = 'active'
+    })
   }
 
   async revoke(): Promise<void> {
     if (this.#disposed) throw new Error('Custom browser controller is disposed')
-    await rm(this.#grantPath, { force: true })
-    this.#grant = undefined
-    this.#status = 'none'
+    await this.#enqueue(async () => {
+      await rm(this.#grantPath, { force: true })
+      this.#grant = undefined
+      this.#status = 'none'
+    })
   }
 
   async openUrl(url: string): Promise<void> {
@@ -211,6 +219,12 @@ export class LauncherCustomBrowserController {
     if (grant.platform === 'macOS') { await this.options.launch('/usr/bin/open', ['-a', grant.path, normalized]); return }
     const template = this.options.getSetting('general.browser.customWebBrowser.commandlineArguments', '{{url}}')
     await this.options.launch(grant.path, parseLauncherCustomBrowserArgumentTemplate(template, normalized))
+  }
+
+  async #enqueue(operation: () => Promise<void>): Promise<void> {
+    const next = this.#mutationTail.then(operation)
+    this.#mutationTail = next.catch(() => undefined)
+    await next
   }
 
   dispose(): void { this.#disposed = true; this.#grant = undefined }

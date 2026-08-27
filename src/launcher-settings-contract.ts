@@ -332,6 +332,7 @@ export function parseLauncherSettingsSnapshot(value: unknown): LauncherSettingsS
     if (!isLauncherRuntimeSettingKey(key) || LAUNCHER_SENSITIVE_SETTING_KEYS.includes(key as never) || LAUNCHER_MAIN_OWNED_SETTING_KEYS.includes(key as never) || !isLauncherRendererSettingValue(key, settingValue)) throw new Error('Invalid launcher settings snapshot values')
     values[key] = cloneJson(settingValue)
   }
+  if (!boundedJson(values, MAX_LAUNCHER_SETTINGS_BYTES)) throw new Error('Invalid launcher settings snapshot values')
   const snapshot = {
     ...(value.customBrowserStatus === undefined ? {} : { customBrowserStatus: value.customBrowserStatus }),
     externalGrantStatus: value.externalGrantStatus,
