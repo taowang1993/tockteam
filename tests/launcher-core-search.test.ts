@@ -44,6 +44,41 @@ test('core search matches both engines, instant ordering, empty ordering, limits
   }
 })
 
+test('core search serializes a stale in-flight index write before publishing the newest write', async () => {
+  const persisted: string[][] = []
+  let load = 0
+  let releaseStaleLoad: ((values: readonly LauncherInternalResultItem[]) => void) | undefined
+  let releaseCurrentLoad: ((values: readonly LauncherInternalResultItem[]) => void) | undefined
+  let releaseStaleWrite: (() => void) | undefined
+  let staleWriteStarted = false
+  const core = createLauncherCoreSearch({
+    loadIndexedItems: async () => {
+      load += 1
+      if (load === 1) return [item('initial', 'Initial')]
+      return await new Promise<readonly LauncherInternalResultItem[]>(resolve => {
+        if (load === 2) releaseStaleLoad = resolve
+        else releaseCurrentLoad = resolve
+      })
+    },
+    persistIndex: async values => {
+      if (values[0]?.id === 'old' && !staleWriteStarted) {
+        staleWriteStarted = true
+        await new Promise<void>(resolve => { releaseStaleWrite = resolve })
+      }
+      persisted.push(values.map(value => value.id))
+    },
+  })
+  await core.search('', options)
+  const staleRescan = core.rescan()
+  releaseStaleLoad?.([item('old', 'Old')])
+  while (!staleWriteStarted) await new Promise<void>(resolve => { setImmediate(resolve) })
+  const currentRescan = core.rescan()
+  releaseCurrentLoad?.([item('new', 'New')])
+  releaseStaleWrite?.()
+  await Promise.all([staleRescan, currentRescan])
+  assert.deepEqual(persisted.slice(-2), [['old'], ['new']])
+})
+
 test('core search keeps newest instant status and index persistence after races and failures', async () => {
   let releaseStale: (() => void) | undefined
   const stale = new Promise<void>(resolve => { releaseStale = resolve })
