@@ -16,6 +16,8 @@ Status: implemented in `/Users/max/projects/worktrees/tocklauncher-full-parity` 
 - `c3a35371` — stabilize parity discovery ordering with a locale-independent comparator.
 - `392b4c6f` — retain the reviewed exact notice attribution values.
 - `17ee50a7` — narrow application identity scanning to actual identity/data/session values.
+- `9d297743` — resolve relative Git object paths against the audited repository root while preserving absolute paths.
+- `ce80b1b4` — declare the exported Git path resolver for the TypeScript test contract.
 
 No push was performed.
 
@@ -84,12 +86,12 @@ All commands were run from the implementation worktree with Node 24.16.0 through
 - `pnpm test:ueli-package-feasibility` — 9 passed, including derived dependency, attribution mutation, and identity-boundary checks.
 - `pnpm audit:ueli-package-feasibility` — passed; launcher remains unimplemented/unpackaged.
 - `pnpm run typecheck` — passed.
-- `pnpm test` — 398 passed, 0 failed.
+- `pnpm test` — 399 passed, 0 failed, including the final Git path-resolution regression.
 - `pnpm run build` — passed.
 - `pnpm pack --dry-run --json` — 529 package files; `vendor/ueli` entries: `0`.
 - `bd lint` — passed; no template warnings.
 - `git diff --check 088c4a079fe47210097be94af7ce232e7582d62f HEAD` — passed.
-- `git show --check` for each implementation commit — passed.
+- `git show --check` for each implementation commit — passed, including `9d297743` and `ce80b1b4`.
 
 Final Git evidence:
 
