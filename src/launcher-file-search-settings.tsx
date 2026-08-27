@@ -4,7 +4,7 @@ import { Button } from '@tockteam/ui/button'
 import { Input } from '@tockteam/ui/input'
 import { NativeSelect, NativeSelectOption } from '@tockteam/ui/native-select'
 import { Switch } from '@tockteam/ui/switch'
-import type { LauncherSettingsSnapshot } from './launcher-settings-contract.ts'
+import { isAllowedLauncherEverythingCliPath, type LauncherSettingsSnapshot } from './launcher-settings-contract.ts'
 
  type SearchFolder = Readonly<{
   excludeHiddenFiles?: boolean
@@ -80,13 +80,16 @@ export function LauncherFileSearchSettings({ busy, save, snapshot }: FileSearchS
   const removeFolder = (id: string): void => { persistFolders(foldersRef.current.filter(folder => folder.id !== id)) }
   const maxResults = stored(snapshot, 'extension[FileSearch].maxSearchResultCount', 20)
   const everythingPath = stored(snapshot, 'extension[FileSearch].everythingCliFilePath', '')
+  const everythingConfigured = typeof everythingPath === 'string'
+    && everythingPath.length > 0
+    && isAllowedLauncherEverythingCliPath(everythingPath)
   const userAgent = typeof navigator === 'undefined' ? '' : navigator.userAgent
   const isLinux = /Linux/u.test(userAgent) && !/Android/u.test(userAgent)
   const isWindows = /Windows/u.test(userAgent)
   return <section className="space-y-3" data-testid="tocklauncher-file-search-settings">
     <div><h2 className="text-base font-semibold text-foreground">File Search</h2><p className="mt-1 text-xs text-muted-foreground">Search indexed files through bounded native adapters, or configure home-contained Simple File Search roots. Paths are validated by Electron main.</p></div>
     {isLinux ? <p className="rounded-md border border-border/60 p-2 text-xs text-muted-foreground" role="status">Indexed File Search is unsupported on Linux. Simple File Search remains available for configured home-contained roots.</p> : null}
-    {isWindows && everythingPath === '' ? <p className="rounded-md border border-border/60 p-2 text-xs text-muted-foreground" role="status">Indexed File Search requires a configured Everything CLI executable on Windows. Simple File Search remains available.</p> : null}
+    {isWindows && !everythingConfigured ? <p className="rounded-md border border-border/60 p-2 text-xs text-muted-foreground" role="status">Indexed File Search requires a configured Everything CLI executable on Windows. Simple File Search remains available.</p> : null}
     <Field label="Maximum File Search Results"><Input aria-label="Maximum File Search Results" className="w-24" type="number" min="1" max="100" disabled={busy} defaultValue={maxResults} onBlur={event => { const value = Math.min(100, Math.max(1, Number(event.target.value) || 20)); void save('extension[FileSearch].maxSearchResultCount', value) }} /></Field>
     <Field label="Windows Everything CLI Path"><Input aria-label="Windows Everything CLI Path" className="w-72" maxLength={1024} disabled={busy} defaultValue={everythingPath} onBlur={event => { void save('extension[FileSearch].everythingCliFilePath', event.target.value) }} /></Field>
     <div className="rounded-md border border-border/60 p-3">

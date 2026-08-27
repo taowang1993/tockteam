@@ -95,6 +95,7 @@ test('file providers require identity and revoke replaced path actions', async (
     queryFileSearch: async () => [{ path: resultPath, type: 'file', identity: { dev: '1', ino: resultPath.endsWith('one.txt') ? '1' : '2' } }],
     scanSimpleFolder: async () => [
       { path: '/home/max/missing.txt', type: 'file', identity: { dev: '', ino: '' } },
+      { path: '/home/max/malformed.txt', type: 'file', identity: { dev: 'not-a-device', ino: '3' } },
       { path: '/home/max/valid.txt', type: 'file', identity: { dev: '1', ino: '3' } },
     ],
     validatePath: async () => true,
@@ -134,7 +135,7 @@ test('in-flight file actions are aborted and rechecked when query state changes'
   let releaseValidation: (() => void) | undefined
   let opened = 0
   const scanners: LauncherFileSearchScanners = {
-    queryFileSearch: async ({ searchTerm }) => [{ path: `/home/max/${searchTerm}.txt`, type: 'file', identity: { dev: '1', ino: searchTerm } }],
+    queryFileSearch: async ({ searchTerm }) => [{ path: `/home/max/${searchTerm}.txt`, type: 'file', identity: { dev: '1', ino: searchTerm === 'first' ? '5' : '6' } }],
     scanSimpleFolder: async () => [],
     validatePath: async ({ signal }) => {
       validationSignal = signal

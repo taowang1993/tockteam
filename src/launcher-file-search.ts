@@ -256,7 +256,8 @@ export function createLauncherFileSearchExtensions(options: FileSearchOptions): 
   ): LauncherInternalResultItem | undefined => {
     if (!bounded(entry.path) || !isWithinHome(options.platform, options.homePath, entry.path, true)
       || (entry.type !== 'file' && entry.type !== 'folder')
-      || !bounded(entry.identity?.dev, 128) || !bounded(entry.identity?.ino, 128)) return undefined
+      || !bounded(entry.identity?.dev, 128) || !bounded(entry.identity?.ino, 128)
+      || !/^[0-9]+$/u.test(entry.identity.dev) || !/^[0-9]+$/u.test(entry.identity.ino)) return undefined
     const api = pathApi(options.platform)
     const target = api.normalize(entry.path)
     const name = api.basename(target)

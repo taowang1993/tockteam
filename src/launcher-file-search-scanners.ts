@@ -94,7 +94,7 @@ function pathApi(platform: LauncherFileSearchPlatform): typeof path.posix | type
 
 function isWithinHome(platform: LauncherFileSearchPlatform, homePath: string, candidate: string, strict = false): boolean {
   const api = pathApi(platform)
-  if (!api.isAbsolute(homePath) || !api.isAbsolute(candidate)) return false
+  if (!boundedText(homePath, 4_096) || !boundedText(candidate) || !api.isAbsolute(homePath) || !api.isAbsolute(candidate)) return false
   const relative = api.relative(api.resolve(homePath), api.resolve(candidate))
   return (!strict && relative === '') || (relative !== '' && !relative.startsWith('..') && !api.isAbsolute(relative))
 }

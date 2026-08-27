@@ -131,7 +131,8 @@ function LauncherSettingsPage({ close: _close }: SettingsSectionProps): ReactNod
   const save = useCallback((key: string, value: unknown): Promise<boolean> => {
     if (!settings) return Promise.resolve(false)
     setStatus('Saving…')
-    if (!LAUNCHER_SENSITIVE_SETTING_KEYS.includes(key as never)) {
+    const isSimpleFileSearchFolders = key === 'extension[SimpleFileSearch].folders'
+    if (!LAUNCHER_SENSITIVE_SETTING_KEYS.includes(key as never) && !isSimpleFileSearchFolders) {
       setSnapshot(previous => previous === null ? previous : Object.freeze({
         ...previous,
         values: Object.freeze({ ...previous.values, [key]: value }),
@@ -146,7 +147,7 @@ function LauncherSettingsPage({ close: _close }: SettingsSectionProps): ReactNod
       setStatus('Saved.')
       return true
     }, () => {
-      void reload().catch(() => {})
+      if (!isSimpleFileSearchFolders) void reload().catch(() => {})
       setStatus('TockLauncher settings could not be saved.')
       return false
     })
