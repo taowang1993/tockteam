@@ -88,6 +88,7 @@ function LauncherSettingsPage({ close: _close }: SettingsSectionProps): ReactNod
   const bridge = window.dshDesktop
   const settings = bridge?.launcher.settings
   const [snapshot, setSnapshot] = useState<LauncherSettingsSnapshot | null>(null)
+  const [snapshotRevision, setSnapshotRevision] = useState(0)
   const [status, setStatus] = useState('Loading TockLauncher settings…')
   const [busy, setBusy] = useState(false)
   const [resetPending, setResetPending] = useState(false)
@@ -100,6 +101,7 @@ function LauncherSettingsPage({ close: _close }: SettingsSectionProps): ReactNod
     if (!settings) return null
     const next = await settings.getSnapshot()
     setSnapshot(next)
+    setSnapshotRevision(revision => revision + 1)
     return next
   }, [settings])
 
@@ -234,7 +236,7 @@ function LauncherSettingsPage({ close: _close }: SettingsSectionProps): ReactNod
       </SectionCard>
 
       <SectionCard icon={<MonitorCog aria-hidden="true" className="size-4" />} title="Local Transformations" description="Configure the seven local transformation providers without exposing renderer authority.">
-        <LauncherLocalSettings busy={busy} save={save} snapshot={snapshot} state={state} />
+        <LauncherLocalSettings key={snapshotRevision} busy={busy} save={save} snapshot={snapshot} />
       </SectionCard>
 
       <SectionCard icon={<Database aria-hidden="true" className="size-4" />} title="Storage and Privacy" description="Managed files and external grants are owned by Electron main; no filesystem path crosses this page.">

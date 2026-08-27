@@ -21,4 +21,8 @@ test('local settings projection is exact, frozen, bounded, and rejects hidden au
   assert.throws(() => parseLauncherLocalExtensionSettings({ ...valid, secret: 'x' } as never))
   assert.throws(() => parseLauncherLocalExtensionSettings({ ...valid, UuidGenerator: { ...valid.UuidGenerator, path: '/tmp' } } as never))
   assert.throws(() => parseLauncherLocalExtensionSettings({ ...valid, Calculator: { ...valid.Calculator, precision: 65 } } as never))
+  assert.equal(parseLauncherLocalExtensionSettings({
+    ...valid,
+    PasswordGenerator: { ...valid.PasswordGenerator, includeSymbols: false, symbols: '' },
+  }).PasswordGenerator.symbols, '')
 })

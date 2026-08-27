@@ -35,6 +35,12 @@ type LocalExtensionOptions = Readonly<{
 const emptyInstantResult = (): InstantResult => Object.freeze({ after: Object.freeze([]), before: Object.freeze([]) })
 const localExtension = (value: string): value is LauncherLocalExtensionId => (LAUNCHER_LOCAL_EXTENSION_IDS as readonly string[]).includes(value)
 
+export function resolveLauncherEnabledExtensionIds(value: unknown, fallback: readonly string[]): readonly string[] {
+  return isLauncherRendererSettingValue('extensions.enabledExtensionIds', value)
+    ? Object.freeze([...(value as string[])])
+    : Object.freeze([...fallback])
+}
+
 function boundedOutput(value: unknown): value is string {
   return typeof value === 'string' && value.length > 0 && value.length <= MAX_OUTPUT_LENGTH
 }
@@ -79,8 +85,48 @@ function safeSeparator(value: string, fallback: string): string {
   return value.length === 1 && value !== '\\' ? value : fallback
 }
 
+const MAX_CALCULATOR_COLLECTION_ITEMS = 10_000
+const CALCULATOR_COLLECTION_CALL = /\b(ones|zeros|identity|random|randomInt|range)\s*\(([^()]*)\)/giu
+const CALCULATOR_UNBOUNDED_CALL = /\b(?:ones|zeros|identity|random|randomInt|range|reshape|resize|matrixFromFunction)\s*\(/giu
+
+function numericArguments(value: string): number[] | undefined {
+  const normalized = value.trim().replace(/^\[|\]$/gu, '')
+  if (normalized.length === 0) return undefined
+  const values = normalized.split(',').map(part => Number(part.trim()))
+  return values.every(part => Number.isFinite(part) && part >= 0) ? values : undefined
+}
+
+export function isLauncherCalculatorExpressionBounded(expression: string): boolean {
+  if (/\b(?:reshape|resize|matrixFromFunction)\s*\(/iu.test(expression)) return false
+  const calls = [...expression.matchAll(CALCULATOR_COLLECTION_CALL)]
+  const callCount = [...expression.matchAll(CALCULATOR_UNBOUNDED_CALL)].length
+  if (calls.length !== callCount) return false
+  for (const call of calls) {
+    const name = call[1]!
+    const values = numericArguments(call[2]!)
+    if (values === undefined) return false
+    if (name === 'range') {
+      const [start = 0, end, step = 1] = values
+      if (end === undefined || step === 0 || Math.ceil(Math.abs(end - start) / Math.abs(step)) > MAX_CALCULATOR_COLLECTION_ITEMS) return false
+    } else {
+      const dimensions = name === 'identity' && values.length === 1 ? [values[0]!, values[0]!] : values
+      if (dimensions.reduce((size, dimension) => size * dimension, 1) > MAX_CALCULATOR_COLLECTION_ITEMS) return false
+    }
+  }
+  const rangeExpressions = [...expression.matchAll(/(-?\d+(?:\.\d+)?)\s*:\s*(?:(-?\d+(?:\.\d+)?)\s*:\s*)?(-?\d+(?:\.\d+)?)(?=\s*(?:[\],)]|$))/gu)]
+  const colonCount = [...expression].filter(character => character === ':').length
+  if (rangeExpressions.reduce((count, range) => count + (range[2] === undefined ? 1 : 2), 0) !== colonCount) return false
+  for (const range of rangeExpressions) {
+    const start = Number(range[1]); const step = range[2] === undefined ? 1 : Number(range[2]); const end = Number(range[3])
+    if (step === 0 || Math.ceil(Math.abs(end - start) / Math.abs(step)) > MAX_CALCULATOR_COLLECTION_ITEMS) return false
+  }
+  const factorials = [...expression.matchAll(/(\d+(?:\.\d+)?)!/gu)]
+  return factorials.length === [...expression].filter(character => character === '!').length
+    && !factorials.some(match => Number(match[1]) > 10_000)
+}
+
 function calculate(expression: string, precision: number, decimalSeparator: string, argumentSeparator: string): string | undefined {
-  if (expression.length === 0 || expression === 'version' || expression === 'i') return undefined
+  if (expression.length === 0 || expression === 'version' || expression === 'i' || !isLauncherCalculatorExpressionBounded(expression)) return undefined
   const decimal = safeSeparator(decimalSeparator, '.')
   const argument = safeSeparator(argumentSeparator, ',')
   const normalized = expression.split(decimal).join('.').split(argument).join(',')
@@ -107,32 +153,33 @@ function password(settings: Readonly<{
   const letters = `${settings.includeUppercaseCharacters ? 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' : ''}${settings.includeLowercaseCharacters ? 'abcdefghijklmnopqrstuvwxyz' : ''}`
   const allChars = `${letters}${settings.includeNumbers ? '0123456789' : ''}${settings.includeSymbols ? settings.symbols : ''}`
   const filter = settings.noSimilarCharacters ? /[01ilo|]/giu : /$^/u
-  const complete = allChars.replace(filter, '')
-  const letterChars = letters.replace(filter, '')
+  const complete = [...allChars.replace(filter, '')]
+  const letterChars = [...letters.replace(filter, '')]
   if (complete.length === 0 || (settings.beginWithALetter && letterChars.length === 0)) throw new Error('Password settings require an available character set')
   if (settings.noDuplicateCharacters && new Set(complete).size < settings.passwordLength) throw new Error('Password length exceeds the unique character set')
   if (settings.noSequentialCharacters && complete.length === 1 && settings.passwordLength > 1) throw new Error('Password settings cannot avoid sequential characters')
   for (let attempt = 0; attempt < 100; attempt += 1) {
     let available = complete
     let lettersAvailable = letterChars
-    let output = ''
+    const output: string[] = []
     let previous = ''
     let failed = false
     for (let index = 0; index < settings.passwordLength; index += 1) {
       const source = index === 0 && settings.beginWithALetter ? lettersAvailable : available
-      const candidates = [...source].filter(character => !settings.noSequentialCharacters || previous.length === 0 || Math.abs(previous.charCodeAt(0) - character.charCodeAt(0)) !== 1)
+      const previousCodePoint = previous.codePointAt(0)
+      const candidates = source.filter(character => !settings.noSequentialCharacters || previousCodePoint === undefined || Math.abs(previousCodePoint - character.codePointAt(0)!) !== 1)
       if (candidates.length === 0) { failed = true; break }
       const random = new Uint32Array(1)
       globalThis.crypto.getRandomValues(random)
       const character = candidates[random[0]! % candidates.length]!
-      output += character
+      output.push(character)
       previous = character
       if (settings.noDuplicateCharacters) {
-        available = [...available].filter(candidate => candidate !== character).join('')
-        lettersAvailable = [...lettersAvailable].filter(candidate => candidate !== character).join('')
+        available = available.filter(candidate => candidate !== character)
+        lettersAvailable = lettersAvailable.filter(candidate => candidate !== character)
       }
     }
-    if (!failed && output.length === settings.passwordLength) return output
+    if (!failed && output.length === settings.passwordLength) return output.join('')
   }
   throw new Error('Password generator did not produce the configured length')
 }
@@ -204,63 +251,6 @@ function quickFormat(text: string, mode: 'auto' | 'json' | 'xml' | 'stack', deep
   return formatStack(trimmed)
 }
 
-type RowlandToken = Readonly<{ type: 'literal'; value: string } | { type: 'column'; index: number } | { type: 'function'; name: string; params: RowlandToken[][] }>
-
-function parsePattern(input: string): RowlandToken[] {
-  let position = 0
-  const error = (message: string): never => { throw new Error(`Pattern parse error at position ${position}: ${message}`) }
-  const parseDollar = (): RowlandToken => {
-    position += 1
-    if (/\d/u.test(input[position] ?? '')) { let digits = ''; while (/\d/u.test(input[position] ?? '')) digits += input[position++]!; return { type: 'column', index: Number.parseInt(digits, 10) } }
-    let name = ''; while (/[A-Za-z]/u.test(input[position] ?? '')) name += input[position++]!
-    if (!name && input[position] === '(') error("Invalid function syntax: expected function name before '('")
-    if (input[position] !== '(') return { type: 'literal', value: `$${name}` }
-    position += 1; const params: RowlandToken[][] = []
-    while (position < input.length && input[position] !== ')') {
-      const nodes: RowlandToken[] = []
-      while (position < input.length && input[position] !== ',' && input[position] !== ')') {
-        if (input[position] === '$') nodes.push(parseDollar())
-        else { let value = ''; while (position < input.length && input[position] !== '$' && input[position] !== ',' && input[position] !== ')') { if (input[position] === '(') error("Unmatched '(': opening bracket without corresponding function"); value += input[position++]! } nodes.push({ type: 'literal', value }) }
-      }
-      if (input[position] === ',' && input[position + 1] === ')') error("Empty parameter: trailing comma before ')'")
-      params.push(nodes)
-      if (input[position] === ',') position += 1
-    }
-    if (position >= input.length) error(`Unclosed function bracket. Expected ')' for function '${name}'`)
-    position += 1; return { type: 'function', name, params }
-  }
-  const nodes: RowlandToken[] = []
-  while (position < input.length) {
-    let literal = ''
-    while (position < input.length && input[position] !== '$') literal += input[position++]!
-    while (position < input.length && input[position] === '$' && input[position + 1] === '$') { literal += '$'; position += 2 }
-    if (literal) nodes.push({ type: 'literal', value: literal })
-    if (position < input.length && input[position] === '$') nodes.push(parseDollar())
-  }
-  return nodes
-}
-
-function rowlandProcess(input: string, pattern: string, rowSeparator: string, columnSeparator: string): string {
-  const unescape = (value: string) => value.replace(/\\n/g, '\n').replace(/\\t/g, '\t').replace(/\\r/g, '\r').replace(/\\\\/g, '\\')
-  try {
-    const rows = unescape(rowSeparator) === '' ? [input] : input.split(unescape(rowSeparator))
-    const rowSep = unescape(rowSeparator); const colSep = unescape(columnSeparator); const tokens = parsePattern(pattern)
-    const evaluate = (items: RowlandToken[], columns: string[]): string => items.map(token => {
-      if (token.type === 'literal') return token.value
-      if (token.type === 'column') return columns[token.index] ?? ''
-      const params = token.params.map(item => evaluate(item, columns)); const name = token.name.toUpperCase()
-      if (name === 'GETDATE') {
-        const date = new Date(); const format = params[0] || 'yyyy-MM-ddTHH:mm:ss.000Z'
-        return format.replace(/yyyy/g, String(date.getFullYear())).replace(/MM/g, String(date.getMonth() + 1).padStart(2, '0')).replace(/dd/g, String(date.getDate()).padStart(2, '0')).replace(/HH/g, String(date.getHours()).padStart(2, '0')).replace(/mm/g, String(date.getMinutes()).padStart(2, '0')).replace(/ss/g, String(date.getSeconds()).padStart(2, '0')).replace(/SSS/g, String(date.getMilliseconds()).padStart(3, '0'))
-      }
-      if (name === 'SUBSTRING') { if (params.length < 3) throw new Error('SUBSTRING function requires at least 3 parameters: string, start, length'); if (Number.isNaN(Number(params[1])) || Number.isNaN(Number(params[2]))) throw new Error('Start and length parameters must be valid numbers'); return params[0]!.substring(Number(params[1]), Number(params[2])) }
-      if (name === 'UUID') { const format = (params[0] || 'D').trim().toUpperCase(); const version = (params[1] || 'v4').toLowerCase(); const generated = version === 'v6' ? uuidv6() : version === 'v7' ? uuidv7() : uuidv4(); const base = generated.replace(/-/g, ''); const dashed = `${base.slice(0, 8)}-${base.slice(8, 12)}-${base.slice(12, 16)}-${base.slice(16, 20)}-${base.slice(20)}`; if (format === 'N') return base; if (format === 'D') return dashed; if (format === 'B') return `{${dashed}}`; if (format === 'P') return `(${dashed})`; if (format.length !== 1) throw new Error(`Invalid UUID format: '${params[0]}'. Format must be a single character (N, D, B or P).`); throw new Error(`Invalid UUID format character: '${format}'. Valid formats are: N, D, B, or P.`) }
-      throw new Error(`Unknown function: ${token.name}`)
-    }).join('')
-    return rows.map(row => evaluate(tokens, colSep === '' ? [row] : row.split(colSep))).join(rowSep)
-  } catch (error) { return String(error) }
-}
-
 function uuidFormat(uuid: string, format: Readonly<{ braces: boolean; hyphens: boolean; quotes: boolean; uppercase: boolean }>, strict: boolean): string {
   if (strict ? !uuidValidate(uuid) : !/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/iu.test(uuid)) throw new Error('Invalid UUID')
   let value = format.uppercase ? uuid.toUpperCase() : uuid
@@ -325,4 +315,3 @@ export function createLauncherLocalExtensions(options: LocalExtensionOptions): R
 }
 
 export { LAUNCHER_LOCAL_EXTENSION_IDS as LAUNCHER_LOCAL_IDS, LAUNCHER_LOCAL_EXTENSION_IMAGE_KEYS as LOCAL_IMAGE_KEYS }
-export { rowlandProcess }

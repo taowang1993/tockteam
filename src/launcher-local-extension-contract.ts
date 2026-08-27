@@ -24,6 +24,7 @@ function exact(value: Record<string, unknown>, keys: readonly string[]): boolean
   return actual.length === keys.length && keys.every(key => actual.includes(key))
 }
 function text(value: unknown, max: number): value is string { return typeof value === 'string' && value.length > 0 && value.length <= max && !/[\0\r\n]/u.test(value) }
+function boundedText(value: unknown, max: number): value is string { return typeof value === 'string' && value.length <= max && !/[\0\r\n]/u.test(value) }
 function number(value: unknown, min: number, max: number): value is number { return typeof value === 'number' && Number.isSafeInteger(value) && value >= min && value <= max }
 function bool(value: unknown): value is boolean { return typeof value === 'boolean' }
 function parseFormat(value: unknown): LauncherUuidFormat {
@@ -50,7 +51,7 @@ export function parseLauncherLocalExtensionSettings(value: unknown): LauncherLoc
   if (!record(color) || !exact(color, ['formats']) || !Array.isArray(color.formats) || color.formats.length > 3 || new Set(color.formats).size !== color.formats.length || color.formats.some(format => typeof format !== 'string' || !colorFormats.has(format))) throw new Error('Invalid color settings')
   const password = value.PasswordGenerator
   const passwordKeys = ['beginWithALetter', 'command', 'includeLowercaseCharacters', 'includeNumbers', 'includeSymbols', 'includeUppercaseCharacters', 'noDuplicateCharacters', 'noSequentialCharacters', 'noSimilarCharacters', 'passwordLength', 'quantity', 'symbols']
-  if (!record(password) || !exact(password, passwordKeys) || !text(password.command, 64) || !text(password.symbols, 256) || !number(password.quantity, 1, 50) || !number(password.passwordLength, 1, 128) || passwordKeys.filter(key => key !== 'command' && key !== 'passwordLength' && key !== 'quantity' && key !== 'symbols').some(key => !bool(password[key]))) throw new Error('Invalid password settings')
+  if (!record(password) || !exact(password, passwordKeys) || !text(password.command, 64) || !boundedText(password.symbols, 256) || !number(password.quantity, 1, 50) || !number(password.passwordLength, 1, 128) || passwordKeys.filter(key => key !== 'command' && key !== 'passwordLength' && key !== 'quantity' && key !== 'symbols').some(key => !bool(password[key]))) throw new Error('Invalid password settings')
   const quick = value.QuickFormatter
   const quickKeys = ['command', 'enableDeepFormatting', 'enableJson', 'enableStackTrace', 'enableXml']
   if (!record(quick) || !exact(quick, quickKeys) || !text(quick.command, 64) || quickKeys.slice(1).some(key => !bool(quick[key]))) throw new Error('Invalid formatter settings')

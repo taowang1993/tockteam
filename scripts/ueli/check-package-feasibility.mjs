@@ -33,8 +33,7 @@ const EXPECTED_LAUNCHER_DEPENDENCIES = Object.freeze({
 const EXPECTED_LAUNCHER_DEPENDENCY_LIST = Object.freeze(['color@4.2.3', 'fast-xml-parser@5.7.0', 'mathjs@15.2.0', 'uuid@14.0.0', 'fuse.js@7.1.0', 'fuzzysort@3.1.0', 'electron-updater@6.8.3'])
 const EXPECTED_LAUNCHER_RUNTIME_CLOSURE = Object.freeze([
   '@babel/runtime@7.29.7',
-  '@nodable/entities@2.2.0',
-  'anynum@1.0.1',
+  '@nodable/entities@2.1.1',
   'argparse@2.0.1',
   'builder-util-runtime@9.5.1',
   'color-convert@2.0.1',
@@ -46,7 +45,7 @@ const EXPECTED_LAUNCHER_RUNTIME_CLOSURE = Object.freeze([
   'decimal.js@10.6.0',
   'electron-updater@6.8.3',
   'escape-latex@1.2.0',
-  'fast-xml-builder@1.3.1',
+  'fast-xml-builder@1.2.0',
   'fast-xml-parser@5.7.0',
   'fraction.js@5.3.4',
   'fs-extra@10.1.0',
@@ -62,18 +61,18 @@ const EXPECTED_LAUNCHER_RUNTIME_CLOSURE = Object.freeze([
   'lodash.isequal@4.5.0',
   'mathjs@15.2.0',
   'ms@2.1.3',
-  'path-expression-matcher@1.6.2',
+  'path-expression-matcher@1.5.0',
   'sax@1.6.1',
   'seedrandom@3.0.5',
   'semver@7.7.4',
   'simple-swizzle@0.2.4',
-  'strnum@2.4.2',
+  'strnum@2.2.3',
   'tiny-emitter@2.1.0',
   'tiny-typed-emitter@2.1.0',
   'typed-function@4.2.2',
   'universalify@2.0.1',
   'uuid@14.0.0',
-  'xml-naming@0.3.0',
+  'xml-naming@0.1.0',
 ])
 const EXPECTED_LAUNCHER_LOCKFILE = Object.freeze({
   path: 'pnpm-lock.yaml',
@@ -87,6 +86,11 @@ const EXPECTED_LAUNCHER_LOCKFILE = Object.freeze({
     'electron-updater': Object.freeze({ specifier: '6.8.3', version: '6.8.3(supports-color@7.2.0)' }),
   }),
   packages: Object.freeze({
+    '@nodable/entities@2.1.1': Object.freeze({ integrity: 'sha512-Pig3HxDIoMgjdEH8OCf/dkcTmLFjJRjWuq8jSnklu284/TKOPibSRERmOykiwmyXTtv61mP+44f3GMx0tLAyjg==' }),
+    'fast-xml-builder@1.2.0': Object.freeze({ integrity: 'sha512-00aAWieqff+ZJhsXA4g1g7M8k+7AYoMUUHF+/zFb5U6Uv/P0Vl4QZo84/IcufzYalLuEj9928bXN9PbbFzMF0Q==' }),
+    'path-expression-matcher@1.5.0': Object.freeze({ integrity: 'sha512-cbrerZV+6rvdQrrD+iGMcZFEiiSrbv9Tfdkvnusy6y0x0GKBXREFg/Y65GhIfm0tnLntThhzCnfKwp1WRjeCyQ==' }),
+    'strnum@2.2.3': Object.freeze({ integrity: 'sha512-oKx6RUCuHfT3oyVjtnrmn19H1SiCqgJSg+54XqURKp5aCMbrXrhLjRN9TjuwMjiYstZ0MzDrHqkGZ5dFTKd+zg==' }),
+    'xml-naming@0.1.0': Object.freeze({ integrity: 'sha512-k8KO9hrMyNk6tUWqUfkTEZbezRRpONVOzUTnc97VnCvyj6Tf9lyUR9EDAIeiVLv56jsMcoXEwjW8Kv5yPY52lw==' }),
     'color@4.2.3': Object.freeze({ integrity: 'sha512-1rXeuUUiGGrykh+CeBdu5Ie7OJwinCgQY0bc7GCRxy5xVHy+moaqkpL/jqQq0MtQOeYcrqEz4abc5f0KtU7W4A==' }),
     'fast-xml-parser@5.7.0': Object.freeze({ integrity: 'sha512-MTcrUoRQ1GSQ9iG3QJzBGquYYYeA7piZaJoIWbPFGbRn6Jj6z7xgoAyi4DrZX4y2ZIQQBF59gc/zmvvejjgoFQ==' }),
     'mathjs@15.2.0': Object.freeze({ integrity: 'sha512-UAQzSVob9rNLdGpqcFMYmSu9dkuLYy7Lr2hBEQS5SHQdknA9VppJz3cy2KkpMzTODunad6V6cNv+5kOLsePLow==' }),
@@ -96,8 +100,13 @@ const EXPECTED_LAUNCHER_LOCKFILE = Object.freeze({
     'electron-updater@6.8.3': Object.freeze({ integrity: 'sha512-Z6sgw3jgbikWKXei1ENdqFOxBP0WlXg3TtKfz0rgw2vIZFJUyI4pD7ZN7jrkm7EoMK+tcm/qTnPUdqfZukBlBQ==' }),
   }),
   snapshots: Object.freeze({
+    '@nodable/entities@2.1.1': Object.freeze({}),
+    'fast-xml-builder@1.2.0': Object.freeze({ dependencies: Object.freeze({ 'path-expression-matcher': '1.5.0', 'xml-naming': '0.1.0' }) }),
+    'path-expression-matcher@1.5.0': Object.freeze({}),
+    'strnum@2.2.3': Object.freeze({}),
+    'xml-naming@0.1.0': Object.freeze({}),
     'color@4.2.3': Object.freeze({ dependencies: Object.freeze({ 'color-convert': '2.0.1', 'color-string': '1.9.1' }) }),
-    'fast-xml-parser@5.7.0': Object.freeze({ dependencies: Object.freeze({ '@nodable/entities': '2.2.0', 'fast-xml-builder': '1.3.1', 'path-expression-matcher': '1.6.2', strnum: '2.4.2' }) }),
+    'fast-xml-parser@5.7.0': Object.freeze({ dependencies: Object.freeze({ '@nodable/entities': '2.1.1', 'fast-xml-builder': '1.2.0', 'path-expression-matcher': '1.5.0', strnum: '2.2.3' }) }),
     'mathjs@15.2.0': Object.freeze({ dependencies: Object.freeze({ '@babel/runtime': '7.29.7', 'complex.js': '2.4.3', 'decimal.js': '10.6.0', 'escape-latex': '1.2.0', 'fraction.js': '5.3.4', 'javascript-natural-sort': '0.7.1', seedrandom: '3.0.5', 'tiny-emitter': '2.1.0', 'typed-function': '4.2.2' }) }),
     'uuid@14.0.0': Object.freeze({}),
     'fuse.js@7.1.0': Object.freeze({}),
@@ -221,7 +230,7 @@ function validateLauncherLockfile(lockfile, lockfileText, failures) {
     const integrity = escapeRegExp(values.integrity)
     addFailure(
       failures,
-      new RegExp(`^  ${packageKey}:\n    resolution: \\{integrity: ${integrity}\\}$`, 'mu').test(packages),
+      new RegExp(`^  '?${packageKey}'?:\n    resolution: \\{integrity: ${integrity}\\}$`, 'mu').test(packages),
       `launcher lockfile package resolution differs for ${name}`,
     )
   }
@@ -230,12 +239,12 @@ function validateLauncherLockfile(lockfile, lockfileText, failures) {
     if (Object.keys(expected).length === 0) {
       addFailure(
         failures,
-        new RegExp(`^  ${escapeRegExp(name)}: \\{\\}$`, 'mu').test(snapshots),
+        new RegExp(`^  '?${escapeRegExp(name)}'?: \\{\\}$`, 'mu').test(snapshots),
         `launcher lockfile snapshot is not empty for ${name}`,
       )
       continue
     }
-    const block = `${snapshots}\n  __launcher_lockfile_end__: {}`.match(new RegExp(`^  ${escapeRegExp(name)}:\\n([\\s\\S]*?)(?=^  \\S)`, 'mu'))?.[1] ?? ''
+    const block = `${snapshots}\n  __launcher_lockfile_end__: {}`.match(new RegExp(`^  '?${escapeRegExp(name)}'?:\\n([\\s\\S]*?)(?=^  \\S)`, 'mu'))?.[1] ?? ''
     for (const [dependency, version] of Object.entries(expected.dependencies ?? {})) {
       addFailure(
         failures,

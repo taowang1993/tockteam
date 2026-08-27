@@ -93,7 +93,7 @@ import { resolveLauncherSettingDefault } from './launcher-settings-defaults.ts'
 import { createLauncherSettingsOperations } from './launcher-settings-operations.ts'
 import { assertNoLauncherIpcArguments } from './launcher-window-contract.ts'
 import { createLauncherCoreSearch } from './launcher-core-search.ts'
-import { createLauncherLocalExtensions } from './launcher-local-extensions.ts'
+import { createLauncherLocalExtensions, resolveLauncherEnabledExtensionIds } from './launcher-local-extensions.ts'
 import { LAUNCHER_LOCAL_EXTENSION_DEFAULTS, LAUNCHER_LOCAL_EXTENSION_IDS } from './launcher-local-extension-config.ts'
 import type { LauncherLocalExtensionSettings } from './launcher-local-extension-contract.ts'
 import { isLauncherRendererSettingValue } from './launcher-settings-contract.ts'
@@ -957,8 +957,8 @@ function launcherEnabledLocalExtensionIds(): readonly string[] {
   const fallback: readonly string[] = Array.isArray(resolved)
     ? resolved.filter((item): item is string => typeof item === 'string')
     : [...LAUNCHER_LOCAL_EXTENSION_IDS]
-  const value = repository.getSetting('extensions.enabledExtensionIds', fallback)
-  return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : fallback
+  const value = repository.getSetting<unknown>('extensions.enabledExtensionIds', fallback)
+  return resolveLauncherEnabledExtensionIds(value, fallback)
 }
 
 function launcherSurfaceSettings(): import('./launcher-contract.ts').LauncherSurfaceSettings {

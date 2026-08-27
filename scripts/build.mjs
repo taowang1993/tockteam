@@ -1,9 +1,14 @@
 import { execFileSync } from 'node:child_process'
+import { createHash } from 'node:crypto'
 import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { build } from 'esbuild'
+import {
+  LAUNCHER_LOCAL_EXTENSION_ASSET_HASHES,
+  LAUNCHER_LOCAL_EXTENSION_IMAGE_KEYS,
+} from '../src/launcher-local-extension-assets.ts'
 import { resolveProductVersion } from '../src/version.ts'
 import { adaptBetterSidebarHost } from './better-sidebar-upstream-adapter.mjs'
 import { buildTailwindCss } from './tailwind.mjs'
@@ -236,20 +241,16 @@ for (const plugin of pluginPackages) {
 await Promise.all(builds)
 writeFileSync(join(dist, 'launcher.css'), launcherTailwindCss)
 copyFileSync(join(root, 'src', 'launcher.html'), join(dist, 'launcher.html'))
-const launcherAssets = [
-  ['Base64Conversion', 'base64-conversion.png'],
-  ['Calculator', 'calculator.png'],
-  ['ColorConverter', 'color-converter.png'],
-  ['PasswordGenerator', 'password-generator.png'],
-  ['QuickFormatter', 'quick-formatter.png'],
-  ['RowlandTextEditor', 'rowland-texteditor.png'],
-  ['UuidGenerator', 'uuid-generator.png'],
-]
 mkdirSync(join(dist, 'launcher-assets'), { recursive: true })
-for (const [extensionId, asset] of launcherAssets) copyFileSync(
-  join(root, 'vendor', 'ueli', 'assets', 'Extensions', extensionId, asset),
-  join(dist, 'launcher-assets', asset),
-)
+for (const [extensionId, imageKey] of Object.entries(LAUNCHER_LOCAL_EXTENSION_IMAGE_KEYS)) {
+  const asset = `${imageKey}.png`
+  const source = join(root, 'vendor', 'ueli', 'assets', 'Extensions', extensionId, asset)
+  const digest = createHash('sha256').update(readFileSync(source)).digest('hex')
+  if (digest !== LAUNCHER_LOCAL_EXTENSION_ASSET_HASHES[extensionId]) {
+    throw new Error(`TockLauncher local asset drifted: ${extensionId}`)
+  }
+  copyFileSync(source, join(dist, 'launcher-assets', asset))
+}
 
 const declarationRoot = mkdtempSync(join(tmpdir(), 'tockteam-host-declarations-'))
 try {

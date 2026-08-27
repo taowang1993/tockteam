@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict'
+import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 import { TOCKTEAM_SKINS } from '../plugins/skins/src/skins.ts'
 import { SKIN_IDS } from '../plugins/skins/src/skin-ids.ts'
+import { LAUNCHER_LOCAL_EXTENSION_ASSET_HASHES, LAUNCHER_LOCAL_EXTENSION_IMAGE_KEYS } from '../src/launcher-local-extension-assets.ts'
 
 const html = readFileSync(new URL('../src/launcher.html', import.meta.url), 'utf8')
 const build = readFileSync(new URL('../scripts/build.mjs', import.meta.url), 'utf8')
@@ -60,13 +62,14 @@ test('local settings controls cover every provider and keep UUID formats bounded
 })
 
 test('local tools stay finite and browser-safe', () => {
-  assert.match(localTools, /Base64 operation|Rowland input|Generated UUIDs/u)
+  assert.match(localTools, /Base64 Operation|Rowland Input|Generated UUIDs/u)
   assert.match(localTools, /maxLength/u)
   assert.doesNotMatch(localTools, /node:|ipcRenderer|dshDesktop|fetch\s*\(|localStorage|sessionStorage/u)
 })
 
-test('settings renderer never inserts sensitive values into snapshot state', () => {
+test('settings renderer never inserts sensitive values and remounts local controls after reload', () => {
   assert.match(launcherSettings, /!LAUNCHER_SENSITIVE_SETTING_KEYS\.includes\(key as never\)[\s\S]+setSnapshot/u)
+  assert.match(launcherSettings, /setSnapshotRevision\([\s\S]+<LauncherLocalSettings key=\{snapshotRevision\}/u)
 })
 
 test('launcher renderer uses shared color tokens for primary actions and selection', () => {
@@ -105,6 +108,14 @@ test('launcher renderer uses shared types, Lucide icons, visible selection, and 
   assert.match(launcher, /Results Refreshed\. Try Again\./u)
   assert.doesNotMatch(launcher, /event\.metaKey \|\| event\.ctrlKey/u)
   assert.match(launcher, /event\.stopPropagation\(\)/u)
+})
+
+test('local extension assets remain pinned to reviewed provenance hashes', () => {
+  for (const [extensionId, imageKey] of Object.entries(LAUNCHER_LOCAL_EXTENSION_IMAGE_KEYS)) {
+    const bytes = readFileSync(new URL(`../vendor/ueli/assets/Extensions/${extensionId}/${imageKey}.png`, import.meta.url))
+    assert.equal(createHash('sha256').update(bytes).digest('hex'), LAUNCHER_LOCAL_EXTENSION_ASSET_HASHES[extensionId as keyof typeof LAUNCHER_LOCAL_EXTENSION_ASSET_HASHES])
+  }
+  assert.match(build, /LAUNCHER_LOCAL_EXTENSION_ASSET_HASHES/u)
 })
 
 test('launcher build emits dedicated browser and preload outputs', () => {

@@ -521,7 +521,7 @@ try {
     if (output !== undefined) await waitFor(() => launcherConnection.evaluate(`document.querySelector(${JSON.stringify(output.selector)})?.value ?? ''`), value => value === output.value)
     if (check !== undefined) assert.equal(await launcherConnection.evaluate(check), true)
     const closed = await launcherConnection.evaluate(`(() => {
-      const button = document.querySelector('[aria-label=${JSON.stringify(`Close ${label} tool`)}]')
+      const button = document.querySelector('[aria-label=${JSON.stringify(`Close ${label} Tool`)}]')
       if (!(button instanceof HTMLButtonElement)) return false
       button.click()
       return true
@@ -529,11 +529,11 @@ try {
     assert.equal(closed, true)
     await waitFor(() => launcherConnection.evaluate(`document.querySelector('[aria-label=${JSON.stringify(`${label} tool`)}]') === null && document.activeElement?.id === 'launcher-search'`), restored => restored === true)
   }
-  await openLocalTool('Base64 Conversion', 'Base64 Conversion', { selector: '[aria-label="Base64 input"]', value: 'TockTeam' }, { selector: '[aria-label="Base64 output"]', value: 'VG9ja1RlYW0=' })
+  await openLocalTool('Base64 Conversion', 'Base64 Conversion', { selector: '[aria-label="Base64 Input"]', value: 'TockTeam' }, { selector: '[aria-label="Base64 Output"]', value: 'VG9ja1RlYW0=' })
   await openLocalTool('Rowland Text Editor', 'Rowland Text Editor', [
-    { selector: '[aria-label="Rowland input"]', value: 'Hello\tWorld' },
-    { selector: '[aria-label="Rowland pattern"]', value: '$0 $1' },
-  ], { selector: '[aria-label="Rowland output"]', value: 'Hello World' })
+    { selector: '[aria-label="Rowland Input"]', value: 'Hello\tWorld' },
+    { selector: '[aria-label="Rowland Pattern"]', value: '$0 $1' },
+  ], { selector: '[aria-label="Rowland Output"]', value: 'Hello World' })
   await openLocalTool('UUID / GUID Generator', 'UUID / GUID Generator', undefined, undefined, `(() => {
     const output = document.querySelector('[aria-label="Generated UUIDs"]')
     const lines = output instanceof HTMLTextAreaElement ? output.value.split(String.fromCharCode(10)) : []

@@ -1,7 +1,12 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { LAUNCHER_LOCAL_EXTENSION_DEFAULTS, LAUNCHER_LOCAL_EXTENSION_IDS } from '../src/launcher-local-extension-config.ts'
-import { LAUNCHER_LOCAL_ACTION_HANDLERS, createLauncherLocalExtensions } from '../src/launcher-local-extensions.ts'
+import {
+  LAUNCHER_LOCAL_ACTION_HANDLERS,
+  createLauncherLocalExtensions,
+  isLauncherCalculatorExpressionBounded,
+  resolveLauncherEnabledExtensionIds,
+} from '../src/launcher-local-extensions.ts'
 import type { LauncherActionRecord, LauncherInternalAction } from '../src/launcher-actions.ts'
 
 const owner = { role: 'launcher' as const, webContentsId: 1 }
@@ -43,6 +48,102 @@ test('Base64, calculator, colors, password, quick formatter, and UUID search mat
   assert.equal(passwords.every(item => item.name.length === 24), true)
   assert.equal((await search('qfj {"answer":42}')).before.find(item => item.sourceExtension === 'QuickFormatter')?.name, '{\n  "answer": 42\n}')
   assert.deepEqual((await search('uuid')).before.filter(item => item.sourceExtension === 'UuidGenerator'), [])
+})
+
+test('calculator and color conversion retain pinned golden vectors', async () => {
+  const calculatorCases: ReadonlyArray<readonly [string, Readonly<Record<string, unknown>>, string]> = [
+    ['1.2 * (2 + 4.5)', { 'extension[Calculator].precision': 2 }, '7.8'],
+    ['1m in cm', {}, '100 cm'],
+    ['(1000m in km)/3', { 'extension[Calculator].precision': 2 }, '0.33 km'],
+    ['1/3', { 'extension[Calculator].precision': 3 }, '0.333'],
+    ['sqrt(-4)', {}, '2i'],
+    ['2.5!', {}, '3.32335097'],
+    ['1,3 * (2 + 4,5)', { 'extension[Calculator].argumentSeparator': ';', 'extension[Calculator].decimalSeparator': ',', 'extension[Calculator].precision': 2 }, '8,45'],
+  ]
+  for (const [query, values, expected] of calculatorCases) {
+    const result = await search(query, { ...options, getSetting: <T>(key: string, fallback: T) => (values[key] ?? fallback) as T })
+    assert.equal(result.after.find(item => item.sourceExtension === 'Calculator')?.name, expected, query)
+  }
+  const white = (await search('#fff')).after.filter(item => item.sourceExtension === 'ColorConverter')
+  assert.deepEqual(white.map(item => item.name), ['#FFFFFF', 'hsl(0, 0%, 100%)', 'rgb(255, 255, 255)'])
+  assert.equal(white.every(item => item.details === 'white'), true)
+  const rgbOnly = await search('#fff', { ...options, getSetting: <T>(key: string, fallback: T) => (key === 'extension[ColorConverter].formats' ? ['RGB'] : fallback) as T })
+  assert.deepEqual(rgbOnly.after.filter(item => item.sourceExtension === 'ColorConverter').map(item => item.description), ['RGB Color'])
+  assert.deepEqual((await search('#ffg')).after.filter(item => item.sourceExtension === 'ColorConverter'), [])
+})
+
+test('password and formatter flags preserve bounded source behavior', async () => {
+  const passwordValues: Record<string, unknown> = {
+    'extension[PasswordGenerator].beginWithALetter': true,
+    'extension[PasswordGenerator].includeLowercaseCharacters': true,
+    'extension[PasswordGenerator].includeNumbers': true,
+    'extension[PasswordGenerator].includeSymbols': false,
+    'extension[PasswordGenerator].includeUppercaseCharacters': false,
+    'extension[PasswordGenerator].noDuplicateCharacters': true,
+    'extension[PasswordGenerator].passwordLength': 20,
+    'extension[PasswordGenerator].quantity': 1,
+  }
+  const generated = (await search('pw', { ...options, getSetting: <T>(key: string, fallback: T) => (passwordValues[key] ?? fallback) as T })).before.find(item => item.sourceExtension === 'PasswordGenerator')?.name ?? ''
+  assert.match(generated[0] ?? '', /[a-z]/u)
+  assert.equal(new Set([...generated]).size, 20)
+
+  const invalidJson = await search('qfj {bad')
+  assert.equal(invalidJson.before.find(item => item.sourceExtension === 'QuickFormatter')?.name, '{bad')
+  const flagsOff = { 'extension[QuickFormatter].enableJson': false, 'extension[QuickFormatter].enableStackTrace': false, 'extension[QuickFormatter].enableXml': false }
+  const explicit = await search('qfj {"answer":42}', { ...options, getSetting: <T>(key: string, fallback: T) => (flagsOff[key as keyof typeof flagsOff] ?? fallback) as T })
+  assert.equal(explicit.before.some(item => item.sourceExtension === 'QuickFormatter'), false)
+  const automatic = await search('qf {"answer":42}', { ...options, getSetting: <T>(key: string, fallback: T) => (flagsOff[key as keyof typeof flagsOff] ?? fallback) as T })
+  assert.equal(automatic.before.find(item => item.sourceExtension === 'QuickFormatter')?.name, '{\n  "answer": 42\n}')
+})
+
+test('UUID search preserves exact generation, strictness, and formatting', async () => {
+  const canonical = '21771a07-7dce-40b3-850e-386c1a0f5a2d'
+  const format = { braces: true, hyphens: false, quotes: true, uppercase: true }
+  const values = { 'extension[UuidGenerator].searchResultFormats': [format] }
+  const formatted = await search(canonical, { ...options, getSetting: <T>(key: string, fallback: T) => (values[key as keyof typeof values] ?? fallback) as T })
+  assert.equal(formatted.before.find(item => item.sourceExtension === 'UuidGenerator')?.name, '"{21771A077DCE40B3850E386C1A0F5A2D}"')
+  const generated = await search('guid', { ...options, getSetting: <T>(key: string, fallback: T) => (values[key as keyof typeof values] ?? fallback) as T })
+  assert.match(generated.before.find(item => item.sourceExtension === 'UuidGenerator')?.name ?? '', /^"\{[0-9A-F]{32}\}"$/u)
+  assert.deepEqual((await search('uuid ', { ...options, getSetting: <T>(key: string, fallback: T) => (values[key as keyof typeof values] ?? fallback) as T })).before.filter(item => item.sourceExtension === 'UuidGenerator'), [])
+  const structurallyLoose = '21771a07-7dce-10b3-050e-386c1a0f5a2d'
+  const looseValues = { ...values, 'extension[UuidGenerator].validateStrictly': false }
+  assert.equal((await search(structurallyLoose, { ...options, getSetting: <T>(key: string, fallback: T) => (looseValues[key as keyof typeof looseValues] ?? fallback) as T })).before.some(item => item.sourceExtension === 'UuidGenerator'), true)
+})
+
+test('calculator rejects resource-amplifying constructors before evaluation', () => {
+  assert.equal(isLauncherCalculatorExpressionBounded('ones(10, 10)'), true)
+  assert.equal(isLauncherCalculatorExpressionBounded('[1:10]'), true)
+  assert.equal(isLauncherCalculatorExpressionBounded('ones(1000000)'), false)
+  assert.equal(isLauncherCalculatorExpressionBounded('ones(10^9)'), false)
+  assert.equal(isLauncherCalculatorExpressionBounded('[1:1000000]'), false)
+  assert.equal(isLauncherCalculatorExpressionBounded('[1:10^9]'), false)
+})
+
+test('Unicode password symbols count code points instead of UTF-16 units', async () => {
+  const result = await search('pw', {
+    ...options,
+    getSetting: <T>(key: string, fallback: T) => {
+      const values: Record<string, unknown> = {
+        'extension[PasswordGenerator].includeLowercaseCharacters': false,
+        'extension[PasswordGenerator].includeNumbers': false,
+        'extension[PasswordGenerator].includeSymbols': true,
+        'extension[PasswordGenerator].includeUppercaseCharacters': false,
+        'extension[PasswordGenerator].passwordLength': 3,
+        'extension[PasswordGenerator].quantity': 1,
+        'extension[PasswordGenerator].symbols': '🚀',
+      }
+      return (values[key] ?? fallback) as T
+    },
+  })
+  const generated = result.before.find(item => item.sourceExtension === 'PasswordGenerator')?.name
+  assert.equal(generated, '🚀🚀🚀')
+  assert.equal([...(generated ?? '')].length, 3)
+})
+
+test('malformed enablement arrays fall back atomically', () => {
+  const fallback = ['Base64Conversion', 'Calculator']
+  assert.deepEqual(resolveLauncherEnabledExtensionIds(['Base64Conversion', 42], fallback), fallback)
+  assert.deepEqual(resolveLauncherEnabledExtensionIds(['QuickFormatter'], fallback), ['QuickFormatter'])
 })
 
 test('local providers isolate failures and malformed settings fall back safely', async () => {
