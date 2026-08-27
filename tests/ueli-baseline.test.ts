@@ -2,11 +2,11 @@ import assert from 'node:assert/strict'
 import { copyFile, mkdtemp, mkdir, readFile, readlink, rm, symlink, writeFile } from 'node:fs/promises'
 import { spawnSync } from 'node:child_process'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { isAbsolute, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { test } from 'node:test'
 
-import { verifyVendorIntegrity, verifyVendorTree } from '../scripts/ueli/check-baseline.mjs'
+import { resolveGitPath, verifyVendorIntegrity, verifyVendorTree } from '../scripts/ueli/check-baseline.mjs'
 
 const repoRoot = fileURLToPath(new URL('..', import.meta.url))
 const checker = join(repoRoot, 'scripts/ueli/check-baseline.mjs')
@@ -26,6 +26,21 @@ function runGitFixture(root: string, args: string[]) {
   assert.equal(result.status, 0, result.stderr || result.stdout)
   return result
 }
+
+test('relative Git paths resolve against ordinary repository roots while absolute paths stay unchanged', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'tockteam-ueli-git-path-'))
+  try {
+    runGitFixture(root, ['init', '--quiet'])
+    const gitPath = runGitFixture(root, ['rev-parse', '--git-path', 'objects']).stdout.trim()
+    assert.equal(isAbsolute(gitPath), false)
+    assert.equal(resolveGitPath(root, gitPath), resolve(root, gitPath))
+
+    const absoluteGitPath = resolve(root, 'linked-worktree', 'objects')
+    assert.equal(resolveGitPath(root, absoluteGitPath), absoluteGitPath)
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
 
 test('the tracked Ueli subtree matches the recorded v9.29.0 release offline', () => {
   const result = runBaseline()

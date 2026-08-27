@@ -70,6 +70,10 @@ function runGit(args, { cwd, input, binary = false } = {}) {
   return String(result.stdout ?? '').trim()
 }
 
+export function resolveGitPath(repoRoot, gitPath) {
+  return path.isAbsolute(gitPath) ? gitPath : path.resolve(repoRoot, gitPath)
+}
+
 function sha256(value) {
   return createHash('sha256').update(value).digest('hex')
 }
@@ -138,7 +142,7 @@ function verifyRawReleaseObjects(repoRoot, manifest, releaseObjectsPath) {
   const objectRoot = mkdtempSync(path.join(tmpdir(), 'tockteam-ueli-baseline-'))
   try {
     runGit(['init', '--bare', '--quiet', objectRoot], { cwd: repoRoot })
-    const sourceObjects = runGit(['rev-parse', '--git-path', 'objects'], { cwd: repoRoot })
+    const sourceObjects = resolveGitPath(repoRoot, runGit(['rev-parse', '--git-path', 'objects'], { cwd: repoRoot }))
     const alternatesPath = path.join(objectRoot, 'objects', 'info', 'alternates')
     writeFileSync(alternatesPath, `${sourceObjects}\n`)
     const actualTagHash = runGit(['--git-dir', objectRoot, 'hash-object', '-t', 'tag', '-w', '--stdin'], {

@@ -30,7 +30,7 @@ git ls-remote --tags https://github.com/oliverschwendener/ueli.git \
 
 It returned annotated tag object `065cd29600a6c2834e75f67f4962e1e975ceeace` and peeled commit `c9670d61cb2576802adf99d95622c58538d265f3`. This is the point-in-time evidence relating the upstream remote tag to the imported snapshot. The normal baseline audit is deliberately offline: it does not contact the network and instead reconstructs the committed raw tag/commit objects in a temporary bare repository using the worktree Git object database as an alternate. Every checker Git subprocess disables replacement refs and lazy object fetching, and archive output pins `tar.umask=0002`.
 
-The imported subtree is ordinary tracked Git content at tree `10af7c99825bc4a16804660e162a891e3515fe93`, with 1,165 tracked files and subtree metadata recording `git-subtree-split: c9670d61cb2576802adf99d95622c58538d265f3`. The offline guard verifies object hashes/types, tag peel/name/type, exact subtree metadata lines, clean vendor status including ignored/untracked paths and index flags, every physical tracked regular-file/symlink blob against the committed tree, file count, package-lock/license hashes, `ueli@9.29.0` MIT identity, and the plain-tar archive SHA-256 `e5efc669abee255f07244bc17eab3f38bfeca12610ca6d7640154feee300bc0d`.
+The imported subtree is ordinary tracked Git content at tree `10af7c99825bc4a16804660e162a891e3515fe93`, with 1,165 tracked files and subtree metadata recording `git-subtree-split: c9670d61cb2576802adf99d95622c58538d265f3`. The offline guard verifies object hashes/types, tag peel/name/type, exact subtree metadata lines, clean vendor status including ignored/untracked paths and index flags, every physical tracked regular-file/symlink blob against the committed tree, file count, package-lock/license hashes, `ueli@9.29.0` MIT identity, and the plain-tar archive SHA-256 `e5efc669abee255f07244bc17eab3f38bfeca12610ca6d7640154feee300bc0d`. The final path-resolution fix resolves a relative `git rev-parse --git-path objects` result against the audited `repoRoot` before writing the temporary alternates file while preserving already-absolute linked-worktree paths; a disposable ordinary Git repository regression covers both cases.
 
 `baseline.json` also records the read-only Tockbot implementation oracle `https://github.com/taowang1993/tockbot.git` at `7655149224cb989b66dc382c4e0f157ae4c4b312`.
 
@@ -77,7 +77,7 @@ The exported `compareCatalog` seam and tests cover four in-memory mutations for 
 
 All commands were run from the implementation worktree with Node 24.16.0 through the required `mise exec node@24 -- env -u PNPM_CONFIG_LOGLEVEL` wrapper where applicable.
 
-- `pnpm test:ueli-baseline` — 6 passed, including canonical base64 and isolated vendor-integrity fixture checks.
+- `pnpm test:ueli-baseline` — 7 passed, including relative/absolute Git path resolution, canonical base64, and isolated vendor-integrity fixture checks.
 - `pnpm audit:ueli-baseline` — passed; exact release/tree/count/archive reported.
 - `pnpm test:ueli-launcher-parity` — 62 passed, including 44 mutation tests, golden rows, duplicate-registration, manifest-key, and source/AST probes.
 - `pnpm audit:ueli-launcher-parity` — passed; all 11 counts above.
@@ -104,11 +104,11 @@ The only changed paths relative to the selected base are the ordinary `vendor/ue
 
 The review-fix tests were written before their corresponding implementation changes:
 
-- Baseline RED: `pnpm test:ueli-baseline` exited `1` because the new test imports `verifyVendorIntegrity`/`verifyVendorTree` before those exports existed.
+- Baseline RED: the final reviewer regression `pnpm test:ueli-baseline` exited `1` because `resolveGitPath` was not yet exported; earlier provenance RED also covered the vendor-integrity seams.
 - Catalog RED: `pnpm test:ueli-launcher-parity` exited `1` with the expected platform-target mismatch and missing duplicate-registration rejection.
 - Package/legal RED: `pnpm test:ueli-package-feasibility` exited `1` because the old identity scan rejected legitimate provenance text and the hand-listed dependency set did not reject `@fluentui/react-components`.
 
-After the minimal fixes and parity regeneration through `node scripts/ueli/parity-catalogs.mjs --write`, GREEN results were baseline `6` passed, parity `62` passed, and package/legal `9` passed.
+After the minimal fixes and parity regeneration through `node scripts/ueli/parity-catalogs.mjs --write`, GREEN results were baseline `7` passed, parity `62` passed, and package/legal `9` passed.
 
 ## Residual and future issue notes
 
