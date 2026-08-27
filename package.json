@@ -75,6 +75,12 @@
   },
   "scripts": {
     "build": "node scripts/build.mjs",
+    "test:ueli-baseline": "node --test tests/ueli-baseline.test.ts",
+    "audit:ueli-baseline": "node scripts/ueli/check-baseline.mjs",
+    "test:ueli-launcher-parity": "node --test tests/ueli-parity-catalogs.test.ts",
+    "audit:ueli-launcher-parity": "node scripts/ueli/parity-catalogs.mjs",
+    "test:ueli-package-feasibility": "node --test tests/ueli-package-feasibility.test.ts",
+    "audit:ueli-package-feasibility": "node scripts/ueli/check-package-feasibility.mjs",
     "build:tocktutor": "pnpm -C plugins/tocktutor run build && node scripts/tocktutor-build-manifest.mjs --write",
     "build:dsh": "node scripts/build-dsh.mjs",
     "stage:dsh": "node scripts/stage-dsh.mjs",

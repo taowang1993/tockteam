@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "implementationOracle": {
+    "repository": "https://github.com/taowang1993/tockbot.git",
+    "revision": "7655149224cb989b66dc382c4e0f157ae4c4b312",
+    "role": "read-only behavior and security implementation oracle"
+  },
+  "vendorPath": "vendor/ueli",
+  "upstreamUrl": "https://github.com/oliverschwendener/ueli.git",
+  "tag": "v9.29.0",
+  "tagObject": "065cd29600a6c2834e75f67f4962e1e975ceeace",
+  "commit": "c9670d61cb2576802adf99d95622c58538d265f3",
+  "tree": "10af7c99825bc4a16804660e162a891e3515fe93",
+  "sourceArchiveSha256": "e5efc669abee255f07244bc17eab3f38bfeca12610ca6d7640154feee300bc0d",
+  "trackedFileCount": 1165,
+  "releaseObjects": "scripts/ueli/release-objects.json",
+  "packageLock": {
+    "path": "package-lock.json",
+    "sha256": "26cbf6c04170b2df0981575e2b1d55da56489690a7b39df81939e06b9530a4e1"
+  },
+  "notices": [
+    {
+      "path": "LICENSE",
+      "sha256": "8da6c1a79d367a41aadf313019833f4bb3f2ff55f0da5b522fd058183d2f9106"
+    },
+    {
+      "path": "assets/Extensions/ApplicationSearch/LICENSE",
+      "sha256": "ed29c8f605a1a27368c832b47816405bc6bb18f1d3ec53372cc5c40e64ae680d"
+    }
+  ]
+}
