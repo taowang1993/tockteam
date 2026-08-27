@@ -46,6 +46,7 @@ export type LauncherFileSearchScanners = Readonly<{
     homePath: string
     maxResults: number
     maxVisitedEntries: number
+    openDirectory?: (directoryPath: string) => Promise<Dir>
     scanTimeoutMs?: number
     signal: AbortSignal
   }>) => Promise<readonly LauncherFileSearchEntry[]>
@@ -252,6 +253,7 @@ export async function scanSimpleFileSearchFolder(input: Readonly<{
   homePath: string
   maxResults: number
   maxVisitedEntries: number
+  openDirectory?: (directoryPath: string) => Promise<Dir>
   scanTimeoutMs?: number
   signal: AbortSignal
 }>): Promise<readonly LauncherFileSearchEntry[]> {
@@ -261,8 +263,17 @@ export async function scanSimpleFileSearchFolder(input: Readonly<{
   const timeoutMs = clamp(input.scanTimeoutMs ?? DEFAULT_SCAN_TIMEOUT_MS, 1, MAX_SCAN_TIMEOUT_MS)
   const deadline = Date.now() + timeoutMs
   const activeDirectories = new Set<Dir>()
+  const directoryClosures = new Map<Dir, Promise<void>>()
+  const closeDirectory = (directory: Dir): Promise<void> => {
+    activeDirectories.delete(directory)
+    const existing = directoryClosures.get(directory)
+    if (existing !== undefined) return existing
+    const closing = Promise.resolve().then(() => directory.close()).catch(() => undefined)
+    directoryClosures.set(directory, closing)
+    return closing
+  }
   const closeActiveDirectories = (): void => {
-    for (const directory of activeDirectories) void directory.close().catch(() => undefined)
+    for (const directory of activeDirectories) void closeDirectory(directory)
   }
   const onAbort = (): void => { closeActiveDirectories() }
   input.signal.addEventListener('abort', onAbort)
@@ -295,13 +306,22 @@ export async function scanSimpleFileSearchFolder(input: Readonly<{
       const current = queue[queueIndex++]!
       if (!await ensureTrustedDirectory(platform, input.homePath, current.directoryPath, input.signal, deadline)) continue
       let directory: Dir
-      try { directory = await awaitFileSystem(opendir(current.directoryPath), input.signal, deadline) }
-      catch (reason) {
+      try {
+        let opened: Dir | undefined
+        try {
+          opened = await (input.openDirectory ?? opendir)(current.directoryPath)
+          activeDirectories.add(opened)
+          throwIfAborted(input.signal); assertNotTimedOut(deadline)
+          directory = opened
+        } catch (reason) {
+          if (opened !== undefined) await closeDirectory(opened)
+          throw reason
+        }
+      } catch (reason) {
         if (input.signal.aborted) throw reason
         if (Date.now() >= deadline) assertNotTimedOut(deadline)
         continue
       }
-      activeDirectories.add(directory)
       const entries: Dirent[] = []
       try {
         while (visitedEntries < maxVisitedEntries) {
@@ -312,8 +332,7 @@ export async function scanSimpleFileSearchFolder(input: Readonly<{
           entries.push(entry)
         }
       } finally {
-        activeDirectories.delete(directory)
-        await directory.close().catch(() => undefined)
+        await closeDirectory(directory)
       }
       entries.sort((left, right) => left.name.localeCompare(right.name))
 
@@ -337,6 +356,7 @@ export async function scanSimpleFileSearchFolder(input: Readonly<{
   } finally {
     input.signal.removeEventListener('abort', onAbort)
     closeActiveDirectories()
+    await Promise.allSettled([...directoryClosures.values()])
   }
 }
 

@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import type { Dir } from 'node:fs'
 import { lstat, mkdtemp, mkdir, rm, stat, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -89,6 +90,34 @@ test('Simple File Search rejects home and symlink roots and honors cancellation'
     const controller = new AbortController(); controller.abort(new Error('canceled'))
     await assert.rejects(scanSimpleFileSearchFolder({ folder: { id: 'safe', path: join(home, 'safe'), recursive: true, searchFor: 'files' }, homePath: home, maxResults: 2, maxVisitedEntries: 10, signal: controller.signal }), /canceled/u)
   } finally { await rm(home, { force: true, recursive: true }); await rm(outside, { force: true, recursive: true }) }
+})
+
+test('Simple File Search closes a directory that resolves after cancellation before registration', async () => {
+  const home = await mkdtemp(join(tmpdir(), 'tockteam-simple-delayed-opendir-'))
+  let openStarted: (() => void) | undefined
+  let releaseOpen: ((directory: Dir) => void) | undefined
+  let closeCalls = 0
+  const openReady = new Promise<void>(resolve => { openStarted = resolve })
+  const delayedOpen = new Promise<Dir>(resolve => { releaseOpen = resolve })
+  const directory = {
+    close: async () => { closeCalls += 1 },
+    read: async () => null,
+  } as unknown as Dir
+  const controller = new AbortController()
+  try {
+    await mkdir(join(home, 'root'))
+    const scanning = scanSimpleFileSearchFolder({
+      folder: { id: 'root', path: join(home, 'root'), recursive: true, searchFor: 'files' },
+      homePath: home, maxResults: 1, maxVisitedEntries: 10, openDirectory: async () => {
+        openStarted?.(); return await delayedOpen
+      }, signal: controller.signal,
+    })
+    await openReady
+    controller.abort(new Error('canceled during opendir'))
+    releaseOpen?.(directory)
+    await assert.rejects(scanning, /canceled during opendir/u)
+    assert.equal(closeCalls, 1)
+  } finally { await rm(home, { force: true, recursive: true }) }
 })
 
 test('Windows File Search uses the allowlisted executable and fixed bounded argv', async () => {
