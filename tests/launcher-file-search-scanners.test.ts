@@ -221,7 +221,7 @@ test('path revalidation rejects kind changes and a retargeted configured root', 
   } finally { await rm(home, { force: true, recursive: true }); await rm(outside, { force: true, recursive: true }) }
 })
 
-test('Simple File Search enforces independent result and visit caps', async () => {
+test('Simple File Search keeps the visit cap at or above the requested result count', async () => {
   const home = await mkdtemp(join(tmpdir(), 'tockteam-file-caps-'))
   try {
     await mkdir(join(home, 'root'))
