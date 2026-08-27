@@ -79,7 +79,11 @@ function bounded(value: string | null | undefined): value is string {
 }
 
 function safeAbsolutePath(value: string | null | undefined): value is string {
-  return bounded(value) && (isAbsolute(value) || win32.isAbsolute(value)) && !/[\u0000-\u001f\u007f]/u.test(value)
+  if (!bounded(value) || /[\u0000-\u001f\u007f]/u.test(value)) return false
+  const windowsAbsolute = process.platform === 'win32'
+    ? win32.isAbsolute(value)
+    : /^[A-Za-z]:[\\/]|^\\\\/u.test(value)
+  return windowsAbsolute || isAbsolute(value) && !value.includes('\\')
 }
 
 function safeVaultRef(value: string | null | undefined): value is string {

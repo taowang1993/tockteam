@@ -36,6 +36,9 @@ test('protocol parser accepts bounded TockTutor requests and rejects credentials
     action: 'open',
     path: 'C:\\Vault\\Plan.md',
   })
+  if (process.platform !== 'win32') {
+    assert.equal(parseTockTutorProtocol('tocktutor://open?path=%2Fvault%2Fliteral%5Cname.md'), null)
+  }
   assert.equal(parseTockTutorProtocol('tocktutor://new?file=Plan.md&x-success=file%3A%2F%2Funsafe'), null)
   assert.equal(parseTockTutorProtocol('tocktutor://open?file=Plan.md&x-success=tocktutor%3A%2F%2Fopen%3Ffile%3DLoop.md%26x-success%3Dhttps%253A%252F%252Fexample.test'), null)
   assert.equal(parseTockTutorProtocol(`tocktutor://search?query=${'x'.repeat(4097)}`), null)
