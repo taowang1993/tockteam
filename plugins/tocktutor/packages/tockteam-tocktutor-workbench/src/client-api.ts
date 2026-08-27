@@ -32,6 +32,17 @@ export const name = '@tockteam/tocktutor-workbench'
 /** Required transport and route registry supplied by the pinned Desktop client graph. */
 export const inject = ['remote', 'slots']
 
+type RouteFiber = { dispose(): Promise<void> }
+
+async function disposeRouteBeforeRemote(
+  routeFiber: RouteFiber,
+  disposeRemote: () => Promise<void>,
+): Promise<void> {
+  await routeFiber.dispose()
+  await waitForTockTutorRouteFlushes()
+  await disposeRemote()
+}
+
 /** Mount strict transport first, then contribute one lifecycle-owned Desktop route. */
 export async function apply(ctx: Context): Promise<() => Promise<void>> {
   const disposeRemote = await ctx.remote.$mount(workbenchRemote)
@@ -62,27 +73,16 @@ export async function apply(ctx: Context): Promise<() => Promise<void>> {
   try {
     await routeFiber
   } catch (error) {
-    try {
-      await routeFiber.dispose()
-    } finally {
-      try {
-        await waitForTockTutorRouteFlushes()
-      } finally {
-        await disposeRemote()
-      }
-    }
+    await disposeRouteBeforeRemote(routeFiber, disposeRemote)
     throw error
   }
-  return async () => {
-    try {
-      await routeFiber.dispose()
-    } finally {
-      try {
-        await waitForTockTutorRouteFlushes()
-      } finally {
-        await disposeRemote()
-      }
+  let disposal: Promise<void> | null = null
+  return () => {
+    if (disposal === null) {
+      disposal = disposeRouteBeforeRemote(routeFiber, disposeRemote)
+      void disposal.catch(() => undefined)
     }
+    return disposal
   }
 }
 

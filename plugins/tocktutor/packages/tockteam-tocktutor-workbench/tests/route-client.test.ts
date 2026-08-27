@@ -128,14 +128,56 @@ test('client disposal waits for tracked route flushes before disposing Remote', 
   assert.deepEqual(events, ['route', 'flush', 'remote'])
 })
 
-test('route flush waiting is bounded when a transport never settles', async () => {
+test('route flush waiting rejects and retains a transport that never settles', async () => {
   let release!: () => void
   trackTockTutorRouteFlush(new Promise<void>(resolve => { release = resolve }))
   const started = Date.now()
-  await waitForTockTutorRouteFlushes(1)
+  await assert.rejects(waitForTockTutorRouteFlushes(1), /timed out/u)
   assert.ok(Date.now() - started < 250)
   release()
   await waitForTockTutorRouteFlushes()
+})
+
+test('route flush waiting observes a rejection that settled before the waiter', async () => {
+  const failure = new Error('quick route flush failure')
+  trackTockTutorRouteFlush(Promise.reject(failure))
+  await Promise.resolve()
+  await assert.rejects(waitForTockTutorRouteFlushes(), error => error === failure)
+})
+
+test('client disposal surfaces final flush failure without disposing Remote', async () => {
+  const client = await import('../dist/client-api.js')
+  const failure = new Error('final draft could not be saved')
+  trackTockTutorRouteFlush(Promise.reject(failure))
+  const events: string[] = []
+  let remoteDisposed = 0
+  const context = {
+    inject(_deps: string[], callback: (child: unknown) => unknown) {
+      return Object.assign(Promise.resolve().then(() => callback(context)), {
+        async dispose() { events.push('route') },
+      })
+    },
+    remote: {
+      $on() { return () => {} },
+      async $mount() {
+        return async () => { remoteDisposed += 1; events.push('remote') }
+      },
+      tocktutorWorkbench: {},
+    },
+    slots: {
+      inject(_name: string, declaration: () => () => void) {
+        declaration()
+        return () => {}
+      },
+      register() { return () => {} },
+    },
+  }
+  const dispose = await client.apply(context as never)
+  await assert.rejects(dispose(), error => error === failure)
+  assert.deepEqual(events, ['route'])
+  assert.equal(remoteDisposed, 0)
+  await assert.rejects(dispose(), error => error === failure)
+  assert.equal(remoteDisposed, 0)
 })
 
 test('keeps the route inside a literal Remote namespace child across loss and reload', async () => {

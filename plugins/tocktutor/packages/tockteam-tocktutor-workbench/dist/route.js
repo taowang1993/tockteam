@@ -63,36 +63,55 @@ function remoteValue(result) {
     throw new RemoteCallError(result.error.code, result.error.message);
 }
 const ROUTE_FLUSH_TIMEOUT_MS = 1_000;
+const FINAL_DRAFT_ATTEMPTS = 3;
 const pendingTockTutorRouteFlushes = new Set();
-/** Track async route cleanup until the owning client contribution is disposed. */
+export class TockTutorRouteFlushTimeoutError extends Error {
+    timeoutMs;
+    constructor(timeoutMs) {
+        super(`TockTutor route cleanup timed out after ${timeoutMs}ms.`);
+        this.timeoutMs = timeoutMs;
+        this.name = 'TockTutorRouteFlushTimeoutError';
+    }
+}
+/** Track async route cleanup until its owning client observes the outcome. */
 export function trackTockTutorRouteFlush(flush) {
-    const tracked = Promise.resolve(flush).catch(() => undefined);
+    const tracked = { outcome: null, promise: Promise.resolve(flush) };
     pendingTockTutorRouteFlushes.add(tracked);
-    void tracked.then(() => { pendingTockTutorRouteFlushes.delete(tracked); });
+    void tracked.promise.then(() => { tracked.outcome = { kind: 'fulfilled' }; }, error => { tracked.outcome = { error, kind: 'rejected' }; });
 }
 /** Await route cleanup without allowing a stuck transport to block unload forever. */
 export async function waitForTockTutorRouteFlushes(timeoutMs = ROUTE_FLUSH_TIMEOUT_MS) {
     const boundedTimeout = Number.isFinite(timeoutMs) ? Math.max(0, timeoutMs) : ROUTE_FLUSH_TIMEOUT_MS;
     const deadline = Date.now() + boundedTimeout;
     while (pendingTockTutorRouteFlushes.size > 0) {
+        const pending = [...pendingTockTutorRouteFlushes];
+        const settled = pending.every(flush => flush.outcome !== null);
+        if (settled) {
+            const failure = pending.find(flush => flush.outcome?.kind === 'rejected')?.outcome;
+            for (const flush of pending)
+                pendingTockTutorRouteFlushes.delete(flush);
+            if (failure?.kind === 'rejected')
+                throw failure.error;
+            continue;
+        }
         const remaining = deadline - Date.now();
         if (remaining <= 0)
-            return;
-        const pending = [...pendingTockTutorRouteFlushes];
+            throw new TockTutorRouteFlushTimeoutError(boundedTimeout);
         let timer;
         try {
             const result = await Promise.race([
-                Promise.all(pending).then(() => 'done'),
+                Promise.all(pending.map(flush => flush.promise.then(() => ({ kind: 'fulfilled' }), error => ({ error, kind: 'rejected' })))).then(outcomes => ({ kind: 'settled', outcomes })),
                 new Promise(resolve => {
-                    timer = setTimeout(() => { resolve('timeout'); }, remaining);
-                    timer.unref?.();
+                    timer = setTimeout(() => { resolve({ kind: 'timeout' }); }, remaining);
                 }),
             ]);
-            if (result === 'timeout') {
-                for (const flush of pending)
-                    pendingTockTutorRouteFlushes.delete(flush);
-                return;
-            }
+            if (result.kind === 'timeout')
+                throw new TockTutorRouteFlushTimeoutError(boundedTimeout);
+            const failure = result.outcomes.find(outcome => outcome.kind === 'rejected');
+            for (const flush of pending)
+                pendingTockTutorRouteFlushes.delete(flush);
+            if (failure?.kind === 'rejected')
+                throw failure.error;
         }
         finally {
             if (timer !== undefined)
@@ -761,19 +780,42 @@ export class WorkbenchRouteController {
         this.shellSession = markTabDirty(this.shellSession, this.shellSession.focusedGroupId, path, dirty);
         this.syncShell();
     }
-    persistDraft(request, abort) {
-        const flush = Promise.resolve()
-            .then(() => this.remote.tocktutorWorkbench.saveDraft(request, abort.signal))
-            .then(result => { remoteValue(result); })
-            .catch(() => undefined);
+    persistDraft(request, abort, final = false) {
+        const flush = final
+            ? this.persistFinalDraft(request, abort)
+            : Promise.resolve()
+                .then(() => this.remote.tocktutorWorkbench.saveDraft(request, abort.signal))
+                .then(result => { remoteValue(result); })
+                .catch(() => undefined);
         this.draftFlush = flush;
         void flush.then(() => {
             if (this.draftFlush === flush)
                 this.draftFlush = null;
             if (this.draftAbort === abort)
                 this.draftAbort = null;
+        }, () => {
+            if (this.draftFlush === flush)
+                this.draftFlush = null;
+            if (this.draftAbort === abort)
+                this.draftAbort = null;
         });
         return flush;
+    }
+    async persistFinalDraft(request, abort) {
+        let lastError;
+        for (let attempt = 0; attempt < FINAL_DRAFT_ATTEMPTS; attempt += 1) {
+            try {
+                const result = await this.remote.tocktutorWorkbench.saveDraft(request, abort.signal);
+                remoteValue(result);
+                return;
+            }
+            catch (error) {
+                lastError = error;
+                if (abort.signal.aborted)
+                    break;
+            }
+        }
+        throw lastError instanceof Error ? lastError : new Error('The latest TockTutor draft could not be saved.');
     }
     scheduleDraft() {
         if (this.draftTimer !== null)
@@ -798,25 +840,23 @@ export class WorkbenchRouteController {
         }, 400);
     }
     flushPendingDraft() {
-        const hadTimer = this.draftTimer !== null;
-        if (hadTimer) {
+        if (this.draftTimer !== null) {
             clearTimeout(this.draftTimer);
             this.draftTimer = null;
         }
-        if (!hadTimer && this.draftFlush !== null)
-            return this.draftFlush;
         const vault = this.snapshot.vault;
         const path = this.snapshot.path;
         if (vault === null || path === null || this.snapshot.saveStatus === 'saved')
-            return this.draftFlush;
-        const abort = this.draftAbort ?? new AbortController();
+            return null;
+        this.draftAbort?.abort();
+        const abort = new AbortController();
         this.draftAbort = abort;
         return this.persistDraft({
             content: this.snapshot.source,
             expectedVault: vault,
             path,
             ...(this.snapshot.revision === null ? {} : { revision: this.snapshot.revision }),
-        }, abort);
+        }, abort, true);
     }
     clearDocument() {
         this.invalidateDispatch();
@@ -2137,6 +2177,7 @@ export class WorkbenchRouteController {
         this.eventDispose?.();
         this.listeners.clear();
         this.disposal = flush ?? Promise.resolve();
+        void this.disposal.catch(() => undefined);
         return this.disposal;
     }
 }

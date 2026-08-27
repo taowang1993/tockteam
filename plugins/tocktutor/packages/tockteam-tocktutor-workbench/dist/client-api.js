@@ -9,6 +9,11 @@ import { TockTutorRoute, waitForTockTutorRouteFlushes, } from "./route.js";
 export const name = '@tockteam/tocktutor-workbench';
 /** Required transport and route registry supplied by the pinned Desktop client graph. */
 export const inject = ['remote', 'slots'];
+async function disposeRouteBeforeRemote(routeFiber, disposeRemote) {
+    await routeFiber.dispose();
+    await waitForTockTutorRouteFlushes();
+    await disposeRemote();
+}
 /** Mount strict transport first, then contribute one lifecycle-owned Desktop route. */
 export async function apply(ctx) {
     const disposeRemote = await ctx.remote.$mount(workbenchRemote);
@@ -34,31 +39,16 @@ export async function apply(ctx) {
         await routeFiber;
     }
     catch (error) {
-        try {
-            await routeFiber.dispose();
-        }
-        finally {
-            try {
-                await waitForTockTutorRouteFlushes();
-            }
-            finally {
-                await disposeRemote();
-            }
-        }
+        await disposeRouteBeforeRemote(routeFiber, disposeRemote);
         throw error;
     }
-    return async () => {
-        try {
-            await routeFiber.dispose();
+    let disposal = null;
+    return () => {
+        if (disposal === null) {
+            disposal = disposeRouteBeforeRemote(routeFiber, disposeRemote);
+            void disposal.catch(() => undefined);
         }
-        finally {
-            try {
-                await waitForTockTutorRouteFlushes();
-            }
-            finally {
-                await disposeRemote();
-            }
-        }
+        return disposal;
     };
 }
 export * from "./assistant-panel.js";

@@ -134,7 +134,11 @@ export interface NativeDispatchDraft {
     text?: string;
     title?: string;
 }
-/** Track async route cleanup until the owning client contribution is disposed. */
+export declare class TockTutorRouteFlushTimeoutError extends Error {
+    readonly timeoutMs: number;
+    constructor(timeoutMs: number);
+}
+/** Track async route cleanup until its owning client observes the outcome. */
 export declare function trackTockTutorRouteFlush(flush: PromiseLike<void> | void): void;
 /** Await route cleanup without allowing a stuck transport to block unload forever. */
 export declare function waitForTockTutorRouteFlushes(timeoutMs?: number): Promise<void>;
@@ -198,6 +202,7 @@ export declare class WorkbenchRouteController {
     private recordOpen;
     private recordDirty;
     private persistDraft;
+    private persistFinalDraft;
     private scheduleDraft;
     private flushPendingDraft;
     private clearDocument;
