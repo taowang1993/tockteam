@@ -43,6 +43,7 @@ test('launcher renderer uses shared types, Lucide icons, visible selection, and 
   assert.doesNotMatch(html, /⌕/u)
   assert.match(launcher, /aria-selected:bg-/u)
   assert.match(launcher, /tockteam-launcher-focus-search/u)
+  assert.match(preload, /dispatchEvent\(new Event\('tockteam-launcher-focus-search'\)\)/u)
   assert.match(launcher, /No Recent Searches/u)
   assert.match(launcher, /Results Refreshed\. Try Again\./u)
   assert.doesNotMatch(launcher, /event\.metaKey \|\| event\.ctrlKey/u)

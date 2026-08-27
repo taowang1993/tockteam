@@ -28,6 +28,7 @@ test('main assembles one launcher owner without branching the DSH workbench fact
   assert.match(main, /will-redirect/u)
   assert.match(main, /launcherController\?\.destroyWindow\(\)/u)
   assert.match(main, /launcherController\?\.dispose\(\)/u)
+  assert.match(main, /executeTockTeamDestination\(record, isEligibleDesktopRevealWindow/u)
   assert.doesNotMatch(main, /createWindow\([^)]*launcher/u)
 })
 
