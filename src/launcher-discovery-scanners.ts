@@ -288,7 +288,8 @@ function parseProfilesIni(contents: string, root: string): readonly string[] {
       const candidate = current.IsRelative === '0' && isAbsolute(current.Path)
         ? current.Path
         : path.join(root, current.Path)
-      if (isAbsolute(candidate)) results.push(path.normalize(candidate))
+      const implementation = isWindowsAbsolute(root) || isWindowsAbsolute(candidate) ? path.win32 : path
+      if (isAbsolute(candidate) && (current.IsRelative === '0' || isWithin(root, candidate))) results.push(implementation.normalize(candidate))
     }
     current = undefined
   }
@@ -414,7 +415,7 @@ async function scanJetBrains(context: LauncherDiscoveryScanContext): Promise<rea
     let product: Record<string, unknown>
     try { product = JSON.parse(await readBoundedText(implementation.join(productRoot, 'product-info.json'))) as Record<string, unknown> }
     catch { continue }
-    if (!boundedDiscoveryString(product.dataDirectoryName, 256)) continue
+    if (!boundedDiscoveryString(product.dataDirectoryName, 256) || /[\\/]/u.test(product.dataDirectoryName)) continue
     let projects: readonly string[]
     try { projects = parseJetBrainsRecentProjectPaths(await readBoundedText(implementation.join(configRoot, product.dataDirectoryName, 'options', 'recentProjects.xml')), context.homePath) }
     catch { continue }

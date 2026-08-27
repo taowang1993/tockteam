@@ -242,6 +242,7 @@ export function createLauncherDiscoveryExtensions(options: LauncherDiscoveryOpti
   let knownReveals = new Map<string, Readonly<{ entry: Extract<LauncherDiscoveryEntry, { kind: 'application' }>; identity: LauncherDiscoveryIdentity | undefined }>>()
   let knownJetBrains = new Map<string, Readonly<{ entry: Extract<LauncherDiscoveryEntry, { kind: 'jetbrains' }>; executableIdentity: LauncherDiscoveryIdentity | undefined; projectIdentity: LauncherDiscoveryIdentity | undefined }>>()
   let knownVscode = new Map<string, Readonly<{ entry: Extract<LauncherDiscoveryEntry, { kind: 'vscode' }>; identity: LauncherDiscoveryIdentity | undefined }>>()
+  let scanGeneration = 0
 
   const context = (signal: AbortSignal): LauncherDiscoveryScanContext => Object.freeze({
     appDataPath: options.appDataPath, defaults, environment, getSetting: options.getSetting,
@@ -270,6 +271,7 @@ export function createLauncherDiscoveryExtensions(options: LauncherDiscoveryOpti
   }
 
   const loadIndexedItems = async (signal: AbortSignal): Promise<readonly LauncherInternalResultItem[]> => {
+    const generation = ++scanGeneration
     const ids = LAUNCHER_DISCOVERY_EXTENSION_IDS.filter(id => enabled().has(id))
     const settled = await Promise.allSettled(ids.map(async id => {
       if (id === 'BrowserBookmarks' && options.platform === 'Linux') throw new Error('BrowserBookmarks is unsupported on Linux')
@@ -279,6 +281,7 @@ export function createLauncherDiscoveryExtensions(options: LauncherDiscoveryOpti
       if (result.status === 'rejected') options.onProviderError?.(ids[index]!, result.reason instanceof Error ? result.reason : new Error('Discovery provider failed'))
     }
     if (signal.aborted) throw signal.reason instanceof Error ? signal.reason : new Error('TockLauncher discovery scan canceled')
+    if (generation !== scanGeneration) throw new Error('TockLauncher discovery scan was superseded')
 
     const actionArguments = new Set<string>()
     const administrators = new Map<string, Readonly<{ entry: Extract<LauncherDiscoveryEntry, { kind: 'application' }>; identity: LauncherDiscoveryIdentity | undefined; name: string; target: string }>>()
@@ -363,11 +366,12 @@ export function createLauncherDiscoveryExtensions(options: LauncherDiscoveryOpti
         continue
       }
       for (let offset = 0; offset < entries.length; offset += MAX_ICON_CONCURRENCY) {
-        if (signal.aborted) throw signal.reason instanceof Error ? signal.reason : new Error('TockLauncher discovery scan canceled')
+        if (signal.aborted || generation !== scanGeneration) throw signal.reason instanceof Error ? signal.reason : new Error('TockLauncher discovery scan canceled')
         const mapped = await Promise.all(entries.slice(offset, offset + MAX_ICON_CONCURRENCY).map(entry => mapEntry(entry, actionArguments, administrators)))
         indexed.push(...mapped.filter((item): item is LauncherInternalResultItem => item !== undefined))
       }
     }
+    if (generation !== scanGeneration) throw new Error('TockLauncher discovery scan was superseded')
     knownActionArguments = actionArguments
     knownAdministratorActions = administrators
     knownApplications = applications
@@ -389,6 +393,8 @@ export function createLauncherDiscoveryExtensions(options: LauncherDiscoveryOpti
     const showPathValue = options.getSetting('extension[VSCode].showPath', defaults.VSCode.showPath)
     const showPath = showPathValue === true
     const executable = parseVSCodeCommand(options.getSetting('extension[VSCode].command', defaults.VSCode.command), defaults.VSCode.command)
+    for (const argument of knownVscode.keys()) knownActionArguments.delete(argument)
+    knownVscode = new Map()
     const after = await Promise.all(vscodeRecents.filter(entry => term.length === 0 || `${entry.label ?? ''} ${entry.path} ${entry.uri}`.toLocaleLowerCase('en-US').includes(term)).slice(0, MAX_ITEMS_PER_EXTENSION).map(async entry => {
       const id = entry.id.length <= 512 ? entry.id : `vscode:${createHash('sha256').update(entry.id).digest('hex')}`
       const item = Object.freeze({
