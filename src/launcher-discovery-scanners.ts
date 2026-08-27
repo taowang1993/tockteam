@@ -433,7 +433,7 @@ async function scanJetBrains(context: LauncherDiscoveryScanContext): Promise<rea
         try { name = (await readdir(ideaPath)).find(candidate => candidate.endsWith('.iml'))?.replace(/\.iml$/u, '') } catch { continue }
       }
       if (!boundedDiscoveryString(name, 512) || !isAbsolute(projectPath)) continue
-      results.push(Object.freeze({ executable, id: `jetbrains-toolbox-${projectPath}`, kind: 'jetbrains', name, projectPath, toolName: tool.displayName }))
+      results.push(Object.freeze({ executable, id: `jetbrains-toolbox-${projectPath}`, installRoot: tool.installLocation, kind: 'jetbrains', name, projectPath, toolName: tool.displayName }))
     }
   }
   return Object.freeze(results)

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { Check, Database, KeyRound, RefreshCw, RotateCcw, ShieldCheck, Trash2, Upload, Download, MonitorCog } from 'lucide-react'
+import { Check, Database, KeyRound, RefreshCw, RotateCcw, Search, ShieldCheck, Trash2, Upload, Download, MonitorCog } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@tockteam/ui/alert'
 import { Badge } from '@tockteam/ui/badge'
 import { Button } from '@tockteam/ui/button'
@@ -10,6 +10,7 @@ import { NativeSelect, NativeSelectOption } from '@tockteam/ui/native-select'
 import { Switch } from '@tockteam/ui/switch'
 import { LAUNCHER_COMPOSITION } from './launcher-contract.ts'
 import { LauncherLocalSettings } from './launcher-local-settings.tsx'
+import { LauncherDiscoverySettings } from './launcher-discovery-settings.tsx'
 import type { DesktopBridge } from './contracts.ts'
 import { LAUNCHER_SENSITIVE_SETTING_KEYS, type LauncherSettingsSnapshot } from './launcher-settings-contract.ts'
 import { readPersistedLauncherState } from './launcher-settings-model.ts'
@@ -237,6 +238,10 @@ function LauncherSettingsPage({ close: _close }: SettingsSectionProps): ReactNod
 
       <SectionCard icon={<MonitorCog aria-hidden="true" className="size-4" />} title="Local Transformations" description="Configure the seven local transformation providers without exposing renderer authority.">
         <LauncherLocalSettings key={snapshotRevision} busy={busy} save={save} snapshot={snapshot} />
+      </SectionCard>
+
+      <SectionCard icon={<Search aria-hidden="true" className="size-4" />} title="Discovery Providers" description="Configure bounded applications, bookmarks, JetBrains projects, and VS Code recents.">
+        <LauncherDiscoverySettings key={snapshotRevision} busy={busy} save={save} snapshot={snapshot} />
       </SectionCard>
 
       <SectionCard icon={<Database aria-hidden="true" className="size-4" />} title="Storage and Privacy" description="Managed files and external grants are owned by Electron main; no filesystem path crosses this page.">

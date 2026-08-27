@@ -1,4 +1,6 @@
 import { randomBytes } from 'node:crypto'
+import { execFile } from 'node:child_process'
+import { promisify } from 'node:util'
 import {
   app,
   BrowserWindow,
@@ -21,7 +23,7 @@ import {
 import { createWriteStream, existsSync, mkdirSync, realpathSync, statSync, type WriteStream } from 'node:fs'
 import { lstat, realpath } from 'node:fs/promises'
 import { homedir } from 'node:os'
-import { basename, dirname, join, resolve } from 'node:path'
+import { basename, dirname, extname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { PluginMarketplaceManager } from '../plugins/plugin-marketplace/src/host/transaction-manager.ts'
 import {
@@ -87,6 +89,19 @@ import {
   type LauncherUrlPolicy,
 } from './launcher-security.ts'
 import { LauncherActionStore } from './launcher-actions.ts'
+import { createLauncherDiscoveryExtensions } from './launcher-discovery-extensions.ts'
+import { createLauncherDiscoveryScanners } from './launcher-discovery-scanners.ts'
+import {
+  launchDetachedLauncherExecutable,
+  revalidateLauncherExecutable,
+  revalidateLauncherPath,
+  revalidateLauncherUrl,
+  revalidateLauncherVscodeUri,
+  resolveLinuxDesktopEntryInvocation,
+  resolveWindowsApplicationElevationInvocation,
+  revalidateLauncherWindowsStoreId,
+  statLauncherPathIdentity,
+} from './launcher-discovery-process.ts'
 import { LauncherPersistenceRepository, createLauncherSecretCodec } from './launcher-persistence.ts'
 import { LauncherCustomBrowserController } from './launcher-custom-browser.ts'
 import { resolveLauncherSettingDefault } from './launcher-settings-defaults.ts'
@@ -182,6 +197,7 @@ let launcherPersistentSetsSync: (() => void) | undefined
 const launcherSettingsOperations = createLauncherSettingsOperations({ isUnavailable: () => quitting })
 const runtimeStartGate = new RuntimeStartGate<void>()
 const launcherWindowRegistry = new LauncherWindowRegistry()
+const execFileAsync = promisify(execFile)
 const launcherToggleQueue = new LauncherToggleIntentQueue()
 let launcherTrayOwner: SingleOwnedTray<Tray> | undefined
 const launcherThemeProjector = createLauncherThemeProjector()
@@ -881,12 +897,25 @@ async function closeLauncherSettingsOperations(): Promise<void> {
 function launcherSettingsSnapshot(): ReturnType<LauncherPersistenceRepository['snapshot']> {
   const repository = requireLauncherPersistence()
   const snapshot = repository.snapshot()
+  const context = launcherDefaultContext()
+  const values = { ...snapshot.values }
+  for (const key of [
+    'extension[ApplicationSearch].linuxFolders',
+    'extension[ApplicationSearch].macOsFolders',
+    'extension[ApplicationSearch].windowsFolders',
+    'extension[VSCode].command',
+  ]) {
+    if (Object.hasOwn(values, key)) continue
+    const fallback = resolveLauncherSettingDefault(key, context)
+    if (fallback !== undefined) values[key] = fallback
+  }
   const customBrowserStatus = launcherCustomBrowser?.snapshot().status ?? 'none'
   return Object.freeze({
     ...snapshot,
     customBrowserStatus,
     externalWriteAvailable: repository.externalWriteAvailable,
     secureStorageAvailable: repository.secureStorageAvailable,
+    values: Object.freeze(values),
   })
 }
 
@@ -1065,16 +1094,109 @@ function initializeLauncher(): void {
       appendLog('desktop', `TockLauncher provider ${extensionId} failed: ${error instanceof Error ? error.name : 'unknown error'}`)
     },
   })
+  const reportDiscoveryError = (extensionId: 'ApplicationSearch' | 'BrowserBookmarks' | 'JetBrainsToolbox' | 'VSCode', error: Error): void => {
+    appendLog('desktop', `TockLauncher provider ${extensionId} failed: ${error instanceof Error ? error.name : 'unknown error'}`)
+  }
+  const discovery = createLauncherDiscoveryExtensions({
+    appDataPath: app.getPath('appData'),
+    effects: {
+      confirmOpenApplicationAsAdministrator: async ({ name, target }) => {
+        const result = await dialog.showMessageBox({
+          buttons: ['Open as administrator', 'Cancel'], cancelId: 1, defaultId: 1,
+          detail: [`Application: ${name}`, `Target: ${target}`, 'Windows will request administrator approval.'].join('\\n'),
+          message: `Open ${name} as administrator?`, title: PRODUCT_NAME, type: 'warning',
+        })
+        return result.response === 0
+      },
+      copyText: text => clipboard.writeText(text),
+      launchExecutable: launchDetachedLauncherExecutable,
+      openApplication: async target => {
+        if (platform === 'Linux' && target.endsWith('.desktop')) {
+          const invocation = resolveLinuxDesktopEntryInvocation(target)
+          await execFileAsync(invocation.executable, [...invocation.args], { maxBuffer: 64 * 1024, timeout: 15_000 })
+          return
+        }
+        if (platform === 'Windows' && revalidateLauncherWindowsStoreId(target)) {
+          await execFileAsync('explorer.exe', [target], { maxBuffer: 64 * 1024, timeout: 15_000, windowsHide: true })
+          return
+        }
+        const error = await shell.openPath(target)
+        if (error) throw new Error(error)
+      },
+      openApplicationAsAdministrator: async target => {
+        const invocation = resolveWindowsApplicationElevationInvocation(target)
+        await execFileAsync(invocation.executable, [...invocation.args], { maxBuffer: 64 * 1024, timeout: 15_000, windowsHide: true })
+      },
+      openExternal: async url => await launcherCustomBrowser?.openUrl(url),
+      revealPath: target => { shell.showItemInFolder(target) },
+    },
+    capturePathIdentity: async target => await statLauncherPathIdentity(target),
+    enabledExtensionIds: launcherEnabledLocalExtensionIds,
+    getApplicationIcon: async (target, signal) => {
+      if (signal.aborted || revalidateLauncherWindowsStoreId(target)) return undefined
+      const image = await app.getFileIcon(target, { size: 'normal' })
+      if (signal.aborted) throw signal.reason instanceof Error ? signal.reason : new Error('Application icon extraction canceled')
+      return image.isEmpty() ? undefined : image.resize({ height: 32, quality: 'good', width: 32 }).toDataURL()
+    },
+    getSetting: (key, fallback) => repository.getSetting(key, fallback),
+    homePath: app.getPath('home'),
+    onProviderError: reportDiscoveryError,
+    platform,
+    revalidate: {
+      application: async (target, entry, identity) => {
+        if (target !== entry.path) return false
+        if (platform === 'Windows' && revalidateLauncherWindowsStoreId(target)) return true
+        const kind = platform === 'macOS' && extname(target).toLocaleLowerCase('en-US') === '.app' ? 'directory' as const : 'file' as const
+        return await revalidateLauncherPath(target, { kind, ...(identity === undefined ? {} : { identity }) })
+      },
+      bookmark: async (target, entry) => target === entry.url && await revalidateLauncherUrl(target, entry.url),
+      jetbrains: async ({ executable, projectPath, entry, executableIdentity, projectIdentity }) => {
+        if (executable !== entry.executable || projectPath !== entry.projectPath) return false
+        const executableValid = await revalidateLauncherExecutable(executable, {
+          ...(executableIdentity === undefined ? {} : { identity: executableIdentity }),
+          ...(entry.installRoot === undefined ? {} : { root: entry.installRoot }),
+        })
+        const projectValid = await revalidateLauncherPath(projectPath, { kind: 'directory', ...(projectIdentity === undefined ? {} : { identity: projectIdentity }) })
+        const ideaValid = await revalidateLauncherPath(join(projectPath, '.idea'), { kind: 'directory' })
+        return executableValid && projectValid && ideaValid
+      },
+      reveal: async (target, entry, identity) => {
+        if (target !== entry.path) return false
+        const kind = platform === 'macOS' && extname(target).toLocaleLowerCase('en-US') === '.app' ? 'directory' as const : 'file' as const
+        return await revalidateLauncherPath(target, { kind, ...(identity === undefined ? {} : { identity }) })
+      },
+      vscode: async ({ executable, uri, entry, identity }) => {
+        if (uri !== entry.uri) return false
+        const executableValid = executable.includes('/') || /^[A-Za-z]:[\\\\]/u.test(executable)
+          ? await revalidateLauncherExecutable(executable)
+          : true
+        return executableValid && await revalidateLauncherVscodeUri(uri, identity === undefined ? {} : { identity })
+      },
+    },
+    scanners: createLauncherDiscoveryScanners({ onProviderError: reportDiscoveryError }),
+  })
+  const discoverySettingKeys = new Set([
+    'extension[ApplicationSearch].includeWindowsStoreApps', 'extension[ApplicationSearch].linuxFolders', 'extension[ApplicationSearch].macOsFolders',
+    'extension[ApplicationSearch].mdfindFilterOption', 'extension[ApplicationSearch].windowsFileExtensions', 'extension[ApplicationSearch].windowsFolders',
+    'extension[BrowserBookmarks].browsers', 'extension[BrowserBookmarks].iconType', 'extension[BrowserBookmarks].searchResultStyle',
+    'extension[VSCode].command', 'extension[VSCode].prefix', 'extension[VSCode].showPath',
+  ])
   const coreSearch = createLauncherCoreSearch({
     initialExcludedItemIds: repository.getSetting('searchEngine.excludedItems', []),
     initialFavoriteItemIds: repository.getSetting('favorites', []),
     initialIndexedItems: repository.readIndex(),
     appendLog: async (_level, message) => { await repository.appendLog('ERROR', message) },
-    loadIndexedItems: async () => {
+    loadIndexedItems: async signal => {
       const result = await createTockTeamDestinationResults('')
-      return [...result.before, ...result.after, ...await local.loadIndexedItems()]
+      return [...result.before, ...result.after, ...await local.loadIndexedItems(), ...await discovery.loadIndexedItems(signal)]
     },
-    searchInstant: async searchTerm => await local.searchInstant(searchTerm),
+    searchInstant: async searchTerm => {
+      const [localResults, discoveryResults] = await Promise.all([local.searchInstant(searchTerm), discovery.searchInstant(searchTerm)])
+      return Object.freeze({
+        after: Object.freeze([...localResults.after, ...discoveryResults.after]),
+        before: Object.freeze([...localResults.before, ...discoveryResults.before]),
+      })
+    },
     persistIndex: async items => { await repository.writeIndex(items) },
     persistSettings: async values => await runLauncherSettingsOperation(
       async () => await repository.updateSettings(values),
@@ -1087,6 +1209,7 @@ function initializeLauncher(): void {
     execute: async record => {
       if (await coreSearch.executeAction(record)) return
       if (await local.executeAction(record)) return
+      if (await discovery.executeAction(record)) return
       await executeTockTeamDestination(record, () => {
         if (runtimeUrl === undefined) return false
         return mainWindow === undefined || mainWindow.isDestroyed()
@@ -1187,7 +1310,7 @@ function initializeLauncher(): void {
         await requireLauncherPersistence().updateSetting(key, value)
         launcherPersistentSetsSync?.()
         await launcherLifecycle?.sync()
-        if (key === 'extensions.enabledExtensionIds') await launcherRescan?.()
+        if (key === 'extensions.enabledExtensionIds' || discoverySettingKeys.has(key)) await launcherRescan?.()
         return settingsOperation()
       }, { mutation: true }),
     },
@@ -2538,7 +2661,7 @@ async function bootstrap(): Promise<void> {
   })
   launcherCustomBrowser = await LauncherCustomBrowserController.open({
     getSetting: (key, fallback) => requireLauncherPersistence().getSetting(key, fallback),
-    launch: async () => { throw new Error('Custom browser launch is owned by a later provider slice') },
+    launch: launchDetachedLauncherExecutable,
     openDefault: async url => { await shell.openExternal(url) },
     platform: launcherPlatform(),
     userDataPath: info.appDataPath,
