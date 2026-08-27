@@ -227,6 +227,32 @@ test('provider close waits for in-flight action validation to settle', async () 
   assert.equal(closed, true)
 })
 
+test('timed-out validation aborts the scanner and keeps close bounded', async () => {
+  let validationSignal: AbortSignal | undefined
+  const provider = createLauncherFileSearchExtensions({
+    effects: { openPath: () => undefined, revealPath: () => undefined },
+    enabledExtensionIds: () => ['FileSearch'], getSetting: settings, homePath: '/home/max', platform: 'macOS',
+    scanners: {
+      queryFileSearch: async () => [{ path: '/home/max/report.txt', type: 'file', identity: { dev: '1', ino: '2' } }],
+      scanSimpleFolder: async () => [],
+      validatePath: async ({ signal }) => {
+        validationSignal = signal
+        return await new Promise<boolean>(() => {})
+      },
+    },
+  })
+  const result = (await provider.searchInstant(`${LAUNCHER_FILE_SEARCH_QUERY_PREFIX} report`)).after[0]!
+  const action = provider.executeAction(record(result)).catch(error => error)
+  const actionError = await action
+  assert.match(String(actionError), /timed out|canceled|revalidation/u)
+  assert.equal(validationSignal?.aborted, true)
+  const boundedClose = Promise.race([
+    provider.close(),
+    new Promise<never>((_, reject) => setTimeout(() => reject(new Error('provider close hung')), 250)),
+  ])
+  await assert.doesNotReject(boundedClose)
+})
+
 test('Simple File Search actions use real scanner validation for open and reveal', async () => {
   const { mkdtemp, rm, writeFile } = await import('node:fs/promises')
   const { tmpdir } = await import('node:os')

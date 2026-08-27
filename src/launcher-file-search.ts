@@ -26,6 +26,7 @@ const MAX_FILE_SEARCH_RESULTS = 100
 const MAX_ARGUMENT_TEXT = 16_384
 const QUERY_TIMEOUT_MS = 8_000
 const ACTION_VALIDATION_TIMEOUT_MS = 1_000
+const CLOSE_DRAIN_TIMEOUT_MS = 100
 const DEFAULT_SCAN_TIMEOUT_MS = 10_000
 const MAX_SCAN_TIMEOUT_MS = 60_000
 
@@ -143,12 +144,16 @@ async function runBounded<T>(
   parentSignal: AbortSignal | undefined,
   timeoutMs: number,
   timeoutMessage: string,
+  onTimeout?: () => void,
 ): Promise<T> {
   const controller = new AbortController()
   const abortFromParent = () => controller.abort(parentSignal?.reason instanceof Error ? parentSignal.reason : new Error('TockLauncher file search canceled'))
   if (parentSignal?.aborted) abortFromParent()
   else parentSignal?.addEventListener('abort', abortFromParent, { once: true })
-  const timer = setTimeout(() => controller.abort(new Error(timeoutMessage)), timeoutMs)
+  const timer = setTimeout(() => {
+    onTimeout?.()
+    controller.abort(new Error(timeoutMessage))
+  }, timeoutMs)
   try {
     if (controller.signal.aborted) throw controller.signal.reason
     const pending = Promise.resolve().then(() => operation(controller.signal))
@@ -222,6 +227,20 @@ export function createLauncherFileSearchExtensions(options: FileSearchOptions): 
     )
     activeWork.add(tracked)
     return tracked
+  }
+  const waitForActiveWork = async (): Promise<void> => {
+    while (activeWork.size > 0) await Promise.allSettled([...activeWork])
+  }
+  const waitForActiveWorkBounded = async (): Promise<void> => {
+    let timer: ReturnType<typeof setTimeout> | undefined
+    try {
+      await Promise.race([
+        waitForActiveWork(),
+        new Promise<void>(resolve => { timer = setTimeout(resolve, CLOSE_DRAIN_TIMEOUT_MS) }),
+      ])
+    } finally {
+      if (timer !== undefined) clearTimeout(timer)
+    }
   }
   const clearActions = (): void => {
     ++simpleActionGeneration
@@ -443,6 +462,10 @@ export function createLauncherFileSearchExtensions(options: FileSearchOptions): 
       ...(current.root === undefined ? null : { root: current.root }),
       signal: validationController.signal,
     })))
+    void validationWork.then(
+      () => { activeValidations.delete(validationController) },
+      () => { activeValidations.delete(validationController) },
+    )
     const assertActionIsCurrent = (): void => {
       const latestKnown = isFileSearch ? knownFile : knownSimple
       const latestActions = isFileSearch ? fileActions : simpleActions
@@ -453,9 +476,13 @@ export function createLauncherFileSearchExtensions(options: FileSearchOptions): 
       }
     }
     let valid = false
-    try {
-      valid = await runBounded(() => validationWork, validationController.signal, ACTION_VALIDATION_TIMEOUT_MS, 'File-search action validation timed out')
-    } finally { activeValidations.delete(validationController) }
+    valid = await runBounded(
+      () => validationWork,
+      validationController.signal,
+      ACTION_VALIDATION_TIMEOUT_MS,
+      'File-search action validation timed out',
+      () => validationController.abort(new Error('File-search action validation timed out')),
+    )
     assertActionIsCurrent()
     if (!valid) throw new Error('File-search action target failed immediate revalidation')
     // Keep this final membership check adjacent to the native effect. The
@@ -468,7 +495,7 @@ export function createLauncherFileSearchExtensions(options: FileSearchOptions): 
 
   const close = async (): Promise<void> => {
     if (closed) {
-      while (activeWork.size > 0) await Promise.allSettled([...activeWork])
+      await waitForActiveWorkBounded()
       return
     }
     closed = true
@@ -477,7 +504,8 @@ export function createLauncherFileSearchExtensions(options: FileSearchOptions): 
     activeQuery = undefined
     abortActiveScans()
     clearActions()
-    while (activeWork.size > 0) await Promise.allSettled([...activeWork])
+    // ponytail: bounded drain keeps uncooperative native validation from holding shutdown forever.
+    await waitForActiveWorkBounded()
   }
 
   return Object.freeze({ close, executeAction, invalidate, loadIndexedItems, searchInstant })
