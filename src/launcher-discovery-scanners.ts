@@ -253,16 +253,16 @@ export function parseVSCodeRecentEntries(rawValues: readonly (string | undefined
 }
 
 function browserBookmarkPath(browser: string, context: LauncherDiscoveryScanContext): string | undefined {
-  const chromiumRoots: Readonly<Record<string, readonly [string, string]>> = {
-    Arc: ['Arc', path.join('User Data', 'Default', 'Bookmarks')],
-    'Brave Browser': ['BraveSoftware', path.join('Brave-Browser', 'User Data', 'Default', 'Bookmarks')],
-    'Google Chrome': ['Google', path.join('Chrome', 'User Data', 'Default', 'Bookmarks')],
-    'Microsoft Edge': ['Microsoft', path.join('Edge', 'User Data', 'Default', 'Bookmarks')],
-    'Yandex Browser': ['Yandex', path.join('YandexBrowser', 'User Data', 'Default', 'Bookmarks')],
+  if (context.platform === 'macOS') {
+    const macRows: Readonly<Record<string, string>> = {
+      Arc: path.join(context.appDataPath, 'Arc', 'User Data', 'Default', 'Bookmarks'),
+      'Brave Browser': path.join(context.appDataPath, 'BraveSoftware', 'Brave-Browser', 'Default', 'Bookmarks'),
+      'Google Chrome': path.join(context.appDataPath, 'Google', 'Chrome', 'Default', 'Bookmarks'),
+      'Microsoft Edge': path.join(context.appDataPath, 'Microsoft', 'Edge', 'Default', 'Bookmarks'),
+      'Yandex Browser': path.join(context.appDataPath, 'Yandex', 'YandexBrowser', 'Default', 'Bookmarks'),
+    }
+    return macRows[browser]
   }
-  const row = chromiumRoots[browser]
-  if (row === undefined) return undefined
-  if (context.platform === 'macOS') return path.join(context.appDataPath, row[0], row[1])
   if (context.platform !== 'Windows') return undefined
   const root = context.environment.LOCALAPPDATA ?? path.win32.join(context.homePath, 'AppData', 'Local')
   const windowsRows: Readonly<Record<string, string>> = {

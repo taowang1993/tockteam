@@ -115,7 +115,7 @@ test('scans Linux applications sequentially with limits and cancellation', async
 test('isolates broken browser profiles while preserving valid browser order', async () => {
   const root = await mkdtemp(join(tmpdir(), 'tockteam-browser-'))
   try {
-    const profile = join(root, 'Google', 'Chrome', 'User Data', 'Default')
+    const profile = join(root, 'Google', 'Chrome', 'Default')
     await mkdir(profile, { recursive: true })
     await writeFile(join(profile, 'Bookmarks'), JSON.stringify({ roots: { bookmark_bar: { children: [{ type: 'url', guid: 'one', name: 'One', url: 'https://one.example.test' }] } } }), 'utf8')
     const scanner = createLauncherDiscoveryScanners()
