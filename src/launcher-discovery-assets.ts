@@ -50,6 +50,11 @@ export const LAUNCHER_DISCOVERY_ASSETS = Object.freeze(rows.map(row => Object.fr
 export const LAUNCHER_DISCOVERY_ASSET_HASHES = Object.freeze(Object.fromEntries(rows.map(row => [row.key, row.hash])) as Record<LauncherDiscoveryImageKey, string>)
 export const LAUNCHER_DISCOVERY_ASSET_URLS = Object.freeze(Object.fromEntries(rows.map(row => [row.key, `./launcher-assets/${row.fileName}`])) as Record<LauncherDiscoveryImageKey, string>)
 
+const LAUNCHER_DISCOVERY_ASSET_ALIASES: Readonly<Record<string, string>> = Object.freeze({
+  'application-windows': './launcher-assets/application-windows-generic.png',
+})
+
 export function launcherDiscoveryAssetUrl(key: string): string | undefined {
-  return Object.hasOwn(LAUNCHER_DISCOVERY_ASSET_URLS, key) ? LAUNCHER_DISCOVERY_ASSET_URLS[key as LauncherDiscoveryImageKey] : undefined
+  if (Object.hasOwn(LAUNCHER_DISCOVERY_ASSET_URLS, key)) return LAUNCHER_DISCOVERY_ASSET_URLS[key as LauncherDiscoveryImageKey]
+  return LAUNCHER_DISCOVERY_ASSET_ALIASES[key]
 }

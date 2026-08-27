@@ -236,11 +236,11 @@ export function parseVSCodeRecentEntries(rawValues: readonly (string | undefined
       seen.add(uri)
       const remote = uri.startsWith('vscode-remote:')
       const baseFileType = fileUri !== undefined ? 'File' : folderUri !== undefined ? 'Folder' : 'Workspace'
-      const commandArg = folderUri !== undefined ? '--folder-uri' as const : '--file-uri' as const
+      const commandArg = fileUri !== undefined ? '--file-uri' as const : folderUri !== undefined ? '--folder-uri' as const : '--file-uri' as const
       results.push(Object.freeze({
         commandArg,
         fileType: remote ? `Remote ${baseFileType}` : baseFileType,
-        id: `vscode:${uri}`,
+        id: `vscode-${commandArg}-${uri}`,
         kind: 'vscode' as const,
         ...(boundedDiscoveryString(row.label, 512) ? { label: row.label } : null),
         path: displayPath,

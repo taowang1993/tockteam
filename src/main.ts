@@ -90,7 +90,7 @@ import {
 } from './launcher-security.ts'
 import { LauncherActionStore } from './launcher-actions.ts'
 import { createLauncherDiscoveryExtensions } from './launcher-discovery-extensions.ts'
-import { createLauncherDiscoveryScanners } from './launcher-discovery-scanners.ts'
+import { createLauncherDiscoveryScanners, launcherNodeSqliteAvailable } from './launcher-discovery-scanners.ts'
 import {
   launchDetachedLauncherExecutable,
   revalidateLauncherExecutable,
@@ -2648,6 +2648,7 @@ async function bootstrap(): Promise<void> {
     if (app.isReady()) flushQueuedPaths()
   })
   await app.whenReady()
+  if (!launcherNodeSqliteAvailable()) throw new Error('TockLauncher requires Electron built-in node:sqlite support')
 
   const info = desktopInfo()
   const logsDir = join(info.appDataPath, 'logs')
