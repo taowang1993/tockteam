@@ -50,7 +50,12 @@ function validSharedTockTutorPath(path: unknown): path is string {
   }
   if (url.protocol !== 'http:' && url.protocol !== 'https:') return false
   if (typeof window !== 'undefined' && url.origin !== window.location.origin) return false
-  return isTockTutorPath(url.pathname)
+  if (!isTockTutorPath(url.pathname)) return false
+  try {
+    return !/[\u0000-\u001f\u007f]/u.test(decodeURIComponent(url.pathname + url.search + url.hash))
+  } catch {
+    return false
+  }
 }
 
 function sharedTockTutorRouteState(): SharedTockTutorRouteState {

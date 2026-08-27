@@ -105,6 +105,8 @@ test('independent Desktop and Sidebar bundles share the active TockTutor note', 
   assert.equal(desktop.readLastTockTutorPath(), '/tocktutor/Active.md?mode=source#active')
   desktop.rememberTockTutorPath({ hash: '', pathname: '/tocktutor/Returned.md', search: '' })
   assert.equal(sidebar.readLastTockTutorPath(), '/tocktutor/Returned.md')
+  sidebar.rememberTockTutorPath({ hash: '', pathname: '/tocktutor/%00unsafe.md', search: '' })
+  assert.equal(desktop.readLastTockTutorPath(), '/tocktutor/Returned.md')
 })
 
 test('resolves bounded same-origin navigation and preserves query/hash', () => {
