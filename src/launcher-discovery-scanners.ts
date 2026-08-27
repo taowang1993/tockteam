@@ -1,6 +1,6 @@
 import { execFile as nodeExecFile } from 'node:child_process'
 import { DatabaseSync } from 'node:sqlite'
-import { readdir, readFile, stat } from 'node:fs/promises'
+import { opendir, open, readdir, stat } from 'node:fs/promises'
 import { statSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -16,7 +16,9 @@ export const MAX_DISCOVERED_ITEMS = 200
 export const MAX_DISCOVERY_FILE_BYTES = 8 * 1024 * 1024
 export const MAX_DISCOVERY_EXEC_BUFFER = 16 * 1024 * 1024
 const MAX_DESKTOP_ENTRY_BYTES = 256 * 1024
+export const MAX_DISCOVERY_DIRECTORY_VISITS = 4_096
 const MAX_TEXT_LENGTH = 16_384
+const DISCOVERY_READ_CHUNK_BYTES = 64 * 1024
 
 export type LauncherExecFileOptions = Readonly<{
   maxBuffer?: number
@@ -105,12 +107,26 @@ function isWithin(root: string, candidate: string): boolean {
 }
 
 async function readBoundedText(filePath: string): Promise<string> {
-  const metadata = await stat(filePath, { bigint: true })
-  if (!metadata.isFile() || metadata.size > BigInt(MAX_DISCOVERY_FILE_BYTES)) throw new Error('Discovery file exceeds its size limit')
-  const bytes = await readFile(filePath)
-  if (bytes.byteLength > MAX_DISCOVERY_FILE_BYTES) throw new Error('Discovery file exceeds its size limit')
-  try { return new TextDecoder('utf-8', { fatal: true }).decode(bytes) }
-  catch { throw new Error('Discovery file is not valid UTF-8') }
+  const handle = await open(filePath, 'r')
+  try {
+    const metadata = await handle.stat({ bigint: true })
+    if (!metadata.isFile() || metadata.size > BigInt(MAX_DISCOVERY_FILE_BYTES)) throw new Error('Discovery file exceeds its size limit')
+    const chunks: Buffer[] = []
+    let total = 0
+    while (total < MAX_DISCOVERY_FILE_BYTES) {
+      const chunk = Buffer.allocUnsafe(Math.min(DISCOVERY_READ_CHUNK_BYTES, MAX_DISCOVERY_FILE_BYTES - total))
+      const { bytesRead } = await handle.read(chunk, 0, chunk.byteLength, total)
+      if (bytesRead === 0) break
+      chunks.push(chunk.subarray(0, bytesRead))
+      total += bytesRead
+    }
+    if (total >= MAX_DISCOVERY_FILE_BYTES) {
+      const probe = Buffer.allocUnsafe(1)
+      if ((await handle.read(probe, 0, 1, total)).bytesRead > 0) throw new Error('Discovery file exceeds its size limit')
+    }
+    try { return new TextDecoder('utf-8', { fatal: true }).decode(Buffer.concat(chunks, total)) }
+    catch { throw new Error('Discovery file is not valid UTF-8') }
+  } finally { await handle.close() }
 }
 
 function decodeXml(value: string): string {
@@ -372,20 +388,27 @@ async function scanApplications(context: LauncherDiscoveryScanContext, execFile:
   const folders = boundedStringArray(context.getSetting('extension[ApplicationSearch].linuxFolders', defaults.linuxFolders), defaults.linuxFolders)
   const environments = (context.environment.ORIGINAL_XDG_CURRENT_DESKTOP ?? '').split(':').filter(Boolean)
   const results: LauncherDiscoveryEntry[] = []
+  let directoryVisits = 0
   for (const folder of folders) {
     throwIfAborted(context.signal)
-    let entries
-    try { entries = await readdir(folder, { withFileTypes: true }) } catch { continue }
-    for (const entry of entries) {
-      throwIfAborted(context.signal)
-      if (results.length >= MAX_DISCOVERED_ITEMS) return Object.freeze(results)
-      if (!entry.isFile() || !entry.name.endsWith('.desktop')) continue
-      const target = path.join(folder, entry.name)
-      try {
-        const parsed = parseLinuxDesktopEntry(await readBoundedText(target), environments)
-        if (parsed) results.push(Object.freeze({ id: `applications:${target}`, kind: 'application', name: parsed.name, path: target }))
-      } catch { /* malformed entries are isolated */ }
-    }
+    if (directoryVisits >= MAX_DISCOVERY_DIRECTORY_VISITS) break
+    let directory
+    try { directory = await opendir(folder) } catch { continue }
+    try {
+      while (directoryVisits < MAX_DISCOVERY_DIRECTORY_VISITS) {
+        throwIfAborted(context.signal)
+        const entry = await directory.read()
+        if (entry === null) break
+        directoryVisits++
+        if (results.length >= MAX_DISCOVERED_ITEMS) return Object.freeze(results)
+        if (!entry.isFile() || !entry.name.endsWith('.desktop')) continue
+        const target = path.join(folder, entry.name)
+        try {
+          const parsed = parseLinuxDesktopEntry(await readBoundedText(target), environments)
+          if (parsed) results.push(Object.freeze({ id: `applications:${target}`, kind: 'application', name: parsed.name, path: target }))
+        } catch { /* malformed entries are isolated */ }
+      }
+    } finally { await directory.close().catch(() => undefined) }
   }
   return Object.freeze(results)
 }
@@ -398,7 +421,7 @@ async function scanJetBrains(context: LauncherDiscoveryScanContext): Promise<rea
       ? path.join(context.homePath, 'Library', 'Application Support', 'JetBrains', 'Toolbox')
       : path.join(context.homePath, '.local', 'share', 'JetBrains', 'Toolbox')
   const configRoot = win
-    ? path.win32.join(context.environment.APPDATA ?? path.win32.join(context.homePath, 'AppData', 'Roaming'), 'JetBrains')
+    ? path.win32.join(context.environment.APPDATA ?? context.appDataPath, 'JetBrains')
     : context.platform === 'macOS'
       ? path.join(context.homePath, 'Library', 'Application Support', 'JetBrains')
       : path.join(context.homePath, '.config', 'JetBrains')
@@ -413,8 +436,11 @@ async function scanJetBrains(context: LauncherDiscoveryScanContext): Promise<rea
     if (!boundedDiscoveryString(tool.displayName, 128) || !boundedDiscoveryString(tool.installLocation, 4_096) || !boundedDiscoveryString(tool.launchCommand, 1_024) || !isAbsolute(tool.installLocation)) continue
     const productRoot = context.platform === 'macOS' ? implementation.join(tool.installLocation, 'Contents', 'Resources') : tool.installLocation
     let product: Record<string, unknown>
-    try { product = JSON.parse(await readBoundedText(implementation.join(productRoot, 'product-info.json'))) as Record<string, unknown> }
-    catch { continue }
+    try {
+      const parsed: unknown = JSON.parse(await readBoundedText(implementation.join(productRoot, 'product-info.json')))
+      if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) continue
+      product = parsed as Record<string, unknown>
+    } catch { continue }
     if (!boundedDiscoveryString(product.dataDirectoryName, 256) || /[\\/]/u.test(product.dataDirectoryName)) continue
     let projects: readonly string[]
     try { projects = parseJetBrainsRecentProjectPaths(await readBoundedText(implementation.join(configRoot, product.dataDirectoryName, 'options', 'recentProjects.xml')), context.homePath) }

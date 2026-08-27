@@ -112,6 +112,33 @@ test('scans Linux applications sequentially with limits and cancellation', async
   } finally { await rm(root, { recursive: true, force: true }) }
 })
 
+test('skips malformed JetBrains product metadata without losing other tools', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'tockteam-jetbrains-'))
+  try {
+    const home = join(root, 'home')
+    const toolbox = join(home, 'Library', 'Application Support', 'JetBrains', 'Toolbox')
+    const config = join(home, 'Library', 'Application Support', 'JetBrains', 'IdeaIC2024.1', 'options')
+    const broken = join(root, 'broken', 'Contents', 'Resources')
+    const install = join(root, 'good')
+    const resources = join(install, 'Contents', 'Resources')
+    const executable = join(install, 'Contents', 'MacOS', 'idea')
+    const project = join(root, 'project')
+    await mkdir(toolbox, { recursive: true }); await mkdir(config, { recursive: true }); await mkdir(broken, { recursive: true }); await mkdir(resources, { recursive: true }); await mkdir(join(install, 'Contents', 'MacOS'), { recursive: true }); await mkdir(join(project, '.idea'), { recursive: true })
+    await writeFile(join(toolbox, 'state.json'), JSON.stringify({ tools: [
+      { displayName: 'Broken', installLocation: join(root, 'broken'), launchCommand: 'Contents/MacOS/idea' },
+      { displayName: 'IntelliJ IDEA', installLocation: install, launchCommand: 'Contents/MacOS/idea' },
+    ] }), 'utf8')
+    await writeFile(join(broken, 'product-info.json'), 'null', 'utf8')
+    await writeFile(join(resources, 'product-info.json'), JSON.stringify({ dataDirectoryName: 'IdeaIC2024.1' }), 'utf8')
+    await writeFile(executable, 'idea', 'utf8')
+    await writeFile(join(config, 'recentProjects.xml'), `<entry key="${project}" value="{}" />`, 'utf8')
+    await writeFile(join(project, '.idea', '.name'), 'TockTeam', 'utf8')
+    const scanner = createLauncherDiscoveryScanners()
+    const entries = await scanner.JetBrainsToolbox(context({ homePath: home, platform: 'macOS' }))
+    assert.deepEqual(entries.map(entry => 'toolName' in entry ? entry.toolName : ''), ['IntelliJ IDEA'])
+  } finally { await rm(root, { recursive: true, force: true }) }
+})
+
 test('isolates broken browser profiles while preserving valid browser order', async () => {
   const root = await mkdtemp(join(tmpdir(), 'tockteam-browser-'))
   try {
