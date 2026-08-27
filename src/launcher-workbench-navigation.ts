@@ -73,6 +73,12 @@ export function createLauncherWorkbenchRouteDelivery<TWindow extends object>(
     markUnready(window: TWindow): void {
       ready.delete(window)
     },
+    takePending(window: TWindow): LauncherWorkbenchRoute | undefined {
+      const queued = pending.get(window)
+      pending.delete(window)
+      ready.delete(window)
+      return queued
+    },
     clear(window: TWindow): void {
       ready.delete(window)
       pending.delete(window)
@@ -116,6 +122,12 @@ export function createLauncherWorkbenchCommandDelivery<
     },
     markUnready(window: TWindow): void {
       ready.delete(window)
+    },
+    takePending(window: TWindow): TValue[] {
+      const queue = pending.get(window) ?? []
+      pending.delete(window)
+      ready.delete(window)
+      return queue
     },
     clear(window: TWindow): void {
       ready.delete(window)

@@ -168,6 +168,7 @@ const workbenchCommandDelivery = createLauncherWorkbenchCommandDelivery<BrowserW
   window.webContents.send('desktop:command', command)
 })
 const commandsBeforeWorkbenchWindow: DesktopCommand[] = []
+let routeBeforeWorkbenchWindow: LauncherWorkbenchRoute | undefined
 let workbenchGeneration = 0
 let workbenchReadyGeneration = -1
 const logTail: string[] = []
@@ -974,6 +975,9 @@ function assignMainWindow(window: BrowserWindow): BrowserWindow {
   mainWindow = window
   workbenchRouteDelivery.markUnready(window)
   workbenchCommandDelivery.markUnready(window)
+  const pendingRoute = routeBeforeWorkbenchWindow
+  routeBeforeWorkbenchWindow = undefined
+  if (pendingRoute !== undefined) workbenchRouteDelivery.deliver(window, pendingRoute)
   const pending = commandsBeforeWorkbenchWindow.splice(0)
   for (const command of pending) workbenchCommandDelivery.deliver(window, command)
   return window
@@ -1075,6 +1079,9 @@ function createWindow(options: { preview?: boolean; title?: string } = {}): Brow
     if (mainWindow === window) {
       launcherController?.destroyWindow()
       desktopCallerAuthorizations.revokeWindow(windowId)
+      const pendingRoute = workbenchRouteDelivery.takePending(window)
+      if (pendingRoute !== undefined) routeBeforeWorkbenchWindow = pendingRoute
+      commandsBeforeWorkbenchWindow.push(...workbenchCommandDelivery.takePending(window))
       workbenchRouteDelivery.clear(window)
       workbenchCommandDelivery.clear(window)
       resetTockTutorTheme(window)
