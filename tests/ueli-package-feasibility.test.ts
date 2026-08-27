@@ -51,8 +51,8 @@ test('the contract preserves the current TockTeam identity and configured packag
   assert.deepEqual(foundation, {
     launcherImplemented: true,
     launcherPackaged: false,
-    admittedRuntimeDependencies: [],
-    runtimeDependencyClosure: [],
+    admittedRuntimeDependencies: ['fuse.js@7.1.0', 'fuzzysort@3.1.0'],
+    runtimeDependencyClosure: ['fuse.js@7.1.0', 'fuzzysort@3.1.0'],
     launcherAssets: [],
     launcherNotices: [],
     shippedVendorSource: false,
@@ -82,7 +82,7 @@ test('the feasibility audit rejects admitted Ueli-derived dependencies and launc
 
   assert.match(
     inspectLauncherPackageFeasibility(mutation).failures.join('\n'),
-    /launcher must not be packaged in foundation.*Ueli-derived runtime dependencies must remain empty.*installed artifact evidence must remain false.*signing evidence must remain false/su,
+    /launcher must not be packaged in foundation.*Ueli-derived runtime dependencies differ.*installed artifact evidence must remain false.*signing evidence must remain false/su,
   )
 })
 

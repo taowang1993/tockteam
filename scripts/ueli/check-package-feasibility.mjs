@@ -21,11 +21,16 @@ const EXPECTED_TARGETS = Object.freeze([
   Object.freeze({ platform: 'linux', formats: Object.freeze(['AppImage', 'deb']), architectures: Object.freeze(['arm64', 'x64']) }),
   Object.freeze({ platform: 'win', formats: Object.freeze(['dir']), architectures: Object.freeze(['x64']) }),
 ])
+const EXPECTED_LAUNCHER_DEPENDENCIES = Object.freeze({
+  'fuse.js': '7.1.0',
+  fuzzysort: '3.1.0',
+})
+const EXPECTED_LAUNCHER_DEPENDENCY_LIST = Object.freeze(['fuse.js@7.1.0', 'fuzzysort@3.1.0'])
 const EXPECTED_FOUNDATION = Object.freeze({
   launcherImplemented: true,
   launcherPackaged: false,
-  admittedRuntimeDependencies: Object.freeze([]),
-  runtimeDependencyClosure: Object.freeze([]),
+  admittedRuntimeDependencies: EXPECTED_LAUNCHER_DEPENDENCY_LIST,
+  runtimeDependencyClosure: EXPECTED_LAUNCHER_DEPENDENCY_LIST,
   launcherAssets: Object.freeze([]),
   launcherNotices: Object.freeze([]),
   shippedVendorSource: false,
@@ -43,8 +48,8 @@ const EXPECTED_PUBLICATION = Object.freeze({
 const EXPECTED_UELI_INTEGRATION = Object.freeze({
   baseline: 'v9.29.0',
   peeledCommit: 'c9670d61cb2576802adf99d95622c58538d265f3',
-  admittedRuntimeDependencies: Object.freeze([]),
-  runtimeDependencyClosure: Object.freeze([]),
+  admittedRuntimeDependencies: EXPECTED_LAUNCHER_DEPENDENCY_LIST,
+  runtimeDependencyClosure: EXPECTED_LAUNCHER_DEPENDENCY_LIST,
   shippedVendorSource: false,
   importedIdentity: false,
 })
@@ -196,6 +201,7 @@ export function inspectLauncherPackageFeasibility(inputs) {
   })
   addFailure(failures, !VENDOR_SOURCE.test(resourceSource), 'vendor/ueli must not ship in npm, Builder files, or Builder resources')
 
+  addFailure(failures, sameJson(packageJson?.dependencies, EXPECTED_LAUNCHER_DEPENDENCIES), 'launcher dependencies differ from the approved direct search set')
   const ueliRuntimeDependencies = new Set([
     ...Object.keys(vendorPackageJson?.dependencies ?? {}),
     ...Object.keys(vendorPackageJson?.optionalDependencies ?? {}),
@@ -212,15 +218,24 @@ export function inspectLauncherPackageFeasibility(inputs) {
     if (!values || typeof values !== 'object') continue
     for (const [dependencyName, version] of Object.entries(values)) {
       addFailure(failures, typeof version !== 'string' || !VENDOR_SOURCE.test(version), `dependency value must not reference vendor/ueli: ${dependencyName}@${version}`)
-      addFailure(failures, !ueliRuntimeDependencies.has(dependencyName), `Ueli-derived dependency is admitted in package inputs: ${dependencyName}`)
+      const approvedVersion = EXPECTED_LAUNCHER_DEPENDENCIES[dependencyName]
+      addFailure(
+        failures,
+        approvedVersion === undefined
+          ? !ueliRuntimeDependencies.has(dependencyName)
+          : version === approvedVersion,
+        approvedVersion === undefined
+          ? `Ueli-derived dependency is admitted in package inputs: ${dependencyName}`
+          : `approved launcher dependency version differs: ${dependencyName}@${version}`,
+      )
     }
   }
 
   const foundation = contract?.foundation ?? {}
   addFailure(failures, foundation.launcherImplemented === true, 'launcher implementation must be recorded in foundation')
   addFailure(failures, foundation.launcherPackaged === false, 'launcher must not be packaged in foundation')
-  addFailure(failures, Array.isArray(foundation.admittedRuntimeDependencies) && foundation.admittedRuntimeDependencies.length === 0, 'Ueli-derived runtime dependencies must remain empty')
-  addFailure(failures, Array.isArray(foundation.runtimeDependencyClosure) && foundation.runtimeDependencyClosure.length === 0, 'runtime dependency closure must remain empty')
+  addFailure(failures, sameJson(foundation.admittedRuntimeDependencies, EXPECTED_LAUNCHER_DEPENDENCY_LIST), 'Ueli-derived runtime dependencies differ from the approved launcher set')
+  addFailure(failures, sameJson(foundation.runtimeDependencyClosure, EXPECTED_LAUNCHER_DEPENDENCY_LIST), 'runtime dependency closure differs from the approved launcher set')
   addFailure(failures, Array.isArray(foundation.launcherAssets) && foundation.launcherAssets.length === 0, 'launcher asset admission must remain empty in foundation')
   addFailure(failures, Array.isArray(foundation.launcherNotices) && foundation.launcherNotices.length === 0, 'launcher notice admission must remain empty in foundation')
   addFailure(failures, foundation.shippedVendorSource === false, 'foundation must not ship vendor source')
@@ -228,7 +243,7 @@ export function inspectLauncherPackageFeasibility(inputs) {
   addFailure(failures, sameJson(foundation, EXPECTED_FOUNDATION), 'foundation contract differs from the reviewed empty-launcher state')
 
   const integration = contract?.ueliIntegration ?? {}
-  addFailure(failures, sameJson(integration, EXPECTED_UELI_INTEGRATION), 'Ueli integration admission differs from the reviewed empty-launcher state')
+  addFailure(failures, sameJson(integration, EXPECTED_UELI_INTEGRATION), 'Ueli integration admission differs from the reviewed launcher state')
 
   const publication = contract?.publication ?? {}
   addFailure(failures, sameJson(publication.configuredTargets, EXPECTED_PUBLICATION.configuredTargets), 'configured publication targets differ from the release evidence')

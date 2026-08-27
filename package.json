@@ -121,8 +121,6 @@
     "@deepseek-ai/cordis-plugin-include": "1.0.6",
     "@deepseek-ai/cordis-plugin-loader": "1.0.2",
     "@pennivo/mcp-server": "1.4.0",
-    "tockbot-note-runtime": "file:plugins/tocktutor/packages/tockbot-note-runtime",
-    "tockbot-note-vault": "file:plugins/tocktutor/packages/tockbot-note-vault",
     "@tockteam/note-vault-tools": "file:plugins/tocktutor/packages/tockteam-note-vault-tools",
     "@types/node": "^24.10.0",
     "electron": "42.3.0",
@@ -130,6 +128,8 @@
     "esbuild": "^0.25.12",
     "lucide": "0.473.0",
     "pnpm": "11.21.0",
+    "tockbot-note-runtime": "file:plugins/tocktutor/packages/tockbot-note-runtime",
+    "tockbot-note-vault": "file:plugins/tocktutor/packages/tockbot-note-vault",
     "typescript": "^6.0.3"
   },
   "engines": {
@@ -239,5 +239,9 @@
       ]
     },
     "artifactName": "TockTeam-Desktop-${version}-${arch}.${ext}"
+  },
+  "dependencies": {
+    "fuse.js": "7.1.0",
+    "fuzzysort": "3.1.0"
   }
 }

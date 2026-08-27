@@ -114,8 +114,14 @@
   "foundation": {
     "launcherImplemented": true,
     "launcherPackaged": false,
-    "admittedRuntimeDependencies": [],
-    "runtimeDependencyClosure": [],
+    "admittedRuntimeDependencies": [
+      "fuse.js@7.1.0",
+      "fuzzysort@3.1.0"
+    ],
+    "runtimeDependencyClosure": [
+      "fuse.js@7.1.0",
+      "fuzzysort@3.1.0"
+    ],
     "launcherAssets": [],
     "launcherNotices": [],
     "shippedVendorSource": false,
@@ -143,8 +149,14 @@
   "ueliIntegration": {
     "baseline": "v9.29.0",
     "peeledCommit": "c9670d61cb2576802adf99d95622c58538d265f3",
-    "admittedRuntimeDependencies": [],
-    "runtimeDependencyClosure": [],
+    "admittedRuntimeDependencies": [
+      "fuse.js@7.1.0",
+      "fuzzysort@3.1.0"
+    ],
+    "runtimeDependencyClosure": [
+      "fuse.js@7.1.0",
+      "fuzzysort@3.1.0"
+    ],
     "shippedVendorSource": false,
     "importedIdentity": false
   },
