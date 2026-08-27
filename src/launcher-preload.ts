@@ -4,6 +4,10 @@ import {
   parseLauncherWindowAcknowledgement,
 } from './launcher-window-contract.ts'
 
+ipcRenderer.on(LAUNCHER_WINDOW_IPC_CHANNELS.focusSearch, () => {
+  document.getElementById('launcher-search')?.focus()
+})
+
 const bridge = Object.freeze({
   dismiss: async (...args: unknown[]): Promise<void> => {
     if (args.length !== 0) throw new Error('TockLauncher dismiss does not accept arguments')

@@ -1,5 +1,6 @@
 export const LAUNCHER_WINDOW_IPC_CHANNELS = Object.freeze({
   dismiss: 'launcher-window:dismiss',
+  focusSearch: 'launcher-window:focus-search',
   getState: 'launcher-window:getState',
   show: 'launcher-window:show',
 })

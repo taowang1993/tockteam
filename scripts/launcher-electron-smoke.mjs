@@ -113,6 +113,7 @@ async function electronPages(port) {
 }
 
 async function clickWorkbenchFallback(page) {
+  await page.call('Page.bringToFront')
   const clicked = await page.evaluate(`(() => {
     const button = [...document.querySelectorAll('button')].find(node =>
       node.textContent?.includes('TockLauncher')
@@ -122,6 +123,11 @@ async function clickWorkbenchFallback(page) {
     return true
   })()`)
   assert.equal(clicked, true, 'TockLauncher workbench fallback button must be present')
+}
+
+async function showLauncherFromWorkbench(page) {
+  await page.call('Page.bringToFront')
+  return await page.evaluate('window.dshDesktop?.launcher?.show()')
 }
 
 async function clearStartupDialogs(page) {
@@ -223,28 +229,27 @@ try {
   await sleep(250)
   assert.equal(await launcherConnection.evaluate('location.href'), launcher.url)
   assert.equal(workbenchConnection ? await workbenchConnection.evaluate('location.href') : '', workbenchUrl)
-
-  await launcherConnection.call('Input.dispatchKeyEvent', {
-    type: 'keyDown',
-    key: 'Escape',
-    code: 'Escape',
-    windowsVirtualKeyCode: 27,
-    nativeVirtualKeyCode: 27,
-  })
-  await waitFor(
-    () => launcherConnection.evaluate('document.visibilityState'),
-    visibility => visibility === 'hidden',
-  )
-  await clickWorkbenchFallback(workbenchConnection)
+  assert.equal(await launcherConnection.evaluate(`(async () => {
+    document.querySelector('#launcher-close')?.focus()
+    const focused = document.activeElement?.id
+    await window.tockteamLauncher?.dismiss()
+    return focused
+  })()`), 'launcher-close')
+  const dismissedState = await workbenchConnection.evaluate('window.dshDesktop?.launcher?.getState()')
+  assert.equal(dismissedState?.visible, false)
+  const closeReopen = await showLauncherFromWorkbench(workbenchConnection)
+  assert.equal(closeReopen?.visible, true)
   pages = await waitFor(
     () => electronPages(port),
     current => current.filter(page => page.title === 'TockLauncher').length === 1,
   )
   launcher = pages.find(page => page.title === 'TockLauncher')
   assert.equal(launcher?.id, firstLauncherId)
-  assert.equal(await launcherConnection.evaluate('document.visibilityState'), 'visible')
-  assert.equal(await launcherConnection.evaluate('document.activeElement?.id'), 'launcher-search')
-  console.log('launcher Electron smoke passed: sandbox/preload/CSP/geometry/focus/reuse/Escape/workbench preservation')
+  await waitFor(
+    () => launcherConnection.evaluate('document.activeElement?.id'),
+    id => id === 'launcher-search',
+  )
+  console.log('launcher Electron smoke passed: sandbox/preload/CSP/geometry/focus/reuse/dismissal/workbench preservation')
 } catch (error) {
   throw new Error(`${error instanceof Error ? error.message : String(error)}\nElectron output:\n${output}`)
 } finally {

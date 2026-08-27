@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import type { Rectangle } from 'electron'
+import { LAUNCHER_WINDOW_IPC_CHANNELS } from '../src/launcher-window-contract.ts'
 import {
   LauncherOverlayController,
   resolveLauncherBounds,
@@ -11,6 +12,7 @@ type Listener = (...args: any[]) => void
 
 class FakeWebContents {
   readonly id = 77
+  readonly sent: string[] = []
   private readonly listeners = new Map<string, Listener[]>()
   on(event: string, listener: Listener): void {
     this.listeners.set(event, [...(this.listeners.get(event) ?? []), listener])
@@ -18,6 +20,7 @@ class FakeWebContents {
   emit(event: string, ...args: any[]): void {
     for (const listener of this.listeners.get(event) ?? []) listener(...args)
   }
+  send(channel: string): void { this.sent.push(channel) }
 }
 
 class FakeWindow {
@@ -135,6 +138,10 @@ test('launcher lazily creates and reuses one focused, rebound window', async () 
   assert.deepEqual(setupResult.windows[0]?.bounds, { height: 475, width: 750, x: 445, y: 158 })
   assert.equal(setupResult.windows[0]?.showCount, 2)
   assert.equal(setupResult.windows[0]?.focusCount, 2)
+  assert.deepEqual(setupResult.windows[0]?.webContents.sent, [
+    LAUNCHER_WINDOW_IPC_CHANNELS.focusSearch,
+    LAUNCHER_WINDOW_IPC_CHANNELS.focusSearch,
+  ])
   await setupResult.controller.show()
   assert.equal(setupResult.windows[0]?.loadCount, 1)
 

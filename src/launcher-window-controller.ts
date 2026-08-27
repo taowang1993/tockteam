@@ -1,7 +1,8 @@
 import type { Rectangle } from 'electron'
-import type {
-  DesktopLauncherState,
-  LauncherShortcutState,
+import {
+  LAUNCHER_WINDOW_IPC_CHANNELS,
+  type DesktopLauncherState,
+  type LauncherShortcutState,
 } from './launcher-window-contract.ts'
 
 export const TOCKLAUNCHER_PRODUCT_NAME = 'TockLauncher'
@@ -19,6 +20,7 @@ type LauncherInputEvent = Readonly<{ preventDefault: () => void }>
 type LauncherWebContents = Readonly<{
   id: number
   on: (...args: any[]) => unknown
+  send: (channel: string) => void
 }>
 
 export type LauncherOverlayWindow = Readonly<{
@@ -172,6 +174,7 @@ export class LauncherOverlayController {
     window.setBounds(resolveLauncherBounds(this.args.getDisplayWorkArea()))
     window.show()
     window.focus()
+    window.webContents.send(LAUNCHER_WINDOW_IPC_CHANNELS.focusSearch)
   }
 
   toggle(): Promise<void> {
