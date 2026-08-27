@@ -1216,6 +1216,7 @@ function initializeLauncher(): void {
       return Object.freeze({
         after: Object.freeze([...localResults.after, ...discoveryResults.after, ...fileResults.after]),
         before: Object.freeze([...localResults.before, ...discoveryResults.before, ...fileResults.before]),
+        ...(fileResults.lastError === undefined ? null : { lastError: fileResults.lastError }),
       })
     },
     persistIndex: async items => { await repository.writeIndex(items) },
