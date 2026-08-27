@@ -174,6 +174,15 @@ function isAbsolute(value: string): boolean {
   return path.isAbsolute(value) || path.win32.isAbsolute(value)
 }
 
+function isConcreteVSCodeExecutable(value: string): boolean {
+  if (isAllowedLauncherVSCodeExecutable(value)) return true
+  if (!isAbsolute(value)) return false
+  const normalized = value.replaceAll('\\', '/')
+  const implementation = path.win32.isAbsolute(value) ? path.win32 : path
+  return /^(?:code|code\.cmd|code\.exe)$/iu.test(implementation.basename(normalized))
+    && !normalized.split('/').some(component => component === '.' || component === '..')
+}
+
 function isWindowsStore(value: string): boolean { return WINDOWS_STORE_PATTERN.test(value) }
 function isApplicationTarget(value: string): boolean { return isAbsolute(value) || isWindowsStore(value) }
 
@@ -458,7 +467,7 @@ export function createLauncherDiscoveryExtensions(options: LauncherDiscoveryOpti
     let executable: string | undefined
     try { executable = await withTimeout(resolveExecutable(parsedExecutable, options.platform, environment), new AbortController().signal, mappingTimeoutMs) }
     catch { executable = undefined }
-    if (executable === undefined || !isAbsolute(executable) || !isAllowedLauncherVSCodeExecutable(executable)) return empty()
+    if (executable === undefined || !isConcreteVSCodeExecutable(executable)) return empty()
     const mappingSignal = new AbortController().signal
     const executableIdentity = await captureIdentity(executable, mappingSignal)
     if (executableIdentity === undefined) return empty()
@@ -537,7 +546,7 @@ export function createLauncherDiscoveryExtensions(options: LauncherDiscoveryOpti
       if (current.executableIdentity === undefined || current.projectIdentity === undefined) throw revalidationError('JetBrains')
       if (options.revalidate?.jetbrains !== undefined && !await options.revalidate.jetbrains({ executable: value.executable, projectPath: value.args[0]!, entry: current.entry, executableIdentity: current.executableIdentity, projectIdentity: current.projectIdentity })) throw revalidationError('JetBrains')
     } else {
-      if (!isAllowedLauncherVSCodeExecutable(value.executable) || (value.args[0] !== '--file-uri' && value.args[0] !== '--folder-uri') || !bounded(value.args[1])) throw new Error('Invalid VS Code launch action')
+      if (!isConcreteVSCodeExecutable(value.executable) || (value.args[0] !== '--file-uri' && value.args[0] !== '--folder-uri') || !bounded(value.args[1])) throw new Error('Invalid VS Code launch action')
       const current = knownVscode.get(record.argument)
       if (current === undefined || current.entry.uri !== value.args[1] || current.entry.commandArg !== value.args[0]) throw new Error('VS Code action is not from the current main-owned scan')
       if (current.executableIdentity === undefined || (current.entry.uri.startsWith('file:') && current.identity === undefined)) throw revalidationError('VS Code')

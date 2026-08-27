@@ -2,7 +2,7 @@
 
 import assert from 'node:assert/strict'
 import { createServer } from 'node:net'
-import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, rename, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -149,6 +149,11 @@ async function clearStartupDialogs(page) {
 
 const port = await freePort()
 const userData = await mkdtemp(join(tmpdir(), 'tockteam-launcher-electron-'))
+const discoveryFixture = await mkdtemp(join(tmpdir(), 'tockteam-discovery-fixture-'))
+const discoveryApplications = join(discoveryFixture, 'Applications')
+const discoveryApplication = join(discoveryApplications, 'TockTeam Fixture.app')
+await mkdir(join(discoveryApplication, 'Contents'), { recursive: true })
+await writeFile(join(discoveryApplication, 'Contents', 'Info.plist'), '<?xml version="1.0"?><plist><dict><key>CFBundleName</key><string>TockTeam Fixture</string></dict></plist>', 'utf8')
 const electron = ensureElectronInstalled(root)
 const child = spawn(electron, [
   '.',
@@ -474,6 +479,7 @@ try {
     browsers => Array.isArray(browsers) && browsers.includes('Google Chrome') && browsers.includes('Firefox'),
   )
   await workbenchConnection.evaluate(`(async () => {
+    await window.dshDesktop?.launcher?.settings?.updateSetting('extension[ApplicationSearch].macOsFolders', [${JSON.stringify(discoveryApplications)}])
     await window.dshDesktop?.launcher?.settings?.updateSetting('general.searchHistory.enabled', true)
     await window.dshDesktop?.launcher?.settings?.updateSetting('searchEngine.fuzziness', 0.6)
     await window.dshDesktop?.launcher?.settings?.updateSetting('searchEngine.id', 'Fuse.js')
@@ -481,6 +487,39 @@ try {
     await window.dshDesktop?.launcher?.settings?.updateSetting('extensions.enabledExtensionIds', ['AppearanceSwitcher', 'ApplicationSearch', 'Base64Conversion', 'BrowserBookmarks', 'Calculator', 'ColorConverter', 'CurrencyConversion', 'CustomWebSearch', 'DeeplTranslator', 'FileSearch', 'JetBrainsToolbox', 'PasswordGenerator', 'QuickFormatter', 'RowlandTextEditor', 'SimpleFileSearch', 'SystemCommands', 'SystemSettings', 'TerminalLauncher', 'UeliCommand', 'UuidGenerator', 'VSCode', 'WebSearch', 'WindowsControlPanel', 'Workflow'])
   })()`)
   await showLauncherFromWorkbench(workbenchConnection)
+
+  const discoveryFacts = await launcherConnection.evaluate(`(async () => {
+    const result = await window.tockteamLauncher?.search('fixture', { fuzziness: 0, maxSearchResultItems: 200, searchEngineId: 'fuzzysort' })
+    const item = result?.after.find(candidate => candidate.sourceExtension === 'ApplicationSearch')
+    return {
+      found: item?.name ?? null,
+      imageKey: item?.imageKey ?? null,
+      hasDefaultAction: item?.defaultAction?.actionId !== undefined,
+      hasCopyAction: item?.additionalActions?.some(action => action.description.includes('Copy file path')) ?? false,
+      defaultActionId: item?.defaultAction?.actionId ?? null,
+      copyActionId: item?.additionalActions?.find(action => action.description.includes('Copy file path'))?.actionId ?? null,
+    }
+  })()`)
+  assert.equal(discoveryFacts.found, 'TockTeam Fixture')
+  assert.equal(discoveryFacts.imageKey, 'application-macos')
+  assert.equal(discoveryFacts.hasDefaultAction, true)
+  assert.equal(discoveryFacts.hasCopyAction, true)
+  const copiedFixturePath = await launcherConnection.evaluate(`(async () => {
+    const result = await window.tockteamLauncher?.search('fixture', { fuzziness: 0, maxSearchResultItems: 200, searchEngineId: 'fuzzysort' })
+    const item = result?.after.find(candidate => candidate.sourceExtension === 'ApplicationSearch')
+    const action = item?.additionalActions?.find(candidate => candidate.description.includes('Copy file path'))
+    if (action === undefined) return false
+    const outcome = await window.tockteamLauncher?.invokeAction(action.actionId)
+    return outcome?.ok === true
+  })()`)
+  assert.equal(copiedFixturePath, true)
+  const fixtureMoved = `${discoveryApplication}.moved`
+  await rename(discoveryApplication, fixtureMoved)
+  const staleFixtureAction = await launcherConnection.evaluate(`(async actionId => {
+    try { await window.tockteamLauncher?.invokeAction(actionId); return false } catch { return true }
+  })(${JSON.stringify(discoveryFacts.defaultActionId)})`)
+  assert.equal(staleFixtureAction, true)
+  await rename(fixtureMoved, discoveryApplication)
 
   const localSearch = async (term, expected) => {
     await launcherConnection.evaluate(`(() => {
@@ -894,4 +933,5 @@ try {
     }
   }
   await rm(userData, { recursive: true, force: true })
+  await rm(discoveryFixture, { recursive: true, force: true })
 }

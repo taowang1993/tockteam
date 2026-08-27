@@ -1131,7 +1131,10 @@ function initializeLauncher(): void {
         const invocation = resolveWindowsApplicationElevationInvocation(target)
         await execFileAsync(invocation.executable, [...invocation.args], { maxBuffer: 64 * 1024, timeout: 15_000, windowsHide: true })
       },
-      openExternal: async url => await launcherCustomBrowser?.openUrl(url),
+      openExternal: async url => {
+        if (launcherCustomBrowser === undefined) throw new Error('Custom browser controller is unavailable')
+        await launcherCustomBrowser.openUrl(url)
+      },
       revealPath: target => { shell.showItemInFolder(target) },
     },
     capturePathIdentity: async target => await statLauncherPathIdentity(target),
