@@ -60,7 +60,10 @@ test('desktop profile pins the released TockTutor runtime and peer package', () 
     peerDependencies: Record<string, string>
     version: string
   }
-  assert.equal(packageJson.dependencies, undefined)
+  assert.deepEqual(packageJson.dependencies, {
+    'fuse.js': '7.1.0',
+    fuzzysort: '3.1.0',
+  })
   assert.equal(
     packageJson.scripts['install:tocktutor'],
     'node scripts/install-tocktutor.mjs',

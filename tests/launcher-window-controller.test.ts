@@ -76,7 +76,7 @@ class FakeWindow {
 function setup(
   platform: NodeJS.Platform = 'linux',
   configure?: (window: FakeWindow) => void,
-  onWindowCleared?: (window: FakeWindow) => void,
+  onWindowCleared?: (window: { webContents: { id: number } }) => void,
 ) {
   const windows: FakeWindow[] = []
   const callbacks: (() => void)[] = []
