@@ -74,6 +74,7 @@ export type LauncherDiscoveryEntry = Readonly<{
 }> | Readonly<{
   executable: string
   id: string
+  installRoot?: string
   kind: 'jetbrains'
   name: string
   projectPath: string
