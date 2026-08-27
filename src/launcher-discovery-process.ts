@@ -72,6 +72,14 @@ async function regularFile(target: string): Promise<string | undefined> {
   } catch { return undefined }
 }
 
+async function canonicalRegularFile(target: string): Promise<string | undefined> {
+  try {
+    const canonical = await realpath(target)
+    const selected = await lstat(canonical)
+    return isRegularExecutable(selected) ? canonical : undefined
+  } catch { return undefined }
+}
+
 export async function resolveLauncherExecutable(
   command: unknown,
   platform: 'Linux' | 'macOS' | 'Windows',
@@ -92,7 +100,8 @@ export async function resolveLauncherExecutable(
   } else if (!/^code$/iu.test(command) && !isAbsolute(command)) return undefined
   if (isAbsolute(command)) {
     const implementation = isWindowsAbsolute(command) ? path.win32 : path
-    return /\.(?:cmd|bat)$/iu.test(implementation.basename(command)) ? undefined : command
+    if (/\.(?:cmd|bat)$/iu.test(implementation.basename(command))) return undefined
+    return platform === 'Windows' ? command : await canonicalRegularFile(command)
   }
   const pathValue = environment.PATH ?? environment.Path
   if (!bounded(pathValue, 16_384)) return undefined
@@ -113,7 +122,7 @@ export async function resolveLauncherExecutable(
       }
       continue
     }
-    const executable = await regularFile(implementation.join(directory, command))
+    const executable = await canonicalRegularFile(implementation.join(directory, command))
     if (executable !== undefined) return implementation.normalize(executable)
   }
   return undefined
@@ -201,7 +210,7 @@ export function resolveWindowsApplicationElevationInvocation(target: string): La
 }
 
 export async function launchDetachedLauncherExecutable(executable: string, args: readonly string[], spawnProcess: SpawnDetachedProcess = spawnDetachedProcess): Promise<void> {
-  if (!bounded(executable, 4_096) || !Array.isArray(args) || args.length > 16 || args.some(argument => !bounded(argument))) throw new Error('Invalid detached launcher invocation')
+  if (!bounded(executable, 4_096) || /\.(?:cmd|bat)$/iu.test(executable) || !Array.isArray(args) || args.length > 16 || args.some(argument => !bounded(argument))) throw new Error('Invalid detached launcher invocation')
   const child = spawnProcess(executable, args, { detached: true, stdio: 'ignore', windowsHide: true })
   await new Promise<void>((resolve, reject) => {
     child.once('error', reject)

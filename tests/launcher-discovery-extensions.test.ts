@@ -1,4 +1,7 @@
 import assert from 'node:assert/strict'
+import { lstat, mkdir, mkdtemp, realpath, rm, symlink, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { test } from 'node:test'
 import {
   LAUNCHER_DISCOVERY_DEFAULTS,
@@ -159,6 +162,38 @@ test('does not let an older instant search overwrite the current VS Code action 
   const current = (await currentSearch).after[0]!
   await oldSearch
   await provider.executeAction(record(current))
+})
+
+test('publishes canonical POSIX VS Code executable paths and identity-bound actions', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'tockteam-vscode-extension-'))
+  try {
+    const target = join(root, 'installed', 'bin', 'code')
+    const link = join(root, 'code')
+    const replacement = join(root, 'replacement', 'bin', 'code')
+    await mkdir(join(root, 'installed', 'bin'), { recursive: true })
+    await mkdir(join(root, 'replacement', 'bin'), { recursive: true })
+    await writeFile(target, 'code', 'utf8')
+    await writeFile(replacement, 'replacement', 'utf8')
+    await symlink(target, link)
+    const { resolveExecutable: _testResolver, ...defaultOptions } = baseOptions
+    const provider = createLauncherDiscoveryExtensions({
+      ...defaultOptions,
+      environment: { PATH: root },
+      getSetting: <T>(key: string, fallback: T) => key === 'extension[VSCode].command' ? 'code %s' as T : fallback,
+      enabledExtensionIds: () => ['VSCode'],
+      scanners: { ...entries, VSCode: async () => [{ commandArg: '--folder-uri' as const, fileType: 'Folder', id: 'canonical', kind: 'vscode' as const, label: 'canonical', path: '/work/canonical', uri: 'vscode-remote://ssh/canonical' }] },
+      capturePathIdentity: async candidate => { const stats = await lstat(candidate, { bigint: true }); return { dev: String(stats.dev), ino: String(stats.ino) } },
+      effects: { confirmOpenApplicationAsAdministrator: async () => false, copyText: () => {}, launchExecutable: () => {}, openApplication: () => {}, openApplicationAsAdministrator: () => {}, openExternal: () => {}, revealPath: () => {} },
+    })
+    await provider.loadIndexedItems(new AbortController().signal)
+    const item = (await provider.searchInstant('vscode canonical')).after[0]!
+    const argument = JSON.parse(item.defaultAction.argument) as { executable: string }
+    assert.equal(argument.executable, await realpath(target))
+    assert.equal(argument.executable.endsWith('/code'), true)
+    await rm(link)
+    await symlink(replacement, link)
+    await assert.rejects(provider.executeAction(record(item)), /revalidation|current main-owned scan/u)
+  } finally { await rm(root, { recursive: true, force: true }) }
 })
 
 test('passes hostile VS Code URI characters only as direct executable arguments', async () => {

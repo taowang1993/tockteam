@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises'
+import { lstat, mkdtemp, mkdir, realpath, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
@@ -53,6 +53,31 @@ test('resolves finite Windows VS Code requests to the concrete Code.exe install 
   } finally { await rm(root, { recursive: true, force: true }) }
 })
 
+test('canonicalizes POSIX VS Code symlinks and rejects retargeted identities', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'tockteam-code-symlink-'))
+  try {
+    const link = join(root, 'code')
+    const target = join(root, 'code-real')
+    const replacement = join(root, 'code-replacement')
+    await writeFile(target, 'Code executable', 'utf8')
+    await symlink(target, link)
+    for (const platform of ['Linux', 'macOS'] as const) {
+      const resolved = await resolveLauncherExecutable('code', platform, { PATH: root })
+      assert.equal(resolved, await realpath(target))
+      const stats = await lstat(target, { bigint: true })
+      assert.equal(await revalidateLauncherPath(resolved!, { kind: 'file', identity: { dev: String(stats.dev), ino: String(stats.ino) } }), true)
+    }
+    await writeFile(replacement, 'replacement', 'utf8')
+    await rm(target)
+    await rm(link)
+    await symlink(replacement, link)
+    const replacementStats = await lstat(replacement, { bigint: true })
+    assert.equal(await resolveLauncherExecutable('code', 'macOS', { PATH: root }), await realpath(replacement))
+    assert.equal(await revalidateLauncherPath(await realpath(target).catch(() => target), { kind: 'file', identity: { dev: String(replacementStats.dev), ino: String(replacementStats.ino) } }), false)
+    assert.equal(await revalidateLauncherPath(link, { kind: 'file', identity: { dev: String(replacementStats.dev), ino: String(replacementStats.ino) } }), false)
+  } finally { await rm(root, { recursive: true, force: true }) }
+})
+
 test('path and URL revalidation rejects drift immediately before effect', async () => {
   const root = await mkdtemp(join(tmpdir(), 'tockteam-revalidate-'))
   try {
@@ -70,5 +95,7 @@ test('path and URL revalidation rejects drift immediately before effect', async 
     assert.equal(await revalidateLauncherVscodeUri('file://server/share/work.code-workspace'), false)
     assert.equal(await revalidateLauncherVscodeUri('file:///etc/passwd'), false)
     assert.equal(await revalidateLauncherVscodeUri('javascript:alert(1)'), false)
+    await assert.rejects(launchDetachedLauncherExecutable('C:\\Program Files\\Microsoft VS Code\\bin\\code.cmd', []), /detached launcher invocation/u)
+    await assert.rejects(launchDetachedLauncherExecutable('C:\\Program Files\\Microsoft VS Code\\bin\\code.bat', []), /detached launcher invocation/u)
   } finally { await rm(root, { recursive: true, force: true }) }
 })
