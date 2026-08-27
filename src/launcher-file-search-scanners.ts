@@ -214,7 +214,7 @@ export function windowsFileSearchInvocation(
     throw new Error('Everything CLI file path is outside the finite executable allowlist')
   }
   if (!path.win32.isAbsolute(homePath) || /[\0\r\n]/u.test(homePath)) throw new Error('Invalid Windows home path')
-  const literalSearchTerm = searchTerm.trim().replaceAll('"', '')
+  const literalSearchTerm = searchTerm.replaceAll('"', '').trim()
   if (literalSearchTerm.length === 0 || literalSearchTerm.length > MAX_SEARCH_TERM_LENGTH || /[\0\r\n]/u.test(literalSearchTerm)) {
     throw new Error('Everything search term is invalid')
   }
