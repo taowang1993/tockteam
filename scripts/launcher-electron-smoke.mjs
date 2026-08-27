@@ -167,6 +167,9 @@ let workbench
 let launcher
 let workbenchConnection
 let launcherConnection
+let restartedChild
+let restartedWorkbenchConnection
+let restartedLauncherConnection
 try {
   await waitFor(
     () => electronPages(port),
@@ -692,12 +695,47 @@ try {
     exitCode => exitCode !== null,
     5_000,
   )
-  console.log('launcher Electron smoke passed: fresh-toggle/sandbox/preload/CSP/geometry/focus/reuse/search/invoke/history/routes/reload/session/theme/skin/settings/updater/second-instance-intents/graceful-quit')
+
+  const restartPort = await freePort()
+  restartedChild = spawn(electron, ['.', `--remote-debugging-port=${String(restartPort)}`, `--user-data-dir=${userData}`], {
+    cwd: root,
+    detached: true,
+    stdio: ['ignore', 'ignore', 'ignore'],
+  })
+  await waitFor(() => electronPages(restartPort), pages => pages.some(page => page.title === 'TockCoder'))
+  const restartedPages = await electronPages(restartPort)
+  const restartedWorkbench = restartedPages.find(page => page.title === 'TockCoder')
+  assert.ok(restartedWorkbench)
+  restartedWorkbenchConnection = await CdpPage.connect(restartedWorkbench.webSocketDebuggerUrl)
+  const persistedSettings = await waitFor(
+    () => restartedWorkbenchConnection.evaluate(`(async () => await window.dshDesktop?.launcher?.settings?.getSnapshot())()`),
+    snapshot => snapshot?.values?.['searchEngine.fuzziness'] === 0.6 && snapshot?.values?.['general.searchHistory.enabled'] === true,
+  )
+  assert.equal(persistedSettings.values['extension[DeeplTranslator].apiKey'], undefined)
+  await restartedWorkbenchConnection.evaluate('window.dshDesktop?.launcher?.show()')
+  const restartedLauncherPages = await waitFor(
+    () => electronPages(restartPort),
+    pages => pages.filter(page => page.title === 'TockLauncher').length === 1,
+  )
+  const restartedLauncher = restartedLauncherPages.find(page => page.title === 'TockLauncher')
+  assert.ok(restartedLauncher)
+  restartedLauncherConnection = await CdpPage.connect(restartedLauncher.webSocketDebuggerUrl)
+  await waitFor(() => restartedLauncherConnection.evaluate('document.documentElement.dataset.launcherReady'), ready => ready === 'true')
+  await restartedLauncherConnection.evaluate(`(() => { document.getElementById('launcher-history-toggle')?.click() })()`)
+  await waitFor(
+    () => restartedLauncherConnection.evaluate(`([...document.querySelectorAll('#launcher-history [role="menuitem"]')].some(node => node.textContent?.includes('coder')))`),
+    found => found === true,
+  )
+  await restartedWorkbenchConnection.call('Browser.close').catch(() => {})
+  await waitFor(() => Promise.resolve(restartedChild.exitCode), exitCode => exitCode !== null, 5_000)
+  console.log('launcher Electron smoke passed: fresh-toggle/sandbox/preload/CSP/geometry/focus/reuse/search/invoke/history/routes/reload/session/theme/skin/settings/updater/second-instance-intents/restart-persistence/graceful-quit')
 } catch (error) {
   throw new Error(`${error instanceof Error ? error.stack ?? error.message : String(error)}\nElectron output:\n${output}`)
 } finally {
   launcherConnection?.close()
   workbenchConnection?.close()
+  restartedLauncherConnection?.close()
+  restartedWorkbenchConnection?.close()
   if (child.pid !== undefined && child.exitCode === null) {
     if (process.platform === 'win32') {
       await stopChildProcess(child, 1_000, 1_000).catch(() => {})
@@ -707,6 +745,18 @@ try {
       while (child.exitCode === null && Date.now() < deadline) await sleep(100)
       if (child.exitCode === null) {
         try { process.kill(-child.pid, 'SIGKILL') } catch {}
+      }
+    }
+  }
+  if (restartedChild?.pid !== undefined && restartedChild.exitCode === null) {
+    if (process.platform === 'win32') {
+      await stopChildProcess(restartedChild, 1_000, 1_000).catch(() => {})
+    } else {
+      try { process.kill(-restartedChild.pid, 'SIGTERM') } catch {}
+      const deadline = Date.now() + 3_000
+      while (restartedChild.exitCode === null && Date.now() < deadline) await sleep(100)
+      if (restartedChild.exitCode === null) {
+        try { process.kill(-restartedChild.pid, 'SIGKILL') } catch {}
       }
     }
   }
