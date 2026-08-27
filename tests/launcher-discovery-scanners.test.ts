@@ -86,6 +86,10 @@ test('uses one fixed PowerShell script and data-only settings arguments', () => 
   assert.equal(safe.args[3], hostile.args[3])
   assert.ok(!String(hostile.args[3]).includes('pwned'))
   assert.ok(String(hostile.args.at(-2)).includes('pwned'))
+  assert.match(String(safe.args[3]), /maxVisits|Select-Object -First/iu)
+  assert.doesNotMatch(String(safe.args[3]), /Get-ChildItem[^\n]+-Recurse/iu)
+  assert.ok(String(safe.args[3]).includes("'shell:AppsFolder\\' + $appId"))
+  assert.ok(!String(safe.args[3]).includes("'shell:AppsFolder\\\\' + $appId"))
 })
 
 test('scans Linux applications sequentially with limits and cancellation', async () => {

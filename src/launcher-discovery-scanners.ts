@@ -467,16 +467,37 @@ export function windowsApplicationScanInvocation(settings: Readonly<{ fileExtens
   const script = String.raw`$folders = ConvertFrom-Json $args[0]
 $extensions = ConvertFrom-Json $args[1]
 $includeStore = $args[2] -eq 'true'
-$results = @()
+$maxResults = 200
+$maxVisits = 4096
+$deadline = [DateTime]::UtcNow.AddSeconds(8)
+$visits = 0
+$results = [System.Collections.Generic.List[object]]::new()
+$stack = [System.Collections.Generic.Stack[string]]::new()
 foreach ($folder in $folders) {
-  if (Test-Path -LiteralPath $folder -PathType Container) {
-    foreach ($file in Get-ChildItem -LiteralPath $folder -Recurse -File -ErrorAction SilentlyContinue) {
-      if ($extensions -contains $file.Extension.TrimStart('.')) { $results += [pscustomobject]@{ name = $file.BaseName; path = $file.FullName } }
-    }
+  if ($stack.Count -ge 32) { break }
+  if (Test-Path -LiteralPath $folder -PathType Container) { $stack.Push([string]$folder) }
+}
+while ($stack.Count -gt 0 -and $results.Count -lt $maxResults -and $visits -lt $maxVisits -and [DateTime]::UtcNow -lt $deadline) {
+  $folder = $stack.Pop()
+  try { $children = @(Get-ChildItem -LiteralPath $folder -Force -ErrorAction Stop | Select-Object -First ($maxVisits - $visits)) } catch { continue }
+  foreach ($file in $children) {
+    if ($results.Count -ge $maxResults -or $visits -ge $maxVisits -or [DateTime]::UtcNow -ge $deadline) { break }
+    $visits++
+    if ($file.Attributes -band [IO.FileAttributes]::ReparsePoint) { continue }
+    if ($file.PSIsContainer) { if ($stack.Count -lt 4096) { $stack.Push([string]$file.FullName) }; continue }
+    if ($extensions -contains $file.Extension.TrimStart('.')) { $results.Add([pscustomobject]@{ name = $file.BaseName; path = $file.FullName }) }
   }
 }
-if ($includeStore) { foreach ($app in Get-StartApps) { $results += [pscustomobject]@{ name = $app.Name; path = ('shell:AppsFolder\\' + $app.AppID) } } }
-$results | Select-Object -First 200 | ConvertTo-Json -Compress`.trim()
+if ($includeStore -and $results.Count -lt $maxResults -and $visits -lt $maxVisits -and [DateTime]::UtcNow -lt $deadline) {
+  try { $apps = @(Get-StartApps | Select-Object -First ($maxResults - $results.Count)) } catch { $apps = @() }
+  foreach ($app in $apps) {
+    if ($results.Count -ge $maxResults -or $visits -ge $maxVisits -or [DateTime]::UtcNow -ge $deadline) { break }
+    $visits++
+    $appId = [string]$app.AppID
+    if ($appId -match '^[A-Za-z0-9._!{}-]{1,512}$') { $results.Add([pscustomobject]@{ name = [string]$app.Name; path = ('shell:AppsFolder\' + $appId) }) }
+  }
+}
+$results | Select-Object -First $maxResults | ConvertTo-Json -Compress`.trim()
   return Object.freeze({ args: Object.freeze(['-NoProfile', '-NonInteractive', '-Command', script, JSON.stringify(settings.folders.slice(0, 32)), JSON.stringify(settings.fileExtensions.slice(0, 16)), String(settings.includeStoreApps)]), executable: 'powershell.exe' })
 }
 
