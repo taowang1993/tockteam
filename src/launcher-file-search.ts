@@ -442,17 +442,24 @@ export function createLauncherFileSearchExtensions(options: FileSearchOptions): 
       ...(current.root === undefined ? null : { root: current.root }),
       signal: validationController.signal,
     })))
+    const assertActionIsCurrent = (): void => {
+      const latestKnown = isFileSearch ? knownFile : knownSimple
+      const latestActions = isFileSearch ? fileActions : simpleActions
+      const latestGeneration = isFileSearch ? fileActionGeneration : simpleActionGeneration
+      if (closed || validationController.signal.aborted || latestGeneration !== actionGeneration
+        || !latestActions.has(record.argument) || latestKnown.get(record.argument) !== current) {
+        throw new Error('File-search action target failed immediate revalidation')
+      }
+    }
     let valid = false
     try {
       valid = await runBounded(() => validationWork, validationController.signal, ACTION_VALIDATION_TIMEOUT_MS, 'File-search action validation timed out')
     } finally { activeValidations.delete(validationController) }
-    const latestKnown = isFileSearch ? knownFile : knownSimple
-    const latestActions = isFileSearch ? fileActions : simpleActions
-    const latestGeneration = isFileSearch ? fileActionGeneration : simpleActionGeneration
-    if (!valid || validationController.signal.aborted || closed || latestGeneration !== actionGeneration
-      || !latestActions.has(record.argument) || latestKnown.get(record.argument) !== current) {
-      throw new Error('File-search action target failed immediate revalidation')
-    }
+    assertActionIsCurrent()
+    if (!valid) throw new Error('File-search action target failed immediate revalidation')
+    // Keep this final membership check adjacent to the native effect. The
+    // revalidation is identity-based, but the result/action map is revocable.
+    assertActionIsCurrent()
     if (record.handlerKey === HANDLERS.open) await options.effects.openPath(target)
     else await options.effects.revealPath(target)
     return true

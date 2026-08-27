@@ -398,9 +398,10 @@ async function queryFileSearch(
     if (candidates.length >= maxResults) break
   }
   const results: LauncherFileSearchEntry[] = []
+  const deadline = Date.now() + QUERY_TIMEOUT_MS
   for (const candidate of candidates) {
     throwIfAborted(input.signal)
-    const entry = await trustedEntry(input.platform, input.homePath, candidate)
+    const entry = await trustedEntry(input.platform, input.homePath, candidate, input.signal, deadline)
     if (entry !== undefined) results.push(entry)
   }
   return Object.freeze(results)
@@ -438,6 +439,8 @@ async function remainsWithinRoot(input: Readonly<{
     || !isWithinHome(input.platform, input.homePath, input.path, true)) return false
   const api = pathApi(input.platform)
   try {
+    const rootStat = await awaitFileSystem(lstat(input.root, { bigint: true }), input.signal)
+    if (rootStat.isSymbolicLink() || !rootStat.isDirectory()) return false
     const [canonicalRoot, canonicalPath] = await awaitFileSystem(Promise.all([realpath(input.root), realpath(input.path)]), input.signal)
     const requested = requestedRelative(input.platform, input.root, input.path)
     const canonical = requestedRelative(input.platform, canonicalRoot, canonicalPath)
