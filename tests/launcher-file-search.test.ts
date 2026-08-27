@@ -143,6 +143,7 @@ test('provider errors return bounded status instead of an empty-success message'
   const result = await provider.searchInstant(`${LAUNCHER_FILE_SEARCH_QUERY_PREFIX} report`)
   assert.equal(result.after.length, 0)
   assert.equal(result.lastError, 'File Search is unavailable. Check the native provider configuration.')
+  assert.ok(result.lastError)
   assert.doesNotMatch(result.lastError, /private|path/u)
 })
 
@@ -184,6 +185,7 @@ test('FileSearch actions use home-scope canonical revalidation without a strict 
     })
     const result = (await provider.searchInstant(`${LAUNCHER_FILE_SEARCH_QUERY_PREFIX} report`)).after[0]
     assert.ok(result)
+    assert.equal(result.details, undefined)
     await provider.executeAction(record(result!))
     await provider.executeAction(record(result!, result!.additionalActions![0]!))
     assert.deepEqual(opened, [target]); assert.deepEqual(revealed, [target])

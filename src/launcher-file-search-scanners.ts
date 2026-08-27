@@ -353,7 +353,10 @@ async function validateEverythingExecutable(filePath: string, signal?: AbortSign
     if (final.isSymbolicLink() || !final.isFile()) return undefined
     const finalIdentity = captureIdentity(final)
     return finalIdentity === undefined || !sameIdentity(identity, finalIdentity) ? undefined : finalIdentity
-  } catch { return undefined }
+  } catch (reason) {
+    if (signal?.aborted) throwIfAborted(signal)
+    return undefined
+  }
 }
 
 async function queryFileSearch(

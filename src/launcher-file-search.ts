@@ -260,8 +260,7 @@ export function createLauncherFileSearchExtensions(options: FileSearchOptions): 
     const api = pathApi(options.platform)
     const target = api.normalize(entry.path)
     const name = api.basename(target)
-    const details = api.dirname(target)
-    if (!bounded(name, 512) || !bounded(details, 8_192)) return undefined
+    if (!bounded(name, 512)) return undefined
     const open = pathAction(HANDLERS.open, `Open ${entry.type}`, target, true)
     const reveal = pathAction(
       HANDLERS.reveal,
@@ -278,7 +277,6 @@ export function createLauncherFileSearchExtensions(options: FileSearchOptions): 
       additionalActions: Object.freeze([reveal]),
       defaultAction: open,
       description: entry.type === 'folder' ? 'Folder' : 'File',
-      details,
       id: itemId(extensionId, target),
       imageKey: extensionId === 'FileSearch'
         ? 'file-search-folder'
