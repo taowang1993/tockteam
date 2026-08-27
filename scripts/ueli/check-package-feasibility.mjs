@@ -152,6 +152,11 @@ const EXPECTED_LAUNCHER_ASSETS = Object.freeze([
   ['browser-microsoft-edge', 'browser-microsoft-edge.png', 'a94a9d74adf95e9bdab3b19c13de497d525aa5d85743f8a98e885d3934010e94'],
   ['browser-yandex', 'browser-yandex.svg', '29afe7aba01ff139dde1c22db8dad0300a5a8b6fea1c26e90bc3b20a3ac888b4'],
   ['browser-zen', 'browser-zen.png', 'e6893025a3f607b3d12b0c5abf8c36b643e453731886d97d0933358fc11fd2c9'],
+  ['file-search-folder', 'file-search-folder.png', '61dbce43d87a5af31a9aba8e9f78079dd171103ac8e2c0110819445b0e090fe3'],
+  ['simple-file-search-linux', 'simple-file-search-linux.png', 'ffd2b70c988295be38a2e507380c9c8328c9aad44870d2e12ff77b76e64200e7'],
+  ['simple-file-search-macos', 'simple-file-search-macos.png', '59f8ff6242b8d79e6e8dba650ab1c7b0c55122472fb3e39ad4b56a21d4c0060a'],
+  ['simple-file-search', 'simple-file-search.png', 'dc608686196c635d1fe0b55adb4e09f54fa5b1b238c839aa180dcb5d89c26f2f'],
+  ['simple-file-search-windows', 'simple-file-search-windows.ico', 'd9b23fb20914aa0eb49de9df379c1628934bf0d77d274f0ba5391cfd4e596f2b'],
 ].map(([key, fileName, sha256]) => Object.freeze({ key, path: `dist/launcher-assets/${fileName}`, sha256 })))
 const EXPECTED_LAUNCHER_NOTICES = Object.freeze([
   Object.freeze({ id: 'ueli-mit', source: 'THIRD_PARTY_NOTICES.md', license: 'MIT', attribution: 'https://github.com/oliverschwendener/ueli' }),

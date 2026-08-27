@@ -433,6 +433,31 @@
         "key": "browser-zen",
         "path": "dist/launcher-assets/browser-zen.png",
         "sha256": "e6893025a3f607b3d12b0c5abf8c36b643e453731886d97d0933358fc11fd2c9"
+      },
+      {
+        "key": "file-search-folder",
+        "path": "dist/launcher-assets/file-search-folder.png",
+        "sha256": "61dbce43d87a5af31a9aba8e9f78079dd171103ac8e2c0110819445b0e090fe3"
+      },
+      {
+        "key": "simple-file-search-linux",
+        "path": "dist/launcher-assets/simple-file-search-linux.png",
+        "sha256": "ffd2b70c988295be38a2e507380c9c8328c9aad44870d2e12ff77b76e64200e7"
+      },
+      {
+        "key": "simple-file-search-macos",
+        "path": "dist/launcher-assets/simple-file-search-macos.png",
+        "sha256": "59f8ff6242b8d79e6e8dba650ab1c7b0c55122472fb3e39ad4b56a21d4c0060a"
+      },
+      {
+        "key": "simple-file-search",
+        "path": "dist/launcher-assets/simple-file-search.png",
+        "sha256": "dc608686196c635d1fe0b55adb4e09f54fa5b1b238c839aa180dcb5d89c26f2f"
+      },
+      {
+        "key": "simple-file-search-windows",
+        "path": "dist/launcher-assets/simple-file-search-windows.ico",
+        "sha256": "d9b23fb20914aa0eb49de9df379c1628934bf0d77d274f0ba5391cfd4e596f2b"
       }
     ],
     "launcherNotices": [
