@@ -39,6 +39,32 @@ test('file providers isolate Linux FileSearch while preserving Simple FileSearch
   assert.match(errors.join('\n'), /FileSearch.*unsupported/i)
 })
 
+test('Simple File Search isolates a broken root and reports bounded provider status', async () => {
+  const errors: string[] = []
+  const provider = createLauncherFileSearchExtensions({
+    effects: { openPath: () => undefined, revealPath: () => undefined },
+    enabledExtensionIds: () => ['SimpleFileSearch'],
+    getSetting: <T>(key: string, fallback: T): T => key === 'extension[SimpleFileSearch].folders' ? [
+      { id: 'broken', path: '/home/max/missing', recursive: true, searchFor: 'files' as const },
+      { id: 'good', path: '/home/max/docs', recursive: false, searchFor: 'files' as const },
+    ] as T : fallback,
+    homePath: '/home/max', onProviderError: (id, error) => errors.push(`${id}:${error.message}`), platform: 'Linux',
+    scanners: {
+      queryFileSearch: async () => [],
+      scanSimpleFolder: async ({ folder }) => folder.id === 'broken'
+        ? await Promise.reject(new Error('permission denied /home/max/missing'))
+        : [{ path: '/home/max/docs/readme.md', type: 'file', identity: { dev: '1', ino: '2' } }],
+      validatePath: async () => true,
+    },
+  })
+  const indexed = await provider.loadIndexedItems(new AbortController().signal)
+  assert.equal(indexed[0]?.name, 'readme.md')
+  assert.match(errors.join('\n'), /SimpleFileSearch/u)
+  const status = await provider.searchInstant('ordinary launcher term')
+  assert.equal(status.lastError, 'Simple File Search is unavailable. Check configured roots.')
+  assert.doesNotMatch(status.lastError!, /permission|home|missing/u)
+})
+
 test('file providers index bounded simple results and query the exact prefixed FileSearch surface', async () => {
   const opened: string[] = []; const revealed: string[] = []; let queried = 0
   const scanners: LauncherFileSearchScanners = {

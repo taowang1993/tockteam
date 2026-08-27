@@ -164,6 +164,42 @@ test('path revalidation rejects kind changes and a retargeted configured root', 
   } finally { await rm(home, { force: true, recursive: true }); await rm(outside, { force: true, recursive: true }) }
 })
 
+test('Simple File Search enforces independent result and visit caps', async () => {
+  const home = await mkdtemp(join(tmpdir(), 'tockteam-file-caps-'))
+  try {
+    await mkdir(join(home, 'root'))
+    await Promise.all(Array.from({ length: 220 }, (_, index) => writeFile(join(home, 'root', `entry-${String(index).padStart(3, '0')}.txt`), 'entry', 'utf8')))
+    const results = await scanSimpleFileSearchFolder({
+      folder: { id: 'root', path: join(home, 'root'), recursive: false, searchFor: 'files' },
+      homePath: home, maxResults: 200, maxVisitedEntries: 10_000, signal: signal(),
+    })
+    assert.equal(results.length, 200)
+    const visited = await scanSimpleFileSearchFolder({
+      folder: { id: 'root', path: join(home, 'root'), recursive: false, searchFor: 'files' },
+      homePath: home, maxResults: 200, maxVisitedEntries: 5, signal: signal(),
+    })
+    assert.equal(visited.length, 5)
+  } finally { await rm(home, { force: true, recursive: true }) }
+})
+
+test('Simple File Search stops recursion at its depth bound', async () => {
+  const home = await mkdtemp(join(tmpdir(), 'tockteam-file-depth-'))
+  try {
+    const root = join(home, 'root'); await mkdir(root)
+    let current = root
+    for (let level = 1; level <= 40; level += 1) {
+      current = join(current, `level-${level}`); await mkdir(current)
+      if (level === 32 || level === 33) await writeFile(join(current, `inside-${level}.txt`), 'entry', 'utf8')
+    }
+    const results = await scanSimpleFileSearchFolder({
+      folder: { id: 'root', path: root, recursive: true, searchFor: 'files' },
+      homePath: home, maxResults: 200, maxVisitedEntries: 10_000, signal: signal(),
+    })
+    assert.ok(results.some(entry => entry.path.endsWith('inside-32.txt')))
+    assert.equal(results.some(entry => entry.path.endsWith('inside-33.txt')), false)
+  } finally { await rm(home, { force: true, recursive: true }) }
+})
+
 test('File Search rejects unsupported Linux and malformed query terms before invoking a child', async () => {
   let calls = 0
   const scanners = createLauncherFileSearchScanners({ runFile: async () => { calls++; return { stdout: '' } } })
