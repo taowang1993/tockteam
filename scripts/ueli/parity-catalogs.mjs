@@ -40,7 +40,7 @@ async function listFiles(root, prefix = "") {
       files.push(relativePath);
     }
   }
-  return files.sort();
+  return files.sort(compareCodePoints);
 }
 
 function matches(source, expression, map) {
@@ -526,7 +526,9 @@ function extensionNameForRow(row) {
 }
 
 function extensionPlatforms(extension) {
-  return extensionApplicability.get(`${extension}Module`) ?? ALL_PLATFORMS;
+  return extensionApplicability.get(`${extension}Module`)
+    ?? extensionApplicability.get(`${extension}ExtensionModule`)
+    ?? ALL_PLATFORMS;
 }
 
 function intersectPlatforms(supported, clues) {
