@@ -26,6 +26,21 @@ const EXPECTED_LAUNCHER_DEPENDENCIES = Object.freeze({
   fuzzysort: '3.1.0',
 })
 const EXPECTED_LAUNCHER_DEPENDENCY_LIST = Object.freeze(['fuse.js@7.1.0', 'fuzzysort@3.1.0'])
+const EXPECTED_LAUNCHER_LOCKFILE = Object.freeze({
+  path: 'pnpm-lock.yaml',
+  rootImporter: Object.freeze({
+    'fuse.js': Object.freeze({ specifier: '7.1.0', version: '7.1.0' }),
+    fuzzysort: Object.freeze({ specifier: '3.1.0', version: '3.1.0' }),
+  }),
+  packages: Object.freeze({
+    'fuse.js@7.1.0': Object.freeze({ integrity: 'sha512-trLf4SzuuUxfusZADLINj+dE8clK1frKdmqiJNb1Es75fmI5oY6X2mxLVUciLLjxqw/xr72Dhy+lER6dGd02FQ==' }),
+    'fuzzysort@3.1.0': Object.freeze({ integrity: 'sha512-sR9BNCjBg6LNgwvxlBd0sBABvQitkLzoVY9MYYROQVX/FvfJ4Mai9LsGhDgd8qYdds0bY77VzYd5iuB+v5rwQQ==' }),
+  }),
+  snapshots: Object.freeze({
+    'fuse.js@7.1.0': Object.freeze({}),
+    'fuzzysort@3.1.0': Object.freeze({}),
+  }),
+})
 const EXPECTED_FOUNDATION = Object.freeze({
   launcherImplemented: true,
   launcherPackaged: false,
@@ -101,6 +116,49 @@ function hash(value) {
   return createHash('sha256').update(value).digest('hex')
 }
 
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')
+}
+
+function validateLauncherLockfile(lockfile, lockfileText, failures) {
+  addFailure(failures, sameJson(lockfile, EXPECTED_LAUNCHER_LOCKFILE), 'launcher lockfile contract differs from the reviewed exact dependency evidence')
+  if (typeof lockfileText !== 'string') {
+    failures.push('launcher lockfile text is unavailable')
+    return
+  }
+  addFailure(failures, /^lockfileVersion: '9\.0'$/mu.test(lockfileText), 'launcher lockfile version differs from pnpm 9 evidence')
+  const importer = lockfileText.match(/^importers:\n\n  \.:([\s\S]*?)^packages:\n/m)?.[1] ?? ''
+  const dependencies = importer.match(/^    dependencies:\n([\s\S]*?)^    devDependencies:/m)?.[1] ?? ''
+  for (const [name, values] of Object.entries(EXPECTED_LAUNCHER_LOCKFILE.rootImporter)) {
+    const packageKey = escapeRegExp(name)
+    const specifier = escapeRegExp(values.specifier)
+    const version = escapeRegExp(values.version)
+    addFailure(
+      failures,
+      new RegExp(`^      ${packageKey}:\n        specifier: ${specifier}\n        version: ${version}$`, 'mu').test(dependencies),
+      `launcher lockfile root importer differs for ${name}`,
+    )
+  }
+  const packages = lockfileText.match(/^packages:\n([\s\S]*?)^snapshots:\n/m)?.[1] ?? ''
+  for (const [name, values] of Object.entries(EXPECTED_LAUNCHER_LOCKFILE.packages)) {
+    const packageKey = escapeRegExp(name)
+    const integrity = escapeRegExp(values.integrity)
+    addFailure(
+      failures,
+      new RegExp(`^  ${packageKey}:\n    resolution: \\{integrity: ${integrity}\\}$`, 'mu').test(packages),
+      `launcher lockfile package resolution differs for ${name}`,
+    )
+  }
+  const snapshots = lockfileText.match(/^snapshots:\n([\s\S]*)$/m)?.[1] ?? ''
+  for (const name of Object.keys(EXPECTED_LAUNCHER_LOCKFILE.snapshots)) {
+    addFailure(
+      failures,
+      new RegExp(`^  ${escapeRegExp(name)}: \\{\\}$`, 'mu').test(snapshots),
+      `launcher lockfile snapshot is not empty for ${name}`,
+    )
+  }
+}
+
 function expectedNoticeShape(entry) {
   return {
     id: entry.id,
@@ -135,7 +193,7 @@ function validateNoticeLedger(inputs, failures) {
 }
 
 export function inspectLauncherPackageFeasibility(inputs) {
-  const { contract, packageJson, vendorPackageJson, mainSource } = inputs
+  const { contract, lockfileText, packageJson, vendorPackageJson, mainSource } = inputs
   const failures = []
   const build = packageJson?.build ?? {}
   const identity = contract?.identity ?? {}
@@ -231,6 +289,8 @@ export function inspectLauncherPackageFeasibility(inputs) {
     }
   }
 
+  validateLauncherLockfile(contract?.launcherLockfile, lockfileText, failures)
+
   const foundation = contract?.foundation ?? {}
   addFailure(failures, foundation.launcherImplemented === true, 'launcher implementation must be recorded in foundation')
   addFailure(failures, foundation.launcherPackaged === false, 'launcher must not be packaged in foundation')
@@ -284,6 +344,7 @@ export async function loadLauncherPackageFeasibilityInputs({ repoRoot = DEFAULT_
   const packageJson = JSON.parse(await readFile(packagePath, 'utf8'))
   const noticeLedger = JSON.parse(await readFile(path.join(repoRoot, contract.noticeLedger), 'utf8'))
   const vendorPackageJson = JSON.parse(await readFile(path.join(repoRoot, 'vendor/ueli/package.json'), 'utf8'))
+  const lockfileText = await readFile(path.join(repoRoot, contract.launcherLockfile.path), 'utf8')
   const noticeContents = {}
   for (const entry of noticeLedger.entries ?? []) {
     const sources = Array.isArray(entry.source) ? entry.source : [entry.source]
@@ -300,6 +361,7 @@ export async function loadLauncherPackageFeasibilityInputs({ repoRoot = DEFAULT_
     packageJson,
     mainSource: await readFile(mainPath, 'utf8'),
     vendorPackageJson,
+    lockfileText,
     noticeLedger,
     noticeContents,
   }

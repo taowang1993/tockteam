@@ -111,6 +111,31 @@
       }
     ]
   },
+  "launcherLockfile": {
+    "path": "pnpm-lock.yaml",
+    "rootImporter": {
+      "fuse.js": {
+        "specifier": "7.1.0",
+        "version": "7.1.0"
+      },
+      "fuzzysort": {
+        "specifier": "3.1.0",
+        "version": "3.1.0"
+      }
+    },
+    "packages": {
+      "fuse.js@7.1.0": {
+        "integrity": "sha512-trLf4SzuuUxfusZADLINj+dE8clK1frKdmqiJNb1Es75fmI5oY6X2mxLVUciLLjxqw/xr72Dhy+lER6dGd02FQ=="
+      },
+      "fuzzysort@3.1.0": {
+        "integrity": "sha512-sR9BNCjBg6LNgwvxlBd0sBABvQitkLzoVY9MYYROQVX/FvfJ4Mai9LsGhDgd8qYdds0bY77VzYd5iuB+v5rwQQ=="
+      }
+    },
+    "snapshots": {
+      "fuse.js@7.1.0": {},
+      "fuzzysort@3.1.0": {}
+    }
+  },
   "foundation": {
     "launcherImplemented": true,
     "launcherPackaged": false,
