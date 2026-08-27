@@ -109,6 +109,8 @@ class FakeRemote implements WorkbenchRouteRemote {
   vault: VaultReference | null = firstVault
   saveFailure: { code: string; message: string } | null = null
   draftContent: string | null = null
+  draftFailure: { code: string; message: string } | null = null
+  draftFailureReads = 0
   snapshots: Array<{ createdAt: number; digest: string; id: string; path: string; reason: string; size: number }> = []
   trashEntries: Array<{ createdAt: number; id: string; kind: 'document'; originalPath: string }> = []
   readonly calls: Array<{ method: string; parameters: unknown[] }> = []
@@ -264,6 +266,16 @@ class FakeRemote implements WorkbenchRouteRemote {
     },
     saveDraft: (request: { content: string; expectedVault: VaultReference; path: string; revision?: string }, signal?: AbortSignal) => {
       this.calls.push({ method: 'saveDraft', parameters: [request, signal] })
+      if (this.draftFailure !== null) {
+        const owner = this
+        return Promise.resolve({
+          get error() {
+            owner.draftFailureReads += 1
+            return { code: owner.draftFailure!.code, details: {}, message: owner.draftFailure!.message }
+          },
+          ok: false as const,
+        })
+      }
       this.draftContent = request.content
       return success({ generation: request.expectedVault.generation, ok: true as const, updatedAt: 2 })
     },
@@ -388,6 +400,18 @@ test('dispose flushes a draft scheduled immediately before true disposal', async
   controller.dispose()
   await new Promise<void>(resolve => { setImmediate(resolve) })
   assert.equal(remote.draftContent, '# Draft must survive disposal\n')
+  assert.equal(remote.calls.filter(call => call.method === 'saveDraft').length, 1)
+})
+
+test('dispose validates a failed final draft result without leaking an unhandled rejection', async () => {
+  const remote = new FakeRemote()
+  remote.draftFailure = { code: 'transport-closed', message: 'transport closed' }
+  const controller = new WorkbenchRouteController(remote, () => {})
+  await controller.syncLocation('/tocktutor')
+  assert.equal(await controller.select('Folder/Note.md'), true)
+  controller.edit('# Draft failure\n')
+  await controller.dispose()
+  assert.equal(remote.draftFailureReads, 2)
   assert.equal(remote.calls.filter(call => call.method === 'saveDraft').length, 1)
 })
 

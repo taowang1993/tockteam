@@ -134,6 +134,10 @@ export interface NativeDispatchDraft {
     text?: string;
     title?: string;
 }
+/** Track async route cleanup until the owning client contribution is disposed. */
+export declare function trackTockTutorRouteFlush(flush: PromiseLike<void> | void): void;
+/** Await route cleanup without allowing a stuck transport to block unload forever. */
+export declare function waitForTockTutorRouteFlushes(timeoutMs?: number): Promise<void>;
 export declare function pathFromTockTutorLocation(pathname: string): string | null;
 /** Bounded route state machine shared by the React contribution and focused tests. */
 export declare class WorkbenchRouteController {
@@ -143,6 +147,7 @@ export declare class WorkbenchRouteController {
     private readonly storage;
     private snapshot;
     private readonly listeners;
+    private disposal;
     private vaultGeneration;
     private shellSession;
     private readonly recentlyClosed;
@@ -257,7 +262,7 @@ export declare class WorkbenchRouteController {
     applyCanvasChange(change: CanvasChange): Promise<boolean>;
     save(): Promise<boolean>;
     private failureMessage;
-    dispose(): void;
+    dispose(): Promise<void>;
 }
 export interface TockTutorRouteViewProps {
     assistantPanel?: ReactNode;

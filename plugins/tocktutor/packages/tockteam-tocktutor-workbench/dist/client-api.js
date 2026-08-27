@@ -4,7 +4,7 @@ import { TOCKTUTOR_ASSISTANT_PANEL_SLOT } from "./assistant-panel.js";
 import { TOCKTUTOR_NATIVE_ACTIONS_SLOT } from "./native-actions.js";
 import { TOCKTUTOR_REVIEW_PANEL_SLOT } from "./review-panel.js";
 import { TOCKTUTOR_WEB_VIEWER_PANEL_SLOT } from "./web-viewer-panel.js";
-import { TockTutorRoute } from "./route.js";
+import { TockTutorRoute, waitForTockTutorRouteFlushes, } from "./route.js";
 /** Browser Loader identity for the native TockTutor workbench. */
 export const name = '@tockteam/tocktutor-workbench';
 /** Required transport and route registry supplied by the pinned Desktop client graph. */
@@ -34,13 +34,31 @@ export async function apply(ctx) {
         await routeFiber;
     }
     catch (error) {
-        await routeFiber.dispose();
-        await disposeRemote();
+        try {
+            await routeFiber.dispose();
+        }
+        finally {
+            try {
+                await waitForTockTutorRouteFlushes();
+            }
+            finally {
+                await disposeRemote();
+            }
+        }
         throw error;
     }
     return async () => {
-        await routeFiber.dispose();
-        await disposeRemote();
+        try {
+            await routeFiber.dispose();
+        }
+        finally {
+            try {
+                await waitForTockTutorRouteFlushes();
+            }
+            finally {
+                await disposeRemote();
+            }
+        }
     };
 }
 export * from "./assistant-panel.js";

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { Context } from '@deepseek-ai/cordis'
 import type { TypertRemoteContribution } from '@deepseek-ai/dsh-typert-protocol'
-import { TockTutorRoute } from '../dist/route.js'
+import { TockTutorRoute, trackTockTutorRouteFlush } from '../dist/route.js'
 
 function injectedFiber(
   context: unknown,
@@ -83,6 +83,45 @@ test('client contribution mounts Remote and the exact lifecycle-owned route seat
   disposeRoute()
   await dispose()
   assert.deepEqual(disposed, ['route', 'inject', 'remote'])
+})
+
+test('client disposal waits for tracked route flushes before disposing Remote', async () => {
+  const client = await import('../dist/client-api.js')
+  const events: string[] = []
+  let release!: () => void
+  const pending = new Promise<void>(resolve => { release = resolve })
+  trackTockTutorRouteFlush(pending.then(() => { events.push('flush') }))
+  const context = {
+    inject(_deps: string[], callback: (child: unknown) => unknown) {
+      return Object.assign(Promise.resolve().then(() => callback(context)), {
+        async dispose() { events.push('route') },
+      })
+    },
+    remote: {
+      $on() { return () => {} },
+      async $mount() {
+        return async () => {
+          events.push('remote')
+          assert.deepEqual(events, ['route', 'flush', 'remote'])
+        }
+      },
+      tocktutorWorkbench: {},
+    },
+    slots: {
+      inject(_name: string, declaration: () => () => void) {
+        declaration()
+        return () => {}
+      },
+      register() { return () => {} },
+    },
+  }
+  const dispose = await client.apply(context as never)
+  const disposing = dispose()
+  await Promise.resolve()
+  assert.deepEqual(events, ['route'])
+  release()
+  await disposing
+  assert.deepEqual(events, ['route', 'flush', 'remote'])
 })
 
 test('keeps the route inside a literal Remote namespace child across loss and reload', async () => {

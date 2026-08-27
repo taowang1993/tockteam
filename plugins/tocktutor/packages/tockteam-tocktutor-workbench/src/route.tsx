@@ -329,6 +329,39 @@ function remoteValue<T>(result: RemoteResult<T>): T {
   throw new RemoteCallError(result.error.code, result.error.message)
 }
 
+const ROUTE_FLUSH_TIMEOUT_MS = 1_000
+const pendingTockTutorRouteFlushes = new Set<Promise<void>>()
+
+/** Track async route cleanup until the owning client contribution is disposed. */
+export function trackTockTutorRouteFlush(flush: PromiseLike<void> | void): void {
+  const tracked = Promise.resolve(flush).catch(() => undefined)
+  pendingTockTutorRouteFlushes.add(tracked)
+  void tracked.then(() => { pendingTockTutorRouteFlushes.delete(tracked) })
+}
+
+/** Await route cleanup without allowing a stuck transport to block unload forever. */
+export async function waitForTockTutorRouteFlushes(timeoutMs = ROUTE_FLUSH_TIMEOUT_MS): Promise<void> {
+  const boundedTimeout = Number.isFinite(timeoutMs) ? Math.max(0, timeoutMs) : ROUTE_FLUSH_TIMEOUT_MS
+  const deadline = Date.now() + boundedTimeout
+  while (pendingTockTutorRouteFlushes.size > 0) {
+    const remaining = deadline - Date.now()
+    if (remaining <= 0) return
+    const pending = [...pendingTockTutorRouteFlushes]
+    let timer: ReturnType<typeof setTimeout> | undefined
+    try {
+      await Promise.race([
+        Promise.all(pending),
+        new Promise<void>(resolve => {
+          timer = setTimeout(resolve, remaining)
+          ;(timer as unknown as { unref?: () => void }).unref?.()
+        }),
+      ])
+    } finally {
+      if (timer !== undefined) clearTimeout(timer)
+    }
+  }
+}
+
 function sameVault(left: VaultReference | null, right: VaultReference): boolean {
   return left !== null && left.id === right.id && left.generation === right.generation
 }
@@ -485,6 +518,7 @@ function initialSnapshot(): WorkbenchRouteSnapshot {
 export class WorkbenchRouteController {
   private snapshot = initialSnapshot()
   private readonly listeners = new Set<() => void>()
+  private disposal: Promise<void> | null = null
   private vaultGeneration = 0
   private shellSession: WorkbenchSession = createWorkbenchSession(ROUTE_PREFIX, null, 'pane-1')
   private readonly recentlyClosed: RouteTabSummary[] = []
@@ -1014,15 +1048,17 @@ export class WorkbenchRouteController {
   private persistDraft(
     request: SaveDraftRequest,
     abort: AbortController,
-  ): void {
-    const flush = this.remote.tocktutorWorkbench.saveDraft(request, abort.signal)
-      .then(() => undefined)
+  ): Promise<void> {
+    const flush = Promise.resolve()
+      .then(() => this.remote.tocktutorWorkbench.saveDraft(request, abort.signal))
+      .then(result => { remoteValue(result) })
       .catch(() => undefined)
     this.draftFlush = flush
-    void flush.finally(() => {
+    void flush.then(() => {
       if (this.draftFlush === flush) this.draftFlush = null
       if (this.draftAbort === abort) this.draftAbort = null
     })
+    return flush
   }
 
   private scheduleDraft(): void {
@@ -1046,19 +1082,19 @@ export class WorkbenchRouteController {
     }, 400)
   }
 
-  private flushPendingDraft(): void {
+  private flushPendingDraft(): Promise<void> | null {
     const hadTimer = this.draftTimer !== null
     if (hadTimer) {
       clearTimeout(this.draftTimer!)
       this.draftTimer = null
     }
-    if (!hadTimer && this.draftFlush !== null) return
+    if (!hadTimer && this.draftFlush !== null) return this.draftFlush
     const vault = this.snapshot.vault
     const path = this.snapshot.path
-    if (vault === null || path === null || this.snapshot.saveStatus === 'saved') return
+    if (vault === null || path === null || this.snapshot.saveStatus === 'saved') return this.draftFlush
     const abort = this.draftAbort ?? new AbortController()
     this.draftAbort = abort
-    this.persistDraft({
+    return this.persistDraft({
       content: this.snapshot.source,
       expectedVault: vault,
       path,
@@ -2288,9 +2324,9 @@ export class WorkbenchRouteController {
     return error instanceof Error && error.message !== '' ? error.message : fallback
   }
 
-  dispose(): void {
-    if (this.disposed) return
-    this.flushPendingDraft()
+  dispose(): Promise<void> {
+    if (this.disposal !== null) return this.disposal
+    const flush = this.flushPendingDraft()
     this.settlePendingDispatch('stale')
     this.disposed = true
     this.dispatchRevision += 1
@@ -2299,6 +2335,8 @@ export class WorkbenchRouteController {
     if (this.draftAbort === null) this.draftTimer = null
     this.eventDispose?.()
     this.listeners.clear()
+    this.disposal = flush ?? Promise.resolve()
+    return this.disposal
   }
 }
 
@@ -3156,7 +3194,9 @@ export function TockTutorRoute(props: TockTutorRouteProps): ReactNode {
     if (!active) return
     void controller.syncLocation(props.location.pathname)
   }, [active, controller, props.location.pathname])
-  useEffect(() => () => { controller.dispose() }, [controller])
+  useEffect(() => () => {
+    trackTockTutorRouteFlush(controller.dispose())
+  }, [controller])
   useEffect(() => {
     if (!active || snapshot.path === null) return
     root.current?.querySelector<HTMLElement>(snapshot.mode === 'source' ? '.cm-content' : snapshot.mode === 'live-preview' ? '.ProseMirror' : '[aria-label$="View"]')?.focus()

@@ -62,6 +62,39 @@ function remoteValue(result) {
         return result.value;
     throw new RemoteCallError(result.error.code, result.error.message);
 }
+const ROUTE_FLUSH_TIMEOUT_MS = 1_000;
+const pendingTockTutorRouteFlushes = new Set();
+/** Track async route cleanup until the owning client contribution is disposed. */
+export function trackTockTutorRouteFlush(flush) {
+    const tracked = Promise.resolve(flush).catch(() => undefined);
+    pendingTockTutorRouteFlushes.add(tracked);
+    void tracked.then(() => { pendingTockTutorRouteFlushes.delete(tracked); });
+}
+/** Await route cleanup without allowing a stuck transport to block unload forever. */
+export async function waitForTockTutorRouteFlushes(timeoutMs = ROUTE_FLUSH_TIMEOUT_MS) {
+    const boundedTimeout = Number.isFinite(timeoutMs) ? Math.max(0, timeoutMs) : ROUTE_FLUSH_TIMEOUT_MS;
+    const deadline = Date.now() + boundedTimeout;
+    while (pendingTockTutorRouteFlushes.size > 0) {
+        const remaining = deadline - Date.now();
+        if (remaining <= 0)
+            return;
+        const pending = [...pendingTockTutorRouteFlushes];
+        let timer;
+        try {
+            await Promise.race([
+                Promise.all(pending),
+                new Promise(resolve => {
+                    timer = setTimeout(resolve, remaining);
+                    timer.unref?.();
+                }),
+            ]);
+        }
+        finally {
+            if (timer !== undefined)
+                clearTimeout(timer);
+        }
+    }
+}
 function sameVault(left, right) {
     return left !== null && left.id === right.id && left.generation === right.generation;
 }
@@ -218,6 +251,7 @@ export class WorkbenchRouteController {
     storage;
     snapshot = initialSnapshot();
     listeners = new Set();
+    disposal = null;
     vaultGeneration = 0;
     shellSession = createWorkbenchSession(ROUTE_PREFIX, null, 'pane-1');
     recentlyClosed = [];
@@ -723,16 +757,18 @@ export class WorkbenchRouteController {
         this.syncShell();
     }
     persistDraft(request, abort) {
-        const flush = this.remote.tocktutorWorkbench.saveDraft(request, abort.signal)
-            .then(() => undefined)
+        const flush = Promise.resolve()
+            .then(() => this.remote.tocktutorWorkbench.saveDraft(request, abort.signal))
+            .then(result => { remoteValue(result); })
             .catch(() => undefined);
         this.draftFlush = flush;
-        void flush.finally(() => {
+        void flush.then(() => {
             if (this.draftFlush === flush)
                 this.draftFlush = null;
             if (this.draftAbort === abort)
                 this.draftAbort = null;
         });
+        return flush;
     }
     scheduleDraft() {
         if (this.draftTimer !== null)
@@ -763,14 +799,14 @@ export class WorkbenchRouteController {
             this.draftTimer = null;
         }
         if (!hadTimer && this.draftFlush !== null)
-            return;
+            return this.draftFlush;
         const vault = this.snapshot.vault;
         const path = this.snapshot.path;
         if (vault === null || path === null || this.snapshot.saveStatus === 'saved')
-            return;
+            return this.draftFlush;
         const abort = this.draftAbort ?? new AbortController();
         this.draftAbort = abort;
-        this.persistDraft({
+        return this.persistDraft({
             content: this.snapshot.source,
             expectedVault: vault,
             path,
@@ -2083,9 +2119,9 @@ export class WorkbenchRouteController {
         return error instanceof Error && error.message !== '' ? error.message : fallback;
     }
     dispose() {
-        if (this.disposed)
-            return;
-        this.flushPendingDraft();
+        if (this.disposal !== null)
+            return this.disposal;
+        const flush = this.flushPendingDraft();
         this.settlePendingDispatch('stale');
         this.disposed = true;
         this.dispatchRevision += 1;
@@ -2095,6 +2131,8 @@ export class WorkbenchRouteController {
             this.draftTimer = null;
         this.eventDispose?.();
         this.listeners.clear();
+        this.disposal = flush ?? Promise.resolve();
+        return this.disposal;
     }
 }
 function NativeDispatchDialog(props) {
@@ -2342,7 +2380,9 @@ export function TockTutorRoute(props) {
             return;
         void controller.syncLocation(props.location.pathname);
     }, [active, controller, props.location.pathname]);
-    useEffect(() => () => { controller.dispose(); }, [controller]);
+    useEffect(() => () => {
+        trackTockTutorRouteFlush(controller.dispose());
+    }, [controller]);
     useEffect(() => {
         if (!active || snapshot.path === null)
             return;

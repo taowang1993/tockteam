@@ -10,7 +10,11 @@ import { TOCKTUTOR_ASSISTANT_PANEL_SLOT } from './assistant-panel.ts'
 import { TOCKTUTOR_NATIVE_ACTIONS_SLOT } from './native-actions.ts'
 import { TOCKTUTOR_REVIEW_PANEL_SLOT } from './review-panel.ts'
 import { TOCKTUTOR_WEB_VIEWER_PANEL_SLOT } from './web-viewer-panel.ts'
-import { TockTutorRoute, type WorkbenchRouteRemote } from './route.tsx'
+import {
+  TockTutorRoute,
+  type WorkbenchRouteRemote,
+  waitForTockTutorRouteFlushes,
+} from './route.tsx'
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
   interface SlotMap {
@@ -58,13 +62,27 @@ export async function apply(ctx: Context): Promise<() => Promise<void>> {
   try {
     await routeFiber
   } catch (error) {
-    await routeFiber.dispose()
-    await disposeRemote()
+    try {
+      await routeFiber.dispose()
+    } finally {
+      try {
+        await waitForTockTutorRouteFlushes()
+      } finally {
+        await disposeRemote()
+      }
+    }
     throw error
   }
   return async () => {
-    await routeFiber.dispose()
-    await disposeRemote()
+    try {
+      await routeFiber.dispose()
+    } finally {
+      try {
+        await waitForTockTutorRouteFlushes()
+      } finally {
+        await disposeRemote()
+      }
+    }
   }
 }
 
