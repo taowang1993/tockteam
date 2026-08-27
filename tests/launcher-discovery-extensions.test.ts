@@ -125,6 +125,42 @@ test('isolates provider failures and enforces latest scan cancellation', async (
   assert.equal(errors.some(error => error.startsWith('BrowserBookmarks:')), true)
 })
 
+test('clears VS Code actions after a failed rescan', async () => {
+  let failed = false
+  const provider = createLauncherDiscoveryExtensions({
+    ...baseOptions,
+    enabledExtensionIds: () => ['VSCode'],
+    scanners: { ...entries, VSCode: async () => { if (failed) throw new Error('database unavailable'); return entries.VSCode() } },
+    effects: { confirmOpenApplicationAsAdministrator: async () => false, copyText: () => {}, launchExecutable: async () => {}, openApplication: () => {}, openApplicationAsAdministrator: () => {}, openExternal: () => {}, revealPath: () => {} },
+  })
+  await provider.loadIndexedItems(new AbortController().signal)
+  const previous = (await provider.searchInstant('vscode tock')).after[0]!
+  failed = true
+  await provider.loadIndexedItems(new AbortController().signal)
+  await assert.rejects(provider.executeAction(record(previous)), /current main-owned scan/u)
+})
+
+test('does not let an older instant search overwrite the current VS Code action map', async () => {
+  let executableCalls = 0
+  const provider = createLauncherDiscoveryExtensions({
+    ...baseOptions,
+    enabledExtensionIds: () => ['VSCode'],
+    scanners: { ...entries, VSCode: async () => [
+      { commandArg: '--folder-uri' as const, fileType: 'Folder', id: 'alpha', kind: 'vscode' as const, label: 'alpha', path: '/work/alpha', uri: 'vscode-remote://ssh/alpha' },
+      { commandArg: '--folder-uri' as const, fileType: 'Folder', id: 'beta', kind: 'vscode' as const, label: 'beta', path: '/work/beta', uri: 'vscode-remote://ssh/beta' },
+    ] },
+    resolveExecutable: async () => '/usr/local/bin/code',
+    capturePathIdentity: async () => { executableCalls++; if (executableCalls === 1) await new Promise(resolve => setTimeout(resolve, 30)); return { dev: '1', ino: '1' } },
+    effects: { confirmOpenApplicationAsAdministrator: async () => false, copyText: () => {}, launchExecutable: async () => {}, openApplication: () => {}, openApplicationAsAdministrator: () => {}, openExternal: () => {}, revealPath: () => {} },
+  })
+  await provider.loadIndexedItems(new AbortController().signal)
+  const oldSearch = provider.searchInstant('vscode alpha')
+  const currentSearch = provider.searchInstant('vscode beta')
+  const current = (await currentSearch).after[0]!
+  await oldSearch
+  await provider.executeAction(record(current))
+})
+
 test('revalidates application, bookmark, reveal, IDE and VS Code targets immediately before effects', async () => {
   const calls: string[] = []
   const effects = {
