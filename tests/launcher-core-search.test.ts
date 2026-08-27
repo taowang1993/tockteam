@@ -79,6 +79,15 @@ test('core search serializes a stale in-flight index write before publishing the
   assert.deepEqual(persisted.slice(-2), [['old'], ['new']])
 })
 
+test('core search surfaces bounded instant provider status', async () => {
+  const core = createLauncherCoreSearch({
+    loadIndexedItems: async () => [],
+    searchInstant: async () => ({ before: [], after: [], lastError: 'File Search is unavailable. Check the native provider configuration.' }),
+  })
+  const result = await core.search('tockteam:file-search:report', options)
+  assert.equal(result.status.lastError, 'File Search is unavailable. Check the native provider configuration.')
+})
+
 test('core search keeps newest instant status and index persistence after races and failures', async () => {
   let releaseStale: (() => void) | undefined
   const stale = new Promise<void>(resolve => { releaseStale = resolve })
