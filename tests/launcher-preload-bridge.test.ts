@@ -38,4 +38,29 @@ test('launcher preload exposes only typed search, invoke, rescan, and dismiss me
   ])
   await assert.rejects(() => bridge.invokeAction('launcher-action:../unsafe'), /action ID/u)
   await assert.rejects(() => bridge.search('x'.repeat(513), { fuzziness: 0.5, maxSearchResultItems: 50, searchEngineId: 'fuzzysort' }), /search term/u)
+  const runtimeBridge = bridge as unknown as Record<string, (...args: unknown[]) => Promise<unknown>>
+  const callRuntime = (method: string, ...args: unknown[]): Promise<unknown> => {
+    const fn = runtimeBridge[method]
+    assert.ok(fn)
+    return fn(...args)
+  }
+  await assert.rejects(() => callRuntime('invokeAction', 'launcher-action:one', 'extra'), /arguments/u)
+  await assert.rejects(() => callRuntime('rescan', 'extra'), /arguments/u)
+  await assert.rejects(() => callRuntime('search', 'coder', {
+    fuzziness: 0.5,
+    maxSearchResultItems: 50,
+    searchEngineId: 'fuzzysort',
+    searchTerm: 'override',
+  }), /search/u)
+  await assert.rejects(() => callRuntime('search', 'coder', {
+    fuzziness: 0.5,
+    maxSearchResultItems: 50,
+    searchEngineId: 'fuzzysort',
+    extra: true,
+  }), /search/u)
+  await assert.rejects(() => callRuntime('search', 'coder', {
+    fuzziness: 0.5,
+    maxSearchResultItems: 50,
+    searchEngineId: 'fuzzysort',
+  }, 'extra'), /arguments/u)
 })
