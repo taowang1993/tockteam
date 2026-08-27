@@ -9,6 +9,7 @@ import { Label } from '@tockteam/ui/label'
 import { NativeSelect, NativeSelectOption } from '@tockteam/ui/native-select'
 import { Switch } from '@tockteam/ui/switch'
 import { LAUNCHER_COMPOSITION } from './launcher-contract.ts'
+import { LauncherLocalSettings } from './launcher-local-settings.tsx'
 import type { DesktopBridge } from './contracts.ts'
 import { LAUNCHER_SENSITIVE_SETTING_KEYS, type LauncherSettingsSnapshot } from './launcher-settings-contract.ts'
 import { readPersistedLauncherState } from './launcher-settings-model.ts'
@@ -182,7 +183,7 @@ function LauncherSettingsPage({ close: _close }: SettingsSectionProps): ReactNod
       <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <h1 className="text-lg font-semibold text-foreground">TockLauncher</h1>
-          <p className="mt-1 text-sm text-muted-foreground">A focused launcher over the TockTeam Desktop workbench. Provider-specific controls arrive with their owning slices.</p>
+          <p className="mt-1 text-sm text-muted-foreground">A focused launcher over the TockTeam Desktop workbench with bounded local transformation providers.</p>
         </div>
         <Badge variant="secondary">Ueli-compatible contract</Badge>
       </div>
@@ -230,6 +231,10 @@ function LauncherSettingsPage({ close: _close }: SettingsSectionProps): ReactNod
             </Field>
           ))}
         </div>
+      </SectionCard>
+
+      <SectionCard icon={<MonitorCog aria-hidden="true" className="size-4" />} title="Local Transformations" description="Configure the seven local transformation providers without exposing renderer authority.">
+        <LauncherLocalSettings busy={busy} save={save} snapshot={snapshot} state={state} />
       </SectionCard>
 
       <SectionCard icon={<Database aria-hidden="true" className="size-4" />} title="Storage and Privacy" description="Managed files and external grants are owned by Electron main; no filesystem path crosses this page.">

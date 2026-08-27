@@ -16,6 +16,8 @@ import type { LauncherPublicAction, LauncherPublicResultItem } from './launcher-
 import type { LauncherSurfaceSettings } from './launcher-contract.ts'
 import type { LauncherPreloadBridge } from './launcher-preload-bridge.ts'
 import type { LauncherThemeProjection } from './launcher-theme.ts'
+import { createLauncherLocalTool, LAUNCHER_LOCAL_TOOL_IDS, type LauncherLocalToolId } from './launcher-local-tools.ts'
+import type { LauncherLocalExtensionSettings } from './launcher-local-extension-contract.ts'
 import { tockTeamSkin } from '../plugins/skins/src/skins.ts'
 
 type LauncherBridge = LauncherPreloadBridge
@@ -69,6 +71,7 @@ function icon(definition: IconNode): SVGSVGElement {
 async function bootstrap(): Promise<void> {
   const root = document.getElementById('launcher-root') as HTMLElement
   const search = document.getElementById('launcher-search') as HTMLInputElement
+  const searchForm = document.getElementById('launcher-search-form') as HTMLElement
   const searchIcon = document.getElementById('launcher-search-icon') as HTMLElement
   const close = document.getElementById('launcher-close') as HTMLButtonElement
   const settings = document.getElementById('launcher-settings') as HTMLButtonElement
@@ -81,6 +84,7 @@ async function bootstrap(): Promise<void> {
   const bridge = window.tockteamLauncher as LauncherBridge
   if (!(root instanceof HTMLElement)
     || !(search instanceof HTMLInputElement)
+    || !(searchForm instanceof HTMLElement)
     || !(searchIcon instanceof HTMLElement)
     || !(close instanceof HTMLButtonElement)
     || !(settings instanceof HTMLButtonElement)
@@ -114,6 +118,8 @@ async function bootstrap(): Promise<void> {
   let actionMenuOpen = false
   let historyOpen = false
   let invoking = false
+  let activeLocalTool: HTMLElement | undefined
+  let activeLocalToolId: LauncherLocalToolId | undefined
   let surfaceSettings: LauncherSurfaceSettings = Object.freeze({
     fuzziness: 0.5,
     history: Object.freeze([]),
@@ -137,6 +143,25 @@ async function bootstrap(): Promise<void> {
   const restoreSearchFocus = (): void => {
     search.focus()
     search.select()
+  }
+
+  const closeLocalTool = (): void => {
+    const tool = activeLocalTool
+    activeLocalTool = undefined
+    activeLocalToolId = undefined
+    tool?.remove()
+    for (const element of [searchForm, historyPanel, status, results, details, rescan, settings]) element.hidden = false
+    void renderSearch(search.value).finally(restoreSearchFocus)
+  }
+
+  const openLocalTool = async (extensionId: LauncherLocalToolId): Promise<void> => {
+    let localSettings: LauncherLocalExtensionSettings
+    try { localSettings = await bridge.getLocalExtensionSettings() } catch { setStatus('Local extension settings are unavailable.', 'error'); restoreSearchFocus(); return }
+    const tool = createLauncherLocalTool({ document, extensionId, onClose: closeLocalTool, settings: localSettings })
+    activeLocalTool = tool
+    activeLocalToolId = extensionId
+    for (const element of [searchForm, historyPanel, status, results, details, rescan, settings]) element.hidden = true
+    root.append(tool)
   }
 
   const updateSelection = (): void => {
@@ -241,6 +266,15 @@ async function bootstrap(): Promise<void> {
 
   const invoke = async (action: LauncherPublicAction): Promise<void> => {
     if (invoking) return
+    const candidate = selectedItem()
+    const candidateId = candidate?.id.slice('ueli-local:'.length)
+    const toolId = candidate !== undefined
+      && candidate.id === `ueli-local:${candidate.sourceExtension}`
+      && action.actionId === candidate.defaultAction.actionId
+      && typeof candidateId === 'string'
+      && (LAUNCHER_LOCAL_TOOL_IDS as readonly string[]).includes(candidateId)
+      ? candidateId as LauncherLocalToolId
+      : undefined
     invoking = true
     closeActionMenu(false)
     await rememberSearch()
@@ -251,6 +285,10 @@ async function bootstrap(): Promise<void> {
         const refreshed = await renderSearch(search.value)
         if (refreshed) setStatus('Results Refreshed. Try Again.', 'muted')
         restoreSearchFocus()
+        return
+      }
+      if (toolId !== undefined) {
+        await openLocalTool(toolId)
         return
       }
       if (action.hideWindowAfterInvocation === true) {
@@ -379,10 +417,22 @@ async function bootstrap(): Promise<void> {
       button.setAttribute('aria-selected', String(item.id === selectedItemId))
       button.tabIndex = -1
       if (start + index < 9) button.setAttribute('aria-keyshortcuts', `${modifier}+${start + index + 1}`)
-      const marker = document.createElement('span')
-      marker.className = 'flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-[var(--dsw-alias-bg-layer-2,Canvas)] text-sm font-semibold text-[var(--dsw-alias-label-secondary,CanvasText)]'
+      const marker = item.imageKey !== undefined && /^[a-z][a-z0-9-]{0,63}$/u.test(item.imageKey)
+        ? document.createElement('img')
+        : document.createElement('span')
+      marker.className = 'flex h-8 w-8 w-8 shrink-0 items-center justify-center rounded-md bg-[var(--dsw-alias-bg-layer-2,Canvas)] text-sm font-semibold text-[var(--dsw-alias-label-secondary,CanvasText)]'
       marker.setAttribute('aria-hidden', 'true')
-      marker.textContent = item.name.slice(0, 1).toLocaleUpperCase()
+      if (marker instanceof HTMLImageElement) {
+        marker.alt = ''
+        marker.src = `./launcher-assets/${item.imageKey}.png`
+        marker.onerror = () => {
+          const fallback = document.createElement('span')
+          fallback.className = marker.className
+          fallback.setAttribute('aria-hidden', 'true')
+          fallback.textContent = item.name.slice(0, 1).toLocaleUpperCase()
+          marker.replaceWith(fallback)
+        }
+      } else marker.textContent = item.name.slice(0, 1).toLocaleUpperCase()
       const copy = document.createElement('span')
       copy.className = 'min-w-0'
       const nameElement = document.createElement('strong')
@@ -500,7 +550,8 @@ async function bootstrap(): Promise<void> {
     if (event.key === 'Escape') {
       event.preventDefault()
       event.stopPropagation()
-      if (actionMenuOpen) closeActionMenu()
+      if (activeLocalTool !== undefined) closeLocalTool()
+      else if (actionMenuOpen) closeActionMenu()
       else if (historyOpen) closeHistory()
       else void bridge.dismiss().catch(() => undefined)
       return
@@ -561,7 +612,8 @@ async function bootstrap(): Promise<void> {
   root.addEventListener('keydown', event => {
     if (event.key !== 'Escape' || event.target === search) return
     event.preventDefault()
-    if (actionMenuOpen) closeActionMenu()
+    if (activeLocalTool !== undefined) closeLocalTool()
+    else if (actionMenuOpen) closeActionMenu()
     else if (historyOpen) closeHistory()
     else void bridge.dismiss().catch(() => undefined)
   })

@@ -8,6 +8,8 @@ const html = readFileSync(new URL('../src/launcher.html', import.meta.url), 'utf
 const build = readFileSync(new URL('../scripts/build.mjs', import.meta.url), 'utf8')
 const launcher = readFileSync(new URL('../src/launcher.ts', import.meta.url), 'utf8')
 const launcherSettings = readFileSync(new URL('../src/launcher-settings.tsx', import.meta.url), 'utf8')
+const localSettings = readFileSync(new URL('../src/launcher-local-settings.tsx', import.meta.url), 'utf8')
+const localTools = readFileSync(new URL('../src/launcher-local-tools.ts', import.meta.url), 'utf8')
 const preload = readFileSync(new URL('../src/launcher-preload.ts', import.meta.url), 'utf8')
 const smoke = readFileSync(new URL('../scripts/launcher-electron-smoke.mjs', import.meta.url), 'utf8')
 const skinIds = readFileSync(new URL('../plugins/skins/src/skin-ids.ts', import.meta.url), 'utf8')
@@ -42,10 +44,25 @@ test('launcher renderer stays empty/search-ready and reports bootstrap status', 
   assert.match(launcher, /surfaceSettings\.fuzziness/u)
   assert.match(launcher, /surfaceSettings\.maxSearchResultItems/u)
   assert.match(launcher, /surfaceSettings\.searchEngineId/u)
+  assert.match(launcher, /createLauncherLocalTool/u)
+  assert.match(launcher, /getLocalExtensionSettings/u)
+  assert.match(launcher, /ueli-local:/u)
   assert.doesNotMatch(launcher, /fuzziness: 0\.5,\s*maxSearchResultItems: 50,\s*searchEngineId: 'fuzzysort'/u)
   assert.doesNotMatch(launcher, /ipcRenderer|handlerKey|argument/u)
   assert.doesNotMatch(launcher, /fetch\s*\(/u)
   assert.doesNotMatch(launcher, /localStorage|sessionStorage|XMLHttpRequest|WebSocket/u)
+})
+
+test('local settings controls cover every provider and keep UUID formats bounded', () => {
+  for (const label of ['Base64 Conversion', 'Calculator', 'Color Converter', 'Password Generator', 'Quick Formatter', 'Rowland Text Editor', 'UUID / GUID Generator']) assert.match(localSettings, new RegExp(label, 'u'))
+  assert.match(localSettings, /searchResultFormats/u)
+  assert.match(localSettings, /maxLength.{0,3}4096/u)
+})
+
+test('local tools stay finite and browser-safe', () => {
+  assert.match(localTools, /Base64 operation|Rowland input|Generated UUIDs/u)
+  assert.match(localTools, /maxLength/u)
+  assert.doesNotMatch(localTools, /node:|ipcRenderer|dshDesktop|fetch\s*\(|localStorage|sessionStorage/u)
 })
 
 test('settings renderer never inserts sensitive values into snapshot state', () => {

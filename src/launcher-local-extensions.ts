@@ -10,6 +10,7 @@ import {
   type LauncherLocalExtensionId,
 } from './launcher-local-extension-config.ts'
 import { isLauncherRendererSettingValue } from './launcher-settings-contract.ts'
+import { LAUNCHER_LOCAL_EXTENSION_IMAGE_KEYS } from './launcher-local-extension-assets.ts'
 
 export { LAUNCHER_LOCAL_EXTENSION_DEFAULTS, LAUNCHER_LOCAL_EXTENSION_IDS } from './launcher-local-extension-config.ts'
 
@@ -19,11 +20,6 @@ export const LAUNCHER_LOCAL_ACTION_HANDLERS = Object.freeze({
 })
 
 const MAX_OUTPUT_LENGTH = 16_384
-const LOCAL_IMAGE_KEYS: Readonly<Record<LauncherLocalExtensionId, string>> = Object.freeze({
-  Base64Conversion: 'base64-conversion', Calculator: 'calculator', ColorConverter: 'color-converter',
-  PasswordGenerator: 'password-generator', QuickFormatter: 'quick-formatter',
-  RowlandTextEditor: 'rowland-texteditor', UuidGenerator: 'uuid-generator',
-})
 
 type InstantResult = Readonly<{ after: readonly LauncherInternalResultItem[]; before: readonly LauncherInternalResultItem[] }>
 type SearchOverride = (searchTerm: string) => InstantResult
@@ -67,7 +63,7 @@ function resultItem(input: Readonly<{
     description: input.description,
     ...(input.details === undefined ? {} : { details: input.details.slice(0, 8192) }),
     id: input.id,
-    imageKey: LOCAL_IMAGE_KEYS[input.sourceExtension],
+    imageKey: LAUNCHER_LOCAL_EXTENSION_IMAGE_KEYS[input.sourceExtension],
     name: input.name.slice(0, 512),
     sourceExtension: input.sourceExtension,
   })
@@ -94,13 +90,13 @@ function calculate(expression: string, precision: number, decimalSeparator: stri
     if (value === undefined || typeof value === 'function' || `${value}` === expression) return undefined
     const kind = math.typeOf(value)
     if (kind === 'Unit' && (value as { value?: unknown }).value === null) return undefined
-    if (kind === 'Function') return undefined
+    if (kind === 'Function' || kind === 'string' || kind === 'boolean' || kind === 'undefined') return undefined
     const calculation = String(value)
     const match = calculation.match(/^([\d,.]+)(\s*)(.*)$/u)
     const rounded = match
       ? `${math.round(math.bignumber(match[1]), precision)}${match[2]}${match[3]}`
       : calculation
-    return rounded.split('.').join(decimalSeparator).split(',').join(argumentSeparator)
+    return rounded.replace(/[.,]/gu, match => match === '.' ? decimalSeparator : argumentSeparator)
   } catch { return undefined }
 }
 
@@ -316,7 +312,7 @@ export function createLauncherLocalExtensions(options: LocalExtensionOptions): R
       defaultAction: openAction(item.extensionId, item.name),
       description: item.description,
       id: `ueli-local:${item.extensionId}`,
-      imageKey: LOCAL_IMAGE_KEYS[item.extensionId],
+      imageKey: LAUNCHER_LOCAL_EXTENSION_IMAGE_KEYS[item.extensionId],
       name: item.name,
       sourceExtension: item.extensionId,
     })))
@@ -328,5 +324,5 @@ export function createLauncherLocalExtensions(options: LocalExtensionOptions): R
   return Object.freeze({ executeAction, loadIndexedItems, searchInstant })
 }
 
-export { LAUNCHER_LOCAL_EXTENSION_IDS as LAUNCHER_LOCAL_IDS, LOCAL_IMAGE_KEYS }
+export { LAUNCHER_LOCAL_EXTENSION_IDS as LAUNCHER_LOCAL_IDS, LAUNCHER_LOCAL_EXTENSION_IMAGE_KEYS as LOCAL_IMAGE_KEYS }
 export { rowlandProcess }

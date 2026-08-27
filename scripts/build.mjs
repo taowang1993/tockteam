@@ -33,6 +33,11 @@ const launcherTailwindCss = await buildTailwindCss(root, [
     negated: false,
     pattern: 'src/launcher.ts',
   },
+  {
+    base: root,
+    negated: false,
+    pattern: 'src/launcher-local-tools.ts',
+  },
 ])
 const tailwindDefine = {
   ...versionDefine,
@@ -231,6 +236,20 @@ for (const plugin of pluginPackages) {
 await Promise.all(builds)
 writeFileSync(join(dist, 'launcher.css'), launcherTailwindCss)
 copyFileSync(join(root, 'src', 'launcher.html'), join(dist, 'launcher.html'))
+const launcherAssets = [
+  ['Base64Conversion', 'base64-conversion.png'],
+  ['Calculator', 'calculator.png'],
+  ['ColorConverter', 'color-converter.png'],
+  ['PasswordGenerator', 'password-generator.png'],
+  ['QuickFormatter', 'quick-formatter.png'],
+  ['RowlandTextEditor', 'rowland-texteditor.png'],
+  ['UuidGenerator', 'uuid-generator.png'],
+]
+mkdirSync(join(dist, 'launcher-assets'), { recursive: true })
+for (const [extensionId, asset] of launcherAssets) copyFileSync(
+  join(root, 'vendor', 'ueli', 'assets', 'Extensions', extensionId, asset),
+  join(dist, 'launcher-assets', asset),
+)
 
 const declarationRoot = mkdtempSync(join(tmpdir(), 'tockteam-host-declarations-'))
 try {

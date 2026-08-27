@@ -235,7 +235,7 @@ try {
     require: 'undefined',
     dshDesktop: 'undefined',
     electronAPI: 'undefined',
-    launcherApiKeys: ['dismiss', 'getSurfaceSettings', 'getTheme', 'invokeAction', 'onTheme', 'openSettings', 'recordSearch', 'rescan', 'search'],
+    launcherApiKeys: ['dismiss', 'getLocalExtensionSettings', 'getSurfaceSettings', 'getTheme', 'invokeAction', 'onTheme', 'openSettings', 'recordSearch', 'rescan', 'search'],
     launcherApiFrozen: true,
     csp: launcherCsp,
     fitsViewport: true,
@@ -461,8 +461,76 @@ try {
     await window.dshDesktop?.launcher?.settings?.updateSetting('general.searchHistory.enabled', true)
     await window.dshDesktop?.launcher?.settings?.updateSetting('searchEngine.fuzziness', 0.6)
     await window.dshDesktop?.launcher?.settings?.updateSetting('searchEngine.id', 'Fuse.js')
-    await window.dshDesktop?.launcher?.settings?.updateSetting('searchEngine.maxResultLength', 1)
+    await window.dshDesktop?.launcher?.settings?.updateSetting('searchEngine.maxResultLength', 50)
+    for (const id of ['Base64Conversion', 'Calculator', 'ColorConverter', 'PasswordGenerator', 'QuickFormatter', 'RowlandTextEditor', 'UuidGenerator']) {
+      await window.dshDesktop?.launcher?.settings?.updateSetting('extensions.enabledExtensionIds', ['AppearanceSwitcher', 'ApplicationSearch', 'Base64Conversion', 'BrowserBookmarks', 'Calculator', 'ColorConverter', 'CurrencyConversion', 'CustomWebSearch', 'DeeplTranslator', 'FileSearch', 'JetBrainsToolbox', 'PasswordGenerator', 'QuickFormatter', 'RowlandTextEditor', 'SimpleFileSearch', 'SystemCommands', 'SystemSettings', 'TerminalLauncher', 'UeliCommand', 'UuidGenerator', 'VSCode', 'WebSearch', 'WindowsControlPanel', 'Workflow'])
+    }
   })()`)
+  await showLauncherFromWorkbench(workbenchConnection)
+
+  const localSearch = async (term, expected) => {
+    await launcherConnection.evaluate(`(() => {
+      const input = document.getElementById('launcher-search')
+      if (!(input instanceof HTMLInputElement)) return false
+      input.value = ${JSON.stringify(term)}
+      input.dispatchEvent(new Event('input', { bubbles: true }))
+      return true
+    })()`)
+    await waitFor(
+      () => launcherConnection.evaluate(`document.body.textContent?.includes(${JSON.stringify(expected)}) ?? false`),
+      found => found === true,
+    )
+  }
+  await localSearch('b64e TockTeam', 'VG9ja1RlYW0=')
+  await localSearch('2 + 2', '4')
+  await localSearch('rebeccapurple', '#663399')
+  await localSearch('pw', 'Generated password')
+  const passwordLengths = await launcherConnection.evaluate(`([...document.querySelectorAll('[data-result-id]')].filter(node => node.textContent?.includes('Generated password')).map(node => node.querySelector('strong')?.textContent?.length ?? 0))`)
+  assert.equal(passwordLengths.length >= 5, true)
+  assert.equal(passwordLengths.every(length => length === 24), true)
+  await localSearch('qfj {"answer":42}', '"answer": 42')
+
+  const copyClicked = await launcherConnection.evaluate(`(() => {
+    const button = [...document.querySelectorAll('#launcher-details button')].find(node => node.textContent?.includes('Copy result to clipboard'))
+    if (!(button instanceof HTMLButtonElement)) return false
+    button.click()
+    return true
+  })()`)
+  assert.equal(copyClicked, true)
+  await waitFor(() => launcherConnection.evaluate('document.activeElement?.id'), id => id === 'launcher-search')
+
+  const openLocalTool = async (term, label, input, output) => {
+    await localSearch(term, label)
+    const clicked = await launcherConnection.evaluate(`(() => {
+      const button = [...document.querySelectorAll('#launcher-details button')].find(node => node.textContent?.includes(${JSON.stringify(`Open ${label}`)}))
+      if (!(button instanceof HTMLButtonElement)) return false
+      button.click()
+      return true
+    })()`)
+    assert.equal(clicked, true)
+    await waitFor(() => launcherConnection.evaluate(`document.querySelector('[aria-label=${JSON.stringify(`${label} tool`)}]') !== null`), found => found === true)
+    if (input !== undefined) await launcherConnection.evaluate(`(() => {
+      const control = document.querySelector(${JSON.stringify(input.selector)})
+      if (!(control instanceof HTMLInputElement || control instanceof HTMLTextAreaElement)) return false
+      control.value = ${JSON.stringify(input.value)}
+      control.dispatchEvent(new Event('input', { bubbles: true }))
+      return true
+    })()`)
+    if (output !== undefined) await waitFor(() => launcherConnection.evaluate(`document.querySelector(${JSON.stringify(output.selector)})?.value ?? ''`), value => value === output.value)
+    const closed = await launcherConnection.evaluate(`(() => {
+      const button = document.querySelector('[aria-label=${JSON.stringify(`Close ${label} tool`)}]')
+      if (!(button instanceof HTMLButtonElement)) return false
+      button.click()
+      return true
+    })()`)
+    assert.equal(closed, true)
+    await waitFor(() => launcherConnection.evaluate(`document.querySelector('[aria-label=${JSON.stringify(`${label} tool`)}]') === null && document.activeElement?.id === 'launcher-search'`), restored => restored === true)
+  }
+  await openLocalTool('Base64 Conversion', 'Base64 Conversion', { selector: '[aria-label="Base64 input"]', value: 'TockTeam' }, { selector: '[aria-label="Base64 output"]', value: 'VG9ja1RlYW0=' })
+  await openLocalTool('Rowland Text Editor', 'Rowland Text Editor', { selector: '[aria-label="Rowland input"]', value: 'Hello\\tWorld' }, undefined)
+  await openLocalTool('UUID / GUID Generator', 'UUID / GUID Generator', undefined, undefined)
+
+  await workbenchConnection.evaluate(`(async () => await window.dshDesktop?.launcher?.settings?.updateSetting('searchEngine.maxResultLength', 1))()`)
   await showLauncherFromWorkbench(workbenchConnection)
 
   const effectiveSearchCount = await launcherConnection.evaluate(`(async () => {
