@@ -498,7 +498,7 @@ try {
   assert.equal(copyClicked, true)
   await waitFor(() => launcherConnection.evaluate('document.activeElement?.id'), id => id === 'launcher-search')
 
-  const openLocalTool = async (term, label, input, output) => {
+  const openLocalTool = async (term, label, input, output, check) => {
     await localSearch(term, label)
     const selectedLocalItem = await launcherConnection.evaluate('document.querySelector(\'[data-result-id][aria-selected="true"]\')?.getAttribute(\'data-result-id\') ?? null')
     assert.equal(selectedLocalItem, `ueli-local:${label === 'Base64 Conversion' ? 'Base64Conversion' : label === 'Rowland Text Editor' ? 'RowlandTextEditor' : 'UuidGenerator'}`)
@@ -510,14 +510,16 @@ try {
     })()`)
     assert.equal(clicked, true)
     await waitFor(() => launcherConnection.evaluate(`document.querySelector('[aria-label=${JSON.stringify(`${label} tool`)}]') !== null`), found => found === true)
-    if (input !== undefined) await launcherConnection.evaluate(`(() => {
-      const control = document.querySelector(${JSON.stringify(input.selector)})
+    const inputs = input === undefined ? [] : Array.isArray(input) ? input : [input]
+    for (const controlInput of inputs) await launcherConnection.evaluate(`(() => {
+      const control = document.querySelector(${JSON.stringify(controlInput.selector)})
       if (!(control instanceof HTMLInputElement || control instanceof HTMLTextAreaElement)) return false
-      control.value = ${JSON.stringify(input.value)}
+      control.value = ${JSON.stringify(controlInput.value)}
       control.dispatchEvent(new Event('input', { bubbles: true }))
       return true
     })()`)
     if (output !== undefined) await waitFor(() => launcherConnection.evaluate(`document.querySelector(${JSON.stringify(output.selector)})?.value ?? ''`), value => value === output.value)
+    if (check !== undefined) assert.equal(await launcherConnection.evaluate(check), true)
     const closed = await launcherConnection.evaluate(`(() => {
       const button = document.querySelector('[aria-label=${JSON.stringify(`Close ${label} tool`)}]')
       if (!(button instanceof HTMLButtonElement)) return false
@@ -528,8 +530,15 @@ try {
     await waitFor(() => launcherConnection.evaluate(`document.querySelector('[aria-label=${JSON.stringify(`${label} tool`)}]') === null && document.activeElement?.id === 'launcher-search'`), restored => restored === true)
   }
   await openLocalTool('Base64 Conversion', 'Base64 Conversion', { selector: '[aria-label="Base64 input"]', value: 'TockTeam' }, { selector: '[aria-label="Base64 output"]', value: 'VG9ja1RlYW0=' })
-  await openLocalTool('Rowland Text Editor', 'Rowland Text Editor', { selector: '[aria-label="Rowland input"]', value: 'Hello\\tWorld' }, undefined)
-  await openLocalTool('UUID / GUID Generator', 'UUID / GUID Generator', undefined, undefined)
+  await openLocalTool('Rowland Text Editor', 'Rowland Text Editor', [
+    { selector: '[aria-label="Rowland input"]', value: 'Hello\tWorld' },
+    { selector: '[aria-label="Rowland pattern"]', value: '$0 $1' },
+  ], { selector: '[aria-label="Rowland output"]', value: 'Hello World' })
+  await openLocalTool('UUID / GUID Generator', 'UUID / GUID Generator', undefined, undefined, `(() => {
+    const output = document.querySelector('[aria-label="Generated UUIDs"]')
+    const lines = output instanceof HTMLTextAreaElement ? output.value.split(String.fromCharCode(10)) : []
+    return lines.length === 10 && lines.every(value => /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(value))
+  })()`)
 
   await workbenchConnection.evaluate(`(async () => {
     await window.dshDesktop?.launcher?.settings?.updateSetting('general.searchHistory.enabled', false)

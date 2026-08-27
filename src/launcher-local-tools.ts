@@ -147,7 +147,7 @@ export function createLauncherLocalTool(options: Readonly<{
   const output = element(document, 'textarea'); output.readOnly = true; output.rows = 10; output.setAttribute('aria-label', 'Generated UUIDs')
   const generate = element(document, 'button', 'launcher-primary-button'); generate.type = 'button'; generate.textContent = 'Generate UUIDs'
   const update = () => { const count = Math.min(100, Math.max(1, Number(quantity.value) || settings.UuidGenerator.numberOfUuids)); const nested = settings.UuidGenerator.generatorFormat; const format = { ...nested, braces: settings.UuidGenerator.braces, hyphens: settings.UuidGenerator.hyphens, quotes: settings.UuidGenerator.quotes, uppercase: settings.UuidGenerator.uppercase }; setOutput(output, error, Array.from({ length: count }, () => uuidFormat(version.value, format)).join('\n')) }
-  generate.addEventListener('click', update); version.addEventListener('change', update); quantity.addEventListener('change', update); content.append(labeled(document, 'UUID version', version), labeled(document, 'Number of UUIDs', quantity), generate, labeled(document, 'Generated UUIDs', output)); queueMicrotask(() => generate.focus()); return tool
+  generate.addEventListener('click', update); version.addEventListener('change', update); quantity.addEventListener('change', update); update(); content.append(labeled(document, 'UUID version', version), labeled(document, 'Number of UUIDs', quantity), generate, labeled(document, 'Generated UUIDs', output)); queueMicrotask(() => generate.focus()); return tool
 }
 
 export { base64Decode, base64Encode, rowland }
