@@ -12,6 +12,8 @@ const launcher = readFileSync(new URL('../src/launcher.ts', import.meta.url), 'u
 const launcherSettings = readFileSync(new URL('../src/launcher-settings.tsx', import.meta.url), 'utf8')
 const localSettings = readFileSync(new URL('../src/launcher-local-settings.tsx', import.meta.url), 'utf8')
 const localTools = readFileSync(new URL('../src/launcher-local-tools.ts', import.meta.url), 'utf8')
+const fileSearchTool = readFileSync(new URL('../src/launcher-file-search-tool.ts', import.meta.url), 'utf8')
+const fileSearchSettings = readFileSync(new URL('../src/launcher-file-search-settings.tsx', import.meta.url), 'utf8')
 const preload = readFileSync(new URL('../src/launcher-preload.ts', import.meta.url), 'utf8')
 const smoke = readFileSync(new URL('../scripts/launcher-electron-smoke.mjs', import.meta.url), 'utf8')
 const skinIds = readFileSync(new URL('../plugins/skins/src/skin-ids.ts', import.meta.url), 'utf8')
@@ -65,6 +67,9 @@ test('local tools stay finite and browser-safe', () => {
   assert.match(localTools, /Base64 Operation|Rowland Input|Generated UUIDs/u)
   assert.match(localTools, /maxLength/u)
   assert.doesNotMatch(localTools, /node:|ipcRenderer|dshDesktop|fetch\s*\(|localStorage|sessionStorage/u)
+  assert.match(fileSearchTool, /LAUNCHER_FILE_SEARCH_QUERY_PREFIX|File Search Input/u)
+  assert.doesNotMatch(fileSearchTool, /node:|ipcRenderer|dshDesktop|fetch\s*\(|localStorage|sessionStorage/u)
+  assert.match(fileSearchSettings, /tocklauncher-file-search-settings/u)
 })
 
 test('settings renderer never inserts sensitive values and remounts local controls after reload', () => {
@@ -124,6 +129,7 @@ test('launcher build emits dedicated browser and preload outputs', () => {
   assert.match(build, /launcherTailwindCss/u)
   assert.match(build, /launcher\.css/u)
   assert.match(build, /launcher\.html/u)
+  assert.match(build, /launcher-file-search-tool\.ts/u)
   assert.match(preload, /exposeInMainWorld\('tockteamLauncher'/u)
   assert.match(preload, /launcher-window:dismiss|LAUNCHER_WINDOW_IPC_CHANNELS/u)
   assert.doesNotMatch(preload, /dshDesktop|electronAPI|require\s*\(/u)

@@ -17,6 +17,7 @@ import type { LauncherSurfaceSettings } from './launcher-contract.ts'
 import type { LauncherPreloadBridge } from './launcher-preload-bridge.ts'
 import type { LauncherThemeProjection } from './launcher-theme.ts'
 import { createLauncherLocalTool, LAUNCHER_LOCAL_TOOL_IDS, type LauncherLocalToolId } from './launcher-local-tools.ts'
+import { createLauncherFileSearchTool } from './launcher-file-search-tool.ts'
 import { LAUNCHER_LOCAL_EXTENSION_ASSET_URLS } from './launcher-local-extension-assets.ts'
 import { launcherDiscoveryAssetUrl } from './launcher-discovery-assets.ts'
 import { launcherFileSearchAssetUrl } from './launcher-file-search-assets.ts'
@@ -158,13 +159,27 @@ async function bootstrap(): Promise<void> {
     void renderSearch(search.value).finally(restoreSearchFocus)
   }
 
+  const hideLauncherControls = (): void => {
+    for (const element of [searchForm, historyPanel, status, results, details, rescan, settings]) element.hidden = true
+  }
   const openLocalTool = async (extensionId: LauncherLocalToolId): Promise<void> => {
     let localSettings: LauncherLocalExtensionSettings
     try { localSettings = await bridge.getLocalExtensionSettings() } catch { setStatus('Local extension settings are unavailable.', 'error'); restoreSearchFocus(); return }
     const tool = createLauncherLocalTool({ document, extensionId, onClose: closeLocalTool, settings: localSettings })
     activeLocalTool = tool
     activeLocalToolId = extensionId
-    for (const element of [searchForm, historyPanel, status, results, details, rescan, settings]) element.hidden = true
+    hideLauncherControls()
+    root.append(tool)
+  }
+  const openFileSearchTool = async (): Promise<void> => {
+    const tool = createLauncherFileSearchTool({ bridge, document, onClose: closeLocalTool, searchOptions: {
+      fuzziness: surfaceSettings.fuzziness,
+      maxSearchResultItems: surfaceSettings.maxSearchResultItems,
+      searchEngineId: surfaceSettings.searchEngineId,
+    } })
+    activeLocalTool = tool
+    activeLocalToolId = undefined
+    hideLauncherControls()
     root.append(tool)
   }
 
@@ -279,6 +294,9 @@ async function bootstrap(): Promise<void> {
       && (LAUNCHER_LOCAL_TOOL_IDS as readonly string[]).includes(candidateId)
       ? candidateId as LauncherLocalToolId
       : undefined
+    const fileSearchTool = candidate?.id === 'file-search:invoke'
+      && candidate.sourceExtension === 'FileSearch'
+      && action.actionId === candidate.defaultAction.actionId
     invoking = true
     closeActionMenu(false)
     await rememberSearch()
@@ -293,6 +311,10 @@ async function bootstrap(): Promise<void> {
       }
       if (toolId !== undefined) {
         await openLocalTool(toolId)
+        return
+      }
+      if (fileSearchTool) {
+        await openFileSearchTool()
         return
       }
       if (action.hideWindowAfterInvocation === true) {

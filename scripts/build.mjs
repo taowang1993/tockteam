@@ -45,6 +45,11 @@ const launcherTailwindCss = await buildTailwindCss(root, [
     negated: false,
     pattern: 'src/launcher-local-tools.ts',
   },
+  {
+    base: root,
+    negated: false,
+    pattern: 'src/launcher-file-search-tool.ts',
+  },
 ])
 const tailwindDefine = {
   ...versionDefine,
