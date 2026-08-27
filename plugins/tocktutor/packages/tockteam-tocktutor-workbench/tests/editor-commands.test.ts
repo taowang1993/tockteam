@@ -28,10 +28,15 @@ test('applies multi-cursor formatting as one source-preserving transaction', () 
   ])
   assert.equal(result.source, '**one** two\nthree **four**')
   assert.deepEqual(result.ranges, [{ from: 2, to: 5 }, { from: 20, to: 24 }])
-  assert.equal(applyEditorCommandToSelections('one\ntwo\nthree\n', 'delete-line', [
+  assert.deepEqual(applyEditorCommandToSelections('one\ntwo\nthree\n', 'delete-line', [
     { from: 1, to: 1 },
     { from: 9, to: 9 },
-  ]).source, 'two\n')
+  ]), {
+    ranges: [{ from: 0, to: 0 }, { from: 4, to: 4 }],
+    source: 'two\n',
+  })
+  const bounded = 'x'.repeat(2_000_000)
+  assert.equal(applyEditorCommand(bounded, 'bold', 0, 1).source, bounded)
 })
 
 test('edits complete Markdown table rows and columns without losing alignment', () => {

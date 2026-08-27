@@ -51,10 +51,13 @@ export function applyEditorCommand(source, command, selectionStart, selectionEnd
     };
     const [before, after] = wrappers[command];
     const value = `${before}${selected || 'text'}${after}`;
+    const next = `${source.slice(0, start)}${value}${source.slice(end)}`;
+    if (byteLength(next) > MAX_EDITOR_COMMAND_SOURCE_BYTES)
+        return { selectionEnd: end, selectionStart: start, source };
     return {
         selectionEnd: start + before.length + (selected || 'text').length,
         selectionStart: start + before.length,
-        source: `${source.slice(0, start)}${value}${source.slice(end)}`,
+        source: next,
     };
 }
 /** Apply one Markdown command to every range in one atomic source transaction. */
@@ -84,7 +87,13 @@ export function applyEditorCommandToSelections(source, command, selections) {
         let next = source;
         for (const line of [...ordered].reverse())
             next = `${next.slice(0, line.from)}${next.slice(line.to)}`;
-        return { ranges: Object.freeze(ordered.map(line => ({ from: line.from, to: Math.min(line.from, next.length) }))), source: next };
+        let removed = 0;
+        const cursors = ordered.map(line => {
+            const position = line.from - removed;
+            removed += line.to - line.from;
+            return { from: position, to: position };
+        });
+        return { ranges: Object.freeze(cursors), source: next };
     }
     let next = source;
     const result = [];

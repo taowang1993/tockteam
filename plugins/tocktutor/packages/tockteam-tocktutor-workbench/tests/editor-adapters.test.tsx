@@ -7,6 +7,7 @@ import {
   shouldStartEditorRectangularSelection,
 } from '../src/source-editor.tsx'
 import { LivePreviewEditor, splitLivePreviewSource } from '../src/live-preview-editor.tsx'
+import { MarkdownSlidesView } from '../src/editor-surface.tsx'
 import { projectEditorStaticWidgets, projectEditorWidgets } from '../src/editor-widgets.ts'
 
 afterEach(() => {
@@ -31,6 +32,17 @@ describe('CodeMirror Source editor', () => {
     expect(onSelection).toHaveBeenCalled()
   })
 
+  it('recreates from the current source instead of the initial source', async () => {
+    const editorViewRef = { current: null }
+    const onChange = vi.fn()
+    const { rerender } = render(<SourceEditor content="Initial" editorViewRef={editorViewRef} onContentChange={onChange} spellCheck />)
+    await waitFor(() => expect(editorViewRef.current).toBeTruthy(), { timeout: 5_000 })
+    editorViewRef.current?.dispatch({ changes: { from: 7, insert: ' edited' } })
+    await waitFor(() => expect(onChange).toHaveBeenCalledWith('Initial edited'))
+    rerender(<SourceEditor content="Initial edited" editorViewRef={editorViewRef} onContentChange={onChange} spellCheck={false} />)
+    await waitFor(() => expect(editorViewRef.current?.state.doc.toString()).toBe('Initial edited'))
+  })
+
   it('enables Tockbot-compatible additive and rectangular selections', () => {
     expect(shouldAddEditorSelectionRange({ altKey: true, shiftKey: false })).toBe(true)
     expect(shouldAddEditorSelectionRange({ altKey: true, shiftKey: true })).toBe(false)
@@ -42,7 +54,9 @@ describe('CodeMirror Source editor', () => {
   it('toggles a Source task through one CodeMirror transaction', async () => {
     const onChange = vi.fn()
     render(<SourceEditor content={'- [ ] Review\n'} onContentChange={onChange} />)
-    fireEvent.mouseDown(await screen.findByRole('checkbox', { name: 'Mark Source Task as Complete' }, { timeout: 5_000 }))
+    const task = await screen.findByRole('checkbox', { name: 'Mark Source Task as Complete' }, { timeout: 5_000 })
+    expect(task.tabIndex).toBe(0)
+    fireEvent.keyDown(task, { key: ' ' })
     await waitFor(() => expect(onChange).toHaveBeenCalledWith('- [x] Review\n'))
   })
 
@@ -116,8 +130,15 @@ describe('Milkdown Live Preview editor', () => {
     const { container } = render(<LivePreviewEditor content="![Remote](https://example.com/image.png)\n" onMarkdownChange={() => {}} onOpenExternalUrl={onOpenExternalUrl} />)
     const button = await screen.findByRole('button', { name: 'External Image: Remote' }, { timeout: 5_000 })
     expect(container.querySelector('img[src^="http"]')).toBeNull()
-    fireEvent.mouseDown(button)
+    fireEvent.click(button)
     expect(onOpenExternalUrl).toHaveBeenCalledWith('https://example.com/image.png')
+  })
+
+  it('opens external embeds from Slides through the isolated viewer callback', () => {
+    const onOpenExternalUrl = vi.fn()
+    render(<MarkdownSlidesView onOpenExternalUrl={onOpenExternalUrl} source="![Video](https://www.youtube.com/watch?v=NnTvZWp5Q7o)" />)
+    fireEvent.click(screen.getByRole('button', { name: /YouTube/u }))
+    expect(onOpenExternalUrl).toHaveBeenCalledWith('https://www.youtube-nocookie.com/embed/NnTvZWp5Q7o')
   })
 
   it('exposes a stable selection-aware widget hook without recreating the editor', async () => {
@@ -138,6 +159,10 @@ describe('Milkdown Live Preview editor', () => {
       return value!
     })
     expect(widget.textContent).toContain('Target')
+    const audio = document.createElement('audio')
+    widget.append(audio)
+    fireEvent.mouseDown(audio)
+    expect(container.querySelector('.tocktutor-live-embed-widget')).toBe(widget)
     rerender(<LivePreviewEditor content={source} onMarkdownChange={() => {}} onWidgetState={onWidgetState} resolvedEmbeds={resolvedEmbeds} />)
     expect(container.querySelector('.ProseMirror')).toBe(editor)
     expect(onWidgetState).toHaveBeenCalled()

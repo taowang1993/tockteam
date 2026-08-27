@@ -70,7 +70,7 @@ export interface EmbedResolverOptions {
 function kind(path: string): EmbedKind | null {
   if (/\.canvas$/iu.test(path)) return 'canvas'
   if (/\.base$/iu.test(path)) return 'base'
-  if (/\.(?:3gp|avif|bmp|flac|gif|ico|jpe?g|m4a|mkv|mp3|mov|mp4|ogv|ogg|pdf|png|svg|wav|weba|webm|webp)$/iu.test(path)) return 'media'
+  if (/\.(?:avif|bmp|gif|ico|jpe?g|m4a|mp3|mov|mp4|ogg|pdf|png|wav|weba|webm|webp)$/iu.test(path)) return 'media'
   if (/\.(?:markdown|md)$/iu.test(path) || !/\.[^/]+$/u.test(path)) return 'note'
   return null
 }

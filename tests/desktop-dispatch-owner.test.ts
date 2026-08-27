@@ -31,6 +31,11 @@ test('protocol parser accepts bounded TockTutor requests and rejects credentials
     vault: 'Notes',
   })
   assert.equal(parseTockTutorProtocol('tocktutor://user:password@open?vault=Notes'), null)
+  assert.equal(parseTockTutorProtocol('tocktutor://open?file=C%3A%2FWindows%2Fsecret.md'), null)
+  assert.deepEqual(parseTockTutorProtocol('tocktutor://open?path=C%3A%5CVault%5CPlan.md'), {
+    action: 'open',
+    path: 'C:\\Vault\\Plan.md',
+  })
   assert.equal(parseTockTutorProtocol('tocktutor://new?file=Plan.md&x-success=file%3A%2F%2Funsafe'), null)
   assert.equal(parseTockTutorProtocol('tocktutor://open?file=Plan.md&x-success=tocktutor%3A%2F%2Fopen%3Ffile%3DLoop.md%26x-success%3Dhttps%253A%252F%252Fexample.test'), null)
   assert.equal(parseTockTutorProtocol(`tocktutor://search?query=${'x'.repeat(4097)}`), null)
@@ -97,6 +102,13 @@ test('resolves named and absolute protocol selectors without exposing Host paths
     parseTockTutorProtocol('tocktutor://open?path=%2Foutside%2FPlan.md')!,
     known,
     known[0],
+  ), null)
+  assert.equal(resolveTockTutorProtocolRequest(
+    parseTockTutorProtocol('tocktutor://open?path=%2Freplaced%2FPlan.md')!,
+    known,
+    known[0],
+    undefined,
+    path => path === '/vaults/work' ? '/replaced' : path,
   ), null)
 })
 
@@ -169,6 +181,39 @@ test('dispatch callbacks are emitted once after final completion', async () => {
   assert.equal((await dispatch.complete({ operationId: event!.identity.operationId, status: 'handled' }, new AbortController().signal)).status, 'handled')
   assert.equal((await dispatch.complete({ operationId: event!.identity.operationId, status: 'handled' }, new AbortController().signal)).status, 'stale')
   assert.deepEqual(callbacks, ['success:https://example.test/done'])
+})
+
+test('reports terminal queue drops and superseded rollbacks through error callbacks', async () => {
+  const callbacks: string[] = []
+  let id = 0
+  const dispatch = new DesktopDispatchOwner({
+    identity: (operationId, requestId) => ({ operationId, requestId, sessionId: 'session', vaultGeneration: 1, vaultId: 'vault', windowId: 'window' }),
+    isAvailable: () => true,
+    onCallback: (url, status) => { callbacks.push(`${status}:${url}`) },
+    randomId: () => `id-${++id}`,
+  })
+  for (let index = 0; index < 65; index += 1) {
+    assert.equal(dispatch.publishProtocol(`tocktutor://open?file=${String(index)}.md&x-error=https%3A%2F%2Fexample.test%2F${String(index)}`), true)
+  }
+  assert.deepEqual(callbacks, ['error:https://example.test/0'])
+
+  const current = { generation: 1, id: `vault:${'a'.repeat(64)}` }
+  const target = { generation: 2, id: `vault:${'b'.repeat(64)}` }
+  const switched = new DesktopDispatchOwner({
+    identity: (operationId, requestId) => ({ operationId, requestId, sessionId: 'session', vaultGeneration: current.generation, vaultId: current.id, windowId: 'window' }),
+    isAvailable: () => true,
+    onCallback: (url, status) => { callbacks.push(`${status}:${url}`) },
+    resolveProtocol: request => resolveTockTutorProtocolRequest(request, [
+      { ...current, name: 'Current', path: '/vaults/current' },
+      { ...target, name: 'Target', path: '/vaults/target' },
+    ], { ...current, name: 'Current', path: '/vaults/current' }),
+  })
+  assert.equal(switched.publishProtocol('tocktutor://open?vault=Target&file=One.md&x-error=https%3A%2F%2Fexample.test%2Fsuperseded'), true)
+  const delivered = await switched.next(new AbortController().signal)
+  assert.ok(delivered)
+  assert.equal(switched.publishProtocol('tocktutor://open?vault=Target&file=Two.md'), true)
+  switched.rollbackDelivery(delivered.identity.operationId)
+  assert.deepEqual(callbacks, ['error:https://example.test/0', 'error:https://example.test/superseded'])
 })
 
 test('dispatch owner delivers typed quick actions and matches one completion', async () => {

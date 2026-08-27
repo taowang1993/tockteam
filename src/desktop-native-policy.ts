@@ -1,4 +1,4 @@
-import { isAbsolute, relative, resolve } from 'node:path'
+import { isAbsolute, relative, resolve, win32 } from 'node:path'
 import type {
   DesktopProtocolVault,
   DesktopProtocolVaultTarget,
@@ -78,14 +78,17 @@ function bounded(value: string | null | undefined): value is string {
   return value != null && value.length <= MAX_PROTOCOL_VALUE_LENGTH
 }
 
+function safeAbsolutePath(value: string | null | undefined): value is string {
+  return bounded(value) && (isAbsolute(value) || win32.isAbsolute(value)) && !/[\u0000-\u001f\u007f]/u.test(value)
+}
+
 function safeVaultRef(value: string | null | undefined): value is string {
-  return Boolean(value)
-    && bounded(value)
-    && (isAbsolute(value) ? !/[\u0000-\u001f\u007f]/u.test(value) : !/[\\/\u0000-\u001f\u007f]/u.test(value))
+  return safeAbsolutePath(value)
+    || Boolean(value) && bounded(value) && !/[\\/\u0000-\u001f\u007f]/u.test(value)
 }
 
 function safeRelativePath(value: string | undefined): value is string {
-  if (!value || value.length > MAX_PROTOCOL_VALUE_LENGTH || value.startsWith('/') || value.includes('\\') || value.includes('\u0000')) return false
+  if (!value || value.length > MAX_PROTOCOL_VALUE_LENGTH || value.startsWith('/') || value.includes('\\') || value.includes('\u0000') || /^[A-Za-z]:/u.test(value)) return false
   const segments = value.split('/')
   return segments.every(segment => segment.length > 0 && segment !== '.' && segment !== '..' && !/[\u0000-\u001f\u007f]/u.test(segment))
 }
@@ -128,8 +131,7 @@ function shorthand(raw: string): TockTutorProtocolRequest | null | undefined {
   const rawPath = match[2]
   if (authority === '' && rawPath !== undefined) {
     const path = decoded(rawPath)
-    return path !== null && isAbsolute(path) && bounded(path) && !/[\\\u0000-\u001f\u007f]/u.test(path)
-      ? { action: 'open', path }
+    return safeAbsolutePath(path) ? { action: 'open', path }
       : null
   }
   if (authority.toLowerCase() !== 'vault' || !rawPath) return null
@@ -150,7 +152,7 @@ function parseAction(action: string, url: URL): TockTutorProtocolRequest | null 
   const vault = entries.get('vault')
   if (vault !== undefined && !safeVaultRef(vault)) return null
   const path = entries.get('path')
-  if (path !== undefined && (!isAbsolute(path) || !bounded(path) || /[\\\u0000-\u001f\u007f]/u.test(path))) return null
+  if (path !== undefined && !safeAbsolutePath(path)) return null
   const hasPane = entries.has('paneType')
   const paneType = entries.get('paneType')
   if (hasPane && (action === 'search' || action === 'choose-vault' || (paneType !== 'tab' && paneType !== 'split' && paneType !== 'window'))) return null
@@ -300,6 +302,7 @@ function protocolVaults(
   for (const candidate of [current, ...known]) {
     if (candidate === null || candidate === undefined || !validProtocolVault(candidate)) continue
     const path = canonicalizePath(candidate.path)
+    if (path !== candidate.path) continue
     const key = `${candidate.id}:${String(candidate.generation)}:${path}`
     if (seen.has(key)) continue
     seen.add(key)
@@ -323,7 +326,7 @@ function requestedVault(
   const selector = request.vault
   const absolutePath = request.path
   if (absolutePath !== undefined) {
-    if (!isAbsolute(absolutePath)) return null
+    if (!safeAbsolutePath(absolutePath)) return null
     const targetPath = canonicalizePath(absolutePath)
     const matches = known
       .map(vault => ({ vault, file: relativeProtocolPath(vault.path, targetPath) }))

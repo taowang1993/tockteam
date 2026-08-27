@@ -87,7 +87,7 @@ function taskCheckbox(pos, index, checked) {
     input.dataset.taskPos = String(pos);
     input.dataset.taskIndex = String(index);
     input.setAttribute('aria-label', checked ? 'Mark Task as Incomplete' : 'Mark Task as Complete');
-    input.tabIndex = -1;
+    input.tabIndex = 0;
     return input;
 }
 function decorations(state, folded) {
@@ -174,6 +174,26 @@ function decorations(state, folded) {
     return DecorationSet.create(state.doc, values);
 }
 export function buildLivePreviewChromePlugin(options) {
+    const toggleTaskControl = (view, event) => {
+        const task = event.target instanceof Element ? event.target.closest('[data-task-pos]') : null;
+        if (task === null)
+            return false;
+        if (event.type === 'keydown' && event.key !== 'Enter' && event.key !== ' ')
+            return false;
+        event.preventDefault();
+        const pos = Number(task.dataset.taskPos);
+        const index = Number(task.dataset.taskIndex);
+        if (options.isProtected()) {
+            if (Number.isSafeInteger(index) && index >= 0)
+                options.onToggleTask(index);
+            return true;
+        }
+        const node = Number.isSafeInteger(pos) ? view.state.doc.nodeAt(pos) : null;
+        if (node?.type.name === 'list_item' && node.attrs.checked !== null && node.attrs.checked !== undefined) {
+            view.dispatch(view.state.tr.setNodeMarkup(pos, undefined, { ...node.attrs, checked: !node.attrs.checked }));
+        }
+        return true;
+    };
     return new Plugin({
         key: chromeKey,
         state: {
@@ -231,7 +251,9 @@ export function buildLivePreviewChromePlugin(options) {
                     event.preventDefault();
                     return true;
                 },
-                keydown(_view, event) {
+                keydown(view, event) {
+                    if (toggleTaskControl(view, event))
+                        return true;
                     if (!options.isProtected())
                         return false;
                     const mutates = event.key.length === 1 && !event.metaKey && !event.ctrlKey
@@ -241,14 +263,17 @@ export function buildLivePreviewChromePlugin(options) {
                     event.preventDefault();
                     return true;
                 },
-                mousedown(view, event) {
+                click(_view, event) {
                     const target = event.target instanceof Element ? event.target : null;
                     const externalUrl = target?.closest('[data-external-url]')?.dataset.externalUrl;
-                    if (externalUrl !== undefined) {
-                        event.preventDefault();
-                        options.onOpenExternalUrl()?.(externalUrl);
-                        return true;
-                    }
+                    if (externalUrl === undefined)
+                        return false;
+                    event.preventDefault();
+                    options.onOpenExternalUrl()?.(externalUrl);
+                    return true;
+                },
+                mousedown(view, event) {
+                    const target = event.target instanceof Element ? event.target : null;
                     const callout = target?.closest('[data-callout-fold-pos]');
                     if (callout !== null && callout !== undefined) {
                         event.preventDefault();
@@ -268,22 +293,8 @@ export function buildLivePreviewChromePlugin(options) {
                         }
                         return true;
                     }
-                    const task = target?.closest('[data-task-pos]');
-                    if (task !== null && task !== undefined) {
-                        event.preventDefault();
-                        const pos = Number(task.dataset.taskPos);
-                        const index = Number(task.dataset.taskIndex);
-                        if (options.isProtected()) {
-                            if (Number.isSafeInteger(index) && index >= 0)
-                                options.onToggleTask(index);
-                            return true;
-                        }
-                        const node = view.state.doc.nodeAt(pos);
-                        if (node?.type.name === 'list_item' && node.attrs.checked !== null && node.attrs.checked !== undefined) {
-                            view.dispatch(view.state.tr.setNodeMarkup(pos, undefined, { ...node.attrs, checked: !node.attrs.checked }));
-                        }
+                    if (toggleTaskControl(view, event))
                         return true;
-                    }
                     const fold = target?.closest('[data-fold-from]');
                     if (fold !== null && fold !== undefined) {
                         event.preventDefault();

@@ -32,7 +32,7 @@ export function ResolvedEmbedsView(props) {
             })] }));
 }
 export function MarkdownSlidesView(props) {
-    const slides = useMemo(() => buildMarkdownSlides(props.source), [props.source]);
+    const slides = useMemo(() => buildMarkdownSlides(props.source, { externalEmbedMode: 'viewer' }), [props.source]);
     return (_jsxs("section", { "aria-label": "Slides Preview", className: "grid gap-3", children: [slides.map((slide, index) => (_jsxs("article", { className: "rounded border border-[var(--tt-border)] p-3", "data-slide-index": index, children: [_jsxs("div", { className: "mb-2 text-xs text-[var(--tt-muted)]", children: ["Slide ", index + 1] }), _jsx("div", { dangerouslySetInnerHTML: { __html: slide }, onClick: event => { handleRenderedClick(event, props.onOpenExternalUrl); } })] }, index))), _jsx(ResolvedEmbedsView, { embeds: props.embeds, onOpenExternalUrl: props.onOpenExternalUrl })] }));
 }
 export function RichReadingView(props) {

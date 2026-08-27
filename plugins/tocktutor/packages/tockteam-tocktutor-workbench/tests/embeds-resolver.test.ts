@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { resolveEmbedGraph } from '../dist/embeds.js'
+import { collectEmbedTargets, resolveEmbedGraph } from '../dist/embeds.js'
 
 const entries = [
   { kind: 'document', path: 'Root.md' },
@@ -115,6 +115,10 @@ test('returns cancelled and stale results and never publishes late content', asy
   })
   assert.equal(stale.status, 'stale')
   assert.equal(stale.embeds.length, 0)
+})
+
+test('keeps media kinds aligned with the Host attachment boundary', () => {
+  assert.deepEqual(collectEmbedTargets('![[safe.png]]\n![[unsafe.svg]]\n![[unsupported.flac]]\n').map(target => target.path), ['safe.png'])
 })
 
 test('rejects malformed media payloads and keeps unsafe targets inert', async () => {

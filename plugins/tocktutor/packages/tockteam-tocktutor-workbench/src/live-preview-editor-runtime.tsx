@@ -59,15 +59,25 @@ function deleteSelectedTextblock(view: EditorView): boolean {
 function toggleCalloutFold(source: string, targetIndex: number): string {
   let index = 0
   let offset = 0
+  let fence: { character: string; length: number } | null = null
   for (const line of source.split(/(?<=\n)/u)) {
-    const match = line.match(/^(\s*>\s*\[![A-Za-z][\w-]*\])([+-])/u)
-    if (match !== null) {
-      if (index === targetIndex) {
-        const from = offset + match[1]!.length
-        return `${source.slice(0, from)}${match[2] === '-' ? '+' : '-'}${source.slice(from + 1)}`
-      }
-      index += 1
-    } else if (/^\s*>\s*\[![A-Za-z][\w-]*\]/u.test(line)) index += 1
+    const marker = line.match(/^ {0,3}(`{3,}|~{3,})/u)?.[1]
+    if (marker !== undefined) {
+      if (fence === null) fence = { character: marker[0]!, length: marker.length }
+      else if (marker[0] === fence.character && marker.length >= fence.length && /^ {0,3}(?:`{3,}|~{3,})\s*$/u.test(line.trimEnd())) fence = null
+      offset += line.length
+      continue
+    }
+    if (fence === null) {
+      const match = line.match(/^(\s*>\s*\[![A-Za-z][\w-]*\])([+-])/u)
+      if (match !== null) {
+        if (index === targetIndex) {
+          const from = offset + match[1]!.length
+          return `${source.slice(0, from)}${match[2] === '-' ? '+' : '-'}${source.slice(from + 1)}`
+        }
+        index += 1
+      } else if (/^\s*>\s*\[![A-Za-z][\w-]*\]/u.test(line)) index += 1
+    }
     offset += line.length
   }
   return source

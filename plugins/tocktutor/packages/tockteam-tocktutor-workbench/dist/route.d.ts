@@ -151,8 +151,11 @@ export declare class WorkbenchRouteController {
     private bookmarks;
     private workspaces;
     private operation;
+    private embedOperation;
+    private embedTargets;
     private dispatchRevision;
     private operationAbort;
+    private embedAbort;
     private saveAbort;
     private saving;
     private draftAbort;
@@ -194,6 +197,9 @@ export declare class WorkbenchRouteController {
     private scheduleDraft;
     private clearDocument;
     private nextOperation;
+    private cancelEmbedOperation;
+    private nextEmbedOperation;
+    private currentEmbed;
     private current;
     syncLocation(pathname: string): Promise<void>;
     reload(): Promise<void>;

@@ -241,7 +241,6 @@ function buildEditorExtensions(props: {
 export function SourceEditorRuntime(props: SourceEditorProps): ReactNode {
   const parentRef = useRef<HTMLDivElement | null>(null)
   const editorRef = useRef<EditorView | null>(null)
-  const initialContentRef = useRef(props.content)
   const sourceRef = useRef(props.content)
   const embedsRef = useRef(props.resolvedEmbeds ?? [])
   const onContentChangeRef = useRef(props.onContentChange)
@@ -282,7 +281,7 @@ export function SourceEditorRuntime(props: SourceEditorProps): ReactNode {
     if (!parent) return
     const view = new EditorView({
       parent,
-      state: EditorState.create({ doc: normalizeEditorSource(initialContentRef.current), extensions }),
+      state: EditorState.create({ doc: normalizeEditorSource(sourceRef.current), extensions }),
     })
     editorRef.current = view
     if (props.editorViewRef) props.editorViewRef.current = view

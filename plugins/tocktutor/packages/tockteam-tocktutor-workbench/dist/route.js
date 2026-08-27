@@ -131,6 +131,17 @@ function sessionModeFromRoute(mode) {
 function boundedSource(source) {
     return new TextEncoder().encode(source).byteLength <= MAX_ROUTE_SOURCE_BYTES;
 }
+function embedTargetSources(source) {
+    try {
+        return Object.freeze(collectEmbedTargets(source).map(target => target.source));
+    }
+    catch {
+        return Object.freeze([]);
+    }
+}
+function sameStrings(left, right) {
+    return left.length === right.length && left.every((value, index) => value === right[index]);
+}
 function defaultWorkbenchStorage() {
     try {
         return typeof globalThis.localStorage === 'undefined' ? null : globalThis.localStorage;
@@ -226,8 +237,11 @@ export class WorkbenchRouteController {
     bookmarks = [];
     workspaces = [];
     operation = 0;
+    embedOperation = 0;
+    embedTargets = Object.freeze([]);
     dispatchRevision = 0;
     operationAbort = null;
+    embedAbort = null;
     saveAbort = null;
     saving = null;
     draftAbort = null;
@@ -749,6 +763,8 @@ export class WorkbenchRouteController {
     clearDocument() {
         this.invalidateDispatch();
         this.nextOperation();
+        this.cancelEmbedOperation();
+        this.embedTargets = Object.freeze([]);
         this.update({
             baseFiles: Object.freeze([]),
             documentKind: null,
@@ -769,6 +785,19 @@ export class WorkbenchRouteController {
         this.operationAbort = new AbortController();
         this.operation += 1;
         return { id: this.operation, signal: this.operationAbort.signal };
+    }
+    cancelEmbedOperation() {
+        this.embedAbort?.abort();
+        this.embedAbort = null;
+        this.embedOperation += 1;
+    }
+    nextEmbedOperation() {
+        this.cancelEmbedOperation();
+        this.embedAbort = new AbortController();
+        return { id: this.embedOperation, signal: this.embedAbort.signal };
+    }
+    currentEmbed(id, vault, path) {
+        return !this.disposed && id === this.embedOperation && sameVault(this.snapshot.vault, vault) && this.snapshot.path === path;
     }
     current(id, vault) {
         return !this.disposed
@@ -1523,8 +1552,11 @@ export class WorkbenchRouteController {
                 }
             }
             const mode = pane.tabs.find(tab => tab.path === path)?.mode ?? this.snapshot.mode;
+            this.cancelEmbedOperation();
+            this.embedTargets = embedTargetSources(content);
             this.update({
                 documentKind: documentKind(path),
+                embeds: Object.freeze([]),
                 draftRecovered,
                 message: draftRecovered ? `${path} opened with its recovered draft.` : `${path} opened.`,
                 mode,
@@ -1542,7 +1574,7 @@ export class WorkbenchRouteController {
                 this.navigate(routeForPath(path));
             if (documentKind(path) === 'markdown') {
                 void (async () => {
-                    if (await this.loadRelationships())
+                    if (await this.loadRelationships() && this.snapshot.path === path && this.snapshot.source === content)
                         await this.loadEmbeds();
                 })();
             }
@@ -1567,13 +1599,21 @@ export class WorkbenchRouteController {
         if (source === this.snapshot.source)
             return;
         this.invalidateDispatch();
+        const nextEmbedTargets = embedTargetSources(source);
+        const embedsChanged = !sameStrings(this.embedTargets, nextEmbedTargets);
+        this.embedTargets = nextEmbedTargets;
+        if (embedsChanged)
+            this.cancelEmbedOperation();
         this.update({
+            ...(embedsChanged ? { embeds: Object.freeze([]) } : {}),
             message: 'Unsaved changes.',
             saveStatus: 'unsaved',
             source,
         });
         this.recordDirty(true);
         this.scheduleDraft();
+        if (embedsChanged && nextEmbedTargets.length > 0)
+            void this.loadEmbeds();
     }
     setSelection(start, end) {
         if (this.snapshot.path === null)
@@ -1773,22 +1813,27 @@ export class WorkbenchRouteController {
         const sourcePath = this.snapshot.path;
         if (vault === null || sourcePath === null || this.snapshot.documentKind !== 'markdown')
             return false;
+        const source = this.snapshot.source;
         let targets;
         try {
-            targets = collectEmbedTargets(this.snapshot.source);
+            targets = collectEmbedTargets(source);
         }
         catch {
+            this.cancelEmbedOperation();
+            this.update({ embeds: Object.freeze([]) });
             return false;
         }
+        this.embedTargets = Object.freeze(targets.map(target => target.source));
         if (targets.length === 0) {
+            this.cancelEmbedOperation();
             this.update({ embeds: Object.freeze([]) });
             return true;
         }
-        const operation = this.nextOperation();
+        const operation = this.nextEmbedOperation();
         try {
             const result = await resolveEmbedGraph({
                 entries: this.snapshot.entries,
-                isCurrent: () => this.current(operation.id, vault) && this.snapshot.path === sourcePath,
+                isCurrent: () => this.currentEmbed(operation.id, vault, sourcePath),
                 readAttachment: async (path) => {
                     const preview = remoteValue(await this.remote.tocktutorWorkbench.previewAttachment(path, vault, operation.signal));
                     if (preview.path !== path || preview.generation !== vault.generation)
@@ -1802,9 +1847,9 @@ export class WorkbenchRouteController {
                     return opened;
                 },
                 signal: operation.signal,
-                source: this.snapshot.source,
+                source,
             });
-            if (result.status !== 'ready' || !this.current(operation.id, vault) || this.snapshot.path !== sourcePath)
+            if (result.status !== 'ready' || !this.currentEmbed(operation.id, vault, sourcePath))
                 return false;
             this.update({
                 embeds: Object.freeze(result.embeds.map(embed => Object.freeze({
@@ -2059,6 +2104,7 @@ export class WorkbenchRouteController {
         this.dispatchRevision += 1;
         this.operation += 1;
         this.operationAbort?.abort();
+        this.cancelEmbedOperation();
         this.saveAbort?.abort();
         this.draftAbort?.abort();
         if (this.draftTimer !== null)

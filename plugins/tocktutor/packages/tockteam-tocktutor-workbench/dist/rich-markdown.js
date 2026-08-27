@@ -403,7 +403,7 @@ function renderStaticEmbed(embed) {
 }
 export function buildMarkdownExportDocument(options) {
     const title = escapeMarkdownHtml(options.title.slice(0, 1000));
-    const body = stripStaticResourceAttributes(renderMarkdownHtml(options.markdown, options));
+    const body = stripStaticResourceAttributes(renderMarkdownHtml(options.markdown, { ...options, externalEmbedMode: 'inert' }));
     const embeds = (options.embeds ?? []).slice(0, 100).filter(embed => bytes(embed.content) <= MAX_RICH_MARKDOWN_BYTES);
     const resolved = embeds.length === 0
         ? ''

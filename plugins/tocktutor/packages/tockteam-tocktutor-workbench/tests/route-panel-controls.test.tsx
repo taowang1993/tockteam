@@ -182,7 +182,7 @@ describe('TockTutor titlebar panel controls', () => {
     const onEdit = vi.fn()
     const onMode = vi.fn()
     const onToggleTask = vi.fn()
-    const source = '# Lesson\n- [ ] Review\n> [!tip]- Fold\n> Body\n'
+    const source = '# Lesson\n- [ ] Review\n```md\n> [!tip]- Literal\n```\n> [!tip]- Fold\n> Body\n'
     renderRoute({
       documentKind: 'markdown',
       mode: 'live-preview',
@@ -198,14 +198,16 @@ describe('TockTutor titlebar panel controls', () => {
     await waitFor(() => expect(document.querySelector('.ProseMirror')).toBeTruthy(), { timeout: 5_000 })
     expect(document.querySelector('.ProseMirror')?.getAttribute('contenteditable')).toBe('true')
     expect(screen.getByRole('note').textContent).toMatch(/Protected Markdown stays exact/u)
-    fireEvent.mouseDown(screen.getByRole('checkbox', { name: 'Mark Task as Complete' }))
+    const task = screen.getByRole('checkbox', { name: 'Mark Task as Complete' })
+    expect(task.tabIndex).toBe(0)
+    fireEvent.keyDown(task, { key: ' ' })
     expect(onToggleTask).toHaveBeenCalledWith(0)
     const callout = document.querySelector('.tocktutor-live-callout')
     expect(callout?.classList.contains('hidden')).toBe(true)
     expect(callout?.textContent).toContain('Body')
     const calloutFold = screen.getByRole('button', { name: 'Expand Callout' })
     fireEvent.mouseDown(calloutFold)
-    await waitFor(() => expect(onEdit).toHaveBeenCalledWith(source.replace('[!tip]-', '[!tip]+')))
+    await waitFor(() => expect(onEdit).toHaveBeenCalledWith(source.replace('> [!tip]- Fold', '> [!tip]+ Fold')))
     expect(callout).toBeTruthy()
     const fold = screen.getByRole('button', { name: 'Collapse Heading' })
     fireEvent.mouseDown(fold)

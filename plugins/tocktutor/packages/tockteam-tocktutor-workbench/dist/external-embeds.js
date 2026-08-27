@@ -5,7 +5,7 @@ function isPrivateHostname(hostname) {
     const host = hostname.toLocaleLowerCase().replace(/^\[|\]$/gu, '').replace(/\.$/u, '');
     if (host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.local') || host.endsWith('.internal') || host === 'home.arpa' || host.endsWith('.home.arpa'))
         return true;
-    if (host === '::' || host === '::1' || host.startsWith('fc') || host.startsWith('fd') || host.startsWith('fe80:') || host.startsWith('::ffff:'))
+    if (host === '::' || host === '::1' || host.startsWith('fc') || host.startsWith('fd') || /^fe[89ab][0-9a-f]:/u.test(host) || host.startsWith('::ffff:'))
         return true;
     if (/^\d+(?:\.\d+){3}$/u.test(host)) {
         const octets = host.split('.').map(Number);

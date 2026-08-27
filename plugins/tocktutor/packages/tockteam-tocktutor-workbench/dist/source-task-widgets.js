@@ -63,7 +63,7 @@ class TaskWidget extends WidgetType {
         input.className = 'tocktutor-source-task';
         input.dataset.taskFrom = String(this.marker.from);
         input.setAttribute('aria-label', this.marker.checked ? 'Mark Source Task as Incomplete' : 'Mark Source Task as Complete');
-        input.tabIndex = -1;
+        input.tabIndex = 0;
         return input;
     }
     ignoreEvent() { return false; }
@@ -85,20 +85,21 @@ export function buildSourceTaskWidgetExtension() {
         decorations: value => value.decorations,
         provide: value => EditorView.atomicRanges.of(view => view.plugin(value)?.decorations ?? Decoration.none),
     });
-    const handler = EditorView.domEventHandlers({
-        mousedown(event, view) {
-            const input = event.target instanceof Element ? event.target.closest('[data-task-from]') : null;
-            if (input === null || view.state.readOnly)
-                return false;
-            event.preventDefault();
-            const from = Number(input.dataset.taskFrom);
-            if (!Number.isSafeInteger(from) || from < 0 || from + 3 > view.state.doc.length)
-                return true;
-            const checked = view.state.sliceDoc(from, from + 3) !== '[ ]';
-            view.dispatch({ changes: { from, to: from + 3, insert: checked ? '[ ]' : '[x]' }, selection: { anchor: from + 3 } });
+    const toggle = (event, view) => {
+        const input = event.target instanceof Element ? event.target.closest('[data-task-from]') : null;
+        if (input === null || view.state.readOnly)
+            return false;
+        if (event.type === 'keydown' && event.key !== 'Enter' && event.key !== ' ')
+            return false;
+        event.preventDefault();
+        const from = Number(input.dataset.taskFrom);
+        if (!Number.isSafeInteger(from) || from < 0 || from + 3 > view.state.doc.length)
             return true;
-        },
-    });
+        const checked = view.state.sliceDoc(from, from + 3) !== '[ ]';
+        view.dispatch({ changes: { from, to: from + 3, insert: checked ? '[ ]' : '[x]' }, selection: { anchor: from + 3 } });
+        return true;
+    };
+    const handler = EditorView.domEventHandlers({ mousedown: toggle, keydown: toggle });
     return [plugin, handler];
 }
 //# sourceMappingURL=source-task-widgets.js.map

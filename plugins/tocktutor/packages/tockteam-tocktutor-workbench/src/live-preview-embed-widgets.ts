@@ -13,8 +13,20 @@ function widgetDom(embed: ResolvedEmbedNode, from: number, to: number, reveal: (
   widget.dataset.embedKind = embed.target.kind
   widget.setAttribute('aria-label', `${embed.target.kind} Embed: ${embed.target.display ?? embed.target.path}`)
   widget.tabIndex = 0
-  widget.addEventListener('mousedown', event => { event.preventDefault(); event.stopPropagation(); reveal() })
+  widget.addEventListener('mousedown', event => {
+    if (event.target instanceof Element && event.target.closest('audio,video') !== null) {
+      event.stopPropagation()
+      return
+    }
+    event.preventDefault()
+    event.stopPropagation()
+    reveal()
+  })
   widget.addEventListener('keydown', event => {
+    if (event.target instanceof Element && event.target.closest('audio,video') !== null) {
+      event.stopPropagation()
+      return
+    }
     if (event.key !== 'Enter' && event.key !== ' ') return
     event.preventDefault()
     event.stopPropagation()
@@ -120,7 +132,9 @@ export function buildLivePreviewEmbedPlugin(
     view.focus()
   }
   const reveal = (view, event: Event): boolean => {
-    const widget = event.target instanceof Element ? event.target.closest<HTMLElement>('[data-embed-from][data-embed-to]') : null
+    const target = event.target instanceof Element ? event.target : null
+    if (target !== null && target.closest('audio,video') !== null) return false
+    const widget = target?.closest<HTMLElement>('[data-embed-from][data-embed-to]') ?? null
     if (widget === null || event.type === 'keydown' && (event as KeyboardEvent).key !== 'Enter' && (event as KeyboardEvent).key !== ' ') return false
     const from = Number(widget.dataset.embedFrom)
     const to = Number(widget.dataset.embedTo)

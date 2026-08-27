@@ -1343,6 +1343,34 @@ test('resolves note, media, Canvas, and Base embeds under source identity', asyn
   controller.dispose()
 })
 
+test('does not publish an embed result after its source target is removed', async () => {
+  const remote = new FakeRemote()
+  let release!: () => void
+  const blocked = new Promise<void>(resolve => { release = resolve })
+  remote.openOverride = async path => {
+    if (path === 'Second.md') await blocked
+    return success({
+      content: '# Second\n',
+      digest: `sha256:${'c'.repeat(64)}`,
+      generation: firstVault.generation,
+      path,
+      revision: firstRevision,
+    })
+  }
+  const controller = new WorkbenchRouteController(remote, () => {})
+  await controller.syncLocation('/tocktutor')
+  assert.equal(await controller.select('Folder/Note.md'), true)
+  controller.edit('![[Second.md]]\n')
+  const pending = controller.loadEmbeds()
+  await new Promise(resolve => setImmediate(resolve))
+  controller.edit('# Removed\n')
+  release()
+  await pending
+  await new Promise(resolve => setImmediate(resolve))
+  assert.deepEqual(controller.getSnapshot().embeds, [])
+  controller.dispose()
+})
+
 test('stores, embeds, and previews bounded attachments under note identity', async () => {
   const remote = new FakeRemote()
   const controller = new WorkbenchRouteController(remote, () => {})

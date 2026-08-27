@@ -159,7 +159,8 @@ export class DesktopDispatchOwner {
     const delivered = this.delivered.get(operationId)
     if (delivered === undefined || (consumerId !== undefined && delivered.consumerId !== consumerId)) return
     this.delivered.delete(operationId)
-    if (!this.superseded.delete(operationId)) this.queue.unshift(delivered.event)
+    if (this.superseded.delete(operationId)) this.drop(delivered.event)
+    else this.queue.unshift(delivered.event)
   }
 
   disposeConsumer(consumerId: string): void {
@@ -167,11 +168,14 @@ export class DesktopDispatchOwner {
     for (const [operationId, delivered] of this.delivered) {
       if (delivered.consumerId !== consumerId) continue
       this.delivered.delete(operationId)
-      if (this.superseded.delete(operationId)) continue
-      requeue.push(delivered.event)
+      if (this.superseded.delete(operationId)) this.drop(delivered.event)
+      else requeue.push(delivered.event)
     }
     this.queue.unshift(...requeue)
-    while (this.queue.length > MAX_PENDING_EVENTS) this.queue.pop()
+    while (this.queue.length > MAX_PENDING_EVENTS) {
+      const dropped = this.queue.pop()
+      if (dropped !== undefined) this.drop(dropped)
+    }
     for (const waiter of [...this.waiters]) {
       if (waiter.consumerId === consumerId) waiter.resolve(undefined)
     }
@@ -198,8 +202,9 @@ export class DesktopDispatchOwner {
       const removed = this.delivered.get(oldest)
       this.delivered.delete(oldest)
       if (removed !== undefined) this.options.onDeliveryExpired?.(oldest, removed.consumerId)
-      if (this.superseded.delete(oldest) || removed === undefined) continue
-      this.queue.unshift(removed.event)
+      if (removed === undefined) continue
+      if (this.superseded.delete(oldest)) this.drop(removed.event)
+      else this.queue.unshift(removed.event)
     }
   }
 
@@ -219,11 +224,14 @@ export class DesktopDispatchOwner {
       if (delivered.expiresAt > now) continue
       this.delivered.delete(operationId)
       this.options.onDeliveryExpired?.(operationId, delivered.consumerId)
-      if (this.superseded.delete(operationId)) continue
-      requeue.push(delivered.event)
+      if (this.superseded.delete(operationId)) this.drop(delivered.event)
+      else requeue.push(delivered.event)
     }
     this.queue.unshift(...requeue)
-    while (this.queue.length > MAX_PENDING_EVENTS) this.queue.pop()
+    while (this.queue.length > MAX_PENDING_EVENTS) {
+      const dropped = this.queue.pop()
+      if (dropped !== undefined) this.drop(dropped)
+    }
   }
 
   private identity(operationId: string): NativeOperationIdentity {
@@ -244,6 +252,10 @@ export class DesktopDispatchOwner {
     if (url !== undefined) this.options.onCallback?.(url, status)
   }
 
+  private drop(event: DesktopDispatchEvent): void {
+    if (event.kind === 'protocol') this.notifyCallback(event.request, 'error')
+  }
+
   private publish(create: (operationId: string) => DesktopDispatchEvent): boolean {
     if (this.disposed || !this.options.isAvailable()) return false
     let event: DesktopDispatchEvent
@@ -254,7 +266,7 @@ export class DesktopDispatchOwner {
       for (const queued of this.queue.splice(0, this.queue.length)) {
         if (queued.kind === 'protocol'
           && (queued.request.action === 'choose-vault' || queued.request.vaultId !== undefined)) {
-          this.notifyCallback(queued.request, 'error')
+          this.drop(queued)
         } else {
           this.queue.push(queued)
         }
@@ -270,7 +282,10 @@ export class DesktopDispatchOwner {
     if (waiter !== undefined) waiter.resolve(event)
     else {
       this.queue.push(event)
-      while (this.queue.length > MAX_PENDING_EVENTS) this.queue.shift()
+      while (this.queue.length > MAX_PENDING_EVENTS) {
+        const dropped = this.queue.shift()
+        if (dropped !== undefined) this.drop(dropped)
+      }
     }
     return true
   }

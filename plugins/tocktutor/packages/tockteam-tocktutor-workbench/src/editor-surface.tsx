@@ -60,7 +60,7 @@ export function MarkdownSlidesView(props: {
   onOpenExternalUrl?: ((url: string) => void) | undefined
   source: string
 }): ReactNode {
-  const slides = useMemo(() => buildMarkdownSlides(props.source), [props.source])
+  const slides = useMemo(() => buildMarkdownSlides(props.source, { externalEmbedMode: 'viewer' }), [props.source])
   return (
     <section aria-label="Slides Preview" className="grid gap-3">
       {slides.map((slide, index) => (

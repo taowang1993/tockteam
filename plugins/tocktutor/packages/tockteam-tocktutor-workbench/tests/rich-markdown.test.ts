@@ -52,11 +52,12 @@ test('honors strict line breaks and builds fenced-aware slides', () => {
 
 test('builds a self-contained inert export accepted by the deny-by-default Desktop owner', () => {
   const document = buildMarkdownExportDocument({
+    externalEmbedMode: 'viewer',
     markdown: '# Export\n[External](https://example.com)\n![Remote](https://example.com/image.png)\n',
     title: 'A < B',
   })
   assert.match(document, /<title>A &lt; B<\/title>/u)
-  assert.doesNotMatch(document, /<meta|\s(?:href|src)=|https?:\/\//u)
+  assert.doesNotMatch(document, /<meta|data-external-url|\s(?:href|src)=|https?:\/\//u)
 })
 
 test('includes bounded resolved embeds in static HTML without rewriting authored Markdown', () => {
