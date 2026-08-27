@@ -223,8 +223,7 @@ function supportedVscodeUri(value: string): boolean {
   try {
     const parsed = new URL(value)
     return boundedDiscoveryString(value, 4_096)
-      && (parsed.protocol === 'file:' || parsed.protocol === 'vscode-remote:')
-      && Boolean(parsed.hostname || parsed.protocol === 'file:')
+      && (parsed.protocol === 'file:' ? parsed.hostname === '' : Boolean(parsed.hostname))
       && !parsed.username && !parsed.password
   } catch { return false }
 }

@@ -222,18 +222,21 @@ export class LauncherCustomBrowserController {
   }
 
   async openUrl(url: string): Promise<void> {
+    if (this.#disposed) throw new Error('Custom browser controller is disposed')
     const normalized = parseLauncherBrowserHttpUrl(url)
     const useDefault = this.options.getSetting('general.browser.useDefaultWebBrowser', true)
     if (useDefault || this.options.platform === 'Linux') { await this.options.openDefault(normalized); return }
-    const grant = this.#grant
-    if (this.#status === 'none') throw new Error('No custom browser grant is selected')
-    if (this.#status !== 'active' || grant === undefined || grant.platform !== this.options.platform) throw new Error('Custom browser grant is revoked')
-    if (!HAS_NOFOLLOW && this.options.identitySafeEffects !== true) throw new Error('Custom browser launch is unavailable on this platform')
-    try { await revalidateGrant(grant) }
-    catch (error) { this.#grant = undefined; this.#status = 'revoked'; throw new Error('Custom browser grant changed or was revoked', { cause: error }) }
-    if (grant.platform === 'macOS') { await this.options.launch('/usr/bin/open', ['-a', grant.path, normalized]); return }
-    const template = this.options.getSetting('general.browser.customWebBrowser.commandlineArguments', '{{url}}')
-    await this.options.launch(grant.path, parseLauncherCustomBrowserArgumentTemplate(template, normalized))
+    await this.#enqueue(async () => {
+      const grant = this.#grant
+      if (this.#status === 'none') throw new Error('No custom browser grant is selected')
+      if (this.#status !== 'active' || grant === undefined || grant.platform !== this.options.platform) throw new Error('Custom browser grant is revoked')
+      if (!HAS_NOFOLLOW && this.options.identitySafeEffects !== true) throw new Error('Custom browser launch is unavailable on this platform')
+      try { await revalidateGrant(grant) }
+      catch (error) { this.#grant = undefined; this.#status = 'revoked'; throw new Error('Custom browser grant changed or was revoked', { cause: error }) }
+      if (grant.platform === 'macOS') { await this.options.launch('/usr/bin/open', ['-a', grant.path, normalized]); return }
+      const template = this.options.getSetting('general.browser.customWebBrowser.commandlineArguments', '{{url}}')
+      await this.options.launch(grant.path, parseLauncherCustomBrowserArgumentTemplate(template, normalized))
+    })
   }
 
   async #enqueue(operation: () => Promise<void>): Promise<void> {

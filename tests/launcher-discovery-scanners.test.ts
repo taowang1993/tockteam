@@ -77,6 +77,7 @@ test('merges VS Code storage values by first URI and classifies remote workspace
     ['file:///work/two.txt', '--file-uri', 'File'],
     ['vscode-remote://ssh/work.code-workspace', '--file-uri', 'Remote Workspace'],
   ])
+  assert.deepEqual(parseVSCodeRecentEntries([JSON.stringify({ entries: [{ fileUri: 'file://server/share/project' }] })]), [])
 })
 
 test('uses one fixed PowerShell script and data-only settings arguments', () => {

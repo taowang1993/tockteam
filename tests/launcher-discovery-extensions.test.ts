@@ -67,6 +67,17 @@ test('maps applications, bookmarks, JetBrains projects, and VS Code to opaque bo
   assert.equal(instant.after[0]?.defaultAction.argument.includes('file:///work/tockteam'), true)
 })
 
+test('bounds application icon mapping by the scan deadline', async () => {
+  const provider = createLauncherDiscoveryExtensions({
+    ...baseOptions,
+    scanTimeoutMs: 20,
+    getApplicationIcon: async () => await new Promise<string | undefined>(() => {}),
+    effects: { confirmOpenApplicationAsAdministrator: async () => false, copyText: () => {}, launchExecutable: () => {}, openApplication: () => {}, openApplicationAsAdministrator: () => {}, openExternal: () => {}, revealPath: () => {} },
+  })
+  const indexed = await provider.loadIndexedItems(new AbortController().signal)
+  assert.equal(indexed.some(item => item.sourceExtension === 'ApplicationSearch'), true)
+})
+
 test('caps public bookmark labels after adding URL details', async () => {
   const longUrl = `https://docs.example.test/${'x'.repeat(4_096)}`
   const provider = createLauncherDiscoveryExtensions({

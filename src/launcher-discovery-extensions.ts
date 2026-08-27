@@ -162,6 +162,7 @@ const BROWSER_IMAGE_KEYS: Readonly<Record<string, string>> = Object.freeze({
 })
 const MAX_ITEMS_PER_EXTENSION = 200
 const MAX_ICON_CONCURRENCY = 8
+const MAX_APPLICATION_ICON_CALLS = MAX_ITEMS_PER_EXTENSION
 const MAX_TEXT_LENGTH = 16_384
 const WINDOWS_STORE_PATTERN = /^shell:AppsFolder\\[A-Za-z0-9._!{}-]{1,512}$/u
 
@@ -272,9 +273,9 @@ export function createLauncherDiscoveryExtensions(options: LauncherDiscoveryOpti
     homePath: options.homePath, platform: options.platform, signal,
   })
   const mappingTimeoutMs = Math.min(scanTimeoutMs, 1_000)
-  const captureIdentity = async (target: string, signal: AbortSignal): Promise<LauncherDiscoveryIdentity | undefined> => {
+  const captureIdentity = async (target: string, signal: AbortSignal, timeoutMs = mappingTimeoutMs): Promise<LauncherDiscoveryIdentity | undefined> => {
     if (options.capturePathIdentity === undefined) return undefined
-    try { return await withTimeout(Promise.resolve().then(() => options.capturePathIdentity!(target)), signal, mappingTimeoutMs) }
+    try { return await withTimeout(Promise.resolve().then(() => options.capturePathIdentity!(target)), signal, Math.max(1, Math.min(mappingTimeoutMs, timeoutMs))) }
     catch { return undefined }
   }
   const replaceVscodeActions = (next: ReadonlyMap<string, Readonly<{ entry: Extract<LauncherDiscoveryEntry, { kind: 'vscode' }>; executableIdentity: LauncherDiscoveryIdentity | undefined; identity: LauncherDiscoveryIdentity | undefined }>>): void => {
@@ -333,6 +334,8 @@ export function createLauncherDiscoveryExtensions(options: LauncherDiscoveryOpti
     const jetbrains = new Map<string, Readonly<{ entry: Extract<LauncherDiscoveryEntry, { kind: 'jetbrains' }>; executableIdentity: LauncherDiscoveryIdentity | undefined; projectIdentity: LauncherDiscoveryIdentity | undefined }>>()
     const vscode = new Map<string, Readonly<{ entry: Extract<LauncherDiscoveryEntry, { kind: 'vscode' }>; executableIdentity: LauncherDiscoveryIdentity | undefined; identity: LauncherDiscoveryIdentity | undefined }>>()
     let nextVscodeRecents: readonly Extract<LauncherDiscoveryEntry, { kind: 'vscode' }>[] = Object.freeze([])
+    const mappingDeadline = Date.now() + scanTimeoutMs
+    let applicationIconCalls = 0
     const indexed: LauncherInternalResultItem[] = []
     const reportIconError = (() => { let reported = false; return (error: Error) => { if (!reported) { reported = true; options.onProviderError?.('ApplicationSearch', error) } } })()
     const mapEntry = async (
@@ -344,7 +347,8 @@ export function createLauncherDiscoveryExtensions(options: LauncherDiscoveryOpti
       if (entry.kind === 'application') {
         if (!bounded(entry.path) || !isApplicationTarget(entry.path)) return undefined
         const storeApplication = isWindowsStore(entry.path)
-        const identity = !storeApplication ? await captureIdentity(entry.path, signal) : undefined
+        if (Date.now() >= mappingDeadline) return undefined
+        const identity = !storeApplication ? await captureIdentity(entry.path, signal, Math.max(1, mappingDeadline - Date.now())) : undefined
         if (!storeApplication && identity === undefined) return undefined
         const admin = options.platform === 'Windows' && !storeApplication
           ? action(HANDLERS.openApplicationAsAdministrator, 'Open application as administrator', { kind: 'application-administrator', target: entry.path }, { keyboardShortcut: 'Shift+Enter', requiresConfirmation: true })
@@ -352,8 +356,11 @@ export function createLauncherDiscoveryExtensions(options: LauncherDiscoveryOpti
         if (admin !== undefined) adminMap.set(admin.argument, Object.freeze({ entry, identity, name: entry.name, target: entry.path }))
         let imageUrl: string | undefined
         try {
-          const candidate = await options.getApplicationIcon?.(entry.path, signal)
-          if (isLauncherImageUrl(candidate)) imageUrl = candidate
+          if (options.getApplicationIcon !== undefined && applicationIconCalls < MAX_APPLICATION_ICON_CALLS && Date.now() < mappingDeadline) {
+            applicationIconCalls++
+            const candidate = await withTimeout(Promise.resolve().then(() => options.getApplicationIcon!(entry.path, signal)), signal, Math.max(1, Math.min(mappingTimeoutMs, mappingDeadline - Date.now())))
+            if (isLauncherImageUrl(candidate)) imageUrl = candidate
+          }
         } catch (error) {
           if (signal.aborted) throw error
           reportIconError(error instanceof Error ? error : new Error('Application icon extraction failed'))
@@ -393,8 +400,9 @@ export function createLauncherDiscoveryExtensions(options: LauncherDiscoveryOpti
           defaultAction: action(HANDLERS.launch, `Open ${entry.name} with ${entry.toolName}`, { args: [entry.projectPath], executable: entry.executable, kind: 'executable' }),
           description: `${entry.toolName} Project`, details: entry.projectPath, id: entry.id, imageKey: 'jetbrains-toolbox', name: entry.name, sourceExtension: 'JetBrainsToolbox',
         })
-        const executableIdentity = await captureIdentity(entry.executable, signal)
-        const projectIdentity = await captureIdentity(entry.projectPath, signal)
+        if (Date.now() >= mappingDeadline) return undefined
+        const executableIdentity = await captureIdentity(entry.executable, signal, Math.max(1, mappingDeadline - Date.now()))
+        const projectIdentity = await captureIdentity(entry.projectPath, signal, Math.max(1, mappingDeadline - Date.now()))
         if (executableIdentity === undefined || projectIdentity === undefined) return undefined
         jetbrains.set(item.defaultAction.argument, Object.freeze({ entry, executableIdentity, projectIdentity }))
         actionArgumentsOf(item).forEach(argument => map.add(argument))
@@ -413,6 +421,7 @@ export function createLauncherDiscoveryExtensions(options: LauncherDiscoveryOpti
       }
       for (let offset = 0; offset < entries.length; offset += MAX_ICON_CONCURRENCY) {
         if (signal.aborted || generation !== scanGeneration) throw signal.reason instanceof Error ? signal.reason : new Error('TockLauncher discovery scan canceled')
+        if (Date.now() >= mappingDeadline) break
         const mapped = await Promise.all(entries.slice(offset, offset + MAX_ICON_CONCURRENCY).map(entry => mapEntry(entry, actionArguments, administrators)))
         indexed.push(...mapped.filter((item): item is LauncherInternalResultItem => item !== undefined))
       }
