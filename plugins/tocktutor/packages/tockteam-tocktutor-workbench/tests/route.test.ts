@@ -110,6 +110,7 @@ class FakeRemote implements WorkbenchRouteRemote {
   saveFailure: { code: string; message: string } | null = null
   draftContent: string | null = null
   draftFailure: { code: string; message: string } | null = null
+  draftReject: Error | null = null
   draftFailureReads = 0
   snapshots: Array<{ createdAt: number; digest: string; id: string; path: string; reason: string; size: number }> = []
   trashEntries: Array<{ createdAt: number; id: string; kind: 'document'; originalPath: string }> = []
@@ -266,6 +267,7 @@ class FakeRemote implements WorkbenchRouteRemote {
     },
     saveDraft: (request: { content: string; expectedVault: VaultReference; path: string; revision?: string }, signal?: AbortSignal) => {
       this.calls.push({ method: 'saveDraft', parameters: [request, signal] })
+      if (this.draftReject !== null) return Promise.reject(this.draftReject)
       if (this.draftFailure !== null) {
         const owner = this
         return Promise.resolve({
@@ -412,6 +414,17 @@ test('dispose validates a failed final draft result without leaking an unhandled
   controller.edit('# Draft failure\n')
   await controller.dispose()
   assert.equal(remote.draftFailureReads, 2)
+  assert.equal(remote.calls.filter(call => call.method === 'saveDraft').length, 1)
+})
+
+test('dispose contains a rejected final draft transport', async () => {
+  const remote = new FakeRemote()
+  remote.draftReject = new Error('transport closed')
+  const controller = new WorkbenchRouteController(remote, () => {})
+  await controller.syncLocation('/tocktutor')
+  assert.equal(await controller.select('Folder/Note.md'), true)
+  controller.edit('# Draft rejection\n')
+  await controller.dispose()
   assert.equal(remote.calls.filter(call => call.method === 'saveDraft').length, 1)
 })
 
