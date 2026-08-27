@@ -6,6 +6,7 @@ const html = readFileSync(new URL('../src/launcher.html', import.meta.url), 'utf
 const build = readFileSync(new URL('../scripts/build.mjs', import.meta.url), 'utf8')
 const launcher = readFileSync(new URL('../src/launcher.ts', import.meta.url), 'utf8')
 const preload = readFileSync(new URL('../src/launcher-preload.ts', import.meta.url), 'utf8')
+const smoke = readFileSync(new URL('../scripts/launcher-electron-smoke.mjs', import.meta.url), 'utf8')
 
 test('launcher document is standalone, strict, external, and accessible', () => {
   assert.match(html, /Content-Security-Policy/u)
@@ -59,4 +60,9 @@ test('launcher build emits dedicated browser and preload outputs', () => {
   assert.match(preload, /exposeInMainWorld\('tockteamLauncher'/u)
   assert.match(preload, /launcher-window:dismiss|LAUNCHER_WINDOW_IPC_CHANNELS/u)
   assert.doesNotMatch(preload, /dshDesktop|electronAPI|require\s*\(/u)
+})
+
+test('launcher smoke stops its Electron child on every host platform', () => {
+  assert.match(smoke, /process\.platform === 'win32'[\s\S]*stopChildProcess\(child/u)
+  assert.match(smoke, /process\.kill\(-child\.pid/u)
 })

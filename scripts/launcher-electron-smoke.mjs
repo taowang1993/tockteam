@@ -8,6 +8,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { spawn } from 'node:child_process'
 import { ensureElectronInstalled } from './electron-runtime.mjs'
+import { stopChildProcess } from './process-cleanup.mjs'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const launcherCsp = "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'; object-src 'none'"
@@ -453,9 +454,13 @@ try {
   launcherConnection?.close()
   workbenchConnection?.close()
   if (child.pid !== undefined) {
-    try { process.kill(-child.pid, 'SIGTERM') } catch {}
-    await sleep(1_000)
-    try { process.kill(-child.pid, 'SIGKILL') } catch {}
+    if (process.platform === 'win32') {
+      await stopChildProcess(child, 1_000, 1_000).catch(() => {})
+    } else {
+      try { process.kill(-child.pid, 'SIGTERM') } catch {}
+      await sleep(1_000)
+      try { process.kill(-child.pid, 'SIGKILL') } catch {}
+    }
   }
   await rm(userData, { recursive: true, force: true })
 }
