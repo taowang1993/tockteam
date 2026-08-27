@@ -206,11 +206,11 @@ describe('TockTutor titlebar panel controls', () => {
     expect(callout?.classList.contains('hidden')).toBe(true)
     expect(callout?.textContent).toContain('Body')
     const calloutFold = screen.getByRole('button', { name: 'Expand Callout' })
-    fireEvent.mouseDown(calloutFold)
+    fireEvent.keyDown(calloutFold, { key: 'Enter' })
     await waitFor(() => expect(onEdit).toHaveBeenCalledWith(source.replace('> [!tip]- Fold', '> [!tip]+ Fold')))
     expect(callout).toBeTruthy()
     const fold = screen.getByRole('button', { name: 'Collapse Heading' })
-    fireEvent.mouseDown(fold)
+    fireEvent.keyDown(fold, { key: ' ' })
     expect(screen.getByRole('button', { name: 'Expand Heading' })).toBeTruthy()
   })
 

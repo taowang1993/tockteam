@@ -193,10 +193,10 @@ export function buildLivePreviewChromePlugin(options: {
   onToggleCallout(index: number): void
   onToggleTask(index: number): void
 }): Plugin<ChromeState> {
+  const activatesControl = event => event.type !== 'keydown' || event.key === 'Enter' || event.key === ' '
   const toggleTaskControl = (view, event): boolean => {
     const task = event.target instanceof Element ? event.target.closest<HTMLInputElement>('[data-task-pos]') : null
-    if (task === null) return false
-    if (event.type === 'keydown' && event.key !== 'Enter' && event.key !== ' ') return false
+    if (task === null || !activatesControl(event)) return false
     event.preventDefault()
     const pos = Number(task.dataset.taskPos)
     const index = Number(task.dataset.taskIndex)
@@ -208,6 +208,32 @@ export function buildLivePreviewChromePlugin(options: {
     if (node?.type.name === 'list_item' && node.attrs.checked !== null && node.attrs.checked !== undefined) {
       view.dispatch(view.state.tr.setNodeMarkup(pos, undefined, { ...node.attrs, checked: !node.attrs.checked }))
     }
+    return true
+  }
+  const toggleCalloutControl = (view, event): boolean => {
+    const callout = event.target instanceof Element ? event.target.closest<HTMLElement>('[data-callout-fold-pos]') : null
+    if (callout === null || !activatesControl(event)) return false
+    event.preventDefault()
+    const pos = Number(callout.dataset.calloutFoldPos)
+    const index = Number(callout.dataset.calloutIndex)
+    if (options.isProtected()) {
+      if (Number.isSafeInteger(index) && index >= 0) options.onToggleCallout(index)
+      return true
+    }
+    const node = Number.isSafeInteger(pos) ? view.state.doc.nodeAt(pos) : null
+    const marker = node?.textContent.match(/^\[![A-Za-z][\w-]*\]([+-])/u)
+    if (node?.type.name === 'blockquote' && marker !== null && marker !== undefined) {
+      const from = pos + 1 + marker[0].length
+      view.dispatch(view.state.tr.insertText(marker[1] === '-' ? '+' : '-', from, from + 1))
+    }
+    return true
+  }
+  const toggleFoldControl = (view, event): boolean => {
+    const fold = event.target instanceof Element ? event.target.closest<HTMLElement>('[data-fold-from]') : null
+    if (fold === null || !activatesControl(event)) return false
+    event.preventDefault()
+    const from = Number(fold.dataset.foldFrom)
+    if (Number.isSafeInteger(from)) view.dispatch(view.state.tr.setMeta(chromeKey, { toggle: from }))
     return true
   }
   return new Plugin<ChromeState>({
@@ -261,7 +287,7 @@ export function buildLivePreviewChromePlugin(options: {
           return true
         },
         keydown(view, event) {
-          if (toggleTaskControl(view, event)) return true
+          if (toggleTaskControl(view, event) || toggleCalloutControl(view, event) || toggleFoldControl(view, event)) return true
           if (!options.isProtected()) return false
           const mutates = event.key.length === 1 && !event.metaKey && !event.ctrlKey
             || ['Backspace', 'Delete', 'Enter', 'Tab'].includes(event.key)
@@ -278,34 +304,7 @@ export function buildLivePreviewChromePlugin(options: {
           return true
         },
         mousedown(view, event) {
-          const target = event.target instanceof Element ? event.target : null
-          const callout = target?.closest<HTMLElement>('[data-callout-fold-pos]')
-          if (callout !== null && callout !== undefined) {
-            event.preventDefault()
-            const pos = Number(callout.dataset.calloutFoldPos)
-            const index = Number(callout.dataset.calloutIndex)
-            if (options.isProtected()) {
-              if (Number.isSafeInteger(index) && index >= 0) options.onToggleCallout(index)
-              return true
-            }
-            const node = Number.isSafeInteger(pos) ? view.state.doc.nodeAt(pos) : null
-            const marker = node?.textContent.match(/^\[![A-Za-z][\w-]*\]([+-])/u)
-            if (node?.type.name === 'blockquote' && marker !== null && marker !== undefined) {
-              const markerOffset = marker[0].length - 1
-              const from = pos + 2 + markerOffset
-              view.dispatch(view.state.tr.insertText(marker[1] === '-' ? '+' : '-', from, from + 1))
-            }
-            return true
-          }
-          if (toggleTaskControl(view, event)) return true
-          const fold = target?.closest<HTMLElement>('[data-fold-from]')
-          if (fold !== null && fold !== undefined) {
-            event.preventDefault()
-            const from = Number(fold.dataset.foldFrom)
-            if (Number.isSafeInteger(from)) view.dispatch(view.state.tr.setMeta(chromeKey, { toggle: from }))
-            return true
-          }
-          return false
+          return toggleCalloutControl(view, event) || toggleTaskControl(view, event) || toggleFoldControl(view, event)
         },
       },
     },
