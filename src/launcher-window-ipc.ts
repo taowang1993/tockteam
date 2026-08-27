@@ -21,17 +21,17 @@ export type LauncherIpcGuard = Readonly<{
   assert: (event: unknown, expectedRole?: 'launcher') => LauncherIpcIdentity
 }>
 
-type IpcMainLike = Pick<IpcMain, 'handle' | 'removeHandler'>
-type IpcHandler = (...args: any[]) => unknown
+export type LauncherIpcMain = Pick<IpcMain, 'handle' | 'removeHandler'>
+export type LauncherIpcHandler = (...args: any[]) => unknown
 
-const ownedHandlers = new WeakMap<object, Map<string, IpcHandler>>()
+const ownedHandlers = new WeakMap<object, Map<string, LauncherIpcHandler>>()
 
 function registerOwnedHandler(
-  ipcMain: IpcMainLike,
+  ipcMain: LauncherIpcMain,
   channel: string,
-  handler: IpcHandler,
+  handler: LauncherIpcHandler,
 ): () => void {
-  const handlers = ownedHandlers.get(ipcMain) ?? new Map<string, IpcHandler>()
+  const handlers = ownedHandlers.get(ipcMain) ?? new Map<string, LauncherIpcHandler>()
   if (handlers.has(channel)) throw new Error(`Launcher IPC channel is already registered: ${channel}`)
   ipcMain.handle(channel, handler)
   handlers.set(channel, handler)
@@ -47,8 +47,8 @@ function registerOwnedHandler(
 }
 
 function registerAll(
-  ipcMain: IpcMainLike,
-  registrations: readonly [string, IpcHandler][],
+  ipcMain: LauncherIpcMain,
+  registrations: readonly [string, LauncherIpcHandler][],
 ): () => void {
   const disposers: (() => void)[] = []
   try {
@@ -67,10 +67,17 @@ function registerAll(
   }
 }
 
+export function registerLauncherOwnedIpcHandlers(
+  ipcMain: LauncherIpcMain,
+  registrations: readonly [string, LauncherIpcHandler][],
+): () => void {
+  return registerAll(ipcMain, registrations)
+}
+
 export function registerLauncherWindowIpcHandlers(args: Readonly<{
   controller: Pick<LauncherWindowIpcController, 'hide'>
   guard: LauncherIpcGuard
-  ipcMain: IpcMainLike
+  ipcMain: LauncherIpcMain
 }>): () => void {
   return registerAll(args.ipcMain, [[
     LAUNCHER_WINDOW_IPC_CHANNELS.dismiss,
@@ -86,7 +93,7 @@ export function registerLauncherWindowIpcHandlers(args: Readonly<{
 export function registerWorkbenchLauncherIpcHandlers(args: Readonly<{
   assertTrustedMainIpc: (event: unknown) => void
   controller: Pick<LauncherWindowIpcController, 'getState' | 'show'>
-  ipcMain: IpcMainLike
+  ipcMain: LauncherIpcMain
 }>): () => void {
   return registerAll(args.ipcMain, [
     [

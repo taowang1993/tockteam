@@ -1,5 +1,41 @@
+type LauncherSearchEngineId = 'Fuse.js' | 'fuzzysort'
+type LauncherSearchOptions = Readonly<{
+  fuzziness: number
+  maxSearchResultItems: number
+  searchEngineId: LauncherSearchEngineId
+}>
+type LauncherPublicAction = Readonly<{
+  actionId: string
+  description: string
+  hideWindowAfterInvocation?: boolean
+  keyboardShortcut?: string
+  requiresConfirmation?: boolean
+}>
+type LauncherPublicResultItem = Readonly<{
+  additionalActions?: readonly LauncherPublicAction[]
+  defaultAction: LauncherPublicAction
+  description: string
+  details?: string
+  id: string
+  name: string
+  sourceExtension: string
+}>
+type LauncherSearchResponse = Readonly<{
+  after: readonly LauncherPublicResultItem[]
+  before: readonly LauncherPublicResultItem[]
+  resultSetId: string
+  status: Readonly<{
+    indexedItemCount: number
+    lastError?: string
+    rescanStatus: 'error' | 'idle' | 'scanning'
+  }>
+}>
+
 interface LauncherBridge {
   dismiss: (...args: unknown[]) => Promise<void>
+  invokeAction: (actionId: string) => Promise<Readonly<{ ok: true } | { ok: false; reason: 'expired' }>>
+  rescan: () => Promise<LauncherSearchResponse['status']>
+  search: (searchTerm: string, options: LauncherSearchOptions) => Promise<LauncherSearchResponse>
 }
 
 declare global {
@@ -15,34 +51,466 @@ function setReady(ready: boolean): void {
   document.getElementById('launcher-root')?.setAttribute('data-launcher-ready', value)
 }
 
-async function dismiss(): Promise<void> {
-  const bridge = window.tockteamLauncher
-  if (bridge === undefined || typeof bridge.dismiss !== 'function') return
-  await bridge.dismiss()
+function icon(document: Document, path: string): SVGSVGElement {
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+  svg.setAttribute('aria-hidden', 'true')
+  svg.setAttribute('viewBox', '0 0 24 24')
+  svg.setAttribute('fill', 'none')
+  svg.setAttribute('stroke', 'currentColor')
+  svg.setAttribute('stroke-width', '2')
+  svg.setAttribute('stroke-linecap', 'round')
+  svg.setAttribute('stroke-linejoin', 'round')
+  const pathElement = document.createElementNS('http://www.w3.org/2000/svg', 'path')
+  pathElement.setAttribute('d', path)
+  svg.append(pathElement)
+  return svg
 }
 
-function bootstrap(): void {
-  const root = document.getElementById('launcher-root')
-  const search = document.getElementById('launcher-search')
-  const close = document.getElementById('launcher-close')
+async function bootstrap(): Promise<void> {
+  const root = document.getElementById('launcher-root') as HTMLElement
+  const search = document.getElementById('launcher-search') as HTMLInputElement
+  const close = document.getElementById('launcher-close') as HTMLButtonElement
+  const results = document.getElementById('launcher-results') as HTMLUListElement
+  const status = document.getElementById('launcher-status') as HTMLElement
+  const historyToggle = document.getElementById('launcher-history-toggle') as HTMLButtonElement
+  const historyPanel = document.getElementById('launcher-history') as HTMLElement
+  const rescan = document.getElementById('launcher-rescan') as HTMLButtonElement
+  const details = document.getElementById('launcher-details') as HTMLElement
+  const bridge = window.tockteamLauncher as LauncherBridge
   if (!(root instanceof HTMLElement)
     || !(search instanceof HTMLInputElement)
-    || !(close instanceof HTMLButtonElement)) {
+    || !(close instanceof HTMLButtonElement)
+    || !(results instanceof HTMLUListElement)
+    || !(status instanceof HTMLElement)
+    || !(historyToggle instanceof HTMLButtonElement)
+    || !(historyPanel instanceof HTMLElement)
+    || !(rescan instanceof HTMLButtonElement)
+    || !(details instanceof HTMLElement)
+    || bridge === undefined) {
     throw new Error('TockLauncher renderer is missing its required controls')
   }
-  close.addEventListener('click', () => { void dismiss().catch(() => {}) })
-  search.addEventListener('keydown', event => {
-    if (event.key !== 'Escape') return
-    event.preventDefault()
-    void dismiss().catch(() => {})
+
+  const isMac = navigator.platform.startsWith('Mac')
+  const modifier = isMac ? 'Meta' : 'Control'
+  let revision = 0
+  let selectedItemId = ''
+  let currentItems: LauncherPublicResultItem[] = []
+  let pinnedCount = 0
+  let actionMenuOpen = false
+  let historyOpen = false
+  let invoking = false
+  const history: string[] = []
+
+  const setStatus = (message: string, tone: 'error' | 'muted' | 'ready' = 'muted'): void => {
+    status.textContent = message
+    status.dataset.tone = tone
+  }
+
+  const selectedItem = (): LauncherPublicResultItem | undefined => (
+    currentItems.find(item => item.id === selectedItemId)
+  )
+
+  const restoreSearchFocus = (): void => {
+    search.focus()
+    search.select()
+  }
+
+  const updateSelection = (): void => {
+    for (const button of results.querySelectorAll<HTMLElement>('[data-result-id]')) {
+      const selected = button.dataset.resultId === selectedItemId
+      button.setAttribute('aria-selected', String(selected))
+      if (selected) {
+        search.setAttribute('aria-activedescendant', button.id)
+        button.scrollIntoView?.({ block: 'nearest' })
+      }
+    }
+    if (selectedItemId.length === 0) search.removeAttribute('aria-activedescendant')
+    renderDetails()
+  }
+
+  const closeActionMenu = (focus = true): void => {
+    if (!actionMenuOpen) return
+    actionMenuOpen = false
+    renderDetails()
+    if (focus) restoreSearchFocus()
+  }
+
+  const renderHistory = (): void => {
+    historyPanel.replaceChildren()
+    if (history.length === 0) {
+      const empty = document.createElement('p')
+      empty.className = 'm-0 px-3 py-2 text-sm text-[var(--dsw-alias-label-secondary,CanvasText)]'
+      empty.textContent = 'No recent searches.'
+      historyPanel.append(empty)
+      return
+    }
+    for (const query of history) {
+      const button = document.createElement('button')
+      button.className = 'block w-full truncate px-3 py-2 text-left text-sm hover:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))]'
+      button.type = 'button'
+      button.setAttribute('role', 'menuitem')
+      button.textContent = query
+      button.addEventListener('click', () => {
+        search.value = query
+        historyOpen = false
+        historyPanel.hidden = true
+        historyToggle.setAttribute('aria-expanded', 'false')
+        void renderSearch(query)
+        restoreSearchFocus()
+      })
+      historyPanel.append(button)
+    }
+  }
+
+  const closeHistory = (focus = true): void => {
+    if (!historyOpen) return
+    historyOpen = false
+    historyPanel.hidden = true
+    historyToggle.setAttribute('aria-expanded', 'false')
+    if (focus) restoreSearchFocus()
+  }
+
+  const rememberSearch = (): void => {
+    const raw = search.value
+    if (raw.trim().length === 0 || history.includes(raw)) return
+    history.unshift(raw)
+    history.splice(10)
+    renderHistory()
+  }
+
+  const actionLabel = (action: LauncherPublicAction): string => (
+    action.keyboardShortcut === undefined
+      ? action.description
+      : `${action.description} (${action.keyboardShortcut})`
+  )
+
+  const invoke = async (action: LauncherPublicAction): Promise<void> => {
+    if (invoking) return
+    invoking = true
+    closeActionMenu(false)
+    rememberSearch()
+    setStatus(`${action.description}…`, 'muted')
+    try {
+      const result = await bridge.invokeAction(action.actionId)
+      if (!result.ok) {
+        await renderSearch(search.value)
+        setStatus('Results refreshed. Try again.', 'muted')
+        restoreSearchFocus()
+        return
+      }
+      if (action.hideWindowAfterInvocation === true) {
+        await bridge.dismiss().catch(() => undefined)
+        return
+      }
+      await renderSearch(search.value)
+      restoreSearchFocus()
+    } catch {
+      await renderSearch(search.value).catch(() => undefined)
+      setStatus(`${action.description} could not be completed.`, 'error')
+      restoreSearchFocus()
+    } finally {
+      invoking = false
+    }
+  }
+
+  function renderDetails(): void {
+    details.replaceChildren()
+    const item = selectedItem()
+    if (item === undefined) return
+
+    const selection = document.createElement('span')
+    selection.className = 'min-w-0 flex-1 truncate text-sm font-medium text-[var(--dsw-alias-label-primary,CanvasText)]'
+    selection.textContent = `${item.name} — ${item.description}`
+    const open = document.createElement('button')
+    open.className = 'inline-flex h-9 shrink-0 items-center gap-2 rounded-lg bg-[var(--dsw-alias-brand-primary,#0969da)] px-3 text-sm font-medium text-white hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2'
+    open.type = 'button'
+    open.setAttribute('aria-label', actionLabel(item.defaultAction))
+    open.setAttribute('aria-keyshortcuts', 'Enter')
+    open.append(icon(document, 'M5 12h14M12 5l7 7-7 7'))
+    const openText = document.createElement('span')
+    openText.textContent = item.defaultAction.description
+    open.append(openText)
+    open.addEventListener('click', () => { void invoke(item.defaultAction) })
+
+    const toggle = document.createElement('button')
+    toggle.className = 'inline-flex h-9 shrink-0 items-center gap-1 rounded-lg border border-[var(--dsw-alias-border-l2,CanvasText)] px-2 text-sm hover:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))] focus-visible:outline-2'
+    toggle.type = 'button'
+    toggle.setAttribute('aria-label', `Actions for ${item.name}`)
+    toggle.setAttribute('aria-haspopup', 'menu')
+    toggle.setAttribute('aria-expanded', String(actionMenuOpen))
+    toggle.setAttribute('aria-controls', 'launcher-actions-menu')
+    toggle.setAttribute('aria-keyshortcuts', `${modifier}+K`)
+    toggle.append(icon(document, 'M5 12h14M12 5v14'))
+    const toggleText = document.createElement('span')
+    toggleText.textContent = 'Actions'
+    toggle.append(toggleText)
+    toggle.addEventListener('click', () => {
+      actionMenuOpen = !actionMenuOpen
+      renderDetails()
+      if (actionMenuOpen) details.querySelector<HTMLButtonElement>('[role="menuitem"]')?.focus()
+      else restoreSearchFocus()
+    })
+
+    const row = document.createElement('div')
+    row.className = 'flex min-w-0 items-center gap-2'
+    row.append(selection, open, toggle)
+    details.append(row)
+    if (!actionMenuOpen) return
+
+    const menu = document.createElement('div')
+    menu.className = 'absolute bottom-full right-0 z-10 mb-2 min-w-[220px] overflow-hidden rounded-lg border border-[var(--dsw-alias-border-l2,CanvasText)] bg-[var(--dsw-alias-bg-layer-1,Canvas)] py-1 shadow-lg'
+    menu.id = 'launcher-actions-menu'
+    menu.setAttribute('role', 'menu')
+    menu.setAttribute('aria-label', `Actions for ${item.name}`)
+    const actions = [item.defaultAction, ...(item.additionalActions ?? [])]
+    for (const action of actions) {
+      const actionButton = document.createElement('button')
+      actionButton.className = 'block w-full truncate px-3 py-2 text-left text-sm hover:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))] focus-visible:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))]'
+      actionButton.type = 'button'
+      actionButton.setAttribute('role', 'menuitem')
+      actionButton.setAttribute('aria-label', actionLabel(action))
+      actionButton.textContent = actionLabel(action)
+      actionButton.addEventListener('click', () => { void invoke(action) })
+      menu.append(actionButton)
+    }
+    menu.addEventListener('keydown', event => {
+      const buttons = [...menu.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')]
+      const index = buttons.indexOf(document.activeElement as HTMLButtonElement)
+      let next: number | undefined
+      if (event.key === 'ArrowDown') next = (Math.max(index, 0) + 1) % buttons.length
+      else if (event.key === 'ArrowUp') next = (Math.max(index, 0) - 1 + buttons.length) % buttons.length
+      else if (event.key === 'Home') next = 0
+      else if (event.key === 'End') next = buttons.length - 1
+      else if (event.key === 'Escape') {
+        event.preventDefault()
+        closeActionMenu()
+        return
+      }
+      if (next !== undefined) {
+        event.preventDefault()
+        buttons[next]?.focus()
+      }
+    })
+    details.classList.add('relative')
+    details.append(menu)
+  }
+
+  const renderGroup = (name: string, items: readonly LauncherPublicResultItem[], start: number): void => {
+    if (items.length === 0) return
+    const group = document.createElement('li')
+    group.className = 'mb-2'
+    group.setAttribute('role', 'group')
+    group.setAttribute('aria-label', name)
+    const heading = document.createElement('h2')
+    heading.className = 'm-0 px-2 py-1 text-xs font-semibold uppercase tracking-wide text-[var(--dsw-alias-label-secondary,CanvasText)]'
+    heading.textContent = name
+    const list = document.createElement('ul')
+    list.className = 'm-0 list-none p-0'
+    list.setAttribute('role', 'presentation')
+    for (const [index, item] of items.entries()) {
+      const listItem = document.createElement('li')
+      listItem.setAttribute('role', 'presentation')
+      const button = document.createElement('button')
+      button.className = 'flex w-full min-w-0 items-center gap-2 rounded-lg px-2 py-2 text-left hover:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))] focus-visible:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))]'
+      button.type = 'button'
+      button.id = `launcher-result-${encodeURIComponent(item.id)}`
+      button.dataset.resultId = item.id
+      button.setAttribute('role', 'option')
+      button.setAttribute('aria-selected', String(item.id === selectedItemId))
+      button.tabIndex = -1
+      if (start + index < 9) button.setAttribute('aria-keyshortcuts', `${modifier}+${start + index + 1}`)
+      const marker = document.createElement('span')
+      marker.className = 'flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-[var(--dsw-alias-bg-layer-2,Canvas)] text-sm font-semibold text-[var(--dsw-alias-label-secondary,CanvasText)]'
+      marker.setAttribute('aria-hidden', 'true')
+      marker.textContent = item.name.slice(0, 1).toLocaleUpperCase()
+      const copy = document.createElement('span')
+      copy.className = 'min-w-0'
+      const nameElement = document.createElement('strong')
+      nameElement.className = 'block truncate text-sm font-medium'
+      nameElement.textContent = item.name
+      const description = document.createElement('span')
+      description.className = 'block truncate text-xs text-[var(--dsw-alias-label-secondary,CanvasText)]'
+      description.textContent = item.description
+      copy.append(nameElement, description)
+      button.append(marker, copy)
+      button.addEventListener('pointerdown', event => { event.preventDefault() })
+      button.addEventListener('click', () => {
+        selectedItemId = item.id
+        actionMenuOpen = false
+        updateSelection()
+      })
+      button.addEventListener('dblclick', () => { void invoke(item.defaultAction) })
+      listItem.append(button)
+      list.append(listItem)
+    }
+    group.append(heading, list)
+    results.append(group)
+  }
+
+  function renderResults(): void {
+    results.replaceChildren()
+    renderGroup('Pinned', currentItems.slice(0, pinnedCount), 0)
+    renderGroup(search.value.trim().length === 0 ? 'Recent' : 'Results', currentItems.slice(pinnedCount), pinnedCount)
+    updateSelection()
+  }
+
+  async function renderSearch(term: string): Promise<boolean> {
+    const currentRevision = ++revision
+    setStatus('Searching…', 'muted')
+    try {
+      const response = await bridge.search(term, {
+        fuzziness: 0.5,
+        maxSearchResultItems: 50,
+        searchEngineId: 'fuzzysort',
+      })
+      if (currentRevision !== revision) return false
+      const previous = selectedItemId
+      pinnedCount = response.before.length
+      currentItems = [...response.before, ...response.after]
+      selectedItemId = currentItems.some(item => item.id === previous) ? previous : currentItems[0]?.id ?? ''
+      search.setAttribute('aria-expanded', String(currentItems.length > 0))
+      renderResults()
+      const error = response.status.lastError
+      setStatus(error ?? (currentItems.length === 0
+        ? 'No TockTeam destinations found.'
+        : `${response.status.indexedItemCount} indexed destinations`), error ? 'error' : 'ready')
+      document.documentElement.dataset.launcherResultRevision = String(currentRevision)
+      return true
+    } catch {
+      if (currentRevision !== revision) return false
+      currentItems = []
+      pinnedCount = 0
+      selectedItemId = ''
+      search.setAttribute('aria-expanded', 'false')
+      renderResults()
+      setStatus('TockLauncher destinations are unavailable.', 'error')
+      return false
+    }
+  }
+
+  close.addEventListener('click', () => { void bridge.dismiss().catch(() => undefined) })
+  historyToggle.addEventListener('click', () => {
+    historyOpen = !historyOpen
+    historyPanel.hidden = !historyOpen
+    historyToggle.setAttribute('aria-expanded', String(historyOpen))
+    if (historyOpen) {
+      renderHistory()
+      historyPanel.querySelector<HTMLElement>('[role="menuitem"]')?.focus()
+    } else restoreSearchFocus()
   })
+  historyPanel.addEventListener('keydown', event => {
+    const buttons = [...historyPanel.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')]
+    if (event.key === 'Escape') {
+      event.preventDefault()
+      closeHistory()
+      return
+    }
+    const index = buttons.indexOf(document.activeElement as HTMLButtonElement)
+    const next = event.key === 'ArrowDown'
+      ? (Math.max(index, 0) + 1) % buttons.length
+      : event.key === 'ArrowUp'
+        ? (Math.max(index, 0) - 1 + buttons.length) % buttons.length
+        : undefined
+    if (next !== undefined && buttons.length > 0) {
+      event.preventDefault()
+      buttons[next]?.focus()
+    }
+  })
+  rescan.addEventListener('click', async () => {
+    rescan.disabled = true
+    rescan.setAttribute('aria-busy', 'true')
+    setStatus('Rescanning TockLauncher…', 'muted')
+    try {
+      await bridge.rescan()
+      await renderSearch(search.value)
+    } catch {
+      setStatus('TockLauncher rescan failed.', 'error')
+    } finally {
+      rescan.disabled = false
+      rescan.removeAttribute('aria-busy')
+    }
+  })
+  search.addEventListener('input', () => { void renderSearch(search.value) })
+  search.addEventListener('keydown', event => {
+    if (event.key === 'Escape') {
+      event.preventDefault()
+      event.stopPropagation()
+      if (actionMenuOpen) closeActionMenu()
+      else if (historyOpen) closeHistory()
+      else void bridge.dismiss().catch(() => undefined)
+      return
+    }
+    if (event.key === 'ArrowDown' || (event.ctrlKey && event.key.toLowerCase() === 'n')) {
+      event.preventDefault()
+      if (currentItems.length > 0) {
+        const index = currentItems.findIndex(item => item.id === selectedItemId)
+        selectedItemId = currentItems[(Math.max(index, -1) + 1) % currentItems.length]?.id ?? ''
+        updateSelection()
+      }
+    } else if (event.key === 'ArrowUp' || (event.ctrlKey && event.key.toLowerCase() === 'p')) {
+      event.preventDefault()
+      if (currentItems.length > 0) {
+        const index = currentItems.findIndex(item => item.id === selectedItemId)
+        selectedItemId = currentItems[(Math.max(index, 0) - 1 + currentItems.length) % currentItems.length]?.id ?? ''
+        updateSelection()
+      }
+    } else if (event.key === 'Enter') {
+      event.preventDefault()
+      const item = selectedItem()
+      if (item !== undefined) void invoke(item.defaultAction)
+    } else if (event.key === 'F5') {
+      event.preventDefault()
+      rescan.click()
+    } else if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+      event.preventDefault()
+      if (selectedItem() === undefined) return
+      actionMenuOpen = !actionMenuOpen
+      renderDetails()
+      if (actionMenuOpen) details.querySelector<HTMLButtonElement>('[role="menuitem"]')?.focus()
+      else restoreSearchFocus()
+    } else if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'f') {
+      const action = selectedItem()?.additionalActions?.find(item => /favorite/u.test(item.description.toLowerCase()))
+      if (action !== undefined) {
+        event.preventDefault()
+        void invoke(action)
+      }
+    } else if ((event.metaKey || event.ctrlKey) && event.key === 'Delete') {
+      const action = selectedItem()?.additionalActions?.find(item => /exclude/u.test(item.description.toLowerCase()))
+      if (action !== undefined) {
+        event.preventDefault()
+        void invoke(action)
+      }
+    } else if ((event.metaKey || event.ctrlKey) && /^[1-9]$/u.test(event.key)) {
+      const item = currentItems[Number(event.key) - 1]
+      if (item !== undefined) {
+        event.preventDefault()
+        selectedItemId = item.id
+        updateSelection()
+        void invoke(item.defaultAction)
+      }
+    } else if ((event.key === 'l' || event.key === 'L') && event[modifier === 'Meta' ? 'metaKey' : 'ctrlKey']) {
+      event.preventDefault()
+      restoreSearchFocus()
+    }
+  })
+  root.addEventListener('keydown', event => {
+    if (event.key !== 'Escape' || event.target === search) return
+    event.preventDefault()
+    if (actionMenuOpen) closeActionMenu()
+    else if (historyOpen) closeHistory()
+    else void bridge.dismiss().catch(() => undefined)
+  })
+  document.addEventListener('pointerdown', event => {
+    if (!historyOpen || !(event.target instanceof Element)) return
+    if (event.target.closest('#launcher-history, #launcher-history-toggle') !== null) return
+    closeHistory(false)
+  })
+
+  renderHistory()
+  await renderSearch('')
   setReady(true)
   search.focus()
 }
 
-try {
-  setReady(false)
-  bootstrap()
-} catch {
-  setReady(false)
-}
+setReady(false)
+void bootstrap().catch(() => { setReady(false) })

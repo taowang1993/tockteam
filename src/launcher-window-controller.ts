@@ -90,6 +90,7 @@ export class LauncherOverlayController {
       role: 'launcher',
       window: LauncherOverlayWindow,
     ) => void | (() => void)
+    onWindowCleared?: (window: LauncherOverlayWindow) => void
   }>
   private window: LauncherOverlayWindow | null = null
   private windowDisposer: (() => void) | undefined
@@ -115,6 +116,7 @@ export class LauncherOverlayController {
       role: 'launcher',
       window: LauncherOverlayWindow,
     ) => void | (() => void)
+    onWindowCleared?: (window: LauncherOverlayWindow) => void
   }>) {
     this.args = args
     this.shortcutState = Object.freeze({
@@ -267,6 +269,7 @@ export class LauncherOverlayController {
     const dispose = this.windowDisposer
     this.windowDisposer = undefined
     dispose?.()
+    this.args.onWindowCleared?.(window)
     const pendingLoad = this.pendingLoad
     if (pendingLoad?.window === window) {
       this.pendingLoad = undefined

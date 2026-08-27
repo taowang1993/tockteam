@@ -76,6 +76,7 @@ class FakeWindow {
 function setup(
   platform: NodeJS.Platform = 'linux',
   configure?: (window: FakeWindow) => void,
+  onWindowCleared?: (window: FakeWindow) => void,
 ) {
   const windows: FakeWindow[] = []
   const callbacks: (() => void)[] = []
@@ -99,6 +100,7 @@ function setup(
       unregister: accelerator => { unregistered.push(accelerator) },
     },
     loadWindow: window => window.loadURL('file:///launcher.html'),
+    ...(onWindowCleared === undefined ? {} : { onWindowCleared }),
     platform,
     registerWindow: () => () => {},
   })
@@ -201,6 +203,16 @@ test('blur and Escape keyDown/rawKeyDown dismiss but keyUp and unrelated keys do
   await controller.show()
   window.emit('blur')
   assert.equal(window.visible, false)
+})
+
+test('renderer cleanup notifies the action owner exactly once', async () => {
+  const cleared: number[] = []
+  const result = setup('linux', undefined, window => { cleared.push(window.webContents.id) })
+  await result.controller.show()
+  result.windows[0]!.webContents.emit('render-process-gone')
+  assert.deepEqual(cleared, [result.windows[0]!.webContents.id])
+  result.windows[0]!.emit('closed')
+  assert.deepEqual(cleared, [result.windows[0]!.webContents.id])
 })
 
 test('failed load or renderer death destroys ownership and allows retry', async () => {

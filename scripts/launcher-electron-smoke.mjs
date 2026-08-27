@@ -184,8 +184,16 @@ try {
   launcher = pages.find(page => page.title === 'TockLauncher')
   assert.ok(launcher)
   const workbenchUrl = await workbenchConnection.evaluate('location.href')
+  const workbenchMarker = await workbenchConnection.evaluate(`(() => {
+    window.__tockteamLauncherSmokeMarker = 'same-workbench-renderer'
+    return window.__tockteamLauncherSmokeMarker
+  })()`)
   launcherConnection = await CdpPage.connect(launcher.webSocketDebuggerUrl)
   const firstLauncherId = launcher.id
+  await waitFor(
+    () => launcherConnection.evaluate('document.documentElement.dataset.launcherReady'),
+    ready => ready === 'true',
+  )
   const facts = await launcherConnection.evaluate(`({
     ready: document.documentElement.dataset.launcherReady,
     width: innerWidth,
@@ -195,7 +203,7 @@ try {
     require: typeof window.require,
     dshDesktop: typeof window.dshDesktop,
     electronAPI: typeof window.electronAPI,
-    launcherApiKeys: Object.keys(window.tockteamLauncher ?? {}),
+    launcherApiKeys: Object.keys(window.tockteamLauncher ?? {}).sort(),
     launcherApiFrozen: Object.isFrozen(window.tockteamLauncher),
     csp: document.querySelector('meta[http-equiv="Content-Security-Policy"]')?.content,
     fitsViewport: document.documentElement.scrollWidth === innerWidth
@@ -210,7 +218,7 @@ try {
     require: 'undefined',
     dshDesktop: 'undefined',
     electronAPI: 'undefined',
-    launcherApiKeys: ['dismiss'],
+    launcherApiKeys: ['dismiss', 'invokeAction', 'rescan', 'search'],
     launcherApiFrozen: true,
     csp: launcherCsp,
     fitsViewport: true,
@@ -237,6 +245,32 @@ try {
   })()`), 'launcher-close')
   const dismissedState = await workbenchConnection.evaluate('window.dshDesktop?.launcher?.getState()')
   assert.equal(dismissedState?.visible, false)
+
+  await launcherConnection.evaluate(`(() => {
+    const input = document.getElementById('launcher-search')
+    if (!(input instanceof HTMLInputElement)) return false
+    input.value = 'coder'
+    input.dispatchEvent(new Event('input', { bubbles: true }))
+    return true
+  })()`)
+  await waitFor(
+    () => launcherConnection.evaluate(`([...document.querySelectorAll('[data-result-id]')].some(node => node.textContent?.includes('TockCoder')))`) ,
+    found => found === true,
+  )
+  const invoked = await launcherConnection.evaluate(`(() => {
+    const button = document.querySelector('#launcher-details button')
+    if (!(button instanceof HTMLButtonElement)) return false
+    button.click()
+    return true
+  })()`)
+  assert.equal(invoked, true)
+  await waitFor(
+    () => workbenchConnection.evaluate('(async () => (await window.dshDesktop?.launcher?.getState())?.visible)()'),
+    visible => visible === false,
+  )
+  assert.equal(await workbenchConnection.evaluate('location.href'), workbenchUrl)
+  assert.equal(await workbenchConnection.evaluate('window.__tockteamLauncherSmokeMarker'), workbenchMarker)
+
   const closeReopen = await showLauncherFromWorkbench(workbenchConnection)
   assert.equal(closeReopen?.visible, true)
   pages = await waitFor(
@@ -249,7 +283,18 @@ try {
     () => launcherConnection.evaluate('document.activeElement?.id'),
     id => id === 'launcher-search',
   )
-  console.log('launcher Electron smoke passed: sandbox/preload/CSP/geometry/focus/reuse/dismissal/workbench preservation')
+  const historyOpened = await launcherConnection.evaluate(`(() => {
+    const button = document.getElementById('launcher-history-toggle')
+    if (!(button instanceof HTMLButtonElement)) return false
+    button.click()
+    return true
+  })()`)
+  assert.equal(historyOpened, true)
+  await waitFor(
+    () => launcherConnection.evaluate(`([...document.querySelectorAll('#launcher-history [role="menuitem"]')].some(node => node.textContent === 'coder'))`),
+    found => found === true,
+  )
+  console.log('launcher Electron smoke passed: sandbox/preload/CSP/geometry/focus/reuse/search/invoke/history/workbench preservation')
 } catch (error) {
   throw new Error(`${error instanceof Error ? error.message : String(error)}\nElectron output:\n${output}`)
 } finally {

@@ -84,6 +84,13 @@ import {
   createLauncherWebPreferences,
   type LauncherUrlPolicy,
 } from './launcher-security.ts'
+import { LauncherActionStore } from './launcher-actions.ts'
+import { createLauncherCoreSearch } from './launcher-core-search.ts'
+import { registerLauncherIpcHandlers } from './launcher-ipc.ts'
+import {
+  executeTockTeamDestination,
+  createTockTeamDestinationResults,
+} from './launcher-specialists.ts'
 import { LauncherOverlayController } from './launcher-window-controller.ts'
 import {
   registerLauncherWindowIpcHandlers,
@@ -786,35 +793,82 @@ function initializeLauncher(): void {
   const launcherSession = session.fromPartition(LAUNCHER_SESSION_PARTITION)
   applyLauncherSessionPolicy(launcherSession)
   const urlPolicy = createLauncherUrlPolicy({ launcherHtmlPath })
-  const controller = new LauncherOverlayController({
+  const launcherPlatform = process.platform === 'darwin'
+    ? 'macOS' as const
+    : process.platform === 'win32'
+      ? 'Windows' as const
+      : 'Linux' as const
+  const coreSearch = createLauncherCoreSearch({
+    loadIndexedItems: async () => {
+      const result = await createTockTeamDestinationResults('')
+      return [...result.before, ...result.after]
+    },
+    platform: launcherPlatform,
+  })
+  let controller: LauncherOverlayController | undefined
+  const actions = new LauncherActionStore({
+    execute: async record => {
+      if (await coreSearch.executeAction(record)) return
+      await executeTockTeamDestination(record, () => {
+        const workbench = mainWindow
+        if (workbench === undefined || workbench.isDestroyed()) {
+          throw new Error('TockTeam workbench is unavailable')
+        }
+        if (workbench.isMinimized()) workbench.restore()
+        workbench.show()
+        workbench.focus()
+        sendCommand({ type: 'focus-composer' })
+      })
+      if (record.hideWindowAfterInvocation) controller?.hide()
+    },
+  })
+  const nextController = new LauncherOverlayController({
     createWindow: () => createLauncherWindow({ launcherSession, urlPolicy }),
     getDisplayWorkArea: () => screen.getDisplayNearestPoint(screen.getCursorScreenPoint()).workArea,
     globalShortcut,
     loadWindow: window => window.loadURL(urlPolicy.entryUrl).then(() => undefined),
+    onWindowCleared: window => actions.clearOwner({ role: 'launcher', webContentsId: window.webContents.id }),
     platform: process.platform,
     registerWindow: (_role, window) => launcherWindowRegistry.register(
       'launcher',
       window as unknown as LauncherRegistryWindow,
     ),
   })
-  launcherController = controller
+  controller = nextController
+  launcherController = nextController
   const launcherGuard = createLauncherIpcGuard({
     launcherSession,
     resolveWindow: sender => launcherWindowRegistry.resolveWindow(sender),
     roleOf: window => launcherWindowRegistry.roleOf(window),
     urlPolicy,
   })
-  launcherIpcDisposer = registerLauncherWindowIpcHandlers({
-    controller,
+  const disposeWindowIpc = registerLauncherWindowIpcHandlers({
+    controller: nextController,
     guard: launcherGuard,
     ipcMain,
   })
+  try {
+    const disposeSearchIpc = registerLauncherIpcHandlers({
+      actions,
+      guard: launcherGuard,
+      ipcMain,
+      rescan: coreSearch.rescan,
+      search: coreSearch.search,
+    })
+    launcherIpcDisposer = () => {
+      disposeSearchIpc()
+      disposeWindowIpc()
+    }
+  } catch (error) {
+    disposeWindowIpc()
+    throw error
+  }
   workbenchLauncherIpcDisposer = registerWorkbenchLauncherIpcHandlers({
     assertTrustedMainIpc: event => { assertTrustedMainIpc(event as Electron.IpcMainInvokeEvent) },
-    controller,
+    controller: nextController,
     ipcMain,
   })
-  controller.registerShortcut()
+  nextController.registerShortcut()
 }
 
 function createWindow(options: { preview?: boolean; title?: string } = {}): BrowserWindow {
