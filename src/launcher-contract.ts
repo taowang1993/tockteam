@@ -9,6 +9,8 @@ import type {
   LauncherSearchOptions,
 } from './launcher-core-search.ts'
 
+export const LAUNCHER_FILE_SEARCH_QUERY_PREFIX = 'tockteam:file-search:'
+
 export const LAUNCHER_IPC_CHANNELS = Object.freeze({
   invokeAction: 'launcher:invoke-action',
   rescan: 'launcher:rescan',
