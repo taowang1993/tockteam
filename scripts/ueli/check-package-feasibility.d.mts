@@ -3,12 +3,14 @@ export interface NoticeEntry {
   source: string | string[]
   license: string
   sha256?: string
+  attribution: string
   disposition: string
 }
 
 export interface FeasibilityInputs {
   contract: any
   packageJson: any
+  vendorPackageJson: any
   mainSource: string
   noticeLedger: { entries: NoticeEntry[] }
   noticeContents: Record<string, string>

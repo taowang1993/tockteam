@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { spawnSync } from 'node:child_process'
 import { test } from 'node:test'
 
@@ -9,7 +10,7 @@ import {
   loadLauncherPackageFeasibilityInputs,
 } from '../scripts/ueli/check-package-feasibility.mjs'
 
-const repoRoot = new URL('..', import.meta.url).pathname.replace(/\/$/u, '')
+const repoRoot = fileURLToPath(new URL('..', import.meta.url))
 const contractPath = join(repoRoot, 'scripts/ueli/desktop-release-contract.json')
 const checkerPath = join(repoRoot, 'scripts/ueli/check-package-feasibility.mjs')
 
@@ -85,7 +86,7 @@ test('the feasibility audit rejects admitted Ueli-derived dependencies and launc
   )
 })
 
-test('the notice ledger keeps attribution in provenance without adding cross-surface notices', async () => {
+test('the notice ledger keeps exact attribution in provenance without adding cross-surface notices', async () => {
   const inputs = await loadLauncherPackageFeasibilityInputs({ repoRoot })
   const ledger = inputs.noticeLedger
 
@@ -95,21 +96,72 @@ test('the notice ledger keeps attribution in provenance without adding cross-sur
     { id: 'openmoji-custom-web-search-icon', disposition: 'deferred-until-asset-shipped' },
     { id: 'ueli-dependency-graph', disposition: 'not-admitted' },
   ])
+  assert.deepEqual(ledger.entries.map(({ id, attribution }) => ({ id, attribution })), [
+    { id: 'ueli-mit', attribution: 'https://github.com/oliverschwendener/ueli' },
+    { id: 'gnome-application-search-icons', attribution: 'http://www.gnome.org' },
+    { id: 'openmoji-custom-web-search-icon', attribution: 'https://openmoji.org/' },
+    { id: 'ueli-dependency-graph', attribution: 'Ueli package dependency graph' },
+  ])
   assert.equal(inputs.contract.foundation.launcherNotices.length, 0)
   assert.equal((await readFile(join(repoRoot, 'THIRD_PARTY_NOTICES.md'), 'utf8')).includes('Ueli'), false)
   assert.deepEqual(inspectLauncherPackageFeasibility(inputs).failures, [])
 })
 
-test('the feasibility audit rejects identity leakage in package inputs', async () => {
+test('the feasibility audit rejects mutated notice attribution', async () => {
   const inputs = await loadLauncherPackageFeasibilityInputs({ repoRoot })
+  for (const entry of inputs.noticeLedger.entries.slice(0, 3)) {
+    const mutation = structuredClone(inputs)
+    const target = mutation.noticeLedger.entries.find(({ id }) => id === entry.id)
+    assert.ok(target)
+    target.attribution = 'https://example.invalid/mutated'
+    assert.match(
+      inspectLauncherPackageFeasibility(mutation).failures.join('\n'),
+      /notice ledger entries differ/u,
+    )
+  }
+})
+
+test('the feasibility audit rejects application identity leakage but permits provenance text', async () => {
+  const inputs = await loadLauncherPackageFeasibilityInputs({ repoRoot })
+  const provenanceMutation = structuredClone(inputs)
+  provenanceMutation.mainSource += '\nconst upstreamProvenance = "Ueli";\nconst compatibilityExtensionId = "ueli-extension";\n'
+  assert.deepEqual(inspectLauncherPackageFeasibility(provenanceMutation).failures, [])
+
   const mutation = structuredClone(inputs)
   mutation.packageJson.productName = 'Tockbot'
-  mutation.mainSource += '\nconst leakedIdentity = "ueli";\n'
+  const failures = inspectLauncherPackageFeasibility(mutation).failures
+  assert.match(failures.join('\n'), /product name differs from TockTeam identity/u)
+  assert.match(failures.join('\n'), /forbidden launcher identity leakage/u)
 
-  assert.match(
-    inspectLauncherPackageFeasibility(mutation).failures.join('\n'),
-    /product name differs from TockTeam identity.*forbidden launcher identity leakage/su,
+  const sourceIdentityMutation = structuredClone(inputs)
+  sourceIdentityMutation.mainSource = sourceIdentityMutation.mainSource.replace(
+    "const DATA_DIRECTORY = 'TockTeam-Desktop'",
+    "const DATA_DIRECTORY = 'Ueli'",
   )
+  assert.match(
+    inspectLauncherPackageFeasibility(sourceIdentityMutation).failures.join('\n'),
+    /forbidden launcher identity leakage/u,
+  )
+})
+
+test('the feasibility audit derives Ueli runtime dependencies and rejects vendor references', async () => {
+  const inputs = await loadLauncherPackageFeasibilityInputs({ repoRoot })
+
+  const dependencyMutation = structuredClone(inputs)
+  dependencyMutation.packageJson.devDependencies['@fluentui/react-components'] = '9.0.0'
+  assert.match(
+    inspectLauncherPackageFeasibility(dependencyMutation).failures.join('\n'),
+    /Ueli-derived dependency is admitted.*@fluentui\/react-components/u,
+  )
+
+  const pathMutation = structuredClone(inputs)
+  pathMutation.packageJson.optionalDependencies = { 'local-ueli': 'file:vendor/ueli' }
+  assert.match(
+    inspectLauncherPackageFeasibility(pathMutation).failures.join('\n'),
+    /dependency value must not reference vendor\/ueli/u,
+  )
+
+  assert.deepEqual(inspectLauncherPackageFeasibility(inputs).failures, [])
 })
 
 test('the release evidence distinguishes configured host targets from launcher publication', async () => {
