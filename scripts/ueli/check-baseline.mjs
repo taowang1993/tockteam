@@ -209,7 +209,7 @@ export async function verifyVendorTree({
     let content
     if (entry.mode === '120000') {
       if (!stats.isSymbolicLink()) fail(`tracked vendor symlink is not a symlink: ${entry.path}`)
-      content = Buffer.from(await readlink(physicalPath), 'utf8')
+      content = await readlink(physicalPath, { encoding: 'buffer' })
     } else {
       if (!stats.isFile()) fail(`tracked vendor file is not a regular file: ${entry.path}`)
       content = await readFile(physicalPath)
