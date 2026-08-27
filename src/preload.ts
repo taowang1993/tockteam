@@ -18,12 +18,13 @@ import {
 import {
   LAUNCHER_WORKBENCH_ROUTE_CHANNEL,
   LAUNCHER_WORKBENCH_ROUTE_READY_CHANNEL,
+  parseLauncherDestination,
   parseLauncherWorkbenchRoute,
   parseLauncherThemeSource,
   parseLauncherWindowAcknowledgement,
   type LauncherThemeSource,
 } from './launcher-window-contract.ts'
-import type { LauncherWorkbenchRoute } from './launcher-navigation.ts'
+import type { LauncherWorkbenchRoute, TockTeamDestination } from './launcher-navigation.ts'
 import {
   LAUNCHER_WINDOW_IPC_CHANNELS,
   assertNoLauncherIpcArguments,
@@ -79,9 +80,12 @@ const bridge: DesktopBridge = Object.freeze({
     },
   }),
   appUpdate: Object.freeze({
-    getState: async () => parseDesktopAppUpdateState(
-      await ipcRenderer.invoke(DESKTOP_APP_UPDATE_CHANNELS.getState),
-    ),
+    getState: async (...args: unknown[]) => {
+      assertNoLauncherIpcArguments(args)
+      return parseDesktopAppUpdateState(
+        await ipcRenderer.invoke(DESKTOP_APP_UPDATE_CHANNELS.getState),
+      )
+    },
     check: async (...args: unknown[]) => {
       assertNoLauncherIpcArguments(args)
       return parseDesktopAppUpdateActionResult(await ipcRenderer.invoke(DESKTOP_APP_UPDATE_CHANNELS.check))
@@ -135,9 +139,15 @@ const bridge: DesktopBridge = Object.freeze({
     if (queued !== undefined) listener(queued)
     return () => { routeListeners.delete(listener) }
   },
-  syncLauncherTheme: async (source: LauncherThemeSource): Promise<void> => {
+  syncLauncherTheme: async (source: LauncherThemeSource, ...extra: unknown[]): Promise<void> => {
+    assertNoLauncherIpcArguments(extra)
     const parsed = parseLauncherThemeSource(source)
     parseLauncherWindowAcknowledgement(await ipcRenderer.invoke(LAUNCHER_WINDOW_IPC_CHANNELS.syncThemeSource, parsed))
+  },
+  syncWorkbenchDestination: async (destination: TockTeamDestination, ...extra: unknown[]): Promise<void> => {
+    assertNoLauncherIpcArguments(extra)
+    const parsed = parseLauncherDestination(destination)
+    parseLauncherWindowAcknowledgement(await ipcRenderer.invoke('desktop:workbench-destination', parsed))
   },
   openExternal: async (url: string): Promise<void> => {
     await ipcRenderer.invoke('desktop:open-external', url)

@@ -498,6 +498,7 @@ export class WorkbenchRouteController {
   private saveAbort: AbortController | null = null
   private saving: Promise<boolean> | null = null
   private draftAbort: AbortController | null = null
+  private draftFlush: Promise<void> | null = null
   private draftTimer: ReturnType<typeof setTimeout> | null = null
   private eventDispose: (() => void) | null = null
   private pendingDispatch: PendingNativeDispatch | null = null
@@ -1010,6 +1011,20 @@ export class WorkbenchRouteController {
     this.syncShell()
   }
 
+  private persistDraft(
+    request: SaveDraftRequest,
+    abort: AbortController,
+  ): void {
+    const flush = this.remote.tocktutorWorkbench.saveDraft(request, abort.signal)
+      .then(() => undefined)
+      .catch(() => undefined)
+    this.draftFlush = flush
+    void flush.finally(() => {
+      if (this.draftFlush === flush) this.draftFlush = null
+      if (this.draftAbort === abort) this.draftAbort = null
+    })
+  }
+
   private scheduleDraft(): void {
     if (this.draftTimer !== null) clearTimeout(this.draftTimer)
     this.draftAbort?.abort()
@@ -1022,15 +1037,33 @@ export class WorkbenchRouteController {
     this.draftAbort = abort
     this.draftTimer = setTimeout(() => {
       this.draftTimer = null
-      void this.remote.tocktutorWorkbench.saveDraft({
+      this.persistDraft({
         content,
         expectedVault: vault,
         path,
         ...(revision === null ? {} : { revision }),
-      }, abort.signal).catch(() => undefined).finally(() => {
-        if (this.draftAbort === abort) this.draftAbort = null
-      })
+      }, abort)
     }, 400)
+  }
+
+  private flushPendingDraft(): void {
+    const hadTimer = this.draftTimer !== null
+    if (hadTimer) {
+      clearTimeout(this.draftTimer!)
+      this.draftTimer = null
+    }
+    if (!hadTimer && this.draftFlush !== null) return
+    const vault = this.snapshot.vault
+    const path = this.snapshot.path
+    if (vault === null || path === null || this.snapshot.saveStatus === 'saved') return
+    const abort = this.draftAbort ?? new AbortController()
+    this.draftAbort = abort
+    this.persistDraft({
+      content: this.snapshot.source,
+      expectedVault: vault,
+      path,
+      ...(this.snapshot.revision === null ? {} : { revision: this.snapshot.revision }),
+    }, abort)
   }
 
   private clearDocument(): void {
@@ -2257,14 +2290,13 @@ export class WorkbenchRouteController {
 
   dispose(): void {
     if (this.disposed) return
+    this.flushPendingDraft()
     this.settlePendingDispatch('stale')
     this.disposed = true
     this.dispatchRevision += 1
     this.operation += 1
     this.operationAbort?.abort()
-    this.saveAbort?.abort()
-    this.draftAbort?.abort()
-    if (this.draftTimer !== null) clearTimeout(this.draftTimer)
+    if (this.draftAbort === null) this.draftTimer = null
     this.eventDispose?.()
     this.listeners.clear()
   }
@@ -2341,6 +2373,7 @@ export interface TockTutorRouteViewProps {
   onTogglePinTab?(paneId: string, path: string): void
   onTrashCurrent?(): void
   onToggleTask(index: number): void
+  active?: boolean
   reviewPanel?: ReactNode
   snapshot: WorkbenchRouteSnapshot
   webViewerPanel?: ReactNode
@@ -2531,6 +2564,7 @@ function TreeEntries(props: {
 /** Semantic, authority-free view for the route state machine. */
 export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
   const { snapshot } = props
+  const active = props.active !== false
   const previewLabel = snapshot.documentKind === 'canvas'
     ? 'Canvas'
     : snapshot.documentKind === 'base' ? 'Base' : 'Reading'
@@ -2626,10 +2660,11 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
   const words = snapshot.source.match(/[\p{L}\p{N}]+(?:['’][\p{L}\p{N}]+)*/gu)?.length ?? 0
   const characters = snapshot.source.length
   const launcher = (globalThis as typeof globalThis & { dshDesktop?: DesktopLauncherBridge }).dshDesktop?.launcher
-  const titlebar = (
+  const hasLauncher = launcher !== undefined && typeof launcher.show === 'function'
+  const titlebar = active ? (
     <section
       aria-label="TockTutor Title Bar"
-      className="tocktutor-titlebar absolute top-0 right-0 left-0 z-[2147483647] grid h-[var(--tockteam-titlebar-height,40px)] grid-cols-[var(--tockteam-primary-sidebar-width,280px)_minmax(0,1fr)] border-b border-[var(--tt-tab-border)] bg-[var(--tockteam-shell-chrome,var(--tt-panel))] text-[var(--tt-text)] transition-[grid-template-columns] duration-300 ease-out [--tt-accent:var(--dsw-alias-accent-primary,#533afd)] [--tt-border:var(--dsw-alias-border-l1,var(--dsw-alias-border-subtle,#e1e3e7))] [--tt-muted:var(--dsw-alias-fg-muted,#71717a)] [--tt-panel:var(--dsw-alias-bg-elevated,#fff)] [--tt-tab-border:#d1d5db] [--tt-text:var(--dsw-alias-fg-primary,#27272a)] [-webkit-app-region:drag] [font:14px/1.45_ui-sans-serif,-apple-system,BlinkMacSystemFont,'Segoe_UI',sans-serif] [&_*]:box-border [&_*::after]:box-border [&_*::before]:box-border [&_button]:text-inherit [&_button]:[font:inherit] [&_button]:[-webkit-app-region:no-drag] [&_svg]:block [&_svg]:size-[18px]"
+      className="tocktutor-titlebar absolute top-0 right-0 left-0 z-[2147483647] grid h-[var(--tockteam-titlebar-height,40px)] grid-cols-[var(--tockteam-primary-sidebar-width,280px)_minmax(0,1fr)] border-b border-[var(--tt-tab-border)] bg-[var(--tockteam-shell-chrome,var(--tt-panel))] text-[var(--tt-text)] transition-[grid-template-columns] duration-300 ease-out [--tt-accent:var(--dsw-alias-brand-primary,#533afd)] [--tt-border:var(--dsw-alias-border-l1,var(--dsw-alias-border-subtle,#e1e3e7))] [--tt-muted:var(--dsw-alias-label-secondary,#71717a)] [--tt-panel:var(--dsw-alias-bg-layer-1,#fff)] [--tt-tab-border:#d1d5db] [--tt-text:var(--dsw-alias-label-primary,#27272a)] [-webkit-app-region:drag] [font:14px/1.45_ui-sans-serif,-apple-system,BlinkMacSystemFont,'Segoe_UI',sans-serif] [&_*]:box-border [&_*::after]:box-border [&_*::before]:box-border [&_button]:text-inherit [&_button]:[font:inherit] [&_button]:[-webkit-app-region:no-drag] [&_svg]:block [&_svg]:size-[18px]"
       style={{
         gridTemplateColumns: titlebarColumns,
         transitionDuration: shouldAnimateSidebarColumns ? undefined : '0ms',
@@ -2710,14 +2745,16 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
           </TooltipTrigger>
           <TooltipContent>Command Palette</TooltipContent>
         </Tooltip>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <span className="inline-flex">
-              <Button unstyled aria-label="Open TockLauncher" className="border-0 bg-transparent p-1.5 text-[var(--tt-muted)]" disabled={launcher?.show === undefined} onClick={() => { void launcher?.show().catch(() => {}) }} type="button"><Search aria-hidden="true" /></Button>
-            </span>
-          </TooltipTrigger>
-          <TooltipContent>Open TockLauncher</TooltipContent>
-        </Tooltip>
+        {hasLauncher && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="inline-flex">
+                <Button unstyled aria-label="Open TockLauncher" className="border-0 bg-transparent p-1.5 text-[var(--tt-muted)]" onClick={() => { void launcher.show().catch(() => {}) }} type="button"><Search aria-hidden="true" /></Button>
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>Open TockLauncher</TooltipContent>
+          </Tooltip>
+        )}
         <Tooltip>
           <TooltipTrigger asChild>
             <span className="inline-flex">
@@ -2741,17 +2778,17 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
         </Tooltip>
       </div>
     </section>
-  )
+  ) : null
   return (
     <TooltipProvider>
       <main
         aria-label="TockTutor Workbench"
-      className="tocktutor-workbench h-full min-h-0 box-border bg-[var(--tt-bg)] pt-0 text-[var(--tt-text)] [--tt-accent:var(--dsw-alias-accent-primary,#533afd)] [--tt-bg:var(--dsw-alias-bg-base,#fff)] [--tt-border:var(--dsw-alias-border-l1,var(--dsw-alias-border-subtle,#e1e3e7))] [--tt-footer-height:28px] [--tt-muted:var(--dsw-alias-fg-muted,#71717a)] [--tt-panel:var(--dsw-alias-bg-elevated,#fff)] [--tt-selected:color-mix(in_srgb,var(--tt-accent)_14%,var(--tt-panel))] [--tt-text:var(--dsw-alias-fg-primary,#27272a)] [font:14px/1.45_ui-sans-serif,-apple-system,BlinkMacSystemFont,'Segoe_UI',sans-serif] [&_*]:box-border [&_*::after]:box-border [&_*::before]:box-border [&_[hidden]]:!hidden [&_button]:text-inherit [&_button]:[font:inherit] [&_button:focus-visible]:outline-2 [&_button:focus-visible]:outline-offset-2 [&_button:focus-visible]:outline-[var(--tt-accent)] [&_input:focus-visible]:outline-2 [&_input:focus-visible]:outline-offset-2 [&_input:focus-visible]:outline-[var(--tt-accent)] [&_svg]:block [&_svg]:size-4 [&_textarea:focus-visible]:outline-2 [&_textarea:focus-visible]:outline-offset-2 [&_textarea:focus-visible]:outline-[var(--tt-accent)] motion-reduce:[&_*]:!scroll-auto motion-reduce:[&_*]:!delay-0 motion-reduce:[&_*]:!duration-0 motion-reduce:[&_*::after]:!delay-0 motion-reduce:[&_*::after]:!duration-0 motion-reduce:[&_*::before]:!delay-0 motion-reduce:[&_*::before]:!duration-0"
+      className="tocktutor-workbench h-full min-h-0 box-border bg-[var(--tt-bg)] pt-0 text-[var(--tt-text)] [--tt-accent:var(--dsw-alias-brand-primary,#533afd)] [--tt-bg:var(--dsw-alias-bg-base,#fff)] [--tt-border:var(--dsw-alias-border-l1,var(--dsw-alias-border-subtle,#e1e3e7))] [--tt-footer-height:28px] [--tt-muted:var(--dsw-alias-label-secondary,#71717a)] [--tt-panel:var(--dsw-alias-bg-layer-1,#fff)] [--tt-selected:color-mix(in_srgb,var(--tt-accent)_14%,var(--tt-panel))] [--tt-text:var(--dsw-alias-label-primary,#27272a)] [font:14px/1.45_ui-sans-serif,-apple-system,BlinkMacSystemFont,'Segoe_UI',sans-serif] [&_*]:box-border [&_*::after]:box-border [&_*::before]:box-border [&_[hidden]]:!hidden [&_button]:text-inherit [&_button]:[font:inherit] [&_button:focus-visible]:outline-2 [&_button:focus-visible]:outline-offset-2 [&_button:focus-visible]:outline-[var(--tt-accent)] [&_input:focus-visible]:outline-2 [&_input:focus-visible]:outline-offset-2 [&_input:focus-visible]:outline-[var(--tt-accent)] [&_svg]:block [&_svg]:size-4 [&_textarea:focus-visible]:outline-2 [&_textarea:focus-visible]:outline-offset-2 [&_textarea:focus-visible]:outline-[var(--tt-accent)] motion-reduce:[&_*]:!scroll-auto motion-reduce:[&_*]:!delay-0 motion-reduce:[&_*]:!duration-0 motion-reduce:[&_*::after]:!delay-0 motion-reduce:[&_*::after]:!duration-0 motion-reduce:[&_*::before]:!delay-0 motion-reduce:[&_*::before]:!duration-0"
       data-focus-mode={snapshot.focusMode === true}
       data-phase={snapshot.phase}
       tabIndex={-1}
     >
-      {props.titlebarTarget === undefined ? titlebar : createPortal(titlebar, props.titlebarTarget)}
+      {titlebar !== null && (props.titlebarTarget === undefined ? titlebar : createPortal(titlebar, props.titlebarTarget))}
       {snapshot.dispatchDialog !== null && (
         <NativeDispatchDialog
           kind={snapshot.dispatchDialog}
@@ -3037,6 +3074,7 @@ export type TockTutorRouteProps = TockTutorRouteOwnerProps &
     | typeof TOCKTUTOR_REVIEW_PANEL_SLOT
     | typeof TOCKTUTOR_WEB_VIEWER_PANEL_SLOT
   > & {
+    active?: boolean
     remote: WorkbenchRouteRemote
   }
 
@@ -3106,6 +3144,7 @@ function TockTutorNativeActionsOutlet(props: {
 
 /** Root-scoped component contributed to TockTeam's exact Desktop route seat. */
 export function TockTutorRoute(props: TockTutorRouteProps): ReactNode {
+  const active = props.active !== false
   const controller = useMemo(
     () => new WorkbenchRouteController(props.remote, props.navigate),
     [props.navigate, props.remote],
@@ -3114,18 +3153,19 @@ export function TockTutorRoute(props: TockTutorRouteProps): ReactNode {
   const root = useRef<HTMLDivElement>(null)
   const [externalUrl, setExternalUrl] = useState<string | null>(null)
   useEffect(() => {
+    if (!active) return
     void controller.syncLocation(props.location.pathname)
-  }, [controller, props.location.pathname])
+  }, [active, controller, props.location.pathname])
   useEffect(() => () => { controller.dispose() }, [controller])
   useEffect(() => {
-    if (snapshot.path === null) return
+    if (!active || snapshot.path === null) return
     root.current?.querySelector<HTMLElement>(snapshot.mode === 'source' ? '.cm-content' : snapshot.mode === 'live-preview' ? '.ProseMirror' : '[aria-label$="View"]')?.focus()
-  }, [snapshot.mode, snapshot.path])
+  }, [active, snapshot.mode, snapshot.path])
   useEffect(() => {
     if (snapshot.searchOpen) root.current?.querySelector<HTMLInputElement>('[aria-label="Search Notes Query"]')?.focus()
   }, [snapshot.searchOpen])
   useEffect(() => {
-    if (snapshot.documentKind !== 'markdown' || snapshot.path === null || snapshot.settings === undefined) return
+    if (!active || snapshot.documentKind !== 'markdown' || snapshot.path === null || snapshot.settings === undefined) return
     const timer = setInterval(() => { void controller.captureRecoverySnapshot() }, snapshot.settings.recoveryIntervalMinutes * 60_000)
     return () => { clearInterval(timer) }
   }, [controller, snapshot.documentKind, snapshot.path, snapshot.settings])
@@ -3264,6 +3304,7 @@ export function TockTutorRoute(props: TockTutorRouteProps): ReactNode {
             vault={snapshot.vault}
           />
         )}
+        active={active}
         snapshot={snapshot}
         webViewerPanel={(
           <TockTutorWebViewerOutlet
@@ -3275,9 +3316,9 @@ export function TockTutorRoute(props: TockTutorRouteProps): ReactNode {
             webClipFolder={snapshot.settings?.webClipFolder ?? 'Clips'}
           />
         )}
-        {...(typeof document === 'undefined'
-          ? {}
-          : { titlebarTarget: document.getElementById('tockteam-window-titlebar-slot') ?? document.body })}
+        {...(active && typeof document !== 'undefined'
+          ? { titlebarTarget: document.getElementById('tockteam-window-titlebar-slot') ?? document.body }
+          : {})}
       />
     </div>
   )

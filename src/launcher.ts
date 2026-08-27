@@ -250,7 +250,7 @@ async function bootstrap(): Promise<void> {
     selection.className = 'min-w-0 flex-1 truncate text-sm font-medium text-[var(--dsw-alias-label-primary,CanvasText)]'
     selection.textContent = `${item.name} — ${item.description}`
     const open = document.createElement('button')
-    open.className = 'inline-flex h-9 shrink-0 items-center gap-2 rounded-lg bg-[var(--dsw-alias-brand-primary,#0969da)] px-3 text-sm font-medium text-white hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2'
+    open.className = 'inline-flex h-9 shrink-0 items-center gap-2 rounded-lg bg-[var(--dsw-alias-brand-primary,#0969da)] px-3 text-sm font-medium text-[var(--dsw-alias-brand-primary-invert,Canvas)] hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2'
     open.type = 'button'
     open.setAttribute('aria-label', actionLabel(item.defaultAction))
     open.setAttribute('aria-keyshortcuts', 'Enter')
@@ -344,7 +344,7 @@ async function bootstrap(): Promise<void> {
       const listItem = document.createElement('li')
       listItem.setAttribute('role', 'presentation')
       const button = document.createElement('button')
-      button.className = 'flex w-full min-w-0 items-center gap-2 rounded-lg px-2 py-2 text-left hover:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))] focus-visible:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))] aria-selected:bg-[var(--dsw-alias-interactive-bg-selected,rgb(0_0_0_/_10%))] aria-selected:font-semibold'
+      button.className = 'flex w-full min-w-0 items-center gap-2 rounded-lg px-2 py-2 text-left hover:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))] focus-visible:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))] aria-selected:bg-[var(--dsw-alias-interactive-bg-active,rgb(0_0_0_/_10%))] aria-selected:font-semibold'
       button.type = 'button'
       button.id = `launcher-result-${encodeURIComponent(item.id)}`
       button.dataset.resultId = item.id

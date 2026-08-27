@@ -12,6 +12,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   useSyncExternalStore,
   type ReactNode,
@@ -101,7 +102,9 @@ import {
   canonicalTockTeamPath,
   isTockCoderPath,
   isTockTutorPath,
+  readLastTockTutorPath,
   readTockTutorRouteLocation,
+  rememberTockTutorPath,
   resolveTockTutorNavigation,
   TOCKCODER_ROUTE_PREFIX,
   TOCKTUTOR_ROUTE_PREFIX,
@@ -2085,9 +2088,13 @@ function TockTutorRouteHost(props: RouteHostProps, routeSlots: RouteSlotsService
   )
   const location = props.useStore(state => state.location)
   const navigate = useCallback((path: string, mode: 'push' | 'replace' = 'push'): void => {
-    const target = resolveTockTutorNavigation(path)
-    if (target === undefined) return
     const current = readTockTutorRouteLocation()
+    if (isTockTutorPath(current.pathname)) rememberTockTutorPath(current)
+    const nextPath = path === TOCKTUTOR_ROUTE_PREFIX && !isTockTutorPath(current.pathname)
+      ? readLastTockTutorPath()
+      : path
+    const target = resolveTockTutorNavigation(nextPath)
+    if (target === undefined) return
     if (target.pathname === current.pathname
       && target.search === current.search
       && target.hash === current.hash) return
@@ -2099,6 +2106,7 @@ function TockTutorRouteHost(props: RouteHostProps, routeSlots: RouteSlotsService
     props.actions.setLocation(readTockTutorRouteLocation())
   }, [props.actions])
   useEffect(() => {
+    if (isTockTutorPath(location.pathname)) rememberTockTutorPath(location)
     const canonicalPath = canonicalTockTeamPath(location.pathname)
     if (canonicalPath !== location.pathname) {
       navigate(`${canonicalPath}${location.search}${location.hash}`, 'replace')
@@ -2112,6 +2120,7 @@ function TockTutorRouteHost(props: RouteHostProps, routeSlots: RouteSlotsService
   const active = routeEntries > 0 && isTockTutorPath(location.pathname)
   useEffect(() => {
     const bridge = window.dshDesktop
+    void bridge?.syncWorkbenchDestination(active ? 'tocktutor' : 'tockcoder').catch(() => undefined)
     void bridge?.setTockTutorActive(active).catch(() => undefined)
     return () => {
       if (active) void bridge?.setTockTutorActive(false).catch(() => undefined)
@@ -2143,10 +2152,21 @@ function TockTutorRouteHost(props: RouteHostProps, routeSlots: RouteSlotsService
   const navigation = routeEntries > 0 && rail !== null
     ? createPortal(<DesktopAppRail location={location} navigate={navigate} />, rail)
     : null
-  const workbench = active
+  const routeRoot = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const node = routeRoot.current
+    if (node === null) return
+    node.inert = !active
+  }, [active])
+  const workbench = routeEntries > 0
     ? createPortal(
-        <div className="tockteam-tocktutor-route pointer-events-auto fixed z-[1001] bg-[var(--dsw-alias-bg-base,#fff)] [inset:var(--tockteam-titlebar-height,0)_0_0_var(--tockteam-rail-width)]" data-tockteam-tocktutor-route="true">
-          {props.renderSlot(TOCKTUTOR_ROUTE_SLOT, { location, navigate })}
+        <div className="tockteam-tocktutor-route pointer-events-auto fixed z-[1001] bg-[var(--dsw-alias-bg-base,#fff)] [inset:var(--tockteam-titlebar-height,0)_0_0_var(--tockteam-rail-width)]"
+          aria-hidden={!active}
+          data-tockteam-tocktutor-route="true"
+          hidden={!active}
+          ref={routeRoot}
+        >
+          {props.renderSlot(TOCKTUTOR_ROUTE_SLOT, { active, location, navigate })}
         </div>,
         document.body,
       )

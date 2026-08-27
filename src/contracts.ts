@@ -5,7 +5,7 @@ import type {
 } from './desktop-app-update.ts'
 import type { DesktopLauncherState } from './launcher-window-contract.ts'
 import type { LauncherThemeSource } from './launcher-theme.ts'
-import type { LauncherWorkbenchRoute } from './launcher-navigation.ts'
+import type { LauncherWorkbenchRoute, TockTeamDestination } from './launcher-navigation.ts'
 
 export type { DesktopLauncherState } from './launcher-window-contract.ts'
 import type {
@@ -118,6 +118,7 @@ export interface DesktopBridge {
   onCommand(listener: (command: DesktopCommand) => void): () => void
   onRoute(listener: (route: LauncherWorkbenchRoute) => void): () => void
   syncLauncherTheme(source: LauncherThemeSource): Promise<void>
+  syncWorkbenchDestination(destination: TockTeamDestination): Promise<void>
   openExternal(url: string): Promise<void>
   setTockTutorActive(active: boolean): Promise<void>
   pluginMarketplace: PluginMarketplaceBridge

@@ -44,10 +44,12 @@ export function parseLauncherThemeSource(value: unknown): LauncherThemeSource {
     || !Object.prototype.hasOwnProperty.call(value, 'skinId')) {
     throw new Error('Invalid launcher theme source')
   }
-  return Object.freeze({
-    mode: parseMode(value.mode),
-    skinId: parseSkinId(value.skinId),
-  })
+  const mode = parseMode(value.mode)
+  const skinId = parseSkinId(value.skinId)
+  if (skinId !== null && tockTeamSkin(skinId)?.colorScheme !== mode) {
+    throw new Error('Launcher theme skin color scheme does not match mode')
+  }
+  return Object.freeze({ mode, skinId })
 }
 
 export function parseLauncherThemeProjection(value: unknown): LauncherThemeProjection {
@@ -61,18 +63,22 @@ export function parseLauncherThemeProjection(value: unknown): LauncherThemeProje
   if (!Number.isSafeInteger(value.revision) || (value.revision as number) < 0) {
     throw new Error('Invalid launcher theme revision')
   }
-  return Object.freeze({
-    mode: parseMode(value.mode),
-    skinId: parseSkinId(value.skinId),
-    revision: value.revision as number,
-  })
+  const mode = parseMode(value.mode)
+  const skinId = parseSkinId(value.skinId)
+  if (skinId !== null && tockTeamSkin(skinId)?.colorScheme !== mode) {
+    throw new Error('Launcher theme skin color scheme does not match mode')
+  }
+  return Object.freeze({ mode, skinId, revision: value.revision as number })
 }
 
 /** Reduce a DSH snapshot to the two facts the isolated launcher can consume. */
 export function projectLauncherThemeSource(snapshot: ThemeSnapshotLike): LauncherThemeSource {
   const mode = parseMode(snapshot.active.colorScheme)
   const skin = tockTeamSkin(snapshot.active.id)
-  return Object.freeze({ mode, skinId: skin?.id ?? null })
+  return Object.freeze({
+    mode,
+    skinId: skin?.colorScheme === mode ? skin.id : null,
+  })
 }
 
 export function createLauncherThemeProjector(initial: LauncherThemeProjection = Object.freeze({

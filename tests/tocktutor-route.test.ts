@@ -68,6 +68,7 @@ test('TockTutor route synchronizes the trusted native frame without widening IPC
   const main = readFileSync(new URL('../src/main.ts', import.meta.url), 'utf8')
   const preload = readFileSync(new URL('../src/preload.ts', import.meta.url), 'utf8')
   const sidebar = readFileSync(new URL('../plugins/sidebar/src/client/plugin.tsx', import.meta.url), 'utf8')
+  const tutorWorkbench = readFileSync(new URL('../plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/route.tsx', import.meta.url), 'utf8')
 
   assert.match(preload, /ipcRenderer\.invoke\('desktop:set-tocktutor-active', active\)/u)
   assert.match(main, /ipcMain\.handle\('desktop:set-tocktutor-active',[\s\S]+assertTrustedMainIpc\(event\)[\s\S]+typeof raw !== 'boolean'/u)
@@ -79,6 +80,21 @@ test('TockTutor route synchronizes the trusted native frame without widening IPC
   assert.match(main, /(?:mainWindow|window)\.loadURL\(runtimeUrl\.href\)(?:\.then\(flushQueuedOpenRequests\))?/u)
   assert.match(sidebar, /setTockTutorActive\(active\)/u)
   assert.match(sidebar, /setTockTutorActive\(false\)/u)
+  assert.match(sidebar, /hidden=\{!active\}/u)
+  assert.match(sidebar, /routeRoot\.current[\s\S]+node\.inert = !active/u)
+  assert.match(tutorWorkbench, /active\?: boolean/u)
+  assert.match(tutorWorkbench, /if \(!active\) return[\s\S]+controller\.syncLocation/u)
+  assert.match(tutorWorkbench, /if \(!active \|\| snapshot\.path === null\) return/u)
+  assert.match(tutorWorkbench, /titlebar !== null/u)
+  assert.match(tutorWorkbench, /active && typeof document !== 'undefined'/u)
+})
+
+test('remembers the last TockTutor path across finite route switches', async () => {
+  const routes = await import('../plugins/sidebar/src/client/tocktutor-route.ts')
+  routes.rememberTockTutorPath({ hash: '#heading', pathname: '/tocktutor/Plan.md', search: '?mode=source' })
+  assert.equal(routes.readLastTockTutorPath(), '/tocktutor/Plan.md?mode=source#heading')
+  routes.rememberTockTutorPath({ hash: '', pathname: '/tockcoder', search: '' })
+  assert.equal(routes.readLastTockTutorPath(), '/tocktutor/Plan.md?mode=source#heading')
 })
 
 test('resolves bounded same-origin navigation and preserves query/hash', () => {

@@ -86,6 +86,36 @@ test('workbench launcher handlers deliver readiness and finite theme facts', asy
   dispose()
 })
 
+test('stale workbench frames cannot mark the current generation ready or sync theme', async () => {
+  const ipcMain = new FakeIpcMain()
+  const currentFrame = {}
+  const staleFrame = {}
+  let ready = 0
+  let synced = 0
+  const currentWindow = { sender: { mainFrame: currentFrame }, senderFrame: currentFrame }
+  const dispose = registerWorkbenchLauncherIpcHandlers({
+    assertTrustedMainIpc: event => {
+      const value = event as typeof currentWindow
+      if (value.senderFrame !== value.sender.mainFrame || value.senderFrame !== currentFrame) throw new Error('stale frame')
+    },
+    controller: { getState: () => ({ visible: false } as never), show: async () => {} },
+    ipcMain,
+    onRouteReady: () => { ready += 1 },
+    syncTheme: () => { synced += 1; return { ok: true } },
+  })
+  await assert.rejects(
+    async () => { await ipcMain.handlers.get(LAUNCHER_WINDOW_IPC_CHANNELS.routeReady)?.({ sender: currentWindow.sender, senderFrame: staleFrame }) },
+    /stale frame/u,
+  )
+  await assert.rejects(
+    async () => { await ipcMain.handlers.get(LAUNCHER_WINDOW_IPC_CHANNELS.syncTheme)?.({ sender: currentWindow.sender, senderFrame: staleFrame }, { mode: 'light', skinId: null }) },
+    /stale frame/u,
+  )
+  assert.equal(ready, 0)
+  assert.equal(synced, 0)
+  dispose()
+})
+
 test('workbench launcher handlers guard before side effects and reject arguments', async () => {
   const ipcMain = new FakeIpcMain()
   let trusted = true

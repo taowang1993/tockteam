@@ -12,4 +12,6 @@ contextBridge.exposeInMainWorld('tockteamLauncher', createLauncherPreloadBridge(
   invoke: (channel, args) => args === undefined
     ? ipcRenderer.invoke(channel)
     : ipcRenderer.invoke(channel, args),
+  on: (channel, listener) => { ipcRenderer.on(channel, listener) },
+  removeListener: (channel, listener) => { ipcRenderer.removeListener(channel, listener) },
 }))

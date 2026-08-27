@@ -60,15 +60,32 @@ export function createLauncherWorkbenchRouteDelivery<TWindow extends object>(
       payload?: unknown,
     ): void {
       const parsed = routeFromDeliveryArguments(channelOrRoute, payload)
-      if (ready.has(window)) sendRoute(send, window, parsed)
-      else pending.set(window, parsed)
+      if (!ready.has(window)) {
+        pending.set(window, parsed)
+        return
+      }
+      try {
+        sendRoute(send, window, parsed)
+      } catch (error) {
+        ready.delete(window)
+        pending.set(window, parsed)
+        throw error
+      }
     },
     markReady(window: TWindow): void {
-      ready.add(window)
       const queued = pending.get(window)
-      if (queued === undefined) return
+      if (queued === undefined) {
+        ready.add(window)
+        return
+      }
+      try {
+        sendRoute(send, window, queued)
+      } catch (error) {
+        ready.delete(window)
+        throw error
+      }
       pending.delete(window)
-      sendRoute(send, window, queued)
+      ready.add(window)
     },
     markUnready(window: TWindow): void {
       ready.delete(window)
@@ -104,21 +121,38 @@ export function createLauncherWorkbenchCommandDelivery<
   const ready = new WeakSet<TWindow>()
   return Object.freeze({
     deliver(window: TWindow, value: TValue): void {
-      if (ready.has(window)) {
-        send(window, value)
+      if (!ready.has(window)) {
+        const queue = pending.get(window) ?? []
+        if (queue.length >= maxPending) throw new Error('Workbench command queue is full')
+        queue.push(value)
+        pending.set(window, queue)
         return
       }
-      const queue = pending.get(window) ?? []
-      if (queue.length >= maxPending) throw new Error('Workbench command queue is full')
-      queue.push(value)
-      pending.set(window, queue)
+      try {
+        send(window, value)
+      } catch (error) {
+        ready.delete(window)
+        pending.set(window, [value])
+        throw error
+      }
     },
     markReady(window: TWindow): void {
-      ready.add(window)
       const queue = pending.get(window)
-      if (queue === undefined) return
+      if (queue === undefined) {
+        ready.add(window)
+        return
+      }
+      for (let index = 0; index < queue.length; index += 1) {
+        try {
+          send(window, queue[index]!)
+        } catch (error) {
+          ready.delete(window)
+          pending.set(window, queue.slice(index))
+          throw error
+        }
+      }
       pending.delete(window)
-      for (const value of queue) send(window, value)
+      ready.add(window)
     },
     markUnready(window: TWindow): void {
       ready.delete(window)

@@ -52,6 +52,61 @@ test('route delivery also supports the typed channel/payload seam', () => {
   assert.deepEqual(sent, [{ channel: LAUNCHER_WORKBENCH_ROUTE_CHANNEL, payload: { destination: 'tocktutor' } }])
 })
 
+test('route delivery retains an unsent route when renderer delivery fails', () => {
+  const window = {}
+  let failures = 1
+  const sent: string[] = []
+  const delivery = createLauncherWorkbenchRouteDelivery<object>((_window: object, route: { destination: 'tockcoder' | 'tocktutor' }) => {
+    if (failures > 0) {
+      failures -= 1
+      throw new Error('renderer gone')
+    }
+    sent.push(route.destination)
+  })
+  delivery.deliver(window, { destination: 'tocktutor' })
+  assert.throws(() => delivery.markReady(window), /renderer gone/u)
+  assert.equal(delivery.isReady(window), false)
+  // The sender has failed once; the second markReady retries the same intent.
+  delivery.markReady(window)
+  assert.deepEqual(sent, ['tocktutor'])
+})
+
+test('route delivery requeues a failed immediate send and marks the window unready', () => {
+  const window = {}
+  let fail = true
+  const sent: string[] = []
+  const delivery = createLauncherWorkbenchRouteDelivery<object>((_window: object, route: { destination: 'tockcoder' | 'tocktutor' }) => {
+    if (fail) {
+      fail = false
+      throw new Error('renderer gone')
+    }
+    sent.push(route.destination)
+  })
+  delivery.markReady(window)
+  assert.throws(() => delivery.deliver(window, { destination: 'tocktutor' }), /renderer gone/u)
+  assert.equal(delivery.isReady(window), false)
+  delivery.markReady(window)
+  assert.deepEqual(sent, ['tocktutor'])
+})
+
+test('command delivery retains only unsent FIFO commands when delivery fails', () => {
+  const window = {}
+  let calls = 0
+  const sent: string[] = []
+  const delivery = createLauncherWorkbenchCommandDelivery<object, string>((_window, value) => {
+    calls += 1
+    if (calls === 2) throw new Error('renderer gone')
+    sent.push(value)
+  }, 4)
+  delivery.deliver(window, 'first')
+  delivery.deliver(window, 'second')
+  delivery.deliver(window, 'third')
+  assert.throws(() => delivery.markReady(window), /renderer gone/u)
+  assert.equal(delivery.isReady(window), false)
+  delivery.markReady(window)
+  assert.deepEqual(sent, ['first', 'second', 'third'])
+})
+
 test('command delivery preserves bounded FIFO order and rebinds recreated windows', () => {
   const first = {}
   const second = {}

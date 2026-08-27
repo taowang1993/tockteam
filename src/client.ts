@@ -2,6 +2,7 @@
 
 import type { DesktopBridge, DesktopCommand } from './contracts.ts'
 import { projectLauncherThemeSource } from './launcher-theme.ts'
+import { deferSettingsOpen } from './desktop-settings-navigation.ts'
 import {
   resolveLauncherRoutePath,
   type LauncherWorkbenchRoute,
@@ -9,6 +10,13 @@ import {
 import type { DesktopPanels } from '../plugins/panel-controls/src/client.ts'
 import type { PinnedSummary } from '../plugins/pinned-summary/src/client.ts'
 import type { WorkspaceTools } from '../plugins/sidebar/src/client.ts'
+import {
+  isTockCoderPath,
+  isTockTutorPath,
+  readLastTockTutorPath,
+  readTockTutorRouteLocation,
+  rememberTockTutorPath,
+} from '../plugins/sidebar/src/client/tocktutor-route.ts'
 import {
   brandingMutationRoots,
   findHeroHeadlines,
@@ -207,13 +215,29 @@ function findSettingsButton(): HTMLButtonElement | undefined {
     .sort((left, right) => right.getBoundingClientRect().bottom - left.getBoundingClientRect().bottom)[0]
 }
 
-function showSettings(): void {
-  findSettingsButton()?.click()
+function showSettingsAfterRoute(): void {
+  deferSettingsOpen({
+    findButton: findSettingsButton,
+    isTockCoder: () => isTockCoderPath(window.location.pathname),
+    isTockTutorActive: () => document.documentElement.dataset.tockteamTocktutorActive === 'true',
+    schedule: callback => {
+      if (typeof window.requestAnimationFrame === 'function') {
+        window.requestAnimationFrame(() => { queueMicrotask(callback) })
+      } else {
+        queueMicrotask(callback)
+      }
+    },
+  })
 }
 
 function navigateLauncherRoute(route: LauncherWorkbenchRoute): void {
-  const pathname = resolveLauncherRoutePath(route.destination)
-  const current = `${window.location.pathname}${window.location.search}${window.location.hash}`
+  const currentLocation = readTockTutorRouteLocation()
+  if (isTockTutorPath(currentLocation.pathname)) rememberTockTutorPath(currentLocation)
+  if (route.destination === 'tocktutor' && isTockTutorPath(currentLocation.pathname)) return
+  const pathname = route.destination === 'tocktutor'
+    ? readLastTockTutorPath()
+    : resolveLauncherRoutePath(route.destination)
+  const current = `${currentLocation.pathname}${currentLocation.search}${currentLocation.hash}`
   if (current === pathname) {
     window.dispatchEvent(new PopStateEvent('popstate'))
     if (route.destination === 'tockcoder') window.setTimeout(focusComposer, 0)
@@ -251,7 +275,7 @@ function dispatch(
       })
       return
     case 'show-settings':
-      showSettings()
+      showSettingsAfterRoute()
       return
     case 'toggle-sidebar':
       panels.toggleSidebar()

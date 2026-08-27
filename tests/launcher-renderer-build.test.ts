@@ -1,12 +1,17 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
+import { TOCKTEAM_SKINS } from '../plugins/skins/src/skins.ts'
+import { SKIN_IDS } from '../plugins/skins/src/skin-ids.ts'
 
 const html = readFileSync(new URL('../src/launcher.html', import.meta.url), 'utf8')
 const build = readFileSync(new URL('../scripts/build.mjs', import.meta.url), 'utf8')
 const launcher = readFileSync(new URL('../src/launcher.ts', import.meta.url), 'utf8')
 const preload = readFileSync(new URL('../src/launcher-preload.ts', import.meta.url), 'utf8')
 const smoke = readFileSync(new URL('../scripts/launcher-electron-smoke.mjs', import.meta.url), 'utf8')
+const skinIds = readFileSync(new URL('../plugins/skins/src/skin-ids.ts', import.meta.url), 'utf8')
+const tockTutor = readFileSync(new URL('../plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/route.tsx', import.meta.url), 'utf8')
+const packageJson = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as { scripts?: Record<string, string> }
 
 test('launcher document is standalone, strict, external, and accessible', () => {
   assert.match(html, /Content-Security-Policy/u)
@@ -38,6 +43,31 @@ test('launcher renderer stays empty/search-ready and reports bootstrap status', 
   assert.doesNotMatch(launcher, /localStorage|sessionStorage|XMLHttpRequest|WebSocket/u)
 })
 
+test('launcher renderer uses shared color tokens for primary actions and selection', () => {
+  assert.match(launcher, /brand-primary-invert/u)
+  assert.match(launcher, /interactive-bg-active/u)
+  assert.doesNotMatch(launcher, /text-white|interactive-bg-selected|bg-selected/u)
+})
+
+test('TockTutor titlebar and all shared skins use valid TockTeam token contracts', () => {
+  assert.match(tockTutor, /--tt-accent:var\(--dsw-alias-brand-primary/u)
+  assert.match(tockTutor, /--tt-muted:var\(--dsw-alias-label-secondary/u)
+  assert.match(tockTutor, /--tt-panel:var\(--dsw-alias-bg-layer-1/u)
+  assert.match(tockTutor, /--tt-text:var\(--dsw-alias-label-primary/u)
+  assert.doesNotMatch(tockTutor, /dsw-alias-(?:accent-primary|fg-muted|bg-elevated|fg-primary)/u)
+  assert.equal(TOCKTEAM_SKINS.length, 4)
+  assert.deepEqual(new Set(TOCKTEAM_SKINS.map(skin => skin.id)), new Set(SKIN_IDS))
+  for (const skin of TOCKTEAM_SKINS) {
+    for (const token of ['--dsw-alias-brand-primary', '--dsw-alias-brand-primary-invert', '--dsw-alias-label-secondary', '--dsw-alias-interactive-bg-active']) {
+      assert.equal(typeof skin.tokens[token], 'string', `${skin.id}:${token}`)
+    }
+  }
+  assert.match(skinIds, /deepCurrent/u)
+  assert.match(skinIds, /jadeCircuit/u)
+  assert.match(skinIds, /porcelain/u)
+  assert.match(skinIds, /emberDusk/u)
+})
+
 test('launcher renderer uses shared types, Lucide icons, visible selection, and layered Escape semantics', () => {
   assert.match(launcher, /from 'lucide'/u)
   assert.match(launcher, /from '\.\/launcher-preload-bridge\.ts'/u)
@@ -60,6 +90,12 @@ test('launcher build emits dedicated browser and preload outputs', () => {
   assert.match(preload, /exposeInMainWorld\('tockteamLauncher'/u)
   assert.match(preload, /launcher-window:dismiss|LAUNCHER_WINDOW_IPC_CHANNELS/u)
   assert.doesNotMatch(preload, /dshDesktop|electronAPI|require\s*\(/u)
+})
+
+test('launcher Electron smoke enforces fresh build and DSH staging', () => {
+  assert.match(packageJson.scripts?.['test:launcher:electron'] ?? '', /build:tocktutor/gu)
+  assert.match(packageJson.scripts?.['test:launcher:electron'] ?? '', /run build/gu)
+  assert.match(packageJson.scripts?.['test:launcher:electron'] ?? '', /stage-dsh\.mjs --quick/gu)
 })
 
 test('launcher smoke stops its Electron child on every host platform', () => {

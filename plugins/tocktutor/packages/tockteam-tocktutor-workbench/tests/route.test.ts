@@ -379,6 +379,31 @@ class FakeRemote implements WorkbenchRouteRemote {
   }
 }
 
+test('dispose flushes a draft scheduled immediately before true disposal', async () => {
+  const remote = new FakeRemote()
+  const controller = new WorkbenchRouteController(remote, () => {})
+  await controller.syncLocation('/tocktutor')
+  assert.equal(await controller.select('Folder/Note.md'), true)
+  controller.edit('# Draft must survive disposal\n')
+  controller.dispose()
+  await new Promise<void>(resolve => { setImmediate(resolve) })
+  assert.equal(remote.draftContent, '# Draft must survive disposal\n')
+  assert.equal(remote.calls.filter(call => call.method === 'saveDraft').length, 1)
+})
+
+test('browser location sync selects without recording a second navigation', async () => {
+  const remote = new FakeRemote()
+  const navigation: string[] = []
+  const controller = new WorkbenchRouteController(remote, path => { navigation.push(path) })
+  await controller.syncLocation('/tocktutor')
+  assert.equal(await controller.select('Folder/Note.md', false), true)
+  const before = navigation.length
+  await controller.syncLocation('/tocktutor/Second.md')
+  assert.equal(controller.getSnapshot().path, 'Second.md')
+  assert.equal(navigation.length, before)
+  controller.dispose()
+})
+
 test('dirty-gates protocol open and exclusive create dispatch', async () => {
   const remote = new FakeRemote()
   const navigation: string[] = []
@@ -783,6 +808,41 @@ test('loads, edits, reads, toggles, and snapshot-saves one exact note', async ()
   assert.match(html, /<button[^>]+aria-label="Search Notes"/u)
   assert.match(html, /<button[^>]+aria-label="New Note"/u)
   assert.doesNotMatch(html, /TockLauncher/u)
+  const previousDesktop = (globalThis as typeof globalThis & { dshDesktop?: unknown }).dshDesktop
+  ;(globalThis as typeof globalThis & { dshDesktop?: unknown }).dshDesktop = { launcher: { show: async () => ({}) } }
+  try {
+    const desktopMarkup = renderToStaticMarkup(createElement(TockTutorRouteView, {
+      active: true,
+      onActivateTab() {},
+      onAddPane() {},
+      onEdit() {},
+      onFocusPane() {},
+      onMode() {},
+      onMoveCanvas() {},
+      onSave() {},
+      onSelect() {},
+      onToggleTask() {},
+      snapshot: controller.getSnapshot(),
+    }))
+    assert.equal((desktopMarkup.match(/aria-label="Open TockLauncher"/gu) ?? []).length, 1)
+    const inactiveMarkup = renderToStaticMarkup(createElement(TockTutorRouteView, {
+      active: false,
+      onActivateTab() {},
+      onAddPane() {},
+      onEdit() {},
+      onFocusPane() {},
+      onMode() {},
+      onMoveCanvas() {},
+      onSave() {},
+      onSelect() {},
+      onToggleTask() {},
+      snapshot: controller.getSnapshot(),
+    }))
+    assert.doesNotMatch(inactiveMarkup, /TockTutor Title Bar/u)
+  } finally {
+    if (previousDesktop === undefined) delete (globalThis as typeof globalThis & { dshDesktop?: unknown }).dshDesktop
+    else (globalThis as typeof globalThis & { dshDesktop?: unknown }).dshDesktop = previousDesktop
+  }
   assert.match(html, /pt-0/u)
   assert.match(html, /h-\[var\(--tockteam-titlebar-height,40px\)\]/u)
   assert.match(html, /tocktutor-titlebar absolute top-0/u)

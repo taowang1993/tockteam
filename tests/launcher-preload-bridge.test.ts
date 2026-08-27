@@ -4,6 +4,20 @@ import { LAUNCHER_IPC_CHANNELS } from '../src/launcher-contract.ts'
 import { createLauncherPreloadBridge } from '../src/launcher-preload-bridge.ts'
 import { LAUNCHER_WINDOW_IPC_CHANNELS } from '../src/launcher-window-contract.ts'
 
+test('launcher preload forwards validated theme events and ignores stale revisions', () => {
+  let receive: ((event: unknown, value: unknown) => void) | undefined
+  const bridge = createLauncherPreloadBridge({
+    invoke: async () => ({ ok: true }),
+    on: (_channel, listener) => { receive = listener as typeof receive },
+  })
+  const received: number[] = []
+  const remove = bridge.onTheme(theme => { received.push(theme.revision) })
+  receive?.({}, { mode: 'dark', revision: 2, skinId: 'tockteam-skin-deep-current' })
+  receive?.({}, { mode: 'light', revision: 1, skinId: null })
+  assert.deepEqual(received, [2])
+  remove()
+})
+
 test('launcher preload exposes only typed search, theme, settings, invoke, rescan, and dismiss methods', async () => {
   const calls: Array<{ channel: string; input?: unknown }> = []
   const bridge = createLauncherPreloadBridge({
