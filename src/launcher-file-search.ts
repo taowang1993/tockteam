@@ -43,7 +43,7 @@ type FileSearchOptions = Readonly<{
   scanners: LauncherFileSearchScanners
 }>
 
-type KnownPath = Readonly<{ entry: LauncherFileSearchEntry }>
+type KnownPath = Readonly<{ entry: LauncherFileSearchEntry; root: string }>
 
 function emptySearch(): Readonly<{ after: readonly LauncherInternalResultItem[]; before: readonly LauncherInternalResultItem[] }> {
   return Object.freeze({ after: Object.freeze([]), before: Object.freeze([]) })
@@ -185,6 +185,7 @@ export function createLauncherFileSearchExtensions(options: FileSearchOptions): 
     entry: LauncherFileSearchEntry,
     actions: Set<string>,
     known: Map<string, KnownPath>,
+    root: string,
   ): LauncherInternalResultItem | undefined => {
     if (!bounded(entry.path) || !isWithinHome(options.platform, options.homePath, entry.path, true)
       || (entry.type !== 'file' && entry.type !== 'folder')
@@ -203,8 +204,9 @@ export function createLauncherFileSearchExtensions(options: FileSearchOptions): 
       options.platform === 'macOS' ? 'Cmd+O' : 'Ctrl+O',
     )
     actions.add(open.argument); actions.add(reveal.argument)
-    known.set(open.argument, Object.freeze({ entry: Object.freeze({ ...entry, path: target }) }))
-    known.set(reveal.argument, Object.freeze({ entry: Object.freeze({ ...entry, path: target }) }))
+    const knownEntry = Object.freeze({ entry: Object.freeze({ ...entry, path: target }), root })
+    known.set(open.argument, knownEntry)
+    known.set(reveal.argument, knownEntry)
     return Object.freeze({
       additionalActions: Object.freeze([reveal]),
       defaultAction: open,
@@ -261,7 +263,7 @@ export function createLauncherFileSearchExtensions(options: FileSearchOptions): 
           if (count >= MAX_SIMPLE_RESULTS || seen.has(entry.path)) continue
           const target = pathApi(options.platform).normalize(entry.path)
           if (seen.has(target)) continue
-          const mapped = mapEntry('SimpleFileSearch', { ...entry, path: target }, nextSimpleActions, nextSimple)
+          const mapped = mapEntry('SimpleFileSearch', { ...entry, path: target }, nextSimpleActions, nextSimple, folder.path)
           if (mapped === undefined) continue
           seen.add(target); items.push(mapped); count += 1
         }
@@ -307,7 +309,7 @@ export function createLauncherFileSearchExtensions(options: FileSearchOptions): 
       if (activeQuery?.controller !== controller || activeQuery.generation !== generation || controller.signal.aborted || generation !== queryGeneration) return emptySearch()
       const nextActions = new Set<string>(); const nextKnown = new Map<string, KnownPath>(); const items: LauncherInternalResultItem[] = []
       for (const entry of entries.slice(0, maxResults)) {
-        const mapped = mapEntry('FileSearch', entry, nextActions, nextKnown)
+        const mapped = mapEntry('FileSearch', entry, nextActions, nextKnown, options.homePath)
         if (mapped !== undefined) items.push(mapped)
       }
       if (generation !== queryGeneration || activeQuery?.controller !== controller) return emptySearch()
@@ -341,6 +343,7 @@ export function createLauncherFileSearchExtensions(options: FileSearchOptions): 
       identity: current.entry.identity,
       path: target,
       platform: options.platform,
+      root: current.root,
       signal,
     }), undefined, ACTION_VALIDATION_TIMEOUT_MS, 'File-search action validation timed out')
     if (!valid) throw new Error('File-search action target failed immediate revalidation')

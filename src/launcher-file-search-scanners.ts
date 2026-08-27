@@ -55,6 +55,7 @@ export type LauncherFileSearchScanners = Readonly<{
     identity?: LauncherFileSearchIdentity
     path: string
     platform: LauncherFileSearchPlatform
+    root?: string
     signal: AbortSignal
   }>) => Promise<boolean>
 }>
@@ -351,12 +352,30 @@ export function createLauncherFileSearchScanners(options: Readonly<{
     validatePath: async input => {
       throwIfAborted(input.signal)
       if (input.identity === undefined || !isWithinHome(input.platform, input.homePath, input.path, true)) return false
+      if (input.root !== undefined && !await remainsWithinRoot({ homePath: input.homePath, path: input.path, platform: input.platform, root: input.root })) return false
       const entry = await trustedEntry(input.platform, input.homePath, input.path)
       return entry !== undefined
         && (input.expectedKind === undefined || entry.type === input.expectedKind)
         && sameIdentity(entry.identity, input.identity)
     },
   })
+}
+
+async function remainsWithinRoot(input: Readonly<{
+  homePath: string
+  path: string
+  platform: LauncherFileSearchPlatform
+  root: string
+}>): Promise<boolean> {
+  if (!isWithinHome(input.platform, input.homePath, input.root, true)
+    || !isWithinHome(input.platform, input.homePath, input.path, true)) return false
+  const api = pathApi(input.platform)
+  try {
+    const [canonicalRoot, canonicalPath] = await Promise.all([realpath(input.root), realpath(input.path)])
+    const requested = requestedRelative(input.platform, input.root, input.path)
+    const canonical = requestedRelative(input.platform, canonicalRoot, canonicalPath)
+    return requested === canonical && canonical !== '' && !canonical.startsWith('..') && !api.isAbsolute(canonical)
+  } catch { return false }
 }
 
 export const LAUNCHER_FILE_SEARCH_LIMITS = Object.freeze({
