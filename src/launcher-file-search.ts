@@ -336,7 +336,11 @@ export function createLauncherFileSearchExtensions(options: FileSearchOptions): 
           description: 'File Search', id: 'file-search:invoke', imageKey: 'file-search-folder', name: 'Search files', sourceExtension: 'FileSearch',
         }))
       }
-      if (!enabledIds.has('SimpleFileSearch')) return Object.freeze(items)
+      if (!enabledIds.has('SimpleFileSearch')) {
+        throwIfNotCurrent(scanController.signal, generation, scanGeneration)
+        if (closed) throw new Error('TockLauncher file search is closed')
+        return Object.freeze(items)
+      }
       const folders = asFolderSettings(options.getSetting('extension[SimpleFileSearch].folders', []))
       let count = 0
       const seen = new Set<string>()
@@ -375,6 +379,7 @@ export function createLauncherFileSearchExtensions(options: FileSearchOptions): 
         if (count >= MAX_SIMPLE_RESULTS) break
       }
       throwIfNotCurrent(scanController.signal, generation, scanGeneration)
+      if (closed) throw new Error('TockLauncher file search is closed')
       if (simpleActionGeneration === simpleActionGenerationAtStart) {
         simpleActions = nextSimpleActions
         knownSimple = nextSimple
@@ -391,6 +396,7 @@ export function createLauncherFileSearchExtensions(options: FileSearchOptions): 
   }
 
   const searchInstant = async (searchTerm: string): Promise<FileSearchInstantResult> => {
+    if (closed) return emptySearch()
     const generation = ++queryGeneration
     activeQuery?.controller.abort(new Error('TockLauncher file search query superseded'))
     activeQuery = undefined
@@ -424,13 +430,13 @@ export function createLauncherFileSearchExtensions(options: FileSearchOptions): 
           signal,
         }))
       }, controller.signal, QUERY_TIMEOUT_MS, 'File Search query timed out')
-      if (activeQuery?.controller !== controller || activeQuery.generation !== generation || controller.signal.aborted || generation !== queryGeneration) return emptySearch()
+      if (closed || activeQuery?.controller !== controller || activeQuery.generation !== generation || controller.signal.aborted || generation !== queryGeneration) return emptySearch()
       const nextActions = new Set<string>(); const nextKnown = new Map<string, KnownPath>(); const items: LauncherInternalResultItem[] = []
       for (const entry of entries.slice(0, maxResults)) {
         const mapped = mapEntry('FileSearch', entry, nextActions, nextKnown)
         if (mapped !== undefined) items.push(mapped)
       }
-      if (generation !== queryGeneration || activeQuery?.controller !== controller) return emptySearch()
+      if (closed || generation !== queryGeneration || activeQuery?.controller !== controller) return emptySearch()
       fileActions = nextActions; knownFile = nextKnown
       const lastError = providerErrorStatus()
       return Object.freeze({ after: Object.freeze(items), before: Object.freeze([]), ...(lastError === undefined ? null : { lastError }) })

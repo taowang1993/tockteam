@@ -160,6 +160,32 @@ test('a slow Simple rescan cannot replace newer FileSearch actions', async () =>
   assert.deepEqual(opened, ['/home/max/query.txt'])
 })
 
+test('closed providers do not start or publish FileSearch queries', async () => {
+  let queried = 0
+  const provider = createLauncherFileSearchExtensions({
+    effects: { openPath: () => undefined, revealPath: () => undefined },
+    enabledExtensionIds: () => ['FileSearch'], getSetting: settings, homePath: '/home/max', platform: 'macOS',
+    scanners: {
+      queryFileSearch: async () => { queried += 1; return [{ path: '/home/max/closed.txt', type: 'file', identity: { dev: '1', ino: '2' } }] },
+      scanSimpleFolder: async () => [], validatePath: async () => true,
+    },
+  })
+  await provider.close()
+  assert.deepEqual(await provider.searchInstant(`${LAUNCHER_FILE_SEARCH_QUERY_PREFIX} closed`), { before: [], after: [] })
+  assert.equal(queried, 0)
+})
+
+test('aborted indexed loads reject before an early disabled-provider return', async () => {
+  const controller = new AbortController()
+  controller.abort(new Error('load canceled'))
+  const provider = createLauncherFileSearchExtensions({
+    effects: { openPath: () => undefined, revealPath: () => undefined },
+    enabledExtensionIds: () => ['FileSearch'], getSetting: settings, homePath: '/home/max', platform: 'macOS',
+    scanners: { queryFileSearch: async () => [], scanSimpleFolder: async () => [], validatePath: async () => true },
+  })
+  await assert.rejects(provider.loadIndexedItems(controller.signal), /load canceled/u)
+})
+
 test('in-flight file actions are aborted and rechecked when query state changes', async () => {
   let validationSignal: AbortSignal | undefined
   let releaseValidation: (() => void) | undefined
