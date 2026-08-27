@@ -1,4 +1,7 @@
 import type { PluginMarketplaceBridge } from '../plugins/plugin-marketplace/src/protocol.ts'
+import type { DesktopLauncherState } from './launcher-window-contract.ts'
+
+export type { DesktopLauncherState } from './launcher-window-contract.ts'
 import type {
   DesktopCallerOperation,
   DesktopQuickAction,
@@ -75,6 +78,11 @@ export interface TockTutorDesktopCallerBridge {
   nextDispatch(): Promise<TockTutorDesktopDispatchEvent | null>
 }
 
+export interface DesktopLauncherBridge {
+  getState(): Promise<DesktopLauncherState>
+  show(): Promise<DesktopLauncherState>
+}
+
 export interface WebClipDesktopBridge {
   authorizeDocument(frameId: number, html: string): Promise<string>
   onNavigationBlocked(listener: (navigation: WebClipBlockedNavigation) => void): () => void
@@ -83,6 +91,7 @@ export interface WebClipDesktopBridge {
 /** Browser-safe desktop bridge made available through contextBridge. */
 export interface DesktopBridge {
   chooseWorkspace(): Promise<string[]>
+  launcher: DesktopLauncherBridge
   getInfo(): Promise<DesktopInfo>
   getRuntimeSnapshot(): Promise<DesktopRuntimeSnapshot>
   onCommand(listener: (command: DesktopCommand) => void): () => void

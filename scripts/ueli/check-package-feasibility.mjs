@@ -22,7 +22,7 @@ const EXPECTED_TARGETS = Object.freeze([
   Object.freeze({ platform: 'win', formats: Object.freeze(['dir']), architectures: Object.freeze(['x64']) }),
 ])
 const EXPECTED_FOUNDATION = Object.freeze({
-  launcherImplemented: false,
+  launcherImplemented: true,
   launcherPackaged: false,
   admittedRuntimeDependencies: Object.freeze([]),
   runtimeDependencyClosure: Object.freeze([]),
@@ -217,7 +217,7 @@ export function inspectLauncherPackageFeasibility(inputs) {
   }
 
   const foundation = contract?.foundation ?? {}
-  addFailure(failures, foundation.launcherImplemented === false, 'launcher must not be implemented in foundation')
+  addFailure(failures, foundation.launcherImplemented === true, 'launcher implementation must be recorded in foundation')
   addFailure(failures, foundation.launcherPackaged === false, 'launcher must not be packaged in foundation')
   addFailure(failures, Array.isArray(foundation.admittedRuntimeDependencies) && foundation.admittedRuntimeDependencies.length === 0, 'Ueli-derived runtime dependencies must remain empty')
   addFailure(failures, Array.isArray(foundation.runtimeDependencyClosure) && foundation.runtimeDependencyClosure.length === 0, 'runtime dependency closure must remain empty')

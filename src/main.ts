@@ -4,6 +4,7 @@ import {
   BrowserWindow,
   clipboard,
   dialog,
+  globalShortcut,
   ipcMain,
   Menu,
   nativeTheme,
@@ -74,6 +75,21 @@ import {
   type BundledRuntimePaths,
 } from './runtime-paths.ts'
 import { resolveProductVersion } from './version.ts'
+import {
+  LAUNCHER_ROLE,
+  LAUNCHER_SESSION_PARTITION,
+  applyLauncherSessionPolicy,
+  createLauncherIpcGuard,
+  createLauncherUrlPolicy,
+  createLauncherWebPreferences,
+  type LauncherUrlPolicy,
+} from './launcher-security.ts'
+import { LauncherOverlayController } from './launcher-window-controller.ts'
+import {
+  registerLauncherWindowIpcHandlers,
+  registerWorkbenchLauncherIpcHandlers,
+} from './launcher-window-ipc.ts'
+import { LauncherWindowRegistry, type LauncherRegistryWindow } from './launcher-window-registry.ts'
 
 const PRODUCT_NAME = 'TockTeam Desktop'
 const DATA_DIRECTORY = 'TockTeam-Desktop'
@@ -82,6 +98,7 @@ const currentDir = dirname(fileURLToPath(import.meta.url))
 const PRODUCT_VERSION = resolveProductVersion(join(currentDir, '..'))
 const splashPath = join(currentDir, 'splash.html')
 const preloadPath = join(currentDir, 'preload.cjs')
+const launcherHtmlPath = join(currentDir, 'launcher.html')
 
 let mainWindow: BrowserWindow | undefined
 let runtime: DshRuntimeSupervisor | undefined
@@ -100,6 +117,10 @@ let transitioning = false
 let queuedPaths: string[] = []
 let queuedProtocolUrls: string[] = []
 let tockTutorPreviousThemeSource: 'system' | 'light' | 'dark' | undefined
+let launcherController: LauncherOverlayController | undefined
+let launcherIpcDisposer: (() => void) | undefined
+let workbenchLauncherIpcDisposer: (() => void) | undefined
+const launcherWindowRegistry = new LauncherWindowRegistry()
 const logTail: string[] = []
 const desktopCallerAuthorizations = new DesktopCallerAuthorizations()
 const webClipFrames = new WebClipFrameAuthorizations()
@@ -721,6 +742,81 @@ function windowIconPath(): string | undefined {
   return existsSync(development) ? development : undefined
 }
 
+function createLauncherWindow(args: Readonly<{
+  launcherSession: Session
+  urlPolicy: LauncherUrlPolicy
+}>): BrowserWindow {
+  const window = new BrowserWindow({
+    alwaysOnTop: true,
+    frame: false,
+    fullscreenable: false,
+    height: 475,
+    maximizable: false,
+    minimizable: false,
+    resizable: false,
+    show: false,
+    skipTaskbar: true,
+    title: 'TockLauncher',
+    width: 750,
+    ...(process.platform === 'darwin' ? { transparent: true, type: 'panel' } : {}),
+    webPreferences: {
+      ...createLauncherWebPreferences({ electronDir: currentDir, role: LAUNCHER_ROLE }),
+      spellcheck: false,
+      webviewTag: false,
+    },
+  })
+  if (window.webContents.session !== args.launcherSession) {
+    window.destroy()
+    throw new Error('TockLauncher window was created with an unexpected session')
+  }
+  window.removeMenu()
+  window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
+  window.webContents.on('will-attach-webview', event => { event.preventDefault() })
+  window.webContents.on('will-navigate', (event, url) => {
+    if (!args.urlPolicy.isAllowed(LAUNCHER_ROLE, url)) event.preventDefault()
+  })
+  window.webContents.on('will-redirect', (event, url) => {
+    if (!args.urlPolicy.isAllowed(LAUNCHER_ROLE, url)) event.preventDefault()
+  })
+  return window
+}
+
+function initializeLauncher(): void {
+  if (launcherController !== undefined) return
+  const launcherSession = session.fromPartition(LAUNCHER_SESSION_PARTITION)
+  applyLauncherSessionPolicy(launcherSession)
+  const urlPolicy = createLauncherUrlPolicy({ launcherHtmlPath })
+  const controller = new LauncherOverlayController({
+    createWindow: () => createLauncherWindow({ launcherSession, urlPolicy }),
+    getDisplayWorkArea: () => screen.getDisplayNearestPoint(screen.getCursorScreenPoint()).workArea,
+    globalShortcut,
+    loadWindow: window => window.loadURL(urlPolicy.entryUrl).then(() => undefined),
+    platform: process.platform,
+    registerWindow: (_role, window) => launcherWindowRegistry.register(
+      'launcher',
+      window as unknown as LauncherRegistryWindow,
+    ),
+  })
+  launcherController = controller
+  const launcherGuard = createLauncherIpcGuard({
+    launcherSession,
+    resolveWindow: sender => launcherWindowRegistry.resolveWindow(sender),
+    roleOf: window => launcherWindowRegistry.roleOf(window),
+    urlPolicy,
+  })
+  launcherIpcDisposer = registerLauncherWindowIpcHandlers({
+    controller,
+    guard: launcherGuard,
+    ipcMain,
+  })
+  workbenchLauncherIpcDisposer = registerWorkbenchLauncherIpcHandlers({
+    assertTrustedMainIpc: event => { assertTrustedMainIpc(event as Electron.IpcMainInvokeEvent) },
+    controller,
+    ipcMain,
+  })
+  controller.registerShortcut()
+}
+
 function createWindow(options: { preview?: boolean; title?: string } = {}): BrowserWindow {
   const icon = windowIconPath()
   const displays = screen.getAllDisplays()
@@ -758,6 +854,7 @@ function createWindow(options: { preview?: boolean; title?: string } = {}): Brow
   window.once('ready-to-show', () => { window.show() })
   window.on('closed', () => {
     if (mainWindow === window) {
+      launcherController?.destroyWindow()
       desktopCallerAuthorizations.revokeWindow(windowId)
       resetTockTutorTheme(window)
       mainWindow = undefined
@@ -1507,6 +1604,7 @@ async function bootstrap(): Promise<void> {
   marketplaceAgentGateway = await startMarketplaceAgentGateway(marketplace, {
     onError: error => { appendLog('desktop', `[marketplace-agent] ${String(error)}`) },
   })
+  initializeLauncher()
   installIpc()
   session.defaultSession.setPermissionRequestHandler((webContents, permission, callback, details) => {
     if (permission === 'media' && 'mediaTypes' in details && allowsRuntimeMicrophone({
@@ -1572,6 +1670,9 @@ async function bootstrap(): Promise<void> {
     if (quitting) return
     event.preventDefault()
     quitting = true
+    launcherController?.dispose()
+    launcherIpcDisposer?.()
+    workbenchLauncherIpcDisposer?.()
     void Promise.allSettled([
       runtime?.stop() ?? Promise.resolve(),
       desktopPrintExportChannel.stop(),

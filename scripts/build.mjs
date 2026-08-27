@@ -22,6 +22,18 @@ const splashTailwindCss = await buildTailwindCss(root, [{
   negated: false,
   pattern: 'src/splash.html',
 }])
+const launcherTailwindCss = await buildTailwindCss(root, [
+  {
+    base: root,
+    negated: false,
+    pattern: 'src/launcher.html',
+  },
+  {
+    base: root,
+    negated: false,
+    pattern: 'src/launcher.ts',
+  },
+])
 const tailwindDefine = {
   ...versionDefine,
   __TOCKTEAM_TAILWIND_CSS__: JSON.stringify(tailwindCss),
@@ -61,6 +73,24 @@ const builds = [
     platform: 'node',
     format: 'cjs',
     external: ['electron'],
+  }),
+  build({
+    ...shared,
+    entryPoints: [join(root, 'src', 'launcher-preload.ts')],
+    outfile: join(dist, 'launcher-preload.cjs'),
+    platform: 'node',
+    format: 'cjs',
+    external: ['electron'],
+  }),
+  build({
+    bundle: true,
+    entryPoints: [join(root, 'src', 'launcher.ts')],
+    outfile: join(dist, 'launcher.js'),
+    platform: 'browser',
+    format: 'esm',
+    target: 'es2022',
+    sourcemap: true,
+    logLevel: 'info',
   }),
   build({
     ...shared,
@@ -198,6 +228,8 @@ for (const plugin of pluginPackages) {
 }
 
 await Promise.all(builds)
+writeFileSync(join(dist, 'launcher.css'), launcherTailwindCss)
+copyFileSync(join(root, 'src', 'launcher.html'), join(dist, 'launcher.html'))
 
 const declarationRoot = mkdtempSync(join(tmpdir(), 'tockteam-host-declarations-'))
 try {

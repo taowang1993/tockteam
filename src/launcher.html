@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en" class="h-full bg-[var(--dsw-alias-bg-base,Canvas)] text-[var(--dsw-alias-label-primary,CanvasText)] [color-scheme:light_dark]" data-launcher-ready="false">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'; object-src 'none'" />
+    <link rel="stylesheet" href="./launcher.css" />
+    <script type="module" src="./launcher.js"></script>
+    <title>TockLauncher</title>
+  </head>
+  <body class="m-0 h-full min-h-full bg-[var(--dsw-alias-bg-base,Canvas)] font-sans text-[var(--dsw-alias-label-primary,CanvasText)]">
+    <main id="launcher-root" class="mx-auto flex h-full w-full max-w-[750px] flex-col gap-4 rounded-xl border border-[var(--dsw-alias-border-l2,CanvasText)] bg-[var(--dsw-alias-bg-layer-1,Canvas)] p-5 shadow-lg" data-launcher-ready="false">
+      <h1 class="sr-only">TockLauncher</h1>
+      <div id="launcher-search-form" class="flex flex-col gap-2" role="search">
+        <label for="launcher-search" class="text-sm font-medium text-[var(--dsw-alias-label-primary,CanvasText)]">Search TockLauncher</label>
+        <input id="launcher-search" class="h-10 w-full rounded-lg border border-[var(--dsw-alias-border-l2,CanvasText)] bg-[var(--dsw-specific-input-major,var(--dsw-alias-bg-base,Canvas))] px-3 text-base text-[var(--dsw-alias-label-primary,CanvasText)] outline-none focus-visible:border-[var(--dsw-alias-brand-primary,CanvasText)] focus-visible:ring-2 focus-visible:ring-[var(--dsw-alias-brand-primary,CanvasText)]" type="search" role="combobox" aria-autocomplete="list" aria-controls="launcher-results" aria-expanded="false" autocomplete="off" />
+      </div>
+      <p id="launcher-status" class="m-0 text-sm text-[var(--dsw-alias-label-secondary,CanvasText)]" role="status" aria-live="polite">Destinations will appear here.</p>
+      <ul id="launcher-results" class="m-0 min-h-0 flex-1 list-none overflow-auto p-0" role="listbox" aria-label="TockLauncher destinations"></ul>
+      <button id="launcher-close" class="h-9 self-end rounded-lg border border-[var(--dsw-alias-border-l2,CanvasText)] bg-[var(--dsw-alias-bg-layer-2,Canvas)] px-3 text-sm text-[var(--dsw-alias-label-primary,CanvasText)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dsw-alias-brand-primary,CanvasText)]" type="button">Close TockLauncher</button>
+    </main>
+  </body>
+</html>

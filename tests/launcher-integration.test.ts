@@ -1,0 +1,52 @@
+import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
+import { test } from 'node:test'
+
+const main = readFileSync(new URL('../src/main.ts', import.meta.url), 'utf8')
+const security = readFileSync(new URL('../src/launcher-security.ts', import.meta.url), 'utf8')
+const preload = readFileSync(new URL('../src/preload.ts', import.meta.url), 'utf8')
+const contracts = readFileSync(new URL('../src/contracts.ts', import.meta.url), 'utf8')
+const sidebar = readFileSync(new URL('../plugins/sidebar/src/client/plugin.tsx', import.meta.url), 'utf8')
+const i18n = readFileSync(new URL('../plugins/sidebar/src/client/i18n.ts', import.meta.url), 'utf8')
+const webPatch = readFileSync(new URL('../web/cordis.patch.yml', import.meta.url), 'utf8')
+const tuiPatch = readFileSync(new URL('../plugins/tui/cordis.patch.yml', import.meta.url), 'utf8')
+
+test('main assembles one launcher owner without branching the DSH workbench factory', () => {
+  assert.match(main, /globalShortcut/u)
+  assert.match(main, /session\.fromPartition\(LAUNCHER_SESSION_PARTITION\)/u)
+  assert.match(security, /persist:tockteam-launcher/u)
+  assert.match(main, /alwaysOnTop: true/u)
+  assert.match(main, /frame: false/u)
+  assert.match(main, /show: false/u)
+  assert.match(main, /skipTaskbar: true/u)
+  assert.match(main, /width: 750/u)
+  assert.match(main, /height: 475/u)
+  assert.match(main, /transparent: true, type: 'panel'/u)
+  assert.match(main, /setWindowOpenHandler\(\(\) => \(\{ action: 'deny' \}\)\)/u)
+  assert.match(main, /will-attach-webview/u)
+  assert.match(main, /will-redirect/u)
+  assert.match(main, /launcherController\?\.destroyWindow\(\)/u)
+  assert.match(main, /launcherController\?\.dispose\(\)/u)
+  assert.doesNotMatch(main, /createWindow\([^)]*launcher/u)
+})
+
+test('workbench bridge and Desktop titlebar expose only finite launcher operations', () => {
+  assert.match(contracts, /launcher: DesktopLauncherBridge/u)
+  assert.match(contracts, /getState\(\): Promise<DesktopLauncherState>/u)
+  assert.match(contracts, /show\(\): Promise<DesktopLauncherState>/u)
+  assert.match(preload, /LAUNCHER_WINDOW_IPC_CHANNELS\.getState/u)
+  assert.match(preload, /LAUNCHER_WINDOW_IPC_CHANNELS\.show/u)
+  assert.match(sidebar, /function DesktopLauncherFallback/u)
+  assert.match(sidebar, /window\.dshDesktop\?\.launcher/u)
+  assert.match(sidebar, /bridge\.getState\(\)/u)
+  assert.match(sidebar, /bridge\.show\(\)/u)
+  assert.match(sidebar, /Shortcut Unavailable|launcher\.shortcut-unavailable/u)
+  assert.match(i18n, /'launcher\.button'/u)
+  assert.match(i18n, /'launcher\.shortcut-unavailable'/u)
+  assert.doesNotMatch(sidebar, /inject[^\n]*desktopShell/u)
+})
+
+test('Web and TUI patch layers do not receive launcher authority', () => {
+  assert.doesNotMatch(webPatch, /launcher-window|tockteamLauncher|globalShortcut/u)
+  assert.doesNotMatch(tuiPatch, /launcher-window|tockteamLauncher|globalShortcut/u)
+})

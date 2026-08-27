@@ -10,11 +10,30 @@ import type {
 } from './contracts.ts'
 import type { MarketplaceCommand, MarketplaceSnapshot } from '../plugins/plugin-marketplace/src/protocol.ts'
 import type { DesktopCallerOperation } from './host-contract.ts'
+import {
+  LAUNCHER_WINDOW_IPC_CHANNELS,
+  assertNoLauncherIpcArguments,
+  parseDesktopLauncherState,
+} from './launcher-window-contract.ts'
 
 const bridge: DesktopBridge = Object.freeze({
   chooseWorkspace: async (): Promise<string[]> => {
     return await ipcRenderer.invoke('desktop:choose-workspace') as string[]
   },
+  launcher: Object.freeze({
+    getState: async (...args: unknown[]) => {
+      assertNoLauncherIpcArguments(args)
+      return parseDesktopLauncherState(
+        await ipcRenderer.invoke(LAUNCHER_WINDOW_IPC_CHANNELS.getState),
+      )
+    },
+    show: async (...args: unknown[]) => {
+      assertNoLauncherIpcArguments(args)
+      return parseDesktopLauncherState(
+        await ipcRenderer.invoke(LAUNCHER_WINDOW_IPC_CHANNELS.show),
+      )
+    },
+  }),
   getInfo: async (): Promise<DesktopInfo> => await ipcRenderer.invoke('desktop:get-info') as DesktopInfo,
   getRuntimeSnapshot: async (): Promise<DesktopRuntimeSnapshot> => {
     return await ipcRenderer.invoke('desktop:get-runtime-snapshot') as DesktopRuntimeSnapshot

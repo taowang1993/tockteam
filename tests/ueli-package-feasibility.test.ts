@@ -21,12 +21,12 @@ function runAudit() {
   })
 }
 
-test('the foundation contract describes TockTeam Desktop without claiming launcher artifacts', () => {
+test('the foundation contract describes TockTeam Desktop without claiming launcher packaging', () => {
   const result = runAudit()
 
   assert.equal(result.status, 0, result.stderr || result.stdout)
   assert.match(result.stdout, /TockTeam Desktop package feasibility passed/u)
-  assert.match(result.stdout, /launcherImplemented=false/u)
+  assert.match(result.stdout, /launcherImplemented=true/u)
   assert.match(result.stdout, /launcherPackaged=false/u)
 })
 
@@ -49,7 +49,7 @@ test('the contract preserves the current TockTeam identity and configured packag
     { platform: 'win', formats: ['dir'], architectures: ['x64'] },
   ])
   assert.deepEqual(foundation, {
-    launcherImplemented: false,
+    launcherImplemented: true,
     launcherPackaged: false,
     admittedRuntimeDependencies: [],
     runtimeDependencyClosure: [],

@@ -112,7 +112,7 @@
     ]
   },
   "foundation": {
-    "launcherImplemented": false,
+    "launcherImplemented": true,
     "launcherPackaged": false,
     "admittedRuntimeDependencies": [],
     "runtimeDependencyClosure": [],
