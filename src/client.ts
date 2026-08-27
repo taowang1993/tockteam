@@ -244,7 +244,13 @@ function showSettingsAfterRoute(): void {
     isTockCoder: () => isTockCoderPath(window.location.pathname),
     isTockTutorActive: () => document.documentElement.dataset.tockteamTocktutorActive === 'true',
     onOpened: selectLauncherSection,
-    schedule,
+    schedule: callback => {
+      if (typeof window.requestAnimationFrame === 'function') {
+        window.requestAnimationFrame(() => { queueMicrotask(callback) })
+      } else {
+        queueMicrotask(callback)
+      }
+    },
   })
 }
 
