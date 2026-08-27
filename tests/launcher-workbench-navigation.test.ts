@@ -107,6 +107,43 @@ test('command delivery retains only unsent FIFO commands when delivery fails', (
   assert.deepEqual(sent, ['first', 'second', 'third'])
 })
 
+test('failed workbench intents transfer to a replacement readiness handshake', () => {
+  const first = {}
+  const replacement = {}
+  const routes: string[] = []
+  let routeFailure = true
+  const routeDelivery = createLauncherWorkbenchRouteDelivery<object>((_window, route) => {
+    if (routeFailure) {
+      routeFailure = false
+      throw new Error('first renderer gone')
+    }
+    routes.push(route.destination)
+  })
+  routeDelivery.deliver(first, { destination: 'tocktutor' })
+  assert.throws(() => routeDelivery.markReady(first), /first renderer gone/u)
+  const pendingRoute = routeDelivery.takePending(first)
+  assert.deepEqual(pendingRoute, { destination: 'tocktutor' })
+  routeDelivery.deliver(replacement, pendingRoute!)
+  routeDelivery.markReady(replacement)
+  assert.deepEqual(routes, ['tocktutor'])
+
+  const commands: string[] = []
+  let commandFailure = true
+  const commandDelivery = createLauncherWorkbenchCommandDelivery<object, string>((_window, command) => {
+    if (commandFailure) {
+      commandFailure = false
+      throw new Error('first renderer gone')
+    }
+    commands.push(command)
+  })
+  commandDelivery.deliver(first, 'queued-command')
+  assert.throws(() => commandDelivery.markReady(first), /first renderer gone/u)
+  const pendingCommands = commandDelivery.takePending(first)
+  for (const command of pendingCommands) commandDelivery.deliver(replacement, command)
+  commandDelivery.markReady(replacement)
+  assert.deepEqual(commands, ['queued-command'])
+})
+
 test('command delivery preserves bounded FIFO order and rebinds recreated windows', () => {
   const first = {}
   const second = {}
