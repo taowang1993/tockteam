@@ -237,14 +237,44 @@ try {
   await sleep(250)
   assert.equal(await launcherConnection.evaluate('location.href'), launcher.url)
   assert.equal(workbenchConnection ? await workbenchConnection.evaluate('location.href') : '', workbenchUrl)
-  assert.equal(await launcherConnection.evaluate(`(async () => {
-    document.querySelector('#launcher-close')?.focus()
-    const focused = document.activeElement?.id
-    await window.tockteamLauncher?.dismiss()
-    return focused
-  })()`), 'launcher-close')
-  const dismissedState = await workbenchConnection.evaluate('window.dshDesktop?.launcher?.getState()')
-  assert.equal(dismissedState?.visible, false)
+
+  const iconFacts = await launcherConnection.evaluate(`({
+    selected: document.querySelector('[data-result-id][aria-selected="true"]')?.className.includes('aria-selected:'),
+    searchIconSize: document.querySelector('#launcher-search-icon svg')?.getAttribute('width'),
+    historyIconSize: document.querySelector('#launcher-history-toggle svg')?.getAttribute('width'),
+  })`)
+  assert.deepEqual(iconFacts, { selected: true, searchIconSize: '18', historyIconSize: '18' })
+
+  const emptyHistoryOpened = await launcherConnection.evaluate(`(() => {
+    const button = document.getElementById('launcher-history-toggle')
+    if (!(button instanceof HTMLButtonElement)) return false
+    button.click()
+    return true
+  })()`)
+  assert.equal(emptyHistoryOpened, true)
+  const emptyHistory = await launcherConnection.evaluate(`(() => {
+    const item = document.querySelector('#launcher-history [role="menuitem"]')
+    return {
+      disabled: item instanceof HTMLButtonElement && item.disabled,
+      label: item?.textContent,
+    }
+  })()`)
+  assert.deepEqual(emptyHistory, { disabled: true, label: 'No Recent Searches' })
+  await launcherConnection.evaluate(`(() => {
+    document.getElementById('launcher-history')?.dispatchEvent(new KeyboardEvent('keydown', {
+      bubbles: true,
+      cancelable: true,
+      key: 'Escape',
+    }))
+  })()`)
+  await waitFor(
+    () => launcherConnection.evaluate(`({
+      historyHidden: document.getElementById('launcher-history')?.hidden,
+      focused: document.activeElement?.id,
+    })`),
+    state => state.historyHidden === true && state.focused === 'launcher-search',
+  )
+  assert.equal((await workbenchConnection.evaluate('window.dshDesktop?.launcher?.getState()'))?.visible, true)
 
   await launcherConnection.evaluate(`(() => {
     const input = document.getElementById('launcher-search')
@@ -256,6 +286,128 @@ try {
   await waitFor(
     () => launcherConnection.evaluate(`([...document.querySelectorAll('[data-result-id]')].some(node => node.textContent?.includes('TockCoder')))`) ,
     found => found === true,
+  )
+  const selectedAfterSearch = await launcherConnection.evaluate(`(() => {
+    const selected = document.querySelector('[data-result-id][aria-selected="true"]')
+    return {
+      selected: selected?.textContent?.includes('TockCoder'),
+      styled: selected?.className.includes('aria-selected:'),
+    }
+  })()`)
+  assert.deepEqual(selectedAfterSearch, { selected: true, styled: true })
+
+  const actionMenuOpened = await launcherConnection.evaluate(`(() => {
+    const toggle = document.querySelector('#launcher-details button[aria-haspopup="menu"]')
+    if (!(toggle instanceof HTMLButtonElement)) return false
+    toggle.click()
+    return document.querySelector('#launcher-actions-menu') !== null
+      && document.activeElement?.getAttribute('role') === 'menuitem'
+  })()`)
+  assert.equal(actionMenuOpened, true)
+  await launcherConnection.evaluate(`(() => {
+    document.querySelector('#launcher-actions-menu [role="menuitem"]')?.dispatchEvent(new KeyboardEvent('keydown', {
+      bubbles: true,
+      cancelable: true,
+      key: 'Escape',
+    }))
+  })()`)
+  await waitFor(
+    () => launcherConnection.evaluate(`({
+      menuOpen: document.querySelector('#launcher-actions-menu') !== null,
+      focused: document.activeElement?.id,
+    })`),
+    state => state.menuOpen === false && state.focused === 'launcher-search',
+  )
+  assert.equal((await workbenchConnection.evaluate('window.dshDesktop?.launcher?.getState()'))?.visible, true)
+
+  const rowFocusRestored = await launcherConnection.evaluate(`(() => {
+    document.querySelector('#launcher-details button[aria-haspopup="menu"]')?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    const row = document.querySelector('[data-result-id]')
+    if (!(row instanceof HTMLButtonElement)) return false
+    row.click()
+    return document.activeElement?.id === 'launcher-search'
+      && document.querySelector('#launcher-actions-menu') === null
+  })()`)
+  assert.equal(rowFocusRestored, true)
+
+  const favoriteInvoked = await launcherConnection.evaluate(`(() => {
+    document.querySelector('#launcher-details button[aria-haspopup="menu"]')?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    const action = [...document.querySelectorAll('#launcher-actions-menu [role="menuitem"]')]
+      .find(node => node.textContent?.includes('Add to Favorites'))
+    if (!(action instanceof HTMLButtonElement)) return false
+    action.click()
+    return true
+  })()`)
+  assert.equal(favoriteInvoked, true)
+  await waitFor(
+    () => launcherConnection.evaluate('document.activeElement?.id'),
+    id => id === 'launcher-search',
+  )
+
+  const rescanClicked = await launcherConnection.evaluate(`(() => {
+    const button = document.getElementById('launcher-rescan')
+    if (!(button instanceof HTMLButtonElement)) return false
+    button.click()
+    return true
+  })()`)
+  assert.equal(rescanClicked, true)
+  await waitFor(
+    () => launcherConnection.evaluate(`({
+      busy: document.getElementById('launcher-rescan')?.getAttribute('aria-busy'),
+      disabled: document.getElementById('launcher-rescan')?.matches(':disabled'),
+      status: document.getElementById('launcher-status')?.textContent,
+    })`),
+    state => state.busy === null && state.disabled === false && !state.status?.toLowerCase().includes('failed'),
+  )
+
+  const popupState = await launcherConnection.evaluate(`(() => {
+    document.getElementById('launcher-history-toggle')?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    document.querySelector('#launcher-details button[aria-haspopup="menu"]')?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    return {
+      historyOpen: document.getElementById('launcher-history')?.hidden === false,
+      actionMenuOpen: document.querySelector('#launcher-actions-menu') !== null,
+    }
+  })()`)
+  assert.deepEqual(popupState, { historyOpen: true, actionMenuOpen: true })
+  await launcherConnection.evaluate('window.tockteamLauncher?.dismiss()')
+  await waitFor(
+    () => workbenchConnection.evaluate('(async () => (await window.dshDesktop?.launcher?.getState())?.visible)()'),
+    visible => visible === false,
+  )
+
+  const resetShow = await showLauncherFromWorkbench(workbenchConnection)
+  assert.equal(resetShow?.visible, true)
+  await waitFor(
+    () => launcherConnection.evaluate(`({
+      focused: document.activeElement?.id,
+      historyHidden: document.getElementById('launcher-history')?.hidden,
+      actionMenuOpen: document.querySelector('#launcher-actions-menu') !== null,
+    })`),
+    state => state.focused === 'launcher-search' && state.historyHidden === true && state.actionMenuOpen === false,
+  )
+  const ordinaryEscape = await launcherConnection.evaluate(`(() => {
+    const search = document.getElementById('launcher-search')
+    if (!(search instanceof HTMLInputElement)) return false
+    search.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, cancelable: true, key: 'Escape' }))
+    return true
+  })()`)
+  assert.equal(ordinaryEscape, true)
+  await waitFor(
+    () => workbenchConnection.evaluate('(async () => (await window.dshDesktop?.launcher?.getState())?.visible)()'),
+    visible => visible === false,
+  )
+
+  const invokedShow = await showLauncherFromWorkbench(workbenchConnection)
+  assert.equal(invokedShow?.visible, true)
+  pages = await waitFor(
+    () => electronPages(port),
+    current => current.filter(page => page.title === 'TockLauncher').length === 1,
+  )
+  launcher = pages.find(page => page.title === 'TockLauncher')
+  assert.equal(launcher?.id, firstLauncherId)
+  await waitFor(
+    () => launcherConnection.evaluate('document.activeElement?.id'),
+    id => id === 'launcher-search',
   )
   const invoked = await launcherConnection.evaluate(`(() => {
     const button = document.querySelector('#launcher-details button')
@@ -291,7 +443,7 @@ try {
   })()`)
   assert.equal(historyOpened, true)
   await waitFor(
-    () => launcherConnection.evaluate(`([...document.querySelectorAll('#launcher-history [role="menuitem"]')].some(node => node.textContent === 'coder'))`),
+    () => launcherConnection.evaluate(`([...document.querySelectorAll('#launcher-history [role="menuitem"]')].some(node => node.textContent?.includes('coder')))`),
     found => found === true,
   )
   console.log('launcher Electron smoke passed: sandbox/preload/CSP/geometry/focus/reuse/search/invoke/history/workbench preservation')

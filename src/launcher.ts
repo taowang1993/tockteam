@@ -1,48 +1,30 @@
-type LauncherSearchEngineId = 'Fuse.js' | 'fuzzysort'
-type LauncherSearchOptions = Readonly<{
-  fuzziness: number
-  maxSearchResultItems: number
-  searchEngineId: LauncherSearchEngineId
-}>
-type LauncherPublicAction = Readonly<{
-  actionId: string
-  description: string
-  hideWindowAfterInvocation?: boolean
-  keyboardShortcut?: string
-  requiresConfirmation?: boolean
-}>
-type LauncherPublicResultItem = Readonly<{
-  additionalActions?: readonly LauncherPublicAction[]
-  defaultAction: LauncherPublicAction
-  description: string
-  details?: string
-  id: string
-  name: string
-  sourceExtension: string
-}>
-type LauncherSearchResponse = Readonly<{
-  after: readonly LauncherPublicResultItem[]
-  before: readonly LauncherPublicResultItem[]
-  resultSetId: string
-  status: Readonly<{
-    indexedItemCount: number
-    lastError?: string
-    rescanStatus: 'error' | 'idle' | 'scanning'
-  }>
-}>
+import {
+  ArrowRight,
+  History as HistoryIcon,
+  ListFilter,
+  RefreshCw,
+  Search,
+  Star,
+  StarOff,
+  Trash2,
+  X,
+  createElement,
+} from 'lucide'
+import type { IconNode } from 'lucide'
+import type { LauncherPublicAction, LauncherPublicResultItem } from './launcher-actions.ts'
+import type { LauncherPreloadBridge } from './launcher-preload-bridge.ts'
 
-interface LauncherBridge {
-  dismiss: (...args: unknown[]) => Promise<void>
-  invokeAction: (actionId: string) => Promise<Readonly<{ ok: true } | { ok: false; reason: 'expired' }>>
-  rescan: () => Promise<LauncherSearchResponse['status']>
-  search: (searchTerm: string, options: LauncherSearchOptions) => Promise<LauncherSearchResponse>
-}
+type LauncherBridge = LauncherPreloadBridge
 
 declare global {
   interface Window {
     tockteamLauncher?: LauncherBridge
   }
 }
+
+const FOCUS_SEARCH_EVENT = 'tockteam-launcher-focus-search'
+let focusSearchHandler = (): void => { document.getElementById('launcher-search')?.focus() }
+document.addEventListener(FOCUS_SEARCH_EVENT, () => { focusSearchHandler() })
 
 function setReady(ready: boolean): void {
   const value = String(ready)
@@ -51,24 +33,19 @@ function setReady(ready: boolean): void {
   document.getElementById('launcher-root')?.setAttribute('data-launcher-ready', value)
 }
 
-function icon(document: Document, path: string): SVGSVGElement {
-  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+function icon(definition: IconNode): SVGSVGElement {
+  const svg = createElement(definition) as SVGSVGElement
+  svg.setAttribute('width', '18')
+  svg.setAttribute('height', '18')
   svg.setAttribute('aria-hidden', 'true')
-  svg.setAttribute('viewBox', '0 0 24 24')
-  svg.setAttribute('fill', 'none')
-  svg.setAttribute('stroke', 'currentColor')
-  svg.setAttribute('stroke-width', '2')
-  svg.setAttribute('stroke-linecap', 'round')
-  svg.setAttribute('stroke-linejoin', 'round')
-  const pathElement = document.createElementNS('http://www.w3.org/2000/svg', 'path')
-  pathElement.setAttribute('d', path)
-  svg.append(pathElement)
+  svg.classList.add('size-[18px]', 'shrink-0')
   return svg
 }
 
 async function bootstrap(): Promise<void> {
   const root = document.getElementById('launcher-root') as HTMLElement
   const search = document.getElementById('launcher-search') as HTMLInputElement
+  const searchIcon = document.getElementById('launcher-search-icon') as HTMLElement
   const close = document.getElementById('launcher-close') as HTMLButtonElement
   const results = document.getElementById('launcher-results') as HTMLUListElement
   const status = document.getElementById('launcher-status') as HTMLElement
@@ -79,6 +56,7 @@ async function bootstrap(): Promise<void> {
   const bridge = window.tockteamLauncher as LauncherBridge
   if (!(root instanceof HTMLElement)
     || !(search instanceof HTMLInputElement)
+    || !(searchIcon instanceof HTMLElement)
     || !(close instanceof HTMLButtonElement)
     || !(results instanceof HTMLUListElement)
     || !(status instanceof HTMLElement)
@@ -90,8 +68,16 @@ async function bootstrap(): Promise<void> {
     throw new Error('TockLauncher renderer is missing its required controls')
   }
 
+  searchIcon.append(icon(Search))
+  historyToggle.prepend(icon(HistoryIcon))
+  rescan.prepend(icon(RefreshCw))
+  close.prepend(icon(X))
+
   const isMac = navigator.platform.startsWith('Mac')
   const modifier = isMac ? 'Meta' : 'Control'
+  const hasPrimaryModifier = (event: KeyboardEvent): boolean => (
+    modifier === 'Meta' ? event.metaKey : event.ctrlKey
+  )
   let revision = 0
   let selectedItemId = ''
   let currentItems: LauncherPublicResultItem[] = []
@@ -138,9 +124,13 @@ async function bootstrap(): Promise<void> {
   const renderHistory = (): void => {
     historyPanel.replaceChildren()
     if (history.length === 0) {
-      const empty = document.createElement('p')
-      empty.className = 'm-0 px-3 py-2 text-sm text-[var(--dsw-alias-label-secondary,CanvasText)]'
-      empty.textContent = 'No recent searches.'
+      const empty = document.createElement('button')
+      empty.className = 'flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-[var(--dsw-alias-label-secondary,CanvasText)]'
+      empty.type = 'button'
+      empty.disabled = true
+      empty.setAttribute('role', 'menuitem')
+      empty.setAttribute('aria-disabled', 'true')
+      empty.append(icon(HistoryIcon), document.createTextNode('No Recent Searches'))
       historyPanel.append(empty)
       return
     }
@@ -149,7 +139,7 @@ async function bootstrap(): Promise<void> {
       button.className = 'block w-full truncate px-3 py-2 text-left text-sm hover:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))]'
       button.type = 'button'
       button.setAttribute('role', 'menuitem')
-      button.textContent = query
+      button.append(icon(HistoryIcon), document.createTextNode(query))
       button.addEventListener('click', () => {
         search.value = query
         historyOpen = false
@@ -168,6 +158,16 @@ async function bootstrap(): Promise<void> {
     historyPanel.hidden = true
     historyToggle.setAttribute('aria-expanded', 'false')
     if (focus) restoreSearchFocus()
+  }
+
+  focusSearchHandler = (): void => {
+    actionMenuOpen = false
+    historyOpen = false
+    historyPanel.hidden = true
+    historyToggle.setAttribute('aria-expanded', 'false')
+    renderHistory()
+    renderDetails()
+    restoreSearchFocus()
   }
 
   const rememberSearch = (): void => {
@@ -193,8 +193,8 @@ async function bootstrap(): Promise<void> {
     try {
       const result = await bridge.invokeAction(action.actionId)
       if (!result.ok) {
-        await renderSearch(search.value)
-        setStatus('Results refreshed. Try again.', 'muted')
+        const refreshed = await renderSearch(search.value)
+        if (refreshed) setStatus('Results Refreshed. Try Again.', 'muted')
         restoreSearchFocus()
         return
       }
@@ -226,7 +226,7 @@ async function bootstrap(): Promise<void> {
     open.type = 'button'
     open.setAttribute('aria-label', actionLabel(item.defaultAction))
     open.setAttribute('aria-keyshortcuts', 'Enter')
-    open.append(icon(document, 'M5 12h14M12 5l7 7-7 7'))
+    open.append(icon(ArrowRight))
     const openText = document.createElement('span')
     openText.textContent = item.defaultAction.description
     open.append(openText)
@@ -240,7 +240,7 @@ async function bootstrap(): Promise<void> {
     toggle.setAttribute('aria-expanded', String(actionMenuOpen))
     toggle.setAttribute('aria-controls', 'launcher-actions-menu')
     toggle.setAttribute('aria-keyshortcuts', `${modifier}+K`)
-    toggle.append(icon(document, 'M5 12h14M12 5v14'))
+    toggle.append(icon(ListFilter))
     const toggleText = document.createElement('span')
     toggleText.textContent = 'Actions'
     toggle.append(toggleText)
@@ -258,18 +258,22 @@ async function bootstrap(): Promise<void> {
     if (!actionMenuOpen) return
 
     const menu = document.createElement('div')
-    menu.className = 'absolute bottom-full right-0 z-10 mb-2 min-w-[220px] overflow-hidden rounded-lg border border-[var(--dsw-alias-border-l2,CanvasText)] bg-[var(--dsw-alias-bg-layer-1,Canvas)] py-1 shadow-lg'
+    menu.className = 'absolute bottom-full right-0 z-10 mb-2 max-h-[240px] min-w-[220px] max-w-[320px] overflow-y-auto rounded-lg border border-[var(--dsw-alias-border-l2,CanvasText)] bg-[var(--dsw-alias-bg-layer-1,Canvas)] py-1 shadow-lg'
     menu.id = 'launcher-actions-menu'
     menu.setAttribute('role', 'menu')
     menu.setAttribute('aria-label', `Actions for ${item.name}`)
     const actions = [item.defaultAction, ...(item.additionalActions ?? [])]
     for (const action of actions) {
       const actionButton = document.createElement('button')
-      actionButton.className = 'block w-full truncate px-3 py-2 text-left text-sm hover:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))] focus-visible:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))]'
+      actionButton.className = 'flex w-full items-center gap-2 truncate px-3 py-2 text-left text-sm hover:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))] focus-visible:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))]'
       actionButton.type = 'button'
       actionButton.setAttribute('role', 'menuitem')
       actionButton.setAttribute('aria-label', actionLabel(action))
-      actionButton.textContent = actionLabel(action)
+      const description = action.description.toLowerCase()
+      const actionIcon = description.includes('favorite')
+        ? description.includes('remove') ? StarOff : Star
+        : description.includes('exclude') ? Trash2 : ArrowRight
+      actionButton.append(icon(actionIcon), document.createTextNode(actionLabel(action)))
       actionButton.addEventListener('click', () => { void invoke(action) })
       menu.append(actionButton)
     }
@@ -283,6 +287,7 @@ async function bootstrap(): Promise<void> {
       else if (event.key === 'End') next = buttons.length - 1
       else if (event.key === 'Escape') {
         event.preventDefault()
+        event.stopPropagation()
         closeActionMenu()
         return
       }
@@ -311,7 +316,7 @@ async function bootstrap(): Promise<void> {
       const listItem = document.createElement('li')
       listItem.setAttribute('role', 'presentation')
       const button = document.createElement('button')
-      button.className = 'flex w-full min-w-0 items-center gap-2 rounded-lg px-2 py-2 text-left hover:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))] focus-visible:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))]'
+      button.className = 'flex w-full min-w-0 items-center gap-2 rounded-lg px-2 py-2 text-left hover:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))] focus-visible:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))] aria-selected:bg-[var(--dsw-alias-interactive-bg-selected,rgb(0_0_0_/_10%))] aria-selected:font-semibold'
       button.type = 'button'
       button.id = `launcher-result-${encodeURIComponent(item.id)}`
       button.dataset.resultId = item.id
@@ -335,9 +340,11 @@ async function bootstrap(): Promise<void> {
       button.append(marker, copy)
       button.addEventListener('pointerdown', event => { event.preventDefault() })
       button.addEventListener('click', () => {
+        const wasActionMenuOpen = actionMenuOpen
         selectedItemId = item.id
         actionMenuOpen = false
         updateSelection()
+        if (wasActionMenuOpen) restoreSearchFocus()
       })
       button.addEventListener('dblclick', () => { void invoke(item.defaultAction) })
       listItem.append(button)
@@ -375,7 +382,7 @@ async function bootstrap(): Promise<void> {
         ? 'No TockTeam destinations found.'
         : `${response.status.indexedItemCount} indexed destinations`), error ? 'error' : 'ready')
       document.documentElement.dataset.launcherResultRevision = String(currentRevision)
-      return true
+      return error === undefined
     } catch {
       if (currentRevision !== revision) return false
       currentItems = []
@@ -402,6 +409,7 @@ async function bootstrap(): Promise<void> {
     const buttons = [...historyPanel.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')]
     if (event.key === 'Escape') {
       event.preventDefault()
+      event.stopPropagation()
       closeHistory()
       return
     }
@@ -440,14 +448,14 @@ async function bootstrap(): Promise<void> {
       else void bridge.dismiss().catch(() => undefined)
       return
     }
-    if (event.key === 'ArrowDown' || (event.ctrlKey && event.key.toLowerCase() === 'n')) {
+    if (event.key === 'ArrowDown' || (hasPrimaryModifier(event) && event.key.toLowerCase() === 'n')) {
       event.preventDefault()
       if (currentItems.length > 0) {
         const index = currentItems.findIndex(item => item.id === selectedItemId)
         selectedItemId = currentItems[(Math.max(index, -1) + 1) % currentItems.length]?.id ?? ''
         updateSelection()
       }
-    } else if (event.key === 'ArrowUp' || (event.ctrlKey && event.key.toLowerCase() === 'p')) {
+    } else if (event.key === 'ArrowUp' || (hasPrimaryModifier(event) && event.key.toLowerCase() === 'p')) {
       event.preventDefault()
       if (currentItems.length > 0) {
         const index = currentItems.findIndex(item => item.id === selectedItemId)
@@ -461,26 +469,26 @@ async function bootstrap(): Promise<void> {
     } else if (event.key === 'F5') {
       event.preventDefault()
       rescan.click()
-    } else if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+    } else if (hasPrimaryModifier(event) && event.key.toLowerCase() === 'k') {
       event.preventDefault()
       if (selectedItem() === undefined) return
       actionMenuOpen = !actionMenuOpen
       renderDetails()
       if (actionMenuOpen) details.querySelector<HTMLButtonElement>('[role="menuitem"]')?.focus()
       else restoreSearchFocus()
-    } else if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'f') {
+    } else if (hasPrimaryModifier(event) && event.key.toLowerCase() === 'f') {
       const action = selectedItem()?.additionalActions?.find(item => /favorite/u.test(item.description.toLowerCase()))
       if (action !== undefined) {
         event.preventDefault()
         void invoke(action)
       }
-    } else if ((event.metaKey || event.ctrlKey) && event.key === 'Delete') {
+    } else if (hasPrimaryModifier(event) && event.key === 'Delete') {
       const action = selectedItem()?.additionalActions?.find(item => /exclude/u.test(item.description.toLowerCase()))
       if (action !== undefined) {
         event.preventDefault()
         void invoke(action)
       }
-    } else if ((event.metaKey || event.ctrlKey) && /^[1-9]$/u.test(event.key)) {
+    } else if (hasPrimaryModifier(event) && /^[1-9]$/u.test(event.key)) {
       const item = currentItems[Number(event.key) - 1]
       if (item !== undefined) {
         event.preventDefault()
@@ -488,7 +496,7 @@ async function bootstrap(): Promise<void> {
         updateSelection()
         void invoke(item.defaultAction)
       }
-    } else if ((event.key === 'l' || event.key === 'L') && event[modifier === 'Meta' ? 'metaKey' : 'ctrlKey']) {
+    } else if ((event.key === 'l' || event.key === 'L') && hasPrimaryModifier(event)) {
       event.preventDefault()
       restoreSearchFocus()
     }

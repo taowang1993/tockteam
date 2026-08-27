@@ -5,7 +5,7 @@ import {
 } from './launcher-window-contract.ts'
 
 ipcRenderer.on(LAUNCHER_WINDOW_IPC_CHANNELS.focusSearch, () => {
-  document.getElementById('launcher-search')?.focus()
+  document.dispatchEvent(new Event('tockteam-launcher-focus-search'))
 })
 
 contextBridge.exposeInMainWorld('tockteamLauncher', createLauncherPreloadBridge({

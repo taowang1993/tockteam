@@ -15,12 +15,12 @@
       <div id="launcher-search-form" class="flex min-w-0 items-center gap-2" role="search">
         <label for="launcher-search" class="sr-only">Search TockLauncher</label>
         <div class="relative min-w-0 flex-1">
-          <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--dsw-alias-label-secondary,CanvasText)]" aria-hidden="true">⌕</span>
+          <span id="launcher-search-icon" class="pointer-events-none absolute left-3 top-1/2 flex -translate-y-1/2 text-[var(--dsw-alias-label-secondary,CanvasText)]" aria-hidden="true"></span>
           <input id="launcher-search" class="box-border h-10 w-full rounded-lg border border-[var(--dsw-alias-border-l2,CanvasText)] bg-[var(--dsw-specific-input-major,var(--dsw-alias-bg-base,Canvas))] px-3 pl-9 text-base text-[var(--dsw-alias-label-primary,CanvasText)] outline-none focus-visible:border-[var(--dsw-alias-brand-primary,CanvasText)] focus-visible:ring-2 focus-visible:ring-[var(--dsw-alias-brand-primary,CanvasText)]" type="search" role="combobox" aria-autocomplete="list" aria-controls="launcher-results" aria-expanded="false" autocomplete="off" placeholder="Search TockTeam" />
         </div>
-        <button id="launcher-history-toggle" class="inline-flex h-10 shrink-0 items-center gap-1 rounded-lg border border-[var(--dsw-alias-border-l2,CanvasText)] px-2 text-sm hover:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))] focus-visible:outline-2" type="button" aria-label="Search history" aria-controls="launcher-history" aria-expanded="false" aria-haspopup="menu">History</button>
+        <button id="launcher-history-toggle" class="inline-flex h-10 shrink-0 items-center gap-1 rounded-lg border border-[var(--dsw-alias-border-l2,CanvasText)] px-2 text-sm hover:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))] focus-visible:outline-2" type="button" aria-label="Search History" aria-controls="launcher-history" aria-expanded="false" aria-haspopup="menu">History</button>
       </div>
-      <div id="launcher-history" class="max-h-40 overflow-auto rounded-lg border border-[var(--dsw-alias-border-l2,CanvasText)] bg-[var(--dsw-alias-bg-layer-1,Canvas)] shadow-md" role="menu" aria-label="Recent searches" hidden></div>
+      <div id="launcher-history" class="max-h-40 overflow-auto rounded-lg border border-[var(--dsw-alias-border-l2,CanvasText)] bg-[var(--dsw-alias-bg-layer-1,Canvas)] shadow-md" role="menu" aria-label="Search History" hidden></div>
       <p id="launcher-status" class="m-0 min-h-5 text-sm text-[var(--dsw-alias-label-secondary,CanvasText)]" role="status" aria-live="polite">Destinations will appear here.</p>
       <ul id="launcher-results" class="m-0 min-h-0 flex-1 list-none overflow-auto p-0" role="listbox" aria-label="TockLauncher destinations"></ul>
       <div id="launcher-details" class="min-h-9"></div>

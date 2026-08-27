@@ -37,6 +37,18 @@ test('launcher renderer stays empty/search-ready and reports bootstrap status', 
   assert.doesNotMatch(launcher, /localStorage|sessionStorage|XMLHttpRequest|WebSocket/u)
 })
 
+test('launcher renderer uses shared types, Lucide icons, visible selection, and layered Escape semantics', () => {
+  assert.match(launcher, /from 'lucide'/u)
+  assert.match(launcher, /from '\.\/launcher-preload-bridge\.ts'/u)
+  assert.doesNotMatch(html, /⌕/u)
+  assert.match(launcher, /aria-selected:bg-/u)
+  assert.match(launcher, /tockteam-launcher-focus-search/u)
+  assert.match(launcher, /No Recent Searches/u)
+  assert.match(launcher, /Results Refreshed\. Try Again\./u)
+  assert.doesNotMatch(launcher, /event\.metaKey \|\| event\.ctrlKey/u)
+  assert.match(launcher, /event\.stopPropagation\(\)/u)
+})
+
 test('launcher build emits dedicated browser and preload outputs', () => {
   assert.match(build, /src', 'launcher-preload\.ts[\s\S]*launcher-preload\.cjs/u)
   assert.match(build, /src', 'launcher\.ts[\s\S]*launcher\.js/u)

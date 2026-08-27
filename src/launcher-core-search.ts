@@ -176,13 +176,13 @@ export function createLauncherCoreSearch(options: LauncherCoreSearchOptions): Re
       ? coreAction(
         LAUNCHER_CORE_ACTION_HANDLERS.removeFavorite,
         item.id,
-        'Remove from favorites',
+        'Remove from Favorites',
         `${commandModifier}+F`,
       )
       : coreAction(
         LAUNCHER_CORE_ACTION_HANDLERS.addFavorite,
         item.id,
-        'Add to favorites',
+        'Add to Favorites',
         `${commandModifier}+F`,
       )
     return Object.freeze({
@@ -193,7 +193,7 @@ export function createLauncherCoreSearch(options: LauncherCoreSearchOptions): Re
         coreAction(
           LAUNCHER_CORE_ACTION_HANDLERS.exclude,
           item.id,
-          'Exclude from search results',
+          'Exclude from Search Results',
           `${commandModifier}+Delete`,
         ),
       ]),
