@@ -53,6 +53,31 @@ function pathEqual(left: string, right: string): boolean {
   return normalize(left) === normalize(right)
 }
 
+export async function resolveLauncherExecutable(
+  command: unknown,
+  platform: 'Linux' | 'macOS' | 'Windows',
+  environment: Readonly<Record<string, string | undefined>> = process.env,
+): Promise<string | undefined> {
+  if (!bounded(command, 1_024)) return undefined
+  if (isAbsolute(command)) return command
+  if (!/^(?:code|code\.cmd|code\.exe)$/iu.test(command) || (platform !== 'Windows' && !/^code$/iu.test(command))) return undefined
+  const pathValue = environment.PATH ?? environment.Path
+  if (!bounded(pathValue, 16_384)) return undefined
+  const candidates = platform === 'Windows' && /^code$/iu.test(command) ? ['code.cmd', 'code.exe', 'code'] : [command]
+  for (const directory of pathValue.split(platform === 'Windows' ? ';' : ':').slice(0, 64)) {
+    if (!bounded(directory, 4_096) || !isAbsolute(directory)) continue
+    const implementation = isWindowsAbsolute(directory) ? path.win32 : path
+    for (const candidateName of candidates) {
+      const candidate = implementation.join(directory, candidateName)
+      try {
+        const selected = await lstat(candidate)
+        if (selected.isFile() && !selected.isSymbolicLink()) return implementation.normalize(candidate)
+      } catch { /* inaccessible PATH entries are skipped */ }
+    }
+  }
+  return undefined
+}
+
 export function isLauncherPathWithin(root: string, candidate: string): boolean {
   if (!bounded(root) || !bounded(candidate) || !isAbsolute(root) || !isAbsolute(candidate)) return false
   const implementation = isWindowsAbsolute(root) || isWindowsAbsolute(candidate) ? path.win32 : path
@@ -62,7 +87,7 @@ export function isLauncherPathWithin(root: string, candidate: string): boolean {
 
 /** Revalidate an identity-bound native path immediately before its effect. */
 export async function revalidateLauncherPath(target: string, expectation: LauncherPathExpectation): Promise<boolean> {
-  if (!bounded(target) || !isAbsolute(target) || !bounded(expectation.root ?? target)) return false
+  if (!bounded(target) || !isAbsolute(target) || expectation.identity === undefined || !bounded(expectation.root ?? target)) return false
   try {
     const selected = await lstat(target, { bigint: true })
     if (selected.isSymbolicLink()) return false
@@ -106,7 +131,7 @@ export async function revalidateLauncherVscodeUri(value: string, expectation: Re
   if (!bounded(value, MAX_URL_LENGTH)) return false
   let parsed: URL
   try { parsed = new URL(value) } catch { return false }
-  if (parsed.protocol === 'file:') {
+  if (parsed.protocol === 'file:' && parsed.hostname === '') {
     try {
       const target = fileURLToPath(parsed)
       const pathExpectation = expectation.identity === undefined ? undefined : { identity: expectation.identity }

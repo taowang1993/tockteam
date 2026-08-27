@@ -1146,31 +1146,27 @@ function initializeLauncher(): void {
       application: async (target, entry, identity) => {
         if (target !== entry.path) return false
         if (platform === 'Windows' && revalidateLauncherWindowsStoreId(target)) return true
+        if (identity === undefined) return false
         const kind = platform === 'macOS' && extname(target).toLocaleLowerCase('en-US') === '.app' ? 'directory' as const : 'file' as const
-        return await revalidateLauncherPath(target, { kind, ...(identity === undefined ? {} : { identity }) })
+        return await revalidateLauncherPath(target, { kind, identity })
       },
       bookmark: async (target, entry) => target === entry.url && await revalidateLauncherUrl(target, entry.url),
       jetbrains: async ({ executable, projectPath, entry, executableIdentity, projectIdentity }) => {
         if (executable !== entry.executable || projectPath !== entry.projectPath) return false
-        const executableValid = await revalidateLauncherExecutable(executable, {
-          ...(executableIdentity === undefined ? {} : { identity: executableIdentity }),
-          ...(entry.installRoot === undefined ? {} : { root: entry.installRoot }),
-        })
-        const projectValid = await revalidateLauncherPath(projectPath, { kind: 'directory', ...(projectIdentity === undefined ? {} : { identity: projectIdentity }) })
-        const ideaValid = await revalidateLauncherPath(join(projectPath, '.idea'), { kind: 'directory' })
-        return executableValid && projectValid && ideaValid
+        if (executableIdentity === undefined || projectIdentity === undefined) return false
+        const executableValid = await revalidateLauncherExecutable(executable, { identity: executableIdentity, ...(entry.installRoot === undefined ? {} : { root: entry.installRoot }) })
+        const projectValid = await revalidateLauncherPath(projectPath, { kind: 'directory', identity: projectIdentity })
+        return executableValid && projectValid
       },
       reveal: async (target, entry, identity) => {
-        if (target !== entry.path) return false
+        if (target !== entry.path || identity === undefined) return false
         const kind = platform === 'macOS' && extname(target).toLocaleLowerCase('en-US') === '.app' ? 'directory' as const : 'file' as const
-        return await revalidateLauncherPath(target, { kind, ...(identity === undefined ? {} : { identity }) })
+        return await revalidateLauncherPath(target, { kind, identity })
       },
-      vscode: async ({ executable, uri, entry, identity }) => {
-        if (uri !== entry.uri) return false
-        const executableValid = executable.includes('/') || /^[A-Za-z]:[\\\\]/u.test(executable)
-          ? await revalidateLauncherExecutable(executable)
-          : true
-        return executableValid && await revalidateLauncherVscodeUri(uri, identity === undefined ? {} : { identity })
+      vscode: async ({ executable, uri, entry, executableIdentity, identity }) => {
+        if (uri !== entry.uri || executableIdentity === undefined || (uri.startsWith('file:') && identity === undefined)) return false
+        const executableValid = await revalidateLauncherExecutable(executable, { identity: executableIdentity })
+        return executableValid && await revalidateLauncherVscodeUri(uri, { ...(identity === undefined ? {} : { identity }) })
       },
     },
     scanners: createLauncherDiscoveryScanners({ onProviderError: reportDiscoveryError }),

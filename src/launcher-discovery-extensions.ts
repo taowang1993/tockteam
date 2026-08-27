@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto'
 import path from 'node:path'
 import { isAllowedLauncherVSCodeExecutable } from './launcher-settings-contract.ts'
+import { resolveLauncherExecutable } from './launcher-discovery-process.ts'
 import { isLauncherImageUrl } from './launcher-image-url.ts'
 import type { LauncherActionRecord, LauncherInternalAction, LauncherInternalResultItem } from './launcher-actions.ts'
 
@@ -121,7 +122,7 @@ export type LauncherDiscoveryRevalidation = Readonly<{
   bookmark?: (url: string, entry: Extract<LauncherDiscoveryEntry, { kind: 'bookmark' }>) => Promise<boolean> | boolean
   jetbrains?: (target: Readonly<{ executable: string; projectPath: string; entry: Extract<LauncherDiscoveryEntry, { kind: 'jetbrains' }>; executableIdentity: LauncherDiscoveryIdentity | undefined; projectIdentity: LauncherDiscoveryIdentity | undefined }>) => Promise<boolean> | boolean
   reveal?: (target: string, entry: Extract<LauncherDiscoveryEntry, { kind: 'application' }>, identity?: LauncherDiscoveryIdentity) => Promise<boolean> | boolean
-  vscode?: (target: Readonly<{ executable: string; uri: string; entry: Extract<LauncherDiscoveryEntry, { kind: 'vscode' }>; identity: LauncherDiscoveryIdentity | undefined }>) => Promise<boolean> | boolean
+  vscode?: (target: Readonly<{ executable: string; uri: string; entry: Extract<LauncherDiscoveryEntry, { kind: 'vscode' }>; executableIdentity: LauncherDiscoveryIdentity | undefined; identity: LauncherDiscoveryIdentity | undefined }>) => Promise<boolean> | boolean
 }>
 
 export type LauncherDiscoveryOptions = Readonly<{
@@ -136,6 +137,7 @@ export type LauncherDiscoveryOptions = Readonly<{
   platform: LauncherDiscoveryPlatform
   capturePathIdentity?: (target: string) => Promise<LauncherDiscoveryIdentity | undefined>
   revalidate?: LauncherDiscoveryRevalidation
+  resolveExecutable?: (command: string, platform: LauncherDiscoveryPlatform, environment: Readonly<Record<string, string | undefined>>) => Promise<string | undefined>
   scanTimeoutMs?: number
   scanners: LauncherDiscoveryScanners
 }>
@@ -225,6 +227,25 @@ function actionArgumentsOf(item: LauncherInternalResultItem): readonly string[] 
 
 function revalidationError(kind: string): Error { return new Error(`${kind} target failed immediate revalidation`) }
 
+async function withTimeout<T>(operation: Promise<T>, signal: AbortSignal, timeoutMs: number): Promise<T> {
+  return await new Promise<T>((resolve, reject) => {
+    let settled = false
+    const timer = setTimeout(() => finish(undefined, new Error('TockLauncher discovery mapping timed out')), timeoutMs)
+    const abort = () => finish(undefined, signal.reason instanceof Error ? signal.reason : new Error('TockLauncher discovery mapping canceled'))
+    const finish = (value: T | undefined, error?: Error) => {
+      if (settled) return
+      settled = true
+      clearTimeout(timer)
+      signal.removeEventListener('abort', abort)
+      if (error !== undefined) reject(error)
+      else resolve(value as T)
+    }
+    if (signal.aborted) { abort(); return }
+    signal.addEventListener('abort', abort, { once: true })
+    operation.then(value => finish(value), error => finish(undefined, error instanceof Error ? error : new Error('TockLauncher discovery mapping failed')))
+  })
+}
+
 export function createLauncherDiscoveryExtensions(options: LauncherDiscoveryOptions): Readonly<{
   executeAction: (record: LauncherActionRecord) => Promise<boolean>
   loadIndexedItems: (signal: AbortSignal) => Promise<readonly LauncherInternalResultItem[]>
@@ -241,13 +262,28 @@ export function createLauncherDiscoveryExtensions(options: LauncherDiscoveryOpti
   let knownBookmarks = new Map<string, Readonly<{ entry: Extract<LauncherDiscoveryEntry, { kind: 'bookmark' }> }>>()
   let knownReveals = new Map<string, Readonly<{ entry: Extract<LauncherDiscoveryEntry, { kind: 'application' }>; identity: LauncherDiscoveryIdentity | undefined }>>()
   let knownJetBrains = new Map<string, Readonly<{ entry: Extract<LauncherDiscoveryEntry, { kind: 'jetbrains' }>; executableIdentity: LauncherDiscoveryIdentity | undefined; projectIdentity: LauncherDiscoveryIdentity | undefined }>>()
-  let knownVscode = new Map<string, Readonly<{ entry: Extract<LauncherDiscoveryEntry, { kind: 'vscode' }>; identity: LauncherDiscoveryIdentity | undefined }>>()
+  let knownVscode = new Map<string, Readonly<{ entry: Extract<LauncherDiscoveryEntry, { kind: 'vscode' }>; executableIdentity: LauncherDiscoveryIdentity | undefined; identity: LauncherDiscoveryIdentity | undefined }>>()
   let scanGeneration = 0
+  let instantGeneration = 0
+  const resolveExecutable = options.resolveExecutable ?? ((command, platform, values) => resolveLauncherExecutable(command, platform, values))
 
   const context = (signal: AbortSignal): LauncherDiscoveryScanContext => Object.freeze({
     appDataPath: options.appDataPath, defaults, environment, getSetting: options.getSetting,
     homePath: options.homePath, platform: options.platform, signal,
   })
+  const mappingTimeoutMs = Math.min(scanTimeoutMs, 1_000)
+  const captureIdentity = async (target: string, signal: AbortSignal): Promise<LauncherDiscoveryIdentity | undefined> => {
+    if (options.capturePathIdentity === undefined) return undefined
+    try { return await withTimeout(Promise.resolve().then(() => options.capturePathIdentity!(target)), signal, mappingTimeoutMs) }
+    catch { return undefined }
+  }
+  const replaceVscodeActions = (next: ReadonlyMap<string, Readonly<{ entry: Extract<LauncherDiscoveryEntry, { kind: 'vscode' }>; executableIdentity: LauncherDiscoveryIdentity | undefined; identity: LauncherDiscoveryIdentity | undefined }>>): void => {
+    const actionArguments = new Set(knownActionArguments)
+    for (const argument of knownVscode.keys()) actionArguments.delete(argument)
+    for (const argument of next.keys()) actionArguments.add(argument)
+    knownActionArguments = actionArguments
+    knownVscode = new Map(next)
+  }
 
   const scan = async (extensionId: LauncherDiscoveryExtensionId, parentSignal: AbortSignal): Promise<readonly LauncherDiscoveryEntry[]> => {
     const controller = new AbortController()
@@ -282,6 +318,12 @@ export function createLauncherDiscoveryExtensions(options: LauncherDiscoveryOpti
     }
     if (signal.aborted) throw signal.reason instanceof Error ? signal.reason : new Error('TockLauncher discovery scan canceled')
     if (generation !== scanGeneration) throw new Error('TockLauncher discovery scan was superseded')
+    const vscodeIndex = ids.indexOf('VSCode')
+    const vscodeFailed = vscodeIndex >= 0 && settled[vscodeIndex]?.status === 'rejected'
+    if (vscodeFailed) {
+      vscodeRecents = Object.freeze([])
+      replaceVscodeActions(new Map())
+    }
 
     const actionArguments = new Set<string>()
     const administrators = new Map<string, Readonly<{ entry: Extract<LauncherDiscoveryEntry, { kind: 'application' }>; identity: LauncherDiscoveryIdentity | undefined; name: string; target: string }>>()
@@ -289,7 +331,8 @@ export function createLauncherDiscoveryExtensions(options: LauncherDiscoveryOpti
     const bookmarks = new Map<string, Readonly<{ entry: Extract<LauncherDiscoveryEntry, { kind: 'bookmark' }> }>>()
     const reveals = new Map<string, Readonly<{ entry: Extract<LauncherDiscoveryEntry, { kind: 'application' }>; identity: LauncherDiscoveryIdentity | undefined }>>()
     const jetbrains = new Map<string, Readonly<{ entry: Extract<LauncherDiscoveryEntry, { kind: 'jetbrains' }>; executableIdentity: LauncherDiscoveryIdentity | undefined; projectIdentity: LauncherDiscoveryIdentity | undefined }>>()
-    const vscode = new Map<string, Readonly<{ entry: Extract<LauncherDiscoveryEntry, { kind: 'vscode' }>; identity: LauncherDiscoveryIdentity | undefined }>>()
+    const vscode = new Map<string, Readonly<{ entry: Extract<LauncherDiscoveryEntry, { kind: 'vscode' }>; executableIdentity: LauncherDiscoveryIdentity | undefined; identity: LauncherDiscoveryIdentity | undefined }>>()
+    let nextVscodeRecents: readonly Extract<LauncherDiscoveryEntry, { kind: 'vscode' }>[] = Object.freeze([])
     const indexed: LauncherInternalResultItem[] = []
     const reportIconError = (() => { let reported = false; return (error: Error) => { if (!reported) { reported = true; options.onProviderError?.('ApplicationSearch', error) } } })()
     const mapEntry = async (
@@ -300,8 +343,10 @@ export function createLauncherDiscoveryExtensions(options: LauncherDiscoveryOpti
       if (!bounded(entry.id, 512) || (entry.kind !== 'vscode' && !bounded(entry.name, 512))) return undefined
       if (entry.kind === 'application') {
         if (!bounded(entry.path) || !isApplicationTarget(entry.path)) return undefined
-        const identity = !isWindowsStore(entry.path) ? await options.capturePathIdentity?.(entry.path) : undefined
-        const admin = options.platform === 'Windows' && !isWindowsStore(entry.path)
+        const storeApplication = isWindowsStore(entry.path)
+        const identity = !storeApplication ? await captureIdentity(entry.path, signal) : undefined
+        if (!storeApplication && identity === undefined) return undefined
+        const admin = options.platform === 'Windows' && !storeApplication
           ? action(HANDLERS.openApplicationAsAdministrator, 'Open application as administrator', { kind: 'application-administrator', target: entry.path }, { keyboardShortcut: 'Shift+Enter', requiresConfirmation: true })
           : undefined
         if (admin !== undefined) adminMap.set(admin.argument, Object.freeze({ entry, identity, name: entry.name, target: entry.path }))
@@ -348,8 +393,9 @@ export function createLauncherDiscoveryExtensions(options: LauncherDiscoveryOpti
           defaultAction: action(HANDLERS.launch, `Open ${entry.name} with ${entry.toolName}`, { args: [entry.projectPath], executable: entry.executable, kind: 'executable' }),
           description: `${entry.toolName} Project`, details: entry.projectPath, id: entry.id, imageKey: 'jetbrains-toolbox', name: entry.name, sourceExtension: 'JetBrainsToolbox',
         })
-        const executableIdentity = await options.capturePathIdentity?.(entry.executable)
-        const projectIdentity = await options.capturePathIdentity?.(entry.projectPath)
+        const executableIdentity = await captureIdentity(entry.executable, signal)
+        const projectIdentity = await captureIdentity(entry.projectPath, signal)
+        if (executableIdentity === undefined || projectIdentity === undefined) return undefined
         jetbrains.set(item.defaultAction.argument, Object.freeze({ entry, executableIdentity, projectIdentity }))
         actionArgumentsOf(item).forEach(argument => map.add(argument))
         return item
@@ -362,7 +408,7 @@ export function createLauncherDiscoveryExtensions(options: LauncherDiscoveryOpti
       const extensionId = ids[index]!
       const entries = result.value.slice(0, MAX_ITEMS_PER_EXTENSION)
       if (extensionId === 'VSCode') {
-        vscodeRecents = Object.freeze(entries.filter((entry): entry is Extract<LauncherDiscoveryEntry, { kind: 'vscode' }> => entry.kind === 'vscode'))
+        nextVscodeRecents = Object.freeze(entries.filter((entry): entry is Extract<LauncherDiscoveryEntry, { kind: 'vscode' }> => entry.kind === 'vscode'))
         continue
       }
       for (let offset = 0; offset < entries.length; offset += MAX_ICON_CONCURRENCY) {
@@ -372,6 +418,7 @@ export function createLauncherDiscoveryExtensions(options: LauncherDiscoveryOpti
       }
     }
     if (generation !== scanGeneration) throw new Error('TockLauncher discovery scan was superseded')
+    vscodeRecents = nextVscodeRecents
     knownActionArguments = actionArguments
     knownAdministratorActions = administrators
     knownApplications = applications
@@ -384,30 +431,49 @@ export function createLauncherDiscoveryExtensions(options: LauncherDiscoveryOpti
   }
 
   const searchInstant = async (searchTerm: string) => {
-    if (!enabled().has('VSCode')) return Object.freeze({ after: Object.freeze([]), before: Object.freeze([]) })
+    const generation = ++instantGeneration
+    const scanAtStart = scanGeneration
+    const empty = () => {
+      if (generation === instantGeneration && scanAtStart === scanGeneration) replaceVscodeActions(new Map())
+      return Object.freeze({ after: Object.freeze([]), before: Object.freeze([]) })
+    }
+    if (!enabled().has('VSCode')) return empty()
     const prefixValue = options.getSetting('extension[VSCode].prefix', defaults.VSCode.prefix)
     const prefix = bounded(prefixValue, 64) ? prefixValue.trim() : defaults.VSCode.prefix
-    if (prefix.length > 0 && !searchTerm.startsWith(`${prefix} `)) return Object.freeze({ after: Object.freeze([]), before: Object.freeze([]) })
+    if (prefix.length > 0 && !searchTerm.startsWith(`${prefix} `)) return empty()
     const term = (prefix.length > 0 ? searchTerm.slice(prefix.length + 1) : searchTerm).trim().toLocaleLowerCase('en-US')
-    if (/^(?:\/|~|[A-Za-z]:[\\/])/u.test(term)) return Object.freeze({ after: Object.freeze([]), before: Object.freeze([]) })
+    if (/^(?:\/|~|[A-Za-z]:[\\/])/u.test(term)) return empty()
     const showPathValue = options.getSetting('extension[VSCode].showPath', defaults.VSCode.showPath)
     const showPath = showPathValue === true
-    const executable = parseVSCodeCommand(options.getSetting('extension[VSCode].command', defaults.VSCode.command), defaults.VSCode.command)
-    for (const argument of knownVscode.keys()) knownActionArguments.delete(argument)
-    knownVscode = new Map()
-    const after = await Promise.all(vscodeRecents.filter(entry => term.length === 0 || `${entry.label ?? ''} ${entry.path} ${entry.uri}`.toLocaleLowerCase('en-US').includes(term)).slice(0, MAX_ITEMS_PER_EXTENSION).map(async entry => {
+    const parsedExecutable = parseVSCodeCommand(options.getSetting('extension[VSCode].command', defaults.VSCode.command), defaults.VSCode.command)
+    let executable: string | undefined
+    try { executable = await withTimeout(resolveExecutable(parsedExecutable, options.platform, environment), new AbortController().signal, mappingTimeoutMs) }
+    catch { executable = undefined }
+    if (executable === undefined || !isAbsolute(executable) || !isAllowedLauncherVSCodeExecutable(executable)) return empty()
+    const mappingSignal = new AbortController().signal
+    const executableIdentity = await captureIdentity(executable, mappingSignal)
+    if (executableIdentity === undefined) return empty()
+    const mapped = await Promise.all(vscodeRecents.filter(entry => term.length === 0 || `${entry.label ?? ''} ${entry.path} ${entry.uri}`.toLocaleLowerCase('en-US').includes(term)).slice(0, MAX_ITEMS_PER_EXTENSION).map(async entry => {
       const id = entry.id.length <= 512 ? entry.id : `vscode:${createHash('sha256').update(entry.id).digest('hex')}`
+      const identity = entry.uri.startsWith('file:') ? await captureIdentity(entry.path, mappingSignal) : undefined
+      if (entry.uri.startsWith('file:') && identity === undefined) return undefined
       const item = Object.freeze({
         defaultAction: action(HANDLERS.launch, `Open ${entry.fileType} in VSCode`, { args: [entry.commandArg, entry.uri], executable, kind: 'executable' }),
         description: entry.fileType, details: entry.path, id, imageKey: entry.commandArg === '--file-uri' ? 'vscode-file' : 'vscode',
         name: `${entry.label ?? path.basename(entry.path)}${showPath ? ` (${entry.path})` : ''}`.slice(0, 512), sourceExtension: 'VSCode',
       })
-      const identity = entry.uri.startsWith('file:') ? await options.capturePathIdentity?.(entry.path) : undefined
-      knownVscode.set(item.defaultAction.argument, Object.freeze({ entry, identity }))
-      knownActionArguments.add(item.defaultAction.argument)
-      return item
+      return Object.freeze({ identity, item, argument: item.defaultAction.argument, entry })
     }))
-    return Object.freeze({ after: Object.freeze(after), before: Object.freeze([]) })
+    if (generation !== instantGeneration || scanAtStart !== scanGeneration) return empty()
+    const next = new Map<string, Readonly<{ entry: Extract<LauncherDiscoveryEntry, { kind: 'vscode' }>; executableIdentity: LauncherDiscoveryIdentity | undefined; identity: LauncherDiscoveryIdentity | undefined }>>()
+    const items: LauncherInternalResultItem[] = []
+    for (const value of mapped) {
+      if (value === undefined) continue
+      next.set(value.argument, Object.freeze({ entry: value.entry, executableIdentity, identity: value.identity }))
+      items.push(value.item)
+    }
+    replaceVscodeActions(next)
+    return Object.freeze({ after: Object.freeze(items), before: Object.freeze([]) })
   }
 
   const executeAction = async (record: LauncherActionRecord): Promise<boolean> => {
@@ -423,6 +489,7 @@ export function createLauncherDiscoveryExtensions(options: LauncherDiscoveryOpti
       const current = knownAdministratorActions.get(record.argument)
       const target = value.kind === 'application-administrator' && bounded(value.target) ? value.target : undefined
       if (options.platform !== 'Windows' || record.sourceExtension !== 'ApplicationSearch' || record.requiresConfirmation !== true || target === undefined || current === undefined || current.target !== target || !isApplicationTarget(target) || isWindowsStore(target)) throw new Error('Invalid application administrator action policy')
+      if (current.identity === undefined) throw revalidationError('Application')
       if (options.revalidate?.application !== undefined && !await options.revalidate.application(target, current.entry, current.identity)) throw revalidationError('Application')
       if (await options.effects.confirmOpenApplicationAsAdministrator({ name: current.name, target })) {
         if (options.revalidate?.application !== undefined && !await options.revalidate.application(target, current.entry, current.identity)) throw revalidationError('Application')
@@ -434,6 +501,7 @@ export function createLauncherDiscoveryExtensions(options: LauncherDiscoveryOpti
       if (record.sourceExtension !== 'ApplicationSearch' || value.kind !== 'application' || !bounded(value.target) || !isApplicationTarget(value.target)) throw new Error('Invalid application action')
       const current = knownApplications.get(record.argument)
       if (current === undefined || current.entry.path !== value.target) throw new Error('Application action is not from the current main-owned scan')
+      if (!isWindowsStore(value.target) && current.identity === undefined) throw revalidationError('Application')
       if (options.revalidate?.application !== undefined && !await options.revalidate.application(value.target, current.entry, current.identity)) throw revalidationError('Application')
       await options.effects.openApplication(value.target); return true
     }
@@ -448,6 +516,7 @@ export function createLauncherDiscoveryExtensions(options: LauncherDiscoveryOpti
       if (record.sourceExtension !== 'ApplicationSearch' || value.kind !== 'path' || !bounded(value.path) || !isAbsolute(value.path)) throw new Error('Invalid reveal action')
       const current = knownReveals.get(record.argument)
       if (current === undefined || current.entry.path !== value.path) throw new Error('Reveal action is not from the current main-owned scan')
+      if (current.identity === undefined) throw revalidationError('Reveal')
       if (options.revalidate?.reveal !== undefined && !await options.revalidate.reveal(value.path, current.entry, current.identity)) throw revalidationError('Reveal')
       await options.effects.revealPath(value.path); return true
     }
@@ -456,12 +525,14 @@ export function createLauncherDiscoveryExtensions(options: LauncherDiscoveryOpti
       if (!isAbsolute(value.executable) || value.args.length !== 1 || !isAbsolute(value.args[0]!)) throw new Error('Invalid JetBrains launch action')
       const current = knownJetBrains.get(record.argument)
       if (current === undefined || current.entry.executable !== value.executable || current.entry.projectPath !== value.args[0]) throw new Error('JetBrains action is not from the current main-owned scan')
+      if (current.executableIdentity === undefined || current.projectIdentity === undefined) throw revalidationError('JetBrains')
       if (options.revalidate?.jetbrains !== undefined && !await options.revalidate.jetbrains({ executable: value.executable, projectPath: value.args[0]!, entry: current.entry, executableIdentity: current.executableIdentity, projectIdentity: current.projectIdentity })) throw revalidationError('JetBrains')
     } else {
       if (!isAllowedLauncherVSCodeExecutable(value.executable) || (value.args[0] !== '--file-uri' && value.args[0] !== '--folder-uri') || !bounded(value.args[1])) throw new Error('Invalid VS Code launch action')
       const current = knownVscode.get(record.argument)
       if (current === undefined || current.entry.uri !== value.args[1] || current.entry.commandArg !== value.args[0]) throw new Error('VS Code action is not from the current main-owned scan')
-      if (options.revalidate?.vscode !== undefined && !await options.revalidate.vscode({ executable: value.executable, uri: value.args[1]!, entry: current.entry, identity: current.identity })) throw revalidationError('VS Code')
+      if (current.executableIdentity === undefined || (current.entry.uri.startsWith('file:') && current.identity === undefined)) throw revalidationError('VS Code')
+      if (options.revalidate?.vscode !== undefined && !await options.revalidate.vscode({ executable: value.executable, uri: value.args[1]!, entry: current.entry, executableIdentity: current.executableIdentity, identity: current.identity })) throw revalidationError('VS Code')
     }
     await options.effects.launchExecutable(value.executable, value.args as string[])
     return true

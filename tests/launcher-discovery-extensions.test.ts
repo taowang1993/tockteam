@@ -21,6 +21,8 @@ const baseOptions = {
   getSetting: <T>(_key: string, fallback: T) => fallback,
   homePath: '/Users/max',
   platform: 'macOS' as const,
+  capturePathIdentity: async (_target: string) => ({ dev: '1', ino: '1' }),
+  resolveExecutable: async (executable: string) => executable === 'code' ? '/usr/local/bin/code' : executable,
   scanners: entries,
 }
 
@@ -63,6 +65,19 @@ test('maps applications, bookmarks, JetBrains projects, and VS Code to opaque bo
   const instant = await provider.searchInstant('vscode tock')
   assert.equal(instant.after[0]?.sourceExtension, 'VSCode')
   assert.equal(instant.after[0]?.defaultAction.argument.includes('file:///work/tockteam'), true)
+})
+
+test('does not publish local targets without captured identities', async () => {
+  const provider = createLauncherDiscoveryExtensions({
+    ...baseOptions,
+    capturePathIdentity: async () => undefined,
+    enabledExtensionIds: () => LAUNCHER_DISCOVERY_EXTENSION_IDS,
+    effects: { confirmOpenApplicationAsAdministrator: async () => false, copyText: () => {}, launchExecutable: () => {}, openApplication: () => {}, openApplicationAsAdministrator: () => {}, openExternal: () => {}, revealPath: () => {} },
+  })
+  const indexed = await provider.loadIndexedItems(new AbortController().signal)
+  assert.deepEqual(indexed.map(item => item.sourceExtension), ['BrowserBookmarks'])
+  const instant = await provider.searchInstant('vscode tock')
+  assert.deepEqual(instant.after, [])
 })
 
 test('isolates provider failures and enforces latest scan cancellation', async () => {

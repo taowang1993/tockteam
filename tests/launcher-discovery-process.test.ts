@@ -9,6 +9,7 @@ import {
   resolveWindowsApplicationElevationInvocation,
   revalidateLauncherPath,
   revalidateLauncherUrl,
+  resolveLauncherExecutable,
   revalidateLauncherWindowsStoreId,
   revalidateLauncherVscodeUri,
 } from '../src/launcher-discovery-process.ts'
@@ -31,6 +32,17 @@ test('detached launch uses argument arrays and hidden detached children', async 
   spawnListener?.()
   await new Promise(resolve => setImmediate(resolve))
   assert.deepEqual(calls, [['code', ['--folder-uri', 'file:///work/tockteam'], { detached: true, stdio: 'ignore', windowsHide: true }], 'unref'])
+})
+
+test('resolves only finite PATH VS Code executable candidates', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'tockteam-code-'))
+  try {
+    await writeFile(join(root, 'code.cmd'), 'code', 'utf8')
+    assert.equal(await resolveLauncherExecutable('code', 'Windows', { PATH: root }), join(root, 'code.cmd'))
+    assert.equal(await resolveLauncherExecutable('code.cmd', 'Windows', { PATH: root }), join(root, 'code.cmd'))
+    assert.equal(await resolveLauncherExecutable('code;evil', 'Windows', { PATH: root }), undefined)
+    assert.equal(await resolveLauncherExecutable('code', 'Windows', { PATH: '' }), undefined)
+  } finally { await rm(root, { recursive: true, force: true }) }
 })
 
 test('path and URL revalidation rejects drift immediately before effect', async () => {
