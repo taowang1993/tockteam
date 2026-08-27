@@ -51,19 +51,19 @@ export function createLauncherFileSearchTool(options: Readonly<{
       if (details !== undefined && itemDetails !== undefined) { details.textContent = itemDetails; details.setAttribute('aria-label', itemDetails) }
       button.append(name, description)
       if (details !== undefined) content.append(details)
-      button.addEventListener('click', () => { void invoke(item.defaultAction) })
+      button.addEventListener('click', () => { void invoke(item.defaultAction, item) })
       content.append(button)
       if (actions.length > 1) {
         const menuId = `launcher-file-search-actions-${index}`
         const toggle = element(document, 'button', 'shrink-0 rounded-md px-2 py-2 text-xs hover:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))]')
-        toggle.type = 'button'; toggle.textContent = 'Actions'; toggle.setAttribute('aria-label', `Actions for ${item.name}`); toggle.setAttribute('aria-haspopup', 'menu'); toggle.setAttribute('aria-expanded', 'false'); toggle.setAttribute('aria-controls', menuId)
+        toggle.type = 'button'; toggle.textContent = 'Actions'; toggle.setAttribute('aria-label', `Actions for ${item.name}`); toggle.setAttribute('aria-haspopup', 'menu'); toggle.setAttribute('aria-expanded', 'false'); toggle.setAttribute('aria-controls', menuId); toggle.setAttribute('data-file-search-result-id', item.id)
         const menu = element(document, 'div', 'absolute right-0 top-full z-10 mt-1 min-w-[220px] rounded-lg border border-[var(--dsw-alias-border-l2,CanvasText)] bg-[var(--dsw-alias-bg-layer-1,Canvas)] py-1 shadow-lg')
         menu.id = menuId; menu.hidden = true; menu.setAttribute('role', 'menu'); menu.setAttribute('aria-label', `Actions for ${item.name}`)
         const menuButtons: HTMLButtonElement[] = []
         for (const action of actions) {
           const actionButton = element(document, 'button', 'flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))]')
           actionButton.type = 'button'; actionButton.setAttribute('role', 'menuitem'); actionButton.setAttribute('aria-label', actionLabel(action)); actionButton.textContent = actionLabel(action)
-          actionButton.addEventListener('click', () => { menu.hidden = true; toggle.setAttribute('aria-expanded', 'false'); void invoke(action) })
+          actionButton.addEventListener('click', () => { menu.hidden = true; toggle.setAttribute('aria-expanded', 'false'); void invoke(action, item) })
           menuButtons.push(actionButton); menu.append(actionButton)
         }
         const closeMenu = (): void => { menu.hidden = true; toggle.setAttribute('aria-expanded', 'false'); toggle.focus() }
@@ -88,19 +88,31 @@ export function createLauncherFileSearchTool(options: Readonly<{
       list.append(row)
     }
   }
-  const invoke = async (action: LauncherPublicAction): Promise<void> => {
+  type RestoreFocus = Readonly<{ menu: boolean; resultId: string }>
+  const restoreFocus = (target: RestoreFocus): void => {
+    if (target.menu) {
+      const toggle = [...list.querySelectorAll<HTMLButtonElement>('[data-file-search-result-id]')]
+        .find(candidate => candidate.getAttribute('data-file-search-result-id') === target.resultId)
+      if (toggle !== undefined) { toggle.focus(); return }
+    }
+    input.focus()
+  }
+  const invoke = async (action: LauncherPublicAction, item: LauncherPublicResultItem): Promise<void> => {
+    const focus = action.hideWindowAfterInvocation === true
+      ? undefined
+      : { menu: document.activeElement?.getAttribute('role') === 'menuitem', resultId: item.id }
     try {
       const result = await bridge.invokeAction(action.actionId)
-      if (!result.ok) { await search(); return }
+      if (!result.ok) { await search(focus); return }
       if (action.hideWindowAfterInvocation === true) await bridge.dismiss().catch(() => undefined)
-      else await search()
+      else await search(focus)
     } catch {
       status.textContent = `${action.description} could not be completed.`
       status.setAttribute('data-tone', 'error')
-      await search()
+      await search(focus)
     }
   }
-  const search = async (): Promise<void> => {
+  const search = async (focus?: RestoreFocus): Promise<void> => {
     const revision = ++requestRevision
     const term = input.value.trim()
     if (term.length === 0) { render([]); status.textContent = 'Enter a file name to search.'; return }
@@ -112,9 +124,11 @@ export function createLauncherFileSearchTool(options: Readonly<{
       render([...response.before, ...response.after])
       status.textContent = response.status.lastError ?? (currentItems.length === 0 ? 'No files found.' : `${currentItems.length} files found.`)
       status.setAttribute('data-tone', response.status.lastError === undefined ? 'ready' : 'error')
+      if (focus !== undefined) restoreFocus(focus)
     } catch {
       if (revision !== requestRevision) return
       render([]); status.textContent = 'File Search is unavailable.'; status.setAttribute('data-tone', 'error')
+      if (focus !== undefined) restoreFocus(focus)
     }
   }
   input.addEventListener('input', () => { void search() })
