@@ -189,6 +189,8 @@ try {
     require: typeof window.require,
     dshDesktop: typeof window.dshDesktop,
     electronAPI: typeof window.electronAPI,
+    launcherApiKeys: Object.keys(window.tockteamLauncher ?? {}),
+    launcherApiFrozen: Object.isFrozen(window.tockteamLauncher),
     csp: document.querySelector('meta[http-equiv="Content-Security-Policy"]')?.content,
   })`)
   assert.deepEqual(facts, {
@@ -200,6 +202,8 @@ try {
     require: 'undefined',
     dshDesktop: 'undefined',
     electronAPI: 'undefined',
+    launcherApiKeys: ['dismiss'],
+    launcherApiFrozen: true,
     csp: launcherCsp,
   })
   const attackFacts = await launcherConnection.evaluate(`({
