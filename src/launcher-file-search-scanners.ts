@@ -389,8 +389,10 @@ async function queryFileSearch(
     ...(input.platform === 'Windows' ? { windowsHide: true } : null),
   })
   throwIfAborted(input.signal)
+  const stdout = String(result.stdout)
+  if (Buffer.byteLength(stdout, 'utf8') > MAX_QUERY_OUTPUT_BYTES) throw new Error('File Search output exceeds its bounded limit')
   const candidates: string[] = []
-  for (const raw of String(result.stdout).split(/\r?\n/u)) {
+  for (const raw of stdout.split(/\r?\n/u)) {
     const candidate = raw.trim()
     if (candidate.length === 0 || candidate.length > MAX_ROW_LENGTH || /[\0\r\n]/u.test(candidate)) continue
     if (!isWithinHome(input.platform, input.homePath, candidate, true)) continue

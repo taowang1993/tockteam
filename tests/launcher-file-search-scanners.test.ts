@@ -46,6 +46,15 @@ test('file-search query uses fixed bounded process options and filters stale/out
   }
 })
 
+test('file-search output is rejected before unbounded row parsing', async () => {
+  const scanners = createLauncherFileSearchScanners({
+    runFile: async () => ({ stdout: 'x'.repeat(2 * 1024 * 1024 + 1) }),
+  })
+  await assert.rejects(scanners.queryFileSearch({
+    everythingCliFilePath: '', homePath: '/home/max', maxResults: 20, platform: 'macOS', searchTerm: 'report', signal: signal(),
+  }), /output exceeds/u)
+})
+
 test('Simple File Search traverses deterministically without following hidden or symlink entries', async () => {
   const home = await mkdtemp(join(tmpdir(), 'tockteam-simple-search-'))
   const outside = await mkdtemp(join(tmpdir(), 'tockteam-simple-search-outside-'))
