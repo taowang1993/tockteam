@@ -162,7 +162,7 @@ test('does not let an older instant search overwrite the current VS Code action 
 })
 
 test('passes hostile VS Code URI characters only as direct executable arguments', async () => {
-  const hostileUri = 'vscode-remote://ssh/work%20space%26%7C%3C%3E%5E%22%25%21'
+  const hostileUri = 'vscode-remote://ssh/work & | < > ^ " %!'
   const launches: Array<{ executable: string; args: readonly string[] }> = []
   const provider = createLauncherDiscoveryExtensions({
     ...baseOptions,

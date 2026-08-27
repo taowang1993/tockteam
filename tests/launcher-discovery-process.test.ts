@@ -48,6 +48,7 @@ test('resolves finite Windows VS Code requests to the concrete Code.exe install 
     assert.equal(await resolveLauncherExecutable('code.exe', 'Windows', { PATH: bin }), executable)
     assert.equal((await resolveLauncherExecutable('code', 'Windows', { PATH: bin }))?.toLocaleLowerCase('en-US').endsWith('.cmd'), false)
     assert.equal(await resolveLauncherExecutable('code;evil', 'Windows', { PATH: bin }), undefined)
+    assert.equal(await resolveLauncherExecutable('code\n&', 'Windows', { PATH: bin }), undefined)
     assert.equal(await resolveLauncherExecutable('code', 'Windows', { PATH: '' }), undefined)
   } finally { await rm(root, { recursive: true, force: true }) }
 })
