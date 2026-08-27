@@ -148,6 +148,37 @@ test('launcher lazily creates and reuses one focused, rebound window', async () 
   assert.equal(setupResult.windows[0]?.visible, false)
 })
 
+test('concurrent shows wait for the shared load and reject together when it fails', async () => {
+  let failLoad: ((error: Error) => void) | undefined
+  const result = setup('linux', window => {
+    window.load = () => new Promise<void>((_resolve, reject) => { failLoad = reject })
+  })
+  const first = result.controller.show()
+  const second = result.controller.show()
+  await new Promise(resolve => setImmediate(resolve))
+  assert.equal(result.windows[0]?.showCount, 0)
+  failLoad?.(new Error('deferred load failed'))
+  const settled = await Promise.allSettled([first, second])
+  assert.deepEqual(settled.map(entry => entry.status), ['rejected', 'rejected'])
+  assert.equal(result.windows[0]?.destroyed, true)
+})
+
+test('concurrent toggles preserve both intents while the launcher loads', async () => {
+  let release: (() => void) | undefined
+  const result = setup('linux', window => {
+    window.load = () => new Promise<void>(resolve => { release = resolve })
+  })
+  const first = result.controller.toggle()
+  const second = result.controller.toggle()
+  await new Promise(resolve => setImmediate(resolve))
+  assert.equal(result.windows[0]?.showCount, 0)
+  release?.()
+  await Promise.all([first, second])
+  assert.equal(result.windows[0]?.showCount, 1)
+  assert.equal(result.windows[0]?.hideCount, 1)
+  assert.equal(result.windows[0]?.visible, false)
+})
+
 test('blur and Escape keyDown/rawKeyDown dismiss but keyUp and unrelated keys do not', async () => {
   const { controller, windows } = setup()
   await controller.show()

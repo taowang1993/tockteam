@@ -92,6 +92,7 @@ export class LauncherOverlayController {
   private window: LauncherOverlayWindow | null = null
   private windowDisposer: (() => void) | undefined
   private windowPromise: Promise<LauncherOverlayWindow> | null = null
+  private togglePromise: Promise<void> = Promise.resolve()
   private pendingLoad: { window: LauncherOverlayWindow; reject: (error: Error) => void } | undefined
   private ownsShortcut = false
   private shortcutState: LauncherShortcutState
@@ -173,14 +174,18 @@ export class LauncherOverlayController {
     window.focus()
   }
 
-  async toggle(): Promise<void> {
-    this.assertUsable()
-    const currentWindow = this.liveWindow()
-    if (currentWindow?.isVisible()) {
-      this.hide()
-      return
-    }
-    await this.show()
+  toggle(): Promise<void> {
+    const operation = this.togglePromise.then(async () => {
+      this.assertUsable()
+      const currentWindow = this.liveWindow()
+      if (currentWindow?.isVisible()) {
+        this.hide()
+        return
+      }
+      await this.show()
+    })
+    this.togglePromise = operation.catch(() => {})
+    return operation
   }
 
   hide(): void {
@@ -267,9 +272,9 @@ export class LauncherOverlayController {
   }
 
   private async getOrCreateWindow(): Promise<LauncherOverlayWindow> {
+    if (this.windowPromise !== null) return await this.windowPromise
     const currentWindow = this.liveWindow()
     if (currentWindow !== null) return currentWindow
-    if (this.windowPromise !== null) return await this.windowPromise
 
     const promise = (async (): Promise<LauncherOverlayWindow> => {
       this.assertUsable()
