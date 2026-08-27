@@ -12,15 +12,19 @@ function widgetDom(embed, from, to, reveal) {
     widget.setAttribute('aria-label', `${embed.target.kind} Embed: ${embed.target.display ?? embed.target.path}`);
     widget.tabIndex = 0;
     widget.addEventListener('mousedown', event => {
-        if (event.target instanceof Element && event.target.closest('audio,video') !== null)
+        if (event.target instanceof Element && event.target.closest('audio,video') !== null) {
+            event.stopPropagation();
             return;
+        }
         event.preventDefault();
         event.stopPropagation();
         reveal();
     });
     widget.addEventListener('keydown', event => {
-        if (event.target instanceof Element && event.target.closest('audio,video') !== null)
+        if (event.target instanceof Element && event.target.closest('audio,video') !== null) {
+            event.stopPropagation();
             return;
+        }
         if (event.key !== 'Enter' && event.key !== ' ')
             return;
         event.preventDefault();

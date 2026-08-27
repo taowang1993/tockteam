@@ -271,6 +271,10 @@ function assertRestoreTrashRequest(value) {
     if (value.toPath !== undefined)
         assertEntryPath(value.toPath);
 }
+async function synchronizeDesktopVault(noteVault, signal) {
+    await noteVault.synchronizeDesktopSelection(signal);
+    signal.throwIfAborted();
+}
 /** Host-only projection of accepted note-vault workbench capabilities. */
 let TockTutorWorkbenchGateway = (() => {
     let _classSuper = TypertRemoteService;
@@ -375,24 +379,20 @@ let TockTutorWorkbenchGateway = (() => {
             super(ctx, 'tocktutorWorkbench');
             __runInitializers(this, _instanceExtraInitializers);
         }
-        async synchronizeDesktopVault(signal) {
-            await this.ctx.noteVault.synchronizeDesktopSelection(signal);
-            signal.throwIfAborted();
-        }
         async currentVault(signal) {
             signal.throwIfAborted();
             const state = this.ctx.noteVault.state;
             if (!state.active)
                 return null;
             const vault = activeReference(state);
-            await this.synchronizeDesktopVault(signal);
+            await synchronizeDesktopVault(this.ctx.noteVault, signal);
             return vault;
         }
         async createManagedVault(request, signal) {
             assertCreateManagedVaultRequest(request);
             signal.throwIfAborted();
             const vault = activeReference(this.ctx.noteVault.createManagedVault(request.name, request.expectedGeneration));
-            await this.synchronizeDesktopVault(signal);
+            await synchronizeDesktopVault(this.ctx.noteVault, signal);
             return vault;
         }
         async listRecentVaults(signal) {
@@ -406,7 +406,7 @@ let TockTutorWorkbenchGateway = (() => {
             assertRecentVaultRequest(request);
             signal.throwIfAborted();
             const vault = activeReference(this.ctx.noteVault.activateRecentVault(request.id, request.expectedGeneration));
-            await this.synchronizeDesktopVault(signal);
+            await synchronizeDesktopVault(this.ctx.noteVault, signal);
             return vault;
         }
         async removeRecentVault(request, signal) {
@@ -421,7 +421,7 @@ let TockTutorWorkbenchGateway = (() => {
             assertExpectedGeneration(request);
             signal.throwIfAborted();
             const vault = activeReference(this.ctx.noteVault.openSandboxVault(request.expectedGeneration));
-            await this.synchronizeDesktopVault(signal);
+            await synchronizeDesktopVault(this.ctx.noteVault, signal);
             return vault;
         }
         async inspectAttachment(path, expectedVault, signal) {

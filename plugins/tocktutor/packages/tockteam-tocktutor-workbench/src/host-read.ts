@@ -347,6 +347,14 @@ function assertRestoreTrashRequest(value: RestoreTrashRequest): void {
   if (value.toPath !== undefined) assertEntryPath(value.toPath)
 }
 
+async function synchronizeDesktopVault(
+  noteVault: Pick<NoteVaultRuntime, 'synchronizeDesktopSelection'>,
+  signal: AbortSignal,
+): Promise<void> {
+  await noteVault.synchronizeDesktopSelection(signal)
+  signal.throwIfAborted()
+}
+
 /** Host-only projection of accepted note-vault workbench capabilities. */
 export class TockTutorWorkbenchGateway extends TypertRemoteService {
   static inject = ['noteVault']
@@ -355,18 +363,13 @@ export class TockTutorWorkbenchGateway extends TypertRemoteService {
     super(ctx, 'tocktutorWorkbench')
   }
 
-  private async synchronizeDesktopVault(signal: AbortSignal): Promise<void> {
-    await this.ctx.noteVault.synchronizeDesktopSelection(signal)
-    signal.throwIfAborted()
-  }
-
   @Remote
   async currentVault(signal: AbortSignal): Promise<ActiveVaultResult> {
     signal.throwIfAborted()
     const state = this.ctx.noteVault.state
     if (!state.active) return null
     const vault = activeReference(state)
-    await this.synchronizeDesktopVault(signal)
+    await synchronizeDesktopVault(this.ctx.noteVault, signal)
     return vault
   }
 
@@ -375,7 +378,7 @@ export class TockTutorWorkbenchGateway extends TypertRemoteService {
     assertCreateManagedVaultRequest(request)
     signal.throwIfAborted()
     const vault = activeReference(this.ctx.noteVault.createManagedVault(request.name, request.expectedGeneration))
-    await this.synchronizeDesktopVault(signal)
+    await synchronizeDesktopVault(this.ctx.noteVault, signal)
     return vault
   }
 
@@ -393,7 +396,7 @@ export class TockTutorWorkbenchGateway extends TypertRemoteService {
     assertRecentVaultRequest(request)
     signal.throwIfAborted()
     const vault = activeReference(this.ctx.noteVault.activateRecentVault(request.id, request.expectedGeneration))
-    await this.synchronizeDesktopVault(signal)
+    await synchronizeDesktopVault(this.ctx.noteVault, signal)
     return vault
   }
 
@@ -412,7 +415,7 @@ export class TockTutorWorkbenchGateway extends TypertRemoteService {
     assertExpectedGeneration(request)
     signal.throwIfAborted()
     const vault = activeReference(this.ctx.noteVault.openSandboxVault(request.expectedGeneration))
-    await this.synchronizeDesktopVault(signal)
+    await synchronizeDesktopVault(this.ctx.noteVault, signal)
     return vault
   }
 

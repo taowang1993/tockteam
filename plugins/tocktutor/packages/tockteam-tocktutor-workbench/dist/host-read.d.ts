@@ -16,7 +16,6 @@ declare module '@deepseek-ai/cordis' {
 export declare class TockTutorWorkbenchGateway extends TypertRemoteService {
     static inject: string[];
     constructor(ctx: Context);
-    private synchronizeDesktopVault;
     currentVault(signal: AbortSignal): Promise<ActiveVaultResult>;
     createManagedVault(request: CreateManagedVaultRequest, signal: AbortSignal): Promise<VaultReference>;
     listRecentVaults(signal: AbortSignal): Promise<RecentVaultListResult>;
