@@ -1245,6 +1245,7 @@ function initializeLauncher(): void {
   })
   const rescan = async () => {
     actions.clear()
+    fileSearch.invalidate()
     return await coreSearch.rescan()
   }
   launcherRescan = rescan
@@ -1264,8 +1265,8 @@ function initializeLauncher(): void {
   controller = nextController
   launcherController = nextController
   launcherCoreFlush = async () => {
-    await coreSearch.close()
     await fileSearch.close()
+    await coreSearch.close()
   }
   launcherPersistentSetsSync = () => { syncLauncherPersistentSets(coreSearch) }
   const launcherGuard = createLauncherIpcGuard({
@@ -1332,10 +1333,15 @@ function initializeLauncher(): void {
         return await selectExternalLauncherSettings()
       }, { blockMutationsAfterSuccess: true, mutation: true }),
       updateSetting: async (key, value) => await runLauncherSettingsOperation(async () => {
+        const needsRescan = key === 'extensions.enabledExtensionIds' || discoverySettingKeys.has(key)
+        if (needsRescan) {
+          actions.clear()
+          fileSearch.invalidate()
+        }
         await requireLauncherPersistence().updateSetting(key, value)
         launcherPersistentSetsSync?.()
         await launcherLifecycle?.sync()
-        if (key === 'extensions.enabledExtensionIds' || discoverySettingKeys.has(key)) await launcherRescan?.()
+        if (needsRescan) await launcherRescan?.()
         return settingsOperation()
       }, { mutation: true }),
     },

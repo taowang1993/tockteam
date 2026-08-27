@@ -43,14 +43,28 @@ type FileSearchOptions = Readonly<{
   scanners: LauncherFileSearchScanners
 }>
 
-type KnownPath = Readonly<{ entry: LauncherFileSearchEntry; root: string }>
+type KnownPath = Readonly<{ entry: LauncherFileSearchEntry; root?: string }>
+type FileSearchInstantResult = Readonly<{
+  after: readonly LauncherInternalResultItem[]
+  before: readonly LauncherInternalResultItem[]
+  lastError?: string
+}>
 
-function emptySearch(): Readonly<{ after: readonly LauncherInternalResultItem[]; before: readonly LauncherInternalResultItem[] }> {
-  return Object.freeze({ after: Object.freeze([]), before: Object.freeze([]) })
+function emptySearch(lastError?: string): FileSearchInstantResult {
+  return Object.freeze({
+    after: Object.freeze([]),
+    before: Object.freeze([]),
+    ...(lastError === undefined ? null : { lastError }),
+  })
 }
 
 function error(value: unknown, fallback: string): Error {
   return value instanceof Error ? value : new Error(fallback)
+}
+
+function throwIfNotCurrent(signal: AbortSignal, generation: number, currentGeneration: number): void {
+  if (signal.aborted) throw error(signal.reason, 'TockLauncher file search canceled')
+  if (generation !== currentGeneration) throw new Error('TockLauncher file search was superseded')
 }
 
 function bounded(value: unknown, maxLength = MAX_ARGUMENT_TEXT): value is string {
@@ -157,8 +171,9 @@ async function runBounded<T>(
 export function createLauncherFileSearchExtensions(options: FileSearchOptions): Readonly<{
   close: () => Promise<void>
   executeAction: (record: LauncherActionRecord) => Promise<boolean>
+  invalidate: () => void
   loadIndexedItems: (signal: AbortSignal) => Promise<readonly LauncherInternalResultItem[]>
-  searchInstant: (searchTerm: string) => Promise<Readonly<{ after: readonly LauncherInternalResultItem[]; before: readonly LauncherInternalResultItem[] }>>
+  searchInstant: (searchTerm: string) => Promise<FileSearchInstantResult>
 }> {
   const scanTimeoutMs = Number.isSafeInteger(options.scanTimeoutMs)
     ? Math.max(1, Math.min(MAX_SCAN_TIMEOUT_MS, options.scanTimeoutMs as number))
@@ -169,15 +184,60 @@ export function createLauncherFileSearchExtensions(options: FileSearchOptions): 
   let knownSimple = new Map<string, KnownPath>()
   let knownFile = new Map<string, KnownPath>()
   let activeQuery: Readonly<{ controller: AbortController; generation: number }> | undefined
+  const activeScanControllers = new Set<AbortController>()
+  const activeValidations = new Set<AbortController>()
+  const activeWork = new Set<Promise<unknown>>()
   let queryGeneration = 0
   let scanGeneration = 0
+  let simpleActionGeneration = 0
+  let fileActionGeneration = 0
   let closed = false
+  const providerErrors = new Set<LauncherFileSearchExtensionId>()
 
+  const providerErrorStatus = (): string | undefined => providerErrors.has('FileSearch')
+    ? 'File Search is unavailable. Check the native provider configuration.'
+    : providerErrors.has('SimpleFileSearch')
+      ? 'Simple File Search is unavailable. Check configured roots.'
+      : undefined
+  const reportProviderError = (extensionId: LauncherFileSearchExtensionId, reason: unknown): void => {
+    providerErrors.add(extensionId)
+    options.onProviderError?.(extensionId, error(reason, `${extensionId} provider failed`))
+  }
+  const clearProviderError = (extensionId: LauncherFileSearchExtensionId): void => { providerErrors.delete(extensionId) }
+  const abortActiveValidations = (): void => {
+    for (const controller of activeValidations) controller.abort(new Error('TockLauncher file search action was superseded'))
+  }
+  const abortActiveScans = (): void => {
+    for (const controller of activeScanControllers) controller.abort(new Error('TockLauncher file search scan was superseded'))
+  }
+  const trackWork = <T>(work: Promise<T>): Promise<T> => {
+    let tracked!: Promise<T>
+    tracked = work.then(
+      value => { activeWork.delete(tracked); return value },
+      reason => { activeWork.delete(tracked); throw reason },
+    )
+    activeWork.add(tracked)
+    return tracked
+  }
   const clearActions = (): void => {
+    ++simpleActionGeneration
+    ++fileActionGeneration
+    abortActiveValidations()
     simpleActions = new Set()
     fileActions = new Set()
     knownSimple = new Map()
     knownFile = new Map()
+  }
+  const invalidateFileActions = (): void => {
+    ++fileActionGeneration
+    abortActiveValidations()
+    fileActions = new Set()
+    knownFile = new Map()
+  }
+  const invalidate = (): void => {
+    clearActions()
+    abortActiveScans()
+    activeQuery?.controller.abort(new Error('TockLauncher file search was invalidated'))
   }
 
   const mapEntry = (
@@ -185,7 +245,7 @@ export function createLauncherFileSearchExtensions(options: FileSearchOptions): 
     entry: LauncherFileSearchEntry,
     actions: Set<string>,
     known: Map<string, KnownPath>,
-    root: string,
+    root?: string,
   ): LauncherInternalResultItem | undefined => {
     if (!bounded(entry.path) || !isWithinHome(options.platform, options.homePath, entry.path, true)
       || (entry.type !== 'file' && entry.type !== 'folder')
@@ -204,7 +264,7 @@ export function createLauncherFileSearchExtensions(options: FileSearchOptions): 
       options.platform === 'macOS' ? 'Cmd+O' : 'Ctrl+O',
     )
     actions.add(open.argument); actions.add(reveal.argument)
-    const knownEntry = Object.freeze({ entry: Object.freeze({ ...entry, path: target }), root })
+    const knownEntry = Object.freeze({ entry: Object.freeze({ ...entry, path: target }), ...(root === undefined ? null : { root }) })
     known.set(open.argument, knownEntry)
     known.set(reveal.argument, knownEntry)
     return Object.freeze({
@@ -224,71 +284,90 @@ export function createLauncherFileSearchExtensions(options: FileSearchOptions): 
   const loadIndexedItems = async (signal: AbortSignal): Promise<readonly LauncherInternalResultItem[]> => {
     if (closed) throw new Error('TockLauncher file search is closed')
     const generation = ++scanGeneration
+    abortActiveScans()
     activeQuery?.controller.abort(new Error('TockLauncher file search scan superseded'))
     activeQuery = undefined
     clearActions()
-    const enabledIds = enabled()
-    const nextSimpleActions = new Set<string>()
-    const nextFileActions = new Set<string>()
-    const nextSimple = new Map<string, KnownPath>()
-    const nextFile = new Map<string, KnownPath>()
-    const items: LauncherInternalResultItem[] = []
-    if (enabledIds.has('FileSearch')) {
-      if (options.platform === 'Linux') options.onProviderError?.('FileSearch', new Error('File Search is unsupported on Linux'))
-      else items.push(Object.freeze({
-        defaultAction: Object.freeze({ argument: 'FileSearch', description: 'Search files', handlerKey: HANDLERS.invoke, hideWindowAfterInvocation: false, requiresConfirmation: false }),
-        description: 'File Search', id: 'file-search:invoke', imageKey: 'file-search-folder', name: 'Search files', sourceExtension: 'FileSearch',
-      }))
-    }
-    if (!enabledIds.has('SimpleFileSearch')) return Object.freeze(items)
-    const folders = asFolderSettings(options.getSetting('extension[SimpleFileSearch].folders', []))
-    let count = 0
-    const seen = new Set<string>()
-    for (const folder of folders) {
-      if (signal.aborted) throw error(signal.reason, 'TockLauncher file search canceled')
-      if (!isWithinHome(options.platform, options.homePath, folder.path, true)) {
-        options.onProviderError?.('SimpleFileSearch', new Error(`Configured root is outside the allowed home scope: ${folder.path}`))
-        continue
+    clearProviderError('FileSearch')
+    clearProviderError('SimpleFileSearch')
+    const scanController = new AbortController()
+    const abortFromSignal = (): void => scanController.abort(signal.reason instanceof Error ? signal.reason : new Error('TockLauncher file search canceled'))
+    if (signal.aborted) abortFromSignal()
+    else signal.addEventListener('abort', abortFromSignal, { once: true })
+    activeScanControllers.add(scanController)
+    try {
+      const enabledIds = enabled()
+      const nextSimpleActions = new Set<string>()
+      const nextFileActions = new Set<string>()
+      const nextSimple = new Map<string, KnownPath>()
+      const nextFile = new Map<string, KnownPath>()
+      const items: LauncherInternalResultItem[] = []
+      if (enabledIds.has('FileSearch')) {
+        if (options.platform === 'Linux') reportProviderError('FileSearch', new Error('File Search is unsupported on Linux'))
+        else items.push(Object.freeze({
+          defaultAction: Object.freeze({ argument: 'FileSearch', description: 'Search files', handlerKey: HANDLERS.invoke, hideWindowAfterInvocation: false, requiresConfirmation: false }),
+          description: 'File Search', id: 'file-search:invoke', imageKey: 'file-search-folder', name: 'Search files', sourceExtension: 'FileSearch',
+        }))
       }
-      try {
-        const entries = await runBounded(scanSignal => options.scanners.scanSimpleFolder({
-          folder,
-          homePath: options.homePath,
-          maxResults: MAX_SIMPLE_RESULTS - count,
-          maxVisitedEntries: 10_000,
-          scanTimeoutMs,
-          signal: scanSignal,
-        }), signal, scanTimeoutMs, `Simple File Search root timed out: ${folder.path}`)
-        for (const entry of entries) {
-          if (count >= MAX_SIMPLE_RESULTS || seen.has(entry.path)) continue
-          const target = pathApi(options.platform).normalize(entry.path)
-          if (seen.has(target)) continue
-          const mapped = mapEntry('SimpleFileSearch', { ...entry, path: target }, nextSimpleActions, nextSimple, folder.path)
-          if (mapped === undefined) continue
-          seen.add(target); items.push(mapped); count += 1
+      if (!enabledIds.has('SimpleFileSearch')) return Object.freeze(items)
+      const folders = asFolderSettings(options.getSetting('extension[SimpleFileSearch].folders', []))
+      let count = 0
+      const seen = new Set<string>()
+      for (const folder of folders) {
+        if (scanController.signal.aborted || signal.aborted) throw error(signal.reason, 'TockLauncher file search canceled')
+        if (!isWithinHome(options.platform, options.homePath, folder.path, true)) {
+          reportProviderError('SimpleFileSearch', new Error('Configured root is outside the allowed home scope'))
+          continue
         }
-      } catch (reason) {
-        if (signal.aborted) throw error(signal.reason, 'TockLauncher file search canceled')
-        options.onProviderError?.('SimpleFileSearch', error(reason, `Unable to scan ${folder.path}`))
+        try {
+          const entries = await runBounded(scanSignal => trackWork(options.scanners.scanSimpleFolder({
+            folder,
+            homePath: options.homePath,
+            maxResults: MAX_SIMPLE_RESULTS - count,
+            maxVisitedEntries: 10_000,
+            scanTimeoutMs,
+            signal: scanSignal,
+          })), scanController.signal, scanTimeoutMs, `Simple File Search root timed out: ${folder.path}`)
+          throwIfNotCurrent(scanController.signal, generation, scanGeneration)
+          for (const entry of entries) {
+            throwIfNotCurrent(scanController.signal, generation, scanGeneration)
+            if (count >= MAX_SIMPLE_RESULTS || seen.has(entry.path)) continue
+            const target = pathApi(options.platform).normalize(entry.path)
+            if (seen.has(target)) continue
+            const mapped = mapEntry('SimpleFileSearch', { ...entry, path: target }, nextSimpleActions, nextSimple, folder.path)
+            if (mapped === undefined) continue
+            seen.add(target); items.push(mapped); count += 1
+          }
+        } catch (reason) {
+          if (signal.aborted || generation !== scanGeneration || closed) throw error(signal.reason, 'TockLauncher file search canceled')
+          reportProviderError('SimpleFileSearch', reason)
+        }
+        if (count >= MAX_SIMPLE_RESULTS) break
       }
-      if (count >= MAX_SIMPLE_RESULTS) break
+      throwIfNotCurrent(scanController.signal, generation, scanGeneration)
+      simpleActions = nextSimpleActions; fileActions = nextFileActions
+      knownSimple = nextSimple; knownFile = nextFile
+      return Object.freeze(items)
+    } finally {
+      activeScanControllers.delete(scanController)
+      signal.removeEventListener('abort', abortFromSignal)
     }
-    if (signal.aborted) throw error(signal.reason, 'TockLauncher file search canceled')
-    if (generation !== scanGeneration) throw new Error('TockLauncher file search scan was superseded')
-    simpleActions = nextSimpleActions; fileActions = nextFileActions
-    knownSimple = nextSimple; knownFile = nextFile
-    return Object.freeze(items)
   }
 
-  const searchInstant = async (searchTerm: string): Promise<Readonly<{ after: readonly LauncherInternalResultItem[]; before: readonly LauncherInternalResultItem[] }>> => {
+  const searchInstant = async (searchTerm: string): Promise<FileSearchInstantResult> => {
     const generation = ++queryGeneration
     activeQuery?.controller.abort(new Error('TockLauncher file search query superseded'))
     activeQuery = undefined
-    fileActions = new Set(); knownFile = new Map()
+    invalidateFileActions()
     if (typeof searchTerm !== 'string' || searchTerm.length > 512 || /[\0\r\n]/u.test(searchTerm)
-      || !enabled().has('FileSearch') || !searchTerm.startsWith(LAUNCHER_FILE_SEARCH_QUERY_PREFIX) || options.platform === 'Linux') return emptySearch()
+      || !enabled().has('FileSearch') || !searchTerm.startsWith(LAUNCHER_FILE_SEARCH_QUERY_PREFIX)) return emptySearch()
     const queryTerm = searchTerm.slice(LAUNCHER_FILE_SEARCH_QUERY_PREFIX.length).trim()
     if (queryTerm.length === 0 || queryTerm.length > 512 || /[\0\r\n]/u.test(queryTerm)) return emptySearch()
+    if (options.platform === 'Linux') {
+      reportProviderError('FileSearch', new Error('File Search is unsupported on Linux'))
+      return emptySearch(providerErrorStatus())
+    }
+    clearProviderError('FileSearch')
     const controller = new AbortController()
     activeQuery = Object.freeze({ controller, generation })
     const maxSetting = options.getSetting('extension[FileSearch].maxSearchResultCount', 20)
@@ -298,68 +377,88 @@ export function createLauncherFileSearchExtensions(options: FileSearchOptions): 
     const everything = options.getSetting('extension[FileSearch].everythingCliFilePath', '')
     const everythingCliFilePath = typeof everything === 'string' ? everything : ''
     try {
-      const entries = await runBounded(signal => options.scanners.queryFileSearch({
+      const entries = await runBounded(signal => trackWork(options.scanners.queryFileSearch({
         everythingCliFilePath,
         homePath: options.homePath,
         maxResults,
         platform: options.platform,
         searchTerm: queryTerm,
         signal,
-      }), controller.signal, QUERY_TIMEOUT_MS, 'File Search query timed out')
+      })), controller.signal, QUERY_TIMEOUT_MS, 'File Search query timed out')
       if (activeQuery?.controller !== controller || activeQuery.generation !== generation || controller.signal.aborted || generation !== queryGeneration) return emptySearch()
       const nextActions = new Set<string>(); const nextKnown = new Map<string, KnownPath>(); const items: LauncherInternalResultItem[] = []
       for (const entry of entries.slice(0, maxResults)) {
-        const mapped = mapEntry('FileSearch', entry, nextActions, nextKnown, options.homePath)
+        const mapped = mapEntry('FileSearch', entry, nextActions, nextKnown)
         if (mapped !== undefined) items.push(mapped)
       }
       if (generation !== queryGeneration || activeQuery?.controller !== controller) return emptySearch()
       fileActions = nextActions; knownFile = nextKnown
-      return Object.freeze({ after: Object.freeze(items), before: Object.freeze([]) })
+      const lastError = providerErrorStatus()
+      return Object.freeze({ after: Object.freeze(items), before: Object.freeze([]), ...(lastError === undefined ? null : { lastError }) })
     } catch (reason) {
-      if (controller.signal.aborted && activeQuery?.controller !== controller) return emptySearch()
-      if (activeQuery?.controller === controller) options.onProviderError?.('FileSearch', error(reason, 'File Search query failed'))
-      return emptySearch()
+      if (activeQuery?.controller !== controller || generation !== queryGeneration || closed) return emptySearch()
+      reportProviderError('FileSearch', reason)
+      return emptySearch(providerErrorStatus())
     } finally {
       if (activeQuery?.controller === controller) activeQuery = undefined
     }
   }
 
   const executeAction = async (record: LauncherActionRecord): Promise<boolean> => {
+    if (closed) throw new Error('TockLauncher file search is closed')
     if (record.sourceExtension !== 'FileSearch' && record.sourceExtension !== 'SimpleFileSearch') return false
     if (record.handlerKey === HANDLERS.invoke) {
       if (record.sourceExtension !== 'FileSearch' || record.argument !== 'FileSearch' || options.platform === 'Linux' || !enabled().has('FileSearch')) throw new Error('Invalid File Search invocation')
       return true
     }
     if (record.handlerKey !== HANDLERS.open && record.handlerKey !== HANDLERS.reveal) throw new Error('Invalid file-search action handler')
-    const known = record.sourceExtension === 'FileSearch' ? knownFile : knownSimple
-    const actions = record.sourceExtension === 'FileSearch' ? fileActions : simpleActions
+    const isFileSearch = record.sourceExtension === 'FileSearch'
+    const known = isFileSearch ? knownFile : knownSimple
+    const actions = isFileSearch ? fileActions : simpleActions
+    const actionGeneration = isFileSearch ? fileActionGeneration : simpleActionGeneration
     if (!actions.has(record.argument)) throw new Error('File-search action is not from the current main-owned result set')
     const target = parsePathArgument(record.argument)
     const current = known.get(record.argument)
     if (current === undefined || current.entry.path !== target || current.entry.identity === undefined) throw new Error('File-search action is not from the current main-owned result set')
-    const valid = await runBounded(signal => options.scanners.validatePath({
-      expectedKind: current.entry.type,
-      homePath: options.homePath,
-      identity: current.entry.identity,
-      path: target,
-      platform: options.platform,
-      root: current.root,
-      signal,
-    }), undefined, ACTION_VALIDATION_TIMEOUT_MS, 'File-search action validation timed out')
-    if (!valid) throw new Error('File-search action target failed immediate revalidation')
+    const validationController = new AbortController()
+    activeValidations.add(validationController)
+    let valid = false
+    try {
+      valid = await runBounded(signal => options.scanners.validatePath({
+        expectedKind: current.entry.type,
+        homePath: options.homePath,
+        identity: current.entry.identity,
+        path: target,
+        platform: options.platform,
+        ...(current.root === undefined ? null : { root: current.root }),
+        signal,
+      }), validationController.signal, ACTION_VALIDATION_TIMEOUT_MS, 'File-search action validation timed out')
+    } finally { activeValidations.delete(validationController) }
+    const latestKnown = isFileSearch ? knownFile : knownSimple
+    const latestActions = isFileSearch ? fileActions : simpleActions
+    const latestGeneration = isFileSearch ? fileActionGeneration : simpleActionGeneration
+    if (!valid || validationController.signal.aborted || closed || latestGeneration !== actionGeneration
+      || !latestActions.has(record.argument) || latestKnown.get(record.argument) !== current) {
+      throw new Error('File-search action target failed immediate revalidation')
+    }
     if (record.handlerKey === HANDLERS.open) await options.effects.openPath(target)
     else await options.effects.revealPath(target)
     return true
   }
 
   const close = async (): Promise<void> => {
-    if (closed) return
+    if (closed) {
+      while (activeWork.size > 0) await Promise.allSettled([...activeWork])
+      return
+    }
     closed = true
     ++scanGeneration; ++queryGeneration
     activeQuery?.controller.abort(new Error('TockLauncher file search is closed'))
     activeQuery = undefined
+    abortActiveScans()
     clearActions()
+    while (activeWork.size > 0) await Promise.allSettled([...activeWork])
   }
 
-  return Object.freeze({ close, executeAction, loadIndexedItems, searchInstant })
+  return Object.freeze({ close, executeAction, invalidate, loadIndexedItems, searchInstant })
 }

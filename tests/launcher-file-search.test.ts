@@ -102,3 +102,54 @@ test('superseded FileSearch queries abort and stale results cannot replace curre
   assert.deepEqual(await first, { before: [], after: [] }); assert.equal(firstSignal?.aborted, true)
   assert.equal((await second).after[0]?.name, 'second.txt')
 })
+
+test('in-flight file actions are aborted and rechecked when query state changes', async () => {
+  let validationSignal: AbortSignal | undefined
+  let releaseValidation: (() => void) | undefined
+  let opened = 0
+  const scanners: LauncherFileSearchScanners = {
+    queryFileSearch: async ({ searchTerm }) => [{ path: `/home/max/${searchTerm}.txt`, type: 'file', identity: { dev: '1', ino: searchTerm } }],
+    scanSimpleFolder: async () => [],
+    validatePath: async ({ signal }) => {
+      validationSignal = signal
+      await new Promise<void>(resolve => { releaseValidation = resolve; signal.addEventListener('abort', () => resolve(), { once: true }) })
+      return true
+    },
+  }
+  const provider = createLauncherFileSearchExtensions({
+    effects: { openPath: () => { opened += 1 }, revealPath: () => undefined },
+    enabledExtensionIds: () => ['FileSearch'], getSetting: settings, homePath: '/home/max', platform: 'macOS', scanners,
+  })
+  const result = (await provider.searchInstant(`${LAUNCHER_FILE_SEARCH_QUERY_PREFIX} first`)).after[0]!
+  const action = provider.executeAction(record(result))
+  await new Promise<void>(resolve => setImmediate(resolve))
+  const replacement = provider.searchInstant(`${LAUNCHER_FILE_SEARCH_QUERY_PREFIX} second`)
+  assert.equal(validationSignal?.aborted, true)
+  releaseValidation?.()
+  await assert.rejects(action, /main-owned result set|canceled|superseded|revalidation/u)
+  await replacement
+  assert.equal(opened, 0)
+})
+
+test('FileSearch actions use home-scope canonical revalidation without a strict root', async () => {
+  const { mkdtemp, rm, writeFile } = await import('node:fs/promises')
+  const { tmpdir } = await import('node:os')
+  const { join } = await import('node:path')
+  const home = await mkdtemp(join(tmpdir(), 'tockteam-file-provider-'))
+  try {
+    const target = join(home, 'report.txt')
+    await writeFile(target, 'report', 'utf8')
+    const { createLauncherFileSearchScanners } = await import('../src/launcher-file-search-scanners.ts')
+    const scanners = createLauncherFileSearchScanners({ runFile: async () => ({ stdout: `${target}\n` }) })
+    const opened: string[] = []; const revealed: string[] = []
+    const provider = createLauncherFileSearchExtensions({
+      effects: { openPath: path => { opened.push(path) }, revealPath: path => { revealed.push(path) } },
+      enabledExtensionIds: () => ['FileSearch'], getSetting: settings, homePath: home, platform: 'macOS', scanners,
+    })
+    const result = (await provider.searchInstant(`${LAUNCHER_FILE_SEARCH_QUERY_PREFIX} report`)).after[0]
+    assert.ok(result)
+    await provider.executeAction(record(result!))
+    await provider.executeAction(record(result!, result!.additionalActions![0]!))
+    assert.deepEqual(opened, [target]); assert.deepEqual(revealed, [target])
+  } finally { await rm(home, { force: true, recursive: true }) }
+})

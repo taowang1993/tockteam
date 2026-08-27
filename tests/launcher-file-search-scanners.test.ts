@@ -32,7 +32,7 @@ test('file-search query uses fixed bounded process options and filters stale/out
     let options: Record<string, unknown> | undefined
     const scanners = createLauncherFileSearchScanners({
       runFile: async (_executable, _args, received) => { options = received; return { stdout: [valid, join(outside, 'outside.txt'), join(home, 'linked.txt'), join(home, 'missing.txt')].join('\n') } },
-      validateEverythingCliPath: async () => true,
+      validateEverythingCliPath: async () => ({ dev: '1', ino: '1' }),
     })
     const metadata = await stat(valid, { bigint: true })
     assert.deepEqual(await scanners.queryFileSearch({
@@ -85,7 +85,7 @@ test('Simple File Search rejects home and symlink roots and honors cancellation'
 test('Windows File Search uses the allowlisted executable and fixed bounded argv', async () => {
   let invocation: { executable: string; args: readonly string[]; options: unknown } | undefined
   const scanners = createLauncherFileSearchScanners({
-    validateEverythingCliPath: async () => true,
+    validateEverythingCliPath: async () => ({ dev: '1', ino: '1' }),
     runFile: async (executable, args, options) => { invocation = { executable, args, options }; return { stdout: '' } },
   })
   await scanners.queryFileSearch({
@@ -95,6 +95,24 @@ test('Windows File Search uses the allowlisted executable and fixed bounded argv
   assert.equal(invocation?.executable, 'C:\\Program Files\\Everything\\es.exe')
   assert.deepEqual(invocation?.args, ['-max-results', '20', 'path:"C:\\Users\\max\\" "report & | > < ^  spaces"'])
   assert.deepEqual(invocation?.options, { maxBuffer: 2 * 1024 * 1024, shell: false, signal: invocation?.options && (invocation.options as { signal: AbortSignal }).signal, timeout: 8_000, windowsHide: true })
+})
+
+test('Everything executable identity is revalidated immediately before spawn', async () => {
+  let validations = 0
+  let spawned = 0
+  const scanners = createLauncherFileSearchScanners({
+    validateEverythingCliPath: async () => {
+      validations += 1
+      return validations === 1 ? { dev: '7', ino: '8' } : undefined
+    },
+    runFile: async () => { spawned += 1; return { stdout: '' } },
+  })
+  await assert.rejects(scanners.queryFileSearch({
+    everythingCliFilePath: 'C:\\Program Files\\Everything\\es.exe', homePath: 'C:\\Users\\max', maxResults: 20,
+    platform: 'Windows', searchTerm: 'report', signal: signal(),
+  }), /changed before spawn|unavailable/u)
+  assert.equal(validations, 2)
+  assert.equal(spawned, 0)
 })
 
 test('Simple File Search applies result, visit, type, and recursive bounds during enumeration', async () => {

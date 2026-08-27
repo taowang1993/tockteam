@@ -46,6 +46,7 @@ export type LauncherCoreSearchOptions = Readonly<{
   searchInstant?: (searchTerm: string) => Promise<Readonly<{
     after: readonly LauncherInternalResultItem[]
     before: readonly LauncherInternalResultItem[]
+    lastError?: string
   }>>
 }>
 
@@ -239,7 +240,8 @@ export function createLauncherCoreSearch(options: LauncherCoreSearchOptions): Re
         if (latestSearchToken === searchToken) {
           instantBefore = instant.before
           instantAfter = instant.after
-          if (rescanStatus !== 'error') lastError = undefined
+          if (instant.lastError !== undefined) lastError = instant.lastError
+          else if (rescanStatus !== 'error') lastError = undefined
         }
       } catch (error) {
         if (indexGeneration !== searchGeneration) throw new Error('TockLauncher search was superseded')

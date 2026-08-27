@@ -37,15 +37,50 @@ export function createLauncherFileSearchTool(options: Readonly<{
   const render = (items: readonly LauncherPublicResultItem[]): void => {
     currentItems = [...items]
     list.replaceChildren()
-    for (const item of currentItems) {
-      const row = element(document, 'li')
-      const button = element(document, 'button', 'flex w-full min-w-0 items-center gap-2 rounded-lg px-2 py-2 text-left hover:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))]')
+    for (const [index, item] of currentItems.entries()) {
+      const row = element(document, 'li', 'relative')
+      const actions = [item.defaultAction, ...(item.additionalActions ?? [])]
+      const content = element(document, 'div', 'flex min-w-0 items-center gap-1')
+      const button = element(document, 'button', 'flex min-w-0 flex-1 items-center gap-2 rounded-lg px-2 py-2 text-left hover:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))]')
       button.type = 'button'; button.setAttribute('aria-label', `${item.name} — ${actionLabel(item.defaultAction)}`)
       const name = element(document, 'strong', 'min-w-0 flex-1 truncate text-sm font-medium'); name.textContent = item.name
       const description = element(document, 'span', 'shrink-0 text-xs text-[var(--dsw-alias-label-secondary,CanvasText)]'); description.textContent = item.description
       button.append(name, description)
       button.addEventListener('click', () => { void invoke(item.defaultAction) })
-      row.append(button); list.append(row)
+      content.append(button)
+      if (actions.length > 1) {
+        const menuId = `launcher-file-search-actions-${index}`
+        const toggle = element(document, 'button', 'shrink-0 rounded-md px-2 py-2 text-xs hover:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))]')
+        toggle.type = 'button'; toggle.textContent = 'Actions'; toggle.setAttribute('aria-label', `Actions for ${item.name}`); toggle.setAttribute('aria-haspopup', 'menu'); toggle.setAttribute('aria-expanded', 'false'); toggle.setAttribute('aria-controls', menuId)
+        const menu = element(document, 'div', 'absolute right-0 top-full z-10 mt-1 min-w-[220px] rounded-lg border border-[var(--dsw-alias-border-l2,CanvasText)] bg-[var(--dsw-alias-bg-layer-1,Canvas)] py-1 shadow-lg')
+        menu.id = menuId; menu.hidden = true; menu.setAttribute('role', 'menu'); menu.setAttribute('aria-label', `Actions for ${item.name}`)
+        const menuButtons: HTMLButtonElement[] = []
+        for (const action of actions) {
+          const actionButton = element(document, 'button', 'flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))]')
+          actionButton.type = 'button'; actionButton.setAttribute('role', 'menuitem'); actionButton.setAttribute('aria-label', actionLabel(action)); actionButton.textContent = actionLabel(action)
+          actionButton.addEventListener('click', () => { menu.hidden = true; toggle.setAttribute('aria-expanded', 'false'); void invoke(action) })
+          menuButtons.push(actionButton); menu.append(actionButton)
+        }
+        const closeMenu = (): void => { menu.hidden = true; toggle.setAttribute('aria-expanded', 'false'); toggle.focus() }
+        toggle.addEventListener('click', () => {
+          const open = menu.hidden
+          menu.hidden = !open
+          toggle.setAttribute('aria-expanded', String(open))
+          if (open) menuButtons[0]?.focus()
+        })
+        menu.addEventListener('keydown', event => {
+          const current = menuButtons.indexOf(document.activeElement as HTMLButtonElement)
+          const next = event.key === 'ArrowDown'
+            ? (Math.max(current, 0) + 1) % menuButtons.length
+            : event.key === 'ArrowUp'
+              ? (Math.max(current, 0) - 1 + menuButtons.length) % menuButtons.length
+              : event.key === 'Home' ? 0 : event.key === 'End' ? menuButtons.length - 1 : undefined
+          if (event.key === 'Escape') { event.preventDefault(); closeMenu(); return }
+          if (next !== undefined) { event.preventDefault(); menuButtons[next]?.focus() }
+        })
+        content.append(toggle); row.append(content, menu)
+      } else row.append(content)
+      list.append(row)
     }
   }
   const invoke = async (action: LauncherPublicAction): Promise<void> => {

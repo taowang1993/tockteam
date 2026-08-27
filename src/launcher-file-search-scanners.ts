@@ -1,5 +1,5 @@
 import { execFile as nodeExecFile } from 'node:child_process'
-import type { Dirent } from 'node:fs'
+import type { Dir, Dirent } from 'node:fs'
 import { lstat, opendir, realpath } from 'node:fs/promises'
 import path from 'node:path'
 import { promisify } from 'node:util'
@@ -129,33 +129,41 @@ async function resolvesWithoutSymlinkEscape(
   platform: LauncherFileSearchPlatform,
   homePath: string,
   candidate: string,
+  signal?: AbortSignal,
+  deadline?: number,
 ): Promise<Readonly<{ canonical: string; identity: LauncherFileSearchIdentity }> | undefined> {
   const api = pathApi(platform)
   try {
-    const [canonicalHome, canonicalCandidate] = await Promise.all([realpath(homePath), realpath(candidate)])
+    const [canonicalHome, canonicalCandidate] = await awaitFileSystem(Promise.all([realpath(homePath), realpath(candidate)]), signal, deadline)
     const requested = requestedRelative(platform, homePath, candidate)
     const canonical = requestedRelative(platform, canonicalHome, canonicalCandidate)
     if (requested !== canonical || !isWithinHome(platform, canonicalHome, canonicalCandidate, true)) return undefined
-    const selected = await lstat(canonicalCandidate, { bigint: true })
+    const selected = await awaitFileSystem(lstat(canonicalCandidate, { bigint: true }), signal, deadline)
     const identity = captureIdentity(selected)
-    if (selected.isSymbolicLink() || identity === undefined) return undefined
+    if (selected.isSymbolicLink() || (!selected.isFile() && !selected.isDirectory()) || identity === undefined) return undefined
     return Object.freeze({ canonical: api.normalize(canonicalCandidate), identity })
-  } catch { return undefined }
+  } catch (reason) {
+    if (signal?.aborted) throwIfAborted(signal)
+    if (deadline !== undefined) assertNotTimedOut(deadline)
+    return undefined
+  }
 }
 
 async function trustedEntry(
   platform: LauncherFileSearchPlatform,
   homePath: string,
   candidate: string,
+  signal?: AbortSignal,
+  deadline?: number,
 ): Promise<LauncherFileSearchEntry | undefined> {
   const api = pathApi(platform)
   try {
-    const selected = await lstat(candidate, { bigint: true })
+    const selected = await awaitFileSystem(lstat(candidate, { bigint: true }), signal, deadline)
     if (selected.isSymbolicLink() || (!selected.isFile() && !selected.isDirectory())) return undefined
-    const resolved = await resolvesWithoutSymlinkEscape(platform, homePath, candidate)
+    const resolved = await resolvesWithoutSymlinkEscape(platform, homePath, candidate, signal, deadline)
     if (resolved === undefined) return undefined
-    const canonicalStats = await lstat(resolved.canonical, { bigint: true })
-    if (canonicalStats.isSymbolicLink()) return undefined
+    const canonicalStats = await awaitFileSystem(lstat(resolved.canonical, { bigint: true }), signal, deadline)
+    if (canonicalStats.isSymbolicLink() || (!canonicalStats.isFile() && !canonicalStats.isDirectory())) return undefined
     const identity = captureIdentity(canonicalStats)
     if (identity === undefined) return undefined
     return Object.freeze({
@@ -163,11 +171,28 @@ async function trustedEntry(
       path: api.normalize(candidate),
       type: canonicalStats.isDirectory() ? 'folder' : 'file',
     })
-  } catch { return undefined }
+  } catch (reason) {
+    if (signal?.aborted) throwIfAborted(signal)
+    if (deadline !== undefined) assertNotTimedOut(deadline)
+    return undefined
+  }
 }
 
 function assertNotTimedOut(deadline: number): void {
   if (Date.now() >= deadline) throw new Error('Simple File Search scan timed out')
+}
+
+async function awaitFileSystem<T>(operation: Promise<T>, signal?: AbortSignal, deadline?: number): Promise<T> {
+  try {
+    const result = await operation
+    if (signal !== undefined) throwIfAborted(signal)
+    if (deadline !== undefined) assertNotTimedOut(deadline)
+    return result
+  } catch (reason) {
+    if (signal !== undefined) throwIfAborted(signal)
+    if (deadline !== undefined) assertNotTimedOut(deadline)
+    throw reason
+  }
 }
 
 function clamp(value: number, minimum: number, maximum: number): number {
@@ -211,13 +236,15 @@ async function ensureTrustedDirectory(
   deadline: number,
 ): Promise<boolean> {
   throwIfAborted(signal); assertNotTimedOut(deadline)
-  const api = pathApi(platform)
   try {
-    const selected = await lstat(directoryPath, { bigint: true })
+    const selected = await awaitFileSystem(lstat(directoryPath, { bigint: true }), signal, deadline)
     if (selected.isSymbolicLink() || !selected.isDirectory()) return false
-    await realpath(directoryPath)
-    return (await resolvesWithoutSymlinkEscape(platform, homePath, directoryPath)) !== undefined
-  } catch { return false }
+    return (await resolvesWithoutSymlinkEscape(platform, homePath, directoryPath, signal, deadline)) !== undefined
+  } catch (reason) {
+    if (signal.aborted) throwIfAborted(signal)
+    if (Date.now() >= deadline) assertNotTimedOut(deadline)
+    return false
+  }
 }
 
 export async function scanSimpleFileSearchFolder(input: Readonly<{
@@ -233,76 +260,106 @@ export async function scanSimpleFileSearchFolder(input: Readonly<{
   const api = pathApi(platform)
   const timeoutMs = clamp(input.scanTimeoutMs ?? DEFAULT_SCAN_TIMEOUT_MS, 1, MAX_SCAN_TIMEOUT_MS)
   const deadline = Date.now() + timeoutMs
-  if (!api.isAbsolute(input.homePath) || !api.isAbsolute(input.folder.path) || !isWithinHome(platform, input.homePath, input.folder.path, true)) {
-    throw new Error(`Simple File Search root is outside the allowed home scope: ${input.folder.path}`)
+  const activeDirectories = new Set<Dir>()
+  const closeActiveDirectories = (): void => {
+    for (const directory of activeDirectories) void directory.close().catch(() => undefined)
   }
-  const rootStat = await lstat(input.folder.path, { bigint: true }).catch(() => undefined)
-  if (rootStat === undefined || rootStat.isSymbolicLink() || !rootStat.isDirectory()) {
-    throw new Error(`Simple File Search root is not a real directory: ${input.folder.path}`)
-  }
-  assertNotTimedOut(deadline); throwIfAborted(input.signal)
-  const rootResolved = await resolvesWithoutSymlinkEscape(platform, input.homePath, input.folder.path)
-  if (rootResolved === undefined) {
-    throw new Error(`Simple File Search root resolves outside the allowed home scope: ${input.folder.path}`)
-  }
+  const onAbort = (): void => { closeActiveDirectories() }
+  input.signal.addEventListener('abort', onAbort)
+  try {
+    if (!api.isAbsolute(input.homePath) || !api.isAbsolute(input.folder.path) || !isWithinHome(platform, input.homePath, input.folder.path, true)) {
+      throw new Error(`Simple File Search root is outside the allowed home scope: ${input.folder.path}`)
+    }
+    const rootStat = await awaitFileSystem(lstat(input.folder.path, { bigint: true }), input.signal, deadline).catch(reason => {
+      if (input.signal.aborted) throw reason
+      if (Date.now() >= deadline) assertNotTimedOut(deadline)
+      return undefined
+    })
+    if (rootStat === undefined || rootStat.isSymbolicLink() || !rootStat.isDirectory()) {
+      throw new Error(`Simple File Search root is not a real directory: ${input.folder.path}`)
+    }
+    const rootResolved = await resolvesWithoutSymlinkEscape(platform, input.homePath, input.folder.path, input.signal, deadline)
+    if (rootResolved === undefined) {
+      throw new Error(`Simple File Search root resolves outside the allowed home scope: ${input.folder.path}`)
+    }
 
-  const maxResults = clamp(input.maxResults, 1, MAX_RESULTS)
-  const maxVisitedEntries = Math.max(maxResults, clamp(input.maxVisitedEntries, 1, MAX_SIMPLE_VISITS))
-  const queue: Array<Readonly<{ depth: number; directoryPath: string }>> = [Object.freeze({ depth: 0, directoryPath: api.normalize(input.folder.path) })]
-  const results: LauncherFileSearchEntry[] = []
-  let queueIndex = 0
-  let visitedEntries = 0
+    const maxResults = clamp(input.maxResults, 1, MAX_RESULTS)
+    const maxVisitedEntries = Math.max(maxResults, clamp(input.maxVisitedEntries, 1, MAX_SIMPLE_VISITS))
+    const queue: Array<Readonly<{ depth: number; directoryPath: string }>> = [Object.freeze({ depth: 0, directoryPath: api.normalize(input.folder.path) })]
+    const results: LauncherFileSearchEntry[] = []
+    let queueIndex = 0
+    let visitedEntries = 0
 
-  while (queueIndex < queue.length && results.length < maxResults && visitedEntries < maxVisitedEntries) {
-    throwIfAborted(input.signal); assertNotTimedOut(deadline)
-    const current = queue[queueIndex++]!
-    if (!await ensureTrustedDirectory(platform, input.homePath, current.directoryPath, input.signal, deadline)) continue
-    let directory
-    try { directory = await opendir(current.directoryPath) } catch { continue }
-    const entries: Dirent[] = []
-    try {
-      while (visitedEntries < maxVisitedEntries) {
-        throwIfAborted(input.signal); assertNotTimedOut(deadline)
-        const entry = await directory.read()
-        if (entry === null) break
-        visitedEntries += 1
-        entries.push(entry)
-      }
-    } finally { await directory.close().catch(() => undefined) }
-    entries.sort((left, right) => left.name.localeCompare(right.name))
-
-    for (const entry of entries) {
+    while (queueIndex < queue.length && results.length < maxResults && visitedEntries < maxVisitedEntries) {
       throwIfAborted(input.signal); assertNotTimedOut(deadline)
-      if (results.length >= maxResults) break
-      if (input.folder.excludeHiddenFiles === true && entry.name.startsWith('.')) continue
-      if (entry.isSymbolicLink() || (!entry.isFile() && !entry.isDirectory())) continue
-      const entryPath = api.join(current.directoryPath, entry.name)
-      const trusted = await trustedEntry(platform, input.homePath, entryPath)
-      if (trusted === undefined) continue
-      if (includesType(trusted.type, input.folder.searchFor)) results.push(trusted)
-      if (trusted.type === 'folder' && input.folder.recursive && current.depth < MAX_SIMPLE_DEPTH
-        && queue.length - queueIndex < MAX_SIMPLE_QUEUE) {
-        queue.push(Object.freeze({ depth: current.depth + 1, directoryPath: trusted.path }))
+      const current = queue[queueIndex++]!
+      if (!await ensureTrustedDirectory(platform, input.homePath, current.directoryPath, input.signal, deadline)) continue
+      let directory: Dir
+      try { directory = await awaitFileSystem(opendir(current.directoryPath), input.signal, deadline) }
+      catch (reason) {
+        if (input.signal.aborted) throw reason
+        if (Date.now() >= deadline) assertNotTimedOut(deadline)
+        continue
+      }
+      activeDirectories.add(directory)
+      const entries: Dirent[] = []
+      try {
+        while (visitedEntries < maxVisitedEntries) {
+          throwIfAborted(input.signal); assertNotTimedOut(deadline)
+          const entry = await awaitFileSystem(directory.read(), input.signal, deadline)
+          if (entry === null) break
+          visitedEntries += 1
+          entries.push(entry)
+        }
+      } finally {
+        activeDirectories.delete(directory)
+        await directory.close().catch(() => undefined)
+      }
+      entries.sort((left, right) => left.name.localeCompare(right.name))
+
+      for (const entry of entries) {
+        throwIfAborted(input.signal); assertNotTimedOut(deadline)
+        if (results.length >= maxResults) break
+        if (input.folder.excludeHiddenFiles === true && entry.name.startsWith('.')) continue
+        if (entry.isSymbolicLink() || (!entry.isFile() && !entry.isDirectory())) continue
+        const entryPath = api.join(current.directoryPath, entry.name)
+        const trusted = await trustedEntry(platform, input.homePath, entryPath, input.signal, deadline)
+        if (trusted === undefined) continue
+        if (includesType(trusted.type, input.folder.searchFor)) results.push(trusted)
+        if (trusted.type === 'folder' && input.folder.recursive && current.depth < MAX_SIMPLE_DEPTH
+          && queue.length - queueIndex < MAX_SIMPLE_QUEUE) {
+          queue.push(Object.freeze({ depth: current.depth + 1, directoryPath: trusted.path }))
+        }
       }
     }
+    throwIfAborted(input.signal); assertNotTimedOut(deadline)
+    return Object.freeze(results)
+  } finally {
+    input.signal.removeEventListener('abort', onAbort)
+    closeActiveDirectories()
   }
-  return Object.freeze(results)
 }
 
-async function validateEverythingExecutable(filePath: string): Promise<boolean> {
-  if (!isAllowedLauncherEverythingCliPath(filePath) || filePath.length === 0) return false
+async function validateEverythingExecutable(filePath: string): Promise<LauncherFileSearchIdentity | undefined> {
+  if (!isAllowedLauncherEverythingCliPath(filePath) || filePath.length === 0) return undefined
   try {
     const selected = await lstat(filePath, { bigint: true })
-    if (selected.isSymbolicLink() || !selected.isFile()) return false
+    if (selected.isSymbolicLink() || !selected.isFile()) return undefined
+    const identity = captureIdentity(selected)
+    if (identity === undefined) return undefined
     const canonical = await realpath(filePath)
-    return path.win32.normalize(canonical).toLocaleLowerCase('en-US') === path.win32.normalize(filePath).toLocaleLowerCase('en-US')
-  } catch { return false }
+    if (path.win32.normalize(canonical).toLocaleLowerCase('en-US') !== path.win32.normalize(filePath).toLocaleLowerCase('en-US')) return undefined
+    const final = await lstat(filePath, { bigint: true })
+    if (final.isSymbolicLink() || !final.isFile()) return undefined
+    const finalIdentity = captureIdentity(final)
+    return finalIdentity === undefined || !sameIdentity(identity, finalIdentity) ? undefined : finalIdentity
+  } catch { return undefined }
 }
 
 async function queryFileSearch(
   input: Parameters<LauncherFileSearchScanners['queryFileSearch']>[0],
   execute: LauncherExecFile,
-  validateExecutable: (filePath: string) => Promise<boolean>,
+  validateExecutable: (filePath: string) => Promise<LauncherFileSearchIdentity | undefined>,
 ): Promise<readonly LauncherFileSearchEntry[]> {
   throwIfAborted(input.signal)
   const searchTerm = input.searchTerm.trim()
@@ -312,9 +369,15 @@ async function queryFileSearch(
   let invocation: Readonly<{ args: readonly string[]; executable: string }>
   if (input.platform === 'macOS') invocation = macFileSearchInvocation(searchTerm)
   else {
-    if (!await validateExecutable(input.everythingCliFilePath)) throw new Error('Everything CLI file path is unavailable or not allowlisted')
+    const configuredIdentity = await validateExecutable(input.everythingCliFilePath)
+    if (configuredIdentity === undefined) throw new Error('Everything CLI file path is unavailable or not allowlisted')
     invocation = windowsFileSearchInvocation(input.everythingCliFilePath, input.homePath, searchTerm, maxResults)
+    const spawnIdentity = await validateExecutable(invocation.executable)
+    if (spawnIdentity === undefined || !sameIdentity(configuredIdentity, spawnIdentity)) {
+      throw new Error('Everything CLI executable changed before spawn')
+    }
   }
+  throwIfAborted(input.signal)
   const result = await execute(invocation.executable, invocation.args, {
     maxBuffer: MAX_QUERY_OUTPUT_BYTES,
     shell: false,
@@ -342,7 +405,7 @@ async function queryFileSearch(
 
 export function createLauncherFileSearchScanners(options: Readonly<{
   runFile?: LauncherExecFile
-  validateEverythingCliPath?: (filePath: string) => Promise<boolean>
+  validateEverythingCliPath?: (filePath: string) => Promise<LauncherFileSearchIdentity | undefined>
 }> = {}): LauncherFileSearchScanners {
   const execute = options.runFile ?? defaultExecFile
   const validateExecutable = options.validateEverythingCliPath ?? validateEverythingExecutable
@@ -352,8 +415,8 @@ export function createLauncherFileSearchScanners(options: Readonly<{
     validatePath: async input => {
       throwIfAborted(input.signal)
       if (input.identity === undefined || !isWithinHome(input.platform, input.homePath, input.path, true)) return false
-      if (input.root !== undefined && !await remainsWithinRoot({ homePath: input.homePath, path: input.path, platform: input.platform, root: input.root })) return false
-      const entry = await trustedEntry(input.platform, input.homePath, input.path)
+      if (input.root !== undefined && !await remainsWithinRoot({ homePath: input.homePath, path: input.path, platform: input.platform, root: input.root, signal: input.signal })) return false
+      const entry = await trustedEntry(input.platform, input.homePath, input.path, input.signal)
       return entry !== undefined
         && (input.expectedKind === undefined || entry.type === input.expectedKind)
         && sameIdentity(entry.identity, input.identity)
@@ -366,16 +429,20 @@ async function remainsWithinRoot(input: Readonly<{
   path: string
   platform: LauncherFileSearchPlatform
   root: string
+  signal: AbortSignal
 }>): Promise<boolean> {
   if (!isWithinHome(input.platform, input.homePath, input.root, true)
     || !isWithinHome(input.platform, input.homePath, input.path, true)) return false
   const api = pathApi(input.platform)
   try {
-    const [canonicalRoot, canonicalPath] = await Promise.all([realpath(input.root), realpath(input.path)])
+    const [canonicalRoot, canonicalPath] = await awaitFileSystem(Promise.all([realpath(input.root), realpath(input.path)]), input.signal)
     const requested = requestedRelative(input.platform, input.root, input.path)
     const canonical = requestedRelative(input.platform, canonicalRoot, canonicalPath)
     return requested === canonical && canonical !== '' && !canonical.startsWith('..') && !api.isAbsolute(canonical)
-  } catch { return false }
+  } catch (reason) {
+    if (input.signal.aborted) throwIfAborted(input.signal)
+    return false
+  }
 }
 
 export const LAUNCHER_FILE_SEARCH_LIMITS = Object.freeze({
