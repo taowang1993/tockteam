@@ -476,7 +476,14 @@ async function bootstrap(): Promise<void> {
       const description = document.createElement('span')
       description.className = 'block truncate text-xs text-[var(--dsw-alias-label-secondary,CanvasText)]'
       description.textContent = item.description
+      const itemDetailsText = item.details
+      const itemDetails = itemDetailsText === undefined ? undefined : document.createElement('span')
+      if (itemDetails !== undefined) {
+        itemDetails.className = 'block truncate text-xs text-[var(--dsw-alias-label-secondary,CanvasText)]'
+        itemDetails.textContent = itemDetailsText ?? null
+      }
       copy.append(nameElement, description)
+      if (itemDetails !== undefined) copy.append(itemDetails)
       button.append(marker, copy)
       button.addEventListener('pointerdown', event => { event.preventDefault() })
       button.addEventListener('click', () => {

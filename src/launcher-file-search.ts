@@ -181,6 +181,7 @@ export function createLauncherFileSearchExtensions(options: FileSearchOptions): 
   close: () => Promise<void>
   executeAction: (record: LauncherActionRecord) => Promise<boolean>
   invalidate: () => void
+  getLastError: () => string | undefined
   loadIndexedItems: (signal: AbortSignal) => Promise<readonly LauncherInternalResultItem[]>
   searchInstant: (searchTerm: string) => Promise<FileSearchInstantResult>
 }> {
@@ -302,6 +303,7 @@ export function createLauncherFileSearchExtensions(options: FileSearchOptions): 
         ? 'file-search-folder'
         : `simple-file-search-${options.platform === 'macOS' ? 'macos' : options.platform.toLocaleLowerCase('en-US')}`,
       name,
+      details: api.dirname(target),
       sourceExtension: extensionId,
     })
   }
@@ -401,7 +403,10 @@ export function createLauncherFileSearchExtensions(options: FileSearchOptions): 
     activeQuery?.controller.abort(new Error('TockLauncher file search query superseded'))
     activeQuery = undefined
     invalidateFileActions()
-    if (typeof searchTerm !== 'string' || searchTerm.length > 512 || /[\0\r\n]/u.test(searchTerm)
+    if (typeof searchTerm !== 'string' || /[\0\r\n]/u.test(searchTerm)
+      || searchTerm.length > (searchTerm.startsWith(LAUNCHER_FILE_SEARCH_QUERY_PREFIX)
+        ? LAUNCHER_FILE_SEARCH_QUERY_PREFIX.length + 512
+        : 512)
       || !enabled().has('FileSearch') || !searchTerm.startsWith(LAUNCHER_FILE_SEARCH_QUERY_PREFIX)) return emptySearch(providerErrorStatus())
     const queryTerm = searchTerm.slice(LAUNCHER_FILE_SEARCH_QUERY_PREFIX.length).trim()
     if (queryTerm.length === 0 || queryTerm.length > 512 || /[\0\r\n]/u.test(queryTerm)) return emptySearch()
@@ -522,5 +527,5 @@ export function createLauncherFileSearchExtensions(options: FileSearchOptions): 
     await waitForActiveWorkBounded()
   }
 
-  return Object.freeze({ close, executeAction, invalidate, loadIndexedItems, searchInstant })
+  return Object.freeze({ close, executeAction, getLastError: providerErrorStatus, invalidate, loadIndexedItems, searchInstant })
 }

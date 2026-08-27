@@ -79,6 +79,7 @@ test('file providers index bounded simple results and query the exact prefixed F
   const indexed = await provider.loadIndexedItems(new AbortController().signal)
   assert.equal(indexed[0]?.id, 'file-search:invoke')
   assert.equal(indexed[1]?.name, 'docs')
+  assert.equal(indexed[1]?.details, '/home/max')
   assert.equal(indexed[1]?.defaultAction.argument.includes('/home/max'), true)
   const instant = await provider.searchInstant(`${LAUNCHER_FILE_SEARCH_QUERY_PREFIX} report`)
   assert.equal(queried, 1); assert.equal(instant.after[0]?.name, 'report.txt')
@@ -354,7 +355,7 @@ test('FileSearch actions use home-scope canonical revalidation without a strict 
     })
     const result = (await provider.searchInstant(`${LAUNCHER_FILE_SEARCH_QUERY_PREFIX} report`)).after[0]
     assert.ok(result)
-    assert.equal(result.details, undefined)
+    assert.equal(result.details, home)
     await provider.executeAction(record(result!))
     await provider.executeAction(record(result!, result!.additionalActions![0]!))
     assert.deepEqual(opened, [target]); assert.deepEqual(revealed, [target])

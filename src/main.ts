@@ -1205,6 +1205,7 @@ function initializeLauncher(): void {
     initialFavoriteItemIds: repository.getSetting('favorites', []),
     initialIndexedItems: repository.readIndex(),
     appendLog: async (_level, message) => { await repository.appendLog('ERROR', message) },
+    getIndexedError: () => fileSearch.getLastError(),
     loadIndexedItems: async signal => {
       const result = await createTockTeamDestinationResults('')
       return [...result.before, ...result.after, ...await local.loadIndexedItems(), ...await discovery.loadIndexedItems(signal), ...await fileSearch.loadIndexedItems(signal)]

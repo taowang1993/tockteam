@@ -79,6 +79,15 @@ test('core search serializes a stale in-flight index write before publishing the
   assert.deepEqual(persisted.slice(-2), [['old'], ['new']])
 })
 
+test('empty core search surfaces indexed provider status after rescan', async () => {
+  const core = createLauncherCoreSearch({
+    getIndexedError: () => 'Simple File Search is unavailable. Check configured roots.',
+    loadIndexedItems: async () => [],
+  })
+  const result = await core.search('', options)
+  assert.equal(result.status.lastError, 'Simple File Search is unavailable. Check configured roots.')
+})
+
 test('core search surfaces bounded instant provider status', async () => {
   const core = createLauncherCoreSearch({
     loadIndexedItems: async () => [],

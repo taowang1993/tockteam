@@ -69,11 +69,14 @@ test('local tools stay finite and browser-safe', () => {
   assert.doesNotMatch(localTools, /node:|ipcRenderer|dshDesktop|fetch\s*\(|localStorage|sessionStorage/u)
   assert.match(fileSearchTool, /LAUNCHER_FILE_SEARCH_QUERY_PREFIX|File Search Input/u)
   assert.match(fileSearchTool, /LAUNCHER_MAX_SEARCH_TERM_LENGTH|maxInputLength/u)
+  assert.match(fileSearchTool, /item\.details/u)
+  assert.match(fileSearchTool, /focus\(\)/u)
   assert.match(fileSearchTool, /additionalActions/u)
   assert.match(fileSearchTool, /menuitem/u)
   assert.match(fileSearchTool, /ArrowDown|ArrowUp/u)
   assert.doesNotMatch(fileSearchTool, /node:|ipcRenderer|dshDesktop|fetch\s*\(|localStorage|sessionStorage/u)
   assert.match(fileSearchSettings, /tocklauncher-file-search-settings/u)
+  assert.match(fileSearchSettings, /maxLength=\{4096\}/u)
 })
 
 test('settings renderer never inserts sensitive values and remounts local controls after reload', () => {

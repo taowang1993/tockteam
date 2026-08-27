@@ -39,6 +39,7 @@ export type LauncherCoreSearchOptions = Readonly<{
   initialExcludedItemIds?: readonly string[]
   initialFavoriteItemIds?: readonly string[]
   initialIndexedItems?: readonly LauncherInternalResultItem[]
+  getIndexedError?: () => string | undefined
   loadIndexedItems: (signal: AbortSignal) => Promise<readonly LauncherInternalResultItem[]>
   persistIndex?: (items: readonly LauncherInternalResultItem[]) => Promise<void>
   persistSettings?: (values: Readonly<Record<string, unknown>>) => Promise<void>
@@ -158,14 +159,15 @@ export function createLauncherCoreSearch(options: LauncherCoreSearchOptions): Re
       const loaded = await options.loadIndexedItems(controller.signal)
       if (activeRescan?.token !== token) return status()
       const nextItems = Object.freeze([...loaded])
+      const indexedError = options.getIndexedError?.()
       indexedItems = nextItems
       indexGeneration += 1
       if (options.persistIndex !== undefined) await queueIndexPersistence(nextItems)
       if (activeRescan?.token !== token) return status()
       indexLoaded = true
       hasValidatedIndex = true
-      lastError = undefined
-      rescanStatus = 'idle'
+      lastError = indexedError
+      rescanStatus = indexedError === undefined ? 'idle' : 'error'
     } catch (error) {
       if (activeRescan?.token !== token || controller.signal.aborted) return status()
       indexLoaded = true

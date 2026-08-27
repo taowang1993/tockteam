@@ -26,7 +26,7 @@ export function createLauncherFileSearchTool(options: Readonly<{
   header.append(title, close); tool.append(header)
   const content = element(document, 'div', 'launcher-local-tool-content'); tool.append(content)
   const input = element(document, 'input')
-  const maxInputLength = Math.max(1, LAUNCHER_MAX_SEARCH_TERM_LENGTH - LAUNCHER_FILE_SEARCH_QUERY_PREFIX.length)
+  const maxInputLength = LAUNCHER_MAX_SEARCH_TERM_LENGTH
   input.type = 'search'; input.maxLength = maxInputLength; input.placeholder = 'Search files'; input.setAttribute('aria-label', 'File Search Input'); input.autocomplete = 'off'
   const status = element(document, 'p', 'launcher-local-tool-error'); status.setAttribute('role', 'status'); status.textContent = 'Enter a file name to search.'
   const list = element(document, 'ul', 'm-0 list-none p-0'); list.setAttribute('aria-label', 'File Search Results')
@@ -46,7 +46,11 @@ export function createLauncherFileSearchTool(options: Readonly<{
       button.type = 'button'; button.setAttribute('aria-label', `${item.name} — ${actionLabel(item.defaultAction)}`)
       const name = element(document, 'strong', 'min-w-0 flex-1 truncate text-sm font-medium'); name.textContent = item.name
       const description = element(document, 'span', 'shrink-0 text-xs text-[var(--dsw-alias-label-secondary,CanvasText)]'); description.textContent = item.description
+      const itemDetails = item.details
+      const details = itemDetails === undefined ? undefined : element(document, 'span', 'min-w-0 truncate text-xs text-[var(--dsw-alias-label-secondary,CanvasText)]')
+      if (details !== undefined && itemDetails !== undefined) { details.textContent = itemDetails; details.setAttribute('aria-label', itemDetails) }
       button.append(name, description)
+      if (details !== undefined) content.append(details)
       button.addEventListener('click', () => { void invoke(item.defaultAction) })
       content.append(button)
       if (actions.length > 1) {

@@ -295,7 +295,7 @@ export async function scanSimpleFileSearchFolder(input: Readonly<{
     }
 
     const maxResults = clamp(input.maxResults, 1, MAX_RESULTS)
-    const maxVisitedEntries = clamp(input.maxVisitedEntries, 1, MAX_SIMPLE_VISITS)
+    const maxVisitedEntries = clamp(Math.max(input.maxVisitedEntries, maxResults), maxResults, MAX_SIMPLE_VISITS)
     const queue: Array<Readonly<{ depth: number; directoryPath: string }>> = [Object.freeze({ depth: 0, directoryPath: api.normalize(input.folder.path) })]
     const results: LauncherFileSearchEntry[] = []
     let queueIndex = 0

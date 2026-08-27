@@ -135,6 +135,24 @@ test('Windows File Search uses the allowlisted executable and fixed bounded argv
   assert.deepEqual(invocation?.options, { maxBuffer: 2 * 1024 * 1024, shell: false, signal: invocation?.options && (invocation.options as { signal: AbortSignal }).signal, timeout: 8_000, windowsHide: true })
 })
 
+test('Windows File Search trims after removing quotes and accepts 512 user characters', async () => {
+  let args: readonly string[] | undefined
+  const scanners = createLauncherFileSearchScanners({
+    validateEverythingCliPath: async () => ({ dev: '1', ino: '1' }),
+    runFile: async (_executable, received) => { args = received; return { stdout: '' } },
+  })
+  const term = `  ${'x'.repeat(510)}"  `
+  await scanners.queryFileSearch({
+    everythingCliFilePath: 'C:\\Program Files\\Everything\\es.exe', homePath: 'C:\\Users\\max', maxResults: 20,
+    platform: 'Windows', searchTerm: term, signal: signal(),
+  })
+  assert.equal(args?.[2], `path:"C:\\Users\\max\\" "${'x'.repeat(510)}"`)
+  await scanners.queryFileSearch({
+    everythingCliFilePath: 'C:\\Program Files\\Everything\\es.exe', homePath: 'C:\\Users\\max', maxResults: 20,
+    platform: 'Windows', searchTerm: 'x'.repeat(512), signal: signal(),
+  })
+})
+
 test('Everything executable identity is revalidated immediately before spawn', async () => {
   let validations = 0
   let spawned = 0
@@ -216,7 +234,7 @@ test('Simple File Search enforces independent result and visit caps', async () =
       folder: { id: 'root', path: join(home, 'root'), recursive: false, searchFor: 'files' },
       homePath: home, maxResults: 200, maxVisitedEntries: 5, signal: signal(),
     })
-    assert.equal(visited.length, 5)
+    assert.equal(visited.length, 200)
   } finally { await rm(home, { force: true, recursive: true }) }
 })
 

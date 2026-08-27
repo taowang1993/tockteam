@@ -106,6 +106,7 @@ export type LauncherSurfaceSettings = Readonly<{
 const ACTION_ID_PATTERN = /^launcher-action:[0-9A-Za-z-]{1,96}$/u
 const RESULT_SET_ID_PATTERN = /^launcher-results:[1-9][0-9]*$/u
 export const LAUNCHER_MAX_SEARCH_TERM_LENGTH = 512
+export const LAUNCHER_MAX_SEARCH_INPUT_LENGTH = LAUNCHER_FILE_SEARCH_QUERY_PREFIX.length + LAUNCHER_MAX_SEARCH_TERM_LENGTH
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -136,7 +137,9 @@ export function parseLauncherSearchArgs(value: unknown): Readonly<{
   if (!isRecord(value)
     || !hasExactKeys(value, ['fuzziness', 'maxSearchResultItems', 'searchEngineId', 'searchTerm'])
     || typeof value.searchTerm !== 'string'
-    || value.searchTerm.length > LAUNCHER_MAX_SEARCH_TERM_LENGTH
+    || value.searchTerm.length > (value.searchTerm.startsWith(LAUNCHER_FILE_SEARCH_QUERY_PREFIX)
+      ? LAUNCHER_MAX_SEARCH_INPUT_LENGTH
+      : LAUNCHER_MAX_SEARCH_TERM_LENGTH)
     || typeof value.fuzziness !== 'number'
     || !Number.isFinite(value.fuzziness)
     || value.fuzziness < 0
