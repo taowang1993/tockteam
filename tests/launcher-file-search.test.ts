@@ -131,6 +131,42 @@ test('in-flight file actions are aborted and rechecked when query state changes'
   assert.equal(opened, 0)
 })
 
+test('provider errors return bounded status instead of an empty-success message', async () => {
+  const provider = createLauncherFileSearchExtensions({
+    effects: { openPath: () => undefined, revealPath: () => undefined },
+    enabledExtensionIds: () => ['FileSearch'], getSetting: settings, homePath: '/home/max', platform: 'macOS',
+    scanners: {
+      queryFileSearch: async () => { throw new Error('/private/path must not be published') },
+      scanSimpleFolder: async () => [], validatePath: async () => true,
+    },
+  })
+  const result = await provider.searchInstant(`${LAUNCHER_FILE_SEARCH_QUERY_PREFIX} report`)
+  assert.equal(result.after.length, 0)
+  assert.equal(result.lastError, 'File Search is unavailable. Check the native provider configuration.')
+  assert.doesNotMatch(result.lastError, /private|path/u)
+})
+
+test('closing a provider aborts and quiesces an in-flight simple scan', async () => {
+  let scanSignal: AbortSignal | undefined
+  const provider = createLauncherFileSearchExtensions({
+    effects: { openPath: () => undefined, revealPath: () => undefined },
+    enabledExtensionIds: () => ['SimpleFileSearch'], getSetting: settings, homePath: '/home/max', platform: 'macOS',
+    scanners: {
+      queryFileSearch: async () => [],
+      scanSimpleFolder: async ({ signal }) => {
+        scanSignal = signal
+        return await new Promise<readonly never[]>(resolve => signal.addEventListener('abort', () => resolve([]), { once: true }))
+      },
+      validatePath: async () => true,
+    },
+  })
+  const loading = provider.loadIndexedItems(new AbortController().signal)
+  await new Promise<void>(resolve => setImmediate(resolve))
+  await provider.close()
+  assert.equal(scanSignal?.aborted, true)
+  await assert.rejects(loading, /canceled|closed|superseded/u)
+})
+
 test('FileSearch actions use home-scope canonical revalidation without a strict root', async () => {
   const { mkdtemp, rm, writeFile } = await import('node:fs/promises')
   const { tmpdir } = await import('node:os')

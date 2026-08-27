@@ -35,6 +35,7 @@ test('main assembles one launcher owner without branching the DSH workbench fact
   assert.match(main, /local\.loadIndexedItems\(\)/u)
   assert.match(main, /local\.searchInstant\(searchTerm\)/u)
   assert.match(main, /local\.executeAction\(record\)/u)
+  assert.match(main, /updateSetting: async \(key, value\) => await runLauncherSettingsOperation\([\s\S]+const needsRescan = key === 'extensions\.enabledExtensionIds'[\s\S]+actions\.clear\(\)[\s\S]+fileSearch\.invalidate\(\)[\s\S]+repository\.updateSetting\(key, value\)/u)
   assert.match(main, /persistSettings: async values => await runLauncherSettingsOperation\([\s\S]+repository\.updateSettings\(values\)[\s\S]+\{ mutation: true \}/u)
   assert.match(main, /resetSettings:[\s\S]+actions\.clear\(\)[\s\S]+resetLauncherSettings/u)
   assert.match(main, /runtimeUrl === undefined\) return false/u)

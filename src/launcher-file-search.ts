@@ -235,9 +235,12 @@ export function createLauncherFileSearchExtensions(options: FileSearchOptions): 
     knownFile = new Map()
   }
   const invalidate = (): void => {
+    ++scanGeneration
+    ++queryGeneration
     clearActions()
     abortActiveScans()
     activeQuery?.controller.abort(new Error('TockLauncher file search was invalidated'))
+    activeQuery = undefined
   }
 
   const mapEntry = (
@@ -360,7 +363,7 @@ export function createLauncherFileSearchExtensions(options: FileSearchOptions): 
     activeQuery = undefined
     invalidateFileActions()
     if (typeof searchTerm !== 'string' || searchTerm.length > 512 || /[\0\r\n]/u.test(searchTerm)
-      || !enabled().has('FileSearch') || !searchTerm.startsWith(LAUNCHER_FILE_SEARCH_QUERY_PREFIX)) return emptySearch()
+      || !enabled().has('FileSearch') || !searchTerm.startsWith(LAUNCHER_FILE_SEARCH_QUERY_PREFIX)) return emptySearch(providerErrorStatus())
     const queryTerm = searchTerm.slice(LAUNCHER_FILE_SEARCH_QUERY_PREFIX.length).trim()
     if (queryTerm.length === 0 || queryTerm.length > 512 || /[\0\r\n]/u.test(queryTerm)) return emptySearch()
     if (options.platform === 'Linux') {

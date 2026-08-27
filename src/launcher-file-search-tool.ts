@@ -1,7 +1,7 @@
 import type { LauncherPublicResultItem, LauncherPublicAction } from './launcher-actions.ts'
 import type { LauncherPreloadBridge } from './launcher-preload-bridge.ts'
 import type { LauncherSearchOptions } from './launcher-core-search.ts'
-import { LAUNCHER_FILE_SEARCH_QUERY_PREFIX } from './launcher-contract.ts'
+import { LAUNCHER_FILE_SEARCH_QUERY_PREFIX, LAUNCHER_MAX_SEARCH_TERM_LENGTH } from './launcher-contract.ts'
 
 function element<K extends keyof HTMLElementTagNameMap>(document: Document, tag: K, className?: string): HTMLElementTagNameMap[K] {
   const created = document.createElement(tag)
@@ -26,7 +26,8 @@ export function createLauncherFileSearchTool(options: Readonly<{
   header.append(title, close); tool.append(header)
   const content = element(document, 'div', 'launcher-local-tool-content'); tool.append(content)
   const input = element(document, 'input')
-  input.type = 'search'; input.maxLength = 512; input.placeholder = 'Search files'; input.setAttribute('aria-label', 'File Search Input'); input.autocomplete = 'off'
+  const maxInputLength = Math.max(1, LAUNCHER_MAX_SEARCH_TERM_LENGTH - LAUNCHER_FILE_SEARCH_QUERY_PREFIX.length)
+  input.type = 'search'; input.maxLength = maxInputLength; input.placeholder = 'Search files'; input.setAttribute('aria-label', 'File Search Input'); input.autocomplete = 'off'
   const status = element(document, 'p', 'launcher-local-tool-error'); status.setAttribute('role', 'status'); status.textContent = 'Enter a file name to search.'
   const list = element(document, 'ul', 'm-0 list-none p-0'); list.setAttribute('aria-label', 'File Search Results')
   content.append(input, status, list)
@@ -99,6 +100,7 @@ export function createLauncherFileSearchTool(options: Readonly<{
     const revision = ++requestRevision
     const term = input.value.trim()
     if (term.length === 0) { render([]); status.textContent = 'Enter a file name to search.'; return }
+    if (term.length > maxInputLength) { render([]); status.textContent = 'Search term is too long.'; status.setAttribute('data-tone', 'error'); return }
     status.textContent = 'Searching…'; status.setAttribute('data-tone', 'muted')
     try {
       const response = await bridge.search(`${LAUNCHER_FILE_SEARCH_QUERY_PREFIX}${term}`, options.searchOptions)
