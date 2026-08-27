@@ -84,10 +84,12 @@ test('external settings accepts regular files, preserves replacement, and fails 
   } finally { await rm(userDataPath, { recursive: true, force: true }) }
 })
 
-test('history records serialize and disabling history clears persisted queries', async () => {
+test('history records serialize and disabled history rejects injected or imported queries', async () => {
   const userDataPath = await root()
   try {
     const repository = await LauncherPersistenceRepository.open({ userDataPath })
+    await repository.updateSetting('general.searchHistory.history', ['injected before enable'])
+    assert.deepEqual(repository.getSetting('general.searchHistory.history', ['stale']), [])
     await repository.updateSetting('general.searchHistory.enabled', true)
     await Promise.all([
       repository.recordSearch('alpha', { historyEnabled: false, historyLimit: 10 }),
@@ -98,7 +100,24 @@ test('history records serialize and disabling history clears persisted queries',
     assert.deepEqual(repository.getSetting('general.searchHistory.history', ['stale']), [])
     await repository.recordSearch('ignored', { historyEnabled: true, historyLimit: 10 })
     assert.deepEqual(repository.getSetting('general.searchHistory.history', ['stale']), [])
+
+    const imported = path.join(userDataPath, 'history-import.json')
+    await writeFile(imported, JSON.stringify({
+      'general.searchHistory.enabled': false,
+      'general.searchHistory.history': ['private imported query'],
+    }), 'utf8')
+    await repository.importSettingsFromPath(imported)
+    assert.deepEqual(repository.snapshot().values['general.searchHistory.history'], [])
     await repository.close()
+
+    const settingsPath = path.join(userDataPath, 'launcher', 'settings.json')
+    await writeFile(settingsPath, JSON.stringify({
+      'general.searchHistory.enabled': false,
+      'general.searchHistory.history': ['private startup query'],
+    }), 'utf8')
+    const restarted = await LauncherPersistenceRepository.open({ userDataPath })
+    assert.deepEqual(restarted.snapshot().values['general.searchHistory.history'], [])
+    await restarted.close()
   } finally { await rm(userDataPath, { recursive: true, force: true }) }
 })
 

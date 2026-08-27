@@ -172,6 +172,8 @@ test('every manifest representative passes its bounded validator and malformed v
   assert.throws(() => parseLauncherSettingUpdateArgs({ key: 'unknown', value: true }))
   assert.throws(() => parseLauncherSettingUpdateArgs({ key: 'window.alwaysOnTop', value: 'true' }))
   assert.throws(() => parseLauncherSettingUpdateArgs({ key: 'general.browser.customWebBrowser.executableFilePath', value: '/tmp/browser' }))
+  assert.throws(() => parseLauncherSettingUpdateArgs({ key: 'favorites', value: ['forged:item'] }))
+  assert.throws(() => parseLauncherSettingUpdateArgs({ key: 'searchEngine.excludedItems', value: ['forged:item'] }))
   assert.equal(LAUNCHER_SENSITIVE_SETTING_KEYS[0], 'extension[DeeplTranslator].apiKey')
   assert.deepEqual(LAUNCHER_MAIN_OWNED_SETTING_KEYS, ['general.browser.customWebBrowser.executableFilePath', 'general.browser.customWebBrowserName'])
   for (const url of ['https://[::1]/{{query}}', 'https://[fd00::1]/{{query}}', 'https://internal/{{query}}']) {

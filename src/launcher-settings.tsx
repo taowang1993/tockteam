@@ -10,7 +10,7 @@ import { NativeSelect, NativeSelectOption } from '@tockteam/ui/native-select'
 import { Switch } from '@tockteam/ui/switch'
 import { LAUNCHER_COMPOSITION } from './launcher-contract.ts'
 import type { DesktopBridge } from './contracts.ts'
-import type { LauncherSettingsSnapshot } from './launcher-settings-contract.ts'
+import { LAUNCHER_SENSITIVE_SETTING_KEYS, type LauncherSettingsSnapshot } from './launcher-settings-contract.ts'
 import { readPersistedLauncherState } from './launcher-settings-model.ts'
 import { LAUNCHER_SETTING_CATALOG_COUNT } from './launcher-setting-catalog.ts'
 import type { LocaleMessages, LocaleService } from '../plugins/shared/i18n.ts'
@@ -126,10 +126,12 @@ function LauncherSettingsPage({ close: _close }: SettingsSectionProps): ReactNod
   const save = useCallback((key: string, value: unknown): Promise<boolean> => {
     if (!settings) return Promise.resolve(false)
     setStatus('Saving…')
-    setSnapshot(previous => previous === null ? previous : Object.freeze({
-      ...previous,
-      values: Object.freeze({ ...previous.values, [key]: value }),
-    }))
+    if (!LAUNCHER_SENSITIVE_SETTING_KEYS.includes(key as never)) {
+      setSnapshot(previous => previous === null ? previous : Object.freeze({
+        ...previous,
+        values: Object.freeze({ ...previous.values, [key]: value }),
+      }))
+    }
     const operation = (writeTail.current ?? Promise.resolve()).catch(() => undefined).then(async () => {
       await settings.updateSetting(key, value)
       await reload()

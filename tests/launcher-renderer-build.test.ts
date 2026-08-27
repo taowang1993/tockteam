@@ -7,6 +7,7 @@ import { SKIN_IDS } from '../plugins/skins/src/skin-ids.ts'
 const html = readFileSync(new URL('../src/launcher.html', import.meta.url), 'utf8')
 const build = readFileSync(new URL('../scripts/build.mjs', import.meta.url), 'utf8')
 const launcher = readFileSync(new URL('../src/launcher.ts', import.meta.url), 'utf8')
+const launcherSettings = readFileSync(new URL('../src/launcher-settings.tsx', import.meta.url), 'utf8')
 const preload = readFileSync(new URL('../src/launcher-preload.ts', import.meta.url), 'utf8')
 const smoke = readFileSync(new URL('../scripts/launcher-electron-smoke.mjs', import.meta.url), 'utf8')
 const skinIds = readFileSync(new URL('../plugins/skins/src/skin-ids.ts', import.meta.url), 'utf8')
@@ -45,6 +46,10 @@ test('launcher renderer stays empty/search-ready and reports bootstrap status', 
   assert.doesNotMatch(launcher, /ipcRenderer|handlerKey|argument/u)
   assert.doesNotMatch(launcher, /fetch\s*\(/u)
   assert.doesNotMatch(launcher, /localStorage|sessionStorage|XMLHttpRequest|WebSocket/u)
+})
+
+test('settings renderer never inserts sensitive values into snapshot state', () => {
+  assert.match(launcherSettings, /!LAUNCHER_SENSITIVE_SETTING_KEYS\.includes\(key as never\)[\s\S]+setSnapshot/u)
 })
 
 test('launcher renderer uses shared color tokens for primary actions and selection', () => {

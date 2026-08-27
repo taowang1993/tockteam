@@ -55,6 +55,8 @@ export function readPersistedLauncherState(snapshot: LauncherSettingsSnapshot, a
   }
   const enabledExtensionIds = value(snapshot, 'extensions.enabledExtensionIds', ['ApplicationSearch', 'UeliCommand'], strings)
     .filter(id => availableExtensionIds.includes(id))
-  const history = value(snapshot, 'general.searchHistory.history', [], strings).slice(0, preferences.historyLimit)
+  const history = preferences.historyEnabled
+    ? value(snapshot, 'general.searchHistory.history', [], strings).slice(0, preferences.historyLimit)
+    : []
   return Object.freeze({ enabledExtensionIds: Object.freeze([...enabledExtensionIds]), history: Object.freeze([...history]), preferences: Object.freeze(preferences) })
 }

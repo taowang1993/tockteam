@@ -12,6 +12,7 @@ import {
   MAX_LAUNCHER_LOG_ENTRIES,
   MAX_LAUNCHER_SETTINGS_BYTES,
   MAX_LAUNCHER_SETTING_VALUE_BYTES,
+  normalizeLauncherSearchHistory,
   parseLauncherSettingsRecord,
   type LauncherSettingsRecord,
   type LauncherSettingsSnapshot,
@@ -107,9 +108,10 @@ function parseStoredSettings(value: unknown, options: Readonly<{ omitMainOwned?:
     if (!isLauncherRendererSettingValue(key, raw)) throw new Error('TockLauncher setting value is invalid')
     parsed[key] = cloneJson(raw)
   }
-  const serialized = JSON.stringify(parsed)
+  const normalized = normalizeLauncherSearchHistory(parsed)
+  const serialized = JSON.stringify(normalized)
   if (serialized === undefined || Buffer.byteLength(serialized, 'utf8') > MAX_LAUNCHER_SETTINGS_BYTES) throw new Error('TockLauncher settings file exceeds the size limit')
-  return parsed
+  return normalized
 }
 
 function parseGrant(value: unknown): ExternalGrant {
@@ -527,7 +529,8 @@ export class LauncherPersistenceRepository {
   }
 
   async #writeSettings(settings: StoredSettings): Promise<void> {
-    const serialized = JSON.stringify(settings, null, 2)
+    const normalized = normalizeLauncherSearchHistory(settings)
+    const serialized = JSON.stringify(normalized, null, 2)
     if (Buffer.byteLength(serialized, 'utf8') > MAX_LAUNCHER_SETTINGS_BYTES) throw new Error('TockLauncher settings file exceeds the size limit')
     if (this.#settingsSource === 'external') {
       const grant = this.#externalGrant
@@ -549,7 +552,7 @@ export class LauncherPersistenceRepository {
       backupMaxBytes: MAX_LAUNCHER_SETTINGS_BYTES,
       validateBackup: contents => { parseStoredSettings(JSON.parse(contents) as unknown) },
     })
-    this.#settings = cloneJson(settings, MAX_LAUNCHER_SETTINGS_BYTES)
+    this.#settings = cloneJson(normalized, MAX_LAUNCHER_SETTINGS_BYTES)
   }
 
   async #writeExternalDescriptor(grant: ExternalGrant, contents: string, _previous: string | undefined): Promise<void> {

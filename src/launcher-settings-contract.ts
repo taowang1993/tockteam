@@ -1,10 +1,10 @@
 import { isLauncherCustomBrowserArgumentTemplate } from './launcher-custom-browser-contract.ts'
 import { LAUNCHER_COMPOSITION } from './launcher-contract.ts'
-import { LAUNCHER_RUNTIME_SETTING_KEYS, LAUNCHER_SENSITIVE_SETTING_KEYS, LAUNCHER_MAIN_OWNED_SETTING_KEYS, isLauncherRuntimeSettingKey } from './launcher-setting-keys.ts'
+import { LAUNCHER_INTERNAL_SETTING_KEYS, LAUNCHER_RUNTIME_SETTING_KEYS, LAUNCHER_SENSITIVE_SETTING_KEYS, LAUNCHER_MAIN_OWNED_SETTING_KEYS, isLauncherRuntimeSettingKey } from './launcher-setting-keys.ts'
 import { LAUNCHER_TERMINALS, isLauncherTerminalIds, isLauncherTerminalPrefix } from './launcher-terminal-config.ts'
 import { isLauncherWorkflows } from './launcher-workflow-contract.ts'
 
-export { LAUNCHER_SENSITIVE_SETTING_KEYS, LAUNCHER_MAIN_OWNED_SETTING_KEYS, LAUNCHER_RUNTIME_SETTING_KEYS }
+export { LAUNCHER_INTERNAL_SETTING_KEYS, LAUNCHER_SENSITIVE_SETTING_KEYS, LAUNCHER_MAIN_OWNED_SETTING_KEYS, LAUNCHER_RUNTIME_SETTING_KEYS }
 
 export const MAX_LAUNCHER_SETTINGS_BYTES = 2 * 1024 * 1024
 export const MAX_LAUNCHER_SETTING_VALUE_BYTES = 256 * 1024
@@ -291,6 +291,12 @@ export function isLauncherSettingKey(value: unknown): value is string {
   return isLauncherRuntimeSettingKey(value)
 }
 
+export function normalizeLauncherSearchHistory<T extends Record<string, unknown>>(settings: T): T {
+  if (settings['general.searchHistory.enabled'] === true
+    || !Object.hasOwn(settings, 'general.searchHistory.history')) return settings
+  return { ...settings, 'general.searchHistory.history': [] }
+}
+
 /** Parse a disk/import/settings update map, including every key's validator. */
 export function parseLauncherSettingsRecord(value: unknown, options: Readonly<{ omitMainOwned?: boolean; omitSensitive?: boolean }> = {}): LauncherSettingsRecord {
   if (!isRecord(value)) throw new Error('TockLauncher settings must be a JSON object')
@@ -302,13 +308,16 @@ export function parseLauncherSettingsRecord(value: unknown, options: Readonly<{ 
     if (!isLauncherRendererSettingValue(key, settingValue)) throw new Error('Invalid TockLauncher setting value')
     parsed[key] = cloneJson(settingValue)
   }
-  if (!boundedJson(parsed, MAX_LAUNCHER_SETTINGS_BYTES)) throw new Error('TockLauncher settings file exceeds the size limit')
-  return parsed
+  const normalized = normalizeLauncherSearchHistory(parsed)
+  if (!boundedJson(normalized, MAX_LAUNCHER_SETTINGS_BYTES)) throw new Error('TockLauncher settings file exceeds the size limit')
+  return normalized
 }
 
 export function parseLauncherSettingUpdateArgs(value: unknown): Readonly<{ key: string; value: unknown }> {
   if (!isRecord(value) || !hasExactKeys(value, ['key', 'value']) || typeof value.key !== 'string'
-    || !isLauncherRuntimeSettingKey(value.key) || LAUNCHER_MAIN_OWNED_SETTING_KEYS.includes(value.key as never)
+    || !isLauncherRuntimeSettingKey(value.key)
+    || LAUNCHER_INTERNAL_SETTING_KEYS.includes(value.key as never)
+    || LAUNCHER_MAIN_OWNED_SETTING_KEYS.includes(value.key as never)
     || !isLauncherRendererSettingValue(value.key, value.value) || !boundedJson(value.value)) throw new Error('Invalid launcher setting update')
   return Object.freeze({ key: value.key, value: cloneJson(value.value) })
 }
@@ -336,7 +345,8 @@ export function parseLauncherSettingsSnapshot(value: unknown): LauncherSettingsS
     if (!isLauncherRuntimeSettingKey(key) || LAUNCHER_SENSITIVE_SETTING_KEYS.includes(key as never) || LAUNCHER_MAIN_OWNED_SETTING_KEYS.includes(key as never) || !isLauncherRendererSettingValue(key, settingValue)) throw new Error('Invalid launcher settings snapshot values')
     values[key] = cloneJson(settingValue)
   }
-  if (!boundedJson(values, MAX_LAUNCHER_SETTINGS_BYTES)) throw new Error('Invalid launcher settings snapshot values')
+  const normalizedValues = normalizeLauncherSearchHistory(values)
+  if (!boundedJson(normalizedValues, MAX_LAUNCHER_SETTINGS_BYTES)) throw new Error('Invalid launcher settings snapshot values')
   const snapshot = {
     ...(value.customBrowserStatus === undefined ? {} : { customBrowserStatus: value.customBrowserStatus }),
     externalGrantStatus: value.externalGrantStatus,
@@ -347,7 +357,7 @@ export function parseLauncherSettingsSnapshot(value: unknown): LauncherSettingsS
     recoveredSettings: value.recoveredSettings,
     ...(value.secureStorageAvailable === undefined ? {} : { secureStorageAvailable: value.secureStorageAvailable }),
     settingsSource: value.settingsSource,
-    values,
+    values: normalizedValues,
   } as LauncherSettingsSnapshot
   return deepFreeze(snapshot)
 }

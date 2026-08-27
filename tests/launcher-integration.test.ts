@@ -31,6 +31,8 @@ test('main assembles one launcher owner without branching the DSH workbench fact
   assert.match(main, /launcherController\?\.destroyWindow\(\)/u)
   assert.match(main, /launcherController\?\.dispose\(\)/u)
   assert.match(main, /executeTockTeamDestination\(record, \(\) =>/u)
+  assert.match(main, /persistSettings: async values => await runLauncherSettingsOperation\([\s\S]+repository\.updateSettings\(values\)[\s\S]+\{ mutation: true \}/u)
+  assert.match(main, /resetSettings:[\s\S]+actions\.clear\(\)[\s\S]+resetLauncherSettings/u)
   assert.match(main, /runtimeUrl === undefined\) return false/u)
   assert.match(main, /createLauncherWorkbenchRouteDelivery/u)
   assert.match(main, /workbenchRouteDelivery\.markUnready/u)
