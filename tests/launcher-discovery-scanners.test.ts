@@ -92,6 +92,15 @@ test('uses one fixed PowerShell script and data-only settings arguments', () => 
   assert.ok(!String(safe.args[3]).includes("'shell:AppsFolder\\\\' + $appId"))
 })
 
+test('keeps macOS applications with exact .app path-component filtering', async () => {
+  const scanner = createLauncherDiscoveryScanners({ execFile: async () => ({ stdout: '/Applications/Foo.app-data/Bar.app\n/Applications/Foo.app/Bar.app\n/Applications/Good.app\n' }) })
+  const entries = await scanner.ApplicationSearch(context({
+    platform: 'macOS',
+    getSetting: <T>(key: string, fallback: T) => key.endsWith('.macOsFolders') ? ['/Applications'] as T : fallback,
+  }))
+  assert.deepEqual(entries.map(entry => 'path' in entry ? entry.path : ''), ['/Applications/Foo.app-data/Bar.app', '/Applications/Good.app'])
+})
+
 test('scans Linux applications sequentially with limits and cancellation', async () => {
   const root = await mkdtemp(join(tmpdir(), 'tockteam-discovery-'))
   try {

@@ -67,6 +67,18 @@ test('maps applications, bookmarks, JetBrains projects, and VS Code to opaque bo
   assert.equal(instant.after[0]?.defaultAction.argument.includes('file:///work/tockteam'), true)
 })
 
+test('caps public bookmark labels after adding URL details', async () => {
+  const longUrl = `https://docs.example.test/${'x'.repeat(4_096)}`
+  const provider = createLauncherDiscoveryExtensions({
+    ...baseOptions,
+    getSetting: <T>(key: string, fallback: T) => key === 'extension[BrowserBookmarks].searchResultStyle' ? 'nameAndUrl' as T : fallback,
+    scanners: { ...entries, BrowserBookmarks: async () => [{ browserName: 'Google Chrome', id: 'long', kind: 'bookmark' as const, name: 'Docs', url: longUrl }] },
+    effects: { confirmOpenApplicationAsAdministrator: async () => false, copyText: () => {}, launchExecutable: () => {}, openApplication: () => {}, openApplicationAsAdministrator: () => {}, openExternal: () => {}, revealPath: () => {} },
+  })
+  const [item] = (await provider.loadIndexedItems(new AbortController().signal)).filter(result => result.sourceExtension === 'BrowserBookmarks')
+  assert.equal(item?.name.length, 512)
+})
+
 test('does not publish local targets without captured identities', async () => {
   const provider = createLauncherDiscoveryExtensions({
     ...baseOptions,

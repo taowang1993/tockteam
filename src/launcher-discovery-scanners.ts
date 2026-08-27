@@ -106,6 +106,10 @@ function isWithin(root: string, candidate: string): boolean {
   return relative === '' || (!relative.startsWith('..') && !implementation.isAbsolute(relative))
 }
 
+function isNestedMacApplication(value: string): boolean {
+  return value.split('/').slice(0, -1).some(component => component.toLocaleLowerCase('en-US').endsWith('.app'))
+}
+
 async function readBoundedText(filePath: string): Promise<string> {
   const handle = await open(filePath, 'r')
   try {
@@ -366,7 +370,7 @@ async function scanApplications(context: LauncherDiscoveryScanContext, execFile:
     const folders = boundedStringArray(context.getSetting('extension[ApplicationSearch].macOsFolders', defaults.macOsFolders), defaults.macOsFolders)
     const invocation = filters[configuredFilter] ?? filters[defaults.mdfindFilterOption]!
     const { stdout } = await execFile('/usr/bin/mdfind', [invocation], { maxBuffer: MAX_DISCOVERY_EXEC_BUFFER, signal: context.signal, timeout: 10_000 })
-    return Object.freeze(stdout.split(/\r?\n/u).map(value => value.trim()).filter(value => value.endsWith('.app') && folders.some(folder => isWithin(folder, value)) && !path.dirname(value).includes('.app')).slice(0, MAX_DISCOVERED_ITEMS).map(value => Object.freeze({ id: `applications:${value}`, kind: 'application' as const, name: path.basename(value, '.app'), path: value })))
+    return Object.freeze(stdout.split(/\r?\n/u).map(value => value.trim()).filter(value => boundedDiscoveryString(value, 4_096) && isAbsolute(value) && value.toLocaleLowerCase('en-US').endsWith('.app') && folders.some(folder => isWithin(folder, value)) && !isNestedMacApplication(value)).slice(0, MAX_DISCOVERED_ITEMS).map(value => Object.freeze({ id: `applications:${value}`, kind: 'application' as const, name: path.basename(value, '.app'), path: value })))
   }
   if (context.platform === 'Windows') {
     const invocation = windowsApplicationScanInvocation({

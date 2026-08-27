@@ -197,9 +197,9 @@ function applicationImageKey(platform: LauncherDiscoveryPlatform): string {
 }
 
 function displayBookmarkName(entry: Extract<LauncherDiscoveryEntry, { kind: 'bookmark' }>, style: unknown): string {
-  if (style === 'urlOnly') return entry.url
-  if (style === 'nameAndUrl') return `${entry.name} - ${entry.url}`
-  return entry.name
+  if (style === 'urlOnly') return entry.url.slice(0, 512)
+  if (style === 'nameAndUrl') return `${entry.name} - ${entry.url}`.slice(0, 512)
+  return entry.name.slice(0, 512)
 }
 
 function parseVSCodeCommand(template: unknown, fallback: string): string {
