@@ -194,6 +194,66 @@ test('closing a provider aborts and quiesces an in-flight simple scan', async ()
   await assert.rejects(loading, /canceled|closed|superseded/u)
 })
 
+test('provider close waits for in-flight action validation to settle', async () => {
+  let validationStarted = false
+  let releaseValidation: (() => void) | undefined
+  const provider = createLauncherFileSearchExtensions({
+    effects: { openPath: () => undefined, revealPath: () => undefined },
+    enabledExtensionIds: () => ['FileSearch'], getSetting: settings, homePath: '/home/max', platform: 'macOS',
+    scanners: {
+      queryFileSearch: async () => [{ path: '/home/max/report.txt', type: 'file', identity: { dev: '1', ino: '2' } }],
+      scanSimpleFolder: async () => [],
+      validatePath: async () => {
+        validationStarted = true
+        await new Promise<void>(resolve => { releaseValidation = resolve })
+        return true
+      },
+    },
+  })
+  const result = (await provider.searchInstant(`${LAUNCHER_FILE_SEARCH_QUERY_PREFIX} report`)).after[0]
+  assert.ok(result)
+  const action = provider.executeAction(record(result)).then(() => undefined, error => error)
+  await new Promise<void>(resolve => setImmediate(resolve))
+  assert.equal(validationStarted, true)
+  let closed = false
+  const closing = provider.close().then(() => { closed = true })
+  await new Promise<void>(resolve => setImmediate(resolve))
+  assert.equal(closed, false)
+  releaseValidation?.()
+  const actionError = await action
+  assert.match(actionError instanceof Error ? actionError.message : String(actionError), /canceled|closed|revalidation|superseded/u)
+  await closing
+  assert.equal(closed, true)
+})
+
+test('Simple File Search actions use real scanner validation for open and reveal', async () => {
+  const { mkdtemp, rm, writeFile } = await import('node:fs/promises')
+  const { tmpdir } = await import('node:os')
+  const { join } = await import('node:path')
+  const home = await mkdtemp(join(tmpdir(), 'tockteam-simple-provider-'))
+  try {
+    const root = join(home, 'docs')
+    const target = join(root, 'report.txt')
+    await import('node:fs/promises').then(({ mkdir }) => mkdir(root))
+    await writeFile(target, 'report', 'utf8')
+    const { createLauncherFileSearchScanners } = await import('../src/launcher-file-search-scanners.ts')
+    const scanners = createLauncherFileSearchScanners()
+    const opened: string[] = []; const revealed: string[] = []
+    const provider = createLauncherFileSearchExtensions({
+      effects: { openPath: path => { opened.push(path) }, revealPath: path => { revealed.push(path) } },
+      enabledExtensionIds: () => ['SimpleFileSearch'],
+      getSetting: <T>(key: string, fallback: T): T => key === 'extension[SimpleFileSearch].folders' ? [{ id: 'docs', path: root, recursive: false, searchFor: 'files' }] as T : fallback,
+      homePath: home, platform: 'macOS', scanners,
+    })
+    const indexed = await provider.loadIndexedItems(new AbortController().signal)
+    const result = indexed.find(item => item.name === 'report.txt')
+    assert.ok(result)
+    await provider.executeAction(record(result))
+    await provider.executeAction(record(result, result.additionalActions![0]!))
+    assert.deepEqual(opened, [target]); assert.deepEqual(revealed, [target])
+  } finally { await rm(home, { force: true, recursive: true }) }
+})
+
 test('FileSearch actions use home-scope canonical revalidation without a strict root', async () => {
   const { mkdtemp, rm, writeFile } = await import('node:fs/promises')
   const { tmpdir } = await import('node:os')

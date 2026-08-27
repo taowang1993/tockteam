@@ -433,17 +433,18 @@ export function createLauncherFileSearchExtensions(options: FileSearchOptions): 
     if (current === undefined || current.entry.path !== target || current.entry.identity === undefined) throw new Error('File-search action is not from the current main-owned result set')
     const validationController = new AbortController()
     activeValidations.add(validationController)
+    const validationWork = trackWork(Promise.resolve().then(() => options.scanners.validatePath({
+      expectedKind: current.entry.type,
+      homePath: options.homePath,
+      identity: current.entry.identity,
+      path: target,
+      platform: options.platform,
+      ...(current.root === undefined ? null : { root: current.root }),
+      signal: validationController.signal,
+    })))
     let valid = false
     try {
-      valid = await runBounded(signal => options.scanners.validatePath({
-        expectedKind: current.entry.type,
-        homePath: options.homePath,
-        identity: current.entry.identity,
-        path: target,
-        platform: options.platform,
-        ...(current.root === undefined ? null : { root: current.root }),
-        signal,
-      }), validationController.signal, ACTION_VALIDATION_TIMEOUT_MS, 'File-search action validation timed out')
+      valid = await runBounded(() => validationWork, validationController.signal, ACTION_VALIDATION_TIMEOUT_MS, 'File-search action validation timed out')
     } finally { activeValidations.delete(validationController) }
     const latestKnown = isFileSearch ? knownFile : knownSimple
     const latestActions = isFileSearch ? fileActions : simpleActions
