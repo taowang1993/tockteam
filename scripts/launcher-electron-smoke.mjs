@@ -167,7 +167,6 @@ try {
   let pages = await electronPages(port)
   workbench = pages.find(page => page.title === 'TockCoder')
   assert.ok(workbench)
-  const workbenchUrl = workbench.url
   workbenchConnection = await CdpPage.connect(workbench.webSocketDebuggerUrl)
   await clearStartupDialogs(workbenchConnection)
   await clickWorkbenchFallback(workbenchConnection)
@@ -178,6 +177,7 @@ try {
   )
   launcher = pages.find(page => page.title === 'TockLauncher')
   assert.ok(launcher)
+  const workbenchUrl = await workbenchConnection.evaluate('location.href')
   launcherConnection = await CdpPage.connect(launcher.webSocketDebuggerUrl)
   const firstLauncherId = launcher.id
   const facts = await launcherConnection.evaluate(`({
@@ -192,6 +192,8 @@ try {
     launcherApiKeys: Object.keys(window.tockteamLauncher ?? {}),
     launcherApiFrozen: Object.isFrozen(window.tockteamLauncher),
     csp: document.querySelector('meta[http-equiv="Content-Security-Policy"]')?.content,
+    fitsViewport: document.documentElement.scrollWidth === innerWidth
+      && document.documentElement.scrollHeight === innerHeight,
   })`)
   assert.deepEqual(facts, {
     ready: 'true',
@@ -205,6 +207,7 @@ try {
     launcherApiKeys: ['dismiss'],
     launcherApiFrozen: true,
     csp: launcherCsp,
+    fitsViewport: true,
   })
   const attackFacts = await launcherConnection.evaluate(`({
     notification: typeof Notification === 'undefined' ? 'unavailable' : Notification.permission,
