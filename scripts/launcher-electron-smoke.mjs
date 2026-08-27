@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict'
 import { createServer } from 'node:net'
 import { mkdir, mkdtemp, rename, rm, writeFile } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
+import { homedir, tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { spawn } from 'node:child_process'
@@ -150,6 +150,9 @@ async function clearStartupDialogs(page) {
 const port = await freePort()
 const userData = await mkdtemp(join(tmpdir(), 'tockteam-launcher-electron-'))
 const discoveryFixture = await mkdtemp(join(tmpdir(), 'tockteam-discovery-fixture-'))
+const simpleSearchFixture = await mkdtemp(join(homedir(), '.tockteam-simple-search-'))
+const simpleSearchFile = join(simpleSearchFixture, 'tockteam-file-search-fixture.txt')
+await writeFile(simpleSearchFile, 'simple file search fixture', 'utf8')
 const discoveryApplications = join(discoveryFixture, 'Applications')
 const discoveryApplication = join(discoveryApplications, 'TockTeam Fixture.app')
 await mkdir(join(discoveryApplication, 'Contents'), { recursive: true })
@@ -463,9 +466,11 @@ try {
       hasApplicationFolders: document.querySelector('[aria-label="macOS Application Folders"]') !== null,
       hasBrowserBookmarks: document.querySelector('[aria-label="Enable Google Chrome bookmarks"]') !== null,
       hasVscodeSettings: document.querySelector('[aria-label="VS Code Command Template"]') !== null,
+      hasFileSearchSettings: document.querySelector('[data-testid="tocklauncher-file-search-settings"]') !== null,
+      hasSimpleSearchRoots: document.querySelector('[aria-label^="Path for"]') !== null,
     }
   })()`)
-  assert.deepEqual(settingsFacts, { bridgeFrozen: true, catalog: true, hasSecret: false, hasBrowserPath: false, hasBrowserName: false, hasHistorySwitch: true, hasReset: true, liveStatus: true, extensionSwitches: 24, hasDiscoverySettings: true, hasApplicationFolders: true, hasBrowserBookmarks: true, hasVscodeSettings: true })
+  assert.deepEqual(settingsFacts, { bridgeFrozen: true, catalog: true, hasSecret: false, hasBrowserPath: false, hasBrowserName: false, hasHistorySwitch: true, hasReset: true, liveStatus: true, extensionSwitches: 24, hasDiscoverySettings: true, hasApplicationFolders: true, hasBrowserBookmarks: true, hasVscodeSettings: true, hasFileSearchSettings: true, hasSimpleSearchRoots: false })
   const rapidBrowserToggle = await workbenchConnection.evaluate(`(() => {
     const chrome = document.querySelector('[aria-label="Enable Google Chrome bookmarks"]')
     const firefox = document.querySelector('[aria-label="Enable Firefox bookmarks"]')
@@ -480,6 +485,7 @@ try {
   )
   await workbenchConnection.evaluate(`(async () => {
     await window.dshDesktop?.launcher?.settings?.updateSetting('extension[ApplicationSearch].macOsFolders', [${JSON.stringify(discoveryApplications)}])
+    await window.dshDesktop?.launcher?.settings?.updateSetting('extension[SimpleFileSearch].folders', [{ id: 'smoke-root', path: ${JSON.stringify(simpleSearchFixture)}, recursive: true, excludeHiddenFiles: true, searchFor: 'filesAndFolders' }])
     await window.dshDesktop?.launcher?.settings?.updateSetting('general.searchHistory.enabled', true)
     await window.dshDesktop?.launcher?.settings?.updateSetting('searchEngine.fuzziness', 0.6)
     await window.dshDesktop?.launcher?.settings?.updateSetting('searchEngine.id', 'Fuse.js')
@@ -521,6 +527,37 @@ try {
   assert.equal(staleFixtureAction, true)
   await rename(fixtureMoved, discoveryApplication)
 
+  const simpleSearchFacts = await launcherConnection.evaluate(`(async () => {
+    const result = await window.tockteamLauncher?.search('tockteam-file-search-fixture', { fuzziness: 0, maxSearchResultItems: 200, searchEngineId: 'fuzzysort' })
+    const item = result?.after.find(candidate => candidate.sourceExtension === 'SimpleFileSearch')
+    return {
+      found: item?.name ?? null,
+      imageKey: item?.imageKey ?? null,
+      defaultActionId: item?.defaultAction?.actionId ?? null,
+      revealActionId: item?.additionalActions?.find(action => action.description.includes('Show in'))?.actionId ?? null,
+    }
+  })()`)
+  assert.equal(simpleSearchFacts.found, 'tockteam-file-search-fixture.txt')
+  assert.equal(simpleSearchFacts.imageKey, 'simple-file-search-macos')
+  assert.equal(typeof simpleSearchFacts.defaultActionId, 'string')
+  assert.equal(typeof simpleSearchFacts.revealActionId, 'string')
+  const simpleFileMoved = `${simpleSearchFile}.moved`
+  await rename(simpleSearchFile, simpleFileMoved)
+  const staleSimpleAction = await launcherConnection.evaluate(`(async actionId => {
+    try { await window.tockteamLauncher?.invokeAction(actionId); return false } catch { return true }
+  })(${JSON.stringify(simpleSearchFacts.defaultActionId)})`)
+  assert.equal(staleSimpleAction, true)
+  await rename(simpleFileMoved, simpleSearchFile)
+  const freshSimpleReveal = await launcherConnection.evaluate(`(async () => {
+    const result = await window.tockteamLauncher?.search('tockteam-file-search-fixture', { fuzziness: 0, maxSearchResultItems: 200, searchEngineId: 'fuzzysort' })
+    const item = result?.after.find(candidate => candidate.sourceExtension === 'SimpleFileSearch')
+    const action = item?.additionalActions?.find(candidate => candidate.description.includes('Show in'))
+    if (action === undefined) return false
+    const outcome = await window.tockteamLauncher?.invokeAction(action.actionId)
+    return outcome?.ok === true
+  })()`)
+  assert.equal(freshSimpleReveal, true)
+
   const localSearch = async (term, expected) => {
     await launcherConnection.evaluate(`(() => {
       const input = document.getElementById('launcher-search')
@@ -542,6 +579,24 @@ try {
   const passwordLengths = await launcherConnection.evaluate(`([...document.querySelectorAll('[data-result-id]')].filter(node => node.textContent?.includes('Generated password')).map(node => node.querySelector('strong')?.textContent?.length ?? 0))`)
   assert.equal(passwordLengths.length >= 5, true)
   assert.equal(passwordLengths.every(length => length === 24), true)
+  await localSearch('qfj {"answer":42}', '"answer": 42')
+  await localSearch('Search files', 'Search files')
+  const fileSearchToolClicked = await launcherConnection.evaluate(`(() => {
+    const button = [...document.querySelectorAll('#launcher-details button')].find(node => node.textContent?.includes('Search files'))
+    if (!(button instanceof HTMLButtonElement)) return false
+    button.click()
+    return true
+  })()`)
+  assert.equal(fileSearchToolClicked, true)
+  await waitFor(() => launcherConnection.evaluate('document.querySelector("[aria-label=\\"File Search Tool\\"]") !== null'), found => found === true)
+  assert.equal(await launcherConnection.evaluate('document.querySelector("[aria-label=\\"File Search Input\\"]") !== null'), true)
+  await launcherConnection.evaluate(`(() => {
+    const button = document.querySelector('[aria-label="Close File Search Tool"]')
+    if (!(button instanceof HTMLButtonElement)) return false
+    button.click()
+    return true
+  })()`)
+  await waitFor(() => launcherConnection.evaluate('document.querySelector("[aria-label=\\"File Search Tool\\"]") === null && document.activeElement?.id === "launcher-search"'), restored => restored === true)
   await localSearch('qfj {"answer":42}', '"answer": 42')
 
   const copyClicked = await launcherConnection.evaluate(`(() => {
@@ -900,7 +955,7 @@ try {
   assert.deepEqual(disabledHistory, { history: [], hidden: true })
   await restartedWorkbenchConnection.call('Browser.close').catch(() => {})
   await waitFor(() => Promise.resolve(restartedChild.exitCode), exitCode => exitCode !== null, 5_000)
-  console.log('launcher Electron smoke passed: fresh-toggle/sandbox/preload/CSP/geometry/focus/reuse/search/invoke/history/routes/reload/session/theme/skin/settings/updater/second-instance-intents/restart-persistence/graceful-quit')
+  console.log('launcher Electron smoke passed: fresh-toggle/sandbox/preload/CSP/geometry/focus/reuse/search/invoke/file-search-tool/simple-file-search-action/revalidation/history/routes/reload/session/theme/skin/settings/updater/second-instance-intents/restart-persistence/graceful-quit')
 } catch (error) {
   throw new Error(`${error instanceof Error ? error.stack ?? error.message : String(error)}\nElectron output:\n${output}`)
 } finally {
@@ -934,4 +989,5 @@ try {
   }
   await rm(userData, { recursive: true, force: true })
   await rm(discoveryFixture, { recursive: true, force: true })
+  await rm(simpleSearchFixture, { recursive: true, force: true })
 }
