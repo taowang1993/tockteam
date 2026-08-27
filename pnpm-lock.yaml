@@ -66,9 +66,6 @@ importers:
       pnpm:
         specifier: 11.21.0
         version: 11.21.0
-      react:
-        specifier: ^18.3.1
-        version: 18.3.1
       tockbot-note-runtime:
         specifier: file:plugins/tocktutor/packages/tockbot-note-runtime
         version: file:plugins/tocktutor/packages/tockbot-note-runtime(@deepseek-ai/cordis@4.0.1)(tockbot-note-vault@file:plugins/tocktutor/packages/tockbot-note-vault)

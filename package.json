@@ -134,7 +134,6 @@
     "lucide": "0.473.0",
     "lucide-react": "0.473.0",
     "pnpm": "11.21.0",
-    "react": "^18.3.1",
     "tockbot-note-runtime": "file:plugins/tocktutor/packages/tockbot-note-runtime",
     "tockbot-note-vault": "file:plugins/tocktutor/packages/tockbot-note-vault",
     "typescript": "^6.0.3"
@@ -248,8 +247,8 @@
     "artifactName": "TockTeam-Desktop-${version}-${arch}.${ext}"
   },
   "dependencies": {
-    "electron-updater": "6.8.3",
     "fuse.js": "7.1.0",
-    "fuzzysort": "3.1.0"
+    "fuzzysort": "3.1.0",
+    "electron-updater": "6.8.3"
   }
 }

@@ -18,7 +18,7 @@ import {
 import type { LauncherWorkbenchRoute } from './launcher-navigation.ts'
 import type { LauncherIpcIdentity } from './launcher-security.ts'
 
-export { LAUNCHER_WINDOW_IPC_CHANNELS } from './launcher-window-contract.ts'
+export { LAUNCHER_SETTINGS_IPC_CHANNELS, LAUNCHER_WINDOW_IPC_CHANNELS } from './launcher-window-contract.ts'
 
 export type LauncherWindowIpcController = Readonly<{
   getState: () => DesktopLauncherState
