@@ -1339,11 +1339,20 @@ function initializeLauncher(): void {
           actions.clear()
           fileSearch.invalidate()
         }
-        await requireLauncherPersistence().updateSetting(key, value)
-        launcherPersistentSetsSync?.()
-        await launcherLifecycle?.sync()
-        if (needsRescan) await launcherRescan?.()
-        return settingsOperation()
+        try {
+          await requireLauncherPersistence().updateSetting(key, value)
+          launcherPersistentSetsSync?.()
+          await launcherLifecycle?.sync()
+          if (needsRescan) await launcherRescan?.()
+          return settingsOperation()
+        } catch (reason) {
+          if (needsRescan) {
+            actions.clear()
+            fileSearch.invalidate()
+            try { await launcherRescan?.() } catch { /* retain the original mutation error */ }
+          }
+          throw reason
+        }
       }, { mutation: true }),
     },
     onRouteReady: event => {
