@@ -237,6 +237,7 @@ test('keeps polling after Desktop is briefly unavailable during client startup',
       vault,
     }),
     remote: { tocktutorDesktop: {} } as DesktopActionRemote,
+    retryUnavailable: true,
   })
   assert.equal(polls, 2)
   assert.deepEqual(completions, [{

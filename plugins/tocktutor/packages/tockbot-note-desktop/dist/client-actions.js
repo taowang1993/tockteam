@@ -270,7 +270,7 @@ export async function runDesktopDispatchLoop(options) {
     while (active() && !options.signal?.aborted) {
         const event = await options.bridge.nextDispatch();
         if (event === null) {
-            if (!active() || options.signal?.aborted)
+            if (!options.retryUnavailable || !active() || options.signal?.aborted)
                 return;
             await new Promise(resolve => setTimeout(resolve, 25));
             continue;
@@ -344,6 +344,7 @@ export function TockTutorNativeActions(props) {
             bridge: props.bridge,
             owner: () => owner.current,
             remote: props.remote,
+            retryUnavailable: true,
             signal: controller.signal,
         }).catch(() => { if (active)
             setMessage('Desktop dispatch is unavailable.'); });

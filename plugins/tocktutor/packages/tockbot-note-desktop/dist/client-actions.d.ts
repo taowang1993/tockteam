@@ -25,6 +25,7 @@ export interface DesktopDispatchLoopOptions {
     bridge: DesktopCallerBridge;
     owner: () => TockTutorNativeActionsOwnerProps | undefined;
     remote: DesktopActionRemote;
+    retryUnavailable?: boolean;
     signal?: AbortSignal;
 }
 export interface AudioMediaDevices {

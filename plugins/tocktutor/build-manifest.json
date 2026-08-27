@@ -11,19 +11,19 @@
     },
     {
       "path": "packages/tockbot-note-desktop/dist/client-actions.d.ts",
-      "sha256": "2bf53568f601a0626b7c470c5c19ab8b3b6ed73e12c93c87a638814d2f4a2a07"
+      "sha256": "26dc88b90434a7aecd638827206c8e78be921fbf085400c45e785fcbc4ff66b7"
     },
     {
       "path": "packages/tockbot-note-desktop/dist/client-actions.d.ts.map",
-      "sha256": "71c030cf2b5ce93050b3a8c0a0596569316e359e1aa27162f9a4c4327c8c0637"
+      "sha256": "5ad704c20bca061082c5ba5fbde9cd296b38f1788d8a04b83ddcd5848eb5c4f6"
     },
     {
       "path": "packages/tockbot-note-desktop/dist/client-actions.js",
-      "sha256": "47d7cf1a73f350f91ed6b0dfa3b779b9975f594ee3278cbda895d364a1c2dcac"
+      "sha256": "ac5fb834eee5cdbf4e48f8005914e9eba52f86db60bc4f9ba83a66f7761c5d07"
     },
     {
       "path": "packages/tockbot-note-desktop/dist/client-actions.js.map",
-      "sha256": "70cdc063853ac6f4368f5111331b1c4f71052a1e96dbea47a3c01b95c5f60e8c"
+      "sha256": "6979f7ed2791f67b8e0a0edd01b13b522f1005e63f48a620caff3789010236c5"
     },
     {
       "path": "packages/tockbot-note-desktop/dist/client-api.d.ts",
@@ -51,11 +51,11 @@
     },
     {
       "path": "packages/tockbot-note-desktop/dist/client.js",
-      "sha256": "9c302023023ad95b0bbcfc84fdd50a8cf0a9bb4d05b8a04a40e28a9eb820cf6b"
+      "sha256": "e0558adbba457ffa2f43de11712e985ebb2ecc6bae1e4e677ee1c867ec251e9c"
     },
     {
       "path": "packages/tockbot-note-desktop/dist/client.js.map",
-      "sha256": "6d20db6811d8c17ddea99e506f12bbc1af98032d08d60a6d7e0cbcc0892b6b53"
+      "sha256": "21a8fefbdbbab42967c7e68262930cf65b143c6b8de18dee89c1ec7ce6497e1f"
     },
     {
       "path": "packages/tockbot-note-desktop/dist/guard.d.ts",
@@ -155,7 +155,7 @@
     },
     {
       "path": "packages/tockbot-note-desktop/src/client-actions.tsx",
-      "sha256": "d0117e79daba4d2caa36368287006f5515a385443ebda7f1c3e3b45d7e308b21"
+      "sha256": "9b3ba15486680ebf30d044e863d9ba58a884fc98d8eba6eab13262b046f20ca9"
     },
     {
       "path": "packages/tockbot-note-desktop/src/client-api.ts",
