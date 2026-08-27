@@ -120,3 +120,109 @@ test('core search keeps newest instant status and index persistence after races 
   assert.equal((await core.search('', options)).status.lastError, undefined)
   assert.deepEqual(persisted.at(-1), ['new'])
 })
+
+test('core search persists a queued snapshot after its successor fails', async () => {
+  const persisted: string[][] = []
+  let load = 0
+  let releaseSeedWrite: (() => void) | undefined
+  let seedWriteStarted = false
+  const core = createLauncherCoreSearch({
+    loadIndexedItems: async () => {
+      load += 1
+      if (load === 1) return [item('initial', 'Initial')]
+      if (load === 2) return [item('seed', 'Seed')]
+      if (load === 3) return [item('a', 'A')]
+      throw new Error('B failed')
+    },
+    persistIndex: async values => {
+      if (values[0]?.id === 'seed') {
+        seedWriteStarted = true
+        await new Promise<void>(resolve => { releaseSeedWrite = resolve })
+      }
+      persisted.push(values.map(value => value.id))
+    },
+  })
+  await core.search('', options)
+  persisted.length = 0
+  const seedRescan = core.rescan()
+  while (!seedWriteStarted) await new Promise<void>(resolve => { setImmediate(resolve) })
+  const aRescan = core.rescan()
+  await new Promise<void>(resolve => { setImmediate(resolve) })
+  const bRescan = core.rescan()
+  await bRescan
+  releaseSeedWrite?.()
+  await Promise.all([seedRescan, aRescan])
+  assert.deepEqual(persisted, [['seed'], ['a']])
+})
+
+test('core search serializes concurrent favorite and exclusion persistence', async () => {
+  const persisted: Array<Readonly<Record<string, unknown>>> = []
+  let releaseFirst: (() => void) | undefined
+  const core = createLauncherCoreSearch({
+    initialIndexedItems: [item('a', 'A'), item('b', 'B'), item('c', 'C')],
+    loadIndexedItems: async () => [item('a', 'A'), item('b', 'B'), item('c', 'C')],
+    persistSettings: async values => {
+      persisted.push(values)
+      if (persisted.length === 1) await new Promise<void>(resolve => { releaseFirst = resolve })
+    },
+  })
+  await core.search('', { ...options, maxSearchResultItems: 50 })
+  const owner = { role: 'launcher' as const, webContentsId: 1 }
+  const addFavorite = core.executeAction({
+    actionId: 'launcher-action:add',
+    argument: 'a',
+    expiresAt: 2_000,
+    handlerKey: LAUNCHER_CORE_ACTION_HANDLERS.addFavorite,
+    hideWindowAfterInvocation: false,
+    owner,
+    requiresConfirmation: false,
+    resultSetId: 'launcher-results:1',
+    sourceExtension: 'TockTeam',
+  })
+  const exclude = core.executeAction({
+    actionId: 'launcher-action:exclude',
+    argument: 'b',
+    expiresAt: 2_000,
+    handlerKey: LAUNCHER_CORE_ACTION_HANDLERS.exclude,
+    hideWindowAfterInvocation: false,
+    owner,
+    requiresConfirmation: false,
+    resultSetId: 'launcher-results:1',
+    sourceExtension: 'TockTeam',
+  })
+  while (persisted.length < 1) await new Promise<void>(resolve => { setImmediate(resolve) })
+  releaseFirst?.()
+  await Promise.all([addFavorite, exclude])
+  assert.deepEqual(persisted, [
+    { favorites: ['a'] },
+    { favorites: ['a'], 'searchEngine.excludedItems': ['b'] },
+  ])
+  const result = await core.search('', { ...options, maxSearchResultItems: 50 })
+  assert.deepEqual(result.before.map(value => value.id), ['a'])
+  assert.deepEqual(result.after.map(value => value.id), ['c'])
+})
+
+test('core search rejects slow instant results from a superseded index generation', async () => {
+  let releaseInstant: (() => void) | undefined
+  const instantReady = new Promise<void>(resolve => { releaseInstant = resolve })
+  let load = 0
+  const core = createLauncherCoreSearch({
+    loadIndexedItems: async () => {
+      load += 1
+      return load === 1 ? [item('old', 'Old')] : [item('new', 'New')]
+    },
+    searchInstant: async () => {
+      await instantReady
+      return { before: [item('instant-old', 'Instant Old')], after: [] }
+    },
+  })
+  await core.search('', options)
+  const slowSearch = core.search('old', options)
+  await new Promise<void>(resolve => { setImmediate(resolve) })
+  await core.rescan()
+  releaseInstant?.()
+  await assert.rejects(slowSearch, /superseded/u)
+  const current = await core.search('', options)
+  assert.deepEqual(current.after.map(value => value.id), ['new'])
+  assert.equal(current.status.lastError, undefined)
+})

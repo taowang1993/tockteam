@@ -118,7 +118,9 @@ export function createLauncherCoreSearch(options: LauncherCoreSearchOptions): Re
   const excluded = new Set<string>(options.initialExcludedItemIds ?? [])
   const favorites = new Set<string>(options.initialFavoriteItemIds ?? [])
   const knownItemIds = new Set<string>()
+  let indexGeneration = 0
   let indexWriteTail: Promise<void> = Promise.resolve()
+  let settingsMutationTail: Promise<void> = Promise.resolve()
 
   const status = (): LauncherCoreStatus => Object.freeze({
     indexedItemCount: indexedItems.length,
@@ -126,20 +128,18 @@ export function createLauncherCoreSearch(options: LauncherCoreSearchOptions): Re
     rescanStatus,
   })
 
-  const queueIndexPersistence = (
-    token: object,
-    items: readonly LauncherInternalResultItem[],
-  ): Promise<void> => {
+  const queueIndexPersistence = (items: readonly LauncherInternalResultItem[]): Promise<void> => {
     const write = indexWriteTail
       .catch(() => undefined)
-      .then(async () => {
-        // A newer rescan supersedes this one before its write starts. Writes
-        // already in progress are followed by the newest write in FIFO order.
-        if (activeRescan?.token !== token) return
-        await options.persistIndex?.(items)
-      })
+      .then(async () => { await options.persistIndex?.(items) })
     indexWriteTail = write.catch(() => undefined)
     return write
+  }
+
+  const queueSettingsMutation = (mutation: () => Promise<void>): Promise<void> => {
+    const operation = settingsMutationTail.then(mutation)
+    settingsMutationTail = operation.catch(() => undefined)
+    return operation
   }
 
   const rescan = async (): Promise<LauncherCoreStatus> => {
@@ -153,7 +153,8 @@ export function createLauncherCoreSearch(options: LauncherCoreSearchOptions): Re
       if (activeRescan?.token !== token) return status()
       const nextItems = Object.freeze([...loaded])
       indexedItems = nextItems
-      if (options.persistIndex !== undefined) await queueIndexPersistence(token, nextItems)
+      indexGeneration += 1
+      if (options.persistIndex !== undefined) await queueIndexPersistence(nextItems)
       if (activeRescan?.token !== token) return status()
       indexLoaded = true
       lastError = undefined
@@ -207,6 +208,7 @@ export function createLauncherCoreSearch(options: LauncherCoreSearchOptions): Re
     latestSearchToken = searchToken
     if (!indexLoaded) await rescan()
 
+    const searchGeneration = indexGeneration
     const available = indexedItems.filter(({ id }) => !excluded.has(id))
     const trimmedSearchTerm = searchTerm.trim()
     const filtered = searchTerm.length > 0
@@ -221,15 +223,18 @@ export function createLauncherCoreSearch(options: LauncherCoreSearchOptions): Re
     if (searchTerm.length > 0 && options.searchInstant !== undefined) {
       try {
         const instant = await options.searchInstant(searchTerm)
+        if (indexGeneration !== searchGeneration) throw new Error('TockLauncher search was superseded')
         if (latestSearchToken === searchToken) {
           instantBefore = instant.before
           instantAfter = instant.after
           if (rescanStatus !== 'error') lastError = undefined
         }
       } catch (error) {
+        if (indexGeneration !== searchGeneration) throw new Error('TockLauncher search was superseded')
         if (latestSearchToken === searchToken) lastError = errorMessage(error)
       }
     }
+    if (indexGeneration !== searchGeneration) throw new Error('TockLauncher search was superseded')
 
     const before = favoriteItems.slice(0, LAUNCHER_MAX_RESULT_ITEMS).map(decorate)
     const after = [...instantBefore, ...ordinaryItems, ...instantAfter]
@@ -249,29 +254,31 @@ export function createLauncherCoreSearch(options: LauncherCoreSearchOptions): Re
   const executeAction = async (record: LauncherActionRecord): Promise<boolean> => {
     const handlers = Object.values(LAUNCHER_CORE_ACTION_HANDLERS) as string[]
     if (!handlers.includes(record.handlerKey)) return false
-    if (!knownItemIds.has(record.argument)) throw new Error('TockLauncher core item is unknown')
+    await queueSettingsMutation(async () => {
+      if (!knownItemIds.has(record.argument)) throw new Error('TockLauncher core item is unknown')
 
-    if (record.handlerKey === LAUNCHER_CORE_ACTION_HANDLERS.addFavorite) {
-      if (favorites.has(record.argument)) throw new Error('TockLauncher item is already a favorite')
-      await options.persistSettings?.({ favorites: [...favorites, record.argument] })
-      favorites.add(record.argument)
-      return true
-    }
-    if (record.handlerKey === LAUNCHER_CORE_ACTION_HANDLERS.removeFavorite) {
-      if (!favorites.has(record.argument)) throw new Error('TockLauncher favorite was not found')
+      if (record.handlerKey === LAUNCHER_CORE_ACTION_HANDLERS.addFavorite) {
+        if (favorites.has(record.argument)) throw new Error('TockLauncher item is already a favorite')
+        await options.persistSettings?.({ favorites: [...favorites, record.argument] })
+        favorites.add(record.argument)
+        return
+      }
+      if (record.handlerKey === LAUNCHER_CORE_ACTION_HANDLERS.removeFavorite) {
+        if (!favorites.has(record.argument)) throw new Error('TockLauncher favorite was not found')
+        const nextFavorites = [...favorites].filter(id => id !== record.argument)
+        await options.persistSettings?.({ favorites: nextFavorites })
+        favorites.delete(record.argument)
+        return
+      }
+      if (excluded.has(record.argument)) throw new Error('TockLauncher item is already excluded')
       const nextFavorites = [...favorites].filter(id => id !== record.argument)
-      await options.persistSettings?.({ favorites: nextFavorites })
+      await options.persistSettings?.({
+        favorites: nextFavorites,
+        'searchEngine.excludedItems': [...excluded, record.argument],
+      })
+      excluded.add(record.argument)
       favorites.delete(record.argument)
-      return true
-    }
-    if (excluded.has(record.argument)) throw new Error('TockLauncher item is already excluded')
-    const nextFavorites = [...favorites].filter(id => id !== record.argument)
-    await options.persistSettings?.({
-      favorites: nextFavorites,
-      'searchEngine.excludedItems': [...excluded, record.argument],
     })
-    excluded.add(record.argument)
-    favorites.delete(record.argument)
     return true
   }
 
