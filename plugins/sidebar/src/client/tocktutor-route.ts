@@ -19,7 +19,12 @@ export interface TockTutorRouteOwnerProps {
 export const TOCKCODER_ROUTE_PREFIX = '/tockcoder'
 export const TOCKTUTOR_ROUTE_PREFIX = '/tocktutor'
 
-let rememberedTockTutorPath = TOCKTUTOR_ROUTE_PREFIX
+const TOCKTUTOR_ROUTE_STATE = Symbol.for('tockteam.tocktutor.route-state')
+const MAX_REMEMBERED_ROUTE_LENGTH = 4_096
+
+interface SharedTockTutorRouteState {
+  rememberedPath: string
+}
 
 function matchesRoute(pathname: string, prefix: string): boolean {
   return pathname === prefix || pathname.startsWith(`${prefix}/`)
@@ -33,14 +38,51 @@ export function isTockTutorPath(pathname: string): boolean {
   return matchesRoute(pathname, TOCKTUTOR_ROUTE_PREFIX)
 }
 
+function validSharedTockTutorPath(path: unknown): path is string {
+  if (typeof path !== 'string' || !path.startsWith('/') || path.length === 0 || path.length > MAX_REMEMBERED_ROUTE_LENGTH) return false
+  if (/[\u0000-\u001f\u007f]/u.test(path)) return false
+  let url: URL
+  try {
+    const base = typeof window === 'undefined' ? 'http://tockteam.invalid/' : window.location.href
+    url = new URL(path, base)
+  } catch {
+    return false
+  }
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') return false
+  if (typeof window !== 'undefined' && url.origin !== window.location.origin) return false
+  return isTockTutorPath(url.pathname)
+}
+
+function sharedTockTutorRouteState(): SharedTockTutorRouteState {
+  const globalState = globalThis as typeof globalThis & {
+    [TOCKTUTOR_ROUTE_STATE]?: unknown
+  }
+  const current = globalState[TOCKTUTOR_ROUTE_STATE]
+  if (typeof current === 'object' && current !== null && 'rememberedPath' in current
+    && validSharedTockTutorPath(current.rememberedPath)) {
+    return current as SharedTockTutorRouteState
+  }
+  const state: SharedTockTutorRouteState = { rememberedPath: TOCKTUTOR_ROUTE_PREFIX }
+  Object.defineProperty(globalState, TOCKTUTOR_ROUTE_STATE, {
+    configurable: false,
+    enumerable: false,
+    value: state,
+    writable: false,
+  })
+  return state
+}
+
 export function rememberTockTutorPath(location: Pick<TockTutorRouteLocation, 'hash' | 'pathname' | 'search'>): void {
-  if (!isTockTutorPath(location.pathname)) return
+  if (typeof location?.pathname !== 'string' || typeof location.search !== 'string'
+    || typeof location.hash !== 'string' || !isTockTutorPath(location.pathname)) return
   const path = `${location.pathname}${location.search}${location.hash}`
-  if (path.length <= 4_096) rememberedTockTutorPath = path
+  if (!validSharedTockTutorPath(path)) return
+  sharedTockTutorRouteState().rememberedPath = path
 }
 
 export function readLastTockTutorPath(): string {
-  return rememberedTockTutorPath
+  const path = sharedTockTutorRouteState().rememberedPath
+  return validSharedTockTutorPath(path) ? path : TOCKTUTOR_ROUTE_PREFIX
 }
 
 export function canonicalTockTeamPath(pathname: string): string {

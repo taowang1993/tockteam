@@ -97,6 +97,16 @@ test('remembers the last TockTutor path across finite route switches', async () 
   assert.equal(routes.readLastTockTutorPath(), '/tocktutor/Plan.md?mode=source#heading')
 })
 
+test('independent Desktop and Sidebar bundles share the active TockTutor note', async () => {
+  const moduleUrl = new URL('../plugins/sidebar/src/client/tocktutor-route.ts', import.meta.url)
+  const sidebar = await import(`${moduleUrl.href}?bundle=sidebar`)
+  const desktop = await import(`${moduleUrl.href}?bundle=desktop`)
+  sidebar.rememberTockTutorPath({ hash: '#active', pathname: '/tocktutor/Active.md', search: '?mode=source' })
+  assert.equal(desktop.readLastTockTutorPath(), '/tocktutor/Active.md?mode=source#active')
+  desktop.rememberTockTutorPath({ hash: '', pathname: '/tocktutor/Returned.md', search: '' })
+  assert.equal(sidebar.readLastTockTutorPath(), '/tocktutor/Returned.md')
+})
+
 test('resolves bounded same-origin navigation and preserves query/hash', () => {
   installWindow('http://127.0.0.1:3080/tocktutor')
   assert.deepEqual(readTockTutorRouteLocation(), {
