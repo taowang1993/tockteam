@@ -1,0 +1,332 @@
+import Color from 'color'
+import { XMLBuilder, XMLParser } from 'fast-xml-parser'
+import { create, all } from 'mathjs'
+import { v4 as uuidv4, v6 as uuidv6, v7 as uuidv7, validate as uuidValidate } from 'uuid'
+import type { LauncherActionRecord, LauncherInternalAction, LauncherInternalResultItem } from './launcher-actions.ts'
+import {
+  LAUNCHER_LOCAL_EXTENSION_DEFAULTS,
+  LAUNCHER_LOCAL_EXTENSION_IDS,
+  LAUNCHER_PASSWORD_SYMBOLS,
+  type LauncherLocalExtensionId,
+} from './launcher-local-extension-config.ts'
+import { isLauncherRendererSettingValue } from './launcher-settings-contract.ts'
+
+export { LAUNCHER_LOCAL_EXTENSION_DEFAULTS, LAUNCHER_LOCAL_EXTENSION_IDS } from './launcher-local-extension-config.ts'
+
+export const LAUNCHER_LOCAL_ACTION_HANDLERS = Object.freeze({
+  copy: 'copy-local-extension-result',
+  open: 'open-local-extension',
+})
+
+const MAX_OUTPUT_LENGTH = 16_384
+const LOCAL_IMAGE_KEYS: Readonly<Record<LauncherLocalExtensionId, string>> = Object.freeze({
+  Base64Conversion: 'base64-conversion', Calculator: 'calculator', ColorConverter: 'color-converter',
+  PasswordGenerator: 'password-generator', QuickFormatter: 'quick-formatter',
+  RowlandTextEditor: 'rowland-texteditor', UuidGenerator: 'uuid-generator',
+})
+
+type InstantResult = Readonly<{ after: readonly LauncherInternalResultItem[]; before: readonly LauncherInternalResultItem[] }>
+type SearchOverride = (searchTerm: string) => InstantResult
+
+type LocalExtensionOptions = Readonly<{
+  copyText: (text: string) => Promise<void> | void
+  enabledExtensionIds: () => readonly string[]
+  getSetting: <T>(key: string, fallback: T) => T
+  onProviderError?: (extensionId: LauncherLocalExtensionId, error: unknown) => void
+  searchOverrides?: Partial<Record<LauncherLocalExtensionId, SearchOverride>>
+}>
+
+const emptyInstantResult = (): InstantResult => Object.freeze({ after: Object.freeze([]), before: Object.freeze([]) })
+const localExtension = (value: string): value is LauncherLocalExtensionId => (LAUNCHER_LOCAL_EXTENSION_IDS as readonly string[]).includes(value)
+
+function boundedOutput(value: unknown): value is string {
+  return typeof value === 'string' && value.length > 0 && value.length <= MAX_OUTPUT_LENGTH
+}
+
+function copyAction(text: string): LauncherInternalAction {
+  if (!boundedOutput(text)) throw new Error('Invalid local extension output')
+  return Object.freeze({ argument: text, description: 'Copy result to clipboard', handlerKey: LAUNCHER_LOCAL_ACTION_HANDLERS.copy, hideWindowAfterInvocation: false, requiresConfirmation: false })
+}
+
+function openAction(id: LauncherLocalExtensionId, name: string): LauncherInternalAction {
+  return Object.freeze({ argument: id, description: `Open ${name}`, handlerKey: LAUNCHER_LOCAL_ACTION_HANDLERS.open, hideWindowAfterInvocation: false, requiresConfirmation: false })
+}
+
+function resultItem(input: Readonly<{
+  description: string
+  details?: string
+  id: string
+  name: string
+  output?: string
+  sourceExtension: LauncherLocalExtensionId
+}>): LauncherInternalResultItem {
+  const output = input.output ?? input.name
+  if (!boundedOutput(output)) throw new Error('Invalid local extension output')
+  return Object.freeze({
+    defaultAction: copyAction(output),
+    description: input.description,
+    ...(input.details === undefined ? {} : { details: input.details.slice(0, 8192) }),
+    id: input.id,
+    imageKey: LOCAL_IMAGE_KEYS[input.sourceExtension],
+    name: input.name.slice(0, 512),
+    sourceExtension: input.sourceExtension,
+  })
+}
+
+function setting<T>(options: LocalExtensionOptions, extensionId: LauncherLocalExtensionId, key: string, fallback: T): T {
+  const fullKey = `extension[${extensionId}].${key}`
+  const value = options.getSetting<unknown>(fullKey, fallback)
+  return isLauncherRendererSettingValue(fullKey, value) ? value as T : fallback
+}
+
+function safeSeparator(value: string, fallback: string): string {
+  return value.length === 1 && value !== '\\' ? value : fallback
+}
+
+function calculate(expression: string, precision: number, decimalSeparator: string, argumentSeparator: string): string | undefined {
+  if (expression.length === 0 || expression === 'version' || expression === 'i') return undefined
+  const decimal = safeSeparator(decimalSeparator, '.')
+  const argument = safeSeparator(argumentSeparator, ',')
+  const normalized = expression.split(decimal).join('.').split(argument).join(',')
+  try {
+    const math = create(all as Parameters<typeof create>[0])
+    const value = math.evaluate(normalized)
+    if (value === undefined || typeof value === 'function' || `${value}` === expression) return undefined
+    const kind = math.typeOf(value)
+    if (kind === 'Unit' && (value as { value?: unknown }).value === null) return undefined
+    if (kind === 'Function') return undefined
+    const calculation = String(value)
+    const match = calculation.match(/^([\d,.]+)(\s*)(.*)$/u)
+    const rounded = match
+      ? `${math.round(math.bignumber(match[1]), precision)}${match[2]}${match[3]}`
+      : calculation
+    return rounded.split('.').join(decimalSeparator).split(',').join(argumentSeparator)
+  } catch { return undefined }
+}
+
+function password(settings: Readonly<{
+  beginWithALetter: boolean; includeLowercaseCharacters: boolean; includeNumbers: boolean; includeSymbols: boolean; includeUppercaseCharacters: boolean
+  noDuplicateCharacters: boolean; noSequentialCharacters: boolean; noSimilarCharacters: boolean; passwordLength: number; symbols: string
+}>): string {
+  const letters = `${settings.includeUppercaseCharacters ? 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' : ''}${settings.includeLowercaseCharacters ? 'abcdefghijklmnopqrstuvwxyz' : ''}`
+  const allChars = `${letters}${settings.includeNumbers ? '0123456789' : ''}${settings.includeSymbols ? settings.symbols : ''}`
+  const filter = settings.noSimilarCharacters ? /[01ilo|]/giu : /$^/u
+  const complete = allChars.replace(filter, '')
+  const letterChars = letters.replace(filter, '')
+  if (complete.length === 0 || (settings.beginWithALetter && letterChars.length === 0)) throw new Error('Password settings require an available character set')
+  if (settings.noDuplicateCharacters && new Set(complete).size < settings.passwordLength) throw new Error('Password length exceeds the unique character set')
+  if (settings.noSequentialCharacters && complete.length === 1 && settings.passwordLength > 1) throw new Error('Password settings cannot avoid sequential characters')
+  for (let attempt = 0; attempt < 100; attempt += 1) {
+    let available = complete
+    let lettersAvailable = letterChars
+    let output = ''
+    let previous = ''
+    let failed = false
+    for (let index = 0; index < settings.passwordLength; index += 1) {
+      const source = index === 0 && settings.beginWithALetter ? lettersAvailable : available
+      const candidates = [...source].filter(character => !settings.noSequentialCharacters || previous.length === 0 || Math.abs(previous.charCodeAt(0) - character.charCodeAt(0)) !== 1)
+      if (candidates.length === 0) { failed = true; break }
+      const random = new Uint32Array(1)
+      globalThis.crypto.getRandomValues(random)
+      const character = candidates[random[0]! % candidates.length]!
+      output += character
+      previous = character
+      if (settings.noDuplicateCharacters) {
+        available = [...available].filter(candidate => candidate !== character).join('')
+        lettersAvailable = [...lettersAvailable].filter(candidate => candidate !== character).join('')
+      }
+    }
+    if (!failed && output.length === settings.passwordLength) return output
+  }
+  throw new Error('Password generator did not produce the configured length')
+}
+
+function xmlFormatter(): { parser: XMLParser; builder: XMLBuilder } {
+  return {
+    parser: new XMLParser({ ignoreAttributes: false, processEntities: true, preserveOrder: false }),
+    builder: new XMLBuilder({ format: true, indentBy: '  ', ignoreAttributes: false, processEntities: true }),
+  }
+}
+
+function unescapeXml(text: string): string {
+  return text.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&#(\d+);/g, (_, code) => String.fromCharCode(Number(code))).replace(/&#x([0-9a-f]+);/gi, (_, hex) => String.fromCharCode(Number.parseInt(hex, 16))).replace(/&amp;/g, '&')
+}
+
+function formatStack(text: string): string {
+  const normalized = text.replace(/\\t/g, '  ').replace(/\\r\\n/g, '\n').replace(/\\r/g, '\n').replace(/\\n/g, '\n').replace(/\r\n/g, '\n').replace(/\r/g, '\n').replace(/\t/g, '  ').replace(/\s{2,}/g, '\n')
+  const lines = normalized.split('\n')
+  const output: string[] = []
+  let blank = false
+  for (const line of lines) {
+    const trimmed = line.trim()
+    if (!trimmed) { if (!blank) output.push(''); blank = true; continue }
+    blank = false
+    output.push(/^(at\s+|File\s+)/iu.test(trimmed) ? `  ${trimmed}` : trimmed)
+  }
+  return output.join('\n')
+}
+
+function deepJson(value: unknown): unknown {
+  if (typeof value === 'string') {
+    try { const parsed = JSON.parse(value); return typeof parsed === 'object' && parsed !== null ? deepJson(parsed) : value } catch { return value }
+  }
+  if (Array.isArray(value)) return value.map(deepJson)
+  if (typeof value === 'object' && value !== null) return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, deepJson(item)]))
+  return value
+}
+
+function formatJson(text: string, deep: boolean): string {
+  try { return JSON.stringify(deep ? deepJson(JSON.parse(text)) : JSON.parse(text), null, 2) } catch { return text }
+}
+
+function formatXml(text: string, deep: boolean): string {
+  try {
+    const { parser, builder } = xmlFormatter()
+    const source = deep && /&(?:lt|gt|amp);/u.test(text) ? unescapeXml(text) : text
+    return builder.build(deep ? deepXml(parser.parse(source), parser, true) : parser.parse(source)).trimEnd()
+  } catch { return text }
+}
+
+function deepXml(value: unknown, parser: XMLParser, auto: boolean): unknown {
+  if (typeof value === 'string') {
+    const text = value.trim()
+    if (!text.startsWith('<')) return auto ? formatStack(value) : value
+    try { return deepXml(parser.parse(unescapeXml(value)), parser, auto) } catch { return value }
+  }
+  if (Array.isArray(value)) return value.map(item => deepXml(item, parser, auto))
+  if (typeof value === 'object' && value !== null) return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, deepXml(item, parser, auto)]))
+  return value
+}
+
+function quickFormat(text: string, mode: 'auto' | 'json' | 'xml' | 'stack', deep: boolean): string {
+  if (mode === 'json') return formatJson(text, deep)
+  if (mode === 'xml') return formatXml(text, deep)
+  if (mode === 'stack') return formatStack(text)
+  const trimmed = text.trim()
+  if (trimmed.startsWith('<')) { try { new XMLParser().parse(trimmed); return formatXml(trimmed, deep) } catch { return formatStack(trimmed) } }
+  if (trimmed.startsWith('{') || trimmed.startsWith('[')) { try { JSON.parse(trimmed); return formatJson(trimmed, deep) } catch { return formatStack(trimmed) } }
+  return formatStack(trimmed)
+}
+
+type RowlandToken = Readonly<{ type: 'literal'; value: string } | { type: 'column'; index: number } | { type: 'function'; name: string; params: RowlandToken[][] }>
+
+function parsePattern(input: string): RowlandToken[] {
+  let position = 0
+  const error = (message: string): never => { throw new Error(`Pattern parse error at position ${position}: ${message}`) }
+  const parseDollar = (): RowlandToken => {
+    position += 1
+    if (/\d/u.test(input[position] ?? '')) { let digits = ''; while (/\d/u.test(input[position] ?? '')) digits += input[position++]!; return { type: 'column', index: Number.parseInt(digits, 10) } }
+    let name = ''; while (/[A-Za-z]/u.test(input[position] ?? '')) name += input[position++]!
+    if (!name && input[position] === '(') error("Invalid function syntax: expected function name before '('")
+    if (input[position] !== '(') return { type: 'literal', value: `$${name}` }
+    position += 1; const params: RowlandToken[][] = []
+    while (position < input.length && input[position] !== ')') {
+      const nodes: RowlandToken[] = []
+      while (position < input.length && input[position] !== ',' && input[position] !== ')') {
+        if (input[position] === '$') nodes.push(parseDollar())
+        else { let value = ''; while (position < input.length && input[position] !== '$' && input[position] !== ',' && input[position] !== ')') { if (input[position] === '(') error("Unmatched '(': opening bracket without corresponding function"); value += input[position++]! } nodes.push({ type: 'literal', value }) }
+      }
+      if (input[position] === ',' && input[position + 1] === ')') error("Empty parameter: trailing comma before ')'")
+      params.push(nodes)
+      if (input[position] === ',') position += 1
+    }
+    if (position >= input.length) error(`Unclosed function bracket. Expected ')' for function '${name}'`)
+    position += 1; return { type: 'function', name, params }
+  }
+  const nodes: RowlandToken[] = []
+  while (position < input.length) {
+    let literal = ''
+    while (position < input.length && input[position] !== '$') literal += input[position++]!
+    while (position < input.length && input[position] === '$' && input[position + 1] === '$') { literal += '$'; position += 2 }
+    if (literal) nodes.push({ type: 'literal', value: literal })
+    if (position < input.length && input[position] === '$') nodes.push(parseDollar())
+  }
+  return nodes
+}
+
+function rowlandProcess(input: string, pattern: string, rowSeparator: string, columnSeparator: string): string {
+  const unescape = (value: string) => value.replace(/\\n/g, '\n').replace(/\\t/g, '\t').replace(/\\r/g, '\r').replace(/\\\\/g, '\\')
+  try {
+    const rows = unescape(rowSeparator) === '' ? [input] : input.split(unescape(rowSeparator))
+    const rowSep = unescape(rowSeparator); const colSep = unescape(columnSeparator); const tokens = parsePattern(pattern)
+    const evaluate = (items: RowlandToken[], columns: string[]): string => items.map(token => {
+      if (token.type === 'literal') return token.value
+      if (token.type === 'column') return columns[token.index] ?? ''
+      const params = token.params.map(item => evaluate(item, columns)); const name = token.name.toUpperCase()
+      if (name === 'GETDATE') {
+        const date = new Date(); const format = params[0] || 'yyyy-MM-ddTHH:mm:ss.000Z'
+        return format.replace(/yyyy/g, String(date.getFullYear())).replace(/MM/g, String(date.getMonth() + 1).padStart(2, '0')).replace(/dd/g, String(date.getDate()).padStart(2, '0')).replace(/HH/g, String(date.getHours()).padStart(2, '0')).replace(/mm/g, String(date.getMinutes()).padStart(2, '0')).replace(/ss/g, String(date.getSeconds()).padStart(2, '0')).replace(/SSS/g, String(date.getMilliseconds()).padStart(3, '0'))
+      }
+      if (name === 'SUBSTRING') { if (params.length < 3) throw new Error('SUBSTRING function requires at least 3 parameters: string, start, length'); if (Number.isNaN(Number(params[1])) || Number.isNaN(Number(params[2]))) throw new Error('Start and length parameters must be valid numbers'); return params[0]!.substring(Number(params[1]), Number(params[2])) }
+      if (name === 'UUID') { const format = (params[0] || 'D').trim().toUpperCase(); const version = (params[1] || 'v4').toLowerCase(); const generated = version === 'v6' ? uuidv6() : version === 'v7' ? uuidv7() : uuidv4(); const base = generated.replace(/-/g, ''); const dashed = `${base.slice(0, 8)}-${base.slice(8, 12)}-${base.slice(12, 16)}-${base.slice(16, 20)}-${base.slice(20)}`; if (format === 'N') return base; if (format === 'D') return dashed; if (format === 'B') return `{${dashed}}`; if (format === 'P') return `(${dashed})`; if (format.length !== 1) throw new Error(`Invalid UUID format: '${params[0]}'. Format must be a single character (N, D, B or P).`); throw new Error(`Invalid UUID format character: '${format}'. Valid formats are: N, D, B, or P.`) }
+      throw new Error(`Unknown function: ${token.name}`)
+    }).join('')
+    return rows.map(row => evaluate(tokens, colSep === '' ? [row] : row.split(colSep))).join(rowSep)
+  } catch (error) { return String(error) }
+}
+
+function uuidFormat(uuid: string, format: Readonly<{ braces: boolean; hyphens: boolean; quotes: boolean; uppercase: boolean }>, strict: boolean): string {
+  if (strict ? !uuidValidate(uuid) : !/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/iu.test(uuid)) throw new Error('Invalid UUID')
+  let value = format.uppercase ? uuid.toUpperCase() : uuid
+  if (!format.hyphens) value = value.replace(/-/g, '')
+  if (format.braces) value = `{${value}}`
+  if (format.quotes) value = `"${value}"`
+  return value
+}
+
+function uuidReformat(uuid: string, format: Readonly<{ braces: boolean; hyphens: boolean; quotes: boolean; uppercase: boolean }>): string {
+  let value = uuid.replace(/["{}-]/g, '')
+  value = format.uppercase ? value.toUpperCase() : value.toLowerCase()
+  if (format.hyphens) value = `${value.slice(0, 8)}-${value.slice(8, 12)}-${value.slice(12, 16)}-${value.slice(16, 20)}-${value.slice(20)}`
+  if (format.braces) value = `{${value}}`
+  if (format.quotes) value = `"${value}"`
+  return value
+}
+
+export function createLauncherLocalExtensions(options: LocalExtensionOptions): Readonly<{
+  executeAction: (record: LauncherActionRecord) => Promise<boolean>
+  loadIndexedItems: () => Promise<readonly LauncherInternalResultItem[]>
+  searchInstant: (searchTerm: string) => Promise<InstantResult>
+}> {
+  const get = <T>(id: LauncherLocalExtensionId, key: string, fallback: T): T => setting(options, id, key, fallback)
+  const enabled = () => new Set(options.enabledExtensionIds().filter(localExtension))
+  const searchers: Record<LauncherLocalExtensionId, SearchOverride> = {
+    Base64Conversion: searchTerm => {
+      const defaults = LAUNCHER_LOCAL_EXTENSION_DEFAULTS.Base64Conversion; const encode = get('Base64Conversion', 'encodePrefix', defaults.encodePrefix); const decode = get('Base64Conversion', 'decodePrefix', defaults.decodePrefix); const both = get('Base64Conversion', 'encodeDecodePrefix', defaults.encodeDecodePrefix); const lower = searchTerm.toLocaleLowerCase('en-US'); const values: Array<{ action: string; value: string }> = []
+      if (lower.startsWith(`${encode} `) && searchTerm.length > encode.length + 1) values.push({ action: 'Encoded', value: Buffer.from(searchTerm.slice(encode.length).trim(), 'utf8').toString('base64') })
+      else if (lower.startsWith(`${decode} `) && searchTerm.length > decode.length + 1) values.push({ action: 'Decoded', value: Buffer.from(searchTerm.slice(decode.length).trim(), 'base64').toString('utf8') })
+      else if (lower.startsWith(`${both} `) && searchTerm.length > both.length + 1) { const payload = searchTerm.slice(both.length).trim(); values.push({ action: 'Encoded', value: Buffer.from(payload, 'utf8').toString('base64') }, { action: 'Decoded', value: Buffer.from(payload, 'base64').toString('utf8') }) }
+      return Object.freeze({ after: Object.freeze([]), before: Object.freeze(values.filter(item => boundedOutput(item.value)).map((item, index) => resultItem({ description: `${item.action} · Base64 Conversion`, id: `base64Conversion:instantResult-${index}`, name: item.value, sourceExtension: 'Base64Conversion' }))) })
+    },
+    Calculator: term => { const d = LAUNCHER_LOCAL_EXTENSION_DEFAULTS.Calculator; const value = calculate(term, get('Calculator', 'precision', d.precision), get('Calculator', 'decimalSeparator', d.decimalSeparator), get('Calculator', 'argumentSeparator', d.argumentSeparator)); return value === undefined || !boundedOutput(value) ? emptyInstantResult() : Object.freeze({ before: Object.freeze([]), after: Object.freeze([resultItem({ description: 'Calculation Result', id: 'calculator:instantResult', name: value, sourceExtension: 'Calculator' })]) }) },
+    ColorConverter: term => { const formats = get('ColorConverter', 'formats', [...LAUNCHER_LOCAL_EXTENSION_DEFAULTS.ColorConverter.formats]); try { const color = Color(term); const values = [{ format: 'HEX', value: color.hex() }, { format: 'HSL', value: color.hsl().string() }, { format: 'RGB', value: color.rgb().string() }].filter(item => formats.includes(item.format as never)); return Object.freeze({ before: Object.freeze([]), after: Object.freeze(values.map(item => resultItem({ description: `${item.format} Color`, details: color.keyword(), id: `color-${item.value}-${item.format}`, name: item.value, sourceExtension: 'ColorConverter' }))) }) } catch { return emptyInstantResult() } },
+    PasswordGenerator: term => { const d = LAUNCHER_LOCAL_EXTENSION_DEFAULTS.PasswordGenerator; const command = get('PasswordGenerator', 'command', d.command); if (term.toLocaleLowerCase('en-US') !== command.toLocaleLowerCase('en-US')) return emptyInstantResult(); const settings = { beginWithALetter: get('PasswordGenerator', 'beginWithALetter', d.beginWithALetter), includeLowercaseCharacters: get('PasswordGenerator', 'includeLowercaseCharacters', d.includeLowercaseCharacters), includeNumbers: get('PasswordGenerator', 'includeNumbers', d.includeNumbers), includeSymbols: get('PasswordGenerator', 'includeSymbols', d.includeSymbols), includeUppercaseCharacters: get('PasswordGenerator', 'includeUppercaseCharacters', d.includeUppercaseCharacters), noDuplicateCharacters: get('PasswordGenerator', 'noDuplicateCharacters', d.noDuplicateCharacters), noSequentialCharacters: get('PasswordGenerator', 'noSequentialCharacters', d.noSequentialCharacters), noSimilarCharacters: get('PasswordGenerator', 'noSimilarCharacters', d.noSimilarCharacters), passwordLength: get('PasswordGenerator', 'passwordLength', d.passwordLength), symbols: get('PasswordGenerator', 'symbols', d.symbols) }; const quantity = get('PasswordGenerator', 'quantity', d.quantity); return Object.freeze({ after: Object.freeze([]), before: Object.freeze(Array.from({ length: quantity }, (_, index) => { const value = password(settings); return resultItem({ description: 'Generated password', id: `passwordGenerator:instantResult-${index}`, name: value, sourceExtension: 'PasswordGenerator' }) })) }) },
+    QuickFormatter: term => { const d = LAUNCHER_LOCAL_EXTENSION_DEFAULTS.QuickFormatter; const command = get('QuickFormatter', 'command', d.command); const lower = term.toLocaleLowerCase('en-US'); const deep = get('QuickFormatter', 'enableDeepFormatting', d.enableDeepFormatting); let value: string | undefined; if (get('QuickFormatter', 'enableStackTrace', d.enableStackTrace) && lower.startsWith(`${command}st `) && term.length > command.length + 3) value = quickFormat(term.slice(command.length + 3).trim(), 'stack', deep); else if (get('QuickFormatter', 'enableJson', d.enableJson) && lower.startsWith(`${command}j `) && term.length > command.length + 2) value = quickFormat(term.slice(command.length + 2).trim(), 'json', deep); else if (get('QuickFormatter', 'enableXml', d.enableXml) && lower.startsWith(`${command}x `) && term.length > command.length + 2) value = quickFormat(term.slice(command.length + 2).trim(), 'xml', deep); else if (lower.startsWith(`${command} `) && term.length > command.length + 1) value = quickFormat(term.slice(command.length + 1).trim(), 'auto', deep); return value === undefined || !boundedOutput(value) ? emptyInstantResult() : Object.freeze({ before: Object.freeze([resultItem({ description: 'Formatted text', id: 'quickFormatter:instantResult', name: value, sourceExtension: 'QuickFormatter' })]), after: Object.freeze([]) }) },
+    RowlandTextEditor: () => emptyInstantResult(),
+    UuidGenerator: term => { const d = LAUNCHER_LOCAL_EXTENSION_DEFAULTS.UuidGenerator; const formats = get('UuidGenerator', 'searchResultFormats', [...d.searchResultFormats]) as ReadonlyArray<Readonly<{ braces: boolean; hyphens: boolean; quotes: boolean; uppercase: boolean }>>; const strict = get('UuidGenerator', 'validateStrictly', d.validateStrictly); let candidate = term; const lower = candidate.toLocaleLowerCase('en-US'); if (lower.startsWith('uuid') || lower.startsWith('guid')) candidate = candidate.slice(4); candidate = candidate.trim(); const possible = uuidReformat(candidate, d.generatorFormat); let values: string[] = []; try { if (strict ? uuidValidate(possible) : /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/iu.test(possible)) values = formats.map(format => uuidFormat(possible, format, strict)); else if (lower === 'uuid' || lower === 'guid') { const version = get<string>('UuidGenerator', 'uuidVersion', d.uuidVersion); const generated = version === 'v6' ? uuidv6() : version === 'v7' ? uuidv7() : uuidv4(); values = formats.map(format => uuidReformat(generated, format)) } } catch { values = [] } return Object.freeze({ before: Object.freeze(values.filter(boundedOutput).map((value, index) => resultItem({ description: 'UUID / GUID', id: `uuidGenerator:instantResult-${index}`, name: value, sourceExtension: 'UuidGenerator' }))), after: Object.freeze([]) }) },
+  }
+
+    const loadIndexedItems = async (): Promise<readonly LauncherInternalResultItem[]> => {
+    const catalog: ReadonlyArray<Readonly<{ description: string; extensionId: LauncherLocalExtensionId; name: string }>> = [
+      { description: 'Encode or decode Base64', extensionId: 'Base64Conversion', name: 'Base64 Conversion' },
+      { description: 'Format rows of text', extensionId: 'RowlandTextEditor', name: 'Rowland Text Editor' },
+      { description: 'Open UUIDs / GUIDs Generator', extensionId: 'UuidGenerator', name: 'UUID / GUID Generator' },
+    ]
+    return Object.freeze(catalog.filter(item => enabled().has(item.extensionId)).map(item => Object.freeze({
+      defaultAction: openAction(item.extensionId, item.name),
+      description: item.description,
+      id: `ueli-local:${item.extensionId}`,
+      imageKey: LOCAL_IMAGE_KEYS[item.extensionId],
+      name: item.name,
+      sourceExtension: item.extensionId,
+    })))
+  }
+
+  const present = (item: LauncherInternalResultItem): LauncherInternalResultItem => Object.freeze({ ...item, name: item.name.slice(0, 512) })
+  const searchInstant = async (term: string): Promise<InstantResult> => { const before: LauncherInternalResultItem[] = []; const after: LauncherInternalResultItem[] = []; const active = enabled(); for (const id of LAUNCHER_LOCAL_EXTENSION_IDS) { if (!active.has(id)) continue; try { const result = (options.searchOverrides?.[id] ?? searchers[id])(term); before.push(...result.before.map(present)); after.push(...result.after.map(present)) } catch (error) { options.onProviderError?.(id, error) } } return Object.freeze({ before: Object.freeze(before), after: Object.freeze(after) }) }
+  const executeAction = async (record: LauncherActionRecord): Promise<boolean> => { if (record.handlerKey === LAUNCHER_LOCAL_ACTION_HANDLERS.copy) { if (!localExtension(record.sourceExtension)) throw new Error('Invalid local extension action'); await options.copyText(record.argument); return true } if (record.handlerKey === LAUNCHER_LOCAL_ACTION_HANDLERS.open) { if (!localExtension(record.argument) || record.argument !== record.sourceExtension) throw new Error('Invalid local extension action'); return true } return false }
+  return Object.freeze({ executeAction, loadIndexedItems, searchInstant })
+}
+
+export { LAUNCHER_LOCAL_EXTENSION_IDS as LAUNCHER_LOCAL_IDS, LOCAL_IMAGE_KEYS }
+export { rowlandProcess }

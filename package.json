@@ -126,6 +126,7 @@
     "@pennivo/mcp-server": "1.4.0",
     "@tockteam/note-vault-tools": "file:plugins/tocktutor/packages/tockteam-note-vault-tools",
     "@tockteam/ui": "workspace:*",
+    "@types/color": "4.2.1",
     "@types/node": "^24.10.0",
     "@types/react": "~18.3.31",
     "electron": "42.3.0",
@@ -247,8 +248,12 @@
     "artifactName": "TockTeam-Desktop-${version}-${arch}.${ext}"
   },
   "dependencies": {
+    "color": "4.2.3",
+    "electron-updater": "6.8.3",
+    "fast-xml-parser": "5.7.0",
     "fuse.js": "7.1.0",
     "fuzzysort": "3.1.0",
-    "electron-updater": "6.8.3"
+    "mathjs": "15.2.0",
+    "uuid": "14.0.0"
   }
 }
