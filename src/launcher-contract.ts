@@ -15,6 +15,71 @@ export const LAUNCHER_IPC_CHANNELS = Object.freeze({
   search: 'launcher:search',
 })
 
+export const LAUNCHER_SURFACE_IPC_CHANNELS = Object.freeze({
+  getSettings: 'launcher:surface-settings',
+  recordSearch: 'launcher:record-search',
+})
+
+/** TockLauncher composition inventory; provider execution is staged in later slices. */
+export const LAUNCHER_COMPOSITION = Object.freeze({
+  upstream: Object.freeze({
+    tag: 'v9.29.0',
+    commit: 'c9670d61cb2576802adf99d95622c58538d265f3',
+  }),
+  extensions: Object.freeze([
+    'AppearanceSwitcherModule',
+    'ApplicationSearchModule',
+    'Base64ConversionModule',
+    'BrowserBookmarksModule',
+    'CalculatorModule',
+    'ColorConverterExtensionModule',
+    'CurrencyConversionModule',
+    'CustomWebSearchModule',
+    'DeeplTranslatorModule',
+    'FileSearchModule',
+    'JetBrainsToolboxModule',
+    'PasswordGeneratorModule',
+    'QuickFormatterModule',
+    'RowlandTextEditorModule',
+    'SimpleFileSearchExtensionModule',
+    'SystemCommandsModule',
+    'SystemSettingsModule',
+    'TerminalLauncherModule',
+    'UeliCommandModule',
+    'UuidGeneratorModule',
+    'VSCodeModule',
+    'WebSearchExtensionModule',
+    'WindowsControlPanelModule',
+    'WorkflowExtensionModule',
+  ] as const),
+  extensionIds: Object.freeze([
+    'AppearanceSwitcher',
+    'ApplicationSearch',
+    'Base64Conversion',
+    'BrowserBookmarks',
+    'Calculator',
+    'ColorConverter',
+    'CurrencyConversion',
+    'CustomWebSearch',
+    'DeeplTranslator',
+    'FileSearch',
+    'JetBrainsToolbox',
+    'PasswordGenerator',
+    'QuickFormatter',
+    'RowlandTextEditor',
+    'SimpleFileSearch',
+    'SystemCommands',
+    'SystemSettings',
+    'TerminalLauncher',
+    'UeliCommand',
+    'UuidGenerator',
+    'VSCode',
+    'WebSearch',
+    'WindowsControlPanel',
+    'Workflow',
+  ] as const),
+})
+
 export type LauncherSearchResponse = Readonly<{
   after: readonly LauncherPublicResultItem[]
   before: readonly LauncherPublicResultItem[]
