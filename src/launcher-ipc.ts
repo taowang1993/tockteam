@@ -30,6 +30,7 @@ type LauncherSearchIpcArgs = Readonly<{
   rescan: () => Promise<LauncherCoreStatus>
   search: LauncherSearchProvider
   surface?: Readonly<{
+    getLocalExtensionSettings?: () => unknown
     getSettings: () => LauncherSurfaceSettings
     recordSearch: (query: string) => Promise<LauncherSurfaceSettings> | LauncherSurfaceSettings
   }>
@@ -117,6 +118,14 @@ export function registerLauncherIpcHandlers(args: LauncherSearchIpcArgs): () => 
   ]
   if (args.surface !== undefined) {
     registrations.push(
+      [LAUNCHER_SURFACE_IPC_CHANNELS.getLocalExtensionSettings, (event: unknown, ...rawArgs: unknown[]): unknown => {
+        args.guard.assert(event, 'launcher')
+        assertNoArguments(LAUNCHER_SURFACE_IPC_CHANNELS.getLocalExtensionSettings, rawArgs)
+        try {
+          if (args.surface!.getLocalExtensionSettings === undefined) throw new Error('Local extension settings are unavailable')
+          return args.surface!.getLocalExtensionSettings()
+        } catch { throw operationFailure() }
+      }],
       [LAUNCHER_SURFACE_IPC_CHANNELS.getSettings, (event: unknown, ...rawArgs: unknown[]): LauncherSurfaceSettings => {
         args.guard.assert(event, 'launcher')
         assertNoArguments(LAUNCHER_SURFACE_IPC_CHANNELS.getSettings, rawArgs)

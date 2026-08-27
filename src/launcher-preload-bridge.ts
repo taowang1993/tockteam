@@ -17,6 +17,7 @@ import {
   type LauncherThemeProjection,
 } from './launcher-window-contract.ts'
 import type { LauncherCoreStatus, LauncherSearchOptions } from './launcher-core-search.ts'
+import { parseLauncherLocalExtensionSettings, type LauncherLocalExtensionSettings } from './launcher-local-extension-contract.ts'
 
 type IpcInvoker = Readonly<{
   invoke: (channel: string, args?: unknown) => Promise<unknown>
@@ -26,6 +27,7 @@ type IpcInvoker = Readonly<{
 
 export type LauncherPreloadBridge = Readonly<{
   dismiss: (...args: unknown[]) => Promise<void>
+  getLocalExtensionSettings: (...args: unknown[]) => Promise<LauncherLocalExtensionSettings>
   getSurfaceSettings: (...args: unknown[]) => Promise<import('./launcher-contract.ts').LauncherSurfaceSettings>
   getTheme: (...args: unknown[]) => Promise<LauncherThemeProjection>
   invokeAction: (actionId: string) => Promise<LauncherInvokeResult>
@@ -63,6 +65,10 @@ export function createLauncherPreloadBridge(ipcRenderer: IpcInvoker): LauncherPr
     dismiss: async (...args: unknown[]): Promise<void> => {
       assertArity('dismiss', args, 0)
       parseLauncherWindowAcknowledgement(await ipcRenderer.invoke(LAUNCHER_WINDOW_IPC_CHANNELS.dismiss))
+    },
+    getLocalExtensionSettings: async (...args: unknown[]): Promise<LauncherLocalExtensionSettings> => {
+      assertArity('getLocalExtensionSettings', args, 0)
+      return parseLauncherLocalExtensionSettings(await ipcRenderer.invoke(LAUNCHER_SURFACE_IPC_CHANNELS.getLocalExtensionSettings))
     },
     getSurfaceSettings: async (...args: unknown[]): Promise<import('./launcher-contract.ts').LauncherSurfaceSettings> => {
       assertArity('getSurfaceSettings', args, 0)

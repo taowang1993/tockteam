@@ -16,6 +16,7 @@ export const LAUNCHER_IPC_CHANNELS = Object.freeze({
 })
 
 export const LAUNCHER_SURFACE_IPC_CHANNELS = Object.freeze({
+  getLocalExtensionSettings: 'launcher:local-extension-settings',
   getSettings: 'launcher:surface-settings',
   recordSearch: 'launcher:record-search',
 })

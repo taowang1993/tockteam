@@ -93,6 +93,10 @@ import { resolveLauncherSettingDefault } from './launcher-settings-defaults.ts'
 import { createLauncherSettingsOperations } from './launcher-settings-operations.ts'
 import { assertNoLauncherIpcArguments } from './launcher-window-contract.ts'
 import { createLauncherCoreSearch } from './launcher-core-search.ts'
+import { createLauncherLocalExtensions } from './launcher-local-extensions.ts'
+import { LAUNCHER_LOCAL_EXTENSION_DEFAULTS, LAUNCHER_LOCAL_EXTENSION_IDS } from './launcher-local-extension-config.ts'
+import type { LauncherLocalExtensionSettings } from './launcher-local-extension-contract.ts'
+import { isLauncherRendererSettingValue } from './launcher-settings-contract.ts'
 import { registerLauncherIpcHandlers } from './launcher-ipc.ts'
 import {
   executeTockTeamDestination,
@@ -886,6 +890,77 @@ function launcherSettingsSnapshot(): ReturnType<LauncherPersistenceRepository['s
   })
 }
 
+function launcherLocalExtensionSettings(): LauncherLocalExtensionSettings {
+  const repository = requireLauncherPersistence()
+  const get = <T>(extensionId: string, key: string, fallback: T): T => {
+    const fullKey = `extension[${extensionId}].${key}`
+    const value = repository.getSetting<unknown>(fullKey, fallback)
+    return isLauncherRendererSettingValue(fullKey, value) ? value as T : fallback
+  }
+  const uuidDefaults = LAUNCHER_LOCAL_EXTENSION_DEFAULTS.UuidGenerator
+  const nested = get('UuidGenerator', 'generatorFormat', uuidDefaults.generatorFormat)
+  return Object.freeze({
+    Base64Conversion: Object.freeze({
+      decodePrefix: get('Base64Conversion', 'decodePrefix', LAUNCHER_LOCAL_EXTENSION_DEFAULTS.Base64Conversion.decodePrefix),
+      encodeDecodePrefix: get('Base64Conversion', 'encodeDecodePrefix', LAUNCHER_LOCAL_EXTENSION_DEFAULTS.Base64Conversion.encodeDecodePrefix),
+      encodePrefix: get('Base64Conversion', 'encodePrefix', LAUNCHER_LOCAL_EXTENSION_DEFAULTS.Base64Conversion.encodePrefix),
+    }),
+    Calculator: Object.freeze({
+      argumentSeparator: get('Calculator', 'argumentSeparator', LAUNCHER_LOCAL_EXTENSION_DEFAULTS.Calculator.argumentSeparator),
+      decimalSeparator: get('Calculator', 'decimalSeparator', LAUNCHER_LOCAL_EXTENSION_DEFAULTS.Calculator.decimalSeparator),
+      precision: get('Calculator', 'precision', LAUNCHER_LOCAL_EXTENSION_DEFAULTS.Calculator.precision),
+    }),
+    ColorConverter: Object.freeze({ formats: Object.freeze([...get('ColorConverter', 'formats', [...LAUNCHER_LOCAL_EXTENSION_DEFAULTS.ColorConverter.formats])]) }),
+    PasswordGenerator: Object.freeze({
+      beginWithALetter: get('PasswordGenerator', 'beginWithALetter', LAUNCHER_LOCAL_EXTENSION_DEFAULTS.PasswordGenerator.beginWithALetter),
+      command: get('PasswordGenerator', 'command', LAUNCHER_LOCAL_EXTENSION_DEFAULTS.PasswordGenerator.command),
+      includeLowercaseCharacters: get('PasswordGenerator', 'includeLowercaseCharacters', LAUNCHER_LOCAL_EXTENSION_DEFAULTS.PasswordGenerator.includeLowercaseCharacters),
+      includeNumbers: get('PasswordGenerator', 'includeNumbers', LAUNCHER_LOCAL_EXTENSION_DEFAULTS.PasswordGenerator.includeNumbers),
+      includeSymbols: get('PasswordGenerator', 'includeSymbols', LAUNCHER_LOCAL_EXTENSION_DEFAULTS.PasswordGenerator.includeSymbols),
+      includeUppercaseCharacters: get('PasswordGenerator', 'includeUppercaseCharacters', LAUNCHER_LOCAL_EXTENSION_DEFAULTS.PasswordGenerator.includeUppercaseCharacters),
+      noDuplicateCharacters: get('PasswordGenerator', 'noDuplicateCharacters', LAUNCHER_LOCAL_EXTENSION_DEFAULTS.PasswordGenerator.noDuplicateCharacters),
+      noSequentialCharacters: get('PasswordGenerator', 'noSequentialCharacters', LAUNCHER_LOCAL_EXTENSION_DEFAULTS.PasswordGenerator.noSequentialCharacters),
+      noSimilarCharacters: get('PasswordGenerator', 'noSimilarCharacters', LAUNCHER_LOCAL_EXTENSION_DEFAULTS.PasswordGenerator.noSimilarCharacters),
+      passwordLength: get('PasswordGenerator', 'passwordLength', LAUNCHER_LOCAL_EXTENSION_DEFAULTS.PasswordGenerator.passwordLength),
+      quantity: get('PasswordGenerator', 'quantity', LAUNCHER_LOCAL_EXTENSION_DEFAULTS.PasswordGenerator.quantity),
+      symbols: get('PasswordGenerator', 'symbols', LAUNCHER_LOCAL_EXTENSION_DEFAULTS.PasswordGenerator.symbols),
+    }),
+    QuickFormatter: Object.freeze({
+      command: get('QuickFormatter', 'command', LAUNCHER_LOCAL_EXTENSION_DEFAULTS.QuickFormatter.command),
+      enableDeepFormatting: get('QuickFormatter', 'enableDeepFormatting', LAUNCHER_LOCAL_EXTENSION_DEFAULTS.QuickFormatter.enableDeepFormatting),
+      enableJson: get('QuickFormatter', 'enableJson', LAUNCHER_LOCAL_EXTENSION_DEFAULTS.QuickFormatter.enableJson),
+      enableStackTrace: get('QuickFormatter', 'enableStackTrace', LAUNCHER_LOCAL_EXTENSION_DEFAULTS.QuickFormatter.enableStackTrace),
+      enableXml: get('QuickFormatter', 'enableXml', LAUNCHER_LOCAL_EXTENSION_DEFAULTS.QuickFormatter.enableXml),
+    }),
+    RowlandTextEditor: Object.freeze({
+      columnSeparator: get('RowlandTextEditor', 'columnSeparator', LAUNCHER_LOCAL_EXTENSION_DEFAULTS.RowlandTextEditor.columnSeparator),
+      rowSeparator: get('RowlandTextEditor', 'rowSeparator', LAUNCHER_LOCAL_EXTENSION_DEFAULTS.RowlandTextEditor.rowSeparator),
+    }),
+    UuidGenerator: Object.freeze({
+      braces: get('UuidGenerator', 'braces', nested.braces),
+      generatorFormat: Object.freeze({ ...nested }),
+      hyphens: get('UuidGenerator', 'hyphens', nested.hyphens),
+      numberOfUuids: get('UuidGenerator', 'numberOfUuids', uuidDefaults.numberOfUuids),
+      quotes: get('UuidGenerator', 'quotes', nested.quotes),
+      searchResultFormats: Object.freeze([...get('UuidGenerator', 'searchResultFormats', [...uuidDefaults.searchResultFormats])]),
+      uppercase: get('UuidGenerator', 'uppercase', nested.uppercase),
+      uuidVersion: get('UuidGenerator', 'uuidVersion', uuidDefaults.uuidVersion),
+      validateStrictly: get('UuidGenerator', 'validateStrictly', uuidDefaults.validateStrictly),
+    }),
+  }) as LauncherLocalExtensionSettings
+}
+
+function launcherEnabledLocalExtensionIds(): readonly string[] {
+  const repository = requireLauncherPersistence()
+  const context = launcherDefaultContext()
+  const resolved = resolveLauncherSettingDefault('extensions.enabledExtensionIds', context)
+  const fallback: readonly string[] = Array.isArray(resolved)
+    ? resolved.filter((item): item is string => typeof item === 'string')
+    : [...LAUNCHER_LOCAL_EXTENSION_IDS]
+  const value = repository.getSetting('extensions.enabledExtensionIds', fallback)
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : fallback
+}
+
 function launcherSurfaceSettings(): import('./launcher-contract.ts').LauncherSurfaceSettings {
   const snapshot = launcherSettingsSnapshot()
   const values = snapshot.values
@@ -982,6 +1057,14 @@ function initializeLauncher(): void {
   applyLauncherSessionPolicy(launcherSession)
   const urlPolicy = createLauncherUrlPolicy({ launcherHtmlPath })
   const platform = launcherPlatform()
+  const local = createLauncherLocalExtensions({
+    copyText: text => clipboard.writeText(text),
+    enabledExtensionIds: launcherEnabledLocalExtensionIds,
+    getSetting: (key, fallback) => repository.getSetting(key, fallback),
+    onProviderError: (extensionId, error) => {
+      appendLog('desktop', `TockLauncher provider ${extensionId} failed: ${error instanceof Error ? error.name : 'unknown error'}`)
+    },
+  })
   const coreSearch = createLauncherCoreSearch({
     initialExcludedItemIds: repository.getSetting('searchEngine.excludedItems', []),
     initialFavoriteItemIds: repository.getSetting('favorites', []),
@@ -989,8 +1072,9 @@ function initializeLauncher(): void {
     appendLog: async (_level, message) => { await repository.appendLog('ERROR', message) },
     loadIndexedItems: async () => {
       const result = await createTockTeamDestinationResults('')
-      return [...result.before, ...result.after]
+      return [...result.before, ...result.after, ...await local.loadIndexedItems()]
     },
+    searchInstant: async searchTerm => await local.searchInstant(searchTerm),
     persistIndex: async items => { await repository.writeIndex(items) },
     persistSettings: async values => await runLauncherSettingsOperation(
       async () => await repository.updateSettings(values),
@@ -1002,6 +1086,7 @@ function initializeLauncher(): void {
   const actions = new LauncherActionStore({
     execute: async record => {
       if (await coreSearch.executeAction(record)) return
+      if (await local.executeAction(record)) return
       await executeTockTeamDestination(record, () => {
         if (runtimeUrl === undefined) return false
         return mainWindow === undefined || mainWindow.isDestroyed()
@@ -1063,6 +1148,7 @@ function initializeLauncher(): void {
         })
       },
       surface: {
+        getLocalExtensionSettings: launcherLocalExtensionSettings,
         getSettings: launcherSurfaceSettings,
         recordSearch: async query => await runLauncherSettingsOperation(async () => await recordLauncherSearch(query), { mutation: true }),
       },
