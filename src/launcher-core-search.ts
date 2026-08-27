@@ -49,10 +49,9 @@ export type LauncherCoreSearchOptions = Readonly<{
   }>>
 }>
 
-function errorMessage(error: unknown): string {
-  return error instanceof Error && error.message.length > 0
-    ? error.message.slice(0, 512)
-    : 'TockLauncher provider failed'
+function errorMessage(_error: unknown): string {
+  // Provider errors are untrusted and may contain paths, URLs, or user input.
+  return 'TockLauncher provider failed'
 }
 
 function alphabetically(left: LauncherInternalResultItem, right: LauncherInternalResultItem): number {

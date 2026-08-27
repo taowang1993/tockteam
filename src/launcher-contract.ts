@@ -269,7 +269,7 @@ export function parseLauncherSurfaceSettings(value: unknown): LauncherSurfaceSet
   if (!isRecord(value)
     || !hasExactKeys(value, ['fuzziness', 'history', 'historyEnabled', 'historyLimit', 'maxSearchResultItems', 'searchEngineId'])
     || typeof value.fuzziness !== 'number' || !Number.isFinite(value.fuzziness) || value.fuzziness < 0 || value.fuzziness > 1
-    || !Array.isArray(value.history) || value.history.length > 100 || value.history.some(item => typeof item !== 'string' || item.length > 512)
+    || !Array.isArray(value.history) || value.history.length > 100 || value.history.some(item => typeof item !== 'string' || item.length === 0 || item.length > 512 || /[\0\r\n]/u.test(item))
     || typeof value.historyEnabled !== 'boolean'
     || typeof value.historyLimit !== 'number' || !Number.isSafeInteger(value.historyLimit) || value.historyLimit < 1 || value.historyLimit > 100
     || typeof value.maxSearchResultItems !== 'number' || !Number.isSafeInteger(value.maxSearchResultItems) || value.maxSearchResultItems < 1 || value.maxSearchResultItems > 200

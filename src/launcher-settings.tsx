@@ -78,7 +78,8 @@ function SectionCard({ icon, title, description, children, testId }: Readonly<{ 
 }
 
 function statusLabel(snapshot: LauncherSettingsSnapshot): string {
-  if (snapshot.settingsSource === 'external') return snapshot.externalGrantStatus === 'revoked' ? 'External source revoked' : 'External source active'
+  if (snapshot.externalGrantStatus === 'revoked') return 'External grant revoked; managed source active'
+  if (snapshot.settingsSource === 'external') return 'External source active'
   return snapshot.recoveredSettings ? 'Managed source recovered from backup' : 'Managed source active'
 }
 
@@ -238,13 +239,13 @@ function LauncherSettingsPage({ close: _close }: SettingsSectionProps): ReactNod
             <Button size="sm" variant="outline" disabled={busy} onClick={() => { void operation('Import', settings.importSettings) }}><Upload aria-hidden="true" />Import</Button>
             <Button size="sm" variant="outline" disabled={busy} onClick={() => { void operation('Export', settings.exportSettings, false) }}><Download aria-hidden="true" />Export</Button>
             <Button size="sm" variant="outline" disabled={busy} onClick={() => { void operation('External selection', settings.selectExternalSettings) }}>Choose external file</Button>
-            <Button size="sm" variant="outline" disabled={busy || snapshot.settingsSource !== 'external'} onClick={() => { void operation('External revocation', settings.revokeExternalSettings) }}>Revoke external file</Button>
+            <Button size="sm" variant="outline" disabled={busy || snapshot.externalGrantStatus === 'none'} onClick={() => { void operation('External revocation', settings.revokeExternalSettings) }}>Revoke external file</Button>
           </div>
         </Field>
         <Field title="Custom browser" description="The native browser grant is status-only in the renderer; Linux uses the system browser.">
           <div className="flex flex-wrap justify-end gap-2">
             <Button size="sm" variant="outline" disabled={busy} onClick={() => { void operation('Custom browser selection', settings.selectCustomBrowser) }}>Choose custom browser</Button>
-            <Button size="sm" variant="outline" disabled={busy || snapshot.customBrowserStatus !== 'active'} onClick={() => { void operation('Custom browser revocation', settings.revokeCustomBrowser) }}>Revoke custom browser</Button>
+            <Button size="sm" variant="outline" disabled={busy || snapshot.customBrowserStatus === 'none'} onClick={() => { void operation('Custom browser revocation', settings.revokeCustomBrowser) }}>Revoke custom browser</Button>
           </div>
         </Field>
         <Field title="Reset TockLauncher settings" description="Clears overrides, favorites, exclusions, history, and the custom-browser grant, then securely relaunches Desktop.">

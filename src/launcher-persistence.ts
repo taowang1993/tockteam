@@ -115,8 +115,8 @@ function parseGrant(value: unknown): ExternalGrant {
     || Object.keys(value).length !== 5
     || identityPart(value.dev) === undefined
     || identityPart(value.ino) === undefined
-    || typeof value.parentRealPath !== 'string' || value.parentRealPath.length === 0 || value.parentRealPath.length > 16_384
-    || typeof value.path !== 'string' || value.path.length === 0 || value.path.length > 16_384
+    || typeof value.parentRealPath !== 'string' || value.parentRealPath.length === 0 || value.parentRealPath.length > 16_384 || /[\0\r\n]/u.test(value.parentRealPath)
+    || typeof value.path !== 'string' || value.path.length === 0 || value.path.length > 16_384 || /[\0\r\n]/u.test(value.path)
     || value.version !== 1) throw new Error('TockLauncher external settings grant is invalid')
   return Object.freeze({
     dev: identityPart(value.dev)!,
@@ -137,6 +137,8 @@ async function exists(filePath: string): Promise<boolean> {
 }
 
 async function readBoundedRegularFile(filePath: string, maxBytes: number, expected?: ExternalGrant): Promise<string> {
+  const before = await lstat(filePath, { bigint: true })
+  if (before.isSymbolicLink() || !before.isFile()) throw new Error('TockLauncher file is not a bounded regular file')
   let handle
   const flags = constants.O_RDONLY | (HAS_NOFOLLOW ? NOFOLLOW : 0)
   try { handle = await open(filePath, flags) }
@@ -147,6 +149,9 @@ async function readBoundedRegularFile(filePath: string, maxBytes: number, expect
     if (expected !== undefined && !sameIdentity(stats, expected)) throw new Error('TockLauncher external settings file changed')
     const text = await handle.readFile('utf8')
     if (Buffer.byteLength(text, 'utf8') > maxBytes) throw new Error('TockLauncher file is too large')
+    const after = await lstat(filePath, { bigint: true })
+    if (after.isSymbolicLink() || !sameIdentity(after, { dev: identityPart(before.dev)!, ino: identityPart(before.ino)! } as ExternalGrant)) throw new Error('TockLauncher file changed while reading')
+    if (expected !== undefined && !sameIdentity(after, expected)) throw new Error('TockLauncher external settings file changed')
     return text
   } finally { await handle.close() }
 }
@@ -289,7 +294,11 @@ export class LauncherPersistenceRepository {
 
   async #recoverJson<T>(filePath: string, maxBytes: number, parser: (value: unknown) => T, fallback: T, setRecovered?: (recovered: boolean) => void): Promise<T> {
     if (await exists(filePath)) {
-      try { return await readJson(filePath, maxBytes, parser) } catch { /* use the independently validated backup */ }
+      try {
+        const parsed = await readJson(filePath, maxBytes, parser)
+        await chmod(filePath, 0o600).catch(() => undefined)
+        return parsed
+      } catch { /* use the independently validated backup */ }
     }
     const backup = `${filePath}.bak`
     if (!await exists(backup)) return fallback

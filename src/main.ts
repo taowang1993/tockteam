@@ -1981,13 +1981,15 @@ function requestSecureQuit(_reason: 'native-quit' | 'tray' | 'launcher-command-q
     workbenchLauncherIpcDisposer?.()
     workbenchLauncherIpcDisposer = undefined
     launcherUpdater = undefined
-    const persistenceResults = await Promise.allSettled([
-      launcherCoreFlush?.() ?? Promise.resolve(),
-      launcherPersistence?.close() ?? Promise.resolve(),
-    ])
-    for (const result of persistenceResults) {
+    const coreFlushResult = await Promise.allSettled([launcherCoreFlush?.() ?? Promise.resolve()])
+    for (const result of coreFlushResult) {
       if (result.status === 'rejected') appendLog('desktop', result.reason instanceof Error ? result.reason.message : String(result.reason))
     }
+    const repositoryCloseResult = await Promise.allSettled([launcherPersistence?.close() ?? Promise.resolve()])
+    for (const result of repositoryCloseResult) {
+      if (result.status === 'rejected') appendLog('desktop', result.reason instanceof Error ? result.reason.message : String(result.reason))
+    }
+    launcherCustomBrowser?.dispose()
     const results = await Promise.allSettled([
       stopRuntimeAndChannels(),
       stopPreviewSurface(),

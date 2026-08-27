@@ -323,7 +323,7 @@ export function parseLauncherSettingsSnapshot(value: unknown): LauncherSettingsS
     || (value.customBrowserStatus !== undefined && value.customBrowserStatus !== 'active' && value.customBrowserStatus !== 'none' && value.customBrowserStatus !== 'revoked')
     || (value.externalWriteAvailable !== undefined && typeof value.externalWriteAvailable !== 'boolean')
     || (value.secureStorageAvailable !== undefined && typeof value.secureStorageAvailable !== 'boolean')
-    || !Array.isArray(value.logs) || value.logs.length > MAX_LAUNCHER_LOG_ENTRIES || value.logs.some(entry => typeof entry !== 'string' || entry.length > 576)
+    || !Array.isArray(value.logs) || value.logs.length > MAX_LAUNCHER_LOG_ENTRIES || value.logs.some(entry => typeof entry !== 'string' || entry.length > 576 || /[\0\r\n]/u.test(entry))
     || !Array.isArray(value.missingSensitiveKeys) || new Set(value.missingSensitiveKeys).size !== value.missingSensitiveKeys.length
     || value.missingSensitiveKeys.some(key => !LAUNCHER_SENSITIVE_SETTING_KEYS.includes(key as never))
     || !isRecord(value.values)) throw new Error('Invalid launcher settings snapshot')
@@ -347,8 +347,9 @@ export function parseLauncherSettingsSnapshot(value: unknown): LauncherSettingsS
 }
 
 export function parseLauncherSettingsOperationResult(value: unknown): Readonly<{ canceled?: boolean; ok: true }> {
-  if (!isRecord(value) || (Object.keys(value).length !== 1 && Object.keys(value).length !== 2)
-    || value.ok !== true || (value.canceled !== undefined && typeof value.canceled !== 'boolean')) throw new Error('Invalid launcher settings operation result')
+  if (!isRecord(value) || value.ok !== true
+    || (value.canceled === undefined && !hasExactKeys(value, ['ok']))
+    || (value.canceled !== undefined && (!hasExactKeys(value, ['canceled', 'ok']) || typeof value.canceled !== 'boolean'))) throw new Error('Invalid launcher settings operation result')
   return Object.freeze({ ...(value.canceled === undefined ? {} : { canceled: value.canceled }), ok: true as const })
 }
 

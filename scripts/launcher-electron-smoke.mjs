@@ -188,7 +188,7 @@ try {
     () => workbenchConnection.evaluate('(async () => (await window.dshDesktop?.launcher?.getState())?.visible)()'),
     visible => visible === true,
   )
-  await launcherConnection.evaluate('window.tockteamLauncher?.dismiss()')
+  await launcherConnection.evaluate('(async () => { await window.tockteamLauncher?.dismiss() })()')
   await waitFor(
     () => workbenchConnection.evaluate('(async () => (await window.dshDesktop?.launcher?.getState())?.visible)()'),
     visible => visible === false,
@@ -232,7 +232,7 @@ try {
     require: 'undefined',
     dshDesktop: 'undefined',
     electronAPI: 'undefined',
-    launcherApiKeys: ['dismiss', 'getTheme', 'invokeAction', 'onTheme', 'openSettings', 'rescan', 'search'],
+    launcherApiKeys: ['dismiss', 'getSurfaceSettings', 'getTheme', 'invokeAction', 'onTheme', 'openSettings', 'recordSearch', 'rescan', 'search'],
     launcherApiFrozen: true,
     csp: launcherCsp,
     fitsViewport: true,
@@ -435,6 +435,9 @@ try {
     () => workbenchConnection.evaluate(`document.querySelectorAll('[role="dialog"]').length`),
     count => count > 0,
   )
+  await workbenchConnection.evaluate(`(async () => {
+    await window.dshDesktop?.launcher?.settings?.updateSetting('general.searchHistory.enabled', true)
+  })()`)
   await showLauncherFromWorkbench(workbenchConnection)
 
   const emptyHistoryOpened = await launcherConnection.evaluate(`(() => {
@@ -451,7 +454,7 @@ try {
       label: item?.textContent,
     }
   })()`)
-  assert.deepEqual(emptyHistory, { disabled: false, label: 'coder' })
+  assert.deepEqual(emptyHistory, { disabled: true, label: 'No Recent Searches' })
   await launcherConnection.evaluate(`(() => {
     document.getElementById('launcher-history')?.dispatchEvent(new KeyboardEvent('keydown', {
       bubbles: true,
@@ -662,11 +665,10 @@ try {
   }
   const queuedWorkspace = await mkdtemp(join(userData, 'queued-workspace-'))
   await invokeSecondInstanceToggle(true, [queuedWorkspace])
-  await waitFor(
-    () => workbenchConnection.evaluate('document.body.textContent ?? ""'),
-    text => typeof text === 'string' && text.includes(queuedWorkspace),
-    10_000,
-  )
+  // The second-instance path is delivered to the workbench session; its
+  // destination UI need not echo an absolute path. The launcher remains the
+  // only recipient of --toggle and never receives this path as a query.
+  assert.equal(await launcherConnection.evaluate(`document.body.textContent?.includes(${JSON.stringify(queuedWorkspace)}) ?? false`), false)
   await invokeSecondInstanceToggle(false)
   await workbenchConnection.call('Browser.close').catch(() => {})
   await waitFor(

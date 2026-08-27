@@ -113,7 +113,7 @@ export function registerLauncherIpcHandlers(args: LauncherSearchIpcArgs): () => 
       [LAUNCHER_SURFACE_IPC_CHANNELS.recordSearch, async (event: unknown, rawQuery: unknown, ...extra: unknown[]): Promise<LauncherSurfaceSettings> => {
         args.guard.assert(event, 'launcher')
         assertNoArguments(LAUNCHER_SURFACE_IPC_CHANNELS.recordSearch, extra)
-        if (typeof rawQuery !== 'string' || rawQuery.length > 512 || /[\\0\\r\\n]/u.test(rawQuery)) throw new Error('Invalid launcher search history query')
+        if (typeof rawQuery !== 'string' || rawQuery.length > 512 || /[\0\r\n]/u.test(rawQuery)) throw new Error('Invalid launcher search history query')
         return await args.surface!.recordSearch(rawQuery)
       }],
     )
