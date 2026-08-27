@@ -163,10 +163,11 @@ export function inspectLauncherPackageFeasibility(inputs) {
   const sourceIdentityValues = []
   for (const expression of [
     /\b(?:PRODUCT_NAME|DATA_DIRECTORY)\s*=\s*(['"`])([^'"`]*)\1/gu,
-    /\b(?:partition|userData|appId|productName|executableName|dataDirectory)\s*(?:=|:)\s*(['"`])([^'"`]*)\1/gu,
-    /\b(?:setName|setPath|fromPartition|setAsDefaultProtocolClient)\(\s*(['"`])([^'"`]*)\1/gu,
+    /\b(?:partition|userData|appId|productName|executableName|dataDirectory|applicationName|applicationId|sessionName|sessionId|profileName|profileId)\s*(?:=|:)\s*(['"`])([^'"`]*)\1/gu,
+    /\bsetPath\(\s*(['"`])[^'"`]*\1\s*,\s*(['"`])([^'"`]*)\2/gu,
+    /\b(?:setName|fromPartition|setAsDefaultProtocolClient)\(\s*(['"`])([^'"`]*)\1/gu,
   ]) {
-    for (const match of String(mainSource ?? '').matchAll(expression)) sourceIdentityValues.push(match[2])
+    for (const match of String(mainSource ?? '').matchAll(expression)) sourceIdentityValues.push(match[match.length - 1])
   }
   addFailure(
     failures,
