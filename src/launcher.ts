@@ -17,6 +17,7 @@ import type { LauncherSurfaceSettings } from './launcher-contract.ts'
 import type { LauncherPreloadBridge } from './launcher-preload-bridge.ts'
 import type { LauncherThemeProjection } from './launcher-theme.ts'
 import { createLauncherLocalTool, LAUNCHER_LOCAL_TOOL_IDS, type LauncherLocalToolId } from './launcher-local-tools.ts'
+import { LAUNCHER_LOCAL_EXTENSION_ASSET_URLS } from './launcher-local-extension-assets.ts'
 import type { LauncherLocalExtensionSettings } from './launcher-local-extension-contract.ts'
 import { tockTeamSkin } from '../plugins/skins/src/skins.ts'
 
@@ -417,14 +418,17 @@ async function bootstrap(): Promise<void> {
       button.setAttribute('aria-selected', String(item.id === selectedItemId))
       button.tabIndex = -1
       if (start + index < 9) button.setAttribute('aria-keyshortcuts', `${modifier}+${start + index + 1}`)
-      const marker = item.imageKey !== undefined && /^[a-z][a-z0-9-]{0,63}$/u.test(item.imageKey)
+      const localAsset = (Object.hasOwn(LAUNCHER_LOCAL_EXTENSION_ASSET_URLS, item.sourceExtension)
+        ? LAUNCHER_LOCAL_EXTENSION_ASSET_URLS[item.sourceExtension as keyof typeof LAUNCHER_LOCAL_EXTENSION_ASSET_URLS]
+        : undefined)
+      const marker = localAsset !== undefined && item.imageKey !== undefined
         ? document.createElement('img')
         : document.createElement('span')
-      marker.className = 'flex h-8 w-8 w-8 shrink-0 items-center justify-center rounded-md bg-[var(--dsw-alias-bg-layer-2,Canvas)] text-sm font-semibold text-[var(--dsw-alias-label-secondary,CanvasText)]'
+      marker.className = 'flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-[var(--dsw-alias-bg-layer-2,Canvas)] text-sm font-semibold text-[var(--dsw-alias-label-secondary,CanvasText)]'
       marker.setAttribute('aria-hidden', 'true')
       if (marker instanceof HTMLImageElement) {
         marker.alt = ''
-        marker.src = `./launcher-assets/${item.imageKey}.png`
+        marker.src = localAsset!
         marker.onerror = () => {
           const fallback = document.createElement('span')
           fallback.className = marker.className
