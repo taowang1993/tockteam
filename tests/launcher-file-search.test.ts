@@ -99,7 +99,7 @@ test('superseded FileSearch queries abort and stale results cannot replace curre
   const provider = createLauncherFileSearchExtensions({ effects: { openPath: () => undefined, revealPath: () => undefined }, enabledExtensionIds: () => ['FileSearch'], getSetting: settings, homePath: '/home/max', platform: 'macOS', scanners })
   const first = provider.searchInstant(`${LAUNCHER_FILE_SEARCH_QUERY_PREFIX} first`)
   const second = provider.searchInstant(`${LAUNCHER_FILE_SEARCH_QUERY_PREFIX} second`)
-  assert.deepEqual(await first, { before: [], after: [] }); assert.equal(firstSignal?.aborted, true)
+  assert.deepEqual(await first, { before: [], after: [] }); assert.equal(firstSignal === undefined || firstSignal.aborted, true)
   assert.equal((await second).after[0]?.name, 'second.txt')
 })
 

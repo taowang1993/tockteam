@@ -62,8 +62,12 @@ function error(value: unknown, fallback: string): Error {
   return value instanceof Error ? value : new Error(fallback)
 }
 
-function throwIfNotCurrent(signal: AbortSignal, generation: number, currentGeneration: number): void {
+function throwIfAborted(signal: AbortSignal): void {
   if (signal.aborted) throw error(signal.reason, 'TockLauncher file search canceled')
+}
+
+function throwIfNotCurrent(signal: AbortSignal, generation: number, currentGeneration: number): void {
+  throwIfAborted(signal)
   if (generation !== currentGeneration) throw new Error('TockLauncher file search was superseded')
 }
 
@@ -323,14 +327,17 @@ export function createLauncherFileSearchExtensions(options: FileSearchOptions): 
           continue
         }
         try {
-          const entries = await runBounded(scanSignal => trackWork(options.scanners.scanSimpleFolder({
-            folder,
-            homePath: options.homePath,
-            maxResults: MAX_SIMPLE_RESULTS - count,
-            maxVisitedEntries: 10_000,
-            scanTimeoutMs,
-            signal: scanSignal,
-          })), scanController.signal, scanTimeoutMs, `Simple File Search root timed out: ${folder.path}`)
+          const entries = await runBounded(scanSignal => {
+            throwIfAborted(scanSignal)
+            return trackWork(options.scanners.scanSimpleFolder({
+              folder,
+              homePath: options.homePath,
+              maxResults: MAX_SIMPLE_RESULTS - count,
+              maxVisitedEntries: 10_000,
+              scanTimeoutMs,
+              signal: scanSignal,
+            }))
+          }, scanController.signal, scanTimeoutMs, `Simple File Search root timed out: ${folder.path}`)
           throwIfNotCurrent(scanController.signal, generation, scanGeneration)
           for (const entry of entries) {
             throwIfNotCurrent(scanController.signal, generation, scanGeneration)
@@ -380,14 +387,17 @@ export function createLauncherFileSearchExtensions(options: FileSearchOptions): 
     const everything = options.getSetting('extension[FileSearch].everythingCliFilePath', '')
     const everythingCliFilePath = typeof everything === 'string' ? everything : ''
     try {
-      const entries = await runBounded(signal => trackWork(options.scanners.queryFileSearch({
-        everythingCliFilePath,
-        homePath: options.homePath,
-        maxResults,
-        platform: options.platform,
-        searchTerm: queryTerm,
-        signal,
-      })), controller.signal, QUERY_TIMEOUT_MS, 'File Search query timed out')
+      const entries = await runBounded(signal => {
+        throwIfAborted(signal)
+        return trackWork(options.scanners.queryFileSearch({
+          everythingCliFilePath,
+          homePath: options.homePath,
+          maxResults,
+          platform: options.platform,
+          searchTerm: queryTerm,
+          signal,
+        }))
+      }, controller.signal, QUERY_TIMEOUT_MS, 'File Search query timed out')
       if (activeQuery?.controller !== controller || activeQuery.generation !== generation || controller.signal.aborted || generation !== queryGeneration) return emptySearch()
       const nextActions = new Set<string>(); const nextKnown = new Map<string, KnownPath>(); const items: LauncherInternalResultItem[] = []
       for (const entry of entries.slice(0, maxResults)) {
