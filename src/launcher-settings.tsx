@@ -11,7 +11,7 @@ import { Switch } from '@tockteam/ui/switch'
 import { LAUNCHER_COMPOSITION } from './launcher-contract.ts'
 import { LauncherLocalSettings } from './launcher-local-settings.tsx'
 import { LauncherDiscoverySettings } from './launcher-discovery-settings.tsx'
-import { LauncherFileSearchSettings } from './launcher-file-search-settings.tsx'
+import { LauncherFileSearchSettings, type LauncherSimpleFileSearchDraft } from './launcher-file-search-settings.tsx'
 import type { DesktopBridge } from './contracts.ts'
 import { LAUNCHER_SENSITIVE_SETTING_KEYS, type LauncherSettingsSnapshot } from './launcher-settings-contract.ts'
 import { readPersistedLauncherState } from './launcher-settings-model.ts'
@@ -97,7 +97,17 @@ function LauncherSettingsPage({ close: _close }: SettingsSectionProps): ReactNod
   const [secret, setSecret] = useState('')
   const [launchOnStart, setLaunchOnStart] = useState<boolean | null>(null)
   const [updater, setUpdater] = useState<UpdaterState | null>(null)
+  const [simpleFileSearchDraft, setSimpleFileSearchDraft] = useState<readonly LauncherSimpleFileSearchDraft[] | null>(null)
+  const simpleFileSearchDraftRevision = useRef(0)
   const writeTail = useRef<Promise<void> | undefined>(undefined)
+  const updateSimpleFileSearchDraft = useCallback((folders: readonly LauncherSimpleFileSearchDraft[]): void => {
+    simpleFileSearchDraftRevision.current += 1
+    setSimpleFileSearchDraft(Object.freeze([...folders]))
+  }, [])
+  const clearSimpleFileSearchDraft = useCallback((): void => {
+    simpleFileSearchDraftRevision.current += 1
+    setSimpleFileSearchDraft(null)
+  }, [])
 
   const reload = useCallback(async (): Promise<LauncherSettingsSnapshot | null> => {
     if (!settings) return null
@@ -132,6 +142,7 @@ function LauncherSettingsPage({ close: _close }: SettingsSectionProps): ReactNod
     if (!settings) return Promise.resolve(false)
     setStatus('Saving…')
     const isSimpleFileSearchFolders = key === 'extension[SimpleFileSearch].folders'
+    const draftRevision = simpleFileSearchDraftRevision.current
     if (!LAUNCHER_SENSITIVE_SETTING_KEYS.includes(key as never) && !isSimpleFileSearchFolders) {
       setSnapshot(previous => previous === null ? previous : Object.freeze({
         ...previous,
@@ -144,6 +155,9 @@ function LauncherSettingsPage({ close: _close }: SettingsSectionProps): ReactNod
     })
     writeTail.current = operation.then(() => undefined, () => undefined)
     return operation.then(() => {
+      if (isSimpleFileSearchFolders && simpleFileSearchDraftRevision.current === draftRevision) {
+        setSimpleFileSearchDraft(value as readonly LauncherSimpleFileSearchDraft[])
+      }
       setStatus('Saved.')
       return true
     }, () => {
@@ -153,7 +167,7 @@ function LauncherSettingsPage({ close: _close }: SettingsSectionProps): ReactNod
     })
   }, [reload, settings])
 
-  const operation = useCallback(async (label: string, action: () => Promise<{ canceled?: boolean; ok: true }>, refresh = true): Promise<void> => {
+  const operation = useCallback(async (label: string, action: () => Promise<{ canceled?: boolean; ok: true }>, refresh = true, clearFileSearchDraft = false): Promise<void> => {
     setBusy(true)
     setStatus(`${label}…`)
     try {
@@ -161,13 +175,14 @@ function LauncherSettingsPage({ close: _close }: SettingsSectionProps): ReactNod
       const result = await action()
       if (result.canceled) setStatus(`${label} canceled.`)
       else {
+        if (clearFileSearchDraft) clearSimpleFileSearchDraft()
         if (refresh) await reload()
         setStatus(`${label} complete.`)
       }
     } catch {
       setStatus(`${label} could not be completed.`)
     } finally { setBusy(false) }
-  }, [reload])
+  }, [clearSimpleFileSearchDraft, reload])
 
   if (!bridge || !settings) return <p className="text-sm text-muted-foreground">TockLauncher settings are available in TockTeam Desktop only.</p>
   if (snapshot === null || state === null) return <p aria-live="polite" className="text-sm text-muted-foreground">{status}</p>
@@ -247,7 +262,7 @@ function LauncherSettingsPage({ close: _close }: SettingsSectionProps): ReactNod
       </SectionCard>
 
       <SectionCard icon={<Search aria-hidden="true" className="size-4" />} title="File Search" description="Configure bounded indexed and home-contained file search providers.">
-        <LauncherFileSearchSettings key={snapshotRevision} busy={busy} save={save} snapshot={snapshot} />
+        <LauncherFileSearchSettings key={snapshotRevision} busy={busy} draftFolders={simpleFileSearchDraft} onDraftFoldersChange={updateSimpleFileSearchDraft} save={save} snapshot={snapshot} />
       </SectionCard>
 
       <SectionCard icon={<Database aria-hidden="true" className="size-4" />} title="Storage and Privacy" description="Managed files and external grants are owned by Electron main; no filesystem path crosses this page.">
@@ -257,7 +272,7 @@ function LauncherSettingsPage({ close: _close }: SettingsSectionProps): ReactNod
         <Field title="Secure storage" description="Sensitive values are encrypted in Electron main and are never hydrated into this renderer."><Badge variant={snapshot.secureStorageAvailable === false ? 'outline' : 'secondary'}>{snapshot.secureStorageAvailable === false ? 'Unavailable' : 'Available'}</Badge></Field>
         <Field title="Settings files">
           <div className="flex flex-wrap justify-end gap-2">
-            <Button size="sm" variant="outline" disabled={busy} onClick={() => { void operation('Import', settings.importSettings) }}><Upload aria-hidden="true" />Import</Button>
+            <Button size="sm" variant="outline" disabled={busy} onClick={() => { void operation('Import', settings.importSettings, true, true) }}><Upload aria-hidden="true" />Import</Button>
             <Button size="sm" variant="outline" disabled={busy} onClick={() => { void operation('Export', settings.exportSettings, false) }}><Download aria-hidden="true" />Export</Button>
             <Button size="sm" variant="outline" disabled={busy} onClick={() => { void operation('External selection', settings.selectExternalSettings) }}>Choose external file</Button>
             <Button size="sm" variant="outline" disabled={busy || snapshot.externalGrantStatus === 'none'} onClick={() => { void operation('External revocation', settings.revokeExternalSettings) }}>Revoke external file</Button>
@@ -270,7 +285,7 @@ function LauncherSettingsPage({ close: _close }: SettingsSectionProps): ReactNod
           </div>
         </Field>
         <Field title="Reset TockLauncher settings" description="Clears overrides, favorites, exclusions, history, and the custom-browser grant, then securely relaunches Desktop.">
-          {resetPending ? <div className="flex gap-2"><Button size="sm" variant="outline" disabled={busy} onClick={() => setResetPending(false)}>Cancel</Button><Button size="sm" variant="destructive" disabled={busy} onClick={() => { setResetPending(false); void operation('Reset', settings.resetSettings) }}><Trash2 aria-hidden="true" />Confirm reset</Button></div> : <Button size="sm" variant="outline" disabled={busy} onClick={() => setResetPending(true)}><RotateCcw aria-hidden="true" />Reset</Button>}
+          {resetPending ? <div className="flex gap-2"><Button size="sm" variant="outline" disabled={busy} onClick={() => setResetPending(false)}>Cancel</Button><Button size="sm" variant="destructive" disabled={busy} onClick={() => { setResetPending(false); void operation('Reset', settings.resetSettings, true, true) }}><Trash2 aria-hidden="true" />Confirm reset</Button></div> : <Button size="sm" variant="outline" disabled={busy} onClick={() => setResetPending(true)}><RotateCcw aria-hidden="true" />Reset</Button>}
         </Field>
       </SectionCard>
 

@@ -1,4 +1,4 @@
-import { useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { FolderSearch, Plus, Trash2 } from 'lucide-react'
 import { Button } from '@tockteam/ui/button'
 import { Input } from '@tockteam/ui/input'
@@ -6,7 +6,7 @@ import { NativeSelect, NativeSelectOption } from '@tockteam/ui/native-select'
 import { Switch } from '@tockteam/ui/switch'
 import { isAllowedLauncherEverythingCliPath, type LauncherSettingsSnapshot } from './launcher-settings-contract.ts'
 
- type SearchFolder = Readonly<{
+export type LauncherSimpleFileSearchDraft = Readonly<{
   excludeHiddenFiles?: boolean
   id: string
   path: string
@@ -14,8 +14,12 @@ import { isAllowedLauncherEverythingCliPath, type LauncherSettingsSnapshot } fro
   searchFor: 'files' | 'folders' | 'filesAndFolders'
 }>
 
+type SearchFolder = LauncherSimpleFileSearchDraft
+
 type FileSearchSettingsProps = Readonly<{
   busy: boolean
+  draftFolders: readonly SearchFolder[] | null
+  onDraftFoldersChange: (folders: readonly SearchFolder[]) => void
   save: (key: string, value: unknown) => Promise<boolean>
   snapshot: LauncherSettingsSnapshot
 }>
@@ -54,13 +58,20 @@ function absolutePath(value: string): boolean {
   return value.length > 0 && (value.startsWith('/') || /^[A-Za-z]:[\\/]/u.test(value))
 }
 
-export function LauncherFileSearchSettings({ busy, save, snapshot }: FileSearchSettingsProps): ReactNode {
+export function LauncherFileSearchSettings({ busy, draftFolders, onDraftFoldersChange, save, snapshot }: FileSearchSettingsProps): ReactNode {
   const configuredFolders = validFolders(stored(snapshot, 'extension[SimpleFileSearch].folders', []))
-  const [folders, setFolders] = useState<SearchFolder[]>(configuredFolders)
-  const foldersRef = useRef<SearchFolder[]>(configuredFolders)
+  const initialFolders = draftFolders === null ? configuredFolders : validFolders(draftFolders)
+  const [folders, setFolders] = useState<SearchFolder[]>(initialFolders)
+  const foldersRef = useRef<SearchFolder[]>(initialFolders)
+  useEffect(() => {
+    const next = draftFolders === null ? configuredFolders : validFolders(draftFolders)
+    foldersRef.current = next
+    setFolders(next)
+  }, [draftFolders, snapshot])
   const persistFolders = (next: SearchFolder[]): void => {
     foldersRef.current = next
     setFolders(next)
+    onDraftFoldersChange(next)
     if (next.some(folder => !absolutePath(folder.path.trim()))) return
     void save('extension[SimpleFileSearch].folders', next)
   }
@@ -76,6 +87,7 @@ export function LauncherFileSearchSettings({ busy, save, snapshot }: FileSearchS
     })]
     foldersRef.current = next
     setFolders(next)
+    onDraftFoldersChange(next)
   }
   const removeFolder = (id: string): void => { persistFolders(foldersRef.current.filter(folder => folder.id !== id)) }
   const maxResults = stored(snapshot, 'extension[FileSearch].maxSearchResultCount', 20)

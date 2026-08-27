@@ -79,6 +79,11 @@ test('local tools stay finite and browser-safe', () => {
 test('settings renderer never inserts sensitive values and remounts local controls after reload', () => {
   assert.match(launcherSettings, /!LAUNCHER_SENSITIVE_SETTING_KEYS\.includes\(key as never\)[\s\S]+setSnapshot/u)
   assert.match(launcherSettings, /setSnapshotRevision\([\s\S]+<LauncherLocalSettings key=\{snapshotRevision\}/u)
+  assert.match(launcherSettings, /simpleFileSearchDraft/u)
+  assert.match(launcherSettings, /onDraftFoldersChange/u)
+  assert.match(launcherSettings, /<LauncherFileSearchSettings key=\{snapshotRevision\}[\s\S]+draftFolders=\{simpleFileSearchDraft\}/u)
+  assert.match(fileSearchSettings, /useEffect/u)
+  assert.match(fileSearchSettings, /draftFolders/u)
 })
 
 test('launcher renderer uses shared color tokens for primary actions and selection', () => {
