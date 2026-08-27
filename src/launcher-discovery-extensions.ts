@@ -179,7 +179,7 @@ function isConcreteVSCodeExecutable(value: string): boolean {
   if (!isAbsolute(value)) return false
   const normalized = value.replaceAll('\\', '/')
   const implementation = path.win32.isAbsolute(value) ? path.win32 : path
-  return /^(?:code|code\.cmd|code\.exe)$/iu.test(implementation.basename(normalized))
+  return /^(?:code|Code\.exe)$/iu.test(implementation.basename(normalized))
     && !normalized.split('/').some(component => component === '.' || component === '..')
 }
 

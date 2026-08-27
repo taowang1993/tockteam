@@ -90,7 +90,10 @@ export async function resolveLauncherExecutable(
     }
     if (!/^(?:code|code\.cmd|code\.exe)$/iu.test(command)) return undefined
   } else if (!/^code$/iu.test(command) && !isAbsolute(command)) return undefined
-  if (isAbsolute(command)) return command
+  if (isAbsolute(command)) {
+    const implementation = isWindowsAbsolute(command) ? path.win32 : path
+    return /\.(?:cmd|bat)$/iu.test(implementation.basename(command)) ? undefined : command
+  }
   const pathValue = environment.PATH ?? environment.Path
   if (!bounded(pathValue, 16_384)) return undefined
   const markers = platform === 'Windows' ? ['code.cmd', 'code.exe'] : [command]
