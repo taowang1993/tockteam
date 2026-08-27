@@ -188,7 +188,7 @@ test('concurrent toggles preserve both intents while the launcher loads', async 
   assert.equal(result.windows[0]?.visible, false)
 })
 
-test('blur and Escape keyDown/rawKeyDown dismiss but keyUp and unrelated keys do not', async () => {
+test('renderer owns Escape while the controller still hides on blur', async () => {
   const { controller, windows } = setup()
   await controller.show()
   const window = windows[0]!
@@ -198,8 +198,8 @@ test('blur and Escape keyDown/rawKeyDown dismiss but keyUp and unrelated keys do
   assert.equal(window.visible, true)
   let prevented = 0
   window.webContents.emit('before-input-event', { preventDefault: () => { prevented += 1 } }, { type: 'rawKeyDown', key: 'Escape' })
-  assert.equal(prevented, 1)
-  assert.equal(window.visible, false)
+  assert.equal(prevented, 0)
+  assert.equal(window.visible, true)
   await controller.show()
   window.emit('blur')
   assert.equal(window.visible, false)

@@ -14,9 +14,6 @@ export const TOCKLAUNCHER_WINDOW_SIZE = Object.freeze({
   width: 750,
 })
 
-type LauncherInput = Readonly<{ key?: string; type?: string }>
-type LauncherInputEvent = Readonly<{ preventDefault: () => void }>
-
 type LauncherWebContents = Readonly<{
   id: number
   on: (...args: any[]) => unknown
@@ -51,7 +48,7 @@ type LauncherGlobalShortcut = Readonly<{
   unregister: (accelerator: string) => void
 }>
 
-const DEFAULT_HIDE_WINDOW_ON = Object.freeze(['blur', 'escapePressed'])
+const DEFAULT_HIDE_WINDOW_ON = Object.freeze(['blur'])
 const DISPOSED_SHORTCUT_MESSAGE = 'The launcher is unavailable. Use the TockLauncher button in the TockTeam titlebar.'
 
 export function resolveLauncherShortcut(platform: NodeJS.Platform): string {
@@ -243,17 +240,6 @@ export class LauncherOverlayController {
     window.once('closed', () => { this.clearWindow(window) })
     window.on('blur', () => {
       if (!this.disposed && this.shouldHideOn('blur')) this.hide()
-    })
-    window.webContents.on('before-input-event', (...args: any[]) => {
-      const event = args[0] as LauncherInputEvent | undefined
-      const input = args[1] as LauncherInput | undefined
-      if (!this.disposed && event !== undefined && input !== undefined
-        && (input.type === 'keyDown' || input.type === 'rawKeyDown')
-        && input.key === 'Escape'
-        && this.shouldHideOn('escapePressed')) {
-        event.preventDefault()
-        this.hide()
-      }
     })
     window.webContents.on('destroyed', () => { this.clearWindow(window) })
     window.webContents.on('render-process-gone', () => {
