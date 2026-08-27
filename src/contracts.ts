@@ -5,6 +5,7 @@ import type {
 } from './desktop-app-update.ts'
 import type { DesktopLauncherState } from './launcher-window-contract.ts'
 import type { LauncherThemeSource } from './launcher-theme.ts'
+import type { LauncherSettingsSnapshot } from './launcher-settings-contract.ts'
 import type { LauncherWorkbenchRoute, TockTeamDestination } from './launcher-navigation.ts'
 
 export type { DesktopLauncherState } from './launcher-window-contract.ts'
@@ -19,7 +20,7 @@ export type DesktopCommand =
   | { type: 'focus-composer' }
   | { type: 'new-session' }
   | { type: 'open-paths'; paths: string[] }
-  | { type: 'show-settings' }
+  | { section?: 'tocklauncher'; type: 'show-settings' }
   | { type: 'toggle-bottom-panel' }
   | { type: 'toggle-panel-maximized' }
   | { type: 'toggle-pinned-summary' }
@@ -84,9 +85,24 @@ export interface TockTutorDesktopCallerBridge {
   nextDispatch(): Promise<TockTutorDesktopDispatchEvent | null>
 }
 
+export type LauncherSettingsOperationResult = Readonly<{ canceled?: boolean; ok: true }>
+
+export interface DesktopLauncherSettingsBridge {
+  exportSettings(): Promise<LauncherSettingsOperationResult>
+  getSnapshot(): Promise<LauncherSettingsSnapshot>
+  importSettings(): Promise<LauncherSettingsOperationResult>
+  resetSettings(): Promise<LauncherSettingsOperationResult>
+  revokeCustomBrowser(): Promise<LauncherSettingsOperationResult>
+  revokeExternalSettings(): Promise<LauncherSettingsOperationResult>
+  selectCustomBrowser(): Promise<LauncherSettingsOperationResult>
+  selectExternalSettings(): Promise<LauncherSettingsOperationResult>
+  updateSetting(key: string, value: unknown): Promise<LauncherSettingsOperationResult>
+}
+
 export interface DesktopLauncherBridge {
   getState(): Promise<DesktopLauncherState>
   show(): Promise<DesktopLauncherState>
+  settings: DesktopLauncherSettingsBridge
 }
 
 export interface DesktopAppUpdateBridge {

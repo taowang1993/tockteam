@@ -26,6 +26,14 @@ import {
 } from './launcher-window-contract.ts'
 import type { LauncherWorkbenchRoute, TockTeamDestination } from './launcher-navigation.ts'
 import {
+  LAUNCHER_SETTINGS_IPC_CHANNELS,
+} from './launcher-window-contract.ts'
+import {
+  parseLauncherSettingUpdateArgs,
+  parseLauncherSettingsOperationResult,
+  parseLauncherSettingsSnapshot,
+} from './launcher-settings-contract.ts'
+import {
   LAUNCHER_WINDOW_IPC_CHANNELS,
   assertNoLauncherIpcArguments,
   parseDesktopLauncherState,
@@ -38,7 +46,35 @@ let pendingRoute: LauncherWorkbenchRoute | undefined
 const updateListeners = new Set<(state: ReturnType<typeof parseDesktopAppUpdateState>) => void>()
 let pendingUpdate: ReturnType<typeof parseDesktopAppUpdateState> | undefined
 
-ipcRenderer.on('desktop:command', (_event, command: DesktopCommand) => {
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+export function parseDesktopCommand(value: unknown): DesktopCommand {
+  if (!isRecord(value) || typeof value.type !== 'string') throw new Error('Invalid desktop command')
+  const keys = Object.keys(value)
+  if (value.type === 'show-settings') {
+    if (keys.length === 1 && value.section === undefined) return { type: 'show-settings' }
+    if (keys.length === 2 && value.section === 'tocklauncher') return { section: 'tocklauncher', type: 'show-settings' }
+    throw new Error('Invalid desktop settings command')
+  }
+  if (value.type === 'open-paths') {
+    if (keys.length !== 2 || !Array.isArray(value.paths) || value.paths.length > 128
+      || value.paths.some(path => typeof path !== 'string' || path.length === 0 || path.length > 4_096 || /[\\0\\r\\n]/u.test(path))) throw new Error('Invalid desktop paths command')
+    return { paths: [...value.paths] as string[], type: 'open-paths' }
+  }
+  const commands = new Set([
+    'focus-composer', 'new-session', 'toggle-bottom-panel', 'toggle-panel-maximized', 'toggle-pinned-summary',
+    'toggle-side-panel', 'toggle-workspace-panel', 'open-browser', 'open-files', 'open-review', 'open-side-chat',
+    'open-trajectory', 'toggle-sidebar',
+  ])
+  if (keys.length !== 1 || !commands.has(value.type)) throw new Error('Invalid desktop command')
+  return { type: value.type } as DesktopCommand
+}
+
+ipcRenderer.on('desktop:command', (_event, raw: unknown) => {
+  let command: DesktopCommand
+  try { command = parseDesktopCommand(raw) } catch { return }
   if (commandListeners.size === 0) {
     if (commandQueue.length < 128) commandQueue.push(command)
     return
@@ -78,6 +114,45 @@ const bridge: DesktopBridge = Object.freeze({
         await ipcRenderer.invoke(LAUNCHER_WINDOW_IPC_CHANNELS.show),
       )
     },
+    settings: Object.freeze({
+      getSnapshot: async (...args: unknown[]) => {
+        assertNoLauncherIpcArguments(args)
+        return parseLauncherSettingsSnapshot(await ipcRenderer.invoke(LAUNCHER_SETTINGS_IPC_CHANNELS.getSnapshot))
+      },
+      updateSetting: async (key: string, value: unknown, ...extra: unknown[]) => {
+        assertNoLauncherIpcArguments(extra)
+        const update = parseLauncherSettingUpdateArgs({ key, value })
+        return parseLauncherSettingsOperationResult(await ipcRenderer.invoke(LAUNCHER_SETTINGS_IPC_CHANNELS.updateSetting, update))
+      },
+      importSettings: async (...args: unknown[]) => {
+        assertNoLauncherIpcArguments(args)
+        return parseLauncherSettingsOperationResult(await ipcRenderer.invoke(LAUNCHER_SETTINGS_IPC_CHANNELS.importSettings))
+      },
+      exportSettings: async (...args: unknown[]) => {
+        assertNoLauncherIpcArguments(args)
+        return parseLauncherSettingsOperationResult(await ipcRenderer.invoke(LAUNCHER_SETTINGS_IPC_CHANNELS.exportSettings))
+      },
+      resetSettings: async (...args: unknown[]) => {
+        assertNoLauncherIpcArguments(args)
+        return parseLauncherSettingsOperationResult(await ipcRenderer.invoke(LAUNCHER_SETTINGS_IPC_CHANNELS.resetSettings))
+      },
+      selectExternalSettings: async (...args: unknown[]) => {
+        assertNoLauncherIpcArguments(args)
+        return parseLauncherSettingsOperationResult(await ipcRenderer.invoke(LAUNCHER_SETTINGS_IPC_CHANNELS.selectExternalSettings))
+      },
+      revokeExternalSettings: async (...args: unknown[]) => {
+        assertNoLauncherIpcArguments(args)
+        return parseLauncherSettingsOperationResult(await ipcRenderer.invoke(LAUNCHER_SETTINGS_IPC_CHANNELS.revokeExternalSettings))
+      },
+      selectCustomBrowser: async (...args: unknown[]) => {
+        assertNoLauncherIpcArguments(args)
+        return parseLauncherSettingsOperationResult(await ipcRenderer.invoke(LAUNCHER_SETTINGS_IPC_CHANNELS.selectCustomBrowser))
+      },
+      revokeCustomBrowser: async (...args: unknown[]) => {
+        assertNoLauncherIpcArguments(args)
+        return parseLauncherSettingsOperationResult(await ipcRenderer.invoke(LAUNCHER_SETTINGS_IPC_CHANNELS.revokeCustomBrowser))
+      },
+    }),
   }),
   appUpdate: Object.freeze({
     getState: async (...args: unknown[]) => {

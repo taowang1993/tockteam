@@ -312,7 +312,7 @@ export class LauncherPersistenceRepository {
     if (!Object.hasOwn(this.#settings, key)) return cloneJson(defaultValue)
     const stored = this.#settings[key]
     if (LAUNCHER_SENSITIVE_SETTING_KEYS.includes(key as never)) {
-      if (!isEncryptedEnvelope(stored) || this.#secretCodec === undefined || this.#secureStorageAvailable !== true) return cloneJson(defaultValue)
+      if (!isEncryptedEnvelope(stored) || this.#secretCodec === undefined || !this.#secureStorageUsable()) return cloneJson(defaultValue)
       try { return cloneJson(this.#secretCodec.decrypt(stored[ENVELOPE_KEY].ciphertext) as T) }
       catch { return cloneJson(defaultValue) }
     }
@@ -322,6 +322,11 @@ export class LauncherPersistenceRepository {
   readIndex(): readonly LauncherInternalResultItem[] { return Object.freeze(cloneJson(this.#index, MAX_LAUNCHER_INDEX_BYTES)) }
   hasPersistedIndex(): boolean { return this.#indexAvailable }
 
+  #secureStorageUsable(): boolean {
+    try { return this.#secureStorageAvailable && (this.#secretCodec?.isAvailable?.() ?? true) }
+    catch { return false }
+  }
+
   snapshot(): LauncherSettingsSnapshot {
     const values: Record<string, unknown> = {}
     for (const [key, value] of Object.entries(this.#settings)) {
@@ -330,7 +335,7 @@ export class LauncherPersistenceRepository {
     }
     const missingSensitiveKeys = LAUNCHER_SENSITIVE_SETTING_KEYS.filter(key => {
       const stored = this.#settings[key]
-      if (!isEncryptedEnvelope(stored) || this.#secretCodec === undefined || this.#secureStorageAvailable !== true) return true
+      if (!isEncryptedEnvelope(stored) || this.#secretCodec === undefined || !this.#secureStorageUsable()) return true
       try { this.#secretCodec.decrypt(stored[ENVELOPE_KEY].ciphertext); return false } catch { return true }
     })
     return Object.freeze({
@@ -340,7 +345,7 @@ export class LauncherPersistenceRepository {
       logs: Object.freeze([...this.#logs]),
       missingSensitiveKeys: Object.freeze(missingSensitiveKeys),
       recoveredSettings: this.#recoveredSettings,
-      secureStorageAvailable: this.#secureStorageAvailable,
+      secureStorageAvailable: this.#secureStorageUsable(),
       settingsSource: this.#settingsSource,
       values: Object.freeze(values),
     })
@@ -354,7 +359,7 @@ export class LauncherPersistenceRepository {
       for (const [key, value] of Object.entries(values)) {
         if (!isLauncherRuntimeSettingKey(key) || LAUNCHER_MAIN_OWNED_SETTING_KEYS.includes(key as never) || !isLauncherRendererSettingValue(key, value)) throw new Error('Invalid TockLauncher setting update')
         if (LAUNCHER_SENSITIVE_SETTING_KEYS.includes(key as never)) {
-          if (this.#secretCodec === undefined || this.#secureStorageAvailable !== true) throw new Error('TockLauncher secure storage is unavailable')
+          if (this.#secretCodec === undefined || !this.#secureStorageUsable()) throw new Error('TockLauncher secure storage is unavailable')
           let ciphertext: string
           try { ciphertext = this.#secretCodec.encrypt(String(value)) } catch (error) { throw new Error('TockLauncher secure storage failed', { cause: error }) }
           next[key] = envelope(ciphertext)

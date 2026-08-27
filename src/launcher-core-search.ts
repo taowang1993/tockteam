@@ -101,6 +101,7 @@ function coreAction(
 
 export function createLauncherCoreSearch(options: LauncherCoreSearchOptions): Readonly<{
   executeAction: (record: LauncherActionRecord) => Promise<boolean>
+  flush: () => Promise<void>
   replacePersistentSettings: (settings: Readonly<{
     excludedItemIds: readonly string[]
     favoriteItemIds: readonly string[]
@@ -292,7 +293,11 @@ export function createLauncherCoreSearch(options: LauncherCoreSearchOptions): Re
     settings.favoriteItemIds.forEach(id => favorites.add(id))
   }
 
-  return Object.freeze({ executeAction, replacePersistentSettings, rescan, search })
+  const flush = async (): Promise<void> => {
+    await Promise.all([indexWriteTail, settingsMutationTail])
+  }
+
+  return Object.freeze({ executeAction, flush, replacePersistentSettings, rescan, search })
 }
 
 export { LAUNCHER_MAX_RESULT_ITEMS }

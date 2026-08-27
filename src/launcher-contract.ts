@@ -91,6 +91,15 @@ export type LauncherInvokeResult =
   | Readonly<{ ok: true }>
   | Readonly<{ ok: false; reason: 'expired' }>
 
+export type LauncherSurfaceSettings = Readonly<{
+  fuzziness: number
+  history: readonly string[]
+  historyEnabled: boolean
+  historyLimit: number
+  maxSearchResultItems: number
+  searchEngineId: LauncherSearchEngineId
+}>
+
 const ACTION_ID_PATTERN = /^launcher-action:[0-9A-Za-z-]{1,96}$/u
 const RESULT_SET_ID_PATTERN = /^launcher-results:[1-9][0-9]*$/u
 const MAX_SEARCH_TERM_LENGTH = 512
@@ -254,4 +263,25 @@ export function parseLauncherSuccessResult(value: unknown): Readonly<{ ok: true 
     throw new Error('Invalid launcher operation result')
   }
   return Object.freeze({ ok: true as const })
+}
+
+export function parseLauncherSurfaceSettings(value: unknown): LauncherSurfaceSettings {
+  if (!isRecord(value)
+    || !hasExactKeys(value, ['fuzziness', 'history', 'historyEnabled', 'historyLimit', 'maxSearchResultItems', 'searchEngineId'])
+    || typeof value.fuzziness !== 'number' || !Number.isFinite(value.fuzziness) || value.fuzziness < 0 || value.fuzziness > 1
+    || !Array.isArray(value.history) || value.history.length > 100 || value.history.some(item => typeof item !== 'string' || item.length > 512)
+    || typeof value.historyEnabled !== 'boolean'
+    || typeof value.historyLimit !== 'number' || !Number.isSafeInteger(value.historyLimit) || value.historyLimit < 1 || value.historyLimit > 100
+    || typeof value.maxSearchResultItems !== 'number' || !Number.isSafeInteger(value.maxSearchResultItems) || value.maxSearchResultItems < 1 || value.maxSearchResultItems > 200
+    || (value.searchEngineId !== 'Fuse.js' && value.searchEngineId !== 'fuzzysort')) {
+    throw new Error('Invalid launcher surface settings')
+  }
+  return Object.freeze({
+    fuzziness: value.fuzziness,
+    history: Object.freeze([...(value.history as string[])]),
+    historyEnabled: value.historyEnabled,
+    historyLimit: value.historyLimit as number,
+    maxSearchResultItems: value.maxSearchResultItems as number,
+    searchEngineId: value.searchEngineId as LauncherSearchEngineId,
+  })
 }

@@ -6,11 +6,15 @@ import type {
   LauncherWindowAcknowledgement,
 } from './launcher-window-contract.ts'
 import {
+  LAUNCHER_SETTINGS_IPC_CHANNELS,
   LAUNCHER_WINDOW_IPC_CHANNELS,
   assertNoLauncherIpcArguments,
   parseLauncherThemeProjection,
   parseLauncherThemeSource,
 } from './launcher-window-contract.ts'
+import {
+  parseLauncherSettingUpdateArgs,
+} from './launcher-settings-contract.ts'
 import type { LauncherWorkbenchRoute } from './launcher-navigation.ts'
 import type { LauncherIpcIdentity } from './launcher-security.ts'
 
@@ -118,11 +122,24 @@ export function registerLauncherWindowIpcHandlers(args: Readonly<{
   return registerAll(args.ipcMain, registrations)
 }
 
+export type LauncherSettingsIpcOperations = Readonly<{
+  exportSettings: () => Promise<Readonly<{ canceled?: boolean; ok: true }>>
+  getSnapshot: () => unknown
+  importSettings: () => Promise<Readonly<{ canceled?: boolean; ok: true }>>
+  resetSettings: () => Promise<Readonly<{ canceled?: boolean; ok: true }>>
+  revokeCustomBrowser: () => Promise<Readonly<{ canceled?: boolean; ok: true }>>
+  revokeExternalSettings: () => Promise<Readonly<{ canceled?: boolean; ok: true }>>
+  selectCustomBrowser: () => Promise<Readonly<{ canceled?: boolean; ok: true }>>
+  selectExternalSettings: () => Promise<Readonly<{ canceled?: boolean; ok: true }>>
+  updateSetting: (key: string, value: unknown) => Promise<Readonly<{ canceled?: boolean; ok: true }>>
+}>
+
 export function registerWorkbenchLauncherIpcHandlers(args: Readonly<{
   assertTrustedMainIpc: (event: unknown) => void
   controller: Pick<LauncherWindowIpcController, 'getState' | 'show'>
   ipcMain: LauncherIpcMain
   onRouteReady?: (event: unknown) => void
+  settings?: LauncherSettingsIpcOperations
   syncTheme?: (event: unknown, source: LauncherThemeSource) => LauncherWindowAcknowledgement
 }>): () => void {
   const registrations: Array<[string, LauncherIpcHandler]> = [
@@ -161,6 +178,37 @@ export function registerWorkbenchLauncherIpcHandlers(args: Readonly<{
       return args.syncTheme?.(event, parseLauncherThemeSource(raw)) ?? Object.freeze({ ok: true })
     },
   ])
+  const settings = args.settings
+  if (settings !== undefined) {
+    registrations.push(
+      [LAUNCHER_SETTINGS_IPC_CHANNELS.getSnapshot, (event: unknown, ...rawArgs: unknown[]): unknown => {
+        args.assertTrustedMainIpc(event)
+        assertNoLauncherIpcArguments(rawArgs)
+        return settings.getSnapshot()
+      }],
+      [LAUNCHER_SETTINGS_IPC_CHANNELS.updateSetting, async (event: unknown, raw: unknown, ...rawArgs: unknown[]): Promise<Readonly<{ ok: true }>> => {
+        args.assertTrustedMainIpc(event)
+        assertNoLauncherIpcArguments(rawArgs)
+        const update = parseLauncherSettingUpdateArgs(raw)
+        await settings.updateSetting(update.key, update.value)
+        return Object.freeze({ ok: true })
+      }],
+    )
+    const native = (channel: string, operation: () => Promise<Readonly<{ canceled?: boolean; ok: true }>>): void => {
+      registrations.push([channel, async (event: unknown, ...rawArgs: unknown[]): Promise<Readonly<{ canceled?: boolean; ok: true }>> => {
+        args.assertTrustedMainIpc(event)
+        assertNoLauncherIpcArguments(rawArgs)
+        return await operation()
+      }])
+    }
+    native(LAUNCHER_SETTINGS_IPC_CHANNELS.importSettings, settings.importSettings)
+    native(LAUNCHER_SETTINGS_IPC_CHANNELS.exportSettings, settings.exportSettings)
+    native(LAUNCHER_SETTINGS_IPC_CHANNELS.resetSettings, settings.resetSettings)
+    native(LAUNCHER_SETTINGS_IPC_CHANNELS.selectExternalSettings, settings.selectExternalSettings)
+    native(LAUNCHER_SETTINGS_IPC_CHANNELS.revokeExternalSettings, settings.revokeExternalSettings)
+    native(LAUNCHER_SETTINGS_IPC_CHANNELS.selectCustomBrowser, settings.selectCustomBrowser)
+    native(LAUNCHER_SETTINGS_IPC_CHANNELS.revokeCustomBrowser, settings.revokeCustomBrowser)
+  }
   return registerAll(args.ipcMain, registrations)
 }
 

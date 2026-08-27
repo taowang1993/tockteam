@@ -10,6 +10,7 @@ import {
   nativeTheme,
   screen,
   session,
+  safeStorage,
   shell,
   systemPreferences,
   Tray,
@@ -86,6 +87,10 @@ import {
   type LauncherUrlPolicy,
 } from './launcher-security.ts'
 import { LauncherActionStore } from './launcher-actions.ts'
+import { LauncherPersistenceRepository, createLauncherSecretCodec } from './launcher-persistence.ts'
+import { LauncherCustomBrowserController } from './launcher-custom-browser.ts'
+import { readPersistedLauncherState } from './launcher-settings-model.ts'
+import { resolveLauncherSettingDefault } from './launcher-settings-defaults.ts'
 import { assertNoLauncherIpcArguments } from './launcher-window-contract.ts'
 import { createLauncherCoreSearch } from './launcher-core-search.ts'
 import { registerLauncherIpcHandlers } from './launcher-ipc.ts'
@@ -166,6 +171,10 @@ let workbenchLauncherIpcDisposer: (() => void) | undefined
 let secureTeardownPromise: Promise<void> | undefined
 let launcherUpdaterRuntimeWasActive = false
 let launcherRescan: (() => Promise<unknown>) | undefined
+let launcherCoreFlush: (() => Promise<void>) | undefined
+let launcherPersistence: LauncherPersistenceRepository | undefined
+let launcherCustomBrowser: LauncherCustomBrowserController | undefined
+let launcherPersistentSetsSync: (() => void) | undefined
 const runtimeStartGate = new RuntimeStartGate<void>()
 const launcherWindowRegistry = new LauncherWindowRegistry()
 const launcherToggleQueue = new LauncherToggleIntentQueue()
@@ -803,6 +812,96 @@ function windowIconPath(): string | undefined {
   return existsSync(development) ? development : undefined
 }
 
+function launcherPlatform(): 'Linux' | 'macOS' | 'Windows' {
+  return process.platform === 'darwin' ? 'macOS' : process.platform === 'win32' ? 'Windows' : 'Linux'
+}
+
+function launcherDefaultContext(): Readonly<{
+  appDataPath: string
+  environment: Readonly<Record<string, string | undefined>>
+  homePath: string
+  locale: string
+  platform: 'Linux' | 'macOS' | 'Windows'
+}> {
+  return Object.freeze({
+    appDataPath: app.getPath('userData'),
+    environment: process.env,
+    homePath: app.getPath('home'),
+    locale: app.getLocale?.() ?? 'en-US',
+    platform: launcherPlatform(),
+  })
+}
+
+function launcherSecureStorageAvailable(): boolean {
+  try {
+    if (!safeStorage.isEncryptionAvailable()) return false
+    if (process.platform === 'linux') {
+      const backend = safeStorage.getSelectedStorageBackend()
+      if (backend === 'basic_text' || backend === 'unknown') return false
+    }
+    return true
+  } catch { return false }
+}
+
+function createMainLauncherSecretCodec() {
+  return createLauncherSecretCodec({
+    isAvailable: launcherSecureStorageAvailable,
+    encrypt: plaintext => {
+      if (!launcherSecureStorageAvailable()) throw new Error('TockLauncher secure storage is unavailable')
+      return safeStorage.encryptString(plaintext).toString('base64')
+    },
+    decrypt: ciphertext => {
+      if (!launcherSecureStorageAvailable()) throw new Error('TockLauncher secure storage is unavailable')
+      return safeStorage.decryptString(Buffer.from(ciphertext, 'base64'))
+    },
+  })
+}
+
+function requireLauncherPersistence(): LauncherPersistenceRepository {
+  if (launcherPersistence === undefined) throw new Error('TockLauncher persistence is unavailable')
+  return launcherPersistence
+}
+
+function launcherSettingsSnapshot(): ReturnType<LauncherPersistenceRepository['snapshot']> {
+  const repository = requireLauncherPersistence()
+  const snapshot = repository.snapshot()
+  const customBrowserStatus = launcherCustomBrowser?.snapshot().status ?? 'none'
+  return Object.freeze({ ...snapshot, customBrowserStatus })
+}
+
+function launcherSurfaceSettings(): import('./launcher-contract.ts').LauncherSurfaceSettings {
+  const state = readPersistedLauncherState(launcherSettingsSnapshot(), [], launcherDefaultContext())
+  return Object.freeze({
+    fuzziness: state.preferences.fuzziness,
+    history: Object.freeze([...state.history]),
+    historyEnabled: state.preferences.historyEnabled,
+    historyLimit: state.preferences.historyLimit,
+    maxSearchResultItems: state.preferences.maxSearchResultItems,
+    searchEngineId: state.preferences.searchEngineId,
+  })
+}
+
+async function recordLauncherSearch(query: string): Promise<import('./launcher-contract.ts').LauncherSurfaceSettings> {
+  const current = launcherSurfaceSettings()
+  if (!current.historyEnabled) return current
+  const normalized = query.trim()
+  if (normalized.length === 0) return current
+  const history = [normalized, ...current.history.filter(item => item !== normalized)].slice(0, current.historyLimit)
+  await requireLauncherPersistence().updateSetting('general.searchHistory.history', history)
+  return launcherSurfaceSettings()
+}
+
+function syncLauncherPersistentSets(core: Readonly<{ replacePersistentSettings: (settings: Readonly<{ excludedItemIds: readonly string[]; favoriteItemIds: readonly string[] }>) => void }>): void {
+  const repository = launcherPersistence
+  if (repository === undefined) return
+  const favorites = repository.getSetting('favorites', [])
+  const excluded = repository.getSetting('searchEngine.excludedItems', [])
+  core.replacePersistentSettings({
+    excludedItemIds: Array.isArray(excluded) ? excluded.filter(item => typeof item === 'string') : [],
+    favoriteItemIds: Array.isArray(favorites) ? favorites.filter(item => typeof item === 'string') : [],
+  })
+}
+
 function createLauncherWindow(args: Readonly<{
   launcherSession: Session
   urlPolicy: LauncherUrlPolicy
@@ -844,20 +943,23 @@ function createLauncherWindow(args: Readonly<{
 
 function initializeLauncher(): void {
   if (launcherController !== undefined) return
+  const repository = requireLauncherPersistence()
   const launcherSession = session.fromPartition(LAUNCHER_SESSION_PARTITION)
   applyLauncherSessionPolicy(launcherSession)
   const urlPolicy = createLauncherUrlPolicy({ launcherHtmlPath })
-  const launcherPlatform = process.platform === 'darwin'
-    ? 'macOS' as const
-    : process.platform === 'win32'
-      ? 'Windows' as const
-      : 'Linux' as const
+  const platform = launcherPlatform()
   const coreSearch = createLauncherCoreSearch({
+    initialExcludedItemIds: repository.getSetting('searchEngine.excludedItems', []),
+    initialFavoriteItemIds: repository.getSetting('favorites', []),
+    initialIndexedItems: repository.readIndex(),
+    appendLog: async (_level, message) => { await repository.appendLog('ERROR', message) },
     loadIndexedItems: async () => {
       const result = await createTockTeamDestinationResults('')
       return [...result.before, ...result.after]
     },
-    platform: launcherPlatform,
+    persistIndex: async items => { await repository.writeIndex(items) },
+    persistSettings: async values => { await repository.updateSettings(values) },
+    platform,
   })
   let controller: LauncherOverlayController | undefined
   launcherRescan = coreSearch.rescan
@@ -890,6 +992,8 @@ function initializeLauncher(): void {
   })
   controller = nextController
   launcherController = nextController
+  launcherCoreFlush = coreSearch.flush
+  launcherPersistentSetsSync = () => { syncLauncherPersistentSets(coreSearch) }
   const launcherGuard = createLauncherIpcGuard({
     launcherSession,
     resolveWindow: sender => launcherWindowRegistry.resolveWindow(sender),
@@ -910,6 +1014,10 @@ function initializeLauncher(): void {
       ipcMain,
       rescan: coreSearch.rescan,
       search: coreSearch.search,
+      surface: {
+        getSettings: launcherSurfaceSettings,
+        recordSearch: recordLauncherSearch,
+      },
     })
     launcherIpcDisposer = () => {
       disposeSearchIpc()
@@ -923,6 +1031,23 @@ function initializeLauncher(): void {
     assertTrustedMainIpc: event => { assertTrustedMainIpc(event as Electron.IpcMainInvokeEvent) },
     controller: nextController,
     ipcMain,
+    settings: {
+      exportSettings: exportLauncherSettings,
+      getSnapshot: launcherSettingsSnapshot,
+      importSettings: importLauncherSettings,
+      resetSettings: resetLauncherSettings,
+      revokeCustomBrowser: revokeCustomLauncherBrowser,
+      revokeExternalSettings: revokeExternalLauncherSettings,
+      selectCustomBrowser: selectCustomLauncherBrowser,
+      selectExternalSettings: selectExternalLauncherSettings,
+      updateSetting: async (key, value) => {
+        await requireLauncherPersistence().updateSetting(key, value)
+        launcherPersistentSetsSync?.()
+        await launcherLifecycle?.sync()
+        if (key === 'extensions.enabledExtensionIds') await launcherRescan?.()
+        return settingsOperation()
+      },
+    },
     onRouteReady: event => {
       const sender = (event as Electron.IpcMainInvokeEvent).sender
       if (sender !== mainWindow?.webContents) throw new Error('Desktop route readiness sender is unavailable')
@@ -949,11 +1074,16 @@ function initializeLauncher(): void {
 
 async function initializeLauncherLifecycle(): Promise<void> {
   if (launcherLifecycle !== undefined) return
+  const repository = requireLauncherPersistence()
   initializeLauncherTray()
   const overlay = launcherController
   if (overlay === undefined) throw new Error('TockLauncher overlay is not initialized')
   launcherLifecycle = new LauncherLifecycleController({
-    getSetting: (_key, fallback) => fallback,
+    getSetting: (key, fallback) => {
+      const context = launcherDefaultContext()
+      const resolved = resolveLauncherSettingDefault(key, context)
+      return repository.getSetting(key, resolved === undefined ? fallback : resolved)
+    },
     openWorkbenchSettings,
     overlay,
     queue: launcherToggleQueue,
@@ -962,7 +1092,11 @@ async function initializeLauncherLifecycle(): Promise<void> {
     rescan: async () => await launcherRescan?.(),
     setDockVisible: setLauncherDockVisible,
     setTrayVisible: setLauncherTrayVisible,
-    updateSetting: async () => {},
+    updateSetting: async (key, value) => {
+      await repository.updateSetting(key, value)
+      launcherPersistentSetsSync?.()
+      await launcherLifecycle?.sync()
+    },
   })
   try {
     await launcherLifecycle.sync()
@@ -1074,7 +1208,104 @@ async function ensureWorkbenchWindow(): Promise<void> {
 async function openWorkbenchSettings(): Promise<void> {
   await ensureWorkbenchWindow()
   dispatchWorkbenchRoute({ destination: 'tockcoder' })
-  sendCommand({ type: 'show-settings' })
+  sendCommand({ section: 'tocklauncher', type: 'show-settings' })
+}
+
+function settingsOperation(canceled = false): Readonly<{ canceled?: boolean; ok: true }> {
+  return canceled ? Object.freeze({ canceled: true, ok: true as const }) : Object.freeze({ ok: true as const })
+}
+
+async function launcherOpenDialog(options: Electron.OpenDialogOptions): Promise<string | undefined> {
+  const owner = mainWindow
+  const result = owner === undefined || owner.isDestroyed()
+    ? await dialog.showOpenDialog(options)
+    : await dialog.showOpenDialog(owner, options)
+  return result.canceled ? undefined : result.filePaths[0]
+}
+
+async function launcherSaveDialog(options: Electron.SaveDialogOptions): Promise<string | undefined> {
+  const owner = mainWindow
+  const result = owner === undefined || owner.isDestroyed()
+    ? await dialog.showSaveDialog(options)
+    : await dialog.showSaveDialog(owner, options)
+  return result.canceled ? undefined : result.filePath
+}
+
+function launcherPlatformPathExtension(): 'app' | 'exe' {
+  return process.platform === 'darwin' ? 'app' : 'exe'
+}
+
+async function importLauncherSettings(): Promise<Readonly<{ canceled?: boolean; ok: true }>> {
+  const filePath = await launcherOpenDialog({
+    properties: ['openFile'],
+    title: 'Import TockLauncher Settings',
+    filters: [{ name: 'JSON', extensions: ['json'] }],
+  })
+  if (filePath === undefined) return settingsOperation(true)
+  await requireLauncherPersistence().importSettingsFromPath(filePath)
+  launcherPersistentSetsSync?.()
+  await launcherLifecycle?.sync()
+  queueSecureRelaunch('launcher-settings-import')
+  return settingsOperation()
+}
+
+async function exportLauncherSettings(): Promise<Readonly<{ canceled?: boolean; ok: true }>> {
+  const filePath = await launcherSaveDialog({
+    title: 'Export TockLauncher Settings',
+    defaultPath: join(app.getPath('documents'), 'tocklauncher-settings.json'),
+    filters: [{ name: 'JSON', extensions: ['json'] }],
+  })
+  if (filePath === undefined) return settingsOperation(true)
+  await requireLauncherPersistence().exportSettingsToPath(filePath)
+  return settingsOperation()
+}
+
+async function resetLauncherSettings(): Promise<Readonly<{ canceled?: boolean; ok: true }>> {
+  const repository = requireLauncherPersistence()
+  if (repository.snapshot().settingsSource === 'external' && !repository.externalWriteAvailable) {
+    throw new Error('TockLauncher external settings writes are unavailable on this platform')
+  }
+  await launcherCustomBrowser?.revoke()
+  await repository.resetSettings()
+  launcherPersistentSetsSync?.()
+  await launcherLifecycle?.sync()
+  queueSecureRelaunch('launcher-settings-reset')
+  return settingsOperation()
+}
+
+async function selectExternalLauncherSettings(): Promise<Readonly<{ canceled?: boolean; ok: true }>> {
+  const filePath = await launcherOpenDialog({ properties: ['openFile'], title: 'Choose External TockLauncher Settings' })
+  if (filePath === undefined) return settingsOperation(true)
+  await requireLauncherPersistence().grantExternalSettingsFile(filePath)
+  launcherPersistentSetsSync?.()
+  await launcherLifecycle?.sync()
+  queueSecureRelaunch('launcher-settings-import')
+  return settingsOperation()
+}
+
+async function selectCustomLauncherBrowser(): Promise<Readonly<{ canceled?: boolean; ok: true }>> {
+  if (process.platform === 'linux') throw new Error('Custom browsers are not supported on Linux')
+  const extension = launcherPlatformPathExtension()
+  const filePath = await launcherOpenDialog({
+    properties: [process.platform === 'darwin' ? 'openDirectory' : 'openFile'],
+    title: 'Choose TockLauncher Custom Browser',
+    filters: [{ name: extension === 'app' ? 'Applications' : 'Applications', extensions: [extension] }],
+  })
+  if (filePath === undefined) return settingsOperation(true)
+  await launcherCustomBrowser?.select(filePath)
+  return settingsOperation()
+}
+
+async function revokeExternalLauncherSettings(): Promise<Readonly<{ canceled?: boolean; ok: true }>> {
+  await requireLauncherPersistence().revokeExternalSettingsFile()
+  launcherPersistentSetsSync?.()
+  await launcherLifecycle?.sync()
+  return settingsOperation()
+}
+
+async function revokeCustomLauncherBrowser(): Promise<Readonly<{ canceled?: boolean; ok: true }>> {
+  await launcherCustomBrowser?.revoke()
+  return settingsOperation()
 }
 
 function transferWorkbenchIntent(window: BrowserWindow): void {
@@ -1733,6 +1964,13 @@ function requestSecureQuit(_reason: 'native-quit' | 'tray' | 'launcher-command-q
     workbenchLauncherIpcDisposer?.()
     workbenchLauncherIpcDisposer = undefined
     launcherUpdater = undefined
+    const persistenceResults = await Promise.allSettled([
+      launcherCoreFlush?.() ?? Promise.resolve(),
+      launcherPersistence?.close() ?? Promise.resolve(),
+    ])
+    for (const result of persistenceResults) {
+      if (result.status === 'rejected') appendLog('desktop', result.reason instanceof Error ? result.reason.message : String(result.reason))
+    }
     const results = await Promise.allSettled([
       stopRuntimeAndChannels(),
       stopPreviewSurface(),
@@ -2144,6 +2382,18 @@ async function bootstrap(): Promise<void> {
   mkdirSync(logsDir, { recursive: true })
   logStream = createWriteStream(join(logsDir, 'desktop.log'), { flags: 'a', mode: 0o600 })
   appendLog('desktop', `${PRODUCT_NAME} ${info.version} starting (${process.arch})`)
+  launcherPersistence = await LauncherPersistenceRepository.open({
+    secretCodec: createMainLauncherSecretCodec(),
+    secureStorageAvailable: launcherSecureStorageAvailable(),
+    userDataPath: info.appDataPath,
+  })
+  launcherCustomBrowser = await LauncherCustomBrowserController.open({
+    getSetting: (key, fallback) => requireLauncherPersistence().getSetting(key, fallback),
+    launch: async () => { throw new Error('Custom browser launch is owned by a later provider slice') },
+    openDefault: async url => { await shell.openExternal(url) },
+    platform: launcherPlatform(),
+    userDataPath: info.appDataPath,
+  })
   marketplace = createPluginMarketplace()
   marketplaceAgentGateway = await startMarketplaceAgentGateway(marketplace, {
     onError: error => { appendLog('desktop', `[marketplace-agent] ${String(error)}`) },

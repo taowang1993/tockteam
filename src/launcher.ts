@@ -113,7 +113,13 @@ async function bootstrap(): Promise<void> {
   let actionMenuOpen = false
   let historyOpen = false
   let invoking = false
-  const history: string[] = []
+  let history: string[] = []
+  try {
+    const surface = await bridge.getSurfaceSettings()
+    history = [...surface.history]
+  } catch {
+    history = []
+  }
 
   const setStatus = (message: string, tone: 'error' | 'muted' | 'ready' = 'muted'): void => {
     status.textContent = message
@@ -198,12 +204,16 @@ async function bootstrap(): Promise<void> {
     restoreSearchFocus()
   }
 
-  const rememberSearch = (): void => {
+  const rememberSearch = async (): Promise<void> => {
     const raw = search.value
-    if (raw.trim().length === 0 || history.includes(raw)) return
-    history.unshift(raw)
-    history.splice(10)
-    renderHistory()
+    if (raw.trim().length === 0) return
+    try {
+      const surface = await bridge.recordSearch(raw)
+      history = [...surface.history]
+      renderHistory()
+    } catch {
+      // Search invocation remains usable when history persistence is unavailable.
+    }
   }
 
   const actionLabel = (action: LauncherPublicAction): string => (
@@ -216,7 +226,7 @@ async function bootstrap(): Promise<void> {
     if (invoking) return
     invoking = true
     closeActionMenu(false)
-    rememberSearch()
+    await rememberSearch()
     setStatus(`${action.description}…`, 'muted')
     try {
       const result = await bridge.invokeAction(action.actionId)

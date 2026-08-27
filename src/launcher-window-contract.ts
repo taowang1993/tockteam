@@ -14,6 +14,18 @@ export const LAUNCHER_WINDOW_IPC_CHANNELS = Object.freeze({
   syncThemeSource: 'launcher:theme-sync',
 })
 
+export const LAUNCHER_SETTINGS_IPC_CHANNELS = Object.freeze({
+  exportSettings: 'launcher-settings:export',
+  getSnapshot: 'launcher-settings:get-snapshot',
+  importSettings: 'launcher-settings:import',
+  resetSettings: 'launcher-settings:reset',
+  revokeCustomBrowser: 'launcher-settings:revoke-custom-browser',
+  revokeExternalSettings: 'launcher-settings:revoke-external-settings',
+  selectCustomBrowser: 'launcher-settings:select-custom-browser',
+  selectExternalSettings: 'launcher-settings:select-external-settings',
+  updateSetting: 'launcher-settings:update-setting',
+})
+
 export type LauncherRendererRole = 'launcher'
 export {
   parseLauncherThemeProjection,

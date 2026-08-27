@@ -2,9 +2,11 @@ import type { LauncherActionOwner, LauncherActionStore, LauncherInternalResultIt
 import { LauncherActionExpiredError } from './launcher-actions.ts'
 import {
   LAUNCHER_IPC_CHANNELS,
+  LAUNCHER_SURFACE_IPC_CHANNELS,
   parseLauncherInvokeActionArgs,
   parseLauncherSearchArgs,
   type LauncherSearchResponse,
+  type LauncherSurfaceSettings,
 } from './launcher-contract.ts'
 import type { LauncherCoreStatus, LauncherSearchOptions } from './launcher-core-search.ts'
 import type { LauncherIpcGuard, LauncherIpcMain } from './launcher-window-ipc.ts'
@@ -27,6 +29,10 @@ type LauncherSearchIpcArgs = Readonly<{
   ipcMain: LauncherIpcMain
   rescan: () => Promise<LauncherCoreStatus>
   search: LauncherSearchProvider
+  surface?: Readonly<{
+    getSettings: () => LauncherSurfaceSettings
+    recordSearch: (query: string) => Promise<LauncherSurfaceSettings> | LauncherSurfaceSettings
+  }>
 }>
 
 function senderId(event: unknown, owner: LauncherActionOwner): number {
@@ -41,7 +47,7 @@ function assertNoArguments(channel: string, args: readonly unknown[]): void {
 
 export function registerLauncherIpcHandlers(args: LauncherSearchIpcArgs): () => void {
   const latestSearchTokens = new Map<number, object>()
-  return registerLauncherOwnedIpcHandlers(args.ipcMain, [
+  const registrations: Array<[string, (...args: any[]) => unknown]> = [
     [
       LAUNCHER_IPC_CHANNELS.search,
       async (event: unknown, input: unknown, ...extra: unknown[]): Promise<LauncherSearchResponse> => {
@@ -96,5 +102,21 @@ export function registerLauncherIpcHandlers(args: LauncherSearchIpcArgs): () => 
         }
       },
     ],
-  ])
+  ]
+  if (args.surface !== undefined) {
+    registrations.push(
+      [LAUNCHER_SURFACE_IPC_CHANNELS.getSettings, (event: unknown, ...rawArgs: unknown[]): LauncherSurfaceSettings => {
+        args.guard.assert(event, 'launcher')
+        assertNoArguments(LAUNCHER_SURFACE_IPC_CHANNELS.getSettings, rawArgs)
+        return args.surface!.getSettings()
+      }],
+      [LAUNCHER_SURFACE_IPC_CHANNELS.recordSearch, async (event: unknown, rawQuery: unknown, ...extra: unknown[]): Promise<LauncherSurfaceSettings> => {
+        args.guard.assert(event, 'launcher')
+        assertNoArguments(LAUNCHER_SURFACE_IPC_CHANNELS.recordSearch, extra)
+        if (typeof rawQuery !== 'string' || rawQuery.length > 512 || /[\\0\\r\\n]/u.test(rawQuery)) throw new Error('Invalid launcher search history query')
+        return await args.surface!.recordSearch(rawQuery)
+      }],
+    )
+  }
+  return registerLauncherOwnedIpcHandlers(args.ipcMain, registrations)
 }

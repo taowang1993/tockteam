@@ -1,10 +1,12 @@
 import {
   LAUNCHER_IPC_CHANNELS,
+  LAUNCHER_SURFACE_IPC_CHANNELS,
   parseLauncherCoreStatus,
   parseLauncherInvokeActionArgs,
   parseLauncherInvokeResult,
   parseLauncherSearchArgs,
   parseLauncherSearchResponse,
+  parseLauncherSurfaceSettings,
   type LauncherInvokeResult,
   type LauncherSearchResponse,
 } from './launcher-contract.ts'
@@ -24,11 +26,13 @@ type IpcInvoker = Readonly<{
 
 export type LauncherPreloadBridge = Readonly<{
   dismiss: (...args: unknown[]) => Promise<void>
+  getSurfaceSettings: (...args: unknown[]) => Promise<import('./launcher-contract.ts').LauncherSurfaceSettings>
   getTheme: (...args: unknown[]) => Promise<LauncherThemeProjection>
   invokeAction: (actionId: string) => Promise<LauncherInvokeResult>
   onTheme: (listener: (projection: LauncherThemeProjection) => void) => () => void
   openSettings: (...args: unknown[]) => Promise<void>
   rescan: () => Promise<LauncherCoreStatus>
+  recordSearch: (query: string) => Promise<import('./launcher-contract.ts').LauncherSurfaceSettings>
   search: (searchTerm: string, options: LauncherSearchOptions) => Promise<LauncherSearchResponse>
 }>
 
@@ -60,6 +64,10 @@ export function createLauncherPreloadBridge(ipcRenderer: IpcInvoker): LauncherPr
       assertArity('dismiss', args, 0)
       parseLauncherWindowAcknowledgement(await ipcRenderer.invoke(LAUNCHER_WINDOW_IPC_CHANNELS.dismiss))
     },
+    getSurfaceSettings: async (...args: unknown[]): Promise<import('./launcher-contract.ts').LauncherSurfaceSettings> => {
+      assertArity('getSurfaceSettings', args, 0)
+      return parseLauncherSurfaceSettings(await ipcRenderer.invoke(LAUNCHER_SURFACE_IPC_CHANNELS.getSettings))
+    },
     getTheme: async (...args: unknown[]): Promise<LauncherThemeProjection> => {
       assertArity('getTheme', args, 0)
       return parseLauncherThemeProjection(await ipcRenderer.invoke(LAUNCHER_WINDOW_IPC_CHANNELS.getThemeSource))
@@ -78,6 +86,11 @@ export function createLauncherPreloadBridge(ipcRenderer: IpcInvoker): LauncherPr
     openSettings: async (...args: unknown[]): Promise<void> => {
       assertArity('openSettings', args, 0)
       parseLauncherWindowAcknowledgement(await ipcRenderer.invoke(LAUNCHER_WINDOW_IPC_CHANNELS.openSettings))
+    },
+    recordSearch: async (query: unknown, ...extra: unknown[]): Promise<import('./launcher-contract.ts').LauncherSurfaceSettings> => {
+      assertArity('recordSearch', [query, ...extra], 1)
+      if (typeof query !== 'string') throw new Error('TockLauncher search history query is invalid')
+      return parseLauncherSurfaceSettings(await ipcRenderer.invoke(LAUNCHER_SURFACE_IPC_CHANNELS.recordSearch, query))
     },
     rescan: async (...args: unknown[]): Promise<LauncherCoreStatus> => {
       assertArity('rescan', args, 0)
