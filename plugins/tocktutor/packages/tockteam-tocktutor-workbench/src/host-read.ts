@@ -355,13 +355,18 @@ export class TockTutorWorkbenchGateway extends TypertRemoteService {
     super(ctx, 'tocktutorWorkbench')
   }
 
+  private async synchronizeDesktopVault(signal: AbortSignal): Promise<void> {
+    await this.ctx.noteVault.synchronizeDesktopSelection(signal)
+    signal.throwIfAborted()
+  }
+
   @Remote
   async currentVault(signal: AbortSignal): Promise<ActiveVaultResult> {
     signal.throwIfAborted()
     const state = this.ctx.noteVault.state
     if (!state.active) return null
-    const vault = { generation: state.generation, id: state.id }
-    assertVaultReference(vault)
+    const vault = activeReference(state)
+    await this.synchronizeDesktopVault(signal)
     return vault
   }
 
@@ -369,7 +374,9 @@ export class TockTutorWorkbenchGateway extends TypertRemoteService {
   async createManagedVault(request: CreateManagedVaultRequest, signal: AbortSignal): Promise<VaultReference> {
     assertCreateManagedVaultRequest(request)
     signal.throwIfAborted()
-    return activeReference(this.ctx.noteVault.createManagedVault(request.name, request.expectedGeneration))
+    const vault = activeReference(this.ctx.noteVault.createManagedVault(request.name, request.expectedGeneration))
+    await this.synchronizeDesktopVault(signal)
+    return vault
   }
 
   @Remote
@@ -385,7 +392,9 @@ export class TockTutorWorkbenchGateway extends TypertRemoteService {
   async activateRecentVault(request: RecentVaultRequest, signal: AbortSignal): Promise<VaultReference> {
     assertRecentVaultRequest(request)
     signal.throwIfAborted()
-    return activeReference(this.ctx.noteVault.activateRecentVault(request.id, request.expectedGeneration))
+    const vault = activeReference(this.ctx.noteVault.activateRecentVault(request.id, request.expectedGeneration))
+    await this.synchronizeDesktopVault(signal)
+    return vault
   }
 
   @Remote
@@ -402,7 +411,9 @@ export class TockTutorWorkbenchGateway extends TypertRemoteService {
   async openSandboxVault(request: VaultGenerationRequest, signal: AbortSignal): Promise<VaultReference> {
     assertExpectedGeneration(request)
     signal.throwIfAborted()
-    return activeReference(this.ctx.noteVault.openSandboxVault(request.expectedGeneration))
+    const vault = activeReference(this.ctx.noteVault.openSandboxVault(request.expectedGeneration))
+    await this.synchronizeDesktopVault(signal)
+    return vault
   }
 
   @Remote

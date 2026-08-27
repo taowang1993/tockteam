@@ -100,6 +100,11 @@ class FakeNoteVault extends Service {
     return { active: true as const, generation: expectedGeneration + 1, id: `vault:${'e'.repeat(64)}` }
   }
 
+  async synchronizeDesktopSelection(signal: AbortSignal) {
+    this.calls.push({ method: 'synchronizeDesktopSelection', parameters: [signal] })
+    return this.state
+  }
+
   async inspectAttachment(path: string, expectedVault: VaultReference, signal: AbortSignal): Promise<AttachmentMetadataResult> {
     this.calls.push({ method: 'inspectAttachment', parameters: [path, expectedVault, signal] })
     return { generation: expectedVault.generation, mediaKind: 'image', mimeType: 'image/png', path, revision: `file:${'a'.repeat(64)}`, size: 3 }
@@ -247,11 +252,15 @@ test('registers only the accepted read/tree Remote methods and delegates exact r
     assert.equal((await state.gateway.links({ expectedVault: vault, includeUnlinked: true, path: 'Folder/Note.md' }, signal)).path, 'Folder/Note.md')
     assert.equal((await state.gateway.search({ expectedVault: vault, mode: 'query', query: 'match' }, signal)).matches.length, 1)
     assert.deepEqual(state.runtime.calls, [
+      { method: 'synchronizeDesktopSelection', parameters: [signal] },
       { method: 'createManagedVault', parameters: ['Class Notes', 7] },
+      { method: 'synchronizeDesktopSelection', parameters: [signal] },
       { method: 'listRecentVaults', parameters: [] },
       { method: 'activateRecentVault', parameters: [`vault:${'d'.repeat(64)}`, 7] },
+      { method: 'synchronizeDesktopSelection', parameters: [signal] },
       { method: 'removeRecentVault', parameters: [`vault:${'d'.repeat(64)}`, 7] },
       { method: 'openSandboxVault', parameters: [7] },
+      { method: 'synchronizeDesktopSelection', parameters: [signal] },
       { method: 'inspectAttachment', parameters: ['Attachments/a.png', vault, signal] },
       { method: 'previewAttachment', parameters: ['Attachments/a.png', vault, signal] },
       { method: 'storeAttachment', parameters: [{ data: Buffer.from([1, 2, 3]), expectedVault: vault, path: 'Attachments/b.png' }, signal] },
