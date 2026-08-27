@@ -18,9 +18,11 @@ import type { LauncherPreloadBridge } from './launcher-preload-bridge.ts'
 import type { LauncherThemeProjection } from './launcher-theme.ts'
 import { createLauncherLocalTool, LAUNCHER_LOCAL_TOOL_IDS, type LauncherLocalToolId } from './launcher-local-tools.ts'
 import { createLauncherFileSearchTool } from './launcher-file-search-tool.ts'
+import { createLauncherNetworkExtensionTool } from './launcher-network-extension-tool.ts'
 import { LAUNCHER_LOCAL_EXTENSION_ASSET_URLS } from './launcher-local-extension-assets.ts'
 import { launcherDiscoveryAssetUrl } from './launcher-discovery-assets.ts'
 import { launcherFileSearchAssetUrl } from './launcher-file-search-assets.ts'
+import { launcherNetworkAssetUrl } from './launcher-network-assets.ts'
 import { isLauncherImageUrl } from './launcher-image-url.ts'
 import type { LauncherLocalExtensionSettings } from './launcher-local-extension-contract.ts'
 import { tockTeamSkin } from '../plugins/skins/src/skins.ts'
@@ -182,6 +184,17 @@ async function bootstrap(): Promise<void> {
     hideLauncherControls()
     root.append(tool)
   }
+  const openNetworkTool = async (extensionId: 'DeeplTranslator' | 'WebSearch'): Promise<void> => {
+    const tool = createLauncherNetworkExtensionTool({ bridge, document, extensionId, onClose: closeLocalTool, searchOptions: {
+      fuzziness: surfaceSettings.fuzziness,
+      maxSearchResultItems: surfaceSettings.maxSearchResultItems,
+      searchEngineId: surfaceSettings.searchEngineId,
+    } })
+    activeLocalTool = tool
+    activeLocalToolId = undefined
+    hideLauncherControls()
+    root.append(tool)
+  }
 
   const updateSelection = (): void => {
     for (const button of results.querySelectorAll<HTMLElement>('[data-result-id]')) {
@@ -297,6 +310,10 @@ async function bootstrap(): Promise<void> {
     const fileSearchTool = candidate?.id === 'file-search:invoke'
       && candidate.sourceExtension === 'FileSearch'
       && action.actionId === candidate.defaultAction.actionId
+    const networkTool = candidate !== undefined
+      && (candidate.id === 'ueli-network:DeeplTranslator' || candidate.id === 'ueli-network:WebSearch')
+      && candidate.sourceExtension === (candidate.id.endsWith('DeeplTranslator') ? 'DeeplTranslator' : 'WebSearch')
+      && action.actionId === candidate.defaultAction.actionId
     invoking = true
     closeActionMenu(false)
     await rememberSearch()
@@ -315,6 +332,10 @@ async function bootstrap(): Promise<void> {
       }
       if (fileSearchTool) {
         await openFileSearchTool()
+        return
+      }
+      if (networkTool) {
+        await openNetworkTool(candidate!.sourceExtension as 'DeeplTranslator' | 'WebSearch')
         return
       }
       if (action.hideWindowAfterInvocation === true) {
@@ -448,7 +469,7 @@ async function bootstrap(): Promise<void> {
         : undefined
       const packagedAsset = item.imageKey === undefined
         ? undefined
-        : launcherDiscoveryAssetUrl(item.imageKey) ?? launcherFileSearchAssetUrl(item.imageKey)
+        : launcherDiscoveryAssetUrl(item.imageKey) ?? launcherFileSearchAssetUrl(item.imageKey) ?? launcherNetworkAssetUrl(item.imageKey)
       const imageUrl = isLauncherImageUrl(item.imageUrl)
         ? item.imageUrl
         : localAsset ?? packagedAsset

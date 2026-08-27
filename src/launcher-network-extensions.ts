@@ -29,7 +29,7 @@ type InstantResult = Readonly<{
   lastError?: string
 }>
 
-type NetworkOptions = Readonly<{
+export type LauncherNetworkOptions = Readonly<{
   copyText: (text: string) => Promise<void> | void
   enabledExtensionIds: () => readonly string[]
   fetch: LauncherNetworkFetch
@@ -108,10 +108,6 @@ function providerErrorMessage(extensionId: LauncherNetworkExtensionId, reason?: 
   if (extensionId === 'CustomWebSearch') return 'Custom Web Search is unavailable.'
   if (extensionId === 'DeeplTranslator') return 'DeepL Translator is unavailable.'
   return 'Web Search is unavailable.'
-}
-
-function error(reason: unknown, fallback: string): Error {
-  return reason instanceof Error ? new Error(fallback) : new Error(fallback)
 }
 
 function ipv4Parts(value: string): readonly [number, number, number, number] | undefined {
@@ -274,7 +270,6 @@ async function runTimed<T>(
   if (parentSignal?.aborted) abort()
   else parentSignal?.addEventListener('abort', abort, { once: true })
   let timer: ReturnType<typeof setTimeout> | undefined
-  const pending = Promise.resolve().then(() => operation(controller.signal))
   try {
     return await new Promise<T>((resolve, reject) => {
       let settled = false
@@ -292,7 +287,9 @@ async function runTimed<T>(
         controller.abort(new Error('Network request timed out'))
         finish(() => reject(new Error('Network request timed out')))
       }, timeoutMs)
-      void pending.then(value => finish(() => resolve(value)), reason => finish(() => reject(reason)))
+      void Promise.resolve()
+        .then(() => operation(controller.signal))
+        .then(value => finish(() => resolve(value)), reason => finish(() => reject(reason)))
     })
   } finally {
     if (timer !== undefined) clearTimeout(timer)
@@ -301,7 +298,7 @@ async function runTimed<T>(
 }
 
 async function requestJson(
-  options: NetworkOptions,
+  options: LauncherNetworkOptions,
   urlValue: string,
   init: RequestInit | undefined,
   parentSignal: AbortSignal | undefined,
@@ -319,13 +316,13 @@ async function requestJson(
   }, parentSignal, timeoutMs)
 }
 
-function setting<T>(options: NetworkOptions, extensionId: LauncherNetworkExtensionId, key: string, fallback: T): T {
+function setting<T>(options: LauncherNetworkOptions, extensionId: LauncherNetworkExtensionId, key: string, fallback: T): T {
   const fullKey = `extension[${extensionId}].${key}`
   const value = options.getSetting<unknown>(fullKey, fallback)
   return isLauncherRendererSettingValue(fullKey, value) ? value as T : fallback
 }
 
-function customEngines(options: NetworkOptions): readonly LauncherNetworkCustomSearchEngine[] {
+function customEngines(options: LauncherNetworkOptions): readonly LauncherNetworkCustomSearchEngine[] {
   const fallback = [...LAUNCHER_NETWORK_EXTENSION_DEFAULTS.CustomWebSearch.customSearchEngines]
   const raw = setting(options, 'CustomWebSearch', 'customSearchEngines', fallback)
   if (!Array.isArray(raw)) return fallback
@@ -342,6 +339,10 @@ function safeQuery(value: string): boolean {
 
 function action(handlerKey: string, argument: string, description: string, hide = true): LauncherInternalAction {
   return Object.freeze({ argument, description, handlerKey, hideWindowAfterInvocation: hide, requiresConfirmation: false })
+}
+
+function actionKey(extensionId: LauncherNetworkExtensionId, kind: NetworkAction['kind'], value: string): string {
+  return `${extensionId}\u0000${kind}\u0000${value}`
 }
 
 function stableDigest(value: unknown): string {
@@ -376,7 +377,7 @@ function customSearchUrl(engine: LauncherNetworkCustomSearchEngine, searchTerm: 
 }
 
 function currencyResult(
-  options: NetworkOptions,
+  options: LauncherNetworkOptions,
   searchTerm: string,
   rates: ReadonlyMap<string, CurrencyRates>,
   nextActions: Map<string, NetworkAction>,
@@ -397,7 +398,7 @@ function currencyResult(
   if (!Number.isFinite(converted)) return []
   const value = converted.toFixed(2)
   const current = Object.freeze({ extensionId: 'CurrencyConversion' as const, generation, kind: 'copy' as const, settingsDigest: digest, value })
-  nextActions.set(value, current)
+  nextActions.set(actionKey('CurrencyConversion', 'copy', value), current)
   return [Object.freeze({
     defaultAction: action(HANDLERS.copy, value, 'Copy currency conversion', false),
     description: 'Currency Conversion',
@@ -417,7 +418,7 @@ function mapCustomResult(
   digest: string,
 ): LauncherInternalResultItem {
   const value = url.toString()
-  nextActions.set(value, Object.freeze({ customEngineId: engine.id, extensionId: 'CustomWebSearch', generation, kind: 'url', query, settingsDigest: digest, value }))
+  nextActions.set(actionKey('CustomWebSearch', 'url', value), Object.freeze({ customEngineId: engine.id, extensionId: 'CustomWebSearch', generation, kind: 'url', query, settingsDigest: digest, value }))
   return Object.freeze({
     defaultAction: action(HANDLERS.open, value, `Search ${engine.name}`),
     description: `Search in ${engine.name}`,
@@ -442,7 +443,7 @@ function mapWebResult(
   id: string,
 ): LauncherInternalResultItem {
   const value = url.toString()
-  nextActions.set(value, Object.freeze({ engine, extensionId, generation, kind: 'url', locale, query, settingsDigest: digest, value }))
+  nextActions.set(actionKey(extensionId, 'url', value), Object.freeze({ engine, extensionId, generation, kind: 'url', locale, query, settingsDigest: digest, value }))
   return Object.freeze({
     defaultAction: action(HANDLERS.open, value, description),
     description: name === 'Suggestion' ? 'Suggestion' : 'Web Search',
@@ -453,7 +454,7 @@ function mapWebResult(
   })
 }
 
-function currentWebSettings(options: NetworkOptions): Readonly<{ engine: 'DuckDuckGo' | 'Google'; locale: string }> {
+function currentWebSettings(options: LauncherNetworkOptions): Readonly<{ engine: 'DuckDuckGo' | 'Google'; locale: string }> {
   const engineValue = setting<'DuckDuckGo' | 'Google'>(options, 'WebSearch', 'searchEngine', LAUNCHER_NETWORK_EXTENSION_DEFAULTS.WebSearch.searchEngine)
   const localeValue = setting<string>(options, 'WebSearch', 'locale', LAUNCHER_NETWORK_EXTENSION_DEFAULTS.WebSearch.locale)
   const engine: 'DuckDuckGo' | 'Google' = engineValue === 'DuckDuckGo' ? 'DuckDuckGo' : 'Google'
@@ -461,7 +462,7 @@ function currentWebSettings(options: NetworkOptions): Readonly<{ engine: 'DuckDu
   return Object.freeze({ engine, locale })
 }
 
-export function createLauncherNetworkExtensions(options: NetworkOptions): Readonly<{
+export function createLauncherNetworkExtensions(options: LauncherNetworkOptions): Readonly<{
   close: () => Promise<void>
   executeAction: (record: LauncherActionRecord) => Promise<boolean>
   getLastError: () => string | undefined
@@ -532,6 +533,7 @@ export function createLauncherNetworkExtensions(options: NetworkOptions): Readon
     const configured = setting(options, 'CurrencyConversion', 'currencies', [...LAUNCHER_NETWORK_EXTENSION_DEFAULTS.CurrencyConversion.currencies])
     const currencies = [...new Set(configured)].filter(value => typeof value === 'string' && CURRENCY_CODE.test(value)).slice(0, 32)
     const staged = new Map<string, CurrencyRates>()
+    let hadFailure = false
     const settled = await Promise.allSettled(currencies.map(async currency => {
       const data = await track(requestJson(
         options,
@@ -553,11 +555,12 @@ export function createLauncherNetworkExtensions(options: NetworkOptions): Readon
     if (signal.aborted || generation !== loadGeneration || closed) throw signal.reason instanceof Error ? signal.reason : new Error('Currency refresh canceled')
     for (const result of settled) if (result.status === 'rejected') {
       if (signal.aborted) throw signal.reason instanceof Error ? signal.reason : new Error('Currency refresh canceled')
+      hadFailure = true
       report('CurrencyConversion', result.reason)
     }
     rates.clear()
     for (const [currency, value] of staged) rates.set(currency, value)
-    if (staged.size > 0) clearError('CurrencyConversion')
+    if (!hadFailure) clearError('CurrencyConversion')
   }
 
   const loadIndexedItems = async (signal: AbortSignal): Promise<readonly LauncherInternalResultItem[]> => {
@@ -686,7 +689,7 @@ export function createLauncherNetworkExtensions(options: NetworkOptions): Readon
           const digest = settingsDigest('DeeplTranslator')
           for (const item of results) {
             const value = item.defaultAction.argument
-            nextActions.set(value, Object.freeze({ extensionId, generation, kind: 'copy', settingsDigest: digest, value }))
+            nextActions.set(actionKey(extensionId, 'copy', value), Object.freeze({ extensionId, generation, kind: 'copy', settingsDigest: digest, value }))
           }
           before.push(...results)
           clearError('DeeplTranslator')
@@ -723,18 +726,20 @@ export function createLauncherNetworkExtensions(options: NetworkOptions): Readon
       return true
     }
     if (record.handlerKey !== HANDLERS.copy && record.handlerKey !== HANDLERS.open) throw new Error('Invalid network extension action')
-    const entry = currentActions.get(record.argument)
+    const kind = record.handlerKey === HANDLERS.copy ? 'copy' : 'url'
+    const mapKey = actionKey(extensionId, kind, record.argument)
+    const entry = currentActions.get(mapKey)
     if (entry === undefined || entry.extensionId !== extensionId || entry.generation !== queryGeneration) throw new Error('Network action is not from the current main-owned result set')
     if (record.handlerKey === HANDLERS.copy) {
       if (entry.kind !== 'copy' || entry.value !== record.argument || settingsDigest(extensionId) !== entry.settingsDigest) throw new Error('Network copy action is stale')
-      if (currentActions.get(record.argument) !== entry || entry.generation !== queryGeneration) throw new Error('Network copy action is stale')
+      if (currentActions.get(mapKey) !== entry || entry.generation !== queryGeneration) throw new Error('Network copy action is stale')
       await options.copyText(entry.value)
       return true
     }
     if (entry.kind !== 'url' || entry.value !== record.argument || entry.query === undefined) throw new Error('Network URL action is invalid')
     const controller = new AbortController()
     activeControllers.add(controller)
-    const current = (): boolean => currentActions.get(record.argument) === entry && entry.generation === queryGeneration && !closed && !controller.signal.aborted
+    const current = (): boolean => currentActions.get(mapKey) === entry && entry.generation === queryGeneration && !closed && !controller.signal.aborted
     try {
       let url: URL
       if (extensionId === 'CustomWebSearch') {

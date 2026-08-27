@@ -24,13 +24,6 @@ function placeholder(locale: string): string {
   return 'Search'
 }
 
-const CUSTOM_WEB_SEARCH = Object.freeze([Object.freeze({
-  encodeSearchTerm: true,
-  id: 'tockteam-wikipedia',
-  name: 'Wikipedia',
-  prefix: 'wiki',
-  url: 'https://en.wikipedia.org/wiki/{{query}}',
-})])
 const HIDE_WINDOW_ON = Object.freeze(['blur', 'afterInvocation', 'escapePressed'])
 
 /** Resolve effective settings without writing defaults into the override map. */
@@ -46,7 +39,7 @@ export function resolveLauncherSettingDefault(key: string, context: LauncherDefa
     case 'extension[BrowserBookmarks].browsers': return []
     case 'extension[BrowserBookmarks].iconType': return 'favicon'
     case 'extension[BrowserBookmarks].searchResultStyle': return 'nameOnly'
-    case 'extension[CustomWebSearch].customSearchEngines': return clone(CUSTOM_WEB_SEARCH)
+    case 'extension[CustomWebSearch].customSearchEngines': return clone(LAUNCHER_NETWORK_EXTENSION_DEFAULTS.CustomWebSearch.customSearchEngines)
     case 'extension[TerminalLauncher].terminalIds': return clone(context.terminalIds ?? launcherTerminalDefaults(context.platform))
     case 'extension[VSCode].command': return context.platform === 'macOS' ? '/usr/local/bin/code %s' : 'code %s'
     case 'appearance.searchBarPlaceholderText': return placeholder(context.locale ?? 'en-US')

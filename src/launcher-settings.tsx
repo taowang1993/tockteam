@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { Check, Database, KeyRound, RefreshCw, RotateCcw, Search, ShieldCheck, Trash2, Upload, Download, MonitorCog } from 'lucide-react'
+import { Check, Database, Globe2, KeyRound, RefreshCw, RotateCcw, Search, ShieldCheck, Trash2, Upload, Download, MonitorCog } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@tockteam/ui/alert'
 import { Badge } from '@tockteam/ui/badge'
 import { Button } from '@tockteam/ui/button'
@@ -12,6 +12,7 @@ import { LAUNCHER_COMPOSITION } from './launcher-contract.ts'
 import { LauncherLocalSettings } from './launcher-local-settings.tsx'
 import { LauncherDiscoverySettings } from './launcher-discovery-settings.tsx'
 import { LauncherFileSearchSettings, type LauncherSimpleFileSearchDraft } from './launcher-file-search-settings.tsx'
+import { LauncherNetworkSettings } from './launcher-network-settings.tsx'
 import type { DesktopBridge } from './contracts.ts'
 import { LAUNCHER_SENSITIVE_SETTING_KEYS, type LauncherSettingsSnapshot } from './launcher-settings-contract.ts'
 import { readPersistedLauncherState } from './launcher-settings-model.ts'
@@ -203,7 +204,7 @@ function LauncherSettingsPage({ close: _close }: SettingsSectionProps): ReactNod
       <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <h1 className="text-lg font-semibold text-foreground">TockLauncher</h1>
-          <p className="mt-1 text-sm text-muted-foreground">A focused launcher over the TockTeam Desktop workbench with bounded local transformation providers.</p>
+          <p className="mt-1 text-sm text-muted-foreground">A focused launcher over the TockTeam Desktop workbench with bounded local, discovery, file, and network providers.</p>
         </div>
         <Badge variant="secondary">Ueli-compatible contract</Badge>
       </div>
@@ -263,6 +264,10 @@ function LauncherSettingsPage({ close: _close }: SettingsSectionProps): ReactNod
 
       <SectionCard icon={<Search aria-hidden="true" className="size-4" />} title="File Search" description="Configure bounded indexed and home-contained file search providers.">
         <LauncherFileSearchSettings key={snapshotRevision} busy={busy} draftFolders={simpleFileSearchDraft} onDraftFoldersChange={updateSimpleFileSearchDraft} save={save} snapshot={snapshot} />
+      </SectionCard>
+
+      <SectionCard icon={<Globe2 aria-hidden="true" className="size-4" />} title="Network Extensions" description="Configure fixed, bounded network providers without exposing renderer network authority.">
+        <LauncherNetworkSettings key={snapshotRevision} busy={busy} save={save} snapshot={snapshot} />
       </SectionCard>
 
       <SectionCard icon={<Database aria-hidden="true" className="size-4" />} title="Storage and Privacy" description="Managed files and external grants are owned by Electron main; no filesystem path crosses this page.">

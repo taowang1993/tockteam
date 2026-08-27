@@ -10,6 +10,7 @@ import {
   ipcMain,
   Menu,
   nativeTheme,
+  net,
   screen,
   session,
   safeStorage,
@@ -93,6 +94,7 @@ import { createLauncherDiscoveryExtensions } from './launcher-discovery-extensio
 import { createLauncherDiscoveryScanners, launcherNodeSqliteAvailable } from './launcher-discovery-scanners.ts'
 import { createLauncherFileSearchExtensions } from './launcher-file-search.ts'
 import { createLauncherFileSearchScanners } from './launcher-file-search-scanners.ts'
+import { createLauncherNetworkExtensions } from './launcher-network-extensions.ts'
 import {
   launchDetachedLauncherExecutable,
   revalidateLauncherExecutable,
@@ -195,6 +197,7 @@ let launcherRescan: (() => Promise<unknown>) | undefined
 let launcherCoreFlush: (() => Promise<void>) | undefined
 let launcherPersistence: LauncherPersistenceRepository | undefined
 let launcherCustomBrowser: LauncherCustomBrowserController | undefined
+let launcherNetwork: ReturnType<typeof createLauncherNetworkExtensions> | undefined
 let launcherPersistentSetsSync: (() => void) | undefined
 const launcherSettingsOperations = createLauncherSettingsOperations({ isUnavailable: () => quitting })
 const runtimeStartGate = new RuntimeStartGate<void>()
@@ -1193,31 +1196,51 @@ function initializeLauncher(): void {
     platform,
     scanners: createLauncherFileSearchScanners(),
   })
+  const network = createLauncherNetworkExtensions({
+    copyText: text => clipboard.writeText(text),
+    enabledExtensionIds: launcherEnabledLocalExtensionIds,
+    fetch: async (url, init) => await net.fetch(url, init) as unknown as Response,
+    getSetting: (key, fallback) => repository.getSetting(key, fallback),
+    onProviderError: (extensionId, error) => {
+      appendLog('desktop', `TockLauncher provider ${extensionId} failed: ${error.name}`)
+    },
+    openExternal: async url => {
+      if (launcherCustomBrowser === undefined) throw new Error('Custom browser controller is unavailable')
+      await launcherCustomBrowser.openUrl(url)
+    },
+  })
+  launcherNetwork = network
   const discoverySettingKeys = new Set([
     'extension[ApplicationSearch].includeWindowsStoreApps', 'extension[ApplicationSearch].linuxFolders', 'extension[ApplicationSearch].macOsFolders',
     'extension[ApplicationSearch].mdfindFilterOption', 'extension[ApplicationSearch].windowsFileExtensions', 'extension[ApplicationSearch].windowsFolders',
     'extension[BrowserBookmarks].browsers', 'extension[BrowserBookmarks].iconType', 'extension[BrowserBookmarks].searchResultStyle',
     'extension[FileSearch].everythingCliFilePath', 'extension[FileSearch].maxSearchResultCount', 'extension[SimpleFileSearch].folders',
     'extension[VSCode].command', 'extension[VSCode].prefix', 'extension[VSCode].showPath',
+    'extension[CurrencyConversion].currencies', 'extension[CurrencyConversion].defaultTargetCurrency',
+    'extension[CustomWebSearch].customSearchEngines', 'extension[DeeplTranslator].apiKey',
+    'extension[DeeplTranslator].defaultSourceLanguage', 'extension[DeeplTranslator].defaultTargetLanguage',
+    'extension[WebSearch].locale', 'extension[WebSearch].searchEngine', 'extension[WebSearch].showInstantSearchResult',
   ])
   const coreSearch = createLauncherCoreSearch({
     initialExcludedItemIds: repository.getSetting('searchEngine.excludedItems', []),
     initialFavoriteItemIds: repository.getSetting('favorites', []),
     initialIndexedItems: repository.readIndex(),
     appendLog: async (_level, message) => { await repository.appendLog('ERROR', message) },
-    getIndexedError: () => fileSearch.getLastError(),
+    getIndexedError: () => fileSearch.getLastError() ?? network.getLastError(),
     loadIndexedItems: async signal => {
       const result = await createTockTeamDestinationResults('')
-      return [...result.before, ...result.after, ...await local.loadIndexedItems(), ...await discovery.loadIndexedItems(signal), ...await fileSearch.loadIndexedItems(signal)]
+      return [...result.before, ...result.after, ...await local.loadIndexedItems(), ...await discovery.loadIndexedItems(signal), ...await fileSearch.loadIndexedItems(signal), ...await network.loadIndexedItems(signal)]
     },
     searchInstant: async searchTerm => {
-      const [localResults, discoveryResults, fileResults] = await Promise.all([
-        local.searchInstant(searchTerm), discovery.searchInstant(searchTerm), fileSearch.searchInstant(searchTerm),
+      const [localResults, discoveryResults, fileResults, networkResults] = await Promise.all([
+        local.searchInstant(searchTerm), discovery.searchInstant(searchTerm), fileSearch.searchInstant(searchTerm), network.searchInstant(searchTerm),
       ])
       return Object.freeze({
-        after: Object.freeze([...localResults.after, ...discoveryResults.after, ...fileResults.after]),
-        before: Object.freeze([...localResults.before, ...discoveryResults.before, ...fileResults.before]),
-        ...(fileResults.lastError === undefined ? null : { lastError: fileResults.lastError }),
+        after: Object.freeze([...localResults.after, ...discoveryResults.after, ...fileResults.after, ...networkResults.after]),
+        before: Object.freeze([...localResults.before, ...discoveryResults.before, ...fileResults.before, ...networkResults.before]),
+        ...(fileResults.lastError === undefined
+          ? networkResults.lastError === undefined ? null : { lastError: networkResults.lastError }
+          : { lastError: fileResults.lastError }),
       })
     },
     persistIndex: async items => { await repository.writeIndex(items) },
@@ -1248,6 +1271,7 @@ function initializeLauncher(): void {
   const rescan = async () => {
     actions.clear()
     fileSearch.invalidate()
+    network.invalidate()
     return await coreSearch.rescan()
   }
   launcherRescan = rescan
@@ -1267,8 +1291,10 @@ function initializeLauncher(): void {
   controller = nextController
   launcherController = nextController
   launcherCoreFlush = async () => {
+    const networkClose = network.close()
     await fileSearch.close()
     await coreSearch.close()
+    await networkClose
   }
   launcherPersistentSetsSync = () => { syncLauncherPersistentSets(coreSearch) }
   const launcherGuard = createLauncherIpcGuard({
@@ -1339,6 +1365,7 @@ function initializeLauncher(): void {
         if (needsRescan) {
           actions.clear()
           fileSearch.invalidate()
+          network.invalidate()
         }
         try {
           await requireLauncherPersistence().updateSetting(key, value)
@@ -1350,6 +1377,7 @@ function initializeLauncher(): void {
           if (needsRescan) {
             actions.clear()
             fileSearch.invalidate()
+            network.invalidate()
             try { await launcherRescan?.() } catch { /* retain the original mutation error */ }
           }
           throw reason
