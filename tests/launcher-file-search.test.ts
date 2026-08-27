@@ -62,6 +62,28 @@ test('file providers index bounded simple results and query the exact prefixed F
   assert.match(instant.after[0]!.defaultAction.argument, /home\/max\/report\.txt/u)
 })
 
+test('file providers require identity and revoke replaced path actions', async () => {
+  let resultPath = '/home/max/one.txt'
+  const effects = { openPath: async (_target: string) => undefined, revealPath: async (_target: string) => undefined }
+  const scanners: LauncherFileSearchScanners = {
+    queryFileSearch: async () => [{ path: resultPath, type: 'file', identity: { dev: '1', ino: resultPath.endsWith('one.txt') ? '1' : '2' } }],
+    scanSimpleFolder: async () => [
+      { path: '/home/max/missing.txt', type: 'file', identity: { dev: '', ino: '' } },
+      { path: '/home/max/valid.txt', type: 'file', identity: { dev: '1', ino: '3' } },
+    ],
+    validatePath: async () => true,
+  }
+  const provider = createLauncherFileSearchExtensions({ effects, enabledExtensionIds: () => ['FileSearch', 'SimpleFileSearch'], getSetting: settings, homePath: '/home/max', platform: 'macOS', scanners })
+  const first = await provider.searchInstant(`${LAUNCHER_FILE_SEARCH_QUERY_PREFIX} one`)
+  assert.equal(first.after.length, 1)
+  const old = first.after[0]!
+  resultPath = '/home/max/two.txt'
+  await provider.searchInstant(`${LAUNCHER_FILE_SEARCH_QUERY_PREFIX} two`)
+  await assert.rejects(provider.executeAction(record(old)), /main-owned result set/u)
+  const indexed = await provider.loadIndexedItems(new AbortController().signal)
+  assert.deepEqual(indexed.filter(item => item.sourceExtension === 'SimpleFileSearch').map(item => item.name), ['valid.txt'])
+})
+
 test('superseded FileSearch queries abort and stale results cannot replace current actions', async () => {
   let firstSignal: AbortSignal | undefined
   const scanners: LauncherFileSearchScanners = {

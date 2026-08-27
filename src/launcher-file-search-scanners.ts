@@ -70,7 +70,6 @@ const MAX_SIMPLE_DEPTH = 32
 const DEFAULT_SCAN_TIMEOUT_MS = 10_000
 const MAX_SCAN_TIMEOUT_MS = 60_000
 const QUERY_TIMEOUT_MS = 8_000
-const DEFAULT_QUERY_MAX_RESULTS = 20
 
 const defaultExecFile: LauncherExecFile = async (executable, args, options) => {
   const result = await promisify(nodeExecFile)(executable, [...args], {
