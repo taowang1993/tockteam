@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
 import { createHash } from 'node:crypto'
+import { lstat, readFile, readlink } from 'node:fs/promises'
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
-import { readFile } from 'node:fs/promises'
 import { spawnSync } from 'node:child_process'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
@@ -48,9 +48,15 @@ function fail(message) {
 }
 
 function runGit(args, { cwd, input, binary = false } = {}) {
-  const result = spawnSync('git', args, {
+  const result = spawnSync('git', ['--no-replace-objects', ...args], {
     cwd,
     encoding: binary ? undefined : 'utf8',
+    env: {
+      ...process.env,
+      GIT_NO_LAZY_FETCH: '1',
+      GIT_NO_REPLACE_OBJECTS: '1',
+      GIT_CONFIG_NOSYSTEM: '1',
+    },
     input,
     maxBuffer: 32 * 1024 * 1024,
   })
@@ -109,12 +115,14 @@ function assertManifest(manifest) {
 }
 
 function decodeObject(objects, key) {
-  if (typeof objects[key] !== 'string' || !objects[key]) fail(`release object ${key} is missing`)
-  try {
-    return Buffer.from(objects[key], 'base64')
-  } catch (error) {
-    fail(`release object ${key} is not valid base64: ${error instanceof Error ? error.message : String(error)}`)
+  const encoded = objects[key]
+  if (typeof encoded !== 'string' || !encoded) fail(`release object ${key} is missing`)
+  if (!/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/u.test(encoded)) {
+    fail(`release object ${key} is not canonical base64`)
   }
+  const decoded = Buffer.from(encoded, 'base64')
+  if (decoded.toString('base64') !== encoded) fail(`release object ${key} is not canonical base64`)
+  return decoded
 }
 
 function verifyRawReleaseObjects(repoRoot, manifest, releaseObjectsPath) {
@@ -153,7 +161,7 @@ function verifyRawReleaseObjects(repoRoot, manifest, releaseObjectsPath) {
 
     const commitText = runGit(['--git-dir', objectRoot, 'cat-file', '-p', manifest.commit], { cwd: repoRoot })
     assertEqual(commitText.match(/^tree ([0-9a-f]{40})$/mu)?.[1], manifest.tree, 'commit tree')
-    const archive = runGit(['--git-dir', objectRoot, 'archive', '--format=tar', manifest.commit], {
+    const archive = runGit(['-c', 'tar.umask=0002', '--git-dir', objectRoot, 'archive', '--format=tar', manifest.commit], {
       cwd: repoRoot,
       binary: true,
     })
@@ -167,6 +175,86 @@ function verifyRawReleaseObjects(repoRoot, manifest, releaseObjectsPath) {
   } finally {
     rmSync(objectRoot, { recursive: true, force: true })
   }
+}
+
+function parseTreeEntries(output) {
+  return output.toString('utf8').split('\0').filter(Boolean).map((entry) => {
+    const separator = entry.indexOf('\t')
+    const [mode, type, object] = entry.slice(0, separator).split(' ')
+    return { mode, type, object, path: entry.slice(separator + 1) }
+  })
+}
+
+export async function verifyVendorTree({
+  repoRoot = DEFAULT_REPO_ROOT,
+  vendorPath = 'vendor/ueli',
+  revision = 'HEAD',
+} = {}) {
+  const output = runGit(['ls-tree', '-r', '-z', revision, '--', vendorPath], {
+    cwd: repoRoot,
+    binary: true,
+  })
+  const entries = parseTreeEntries(output)
+  if (entries.length === 0) fail(`committed vendor tree is empty: ${vendorPath}`)
+
+  for (const entry of entries) {
+    const physicalPath = path.join(repoRoot, entry.path)
+    let stats
+    try {
+      stats = await lstat(physicalPath)
+    } catch (error) {
+      fail(`tracked vendor path is missing: ${entry.path} (${error instanceof Error ? error.message : String(error)})`)
+    }
+    if (entry.type !== 'blob') fail(`tracked vendor path is not a blob: ${entry.path}`)
+    let content
+    if (entry.mode === '120000') {
+      if (!stats.isSymbolicLink()) fail(`tracked vendor symlink is not a symlink: ${entry.path}`)
+      content = Buffer.from(await readlink(physicalPath), 'utf8')
+    } else {
+      if (!stats.isFile()) fail(`tracked vendor file is not a regular file: ${entry.path}`)
+      content = await readFile(physicalPath)
+    }
+    const actualObject = sha1GitObject('blob', content)
+    if (actualObject !== entry.object) {
+      fail(`tracked vendor blob differs from committed tree: ${entry.path}`)
+    }
+  }
+
+  return { trackedFileCount: entries.length }
+}
+
+export async function verifyVendorIntegrity({
+  repoRoot = DEFAULT_REPO_ROOT,
+  vendorPath = 'vendor/ueli',
+  revision = 'HEAD',
+} = {}) {
+  const indexEntries = runGit(['ls-files', '-v', '-z', '--', vendorPath], { cwd: repoRoot })
+    .split('\0')
+    .filter(Boolean)
+  const flagged = indexEntries.filter((entry) => entry[0] === 'S' || entry[0] === 'h')
+  if (flagged.length > 0) {
+    fail(`vendor index contains skip-worktree or assume-unchanged flag: ${flagged.join(', ')}`)
+  }
+
+  const status = runGit([
+    'status',
+    '--porcelain=v1',
+    '--untracked-files=all',
+    '--ignored=matching',
+    '--',
+    vendorPath,
+  ], { cwd: repoRoot })
+  if (status) fail(`ignored or untracked vendor path (or modified tracked path): ${status}`)
+
+  return verifyVendorTree({ repoRoot, vendorPath, revision })
+}
+
+function assertSubtreeMetadata(metadata, vendorPath, commit) {
+  const lines = metadata.split(/\r?\n/u)
+  const directoryLine = `git-subtree-dir: ${vendorPath}`
+  const splitLine = `git-subtree-split: ${commit}`
+  assertEqual(lines.filter((line) => line === directoryLine).length, 1, 'subtree directory metadata lines')
+  assertEqual(lines.filter((line) => line === splitLine).length, 1, 'subtree split metadata lines')
 }
 
 function sha1GitObject(type, content) {
@@ -193,24 +281,16 @@ export async function checkBaseline({
     'log',
     'HEAD',
     '--format=%B',
-    '--grep=git-subtree-dir: vendor/ueli',
+    '--grep=^git-subtree-dir: vendor/ueli$',
     '-1',
   ], { cwd: repoRoot })
-  if (!subtreeMetadata.includes(`git-subtree-split: ${manifest.commit}`)) {
-    fail(`subtree metadata does not record peeled commit ${manifest.commit}`)
-  }
+  assertSubtreeMetadata(subtreeMetadata, manifest.vendorPath, manifest.commit)
 
-  const vendorStatus = runGit([
-    'status',
-    '--porcelain=v1',
-    '--untracked-files=all',
-    '--',
-    manifest.vendorPath,
-  ], { cwd: repoRoot })
-  assertEqual(vendorStatus, '', 'vendor working-tree status')
-
-  const trackedFiles = runGit(['ls-tree', '-r', '--name-only', 'HEAD', '--', manifest.vendorPath], { cwd: repoRoot })
-  const trackedFileCount = trackedFiles ? trackedFiles.split('\n').length : 0
+  const { trackedFileCount } = await verifyVendorIntegrity({
+    repoRoot,
+    vendorPath: manifest.vendorPath,
+    revision: 'HEAD',
+  })
   assertEqual(trackedFileCount, manifest.trackedFileCount, 'tracked vendor file count')
 
   for (const entry of [manifest.packageLock, ...manifest.notices]) {
