@@ -259,7 +259,7 @@ try {
     require: 'undefined',
     dshDesktop: 'undefined',
     electronAPI: 'undefined',
-    launcherApiKeys: ['dismiss', 'getLocalExtensionSettings', 'getSurfaceSettings', 'getTheme', 'invokeAction', 'onTheme', 'openSettings', 'recordSearch', 'rescan', 'search'],
+    launcherApiKeys: ['cancelAction', 'dismiss', 'getLocalExtensionSettings', 'getSurfaceSettings', 'getTheme', 'invokeAction', 'onTheme', 'openSettings', 'recordSearch', 'rescan', 'search'],
     launcherApiFrozen: true,
     csp: launcherCsp,
     fitsViewport: true,
@@ -885,10 +885,15 @@ try {
     () => readFile(workflowFixtureMarkerPath, 'utf8').then(value => JSON.parse(value)).catch(() => null),
     marker => marker?.marker === 'tockteam-workflow-fixture-v1'
       && marker?.accepted === 1
+      && marker?.confirmationAccepted === (process.platform === 'linux' ? 3 : 4)
       && marker?.forbiddenEffects === 0
       && JSON.stringify(marker?.order ?? []) === JSON.stringify(process.platform === 'linux' ? ['OpenFile', 'OpenUrl', 'ExecuteCommand'] : ['OpenFile', 'OpenUrl', 'OpenTerminal', 'ExecuteCommand']),
   )
   assert.deepEqual(workflowFixtureMarker.order, process.platform === 'linux' ? ['OpenFile', 'OpenUrl', 'ExecuteCommand'] : ['OpenFile', 'OpenUrl', 'OpenTerminal', 'ExecuteCommand'])
+  const workflowTamper = await launcherConnection.evaluate(`(async () => {
+    try { await window.tockteamLauncher?.invokeAction('launcher-action:tampered'); return false } catch { return true }
+  })()`)
+  assert.equal(workflowTamper, true)
   const workflowFixtureSetup = await workbenchConnection.evaluate(`(async () => {
     const snapshot = await window.dshDesktop?.launcher?.settings?.getSnapshot()
     const current = snapshot?.values?.['extension[Workflow].workflows']
@@ -912,14 +917,30 @@ try {
   const workflowCancelStarted = await launcherConnection.call('Runtime.evaluate', { expression: `(async () => {
     const response = await window.tockteamLauncher?.search('Cancel workflow', { fuzziness: 0, maxSearchResultItems: 50, searchEngineId: 'fuzzysort' })
     const item = [...(response?.before ?? []), ...(response?.after ?? [])].find(candidate => candidate.sourceExtension === 'Workflow')
-    return typeof item?.defaultAction?.actionId === 'string' && await window.tockteamLauncher?.invokeAction(item.defaultAction.actionId)
+    if (item?.defaultAction?.actionId === undefined || response?.resultSetId === undefined) return false
+    window.__tockteamWorkflowCancel = { actionId: item.defaultAction.actionId, resultSetId: response.resultSetId }
+    void window.tockteamLauncher?.invokeAction(item.defaultAction.actionId)
+    return true
   })()`, awaitPromise: false, returnByValue: true })
-  assert.ok(workflowCancelStarted)
+  assert.ok(workflowCancelStarted.result?.result)
   await sleep(250)
+  const workflowCancelToken = await waitFor(
+    () => launcherConnection.evaluate('window.__tockteamWorkflowCancel ?? null'),
+    token => typeof token?.actionId === 'string' && typeof token?.resultSetId === 'string',
+  )
+  assert.equal(await launcherConnection.evaluate(`(async () => {
+    try { await window.tockteamLauncher?.cancelAction(${JSON.stringify(workflowCancelToken.actionId)}, 'launcher-results:999'); return false } catch { return true }
+  })()`), true)
+  assert.equal(await launcherConnection.evaluate(`(async () => {
+    const button = document.querySelector('[aria-label="Cancel workflow"]')
+    if (!(button instanceof HTMLButtonElement)) return false
+    button.click()
+    return true
+  })()`), true)
   await workbenchConnection.evaluate(`(async () => { await window.dshDesktop?.launcher?.settings?.updateSetting('general.language', 'en-US') })()`)
   const workflowFixtureAfterCancel = await waitFor(
     () => readFile(workflowFixtureMarkerPath, 'utf8').then(value => JSON.parse(value)).catch(() => null),
-    marker => marker?.marker === 'tockteam-workflow-fixture-v1' && marker?.declined === 1 && marker?.canceled === 1 && marker?.forbiddenEffects === 0,
+    marker => marker?.marker === 'tockteam-workflow-fixture-v1' && marker?.declined === 1 && marker?.canceled === 1 && marker?.confirmationDeclined === 1 && marker?.confirmationCanceled === 1 && marker?.forbiddenEffects === 0,
   )
   assert.equal(workflowFixtureAfterCancel.forbiddenEffects, 0)
 

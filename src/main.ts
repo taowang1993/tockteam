@@ -323,6 +323,9 @@ function recordLauncherTerminalFixtureCanceled(): void {
 type LauncherWorkflowFixtureMarker = {
   accepted: number
   canceled: number
+  confirmationAccepted: number
+  confirmationCanceled: number
+  confirmationDeclined: number
   declined: number
   forbiddenEffects: number
   marker: 'tockteam-workflow-fixture-v1'
@@ -332,6 +335,9 @@ type LauncherWorkflowFixtureMarker = {
 let launcherWorkflowFixtureMarker: LauncherWorkflowFixtureMarker = {
   accepted: 0,
   canceled: 0,
+  confirmationAccepted: 0,
+  confirmationCanceled: 0,
+  confirmationDeclined: 0,
   declined: 0,
   forbiddenEffects: 0,
   marker: 'tockteam-workflow-fixture-v1',
@@ -351,7 +357,7 @@ function writeLauncherWorkflowFixtureMarker(): void {
 
 function resetLauncherWorkflowFixtureMarker(): void {
   if (!launcherWorkflowFixtureEnabled) return
-  launcherWorkflowFixtureMarker = { accepted: 0, canceled: 0, declined: 0, forbiddenEffects: 0, marker: 'tockteam-workflow-fixture-v1', order: [] }
+  launcherWorkflowFixtureMarker = { accepted: 0, canceled: 0, confirmationAccepted: 0, confirmationCanceled: 0, confirmationDeclined: 0, declined: 0, forbiddenEffects: 0, marker: 'tockteam-workflow-fixture-v1', order: [] }
   writeLauncherWorkflowFixtureMarker()
 }
 
@@ -361,6 +367,14 @@ function recordLauncherWorkflowFixtureAudit(outcome: 'cancelled' | 'completed' |
   else if (outcome === 'denied') launcherWorkflowFixtureMarker.declined += 1
   else if (outcome === 'cancelled') launcherWorkflowFixtureMarker.canceled += 1
   else launcherWorkflowFixtureMarker.forbiddenEffects += 1
+  writeLauncherWorkflowFixtureMarker()
+}
+
+function recordLauncherWorkflowFixtureConfirmation(outcome: 'accepted' | 'canceled' | 'declined'): void {
+  if (!launcherWorkflowFixtureEnabled) return
+  if (outcome === 'accepted') launcherWorkflowFixtureMarker.confirmationAccepted += 1
+  else if (outcome === 'canceled') launcherWorkflowFixtureMarker.confirmationCanceled += 1
+  else launcherWorkflowFixtureMarker.confirmationDeclined += 1
   writeLauncherWorkflowFixtureMarker()
 }
 
@@ -1762,26 +1776,6 @@ function initializeLauncher(): void {
     : launcherEnabledLocalExtensionIds()
   const confirmWorkflowAction = async (request: LauncherWorkflowConfirmation, signal?: AbortSignal): Promise<boolean> => {
     if (signal?.aborted) throw launcherAbortError(signal)
-    if (launcherWorkflowFixtureEnabled) {
-      if (/cancel/iu.test(request.actionName) && signal !== undefined) {
-        await new Promise<void>((resolve, reject) => {
-          let settled = false
-          const finish = (error?: Error): void => {
-            if (settled) return
-            settled = true
-            clearTimeout(timer)
-            signal.removeEventListener('abort', abort)
-            if (error === undefined) resolve()
-            else reject(error)
-          }
-          const abort = (): void => finish(launcherAbortError(signal))
-          const timer = setTimeout(() => finish(), 5_000)
-          signal.addEventListener('abort', abort, { once: true })
-          if (signal.aborted) abort()
-        })
-      }
-      return !/decline/iu.test(request.actionName)
-    }
     const target = request.actionType === 'OpenFile'
       ? `File (${request.kind}): ${request.filePath}`
       : request.actionType === 'OpenUrl'
@@ -1789,11 +1783,37 @@ function initializeLauncher(): void {
         : request.actionType === 'OpenTerminal'
           ? `Terminal: ${request.terminalId}\\nCommand: ${request.command}\\nWorking directory: ${request.workingDirectory}`
           : `Command: ${request.command}\\nWorking directory: ${request.workingDirectory}`
-    const pending = mainWindow === undefined || mainWindow.isDestroyed()
-      ? dialog.showMessageBox({ buttons: ['Continue', 'Cancel'], cancelId: 1, defaultId: 1, detail: target, message: `Invoke ${request.actionType} in ${request.workflowName}?`, title: PRODUCT_NAME, type: 'warning' })
-      : dialog.showMessageBox(mainWindow, { buttons: ['Continue', 'Cancel'], cancelId: 1, defaultId: 1, detail: target, message: `Invoke ${request.actionType} in ${request.workflowName}?`, title: PRODUCT_NAME, type: 'warning' })
+    const pending = launcherWorkflowFixtureEnabled
+      ? (async () => {
+        if (/cancel/iu.test(request.actionName) && signal !== undefined) {
+          await new Promise<void>((resolve, reject) => {
+            let settled = false
+            const finish = (error?: Error): void => {
+              if (settled) return
+              settled = true
+              clearTimeout(timer)
+              signal.removeEventListener('abort', abort)
+              if (error === undefined) resolve()
+              else reject(error)
+            }
+            const abort = (): void => {
+              recordLauncherWorkflowFixtureConfirmation('canceled')
+              finish(launcherAbortError(signal))
+            }
+            const timer = setTimeout(finish, 5_000)
+            signal.addEventListener('abort', abort, { once: true })
+            if (signal.aborted) abort()
+          })
+        }
+        return { response: /decline/iu.test(request.actionName) ? 1 : 0 }
+      })()
+      : mainWindow === undefined || mainWindow.isDestroyed()
+        ? dialog.showMessageBox({ buttons: ['Continue', 'Cancel'], cancelId: 1, defaultId: 1, detail: target, message: `Invoke ${request.actionType} in ${request.workflowName}?`, title: PRODUCT_NAME, type: 'warning' })
+        : dialog.showMessageBox(mainWindow, { buttons: ['Continue', 'Cancel'], cancelId: 1, defaultId: 1, detail: target, message: `Invoke ${request.actionType} in ${request.workflowName}?`, title: PRODUCT_NAME, type: 'warning' })
     const result = signal === undefined ? await pending : await launcherAwaitAbortable(pending, signal)
-    return result.response === 0
+    const approved = result.response === 0
+    if (launcherWorkflowFixtureEnabled) recordLauncherWorkflowFixtureConfirmation(approved ? 'accepted' : 'declined')
+    return approved
   }
   const workflow = createLauncherWorkflow({
     ...(launcherHomeIdentity === undefined ? {} : { captureHomeIdentity: async target => await captureLauncherHomeIdentity(target) }),
