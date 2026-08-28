@@ -244,6 +244,7 @@ export function createLauncherTerminal(options: LauncherTerminalOptions): Readon
     if (startupHomeIdentity === undefined && options.captureHomeIdentity !== undefined) {
       startupHomeIdentity = await options.captureHomeIdentity(workingDirectory, new AbortController().signal)
     }
+    if (options.captureHomeIdentity !== undefined && startupHomeIdentity === undefined) return emptyResult()
     const nextActions = new Map<string, KnownAction>()
     const items = LAUNCHER_TERMINALS[options.platform]
       .filter((terminal: LauncherTerminalDefinition) => settings.ids.includes(terminal.id))
