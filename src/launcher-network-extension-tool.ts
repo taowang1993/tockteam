@@ -201,7 +201,7 @@ export function createLauncherNetworkExtensionTool(options: Readonly<{
       if (revision !== requestRevision) return
       currentItems = Object.freeze([...response.before, ...response.after].filter(item => item.sourceExtension === extensionId))
       render()
-      setStatus(response.status.lastError ?? launcherCountText(options.locale, 'resultsFound', currentItems.length, `${currentItems.length} result${currentItems.length === 1 ? '' : 's'}.`), response.status.lastError === undefined ? 'ready' : 'error')
+      setStatus(response.status.lastError === undefined ? launcherCountText(options.locale, 'resultsFound', currentItems.length, `${currentItems.length} result${currentItems.length === 1 ? '' : 's'}.`) : text('networkUnavailable', `${title} is unavailable.`), response.status.lastError === undefined ? 'ready' : 'error')
       restoreFocus(focusItemId)
     } catch {
       if (revision !== requestRevision) return

@@ -3,6 +3,7 @@ import { Input } from '@tockteam/ui/input'
 import { NativeSelect, NativeSelectOption } from '@tockteam/ui/native-select'
 import { Switch } from '@tockteam/ui/switch'
 import { LAUNCHER_LOCAL_EXTENSION_DEFAULTS } from './launcher-local-extension-config.ts'
+import { launcherFixedText } from './launcher-i18n.ts'
 import type { LauncherSettingsSnapshot } from './launcher-settings-contract.ts'
 type LocalSettingsProps = Readonly<{
   busy: boolean
@@ -15,7 +16,7 @@ function localValue(snapshot: LauncherSettingsSnapshot, id: string, key: string,
   return value === undefined ? fallback : value
 }
 function Field({ label, children }: Readonly<{ label: string; children: ReactNode }>): ReactNode {
-  return <div className="flex min-w-0 flex-wrap items-center justify-between gap-3 border-b border-border/60 py-2 last:border-b-0"><span className="text-sm text-foreground">{label}</span><span className="flex min-w-0 max-w-full flex-wrap items-center gap-2">{children}</span></div>
+  return <div className="flex min-w-0 flex-wrap items-center justify-between gap-3 border-b border-border/60 py-2 last:border-b-0"><span className="text-sm text-foreground">{launcherFixedText(label)}</span><span className="flex min-w-0 max-w-full flex-wrap items-center gap-2">{children}</span></div>
 }
 function text(props: ComponentProps<typeof Input>): ReactNode { return <Input {...props} /> }
 

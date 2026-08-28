@@ -80,6 +80,67 @@ const MESSAGES: Readonly<Record<LauncherLocale, Readonly<Record<string, Launcher
   }),
 })
 
+const FIXED_ZH: Readonly<Record<string, string>> = Object.freeze({
+  'Actions': '操作',
+  'Add': '添加',
+  'Add workflow': '添加工作流',
+  'Remove': '移除',
+  'Add Root': '添加根目录',
+  'Add action': '添加操作',
+  'Back to Results': '返回结果',
+  'Cancel': '取消',
+  'Clear History': '清除历史',
+  'Command prefix': '命令前缀',
+  'Confirm workflow deletion': '确认删除工作流',
+  'Delete': '删除',
+  'Delete workflow': '删除工作流',
+  'File Search': '文件搜索',
+  'Generate UUIDs': '生成 UUID',
+  'History limit': '历史记录上限',
+  'Input': '输入',
+  'Maximum results': '最大结果数',
+  'No saved workflows.': '没有已保存的工作流。',
+  'Open File': '打开文件',
+  'Open Terminal': '打开终端',
+  'Open URL': '打开 URL',
+  'Output': '输出',
+  'Pattern': '模式',
+  'Reset': '重置',
+  'Save workflow': '保存工作流',
+  'Search engine': '搜索引擎',
+  'Search history': '搜索历史',
+  'Search term': '搜索词',
+  'Settings files': '设置文件',
+  'Terminal': '终端',
+  'Workflow name': '工作流名称',
+  'Workflows': '工作流',
+  'Every action receives exact native approval. Commands use the trusted Desktop home, are time and output bounded, cancellable, and audited without command text or output.': '每个操作都需要精确的原生批准。命令使用受信任的 Desktop 主目录，受时间和输出限制，可取消，且审计不会记录命令文本或输出。',
+  'Tune the matching surface without exposing launcher internals.': '调整匹配界面，不暴露启动器内部信息。',
+  'Search presentation follows the shared TockTeam appearance owner and remains keyboard accessible.': '搜索外观遵循共享的 TockTeam 外观所有者，并保持键盘可访问。',
+  'Window and shell behavior is applied by Electron main. Launch on Start remains in its existing TockTeam Preferences owner.': '窗口和 Shell 行为由 Electron 主进程应用。启动时运行仍由现有 TockTeam 偏好设置所有者管理。',
+  'Choose selection behavior without exposing paths or other authority.': '选择交互行为，不暴露路径或其他权限。',
+  'Browser grants and global shortcut ownership remain in Electron main.': '浏览器授权和全局快捷键所有权仍由 Electron 主进程管理。',
+  'Enablement is serialized through main before the next scan. Provider controls remain with their owning slices.': '启用状态由主进程串行保存后再执行扫描。提供方控件仍由各自模块管理。',
+  'Configure the seven local transformation providers without exposing renderer authority.': '配置七个本地转换提供方，不暴露渲染器权限。',
+  'Configure bounded applications, bookmarks, JetBrains projects, and VS Code recents.': '配置受限的应用、书签、JetBrains 项目和 VS Code 最近项目。',
+  'Configure bounded indexed and home-contained file search providers.': '配置受限的索引文件和主目录内文件搜索提供方。',
+  'Configure the finite native terminal catalog. Commands always require main-process approval.': '配置有限的原生终端目录。命令始终需要主进程批准。',
+  'Compose a bounded ordered sequence of exact native actions. Commands always use a fixed shell policy and trusted Desktop home.': '组合受限且有序的原生操作。命令始终使用固定 Shell 策略和受信任的 Desktop 主目录。',
+  'Configure fixed, bounded network providers without exposing renderer network authority.': '配置固定且受限的网络提供方，不暴露渲染器网络权限。',
+  'Managed files and external grants are owned by Electron main; no filesystem path crosses this page.': '托管文件和外部授权由 Electron 主进程管理；文件系统路径不会经过此页面。',
+  'Secrets are write-only. A missing or unavailable key is never represented by ciphertext or an error payload.': '机密信息仅可写入。缺失或不可用的密钥不会以密文或错误载荷表示。',
+  'Automatic updates remain owned by the existing Electron updater state machine.': '自动更新仍由现有 Electron 更新状态机管理。',
+  'Compatibility inventory is explicit even while provider slices are staged.': '即使提供方模块正在分阶段加载，兼容性清单仍保持明确。',
+})
+
+export function launcherCurrentLocale(): LauncherLocale {
+  return typeof document !== 'undefined' && document.documentElement.lang.toLocaleLowerCase('en-US').startsWith('zh') ? 'zh-CN' : 'en-US'
+}
+
+export function launcherFixedText(fallback: string, locale: LauncherLocale = launcherCurrentLocale()): string {
+  return locale === 'zh-CN' ? FIXED_ZH[fallback] ?? fallback : fallback
+}
+
 export function launcherText(locale: LauncherLocale | undefined, key: string, fallback: string): string {
   const message = MESSAGES[locale ?? 'en-US'][key]
   return typeof message === 'function' ? message(0) : message ?? fallback

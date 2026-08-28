@@ -16,6 +16,7 @@ import { LauncherNetworkSettings } from './launcher-network-settings.tsx'
 import { LauncherTerminalSettings } from './launcher-terminal-settings.tsx'
 import { LauncherWorkflowSettings } from './launcher-workflow-settings.tsx'
 import { LauncherSurfaceSettingsSection } from './launcher-surface-settings.tsx'
+import { launcherFixedText } from './launcher-i18n.ts'
 import { launcherWorkflowSnapshotToken } from './launcher-workflow-contract.ts'
 import type { DesktopBridge } from './contracts.ts'
 import { LAUNCHER_SENSITIVE_SETTING_KEYS, type LauncherSettingsSnapshot } from './launcher-settings-contract.ts'
@@ -132,7 +133,7 @@ function SectionCard({ icon, title, description, children, testId }: Readonly<{ 
     <Card aria-labelledby={headingId} data-testid={testId} role="region">
       <CardHeader>
         <CardTitle className="flex items-center gap-2"><h2 id={headingId} className="flex items-center gap-2 text-base font-semibold">{icon}{title}</h2></CardTitle>
-        <CardDescription>{description}</CardDescription>
+        <CardDescription>{launcherFixedText(description)}</CardDescription>
       </CardHeader>
       <CardContent>{children}</CardContent>
     </Card>
@@ -333,7 +334,7 @@ function LauncherSettingsPage({ close: _close, locale }: SettingsSectionProps): 
           </NativeSelect>
         </Field>
         <Field title={`Fuzziness (${state.preferences.fuzziness.toFixed(1)})`} description="Higher values broaden fuzzy matching.">
-          <Input aria-label="Search fuzziness" className="w-36" type="range" min="0" max="1" step="0.1" disabled={busy} value={state.preferences.fuzziness} onChange={event => { void save('searchEngine.fuzziness', Number(event.target.value)) }} />
+          <Input aria-label="Search fuzziness" className="w-full max-w-xs min-w-0" type="range" min="0" max="1" step="0.1" disabled={busy} value={state.preferences.fuzziness} onChange={event => { void save('searchEngine.fuzziness', Number(event.target.value)) }} />
         </Field>
         <Field title="Maximum results" description="Keep result lists concise while retaining pinned items.">
           <Input aria-label="Maximum results" className="w-24" type="number" min="1" max="200" disabled={busy} value={state.preferences.maxSearchResultItems} onChange={event => { const value = Math.min(200, Math.max(1, Number(event.target.value) || 50)); void save('searchEngine.maxResultLength', value) }} />
@@ -445,7 +446,7 @@ function LauncherSettingsPage({ close: _close, locale }: SettingsSectionProps): 
         <Field title="DeepL API key" description="Enter a new key to encrypt it with the operating system secure-storage backend.">
           <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">
             <Label htmlFor="tocklauncher-deepl-key" className="sr-only">DeepL API key</Label>
-            <Input id="tocklauncher-deepl-key" aria-label="DeepL API key" autoComplete="new-password" className="w-56" maxLength={8192} type="password" value={secret} disabled={busy || snapshot.secureStorageAvailable === false} onChange={event => setSecret(event.target.value)} />
+            <Input id="tocklauncher-deepl-key" aria-label="DeepL API key" autoComplete="new-password" className="w-full max-w-sm min-w-0" maxLength={8192} type="password" value={secret} disabled={busy || snapshot.secureStorageAvailable === false} onChange={event => setSecret(event.target.value)} />
             <Button size="sm" variant="outline" disabled={busy || secret.length === 0 || snapshot.secureStorageAvailable === false} onClick={() => { const value = secret; void save('extension[DeeplTranslator].apiKey', value).then(saved => { if (saved) setSecret('') }) }}>Save key</Button>
           </div>
         </Field>

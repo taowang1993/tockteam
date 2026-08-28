@@ -127,7 +127,9 @@ export function createLauncherFileSearchTool(options: Readonly<{
       const response = await bridge.search(`${LAUNCHER_FILE_SEARCH_QUERY_PREFIX}${term}`, options.searchOptions)
       if (revision !== requestRevision) return
       render([...response.before, ...response.after])
-      status.textContent = response.status.lastError ?? (currentItems.length === 0 ? text('noFiles', 'No files found.') : launcherCountText(options.locale, 'filesFound', currentItems.length, `${currentItems.length} files found.`))
+      status.textContent = response.status.lastError === undefined
+        ? (currentItems.length === 0 ? text('noFiles', 'No files found.') : launcherCountText(options.locale, 'filesFound', currentItems.length, `${currentItems.length} files found.`))
+        : text('fileUnavailable', 'File Search is unavailable.')
       status.setAttribute('data-tone', response.status.lastError === undefined ? 'ready' : 'error')
       if (focus !== undefined) restoreFocus(focus)
     } catch {

@@ -5,6 +5,7 @@ import { Input } from '@tockteam/ui/input'
 import { NativeSelect, NativeSelectOption } from '@tockteam/ui/native-select'
 import { Switch } from '@tockteam/ui/switch'
 import { isAllowedLauncherEverythingCliPath, type LauncherSettingsSnapshot } from './launcher-settings-contract.ts'
+import { launcherFixedText } from './launcher-i18n.ts'
 
 export type LauncherSimpleFileSearchDraft = Readonly<{
   excludeHiddenFiles?: boolean
@@ -29,7 +30,7 @@ function stored<T>(snapshot: LauncherSettingsSnapshot, key: string, fallback: T)
 }
 
 function Field({ label, children }: Readonly<{ label: string; children: ReactNode }>): ReactNode {
-  return <div className="flex min-w-0 flex-wrap items-center justify-between gap-3 border-b border-border/60 py-2 last:border-b-0"><span className="text-sm text-foreground">{label}</span><span className="flex min-w-0 max-w-full flex-wrap items-center gap-2">{children}</span></div>
+  return <div className="flex min-w-0 flex-wrap items-center justify-between gap-3 border-b border-border/60 py-2 last:border-b-0"><span className="text-sm text-foreground">{launcherFixedText(label)}</span><span className="flex min-w-0 max-w-full flex-wrap items-center gap-2">{children}</span></div>
 }
 
 function validFolders(value: unknown): SearchFolder[] {
@@ -103,7 +104,7 @@ export function LauncherFileSearchSettings({ busy, draftFolders, onDraftFoldersC
     {isLinux ? <p className="rounded-md border border-border/60 p-2 text-xs text-muted-foreground" role="status">Indexed File Search is unsupported on Linux. Simple File Search remains available for configured home-contained roots.</p> : null}
     {isWindows && !everythingConfigured ? <p className="rounded-md border border-border/60 p-2 text-xs text-muted-foreground" role="status">Indexed File Search requires a configured Everything CLI executable on Windows. Simple File Search remains available.</p> : null}
     <Field label="Maximum File Search Results"><Input aria-label="Maximum File Search Results" className="w-24" type="number" min="1" max="100" disabled={busy} defaultValue={maxResults} onBlur={event => { const value = Math.min(100, Math.max(1, Number(event.target.value) || 20)); void save('extension[FileSearch].maxSearchResultCount', value) }} /></Field>
-    <Field label="Windows Everything CLI Path"><Input aria-label="Windows Everything CLI Path" className="w-72" maxLength={1024} disabled={busy} defaultValue={everythingPath} onBlur={event => { void save('extension[FileSearch].everythingCliFilePath', event.target.value) }} /></Field>
+    <Field label="Windows Everything CLI Path"><Input aria-label="Windows Everything CLI Path" className="w-full max-w-sm min-w-0" maxLength={1024} disabled={busy} defaultValue={everythingPath} onBlur={event => { void save('extension[FileSearch].everythingCliFilePath', event.target.value) }} /></Field>
     <div className="rounded-md border border-border/60 p-3">
       <div className="flex flex-wrap items-center justify-between gap-2"><div><h3 className="flex items-center gap-2 text-sm font-medium text-foreground"><FolderSearch aria-hidden="true" className="size-4" />Simple File Search Roots</h3><p className="mt-1 text-xs text-muted-foreground">Only strict children of the Desktop home directory are accepted. New roots stay local until a nonempty absolute path is entered.</p></div><Button type="button" size="sm" variant="outline" disabled={busy || folders.length >= 16} onClick={addFolder}><Plus aria-hidden="true" />Add Root</Button></div>
       <div className="mt-2 space-y-2">
