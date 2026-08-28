@@ -12,6 +12,7 @@ type LauncherProviderInvalidatorOptions = Readonly<{
   network?: LauncherProviderInvalidation
   os?: LauncherProviderInvalidation
   terminal?: LauncherProviderInvalidation
+  workflow?: LauncherProviderInvalidation
   browser?: LauncherProviderInvalidation
   core?: LauncherProviderInvalidation
 }>
@@ -25,6 +26,7 @@ export function createLauncherProviderInvalidator(options: LauncherProviderInval
     options.network?.invalidate(reason, preserveSignal)
     options.os?.invalidate(reason, preserveSignal)
     options.terminal?.invalidate(reason, preserveSignal)
+    options.workflow?.invalidate(reason, preserveSignal)
     options.browser?.invalidate(reason, preserveSignal)
     options.local?.invalidate(reason, preserveSignal)
     options.core?.invalidate(reason, preserveSignal)

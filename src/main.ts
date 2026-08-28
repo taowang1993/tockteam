@@ -97,6 +97,8 @@ import { createLauncherFileSearchScanners } from './launcher-file-search-scanner
 import { createLauncherNetworkExtensions } from './launcher-network-extensions.ts'
 import { createLauncherOsExtensions } from './launcher-os-extensions.ts'
 import { createLauncherTerminal } from './launcher-terminal.ts'
+import { createLauncherWorkflow } from './launcher-workflow.ts'
+import { runBoundedWorkflowCommand } from './launcher-workflow-process.ts'
 import {
   launchDetachedTerminalInvocation,
   resolveTerminalInvocation,
@@ -189,6 +191,7 @@ const launcherHtmlPath = join(currentDir, 'launcher.html')
 const launcherNetworkFixtureEnabled = !app.isPackaged && process.env.TOCKTEAM_NETWORK_FIXTURE === '1'
 const launcherOsFixtureEnabled = !app.isPackaged && process.env.TOCKTEAM_OS_FIXTURE === '1'
 const launcherTerminalFixtureEnabled = !app.isPackaged && process.env.TOCKTEAM_TERMINAL_FIXTURE === '1'
+const launcherWorkflowFixtureEnabled = !app.isPackaged && process.env.TOCKTEAM_WORKFLOW_FIXTURE === '1'
 const launcherBrowserFixtureEnabled = !app.isPackaged && process.env.TOCKTEAM_BROWSER_FIXTURE === '1'
 
 type LauncherBrowserFixtureMarker = {
@@ -317,6 +320,64 @@ function recordLauncherTerminalFixtureCanceled(): void {
   writeLauncherTerminalFixtureMarker()
 }
 
+type LauncherWorkflowFixtureMarker = {
+  accepted: number
+  canceled: number
+  declined: number
+  forbiddenEffects: number
+  marker: 'tockteam-workflow-fixture-v1'
+  order: string[]
+}
+
+let launcherWorkflowFixtureMarker: LauncherWorkflowFixtureMarker = {
+  accepted: 0,
+  canceled: 0,
+  declined: 0,
+  forbiddenEffects: 0,
+  marker: 'tockteam-workflow-fixture-v1',
+  order: [],
+}
+
+function launcherWorkflowFixtureMarkerPath(): string {
+  return join(app.getPath('userData'), 'launcher', 'workflow-fixture-marker.json')
+}
+
+function writeLauncherWorkflowFixtureMarker(): void {
+  if (!launcherWorkflowFixtureEnabled) return
+  const filePath = launcherWorkflowFixtureMarkerPath()
+  mkdirSync(dirname(filePath), { mode: 0o700, recursive: true })
+  writeFileSync(filePath, JSON.stringify(launcherWorkflowFixtureMarker, null, 2), { encoding: 'utf8', mode: 0o600 })
+}
+
+function resetLauncherWorkflowFixtureMarker(): void {
+  if (!launcherWorkflowFixtureEnabled) return
+  launcherWorkflowFixtureMarker = { accepted: 0, canceled: 0, declined: 0, forbiddenEffects: 0, marker: 'tockteam-workflow-fixture-v1', order: [] }
+  writeLauncherWorkflowFixtureMarker()
+}
+
+function recordLauncherWorkflowFixtureAudit(outcome: 'cancelled' | 'completed' | 'denied' | 'failed'): void {
+  if (!launcherWorkflowFixtureEnabled) return
+  if (outcome === 'completed') launcherWorkflowFixtureMarker.accepted += 1
+  else if (outcome === 'denied') launcherWorkflowFixtureMarker.declined += 1
+  else if (outcome === 'cancelled') launcherWorkflowFixtureMarker.canceled += 1
+  else launcherWorkflowFixtureMarker.forbiddenEffects += 1
+  writeLauncherWorkflowFixtureMarker()
+}
+
+function recordLauncherWorkflowFixtureEffect(kind: 'OpenFile' | 'OpenUrl' | 'OpenTerminal' | 'ExecuteCommand'): void {
+  if (!launcherWorkflowFixtureEnabled) return
+  launcherWorkflowFixtureMarker.order = [...launcherWorkflowFixtureMarker.order, kind].slice(-64)
+  writeLauncherWorkflowFixtureMarker()
+}
+
+function rejectLauncherWorkflowFixtureEffect(kind: string): never {
+  if (launcherWorkflowFixtureEnabled) {
+    launcherWorkflowFixtureMarker.forbiddenEffects += 1
+    writeLauncherWorkflowFixtureMarker()
+  }
+  throw new Error(`Unexpected workflow fixture effect: ${kind}`)
+}
+
 type LauncherOsFixtureMarker = {
   marker: 'tockteam-os-fixture-v1'
   acceptedEffects: { lock: number }
@@ -431,6 +492,7 @@ let launcherFileSearch: ReturnType<typeof createLauncherFileSearchExtensions> | 
 let launcherNetwork: ReturnType<typeof createLauncherNetworkExtensions> | undefined
 let launcherOs: ReturnType<typeof createLauncherOsExtensions> | undefined
 let launcherTerminal: ReturnType<typeof createLauncherTerminal> | undefined
+let launcherWorkflow: ReturnType<typeof createLauncherWorkflow> | undefined
 let launcherCore: ReturnType<typeof createLauncherCoreSearch> | undefined
 let launcherProviderInvalidator: ReturnType<typeof createLauncherProviderInvalidator> | undefined
 let launcherInvalidationController = new AbortController()
@@ -520,6 +582,7 @@ async function waitForLauncherProvidersIdle(): Promise<void> {
     launcherNetwork?.waitForIdle() ?? Promise.resolve(),
     launcherOs?.waitForIdle() ?? Promise.resolve(),
     launcherTerminal?.waitForIdle() ?? Promise.resolve(),
+    launcherWorkflow?.waitForIdle() ?? Promise.resolve(),
     launcherCustomBrowser?.waitForIdle() ?? Promise.resolve(),
     launcherLocal?.waitForIdle() ?? Promise.resolve(),
   ])
@@ -1442,6 +1505,7 @@ function initializeLauncher(): void {
   if (launcherController !== undefined) return
   resetLauncherOsFixtureMarker()
   resetLauncherTerminalFixtureMarker()
+  resetLauncherWorkflowFixtureMarker()
   resetLauncherBrowserFixtureMarker()
   const repository = requireLauncherPersistence()
   const launcherSession = session.fromPartition(LAUNCHER_SESSION_PARTITION)
@@ -1679,6 +1743,124 @@ function initializeLauncher(): void {
     platform,
   })
   launcherTerminal = terminal
+  const workflowEnabledExtensionIds = (): readonly string[] => launcherWorkflowFixtureEnabled
+    ? [...new Set([...launcherEnabledLocalExtensionIds(), 'Workflow'])]
+    : launcherEnabledLocalExtensionIds()
+  const workflow = createLauncherWorkflow({
+    captureHomeIdentity: async target => await captureLauncherHomeIdentity(target),
+    effects: {
+      auditWorkflow: async record => {
+        recordLauncherWorkflowFixtureAudit(record.outcome)
+        appendLog('desktop', `TockLauncher workflow ${record.outcome}: actions=${record.actionCount} commands=${record.commandCount} durationMs=${record.durationMs} stdoutBytes=${record.stdoutBytes} stderrBytes=${record.stderrBytes}`)
+      },
+      confirmAction: async request => !/decline/iu.test(request.actionName),
+      confirmActionWithSignal: async (request, signal) => {
+        if (signal.aborted) throw launcherAbortError(signal)
+        if (launcherWorkflowFixtureEnabled) {
+          if (/cancel/iu.test(request.actionName)) {
+            await new Promise<void>((resolve, reject) => {
+              const timer = setTimeout(resolve, 5_000)
+              const abort = (): void => {
+                clearTimeout(timer)
+                signal.removeEventListener('abort', abort)
+                reject(launcherAbortError(signal))
+              }
+              signal.addEventListener('abort', abort, { once: true })
+            })
+          }
+          return !/decline/iu.test(request.actionName)
+        }
+        const target = request.actionType === 'OpenFile'
+          ? `File: ${request.filePath}`
+          : request.actionType === 'OpenUrl'
+            ? `URL: ${request.url}`
+            : request.actionType === 'OpenTerminal'
+              ? `Terminal: ${request.terminalId}\\nCommand: ${request.command}\\nWorking directory: ${request.workingDirectory}`
+              : `Command: ${request.command}\\nWorking directory: ${request.workingDirectory}`
+        const pending = mainWindow === undefined || mainWindow.isDestroyed()
+          ? dialog.showMessageBox({ buttons: ['Continue', 'Cancel'], cancelId: 1, defaultId: 1, detail: target, message: `Invoke ${request.actionType} in ${request.workflowName}?`, title: PRODUCT_NAME, type: 'warning' })
+          : dialog.showMessageBox(mainWindow, { buttons: ['Continue', 'Cancel'], cancelId: 1, defaultId: 1, detail: target, message: `Invoke ${request.actionType} in ${request.workflowName}?`, title: PRODUCT_NAME, type: 'warning' })
+        const result = await launcherAwaitAbortable(pending, signal)
+        return result.response === 0
+      },
+      executeCommand: async request => {
+        if (launcherWorkflowFixtureEnabled) {
+          recordLauncherWorkflowFixtureEffect('ExecuteCommand')
+          return Object.freeze({ stderrBytes: 0, stdoutBytes: 0 })
+        }
+        return await runBoundedWorkflowCommand({ command: request.command, platform, signal: request.signal, workingDirectory: request.workingDirectory })
+      },
+      openFileWithSignal: async (target, signal) => {
+        if (signal.aborted) throw launcherAbortError(signal)
+        if (launcherWorkflowFixtureEnabled) {
+          recordLauncherWorkflowFixtureEffect('OpenFile')
+          return
+        }
+        const error = await launcherAwaitAbortable(shell.openPath(target), signal)
+        if (error) throw new Error('TockLauncher Workflow file action failed')
+      },
+      openFile: async target => {
+        if (launcherWorkflowFixtureEnabled) return recordLauncherWorkflowFixtureEffect('OpenFile')
+        const error = await shell.openPath(target)
+        if (error) throw new Error('TockLauncher Workflow file action failed')
+      },
+      openTerminalWithSignal: async (request, signal) => {
+        if (signal.aborted) throw launcherAbortError(signal)
+        if (launcherWorkflowFixtureEnabled) {
+          if (request.command !== 'fixture accepted') return rejectLauncherWorkflowFixtureEffect('OpenTerminal')
+          recordLauncherWorkflowFixtureEffect('OpenTerminal')
+          return
+        }
+        const invocation = resolveTerminalInvocation(platform, request)
+        if (invocation.waitForExit) {
+          await execFileAsync(invocation.executable, [...invocation.args], { cwd: invocation.cwd, maxBuffer: 1_048_576, shell: false, signal, timeout: 15_000 })
+          return
+        }
+        if (platform === 'Windows') {
+          const trusted = await resolveTrustedWindowsTerminalExecutable(request.terminalId)
+          if (!await revalidateTrustedWindowsTerminalExecutable(trusted)) throw new Error('Windows terminal executable changed before launch')
+          await launchDetachedTerminalInvocation({ ...invocation, executable: trusted.executable }, { signal, timeoutMs: 5_000 })
+          return
+        }
+        await launchDetachedTerminalInvocation(invocation, { signal, timeoutMs: 5_000 })
+      },
+      openTerminal: async request => {
+        if (launcherWorkflowFixtureEnabled) return recordLauncherWorkflowFixtureEffect('OpenTerminal')
+        const invocation = resolveTerminalInvocation(platform, request)
+        if (invocation.waitForExit) {
+          await execFileAsync(invocation.executable, [...invocation.args], { cwd: invocation.cwd, maxBuffer: 1_048_576, shell: false, timeout: 15_000 })
+          return
+        }
+        await launchDetachedTerminalInvocation(invocation, { timeoutMs: 5_000 })
+      },
+      openUrlWithSignal: async (url, signal) => {
+        if (signal.aborted) throw launcherAbortError(signal)
+        if (launcherWorkflowFixtureEnabled) {
+          recordLauncherWorkflowFixtureEffect('OpenUrl')
+          return
+        }
+        if (launcherCustomBrowser === undefined) throw new Error('Custom browser controller is unavailable')
+        await launcherAwaitAbortable(launcherCustomBrowser.openUrl(url, signal), signal)
+      },
+      openUrl: async url => {
+        if (launcherWorkflowFixtureEnabled) return recordLauncherWorkflowFixtureEffect('OpenUrl')
+        if (launcherCustomBrowser === undefined) throw new Error('Custom browser controller is unavailable')
+        await launcherCustomBrowser.openUrl(url)
+      },
+    },
+    enabledExtensionIds: workflowEnabledExtensionIds,
+    getSetting: (key, fallback) => repository.getSetting(key, fallback),
+    ...(launcherHomeIdentity === undefined ? {} : { homeIdentity: launcherHomeIdentity }),
+    homePath: launcherHomePath,
+    onProviderError: _error => { appendLog('desktop', 'TockLauncher Workflow is unavailable.') },
+    platform,
+    validateHome: async (target, expected, signal) => {
+      if (signal.aborted) return false
+      const current = await captureLauncherHomeIdentity(target)
+      return current !== undefined && current.dev === expected.dev && current.ino === expected.ino
+    },
+  })
+  launcherWorkflow = workflow
   launcherLocal = local
   const osEnabledExtensionIds = (): readonly string[] => launcherOsFixtureEnabled
     ? [...new Set([...launcherEnabledLocalExtensionIds(), 'AppearanceSwitcher', 'SystemCommands', 'SystemSettings', 'UeliCommand', 'WindowsControlPanel'])]
@@ -1823,12 +2005,12 @@ function initializeLauncher(): void {
     initialIndexedItems: repository.readIndex(),
     appendLog: async (_level, message) => { await repository.appendLog('ERROR', message) },
     getIndexedError: () => {
-      const errors = [network.getLastError(), fileSearch.getLastError(), os.getLastError()].filter((value): value is string => value !== undefined)
+      const errors = [network.getLastError(), fileSearch.getLastError(), os.getLastError(), workflow.getLastError()].filter((value): value is string => value !== undefined)
       return errors.length === 0 ? undefined : errors.slice(0, 3).join(' ')
     },
     loadIndexedItems: async (signal, preserveSignal) => {
       const result = await createTockTeamDestinationResults('')
-      return [...result.before, ...result.after, ...await local.loadIndexedItems(), ...await discovery.loadIndexedItems(signal, preserveSignal), ...await fileSearch.loadIndexedItems(signal, preserveSignal), ...await network.loadIndexedItems(signal, preserveSignal), ...await os.loadIndexedItems(signal, preserveSignal), ...await terminal.loadIndexedItems(signal, preserveSignal)]
+      return [...result.before, ...result.after, ...await local.loadIndexedItems(), ...await discovery.loadIndexedItems(signal, preserveSignal), ...await fileSearch.loadIndexedItems(signal, preserveSignal), ...await network.loadIndexedItems(signal, preserveSignal), ...await os.loadIndexedItems(signal, preserveSignal), ...await terminal.loadIndexedItems(signal, preserveSignal), ...await workflow.loadIndexedItems(signal, preserveSignal)]
     },
     searchInstant: async searchTerm => {
       const [localResults, discoveryResults, fileResults, networkResults, terminalResults] = await Promise.all([
@@ -1859,6 +2041,10 @@ function initializeLauncher(): void {
     execute: async record => {
       if (await coreSearch.executeAction(record)) return
       if (await terminal.executeAction(record)) {
+        if (record.hideWindowAfterInvocation) controller?.hideAfterInvocation(record.owner.webContentsId)
+        return
+      }
+      if (await workflow.executeAction(record)) {
         if (record.hideWindowAfterInvocation) controller?.hideAfterInvocation(record.owner.webContentsId)
         return
       }
@@ -1894,6 +2080,7 @@ function initializeLauncher(): void {
     network,
     os,
     terminal,
+    workflow,
     ...(launcherCustomBrowser === undefined ? {} : { browser: launcherCustomBrowser }),
   })
   const rescan = async (owner?: LauncherActionOwner, preserveSignal?: AbortSignal, reason = 'launcher-rescan') => {
@@ -1937,12 +2124,14 @@ function initializeLauncher(): void {
     const networkClose = network.close()
     const osClose = os.close()
     const terminalClose = terminal.close()
+    const workflowClose = workflow.close()
     const localClose = local.close()
     await discoveryClose
     await fileClose
     await networkClose
     await osClose
     await terminalClose
+    await workflowClose
     await localClose
     await coreSearch.close()
   }

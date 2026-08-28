@@ -14,6 +14,7 @@ import { LAUNCHER_FILE_SEARCH_ASSETS } from '../src/launcher-file-search-assets.
 import { LAUNCHER_NETWORK_ASSETS } from '../src/launcher-network-assets.ts'
 import { LAUNCHER_OS_ASSETS } from '../src/launcher-os-assets.ts'
 import { LAUNCHER_TERMINAL_ASSETS } from '../src/launcher-terminal-assets.ts'
+import { LAUNCHER_WORKFLOW_ASSETS } from '../src/launcher-workflow-assets.ts'
 import { resolveProductVersion } from '../src/version.ts'
 import { adaptBetterSidebarHost } from './better-sidebar-upstream-adapter.mjs'
 import { buildTailwindCss } from './tailwind.mjs'
@@ -294,6 +295,12 @@ for (const asset of LAUNCHER_TERMINAL_ASSETS) {
   const source = join(root, asset.source)
   const digest = createHash('sha256').update(readFileSync(source)).digest('hex')
   if (digest !== asset.hash) throw new Error(`TockLauncher terminal asset drifted: ${asset.key}`)
+  copyFileSync(source, join(dist, 'launcher-assets', asset.fileName))
+}
+for (const asset of LAUNCHER_WORKFLOW_ASSETS) {
+  const source = join(root, asset.source)
+  const digest = createHash('sha256').update(readFileSync(source)).digest('hex')
+  if (digest !== asset.hash) throw new Error(`TockLauncher Workflow asset drifted: ${asset.key}`)
   copyFileSync(source, join(dist, 'launcher-assets', asset.fileName))
 }
 

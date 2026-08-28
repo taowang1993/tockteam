@@ -628,6 +628,11 @@
         "key": "terminal-wsl",
         "path": "dist/launcher-assets/terminal-wsl.png",
         "sha256": "8974f977ee2bb8b72917c0361a1eab77e20580e41d072efeff3f2d8a5757e0e0"
+      },
+      {
+        "key": "workflow",
+        "path": "dist/launcher-assets/workflow.png",
+        "sha256": "baaf4c6eb4f9bdf3f921986eedd5f5186582f5788a2685e765a1321bfc6a5507"
       }
     ],
     "launcherNotices": [

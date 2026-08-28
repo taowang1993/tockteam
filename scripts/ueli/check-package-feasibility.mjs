@@ -191,6 +191,7 @@ const EXPECTED_LAUNCHER_ASSETS = Object.freeze([
   ['terminal-macos', 'terminal-macos.png', '95ee8153a87c68f3a4a432b94c0a24a8a77961905bd049e0b7242f83be67385e'],
   ['terminal-windows', 'terminal-windows.png', 'd55cfcdce8e000ec4e4490ef487b147d63d2c1ed8d063f8d01e7ffecaaf450ac'],
   ['terminal-wsl', 'terminal-wsl.png', '8974f977ee2bb8b72917c0361a1eab77e20580e41d072efeff3f2d8a5757e0e0'],
+  ['workflow', 'workflow.png', 'baaf4c6eb4f9bdf3f921986eedd5f5186582f5788a2685e765a1321bfc6a5507'],
 ].map(([key, fileName, sha256]) => Object.freeze({ key, path: `dist/launcher-assets/${fileName}`, sha256 })))
 const EXPECTED_LAUNCHER_NOTICES = Object.freeze([
   Object.freeze({ id: 'ueli-mit', source: 'THIRD_PARTY_NOTICES.md', license: 'MIT', attribution: 'https://github.com/oliverschwendener/ueli' }),
