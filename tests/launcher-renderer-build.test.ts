@@ -64,6 +64,19 @@ test('launcher renderer stays empty/search-ready and reports bootstrap status', 
   assert.match(launcher, /search\.disabled/u)
 })
 
+test('workflow invocation fences late searches and blocks result interactions', () => {
+  const invocationStart = launcher.indexOf('invokingWorkflow = isWorkflowAction')
+  const searchFence = launcher.indexOf('revision += 1', invocationStart)
+  assert.ok(invocationStart >= 0 && searchFence > invocationStart, 'Workflow invocation must invalidate pending search revisions')
+  assert.equal((launcher.match(/currentRevision !== revision \|\| workflowInteractionBlocked\(\)/gu) ?? []).length, 2, 'Workflow search success and error paths must share the fence')
+  assert.match(launcher, /const workflowInteractionBlocked = \(\): boolean/u)
+  const resultGroup = launcher.slice(launcher.indexOf('const renderGroup'))
+  assert.match(resultGroup, /button\.disabled = workflowInteractionBlocked\(\)/u)
+  assert.match(resultGroup, /if \(workflowInteractionBlocked\(\)\) return/u)
+  const keydown = launcher.slice(launcher.indexOf("search.addEventListener('keydown'"))
+  assert.match(keydown, /if \(workflowInteractionBlocked\(\)\) return/u)
+})
+
 test('local settings controls cover every provider and keep UUID formats bounded', () => {
   for (const label of ['Base64 Conversion', 'Calculator', 'Color Converter', 'Password Generator', 'Quick Formatter', 'Rowland Text Editor', 'UUID / GUID Generator']) assert.match(localSettings, new RegExp(label, 'u'))
   assert.match(localSettings, /searchResultFormats/u)

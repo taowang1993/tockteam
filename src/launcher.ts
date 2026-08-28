@@ -172,6 +172,8 @@ async function bootstrap(): Promise<void> {
     historyToggle.disabled = busy || !surfaceSettings.historyEnabled
   }
 
+  const workflowInteractionBlocked = (): boolean => invokingWorkflow || activeCancellation !== undefined || cancellationPending
+
   const closeLocalTool = (): void => {
     const tool = activeLocalTool
     activeLocalTool = undefined
@@ -319,7 +321,7 @@ async function bootstrap(): Promise<void> {
   )
 
   const invoke = async (action: LauncherPublicAction): Promise<void> => {
-    if (invoking) return
+    if (invoking || workflowInteractionBlocked()) return
     const candidate = selectedItem()
     const isWorkflowAction = candidate?.sourceExtension === 'Workflow'
     const invocationResultSetId = currentResultSetId
@@ -340,9 +342,15 @@ async function bootstrap(): Promise<void> {
       && action.actionId === candidate.defaultAction.actionId
     invoking = true
     invokingWorkflow = isWorkflowAction
-    if (invokingWorkflow) setWorkflowBusy(true)
+    if (invokingWorkflow) {
+      // A search started before invocation may resolve after the workflow owns the UI.
+      // Fence its revision before any asynchronous history write or native effect.
+      revision += 1
+      setWorkflowBusy(true)
+      renderResults()
+    }
     closeActionMenu(false)
-    renderDetails()
+    if (!invokingWorkflow) renderDetails()
     await rememberSearch()
     setStatus(`${action.description}…`, 'muted')
     try {
@@ -421,17 +429,22 @@ async function bootstrap(): Promise<void> {
     const open = document.createElement('button')
     open.className = 'inline-flex h-9 shrink-0 items-center gap-2 rounded-lg bg-[var(--dsw-alias-brand-primary,#0969da)] px-3 text-sm font-medium text-[var(--dsw-alias-brand-primary-invert,Canvas)] hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2'
     open.type = 'button'
+    open.disabled = workflowInteractionBlocked()
     open.setAttribute('aria-label', actionLabel(item.defaultAction))
     open.setAttribute('aria-keyshortcuts', 'Enter')
     open.append(icon(ArrowRight))
     const openText = document.createElement('span')
     openText.textContent = item.defaultAction.description
     open.append(openText)
-    open.addEventListener('click', () => { void invoke(item.defaultAction) })
+    open.addEventListener('click', () => {
+      if (workflowInteractionBlocked()) return
+      void invoke(item.defaultAction)
+    })
 
     const toggle = document.createElement('button')
     toggle.className = 'inline-flex h-9 shrink-0 items-center gap-1 rounded-lg border border-[var(--dsw-alias-border-l2,CanvasText)] px-2 text-sm hover:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))] focus-visible:outline-2'
     toggle.type = 'button'
+    toggle.disabled = workflowInteractionBlocked()
     toggle.setAttribute('aria-label', `Actions for ${item.name}`)
     toggle.setAttribute('aria-haspopup', 'menu')
     toggle.setAttribute('aria-expanded', String(actionMenuOpen))
@@ -442,6 +455,7 @@ async function bootstrap(): Promise<void> {
     toggleText.textContent = 'Actions'
     toggle.append(toggleText)
     toggle.addEventListener('click', () => {
+      if (workflowInteractionBlocked()) return
       actionMenuOpen = !actionMenuOpen
       renderDetails()
       if (actionMenuOpen) details.querySelector<HTMLButtonElement>('[role="menuitem"]')?.focus()
@@ -476,6 +490,7 @@ async function bootstrap(): Promise<void> {
       const actionButton = document.createElement('button')
       actionButton.className = 'flex w-full items-center gap-2 truncate px-3 py-2 text-left text-sm hover:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))] focus-visible:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))]'
       actionButton.type = 'button'
+      actionButton.disabled = workflowInteractionBlocked()
       actionButton.setAttribute('role', 'menuitem')
       actionButton.setAttribute('aria-label', actionLabel(action))
       const description = action.description.toLowerCase()
@@ -483,7 +498,10 @@ async function bootstrap(): Promise<void> {
         ? description.includes('remove') ? StarOff : Star
         : description.includes('exclude') ? Trash2 : ArrowRight
       actionButton.append(icon(actionIcon), document.createTextNode(actionLabel(action)))
-      actionButton.addEventListener('click', () => { void invoke(action) })
+      actionButton.addEventListener('click', () => {
+        if (workflowInteractionBlocked()) return
+        void invoke(action)
+      })
       menu.append(actionButton)
     }
     menu.addEventListener('keydown', event => {
@@ -527,6 +545,7 @@ async function bootstrap(): Promise<void> {
       const button = document.createElement('button')
       button.className = 'flex w-full min-w-0 items-center gap-2 rounded-lg px-2 py-2 text-left hover:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))] focus-visible:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))] aria-selected:bg-[var(--dsw-alias-interactive-bg-active,rgb(0_0_0_/_10%))] aria-selected:font-semibold'
       button.type = 'button'
+      button.disabled = workflowInteractionBlocked()
       button.id = `launcher-result-${encodeURIComponent(item.id)}`
       button.dataset.resultId = item.id
       button.setAttribute('role', 'option')
@@ -577,13 +596,17 @@ async function bootstrap(): Promise<void> {
       button.append(marker, copy)
       button.addEventListener('pointerdown', event => { event.preventDefault() })
       button.addEventListener('click', () => {
+        if (workflowInteractionBlocked()) return
         const wasActionMenuOpen = actionMenuOpen
         selectedItemId = item.id
         actionMenuOpen = false
         updateSelection()
         if (wasActionMenuOpen) restoreSearchFocus()
       })
-      button.addEventListener('dblclick', () => { void invoke(item.defaultAction) })
+      button.addEventListener('dblclick', () => {
+        if (workflowInteractionBlocked()) return
+        void invoke(item.defaultAction)
+      })
       listItem.append(button)
       list.append(listItem)
     }
@@ -599,7 +622,7 @@ async function bootstrap(): Promise<void> {
   }
 
   async function renderSearch(term: string): Promise<boolean> {
-    if (invokingWorkflow) return false
+    if (workflowInteractionBlocked()) return false
     const currentRevision = ++revision
     setStatus('Searching…', 'muted')
     try {
@@ -608,7 +631,7 @@ async function bootstrap(): Promise<void> {
         maxSearchResultItems: surfaceSettings.maxSearchResultItems,
         searchEngineId: surfaceSettings.searchEngineId,
       })
-      if (currentRevision !== revision) return false
+      if (currentRevision !== revision || workflowInteractionBlocked()) return false
       const previous = selectedItemId
       pinnedCount = response.before.length
       currentItems = [...response.before, ...response.after]
@@ -623,7 +646,7 @@ async function bootstrap(): Promise<void> {
       document.documentElement.dataset.launcherResultRevision = String(currentRevision)
       return error === undefined
     } catch {
-      if (currentRevision !== revision) return false
+      if (currentRevision !== revision || workflowInteractionBlocked()) return false
       currentItems = []
       pinnedCount = 0
       selectedItemId = ''
@@ -697,6 +720,7 @@ async function bootstrap(): Promise<void> {
       else void bridge.dismiss().catch(() => undefined)
       return
     }
+    if (workflowInteractionBlocked()) return
     if (event.key === 'ArrowDown' || (hasPrimaryModifier(event) && event.key.toLowerCase() === 'n')) {
       event.preventDefault()
       if (currentItems.length > 0) {

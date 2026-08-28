@@ -67,6 +67,25 @@ test('explicit cancellation is owner- and result-set-bound and single-use', asyn
   await assert.rejects(store.cancel({ actionId, owner, resultSetId: published.resultSetId }), /not active/u)
 })
 
+test('active actions fence publication without invalidating their result set', async () => {
+  let release!: () => void
+  let canceled = 0
+  const store = new LauncherActionStore({
+    cancel: async () => { canceled += 1; release(); return true },
+    createId: () => 'fixed-publication-fence',
+    execute: async () => await new Promise<void>(resolve => { release = resolve }),
+  })
+  const owner = { role: 'launcher' as const, webContentsId: 41 }
+  const published = store.publish({ items: [item()], owner })
+  const actionId = published.items[0]!.defaultAction.actionId
+  const invocation = store.invoke({ actionId, owner })
+  await new Promise(resolve => setImmediate(resolve))
+  assert.throws(() => store.publish({ items: [item('late')], owner }), /active action/u)
+  await store.cancel({ actionId, owner, resultSetId: published.resultSetId })
+  await invocation
+  assert.equal(canceled, 1)
+})
+
 test('owner cleanup removes consumed active actions while their effect is settling', async () => {
   let release!: () => void
   const store = new LauncherActionStore({

@@ -16,10 +16,10 @@ import {
 import { LAUNCHER_TERMINALS, type LauncherTerminalId, type LauncherTerminalPlatform } from './launcher-terminal-config.ts'
 
 const ACTION_TYPES = Object.freeze([
-  ['OpenFile', 'Open file'],
+  ['OpenFile', 'Open File'],
   ['OpenUrl', 'Open URL'],
-  ['OpenTerminal', 'Open terminal'],
-  ['ExecuteCommand', 'Execute command'],
+  ['OpenTerminal', 'Open Terminal'],
+  ['ExecuteCommand', 'Execute Command'],
 ] as const)
 
 type DraftAction = {

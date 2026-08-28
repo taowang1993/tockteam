@@ -142,6 +142,9 @@ export class LauncherActionStore {
     owner: LauncherActionOwner
   }>): Readonly<{ items: readonly LauncherPublicResultItem[]; resultSetId: string }> {
     assertOwner(input.owner)
+    if ([...this.activeActions.values()].some(record => sameOwner(record.owner, input.owner))) {
+      throw new Error('TockLauncher owner has an active action')
+    }
     if (!Array.isArray(input.items) || input.items.length > LAUNCHER_MAX_RESULT_ITEMS) {
       throw new Error('TockLauncher result set exceeds its item limit')
     }

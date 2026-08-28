@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { LauncherActionExpiredError } from '../src/launcher-actions.ts'
+import { LauncherActionExpiredError, LauncherActionStore } from '../src/launcher-actions.ts'
 import { LAUNCHER_IPC_CHANNELS, LAUNCHER_SURFACE_IPC_CHANNELS } from '../src/launcher-contract.ts'
 import { registerLauncherIpcHandlers } from '../src/launcher-ipc.ts'
 
@@ -53,6 +53,47 @@ test('launcher search IPC guards, publishes opaque actions, rejects stale reques
   await assert.rejects(cancel(event, { actionId: 'launcher-action:opaque', resultSetId: 'launcher-results:bad' }) as Promise<unknown>, /cancellation|operation/u)
   dispose()
   assert.deepEqual(ipc.removed.sort(), Object.values(LAUNCHER_IPC_CHANNELS).sort())
+})
+
+test('workflow invocation fences a pending search while preserving cancellation', async () => {
+  const ipc = new FakeIpc()
+  const owner = { role: 'launcher' as const, webContentsId: 41 }
+  let releaseSearch!: () => void
+  const pendingSearch = new Promise<void>(resolve => { releaseSearch = resolve })
+  let releaseWorkflow!: () => void
+  const pendingWorkflow = new Promise<void>(resolve => { releaseWorkflow = resolve })
+  let nextId = 0
+  const actions = new LauncherActionStore({
+    cancel: async () => { releaseWorkflow(); return true },
+    createId: () => `workflow-${nextId++}`,
+    execute: async () => await pendingWorkflow,
+  })
+  const initial = actions.publish({
+    items: [{ defaultAction: { argument: 'opaque', description: 'Invoke', handlerKey: 'invoke-workflow' }, description: 'Workflow', id: 'workflow', name: 'Workflow', sourceExtension: 'Workflow' }],
+    owner,
+  })
+  const dispose = registerLauncherIpcHandlers({
+    actions,
+    guard: { assert: () => owner },
+    ipcMain: ipc,
+    rescan: async () => ({ indexedItemCount: 1, rescanStatus: 'idle' as const }),
+    search: async () => {
+      await pendingSearch
+      return { after: [], before: [], status: { indexedItemCount: 1, rescanStatus: 'idle' as const } }
+    },
+  })
+  const event = { sender: {} }
+  const search = ipc.handlers.get(LAUNCHER_IPC_CHANNELS.search)!
+  const invoke = ipc.handlers.get(LAUNCHER_IPC_CHANNELS.invokeAction)!
+  const cancel = ipc.handlers.get(LAUNCHER_IPC_CHANNELS.cancelAction)!
+  const searchPending = search(event, { fuzziness: 0.5, maxSearchResultItems: 50, searchEngineId: 'fuzzysort', searchTerm: 'late' }) as Promise<unknown>
+  const invokePending = invoke(event, { actionId: initial.items[0]!.defaultAction.actionId }) as Promise<unknown>
+  releaseSearch()
+  await assert.rejects(searchPending, /operation|superseded/u)
+  await cancel(event, { actionId: initial.items[0]!.defaultAction.actionId, resultSetId: initial.resultSetId })
+  releaseWorkflow()
+  await invokePending
+  dispose()
 })
 
 test('launcher IPC rechecks ownership after search and maps expiry without exposing internals', async () => {

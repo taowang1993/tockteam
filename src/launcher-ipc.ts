@@ -117,6 +117,9 @@ export function registerLauncherIpcHandlers(args: LauncherSearchIpcArgs): () => 
       async (event: unknown, input: unknown, ...extra: unknown[]): Promise<Readonly<{ ok: true } | { ok: false; reason: 'expired' }>> => {
         const owner = args.guard.assert(event, 'launcher')
         assertNoArguments(LAUNCHER_IPC_CHANNELS.invokeAction, extra)
+        // Fence searches already waiting in main before consuming the action. The action store
+        // also rejects publication while the consumed action remains active.
+        latestSearchTokens.set(senderId(event, owner), Object.freeze({}))
         const { actionId } = parseLauncherInvokeActionArgs(input)
         try {
           return await args.actions.invoke({ actionId, owner })
