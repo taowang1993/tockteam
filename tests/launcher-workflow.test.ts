@@ -109,7 +109,7 @@ test('Workflow stops sequential effects at the first failure and audits failed',
     revalidatePath: async () => true,
   })
   const item = (await provider.loadIndexedItems())[0]!
-  await assert.rejects(provider.executeAction(record(item.defaultAction.argument)), /fixture failure/u)
+  await assert.rejects(provider.executeAction(record(item.defaultAction.argument)), /action failed/u)
   assert.deepEqual(events, ['file', 'url', 'audit:failed'])
   assert.equal(events.includes('terminal'), false)
   assert.equal(events.includes('execute-command'), false)
@@ -164,7 +164,7 @@ test('Workflow revalidates an exact file target after approval before opening it
     revalidatePath: async () => { validations += 1; return validations === 1 },
   })
   const item = (await provider.loadIndexedItems())[0]!
-  await assert.rejects(provider.executeAction(record(item.defaultAction.argument)), /file target changed/u)
+  await assert.rejects(provider.executeAction(record(item.defaultAction.argument)), /action failed/u)
   assert.equal(opened, false)
   assert.equal(validations >= 2, true)
 })

@@ -608,7 +608,10 @@ export function createLauncherWorkflow(options: WorkflowOptions): Readonly<{
       } else {
         const executeCommand = options.effects.executeCommand ?? (async request => await runBoundedWorkflowCommand({ command: request.command, platform: options.platform, signal: request.signal, workingDirectory: request.workingDirectory }))
         throwIfAborted(controller.signal)
-        const result = commandResultBytes(await executeCommand({ command: action.args.command, signal: controller.signal, workingDirectory: options.homePath }))
+        const result = commandResultBytes(await awaitAbortable(
+          () => executeCommand({ command: action.args.command, signal: controller.signal, workingDirectory: options.homePath }),
+          controller.signal,
+        ))
         stdoutBytes += result.stdoutBytes
         stderrBytes += result.stderrBytes
       }
@@ -630,13 +633,13 @@ export function createLauncherWorkflow(options: WorkflowOptions): Readonly<{
       }
       await audit('completed')
       return true
-    } catch (error) {
+    } catch {
       if (controller.signal.aborted) {
         await audit('cancelled')
-        throw new Error('TockLauncher Workflow was canceled', { cause: error })
+        throw new Error('TockLauncher Workflow was canceled')
       }
       await audit('failed')
-      throw error
+      throw new Error('TockLauncher Workflow action failed')
     } finally {
       if (currentActions.get(record.argument) === known) currentActions.delete(record.argument)
       active.delete(record.actionId)

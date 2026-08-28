@@ -271,8 +271,8 @@ export async function runBoundedWorkflowCommand(
         windowsHide: true,
       },
     )
-  } catch (error) {
-    throw error instanceof Error ? error : new Error('Workflow command could not start')
+  } catch {
+    throw new Error('Workflow command could not start')
   }
 
   return await new Promise<LauncherWorkflowCommandResult>((resolve, reject) => {
@@ -310,7 +310,7 @@ export async function runBoundedWorkflowCommand(
 
     child.stdout.on('data', chunk => count('stdout', chunk))
     child.stderr.on('data', chunk => count('stderr', chunk))
-    child.once('error', error => { if (!stopping) finish(error) })
+    child.once('error', () => { if (!stopping) finish(new Error('Workflow command could not start')) })
     child.once('close', code => { if (!stopping) finish(code === 0 ? undefined : new Error('Workflow command failed')) })
     timeout = setTimeout(() => stop(new Error('Workflow command timed out')), timeoutMs)
     request.signal.addEventListener('abort', cancel, { once: true })
