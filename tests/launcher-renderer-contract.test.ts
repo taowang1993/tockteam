@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 import {
   LAUNCHER_COMPOSITION,
@@ -10,6 +11,8 @@ import {
 } from '../src/launcher-contract.ts'
 import { launcherSettingDisposition } from '../src/launcher-settings-model.ts'
 
+const launcherSource = readFileSync(new URL('../src/launcher.ts', import.meta.url), 'utf8')
+
 test('surface projection has bounded locale, appearance, interaction, and provider status facts', () => {
   const projection = parseLauncherSurfaceSettings({
     doubleClickBehavior: 'invokeSearchResultItem',
@@ -18,6 +21,7 @@ test('surface projection has bounded locale, appearance, interaction, and provid
     history: [],
     historyEnabled: true,
     historyLimit: 10,
+    hideWindowOn: ['blur', 'afterInvocation'],
     locale: 'zh-CN',
     maxSearchResultItems: 50,
     placeholder: '搜索 TockTeam',
@@ -32,6 +36,7 @@ test('surface projection has bounded locale, appearance, interaction, and provid
     singleClickBehavior: 'selectSearchResultItem',
   })
   assert.equal(projection.locale, 'zh-CN')
+  assert.deepEqual(projection.hideWindowOn, ['blur', 'afterInvocation'])
   assert.equal(projection.providerStatuses.at(-1)?.extensionId, 'Workflow')
   assert.equal(Object.isFrozen(projection.providerStatuses), true)
   assert.equal(Object.isFrozen(projection), true)
@@ -49,6 +54,16 @@ test('launcher shortcut matching requires exact modifiers and supports finite pr
   assert.equal(launcherShortcutMatches({ key: 'Enter', metaKey: false, ctrlKey: false, altKey: false, shiftKey: true }, 'Shift+Enter', 'Windows'), true)
   assert.equal(launcherShortcutMatches({ key: 'Enter', metaKey: false, ctrlKey: true, altKey: false, shiftKey: true }, 'Shift+Enter', 'Windows'), false)
   assert.equal(launcherShortcutLabel('Cmd+O', 'macOS'), 'Cmd+O')
+})
+
+test('action-menu activation closes the history menu', () => {
+  assert.match(launcherSource, /if \(!actionMenuOpen\) \{[\s\S]{0,240}historyOpen = false/u)
+  assert.match(launcherSource, /historyPanel\.hidden = true[\s\S]{0,120}historyToggle\.setAttribute\('aria-expanded', 'false'\)/u)
+})
+
+test('long result and action labels retain an inspection affordance', () => {
+  assert.match(launcherSource, /button\.title = item\.name/u)
+  assert.match(launcherSource, /actionButton\.title = action\.description/u)
 })
 
 test('every catalog row has an explicit renderer disposition', () => {

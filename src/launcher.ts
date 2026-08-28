@@ -620,6 +620,11 @@ async function bootstrap(): Promise<void> {
     toggle.append(toggleText)
     toggle.addEventListener('click', () => {
       if (workflowInteractionBlocked()) return
+      if (!actionMenuOpen) {
+        historyOpen = false
+        historyPanel.hidden = true
+        historyToggle.setAttribute('aria-expanded', 'false')
+      }
       actionMenuOpen = !actionMenuOpen
       renderDetails()
       if (actionMenuOpen) details.querySelector<HTMLButtonElement>('[role="menuitem"]')?.focus()
@@ -657,6 +662,7 @@ async function bootstrap(): Promise<void> {
       actionButton.disabled = workflowInteractionBlocked()
       actionButton.setAttribute('role', 'menuitem')
       actionButton.setAttribute('aria-label', actionLabel(action))
+      actionButton.title = action.description
       if (action.keyboardShortcut !== undefined) actionButton.setAttribute('aria-keyshortcuts', action.keyboardShortcut)
       const description = action.description.toLowerCase()
       const actionIcon = description.includes('favorite')
@@ -714,6 +720,7 @@ async function bootstrap(): Promise<void> {
       button.disabled = workflowInteractionBlocked()
       button.id = `launcher-result-${encodeURIComponent(item.id)}`
       button.dataset.resultId = item.id
+      button.title = item.name
       button.setAttribute('role', 'option')
       button.setAttribute('aria-selected', String(item.id === selectedItemId))
       button.tabIndex = -1

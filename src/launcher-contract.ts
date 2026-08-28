@@ -384,7 +384,7 @@ export function parseLauncherSurfaceSettings(value: unknown): LauncherSurfaceSet
   if (!isRecord(value)
     || !hasAllowedKeys(value,
       ['fuzziness', 'history', 'historyEnabled', 'historyLimit', 'maxSearchResultItems', 'searchEngineId'],
-      ['doubleClickBehavior', 'dragAndDropEnabled', 'locale', 'placeholder', 'preserveUserInput', 'providerStatuses', 'searchBarAppearance', 'searchBarSize', 'searchResultLayout', 'scrollBehavior', 'showSearchIcon', 'singleClickBehavior'],
+      ['doubleClickBehavior', 'dragAndDropEnabled', 'hideWindowOn', 'locale', 'placeholder', 'preserveUserInput', 'providerStatuses', 'searchBarAppearance', 'searchBarSize', 'searchResultLayout', 'scrollBehavior', 'showSearchIcon', 'singleClickBehavior'],
     )
     || typeof value.fuzziness !== 'number' || !Number.isFinite(value.fuzziness) || value.fuzziness < 0 || value.fuzziness > 1
     || !Array.isArray(value.history) || value.history.length > 100 || value.history.some(item => typeof item !== 'string' || item.length === 0 || item.length > 512 || /[\0\r\n]/u.test(item))
