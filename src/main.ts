@@ -169,7 +169,6 @@ const splashPath = join(currentDir, 'splash.html')
 const preloadPath = join(currentDir, 'preload.cjs')
 const launcherHtmlPath = join(currentDir, 'launcher.html')
 const launcherNetworkFixtureEnabled = !app.isPackaged && process.env.TOCKTEAM_NETWORK_FIXTURE === '1'
-const launcherNetworkFixtureOpenedUrls: string[] = []
 
 function launcherNetworkFixtureResponse(body: unknown): Response {
   return new Response(JSON.stringify(body), { headers: { 'content-type': 'application/json' }, status: 200 })
@@ -1228,10 +1227,7 @@ function initializeLauncher(): void {
       appendLog('desktop', `TockLauncher provider ${extensionId} failed: ${error.name}`)
     },
     openExternal: async url => {
-      if (launcherNetworkFixtureEnabled) {
-        launcherNetworkFixtureOpenedUrls.push(url)
-        return
-      }
+      if (launcherNetworkFixtureEnabled) return
       if (launcherCustomBrowser === undefined) throw new Error('Custom browser controller is unavailable')
       await launcherCustomBrowser.openUrl(url)
     },
