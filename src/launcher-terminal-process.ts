@@ -45,6 +45,13 @@ function windowsAbsolute(value: unknown): string | undefined {
   return path.win32.normalize(value)
 }
 
+function comparableWindowsPath(value: string): string {
+  const normalized = path.win32.normalize(value)
+  if (normalized.startsWith('\\\\?\\UNC\\')) return `\\\\${normalized.slice('\\\\?\\UNC\\'.length)}`.toLocaleLowerCase('en-US')
+  if (normalized.startsWith('\\\\?\\')) return normalized.slice('\\\\?\\'.length).toLocaleLowerCase('en-US')
+  return normalized.toLocaleLowerCase('en-US')
+}
+
 function windowsEnvironmentValue(environment: Readonly<Record<string, string | undefined>>, key: string): string | undefined {
   return windowsAbsolute(environment[key])
 }
@@ -79,7 +86,8 @@ export async function resolveTrustedWindowsTerminalExecutable(
   const captureIdentity = options.captureIdentity ?? captureTrustedWindowsTerminal
   for (const candidate of windowsTerminalCandidates(terminalId, options.environment ?? process.env)) {
     const captured = await captureIdentity(candidate)
-    if (captured === undefined || !path.win32.isAbsolute(captured.canonicalPath)) continue
+    if (captured === undefined || !path.win32.isAbsolute(captured.canonicalPath)
+      || comparableWindowsPath(captured.canonicalPath) !== comparableWindowsPath(candidate)) continue
     return Object.freeze({ executable: captured.canonicalPath, identity: captured.identity })
   }
   throw new Error(`Trusted Windows terminal executable is unavailable: ${terminalId}`)
@@ -92,7 +100,7 @@ export async function revalidateTrustedWindowsTerminalExecutable(
   if (!path.win32.isAbsolute(resolution.executable)) return false
   const current = await captureIdentity(resolution.executable)
   if (current === undefined) return false
-  return path.win32.normalize(current.canonicalPath).toLocaleLowerCase('en-US') === path.win32.normalize(resolution.executable).toLocaleLowerCase('en-US')
+  return comparableWindowsPath(current.canonicalPath) === comparableWindowsPath(resolution.executable)
     && current.identity.dev === resolution.identity.dev
     && current.identity.ino === resolution.identity.ino
 }
