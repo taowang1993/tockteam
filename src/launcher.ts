@@ -13,7 +13,7 @@ import {
 } from 'lucide'
 import type { IconNode } from 'lucide'
 import type { LauncherPublicAction, LauncherPublicResultItem } from './launcher-actions.ts'
-import type { LauncherSurfaceSettings } from './launcher-contract.ts'
+import type { LauncherInvokeResult, LauncherSurfaceSettings } from './launcher-contract.ts'
 import type { LauncherPreloadBridge } from './launcher-preload-bridge.ts'
 import type { LauncherThemeProjection } from './launcher-theme.ts'
 import type { LauncherOsThemeMode } from './launcher-os-assets.ts'
@@ -351,14 +351,25 @@ async function bootstrap(): Promise<void> {
     }
     closeActionMenu(false)
     if (!invokingWorkflow) renderDetails()
-    await rememberSearch()
+    let pending: Promise<LauncherInvokeResult>
+    let invocationStarted = false
+    try {
+      pending = Promise.resolve(bridge.invokeAction(action.actionId))
+      invocationStarted = true
+    } catch (error) {
+      pending = Promise.reject(error)
+    }
+    // Keep a handler attached while history persistence is pending; the invocation
+    // must be reserved before that await, but a fast rejection must stay contained.
+    void pending.catch(() => undefined)
+    if (isWorkflowAction && invocationStarted) {
+      activeCancellation = Object.freeze({ actionId: action.actionId, resultSetId: invocationResultSetId })
+      renderDetails()
+    }
+    const historyPending = rememberSearch()
     setStatus(`${action.description}…`, 'muted')
     try {
-      const pending = bridge.invokeAction(action.actionId)
-      if (isWorkflowAction) {
-        activeCancellation = Object.freeze({ actionId: action.actionId, resultSetId: invocationResultSetId })
-        renderDetails()
-      }
+      await historyPending
       const result = await pending
       if (!result.ok) {
         const refreshed = await renderSearch(search.value)

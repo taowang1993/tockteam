@@ -935,15 +935,13 @@ try {
     return true
   })()`)
   assert.equal(workflowCancelInvoked, true)
+  // Invocation consumes the action before delayed history persistence, so cancellation is
+  // available during the fixture's 750ms recordSearch delay.
   await sleep(100)
-  assert.equal(await launcherConnection.evaluate('document.querySelector(\'[data-testid="tocklauncher-cancel-workflow"]\') === null'), true)
-  const workflowCancelUi = await waitFor(
-    () => launcherConnection.evaluate(`(() => ({
-      cancel: document.querySelector('[data-testid="tocklauncher-cancel-workflow"]') !== null,
-      searchDisabled: document.getElementById('launcher-search')?.matches(':disabled') ?? false,
-    }))()`),
-    state => state.cancel === true && state.searchDisabled === true,
-  )
+  const workflowCancelUi = await launcherConnection.evaluate(`(() => ({
+    cancel: document.querySelector('[data-testid="tocklauncher-cancel-workflow"]') !== null,
+    searchDisabled: document.getElementById('launcher-search')?.matches(':disabled') ?? false,
+  }))()`)
   assert.deepEqual(workflowCancelUi, { cancel: true, searchDisabled: true })
   const workflowCancelClicked = await launcherConnection.evaluate(`(() => {
     const cancelButton = document.querySelector('[data-testid="tocklauncher-cancel-workflow"]')
