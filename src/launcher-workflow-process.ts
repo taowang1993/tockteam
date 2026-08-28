@@ -85,7 +85,7 @@ const spawnWorkflowProcess: SpawnWorkflowProcess = (executable, args, options) =
   return {
     kill: signal => child.kill(signal),
     once: child.once.bind(child) as WorkflowChildProcess['once'],
-    pid: child.pid,
+    ...(child.pid === undefined ? {} : { pid: child.pid }),
     stderr: child.stderr,
     stdout: child.stdout,
   }
