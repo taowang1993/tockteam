@@ -62,6 +62,7 @@ type LauncherMessages = Readonly<{
   noHistory: string
   noResults: string
   pinned: string
+  providerState: (state: string) => string
   recent: string
   refreshed: string
   rescan: string
@@ -92,6 +93,7 @@ const LAUNCHER_MESSAGES: Readonly<Record<'en' | 'zh', LauncherMessages>> = Objec
     noResults: 'No TockTeam destinations found.',
     refreshed: 'Results Refreshed. Try Again.',
     pinned: 'Pinned',
+    providerState: (state: string) => state,
     recent: 'Recent',
     rescan: 'Rescan',
     rescanFailed: 'TockLauncher rescan failed.',
@@ -119,6 +121,7 @@ const LAUNCHER_MESSAGES: Readonly<Record<'en' | 'zh', LauncherMessages>> = Objec
     noResults: '未找到 TockTeam 目标。',
     refreshed: '结果已刷新，请重试。',
     pinned: '置顶',
+    providerState: (state: string) => ({ disabled: '已禁用', unavailable: '不可用', unsupported: '不支持', ready: '就绪' } as Record<string, string>)[state] ?? state,
     recent: '最近',
     rescan: '重新扫描',
     rescanFailed: 'TockLauncher 重新扫描失败。',
@@ -290,7 +293,7 @@ async function bootstrap(): Promise<void> {
     providerStatuses.hidden = surfaceSettings.providerStatuses.every(provider => provider.state === 'ready' || provider.state === 'disabled')
     providerStatuses.textContent = surfaceSettings.providerStatuses
       .filter(provider => provider.state !== 'ready')
-      .map(provider => `${provider.extensionId}: ${provider.state}`)
+      .map(provider => `${provider.extensionId}: ${messages().providerState(provider.state)}`)
       .join(' · ')
   }
   applySurfaceSettings()

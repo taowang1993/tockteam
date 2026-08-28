@@ -408,6 +408,10 @@ export function parseLauncherSurfaceSettings(value: unknown): LauncherSurfaceSet
     if (statusIds.has(status.extensionId)) throw new Error('Duplicate launcher provider status')
     statusIds.add(status.extensionId)
   }
+  if (value.providerStatuses !== undefined && (parsedStatuses.length !== LAUNCHER_COMPOSITION.extensionIds.length
+    || parsedStatuses.some((status, index) => status.extensionId !== LAUNCHER_COMPOSITION.extensionIds[index]))) {
+    throw new Error('Launcher provider status projection is incomplete')
+  }
   const hideWindowOn = value.hideWindowOn === undefined ? ['blur', 'afterInvocation'] : value.hideWindowOn
   const doubleClickBehavior = value.doubleClickBehavior === undefined ? 'invokeSearchResultItem' : value.doubleClickBehavior
   const singleClickBehavior = value.singleClickBehavior === undefined ? 'selectSearchResultItem' : value.singleClickBehavior

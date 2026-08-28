@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import {
+  LAUNCHER_COMPOSITION,
   launcherShortcutMatches,
   launcherShortcutLabel,
   normalizeLauncherLocale,
@@ -21,7 +22,7 @@ test('surface projection has bounded locale, appearance, interaction, and provid
     maxSearchResultItems: 50,
     placeholder: '搜索 TockTeam',
     preserveUserInput: true,
-    providerStatuses: [{ extensionId: 'Workflow', state: 'ready' }],
+    providerStatuses: LAUNCHER_COMPOSITION.extensionIds.map(extensionId => ({ extensionId, state: 'ready' as const })),
     searchBarAppearance: 'auto',
     searchBarSize: 'large',
     searchEngineId: 'fuzzysort',
@@ -31,7 +32,7 @@ test('surface projection has bounded locale, appearance, interaction, and provid
     singleClickBehavior: 'selectSearchResultItem',
   })
   assert.equal(projection.locale, 'zh-CN')
-  assert.equal(projection.providerStatuses[0]?.extensionId, 'Workflow')
+  assert.equal(projection.providerStatuses.at(-1)?.extensionId, 'Workflow')
   assert.equal(Object.isFrozen(projection.providerStatuses), true)
   assert.equal(Object.isFrozen(projection), true)
   assert.throws(() => parseLauncherSurfaceSettings({

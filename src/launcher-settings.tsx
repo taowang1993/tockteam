@@ -20,7 +20,7 @@ import { launcherFixedText } from './launcher-i18n.ts'
 import { launcherWorkflowSnapshotToken } from './launcher-workflow-contract.ts'
 import type { DesktopBridge } from './contracts.ts'
 import { LAUNCHER_SENSITIVE_SETTING_KEYS, type LauncherSettingsSnapshot } from './launcher-settings-contract.ts'
-import { readPersistedLauncherState } from './launcher-settings-model.ts'
+import { mergeLauncherDirtyValues, readPersistedLauncherState } from './launcher-settings-model.ts'
 import { LAUNCHER_SETTING_CATALOG_COUNT } from './launcher-setting-catalog.ts'
 import { localeTag } from '../plugins/shared/i18n.ts'
 import { useTranslate } from '../plugins/shared/use-i18n.ts'
@@ -83,7 +83,7 @@ const MESSAGES = {
 
 interface SettingsSectionProps {
   close: () => void
-  locale?: LocaleService
+  locale: LocaleService
 }
 
 interface SettingsSlots {
@@ -114,7 +114,7 @@ function Field({ title, description, children }: Readonly<{ title: string; descr
     <div className="flex min-w-0 flex-wrap items-center justify-between gap-3 border-b border-border/60 py-3 last:border-b-0">
       <div className="min-w-0 flex-1">
         <div className="text-sm font-medium text-foreground">{title}</div>
-        {description ? <div className="mt-1 max-w-2xl text-xs leading-5 text-muted-foreground">{description}</div> : null}
+        {description ? <div className="mt-1 max-w-2xl text-xs leading-5 text-muted-foreground">{launcherFixedText(description)}</div> : null}
       </div>
       {children ? <div className="flex shrink-0 items-center gap-2">{children}</div> : null}
     </div>
@@ -147,9 +147,9 @@ function statusLabel(snapshot: LauncherSettingsSnapshot): string {
 }
 
 function LauncherSettingsPage({ close: _close, locale }: SettingsSectionProps): ReactNode {
-  const translate = locale === undefined ? undefined : useTranslate(locale, locale.bind('tockteam.launcher'))
-  const t = (key: keyof typeof MESSAGES.en): string => translate?.(key) ?? MESSAGES.en[key]
-  if (locale !== undefined) document.documentElement.lang = localeTag(locale)
+  const translate = useTranslate(locale, locale.bind('tockteam.launcher'))
+  const t = (key: keyof typeof MESSAGES.en): string => translate(key)
+  document.documentElement.lang = localeTag(locale)
   const bridge = window.dshDesktop
   const settings = bridge?.launcher.settings
   const [snapshot, setSnapshot] = useState<LauncherSettingsSnapshot | null>(null)
@@ -185,13 +185,7 @@ function LauncherSettingsPage({ close: _close, locale }: SettingsSectionProps): 
       setWorkflowSnapshotRevision(revision => revision + 1)
     }
     const dirtyValues = pendingValues.current
-    if (dirtyValues.size === 0) {
-      setSnapshot(next)
-      return next
-    }
-    const values = { ...next.values }
-    for (const [key, value] of dirtyValues) values[key] = value
-    setSnapshot(Object.freeze({ ...next, values: Object.freeze(values) }))
+    setSnapshot(mergeLauncherDirtyValues(next, dirtyValues))
     return next
   }, [settings])
 
@@ -233,7 +227,6 @@ function LauncherSettingsPage({ close: _close, locale }: SettingsSectionProps): 
   const save = useCallback((key: string, value: unknown): Promise<boolean> => {
     if (!settings) return Promise.resolve(false)
     setStatus(t('saving'))
-    setBusy(true)
     const isSimpleFileSearchFolders = key === 'extension[SimpleFileSearch].folders'
     const draftRevision = simpleFileSearchDraftRevision.current
     const trackPendingValue = !LAUNCHER_SENSITIVE_SETTING_KEYS.includes(key as never)

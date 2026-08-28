@@ -38,6 +38,14 @@ export type PersistedLauncherState = Readonly<{
 
 export type LauncherSettingDisposition = 'effective' | 'platform-disabled' | 'status-only' | 'internal'
 
+/** Apply only still-dirty renderer drafts while adopting a newer main-owned snapshot. */
+export function mergeLauncherDirtyValues(snapshot: LauncherSettingsSnapshot, dirty: ReadonlyMap<string, unknown>): LauncherSettingsSnapshot {
+  if (dirty.size === 0) return snapshot
+  const values = { ...snapshot.values }
+  for (const [key, value] of dirty) values[key] = value
+  return Object.freeze({ ...snapshot, values: Object.freeze(values) })
+}
+
 /** Every accepted setting is either rendered, explicitly disabled, or delegated to one owner. */
 export function launcherSettingDisposition(key: string, platform: 'Linux' | 'macOS' | 'Windows'): LauncherSettingDisposition {
   if (LAUNCHER_INTERNAL_SETTING_KEYS.includes(key as never)) return 'internal'
