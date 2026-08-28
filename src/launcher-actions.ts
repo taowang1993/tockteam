@@ -211,6 +211,7 @@ export class LauncherActionStore {
 
   clear(): void {
     this.actions.clear()
+    this.activeActions.clear()
     this.currentResultSets.clear()
   }
 
@@ -220,6 +221,9 @@ export class LauncherActionStore {
     const resultSetId = this.currentResultSets.get(key)
     if (resultSetId !== undefined) this.deleteResultSet(resultSetId)
     this.currentResultSets.delete(key)
+    for (const [actionId, record] of this.activeActions) {
+      if (sameOwner(record.owner, owner)) this.activeActions.delete(actionId)
+    }
   }
 
   private pruneExpiredActions(): void {

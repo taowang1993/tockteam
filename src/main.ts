@@ -1309,7 +1309,9 @@ function initializeLauncher(): void {
           if (signal.aborted) throw launcherAbortError(signal)
           if (launcherOsFixtureEnabled && command === 'quit') return
           if (launcherLifecycle === undefined) throw new Error('TockLauncher lifecycle is unavailable')
-          await launcherLifecycle.invokeCommand(command, signal)
+          const lifecycleWork = launcherLifecycle.invokeCommand(command, signal)
+          const selfInvalidating = command === 'disableHotkey' || command === 'enableHotkey' || command === 'rescanExtensions'
+          await (selfInvalidating ? lifecycleWork : launcherAwaitAbortable(lifecycleWork, signal))
         } catch { throw new Error('TockLauncher lifecycle command failed') }
       },
       openControlPanelItem: async (canonicalName, signal) => {

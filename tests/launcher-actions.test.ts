@@ -45,6 +45,21 @@ test('launcher actions are opaque, owner-bound, expiring, replaced, and single-u
   assert.equal(executed, 1)
 })
 
+test('owner cleanup removes consumed active actions while their effect is settling', async () => {
+  let release!: () => void
+  const store = new LauncherActionStore({
+    execute: async () => await new Promise<void>(resolve => { release = resolve }),
+  })
+  const owner = { role: 'launcher' as const, webContentsId: 41 }
+  const published = store.publish({ items: [item()], owner })
+  const invocation = store.invoke({ actionId: published.items[0]!.defaultAction.actionId, owner })
+  await new Promise(resolve => setImmediate(resolve))
+  store.clearOwner(owner)
+  await assert.rejects(store.cancel({ actionId: published.items[0]!.defaultAction.actionId, owner }), /not active/u)
+  release()
+  await invocation
+})
+
 test('failed launcher effects are consumed and owner cleanup removes pending actions', async () => {
   const store = new LauncherActionStore({
     createId: (() => { let i = 0; return () => `id-${i++}` })(),
