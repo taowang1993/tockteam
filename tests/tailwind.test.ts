@@ -44,7 +44,11 @@ test('owned browser components use Tailwind utilities in markup', () => {
 
   assert.deepEqual(
     [...tailwind.matchAll(/^@utility ([\w-]+)/gmu)].map(match => match[1]),
-    ['tockteam-desktop-shell', 'tockteam-marketplace-shell', 'tockteam-sidebar-styles'],
+    [
+      'launcher-local-tool', 'launcher-local-tool-header', 'launcher-local-tool-identity', 'launcher-local-tool-content',
+      'launcher-local-tool-field', 'launcher-local-tool-status', 'launcher-local-tool-error', 'launcher-secondary-button', 'launcher-primary-button',
+      'tockteam-desktop-shell', 'tockteam-marketplace-shell', 'tockteam-sidebar-styles',
+    ],
   )
 })
 
