@@ -78,6 +78,7 @@ test('launcher preload exposes only typed search, theme, settings, invoke, resca
   ])
   await assert.rejects(() => bridge.invokeAction('launcher-action:../unsafe'), /action ID/u)
   await assert.rejects(() => bridge.cancelAction('launcher-action:../unsafe', 'launcher-results:1'), /cancellation|action ID/u)
+  await assert.rejects(() => bridge.cancelAction('launcher-action:one', `launcher-results:${'1'.repeat(64)}`), /cancellation/u)
   await assert.rejects(() => bridge.search('x'.repeat(513), { fuzziness: 0.5, maxSearchResultItems: 50, searchEngineId: 'fuzzysort' }), /search term/u)
   const runtimeBridge = bridge as unknown as Record<string, (...args: unknown[]) => Promise<unknown>>
   const callRuntime = (method: string, ...args: unknown[]): Promise<unknown> => {

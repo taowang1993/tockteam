@@ -83,6 +83,8 @@ const MAX_ACTIONS_PER_ITEM = 16
 const DEFAULT_MAX_ACTIONS = 2 * LAUNCHER_MAX_RESULT_ITEMS * (MAX_ACTIONS_PER_ITEM + 1)
 const MAX_ARGUMENT_LENGTH = 16_384
 const ACTION_ID_PATTERN = /^launcher-action:[0-9A-Za-z-]{1,96}$/u
+const MAX_RESULT_SET_ID_LENGTH = 64
+const RESULT_SET_ID_PATTERN = /^launcher-results:[1-9][0-9]{0,46}$/u
 const HANDLER_KEY_PATTERN = /^[a-z][a-z0-9-]{0,63}$/u
 const IMAGE_KEY_PATTERN = /^[a-z][a-z0-9-]{0,63}$/u
 
@@ -202,7 +204,9 @@ export class LauncherActionStore {
     if (typeof input.actionId !== 'string' || !ACTION_ID_PATTERN.test(input.actionId)) {
       throw new Error('Malformed launcher action ID')
     }
-    if (typeof input.resultSetId !== 'string' || !/^launcher-results:[1-9][0-9]*$/u.test(input.resultSetId)) {
+    if (typeof input.resultSetId !== 'string'
+      || input.resultSetId.length > MAX_RESULT_SET_ID_LENGTH
+      || !RESULT_SET_ID_PATTERN.test(input.resultSetId)) {
       throw new Error('Malformed launcher result set ID')
     }
     const record = this.activeActions.get(input.actionId)

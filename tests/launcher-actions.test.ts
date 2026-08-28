@@ -58,6 +58,7 @@ test('explicit cancellation is owner- and result-set-bound and single-use', asyn
   const actionId = published.items[0]!.defaultAction.actionId
   const invocation = store.invoke({ actionId, owner })
   await new Promise(resolve => setImmediate(resolve))
+  await assert.rejects(store.cancel({ actionId, owner, resultSetId: `launcher-results:${'1'.repeat(64)}` }), /result set/u)
   await assert.rejects(store.cancel({ actionId, owner, resultSetId: 'launcher-results:999' }), /result set|replaced/u)
   await assert.rejects(store.cancel({ actionId, owner: { ...owner, webContentsId: 42 }, resultSetId: published.resultSetId }), /another window|active/u)
   await store.cancel({ actionId, owner, resultSetId: published.resultSetId })

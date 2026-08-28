@@ -4,6 +4,7 @@ import {
   LAUNCHER_FILE_SEARCH_QUERY_PREFIX,
   LAUNCHER_IPC_CHANNELS,
   LAUNCHER_MAX_SEARCH_TERM_LENGTH,
+  parseLauncherCancelActionArgs,
   parseLauncherInvokeActionArgs,
   parseLauncherInvokeResult,
   parseLauncherSearchArgs,
@@ -79,4 +80,10 @@ test('launcher public responses contain opaque action IDs only', () => {
     status: { indexedItemCount: 1, rescanStatus: 'idle' },
   }), /action result/u)
   assert.deepEqual(parseLauncherInvokeResult({ ok: false, reason: 'expired' }), { ok: false, reason: 'expired' })
+  const oversizedResultSetId = `launcher-results:${'1'.repeat(64)}`
+  assert.throws(() => parseLauncherCancelActionArgs({ actionId: 'launcher-action:abc', resultSetId: oversizedResultSetId }), /cancellation/u)
+  assert.throws(() => parseLauncherSearchResponse({
+    after: [], before: [], resultSetId: oversizedResultSetId,
+    status: { indexedItemCount: 0, rescanStatus: 'idle' },
+  }), /search response/u)
 })

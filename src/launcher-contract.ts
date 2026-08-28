@@ -105,7 +105,8 @@ export type LauncherSurfaceSettings = Readonly<{
 }>
 
 const ACTION_ID_PATTERN = /^launcher-action:[0-9A-Za-z-]{1,96}$/u
-const RESULT_SET_ID_PATTERN = /^launcher-results:[1-9][0-9]*$/u
+const MAX_RESULT_SET_ID_LENGTH = 64
+const RESULT_SET_ID_PATTERN = /^launcher-results:[1-9][0-9]{0,46}$/u
 export const LAUNCHER_MAX_SEARCH_TERM_LENGTH = 512
 export const LAUNCHER_MAX_SEARCH_INPUT_LENGTH = LAUNCHER_FILE_SEARCH_QUERY_PREFIX.length + LAUNCHER_MAX_SEARCH_TERM_LENGTH
 
@@ -176,6 +177,7 @@ export function parseLauncherCancelActionArgs(value: unknown): Readonly<{ action
     || typeof value.actionId !== 'string'
     || !ACTION_ID_PATTERN.test(value.actionId)
     || typeof value.resultSetId !== 'string'
+    || value.resultSetId.length > MAX_RESULT_SET_ID_LENGTH
     || !RESULT_SET_ID_PATTERN.test(value.resultSetId)) {
     throw new Error('Invalid launcher cancellation')
   }
@@ -229,6 +231,7 @@ export function parseLauncherSearchResponse(value: unknown): LauncherSearchRespo
   if (!isRecord(value)
     || !hasExactKeys(value, ['after', 'before', 'resultSetId', 'status'])
     || typeof value.resultSetId !== 'string'
+    || value.resultSetId.length > MAX_RESULT_SET_ID_LENGTH
     || !RESULT_SET_ID_PATTERN.test(value.resultSetId)
     || !Array.isArray(value.before)
     || !Array.isArray(value.after)
