@@ -42,11 +42,18 @@ export type LauncherSettingDisposition = 'effective' | 'platform-disabled' | 'st
 export function launcherSettingDisposition(key: string, platform: 'Linux' | 'macOS' | 'Windows'): LauncherSettingDisposition {
   if (LAUNCHER_INTERNAL_SETTING_KEYS.includes(key as never)) return 'internal'
   if (LAUNCHER_MAIN_OWNED_SETTING_KEYS.includes(key as never)
+    || key === 'general.browser.customWebBrowser.commandlineArguments'
     || key === 'appearance.themeName'
     || key === 'appearance.themeSource'
     || key === 'keyboardAndMouse.dragAndDropEnabled'
     || key === 'general.language'
-    || key === 'general.hotkey') return 'status-only'
+    || key === 'general.hotkey'
+    || key === 'imageGenerator.faviconApiProvider'
+    || key === 'searchEngine.automaticRescan'
+    || key === 'searchEngine.rescanIntervalInSeconds'
+    || key === 'window.acrylicOpacity'
+    || key === 'window.backgroundMaterial'
+    || key === 'window.vibrancy') return 'status-only'
   const entry = launcherSettingCatalogEntry(key)
   if (entry !== undefined && !entry.applicability.includes(platform)) return 'platform-disabled'
   return 'effective'
