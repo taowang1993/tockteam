@@ -306,13 +306,57 @@ try {
     ueli: 'UeliCommand',
     controlPanel: ['WindowsControlPanel', true],
   })
-  const mockedControlPanelRejected = await launcherConnection.evaluate(`(async () => {
+  const mockedControlPanelDeclined = await launcherConnection.evaluate(`(async () => {
     const response = await window.tockteamLauncher?.search('Fixture Control Panel', { fuzziness: 0.5, maxSearchResultItems: 50, searchEngineId: 'fuzzysort' })
     const action = response?.after?.[0]?.defaultAction ?? response?.before?.[0]?.defaultAction
     if (action === undefined) return false
     try { await window.tockteamLauncher?.invokeAction(action.actionId); return false } catch { return true }
   })()`)
-  assert.equal(mockedControlPanelRejected, true)
+  assert.equal(mockedControlPanelDeclined, false)
+  const osActionFacts = await launcherConnection.evaluate(`(async () => {
+    const options = { fuzziness: 0.5, maxSearchResultItems: 50, searchEngineId: 'fuzzysort' }
+    const read = async term => await window.tockteamLauncher?.search(term, options)
+    const first = value => value?.after?.[0] ?? value?.before?.[0]
+    const invoke = async term => {
+      const item = first(await read(term))
+      const actionId = item?.defaultAction?.actionId
+      if (typeof actionId !== 'string') return { ok: false, replay: false }
+      const result = await window.tockteamLauncher?.invokeAction(actionId)
+      let replay = false
+      try { await window.tockteamLauncher?.invokeAction(actionId) } catch { replay = true }
+      return { ok: result?.ok === true, replay }
+    }
+    const lock = await invoke('Lock')
+    const staleItem = first(await read('Shut Down'))
+    const staleId = staleItem?.defaultAction?.actionId
+    await read('Restart')
+    let stale = false
+    if (typeof staleId === 'string') {
+      try { await window.tockteamLauncher?.invokeAction(staleId) } catch { stale = true }
+    }
+    const controlPanel = await invoke('Fixture Control Panel')
+    const quit = await invoke('Quit TockTeam')
+    return { controlPanel, lock, quit, stale }
+  })()`)
+  assert.deepEqual(osActionFacts, {
+    controlPanel: { ok: true, replay: true },
+    lock: { ok: true, replay: true },
+    quit: { ok: true, replay: true },
+    stale: true,
+  })
+  const delayedShutdown = launcherConnection.call('Runtime.evaluate', { expression: `(async () => { const result = await window.tockteamLauncher?.search('Shut Down', { fuzziness: 0.5, maxSearchResultItems: 50, searchEngineId: 'fuzzysort' }); const item = result?.after?.[0] ?? result?.before?.[0]; return await window.tockteamLauncher?.invokeAction(item?.defaultAction?.actionId) })()`, awaitPromise: true, returnByValue: true })
+  await sleep(250)
+  await launcherConnection.call('Page.close').catch(() => undefined)
+  await delayedShutdown.catch(() => undefined)
+  launcherConnection.close()
+  launcherConnection = undefined
+  await waitFor(() => electronPages(port), pages => pages.every(page => page.title !== 'TockLauncher'))
+  await showLauncherFromWorkbench(workbenchConnection)
+  pages = await waitFor(() => electronPages(port), current => current.filter(page => page.title === 'TockLauncher').length === 1)
+  launcher = pages.find(page => page.title === 'TockLauncher')
+  assert.ok(launcher)
+  launcherConnection = await CdpPage.connect(launcher.webSocketDebuggerUrl)
+  await waitFor(() => launcherConnection.evaluate('document.documentElement.dataset.launcherReady'), ready => ready === 'true')
   await workbenchConnection.evaluate(`(async () => {
     await window.dshDesktop?.syncLauncherTheme({ mode: 'dark', skinId: 'tockteam-skin-deep-current' })
   })()`)
@@ -331,6 +375,26 @@ try {
   assert.equal(darkThemeFacts.colorScheme, 'dark')
   assert.equal(darkThemeFacts.skin, 'tockteam-skin-deep-current')
   assert.equal(darkThemeFacts.brand, '#49c8eb')
+  const osIconFacts = await launcherConnection.evaluate(`(async () => {
+    const input = document.getElementById('launcher-search')
+    if (!(input instanceof HTMLInputElement)) return {}
+    const iconFor = async term => {
+      input.value = term
+      input.dispatchEvent(new Event('input', { bubbles: true }))
+      await new Promise(resolve => setTimeout(resolve, 100))
+      return document.querySelector('[data-result-id] img')?.getAttribute('src') ?? null
+    }
+    return {
+      appearance: await iconFor('Toggle System Appearance'),
+      command: await iconFor('Lock'),
+      controlPanel: await iconFor('Fixture Control Panel'),
+      setting: await iconFor('System Settings'),
+    }
+  })()`)
+  assert.match(osIconFacts.appearance ?? '', /launcher-assets\/appearance-switcher-light\.png$/u)
+  assert.match(osIconFacts.command ?? '', /launcher-assets\/system-command-macos-lock-dark\.png$/u)
+  assert.match(osIconFacts.controlPanel ?? '', /launcher-assets\/control-panel\.png$/u)
+  assert.match(osIconFacts.setting ?? '', /launcher-assets\/system-settings-macos\.png$/u)
   await launcherConnection.evaluate(`(() => {
     const input = document.getElementById('launcher-search')
     if (!(input instanceof HTMLInputElement)) return false
@@ -1145,7 +1209,7 @@ try {
     current => current.filter(page => page.title === 'TockLauncher').length === 1,
   )
   launcher = pages.find(page => page.title === 'TockLauncher')
-  assert.equal(launcher?.id, firstLauncherId)
+  assert.notEqual(launcher?.id, firstLauncherId)
   await waitFor(
     () => launcherConnection.evaluate('document.activeElement?.id'),
     id => id === 'launcher-search',
@@ -1171,7 +1235,7 @@ try {
     current => current.filter(page => page.title === 'TockLauncher').length === 1,
   )
   launcher = pages.find(page => page.title === 'TockLauncher')
-  assert.equal(launcher?.id, firstLauncherId)
+  assert.notEqual(launcher?.id, firstLauncherId)
   await waitFor(
     () => launcherConnection.evaluate('document.activeElement?.id'),
     id => id === 'launcher-search',

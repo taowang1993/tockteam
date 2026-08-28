@@ -21,13 +21,13 @@ export type LauncherSearchProvider = (
   status: LauncherCoreStatus
 }>>
 
-type LauncherActions = Pick<LauncherActionStore, 'clearOwner' | 'invoke' | 'publish'>
+type LauncherActions = Pick<LauncherActionStore, 'invoke' | 'publish'> & Partial<Pick<LauncherActionStore, 'clearOwner'>>
 
 type LauncherSearchIpcArgs = Readonly<{
   actions: LauncherActions
   guard: LauncherIpcGuard
   ipcMain: LauncherIpcMain
-  rescan: () => Promise<LauncherCoreStatus>
+  rescan: (owner?: LauncherActionOwner) => Promise<LauncherCoreStatus>
   search: LauncherSearchProvider
   surface?: Readonly<{
     getLocalExtensionSettings?: () => unknown
@@ -96,8 +96,7 @@ export function registerLauncherIpcHandlers(args: LauncherSearchIpcArgs): () => 
       async (event: unknown, ...rawArgs: unknown[]): Promise<LauncherCoreStatus> => {
         const owner = args.guard.assert(event, 'launcher')
         assertNoArguments(LAUNCHER_IPC_CHANNELS.rescan, rawArgs)
-        args.actions.clearOwner(owner)
-        try { return await args.rescan() }
+        try { return await args.rescan(owner) }
         catch { throw operationFailure() }
       },
     ],

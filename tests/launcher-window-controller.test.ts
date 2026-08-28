@@ -239,6 +239,7 @@ test('window clear aborts an OS confirmation before renderer ownership is revoke
     effects,
     enabledExtensionIds: () => ['SystemCommands'],
     getSetting: <T>(_key: string, fallback: T) => fallback,
+    linuxTrashCapability: { atomic: true, empty: async () => undefined },
     platform: 'Linux',
     scanControlPanelItems: async () => [],
   })

@@ -105,7 +105,10 @@ test('overlay operations invalidate actions on rescan and hide downstream path e
     },
     guard: { assert: () => ({ role: 'launcher', webContentsId: 41 }) },
     ipcMain: ipc,
-    rescan: async () => { throw new Error(`ENOENT ${path}`) },
+    rescan: async owner => {
+      if (owner !== undefined) cleared.push(owner.webContentsId)
+      throw new Error(`ENOENT ${path}`)
+    },
     search: async () => { throw new Error(`lstat ${path}`) },
     surface: {
       getSettings: () => { throw new Error(`read ${path}`) },

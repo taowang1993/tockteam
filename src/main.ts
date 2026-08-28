@@ -89,15 +89,15 @@ import {
   createLauncherWebPreferences,
   type LauncherUrlPolicy,
 } from './launcher-security.ts'
-import { LauncherActionStore } from './launcher-actions.ts'
+import { LauncherActionStore, type LauncherActionOwner } from './launcher-actions.ts'
 import { createLauncherDiscoveryExtensions } from './launcher-discovery-extensions.ts'
 import { createLauncherDiscoveryScanners, launcherNodeSqliteAvailable } from './launcher-discovery-scanners.ts'
 import { createLauncherFileSearchExtensions } from './launcher-file-search.ts'
 import { createLauncherFileSearchScanners } from './launcher-file-search-scanners.ts'
 import { createLauncherNetworkExtensions } from './launcher-network-extensions.ts'
 import { createLauncherOsExtensions } from './launcher-os-extensions.ts'
+import { createLauncherProviderInvalidator } from './launcher-provider-lifecycle.ts'
 import {
-  emptyLauncherLinuxTrash,
   resolveAppearanceInvocation,
   resolveSystemCommandInvocation,
   resolveWindowsControlPanelInvocation,
@@ -225,14 +225,20 @@ let launcherIpcDisposer: (() => void) | undefined
 let workbenchLauncherIpcDisposer: (() => void) | undefined
 let secureTeardownPromise: Promise<void> | undefined
 let launcherUpdaterRuntimeWasActive = false
-let launcherRescan: (() => Promise<unknown>) | undefined
+let launcherRescan: ((owner?: LauncherActionOwner, preserveSignal?: AbortSignal, reason?: string) => Promise<unknown>) | undefined
 let launcherCoreFlush: (() => Promise<void>) | undefined
 let launcherPersistence: LauncherPersistenceRepository | undefined
 let launcherCustomBrowser: LauncherCustomBrowserController | undefined
+let launcherLocal: ReturnType<typeof createLauncherLocalExtensions> | undefined
+let launcherDiscovery: ReturnType<typeof createLauncherDiscoveryExtensions> | undefined
+let launcherFileSearch: ReturnType<typeof createLauncherFileSearchExtensions> | undefined
 let launcherNetwork: ReturnType<typeof createLauncherNetworkExtensions> | undefined
 let launcherOs: ReturnType<typeof createLauncherOsExtensions> | undefined
+let launcherCore: ReturnType<typeof createLauncherCoreSearch> | undefined
+let launcherProviderInvalidator: ReturnType<typeof createLauncherProviderInvalidator> | undefined
+let launcherInvalidationController = new AbortController()
 let launcherPersistentSetsSync: (() => void) | undefined
-let launcherActionsClear: (() => void) | undefined
+let launcherActions: LauncherActionStore | undefined
 let launcherOwnerReady: Promise<void> = Promise.resolve()
 let launcherOwnerGeneration = 0
 const launcherSettingsOperations = createLauncherSettingsOperations({ isUnavailable: () => quitting })
@@ -244,6 +250,10 @@ let launcherTrayOwner: SingleOwnedTray<Tray> | undefined
 
 function launcherAbortError(signal: AbortSignal): Error {
   return signal.reason instanceof Error ? signal.reason : new Error('TockLauncher operation canceled')
+}
+
+function assertLauncherSignal(signal?: AbortSignal): void {
+  if (signal?.aborted) throw launcherAbortError(signal)
 }
 
 async function launcherAwaitAbortable<T>(operation: Promise<T>, signal: AbortSignal): Promise<T> {
@@ -258,6 +268,24 @@ async function launcherAwaitAbortable<T>(operation: Promise<T>, signal: AbortSig
   try { return await Promise.race([pending, canceled]) }
   finally { signal.removeEventListener('abort', onAbort) }
 }
+
+function invalidateAllLauncherProviders(reason: string, owner?: LauncherActionOwner, preserveSignal?: AbortSignal): AbortSignal {
+  launcherInvalidationController.abort(new Error(reason))
+  launcherInvalidationController = new AbortController()
+  launcherProviderInvalidator?.invalidateAllLauncherProviders(reason, owner, preserveSignal)
+  return launcherInvalidationController.signal
+}
+
+async function waitForLauncherProvidersIdle(): Promise<void> {
+  await Promise.allSettled([
+    launcherDiscovery?.waitForIdle() ?? Promise.resolve(),
+    launcherFileSearch?.waitForIdle() ?? Promise.resolve(),
+    launcherNetwork?.waitForIdle() ?? Promise.resolve(),
+    launcherOs?.waitForIdle() ?? Promise.resolve(),
+    launcherLocal?.waitForIdle() ?? Promise.resolve(),
+  ])
+}
+
 const launcherThemeProjector = createLauncherThemeProjector()
 const workbenchRouteDelivery = createLauncherWorkbenchRouteDelivery<BrowserWindow>((window: BrowserWindow, route: LauncherWorkbenchRoute) => {
   window.webContents.send(LAUNCHER_WORKBENCH_ROUTE_CHANNEL, route)
@@ -951,6 +979,25 @@ function runLauncherSettingsOperation<T>(
   return launcherSettingsOperations.run(operation, options)
 }
 
+async function runLauncherMutation<T>(
+  reason: string,
+  operation: (signal: AbortSignal) => Promise<T>,
+): Promise<T> {
+  const signal = invalidateAllLauncherProviders(reason)
+  try {
+    const result = await operation(signal)
+    assertLauncherSignal(signal)
+    if (!quitting) await launcherRescan?.(undefined, undefined, reason)
+    return result
+  } catch (error) {
+    if (!quitting && !signal.aborted) {
+      invalidateAllLauncherProviders(`${reason}-rollback`)
+      try { await launcherRescan?.() } catch { /* retain the original mutation error */ }
+    }
+    throw error
+  }
+}
+
 async function closeLauncherSettingsOperations(): Promise<void> {
   await launcherSettingsOperations.close()
 }
@@ -1148,7 +1195,11 @@ function initializeLauncher(): void {
   const urlPolicy = createLauncherUrlPolicy({ launcherHtmlPath })
   const platform = launcherPlatform()
   const local = createLauncherLocalExtensions({
-    copyText: text => clipboard.writeText(text),
+    copyText: async (text, signal) => {
+      if (signal.aborted) throw launcherAbortError(signal)
+      clipboard.writeText(text)
+      if (signal.aborted) throw launcherAbortError(signal)
+    },
     enabledExtensionIds: launcherEnabledLocalExtensionIds,
     getSetting: (key, fallback) => repository.getSetting(key, fallback),
     onProviderError: (extensionId, error) => {
@@ -1161,38 +1212,54 @@ function initializeLauncher(): void {
   const discovery = createLauncherDiscoveryExtensions({
     appDataPath: app.getPath('appData'),
     effects: {
-      confirmOpenApplicationAsAdministrator: async ({ name, target }) => {
-        const result = await dialog.showMessageBox({
+      confirmOpenApplicationAsAdministrator: async ({ name, target }, signal) => {
+        if (signal.aborted) throw launcherAbortError(signal)
+        const result = await launcherAwaitAbortable(dialog.showMessageBox({
           buttons: ['Open as administrator', 'Cancel'], cancelId: 1, defaultId: 1,
           detail: [`Application: ${name}`, `Target: ${target}`, 'Windows will request administrator approval.'].join('\\n'),
           message: `Open ${name} as administrator?`, title: PRODUCT_NAME, type: 'warning',
-        })
+        }), signal)
         return result.response === 0
       },
-      copyText: text => clipboard.writeText(text),
-      launchExecutable: launchDetachedLauncherExecutable,
-      openApplication: async target => {
+      copyText: async (text, signal) => {
+        if (signal.aborted) throw launcherAbortError(signal)
+        clipboard.writeText(text)
+        if (signal.aborted) throw launcherAbortError(signal)
+      },
+      launchExecutable: async (executable, args, signal) => {
+        if (signal.aborted) throw launcherAbortError(signal)
+        await launchDetachedLauncherExecutable(executable, args)
+        if (signal.aborted) throw launcherAbortError(signal)
+      },
+      openApplication: async (target, signal) => {
+        if (signal.aborted) throw launcherAbortError(signal)
         if (platform === 'Linux' && target.endsWith('.desktop')) {
           const invocation = resolveLinuxDesktopEntryInvocation(target)
-          await execFileAsync(invocation.executable, [...invocation.args], { maxBuffer: 64 * 1024, timeout: 15_000 })
+          await execFileAsync(invocation.executable, [...invocation.args], { maxBuffer: 64 * 1024, signal, timeout: 15_000 })
           return
         }
         if (platform === 'Windows' && revalidateLauncherWindowsStoreId(target)) {
-          await execFileAsync('explorer.exe', [target], { maxBuffer: 64 * 1024, timeout: 15_000, windowsHide: true })
+          await execFileAsync('explorer.exe', [target], { maxBuffer: 64 * 1024, signal, timeout: 15_000, windowsHide: true })
           return
         }
-        const error = await shell.openPath(target)
+        const error = await launcherAwaitAbortable(shell.openPath(target), signal)
         if (error) throw new Error(error)
       },
-      openApplicationAsAdministrator: async target => {
+      openApplicationAsAdministrator: async (target, signal) => {
+        if (signal.aborted) throw launcherAbortError(signal)
         const invocation = resolveWindowsApplicationElevationInvocation(target)
-        await execFileAsync(invocation.executable, [...invocation.args], { maxBuffer: 64 * 1024, timeout: 15_000, windowsHide: true })
+        await execFileAsync(invocation.executable, [...invocation.args], { maxBuffer: 64 * 1024, signal, timeout: 15_000, windowsHide: true })
       },
-      openExternal: async url => {
+      openExternal: async (url, signal) => {
+        if (signal.aborted) throw launcherAbortError(signal)
         if (launcherCustomBrowser === undefined) throw new Error('Custom browser controller is unavailable')
-        await launcherCustomBrowser.openUrl(url)
+        await launcherAwaitAbortable(launcherCustomBrowser.openUrl(url, signal), signal)
       },
-      revealPath: target => { shell.showItemInFolder(target) },
+      revealPath: (target, signal) => {
+        if (signal.aborted) throw launcherAbortError(signal)
+        shell.showItemInFolder(target)
+        if (signal.aborted) throw launcherAbortError(signal)
+      },
     },
     capturePathIdentity: async target => await statLauncherPathIdentity(target),
     enabledExtensionIds: launcherEnabledLocalExtensionIds,
@@ -1235,13 +1302,19 @@ function initializeLauncher(): void {
     },
     scanners: createLauncherDiscoveryScanners({ onProviderError: reportDiscoveryError }),
   })
+  launcherDiscovery = discovery
   const fileSearch = createLauncherFileSearchExtensions({
     effects: {
-      openPath: async target => {
-        const error = await shell.openPath(target)
+      openPath: async (target, signal) => {
+        if (signal.aborted) throw launcherAbortError(signal)
+        const error = await launcherAwaitAbortable(shell.openPath(target), signal)
         if (error) throw new Error(error)
       },
-      revealPath: target => { shell.showItemInFolder(target) },
+      revealPath: (target, signal) => {
+        if (signal.aborted) throw launcherAbortError(signal)
+        shell.showItemInFolder(target)
+        if (signal.aborted) throw launcherAbortError(signal)
+      },
     },
     enabledExtensionIds: launcherEnabledLocalExtensionIds,
     getSetting: (key, fallback) => repository.getSetting(key, fallback),
@@ -1252,8 +1325,13 @@ function initializeLauncher(): void {
     platform,
     scanners: createLauncherFileSearchScanners(),
   })
+  launcherFileSearch = fileSearch
   const network = createLauncherNetworkExtensions({
-    copyText: text => clipboard.writeText(text),
+    copyText: async (text, signal) => {
+      if (signal.aborted) throw launcherAbortError(signal)
+      clipboard.writeText(text)
+      if (signal.aborted) throw launcherAbortError(signal)
+    },
     enabledExtensionIds: launcherEnabledLocalExtensionIds,
     fetch: async (url, init) => launcherNetworkFixtureEnabled
       ? await launcherNetworkFixtureFetch(url, init)
@@ -1262,21 +1340,36 @@ function initializeLauncher(): void {
     onProviderError: (extensionId, error) => {
       appendLog('desktop', `TockLauncher provider ${extensionId} failed: ${error.name}`)
     },
-    openExternal: async url => {
+    openExternal: async (url, signal) => {
+      if (signal.aborted) throw launcherAbortError(signal)
       if (launcherNetworkFixtureEnabled) return
       if (launcherCustomBrowser === undefined) throw new Error('Custom browser controller is unavailable')
-      await launcherCustomBrowser.openUrl(url)
+      await launcherAwaitAbortable(launcherCustomBrowser.openUrl(url, signal), signal)
     },
     ...(launcherNetworkFixtureEnabled ? { resolveAddresses: async () => ['8.8.8.8'] } : null),
   })
   launcherNetwork = network
+  launcherLocal = local
   const osEnabledExtensionIds = (): readonly string[] => launcherOsFixtureEnabled
     ? [...new Set([...launcherEnabledLocalExtensionIds(), 'AppearanceSwitcher', 'SystemCommands', 'SystemSettings', 'UeliCommand', 'WindowsControlPanel'])]
     : launcherEnabledLocalExtensionIds()
+  // Linux Empty Trash stays unpublished: Node has no atomic unlinkat/openat2 seam here.
   const os = createLauncherOsExtensions({
     effects: {
-      confirmPrivilegedAction: async ({ detail, title }, signal) => {
-        if (launcherOsFixtureEnabled) return false
+      confirmPrivilegedAction: async ({ detail, operation, title }, signal) => {
+        if (launcherOsFixtureEnabled) {
+          if (signal.aborted) throw launcherAbortError(signal)
+          if (operation === 'invoke-system-command' && title === 'Shut Down?') {
+            return await new Promise<boolean>((resolve, reject) => {
+              const timer = setTimeout(() => { signal.removeEventListener('abort', abort); resolve(false) }, 5_000)
+              const abort = (): void => { clearTimeout(timer); signal.removeEventListener('abort', abort); reject(launcherAbortError(signal)) }
+              signal.addEventListener('abort', abort, { once: true })
+            })
+          }
+          // Fixture confirmation is deliberately entered for every protected row:
+          // only Lock is accepted, and its fixed effect remains inert below.
+          return operation === 'invoke-system-command' && title === 'Lock?'
+        }
         if (signal.aborted) throw launcherAbortError(signal)
         const owner = mainWindow
         const pending = owner === undefined || owner.isDestroyed()
@@ -1288,9 +1381,8 @@ function initializeLauncher(): void {
       invokeSystemCommand: async (command, signal) => {
         try {
           if (signal.aborted) throw launcherAbortError(signal)
-          if (launcherOsFixtureEnabled) return
-          if (platform === 'Linux' && command === 'empty-trash') {
-            await emptyLauncherLinuxTrash(app.getPath('home'), signal)
+          if (launcherOsFixtureEnabled) {
+            if (command !== 'lock') throw new Error('Unexpected fixture system command')
             return
           }
           const invocation = resolveSystemCommandInvocation(platform, command)
@@ -1310,8 +1402,7 @@ function initializeLauncher(): void {
           if (launcherOsFixtureEnabled && command === 'quit') return
           if (launcherLifecycle === undefined) throw new Error('TockLauncher lifecycle is unavailable')
           const lifecycleWork = launcherLifecycle.invokeCommand(command, signal)
-          const selfInvalidating = command === 'disableHotkey' || command === 'enableHotkey' || command === 'rescanExtensions'
-          await (selfInvalidating ? lifecycleWork : launcherAwaitAbortable(lifecycleWork, signal))
+          await launcherAwaitAbortable(lifecycleWork, signal)
         } catch { throw new Error('TockLauncher lifecycle command failed') }
       },
       openControlPanelItem: async (canonicalName, signal) => {
@@ -1376,18 +1467,6 @@ function initializeLauncher(): void {
     },
   })
   launcherOs = os
-  const discoverySettingKeys = new Set([
-    'extension[ApplicationSearch].includeWindowsStoreApps', 'extension[ApplicationSearch].linuxFolders', 'extension[ApplicationSearch].macOsFolders',
-    'extension[ApplicationSearch].mdfindFilterOption', 'extension[ApplicationSearch].windowsFileExtensions', 'extension[ApplicationSearch].windowsFolders',
-    'extension[BrowserBookmarks].browsers', 'extension[BrowserBookmarks].iconType', 'extension[BrowserBookmarks].searchResultStyle',
-    'extension[FileSearch].everythingCliFilePath', 'extension[FileSearch].maxSearchResultCount', 'extension[SimpleFileSearch].folders',
-    'extension[VSCode].command', 'extension[VSCode].prefix', 'extension[VSCode].showPath',
-    'extension[CurrencyConversion].currencies', 'extension[CurrencyConversion].defaultTargetCurrency',
-    'extension[CustomWebSearch].customSearchEngines', 'extension[DeeplTranslator].apiKey',
-    'extension[DeeplTranslator].defaultSourceLanguage', 'extension[DeeplTranslator].defaultTargetLanguage',
-    'extension[WebSearch].locale', 'extension[WebSearch].searchEngine', 'extension[WebSearch].showInstantSearchResult',
-    'general.language', 'general.hotkey.enabled',
-  ])
   const coreSearch = createLauncherCoreSearch({
     initialExcludedItemIds: repository.getSetting('searchEngine.excludedItems', []),
     initialFavoriteItemIds: repository.getSetting('favorites', []),
@@ -1397,9 +1476,9 @@ function initializeLauncher(): void {
       const errors = [network.getLastError(), fileSearch.getLastError(), os.getLastError()].filter((value): value is string => value !== undefined)
       return errors.length === 0 ? undefined : errors.slice(0, 3).join(' ')
     },
-    loadIndexedItems: async signal => {
+    loadIndexedItems: async (signal, preserveSignal) => {
       const result = await createTockTeamDestinationResults('')
-      return [...result.before, ...result.after, ...await local.loadIndexedItems(), ...await discovery.loadIndexedItems(signal), ...await fileSearch.loadIndexedItems(signal), ...await network.loadIndexedItems(signal), ...await os.loadIndexedItems(signal)]
+      return [...result.before, ...result.after, ...await local.loadIndexedItems(), ...await discovery.loadIndexedItems(signal, preserveSignal), ...await fileSearch.loadIndexedItems(signal, preserveSignal), ...await network.loadIndexedItems(signal, preserveSignal), ...await os.loadIndexedItems(signal, preserveSignal)]
     },
     searchInstant: async searchTerm => {
       const [localResults, discoveryResults, fileResults, networkResults] = await Promise.all([
@@ -1415,7 +1494,12 @@ function initializeLauncher(): void {
     },
     persistIndex: async items => { await repository.writeIndex(items) },
     persistSettings: async values => await runLauncherSettingsOperation(
-      async () => await repository.updateSettings(values),
+      async () => await runLauncherMutation('launcher-core-settings-mutation', async signal => {
+        await repository.updateSettings(values, signal)
+        assertLauncherSignal(signal)
+        launcherPersistentSetsSync?.()
+        return undefined
+      }),
       { mutation: true },
     ),
     platform,
@@ -1446,21 +1530,31 @@ function initializeLauncher(): void {
       if (record.hideWindowAfterInvocation) controller?.hideAfterInvocation(record.owner.webContentsId)
     },
   })
-  const rescan = async () => {
-    actions.clear()
-    fileSearch.invalidate()
-    network.invalidate()
-    os.invalidate()
-    return await coreSearch.rescan()
+  launcherCore = coreSearch
+  launcherProviderInvalidator = createLauncherProviderInvalidator({
+    actions,
+    core: coreSearch,
+    discovery,
+    fileSearch,
+    local,
+    network,
+    os,
+  })
+  const rescan = async (owner?: LauncherActionOwner, preserveSignal?: AbortSignal, reason = 'launcher-rescan') => {
+    const invalidationSignal = invalidateAllLauncherProviders(reason, owner, preserveSignal)
+    const rescanSignal = preserveSignal === undefined
+      ? invalidationSignal
+      : AbortSignal.any([invalidationSignal, preserveSignal])
+    return await coreSearch.rescan(rescanSignal, preserveSignal)
   }
   launcherRescan = rescan
   const onWindowCleared = (window: { webContents: { id: number } }): void => {
-    // Invalidate native OS work before revoking this renderer's public owner.
-    os.invalidate()
-    actions.clearOwner({ role: 'launcher', webContentsId: window.webContents.id })
+    const owner = { role: 'launcher' as const, webContentsId: window.webContents.id }
+    // Revoke every provider before clearing this renderer's public action owner.
+    invalidateAllLauncherProviders('launcher-owner-clear', owner)
     const ownerGeneration = ++launcherOwnerGeneration
     launcherOwnerReady = (async () => {
-      await os.waitForIdle()
+      await waitForLauncherProvidersIdle()
       if (ownerGeneration !== launcherOwnerGeneration || quitting) return
       try { await rescan() } catch { /* the next owner will surface a bounded status */ }
     })()
@@ -1481,15 +1575,20 @@ function initializeLauncher(): void {
   controller = nextController
   launcherController = nextController
   launcherCoreFlush = async () => {
+    const discoveryClose = discovery.close()
+    const fileClose = fileSearch.close()
     const networkClose = network.close()
     const osClose = os.close()
-    await fileSearch.close()
+    const localClose = local.close()
+    await discoveryClose
+    await fileClose
     await networkClose
     await osClose
+    await localClose
     await coreSearch.close()
   }
   launcherPersistentSetsSync = () => { syncLauncherPersistentSets(coreSearch) }
-  launcherActionsClear = () => { actions.clear() }
+  launcherActions = actions
   const launcherGuard = createLauncherIpcGuard({
     launcherSession,
     resolveWindow: sender => launcherWindowRegistry.resolveWindow(sender),
@@ -1539,46 +1638,41 @@ function initializeLauncher(): void {
     settings: {
       exportSettings: async () => await runLauncherSettingsOperation(exportLauncherSettings),
       getSnapshot: launcherSettingsSnapshot,
-      importSettings: async () => await runLauncherSettingsOperation(async () => {
-        actions.clear()
-        return await importLauncherSettings()
-      }, { blockMutationsAfterSuccess: true, mutation: true }),
-      resetSettings: async () => await runLauncherSettingsOperation(async () => {
-        actions.clear()
-        return await resetLauncherSettings()
-      }, { blockMutationsAfterSuccess: true, mutation: true }),
-      revokeCustomBrowser: async () => await runLauncherSettingsOperation(revokeCustomLauncherBrowser, { mutation: true }),
-      revokeExternalSettings: async () => await runLauncherSettingsOperation(revokeExternalLauncherSettings, { mutation: true }),
-      selectCustomBrowser: async () => await runLauncherSettingsOperation(selectCustomLauncherBrowser, { mutation: true }),
-      selectExternalSettings: async () => await runLauncherSettingsOperation(async () => {
-        actions.clear()
-        return await selectExternalLauncherSettings()
-      }, { blockMutationsAfterSuccess: true, mutation: true }),
-      updateSetting: async (key, value) => await runLauncherSettingsOperation(async () => {
-        const needsRescan = key === 'extensions.enabledExtensionIds' || discoverySettingKeys.has(key)
-        if (needsRescan) {
-          actions.clear()
-          fileSearch.invalidate()
-          network.invalidate()
-          os.invalidate()
-        }
-        try {
-          await requireLauncherPersistence().updateSetting(key, value)
+      importSettings: async () => await runLauncherSettingsOperation(
+        () => runLauncherMutation('launcher-settings-import', signal => importLauncherSettings(signal)),
+        { blockMutationsAfterSuccess: true, mutation: true },
+      ),
+      resetSettings: async () => await runLauncherSettingsOperation(
+        () => runLauncherMutation('launcher-settings-reset', signal => resetLauncherSettings(signal)),
+        { blockMutationsAfterSuccess: true, mutation: true },
+      ),
+      revokeCustomBrowser: async () => await runLauncherSettingsOperation(
+        () => runLauncherMutation('launcher-custom-browser-revoke', signal => revokeCustomLauncherBrowser(signal)),
+        { mutation: true },
+      ),
+      revokeExternalSettings: async () => await runLauncherSettingsOperation(
+        () => runLauncherMutation('launcher-external-settings-revoke', signal => revokeExternalLauncherSettings(signal)),
+        { mutation: true },
+      ),
+      selectCustomBrowser: async () => await runLauncherSettingsOperation(
+        () => runLauncherMutation('launcher-custom-browser-select', signal => selectCustomLauncherBrowser(signal)),
+        { mutation: true },
+      ),
+      selectExternalSettings: async () => await runLauncherSettingsOperation(
+        () => runLauncherMutation('launcher-external-settings-select', signal => selectExternalLauncherSettings(signal)),
+        { blockMutationsAfterSuccess: true, mutation: true },
+      ),
+      updateSetting: async (key, value) => await runLauncherSettingsOperation(
+        () => runLauncherMutation('launcher-setting-update', async signal => {
+          await requireLauncherPersistence().updateSetting(key, value, signal)
+          assertLauncherSignal(signal)
           launcherPersistentSetsSync?.()
           await launcherLifecycle?.sync()
-          if (needsRescan) await launcherRescan?.()
+          assertLauncherSignal(signal)
           return settingsOperation()
-        } catch (reason) {
-          if (needsRescan) {
-            actions.clear()
-            fileSearch.invalidate()
-            network.invalidate()
-            os.invalidate()
-            try { await launcherRescan?.() } catch { /* retain the original mutation error */ }
-          }
-          throw reason
-        }
-      }, { mutation: true }),
+        }),
+        { mutation: true },
+      ),
     },
     onRouteReady: event => {
       const sender = (event as Electron.IpcMainInvokeEvent).sender
@@ -1621,23 +1715,27 @@ async function initializeLauncherLifecycle(): Promise<void> {
     queue: launcherToggleQueue,
     queueSecureRelaunch,
     requestSecureQuit: reason => { requestSecureQuit(reason) },
-    rescan: async () => await launcherRescan?.(),
+    rescan: async signal => {
+      assertLauncherSignal(signal)
+      return await launcherRescan?.(undefined, signal, 'launcher-self-invalidation')
+    },
     setDockVisible: setLauncherDockVisible,
     setTrayVisible: setLauncherTrayVisible,
-    updateSetting: async (key, value) => {
+    updateSetting: async (key, value, signal) => {
       const needsRescan = key === 'general.hotkey.enabled'
-      if (needsRescan) {
-        launcherActionsClear?.()
-        launcherOs?.invalidate()
-      }
+      assertLauncherSignal(signal)
+      if (needsRescan) invalidateAllLauncherProviders('launcher-self-invalidation', undefined, signal)
       try {
-        await repository.updateSetting(key, value)
+        await repository.updateSetting(key, value, signal)
+        assertLauncherSignal(signal)
         launcherPersistentSetsSync?.()
         await launcherLifecycle?.sync()
-        if (needsRescan) await launcherRescan?.()
+        assertLauncherSignal(signal)
+        if (needsRescan) await launcherRescan?.(undefined, signal, 'launcher-self-invalidation')
+        assertLauncherSignal(signal)
       } catch (reason) {
         if (needsRescan) {
-          try { await launcherRescan?.() } catch { /* retain the original mutation error */ }
+          try { await launcherRescan?.(undefined, signal, 'launcher-self-invalidation') } catch { /* retain the original mutation error */ }
         }
         throw reason
       }
@@ -1783,16 +1881,19 @@ function launcherPlatformPathExtension(): 'app' | 'exe' {
   throw new Error('Unsupported TockLauncher platform')
 }
 
-async function importLauncherSettings(): Promise<Readonly<{ canceled?: boolean; ok: true }>> {
+async function importLauncherSettings(signal?: AbortSignal): Promise<Readonly<{ canceled?: boolean; ok: true }>> {
   const filePath = await launcherOpenDialog({
     properties: ['openFile'],
     title: 'Import TockLauncher Settings',
     filters: [{ name: 'JSON', extensions: ['json'] }],
   })
+  assertLauncherSignal(signal)
   if (filePath === undefined) return settingsOperation(true)
-  await requireLauncherPersistence().importSettingsFromPath(filePath)
+  await requireLauncherPersistence().importSettingsFromPath(filePath, signal)
+  assertLauncherSignal(signal)
   launcherPersistentSetsSync?.()
   await launcherLifecycle?.sync()
+  assertLauncherSignal(signal)
   queueSecureRelaunch('launcher-settings-import')
   return settingsOperation()
 }
@@ -1808,30 +1909,36 @@ async function exportLauncherSettings(): Promise<Readonly<{ canceled?: boolean; 
   return settingsOperation()
 }
 
-async function resetLauncherSettings(): Promise<Readonly<{ canceled?: boolean; ok: true }>> {
+async function resetLauncherSettings(signal?: AbortSignal): Promise<Readonly<{ canceled?: boolean; ok: true }>> {
   const repository = requireLauncherPersistence()
   if (repository.snapshot().settingsSource === 'external' && !repository.externalWriteAvailable) {
     throw new Error('TockLauncher external settings writes are unavailable on this platform')
   }
-  await launcherCustomBrowser?.revoke()
-  await repository.resetSettings()
+  assertLauncherSignal(signal)
+  await launcherCustomBrowser?.revoke(signal)
+  await repository.resetSettings(signal)
+  assertLauncherSignal(signal)
   launcherPersistentSetsSync?.()
   await launcherLifecycle?.sync()
+  assertLauncherSignal(signal)
   queueSecureRelaunch('launcher-settings-reset')
   return settingsOperation()
 }
 
-async function selectExternalLauncherSettings(): Promise<Readonly<{ canceled?: boolean; ok: true }>> {
+async function selectExternalLauncherSettings(signal?: AbortSignal): Promise<Readonly<{ canceled?: boolean; ok: true }>> {
   const filePath = await launcherOpenDialog({ properties: ['openFile'], title: 'Choose External TockLauncher Settings' })
+  assertLauncherSignal(signal)
   if (filePath === undefined) return settingsOperation(true)
-  await requireLauncherPersistence().grantExternalSettingsFile(filePath)
+  await requireLauncherPersistence().grantExternalSettingsFile(filePath, signal)
+  assertLauncherSignal(signal)
   launcherPersistentSetsSync?.()
   await launcherLifecycle?.sync()
+  assertLauncherSignal(signal)
   queueSecureRelaunch('launcher-settings-import')
   return settingsOperation()
 }
 
-async function selectCustomLauncherBrowser(): Promise<Readonly<{ canceled?: boolean; ok: true }>> {
+async function selectCustomLauncherBrowser(signal?: AbortSignal): Promise<Readonly<{ canceled?: boolean; ok: true }>> {
   if (process.platform === 'linux') throw new Error('Custom browsers are not supported on Linux')
   const extension = launcherPlatformPathExtension()
   const filePath = await launcherOpenDialog({
@@ -1839,20 +1946,27 @@ async function selectCustomLauncherBrowser(): Promise<Readonly<{ canceled?: bool
     title: 'Choose TockLauncher Custom Browser',
     filters: [{ name: extension === 'app' ? 'Applications' : 'Applications', extensions: [extension] }],
   })
+  assertLauncherSignal(signal)
   if (filePath === undefined) return settingsOperation(true)
-  await launcherCustomBrowser?.select(filePath)
+  await launcherCustomBrowser?.select(filePath, signal)
+  assertLauncherSignal(signal)
   return settingsOperation()
 }
 
-async function revokeExternalLauncherSettings(): Promise<Readonly<{ canceled?: boolean; ok: true }>> {
-  await requireLauncherPersistence().revokeExternalSettingsFile()
+async function revokeExternalLauncherSettings(signal?: AbortSignal): Promise<Readonly<{ canceled?: boolean; ok: true }>> {
+  assertLauncherSignal(signal)
+  await requireLauncherPersistence().revokeExternalSettingsFile(signal)
+  assertLauncherSignal(signal)
   launcherPersistentSetsSync?.()
   await launcherLifecycle?.sync()
+  assertLauncherSignal(signal)
   return settingsOperation()
 }
 
-async function revokeCustomLauncherBrowser(): Promise<Readonly<{ canceled?: boolean; ok: true }>> {
-  await launcherCustomBrowser?.revoke()
+async function revokeCustomLauncherBrowser(signal?: AbortSignal): Promise<Readonly<{ canceled?: boolean; ok: true }>> {
+  assertLauncherSignal(signal)
+  await launcherCustomBrowser?.revoke(signal)
+  assertLauncherSignal(signal)
   return settingsOperation()
 }
 
@@ -2129,6 +2243,7 @@ function flushQueuedOpenRequests(): void {
 let runtimeStopPromise: Promise<void> | undefined
 
 async function stopRuntimeAndChannels(options: Readonly<{ skipStartWait?: boolean }> = {}): Promise<void> {
+  invalidateAllLauncherProviders('launcher-runtime-relaunch')
   const pendingStart = runtimeStartGate.pending
   runtimeStartGate.invalidate()
   invalidateWorkbenchReadiness()
@@ -2220,6 +2335,7 @@ async function startRuntimeOwned(token: Readonly<{ isCurrent: () => boolean }>):
     await window.loadURL(url.href)
     ensureCurrent()
     flushQueuedOpenRequests()
+    await launcherRescan?.()
   } catch (error) {
     await stopRuntimeAndChannels({ skipStartWait: true }).catch(() => {})
     throw error
@@ -2504,6 +2620,7 @@ function requestSecureQuit(_reason: 'native-quit' | 'tray' | 'launcher-command-q
   if (secureTeardownPromise !== undefined) return
   secureTeardownPromise = (async () => {
     quitting = true
+    invalidateAllLauncherProviders('launcher-shutdown')
     runtimeStartGate.close()
     launcherLifecycle?.dispose()
     launcherController?.dispose()
@@ -2546,6 +2663,7 @@ function requestSecureQuit(_reason: 'native-quit' | 'tray' | 'launcher-command-q
 
 function queueSecureRelaunch(reason: 'launcher-settings-import' | 'launcher-settings-reset'): void {
   if (quitting) return
+  invalidateAllLauncherProviders(`launcher-${reason}-relaunch`)
   attemptSecureRelaunch({
     relaunch: () => { app.relaunch() },
     report: error => {
