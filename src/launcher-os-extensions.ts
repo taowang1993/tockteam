@@ -23,6 +23,12 @@ export type LauncherPrivilegedPrompt = Readonly<{
   title: string
 }>
 
+export type LauncherLinuxTrashCapability = Readonly<{
+  /** Explicit opt-in marker; production leaves this capability absent without an atomic kernel seam. */
+  atomic: true
+  empty: (signal: AbortSignal) => Promise<void> | void
+}>
+
 export type LauncherOsEffects = Readonly<{
   confirmPrivilegedAction: (prompt: LauncherPrivilegedPrompt, signal: AbortSignal) => Promise<boolean>
   invokeSystemCommand: (command: LauncherSystemCommand, signal: AbortSignal) => Promise<void> | void
@@ -39,6 +45,7 @@ export type LauncherOsOptions = Readonly<{
   getSetting: <T>(key: string, fallback: T) => T
   includeControlPanelFixture?: boolean
   isAppearanceOverridden?: () => boolean
+  linuxTrashCapability?: LauncherLinuxTrashCapability
   onProviderError?: (extensionId: 'WindowsControlPanel' | 'AppearanceSwitcher' | 'SystemCommands' | 'SystemSettings' | 'UeliCommand', error: Error) => void
   platform: LauncherOsPlatform
   scanControlPanelItems: (signal?: AbortSignal) => Promise<readonly LauncherControlPanelEntry[]>
@@ -144,7 +151,7 @@ export function createLauncherOsExtensions(options: LauncherOsOptions): Readonly
   executeAction: (record: LauncherActionRecord) => Promise<boolean>
   getLastError: () => string | undefined
   invalidate: () => void
-  loadIndexedItems: (signal?: AbortSignal) => Promise<readonly LauncherInternalResultItem[]>
+  loadIndexedItems: (signal?: AbortSignal, preserveSignal?: AbortSignal) => Promise<readonly LauncherInternalResultItem[]>
   waitForIdle: () => Promise<void>
 }> {
   if (!SUPPORTED_PLATFORMS.has(options.platform)) throw new Error('Unsupported TockLauncher platform')
@@ -177,8 +184,10 @@ export function createLauncherOsExtensions(options: LauncherOsOptions): Readonly
     currentActions = new Map()
     currentControlPanel = new Map()
   }
-  const abortAll = (reason: Error): void => {
-    for (const controller of activeControllers) controller.abort(reason)
+  const abortAll = (reason: Error, preserveSignal?: AbortSignal): void => {
+    for (const controller of activeControllers) {
+      if (controller.signal !== preserveSignal) controller.abort(reason)
+    }
   }
   const track = <T>(promise: Promise<T>): Promise<T> => {
     let tracked!: Promise<T>
@@ -186,11 +195,11 @@ export function createLauncherOsExtensions(options: LauncherOsOptions): Readonly
     activeWork.add(tracked)
     return tracked
   }
-  const invalidate = (): void => {
+  const invalidate = (reason = 'TockLauncher OS provider was invalidated', preserveSignal?: AbortSignal): void => {
     generation += 1
     clearState()
     providerErrors.clear()
-    abortAll(new Error('TockLauncher OS provider was invalidated'))
+    abortAll(new Error(reason), preserveSignal)
   }
 
   const staticItems = (ids: ReadonlySet<string>, nextActions: Map<string, KnownAction>, nextGeneration: number): LauncherInternalResultItem[] => {
@@ -206,6 +215,10 @@ export function createLauncherOsExtensions(options: LauncherOsOptions): Readonly
     }
     if (ids.has('SystemCommands')) {
       for (const row of SYSTEM_COMMAND_CATALOG[options.platform]) {
+        if (options.platform === 'Linux' && row.command === 'empty-trash' && options.linuxTrashCapability?.atomic !== true) {
+          report('SystemCommands', new Error('Linux Trash atomic capability is unavailable'))
+          continue
+        }
         const argument = Object.freeze({ command: row.command, kind: 'system-command', version: 1 } as const)
         add(createItem('SystemCommands', systemCommandId(row.name), row.name, 'System Command', row.imageKey, action(argument, row.name, HANDLERS.systemCommand, true), row.details), argument, 'SystemCommands', row.name)
       }
@@ -231,12 +244,12 @@ export function createLauncherOsExtensions(options: LauncherOsOptions): Readonly
     return items
   }
 
-  const loadIndexedItems = async (signal?: AbortSignal): Promise<readonly LauncherInternalResultItem[]> => {
+  const loadIndexedItems = async (signal?: AbortSignal, preserveSignal?: AbortSignal): Promise<readonly LauncherInternalResultItem[]> => {
     if (closed) throw new Error('TockLauncher OS provider is closed')
     if (signal?.aborted) throw abortError(signal, 'TockLauncher OS load canceled')
     const nextGeneration = ++generation
     clearState()
-    abortAll(new Error('TockLauncher OS scan superseded'))
+    abortAll(new Error('TockLauncher OS scan superseded'), preserveSignal)
     const controller = new AbortController()
     activeControllers.add(controller)
     const relay = (): void => { controller.abort(abortError(signal, 'TockLauncher OS load canceled')) }
@@ -321,13 +334,18 @@ export function createLauncherOsExtensions(options: LauncherOsOptions): Readonly
         if (command === undefined || known.displayName !== command.name || !actionIsCurrent(record.argument, known)) throw new Error('System command action is stale')
         if (await options.effects.confirmPrivilegedAction({ detail: 'This operation can interrupt work or permanently remove trashed files.', operation: 'invoke-system-command', title: `${command.name}?` }, controller.signal)) {
           if (!actionIsCurrent(record.argument, known) || controller.signal.aborted) throw new Error('System command action was canceled')
-          await options.effects.invokeSystemCommand(command.command, controller.signal)
+          if (options.platform === 'Linux' && command.command === 'empty-trash') {
+            if (options.linuxTrashCapability?.atomic !== true) throw new Error('Linux Trash atomic capability is unavailable')
+            await options.linuxTrashCapability.empty(controller.signal)
+          } else {
+            await options.effects.invokeSystemCommand(command.command, controller.signal)
+          }
           if (controller.signal.aborted) throw new Error('System command action was canceled')
         }
         return true
       }
       if (record.handlerKey === HANDLERS.controlPanel) {
-        if (extensionId !== 'WindowsControlPanel' || value.kind !== 'control-panel' || options.platform !== 'Windows') throw new Error('Invalid Control Panel action')
+        if (extensionId !== 'WindowsControlPanel' || value.kind !== 'control-panel' || (options.platform !== 'Windows' && options.includeControlPanelFixture !== true)) throw new Error('Invalid Control Panel action')
         const name = currentControlPanel.get(value.canonicalName)
         if (name === undefined || known.displayName !== name || !actionIsCurrent(record.argument, known)) throw new Error('Control Panel action is stale')
         if (await options.effects.confirmPrivilegedAction({ detail: 'Windows may request administrator approval for this Control Panel item.', operation: 'open-control-panel-item', title: `Open ${name}?` }, controller.signal)) {
@@ -352,7 +370,7 @@ export function createLauncherOsExtensions(options: LauncherOsOptions): Readonly
         if (!actionIsCurrent(record.argument, known)) throw new Error('TockLauncher command action is stale')
         await options.effects.invokeUeliCommand(value.command, controller.signal)
         const selfInvalidating = value.command === 'disableHotkey' || value.command === 'enableHotkey' || value.command === 'rescanExtensions'
-        if (!selfInvalidating && (!actionIsCurrent(record.argument, known) || controller.signal.aborted)) throw new Error('TockLauncher command action was canceled')
+        if (controller.signal.aborted || (!selfInvalidating && !actionIsCurrent(record.argument, known))) throw new Error('TockLauncher command action was canceled')
         return true
       }
       return false
@@ -375,5 +393,5 @@ export function createLauncherOsExtensions(options: LauncherOsOptions): Readonly
     await waitForIdle()
   }
 
-  return Object.freeze({ close, executeAction: (record: LauncherActionRecord) => track(executeAction(record)), getLastError, invalidate, loadIndexedItems: (signal?: AbortSignal) => track(loadIndexedItems(signal)), waitForIdle })
+  return Object.freeze({ close, executeAction: (record: LauncherActionRecord) => track(executeAction(record)), getLastError, invalidate, loadIndexedItems: (signal?: AbortSignal, preserveSignal?: AbortSignal) => track(loadIndexedItems(signal, preserveSignal)), waitForIdle })
 }

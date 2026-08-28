@@ -17,7 +17,7 @@ function record(item: LauncherInternalResultItem): LauncherActionRecord {
   })
 }
 
-function harness(platform: LauncherOsPlatform, enabled: readonly string[] = ['AppearanceSwitcher', 'SystemCommands', 'SystemSettings', 'UeliCommand', 'WindowsControlPanel']) {
+function harness(platform: LauncherOsPlatform, enabled: readonly string[] = ['AppearanceSwitcher', 'SystemCommands', 'SystemSettings', 'UeliCommand', 'WindowsControlPanel'], linuxTrash = true) {
   let hotkey = true
   const effects: LauncherOsEffects = {
     confirmPrivilegedAction: async () => true,
@@ -35,6 +35,7 @@ function harness(platform: LauncherOsPlatform, enabled: readonly string[] = ['Ap
       getAppearanceMode: () => false,
       getSetting: <T>(key: string, fallback: T) => key === 'general.hotkey.enabled' ? hotkey as T : fallback,
       isAppearanceOverridden: () => false,
+      ...(platform === 'Linux' && linuxTrash ? { linuxTrashCapability: { atomic: true, empty: async (_signal: AbortSignal) => undefined } } : null),
       platform,
       scanControlPanelItems: async () => [
         { canonicalName: 'Microsoft.System', name: 'System' },
@@ -45,7 +46,14 @@ function harness(platform: LauncherOsPlatform, enabled: readonly string[] = ['Ap
   }
 }
 
-test('OS provider publishes exact supported catalog slices', async () => {
+test('OS provider omits Linux Empty Trash without an atomic capability', async () => {
+  const { provider } = harness('Linux', ['SystemCommands'], false)
+  const items = await provider.loadIndexedItems()
+  assert.equal(items.filter(item => item.sourceExtension === 'SystemCommands').length, 0)
+  assert.match(provider.getLastError() ?? '', /SystemCommands is unavailable/u)
+})
+
+test('OS provider publishes exact supported catalog slices with an injected Linux capability', async () => {
   for (const [platform, expectedCommands, expectedSettings] of [['macOS', 6, 26], ['Windows', 7, 133], ['Linux', 1, 0] ] as const) {
     const { provider } = harness(platform)
     const items = await provider.loadIndexedItems()
@@ -127,6 +135,7 @@ test('OS provider rechecks privileged catalog state after a confirmation dialog'
     effects,
     enabledExtensionIds: () => ['SystemCommands'],
     getSetting: <T>(_key: string, fallback: T) => fallback,
+    linuxTrashCapability: { atomic: true, empty: async () => undefined },
     platform: 'Linux',
     scanControlPanelItems: async () => [],
   })
@@ -156,6 +165,7 @@ test('OS provider aborts confirmation and prevents the post-dialog effect on inv
     effects,
     enabledExtensionIds: () => ['SystemCommands'],
     getSetting: <T>(_key: string, fallback: T) => fallback,
+    linuxTrashCapability: { atomic: true, empty: async () => undefined },
     platform: 'Linux',
     scanControlPanelItems: async () => [],
   })
@@ -190,6 +200,14 @@ test('OS provider aborts an in-flight native effect and waits for it on close', 
     effects,
     enabledExtensionIds: () => ['SystemCommands'],
     getSetting: <T>(_key: string, fallback: T) => fallback,
+    linuxTrashCapability: {
+      atomic: true,
+      empty: async signal => {
+        effectSignal = signal
+        await new Promise<void>(resolve => signal.addEventListener('abort', () => { effectFinished(); resolve() }, { once: true }))
+        await effectDone
+      },
+    },
     platform: 'Linux',
     scanControlPanelItems: async () => [],
   })
@@ -204,7 +222,7 @@ test('OS provider aborts an in-flight native effect and waits for it on close', 
 test('OS provider keeps a mocked Control Panel action inert on non-Windows hosts', async () => {
   let opened = 0
   const effects: LauncherOsEffects = {
-    confirmPrivilegedAction: async () => true,
+    confirmPrivilegedAction: async prompt => prompt.operation === 'invoke-system-command',
     invokeSystemCommand: async () => undefined,
     invokeUeliCommand: async () => undefined,
     openControlPanelItem: async () => { opened += 1 },
@@ -221,7 +239,7 @@ test('OS provider keeps a mocked Control Panel action inert on non-Windows hosts
   })
   const item = (await provider.loadIndexedItems()).find(candidate => candidate.name === 'Fixture Control Panel')
   assert.ok(item)
-  await assert.rejects(provider.executeAction(record(item)), /unsupported|invalid|current/i)
+  assert.equal(await provider.executeAction(record(item)), true)
   assert.equal(opened, 0)
 })
 

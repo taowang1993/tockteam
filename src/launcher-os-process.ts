@@ -319,7 +319,10 @@ async function withTrustedTrashDirectory(
   }
 }
 
-/** Delete only the two standard Linux desktop-trash descendants, never by shell. */
+/**
+ * Test/injected capability only. Node has no portable kernel-enforced unlinkat
+ * containment seam, so production never wires this helper into the OS catalog.
+ */
 export async function emptyLauncherLinuxTrash(homePath: string, signal: AbortSignal = new AbortController().signal, timeoutMs = 15_000): Promise<void> {
   if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 60_000) throw new Error('Invalid trash timeout')
   const deadline = Date.now() + timeoutMs

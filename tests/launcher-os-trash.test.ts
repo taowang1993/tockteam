@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdtemp, mkdir, link, readFile, readdir, realpath, rm, symlink, writeFile } from 'node:fs/promises'
+import { mkdtemp, mkdir, link, readFile, readdir, realpath, rename, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
@@ -74,6 +74,23 @@ test('Linux trash deletion rejects a symlinked fixed directory', { skip: process
   await emptyLauncherLinuxTrash(home)
   await writeFile(join(outside, 'kept'), 'x')
   assert.equal(await readFile(join(outside, 'kept'), 'utf8'), 'x')
+  await rm(home, { recursive: true, force: true })
+  await rm(outside, { recursive: true, force: true })
+})
+
+test('Linux Trash capability stays fail-closed when an open root is moved outside', { skip: process.platform !== 'linux' }, async () => {
+  const home = await realpath(await mkdtemp(join(tmpdir(), 'tockteam-trash-moved-')))
+  const outside = await realpath(await mkdtemp(join(tmpdir(), 'tockteam-trash-moved-outside-')))
+  const trash = join(home, '.local', 'share', 'Trash')
+  const files = join(trash, 'files')
+  await mkdir(files, { recursive: true })
+  await mkdir(join(trash, 'info'), { recursive: true })
+  await writeFile(join(files, 'kept'), 'x')
+  const moved = join(outside, 'files')
+  await rename(files, moved)
+  await mkdir(files)
+  await emptyLauncherLinuxTrash(home)
+  assert.equal(await readFile(join(moved, 'kept'), 'utf8'), 'x')
   await rm(home, { recursive: true, force: true })
   await rm(outside, { recursive: true, force: true })
 })
