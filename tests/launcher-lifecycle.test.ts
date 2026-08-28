@@ -5,6 +5,7 @@ import {
   LauncherToggleIntentQueue,
   SingleOwnedTray,
   attemptSecureRelaunch,
+  attemptSecureRelaunchWithRecovery,
   readLaunchOnStart,
   resolveLauncherLifecycleSettings,
   setLaunchOnStart,
@@ -129,6 +130,18 @@ test('relaunch failure reports without requesting quit', () => {
     requestQuit: () => { calls.push('quit') },
   }), false)
   assert.deepEqual(calls, ['relaunch unavailable'])
+})
+
+test('secure relaunch recovery reconciles before reporting failure', async () => {
+  const calls: string[] = []
+  const result = await attemptSecureRelaunchWithRecovery({
+    reconcile: async () => { calls.push('reconcile') },
+    relaunch: () => { throw new Error('relaunch unavailable') },
+    report: error => { calls.push(`report:${error instanceof Error ? error.message : String(error)}`) },
+    requestQuit: () => { calls.push('quit') },
+  })
+  assert.equal(result, false)
+  assert.deepEqual(calls, ['reconcile', 'report:relaunch unavailable'])
 })
 
 test('owned tray is singleton and destroys only its own instance', () => {

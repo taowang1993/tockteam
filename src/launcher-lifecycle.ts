@@ -96,12 +96,30 @@ export function attemptSecureRelaunch(args: Readonly<{
 }>): boolean {
   try {
     args.relaunch()
+    args.requestQuit()
+    return true
   } catch (error) {
     args.report(error)
     return false
   }
-  args.requestQuit()
-  return true
+}
+
+export async function attemptSecureRelaunchWithRecovery(args: Readonly<{
+  reconcile: () => Promise<void> | void
+  relaunch: () => void
+  report: (error: unknown) => void
+  requestQuit: () => void
+}>): Promise<boolean> {
+  let relaunchError: unknown
+  const relaunched = attemptSecureRelaunch({
+    relaunch: args.relaunch,
+    report: error => { relaunchError = error },
+    requestQuit: args.requestQuit,
+  })
+  if (relaunched) return true
+  try { await args.reconcile() } catch { /* report the original relaunch failure after reconciliation */ }
+  args.report(relaunchError ?? new Error('TockTeam relaunch failed'))
+  return false
 }
 
 /** Owns one native tray and never destroys a tray it did not create. */
@@ -165,7 +183,7 @@ export class LauncherLifecycleController {
     openWorkbenchSettings: () => Promise<void> | void
     overlay: LauncherLifecycleOverlay
     queue: LauncherToggleIntentQueue
-    queueSecureRelaunch?: (reason: 'launcher-settings-import' | 'launcher-settings-reset') => void
+    queueSecureRelaunch?: (reason: 'launcher-settings-import' | 'launcher-settings-reset') => Promise<void> | void
     requestSecureQuit: (reason: 'launcher-command-quit') => void
     rescan: (signal?: AbortSignal) => Promise<unknown>
     setDockVisible: (visible: boolean) => Promise<void> | void
@@ -178,7 +196,7 @@ export class LauncherLifecycleController {
     openWorkbenchSettings: () => Promise<void> | void
     overlay: LauncherLifecycleOverlay
     queue: LauncherToggleIntentQueue
-    queueSecureRelaunch?: (reason: 'launcher-settings-import' | 'launcher-settings-reset') => void
+    queueSecureRelaunch?: (reason: 'launcher-settings-import' | 'launcher-settings-reset') => Promise<void> | void
     requestSecureQuit: (reason: 'launcher-command-quit') => void
     rescan: (signal?: AbortSignal) => Promise<unknown>
     setDockVisible: (visible: boolean) => Promise<void> | void
@@ -291,7 +309,7 @@ export class LauncherLifecycleController {
     const result = await operation()
     if (!result.canceled) {
       await this.sync()
-      this.args.queueSecureRelaunch?.(reason)
+      await this.args.queueSecureRelaunch?.(reason)
     }
     return result
   }
