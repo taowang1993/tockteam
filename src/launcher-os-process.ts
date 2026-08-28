@@ -34,6 +34,10 @@ function boundedText(value: unknown, maximum = MAX_CONTROL_PANEL_TEXT): value is
   return typeof value === 'string' && value.length > 0 && value.length <= maximum && !/[\0\r\n]/u.test(value)
 }
 
+function boundedOutput(value: unknown): value is string {
+  return typeof value === 'string' && value.length > 0 && value.length <= MAX_CONTROL_PANEL_OUTPUT && !/\0/u.test(value)
+}
+
 export function resolveSystemCommandInvocation(
   platform: LauncherOsPlatform,
   command: LauncherSystemCommand,
@@ -85,7 +89,7 @@ export function resolveWindowsControlPanelInvocation(canonicalName: string): Lau
 export type LauncherControlPanelEntry = Readonly<{ canonicalName: string; name: string }>
 
 export function parseWindowsControlPanelItems(output: string): readonly LauncherControlPanelEntry[] {
-  if (!boundedText(output, MAX_CONTROL_PANEL_OUTPUT)) throw new Error('Invalid Windows Control Panel discovery output')
+  if (!boundedOutput(output)) throw new Error('Invalid Windows Control Panel discovery output')
   let parsed: unknown
   try { parsed = JSON.parse(output) } catch { throw new Error('Invalid Windows Control Panel discovery output') }
   if (!Array.isArray(parsed) && (parsed === null || typeof parsed !== 'object')) throw new Error('Invalid Windows Control Panel discovery output')

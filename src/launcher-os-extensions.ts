@@ -102,10 +102,6 @@ function parseActionArgument(raw: string): ActionArgument {
   throw new Error('Invalid TockLauncher OS action argument')
 }
 
-function actionDescription(name: string): string {
-  return name.length <= 512 ? name : name.slice(0, 512)
-}
-
 function createItem(
   sourceExtension: LauncherOsExtensionId,
   id: string,
@@ -280,7 +276,11 @@ export function createLauncherOsExtensions(options: LauncherOsOptions): Readonly
     }
   }
 
-  const actionIsCurrent = (raw: string, known: KnownAction): boolean => currentActions.get(raw) === known && known.catalogGeneration === generation && !closed
+  const actionIsCurrent = (raw: string, known: KnownAction): boolean => currentActions.get(raw) === known
+    && known.catalogGeneration === generation
+    && !closed
+    && enabled().has(known.extensionId)
+    && supportedCatalog(options.platform, known.extensionId)
 
   const executeAction = async (record: LauncherActionRecord): Promise<boolean> => {
     if (!LAUNCHER_OS_EXTENSION_IDS.includes(record.sourceExtension as LauncherOsExtensionId)) return false

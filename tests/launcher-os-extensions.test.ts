@@ -92,6 +92,25 @@ test('OS provider delegates Ueli commands and revokes actions on invalidation', 
   await assert.rejects(provider.executeAction(record(settings)), /current/i)
 })
 
+test('OS provider cancels tracked discovery work when closed', async () => {
+  let observedSignal: AbortSignal | undefined
+  let release!: () => void
+  const pending = new Promise<void>(resolve => { release = resolve })
+  const provider = createLauncherOsExtensions({
+    effects: { confirmPrivilegedAction: async () => true, invokeSystemCommand: async () => undefined, invokeUeliCommand: async () => undefined, openControlPanelItem: async () => undefined, openSystemSetting: async () => undefined, toggleAppearance: async () => undefined },
+    enabledExtensionIds: () => ['WindowsControlPanel'],
+    getSetting: <T>(_key: string, fallback: T) => fallback,
+    platform: 'Windows',
+    scanControlPanelItems: async signal => { observedSignal = signal; await pending; return [] },
+  })
+  const loading = provider.loadIndexedItems()
+  await new Promise(resolve => setImmediate(resolve))
+  const closing = provider.close()
+  assert.equal(observedSignal?.aborted, true)
+  release()
+  await Promise.all([loading.catch(() => undefined), closing])
+})
+
 test('OS provider rechecks privileged catalog state after a confirmation dialog', async () => {
   let release!: () => void
   const gate = new Promise<void>(resolve => { release = resolve })

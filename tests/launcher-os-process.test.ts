@@ -19,7 +19,7 @@ test('OS process adapters expose only fixed executable and argv records', () => 
 test('Control Panel records reject command injection and parse bounded scalar/array output', () => {
   assert.deepEqual(resolveWindowsControlPanelInvocation('Microsoft.System'), { executable: 'control.exe', args: ['/name', 'Microsoft.System'] })
   for (const hostile of ['Microsoft.System;calc', 'Microsoft.System\r\ncalc', 'x'.repeat(257), '']) assert.throws(() => resolveWindowsControlPanelInvocation(hostile), /invalid/i)
-  assert.deepEqual(parseWindowsControlPanelItems(JSON.stringify({ CanonicalName: 'Microsoft.System', Name: 'System' })), [{ canonicalName: 'Microsoft.System', name: 'System' }])
+  assert.deepEqual(parseWindowsControlPanelItems(`\n${JSON.stringify({ CanonicalName: 'Microsoft.System', Name: 'System' })}\n`), [{ canonicalName: 'Microsoft.System', name: 'System' }])
   assert.deepEqual(parseWindowsControlPanelItems(JSON.stringify([
     { CanonicalName: 'Microsoft.System', Name: 'System' },
     { CanonicalName: 'microsoft.system', Name: 'duplicate' },
