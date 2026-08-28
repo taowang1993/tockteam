@@ -324,7 +324,6 @@ async function syncGrantDirectory(sync: (directory: string) => Promise<void>, di
 async function writeGrant(filePath: string, grant: Grant, platform: LauncherCustomBrowserPlatform, parentBinding: GrantParentBinding): Promise<string> {
   if (!samePath(path.dirname(filePath), parentBinding.directory)) throw new Error('Custom browser grant directory changed')
   const parent = await validateGrantParent(parentBinding, platform)
-  if (platform !== 'Windows') await parent.handle?.chmod(0o700)
   const filename = path.basename(filePath)
   const temporaryName = `.custom-browser-grant-${process.pid}-${randomUUID()}.tmp`
   const temporaryCandidates = await parentChildPaths(parent, temporaryName)
@@ -332,13 +331,16 @@ async function writeGrant(filePath: string, grant: Grant, platform: LauncherCust
   let temporary = temporaryCandidates.at(-1)!
   let target = targetCandidates.at(-1)!
   let handle: FileHandle | undefined
+  let created = false
   let renamed = false
   try {
+    if (platform !== 'Windows') await parent.handle?.chmod(0o700)
     for (let index = 0; index < temporaryCandidates.length; index += 1) {
       try {
         temporary = temporaryCandidates[index]!
         target = targetCandidates[index] ?? targetCandidates.at(-1)!
         handle = await open(temporary, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | (HAS_NOFOLLOW ? NOFOLLOW : 0), 0o600)
+        created = true
         break
       } catch (error) {
         if ((error as NodeJS.ErrnoException).code !== 'ENOENT' || index === temporaryCandidates.length - 1) throw error
@@ -356,7 +358,7 @@ async function writeGrant(filePath: string, grant: Grant, platform: LauncherCust
   } finally {
     await handle?.close().catch(() => undefined)
     await closeGrantParent(parent)
-    if (!renamed) {
+    if (!renamed && created) {
       try {
         const cleanupParent = await validateGrantParent(parentBinding, platform)
         await rm(temporary, { force: true })
