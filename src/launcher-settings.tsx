@@ -15,6 +15,7 @@ import { LauncherFileSearchSettings, type LauncherSimpleFileSearchDraft } from '
 import { LauncherNetworkSettings } from './launcher-network-settings.tsx'
 import { LauncherTerminalSettings } from './launcher-terminal-settings.tsx'
 import { LauncherWorkflowSettings } from './launcher-workflow-settings.tsx'
+import { launcherWorkflowSnapshotToken } from './launcher-workflow-contract.ts'
 import type { DesktopBridge } from './contracts.ts'
 import { LAUNCHER_SENSITIVE_SETTING_KEYS, type LauncherSettingsSnapshot } from './launcher-settings-contract.ts'
 import { readPersistedLauncherState } from './launcher-settings-model.ts'
@@ -94,6 +95,8 @@ function LauncherSettingsPage({ close: _close }: SettingsSectionProps): ReactNod
   const settings = bridge?.launcher.settings
   const [snapshot, setSnapshot] = useState<LauncherSettingsSnapshot | null>(null)
   const [snapshotRevision, setSnapshotRevision] = useState(0)
+  const [workflowSnapshotRevision, setWorkflowSnapshotRevision] = useState(0)
+  const workflowSnapshotValue = useRef<string | undefined>(undefined)
   const [status, setStatus] = useState('Loading TockLauncher settings…')
   const [busy, setBusy] = useState(false)
   const [resetPending, setResetPending] = useState(false)
@@ -115,6 +118,11 @@ function LauncherSettingsPage({ close: _close }: SettingsSectionProps): ReactNod
   const reload = useCallback(async (): Promise<LauncherSettingsSnapshot | null> => {
     if (!settings) return null
     const next = await settings.getSnapshot()
+    const serializedWorkflow = launcherWorkflowSnapshotToken(next)
+    if (serializedWorkflow !== workflowSnapshotValue.current) {
+      workflowSnapshotValue.current = serializedWorkflow
+      setWorkflowSnapshotRevision(revision => revision + 1)
+    }
     setSnapshot(next)
     setSnapshotRevision(revision => revision + 1)
     return next
@@ -289,7 +297,7 @@ function LauncherSettingsPage({ close: _close }: SettingsSectionProps): ReactNod
       </SectionCard>
 
       <SectionCard icon={<ShieldCheck aria-hidden="true" className="size-4" />} title="Workflows" description="Compose a bounded ordered sequence of exact native actions. Commands always use a fixed shell policy and trusted Desktop home.">
-        <LauncherWorkflowSettings key={snapshotRevision} busy={busy} save={save} snapshot={snapshot} />
+        <LauncherWorkflowSettings key={workflowSnapshotRevision} busy={busy} save={save} snapshot={snapshot} />
       </SectionCard>
 
       <SectionCard icon={<Globe2 aria-hidden="true" className="size-4" />} title="Network Extensions" description="Configure fixed, bounded network providers without exposing renderer network authority.">

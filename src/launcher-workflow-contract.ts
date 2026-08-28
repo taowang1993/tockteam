@@ -194,6 +194,10 @@ export function isLauncherWorkflows(value: unknown, platform: LauncherTerminalPl
   }
 }
 
+export function launcherWorkflowSnapshotToken(snapshot: LauncherSettingsSnapshot): string | undefined {
+  return JSON.stringify(snapshot.values[LAUNCHER_WORKFLOW_SETTING_KEY])
+}
+
 export function initialLauncherWorkflowSettings(snapshot: LauncherSettingsSnapshot): LauncherWorkflow[] {
   const value = snapshot.values[LAUNCHER_WORKFLOW_SETTING_KEY]
   try { return [...parseLauncherWorkflowsForSettings(value)] }

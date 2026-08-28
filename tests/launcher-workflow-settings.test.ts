@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
-import { createLauncherWorkflowSaveGate, initialLauncherWorkflowSettings, LAUNCHER_WORKFLOW_SETTING_KEY } from '../src/launcher-workflow-contract.ts'
+import { createLauncherWorkflowSaveGate, initialLauncherWorkflowSettings, launcherWorkflowSnapshotToken, LAUNCHER_WORKFLOW_SETTING_KEY } from '../src/launcher-workflow-contract.ts'
 import type { LauncherSettingsSnapshot } from '../src/launcher-settings-contract.ts'
 
 const source = readFileSync(new URL('../src/launcher-workflow-settings.tsx', import.meta.url), 'utf8')
@@ -15,6 +15,15 @@ test('Workflow settings editor preserves foreign-platform entries', () => {
     ] },
   } as unknown as LauncherSettingsSnapshot
   assert.deepEqual(initialLauncherWorkflowSettings(snapshot).map(workflow => workflow.id), ['windows-only'])
+})
+
+test('Workflow snapshot remount token ignores unrelated settings changes but tracks workflow changes', () => {
+  const workflow = [{ id: 'workflow', name: 'Workflow', actions: [{ id: 'command', handlerId: 'ExecuteCommand', name: 'Run', args: { command: 'printf ok' } }] }]
+  const base = { values: { [LAUNCHER_WORKFLOW_SETTING_KEY]: workflow, 'general.language': 'en-US' } } as unknown as LauncherSettingsSnapshot
+  const unrelated = { values: { [LAUNCHER_WORKFLOW_SETTING_KEY]: workflow, 'general.language': 'zh-CN' } } as unknown as LauncherSettingsSnapshot
+  const changed = { values: { [LAUNCHER_WORKFLOW_SETTING_KEY]: [{ ...workflow[0], name: 'Changed' }], 'general.language': 'en-US' } } as unknown as LauncherSettingsSnapshot
+  assert.equal(launcherWorkflowSnapshotToken(base), launcherWorkflowSnapshotToken(unrelated))
+  assert.notEqual(launcherWorkflowSnapshotToken(base), launcherWorkflowSnapshotToken(changed))
 })
 
 test('Workflow settings save gate rejects stale concurrent full-array writes and reopens after failure', async () => {
@@ -55,5 +64,8 @@ test('Workflow settings editor is bounded, ordered, accessible, and main-owned',
   assert.match(source, /Confirm workflow deletion/u)
   assert.match(source, /LAUNCHER_WORKFLOW_SETTING_KEY/u)
   assert.doesNotMatch(source, /node:fs|node:child_process|window\.open|fetch\s*\(/u)
-  assert.match(mainSettings, /<LauncherWorkflowSettings key=\{snapshotRevision\}/u)
+  assert.match(mainSettings, /workflowSnapshotValue/u)
+  assert.match(mainSettings, /serializedWorkflow/u)
+  assert.match(mainSettings, /<LauncherWorkflowSettings key=\{workflowSnapshotRevision\}/u)
+  assert.doesNotMatch(mainSettings, /<LauncherWorkflowSettings key=\{snapshotRevision\}/u)
 })
