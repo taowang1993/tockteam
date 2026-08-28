@@ -88,8 +88,9 @@ packaged source artifacts.
 
 ## Ueli launcher assets
 
-TockTeam packages selected Ueli v9.29.0 launcher assets from the pinned
-provenance tree. Ueli is MIT licensed; source: <https://github.com/oliverschwendener/ueli>.
+TockTeam packages selected Ueli v9.29.0 launcher assets, including the finite
+operating-system extension icons, from the pinned provenance tree. Ueli is MIT
+licensed; source: <https://github.com/oliverschwendener/ueli>.
 Copyright (c) 2023 Oliver Schwendener.
 
 The assets `linux-applications.png` and `linux-generic-app-icon.png` by GNOME Project

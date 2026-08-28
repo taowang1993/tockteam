@@ -10,7 +10,7 @@ function record(item: LauncherInternalResultItem): LauncherActionRecord {
     expiresAt: Date.now() + 30_000,
     handlerKey: item.defaultAction.handlerKey,
     hideWindowAfterInvocation: item.defaultAction.hideWindowAfterInvocation === true,
-    owner: { role: 'launcher', webContentsId: 41 },
+    owner: { role: 'launcher' as const, webContentsId: 41 },
     requiresConfirmation: item.defaultAction.requiresConfirmation === true,
     resultSetId: 'launcher-results:1',
     sourceExtension: item.sourceExtension,
@@ -33,7 +33,7 @@ function harness(platform: LauncherOsPlatform, enabled: readonly string[] = ['Ap
       effects,
       enabledExtensionIds: () => enabled,
       getAppearanceMode: () => false,
-      getSetting: (key, fallback) => key === 'general.hotkey.enabled' ? hotkey : fallback,
+      getSetting: <T>(key: string, fallback: T) => key === 'general.hotkey.enabled' ? hotkey as T : fallback,
       isAppearanceOverridden: () => false,
       platform,
       scanControlPanelItems: async () => [

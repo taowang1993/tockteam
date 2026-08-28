@@ -488,6 +488,111 @@
         "key": "web-search",
         "path": "dist/launcher-assets/web-search.png",
         "sha256": "37667bef690d961232b7d290de1cdac56f8f33e23d4a7a732b95de2a7de3218a"
+      },
+      {
+        "key": "appearance-switcher-dark",
+        "path": "dist/launcher-assets/appearance-switcher-dark.png",
+        "sha256": "0918bc78b8742066d8afbe522e3c47159aadcee50902ce8b39e6b76e94b9bb25"
+      },
+      {
+        "key": "appearance-switcher-light",
+        "path": "dist/launcher-assets/appearance-switcher-light.png",
+        "sha256": "e7642a2d2364376291691734f3b12449c613134e43fbf2de50f525a015376ced"
+      },
+      {
+        "key": "system-command-linux",
+        "path": "dist/launcher-assets/system-command-linux.png",
+        "sha256": "39242bd103fa6dc422affb7cb40a7f864a533f6b94ba2e8bb595f867141d2ac9"
+      },
+      {
+        "key": "system-command-macos-lock-dark",
+        "path": "dist/launcher-assets/system-command-macos-lock-dark.png",
+        "sha256": "efd9efa69b3b1f1e2ae4db45ae1586c983b4681b935b34c283fa5273a2ca4fab"
+      },
+      {
+        "key": "system-command-macos-lock-light",
+        "path": "dist/launcher-assets/system-command-macos-lock-light.png",
+        "sha256": "863b8ecbf73cd9714760d5ad1dd4f66e9997adb329b2c3ce8a37ae583433ef2f"
+      },
+      {
+        "key": "system-command-macos-logout-dark",
+        "path": "dist/launcher-assets/system-command-macos-logout-dark.png",
+        "sha256": "aa9649088899592199b11ce7af7c6b6f8cbacf9e49bd0f9a05acc8e7f66cd1d0"
+      },
+      {
+        "key": "system-command-macos-logout-light",
+        "path": "dist/launcher-assets/system-command-macos-logout-light.png",
+        "sha256": "7d0c0edbcfd0f0bb6c57b8975fafa9869b69a9e4e9cf049d70573729593c3413"
+      },
+      {
+        "key": "system-command-macos-restart-dark",
+        "path": "dist/launcher-assets/system-command-macos-restart-dark.png",
+        "sha256": "af66662b5c3c691770e78f348071d858f0cc760e1d594ff8851f2fe950d63506"
+      },
+      {
+        "key": "system-command-macos-restart-light",
+        "path": "dist/launcher-assets/system-command-macos-restart-light.png",
+        "sha256": "e316a3aa47881d8efc51f13e9fb9a1143e86ac0d9edb2cd18ef6332cdd9cd488"
+      },
+      {
+        "key": "system-command-macos-shutdown-dark",
+        "path": "dist/launcher-assets/system-command-macos-shutdown-dark.png",
+        "sha256": "c035bcba9ac55fe61b7b6ec2a9f7a87b64461de596390279ad9e1180c7be07aa"
+      },
+      {
+        "key": "system-command-macos-shutdown-light",
+        "path": "dist/launcher-assets/system-command-macos-shutdown-light.png",
+        "sha256": "0325906ab4d6019f5cb56c8fa08cbcdef514b06c040cbf2e1ae5a11eba32ebe9"
+      },
+      {
+        "key": "system-command-macos-sleep-dark",
+        "path": "dist/launcher-assets/system-command-macos-sleep-dark.png",
+        "sha256": "1fd624e2ab370a896bd9bc21a777a219f1a4c92295157eee65ecf735dbf9c96b"
+      },
+      {
+        "key": "system-command-macos-sleep-light",
+        "path": "dist/launcher-assets/system-command-macos-sleep-light.png",
+        "sha256": "38914903ea6fd4419492c1e840b0eab4a0b4ed83be8e0d5cac2f50d034e6bac9"
+      },
+      {
+        "key": "system-command-macos",
+        "path": "dist/launcher-assets/system-command-macos.png",
+        "sha256": "c37f0fc743564b621263fcaf937ed97f5fcc5e9329ad31c49c438e7c8c0219e9"
+      },
+      {
+        "key": "system-command-trash",
+        "path": "dist/launcher-assets/system-command-trash.png",
+        "sha256": "e9970c694b14eb163c975f430899500ce863cc4d617294baf7e05ff78447df20"
+      },
+      {
+        "key": "system-command-windows",
+        "path": "dist/launcher-assets/system-command-windows.png",
+        "sha256": "41a80a39d7ea42f606b5cc1de9f133e03147a357360c8bcf8952a1d55d0dbd10"
+      },
+      {
+        "key": "system-settings-macos",
+        "path": "dist/launcher-assets/system-settings-macos.png",
+        "sha256": "c37f0fc743564b621263fcaf937ed97f5fcc5e9329ad31c49c438e7c8c0219e9"
+      },
+      {
+        "key": "system-settings-windows",
+        "path": "dist/launcher-assets/system-settings-windows.png",
+        "sha256": "41a80a39d7ea42f606b5cc1de9f133e03147a357360c8bcf8952a1d55d0dbd10"
+      },
+      {
+        "key": "ueli-command-dark",
+        "path": "dist/launcher-assets/ueli-command-dark.png",
+        "sha256": "3c62491065bec9cee765ebc238b6ae1546ebfd6288e0cf3ba642a4964b82979b"
+      },
+      {
+        "key": "ueli-command-light",
+        "path": "dist/launcher-assets/ueli-command-light.png",
+        "sha256": "35c0b53a23b9ae22aebbc011b3f1e939be37d2a02c1db404320c41d5ff320aa9"
+      },
+      {
+        "key": "control-panel",
+        "path": "dist/launcher-assets/control-panel.png",
+        "sha256": "6581a2084b71e7b65efb9665cd70469fe1cc237dc3c41a9d1c960ee2ce14accb"
       }
     ],
     "launcherNotices": [
@@ -508,6 +613,12 @@
         "source": "THIRD_PARTY_NOTICES.md",
         "license": "CC BY-SA 4.0",
         "attribution": "https://openmoji.org/"
+      },
+      {
+        "id": "ueli-os-assets",
+        "source": "THIRD_PARTY_NOTICES.md",
+        "license": "MIT",
+        "attribution": "https://github.com/oliverschwendener/ueli"
       }
     ],
     "shippedVendorSource": false,

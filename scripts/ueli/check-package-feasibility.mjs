@@ -163,11 +163,33 @@ const EXPECTED_LAUNCHER_ASSETS = Object.freeze([
   ['web-search-duckduckgo', 'web-search-duckduckgo.svg', 'a552810b288ab1511f5ad547957de90d44b4245c364b60a2a90a437532e16f21'],
   ['web-search-google', 'web-search-google.png', 'e2087f585c3b213ba537a56c8bc8e6134c69d6fa1a5728d306df56d697b4e7ab'],
   ['web-search', 'web-search.png', '37667bef690d961232b7d290de1cdac56f8f33e23d4a7a732b95de2a7de3218a'],
+  ['appearance-switcher-dark', 'appearance-switcher-dark.png', '0918bc78b8742066d8afbe522e3c47159aadcee50902ce8b39e6b76e94b9bb25'],
+  ['appearance-switcher-light', 'appearance-switcher-light.png', 'e7642a2d2364376291691734f3b12449c613134e43fbf2de50f525a015376ced'],
+  ['system-command-linux', 'system-command-linux.png', '39242bd103fa6dc422affb7cb40a7f864a533f6b94ba2e8bb595f867141d2ac9'],
+  ['system-command-macos-lock-dark', 'system-command-macos-lock-dark.png', 'efd9efa69b3b1f1e2ae4db45ae1586c983b4681b935b34c283fa5273a2ca4fab'],
+  ['system-command-macos-lock-light', 'system-command-macos-lock-light.png', '863b8ecbf73cd9714760d5ad1dd4f66e9997adb329b2c3ce8a37ae583433ef2f'],
+  ['system-command-macos-logout-dark', 'system-command-macos-logout-dark.png', 'aa9649088899592199b11ce7af7c6b6f8cbacf9e49bd0f9a05acc8e7f66cd1d0'],
+  ['system-command-macos-logout-light', 'system-command-macos-logout-light.png', '7d0c0edbcfd0f0bb6c57b8975fafa9869b69a9e4e9cf049d70573729593c3413'],
+  ['system-command-macos-restart-dark', 'system-command-macos-restart-dark.png', 'af66662b5c3c691770e78f348071d858f0cc760e1d594ff8851f2fe950d63506'],
+  ['system-command-macos-restart-light', 'system-command-macos-restart-light.png', 'e316a3aa47881d8efc51f13e9fb9a1143e86ac0d9edb2cd18ef6332cdd9cd488'],
+  ['system-command-macos-shutdown-dark', 'system-command-macos-shutdown-dark.png', 'c035bcba9ac55fe61b7b6ec2a9f7a87b64461de596390279ad9e1180c7be07aa'],
+  ['system-command-macos-shutdown-light', 'system-command-macos-shutdown-light.png', '0325906ab4d6019f5cb56c8fa08cbcdef514b06c040cbf2e1ae5a11eba32ebe9'],
+  ['system-command-macos-sleep-dark', 'system-command-macos-sleep-dark.png', '1fd624e2ab370a896bd9bc21a777a219f1a4c92295157eee65ecf735dbf9c96b'],
+  ['system-command-macos-sleep-light', 'system-command-macos-sleep-light.png', '38914903ea6fd4419492c1e840b0eab4a0b4ed83be8e0d5cac2f50d034e6bac9'],
+  ['system-command-macos', 'system-command-macos.png', 'c37f0fc743564b621263fcaf937ed97f5fcc5e9329ad31c49c438e7c8c0219e9'],
+  ['system-command-trash', 'system-command-trash.png', 'e9970c694b14eb163c975f430899500ce863cc4d617294baf7e05ff78447df20'],
+  ['system-command-windows', 'system-command-windows.png', '41a80a39d7ea42f606b5cc1de9f133e03147a357360c8bcf8952a1d55d0dbd10'],
+  ['system-settings-macos', 'system-settings-macos.png', 'c37f0fc743564b621263fcaf937ed97f5fcc5e9329ad31c49c438e7c8c0219e9'],
+  ['system-settings-windows', 'system-settings-windows.png', '41a80a39d7ea42f606b5cc1de9f133e03147a357360c8bcf8952a1d55d0dbd10'],
+  ['ueli-command-dark', 'ueli-command-dark.png', '3c62491065bec9cee765ebc238b6ae1546ebfd6288e0cf3ba642a4964b82979b'],
+  ['ueli-command-light', 'ueli-command-light.png', '35c0b53a23b9ae22aebbc011b3f1e939be37d2a02c1db404320c41d5ff320aa9'],
+  ['control-panel', 'control-panel.png', '6581a2084b71e7b65efb9665cd70469fe1cc237dc3c41a9d1c960ee2ce14accb'],
 ].map(([key, fileName, sha256]) => Object.freeze({ key, path: `dist/launcher-assets/${fileName}`, sha256 })))
 const EXPECTED_LAUNCHER_NOTICES = Object.freeze([
   Object.freeze({ id: 'ueli-mit', source: 'THIRD_PARTY_NOTICES.md', license: 'MIT', attribution: 'https://github.com/oliverschwendener/ueli' }),
   Object.freeze({ id: 'gnome-application-search-icons', source: 'THIRD_PARTY_NOTICES.md', license: 'CC BY-SA 3.0', attribution: 'https://www.gnome.org' }),
   Object.freeze({ id: 'openmoji-custom-web-search-icon', source: 'THIRD_PARTY_NOTICES.md', license: 'CC BY-SA 4.0', attribution: 'https://openmoji.org/' }),
+  Object.freeze({ id: 'ueli-os-assets', source: 'THIRD_PARTY_NOTICES.md', license: 'MIT', attribution: 'https://github.com/oliverschwendener/ueli' }),
 ])
 const EXPECTED_FOUNDATION = Object.freeze({
   launcherImplemented: true,
@@ -227,6 +249,14 @@ const EXPECTED_NOTICE_ENTRIES = Object.freeze([
     license: 'mixed',
     attribution: 'Ueli package dependency graph',
     disposition: 'not-admitted',
+  }),
+  Object.freeze({
+    id: 'ueli-os-assets',
+    source: 'vendor/ueli/LICENSE',
+    license: 'MIT',
+    sha256: '8da6c1a79d367a41aadf313019833f4bb3f2ff55f0da5b522fd058183d2f9106',
+    attribution: 'https://github.com/oliverschwendener/ueli',
+    disposition: 'shipped',
   }),
 ])
 const FORBIDDEN_APPLICATION_IDENTITY = /tockbot|works\.tockbot|OliverSchwendener\.Ueli|\bueli\b/iu

@@ -12,6 +12,7 @@ import {
 import { LAUNCHER_DISCOVERY_ASSETS } from '../src/launcher-discovery-assets.ts'
 import { LAUNCHER_FILE_SEARCH_ASSETS } from '../src/launcher-file-search-assets.ts'
 import { LAUNCHER_NETWORK_ASSETS } from '../src/launcher-network-assets.ts'
+import { LAUNCHER_OS_ASSETS } from '../src/launcher-os-assets.ts'
 import { resolveProductVersion } from '../src/version.ts'
 import { adaptBetterSidebarHost } from './better-sidebar-upstream-adapter.mjs'
 import { buildTailwindCss } from './tailwind.mjs'
@@ -280,6 +281,12 @@ for (const asset of LAUNCHER_NETWORK_ASSETS) {
   const source = join(root, asset.source)
   const digest = createHash('sha256').update(readFileSync(source)).digest('hex')
   if (digest !== asset.hash) throw new Error(`TockLauncher network asset drifted: ${asset.key}`)
+  copyFileSync(source, join(dist, 'launcher-assets', asset.fileName))
+}
+for (const asset of LAUNCHER_OS_ASSETS) {
+  const source = join(root, asset.source)
+  const digest = createHash('sha256').update(readFileSync(source)).digest('hex')
+  if (digest !== asset.hash) throw new Error(`TockLauncher OS asset drifted: ${asset.key}`)
   copyFileSync(source, join(dist, 'launcher-assets', asset.fileName))
 }
 

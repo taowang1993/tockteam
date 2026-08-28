@@ -95,6 +95,16 @@ import { createLauncherDiscoveryScanners, launcherNodeSqliteAvailable } from './
 import { createLauncherFileSearchExtensions } from './launcher-file-search.ts'
 import { createLauncherFileSearchScanners } from './launcher-file-search-scanners.ts'
 import { createLauncherNetworkExtensions } from './launcher-network-extensions.ts'
+import { createLauncherOsExtensions } from './launcher-os-extensions.ts'
+import {
+  emptyLauncherLinuxTrash,
+  resolveAppearanceInvocation,
+  resolveSystemCommandInvocation,
+  resolveWindowsControlPanelInvocation,
+  resolveWindowsControlPanelScanInvocation,
+  parseWindowsControlPanelItems,
+} from './launcher-os-process.ts'
+import { MACOS_SYSTEM_SETTINGS, SYSTEM_COMMAND_CATALOG, WINDOWS_SYSTEM_SETTINGS } from './launcher-os-catalog.ts'
 import {
   launchDetachedLauncherExecutable,
   revalidateLauncherExecutable,
@@ -219,6 +229,7 @@ let launcherCoreFlush: (() => Promise<void>) | undefined
 let launcherPersistence: LauncherPersistenceRepository | undefined
 let launcherCustomBrowser: LauncherCustomBrowserController | undefined
 let launcherNetwork: ReturnType<typeof createLauncherNetworkExtensions> | undefined
+let launcherOs: ReturnType<typeof createLauncherOsExtensions> | undefined
 let launcherPersistentSetsSync: (() => void) | undefined
 const launcherSettingsOperations = createLauncherSettingsOperations({ isUnavailable: () => quitting })
 const runtimeStartGate = new RuntimeStartGate<void>()
@@ -860,7 +871,10 @@ function windowIconPath(): string | undefined {
 }
 
 function launcherPlatform(): 'Linux' | 'macOS' | 'Windows' {
-  return process.platform === 'darwin' ? 'macOS' : process.platform === 'win32' ? 'Windows' : 'Linux'
+  if (process.platform === 'darwin') return 'macOS'
+  if (process.platform === 'win32') return 'Windows'
+  if (process.platform === 'linux') return 'Linux'
+  throw new Error('Unsupported TockLauncher platform')
 }
 
 function launcherDefaultContext(): Readonly<{
@@ -1235,6 +1249,79 @@ function initializeLauncher(): void {
     ...(launcherNetworkFixtureEnabled ? { resolveAddresses: async () => ['8.8.8.8'] } : null),
   })
   launcherNetwork = network
+  const os = createLauncherOsExtensions({
+    effects: {
+      confirmPrivilegedAction: async ({ detail, title }) => {
+        const owner = mainWindow
+        const result = owner === undefined || owner.isDestroyed()
+          ? await dialog.showMessageBox({ buttons: ['Continue', 'Cancel'], cancelId: 1, defaultId: 1, detail, message: title, title: PRODUCT_NAME, type: 'warning' })
+          : await dialog.showMessageBox(owner, { buttons: ['Continue', 'Cancel'], cancelId: 1, defaultId: 1, detail, message: title, title: PRODUCT_NAME, type: 'warning' })
+        return result.response === 0
+      },
+      invokeSystemCommand: async command => {
+        if (platform === 'Linux' && command === 'empty-trash') {
+          await emptyLauncherLinuxTrash(app.getPath('home'))
+          return
+        }
+        const invocation = resolveSystemCommandInvocation(platform, command)
+        if (invocation === undefined) throw new Error('System command is unavailable')
+        await execFileAsync(invocation.executable, [...invocation.args], {
+          maxBuffer: 64 * 1024,
+          shell: false,
+          timeout: 15_000,
+          ...(platform === 'Windows' ? { windowsHide: true } : {}),
+        })
+      },
+      invokeUeliCommand: async command => {
+        if (launcherLifecycle === undefined) throw new Error('TockLauncher lifecycle is unavailable')
+        await launcherLifecycle.invokeCommand(command)
+      },
+      openControlPanelItem: async canonicalName => {
+        if (platform !== 'Windows') throw new Error('Windows Control Panel is unavailable')
+        const invocation = resolveWindowsControlPanelInvocation(canonicalName)
+        await execFileAsync(invocation.executable, [...invocation.args], { maxBuffer: 64 * 1024, shell: false, timeout: 15_000, windowsHide: true })
+      },
+      openSystemSetting: async target => {
+        const catalog = platform === 'macOS' ? MACOS_SYSTEM_SETTINGS : WINDOWS_SYSTEM_SETTINGS
+        if (!catalog.some(row => row.target === target)) throw new Error('System setting is not in the current catalog')
+        if (platform === 'Windows') {
+          await shell.openExternal(target)
+          return
+        }
+        const identity = await statLauncherPathIdentity(target)
+        if (identity === undefined || !await revalidateLauncherPath(target, { identity, kind: 'directory' })) throw new Error('System setting is unavailable')
+        const error = await shell.openPath(target)
+        if (error) throw new Error(error)
+      },
+      toggleAppearance: async () => {
+        if (tockTutorPreviousThemeSource !== undefined) throw new Error('System appearance is unavailable during a theme override')
+        const invocation = resolveAppearanceInvocation(platform, nativeTheme.shouldUseDarkColors)
+        await execFileAsync(invocation.executable, [...invocation.args], { maxBuffer: 64 * 1024, shell: false, timeout: 15_000, ...(platform === 'Windows' ? { windowsHide: true } : {}) })
+      },
+    },
+    enabledExtensionIds: launcherEnabledLocalExtensionIds,
+    getAppearanceMode: () => tockTutorPreviousThemeSource === undefined ? nativeTheme.shouldUseDarkColors : undefined,
+    getSetting: (key, fallback) => repository.getSetting(key, fallback),
+    isAppearanceOverridden: () => tockTutorPreviousThemeSource !== undefined,
+    onProviderError: (extensionId, error) => {
+      appendLog('desktop', `TockLauncher provider ${extensionId} failed: ${error.name}`)
+    },
+    platform,
+    scanControlPanelItems: async signal => {
+      if (platform !== 'Windows') return []
+      const invocation = resolveWindowsControlPanelScanInvocation()
+      const result = await execFileAsync(invocation.executable, [...invocation.args], {
+        encoding: 'utf8',
+        maxBuffer: 1_048_576,
+        shell: false,
+        signal,
+        timeout: 15_000,
+        windowsHide: true,
+      }) as unknown as { stdout: string }
+      return parseWindowsControlPanelItems(result.stdout)
+    },
+  })
+  launcherOs = os
   const discoverySettingKeys = new Set([
     'extension[ApplicationSearch].includeWindowsStoreApps', 'extension[ApplicationSearch].linuxFolders', 'extension[ApplicationSearch].macOsFolders',
     'extension[ApplicationSearch].mdfindFilterOption', 'extension[ApplicationSearch].windowsFileExtensions', 'extension[ApplicationSearch].windowsFolders',
@@ -1245,17 +1332,17 @@ function initializeLauncher(): void {
     'extension[CustomWebSearch].customSearchEngines', 'extension[DeeplTranslator].apiKey',
     'extension[DeeplTranslator].defaultSourceLanguage', 'extension[DeeplTranslator].defaultTargetLanguage',
     'extension[WebSearch].locale', 'extension[WebSearch].searchEngine', 'extension[WebSearch].showInstantSearchResult',
-    'general.language',
+    'general.language', 'general.hotkey.enabled',
   ])
   const coreSearch = createLauncherCoreSearch({
     initialExcludedItemIds: repository.getSetting('searchEngine.excludedItems', []),
     initialFavoriteItemIds: repository.getSetting('favorites', []),
     initialIndexedItems: repository.readIndex(),
     appendLog: async (_level, message) => { await repository.appendLog('ERROR', message) },
-    getIndexedError: () => network.getLastError() ?? fileSearch.getLastError(),
+    getIndexedError: () => network.getLastError() ?? fileSearch.getLastError() ?? os.getLastError(),
     loadIndexedItems: async signal => {
       const result = await createTockTeamDestinationResults('')
-      return [...result.before, ...result.after, ...await local.loadIndexedItems(), ...await discovery.loadIndexedItems(signal), ...await fileSearch.loadIndexedItems(signal), ...await network.loadIndexedItems(signal)]
+      return [...result.before, ...result.after, ...await local.loadIndexedItems(), ...await discovery.loadIndexedItems(signal), ...await fileSearch.loadIndexedItems(signal), ...await network.loadIndexedItems(signal), ...await os.loadIndexedItems(signal)]
     },
     searchInstant: async searchTerm => {
       const [localResults, discoveryResults, fileResults, networkResults] = await Promise.all([
@@ -1287,6 +1374,10 @@ function initializeLauncher(): void {
         if (record.hideWindowAfterInvocation) controller?.hideAfterInvocation(record.owner.webContentsId)
         return
       }
+      if (await os.executeAction(record)) {
+        if (record.hideWindowAfterInvocation) controller?.hideAfterInvocation(record.owner.webContentsId)
+        return
+      }
       await executeTockTeamDestination(record, () => {
         if (runtimeUrl === undefined) return false
         return mainWindow === undefined || mainWindow.isDestroyed()
@@ -1302,6 +1393,7 @@ function initializeLauncher(): void {
     actions.clear()
     fileSearch.invalidate()
     network.invalidate()
+    os.invalidate()
     return await coreSearch.rescan()
   }
   launcherRescan = rescan
@@ -1322,9 +1414,11 @@ function initializeLauncher(): void {
   launcherController = nextController
   launcherCoreFlush = async () => {
     const networkClose = network.close()
+    const osClose = os.close()
     await fileSearch.close()
-    await coreSearch.close()
     await networkClose
+    await osClose
+    await coreSearch.close()
   }
   launcherPersistentSetsSync = () => { syncLauncherPersistentSets(coreSearch) }
   const launcherGuard = createLauncherIpcGuard({
@@ -1396,6 +1490,7 @@ function initializeLauncher(): void {
           actions.clear()
           fileSearch.invalidate()
           network.invalidate()
+          os.invalidate()
         }
         try {
           await requireLauncherPersistence().updateSetting(key, value)
@@ -1408,6 +1503,7 @@ function initializeLauncher(): void {
             actions.clear()
             fileSearch.invalidate()
             network.invalidate()
+            os.invalidate()
             try { await launcherRescan?.() } catch { /* retain the original mutation error */ }
           }
           throw reason

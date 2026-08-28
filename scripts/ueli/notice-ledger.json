@@ -35,6 +35,14 @@
       "license": "mixed",
       "attribution": "Ueli package dependency graph",
       "disposition": "not-admitted"
+    },
+    {
+      "id": "ueli-os-assets",
+      "source": "vendor/ueli/LICENSE",
+      "license": "MIT",
+      "sha256": "8da6c1a79d367a41aadf313019833f4bb3f2ff55f0da5b522fd058183d2f9106",
+      "attribution": "https://github.com/oliverschwendener/ueli",
+      "disposition": "shipped"
     }
   ]
 }
