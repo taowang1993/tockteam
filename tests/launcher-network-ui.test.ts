@@ -27,6 +27,12 @@ test('network settings expose all nine settings without hydrating the DeepL key'
   ]) assert.match(settings, new RegExp(key.replace(/[.[\]]/gu, '\\$&'), 'u'), key)
   assert.match(page, /extension\[DeeplTranslator\]\.apiKey/u)
   assert.match(settings, /write-only|write only|encrypted/u)
+  assert.match(settings, /aria-invalid/u)
+  assert.match(settings, /aria-describedby/u)
+  assert.match(settings, /role="alert"/u)
+  assert.match(settings, /Currency codes could not be saved|currency.*invalid/iu)
+  assert.match(settings, /Default target currency could not be saved|target currency.*invalid/iu)
+  assert.match(settings, /Custom search engines could not be saved/u)
   assert.doesNotMatch(tool, /apiKey|DeepL-Auth-Key/u)
 })
 

@@ -170,8 +170,8 @@ const preloadPath = join(currentDir, 'preload.cjs')
 const launcherHtmlPath = join(currentDir, 'launcher.html')
 const launcherNetworkFixtureEnabled = !app.isPackaged && process.env.TOCKTEAM_NETWORK_FIXTURE === '1'
 
-function launcherNetworkFixtureResponse(body: unknown): Response {
-  return new Response(JSON.stringify(body), { headers: { 'content-type': 'application/json' }, status: 200 })
+function launcherNetworkFixtureResponse(body: unknown, init: ResponseInit = {}): Response {
+  return new Response(JSON.stringify(body), { headers: { 'content-type': 'application/json' }, status: 200, ...init })
 }
 
 async function launcherNetworkFixtureFetch(url: string, init?: RequestInit): Promise<Response> {
@@ -184,6 +184,7 @@ async function launcherNetworkFixtureFetch(url: string, init?: RequestInit): Pro
     return launcherNetworkFixtureResponse({ translations: [{ text: 'Fixture translation' }] })
   }
   if (parsed.origin === 'https://www.google.com' && parsed.pathname === '/complete/search') {
+    if (parsed.searchParams.get('q') === 'error') return launcherNetworkFixtureResponse({ error: 'fixture' }, { status: 503 })
     return launcherNetworkFixtureResponse(['fixture', ['fixture latest']])
   }
   throw new Error('Unexpected launcher network fixture URL')

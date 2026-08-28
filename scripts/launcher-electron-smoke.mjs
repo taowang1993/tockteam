@@ -475,6 +475,53 @@ try {
     }
   })()`)
   assert.deepEqual(settingsFacts, { bridgeFrozen: true, catalog: true, hasSecret: false, hasBrowserPath: false, hasBrowserName: false, hasHistorySwitch: true, hasReset: true, liveStatus: true, extensionSwitches: 24, hasDiscoverySettings: true, hasApplicationFolders: true, hasBrowserBookmarks: true, hasVscodeSettings: true, hasFileSearchSettings: true, hasSimpleSearchRoots: false, hasNetworkSettings: true, hasNetworkDisclosure: true })
+  const networkValidationInputs = await workbenchConnection.evaluate(`(() => {
+    const setAndBlur = (selector, value) => {
+      const control = document.querySelector(selector)
+      if (!(control instanceof HTMLInputElement || control instanceof HTMLTextAreaElement)) return false
+      control.value = value
+      control.dispatchEvent(new Event('input', { bubbles: true }))
+      control.dispatchEvent(new Event('blur', { bubbles: true }))
+      return true
+    }
+    return [
+      setAndBlur('[aria-label="Currency codes"]', 'usd, !'),
+      setAndBlur('[aria-label="Default target currency"]', 'USD'),
+      setAndBlur('[aria-label="Custom web search engines JSON"]', '{not json'),
+    ].every(Boolean)
+  })()`)
+  assert.equal(networkValidationInputs, true)
+  await waitFor(
+    () => workbenchConnection.evaluate(`(() => {
+      const read = selector => {
+        const control = document.querySelector(selector)
+        return {
+          invalid: control?.getAttribute('aria-invalid') ?? null,
+          describedBy: control?.getAttribute('aria-describedby') ?? null,
+        }
+      }
+      return {
+        currencies: read('[aria-label="Currency codes"]'),
+        target: read('[aria-label="Default target currency"]'),
+        custom: read('[aria-label="Custom web search engines JSON"]'),
+      }
+    })()`),
+    controls => [controls.currencies, controls.target, controls.custom].every(control => control.invalid === 'true'
+      && control.describedBy !== null && control.describedBy !== ''),
+  )
+  const networkValidationFacts = await workbenchConnection.evaluate(`(async () => {
+    const fields = ['tockteam-currency-error', 'tockteam-target-currency-error', 'tockteam-custom-search-error']
+    const snapshot = await window.dshDesktop?.launcher?.settings?.getSnapshot()
+    let rejected = false
+    try { await window.dshDesktop?.launcher?.settings?.updateSetting('extension[CurrencyConversion].defaultTargetCurrency', 'USD') } catch { rejected = true }
+    return {
+      errors: fields.map(id => document.getElementById(id)?.getAttribute('role') ?? null),
+      currencies: snapshot?.values?.['extension[CurrencyConversion].currencies'] ?? null,
+      target: snapshot?.values?.['extension[CurrencyConversion].defaultTargetCurrency'] ?? null,
+      rejected,
+    }
+  })()`)
+  assert.deepEqual(networkValidationFacts, { errors: ['alert', 'alert', 'alert'], currencies: ['usd', 'eur'], target: 'eur', rejected: true })
   const rapidBrowserToggle = await workbenchConnection.evaluate(`(() => {
     const chrome = document.querySelector('[aria-label="Enable Google Chrome bookmarks"]')
     const firefox = document.querySelector('[aria-label="Enable Firefox bookmarks"]')
@@ -542,11 +589,49 @@ try {
   const networkToolFacts = await launcherConnection.evaluate(`(() => ({
     disclosure: document.querySelector('[aria-label="Web Search tool"]')?.textContent?.includes('Google or DuckDuckGo') ?? false,
     input: document.querySelector('[aria-label="Search term"]')?.getAttribute('maxlength'),
+    statusRole: document.querySelector('[aria-label="Web Search tool"] [role="status"]')?.getAttribute('aria-live'),
+    resultsRole: document.querySelector('[aria-label="Web Search results"]')?.getAttribute('role'),
+    closeLabel: document.querySelector('[aria-label="Close Web Search tool"]')?.getAttribute('aria-label'),
     asset: document.querySelector('[aria-label="Web Search tool"] img')?.getAttribute('src') ?? null,
   }))()`)
-  assert.equal(networkToolFacts.disclosure, true)
-  assert.equal(networkToolFacts.input, '480')
+  assert.deepEqual(networkToolFacts, { disclosure: true, input: '480', statusRole: 'polite', resultsRole: 'list', closeLabel: 'Close Web Search tool', asset: networkToolFacts.asset })
   assert.match(networkToolFacts.asset, /launcher-assets\/web-search\./u)
+  await launcherConnection.evaluate(`(() => {
+    const input = document.querySelector('[aria-label="Search term"]')
+    if (!(input instanceof HTMLInputElement)) return false
+    input.value = 'fixture'
+    input.dispatchEvent(new Event('input', { bubbles: true }))
+    return true
+  })()`)
+  await waitFor(
+    () => launcherConnection.evaluate('document.querySelector(\'[aria-label="Web Search results"]\')?.textContent?.includes("fixture latest") ?? false'),
+    found => found === true,
+  )
+  await launcherConnection.evaluate(`(() => {
+    const input = document.querySelector('[aria-label="Search term"]')
+    if (!(input instanceof HTMLInputElement)) return false
+    input.value = 'error'
+    input.dispatchEvent(new Event('input', { bubbles: true }))
+    return true
+  })()`)
+  await waitFor(
+    () => launcherConnection.evaluate(`(() => ({
+      message: document.querySelector('[aria-label="Web Search tool"] [role="status"]')?.textContent ?? '',
+      tone: document.querySelector('[aria-label="Web Search tool"] [role="status"]')?.getAttribute('data-tone') ?? null,
+    }))()`),
+    state => state.message === 'Web Search is unavailable.' && state.tone === 'error',
+  )
+  await launcherConnection.evaluate(`(() => {
+    const input = document.querySelector('[aria-label="Search term"]')
+    if (!(input instanceof HTMLInputElement)) return false
+    input.value = 'fixture'
+    input.dispatchEvent(new Event('input', { bubbles: true }))
+    return true
+  })()`)
+  await waitFor(
+    () => launcherConnection.evaluate('document.querySelector(\'[aria-label="Web Search results"]\')?.textContent?.includes("fixture latest") ?? false'),
+    found => found === true,
+  )
   await launcherConnection.evaluate(`(() => {
     const button = document.querySelector('[aria-label="Close Web Search tool"]')
     if (!(button instanceof HTMLButtonElement)) return false
@@ -554,6 +639,60 @@ try {
     return true
   })()`)
   await waitFor(() => launcherConnection.evaluate('document.querySelector(\'[aria-label="Web Search tool"]\') === null && document.activeElement?.id === "launcher-search"'), restored => restored === true)
+
+  await launcherConnection.evaluate(`(() => {
+    const input = document.getElementById('launcher-search')
+    if (!(input instanceof HTMLInputElement)) return false
+    input.value = 'DeepL Translator'
+    input.dispatchEvent(new Event('input', { bubbles: true }))
+    return true
+  })()`)
+  await waitFor(
+    () => launcherConnection.evaluate('([...document.querySelectorAll("#launcher-details button")].some(node => node.textContent?.includes("Open DeepL Translator")))'),
+    found => found === true,
+  )
+  await launcherConnection.evaluate(`(() => {
+    const button = [...document.querySelectorAll('#launcher-details button')]
+      .find(node => node.textContent?.includes('Open DeepL Translator'))
+    if (!(button instanceof HTMLButtonElement)) return false
+    button.click()
+    return true
+  })()`)
+  await waitFor(() => launcherConnection.evaluate('document.querySelector(\'[aria-label="DeepL Translator tool"]\') !== null'), found => found === true)
+  const deepLToolFacts = await launcherConnection.evaluate(`(() => ({
+    input: document.querySelector('[aria-label="DeepL Translator tool"] [aria-label="Text to translate"]')?.getAttribute('maxlength'),
+    statusRole: document.querySelector('[aria-label="DeepL Translator tool"] [role="status"]')?.getAttribute('aria-live'),
+    resultsRole: document.querySelector('[aria-label="DeepL Translator results"]')?.getAttribute('role'),
+  }))()`)
+  assert.deepEqual(deepLToolFacts, { input: '480', statusRole: 'polite', resultsRole: 'list' })
+  await launcherConnection.evaluate(`(() => {
+    const input = document.querySelector('[aria-label="Text to translate"]')
+    if (!(input instanceof HTMLTextAreaElement)) return false
+    input.value = 'fixture multiline'
+    input.dispatchEvent(new Event('input', { bubbles: true }))
+    return true
+  })()`)
+  await waitFor(
+    () => launcherConnection.evaluate('document.querySelector(\'[aria-label="DeepL Translator results"]\')?.textContent?.includes("Fixture translation") ?? false'),
+    found => found === true,
+  )
+  const deepLCopy = await launcherConnection.evaluate(`(() => {
+    const row = [...document.querySelectorAll('[aria-label="DeepL Translator results"] li')]
+      .find(node => node.textContent?.includes('Fixture translation'))
+    const button = row?.querySelector('button')
+    if (!(button instanceof HTMLButtonElement)) return false
+    button.click()
+    return true
+  })()`)
+  assert.equal(deepLCopy, true)
+  await waitFor(() => launcherConnection.evaluate('document.activeElement?.getAttribute("aria-label")'), label => label === 'Text to translate')
+  await launcherConnection.evaluate(`(() => {
+    const button = document.querySelector('[aria-label="Close DeepL Translator tool"]')
+    if (!(button instanceof HTMLButtonElement)) return false
+    button.click()
+    return true
+  })()`)
+  await waitFor(() => launcherConnection.evaluate('document.querySelector(\'[aria-label="DeepL Translator tool"]\') === null && document.activeElement?.id === "launcher-search"'), restored => restored === true)
 
   const networkActionFacts = await launcherConnection.evaluate(`(async () => {
     const options = { fuzziness: 0, maxSearchResultItems: 200, searchEngineId: 'fuzzysort' }

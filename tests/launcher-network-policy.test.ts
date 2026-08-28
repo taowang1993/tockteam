@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { isPublicLauncherNetworkAddress, parseLauncherExternalUrl, validateLauncherNetworkUrl } from '../src/launcher-network-extensions.ts'
+import { validateLauncherNetworkTemplate } from '../src/launcher-network-url-policy.ts'
+import { isLauncherRendererSettingValue } from '../src/launcher-settings-contract.ts'
 
 test('network URL policy rejects unsafe schemes, credentials, ports, and private hosts', () => {
   for (const value of [
@@ -18,6 +20,31 @@ test('public-address policy rejects mixed/private and special IPv4 or IPv6 value
   }
   for (const address of ['8.8.8.8', '192.0.1.1', '192.0.3.1', '192.31.195.1', '192.52.194.1', '192.88.98.1', '192.175.47.1']) {
     assert.equal(isPublicLauncherNetworkAddress(address), true, address)
+  }
+})
+
+test('settings and runtime share the same custom URL policy', () => {
+  const accepted = [
+    'https://example.com/search?q={{query}}',
+    'https://public.example/path/{{query}}',
+    'https://[2001:4860:4860::8888]/search?q={{query}}',
+  ]
+  const rejected = [
+    'https://example.com:444/search?q={{query}}',
+    'https://192.168.1.1/search?q={{query}}',
+    'https://[::192.168.1.1]/search?q={{query}}',
+    'https://[2001:db8::1]/search?q={{query}}',
+    'https://example.com/search?q={{query}}&x={{query}}',
+    'https://{{query}}.example.com/search',
+  ]
+  for (const url of accepted) {
+    assert.equal(validateLauncherNetworkTemplate(url), true, url)
+    assert.equal(isLauncherRendererSettingValue('extension[CustomWebSearch].customSearchEngines', [{ encodeSearchTerm: true, id: 'engine', name: 'Engine', prefix: 'e', url }]), true, url)
+    assert.equal(validateLauncherNetworkUrl(url.replace('{{query}}', 'term')), true, url)
+  }
+  for (const url of rejected) {
+    assert.equal(validateLauncherNetworkTemplate(url), false, url)
+    assert.equal(isLauncherRendererSettingValue('extension[CustomWebSearch].customSearchEngines', [{ encodeSearchTerm: true, id: 'engine', name: 'Engine', prefix: 'e', url }]), false, url)
   }
 })
 

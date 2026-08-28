@@ -114,6 +114,28 @@ test('network provider uses fixed custom URL and web search shapes', async () =>
   assert.equal(result.after.length, 3)
 })
 
+test('accepted custom URL settings produce invocation-safe actions', async () => {
+  for (const url of [
+    'https://example.com/search?q={{query}}',
+    'https://[2001:4860:4860::8888]/search?q={{query}}',
+  ]) {
+    const opened: string[] = []
+    const network = createLauncherNetworkExtensions({
+      copyText: () => undefined, enabledExtensionIds: () => ['CustomWebSearch'],
+      fetch: async () => response(JSON.stringify([])),
+      getSetting: <T>(key: string, fallback: T): T => key === 'extension[CustomWebSearch].customSearchEngines'
+        ? [{ encodeSearchTerm: true, id: 'engine', name: 'Engine', prefix: 'e', url }] as T : fallback,
+      openExternal: value => { opened.push(value) }, resolveAddresses: publicResolver,
+    })
+    const result = await network.searchInstant('e hello')
+    const item = result.after[0]
+    assert.ok(item)
+    assert.equal(item.details, item.defaultAction.argument)
+    assert.equal(await network.executeAction(record(item)), true)
+    assert.equal(opened.length, 1)
+  }
+})
+
 test('network result actions require current main-owned map and revalidate URL before opening', async () => {
   const opened: string[] = []
   const provider = createLauncherNetworkExtensions({
@@ -130,6 +152,30 @@ test('network result actions require current main-owned map and revalidate URL b
   await provider.executeAction(record(item))
   assert.deepEqual(opened, ['https://google.com/search?q=hello&hl=en-us'])
   assert.equal(await provider.executeAction(record(item)), true)
+})
+
+test('close clears provider errors after aborting network work', async () => {
+  const network = createLauncherNetworkExtensions({
+    copyText: () => undefined, enabledExtensionIds: () => ['WebSearch'],
+    fetch: async () => { throw new Error('offline') }, getSetting: settings,
+    openExternal: () => undefined, resolveAddresses: publicResolver,
+  })
+  const failed = await network.searchInstant(`${LAUNCHER_WEB_SEARCH_QUERY_PREFIX} unavailable`)
+  assert.equal(failed.lastError, 'Web Search is unavailable.')
+  await network.close()
+  assert.equal(network.getLastError(), undefined)
+})
+
+test('network suggestions validate all entries before compacting result IDs', async () => {
+  const network = createLauncherNetworkExtensions({
+    copyText: () => undefined, enabledExtensionIds: () => ['WebSearch'],
+    fetch: async () => response(JSON.stringify(['term', ['', 'valid-first', 42, 'valid-second', '\ninvalid', ...Array.from({ length: 10 }, (_, index) => `valid-${index}`)]])),
+    getSetting: settings, openExternal: () => undefined, resolveAddresses: publicResolver,
+  })
+  const result = await network.searchInstant(`${LAUNCHER_WEB_SEARCH_QUERY_PREFIX} suggestions`)
+  const suggestions = result.after.filter(item => item.description === 'Suggestion')
+  assert.deepEqual(suggestions.map(item => item.name), ['valid-first', 'valid-second', ...Array.from({ length: 8 }, (_, index) => `valid-${index}`)])
+  assert.deepEqual(suggestions.map(item => item.id), ['web-suggestion:0', 'web-suggestion:1', ...Array.from({ length: 8 }, (_, index) => `web-suggestion:${index + 2}`)])
 })
 
 test('network provider rejects superseded and closed requests without publishing stale results', async () => {

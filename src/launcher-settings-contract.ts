@@ -1,4 +1,5 @@
 import { isLauncherCustomBrowserArgumentTemplate } from './launcher-custom-browser-contract.ts'
+import { validateLauncherNetworkTemplate } from './launcher-network-url-policy.ts'
 import { LAUNCHER_COMPOSITION } from './launcher-contract.ts'
 import { LAUNCHER_INTERNAL_SETTING_KEYS, LAUNCHER_RUNTIME_SETTING_KEYS, LAUNCHER_SENSITIVE_SETTING_KEYS, LAUNCHER_MAIN_OWNED_SETTING_KEYS, isLauncherRuntimeSettingKey } from './launcher-setting-keys.ts'
 import { LAUNCHER_TERMINALS, isLauncherTerminalIds, isLauncherTerminalPrefix } from './launcher-terminal-config.ts'
@@ -121,18 +122,7 @@ function customSearchEngines(value: unknown): boolean {
 }
 
 function publicHttpsTemplate(value: unknown): value is string {
-  if (!boundedString(value, 4_096) || value.indexOf('{{query}}') < 0 || value.indexOf('{{query}}') !== value.lastIndexOf('{{query}}')) return false
-  try {
-    const parsed = new URL(value.replace('{{query}}', 'tockteam-query-placeholder'))
-    const host = parsed.hostname.toLocaleLowerCase('en-US').replace(/\.$/u, '')
-    if (parsed.protocol !== 'https:' || !host || parsed.username || parsed.password || host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.local') || host.includes('tockteam-query-placeholder') || host.includes(':') || !host.includes('.')) return false
-    const ipv4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/u.exec(host)
-    if (!ipv4) return true
-    const parts = ipv4.slice(1).map(Number)
-    if (parts.length !== 4 || parts.some(part => !Number.isSafeInteger(part))) return false
-    const [a, b] = parts
-    return parts.every(part => part <= 255) && a! > 0 && a! < 224 && a! !== 10 && a! !== 127 && !(a === 169 && b === 254) && !(a === 172 && b! >= 16 && b! <= 31) && !(a === 192 && b === 168)
-  } catch { return false }
+  return typeof value === 'string' && validateLauncherNetworkTemplate(value)
 }
 
 function exactBooleanRecord(value: unknown): boolean {

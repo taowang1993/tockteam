@@ -71,6 +71,59 @@ test('every redirect status is rejected without following a chain or loop', asyn
   }
 })
 
+test('status and declared-size exits cancel response bodies without reading them', async () => {
+  for (const status of [300, 301, 302, 303, 307, 308, 500, 502, 599]) {
+    let cancelCount = 0
+    let readCount = 0
+    const network = provider(async () => ({
+      body: { getReader: () => ({
+        cancel: async () => { cancelCount += 1 },
+        read: async () => { readCount += 1; return { done: true, value: undefined } },
+      }) },
+      headers: new Headers({ location: 'https://evil.example/redirect' }), ok: false, status,
+    } as unknown as Response))
+    const result = await network.searchInstant(`${LAUNCHER_WEB_SEARCH_QUERY_PREFIX} status-${status}`)
+    assert.equal(result.lastError, 'Web Search is unavailable.')
+    assert.equal(cancelCount, 1, `status ${status} must cancel its body`)
+    assert.equal(readCount, 0, `status ${status} must not read its body`)
+  }
+
+  let cancelCount = 0
+  let readCount = 0
+  const network = provider(async () => ({
+    body: { getReader: () => ({
+      cancel: async () => { cancelCount += 1 },
+      read: async () => { readCount += 1; return { done: true, value: undefined } },
+    }) },
+    headers: new Headers({ 'content-length': '1048577' }), ok: true, status: 200,
+  } as unknown as Response))
+  const result = await network.searchInstant(`${LAUNCHER_WEB_SEARCH_QUERY_PREFIX} declared-oversize`)
+  assert.equal(result.lastError, 'Web Search is unavailable.')
+  assert.equal(cancelCount, 1)
+  assert.equal(readCount, 0)
+})
+
+test('stalled response-body cancellation is bounded and tracked through close', async () => {
+  let releaseCancel!: () => void
+  let cancelCount = 0
+  const network = provider(async () => ({
+    body: { getReader: () => ({
+      cancel: () => { cancelCount += 1; return new Promise<void>(resolve => { releaseCancel = resolve }) },
+      read: async () => { throw new Error('body must not be read') },
+    }) },
+    headers: new Headers(), ok: false, status: 503,
+  } as unknown as Response))
+  const started = Date.now()
+  const result = await network.searchInstant(`${LAUNCHER_WEB_SEARCH_QUERY_PREFIX} stalled-status`)
+  assert.equal(result.lastError, 'Web Search is unavailable.')
+  assert.equal(cancelCount, 1)
+  assert.ok(Date.now() - started < 250)
+  const closeStarted = Date.now()
+  await network.close()
+  assert.ok(Date.now() - closeStarted < 250)
+  releaseCancel()
+})
+
 test('oversized streamed bodies cancel their reader and malformed UTF-8 remains bounded', async () => {
   let cancelCount = 0
   let readCount = 0
@@ -271,6 +324,24 @@ test('ignored-abort fetch is not replaced unboundedly and close remains bounded'
   const started = Date.now()
   await network.close()
   assert.equal(Date.now() - started < 250, true)
+})
+
+test('load invalidation during raw-operation wait cannot register or publish stale work', async () => {
+  let releaseFetch!: () => void
+  const network = createLauncherNetworkExtensions({
+    copyText: () => undefined, enabledExtensionIds: () => ['WebSearch'],
+    fetch: async () => await new Promise<Response>(resolve => { releaseFetch = () => resolve(response(JSON.stringify(['term', []]))) }),
+    getSetting: baseSettings, openExternal: () => undefined, resolveAddresses: publicResolver,
+  })
+  const pendingSearch = network.searchInstant(`${LAUNCHER_WEB_SEARCH_QUERY_PREFIX} waiting`)
+  await new Promise<void>(resolve => setImmediate(resolve))
+  const pendingLoad = network.loadIndexedItems(new AbortController().signal)
+  await new Promise<void>(resolve => setImmediate(resolve))
+  network.invalidate()
+  releaseFetch()
+  assert.deepEqual(await pendingSearch, { before: [], after: [] })
+  await assert.rejects(pendingLoad, /superseded|canceled/u)
+  await network.close()
 })
 
 test('currency refresh owns and aborts its raw operation', async () => {
