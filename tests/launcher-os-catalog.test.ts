@@ -36,4 +36,5 @@ test('OS catalogs retain exact finite row counts and fixed labels', () => {
   assert.equal(WINDOWS_SYSTEM_SETTINGS.find(row => row.name === 'App volume and device preferences')?.target, 'ms-settings:apps-volume')
   assert.equal(UELI_COMMAND_CATALOG[0]?.name, 'Quit TockTeam')
   assert.equal(UELI_COMMAND_CATALOG.at(-1)?.id, 'ueliCommand:toggleHotkey')
+  assert.equal(SYSTEM_COMMAND_CATALOG.Windows.at(-1)?.imageKey, 'system-command-windows')
 })

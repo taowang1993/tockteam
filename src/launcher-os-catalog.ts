@@ -224,7 +224,7 @@ export const SYSTEM_COMMAND_CATALOG: Readonly<Record<LauncherOsPlatform, readonl
     Object.freeze({ command: 'lock', details: 'Lock this PC', imageKey: 'system-command-windows', name: 'Lock' }),
     Object.freeze({ command: 'sleep', details: 'Put this PC to sleep', imageKey: 'system-command-windows', name: 'Sleep' }),
     Object.freeze({ command: 'hibernate', details: 'Hibernate this PC', imageKey: 'system-command-windows', name: 'Hibernate' }),
-    Object.freeze({ command: 'empty-trash', details: "Empty the current account's Recycle Bin", imageKey: 'system-command-trash', name: 'Empty Recycle Bin' }),
+    Object.freeze({ command: 'empty-trash', details: "Empty the current account's Recycle Bin", imageKey: 'system-command-windows', name: 'Empty Recycle Bin' }),
   ]),
 })
 
