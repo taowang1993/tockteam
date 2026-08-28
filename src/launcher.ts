@@ -135,6 +135,9 @@ async function bootstrap(): Promise<void> {
   let actionMenuOpen = false
   let historyOpen = false
   let invoking = false
+  let invokingWorkflow = false
+  let cancellationPending = false
+  let cancellationRequested = false
   let activeCancellation: Readonly<{ actionId: string; resultSetId: string }> | undefined
   let activeLocalTool: HTMLElement | undefined
   let activeLocalToolId: LauncherLocalToolId | undefined
@@ -161,6 +164,12 @@ async function bootstrap(): Promise<void> {
   const restoreSearchFocus = (): void => {
     search.focus()
     search.select()
+  }
+
+  const setWorkflowBusy = (busy: boolean): void => {
+    search.disabled = busy
+    rescan.disabled = busy
+    historyToggle.disabled = busy || !surfaceSettings.historyEnabled
   }
 
   const closeLocalTool = (): void => {
@@ -229,7 +238,7 @@ async function bootstrap(): Promise<void> {
 
   const renderHistory = (): void => {
     historyToggle.hidden = !surfaceSettings.historyEnabled
-    historyToggle.disabled = !surfaceSettings.historyEnabled
+    historyToggle.disabled = invokingWorkflow || !surfaceSettings.historyEnabled
     if (!surfaceSettings.historyEnabled) {
       history = []
       historyOpen = false
@@ -255,6 +264,7 @@ async function bootstrap(): Promise<void> {
       button.setAttribute('role', 'menuitem')
       button.append(icon(HistoryIcon), document.createTextNode(query))
       button.addEventListener('click', () => {
+        if (invokingWorkflow) return
         search.value = query
         historyOpen = false
         historyPanel.hidden = true
@@ -279,6 +289,7 @@ async function bootstrap(): Promise<void> {
     historyOpen = false
     historyPanel.hidden = true
     historyToggle.setAttribute('aria-expanded', 'false')
+    if (invokingWorkflow) return
     void bridge.getSurfaceSettings().then(current => {
       surfaceSettings = current
       history = current.historyEnabled ? [...current.history] : []
@@ -311,6 +322,7 @@ async function bootstrap(): Promise<void> {
     if (invoking) return
     const candidate = selectedItem()
     const isWorkflowAction = candidate?.sourceExtension === 'Workflow'
+    const invocationResultSetId = currentResultSetId
     const candidateId = candidate?.id.slice('ueli-local:'.length)
     const toolId = candidate !== undefined
       && candidate.id === `ueli-local:${candidate.sourceExtension}`
@@ -327,13 +339,19 @@ async function bootstrap(): Promise<void> {
       && candidate.sourceExtension === (candidate.id.endsWith('DeeplTranslator') ? 'DeeplTranslator' : 'WebSearch')
       && action.actionId === candidate.defaultAction.actionId
     invoking = true
-    if (isWorkflowAction) activeCancellation = Object.freeze({ actionId: action.actionId, resultSetId: currentResultSetId })
+    invokingWorkflow = isWorkflowAction
+    if (invokingWorkflow) setWorkflowBusy(true)
     closeActionMenu(false)
     renderDetails()
     await rememberSearch()
     setStatus(`${action.description}…`, 'muted')
     try {
-      const result = await bridge.invokeAction(action.actionId)
+      const pending = bridge.invokeAction(action.actionId)
+      if (isWorkflowAction) {
+        activeCancellation = Object.freeze({ actionId: action.actionId, resultSetId: invocationResultSetId })
+        renderDetails()
+      }
+      const result = await pending
       if (!result.ok) {
         const refreshed = await renderSearch(search.value)
         if (refreshed) setStatus('Results Refreshed. Try Again.', 'muted')
@@ -360,24 +378,35 @@ async function bootstrap(): Promise<void> {
       restoreSearchFocus()
     } catch {
       await renderSearch(search.value).catch(() => undefined)
-      setStatus(`${action.description} could not be completed.`, 'error')
+      setStatus(cancellationRequested && isWorkflowAction ? 'Workflow canceled.' : `${action.description} could not be completed.`, cancellationRequested && isWorkflowAction ? 'muted' : 'error')
       restoreSearchFocus()
     } finally {
       invoking = false
+      invokingWorkflow = false
       activeCancellation = undefined
+      cancellationPending = false
+      cancellationRequested = false
+      setWorkflowBusy(false)
       renderDetails()
     }
   }
 
   const cancelActiveWorkflow = async (): Promise<void> => {
     const cancellation = activeCancellation
-    if (cancellation === undefined) return
+    if (cancellation === undefined || cancellationPending) return
+    cancellationRequested = true
+    cancellationPending = true
     setStatus('Canceling workflow…', 'muted')
+    renderDetails()
     try {
       await bridge.cancelAction(cancellation.actionId, cancellation.resultSetId)
       setStatus('Workflow canceled.', 'muted')
     } catch {
+      cancellationRequested = false
       setStatus('Workflow could not be canceled.', 'error')
+    } finally {
+      cancellationPending = false
+      renderDetails()
     }
   }
 
@@ -426,6 +455,8 @@ async function bootstrap(): Promise<void> {
       const cancel = document.createElement('button')
       cancel.className = 'inline-flex h-9 shrink-0 items-center gap-1 rounded-lg border border-[var(--dsw-alias-border-l2,CanvasText)] px-2 text-sm hover:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))] focus-visible:outline-2'
       cancel.type = 'button'
+      cancel.disabled = cancellationPending
+      cancel.dataset.testid = 'tocklauncher-cancel-workflow'
       cancel.setAttribute('aria-label', 'Cancel workflow')
       cancel.textContent = 'Cancel'
       cancel.addEventListener('click', () => { void cancelActiveWorkflow() })
@@ -568,6 +599,7 @@ async function bootstrap(): Promise<void> {
   }
 
   async function renderSearch(term: string): Promise<boolean> {
+    if (invokingWorkflow) return false
     const currentRevision = ++revision
     setStatus('Searching…', 'muted')
     try {
@@ -603,12 +635,12 @@ async function bootstrap(): Promise<void> {
   }
 
   launcherThemeRerender = () => {
-    if (activeLocalTool === undefined) void renderSearch(search.value)
+    if (activeLocalTool === undefined && !invokingWorkflow) void renderSearch(search.value)
   }
   close.addEventListener('click', () => { void bridge.dismiss().catch(() => undefined) })
   settings.addEventListener('click', () => { void bridge.openSettings().catch(() => undefined) })
   historyToggle.addEventListener('click', () => {
-    if (!surfaceSettings.historyEnabled) return
+    if (invokingWorkflow || !surfaceSettings.historyEnabled) return
     historyOpen = !historyOpen
     historyPanel.hidden = !historyOpen
     historyToggle.setAttribute('aria-expanded', String(historyOpen))
@@ -637,6 +669,7 @@ async function bootstrap(): Promise<void> {
     }
   })
   rescan.addEventListener('click', async () => {
+    if (invokingWorkflow) return
     rescan.disabled = true
     rescan.setAttribute('aria-busy', 'true')
     setStatus('Rescanning TockLauncher…', 'muted')
@@ -650,7 +683,10 @@ async function bootstrap(): Promise<void> {
       rescan.removeAttribute('aria-busy')
     }
   })
-  search.addEventListener('input', () => { void renderSearch(search.value) })
+  search.addEventListener('input', () => {
+    if (invokingWorkflow) return
+    void renderSearch(search.value)
+  })
   search.addEventListener('keydown', event => {
     if (event.key === 'Escape') {
       event.preventDefault()

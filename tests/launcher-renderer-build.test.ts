@@ -57,6 +57,11 @@ test('launcher renderer stays empty/search-ready and reports bootstrap status', 
   assert.doesNotMatch(launcher, /ipcRenderer|handlerKey|argument/u)
   assert.doesNotMatch(launcher, /fetch\s*\(/u)
   assert.doesNotMatch(launcher, /localStorage|sessionStorage|XMLHttpRequest|WebSocket/u)
+  const invokeStart = launcher.indexOf('const pending = bridge.invokeAction')
+  const cancellationPublication = launcher.indexOf('activeCancellation = Object.freeze', invokeStart)
+  assert.ok(invokeStart >= 0 && cancellationPublication > invokeStart, 'Workflow cancellation must publish only after invocation begins')
+  assert.match(launcher, /invokingWorkflow/u)
+  assert.match(launcher, /search\.disabled/u)
 })
 
 test('local settings controls cover every provider and keep UUID formats bounded', () => {
@@ -90,6 +95,8 @@ test('settings renderer never inserts sensitive values and remounts local contro
   assert.match(fileSearchSettings, /useEffect/u)
   assert.match(fileSearchSettings, /draftFolders/u)
   assert.match(launcherSettings, /<LauncherTerminalSettings key=\{snapshotRevision\}/u)
+  assert.match(launcherSettings, /workflowSnapshotRevision/u)
+  assert.match(launcherSettings, /<LauncherWorkflowSettings key=\{workflowSnapshotRevision\}/u)
   assert.match(terminalSettings, /Terminal Launcher command prefix/u)
   assert.match(terminalSettings, /isLauncherTerminalPrefix/u)
   assert.match(terminalSettings, /unavailable on Linux/u)
