@@ -300,6 +300,8 @@ test('macOS app grants and Linux default-browser fallback remain finite', async 
       { executable: '/usr/bin/open', args: ['-a', await realpath(app), 'http://example.com/'] },
       { executable: '/usr/bin/open', args: ['-a', await realpath(app), 'http://example.com/restarted'] },
     ])
+    await restartedMac.revoke()
+    assert.deepEqual(restartedMac.snapshot(), { platform: 'macOS', status: 'none' })
     await Promise.all([controller.close(), restartedMac.close()])
 
     const linux = harness('Linux', linuxRoot, { 'general.browser.useDefaultWebBrowser': false })
