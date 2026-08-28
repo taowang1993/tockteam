@@ -51,19 +51,23 @@ export const LAUNCHER_OS_ASSETS = Object.freeze(rows.map(row => Object.freeze(ro
 export const LAUNCHER_OS_ASSET_HASHES = Object.freeze(Object.fromEntries(rows.map(row => [row.key, row.hash])) as Record<LauncherOsImageKey, string>)
 export const LAUNCHER_OS_ASSET_URLS = Object.freeze(Object.fromEntries(rows.map(row => [row.key, `./launcher-assets/${row.fileName}`])) as Record<LauncherOsImageKey, string>)
 
-const ALIASES: Readonly<Record<string, LauncherOsImageKey>> = Object.freeze({
-  'appearance-switcher': 'appearance-switcher-dark',
-  'system-command-macos-lock': 'system-command-macos-lock-dark',
-  'system-command-macos-logout': 'system-command-macos-logout-dark',
-  'system-command-macos-restart': 'system-command-macos-restart-dark',
-  'system-command-macos-shutdown': 'system-command-macos-shutdown-dark',
-  'system-command-macos-sleep': 'system-command-macos-sleep-dark',
-  'ueli-command': 'ueli-command-dark',
+export type LauncherOsThemeMode = 'light' | 'dark'
+
+type LauncherOsAssetAlias = Readonly<{ dark: LauncherOsImageKey; light: LauncherOsImageKey }>
+
+const ALIASES: Readonly<Record<string, LauncherOsAssetAlias>> = Object.freeze({
+  'appearance-switcher': Object.freeze({ dark: 'appearance-switcher-light', light: 'appearance-switcher-dark' }),
+  'system-command-macos-lock': Object.freeze({ dark: 'system-command-macos-lock-dark', light: 'system-command-macos-lock-light' }),
+  'system-command-macos-logout': Object.freeze({ dark: 'system-command-macos-logout-dark', light: 'system-command-macos-logout-light' }),
+  'system-command-macos-restart': Object.freeze({ dark: 'system-command-macos-restart-dark', light: 'system-command-macos-restart-light' }),
+  'system-command-macos-shutdown': Object.freeze({ dark: 'system-command-macos-shutdown-dark', light: 'system-command-macos-shutdown-light' }),
+  'system-command-macos-sleep': Object.freeze({ dark: 'system-command-macos-sleep-dark', light: 'system-command-macos-sleep-light' }),
+  'ueli-command': Object.freeze({ dark: 'ueli-command-dark', light: 'ueli-command-light' }),
 })
 
-export function launcherOsAssetUrl(key: string): string | undefined {
+export function launcherOsAssetUrl(key: string, mode: LauncherOsThemeMode = 'light'): string | undefined {
   const resolved = Object.hasOwn(LAUNCHER_OS_ASSET_URLS, key)
     ? LAUNCHER_OS_ASSET_URLS[key as LauncherOsImageKey]
-    : ALIASES[key] === undefined ? undefined : LAUNCHER_OS_ASSET_URLS[ALIASES[key]]
+    : ALIASES[key] === undefined ? undefined : LAUNCHER_OS_ASSET_URLS[ALIASES[key][mode === 'dark' ? 'dark' : 'light']]
   return resolved
 }

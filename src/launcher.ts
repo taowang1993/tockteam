@@ -16,6 +16,7 @@ import type { LauncherPublicAction, LauncherPublicResultItem } from './launcher-
 import type { LauncherSurfaceSettings } from './launcher-contract.ts'
 import type { LauncherPreloadBridge } from './launcher-preload-bridge.ts'
 import type { LauncherThemeProjection } from './launcher-theme.ts'
+import type { LauncherOsThemeMode } from './launcher-os-assets.ts'
 import { createLauncherLocalTool, LAUNCHER_LOCAL_TOOL_IDS, type LauncherLocalToolId } from './launcher-local-tools.ts'
 import { createLauncherFileSearchTool } from './launcher-file-search-tool.ts'
 import { createLauncherNetworkExtensionTool } from './launcher-network-extension-tool.ts'
@@ -42,10 +43,13 @@ document.addEventListener(FOCUS_SEARCH_EVENT, () => { focusSearchHandler() })
 
 let appliedThemeTokens = new Set<string>()
 let appliedThemeRevision = -1
+let appliedThemeMode: LauncherOsThemeMode = 'light'
+let launcherThemeRerender: (() => void) | undefined
 
 function applyLauncherTheme(projection: LauncherThemeProjection): void {
   if (projection.revision < appliedThemeRevision) return
   appliedThemeRevision = projection.revision
+  appliedThemeMode = projection.mode
   const root = document.documentElement
   root.style.colorScheme = projection.mode
   if (projection.skinId === null) delete root.dataset.tockteamSkin
@@ -53,11 +57,13 @@ function applyLauncherTheme(projection: LauncherThemeProjection): void {
   for (const token of appliedThemeTokens) root.style.removeProperty(token)
   appliedThemeTokens = new Set<string>()
   const skin = projection.skinId === null ? undefined : tockTeamSkin(projection.skinId)
-  if (skin === undefined) return
-  for (const [token, value] of Object.entries(skin.tokens)) {
-    root.style.setProperty(token, value)
-    appliedThemeTokens.add(token)
+  if (skin !== undefined) {
+    for (const [token, value] of Object.entries(skin.tokens)) {
+      root.style.setProperty(token, value)
+      appliedThemeTokens.add(token)
+    }
   }
+  launcherThemeRerender?.()
 }
 
 function setReady(ready: boolean): void {
@@ -470,7 +476,7 @@ async function bootstrap(): Promise<void> {
         : undefined
       const packagedAsset = item.imageKey === undefined
         ? undefined
-        : launcherDiscoveryAssetUrl(item.imageKey) ?? launcherFileSearchAssetUrl(item.imageKey) ?? launcherNetworkAssetUrl(item.imageKey) ?? launcherOsAssetUrl(item.imageKey)
+        : launcherDiscoveryAssetUrl(item.imageKey) ?? launcherFileSearchAssetUrl(item.imageKey) ?? launcherNetworkAssetUrl(item.imageKey) ?? launcherOsAssetUrl(item.imageKey, appliedThemeMode)
       const imageUrl = isLauncherImageUrl(item.imageUrl)
         ? item.imageUrl
         : localAsset ?? packagedAsset
@@ -564,6 +570,9 @@ async function bootstrap(): Promise<void> {
     }
   }
 
+  launcherThemeRerender = () => {
+    if (activeLocalTool === undefined) void renderSearch(search.value)
+  }
   close.addEventListener('click', () => { void bridge.dismiss().catch(() => undefined) })
   settings.addEventListener('click', () => { void bridge.openSettings().catch(() => undefined) })
   historyToggle.addEventListener('click', () => {

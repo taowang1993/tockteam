@@ -12,7 +12,12 @@ test('OS asset registry contains the 21 pinned finite assets and local URLs', as
     assert.equal(createHash('sha256').update(source).digest('hex'), asset.hash, asset.key)
     assert.equal(launcherOsAssetUrl(asset.key), `./launcher-assets/${asset.fileName}`)
   }
-  assert.equal(launcherOsAssetUrl('appearance-switcher'), './launcher-assets/appearance-switcher-dark.png')
+  assert.equal(launcherOsAssetUrl('appearance-switcher', 'light'), './launcher-assets/appearance-switcher-dark.png')
+  assert.equal(launcherOsAssetUrl('appearance-switcher', 'dark'), './launcher-assets/appearance-switcher-light.png')
+  assert.equal(launcherOsAssetUrl('system-command-macos-lock', 'light'), './launcher-assets/system-command-macos-lock-light.png')
+  assert.equal(launcherOsAssetUrl('system-command-macos-lock', 'dark'), './launcher-assets/system-command-macos-lock-dark.png')
+  assert.equal(launcherOsAssetUrl('ueli-command', 'light'), './launcher-assets/ueli-command-light.png')
+  assert.equal(launcherOsAssetUrl('ueli-command', 'dark'), './launcher-assets/ueli-command-dark.png')
   assert.equal(launcherOsAssetUrl('data:image/png;base64,AAAA'), undefined)
 })
 
