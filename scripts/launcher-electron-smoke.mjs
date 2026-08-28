@@ -283,9 +283,11 @@ try {
   const osFixtureFacts = await launcherConnection.evaluate(`(async () => {
     const options = { fuzziness: 0.5, maxSearchResultItems: 50, searchEngineId: 'fuzzysort' }
     const read = async term => (await window.tockteamLauncher?.search(term, options))
-    const [appearance, command, setting, ueli, controlPanel] = await Promise.all([
-      read('Toggle System Appearance'), read('Shut Down'), read('System Settings'), read('Quit TockTeam'), read('Fixture Control Panel'),
-    ])
+    const appearance = await read('Toggle System Appearance')
+    const command = await read('Shut Down')
+    const setting = await read('System Settings')
+    const ueli = await read('Quit TockTeam')
+    const controlPanel = await read('Fixture Control Panel')
     const first = value => value?.after?.[0] ?? value?.before?.[0]
     return {
       appearance: first(appearance)?.sourceExtension ?? null,
@@ -329,6 +331,13 @@ try {
   assert.equal(darkThemeFacts.colorScheme, 'dark')
   assert.equal(darkThemeFacts.skin, 'tockteam-skin-deep-current')
   assert.equal(darkThemeFacts.brand, '#49c8eb')
+  await launcherConnection.evaluate(`(() => {
+    const input = document.getElementById('launcher-search')
+    if (!(input instanceof HTMLInputElement)) return false
+    input.value = 'Quit TockTeam'
+    input.dispatchEvent(new Event('input', { bubbles: true }))
+    return true
+  })()`)
   await waitFor(
     () => launcherConnection.evaluate(`(async () => {
       const response = await window.tockteamLauncher?.search('Quit TockTeam', { fuzziness: 0.5, maxSearchResultItems: 50, searchEngineId: 'fuzzysort' })
