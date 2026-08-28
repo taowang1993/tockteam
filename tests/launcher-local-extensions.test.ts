@@ -185,8 +185,9 @@ test('local providers isolate failures and malformed settings fall back safely',
 test('local actions keep payloads main-owned and enforce finite ownership', async () => {
   let copied = ''
   const local = createLauncherLocalExtensions({ ...options, copyText: text => { copied = text } })
-  assert.equal(await local.executeAction(action({ argument: 'secret' })), true)
-  assert.equal(copied, 'secret')
+  const published = (await local.searchInstant('b64e secret')).before[0]!
+  assert.equal(await local.executeAction(action({ argument: published.defaultAction.argument })), true)
+  assert.equal(copied, 'c2VjcmV0')
   assert.equal(await local.executeAction(action({ handlerKey: 'unrelated' })), false)
   await assert.rejects(local.executeAction(action({ sourceExtension: 'Other' })))
   await assert.rejects(local.executeAction(action({ handlerKey: LAUNCHER_LOCAL_ACTION_HANDLERS.open, argument: 'RowlandTextEditor', sourceExtension: 'Base64Conversion' })))
@@ -205,6 +206,21 @@ test('local dynamic results remain bounded and retain complete copy arguments', 
   assert.equal(item.name.length, 512)
 })
 
+test('local action publication generation rejects dispatch after global invalidation', async () => {
+  let copied = ''
+  const local = createLauncherLocalExtensions({ ...options, copyText: text => { copied = text } })
+  const result = await local.searchInstant('b64e Tockbot')
+  const published = result.before[0]!
+  const record = action({
+    argument: published.defaultAction.argument,
+    sourceExtension: published.sourceExtension,
+  })
+  local.invalidate('launcher-owner-clear')
+  await assert.rejects(local.executeAction(record), /canceled|current|stale/u)
+  assert.equal(copied, '')
+  await local.close()
+})
+
 test('local window-clear invalidation aborts a consumed copy effect', async () => {
   let observedSignal: AbortSignal | undefined
   let release!: () => void
@@ -213,7 +229,8 @@ test('local window-clear invalidation aborts a consumed copy effect', async () =
     ...options,
     copyText: async (_text, signal) => { observedSignal = signal; await pendingEffect },
   })
-  const pending = local.executeAction(action({ argument: 'secret' }))
+  const published = (await local.searchInstant('b64e secret')).before[0]!
+  const pending = local.executeAction(action({ argument: published.defaultAction.argument }))
   await new Promise<void>(resolve => setImmediate(resolve))
   local.invalidate('launcher-owner-clear')
   assert.equal(observedSignal?.aborted, true)

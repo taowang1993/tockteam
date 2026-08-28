@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import Color from 'color'
 import { XMLBuilder, XMLParser } from 'fast-xml-parser'
 import { create, all } from 'mathjs'
@@ -281,11 +282,12 @@ export function createLauncherLocalExtensions(options: LocalExtensionOptions): R
   const get = <T>(id: LauncherLocalExtensionId, key: string, fallback: T): T => setting(options, id, key, fallback)
   let closed = false
   let generation = 0
+  const copyArguments = new Map<string, Readonly<{ generation: number; text: string }>>()
   const activeControllers = new Set<AbortController>()
   const activeWork = new Set<Promise<unknown>>()
-  const track = <T>(work: Promise<T>): Promise<T> => {
+  const track = <T>(work: () => Promise<T>): Promise<T> => {
     let tracked!: Promise<T>
-    tracked = work.then(value => { activeWork.delete(tracked); return value }, reason => { activeWork.delete(tracked); throw reason })
+    tracked = Promise.resolve().then(work).then(value => { activeWork.delete(tracked); return value }, reason => { activeWork.delete(tracked); throw reason })
     activeWork.add(tracked)
     return tracked
   }
@@ -296,6 +298,7 @@ export function createLauncherLocalExtensions(options: LocalExtensionOptions): R
   }
   const invalidate = (reason = 'TockLauncher local provider was invalidated', preserveSignal?: AbortSignal): void => {
     ++generation
+    copyArguments.clear()
     abortAll(new Error(reason), preserveSignal)
   }
   const waitForIdle = async (): Promise<void> => {
@@ -336,9 +339,25 @@ export function createLauncherLocalExtensions(options: LocalExtensionOptions): R
     })))
   }
 
-  const present = (item: LauncherInternalResultItem): LauncherInternalResultItem => Object.freeze({ ...item, name: item.name.slice(0, 512) })
+  const privateCopyArgument = (text: string, publicationGeneration: number): string => {
+    let argument = `local-copy:${randomUUID()}`
+    while (copyArguments.has(argument)) argument = `local-copy:${randomUUID()}`
+    copyArguments.set(argument, Object.freeze({ generation: publicationGeneration, text }))
+    return argument
+  }
+  const presentAction = (action: LauncherInternalAction, publicationGeneration: number): LauncherInternalAction => action.handlerKey !== LAUNCHER_LOCAL_ACTION_HANDLERS.copy
+    ? action
+    : Object.freeze({ ...action, argument: privateCopyArgument(action.argument, publicationGeneration) })
+  const present = (item: LauncherInternalResultItem, publicationGeneration: number): LauncherInternalResultItem => Object.freeze({
+    ...item,
+    ...(item.additionalActions === undefined ? {} : { additionalActions: item.additionalActions.map(action => presentAction(action, publicationGeneration)) }),
+    defaultAction: presentAction(item.defaultAction, publicationGeneration),
+    name: item.name.slice(0, 512),
+  })
   const searchInstant = async (term: string): Promise<InstantResult> => {
     if (closed) return emptyInstantResult()
+    copyArguments.clear()
+    const publicationGeneration = generation
     const before: LauncherInternalResultItem[] = []
     const after: LauncherInternalResultItem[] = []
     const active = enabled()
@@ -346,7 +365,7 @@ export function createLauncherLocalExtensions(options: LocalExtensionOptions): R
       if (!active.has(id) || closed) continue
       try {
         const result = (options.searchOverrides?.[id] ?? searchers[id])(term)
-        before.push(...result.before.map(present)); after.push(...result.after.map(present))
+        before.push(...result.before.map(item => present(item, publicationGeneration))); after.push(...result.after.map(item => present(item, publicationGeneration)))
       } catch (error) { options.onProviderError?.(id, error) }
     }
     return Object.freeze({ before: Object.freeze(before), after: Object.freeze(after) })
@@ -355,12 +374,16 @@ export function createLauncherLocalExtensions(options: LocalExtensionOptions): R
     if (closed) throw new Error('TockLauncher local provider is closed')
     if (record.handlerKey === LAUNCHER_LOCAL_ACTION_HANDLERS.copy) {
       if (!localExtension(record.sourceExtension)) throw new Error('Invalid local extension action')
+      const published = copyArguments.get(record.argument)
+      if (published === undefined || published.generation !== generation) throw new Error('TockLauncher local action is stale')
       const controller = new AbortController()
-      const generationAtStart = generation
       activeControllers.add(controller)
       try {
-        await track(Promise.resolve(options.copyText(record.argument, controller.signal)))
-        if (closed || controller.signal.aborted || generation !== generationAtStart) throw new Error('TockLauncher local action was canceled')
+        await track(async () => {
+          if (closed || controller.signal.aborted || generation !== published.generation || copyArguments.get(record.argument) !== published) throw new Error('TockLauncher local action was canceled')
+          await options.copyText(published.text, controller.signal)
+        })
+        if (closed || controller.signal.aborted || generation !== published.generation || copyArguments.get(record.argument) !== published) throw new Error('TockLauncher local action was canceled')
         return true
       } finally { activeControllers.delete(controller) }
     }
