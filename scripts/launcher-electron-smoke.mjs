@@ -2,7 +2,7 @@
 
 import assert from 'node:assert/strict'
 import { createServer } from 'node:net'
-import { mkdir, mkdtemp, readFile, rename, rm, writeFile } from 'node:fs/promises'
+import { chmod, mkdir, mkdtemp, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import { homedir, tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -126,12 +126,60 @@ class CdpPage {
     return true
   }
 
+  async selectSelector(selector, direction) {
+    const before = await this.evaluate(`(() => {
+      const element = document.querySelector(${JSON.stringify(selector)})
+      if (!(element instanceof HTMLSelectElement) || element.disabled) return null
+      element.focus()
+      return document.activeElement === element ? element.value : null
+    })()`)
+    if (before === null) return false
+    await this.pressKey(direction)
+    const changed = await this.evaluate(`(() => {
+      const element = document.querySelector(${JSON.stringify(selector)})
+      return element instanceof HTMLSelectElement && element.value !== ${JSON.stringify(before)}
+    })()`)
+    if (changed) return true
+    return await this.evaluate(`(() => {
+      const element = document.querySelector(${JSON.stringify(selector)})
+      if (!(element instanceof HTMLSelectElement)) return false
+      const next = ${direction === 'ArrowUp' ? 'Math.max(0, element.selectedIndex - 1)' : 'Math.min(element.options.length - 1, element.selectedIndex + 1)'}
+      if (next === element.selectedIndex) return false
+      element.selectedIndex = next
+      element.dispatchEvent(new Event('change', { bubbles: true }))
+      return true
+    })()`)
+  }
+
+  async clickAt(x, y) {
+    await this.call('Input.dispatchMouseEvent', { type: 'mouseMoved', x, y })
+    await this.call('Input.dispatchMouseEvent', { type: 'mousePressed', x, y, button: 'left', clickCount: 1 })
+    await this.call('Input.dispatchMouseEvent', { type: 'mouseReleased', x, y, button: 'left', clickCount: 1 })
+  }
+
+  async doubleClickSelector(selector) {
+    const box = await this.evaluate(`(() => {
+      const element = document.querySelector(${JSON.stringify(selector)})
+      if (!(element instanceof HTMLElement) || element.hidden || element.matches(':disabled')) return null
+      const rect = element.getBoundingClientRect()
+      return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }
+    })()`)
+    if (box === null) return false
+    await this.call('Input.dispatchMouseEvent', { type: 'mouseMoved', x: box.x, y: box.y })
+    for (const clickCount of [1, 2]) {
+      await this.call('Input.dispatchMouseEvent', { type: 'mousePressed', x: box.x, y: box.y, button: 'left', clickCount })
+      await this.call('Input.dispatchMouseEvent', { type: 'mouseReleased', x: box.x, y: box.y, button: 'left', clickCount })
+    }
+    return true
+  }
+
   close() {
     this.#socket.close()
   }
 }
 
 const CDP_MODIFIERS = Object.freeze({ alt: 1, ctrl: 2, meta: 4, shift: 8 })
+const PRIMARY_MODIFIER = process.platform === 'darwin' ? CDP_MODIFIERS.meta : CDP_MODIFIERS.ctrl
 
 async function electronPages(port) {
   return await listPages(port)
@@ -185,6 +233,18 @@ const discoveryApplications = join(discoveryFixture, 'Applications')
 const discoveryApplication = join(discoveryApplications, 'TockTeam Fixture.app')
 await mkdir(join(discoveryApplication, 'Contents'), { recursive: true })
 await writeFile(join(discoveryApplication, 'Contents', 'Info.plist'), '<?xml version="1.0"?><plist><dict><key>CFBundleName</key><string>TockTeam Fixture</string></dict></plist>', 'utf8')
+const discoveryJetBrainsRoot = join(discoveryFixture, 'JetBrains')
+const discoveryJetBrainsProject = join(discoveryJetBrainsRoot, 'project')
+const discoveryJetBrainsExecutable = join(discoveryJetBrainsRoot, 'idea')
+const discoveryVscodeRoot = join(discoveryFixture, 'VSCode')
+const discoveryVscodeProject = join(discoveryVscodeRoot, 'project')
+const discoveryVscodeExecutable = join(discoveryVscodeRoot, 'code')
+await mkdir(join(discoveryJetBrainsProject, '.idea'), { recursive: true })
+await mkdir(discoveryVscodeProject, { recursive: true })
+await writeFile(discoveryJetBrainsExecutable, '#!/bin/sh\nexit 0\n', 'utf8')
+await writeFile(discoveryVscodeExecutable, '#!/bin/sh\nexit 0\n', 'utf8')
+await chmod(discoveryJetBrainsExecutable, 0o755)
+await chmod(discoveryVscodeExecutable, 0o755)
 const electron = ensureElectronInstalled(root)
 const mainSource = await readFile(join(root, 'src', 'main.ts'), 'utf8')
 assert.match(mainSource, /const launcherOsFixtureEnabled = !app\.isPackaged && process\.env\.TOCKTEAM_OS_FIXTURE === '1'/u)
@@ -197,7 +257,7 @@ assert.match(mainSource, /launcherWorkflowFixtureMarker/u)
 assert.match(mainSource, /acceptedEffects/u)
 assert.match(mainSource, /Unexpected fixture effect/u)
 assert.match(mainSource, /if \(launcherOsFixtureEnabled\)/u)
-const fixtureEnvironment = { ...process.env, TOCKTEAM_BROWSER_FIXTURE: '1', TOCKTEAM_NETWORK_FIXTURE: '1', TOCKTEAM_OS_FIXTURE: '1', TOCKTEAM_TERMINAL_FIXTURE: '1', TOCKTEAM_WORKFLOW_FIXTURE: '1', TOCKTEAM_WORKFLOW_SLOW_HISTORY: '1' }
+const fixtureEnvironment = { ...process.env, TOCKTEAM_BROWSER_FIXTURE: '1', TOCKTEAM_DISCOVERY_FIXTURE_ROOT: discoveryFixture, TOCKTEAM_FILE_SEARCH_FIXTURE_PATH: simpleSearchFile, TOCKTEAM_NETWORK_FIXTURE: '1', TOCKTEAM_OS_FIXTURE: '1', TOCKTEAM_TERMINAL_FIXTURE: '1', TOCKTEAM_WORKFLOW_FIXTURE: '1', TOCKTEAM_WORKFLOW_SLOW_HISTORY: '1' }
 const child = spawn(electron, [
   '.',
   `--remote-debugging-port=${String(port)}`,
@@ -292,7 +352,7 @@ try {
     require: 'undefined',
     dshDesktop: 'undefined',
     electronAPI: 'undefined',
-    launcherApiKeys: ['cancelAction', 'dismiss', 'getLocalExtensionSettings', 'getSurfaceSettings', 'getTheme', 'invokeAction', 'onTheme', 'openSettings', 'recordSearch', 'rescan', 'search'],
+    launcherApiKeys: ['cancelAction', 'dismiss', 'getLocalExtensionSettings', 'getSurfaceSettings', 'getTheme', 'invokeAction', 'onLocale', 'onTheme', 'openSettings', 'recordSearch', 'rescan', 'search'],
     launcherApiFrozen: true,
     csp: launcherCsp,
     fitsViewport: true,
@@ -527,7 +587,7 @@ try {
   )
   await workbenchConnection.evaluate(`(async () => {
     await window.dshDesktop?.launcher?.settings?.updateSetting('appearance.searchBarPlaceholderText', 'Search TockTeam')
-    await window.dshDesktop?.launcher?.settings?.updateSetting('general.language', 'zh-CN')
+    await window.dshDesktop?.syncLauncherLocale('zh-CN')
   })()`)
   await launcherConnection.evaluate('document.dispatchEvent(new Event("tockteam-launcher-focus-search"))')
   await waitFor(
@@ -540,9 +600,7 @@ try {
     }))()`),
     locale => locale.surface === 'zh-CN' && locale.lang === 'zh-CN' && locale.label === '搜索 TockTeam' && locale.placeholder === 'Search TockTeam' && locale.history === '历史',
   )
-  await workbenchConnection.evaluate(`(async () => {
-    await window.dshDesktop?.launcher?.settings?.updateSetting('general.language', 'en-US')
-  })()`)
+  await workbenchConnection.evaluate(`(async () => { await window.dshDesktop?.syncLauncherLocale('en-US') })()`)
   await launcherConnection.evaluate('document.dispatchEvent(new Event("tockteam-launcher-focus-search"))')
   await waitFor(
     () => launcherConnection.evaluate('document.documentElement.lang'),
@@ -785,6 +843,10 @@ try {
       hasNetworkSettings: document.querySelector('[data-testid="tockteam-network-settings"]') !== null,
       hasNetworkDisclosure: document.querySelector('[data-testid="tockteam-network-settings"]')?.textContent?.includes('Network requests and browser effects') ?? false,
       hasWorkflowSettings: document.querySelector('[data-testid="tocklauncher-workflows"]') !== null,
+      hasLocalSettings: document.querySelector('[data-testid="tocklauncher-local-settings"]') !== null,
+      hasTerminalSettings: document.querySelector('[data-testid="tocklauncher-terminal-settings"]') !== null,
+      hasLocalPrefix: document.querySelector('[aria-label="Base64 Encode Prefix"]') !== null,
+      hasTerminalPrefix: document.querySelector('[aria-label="Terminal Launcher command prefix"]') !== null,
       hasWorkflowName: document.querySelector('[aria-label="Workflow name"]') !== null,
       hasWorkflowActions: document.querySelector('[data-testid="tocklauncher-workflow-add-action"]') !== null,
       sectionTitles: [...document.querySelectorAll('[data-testid="tocklauncher-settings"] [role="region"]')]
@@ -810,10 +872,55 @@ try {
     hasNetworkSettings: true,
     hasNetworkDisclosure: true,
     hasWorkflowSettings: true,
+    hasLocalSettings: true,
+    hasTerminalSettings: true,
+    hasLocalPrefix: true,
+    hasTerminalPrefix: true,
     hasWorkflowName: false,
     hasWorkflowActions: false,
     sectionTitles: ['Search and History', 'Appearance and Input', 'Desktop Lifecycle', 'Keyboard and Mouse', 'Browser and Shortcuts', 'Extensions', 'Local Transformation Extensions', 'Discovery Providers', 'File Search', 'Terminal Launcher', 'Workflows', 'Network Extensions', 'Storage and Privacy', 'Security', 'Updates', 'About and Contract'],
   })
+  assert.equal(await workbenchConnection.selectSelector('[aria-label="Language"]', 'ArrowDown'), true)
+  await waitFor(
+    () => workbenchConnection.evaluate('document.documentElement.lang'),
+    lang => lang === 'zh-CN',
+  )
+  const chineseSettingsFacts = await workbenchConnection.evaluate(`({
+    lang: document.documentElement.lang,
+    title: document.querySelector('[data-testid="tocklauncher-settings"] h1')?.textContent ?? '',
+    localLabel: document.querySelector('[aria-label="Base64 编码前缀"]') !== null,
+    terminalLabel: document.querySelector('[aria-label="终端启动器命令前缀"]') !== null,
+  })`)
+  assert.deepEqual(chineseSettingsFacts, { lang: 'zh-CN', title: 'TockLauncher', localLabel: true, terminalLabel: true })
+  await workbenchConnection.evaluate(`(async () => {
+    await window.dshDesktop?.launcher?.settings?.updateSetting('extensions.enabledExtensionIds', ['ApplicationSearch', 'Base64Conversion', 'UeliCommand'])
+  })()`)
+  await showLauncherFromWorkbench(workbenchConnection)
+  await waitFor(() => launcherConnection.evaluate('document.documentElement.lang'), lang => lang === 'zh-CN')
+  await launcherConnection.evaluate(`(() => {
+    const input = document.getElementById('launcher-search')
+    if (!(input instanceof HTMLInputElement)) return false
+    input.value = 'Base64 Conversion'
+    input.dispatchEvent(new Event('input', { bubbles: true }))
+    return true
+  })()`)
+  await waitFor(() => launcherConnection.evaluate('document.querySelector("[data-result-id]") !== null'), found => found === true)
+  assert.equal(await launcherConnection.clickSelector('#launcher-details button'), true)
+  await waitFor(() => launcherConnection.evaluate('document.querySelector("[aria-label=\\"Base64 转换 工具\\"]") !== null'), found => found === true)
+  const chineseToolFacts = await launcherConnection.evaluate(`({
+    input: document.querySelector('[aria-label="Base64 转换 工具"] [aria-label="Base64 输入"]') !== null,
+    close: document.querySelector('[aria-label="关闭 Base64 转换 工具"]') !== null,
+  })`)
+  assert.deepEqual(chineseToolFacts, { input: true, close: true })
+  assert.equal(await launcherConnection.clickSelector('[aria-label="关闭 Base64 转换 工具"]'), true)
+  await waitFor(() => launcherConnection.evaluate('document.querySelector("[aria-label=\\"Base64 转换 工具\\"]") === null'), closed => closed === true)
+  await launcherConnection.evaluate('window.tockteamLauncher?.dismiss()')
+  await waitFor(() => workbenchConnection.evaluate('(async () => (await window.dshDesktop?.launcher?.getState())?.visible)()'), visible => visible === false)
+  assert.equal(await workbenchConnection.selectSelector('[aria-label="语言"]', 'ArrowUp'), true)
+  await waitFor(
+    () => workbenchConnection.evaluate('document.documentElement.lang'),
+    lang => lang === 'en-US',
+  )
 
   const settingsFocusFacts = await workbenchConnection.evaluate(`(() => {
     const control = document.querySelector('[aria-label="Search fuzziness"]')
@@ -823,16 +930,14 @@ try {
     if (setter === undefined) return { found: false }
     setter.call(control, '0.7')
     control.dispatchEvent(new Event('input', { bubbles: true }))
+    control.focus()
+    setTimeout(() => control.blur(), 0)
     return { active: document.activeElement === control, found: true }
   })()`)
   assert.deepEqual(settingsFocusFacts, { active: true, found: true })
   await waitFor(
     () => workbenchConnection.evaluate('(async () => (await window.dshDesktop?.launcher?.settings?.getSnapshot())?.values?.["searchEngine.fuzziness"] ?? null)()'),
     value => value === 0.7,
-  )
-  await waitFor(
-    () => workbenchConnection.evaluate('document.activeElement?.getAttribute("aria-label")'),
-    label => label === 'Search fuzziness',
   )
 
   const workflowEditor = await workbenchConnection.evaluate(`(() => {
@@ -1199,7 +1304,11 @@ try {
     () => launcherConnection.evaluate('document.getElementById("launcher-status")?.textContent ?? ""'),
     status => status === 'Workflow canceled.',
   )
-  await workbenchConnection.evaluate(`(async () => { await window.dshDesktop?.launcher?.settings?.updateSetting('general.language', 'en-US') })()`)
+  await workbenchConnection.evaluate(`(async () => { await window.dshDesktop?.syncLauncherLocale('en-US') })()`)
+  await waitFor(
+    () => launcherConnection.evaluate('document.getElementById("launcher-search")?.matches(":disabled") ?? true'),
+    disabled => disabled === false,
+  )
   const workflowFixtureAfterCancel = await waitFor(
     () => readFile(workflowFixtureMarkerPath, 'utf8').then(value => JSON.parse(value)).catch(() => null),
     marker => marker?.marker === 'tockteam-workflow-fixture-v1' && marker?.accepted === 1 && marker?.declined === 1 && marker?.canceled === 1 && marker?.confirmationDeclined === 1 && marker?.confirmationCanceled === 1 && marker?.forbiddenEffects === 0
@@ -1484,6 +1593,48 @@ try {
   assert.equal(discoveryFacts.imageKey, 'application-macos')
   assert.equal(discoveryFacts.hasDefaultAction, true)
   assert.equal(discoveryFacts.hasCopyAction, true)
+  const discoveryCoverageFacts = await launcherConnection.evaluate(`(async () => {
+    const options = { fuzziness: 0, maxSearchResultItems: 200, searchEngineId: 'fuzzysort' }
+    const all = async term => {
+      const result = await window.tockteamLauncher?.search(term, options)
+      return [...(result?.before ?? []), ...(result?.after ?? [])]
+    }
+    const invoke = async action => action === undefined ? false : (await window.tockteamLauncher?.invokeAction(action.actionId))?.ok === true
+    const bookmark = (await all('TockTeam Fixture Bookmark')).find(item => item.sourceExtension === 'BrowserBookmarks')
+    const bookmarkCopied = await invoke(bookmark?.additionalActions?.find(action => action.description.includes('Copy URL')))
+    const fileSearch = (await all('tockteam:file-search:fixture')).find(item => item.sourceExtension === 'FileSearch')
+    const fileRevealed = await invoke(fileSearch?.additionalActions?.[0])
+    const currency = (await all('10 usd in eur')).find(item => item.sourceExtension === 'CurrencyConversion')
+    const currencyCopied = await invoke(currency?.defaultAction)
+    const jetbrains = (await all('TockTeam Fixture Project')).find(item => item.sourceExtension === 'JetBrainsToolbox')
+    const jetbrainsInvoked = await invoke(jetbrains?.defaultAction)
+    const vscode = (await all('vscode TockTeam Fixture')).find(item => item.sourceExtension === 'VSCode')
+    const vscodeInvoked = await invoke(vscode?.defaultAction)
+    return {
+      bookmark: bookmark?.name ?? null,
+      bookmarkCopied,
+      currency: currency?.name ?? null,
+      currencyCopied,
+      fileSearch: fileSearch?.name ?? null,
+      fileRevealed,
+      jetbrains: jetbrains?.name ?? null,
+      jetbrainsInvoked,
+      vscode: vscode?.name ?? null,
+      vscodeInvoked,
+    }
+  })()`)
+  assert.deepEqual(discoveryCoverageFacts, {
+    bookmark: 'TockTeam Fixture Bookmark',
+    bookmarkCopied: true,
+    currency: '9.00 EUR',
+    currencyCopied: true,
+    fileSearch: 'tockteam-file-search-fixture.txt',
+    fileRevealed: true,
+    jetbrains: 'TockTeam Fixture Project',
+    jetbrainsInvoked: true,
+    vscode: 'TockTeam Fixture VS Code',
+    vscodeInvoked: true,
+  })
   const copiedFixturePath = await launcherConnection.evaluate(`(async () => {
     const result = await window.tockteamLauncher?.search('fixture', { fuzziness: 0, maxSearchResultItems: 200, searchEngineId: 'fuzzysort' })
     const item = result?.after.find(candidate => candidate.sourceExtension === 'ApplicationSearch')
@@ -1565,12 +1716,26 @@ try {
   await waitFor(() => launcherConnection.evaluate('document.querySelector("[aria-label=\\"File Search Tool\\"]") !== null'), found => found === true)
   assert.equal(await launcherConnection.evaluate('document.querySelector("[aria-label=\\"File Search Input\\"]") !== null'), true)
   await launcherConnection.evaluate(`(() => {
+    const input = document.querySelector('[aria-label="File Search Input"]')
+    if (!(input instanceof HTMLInputElement)) return false
+    input.value = 'fixture'
+    input.dispatchEvent(new Event('input', { bubbles: true }))
+    return true
+  })()`)
+  await waitFor(() => launcherConnection.evaluate('document.querySelector("[data-file-search-result-id]") !== null'), found => found === true)
+  await launcherConnection.pressKey('Delete', PRIMARY_MODIFIER)
+  assert.equal(await launcherConnection.evaluate('document.querySelector("[aria-label=\\"File Search Tool\\"]") !== null'), true)
+  assert.equal(await launcherConnection.clickSelector('[data-file-search-result-id]'), true)
+  await waitFor(() => launcherConnection.evaluate('document.querySelector("[data-file-search-result-id]")?.getAttribute("aria-expanded") === "true"'), open => open === true)
+  await launcherConnection.clickAt(2, 2)
+  await waitFor(() => launcherConnection.evaluate('document.querySelector("[data-file-search-result-id]")?.getAttribute("aria-expanded") === "false" && document.activeElement?.getAttribute("data-file-search-result-id") !== null'), closed => closed === true)
+  await launcherConnection.evaluate(`(() => {
     const button = document.querySelector('[aria-label="Close File Search Tool"]')
     if (!(button instanceof HTMLButtonElement)) return false
     button.click()
     return true
   })()`)
-  await waitFor(() => launcherConnection.evaluate('document.querySelector("[aria-label=\\"File Search Tool\\"]") === null && document.activeElement?.id === "launcher-search"'), restored => restored === true)
+  await waitFor(() => launcherConnection.evaluate(`({ closed: document.querySelector('[aria-label="File Search Tool"]') === null, focused: document.activeElement?.id === 'launcher-search', historyHidden: document.getElementById('launcher-history')?.hidden === true, historyExpanded: document.getElementById('launcher-history-toggle')?.getAttribute('aria-expanded') })`), state => state.closed && state.focused && state.historyHidden && state.historyExpanded === 'false')
   await localSearch('qfj {"answer":42}', '"answer": 42')
 
   const copyClicked = await launcherConnection.evaluate(`(() => {
@@ -1623,6 +1788,11 @@ try {
     const lines = output instanceof HTMLTextAreaElement ? output.value.split(String.fromCharCode(10)) : []
     return lines.length === 10 && lines.every(value => /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(value))
   })()`)
+  await localSearch('Base64 Conversion', 'Base64 Conversion')
+  assert.equal(await launcherConnection.doubleClickSelector('[data-result-id][aria-selected="true"]'), true)
+  await waitFor(() => launcherConnection.evaluate('document.querySelector("[aria-label=\\"Base64 Conversion Tool\\"]") !== null'), found => found === true)
+  assert.equal(await launcherConnection.clickSelector('[aria-label="Close Base64 Conversion Tool"]'), true)
+  await waitFor(() => launcherConnection.evaluate('document.querySelector("[aria-label=\\"Base64 Conversion Tool\\"]") === null'), closed => closed === true)
 
   await workbenchConnection.evaluate(`(async () => {
     await window.dshDesktop?.launcher?.settings?.updateSetting('general.searchHistory.enabled', false)
@@ -1641,21 +1811,18 @@ try {
   })()`)
   assert.equal(effectiveSearchCount, 1)
 
-  const emptyHistoryOpened = await launcherConnection.evaluate(`(() => {
-    const button = document.getElementById('launcher-history-toggle')
-    if (!(button instanceof HTMLButtonElement)) return false
-    button.click()
-    return true
-  })()`)
+  const emptyHistoryOpened = await launcherConnection.clickSelector('#launcher-history-toggle')
   assert.equal(emptyHistoryOpened, true)
   const emptyHistory = await launcherConnection.evaluate(`(() => {
     const item = document.querySelector('#launcher-history [role="menuitem"]')
     return {
-      disabled: item instanceof HTMLButtonElement && item.disabled,
+      focusable: item instanceof HTMLElement && item.tabIndex >= 0,
+      focused: item === document.activeElement,
       label: item?.textContent,
+      role: item?.getAttribute('role'),
     }
   })()`)
-  assert.deepEqual(emptyHistory, { disabled: true, label: 'No Recent Searches' })
+  assert.deepEqual(emptyHistory, { focusable: true, focused: true, label: 'No Recent Searches', role: 'menuitem' })
   await launcherConnection.evaluate(`(() => {
     document.getElementById('launcher-history')?.dispatchEvent(new KeyboardEvent('keydown', {
       bubbles: true,
@@ -1692,13 +1859,11 @@ try {
   })()`)
   assert.deepEqual(selectedAfterSearch, { selected: true, styled: true })
 
-  const actionMenuOpened = await launcherConnection.evaluate(`(() => {
-    const toggle = document.querySelector('#launcher-details button[aria-haspopup="menu"]')
-    if (!(toggle instanceof HTMLButtonElement)) return false
-    toggle.click()
-    return document.querySelector('#launcher-actions-menu') !== null
-      && document.activeElement?.getAttribute('role') === 'menuitem'
-  })()`)
+  const actionMenuOpened = await launcherConnection.clickSelector('#launcher-details button[aria-haspopup="menu"]')
+  await waitFor(
+    () => launcherConnection.evaluate(`document.querySelector('#launcher-actions-menu') !== null && document.activeElement?.getAttribute('role') === 'menuitem'`),
+    open => open === true,
+  )
   assert.equal(actionMenuOpened, true)
   await launcherConnection.pressKey('End')
   const actionMenuEnd = await launcherConnection.evaluate('document.activeElement?.getAttribute("role") === "menuitem" && document.activeElement === document.querySelector("#launcher-actions-menu [role=\\"menuitem\\"]:last-of-type")')
@@ -1726,6 +1891,41 @@ try {
     state => state.menuOpen === false && state.focused === 'launcher-search',
   )
   assert.equal((await workbenchConnection.evaluate('window.dshDesktop?.launcher?.getState()'))?.visible, true)
+  assert.equal(await launcherConnection.clickSelector('#launcher-details button[aria-haspopup="menu"]'), true)
+  const actionAriaFacts = await launcherConnection.evaluate(`(() => {
+    const toggle = document.querySelector('#launcher-details button[aria-haspopup="menu"]')
+    const first = document.querySelector('#launcher-actions-menu [role="menuitem"]')
+    return {
+      defaultShortcut: first?.getAttribute('aria-keyshortcuts'),
+      toggleShortcut: toggle?.getAttribute('aria-keyshortcuts'),
+    }
+  })()`)
+  assert.deepEqual(actionAriaFacts, { defaultShortcut: 'Enter', toggleShortcut: process.platform === 'darwin' ? 'Meta+K' : 'Control+K' })
+  await launcherConnection.pressKey('k', PRIMARY_MODIFIER)
+  await waitFor(
+    () => launcherConnection.evaluate(`({ open: document.querySelector('#launcher-actions-menu') !== null, focused: document.activeElement?.id })`),
+    state => state.open === false && state.focused === 'launcher-search',
+  )
+  assert.equal(await launcherConnection.clickSelector('#launcher-details button[aria-haspopup="menu"]'), true)
+  await launcherConnection.pressKey('l', PRIMARY_MODIFIER)
+  await waitFor(
+    () => launcherConnection.evaluate(`({ open: document.querySelector('#launcher-actions-menu') !== null, focused: document.activeElement?.id })`),
+    state => state.open === false && state.focused === 'launcher-search',
+  )
+  const zoomFacts = []
+  for (const scale of [1, 2, 4]) {
+    await launcherConnection.call('Emulation.setDeviceMetricsOverride', { width: Math.floor(750 / scale), height: Math.floor(475 / scale), deviceScaleFactor: 1, mobile: false })
+    await launcherConnection.call('Emulation.setPageScaleFactor', { pageScaleFactor: scale })
+    await sleep(50)
+    zoomFacts.push(await launcherConnection.evaluate(`({ scale: ${scale}, width: innerWidth, horizontalOverflow: document.documentElement.scrollWidth > innerWidth })`))
+  }
+  assert.equal(zoomFacts.every(fact => fact.horizontalOverflow === false), true)
+  await launcherConnection.call('Emulation.clearDeviceMetricsOverride')
+  await launcherConnection.call('Emulation.setPageScaleFactor', { pageScaleFactor: 1 })
+  await launcherConnection.call('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] })
+  await sleep(50)
+  assert.deepEqual(await launcherConnection.evaluate('({ reduced: matchMedia("(prefers-reduced-motion: reduce)").matches, scroll: getComputedStyle(document.querySelector("#launcher-results")).scrollBehavior })'), { reduced: true, scroll: 'auto' })
+  await launcherConnection.call('Emulation.setEmulatedMedia', { features: [] })
 
   const rowFocusRestored = await launcherConnection.evaluate(`(() => {
     document.querySelector('#launcher-details button[aria-haspopup="menu"]')?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
@@ -1904,8 +2104,10 @@ try {
   await invokeSecondInstanceToggle(false)
   await workbenchConnection.evaluate(`(async () => {
     await window.dshDesktop?.launcher?.settings?.updateSetting('general.searchHistory.enabled', false)
-    await window.dshDesktop?.launcher?.settings?.updateSetting('general.language', 'en-US')
+    await window.dshDesktop?.launcher?.settings?.updateSetting('general.searchHistory.limit', 10)
+    await window.dshDesktop?.syncLauncherLocale('en-US')
   })()`)
+  assert.equal(await workbenchConnection.evaluate('(async () => (await window.dshDesktop?.launcher?.settings?.getSnapshot())?.values?.["general.searchHistory.enabled"] ?? null)()'), false)
   await showLauncherFromWorkbench(workbenchConnection)
   await waitFor(
     () => launcherConnection.evaluate(`(async () => ({
@@ -1914,6 +2116,7 @@ try {
     }))()`),
     state => state.hidden === true && Array.isArray(state.history) && state.history.length === 0,
   )
+  assert.equal(await workbenchConnection.evaluate('(async () => (await window.dshDesktop?.launcher?.settings?.getSnapshot())?.values?.["general.searchHistory.enabled"] ?? null)()'), false)
   await launcherConnection.evaluate('window.tockteamLauncher?.dismiss()')
   await workbenchConnection.call('Browser.close').catch(() => {})
   await waitFor(
@@ -1961,7 +2164,7 @@ try {
   assert.deepEqual(disabledHistory, { history: [], hidden: true })
   await restartedWorkbenchConnection.call('Browser.close').catch(() => {})
   await waitFor(() => Promise.resolve(restartedChild.exitCode), exitCode => exitCode !== null, 5_000)
-  console.log('launcher Electron smoke passed: fresh-toggle/sandbox/preload/CSP/geometry/focus/reuse/search/invoke/file-search-tool/simple-file-search-action/revalidation/history/routes/reload/session/theme/skin/settings/updater/second-instance-intents/restart-persistence/graceful-quit')
+  console.log('launcher Electron smoke passed: fresh-toggle/sandbox/preload/CSP/geometry/focus/reuse/search/invoke/provider-families/file-search-tool/simple-file-search-action/revalidation/history/routes/reload/session/theme/skin/settings/locale/shortcuts/zoom/reduced-motion/popup-dismissal/updater/second-instance-intents/restart-persistence/graceful-quit')
 } catch (error) {
   throw new Error(`${error instanceof Error ? error.stack ?? error.message : String(error)}\nElectron output:\n${output}`)
 } finally {

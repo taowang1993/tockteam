@@ -46,6 +46,7 @@ test('network provider creates static DeepL/Web Search rows and isolates currenc
   const items = await provider.loadIndexedItems(new AbortController().signal)
   assert.deepEqual(items.map(item => item.sourceExtension), ['DeeplTranslator', 'WebSearch'])
   assert.equal(calls.length, 2)
+  assert.deepEqual([...provider.getProviderErrors().keys()], ['CurrencyConversion'])
 })
 
 test('network provider uses exact DeepL request and keeps translation action main-owned', async () => {

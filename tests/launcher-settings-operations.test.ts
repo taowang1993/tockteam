@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { createLauncherSettingsOperations } from '../src/launcher-settings-operations.ts'
+import { launcherSettingRequiresProviderRescan } from '../src/launcher-setting-keys.ts'
 import { attemptSecureRelaunchWithRecovery } from '../src/launcher-lifecycle.ts'
 import { LAUNCHER_CORE_ACTION_HANDLERS, createLauncherCoreSearch } from '../src/launcher-core-search.ts'
 import type { LauncherInternalResultItem } from '../src/launcher-actions.ts'
@@ -95,6 +96,26 @@ test('failed secure relaunch recovery reopens the settings mutation gate', async
   assert.equal(recoveries, 1)
   await operations.run(async () => { persisted.push('ordinary') }, { mutation: true })
   assert.deepEqual(persisted, ['replacement', 'ordinary'])
+})
+
+test('presentation settings skip provider rescans while provider settings retain them', () => {
+  assert.equal(launcherSettingRequiresProviderRescan('searchEngine.fuzziness'), false)
+  assert.equal(launcherSettingRequiresProviderRescan('appearance.searchBarSize'), false)
+  assert.equal(launcherSettingRequiresProviderRescan('window.alwaysOnTop'), false)
+  assert.equal(launcherSettingRequiresProviderRescan('extension[ApplicationSearch].macOsFolders'), true)
+  assert.equal(launcherSettingRequiresProviderRescan('extensions.enabledExtensionIds'), true)
+})
+
+test('settings operation bounds queued mutation work', async () => {
+  const operations = createLauncherSettingsOperations({ isUnavailable: () => false })
+  let release!: () => void
+  const first = operations.run(() => new Promise<void>(resolve => { release = resolve }), { mutation: true })
+  await new Promise<void>(resolve => { setImmediate(resolve) })
+  const queued = Array.from({ length: 64 }, () => operations.run(async () => undefined, { mutation: true }))
+  await assert.rejects(operations.run(async () => undefined, { mutation: true }), /queue is full/u)
+  release()
+  await first
+  await Promise.all(queued)
 })
 
 test('settings operation close drains accepted work and rejects new work', async () => {

@@ -70,6 +70,12 @@ test('launcher renderer guards hidden tool focus from result shortcuts', () => {
   assert.match(launcherSource, /eventInsideTool && event\.key !== 'Escape'/u)
 })
 
+test('launcher menus expose normalized shortcuts and focusable empty history', () => {
+  assert.match(launcherSource, /actionAriaShortcut\(action, true\)/u)
+  assert.match(launcherSource, /empty\.tabIndex = 0/u)
+  assert.match(launcherSource, /historyOpen = false[\s\S]{0,160}historyPanel\.hidden = true/u)
+})
+
 test('action-menu activation closes the history menu', () => {
   assert.match(launcherSource, /if \(!actionMenuOpen\) \{[\s\S]{0,240}historyOpen = false/u)
   assert.match(launcherSource, /historyPanel\.hidden = true[\s\S]{0,120}historyToggle\.setAttribute\('aria-expanded', 'false'\)/u)

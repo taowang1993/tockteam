@@ -31,7 +31,7 @@ export function createLauncherFileSearchTool(options: Readonly<{
   const content = element(document, 'div', 'launcher-local-tool-content'); tool.append(content)
   const input = element(document, 'input')
   const maxInputLength = LAUNCHER_MAX_SEARCH_TERM_LENGTH
-  input.type = 'search'; input.className = 'min-w-0 max-w-full'; input.maxLength = maxInputLength; input.placeholder = text('searchFiles', 'Search files'); input.setAttribute('aria-label', text('fileSearchInput', 'File Search Input')); input.setAttribute('aria-controls', 'launcher-file-search-results'); input.setAttribute('aria-autocomplete', 'list'); input.autocomplete = 'off'
+  input.type = 'search'; input.className = 'min-w-0 w-full max-w-full'; input.maxLength = maxInputLength; input.placeholder = text('searchFiles', 'Search files'); input.setAttribute('aria-label', text('fileSearchInput', 'File Search Input')); input.setAttribute('aria-controls', 'launcher-file-search-results'); input.setAttribute('aria-autocomplete', 'list'); input.autocomplete = 'off'
   const status = element(document, 'p', 'launcher-local-tool-error'); status.setAttribute('role', 'status'); status.textContent = text('enterFile', 'Enter a file name to search.')
   const list = element(document, 'ul', 'm-0 min-w-0 list-none overflow-auto p-0'); list.id = 'launcher-file-search-results'; list.setAttribute('aria-label', text('fileSearchResults', 'File Search Results')); list.setAttribute('role', 'list')
   content.append(input, status, list)
@@ -113,7 +113,7 @@ export function createLauncherFileSearchTool(options: Readonly<{
       if (action.hideWindowAfterInvocation === true) await bridge.dismiss().catch(() => undefined)
       else await search(focus)
     } catch {
-      status.textContent = `${action.description} could not be completed.`
+      status.textContent = launcherText(options.locale, 'actionFailed', 'The action could not be completed.')
       status.setAttribute('data-tone', 'error')
       await search(focus)
     }
@@ -160,10 +160,14 @@ export function createLauncherFileSearchTool(options: Readonly<{
     if (openMenu === undefined) return
     openMenu.menu.hidden = true
     openMenu.toggle.setAttribute('aria-expanded', 'false')
-    openMenu.toggle.focus()
     openMenu = undefined
   }
-  tool.addEventListener('tockteam-launcher-close-tool-menu', closeMenuWithoutFocus)
+  const closeMenuAndRestoreFocus = (): void => {
+    const toggle = openMenu?.toggle
+    closeMenuWithoutFocus()
+    if (toggle !== undefined) setTimeout(() => { if (toggle.isConnected) toggle.focus() }, 0)
+  }
+  tool.addEventListener('tockteam-launcher-close-tool-menu', closeMenuAndRestoreFocus)
   queueMicrotask(() => input.focus())
   return tool
 }

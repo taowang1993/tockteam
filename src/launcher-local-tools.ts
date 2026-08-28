@@ -168,7 +168,7 @@ export function createLauncherLocalTool(options: Readonly<{
   const text = (key: string, fallback: string): string => launcherText(options.locale, key, fallback)
   const toolName = extensionId === 'Base64Conversion' ? text('base64Name', TOOL_NAMES[extensionId]) : extensionId === 'RowlandTextEditor' ? text('rowlandName', TOOL_NAMES[extensionId]) : text('uuidName', TOOL_NAMES[extensionId])
   const tool = element(document, 'section', 'launcher-local-tool')
-  tool.setAttribute('aria-label', `${toolName} Tool`)
+  tool.setAttribute('aria-label', `${toolName} ${text('tool', 'Tool')}`)
   const header = element(document, 'header', 'launcher-local-tool-header')
   const title = element(document, 'h2')
   title.textContent = toolName
@@ -191,7 +191,7 @@ export function createLauncherLocalTool(options: Readonly<{
     const input = element(document, 'textarea'); input.setAttribute('aria-label', text('rowlandInput', 'Rowland Input')); input.maxLength = MAX_LOCAL_TOOL_INPUT_LENGTH; input.rows = 7
     const pattern = element(document, 'input'); pattern.type = 'text'; pattern.setAttribute('aria-label', text('rowlandPattern', 'Rowland Pattern')); pattern.maxLength = MAX_ROWLAND_PATTERN_LENGTH
     const output = element(document, 'textarea'); output.setAttribute('aria-label', text('rowlandOutput', 'Rowland Output')); output.readOnly = true; output.rows = 7
-    const update = () => { try { setOutput(output, error, rowland(input.value, pattern.value, settings.RowlandTextEditor.rowSeparator, settings.RowlandTextEditor.columnSeparator), outputStatus, options.locale) } catch (caught) { setError(output, error, caught instanceof Error ? caught.message : text('rowlandError', 'Rowland output could not be generated.'), outputStatus, options.locale) } }
+    const update = () => { try { setOutput(output, error, rowland(input.value, pattern.value, settings.RowlandTextEditor.rowSeparator, settings.RowlandTextEditor.columnSeparator), outputStatus, options.locale) } catch (caught) { setError(output, error, text('rowlandError', 'Rowland output could not be generated.'), outputStatus, options.locale) } }
     input.addEventListener('input', update); pattern.addEventListener('input', update); content.append(labeled(document, text('rowlandInput', 'Input'), input), labeled(document, text('rowlandPattern', 'Pattern'), pattern), labeled(document, text('rowlandOutput', 'Output'), output)); queueMicrotask(() => input.focus()); return tool
   }
   const version = element(document, 'select'); version.setAttribute('aria-label', text('uuidVersion', 'UUID Version')); for (const value of ['v4', 'v6', 'v7'] as const) { const option = element(document, 'option'); option.value = value; option.textContent = value; version.append(option) }; version.value = settings.UuidGenerator.uuidVersion

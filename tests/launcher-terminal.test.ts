@@ -60,6 +60,23 @@ test('Terminal Launcher preserves the finite catalog and platform defaults', () 
   ])
 })
 
+test('Terminal Launcher projects a provider error without affecting other providers', async () => {
+  const provider = createLauncherTerminal({
+    captureHomeIdentity: async () => ({ dev: '1', ino: '2' }),
+    effects: { auditLaunch: () => {}, confirmLaunch: async () => true, launchTerminal: async () => { throw new Error('fixture launch failed') } },
+    enabledExtensionIds: () => ['TerminalLauncher'],
+    getSetting: <T>(_key: string, fallback: T): T => fallback,
+    homeIdentity: { dev: '1', ino: '2' },
+    homePath: '/Users/max',
+    platform: 'macOS',
+  })
+  const item = (await provider.searchInstant('> fixture')).after[0]
+  assert.ok(item)
+  await assert.rejects(provider.executeAction(record(item)), /fixture launch failed/u)
+  assert.deepEqual([...provider.getProviderErrors().keys()], ['TerminalLauncher'])
+  await provider.close()
+})
+
 test('Terminal Launcher extracts with slice and trim, preserving no-separator commands and public details', async () => {
   const { provider } = harness({
     'extension[TerminalLauncher].prefix': 'run:',

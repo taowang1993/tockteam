@@ -196,6 +196,8 @@ const launcherTerminalFixtureEnabled = !app.isPackaged && process.env.TOCKTEAM_T
 const launcherWorkflowFixtureEnabled = !app.isPackaged && process.env.TOCKTEAM_WORKFLOW_FIXTURE === '1'
 const launcherWorkflowFixtureSlowHistoryEnabled = launcherWorkflowFixtureEnabled && process.env.TOCKTEAM_WORKFLOW_SLOW_HISTORY === '1'
 const launcherBrowserFixtureEnabled = !app.isPackaged && process.env.TOCKTEAM_BROWSER_FIXTURE === '1'
+const launcherDiscoveryFixtureRoot = !app.isPackaged ? process.env.TOCKTEAM_DISCOVERY_FIXTURE_ROOT : undefined
+const launcherFileSearchFixturePath = !app.isPackaged ? process.env.TOCKTEAM_FILE_SEARCH_FIXTURE_PATH : undefined
 
 type LauncherBrowserFixtureMarker = {
   custom: { count: number; urls: string[] }
@@ -1610,6 +1612,14 @@ function initializeLauncher(): void {
   const reportDiscoveryError = (extensionId: 'ApplicationSearch' | 'BrowserBookmarks' | 'JetBrainsToolbox' | 'VSCode', error: Error): void => {
     appendLog('desktop', `TockLauncher provider ${extensionId} failed: ${error instanceof Error ? error.name : 'unknown error'}`)
   }
+  const discoveryScanners = launcherDiscoveryFixtureRoot === undefined
+    ? createLauncherDiscoveryScanners({ onProviderError: reportDiscoveryError })
+    : Object.freeze({
+      ApplicationSearch: async () => [{ id: 'fixture:application', kind: 'application' as const, name: 'TockTeam Fixture', path: join(launcherDiscoveryFixtureRoot, 'Applications', 'TockTeam Fixture.app') }],
+      BrowserBookmarks: async () => [{ browserName: 'Google Chrome', id: 'fixture-bookmark', kind: 'bookmark' as const, name: 'TockTeam Fixture Bookmark', url: 'https://example.com/tockteam-fixture' }],
+      JetBrainsToolbox: async () => [{ executable: join(launcherDiscoveryFixtureRoot, 'JetBrains', 'idea'), id: 'fixture-jetbrains', kind: 'jetbrains' as const, name: 'TockTeam Fixture Project', projectPath: join(launcherDiscoveryFixtureRoot, 'JetBrains', 'project'), toolName: 'IntelliJ IDEA' }],
+      VSCode: async () => [{ commandArg: '--folder-uri' as const, fileType: 'Folder', id: 'fixture-vscode', kind: 'vscode' as const, label: 'TockTeam Fixture VS Code', path: join(launcherDiscoveryFixtureRoot, 'VSCode', 'project'), uri: 'vscode-remote://fixture/tockteam' }],
+    })
   const discovery = createLauncherDiscoveryExtensions({
     appDataPath: app.getPath('appData'),
     effects: {
@@ -1701,9 +1711,13 @@ function initializeLauncher(): void {
         return executableValid && await revalidateLauncherVscodeUri(uri, { ...(identity === undefined ? {} : { identity }) })
       },
     },
-    scanners: createLauncherDiscoveryScanners({ onProviderError: reportDiscoveryError }),
+    ...(launcherDiscoveryFixtureRoot === undefined ? {} : {
+      resolveExecutable: async () => join(launcherDiscoveryFixtureRoot, 'VSCode', 'code'),
+    }),
+    scanners: discoveryScanners,
   })
   launcherDiscovery = discovery
+  const fileSearchScanners = createLauncherFileSearchScanners()
   const fileSearch = createLauncherFileSearchExtensions({
     effects: {
       openPath: async (target, signal) => {
@@ -1724,7 +1738,17 @@ function initializeLauncher(): void {
       appendLog('desktop', `TockLauncher provider ${extensionId} failed: ${error instanceof Error ? error.name : 'unknown error'}`)
     },
     platform,
-    scanners: createLauncherFileSearchScanners(),
+    scanners: launcherFileSearchFixturePath === undefined
+      ? fileSearchScanners
+      : Object.freeze({
+        ...fileSearchScanners,
+        queryFileSearch: async ({ searchTerm, signal }) => {
+          if (!searchTerm.toLocaleLowerCase('en-US').includes('fixture')) return []
+          if (signal.aborted) throw signal.reason instanceof Error ? signal.reason : new Error('TockLauncher file search fixture canceled')
+          const identity = await statLauncherPathIdentity(launcherFileSearchFixturePath)
+          return identity === undefined ? [] : [{ identity, path: launcherFileSearchFixturePath, type: 'file' as const }]
+        },
+      }),
   })
   launcherFileSearch = fileSearch
   const network = createLauncherNetworkExtensions({

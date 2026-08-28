@@ -126,6 +126,7 @@ test('isolates provider failures and enforces latest scan cancellation', async (
   await assert.rejects(pending, /superseded/u)
   assert.equal(errors.some(error => error.startsWith('ApplicationSearch:')), true)
   assert.equal(errors.some(error => error.startsWith('BrowserBookmarks:')), true)
+  assert.deepEqual([...provider.getProviderErrors().keys()].sort(), ['ApplicationSearch', 'BrowserBookmarks', 'JetBrainsToolbox', 'VSCode'])
 })
 
 test('clears VS Code actions after a failed rescan', async () => {

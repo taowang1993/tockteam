@@ -19,6 +19,7 @@ export type LocaleMessages<Key extends string> = Record<
 export interface LocaleService {
   bind<Key extends string = string>(namespace: string): Translate<Key>
   getSnapshot(): LocaleSnapshot
+  setLocale(locale: TockTeamLocale): void
   register<Key extends string>(
     namespace: string,
     messages: LocaleMessages<Key>,

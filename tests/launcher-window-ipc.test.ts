@@ -144,10 +144,11 @@ test('workbench settings handlers replace path-bearing operation errors with a f
   dispose()
 })
 
-test('workbench launcher handlers deliver readiness and finite theme facts', async () => {
+test('workbench launcher handlers deliver readiness, locale, and finite theme facts', async () => {
   const ipcMain = new FakeIpcMain()
   let ready = 0
   let synced: unknown
+  let syncedLocale: unknown
   const dispose = registerWorkbenchLauncherIpcHandlers({
     assertTrustedMainIpc: () => {},
     controller: {
@@ -156,11 +157,14 @@ test('workbench launcher handlers deliver readiness and finite theme facts', asy
     },
     ipcMain,
     onRouteReady: () => { ready += 1 },
+    syncLocale: (_event, locale) => { syncedLocale = locale; return { ok: true } },
     syncTheme: (_event, source) => { synced = source; return { ok: true } },
   })
   await ipcMain.handlers.get(LAUNCHER_WINDOW_IPC_CHANNELS.routeReady)?.({})
+  await ipcMain.handlers.get(LAUNCHER_WINDOW_IPC_CHANNELS.syncLocale)?.({}, 'zh-CN')
   await ipcMain.handlers.get(LAUNCHER_WINDOW_IPC_CHANNELS.syncTheme)?.({}, { mode: 'light', skinId: null })
   assert.equal(ready, 1)
+  assert.equal(syncedLocale, 'zh-CN')
   assert.deepEqual(synced, { mode: 'light', skinId: null })
   await assert.rejects(
     async () => await ipcMain.handlers.get(LAUNCHER_WINDOW_IPC_CHANNELS.syncTheme)?.({}, { mode: 'light', skinId: 'unknown' }),

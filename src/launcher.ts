@@ -266,6 +266,10 @@ async function bootstrap(): Promise<void> {
   let history: string[] = surfaceSettings.historyEnabled ? [...surfaceSettings.history] : []
   const surfacePlatform: LauncherSurfacePlatform = isMac ? 'macOS' : /Windows/iu.test(`${navigator.platform} ${navigator.userAgent}`) ? 'Windows' : 'Linux'
   const messages = (): typeof LAUNCHER_MESSAGES.en => surfaceSettings.locale === 'zh-CN' ? LAUNCHER_MESSAGES.zh : LAUNCHER_MESSAGES.en
+  const syncScrollBehavior = (): void => {
+    // The media rule owns CSS scrolling; programmatic scrolling uses the effective behavior below.
+    results.style.removeProperty('scroll-behavior')
+  }
   const applySurfaceSettings = (): void => {
     const copy = messages()
     document.documentElement.lang = surfaceSettings.locale
@@ -281,8 +285,7 @@ async function bootstrap(): Promise<void> {
     search.classList.remove('h-8', 'h-10', 'h-12')
     search.classList.add(surfaceSettings.searchBarSize === 'small' ? 'h-8' : surfaceSettings.searchBarSize === 'large' ? 'h-12' : 'h-10')
     results.dataset.layout = surfaceSettings.searchResultLayout
-    const reducedMotion = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    results.style.scrollBehavior = launcherEffectiveScrollBehavior(surfaceSettings.scrollBehavior, reducedMotion)
+    syncScrollBehavior()
     const setButtonLabel = (button: HTMLButtonElement, label: string): void => {
       const textNode = [...button.childNodes].find(node => node.nodeType === Node.TEXT_NODE)
       if (textNode !== undefined) textNode.textContent = label
@@ -292,7 +295,7 @@ async function bootstrap(): Promise<void> {
     setButtonLabel(rescan, copy.rescan)
     setButtonLabel(close, copy.close)
     setButtonLabel(settings, copy.settings)
-    status.textContent = copy.initialStatus
+    if (!invoking && !invokingWorkflow) status.textContent = copy.initialStatus
     providerStatuses.hidden = surfaceSettings.providerStatuses.every(provider => provider.state === 'ready' || provider.state === 'disabled')
     providerStatuses.textContent = surfaceSettings.providerStatuses
       .filter(provider => provider.state !== 'ready')
@@ -449,12 +452,13 @@ async function bootstrap(): Promise<void> {
     historyPanel.hidden = true
     historyToggle.setAttribute('aria-expanded', 'false')
     if (invokingWorkflow) return
+    const focusedSearchValue = search.value
     void bridge.getSurfaceSettings().then(current => {
       surfaceSettings = current
       history = current.historyEnabled ? [...current.history] : []
       applySurfaceSettings()
       renderHistory()
-      void renderSearch(search.value)
+      if (search.value === focusedSearchValue && currentItems.length === 0) void renderSearch(search.value)
     }).catch(() => { renderHistory() })
     renderDetails()
     restoreSearchFocus()
@@ -1045,10 +1049,10 @@ async function bootstrap(): Promise<void> {
     else if (surfaceSettings.hideWindowOn.includes('escapePressed')) void bridge.dismiss().catch(() => undefined)
   })
   document.addEventListener('pointerdown', event => {
-    if (!(event.target instanceof Element)) return
-    if (activeLocalTool !== undefined && !activeLocalTool.contains(event.target)) {
+    if (activeLocalTool !== undefined) {
       activeLocalTool.dispatchEvent(new Event('tockteam-launcher-close-tool-menu'))
     }
+    if (!(event.target instanceof Element)) return
     if (historyOpen && event.target.closest('#launcher-history, #launcher-history-toggle') === null) closeHistory()
     if (actionMenuOpen && event.target.closest('#launcher-details') === null) closeActionMenu()
   })
@@ -1057,7 +1061,7 @@ async function bootstrap(): Promise<void> {
     history = surfaceSettings.historyEnabled ? [...surfaceSettings.history] : []
     applySurfaceSettings()
     renderHistory()
-    if (activeLocalTool === undefined && !invokingWorkflow) void renderSearch(search.value)
+    renderResults()
   })
 
   renderHistory()

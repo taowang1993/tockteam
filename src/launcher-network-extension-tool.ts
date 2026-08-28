@@ -62,6 +62,7 @@ export function createLauncherNetworkExtensionTool(options: Readonly<{
   input.setAttribute('aria-controls', `launcher-${extensionId.toLocaleLowerCase('en-US')}-results`)
   input.setAttribute('aria-autocomplete', 'list')
   input.maxLength = LAUNCHER_NETWORK_TOOL_INPUT_LENGTH
+  input.className = 'min-w-0 w-full max-w-full'
   if (!isDeepL) input.setAttribute('type', 'search')
   label.append(labelText, input)
   const status = element(document, 'p', 'launcher-local-tool-status')
@@ -215,7 +216,7 @@ export function createLauncherNetworkExtensionTool(options: Readonly<{
   }
   const invoke = async (action: LauncherPublicAction, item: LauncherPublicResultItem): Promise<void> => {
     const focusItemId = action.hideWindowAfterInvocation === true ? undefined : item.id
-    setStatus(`${action.description}…`)
+    setStatus(`${text('actionWorking', 'Working…')} ${action.description}`)
     try {
       const result = await bridge.invokeAction(action.actionId)
       if (!result.ok) {
@@ -228,7 +229,7 @@ export function createLauncherNetworkExtensionTool(options: Readonly<{
       }
       await search(focusItemId)
     } catch {
-      setStatus(`${action.description} could not be completed.`, 'error')
+      setStatus(text('actionFailed', 'The action could not be completed.'), 'error')
       await search(focusItemId)
     }
   }
@@ -250,14 +251,18 @@ export function createLauncherNetworkExtensionTool(options: Readonly<{
     if (openMenu === undefined) return
     openMenu.menu.hidden = true
     openMenu.toggle.setAttribute('aria-expanded', 'false')
-    openMenu.toggle.focus()
     openMenu = undefined
+  }
+  const closeMenuAndRestoreFocus = (): void => {
+    const toggle = openMenu?.toggle
+    closeMenuWithoutFocus()
+    if (toggle !== undefined) setTimeout(() => { if (toggle.isConnected) toggle.focus() }, 0)
   }
   tool.addEventListener('pointerdown', event => {
     if (openMenu === undefined || !(event.target instanceof Element)) return
     if (event.target.closest('[role="menu"], [aria-haspopup="menu"]') === null) closeMenuWithoutFocus()
   })
-  tool.addEventListener('tockteam-launcher-close-tool-menu', closeMenuWithoutFocus)
+  tool.addEventListener('tockteam-launcher-close-tool-menu', closeMenuAndRestoreFocus)
   queueMicrotask(() => input.focus())
   return tool
 }

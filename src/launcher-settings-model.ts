@@ -12,6 +12,7 @@ export type LauncherSurfacePreferences = Readonly<{
   historyEnabled: boolean
   historyLimit: number
   hideWindowOn: readonly ('blur' | 'afterInvocation' | 'escapePressed')[]
+  /** Compatibility projection only; DSH LocaleService owns the effective language. */
   language: string
   maxSearchResultItems: number
   placeholder: string
