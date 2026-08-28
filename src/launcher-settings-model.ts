@@ -1,6 +1,8 @@
 import type { LauncherSearchOptions } from './launcher-core-search.ts'
 import type { LauncherSettingsSnapshot } from './launcher-settings-contract.ts'
 import { LAUNCHER_COMPOSITION } from './launcher-contract.ts'
+import { LAUNCHER_INTERNAL_SETTING_KEYS, LAUNCHER_MAIN_OWNED_SETTING_KEYS, LAUNCHER_RUNTIME_SETTING_KEYS } from './launcher-setting-keys.ts'
+import { launcherSettingCatalogEntry } from './launcher-setting-catalog.ts'
 
 export type LauncherThemeSource = 'dark' | 'light' | 'system'
 export type LauncherSurfacePreferences = Readonly<{
@@ -24,6 +26,28 @@ export type PersistedLauncherState = Readonly<{
   history: readonly string[]
   preferences: LauncherSurfacePreferences
 }>
+
+export type LauncherSettingDisposition = 'effective' | 'platform-disabled' | 'status-only' | 'internal'
+
+/** Every accepted setting is either rendered, explicitly disabled, or delegated to one owner. */
+export function launcherSettingDisposition(key: string, platform: 'Linux' | 'macOS' | 'Windows'): LauncherSettingDisposition {
+  if (LAUNCHER_INTERNAL_SETTING_KEYS.includes(key as never)) return 'internal'
+  if (LAUNCHER_MAIN_OWNED_SETTING_KEYS.includes(key as never)
+    || key === 'appearance.themeName'
+    || key === 'appearance.themeSource'
+    || key === 'keyboardAndMouse.dragAndDropEnabled'
+    || key === 'general.language'
+    || key === 'general.hotkey') return 'status-only'
+  const entry = launcherSettingCatalogEntry(key)
+  if (entry !== undefined && !entry.applicability.includes(platform)) return 'platform-disabled'
+  return 'effective'
+}
+
+export function launcherSettingDispositions(platform: 'Linux' | 'macOS' | 'Windows'): Readonly<Record<string, LauncherSettingDisposition>> {
+  const result: Record<string, LauncherSettingDisposition> = {}
+  for (const key of LAUNCHER_RUNTIME_SETTING_KEYS) result[key] = launcherSettingDisposition(key, platform)
+  return Object.freeze(result)
+}
 
 const bool = (value: unknown): value is boolean => typeof value === 'boolean'
 const finiteNumber = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value)

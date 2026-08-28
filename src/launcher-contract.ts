@@ -95,18 +95,50 @@ export type LauncherInvokeResult =
   | Readonly<{ ok: true }>
   | Readonly<{ ok: false; reason: 'expired' }>
 
+export type LauncherSurfacePlatform = 'Linux' | 'macOS' | 'Windows'
+export type LauncherLocale = 'en-US' | 'zh-CN'
+export type LauncherSearchBarAppearance = 'auto' | 'outline' | 'underline' | 'filled-darker' | 'filled-lighter'
+export type LauncherSearchBarSize = 'small' | 'medium' | 'large'
+export type LauncherResultLayout = 'compact' | 'detailed'
+export type LauncherScrollBehavior = 'auto' | 'smooth' | 'instant'
+export type LauncherClickBehavior = 'selectSearchResultItem' | 'invokeSearchResultItem'
+export type LauncherProviderState = 'ready' | 'disabled' | 'unsupported' | 'unavailable'
+export type LauncherProviderStatus = Readonly<{
+  extensionId: (typeof LAUNCHER_COMPOSITION.extensionIds)[number]
+  state: LauncherProviderState
+  messageKey?: 'disabled' | 'unsupported' | 'unavailable'
+}>
+
 export type LauncherSurfaceSettings = Readonly<{
+  doubleClickBehavior: LauncherClickBehavior
+  dragAndDropEnabled: boolean
   fuzziness: number
   history: readonly string[]
   historyEnabled: boolean
   historyLimit: number
+  locale: LauncherLocale
   maxSearchResultItems: number
+  placeholder: string
+  preserveUserInput: boolean
+  providerStatuses: readonly LauncherProviderStatus[]
+  searchBarAppearance: LauncherSearchBarAppearance
+  searchBarSize: LauncherSearchBarSize
   searchEngineId: LauncherSearchEngineId
+  searchResultLayout: LauncherResultLayout
+  scrollBehavior: LauncherScrollBehavior
+  showSearchIcon: boolean
+  singleClickBehavior: LauncherClickBehavior
 }>
 
 const ACTION_ID_PATTERN = /^launcher-action:[0-9A-Za-z-]{1,96}$/u
 const MAX_RESULT_SET_ID_LENGTH = 64
 const RESULT_SET_ID_PATTERN = /^launcher-results:[1-9][0-9]{0,46}$/u
+const SURFACE_PROVIDER_IDS = new Set<string>(LAUNCHER_COMPOSITION.extensionIds)
+const SEARCH_BAR_APPEARANCES = new Set<LauncherSearchBarAppearance>(['auto', 'outline', 'underline', 'filled-darker', 'filled-lighter'])
+const SEARCH_BAR_SIZES = new Set<LauncherSearchBarSize>(['small', 'medium', 'large'])
+const RESULT_LAYOUTS = new Set<LauncherResultLayout>(['compact', 'detailed'])
+const SCROLL_BEHAVIORS = new Set<LauncherScrollBehavior>(['auto', 'smooth', 'instant'])
+const CLICK_BEHAVIORS = new Set<LauncherClickBehavior>(['selectSearchResultItem', 'invokeSearchResultItem'])
 export const LAUNCHER_MAX_SEARCH_TERM_LENGTH = 512
 export const LAUNCHER_MAX_SEARCH_INPUT_LENGTH = LAUNCHER_FILE_SEARCH_QUERY_PREFIX.length + LAUNCHER_MAX_SEARCH_TERM_LENGTH
 
@@ -131,6 +163,64 @@ function hasAllowedKeys(
 
 function isBoundedText(value: unknown, maxLength: number): value is string {
   return typeof value === 'string' && value.length > 0 && value.length <= maxLength
+}
+
+export function normalizeLauncherLocale(value: unknown): LauncherLocale {
+  if (typeof value === 'string' && /^(?:zh|zh-CN)$/iu.test(value)) return 'zh-CN'
+  return 'en-US'
+}
+
+function isLauncherProviderId(value: unknown): value is (typeof LAUNCHER_COMPOSITION.extensionIds)[number] {
+  return typeof value === 'string' && SURFACE_PROVIDER_IDS.has(value)
+}
+
+export function parseLauncherProviderStatus(value: unknown): LauncherProviderStatus {
+  if (!isRecord(value)
+    || !hasExactKeys(value, Object.keys(value))
+    || Object.keys(value).some(key => !['extensionId', 'state', 'messageKey'].includes(key))
+    || !isLauncherProviderId(value.extensionId)
+    || (value.state !== 'ready' && value.state !== 'disabled' && value.state !== 'unsupported' && value.state !== 'unavailable')
+    || (value.messageKey !== undefined && value.messageKey !== 'disabled' && value.messageKey !== 'unsupported' && value.messageKey !== 'unavailable')) {
+    throw new Error('Invalid launcher provider status')
+  }
+  if ((value.state === 'ready' && value.messageKey !== undefined)
+    || (value.state !== 'disabled' && value.messageKey === 'disabled')
+    || (value.state !== 'unsupported' && value.messageKey === 'unsupported')
+    || (value.state !== 'unavailable' && value.messageKey === 'unavailable')) {
+    throw new Error('Invalid launcher provider status message')
+  }
+  return Object.freeze({
+    extensionId: value.extensionId,
+    state: value.state,
+    ...(value.messageKey === undefined ? null : { messageKey: value.messageKey }),
+  }) as LauncherProviderStatus
+}
+
+export type LauncherShortcutEvent = Readonly<Pick<KeyboardEvent, 'key' | 'metaKey' | 'ctrlKey' | 'altKey' | 'shiftKey'>>
+
+/** Match only a finite provider-declared shortcut with an exact modifier set. */
+export function launcherShortcutMatches(
+  event: LauncherShortcutEvent,
+  shortcut: string,
+  platform: LauncherSurfacePlatform,
+): boolean {
+  if (typeof shortcut !== 'string' || shortcut.length === 0 || shortcut.length > 128) return false
+  const parts = shortcut.split('+').map(part => part.trim()).filter(Boolean)
+  const key = parts.pop()?.toLocaleLowerCase('en-US')
+  if (key === undefined || parts.some(part => !['Cmd', 'Ctrl', 'Alt', 'Shift'].includes(part))) return false
+  const expected = new Set(parts)
+  // Platform chooses the labels providers publish; matching still honors the literal
+  // modifier set so Shift+Enter and other non-primary shortcuts remain valid.
+  void platform
+  if (expected.has('Alt') !== event.altKey) return false
+  if (expected.has('Shift') !== event.shiftKey) return false
+  if (event.metaKey !== expected.has('Cmd') || event.ctrlKey !== expected.has('Ctrl')) return false
+  const eventKey = event.key.toLocaleLowerCase('en-US')
+  return eventKey === key
+}
+
+export function launcherShortcutLabel(shortcut: string, _platform: LauncherSurfacePlatform): string {
+  return typeof shortcut === 'string' && shortcut.length <= 128 ? shortcut : ''
 }
 
 export function parseLauncherSearchArgs(value: unknown): Readonly<{
@@ -289,7 +379,10 @@ export function parseLauncherSuccessResult(value: unknown): Readonly<{ ok: true 
 
 export function parseLauncherSurfaceSettings(value: unknown): LauncherSurfaceSettings {
   if (!isRecord(value)
-    || !hasExactKeys(value, ['fuzziness', 'history', 'historyEnabled', 'historyLimit', 'maxSearchResultItems', 'searchEngineId'])
+    || !hasAllowedKeys(value,
+      ['fuzziness', 'history', 'historyEnabled', 'historyLimit', 'maxSearchResultItems', 'searchEngineId'],
+      ['doubleClickBehavior', 'dragAndDropEnabled', 'locale', 'placeholder', 'preserveUserInput', 'providerStatuses', 'searchBarAppearance', 'searchBarSize', 'searchResultLayout', 'scrollBehavior', 'showSearchIcon', 'singleClickBehavior'],
+    )
     || typeof value.fuzziness !== 'number' || !Number.isFinite(value.fuzziness) || value.fuzziness < 0 || value.fuzziness > 1
     || !Array.isArray(value.history) || value.history.length > 100 || value.history.some(item => typeof item !== 'string' || item.length === 0 || item.length > 512 || /[\0\r\n]/u.test(item))
     || typeof value.historyEnabled !== 'boolean'
@@ -298,12 +391,55 @@ export function parseLauncherSurfaceSettings(value: unknown): LauncherSurfaceSet
     || (value.searchEngineId !== 'Fuse.js' && value.searchEngineId !== 'fuzzysort')) {
     throw new Error('Invalid launcher surface settings')
   }
+  const locale = value.locale === undefined ? 'en-US' : normalizeLauncherLocale(value.locale)
+  const placeholder = value.placeholder === undefined ? 'Search TockTeam' : value.placeholder
+  const providerStatuses = value.providerStatuses === undefined ? [] : value.providerStatuses
+  if (!isBoundedText(placeholder, 512) || /[\0\r\n]/u.test(placeholder)
+    || (value.locale !== undefined && value.locale !== 'en-US' && value.locale !== 'zh-CN')
+    || !Array.isArray(providerStatuses) || providerStatuses.length > LAUNCHER_COMPOSITION.extensionIds.length) {
+    throw new Error('Invalid launcher surface settings')
+  }
+  const parsedStatuses = providerStatuses.map(parseLauncherProviderStatus)
+  const statusIds = new Set<string>()
+  for (const status of parsedStatuses) {
+    if (statusIds.has(status.extensionId)) throw new Error('Duplicate launcher provider status')
+    statusIds.add(status.extensionId)
+  }
+  const doubleClickBehavior = value.doubleClickBehavior === undefined ? 'invokeSearchResultItem' : value.doubleClickBehavior
+  const singleClickBehavior = value.singleClickBehavior === undefined ? 'selectSearchResultItem' : value.singleClickBehavior
+  const searchBarAppearance = value.searchBarAppearance === undefined ? 'auto' : value.searchBarAppearance
+  const searchBarSize = value.searchBarSize === undefined ? 'large' : value.searchBarSize
+  const searchResultLayout = value.searchResultLayout === undefined ? 'compact' : value.searchResultLayout
+  const scrollBehavior = value.scrollBehavior === undefined ? 'smooth' : value.scrollBehavior
+  if (!CLICK_BEHAVIORS.has(doubleClickBehavior as LauncherClickBehavior)
+    || !CLICK_BEHAVIORS.has(singleClickBehavior as LauncherClickBehavior)
+    || !SEARCH_BAR_APPEARANCES.has(searchBarAppearance as LauncherSearchBarAppearance)
+    || !SEARCH_BAR_SIZES.has(searchBarSize as LauncherSearchBarSize)
+    || !RESULT_LAYOUTS.has(searchResultLayout as LauncherResultLayout)
+    || !SCROLL_BEHAVIORS.has(scrollBehavior as LauncherScrollBehavior)
+    || (value.dragAndDropEnabled !== undefined && typeof value.dragAndDropEnabled !== 'boolean')
+    || (value.preserveUserInput !== undefined && typeof value.preserveUserInput !== 'boolean')
+    || (value.showSearchIcon !== undefined && typeof value.showSearchIcon !== 'boolean')) {
+    throw new Error('Invalid launcher surface settings')
+  }
   return Object.freeze({
+    doubleClickBehavior: doubleClickBehavior as LauncherClickBehavior,
+    dragAndDropEnabled: value.dragAndDropEnabled === true,
     fuzziness: value.fuzziness,
     history: Object.freeze([...(value.history as string[])]),
     historyEnabled: value.historyEnabled,
     historyLimit: value.historyLimit as number,
+    locale,
     maxSearchResultItems: value.maxSearchResultItems as number,
+    placeholder,
+    preserveUserInput: value.preserveUserInput !== false,
+    providerStatuses: Object.freeze(parsedStatuses),
+    searchBarAppearance: searchBarAppearance as LauncherSearchBarAppearance,
+    searchBarSize: searchBarSize as LauncherSearchBarSize,
     searchEngineId: value.searchEngineId as LauncherSearchEngineId,
+    searchResultLayout: searchResultLayout as LauncherResultLayout,
+    scrollBehavior: scrollBehavior as LauncherScrollBehavior,
+    showSearchIcon: value.showSearchIcon !== false,
+    singleClickBehavior: singleClickBehavior as LauncherClickBehavior,
   })
 }
