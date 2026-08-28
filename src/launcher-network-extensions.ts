@@ -125,7 +125,7 @@ function publicIpv4(parts: readonly [number, number, number, number]): boolean {
   if (a === 100 && b >= 64 && b <= 127) return false
   if (a === 169 && b === 254) return false
   if (a === 172 && b >= 16 && b <= 31) return false
-  if (a === 192 && b === 0) return false
+  if (a === 192 && b === 0 && (c === 0 || c === 2)) return false
   if (a === 192 && b === 31 && c === 196) return false
   if (a === 192 && b === 52 && c === 193) return false
   if (a === 192 && b === 88 && c === 99) return false
