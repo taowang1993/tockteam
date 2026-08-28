@@ -96,7 +96,7 @@ import { createLauncherFileSearchExtensions } from './launcher-file-search.ts'
 import { createLauncherFileSearchScanners } from './launcher-file-search-scanners.ts'
 import { createLauncherNetworkExtensions } from './launcher-network-extensions.ts'
 import { createLauncherOsExtensions } from './launcher-os-extensions.ts'
-import { createLauncherTerminal } from './launcher-terminal.ts'
+import { createLauncherTerminal, type LauncherTerminalLaunchRequest, type LauncherTerminalPlatform } from './launcher-terminal.ts'
 import { createLauncherWorkflow, type LauncherWorkflowConfirmation } from './launcher-workflow.ts'
 import { runBoundedWorkflowCommand } from './launcher-workflow-process.ts'
 import {
@@ -505,6 +505,37 @@ const runtimeStartGate = new RuntimeStartGate<void>()
 const launcherWindowRegistry = new LauncherWindowRegistry()
 const execFileAsync = promisify(execFile)
 const launcherToggleQueue = new LauncherToggleIntentQueue()
+
+async function launchTrustedLauncherTerminal(
+  platform: LauncherTerminalPlatform,
+  request: LauncherTerminalLaunchRequest,
+  signal?: AbortSignal,
+): Promise<void> {
+  if (signal?.aborted) throw launcherAbortError(signal)
+  const invocation = resolveTerminalInvocation(platform, request)
+  if (invocation.waitForExit) {
+    await execFileAsync(invocation.executable, [...invocation.args], {
+      cwd: invocation.cwd,
+      maxBuffer: 1_048_576,
+      shell: false,
+      ...(signal === undefined ? {} : { signal }),
+      timeout: 15_000,
+    })
+  } else if (platform === 'Windows') {
+    const trusted = await resolveTrustedWindowsTerminalExecutable(request.terminalId)
+    if (!await revalidateTrustedWindowsTerminalExecutable(trusted)) throw new Error('Windows terminal executable changed before launch')
+    await launchDetachedTerminalInvocation({ ...invocation, executable: trusted.executable }, {
+      ...(signal === undefined ? {} : { signal }),
+      timeoutMs: 5_000,
+    })
+  } else {
+    await launchDetachedTerminalInvocation(invocation, {
+      ...(signal === undefined ? {} : { signal }),
+      timeoutMs: 5_000,
+    })
+  }
+  if (signal?.aborted) throw launcherAbortError(signal)
+}
 let launcherTrayOwner: SingleOwnedTray<Tray> | undefined
 
 function launcherAbortError(signal: AbortSignal): Error {
@@ -1713,24 +1744,7 @@ function initializeLauncher(): void {
           }
           return
         }
-        const invocation = resolveTerminalInvocation(platform, request)
-        if (invocation.waitForExit) {
-          await execFileAsync(invocation.executable, [...invocation.args], {
-            cwd: invocation.cwd,
-            maxBuffer: 1_048_576,
-            shell: false,
-            signal,
-            timeout: 15_000,
-          })
-          return
-        }
-        if (platform === 'Windows') {
-          const trusted = await resolveTrustedWindowsTerminalExecutable(request.terminalId)
-          if (!await revalidateTrustedWindowsTerminalExecutable(trusted)) throw new Error('Windows terminal executable changed before launch')
-          await launchDetachedTerminalInvocation({ ...invocation, executable: trusted.executable }, { signal, timeoutMs: 5_000 })
-          return
-        }
-        await launchDetachedTerminalInvocation(invocation, { signal, timeoutMs: 5_000 })
+        await launchTrustedLauncherTerminal(platform, request, signal)
       },
     },
     enabledExtensionIds: terminalEnabledExtensionIds,
@@ -1822,33 +1836,11 @@ function initializeLauncher(): void {
           recordLauncherWorkflowFixtureEffect('OpenTerminal')
           return
         }
-        const invocation = resolveTerminalInvocation(platform, request)
-        if (invocation.waitForExit) {
-          await execFileAsync(invocation.executable, [...invocation.args], { cwd: invocation.cwd, maxBuffer: 1_048_576, shell: false, signal, timeout: 15_000 })
-          return
-        }
-        if (platform === 'Windows') {
-          const trusted = await resolveTrustedWindowsTerminalExecutable(request.terminalId)
-          if (!await revalidateTrustedWindowsTerminalExecutable(trusted)) throw new Error('Windows terminal executable changed before launch')
-          await launchDetachedTerminalInvocation({ ...invocation, executable: trusted.executable }, { signal, timeoutMs: 5_000 })
-          return
-        }
-        await launchDetachedTerminalInvocation(invocation, { signal, timeoutMs: 5_000 })
+        await launchTrustedLauncherTerminal(platform, request, signal)
       },
       openTerminal: async request => {
         if (launcherWorkflowFixtureEnabled) return recordLauncherWorkflowFixtureEffect('OpenTerminal')
-        const invocation = resolveTerminalInvocation(platform, request)
-        if (invocation.waitForExit) {
-          await execFileAsync(invocation.executable, [...invocation.args], { cwd: invocation.cwd, maxBuffer: 1_048_576, shell: false, timeout: 15_000 })
-          return
-        }
-        if (platform === 'Windows') {
-          const trusted = await resolveTrustedWindowsTerminalExecutable(request.terminalId)
-          if (!await revalidateTrustedWindowsTerminalExecutable(trusted)) throw new Error('Windows terminal executable changed before launch')
-          await launchDetachedTerminalInvocation({ ...invocation, executable: trusted.executable }, { timeoutMs: 5_000 })
-          return
-        }
-        await launchDetachedTerminalInvocation(invocation, { timeoutMs: 5_000 })
+        await launchTrustedLauncherTerminal(platform, request)
       },
       openUrlWithSignal: async (url, signal) => {
         if (signal.aborted) throw launcherAbortError(signal)
