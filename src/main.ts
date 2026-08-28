@@ -1259,44 +1259,54 @@ function initializeLauncher(): void {
         return result.response === 0
       },
       invokeSystemCommand: async command => {
-        if (platform === 'Linux' && command === 'empty-trash') {
-          await emptyLauncherLinuxTrash(app.getPath('home'))
-          return
-        }
-        const invocation = resolveSystemCommandInvocation(platform, command)
-        if (invocation === undefined) throw new Error('System command is unavailable')
-        await execFileAsync(invocation.executable, [...invocation.args], {
-          maxBuffer: 64 * 1024,
-          shell: false,
-          timeout: 15_000,
-          ...(platform === 'Windows' ? { windowsHide: true } : {}),
-        })
+        try {
+          if (platform === 'Linux' && command === 'empty-trash') {
+            await emptyLauncherLinuxTrash(app.getPath('home'))
+            return
+          }
+          const invocation = resolveSystemCommandInvocation(platform, command)
+          if (invocation === undefined) throw new Error('System command is unavailable')
+          await execFileAsync(invocation.executable, [...invocation.args], {
+            maxBuffer: 64 * 1024,
+            shell: false,
+            timeout: 15_000,
+            ...(platform === 'Windows' ? { windowsHide: true } : {}),
+          })
+        } catch { throw new Error('TockLauncher system command failed') }
       },
       invokeUeliCommand: async command => {
-        if (launcherLifecycle === undefined) throw new Error('TockLauncher lifecycle is unavailable')
-        await launcherLifecycle.invokeCommand(command)
+        try {
+          if (launcherLifecycle === undefined) throw new Error('TockLauncher lifecycle is unavailable')
+          await launcherLifecycle.invokeCommand(command)
+        } catch { throw new Error('TockLauncher lifecycle command failed') }
       },
       openControlPanelItem: async canonicalName => {
-        if (platform !== 'Windows') throw new Error('Windows Control Panel is unavailable')
-        const invocation = resolveWindowsControlPanelInvocation(canonicalName)
-        await execFileAsync(invocation.executable, [...invocation.args], { maxBuffer: 64 * 1024, shell: false, timeout: 15_000, windowsHide: true })
+        try {
+          if (platform !== 'Windows') throw new Error('Windows Control Panel is unavailable')
+          const invocation = resolveWindowsControlPanelInvocation(canonicalName)
+          await execFileAsync(invocation.executable, [...invocation.args], { maxBuffer: 64 * 1024, shell: false, timeout: 15_000, windowsHide: true })
+        } catch { throw new Error('TockLauncher Control Panel action failed') }
       },
       openSystemSetting: async target => {
         const catalog = platform === 'macOS' ? MACOS_SYSTEM_SETTINGS : WINDOWS_SYSTEM_SETTINGS
         if (!catalog.some(row => row.target === target)) throw new Error('System setting is not in the current catalog')
-        if (platform === 'Windows') {
-          await shell.openExternal(target)
-          return
-        }
-        const identity = await statLauncherPathIdentity(target)
-        if (identity === undefined || !await revalidateLauncherPath(target, { identity, kind: 'directory' })) throw new Error('System setting is unavailable')
-        const error = await shell.openPath(target)
-        if (error) throw new Error(error)
+        try {
+          if (platform === 'Windows') {
+            await shell.openExternal(target)
+            return
+          }
+          const identity = await statLauncherPathIdentity(target)
+          if (identity === undefined || !await revalidateLauncherPath(target, { identity, kind: 'directory' })) throw new Error('System setting is unavailable')
+          const error = await shell.openPath(target)
+          if (error) throw new Error('System setting is unavailable')
+        } catch { throw new Error('TockLauncher system setting action failed') }
       },
       toggleAppearance: async () => {
         if (tockTutorPreviousThemeSource !== undefined) throw new Error('System appearance is unavailable during a theme override')
-        const invocation = resolveAppearanceInvocation(platform, nativeTheme.shouldUseDarkColors)
-        await execFileAsync(invocation.executable, [...invocation.args], { maxBuffer: 64 * 1024, shell: false, timeout: 15_000, ...(platform === 'Windows' ? { windowsHide: true } : {}) })
+        try {
+          const invocation = resolveAppearanceInvocation(platform, nativeTheme.shouldUseDarkColors)
+          await execFileAsync(invocation.executable, [...invocation.args], { maxBuffer: 64 * 1024, shell: false, timeout: 15_000, ...(platform === 'Windows' ? { windowsHide: true } : {}) })
+        } catch { throw new Error('TockLauncher appearance action failed') }
       },
     },
     enabledExtensionIds: launcherEnabledLocalExtensionIds,
