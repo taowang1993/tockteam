@@ -153,6 +153,7 @@ const discoveryFixture = await mkdtemp(join(tmpdir(), 'tockteam-discovery-fixtur
 const simpleSearchFixture = await mkdtemp(join(homedir(), '.tockteam-simple-search-'))
 const simpleSearchFile = join(simpleSearchFixture, 'tockteam-file-search-fixture.txt')
 const fixtureMarkerPath = join(userData, 'launcher', 'os-fixture-marker.json')
+const terminalFixtureMarkerPath = join(userData, 'launcher', 'terminal-fixture-marker.json')
 await writeFile(simpleSearchFile, 'simple file search fixture', 'utf8')
 const discoveryApplications = join(discoveryFixture, 'Applications')
 const discoveryApplication = join(discoveryApplications, 'TockTeam Fixture.app')
@@ -161,11 +162,12 @@ await writeFile(join(discoveryApplication, 'Contents', 'Info.plist'), '<?xml ver
 const electron = ensureElectronInstalled(root)
 const mainSource = await readFile(join(root, 'src', 'main.ts'), 'utf8')
 assert.match(mainSource, /const launcherOsFixtureEnabled = !app\.isPackaged && process\.env\.TOCKTEAM_OS_FIXTURE === '1'/u)
+assert.match(mainSource, /const launcherTerminalFixtureEnabled = !app\.isPackaged && process\.env\.TOCKTEAM_TERMINAL_FIXTURE === '1'/u)
 assert.match(mainSource, /launcherOsFixtureMarker/u)
 assert.match(mainSource, /acceptedEffects/u)
 assert.match(mainSource, /Unexpected fixture effect/u)
 assert.match(mainSource, /if \(launcherOsFixtureEnabled\)/u)
-const fixtureEnvironment = { ...process.env, TOCKTEAM_NETWORK_FIXTURE: '1', TOCKTEAM_OS_FIXTURE: '1' }
+const fixtureEnvironment = { ...process.env, TOCKTEAM_NETWORK_FIXTURE: '1', TOCKTEAM_OS_FIXTURE: '1', TOCKTEAM_TERMINAL_FIXTURE: '1' }
 const child = spawn(electron, [
   '.',
   `--remote-debugging-port=${String(port)}`,
@@ -310,6 +312,32 @@ try {
     ueli: 'UeliCommand',
     controlPanel: ['WindowsControlPanel', true],
   })
+  const terminalFixtureFacts = await launcherConnection.evaluate(`(async () => {
+    const options = { fuzziness: 0.5, maxSearchResultItems: 50, searchEngineId: 'fuzzysort' }
+    const read = async term => await window.tockteamLauncher?.search(term, options)
+    const first = value => value?.after?.[0] ?? value?.before?.[0]
+    const accepted = first(await read('fixture accepted'))
+    const declined = first(await read('fixture declined'))
+    if (accepted?.sourceExtension !== 'TerminalLauncher' || declined?.sourceExtension !== 'TerminalLauncher') return null
+    const acceptedResult = await window.tockteamLauncher?.invokeAction(accepted.defaultAction.actionId)
+    const declinedResult = await window.tockteamLauncher?.invokeAction(declined.defaultAction.actionId)
+    return {
+      accepted: acceptedResult?.ok === true,
+      confirmation: accepted.defaultAction.requiresConfirmation === true,
+      declined: declinedResult?.ok === true,
+      details: accepted.details ?? null,
+      image: accepted.imageKey ?? null,
+      replay: await (async () => { try { await window.tockteamLauncher?.invokeAction(accepted.defaultAction.actionId); return false } catch { return true } })(),
+    }
+  })()`)
+  assert.deepEqual(terminalFixtureFacts, {
+    accepted: true,
+    confirmation: true,
+    declined: true,
+    details: 'Terminal: Terminal\\nWorking directory: /Users/max\\nApproval: Always required',
+    image: 'terminal-macos',
+    replay: true,
+  })
   const mockedControlPanelDeclined = await launcherConnection.evaluate(`(async () => {
     const response = await window.tockteamLauncher?.search('Fixture Control Panel', { fuzziness: 0.5, maxSearchResultItems: 50, searchEngineId: 'fuzzysort' })
     const action = response?.after?.[0]?.defaultAction ?? response?.before?.[0]?.defaultAction
@@ -348,11 +376,24 @@ try {
     quit: { ok: true, replay: true },
     stale: true,
   })
-  const delayedShutdownStartedAt = Date.now()
-  const delayedShutdown = launcherConnection.call('Runtime.evaluate', { expression: `(async () => { const result = await window.tockteamLauncher?.search('Shut Down', { fuzziness: 0.5, maxSearchResultItems: 50, searchEngineId: 'fuzzysort' }); const item = result?.after?.[0] ?? result?.before?.[0]; return await window.tockteamLauncher?.invokeAction(item?.defaultAction?.actionId) })()`, awaitPromise: true, returnByValue: true })
+  const delayedTerminalStartedAt = Date.now()
+  await launcherConnection.call('Runtime.evaluate', { expression: `(async () => { const result = await window.tockteamLauncher?.search('fixture delayed', { fuzziness: 0.5, maxSearchResultItems: 50, searchEngineId: 'fuzzysort' }); const item = result?.after?.[0] ?? result?.before?.[0]; return await window.tockteamLauncher?.invokeAction(item?.defaultAction?.actionId) })()`, awaitPromise: false, returnByValue: true })
   await sleep(250)
   await launcherConnection.call('Page.close').catch(() => undefined)
-  await delayedShutdown.catch(() => undefined)
+  assert.ok(Date.now() - delayedTerminalStartedAt < 1_500, 'owner-clear must cancel terminal fixture confirmation before its 5s fallback')
+  launcherConnection.close()
+  launcherConnection = undefined
+  await waitFor(() => electronPages(port), pages => pages.every(page => page.title !== 'TockLauncher'))
+  await showLauncherFromWorkbench(workbenchConnection)
+  pages = await waitFor(() => electronPages(port), current => current.filter(page => page.title === 'TockLauncher').length === 1)
+  launcher = pages.find(page => page.title === 'TockLauncher')
+  assert.ok(launcher)
+  launcherConnection = await CdpPage.connect(launcher.webSocketDebuggerUrl)
+  await waitFor(() => launcherConnection.evaluate('document.documentElement.dataset.launcherReady'), ready => ready === 'true')
+  const delayedShutdownStartedAt = Date.now()
+  await launcherConnection.call('Runtime.evaluate', { expression: `(async () => { const result = await window.tockteamLauncher?.search('Shut Down', { fuzziness: 0.5, maxSearchResultItems: 50, searchEngineId: 'fuzzysort' }); const item = result?.after?.[0] ?? result?.before?.[0]; return await window.tockteamLauncher?.invokeAction(item?.defaultAction?.actionId) })()`, awaitPromise: false, returnByValue: true })
+  await sleep(250)
+  await launcherConnection.call('Page.close').catch(() => undefined)
   assert.ok(Date.now() - delayedShutdownStartedAt < 1_500, 'owner-clear must cancel fixture confirmation before its 5s fallback')
   launcherConnection.close()
   launcherConnection = undefined
@@ -371,6 +412,23 @@ try {
       && marker?.declinedConfirmations?.quit === 1
       && marker?.canceledConfirmations?.shutdown === 1,
   )
+  const terminalFixtureMarker = await waitFor(
+    () => readFile(terminalFixtureMarkerPath, 'utf8').then(value => JSON.parse(value)).catch(() => null),
+    marker => marker?.marker === 'tockteam-terminal-fixture-v1'
+      && marker?.accepted?.count === 1
+      && marker?.accepted?.commandLength === 'fixture accepted'.length
+      && /^[a-f0-9]{64}$/u.test(marker?.accepted?.commandSha256 ?? '')
+      && marker?.declined === 1
+      && marker?.canceled === 1
+      && marker?.forbiddenEffects === 0,
+  )
+  assert.deepEqual(terminalFixtureMarker, {
+    accepted: { commandLength: 'fixture accepted'.length, commandSha256: terminalFixtureMarker.accepted.commandSha256, count: 1 },
+    canceled: 1,
+    declined: 1,
+    forbiddenEffects: 0,
+    marker: 'tockteam-terminal-fixture-v1',
+  })
   assert.deepEqual(fixtureMarker, {
     acceptedEffects: { lock: 1 },
     canceledConfirmations: { shutdown: 1 },

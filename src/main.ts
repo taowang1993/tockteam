@@ -182,6 +182,60 @@ const preloadPath = join(currentDir, 'preload.cjs')
 const launcherHtmlPath = join(currentDir, 'launcher.html')
 const launcherNetworkFixtureEnabled = !app.isPackaged && process.env.TOCKTEAM_NETWORK_FIXTURE === '1'
 const launcherOsFixtureEnabled = !app.isPackaged && process.env.TOCKTEAM_OS_FIXTURE === '1'
+const launcherTerminalFixtureEnabled = !app.isPackaged && process.env.TOCKTEAM_TERMINAL_FIXTURE === '1'
+
+type LauncherTerminalFixtureMarker = {
+  accepted: { commandLength: number; commandSha256: string; count: number }
+  canceled: number
+  declined: number
+  forbiddenEffects: number
+  marker: 'tockteam-terminal-fixture-v1'
+}
+
+let launcherTerminalFixtureMarker: LauncherTerminalFixtureMarker = {
+  accepted: { commandLength: 0, commandSha256: '', count: 0 },
+  canceled: 0,
+  declined: 0,
+  forbiddenEffects: 0,
+  marker: 'tockteam-terminal-fixture-v1',
+}
+
+function launcherTerminalFixtureMarkerPath(): string {
+  return join(app.getPath('userData'), 'launcher', 'terminal-fixture-marker.json')
+}
+
+function writeLauncherTerminalFixtureMarker(): void {
+  if (!launcherTerminalFixtureEnabled) return
+  const filePath = launcherTerminalFixtureMarkerPath()
+  mkdirSync(dirname(filePath), { mode: 0o700, recursive: true })
+  writeFileSync(filePath, JSON.stringify(launcherTerminalFixtureMarker, null, 2), { encoding: 'utf8', mode: 0o600 })
+}
+
+function resetLauncherTerminalFixtureMarker(): void {
+  if (!launcherTerminalFixtureEnabled) return
+  launcherTerminalFixtureMarker = {
+    accepted: { commandLength: 0, commandSha256: '', count: 0 },
+    canceled: 0,
+    declined: 0,
+    forbiddenEffects: 0,
+    marker: 'tockteam-terminal-fixture-v1',
+  }
+  writeLauncherTerminalFixtureMarker()
+}
+
+function recordLauncherTerminalFixtureAudit(record: { commandLength: number; commandSha256: string; outcome: 'denied' | 'failed' | 'launched' }): void {
+  if (!launcherTerminalFixtureEnabled) return
+  if (record.outcome === 'launched') launcherTerminalFixtureMarker.accepted = { commandLength: record.commandLength, commandSha256: record.commandSha256, count: launcherTerminalFixtureMarker.accepted.count + 1 }
+  else if (record.outcome === 'denied') launcherTerminalFixtureMarker.declined += 1
+  else launcherTerminalFixtureMarker.forbiddenEffects += 1
+  writeLauncherTerminalFixtureMarker()
+}
+
+function recordLauncherTerminalFixtureCanceled(): void {
+  if (!launcherTerminalFixtureEnabled) return
+  launcherTerminalFixtureMarker.canceled += 1
+  writeLauncherTerminalFixtureMarker()
+}
 
 type LauncherOsFixtureMarker = {
   marker: 'tockteam-os-fixture-v1'
@@ -1267,6 +1321,7 @@ function createLauncherWindow(args: Readonly<{
 function initializeLauncher(): void {
   if (launcherController !== undefined) return
   resetLauncherOsFixtureMarker()
+  resetLauncherTerminalFixtureMarker()
   const repository = requireLauncherPersistence()
   const launcherSession = session.fromPartition(LAUNCHER_SESSION_PARTITION)
   applyLauncherSessionPolicy(launcherSession)
@@ -1427,13 +1482,32 @@ function initializeLauncher(): void {
     ...(launcherNetworkFixtureEnabled ? { resolveAddresses: async () => ['8.8.8.8'] } : null),
   })
   launcherNetwork = network
+  const terminalEnabledExtensionIds = (): readonly string[] => launcherTerminalFixtureEnabled
+    ? [...new Set([...launcherEnabledLocalExtensionIds(), 'TerminalLauncher'])]
+    : launcherEnabledLocalExtensionIds()
   const terminal = createLauncherTerminal({
     effects: {
       auditLaunch: async record => {
+        recordLauncherTerminalFixtureAudit(record)
         appendLog('desktop', `TockLauncher terminal ${record.outcome}: terminal=${record.terminalId} commandLength=${record.commandLength} commandSha256=${record.commandSha256} workingDirectory=${record.workingDirectory}`)
       },
       confirmLaunch: async ({ command, terminalName, workingDirectory }, signal) => {
         if (signal.aborted) throw launcherAbortError(signal)
+        if (launcherTerminalFixtureEnabled) {
+          if (command === 'fixture delayed') {
+            await new Promise<void>((resolve, reject) => {
+              const timer = setTimeout(resolve, 5_000)
+              const abort = (): void => {
+                clearTimeout(timer)
+                signal.removeEventListener('abort', abort)
+                recordLauncherTerminalFixtureCanceled()
+                reject(launcherAbortError(signal))
+              }
+              signal.addEventListener('abort', abort, { once: true })
+            })
+          }
+          return command === 'fixture accepted'
+        }
         const owner = mainWindow
         const pending = owner === undefined || owner.isDestroyed()
           ? dialog.showMessageBox({ buttons: ['Launch', 'Cancel'], cancelId: 1, defaultId: 1, detail: `Terminal: ${terminalName}\\nCommand: ${command}\\nWorking directory: ${workingDirectory}`, message: `Launch command in ${terminalName}?`, title: PRODUCT_NAME, type: 'warning' })
@@ -1443,6 +1517,14 @@ function initializeLauncher(): void {
       },
       launchTerminal: async (request, signal) => {
         if (signal.aborted) throw launcherAbortError(signal)
+        if (launcherTerminalFixtureEnabled) {
+          if (request.command !== 'fixture accepted') {
+            launcherTerminalFixtureMarker.forbiddenEffects += 1
+            writeLauncherTerminalFixtureMarker()
+            throw new Error('Unexpected terminal fixture effect')
+          }
+          return
+        }
         const invocation = resolveTerminalInvocation(platform, request)
         if (invocation.waitForExit) {
           await execFileAsync(invocation.executable, [...invocation.args], {
@@ -1457,7 +1539,7 @@ function initializeLauncher(): void {
         await launchDetachedTerminalInvocation(invocation, { signal, timeoutMs: 5_000 })
       },
     },
-    enabledExtensionIds: launcherEnabledLocalExtensionIds,
+    enabledExtensionIds: terminalEnabledExtensionIds,
     getSetting: (key, fallback) => repository.getSetting(key, fallback),
     homePath: app.getPath('home'),
     onProviderError: error => { appendLog('desktop', `TockLauncher Terminal Launcher failed: ${error.name}`) },

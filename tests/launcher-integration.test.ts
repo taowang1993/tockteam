@@ -47,7 +47,9 @@ test('main assembles one launcher owner without branching the DSH workbench fact
   assert.match(main, /waitForLauncherProvidersIdle/u)
   assert.match(main, /launcherOwnerReady/u)
   assert.match(main, /TOCKTEAM_OS_FIXTURE/u)
+  assert.match(main, /TOCKTEAM_TERMINAL_FIXTURE/u)
   assert.match(main, /launcherOsFixtureMarker/u)
+  assert.match(main, /launcherTerminalFixtureMarker/u)
   assert.match(main, /acceptedEffects/u)
   assert.match(main, /Unexpected fixture/u)
   assert.match(main, /signal,\s*timeout: 15_000/u)
@@ -110,7 +112,9 @@ test('main assembles one launcher owner without branching the DSH workbench fact
 
 test('fixture smoke reads host-owned effect counters instead of renderer authority', () => {
   assert.match(electronSmoke, /os-fixture-marker\.json/u)
+  assert.match(electronSmoke, /terminal-fixture-marker\.json/u)
   assert.match(electronSmoke, /acceptedEffects/u)
+  assert.match(electronSmoke, /fixture accepted/u)
   assert.match(electronSmoke, /declinedConfirmations/u)
   assert.match(electronSmoke, /canceledConfirmations/u)
   assert.match(electronSmoke, /forbiddenEffects/u)
