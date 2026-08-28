@@ -169,7 +169,7 @@ const MAX_AUDIT_DURATION = 86_400_000
 const MAX_COMMAND_BYTES = 1_048_576
 
 function isAbsolutePath(platform: LauncherTerminalPlatform, value: string): boolean {
-  return platform === 'Windows' ? path.win32.isAbsolute(value) : path.posix.isAbsolute(value)
+  return platform === 'Windows' ? /^[A-Za-z]:[\\/]/u.test(value) : path.posix.isAbsolute(value)
 }
 
 function identityPart(value: unknown): string | undefined {
@@ -189,11 +189,25 @@ function sameIdentity(left: LauncherWorkflowPathIdentity, right: LauncherWorkflo
   return left.dev === right.dev && left.ino === right.ino
 }
 
-function validIdentity(value: unknown): value is LauncherWorkflowPathIdentity {
-  if (typeof value !== 'object' || value === null) return false
+function normalizedIdentity(value: unknown): LauncherWorkflowPathIdentity | undefined {
+  if (typeof value !== 'object' || value === null) return undefined
   const candidate = value as { dev?: unknown; ino?: unknown }
-  return typeof candidate.dev === 'string' && /^[0-9]+$/u.test(candidate.dev)
-    && typeof candidate.ino === 'string' && /^[0-9]+$/u.test(candidate.ino)
+  const dev = identityPart(candidate.dev)
+  const ino = identityPart(candidate.ino)
+  return dev === undefined || ino === undefined || dev.length > 128 || ino.length > 128
+    ? undefined
+    : Object.freeze({ dev, ino })
+}
+
+function validIdentity(value: unknown): value is LauncherWorkflowPathIdentity {
+  return normalizedIdentity(value) !== undefined
+}
+
+function normalizePathTarget(platform: LauncherTerminalPlatform, value: LauncherWorkflowPathTarget): LauncherWorkflowPathTarget | undefined {
+  const identity = normalizedIdentity(value.identity)
+  return identity === undefined || !boundedPath(platform, value.canonicalPath)
+    ? undefined
+    : Object.freeze({ canonicalPath: value.canonicalPath, identity, kind: value.kind })
 }
 
 function validPathTarget(platform: LauncherTerminalPlatform, value: unknown): value is LauncherWorkflowPathTarget {
@@ -225,7 +239,7 @@ function pathParts(platform: LauncherTerminalPlatform, target: string): readonly
   const api = platform === 'Windows' ? path.win32 : path.posix
   const parsed = api.parse(target)
   const relative = api.relative(parsed.root, target)
-  return [parsed.root, ...relative.split(api.sep).filter(Boolean)]
+  return [parsed.root, ...relative.split(/[\\/]/u).filter(Boolean)]
 }
 
 /** Capture a canonical regular file/directory and reject every symlink component. */
@@ -235,6 +249,9 @@ export async function captureLauncherWorkflowPath(
   signal: AbortSignal = new AbortController().signal,
 ): Promise<LauncherWorkflowPathTarget | undefined> {
   if (!boundedPath(platform, target) || signal.aborted) return undefined
+  const api = platform === 'Windows' ? path.win32 : path.posix
+  const components = target.slice(api.parse(target).root.length).split(/[\\/]/u).filter(Boolean)
+  if (components.some(component => component === '.' || component === '..')) return undefined
   try {
     let current = pathParts(platform, target)[0]!
     for (const component of pathParts(platform, target).slice(1)) {
@@ -288,9 +305,9 @@ function throwIfAborted(signal: AbortSignal, fallback = 'TockLauncher Workflow w
   if (signal.aborted) throw abortError(signal, fallback)
 }
 
-async function awaitAbortable<T>(operation: Promise<T> | T, signal: AbortSignal): Promise<T> {
+async function awaitAbortable<T>(operation: () => Promise<T> | T, signal: AbortSignal): Promise<T> {
   throwIfAborted(signal)
-  const pending = Promise.resolve().then(() => operation)
+  const pending = Promise.resolve().then(operation)
   void pending.catch(() => undefined)
   let onAbort!: () => void
   const canceled = new Promise<never>((_, reject) => {
@@ -403,13 +420,16 @@ export function createLauncherWorkflow(options: WorkflowOptions): Readonly<{
     if (workflow.actions.some(isCommandAction) && homeIdentity === undefined && options.captureHomeIdentity !== undefined) {
       homeIdentity = await options.captureHomeIdentity(options.homePath, signal)
     }
-    if (workflow.actions.some(isCommandAction) && (homeIdentity === undefined || !validIdentity(homeIdentity))) return undefined
+    homeIdentity = homeIdentity === undefined ? undefined : normalizedIdentity(homeIdentity)
+    if (workflow.actions.some(isCommandAction) && homeIdentity === undefined) return undefined
     for (const action of workflow.actions) {
       throwIfAborted(signal, 'TockLauncher Workflow load canceled')
       if (action.handlerId === 'OpenFile') {
         const target = await capturePath(action.args.filePath, options.platform, signal)
         if (target === undefined || !validPathTarget(options.platform, target)) return undefined
-        pathTargets.set(action.id, target)
+        const normalized = normalizePathTarget(options.platform, target)
+        if (normalized === undefined) return undefined
+        pathTargets.set(action.id, normalized)
       } else if (action.handlerId === 'OpenUrl') {
         const normalized = normalizeWorkflowUrl(action.args.url)
         if (normalized === undefined) return undefined
@@ -447,6 +467,7 @@ export function createLauncherWorkflow(options: WorkflowOptions): Readonly<{
       let workflows: readonly LauncherWorkflow[]
       try { workflows = parseLauncherWorkflows(options.getSetting<unknown>(LAUNCHER_WORKFLOW_SETTING_KEY, []), options.platform) }
       catch (error) {
+        if (controller.signal.aborted || closed || loadGeneration !== generation) throw abortError(controller.signal, 'TockLauncher Workflow load superseded')
         report(error)
         return Object.freeze([])
       }
@@ -540,7 +561,7 @@ export function createLauncherWorkflow(options: WorkflowOptions): Readonly<{
     const validateHome = async (): Promise<void> => {
       if (known.homeIdentity === undefined || !boundedPath(options.platform, options.homePath)) throw new Error('TockLauncher Workflow home is unavailable')
       if (options.captureHomeIdentity !== undefined) {
-        const current = await options.captureHomeIdentity(options.homePath, controller.signal)
+        const current = normalizedIdentity(await options.captureHomeIdentity(options.homePath, controller.signal))
         if (current === undefined || !sameIdentity(current, known.homeIdentity)) throw new Error('TockLauncher Workflow home changed')
       }
       if (options.validateHome !== undefined && !await options.validateHome(options.homePath, known.homeIdentity, controller.signal)) throw new Error('TockLauncher Workflow home changed')
@@ -564,27 +585,28 @@ export function createLauncherWorkflow(options: WorkflowOptions): Readonly<{
     }
     const confirm = async (action: LauncherWorkflowAction): Promise<boolean> => {
       const request = actionForConfirmation(action, workflow, options.homePath)
-      if (options.effects.confirmActionWithSignal !== undefined) return await awaitAbortable(options.effects.confirmActionWithSignal(request, controller.signal), controller.signal)
-      return await awaitAbortable(options.effects.confirmAction(request), controller.signal)
+      if (options.effects.confirmActionWithSignal !== undefined) return (await awaitAbortable(() => options.effects.confirmActionWithSignal!(request, controller.signal), controller.signal)) === true
+      return (await awaitAbortable(() => options.effects.confirmAction(request), controller.signal)) === true
     }
     const effect = async (action: LauncherWorkflowAction): Promise<void> => {
       ensureCurrent()
       if (action.handlerId === 'OpenFile') {
         const target = known.pathTargets.get(action.id)
         if (target === undefined) throw new Error('TockLauncher Workflow file target is unavailable')
-        if (options.effects.openFileWithSignal !== undefined) await awaitAbortable(options.effects.openFileWithSignal(target.canonicalPath, controller.signal), controller.signal)
-        else await awaitAbortable(options.effects.openFile(target.canonicalPath), controller.signal)
+        if (options.effects.openFileWithSignal !== undefined) await awaitAbortable(() => options.effects.openFileWithSignal!(target.canonicalPath, controller.signal), controller.signal)
+        else await awaitAbortable(() => options.effects.openFile(target.canonicalPath), controller.signal)
       } else if (action.handlerId === 'OpenUrl') {
         const url = normalizeWorkflowUrl(action.args.url)
         if (url === undefined) throw new Error('TockLauncher Workflow URL target is unavailable')
-        if (options.effects.openUrlWithSignal !== undefined) await awaitAbortable(options.effects.openUrlWithSignal(url, controller.signal), controller.signal)
-        else await awaitAbortable(options.effects.openUrl(url), controller.signal)
+        if (options.effects.openUrlWithSignal !== undefined) await awaitAbortable(() => options.effects.openUrlWithSignal!(url, controller.signal), controller.signal)
+        else await awaitAbortable(() => options.effects.openUrl(url), controller.signal)
       } else if (action.handlerId === 'OpenTerminal') {
         const request = Object.freeze({ command: action.args.command, terminalId: action.args.terminalId, workingDirectory: options.homePath })
-        if (options.effects.openTerminalWithSignal !== undefined) await awaitAbortable(options.effects.openTerminalWithSignal(request, controller.signal), controller.signal)
-        else await awaitAbortable(options.effects.openTerminal(request), controller.signal)
+        if (options.effects.openTerminalWithSignal !== undefined) await awaitAbortable(() => options.effects.openTerminalWithSignal!(request, controller.signal), controller.signal)
+        else await awaitAbortable(() => options.effects.openTerminal(request), controller.signal)
       } else {
         const executeCommand = options.effects.executeCommand ?? (async request => await runBoundedWorkflowCommand({ command: request.command, platform: options.platform, signal: request.signal, workingDirectory: request.workingDirectory }))
+        throwIfAborted(controller.signal)
         const result = commandResultBytes(await executeCommand({ command: action.args.command, signal: controller.signal, workingDirectory: options.homePath }))
         stdoutBytes += result.stdoutBytes
         stderrBytes += result.stderrBytes

@@ -144,7 +144,7 @@ function boundedEnvironment(
   environment: Readonly<Record<string, string | undefined>>,
 ): Readonly<Record<string, string>> {
   if (platform === 'Windows') {
-    const systemRoot = boundedSystemRoot(environment.SystemRoot ?? environment.SystemRoot)
+    const systemRoot = boundedSystemRoot(environment.SystemRoot)
     return Object.freeze({
       ComSpec: `${systemRoot}\\System32\\cmd.exe`,
       PATH: `${systemRoot}\\System32;${systemRoot}`,

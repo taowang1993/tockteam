@@ -41,7 +41,7 @@ function harness(workflows: unknown = [WORKFLOW]) {
     homeIdentity: HOME,
     homePath: '/Users/max',
     platform: 'macOS',
-    revalidatePath: async (_target, expected) => expected === FILE,
+    revalidatePath: async (_target, expected) => expected.canonicalPath === FILE.canonicalPath && expected.identity.dev === FILE.identity.dev && expected.identity.ino === FILE.identity.ino && expected.kind === FILE.kind,
   })
   return { effects, events, provider }
 }

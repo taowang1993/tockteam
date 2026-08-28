@@ -1841,6 +1841,12 @@ function initializeLauncher(): void {
           await execFileAsync(invocation.executable, [...invocation.args], { cwd: invocation.cwd, maxBuffer: 1_048_576, shell: false, timeout: 15_000 })
           return
         }
+        if (platform === 'Windows') {
+          const trusted = await resolveTrustedWindowsTerminalExecutable(request.terminalId)
+          if (!await revalidateTrustedWindowsTerminalExecutable(trusted)) throw new Error('Windows terminal executable changed before launch')
+          await launchDetachedTerminalInvocation({ ...invocation, executable: trusted.executable }, { timeoutMs: 5_000 })
+          return
+        }
         await launchDetachedTerminalInvocation(invocation, { timeoutMs: 5_000 })
       },
       openUrlWithSignal: async (url, signal) => {
