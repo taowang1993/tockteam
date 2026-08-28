@@ -1158,6 +1158,36 @@ try {
     }
   })()`)
   assert.deepEqual(networkValidationFacts, { errors: ['alert', 'alert', 'alert'], currencies: ['usd', 'eur'], target: 'eur', rejected: true })
+  const localDraftPrepared = await workbenchConnection.evaluate(`(() => {
+    const control = document.querySelector('[aria-label="Base64 Encode Prefix"]')
+    if (!(control instanceof HTMLInputElement) || control.disabled) return false
+    const setter = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(control), 'value')?.set
+    if (setter === undefined) return false
+    control.focus()
+    setter.call(control, 'race-local-prefix')
+    control.dispatchEvent(new Event('input', { bubbles: true, cancelable: true }))
+    return control.value === 'race-local-prefix'
+  })()`)
+  assert.equal(localDraftPrepared, true)
+  const presentationMutation = await workbenchConnection.evaluate(`(() => {
+    const select = document.querySelector('[aria-label="Search Bar Size"]')
+    if (!(select instanceof HTMLSelectElement) || select.disabled) return false
+    const next = select.value === 'large' ? 'medium' : 'large'
+    select.value = next
+    select.dispatchEvent(new Event('change', { bubbles: true, cancelable: true }))
+    return select.value === next
+  })()`)
+  assert.equal(presentationMutation, true)
+  await waitFor(
+    () => workbenchConnection.evaluate('document.querySelector("[aria-label=\\"Base64 Encode Prefix\\"]")?.value ?? null'),
+    value => value === 'race-local-prefix',
+  )
+  await workbenchConnection.evaluate('(async () => { await window.dshDesktop?.launcher?.settings?.updateSetting("extension[Base64Conversion].encodePrefix", "b64e") })()')
+  await waitFor(
+    () => workbenchConnection.evaluate('(async () => (await window.dshDesktop?.launcher?.settings?.getSnapshot())?.values?.["extension[Base64Conversion].encodePrefix"] ?? null)()'),
+    value => value === 'b64e',
+  )
+
   const rapidBrowserToggle = await workbenchConnection.evaluate(`(() => {
     const chrome = document.querySelector('[aria-label="Enable Google Chrome bookmarks"]')
     const firefox = document.querySelector('[aria-label="Enable Firefox bookmarks"]')

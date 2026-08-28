@@ -210,6 +210,7 @@ const FIXED_ZH: Readonly<Record<string, string>> = Object.freeze({
   'History is stored in the Desktop-owned launcher repository.': '历史记录存储在 Desktop 所有的启动器仓库中。',
   'Clear persisted history without changing provider settings.': '清除持久化历史记录，但不更改提供方设置。',
   'Enable search history': '启用搜索历史',
+  'English': '英语',
   'Settings source': '设置来源',
   'Language': '语言',
   'External grant revoked; managed source active': '外部授权已撤销；使用托管源',

@@ -333,22 +333,22 @@ function LauncherSettingsPage({ close: _close, locale }: SettingsSectionProps): 
 
       <SectionCard icon={<MonitorCog aria-hidden="true" className="size-4" />} title={t('sectionSearch')} description="Tune the matching surface without exposing launcher internals.">
         <Field title="Search engine" description="The selected matcher is applied to the next search.">
-          <NativeSelect aria-label="Search engine" size="sm" value={state.preferences.searchEngineId} disabled={busy} onChange={event => { void save('searchEngine.id', event.target.value) }}>
+          <NativeSelect aria-label={launcherFixedText('Search engine')} size="sm" value={state.preferences.searchEngineId} disabled={busy} onChange={event => { void save('searchEngine.id', event.target.value) }}>
             <NativeSelectOption value="fuzzysort">fuzzysort</NativeSelectOption>
             <NativeSelectOption value="Fuse.js">Fuse.js</NativeSelectOption>
           </NativeSelect>
         </Field>
         <Field title={`${launcherFixedText('Fuzziness')} (${fuzzinessDraft.toFixed(1)})`} description="Higher values broaden fuzzy matching.">
-          <Input aria-label="Search fuzziness" className="w-full max-w-xs min-w-0" type="range" min="0" max="1" step="0.1" disabled={busy} value={fuzzinessDraft} onChange={event => { setFuzzinessDraft(Number(event.target.value)) }} onBlur={() => { void save('searchEngine.fuzziness', fuzzinessDraft) }} />
+          <Input aria-label={launcherFixedText('Search fuzziness')} className="w-full max-w-xs min-w-0" type="range" min="0" max="1" step="0.1" disabled={busy} value={fuzzinessDraft} onChange={event => { setFuzzinessDraft(Number(event.target.value)) }} onBlur={() => { void save('searchEngine.fuzziness', fuzzinessDraft) }} />
         </Field>
         <Field title="Maximum results" description="Keep result lists concise while retaining pinned items.">
-          <Input aria-label="Maximum results" className="w-24" type="number" min="1" max="200" disabled={busy} value={state.preferences.maxSearchResultItems} onChange={event => { const value = Math.min(200, Math.max(1, Number(event.target.value) || 50)); void save('searchEngine.maxResultLength', value) }} />
+          <Input aria-label={launcherFixedText('Maximum results')} className="w-24" type="number" min="1" max="200" disabled={busy} value={state.preferences.maxSearchResultItems} onChange={event => { const value = Math.min(200, Math.max(1, Number(event.target.value) || 50)); void save('searchEngine.maxResultLength', value) }} />
         </Field>
         <Field title="Search history" description="History is stored in the Desktop-owned launcher repository.">
-          <Switch aria-label="Enable search history" checked={state.preferences.historyEnabled} disabled={busy} onCheckedChange={checked => { void save('general.searchHistory.enabled', checked) }} />
+          <Switch aria-label={launcherFixedText('Enable search history')} checked={state.preferences.historyEnabled} disabled={busy} onCheckedChange={checked => { void save('general.searchHistory.enabled', checked) }} />
         </Field>
         <Field title="History limit" description={`${state.history.length} saved searches currently visible to TockLauncher.`}>
-          <Input aria-label="History limit" className="w-24" type="number" min="1" max="100" disabled={busy} value={state.preferences.historyLimit} onChange={event => { const value = Math.min(100, Math.max(1, Number(event.target.value) || 10)); void save('general.searchHistory.limit', value) }} />
+          <Input aria-label={launcherFixedText('History limit')} className="w-24" type="number" min="1" max="100" disabled={busy} value={state.preferences.historyLimit} onChange={event => { const value = Math.min(100, Math.max(1, Number(event.target.value) || 10)); void save('general.searchHistory.limit', value) }} />
         </Field>
         <Field title="Saved searches" description="Clear persisted history without changing provider settings.">
           <Button aria-label={launcherFixedText('Clear search history')} size="sm" variant="outline" disabled={busy || state.history.length === 0} onClick={clearHistory}><Trash2 aria-hidden="true" />{launcherFixedText('Clear History')}</Button>
@@ -367,12 +367,12 @@ function LauncherSettingsPage({ close: _close, locale }: SettingsSectionProps): 
           <Switch aria-label={launcherFixedText('Launch on Start')} checked={launchOnStart === true} disabled={busy || launchOnStart === null} onCheckedChange={checked => { setBusy(true); void bridge.launchOnStart.set(checked).then(value => { setLaunchOnStart(value); setStatus(launcherFixedText('Launch on Start saved.')) }).catch(() => setStatus(launcherFixedText('Launch on Start could not be saved.'))).finally(() => setBusy(false)) }} />
         </Field>
         <Field title="Show TockLauncher on startup" description="TockTeam defaults to opt-in startup visibility.">
-          <Switch aria-label="Show TockLauncher on startup" checked={state.preferences.showOnStartup} disabled={busy} onCheckedChange={checked => { void save('window.showOnStartup', checked) }} />
+          <Switch aria-label={launcherFixedText('Show TockLauncher on startup')} checked={state.preferences.showOnStartup} disabled={busy} onCheckedChange={checked => { void save('window.showOnStartup', checked) }} />
         </Field>
-        <Field title="Keep TockLauncher always on top"><Switch aria-label="Keep TockLauncher always on top" checked={state.preferences.alwaysOnTop} disabled={busy} onCheckedChange={checked => { void save('window.alwaysOnTop', checked) }} /></Field>
-        <Field title="Show on all workspaces"><Switch aria-label="Show on all workspaces" checked={state.preferences.visibleOnAllWorkspaces} disabled={busy} onCheckedChange={checked => { void save('window.visibleOnAllWorkspaces', checked) }} /></Field>
-        <Field title="Show tray icon"><Switch aria-label="Show tray icon" checked={state.preferences.showTrayIcon} disabled={busy} onCheckedChange={checked => { void save('general.tray.showIcon', checked) }} /></Field>
-        <Field title="Show Dock icon"><Switch aria-label="Show Dock icon" checked={state.preferences.showDockIcon} disabled={busy} onCheckedChange={checked => { void save('appearance.showAppIconInDock', checked) }} /></Field>
+        <Field title="Keep TockLauncher always on top"><Switch aria-label={launcherFixedText('Keep TockLauncher always on top')} checked={state.preferences.alwaysOnTop} disabled={busy} onCheckedChange={checked => { void save('window.alwaysOnTop', checked) }} /></Field>
+        <Field title="Show on all workspaces"><Switch aria-label={launcherFixedText('Show on all workspaces')} checked={state.preferences.visibleOnAllWorkspaces} disabled={busy} onCheckedChange={checked => { void save('window.visibleOnAll workspaces', checked) }} /></Field>
+        <Field title="Show tray icon"><Switch aria-label={launcherFixedText('Show tray icon')} checked={state.preferences.showTrayIcon} disabled={busy} onCheckedChange={checked => { void save('general.tray.showIcon', checked) }} /></Field>
+        <Field title="Show Dock icon"><Switch aria-label={launcherFixedText('Show Dock icon')} checked={state.preferences.showDockIcon} disabled={busy} onCheckedChange={checked => { void save('appearance.showAppIconInDock', checked) }} /></Field>
         <LauncherSurfaceSettingsSection busy={busy} platform={rendererPlatform} save={save} section="window" snapshot={snapshot} />
       </SectionCard>
 
