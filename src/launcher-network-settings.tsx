@@ -25,7 +25,7 @@ function value<T>(snapshot: LauncherSettingsSnapshot, key: string, fallback: T):
 }
 
 function Field({ label, description, children }: Readonly<{ label: string; description?: string; children: ReactNode }>): ReactNode {
-  return <div className="flex min-w-0 flex-wrap items-center justify-between gap-3 border-b border-border/60 py-3 last:border-b-0"><div className="min-w-0 flex-1"><div className="text-sm font-medium text-foreground">{launcherFixedText(label)}</div>{description ? <div className="mt-1 text-xs leading-5 text-muted-foreground">{description}</div> : null}</div><div className="flex min-w-0 max-w-full flex-wrap items-center gap-2">{children}</div></div>
+  return <div className="flex min-w-0 flex-wrap items-center justify-between gap-3 border-b border-border/60 py-3 last:border-b-0"><div className="min-w-0 flex-1"><div className="text-sm font-medium text-foreground">{launcherFixedText(label)}</div>{description ? <div className="mt-1 text-xs leading-5 text-muted-foreground">{launcherFixedText(description)}</div> : null}</div><div className="flex min-w-0 max-w-full flex-wrap items-center gap-2">{children}</div></div>
 }
 
 function ValidationError({ id, message }: Readonly<{ id: string; message: string | undefined }>): ReactNode {

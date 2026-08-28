@@ -50,7 +50,7 @@ export function LauncherLocalSettings({ busy, save, snapshot }: LocalSettingsPro
       void save('extension[UuidGenerator].searchResultFormats', parsed)
     } catch { event.currentTarget.setAttribute('aria-invalid', 'true') }
   }
-  return <section className="space-y-3" data-testid="tocklauncher-local-settings">
+  return <section className="min-w-0 space-y-3" data-testid="tocklauncher-local-settings">
     <div><h2 className="text-base font-semibold text-foreground">Local Transformation Extensions</h2><p className="mt-1 text-xs text-muted-foreground">These bounded controls configure the seven local search providers.</p></div>
     <details open><summary className="cursor-pointer text-sm font-medium">Base64 Conversion</summary><div className="pl-3">
       <Field label="Encode/Decode Prefix">{text({ 'aria-label': 'Base64 Encode/Decode Prefix', maxLength: 64, disabled: busy, defaultValue: value('Base64Conversion', 'encodeDecodePrefix', d.Base64Conversion.encodeDecodePrefix) as string, onBlur: event => { void save('extension[Base64Conversion].encodeDecodePrefix', event.target.value) } })}</Field>
