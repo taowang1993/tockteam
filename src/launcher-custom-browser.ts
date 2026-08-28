@@ -361,7 +361,7 @@ async function writeGrant(filePath: string, grant: Grant, platform: LauncherCust
     if (!renamed && created) {
       try {
         const cleanupParent = await validateGrantParent(parentBinding, platform)
-        await rm(temporary, { force: true })
+        await rm(path.join(cleanupParent.binding.realPath, temporaryName), { force: true })
         await closeGrantParent(cleanupParent)
       } catch { /* leave an untrusted temporary path untouched */ }
     }
@@ -501,21 +501,11 @@ export class LauncherCustomBrowserController {
       this.#grant = undefined
       this.#status = 'none'
       await closeGrantParent(parent)
-      try {
-        const after = await validateGrantParent(this.#parentBinding!, this.options.platform)
-        await closeGrantParent(after)
-      } catch (error) {
-        throw error
-      }
-      try { await syncGrantDirectory(this.options.syncDirectory ?? (async targetDirectory => await syncDirectory(targetDirectory, this.options.platform)), this.#parentBinding!.realPath, this.options.platform) } catch (error) {
-        if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
-      }
-      try {
-        const afterSync = await validateGrantParent(this.#parentBinding!, this.options.platform)
-        await closeGrantParent(afterSync)
-      } catch (error) {
-        throw error
-      }
+      const after = await validateGrantParent(this.#parentBinding!, this.options.platform)
+      await closeGrantParent(after)
+      await syncGrantDirectory(this.options.syncDirectory ?? (async targetDirectory => await syncDirectory(targetDirectory, this.options.platform)), this.#parentBinding!.realPath, this.options.platform)
+      const afterSync = await validateGrantParent(this.#parentBinding!, this.options.platform)
+      await closeGrantParent(afterSync)
       this.options.afterGrantMutation?.('revoke')
       throwIfAborted(operationSignal)
     }, signal)
