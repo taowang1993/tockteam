@@ -155,6 +155,7 @@ const simpleSearchFile = join(simpleSearchFixture, 'tockteam-file-search-fixture
 const fixtureMarkerPath = join(userData, 'launcher', 'os-fixture-marker.json')
 const terminalFixtureMarkerPath = join(userData, 'launcher', 'terminal-fixture-marker.json')
 const browserFixtureMarkerPath = join(userData, 'launcher', 'browser-fixture-marker.json')
+const workflowFixtureMarkerPath = join(userData, 'launcher', 'workflow-fixture-marker.json')
 await writeFile(simpleSearchFile, 'simple file search fixture', 'utf8')
 const discoveryApplications = join(discoveryFixture, 'Applications')
 const discoveryApplication = join(discoveryApplications, 'TockTeam Fixture.app')
@@ -164,12 +165,14 @@ const electron = ensureElectronInstalled(root)
 const mainSource = await readFile(join(root, 'src', 'main.ts'), 'utf8')
 assert.match(mainSource, /const launcherOsFixtureEnabled = !app\.isPackaged && process\.env\.TOCKTEAM_OS_FIXTURE === '1'/u)
 assert.match(mainSource, /const launcherTerminalFixtureEnabled = !app\.isPackaged && process\.env\.TOCKTEAM_TERMINAL_FIXTURE === '1'/u)
+assert.match(mainSource, /const launcherWorkflowFixtureEnabled = !app\.isPackaged && process\.env\.TOCKTEAM_WORKFLOW_FIXTURE === '1'/u)
 assert.match(mainSource, /const launcherBrowserFixtureEnabled = !app\.isPackaged && process\.env\.TOCKTEAM_BROWSER_FIXTURE === '1'/u)
 assert.match(mainSource, /launcherOsFixtureMarker/u)
+assert.match(mainSource, /launcherWorkflowFixtureMarker/u)
 assert.match(mainSource, /acceptedEffects/u)
 assert.match(mainSource, /Unexpected fixture effect/u)
 assert.match(mainSource, /if \(launcherOsFixtureEnabled\)/u)
-const fixtureEnvironment = { ...process.env, TOCKTEAM_BROWSER_FIXTURE: '1', TOCKTEAM_NETWORK_FIXTURE: '1', TOCKTEAM_OS_FIXTURE: '1', TOCKTEAM_TERMINAL_FIXTURE: '1' }
+const fixtureEnvironment = { ...process.env, TOCKTEAM_BROWSER_FIXTURE: '1', TOCKTEAM_NETWORK_FIXTURE: '1', TOCKTEAM_OS_FIXTURE: '1', TOCKTEAM_TERMINAL_FIXTURE: '1', TOCKTEAM_WORKFLOW_FIXTURE: '1' }
 const child = spawn(electron, [
   '.',
   `--remote-debugging-port=${String(port)}`,
@@ -692,9 +695,65 @@ try {
       hasSimpleSearchRoots: document.querySelector('[aria-label^="Path for"]') !== null,
       hasNetworkSettings: document.querySelector('[data-testid="tockteam-network-settings"]') !== null,
       hasNetworkDisclosure: document.querySelector('[data-testid="tockteam-network-settings"]')?.textContent?.includes('Network requests and browser effects') ?? false,
+      hasWorkflowSettings: document.querySelector('[data-testid="tocklauncher-workflows"]') !== null,
+      hasWorkflowName: document.querySelector('[aria-label="Workflow name"]') !== null,
+      hasWorkflowActions: document.querySelector('[data-testid="tocklauncher-workflow-add-action"]') !== null,
     }
   })()`)
-  assert.deepEqual(settingsFacts, { bridgeFrozen: true, catalog: true, hasSecret: false, hasBrowserPath: false, hasBrowserName: false, hasHistorySwitch: true, hasReset: true, liveStatus: true, extensionSwitches: 24, hasDiscoverySettings: true, hasApplicationFolders: true, hasBrowserBookmarks: true, hasVscodeSettings: true, hasFileSearchSettings: true, hasSimpleSearchRoots: false, hasNetworkSettings: true, hasNetworkDisclosure: true })
+  assert.deepEqual(settingsFacts, { bridgeFrozen: true, catalog: true, hasSecret: false, hasBrowserPath: false, hasBrowserName: false, hasHistorySwitch: true, hasReset: true, liveStatus: true, extensionSwitches: 24, hasDiscoverySettings: true, hasApplicationFolders: true, hasBrowserBookmarks: true, hasVscodeSettings: true, hasFileSearchSettings: true, hasSimpleSearchRoots: false, hasNetworkSettings: true, hasNetworkDisclosure: true, hasWorkflowSettings: true, hasWorkflowName: false, hasWorkflowActions: false })
+
+  const workflowEditor = await workbenchConnection.evaluate(`(() => {
+    const add = document.querySelector('[data-testid="tocklauncher-workflow-add"]')
+    if (!(add instanceof HTMLButtonElement)) return false
+    add.click()
+    return true
+  })()`)
+  assert.equal(workflowEditor, true)
+  await waitFor(() => workbenchConnection.evaluate('document.querySelector("#tocklauncher-workflow-name") !== null'), found => found === true)
+  const setWorkflowInput = async (selector, value, eventName = 'input') => await workbenchConnection.evaluate(`(() => {
+    const control = document.querySelector(${JSON.stringify(selector)})
+    if (!(control instanceof HTMLInputElement || control instanceof HTMLSelectElement)) return false
+    const setter = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(control), 'value')?.set
+    if (setter === undefined) return false
+    setter.call(control, ${JSON.stringify(value)})
+    control.dispatchEvent(new Event(${JSON.stringify(eventName)}, { bubbles: true }))
+    return true
+  })()`)
+  assert.equal(await setWorkflowInput('#tocklauncher-workflow-name', 'Fixture workflow'), true)
+  assert.equal(await setWorkflowInput('#tocklauncher-workflow-action-name', 'fixture file'), true)
+  assert.equal(await setWorkflowInput('#tocklauncher-workflow-file-path', '/tmp/tockteam-workflow-fixture.txt'), true)
+  assert.equal(await workbenchConnection.evaluate('(() => { const button = document.querySelector("[data-testid=\\"tocklauncher-workflow-add-action\\"]"); if (!(button instanceof HTMLButtonElement) || button.disabled) return false; button.click(); return true })()'), true)
+  await sleep(50)
+  assert.equal(await setWorkflowInput('#tocklauncher-workflow-action-type', 'OpenUrl', 'change'), true)
+  await sleep(50)
+  assert.equal(await setWorkflowInput('#tocklauncher-workflow-action-name', 'fixture url'), true)
+  assert.equal(await setWorkflowInput('#tocklauncher-workflow-url', 'https://example.com/fixture'), true)
+  assert.equal(await workbenchConnection.evaluate('(() => { const button = document.querySelector("[data-testid=\\"tocklauncher-workflow-add-action\\"]"); if (!(button instanceof HTMLButtonElement) || button.disabled) return false; button.click(); return true })()'), true)
+  await sleep(50)
+  if (process.platform !== 'linux') {
+    assert.equal(await setWorkflowInput('#tocklauncher-workflow-action-type', 'OpenTerminal', 'change'), true)
+    await sleep(50)
+    assert.equal(await setWorkflowInput('#tocklauncher-workflow-action-name', 'fixture terminal'), true)
+    assert.equal(await setWorkflowInput('#tocklauncher-workflow-command', 'fixture accepted'), true)
+    assert.equal(await workbenchConnection.evaluate('(() => { const button = document.querySelector("[data-testid=\\"tocklauncher-workflow-add-action\\"]"); if (!(button instanceof HTMLButtonElement) || button.disabled) return false; button.click(); return true })()'), true)
+    await sleep(50)
+  }
+  assert.equal(await setWorkflowInput('#tocklauncher-workflow-action-type', 'ExecuteCommand', 'change'), true)
+  await sleep(50)
+  assert.equal(await setWorkflowInput('#tocklauncher-workflow-action-name', 'run output'), true)
+  assert.equal(await setWorkflowInput('#tocklauncher-workflow-command', 'fixture command'), true)
+  const workflowSaveFacts = await workbenchConnection.evaluate(`(() => {
+    const save = document.querySelector('[data-testid="tocklauncher-workflow-save"]')
+    if (!(save instanceof HTMLButtonElement)) return { present: false, disabled: true }
+    const disabled = save.disabled
+    if (!disabled) save.click()
+    return { present: true, disabled }
+  })()`)
+  assert.deepEqual(workflowSaveFacts, { present: true, disabled: false })
+  await waitFor(
+    () => workbenchConnection.evaluate('(async () => (await window.dshDesktop?.launcher?.settings?.getSnapshot())?.values?.["extension[Workflow].workflows"] ?? null)()'),
+    workflows => Array.isArray(workflows) && workflows.some(workflow => workflow?.id !== undefined && workflow?.name === 'Fixture workflow'),
+  )
   const browserChooseClicked = await workbenchConnection.evaluate(`(() => {
     const button = document.querySelector('[data-testid="tockteam-custom-browser-choose"]')
     if (!(button instanceof HTMLButtonElement)) return false
@@ -799,6 +858,68 @@ try {
     await window.dshDesktop?.launcher?.settings?.updateSetting('extensions.enabledExtensionIds', ['AppearanceSwitcher', 'ApplicationSearch', 'Base64Conversion', 'BrowserBookmarks', 'Calculator', 'ColorConverter', 'CurrencyConversion', 'CustomWebSearch', 'DeeplTranslator', 'FileSearch', 'JetBrainsToolbox', 'PasswordGenerator', 'QuickFormatter', 'RowlandTextEditor', 'SimpleFileSearch', 'SystemCommands', 'SystemSettings', 'TerminalLauncher', 'UeliCommand', 'UuidGenerator', 'VSCode', 'WebSearch', 'WindowsControlPanel', 'Workflow'])
   })()`)
   await showLauncherFromWorkbench(workbenchConnection)
+
+  const workflowFixtureFacts = await launcherConnection.evaluate(`(async () => {
+    const options = { fuzziness: 0, maxSearchResultItems: 200, searchEngineId: 'fuzzysort' }
+    const response = await window.tockteamLauncher?.search('Fixture workflow', options)
+    const item = [...(response?.before ?? []), ...(response?.after ?? [])].find(candidate => candidate.sourceExtension === 'Workflow')
+    if (item === undefined) return { found: false }
+    const actionId = item.defaultAction.actionId
+    const serialized = JSON.stringify(item)
+    const invoked = await window.tockteamLauncher?.invokeAction(actionId)
+    let replay = false
+    try { await window.tockteamLauncher?.invokeAction(actionId) } catch { replay = true }
+    return {
+      found: true,
+      icon: item.imageKey ?? null,
+      details: item.details ?? null,
+      leaks: /(tockteam-workflow-fixture|example\\.com|fixture command|\\/tmp)/iu.test(serialized),
+      invoked: invoked?.ok === true,
+      replay,
+    }
+  })()`)
+  assert.deepEqual(workflowFixtureFacts, { found: true, icon: 'workflow', details: process.platform === 'linux' ? 'fixture file, fixture url, run output' : 'fixture file, fixture url, fixture terminal, run output', leaks: false, invoked: true, replay: true })
+  const workflowFixtureMarker = await waitFor(
+    () => readFile(workflowFixtureMarkerPath, 'utf8').then(value => JSON.parse(value)).catch(() => null),
+    marker => marker?.marker === 'tockteam-workflow-fixture-v1'
+      && marker?.accepted === 1
+      && marker?.forbiddenEffects === 0
+      && JSON.stringify(marker?.order ?? []) === JSON.stringify(process.platform === 'linux' ? ['OpenFile', 'OpenUrl', 'ExecuteCommand'] : ['OpenFile', 'OpenUrl', 'OpenTerminal', 'ExecuteCommand']),
+  )
+  assert.deepEqual(workflowFixtureMarker.order, process.platform === 'linux' ? ['OpenFile', 'OpenUrl', 'ExecuteCommand'] : ['OpenFile', 'OpenUrl', 'OpenTerminal', 'ExecuteCommand'])
+  const workflowFixtureSetup = await workbenchConnection.evaluate(`(async () => {
+    const snapshot = await window.dshDesktop?.launcher?.settings?.getSnapshot()
+    const current = snapshot?.values?.['extension[Workflow].workflows']
+    if (!Array.isArray(current)) return false
+    const decline = { id: 'workflow-decline', name: 'Decline workflow', requiresConfirmation: false, actions: [{ id: 'decline', handlerId: 'ExecuteCommand', name: 'fixture decline', args: { command: 'fixture decline' } }] }
+    const cancel = { id: 'workflow-cancel', name: 'Cancel workflow', requiresConfirmation: false, actions: [{ id: 'cancel', handlerId: 'ExecuteCommand', name: 'fixture cancel', args: { command: 'fixture cancel' } }] }
+    await window.dshDesktop?.launcher?.settings?.updateSetting('extension[Workflow].workflows', [...current, decline, cancel])
+    return true
+  })()`)
+  assert.equal(workflowFixtureSetup, true)
+  await showLauncherFromWorkbench(workbenchConnection)
+  const workflowDeclined = await launcherConnection.evaluate(`(async () => {
+    const response = await window.tockteamLauncher?.search('Decline workflow', { fuzziness: 0, maxSearchResultItems: 50, searchEngineId: 'fuzzysort' })
+    const item = [...(response?.before ?? []), ...(response?.after ?? [])].find(candidate => candidate.sourceExtension === 'Workflow')
+    if (item === undefined) return false
+    const result = await window.tockteamLauncher?.invokeAction(item.defaultAction.actionId)
+    return result?.ok === true
+  })()`)
+  assert.equal(workflowDeclined, true)
+  await showLauncherFromWorkbench(workbenchConnection)
+  const workflowCancelStarted = await launcherConnection.call('Runtime.evaluate', { expression: `(async () => {
+    const response = await window.tockteamLauncher?.search('Cancel workflow', { fuzziness: 0, maxSearchResultItems: 50, searchEngineId: 'fuzzysort' })
+    const item = [...(response?.before ?? []), ...(response?.after ?? [])].find(candidate => candidate.sourceExtension === 'Workflow')
+    return typeof item?.defaultAction?.actionId === 'string' && await window.tockteamLauncher?.invokeAction(item.defaultAction.actionId)
+  })()`, awaitPromise: false, returnByValue: true })
+  assert.ok(workflowCancelStarted)
+  await sleep(250)
+  await workbenchConnection.evaluate(`(async () => { await window.dshDesktop?.launcher?.settings?.updateSetting('general.language', 'en-US') })()`)
+  const workflowFixtureAfterCancel = await waitFor(
+    () => readFile(workflowFixtureMarkerPath, 'utf8').then(value => JSON.parse(value)).catch(() => null),
+    marker => marker?.marker === 'tockteam-workflow-fixture-v1' && marker?.declined === 1 && marker?.canceled === 1 && marker?.forbiddenEffects === 0,
+  )
+  assert.equal(workflowFixtureAfterCancel.forbiddenEffects, 0)
 
   const networkStaticFacts = await launcherConnection.evaluate(`(async () => {
     const result = await window.tockteamLauncher?.search('', { fuzziness: 0, maxSearchResultItems: 200, searchEngineId: 'fuzzysort' })
