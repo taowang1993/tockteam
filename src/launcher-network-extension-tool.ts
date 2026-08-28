@@ -29,7 +29,7 @@ export function createLauncherNetworkExtensionTool(options: Readonly<{
   const { bridge, document, extensionId } = options
   const text = (key: string, fallback: string): string => launcherText(options.locale, key, fallback)
   const isDeepL = extensionId === 'DeeplTranslator'
-  const title = isDeepL ? 'DeepL Translator' : 'Web Search'
+  const title = isDeepL ? text('deeplName', 'DeepL Translator') : text('webSearchName', 'Web Search')
   const prefix = isDeepL ? LAUNCHER_DEEPL_QUERY_PREFIX : LAUNCHER_WEB_SEARCH_QUERY_PREFIX
   const tool = element(document, 'section', 'launcher-local-tool')
   tool.setAttribute('aria-label', `${title} tool`)

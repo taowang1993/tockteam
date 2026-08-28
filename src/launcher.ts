@@ -527,6 +527,7 @@ async function bootstrap(): Promise<void> {
         restoreSearchFocus()
         return
       }
+      if (!surfaceSettings.preserveUserInput) search.value = ''
       if (toolId !== undefined) {
         await openLocalTool(toolId)
         return

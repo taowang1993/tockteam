@@ -210,7 +210,7 @@ export function launcherShortcutMatches(
   if (typeof shortcut !== 'string' || shortcut.length === 0 || shortcut.length > 128) return false
   const parts = shortcut.split('+').map(part => part.trim()).filter(Boolean)
   const key = parts.pop()?.toLocaleLowerCase('en-US')
-  if (key === undefined || parts.some(part => !['Cmd', 'Ctrl', 'Alt', 'Shift'].includes(part))) return false
+  if (key === undefined || parts.some(part => !['Cmd', 'Ctrl', 'Alt', 'Shift'].includes(part)) || new Set(parts).size !== parts.length) return false
   const expected = new Set(parts)
   // Platform chooses the labels providers publish; matching still honors the literal
   // modifier set so Shift+Enter and other non-primary shortcuts remain valid.

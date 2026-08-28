@@ -165,13 +165,14 @@ export function createLauncherLocalTool(options: Readonly<{
 }>): HTMLElement {
   const { document, extensionId, settings } = options
   const text = (key: string, fallback: string): string => launcherText(options.locale, key, fallback)
+  const toolName = extensionId === 'Base64Conversion' ? text('base64Name', TOOL_NAMES[extensionId]) : extensionId === 'RowlandTextEditor' ? text('rowlandName', TOOL_NAMES[extensionId]) : text('uuidName', TOOL_NAMES[extensionId])
   const tool = element(document, 'section', 'launcher-local-tool')
-  tool.setAttribute('aria-label', `${TOOL_NAMES[extensionId]} Tool`)
+  tool.setAttribute('aria-label', `${toolName} Tool`)
   const header = element(document, 'header', 'launcher-local-tool-header')
   const title = element(document, 'h2')
-  title.textContent = TOOL_NAMES[extensionId]
+  title.textContent = toolName
   const close = element(document, 'button', 'launcher-secondary-button')
-  close.type = 'button'; close.textContent = text('back', 'Back to Results'); close.setAttribute('aria-label', `Close ${TOOL_NAMES[extensionId]} Tool`); close.addEventListener('click', options.onClose)
+  close.type = 'button'; close.textContent = text('back', 'Back to Results'); close.setAttribute('aria-label', `Close ${toolName} Tool`); close.addEventListener('click', options.onClose)
   header.append(title, close); tool.append(header)
   const content = element(document, 'div', 'launcher-local-tool-content min-w-0 overflow-auto'); tool.append(content)
   const error = element(document, 'p', 'launcher-local-tool-error'); error.setAttribute('role', 'alert'); error.hidden = true
