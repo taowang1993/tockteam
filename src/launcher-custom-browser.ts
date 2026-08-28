@@ -1,5 +1,5 @@
 import { constants } from 'node:fs'
-import { lstat, mkdir, open, realpath, rename, rm, type FileHandle } from 'node:fs/promises'
+import { access as accessPath, lstat, mkdir, open, realpath, rename, rm, type FileHandle } from 'node:fs/promises'
 import path from 'node:path'
 import { randomUUID } from 'node:crypto'
 import type { LauncherSettingsSnapshot } from './launcher-settings-contract.ts'
@@ -16,6 +16,18 @@ type Grant = Readonly<{
   path: string
   platform: DesktopBrowserPlatform
   version: 1
+}>
+
+type GrantParentBinding = Readonly<{
+  dev: string
+  directory: string
+  ino: string
+  realPath: string
+}>
+
+type GrantParentAccess = Readonly<{
+  binding: GrantParentBinding
+  handle?: FileHandle
 }>
 
 export type LauncherCustomBrowserSnapshot = Readonly<{
@@ -50,7 +62,9 @@ type ControllerOptions = Readonly<{
 
 const MAX_GRANT_BYTES = 16 * 1024
 const NOFOLLOW = constants.O_NOFOLLOW
+const DIRECTORY = constants.O_DIRECTORY
 const HAS_NOFOLLOW = typeof NOFOLLOW === 'number' && NOFOLLOW > 0
+const HAS_DIRECTORY = typeof DIRECTORY === 'number' && DIRECTORY > 0
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -125,6 +139,71 @@ function identityPart(value: unknown): string | undefined {
   return decimalIdentity(value)
 }
 
+function samePath(left: string, right: string): boolean {
+  const implementation = path.win32.isAbsolute(left) || path.win32.isAbsolute(right) ? path.win32 : path
+  const normalizedLeft = implementation.normalize(left)
+  const normalizedRight = implementation.normalize(right)
+  return implementation === path.win32
+    ? normalizedLeft.toLocaleLowerCase('en-US') === normalizedRight.toLocaleLowerCase('en-US')
+    : normalizedLeft === normalizedRight
+}
+
+function parentAnchorRoots(): readonly string[] {
+  if (process.platform === 'linux') return ['/proc/self/fd', '/dev/fd']
+  if (process.platform === 'darwin') return ['/dev/fd']
+  return []
+}
+
+async function parentChildPaths(parent: GrantParentAccess, filename: string): Promise<readonly string[]> {
+  const raw = path.join(parent.binding.realPath, filename)
+  if (parent.handle === undefined) return [raw]
+  const anchored: string[] = []
+  for (const root of parentAnchorRoots()) {
+    try {
+      await accessPath(root)
+      anchored.push(path.posix.join(root, String(parent.handle.fd), filename))
+    } catch { /* try the next anchor or the identity-checked path */ }
+  }
+  return Object.freeze([...anchored, raw])
+}
+
+async function closeGrantParent(parent: GrantParentAccess): Promise<void> {
+  await parent.handle?.close().catch(() => undefined)
+}
+
+/** Validate and identity-bind the fixed grant parent before every grant operation. */
+// ponytail: same-user ABA can only be reduced to the bound dev/ino identity; filesystem identity reuse remains outside this seam.
+async function validateGrantParent(
+  target: string | GrantParentBinding,
+  platform: LauncherCustomBrowserPlatform,
+): Promise<GrantParentAccess> {
+  const expected = typeof target === 'string' ? undefined : target
+  const directory = expected?.directory ?? target
+  if (typeof directory !== 'string' || directory.length === 0 || /[\0\r\n]/u.test(directory)) throw new Error('Custom browser grant directory is invalid')
+  const selected = await lstat(directory, { bigint: true })
+  if (!selected.isDirectory() || selected.isSymbolicLink()) throw new Error('Custom browser grant directory is invalid')
+  const canonicalPath = await realpath(directory)
+  if (expected !== undefined && !samePath(canonicalPath, expected.realPath)) throw new Error('Custom browser grant directory changed')
+  const canonical = await lstat(canonicalPath, { bigint: true })
+  if (!canonical.isDirectory() || canonical.isSymbolicLink()) throw new Error('Custom browser grant directory is invalid')
+  const identity = identityOf(canonical)
+  if (expected !== undefined && (identity.dev !== expected.dev || identity.ino !== expected.ino)) throw new Error('Custom browser grant directory changed')
+  let handle: FileHandle | undefined
+  try {
+    if (platform !== 'Windows') {
+      if (!HAS_DIRECTORY || !HAS_NOFOLLOW) throw new Error('Custom browser grant directory identity is unavailable')
+      handle = await open(canonicalPath, constants.O_RDONLY | DIRECTORY | NOFOLLOW)
+      const opened = await handle.stat({ bigint: true })
+      if (!opened.isDirectory() || opened.isSymbolicLink() || !identityMatches(opened, canonical)) throw new Error('Custom browser grant directory changed')
+    }
+    const binding = expected ?? Object.freeze({ dev: identity.dev, directory, ino: identity.ino, realPath: canonicalPath })
+    return Object.freeze({ binding, ...(handle === undefined ? {} : { handle }) })
+  } catch (error) {
+    await handle?.close().catch(() => undefined)
+    throw error
+  }
+}
+
 async function validateBrowserTarget(target: string, platform: DesktopBrowserPlatform): Promise<Grant> {
   if (typeof target !== 'string' || target.length === 0 || target.length > 16_384 || /[\0\r\n]/u.test(target)
     || (!path.isAbsolute(target) && !path.win32.isAbsolute(target))) throw new Error('Custom browser selection must be an absolute path')
@@ -147,8 +226,16 @@ async function validateBrowserTarget(target: string, platform: DesktopBrowserPla
   })
 }
 
-async function revalidateGrant(grant: Grant): Promise<void> {
-  const current = await validateBrowserTarget(grant.path, grant.platform)
+async function revalidateGrant(grant: Grant, parentBinding: GrantParentBinding): Promise<void> {
+  const before = await validateGrantParent(parentBinding, grant.platform)
+  await closeGrantParent(before)
+  let current: Grant
+  try {
+    current = await validateBrowserTarget(grant.path, grant.platform)
+  } finally {
+    const after = await validateGrantParent(parentBinding, grant.platform)
+    await closeGrantParent(after)
+  }
   if (current.path !== grant.path || current.parentRealPath !== grant.parentRealPath || current.dev !== grant.dev || current.ino !== grant.ino) {
     throw new Error('Custom browser grant changed after approval')
   }
@@ -169,28 +256,43 @@ export async function readLauncherBoundedUtf8(handle: Pick<FileHandle, 'read'>):
   catch (error) { throw new Error('Custom browser grant file is not valid UTF-8', { cause: error }) }
 }
 
-async function readGrant(filePath: string): Promise<Grant | undefined> {
-  let before
-  try { before = await lstat(filePath, { bigint: true }) }
-  catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return undefined
-    throw error
-  }
-  if (before.isSymbolicLink() || !before.isFile()) throw new Error('Custom browser grant file is invalid')
-  let handle
-  try { handle = await open(filePath, HAS_NOFOLLOW ? constants.O_RDONLY | NOFOLLOW : constants.O_RDONLY) }
-  catch (error) { throw new Error('Custom browser grant file is unavailable', { cause: error }) }
+async function readGrant(filePath: string, parentBinding: GrantParentBinding, platform: LauncherCustomBrowserPlatform): Promise<Grant | undefined> {
+  if (!samePath(path.dirname(filePath), parentBinding.directory)) throw new Error('Custom browser grant directory changed')
+  const parent = await validateGrantParent(parentBinding, platform)
+  let handle: FileHandle | undefined
   try {
+    const filename = path.basename(filePath)
+    const candidates = await parentChildPaths(parent, filename)
+    let anchoredPath = candidates.at(-1)!
+    let before
+    for (const candidate of candidates) {
+      try {
+        before = await lstat(candidate, { bigint: true })
+        anchoredPath = candidate
+        break
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
+      }
+    }
+    if (before === undefined) return undefined
+    if (before.isSymbolicLink() || !before.isFile()) throw new Error('Custom browser grant file is invalid')
+    try { handle = await open(anchoredPath, HAS_NOFOLLOW ? constants.O_RDONLY | NOFOLLOW : constants.O_RDONLY) }
+    catch (error) { throw new Error('Custom browser grant file is unavailable', { cause: error }) }
     const stats = await handle.stat({ bigint: true })
     if (!stats.isFile() || stats.size > BigInt(MAX_GRANT_BYTES) || !identityMatches(stats, before)) throw new Error('Custom browser grant file is invalid')
     const content = await readLauncherBoundedUtf8(handle)
     const afterRead = await handle.stat({ bigint: true })
     if (!afterRead.isFile() || afterRead.size > BigInt(MAX_GRANT_BYTES) || !identityMatches(afterRead, before)) throw new Error('Custom browser grant file grew while it was read')
     const parsed = parseGrant(JSON.parse(content) as unknown)
-    const after = await lstat(filePath, { bigint: true })
+    const after = await lstat(anchoredPath, { bigint: true })
     if (after.isSymbolicLink() || after.size > BigInt(MAX_GRANT_BYTES) || !identityMatches(after, before)) throw new Error('Custom browser grant file changed')
     return parsed
-  } finally { await handle.close() }
+  } finally {
+    await handle?.close().catch(() => undefined)
+    await closeGrantParent(parent)
+    const afterParent = await validateGrantParent(parentBinding, platform)
+    await closeGrantParent(afterParent)
+  }
 }
 
 function unsupportedDirectorySync(error: unknown): boolean {
@@ -212,15 +314,6 @@ async function syncDirectory(directory: string, platform: LauncherCustomBrowserP
   try { await handle.sync() } finally { await handle.close() }
 }
 
-async function canonicalGrantDirectory(directory: string): Promise<string> {
-  const selected = await lstat(directory, { bigint: true })
-  if (!selected.isDirectory() || selected.isSymbolicLink()) throw new Error('Custom browser grant directory is invalid')
-  const canonicalDirectory = await realpath(directory)
-  const parent = await lstat(canonicalDirectory, { bigint: true })
-  if (!parent.isDirectory() || parent.isSymbolicLink()) throw new Error('Custom browser grant directory is invalid')
-  return canonicalDirectory
-}
-
 async function syncGrantDirectory(sync: (directory: string) => Promise<void>, directory: string, platform: LauncherCustomBrowserPlatform): Promise<void> {
   try { await sync(directory) }
   catch (error) {
@@ -228,37 +321,54 @@ async function syncGrantDirectory(sync: (directory: string) => Promise<void>, di
   }
 }
 
-async function writeGrant(filePath: string, grant: Grant, platform: LauncherCustomBrowserPlatform, sync: (directory: string) => Promise<void>): Promise<void> {
-  const directory = path.dirname(filePath)
-  await mkdir(directory, { mode: 0o700, recursive: true })
-  const canonicalDirectory = await canonicalGrantDirectory(directory)
-  let parentHandle: FileHandle | undefined
-  if (platform !== 'Windows') {
-    parentHandle = await open(canonicalDirectory, constants.O_RDONLY | (HAS_NOFOLLOW ? NOFOLLOW : 0))
-    await parentHandle.chmod(0o700)
-  }
+async function writeGrant(filePath: string, grant: Grant, platform: LauncherCustomBrowserPlatform, parentBinding: GrantParentBinding): Promise<string> {
+  if (!samePath(path.dirname(filePath), parentBinding.directory)) throw new Error('Custom browser grant directory changed')
+  const parent = await validateGrantParent(parentBinding, platform)
+  if (platform !== 'Windows') await parent.handle?.chmod(0o700)
   const filename = path.basename(filePath)
-  const target = path.join(canonicalDirectory, filename)
-  const temporary = path.join(canonicalDirectory, `.custom-browser-grant-${process.pid}-${randomUUID()}.tmp`)
+  const temporaryName = `.custom-browser-grant-${process.pid}-${randomUUID()}.tmp`
+  const temporaryCandidates = await parentChildPaths(parent, temporaryName)
+  const targetCandidates = await parentChildPaths(parent, filename)
+  let temporary = temporaryCandidates.at(-1)!
+  let target = targetCandidates.at(-1)!
   let handle: FileHandle | undefined
+  let renamed = false
   try {
-    handle = await open(temporary, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | (HAS_NOFOLLOW ? NOFOLLOW : 0), 0o600)
+    for (let index = 0; index < temporaryCandidates.length; index += 1) {
+      try {
+        temporary = temporaryCandidates[index]!
+        target = targetCandidates[index] ?? targetCandidates.at(-1)!
+        handle = await open(temporary, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | (HAS_NOFOLLOW ? NOFOLLOW : 0), 0o600)
+        break
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== 'ENOENT' || index === temporaryCandidates.length - 1) throw error
+      }
+    }
+    if (handle === undefined) throw new Error('Custom browser grant temporary file is unavailable')
     await handle.chmod(0o600)
     await handle.writeFile(JSON.stringify(grant, null, 2), 'utf8')
     await handle.sync()
     await handle.close()
     handle = undefined
     await rename(temporary, target)
-    await syncGrantDirectory(sync, canonicalDirectory, platform)
+    renamed = true
+    return parent.binding.realPath
   } finally {
     await handle?.close().catch(() => undefined)
-    await rm(temporary, { force: true })
-    await parentHandle?.close().catch(() => undefined)
+    await closeGrantParent(parent)
+    if (!renamed) {
+      try {
+        const cleanupParent = await validateGrantParent(parentBinding, platform)
+        await rm(temporary, { force: true })
+        await closeGrantParent(cleanupParent)
+      } catch { /* leave an untrusted temporary path untouched */ }
+    }
   }
 }
 
 export class LauncherCustomBrowserController {
   readonly #grantPath: string
+  readonly #parentBinding: GrantParentBinding | undefined
   #grant: Grant | undefined
   #status: LauncherCustomBrowserSnapshot['status']
   #mutationTail: Promise<void> = Promise.resolve()
@@ -269,22 +379,31 @@ export class LauncherCustomBrowserController {
 
   private readonly options: ControllerOptions
 
-  private constructor(options: ControllerOptions, grant: Grant | undefined, status: LauncherCustomBrowserSnapshot['status']) {
+  private constructor(options: ControllerOptions, parentBinding: GrantParentBinding | undefined, grant: Grant | undefined, status: LauncherCustomBrowserSnapshot['status']) {
     this.options = options
     this.#grantPath = path.join(options.userDataPath, 'launcher', 'custom-browser-grant.json')
+    this.#parentBinding = parentBinding
     this.#grant = grant
     this.#status = status
   }
 
   static async open(options: ControllerOptions): Promise<LauncherCustomBrowserController> {
     const grantPath = path.join(options.userDataPath, 'launcher', 'custom-browser-grant.json')
+    const directory = path.dirname(grantPath)
+    let parentBinding: GrantParentBinding | undefined
     try {
-      const grant = await readGrant(grantPath)
-      if (grant === undefined) return new LauncherCustomBrowserController(options, undefined, 'none')
-      if (options.platform === 'Linux' || grant.platform !== options.platform) return new LauncherCustomBrowserController(options, undefined, 'revoked')
-      await revalidateGrant(grant)
-      return new LauncherCustomBrowserController(options, grant, 'active')
-    } catch { return new LauncherCustomBrowserController(options, undefined, 'revoked') }
+      await mkdir(directory, { mode: 0o700, recursive: true })
+      const parent = await validateGrantParent(directory, options.platform)
+      parentBinding = parent.binding
+      await closeGrantParent(parent)
+    } catch { return new LauncherCustomBrowserController(options, undefined, undefined, 'revoked') }
+    try {
+      const grant = await readGrant(grantPath, parentBinding, options.platform)
+      if (grant === undefined) return new LauncherCustomBrowserController(options, parentBinding, undefined, 'none')
+      if (options.platform === 'Linux' || grant.platform !== options.platform) return new LauncherCustomBrowserController(options, parentBinding, undefined, 'revoked')
+      await revalidateGrant(grant, parentBinding)
+      return new LauncherCustomBrowserController(options, parentBinding, grant, 'active')
+    } catch { return new LauncherCustomBrowserController(options, parentBinding, undefined, 'revoked') }
   }
 
   snapshot(): LauncherCustomBrowserSnapshot {
@@ -303,38 +422,97 @@ export class LauncherCustomBrowserController {
   async select(target: string, signal?: AbortSignal): Promise<void> {
     if (this.#disposed) throw new Error('Custom browser controller is disposed')
     if (this.options.platform === 'Linux') throw new Error('Custom browsers are not supported on Linux')
+    if (this.#parentBinding === undefined) throw new Error('Custom browser grant directory is unavailable')
     if (!HAS_NOFOLLOW && this.options.identitySafeEffects !== true) throw new Error('Custom browser selection is unavailable on this platform')
     throwIfAborted(signal)
     await this.#enqueue(async operationSignal => {
       throwIfAborted(operationSignal)
       const grant = await validateBrowserTarget(target, this.options.platform as DesktopBrowserPlatform)
       throwIfAborted(operationSignal)
-      await writeGrant(this.#grantPath, grant, this.options.platform, this.options.syncDirectory ?? (async directory => await syncDirectory(directory, this.options.platform)))
-      // Durable state is committed; finish the matching in-memory commit even
-      // when owner cancellation arrives at this boundary.
+      const directory = await writeGrant(this.#grantPath, grant, this.options.platform, this.#parentBinding!)
+      // Rename is the file commit point. Keep disk and memory matching before
+      // the best-effort directory durability step or any owner cancellation.
       this.#grant = grant
       this.#status = 'active'
       this.options.afterGrantMutation?.('select')
+      try {
+        const after = await validateGrantParent(this.#parentBinding!, this.options.platform)
+        await closeGrantParent(after)
+      } catch (error) {
+        this.#grant = undefined
+        this.#status = 'revoked'
+        throw error
+      }
+      try {
+        await syncGrantDirectory(this.options.syncDirectory ?? (async targetDirectory => await syncDirectory(targetDirectory, this.options.platform)), directory, this.options.platform)
+      } catch (error) {
+        try {
+          const afterSyncFailure = await validateGrantParent(this.#parentBinding!, this.options.platform)
+          await closeGrantParent(afterSyncFailure)
+        } catch {
+          this.#grant = undefined
+          this.#status = 'revoked'
+        }
+        throw error
+      }
+      try {
+        const afterSync = await validateGrantParent(this.#parentBinding!, this.options.platform)
+        await closeGrantParent(afterSync)
+      } catch (error) {
+        this.#grant = undefined
+        this.#status = 'revoked'
+        throw error
+      }
       throwIfAborted(operationSignal)
     }, signal)
   }
 
   async revoke(signal?: AbortSignal): Promise<void> {
     if (this.#disposed) throw new Error('Custom browser controller is disposed')
+    if (this.#parentBinding === undefined) throw new Error('Custom browser grant directory is unavailable')
     throwIfAborted(signal)
     await this.#enqueue(async operationSignal => {
       throwIfAborted(operationSignal)
-      let directory: string
-      try { directory = await canonicalGrantDirectory(path.dirname(this.#grantPath)) }
-      catch (error) {
-        if ((error as NodeJS.ErrnoException).code === 'ENOENT') directory = path.dirname(this.#grantPath)
-        else throw error
+      const parent = await validateGrantParent(this.#parentBinding!, this.options.platform)
+      const candidates = await parentChildPaths(parent, path.basename(this.#grantPath))
+      let target = candidates.at(-1)!
+      for (const candidate of candidates) {
+        try {
+          await lstat(candidate)
+          target = candidate
+          break
+        } catch (error) {
+          if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+            await closeGrantParent(parent)
+            throw error
+          }
+        }
       }
-      await rm(path.join(directory, path.basename(this.#grantPath)), { force: true })
+      try {
+        await rm(target, { force: true })
+      } catch (error) {
+        await closeGrantParent(parent)
+        throw error
+      }
+      // Removal is the file commit point; never retain a stale active grant
+      // while directory durability is being attempted.
       this.#grant = undefined
       this.#status = 'none'
-      try { await syncGrantDirectory(this.options.syncDirectory ?? (async target => await syncDirectory(target, this.options.platform)), directory, this.options.platform) } catch (error) {
+      await closeGrantParent(parent)
+      try {
+        const after = await validateGrantParent(this.#parentBinding!, this.options.platform)
+        await closeGrantParent(after)
+      } catch (error) {
+        throw error
+      }
+      try { await syncGrantDirectory(this.options.syncDirectory ?? (async targetDirectory => await syncDirectory(targetDirectory, this.options.platform)), this.#parentBinding!.realPath, this.options.platform) } catch (error) {
         if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
+      }
+      try {
+        const afterSync = await validateGrantParent(this.#parentBinding!, this.options.platform)
+        await closeGrantParent(afterSync)
+      } catch (error) {
+        throw error
       }
       this.options.afterGrantMutation?.('revoke')
       throwIfAborted(operationSignal)
@@ -356,8 +534,9 @@ export class LauncherCustomBrowserController {
       const grant = this.#grant
       if (this.#status === 'none') throw new Error('No custom browser grant is selected')
       if (this.#status !== 'active' || grant === undefined || grant.platform !== this.options.platform) throw new Error('Custom browser grant is revoked')
+      if (this.#parentBinding === undefined) throw new Error('Custom browser grant directory is unavailable')
       if (!HAS_NOFOLLOW && this.options.identitySafeEffects !== true) throw new Error('Custom browser launch is unavailable on this platform')
-      try { await revalidateGrant(grant) }
+      try { await revalidateGrant(grant, this.#parentBinding) }
       catch (error) { this.#grant = undefined; this.#status = 'revoked'; throw new Error('Custom browser grant changed or was revoked', { cause: error }) }
       throwIfAborted(operationSignal)
       if (grant.platform === 'macOS') {

@@ -29,6 +29,79 @@ test('custom browser accepts only inert HTTP(S) URL arguments', () => {
   assert.throws(() => parseLauncherCustomBrowserArgumentTemplate('{{url}}', 'file:///etc/passwd'), /HTTP/i)
 })
 
+test('custom browser fails closed when the fixed grant parent is a symlink at startup', async () => {
+  const userDataPath = await root()
+  try {
+    const realParent = path.join(userDataPath, 'real-launcher')
+    await mkdir(realParent)
+    await symlink(realParent, path.join(userDataPath, 'launcher'))
+    const executable = path.join(userDataPath, 'browser.exe')
+    await writeFile(executable, 'approved', { mode: 0o700 })
+    const controller = await LauncherCustomBrowserController.open({
+      getSetting: <T>(_key: string, fallback: T): T => fallback,
+      launch: async () => {},
+      openDefault: async () => {},
+      platform: 'Windows',
+      userDataPath,
+    })
+    assert.deepEqual(controller.snapshot(), { platform: 'Windows', status: 'revoked' })
+    await assert.rejects(controller.select(executable), /directory|symbolic|invalid|unavailable/i)
+    await controller.close()
+  } finally { await rm(userDataPath, { recursive: true, force: true }) }
+})
+
+test('custom browser rejects a grant-parent replacement for read, write, and revoke', async () => {
+  const userDataPath = await root()
+  try {
+    const executable = path.join(userDataPath, 'browser.exe')
+    await writeFile(executable, 'approved', { mode: 0o700 })
+    const controller = await LauncherCustomBrowserController.open({
+      getSetting: <T>(_key: string, fallback: T): T => fallback,
+      launch: async () => {},
+      openDefault: async () => {},
+      platform: 'Windows',
+      userDataPath,
+    })
+    const launcherPath = path.join(userDataPath, 'launcher')
+    const replacement = path.join(userDataPath, 'replacement-launcher')
+    await rename(launcherPath, `${launcherPath}.old`)
+    await mkdir(replacement)
+    await symlink(replacement, launcherPath)
+    await assert.rejects(controller.select(executable), /directory|symbolic|invalid|unavailable/i)
+    await controller.close()
+
+    const restarted = await LauncherCustomBrowserController.open({
+      getSetting: <T>(_key: string, fallback: T): T => fallback,
+      launch: async () => {},
+      openDefault: async () => {},
+      platform: 'Windows',
+      userDataPath,
+    })
+    assert.deepEqual(restarted.snapshot(), { platform: 'Windows', status: 'revoked' })
+    await assert.rejects(restarted.revoke(), /directory|symbolic|invalid|unavailable/i)
+    await restarted.close()
+  } finally { await rm(userDataPath, { recursive: true, force: true }) }
+})
+
+test('custom browser invalidates an active grant when its fixed parent is replaced before launch', async () => {
+  const userDataPath = await root()
+  try {
+    const executable = path.join(userDataPath, 'browser.exe')
+    await writeFile(executable, 'approved', { mode: 0o700 })
+    const fixture = harness('Windows', userDataPath, { 'general.browser.useDefaultWebBrowser': false })
+    const controller = await fixture.open()
+    await controller.select(executable)
+    const parent = path.join(userDataPath, 'launcher')
+    await rename(parent, `${parent}.old`)
+    await mkdir(path.join(userDataPath, 'replacement-launcher'))
+    await symlink(path.join(userDataPath, 'replacement-launcher'), parent)
+    await assert.rejects(controller.openUrl('https://example.com'), /changed|revoked|directory/i)
+    assert.equal(controller.snapshot().status, 'revoked')
+    assert.equal(fixture.launches.length, 0)
+    await controller.close()
+  } finally { await rm(userDataPath, { recursive: true, force: true }) }
+})
+
 test('custom-browser grants keep identity private and revoke replacement', async () => {
   const userDataPath = await root()
   try {
@@ -123,6 +196,94 @@ test('custom browser revoke commits disk and memory before an abort-after-remove
     assert.deepEqual(restarted.snapshot(), { platform: 'Windows', status: 'none' })
     await assert.rejects(restarted.openUrl('https://example.com'), /No custom browser grant/u)
     await Promise.all([controller.close(), restarted.close()])
+  } finally { await rm(userDataPath, { recursive: true, force: true }) }
+})
+
+test('custom-browser parent swaps during select/revoke fail closed without losing restart consistency', async () => {
+  const selectRoot = await root()
+  const revokeRoot = await root()
+  try {
+    const selectExecutable = path.join(selectRoot, 'browser.exe')
+    await writeFile(selectExecutable, 'approved', { mode: 0o700 })
+    let swapSelect = false
+    const replaceSelectParent = async () => {
+      const parent = path.join(selectRoot, 'launcher')
+      await rename(parent, `${parent}.old`)
+      await mkdir(path.join(selectRoot, 'replacement-launcher'))
+      await symlink(path.join(selectRoot, 'replacement-launcher'), parent)
+    }
+    const selectController = await LauncherCustomBrowserController.open({
+      getSetting: <T>(_key: string, fallback: T): T => fallback,
+      launch: async () => {},
+      openDefault: async () => {},
+      platform: 'Windows',
+      syncDirectory: async () => { if (!swapSelect) { swapSelect = true; await replaceSelectParent() } },
+      userDataPath: selectRoot,
+    })
+    await assert.rejects(selectController.select(selectExecutable), /directory|changed|invalid|unavailable/i)
+    assert.equal(selectController.snapshot().status, 'revoked')
+    await selectController.close()
+
+    const revokeExecutable = path.join(revokeRoot, 'browser.exe')
+    await writeFile(revokeExecutable, 'approved', { mode: 0o700 })
+    let swapRevoke = false
+    const replaceRevokeParent = async () => {
+      const parent = path.join(revokeRoot, 'launcher')
+      await rename(parent, `${parent}.old`)
+      await mkdir(path.join(revokeRoot, 'replacement-launcher'))
+      await symlink(path.join(revokeRoot, 'replacement-launcher'), parent)
+    }
+    const revokeController = await LauncherCustomBrowserController.open({
+      getSetting: <T>(_key: string, fallback: T): T => fallback,
+      launch: async () => {},
+      openDefault: async () => {},
+      platform: 'Windows',
+      syncDirectory: async () => { if (swapRevoke) await replaceRevokeParent() },
+      userDataPath: revokeRoot,
+    })
+    await revokeController.select(revokeExecutable)
+    swapRevoke = true
+    await assert.rejects(revokeController.revoke(), /directory|changed|invalid|unavailable/i)
+    assert.equal(revokeController.snapshot().status, 'none')
+    await revokeController.close()
+    const restarted = await LauncherCustomBrowserController.open({
+      getSetting: <T>(_key: string, fallback: T): T => fallback,
+      launch: async () => {},
+      openDefault: async () => {},
+      platform: 'Windows',
+      userDataPath: revokeRoot,
+    })
+    assert.equal(restarted.snapshot().status, 'revoked')
+    await restarted.close()
+  } finally {
+    await Promise.all([rm(selectRoot, { recursive: true, force: true }), rm(revokeRoot, { recursive: true, force: true })])
+  }
+})
+
+test('custom-browser commits memory before non-ignored sync failures and restart reads matching disk state', async () => {
+  const userDataPath = await root()
+  try {
+    const executable = path.join(userDataPath, 'browser.exe')
+    await writeFile(executable, 'approved', { mode: 0o700 })
+    const syncFailure = async () => { const error = new Error('durability failure') as NodeJS.ErrnoException; error.code = 'ENOSPC'; throw error }
+    const options = {
+      getSetting: <T>(_key: string, fallback: T): T => fallback,
+      launch: async () => {},
+      openDefault: async () => {},
+      platform: 'Windows' as const,
+      syncDirectory: syncFailure,
+      userDataPath,
+    }
+    const controller = await LauncherCustomBrowserController.open(options)
+    await assert.rejects(controller.select(executable), /ENOSPC|durability/i)
+    assert.equal(controller.snapshot().status, 'active')
+    const restarted = await LauncherCustomBrowserController.open(options)
+    assert.equal(restarted.snapshot().status, 'active')
+    await assert.rejects(restarted.revoke(), /ENOSPC|durability/i)
+    assert.equal(restarted.snapshot().status, 'none')
+    const final = await LauncherCustomBrowserController.open(options)
+    assert.equal(final.snapshot().status, 'none')
+    await Promise.all([controller.close(), restarted.close(), final.close()])
   } finally { await rm(userDataPath, { recursive: true, force: true }) }
 })
 
