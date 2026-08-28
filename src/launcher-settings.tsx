@@ -139,6 +139,7 @@ function LauncherSettingsPage({ close: _close }: SettingsSectionProps): ReactNod
 
   const state = useMemo(() => snapshot ? readPersistedLauncherState(snapshot, LAUNCHER_COMPOSITION.extensionIds) : null, [snapshot])
   const enabled = useMemo(() => new Set(state?.enabledExtensionIds ?? []), [state?.enabledExtensionIds])
+  const rendererIsLinux = typeof navigator !== 'undefined' && !/Macintosh|Mac OS|Windows/iu.test(`${navigator.platform} ${navigator.userAgent}`)
 
   const save = useCallback((key: string, value: unknown): Promise<boolean> => {
     if (!settings) return Promise.resolve(false)
@@ -288,10 +289,10 @@ function LauncherSettingsPage({ close: _close }: SettingsSectionProps): ReactNod
             <Button size="sm" variant="outline" disabled={busy || snapshot.externalGrantStatus === 'none'} onClick={() => { void operation('External revocation', settings.revokeExternalSettings) }}>Revoke external file</Button>
           </div>
         </Field>
-        <Field title="Custom browser" description="The native browser grant is status-only in the renderer; Linux uses the system browser.">
+        <Field title="Custom browser" description={rendererIsLinux ? 'Linux always uses the system browser; custom browser selection is unavailable.' : 'The native browser grant is status-only in the renderer; the selected target never crosses this page.'}>
           <div className="flex flex-wrap justify-end gap-2">
-            <Button size="sm" variant="outline" disabled={busy} onClick={() => { void operation('Custom browser selection', settings.selectCustomBrowser) }}>Choose custom browser</Button>
-            <Button size="sm" variant="outline" disabled={busy || snapshot.customBrowserStatus === 'none'} onClick={() => { void operation('Custom browser revocation', settings.revokeCustomBrowser) }}>Revoke custom browser</Button>
+            <Button size="sm" variant="outline" disabled={busy || rendererIsLinux} onClick={() => { void operation('Custom browser selection', settings.selectCustomBrowser) }}>Choose custom browser</Button>
+            <Button size="sm" variant="outline" disabled={busy || rendererIsLinux || snapshot.customBrowserStatus === 'none'} onClick={() => { void operation('Custom browser revocation', settings.revokeCustomBrowser) }}>Revoke custom browser</Button>
           </div>
         </Field>
         <Field title="Reset TockLauncher settings" description="Clears overrides, favorites, exclusions, history, and the custom-browser grant, then securely relaunches Desktop.">

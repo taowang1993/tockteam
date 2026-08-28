@@ -76,7 +76,7 @@ export function LauncherTerminalSettings({ busy, save, snapshot }: LauncherTermi
           <div className="text-sm font-medium text-foreground">Command prefix</div>
           <div className="mt-1 text-xs text-muted-foreground">Type the prefix followed by a command. Every command requires native approval.</div>
         </div>
-        <Input aria-describedby="tocklauncher-terminal-prefix-help" aria-label="Terminal Launcher command prefix" className="w-24" disabled={busy} maxLength={32} value={prefix} onChange={event => setPrefix(event.target.value)} onBlur={savePrefix} />
+        <Input aria-describedby={error ? 'tocklauncher-terminal-prefix-help tocklauncher-terminal-prefix-error' : 'tocklauncher-terminal-prefix-help'} aria-invalid={error !== undefined} aria-label="Terminal Launcher command prefix" className="w-24" disabled={busy} maxLength={32} value={prefix} onChange={event => setPrefix(event.target.value)} onBlur={savePrefix} />
       </div>
       <p className="text-xs text-muted-foreground" id="tocklauncher-terminal-prefix-help">The command runs in the main-owned home directory through the selected terminal.</p>
       {definitions.map(definition => (
@@ -85,7 +85,7 @@ export function LauncherTerminalSettings({ busy, save, snapshot }: LauncherTermi
           <Switch aria-label={`Enable Terminal Launcher ${definition.name}`} checked={terminalIds.includes(definition.id)} disabled={busy} onCheckedChange={checked => toggle(definition.id, checked)} />
         </div>
       ))}
-      {error ? <p aria-live="polite" className="text-xs text-destructive">{error}</p> : null}
+      {error ? <p aria-live="polite" className="text-xs text-destructive" id="tocklauncher-terminal-prefix-error">{error}</p> : null}
     </div>
   )
 }
