@@ -25,6 +25,7 @@ import { launcherDiscoveryAssetUrl } from './launcher-discovery-assets.ts'
 import { launcherFileSearchAssetUrl } from './launcher-file-search-assets.ts'
 import { launcherNetworkAssetUrl } from './launcher-network-assets.ts'
 import { launcherOsAssetUrl } from './launcher-os-assets.ts'
+import { launcherTerminalAssetUrl } from './launcher-terminal-assets.ts'
 import { isLauncherImageUrl } from './launcher-image-url.ts'
 import type { LauncherLocalExtensionSettings } from './launcher-local-extension-contract.ts'
 import { tockTeamSkin } from '../plugins/skins/src/skins.ts'
@@ -476,7 +477,7 @@ async function bootstrap(): Promise<void> {
         : undefined
       const packagedAsset = item.imageKey === undefined
         ? undefined
-        : launcherDiscoveryAssetUrl(item.imageKey) ?? launcherFileSearchAssetUrl(item.imageKey) ?? launcherNetworkAssetUrl(item.imageKey) ?? launcherOsAssetUrl(item.imageKey, appliedThemeMode)
+        : launcherDiscoveryAssetUrl(item.imageKey) ?? launcherFileSearchAssetUrl(item.imageKey) ?? launcherNetworkAssetUrl(item.imageKey) ?? launcherOsAssetUrl(item.imageKey, appliedThemeMode) ?? launcherTerminalAssetUrl(item.imageKey)
       const imageUrl = isLauncherImageUrl(item.imageUrl)
         ? item.imageUrl
         : localAsset ?? packagedAsset

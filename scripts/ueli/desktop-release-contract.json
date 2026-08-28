@@ -593,6 +593,41 @@
         "key": "control-panel",
         "path": "dist/launcher-assets/control-panel.png",
         "sha256": "6581a2084b71e7b65efb9665cd70469fe1cc237dc3c41a9d1c960ee2ce14accb"
+      },
+      {
+        "key": "terminal-command-prompt",
+        "path": "dist/launcher-assets/terminal-command-prompt.png",
+        "sha256": "9daa6c7d9a1237dd77c267ef9cc54b1ac0513cf5f8b3b1fbd99da402eca7c1e4"
+      },
+      {
+        "key": "terminal-iterm",
+        "path": "dist/launcher-assets/terminal-iterm.png",
+        "sha256": "c7358e53c5756539d9d35379d8733f44e08ebbb598cee730083d2fb0613b0b9a"
+      },
+      {
+        "key": "terminal-powershell-core",
+        "path": "dist/launcher-assets/terminal-powershell-core.svg",
+        "sha256": "5998c6d08f3076521328a39a856ca381cdc5b5935892dd62c0557fa230e28fa8"
+      },
+      {
+        "key": "terminal-powershell",
+        "path": "dist/launcher-assets/terminal-powershell.png",
+        "sha256": "dac022e145d0c63c53908fd4cd07a6bb1ceba3149c0a9b6aa8761928e1297fe2"
+      },
+      {
+        "key": "terminal-macos",
+        "path": "dist/launcher-assets/terminal-macos.png",
+        "sha256": "95ee8153a87c68f3a4a432b94c0a24a8a77961905bd049e0b7242f83be67385e"
+      },
+      {
+        "key": "terminal-windows",
+        "path": "dist/launcher-assets/terminal-windows.png",
+        "sha256": "d55cfcdce8e000ec4e4490ef487b147d63d2c1ed8d063f8d01e7ffecaaf450ac"
+      },
+      {
+        "key": "terminal-wsl",
+        "path": "dist/launcher-assets/terminal-wsl.png",
+        "sha256": "8974f977ee2bb8b72917c0361a1eab77e20580e41d072efeff3f2d8a5757e0e0"
       }
     ],
     "launcherNotices": [

@@ -13,6 +13,7 @@ import { LauncherLocalSettings } from './launcher-local-settings.tsx'
 import { LauncherDiscoverySettings } from './launcher-discovery-settings.tsx'
 import { LauncherFileSearchSettings, type LauncherSimpleFileSearchDraft } from './launcher-file-search-settings.tsx'
 import { LauncherNetworkSettings } from './launcher-network-settings.tsx'
+import { LauncherTerminalSettings } from './launcher-terminal-settings.tsx'
 import type { DesktopBridge } from './contracts.ts'
 import { LAUNCHER_SENSITIVE_SETTING_KEYS, type LauncherSettingsSnapshot } from './launcher-settings-contract.ts'
 import { readPersistedLauncherState } from './launcher-settings-model.ts'
@@ -264,6 +265,10 @@ function LauncherSettingsPage({ close: _close }: SettingsSectionProps): ReactNod
 
       <SectionCard icon={<Search aria-hidden="true" className="size-4" />} title="File Search" description="Configure bounded indexed and home-contained file search providers.">
         <LauncherFileSearchSettings key={snapshotRevision} busy={busy} draftFolders={simpleFileSearchDraft} onDraftFoldersChange={updateSimpleFileSearchDraft} save={save} snapshot={snapshot} />
+      </SectionCard>
+
+      <SectionCard icon={<MonitorCog aria-hidden="true" className="size-4" />} title="Terminal Launcher" description="Configure the finite native terminal catalog. Commands always require main-process approval.">
+        <LauncherTerminalSettings key={snapshotRevision} busy={busy} save={save} snapshot={snapshot} />
       </SectionCard>
 
       <SectionCard icon={<Globe2 aria-hidden="true" className="size-4" />} title="Network Extensions" description="Configure fixed, bounded network providers without exposing renderer network authority.">

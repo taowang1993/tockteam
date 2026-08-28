@@ -96,6 +96,8 @@ import { createLauncherFileSearchExtensions } from './launcher-file-search.ts'
 import { createLauncherFileSearchScanners } from './launcher-file-search-scanners.ts'
 import { createLauncherNetworkExtensions } from './launcher-network-extensions.ts'
 import { createLauncherOsExtensions } from './launcher-os-extensions.ts'
+import { createLauncherTerminal } from './launcher-terminal.ts'
+import { launchDetachedTerminalInvocation, resolveTerminalInvocation } from './launcher-terminal-process.ts'
 import { createLauncherProviderInvalidator } from './launcher-provider-lifecycle.ts'
 import {
   resolveAppearanceInvocation,
@@ -294,6 +296,7 @@ let launcherDiscovery: ReturnType<typeof createLauncherDiscoveryExtensions> | un
 let launcherFileSearch: ReturnType<typeof createLauncherFileSearchExtensions> | undefined
 let launcherNetwork: ReturnType<typeof createLauncherNetworkExtensions> | undefined
 let launcherOs: ReturnType<typeof createLauncherOsExtensions> | undefined
+let launcherTerminal: ReturnType<typeof createLauncherTerminal> | undefined
 let launcherCore: ReturnType<typeof createLauncherCoreSearch> | undefined
 let launcherProviderInvalidator: ReturnType<typeof createLauncherProviderInvalidator> | undefined
 let launcherInvalidationController = new AbortController()
@@ -342,6 +345,8 @@ async function waitForLauncherProvidersIdle(): Promise<void> {
     launcherFileSearch?.waitForIdle() ?? Promise.resolve(),
     launcherNetwork?.waitForIdle() ?? Promise.resolve(),
     launcherOs?.waitForIdle() ?? Promise.resolve(),
+    launcherTerminal?.waitForIdle() ?? Promise.resolve(),
+    launcherCustomBrowser?.waitForIdle() ?? Promise.resolve(),
     launcherLocal?.waitForIdle() ?? Promise.resolve(),
   ])
 }
@@ -1422,6 +1427,43 @@ function initializeLauncher(): void {
     ...(launcherNetworkFixtureEnabled ? { resolveAddresses: async () => ['8.8.8.8'] } : null),
   })
   launcherNetwork = network
+  const terminal = createLauncherTerminal({
+    effects: {
+      auditLaunch: async record => {
+        appendLog('desktop', `TockLauncher terminal ${record.outcome}: terminal=${record.terminalId} commandLength=${record.commandLength} commandSha256=${record.commandSha256} workingDirectory=${record.workingDirectory}`)
+      },
+      confirmLaunch: async ({ command, terminalName, workingDirectory }, signal) => {
+        if (signal.aborted) throw launcherAbortError(signal)
+        const owner = mainWindow
+        const pending = owner === undefined || owner.isDestroyed()
+          ? dialog.showMessageBox({ buttons: ['Launch', 'Cancel'], cancelId: 1, defaultId: 1, detail: `Terminal: ${terminalName}\\nCommand: ${command}\\nWorking directory: ${workingDirectory}`, message: `Launch command in ${terminalName}?`, title: PRODUCT_NAME, type: 'warning' })
+          : dialog.showMessageBox(owner, { buttons: ['Launch', 'Cancel'], cancelId: 1, defaultId: 1, detail: `Terminal: ${terminalName}\\nCommand: ${command}\\nWorking directory: ${workingDirectory}`, message: `Launch command in ${terminalName}?`, title: PRODUCT_NAME, type: 'warning' })
+        const result = await launcherAwaitAbortable(pending, signal)
+        return result.response === 0
+      },
+      launchTerminal: async (request, signal) => {
+        if (signal.aborted) throw launcherAbortError(signal)
+        const invocation = resolveTerminalInvocation(platform, request)
+        if (invocation.waitForExit) {
+          await execFileAsync(invocation.executable, [...invocation.args], {
+            cwd: invocation.cwd,
+            maxBuffer: 1_048_576,
+            shell: false,
+            signal,
+            timeout: 15_000,
+          })
+          return
+        }
+        await launchDetachedTerminalInvocation(invocation, { signal, timeoutMs: 5_000 })
+      },
+    },
+    enabledExtensionIds: launcherEnabledLocalExtensionIds,
+    getSetting: (key, fallback) => repository.getSetting(key, fallback),
+    homePath: app.getPath('home'),
+    onProviderError: error => { appendLog('desktop', `TockLauncher Terminal Launcher failed: ${error.name}`) },
+    platform,
+  })
+  launcherTerminal = terminal
   launcherLocal = local
   const osEnabledExtensionIds = (): readonly string[] => launcherOsFixtureEnabled
     ? [...new Set([...launcherEnabledLocalExtensionIds(), 'AppearanceSwitcher', 'SystemCommands', 'SystemSettings', 'UeliCommand', 'WindowsControlPanel'])]
@@ -1571,15 +1613,15 @@ function initializeLauncher(): void {
     },
     loadIndexedItems: async (signal, preserveSignal) => {
       const result = await createTockTeamDestinationResults('')
-      return [...result.before, ...result.after, ...await local.loadIndexedItems(), ...await discovery.loadIndexedItems(signal, preserveSignal), ...await fileSearch.loadIndexedItems(signal, preserveSignal), ...await network.loadIndexedItems(signal, preserveSignal), ...await os.loadIndexedItems(signal, preserveSignal)]
+      return [...result.before, ...result.after, ...await local.loadIndexedItems(), ...await discovery.loadIndexedItems(signal, preserveSignal), ...await fileSearch.loadIndexedItems(signal, preserveSignal), ...await network.loadIndexedItems(signal, preserveSignal), ...await os.loadIndexedItems(signal, preserveSignal), ...await terminal.loadIndexedItems(signal, preserveSignal)]
     },
     searchInstant: async searchTerm => {
-      const [localResults, discoveryResults, fileResults, networkResults] = await Promise.all([
-        local.searchInstant(searchTerm), discovery.searchInstant(searchTerm), fileSearch.searchInstant(searchTerm), network.searchInstant(searchTerm),
+      const [localResults, discoveryResults, fileResults, networkResults, terminalResults] = await Promise.all([
+        local.searchInstant(searchTerm), discovery.searchInstant(searchTerm), fileSearch.searchInstant(searchTerm), network.searchInstant(searchTerm), terminal.searchInstant(searchTerm),
       ])
       return Object.freeze({
-        after: Object.freeze([...localResults.after, ...discoveryResults.after, ...fileResults.after, ...networkResults.after]),
-        before: Object.freeze([...localResults.before, ...discoveryResults.before, ...fileResults.before, ...networkResults.before]),
+        after: Object.freeze([...localResults.after, ...discoveryResults.after, ...fileResults.after, ...networkResults.after, ...terminalResults.after]),
+        before: Object.freeze([...localResults.before, ...discoveryResults.before, ...fileResults.before, ...networkResults.before, ...terminalResults.before]),
         ...(networkResults.lastError === undefined
           ? fileResults.lastError === undefined ? null : { lastError: fileResults.lastError }
           : { lastError: networkResults.lastError }),
@@ -1608,6 +1650,10 @@ function initializeLauncher(): void {
         if (record.hideWindowAfterInvocation) controller?.hideAfterInvocation(record.owner.webContentsId)
         return
       }
+      if (await terminal.executeAction(record)) {
+        if (record.hideWindowAfterInvocation) controller?.hideAfterInvocation(record.owner.webContentsId)
+        return
+      }
       if (await os.executeAction(record)) {
         if (record.hideWindowAfterInvocation) controller?.hideAfterInvocation(record.owner.webContentsId)
         return
@@ -1632,6 +1678,8 @@ function initializeLauncher(): void {
     local,
     network,
     os,
+    terminal,
+    ...(launcherCustomBrowser === undefined ? {} : { browser: launcherCustomBrowser }),
   })
   const rescan = async (owner?: LauncherActionOwner, preserveSignal?: AbortSignal, reason = 'launcher-rescan') => {
     const invalidationSignal = invalidateAllLauncherProviders(reason, owner, preserveSignal)
@@ -1668,15 +1716,18 @@ function initializeLauncher(): void {
   controller = nextController
   launcherController = nextController
   launcherCoreFlush = async () => {
+    await launcherCustomBrowser?.close()
     const discoveryClose = discovery.close()
     const fileClose = fileSearch.close()
     const networkClose = network.close()
     const osClose = os.close()
+    const terminalClose = terminal.close()
     const localClose = local.close()
     await discoveryClose
     await fileClose
     await networkClose
     await osClose
+    await terminalClose
     await localClose
     await coreSearch.close()
   }
@@ -2044,9 +2095,9 @@ async function selectCustomLauncherBrowser(signal?: AbortSignal): Promise<Readon
   if (process.platform === 'linux') throw new Error('Custom browsers are not supported on Linux')
   const extension = launcherPlatformPathExtension()
   const filePath = await launcherOpenDialog({
-    properties: [process.platform === 'darwin' ? 'openDirectory' : 'openFile'],
+    properties: ['openFile'],
     title: 'Choose TockLauncher Custom Browser',
-    filters: [{ name: extension === 'app' ? 'Applications' : 'Applications', extensions: [extension] }],
+    filters: [{ name: extension === 'app' ? 'Browser applications' : 'Browser executables', extensions: [extension] }],
   })
   assertLauncherSignal(signal)
   if (filePath === undefined) return settingsOperation(true)
@@ -3177,8 +3228,14 @@ async function bootstrap(): Promise<void> {
   })
   launcherCustomBrowser = await LauncherCustomBrowserController.open({
     getSetting: (key, fallback) => requireLauncherPersistence().getSetting(key, fallback),
-    launch: launchDetachedLauncherExecutable,
-    openDefault: async url => { await shell.openExternal(url) },
+    launch: async (executable, args, signal) => {
+      await launchDetachedLauncherExecutable(executable, args, undefined, { ...(signal === undefined ? {} : { signal }), timeoutMs: 15_000 })
+    },
+    openDefault: async (url, signal) => {
+      if (signal?.aborted) throw launcherAbortError(signal)
+      await shell.openExternal(url)
+      if (signal?.aborted) throw launcherAbortError(signal)
+    },
     platform: launcherPlatform(),
     userDataPath: info.appDataPath,
   })

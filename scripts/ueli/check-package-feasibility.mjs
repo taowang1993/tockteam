@@ -184,6 +184,13 @@ const EXPECTED_LAUNCHER_ASSETS = Object.freeze([
   ['ueli-command-dark', 'ueli-command-dark.png', '3c62491065bec9cee765ebc238b6ae1546ebfd6288e0cf3ba642a4964b82979b'],
   ['ueli-command-light', 'ueli-command-light.png', '35c0b53a23b9ae22aebbc011b3f1e939be37d2a02c1db404320c41d5ff320aa9'],
   ['control-panel', 'control-panel.png', '6581a2084b71e7b65efb9665cd70469fe1cc237dc3c41a9d1c960ee2ce14accb'],
+  ['terminal-command-prompt', 'terminal-command-prompt.png', '9daa6c7d9a1237dd77c267ef9cc54b1ac0513cf5f8b3b1fbd99da402eca7c1e4'],
+  ['terminal-iterm', 'terminal-iterm.png', 'c7358e53c5756539d9d35379d8733f44e08ebbb598cee730083d2fb0613b0b9a'],
+  ['terminal-powershell-core', 'terminal-powershell-core.svg', '5998c6d08f3076521328a39a856ca381cdc5b5935892dd62c0557fa230e28fa8'],
+  ['terminal-powershell', 'terminal-powershell.png', 'dac022e145d0c63c53908fd4cd07a6bb1ceba3149c0a9b6aa8761928e1297fe2'],
+  ['terminal-macos', 'terminal-macos.png', '95ee8153a87c68f3a4a432b94c0a24a8a77961905bd049e0b7242f83be67385e'],
+  ['terminal-windows', 'terminal-windows.png', 'd55cfcdce8e000ec4e4490ef487b147d63d2c1ed8d063f8d01e7ffecaaf450ac'],
+  ['terminal-wsl', 'terminal-wsl.png', '8974f977ee2bb8b72917c0361a1eab77e20580e41d072efeff3f2d8a5757e0e0'],
 ].map(([key, fileName, sha256]) => Object.freeze({ key, path: `dist/launcher-assets/${fileName}`, sha256 })))
 const EXPECTED_LAUNCHER_NOTICES = Object.freeze([
   Object.freeze({ id: 'ueli-mit', source: 'THIRD_PARTY_NOTICES.md', license: 'MIT', attribution: 'https://github.com/oliverschwendener/ueli' }),

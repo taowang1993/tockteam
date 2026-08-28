@@ -6,10 +6,11 @@ import { fileURLToPath } from 'node:url'
 export type LauncherFixedInvocation = Readonly<{ args: readonly string[]; executable: string }>
 
 type DetachedChildProcess = Readonly<{
+  kill?: () => unknown
   once: (event: 'error' | 'spawn', listener: ((error: Error) => void) | (() => void)) => unknown
   unref: () => unknown
 }>
-type SpawnDetachedProcess = (executable: string, args: readonly string[], options: Readonly<{ detached: true; stdio: 'ignore'; windowsHide: true }>) => DetachedChildProcess
+type SpawnDetachedProcess = (executable: string, args: readonly string[], options: Readonly<{ detached: true; stdio: 'ignore'; windowsHide: true; shell?: false; signal?: AbortSignal }>) => DetachedChildProcess
 
 const spawnDetachedProcess: SpawnDetachedProcess = (executable, args, options) => spawn(executable, [...args], options)
 const WINDOWS_STORE_APPLICATION_PATTERN = /^shell:AppsFolder\\[A-Za-z0-9._!{}-]{1,512}$/u
@@ -209,13 +210,52 @@ export function resolveWindowsApplicationElevationInvocation(target: string): La
   })
 }
 
-export async function launchDetachedLauncherExecutable(executable: string, args: readonly string[], spawnProcess: SpawnDetachedProcess = spawnDetachedProcess): Promise<void> {
+export type LauncherDetachedLaunchOptions = Readonly<{
+  signal?: AbortSignal
+  timeoutMs?: number
+}>
+
+export async function launchDetachedLauncherExecutable(
+  executable: string,
+  args: readonly string[],
+  spawnProcess: SpawnDetachedProcess = spawnDetachedProcess,
+  options: LauncherDetachedLaunchOptions = {},
+): Promise<void> {
   if (!bounded(executable, 4_096) || /\.(?:cmd|bat)$/iu.test(executable) || !Array.isArray(args) || args.length > 16 || args.some(argument => !bounded(argument))) throw new Error('Invalid detached launcher invocation')
-  const child = spawnProcess(executable, args, { detached: true, stdio: 'ignore', windowsHide: true })
+  if (options.signal?.aborted) throw options.signal.reason instanceof Error ? options.signal.reason : new Error('Detached launcher invocation canceled')
+  const spawnOptions = options.signal === undefined
+    ? { detached: true as const, stdio: 'ignore' as const, windowsHide: true as const }
+    : { detached: true as const, shell: false as const, signal: options.signal, stdio: 'ignore' as const, windowsHide: true as const }
+  const child = spawnProcess(executable, args, spawnOptions)
+  const timeoutMs = Number.isFinite(options.timeoutMs) ? Math.max(1, Math.min(options.timeoutMs as number, 15_000)) : options.signal === undefined ? undefined : 15_000
   await new Promise<void>((resolve, reject) => {
-    child.once('error', reject)
-    child.once('spawn', resolve)
+    let settled = false
+    const finish = (reason?: Error): void => {
+      if (settled) return
+      settled = true
+      if (timer !== undefined) clearTimeout(timer)
+      options.signal?.removeEventListener('abort', onAbort)
+      if (reason === undefined) resolve()
+      else reject(reason)
+    }
+    const onAbort = (): void => {
+      try { child.kill?.() } catch { /* best effort */ }
+      finish(options.signal?.reason instanceof Error ? options.signal.reason : new Error('Detached launcher invocation canceled'))
+    }
+    const timer = timeoutMs === undefined ? undefined : setTimeout(() => {
+      try { child.kill?.() } catch { /* best effort */ }
+      finish(new Error('Detached launcher invocation timed out'))
+    }, timeoutMs)
+    child.once('error', error => finish(error))
+    child.once('spawn', () => finish())
+    if (options.signal === undefined) return
+    if (options.signal.aborted) onAbort()
+    else options.signal.addEventListener('abort', onAbort, { once: true })
   })
+  if (options.signal?.aborted) {
+    try { child.kill?.() } catch { /* best effort */ }
+    throw options.signal.reason instanceof Error ? options.signal.reason : new Error('Detached launcher invocation canceled')
+  }
   child.unref()
 }
 

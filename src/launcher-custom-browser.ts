@@ -37,8 +37,8 @@ export function projectLauncherCustomBrowserSettings(
 
 type ControllerOptions = Readonly<{
   getSetting: <T>(key: string, fallback: T) => T
-  launch: (executable: string, args: readonly string[]) => Promise<void> | void
-  openDefault: (url: string) => Promise<void> | void
+  launch: (executable: string, args: readonly string[], signal?: AbortSignal) => Promise<void> | void
+  openDefault: (url: string, signal?: AbortSignal) => Promise<void> | void
   /** Test-only cancellation seam; production never supplies it. */
   afterGrantMutation?: (operation: 'select' | 'revoke') => void
   platform: LauncherCustomBrowserPlatform
@@ -180,7 +180,10 @@ export class LauncherCustomBrowserController {
   #grant: Grant | undefined
   #status: LauncherCustomBrowserSnapshot['status']
   #mutationTail: Promise<void> = Promise.resolve()
+  #activeControllers = new Set<AbortController>()
+  #activeWork = new Set<Promise<unknown>>()
   #disposed = false
+  #generation = 0
 
   private readonly options: ControllerOptions
 
@@ -206,68 +209,99 @@ export class LauncherCustomBrowserController {
     return Object.freeze({ platform: this.options.platform, status: this.#status })
   }
 
+  invalidate(reason = 'Custom browser operation was invalidated', _preserveSignal?: AbortSignal): void {
+    ++this.#generation
+    for (const controller of this.#activeControllers) controller.abort(new Error(reason))
+  }
+
+  async waitForIdle(): Promise<void> {
+    while (this.#activeWork.size > 0) await Promise.allSettled([...this.#activeWork])
+  }
+
   async select(target: string, signal?: AbortSignal): Promise<void> {
     if (this.#disposed) throw new Error('Custom browser controller is disposed')
     if (this.options.platform === 'Linux') throw new Error('Custom browsers are not supported on Linux')
     if (!HAS_NOFOLLOW && this.options.identitySafeEffects !== true) throw new Error('Custom browser selection is unavailable on this platform')
     throwIfAborted(signal)
-    await this.#enqueue(async () => {
-      throwIfAborted(signal)
+    await this.#enqueue(async operationSignal => {
+      throwIfAborted(operationSignal)
       const grant = await validateBrowserTarget(target, this.options.platform as DesktopBrowserPlatform)
-      throwIfAborted(signal)
+      throwIfAborted(operationSignal)
       await writeGrant(this.#grantPath, grant)
+      // Durable state is committed; finish the matching in-memory commit even
+      // when owner cancellation arrives at this boundary.
       this.#grant = grant
       this.#status = 'active'
       this.options.afterGrantMutation?.('select')
-      throwIfAborted(signal)
-    })
+      throwIfAborted(operationSignal)
+    }, signal)
   }
 
   async revoke(signal?: AbortSignal): Promise<void> {
     if (this.#disposed) throw new Error('Custom browser controller is disposed')
     throwIfAborted(signal)
-    await this.#enqueue(async () => {
-      throwIfAborted(signal)
+    await this.#enqueue(async operationSignal => {
+      throwIfAborted(operationSignal)
       await rm(this.#grantPath, { force: true })
       this.#grant = undefined
       this.#status = 'none'
       this.options.afterGrantMutation?.('revoke')
-      throwIfAborted(signal)
-    })
+      throwIfAborted(operationSignal)
+    }, signal)
   }
 
   async openUrl(url: string, signal?: AbortSignal): Promise<void> {
     if (this.#disposed) throw new Error('Custom browser controller is disposed')
     throwIfAborted(signal)
     const normalized = parseLauncherBrowserHttpUrl(url)
-    const useDefault = this.options.getSetting('general.browser.useDefaultWebBrowser', true)
-    if (useDefault || this.options.platform === 'Linux') { throwIfAborted(signal); await this.options.openDefault(normalized); throwIfAborted(signal); return }
-    await this.#enqueue(async () => {
-      throwIfAborted(signal)
+    await this.#enqueue(async operationSignal => {
+      throwIfAborted(operationSignal)
+      const useDefault = this.options.getSetting('general.browser.useDefaultWebBrowser', true)
+      if (useDefault || this.options.platform === 'Linux') {
+        await this.options.openDefault(normalized, operationSignal)
+        throwIfAborted(operationSignal)
+        return
+      }
       const grant = this.#grant
       if (this.#status === 'none') throw new Error('No custom browser grant is selected')
       if (this.#status !== 'active' || grant === undefined || grant.platform !== this.options.platform) throw new Error('Custom browser grant is revoked')
       if (!HAS_NOFOLLOW && this.options.identitySafeEffects !== true) throw new Error('Custom browser launch is unavailable on this platform')
       try { await revalidateGrant(grant) }
       catch (error) { this.#grant = undefined; this.#status = 'revoked'; throw new Error('Custom browser grant changed or was revoked', { cause: error }) }
-      throwIfAborted(signal)
-      if (grant.platform === 'macOS') { await this.options.launch('/usr/bin/open', ['-a', grant.path, normalized]); throwIfAborted(signal); return }
+      throwIfAborted(operationSignal)
+      if (grant.platform === 'macOS') { await this.options.launch('/usr/bin/open', ['-a', grant.path, normalized], operationSignal); throwIfAborted(operationSignal); return }
       const template = this.options.getSetting('general.browser.customWebBrowser.commandlineArguments', '{{url}}')
-      await this.options.launch(grant.path, parseLauncherCustomBrowserArgumentTemplate(template, normalized))
-      throwIfAborted(signal)
-    })
+      await this.options.launch(grant.path, parseLauncherCustomBrowserArgumentTemplate(template, normalized), operationSignal)
+      throwIfAborted(operationSignal)
+    }, signal)
   }
 
-  async #enqueue(operation: () => Promise<void>): Promise<void> {
-    const next = this.#mutationTail.then(operation)
-    this.#mutationTail = next.catch(() => undefined)
-    await next
+  async #enqueue(operation: (signal: AbortSignal) => Promise<void>, parentSignal?: AbortSignal): Promise<void> {
+    const controller = new AbortController()
+    const relay = (): void => controller.abort(parentSignal?.reason instanceof Error ? parentSignal.reason : new Error('Custom browser operation canceled'))
+    if (parentSignal?.aborted) relay()
+    else parentSignal?.addEventListener('abort', relay, { once: true })
+    this.#activeControllers.add(controller)
+    const generation = this.#generation
+    const next = this.#mutationTail.then(async () => {
+      if (this.#disposed || generation !== this.#generation) throw new Error('Custom browser operation was invalidated')
+      await operation(controller.signal)
+    })
+    const tracked = next.finally(() => {
+      parentSignal?.removeEventListener('abort', relay)
+      this.#activeControllers.delete(controller)
+      this.#activeWork.delete(tracked)
+    })
+    this.#activeWork.add(tracked)
+    this.#mutationTail = tracked.catch(() => undefined)
+    await tracked
   }
 
   async close(): Promise<void> {
-    if (this.#disposed) { await this.#mutationTail; return }
+    if (this.#disposed) { await this.waitForIdle(); return }
     this.#disposed = true
-    await this.#mutationTail
+    this.invalidate('Custom browser controller is closed')
+    await this.waitForIdle()
     this.#grant = undefined
   }
 }

@@ -11,6 +11,8 @@ type LauncherProviderInvalidatorOptions = Readonly<{
   local?: LauncherProviderInvalidation
   network?: LauncherProviderInvalidation
   os?: LauncherProviderInvalidation
+  terminal?: LauncherProviderInvalidation
+  browser?: LauncherProviderInvalidation
   core?: LauncherProviderInvalidation
 }>
 
@@ -22,6 +24,8 @@ export function createLauncherProviderInvalidator(options: LauncherProviderInval
     options.fileSearch?.invalidate(reason, preserveSignal)
     options.network?.invalidate(reason, preserveSignal)
     options.os?.invalidate(reason, preserveSignal)
+    options.terminal?.invalidate(reason, preserveSignal)
+    options.browser?.invalidate(reason, preserveSignal)
     options.local?.invalidate(reason, preserveSignal)
     options.core?.invalidate(reason, preserveSignal)
     if (owner === undefined) options.actions.clear()
