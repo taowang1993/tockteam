@@ -59,6 +59,7 @@ test('main assembles one launcher owner without branching the DSH workbench fact
   assert.match(main, /launcherTerminalFixtureMarker/u)
   assert.match(main, /acceptedEffects/u)
   assert.match(main, /Unexpected fixture/u)
+  assert.match(main, /Action: \$\{request\.actionName\}/u)
   assert.match(main, /signal,\s*timeout: 15_000/u)
   assert.match(main, /local\.loadIndexedItems\(\)/u)
   assert.match(main, /local\.searchInstant\(searchTerm\)/u)
@@ -126,6 +127,9 @@ test('fixture smoke reads host-owned effect counters instead of renderer authori
   assert.match(electronSmoke, /declinedConfirmations/u)
   assert.match(electronSmoke, /canceledConfirmations/u)
   assert.match(electronSmoke, /forbiddenEffects/u)
+  assert.match(electronSmoke, /Cancel workflow/u)
+  assert.match(electronSmoke, /cancelButton\.click\(\)/u)
+  assert.match(electronSmoke, /TOCKTEAM_WORKFLOW_SLOW_HISTORY/u)
 })
 
 test('workbench bridge and Desktop titlebar expose only finite launcher operations', () => {

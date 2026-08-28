@@ -192,6 +192,7 @@ const launcherNetworkFixtureEnabled = !app.isPackaged && process.env.TOCKTEAM_NE
 const launcherOsFixtureEnabled = !app.isPackaged && process.env.TOCKTEAM_OS_FIXTURE === '1'
 const launcherTerminalFixtureEnabled = !app.isPackaged && process.env.TOCKTEAM_TERMINAL_FIXTURE === '1'
 const launcherWorkflowFixtureEnabled = !app.isPackaged && process.env.TOCKTEAM_WORKFLOW_FIXTURE === '1'
+const launcherWorkflowFixtureSlowHistoryEnabled = launcherWorkflowFixtureEnabled && process.env.TOCKTEAM_WORKFLOW_SLOW_HISTORY === '1'
 const launcherBrowserFixtureEnabled = !app.isPackaged && process.env.TOCKTEAM_BROWSER_FIXTURE === '1'
 
 type LauncherBrowserFixtureMarker = {
@@ -1488,6 +1489,7 @@ function launcherSurfaceSettings(): import('./launcher-contract.ts').LauncherSur
 }
 
 async function recordLauncherSearch(query: string): Promise<import('./launcher-contract.ts').LauncherSurfaceSettings> {
+  if (launcherWorkflowFixtureSlowHistoryEnabled && query === 'Cancel workflow') await new Promise<void>(resolve => setTimeout(resolve, 750))
   const current = launcherSurfaceSettings()
   await requireLauncherPersistence().recordSearch(query, {
     historyEnabled: current.historyEnabled,
@@ -1783,6 +1785,7 @@ function initializeLauncher(): void {
         : request.actionType === 'OpenTerminal'
           ? `Terminal: ${request.terminalId}\\nCommand: ${request.command}\\nWorking directory: ${request.workingDirectory}`
           : `Command: ${request.command}\\nWorking directory: ${request.workingDirectory}`
+    const detail = `Action: ${request.actionName}\n${target}`
     const pending = launcherWorkflowFixtureEnabled
       ? (async () => {
         if (/cancel/iu.test(request.actionName) && signal !== undefined) {
@@ -1808,8 +1811,8 @@ function initializeLauncher(): void {
         return { response: /decline/iu.test(request.actionName) ? 1 : 0 }
       })()
       : mainWindow === undefined || mainWindow.isDestroyed()
-        ? dialog.showMessageBox({ buttons: ['Continue', 'Cancel'], cancelId: 1, defaultId: 1, detail: target, message: `Invoke ${request.actionType} in ${request.workflowName}?`, title: PRODUCT_NAME, type: 'warning' })
-        : dialog.showMessageBox(mainWindow, { buttons: ['Continue', 'Cancel'], cancelId: 1, defaultId: 1, detail: target, message: `Invoke ${request.actionType} in ${request.workflowName}?`, title: PRODUCT_NAME, type: 'warning' })
+        ? dialog.showMessageBox({ buttons: ['Continue', 'Cancel'], cancelId: 1, defaultId: 1, detail, message: `Invoke ${request.actionType} in ${request.workflowName}?`, title: PRODUCT_NAME, type: 'warning' })
+        : dialog.showMessageBox(mainWindow, { buttons: ['Continue', 'Cancel'], cancelId: 1, defaultId: 1, detail, message: `Invoke ${request.actionType} in ${request.workflowName}?`, title: PRODUCT_NAME, type: 'warning' })
     const result = signal === undefined ? await pending : await launcherAwaitAbortable(pending, signal)
     const approved = result.response === 0
     if (launcherWorkflowFixtureEnabled) recordLauncherWorkflowFixtureConfirmation(approved ? 'accepted' : 'declined')

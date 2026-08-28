@@ -166,13 +166,14 @@ const mainSource = await readFile(join(root, 'src', 'main.ts'), 'utf8')
 assert.match(mainSource, /const launcherOsFixtureEnabled = !app\.isPackaged && process\.env\.TOCKTEAM_OS_FIXTURE === '1'/u)
 assert.match(mainSource, /const launcherTerminalFixtureEnabled = !app\.isPackaged && process\.env\.TOCKTEAM_TERMINAL_FIXTURE === '1'/u)
 assert.match(mainSource, /const launcherWorkflowFixtureEnabled = !app\.isPackaged && process\.env\.TOCKTEAM_WORKFLOW_FIXTURE === '1'/u)
+assert.match(mainSource, /launcherWorkflowFixtureSlowHistoryEnabled/u)
 assert.match(mainSource, /const launcherBrowserFixtureEnabled = !app\.isPackaged && process\.env\.TOCKTEAM_BROWSER_FIXTURE === '1'/u)
 assert.match(mainSource, /launcherOsFixtureMarker/u)
 assert.match(mainSource, /launcherWorkflowFixtureMarker/u)
 assert.match(mainSource, /acceptedEffects/u)
 assert.match(mainSource, /Unexpected fixture effect/u)
 assert.match(mainSource, /if \(launcherOsFixtureEnabled\)/u)
-const fixtureEnvironment = { ...process.env, TOCKTEAM_BROWSER_FIXTURE: '1', TOCKTEAM_NETWORK_FIXTURE: '1', TOCKTEAM_OS_FIXTURE: '1', TOCKTEAM_TERMINAL_FIXTURE: '1', TOCKTEAM_WORKFLOW_FIXTURE: '1' }
+const fixtureEnvironment = { ...process.env, TOCKTEAM_BROWSER_FIXTURE: '1', TOCKTEAM_NETWORK_FIXTURE: '1', TOCKTEAM_OS_FIXTURE: '1', TOCKTEAM_TERMINAL_FIXTURE: '1', TOCKTEAM_WORKFLOW_FIXTURE: '1', TOCKTEAM_WORKFLOW_SLOW_HISTORY: '1' }
 const child = spawn(electron, [
   '.',
   `--remote-debugging-port=${String(port)}`,
@@ -914,30 +915,52 @@ try {
   })()`)
   assert.equal(workflowDeclined, true)
   await showLauncherFromWorkbench(workbenchConnection)
-  const workflowCancelStarted = await launcherConnection.call('Runtime.evaluate', { expression: `(async () => {
-    const response = await window.tockteamLauncher?.search('Cancel workflow', { fuzziness: 0, maxSearchResultItems: 50, searchEngineId: 'fuzzysort' })
-    const item = [...(response?.before ?? []), ...(response?.after ?? [])].find(candidate => candidate.sourceExtension === 'Workflow')
-    if (item?.defaultAction?.actionId === undefined || response?.resultSetId === undefined) return false
-    window.__tockteamWorkflowCancel = { actionId: item.defaultAction.actionId, resultSetId: response.resultSetId }
-    void window.tockteamLauncher?.invokeAction(item.defaultAction.actionId)
+  const workflowCancelSearch = await launcherConnection.evaluate(`(() => {
+    const input = document.getElementById('launcher-search')
+    if (!(input instanceof HTMLInputElement)) return false
+    input.value = 'Cancel workflow'
+    input.dispatchEvent(new Event('input', { bubbles: true }))
     return true
-  })()`, awaitPromise: false, returnByValue: true })
-  assert.ok(workflowCancelStarted.result)
-  await sleep(250)
-  const workflowCancelToken = await waitFor(
-    () => launcherConnection.evaluate('window.__tockteamWorkflowCancel ?? null'),
-    token => typeof token?.actionId === 'string' && typeof token?.resultSetId === 'string',
+  })()`)
+  assert.equal(workflowCancelSearch, true)
+  await waitFor(
+    () => launcherConnection.evaluate('document.querySelector(\'[data-result-id][aria-selected="true"]\')?.textContent?.includes("Cancel workflow") ?? false'),
+    found => found === true,
   )
-  assert.equal(await launcherConnection.evaluate(`(async () => {
-    try { await window.tockteamLauncher?.cancelAction(${JSON.stringify(workflowCancelToken.actionId)}, 'launcher-results:999'); return false } catch { return true }
-  })()`), true)
-  assert.equal(await launcherConnection.evaluate(`(async () => {
-    try { await window.tockteamLauncher?.cancelAction(${JSON.stringify(workflowCancelToken.actionId)}, ${JSON.stringify(workflowCancelToken.resultSetId)}); return true } catch { return false }
-  })()`), true)
+  const workflowCancelInvoked = await launcherConnection.evaluate(`(() => {
+    const button = [...document.querySelectorAll('#launcher-details button')]
+      .find(node => node.textContent?.includes('Invoke workflow'))
+    if (!(button instanceof HTMLButtonElement)) return false
+    button.click()
+    return true
+  })()`)
+  assert.equal(workflowCancelInvoked, true)
+  await sleep(100)
+  assert.equal(await launcherConnection.evaluate('document.querySelector(\'[data-testid="tocklauncher-cancel-workflow"]\') === null'), true)
+  const workflowCancelUi = await waitFor(
+    () => launcherConnection.evaluate(`(() => ({
+      cancel: document.querySelector('[data-testid="tocklauncher-cancel-workflow"]') !== null,
+      searchDisabled: document.getElementById('launcher-search')?.matches(':disabled') ?? false,
+    }))()`),
+    state => state.cancel === true && state.searchDisabled === true,
+  )
+  assert.deepEqual(workflowCancelUi, { cancel: true, searchDisabled: true })
+  const workflowCancelClicked = await launcherConnection.evaluate(`(() => {
+    const cancelButton = document.querySelector('[data-testid="tocklauncher-cancel-workflow"]')
+    if (!(cancelButton instanceof HTMLButtonElement)) return false
+    cancelButton.click()
+    return true
+  })()`)
+  assert.equal(workflowCancelClicked, true)
+  await waitFor(
+    () => launcherConnection.evaluate('document.getElementById("launcher-status")?.textContent ?? ""'),
+    status => status === 'Workflow canceled.',
+  )
   await workbenchConnection.evaluate(`(async () => { await window.dshDesktop?.launcher?.settings?.updateSetting('general.language', 'en-US') })()`)
   const workflowFixtureAfterCancel = await waitFor(
     () => readFile(workflowFixtureMarkerPath, 'utf8').then(value => JSON.parse(value)).catch(() => null),
-    marker => marker?.marker === 'tockteam-workflow-fixture-v1' && marker?.declined === 1 && marker?.canceled === 1 && marker?.confirmationDeclined === 1 && marker?.confirmationCanceled === 1 && marker?.forbiddenEffects === 0,
+    marker => marker?.marker === 'tockteam-workflow-fixture-v1' && marker?.accepted === 1 && marker?.declined === 1 && marker?.canceled === 1 && marker?.confirmationDeclined === 1 && marker?.confirmationCanceled === 1 && marker?.forbiddenEffects === 0
+      && JSON.stringify(marker?.order ?? []) === JSON.stringify(process.platform === 'linux' ? ['OpenFile', 'OpenUrl', 'ExecuteCommand'] : ['OpenFile', 'OpenUrl', 'OpenTerminal', 'ExecuteCommand']),
   )
   assert.equal(workflowFixtureAfterCancel.forbiddenEffects, 0)
 

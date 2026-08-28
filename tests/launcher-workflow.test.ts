@@ -235,7 +235,13 @@ test('Workflow confirmation includes the canonical file kind', async () => {
   })
   const item = (await provider.loadIndexedItems())[0]!
   await provider.executeAction(record(item.defaultAction.argument))
-  assert.equal((requests[0] as { kind?: string }).kind, 'directory')
+  assert.deepEqual(requests[0], {
+    actionName: 'Open directory',
+    actionType: 'OpenFile',
+    filePath: '/tmp/directory',
+    kind: 'directory',
+    workflowName: 'Directory',
+  })
 })
 
 test('Workflow cancellation waits for the command effect and records cancellation', async () => {
