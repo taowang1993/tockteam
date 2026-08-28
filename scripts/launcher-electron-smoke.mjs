@@ -316,10 +316,11 @@ try {
     const options = { fuzziness: 0.5, maxSearchResultItems: 50, searchEngineId: 'fuzzysort' }
     const read = async term => await window.tockteamLauncher?.search(term, options)
     const first = value => value?.after?.[0] ?? value?.before?.[0]
-    const accepted = first(await read('fixture accepted'))
-    const declined = first(await read('fixture declined'))
-    if (accepted?.sourceExtension !== 'TerminalLauncher' || declined?.sourceExtension !== 'TerminalLauncher') return null
+    const accepted = first(await read('>fixture accepted'))
+    if (accepted?.sourceExtension !== 'TerminalLauncher') return null
     const acceptedResult = await window.tockteamLauncher?.invokeAction(accepted.defaultAction.actionId)
+    const declined = first(await read('>fixture declined'))
+    if (declined?.sourceExtension !== 'TerminalLauncher') return null
     const declinedResult = await window.tockteamLauncher?.invokeAction(declined.defaultAction.actionId)
     return {
       accepted: acceptedResult?.ok === true,
@@ -334,7 +335,7 @@ try {
     accepted: true,
     confirmation: true,
     declined: true,
-    details: 'Terminal: Terminal\\nWorking directory: /Users/max\\nApproval: Always required',
+    details: 'Terminal: Terminal\nWorking directory: /Users/max\nApproval: Always required',
     image: 'terminal-macos',
     replay: true,
   })
@@ -377,7 +378,7 @@ try {
     stale: true,
   })
   const delayedTerminalStartedAt = Date.now()
-  await launcherConnection.call('Runtime.evaluate', { expression: `(async () => { const result = await window.tockteamLauncher?.search('fixture delayed', { fuzziness: 0.5, maxSearchResultItems: 50, searchEngineId: 'fuzzysort' }); const item = result?.after?.[0] ?? result?.before?.[0]; return await window.tockteamLauncher?.invokeAction(item?.defaultAction?.actionId) })()`, awaitPromise: false, returnByValue: true })
+  await launcherConnection.call('Runtime.evaluate', { expression: `(async () => { const result = await window.tockteamLauncher?.search('>fixture delayed', { fuzziness: 0.5, maxSearchResultItems: 50, searchEngineId: 'fuzzysort' }); const item = result?.after?.[0] ?? result?.before?.[0]; return await window.tockteamLauncher?.invokeAction(item?.defaultAction?.actionId) })()`, awaitPromise: false, returnByValue: true })
   await sleep(250)
   await launcherConnection.call('Page.close').catch(() => undefined)
   assert.ok(Date.now() - delayedTerminalStartedAt < 1_500, 'owner-clear must cancel terminal fixture confirmation before its 5s fallback')
