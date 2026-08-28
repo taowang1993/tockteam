@@ -470,9 +470,11 @@ try {
       hasVscodeSettings: document.querySelector('[aria-label="VS Code Command Template"]') !== null,
       hasFileSearchSettings: document.querySelector('[data-testid="tocklauncher-file-search-settings"]') !== null,
       hasSimpleSearchRoots: document.querySelector('[aria-label^="Path for"]') !== null,
+      hasNetworkSettings: document.querySelector('[data-testid="tockteam-network-settings"]') !== null,
+      hasNetworkDisclosure: document.querySelector('[data-testid="tockteam-network-settings"]')?.textContent?.includes('Network requests and browser effects') ?? false,
     }
   })()`)
-  assert.deepEqual(settingsFacts, { bridgeFrozen: true, catalog: true, hasSecret: false, hasBrowserPath: false, hasBrowserName: false, hasHistorySwitch: true, hasReset: true, liveStatus: true, extensionSwitches: 24, hasDiscoverySettings: true, hasApplicationFolders: true, hasBrowserBookmarks: true, hasVscodeSettings: true, hasFileSearchSettings: true, hasSimpleSearchRoots: false })
+  assert.deepEqual(settingsFacts, { bridgeFrozen: true, catalog: true, hasSecret: false, hasBrowserPath: false, hasBrowserName: false, hasHistorySwitch: true, hasReset: true, liveStatus: true, extensionSwitches: 24, hasDiscoverySettings: true, hasApplicationFolders: true, hasBrowserBookmarks: true, hasVscodeSettings: true, hasFileSearchSettings: true, hasSimpleSearchRoots: false, hasNetworkSettings: true, hasNetworkDisclosure: true })
   const rapidBrowserToggle = await workbenchConnection.evaluate(`(() => {
     const chrome = document.querySelector('[aria-label="Enable Google Chrome bookmarks"]')
     const firefox = document.querySelector('[aria-label="Enable Firefox bookmarks"]')
