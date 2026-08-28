@@ -222,12 +222,13 @@ test('Workflow cancellation waits for the command effect and records cancellatio
   })
   const item = (await provider.loadIndexedItems())[0]!
   const pending = provider.executeAction(record(item.defaultAction.argument))
+  const rejection = assert.rejects(pending, /canceled/i)
   await new Promise(resolve => setImmediate(resolve))
   const cancellation = provider.cancelAction(record(item.defaultAction.argument))
   await new Promise(resolve => setImmediate(resolve))
   assert.equal(typeof release, 'function')
   release!()
   assert.equal(await cancellation, true)
-  await assert.rejects(pending, /canceled/i)
+  await rejection
   assert.deepEqual(events, ['audit:cancelled'])
 })
