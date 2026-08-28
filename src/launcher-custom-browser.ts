@@ -9,7 +9,7 @@ export { parseLauncherCustomBrowserArgumentTemplate } from './launcher-custom-br
 
 export type LauncherCustomBrowserPlatform = 'Linux' | 'macOS' | 'Windows'
 type DesktopBrowserPlatform = Exclude<LauncherCustomBrowserPlatform, 'Linux'>
-type Grant = Readonly<{
+export type LauncherCustomBrowserGrant = Readonly<{
   dev: string
   ino: string
   parentRealPath: string
@@ -17,6 +17,8 @@ type Grant = Readonly<{
   platform: DesktopBrowserPlatform
   version: 1
 }>
+
+type Grant = LauncherCustomBrowserGrant
 
 type GrantParentBinding = Readonly<{
   dev: string
@@ -53,6 +55,10 @@ type ControllerOptions = Readonly<{
   openDefault: (url: string, signal?: AbortSignal) => Promise<void> | void
   /** Test-only cancellation seam; production never supplies it. */
   afterGrantMutation?: (operation: 'select' | 'revoke') => void
+  /** Test-only race seam; production never supplies it. */
+  afterAnchoredGrantPathMiss?: () => Promise<void> | void
+  /** Test-only serialization seam; production uses serializeLauncherCustomBrowserGrant. */
+  serializeGrant?: (grant: Grant) => string
   effectTimeoutMs?: number
   platform: LauncherCustomBrowserPlatform
   syncDirectory?: (directory: string) => Promise<void>
@@ -124,6 +130,12 @@ function parseGrant(value: unknown): Grant {
   })
 }
 
+export function serializeLauncherCustomBrowserGrant(grant: LauncherCustomBrowserGrant): string {
+  const serialized = JSON.stringify(grant, null, 2)
+  if (Buffer.byteLength(serialized, 'utf8') > MAX_GRANT_BYTES) throw new Error('Custom browser grant is too large')
+  return serialized
+}
+
 function identityOf(stats: { dev: unknown; ino: unknown }): { dev: string; ino: string } {
   const dev = decimalIdentity(stats.dev)
   const ino = decimalIdentity(stats.ino)
@@ -148,23 +160,36 @@ function samePath(left: string, right: string): boolean {
     : normalizedLeft === normalizedRight
 }
 
+type GrantPathCandidate = Readonly<{
+  anchored: boolean
+  path: string
+}>
+
 function parentAnchorRoots(): readonly string[] {
+  // macOS exposes /dev/fd, but does not support reliable child traversal from
+  // the descriptor path. Treat it as a raw-path platform instead.
   if (process.platform === 'linux') return ['/proc/self/fd', '/dev/fd']
-  if (process.platform === 'darwin') return ['/dev/fd']
   return []
 }
 
-async function parentChildPaths(parent: GrantParentAccess, filename: string): Promise<readonly string[]> {
+async function grantPathCandidates(parent: GrantParentAccess, filename: string): Promise<readonly GrantPathCandidate[]> {
   const raw = path.join(parent.binding.realPath, filename)
-  if (parent.handle === undefined) return [raw]
-  const anchored: string[] = []
+  // Never mix a raw candidate into an anchored candidate set. Raw paths are
+  // used only when no descriptor-relative anchor exists and callers fence them
+  // with explicit parent identity checks.
+  if (parent.handle === undefined) return Object.freeze([{ anchored: false, path: raw }])
   for (const root of parentAnchorRoots()) {
     try {
       await accessPath(root)
-      anchored.push(path.posix.join(root, String(parent.handle.fd), filename))
-    } catch { /* try the next anchor or the identity-checked path */ }
+      return Object.freeze([{ anchored: true, path: path.posix.join(root, String(parent.handle.fd), filename) }])
+    } catch { /* no usable descriptor anchor at this root */ }
   }
-  return Object.freeze([...anchored, raw])
+  return Object.freeze([{ anchored: false, path: raw }])
+}
+
+async function validateRawGrantParent(binding: GrantParentBinding, platform: LauncherCustomBrowserPlatform): Promise<void> {
+  const checked = await validateGrantParent(binding, platform)
+  await closeGrantParent(checked)
 }
 
 async function closeGrantParent(parent: GrantParentAccess): Promise<void> {
@@ -256,27 +281,28 @@ export async function readLauncherBoundedUtf8(handle: Pick<FileHandle, 'read'>):
   catch (error) { throw new Error('Custom browser grant file is not valid UTF-8', { cause: error }) }
 }
 
-async function readGrant(filePath: string, parentBinding: GrantParentBinding, platform: LauncherCustomBrowserPlatform): Promise<Grant | undefined> {
+async function readGrant(
+  filePath: string,
+  parentBinding: GrantParentBinding,
+  platform: LauncherCustomBrowserPlatform,
+  afterAnchoredGrantPathMiss?: () => Promise<void> | void,
+): Promise<Grant | undefined> {
   if (!samePath(path.dirname(filePath), parentBinding.directory)) throw new Error('Custom browser grant directory changed')
   const parent = await validateGrantParent(parentBinding, platform)
   let handle: FileHandle | undefined
   try {
     const filename = path.basename(filePath)
-    const candidates = await parentChildPaths(parent, filename)
-    let anchoredPath = candidates.at(-1)!
+    const candidate = (await grantPathCandidates(parent, filename))[0]!
     let before
-    for (const candidate of candidates) {
-      try {
-        before = await lstat(candidate, { bigint: true })
-        anchoredPath = candidate
-        break
-      } catch (error) {
-        if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
-      }
+    try { before = await lstat(candidate.path, { bigint: true }) }
+    catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
+      if (candidate.anchored) await afterAnchoredGrantPathMiss?.()
+      return undefined
     }
-    if (before === undefined) return undefined
     if (before.isSymbolicLink() || !before.isFile()) throw new Error('Custom browser grant file is invalid')
-    try { handle = await open(anchoredPath, HAS_NOFOLLOW ? constants.O_RDONLY | NOFOLLOW : constants.O_RDONLY) }
+    if (!candidate.anchored) await validateRawGrantParent(parentBinding, platform)
+    try { handle = await open(candidate.path, HAS_NOFOLLOW ? constants.O_RDONLY | NOFOLLOW : constants.O_RDONLY) }
     catch (error) { throw new Error('Custom browser grant file is unavailable', { cause: error }) }
     const stats = await handle.stat({ bigint: true })
     if (!stats.isFile() || stats.size > BigInt(MAX_GRANT_BYTES) || !identityMatches(stats, before)) throw new Error('Custom browser grant file is invalid')
@@ -284,14 +310,15 @@ async function readGrant(filePath: string, parentBinding: GrantParentBinding, pl
     const afterRead = await handle.stat({ bigint: true })
     if (!afterRead.isFile() || afterRead.size > BigInt(MAX_GRANT_BYTES) || !identityMatches(afterRead, before)) throw new Error('Custom browser grant file grew while it was read')
     const parsed = parseGrant(JSON.parse(content) as unknown)
-    const after = await lstat(anchoredPath, { bigint: true })
+    const after = await lstat(candidate.path, { bigint: true })
     if (after.isSymbolicLink() || after.size > BigInt(MAX_GRANT_BYTES) || !identityMatches(after, before)) throw new Error('Custom browser grant file changed')
     return parsed
   } finally {
     await handle?.close().catch(() => undefined)
-    await closeGrantParent(parent)
-    const afterParent = await validateGrantParent(parentBinding, platform)
-    await closeGrantParent(afterParent)
+    try {
+      const afterParent = await validateGrantParent(parentBinding, platform)
+      await closeGrantParent(afterParent)
+    } finally { await closeGrantParent(parent) }
   }
 }
 
@@ -321,50 +348,60 @@ async function syncGrantDirectory(sync: (directory: string) => Promise<void>, di
   }
 }
 
-async function writeGrant(filePath: string, grant: Grant, platform: LauncherCustomBrowserPlatform, parentBinding: GrantParentBinding): Promise<string> {
+type GrantWriteResult = Readonly<{
+  directory: string
+  parent: GrantParentAccess
+}>
+
+async function writeGrant(
+  filePath: string,
+  grant: Grant,
+  platform: LauncherCustomBrowserPlatform,
+  parentBinding: GrantParentBinding,
+  serializeGrant: (grant: Grant) => string,
+  afterAnchoredGrantPathMiss?: () => Promise<void> | void,
+): Promise<GrantWriteResult> {
+  const serialized = serializeGrant(grant)
   if (!samePath(path.dirname(filePath), parentBinding.directory)) throw new Error('Custom browser grant directory changed')
   const parent = await validateGrantParent(parentBinding, platform)
   const filename = path.basename(filePath)
   const temporaryName = `.custom-browser-grant-${process.pid}-${randomUUID()}.tmp`
-  const temporaryCandidates = await parentChildPaths(parent, temporaryName)
-  const targetCandidates = await parentChildPaths(parent, filename)
-  let temporary = temporaryCandidates.at(-1)!
-  let target = targetCandidates.at(-1)!
+  const temporaryCandidate = (await grantPathCandidates(parent, temporaryName))[0]!
+  const targetCandidate = (await grantPathCandidates(parent, filename))[0]!
   let handle: FileHandle | undefined
   let created = false
   let renamed = false
+  let transferred = false
   try {
     if (platform !== 'Windows') await parent.handle?.chmod(0o700)
-    for (let index = 0; index < temporaryCandidates.length; index += 1) {
-      try {
-        temporary = temporaryCandidates[index]!
-        target = targetCandidates[index] ?? targetCandidates.at(-1)!
-        handle = await open(temporary, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | (HAS_NOFOLLOW ? NOFOLLOW : 0), 0o600)
-        created = true
-        break
-      } catch (error) {
-        if ((error as NodeJS.ErrnoException).code !== 'ENOENT' || index === temporaryCandidates.length - 1) throw error
-      }
+    if (!temporaryCandidate.anchored) await validateRawGrantParent(parentBinding, platform)
+    try {
+      handle = await open(temporaryCandidate.path, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | (HAS_NOFOLLOW ? NOFOLLOW : 0), 0o600)
+      created = true
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT' && temporaryCandidate.anchored) await afterAnchoredGrantPathMiss?.()
+      throw error
     }
-    if (handle === undefined) throw new Error('Custom browser grant temporary file is unavailable')
+    if (!temporaryCandidate.anchored) await validateRawGrantParent(parentBinding, platform)
     await handle.chmod(0o600)
-    await handle.writeFile(JSON.stringify(grant, null, 2), 'utf8')
+    await handle.writeFile(serialized, 'utf8')
     await handle.sync()
     await handle.close()
     handle = undefined
-    await rename(temporary, target)
+    if (!targetCandidate.anchored) await validateRawGrantParent(parentBinding, platform)
+    await rename(temporaryCandidate.path, targetCandidate.path)
     renamed = true
-    return parent.binding.realPath
+    transferred = true
+    return Object.freeze({ directory: parent.binding.realPath, parent })
   } finally {
     await handle?.close().catch(() => undefined)
-    await closeGrantParent(parent)
     if (!renamed && created) {
       try {
-        const cleanupParent = await validateGrantParent(parentBinding, platform)
-        await rm(path.join(cleanupParent.binding.realPath, temporaryName), { force: true })
-        await closeGrantParent(cleanupParent)
+        if (!temporaryCandidate.anchored) await validateRawGrantParent(parentBinding, platform)
+        await rm(temporaryCandidate.path, { force: true })
       } catch { /* leave an untrusted temporary path untouched */ }
     }
+    if (!transferred) await closeGrantParent(parent)
   }
 }
 
@@ -400,7 +437,7 @@ export class LauncherCustomBrowserController {
       await closeGrantParent(parent)
     } catch { return new LauncherCustomBrowserController(options, undefined, undefined, 'revoked') }
     try {
-      const grant = await readGrant(grantPath, parentBinding, options.platform)
+      const grant = await readGrant(grantPath, parentBinding, options.platform, options.afterAnchoredGrantPathMiss)
       if (grant === undefined) return new LauncherCustomBrowserController(options, parentBinding, undefined, 'none')
       if (options.platform === 'Linux' || grant.platform !== options.platform) return new LauncherCustomBrowserController(options, parentBinding, undefined, 'revoked')
       await revalidateGrant(grant, parentBinding)
@@ -431,41 +468,50 @@ export class LauncherCustomBrowserController {
       throwIfAborted(operationSignal)
       const grant = await validateBrowserTarget(target, this.options.platform as DesktopBrowserPlatform)
       throwIfAborted(operationSignal)
-      const directory = await writeGrant(this.#grantPath, grant, this.options.platform, this.#parentBinding!)
-      // Rename is the file commit point. Keep disk and memory matching before
-      // the best-effort directory durability step or any owner cancellation.
-      this.#grant = grant
-      this.#status = 'active'
-      this.options.afterGrantMutation?.('select')
+      const written = await writeGrant(
+        this.#grantPath,
+        grant,
+        this.options.platform,
+        this.#parentBinding!,
+        this.options.serializeGrant ?? serializeLauncherCustomBrowserGrant,
+        this.options.afterAnchoredGrantPathMiss,
+      )
       try {
-        const after = await validateGrantParent(this.#parentBinding!, this.options.platform)
-        await closeGrantParent(after)
-      } catch (error) {
-        this.#grant = undefined
-        this.#status = 'revoked'
-        throw error
-      }
-      try {
-        await syncGrantDirectory(this.options.syncDirectory ?? (async targetDirectory => await syncDirectory(targetDirectory, this.options.platform)), directory, this.options.platform)
-      } catch (error) {
+        // Rename is the file commit point. Keep disk and memory matching before
+        // the best-effort directory durability step or any owner cancellation.
+        this.#grant = grant
+        this.#status = 'active'
+        this.options.afterGrantMutation?.('select')
         try {
-          const afterSyncFailure = await validateGrantParent(this.#parentBinding!, this.options.platform)
-          await closeGrantParent(afterSyncFailure)
-        } catch {
+          const after = await validateGrantParent(this.#parentBinding!, this.options.platform)
+          await closeGrantParent(after)
+        } catch (error) {
           this.#grant = undefined
           this.#status = 'revoked'
+          throw error
         }
-        throw error
-      }
-      try {
-        const afterSync = await validateGrantParent(this.#parentBinding!, this.options.platform)
-        await closeGrantParent(afterSync)
-      } catch (error) {
-        this.#grant = undefined
-        this.#status = 'revoked'
-        throw error
-      }
-      throwIfAborted(operationSignal)
+        try {
+          await syncGrantDirectory(this.options.syncDirectory ?? (async targetDirectory => await syncDirectory(targetDirectory, this.options.platform)), written.directory, this.options.platform)
+        } catch (error) {
+          try {
+            const afterSyncFailure = await validateGrantParent(this.#parentBinding!, this.options.platform)
+            await closeGrantParent(afterSyncFailure)
+          } catch {
+            this.#grant = undefined
+            this.#status = 'revoked'
+          }
+          throw error
+        }
+        try {
+          const afterSync = await validateGrantParent(this.#parentBinding!, this.options.platform)
+          await closeGrantParent(afterSync)
+        } catch (error) {
+          this.#grant = undefined
+          this.#status = 'revoked'
+          throw error
+        }
+        throwIfAborted(operationSignal)
+      } finally { await closeGrantParent(written.parent) }
     }, signal)
   }
 
@@ -476,38 +522,31 @@ export class LauncherCustomBrowserController {
     await this.#enqueue(async operationSignal => {
       throwIfAborted(operationSignal)
       const parent = await validateGrantParent(this.#parentBinding!, this.options.platform)
-      const candidates = await parentChildPaths(parent, path.basename(this.#grantPath))
-      let target = candidates.at(-1)!
-      for (const candidate of candidates) {
-        try {
-          await lstat(candidate)
-          target = candidate
-          break
-        } catch (error) {
-          if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
-            await closeGrantParent(parent)
-            throw error
-          }
-        }
-      }
       try {
-        await rm(target, { force: true })
-      } catch (error) {
-        await closeGrantParent(parent)
-        throw error
-      }
-      // Removal is the file commit point; never retain a stale active grant
-      // while directory durability is being attempted.
-      this.#grant = undefined
-      this.#status = 'none'
-      await closeGrantParent(parent)
-      const after = await validateGrantParent(this.#parentBinding!, this.options.platform)
-      await closeGrantParent(after)
-      await syncGrantDirectory(this.options.syncDirectory ?? (async targetDirectory => await syncDirectory(targetDirectory, this.options.platform)), this.#parentBinding!.realPath, this.options.platform)
-      const afterSync = await validateGrantParent(this.#parentBinding!, this.options.platform)
-      await closeGrantParent(afterSync)
-      this.options.afterGrantMutation?.('revoke')
-      throwIfAborted(operationSignal)
+        const candidate = (await grantPathCandidates(parent, path.basename(this.#grantPath)))[0]!
+        let exists = true
+        try { await lstat(candidate.path) }
+        catch (error) {
+          if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
+          if (candidate.anchored) await this.options.afterAnchoredGrantPathMiss?.()
+          exists = false
+        }
+        if (exists) {
+          if (!candidate.anchored) await validateRawGrantParent(this.#parentBinding!, this.options.platform)
+          await rm(candidate.path, { force: true })
+        }
+        // Removal is the file commit point; never retain a stale active grant
+        // while directory durability is being attempted.
+        this.#grant = undefined
+        this.#status = 'none'
+        const after = await validateGrantParent(this.#parentBinding!, this.options.platform)
+        await closeGrantParent(after)
+        await syncGrantDirectory(this.options.syncDirectory ?? (async targetDirectory => await syncDirectory(targetDirectory, this.options.platform)), this.#parentBinding!.realPath, this.options.platform)
+        const afterSync = await validateGrantParent(this.#parentBinding!, this.options.platform)
+        await closeGrantParent(afterSync)
+        this.options.afterGrantMutation?.('revoke')
+        throwIfAborted(operationSignal)
+      } finally { await closeGrantParent(parent) }
     }, signal)
   }
 

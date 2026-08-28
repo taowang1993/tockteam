@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict'
-import { mkdir, mkdtemp, readFile, realpath, rename, rm, stat, symlink, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, readdir, realpath, rename, rm, stat, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { test } from 'node:test'
-import { LauncherCustomBrowserController, parseLauncherCustomBrowserArgumentTemplate, readLauncherBoundedUtf8 } from '../src/launcher-custom-browser.ts'
+import { LauncherCustomBrowserController, parseLauncherCustomBrowserArgumentTemplate, readLauncherBoundedUtf8, serializeLauncherCustomBrowserGrant } from '../src/launcher-custom-browser.ts'
 
 async function root(): Promise<string> { return await mkdtemp(path.join(tmpdir(), 'tockteam-browser-')) }
 
@@ -102,7 +102,91 @@ test('custom browser invalidates an active grant when its fixed parent is replac
   } finally { await rm(userDataPath, { recursive: true, force: true }) }
 })
 
-test('custom-browser grants keep identity private and revoke replacement', async () => {
+test('custom browser keeps POSIX anchored revoke paths from falling back to a swapped raw parent', async t => {
+  if (process.platform !== 'linux') { t.skip('requires a Linux /proc/self/fd parent anchor'); return }
+  const userDataPath = await root()
+  try {
+    const executable = path.join(userDataPath, 'Browser.app')
+    await mkdir(executable)
+    const setup = await LauncherCustomBrowserController.open({
+      getSetting: <T>(_key: string, fallback: T): T => fallback,
+      launch: async () => {},
+      openDefault: async () => {},
+      platform: 'macOS',
+      userDataPath,
+    })
+    await setup.select(executable)
+    await setup.close()
+    const parent = path.join(userDataPath, 'launcher')
+    const replacement = path.join(userDataPath, 'replacement-launcher')
+    const replacementGrant = path.join(replacement, 'custom-browser-grant.json')
+    let swapped = false
+    const controller = await LauncherCustomBrowserController.open({
+      afterAnchoredGrantPathMiss: async () => {
+        if (swapped) return
+        swapped = true
+        await rename(parent, `${parent}.old`)
+        await mkdir(replacement)
+        await writeFile(replacementGrant, 'must survive')
+        await symlink(replacement, parent)
+      },
+      getSetting: <T>(_key: string, fallback: T): T => fallback,
+      launch: async () => {},
+      openDefault: async () => {},
+      platform: 'macOS',
+      userDataPath,
+    })
+    assert.deepEqual(controller.snapshot(), { platform: 'macOS', status: 'active' })
+    await rm(path.join(parent, 'custom-browser-grant.json'))
+    await assert.rejects(controller.revoke(), /directory|changed|invalid|unavailable/i)
+    assert.equal(await readFile(replacementGrant, 'utf8'), 'must survive')
+    await controller.close()
+  } finally { await rm(userDataPath, { recursive: true, force: true }) }
+})
+
+test('custom browser serializes exact grant byte bounds and rejects overbound selection before mutation', async () => {
+  const base = { dev: '1', ino: '2', parentRealPath: '/tmp', path: '', platform: 'Windows' as const, version: 1 as const }
+  const size = (value: typeof base): number => Buffer.byteLength(JSON.stringify(value, null, 2), 'utf8')
+  let exactPath = ''
+  for (let length = 0; length < 20_000; length += 1) {
+    const candidate = { ...base, path: 'x'.repeat(length) }
+    if (size(candidate) === 16 * 1024) { exactPath = candidate.path; break }
+  }
+  assert.notEqual(exactPath, '')
+  const exact = { ...base, path: exactPath }
+  assert.equal(Buffer.byteLength(serializeLauncherCustomBrowserGrant(exact), 'utf8'), 16 * 1024)
+  assert.throws(() => serializeLauncherCustomBrowserGrant({ ...exact, path: `${exact.path}x` }), /large|size|bound/i)
+
+  const userDataPath = await root()
+  try {
+    const executable = path.join(userDataPath, 'browser.exe')
+    await writeFile(executable, 'approved', { mode: 0o700 })
+    const first = await LauncherCustomBrowserController.open({
+      getSetting: <T>(_key: string, fallback: T): T => fallback,
+      launch: async () => {},
+      openDefault: async () => {},
+      platform: 'Windows',
+      userDataPath,
+    })
+    await first.select(executable)
+    const prior = await readFile(path.join(userDataPath, 'launcher', 'custom-browser-grant.json'), 'utf8')
+    const guarded = await LauncherCustomBrowserController.open({
+      getSetting: <T>(_key: string, fallback: T): T => fallback,
+      launch: async () => {},
+      openDefault: async () => {},
+      platform: 'Windows',
+      serializeGrant: grant => serializeLauncherCustomBrowserGrant({ ...grant, path: `${grant.path}${'x'.repeat(20_000)}` }),
+      userDataPath,
+    })
+    await assert.rejects(guarded.select(executable), /large|size|bound/i)
+    assert.equal(guarded.snapshot().status, 'active')
+    assert.equal(await readFile(path.join(userDataPath, 'launcher', 'custom-browser-grant.json'), 'utf8'), prior)
+    assert.deepEqual((await readdir(path.join(userDataPath, 'launcher'))).sort(), ['custom-browser-grant.json'])
+    await Promise.all([first.close(), guarded.close()])
+  } finally { await rm(userDataPath, { recursive: true, force: true }) }
+})
+
+test('custom-browser Windows raw fallback keeps identity private and revokes replacement', async () => {
   const userDataPath = await root()
   try {
     const executable = path.join(userDataPath, 'browser.exe')
