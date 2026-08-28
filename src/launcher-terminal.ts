@@ -22,6 +22,8 @@ export type LauncherTerminalLaunchRequest = Readonly<{
   workingDirectory: string
 }>
 
+export type LauncherTerminalPathIdentity = Readonly<{ dev: string; ino: string }>
+
 export type LauncherTerminalConfirmation = LauncherTerminalLaunchRequest & Readonly<{
   terminalName: string
 }>
@@ -43,8 +45,10 @@ export type LauncherTerminalEffects = Readonly<{
 type LauncherTerminalOptions = Readonly<{
   effects: LauncherTerminalEffects
   enabledExtensionIds: () => readonly string[]
+  captureHomeIdentity?: (path: string, signal: AbortSignal) => Promise<LauncherTerminalPathIdentity | undefined>
   getHomePath?: () => string
   getSetting: <T>(key: string, fallback: T) => T
+  homeIdentity?: LauncherTerminalPathIdentity
   homePath: string
   onProviderError?: (error: Error) => void
   platform: LauncherTerminalPlatform
@@ -59,6 +63,7 @@ type TerminalActionArgument = LauncherTerminalLaunchRequest & Readonly<{
 type KnownAction = Readonly<{
   argument: TerminalActionArgument
   generation: number
+  homeIdentity?: LauncherTerminalPathIdentity
   settingsDigest: string
 }>
 
@@ -202,6 +207,7 @@ export function createLauncherTerminal(options: LauncherTerminalOptions): Readon
   const activeWork = new Set<Promise<unknown>>()
   let currentActions = new Map<string, KnownAction>()
   let generation = 0
+  let startupHomeIdentity = options.homeIdentity
   let closed = false
 
   const track = <T>(operation: () => Promise<T>): Promise<T> => {
@@ -235,13 +241,21 @@ export function createLauncherTerminal(options: LauncherTerminalOptions): Readon
     if (!searchTerm.startsWith(settings.prefix)) return emptyResult()
     const command = searchTerm.slice(settings.prefix.length).trim()
     if (!commandIsValid(command)) return emptyResult()
+    if (startupHomeIdentity === undefined && options.captureHomeIdentity !== undefined) {
+      startupHomeIdentity = await options.captureHomeIdentity(workingDirectory, new AbortController().signal)
+    }
     const nextActions = new Map<string, KnownAction>()
     const items = LAUNCHER_TERMINALS[options.platform]
       .filter((terminal: LauncherTerminalDefinition) => settings.ids.includes(terminal.id))
       .map((terminal): LauncherInternalResultItem => {
         const value: TerminalActionArgument = Object.freeze({ command, kind: 'terminal-command', terminalId: terminal.id, version: 1, workingDirectory })
         const argument = serializeAction(value)
-        nextActions.set(argument, Object.freeze({ argument: value, generation, settingsDigest: settings.digest }))
+        nextActions.set(argument, Object.freeze({
+          argument: value,
+          generation,
+          ...(startupHomeIdentity === undefined ? {} : { homeIdentity: startupHomeIdentity }),
+          settingsDigest: settings.digest,
+        }))
         const action: LauncherInternalAction = Object.freeze({
           argument,
           description: `Launch command in ${terminal.name}`,
@@ -284,6 +298,11 @@ export function createLauncherTerminal(options: LauncherTerminalOptions): Readon
       if (controller.signal.aborted) return false
       const currentHome = options.getHomePath?.() ?? workingDirectory
       if (currentHome !== workingDirectory) return false
+      if (known.homeIdentity !== undefined) {
+        if (options.captureHomeIdentity === undefined) return false
+        const current = await options.captureHomeIdentity(workingDirectory, controller.signal)
+        if (current === undefined || current.dev !== known.homeIdentity.dev || current.ino !== known.homeIdentity.ino) return false
+      }
       return options.validateWorkingDirectory === undefined || await options.validateWorkingDirectory(workingDirectory, controller.signal)
     }
     const auditBase = Object.freeze({ commandLength: request.command.length, commandSha256: createHash('sha256').update(request.command, 'utf8').digest('hex'), terminalId: request.terminalId, workingDirectory })

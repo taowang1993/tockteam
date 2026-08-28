@@ -1,5 +1,5 @@
 import { constants } from 'node:fs'
-import { chmod, lstat, mkdir, open, realpath, rename, rm } from 'node:fs/promises'
+import { lstat, mkdir, open, realpath, rename, rm, type FileHandle } from 'node:fs/promises'
 import path from 'node:path'
 import { randomUUID } from 'node:crypto'
 import type { LauncherSettingsSnapshot } from './launcher-settings-contract.ts'
@@ -41,7 +41,9 @@ type ControllerOptions = Readonly<{
   openDefault: (url: string, signal?: AbortSignal) => Promise<void> | void
   /** Test-only cancellation seam; production never supplies it. */
   afterGrantMutation?: (operation: 'select' | 'revoke') => void
+  effectTimeoutMs?: number
   platform: LauncherCustomBrowserPlatform
+  syncDirectory?: (directory: string) => Promise<void>
   userDataPath: string
   identitySafeEffects?: boolean
 }>
@@ -56,6 +58,30 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function throwIfAborted(signal?: AbortSignal): void {
   if (signal?.aborted) throw signal.reason instanceof Error ? signal.reason : new Error('Custom browser operation canceled')
+}
+
+async function awaitBoundedEffect<T>(effect: () => Promise<T> | T, signal: AbortSignal, timeoutMs: number): Promise<T> {
+  const pending = Promise.resolve().then(effect)
+  void pending.catch(() => undefined)
+  let onAbort!: () => void
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const canceled = new Promise<never>((_, reject) => {
+    onAbort = () => reject(signal.reason instanceof Error ? signal.reason : new Error('Custom browser operation canceled'))
+    signal.addEventListener('abort', onAbort, { once: true })
+  })
+  const timedOut = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error('Custom browser native effect timed out')), timeoutMs)
+  })
+  try { return await Promise.race([pending, canceled, timedOut]) }
+  finally {
+    if (timer !== undefined) clearTimeout(timer)
+    signal.removeEventListener('abort', onAbort)
+  }
+}
+
+function effectTimeout(options: ControllerOptions): number {
+  const configured = options.effectTimeoutMs ?? 15_000
+  return Number.isFinite(configured) ? Math.max(1, Math.min(configured, 15_000)) : 15_000
 }
 
 function decimalIdentity(value: unknown): string | undefined {
@@ -128,6 +154,21 @@ async function revalidateGrant(grant: Grant): Promise<void> {
   }
 }
 
+export async function readLauncherBoundedUtf8(handle: Pick<FileHandle, 'read'>): Promise<string> {
+  const chunks: Buffer[] = []
+  let total = 0
+  while (true) {
+    const buffer = Buffer.alloc(Math.min(4_096, MAX_GRANT_BYTES + 1 - total))
+    const { bytesRead } = await handle.read(buffer, 0, buffer.length, null)
+    if (bytesRead === 0) break
+    total += bytesRead
+    if (total > MAX_GRANT_BYTES) throw new Error('Custom browser grant file is too large')
+    chunks.push(buffer.subarray(0, bytesRead))
+  }
+  try { return new TextDecoder('utf-8', { fatal: true }).decode(Buffer.concat(chunks)) }
+  catch (error) { throw new Error('Custom browser grant file is not valid UTF-8', { cause: error }) }
+}
+
 async function readGrant(filePath: string): Promise<Grant | undefined> {
   let before
   try { before = await lstat(filePath, { bigint: true }) }
@@ -142,36 +183,74 @@ async function readGrant(filePath: string): Promise<Grant | undefined> {
   try {
     const stats = await handle.stat({ bigint: true })
     if (!stats.isFile() || stats.size > BigInt(MAX_GRANT_BYTES) || !identityMatches(stats, before)) throw new Error('Custom browser grant file is invalid')
-    const parsed = parseGrant(JSON.parse(await handle.readFile('utf8')) as unknown)
+    const parsed = parseGrant(JSON.parse(await readLauncherBoundedUtf8(handle)) as unknown)
     const after = await lstat(filePath, { bigint: true })
     if (after.isSymbolicLink() || !identityMatches(after, before)) throw new Error('Custom browser grant file changed')
     return parsed
   } finally { await handle.close() }
 }
 
-async function syncDirectory(directory: string): Promise<void> {
+function unsupportedDirectorySync(error: unknown): boolean {
+  const code = (error as NodeJS.ErrnoException).code
+  return code === 'EINVAL' || code === 'ENOTSUP' || code === 'EOPNOTSUPP' || code === 'EBADF' || code === 'EPERM'
+}
+
+async function syncDirectory(directory: string, platform: LauncherCustomBrowserPlatform): Promise<void> {
+  if (platform === 'Windows') {
+    try {
+      const handle = await open(directory, constants.O_RDONLY)
+      try { await handle.sync() } finally { await handle.close() }
+    } catch (error) {
+      if (!unsupportedDirectorySync(error)) throw error
+    }
+    return
+  }
   const handle = await open(directory, constants.O_RDONLY)
   try { await handle.sync() } finally { await handle.close() }
 }
 
-async function writeGrant(filePath: string, grant: Grant): Promise<void> {
+async function canonicalGrantDirectory(directory: string): Promise<string> {
+  const selected = await lstat(directory, { bigint: true })
+  if (!selected.isDirectory() || selected.isSymbolicLink()) throw new Error('Custom browser grant directory is invalid')
+  const canonicalDirectory = await realpath(directory)
+  const parent = await lstat(canonicalDirectory, { bigint: true })
+  if (!parent.isDirectory() || parent.isSymbolicLink()) throw new Error('Custom browser grant directory is invalid')
+  return canonicalDirectory
+}
+
+async function syncGrantDirectory(sync: (directory: string) => Promise<void>, directory: string, platform: LauncherCustomBrowserPlatform): Promise<void> {
+  try { await sync(directory) }
+  catch (error) {
+    if (platform !== 'Windows' || !unsupportedDirectorySync(error)) throw error
+  }
+}
+
+async function writeGrant(filePath: string, grant: Grant, platform: LauncherCustomBrowserPlatform, sync: (directory: string) => Promise<void>): Promise<void> {
   const directory = path.dirname(filePath)
   await mkdir(directory, { mode: 0o700, recursive: true })
-  await chmod(directory, 0o700)
-  const temporary = path.join(directory, `.custom-browser-grant-${process.pid}-${randomUUID()}.tmp`)
-  let handle
+  const canonicalDirectory = await canonicalGrantDirectory(directory)
+  let parentHandle: FileHandle | undefined
+  if (platform !== 'Windows') {
+    parentHandle = await open(canonicalDirectory, constants.O_RDONLY | (HAS_NOFOLLOW ? NOFOLLOW : 0))
+    await parentHandle.chmod(0o700)
+  }
+  const filename = path.basename(filePath)
+  const target = path.join(canonicalDirectory, filename)
+  const temporary = path.join(canonicalDirectory, `.custom-browser-grant-${process.pid}-${randomUUID()}.tmp`)
+  let handle: FileHandle | undefined
   try {
     handle = await open(temporary, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | (HAS_NOFOLLOW ? NOFOLLOW : 0), 0o600)
+    await handle.chmod(0o600)
     await handle.writeFile(JSON.stringify(grant, null, 2), 'utf8')
     await handle.sync()
     await handle.close()
     handle = undefined
-    await rename(temporary, filePath)
-    await chmod(filePath, 0o600)
-    await syncDirectory(directory)
+    await rename(temporary, target)
+    await syncGrantDirectory(sync, canonicalDirectory, platform)
   } finally {
     await handle?.close().catch(() => undefined)
     await rm(temporary, { force: true })
+    await parentHandle?.close().catch(() => undefined)
   }
 }
 
@@ -227,7 +306,7 @@ export class LauncherCustomBrowserController {
       throwIfAborted(operationSignal)
       const grant = await validateBrowserTarget(target, this.options.platform as DesktopBrowserPlatform)
       throwIfAborted(operationSignal)
-      await writeGrant(this.#grantPath, grant)
+      await writeGrant(this.#grantPath, grant, this.options.platform, this.options.syncDirectory ?? (async directory => await syncDirectory(directory, this.options.platform)))
       // Durable state is committed; finish the matching in-memory commit even
       // when owner cancellation arrives at this boundary.
       this.#grant = grant
@@ -242,8 +321,14 @@ export class LauncherCustomBrowserController {
     throwIfAborted(signal)
     await this.#enqueue(async operationSignal => {
       throwIfAborted(operationSignal)
-      await rm(this.#grantPath, { force: true })
-      try { await syncDirectory(path.dirname(this.#grantPath)) } catch (error) {
+      let directory: string
+      try { directory = await canonicalGrantDirectory(path.dirname(this.#grantPath)) }
+      catch (error) {
+        if ((error as NodeJS.ErrnoException).code === 'ENOENT') directory = path.dirname(this.#grantPath)
+        else throw error
+      }
+      await rm(path.join(directory, path.basename(this.#grantPath)), { force: true })
+      try { await syncGrantDirectory(this.options.syncDirectory ?? (async target => await syncDirectory(target, this.options.platform)), directory, this.options.platform) } catch (error) {
         if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
       }
       this.#grant = undefined
@@ -261,7 +346,7 @@ export class LauncherCustomBrowserController {
       throwIfAborted(operationSignal)
       const useDefault = this.options.getSetting('general.browser.useDefaultWebBrowser', true)
       if (useDefault || this.options.platform === 'Linux') {
-        await this.options.openDefault(normalized, operationSignal)
+        await awaitBoundedEffect(() => this.options.openDefault(normalized, operationSignal), operationSignal, effectTimeout(this.options))
         throwIfAborted(operationSignal)
         return
       }
@@ -272,9 +357,13 @@ export class LauncherCustomBrowserController {
       try { await revalidateGrant(grant) }
       catch (error) { this.#grant = undefined; this.#status = 'revoked'; throw new Error('Custom browser grant changed or was revoked', { cause: error }) }
       throwIfAborted(operationSignal)
-      if (grant.platform === 'macOS') { await this.options.launch('/usr/bin/open', ['-a', grant.path, normalized], operationSignal); throwIfAborted(operationSignal); return }
+      if (grant.platform === 'macOS') {
+        await awaitBoundedEffect(() => this.options.launch('/usr/bin/open', ['-a', grant.path, normalized], operationSignal), operationSignal, effectTimeout(this.options))
+        throwIfAborted(operationSignal)
+        return
+      }
       const template = this.options.getSetting('general.browser.customWebBrowser.commandlineArguments', '{{url}}')
-      await this.options.launch(grant.path, parseLauncherCustomBrowserArgumentTemplate(template, normalized), operationSignal)
+      await awaitBoundedEffect(() => this.options.launch(grant.path, parseLauncherCustomBrowserArgumentTemplate(template, normalized), operationSignal), operationSignal, effectTimeout(this.options))
       throwIfAborted(operationSignal)
     }, signal)
   }

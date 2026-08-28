@@ -1,6 +1,7 @@
 import { spawn } from 'node:child_process'
+import { lstat, realpath } from 'node:fs/promises'
 import path from 'node:path'
-import type { LauncherTerminalLaunchRequest, LauncherTerminalPlatform } from './launcher-terminal.ts'
+import type { LauncherTerminalLaunchRequest, LauncherTerminalPlatform, LauncherTerminalId } from './launcher-terminal.ts'
 
 export type LauncherTerminalInvocation = Readonly<{
   args: readonly string[]
@@ -8,6 +9,93 @@ export type LauncherTerminalInvocation = Readonly<{
   executable: string
   waitForExit: boolean
 }>
+
+export type LauncherTerminalExecutableIdentity = Readonly<{ dev: string; ino: string }>
+export type TrustedWindowsTerminalExecutable = Readonly<{
+  executable: string
+  identity: LauncherTerminalExecutableIdentity
+}>
+type TrustedWindowsTerminalCapture = Readonly<{
+  canonicalPath: string
+  identity: LauncherTerminalExecutableIdentity
+}>
+type TrustedWindowsTerminalCaptureEffect = (target: string) => Promise<TrustedWindowsTerminalCapture | undefined>
+
+function identityPart(value: unknown): string | undefined {
+  if (typeof value === 'bigint') return value >= 0n ? value.toString(10) : undefined
+  if (typeof value === 'number') return Number.isSafeInteger(value) && value >= 0 ? String(value) : undefined
+  return typeof value === 'string' && /^[0-9]+$/u.test(value) ? value.replace(/^0+(?=\d)/u, '') : undefined
+}
+
+async function captureTrustedWindowsTerminal(target: string): Promise<TrustedWindowsTerminalCapture | undefined> {
+  try {
+    const selected = await lstat(target, { bigint: true })
+    if (!selected.isFile() || selected.isSymbolicLink()) return undefined
+    const canonicalPath = await realpath(target)
+    const canonical = await lstat(canonicalPath, { bigint: true })
+    const dev = identityPart(canonical.dev)
+    const ino = identityPart(canonical.ino)
+    if (!canonical.isFile() || canonical.isSymbolicLink() || dev === undefined || ino === undefined) return undefined
+    return Object.freeze({ canonicalPath, identity: Object.freeze({ dev, ino }) })
+  } catch { return undefined }
+}
+
+function windowsAbsolute(value: unknown): string | undefined {
+  if (typeof value !== 'string' || value.length === 0 || value.length > 4_096 || /[\0\r\n]/u.test(value) || !path.win32.isAbsolute(value)) return undefined
+  return path.win32.normalize(value)
+}
+
+function windowsEnvironmentValue(environment: Readonly<Record<string, string | undefined>>, key: string): string | undefined {
+  return windowsAbsolute(environment[key])
+}
+
+function windowsTerminalCandidates(
+  terminalId: LauncherTerminalId,
+  environment: Readonly<Record<string, string | undefined>>,
+): readonly string[] {
+  const systemRoot = windowsEnvironmentValue(environment, 'SystemRoot')
+  const systemExecutable = (name: string): string | undefined => systemRoot === undefined ? undefined : path.win32.join(systemRoot, 'System32', name)
+  if (terminalId === 'Command Prompt') return systemExecutable('cmd.exe') === undefined ? [] : [systemExecutable('cmd.exe')!]
+  if (terminalId === 'Powershell') return systemExecutable('powershell.exe') === undefined ? [] : [systemExecutable('powershell.exe')!]
+  if (terminalId === 'WSL') return systemExecutable('wsl.exe') === undefined ? [] : [systemExecutable('wsl.exe')!]
+  if (terminalId !== 'Powershell Core') return []
+  const candidates = [
+    windowsEnvironmentValue(environment, 'ProgramFiles'),
+    windowsEnvironmentValue(environment, 'LOCALAPPDATA'),
+  ].flatMap(root => root === undefined ? [] : [
+    path.win32.join(root, 'PowerShell', '7', 'pwsh.exe'),
+    ...(root === windowsEnvironmentValue(environment, 'LOCALAPPDATA') ? [path.win32.join(root, 'Programs', 'PowerShell', '7', 'pwsh.exe')] : []),
+  ])
+  return [...new Set(candidates)]
+}
+
+export async function resolveTrustedWindowsTerminalExecutable(
+  terminalId: LauncherTerminalId,
+  options: Readonly<{
+    captureIdentity?: TrustedWindowsTerminalCaptureEffect
+    environment?: Readonly<Record<string, string | undefined>>
+  }> = {},
+): Promise<TrustedWindowsTerminalExecutable> {
+  const captureIdentity = options.captureIdentity ?? captureTrustedWindowsTerminal
+  for (const candidate of windowsTerminalCandidates(terminalId, options.environment ?? process.env)) {
+    const captured = await captureIdentity(candidate)
+    if (captured === undefined || !path.win32.isAbsolute(captured.canonicalPath)) continue
+    return Object.freeze({ executable: captured.canonicalPath, identity: captured.identity })
+  }
+  throw new Error(`Trusted Windows terminal executable is unavailable: ${terminalId}`)
+}
+
+export async function revalidateTrustedWindowsTerminalExecutable(
+  resolution: TrustedWindowsTerminalExecutable,
+  captureIdentity: TrustedWindowsTerminalCaptureEffect = captureTrustedWindowsTerminal,
+): Promise<boolean> {
+  if (!path.win32.isAbsolute(resolution.executable)) return false
+  const current = await captureIdentity(resolution.executable)
+  if (current === undefined) return false
+  return path.win32.normalize(current.canonicalPath).toLocaleLowerCase('en-US') === path.win32.normalize(resolution.executable).toLocaleLowerCase('en-US')
+    && current.identity.dev === resolution.identity.dev
+    && current.identity.ino === resolution.identity.ino
+}
 
 type DetachedChildProcess = Readonly<{
   kill: () => void

@@ -21,7 +21,7 @@ import {
   type Session,
   type WebContents,
 } from 'electron'
-import { createWriteStream, existsSync, mkdirSync, realpathSync, statSync, writeFileSync, type WriteStream } from 'node:fs'
+import { createWriteStream, existsSync, lstatSync, mkdirSync, realpathSync, statSync, writeFileSync, type WriteStream } from 'node:fs'
 import { lstat, realpath } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { basename, dirname, extname, join, resolve } from 'node:path'
@@ -97,7 +97,12 @@ import { createLauncherFileSearchScanners } from './launcher-file-search-scanner
 import { createLauncherNetworkExtensions } from './launcher-network-extensions.ts'
 import { createLauncherOsExtensions } from './launcher-os-extensions.ts'
 import { createLauncherTerminal } from './launcher-terminal.ts'
-import { launchDetachedTerminalInvocation, resolveTerminalInvocation } from './launcher-terminal-process.ts'
+import {
+  launchDetachedTerminalInvocation,
+  resolveTerminalInvocation,
+  resolveTrustedWindowsTerminalExecutable,
+  revalidateTrustedWindowsTerminalExecutable,
+} from './launcher-terminal-process.ts'
 import { createLauncherProviderInvalidator } from './launcher-provider-lifecycle.ts'
 import {
   resolveAppearanceInvocation,
@@ -113,6 +118,7 @@ import {
   revalidateLauncherPath,
   revalidateLauncherUrl,
   revalidateLauncherVscodeUri,
+  launcherPathIdentity,
   resolveLinuxDesktopEntryInvocation,
   resolveWindowsApplicationElevationInvocation,
   revalidateLauncherWindowsStoreId,
@@ -183,6 +189,80 @@ const launcherHtmlPath = join(currentDir, 'launcher.html')
 const launcherNetworkFixtureEnabled = !app.isPackaged && process.env.TOCKTEAM_NETWORK_FIXTURE === '1'
 const launcherOsFixtureEnabled = !app.isPackaged && process.env.TOCKTEAM_OS_FIXTURE === '1'
 const launcherTerminalFixtureEnabled = !app.isPackaged && process.env.TOCKTEAM_TERMINAL_FIXTURE === '1'
+const launcherBrowserFixtureEnabled = !app.isPackaged && process.env.TOCKTEAM_BROWSER_FIXTURE === '1'
+
+type LauncherBrowserFixtureMarker = {
+  custom: { count: number; urls: string[] }
+  default: { count: number; urls: string[] }
+  forbiddenEffects: number
+  marker: 'tockteam-browser-fixture-v1'
+  picker: number
+  revoked: number
+  selected: number
+}
+
+let launcherBrowserFixtureMarker: LauncherBrowserFixtureMarker = {
+  custom: { count: 0, urls: [] },
+  default: { count: 0, urls: [] },
+  forbiddenEffects: 0,
+  marker: 'tockteam-browser-fixture-v1',
+  picker: 0,
+  revoked: 0,
+  selected: 0,
+}
+
+function launcherBrowserFixtureMarkerPath(): string {
+  return join(app.getPath('userData'), 'launcher', 'browser-fixture-marker.json')
+}
+
+function writeLauncherBrowserFixtureMarker(): void {
+  if (!launcherBrowserFixtureEnabled) return
+  const filePath = launcherBrowserFixtureMarkerPath()
+  mkdirSync(dirname(filePath), { mode: 0o700, recursive: true })
+  writeFileSync(filePath, JSON.stringify(launcherBrowserFixtureMarker, null, 2), { encoding: 'utf8', mode: 0o600 })
+}
+
+function resetLauncherBrowserFixtureMarker(): void {
+  if (!launcherBrowserFixtureEnabled) return
+  launcherBrowserFixtureMarker = {
+    custom: { count: 0, urls: [] },
+    default: { count: 0, urls: [] },
+    forbiddenEffects: 0,
+    marker: 'tockteam-browser-fixture-v1',
+    picker: 0,
+    revoked: 0,
+    selected: 0,
+  }
+  writeLauncherBrowserFixtureMarker()
+}
+
+function launcherBrowserFixturePath(): string {
+  const target = join(app.getPath('userData'), 'launcher', 'fixtures', 'TockTeam Fixture Browser.app')
+  if (launcherBrowserFixtureEnabled) mkdirSync(target, { mode: 0o700, recursive: true })
+  return target
+}
+
+function recordLauncherBrowserFixtureSelection(operation: 'select' | 'revoke'): void {
+  if (!launcherBrowserFixtureEnabled) return
+  if (operation === 'select') launcherBrowserFixtureMarker.selected += 1
+  else launcherBrowserFixtureMarker.revoked += 1
+  writeLauncherBrowserFixtureMarker()
+}
+
+function recordLauncherBrowserFixtureOpen(mode: 'custom' | 'default', url: string): void {
+  if (!launcherBrowserFixtureEnabled) return
+  const entry = launcherBrowserFixtureMarker[mode]
+  launcherBrowserFixtureMarker[mode] = { count: entry.count + 1, urls: [...entry.urls, url].slice(-8) }
+  writeLauncherBrowserFixtureMarker()
+}
+
+function rejectLauncherBrowserFixtureEffect(effect: string): never {
+  if (launcherBrowserFixtureEnabled) {
+    launcherBrowserFixtureMarker.forbiddenEffects += 1
+    writeLauncherBrowserFixtureMarker()
+  }
+  throw new Error(`Unexpected browser fixture effect: ${effect}`)
+}
 
 type LauncherTerminalFixtureMarker = {
   accepted: { commandLength: number; commandSha256: string; count: number }
@@ -373,6 +453,26 @@ function assertLauncherSignal(signal?: AbortSignal): void {
   if (signal?.aborted) throw launcherAbortError(signal)
 }
 
+function captureLauncherHomeIdentitySync(target: string): ReturnType<typeof launcherPathIdentity> {
+  try {
+    const selected = lstatSync(target, { bigint: true })
+    if (!selected.isDirectory() || selected.isSymbolicLink()) return undefined
+    const canonical = realpathSync(target)
+    const current = lstatSync(canonical, { bigint: true })
+    return current.isDirectory() && !current.isSymbolicLink() ? launcherPathIdentity(current) : undefined
+  } catch { return undefined }
+}
+
+async function captureLauncherHomeIdentity(target: string): Promise<ReturnType<typeof launcherPathIdentity>> {
+  try {
+    const selected = await lstat(target, { bigint: true })
+    if (!selected.isDirectory() || selected.isSymbolicLink()) return undefined
+    const canonical = await realpath(target)
+    const current = await lstat(canonical, { bigint: true })
+    return current.isDirectory() && !current.isSymbolicLink() ? launcherPathIdentity(current) : undefined
+  } catch { return undefined }
+}
+
 async function launcherAwaitAbortable<T>(operation: Promise<T>, signal: AbortSignal): Promise<T> {
   const pending = Promise.resolve(operation)
   void pending.catch(() => undefined)
@@ -384,6 +484,26 @@ async function launcherAwaitAbortable<T>(operation: Promise<T>, signal: AbortSig
   })
   try { return await Promise.race([pending, canceled]) }
   finally { signal.removeEventListener('abort', onAbort) }
+}
+
+async function launcherAwaitAbortableWithTimeout<T>(operation: Promise<T>, signal: AbortSignal, timeoutMs: number, label: string): Promise<T> {
+  const pending = Promise.resolve(operation)
+  void pending.catch(error => { appendLog('desktop', `${label} rejected: ${error instanceof Error ? error.name : 'unknown'}`) })
+  if (signal.aborted) throw launcherAbortError(signal)
+  let onAbort!: () => void
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const canceled = new Promise<never>((_resolve, reject) => {
+    onAbort = () => { reject(launcherAbortError(signal)) }
+    signal.addEventListener('abort', onAbort, { once: true })
+  })
+  const timedOut = new Promise<never>((_resolve, reject) => {
+    timer = setTimeout(() => reject(new Error(`${label} timed out`)), timeoutMs)
+  })
+  try { return await Promise.race([pending, canceled, timedOut]) }
+  finally {
+    if (timer !== undefined) clearTimeout(timer)
+    signal.removeEventListener('abort', onAbort)
+  }
 }
 
 function invalidateAllLauncherProviders(reason: string, owner?: LauncherActionOwner, preserveSignal?: AbortSignal): AbortSignal {
@@ -1322,11 +1442,14 @@ function initializeLauncher(): void {
   if (launcherController !== undefined) return
   resetLauncherOsFixtureMarker()
   resetLauncherTerminalFixtureMarker()
+  resetLauncherBrowserFixtureMarker()
   const repository = requireLauncherPersistence()
   const launcherSession = session.fromPartition(LAUNCHER_SESSION_PARTITION)
   applyLauncherSessionPolicy(launcherSession)
   const urlPolicy = createLauncherUrlPolicy({ launcherHtmlPath })
   const platform = launcherPlatform()
+  const launcherHomePath = app.getPath('home')
+  const launcherHomeIdentity = captureLauncherHomeIdentitySync(launcherHomePath)
   const local = createLauncherLocalExtensions({
     copyText: async (text, signal) => {
       if (signal.aborted) throw launcherAbortError(signal)
@@ -1475,7 +1598,7 @@ function initializeLauncher(): void {
     },
     openExternal: async (url, signal) => {
       if (signal.aborted) throw launcherAbortError(signal)
-      if (launcherNetworkFixtureEnabled) return
+      if (launcherNetworkFixtureEnabled && !launcherBrowserFixtureEnabled) return
       if (launcherCustomBrowser === undefined) throw new Error('Custom browser controller is unavailable')
       await launcherAwaitAbortable(launcherCustomBrowser.openUrl(url, signal), signal)
     },
@@ -1537,20 +1660,22 @@ function initializeLauncher(): void {
           })
           return
         }
+        if (platform === 'Windows') {
+          const trusted = await resolveTrustedWindowsTerminalExecutable(request.terminalId)
+          if (!await revalidateTrustedWindowsTerminalExecutable(trusted)) throw new Error('Windows terminal executable changed before launch')
+          await launchDetachedTerminalInvocation({ ...invocation, executable: trusted.executable }, { signal, timeoutMs: 5_000 })
+          return
+        }
         await launchDetachedTerminalInvocation(invocation, { signal, timeoutMs: 5_000 })
       },
     },
     enabledExtensionIds: terminalEnabledExtensionIds,
+    captureHomeIdentity: async target => await captureLauncherHomeIdentity(target),
     getHomePath: () => app.getPath('home'),
     getSetting: (key, fallback) => repository.getSetting(key, fallback),
-    homePath: app.getPath('home'),
+    ...(launcherHomeIdentity === undefined ? {} : { homeIdentity: launcherHomeIdentity }),
+    homePath: launcherHomePath,
     onProviderError: error => { appendLog('desktop', `TockLauncher Terminal Launcher failed: ${error.name}`) },
-    validateWorkingDirectory: async (target, signal) => {
-      if (signal.aborted) throw launcherAbortError(signal)
-      const identity = await statLauncherPathIdentity(target)
-      if (signal.aborted) throw launcherAbortError(signal)
-      return identity !== undefined && await revalidateLauncherPath(target, { identity, kind: 'directory' })
-    },
     platform,
   })
   launcherTerminal = terminal
@@ -2105,6 +2230,11 @@ function settingsOperation(canceled = false): Readonly<{ canceled?: boolean; ok:
 }
 
 async function launcherOpenDialog(options: Electron.OpenDialogOptions): Promise<string | undefined> {
+  if (launcherBrowserFixtureEnabled && options.title === 'Choose TockLauncher Custom Browser') {
+    launcherBrowserFixtureMarker.picker += 1
+    writeLauncherBrowserFixtureMarker()
+    return launcherBrowserFixturePath()
+  }
   const owner = mainWindow
   const result = owner === undefined || owner.isDestroyed()
     ? await dialog.showOpenDialog(options)
@@ -3317,15 +3447,32 @@ async function bootstrap(): Promise<void> {
     userDataPath: info.appDataPath,
   })
   launcherCustomBrowser = await LauncherCustomBrowserController.open({
+    afterGrantMutation: operation => { recordLauncherBrowserFixtureSelection(operation) },
     getSetting: (key, fallback) => requireLauncherPersistence().getSetting(key, fallback),
     launch: async (executable, args, signal) => {
+      if (launcherBrowserFixtureEnabled) {
+        const expected = launcherBrowserFixturePath()
+        const url = args.at(-1)
+        if (executable !== '/usr/bin/open' || args.length !== 3 || args[0] !== '-a' || args[1] !== expected || typeof url !== 'string' || !/^https?:\/\//iu.test(url)) return rejectLauncherBrowserFixtureEffect('custom-open')
+        recordLauncherBrowserFixtureOpen('custom', url)
+        return
+      }
       await launchDetachedLauncherExecutable(executable, args, undefined, { ...(signal === undefined ? {} : { signal }), timeoutMs: 15_000 })
     },
     openDefault: async (url, signal) => {
       if (signal?.aborted) throw launcherAbortError(signal)
-      await shell.openExternal(url)
+      if (launcherBrowserFixtureEnabled) {
+        recordLauncherBrowserFixtureOpen('default', url)
+        return
+      }
+      const pending = Promise.resolve().then(() => {
+        if (signal?.aborted) throw launcherAbortError(signal)
+        return shell.openExternal(url)
+      })
+      await launcherAwaitAbortableWithTimeout(pending, signal ?? new AbortController().signal, 15_000, 'Default browser launch')
       if (signal?.aborted) throw launcherAbortError(signal)
     },
+    effectTimeoutMs: 15_000,
     platform: launcherPlatform(),
     userDataPath: info.appDataPath,
   })

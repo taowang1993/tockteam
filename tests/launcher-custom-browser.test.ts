@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict'
-import { mkdir, mkdtemp, readFile, realpath, rename, rm, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, realpath, rename, rm, stat, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { test } from 'node:test'
-import { LauncherCustomBrowserController, parseLauncherCustomBrowserArgumentTemplate } from '../src/launcher-custom-browser.ts'
+import { LauncherCustomBrowserController, parseLauncherCustomBrowserArgumentTemplate, readLauncherBoundedUtf8 } from '../src/launcher-custom-browser.ts'
 
 async function root(): Promise<string> { return await mkdtemp(path.join(tmpdir(), 'tockteam-browser-')) }
 
@@ -140,4 +140,89 @@ test('macOS app grants and Linux default-browser fallback remain finite', async 
   } finally {
     await Promise.all([rm(macRoot, { recursive: true, force: true }), rm(linuxRoot, { recursive: true, force: true })])
   }
+})
+
+test('custom-browser tolerates unsupported Windows directory fsync only after file commit', async () => {
+  const userDataPath = await root()
+  try {
+    const executable = path.join(userDataPath, 'browser.exe')
+    await writeFile(executable, 'approved', { mode: 0o700 })
+    let syncs = 0
+    const controller = await LauncherCustomBrowserController.open({
+      getSetting: <T>(_key: string, fallback: T): T => fallback,
+      launch: async () => {},
+      openDefault: async () => {},
+      platform: 'Windows',
+      syncDirectory: async () => { syncs += 1; const error = new Error('unsupported') as NodeJS.ErrnoException; error.code = 'ENOTSUP'; throw error },
+      userDataPath,
+    })
+    await controller.select(executable)
+    assert.ok(syncs > 0)
+    await controller.revoke()
+    assert.deepEqual(controller.snapshot(), { platform: 'Windows', status: 'none' })
+    await controller.close()
+  } finally { await rm(userDataPath, { recursive: true, force: true }) }
+})
+
+test('custom-browser default open timeout lets close settle after a never-settling native promise', async () => {
+  const userDataPath = await root()
+  try {
+    const controller = await LauncherCustomBrowserController.open({
+      effectTimeoutMs: 20,
+      getSetting: <T>(_key: string, fallback: T): T => fallback,
+      launch: async () => {},
+      openDefault: async () => await new Promise<void>(() => {}),
+      platform: 'Linux',
+      userDataPath,
+    })
+    await assert.rejects(controller.openUrl('https://example.com'), /timed out|canceled/u)
+    await controller.close()
+  } finally { await rm(userDataPath, { recursive: true, force: true }) }
+})
+
+test('custom-browser bounded descriptor reads reject same-handle growth', async () => {
+  let index = 0
+  const handle = { read: async (buffer: Buffer) => {
+    if (index++ === 0) {
+      const chunk = Buffer.from('{"ok":true}')
+      chunk.copy(buffer)
+      return { buffer, bytesRead: chunk.length }
+    }
+    buffer.fill(120)
+    return { buffer, bytesRead: buffer.length }
+  } }
+  await assert.rejects(readLauncherBoundedUtf8(handle), /size|large|bound/i)
+})
+
+test('custom-browser grant writes harden the fixed parent and never chmod the replaced target path', async () => {
+  const userDataPath = await root()
+  try {
+    const executable = path.join(userDataPath, 'browser.exe')
+    await writeFile(executable, 'approved', { mode: 0o700 })
+    const controller = await LauncherCustomBrowserController.open({
+      getSetting: <T>(_key: string, fallback: T): T => fallback,
+      launch: async () => {},
+      openDefault: async () => {},
+      platform: 'Windows',
+      userDataPath,
+    })
+    await controller.select(executable)
+    const grant = await stat(path.join(userDataPath, 'launcher', 'custom-browser-grant.json'))
+    assert.equal(grant.mode & 0o777, 0o600)
+    await controller.close()
+
+    const replaced = path.join(userDataPath, 'launcher-real')
+    await mkdir(replaced)
+    await rm(path.join(userDataPath, 'launcher'), { recursive: true, force: true })
+    await symlink(replaced, path.join(userDataPath, 'launcher'), 'junction')
+    const rejected = await LauncherCustomBrowserController.open({
+      getSetting: <T>(_key: string, fallback: T): T => fallback,
+      launch: async () => {},
+      openDefault: async () => {},
+      platform: 'Windows',
+      userDataPath,
+    })
+    await assert.rejects(rejected.select(executable), /directory|symbolic|unavailable|invalid/i)
+    await rejected.close()
+  } finally { await rm(userDataPath, { recursive: true, force: true }) }
 })

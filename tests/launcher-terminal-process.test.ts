@@ -1,7 +1,12 @@
 import assert from 'node:assert/strict'
 import { EventEmitter } from 'node:events'
 import test from 'node:test'
-import { launchDetachedTerminalInvocation, resolveTerminalInvocation } from '../src/launcher-terminal-process.ts'
+import {
+  launchDetachedTerminalInvocation,
+  resolveTerminalInvocation,
+  resolveTrustedWindowsTerminalExecutable,
+  revalidateTrustedWindowsTerminalExecutable,
+} from '../src/launcher-terminal-process.ts'
 
 test('Terminal Launcher keeps macOS scripts static and sends command then fixed home as argv data', () => {
   const command = `printf '"'; touch /tmp/should-not-run`
@@ -46,4 +51,34 @@ test('Terminal Launcher rejects malformed request bounds', () => {
   assert.throws(() => resolveTerminalInvocation('macOS', { command: 'x'.repeat(513), terminalId: 'Terminal', workingDirectory: '/Users/max' }), /invalid/i)
   assert.throws(() => resolveTerminalInvocation('macOS', { command: 'x\n', terminalId: 'Terminal', workingDirectory: '/Users/max' }), /invalid/i)
   assert.throws(() => resolveTerminalInvocation('macOS', { command: 'x', terminalId: 'Terminal', workingDirectory: 'relative' }), /invalid/i)
+})
+
+test('Windows terminal trust resolution ignores PATH and hostile home paths', async () => {
+  const environment = {
+    SystemRoot: 'C:\\Windows',
+    ProgramFiles: 'C:\\Program Files',
+    LOCALAPPDATA: 'C:\\Users\\max\\AppData\\Local',
+    PATH: 'C:\\hostile-home',
+  }
+  const seen: string[] = []
+  const captureIdentity = async (target: string) => {
+    seen.push(target)
+    return { canonicalPath: target, identity: { dev: '1', ino: '2' } }
+  }
+  const commandPrompt = await resolveTrustedWindowsTerminalExecutable('Command Prompt', { environment, captureIdentity })
+  assert.equal(commandPrompt.executable, 'C:\\Windows\\System32\\cmd.exe')
+  assert.deepEqual(seen, ['C:\\Windows\\System32\\cmd.exe'])
+  const powershellCore = await resolveTrustedWindowsTerminalExecutable('Powershell Core', { environment, captureIdentity })
+  assert.equal(powershellCore.executable, 'C:\\Program Files\\PowerShell\\7\\pwsh.exe')
+})
+
+test('Windows terminal trust resolution rejects replacement identity immediately before spawn', async () => {
+  let identity = { dev: '1', ino: '2' }
+  const captureIdentity = async (target: string) => ({ canonicalPath: target, identity })
+  const resolved = await resolveTrustedWindowsTerminalExecutable('WSL', {
+    environment: { SystemRoot: 'C:\\Windows' },
+    captureIdentity,
+  })
+  identity = { dev: '3', ino: '4' }
+  assert.equal(await revalidateTrustedWindowsTerminalExecutable(resolved, captureIdentity), false)
 })

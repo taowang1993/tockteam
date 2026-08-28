@@ -154,6 +154,7 @@ const simpleSearchFixture = await mkdtemp(join(homedir(), '.tockteam-simple-sear
 const simpleSearchFile = join(simpleSearchFixture, 'tockteam-file-search-fixture.txt')
 const fixtureMarkerPath = join(userData, 'launcher', 'os-fixture-marker.json')
 const terminalFixtureMarkerPath = join(userData, 'launcher', 'terminal-fixture-marker.json')
+const browserFixtureMarkerPath = join(userData, 'launcher', 'browser-fixture-marker.json')
 await writeFile(simpleSearchFile, 'simple file search fixture', 'utf8')
 const discoveryApplications = join(discoveryFixture, 'Applications')
 const discoveryApplication = join(discoveryApplications, 'TockTeam Fixture.app')
@@ -163,11 +164,12 @@ const electron = ensureElectronInstalled(root)
 const mainSource = await readFile(join(root, 'src', 'main.ts'), 'utf8')
 assert.match(mainSource, /const launcherOsFixtureEnabled = !app\.isPackaged && process\.env\.TOCKTEAM_OS_FIXTURE === '1'/u)
 assert.match(mainSource, /const launcherTerminalFixtureEnabled = !app\.isPackaged && process\.env\.TOCKTEAM_TERMINAL_FIXTURE === '1'/u)
+assert.match(mainSource, /const launcherBrowserFixtureEnabled = !app\.isPackaged && process\.env\.TOCKTEAM_BROWSER_FIXTURE === '1'/u)
 assert.match(mainSource, /launcherOsFixtureMarker/u)
 assert.match(mainSource, /acceptedEffects/u)
 assert.match(mainSource, /Unexpected fixture effect/u)
 assert.match(mainSource, /if \(launcherOsFixtureEnabled\)/u)
-const fixtureEnvironment = { ...process.env, TOCKTEAM_NETWORK_FIXTURE: '1', TOCKTEAM_OS_FIXTURE: '1', TOCKTEAM_TERMINAL_FIXTURE: '1' }
+const fixtureEnvironment = { ...process.env, TOCKTEAM_BROWSER_FIXTURE: '1', TOCKTEAM_NETWORK_FIXTURE: '1', TOCKTEAM_OS_FIXTURE: '1', TOCKTEAM_TERMINAL_FIXTURE: '1' }
 const child = spawn(electron, [
   '.',
   `--remote-debugging-port=${String(port)}`,
@@ -429,6 +431,25 @@ try {
     declined: 1,
     forbiddenEffects: 0,
     marker: 'tockteam-terminal-fixture-v1',
+  })
+  const browserFixtureMarker = await waitFor(
+    () => readFile(browserFixtureMarkerPath, 'utf8').then(value => JSON.parse(value)).catch(() => null),
+    marker => marker?.marker === 'tockteam-browser-fixture-v1'
+      && marker?.picker === 1
+      && marker?.selected === 1
+      && marker?.revoked === 1
+      && marker?.custom?.count === 2
+      && marker?.default?.count === 1
+      && marker?.forbiddenEffects === 0,
+  )
+  assert.deepEqual(browserFixtureMarker, {
+    custom: { count: 2, urls: ['https://en.wikipedia.org/wiki/fixture', 'https://google.com/search?q=fixture&hl=en-us'] },
+    default: { count: 1, urls: ['https://google.com/search?q=default&hl=en-us'] },
+    forbiddenEffects: 0,
+    marker: 'tockteam-browser-fixture-v1',
+    picker: 1,
+    revoked: 1,
+    selected: 1,
   })
   assert.deepEqual(fixtureMarker, {
     acceptedEffects: { lock: 1 },
@@ -693,6 +714,19 @@ try {
     }
   })()`)
   assert.deepEqual(settingsFacts, { bridgeFrozen: true, catalog: true, hasSecret: false, hasBrowserPath: false, hasBrowserName: false, hasHistorySwitch: true, hasReset: true, liveStatus: true, extensionSwitches: 24, hasDiscoverySettings: true, hasApplicationFolders: true, hasBrowserBookmarks: true, hasVscodeSettings: true, hasFileSearchSettings: true, hasSimpleSearchRoots: false, hasNetworkSettings: true, hasNetworkDisclosure: true })
+  const browserFixtureFacts = await workbenchConnection.evaluate(`(async () => {
+    const selected = await window.dshDesktop?.launcher?.settings?.selectCustomBrowser()
+    const snapshot = await window.dshDesktop?.launcher?.settings?.getSnapshot()
+    await window.dshDesktop?.launcher?.settings?.updateSetting('general.browser.useDefaultWebBrowser', false)
+    return {
+      selected: selected?.ok === true,
+      status: snapshot?.customBrowserStatus ?? null,
+      pathHidden: !(document.body.textContent ?? '').includes('TockTeam Fixture Browser.app'),
+      choose: [...document.querySelectorAll('button')].some(button => button.textContent?.includes('Choose custom browser')),
+      revoke: [...document.querySelectorAll('button')].some(button => button.textContent?.includes('Revoke custom browser')),
+    }
+  })()`)
+  assert.deepEqual(browserFixtureFacts, { selected: true, status: 'active', pathHidden: true, choose: true, revoke: true })
   const networkValidationInputs = await workbenchConnection.evaluate(`(() => {
     const setAndBlur = (selector, value) => {
       const control = document.querySelector(selector)
@@ -956,6 +990,22 @@ try {
     status: null,
     secretVisible: false,
   })
+  const defaultBrowserFixtureFacts = await workbenchConnection.evaluate(`(async () => {
+    await window.dshDesktop?.launcher?.settings?.updateSetting('general.browser.useDefaultWebBrowser', true)
+    return (await window.dshDesktop?.launcher?.settings?.getSnapshot())?.customBrowserStatus ?? null
+  })()`)
+  assert.equal(defaultBrowserFixtureFacts, 'active')
+  const defaultBrowserOpen = await launcherConnection.evaluate(`(async () => {
+    const result = await window.tockteamLauncher?.search('tockteam:web-search:default', { fuzziness: 0, maxSearchResultItems: 200, searchEngineId: 'fuzzysort' })
+    const item = [...(result?.before ?? []), ...(result?.after ?? [])].find(candidate => candidate.sourceExtension === 'WebSearch')
+    return item?.defaultAction?.actionId === undefined ? false : (await window.tockteamLauncher?.invokeAction(item.defaultAction.actionId))?.ok === true
+  })()`)
+  assert.equal(defaultBrowserOpen, true)
+  const revokedBrowser = await workbenchConnection.evaluate(`(async () => {
+    const result = await window.dshDesktop?.launcher?.settings?.revokeCustomBrowser()
+    return { result: result?.ok === true, status: (await window.dshDesktop?.launcher?.settings?.getSnapshot())?.customBrowserStatus ?? null }
+  })()`)
+  assert.deepEqual(revokedBrowser, { result: true, status: 'none' })
 
   const discoveryFacts = await launcherConnection.evaluate(`(async () => {
     const result = await window.tockteamLauncher?.search('fixture', { fuzziness: 0, maxSearchResultItems: 200, searchEngineId: 'fuzzysort' })

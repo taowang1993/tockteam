@@ -164,19 +164,22 @@ test('Terminal Launcher rejects stale actions after a newer query and denied con
 
 test('Terminal Launcher revalidates the fixed main-owned home before confirmation and effect', async () => {
   let currentHome = '/Users/max'
+  let currentIdentity = { dev: '1', ino: '2' }
   let validations = 0
   let launches = 0
   const provider = createLauncherTerminal({
     effects: { auditLaunch: () => {}, confirmLaunch: async () => true, launchTerminal: () => { launches += 1 } },
     enabledExtensionIds: () => ['TerminalLauncher'],
+    captureHomeIdentity: async () => currentIdentity,
     getHomePath: () => currentHome,
     getSetting: <T>(_key: string, fallback: T): T => fallback,
+    homeIdentity: currentIdentity,
     homePath: '/Users/max',
     validateWorkingDirectory: async () => { validations += 1; return true },
     platform: 'macOS',
   })
   const item = (await provider.searchInstant('> gated')).after[0]!
-  currentHome = '/Users/other'
+  currentIdentity = { dev: '3', ino: '4' }
   await assert.rejects(provider.executeAction(record(item)), /stale|canceled/u)
   assert.equal(validations, 0)
   assert.equal(launches, 0)
