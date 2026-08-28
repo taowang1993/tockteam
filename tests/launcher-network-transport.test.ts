@@ -113,6 +113,15 @@ test('DNS preflight rejects any private address and does not call fetch', async 
   const result = await network.searchInstant(`${LAUNCHER_WEB_SEARCH_QUERY_PREFIX} term`)
   assert.equal(fetched, false)
   assert.equal(result.lastError, 'Web Search is unavailable.')
+
+  const mixed = createLauncherNetworkExtensions({
+    copyText: () => undefined, enabledExtensionIds: () => ['WebSearch'],
+    fetch: async () => { fetched = true; return response(JSON.stringify([])) },
+    getSetting: baseSettings, openExternal: () => undefined,
+    resolveAddresses: async () => ['2001:4860:4860::8888', '::192.168.1.2'],
+  })
+  await mixed.searchInstant(`${LAUNCHER_WEB_SEARCH_QUERY_PREFIX} mixed`)
+  assert.equal(fetched, false)
 })
 
 test('DeepL omits Auto source language and rejects invalid or oversized typed input before fetch', async () => {
@@ -169,6 +178,14 @@ test('DeepL preserves bounded multiline translation text and copies it through i
   assert.equal(result.before[0]?.name, text)
   assert.equal(await network.executeAction(actionRecord(result.before[0]!)), true)
   assert.equal(copied, text)
+})
+
+test('empty search stays bounded while retaining provider status', async () => {
+  const network = provider(async () => { throw new Error('offline') })
+  const failed = await network.searchInstant(`${LAUNCHER_WEB_SEARCH_QUERY_PREFIX} hello`)
+  assert.equal(failed.lastError, 'Web Search is unavailable.')
+  const empty = await network.searchInstant('')
+  assert.deepEqual(empty, { before: [], after: [], lastError: 'Web Search is unavailable.' })
 })
 
 test('successful custom search clears only its provider error and preserves other provider status', async () => {

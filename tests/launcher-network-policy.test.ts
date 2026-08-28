@@ -13,10 +13,12 @@ test('network URL policy rejects unsafe schemes, credentials, ports, and private
 })
 
 test('public-address policy rejects mixed/private and special IPv4 or IPv6 values', () => {
-  for (const address of ['0.0.0.1', '10.1.1.1', '100.64.0.1', '127.0.0.1', '169.254.1.1', '192.0.2.1', '198.18.0.1', '198.51.100.1', '203.0.113.1', '224.0.0.1', '240.0.0.1', '::', '::1', 'fc00::1', 'fe80::1', 'ff02::1']) {
+  for (const address of ['0.0.0.1', '10.1.1.1', '100.64.0.1', '127.0.0.1', '169.254.1.1', '192.0.0.1', '192.0.2.1', '192.31.196.1', '192.52.193.1', '192.88.99.1', '192.168.1.1', '192.175.48.1', '198.18.0.1', '198.51.100.1', '203.0.113.1', '224.0.0.1', '240.0.0.1', '::', '::1', 'fc00::1', 'fe80::1', 'ff02::1']) {
     assert.equal(isPublicLauncherNetworkAddress(address), false, address)
   }
-  assert.equal(isPublicLauncherNetworkAddress('8.8.8.8'), true)
+  for (const address of ['8.8.8.8', '192.0.1.1', '192.0.3.1', '192.31.195.1', '192.52.194.1', '192.88.98.1', '192.175.47.1']) {
+    assert.equal(isPublicLauncherNetworkAddress(address), true, address)
+  }
 })
 
 test('network URL policy bounds hostile and oversized URLs', () => {
