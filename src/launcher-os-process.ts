@@ -132,7 +132,7 @@ async function hasSymlinkComponent(target: string): Promise<boolean> {
 }
 
 async function trustedTrashDirectory(homePath: string, name: 'files' | 'info'): Promise<string | undefined> {
-  if (!path.posix.isAbsolute(homePath) || homePath.length > MAX_PATH_LENGTH) return undefined
+  if (!path.posix.isAbsolute(homePath) || homePath.length > MAX_PATH_LENGTH || /[\0\r\n]/u.test(homePath)) return undefined
   const home = path.posix.resolve(homePath)
   const target = path.posix.join(home, '.local', 'share', 'Trash', name)
   if (!strictChild(home, target)) return undefined

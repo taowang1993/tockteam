@@ -231,6 +231,7 @@ let launcherCustomBrowser: LauncherCustomBrowserController | undefined
 let launcherNetwork: ReturnType<typeof createLauncherNetworkExtensions> | undefined
 let launcherOs: ReturnType<typeof createLauncherOsExtensions> | undefined
 let launcherPersistentSetsSync: (() => void) | undefined
+let launcherActionsClear: (() => void) | undefined
 const launcherSettingsOperations = createLauncherSettingsOperations({ isUnavailable: () => quitting })
 const runtimeStartGate = new RuntimeStartGate<void>()
 const launcherWindowRegistry = new LauncherWindowRegistry()
@@ -1434,6 +1435,7 @@ function initializeLauncher(): void {
     await coreSearch.close()
   }
   launcherPersistentSetsSync = () => { syncLauncherPersistentSets(coreSearch) }
+  launcherActionsClear = () => { actions.clear() }
   const launcherGuard = createLauncherIpcGuard({
     launcherSession,
     resolveWindow: sender => launcherWindowRegistry.resolveWindow(sender),
@@ -1569,7 +1571,10 @@ async function initializeLauncherLifecycle(): Promise<void> {
     setTrayVisible: setLauncherTrayVisible,
     updateSetting: async (key, value) => {
       const needsRescan = key === 'general.hotkey.enabled'
-      if (needsRescan) launcherOs?.invalidate()
+      if (needsRescan) {
+        launcherActionsClear?.()
+        launcherOs?.invalidate()
+      }
       try {
         await repository.updateSetting(key, value)
         launcherPersistentSetsSync?.()
