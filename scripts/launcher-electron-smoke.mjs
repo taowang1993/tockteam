@@ -158,6 +158,7 @@ const discoveryApplication = join(discoveryApplications, 'TockTeam Fixture.app')
 await mkdir(join(discoveryApplication, 'Contents'), { recursive: true })
 await writeFile(join(discoveryApplication, 'Contents', 'Info.plist'), '<?xml version="1.0"?><plist><dict><key>CFBundleName</key><string>TockTeam Fixture</string></dict></plist>', 'utf8')
 const electron = ensureElectronInstalled(root)
+const fixtureEnvironment = { ...process.env, TOCKTEAM_NETWORK_FIXTURE: '1' }
 const child = spawn(electron, [
   '.',
   `--remote-debugging-port=${String(port)}`,
@@ -166,6 +167,7 @@ const child = spawn(electron, [
 ], {
   cwd: root,
   detached: true,
+  env: fixtureEnvironment,
   stdio: ['ignore', 'pipe', 'pipe'],
 })
 let output = ''
@@ -490,9 +492,108 @@ try {
     await window.dshDesktop?.launcher?.settings?.updateSetting('searchEngine.fuzziness', 0.6)
     await window.dshDesktop?.launcher?.settings?.updateSetting('searchEngine.id', 'Fuse.js')
     await window.dshDesktop?.launcher?.settings?.updateSetting('searchEngine.maxResultLength', 50)
+    await window.dshDesktop?.launcher?.settings?.updateSetting('extension[DeeplTranslator].apiKey', 'fixture-key')
     await window.dshDesktop?.launcher?.settings?.updateSetting('extensions.enabledExtensionIds', ['AppearanceSwitcher', 'ApplicationSearch', 'Base64Conversion', 'BrowserBookmarks', 'Calculator', 'ColorConverter', 'CurrencyConversion', 'CustomWebSearch', 'DeeplTranslator', 'FileSearch', 'JetBrainsToolbox', 'PasswordGenerator', 'QuickFormatter', 'RowlandTextEditor', 'SimpleFileSearch', 'SystemCommands', 'SystemSettings', 'TerminalLauncher', 'UeliCommand', 'UuidGenerator', 'VSCode', 'WebSearch', 'WindowsControlPanel', 'Workflow'])
   })()`)
   await showLauncherFromWorkbench(workbenchConnection)
+
+  const networkStaticFacts = await launcherConnection.evaluate(`(async () => {
+    const result = await window.tockteamLauncher?.search('', { fuzziness: 0, maxSearchResultItems: 200, searchEngineId: 'fuzzysort' })
+    const items = [...(result?.before ?? []), ...(result?.after ?? [])]
+    const deepL = items.find(item => item.sourceExtension === 'DeeplTranslator')
+    const web = items.find(item => item.sourceExtension === 'WebSearch')
+    return {
+      deepL: deepL?.name ?? null,
+      web: web?.name ?? null,
+      deepLAction: deepL?.defaultAction?.actionId ?? null,
+      webAction: web?.defaultAction?.actionId ?? null,
+      error: result?.status?.lastError ?? null,
+    }
+  })()`)
+  assert.deepEqual(networkStaticFacts, { deepL: 'DeepL Translator', web: 'Google', deepLAction: networkStaticFacts.deepLAction, webAction: networkStaticFacts.webAction, error: null })
+  assert.equal(typeof networkStaticFacts.deepLAction, 'string')
+  assert.equal(typeof networkStaticFacts.webAction, 'string')
+
+  await launcherConnection.evaluate(`(() => {
+    const input = document.getElementById('launcher-search')
+    if (!(input instanceof HTMLInputElement)) return false
+    input.value = 'Google'
+    input.dispatchEvent(new Event('input', { bubbles: true }))
+    return true
+  })()`)
+  await waitFor(
+    () => launcherConnection.evaluate('([...document.querySelectorAll("#launcher-details button")].some(node => node.textContent?.includes("Search Google")))'),
+    found => found === true,
+  )
+  const networkToolClicked = await launcherConnection.evaluate(`(() => {
+    const button = [...document.querySelectorAll('#launcher-details button')]
+      .find(node => node.textContent?.includes('Search Google'))
+    if (!(button instanceof HTMLButtonElement)) return false
+    button.click()
+    return true
+  })()`)
+  assert.equal(networkToolClicked, true)
+  await waitFor(
+    () => launcherConnection.evaluate('document.querySelector(\'[aria-label="Web Search tool"]\') !== null'),
+    found => found === true,
+  )
+  const networkToolFacts = await launcherConnection.evaluate(`(() => ({
+    disclosure: document.querySelector('[aria-label="Web Search tool"]')?.textContent?.includes('Google or DuckDuckGo') ?? false,
+    input: document.querySelector('[aria-label="Search term"]')?.getAttribute('maxlength'),
+    asset: document.querySelector('[aria-label="Web Search tool"] img')?.getAttribute('src') ?? null,
+  }))()`)
+  assert.equal(networkToolFacts.disclosure, true)
+  assert.equal(networkToolFacts.input, '480')
+  assert.match(networkToolFacts.asset, /launcher-assets\/web-search\./u)
+  await launcherConnection.evaluate(`(() => {
+    const button = document.querySelector('[aria-label="Close Web Search tool"]')
+    if (!(button instanceof HTMLButtonElement)) return false
+    button.click()
+    return true
+  })()`)
+  await waitFor(() => launcherConnection.evaluate('document.querySelector(\'[aria-label="Web Search tool"]\') === null && document.activeElement?.id === "launcher-search"'), restored => restored === true)
+
+  const networkActionFacts = await launcherConnection.evaluate(`(async () => {
+    const options = { fuzziness: 0, maxSearchResultItems: 200, searchEngineId: 'fuzzysort' }
+    const deepL = await window.tockteamLauncher?.search('tockteam:deepl:hello', options)
+    const translation = [...(deepL?.before ?? []), ...(deepL?.after ?? [])].find(item => item.sourceExtension === 'DeeplTranslator')
+    const copy = translation?.defaultAction?.actionId === undefined ? null : await window.tockteamLauncher?.invokeAction(translation.defaultAction.actionId)
+    const custom = await window.tockteamLauncher?.search('wiki fixture', options)
+    const customItem = [...(custom?.before ?? []), ...(custom?.after ?? [])].find(item => item.sourceExtension === 'CustomWebSearch')
+    const customOpen = customItem?.defaultAction?.actionId === undefined ? null : await window.tockteamLauncher?.invokeAction(customItem.defaultAction.actionId)
+    const first = await window.tockteamLauncher?.search('tockteam:web-search:first', options)
+    const staleId = [...(first?.before ?? []), ...(first?.after ?? [])].find(item => item.sourceExtension === 'WebSearch')?.defaultAction?.actionId
+    await window.tockteamLauncher?.search('tockteam:web-search:second', options)
+    let staleReplay = false
+    if (staleId !== undefined) {
+      try { await window.tockteamLauncher?.invokeAction(staleId) } catch { staleReplay = true }
+    }
+    const latest = await window.tockteamLauncher?.search('tockteam:web-search:fixture', options)
+    const latestItem = [...(latest?.before ?? []), ...(latest?.after ?? [])].find(item => item.sourceExtension === 'WebSearch')
+    const open = latestItem?.defaultAction?.actionId === undefined ? null : await window.tockteamLauncher?.invokeAction(latestItem.defaultAction.actionId)
+    return {
+      copy: copy?.ok === true,
+      translation: translation?.name ?? null,
+      customDetails: customItem?.details ?? null,
+      customOpen: customOpen?.ok === true,
+      webDetails: latestItem?.details ?? null,
+      open: open?.ok === true,
+      staleReplay,
+      status: latest?.status?.lastError ?? null,
+      secretVisible: JSON.stringify({ deepL, translation, latest })?.includes('test-key') ?? false,
+    }
+  })()`)
+  assert.deepEqual(networkActionFacts, {
+    copy: true,
+    translation: 'Fixture translation',
+    customDetails: 'https://en.wikipedia.org/wiki/fixture',
+    customOpen: true,
+    webDetails: 'https://google.com/search?q=fixture&hl=en-us',
+    open: true,
+    staleReplay: true,
+    status: null,
+    secretVisible: false,
+  })
 
   const discoveryFacts = await launcherConnection.evaluate(`(async () => {
     const result = await window.tockteamLauncher?.search('fixture', { fuzziness: 0, maxSearchResultItems: 200, searchEngineId: 'fuzzysort' })
@@ -922,6 +1023,7 @@ try {
   restartedChild = spawn(electron, ['.', `--remote-debugging-port=${String(restartPort)}`, `--user-data-dir=${userData}`], {
     cwd: root,
     detached: true,
+    env: fixtureEnvironment,
     stdio: ['ignore', 'ignore', 'ignore'],
   })
   await waitFor(() => electronPages(restartPort), pages => pages.some(page => page.title === 'TockCoder'))

@@ -168,6 +168,27 @@ const PRODUCT_VERSION = resolveProductVersion(join(currentDir, '..'))
 const splashPath = join(currentDir, 'splash.html')
 const preloadPath = join(currentDir, 'preload.cjs')
 const launcherHtmlPath = join(currentDir, 'launcher.html')
+const launcherNetworkFixtureEnabled = !app.isPackaged && process.env.TOCKTEAM_NETWORK_FIXTURE === '1'
+const launcherNetworkFixtureOpenedUrls: string[] = []
+
+function launcherNetworkFixtureResponse(body: unknown): Response {
+  return new Response(JSON.stringify(body), { headers: { 'content-type': 'application/json' }, status: 200 })
+}
+
+async function launcherNetworkFixtureFetch(url: string, init?: RequestInit): Promise<Response> {
+  const parsed = new URL(url)
+  if (parsed.origin === 'https://cdn.jsdelivr.net' && parsed.pathname.startsWith('/npm/@fawazahmed0/currency-api@latest/v1/currencies/')) {
+    const currency = parsed.pathname.split('/').pop()?.replace(/\.json$/u, '') ?? 'usd'
+    return launcherNetworkFixtureResponse({ [currency]: { eur: currency === 'usd' ? 0.9 : 1, usd: currency === 'eur' ? 1.1 : 1, chf: 0.8 } })
+  }
+  if (parsed.origin === 'https://api-free.deepl.com' && parsed.pathname === '/v2/translate' && init?.method === 'POST') {
+    return launcherNetworkFixtureResponse({ translations: [{ text: 'Fixture translation' }] })
+  }
+  if (parsed.origin === 'https://www.google.com' && parsed.pathname === '/complete/search') {
+    return launcherNetworkFixtureResponse(['fixture', ['fixture latest']])
+  }
+  throw new Error('Unexpected launcher network fixture URL')
+}
 
 let mainWindow: BrowserWindow | undefined
 let runtime: DshRuntimeSupervisor | undefined
@@ -1199,15 +1220,22 @@ function initializeLauncher(): void {
   const network = createLauncherNetworkExtensions({
     copyText: text => clipboard.writeText(text),
     enabledExtensionIds: launcherEnabledLocalExtensionIds,
-    fetch: async (url, init) => await net.fetch(url, init) as unknown as Response,
+    fetch: async (url, init) => launcherNetworkFixtureEnabled
+      ? await launcherNetworkFixtureFetch(url, init)
+      : await net.fetch(url, init) as unknown as Response,
     getSetting: (key, fallback) => repository.getSetting(key, fallback),
     onProviderError: (extensionId, error) => {
       appendLog('desktop', `TockLauncher provider ${extensionId} failed: ${error.name}`)
     },
     openExternal: async url => {
+      if (launcherNetworkFixtureEnabled) {
+        launcherNetworkFixtureOpenedUrls.push(url)
+        return
+      }
       if (launcherCustomBrowser === undefined) throw new Error('Custom browser controller is unavailable')
       await launcherCustomBrowser.openUrl(url)
     },
+    ...(launcherNetworkFixtureEnabled ? { resolveAddresses: async () => ['8.8.8.8'] } : null),
   })
   launcherNetwork = network
   const discoverySettingKeys = new Set([
