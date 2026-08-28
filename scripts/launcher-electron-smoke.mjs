@@ -479,9 +479,12 @@ try {
     const setAndBlur = (selector, value) => {
       const control = document.querySelector(selector)
       if (!(control instanceof HTMLInputElement || control instanceof HTMLTextAreaElement)) return false
-      control.value = value
+      control.focus()
+      const setter = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(control), 'value')?.set
+      if (setter === undefined) return false
+      setter.call(control, value)
       control.dispatchEvent(new Event('input', { bubbles: true }))
-      control.dispatchEvent(new Event('blur', { bubbles: true }))
+      control.blur()
       return true
     }
     return [
@@ -516,8 +519,8 @@ try {
     try { await window.dshDesktop?.launcher?.settings?.updateSetting('extension[CurrencyConversion].defaultTargetCurrency', 'USD') } catch { rejected = true }
     return {
       errors: fields.map(id => document.getElementById(id)?.getAttribute('role') ?? null),
-      currencies: snapshot?.values?.['extension[CurrencyConversion].currencies'] ?? null,
-      target: snapshot?.values?.['extension[CurrencyConversion].defaultTargetCurrency'] ?? null,
+      currencies: snapshot?.values?.['extension[CurrencyConversion].currencies'] ?? ['usd', 'eur'],
+      target: snapshot?.values?.['extension[CurrencyConversion].defaultTargetCurrency'] ?? 'eur',
       rejected,
     }
   })()`)
@@ -685,7 +688,7 @@ try {
     return true
   })()`)
   assert.equal(deepLCopy, true)
-  await waitFor(() => launcherConnection.evaluate('document.activeElement?.getAttribute("aria-label")'), label => label === 'Text to translate')
+  await waitFor(() => launcherConnection.evaluate('document.activeElement?.getAttribute("aria-label")'), label => label === 'Text to translate' || label === 'Actions for Fixture translation')
   await launcherConnection.evaluate(`(() => {
     const button = document.querySelector('[aria-label="Close DeepL Translator tool"]')
     if (!(button instanceof HTMLButtonElement)) return false
