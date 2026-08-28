@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict'
+import { mkdtemp, mkdir, rm, symlink, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import path from 'node:path'
 import test from 'node:test'
-import { createLauncherWorkflow, type LauncherWorkflow, type LauncherWorkflowEffects, type LauncherWorkflowPathTarget } from '../src/launcher-workflow.ts'
+import { captureLauncherWorkflowPath, createLauncherWorkflow, type LauncherWorkflow, type LauncherWorkflowEffects } from '../src/launcher-workflow.ts'
 import type { LauncherActionRecord } from '../src/launcher-actions.ts'
 
 const OWNER = Object.freeze({ role: 'launcher' as const, webContentsId: 41 })
@@ -45,6 +48,20 @@ function harness(workflows: unknown = [WORKFLOW]) {
   })
   return { effects, events, provider }
 }
+
+test('Workflow path capture rejects symlink components, dot escapes, and special targets', async () => {
+  const root = await mkdtemp(path.join(tmpdir(), 'tockteam-workflow-path-'))
+  try {
+    await mkdir(path.join(root, 'safe'))
+    await writeFile(path.join(root, 'safe', 'file.txt'), 'fixture')
+    assert.equal((await captureLauncherWorkflowPath(path.join(root, 'safe', 'file.txt'), 'macOS'))?.kind, 'file')
+    assert.equal(await captureLauncherWorkflowPath(`${root}/safe/../safe/file.txt`, 'macOS'), undefined)
+    await symlink(path.join(root, 'safe'), path.join(root, 'link'))
+    assert.equal(await captureLauncherWorkflowPath(path.join(root, 'link', 'file.txt'), 'macOS'), undefined)
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
 
 test('Workflow provider publishes ordered digest-token results without nested authority', async () => {
   const { provider } = harness()

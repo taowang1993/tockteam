@@ -97,7 +97,7 @@ import { createLauncherFileSearchScanners } from './launcher-file-search-scanner
 import { createLauncherNetworkExtensions } from './launcher-network-extensions.ts'
 import { createLauncherOsExtensions } from './launcher-os-extensions.ts'
 import { createLauncherTerminal } from './launcher-terminal.ts'
-import { createLauncherWorkflow } from './launcher-workflow.ts'
+import { createLauncherWorkflow, type LauncherWorkflowConfirmation } from './launcher-workflow.ts'
 import { runBoundedWorkflowCommand } from './launcher-workflow-process.ts'
 import {
   launchDetachedTerminalInvocation,
@@ -1746,6 +1746,41 @@ function initializeLauncher(): void {
   const workflowEnabledExtensionIds = (): readonly string[] => launcherWorkflowFixtureEnabled
     ? [...new Set([...launcherEnabledLocalExtensionIds(), 'Workflow'])]
     : launcherEnabledLocalExtensionIds()
+  const confirmWorkflowAction = async (request: LauncherWorkflowConfirmation, signal?: AbortSignal): Promise<boolean> => {
+    if (signal?.aborted) throw launcherAbortError(signal)
+    if (launcherWorkflowFixtureEnabled) {
+      if (/cancel/iu.test(request.actionName) && signal !== undefined) {
+        await new Promise<void>((resolve, reject) => {
+          let settled = false
+          const finish = (error?: Error): void => {
+            if (settled) return
+            settled = true
+            clearTimeout(timer)
+            signal.removeEventListener('abort', abort)
+            if (error === undefined) resolve()
+            else reject(error)
+          }
+          const abort = (): void => finish(launcherAbortError(signal))
+          const timer = setTimeout(() => finish(), 5_000)
+          signal.addEventListener('abort', abort, { once: true })
+          if (signal.aborted) abort()
+        })
+      }
+      return !/decline/iu.test(request.actionName)
+    }
+    const target = request.actionType === 'OpenFile'
+      ? `File: ${request.filePath}`
+      : request.actionType === 'OpenUrl'
+        ? `URL: ${request.url}`
+        : request.actionType === 'OpenTerminal'
+          ? `Terminal: ${request.terminalId}\\nCommand: ${request.command}\\nWorking directory: ${request.workingDirectory}`
+          : `Command: ${request.command}\\nWorking directory: ${request.workingDirectory}`
+    const pending = mainWindow === undefined || mainWindow.isDestroyed()
+      ? dialog.showMessageBox({ buttons: ['Continue', 'Cancel'], cancelId: 1, defaultId: 1, detail: target, message: `Invoke ${request.actionType} in ${request.workflowName}?`, title: PRODUCT_NAME, type: 'warning' })
+      : dialog.showMessageBox(mainWindow, { buttons: ['Continue', 'Cancel'], cancelId: 1, defaultId: 1, detail: target, message: `Invoke ${request.actionType} in ${request.workflowName}?`, title: PRODUCT_NAME, type: 'warning' })
+    const result = signal === undefined ? await pending : await launcherAwaitAbortable(pending, signal)
+    return result.response === 0
+  }
   const workflow = createLauncherWorkflow({
     captureHomeIdentity: async target => await captureLauncherHomeIdentity(target),
     ...(launcherWorkflowFixtureEnabled ? {
@@ -1757,42 +1792,8 @@ function initializeLauncher(): void {
         recordLauncherWorkflowFixtureAudit(record.outcome)
         appendLog('desktop', `TockLauncher workflow ${record.outcome}: actions=${record.actionCount} commands=${record.commandCount} durationMs=${record.durationMs} stdoutBytes=${record.stdoutBytes} stderrBytes=${record.stderrBytes}`)
       },
-      confirmAction: async request => !/decline/iu.test(request.actionName),
-      confirmActionWithSignal: async (request, signal) => {
-        if (signal.aborted) throw launcherAbortError(signal)
-        if (launcherWorkflowFixtureEnabled) {
-          if (/cancel/iu.test(request.actionName)) {
-            await new Promise<void>((resolve, reject) => {
-              let settled = false
-              const finish = (error?: Error): void => {
-                if (settled) return
-                settled = true
-                clearTimeout(timer)
-                signal.removeEventListener('abort', abort)
-                if (error === undefined) resolve()
-                else reject(error)
-              }
-              const abort = (): void => finish(launcherAbortError(signal))
-              const timer = setTimeout(() => finish(), 5_000)
-              signal.addEventListener('abort', abort, { once: true })
-              if (signal.aborted) abort()
-            })
-          }
-          return !/decline/iu.test(request.actionName)
-        }
-        const target = request.actionType === 'OpenFile'
-          ? `File: ${request.filePath}`
-          : request.actionType === 'OpenUrl'
-            ? `URL: ${request.url}`
-            : request.actionType === 'OpenTerminal'
-              ? `Terminal: ${request.terminalId}\\nCommand: ${request.command}\\nWorking directory: ${request.workingDirectory}`
-              : `Command: ${request.command}\\nWorking directory: ${request.workingDirectory}`
-        const pending = mainWindow === undefined || mainWindow.isDestroyed()
-          ? dialog.showMessageBox({ buttons: ['Continue', 'Cancel'], cancelId: 1, defaultId: 1, detail: target, message: `Invoke ${request.actionType} in ${request.workflowName}?`, title: PRODUCT_NAME, type: 'warning' })
-          : dialog.showMessageBox(mainWindow, { buttons: ['Continue', 'Cancel'], cancelId: 1, defaultId: 1, detail: target, message: `Invoke ${request.actionType} in ${request.workflowName}?`, title: PRODUCT_NAME, type: 'warning' })
-        const result = await launcherAwaitAbortable(pending, signal)
-        return result.response === 0
-      },
+      confirmAction: async request => await confirmWorkflowAction(request),
+      confirmActionWithSignal: async (request, signal) => await confirmWorkflowAction(request, signal),
       executeCommand: async request => {
         if (launcherWorkflowFixtureEnabled) {
           recordLauncherWorkflowFixtureEffect('ExecuteCommand')
@@ -1874,6 +1875,15 @@ function initializeLauncher(): void {
       if (signal.aborted) return false
       const current = await captureLauncherHomeIdentity(target)
       return current !== undefined && current.dev === expected.dev && current.ino === expected.ino
+    },
+    validateTerminal: async (terminalId, signal) => {
+      if (signal.aborted) return false
+      try {
+        const invocation = resolveTerminalInvocation(platform, { command: 'tockteam-workflow-check', terminalId, workingDirectory: launcherHomePath })
+        if (platform !== 'Windows') return invocation.executable === '/usr/bin/osascript'
+        const trusted = await resolveTrustedWindowsTerminalExecutable(terminalId)
+        return await revalidateTrustedWindowsTerminalExecutable(trusted)
+      } catch { return false }
     },
   })
   launcherWorkflow = workflow

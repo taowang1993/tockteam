@@ -167,6 +167,7 @@ export function parseLauncherWorkflowToken(value: unknown): LauncherWorkflowToke
 const MAX_TOKEN_LENGTH = 512
 const MAX_AUDIT_DURATION = 86_400_000
 const MAX_COMMAND_BYTES = 1_048_576
+const MACOS_SYSTEM_ALIASES = new Set(['/etc', '/tmp', '/var'])
 
 function isAbsolutePath(platform: LauncherTerminalPlatform, value: string): boolean {
   return platform === 'Windows' ? /^[A-Za-z]:[\\/]/u.test(value) : path.posix.isAbsolute(value)
@@ -258,10 +259,10 @@ export async function captureLauncherWorkflowPath(
       if (signal.aborted) return undefined
       current = platform === 'Windows' ? path.win32.join(current, component) : path.posix.join(current, component)
       const selected = await lstat(current, { bigint: true })
-      if (selected.isSymbolicLink()) return undefined
+      if (selected.isSymbolicLink() && !(platform === 'macOS' && MACOS_SYSTEM_ALIASES.has(current))) return undefined
     }
     const selected = await lstat(target, { bigint: true })
-    if (selected.isSymbolicLink()) return undefined
+    if (selected.isSymbolicLink() && !(platform === 'macOS' && MACOS_SYSTEM_ALIASES.has(target))) return undefined
     const canonicalPath = await realpath(target)
     const canonical = await lstat(canonicalPath, { bigint: true })
     if (canonical.isSymbolicLink() || (!canonical.isFile() && !canonical.isDirectory())) return undefined
@@ -342,10 +343,10 @@ function commandResultBytes(result: LauncherWorkflowCommandResult): Readonly<{ s
   return Object.freeze({ stderrBytes, stdoutBytes })
 }
 
-function actionForConfirmation(action: LauncherWorkflowAction, workflow: LauncherWorkflow, homePath: string): LauncherWorkflowConfirmation {
+function actionForConfirmation(action: LauncherWorkflowAction, workflow: LauncherWorkflow, homePath: string, canonicalFilePath?: string): LauncherWorkflowConfirmation {
   const base = { actionName: action.name, workflowName: workflow.name } as const
   switch (action.handlerId) {
-    case 'OpenFile': return { ...base, actionType: 'OpenFile', filePath: action.args.filePath }
+    case 'OpenFile': return { ...base, actionType: 'OpenFile', filePath: canonicalFilePath ?? action.args.filePath }
     case 'OpenUrl': return { ...base, actionType: 'OpenUrl', url: normalizeWorkflowUrl(action.args.url)! }
     case 'OpenTerminal': return { ...base, actionType: 'OpenTerminal', command: action.args.command, terminalId: action.args.terminalId, workingDirectory: homePath }
     case 'ExecuteCommand': return { ...base, actionType: 'ExecuteCommand', command: action.args.command, workingDirectory: homePath }
@@ -584,7 +585,7 @@ export function createLauncherWorkflow(options: WorkflowOptions): Readonly<{
       ensureCurrent()
     }
     const confirm = async (action: LauncherWorkflowAction): Promise<boolean> => {
-      const request = actionForConfirmation(action, workflow, options.homePath)
+      const request = actionForConfirmation(action, workflow, options.homePath, action.handlerId === 'OpenFile' ? known.pathTargets.get(action.id)?.canonicalPath : undefined)
       if (options.effects.confirmActionWithSignal !== undefined) return (await awaitAbortable(() => options.effects.confirmActionWithSignal!(request, controller.signal), controller.signal)) === true
       return (await awaitAbortable(() => options.effects.confirmAction(request), controller.signal)) === true
     }
