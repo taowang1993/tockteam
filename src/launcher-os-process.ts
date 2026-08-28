@@ -144,43 +144,65 @@ async function trustedTrashDirectory(homePath: string, name: 'files' | 'info'): 
   } catch { return undefined }
 }
 
+function trashErrorCode(error: unknown): string | undefined {
+  return typeof error === 'object' && error !== null && 'code' in error && typeof error.code === 'string' ? error.code : undefined
+}
+
+function ensureTrashLive(signal: AbortSignal, deadline: number): void {
+  if (signal.aborted) throw signal.reason instanceof Error ? signal.reason : new Error('Trash deletion canceled')
+  if (Date.now() >= deadline) throw new Error('Trash deletion timed out')
+}
+
 async function removeTrashTree(root: string, deadline: number, signal: AbortSignal): Promise<void> {
   const queue: Array<Readonly<{ depth: number; directory: string }>> = [{ depth: 0, directory: root }]
   let visited = 0
   while (queue.length > 0 && visited < MAX_TRASH_ENTRIES) {
-    if (signal.aborted) throw signal.reason instanceof Error ? signal.reason : new Error('Trash deletion canceled')
-    if (Date.now() >= deadline) throw new Error('Trash deletion timed out')
+    ensureTrashLive(signal, deadline)
     const current = queue.shift()!
     let directory
     try {
       const currentStats = await lstat(current.directory, { bigint: true })
+      ensureTrashLive(signal, deadline)
       const canonical = await realpath(current.directory)
+      ensureTrashLive(signal, deadline)
       if (currentStats.isSymbolicLink() || !currentStats.isDirectory() || canonical !== current.directory) continue
       directory = await opendir(current.directory)
-    } catch { continue }
+    } catch (error) {
+      if (trashErrorCode(error) === 'ENOENT' || trashErrorCode(error) === 'ENOTDIR') continue
+      throw error
+    }
     try {
       while (visited < MAX_TRASH_ENTRIES) {
-        if (signal.aborted) throw signal.reason instanceof Error ? signal.reason : new Error('Trash deletion canceled')
-        if (Date.now() >= deadline) throw new Error('Trash deletion timed out')
+        ensureTrashLive(signal, deadline)
         const entry: Dirent | null = await directory.read()
+        ensureTrashLive(signal, deadline)
         if (entry === null) break
         visited += 1
         const target = path.posix.join(current.directory, entry.name)
         if (target.length > MAX_PATH_LENGTH) continue
         let stats
-        try { stats = await lstat(target, { bigint: true }) } catch { continue }
+        try { stats = await lstat(target, { bigint: true }) } catch (error) {
+          if (trashErrorCode(error) === 'ENOENT' || trashErrorCode(error) === 'ENOTDIR') continue
+          throw error
+        }
+        ensureTrashLive(signal, deadline)
         if (stats.isSymbolicLink()) continue
         if (stats.isDirectory()) {
           if (current.depth < MAX_TRASH_DEPTH) queue.push({ depth: current.depth + 1, directory: target })
         } else if (stats.isFile()) {
-          try { await unlink(target) } catch { /* isolate a stale/permission entry */ }
+          try { await unlink(target) } catch (error) {
+            if (trashErrorCode(error) !== 'ENOENT') throw error
+          }
+          ensureTrashLive(signal, deadline)
         }
       }
     } finally { await directory.close().catch(() => undefined) }
   }
   for (const entry of queue.toReversed()) {
     if (Date.now() >= deadline || signal.aborted) break
-    try { await rmdir(entry.directory) } catch { /* nonempty or raced directories are harmless */ }
+    try { await rmdir(entry.directory) } catch (error) {
+      if (!['ENOENT', 'ENOTEMPTY', 'ENOTDIR'].includes(trashErrorCode(error) ?? '')) throw error
+    }
   }
 }
 
@@ -189,7 +211,9 @@ export async function emptyLauncherLinuxTrash(homePath: string, signal: AbortSig
   if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 60_000) throw new Error('Invalid trash timeout')
   const deadline = Date.now() + timeoutMs
   for (const name of ['files', 'info'] as const) {
+    ensureTrashLive(signal, deadline)
     const root = await trustedTrashDirectory(homePath, name)
+    ensureTrashLive(signal, deadline)
     if (root !== undefined) await removeTrashTree(root, deadline, signal)
   }
 }
