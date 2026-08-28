@@ -133,7 +133,72 @@ test('OS provider rechecks privileged catalog state after a confirmation dialog'
   const item = (await provider.loadIndexedItems()).find(candidate => candidate.name === 'Empty Trash')!
   const pending = provider.executeAction(record(item))
   release()
-  await assert.rejects(pending, /stale/i)
+  await assert.rejects(pending, /stale|canceled/i)
+})
+
+test('OS provider aborts confirmation and prevents the post-dialog effect on invalidation', async () => {
+  let provider: ReturnType<typeof createLauncherOsExtensions>
+  let release!: (value: boolean) => void
+  let confirmationSignal: AbortSignal | undefined
+  let invoked = 0
+  const effects: LauncherOsEffects = {
+    confirmPrivilegedAction: async (_prompt, signal) => {
+      confirmationSignal = signal
+      return await new Promise<boolean>(resolve => { release = resolve })
+    },
+    invokeSystemCommand: async (_command, _signal) => { invoked += 1 },
+    invokeUeliCommand: async () => undefined,
+    openControlPanelItem: async () => undefined,
+    openSystemSetting: async () => undefined,
+    toggleAppearance: async () => undefined,
+  }
+  provider = createLauncherOsExtensions({
+    effects,
+    enabledExtensionIds: () => ['SystemCommands'],
+    getSetting: <T>(_key: string, fallback: T) => fallback,
+    platform: 'Linux',
+    scanControlPanelItems: async () => [],
+  })
+  const item = (await provider.loadIndexedItems()).find(candidate => candidate.name === 'Empty Trash')!
+  const pending = provider.executeAction(record(item))
+  await new Promise(resolve => setImmediate(resolve))
+  provider.invalidate()
+  assert.equal(confirmationSignal?.aborted, true)
+  release(true)
+  await assert.rejects(pending, /stale|canceled/i)
+  await provider.waitForIdle()
+  assert.equal(invoked, 0)
+})
+
+test('OS provider aborts an in-flight native effect and waits for it on close', async () => {
+  let effectSignal: AbortSignal | undefined
+  let effectFinished!: () => void
+  const effectDone = new Promise<void>(resolve => { effectFinished = resolve })
+  const effects: LauncherOsEffects = {
+    confirmPrivilegedAction: async () => true,
+    invokeSystemCommand: async (_command, signal) => {
+      effectSignal = signal
+      await new Promise<void>(resolve => signal.addEventListener('abort', () => { effectFinished(); resolve() }, { once: true }))
+      await effectDone
+    },
+    invokeUeliCommand: async () => undefined,
+    openControlPanelItem: async () => undefined,
+    openSystemSetting: async () => undefined,
+    toggleAppearance: async () => undefined,
+  }
+  const provider = createLauncherOsExtensions({
+    effects,
+    enabledExtensionIds: () => ['SystemCommands'],
+    getSetting: <T>(_key: string, fallback: T) => fallback,
+    platform: 'Linux',
+    scanControlPanelItems: async () => [],
+  })
+  const item = (await provider.loadIndexedItems()).find(candidate => candidate.name === 'Empty Trash')!
+  const pending = provider.executeAction(record(item))
+  await new Promise(resolve => setImmediate(resolve))
+  await provider.close()
+  assert.equal(effectSignal?.aborted, true)
+  await pending.catch(() => undefined)
 })
 
 test('OS provider rejects appearance effects while host projection is overridden', async () => {

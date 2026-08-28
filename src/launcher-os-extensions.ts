@@ -24,12 +24,12 @@ export type LauncherPrivilegedPrompt = Readonly<{
 }>
 
 export type LauncherOsEffects = Readonly<{
-  confirmPrivilegedAction: (prompt: LauncherPrivilegedPrompt) => Promise<boolean>
-  invokeSystemCommand: (command: LauncherSystemCommand) => Promise<void> | void
-  invokeUeliCommand: (command: LauncherUeliCommand) => Promise<void> | void
-  openControlPanelItem: (canonicalName: string) => Promise<void> | void
-  openSystemSetting: (target: string) => Promise<void> | void
-  toggleAppearance: () => Promise<void> | void
+  confirmPrivilegedAction: (prompt: LauncherPrivilegedPrompt, signal: AbortSignal) => Promise<boolean>
+  invokeSystemCommand: (command: LauncherSystemCommand, signal: AbortSignal) => Promise<void> | void
+  invokeUeliCommand: (command: LauncherUeliCommand, signal: AbortSignal) => Promise<void> | void
+  openControlPanelItem: (canonicalName: string, signal: AbortSignal) => Promise<void> | void
+  openSystemSetting: (target: string, signal: AbortSignal) => Promise<void> | void
+  toggleAppearance: (signal: AbortSignal) => Promise<void> | void
 }>
 
 export type LauncherOsOptions = Readonly<{
@@ -144,6 +144,7 @@ export function createLauncherOsExtensions(options: LauncherOsOptions): Readonly
   getLastError: () => string | undefined
   invalidate: () => void
   loadIndexedItems: (signal?: AbortSignal) => Promise<readonly LauncherInternalResultItem[]>
+  waitForIdle: () => Promise<void>
 }> {
   if (!SUPPORTED_PLATFORMS.has(options.platform)) throw new Error('Unsupported TockLauncher platform')
   const enabled = (): ReadonlySet<string> => new Set(options.enabledExtensionIds())
@@ -298,7 +299,8 @@ export function createLauncherOsExtensions(options: LauncherOsOptions): Readonly
         if (extensionId !== 'AppearanceSwitcher' || value.kind !== 'toggle-appearance') throw new Error('Invalid appearance action')
         if (options.isAppearanceOverridden?.() === true || (options.getAppearanceMode !== undefined && options.getAppearanceMode() === undefined)) throw new Error('System appearance is unavailable')
         if (!actionIsCurrent(record.argument, known)) throw new Error('Appearance action is stale')
-        await options.effects.toggleAppearance()
+        await options.effects.toggleAppearance(controller.signal)
+        if (!actionIsCurrent(record.argument, known) || controller.signal.aborted) throw new Error('Appearance action was canceled')
         return true
       }
       if (record.handlerKey === HANDLERS.systemSetting) {
@@ -306,16 +308,18 @@ export function createLauncherOsExtensions(options: LauncherOsOptions): Readonly
         const catalog = options.platform === 'macOS' ? MACOS_SYSTEM_SETTINGS : WINDOWS_SYSTEM_SETTINGS
         const current = catalog.find(row => row.target === value.target)
         if (current === undefined || !actionIsCurrent(record.argument, known)) throw new Error('System setting action is stale')
-        await options.effects.openSystemSetting(current.target)
+        await options.effects.openSystemSetting(current.target, controller.signal)
+        if (!actionIsCurrent(record.argument, known) || controller.signal.aborted) throw new Error('System setting action was canceled')
         return true
       }
       if (record.handlerKey === HANDLERS.systemCommand) {
         if (extensionId !== 'SystemCommands' || value.kind !== 'system-command') throw new Error('Invalid system command action')
         const command = SYSTEM_COMMAND_CATALOG[options.platform].find(row => row.command === value.command)
         if (command === undefined || known.displayName !== command.name || !actionIsCurrent(record.argument, known)) throw new Error('System command action is stale')
-        if (await options.effects.confirmPrivilegedAction({ detail: 'This operation can interrupt work or permanently remove trashed files.', operation: 'invoke-system-command', title: `${command.name}?` })) {
-          if (!actionIsCurrent(record.argument, known)) throw new Error('System command action is stale')
-          await options.effects.invokeSystemCommand(command.command)
+        if (await options.effects.confirmPrivilegedAction({ detail: 'This operation can interrupt work or permanently remove trashed files.', operation: 'invoke-system-command', title: `${command.name}?` }, controller.signal)) {
+          if (!actionIsCurrent(record.argument, known) || controller.signal.aborted) throw new Error('System command action was canceled')
+          await options.effects.invokeSystemCommand(command.command, controller.signal)
+          if (controller.signal.aborted) throw new Error('System command action was canceled')
         }
         return true
       }
@@ -323,9 +327,10 @@ export function createLauncherOsExtensions(options: LauncherOsOptions): Readonly
         if (extensionId !== 'WindowsControlPanel' || value.kind !== 'control-panel' || options.platform !== 'Windows') throw new Error('Invalid Control Panel action')
         const name = currentControlPanel.get(value.canonicalName)
         if (name === undefined || known.displayName !== name || !actionIsCurrent(record.argument, known)) throw new Error('Control Panel action is stale')
-        if (await options.effects.confirmPrivilegedAction({ detail: 'Windows may request administrator approval for this Control Panel item.', operation: 'open-control-panel-item', title: `Open ${name}?` })) {
-          if (!actionIsCurrent(record.argument, known) || currentControlPanel.get(value.canonicalName) !== name) throw new Error('Control Panel action is stale')
-          await options.effects.openControlPanelItem(value.canonicalName)
+        if (await options.effects.confirmPrivilegedAction({ detail: 'Windows may request administrator approval for this Control Panel item.', operation: 'open-control-panel-item', title: `Open ${name}?` }, controller.signal)) {
+          if (!actionIsCurrent(record.argument, known) || currentControlPanel.get(value.canonicalName) !== name || controller.signal.aborted) throw new Error('Control Panel action was canceled')
+          await options.effects.openControlPanelItem(value.canonicalName, controller.signal)
+          if (controller.signal.aborted) throw new Error('Control Panel action was canceled')
         }
         return true
       }
@@ -334,20 +339,26 @@ export function createLauncherOsExtensions(options: LauncherOsOptions): Readonly
         const hotkeyEnabled = options.getSetting('general.hotkey.enabled', true) === true
         if ((value.command === 'disableHotkey' && !hotkeyEnabled) || (value.command === 'enableHotkey' && hotkeyEnabled)) throw new Error('Hotkey command is stale')
         if (value.command === 'quit') {
-          if (await options.effects.confirmPrivilegedAction({ detail: 'TockTeam will close after active local state is secured.', operation: 'quit', title: 'Quit TockTeam?' })) {
-            if (!actionIsCurrent(record.argument, known)) throw new Error('Quit action is stale')
-            await options.effects.invokeUeliCommand(value.command)
+          if (await options.effects.confirmPrivilegedAction({ detail: 'TockTeam will close after active local state is secured.', operation: 'quit', title: 'Quit TockTeam?' }, controller.signal)) {
+            if (!actionIsCurrent(record.argument, known) || controller.signal.aborted) throw new Error('Quit action was canceled')
+            await options.effects.invokeUeliCommand(value.command, controller.signal)
+            if (controller.signal.aborted) throw new Error('Quit action was canceled')
           }
           return true
         }
         if (!actionIsCurrent(record.argument, known)) throw new Error('TockLauncher command action is stale')
-        await options.effects.invokeUeliCommand(value.command)
+        await options.effects.invokeUeliCommand(value.command, controller.signal)
+        if (!actionIsCurrent(record.argument, known) || controller.signal.aborted) throw new Error('TockLauncher command action was canceled')
         return true
       }
       return false
     } finally {
       activeControllers.delete(controller)
     }
+  }
+
+  const waitForIdle = async (): Promise<void> => {
+    while (activeWork.size > 0) await Promise.allSettled([...activeWork])
   }
 
   const close = async (): Promise<void> => {
@@ -357,9 +368,8 @@ export function createLauncherOsExtensions(options: LauncherOsOptions): Readonly
     clearState()
     providerErrors.clear()
     abortAll(new Error('TockLauncher OS provider is closed'))
-    const pending = Promise.allSettled([...activeWork]).then(() => undefined)
-    await Promise.race([pending, new Promise<void>(resolve => setTimeout(resolve, 100))])
+    await waitForIdle()
   }
 
-  return Object.freeze({ close, executeAction: (record: LauncherActionRecord) => track(executeAction(record)), getLastError, invalidate, loadIndexedItems: (signal?: AbortSignal) => track(loadIndexedItems(signal)) })
+  return Object.freeze({ close, executeAction: (record: LauncherActionRecord) => track(executeAction(record)), getLastError, invalidate, loadIndexedItems: (signal?: AbortSignal) => track(loadIndexedItems(signal)), waitForIdle })
 }

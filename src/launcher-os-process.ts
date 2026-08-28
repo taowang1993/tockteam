@@ -1,5 +1,7 @@
-import { lstat, opendir, realpath, rmdir, unlink } from 'node:fs/promises'
-import type { Dirent } from 'node:fs'
+import { O_DIRECTORY, O_NOFOLLOW, O_RDONLY } from 'node:constants'
+import { lstat, open, opendir, realpath, rmdir, unlink } from 'node:fs/promises'
+import type { Dir, Dirent } from 'node:fs'
+import type { FileHandle } from 'node:fs/promises'
 import path from 'node:path'
 import type { LauncherOsPlatform, LauncherSystemCommand } from './launcher-os-catalog.ts'
 
@@ -119,29 +121,8 @@ function strictChild(root: string, target: string): boolean {
   return relative !== '' && !relative.startsWith('..') && !path.posix.isAbsolute(relative)
 }
 
-async function hasSymlinkComponent(target: string): Promise<boolean> {
-  const parsed = path.posix.parse(target)
-  let current = parsed.root
-  for (const part of parsed.dir.slice(parsed.root.length).split('/').filter(Boolean).concat(parsed.base)) {
-    current = path.posix.join(current, part)
-    try {
-      if ((await lstat(current, { bigint: true })).isSymbolicLink()) return true
-    } catch { return true }
-  }
-  return false
-}
-
-async function trustedTrashDirectory(homePath: string, name: 'files' | 'info'): Promise<string | undefined> {
-  if (!path.posix.isAbsolute(homePath) || homePath.length > MAX_PATH_LENGTH || /[\0\r\n]/u.test(homePath)) return undefined
-  const home = path.posix.resolve(homePath)
-  const target = path.posix.join(home, '.local', 'share', 'Trash', name)
-  if (!strictChild(home, target)) return undefined
-  try {
-    const [canonicalHome, canonicalTarget, targetStats] = await Promise.all([realpath(home), realpath(target), lstat(target, { bigint: true })])
-    if (canonicalHome !== home || await hasSymlinkComponent(target) || !strictChild(canonicalHome, canonicalTarget)
-      || canonicalTarget !== target || targetStats.isSymbolicLink() || !targetStats.isDirectory()) return undefined
-    return target
-  } catch { return undefined }
+function strictChildOrSame(root: string, target: string): boolean {
+  return target === root || strictChild(root, target)
 }
 
 function trashErrorCode(error: unknown): string | undefined {
@@ -153,56 +134,188 @@ function ensureTrashLive(signal: AbortSignal, deadline: number): void {
   if (Date.now() >= deadline) throw new Error('Trash deletion timed out')
 }
 
-async function removeTrashTree(root: string, deadline: number, signal: AbortSignal): Promise<void> {
-  const queue: Array<Readonly<{ depth: number; directory: string }>> = [{ depth: 0, directory: root }]
-  let visited = 0
-  while (queue.length > 0 && visited < MAX_TRASH_ENTRIES) {
-    ensureTrashLive(signal, deadline)
-    const current = queue.shift()!
-    let directory
-    try {
-      const currentStats = await lstat(current.directory, { bigint: true })
-      ensureTrashLive(signal, deadline)
-      const canonical = await realpath(current.directory)
-      ensureTrashLive(signal, deadline)
-      if (currentStats.isSymbolicLink() || !currentStats.isDirectory() || canonical !== current.directory) continue
-      directory = await opendir(current.directory)
-    } catch (error) {
-      if (trashErrorCode(error) === 'ENOENT' || trashErrorCode(error) === 'ENOTDIR') continue
-      throw error
+function assertDescriptorSafety(): void {
+  if (!Number.isInteger(O_DIRECTORY) || !Number.isInteger(O_NOFOLLOW) || !Number.isInteger(O_RDONLY)) {
+    throw new Error('Linux Trash descriptor safety is unavailable')
+  }
+  try { if (!path.posix.isAbsolute('/proc/self/fd/0')) throw new Error('invalid proc-fd path') } catch { throw new Error('Linux Trash descriptor safety is unavailable') }
+}
+
+type AnchoredDirectory = Readonly<{
+  canonical: string
+  dev: bigint
+  fd: FileHandle
+  ino: bigint
+}>
+
+function descriptorPath(directory: AnchoredDirectory, child?: string): string {
+  if (child !== undefined && (child.length === 0 || child === '.' || child === '..' || child.includes('/') || /[\0\r\n]/u.test(child))) {
+    throw new Error('Invalid Linux Trash directory entry')
+  }
+  const suffix = child === undefined ? '' : `/${child}`
+  const value = `/proc/self/fd/${String(directory.fd.fd)}${suffix}`
+  if (value.length > MAX_PATH_LENGTH) throw new Error('Linux Trash path exceeds its limit')
+  return value
+}
+
+function sameIdentity(left: Readonly<{ dev: bigint; ino: bigint }>, right: Readonly<{ dev: bigint; ino: bigint }>): boolean {
+  return left.dev === right.dev && left.ino === right.ino
+}
+
+async function closeDescriptor(directory: AnchoredDirectory | undefined): Promise<void> {
+  await directory?.fd.close().catch(() => undefined)
+}
+
+async function openAnchoredChild(parent: AnchoredDirectory, child: string, trustedRoot: string): Promise<AnchoredDirectory | undefined> {
+  const target = descriptorPath(parent, child)
+  let before
+  try { before = await lstat(target, { bigint: true }) } catch (error) {
+    if (trashErrorCode(error) === 'ENOENT' || trashErrorCode(error) === 'ENOTDIR') return undefined
+    throw error
+  }
+  if (before.isSymbolicLink() || !before.isDirectory()) return undefined
+  let fd: FileHandle
+  try {
+    fd = await open(target, O_RDONLY | O_DIRECTORY | O_NOFOLLOW)
+  } catch (error) {
+    if (trashErrorCode(error) === 'ENOENT' || trashErrorCode(error) === 'ENOTDIR' || trashErrorCode(error) === 'ELOOP') return undefined
+    throw error
+  }
+  let keepOpen = false
+  try {
+    const after = await fd.stat({ bigint: true })
+    if (!after.isDirectory() || !sameIdentity(before, after)) return undefined
+    const canonical = await realpath(`/proc/self/fd/${String(fd.fd)}`)
+    if (!strictChildOrSame(trustedRoot, canonical)) return undefined
+    keepOpen = true
+    return Object.freeze({ canonical, dev: after.dev, fd, ino: after.ino })
+  } catch (error) {
+    if (trashErrorCode(error) === 'ENOENT' || trashErrorCode(error) === 'ENOTDIR' || trashErrorCode(error) === 'ELOOP') return undefined
+    throw error
+  } finally {
+    // The returned descriptor is deliberately kept open; all other paths close here.
+    if (!keepOpen) await fd.close().catch(() => undefined)
+  }
+}
+
+async function openAnchoredRoot(): Promise<AnchoredDirectory> {
+  let fd: FileHandle
+  try { fd = await open('/', O_RDONLY | O_DIRECTORY | O_NOFOLLOW) } catch { throw new Error('Linux Trash descriptor safety is unavailable') }
+  try {
+    const stat = await fd.stat({ bigint: true })
+    if (!stat.isDirectory()) throw new Error('Linux Trash descriptor safety is unavailable')
+    const canonical = await realpath(`/proc/self/fd/${String(fd.fd)}`)
+    if (canonical !== '/') throw new Error('Linux Trash descriptor safety is unavailable')
+    return Object.freeze({ canonical, dev: stat.dev, fd, ino: stat.ino })
+  } catch {
+    await fd.close().catch(() => undefined)
+    throw new Error('Linux Trash descriptor safety is unavailable')
+  }
+}
+
+async function openAnchoredPath(absolutePath: string): Promise<AnchoredDirectory | undefined> {
+  const normalized = path.posix.resolve(absolutePath)
+  const root = await openAnchoredRoot()
+  const opened: AnchoredDirectory[] = [root]
+  let keepFinal = false
+  try {
+    for (const child of normalized.split('/').filter(Boolean)) {
+      const parent = opened.at(-1)!
+      const next = await openAnchoredChild(parent, child, '/')
+      if (next === undefined) return undefined
+      opened.push(next)
     }
-    try {
-      while (visited < MAX_TRASH_ENTRIES) {
+    keepFinal = true
+    return opened.at(-1)!
+  } finally {
+    // Keep only the final descriptor; every ancestor is still an anchor for its child.
+    // The final descriptor is returned and closed by the caller.
+    for (const directory of (keepFinal ? opened.slice(0, -1) : opened).toReversed()) await closeDescriptor(directory)
+  }
+}
+
+async function revalidateDirectory(directory: AnchoredDirectory, trustedRoot: string): Promise<boolean> {
+  try {
+    const stat = await directory.fd.stat({ bigint: true })
+    if (!stat.isDirectory() || !sameIdentity(directory, stat)) return false
+    const canonical = await realpath(`/proc/self/fd/${String(directory.fd.fd)}`)
+    return strictChildOrSame(trustedRoot, canonical)
+  } catch { return false }
+}
+
+async function removeAnchoredTree(
+  directory: AnchoredDirectory,
+  trustedRoot: string,
+  depth: number,
+  state: { visited: number },
+  deadline: number,
+  signal: AbortSignal,
+): Promise<void> {
+  ensureTrashLive(signal, deadline)
+  if (!await revalidateDirectory(directory, trustedRoot)) return
+  let entries: Dir
+  try { entries = await opendir(descriptorPath(directory), { bufferSize: 32 }) } catch (error) {
+    if (trashErrorCode(error) === 'ENOENT' || trashErrorCode(error) === 'ENOTDIR') return
+    throw error
+  }
+  try {
+    for await (const entry of entries) {
+      ensureTrashLive(signal, deadline)
+      if (state.visited >= MAX_TRASH_ENTRIES) return
+      state.visited += 1
+      const child = entry.name
+      if (child.length === 0 || child.length > MAX_PATH_LENGTH || child === '.' || child === '..' || /[\0\r\n/]/u.test(child)) continue
+      const target = descriptorPath(directory, child)
+      let stats
+      try { stats = await lstat(target, { bigint: true }) } catch (error) {
+        if (trashErrorCode(error) === 'ENOENT' || trashErrorCode(error) === 'ENOTDIR') continue
+        throw error
+      }
+      ensureTrashLive(signal, deadline)
+      if (stats.isSymbolicLink() || (!stats.isFile() && !stats.isDirectory())) continue
+      if (stats.isDirectory()) {
+        if (depth >= MAX_TRASH_DEPTH) continue
+        const nested = await openAnchoredChild(directory, child, trustedRoot)
+        if (nested === undefined) continue
+        try {
+          if (sameIdentity(stats, nested)) await removeAnchoredTree(nested, trustedRoot, depth + 1, state, deadline, signal)
+        } finally { await closeDescriptor(nested) }
         ensureTrashLive(signal, deadline)
-        const entry: Dirent | null = await directory.read()
-        ensureTrashLive(signal, deadline)
-        if (entry === null) break
-        visited += 1
-        const target = path.posix.join(current.directory, entry.name)
-        if (target.length > MAX_PATH_LENGTH) continue
-        let stats
-        try { stats = await lstat(target, { bigint: true }) } catch (error) {
-          if (trashErrorCode(error) === 'ENOENT' || trashErrorCode(error) === 'ENOTDIR') continue
-          throw error
+        if (!await revalidateDirectory(directory, trustedRoot)) return
+        try { await rmdir(target) } catch (error) {
+          if (!['ENOENT', 'ENOTEMPTY', 'ENOTDIR'].includes(trashErrorCode(error) ?? '')) throw error
         }
-        ensureTrashLive(signal, deadline)
-        if (stats.isSymbolicLink()) continue
-        if (stats.isDirectory()) {
-          if (current.depth < MAX_TRASH_DEPTH) queue.push({ depth: current.depth + 1, directory: target })
-        } else if (stats.isFile()) {
-          try { await unlink(target) } catch (error) {
-            if (trashErrorCode(error) !== 'ENOENT') throw error
-          }
-          ensureTrashLive(signal, deadline)
+      } else {
+        if (!await revalidateDirectory(directory, trustedRoot)) return
+        try { await unlink(target) } catch (error) {
+          if (trashErrorCode(error) !== 'ENOENT') throw error
         }
       }
-    } finally { await directory.close().catch(() => undefined) }
-  }
-  for (const entry of queue.toReversed()) {
-    if (Date.now() >= deadline || signal.aborted) break
-    try { await rmdir(entry.directory) } catch (error) {
-      if (!['ENOENT', 'ENOTEMPTY', 'ENOTDIR'].includes(trashErrorCode(error) ?? '')) throw error
     }
+  } finally { await entries.close().catch(() => undefined) }
+}
+
+async function withTrustedTrashDirectory(
+  homePath: string,
+  name: 'files' | 'info',
+  signal: AbortSignal,
+  deadline: number,
+): Promise<void> {
+  if (!path.posix.isAbsolute(homePath) || homePath.length > MAX_PATH_LENGTH || /[\0\r\n]/u.test(homePath)) return
+  assertDescriptorSafety()
+  const home = path.posix.resolve(homePath)
+  const trashPath = path.posix.join(home, '.local', 'share', 'Trash')
+  if (!strictChild(home, trashPath)) return
+  const trash = await openAnchoredPath(trashPath)
+  if (trash === undefined) return
+  let target: AnchoredDirectory | undefined
+  try {
+    target = await openAnchoredChild(trash, name, trash.canonical)
+    if (target === undefined) return
+    await removeAnchoredTree(target, trash.canonical, 0, { visited: 0 }, deadline, signal)
+  } finally {
+    await closeDescriptor(target)
+    await closeDescriptor(trash)
   }
 }
 
@@ -212,9 +325,7 @@ export async function emptyLauncherLinuxTrash(homePath: string, signal: AbortSig
   const deadline = Date.now() + timeoutMs
   for (const name of ['files', 'info'] as const) {
     ensureTrashLive(signal, deadline)
-    const root = await trustedTrashDirectory(homePath, name)
-    ensureTrashLive(signal, deadline)
-    if (root !== undefined) await removeTrashTree(root, deadline, signal)
+    await withTrustedTrashDirectory(homePath, name, signal, deadline)
   }
 }
 

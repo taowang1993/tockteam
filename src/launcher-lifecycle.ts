@@ -247,16 +247,23 @@ export class LauncherLifecycleController {
     activateWorkbench()
   }
 
-  async invokeCommand(command: LauncherLifecycleCommand): Promise<void> {
+  async invokeCommand(command: LauncherLifecycleCommand, signal?: AbortSignal): Promise<void> {
+    const check = (): void => {
+      if (this.disposed) throw new Error('Launcher lifecycle controller is disposed')
+      if (signal?.aborted) throw signal.reason instanceof Error ? signal.reason : new Error('TockLauncher lifecycle command canceled')
+    }
+    check()
     switch (command) {
       case 'centerWindow':
       case 'show':
         await this.args.overlay.show()
+        check()
         return
       case 'disableHotkey':
       case 'enableHotkey': {
         const enabled = command === 'enableHotkey'
         await this.args.updateSetting('general.hotkey.enabled', enabled)
+        check()
         this.args.overlay.setShortcutEnabled(enabled)
         return
       }
@@ -264,11 +271,14 @@ export class LauncherLifecycleController {
       case 'openExtensions':
       case 'openSettings':
         await this.args.openWorkbenchSettings()
+        check()
         return
       case 'rescanExtensions':
         await this.args.rescan()
+        check()
         return
       case 'quit':
+        check()
         this.args.requestSecureQuit('launcher-command-quit')
         return
     }

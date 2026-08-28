@@ -5,7 +5,7 @@ import { join } from 'node:path'
 import test from 'node:test'
 import { emptyLauncherLinuxTrash } from '../src/launcher-os-process.ts'
 
-test('Linux trash deletion is bounded, home-derived, and no-follow', async () => {
+test('Linux trash deletion is bounded, home-derived, and no-follow', { skip: process.platform !== 'linux' }, async () => {
   const home = await realpath(await mkdtemp(join(tmpdir(), 'tockteam-trash-')))
   const trash = join(home, '.local', 'share', 'Trash')
   await mkdir(join(trash, 'files'), { recursive: true })
@@ -18,7 +18,7 @@ test('Linux trash deletion is bounded, home-derived, and no-follow', async () =>
   await rm(home, { recursive: true, force: true })
 })
 
-test('Linux trash deletion rejects a symlinked fixed directory', async () => {
+test('Linux trash deletion rejects a symlinked fixed directory', { skip: process.platform !== 'linux' }, async () => {
   const home = await realpath(await mkdtemp(join(tmpdir(), 'tockteam-trash-link-')))
   const outside = await realpath(await mkdtemp(join(tmpdir(), 'tockteam-trash-outside-')))
   await mkdir(join(home, '.local', 'share'), { recursive: true })

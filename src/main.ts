@@ -232,12 +232,31 @@ let launcherNetwork: ReturnType<typeof createLauncherNetworkExtensions> | undefi
 let launcherOs: ReturnType<typeof createLauncherOsExtensions> | undefined
 let launcherPersistentSetsSync: (() => void) | undefined
 let launcherActionsClear: (() => void) | undefined
+let launcherOwnerReady: Promise<void> = Promise.resolve()
+let launcherOwnerGeneration = 0
 const launcherSettingsOperations = createLauncherSettingsOperations({ isUnavailable: () => quitting })
 const runtimeStartGate = new RuntimeStartGate<void>()
 const launcherWindowRegistry = new LauncherWindowRegistry()
 const execFileAsync = promisify(execFile)
 const launcherToggleQueue = new LauncherToggleIntentQueue()
 let launcherTrayOwner: SingleOwnedTray<Tray> | undefined
+
+function launcherAbortError(signal: AbortSignal): Error {
+  return signal.reason instanceof Error ? signal.reason : new Error('TockLauncher operation canceled')
+}
+
+async function launcherAwaitAbortable<T>(operation: Promise<T>, signal: AbortSignal): Promise<T> {
+  const pending = Promise.resolve(operation)
+  void pending.catch(() => undefined)
+  if (signal.aborted) throw launcherAbortError(signal)
+  let onAbort!: () => void
+  const canceled = new Promise<never>((_resolve, reject) => {
+    onAbort = () => { reject(launcherAbortError(signal)) }
+    signal.addEventListener('abort', onAbort, { once: true })
+  })
+  try { return await Promise.race([pending, canceled]) }
+  finally { signal.removeEventListener('abort', onAbort) }
+}
 const launcherThemeProjector = createLauncherThemeProjector()
 const workbenchRouteDelivery = createLauncherWorkbenchRouteDelivery<BrowserWindow>((window: BrowserWindow, route: LauncherWorkbenchRoute) => {
   window.webContents.send(LAUNCHER_WORKBENCH_ROUTE_CHANNEL, route)
@@ -1252,17 +1271,20 @@ function initializeLauncher(): void {
   launcherNetwork = network
   const os = createLauncherOsExtensions({
     effects: {
-      confirmPrivilegedAction: async ({ detail, title }) => {
+      confirmPrivilegedAction: async ({ detail, title }, signal) => {
+        if (signal.aborted) throw launcherAbortError(signal)
         const owner = mainWindow
-        const result = owner === undefined || owner.isDestroyed()
-          ? await dialog.showMessageBox({ buttons: ['Continue', 'Cancel'], cancelId: 1, defaultId: 1, detail, message: title, title: PRODUCT_NAME, type: 'warning' })
-          : await dialog.showMessageBox(owner, { buttons: ['Continue', 'Cancel'], cancelId: 1, defaultId: 1, detail, message: title, title: PRODUCT_NAME, type: 'warning' })
+        const pending = owner === undefined || owner.isDestroyed()
+          ? dialog.showMessageBox({ buttons: ['Continue', 'Cancel'], cancelId: 1, defaultId: 1, detail, message: title, title: PRODUCT_NAME, type: 'warning' })
+          : dialog.showMessageBox(owner, { buttons: ['Continue', 'Cancel'], cancelId: 1, defaultId: 1, detail, message: title, title: PRODUCT_NAME, type: 'warning' })
+        const result = await launcherAwaitAbortable(pending, signal)
         return result.response === 0
       },
-      invokeSystemCommand: async command => {
+      invokeSystemCommand: async (command, signal) => {
         try {
+          if (signal.aborted) throw launcherAbortError(signal)
           if (platform === 'Linux' && command === 'empty-trash') {
-            await emptyLauncherLinuxTrash(app.getPath('home'))
+            await emptyLauncherLinuxTrash(app.getPath('home'), signal)
             return
           }
           const invocation = resolveSystemCommandInvocation(platform, command)
@@ -1270,43 +1292,50 @@ function initializeLauncher(): void {
           await execFileAsync(invocation.executable, [...invocation.args], {
             maxBuffer: 64 * 1024,
             shell: false,
+            signal,
             timeout: 15_000,
             ...(platform === 'Windows' ? { windowsHide: true } : {}),
           })
         } catch { throw new Error('TockLauncher system command failed') }
       },
-      invokeUeliCommand: async command => {
+      invokeUeliCommand: async (command, signal) => {
         try {
+          if (signal.aborted) throw launcherAbortError(signal)
           if (launcherLifecycle === undefined) throw new Error('TockLauncher lifecycle is unavailable')
-          await launcherLifecycle.invokeCommand(command)
+          await launcherLifecycle.invokeCommand(command, signal)
         } catch { throw new Error('TockLauncher lifecycle command failed') }
       },
-      openControlPanelItem: async canonicalName => {
+      openControlPanelItem: async (canonicalName, signal) => {
         try {
+          if (signal.aborted) throw launcherAbortError(signal)
           if (platform !== 'Windows') throw new Error('Windows Control Panel is unavailable')
           const invocation = resolveWindowsControlPanelInvocation(canonicalName)
-          await execFileAsync(invocation.executable, [...invocation.args], { maxBuffer: 64 * 1024, shell: false, timeout: 15_000, windowsHide: true })
+          await execFileAsync(invocation.executable, [...invocation.args], { maxBuffer: 64 * 1024, shell: false, signal, timeout: 15_000, windowsHide: true })
         } catch { throw new Error('TockLauncher Control Panel action failed') }
       },
-      openSystemSetting: async target => {
+      openSystemSetting: async (target, signal) => {
         const catalog = platform === 'macOS' ? MACOS_SYSTEM_SETTINGS : WINDOWS_SYSTEM_SETTINGS
         if (!catalog.some(row => row.target === target)) throw new Error('System setting is not in the current catalog')
         try {
+          if (signal.aborted) throw launcherAbortError(signal)
           if (platform === 'Windows') {
-            await shell.openExternal(target)
+            await launcherAwaitAbortable(shell.openExternal(target), signal)
             return
           }
           const identity = await statLauncherPathIdentity(target)
+          if (signal.aborted) throw launcherAbortError(signal)
           if (identity === undefined || !await revalidateLauncherPath(target, { identity, kind: 'directory' })) throw new Error('System setting is unavailable')
-          const error = await shell.openPath(target)
+          if (signal.aborted) throw launcherAbortError(signal)
+          const error = await launcherAwaitAbortable(shell.openPath(target), signal)
           if (error) throw new Error('System setting is unavailable')
         } catch { throw new Error('TockLauncher system setting action failed') }
       },
-      toggleAppearance: async () => {
+      toggleAppearance: async signal => {
         if (tockTutorPreviousThemeSource !== undefined) throw new Error('System appearance is unavailable during a theme override')
         try {
+          if (signal.aborted) throw launcherAbortError(signal)
           const invocation = resolveAppearanceInvocation(platform, nativeTheme.shouldUseDarkColors)
-          await execFileAsync(invocation.executable, [...invocation.args], { maxBuffer: 64 * 1024, shell: false, timeout: 15_000, ...(platform === 'Windows' ? { windowsHide: true } : {}) })
+          await execFileAsync(invocation.executable, [...invocation.args], { maxBuffer: 64 * 1024, shell: false, signal, timeout: 15_000, ...(platform === 'Windows' ? { windowsHide: true } : {}) })
         } catch { throw new Error('TockLauncher appearance action failed') }
       },
     },
@@ -1411,12 +1440,23 @@ function initializeLauncher(): void {
     return await coreSearch.rescan()
   }
   launcherRescan = rescan
+  const onWindowCleared = (window: { webContents: { id: number } }): void => {
+    // Invalidate native OS work before revoking this renderer's public owner.
+    os.invalidate()
+    actions.clearOwner({ role: 'launcher', webContentsId: window.webContents.id })
+    const ownerGeneration = ++launcherOwnerGeneration
+    launcherOwnerReady = (async () => {
+      await os.waitForIdle()
+      if (ownerGeneration !== launcherOwnerGeneration || quitting) return
+      try { await rescan() } catch { /* the next owner will surface a bounded status */ }
+    })()
+  }
   const nextController = new LauncherOverlayController({
     createWindow: () => createLauncherWindow({ launcherSession, urlPolicy }),
     getDisplayWorkArea: () => screen.getDisplayNearestPoint(screen.getCursorScreenPoint()).workArea,
     globalShortcut,
     loadWindow: window => window.loadURL(urlPolicy.entryUrl).then(() => undefined),
-    onWindowCleared: window => actions.clearOwner({ role: 'launcher', webContentsId: window.webContents.id }),
+    onWindowCleared,
     getThemeProjection: () => launcherThemeProjector.get(),
     platform: process.platform,
     registerWindow: (_role, window) => launcherWindowRegistry.register(
@@ -1456,6 +1496,7 @@ function initializeLauncher(): void {
       ipcMain,
       rescan,
       search: async (searchTerm) => {
+        await launcherOwnerReady
         const surface = launcherSurfaceSettings()
         return await coreSearch.search(searchTerm, {
           fuzziness: surface.fuzziness,
