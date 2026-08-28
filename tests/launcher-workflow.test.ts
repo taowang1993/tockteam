@@ -87,6 +87,34 @@ test('Workflow approves all actions before effects and then executes sequentiall
   assert.deepEqual(events, ['confirm:OpenFile', 'confirm:OpenUrl', 'confirm:OpenTerminal', 'confirm:ExecuteCommand', 'file:/Users/max/report.txt', 'url:https://example.com/status', 'terminal:printf ok', 'execute-command', 'audit:completed'])
 })
 
+test('Workflow stops sequential effects at the first failure and audits failed', async () => {
+  const events: string[] = []
+  const effects: LauncherWorkflowEffects = {
+    auditWorkflow: async audit => { events.push(`audit:${audit.outcome}`) },
+    confirmAction: async () => true,
+    executeCommand: async () => { events.push('execute-command'); return { stderrBytes: 0, stdoutBytes: 0 } },
+    openFile: async () => { events.push('file') },
+    openTerminal: async () => { events.push('terminal') },
+    openUrl: async () => { events.push('url'); throw new Error('fixture failure') },
+  }
+  const provider = createLauncherWorkflow({
+    captureHomeIdentity: async () => HOME,
+    capturePath: async () => FILE,
+    effects,
+    enabledExtensionIds: () => ['Workflow'],
+    getSetting: (_key, fallback) => [WORKFLOW] as unknown as typeof fallback,
+    homeIdentity: HOME,
+    homePath: '/Users/max',
+    platform: 'macOS',
+    revalidatePath: async () => true,
+  })
+  const item = (await provider.loadIndexedItems())[0]!
+  await assert.rejects(provider.executeAction(record(item.defaultAction.argument)), /fixture failure/u)
+  assert.deepEqual(events, ['file', 'url', 'audit:failed'])
+  assert.equal(events.includes('terminal'), false)
+  assert.equal(events.includes('execute-command'), false)
+})
+
 test('Workflow denial leaves every effect untouched and audits denied', async () => {
   const events: string[] = []
   let deny = false
@@ -113,6 +141,32 @@ test('Workflow denial leaves every effect untouched and audits denied', async ()
   await assert.doesNotReject(provider.executeAction(record(item.defaultAction.argument)))
   assert.equal(events.at(-1), 'audit:denied')
   assert.equal(events.some(event => /^(file|url|terminal|execute-command):?/u.test(event)), false)
+})
+
+test('Workflow revalidates an exact file target after approval before opening it', async () => {
+  let validations = 0
+  let opened = false
+  const effects: LauncherWorkflowEffects = {
+    auditWorkflow: async () => undefined,
+    confirmAction: async () => true,
+    openFile: async () => { opened = true },
+    openTerminal: async () => undefined,
+    openUrl: async () => undefined,
+  }
+  const fileWorkflow: LauncherWorkflow = { ...WORKFLOW, actions: [WORKFLOW.actions[0]!] }
+  const provider = createLauncherWorkflow({
+    capturePath: async () => FILE,
+    effects,
+    enabledExtensionIds: () => ['Workflow'],
+    getSetting: (_key, fallback) => [fileWorkflow] as unknown as typeof fallback,
+    homePath: '/Users/max',
+    platform: 'macOS',
+    revalidatePath: async () => { validations += 1; return validations === 1 },
+  })
+  const item = (await provider.loadIndexedItems())[0]!
+  await assert.rejects(provider.executeAction(record(item.defaultAction.argument)), /file target changed/u)
+  assert.equal(opened, false)
+  assert.equal(validations >= 2, true)
 })
 
 test('Workflow rejects changed definitions and stale/replayed tokens', async () => {
