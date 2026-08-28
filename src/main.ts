@@ -1769,7 +1769,7 @@ function initializeLauncher(): void {
       return !/decline/iu.test(request.actionName)
     }
     const target = request.actionType === 'OpenFile'
-      ? `File: ${request.filePath}`
+      ? `File (${request.kind}): ${request.filePath}`
       : request.actionType === 'OpenUrl'
         ? `URL: ${request.url}`
         : request.actionType === 'OpenTerminal'
@@ -1782,7 +1782,7 @@ function initializeLauncher(): void {
     return result.response === 0
   }
   const workflow = createLauncherWorkflow({
-    captureHomeIdentity: async target => await captureLauncherHomeIdentity(target),
+    ...(launcherHomeIdentity === undefined ? {} : { captureHomeIdentity: async target => await captureLauncherHomeIdentity(target) }),
     ...(launcherWorkflowFixtureEnabled ? {
       capturePath: async (target: string) => ({ canonicalPath: target, identity: { dev: '0', ino: '0' }, kind: 'file' as const }),
       revalidatePath: async () => true,

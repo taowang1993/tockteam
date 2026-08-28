@@ -3,7 +3,7 @@ import { mkdtemp, mkdir, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import test from 'node:test'
-import { captureLauncherWorkflowPath, createLauncherWorkflow, type LauncherWorkflow, type LauncherWorkflowEffects } from '../src/launcher-workflow.ts'
+import { captureLauncherWorkflowPath, createLauncherWorkflow, normalizeLauncherWorkflowUrl, type LauncherWorkflow, type LauncherWorkflowEffects } from '../src/launcher-workflow.ts'
 import type { LauncherActionRecord } from '../src/launcher-actions.ts'
 
 const OWNER = Object.freeze({ role: 'launcher' as const, webContentsId: 41 })
@@ -61,6 +61,13 @@ test('Workflow path capture rejects symlink components, dot escapes, and special
   } finally {
     await rm(root, { recursive: true, force: true })
   }
+})
+
+test('Workflow URL normalization bounds expanded hrefs', () => {
+  const expanded = `https://example.com/${'é'.repeat(1_300)}`
+  assert.ok(expanded.length < 4_096)
+  assert.equal(normalizeLauncherWorkflowUrl(expanded), undefined)
+  assert.equal(normalizeLauncherWorkflowUrl('https://example.com/path'), 'https://example.com/path')
 })
 
 test('Workflow provider publishes ordered digest-token results without nested authority', async () => {
@@ -195,6 +202,40 @@ test('Workflow rejects changed definitions and stale/replayed tokens', async () 
   await assert.rejects(provider.executeAction(record(item.defaultAction.argument)), /stale|current main-owned/u)
   provider.invalidate('test')
   await assert.rejects(provider.executeAction(record(item.defaultAction.argument)), /current main-owned|stale/u)
+})
+
+test('Workflow file staging fails atomically and command staging requires startup identity', async () => {
+  const fileA: LauncherWorkflow = { id: 'file-a', name: 'File A', actions: [{ id: 'file', handlerId: 'OpenFile', name: 'File', args: { filePath: '/tmp/a' } }] }
+  const fileB: LauncherWorkflow = { id: 'file-b', name: 'File B', actions: [{ id: 'file', handlerId: 'OpenFile', name: 'File', args: { filePath: '/tmp/b' } }] }
+  const provider = createLauncherWorkflow({
+    capturePath: async target => target.endsWith('/a') ? FILE : undefined,
+    effects: { auditWorkflow: () => undefined, confirmAction: () => true, openFile: () => undefined, openTerminal: () => undefined, openUrl: () => undefined },
+    enabledExtensionIds: () => ['Workflow'], getSetting: (_key, fallback) => [fileA, fileB] as unknown as typeof fallback,
+    homePath: '/Users/max', platform: 'macOS',
+  })
+  assert.deepEqual(await provider.loadIndexedItems(), [])
+  const command: LauncherWorkflow = { id: 'command', name: 'Command', actions: [{ id: 'command', handlerId: 'ExecuteCommand', name: 'Command', args: { command: 'printf ok' } }] }
+  const noIdentity = createLauncherWorkflow({
+    captureHomeIdentity: async () => HOME,
+    effects: { auditWorkflow: () => undefined, confirmAction: () => true, openFile: () => undefined, openTerminal: () => undefined, openUrl: () => undefined },
+    enabledExtensionIds: () => ['Workflow'], getSetting: (_key, fallback) => [command] as unknown as typeof fallback,
+    homePath: '/Users/max', platform: 'macOS',
+  })
+  assert.deepEqual(await noIdentity.loadIndexedItems(), [])
+})
+
+test('Workflow confirmation includes the canonical file kind', async () => {
+  const requests: unknown[] = []
+  const directory: LauncherWorkflow = { id: 'directory', name: 'Directory', actions: [{ id: 'directory', handlerId: 'OpenFile', name: 'Open directory', args: { filePath: '/tmp/directory' } }] }
+  const provider = createLauncherWorkflow({
+    capturePath: async () => ({ ...FILE, canonicalPath: '/tmp/directory', kind: 'directory' as const }),
+    effects: { auditWorkflow: () => undefined, confirmAction: request => { requests.push(request); return true }, openFile: () => undefined, openTerminal: () => undefined, openUrl: () => undefined },
+    enabledExtensionIds: () => ['Workflow'], getSetting: (_key, fallback) => [directory] as unknown as typeof fallback,
+    homePath: '/Users/max', platform: 'macOS', revalidatePath: async () => true,
+  })
+  const item = (await provider.loadIndexedItems())[0]!
+  await provider.executeAction(record(item.defaultAction.argument))
+  assert.equal((requests[0] as { kind?: string }).kind, 'directory')
 })
 
 test('Workflow cancellation waits for the command effect and records cancellation', async () => {

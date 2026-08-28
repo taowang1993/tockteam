@@ -40,7 +40,7 @@ export type LauncherWorkflowAudit = Readonly<{
 }>
 
 export type LauncherWorkflowConfirmation =
-  | Readonly<{ actionName: string; actionType: 'OpenFile'; filePath: string; workflowName: string }>
+  | Readonly<{ actionName: string; actionType: 'OpenFile'; filePath: string; kind: 'directory' | 'file'; workflowName: string }>
   | Readonly<{ actionName: string; actionType: 'OpenUrl'; url: string; workflowName: string }>
   | Readonly<{
       actionName: string
@@ -290,11 +290,11 @@ export async function revalidateLauncherWorkflowPath(
     && sameIdentity(current.identity, expected.identity)
 }
 
-function normalizeWorkflowUrl(value: string): string | undefined {
+export function normalizeLauncherWorkflowUrl(value: string): string | undefined {
   if (typeof value !== 'string' || value.length === 0 || value.length > 4_096 || /[\0\r\n]/u.test(value)) return undefined
   try {
     const parsed = new URL(value)
-    if ((parsed.protocol !== 'http:' && parsed.protocol !== 'https:') || parsed.hostname.length === 0 || parsed.username || parsed.password) return undefined
+    if ((parsed.protocol !== 'http:' && parsed.protocol !== 'https:') || parsed.hostname.length === 0 || parsed.username || parsed.password || parsed.href.length > 4_096) return undefined
     return parsed.href
   } catch { return undefined }
 }
@@ -344,11 +344,13 @@ function commandResultBytes(result: LauncherWorkflowCommandResult): Readonly<{ s
   return Object.freeze({ stderrBytes, stdoutBytes })
 }
 
-function actionForConfirmation(action: LauncherWorkflowAction, workflow: LauncherWorkflow, homePath: string, canonicalFilePath?: string): LauncherWorkflowConfirmation {
+function actionForConfirmation(action: LauncherWorkflowAction, workflow: LauncherWorkflow, homePath: string, canonicalFilePath?: LauncherWorkflowPathTarget): LauncherWorkflowConfirmation {
   const base = { actionName: action.name, workflowName: workflow.name } as const
   switch (action.handlerId) {
-    case 'OpenFile': return { ...base, actionType: 'OpenFile', filePath: canonicalFilePath ?? action.args.filePath }
-    case 'OpenUrl': return { ...base, actionType: 'OpenUrl', url: normalizeWorkflowUrl(action.args.url)! }
+    case 'OpenFile':
+      if (canonicalFilePath === undefined) throw new Error('TockLauncher Workflow file target is unavailable')
+      return { ...base, actionType: 'OpenFile', filePath: canonicalFilePath.canonicalPath, kind: canonicalFilePath.kind }
+    case 'OpenUrl': return { ...base, actionType: 'OpenUrl', url: normalizeLauncherWorkflowUrl(action.args.url)! }
     case 'OpenTerminal': return { ...base, actionType: 'OpenTerminal', command: action.args.command, terminalId: action.args.terminalId, workingDirectory: homePath }
     case 'ExecuteCommand': return { ...base, actionType: 'ExecuteCommand', command: action.args.command, workingDirectory: homePath }
   }
@@ -419,9 +421,6 @@ export function createLauncherWorkflow(options: WorkflowOptions): Readonly<{
     const urlTargets = new Map<string, string>()
     let homeIdentity = options.homeIdentity
     if (homeIdentity !== undefined && !validIdentity(homeIdentity)) return undefined
-    if (workflow.actions.some(isCommandAction) && homeIdentity === undefined && options.captureHomeIdentity !== undefined) {
-      homeIdentity = await options.captureHomeIdentity(options.homePath, signal)
-    }
     homeIdentity = homeIdentity === undefined ? undefined : normalizedIdentity(homeIdentity)
     if (workflow.actions.some(isCommandAction) && homeIdentity === undefined) return undefined
     for (const action of workflow.actions) {
@@ -433,7 +432,7 @@ export function createLauncherWorkflow(options: WorkflowOptions): Readonly<{
         if (normalized === undefined) return undefined
         pathTargets.set(action.id, normalized)
       } else if (action.handlerId === 'OpenUrl') {
-        const normalized = normalizeWorkflowUrl(action.args.url)
+        const normalized = normalizeLauncherWorkflowUrl(action.args.url)
         if (normalized === undefined) return undefined
         urlTargets.set(action.id, normalized)
       } else if (action.handlerId === 'OpenTerminal') {
@@ -480,7 +479,7 @@ export function createLauncherWorkflow(options: WorkflowOptions): Readonly<{
           const known = await stageWorkflow(workflow, loadGeneration, controller.signal)
           if (known === undefined) {
             report(new Error('Workflow target is unavailable'))
-            continue
+            return Object.freeze([])
           }
           const token = serializeLauncherWorkflowToken(workflow)
           const requiresConfirmation = workflow.requiresConfirmation === true || workflow.actions.some(isCommandAction)
@@ -497,6 +496,7 @@ export function createLauncherWorkflow(options: WorkflowOptions): Readonly<{
         } catch (error) {
           if (controller.signal.aborted) throw error
           report(error)
+          if (workflow.actions.some(action => action.handlerId === 'OpenFile')) return Object.freeze([])
         }
       }
       if (closed || controller.signal.aborted || loadGeneration !== generation) throw abortError(controller.signal, 'TockLauncher Workflow load superseded')
@@ -574,7 +574,7 @@ export function createLauncherWorkflow(options: WorkflowOptions): Readonly<{
         const expected = known.pathTargets.get(action.id)
         if (expected === undefined || !await revalidatePath(action.args.filePath, expected, controller.signal)) throw new Error('TockLauncher Workflow file target changed')
       } else if (action.handlerId === 'OpenUrl') {
-        const normalized = normalizeWorkflowUrl(action.args.url)
+        const normalized = normalizeLauncherWorkflowUrl(action.args.url)
         if (normalized === undefined || known.urlTargets.get(action.id) !== normalized) throw new Error('TockLauncher Workflow URL target changed')
       } else if (action.handlerId === 'OpenTerminal') {
         if (!LAUNCHER_TERMINALS[options.platform].some(item => item.id === action.args.terminalId) || !terminalIsEnabled(options, action.args.terminalId)) throw new Error('TockLauncher Workflow terminal is unavailable')
@@ -586,7 +586,7 @@ export function createLauncherWorkflow(options: WorkflowOptions): Readonly<{
       ensureCurrent()
     }
     const confirm = async (action: LauncherWorkflowAction): Promise<boolean> => {
-      const request = actionForConfirmation(action, workflow, options.homePath, action.handlerId === 'OpenFile' ? known.pathTargets.get(action.id)?.canonicalPath : undefined)
+      const request = actionForConfirmation(action, workflow, options.homePath, action.handlerId === 'OpenFile' ? known.pathTargets.get(action.id) : undefined)
       if (options.effects.confirmActionWithSignal !== undefined) return (await awaitAbortable(() => options.effects.confirmActionWithSignal!(request, controller.signal), controller.signal)) === true
       return (await awaitAbortable(() => options.effects.confirmAction(request), controller.signal)) === true
     }
@@ -598,7 +598,7 @@ export function createLauncherWorkflow(options: WorkflowOptions): Readonly<{
         if (options.effects.openFileWithSignal !== undefined) await awaitAbortable(() => options.effects.openFileWithSignal!(target.canonicalPath, controller.signal), controller.signal)
         else await awaitAbortable(() => options.effects.openFile(target.canonicalPath), controller.signal)
       } else if (action.handlerId === 'OpenUrl') {
-        const url = normalizeWorkflowUrl(action.args.url)
+        const url = normalizeLauncherWorkflowUrl(action.args.url)
         if (url === undefined) throw new Error('TockLauncher Workflow URL target is unavailable')
         if (options.effects.openUrlWithSignal !== undefined) await awaitAbortable(() => options.effects.openUrlWithSignal!(url, controller.signal), controller.signal)
         else await awaitAbortable(() => options.effects.openUrl(url), controller.signal)
