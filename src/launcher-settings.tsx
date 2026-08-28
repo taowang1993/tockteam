@@ -113,10 +113,10 @@ function Field({ title, description, children }: Readonly<{ title: string; descr
   return (
     <div className="flex min-w-0 flex-wrap items-center justify-between gap-3 border-b border-border/60 py-3 last:border-b-0">
       <div className="min-w-0 flex-1">
-        <div className="text-sm font-medium text-foreground">{title}</div>
+        <div className="text-sm font-medium text-foreground">{launcherFixedText(title)}</div>
         {description ? <div className="mt-1 max-w-2xl text-xs leading-5 text-muted-foreground">{launcherFixedText(description)}</div> : null}
       </div>
-      {children ? <div className="flex shrink-0 items-center gap-2">{children}</div> : null}
+      {children ? <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2">{children}</div> : null}
     </div>
   )
 }
