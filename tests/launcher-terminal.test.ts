@@ -34,6 +34,16 @@ function harness(settings: Record<string, unknown> = {}) {
   return { calls, provider }
 }
 
+test('Terminal Launcher rejects unknown platform authority instead of treating it as Linux', () => {
+  assert.throws(() => createLauncherTerminal({
+    effects: { auditLaunch: () => {}, confirmLaunch: async () => true, launchTerminal: () => {} },
+    enabledExtensionIds: () => ['TerminalLauncher'],
+    getSetting: <T>(_key: string, fallback: T): T => fallback,
+    homePath: '/tmp',
+    platform: 'Solaris' as never,
+  }), /unsupported/iu)
+})
+
 test('Terminal Launcher preserves the finite catalog and platform defaults', () => {
   assert.deepEqual(LAUNCHER_TERMINALS.Linux, [])
   assert.deepEqual(LAUNCHER_TERMINALS.macOS.map(item => [item.id, item.name, item.isEnabledByDefault, item.assetKey]), [

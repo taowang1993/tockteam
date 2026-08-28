@@ -193,6 +193,7 @@ export function createLauncherTerminal(options: LauncherTerminalOptions): Readon
   searchInstant: (searchTerm: string) => Promise<Readonly<{ after: readonly LauncherInternalResultItem[]; before: readonly LauncherInternalResultItem[] }>>
   waitForIdle: () => Promise<void>
 }> {
+  if (options.platform !== 'Linux' && options.platform !== 'macOS' && options.platform !== 'Windows') throw new Error('Unsupported TockLauncher platform')
   if (!homeIsValid(options.platform, options.homePath)) throw new Error('Invalid TockLauncher Terminal working directory')
   const workingDirectory = options.homePath
   const activeControllers = new Set<AbortController>()

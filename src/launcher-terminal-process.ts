@@ -86,6 +86,7 @@ export function resolveTerminalInvocation(
   platform: LauncherTerminalPlatform,
   request: LauncherTerminalLaunchRequest,
 ): LauncherTerminalInvocation {
+  if (!isKnownPlatform(platform)) throw new Error('Unsupported TockLauncher platform')
   if (platform === 'Linux') throw new Error('Terminal Launcher is unsupported on Linux')
   assertRequest(platform, request)
   if (platform === 'macOS') {
