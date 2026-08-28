@@ -25,9 +25,11 @@ function harness(settings: Record<string, unknown> = {}) {
     launchTerminal: async value => { calls.launch.push(value) },
   }
   const provider = createLauncherTerminal({
+    captureHomeIdentity: async () => ({ dev: '1', ino: '2' }),
     effects,
     enabledExtensionIds: () => ['TerminalLauncher'],
     getSetting: <T>(key: string, fallback: T): T => Object.hasOwn(settings, key) ? settings[key] as T : fallback,
+    homeIdentity: { dev: '1', ino: '2' },
     homePath: '/Users/max',
     platform: 'macOS',
   })
@@ -39,6 +41,7 @@ test('Terminal Launcher rejects unknown platform authority instead of treating i
     effects: { auditLaunch: () => {}, confirmLaunch: async () => true, launchTerminal: () => {} },
     enabledExtensionIds: () => ['TerminalLauncher'],
     getSetting: <T>(_key: string, fallback: T): T => fallback,
+    homeIdentity: undefined,
     homePath: '/tmp',
     platform: 'Solaris' as never,
   }), /unsupported/iu)
@@ -89,6 +92,41 @@ test('Terminal Launcher extracts with slice and trim, preserving no-separator co
   })
 })
 
+test('Terminal Launcher never lazily replaces an unavailable startup home identity', async () => {
+  let captures = 0
+  const provider = createLauncherTerminal({
+    captureHomeIdentity: async () => { captures += 1; return { dev: '9', ino: '9' } },
+    effects: { auditLaunch: () => {}, confirmLaunch: async () => true, launchTerminal: () => {} },
+    enabledExtensionIds: () => ['TerminalLauncher'],
+    getSetting: <T>(_key: string, fallback: T): T => fallback,
+    homePath: '/Users/max',
+    homeIdentity: undefined,
+    platform: 'macOS',
+  })
+  assert.deepEqual(await provider.searchInstant('> replacement'), { after: [], before: [] })
+  assert.equal(captures, 0)
+  await provider.close()
+})
+
+test('Terminal Launcher publishes only the latest concurrent query action map', async () => {
+  const identity = { dev: '1', ino: '2' }
+  const provider = createLauncherTerminal({
+    captureHomeIdentity: async () => identity,
+    effects: { auditLaunch: () => {}, confirmLaunch: async () => true, launchTerminal: () => {} },
+    enabledExtensionIds: () => ['TerminalLauncher'],
+    getSetting: <T>(_key: string, fallback: T): T => fallback,
+    homePath: '/Users/max',
+    homeIdentity: identity,
+    platform: 'macOS',
+  })
+  const [first, latest] = await Promise.all([provider.searchInstant('> first'), provider.searchInstant('> latest')])
+  assert.equal(first.after[0]?.name, 'first')
+  assert.equal(latest.after[0]?.name, 'latest')
+  await assert.rejects(provider.executeAction(record(first.after[0]!)), /current|stale/u)
+  assert.equal(await provider.executeAction(record(latest.after[0]!)), true)
+  await provider.close()
+})
+
 test('Terminal Launcher rejects malformed or oversized commands and unsupported Linux', async () => {
   const { provider } = harness()
   for (const value of ['>', '>   ', `>${'x'.repeat(513)}`, '>bad\0value', '>bad\rvalue', '>bad\nvalue']) {
@@ -98,10 +136,36 @@ test('Terminal Launcher rejects malformed or oversized commands and unsupported 
     effects: { auditLaunch: () => {}, confirmLaunch: async () => true, launchTerminal: () => {} },
     enabledExtensionIds: () => ['TerminalLauncher'],
     getSetting: <T>(_key: string, fallback: T): T => fallback,
+    homeIdentity: undefined,
     homePath: '/home/max',
     platform: 'Linux',
   })
   assert.deepEqual(await linux.searchInstant('> echo nope'), { after: [], before: [] })
+})
+
+test('Terminal Launcher validates persisted terminal IDs as a complete array before platform filtering', async () => {
+  for (const configured of [['iTerm', 'iTerm'], ['iTerm', 'Unknown Terminal']]) {
+    const provider = createLauncherTerminal({
+      effects: { auditLaunch: () => {}, confirmLaunch: async () => true, launchTerminal: () => {} },
+      enabledExtensionIds: () => ['TerminalLauncher'],
+      getSetting: <T>(key: string, fallback: T): T => key.endsWith('terminalIds') ? configured as T : fallback,
+      homePath: '/Users/max',
+      homeIdentity: { dev: '1', ino: '2' },
+      platform: 'macOS',
+    })
+    assert.deepEqual((await provider.searchInstant('> defaults')).after.map(item => item.imageKey), ['terminal-macos'])
+    await provider.close()
+  }
+  const valid = createLauncherTerminal({
+    effects: { auditLaunch: () => {}, confirmLaunch: async () => true, launchTerminal: () => {} },
+    enabledExtensionIds: () => ['TerminalLauncher'],
+    getSetting: <T>(key: string, fallback: T): T => key.endsWith('terminalIds') ? ['iTerm'] as T : fallback,
+    homePath: '/Users/max',
+    homeIdentity: { dev: '1', ino: '2' },
+    platform: 'macOS',
+  })
+  assert.deepEqual((await valid.searchInstant('> valid')).after.map(item => item.imageKey), ['terminal-iterm'])
+  await valid.close()
 })
 
 test('Terminal Launcher filters cross-platform settings without granting foreign terminal IDs', async () => {
@@ -109,6 +173,7 @@ test('Terminal Launcher filters cross-platform settings without granting foreign
     effects: { auditLaunch: () => {}, confirmLaunch: async () => true, launchTerminal: () => {} },
     enabledExtensionIds: () => ['TerminalLauncher'],
     getSetting: <T>(key: string, fallback: T): T => key.endsWith('terminalIds') ? ['Terminal', 'Command Prompt'] as T : fallback,
+    homeIdentity: { dev: '1', ino: '2' },
     homePath: 'C:\\Users\\max',
     platform: 'Windows',
   })
@@ -144,9 +209,11 @@ test('Terminal Launcher rejects stale actions after a newer query and denied con
     launchTerminal: request => { launches.push(request.command) },
   }
   const provider = createLauncherTerminal({
+    captureHomeIdentity: async () => ({ dev: '1', ino: '2' }),
     effects,
     enabledExtensionIds: () => ['TerminalLauncher'],
     getSetting: <T>(_key: string, fallback: T): T => fallback,
+    homeIdentity: { dev: '1', ino: '2' },
     homePath: '/Users/max',
     platform: 'macOS',
   })
@@ -190,9 +257,11 @@ test('Terminal Launcher rechecks extension enablement before an approved effect'
   let enabled = true
   let launches = 0
   const provider = createLauncherTerminal({
+    captureHomeIdentity: async () => ({ dev: '1', ino: '2' }),
     effects: { auditLaunch: () => {}, confirmLaunch: async () => true, launchTerminal: () => { launches += 1 } },
     enabledExtensionIds: () => enabled ? ['TerminalLauncher'] : [],
     getSetting: <T>(_key: string, fallback: T): T => fallback,
+    homeIdentity: { dev: '1', ino: '2' },
     homePath: '/Users/max',
     platform: 'macOS',
   })
@@ -215,8 +284,10 @@ test('Terminal Launcher cancels a pending confirmation on invalidation', async (
       },
       launchTerminal: () => {},
     },
+    captureHomeIdentity: async () => ({ dev: '1', ino: '2' }),
     enabledExtensionIds: () => ['TerminalLauncher'],
     getSetting: <T>(_key: string, fallback: T): T => fallback,
+    homeIdentity: { dev: '1', ino: '2' },
     homePath: '/Users/max',
     platform: 'macOS',
   })

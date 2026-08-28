@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto'
 import type { LauncherActionRecord, LauncherInternalAction, LauncherInternalResultItem } from './launcher-actions.ts'
 import {
   LAUNCHER_TERMINALS,
+  isLauncherTerminalIds,
   isLauncherTerminalPrefix,
   launcherTerminalDefaults,
   type LauncherTerminalDefinition,
@@ -48,7 +49,7 @@ type LauncherTerminalOptions = Readonly<{
   captureHomeIdentity?: (path: string, signal: AbortSignal) => Promise<LauncherTerminalPathIdentity | undefined>
   getHomePath?: () => string
   getSetting: <T>(key: string, fallback: T) => T
-  homeIdentity?: LauncherTerminalPathIdentity
+  homeIdentity: LauncherTerminalPathIdentity | undefined
   homePath: string
   onProviderError?: (error: Error) => void
   platform: LauncherTerminalPlatform
@@ -63,7 +64,7 @@ type TerminalActionArgument = LauncherTerminalLaunchRequest & Readonly<{
 type KnownAction = Readonly<{
   argument: TerminalActionArgument
   generation: number
-  homeIdentity?: LauncherTerminalPathIdentity
+  homeIdentity: LauncherTerminalPathIdentity
   settingsDigest: string
 }>
 
@@ -153,9 +154,7 @@ function settingsState(options: LauncherTerminalOptions): Readonly<{ ids: readon
   const prefix = isLauncherTerminalPrefix(prefixValue) ? prefixValue : '>'
   const defaults = launcherTerminalDefaults(options.platform)
   const configured = options.getSetting('extension[TerminalLauncher].terminalIds', defaults)
-  const configuredIds = Array.isArray(configured)
-    ? configured.filter((id): id is LauncherTerminalId => typeof id === 'string' && LAUNCHER_TERMINALS[options.platform].some(item => item.id === id))
-    : defaults
+  const configuredIds = isLauncherTerminalIds(configured) ? configured : defaults
   const ids = LAUNCHER_TERMINALS[options.platform]
     .filter(item => configuredIds.includes(item.id))
     .map(item => item.id)
@@ -207,7 +206,7 @@ export function createLauncherTerminal(options: LauncherTerminalOptions): Readon
   const activeWork = new Set<Promise<unknown>>()
   let currentActions = new Map<string, KnownAction>()
   let generation = 0
-  let startupHomeIdentity = options.homeIdentity
+  const startupHomeIdentity = options.homeIdentity
   let closed = false
 
   const track = <T>(operation: () => Promise<T>): Promise<T> => {
@@ -234,17 +233,13 @@ export function createLauncherTerminal(options: LauncherTerminalOptions): Readon
   )
   const searchInstant = async (searchTerm: string) => track(async () => {
     if (closed) return emptyResult()
-    ++generation
+    const searchGeneration = ++generation
     currentActions = new Map()
-    if (options.platform === 'Linux' || !options.enabledExtensionIds().includes('TerminalLauncher') || typeof searchTerm !== 'string') return emptyResult()
+    if (options.platform === 'Linux' || !options.enabledExtensionIds().includes('TerminalLauncher') || typeof searchTerm !== 'string' || startupHomeIdentity === undefined) return emptyResult()
     const settings = settingsState(options)
     if (!searchTerm.startsWith(settings.prefix)) return emptyResult()
     const command = searchTerm.slice(settings.prefix.length).trim()
     if (!commandIsValid(command)) return emptyResult()
-    if (startupHomeIdentity === undefined && options.captureHomeIdentity !== undefined) {
-      startupHomeIdentity = await options.captureHomeIdentity(workingDirectory, new AbortController().signal)
-    }
-    if (options.captureHomeIdentity !== undefined && startupHomeIdentity === undefined) return emptyResult()
     const nextActions = new Map<string, KnownAction>()
     const items = LAUNCHER_TERMINALS[options.platform]
       .filter((terminal: LauncherTerminalDefinition) => settings.ids.includes(terminal.id))
@@ -253,8 +248,8 @@ export function createLauncherTerminal(options: LauncherTerminalOptions): Readon
         const argument = serializeAction(value)
         nextActions.set(argument, Object.freeze({
           argument: value,
-          generation,
-          ...(startupHomeIdentity === undefined ? {} : { homeIdentity: startupHomeIdentity }),
+          generation: searchGeneration,
+          homeIdentity: startupHomeIdentity,
           settingsDigest: settings.digest,
         }))
         const action: LauncherInternalAction = Object.freeze({
@@ -274,7 +269,9 @@ export function createLauncherTerminal(options: LauncherTerminalOptions): Readon
           sourceExtension: 'TerminalLauncher',
         })
       })
-    if (!closed) currentActions = nextActions
+    const currentSettings = settingsState(options)
+    if (closed || generation !== searchGeneration || !options.enabledExtensionIds().includes('TerminalLauncher') || currentSettings.digest !== settings.digest) return emptyResult()
+    currentActions = nextActions
     return Object.freeze({ after: Object.freeze(items), before: Object.freeze([]) })
   })
   const loadIndexedItems = async (signal?: AbortSignal, _preserveSignal?: AbortSignal): Promise<readonly LauncherInternalResultItem[]> => {
@@ -299,11 +296,9 @@ export function createLauncherTerminal(options: LauncherTerminalOptions): Readon
       if (controller.signal.aborted) return false
       const currentHome = options.getHomePath?.() ?? workingDirectory
       if (currentHome !== workingDirectory) return false
-      if (known.homeIdentity !== undefined) {
-        if (options.captureHomeIdentity === undefined) return false
-        const current = await options.captureHomeIdentity(workingDirectory, controller.signal)
-        if (current === undefined || current.dev !== known.homeIdentity.dev || current.ino !== known.homeIdentity.ino) return false
-      }
+      if (options.captureHomeIdentity === undefined) return false
+      const current = await options.captureHomeIdentity(workingDirectory, controller.signal)
+      if (current === undefined || current.dev !== known.homeIdentity.dev || current.ino !== known.homeIdentity.ino) return false
       return options.validateWorkingDirectory === undefined || await options.validateWorkingDirectory(workingDirectory, controller.signal)
     }
     const auditBase = Object.freeze({ commandLength: request.command.length, commandSha256: createHash('sha256').update(request.command, 'utf8').digest('hex'), terminalId: request.terminalId, workingDirectory })

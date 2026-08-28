@@ -1673,7 +1673,7 @@ function initializeLauncher(): void {
     captureHomeIdentity: async target => await captureLauncherHomeIdentity(target),
     getHomePath: () => app.getPath('home'),
     getSetting: (key, fallback) => repository.getSetting(key, fallback),
-    ...(launcherHomeIdentity === undefined ? {} : { homeIdentity: launcherHomeIdentity }),
+    homeIdentity: launcherHomeIdentity,
     homePath: launcherHomePath,
     onProviderError: error => { appendLog('desktop', `TockLauncher Terminal Launcher failed: ${error.name}`) },
     platform,
