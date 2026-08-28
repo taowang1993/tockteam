@@ -69,5 +69,6 @@ test('OS catalogs and fixed effects match the pinned Ueli v9.29.0 tuples', () =>
   assert.equal(digest([resolveAppearanceInvocation('Windows', true), resolveAppearanceInvocation('Windows', false)]), '2d06332a07817ba79efb24746ed1e14b54493ce26909ce860db4eb0fa84ece11')
   assert.equal(digest(resolveWindowsControlPanelScanInvocation()), 'b506b03ea91b1633dd2aab28b6dc4c08e8e432514fa81b45b42b85d8fcceea49')
   assert.equal(digest(resolveWindowsControlPanelInvocation('Microsoft.System')), '07fef61590c7301f3d7f3e21d6a2c7abbab370570c847d736a0cbfb4386bcc66')
-  assert.equal(digest(['Linux', 'macOS', 'Windows'].map(platform => ['AppearanceSwitcher', 'SystemCommands', 'SystemSettings', 'UeliCommand', 'WindowsControlPanel'].map(id => [platform, id, osExtensionSupported(id, platform)]))), 'abf5b631a6fde9324bfa3f1ae074b3fe71817d36994d27a67caecdd8fe4ddfbf')
+  const platforms: readonly ('Linux' | 'macOS' | 'Windows')[] = ['Linux', 'macOS', 'Windows']
+  assert.equal(digest(platforms.map(platform => ['AppearanceSwitcher', 'SystemCommands', 'SystemSettings', 'UeliCommand', 'WindowsControlPanel'].map(id => [platform, id, osExtensionSupported(id, platform)]))), 'abf5b631a6fde9324bfa3f1ae074b3fe71817d36994d27a67caecdd8fe4ddfbf')
 })
