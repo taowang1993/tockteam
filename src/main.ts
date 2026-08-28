@@ -136,6 +136,7 @@ import { createLauncherLocalExtensions, resolveLauncherEnabledExtensionIds } fro
 import { LAUNCHER_LOCAL_EXTENSION_DEFAULTS, LAUNCHER_LOCAL_EXTENSION_IDS } from './launcher-local-extension-config.ts'
 import type { LauncherLocalExtensionSettings } from './launcher-local-extension-contract.ts'
 import { isLauncherRendererSettingValue } from './launcher-settings-contract.ts'
+import { LAUNCHER_COMPOSITION, normalizeLauncherLocale, type LauncherProviderStatus } from './launcher-contract.ts'
 import { registerLauncherIpcHandlers } from './launcher-ipc.ts'
 import {
   executeTockTeamDestination,
@@ -1462,29 +1463,54 @@ function launcherSurfaceSettings(): import('./launcher-contract.ts').LauncherSur
   const snapshot = launcherSettingsSnapshot()
   const values = snapshot.values
   const context = launcherDefaultContext()
+  const platform = context.platform
   const boolValue = (key: string, fallback: boolean): boolean => typeof values[key] === 'boolean' ? values[key] as boolean : Boolean(resolveLauncherSettingDefault(key, context) ?? fallback)
   const numberValue = (key: string, fallback: number): number => typeof values[key] === 'number' && Number.isFinite(values[key]) ? values[key] as number : Number(resolveLauncherSettingDefault(key, context) ?? fallback)
+  const textValue = (key: string, fallback: string): string => typeof values[key] === 'string' && values[key].length > 0 ? values[key] as string : String(resolveLauncherSettingDefault(key, context) ?? fallback)
   const historyEnabled = boolValue('general.searchHistory.enabled', false)
   const historyLimit = Math.min(100, Math.max(1, numberValue('general.searchHistory.limit', 10)))
   const rawHistory = values['general.searchHistory.history']
   const history = historyEnabled && Array.isArray(rawHistory) ? rawHistory.filter(item => typeof item === 'string').slice(0, historyLimit) : []
-  const state = {
-    preferences: {
-      fuzziness: Math.min(1, Math.max(0, numberValue('searchEngine.fuzziness', 0.5))),
-      historyEnabled,
-      historyLimit,
-      maxSearchResultItems: Math.min(200, Math.max(1, numberValue('searchEngine.maxResultLength', 50))),
-      searchEngineId: values['searchEngine.id'] === 'Fuse.js' ? 'Fuse.js' as const : 'fuzzysort' as const,
-    },
-    history,
-  }
+  const enabled = new Set(launcherEnabledLocalExtensionIds())
+  if (launcherWorkflowFixtureEnabled) enabled.add('Workflow')
+  const unsupported = new Set<string>([
+    ...(platform === 'Linux' ? ['BrowserBookmarks', 'FileSearch', 'TerminalLauncher'] : []),
+    ...(platform !== 'Windows' ? ['WindowsControlPanel'] : []),
+  ])
+  const providerErrors = new Set<string>([
+    ...(launcherDiscovery === undefined ? [] : []),
+    ...(launcherFileSearch?.getLastError() !== undefined ? ['FileSearch', 'SimpleFileSearch'] : []),
+    ...(launcherNetwork?.getLastError() !== undefined ? ['CurrencyConversion', 'CustomWebSearch', 'DeeplTranslator', 'WebSearch'] : []),
+    ...(launcherOs?.getLastError() !== undefined ? ['AppearanceSwitcher', 'SystemCommands', 'SystemSettings', 'UeliCommand', 'WindowsControlPanel'] : []),
+    ...(launcherWorkflow?.getLastError() !== undefined ? ['Workflow'] : []),
+  ])
+  const providerStatuses: LauncherProviderStatus[] = LAUNCHER_COMPOSITION.extensionIds.map(extensionId => {
+    if (!enabled.has(extensionId)) return Object.freeze({ extensionId, state: 'disabled' as const, messageKey: 'disabled' as const })
+    if (unsupported.has(extensionId)) return Object.freeze({ extensionId, state: 'unsupported' as const, messageKey: 'unsupported' as const })
+    if (providerErrors.has(extensionId)) return Object.freeze({ extensionId, state: 'unavailable' as const, messageKey: 'unavailable' as const })
+    return Object.freeze({ extensionId, state: 'ready' as const })
+  })
+  const language = normalizeLauncherLocale(values['general.language'])
+  const configuredPlaceholder = textValue('appearance.searchBarPlaceholderText', language === 'zh-CN' ? '搜索 TockTeam' : 'Search TockTeam')
   return Object.freeze({
-    fuzziness: state.preferences.fuzziness,
-    history: Object.freeze([...state.history]),
-    historyEnabled: state.preferences.historyEnabled,
-    historyLimit: state.preferences.historyLimit,
-    maxSearchResultItems: state.preferences.maxSearchResultItems,
-    searchEngineId: state.preferences.searchEngineId,
+    doubleClickBehavior: values['keyboardAndMouse.doubleClickBehavior'] === 'selectSearchResultItem' ? 'selectSearchResultItem' as const : 'invokeSearchResultItem' as const,
+    dragAndDropEnabled: false,
+    fuzziness: Math.min(1, Math.max(0, numberValue('searchEngine.fuzziness', 0.5))),
+    history: Object.freeze([...history]),
+    historyEnabled,
+    historyLimit,
+    locale: language,
+    maxSearchResultItems: Math.min(200, Math.max(1, numberValue('searchEngine.maxResultLength', 50))),
+    placeholder: configuredPlaceholder.slice(0, 512),
+    preserveUserInput: boolValue('general.preserveUserInput', true),
+    providerStatuses: Object.freeze(providerStatuses),
+    searchBarAppearance: ['auto', 'outline', 'underline', 'filled-darker', 'filled-lighter'].includes(values['appearance.searchBarAppearance'] as string) ? values['appearance.searchBarAppearance'] as import('./launcher-contract.ts').LauncherSearchBarAppearance : 'auto',
+    searchBarSize: ['small', 'medium', 'large'].includes(values['appearance.searchBarSize'] as string) ? values['appearance.searchBarSize'] as import('./launcher-contract.ts').LauncherSearchBarSize : 'large',
+    searchEngineId: values['searchEngine.id'] === 'Fuse.js' ? 'Fuse.js' as const : 'fuzzysort' as const,
+    searchResultLayout: values['appearance.searchResultListLayout'] === 'detailed' ? 'detailed' as const : 'compact' as const,
+    scrollBehavior: ['auto', 'smooth', 'instant'].includes(values['window.scrollBehavior'] as string) ? values['window.scrollBehavior'] as import('./launcher-contract.ts').LauncherScrollBehavior : 'smooth',
+    showSearchIcon: boolValue('appearance.showSearchIcon', true),
+    singleClickBehavior: values['keyboardAndMouse.singleClickBehavior'] === 'invokeSearchResultItem' ? 'invokeSearchResultItem' as const : 'selectSearchResultItem' as const,
   })
 }
 

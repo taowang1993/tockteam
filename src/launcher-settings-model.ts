@@ -7,16 +7,24 @@ import { launcherSettingCatalogEntry } from './launcher-setting-catalog.ts'
 export type LauncherThemeSource = 'dark' | 'light' | 'system'
 export type LauncherSurfacePreferences = Readonly<{
   alwaysOnTop: boolean
+  doubleClickBehavior: 'selectSearchResultItem' | 'invokeSearchResultItem'
   fuzziness: number
   historyEnabled: boolean
   historyLimit: number
   language: string
   maxSearchResultItems: number
+  placeholder: string
   preserveUserInput: boolean
+  searchBarAppearance: 'auto' | 'outline' | 'underline' | 'filled-darker' | 'filled-lighter'
+  searchBarSize: 'small' | 'medium' | 'large'
   searchEngineId: LauncherSearchOptions['searchEngineId']
+  searchResultLayout: 'compact' | 'detailed'
+  scrollBehavior: 'auto' | 'smooth' | 'instant'
   showDockIcon: boolean
   showOnStartup: boolean
+  showSearchIcon: boolean
   showTrayIcon: boolean
+  singleClickBehavior: 'selectSearchResultItem' | 'invokeSearchResultItem'
   themeSource: LauncherThemeSource
   visibleOnAllWorkspaces: boolean
 }>
@@ -55,6 +63,11 @@ const text = (value: unknown): value is string => typeof value === 'string'
 const strings = (value: unknown): value is string[] => Array.isArray(value) && value.length <= 50_000 && value.every(item => typeof item === 'string' && item.length <= 512)
 const engine = (value: unknown): value is LauncherSearchOptions['searchEngineId'] => value === 'fuzzysort' || value === 'Fuse.js'
 const theme = (value: unknown): value is LauncherThemeSource => value === 'dark' || value === 'light' || value === 'system'
+const clickBehavior = (value: unknown): value is LauncherSurfacePreferences['singleClickBehavior'] => value === 'selectSearchResultItem' || value === 'invokeSearchResultItem'
+const searchAppearance = (value: unknown): value is LauncherSurfacePreferences['searchBarAppearance'] => value === 'auto' || value === 'outline' || value === 'underline' || value === 'filled-darker' || value === 'filled-lighter'
+const searchSize = (value: unknown): value is LauncherSurfacePreferences['searchBarSize'] => value === 'small' || value === 'medium' || value === 'large'
+const resultLayout = (value: unknown): value is LauncherSurfacePreferences['searchResultLayout'] => value === 'compact' || value === 'detailed'
+const scrollBehavior = (value: unknown): value is LauncherSurfacePreferences['scrollBehavior'] => value === 'auto' || value === 'smooth' || value === 'instant'
 
 function value<T>(snapshot: LauncherSettingsSnapshot, key: string, fallback: T, valid: (candidate: unknown) => candidate is T): T {
   const stored = snapshot.values[key]
@@ -64,16 +77,24 @@ function value<T>(snapshot: LauncherSettingsSnapshot, key: string, fallback: T, 
 export function readPersistedLauncherState(snapshot: LauncherSettingsSnapshot, availableExtensionIds: readonly string[] = LAUNCHER_COMPOSITION.extensionIds): PersistedLauncherState {
   const preferences: LauncherSurfacePreferences = {
     alwaysOnTop: value(snapshot, 'window.alwaysOnTop', true, bool),
+    doubleClickBehavior: value(snapshot, 'keyboardAndMouse.doubleClickBehavior', 'invokeSearchResultItem', clickBehavior),
     fuzziness: Math.min(1, Math.max(0, value(snapshot, 'searchEngine.fuzziness', 0.5, finiteNumber))),
     historyEnabled: value(snapshot, 'general.searchHistory.enabled', false, bool),
     historyLimit: Math.min(100, Math.max(1, value(snapshot, 'general.searchHistory.limit', 10, finiteNumber))),
     language: value(snapshot, 'general.language', 'en-US', text),
     maxSearchResultItems: Math.min(200, Math.max(1, value(snapshot, 'searchEngine.maxResultLength', 50, finiteNumber))),
+    placeholder: value(snapshot, 'appearance.searchBarPlaceholderText', 'Search TockTeam', text),
     preserveUserInput: value(snapshot, 'general.preserveUserInput', true, bool),
+    searchBarAppearance: value(snapshot, 'appearance.searchBarAppearance', 'auto', searchAppearance),
+    searchBarSize: value(snapshot, 'appearance.searchBarSize', 'large', searchSize),
     searchEngineId: value(snapshot, 'searchEngine.id', 'fuzzysort', engine),
+    searchResultLayout: value(snapshot, 'appearance.searchResultListLayout', 'compact', resultLayout),
+    scrollBehavior: value(snapshot, 'window.scrollBehavior', 'smooth', scrollBehavior),
     showDockIcon: value(snapshot, 'appearance.showAppIconInDock', false, bool),
     showOnStartup: value(snapshot, 'window.showOnStartup', false, bool),
+    showSearchIcon: value(snapshot, 'appearance.showSearchIcon', true, bool),
     showTrayIcon: value(snapshot, 'general.tray.showIcon', true, bool),
+    singleClickBehavior: value(snapshot, 'keyboardAndMouse.singleClickBehavior', 'selectSearchResultItem', clickBehavior),
     themeSource: value(snapshot, 'appearance.themeSource', 'system', theme),
     visibleOnAllWorkspaces: value(snapshot, 'window.visibleOnAllWorkspaces', true, bool),
   }
