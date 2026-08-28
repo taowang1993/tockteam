@@ -1220,6 +1220,7 @@ function initializeLauncher(): void {
     'extension[CustomWebSearch].customSearchEngines', 'extension[DeeplTranslator].apiKey',
     'extension[DeeplTranslator].defaultSourceLanguage', 'extension[DeeplTranslator].defaultTargetLanguage',
     'extension[WebSearch].locale', 'extension[WebSearch].searchEngine', 'extension[WebSearch].showInstantSearchResult',
+    'general.language',
   ])
   const coreSearch = createLauncherCoreSearch({
     initialExcludedItemIds: repository.getSetting('searchEngine.excludedItems', []),

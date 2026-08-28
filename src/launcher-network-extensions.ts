@@ -85,6 +85,7 @@ const WEB_LOCALE_MAP = new Map<string, string>([
   ['ja-JP', 'jp-jp'],
   ['ko-KR', 'kr-kr'],
 ])
+const SUPPORTED_WEB_LOCALES = new Set(['en-US', 'de-CH', 'fr-FR', 'ja-JP', 'ko-KR', 'zh-CN', 'zh-TW'])
 
 function emptyResult(lastError?: string): InstantResult {
   return Object.freeze({
@@ -189,7 +190,7 @@ function isPublicLauncherHost(hostname: string): boolean {
   const ipv4 = ipv4Parts(host)
   if (ipv4 !== undefined) return publicIpv4(ipv4)
   if (isIP(host) !== 0) return false
-  return host.includes('.') && /^[a-z0-9.-]+$/u.test(host)
+  return /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+$/u.test(host)
 }
 
 /** Parse a URL allowed for a browser or fixed provider request. */
@@ -333,8 +334,12 @@ function customEngines(options: LauncherNetworkOptions): readonly LauncherNetwor
   })
 }
 
+function boundedNetworkText(value: string, maximum: number): boolean {
+  return typeof value === 'string' && value.length > 0 && value.length <= maximum && !/[\0\r\n]/u.test(value)
+}
+
 function safeQuery(value: string): boolean {
-  return typeof value === 'string' && value.length > 0 && value.length <= LAUNCHER_NETWORK_TOOL_INPUT_LENGTH && !/[\0\r\n]/u.test(value)
+  return boundedNetworkText(value, LAUNCHER_NETWORK_TOOL_INPUT_LENGTH)
 }
 
 function action(handlerKey: string, argument: string, description: string, hide = true): LauncherInternalAction {
@@ -432,7 +437,8 @@ function mapCustomResult(
 function mapWebResult(
   extensionId: 'WebSearch',
   name: string,
-  description: string,
+  resultDescription: string,
+  actionDescription: string,
   url: URL,
   query: string,
   engine: 'DuckDuckGo' | 'Google',
@@ -445,10 +451,10 @@ function mapWebResult(
   const value = url.toString()
   nextActions.set(actionKey(extensionId, 'url', value), Object.freeze({ engine, extensionId, generation, kind: 'url', locale, query, settingsDigest: digest, value }))
   return Object.freeze({
-    defaultAction: action(HANDLERS.open, value, description),
-    description: name === 'Suggestion' ? 'Suggestion' : 'Web Search',
+    defaultAction: action(HANDLERS.open, value, actionDescription.slice(0, 512)),
+    description: resultDescription,
     id,
-    imageKey: name === 'DuckDuckGo' ? 'web-search-duckduckgo' : name === 'Google' ? 'web-search-google' : `web-search-${engine === 'Google' ? 'google' : 'duckduckgo'}`,
+    imageKey: engine === 'DuckDuckGo' ? 'web-search-duckduckgo' : 'web-search-google',
     name,
     sourceExtension: 'WebSearch',
   })
@@ -458,7 +464,7 @@ function currentWebSettings(options: LauncherNetworkOptions): Readonly<{ engine:
   const engineValue = setting<'DuckDuckGo' | 'Google'>(options, 'WebSearch', 'searchEngine', LAUNCHER_NETWORK_EXTENSION_DEFAULTS.WebSearch.searchEngine)
   const localeValue = setting<string>(options, 'WebSearch', 'locale', LAUNCHER_NETWORK_EXTENSION_DEFAULTS.WebSearch.locale)
   const engine: 'DuckDuckGo' | 'Google' = engineValue === 'DuckDuckGo' ? 'DuckDuckGo' : 'Google'
-  const locale = typeof localeValue === 'string' && LOCALE.test(localeValue) ? localeValue : 'en-US'
+  const locale = typeof localeValue === 'string' && LOCALE.test(localeValue) && SUPPORTED_WEB_LOCALES.has(localeValue) ? localeValue : 'en-US'
   return Object.freeze({ engine, locale })
 }
 
@@ -506,11 +512,14 @@ export function createLauncherNetworkExtensions(options: LauncherNetworkOptions)
     activeInteractive = undefined
     currentActions = new Map()
   }
+  const abortActiveControllers = (reason: Error): void => {
+    for (const controller of activeControllers) controller.abort(reason)
+  }
   const invalidate = (): void => {
     ++queryGeneration
     ++loadGeneration
     clearInteractiveActions()
-    for (const controller of activeControllers) controller.abort(new Error('Network provider was invalidated'))
+    abortActiveControllers(new Error('Network provider was invalidated'))
     rates.clear()
     providerErrors.clear()
   }
@@ -569,6 +578,7 @@ export function createLauncherNetworkExtensions(options: LauncherNetworkOptions)
     const generation = ++loadGeneration
     queryGeneration += 1
     clearInteractiveActions()
+    abortActiveControllers(new Error('Network provider scan superseded'))
     rates.clear()
     if (enabled().has('CurrencyConversion')) await loadCurrency(signal, generation)
     if (closed || signal.aborted || generation !== loadGeneration) throw signal.reason instanceof Error ? signal.reason : new Error('Network load was superseded')
@@ -623,7 +633,7 @@ export function createLauncherNetworkExtensions(options: LauncherNetworkOptions)
     if (!safeQuery(term)) throw new Error('Web search request exceeds its input limit')
     const web = currentWebSettings(options)
     const digest = settingsDigest('WebSearch')
-    const search = mapWebResult('WebSearch', web.engine, `Search ${web.engine}`, webSearchUrl(web.engine, term, web.locale), term, web.engine, web.locale, nextActions, generation, digest, `search-${web.engine}`)
+    const search = mapWebResult('WebSearch', `Search "${term}"`, web.engine, `Search ${web.engine}`, webSearchUrl(web.engine, term, web.locale), term, web.engine, web.locale, nextActions, generation, digest, `search-${web.engine}`)
     const suggestionUrl = webSuggestionUrl(web.engine, term, web.locale)
     const data = await track(requestJson(options, suggestionUrl.toString(), undefined, signal, timeoutMs, {
       origin: suggestionUrl.origin, pathname: suggestionUrl.pathname,
@@ -634,7 +644,7 @@ export function createLauncherNetworkExtensions(options: LauncherNetworkOptions)
     const results = [search]
     for (const [index, suggestion] of suggestions.slice(0, MAX_SUGGESTIONS).entries()) {
       if (suggestion.length === 0 || suggestion.length > 512 || /[\0\r\n]/u.test(suggestion)) continue
-      results.push(mapWebResult('WebSearch', suggestion, 'Suggestion', webSearchUrl(web.engine, suggestion, web.locale), suggestion, web.engine, web.locale, nextActions, generation, digest, `web-suggestion:${index}`))
+      results.push(mapWebResult('WebSearch', suggestion, 'Suggestion', `Search ${suggestion}`, webSearchUrl(web.engine, suggestion, web.locale), suggestion, web.engine, web.locale, nextActions, generation, digest, `web-suggestion:${index}`))
     }
     return results
   }
@@ -663,7 +673,7 @@ export function createLauncherNetworkExtensions(options: LauncherNetworkOptions)
         for (const engine of customEngines(options)) {
           if (!searchTerm.startsWith(engine.prefix)) continue
           const query = searchTerm.slice(engine.prefix.length).trim()
-          if (!query || !safeQuery(query)) continue
+          if (!boundedNetworkText(query, 512)) continue
           try { after.push(mapCustomResult(engine, query, customSearchUrl(engine, query), nextActions, generation, digest)) }
           catch (reason) { report('CustomWebSearch', reason) }
         }
@@ -674,7 +684,8 @@ export function createLauncherNetworkExtensions(options: LauncherNetworkOptions)
         const web = currentWebSettings(options)
         try {
           const digest = settingsDigest('WebSearch')
-          after.push(mapWebResult('WebSearch', web.engine, `Search ${web.engine}`, webSearchUrl(web.engine, searchTerm.trim(), web.locale), searchTerm.trim(), web.engine, web.locale, nextActions, generation, digest, `search-${web.engine}`))
+          const term = searchTerm.trim()
+          after.push(mapWebResult('WebSearch', `Search "${term}"`, web.engine, `Search ${web.engine}`, webSearchUrl(web.engine, term, web.locale), term, web.engine, web.locale, nextActions, generation, digest, `search-${web.engine}`))
         } catch (reason) { report('WebSearch', reason) }
       }
       if (isDeepL || isWeb) {
@@ -769,7 +780,7 @@ export function createLauncherNetworkExtensions(options: LauncherNetworkOptions)
     closed = true
     ++queryGeneration; ++loadGeneration
     clearInteractiveActions()
-    for (const controller of activeControllers) controller.abort(new Error('TockLauncher network provider is closed'))
+    abortActiveControllers(new Error('TockLauncher network provider is closed'))
     currentActions = new Map()
     // Network transports receive abort signals; uncooperative test/native promises are
     // abandoned after a small bounded drain and cannot publish because closed is fenced.
