@@ -378,6 +378,7 @@ async function requestJson(
     const url = parseLauncherExternalUrl(urlValue)
     if (url.origin !== expected.origin || url.pathname !== expected.pathname) throw new Error('Network provider destination is not approved')
     await assertPublicResolution(url, options.resolveAddresses ?? defaultResolveAddresses, trackRaw)
+    if (signal.aborted) throw abortReason(signal)
     const body = typeof init?.body === 'string' ? init.body : undefined
     if (body !== undefined && new TextEncoder().encode(body).byteLength > MAX_REQUEST_BODY_BYTES) throw new Error('Network request body exceeded its byte limit')
     const response = await trackRaw(Promise.resolve().then(async () => await options.fetch(url.toString(), { ...init, redirect: 'manual', signal })))
