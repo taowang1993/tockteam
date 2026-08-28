@@ -1725,14 +1725,14 @@ function initializeLauncher(): void {
   const actions = new LauncherActionStore({
     execute: async record => {
       if (await coreSearch.executeAction(record)) return
+      if (await terminal.executeAction(record)) {
+        if (record.hideWindowAfterInvocation) controller?.hideAfterInvocation(record.owner.webContentsId)
+        return
+      }
       if (await local.executeAction(record)) return
       if (await discovery.executeAction(record)) return
       if (await fileSearch.executeAction(record)) return
       if (await network.executeAction(record)) {
-        if (record.hideWindowAfterInvocation) controller?.hideAfterInvocation(record.owner.webContentsId)
-        return
-      }
-      if (await terminal.executeAction(record)) {
         if (record.hideWindowAfterInvocation) controller?.hideAfterInvocation(record.owner.webContentsId)
         return
       }
