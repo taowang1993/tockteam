@@ -353,8 +353,9 @@ export function createLauncherOsExtensions(options: LauncherOsOptions): Readonly
     clearState()
     providerErrors.clear()
     abortAll(new Error('TockLauncher OS provider is closed'))
-    await Promise.allSettled([...activeWork])
+    const pending = Promise.allSettled([...activeWork]).then(() => undefined)
+    await Promise.race([pending, new Promise<void>(resolve => setTimeout(resolve, 100))])
   }
 
-  return Object.freeze({ close, executeAction, getLastError, invalidate, loadIndexedItems })
+  return Object.freeze({ close, executeAction, getLastError, invalidate, loadIndexedItems: (signal?: AbortSignal) => track(loadIndexedItems(signal)) })
 }

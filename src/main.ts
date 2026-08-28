@@ -104,7 +104,7 @@ import {
   resolveWindowsControlPanelScanInvocation,
   parseWindowsControlPanelItems,
 } from './launcher-os-process.ts'
-import { MACOS_SYSTEM_SETTINGS, SYSTEM_COMMAND_CATALOG, WINDOWS_SYSTEM_SETTINGS } from './launcher-os-catalog.ts'
+import { MACOS_SYSTEM_SETTINGS, WINDOWS_SYSTEM_SETTINGS } from './launcher-os-catalog.ts'
 import {
   launchDetachedLauncherExecutable,
   revalidateLauncherExecutable,
@@ -1339,7 +1339,10 @@ function initializeLauncher(): void {
     initialFavoriteItemIds: repository.getSetting('favorites', []),
     initialIndexedItems: repository.readIndex(),
     appendLog: async (_level, message) => { await repository.appendLog('ERROR', message) },
-    getIndexedError: () => network.getLastError() ?? fileSearch.getLastError() ?? os.getLastError(),
+    getIndexedError: () => {
+      const errors = [network.getLastError(), fileSearch.getLastError(), os.getLastError()].filter((value): value is string => value !== undefined)
+      return errors.length === 0 ? undefined : errors.slice(0, 3).join(' ')
+    },
     loadIndexedItems: async signal => {
       const result = await createTockTeamDestinationResults('')
       return [...result.before, ...result.after, ...await local.loadIndexedItems(), ...await discovery.loadIndexedItems(signal), ...await fileSearch.loadIndexedItems(signal), ...await network.loadIndexedItems(signal), ...await os.loadIndexedItems(signal)]
@@ -1555,9 +1558,19 @@ async function initializeLauncherLifecycle(): Promise<void> {
     setDockVisible: setLauncherDockVisible,
     setTrayVisible: setLauncherTrayVisible,
     updateSetting: async (key, value) => {
-      await repository.updateSetting(key, value)
-      launcherPersistentSetsSync?.()
-      await launcherLifecycle?.sync()
+      const needsRescan = key === 'general.hotkey.enabled'
+      if (needsRescan) launcherOs?.invalidate()
+      try {
+        await repository.updateSetting(key, value)
+        launcherPersistentSetsSync?.()
+        await launcherLifecycle?.sync()
+        if (needsRescan) await launcherRescan?.()
+      } catch (reason) {
+        if (needsRescan) {
+          try { await launcherRescan?.() } catch { /* retain the original mutation error */ }
+        }
+        throw reason
+      }
     },
   })
   try {

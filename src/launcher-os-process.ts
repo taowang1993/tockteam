@@ -106,6 +106,18 @@ function strictChild(root: string, target: string): boolean {
   return relative !== '' && !relative.startsWith('..') && !path.posix.isAbsolute(relative)
 }
 
+async function hasSymlinkComponent(target: string): Promise<boolean> {
+  const parsed = path.posix.parse(target)
+  let current = parsed.root
+  for (const part of parsed.dir.slice(parsed.root.length).split('/').filter(Boolean).concat(parsed.base)) {
+    current = path.posix.join(current, part)
+    try {
+      if ((await lstat(current, { bigint: true })).isSymbolicLink()) return true
+    } catch { return true }
+  }
+  return false
+}
+
 async function trustedTrashDirectory(homePath: string, name: 'files' | 'info'): Promise<string | undefined> {
   if (!path.posix.isAbsolute(homePath) || homePath.length > MAX_PATH_LENGTH) return undefined
   const home = path.posix.resolve(homePath)
@@ -113,8 +125,9 @@ async function trustedTrashDirectory(homePath: string, name: 'files' | 'info'): 
   if (!strictChild(home, target)) return undefined
   try {
     const [canonicalHome, canonicalTarget, targetStats] = await Promise.all([realpath(home), realpath(target), lstat(target, { bigint: true })])
-    if (!strictChild(canonicalHome, canonicalTarget) || targetStats.isSymbolicLink() || !targetStats.isDirectory()) return undefined
-    return canonicalTarget
+    if (canonicalHome !== home || await hasSymlinkComponent(target) || !strictChild(canonicalHome, canonicalTarget)
+      || canonicalTarget !== target || targetStats.isSymbolicLink() || !targetStats.isDirectory()) return undefined
+    return target
   } catch { return undefined }
 }
 
@@ -126,7 +139,12 @@ async function removeTrashTree(root: string, deadline: number, signal: AbortSign
     if (Date.now() >= deadline) throw new Error('Trash deletion timed out')
     const current = queue.shift()!
     let directory
-    try { directory = await opendir(current.directory) } catch { continue }
+    try {
+      const currentStats = await lstat(current.directory, { bigint: true })
+      const canonical = await realpath(current.directory)
+      if (currentStats.isSymbolicLink() || !currentStats.isDirectory() || canonical !== current.directory) continue
+      directory = await opendir(current.directory)
+    } catch { continue }
     try {
       while (visited < MAX_TRASH_ENTRIES) {
         if (signal.aborted) throw signal.reason instanceof Error ? signal.reason : new Error('Trash deletion canceled')
@@ -135,7 +153,7 @@ async function removeTrashTree(root: string, deadline: number, signal: AbortSign
         if (entry === null) break
         visited += 1
         const target = path.posix.join(current.directory, entry.name)
-        if (target.length > MAX_PATH_LENGTH || entry.name.startsWith('.') && entry.name !== '.TrashInfo') continue
+        if (target.length > MAX_PATH_LENGTH) continue
         let stats
         try { stats = await lstat(target, { bigint: true }) } catch { continue }
         if (stats.isSymbolicLink()) continue
