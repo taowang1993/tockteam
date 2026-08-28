@@ -39,6 +39,8 @@ type ControllerOptions = Readonly<{
   getSetting: <T>(key: string, fallback: T) => T
   launch: (executable: string, args: readonly string[]) => Promise<void> | void
   openDefault: (url: string) => Promise<void> | void
+  /** Test-only cancellation seam; production never supplies it. */
+  afterGrantMutation?: (operation: 'select' | 'revoke') => void
   platform: LauncherCustomBrowserPlatform
   userDataPath: string
   identitySafeEffects?: boolean
@@ -214,9 +216,10 @@ export class LauncherCustomBrowserController {
       const grant = await validateBrowserTarget(target, this.options.platform as DesktopBrowserPlatform)
       throwIfAborted(signal)
       await writeGrant(this.#grantPath, grant)
-      throwIfAborted(signal)
       this.#grant = grant
       this.#status = 'active'
+      this.options.afterGrantMutation?.('select')
+      throwIfAborted(signal)
     })
   }
 
@@ -226,9 +229,10 @@ export class LauncherCustomBrowserController {
     await this.#enqueue(async () => {
       throwIfAborted(signal)
       await rm(this.#grantPath, { force: true })
-      throwIfAborted(signal)
       this.#grant = undefined
       this.#status = 'none'
+      this.options.afterGrantMutation?.('revoke')
+      throwIfAborted(signal)
     })
   }
 

@@ -7,10 +7,11 @@ import { LauncherCustomBrowserController, parseLauncherCustomBrowserArgumentTemp
 
 async function root(): Promise<string> { return await mkdtemp(path.join(tmpdir(), 'tockteam-browser-')) }
 
-function harness(platform: 'Linux' | 'macOS' | 'Windows', userDataPath: string, settings: Record<string, unknown> = {}, launchOverride?: (executable: string, args: readonly string[]) => Promise<void>) {
+function harness(platform: 'Linux' | 'macOS' | 'Windows', userDataPath: string, settings: Record<string, unknown> = {}, launchOverride?: (executable: string, args: readonly string[]) => Promise<void>, afterGrantMutation?: (operation: 'select' | 'revoke') => void) {
   const launches: Array<{ executable: string; args: readonly string[] }> = []
   const defaults: string[] = []
   const options = {
+    ...(afterGrantMutation === undefined ? {} : { afterGrantMutation }),
     getSetting: <T>(key: string, fallback: T): T => Object.hasOwn(settings, key) ? settings[key] as T : fallback,
     launch: launchOverride ?? (async (executable: string, args: readonly string[]) => { launches.push({ executable, args }) }),
     openDefault: async (url: string) => { defaults.push(url) },
@@ -80,6 +81,48 @@ test('serializes custom-browser revocation behind an in-flight launch', async ()
     await revoking
     assert.equal(controller.snapshot().status, 'none')
     await controller.close()
+  } finally { await rm(userDataPath, { recursive: true, force: true }) }
+})
+
+test('custom browser select commits disk and memory before an abort-after-write', async () => {
+  const userDataPath = await root()
+  try {
+    const executable = path.join(userDataPath, 'browser.exe')
+    await writeFile(executable, 'approved', { mode: 0o700 })
+    const abort = new AbortController()
+    const fixture = harness('Windows', userDataPath, { 'general.browser.useDefaultWebBrowser': false }, undefined, operation => {
+      if (operation === 'select') abort.abort(new Error('owner cleared'))
+    })
+    const controller = await fixture.open()
+    await assert.rejects(controller.select(executable, abort.signal), /owner cleared|canceled/u)
+    assert.deepEqual(controller.snapshot(), { platform: 'Windows', status: 'active' })
+    const restarted = await fixture.open()
+    assert.deepEqual(restarted.snapshot(), { platform: 'Windows', status: 'active' })
+    await restarted.openUrl('https://example.com')
+    assert.equal(fixture.launches.length, 1)
+    await Promise.all([controller.close(), restarted.close()])
+  } finally { await rm(userDataPath, { recursive: true, force: true }) }
+})
+
+test('custom browser revoke commits disk and memory before an abort-after-remove', async () => {
+  const userDataPath = await root()
+  try {
+    const executable = path.join(userDataPath, 'browser.exe')
+    await writeFile(executable, 'approved', { mode: 0o700 })
+    const abort = new AbortController()
+    let abortOperation: 'select' | 'revoke' | undefined
+    const fixture = harness('Windows', userDataPath, { 'general.browser.useDefaultWebBrowser': false }, undefined, operation => {
+      if (operation === abortOperation) abort.abort(new Error('owner cleared'))
+    })
+    const controller = await fixture.open()
+    await controller.select(executable)
+    abortOperation = 'revoke'
+    await assert.rejects(controller.revoke(abort.signal), /owner cleared|canceled/u)
+    assert.deepEqual(controller.snapshot(), { platform: 'Windows', status: 'none' })
+    const restarted = await fixture.open()
+    assert.deepEqual(restarted.snapshot(), { platform: 'Windows', status: 'none' })
+    await assert.rejects(restarted.openUrl('https://example.com'), /No custom browser grant/u)
+    await Promise.all([controller.close(), restarted.close()])
   } finally { await rm(userDataPath, { recursive: true, force: true }) }
 })
 
