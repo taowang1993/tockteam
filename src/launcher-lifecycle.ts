@@ -167,10 +167,10 @@ export class LauncherLifecycleController {
     queue: LauncherToggleIntentQueue
     queueSecureRelaunch?: (reason: 'launcher-settings-import' | 'launcher-settings-reset') => void
     requestSecureQuit: (reason: 'launcher-command-quit') => void
-    rescan: () => Promise<unknown>
+    rescan: (signal?: AbortSignal) => Promise<unknown>
     setDockVisible: (visible: boolean) => Promise<void> | void
     setTrayVisible: (visible: boolean) => void
-    updateSetting: (key: string, value: unknown) => Promise<void>
+    updateSetting: (key: string, value: unknown, signal?: AbortSignal) => Promise<void>
   }>
 
   constructor(args: Readonly<{
@@ -180,10 +180,10 @@ export class LauncherLifecycleController {
     queue: LauncherToggleIntentQueue
     queueSecureRelaunch?: (reason: 'launcher-settings-import' | 'launcher-settings-reset') => void
     requestSecureQuit: (reason: 'launcher-command-quit') => void
-    rescan: () => Promise<unknown>
+    rescan: (signal?: AbortSignal) => Promise<unknown>
     setDockVisible: (visible: boolean) => Promise<void> | void
     setTrayVisible: (visible: boolean) => void
-    updateSetting: (key: string, value: unknown) => Promise<void>
+    updateSetting: (key: string, value: unknown, signal?: AbortSignal) => Promise<void>
   }>) {
     this.args = args
   }
@@ -248,9 +248,9 @@ export class LauncherLifecycleController {
   }
 
   async invokeCommand(command: LauncherLifecycleCommand, signal?: AbortSignal): Promise<void> {
-    const check = (allowSelfInvalidation = false): void => {
+    const check = (): void => {
       if (this.disposed) throw new Error('Launcher lifecycle controller is disposed')
-      if (!allowSelfInvalidation && signal?.aborted) throw signal.reason instanceof Error ? signal.reason : new Error('TockLauncher lifecycle command canceled')
+      if (signal?.aborted) throw signal.reason instanceof Error ? signal.reason : new Error('TockLauncher lifecycle command canceled')
     }
     check()
     switch (command) {
@@ -262,8 +262,8 @@ export class LauncherLifecycleController {
       case 'disableHotkey':
       case 'enableHotkey': {
         const enabled = command === 'enableHotkey'
-        await this.args.updateSetting('general.hotkey.enabled', enabled)
-        check(true)
+        await this.args.updateSetting('general.hotkey.enabled', enabled, signal)
+        check()
         this.args.overlay.setShortcutEnabled(enabled)
         return
       }
@@ -274,8 +274,8 @@ export class LauncherLifecycleController {
         check()
         return
       case 'rescanExtensions':
-        await this.args.rescan()
-        check(true)
+        await this.args.rescan(signal)
+        check()
         return
       case 'quit':
         check()

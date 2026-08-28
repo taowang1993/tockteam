@@ -58,6 +58,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return prototype === Object.prototype || prototype === null
 }
 
+function throwIfAborted(signal?: AbortSignal): void {
+  if (signal?.aborted) throw signal.reason instanceof Error ? signal.reason : new Error('TockLauncher settings mutation canceled')
+}
+
 function identityPart(value: unknown): string | undefined {
   if (typeof value === 'bigint') return value >= 0n ? value.toString(10) : undefined
   if (typeof value === 'number') return Number.isSafeInteger(value) && value >= 0 ? String(value) : undefined
@@ -403,10 +407,12 @@ export class LauncherPersistenceRepository {
     })
   }
 
-  async updateSetting(key: string, value: unknown): Promise<void> { await this.updateSettings({ [key]: value }) }
+  async updateSetting(key: string, value: unknown, signal?: AbortSignal): Promise<void> { await this.updateSettings({ [key]: value }, signal) }
 
-  async updateSettings(values: Readonly<Record<string, unknown>>): Promise<void> {
+  async updateSettings(values: Readonly<Record<string, unknown>>, signal?: AbortSignal): Promise<void> {
+    throwIfAborted(signal)
     await this.#enqueue(async () => {
+      throwIfAborted(signal)
       const next = { ...this.#settings }
       for (const [key, value] of Object.entries(values)) {
         if (!isLauncherRuntimeSettingKey(key) || LAUNCHER_MAIN_OWNED_SETTING_KEYS.includes(key as never) || !isLauncherRendererSettingValue(key, value)) throw new Error('Invalid TockLauncher setting update')
@@ -419,12 +425,14 @@ export class LauncherPersistenceRepository {
         if (key === 'general.searchHistory.enabled' && value === false) next['general.searchHistory.history'] = []
       }
       parseStoredSettings(next)
+      throwIfAborted(signal)
       await this.#writeSettings(next)
     })
   }
 
-  async resetSettings(): Promise<void> {
-    await this.#enqueue(async () => { await this.#writeSettings({}) })
+  async resetSettings(signal?: AbortSignal): Promise<void> {
+    throwIfAborted(signal)
+    await this.#enqueue(async () => { throwIfAborted(signal); await this.#writeSettings({}) })
   }
 
   async recordSearch(query: string, defaults: Readonly<{ historyEnabled: boolean; historyLimit: number }>): Promise<void> {
@@ -471,11 +479,15 @@ export class LauncherPersistenceRepository {
     })
   }
 
-  async importSettingsFromPath(filePath: string): Promise<void> {
+  async importSettingsFromPath(filePath: string, signal?: AbortSignal): Promise<void> {
+    throwIfAborted(signal)
     const absolute = path.resolve(filePath)
     const imported = await readJson(absolute, MAX_LAUNCHER_SETTINGS_BYTES, value => parseLauncherSettingsRecord(value, { omitMainOwned: true, omitSensitive: true }))
+    throwIfAborted(signal)
     await this.#enqueue(async () => {
+      throwIfAborted(signal)
       const preserved = Object.fromEntries(LAUNCHER_SENSITIVE_SETTING_KEYS.flatMap(key => Object.hasOwn(this.#settings, key) ? [[key, this.#settings[key]]] : []))
+      throwIfAborted(signal)
       await this.#writeSettings({ ...imported, ...preserved })
     })
   }
@@ -493,20 +505,31 @@ export class LauncherPersistenceRepository {
     })
   }
 
-  async grantExternalSettingsFile(filePath: string): Promise<void> {
+  async grantExternalSettingsFile(filePath: string, signal?: AbortSignal): Promise<void> {
+    throwIfAborted(signal)
     const grant = await this.#createGrant(filePath)
     const settings = await readJson(grant.path, MAX_LAUNCHER_SETTINGS_BYTES, value => parseStoredSettings(value), grant)
+    throwIfAborted(signal)
     await this.#enqueue(async () => {
+      throwIfAborted(signal)
       // Re-open/revalidate inside the serialized mutation before adopting the path.
       const current = await this.#createGrant(grant.path)
       if (!this.#sameGrant(current, grant)) throw new Error('TockLauncher external settings file changed')
+      throwIfAborted(signal)
       await atomicWrite(this.#grantPath, JSON.stringify(grant, null, 2), { backup: false })
+      try { throwIfAborted(signal) }
+      catch (error) {
+        await rm(this.#grantPath, { force: true }).catch(() => undefined)
+        throw error
+      }
       this.#externalGrant = grant; this.#externalGrantStatus = 'active'; this.#settingsSource = 'external'; this.#settings = settings
     })
   }
 
-  async revokeExternalSettingsFile(): Promise<void> {
+  async revokeExternalSettingsFile(signal?: AbortSignal): Promise<void> {
+    throwIfAborted(signal)
     await this.#enqueue(async () => {
+      throwIfAborted(signal)
       await rm(this.#grantPath, { force: true })
       this.#externalGrant = undefined; this.#externalGrantStatus = 'none'; this.#settingsSource = 'managed'
       this.#settings = await this.#recoverJson(this.#managedSettingsPath, MAX_LAUNCHER_SETTINGS_BYTES, value => parseStoredSettings(value), {})

@@ -203,6 +203,37 @@ test('lifecycle routes native commands through one owner and relaunch callback',
   ])
 })
 
+test('owner cancellation still fences delayed self-invalidating lifecycle commands', async () => {
+  const queue = new LauncherToggleIntentQueue()
+  const create = (command: 'disableHotkey' | 'rescanExtensions', release: () => void) => new LauncherLifecycleController({
+    getSetting: (_key, fallback) => fallback,
+    openWorkbenchSettings: () => {},
+    overlay: { applyWindowPreferences: () => {}, setShortcutEnabled: () => {}, show: async () => {}, toggle: async () => {} },
+    queue,
+    requestSecureQuit: () => {},
+    rescan: async signal => {
+      signal?.addEventListener('abort', release, { once: true })
+      await new Promise<void>(resolve => { signal?.addEventListener('abort', () => resolve(), { once: true }) })
+    },
+    setDockVisible: () => {},
+    setTrayVisible: () => {},
+    updateSetting: async (_key, _value, signal) => {
+      signal?.addEventListener('abort', release, { once: true })
+      await new Promise<void>(resolve => { signal?.addEventListener('abort', () => resolve(), { once: true }) })
+    },
+  })
+  for (const command of ['disableHotkey', 'rescanExtensions'] as const) {
+    const controller = new AbortController()
+    let released = false
+    const lifecycle = create(command, () => { released = true })
+    const pending = lifecycle.invokeCommand(command, controller.signal)
+    await new Promise<void>(resolve => setImmediate(resolve))
+    controller.abort(new Error('owner cleared'))
+    await assert.rejects(pending, /owner cleared|canceled/u)
+    assert.equal(released, true)
+  }
+})
+
 test('lifecycle waits for workbench readiness before showing startup launcher', async () => {
   const calls: string[] = []
   let settingsUpdates = 0

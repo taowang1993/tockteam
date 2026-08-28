@@ -52,6 +52,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
+function throwIfAborted(signal?: AbortSignal): void {
+  if (signal?.aborted) throw signal.reason instanceof Error ? signal.reason : new Error('Custom browser operation canceled')
+}
+
 function decimalIdentity(value: unknown): string | undefined {
   if (typeof value === 'bigint') return value >= 0n ? value.toString(10) : undefined
   if (typeof value === 'number' && Number.isSafeInteger(value) && value >= 0) return String(value)
@@ -200,42 +204,53 @@ export class LauncherCustomBrowserController {
     return Object.freeze({ platform: this.options.platform, status: this.#status })
   }
 
-  async select(target: string): Promise<void> {
+  async select(target: string, signal?: AbortSignal): Promise<void> {
     if (this.#disposed) throw new Error('Custom browser controller is disposed')
     if (this.options.platform === 'Linux') throw new Error('Custom browsers are not supported on Linux')
     if (!HAS_NOFOLLOW && this.options.identitySafeEffects !== true) throw new Error('Custom browser selection is unavailable on this platform')
+    throwIfAborted(signal)
     await this.#enqueue(async () => {
+      throwIfAborted(signal)
       const grant = await validateBrowserTarget(target, this.options.platform as DesktopBrowserPlatform)
+      throwIfAborted(signal)
       await writeGrant(this.#grantPath, grant)
+      throwIfAborted(signal)
       this.#grant = grant
       this.#status = 'active'
     })
   }
 
-  async revoke(): Promise<void> {
+  async revoke(signal?: AbortSignal): Promise<void> {
     if (this.#disposed) throw new Error('Custom browser controller is disposed')
+    throwIfAborted(signal)
     await this.#enqueue(async () => {
+      throwIfAborted(signal)
       await rm(this.#grantPath, { force: true })
+      throwIfAborted(signal)
       this.#grant = undefined
       this.#status = 'none'
     })
   }
 
-  async openUrl(url: string): Promise<void> {
+  async openUrl(url: string, signal?: AbortSignal): Promise<void> {
     if (this.#disposed) throw new Error('Custom browser controller is disposed')
+    throwIfAborted(signal)
     const normalized = parseLauncherBrowserHttpUrl(url)
     const useDefault = this.options.getSetting('general.browser.useDefaultWebBrowser', true)
-    if (useDefault || this.options.platform === 'Linux') { await this.options.openDefault(normalized); return }
+    if (useDefault || this.options.platform === 'Linux') { throwIfAborted(signal); await this.options.openDefault(normalized); throwIfAborted(signal); return }
     await this.#enqueue(async () => {
+      throwIfAborted(signal)
       const grant = this.#grant
       if (this.#status === 'none') throw new Error('No custom browser grant is selected')
       if (this.#status !== 'active' || grant === undefined || grant.platform !== this.options.platform) throw new Error('Custom browser grant is revoked')
       if (!HAS_NOFOLLOW && this.options.identitySafeEffects !== true) throw new Error('Custom browser launch is unavailable on this platform')
       try { await revalidateGrant(grant) }
       catch (error) { this.#grant = undefined; this.#status = 'revoked'; throw new Error('Custom browser grant changed or was revoked', { cause: error }) }
-      if (grant.platform === 'macOS') { await this.options.launch('/usr/bin/open', ['-a', grant.path, normalized]); return }
+      throwIfAborted(signal)
+      if (grant.platform === 'macOS') { await this.options.launch('/usr/bin/open', ['-a', grant.path, normalized]); throwIfAborted(signal); return }
       const template = this.options.getSetting('general.browser.customWebBrowser.commandlineArguments', '{{url}}')
       await this.options.launch(grant.path, parseLauncherCustomBrowserArgumentTemplate(template, normalized))
+      throwIfAborted(signal)
     })
   }
 
