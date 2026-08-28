@@ -37,6 +37,7 @@ export type LauncherOsOptions = Readonly<{
   enabledExtensionIds: () => readonly string[]
   getAppearanceMode?: () => boolean | undefined
   getSetting: <T>(key: string, fallback: T) => T
+  includeControlPanelFixture?: boolean
   isAppearanceOverridden?: () => boolean
   onProviderError?: (extensionId: 'WindowsControlPanel' | 'AppearanceSwitcher' | 'SystemCommands' | 'SystemSettings' | 'UeliCommand', error: Error) => void
   platform: LauncherOsPlatform
@@ -148,6 +149,8 @@ export function createLauncherOsExtensions(options: LauncherOsOptions): Readonly
 }> {
   if (!SUPPORTED_PLATFORMS.has(options.platform)) throw new Error('Unsupported TockLauncher platform')
   const enabled = (): ReadonlySet<string> => new Set(options.enabledExtensionIds())
+  const actionSupported = (id: LauncherOsExtensionId): boolean => supportedCatalog(options.platform, id)
+    || (id === 'WindowsControlPanel' && options.includeControlPanelFixture === true)
   const providerErrors = new Map<LauncherOsExtensionId, string>()
   const activeControllers = new Set<AbortController>()
   const activeWork = new Set<Promise<unknown>>()
@@ -245,7 +248,7 @@ export function createLauncherOsExtensions(options: LauncherOsOptions): Readonly
       if (controller.signal.aborted || closed || nextGeneration !== generation) throw abortError(controller.signal, 'TockLauncher OS load canceled')
       const ids = enabled()
       const items = staticItems(ids, nextActions, nextGeneration)
-      if (ids.has('WindowsControlPanel') && options.platform === 'Windows') {
+      if (ids.has('WindowsControlPanel') && (options.platform === 'Windows' || options.includeControlPanelFixture === true)) {
         try {
           const scanned = await options.scanControlPanelItems(controller.signal)
           if (!sameGeneration(generation, nextGeneration, closed, controller.signal)) throw abortError(controller.signal, 'TockLauncher OS load superseded')
@@ -281,13 +284,13 @@ export function createLauncherOsExtensions(options: LauncherOsOptions): Readonly
     && known.catalogGeneration === generation
     && !closed
     && enabled().has(known.extensionId)
-    && supportedCatalog(options.platform, known.extensionId)
+    && actionSupported(known.extensionId)
 
   const executeAction = async (record: LauncherActionRecord): Promise<boolean> => {
     if (!LAUNCHER_OS_EXTENSION_IDS.includes(record.sourceExtension as LauncherOsExtensionId)) return false
     if (closed) throw new Error('TockLauncher OS provider is closed')
     const extensionId = record.sourceExtension as LauncherOsExtensionId
-    if (!enabled().has(extensionId) || !supportedCatalog(options.platform, extensionId)) throw new Error('TockLauncher OS extension is disabled or unsupported')
+    if (!enabled().has(extensionId) || !actionSupported(extensionId)) throw new Error('TockLauncher OS extension is disabled or unsupported')
     const known = currentActions.get(record.argument)
     if (known === undefined || known.extensionId !== extensionId || !actionIsCurrent(record.argument, known)) throw new Error('TockLauncher OS action is not current')
     const value = parseActionArgument(record.argument)
@@ -348,7 +351,8 @@ export function createLauncherOsExtensions(options: LauncherOsOptions): Readonly
         }
         if (!actionIsCurrent(record.argument, known)) throw new Error('TockLauncher command action is stale')
         await options.effects.invokeUeliCommand(value.command, controller.signal)
-        if (!actionIsCurrent(record.argument, known) || controller.signal.aborted) throw new Error('TockLauncher command action was canceled')
+        const selfInvalidating = value.command === 'disableHotkey' || value.command === 'enableHotkey' || value.command === 'rescanExtensions'
+        if (!selfInvalidating && (!actionIsCurrent(record.argument, known) || controller.signal.aborted)) throw new Error('TockLauncher command action was canceled')
         return true
       }
       return false

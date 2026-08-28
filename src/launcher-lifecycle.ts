@@ -248,9 +248,9 @@ export class LauncherLifecycleController {
   }
 
   async invokeCommand(command: LauncherLifecycleCommand, signal?: AbortSignal): Promise<void> {
-    const check = (): void => {
+    const check = (allowSelfInvalidation = false): void => {
       if (this.disposed) throw new Error('Launcher lifecycle controller is disposed')
-      if (signal?.aborted) throw signal.reason instanceof Error ? signal.reason : new Error('TockLauncher lifecycle command canceled')
+      if (!allowSelfInvalidation && signal?.aborted) throw signal.reason instanceof Error ? signal.reason : new Error('TockLauncher lifecycle command canceled')
     }
     check()
     switch (command) {
@@ -263,7 +263,7 @@ export class LauncherLifecycleController {
       case 'enableHotkey': {
         const enabled = command === 'enableHotkey'
         await this.args.updateSetting('general.hotkey.enabled', enabled)
-        check()
+        check(true)
         this.args.overlay.setShortcutEnabled(enabled)
         return
       }
@@ -275,7 +275,7 @@ export class LauncherLifecycleController {
         return
       case 'rescanExtensions':
         await this.args.rescan()
-        check()
+        check(true)
         return
       case 'quit':
         check()

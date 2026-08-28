@@ -179,6 +179,7 @@ const splashPath = join(currentDir, 'splash.html')
 const preloadPath = join(currentDir, 'preload.cjs')
 const launcherHtmlPath = join(currentDir, 'launcher.html')
 const launcherNetworkFixtureEnabled = !app.isPackaged && process.env.TOCKTEAM_NETWORK_FIXTURE === '1'
+const launcherOsFixtureEnabled = !app.isPackaged && process.env.TOCKTEAM_OS_FIXTURE === '1'
 
 function launcherNetworkFixtureResponse(body: unknown, init: ResponseInit = {}): Response {
   return new Response(JSON.stringify(body), { headers: { 'content-type': 'application/json' }, status: 200, ...init })
@@ -1269,9 +1270,13 @@ function initializeLauncher(): void {
     ...(launcherNetworkFixtureEnabled ? { resolveAddresses: async () => ['8.8.8.8'] } : null),
   })
   launcherNetwork = network
+  const osEnabledExtensionIds = (): readonly string[] => launcherOsFixtureEnabled
+    ? [...new Set([...launcherEnabledLocalExtensionIds(), 'AppearanceSwitcher', 'SystemCommands', 'SystemSettings', 'UeliCommand', 'WindowsControlPanel'])]
+    : launcherEnabledLocalExtensionIds()
   const os = createLauncherOsExtensions({
     effects: {
       confirmPrivilegedAction: async ({ detail, title }, signal) => {
+        if (launcherOsFixtureEnabled) return false
         if (signal.aborted) throw launcherAbortError(signal)
         const owner = mainWindow
         const pending = owner === undefined || owner.isDestroyed()
@@ -1283,6 +1288,7 @@ function initializeLauncher(): void {
       invokeSystemCommand: async (command, signal) => {
         try {
           if (signal.aborted) throw launcherAbortError(signal)
+          if (launcherOsFixtureEnabled) return
           if (platform === 'Linux' && command === 'empty-trash') {
             await emptyLauncherLinuxTrash(app.getPath('home'), signal)
             return
@@ -1301,6 +1307,7 @@ function initializeLauncher(): void {
       invokeUeliCommand: async (command, signal) => {
         try {
           if (signal.aborted) throw launcherAbortError(signal)
+          if (launcherOsFixtureEnabled && command === 'quit') return
           if (launcherLifecycle === undefined) throw new Error('TockLauncher lifecycle is unavailable')
           await launcherLifecycle.invokeCommand(command, signal)
         } catch { throw new Error('TockLauncher lifecycle command failed') }
@@ -1308,6 +1315,7 @@ function initializeLauncher(): void {
       openControlPanelItem: async (canonicalName, signal) => {
         try {
           if (signal.aborted) throw launcherAbortError(signal)
+          if (launcherOsFixtureEnabled) return
           if (platform !== 'Windows') throw new Error('Windows Control Panel is unavailable')
           const invocation = resolveWindowsControlPanelInvocation(canonicalName)
           await execFileAsync(invocation.executable, [...invocation.args], { maxBuffer: 64 * 1024, shell: false, signal, timeout: 15_000, windowsHide: true })
@@ -1318,6 +1326,7 @@ function initializeLauncher(): void {
         if (!catalog.some(row => row.target === target)) throw new Error('System setting is not in the current catalog')
         try {
           if (signal.aborted) throw launcherAbortError(signal)
+          if (launcherOsFixtureEnabled) return
           if (platform === 'Windows') {
             await launcherAwaitAbortable(shell.openExternal(target), signal)
             return
@@ -1334,12 +1343,13 @@ function initializeLauncher(): void {
         if (tockTutorPreviousThemeSource !== undefined) throw new Error('System appearance is unavailable during a theme override')
         try {
           if (signal.aborted) throw launcherAbortError(signal)
+          if (launcherOsFixtureEnabled) return
           const invocation = resolveAppearanceInvocation(platform, nativeTheme.shouldUseDarkColors)
           await execFileAsync(invocation.executable, [...invocation.args], { maxBuffer: 64 * 1024, shell: false, signal, timeout: 15_000, ...(platform === 'Windows' ? { windowsHide: true } : {}) })
         } catch { throw new Error('TockLauncher appearance action failed') }
       },
     },
-    enabledExtensionIds: launcherEnabledLocalExtensionIds,
+    enabledExtensionIds: osEnabledExtensionIds,
     getAppearanceMode: () => tockTutorPreviousThemeSource === undefined ? nativeTheme.shouldUseDarkColors : undefined,
     getSetting: (key, fallback) => repository.getSetting(key, fallback),
     isAppearanceOverridden: () => tockTutorPreviousThemeSource !== undefined,
@@ -1347,7 +1357,9 @@ function initializeLauncher(): void {
       appendLog('desktop', `TockLauncher provider ${extensionId} failed: ${error.name}`)
     },
     platform,
+    includeControlPanelFixture: launcherOsFixtureEnabled,
     scanControlPanelItems: async signal => {
+      if (launcherOsFixtureEnabled) return [{ canonicalName: 'Fixture.System', name: 'Fixture Control Panel' }]
       if (platform !== 'Windows') return []
       const invocation = resolveWindowsControlPanelScanInvocation()
       const result = await execFileAsync(invocation.executable, [...invocation.args], {

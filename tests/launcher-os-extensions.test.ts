@@ -201,6 +201,30 @@ test('OS provider aborts an in-flight native effect and waits for it on close', 
   await pending.catch(() => undefined)
 })
 
+test('OS provider keeps a mocked Control Panel action inert on non-Windows hosts', async () => {
+  let opened = 0
+  const effects: LauncherOsEffects = {
+    confirmPrivilegedAction: async () => true,
+    invokeSystemCommand: async () => undefined,
+    invokeUeliCommand: async () => undefined,
+    openControlPanelItem: async () => { opened += 1 },
+    openSystemSetting: async () => undefined,
+    toggleAppearance: async () => undefined,
+  }
+  const provider = createLauncherOsExtensions({
+    effects,
+    enabledExtensionIds: () => ['WindowsControlPanel'],
+    getSetting: <T>(_key: string, fallback: T) => fallback,
+    includeControlPanelFixture: true,
+    platform: 'macOS',
+    scanControlPanelItems: async () => [{ canonicalName: 'Fixture.System', name: 'Fixture Control Panel' }],
+  })
+  const item = (await provider.loadIndexedItems()).find(candidate => candidate.name === 'Fixture Control Panel')
+  assert.ok(item)
+  await assert.rejects(provider.executeAction(record(item)), /unsupported|invalid|current/i)
+  assert.equal(opened, 0)
+})
+
 test('OS provider rejects appearance effects while host projection is overridden', async () => {
   const effects: LauncherOsEffects = {
     confirmPrivilegedAction: async () => true,

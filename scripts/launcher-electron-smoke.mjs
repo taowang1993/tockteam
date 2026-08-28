@@ -2,7 +2,7 @@
 
 import assert from 'node:assert/strict'
 import { createServer } from 'node:net'
-import { mkdir, mkdtemp, rename, rm, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import { homedir, tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -158,7 +158,10 @@ const discoveryApplication = join(discoveryApplications, 'TockTeam Fixture.app')
 await mkdir(join(discoveryApplication, 'Contents'), { recursive: true })
 await writeFile(join(discoveryApplication, 'Contents', 'Info.plist'), '<?xml version="1.0"?><plist><dict><key>CFBundleName</key><string>TockTeam Fixture</string></dict></plist>', 'utf8')
 const electron = ensureElectronInstalled(root)
-const fixtureEnvironment = { ...process.env, TOCKTEAM_NETWORK_FIXTURE: '1' }
+const mainSource = await readFile(join(root, 'src', 'main.ts'), 'utf8')
+assert.match(mainSource, /const launcherOsFixtureEnabled = !app\.isPackaged && process\.env\.TOCKTEAM_OS_FIXTURE === '1'/u)
+assert.match(mainSource, /if \(launcherOsFixtureEnabled\)/u)
+const fixtureEnvironment = { ...process.env, TOCKTEAM_NETWORK_FIXTURE: '1', TOCKTEAM_OS_FIXTURE: '1' }
 const child = spawn(electron, [
   '.',
   `--remote-debugging-port=${String(port)}`,
@@ -277,6 +280,37 @@ try {
   const initialTheme = await launcherConnection.evaluate('window.tockteamLauncher?.getTheme()')
   assert.ok(initialTheme?.mode === 'light' || initialTheme?.mode === 'dark')
   assert.ok(initialTheme?.skinId === null || /^tockteam-skin-/u.test(initialTheme.skinId))
+  const osFixtureFacts = await launcherConnection.evaluate(`(async () => {
+    const options = { fuzziness: 0.5, maxSearchResultItems: 50, searchEngineId: 'fuzzysort' }
+    const read = async term => (await window.tockteamLauncher?.search(term, options))
+    const [appearance, command, setting, ueli, controlPanel] = await Promise.all([
+      read('Toggle System Appearance'), read('Shut Down'), read('System Settings'), read('Quit TockTeam'), read('Fixture Control Panel'),
+    ])
+    const first = value => value?.after?.[0] ?? value?.before?.[0]
+    return {
+      appearance: first(appearance)?.sourceExtension ?? null,
+      appearanceAsset: first(appearance)?.imageKey ?? null,
+      command: [first(command)?.sourceExtension ?? null, first(command)?.defaultAction?.requiresConfirmation ?? null],
+      setting: first(setting)?.sourceExtension ?? null,
+      ueli: first(ueli)?.sourceExtension ?? null,
+      controlPanel: [first(controlPanel)?.sourceExtension ?? null, first(controlPanel)?.defaultAction?.requiresConfirmation ?? null],
+    }
+  })()`)
+  assert.deepEqual(osFixtureFacts, {
+    appearance: 'AppearanceSwitcher',
+    appearanceAsset: 'appearance-switcher',
+    command: ['SystemCommands', true],
+    setting: 'SystemSettings',
+    ueli: 'UeliCommand',
+    controlPanel: ['WindowsControlPanel', true],
+  })
+  const mockedControlPanelRejected = await launcherConnection.evaluate(`(async () => {
+    const response = await window.tockteamLauncher?.search('Fixture Control Panel', { fuzziness: 0.5, maxSearchResultItems: 50, searchEngineId: 'fuzzysort' })
+    const action = response?.after?.[0]?.defaultAction ?? response?.before?.[0]?.defaultAction
+    if (action === undefined) return false
+    try { await window.tockteamLauncher?.invokeAction(action.actionId); return false } catch { return true }
+  })()`)
+  assert.equal(mockedControlPanelRejected, true)
   await workbenchConnection.evaluate(`(async () => {
     await window.dshDesktop?.syncLauncherTheme({ mode: 'dark', skinId: 'tockteam-skin-deep-current' })
   })()`)
@@ -295,6 +329,17 @@ try {
   assert.equal(darkThemeFacts.colorScheme, 'dark')
   assert.equal(darkThemeFacts.skin, 'tockteam-skin-deep-current')
   assert.equal(darkThemeFacts.brand, '#49c8eb')
+  await waitFor(
+    () => launcherConnection.evaluate(`(async () => {
+      const response = await window.tockteamLauncher?.search('Quit TockTeam', { fuzziness: 0.5, maxSearchResultItems: 50, searchEngineId: 'fuzzysort' })
+      return response?.after?.[0]?.imageKey ?? response?.before?.[0]?.imageKey ?? null
+    })()`),
+    imageKey => imageKey === 'ueli-command',
+  )
+  await waitFor(
+    () => launcherConnection.evaluate(`document.querySelector('[data-result-id] img')?.getAttribute('src') ?? null`),
+    src => src?.endsWith('/ueli-command-dark.png') === true,
+  )
   await workbenchConnection.evaluate(`(async () => {
     await window.dshDesktop?.syncLauncherTheme({ mode: 'light', skinId: null })
   })()`)
@@ -310,6 +355,26 @@ try {
     skin: document.documentElement.dataset.tockteamSkin ?? null,
   })`)
   assert.deepEqual(lightThemeFacts, { colorScheme: 'light', skin: null })
+  await waitFor(
+    () => launcherConnection.evaluate(`document.querySelector('[data-result-id] img')?.getAttribute('src') ?? null`),
+    src => src?.endsWith('/ueli-command-light.png') === true,
+  )
+  const lifecycleFixtureFacts = await launcherConnection.evaluate(`(async () => {
+    const options = { fuzziness: 0.5, maxSearchResultItems: 50, searchEngineId: 'fuzzysort' }
+    const invoke = async term => {
+      const response = await window.tockteamLauncher?.search(term, options)
+      const action = response?.after?.[0]?.defaultAction ?? response?.before?.[0]?.defaultAction
+      if (action === undefined) return false
+      await window.tockteamLauncher?.invokeAction(action.actionId)
+      return true
+    }
+    return {
+      rescan: await invoke('Rescan extensions'),
+      disableHotkey: await invoke('Disable hotkey'),
+      enableHotkey: await invoke('Enable hotkey'),
+    }
+  })()`)
+  assert.deepEqual(lifecycleFixtureFacts, { rescan: true, disableHotkey: true, enableHotkey: true })
 
   await launcherConnection.evaluate(`(() => {
     const input = document.getElementById('launcher-search')

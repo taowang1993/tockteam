@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdtemp, mkdir, readFile, realpath, rm, symlink, writeFile } from 'node:fs/promises'
+import { mkdtemp, mkdir, link, readFile, readdir, realpath, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
@@ -15,6 +15,54 @@ test('Linux trash deletion is bounded, home-derived, and no-follow', { skip: pro
   await emptyLauncherLinuxTrash(home)
   await assert.rejects(readFile(join(trash, 'files', 'remove-me')))
   await assert.rejects(readFile(join(trash, 'info', 'remove-me.trashinfo')))
+  await rm(home, { recursive: true, force: true })
+})
+
+test('Linux trash deletion skips symlinked queued directories and preserves outside entries', { skip: process.platform !== 'linux' }, async () => {
+  const home = await realpath(await mkdtemp(join(tmpdir(), 'tockteam-trash-queued-link-')))
+  const outside = await realpath(await mkdtemp(join(tmpdir(), 'tockteam-trash-queued-outside-')))
+  const trash = join(home, '.local', 'share', 'Trash')
+  await mkdir(join(trash, 'files'), { recursive: true })
+  await mkdir(join(trash, 'info'), { recursive: true })
+  await writeFile(join(outside, 'kept'), 'x')
+  await symlink(outside, join(trash, 'files', 'queued'))
+  await emptyLauncherLinuxTrash(home)
+  assert.equal(await readFile(join(outside, 'kept'), 'utf8'), 'x')
+  assert.equal(await readdir(join(trash, 'files')), ['queued'])
+  await rm(home, { recursive: true, force: true })
+  await rm(outside, { recursive: true, force: true })
+})
+
+test('Linux trash deletion unlinks only the in-trash hardlink and skips special-looking links', { skip: process.platform !== 'linux' }, async () => {
+  const home = await realpath(await mkdtemp(join(tmpdir(), 'tockteam-trash-hardlink-')))
+  const outside = await realpath(await mkdtemp(join(tmpdir(), 'tockteam-trash-hardlink-outside-')))
+  const trash = join(home, '.local', 'share', 'Trash')
+  await mkdir(join(trash, 'files'), { recursive: true })
+  await mkdir(join(trash, 'info'), { recursive: true })
+  await writeFile(join(outside, 'kept'), 'x')
+  await link(join(outside, 'kept'), join(trash, 'files', 'hardlink'))
+  await symlink(join(outside, 'kept'), join(trash, 'files', 'symlink'))
+  await emptyLauncherLinuxTrash(home)
+  assert.equal(await readFile(join(outside, 'kept'), 'utf8'), 'x')
+  await assert.rejects(readFile(join(trash, 'files', 'hardlink')))
+  assert.equal(await readdir(join(trash, 'files')), ['symlink'])
+  await rm(home, { recursive: true, force: true })
+  await rm(outside, { recursive: true, force: true })
+})
+
+test('Linux trash deletion observes cancellation and does not leak descriptors', { skip: process.platform !== 'linux' }, async () => {
+  const home = await realpath(await mkdtemp(join(tmpdir(), 'tockteam-trash-cancel-')))
+  const trash = join(home, '.local', 'share', 'Trash')
+  await mkdir(join(trash, 'files'), { recursive: true })
+  await mkdir(join(trash, 'info'), { recursive: true })
+  await writeFile(join(trash, 'files', 'kept'), 'x')
+  const signalController = new AbortController()
+  signalController.abort(new Error('test canceled'))
+  const before = (await readdir('/proc/self/fd')).length
+  await assert.rejects(emptyLauncherLinuxTrash(home, signalController.signal), /canceled/i)
+  const after = (await readdir('/proc/self/fd')).length
+  assert.equal(after, before)
+  assert.equal(await readFile(join(trash, 'files', 'kept'), 'utf8'), 'x')
   await rm(home, { recursive: true, force: true })
 })
 

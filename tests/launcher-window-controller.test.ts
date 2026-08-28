@@ -2,6 +2,8 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import type { Rectangle } from 'electron'
 import { LAUNCHER_WINDOW_IPC_CHANNELS } from '../src/launcher-window-contract.ts'
+import { createLauncherOsExtensions, type LauncherOsEffects } from '../src/launcher-os-extensions.ts'
+import type { LauncherActionRecord, LauncherInternalResultItem } from '../src/launcher-actions.ts'
 import {
   LauncherOverlayController,
   resolveLauncherBounds,
@@ -71,6 +73,20 @@ class FakeWindow {
   setBounds(value: Rectangle): void { this.bounds = value }
   setVisibleOnAllWorkspaces(value: boolean): void { this.allWorkspaces = value }
   show(): void { this.showCount += 1; this.visible = true }
+}
+
+function actionRecord(item: LauncherInternalResultItem): LauncherActionRecord {
+  return Object.freeze({
+    actionId: 'launcher-action:test',
+    argument: item.defaultAction.argument,
+    expiresAt: Date.now() + 30_000,
+    handlerKey: item.defaultAction.handlerKey,
+    hideWindowAfterInvocation: item.defaultAction.hideWindowAfterInvocation === true,
+    owner: { role: 'launcher' as const, webContentsId: 77 },
+    requiresConfirmation: item.defaultAction.requiresConfirmation === true,
+    resultSetId: 'launcher-results:1',
+    sourceExtension: item.sourceExtension,
+  })
 }
 
 function setup(
@@ -203,6 +219,40 @@ test('renderer owns Escape while the controller still hides on blur', async () =
   await controller.show()
   window.emit('blur')
   assert.equal(window.visible, false)
+})
+
+test('window clear aborts an OS confirmation before renderer ownership is revoked', async () => {
+  let release!: (value: boolean) => void
+  let confirmationSignal: AbortSignal | undefined
+  const effects: LauncherOsEffects = {
+    confirmPrivilegedAction: async (_prompt, signal) => {
+      confirmationSignal = signal
+      return await new Promise<boolean>(resolve => { release = resolve })
+    },
+    invokeSystemCommand: async () => { throw new Error('must not run') },
+    invokeUeliCommand: async () => undefined,
+    openControlPanelItem: async () => undefined,
+    openSystemSetting: async () => undefined,
+    toggleAppearance: async () => undefined,
+  }
+  const provider = createLauncherOsExtensions({
+    effects,
+    enabledExtensionIds: () => ['SystemCommands'],
+    getSetting: <T>(_key: string, fallback: T) => fallback,
+    platform: 'Linux',
+    scanControlPanelItems: async () => [],
+  })
+  const result = setup('linux', undefined, () => { provider.invalidate() })
+  await result.controller.show()
+  const item = (await provider.loadIndexedItems()).find(candidate => candidate.name === 'Empty Trash')!
+  const pending = provider.executeAction(actionRecord(item))
+  await new Promise(resolve => setImmediate(resolve))
+  result.windows[0]!.webContents.emit('render-process-gone')
+  assert.equal(confirmationSignal?.aborted, true)
+  release(true)
+  await assert.rejects(pending, /stale|canceled/i)
+  await provider.waitForIdle()
+  await provider.close()
 })
 
 test('renderer cleanup notifies the action owner exactly once', async () => {
