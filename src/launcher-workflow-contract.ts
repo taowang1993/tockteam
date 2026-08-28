@@ -1,5 +1,3 @@
-import { createHash } from 'node:crypto'
-import path from 'node:path'
 import {
   LAUNCHER_TERMINALS,
   type LauncherTerminalId,
@@ -55,7 +53,6 @@ export type LauncherWorkflowToken = Readonly<{
 }>
 
 const WORKFLOW_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u
-const DIGEST_PATTERN = /^[a-f0-9]{64}$/u
 const PLATFORM_IDS = new Set<LauncherTerminalPlatform>(['Linux', 'macOS', 'Windows'])
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -80,7 +77,7 @@ function absoluteFilePath(value: unknown, platform: LauncherTerminalPlatform): v
   if (!boundedText(value, 4_096)) return false
   return platform === 'Windows'
     ? /^[A-Za-z]:[\\/]/u.test(value)
-    : path.posix.isAbsolute(value)
+    : value.startsWith('/')
 }
 
 function parseAction(value: unknown, platform: LauncherTerminalPlatform): LauncherWorkflowAction {
@@ -164,58 +161,6 @@ export function parseLauncherWorkflows(value: unknown, platform: LauncherTermina
     })
   })
   return Object.freeze(parsed)
-}
-
-/** Canonical digest input keeps compatibility data's original text while fixing key order. */
-export function canonicalLauncherWorkflow(workflow: LauncherWorkflow): unknown {
-  return {
-    id: workflow.id,
-    name: workflow.name,
-    actions: workflow.actions.map(action => ({
-      args: { ...action.args },
-      handlerId: action.handlerId,
-      id: action.id,
-      name: action.name,
-    })),
-    ...(workflow.requiresConfirmation === undefined ? {} : { requiresConfirmation: workflow.requiresConfirmation }),
-  }
-}
-
-export function launcherWorkflowDigest(workflow: LauncherWorkflow): string {
-  return createHash('sha256').update(JSON.stringify(canonicalLauncherWorkflow(workflow), undefined, 0), 'utf8').digest('hex')
-}
-
-export function serializeLauncherWorkflowToken(workflow: LauncherWorkflow): string {
-  return JSON.stringify({
-    kind: 'workflow',
-    version: 1,
-    workflowId: workflow.id,
-    workflowSha256: launcherWorkflowDigest(workflow),
-  })
-}
-
-export function parseLauncherWorkflowToken(value: unknown): LauncherWorkflowToken {
-  if (typeof value !== 'string' || value.length === 0 || value.length > 512 || /[\0\r\n]/u.test(value)) {
-    throw new Error('Invalid TockLauncher Workflow action token')
-  }
-  let parsed: unknown
-  try { parsed = JSON.parse(value) } catch { throw new Error('Invalid TockLauncher Workflow action token') }
-  if (!isRecord(parsed)
-    || !hasExactKeys(parsed, ['kind', 'version', 'workflowId', 'workflowSha256'])
-    || parsed.kind !== 'workflow'
-    || parsed.version !== 1
-    || !boundedText(parsed.workflowId, 128)
-    || !WORKFLOW_ID_PATTERN.test(parsed.workflowId)
-    || typeof parsed.workflowSha256 !== 'string'
-    || !DIGEST_PATTERN.test(parsed.workflowSha256)) {
-    throw new Error('Invalid TockLauncher Workflow action token')
-  }
-  return Object.freeze({
-    kind: 'workflow',
-    version: 1,
-    workflowId: parsed.workflowId,
-    workflowSha256: parsed.workflowSha256,
-  })
 }
 
 export function isLauncherWorkflows(value: unknown, platform: LauncherTerminalPlatform): value is readonly LauncherWorkflow[] {

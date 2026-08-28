@@ -41,6 +41,16 @@ test('central launcher invalidation fences every provider before clearing its ac
   ])
 })
 
+test('central launcher invalidation includes workflow before clearing the action owner', () => {
+  const events: string[] = []
+  const coordinator = createLauncherProviderInvalidator({
+    actions: { clear: () => { events.push('actions.clear') }, clearOwner: () => { events.push('actions.clearOwner') } },
+    workflow: { invalidate: reason => { events.push(`workflow:${reason}`) } },
+  })
+  coordinator.invalidateAllLauncherProviders('workflow-settings')
+  assert.deepEqual(events, ['workflow:workflow-settings', 'actions.clear'])
+})
+
 test('central mutation invalidation cancels consumed OS confirmation for import, reset, and external-source changes', async () => {
   for (const reason of ['launcher-settings-import', 'launcher-settings-reset', 'launcher-external-settings-select'] as const) {
     let release!: (value: boolean) => void

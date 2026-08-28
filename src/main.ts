@@ -1748,6 +1748,10 @@ function initializeLauncher(): void {
     : launcherEnabledLocalExtensionIds()
   const workflow = createLauncherWorkflow({
     captureHomeIdentity: async target => await captureLauncherHomeIdentity(target),
+    ...(launcherWorkflowFixtureEnabled ? {
+      capturePath: async (target: string) => ({ canonicalPath: target, identity: { dev: '0', ino: '0' }, kind: 'file' as const }),
+      revalidatePath: async () => true,
+    } : {}),
     effects: {
       auditWorkflow: async record => {
         recordLauncherWorkflowFixtureAudit(record.outcome)
@@ -1759,13 +1763,19 @@ function initializeLauncher(): void {
         if (launcherWorkflowFixtureEnabled) {
           if (/cancel/iu.test(request.actionName)) {
             await new Promise<void>((resolve, reject) => {
-              const timer = setTimeout(resolve, 5_000)
-              const abort = (): void => {
+              let settled = false
+              const finish = (error?: Error): void => {
+                if (settled) return
+                settled = true
                 clearTimeout(timer)
                 signal.removeEventListener('abort', abort)
-                reject(launcherAbortError(signal))
+                if (error === undefined) resolve()
+                else reject(error)
               }
+              const abort = (): void => finish(launcherAbortError(signal))
+              const timer = setTimeout(() => finish(), 5_000)
               signal.addEventListener('abort', abort, { once: true })
+              if (signal.aborted) abort()
             })
           }
           return !/decline/iu.test(request.actionName)

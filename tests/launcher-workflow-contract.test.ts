@@ -1,11 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import {
-  launcherWorkflowDigest,
-  parseLauncherWorkflowToken,
-  parseLauncherWorkflows,
-  serializeLauncherWorkflowToken,
-} from '../src/launcher-workflow-contract.ts'
+import { parseLauncherWorkflows } from '../src/launcher-workflow-contract.ts'
+import { launcherWorkflowDigest, parseLauncherWorkflowToken, serializeLauncherWorkflowToken } from '../src/launcher-workflow.ts'
 
 const WORKFLOW = {
   id: 'release-check',

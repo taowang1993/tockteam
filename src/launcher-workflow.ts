@@ -1,12 +1,11 @@
+import { createHash } from 'node:crypto'
 import { lstat, realpath } from 'node:fs/promises'
 import path from 'node:path'
 import type { LauncherActionRecord, LauncherInternalAction, LauncherInternalResultItem } from './launcher-actions.ts'
 import {
+  LAUNCHER_WORKFLOW_ID_PATTERN,
   LAUNCHER_WORKFLOW_SETTING_KEY,
-  launcherWorkflowDigest,
-  parseLauncherWorkflowToken,
   parseLauncherWorkflows,
-  serializeLauncherWorkflowToken,
   type LauncherWorkflow,
   type LauncherWorkflowAction,
   type LauncherWorkflowToken,
@@ -20,7 +19,6 @@ import {
 import { runBoundedWorkflowCommand, type LauncherWorkflowCommandResult } from './launcher-workflow-process.ts'
 
 export { parseLauncherWorkflows, type LauncherWorkflow } from './launcher-workflow-contract.ts'
-export { launcherWorkflowDigest, parseLauncherWorkflowToken, serializeLauncherWorkflowToken } from './launcher-workflow-contract.ts'
 
 export type LauncherWorkflowPathIdentity = Readonly<{ dev: string; ino: string }>
 export type LauncherWorkflowPathTarget = Readonly<{
@@ -121,8 +119,51 @@ type ActiveWorkflow = Readonly<{
 }>
 
 const HANDLER = 'invoke-workflow'
-const MAX_STATUS_LENGTH = 128
 const MAX_HOME_LENGTH = 4_096
+const DIGEST_PATTERN = /^[a-f0-9]{64}$/u
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return false
+  const prototype = Object.getPrototypeOf(value)
+  return prototype === Object.prototype || prototype === null
+}
+
+function hasExactKeys(value: Record<string, unknown>, keys: readonly string[]): boolean {
+  const actual = Object.keys(value)
+  return actual.length === keys.length && actual.every(key => keys.includes(key))
+}
+
+function boundedText(value: unknown, maximum: number): value is string {
+  return typeof value === 'string' && value.length > 0 && value.length <= maximum && !/[\0\r\n]/u.test(value)
+}
+
+function canonicalLauncherWorkflow(workflow: LauncherWorkflow): unknown {
+  return {
+    id: workflow.id,
+    name: workflow.name,
+    actions: workflow.actions.map(action => ({ args: { ...action.args }, handlerId: action.handlerId, id: action.id, name: action.name })),
+    ...(workflow.requiresConfirmation === undefined ? {} : { requiresConfirmation: workflow.requiresConfirmation }),
+  }
+}
+
+export function launcherWorkflowDigest(workflow: LauncherWorkflow): string {
+  return createHash('sha256').update(JSON.stringify(canonicalLauncherWorkflow(workflow)), 'utf8').digest('hex')
+}
+
+export function serializeLauncherWorkflowToken(workflow: LauncherWorkflow): string {
+  return JSON.stringify({ kind: 'workflow', version: 1, workflowId: workflow.id, workflowSha256: launcherWorkflowDigest(workflow) })
+}
+
+export function parseLauncherWorkflowToken(value: unknown): LauncherWorkflowToken {
+  if (!boundedText(value, 512)) throw new Error('Invalid TockLauncher Workflow action token')
+  let parsed: unknown
+  try { parsed = JSON.parse(value) } catch { throw new Error('Invalid TockLauncher Workflow action token') }
+  if (!isRecord(parsed) || !hasExactKeys(parsed, ['kind', 'version', 'workflowId', 'workflowSha256'])
+    || parsed.kind !== 'workflow' || parsed.version !== 1 || !boundedText(parsed.workflowId, 128)
+    || !LAUNCHER_WORKFLOW_ID_PATTERN.test(parsed.workflowId) || typeof parsed.workflowSha256 !== 'string'
+    || !DIGEST_PATTERN.test(parsed.workflowSha256)) throw new Error('Invalid TockLauncher Workflow action token')
+  return Object.freeze({ kind: 'workflow', version: 1, workflowId: parsed.workflowId, workflowSha256: parsed.workflowSha256 })
+}
 const MAX_TOKEN_LENGTH = 512
 const MAX_AUDIT_DURATION = 86_400_000
 const MAX_COMMAND_BYTES = 1_048_576
@@ -414,7 +455,10 @@ export function createLauncherWorkflow(options: WorkflowOptions): Readonly<{
         if (closed || loadGeneration !== generation) throw new Error('TockLauncher Workflow load superseded')
         try {
           const known = await stageWorkflow(workflow, loadGeneration, controller.signal)
-          if (known === undefined) continue
+          if (known === undefined) {
+            report(new Error('Workflow target is unavailable'))
+            continue
+          }
           const token = serializeLauncherWorkflowToken(workflow)
           const requiresConfirmation = workflow.requiresConfirmation === true || workflow.actions.some(isCommandAction)
           staged.set(token, known)
@@ -472,6 +516,8 @@ export function createLauncherWorkflow(options: WorkflowOptions): Readonly<{
     const audit = async (outcome: LauncherWorkflowAudit['outcome']): Promise<void> => {
       if (auditDone) return
       auditDone = true
+      // Once the outcome is being recorded, cancellation no longer owns this action.
+      active.delete(record.actionId)
       try {
         await options.effects.auditWorkflow(Object.freeze({
           actionCount: workflow.actions.length,
