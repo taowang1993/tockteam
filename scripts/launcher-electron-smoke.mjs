@@ -695,24 +695,37 @@ try {
     }
   })()`)
   assert.deepEqual(settingsFacts, { bridgeFrozen: true, catalog: true, hasSecret: false, hasBrowserPath: false, hasBrowserName: false, hasHistorySwitch: true, hasReset: true, liveStatus: true, extensionSwitches: 24, hasDiscoverySettings: true, hasApplicationFolders: true, hasBrowserBookmarks: true, hasVscodeSettings: true, hasFileSearchSettings: true, hasSimpleSearchRoots: false, hasNetworkSettings: true, hasNetworkDisclosure: true })
-  const browserFixtureFacts = await workbenchConnection.evaluate(`(async () => {
-    const selected = await window.dshDesktop?.launcher?.settings?.selectCustomBrowser()
-    const snapshot = await window.dshDesktop?.launcher?.settings?.getSnapshot()
-    await window.dshDesktop?.launcher?.settings?.updateSetting('general.browser.useDefaultWebBrowser', false)
-    const chooseButton = [...document.querySelectorAll('button')].find(button => button.textContent?.includes('Choose custom browser'))
-    const revokeButton = [...document.querySelectorAll('button')].find(button => button.textContent?.includes('Revoke custom browser'))
-    chooseButton?.focus()
-    return {
-      selected: selected?.ok === true,
-      status: snapshot?.customBrowserStatus ?? null,
-      pathHidden: !(document.body.textContent ?? '').includes('TockTeam Fixture Browser.app'),
-      choose: chooseButton !== undefined,
-      revoke: revokeButton !== undefined,
-      focus: document.activeElement === chooseButton,
-      accessibleNames: chooseButton?.textContent?.trim() === 'Choose custom browser' && revokeButton?.textContent?.trim() === 'Revoke custom browser',
-    }
+  const browserChooseClicked = await workbenchConnection.evaluate(`(() => {
+    const button = document.querySelector('[data-testid="tockteam-custom-browser-choose"]')
+    if (!(button instanceof HTMLButtonElement)) return false
+    button.focus()
+    button.click()
+    return document.activeElement === button
   })()`)
-  assert.deepEqual(browserFixtureFacts, { selected: true, status: 'active', pathHidden: true, choose: true, revoke: true, focus: true, accessibleNames: true })
+  assert.equal(browserChooseClicked, true)
+  const browserFixtureFacts = await waitFor(
+    () => workbenchConnection.evaluate(`(async () => {
+      const snapshot = await window.dshDesktop?.launcher?.settings?.getSnapshot()
+      const statusNode = document.querySelector('[data-testid="tocklauncher-settings"] > p[role="status"]')
+      const snapshotText = JSON.stringify(snapshot ?? {})
+      const chooseButton = document.querySelector('[data-testid="tockteam-custom-browser-choose"]')
+      const revokeButton = document.querySelector('[data-testid="tockteam-custom-browser-revoke"]')
+      return {
+        status: snapshot?.customBrowserStatus ?? null,
+        statusText: statusNode?.textContent ?? '',
+        pathHidden: !(document.body.textContent ?? '').includes('TockTeam Fixture Browser.app'),
+        privateSnapshot: !/(Fixture Browser|customWebBrowserName|executableFilePath|parentRealPath|"dev"|"ino")/iu.test(snapshotText),
+        focus: document.activeElement === chooseButton,
+        accessibleNames: chooseButton?.getAttribute('aria-label') === 'Choose custom browser' && revokeButton?.getAttribute('aria-label') === 'Revoke custom browser',
+        statusSemantics: statusNode?.getAttribute('aria-live') === 'polite',
+      }
+    })()`),
+    facts => facts.status === 'active' && facts.statusText === 'Custom browser selection complete.' && facts.pathHidden && facts.privateSnapshot && facts.focus && facts.accessibleNames && facts.statusSemantics,
+  )
+  assert.deepEqual(browserFixtureFacts, { status: 'active', statusText: 'Custom browser selection complete.', pathHidden: true, privateSnapshot: true, focus: true, accessibleNames: true, statusSemantics: true })
+  await workbenchConnection.evaluate(`(async () => {
+    await window.dshDesktop?.launcher?.settings?.updateSetting('general.browser.useDefaultWebBrowser', false)
+  })()`)
   const networkValidationInputs = await workbenchConnection.evaluate(`(() => {
     const setAndBlur = (selector, value) => {
       const control = document.querySelector(selector)
@@ -987,11 +1000,37 @@ try {
     return item?.defaultAction?.actionId === undefined ? false : (await window.tockteamLauncher?.invokeAction(item.defaultAction.actionId))?.ok === true
   })()`)
   assert.equal(defaultBrowserOpen, true)
-  const revokedBrowser = await workbenchConnection.evaluate(`(async () => {
-    const result = await window.dshDesktop?.launcher?.settings?.revokeCustomBrowser()
-    return { result: result?.ok === true, status: (await window.dshDesktop?.launcher?.settings?.getSnapshot())?.customBrowserStatus ?? null }
+  const browserRevokeClicked = await workbenchConnection.evaluate(`(() => {
+    const button = document.querySelector('[data-testid="tockteam-custom-browser-revoke"]')
+    if (!(button instanceof HTMLButtonElement) || button.disabled) return false
+    button.focus()
+    button.click()
+    return document.activeElement === button
   })()`)
-  assert.deepEqual(revokedBrowser, { result: true, status: 'none' })
+  assert.equal(browserRevokeClicked, true)
+  const revokedBrowser = await waitFor(
+    () => workbenchConnection.evaluate(`(async () => {
+      const snapshot = await window.dshDesktop?.launcher?.settings?.getSnapshot()
+      const statusNode = document.querySelector('[data-testid="tocklauncher-settings"] > p[role="status"]')
+      const snapshotText = JSON.stringify(snapshot ?? {})
+      const revokeButton = document.querySelector('[data-testid="tockteam-custom-browser-revoke"]')
+      return {
+        status: snapshot?.customBrowserStatus ?? null,
+        statusText: statusNode?.textContent ?? '',
+        pathHidden: !(document.body.textContent ?? '').includes('TockTeam Fixture Browser.app'),
+        privateSnapshot: !/(Fixture Browser|customWebBrowserName|executableFilePath|parentRealPath|"dev"|"ino")/iu.test(snapshotText),
+        focus: document.activeElement === revokeButton || document.activeElement === document.querySelector('[data-testid="tockteam-custom-browser-choose"]'),
+        statusSemantics: statusNode?.getAttribute('aria-live') === 'polite',
+      }
+    })()`),
+    facts => facts.status === 'none' && facts.statusText === 'Custom browser revocation complete.' && facts.pathHidden && facts.privateSnapshot && facts.statusSemantics,
+  )
+  assert.equal(revokedBrowser.status, 'none')
+  assert.equal(revokedBrowser.statusText, 'Custom browser revocation complete.')
+  assert.equal(revokedBrowser.pathHidden, true)
+  assert.equal(revokedBrowser.privateSnapshot, true)
+  assert.equal(revokedBrowser.focus, true)
+  assert.equal(revokedBrowser.statusSemantics, true)
   await workbenchConnection.evaluate(`(async () => {
     await window.dshDesktop?.launcher?.settings?.updateSetting('general.browser.useDefaultWebBrowser', false)
   })()`)

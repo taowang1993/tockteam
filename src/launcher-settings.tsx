@@ -170,7 +170,18 @@ function LauncherSettingsPage({ close: _close }: SettingsSectionProps): ReactNod
     })
   }, [reload, settings])
 
-  const operation = useCallback(async (label: string, action: () => Promise<{ canceled?: boolean; ok: true }>, refresh = true, clearFileSearchDraft = false): Promise<void> => {
+  const operation = useCallback(async (label: string, action: () => Promise<{ canceled?: boolean; ok: true }>, refresh = true, clearFileSearchDraft = false, focusTarget?: HTMLElement): Promise<void> => {
+    const active = focusTarget ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null)
+    const restoreFocus = (): void => {
+      if (active === null) return
+      const current = active.dataset.testid === undefined
+        ? active
+        : [...document.querySelectorAll<HTMLElement>('[data-testid]')].find(candidate => candidate.dataset.testid === active.dataset.testid) ?? active
+      const fallback = current instanceof HTMLButtonElement && current.disabled
+        ? [...document.querySelectorAll<HTMLElement>('[data-testid]')].find(candidate => candidate.dataset.testid === 'tockteam-custom-browser-choose')
+        : current
+      if (fallback?.isConnected) fallback.focus()
+    }
     setBusy(true)
     setStatus(`${label}…`)
     try {
@@ -184,11 +195,15 @@ function LauncherSettingsPage({ close: _close }: SettingsSectionProps): ReactNod
       }
     } catch {
       setStatus(`${label} could not be completed.`)
-    } finally { setBusy(false) }
+    } finally {
+      setBusy(false)
+      if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => requestAnimationFrame(restoreFocus))
+      else setTimeout(restoreFocus, 0)
+    }
   }, [clearSimpleFileSearchDraft, reload])
 
   if (!bridge || !settings) return <p className="text-sm text-muted-foreground">TockLauncher settings are available in TockTeam Desktop only.</p>
-  if (snapshot === null || state === null) return <p aria-live="polite" className="text-sm text-muted-foreground">{status}</p>
+  if (snapshot === null || state === null) return <p aria-live="polite" className="text-sm text-muted-foreground" role="status">{status}</p>
 
   const setExtension = (extensionId: string, checked: boolean): void => {
     const next = new Set(enabled)
@@ -291,8 +306,8 @@ function LauncherSettingsPage({ close: _close }: SettingsSectionProps): ReactNod
         </Field>
         <Field title="Custom browser" description={rendererIsLinux ? 'Linux always uses the system browser; custom browser selection is unavailable.' : 'The native browser grant is status-only in the renderer; the selected target never crosses this page.'}>
           <div className="flex flex-wrap justify-end gap-2">
-            <Button size="sm" variant="outline" disabled={busy || rendererIsLinux} onClick={() => { void operation('Custom browser selection', settings.selectCustomBrowser) }}>Choose custom browser</Button>
-            <Button size="sm" variant="outline" disabled={busy || rendererIsLinux || snapshot.customBrowserStatus === 'none'} onClick={() => { void operation('Custom browser revocation', settings.revokeCustomBrowser) }}>Revoke custom browser</Button>
+            <Button aria-label="Choose custom browser" data-testid="tockteam-custom-browser-choose" size="sm" variant="outline" disabled={busy || rendererIsLinux} onClick={event => { const target = event.currentTarget; void operation('Custom browser selection', settings.selectCustomBrowser, true, false, target).finally(() => { setTimeout(() => target.focus(), 50) }) }}>Choose custom browser</Button>
+            <Button aria-label="Revoke custom browser" data-testid="tockteam-custom-browser-revoke" size="sm" variant="outline" disabled={busy || rendererIsLinux || snapshot.customBrowserStatus === 'none'} onClick={event => { const target = event.currentTarget; void operation('Custom browser revocation', settings.revokeCustomBrowser, true, false, target).finally(() => { setTimeout(() => target.focus(), 50) }) }}>Revoke custom browser</Button>
           </div>
         </Field>
         <Field title="Reset TockLauncher settings" description="Clears overrides, favorites, exclusions, history, and the custom-browser grant, then securely relaunches Desktop.">
@@ -325,7 +340,7 @@ function LauncherSettingsPage({ close: _close }: SettingsSectionProps): ReactNod
         <Field title="Diagnostics" description="Bounded launcher diagnostics are retained without secret or path material."><span className="max-w-full truncate text-xs text-muted-foreground">{snapshot.logs.at(-1) ?? 'No launcher diagnostics.'}</span></Field>
       </SectionCard>
 
-      <p aria-live="polite" className="px-1 text-sm text-muted-foreground">{status}</p>
+      <p aria-live="polite" className="px-1 text-sm text-muted-foreground" role="status">{status}</p>
     </div>
   )
 }
