@@ -1,4 +1,5 @@
-import { lstat, opendir, realpath, rmdir, unlink, type Dirent } from 'node:fs/promises'
+import { lstat, opendir, realpath, rmdir, unlink } from 'node:fs/promises'
+import type { Dirent } from 'node:fs'
 import path from 'node:path'
 import type { LauncherOsPlatform, LauncherSystemCommand } from './launcher-os-catalog.ts'
 
