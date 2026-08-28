@@ -38,3 +38,11 @@ export type LauncherUpstreamSettingKey = (typeof LAUNCHER_UPSTREAM_SETTING_KEYS)
 export function isLauncherRuntimeSettingKey(value: unknown): value is LauncherRuntimeSettingKey {
   return typeof value === 'string' && (LAUNCHER_RUNTIME_SETTING_KEYS as readonly string[]).includes(value)
 }
+
+/** Presentation and lifecycle settings do not require provider rescans. */
+export function launcherSettingRequiresProviderRescan(key: string): boolean {
+  return key === 'extensions.enabledExtensionIds'
+    || key === 'favorites'
+    || key === 'searchEngine.excludedItems'
+    || key.startsWith('extension[')
+}

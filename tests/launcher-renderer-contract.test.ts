@@ -4,7 +4,9 @@ import { test } from 'node:test'
 import {
   LAUNCHER_COMPOSITION,
   launcherShortcutMatches,
+  launcherShortcutAriaLabel,
   launcherShortcutLabel,
+  launcherEffectiveScrollBehavior,
   normalizeLauncherLocale,
   parseLauncherSurfaceSettings,
   type LauncherSurfaceSettings,
@@ -54,6 +56,18 @@ test('launcher shortcut matching requires exact modifiers and supports finite pr
   assert.equal(launcherShortcutMatches({ key: 'Enter', metaKey: false, ctrlKey: false, altKey: false, shiftKey: true }, 'Shift+Enter', 'Windows'), true)
   assert.equal(launcherShortcutMatches({ key: 'Enter', metaKey: false, ctrlKey: true, altKey: false, shiftKey: true }, 'Shift+Enter', 'Windows'), false)
   assert.equal(launcherShortcutLabel('Cmd+O', 'macOS'), 'Cmd+O')
+  assert.equal(launcherShortcutAriaLabel('Cmd+O'), 'Meta+O')
+  assert.equal(launcherShortcutAriaLabel('Ctrl+O'), 'Control+O')
+  assert.equal(launcherShortcutAriaLabel('Shift+Enter'), 'Shift+Enter')
+})
+
+test('programmatic launcher scrolling is instant when reduced motion is active', () => {
+  assert.equal(launcherEffectiveScrollBehavior('smooth', true), 'instant')
+  assert.equal(launcherEffectiveScrollBehavior('smooth', false), 'smooth')
+})
+
+test('launcher renderer guards hidden tool focus from result shortcuts', () => {
+  assert.match(launcherSource, /eventInsideTool && event\.key !== 'Escape'/u)
 })
 
 test('action-menu activation closes the history menu', () => {

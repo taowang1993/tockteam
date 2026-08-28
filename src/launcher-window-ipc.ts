@@ -1,6 +1,8 @@
 import type { IpcMain } from 'electron'
+import { parseLauncherLocale } from './launcher-contract.ts'
 import type {
   DesktopLauncherState,
+  LauncherLocale,
   LauncherThemeProjection,
   LauncherThemeSource,
   LauncherWindowAcknowledgement,
@@ -140,6 +142,7 @@ export function registerWorkbenchLauncherIpcHandlers(args: Readonly<{
   ipcMain: LauncherIpcMain
   onRouteReady?: (event: unknown) => void
   settings?: LauncherSettingsIpcOperations
+  syncLocale?: (event: unknown, locale: LauncherLocale) => LauncherWindowAcknowledgement
   syncTheme?: (event: unknown, source: LauncherThemeSource) => LauncherWindowAcknowledgement
 }>): () => void {
   const registrations: Array<[string, LauncherIpcHandler]> = [
@@ -168,6 +171,14 @@ export function registerWorkbenchLauncherIpcHandlers(args: Readonly<{
       assertNoLauncherIpcArguments(rawArgs)
       args.onRouteReady?.(event)
       return Object.freeze({ ok: true })
+    },
+  ])
+  if (args.syncLocale !== undefined) registrations.push([
+    LAUNCHER_WINDOW_IPC_CHANNELS.syncLocale,
+    (event: unknown, raw: unknown, ...rawArgs: unknown[]): LauncherWindowAcknowledgement => {
+      args.assertTrustedMainIpc(event)
+      assertNoLauncherIpcArguments(rawArgs)
+      return args.syncLocale?.(event, parseLauncherLocale(raw)) ?? Object.freeze({ ok: true })
     },
   ])
   if (args.syncTheme !== undefined) registrations.push([

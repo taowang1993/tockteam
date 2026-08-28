@@ -1,6 +1,7 @@
 /** Browser face for the native TockTeam Desktop bridge. */
 
 import type { DesktopBridge, DesktopCommand } from './contracts.ts'
+import { localeTag, type LocaleService } from '../plugins/shared/i18n.ts'
 import { apply as applyLauncherSettings, inject as launcherSettingsInject } from './launcher-settings.tsx'
 import { projectLauncherThemeSource } from './launcher-theme.ts'
 import { deferSettingsOpen } from './desktop-settings-navigation.ts'
@@ -398,14 +399,21 @@ export function apply(ctx: ClientContext): void {
     })
     const unsubscribeRoute = bridge.onRoute((route) => { navigateLauncherRoute(route) })
     const theme = ctx.get('theme') as ThemeService
+    const locale = ctx.get('locale') as LocaleService
+    const syncLocale = (): void => {
+      void bridge.syncLauncherLocale(localeTag(locale)).catch(() => {})
+    }
     const syncTheme = (): void => {
       void bridge.syncLauncherTheme(projectLauncherThemeSource(theme.getTheme())).catch(() => {})
     }
+    syncLocale()
     syncTheme()
+    const unsubscribeLocale = locale.subscribe(syncLocale)
     const unsubscribeTheme = ctx.on('theme/change', snapshot => {
       void bridge.syncLauncherTheme(projectLauncherThemeSource(snapshot)).catch(() => {})
     })
     return () => {
+      unsubscribeLocale()
       unsubscribeTheme()
       unsubscribeRoute()
       unsubscribeCommand()

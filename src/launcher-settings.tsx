@@ -21,6 +21,7 @@ import { launcherWorkflowSnapshotToken } from './launcher-workflow-contract.ts'
 import type { DesktopBridge } from './contracts.ts'
 import { LAUNCHER_SENSITIVE_SETTING_KEYS, type LauncherSettingsSnapshot } from './launcher-settings-contract.ts'
 import { mergeLauncherDirtyValues, readPersistedLauncherState } from './launcher-settings-model.ts'
+import { useLauncherDraft } from './launcher-settings-drafts.ts'
 import { LAUNCHER_SETTING_CATALOG_COUNT } from './launcher-setting-catalog.ts'
 import { localeTag } from '../plugins/shared/i18n.ts'
 import { useTranslate } from '../plugins/shared/use-i18n.ts'
@@ -158,6 +159,7 @@ function LauncherSettingsPage({ close: _close, locale }: SettingsSectionProps): 
   const workflowSnapshotValue = useRef<string | undefined>(undefined)
   const [status, setStatus] = useState('Loading TockLauncher settings…')
   const [busy, setBusy] = useState(false)
+  const activeSaves = useRef(0)
   const [resetPending, setResetPending] = useState(false)
   const resetDialogRef = useRef<HTMLDialogElement>(null)
   const resetTriggerRef = useRef<HTMLButtonElement>(null)
@@ -220,12 +222,15 @@ function LauncherSettingsPage({ close: _close, locale }: SettingsSectionProps): 
   }, [bridge])
 
   const state = useMemo(() => snapshot ? readPersistedLauncherState(snapshot, LAUNCHER_COMPOSITION.extensionIds) : null, [snapshot])
+  const [fuzzinessDraft, setFuzzinessDraft] = useLauncherDraft(state?.preferences.fuzziness ?? 0.5)
   const enabled = useMemo(() => new Set(state?.enabledExtensionIds ?? []), [state?.enabledExtensionIds])
   const rendererIsLinux = typeof navigator !== 'undefined' && !/Macintosh|Mac OS|Windows/iu.test(`${navigator.platform} ${navigator.userAgent}`)
   const rendererPlatform = rendererIsLinux ? 'Linux' as const : /Windows/iu.test(`${navigator.platform} ${navigator.userAgent}`) ? 'Windows' as const : 'macOS' as const
 
   const save = useCallback((key: string, value: unknown): Promise<boolean> => {
     if (!settings) return Promise.resolve(false)
+    activeSaves.current += 1
+    setBusy(true)
     setStatus(t('saving'))
     const isSimpleFileSearchFolders = key === 'extension[SimpleFileSearch].folders'
     const draftRevision = simpleFileSearchDraftRevision.current
@@ -255,7 +260,8 @@ function LauncherSettingsPage({ close: _close, locale }: SettingsSectionProps): 
       setStatus('TockLauncher settings could not be saved.')
       return false
     }).finally(() => {
-      if (pendingValues.current.size === 0) setBusy(false)
+      activeSaves.current = Math.max(0, activeSaves.current - 1)
+      if (activeSaves.current === 0) setBusy(false)
     })
   }, [reload, settings])
 
@@ -313,10 +319,10 @@ function LauncherSettingsPage({ close: _close, locale }: SettingsSectionProps): 
     <div className="mx-auto flex w-full max-w-4xl min-w-0 flex-col gap-5 px-1 py-4" data-testid="tocklauncher-settings">
       <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="text-lg font-semibold text-foreground">TockLauncher</h1>
-          <p className="mt-1 text-sm text-muted-foreground">A focused launcher over the TockTeam Desktop workbench with bounded local, discovery, file, and network providers.</p>
+          <h1 className="text-lg font-semibold text-foreground">{t('title')}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{t('description')}</p>
         </div>
-        <Badge variant="secondary">Ueli-compatible contract</Badge>
+        <Badge variant="secondary">{t('badge')}</Badge>
       </div>
 
       <SectionCard icon={<MonitorCog aria-hidden="true" className="size-4" />} title={t('sectionSearch')} description="Tune the matching surface without exposing launcher internals.">
@@ -326,8 +332,8 @@ function LauncherSettingsPage({ close: _close, locale }: SettingsSectionProps): 
             <NativeSelectOption value="Fuse.js">Fuse.js</NativeSelectOption>
           </NativeSelect>
         </Field>
-        <Field title={`Fuzziness (${state.preferences.fuzziness.toFixed(1)})`} description="Higher values broaden fuzzy matching.">
-          <Input aria-label="Search fuzziness" className="w-full max-w-xs min-w-0" type="range" min="0" max="1" step="0.1" disabled={busy} value={state.preferences.fuzziness} onChange={event => { void save('searchEngine.fuzziness', Number(event.target.value)) }} />
+        <Field title={`Fuzziness (${fuzzinessDraft.toFixed(1)})`} description="Higher values broaden fuzzy matching.">
+          <Input aria-label="Search fuzziness" className="w-full max-w-xs min-w-0" type="range" min="0" max="1" step="0.1" disabled={busy} value={fuzzinessDraft} onChange={event => { setFuzzinessDraft(Number(event.target.value)) }} onBlur={() => { void save('searchEngine.fuzziness', fuzzinessDraft) }} />
         </Field>
         <Field title="Maximum results" description="Keep result lists concise while retaining pinned items.">
           <Input aria-label="Maximum results" className="w-24" type="number" min="1" max="200" disabled={busy} value={state.preferences.maxSearchResultItems} onChange={event => { const value = Math.min(200, Math.max(1, Number(event.target.value) || 50)); void save('searchEngine.maxResultLength', value) }} />
@@ -339,9 +345,9 @@ function LauncherSettingsPage({ close: _close, locale }: SettingsSectionProps): 
           <Input aria-label="History limit" className="w-24" type="number" min="1" max="100" disabled={busy} value={state.preferences.historyLimit} onChange={event => { const value = Math.min(100, Math.max(1, Number(event.target.value) || 10)); void save('general.searchHistory.limit', value) }} />
         </Field>
         <Field title="Saved searches" description="Clear persisted history without changing provider settings.">
-          <Button aria-label="Clear search history" size="sm" variant="outline" disabled={busy || state.history.length === 0} onClick={clearHistory}><Trash2 aria-hidden="true" />Clear History</Button>
+          <Button aria-label={launcherFixedText('Clear search history')} size="sm" variant="outline" disabled={busy || state.history.length === 0} onClick={clearHistory}><Trash2 aria-hidden="true" />{launcherFixedText('Clear History')}</Button>
         </Field>
-        <details className="min-w-0 rounded-md border border-border/60 px-3 py-2"><summary className="cursor-pointer text-sm font-medium">Recent search entries</summary>{state.history.length === 0 ? <p className="mt-2 text-xs text-muted-foreground">No Recent Searches</p> : <ul className="mt-2 max-h-32 min-w-0 list-disc overflow-auto pl-5 text-xs text-muted-foreground">{state.history.map(query => <li key={query} className="min-w-0 break-words" title={query}>{query}</li>)}</ul>}</details>
+        <details className="min-w-0 rounded-md border border-border/60 px-3 py-2"><summary className="cursor-pointer text-sm font-medium">{launcherFixedText('Recent search entries')}</summary>{state.history.length === 0 ? <p className="mt-2 text-xs text-muted-foreground">{launcherFixedText('No Recent Searches')}</p> : <ul className="mt-2 max-h-32 min-w-0 list-disc overflow-auto pl-5 text-xs text-muted-foreground">{state.history.map(query => <li key={query} className="min-w-0 break-words" title={query}>{query}</li>)}</ul>}</details>
         <LauncherSurfaceSettingsSection busy={busy} platform={rendererPlatform} save={save} section="search" snapshot={snapshot} />
       </SectionCard>
 
@@ -376,7 +382,7 @@ function LauncherSettingsPage({ close: _close, locale }: SettingsSectionProps): 
         <div className="grid min-w-0 grid-cols-1 gap-x-6 sm:grid-cols-2">
           {LAUNCHER_COMPOSITION.extensionIds.map(extensionId => (
             <Field key={extensionId} title={extensionId}>
-              <Switch aria-label={`Enable ${extensionId}`} checked={enabled.has(extensionId)} disabled={busy} onCheckedChange={checked => setExtension(extensionId, checked)} />
+              <Switch aria-label={`${launcherFixedText('Enable')} ${extensionId}`} checked={enabled.has(extensionId)} disabled={busy} onCheckedChange={checked => setExtension(extensionId, checked)} />
             </Field>
           ))}
         </div>
@@ -413,24 +419,24 @@ function LauncherSettingsPage({ close: _close, locale }: SettingsSectionProps): 
         <Field title="Secure storage" description="Sensitive values are encrypted in Electron main and are never hydrated into this renderer."><Badge variant={snapshot.secureStorageAvailable === false ? 'outline' : 'secondary'}>{snapshot.secureStorageAvailable === false ? 'Unavailable' : 'Available'}</Badge></Field>
         <Field title="Settings files">
           <div className="flex flex-wrap justify-end gap-2">
-            <Button size="sm" variant="outline" disabled={busy} onClick={() => { void operation('Import', settings.importSettings, true, true) }}><Upload aria-hidden="true" />Import</Button>
-            <Button size="sm" variant="outline" disabled={busy} onClick={() => { void operation('Export', settings.exportSettings, false) }}><Download aria-hidden="true" />Export</Button>
-            <Button size="sm" variant="outline" disabled={busy} onClick={() => { void operation('External selection', settings.selectExternalSettings, true, true) }}>Choose external file</Button>
-            <Button size="sm" variant="outline" disabled={busy || snapshot.externalGrantStatus === 'none'} onClick={() => { void operation('External revocation', settings.revokeExternalSettings) }}>Revoke external file</Button>
+            <Button size="sm" variant="outline" disabled={busy} onClick={() => { void operation('Import', settings.importSettings, true, true) }}><Upload aria-hidden="true" />{launcherFixedText('Import')}</Button>
+            <Button size="sm" variant="outline" disabled={busy} onClick={() => { void operation('Export', settings.exportSettings, false) }}><Download aria-hidden="true" />{launcherFixedText('Export')}</Button>
+            <Button size="sm" variant="outline" disabled={busy} onClick={() => { void operation('External selection', settings.selectExternalSettings, true, true) }}>{launcherFixedText('Choose external file')}</Button>
+            <Button size="sm" variant="outline" disabled={busy || snapshot.externalGrantStatus === 'none'} onClick={() => { void operation('External revocation', settings.revokeExternalSettings) }}>{launcherFixedText('Revoke external file')}</Button>
           </div>
         </Field>
         <Field title="Custom browser" description={rendererIsLinux ? 'Linux always uses the system browser; custom browser selection is unavailable.' : 'The native browser grant is status-only in the renderer; the selected target never crosses this page.'}>
           <div className="flex flex-wrap justify-end gap-2">
-            <Button aria-label="Choose custom browser" data-testid="tockteam-custom-browser-choose" size="sm" variant="outline" disabled={busy || rendererIsLinux} onClick={event => { const target = event.currentTarget; void operation('Custom browser selection', settings.selectCustomBrowser, true, false, target).finally(() => { setTimeout(() => target.focus(), 50) }) }}>Choose custom browser</Button>
-            <Button aria-label="Revoke custom browser" data-testid="tockteam-custom-browser-revoke" size="sm" variant="outline" disabled={busy || rendererIsLinux || snapshot.customBrowserStatus === 'none'} onClick={event => { const target = event.currentTarget; void operation('Custom browser revocation', settings.revokeCustomBrowser, true, false, target).finally(() => { setTimeout(() => target.focus(), 50) }) }}>Revoke custom browser</Button>
+            <Button aria-label={launcherFixedText('Choose custom browser')} data-testid="tockteam-custom-browser-choose" size="sm" variant="outline" disabled={busy || rendererIsLinux} onClick={event => { const target = event.currentTarget; void operation('Custom browser selection', settings.selectCustomBrowser, true, false, target).finally(() => { setTimeout(() => target.focus(), 50) }) }}>{launcherFixedText('Choose custom browser')}</Button>
+            <Button aria-label={launcherFixedText('Revoke custom browser')} data-testid="tockteam-custom-browser-revoke" size="sm" variant="outline" disabled={busy || rendererIsLinux || snapshot.customBrowserStatus === 'none'} onClick={event => { const target = event.currentTarget; void operation('Custom browser revocation', settings.revokeCustomBrowser, true, false, target).finally(() => { setTimeout(() => target.focus(), 50) }) }}>{launcherFixedText('Revoke custom browser')}</Button>
           </div>
         </Field>
         <Field title="Reset TockLauncher settings" description="Clears overrides, favorites, exclusions, history, and the custom-browser grant, then securely relaunches Desktop.">
-          <Button ref={resetTriggerRef} size="sm" variant="outline" disabled={busy} onClick={() => setResetPending(true)}><RotateCcw aria-hidden="true" />Reset</Button>
+          <Button ref={resetTriggerRef} size="sm" variant="outline" disabled={busy} onClick={() => setResetPending(true)}><RotateCcw aria-hidden="true" />{launcherFixedText('Reset')}</Button>
           <dialog ref={resetDialogRef} aria-describedby="tocklauncher-reset-description" aria-labelledby="tocklauncher-reset-title" aria-modal="true" className="rounded-lg border border-border bg-background p-4 text-foreground shadow-xl" data-testid="tocklauncher-reset-dialog" onCancel={event => { event.preventDefault(); setResetPending(false); requestAnimationFrame(() => resetTriggerRef.current?.focus()) }} onKeyDown={event => { if (event.key !== 'Escape') return; event.preventDefault(); setResetPending(false); requestAnimationFrame(() => resetTriggerRef.current?.focus()) }}>
             <h3 id="tocklauncher-reset-title" className="text-base font-semibold">Reset TockLauncher settings?</h3>
             <p id="tocklauncher-reset-description" className="mt-2 max-w-md text-sm text-muted-foreground">This clears launcher overrides, favorites, exclusions, history, and the custom-browser grant.</p>
-            <div className="mt-4 flex justify-end gap-2"><Button data-testid="tocklauncher-reset-cancel" type="button" variant="outline" disabled={busy} onClick={() => { setResetPending(false); requestAnimationFrame(() => resetTriggerRef.current?.focus()) }}>Cancel</Button><Button type="button" variant="destructive" disabled={busy} onClick={() => { setResetPending(false); void operation('Reset', settings.resetSettings, true, true, resetTriggerRef.current ?? undefined) }}><Trash2 aria-hidden="true" />Confirm reset</Button></div>
+            <div className="mt-4 flex justify-end gap-2"><Button data-testid="tocklauncher-reset-cancel" type="button" variant="outline" disabled={busy} onClick={() => { setResetPending(false); requestAnimationFrame(() => resetTriggerRef.current?.focus()) }}>{launcherFixedText('Cancel')}</Button><Button type="button" variant="destructive" disabled={busy} onClick={() => { setResetPending(false); void operation('Reset', settings.resetSettings, true, true, resetTriggerRef.current ?? undefined) }}><Trash2 aria-hidden="true" />{launcherFixedText('Confirm reset')}</Button></div>
           </dialog>
         </Field>
       </SectionCard>

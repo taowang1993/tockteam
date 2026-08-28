@@ -183,6 +183,7 @@ export function createLauncherFileSearchExtensions(options: FileSearchOptions): 
   executeAction: (record: LauncherActionRecord) => Promise<boolean>
   invalidate: (reason?: string, preserveSignal?: AbortSignal) => void
   getLastError: () => string | undefined
+  getProviderErrors: () => ReadonlyMap<LauncherFileSearchExtensionId, string>
   loadIndexedItems: (signal: AbortSignal, preserveSignal?: AbortSignal) => Promise<readonly LauncherInternalResultItem[]>
   searchInstant: (searchTerm: string) => Promise<FileSearchInstantResult>
   waitForIdle: () => Promise<void>
@@ -207,11 +208,17 @@ export function createLauncherFileSearchExtensions(options: FileSearchOptions): 
   let closed = false
   const providerErrors = new Set<LauncherFileSearchExtensionId>()
 
-  const providerErrorStatus = (): string | undefined => providerErrors.has('FileSearch')
+  const providerErrorMessage = (extensionId: LauncherFileSearchExtensionId): string => extensionId === 'FileSearch'
     ? 'File Search is unavailable. Check the native provider configuration.'
+    : 'Simple File Search is unavailable. Check configured roots.'
+  const providerErrorStatus = (): string | undefined => providerErrors.has('FileSearch')
+    ? providerErrorMessage('FileSearch')
     : providerErrors.has('SimpleFileSearch')
-      ? 'Simple File Search is unavailable. Check configured roots.'
+      ? providerErrorMessage('SimpleFileSearch')
       : undefined
+  const getProviderErrors = (): ReadonlyMap<LauncherFileSearchExtensionId, string> => new Map(
+    [...providerErrors].map(extensionId => [extensionId, providerErrorMessage(extensionId)] as const),
+  )
   const reportProviderError = (extensionId: LauncherFileSearchExtensionId, reason: unknown): void => {
     providerErrors.add(extensionId)
     options.onProviderError?.(extensionId, error(reason, `${extensionId} provider failed`))
@@ -548,5 +555,5 @@ export function createLauncherFileSearchExtensions(options: FileSearchOptions): 
     await waitForActiveWorkBounded()
   }
 
-  return Object.freeze({ close, executeAction, getLastError: providerErrorStatus, invalidate, loadIndexedItems, searchInstant, waitForIdle: waitForActiveWorkBounded })
+  return Object.freeze({ close, executeAction, getLastError: providerErrorStatus, getProviderErrors, invalidate, loadIndexedItems, searchInstant, waitForIdle: waitForActiveWorkBounded })
 }

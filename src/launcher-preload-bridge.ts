@@ -2,6 +2,7 @@ import {
   LAUNCHER_IPC_CHANNELS,
   LAUNCHER_SURFACE_IPC_CHANNELS,
   parseLauncherCancelActionArgs,
+  parseLauncherLocale,
   parseLauncherCoreStatus,
   parseLauncherInvokeActionArgs,
   parseLauncherInvokeResult,
@@ -34,6 +35,7 @@ export type LauncherPreloadBridge = Readonly<{
   getTheme: (...args: unknown[]) => Promise<LauncherThemeProjection>
   cancelAction: (actionId: string, resultSetId: string) => Promise<Readonly<{ ok: true }>>
   invokeAction: (actionId: string) => Promise<LauncherInvokeResult>
+  onLocale: (listener: (locale: import('./launcher-contract.ts').LauncherLocale) => void) => () => void
   onTheme: (listener: (projection: LauncherThemeProjection) => void) => () => void
   openSettings: (...args: unknown[]) => Promise<void>
   rescan: () => Promise<LauncherCoreStatus>
@@ -50,8 +52,16 @@ function assertArity(method: string, args: readonly unknown[], expected: number)
 }
 
 export function createLauncherPreloadBridge(ipcRenderer: IpcInvoker): LauncherPreloadBridge {
+  const localeListeners = new Set<(locale: import('./launcher-contract.ts').LauncherLocale) => void>()
   const themeListeners = new Set<(projection: LauncherThemeProjection) => void>()
+  let latestLocale: import('./launcher-contract.ts').LauncherLocale | undefined
   let latestTheme: LauncherThemeProjection | undefined
+  const receiveLocale = (_event: unknown, raw: unknown): void => {
+    let locale: import('./launcher-contract.ts').LauncherLocale
+    try { locale = parseLauncherLocale(raw) } catch { return }
+    latestLocale = locale
+    for (const listener of localeListeners) listener(locale)
+  }
   const receiveTheme = (_event: unknown, raw: unknown): void => {
     let projection: LauncherThemeProjection
     try {
@@ -63,6 +73,7 @@ export function createLauncherPreloadBridge(ipcRenderer: IpcInvoker): LauncherPr
     latestTheme = projection
     for (const listener of themeListeners) listener(projection)
   }
+  ipcRenderer.on?.(LAUNCHER_WINDOW_IPC_CHANNELS.locale, receiveLocale)
   ipcRenderer.on?.(LAUNCHER_WINDOW_IPC_CHANNELS.theme, receiveTheme)
   return Object.freeze({
     dismiss: async (...args: unknown[]): Promise<void> => {
@@ -90,6 +101,12 @@ export function createLauncherPreloadBridge(ipcRenderer: IpcInvoker): LauncherPr
       assertArity('invokeAction', [actionId, ...extra], 1)
       const input = parseLauncherInvokeActionArgs({ actionId })
       return parseLauncherInvokeResult(await ipcRenderer.invoke(LAUNCHER_IPC_CHANNELS.invokeAction, input))
+    },
+    onLocale: (listener: (locale: import('./launcher-contract.ts').LauncherLocale) => void): (() => void) => {
+      if (typeof listener !== 'function') throw new Error('TockLauncher locale listener is invalid')
+      localeListeners.add(listener)
+      if (latestLocale !== undefined) listener(latestLocale)
+      return () => { localeListeners.delete(listener) }
     },
     onTheme: (listener: (projection: LauncherThemeProjection) => void): (() => void) => {
       if (typeof listener !== 'function') throw new Error('TockLauncher theme listener is invalid')

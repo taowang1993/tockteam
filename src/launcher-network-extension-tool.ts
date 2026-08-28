@@ -8,7 +8,7 @@ import {
 } from './launcher-network-extension-config.ts'
 import { launcherNetworkAssetUrl } from './launcher-network-assets.ts'
 import { launcherCountText, launcherText } from './launcher-i18n.ts'
-import type { LauncherLocale } from './launcher-contract.ts'
+import { launcherShortcutAriaLabel, type LauncherLocale } from './launcher-contract.ts'
 
 function element<K extends keyof HTMLElementTagNameMap>(document: Document, tag: K, className?: string): HTMLElementTagNameMap[K] {
   const created = document.createElement(tag)
@@ -32,7 +32,7 @@ export function createLauncherNetworkExtensionTool(options: Readonly<{
   const title = isDeepL ? text('deeplName', 'DeepL Translator') : text('webSearchName', 'Web Search')
   const prefix = isDeepL ? LAUNCHER_DEEPL_QUERY_PREFIX : LAUNCHER_WEB_SEARCH_QUERY_PREFIX
   const tool = element(document, 'section', 'launcher-local-tool')
-  tool.setAttribute('aria-label', `${title} tool`)
+  tool.setAttribute('aria-label', `${title} ${text('tool', 'Tool').toLocaleLowerCase('en-US')}`)
   const header = element(document, 'header', 'launcher-local-tool-header')
   const identity = element(document, 'div', 'launcher-local-tool-identity')
   const image = element(document, 'img')
@@ -44,16 +44,16 @@ export function createLauncherNetworkExtensionTool(options: Readonly<{
   const close = element(document, 'button', 'launcher-secondary-button')
   close.type = 'button'
   close.textContent = text('back', 'Back to Results')
-  close.setAttribute('aria-label', `Close ${title} tool`)
+  close.setAttribute('aria-label', `${text('closeTool', 'Close')} ${title} ${text('tool', 'Tool').toLocaleLowerCase('en-US')}`)
   close.addEventListener('click', options.onClose)
   header.append(identity, close)
 
   const content = element(document, 'div', 'launcher-local-tool-content min-w-0 overflow-auto')
   const disclosure = element(document, 'p', 'text-xs text-muted-foreground')
   disclosure.textContent = isDeepL
-    ? 'Text is sent to api-free.deepl.com for translation. Your saved key stays in Desktop secure storage.'
-    : 'Queries are sent to the selected Google or DuckDuckGo provider for suggestions.'
-  const label = element(document, 'label', 'launcher-tool-field')
+    ? text('disclosureDeepL', 'Text is sent to api-free.deepl.com for translation. Your saved key stays in Desktop secure storage.')
+    : text('disclosureWebSearch', 'Queries are sent to the selected Google or DuckDuckGo provider for suggestions.')
+  const label = element(document, 'label', 'launcher-local-tool-field')
   const labelText = element(document, 'span')
   labelText.textContent = isDeepL ? text('textToTranslate', 'Text to translate') : text('searchTerm', 'Search term')
   const input = element(document, isDeepL ? 'textarea' : 'input')
@@ -70,7 +70,7 @@ export function createLauncherNetworkExtensionTool(options: Readonly<{
   status.textContent = isDeepL ? text('enterTranslation', 'Enter text to translate.') : text('enterWebSearch', 'Enter a web search.')
   const list = element(document, 'ul', 'm-0 min-w-0 list-none overflow-auto p-0')
   list.id = `launcher-${extensionId.toLocaleLowerCase('en-US')}-results`
-  list.setAttribute('aria-label', `${title} results`)
+  list.setAttribute('aria-label', `${title} ${text('resultsLabel', 'results')}`)
   list.setAttribute('role', 'list')
   content.append(disclosure, label, status, list)
   tool.append(header, content)
@@ -114,22 +114,24 @@ export function createLauncherNetworkExtensionTool(options: Readonly<{
         const toggle = element(document, 'button', 'shrink-0 rounded-md px-2 py-2 text-xs')
         toggle.type = 'button'
         toggle.textContent = text('actions', 'Actions')
-        toggle.setAttribute('aria-label', `${text('actions', 'Actions')} for ${item.name}`)
+        toggle.setAttribute('aria-label', `${text('actionsFor', 'Actions for')} ${item.name}`)
         toggle.setAttribute('aria-haspopup', 'menu')
         toggle.setAttribute('aria-expanded', 'false')
         toggle.setAttribute('aria-controls', menuId)
         toggle.dataset.networkResultId = item.id
-        const menu = element(document, 'div', 'absolute right-0 top-full z-10 mt-1 min-w-[220px] rounded-lg border bg-background py-1 shadow-lg')
+        const menu = element(document, 'div', 'absolute right-0 top-full z-10 mt-1 w-[min(320px,calc(100vw-2rem))] min-w-0 max-w-full rounded-lg border bg-background py-1 shadow-lg')
         menu.id = menuId
         menu.hidden = true
         menu.setAttribute('role', 'menu')
-        menu.setAttribute('aria-label', `Actions for ${item.name}`)
+        menu.setAttribute('aria-label', `${text('actionsFor', 'Actions for')} ${item.name}`)
         const menuButtons: HTMLButtonElement[] = []
         for (const action of actions) {
           const actionButton = element(document, 'button', 'flex w-full items-center px-3 py-2 text-left text-sm')
           actionButton.type = 'button'
           actionButton.setAttribute('role', 'menuitem')
           actionButton.setAttribute('aria-label', actionLabel(action))
+          actionButton.setAttribute('aria-keyshortcuts', action.keyboardShortcut === undefined ? 'Enter' : launcherShortcutAriaLabel(action.keyboardShortcut))
+          actionButton.title = action.description
           actionButton.textContent = actionLabel(action)
           actionButton.addEventListener('click', () => {
             menu.hidden = true
@@ -255,6 +257,7 @@ export function createLauncherNetworkExtensionTool(options: Readonly<{
     if (openMenu === undefined || !(event.target instanceof Element)) return
     if (event.target.closest('[role="menu"], [aria-haspopup="menu"]') === null) closeMenuWithoutFocus()
   })
+  tool.addEventListener('tockteam-launcher-close-tool-menu', closeMenuWithoutFocus)
   queueMicrotask(() => input.focus())
   return tool
 }

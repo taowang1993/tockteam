@@ -14,6 +14,8 @@ import {
 import type { IconNode } from 'lucide'
 import type { LauncherPublicAction, LauncherPublicResultItem } from './launcher-actions.ts'
 import {
+  launcherEffectiveScrollBehavior,
+  launcherShortcutAriaLabel,
   launcherShortcutMatches,
   type LauncherInvokeResult,
   type LauncherSurfacePlatform,
@@ -279,7 +281,8 @@ async function bootstrap(): Promise<void> {
     search.classList.remove('h-8', 'h-10', 'h-12')
     search.classList.add(surfaceSettings.searchBarSize === 'small' ? 'h-8' : surfaceSettings.searchBarSize === 'large' ? 'h-12' : 'h-10')
     results.dataset.layout = surfaceSettings.searchResultLayout
-    results.style.scrollBehavior = surfaceSettings.scrollBehavior
+    const reducedMotion = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    results.style.scrollBehavior = launcherEffectiveScrollBehavior(surfaceSettings.scrollBehavior, reducedMotion)
     const setButtonLabel = (button: HTMLButtonElement, label: string): void => {
       const textNode = [...button.childNodes].find(node => node.nodeType === Node.TEXT_NODE)
       if (textNode !== undefined) textNode.textContent = label
@@ -325,12 +328,19 @@ async function bootstrap(): Promise<void> {
     activeLocalTool = undefined
     activeLocalToolId = undefined
     tool?.remove()
-    for (const element of [searchForm, historyPanel, status, providerStatuses, results, details, rescan, settings]) element.hidden = false
+    for (const element of [searchForm, status, providerStatuses, results, details, rescan, settings]) element.hidden = false
+    historyOpen = false
+    historyPanel.hidden = true
+    historyToggle.setAttribute('aria-expanded', 'false')
+    historyToggle.hidden = !surfaceSettings.historyEnabled
     void renderSearch(search.value).finally(restoreSearchFocus)
   }
 
   const hideLauncherControls = (): void => {
-    for (const element of [searchForm, historyPanel, status, providerStatuses, results, details, rescan, settings]) element.hidden = true
+    historyOpen = false
+    historyPanel.hidden = true
+    historyToggle.setAttribute('aria-expanded', 'false')
+    for (const element of [searchForm, status, providerStatuses, results, details, rescan, settings]) element.hidden = true
   }
   const openLocalTool = async (extensionId: LauncherLocalToolId): Promise<void> => {
     let localSettings: LauncherLocalExtensionSettings
@@ -370,7 +380,8 @@ async function bootstrap(): Promise<void> {
       button.setAttribute('aria-selected', String(selected))
       if (selected) {
         search.setAttribute('aria-activedescendant', button.id)
-        button.scrollIntoView?.({ behavior: surfaceSettings.scrollBehavior, block: 'nearest' })
+        const reducedMotion = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+        button.scrollIntoView?.({ behavior: launcherEffectiveScrollBehavior(surfaceSettings.scrollBehavior, reducedMotion), block: 'nearest' })
       }
     }
     if (selectedItemId.length === 0) search.removeAttribute('aria-activedescendant')
@@ -395,10 +406,9 @@ async function bootstrap(): Promise<void> {
     }
     historyPanel.replaceChildren()
     if (history.length === 0) {
-      const empty = document.createElement('button')
+      const empty = document.createElement('div')
       empty.className = 'flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-[var(--dsw-alias-label-secondary,CanvasText)]'
-      empty.type = 'button'
-      empty.disabled = true
+      empty.tabIndex = 0
       empty.setAttribute('role', 'menuitem')
       empty.setAttribute('aria-disabled', 'true')
       empty.append(icon(HistoryIcon), document.createTextNode(messages().noHistory))
@@ -469,6 +479,10 @@ async function bootstrap(): Promise<void> {
       ? action.description
       : `${action.description} (${action.keyboardShortcut})`
   )
+  const actionAriaShortcut = (action: LauncherPublicAction, defaultShortcut = false): string | undefined => {
+    if (action.keyboardShortcut !== undefined) return launcherShortcutAriaLabel(action.keyboardShortcut)
+    return defaultShortcut ? 'Enter' : undefined
+  }
 
   const invoke = async (action: LauncherPublicAction): Promise<void> => {
     if (invoking || workflowInteractionBlocked()) return
@@ -522,6 +536,15 @@ async function bootstrap(): Promise<void> {
       await historyPending
       const result = await pending
       if (!result.ok) {
+        if (isWorkflowAction) {
+          invoking = false
+          invokingWorkflow = false
+          activeCancellation = undefined
+          cancellationPending = false
+          cancellationRequested = false
+          setWorkflowBusy(false)
+          renderDetails()
+        }
         const refreshed = await renderSearch(search.value)
         if (refreshed) setStatus(messages().refreshed, 'muted')
         restoreSearchFocus()
@@ -595,7 +618,8 @@ async function bootstrap(): Promise<void> {
     open.type = 'button'
     open.disabled = workflowInteractionBlocked()
     open.setAttribute('aria-label', actionLabel(item.defaultAction))
-    open.setAttribute('aria-keyshortcuts', item.defaultAction.keyboardShortcut ?? 'Enter')
+    const openShortcut = actionAriaShortcut(item.defaultAction, true)
+    if (openShortcut !== undefined) open.setAttribute('aria-keyshortcuts', openShortcut)
     open.append(icon(ArrowRight))
     const openText = document.createElement('span')
     openText.textContent = item.defaultAction.description
@@ -632,7 +656,7 @@ async function bootstrap(): Promise<void> {
     })
 
     const row = document.createElement('div')
-    row.className = 'flex min-w-0 items-center gap-2'
+    row.className = 'flex min-w-0 flex-wrap items-center gap-2'
     row.append(selection, open)
     if (activeCancellation !== undefined && item.sourceExtension === 'Workflow') {
       const cancel = document.createElement('button')
@@ -650,7 +674,7 @@ async function bootstrap(): Promise<void> {
     if (!actionMenuOpen) return
 
     const menu = document.createElement('div')
-    menu.className = 'absolute bottom-full right-0 z-10 mb-2 max-h-[240px] min-w-[220px] max-w-[320px] overflow-y-auto rounded-lg border border-[var(--dsw-alias-border-l2,CanvasText)] bg-[var(--dsw-alias-bg-layer-1,Canvas)] py-1 shadow-lg'
+    menu.className = 'absolute bottom-full right-0 z-10 mb-2 max-h-[240px] w-[min(320px,calc(100vw-2rem))] min-w-0 max-w-full overflow-y-auto rounded-lg border border-[var(--dsw-alias-border-l2,CanvasText)] bg-[var(--dsw-alias-bg-layer-1,Canvas)] py-1 shadow-lg'
     menu.id = 'launcher-actions-menu'
     menu.setAttribute('role', 'menu')
     menu.setAttribute('aria-label', `Actions for ${item.name}`)
@@ -663,7 +687,8 @@ async function bootstrap(): Promise<void> {
       actionButton.setAttribute('role', 'menuitem')
       actionButton.setAttribute('aria-label', actionLabel(action))
       actionButton.title = action.description
-      if (action.keyboardShortcut !== undefined) actionButton.setAttribute('aria-keyshortcuts', action.keyboardShortcut)
+      const ariaShortcut = actionAriaShortcut(action, true)
+      if (ariaShortcut !== undefined) actionButton.setAttribute('aria-keyshortcuts', ariaShortcut)
       const description = action.description.toLowerCase()
       const actionIcon = description.includes('favorite')
         ? description.includes('remove') ? StarOff : Star
@@ -971,19 +996,44 @@ async function bootstrap(): Promise<void> {
     }
   })
   root.addEventListener('keydown', event => {
+    const eventInsideTool = activeLocalTool !== undefined
+      && event.target instanceof Node
+      && activeLocalTool.contains(event.target)
+    if (eventInsideTool && event.key !== 'Escape') return
     if (event.target !== search && !workflowInteractionBlocked() && hasPrimaryModifier(event) && event.key === ',') {
       event.preventDefault()
       void bridge.openSettings().catch(() => undefined)
       return
     }
     if (event.target !== search && !workflowInteractionBlocked()) {
-      const item = selectedItem()
-      const action = item === undefined ? undefined : [item.defaultAction, ...(item.additionalActions ?? [])]
-        .find(candidate => candidate.keyboardShortcut !== undefined && launcherShortcutMatches(event, candidate.keyboardShortcut, surfacePlatform))
-      if (action !== undefined) {
+      if (hasPrimaryModifier(event) && event.key.toLowerCase() === 'k') {
         event.preventDefault()
-        void invoke(action)
+        if (selectedItem() === undefined) return
+        historyOpen = false
+        historyPanel.hidden = true
+        historyToggle.setAttribute('aria-expanded', 'false')
+        actionMenuOpen = !actionMenuOpen
+        renderDetails()
+        if (actionMenuOpen) details.querySelector<HTMLButtonElement>('[role="menuitem"]')?.focus()
+        else restoreSearchFocus()
         return
+      }
+      if (hasPrimaryModifier(event) && event.key.toLowerCase() === 'l') {
+        event.preventDefault()
+        closeActionMenu(false)
+        closeHistory(false)
+        restoreSearchFocus()
+        return
+      }
+      if (activeLocalTool === undefined) {
+        const item = selectedItem()
+        const action = item === undefined ? undefined : [item.defaultAction, ...(item.additionalActions ?? [])]
+          .find(candidate => candidate.keyboardShortcut !== undefined && launcherShortcutMatches(event, candidate.keyboardShortcut, surfacePlatform))
+        if (action !== undefined) {
+          event.preventDefault()
+          void invoke(action)
+          return
+        }
       }
     }
     if (event.key !== 'Escape' || event.target === search) return
@@ -996,8 +1046,18 @@ async function bootstrap(): Promise<void> {
   })
   document.addEventListener('pointerdown', event => {
     if (!(event.target instanceof Element)) return
+    if (activeLocalTool !== undefined && !activeLocalTool.contains(event.target)) {
+      activeLocalTool.dispatchEvent(new Event('tockteam-launcher-close-tool-menu'))
+    }
     if (historyOpen && event.target.closest('#launcher-history, #launcher-history-toggle') === null) closeHistory()
     if (actionMenuOpen && event.target.closest('#launcher-details') === null) closeActionMenu()
+  })
+  bridge.onLocale(locale => {
+    surfaceSettings = Object.freeze({ ...surfaceSettings, locale })
+    history = surfaceSettings.historyEnabled ? [...surfaceSettings.history] : []
+    applySurfaceSettings()
+    renderHistory()
+    if (activeLocalTool === undefined && !invokingWorkflow) void renderSearch(search.value)
   })
 
   renderHistory()

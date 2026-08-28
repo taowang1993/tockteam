@@ -1,3 +1,4 @@
+import type { LauncherLocale } from './launcher-contract.ts'
 import type { LauncherThemeProjection, LauncherThemeSource } from './launcher-theme.ts'
 
 export const LAUNCHER_WINDOW_IPC_CHANNELS = Object.freeze({
@@ -8,6 +9,8 @@ export const LAUNCHER_WINDOW_IPC_CHANNELS = Object.freeze({
   openSettings: 'launcher-window:open-settings',
   routeReady: 'launcher:workbench-route-ready',
   show: 'launcher-window:show',
+  syncLocale: 'launcher:locale-sync',
+  locale: 'launcher-window:locale',
   syncTheme: 'launcher:theme-sync',
   theme: 'launcher-window:theme',
   getThemeSource: 'launcher-window:get-theme',
@@ -39,6 +42,7 @@ export {
   parseLauncherWorkbenchRoute,
   parseLauncherWorkbenchRouteEvent,
 } from './launcher-navigation.ts'
+export type { LauncherLocale } from './launcher-contract.ts'
 export type { LauncherThemeProjection, LauncherThemeSource } from './launcher-theme.ts'
 export type { LauncherWorkbenchRoute, TockTeamDestination } from './launcher-navigation.ts'
 

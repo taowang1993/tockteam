@@ -2,6 +2,7 @@ import type { Rectangle } from 'electron'
 import {
   LAUNCHER_WINDOW_IPC_CHANNELS,
   type DesktopLauncherState,
+  type LauncherLocale,
   type LauncherShortcutState,
 } from './launcher-window-contract.ts'
 import type { LauncherThemeProjection } from './launcher-theme.ts'
@@ -89,6 +90,7 @@ export class LauncherOverlayController {
       window: LauncherOverlayWindow,
     ) => void | (() => void)
     onWindowCleared?: (window: LauncherOverlayWindow) => void
+    getLocale?: () => LauncherLocale
     getThemeProjection?: () => LauncherThemeProjection
   }>
   private window: LauncherOverlayWindow | null = null
@@ -117,6 +119,7 @@ export class LauncherOverlayController {
       window: LauncherOverlayWindow,
     ) => void | (() => void)
     onWindowCleared?: (window: LauncherOverlayWindow) => void
+    getLocale?: () => LauncherLocale
     getThemeProjection?: () => LauncherThemeProjection
   }>) {
     this.args = args
@@ -186,6 +189,7 @@ export class LauncherOverlayController {
     window.show()
     window.focus()
     this.sendTheme()
+    this.sendLocale()
     window.webContents.send(LAUNCHER_WINDOW_IPC_CHANNELS.focusSearch)
   }
 
@@ -235,6 +239,14 @@ export class LauncherOverlayController {
     const next = projection ?? this.args.getThemeProjection?.()
     if (next === undefined) return
     window.webContents.send(LAUNCHER_WINDOW_IPC_CHANNELS.theme, next)
+  }
+
+  sendLocale(locale?: LauncherLocale): void {
+    const window = this.liveWindow()
+    if (window === null) return
+    const next = locale ?? this.args.getLocale?.()
+    if (next === undefined) return
+    window.webContents.send(LAUNCHER_WINDOW_IPC_CHANNELS.locale, next)
   }
 
   toggle(): Promise<void> {
@@ -353,6 +365,7 @@ export class LauncherOverlayController {
           throw new Error('Launcher window was destroyed while loading')
         }
         this.sendTheme()
+        this.sendLocale()
         return window
       } catch (error) {
         this.clearWindow(window)

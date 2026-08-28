@@ -26,6 +26,6 @@ export interface LocaleService {
   subscribe(listener: () => void): () => void
 }
 
-export function localeTag(locale: LocaleService): string {
+export function localeTag(locale: LocaleService): 'en-US' | 'zh-CN' {
   return locale.getSnapshot().active === 'zh' ? 'zh-CN' : 'en-US'
 }

@@ -466,6 +466,7 @@ export function createLauncherNetworkExtensions(options: LauncherNetworkOptions)
   close: () => Promise<void>
   executeAction: (record: LauncherActionRecord) => Promise<boolean>
   getLastError: () => string | undefined
+  getProviderErrors: () => ReadonlyMap<LauncherNetworkExtensionId, string>
   invalidate: (reason?: string, preserveSignal?: AbortSignal) => void
   loadIndexedItems: (signal: AbortSignal, preserveSignal?: AbortSignal) => Promise<readonly LauncherInternalResultItem[]>
   searchInstant: (searchTerm: string) => Promise<InstantResult>
@@ -492,6 +493,7 @@ export function createLauncherNetworkExtensions(options: LauncherNetworkOptions)
     }
     return undefined
   }
+  const getProviderErrors = (): ReadonlyMap<LauncherNetworkExtensionId, string> => new Map(providerErrors)
   const report = (extensionId: LauncherNetworkExtensionId, reason?: unknown): void => {
     const message = providerErrorMessage(extensionId, reason)
     providerErrors.set(extensionId, message)
@@ -849,5 +851,5 @@ export function createLauncherNetworkExtensions(options: LauncherNetworkOptions)
     await waitForIdle()
   }
 
-  return Object.freeze({ close, executeAction, getLastError, invalidate, loadIndexedItems, searchInstant, waitForIdle })
+  return Object.freeze({ close, executeAction, getLastError, getProviderErrors, invalidate, loadIndexedItems, searchInstant, waitForIdle })
 }

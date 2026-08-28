@@ -375,6 +375,7 @@ export function createLauncherWorkflow(options: WorkflowOptions): Readonly<{
   close: () => Promise<void>
   executeAction: (record: LauncherActionRecord) => Promise<boolean>
   getLastError: () => string | undefined
+  getProviderErrors: () => ReadonlyMap<'Workflow', string>
   invalidate: (reason?: string, preserveSignal?: AbortSignal) => void
   loadIndexedItems: (signal?: AbortSignal, preserveSignal?: AbortSignal) => Promise<readonly LauncherInternalResultItem[]>
   waitForIdle: () => Promise<void>
@@ -415,6 +416,7 @@ export function createLauncherWorkflow(options: WorkflowOptions): Readonly<{
     options.onProviderError?.(error)
   }
   const getLastError = (): string | undefined => lastError
+  const getProviderErrors = (): ReadonlyMap<'Workflow', string> => lastError === undefined ? new Map() : new Map([['Workflow', lastError]])
 
   const stageWorkflow = async (workflow: LauncherWorkflow, loadGeneration: number, signal: AbortSignal): Promise<KnownWorkflow | undefined> => {
     const pathTargets = new Map<string, LauncherWorkflowPathTarget>()
@@ -667,5 +669,5 @@ export function createLauncherWorkflow(options: WorkflowOptions): Readonly<{
     await waitForIdle()
   }
 
-  return Object.freeze({ cancelAction, close, executeAction, getLastError, invalidate, loadIndexedItems, waitForIdle })
+  return Object.freeze({ cancelAction, close, executeAction, getLastError, getProviderErrors, invalidate, loadIndexedItems, waitForIdle })
 }

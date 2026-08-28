@@ -194,6 +194,7 @@ function sameAction(left: KnownAction, right: KnownAction): boolean {
 export function createLauncherTerminal(options: LauncherTerminalOptions): Readonly<{
   close: () => Promise<void>
   executeAction: (record: LauncherActionRecord) => Promise<boolean>
+  getProviderErrors: () => ReadonlyMap<'TerminalLauncher', string>
   invalidate: (reason?: string, preserveSignal?: AbortSignal) => void
   loadIndexedItems: (signal?: AbortSignal, preserveSignal?: AbortSignal) => Promise<readonly LauncherInternalResultItem[]>
   searchInstant: (searchTerm: string) => Promise<Readonly<{ after: readonly LauncherInternalResultItem[]; before: readonly LauncherInternalResultItem[] }>>
@@ -208,6 +209,12 @@ export function createLauncherTerminal(options: LauncherTerminalOptions): Readon
   let generation = 0
   const startupHomeIdentity = options.homeIdentity
   let closed = false
+  let lastError: string | undefined
+  const getProviderErrors = (): ReadonlyMap<'TerminalLauncher', string> => lastError === undefined ? new Map() : new Map([['TerminalLauncher', lastError]])
+  const reportProviderError = (reason: unknown): void => {
+    lastError = 'Terminal Launcher is unavailable.'
+    options.onProviderError?.(reason instanceof Error ? reason : new Error(lastError))
+  }
 
   const track = <T>(operation: () => Promise<T>): Promise<T> => {
     let tracked!: Promise<T>
@@ -221,6 +228,7 @@ export function createLauncherTerminal(options: LauncherTerminalOptions): Readon
   const invalidate = (reason = 'TockLauncher Terminal Launcher was invalidated', _preserveSignal?: AbortSignal): void => {
     ++generation
     currentActions = new Map()
+    lastError = undefined
     abortAll(new Error(reason))
   }
   const isCurrent = (raw: string, known: KnownAction, expectedGeneration: number, digest: string): boolean => (
@@ -272,6 +280,7 @@ export function createLauncherTerminal(options: LauncherTerminalOptions): Readon
     const currentSettings = settingsState(options)
     if (closed || generation !== searchGeneration || !options.enabledExtensionIds().includes('TerminalLauncher') || currentSettings.digest !== settings.digest) return emptyResult()
     currentActions = nextActions
+    lastError = undefined
     return Object.freeze({ after: Object.freeze(items), before: Object.freeze([]) })
   })
   const loadIndexedItems = async (signal?: AbortSignal, _preserveSignal?: AbortSignal): Promise<readonly LauncherInternalResultItem[]> => {
@@ -316,6 +325,7 @@ export function createLauncherTerminal(options: LauncherTerminalOptions): Readon
         await options.effects.launchTerminal(launchRequest, controller.signal)
       } catch (reason) {
         await options.effects.auditLaunch(Object.freeze({ ...auditBase, outcome: 'failed' }))
+        reportProviderError(reason)
         throw reason
       }
       if (controller.signal.aborted || !isCurrent(record.argument, known, known.generation, settingsState(options).digest)) throw new Error('TockLauncher Terminal action was canceled')
@@ -330,5 +340,5 @@ export function createLauncherTerminal(options: LauncherTerminalOptions): Readon
     invalidate('TockLauncher Terminal Launcher is closed')
     await waitForIdle()
   }
-  return Object.freeze({ close, executeAction, invalidate, loadIndexedItems, searchInstant, waitForIdle })
+  return Object.freeze({ close, executeAction, getProviderErrors, invalidate, loadIndexedItems, searchInstant, waitForIdle })
 }

@@ -564,7 +564,7 @@ export function createLauncherDiscoveryScanners(options: Readonly<{
       const results: LauncherDiscoveryEntry[] = []
       settled.forEach(result => {
         if (result.status === 'fulfilled') results.push(...result.value)
-        else options.onProviderError?.('BrowserBookmarks', result.reason instanceof Error ? result.reason : new Error('Browser bookmark scan failed'))
+        else context.onProviderError?.(result.reason instanceof Error ? result.reason : new Error('Browser bookmark scan failed'))
       })
       return Object.freeze(results.slice(0, MAX_DISCOVERED_ITEMS))
     },

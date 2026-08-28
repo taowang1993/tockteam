@@ -150,6 +150,7 @@ export function createLauncherOsExtensions(options: LauncherOsOptions): Readonly
   close: () => Promise<void>
   executeAction: (record: LauncherActionRecord) => Promise<boolean>
   getLastError: () => string | undefined
+  getProviderErrors: () => ReadonlyMap<LauncherOsExtensionId, string>
   invalidate: () => void
   loadIndexedItems: (signal?: AbortSignal, preserveSignal?: AbortSignal) => Promise<readonly LauncherInternalResultItem[]>
   waitForIdle: () => Promise<void>
@@ -173,6 +174,7 @@ export function createLauncherOsExtensions(options: LauncherOsOptions): Readonly
     }
     return undefined
   }
+  const getProviderErrors = (): ReadonlyMap<LauncherOsExtensionId, string> => new Map(providerErrors)
   const report = (id: LauncherOsExtensionId, reason: unknown): void => {
     const message = id === 'WindowsControlPanel' ? 'Windows Control Panel is unavailable.' : `${id} is unavailable.`
     providerErrors.set(id, message)
@@ -393,5 +395,5 @@ export function createLauncherOsExtensions(options: LauncherOsOptions): Readonly
     await waitForIdle()
   }
 
-  return Object.freeze({ close, executeAction: (record: LauncherActionRecord) => track(executeAction(record)), getLastError, invalidate, loadIndexedItems: (signal?: AbortSignal, preserveSignal?: AbortSignal) => track(loadIndexedItems(signal, preserveSignal)), waitForIdle })
+  return Object.freeze({ close, executeAction: (record: LauncherActionRecord) => track(executeAction(record)), getLastError, getProviderErrors, invalidate, loadIndexedItems: (signal?: AbortSignal, preserveSignal?: AbortSignal) => track(loadIndexedItems(signal, preserveSignal)), waitForIdle })
 }

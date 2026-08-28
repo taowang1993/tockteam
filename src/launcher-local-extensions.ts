@@ -274,6 +274,7 @@ function uuidReformat(uuid: string, format: Readonly<{ braces: boolean; hyphens:
 export function createLauncherLocalExtensions(options: LocalExtensionOptions): Readonly<{
   close: () => Promise<void>
   executeAction: (record: LauncherActionRecord) => Promise<boolean>
+  getProviderErrors: () => ReadonlyMap<LauncherLocalExtensionId, string>
   invalidate: (reason?: string, preserveSignal?: AbortSignal) => void
   loadIndexedItems: () => Promise<readonly LauncherInternalResultItem[]>
   searchInstant: (searchTerm: string) => Promise<InstantResult>
@@ -283,6 +284,13 @@ export function createLauncherLocalExtensions(options: LocalExtensionOptions): R
   let closed = false
   let generation = 0
   const copyArguments = new Map<string, Readonly<{ generation: number; text: string }>>()
+  const providerErrors = new Map<LauncherLocalExtensionId, string>()
+  const reportProviderError = (extensionId: LauncherLocalExtensionId, reason: unknown): void => {
+    providerErrors.set(extensionId, `${extensionId} is unavailable.`)
+    options.onProviderError?.(extensionId, reason)
+  }
+  const clearProviderError = (extensionId: LauncherLocalExtensionId): void => { providerErrors.delete(extensionId) }
+  const getProviderErrors = (): ReadonlyMap<LauncherLocalExtensionId, string> => new Map(providerErrors)
   const activeControllers = new Set<AbortController>()
   const activeWork = new Set<Promise<unknown>>()
   const track = <T>(work: () => Promise<T>): Promise<T> => {
@@ -299,6 +307,7 @@ export function createLauncherLocalExtensions(options: LocalExtensionOptions): R
   const invalidate = (reason = 'TockLauncher local provider was invalidated', preserveSignal?: AbortSignal): void => {
     ++generation
     copyArguments.clear()
+    providerErrors.clear()
     abortAll(new Error(reason), preserveSignal)
   }
   const waitForIdle = async (): Promise<void> => {
@@ -366,7 +375,8 @@ export function createLauncherLocalExtensions(options: LocalExtensionOptions): R
       try {
         const result = (options.searchOverrides?.[id] ?? searchers[id])(term)
         before.push(...result.before.map(item => present(item, publicationGeneration))); after.push(...result.after.map(item => present(item, publicationGeneration)))
-      } catch (error) { options.onProviderError?.(id, error) }
+        clearProviderError(id)
+      } catch (error) { reportProviderError(id, error) }
     }
     return Object.freeze({ before: Object.freeze(before), after: Object.freeze(after) })
   }
@@ -399,7 +409,7 @@ export function createLauncherLocalExtensions(options: LocalExtensionOptions): R
     invalidate('TockLauncher local provider is closed')
     await waitForIdle()
   }
-  return Object.freeze({ close, executeAction, invalidate, loadIndexedItems, searchInstant, waitForIdle })
+  return Object.freeze({ close, executeAction, getProviderErrors, invalidate, loadIndexedItems, searchInstant, waitForIdle })
 }
 
 export { LAUNCHER_LOCAL_EXTENSION_IDS as LAUNCHER_LOCAL_IDS, LAUNCHER_LOCAL_EXTENSION_IMAGE_KEYS as LOCAL_IMAGE_KEYS }

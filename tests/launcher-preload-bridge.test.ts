@@ -42,10 +42,11 @@ test('launcher preload exposes only typed search, theme, settings, invoke, resca
       return { ok: true }
     },
   })
-  assert.deepEqual(Object.keys(bridge).sort(), ['cancelAction', 'dismiss', 'getLocalExtensionSettings', 'getSurfaceSettings', 'getTheme', 'invokeAction', 'onTheme', 'openSettings', 'recordSearch', 'rescan', 'search'])
+  assert.deepEqual(Object.keys(bridge).sort(), ['cancelAction', 'dismiss', 'getLocalExtensionSettings', 'getSurfaceSettings', 'getTheme', 'invokeAction', 'onLocale', 'onTheme', 'openSettings', 'recordSearch', 'rescan', 'search'])
   assert.equal(bridge.getLocalExtensionSettings.length, 0)
   assert.equal(bridge.getSurfaceSettings.length, 0)
   assert.equal(bridge.getTheme.length, 0)
+  assert.equal(bridge.onLocale.length, 1)
   assert.equal(bridge.cancelAction.length, 2)
   assert.equal(bridge.invokeAction.length, 1)
   assert.equal(bridge.recordSearch.length, 1)

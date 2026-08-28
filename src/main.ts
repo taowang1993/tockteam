@@ -130,13 +130,14 @@ import { LauncherPersistenceRepository, createLauncherSecretCodec } from './laun
 import { LauncherCustomBrowserController } from './launcher-custom-browser.ts'
 import { resolveLauncherSettingDefault } from './launcher-settings-defaults.ts'
 import { createLauncherSettingsOperations } from './launcher-settings-operations.ts'
+import { launcherSettingRequiresProviderRescan } from './launcher-setting-keys.ts'
 import { assertNoLauncherIpcArguments } from './launcher-window-contract.ts'
 import { createLauncherCoreSearch } from './launcher-core-search.ts'
 import { createLauncherLocalExtensions, resolveLauncherEnabledExtensionIds } from './launcher-local-extensions.ts'
 import { LAUNCHER_LOCAL_EXTENSION_DEFAULTS, LAUNCHER_LOCAL_EXTENSION_IDS } from './launcher-local-extension-config.ts'
 import type { LauncherLocalExtensionSettings } from './launcher-local-extension-contract.ts'
 import { isLauncherRendererSettingValue } from './launcher-settings-contract.ts'
-import { LAUNCHER_COMPOSITION, normalizeLauncherLocale, type LauncherProviderStatus } from './launcher-contract.ts'
+import { LAUNCHER_COMPOSITION, normalizeLauncherLocale, type LauncherLocale, type LauncherProviderStatus } from './launcher-contract.ts'
 import { registerLauncherIpcHandlers } from './launcher-ipc.ts'
 import {
   executeTockTeamDestination,
@@ -516,6 +517,7 @@ let launcherPersistentSetsSync: (() => void) | undefined
 let launcherActions: LauncherActionStore | undefined
 let launcherOwnerReady: Promise<void> = Promise.resolve()
 let launcherOwnerGeneration = 0
+let launcherLocale: LauncherLocale = 'en-US'
 const launcherSettingsOperations = createLauncherSettingsOperations({ isUnavailable: () => quitting })
 const runtimeStartGate = new RuntimeStartGate<void>()
 const launcherWindowRegistry = new LauncherWindowRegistry()
@@ -1343,15 +1345,18 @@ function runLauncherSettingsOperation<T>(
 async function runLauncherMutation<T>(
   reason: string,
   operation: (signal: AbortSignal) => Promise<T>,
+  options: Readonly<{ invalidate?: boolean; rescan?: boolean }> = {},
 ): Promise<T> {
-  const signal = invalidateAllLauncherProviders(reason)
+  const invalidate = options.invalidate !== false
+  const rescan = options.rescan !== false && invalidate
+  const signal = invalidate ? invalidateAllLauncherProviders(reason) : launcherInvalidationController.signal
   try {
     const result = await operation(signal)
     assertLauncherSignal(signal)
-    if (!quitting) await launcherRescan?.(undefined, undefined, reason)
+    if (rescan && !quitting) await launcherRescan?.(undefined, undefined, reason)
     return result
   } catch (error) {
-    if (!quitting && !signal.aborted) {
+    if (invalidate && !quitting && !signal.aborted) {
       invalidateAllLauncherProviders(`${reason}-rollback`)
       try { await launcherRescan?.() } catch { /* retain the original mutation error */ }
     }
@@ -1478,10 +1483,13 @@ function launcherSurfaceSettings(): import('./launcher-contract.ts').LauncherSur
     ...(platform !== 'Windows' ? ['WindowsControlPanel'] : []),
   ])
   const providerErrors = new Set<string>([
-    ...(launcherFileSearch?.getLastError() !== undefined ? ['FileSearch', 'SimpleFileSearch'] : []),
-    ...(launcherNetwork?.getLastError() !== undefined ? ['CurrencyConversion', 'CustomWebSearch', 'DeeplTranslator', 'WebSearch'] : []),
-    ...(launcherOs?.getLastError() !== undefined ? ['AppearanceSwitcher', 'SystemCommands', 'SystemSettings', 'UeliCommand', 'WindowsControlPanel'] : []),
-    ...(launcherWorkflow?.getLastError() !== undefined ? ['Workflow'] : []),
+    ...(launcherLocal?.getProviderErrors().keys() ?? []),
+    ...(launcherDiscovery?.getProviderErrors().keys() ?? []),
+    ...(launcherFileSearch?.getProviderErrors().keys() ?? []),
+    ...(launcherNetwork?.getProviderErrors().keys() ?? []),
+    ...(launcherOs?.getProviderErrors().keys() ?? []),
+    ...(launcherTerminal?.getProviderErrors().keys() ?? []),
+    ...(launcherWorkflow?.getProviderErrors().keys() ?? []),
   ])
   const providerStatuses: LauncherProviderStatus[] = LAUNCHER_COMPOSITION.extensionIds.map(extensionId => {
     if (!enabled.has(extensionId)) return Object.freeze({ extensionId, state: 'disabled' as const, messageKey: 'disabled' as const })
@@ -1489,7 +1497,7 @@ function launcherSurfaceSettings(): import('./launcher-contract.ts').LauncherSur
     if (providerErrors.has(extensionId)) return Object.freeze({ extensionId, state: 'unavailable' as const, messageKey: 'unavailable' as const })
     return Object.freeze({ extensionId, state: 'ready' as const })
   })
-  const language = normalizeLauncherLocale(values['general.language'])
+  const language = launcherLocale
   const configuredPlaceholder = textValue('appearance.searchBarPlaceholderText', language === 'zh-CN' ? '搜索 TockTeam' : 'Search TockTeam')
   return Object.freeze({
     doubleClickBehavior: values['keyboardAndMouse.doubleClickBehavior'] === 'selectSearchResultItem' ? 'selectSearchResultItem' as const : 'invokeSearchResultItem' as const,
@@ -2173,6 +2181,7 @@ function initializeLauncher(): void {
   const nextController = new LauncherOverlayController({
     createWindow: () => createLauncherWindow({ launcherSession, urlPolicy }),
     getDisplayWorkArea: () => screen.getDisplayNearestPoint(screen.getCursorScreenPoint()).workArea,
+    getLocale: () => launcherLocale,
     getHideWindowOn: () => {
       const configured = repository.getSetting<unknown>('window.hideWindowOn', ['blur', 'afterInvocation'])
       return Array.isArray(configured) ? configured.filter((value): value is string => value === 'blur' || value === 'afterInvocation' || value === 'escapePressed') : ['blur', 'afterInvocation']
@@ -2302,6 +2311,9 @@ function initializeLauncher(): void {
           await launcherLifecycle?.sync()
           assertLauncherSignal(signal)
           return settingsOperation()
+        }, {
+          invalidate: launcherSettingRequiresProviderRescan(key),
+          rescan: launcherSettingRequiresProviderRescan(key),
         }),
         { mutation: true },
       ),
@@ -2312,6 +2324,19 @@ function initializeLauncher(): void {
       const window = mainWindow
       if (window === undefined || window.isDestroyed()) throw new Error('Desktop workbench is unavailable')
       markWorkbenchReady(window)
+    },
+    syncLocale: (event, locale) => {
+      const sender = (event as Electron.IpcMainInvokeEvent).sender
+      const window = mainWindow
+      if (window === undefined || window.isDestroyed()
+        || sender !== window.webContents
+        || !workbenchRouteDelivery.isReady(window)
+        || workbenchReadyGeneration !== workbenchGeneration) {
+        throw new Error('Desktop locale sync is unavailable while the workbench is navigating')
+      }
+      launcherLocale = locale
+      nextController.sendLocale(locale)
+      return Object.freeze({ ok: true as const })
     },
     syncTheme: (event, source) => {
       const sender = (event as Electron.IpcMainInvokeEvent).sender

@@ -172,6 +172,11 @@ export function normalizeLauncherLocale(value: unknown): LauncherLocale {
   return 'en-US'
 }
 
+export function parseLauncherLocale(value: unknown): LauncherLocale {
+  if (value !== 'en-US' && value !== 'zh-CN') throw new Error('Invalid launcher locale')
+  return value
+}
+
 function isLauncherProviderId(value: unknown): value is (typeof LAUNCHER_COMPOSITION.extensionIds)[number] {
   return typeof value === 'string' && SURFACE_PROVIDER_IDS.has(value)
 }
@@ -224,6 +229,19 @@ export function launcherShortcutMatches(
 
 export function launcherShortcutLabel(shortcut: string, _platform: LauncherSurfacePlatform): string {
   return typeof shortcut === 'string' && shortcut.length <= 128 ? shortcut : ''
+}
+
+/** Convert the user-facing shortcut spelling to the token spelling required by ARIA. */
+export function launcherShortcutAriaLabel(shortcut: string): string {
+  if (typeof shortcut !== 'string' || shortcut.length === 0 || shortcut.length > 128) return ''
+  return shortcut.split('+').map(part => {
+    const value = part.trim()
+    return value === 'Cmd' ? 'Meta' : value === 'Ctrl' ? 'Control' : value
+  }).join('+')
+}
+
+export function launcherEffectiveScrollBehavior(behavior: LauncherScrollBehavior, reducedMotion: boolean): LauncherScrollBehavior {
+  return reducedMotion ? 'instant' : behavior
 }
 
 export function parseLauncherSearchArgs(value: unknown): Readonly<{

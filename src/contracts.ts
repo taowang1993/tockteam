@@ -5,6 +5,7 @@ import type {
 } from './desktop-app-update.ts'
 import type { DesktopLauncherState } from './launcher-window-contract.ts'
 import type { LauncherThemeSource } from './launcher-theme.ts'
+import type { LauncherLocale } from './launcher-contract.ts'
 import type { LauncherSettingsSnapshot } from './launcher-settings-contract.ts'
 import type { LauncherWorkbenchRoute, TockTeamDestination } from './launcher-navigation.ts'
 
@@ -133,6 +134,7 @@ export interface DesktopBridge {
   getRuntimeSnapshot(): Promise<DesktopRuntimeSnapshot>
   onCommand(listener: (command: DesktopCommand) => void): () => void
   onRoute(listener: (route: LauncherWorkbenchRoute) => void): () => void
+  syncLauncherLocale(locale: LauncherLocale): Promise<void>
   syncLauncherTheme(source: LauncherThemeSource): Promise<void>
   syncWorkbenchDestination(destination: TockTeamDestination): Promise<void>
   openExternal(url: string): Promise<void>

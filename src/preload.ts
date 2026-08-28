@@ -28,6 +28,7 @@ import type { LauncherWorkbenchRoute, TockTeamDestination } from './launcher-nav
 import {
   LAUNCHER_SETTINGS_IPC_CHANNELS,
 } from './launcher-window-contract.ts'
+import { parseLauncherLocale } from './launcher-contract.ts'
 import {
   parseLauncherSettingUpdateArgs,
   parseLauncherSettingsOperationResult,
@@ -213,6 +214,11 @@ const bridge: DesktopBridge = Object.freeze({
     pendingRoute = undefined
     if (queued !== undefined) listener(queued)
     return () => { routeListeners.delete(listener) }
+  },
+  syncLauncherLocale: async (locale: import('./launcher-contract.ts').LauncherLocale, ...extra: unknown[]): Promise<void> => {
+    assertNoLauncherIpcArguments(extra)
+    const parsed = parseLauncherLocale(locale)
+    parseLauncherWindowAcknowledgement(await ipcRenderer.invoke(LAUNCHER_WINDOW_IPC_CHANNELS.syncLocale, parsed))
   },
   syncLauncherTheme: async (source: LauncherThemeSource, ...extra: unknown[]): Promise<void> => {
     assertNoLauncherIpcArguments(extra)

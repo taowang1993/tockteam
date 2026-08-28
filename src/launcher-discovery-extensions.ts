@@ -98,6 +98,7 @@ export type LauncherDiscoveryScanContext = Readonly<{
   homePath: string
   platform: LauncherDiscoveryPlatform
   signal: AbortSignal
+  onProviderError?: (error: Error) => void
 }>
 
 export type LauncherDiscoveryScanners = Readonly<Record<
@@ -260,6 +261,7 @@ export function createLauncherDiscoveryExtensions(options: LauncherDiscoveryOpti
   close: () => Promise<void>
   executeAction: (record: LauncherActionRecord) => Promise<boolean>
   invalidate: (reason?: string, preserveSignal?: AbortSignal) => void
+  getProviderErrors: () => ReadonlyMap<LauncherDiscoveryExtensionId, string>
   loadIndexedItems: (signal: AbortSignal, preserveSignal?: AbortSignal) => Promise<readonly LauncherInternalResultItem[]>
   searchInstant: (searchTerm: string) => Promise<Readonly<{ after: readonly LauncherInternalResultItem[]; before: readonly LauncherInternalResultItem[] }>>
   waitForIdle: () => Promise<void>
@@ -279,6 +281,14 @@ export function createLauncherDiscoveryExtensions(options: LauncherDiscoveryOpti
   let scanGeneration = 0
   let instantGeneration = 0
   let closed = false
+  const providerErrors = new Map<LauncherDiscoveryExtensionId, string>()
+  const reportProviderError = (extensionId: LauncherDiscoveryExtensionId, reason: unknown): void => {
+    const message = `${extensionId} is unavailable.`
+    providerErrors.set(extensionId, message)
+    options.onProviderError?.(extensionId, reason instanceof Error ? reason : new Error(message))
+  }
+  const clearProviderError = (extensionId: LauncherDiscoveryExtensionId): void => { providerErrors.delete(extensionId) }
+  const getProviderErrors = (): ReadonlyMap<LauncherDiscoveryExtensionId, string> => new Map(providerErrors)
   const activeControllers = new Set<AbortController>()
   const activeWork = new Set<Promise<unknown>>()
   const resolveExecutable = options.resolveExecutable ?? ((command, platform, values) => resolveLauncherExecutable(command, platform, values))
@@ -308,6 +318,7 @@ export function createLauncherDiscoveryExtensions(options: LauncherDiscoveryOpti
     ++scanGeneration
     ++instantGeneration
     clearState()
+    providerErrors.clear()
     abortAll(new Error(reason), preserveSignal)
   }
   const waitForIdle = async (): Promise<void> => {
@@ -315,9 +326,9 @@ export function createLauncherDiscoveryExtensions(options: LauncherDiscoveryOpti
     await Promise.race([Promise.allSettled([...activeWork]).then(() => undefined), timer])
   }
 
-  const context = (signal: AbortSignal): LauncherDiscoveryScanContext => Object.freeze({
+  const context = (extensionId: LauncherDiscoveryExtensionId, signal: AbortSignal): LauncherDiscoveryScanContext => Object.freeze({
     appDataPath: options.appDataPath, defaults, environment, getSetting: options.getSetting,
-    homePath: options.homePath, platform: options.platform, signal,
+    homePath: options.homePath, onProviderError: error => reportProviderError(extensionId, error), platform: options.platform, signal,
   })
   const mappingTimeoutMs = Math.min(scanTimeoutMs, 1_000)
   const captureIdentity = async (target: string, signal: AbortSignal, timeoutMs = mappingTimeoutMs): Promise<LauncherDiscoveryIdentity | undefined> => {
@@ -343,7 +354,7 @@ export function createLauncherDiscoveryExtensions(options: LauncherDiscoveryOpti
     try {
       if (closed) throw new Error('TockLauncher discovery provider is closed')
       if (controller.signal.aborted) throw controller.signal.reason instanceof Error ? controller.signal.reason : new Error('TockLauncher discovery scan canceled')
-      const operation = options.scanners[extensionId](context(controller.signal))
+      const operation = options.scanners[extensionId](context(extensionId, controller.signal))
       return await new Promise<readonly LauncherDiscoveryEntry[]>((resolve, reject) => {
         const rejectOnAbort = () => reject(controller.signal.reason instanceof Error ? controller.signal.reason : new Error(`${extensionId} discovery scan canceled`))
         if (controller.signal.aborted) rejectOnAbort()
@@ -367,7 +378,8 @@ export function createLauncherDiscoveryExtensions(options: LauncherDiscoveryOpti
       return await track(scan(id, signal))
     }))
     for (const [index, result] of settled.entries()) {
-      if (result.status === 'rejected') options.onProviderError?.(ids[index]!, result.reason instanceof Error ? result.reason : new Error('Discovery provider failed'))
+      if (result.status === 'rejected') reportProviderError(ids[index]!, result.reason)
+      else clearProviderError(ids[index]!)
     }
     if (signal.aborted) throw signal.reason instanceof Error ? signal.reason : new Error('TockLauncher discovery scan canceled')
     if (generation !== scanGeneration) throw new Error('TockLauncher discovery scan was superseded')
@@ -389,7 +401,7 @@ export function createLauncherDiscoveryExtensions(options: LauncherDiscoveryOpti
     const mappingDeadline = Date.now() + scanTimeoutMs
     let applicationIconCalls = 0
     const indexed: LauncherInternalResultItem[] = []
-    const reportIconError = (() => { let reported = false; return (error: Error) => { if (!reported) { reported = true; options.onProviderError?.('ApplicationSearch', error) } } })()
+    const reportIconError = (() => { let reported = false; return (error: Error) => { if (!reported) { reported = true; reportProviderError('ApplicationSearch', error) } } })()
     const mapEntry = async (
       entry: LauncherDiscoveryEntry,
       map: Set<string>,
@@ -633,7 +645,7 @@ export function createLauncherDiscoveryExtensions(options: LauncherDiscoveryOpti
     await waitForIdle()
   }
 
-  return Object.freeze({ close, executeAction, invalidate, loadIndexedItems, searchInstant, waitForIdle })
+  return Object.freeze({ close, executeAction, getProviderErrors, invalidate, loadIndexedItems, searchInstant, waitForIdle })
 }
 
 export function launcherDiscoveryImageKeyForBrowser(browser: string): string { return BROWSER_IMAGE_KEYS[browser] ?? 'browser-bookmarks' }

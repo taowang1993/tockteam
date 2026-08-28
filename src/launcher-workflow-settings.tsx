@@ -122,7 +122,20 @@ export function LauncherWorkflowSettings({ busy, save, snapshot }: WorkflowSetti
   const deleteTriggerRef = useRef<HTMLButtonElement>(null)
   const [saving, setSaving] = useState(false)
   const savingRef = useRef(false)
+  const dirtyRef = useRef(false)
+  const selectedIdRef = useRef(selectedId)
   const saveWorkflow = useMemo(() => createLauncherWorkflowSaveGate(save), [save])
+
+  useEffect(() => {
+    if (dirtyRef.current || savingRef.current) return
+    const next = initialLauncherWorkflowSettings(snapshot)
+    const selected = next.find(workflow => workflow.id === selectedIdRef.current) ?? next[0]
+    selectedIdRef.current = selected?.id ?? ''
+    setWorkflows(next)
+    setSelectedId(selected?.id ?? '')
+    setDraft(selected === undefined ? null : copyWorkflow(selected))
+    setPendingAction(makeAction(currentPlatform))
+  }, [currentPlatform, snapshot])
 
   useEffect(() => {
     if (!deletePending) {
@@ -137,6 +150,8 @@ export function LauncherWorkflowSettings({ busy, save, snapshot }: WorkflowSetti
   }, [deletePending])
 
   const selectWorkflow = (workflow: LauncherWorkflow): void => {
+    dirtyRef.current = false
+    selectedIdRef.current = workflow.id
     setSelectedId(workflow.id)
     setDraft(copyWorkflow(workflow))
     setPendingAction(makeAction(currentPlatform))
@@ -145,6 +160,8 @@ export function LauncherWorkflowSettings({ busy, save, snapshot }: WorkflowSetti
 
   const addWorkflow = (): void => {
     const id = newId('workflow')
+    dirtyRef.current = true
+    selectedIdRef.current = id
     setSelectedId(id)
     setDraft({ actions: [], id, name: '', requiresConfirmation: false })
     setPendingAction(makeAction(currentPlatform))
@@ -157,6 +174,8 @@ export function LauncherWorkflowSettings({ busy, save, snapshot }: WorkflowSetti
     setSaving(true)
     try {
       if (!await saveWorkflow(next)) return
+      dirtyRef.current = false
+      selectedIdRef.current = selected
       setWorkflows([...next])
       setSelectedId(selected)
       const chosen = next.find(workflow => workflow.id === selected)
@@ -170,6 +189,7 @@ export function LauncherWorkflowSettings({ busy, save, snapshot }: WorkflowSetti
   }
 
   const updateDraftName = (event: ChangeEvent<HTMLInputElement>): void => {
+    dirtyRef.current = true
     setDraft(previous => previous === null ? previous : { ...previous, name: event.target.value })
   }
   const selectedWorkflow = workflows.find(workflow => workflow.id === selectedId)
@@ -208,7 +228,7 @@ export function LauncherWorkflowSettings({ busy, save, snapshot }: WorkflowSetti
                 <p id="tocklauncher-workflow-name-help" className="text-xs text-muted-foreground">Use 1–128 characters; the name is shown only as bounded display text.</p>
               </div>
               <label className="flex items-center gap-2 text-sm text-foreground">
-                <input aria-label="Workflow requires confirmation" checked={draft.requiresConfirmation} disabled={busy || saving} type="checkbox" onChange={event => setDraft(previous => previous === null ? previous : { ...previous, requiresConfirmation: event.target.checked })} />
+                <input aria-label="Workflow requires confirmation" checked={draft.requiresConfirmation} disabled={busy || saving} type="checkbox" onChange={event => { dirtyRef.current = true; setDraft(previous => previous === null ? previous : { ...previous, requiresConfirmation: event.target.checked }) }} />
                 <span>Require launcher confirmation (commands always do)</span>
               </label>
 
@@ -217,7 +237,7 @@ export function LauncherWorkflowSettings({ busy, save, snapshot }: WorkflowSetti
                 {draft.actions.length === 0 ? <p className="text-xs text-muted-foreground">No actions yet. Add one below.</p> : <ol className="grid gap-2 pl-5">
                   {draft.actions.map((action, index) => <li className="flex min-w-0 items-center justify-between gap-2 text-sm" key={action.id}>
                     <span className="min-w-0 truncate"><span className="mr-1 text-muted-foreground">{index + 1}.</span>{action.name || 'Unnamed action'} · {actionLabel(action.handlerId)}</span>
-                    <Button aria-label={`${launcherFixedText('Remove')} ${action.name || `action ${index + 1}`}`} size="sm" type="button" variant="outline" disabled={busy || saving} onClick={() => setDraft(previous => previous === null ? previous : { ...previous, actions: previous.actions.filter(candidate => candidate.id !== action.id) })}>{launcherFixedText('Remove')}</Button>
+                    <Button aria-label={`${launcherFixedText('Remove')} ${action.name || `action ${index + 1}`}`} size="sm" type="button" variant="outline" disabled={busy || saving} onClick={() => { dirtyRef.current = true; setDraft(previous => previous === null ? previous : { ...previous, actions: previous.actions.filter(candidate => candidate.id !== action.id) }) }}>{launcherFixedText('Remove')}</Button>
                   </li>)}
                 </ol>}
               </div>
@@ -225,31 +245,32 @@ export function LauncherWorkflowSettings({ busy, save, snapshot }: WorkflowSetti
               <fieldset className="grid gap-2 rounded-md border border-border/60 p-2">
                 <legend className="px-1 text-xs font-medium text-foreground">New action</legend>
                 <Label htmlFor="tocklauncher-workflow-action-name">Action name</Label>
-                <Input id="tocklauncher-workflow-action-name" aria-describedby="tocklauncher-workflow-action-name-help" aria-invalid={pendingAction.name.trim().length === 0 || pendingAction.name.length > 128} disabled={busy || saving} maxLength={128} value={pendingAction.name} onChange={event => setPendingAction(previous => ({ ...previous, name: event.target.value }))} />
+                <Input id="tocklauncher-workflow-action-name" aria-describedby="tocklauncher-workflow-action-name-help" aria-invalid={pendingAction.name.trim().length === 0 || pendingAction.name.length > 128} disabled={busy || saving} maxLength={128} value={pendingAction.name} onChange={event => { dirtyRef.current = true; setPendingAction(previous => ({ ...previous, name: event.target.value })) }} />
                 <p id="tocklauncher-workflow-action-name-help" className="text-xs text-muted-foreground">Action names are required and bounded to 128 characters.</p>
                 <Label htmlFor="tocklauncher-workflow-action-type">Action type</Label>
-                <NativeSelect id="tocklauncher-workflow-action-type" aria-label="New action type" value={pendingAction.handlerId} disabled={busy || saving} onChange={event => setPendingAction(previous => ({ ...previous, handlerId: event.target.value as DraftAction['handlerId'] }))}>
+                <NativeSelect id="tocklauncher-workflow-action-type" aria-label="New action type" value={pendingAction.handlerId} disabled={busy || saving} onChange={event => { dirtyRef.current = true; setPendingAction(previous => ({ ...previous, handlerId: event.target.value as DraftAction['handlerId'] })) }}>
                   {ACTION_TYPES.map(([id, label]) => <NativeSelectOption key={id} value={id}>{label}</NativeSelectOption>)}
                 </NativeSelect>
                 {pendingAction.handlerId === 'OpenFile' ? <>
                   <Label htmlFor="tocklauncher-workflow-file-path">Absolute file path</Label>
-                  <Input id="tocklauncher-workflow-file-path" aria-label="New action file path" maxLength={4096} value={pendingAction.args.filePath} disabled={busy || saving} onChange={event => setPendingAction(previous => ({ ...previous, args: { ...previous.args, filePath: event.target.value } }))} />
+                  <Input id="tocklauncher-workflow-file-path" aria-label="New action file path" maxLength={4096} value={pendingAction.args.filePath} disabled={busy || saving} onChange={event => { dirtyRef.current = true; setPendingAction(previous => ({ ...previous, args: { ...previous.args, filePath: event.target.value } })) }} />
                 </> : null}
                 {pendingAction.handlerId === 'OpenUrl' ? <>
                   <Label htmlFor="tocklauncher-workflow-url">HTTP(S) URL</Label>
-                  <Input id="tocklauncher-workflow-url" aria-label="New action url" maxLength={4096} value={pendingAction.args.url} disabled={busy || saving} onChange={event => setPendingAction(previous => ({ ...previous, args: { ...previous.args, url: event.target.value } }))} />
+                  <Input id="tocklauncher-workflow-url" aria-label="New action url" maxLength={4096} value={pendingAction.args.url} disabled={busy || saving} onChange={event => { dirtyRef.current = true; setPendingAction(previous => ({ ...previous, args: { ...previous.args, url: event.target.value } })) }} />
                 </> : null}
                 {pendingAction.handlerId === 'OpenTerminal' ? <>
                   <Label htmlFor="tocklauncher-workflow-terminal">Terminal</Label>
-                  <NativeSelect id="tocklauncher-workflow-terminal" aria-label="New action terminal" disabled={busy || saving || LAUNCHER_TERMINALS[currentPlatform].length === 0} value={pendingAction.args.terminalId} onChange={event => setPendingAction(previous => ({ ...previous, args: { ...previous.args, terminalId: event.target.value } }))}>
+                  <NativeSelect id="tocklauncher-workflow-terminal" aria-label="New action terminal" disabled={busy || saving || LAUNCHER_TERMINALS[currentPlatform].length === 0} value={pendingAction.args.terminalId} onChange={event => { dirtyRef.current = true; setPendingAction(previous => ({ ...previous, args: { ...previous.args, terminalId: event.target.value } })) }}>
                     {LAUNCHER_TERMINALS[currentPlatform].map(terminal => <NativeSelectOption key={terminal.id} value={terminal.id}>{terminal.name}</NativeSelectOption>)}
                   </NativeSelect>
                 </> : null}
                 {pendingAction.handlerId === 'OpenTerminal' || pendingAction.handlerId === 'ExecuteCommand' ? <>
                   <Label htmlFor="tocklauncher-workflow-command">Command</Label>
-                  <Input id="tocklauncher-workflow-command" aria-label="New action command" maxLength={pendingAction.handlerId === 'OpenTerminal' ? 512 : 2048} value={pendingAction.args.command} disabled={busy || saving} onChange={event => setPendingAction(previous => ({ ...previous, args: { ...previous.args, command: event.target.value } }))} />
+                  <Input id="tocklauncher-workflow-command" aria-label="New action command" maxLength={pendingAction.handlerId === 'OpenTerminal' ? 512 : 2048} value={pendingAction.args.command} disabled={busy || saving} onChange={event => { dirtyRef.current = true; setPendingAction(previous => ({ ...previous, args: { ...previous.args, command: event.target.value } })) }} />
                 </> : null}
                 <Button data-testid="tocklauncher-workflow-add-action" size="sm" type="button" variant="outline" disabled={busy || saving || draft.actions.length >= 16 || !validAction(pendingAction, currentPlatform)} onClick={() => {
+                  dirtyRef.current = true
                   setDraft(previous => previous === null ? previous : { ...previous, actions: [...previous.actions, { ...pendingAction, args: { ...pendingAction.args } }] })
                   setPendingAction(makeAction(currentPlatform))
                 }}>Add action</Button>

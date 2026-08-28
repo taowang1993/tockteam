@@ -12,9 +12,9 @@
   <body class="m-0 h-full min-h-full overflow-auto bg-[var(--dsw-alias-bg-base,Canvas)] font-sans text-[var(--dsw-alias-label-primary,CanvasText)] motion-reduce:transition-none motion-reduce:animate-none">
     <main id="launcher-root" class="mx-auto box-border flex min-h-full w-full max-w-[750px] min-w-0 flex-col gap-3 overflow-auto rounded-xl border border-[var(--dsw-alias-border-l2,CanvasText)] bg-[var(--dsw-alias-bg-layer-1,Canvas)] p-5 shadow-lg motion-reduce:transition-none" data-launcher-ready="false">
       <h1 class="sr-only">TockLauncher</h1>
-      <div id="launcher-search-form" class="flex min-w-0 items-center gap-2" role="search">
+      <div id="launcher-search-form" class="flex min-w-0 flex-wrap items-center gap-2" role="search">
         <label for="launcher-search" class="sr-only">Search TockLauncher</label>
-        <div class="relative min-w-0 flex-1">
+        <div class="relative min-w-0 flex-1 basis-full sm:basis-auto">
           <span id="launcher-search-icon" class="pointer-events-none absolute left-3 top-1/2 flex -translate-y-1/2 text-[var(--dsw-alias-label-secondary,CanvasText)]" aria-hidden="true"></span>
           <input id="launcher-search" class="box-border h-10 w-full rounded-lg border border-[var(--dsw-alias-border-l2,CanvasText)] bg-[var(--dsw-specific-input-major,var(--dsw-alias-bg-base,Canvas))] px-3 pl-9 text-base text-[var(--dsw-alias-label-primary,CanvasText)] outline-none focus-visible:border-[var(--dsw-alias-brand-primary,CanvasText)] focus-visible:ring-2 focus-visible:ring-[var(--dsw-alias-brand-primary,CanvasText)]" type="search" role="combobox" aria-autocomplete="list" aria-controls="launcher-results" aria-expanded="false" autocomplete="off" placeholder="Search TockTeam" />
         </div>
@@ -24,7 +24,7 @@
       <p id="launcher-status" class="m-0 min-h-5 text-sm text-[var(--dsw-alias-label-secondary,CanvasText)]" role="status" aria-live="polite" aria-atomic="true">Destinations will appear here.</p>
       <div id="launcher-provider-statuses" class="min-w-0 text-xs text-[var(--dsw-alias-label-secondary,CanvasText)]" role="status" aria-live="polite" hidden></div>
       <ul id="launcher-results" class="m-0 min-h-0 flex-1 list-none overflow-auto p-0" role="listbox" aria-label="TockLauncher destinations"></ul>
-      <div id="launcher-details" class="min-h-9"></div>
+      <div id="launcher-details" class="min-h-9 min-w-0"></div>
       <div class="flex min-w-0 flex-wrap items-center justify-end gap-2">
         <button id="launcher-rescan" class="inline-flex h-9 items-center gap-1 rounded-lg border border-[var(--dsw-alias-border-l2,CanvasText)] px-2 text-sm hover:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))] focus-visible:outline-2 disabled:cursor-wait disabled:opacity-60" type="button">Rescan</button>
         <button id="launcher-settings" class="inline-flex h-9 items-center gap-1 rounded-lg border border-[var(--dsw-alias-border-l2,CanvasText)] px-2 text-sm hover:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))] focus-visible:outline-2" type="button">Open TockLauncher Settings</button>
