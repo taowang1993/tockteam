@@ -7,6 +7,8 @@ import {
   LAUNCHER_WEB_SEARCH_QUERY_PREFIX,
 } from './launcher-network-extension-config.ts'
 import { launcherNetworkAssetUrl } from './launcher-network-assets.ts'
+import { launcherCountText, launcherText } from './launcher-i18n.ts'
+import type { LauncherLocale } from './launcher-contract.ts'
 
 function element<K extends keyof HTMLElementTagNameMap>(document: Document, tag: K, className?: string): HTMLElementTagNameMap[K] {
   const created = document.createElement(tag)
@@ -20,10 +22,12 @@ export function createLauncherNetworkExtensionTool(options: Readonly<{
   bridge: LauncherPreloadBridge
   document: Document
   extensionId: NetworkToolExtensionId
+  locale?: LauncherLocale
   onClose: () => void
   searchOptions: LauncherSearchOptions
 }>): HTMLElement {
   const { bridge, document, extensionId } = options
+  const text = (key: string, fallback: string): string => launcherText(options.locale, key, fallback)
   const isDeepL = extensionId === 'DeeplTranslator'
   const title = isDeepL ? 'DeepL Translator' : 'Web Search'
   const prefix = isDeepL ? LAUNCHER_DEEPL_QUERY_PREFIX : LAUNCHER_WEB_SEARCH_QUERY_PREFIX
@@ -39,7 +43,7 @@ export function createLauncherNetworkExtensionTool(options: Readonly<{
   identity.append(image, heading)
   const close = element(document, 'button', 'launcher-secondary-button')
   close.type = 'button'
-  close.textContent = 'Back to results'
+  close.textContent = text('back', 'Back to Results')
   close.setAttribute('aria-label', `Close ${title} tool`)
   close.addEventListener('click', options.onClose)
   header.append(identity, close)
@@ -51,7 +55,7 @@ export function createLauncherNetworkExtensionTool(options: Readonly<{
     : 'Queries are sent to the selected Google or DuckDuckGo provider for suggestions.'
   const label = element(document, 'label', 'launcher-tool-field')
   const labelText = element(document, 'span')
-  labelText.textContent = isDeepL ? 'Text to translate' : 'Search term'
+  labelText.textContent = isDeepL ? text('textToTranslate', 'Text to translate') : text('searchTerm', 'Search term')
   const input = element(document, isDeepL ? 'textarea' : 'input')
   input.setAttribute('aria-label', labelText.textContent)
   input.setAttribute('autocomplete', 'off')
@@ -61,7 +65,7 @@ export function createLauncherNetworkExtensionTool(options: Readonly<{
   const status = element(document, 'p', 'launcher-local-tool-status')
   status.setAttribute('role', 'status')
   status.setAttribute('aria-live', 'polite')
-  status.textContent = isDeepL ? 'Enter text to translate.' : 'Enter a web search.'
+  status.textContent = isDeepL ? text('enterTranslation', 'Enter text to translate.') : text('enterWebSearch', 'Enter a web search.')
   const list = element(document, 'ul', 'm-0 min-w-0 list-none overflow-auto p-0')
   list.setAttribute('aria-label', `${title} results`)
   list.setAttribute('role', 'list')
@@ -107,8 +111,8 @@ export function createLauncherNetworkExtensionTool(options: Readonly<{
         const menuId = `launcher-network-actions-${index}`
         const toggle = element(document, 'button', 'shrink-0 rounded-md px-2 py-2 text-xs')
         toggle.type = 'button'
-        toggle.textContent = 'Actions'
-        toggle.setAttribute('aria-label', `Actions for ${item.name}`)
+        toggle.textContent = text('actions', 'Actions')
+        toggle.setAttribute('aria-label', `${text('actions', 'Actions')} for ${item.name}`)
         toggle.setAttribute('aria-haspopup', 'menu')
         toggle.setAttribute('aria-expanded', 'false')
         toggle.setAttribute('aria-controls', menuId)
@@ -180,7 +184,7 @@ export function createLauncherNetworkExtensionTool(options: Readonly<{
     if (term.length === 0) {
       currentItems = []
       render()
-      setStatus(isDeepL ? 'Enter text to translate.' : 'Enter a web search.')
+      setStatus(isDeepL ? text('enterTranslation', 'Enter text to translate.') : text('enterWebSearch', 'Enter a web search.'))
       return
     }
     if (term.length > LAUNCHER_NETWORK_TOOL_INPUT_LENGTH) {
@@ -189,19 +193,19 @@ export function createLauncherNetworkExtensionTool(options: Readonly<{
       setStatus(`${title} input is too long.`, 'error')
       return
     }
-    setStatus(isDeepL ? 'Translating with DeepL…' : 'Loading suggestions…')
+    setStatus(isDeepL ? text('translating', 'Translating with DeepL…') : text('loadingSuggestions', 'Loading suggestions…'))
     try {
       const response = await bridge.search(`${prefix}${term}`, options.searchOptions)
       if (revision !== requestRevision) return
       currentItems = Object.freeze([...response.before, ...response.after].filter(item => item.sourceExtension === extensionId))
       render()
-      setStatus(response.status.lastError ?? `${currentItems.length} result${currentItems.length === 1 ? '' : 's'}.`, response.status.lastError === undefined ? 'ready' : 'error')
+      setStatus(response.status.lastError ?? launcherCountText(options.locale, 'resultsFound', currentItems.length, `${currentItems.length} result${currentItems.length === 1 ? '' : 's'}.`), response.status.lastError === undefined ? 'ready' : 'error')
       restoreFocus(focusItemId)
     } catch {
       if (revision !== requestRevision) return
       currentItems = []
       render()
-      setStatus(`${title} is unavailable.`, 'error')
+      setStatus(text('networkUnavailable', `${title} is unavailable.`), 'error')
       restoreFocus(focusItemId)
     }
   }

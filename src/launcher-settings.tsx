@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { Check, Database, Globe2, KeyRound, Palette, RefreshCw, RotateCcw, Search, ShieldCheck, Trash2, Upload, Download, MonitorCog } from 'lucide-react'
+import { Check, Database, Globe2, KeyRound, Keyboard, Palette, RefreshCw, RotateCcw, Search, ShieldCheck, Trash2, Upload, Download, MonitorCog } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@tockteam/ui/alert'
 import { Badge } from '@tockteam/ui/badge'
 import { Button } from '@tockteam/ui/button'
@@ -21,21 +21,36 @@ import type { DesktopBridge } from './contracts.ts'
 import { LAUNCHER_SENSITIVE_SETTING_KEYS, type LauncherSettingsSnapshot } from './launcher-settings-contract.ts'
 import { readPersistedLauncherState } from './launcher-settings-model.ts'
 import { LAUNCHER_SETTING_CATALOG_COUNT } from './launcher-setting-catalog.ts'
+import { localeTag } from '../plugins/shared/i18n.ts'
+import { useTranslate } from '../plugins/shared/use-i18n.ts'
 import type { LocaleMessages, LocaleService } from '../plugins/shared/i18n.ts'
 
 const MESSAGES = {
   en: {
+    about: 'A focused launcher over the TockTeam Desktop workbench with bounded local, discovery, file, and network providers.',
+    badge: 'Ueli-compatible contract',
+    description: 'A focused launcher over the TockTeam Desktop workbench with bounded local, discovery, file, and network providers.',
+    ready: 'TockLauncher settings are ready.',
+    saving: 'Saving…',
+    saved: 'Saved.',
     title: 'TockLauncher',
     unavailable: 'TockLauncher settings are available in TockTeam Desktop only.',
   },
   zh: {
+    about: '基于 TockTeam Desktop 工作台的专注启动器，提供受限的本地、发现、文件和网络提供方。',
+    badge: '兼容 Ueli 合约',
+    description: '基于 TockTeam Desktop 工作台的专注启动器，提供受限的本地、发现、文件和网络提供方。',
+    ready: 'TockLauncher 设置已就绪。',
+    saving: '正在保存…',
+    saved: '已保存。',
     title: 'TockLauncher',
     unavailable: 'TockLauncher 设置仅在 TockTeam Desktop 中可用。',
   },
-} satisfies LocaleMessages<'title' | 'unavailable'>
+} satisfies LocaleMessages<'about' | 'badge' | 'description' | 'ready' | 'saving' | 'saved' | 'title' | 'unavailable'>
 
 interface SettingsSectionProps {
   close: () => void
+  locale?: LocaleService
 }
 
 interface SettingsSlots {
@@ -92,7 +107,10 @@ function statusLabel(snapshot: LauncherSettingsSnapshot): string {
   return snapshot.recoveredSettings ? 'Managed source recovered from backup' : 'Managed source active'
 }
 
-function LauncherSettingsPage({ close: _close }: SettingsSectionProps): ReactNode {
+function LauncherSettingsPage({ close: _close, locale }: SettingsSectionProps): ReactNode {
+  const translate = locale === undefined ? undefined : useTranslate(locale, locale.bind('tockteam.launcher'))
+  const t = (key: keyof typeof MESSAGES.en): string => translate?.(key) ?? MESSAGES.en[key]
+  if (locale !== undefined) document.documentElement.lang = localeTag(locale)
   const bridge = window.dshDesktop
   const settings = bridge?.launcher.settings
   const [snapshot, setSnapshot] = useState<LauncherSettingsSnapshot | null>(null)
@@ -139,7 +157,7 @@ function LauncherSettingsPage({ close: _close }: SettingsSectionProps): ReactNod
 
   useEffect(() => {
     if (!settings) return
-    void reload().then(() => setStatus('TockLauncher settings are ready.')).catch(() => setStatus('TockLauncher settings are unavailable.'))
+    void reload().then(() => setStatus(t('ready'))).catch(() => setStatus(t('unavailable')))
   }, [reload, settings])
 
   useEffect(() => {
@@ -173,7 +191,7 @@ function LauncherSettingsPage({ close: _close }: SettingsSectionProps): ReactNod
 
   const save = useCallback((key: string, value: unknown): Promise<boolean> => {
     if (!settings) return Promise.resolve(false)
-    setStatus('Saving…')
+    setStatus(t('saving'))
     setBusy(true)
     const isSimpleFileSearchFolders = key === 'extension[SimpleFileSearch].folders'
     const draftRevision = simpleFileSearchDraftRevision.current
@@ -194,7 +212,7 @@ function LauncherSettingsPage({ close: _close }: SettingsSectionProps): ReactNod
       if (isSimpleFileSearchFolders && simpleFileSearchDraftRevision.current === draftRevision) {
         setSimpleFileSearchDraft(value as readonly LauncherSimpleFileSearchDraft[])
       }
-      setStatus('Saved.')
+      setStatus(t('saved'))
       return true
     }, () => {
       if (pendingValues.current.get(key) === value) pendingValues.current.delete(key)
@@ -242,7 +260,7 @@ function LauncherSettingsPage({ close: _close }: SettingsSectionProps): ReactNod
     }
   }, [clearSimpleFileSearchDraft, reload])
 
-  if (!bridge || !settings) return <p className="text-sm text-muted-foreground">TockLauncher settings are available in TockTeam Desktop only.</p>
+  if (!bridge || !settings) return <p className="text-sm text-muted-foreground">{t('unavailable')}</p>
   if (snapshot === null || state === null) return <p aria-live="polite" className="text-sm text-muted-foreground" role="status">{status}</p>
 
   const setExtension = (extensionId: string, checked: boolean): void => {
@@ -288,10 +306,11 @@ function LauncherSettingsPage({ close: _close }: SettingsSectionProps): ReactNod
         <Field title="Saved searches" description="Clear persisted history without changing provider settings.">
           <Button aria-label="Clear search history" size="sm" variant="outline" disabled={busy || state.history.length === 0} onClick={clearHistory}><Trash2 aria-hidden="true" />Clear History</Button>
         </Field>
+        <LauncherSurfaceSettingsSection busy={busy} platform={rendererIsLinux ? 'Linux' : /Windows/iu.test(`${navigator.platform} ${navigator.userAgent}`) ? 'Windows' : 'macOS'} save={save} section="search" snapshot={snapshot} />
       </SectionCard>
 
       <SectionCard icon={<Palette aria-hidden="true" className="size-4" />} title="Appearance and Input" description="Search presentation follows the shared TockTeam appearance owner and remains keyboard accessible.">
-        <LauncherSurfaceSettingsSection busy={busy} platform={rendererIsLinux ? 'Linux' : /Windows/iu.test(`${navigator.platform} ${navigator.userAgent}`) ? 'Windows' : 'macOS'} save={save} snapshot={snapshot} />
+        <LauncherSurfaceSettingsSection busy={busy} platform={rendererIsLinux ? 'Linux' : /Windows/iu.test(`${navigator.platform} ${navigator.userAgent}`) ? 'Windows' : 'macOS'} save={save} section="appearance" snapshot={snapshot} />
       </SectionCard>
 
       <SectionCard icon={<MonitorCog aria-hidden="true" className="size-4" />} title="Desktop Lifecycle" description="Window and shell behavior is applied by Electron main. Launch on Start remains in its existing TockTeam Preferences owner.">
@@ -306,6 +325,15 @@ function LauncherSettingsPage({ close: _close }: SettingsSectionProps): ReactNod
         <Field title="Show on all workspaces"><Switch aria-label="Show on all workspaces" checked={state.preferences.visibleOnAllWorkspaces} disabled={busy} onCheckedChange={checked => { void save('window.visibleOnAllWorkspaces', checked) }} /></Field>
         <Field title="Show tray icon"><Switch aria-label="Show tray icon" checked={state.preferences.showTrayIcon} disabled={busy} onCheckedChange={checked => { void save('general.tray.showIcon', checked) }} /></Field>
         <Field title="Show Dock icon"><Switch aria-label="Show Dock icon" checked={state.preferences.showDockIcon} disabled={busy} onCheckedChange={checked => { void save('appearance.showAppIconInDock', checked) }} /></Field>
+        <LauncherSurfaceSettingsSection busy={busy} platform={rendererIsLinux ? 'Linux' : /Windows/iu.test(`${navigator.platform} ${navigator.userAgent}`) ? 'Windows' : 'macOS'} save={save} section="window" snapshot={snapshot} />
+      </SectionCard>
+
+      <SectionCard icon={<Keyboard aria-hidden="true" className="size-4" />} title="Keyboard and Mouse" description="Choose selection behavior without exposing paths or other authority.">
+        <LauncherSurfaceSettingsSection busy={busy} platform={rendererIsLinux ? 'Linux' : /Windows/iu.test(`${navigator.platform} ${navigator.userAgent}`) ? 'Windows' : 'macOS'} save={save} section="keyboard" snapshot={snapshot} />
+      </SectionCard>
+
+      <SectionCard icon={<Globe2 aria-hidden="true" className="size-4" />} title="Browser and Shortcuts" description="Browser grants and global shortcut ownership remain in Electron main.">
+        <LauncherSurfaceSettingsSection busy={busy} platform={rendererIsLinux ? 'Linux' : /Windows/iu.test(`${navigator.platform} ${navigator.userAgent}`) ? 'Windows' : 'macOS'} save={save} section="browser" snapshot={snapshot} />
       </SectionCard>
 
       <SectionCard icon={<ShieldCheck aria-hidden="true" className="size-4" />} title="Extensions" description="Enablement is serialized through main before the next scan. Provider controls remain with their owning slices." testId="tocklauncher-extension-toggles">
@@ -394,6 +422,7 @@ function LauncherSettingsPage({ close: _close }: SettingsSectionProps): ReactNod
         <Field title="Appearance ownership" description="The compatibility appearance.themeSource value is retained, but the active mode and skin follow the DSH TockTeam Appearance owner."><Badge variant="outline">Follows TockTeam Appearance</Badge></Field>
         <Field title="Browser grant" description="Custom-browser identity is status-only here; selection and revocation are native operations."><Badge variant="secondary">{snapshot.customBrowserStatus ?? 'none'}</Badge></Field>
         <Field title="Diagnostics" description="Bounded launcher diagnostics are retained without secret or path material."><span className="max-w-full truncate text-xs text-muted-foreground">{snapshot.logs.at(-1) ?? 'No launcher diagnostics.'}</span></Field>
+        <LauncherSurfaceSettingsSection busy={busy} platform={rendererIsLinux ? 'Linux' : /Windows/iu.test(`${navigator.platform} ${navigator.userAgent}`) ? 'Windows' : 'macOS'} save={save} section="compatibility" snapshot={snapshot} />
       </SectionCard>
 
       <p aria-live="polite" className="px-1 text-sm text-muted-foreground" role="status">{status}</p>
@@ -418,7 +447,7 @@ export function apply(ctx: Readonly<{
       locale: 'tockteam.launcher',
       name: 'settings.section',
       order: 60,
-    }, LauncherSettingsPage)) as (() => void) | undefined
+    }, props => <LauncherSettingsPage {...props} locale={locale} />)) as (() => void) | undefined
     return () => {
       removeSlot?.()
       removeLocale?.()

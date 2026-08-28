@@ -1499,6 +1499,7 @@ function launcherSurfaceSettings(): import('./launcher-contract.ts').LauncherSur
     history: Object.freeze([...history]),
     historyEnabled,
     historyLimit,
+    hideWindowOn: Object.freeze((Array.isArray(values['window.hideWindowOn']) ? values['window.hideWindowOn'] : ['blur', 'afterInvocation']).filter((reason): reason is 'blur' | 'afterInvocation' | 'escapePressed' => reason === 'blur' || reason === 'afterInvocation' || reason === 'escapePressed')),
     locale: language,
     maxSearchResultItems: Math.min(200, Math.max(1, numberValue('searchEngine.maxResultLength', 50))),
     placeholder: configuredPlaceholder.slice(0, 512),
@@ -2173,6 +2174,10 @@ function initializeLauncher(): void {
   const nextController = new LauncherOverlayController({
     createWindow: () => createLauncherWindow({ launcherSession, urlPolicy }),
     getDisplayWorkArea: () => screen.getDisplayNearestPoint(screen.getCursorScreenPoint()).workArea,
+    getHideWindowOn: () => {
+      const configured = repository.getSetting<unknown>('window.hideWindowOn', ['blur', 'afterInvocation'])
+      return Array.isArray(configured) ? configured.filter((value): value is string => value === 'blur' || value === 'afterInvocation' || value === 'escapePressed') : ['blur', 'afterInvocation']
+    },
     globalShortcut,
     loadWindow: window => window.loadURL(urlPolicy.entryUrl).then(() => undefined),
     onWindowCleared,

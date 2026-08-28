@@ -116,6 +116,7 @@ export type LauncherSurfaceSettings = Readonly<{
   history: readonly string[]
   historyEnabled: boolean
   historyLimit: number
+  hideWindowOn: readonly ('blur' | 'afterInvocation' | 'escapePressed')[]
   locale: LauncherLocale
   maxSearchResultItems: number
   placeholder: string
@@ -139,6 +140,7 @@ const SEARCH_BAR_SIZES = new Set<LauncherSearchBarSize>(['small', 'medium', 'lar
 const RESULT_LAYOUTS = new Set<LauncherResultLayout>(['compact', 'detailed'])
 const SCROLL_BEHAVIORS = new Set<LauncherScrollBehavior>(['auto', 'smooth', 'instant'])
 const CLICK_BEHAVIORS = new Set<LauncherClickBehavior>(['selectSearchResultItem', 'invokeSearchResultItem'])
+const HIDE_WINDOW_REASONS = new Set(['blur', 'afterInvocation', 'escapePressed'])
 export const LAUNCHER_MAX_SEARCH_TERM_LENGTH = 512
 export const LAUNCHER_MAX_SEARCH_INPUT_LENGTH = LAUNCHER_FILE_SEARCH_QUERY_PREFIX.length + LAUNCHER_MAX_SEARCH_TERM_LENGTH
 
@@ -405,6 +407,7 @@ export function parseLauncherSurfaceSettings(value: unknown): LauncherSurfaceSet
     if (statusIds.has(status.extensionId)) throw new Error('Duplicate launcher provider status')
     statusIds.add(status.extensionId)
   }
+  const hideWindowOn = value.hideWindowOn === undefined ? ['blur', 'afterInvocation'] : value.hideWindowOn
   const doubleClickBehavior = value.doubleClickBehavior === undefined ? 'invokeSearchResultItem' : value.doubleClickBehavior
   const singleClickBehavior = value.singleClickBehavior === undefined ? 'selectSearchResultItem' : value.singleClickBehavior
   const searchBarAppearance = value.searchBarAppearance === undefined ? 'auto' : value.searchBarAppearance
@@ -419,7 +422,8 @@ export function parseLauncherSurfaceSettings(value: unknown): LauncherSurfaceSet
     || !SCROLL_BEHAVIORS.has(scrollBehavior as LauncherScrollBehavior)
     || (value.dragAndDropEnabled !== undefined && typeof value.dragAndDropEnabled !== 'boolean')
     || (value.preserveUserInput !== undefined && typeof value.preserveUserInput !== 'boolean')
-    || (value.showSearchIcon !== undefined && typeof value.showSearchIcon !== 'boolean')) {
+    || (value.showSearchIcon !== undefined && typeof value.showSearchIcon !== 'boolean')
+    || !Array.isArray(hideWindowOn) || hideWindowOn.length > 3 || new Set(hideWindowOn).size !== hideWindowOn.length || hideWindowOn.some(reason => typeof reason !== 'string' || !HIDE_WINDOW_REASONS.has(reason))) {
     throw new Error('Invalid launcher surface settings')
   }
   return Object.freeze({
@@ -429,6 +433,7 @@ export function parseLauncherSurfaceSettings(value: unknown): LauncherSurfaceSet
     history: Object.freeze([...(value.history as string[])]),
     historyEnabled: value.historyEnabled,
     historyLimit: value.historyLimit as number,
+    hideWindowOn: Object.freeze([...(hideWindowOn as string[])]) as LauncherSurfaceSettings['hideWindowOn'],
     locale,
     maxSearchResultItems: value.maxSearchResultItems as number,
     placeholder,

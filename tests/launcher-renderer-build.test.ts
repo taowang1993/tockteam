@@ -101,15 +101,16 @@ test('local tools stay finite and browser-safe', () => {
   assert.match(fileSearchSettings, /maxLength=\{4096\}/u)
 })
 
-test('settings renderer never inserts sensitive values and remounts local controls after reload', () => {
+test('settings renderer never inserts sensitive values and preserves focused controls across reloads', () => {
   assert.match(launcherSettings, /!LAUNCHER_SENSITIVE_SETTING_KEYS\.includes\(key as never\)[\s\S]+setSnapshot/u)
-  assert.match(launcherSettings, /setSnapshotRevision\([\s\S]+<LauncherLocalSettings key=\{snapshotRevision\}/u)
+  assert.match(launcherSettings, /pendingValues/u)
+  assert.doesNotMatch(launcherSettings, /<LauncherLocalSettings key=\{snapshotRevision\}/u)
   assert.match(launcherSettings, /simpleFileSearchDraft/u)
   assert.match(launcherSettings, /onDraftFoldersChange/u)
-  assert.match(launcherSettings, /<LauncherFileSearchSettings key=\{snapshotRevision\}[\s\S]+draftFolders=\{simpleFileSearchDraft\}/u)
+  assert.match(launcherSettings, /<LauncherFileSearchSettings [\s\S]+draftFolders=\{simpleFileSearchDraft\}/u)
   assert.match(fileSearchSettings, /useEffect/u)
   assert.match(fileSearchSettings, /draftFolders/u)
-  assert.match(launcherSettings, /<LauncherTerminalSettings key=\{snapshotRevision\}/u)
+  assert.match(launcherSettings, /<LauncherTerminalSettings busy=\{busy\}/u)
   assert.match(launcherSettings, /workflowSnapshotRevision/u)
   assert.match(launcherSettings, /<LauncherWorkflowSettings key=\{workflowSnapshotRevision\}/u)
   assert.match(terminalSettings, /Terminal Launcher command prefix/u)

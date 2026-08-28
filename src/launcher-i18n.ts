@@ -1,0 +1,91 @@
+import type { LauncherLocale } from './launcher-contract.ts'
+
+type LauncherMessage = string | ((value: number) => string)
+const MESSAGES: Readonly<Record<LauncherLocale, Readonly<Record<string, LauncherMessage>>>> = Object.freeze({
+  'en-US': Object.freeze({
+    actions: 'Actions',
+    back: 'Back to Results',
+    enterFile: 'Enter a file name to search.',
+    fileUnavailable: 'File Search is unavailable.',
+    networkUnavailable: 'Network provider is unavailable.',
+    resultsFound: (count: number) => `${count} result${count === 1 ? '' : 's'}.`,
+    enterTranslation: 'Enter text to translate.',
+    enterWebSearch: 'Enter a web search.',
+    translating: 'Translating with DeepL…',
+    loadingSuggestions: 'Loading suggestions…',
+    filesFound: (count: number) => `${count} file${count === 1 ? '' : 's'} found.`,
+    noFiles: 'No files found.',
+    searching: 'Searching…',
+    searchTooLong: 'Search term is too long.',
+    base64Input: 'Base64 Input',
+    base64Operation: 'Base64 Operation',
+    base64Output: 'Base64 Output',
+    decode: 'Decode',
+    encode: 'Encode',
+    fileSearch: 'File Search',
+    fileSearchInput: 'File Search Input',
+    fileSearchResults: 'File Search Results',
+    generatedUuids: 'Generated UUIDs',
+    generateUuids: 'Generate UUIDs',
+    noHistory: 'No Recent Searches',
+    outputEmpty: 'Output is empty.',
+    outputReady: 'Output is ready.',
+    rowlandInput: 'Rowland Input',
+    rowlandOutput: 'Rowland Output',
+    rowlandPattern: 'Rowland Pattern',
+    searchFiles: 'Search files',
+    searchTerm: 'Search term',
+    textToTranslate: 'Text to translate',
+    toolUnavailable: 'The tool is unavailable.',
+    uuidVersion: 'UUID Version',
+    uuids: 'Number of UUIDs',
+  }),
+  'zh-CN': Object.freeze({
+    actions: '操作',
+    back: '返回结果',
+    enterFile: '输入文件名以搜索。',
+    fileUnavailable: '文件搜索不可用。',
+    networkUnavailable: '网络提供方不可用。',
+    resultsFound: (count: number) => `${count} 个结果。`,
+    enterTranslation: '输入要翻译的文本。',
+    enterWebSearch: '输入网络搜索内容。',
+    translating: '正在使用 DeepL 翻译…',
+    loadingSuggestions: '正在加载建议…',
+    filesFound: (count: number) => `找到 ${count} 个文件。`,
+    noFiles: '未找到文件。',
+    searching: '正在搜索…',
+    searchTooLong: '搜索词过长。',
+    base64Input: 'Base64 输入',
+    base64Operation: 'Base64 操作',
+    base64Output: 'Base64 输出',
+    decode: '解码',
+    encode: '编码',
+    fileSearch: '文件搜索',
+    fileSearchInput: '文件搜索输入',
+    fileSearchResults: '文件搜索结果',
+    generatedUuids: '生成的 UUID',
+    generateUuids: '生成 UUID',
+    noHistory: '没有最近搜索',
+    outputEmpty: '输出为空。',
+    outputReady: '输出已准备好。',
+    rowlandInput: 'Rowland 输入',
+    rowlandOutput: 'Rowland 输出',
+    rowlandPattern: 'Rowland 模式',
+    searchFiles: '搜索文件',
+    searchTerm: '搜索词',
+    textToTranslate: '要翻译的文本',
+    toolUnavailable: '工具不可用。',
+    uuidVersion: 'UUID 版本',
+    uuids: 'UUID 数量',
+  }),
+})
+
+export function launcherText(locale: LauncherLocale | undefined, key: string, fallback: string): string {
+  const message = MESSAGES[locale ?? 'en-US'][key]
+  return typeof message === 'function' ? message(0) : message ?? fallback
+}
+
+export function launcherCountText(locale: LauncherLocale | undefined, key: string, count: number, fallback: string): string {
+  const message = MESSAGES[locale ?? 'en-US'][key]
+  return typeof message === 'function' ? message(count) : message ?? fallback
+}

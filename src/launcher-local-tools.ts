@@ -1,6 +1,8 @@
 import { v4 as uuidv4, v6 as uuidv6, v7 as uuidv7 } from 'uuid'
 import { LAUNCHER_LOCAL_EXTENSION_DEFAULTS, type LauncherLocalExtensionId } from './launcher-local-extension-config.ts'
 import type { LauncherLocalExtensionSettings, LauncherUuidFormat } from './launcher-local-extension-contract.ts'
+import type { LauncherLocale } from './launcher-contract.ts'
+import { launcherText } from './launcher-i18n.ts'
 
 export const LAUNCHER_LOCAL_TOOL_IDS = Object.freeze(['Base64Conversion', 'RowlandTextEditor', 'UuidGenerator'] as const)
 export type LauncherLocalToolId = (typeof LAUNCHER_LOCAL_TOOL_IDS)[number]
@@ -32,7 +34,7 @@ function setError(output: HTMLTextAreaElement, error: HTMLElement, message: stri
   output.value = ''
   error.textContent = message
   error.hidden = false
-  if (status !== undefined) status.textContent = 'The tool could not produce output.'
+  if (status !== undefined) status.textContent = launcherText(undefined, 'toolUnavailable', 'The tool could not produce output.')
 }
 function setOutput(output: HTMLTextAreaElement, error: HTMLElement, value: string, status?: HTMLElement): void {
   if (value.length > MAX_LOCAL_TOOL_OUTPUT_LENGTH) {
@@ -41,7 +43,7 @@ function setOutput(output: HTMLTextAreaElement, error: HTMLElement, value: strin
     output.value = value
     error.textContent = ''
     error.hidden = true
-    if (status !== undefined) status.textContent = value.length === 0 ? 'Output is empty.' : 'Output is ready.'
+    if (status !== undefined) status.textContent = value.length === 0 ? launcherText(undefined, 'outputEmpty', 'Output is empty.') : launcherText(undefined, 'outputReady', 'Output is ready.')
   }
 }
 function assertLength(value: string, max: number, label: string): void {
@@ -156,42 +158,44 @@ function uuidFormat(version: UuidToolVersion, format: LauncherUuidFormat): strin
 
 export function createLauncherLocalTool(options: Readonly<{
   document: Document
+  locale?: LauncherLocale
   extensionId: LauncherLocalToolId
   onClose: () => void
   settings: LauncherLocalExtensionSettings
 }>): HTMLElement {
   const { document, extensionId, settings } = options
+  const text = (key: string, fallback: string): string => launcherText(options.locale, key, fallback)
   const tool = element(document, 'section', 'launcher-local-tool')
   tool.setAttribute('aria-label', `${TOOL_NAMES[extensionId]} Tool`)
   const header = element(document, 'header', 'launcher-local-tool-header')
   const title = element(document, 'h2')
   title.textContent = TOOL_NAMES[extensionId]
   const close = element(document, 'button', 'launcher-secondary-button')
-  close.type = 'button'; close.textContent = 'Back to Results'; close.setAttribute('aria-label', `Close ${TOOL_NAMES[extensionId]} Tool`); close.addEventListener('click', options.onClose)
+  close.type = 'button'; close.textContent = text('back', 'Back to Results'); close.setAttribute('aria-label', `Close ${TOOL_NAMES[extensionId]} Tool`); close.addEventListener('click', options.onClose)
   header.append(title, close); tool.append(header)
   const content = element(document, 'div', 'launcher-local-tool-content min-w-0 overflow-auto'); tool.append(content)
   const error = element(document, 'p', 'launcher-local-tool-error'); error.setAttribute('role', 'alert'); error.hidden = true
-  const outputStatus = element(document, 'p', 'launcher-local-tool-status'); outputStatus.setAttribute('role', 'status'); outputStatus.setAttribute('aria-live', 'polite'); outputStatus.textContent = 'Output is ready.'
+  const outputStatus = element(document, 'p', 'launcher-local-tool-status'); outputStatus.setAttribute('role', 'status'); outputStatus.setAttribute('aria-live', 'polite'); outputStatus.textContent = text('outputReady', 'Output is ready.')
   content.append(error, outputStatus)
 
   if (extensionId === 'Base64Conversion') {
-    const operation = element(document, 'select'); operation.setAttribute('aria-label', 'Base64 Operation'); for (const [value, label] of [['encode', 'Encode'], ['decode', 'Decode']] as const) { const option = element(document, 'option'); option.value = value; option.textContent = label; operation.append(option) }
-    const input = element(document, 'textarea'); input.setAttribute('aria-label', 'Base64 Input'); input.maxLength = MAX_LOCAL_TOOL_INPUT_LENGTH; input.rows = 8
-    const output = element(document, 'textarea'); output.setAttribute('aria-label', 'Base64 Output'); output.readOnly = true; output.rows = 8
+    const operation = element(document, 'select'); operation.setAttribute('aria-label', text('base64Operation', 'Base64 Operation')); for (const [value, label] of [['encode', text('encode', 'Encode')], ['decode', text('decode', 'Decode')]] as const) { const option = element(document, 'option'); option.value = value; option.textContent = label; operation.append(option) }
+    const input = element(document, 'textarea'); input.setAttribute('aria-label', text('base64Input', 'Base64 Input')); input.maxLength = MAX_LOCAL_TOOL_INPUT_LENGTH; input.rows = 8
+    const output = element(document, 'textarea'); output.setAttribute('aria-label', text('base64Output', 'Base64 Output')); output.readOnly = true; output.rows = 8
     const update = () => { try { setOutput(output, error, operation.value === 'decode' ? base64Decode(input.value) : base64Encode(input.value), outputStatus) } catch (caught) { setError(output, error, caught instanceof LocalToolLimitError ? caught.message : 'Base64 input could not be decoded.', outputStatus) } }
     operation.addEventListener('change', update); input.addEventListener('input', update); content.append(labeled(document, 'Operation', operation), labeled(document, 'Input', input), labeled(document, 'Output', output)); queueMicrotask(() => input.focus()); return tool
   }
   if (extensionId === 'RowlandTextEditor') {
-    const input = element(document, 'textarea'); input.setAttribute('aria-label', 'Rowland Input'); input.maxLength = MAX_LOCAL_TOOL_INPUT_LENGTH; input.rows = 7
-    const pattern = element(document, 'input'); pattern.type = 'text'; pattern.setAttribute('aria-label', 'Rowland Pattern'); pattern.maxLength = MAX_ROWLAND_PATTERN_LENGTH
-    const output = element(document, 'textarea'); output.setAttribute('aria-label', 'Rowland Output'); output.readOnly = true; output.rows = 7
+    const input = element(document, 'textarea'); input.setAttribute('aria-label', text('rowlandInput', 'Rowland Input')); input.maxLength = MAX_LOCAL_TOOL_INPUT_LENGTH; input.rows = 7
+    const pattern = element(document, 'input'); pattern.type = 'text'; pattern.setAttribute('aria-label', text('rowlandPattern', 'Rowland Pattern')); pattern.maxLength = MAX_ROWLAND_PATTERN_LENGTH
+    const output = element(document, 'textarea'); output.setAttribute('aria-label', text('rowlandOutput', 'Rowland Output')); output.readOnly = true; output.rows = 7
     const update = () => { try { setOutput(output, error, rowland(input.value, pattern.value, settings.RowlandTextEditor.rowSeparator, settings.RowlandTextEditor.columnSeparator), outputStatus) } catch (caught) { setError(output, error, caught instanceof Error ? caught.message : 'Rowland output could not be generated.', outputStatus) } }
     input.addEventListener('input', update); pattern.addEventListener('input', update); content.append(labeled(document, 'Input', input), labeled(document, 'Pattern', pattern), labeled(document, 'Output', output)); queueMicrotask(() => input.focus()); return tool
   }
-  const version = element(document, 'select'); version.setAttribute('aria-label', 'UUID Version'); for (const value of ['v4', 'v6', 'v7'] as const) { const option = element(document, 'option'); option.value = value; option.textContent = value; version.append(option) }; version.value = settings.UuidGenerator.uuidVersion
-  const quantity = element(document, 'input'); quantity.type = 'number'; quantity.min = '1'; quantity.max = '100'; quantity.value = String(settings.UuidGenerator.numberOfUuids); quantity.setAttribute('aria-label', 'Number of UUIDs')
-  const output = element(document, 'textarea'); output.readOnly = true; output.rows = 10; output.setAttribute('aria-label', 'Generated UUIDs')
-  const generate = element(document, 'button', 'launcher-primary-button'); generate.type = 'button'; generate.textContent = 'Generate UUIDs'
+  const version = element(document, 'select'); version.setAttribute('aria-label', text('uuidVersion', 'UUID Version')); for (const value of ['v4', 'v6', 'v7'] as const) { const option = element(document, 'option'); option.value = value; option.textContent = value; version.append(option) }; version.value = settings.UuidGenerator.uuidVersion
+  const quantity = element(document, 'input'); quantity.type = 'number'; quantity.min = '1'; quantity.max = '100'; quantity.value = String(settings.UuidGenerator.numberOfUuids); quantity.setAttribute('aria-label', text('uuids', 'Number of UUIDs'))
+  const output = element(document, 'textarea'); output.readOnly = true; output.rows = 10; output.setAttribute('aria-label', text('generatedUuids', 'Generated UUIDs'))
+  const generate = element(document, 'button', 'launcher-primary-button'); generate.type = 'button'; generate.textContent = text('generateUuids', 'Generate UUIDs')
   const update = () => { const normalized = normalizeUuidToolOptions(version.value, quantity.value, settings.UuidGenerator.numberOfUuids); quantity.value = String(normalized.count); version.value = normalized.version; const nested = settings.UuidGenerator.generatorFormat; const format = { ...nested, braces: settings.UuidGenerator.braces, hyphens: settings.UuidGenerator.hyphens, quotes: settings.UuidGenerator.quotes, uppercase: settings.UuidGenerator.uppercase }; setOutput(output, error, Array.from({ length: normalized.count }, () => uuidFormat(normalized.version, format)).join('\n'), outputStatus) }
   generate.addEventListener('click', update); version.addEventListener('change', update); quantity.addEventListener('change', update); update(); content.append(labeled(document, 'UUID version', version), labeled(document, 'Number of UUIDs', quantity), generate, labeled(document, 'Generated UUIDs', output)); queueMicrotask(() => generate.focus()); return tool
 }

@@ -184,6 +184,7 @@ async function bootstrap(): Promise<void> {
   const settings = document.getElementById('launcher-settings') as HTMLButtonElement
   const results = document.getElementById('launcher-results') as HTMLUListElement
   const status = document.getElementById('launcher-status') as HTMLElement
+  const providerStatuses = document.getElementById('launcher-provider-statuses') as HTMLElement
   const historyToggle = document.getElementById('launcher-history-toggle') as HTMLButtonElement
   const historyPanel = document.getElementById('launcher-history') as HTMLElement
   const rescan = document.getElementById('launcher-rescan') as HTMLButtonElement
@@ -197,6 +198,7 @@ async function bootstrap(): Promise<void> {
     || !(settings instanceof HTMLButtonElement)
     || !(results instanceof HTMLUListElement)
     || !(status instanceof HTMLElement)
+    || !(providerStatuses instanceof HTMLElement)
     || !(historyToggle instanceof HTMLButtonElement)
     || !(historyPanel instanceof HTMLElement)
     || !(rescan instanceof HTMLButtonElement)
@@ -240,6 +242,7 @@ async function bootstrap(): Promise<void> {
     history: Object.freeze([]),
     historyEnabled: false,
     historyLimit: 10,
+    hideWindowOn: Object.freeze(['blur', 'afterInvocation'] as const),
     locale: 'en-US',
     maxSearchResultItems: 50,
     placeholder: 'Search TockTeam',
@@ -263,9 +266,15 @@ async function bootstrap(): Promise<void> {
     document.documentElement.lang = surfaceSettings.locale
     document.title = 'TockLauncher'
     search.placeholder = surfaceSettings.placeholder
+    document.querySelector<HTMLLabelElement>('label[for="launcher-search"]')?.replaceChildren(document.createTextNode(copy.search))
+    search.setAttribute('aria-label', copy.search)
+    historyToggle.setAttribute('aria-label', copy.history)
+    results.setAttribute('aria-label', copy.results)
     searchIcon.hidden = !surfaceSettings.showSearchIcon
     search.dataset.searchBarAppearance = surfaceSettings.searchBarAppearance
     search.dataset.searchBarSize = surfaceSettings.searchBarSize
+    search.classList.remove('h-8', 'h-10', 'h-12')
+    search.classList.add(surfaceSettings.searchBarSize === 'small' ? 'h-8' : surfaceSettings.searchBarSize === 'large' ? 'h-12' : 'h-10')
     results.dataset.layout = surfaceSettings.searchResultLayout
     results.style.scrollBehavior = surfaceSettings.scrollBehavior
     const setButtonLabel = (button: HTMLButtonElement, label: string): void => {
@@ -278,6 +287,11 @@ async function bootstrap(): Promise<void> {
     setButtonLabel(close, copy.close)
     setButtonLabel(settings, copy.settings)
     status.textContent = copy.initialStatus
+    providerStatuses.hidden = surfaceSettings.providerStatuses.every(provider => provider.state === 'ready' || provider.state === 'disabled')
+    providerStatuses.textContent = surfaceSettings.providerStatuses
+      .filter(provider => provider.state !== 'ready')
+      .map(provider => `${provider.extensionId}: ${provider.state}`)
+      .join(' · ')
   }
   applySurfaceSettings()
 
@@ -308,24 +322,24 @@ async function bootstrap(): Promise<void> {
     activeLocalTool = undefined
     activeLocalToolId = undefined
     tool?.remove()
-    for (const element of [searchForm, historyPanel, status, results, details, rescan, settings]) element.hidden = false
+    for (const element of [searchForm, historyPanel, status, providerStatuses, results, details, rescan, settings]) element.hidden = false
     void renderSearch(search.value).finally(restoreSearchFocus)
   }
 
   const hideLauncherControls = (): void => {
-    for (const element of [searchForm, historyPanel, status, results, details, rescan, settings]) element.hidden = true
+    for (const element of [searchForm, historyPanel, status, providerStatuses, results, details, rescan, settings]) element.hidden = true
   }
   const openLocalTool = async (extensionId: LauncherLocalToolId): Promise<void> => {
     let localSettings: LauncherLocalExtensionSettings
     try { localSettings = await bridge.getLocalExtensionSettings() } catch { setStatus(messages().fileSearchUnavailable, 'error'); restoreSearchFocus(); return }
-    const tool = createLauncherLocalTool({ document, extensionId, onClose: closeLocalTool, settings: localSettings })
+    const tool = createLauncherLocalTool({ document, extensionId, locale: surfaceSettings.locale, onClose: closeLocalTool, settings: localSettings })
     activeLocalTool = tool
     activeLocalToolId = extensionId
     hideLauncherControls()
     root.append(tool)
   }
   const openFileSearchTool = async (): Promise<void> => {
-    const tool = createLauncherFileSearchTool({ bridge, document, onClose: closeLocalTool, searchOptions: {
+    const tool = createLauncherFileSearchTool({ bridge, document, locale: surfaceSettings.locale, onClose: closeLocalTool, searchOptions: {
       fuzziness: surfaceSettings.fuzziness,
       maxSearchResultItems: surfaceSettings.maxSearchResultItems,
       searchEngineId: surfaceSettings.searchEngineId,
@@ -336,7 +350,7 @@ async function bootstrap(): Promise<void> {
     root.append(tool)
   }
   const openNetworkTool = async (extensionId: 'DeeplTranslator' | 'WebSearch'): Promise<void> => {
-    const tool = createLauncherNetworkExtensionTool({ bridge, document, extensionId, onClose: closeLocalTool, searchOptions: {
+    const tool = createLauncherNetworkExtensionTool({ bridge, document, extensionId, locale: surfaceSettings.locale, onClose: closeLocalTool, searchOptions: {
       fuzziness: surfaceSettings.fuzziness,
       maxSearchResultItems: surfaceSettings.maxSearchResultItems,
       searchEngineId: surfaceSettings.searchEngineId,
@@ -577,7 +591,7 @@ async function bootstrap(): Promise<void> {
     open.type = 'button'
     open.disabled = workflowInteractionBlocked()
     open.setAttribute('aria-label', actionLabel(item.defaultAction))
-    open.setAttribute('aria-keyshortcuts', 'Enter')
+    open.setAttribute('aria-keyshortcuts', item.defaultAction.keyboardShortcut ?? 'Enter')
     open.append(icon(ArrowRight))
     const openText = document.createElement('span')
     openText.textContent = item.defaultAction.description
@@ -639,6 +653,7 @@ async function bootstrap(): Promise<void> {
       actionButton.disabled = workflowInteractionBlocked()
       actionButton.setAttribute('role', 'menuitem')
       actionButton.setAttribute('aria-label', actionLabel(action))
+      if (action.keyboardShortcut !== undefined) actionButton.setAttribute('aria-keyshortcuts', action.keyboardShortcut)
       const description = action.description.toLowerCase()
       const actionIcon = description.includes('favorite')
         ? description.includes('remove') ? StarOff : Star
@@ -872,7 +887,7 @@ async function bootstrap(): Promise<void> {
       if (activeLocalTool !== undefined) closeLocalTool()
       else if (actionMenuOpen) closeActionMenu()
       else if (historyOpen) closeHistory()
-      else void bridge.dismiss().catch(() => undefined)
+      else if (surfaceSettings.hideWindowOn.includes('escapePressed')) void bridge.dismiss().catch(() => undefined)
       return
     }
     if (workflowInteractionBlocked()) return
@@ -966,7 +981,7 @@ async function bootstrap(): Promise<void> {
     if (activeLocalTool !== undefined) closeLocalTool()
     else if (actionMenuOpen) closeActionMenu()
     else if (historyOpen) closeHistory()
-    else void bridge.dismiss().catch(() => undefined)
+    else if (surfaceSettings.hideWindowOn.includes('escapePressed')) void bridge.dismiss().catch(() => undefined)
   })
   document.addEventListener('pointerdown', event => {
     if (!(event.target instanceof Element)) return

@@ -1,7 +1,8 @@
 import type { LauncherPublicResultItem, LauncherPublicAction } from './launcher-actions.ts'
 import type { LauncherPreloadBridge } from './launcher-preload-bridge.ts'
 import type { LauncherSearchOptions } from './launcher-core-search.ts'
-import { LAUNCHER_FILE_SEARCH_QUERY_PREFIX, LAUNCHER_MAX_SEARCH_TERM_LENGTH } from './launcher-contract.ts'
+import { LAUNCHER_FILE_SEARCH_QUERY_PREFIX, LAUNCHER_MAX_SEARCH_TERM_LENGTH, type LauncherLocale } from './launcher-contract.ts'
+import { launcherCountText, launcherText } from './launcher-i18n.ts'
 
 function element<K extends keyof HTMLElementTagNameMap>(document: Document, tag: K, className?: string): HTMLElementTagNameMap[K] {
   const created = document.createElement(tag)
@@ -12,24 +13,26 @@ function element<K extends keyof HTMLElementTagNameMap>(document: Document, tag:
 export function createLauncherFileSearchTool(options: Readonly<{
   bridge: LauncherPreloadBridge
   document: Document
+  locale?: LauncherLocale
   onClose: () => void
   searchOptions: LauncherSearchOptions
 }>): HTMLElement {
   const { bridge, document } = options
+  const text = (key: string, fallback: string): string => launcherText(options.locale, key, fallback)
   const tool = element(document, 'section', 'launcher-local-tool')
-  tool.setAttribute('aria-label', 'File Search Tool')
+  tool.setAttribute('aria-label', `${text('fileSearch', 'File Search')} Tool`)
   const header = element(document, 'header', 'launcher-local-tool-header')
   const title = element(document, 'h2')
-  title.textContent = 'File Search'
+  title.textContent = text('fileSearch', 'File Search')
   const close = element(document, 'button', 'launcher-secondary-button')
-  close.type = 'button'; close.textContent = 'Back to Results'; close.setAttribute('aria-label', 'Close File Search Tool'); close.addEventListener('click', options.onClose)
+  close.type = 'button'; close.textContent = text('back', 'Back to Results'); close.setAttribute('aria-label', `Close ${text('fileSearch', 'File Search')} Tool`); close.addEventListener('click', options.onClose)
   header.append(title, close); tool.append(header)
   const content = element(document, 'div', 'launcher-local-tool-content'); tool.append(content)
   const input = element(document, 'input')
   const maxInputLength = LAUNCHER_MAX_SEARCH_TERM_LENGTH
-  input.type = 'search'; input.maxLength = maxInputLength; input.placeholder = 'Search files'; input.setAttribute('aria-label', 'File Search Input'); input.autocomplete = 'off'
-  const status = element(document, 'p', 'launcher-local-tool-error'); status.setAttribute('role', 'status'); status.textContent = 'Enter a file name to search.'
-  const list = element(document, 'ul', 'm-0 min-w-0 list-none overflow-auto p-0'); list.setAttribute('aria-label', 'File Search Results'); list.setAttribute('role', 'list')
+  input.type = 'search'; input.maxLength = maxInputLength; input.placeholder = text('searchFiles', 'Search files'); input.setAttribute('aria-label', text('fileSearchInput', 'File Search Input')); input.autocomplete = 'off'
+  const status = element(document, 'p', 'launcher-local-tool-error'); status.setAttribute('role', 'status'); status.textContent = text('enterFile', 'Enter a file name to search.')
+  const list = element(document, 'ul', 'm-0 min-w-0 list-none overflow-auto p-0'); list.setAttribute('aria-label', text('fileSearchResults', 'File Search Results')); list.setAttribute('role', 'list')
   content.append(input, status, list)
 
   let requestRevision = 0
@@ -57,7 +60,7 @@ export function createLauncherFileSearchTool(options: Readonly<{
       if (actions.length > 1) {
         const menuId = `launcher-file-search-actions-${index}`
         const toggle = element(document, 'button', 'shrink-0 rounded-md px-2 py-2 text-xs hover:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))]')
-        toggle.type = 'button'; toggle.textContent = 'Actions'; toggle.setAttribute('aria-label', `Actions for ${item.name}`); toggle.setAttribute('aria-haspopup', 'menu'); toggle.setAttribute('aria-expanded', 'false'); toggle.setAttribute('aria-controls', menuId); toggle.setAttribute('data-file-search-result-id', item.id)
+        toggle.type = 'button'; toggle.textContent = text('actions', 'Actions'); toggle.setAttribute('aria-label', `${text('actions', 'Actions')} for ${item.name}`); toggle.setAttribute('aria-haspopup', 'menu'); toggle.setAttribute('aria-expanded', 'false'); toggle.setAttribute('aria-controls', menuId); toggle.setAttribute('data-file-search-result-id', item.id)
         const menu = element(document, 'div', 'absolute right-0 top-full z-10 mt-1 min-w-[220px] rounded-lg border border-[var(--dsw-alias-border-l2,CanvasText)] bg-[var(--dsw-alias-bg-layer-1,Canvas)] py-1 shadow-lg')
         menu.id = menuId; menu.hidden = true; menu.setAttribute('role', 'menu'); menu.setAttribute('aria-label', `Actions for ${item.name}`)
         const menuButtons: HTMLButtonElement[] = []
@@ -117,19 +120,19 @@ export function createLauncherFileSearchTool(options: Readonly<{
   const search = async (focus?: RestoreFocus): Promise<void> => {
     const revision = ++requestRevision
     const term = input.value.trim()
-    if (term.length === 0) { render([]); status.textContent = 'Enter a file name to search.'; return }
-    if (term.length > maxInputLength) { render([]); status.textContent = 'Search term is too long.'; status.setAttribute('data-tone', 'error'); return }
-    status.textContent = 'Searching…'; status.setAttribute('data-tone', 'muted')
+    if (term.length === 0) { render([]); status.textContent = text('enterFile', 'Enter a file name to search.'); return }
+    if (term.length > maxInputLength) { render([]); status.textContent = text('searchTooLong', 'Search term is too long.'); status.setAttribute('data-tone', 'error'); return }
+    status.textContent = text('searching', 'Searching…'); status.setAttribute('data-tone', 'muted')
     try {
       const response = await bridge.search(`${LAUNCHER_FILE_SEARCH_QUERY_PREFIX}${term}`, options.searchOptions)
       if (revision !== requestRevision) return
       render([...response.before, ...response.after])
-      status.textContent = response.status.lastError ?? (currentItems.length === 0 ? 'No files found.' : `${currentItems.length} files found.`)
+      status.textContent = response.status.lastError ?? (currentItems.length === 0 ? text('noFiles', 'No files found.') : launcherCountText(options.locale, 'filesFound', currentItems.length, `${currentItems.length} files found.`))
       status.setAttribute('data-tone', response.status.lastError === undefined ? 'ready' : 'error')
       if (focus !== undefined) restoreFocus(focus)
     } catch {
       if (revision !== requestRevision) return
-      render([]); status.textContent = 'File Search is unavailable.'; status.setAttribute('data-tone', 'error')
+      render([]); status.textContent = text('fileUnavailable', 'File Search is unavailable.'); status.setAttribute('data-tone', 'error')
       if (focus !== undefined) restoreFocus(focus)
     }
   }

@@ -11,6 +11,7 @@ export type LauncherSurfacePreferences = Readonly<{
   fuzziness: number
   historyEnabled: boolean
   historyLimit: number
+  hideWindowOn: readonly ('blur' | 'afterInvocation' | 'escapePressed')[]
   language: string
   maxSearchResultItems: number
   placeholder: string
@@ -68,6 +69,7 @@ const searchAppearance = (value: unknown): value is LauncherSurfacePreferences['
 const searchSize = (value: unknown): value is LauncherSurfacePreferences['searchBarSize'] => value === 'small' || value === 'medium' || value === 'large'
 const resultLayout = (value: unknown): value is LauncherSurfacePreferences['searchResultLayout'] => value === 'compact' || value === 'detailed'
 const scrollBehavior = (value: unknown): value is LauncherSurfacePreferences['scrollBehavior'] => value === 'auto' || value === 'smooth' || value === 'instant'
+const hideWindowOn = (value: unknown): value is LauncherSurfacePreferences['hideWindowOn'] => Array.isArray(value) && new Set(value).size === value.length && value.every(reason => reason === 'blur' || reason === 'afterInvocation' || reason === 'escapePressed')
 
 function value<T>(snapshot: LauncherSettingsSnapshot, key: string, fallback: T, valid: (candidate: unknown) => candidate is T): T {
   const stored = snapshot.values[key]
@@ -81,6 +83,7 @@ export function readPersistedLauncherState(snapshot: LauncherSettingsSnapshot, a
     fuzziness: Math.min(1, Math.max(0, value(snapshot, 'searchEngine.fuzziness', 0.5, finiteNumber))),
     historyEnabled: value(snapshot, 'general.searchHistory.enabled', false, bool),
     historyLimit: Math.min(100, Math.max(1, value(snapshot, 'general.searchHistory.limit', 10, finiteNumber))),
+    hideWindowOn: Object.freeze([...value(snapshot, 'window.hideWindowOn', Object.freeze(['blur', 'afterInvocation'] as const), hideWindowOn)]),
     language: value(snapshot, 'general.language', 'en-US', text),
     maxSearchResultItems: Math.min(200, Math.max(1, value(snapshot, 'searchEngine.maxResultLength', 50, finiteNumber))),
     placeholder: value(snapshot, 'appearance.searchBarPlaceholderText', 'Search TockTeam', text),
