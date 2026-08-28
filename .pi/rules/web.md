@@ -1,8 +1,13 @@
 ---
 paths:
   - src/client.ts
+  - src/launcher*.ts
+  - src/launcher*.tsx
+  - src/launcher*.html
+  - src/splash.html
   - cordis.patch.yml
   - web/**
+  - plugins/ui/**
   - plugins/**/src/**/*.css
   - plugins/**/src/**/*.tsx
   - plugins/**/src/client.ts
@@ -22,7 +27,7 @@ This document is the canonical local design guidance for browser-rendered TockTe
 - Use Lucide for interface icons. Product marks are the only routine custom-SVG exception.
 - Use semantic HTML, preserve keyboard behavior, label icon-only controls, show keyboard focus, and honor `prefers-reduced-motion`.
 - Keep Host, browser-client, Electron, and TUI ownership separate. A visual change must not widen IPC, filesystem, process, workspace, or plugin authority.
-- Tailwind CSS v4 is the only first-party browser styling layer. Use utilities in markup and keep the few inherited-shell compatibility rules as named custom utilities in `plugins/skins/src/client/tailwind.css`; do not add feature stylesheets or embedded CSS strings.
+- Tailwind CSS v4 is the first-party browser styling layer. React surfaces reuse the shared shadcn source components in `@tockteam/ui`; imperative surfaces such as the TockLauncher overlay use semantic native markup. Keep inherited-shell compatibility rules as named custom utilities in `plugins/skins/src/client/tailwind.css`; do not add feature stylesheets or embedded CSS strings.
 - Run the smallest visual regression test first, then `pnpm run typecheck`, `pnpm test`, and `pnpm run build`.
 
 ## 1. Authority and Ownership
@@ -47,6 +52,8 @@ Use this precedence when sources disagree:
 | Pinned summary                                              | `plugins/pinned-summary/src/client.ts`                       |
 | Plugin marketplace                                          | `plugins/plugin-marketplace/src/client/` on Desktop only     |
 | Skin catalog and picker                                     | `plugins/skins/src/`                                         |
+| Shared shadcn React controls                                | `plugins/ui/src/` (`@tockteam/ui`)                           |
+| TockLauncher overlay and settings                           | `src/launcher*`                                              |
 | TockTutor workbench and assistant                           | `plugins/tocktutor/packages/*/src/`                          |
 | TUI rendering                                               | Pinned `dsh-TUI`; outside this document                      |
 
@@ -107,12 +114,14 @@ DSH owns the base browser font stack and global type behavior. TockTeam currentl
 
 ## 5. Components and Tailwind
 
-TockTeam deliberately composes DSH instead of shipping a second Web component system. Tailwind provides browser utilities only; `plugins/skins/src/client/tailwind.css` maps its semantic color utilities to the inherited `--dsw-*` contract and `@tockteam/skins` owns lifecycle injection on Desktop and Web. Tailwind does not apply to TockTeam TUI.
+TockTeam composes the DSH browser shell and ships a small shared shadcn source package for first-party React controls. `@tockteam/ui` is not a second runtime, theme owner, or styling layer: its source components use Tailwind and inherit the DSH `--dsw-*` semantic token contract. `plugins/skins/src/client/tailwind.css` provides the shared Tailwind theme and utilities, and `@tockteam/skins` owns lifecycle injection on Desktop and Web. Tailwind and shadcn do not apply to TockTeam TUI.
 
 1. Reuse an inherited DSH component when it preserves the required behavior.
-2. Reuse the closest TockTeam feature recipe or component.
-3. Express first-party browser presentation with Tailwind utilities in markup.
-4. Add a named custom utility only for an inherited DOM seam, coordinated pseudo-element behavior, or another rule that cannot live on the owning element clearly.
+2. Reuse an existing `@tockteam/ui` component for React controls.
+3. Reuse the closest TockTeam feature recipe or component.
+4. Express first-party browser presentation with Tailwind utilities in markup.
+5. Prefer semantic native HTML for imperative surfaces; do not introduce React merely to use shadcn.
+6. Add a named custom utility only for an inherited DOM seam, coordinated pseudo-element behavior, or another rule that cannot live on the owning element clearly.
 
 Rules:
 
@@ -121,7 +130,9 @@ Rules:
 - Keep Tailwind class names statically discoverable. Add new browser source roots to `plugins/skins/src/client/tailwind.css`; do not scan Host or TUI source and do not construct utility names dynamically.
 - Inline styles are limited to live measurements or intrinsic data such as resizable widths, skin previews, and Reader preferences. Move every static declaration into Tailwind.
 - Generated DSH skin atmosphere CSS and the third-party xterm stylesheet remain explicit compatibility exceptions; neither authorizes first-party feature CSS.
-- Do not add another CSS framework, component library, token layer, or styling runtime. Do not add shadcn merely because Tailwind is available.
+- `plugins/ui/components.json` and `plugins/ui/src/` are the only shadcn configuration and shared-component source owners. Import React controls through `@tockteam/ui`; do not duplicate registry components inside features.
+- Use the project package runner and shadcn CLI to inspect or add registry components, then review the generated source and preserve the DSH semantic tokens. Never overwrite locally adapted components without explicit approval.
+- Do not add another CSS framework, component library, token layer, or styling runtime. The existing shadcn package is a source component collection, not authority to add another theme or application shell.
 - Host-only packages must not acquire browser-client styling accidentally. Browser UI remains in client exports and client bundle metadata.
 - Register injected styles, slots, listeners, and DOM effects through Cordis lifecycle ownership so unload removes them.
 - Do not edit `upstream/*` for TockTeam styling. Use the existing downstream adapter or bundle layer.
@@ -145,13 +156,13 @@ Rules:
 
 The shared Desktop/Web shell uses these established metrics:
 
-| Metric                             | Value | Owner                                    |
-| ---------------------------------- | ----- | ---------------------------------------- |
-| Titlebar height                    | 40px  | `src/client.ts`, sidebar shell           |
+| Metric                             | Value | Owner                                      |
+| ---------------------------------- | ----- | ------------------------------------------ |
+| Titlebar height                    | 40px  | `src/client.ts`, sidebar shell             |
 | App rail width                     | 40px  | `tockteam-sidebar-styles` Tailwind utility |
 | Primary sidebar width              | 280px | `tockteam-sidebar-styles` Tailwind utility |
 | Expanded sidebar composition width | 300px | `tockteam-sidebar-styles` Tailwind utility |
-| Standard shell icon                | 18px  | shared titlebar/rail rules               |
+| Standard shell icon                | 18px  | shared titlebar/rail rules                 |
 
 Treat these as compatibility metrics, not a general spacing scale.
 
@@ -204,6 +215,13 @@ node --test tests/right-panel-layout.test.ts tests/terminal-style.test.ts
 node --test tests/sidebar.test.ts tests/terminal-panel-store.test.ts
 ```
 
+For shared shadcn or consuming React surface changes, run:
+
+```sh
+node --test tests/shadcn-migration.test.ts tests/ui-ref-contract.test.ts
+pnpm --filter @tockteam/ui run typecheck
+```
+
 For TockTutor UI changes, run the focused package test and rebuild tracked outputs through the package scripts; never hand-edit `lib/` or `dist/`.
 
 Finish with the repository gate:
@@ -221,6 +239,7 @@ Use rendered browser or Electron verification for nontrivial visual changes when
 ### Do
 
 - Start with the active surface owner and its tests.
+- Reuse `@tockteam/ui` for React controls and semantic native HTML for imperative surfaces.
 - Derive colors from DSH semantic tokens.
 - Keep one TockTeam skin catalog across Desktop, Web, and TUI.
 - Reuse Lucide, native semantics, and existing feature recipes.
@@ -234,4 +253,4 @@ Use rendered browser or Electron verification for nontrivial visual changes when
 - Don't hardcode ordinary UI colors or assume one skin.
 - Don't patch generated output, installed dependencies, the pinned DSH checkout, or `upstream/*` directly.
 - Don't suppress focus, reduced-motion behavior, zoom, paste, or semantic controls.
-- Don't copy Tockbot's shadcn, route-template, or product-specific recipes into this repository; TockTeam uses Tailwind directly over DSH and its existing downstream plugins.
+- Don't copy Tockbot's private shadcn forks, route templates, or product-specific recipes. Add generally reusable React controls to `@tockteam/ui` through the project shadcn workflow; keep feature composition with its owning surface.
