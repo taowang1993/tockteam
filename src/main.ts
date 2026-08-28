@@ -2825,6 +2825,7 @@ let runtimeStopPromise: Promise<void> | undefined
 
 async function stopRuntimeAndChannels(options: Readonly<{ skipStartWait?: boolean }> = {}): Promise<void> {
   invalidateAllLauncherProviders('launcher-runtime-relaunch')
+  await launcherWorkflow?.waitForIdle()
   const pendingStart = runtimeStartGate.pending
   runtimeStartGate.invalidate()
   invalidateWorkbenchReadiness()
@@ -3202,6 +3203,7 @@ function requestSecureQuit(_reason: 'native-quit' | 'tray' | 'launcher-command-q
   secureTeardownPromise = (async () => {
     quitting = true
     invalidateAllLauncherProviders('launcher-shutdown')
+    await launcherWorkflow?.waitForIdle()
     runtimeStartGate.close()
     launcherLifecycle?.dispose()
     launcherController?.dispose()
@@ -3257,6 +3259,7 @@ async function reconcileLauncherAfterRelaunchFailure(reason: string): Promise<vo
 async function queueSecureRelaunch(reason: 'launcher-settings-import' | 'launcher-settings-reset'): Promise<void> {
   if (quitting) return
   invalidateAllLauncherProviders(`launcher-${reason}-relaunch`)
+  await launcherWorkflow?.waitForIdle()
   await attemptSecureRelaunchWithRecovery({
     reconcile: async () => await reconcileLauncherAfterRelaunchFailure(reason),
     relaunch: () => { app.relaunch() },
