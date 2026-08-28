@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process'
+import { lstat, realpath } from 'node:fs/promises'
 import path from 'node:path'
 import type { LauncherTerminalPlatform } from './launcher-terminal-config.ts'
 
@@ -22,8 +23,14 @@ export type LauncherWorkflowCommandInvocation = Readonly<{
 
 export type LauncherWorkflowTerminationInvocation = Readonly<{
   args: readonly string[]
-  executable: 'taskkill.exe'
+  executable: string
 }>
+
+export type LauncherWorkflowExecutableIdentity = Readonly<{ dev: string; ino: string }>
+export type LauncherWorkflowExecutableCapture = (target: string) => Promise<Readonly<{
+  canonicalPath: string
+  identity: LauncherWorkflowExecutableIdentity
+}> | undefined>
 
 type WorkflowChildProcess = Readonly<{
   kill: (signal?: NodeJS.Signals) => boolean
@@ -75,6 +82,7 @@ const DEFAULT_TIMEOUT_MS = 15_000
 const HARD_TIMEOUT_MS = 60_000
 const PROCESS_DRAIN_TIMEOUT_MS = 250
 const WINDOWS_KILL_TIMEOUT_MS = 5_000
+const WINDOWS_SYSTEM_EXECUTABLES = new Set(['cmd.exe', 'taskkill.exe'])
 
 const spawnWorkflowProcess: SpawnWorkflowProcess = (executable, args, options) => {
   const child = spawn(executable, [...args], {
@@ -119,20 +127,70 @@ export function resolveWorkflowCommandInvocation(
   platform: LauncherTerminalPlatform,
   command: string,
   workingDirectory: string,
+  environment: Readonly<Record<string, string | undefined>> = {},
 ): LauncherWorkflowCommandInvocation {
   assertCommand(platform, command, workingDirectory)
   return Object.freeze(platform === 'Windows'
-    ? { args: Object.freeze(['/D', '/S', '/C', command]), cwd: workingDirectory, executable: 'cmd.exe' }
+    ? { args: Object.freeze(['/D', '/S', '/C', command]), cwd: workingDirectory, executable: path.win32.join(boundedSystemRoot(environment.SystemRoot), 'System32', 'cmd.exe') }
     : { args: Object.freeze(['-lc', command]), cwd: workingDirectory, executable: '/bin/sh' })
 }
 
 function boundedSystemRoot(value: unknown): string {
-  return typeof value === 'string'
-    && value.length > 0
-    && value.length <= 256
-    && /^[A-Za-z]:\\[^\0\r\n]*$/u.test(value)
-    ? value.replace(/[\\/]+$/u, '')
-    : 'C:\\Windows'
+  if (typeof value !== 'string' || value.length === 0 || value.length > 256 || !/^[A-Za-z]:\\[^\0\r\n]*$/u.test(value)) return 'C:\\Windows'
+  const normalized = path.win32.normalize(value.replace(/[\\/]+$/u, ''))
+  return normalized.includes('..') || !path.win32.isAbsolute(normalized) ? 'C:\\Windows' : normalized
+}
+
+function identityPart(value: unknown): string | undefined {
+  if (typeof value === 'bigint') return value >= 0n ? value.toString(10) : undefined
+  if (typeof value === 'number') return Number.isSafeInteger(value) && value >= 0 ? String(value) : undefined
+  return typeof value === 'string' && /^[0-9]+$/u.test(value) ? value.replace(/^0+(?=\d)/u, '') : undefined
+}
+
+function comparableWindowsPath(value: string): string {
+  const normalized = path.win32.normalize(value)
+  if (normalized.startsWith('\\\\?\\UNC\\')) return `\\\\${normalized.slice('\\\\?\\UNC\\'.length)}`.toLocaleLowerCase('en-US')
+  if (normalized.startsWith('\\\\?\\')) return normalized.slice('\\\\?\\'.length).toLocaleLowerCase('en-US')
+  return normalized.toLocaleLowerCase('en-US')
+}
+
+async function captureWorkflowWindowsExecutable(target: string): Promise<Readonly<{ canonicalPath: string; identity: LauncherWorkflowExecutableIdentity }> | undefined> {
+  try {
+    const selected = await lstat(target, { bigint: true })
+    if (!selected.isFile() || selected.isSymbolicLink()) return undefined
+    const canonicalPath = await realpath(target)
+    const canonical = await lstat(canonicalPath, { bigint: true })
+    const dev = identityPart(canonical.dev)
+    const ino = identityPart(canonical.ino)
+    if (!canonical.isFile() || canonical.isSymbolicLink() || dev === undefined || ino === undefined) return undefined
+    return Object.freeze({ canonicalPath, identity: Object.freeze({ dev, ino }) })
+  } catch { return undefined }
+}
+
+export async function resolveTrustedWorkflowWindowsExecutable(
+  executableName: 'cmd.exe' | 'taskkill.exe',
+  environment: Readonly<Record<string, string | undefined>>,
+  capture: LauncherWorkflowExecutableCapture = captureWorkflowWindowsExecutable,
+): Promise<Readonly<{ executable: string; identity: LauncherWorkflowExecutableIdentity }>> {
+  if (!WINDOWS_SYSTEM_EXECUTABLES.has(executableName)) throw new Error('Invalid TockLauncher Workflow Windows executable')
+  const candidate = path.win32.join(boundedSystemRoot(environment.SystemRoot), 'System32', executableName)
+  const selected = await capture(candidate)
+  if (selected === undefined || !path.win32.isAbsolute(selected.canonicalPath) || comparableWindowsPath(selected.canonicalPath) !== comparableWindowsPath(candidate)) {
+    throw new Error('TockLauncher Workflow Windows executable is unavailable')
+  }
+  return Object.freeze({ executable: selected.canonicalPath, identity: selected.identity })
+}
+
+export async function revalidateTrustedWorkflowWindowsExecutable(
+  resolution: Readonly<{ executable: string; identity: LauncherWorkflowExecutableIdentity }>,
+  capture: LauncherWorkflowExecutableCapture = captureWorkflowWindowsExecutable,
+): Promise<boolean> {
+  if (!path.win32.isAbsolute(resolution.executable)) return false
+  const current = await capture(resolution.executable)
+  return current !== undefined
+    && comparableWindowsPath(current.canonicalPath) === comparableWindowsPath(resolution.executable)
+    && current.identity.dev === resolution.identity.dev
+    && current.identity.ino === resolution.identity.ino
 }
 
 function boundedLanguage(value: unknown): string {
@@ -163,9 +221,9 @@ function boundedEnvironment(
   })
 }
 
-export function resolveWorkflowTerminationInvocation(pid: number): LauncherWorkflowTerminationInvocation {
+export function resolveWorkflowTerminationInvocation(pid: number, systemRoot = 'C:\\Windows'): LauncherWorkflowTerminationInvocation {
   if (!Number.isSafeInteger(pid) || pid <= 0) throw new Error('Invalid TockLauncher Workflow process ID')
-  return Object.freeze({ args: Object.freeze(['/PID', String(pid), '/T', '/F']), executable: 'taskkill.exe' })
+  return Object.freeze({ args: Object.freeze(['/PID', String(pid), '/T', '/F']), executable: path.win32.join(boundedSystemRoot(systemRoot), 'System32', 'taskkill.exe') })
 }
 
 function hardKillChild(child: WorkflowChildProcess): void {
@@ -183,7 +241,7 @@ function waitForChildClose(child: WorkflowChildProcess, timeoutMs: number): Prom
     }
     const timer = setTimeout(() => finish(false), timeoutMs)
     child.once('close', () => finish(true))
-    child.once('error', () => finish(true))
+    child.once('error', () => undefined)
   })
 }
 
@@ -193,47 +251,56 @@ async function terminateChild(
   environment: Readonly<Record<string, string>>,
   spawnTerminationProcess: SpawnWorkflowTerminationProcess,
   killProcess: (pid: number, signal: NodeJS.Signals) => void,
+  captureWindowsExecutable: LauncherWorkflowExecutableCapture,
 ): Promise<void> {
+  const waitForTermination = async (): Promise<void> => {
+    if (await waitForChildClose(child, PROCESS_DRAIN_TIMEOUT_MS)) return
+    hardKillChild(child)
+    await waitForChildClose(child, PROCESS_DRAIN_TIMEOUT_MS)
+  }
   if (platform === 'Windows' && child.pid !== undefined && Number.isSafeInteger(child.pid) && child.pid > 0) {
-    const invocation = resolveWorkflowTerminationInvocation(child.pid)
-    let killerFinished = false
+    let invocation: LauncherWorkflowTerminationInvocation
+    let trusted: Readonly<{ executable: string; identity: LauncherWorkflowExecutableIdentity }>
+    try {
+      invocation = resolveWorkflowTerminationInvocation(child.pid, environment.SystemRoot)
+      trusted = await resolveTrustedWorkflowWindowsExecutable('taskkill.exe', environment, captureWindowsExecutable)
+      if (!await revalidateTrustedWorkflowWindowsExecutable(trusted, captureWindowsExecutable)) throw new Error('Windows taskkill executable changed')
+    } catch {
+      hardKillChild(child)
+      await waitForTermination()
+      return
+    }
     await new Promise<void>(resolve => {
       let settled = false
       const finish = (): void => {
         if (settled) return
         settled = true
-        killerFinished = true
         clearTimeout(timer)
         resolve()
       }
-      const timer = setTimeout(finish, WINDOWS_KILL_TIMEOUT_MS)
+      const timer = setTimeout(() => { hardKillChild(child); finish() }, WINDOWS_KILL_TIMEOUT_MS)
       try {
-        const killer = spawnTerminationProcess(invocation.executable, invocation.args, {
+        const killer = spawnTerminationProcess(trusted.executable, invocation.args, {
           env: environment,
           shell: false,
           stdio: ['ignore', 'ignore', 'ignore'],
           windowsHide: true,
         })
-        killer.once('error', finish)
-        killer.once('close', code => { if (code === 0) finish(); else { hardKillChild(child); finish() } })
+        killer.once('error', () => { hardKillChild(child); finish() })
+        killer.once('close', code => { if (code !== 0) hardKillChild(child); finish() })
         killer.unref()
       } catch {
         hardKillChild(child)
         finish()
       }
     })
-    // A successful taskkill is not proof that the child handle has closed yet.
-    if (killerFinished && !await waitForChildClose(child, PROCESS_DRAIN_TIMEOUT_MS)) hardKillChild(child)
-    await waitForChildClose(child, PROCESS_DRAIN_TIMEOUT_MS)
+    await waitForTermination()
     return
   }
   if (child.pid !== undefined && Number.isSafeInteger(child.pid) && child.pid > 0) {
     try { killProcess(-child.pid, 'SIGKILL') } catch { /* fall back to the child handle */ }
   }
-  if (!await waitForChildClose(child, PROCESS_DRAIN_TIMEOUT_MS)) {
-    hardKillChild(child)
-    await waitForChildClose(child, PROCESS_DRAIN_TIMEOUT_MS)
-  }
+  await waitForTermination()
 }
 
 function finiteBound(value: number | undefined, fallback: number, maximum: number): number {
@@ -248,19 +315,28 @@ export async function runBoundedWorkflowCommand(
     maxOutputBytes?: number
     spawnProcess?: SpawnWorkflowProcess
     spawnTerminationProcess?: SpawnWorkflowTerminationProcess
+    captureWindowsExecutable?: LauncherWorkflowExecutableCapture
     timeoutMs?: number
   }> = {},
 ): Promise<LauncherWorkflowCommandResult> {
-  resolveWorkflowCommandInvocation(request.platform, request.command, request.workingDirectory)
+  const rawEnvironment = options.environment ?? process.env
+  const environment = boundedEnvironment(request.platform, request.workingDirectory, rawEnvironment)
+  const invocation = resolveWorkflowCommandInvocation(request.platform, request.command, request.workingDirectory, rawEnvironment)
   if (request.signal.aborted) throw new Error('Workflow command cancelled')
   const maxOutputBytes = finiteBound(options.maxOutputBytes, DEFAULT_OUTPUT_BYTES, HARD_OUTPUT_BYTES)
   const timeoutMs = finiteBound(options.timeoutMs, DEFAULT_TIMEOUT_MS, HARD_TIMEOUT_MS)
-  const environment = boundedEnvironment(request.platform, request.workingDirectory, options.environment ?? process.env)
+  const captureWindowsExecutable = options.captureWindowsExecutable ?? captureWorkflowWindowsExecutable
+  let executable = invocation.executable
   let child: WorkflowChildProcess
   try {
+    if (request.platform === 'Windows') {
+      const trusted = await resolveTrustedWorkflowWindowsExecutable('cmd.exe', environment, captureWindowsExecutable)
+      if (!await revalidateTrustedWorkflowWindowsExecutable(trusted, captureWindowsExecutable)) throw new Error('Windows command executable changed')
+      executable = trusted.executable
+    }
     child = (options.spawnProcess ?? spawnWorkflowProcess)(
-      request.platform === 'Windows' ? 'cmd.exe' : '/bin/sh',
-      request.platform === 'Windows' ? ['/D', '/S', '/C', request.command] : ['-lc', request.command],
+      executable,
+      invocation.args,
       {
         cwd: request.workingDirectory,
         detached: true,
@@ -298,6 +374,7 @@ export async function runBoundedWorkflowCommand(
         environment,
         options.spawnTerminationProcess ?? spawnWorkflowTerminationProcess,
         options.killProcess ?? ((pid, signal) => process.kill(pid, signal)),
+        captureWindowsExecutable,
       ).then(() => finish(error), () => finish(error))
     }
     const cancel = (): void => stop(new Error('Workflow command cancelled'))
@@ -310,7 +387,7 @@ export async function runBoundedWorkflowCommand(
 
     child.stdout.on('data', chunk => count('stdout', chunk))
     child.stderr.on('data', chunk => count('stderr', chunk))
-    child.once('error', () => { if (!stopping) finish(new Error('Workflow command could not start')) })
+    child.once('error', () => { stop(new Error('Workflow command could not start')) })
     child.once('close', code => { if (!stopping) finish(code === 0 ? undefined : new Error('Workflow command failed')) })
     timeout = setTimeout(() => stop(new Error('Workflow command timed out')), timeoutMs)
     request.signal.addEventListener('abort', cancel, { once: true })

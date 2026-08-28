@@ -3,6 +3,7 @@ import { EventEmitter } from 'node:events'
 import { PassThrough } from 'node:stream'
 import test from 'node:test'
 import {
+  resolveTrustedWorkflowWindowsExecutable,
   resolveWorkflowCommandInvocation,
   resolveWorkflowTerminationInvocation,
   runBoundedWorkflowCommand,
@@ -30,9 +31,9 @@ test('Workflow command maps text to fixed shell executable and argv', () => {
     args: ['-lc', 'printf ok'], cwd: '/home/max', executable: '/bin/sh',
   })
   assert.deepEqual(resolveWorkflowCommandInvocation('Windows', 'echo ok & whoami', 'C:\\Users\\max'), {
-    args: ['/D', '/S', '/C', 'echo ok & whoami'], cwd: 'C:\\Users\\max', executable: 'cmd.exe',
+    args: ['/D', '/S', '/C', 'echo ok & whoami'], cwd: 'C:\\Users\\max', executable: 'C:\\Windows\\System32\\cmd.exe',
   })
-  assert.deepEqual(resolveWorkflowTerminationInvocation(4242), { args: ['/PID', '4242', '/T', '/F'], executable: 'taskkill.exe' })
+  assert.deepEqual(resolveWorkflowTerminationInvocation(4242), { args: ['/PID', '4242', '/T', '/F'], executable: 'C:\\Windows\\System32\\taskkill.exe' })
   assert.throws(() => resolveWorkflowCommandInvocation('macOS', 'echo ok\nwhoami', '/Users/max'), /command/i)
 })
 
@@ -78,14 +79,49 @@ test('Windows process-tree termination is awaited before reporting failure', asy
   const killer = new EventEmitter() as EventEmitter & { unref: () => void }
   killer.unref = () => undefined
   let called = false
+  const trustedCapture = async (target: string) => ({ canonicalPath: target, identity: { dev: '1', ino: '2' } })
   const pending = runBoundedWorkflowCommand({ command: 'echo lots', platform: 'Windows', signal: new AbortController().signal, workingDirectory: 'C:\\Users\\max' }, {
-    maxOutputBytes: 4, spawnProcess: () => child, spawnTerminationProcess: (executable, args, options) => { called = executable === 'taskkill.exe' && args.join(' ') === '/PID 4242 /T /F' && options.shell === false; return killer },
+    captureWindowsExecutable: trustedCapture,
+    maxOutputBytes: 4, spawnProcess: () => child, spawnTerminationProcess: (executable, args, options) => { called = executable === 'C:\\Windows\\System32\\taskkill.exe' && args.join(' ') === '/PID 4242 /T /F' && options.shell === false; return killer },
   })
   child.stdout.write('12345')
   await new Promise(resolve => setImmediate(resolve))
   assert.equal(called, true)
   killer.emit('close', 0)
   await assert.rejects(pending, /output limit/i)
+})
+
+test('Workflow post-spawn errors terminate and wait for the child close event', async () => {
+  const child = childProcess()
+  let killed = 0
+  let groupKilled = 0
+  child.kill = () => { killed += 1; return true }
+  const pending = runBoundedWorkflowCommand({ command: 'false', platform: 'Linux', signal: new AbortController().signal, workingDirectory: '/home/max' }, {
+    killProcess: () => { groupKilled += 1 },
+    spawnProcess: () => child,
+  })
+  child.emit('error', new Error('post-spawn error'))
+  await new Promise(resolve => setImmediate(resolve))
+  assert.equal(killed > 0 || groupKilled > 0, true)
+  child.emit('close', 1, null)
+  await assert.rejects(pending, /could not start|failed/u)
+})
+
+test('Workflow Windows process rejects non-canonical system binaries before spawn', async () => {
+  await assert.rejects(
+    resolveTrustedWorkflowWindowsExecutable('cmd.exe', { SystemRoot: 'C:\\Windows' }, async target => ({ canonicalPath: `${target}\\..\\evil.exe`, identity: { dev: '1', ino: '2' } })),
+    /unavailable/u,
+  )
+})
+
+test('Workflow process kill failure has a bounded rejection and never reports clean completion', async () => {
+  const child = childProcess()
+  child.kill = () => { throw new Error('kill failed') }
+  const pending = runBoundedWorkflowCommand({ command: 'printf x', platform: 'Linux', signal: new AbortController().signal, workingDirectory: '/home/max' }, {
+    killProcess: () => { throw new Error('group kill failed') }, maxOutputBytes: 1, spawnProcess: () => child,
+  })
+  child.stdout.write('xx')
+  await assert.rejects(pending, /output limit/u)
 })
 
 test('Workflow process closes abort race after spawn/listener registration', async () => {
