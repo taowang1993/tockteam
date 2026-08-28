@@ -55,6 +55,7 @@ export function resolveSystemCommandInvocation(
     case 'hibernate': return Object.freeze({ args: Object.freeze(['/h']), executable: 'shutdown.exe' })
     case 'sleep': return fixedPowershell(WINDOWS_SLEEP_SCRIPT)
     case 'empty-trash': return fixedPowershell('Clear-RecycleBin -Force -ErrorAction Stop')
+    default: throw new Error(`System command ${command} is not supported on Windows`)
   }
 }
 

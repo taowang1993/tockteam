@@ -1707,7 +1707,10 @@ async function launcherSaveDialog(options: Electron.SaveDialogOptions): Promise<
 }
 
 function launcherPlatformPathExtension(): 'app' | 'exe' {
-  return process.platform === 'darwin' ? 'app' : 'exe'
+  if (process.platform === 'darwin') return 'app'
+  if (process.platform === 'win32') return 'exe'
+  if (process.platform === 'linux') throw new Error('Custom browsers are not supported on Linux')
+  throw new Error('Unsupported TockLauncher platform')
 }
 
 async function importLauncherSettings(): Promise<Readonly<{ canceled?: boolean; ok: true }>> {

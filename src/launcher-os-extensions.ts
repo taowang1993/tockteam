@@ -12,7 +12,7 @@ import {
   type LauncherSystemCommand,
   type LauncherUeliCommand,
 } from './launcher-os-catalog.ts'
-import type { LauncherControlPanelEntry } from './launcher-os-process.ts'
+import { launcherControlPanelCanonicalName, type LauncherControlPanelEntry } from './launcher-os-process.ts'
 
 export type { LauncherOsExtensionId, LauncherOsPlatform, LauncherSystemCommand, LauncherUeliCommand } from './launcher-os-catalog.ts'
 export type { LauncherControlPanelEntry } from './launcher-os-process.ts'
@@ -253,7 +253,7 @@ export function createLauncherOsExtensions(options: LauncherOsOptions): Readonly
           const scanned = await options.scanControlPanelItems(controller.signal)
           if (!sameGeneration(generation, nextGeneration, closed, controller.signal)) throw abortError(controller.signal, 'TockLauncher OS load superseded')
           for (const entry of scanned.slice(0, MAX_SCAN_ITEMS)) {
-            if (!bounded(entry.canonicalName) || !bounded(entry.name) || nextControlPanel.has(entry.canonicalName)) continue
+            if (!launcherControlPanelCanonicalName(entry.canonicalName) || !bounded(entry.name) || nextControlPanel.has(entry.canonicalName)) continue
             nextControlPanel.set(entry.canonicalName, entry.name)
             const argument = Object.freeze({ canonicalName: entry.canonicalName, kind: 'control-panel', version: 1 } as const)
             const item = createItem('WindowsControlPanel', entry.canonicalName, entry.name, 'Control Panel Item', 'control-panel', action(argument, `Open ${entry.name}`, HANDLERS.controlPanel, true))
