@@ -42,10 +42,11 @@ test('launcher preload exposes only typed search, theme, settings, invoke, resca
       return { ok: true }
     },
   })
-  assert.deepEqual(Object.keys(bridge).sort(), ['dismiss', 'getLocalExtensionSettings', 'getSurfaceSettings', 'getTheme', 'invokeAction', 'onTheme', 'openSettings', 'recordSearch', 'rescan', 'search'])
+  assert.deepEqual(Object.keys(bridge).sort(), ['cancelAction', 'dismiss', 'getLocalExtensionSettings', 'getSurfaceSettings', 'getTheme', 'invokeAction', 'onTheme', 'openSettings', 'recordSearch', 'rescan', 'search'])
   assert.equal(bridge.getLocalExtensionSettings.length, 0)
   assert.equal(bridge.getSurfaceSettings.length, 0)
   assert.equal(bridge.getTheme.length, 0)
+  assert.equal(bridge.cancelAction.length, 2)
   assert.equal(bridge.invokeAction.length, 1)
   assert.equal(bridge.recordSearch.length, 1)
   assert.equal(bridge.rescan.length, 0)
@@ -57,6 +58,7 @@ test('launcher preload exposes only typed search, theme, settings, invoke, resca
   await bridge.search('coder', { fuzziness: 0.5, maxSearchResultItems: 50, searchEngineId: 'fuzzysort' })
   await bridge.rescan()
   await bridge.invokeAction('launcher-action:one')
+  await bridge.cancelAction('launcher-action:one', 'launcher-results:1')
   await bridge.dismiss()
   await bridge.openSettings()
   assert.deepEqual(calls, [
@@ -70,10 +72,12 @@ test('launcher preload exposes only typed search, theme, settings, invoke, resca
     },
     { channel: LAUNCHER_IPC_CHANNELS.rescan },
     { channel: LAUNCHER_IPC_CHANNELS.invokeAction, input: { actionId: 'launcher-action:one' } },
+    { channel: LAUNCHER_IPC_CHANNELS.cancelAction, input: { actionId: 'launcher-action:one', resultSetId: 'launcher-results:1' } },
     { channel: LAUNCHER_WINDOW_IPC_CHANNELS.dismiss },
     { channel: LAUNCHER_WINDOW_IPC_CHANNELS.openSettings },
   ])
   await assert.rejects(() => bridge.invokeAction('launcher-action:../unsafe'), /action ID/u)
+  await assert.rejects(() => bridge.cancelAction('launcher-action:../unsafe', 'launcher-results:1'), /cancellation|action ID/u)
   await assert.rejects(() => bridge.search('x'.repeat(513), { fuzziness: 0.5, maxSearchResultItems: 50, searchEngineId: 'fuzzysort' }), /search term/u)
   const runtimeBridge = bridge as unknown as Record<string, (...args: unknown[]) => Promise<unknown>>
   const callRuntime = (method: string, ...args: unknown[]): Promise<unknown> => {
@@ -82,6 +86,7 @@ test('launcher preload exposes only typed search, theme, settings, invoke, resca
     return fn(...args)
   }
   await assert.rejects(() => callRuntime('getLocalExtensionSettings', 'extra'), /arguments/u)
+  await assert.rejects(() => callRuntime('cancelAction', 'launcher-action:one', 'launcher-results:1', 'extra'), /arguments/u)
   await assert.rejects(() => callRuntime('invokeAction', 'launcher-action:one', 'extra'), /arguments/u)
   await assert.rejects(() => callRuntime('rescan', 'extra'), /arguments/u)
   await assert.rejects(() => callRuntime('search', 'coder', {

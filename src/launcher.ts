@@ -130,10 +130,12 @@ async function bootstrap(): Promise<void> {
   let revision = 0
   let selectedItemId = ''
   let currentItems: LauncherPublicResultItem[] = []
+  let currentResultSetId = ''
   let pinnedCount = 0
   let actionMenuOpen = false
   let historyOpen = false
   let invoking = false
+  let activeCancellation: Readonly<{ actionId: string; resultSetId: string }> | undefined
   let activeLocalTool: HTMLElement | undefined
   let activeLocalToolId: LauncherLocalToolId | undefined
   let surfaceSettings: LauncherSurfaceSettings = Object.freeze({
@@ -308,6 +310,7 @@ async function bootstrap(): Promise<void> {
   const invoke = async (action: LauncherPublicAction): Promise<void> => {
     if (invoking) return
     const candidate = selectedItem()
+    const isWorkflowAction = candidate?.sourceExtension === 'Workflow'
     const candidateId = candidate?.id.slice('ueli-local:'.length)
     const toolId = candidate !== undefined
       && candidate.id === `ueli-local:${candidate.sourceExtension}`
@@ -324,7 +327,9 @@ async function bootstrap(): Promise<void> {
       && candidate.sourceExtension === (candidate.id.endsWith('DeeplTranslator') ? 'DeeplTranslator' : 'WebSearch')
       && action.actionId === candidate.defaultAction.actionId
     invoking = true
+    if (isWorkflowAction) activeCancellation = Object.freeze({ actionId: action.actionId, resultSetId: currentResultSetId })
     closeActionMenu(false)
+    renderDetails()
     await rememberSearch()
     setStatus(`${action.description}…`, 'muted')
     try {
@@ -359,6 +364,20 @@ async function bootstrap(): Promise<void> {
       restoreSearchFocus()
     } finally {
       invoking = false
+      activeCancellation = undefined
+      renderDetails()
+    }
+  }
+
+  const cancelActiveWorkflow = async (): Promise<void> => {
+    const cancellation = activeCancellation
+    if (cancellation === undefined) return
+    setStatus('Canceling workflow…', 'muted')
+    try {
+      await bridge.cancelAction(cancellation.actionId, cancellation.resultSetId)
+      setStatus('Workflow canceled.', 'muted')
+    } catch {
+      setStatus('Workflow could not be canceled.', 'error')
     }
   }
 
@@ -402,7 +421,17 @@ async function bootstrap(): Promise<void> {
 
     const row = document.createElement('div')
     row.className = 'flex min-w-0 items-center gap-2'
-    row.append(selection, open, toggle)
+    row.append(selection, open)
+    if (activeCancellation !== undefined && item.sourceExtension === 'Workflow') {
+      const cancel = document.createElement('button')
+      cancel.className = 'inline-flex h-9 shrink-0 items-center gap-1 rounded-lg border border-[var(--dsw-alias-border-l2,CanvasText)] px-2 text-sm hover:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))] focus-visible:outline-2'
+      cancel.type = 'button'
+      cancel.setAttribute('aria-label', 'Cancel workflow')
+      cancel.textContent = 'Cancel'
+      cancel.addEventListener('click', () => { void cancelActiveWorkflow() })
+      row.append(cancel)
+    }
+    row.append(toggle)
     details.append(row)
     if (!actionMenuOpen) return
 
@@ -551,6 +580,7 @@ async function bootstrap(): Promise<void> {
       const previous = selectedItemId
       pinnedCount = response.before.length
       currentItems = [...response.before, ...response.after]
+      currentResultSetId = response.resultSetId
       selectedItemId = currentItems.some(item => item.id === previous) ? previous : currentItems[0]?.id ?? ''
       search.setAttribute('aria-expanded', String(currentItems.length > 0))
       renderResults()

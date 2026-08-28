@@ -196,14 +196,21 @@ export class LauncherActionStore {
   async cancel(input: Readonly<{
     actionId: string
     owner: LauncherActionOwner
+    resultSetId: string
   }>): Promise<Readonly<{ ok: true }>> {
     assertOwner(input.owner)
     if (typeof input.actionId !== 'string' || !ACTION_ID_PATTERN.test(input.actionId)) {
       throw new Error('Malformed launcher action ID')
     }
+    if (typeof input.resultSetId !== 'string' || !/^launcher-results:[1-9][0-9]*$/u.test(input.resultSetId)) {
+      throw new Error('Malformed launcher result set ID')
+    }
     const record = this.activeActions.get(input.actionId)
     if (record === undefined) throw new Error('TockLauncher action is not active')
     if (!sameOwner(record.owner, input.owner)) throw new Error('TockLauncher action belongs to another window')
+    if (record.resultSetId !== input.resultSetId || this.currentResultSets.get(ownerKey(input.owner)) !== record.resultSetId) {
+      throw new Error('TockLauncher action belongs to a replaced result set')
+    }
     if (!await this.cancelEffect(record)) throw new Error('TockLauncher action is not cancellable')
     this.activeActions.delete(input.actionId)
     return Object.freeze({ ok: true as const })

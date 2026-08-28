@@ -3,6 +3,7 @@ import { LauncherActionExpiredError } from './launcher-actions.ts'
 import {
   LAUNCHER_IPC_CHANNELS,
   LAUNCHER_SURFACE_IPC_CHANNELS,
+  parseLauncherCancelActionArgs,
   parseLauncherInvokeActionArgs,
   parseLauncherSearchArgs,
   type LauncherSearchResponse,
@@ -21,7 +22,7 @@ export type LauncherSearchProvider = (
   status: LauncherCoreStatus
 }>>
 
-type LauncherActions = Pick<LauncherActionStore, 'invoke' | 'publish'> & Partial<Pick<LauncherActionStore, 'clearOwner'>>
+type LauncherActions = Pick<LauncherActionStore, 'cancel' | 'invoke' | 'publish'> & Partial<Pick<LauncherActionStore, 'clearOwner'>>
 
 type LauncherSearchIpcArgs = Readonly<{
   actions: LauncherActions
@@ -98,6 +99,17 @@ export function registerLauncherIpcHandlers(args: LauncherSearchIpcArgs): () => 
         assertNoArguments(LAUNCHER_IPC_CHANNELS.rescan, rawArgs)
         try { return await args.rescan(owner) }
         catch { throw operationFailure() }
+      },
+    ],
+    [
+      LAUNCHER_IPC_CHANNELS.cancelAction,
+      async (event: unknown, input: unknown, ...extra: unknown[]): Promise<Readonly<{ ok: true }>> => {
+        const owner = args.guard.assert(event, 'launcher')
+        assertNoArguments(LAUNCHER_IPC_CHANNELS.cancelAction, extra)
+        const { actionId, resultSetId } = parseLauncherCancelActionArgs(input)
+        try {
+          return await args.actions.cancel({ actionId, owner, resultSetId })
+        } catch { throw operationFailure() }
       },
     ],
     [

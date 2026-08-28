@@ -19,6 +19,7 @@ test('launcher search IPC guards, publishes opaque actions, rejects stale reques
   let published = 0
   const dispose = registerLauncherIpcHandlers({
     actions: {
+      cancel: async () => ({ ok: true as const }),
       clearOwner: () => {},
       invoke: async () => ({ ok: true as const }),
       publish: ({ owner }) => {
@@ -46,6 +47,10 @@ test('launcher search IPC guards, publishes opaque actions, rejects stale reques
   await assert.rejects(ipc.handlers.get(LAUNCHER_IPC_CHANNELS.rescan)!(event, 'extra') as Promise<unknown>, /arguments/u)
   await assert.rejects(ipc.handlers.get(LAUNCHER_IPC_CHANNELS.search)!(event, input('extra'), 'extra') as Promise<unknown>, /arguments/u)
   await assert.rejects(ipc.handlers.get(LAUNCHER_IPC_CHANNELS.invokeAction)!(event, { actionId: 'launcher-action:opaque' }, 'extra') as Promise<unknown>, /arguments/u)
+  const cancel = ipc.handlers.get(LAUNCHER_IPC_CHANNELS.cancelAction)!
+  assert.deepEqual(await cancel(event, { actionId: 'launcher-action:opaque', resultSetId: 'launcher-results:1' }), { ok: true })
+  await assert.rejects(cancel(event, { actionId: 'launcher-action:opaque', resultSetId: 'launcher-results:1' }, 'extra') as Promise<unknown>, /arguments/u)
+  await assert.rejects(cancel(event, { actionId: 'launcher-action:opaque', resultSetId: 'launcher-results:bad' }) as Promise<unknown>, /cancellation|operation/u)
   dispose()
   assert.deepEqual(ipc.removed.sort(), Object.values(LAUNCHER_IPC_CHANNELS).sort())
 })
@@ -58,6 +63,7 @@ test('launcher IPC rechecks ownership after search and maps expiry without expos
   let published = 0
   const dispose = registerLauncherIpcHandlers({
     actions: {
+      cancel: async () => ({ ok: true as const }),
       clearOwner: () => {},
       invoke: async () => { throw new LauncherActionExpiredError() },
       publish: () => {
@@ -99,6 +105,7 @@ test('overlay operations invalidate actions on rescan and hide downstream path e
   const path = '/private/user/secrets/settings.json'
   const dispose = registerLauncherIpcHandlers({
     actions: {
+      cancel: async () => { throw new Error('cancel unavailable') },
       clearOwner: owner => { cleared.push(owner.webContentsId) },
       invoke: async () => { throw new Error(`EACCES ${path}`) },
       publish: () => ({ items: [], resultSetId: 'launcher-results:1' }),

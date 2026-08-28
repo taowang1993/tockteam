@@ -1,9 +1,11 @@
 import {
   LAUNCHER_IPC_CHANNELS,
   LAUNCHER_SURFACE_IPC_CHANNELS,
+  parseLauncherCancelActionArgs,
   parseLauncherCoreStatus,
   parseLauncherInvokeActionArgs,
   parseLauncherInvokeResult,
+  parseLauncherSuccessResult,
   parseLauncherSearchArgs,
   parseLauncherSearchResponse,
   parseLauncherSurfaceSettings,
@@ -30,6 +32,7 @@ export type LauncherPreloadBridge = Readonly<{
   getLocalExtensionSettings: (...args: unknown[]) => Promise<LauncherLocalExtensionSettings>
   getSurfaceSettings: (...args: unknown[]) => Promise<import('./launcher-contract.ts').LauncherSurfaceSettings>
   getTheme: (...args: unknown[]) => Promise<LauncherThemeProjection>
+  cancelAction: (actionId: string, resultSetId: string) => Promise<Readonly<{ ok: true }>>
   invokeAction: (actionId: string) => Promise<LauncherInvokeResult>
   onTheme: (listener: (projection: LauncherThemeProjection) => void) => () => void
   openSettings: (...args: unknown[]) => Promise<void>
@@ -77,6 +80,11 @@ export function createLauncherPreloadBridge(ipcRenderer: IpcInvoker): LauncherPr
     getTheme: async (...args: unknown[]): Promise<LauncherThemeProjection> => {
       assertArity('getTheme', args, 0)
       return parseLauncherThemeProjection(await ipcRenderer.invoke(LAUNCHER_WINDOW_IPC_CHANNELS.getThemeSource))
+    },
+    cancelAction: async (actionId: unknown, resultSetId: unknown, ...extra: unknown[]): Promise<Readonly<{ ok: true }>> => {
+      assertArity('cancelAction', [actionId, resultSetId, ...extra], 2)
+      const input = parseLauncherCancelActionArgs({ actionId, resultSetId })
+      return parseLauncherSuccessResult(await ipcRenderer.invoke(LAUNCHER_IPC_CHANNELS.cancelAction, input))
     },
     invokeAction: async (actionId: unknown, ...extra: unknown[]): Promise<LauncherInvokeResult> => {
       assertArity('invokeAction', [actionId, ...extra], 1)

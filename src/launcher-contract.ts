@@ -12,6 +12,7 @@ import type {
 export const LAUNCHER_FILE_SEARCH_QUERY_PREFIX = 'tockteam:file-search:'
 
 export const LAUNCHER_IPC_CHANNELS = Object.freeze({
+  cancelAction: 'launcher:cancel-action',
   invokeAction: 'launcher:invoke-action',
   rescan: 'launcher:rescan',
   search: 'launcher:search',
@@ -167,6 +168,18 @@ export function parseLauncherInvokeActionArgs(value: unknown): Readonly<{ action
     throw new Error('Invalid launcher action ID')
   }
   return Object.freeze({ actionId: value.actionId })
+}
+
+export function parseLauncherCancelActionArgs(value: unknown): Readonly<{ actionId: string; resultSetId: string }> {
+  if (!isRecord(value)
+    || !hasExactKeys(value, ['actionId', 'resultSetId'])
+    || typeof value.actionId !== 'string'
+    || !ACTION_ID_PATTERN.test(value.actionId)
+    || typeof value.resultSetId !== 'string'
+    || !RESULT_SET_ID_PATTERN.test(value.resultSetId)) {
+    throw new Error('Invalid launcher cancellation')
+  }
+  return Object.freeze({ actionId: value.actionId, resultSetId: value.resultSetId })
 }
 
 function parsePublicAction(value: unknown): asserts value is LauncherPublicAction {

@@ -2064,6 +2064,7 @@ function initializeLauncher(): void {
   })
   let controller: LauncherOverlayController | undefined
   const actions = new LauncherActionStore({
+    cancel: async record => await workflow.cancelAction(record),
     execute: async record => {
       if (await coreSearch.executeAction(record)) return
       if (await terminal.executeAction(record)) {
