@@ -162,6 +162,23 @@ test('Terminal Launcher rejects stale actions after a newer query and denied con
   assert.deepEqual(launches, ['third'])
 })
 
+test('Terminal Launcher rechecks extension enablement before an approved effect', async () => {
+  let enabled = true
+  let launches = 0
+  const provider = createLauncherTerminal({
+    effects: { auditLaunch: () => {}, confirmLaunch: async () => true, launchTerminal: () => { launches += 1 } },
+    enabledExtensionIds: () => enabled ? ['TerminalLauncher'] : [],
+    getSetting: <T>(_key: string, fallback: T): T => fallback,
+    homePath: '/Users/max',
+    platform: 'macOS',
+  })
+  const item = (await provider.searchInstant('> gated')).after[0]!
+  enabled = false
+  await assert.rejects(provider.executeAction(record(item)), /stale|current/u)
+  assert.equal(launches, 0)
+  await provider.close()
+})
+
 test('Terminal Launcher cancels a pending confirmation on invalidation', async () => {
   let release!: (value: boolean) => void
   let confirmationSignal: AbortSignal | undefined

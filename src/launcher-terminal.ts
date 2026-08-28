@@ -217,7 +217,12 @@ export function createLauncherTerminal(options: LauncherTerminalOptions): Readon
     abortAll(new Error(reason))
   }
   const isCurrent = (raw: string, known: KnownAction, expectedGeneration: number, digest: string): boolean => (
-    !closed && generation === expectedGeneration && currentActions.get(raw) === known && known.generation === expectedGeneration && known.settingsDigest === digest
+    !closed
+    && options.enabledExtensionIds().includes('TerminalLauncher')
+    && generation === expectedGeneration
+    && currentActions.get(raw) === known
+    && known.generation === expectedGeneration
+    && known.settingsDigest === digest
   )
   const searchInstant = async (searchTerm: string) => track(async () => {
     if (closed) return emptyResult()
