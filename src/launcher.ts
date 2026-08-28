@@ -985,8 +985,8 @@ async function bootstrap(): Promise<void> {
   })
   document.addEventListener('pointerdown', event => {
     if (!(event.target instanceof Element)) return
-    if (historyOpen && event.target.closest('#launcher-history, #launcher-history-toggle') === null) closeHistory(false)
-    if (actionMenuOpen && event.target.closest('#launcher-details') === null) closeActionMenu(false)
+    if (historyOpen && event.target.closest('#launcher-history, #launcher-history-toggle') === null) closeHistory()
+    if (actionMenuOpen && event.target.closest('#launcher-details') === null) closeActionMenu()
   })
 
   renderHistory()

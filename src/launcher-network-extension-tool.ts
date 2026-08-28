@@ -59,6 +59,8 @@ export function createLauncherNetworkExtensionTool(options: Readonly<{
   const input = element(document, isDeepL ? 'textarea' : 'input')
   input.setAttribute('aria-label', labelText.textContent)
   input.setAttribute('autocomplete', 'off')
+  input.setAttribute('aria-controls', `launcher-${extensionId.toLocaleLowerCase('en-US')}-results`)
+  input.setAttribute('aria-autocomplete', 'list')
   input.maxLength = LAUNCHER_NETWORK_TOOL_INPUT_LENGTH
   if (!isDeepL) input.setAttribute('type', 'search')
   label.append(labelText, input)
@@ -67,6 +69,7 @@ export function createLauncherNetworkExtensionTool(options: Readonly<{
   status.setAttribute('aria-live', 'polite')
   status.textContent = isDeepL ? text('enterTranslation', 'Enter text to translate.') : text('enterWebSearch', 'Enter a web search.')
   const list = element(document, 'ul', 'm-0 min-w-0 list-none overflow-auto p-0')
+  list.id = `launcher-${extensionId.toLocaleLowerCase('en-US')}-results`
   list.setAttribute('aria-label', `${title} results`)
   list.setAttribute('role', 'list')
   content.append(disclosure, label, status, list)
@@ -91,7 +94,6 @@ export function createLauncherNetworkExtensionTool(options: Readonly<{
       const line = element(document, 'div', 'flex min-w-0 items-center gap-1')
       const button = element(document, 'button', 'flex min-w-0 flex-1 items-center gap-2 rounded-lg px-2 py-2 text-left')
       button.type = 'button'
-      button.setAttribute('role', 'listitem')
       button.setAttribute('aria-label', `${item.name} — ${actionLabel(item.defaultAction)}`)
       const name = element(document, 'strong', 'min-w-0 flex-1 truncate text-sm font-medium')
       name.textContent = item.name
@@ -246,6 +248,7 @@ export function createLauncherNetworkExtensionTool(options: Readonly<{
     if (openMenu === undefined) return
     openMenu.menu.hidden = true
     openMenu.toggle.setAttribute('aria-expanded', 'false')
+    openMenu.toggle.focus()
     openMenu = undefined
   }
   tool.addEventListener('pointerdown', event => {

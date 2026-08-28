@@ -30,9 +30,9 @@ export function createLauncherFileSearchTool(options: Readonly<{
   const content = element(document, 'div', 'launcher-local-tool-content'); tool.append(content)
   const input = element(document, 'input')
   const maxInputLength = LAUNCHER_MAX_SEARCH_TERM_LENGTH
-  input.type = 'search'; input.maxLength = maxInputLength; input.placeholder = text('searchFiles', 'Search files'); input.setAttribute('aria-label', text('fileSearchInput', 'File Search Input')); input.autocomplete = 'off'
+  input.type = 'search'; input.maxLength = maxInputLength; input.placeholder = text('searchFiles', 'Search files'); input.setAttribute('aria-label', text('fileSearchInput', 'File Search Input')); input.setAttribute('aria-controls', 'launcher-file-search-results'); input.setAttribute('aria-autocomplete', 'list'); input.autocomplete = 'off'
   const status = element(document, 'p', 'launcher-local-tool-error'); status.setAttribute('role', 'status'); status.textContent = text('enterFile', 'Enter a file name to search.')
-  const list = element(document, 'ul', 'm-0 min-w-0 list-none overflow-auto p-0'); list.setAttribute('aria-label', text('fileSearchResults', 'File Search Results')); list.setAttribute('role', 'list')
+  const list = element(document, 'ul', 'm-0 min-w-0 list-none overflow-auto p-0'); list.id = 'launcher-file-search-results'; list.setAttribute('aria-label', text('fileSearchResults', 'File Search Results')); list.setAttribute('role', 'list')
   content.append(input, status, list)
 
   let requestRevision = 0
@@ -47,7 +47,7 @@ export function createLauncherFileSearchTool(options: Readonly<{
       const actions = [item.defaultAction, ...(item.additionalActions ?? [])]
       const content = element(document, 'div', 'flex min-w-0 items-center gap-1')
       const button = element(document, 'button', 'flex min-w-0 flex-1 items-center gap-2 rounded-lg px-2 py-2 text-left hover:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))]')
-      button.type = 'button'; button.setAttribute('role', 'listitem'); button.setAttribute('aria-label', `${item.name} — ${actionLabel(item.defaultAction)}`)
+      button.type = 'button'; button.setAttribute('aria-label', `${item.name} — ${actionLabel(item.defaultAction)}`)
       const name = element(document, 'strong', 'min-w-0 flex-1 truncate text-sm font-medium'); name.textContent = item.name
       const description = element(document, 'span', 'shrink-0 text-xs text-[var(--dsw-alias-label-secondary,CanvasText)]'); description.textContent = item.description
       const itemDetails = item.details
@@ -157,6 +157,7 @@ export function createLauncherFileSearchTool(options: Readonly<{
     if (openMenu === undefined) return
     openMenu.menu.hidden = true
     openMenu.toggle.setAttribute('aria-expanded', 'false')
+    openMenu.toggle.focus()
     openMenu = undefined
   }
   queueMicrotask(() => input.focus())

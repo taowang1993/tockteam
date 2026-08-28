@@ -32,7 +32,13 @@ test('surface projection has bounded locale, appearance, interaction, and provid
   })
   assert.equal(projection.locale, 'zh-CN')
   assert.equal(projection.providerStatuses[0]?.extensionId, 'Workflow')
+  assert.equal(Object.isFrozen(projection.providerStatuses), true)
   assert.equal(Object.isFrozen(projection), true)
+  assert.throws(() => parseLauncherSurfaceSettings({
+    doubleClickBehavior: 'invokeSearchResultItem', dragAndDropEnabled: false, fuzziness: 0.5, history: [], historyEnabled: true, historyLimit: 10,
+    locale: 'en-US', maxSearchResultItems: 50, placeholder: 'Search', preserveUserInput: true, providerStatuses: [{ extensionId: 'Workflow', state: 'ready', messageKey: 'unavailable' }],
+    searchBarAppearance: 'auto', searchBarSize: 'large', searchEngineId: 'fuzzysort', searchResultLayout: 'compact', scrollBehavior: 'smooth', showSearchIcon: true, singleClickBehavior: 'selectSearchResultItem',
+  }), /provider status/u)
   assert.equal(normalizeLauncherLocale('fr-FR'), 'en-US')
 })
 

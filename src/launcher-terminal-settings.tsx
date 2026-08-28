@@ -71,7 +71,7 @@ export function LauncherTerminalSettings({ busy, save, snapshot }: LauncherTermi
 
   return (
     <div className="space-y-2" data-testid="tocklauncher-terminal-settings">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 py-3">
+      <div className="flex min-w-0 flex-wrap items-center justify-between gap-3 border-b border-border/60 py-3">
         <div>
           <div className="text-sm font-medium text-foreground">Command prefix</div>
           <div className="mt-1 text-xs text-muted-foreground">Type the prefix followed by a command. Every command requires native approval.</div>

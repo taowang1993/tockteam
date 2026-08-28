@@ -117,6 +117,7 @@ export function LauncherWorkflowSettings({ busy, save, snapshot }: WorkflowSetti
   const [pendingAction, setPendingAction] = useState<DraftAction>(() => makeAction(currentPlatform))
   const [deletePending, setDeletePending] = useState(false)
   const deleteDialogRef = useRef<HTMLDialogElement>(null)
+  const deleteTriggerRef = useRef<HTMLButtonElement>(null)
   const [saving, setSaving] = useState(false)
   const savingRef = useRef(false)
   const saveWorkflow = useMemo(() => createLauncherWorkflowSaveGate(save), [save])
@@ -253,11 +254,11 @@ export function LauncherWorkflowSettings({ busy, save, snapshot }: WorkflowSetti
               </fieldset>
 
               <div className="flex flex-wrap justify-end gap-2">
-                {selectedWorkflow === undefined || deletePending ? null : <Button data-testid="tocklauncher-workflow-delete" size="sm" type="button" variant="outline" disabled={busy || saving} onClick={() => setDeletePending(true)}>Delete</Button>}
+                {selectedWorkflow === undefined || deletePending ? null : <Button ref={deleteTriggerRef} data-testid="tocklauncher-workflow-delete" size="sm" type="button" variant="outline" disabled={busy || saving} onClick={() => setDeletePending(true)}>Delete</Button>}
                 <dialog ref={deleteDialogRef} aria-describedby="tocklauncher-workflow-delete-description" aria-labelledby="tocklauncher-workflow-delete-title" aria-modal="true" className="rounded-lg border border-border bg-background p-4 text-foreground shadow-xl" data-testid="tocklauncher-workflow-delete-dialog" onCancel={event => { event.preventDefault(); setDeletePending(false) }}>
                   <h3 id="tocklauncher-workflow-delete-title" className="text-base font-semibold">Confirm workflow deletion</h3>
                   <p id="tocklauncher-workflow-delete-description" className="mt-2 text-sm text-muted-foreground">This permanently removes the selected workflow from launcher settings.</p>
-                  <div className="mt-4 flex justify-end gap-2"><Button data-testid="tockteam-workflow-delete-cancel" size="sm" type="button" variant="outline" disabled={busy || saving} onClick={() => setDeletePending(false)}>Cancel</Button><Button data-testid="tocklauncher-workflow-confirm-delete" size="sm" type="button" variant="destructive" disabled={busy || saving} onClick={() => { setDeletePending(false); void persist(workflows.filter(workflow => workflow.id !== draft.id), workflows.find(workflow => workflow.id !== draft.id)?.id ?? '') }}>Delete workflow</Button></div>
+                  <div className="mt-4 flex justify-end gap-2"><Button data-testid="tockteam-workflow-delete-cancel" size="sm" type="button" variant="outline" disabled={busy || saving} onClick={() => { setDeletePending(false); requestAnimationFrame(() => deleteTriggerRef.current?.focus()) }}>Cancel</Button><Button data-testid="tocklauncher-workflow-confirm-delete" size="sm" type="button" variant="destructive" disabled={busy || saving} onClick={() => { setDeletePending(false); void persist(workflows.filter(workflow => workflow.id !== draft.id), workflows.find(workflow => workflow.id !== draft.id)?.id ?? '') }}>Delete workflow</Button></div>
                 </dialog>
                 <Button data-testid="tocklauncher-workflow-save" size="sm" type="button" disabled={busy || saving || !validWorkflow(draft, currentPlatform)} onClick={() => {
                   const value = workflowValue(draft)
