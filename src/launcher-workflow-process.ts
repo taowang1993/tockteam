@@ -44,6 +44,7 @@ type SpawnWorkflowProcess = (
     detached: true
     env: Readonly<Record<string, string>>
     shell: false
+    signal: AbortSignal
     stdio: readonly ['ignore', 'pipe', 'pipe']
     windowsHide: true
   }>,
@@ -265,6 +266,7 @@ export async function runBoundedWorkflowCommand(
         detached: true,
         env: environment,
         shell: false,
+        signal: request.signal,
         stdio: ['ignore', 'pipe', 'pipe'],
         windowsHide: true,
       },

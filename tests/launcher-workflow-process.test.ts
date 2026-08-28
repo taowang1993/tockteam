@@ -39,8 +39,9 @@ test('Workflow command maps text to fixed shell executable and argv', () => {
 test('Workflow process uses shell:false, scrubbed environment, fixed cwd, and counts output only', async () => {
   const child = childProcess()
   let received: unknown
+  const signal = new AbortController().signal
   const pending = runBoundedWorkflowCommand({
-    command: 'printf secret-token', platform: 'macOS', signal: new AbortController().signal, workingDirectory: '/Users/max',
+    command: 'printf secret-token', platform: 'macOS', signal, workingDirectory: '/Users/max',
   }, {
     environment: { AGENT_SERVICE_TOKEN: 'secret', CODEX_API_KEY: 'secret', LANG: 'en_US.UTF-8', PATH: '/untrusted' },
     spawnProcess: (executable, args, options) => { received = { executable, args, options }; return child },
@@ -52,7 +53,7 @@ test('Workflow process uses shell:false, scrubbed environment, fixed cwd, and co
   assert.deepEqual(await pending, { stdoutBytes: 12, stderrBytes: 7 })
   assert.deepEqual(received, {
     executable: '/bin/sh', args: ['-lc', 'printf secret-token'], options: {
-      cwd: '/Users/max', detached: true, env: { HOME: '/Users/max', LANG: 'en_US.UTF-8', PATH: '/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin' }, shell: false,
+      cwd: '/Users/max', detached: true, env: { HOME: '/Users/max', LANG: 'en_US.UTF-8', PATH: '/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin' }, shell: false, signal,
       stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true,
     },
   })
