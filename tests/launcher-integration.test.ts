@@ -39,6 +39,7 @@ test('main assembles one launcher owner without branching the DSH workbench fact
   assert.match(main, /createLauncherTerminal/u)
   assert.match(main, /resolveTerminalInvocation/u)
   assert.match(main, /launchDetachedTerminalInvocation/u)
+  assert.match(main, /properties: \['openFile'\][\s\S]+Browser applications|Browser executables/u)
   assert.match(main, /os\.loadIndexedItems\(signal(?:, preserveSignal)?/u)
   assert.match(main, /if \(await terminal\.executeAction\(record\)\)/u)
   assert.match(main, /if \(await os\.executeAction\(record\)\)/u)
