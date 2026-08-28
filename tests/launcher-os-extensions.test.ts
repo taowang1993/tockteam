@@ -57,6 +57,16 @@ test('OS provider publishes exact supported catalog slices', async () => {
   }
 })
 
+test('OS provider keeps finite system setting targets actionable', async () => {
+  const { provider, effects } = harness('Windows', ['SystemSettings'])
+  const items = await provider.loadIndexedItems()
+  const setting = items.find(item => item.details === 'ms-settings:display-advancedgraphics')!
+  let target: string | undefined
+  effects.openSystemSetting = async value => { target = value }
+  await provider.executeAction(record(setting))
+  assert.equal(target, 'ms-settings:display-advancedgraphics')
+})
+
 test('OS provider confirms privileged effects and rejects stale/tampered actions', async () => {
   const { provider, effects } = harness('Windows', ['SystemCommands', 'WindowsControlPanel'])
   const items = await provider.loadIndexedItems()
@@ -80,6 +90,31 @@ test('OS provider delegates Ueli commands and revokes actions on invalidation', 
   assert.equal(command, 'openSettings')
   provider.invalidate()
   await assert.rejects(provider.executeAction(record(settings)), /current/i)
+})
+
+test('OS provider rechecks privileged catalog state after a confirmation dialog', async () => {
+  let release!: () => void
+  const gate = new Promise<void>(resolve => { release = resolve })
+  let provider: ReturnType<typeof createLauncherOsExtensions>
+  const effects: LauncherOsEffects = {
+    confirmPrivilegedAction: async () => { await gate; provider.invalidate(); return true },
+    invokeSystemCommand: async () => { throw new Error('must not run') },
+    invokeUeliCommand: async () => undefined,
+    openControlPanelItem: async () => undefined,
+    openSystemSetting: async () => undefined,
+    toggleAppearance: async () => undefined,
+  }
+  provider = createLauncherOsExtensions({
+    effects,
+    enabledExtensionIds: () => ['SystemCommands'],
+    getSetting: <T>(_key: string, fallback: T) => fallback,
+    platform: 'Linux',
+    scanControlPanelItems: async () => [],
+  })
+  const item = (await provider.loadIndexedItems()).find(candidate => candidate.name === 'Empty Trash')!
+  const pending = provider.executeAction(record(item))
+  release()
+  await assert.rejects(pending, /stale/i)
 })
 
 test('OS provider rejects appearance effects while host projection is overridden', async () => {

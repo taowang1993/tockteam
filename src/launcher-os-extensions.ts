@@ -252,8 +252,12 @@ export function createLauncherOsExtensions(options: LauncherOsOptions): Readonly
         try {
           const scanned = await options.scanControlPanelItems(controller.signal)
           if (!sameGeneration(generation, nextGeneration, closed, controller.signal)) throw abortError(controller.signal, 'TockLauncher OS load superseded')
+          const seenControlPanelNames = new Set<string>()
           for (const entry of scanned.slice(0, MAX_SCAN_ITEMS)) {
-            if (!launcherControlPanelCanonicalName(entry.canonicalName) || !bounded(entry.name) || nextControlPanel.has(entry.canonicalName)) continue
+            if (!launcherControlPanelCanonicalName(entry.canonicalName) || !bounded(entry.name)) continue
+            const canonicalKey = entry.canonicalName.toLocaleLowerCase('en-US')
+            if (seenControlPanelNames.has(canonicalKey)) continue
+            seenControlPanelNames.add(canonicalKey)
             nextControlPanel.set(entry.canonicalName, entry.name)
             const argument = Object.freeze({ canonicalName: entry.canonicalName, kind: 'control-panel', version: 1 } as const)
             const item = createItem('WindowsControlPanel', entry.canonicalName, entry.name, 'Control Panel Item', 'control-panel', action(argument, `Open ${entry.name}`, HANDLERS.controlPanel, true))
@@ -301,7 +305,7 @@ export function createLauncherOsExtensions(options: LauncherOsOptions): Readonly
         if (extensionId !== 'SystemSettings' || value.kind !== 'system-setting') throw new Error('Invalid system setting action')
         const catalog = options.platform === 'macOS' ? MACOS_SYSTEM_SETTINGS : WINDOWS_SYSTEM_SETTINGS
         const current = catalog.find(row => row.target === value.target)
-        if (current === undefined || known.displayName !== current.name || !actionIsCurrent(record.argument, known)) throw new Error('System setting action is stale')
+        if (current === undefined || !actionIsCurrent(record.argument, known)) throw new Error('System setting action is stale')
         await options.effects.openSystemSetting(current.target)
         return true
       }
@@ -357,5 +361,5 @@ export function createLauncherOsExtensions(options: LauncherOsOptions): Readonly
     await Promise.race([pending, new Promise<void>(resolve => setTimeout(resolve, 100))])
   }
 
-  return Object.freeze({ close, executeAction, getLastError, invalidate, loadIndexedItems: (signal?: AbortSignal) => track(loadIndexedItems(signal)) })
+  return Object.freeze({ close, executeAction: (record: LauncherActionRecord) => track(executeAction(record)), getLastError, invalidate, loadIndexedItems: (signal?: AbortSignal) => track(loadIndexedItems(signal)) })
 }
