@@ -34,6 +34,18 @@ test('detached launch uses argument arrays and hidden detached children', async 
   assert.deepEqual(calls, [['code', ['--folder-uri', 'file:///work/tockteam'], { detached: true, stdio: 'ignore', windowsHide: true }], 'unref'])
 })
 
+test('custom-browser detached launches opt into shell-free cancellation and a startup timeout', async () => {
+  const child = {
+    once: (event: 'error' | 'spawn', listener: (() => void) | ((error: Error) => void)) => { if (event === 'spawn') (listener as () => void)() },
+    unref: () => {},
+    kill: () => {},
+  }
+  const signal = new AbortController().signal
+  let received: unknown
+  await launchDetachedLauncherExecutable('browser.exe', ['https://example.com/'], (_executable, _args, options) => { received = options; return child }, { signal, timeoutMs: 1_000 })
+  assert.deepEqual(received, { detached: true, shell: false, signal, stdio: 'ignore', windowsHide: true })
+})
+
 test('resolves finite Windows VS Code requests to the concrete Code.exe install target', async () => {
   const root = await mkdtemp(join(tmpdir(), 'tockteam-code-'))
   try {
