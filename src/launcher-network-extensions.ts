@@ -129,11 +129,21 @@ function abortReason(signal: AbortSignal, fallback = 'Network request canceled')
   return signal.reason instanceof Error ? signal.reason : new Error(fallback)
 }
 
+function literalNetworkAddress(hostname: string): string | undefined {
+  if (hostname.startsWith('[') && hostname.endsWith(']')) return hostname.slice(1, -1)
+  return /^\d+(?:\.\d+){3}$/u.test(hostname) ? hostname : undefined
+}
+
 async function assertPublicResolution(
   url: URL,
   resolveAddresses: LauncherNetworkResolveAddresses,
   trackRaw: TrackRawOperation = identityTrackRawOperation,
 ): Promise<void> {
+  const literal = literalNetworkAddress(url.hostname)
+  if (literal !== undefined) {
+    if (!isPublicLauncherNetworkAddress(literal)) throw new Error('Network host resolution is outside the public policy')
+    return
+  }
   const addresses = await trackRaw(Promise.resolve().then(async () => await resolveAddresses(url.hostname)))
   if (addresses.length === 0 || addresses.length > 32 || addresses.some(address => !isPublicLauncherNetworkAddress(address))) {
     throw new Error('Network host resolution is outside the public policy')
@@ -665,9 +675,14 @@ export function createLauncherNetworkExtensions(options: LauncherNetworkOptions)
     const data = await track(requestJson(options, suggestionUrl.toString(), undefined, signal, timeoutMs, {
       origin: suggestionUrl.origin, pathname: suggestionUrl.pathname,
     }, trackRaw))
-    const suggestions: string[] = web.engine === 'Google'
-      ? (Array.isArray(data) && Array.isArray(data[1]) ? data[1].filter((value): value is string => typeof value === 'string') : [])
-      : (Array.isArray(data) ? data.flatMap(value => isRecord(value) && typeof value.phrase === 'string' ? [value.phrase] : []) : [])
+    let suggestions: string[]
+    if (web.engine === 'Google') {
+      if (!Array.isArray(data) || typeof data[0] !== 'string' || !Array.isArray(data[1])) throw new Error('invalid Web Search response')
+      suggestions = data[1].filter((value): value is string => typeof value === 'string')
+    } else {
+      if (!Array.isArray(data)) throw new Error('invalid Web Search response')
+      suggestions = data.flatMap(value => isRecord(value) && typeof value.phrase === 'string' ? [value.phrase] : [])
+    }
     const validSuggestions = suggestions
       .filter(suggestion => suggestion.length > 0 && suggestion.length <= 512 && !/[\0\r\n]/u.test(suggestion))
       .slice(0, MAX_SUGGESTIONS)

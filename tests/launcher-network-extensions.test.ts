@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { LAUNCHER_DEEPL_QUERY_PREFIX, LAUNCHER_NETWORK_EXTENSION_DEFAULTS, LAUNCHER_NETWORK_EXTENSION_IDS, LAUNCHER_WEB_SEARCH_QUERY_PREFIX } from '../src/launcher-network-extension-config.ts'
-import { createLauncherNetworkExtensions, type LauncherNetworkFetch } from '../src/launcher-network-extensions.ts'
+import { createLauncherNetworkExtensions, type LauncherNetworkFetch, validateLauncherNetworkUrl } from '../src/launcher-network-extensions.ts'
 import type { LauncherActionRecord, LauncherInternalResultItem } from '../src/launcher-actions.ts'
 
 function settings<T>(key: string, fallback: T): T {
@@ -136,6 +136,28 @@ test('accepted custom URL settings produce invocation-safe actions', async () =>
   }
 })
 
+test('public IPv6 literal actions skip DNS preflight while unsafe literals remain rejected', async () => {
+  let resolutions = 0
+  const opened: string[] = []
+  const network = createLauncherNetworkExtensions({
+    copyText: () => undefined, enabledExtensionIds: () => ['CustomWebSearch'],
+    fetch: async () => response(JSON.stringify([])),
+    getSetting: <T>(key: string, fallback: T): T => key === 'extension[CustomWebSearch].customSearchEngines'
+      ? [{ encodeSearchTerm: true, id: 'engine', name: 'Engine', prefix: 'e', url: 'https://[2001:4860:4860::8888]/search?q={{query}}' }] as T : fallback,
+    openExternal: value => { opened.push(value) },
+    resolveAddresses: async () => { resolutions += 1; throw new Error('literal addresses must not resolve') },
+  })
+  const result = await network.searchInstant('e hello')
+  const item = result.after[0]
+  assert.ok(item)
+  assert.equal(await network.executeAction(record(item)), true)
+  assert.equal(resolutions, 0)
+  assert.deepEqual(opened, ['https://[2001:4860:4860::8888]/search?q=hello'])
+  for (const url of ['https://[::192.168.1.1]/search?q=hello', 'https://[2001:db8::1]/search?q=hello']) {
+    assert.equal(validateLauncherNetworkUrl(url), false, url)
+  }
+})
+
 test('network result actions require current main-owned map and revalidate URL before opening', async () => {
   const opened: string[] = []
   const provider = createLauncherNetworkExtensions({
@@ -163,6 +185,24 @@ test('close clears provider errors after aborting network work', async () => {
   const failed = await network.searchInstant(`${LAUNCHER_WEB_SEARCH_QUERY_PREFIX} unavailable`)
   assert.equal(failed.lastError, 'Web Search is unavailable.')
   await network.close()
+  assert.equal(network.getLastError(), undefined)
+})
+
+test('malformed Google top-level suggestions report an error and valid results clear it', async () => {
+  let malformed = true
+  const network = createLauncherNetworkExtensions({
+    copyText: () => undefined, enabledExtensionIds: () => ['WebSearch'],
+    fetch: async () => response(JSON.stringify(malformed ? ['term', 'not-an-array'] : ['term', ['valid']])),
+    getSetting: settings, openExternal: () => undefined, resolveAddresses: publicResolver,
+  })
+  const failed = await network.searchInstant(`${LAUNCHER_WEB_SEARCH_QUERY_PREFIX} malformed`)
+  assert.equal(failed.after.length, 0)
+  assert.equal(failed.lastError, 'Web Search is unavailable.')
+  assert.equal(network.getLastError(), 'Web Search is unavailable.')
+  malformed = false
+  const valid = await network.searchInstant(`${LAUNCHER_WEB_SEARCH_QUERY_PREFIX} valid`)
+  assert.equal(valid.after.some(item => item.name === 'valid'), true)
+  assert.equal(valid.lastError, undefined)
   assert.equal(network.getLastError(), undefined)
 })
 
