@@ -87,6 +87,17 @@ test('DeepL secrets never enter result, error, or provider callback data', async
   assert.equal(JSON.stringify(result).includes(secret), false)
   assert.equal(provider.getLastError()?.includes(secret), false)
   assert.deepEqual(callbacks, ['DeepL Translator is unavailable.'])
+
+  const echoedKeyProvider = createLauncherNetworkExtensions({
+    copyText: () => undefined,
+    enabledExtensionIds: () => ['DeeplTranslator'],
+    fetch: async () => response(JSON.stringify({ translations: [{ text: secret }] })),
+    getSetting: <T>(key: string, fallback: T): T => key === 'extension[DeeplTranslator].apiKey' ? secret as T : fallback,
+    openExternal: () => undefined,
+    resolveAddresses: publicResolver,
+  })
+  const echoed = await echoedKeyProvider.searchInstant(`${LAUNCHER_DEEPL_QUERY_PREFIX} hello`)
+  assert.equal(JSON.stringify(echoed).includes(secret), false)
 })
 
 test('network provider uses fixed custom URL and web search shapes', async () => {

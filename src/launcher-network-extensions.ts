@@ -722,7 +722,7 @@ export function createLauncherNetworkExtensions(options: LauncherNetworkOptions)
     const results: LauncherInternalResultItem[] = []
     const entries = data.translations.slice(0, MAX_TRANSLATIONS)
     for (const [index, entry] of entries.entries()) {
-      if (!isRecord(entry) || typeof entry.text !== 'string' || !boundedTranslationText(entry.text)) continue
+      if (!isRecord(entry) || typeof entry.text !== 'string' || !boundedTranslationText(entry.text) || entry.text.includes(apiKey)) continue
       const item = Object.freeze({
         defaultAction: action(HANDLERS.copy, entry.text, 'Copy translation', false),
         description: 'DeepL Translation', id: `deepl-translation:${index}`, imageKey: 'deepl-translator', name: entry.text.slice(0, 512), sourceExtension: 'DeeplTranslator',
