@@ -39,6 +39,7 @@ test('file-search IPC reserves the prefix outside the 512-character user query b
 
 test('launcher public responses contain opaque action IDs only', () => {
   assert.deepEqual(LAUNCHER_IPC_CHANNELS, {
+    cancelAction: 'launcher:cancel-action',
     invokeAction: 'launcher:invoke-action',
     rescan: 'launcher:rescan',
     search: 'launcher:search',
