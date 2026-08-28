@@ -4,6 +4,7 @@
 
 @source '../../../../src/client.ts';
 @source '../../../../src/launcher-settings.tsx';
+@source '../../../../src/launcher-workflow-settings.tsx';
 @source '../../../../src/splash.html';
 @source '../../../../web/src/client.ts';
 @source '../../../skins/src/**/*.{ts,tsx}';

@@ -28,6 +28,7 @@ test('browser Tailwind utilities compile against DSH tokens without a global res
   assert.match(css, /\.text-foreground\{color:var\(--dsw-alias-label-primary\)\}/)
   assert.doesNotMatch(css, /@layer utilities/)
   assert.doesNotMatch(css, /\*,:before,:after\{box-sizing:border-box/)
+  assert.match(css, /grid-template-columns:minmax\(10rem,\.?8fr\) minmax\(0,1\.8fr\)/)
 })
 
 test('splash Tailwind build scans only the standalone loading document', async () => {
@@ -39,6 +40,7 @@ test('splash Tailwind build scans only the standalone loading document', async (
 
 test('owned browser components use Tailwind utilities in markup', () => {
   const tailwind = readFileSync(join(root, 'plugins', 'skins', 'src', 'client', 'tailwind.css'), 'utf8')
+  assert.match(tailwind, /@source .*src\/launcher-workflow-settings\.tsx/u)
 
   assert.deepEqual(
     [...tailwind.matchAll(/^@utility ([\w-]+)/gmu)].map(match => match[1]),
