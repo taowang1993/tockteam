@@ -298,7 +298,7 @@ async function terminateChild(
     return
   }
   if (child.pid !== undefined && Number.isSafeInteger(child.pid) && child.pid > 0) {
-    try { killProcess(-child.pid, 'SIGKILL') } catch { /* fall back to the child handle */ }
+    try { killProcess(-child.pid, 'SIGKILL') } catch { hardKillChild(child) }
   }
   await waitForTermination()
 }
