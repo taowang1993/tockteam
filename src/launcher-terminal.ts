@@ -43,10 +43,12 @@ export type LauncherTerminalEffects = Readonly<{
 type LauncherTerminalOptions = Readonly<{
   effects: LauncherTerminalEffects
   enabledExtensionIds: () => readonly string[]
+  getHomePath?: () => string
   getSetting: <T>(key: string, fallback: T) => T
   homePath: string
   onProviderError?: (error: Error) => void
   platform: LauncherTerminalPlatform
+  validateWorkingDirectory?: (path: string, signal: AbortSignal) => Promise<boolean>
 }>
 
 type TerminalActionArgument = LauncherTerminalLaunchRequest & Readonly<{
@@ -278,14 +280,22 @@ export function createLauncherTerminal(options: LauncherTerminalOptions): Readon
     if (terminal === undefined || !settings.ids.includes(request.terminalId) || request.workingDirectory !== workingDirectory || !isCurrent(record.argument, known, known.generation, settings.digest)) throw new Error('TockLauncher Terminal action is stale')
     const controller = new AbortController()
     activeControllers.add(controller)
+    const validateHome = async (): Promise<boolean> => {
+      if (controller.signal.aborted) return false
+      const currentHome = options.getHomePath?.() ?? workingDirectory
+      if (currentHome !== workingDirectory) return false
+      return options.validateWorkingDirectory === undefined || await options.validateWorkingDirectory(workingDirectory, controller.signal)
+    }
     const auditBase = Object.freeze({ commandLength: request.command.length, commandSha256: createHash('sha256').update(request.command, 'utf8').digest('hex'), terminalId: request.terminalId, workingDirectory })
     try {
-      const approved = await options.effects.confirmLaunch({ command: request.command, terminalId: request.terminalId, terminalName: terminal.name, workingDirectory }, controller.signal)
-      if (!isCurrent(record.argument, known, known.generation, settingsState(options).digest) || controller.signal.aborted) throw new Error('TockLauncher Terminal action was canceled')
+      if (!await validateHome()) throw new Error('TockLauncher Terminal working directory is stale')
+      const approved = await options.effects.confirmLaunch({ command: request.command, terminalId: terminal.id, terminalName: terminal.name, workingDirectory }, controller.signal)
+      if (!await validateHome() || !isCurrent(record.argument, known, known.generation, settingsState(options).digest) || controller.signal.aborted) throw new Error('TockLauncher Terminal action was canceled')
       if (!approved) {
         await options.effects.auditLaunch(Object.freeze({ ...auditBase, outcome: 'denied' }))
         return true
       }
+      if (!await validateHome() || !isCurrent(record.argument, known, known.generation, settingsState(options).digest)) throw new Error('TockLauncher Terminal action was canceled')
       try {
         const launchRequest: LauncherTerminalLaunchRequest = Object.freeze({ command: request.command, terminalId: request.terminalId, workingDirectory })
         await options.effects.launchTerminal(launchRequest, controller.signal)

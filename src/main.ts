@@ -1496,7 +1496,8 @@ function initializeLauncher(): void {
         if (launcherTerminalFixtureEnabled) {
           if (command === 'fixture delayed') {
             await new Promise<void>((resolve, reject) => {
-              const timer = setTimeout(resolve, 5_000)
+              const finish = (): void => { signal.removeEventListener('abort', abort); resolve() }
+              const timer = setTimeout(finish, 5_000)
               const abort = (): void => {
                 clearTimeout(timer)
                 signal.removeEventListener('abort', abort)
@@ -1540,9 +1541,16 @@ function initializeLauncher(): void {
       },
     },
     enabledExtensionIds: terminalEnabledExtensionIds,
+    getHomePath: () => app.getPath('home'),
     getSetting: (key, fallback) => repository.getSetting(key, fallback),
     homePath: app.getPath('home'),
     onProviderError: error => { appendLog('desktop', `TockLauncher Terminal Launcher failed: ${error.name}`) },
+    validateWorkingDirectory: async (target, signal) => {
+      if (signal.aborted) throw launcherAbortError(signal)
+      const identity = await statLauncherPathIdentity(target)
+      if (signal.aborted) throw launcherAbortError(signal)
+      return identity !== undefined && await revalidateLauncherPath(target, { identity, kind: 'directory' })
+    },
     platform,
   })
   launcherTerminal = terminal

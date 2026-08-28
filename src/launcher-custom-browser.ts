@@ -243,6 +243,9 @@ export class LauncherCustomBrowserController {
     await this.#enqueue(async operationSignal => {
       throwIfAborted(operationSignal)
       await rm(this.#grantPath, { force: true })
+      try { await syncDirectory(path.dirname(this.#grantPath)) } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
+      }
       this.#grant = undefined
       this.#status = 'none'
       this.options.afterGrantMutation?.('revoke')
