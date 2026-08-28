@@ -23,7 +23,7 @@ export const LAUNCHER_SURFACE_IPC_CHANNELS = Object.freeze({
   recordSearch: 'launcher:record-search',
 })
 
-/** TockLauncher composition inventory; provider execution is staged in later slices. */
+/** TockLauncher composition inventory; Desktop providers execute through main-owned typed seams. */
 export const LAUNCHER_COMPOSITION = Object.freeze({
   upstream: Object.freeze({
     tag: 'v9.29.0',

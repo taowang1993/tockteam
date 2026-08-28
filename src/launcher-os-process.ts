@@ -24,7 +24,7 @@ const MAC_COMMANDS: Readonly<Partial<Record<LauncherSystemCommand, string>>> = O
   sleep: 'tell application "System Events" to sleep',
 })
 
-const WINDOWS_SLEEP_SCRIPT = String.raw`$m='[DllImport("PowrProf.dll",SetLastError=true)]static extern bool SetSuspendState(bool hibernate,bool forceCritical,bool disableWakeEvent);public static void PowerSleep(){SetSuspendState(false,false,false);}'; Add-Type -Name Import -MemberDefinition $m -Namespace Dll; [Dll.Import]::PowerSleep()`
+const WINDOWS_SLEEP_SCRIPT = String.raw`$m='[DllImport("Powrprof.dll",SetLastError=true)]static extern bool SetSuspendState(bool hibernate,bool forceCritical,bool disableWakeEvent);public static void PowerSleep(){SetSuspendState(false,false,false);}'; Add-Type -Name Import -MemberDefinition $m -Namespace Dll; [Dll.Import]::PowerSleep()`
 
 function fixedPowershell(script: string): LauncherFixedInvocation {
   return Object.freeze({ args: Object.freeze([...POWERSHELL_PREFIX, script]), executable: 'powershell.exe' })
