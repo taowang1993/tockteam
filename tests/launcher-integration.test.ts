@@ -13,6 +13,7 @@ const i18n = readFileSync(new URL('../plugins/sidebar/src/client/i18n.ts', impor
 const tockTutorRoute = readFileSync(new URL('../plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/route.tsx', import.meta.url), 'utf8')
 const webPatch = readFileSync(new URL('../web/cordis.patch.yml', import.meta.url), 'utf8')
 const tuiPatch = readFileSync(new URL('../plugins/tui/cordis.patch.yml', import.meta.url), 'utf8')
+const electronSmoke = readFileSync(new URL('../scripts/launcher-electron-smoke.mjs', import.meta.url), 'utf8')
 
 test('main assembles one launcher owner without branching the DSH workbench factory', () => {
   assert.match(main, /globalShortcut/u)
@@ -42,6 +43,9 @@ test('main assembles one launcher owner without branching the DSH workbench fact
   assert.match(main, /waitForLauncherProvidersIdle/u)
   assert.match(main, /launcherOwnerReady/u)
   assert.match(main, /TOCKTEAM_OS_FIXTURE/u)
+  assert.match(main, /launcherOsFixtureMarker/u)
+  assert.match(main, /acceptedEffects/u)
+  assert.match(main, /Unexpected fixture/u)
   assert.match(main, /signal,\s*timeout: 15_000/u)
   assert.match(main, /local\.loadIndexedItems\(\)/u)
   assert.match(main, /local\.searchInstant\(searchTerm\)/u)
@@ -56,6 +60,14 @@ test('main assembles one launcher owner without branching the DSH workbench fact
   assert.match(main, /importSettings:[\s\S]+runLauncherMutation\('launcher-settings-import'/u)
   assert.match(main, /resetSettings:[\s\S]+runLauncherMutation\('launcher-settings-reset'/u)
   assert.match(main, /selectExternalSettings:[\s\S]+runLauncherMutation\('launcher-external-settings-select'/u)
+  assert.match(main, /importSettings: async \(\) => \{[\s\S]+if \(!result\.canceled\) await queueSecureRelaunch\('launcher-settings-import'\)/u)
+  assert.match(main, /resetSettings: async \(\) => \{[\s\S]+if \(!result\.canceled\) await queueSecureRelaunch\('launcher-settings-reset'\)/u)
+  assert.match(main, /selectExternalSettings: async \(\) => \{[\s\S]+if \(!result\.canceled\) await queueSecureRelaunch\('launcher-settings-import'\)/u)
+  assert.doesNotMatch(main, /async function importLauncherSettings(?:(?!\nasync function ).)*queueSecureRelaunch/u)
+  assert.doesNotMatch(main, /async function resetLauncherSettings(?:(?!\nasync function ).)*queueSecureRelaunch/u)
+  assert.doesNotMatch(main, /async function selectExternalLauncherSettings(?:(?!\nasync function ).)*queueSecureRelaunch/u)
+  assert.match(main, /attemptSecureRelaunchWithRecovery/u)
+  assert.match(main, /reconcileLauncherAfterRelaunchFailure/u)
   assert.match(main, /runtimeUrl === undefined\) return false/u)
   assert.match(main, /createLauncherWorkbenchRouteDelivery/u)
   assert.match(main, /workbenchRouteDelivery\.markUnready/u)
@@ -88,6 +100,14 @@ test('main assembles one launcher owner without branching the DSH workbench fact
   assert.match(client, /unsubscribeTheme\(\)[\s\S]+unsubscribeRoute\(\)[\s\S]+unsubscribeCommand\(\)/u)
   assert.match(client, /deferSettingsOpen\([\s\S]+requestAnimationFrame[\s\S]+queueMicrotask/u)
   assert.doesNotMatch(main, /createWindow\([^)]*launcher/u)
+})
+
+test('fixture smoke reads host-owned effect counters instead of renderer authority', () => {
+  assert.match(electronSmoke, /os-fixture-marker\.json/u)
+  assert.match(electronSmoke, /acceptedEffects/u)
+  assert.match(electronSmoke, /declinedConfirmations/u)
+  assert.match(electronSmoke, /canceledConfirmations/u)
+  assert.match(electronSmoke, /forbiddenEffects/u)
 })
 
 test('workbench bridge and Desktop titlebar expose only finite launcher operations', () => {

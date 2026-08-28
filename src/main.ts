@@ -21,7 +21,7 @@ import {
   type Session,
   type WebContents,
 } from 'electron'
-import { createWriteStream, existsSync, mkdirSync, realpathSync, statSync, type WriteStream } from 'node:fs'
+import { createWriteStream, existsSync, mkdirSync, realpathSync, statSync, writeFileSync, type WriteStream } from 'node:fs'
 import { lstat, realpath } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { basename, dirname, extname, join, resolve } from 'node:path'
@@ -150,7 +150,7 @@ import {
   type TockTeamDestination,
 } from './launcher-navigation.ts'
 import {
-  attemptSecureRelaunch,
+  attemptSecureRelaunchWithRecovery,
   LauncherLifecycleController,
   LauncherToggleIntentQueue,
   SingleOwnedTray,
@@ -180,6 +180,66 @@ const preloadPath = join(currentDir, 'preload.cjs')
 const launcherHtmlPath = join(currentDir, 'launcher.html')
 const launcherNetworkFixtureEnabled = !app.isPackaged && process.env.TOCKTEAM_NETWORK_FIXTURE === '1'
 const launcherOsFixtureEnabled = !app.isPackaged && process.env.TOCKTEAM_OS_FIXTURE === '1'
+
+type LauncherOsFixtureMarker = {
+  marker: 'tockteam-os-fixture-v1'
+  acceptedEffects: { lock: number }
+  canceledConfirmations: { shutdown: number }
+  declinedConfirmations: { controlPanel: number; quit: number; systemCommand: number }
+  forbiddenEffects: number
+}
+
+let launcherOsFixtureMarker: LauncherOsFixtureMarker = {
+  acceptedEffects: { lock: 0 },
+  canceledConfirmations: { shutdown: 0 },
+  declinedConfirmations: { controlPanel: 0, quit: 0, systemCommand: 0 },
+  forbiddenEffects: 0,
+  marker: 'tockteam-os-fixture-v1',
+}
+
+function launcherOsFixtureMarkerPath(): string {
+  return join(app.getPath('userData'), 'launcher', 'os-fixture-marker.json')
+}
+
+function writeLauncherOsFixtureMarker(): void {
+  if (!launcherOsFixtureEnabled) return
+  const filePath = launcherOsFixtureMarkerPath()
+  mkdirSync(dirname(filePath), { mode: 0o700, recursive: true })
+  writeFileSync(filePath, JSON.stringify(launcherOsFixtureMarker, null, 2), { encoding: 'utf8', mode: 0o600 })
+}
+
+function resetLauncherOsFixtureMarker(): void {
+  if (!launcherOsFixtureEnabled) return
+  launcherOsFixtureMarker = {
+    acceptedEffects: { lock: 0 },
+    canceledConfirmations: { shutdown: 0 },
+    declinedConfirmations: { controlPanel: 0, quit: 0, systemCommand: 0 },
+    forbiddenEffects: 0,
+    marker: 'tockteam-os-fixture-v1',
+  }
+  writeLauncherOsFixtureMarker()
+}
+
+function recordLauncherOsFixtureConfirmation(kind: 'controlPanel' | 'quit' | 'shutdown' | 'systemCommand', outcome: 'canceled' | 'declined'): void {
+  if (!launcherOsFixtureEnabled) return
+  if (outcome === 'canceled' && kind === 'shutdown') launcherOsFixtureMarker.canceledConfirmations.shutdown += 1
+  else if (outcome === 'declined' && kind === 'controlPanel') launcherOsFixtureMarker.declinedConfirmations.controlPanel += 1
+  else if (outcome === 'declined' && kind === 'quit') launcherOsFixtureMarker.declinedConfirmations.quit += 1
+  else if (outcome === 'declined' && kind === 'systemCommand') launcherOsFixtureMarker.declinedConfirmations.systemCommand += 1
+  writeLauncherOsFixtureMarker()
+}
+
+function recordLauncherOsFixtureAcceptedLock(): void {
+  if (!launcherOsFixtureEnabled) return
+  launcherOsFixtureMarker.acceptedEffects.lock += 1
+  writeLauncherOsFixtureMarker()
+}
+
+function rejectLauncherOsFixtureEffect(effect: string): never {
+  launcherOsFixtureMarker.forbiddenEffects += 1
+  writeLauncherOsFixtureMarker()
+  throw new Error(`Unexpected fixture effect: ${effect}`)
+}
 
 function launcherNetworkFixtureResponse(body: unknown, init: ResponseInit = {}): Response {
   return new Response(JSON.stringify(body), { headers: { 'content-type': 'application/json' }, status: 200, ...init })
@@ -284,6 +344,18 @@ async function waitForLauncherProvidersIdle(): Promise<void> {
     launcherOs?.waitForIdle() ?? Promise.resolve(),
     launcherLocal?.waitForIdle() ?? Promise.resolve(),
   ])
+}
+
+async function waitForLauncherProvidersIdleBounded(timeoutMs = 1_000): Promise<void> {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  try {
+    await Promise.race([
+      waitForLauncherProvidersIdle(),
+      new Promise<void>(resolve => { timer = setTimeout(resolve, timeoutMs) }),
+    ])
+  } finally {
+    if (timer !== undefined) clearTimeout(timer)
+  }
 }
 
 const launcherThemeProjector = createLauncherThemeProjector()
@@ -1189,6 +1261,7 @@ function createLauncherWindow(args: Readonly<{
 
 function initializeLauncher(): void {
   if (launcherController !== undefined) return
+  resetLauncherOsFixtureMarker()
   const repository = requireLauncherPersistence()
   const launcherSession = session.fromPartition(LAUNCHER_SESSION_PARTITION)
   applyLauncherSessionPolicy(launcherSession)
@@ -1361,14 +1434,33 @@ function initializeLauncher(): void {
           if (signal.aborted) throw launcherAbortError(signal)
           if (operation === 'invoke-system-command' && title === 'Shut Down?') {
             return await new Promise<boolean>((resolve, reject) => {
-              const timer = setTimeout(() => { signal.removeEventListener('abort', abort); resolve(false) }, 5_000)
-              const abort = (): void => { clearTimeout(timer); signal.removeEventListener('abort', abort); reject(launcherAbortError(signal)) }
+              const timer = setTimeout(() => {
+                signal.removeEventListener('abort', abort)
+                recordLauncherOsFixtureConfirmation('systemCommand', 'declined')
+                resolve(false)
+              }, 5_000)
+              const abort = (): void => {
+                clearTimeout(timer)
+                signal.removeEventListener('abort', abort)
+                recordLauncherOsFixtureConfirmation('shutdown', 'canceled')
+                reject(launcherAbortError(signal))
+              }
               signal.addEventListener('abort', abort, { once: true })
             })
           }
           // Fixture confirmation is deliberately entered for every protected row:
           // only Lock is accepted, and its fixed effect remains inert below.
-          return operation === 'invoke-system-command' && title === 'Lock?'
+          if (operation === 'invoke-system-command' && title === 'Lock?') return true
+          if (operation === 'open-control-panel-item') {
+            recordLauncherOsFixtureConfirmation('controlPanel', 'declined')
+            return false
+          }
+          if (operation === 'quit') {
+            recordLauncherOsFixtureConfirmation('quit', 'declined')
+            return false
+          }
+          recordLauncherOsFixtureConfirmation('systemCommand', 'declined')
+          return false
         }
         if (signal.aborted) throw launcherAbortError(signal)
         const owner = mainWindow
@@ -1382,7 +1474,8 @@ function initializeLauncher(): void {
         try {
           if (signal.aborted) throw launcherAbortError(signal)
           if (launcherOsFixtureEnabled) {
-            if (command !== 'lock') throw new Error('Unexpected fixture system command')
+            if (command !== 'lock') return rejectLauncherOsFixtureEffect(`system-command:${command}`)
+            recordLauncherOsFixtureAcceptedLock()
             return
           }
           const invocation = resolveSystemCommandInvocation(platform, command)
@@ -1399,7 +1492,7 @@ function initializeLauncher(): void {
       invokeUeliCommand: async (command, signal) => {
         try {
           if (signal.aborted) throw launcherAbortError(signal)
-          if (launcherOsFixtureEnabled && command === 'quit') return
+          if (launcherOsFixtureEnabled && command === 'quit') return rejectLauncherOsFixtureEffect('quit')
           if (launcherLifecycle === undefined) throw new Error('TockLauncher lifecycle is unavailable')
           const lifecycleWork = launcherLifecycle.invokeCommand(command, signal)
           await launcherAwaitAbortable(lifecycleWork, signal)
@@ -1408,7 +1501,7 @@ function initializeLauncher(): void {
       openControlPanelItem: async (canonicalName, signal) => {
         try {
           if (signal.aborted) throw launcherAbortError(signal)
-          if (launcherOsFixtureEnabled) return
+          if (launcherOsFixtureEnabled) return rejectLauncherOsFixtureEffect(`control-panel:${canonicalName}`)
           if (platform !== 'Windows') throw new Error('Windows Control Panel is unavailable')
           const invocation = resolveWindowsControlPanelInvocation(canonicalName)
           await execFileAsync(invocation.executable, [...invocation.args], { maxBuffer: 64 * 1024, shell: false, signal, timeout: 15_000, windowsHide: true })
@@ -1419,7 +1512,7 @@ function initializeLauncher(): void {
         if (!catalog.some(row => row.target === target)) throw new Error('System setting is not in the current catalog')
         try {
           if (signal.aborted) throw launcherAbortError(signal)
-          if (launcherOsFixtureEnabled) return
+          if (launcherOsFixtureEnabled) return rejectLauncherOsFixtureEffect(`system-setting:${target}`)
           if (platform === 'Windows') {
             await launcherAwaitAbortable(shell.openExternal(target), signal)
             return
@@ -1436,7 +1529,7 @@ function initializeLauncher(): void {
         if (tockTutorPreviousThemeSource !== undefined) throw new Error('System appearance is unavailable during a theme override')
         try {
           if (signal.aborted) throw launcherAbortError(signal)
-          if (launcherOsFixtureEnabled) return
+          if (launcherOsFixtureEnabled) return rejectLauncherOsFixtureEffect('appearance')
           const invocation = resolveAppearanceInvocation(platform, nativeTheme.shouldUseDarkColors)
           await execFileAsync(invocation.executable, [...invocation.args], { maxBuffer: 64 * 1024, shell: false, signal, timeout: 15_000, ...(platform === 'Windows' ? { windowsHide: true } : {}) })
         } catch { throw new Error('TockLauncher appearance action failed') }
@@ -1638,14 +1731,22 @@ function initializeLauncher(): void {
     settings: {
       exportSettings: async () => await runLauncherSettingsOperation(exportLauncherSettings),
       getSnapshot: launcherSettingsSnapshot,
-      importSettings: async () => await runLauncherSettingsOperation(
-        () => runLauncherMutation('launcher-settings-import', signal => importLauncherSettings(signal)),
-        { blockMutationsAfterSuccess: true, mutation: true },
-      ),
-      resetSettings: async () => await runLauncherSettingsOperation(
-        () => runLauncherMutation('launcher-settings-reset', signal => resetLauncherSettings(signal)),
-        { blockMutationsAfterSuccess: true, mutation: true },
-      ),
+      importSettings: async () => {
+        const result = await runLauncherSettingsOperation(
+          () => runLauncherMutation('launcher-settings-import', signal => importLauncherSettings(signal)),
+          { blockMutationsAfterSuccess: true, mutation: true },
+        )
+        if (!result.canceled) await queueSecureRelaunch('launcher-settings-import')
+        return result
+      },
+      resetSettings: async () => {
+        const result = await runLauncherSettingsOperation(
+          () => runLauncherMutation('launcher-settings-reset', signal => resetLauncherSettings(signal)),
+          { blockMutationsAfterSuccess: true, mutation: true },
+        )
+        if (!result.canceled) await queueSecureRelaunch('launcher-settings-reset')
+        return result
+      },
       revokeCustomBrowser: async () => await runLauncherSettingsOperation(
         () => runLauncherMutation('launcher-custom-browser-revoke', signal => revokeCustomLauncherBrowser(signal)),
         { mutation: true },
@@ -1658,10 +1759,14 @@ function initializeLauncher(): void {
         () => runLauncherMutation('launcher-custom-browser-select', signal => selectCustomLauncherBrowser(signal)),
         { mutation: true },
       ),
-      selectExternalSettings: async () => await runLauncherSettingsOperation(
-        () => runLauncherMutation('launcher-external-settings-select', signal => selectExternalLauncherSettings(signal)),
-        { blockMutationsAfterSuccess: true, mutation: true },
-      ),
+      selectExternalSettings: async () => {
+        const result = await runLauncherSettingsOperation(
+          () => runLauncherMutation('launcher-external-settings-select', signal => selectExternalLauncherSettings(signal)),
+          { blockMutationsAfterSuccess: true, mutation: true },
+        )
+        if (!result.canceled) await queueSecureRelaunch('launcher-settings-import')
+        return result
+      },
       updateSetting: async (key, value) => await runLauncherSettingsOperation(
         () => runLauncherMutation('launcher-setting-update', async signal => {
           await requireLauncherPersistence().updateSetting(key, value, signal)
@@ -1894,7 +1999,6 @@ async function importLauncherSettings(signal?: AbortSignal): Promise<Readonly<{ 
   launcherPersistentSetsSync?.()
   await launcherLifecycle?.sync()
   assertLauncherSignal(signal)
-  queueSecureRelaunch('launcher-settings-import')
   return settingsOperation()
 }
 
@@ -1921,7 +2025,6 @@ async function resetLauncherSettings(signal?: AbortSignal): Promise<Readonly<{ c
   launcherPersistentSetsSync?.()
   await launcherLifecycle?.sync()
   assertLauncherSignal(signal)
-  queueSecureRelaunch('launcher-settings-reset')
   return settingsOperation()
 }
 
@@ -1934,7 +2037,6 @@ async function selectExternalLauncherSettings(signal?: AbortSignal): Promise<Rea
   launcherPersistentSetsSync?.()
   await launcherLifecycle?.sync()
   assertLauncherSignal(signal)
-  queueSecureRelaunch('launcher-settings-import')
   return settingsOperation()
 }
 
@@ -2661,10 +2763,19 @@ function requestSecureQuit(_reason: 'native-quit' | 'tray' | 'launcher-command-q
   })
 }
 
-function queueSecureRelaunch(reason: 'launcher-settings-import' | 'launcher-settings-reset'): void {
+async function reconcileLauncherAfterRelaunchFailure(reason: string): Promise<void> {
+  if (quitting) return
+  launcherPersistentSetsSync?.()
+  await launcherLifecycle?.sync()
+  await waitForLauncherProvidersIdleBounded()
+  await launcherRescan?.(undefined, undefined, `${reason}-recovery`)
+}
+
+async function queueSecureRelaunch(reason: 'launcher-settings-import' | 'launcher-settings-reset'): Promise<void> {
   if (quitting) return
   invalidateAllLauncherProviders(`launcher-${reason}-relaunch`)
-  attemptSecureRelaunch({
+  await attemptSecureRelaunchWithRecovery({
+    reconcile: async () => await reconcileLauncherAfterRelaunchFailure(reason),
     relaunch: () => { app.relaunch() },
     report: error => {
       appendLog('desktop', `relaunch requested by ${reason} failed: ${error instanceof Error ? error.message : String(error)}`)

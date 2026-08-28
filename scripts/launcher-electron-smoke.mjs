@@ -152,6 +152,7 @@ const userData = await mkdtemp(join(tmpdir(), 'tockteam-launcher-electron-'))
 const discoveryFixture = await mkdtemp(join(tmpdir(), 'tockteam-discovery-fixture-'))
 const simpleSearchFixture = await mkdtemp(join(homedir(), '.tockteam-simple-search-'))
 const simpleSearchFile = join(simpleSearchFixture, 'tockteam-file-search-fixture.txt')
+const fixtureMarkerPath = join(userData, 'launcher', 'os-fixture-marker.json')
 await writeFile(simpleSearchFile, 'simple file search fixture', 'utf8')
 const discoveryApplications = join(discoveryFixture, 'Applications')
 const discoveryApplication = join(discoveryApplications, 'TockTeam Fixture.app')
@@ -160,6 +161,9 @@ await writeFile(join(discoveryApplication, 'Contents', 'Info.plist'), '<?xml ver
 const electron = ensureElectronInstalled(root)
 const mainSource = await readFile(join(root, 'src', 'main.ts'), 'utf8')
 assert.match(mainSource, /const launcherOsFixtureEnabled = !app\.isPackaged && process\.env\.TOCKTEAM_OS_FIXTURE === '1'/u)
+assert.match(mainSource, /launcherOsFixtureMarker/u)
+assert.match(mainSource, /acceptedEffects/u)
+assert.match(mainSource, /Unexpected fixture effect/u)
 assert.match(mainSource, /if \(launcherOsFixtureEnabled\)/u)
 const fixtureEnvironment = { ...process.env, TOCKTEAM_NETWORK_FIXTURE: '1', TOCKTEAM_OS_FIXTURE: '1' }
 const child = spawn(electron, [
@@ -344,10 +348,12 @@ try {
     quit: { ok: true, replay: true },
     stale: true,
   })
+  const delayedShutdownStartedAt = Date.now()
   const delayedShutdown = launcherConnection.call('Runtime.evaluate', { expression: `(async () => { const result = await window.tockteamLauncher?.search('Shut Down', { fuzziness: 0.5, maxSearchResultItems: 50, searchEngineId: 'fuzzysort' }); const item = result?.after?.[0] ?? result?.before?.[0]; return await window.tockteamLauncher?.invokeAction(item?.defaultAction?.actionId) })()`, awaitPromise: true, returnByValue: true })
   await sleep(250)
   await launcherConnection.call('Page.close').catch(() => undefined)
   await delayedShutdown.catch(() => undefined)
+  assert.ok(Date.now() - delayedShutdownStartedAt < 1_500, 'owner-clear must cancel fixture confirmation before its 5s fallback')
   launcherConnection.close()
   launcherConnection = undefined
   await waitFor(() => electronPages(port), pages => pages.every(page => page.title !== 'TockLauncher'))
@@ -357,6 +363,21 @@ try {
   assert.ok(launcher)
   launcherConnection = await CdpPage.connect(launcher.webSocketDebuggerUrl)
   await waitFor(() => launcherConnection.evaluate('document.documentElement.dataset.launcherReady'), ready => ready === 'true')
+  const fixtureMarker = await waitFor(
+    () => readFile(fixtureMarkerPath, 'utf8').then(value => JSON.parse(value)).catch(() => null),
+    marker => marker?.marker === 'tockteam-os-fixture-v1'
+      && marker?.acceptedEffects?.lock === 1
+      && marker?.declinedConfirmations?.controlPanel === 2
+      && marker?.declinedConfirmations?.quit === 1
+      && marker?.canceledConfirmations?.shutdown === 1,
+  )
+  assert.deepEqual(fixtureMarker, {
+    acceptedEffects: { lock: 1 },
+    canceledConfirmations: { shutdown: 1 },
+    declinedConfirmations: { controlPanel: 2, quit: 1, systemCommand: 0 },
+    forbiddenEffects: 0,
+    marker: 'tockteam-os-fixture-v1',
+  })
   await workbenchConnection.evaluate(`(async () => {
     await window.dshDesktop?.syncLauncherTheme({ mode: 'dark', skinId: 'tockteam-skin-deep-current' })
   })()`)
