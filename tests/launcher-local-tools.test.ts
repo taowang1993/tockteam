@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
+import { readFileSync } from 'node:fs'
 import {
   MAX_LOCAL_TOOL_INPUT_LENGTH,
   MAX_ROWLAND_PATTERN_LENGTH,
@@ -8,6 +9,14 @@ import {
   normalizeUuidToolOptions,
   rowland,
 } from '../src/launcher-local-tools.ts'
+
+const source = readFileSync(new URL('../src/launcher-local-tools.ts', import.meta.url), 'utf8')
+
+test('local tool output is announced and tools reflow at narrow widths', () => {
+  assert.match(source, /aria-live/u)
+  assert.match(source, /launcher-local-tool-content[\s\S]*min-w-0/u)
+  assert.match(source, /role.*status/u)
+})
 
 test('browser-safe Base64 and finite Rowland tools preserve deterministic vectors', () => {
   assert.equal(base64Encode('Tockbot ✓ 你好 🚀'), 'VG9ja2JvdCDinJMg5L2g5aW9IPCfmoA=')

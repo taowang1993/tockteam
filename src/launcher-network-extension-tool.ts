@@ -44,7 +44,7 @@ export function createLauncherNetworkExtensionTool(options: Readonly<{
   close.addEventListener('click', options.onClose)
   header.append(identity, close)
 
-  const content = element(document, 'div', 'launcher-local-tool-content')
+  const content = element(document, 'div', 'launcher-local-tool-content min-w-0 overflow-auto')
   const disclosure = element(document, 'p', 'text-xs text-muted-foreground')
   disclosure.textContent = isDeepL
     ? 'Text is sent to api-free.deepl.com for translation. Your saved key stays in Desktop secure storage.'
@@ -62,7 +62,7 @@ export function createLauncherNetworkExtensionTool(options: Readonly<{
   status.setAttribute('role', 'status')
   status.setAttribute('aria-live', 'polite')
   status.textContent = isDeepL ? 'Enter text to translate.' : 'Enter a web search.'
-  const list = element(document, 'ul', 'm-0 list-none p-0')
+  const list = element(document, 'ul', 'm-0 min-w-0 list-none overflow-auto p-0')
   list.setAttribute('aria-label', `${title} results`)
   list.setAttribute('role', 'list')
   content.append(disclosure, label, status, list)
@@ -70,6 +70,7 @@ export function createLauncherNetworkExtensionTool(options: Readonly<{
 
   let requestRevision = 0
   let currentItems: readonly LauncherPublicResultItem[] = []
+  let openMenu: Readonly<{ menu: HTMLElement; toggle: HTMLButtonElement }> | undefined
   const actionLabel = (action: LauncherPublicAction): string => action.keyboardShortcut === undefined
     ? action.description
     : `${action.description} (${action.keyboardShortcut})`
@@ -80,17 +81,26 @@ export function createLauncherNetworkExtensionTool(options: Readonly<{
   const render = (): void => {
     list.replaceChildren()
     for (const [index, item] of currentItems.entries()) {
-      const row = element(document, 'li', 'relative')
+      const row = element(document, 'li', 'relative min-w-0')
+      row.setAttribute('role', 'listitem')
       const actions = [item.defaultAction, ...(item.additionalActions ?? [])]
       const line = element(document, 'div', 'flex min-w-0 items-center gap-1')
       const button = element(document, 'button', 'flex min-w-0 flex-1 items-center gap-2 rounded-lg px-2 py-2 text-left')
       button.type = 'button'
+      button.setAttribute('role', 'listitem')
       button.setAttribute('aria-label', `${item.name} — ${actionLabel(item.defaultAction)}`)
       const name = element(document, 'strong', 'min-w-0 flex-1 truncate text-sm font-medium')
       name.textContent = item.name
       const description = element(document, 'span', 'shrink-0 truncate text-xs text-muted-foreground')
       description.textContent = item.description
       button.append(name, description)
+      if (item.details !== undefined) {
+        const detail = element(document, 'span', 'sr-only')
+        detail.id = `launcher-network-details-${index}`
+        detail.textContent = item.details
+        button.setAttribute('aria-describedby', detail.id)
+        row.append(detail)
+      }
       line.append(button)
       row.append(line)
       if (actions.length > 1) {
@@ -125,9 +135,10 @@ export function createLauncherNetworkExtensionTool(options: Readonly<{
         }
         toggle.addEventListener('click', () => {
           const open = menu.hidden
+          if (openMenu !== undefined && openMenu.menu !== menu) { openMenu.menu.hidden = true; openMenu.toggle.setAttribute('aria-expanded', 'false') }
           menu.hidden = !open
           toggle.setAttribute('aria-expanded', String(open))
-          if (open) menuButtons[0]?.focus()
+          if (open) { openMenu = Object.freeze({ menu, toggle }); menuButtons[0]?.focus() } else if (openMenu?.menu === menu) openMenu = undefined
         })
         menu.addEventListener('keydown', event => {
           const current = menuButtons.indexOf(document.activeElement as HTMLButtonElement)
@@ -136,10 +147,11 @@ export function createLauncherNetworkExtensionTool(options: Readonly<{
             : event.key === 'ArrowUp'
               ? (Math.max(current, 0) - 1 + menuButtons.length) % menuButtons.length
               : event.key === 'Home' ? 0 : event.key === 'End' ? menuButtons.length - 1 : undefined
-          if (event.key === 'Escape') {
+          if (event.key === 'Escape' || event.key === 'Tab') {
             event.preventDefault()
             menu.hidden = true
             toggle.setAttribute('aria-expanded', 'false')
+            if (openMenu?.menu === menu) openMenu = undefined
             toggle.focus()
           } else if (next !== undefined) {
             event.preventDefault()
@@ -218,7 +230,23 @@ export function createLauncherNetworkExtensionTool(options: Readonly<{
     if (keyboardEvent.key === 'Escape') {
       keyboardEvent.preventDefault()
       options.onClose()
+    } else if (keyboardEvent.key === 'ArrowDown') {
+      const first = list.querySelector<HTMLButtonElement>('button')
+      if (first !== null) { keyboardEvent.preventDefault(); first.focus() }
+    } else if (keyboardEvent.key === 'Enter') {
+      const first = currentItems[0]
+      if (first !== undefined) { keyboardEvent.preventDefault(); void invoke(first.defaultAction, first) }
     }
+  })
+  const closeMenuWithoutFocus = (): void => {
+    if (openMenu === undefined) return
+    openMenu.menu.hidden = true
+    openMenu.toggle.setAttribute('aria-expanded', 'false')
+    openMenu = undefined
+  }
+  tool.addEventListener('pointerdown', event => {
+    if (openMenu === undefined || !(event.target instanceof Element)) return
+    if (event.target.closest('[role="menu"], [aria-haspopup="menu"]') === null) closeMenuWithoutFocus()
   })
   queueMicrotask(() => input.focus())
   return tool

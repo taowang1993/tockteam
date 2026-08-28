@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { Check, Database, Globe2, KeyRound, RefreshCw, RotateCcw, Search, ShieldCheck, Trash2, Upload, Download, MonitorCog } from 'lucide-react'
+import { Check, Database, Globe2, KeyRound, Palette, RefreshCw, RotateCcw, Search, ShieldCheck, Trash2, Upload, Download, MonitorCog } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@tockteam/ui/alert'
 import { Badge } from '@tockteam/ui/badge'
 import { Button } from '@tockteam/ui/button'
@@ -15,6 +15,7 @@ import { LauncherFileSearchSettings, type LauncherSimpleFileSearchDraft } from '
 import { LauncherNetworkSettings } from './launcher-network-settings.tsx'
 import { LauncherTerminalSettings } from './launcher-terminal-settings.tsx'
 import { LauncherWorkflowSettings } from './launcher-workflow-settings.tsx'
+import { LauncherSurfaceSettingsSection } from './launcher-surface-settings.tsx'
 import { launcherWorkflowSnapshotToken } from './launcher-workflow-contract.ts'
 import type { DesktopBridge } from './contracts.ts'
 import { LAUNCHER_SENSITIVE_SETTING_KEYS, type LauncherSettingsSnapshot } from './launcher-settings-contract.ts'
@@ -73,10 +74,11 @@ function Field({ title, description, children }: Readonly<{ title: string; descr
 }
 
 function SectionCard({ icon, title, description, children, testId }: Readonly<{ icon: ReactNode; title: string; description: string; children: ReactNode; testId?: string }>): ReactNode {
+  const headingId = `tocklauncher-section-${title.toLocaleLowerCase('en-US').replaceAll(/[^a-z0-9]+/gu, '-')}`
   return (
-    <Card data-testid={testId}>
+    <Card aria-labelledby={headingId} data-testid={testId} role="region">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">{icon}{title}</CardTitle>
+        <CardTitle className="flex items-center gap-2"><h2 id={headingId} className="flex items-center gap-2 text-base font-semibold">{icon}{title}</h2></CardTitle>
         <CardDescription>{description}</CardDescription>
       </CardHeader>
       <CardContent>{children}</CardContent>
@@ -94,12 +96,13 @@ function LauncherSettingsPage({ close: _close }: SettingsSectionProps): ReactNod
   const bridge = window.dshDesktop
   const settings = bridge?.launcher.settings
   const [snapshot, setSnapshot] = useState<LauncherSettingsSnapshot | null>(null)
-  const [snapshotRevision, setSnapshotRevision] = useState(0)
+  const pendingValues = useRef(new Map<string, unknown>())
   const [workflowSnapshotRevision, setWorkflowSnapshotRevision] = useState(0)
   const workflowSnapshotValue = useRef<string | undefined>(undefined)
   const [status, setStatus] = useState('Loading TockLauncher settings…')
   const [busy, setBusy] = useState(false)
   const [resetPending, setResetPending] = useState(false)
+  const resetDialogRef = useRef<HTMLDialogElement>(null)
   const [secret, setSecret] = useState('')
   const [launchOnStart, setLaunchOnStart] = useState<boolean | null>(null)
   const [updater, setUpdater] = useState<UpdaterState | null>(null)
@@ -123,8 +126,14 @@ function LauncherSettingsPage({ close: _close }: SettingsSectionProps): ReactNod
       workflowSnapshotValue.current = serializedWorkflow
       setWorkflowSnapshotRevision(revision => revision + 1)
     }
-    setSnapshot(next)
-    setSnapshotRevision(revision => revision + 1)
+    const dirtyValues = pendingValues.current
+    if (dirtyValues.size === 0) {
+      setSnapshot(next)
+      return next
+    }
+    const values = { ...next.values }
+    for (const [key, value] of dirtyValues) values[key] = value
+    setSnapshot(Object.freeze({ ...next, values: Object.freeze(values) }))
     return next
   }, [settings])
 
@@ -132,6 +141,18 @@ function LauncherSettingsPage({ close: _close }: SettingsSectionProps): ReactNod
     if (!settings) return
     void reload().then(() => setStatus('TockLauncher settings are ready.')).catch(() => setStatus('TockLauncher settings are unavailable.'))
   }, [reload, settings])
+
+  useEffect(() => {
+    if (!resetPending) {
+      resetDialogRef.current?.close()
+      return
+    }
+    const dialog = resetDialogRef.current
+    if (dialog !== null && !dialog.open) {
+      try { dialog.showModal() } catch { dialog.setAttribute('open', '') }
+    }
+    requestAnimationFrame(() => dialog?.querySelector<HTMLButtonElement>('[data-testid="tocklauncher-reset-cancel"]')?.focus())
+  }, [resetPending])
 
   useEffect(() => {
     if (!bridge) return
@@ -153,8 +174,10 @@ function LauncherSettingsPage({ close: _close }: SettingsSectionProps): ReactNod
   const save = useCallback((key: string, value: unknown): Promise<boolean> => {
     if (!settings) return Promise.resolve(false)
     setStatus('Saving…')
+    setBusy(true)
     const isSimpleFileSearchFolders = key === 'extension[SimpleFileSearch].folders'
     const draftRevision = simpleFileSearchDraftRevision.current
+    pendingValues.current.set(key, value)
     if (!LAUNCHER_SENSITIVE_SETTING_KEYS.includes(key as never) && !isSimpleFileSearchFolders) {
       setSnapshot(previous => previous === null ? previous : Object.freeze({
         ...previous,
@@ -167,17 +190,25 @@ function LauncherSettingsPage({ close: _close }: SettingsSectionProps): ReactNod
     })
     writeTail.current = operation.then(() => undefined, () => undefined)
     return operation.then(() => {
+      if (pendingValues.current.get(key) === value) pendingValues.current.delete(key)
       if (isSimpleFileSearchFolders && simpleFileSearchDraftRevision.current === draftRevision) {
         setSimpleFileSearchDraft(value as readonly LauncherSimpleFileSearchDraft[])
       }
       setStatus('Saved.')
       return true
     }, () => {
+      if (pendingValues.current.get(key) === value) pendingValues.current.delete(key)
       if (!isSimpleFileSearchFolders) void reload().catch(() => {})
       setStatus('TockLauncher settings could not be saved.')
       return false
+    }).finally(() => {
+      if (pendingValues.current.size === 0) setBusy(false)
     })
   }, [reload, settings])
+
+  const clearHistory = useCallback((): void => {
+    void save('general.searchHistory.history', [])
+  }, [save])
 
   const operation = useCallback(async (label: string, action: () => Promise<{ canceled?: boolean; ok: true }>, refresh = true, clearFileSearchDraft = false, focusTarget?: HTMLElement): Promise<void> => {
     const active = focusTarget ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null)
@@ -254,6 +285,13 @@ function LauncherSettingsPage({ close: _close }: SettingsSectionProps): ReactNod
         <Field title="History limit" description={`${state.history.length} saved searches currently visible to TockLauncher.`}>
           <Input aria-label="History limit" className="w-24" type="number" min="1" max="100" disabled={busy} value={state.preferences.historyLimit} onChange={event => { const value = Math.min(100, Math.max(1, Number(event.target.value) || 10)); void save('general.searchHistory.limit', value) }} />
         </Field>
+        <Field title="Saved searches" description="Clear persisted history without changing provider settings.">
+          <Button aria-label="Clear search history" size="sm" variant="outline" disabled={busy || state.history.length === 0} onClick={clearHistory}><Trash2 aria-hidden="true" />Clear History</Button>
+        </Field>
+      </SectionCard>
+
+      <SectionCard icon={<Palette aria-hidden="true" className="size-4" />} title="Appearance and Input" description="Search presentation follows the shared TockTeam appearance owner and remains keyboard accessible.">
+        <LauncherSurfaceSettingsSection busy={busy} platform={rendererIsLinux ? 'Linux' : /Windows/iu.test(`${navigator.platform} ${navigator.userAgent}`) ? 'Windows' : 'macOS'} save={save} snapshot={snapshot} />
       </SectionCard>
 
       <SectionCard icon={<MonitorCog aria-hidden="true" className="size-4" />} title="Desktop Lifecycle" description="Window and shell behavior is applied by Electron main. Launch on Start remains in its existing TockTeam Preferences owner.">
@@ -280,20 +318,20 @@ function LauncherSettingsPage({ close: _close }: SettingsSectionProps): ReactNod
         </div>
       </SectionCard>
 
-      <SectionCard icon={<MonitorCog aria-hidden="true" className="size-4" />} title="Local Transformations" description="Configure the seven local transformation providers without exposing renderer authority.">
-        <LauncherLocalSettings key={snapshotRevision} busy={busy} save={save} snapshot={snapshot} />
+      <SectionCard icon={<MonitorCog aria-hidden="true" className="size-4" />} title="Local Transformation Extensions" description="Configure the seven local transformation providers without exposing renderer authority.">
+        <LauncherLocalSettings busy={busy} save={save} snapshot={snapshot} />
       </SectionCard>
 
       <SectionCard icon={<Search aria-hidden="true" className="size-4" />} title="Discovery Providers" description="Configure bounded applications, bookmarks, JetBrains projects, and VS Code recents.">
-        <LauncherDiscoverySettings key={snapshotRevision} busy={busy} save={save} snapshot={snapshot} />
+        <LauncherDiscoverySettings busy={busy} save={save} snapshot={snapshot} />
       </SectionCard>
 
       <SectionCard icon={<Search aria-hidden="true" className="size-4" />} title="File Search" description="Configure bounded indexed and home-contained file search providers.">
-        <LauncherFileSearchSettings key={snapshotRevision} busy={busy} draftFolders={simpleFileSearchDraft} onDraftFoldersChange={updateSimpleFileSearchDraft} save={save} snapshot={snapshot} />
+        <LauncherFileSearchSettings busy={busy} draftFolders={simpleFileSearchDraft} onDraftFoldersChange={updateSimpleFileSearchDraft} save={save} snapshot={snapshot} />
       </SectionCard>
 
       <SectionCard icon={<MonitorCog aria-hidden="true" className="size-4" />} title="Terminal Launcher" description="Configure the finite native terminal catalog. Commands always require main-process approval.">
-        <LauncherTerminalSettings key={snapshotRevision} busy={busy} save={save} snapshot={snapshot} />
+        <LauncherTerminalSettings busy={busy} save={save} snapshot={snapshot} />
       </SectionCard>
 
       <SectionCard icon={<ShieldCheck aria-hidden="true" className="size-4" />} title="Workflows" description="Compose a bounded ordered sequence of exact native actions. Commands always use a fixed shell policy and trusted Desktop home.">
@@ -301,7 +339,7 @@ function LauncherSettingsPage({ close: _close }: SettingsSectionProps): ReactNod
       </SectionCard>
 
       <SectionCard icon={<Globe2 aria-hidden="true" className="size-4" />} title="Network Extensions" description="Configure fixed, bounded network providers without exposing renderer network authority.">
-        <LauncherNetworkSettings key={snapshotRevision} busy={busy} save={save} snapshot={snapshot} />
+        <LauncherNetworkSettings busy={busy} save={save} snapshot={snapshot} />
       </SectionCard>
 
       <SectionCard icon={<Database aria-hidden="true" className="size-4" />} title="Storage and Privacy" description="Managed files and external grants are owned by Electron main; no filesystem path crosses this page.">
@@ -324,7 +362,12 @@ function LauncherSettingsPage({ close: _close }: SettingsSectionProps): ReactNod
           </div>
         </Field>
         <Field title="Reset TockLauncher settings" description="Clears overrides, favorites, exclusions, history, and the custom-browser grant, then securely relaunches Desktop.">
-          {resetPending ? <div className="flex gap-2"><Button size="sm" variant="outline" disabled={busy} onClick={() => setResetPending(false)}>Cancel</Button><Button size="sm" variant="destructive" disabled={busy} onClick={() => { setResetPending(false); void operation('Reset', settings.resetSettings, true, true) }}><Trash2 aria-hidden="true" />Confirm reset</Button></div> : <Button size="sm" variant="outline" disabled={busy} onClick={() => setResetPending(true)}><RotateCcw aria-hidden="true" />Reset</Button>}
+          <Button size="sm" variant="outline" disabled={busy} onClick={() => setResetPending(true)}><RotateCcw aria-hidden="true" />Reset</Button>
+          <dialog ref={resetDialogRef} aria-describedby="tocklauncher-reset-description" aria-labelledby="tocklauncher-reset-title" aria-modal="true" className="rounded-lg border border-border bg-background p-4 text-foreground shadow-xl" data-testid="tocklauncher-reset-dialog" onCancel={event => { event.preventDefault(); setResetPending(false) }}>
+            <h3 id="tocklauncher-reset-title" className="text-base font-semibold">Reset TockLauncher settings?</h3>
+            <p id="tocklauncher-reset-description" className="mt-2 max-w-md text-sm text-muted-foreground">This clears launcher overrides, favorites, exclusions, history, and the custom-browser grant.</p>
+            <div className="mt-4 flex justify-end gap-2"><Button data-testid="tocklauncher-reset-cancel" type="button" variant="outline" disabled={busy} onClick={() => setResetPending(false)}>Cancel</Button><Button type="button" variant="destructive" disabled={busy} onClick={() => { setResetPending(false); void operation('Reset', settings.resetSettings, true, true) }}><Trash2 aria-hidden="true" />Confirm reset</Button></div>
+          </dialog>
         </Field>
       </SectionCard>
 
@@ -336,7 +379,7 @@ function LauncherSettingsPage({ close: _close }: SettingsSectionProps): ReactNod
             <Button size="sm" variant="outline" disabled={busy || secret.length === 0 || snapshot.secureStorageAvailable === false} onClick={() => { const value = secret; void save('extension[DeeplTranslator].apiKey', value).then(saved => { if (saved) setSecret('') }) }}>Save key</Button>
           </div>
         </Field>
-        <Alert><ShieldCheck aria-hidden="true" /><AlertTitle>Protected secret</AlertTitle><AlertDescription>{snapshot.missingSensitiveKeys.includes('extension[DeeplTranslator].apiKey') ? 'No usable DeepL key is stored.' : 'A usable DeepL key is stored with secure storage.'}</AlertDescription></Alert>
+        <Alert role="status" aria-live="polite"><ShieldCheck aria-hidden="true" /><AlertTitle>Protected secret</AlertTitle><AlertDescription>{snapshot.missingSensitiveKeys.includes('extension[DeeplTranslator].apiKey') ? 'No usable DeepL key is stored.' : 'A usable DeepL key is stored with secure storage.'}</AlertDescription></Alert>
       </SectionCard>
 
       <SectionCard icon={<RefreshCw aria-hidden="true" className="size-4" />} title="Updates" description="Automatic updates remain owned by the existing Electron updater state machine.">

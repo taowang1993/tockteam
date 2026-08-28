@@ -29,26 +29,27 @@ export function createLauncherFileSearchTool(options: Readonly<{
   const maxInputLength = LAUNCHER_MAX_SEARCH_TERM_LENGTH
   input.type = 'search'; input.maxLength = maxInputLength; input.placeholder = 'Search files'; input.setAttribute('aria-label', 'File Search Input'); input.autocomplete = 'off'
   const status = element(document, 'p', 'launcher-local-tool-error'); status.setAttribute('role', 'status'); status.textContent = 'Enter a file name to search.'
-  const list = element(document, 'ul', 'm-0 list-none p-0'); list.setAttribute('aria-label', 'File Search Results')
+  const list = element(document, 'ul', 'm-0 min-w-0 list-none overflow-auto p-0'); list.setAttribute('aria-label', 'File Search Results'); list.setAttribute('role', 'list')
   content.append(input, status, list)
 
   let requestRevision = 0
+  let openMenu: Readonly<{ menu: HTMLElement; toggle: HTMLButtonElement }> | undefined
   let currentItems: LauncherPublicResultItem[] = []
   const actionLabel = (action: LauncherPublicAction): string => action.keyboardShortcut === undefined ? action.description : `${action.description} (${action.keyboardShortcut})`
   const render = (items: readonly LauncherPublicResultItem[]): void => {
     currentItems = [...items]
     list.replaceChildren()
     for (const [index, item] of currentItems.entries()) {
-      const row = element(document, 'li', 'relative')
+      const row = element(document, 'li', 'relative min-w-0'); row.setAttribute('role', 'listitem')
       const actions = [item.defaultAction, ...(item.additionalActions ?? [])]
       const content = element(document, 'div', 'flex min-w-0 items-center gap-1')
       const button = element(document, 'button', 'flex min-w-0 flex-1 items-center gap-2 rounded-lg px-2 py-2 text-left hover:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))]')
-      button.type = 'button'; button.setAttribute('aria-label', `${item.name} — ${actionLabel(item.defaultAction)}`)
+      button.type = 'button'; button.setAttribute('role', 'listitem'); button.setAttribute('aria-label', `${item.name} — ${actionLabel(item.defaultAction)}`)
       const name = element(document, 'strong', 'min-w-0 flex-1 truncate text-sm font-medium'); name.textContent = item.name
       const description = element(document, 'span', 'shrink-0 text-xs text-[var(--dsw-alias-label-secondary,CanvasText)]'); description.textContent = item.description
       const itemDetails = item.details
       const details = itemDetails === undefined ? undefined : element(document, 'span', 'min-w-0 truncate text-xs text-[var(--dsw-alias-label-secondary,CanvasText)]')
-      if (details !== undefined && itemDetails !== undefined) { details.textContent = itemDetails; details.setAttribute('aria-label', itemDetails) }
+      if (details !== undefined && itemDetails !== undefined) { details.id = `launcher-file-search-details-${index}`; details.textContent = itemDetails; details.setAttribute('aria-label', itemDetails); button.setAttribute('aria-describedby', details.id) }
       button.append(name, description)
       if (details !== undefined) content.append(details)
       button.addEventListener('click', () => { void invoke(item.defaultAction, item) })
@@ -66,12 +67,13 @@ export function createLauncherFileSearchTool(options: Readonly<{
           actionButton.addEventListener('click', () => { menu.hidden = true; toggle.setAttribute('aria-expanded', 'false'); void invoke(action, item) })
           menuButtons.push(actionButton); menu.append(actionButton)
         }
-        const closeMenu = (): void => { menu.hidden = true; toggle.setAttribute('aria-expanded', 'false'); toggle.focus() }
+        const closeMenu = (focus = true): void => { menu.hidden = true; toggle.setAttribute('aria-expanded', 'false'); if (openMenu?.menu === menu) openMenu = undefined; if (focus) toggle.focus() }
         toggle.addEventListener('click', () => {
           const open = menu.hidden
+          if (openMenu !== undefined && openMenu.menu !== menu) { openMenu.menu.hidden = true; openMenu.toggle.setAttribute('aria-expanded', 'false') }
           menu.hidden = !open
           toggle.setAttribute('aria-expanded', String(open))
-          if (open) menuButtons[0]?.focus()
+          if (open) { openMenu = Object.freeze({ menu, toggle }); menuButtons[0]?.focus() } else if (openMenu?.menu === menu) openMenu = undefined
         })
         menu.addEventListener('keydown', event => {
           const current = menuButtons.indexOf(document.activeElement as HTMLButtonElement)
@@ -80,7 +82,7 @@ export function createLauncherFileSearchTool(options: Readonly<{
             : event.key === 'ArrowUp'
               ? (Math.max(current, 0) - 1 + menuButtons.length) % menuButtons.length
               : event.key === 'Home' ? 0 : event.key === 'End' ? menuButtons.length - 1 : undefined
-          if (event.key === 'Escape') { event.preventDefault(); closeMenu(); return }
+          if (event.key === 'Escape' || event.key === 'Tab') { event.preventDefault(); closeMenu(); return }
           if (next !== undefined) { event.preventDefault(); menuButtons[next]?.focus() }
         })
         content.append(toggle); row.append(content, menu)
@@ -132,6 +134,28 @@ export function createLauncherFileSearchTool(options: Readonly<{
     }
   }
   input.addEventListener('input', () => { void search() })
+  input.addEventListener('keydown', event => {
+    if (event.key === 'Escape') {
+      event.preventDefault()
+      options.onClose()
+    } else if (event.key === 'ArrowDown') {
+      const first = list.querySelector<HTMLButtonElement>('button')
+      if (first !== null) { event.preventDefault(); first.focus() }
+    } else if (event.key === 'Enter') {
+      const first = currentItems[0]
+      if (first !== undefined) { event.preventDefault(); void invoke(first.defaultAction, first) }
+    }
+  })
+  tool.addEventListener('pointerdown', event => {
+    if (openMenu === undefined || !(event.target instanceof Element)) return
+    if (event.target.closest('[role="menu"], [aria-haspopup="menu"]') === null) closeMenuWithoutFocus()
+  })
+  const closeMenuWithoutFocus = (): void => {
+    if (openMenu === undefined) return
+    openMenu.menu.hidden = true
+    openMenu.toggle.setAttribute('aria-expanded', 'false')
+    openMenu = undefined
+  }
   queueMicrotask(() => input.focus())
   return tool
 }

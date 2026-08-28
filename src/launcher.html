@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" class="h-full overflow-hidden bg-[var(--dsw-alias-bg-base,Canvas)] text-[var(--dsw-alias-label-primary,CanvasText)] [color-scheme:light_dark]" data-launcher-ready="false">
+<html lang="en-US" class="h-full bg-[var(--dsw-alias-bg-base,Canvas)] text-[var(--dsw-alias-label-primary,CanvasText)] [color-scheme:light_dark]" data-launcher-ready="false">
   <head>
     <meta charset="UTF-8" />
     <meta name="color-scheme" content="light dark" />
@@ -9,8 +9,8 @@
     <script type="module" src="./launcher.js"></script>
     <title>TockLauncher</title>
   </head>
-  <body class="m-0 h-full min-h-full overflow-hidden bg-[var(--dsw-alias-bg-base,Canvas)] font-sans text-[var(--dsw-alias-label-primary,CanvasText)]">
-    <main id="launcher-root" class="mx-auto box-border flex h-full w-full max-w-[750px] flex-col gap-3 rounded-xl border border-[var(--dsw-alias-border-l2,CanvasText)] bg-[var(--dsw-alias-bg-layer-1,Canvas)] p-5 shadow-lg" data-launcher-ready="false">
+  <body class="m-0 h-full min-h-full overflow-auto bg-[var(--dsw-alias-bg-base,Canvas)] font-sans text-[var(--dsw-alias-label-primary,CanvasText)] motion-reduce:transition-none motion-reduce:animate-none">
+    <main id="launcher-root" class="mx-auto box-border flex min-h-full w-full max-w-[750px] min-w-0 flex-col gap-3 overflow-auto rounded-xl border border-[var(--dsw-alias-border-l2,CanvasText)] bg-[var(--dsw-alias-bg-layer-1,Canvas)] p-5 shadow-lg motion-reduce:transition-none" data-launcher-ready="false">
       <h1 class="sr-only">TockLauncher</h1>
       <div id="launcher-search-form" class="flex min-w-0 items-center gap-2" role="search">
         <label for="launcher-search" class="sr-only">Search TockLauncher</label>
@@ -21,10 +21,11 @@
         <button id="launcher-history-toggle" class="inline-flex h-10 shrink-0 items-center gap-1 rounded-lg border border-[var(--dsw-alias-border-l2,CanvasText)] px-2 text-sm hover:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))] focus-visible:outline-2" type="button" aria-label="Search History" aria-controls="launcher-history" aria-expanded="false" aria-haspopup="menu">History</button>
       </div>
       <div id="launcher-history" class="max-h-40 overflow-auto rounded-lg border border-[var(--dsw-alias-border-l2,CanvasText)] bg-[var(--dsw-alias-bg-layer-1,Canvas)] shadow-md" role="menu" aria-label="Search History" hidden></div>
-      <p id="launcher-status" class="m-0 min-h-5 text-sm text-[var(--dsw-alias-label-secondary,CanvasText)]" role="status" aria-live="polite">Destinations will appear here.</p>
+      <p id="launcher-status" class="m-0 min-h-5 text-sm text-[var(--dsw-alias-label-secondary,CanvasText)]" role="status" aria-live="polite" aria-atomic="true">Destinations will appear here.</p>
+      <div id="launcher-provider-statuses" class="min-w-0 text-xs text-[var(--dsw-alias-label-secondary,CanvasText)]" role="status" aria-live="polite" hidden></div>
       <ul id="launcher-results" class="m-0 min-h-0 flex-1 list-none overflow-auto p-0" role="listbox" aria-label="TockLauncher destinations"></ul>
       <div id="launcher-details" class="min-h-9"></div>
-      <div class="flex items-center justify-end gap-2">
+      <div class="flex min-w-0 flex-wrap items-center justify-end gap-2">
         <button id="launcher-rescan" class="inline-flex h-9 items-center gap-1 rounded-lg border border-[var(--dsw-alias-border-l2,CanvasText)] px-2 text-sm hover:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))] focus-visible:outline-2 disabled:cursor-wait disabled:opacity-60" type="button">Rescan</button>
         <button id="launcher-settings" class="inline-flex h-9 items-center gap-1 rounded-lg border border-[var(--dsw-alias-border-l2,CanvasText)] px-2 text-sm hover:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))] focus-visible:outline-2" type="button">Open TockLauncher Settings</button>
         <button id="launcher-close" class="h-9 rounded-lg border border-[var(--dsw-alias-border-l2,CanvasText)] bg-[var(--dsw-alias-bg-layer-2,Canvas)] px-3 text-[var(--dsw-alias-label-primary,CanvasText)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dsw-alias-brand-primary,CanvasText)]" type="button">Close TockLauncher</button>

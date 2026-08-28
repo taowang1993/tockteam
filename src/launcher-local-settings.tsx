@@ -15,7 +15,7 @@ function localValue(snapshot: LauncherSettingsSnapshot, id: string, key: string,
   return value === undefined ? fallback : value
 }
 function Field({ label, children }: Readonly<{ label: string; children: ReactNode }>): ReactNode {
-  return <label className="flex min-w-0 flex-wrap items-center justify-between gap-3 border-b border-border/60 py-2 last:border-b-0"><span className="text-sm text-foreground">{label}</span><span className="flex min-w-0 shrink-0 items-center gap-2">{children}</span></label>
+  return <div className="flex min-w-0 flex-wrap items-center justify-between gap-3 border-b border-border/60 py-2 last:border-b-0"><span className="text-sm text-foreground">{label}</span><span className="flex min-w-0 max-w-full flex-wrap items-center gap-2">{children}</span></div>
 }
 function text(props: ComponentProps<typeof Input>): ReactNode { return <Input {...props} /> }
 

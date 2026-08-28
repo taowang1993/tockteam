@@ -3,8 +3,15 @@
 @import 'tailwindcss/utilities.css' source(none);
 
 @source '../../../../src/client.ts';
+@source '../../../../src/launcher.html';
+@source '../../../../src/launcher.ts';
 @source '../../../../src/launcher-settings.tsx';
 @source '../../../../src/launcher-workflow-settings.tsx';
+@source '../../../../src/launcher-local-tools.ts';
+@source '../../../../src/launcher-file-search-tool.ts';
+@source '../../../../src/launcher-network-extension-tool.ts';
+@source '../../../../src/launcher-surface-settings.tsx';
+@source '../../../../src/launcher-*.{ts,tsx}';
 @source '../../../../src/splash.html';
 @source '../../../../web/src/client.ts';
 @source '../../../skins/src/**/*.{ts,tsx}';
@@ -54,6 +61,111 @@
 }
 
 /* The Desktop bridge has no component seam for the inherited DSH shell. */
+/* Launcher tools share these small semantic recipes across every provider surface. */
+@utility launcher-local-tool {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+@utility launcher-local-tool-header {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+@utility launcher-local-tool-identity {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+@utility launcher-local-tool-content {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+
+@utility launcher-local-tool-field {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+@utility launcher-local-tool-status {
+  min-height: 1.25rem;
+  color: var(--dsw-alias-label-secondary, CanvasText);
+  font-size: 0.75rem;
+}
+
+@utility launcher-local-tool-error {
+  color: var(--dsw-alias-state-error-primary, CanvasText);
+  font-size: 0.75rem;
+}
+
+@utility launcher-secondary-button {
+  display: inline-flex;
+  min-height: 2.25rem;
+  max-width: 100%;
+  align-items: center;
+  gap: 0.375rem;
+  border: 1px solid var(--dsw-alias-border-l2, CanvasText);
+  border-radius: 0.5rem;
+  padding-inline: 0.75rem;
+  color: var(--dsw-alias-label-primary, CanvasText);
+}
+
+@utility launcher-primary-button {
+  display: inline-flex;
+  min-height: 2.25rem;
+  align-items: center;
+  gap: 0.375rem;
+  border-radius: 0.5rem;
+  background: var(--dsw-alias-brand-primary, CanvasText);
+  padding-inline: 0.75rem;
+  color: var(--dsw-alias-brand-primary-invert, Canvas);
+}
+
+/* Launcher settings are derived from the shared DSH surface projection. */
+#launcher-search[data-search-bar-appearance='underline'] {
+  border-width: 0 0 2px;
+  border-radius: 0;
+}
+
+#launcher-search[data-search-bar-appearance='filled-darker'] {
+  background: color-mix(in srgb, var(--dsw-alias-label-primary, CanvasText) 8%, var(--dsw-alias-bg-base, Canvas));
+}
+
+#launcher-search[data-search-bar-appearance='filled-lighter'] {
+  background: color-mix(in srgb, var(--dsw-alias-bg-base, Canvas) 92%, var(--dsw-alias-label-primary, CanvasText));
+}
+
+#launcher-results[data-layout='detailed'] [role='option'] {
+  align-items: flex-start;
+  padding-block: 0.625rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #launcher-root *,
+  #launcher-root *::before,
+  #launcher-root *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
 @utility tockteam-desktop-shell {
   --tockteam-titlebar-height: 40px;
 

@@ -15,6 +15,10 @@ test('network tools use only typed prefixes, bounded input, opaque actions, and 
   assert.match(tool, /bridge\.invokeAction\(action\.actionId\)/u)
   assert.match(tool, /aria-haspopup.*menu/u)
   assert.match(tool, /role.*menuitem/u)
+  assert.match(tool, /role', 'list'/u)
+  assert.match(tool, /role', 'listitem'/u)
+  assert.match(tool, /aria-describedby/u)
+  assert.match(tool, /event\.key === 'Tab'/u)
   assert.doesNotMatch(tool, /window\.open|fetch\(|shell\.|node:/u)
 })
 

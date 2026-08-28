@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
+import { readFileSync } from 'node:fs'
 import { createLauncherFileSearchTool } from '../src/launcher-file-search-tool.ts'
 import type { LauncherPreloadBridge } from '../src/launcher-preload-bridge.ts'
 import type { LauncherPublicResultItem } from '../src/launcher-actions.ts'
@@ -57,6 +58,15 @@ function flush(): Promise<void> {
 }
 
 const options = { fuzziness: 0.5, maxSearchResultItems: 20, searchEngineId: 'fuzzysort' as const }
+const source = readFileSync(new URL('../src/launcher-file-search-tool.ts', import.meta.url), 'utf8')
+
+test('File Search exposes keyboard-first results and semantic list items', () => {
+  assert.match(source, /role', 'list'/u)
+  assert.match(source, /role', 'listitem'/u)
+  assert.match(source, /ArrowDown/u)
+  assert.match(source, /event\.key === 'Enter'/u)
+  assert.match(source, /event\.key === 'Tab'/u)
+})
 
 test('non-hiding reveal rerender restores keyboard focus to the live action menu', async () => {
   const item: LauncherPublicResultItem = {
