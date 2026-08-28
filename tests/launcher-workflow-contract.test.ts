@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { parseLauncherWorkflows } from '../src/launcher-workflow-contract.ts'
+import { parseLauncherWorkflows, parseLauncherWorkflowsForSettings } from '../src/launcher-workflow-contract.ts'
 import { launcherWorkflowDigest, parseLauncherWorkflowToken, serializeLauncherWorkflowToken } from '../src/launcher-workflow.ts'
 
 const WORKFLOW = {
@@ -39,6 +39,18 @@ test('Workflow parser rejects whole graphs with extra keys, unknown handlers, du
   ]
   for (const value of invalid) assert.throws(() => parseLauncherWorkflows(value, 'macOS'), /workflow/i)
   assert.throws(() => parseLauncherWorkflows([WORKFLOW], 'Linux'), /workflow/i)
+})
+
+test('Workflow settings parser preserves valid workflows for different platforms in one array', () => {
+  const windowsOnly = {
+    id: 'windows-only',
+    name: 'Windows only',
+    actions: [{ id: 'terminal', handlerId: 'OpenTerminal', name: 'Prompt', args: { terminalId: 'Command Prompt', command: 'echo ok' } }],
+  }
+  const parsed = parseLauncherWorkflowsForSettings([WORKFLOW, windowsOnly])
+  assert.deepEqual(parsed.map(workflow => workflow.id), ['release-check', 'windows-only'])
+  assert.equal(Object.isFrozen(parsed), true)
+  assert.throws(() => parseLauncherWorkflowsForSettings([{ ...windowsOnly, id: 'windows-only-2', actions: [{ ...windowsOnly.actions[0], args: { terminalId: 'not-a-terminal', command: 'echo ok' } }] }]), /workflow/i)
 })
 
 test('Workflow digest and public token have canonical field order and no nested authority', () => {

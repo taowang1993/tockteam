@@ -3,7 +3,7 @@ import { validateLauncherNetworkTemplate } from './launcher-network-url-policy.t
 import { LAUNCHER_COMPOSITION } from './launcher-contract.ts'
 import { LAUNCHER_INTERNAL_SETTING_KEYS, LAUNCHER_RUNTIME_SETTING_KEYS, LAUNCHER_SENSITIVE_SETTING_KEYS, LAUNCHER_MAIN_OWNED_SETTING_KEYS, isLauncherRuntimeSettingKey } from './launcher-setting-keys.ts'
 import { LAUNCHER_TERMINALS, isLauncherTerminalIds, isLauncherTerminalPrefix } from './launcher-terminal-config.ts'
-import { isLauncherWorkflows } from './launcher-workflow-contract.ts'
+import { isLauncherWorkflowSettings } from './launcher-workflow-contract.ts'
 
 export { LAUNCHER_INTERNAL_SETTING_KEYS, LAUNCHER_SENSITIVE_SETTING_KEYS, LAUNCHER_MAIN_OWNED_SETTING_KEYS, LAUNCHER_RUNTIME_SETTING_KEYS }
 
@@ -208,7 +208,7 @@ export function isLauncherRendererSettingValue(key: string, value: unknown): boo
     case 'extension[WebSearch].locale': return typeof value === 'string' && /^[a-z]{2,3}(?:-[A-Z]{2})?$/u.test(value)
     case 'extension[WebSearch].searchEngine': return value === 'DuckDuckGo' || value === 'Google'
     case 'extension[WebSearch].showInstantSearchResult': return typeof value === 'boolean'
-    case 'extension[Workflow].workflows': return isLauncherWorkflows(value, 'Linux') || isLauncherWorkflows(value, 'macOS') || isLauncherWorkflows(value, 'Windows')
+    case 'extension[Workflow].workflows': return isLauncherWorkflowSettings(value)
     case 'appearance.searchBarAppearance': return typeof value === 'string' && SEARCH_APPEARANCE.has(value)
     case 'appearance.searchBarPlaceholderText': return boundedString(value, 512)
     case 'appearance.searchBarSize': return typeof value === 'string' && SEARCH_BAR_SIZE.has(value)

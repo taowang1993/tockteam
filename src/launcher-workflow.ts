@@ -6,6 +6,7 @@ import {
   LAUNCHER_WORKFLOW_ID_PATTERN,
   LAUNCHER_WORKFLOW_SETTING_KEY,
   parseLauncherWorkflows,
+  parseLauncherWorkflowsForPlatform,
   type LauncherWorkflow,
   type LauncherWorkflowAction,
   type LauncherWorkflowToken,
@@ -466,7 +467,7 @@ export function createLauncherWorkflow(options: WorkflowOptions): Readonly<{
     const items: LauncherInternalResultItem[] = []
     try {
       let workflows: readonly LauncherWorkflow[]
-      try { workflows = parseLauncherWorkflows(options.getSetting<unknown>(LAUNCHER_WORKFLOW_SETTING_KEY, []), options.platform) }
+      try { workflows = parseLauncherWorkflowsForPlatform(options.getSetting<unknown>(LAUNCHER_WORKFLOW_SETTING_KEY, []), options.platform) }
       catch (error) {
         if (controller.signal.aborted || closed || loadGeneration !== generation) throw abortError(controller.signal, 'TockLauncher Workflow load superseded')
         report(error)
@@ -510,7 +511,7 @@ export function createLauncherWorkflow(options: WorkflowOptions): Readonly<{
   const currentWorkflow = (token: LauncherWorkflowToken, known: KnownWorkflow): LauncherWorkflow | undefined => {
     if (closed || generation !== known.generation || currentActions.get(JSON.stringify(token)) !== known || !options.enabledExtensionIds().includes('Workflow')) return undefined
     try {
-      const parsed = parseLauncherWorkflows(options.getSetting<unknown>(LAUNCHER_WORKFLOW_SETTING_KEY, []), options.platform)
+      const parsed = parseLauncherWorkflowsForPlatform(options.getSetting<unknown>(LAUNCHER_WORKFLOW_SETTING_KEY, []), options.platform)
       const workflow = parsed.find(candidate => candidate.id === token.workflowId)
       return workflow !== undefined && launcherWorkflowDigest(workflow) === token.workflowSha256 ? workflow : undefined
     } catch { return undefined }

@@ -1,3 +1,4 @@
+import type { LauncherSettingsSnapshot } from './launcher-settings-contract.ts'
 import {
   LAUNCHER_TERMINALS,
   type LauncherTerminalId,
@@ -163,6 +164,27 @@ export function parseLauncherWorkflows(value: unknown, platform: LauncherTermina
   return Object.freeze(parsed)
 }
 
+const SUPPORTED_PLATFORMS = Object.freeze(['Linux', 'macOS', 'Windows'] as const)
+
+/** Parse compatibility settings one workflow at a time so platform-specific entries can round-trip together. */
+export function parseLauncherWorkflowsForSettings(value: unknown): readonly LauncherWorkflow[] {
+  if (!Array.isArray(value) || value.length > 64) throw new Error('Invalid TockLauncher Workflow settings')
+  const workflowIds = new Set<string>()
+  const parsed = value.map(candidate => {
+    let workflow: LauncherWorkflow | undefined
+    for (const candidatePlatform of SUPPORTED_PLATFORMS) {
+      try {
+        workflow = parseLauncherWorkflows([candidate], candidatePlatform)[0]
+        if (workflow !== undefined) break
+      } catch { /* try the platform-specific schema next */ }
+    }
+    if (workflow === undefined || workflowIds.has(workflow.id)) throw new Error('Invalid TockLauncher Workflow definition')
+    workflowIds.add(workflow.id)
+    return workflow
+  })
+  return Object.freeze(parsed)
+}
+
 export function isLauncherWorkflows(value: unknown, platform: LauncherTerminalPlatform): value is readonly LauncherWorkflow[] {
   try {
     parseLauncherWorkflows(value, platform)
@@ -170,6 +192,40 @@ export function isLauncherWorkflows(value: unknown, platform: LauncherTerminalPl
   } catch {
     return false
   }
+}
+
+export function initialLauncherWorkflowSettings(snapshot: LauncherSettingsSnapshot): LauncherWorkflow[] {
+  const value = snapshot.values[LAUNCHER_WORKFLOW_SETTING_KEY]
+  try { return [...parseLauncherWorkflowsForSettings(value)] }
+  catch { return [] }
+}
+
+export function createLauncherWorkflowSaveGate(save: (key: string, value: unknown) => Promise<boolean>): (value: readonly LauncherWorkflow[]) => Promise<boolean> {
+  let saving = false
+  return async value => {
+    if (saving) return false
+    saving = true
+    try { return await save(LAUNCHER_WORKFLOW_SETTING_KEY, value) }
+    finally { saving = false }
+  }
+}
+
+export function isLauncherWorkflowSettings(value: unknown): value is readonly LauncherWorkflow[] {
+  try {
+    parseLauncherWorkflowsForSettings(value)
+    return true
+  } catch {
+    return false
+  }
+}
+
+export function parseLauncherWorkflowsForPlatform(value: unknown, platform: LauncherTerminalPlatform): readonly LauncherWorkflow[] {
+  const parsed = parseLauncherWorkflowsForSettings(value)
+  const current = parsed.flatMap(workflow => {
+    try { return parseLauncherWorkflows([workflow], platform) }
+    catch { return [] }
+  })
+  return Object.freeze(current)
 }
 
 export const LAUNCHER_WORKFLOW_SETTING_KEY = 'extension[Workflow].workflows' as const
