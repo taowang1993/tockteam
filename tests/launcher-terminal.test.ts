@@ -152,6 +152,33 @@ test('Terminal Launcher rejects stale actions after a newer query and denied con
   assert.deepEqual(launches, ['third'])
 })
 
+test('Terminal Launcher cancels a pending confirmation on invalidation', async () => {
+  let release!: (value: boolean) => void
+  let confirmationSignal: AbortSignal | undefined
+  const provider = createLauncherTerminal({
+    effects: {
+      auditLaunch: () => {},
+      confirmLaunch: async (_request, signal) => {
+        confirmationSignal = signal
+        return await new Promise<boolean>(resolve => { release = resolve })
+      },
+      launchTerminal: () => {},
+    },
+    enabledExtensionIds: () => ['TerminalLauncher'],
+    getSetting: <T>(_key: string, fallback: T): T => fallback,
+    homePath: '/Users/max',
+    platform: 'macOS',
+  })
+  const item = (await provider.searchInstant('> delayed')).after[0]!
+  const pending = provider.executeAction(record(item))
+  await new Promise<void>(resolve => setImmediate(resolve))
+  provider.invalidate('owner-cleared')
+  assert.equal(confirmationSignal?.aborted, true)
+  release(true)
+  await assert.rejects(pending, /canceled|stale/u)
+  await provider.close()
+})
+
 test('Terminal Launcher rejects action argument tampering and honors close', async () => {
   const { provider } = harness()
   const item = (await provider.searchInstant('> pwd')).after[0]!
