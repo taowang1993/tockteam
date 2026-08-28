@@ -432,25 +432,6 @@ try {
     forbiddenEffects: 0,
     marker: 'tockteam-terminal-fixture-v1',
   })
-  const browserFixtureMarker = await waitFor(
-    () => readFile(browserFixtureMarkerPath, 'utf8').then(value => JSON.parse(value)).catch(() => null),
-    marker => marker?.marker === 'tockteam-browser-fixture-v1'
-      && marker?.picker === 1
-      && marker?.selected === 1
-      && marker?.revoked === 1
-      && marker?.custom?.count === 2
-      && marker?.default?.count === 1
-      && marker?.forbiddenEffects === 0,
-  )
-  assert.deepEqual(browserFixtureMarker, {
-    custom: { count: 2, urls: ['https://en.wikipedia.org/wiki/fixture', 'https://google.com/search?q=fixture&hl=en-us'] },
-    default: { count: 1, urls: ['https://google.com/search?q=default&hl=en-us'] },
-    forbiddenEffects: 0,
-    marker: 'tockteam-browser-fixture-v1',
-    picker: 1,
-    revoked: 1,
-    selected: 1,
-  })
   assert.deepEqual(fixtureMarker, {
     acceptedEffects: { lock: 1 },
     canceledConfirmations: { shutdown: 1 },
@@ -718,15 +699,20 @@ try {
     const selected = await window.dshDesktop?.launcher?.settings?.selectCustomBrowser()
     const snapshot = await window.dshDesktop?.launcher?.settings?.getSnapshot()
     await window.dshDesktop?.launcher?.settings?.updateSetting('general.browser.useDefaultWebBrowser', false)
+    const chooseButton = [...document.querySelectorAll('button')].find(button => button.textContent?.includes('Choose custom browser'))
+    const revokeButton = [...document.querySelectorAll('button')].find(button => button.textContent?.includes('Revoke custom browser'))
+    chooseButton?.focus()
     return {
       selected: selected?.ok === true,
       status: snapshot?.customBrowserStatus ?? null,
       pathHidden: !(document.body.textContent ?? '').includes('TockTeam Fixture Browser.app'),
-      choose: [...document.querySelectorAll('button')].some(button => button.textContent?.includes('Choose custom browser')),
-      revoke: [...document.querySelectorAll('button')].some(button => button.textContent?.includes('Revoke custom browser')),
+      choose: chooseButton !== undefined,
+      revoke: revokeButton !== undefined,
+      focus: document.activeElement === chooseButton,
+      accessibleNames: chooseButton?.textContent?.trim() === 'Choose custom browser' && revokeButton?.textContent?.trim() === 'Revoke custom browser',
     }
   })()`)
-  assert.deepEqual(browserFixtureFacts, { selected: true, status: 'active', pathHidden: true, choose: true, revoke: true })
+  assert.deepEqual(browserFixtureFacts, { selected: true, status: 'active', pathHidden: true, choose: true, revoke: true, focus: true, accessibleNames: true })
   const networkValidationInputs = await workbenchConnection.evaluate(`(() => {
     const setAndBlur = (selector, value) => {
       const control = document.querySelector(selector)
@@ -1006,7 +992,36 @@ try {
     return { result: result?.ok === true, status: (await window.dshDesktop?.launcher?.settings?.getSnapshot())?.customBrowserStatus ?? null }
   })()`)
   assert.deepEqual(revokedBrowser, { result: true, status: 'none' })
+  await workbenchConnection.evaluate(`(async () => {
+    await window.dshDesktop?.launcher?.settings?.updateSetting('general.browser.useDefaultWebBrowser', false)
+  })()`)
+  const browserNoGrantAction = await launcherConnection.evaluate(`(async () => {
+    const result = await window.tockteamLauncher?.search('tockteam:web-search:after-revoke', { fuzziness: 0, maxSearchResultItems: 200, searchEngineId: 'fuzzysort' })
+    const item = [...(result?.before ?? []), ...(result?.after ?? [])].find(candidate => candidate.sourceExtension === 'WebSearch')
+    if (item?.defaultAction?.actionId === undefined) return false
+    try { await window.tockteamLauncher?.invokeAction(item.defaultAction.actionId); return false } catch { return true }
+  })()`)
+  assert.equal(browserNoGrantAction, true)
 
+  const browserFixtureMarker = await waitFor(
+    () => readFile(browserFixtureMarkerPath, 'utf8').then(value => JSON.parse(value)).catch(() => null),
+    marker => marker?.marker === 'tockteam-browser-fixture-v1'
+      && marker?.picker === 1
+      && marker?.selected === 1
+      && marker?.revoked === 1
+      && marker?.custom?.count === 2
+      && marker?.default?.count === 1
+      && marker?.forbiddenEffects === 0,
+  )
+  assert.deepEqual(browserFixtureMarker, {
+    custom: { count: 2, urls: ['https://en.wikipedia.org/wiki/fixture', 'https://google.com/search?q=fixture&hl=en-us'] },
+    default: { count: 1, urls: ['https://google.com/search?q=default&hl=en-us'] },
+    forbiddenEffects: 0,
+    marker: 'tockteam-browser-fixture-v1',
+    picker: 1,
+    revoked: 1,
+    selected: 1,
+  })
   const discoveryFacts = await launcherConnection.evaluate(`(async () => {
     const result = await window.tockteamLauncher?.search('fixture', { fuzziness: 0, maxSearchResultItems: 200, searchEngineId: 'fuzzysort' })
     const item = result?.after.find(candidate => candidate.sourceExtension === 'ApplicationSearch')
