@@ -24,6 +24,8 @@ function response(body: string, init: ResponseInit = {}): Response {
   return new Response(body, { status: 200, headers: { 'content-type': 'application/json' }, ...init })
 }
 
+const publicResolver = async (): Promise<readonly string[]> => ['8.8.8.8']
+
 test('network inventory preserves adapted IDs, defaults, and prefixes', () => {
   assert.deepEqual(LAUNCHER_NETWORK_EXTENSION_IDS, ['CurrencyConversion', 'CustomWebSearch', 'DeeplTranslator', 'WebSearch'])
   assert.equal(LAUNCHER_DEEPL_QUERY_PREFIX, 'tockteam:deepl:')
@@ -39,6 +41,7 @@ test('network provider creates static DeepL/Web Search rows and isolates currenc
     fetch: async (url) => { calls.push(url); throw new Error('offline') },
     getSetting: settings,
     openExternal: () => undefined,
+    resolveAddresses: publicResolver,
   })
   const items = await provider.loadIndexedItems(new AbortController().signal)
   assert.deepEqual(items.map(item => item.sourceExtension), ['DeeplTranslator', 'WebSearch'])
@@ -53,6 +56,7 @@ test('network provider uses exact DeepL request and keeps translation action mai
     fetch: (url, init) => { request = { url, init }; return Promise.resolve(response(JSON.stringify({ translations: [{ text: 'Hallo' }] }))) },
     getSetting: settings,
     openExternal: () => undefined,
+    resolveAddresses: publicResolver,
   })
   const result = await provider.searchInstant(`${LAUNCHER_DEEPL_QUERY_PREFIX} hello`)
   assert.equal(request?.url, 'https://api-free.deepl.com/v2/translate')
@@ -64,13 +68,34 @@ test('network provider uses exact DeepL request and keeps translation action mai
   assert.equal(result.before[0]?.details, undefined)
 })
 
+test('DeepL secrets never enter result, error, or provider callback data', async () => {
+  const secret = 'super-secret-key'
+  const callbacks: string[] = []
+  const provider = createLauncherNetworkExtensions({
+    copyText: () => undefined,
+    enabledExtensionIds: () => ['DeeplTranslator'],
+    fetch: async (_url, init) => {
+      assert.equal((init?.headers as Record<string, string>)?.Authorization, `DeepL-Auth-Key ${secret}`)
+      throw new Error(secret)
+    },
+    getSetting: <T>(key: string, fallback: T): T => key === 'extension[DeeplTranslator].apiKey' ? secret as T : fallback,
+    onProviderError: (_extensionId, error) => { callbacks.push(error.message) },
+    openExternal: () => undefined,
+    resolveAddresses: publicResolver,
+  })
+  const result = await provider.searchInstant(`${LAUNCHER_DEEPL_QUERY_PREFIX} hello`)
+  assert.equal(JSON.stringify(result).includes(secret), false)
+  assert.equal(provider.getLastError()?.includes(secret), false)
+  assert.deepEqual(callbacks, ['DeepL Translator is unavailable.'])
+})
+
 test('network provider uses fixed custom URL and web search shapes', async () => {
   const urls: string[] = []
   const fetch: LauncherNetworkFetch = async (url) => { urls.push(url); return response(JSON.stringify(['term', ['one', 'two']])) }
   const provider = createLauncherNetworkExtensions({
     copyText: () => undefined,
     enabledExtensionIds: () => ['CustomWebSearch', 'WebSearch'], fetch,
-    getSetting: settings, openExternal: () => undefined,
+    getSetting: settings, openExternal: () => undefined, resolveAddresses: publicResolver,
   })
   const result = await provider.searchInstant(`${LAUNCHER_WEB_SEARCH_QUERY_PREFIX} hello world`)
   assert.equal(result.after[0]?.id, 'search-Google')
@@ -86,6 +111,7 @@ test('network result actions require current main-owned map and revalidate URL b
     fetch: async () => response(JSON.stringify(['term', []])),
     getSetting: settings,
     openExternal: url => { opened.push(url) },
+    resolveAddresses: publicResolver,
   })
   const result = await provider.searchInstant(`${LAUNCHER_WEB_SEARCH_QUERY_PREFIX} hello`)
   const item = result.after[0]

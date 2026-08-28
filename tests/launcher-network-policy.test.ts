@@ -23,3 +23,14 @@ test('network URL policy bounds hostile and oversized URLs', () => {
   assert.throws(() => parseLauncherExternalUrl(`https://example.com/${'x'.repeat(4096)}`), /Invalid|URL|policy/u)
   assert.throws(() => parseLauncherExternalUrl('https://example.com/a\nb'), /Invalid|URL/u)
 })
+
+test('public-address policy classifies embedded IPv4 and reviewed IPv6 special ranges', () => {
+  for (const address of [
+    '::192.168.1.1', '::10.0.0.1', '::127.0.0.1', '::ffff:192.168.1.1',
+    '100::1', '2001:0::1', '2001:1::1', '2001:2::1', '2001:10::1', '2001:20::1',
+    '2001:db8::1', '2002::1', '3fff::1', '64:ff9b::c000:201', 'fec0::1',
+  ]) assert.equal(isPublicLauncherNetworkAddress(address), false, address)
+  for (const address of ['::8.8.8.8', '::ffff:8.8.8.8', '2001:4860:4860::8888', '2606:4700:4700::1111', '2a00:1450:4001::1']) {
+    assert.equal(isPublicLauncherNetworkAddress(address), true, address)
+  }
+})

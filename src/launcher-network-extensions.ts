@@ -125,9 +125,12 @@ function publicIpv4(parts: readonly [number, number, number, number]): boolean {
   if (a === 100 && b >= 64 && b <= 127) return false
   if (a === 169 && b === 254) return false
   if (a === 172 && b >= 16 && b <= 31) return false
-  if (a === 192 && b === 0 && c === 0) return false
-  if (a === 192 && b === 0 && c === 2) return false
+  if (a === 192 && b === 0) return false
+  if (a === 192 && b === 31 && c === 196) return false
+  if (a === 192 && b === 52 && c === 193) return false
+  if (a === 192 && b === 88 && c === 99) return false
   if (a === 192 && b === 168) return false
+  if (a === 192 && b === 175 && c === 48) return false
   if (a === 198 && (b === 18 || b === 19)) return false
   if (a === 198 && b === 51 && c === 100) return false
   if (a === 203 && b === 0 && c === 113) return false
@@ -164,6 +167,31 @@ function ipv6Words(value: string): number[] | undefined {
   return [...left, ...Array.from({ length: missing }, () => 0), ...right]
 }
 
+function hasIpv6Prefix(words: readonly number[], prefix: readonly number[], bits: number): boolean {
+  let remaining = bits
+  for (let index = 0; remaining > 0; index += 1) {
+    const width = Math.min(remaining, 16)
+    const mask = width === 16 ? 0xffff : (0xffff << (16 - width)) & 0xffff
+    if (((words[index] ?? -1) & mask) !== ((prefix[index] ?? -1) & mask)) return false
+    remaining -= width
+  }
+  return true
+}
+
+const NON_GLOBAL_IPV6_PREFIXES: readonly Readonly<{ bits: number; words: readonly number[] }>[] = Object.freeze([
+  Object.freeze({ bits: 64, words: [0x0100, 0, 0, 0] }), // discard-only 100::/64
+  Object.freeze({ bits: 23, words: [0x2001, 0] }), // IETF protocol assignments, including Teredo and benchmarking
+  Object.freeze({ bits: 32, words: [0x2001, 0x0db8] }), // documentation
+  Object.freeze({ bits: 16, words: [0x2002] }), // deprecated 6to4
+  Object.freeze({ bits: 96, words: [0x0064, 0xff9b, 0, 0, 0, 0] }), // NAT64 well-known prefix
+  Object.freeze({ bits: 48, words: [0x0064, 0xff9b, 0x0001] }), // NAT64 local-use prefix
+  Object.freeze({ bits: 20, words: [0x3fff, 0] }), // documentation
+])
+
+function ipv4FromWords(words: readonly number[]): readonly [number, number, number, number] {
+  return [words[0]! >> 8, words[0]! & 255, words[1]! >> 8, words[1]! & 255]
+}
+
 /** Returns false for non-global addresses, including private, special, and mapped values. */
 export function isPublicLauncherNetworkAddress(value: string): boolean {
   if (typeof value !== 'string' || value.length === 0 || value.includes('%')) return false
@@ -176,12 +204,16 @@ export function isPublicLauncherNetworkAddress(value: string): boolean {
   const words = ipv6Words(value)
   if (words === undefined) return false
   const mapped = words.slice(0, 5).every(word => word === 0) && words[5] === 0xffff
-  if (mapped) return publicIpv4([words[6]! >> 8, words[6]! & 255, words[7]! >> 8, words[7]! & 255])
-  if (words.every(word => word === 0) || (words.slice(0, 7).every(word => word === 0) && words[7] === 1)) return false
+  if (mapped) return publicIpv4(ipv4FromWords(words.slice(6)))
+  // IPv4-compatible addresses are deprecated, but retain the reviewed policy:
+  // only their embedded globally routable IPv4 value is acceptable.
+  if (words.slice(0, 6).every(word => word === 0)) return publicIpv4(ipv4FromWords(words.slice(6)))
+  if (NON_GLOBAL_IPV6_PREFIXES.some(prefix => hasIpv6Prefix(words, prefix.words, prefix.bits))) return false
   const first = words[0]!
-  if ((first & 0xfe00) === 0xfc00 || (first & 0xffc0) === 0xfe80 || (first & 0xff00) === 0xff00) return false
-  if (first === 0x2001 && (words[1] === 0x0db8 || words[1] === 0x0002)) return false
-  return true
+  // This intentionally permits only global-unicast 2000::/3; unspecified,
+  // loopback, ULA, link-local, multicast, site-local, and other special ranges
+  // therefore fail closed without an ever-growing deny list.
+  return first >= 0x2000 && first <= 0x3fff
 }
 
 function isPublicLauncherHost(hostname: string): boolean {
@@ -215,14 +247,34 @@ async function defaultResolveAddresses(hostname: string): Promise<readonly strin
   return records.map(record => record.address)
 }
 
-async function assertPublicResolution(url: URL, resolveAddresses: LauncherNetworkResolveAddresses): Promise<void> {
-  const addresses = await resolveAddresses(url.hostname)
+type TrackRawOperation = <T>(operation: Promise<T>) => Promise<T>
+
+const identityTrackRawOperation: TrackRawOperation = <T>(operation: Promise<T>): Promise<T> => operation
+
+function abortReason(signal: AbortSignal, fallback = 'Network request canceled'): Error {
+  return signal.reason instanceof Error ? signal.reason : new Error(fallback)
+}
+
+async function assertPublicResolution(
+  url: URL,
+  resolveAddresses: LauncherNetworkResolveAddresses,
+  trackRaw: TrackRawOperation = identityTrackRawOperation,
+): Promise<void> {
+  const addresses = await trackRaw(Promise.resolve().then(async () => await resolveAddresses(url.hostname)))
   if (addresses.length === 0 || addresses.length > 32 || addresses.some(address => !isPublicLauncherNetworkAddress(address))) {
     throw new Error('Network host resolution is outside the public policy')
   }
 }
 
-async function readBoundedJson(response: Response, signal: AbortSignal): Promise<unknown> {
+async function settleCancel(cancel: Promise<void>): Promise<void> {
+  await Promise.race([cancel, new Promise<void>(resolve => setTimeout(resolve, 50))])
+}
+
+async function readBoundedJson(
+  response: Response,
+  signal: AbortSignal,
+  trackRaw: TrackRawOperation = identityTrackRawOperation,
+): Promise<unknown> {
   if (response.status >= 300 && response.status < 400) throw new Error('Network redirects are not allowed')
   if (!response.ok) throw new Error('Network provider returned an unsuccessful response')
   const rawLength = response.headers.get('content-length')
@@ -232,33 +284,48 @@ async function readBoundedJson(response: Response, signal: AbortSignal): Promise
   }
   const reader = response.body?.getReader()
   if (reader === undefined) throw new Error('Network provider returned no response body')
-  const cancel = (): void => { void reader.cancel().catch(() => undefined) }
-  signal.addEventListener('abort', cancel, { once: true })
+  let cancelPromise: Promise<void> | undefined
+  const cancelReader = (): Promise<void> => {
+    if (cancelPromise !== undefined) return cancelPromise
+    try {
+      cancelPromise = trackRaw(Promise.resolve(reader.cancel()).then(() => undefined, () => undefined))
+    } catch {
+      cancelPromise = Promise.resolve()
+    }
+    return cancelPromise
+  }
+  const onAbort = (): void => { void cancelReader() }
+  signal.addEventListener('abort', onAbort, { once: true })
   const chunks: Uint8Array[] = []
   let bytes = 0
+  let completed = false
   try {
+    // The check after listener registration closes the getReader/listener race.
+    if (signal.aborted) throw abortReason(signal)
     while (true) {
-      const next = await reader.read()
-      if (signal.aborted) throw signal.reason instanceof Error ? signal.reason : new Error('Network request canceled')
+      const next = await trackRaw(Promise.resolve().then(async () => await reader.read()))
+      if (signal.aborted) throw abortReason(signal)
       if (next.done) break
       const chunk = next.value
       if (chunk === undefined) continue
       bytes += chunk.byteLength
-      if (bytes > MAX_RESPONSE_BYTES) {
-        await reader.cancel().catch(() => undefined)
-        throw new Error('Network response exceeded its byte limit')
-      }
+      if (bytes > MAX_RESPONSE_BYTES) throw new Error('Network response exceeded its byte limit')
       chunks.push(chunk)
     }
+    const body = new Uint8Array(bytes)
+    let offset = 0
+    for (const chunk of chunks) { body.set(chunk, offset); offset += chunk.byteLength }
+    let text: string
+    try { text = new TextDecoder('utf-8', { fatal: true }).decode(body) } catch { throw new Error('Network provider returned invalid UTF-8') }
+    try {
+      const parsed = JSON.parse(text) as unknown
+      completed = true
+      return parsed
+    } catch { throw new Error('Network provider returned invalid JSON') }
   } finally {
-    signal.removeEventListener('abort', cancel)
+    signal.removeEventListener('abort', onAbort)
+    if (!completed) await settleCancel(cancelReader())
   }
-  const body = new Uint8Array(bytes)
-  let offset = 0
-  for (const chunk of chunks) { body.set(chunk, offset); offset += chunk.byteLength }
-  let text: string
-  try { text = new TextDecoder('utf-8', { fatal: true }).decode(body) } catch { throw new Error('Network provider returned invalid UTF-8') }
-  try { return JSON.parse(text) as unknown } catch { throw new Error('Network provider returned invalid JSON') }
 }
 
 async function runTimed<T>(
@@ -305,15 +372,16 @@ async function requestJson(
   parentSignal: AbortSignal | undefined,
   timeoutMs: number,
   expected: Readonly<{ origin: string; pathname: string }>,
+  trackRaw: TrackRawOperation = identityTrackRawOperation,
 ): Promise<unknown> {
   return await runTimed(async signal => {
     const url = parseLauncherExternalUrl(urlValue)
     if (url.origin !== expected.origin || url.pathname !== expected.pathname) throw new Error('Network provider destination is not approved')
-    await assertPublicResolution(url, options.resolveAddresses ?? defaultResolveAddresses)
+    await assertPublicResolution(url, options.resolveAddresses ?? defaultResolveAddresses, trackRaw)
     const body = typeof init?.body === 'string' ? init.body : undefined
     if (body !== undefined && new TextEncoder().encode(body).byteLength > MAX_REQUEST_BODY_BYTES) throw new Error('Network request body exceeded its byte limit')
-    const response = await options.fetch(url.toString(), { ...init, redirect: 'manual', signal })
-    return await readBoundedJson(response, signal)
+    const response = await trackRaw(Promise.resolve().then(async () => await options.fetch(url.toString(), { ...init, redirect: 'manual', signal })))
+    return await readBoundedJson(response, signal, trackRaw)
   }, parentSignal, timeoutMs)
 }
 
@@ -336,6 +404,10 @@ function customEngines(options: LauncherNetworkOptions): readonly LauncherNetwor
 
 function boundedNetworkText(value: string, maximum: number): boolean {
   return typeof value === 'string' && value.length > 0 && value.length <= maximum && !/[\0\r\n]/u.test(value)
+}
+
+function boundedTranslationText(value: string): boolean {
+  return typeof value === 'string' && value.length > 0 && value.length <= MAX_TRANSLATION_TEXT && !/\0/u.test(value)
 }
 
 function safeQuery(value: string): boolean {
@@ -427,6 +499,7 @@ function mapCustomResult(
   return Object.freeze({
     defaultAction: action(HANDLERS.open, value, `Search ${engine.name}`),
     description: `Search in ${engine.name}`,
+    details: value,
     id: `${engine.id}:instantResult`,
     imageKey: 'custom-web-search',
     name: engine.name,
@@ -453,6 +526,7 @@ function mapWebResult(
   return Object.freeze({
     defaultAction: action(HANDLERS.open, value, actionDescription.slice(0, 512)),
     description: resultDescription,
+    details: value,
     id,
     imageKey: engine === 'DuckDuckGo' ? 'web-search-duckduckgo' : 'web-search-google',
     name,
@@ -482,8 +556,10 @@ export function createLauncherNetworkExtensions(options: LauncherNetworkOptions)
   const rates = new Map<string, CurrencyRates>()
   const providerErrors = new Map<LauncherNetworkExtensionId, string>()
   const activeWork = new Set<Promise<unknown>>()
+  const activeRawOperations = new Set<Promise<unknown>>()
   const activeControllers = new Set<AbortController>()
   let activeInteractive: Readonly<{ controller: AbortController; generation: number }> | undefined
+  let activeLoad: Readonly<{ controller: AbortController; generation: number }> | undefined
   let queryGeneration = 0
   let loadGeneration = 0
   let closed = false
@@ -507,6 +583,20 @@ export function createLauncherNetworkExtensions(options: LauncherNetworkOptions)
     activeWork.add(tracked)
     return tracked
   }
+  const trackRaw: TrackRawOperation = <T>(work: Promise<T>): Promise<T> => {
+    let tracked!: Promise<T>
+    tracked = work.then(value => { activeRawOperations.delete(tracked); return value }, reason => { activeRawOperations.delete(tracked); throw reason })
+    activeRawOperations.add(tracked)
+    return tracked
+  }
+  const hasUnsettledRawOperations = (): boolean => activeRawOperations.size > 0
+  const waitForRawOperations = async (): Promise<boolean> => {
+    if (!hasUnsettledRawOperations()) return true
+    const settled = Promise.allSettled([...activeRawOperations]).then(() => undefined)
+    await Promise.race([settled, new Promise<void>(resolve => setTimeout(resolve, 50))])
+    return !hasUnsettledRawOperations()
+  }
+  const rawOperationBusyError = (): Error => new Error('Network provider is waiting for a previous operation to settle')
   const clearInteractiveActions = (): void => {
     activeInteractive?.controller.abort(new Error('Network request was superseded'))
     activeInteractive = undefined
@@ -551,7 +641,9 @@ export function createLauncherNetworkExtensions(options: LauncherNetworkOptions)
         signal,
         timeoutMs,
         { origin: 'https://cdn.jsdelivr.net', pathname: `/npm/@fawazahmed0/currency-api@latest/v1/currencies/${currency}.json` },
+        trackRaw,
       ))
+      if (signal.aborted || generation !== loadGeneration || closed) throw abortReason(signal, 'Currency refresh canceled')
       if (!isRecord(data) || !isRecord(data[currency])) throw new Error('invalid currency rate map')
       const entries = Object.entries(data[currency]).slice(0, MAX_RATE_ENTRIES)
       const values: Record<string, number> = {}
@@ -559,6 +651,7 @@ export function createLauncherNetworkExtensions(options: LauncherNetworkOptions)
         if (!CURRENCY_CODE.test(key) || typeof value !== 'number' || !Number.isFinite(value) || value < 0) throw new Error('invalid currency rate')
         values[key] = value
       }
+      if (signal.aborted || generation !== loadGeneration || closed) throw abortReason(signal, 'Currency refresh canceled')
       staged.set(currency, Object.freeze(values))
     }))
     if (signal.aborted || generation !== loadGeneration || closed) throw signal.reason instanceof Error ? signal.reason : new Error('Currency refresh canceled')
@@ -574,28 +667,42 @@ export function createLauncherNetworkExtensions(options: LauncherNetworkOptions)
 
   const loadIndexedItems = async (signal: AbortSignal): Promise<readonly LauncherInternalResultItem[]> => {
     if (closed) throw new Error('TockLauncher network provider is closed')
-    if (signal.aborted) throw signal.reason instanceof Error ? signal.reason : new Error('Network load canceled')
+    if (signal.aborted) throw abortReason(signal, 'Network load canceled')
+    activeLoad?.controller.abort(new Error('Network provider scan superseded'))
     const generation = ++loadGeneration
     queryGeneration += 1
     clearInteractiveActions()
     abortActiveControllers(new Error('Network provider scan superseded'))
-    rates.clear()
-    if (enabled().has('CurrencyConversion')) await loadCurrency(signal, generation)
-    if (closed || signal.aborted || generation !== loadGeneration) throw signal.reason instanceof Error ? signal.reason : new Error('Network load was superseded')
-    const ids = enabled()
-    const items: LauncherInternalResultItem[] = []
-    if (ids.has('DeeplTranslator')) items.push(Object.freeze({
-      defaultAction: action(HANDLERS.invoke, 'DeeplTranslator', 'Open DeepL Translator', false),
-      description: 'Translate with DeepL', id: 'ueli-network:DeeplTranslator', imageKey: 'deepl-translator', name: 'DeepL Translator', sourceExtension: 'DeeplTranslator',
-    }))
-    if (ids.has('WebSearch')) {
-      const web = currentWebSettings(options)
-      items.push(Object.freeze({
-        defaultAction: action(HANDLERS.invoke, 'WebSearch', `Search ${web.engine}`, false),
-        description: 'Web Search', id: 'ueli-network:WebSearch', imageKey: web.engine === 'DuckDuckGo' ? 'web-search-duckduckgo' : 'web-search-google', name: web.engine, sourceExtension: 'WebSearch',
+    if (!await waitForRawOperations()) throw rawOperationBusyError()
+    const controller = new AbortController()
+    activeLoad = Object.freeze({ controller, generation })
+    activeControllers.add(controller)
+    const relayAbort = (): void => { controller.abort(abortReason(signal, 'Network load canceled')) }
+    if (signal.aborted) relayAbort()
+    else signal.addEventListener('abort', relayAbort, { once: true })
+    try {
+      rates.clear()
+      if (enabled().has('CurrencyConversion')) await loadCurrency(controller.signal, generation)
+      if (closed || controller.signal.aborted || generation !== loadGeneration) throw abortReason(controller.signal, 'Network load was superseded')
+      const ids = enabled()
+      const items: LauncherInternalResultItem[] = []
+      if (ids.has('DeeplTranslator')) items.push(Object.freeze({
+        defaultAction: action(HANDLERS.invoke, 'DeeplTranslator', 'Open DeepL Translator', false),
+        description: 'Translate with DeepL', id: 'ueli-network:DeeplTranslator', imageKey: 'deepl-translator', name: 'DeepL Translator', sourceExtension: 'DeeplTranslator',
       }))
+      if (ids.has('WebSearch')) {
+        const web = currentWebSettings(options)
+        items.push(Object.freeze({
+          defaultAction: action(HANDLERS.invoke, 'WebSearch', `Search ${web.engine}`, false),
+          description: 'Web Search', id: 'ueli-network:WebSearch', imageKey: web.engine === 'DuckDuckGo' ? 'web-search-duckduckgo' : 'web-search-google', name: web.engine, sourceExtension: 'WebSearch',
+        }))
+      }
+      return Object.freeze(items)
+    } finally {
+      signal.removeEventListener('abort', relayAbort)
+      activeControllers.delete(controller)
+      if (activeLoad?.controller === controller) activeLoad = undefined
     }
-    return Object.freeze(items)
   }
 
   const translate = async (term: string, signal: AbortSignal): Promise<LauncherInternalResultItem[]> => {
@@ -608,13 +715,13 @@ export function createLauncherNetworkExtensions(options: LauncherNetworkOptions)
     const body = JSON.stringify({ text: [term], target_lang: target, ...(source === 'Auto' ? null : { source_lang: source }) })
     const data = await track(requestJson(options, 'https://api-free.deepl.com/v2/translate', {
       body, headers: { Authorization: `DeepL-Auth-Key ${apiKey}`, 'Content-Type': 'application/json' }, method: 'POST',
-    }, signal, timeoutMs, { origin: 'https://api-free.deepl.com', pathname: '/v2/translate' }))
+    }, signal, timeoutMs, { origin: 'https://api-free.deepl.com', pathname: '/v2/translate' }, trackRaw))
     if (!isRecord(data) || !Array.isArray(data.translations)) throw new Error('invalid DeepL response')
     const digest = settingsDigest('DeeplTranslator')
     const results: LauncherInternalResultItem[] = []
     const entries = data.translations.slice(0, MAX_TRANSLATIONS)
     for (const [index, entry] of entries.entries()) {
-      if (!isRecord(entry) || typeof entry.text !== 'string' || entry.text.length === 0 || entry.text.length > MAX_TRANSLATION_TEXT || /[\0\r\n]/u.test(entry.text)) continue
+      if (!isRecord(entry) || typeof entry.text !== 'string' || !boundedTranslationText(entry.text)) continue
       const item = Object.freeze({
         defaultAction: action(HANDLERS.copy, entry.text, 'Copy translation', false),
         description: 'DeepL Translation', id: `deepl-translation:${index}`, imageKey: 'deepl-translator', name: entry.text.slice(0, 512), sourceExtension: 'DeeplTranslator',
@@ -637,7 +744,7 @@ export function createLauncherNetworkExtensions(options: LauncherNetworkOptions)
     const suggestionUrl = webSuggestionUrl(web.engine, term, web.locale)
     const data = await track(requestJson(options, suggestionUrl.toString(), undefined, signal, timeoutMs, {
       origin: suggestionUrl.origin, pathname: suggestionUrl.pathname,
-    }))
+    }, trackRaw))
     const suggestions: string[] = web.engine === 'Google'
       ? (Array.isArray(data) && Array.isArray(data[1]) ? data[1].filter((value): value is string => typeof value === 'string') : [])
       : (Array.isArray(data) ? data.flatMap(value => isRecord(value) && typeof value.phrase === 'string' ? [value.phrase] : []) : [])
@@ -653,6 +760,7 @@ export function createLauncherNetworkExtensions(options: LauncherNetworkOptions)
     if (closed) return emptyResult()
     const generation = ++queryGeneration
     clearInteractiveActions()
+    if (!await waitForRawOperations() || closed || generation !== queryGeneration) return emptyResult(getLastError())
     const controller = new AbortController()
     activeInteractive = Object.freeze({ controller, generation })
     activeControllers.add(controller)
@@ -674,8 +782,10 @@ export function createLauncherNetworkExtensions(options: LauncherNetworkOptions)
           if (!searchTerm.startsWith(engine.prefix)) continue
           const query = searchTerm.slice(engine.prefix.length).trim()
           if (!boundedNetworkText(query, 512)) continue
-          try { after.push(mapCustomResult(engine, query, customSearchUrl(engine, query), nextActions, generation, digest)) }
-          catch (reason) { report('CustomWebSearch', reason) }
+          try {
+            after.push(mapCustomResult(engine, query, customSearchUrl(engine, query), nextActions, generation, digest))
+            clearError('CustomWebSearch')
+          } catch (reason) { report('CustomWebSearch', reason) }
         }
       }
       const isDeepL = searchTerm.startsWith(LAUNCHER_DEEPL_QUERY_PREFIX)
@@ -686,6 +796,7 @@ export function createLauncherNetworkExtensions(options: LauncherNetworkOptions)
           const digest = settingsDigest('WebSearch')
           const term = searchTerm.trim()
           after.push(mapWebResult('WebSearch', `Search "${term}"`, web.engine, `Search ${web.engine}`, webSearchUrl(web.engine, term, web.locale), term, web.engine, web.locale, nextActions, generation, digest, `search-${web.engine}`))
+          clearError('WebSearch')
         } catch (reason) { report('WebSearch', reason) }
       }
       if (isDeepL || isWeb) {
@@ -732,26 +843,29 @@ export function createLauncherNetworkExtensions(options: LauncherNetworkOptions)
     if (!LAUNCHER_NETWORK_EXTENSION_IDS.includes(record.sourceExtension as LauncherNetworkExtensionId)) return false
     const extensionId = record.sourceExtension as LauncherNetworkExtensionId
     if (!enabled().has(extensionId)) throw new Error('Network extension is disabled')
-    if (record.handlerKey === HANDLERS.invoke) {
-      if ((extensionId !== 'DeeplTranslator' && extensionId !== 'WebSearch') || record.argument !== extensionId) throw new Error('Invalid network extension invocation')
-      return true
-    }
-    if (record.handlerKey !== HANDLERS.copy && record.handlerKey !== HANDLERS.open) throw new Error('Invalid network extension action')
-    const kind = record.handlerKey === HANDLERS.copy ? 'copy' : 'url'
-    const mapKey = actionKey(extensionId, kind, record.argument)
-    const entry = currentActions.get(mapKey)
-    if (entry === undefined || entry.extensionId !== extensionId || entry.generation !== queryGeneration) throw new Error('Network action is not from the current main-owned result set')
-    if (record.handlerKey === HANDLERS.copy) {
-      if (entry.kind !== 'copy' || entry.value !== record.argument || settingsDigest(extensionId) !== entry.settingsDigest) throw new Error('Network copy action is stale')
-      if (currentActions.get(mapKey) !== entry || entry.generation !== queryGeneration) throw new Error('Network copy action is stale')
-      await options.copyText(entry.value)
-      return true
-    }
-    if (entry.kind !== 'url' || entry.value !== record.argument || entry.query === undefined) throw new Error('Network URL action is invalid')
     const controller = new AbortController()
     activeControllers.add(controller)
-    const current = (): boolean => currentActions.get(mapKey) === entry && entry.generation === queryGeneration && !closed && !controller.signal.aborted
     try {
+      if (controller.signal.aborted) throw abortReason(controller.signal)
+      if (record.handlerKey === HANDLERS.invoke) {
+        if ((extensionId !== 'DeeplTranslator' && extensionId !== 'WebSearch') || record.argument !== extensionId) throw new Error('Invalid network extension invocation')
+        return true
+      }
+      if (record.handlerKey !== HANDLERS.copy && record.handlerKey !== HANDLERS.open) throw new Error('Invalid network extension action')
+      const kind = record.handlerKey === HANDLERS.copy ? 'copy' : 'url'
+      const mapKey = actionKey(extensionId, kind, record.argument)
+      const entry = currentActions.get(mapKey)
+      if (entry === undefined || entry.extensionId !== extensionId || entry.generation !== queryGeneration) throw new Error('Network action is not from the current main-owned result set')
+      if (record.handlerKey === HANDLERS.copy) {
+        if (entry.kind !== 'copy' || entry.value !== record.argument || settingsDigest(extensionId) !== entry.settingsDigest) throw new Error('Network copy action is stale')
+        if (currentActions.get(mapKey) !== entry || entry.generation !== queryGeneration || controller.signal.aborted) throw new Error('Network copy action is stale')
+        await options.copyText(entry.value)
+        if (controller.signal.aborted || closed) throw new Error('Network copy action is stale')
+        return true
+      }
+      if (!await waitForRawOperations()) throw rawOperationBusyError()
+      if (entry.kind !== 'url' || entry.value !== record.argument || entry.query === undefined) throw new Error('Network URL action is invalid')
+      const current = (): boolean => currentActions.get(mapKey) === entry && entry.generation === queryGeneration && !closed && !controller.signal.aborted
       let url: URL
       if (extensionId === 'CustomWebSearch') {
         const engine = customEngines(options).find(value => value.id === entry.customEngineId)
@@ -764,8 +878,8 @@ export function createLauncherNetworkExtensions(options: LauncherNetworkOptions)
       }
       if (url.toString() !== entry.value || !current()) throw new Error('Network URL action is stale')
       await runTimed(async signal => {
-        await assertPublicResolution(url, options.resolveAddresses ?? defaultResolveAddresses)
-        if (signal.aborted) throw signal.reason instanceof Error ? signal.reason : new Error('Network navigation canceled')
+        await assertPublicResolution(url, options.resolveAddresses ?? defaultResolveAddresses, trackRaw)
+        if (signal.aborted) throw abortReason(signal, 'Network navigation canceled')
       }, controller.signal, timeoutMs)
       if (!current()) throw new Error('Network URL action is stale')
       await options.openExternal(url.toString())
@@ -785,7 +899,7 @@ export function createLauncherNetworkExtensions(options: LauncherNetworkOptions)
     // Network transports receive abort signals; uncooperative test/native promises are
     // abandoned after a small bounded drain and cannot publish because closed is fenced.
     const timer = new Promise<void>(resolve => setTimeout(resolve, 100))
-    await Promise.race([Promise.allSettled([...activeWork]).then(() => undefined), timer])
+    await Promise.race([Promise.allSettled([...activeWork, ...activeRawOperations]).then(() => undefined), timer])
   }
 
   return Object.freeze({ close, executeAction, getLastError, invalidate, loadIndexedItems, searchInstant })

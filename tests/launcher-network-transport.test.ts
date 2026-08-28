@@ -57,9 +57,41 @@ test('custom query metacharacters remain one encoded same-origin URL action', as
   assert.match(result.after[0]?.defaultAction.argument ?? '', /^https:\/\/example\.com\/search\?q=a%20%26%20b%20%7C%20c%20%3E%20d%20%3C%20e%20%5E%20%22quoted%22$/u)
 })
 
-test('redirects, oversized bodies, and malformed UTF-8 become bounded provider errors', async () => {
+test('every redirect status is rejected without following a chain or loop', async () => {
+  for (const status of [300, 301, 302, 303, 307, 308]) {
+    let calls = 0
+    const network = provider(async () => {
+      calls += 1
+      return response('', { status, headers: { location: 'https://evil.example/loop' } })
+    })
+    const result = await network.searchInstant(`${LAUNCHER_WEB_SEARCH_QUERY_PREFIX} status-${status}`)
+    assert.equal(result.after.length, 0)
+    assert.equal(result.lastError, 'Web Search is unavailable.')
+    assert.equal(calls, 1)
+  }
+})
+
+test('oversized streamed bodies cancel their reader and malformed UTF-8 remains bounded', async () => {
+  let cancelCount = 0
+  let readCount = 0
+  const reader = {
+    cancel: async () => { cancelCount += 1 },
+    read: async (): Promise<ReadableStreamReadResult<Uint8Array>> => {
+      readCount += 1
+      return readCount === 1
+        ? { done: false, value: new Uint8Array(1_048_576) }
+        : { done: false, value: new Uint8Array(1) }
+    },
+  } as unknown as ReadableStreamDefaultReader<Uint8Array>
+  const oversized = provider(async () => ({
+    body: { getReader: () => reader }, headers: new Headers(), ok: true, status: 200,
+  } as unknown as Response))
+  const oversizedResult = await oversized.searchInstant(`${LAUNCHER_WEB_SEARCH_QUERY_PREFIX} streamed`)
+  assert.equal(oversizedResult.lastError, 'Web Search is unavailable.')
+  assert.equal(cancelCount, 1)
+  assert.ok(readCount <= 2)
+
   for (const fetch of [
-    async () => response('', { status: 302, headers: { location: 'https://evil.example/' } }),
     async () => response('x'.repeat(1_048_577)),
     async () => response(new Uint8Array([0xff, 0xfe])),
   ] satisfies readonly LauncherNetworkFetch[]) {
@@ -112,4 +144,129 @@ test('current custom settings are revalidated before external navigation', async
   engineUrl = 'https://other.example/search?q={{query}}'
   await assert.rejects(network.executeAction(actionRecord(result.after[0]!)), /stale|current|main-owned/u)
   assert.deepEqual(opened, [])
+})
+
+test('custom and web rows expose bounded generated URLs without making actions public', async () => {
+  const network = provider(async () => response(JSON.stringify(['term', []])), key => key === 'extension[CustomWebSearch].customSearchEngines'
+    ? [{ encodeSearchTerm: true, id: 'custom', name: 'Example', prefix: 'x', url: 'https://example.com/search?q={{query}}' }] as unknown as never
+    : baseSettings(key, undefined as never))
+  const custom = await network.searchInstant('x hello')
+  assert.equal(custom.after[0]?.details, 'https://example.com/search?q=hello')
+  assert.match(custom.after[0]?.defaultAction.argument ?? '', /^https:\/\/example\.com\/search\?q=hello$/u)
+  const web = await network.searchInstant(`${LAUNCHER_WEB_SEARCH_QUERY_PREFIX} hello`)
+  assert.equal(web.after[0]?.details, 'https://google.com/search?q=hello&hl=en-us')
+})
+
+test('DeepL preserves bounded multiline translation text and copies it through its action', async () => {
+  let copied = ''
+  const text = 'line one\nline two\r\nline three'
+  const network = createLauncherNetworkExtensions({
+    copyText: value => { copied = value }, enabledExtensionIds: () => ['DeeplTranslator'],
+    fetch: async () => response(JSON.stringify({ translations: [{ text }] })), getSetting: baseSettings,
+    openExternal: () => undefined, resolveAddresses: publicResolver,
+  })
+  const result = await network.searchInstant(`${LAUNCHER_DEEPL_QUERY_PREFIX} hello`)
+  assert.equal(result.before[0]?.name, text)
+  assert.equal(await network.executeAction(actionRecord(result.before[0]!)), true)
+  assert.equal(copied, text)
+})
+
+test('successful custom search clears only its provider error and preserves other provider status', async () => {
+  const getSetting = <T>(key: string, fallback: T): T => key === 'extension[CustomWebSearch].customSearchEngines'
+    ? [{ encodeSearchTerm: true, id: 'custom', name: 'Example', prefix: 'x', url: 'https://example.com/search?q={{query}}' }] as T
+    : baseSettings(key, fallback)
+  const network = provider(async () => { throw new Error('offline') }, getSetting)
+  const failed = await network.searchInstant(`${LAUNCHER_WEB_SEARCH_QUERY_PREFIX} hello`)
+  assert.equal(failed.lastError, 'Web Search is unavailable.')
+  const custom = await network.searchInstant('x hello')
+  assert.equal(custom.lastError, 'Web Search is unavailable.')
+  assert.equal(network.getLastError(), 'Web Search is unavailable.')
+})
+
+test('abort before and during body reads cancels the reader and does not publish stale results', async () => {
+  const makeReaderResponse = (reader: ReadableStreamDefaultReader<Uint8Array>): Response => ({
+    body: { getReader: () => reader }, headers: new Headers(), ok: true, status: 200,
+  } as unknown as Response)
+  let beforeCancelCount = 0
+  let beforeRead!: () => void
+  let network!: ReturnType<typeof createLauncherNetworkExtensions>
+  const beforeReader = {
+    cancel: async () => { beforeCancelCount += 1; beforeRead() },
+    read: () => new Promise<ReadableStreamReadResult<Uint8Array>>(resolve => { beforeRead = () => resolve({ done: true, value: undefined }) }),
+  } as unknown as ReadableStreamDefaultReader<Uint8Array>
+  network = provider(async () => {
+    queueMicrotask(() => network.invalidate())
+    return makeReaderResponse(beforeReader)
+  })
+  assert.deepEqual(await network.searchInstant(`${LAUNCHER_WEB_SEARCH_QUERY_PREFIX} before`), { before: [], after: [] })
+  await new Promise<void>(resolve => setImmediate(resolve))
+  assert.equal(beforeCancelCount, 1)
+
+  let duringCancelCount = 0
+  let duringRead!: () => void
+  const duringReader = {
+    cancel: async () => { duringCancelCount += 1; duringRead() },
+    read: () => new Promise<ReadableStreamReadResult<Uint8Array>>(resolve => { duringRead = () => resolve({ done: true, value: undefined }) }),
+  } as unknown as ReadableStreamDefaultReader<Uint8Array>
+  network = provider(async () => makeReaderResponse(duringReader))
+  const pending = network.searchInstant(`${LAUNCHER_WEB_SEARCH_QUERY_PREFIX} during`)
+  await new Promise<void>(resolve => setImmediate(resolve))
+  network.invalidate()
+  assert.deepEqual(await pending, { before: [], after: [] })
+  assert.equal(duringCancelCount, 1)
+})
+
+test('abort-aware supersession settles the old request before latest results publish', async () => {
+  const calls: string[] = []
+  const network = createLauncherNetworkExtensions({
+    copyText: () => undefined, enabledExtensionIds: () => ['WebSearch'],
+    fetch: async (url, init) => {
+      calls.push(url)
+      if (url.includes('first')) {
+        return await new Promise<Response>(resolve => init?.signal?.addEventListener('abort', () => resolve(response(JSON.stringify(['first', []]))), { once: true }))
+      }
+      return response(JSON.stringify(['second', ['latest']]))
+    },
+    getSetting: baseSettings, openExternal: () => undefined, resolveAddresses: publicResolver,
+  })
+  const first = network.searchInstant(`${LAUNCHER_WEB_SEARCH_QUERY_PREFIX} first`)
+  await new Promise<void>(resolve => setImmediate(resolve))
+  await new Promise<void>(resolve => setImmediate(resolve))
+  const second = network.searchInstant(`${LAUNCHER_WEB_SEARCH_QUERY_PREFIX} second`)
+  const [firstResult, secondResult] = await Promise.all([first, second])
+  assert.deepEqual(firstResult, { before: [], after: [] })
+  assert.equal(secondResult.after[0]?.name, 'Search "second"')
+  assert.equal(calls.length, 2)
+})
+
+test('ignored-abort fetch is not replaced unboundedly and close remains bounded', async () => {
+  let calls = 0
+  const network = createLauncherNetworkExtensions({
+    copyText: () => undefined, enabledExtensionIds: () => ['WebSearch'],
+    fetch: async () => { calls += 1; return await new Promise<Response>(() => {}) },
+    getSetting: baseSettings, openExternal: () => undefined, requestTimeoutMs: 5, resolveAddresses: publicResolver,
+  })
+  const first = await network.searchInstant(`${LAUNCHER_WEB_SEARCH_QUERY_PREFIX} first`)
+  assert.equal(first.lastError, 'Web Search is unavailable.')
+  const second = await network.searchInstant(`${LAUNCHER_WEB_SEARCH_QUERY_PREFIX} second`)
+  assert.equal(second.lastError, 'Web Search is unavailable.')
+  assert.equal(calls, 1)
+  const started = Date.now()
+  await network.close()
+  assert.equal(Date.now() - started < 250, true)
+})
+
+test('currency refresh owns and aborts its raw operation', async () => {
+  let fetchSignal!: AbortSignal
+  const network = createLauncherNetworkExtensions({
+    copyText: () => undefined, enabledExtensionIds: () => ['CurrencyConversion'],
+    fetch: async (_url, init) => { fetchSignal = init?.signal as AbortSignal; return await new Promise<Response>(() => {}) },
+    getSetting: baseSettings, openExternal: () => undefined, requestTimeoutMs: 5, resolveAddresses: publicResolver,
+  })
+  const load = network.loadIndexedItems(new AbortController().signal)
+  await new Promise<void>(resolve => setImmediate(resolve))
+  network.invalidate()
+  await assert.rejects(load)
+  assert.equal(fetchSignal.aborted, true)
+  await network.close()
 })

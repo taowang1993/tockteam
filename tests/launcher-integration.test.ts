@@ -31,6 +31,8 @@ test('main assembles one launcher owner without branching the DSH workbench fact
   assert.match(main, /launcherController\?\.destroyWindow\(\)/u)
   assert.match(main, /launcherController\?\.dispose\(\)/u)
   assert.match(main, /executeTockTeamDestination\(record, \(\) =>/u)
+  assert.match(main, /fileSearch\.executeAction\(record\)[\s\S]+network\.executeAction\(record\)[\s\S]+executeTockTeamDestination/u)
+  assert.match(main, /if \(await network\.executeAction\(record\)\) \{[\s\S]+hideAfterInvocation/u)
   assert.match(main, /createLauncherLocalExtensions/u)
   assert.match(main, /local\.loadIndexedItems\(\)/u)
   assert.match(main, /local\.searchInstant\(searchTerm\)/u)

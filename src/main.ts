@@ -1227,7 +1227,7 @@ function initializeLauncher(): void {
     initialFavoriteItemIds: repository.getSetting('favorites', []),
     initialIndexedItems: repository.readIndex(),
     appendLog: async (_level, message) => { await repository.appendLog('ERROR', message) },
-    getIndexedError: () => fileSearch.getLastError() ?? network.getLastError(),
+    getIndexedError: () => network.getLastError() ?? fileSearch.getLastError(),
     loadIndexedItems: async signal => {
       const result = await createTockTeamDestinationResults('')
       return [...result.before, ...result.after, ...await local.loadIndexedItems(), ...await discovery.loadIndexedItems(signal), ...await fileSearch.loadIndexedItems(signal), ...await network.loadIndexedItems(signal)]
@@ -1239,9 +1239,9 @@ function initializeLauncher(): void {
       return Object.freeze({
         after: Object.freeze([...localResults.after, ...discoveryResults.after, ...fileResults.after, ...networkResults.after]),
         before: Object.freeze([...localResults.before, ...discoveryResults.before, ...fileResults.before, ...networkResults.before]),
-        ...(fileResults.lastError === undefined
-          ? networkResults.lastError === undefined ? null : { lastError: networkResults.lastError }
-          : { lastError: fileResults.lastError }),
+        ...(networkResults.lastError === undefined
+          ? fileResults.lastError === undefined ? null : { lastError: fileResults.lastError }
+          : { lastError: networkResults.lastError }),
       })
     },
     persistIndex: async items => { await repository.writeIndex(items) },
@@ -1258,6 +1258,10 @@ function initializeLauncher(): void {
       if (await local.executeAction(record)) return
       if (await discovery.executeAction(record)) return
       if (await fileSearch.executeAction(record)) return
+      if (await network.executeAction(record)) {
+        if (record.hideWindowAfterInvocation) controller?.hideAfterInvocation(record.owner.webContentsId)
+        return
+      }
       await executeTockTeamDestination(record, () => {
         if (runtimeUrl === undefined) return false
         return mainWindow === undefined || mainWindow.isDestroyed()
