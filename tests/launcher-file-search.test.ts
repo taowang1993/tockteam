@@ -435,3 +435,35 @@ test('FileSearch actions use home-scope canonical revalidation without a strict 
     assert.deepEqual(opened, [target]); assert.deepEqual(revealed, [target])
   } finally { await rm(home, { force: true, recursive: true }) }
 })
+
+test('file-search window-clear invalidation aborts a consumed open effect', async () => {
+  let observedSignal: AbortSignal | undefined
+  let release!: () => void
+  const pendingEffect = new Promise<void>(resolve => { release = resolve })
+  const scanners: LauncherFileSearchScanners = {
+    queryFileSearch: async () => [{ identity: { dev: '1', ino: '2' }, path: '/home/max/report.txt', type: 'file' as const }],
+    scanSimpleFolder: async () => [],
+    validatePath: async () => true,
+  }
+  const provider = createLauncherFileSearchExtensions({
+    effects: {
+      openPath: async (_target, signal) => { observedSignal = signal; await pendingEffect },
+      revealPath: () => undefined,
+    },
+    enabledExtensionIds: () => ['FileSearch'],
+    getSetting: settings,
+    homePath: '/home/max',
+    platform: 'macOS',
+    scanners,
+  })
+  const result = (await provider.searchInstant(`${LAUNCHER_FILE_SEARCH_QUERY_PREFIX} report`)).after[0]
+  assert.ok(result)
+  const pending = provider.executeAction(record(result!))
+  await new Promise<void>(resolve => setImmediate(resolve))
+  provider.invalidate('launcher-owner-clear')
+  assert.equal(observedSignal?.aborted, true)
+  release()
+  await assert.rejects(pending, /canceled|revalidation|current/u)
+  await provider.waitForIdle()
+  await provider.close()
+})

@@ -35,12 +35,12 @@ type InstantResult = Readonly<{
 }>
 
 export type LauncherNetworkOptions = Readonly<{
-  copyText: (text: string) => Promise<void> | void
+  copyText: (text: string, signal: AbortSignal) => Promise<void> | void
   enabledExtensionIds: () => readonly string[]
   fetch: LauncherNetworkFetch
   getSetting: <T>(key: string, fallback: T) => T
   onProviderError?: (extensionId: LauncherNetworkExtensionId, error: Error) => void
-  openExternal: (url: string) => Promise<void> | void
+  openExternal: (url: string, signal: AbortSignal) => Promise<void> | void
   requestTimeoutMs?: number
   resolveAddresses?: LauncherNetworkResolveAddresses
 }>
@@ -466,9 +466,10 @@ export function createLauncherNetworkExtensions(options: LauncherNetworkOptions)
   close: () => Promise<void>
   executeAction: (record: LauncherActionRecord) => Promise<boolean>
   getLastError: () => string | undefined
-  invalidate: () => void
-  loadIndexedItems: (signal: AbortSignal) => Promise<readonly LauncherInternalResultItem[]>
+  invalidate: (reason?: string, preserveSignal?: AbortSignal) => void
+  loadIndexedItems: (signal: AbortSignal, preserveSignal?: AbortSignal) => Promise<readonly LauncherInternalResultItem[]>
   searchInstant: (searchTerm: string) => Promise<InstantResult>
+  waitForIdle: () => Promise<void>
 }> {
   const timeoutMs = options.requestTimeoutMs ?? DEFAULT_REQUEST_TIMEOUT_MS
   if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > MAX_REQUEST_TIMEOUT_MS) throw new Error('Invalid launcher network timeout')
@@ -522,14 +523,16 @@ export function createLauncherNetworkExtensions(options: LauncherNetworkOptions)
     activeInteractive = undefined
     currentActions = new Map()
   }
-  const abortActiveControllers = (reason: Error): void => {
-    for (const controller of activeControllers) controller.abort(reason)
+  const abortActiveControllers = (reason: Error, preserveSignal?: AbortSignal): void => {
+    for (const controller of activeControllers) {
+      if (controller.signal !== preserveSignal) controller.abort(reason)
+    }
   }
-  const invalidate = (): void => {
+  const invalidate = (reason = 'Network provider was invalidated', preserveSignal?: AbortSignal): void => {
     ++queryGeneration
     ++loadGeneration
     clearInteractiveActions()
-    abortActiveControllers(new Error('Network provider was invalidated'))
+    abortActiveControllers(new Error(reason), preserveSignal)
     rates.clear()
     providerErrors.clear()
   }
@@ -585,14 +588,14 @@ export function createLauncherNetworkExtensions(options: LauncherNetworkOptions)
     if (!hadFailure) clearError('CurrencyConversion')
   }
 
-  const loadIndexedItems = async (signal: AbortSignal): Promise<readonly LauncherInternalResultItem[]> => {
+  const loadIndexedItems = async (signal: AbortSignal, preserveSignal?: AbortSignal): Promise<readonly LauncherInternalResultItem[]> => {
     if (closed) throw new Error('TockLauncher network provider is closed')
     if (signal.aborted) throw abortReason(signal, 'Network load canceled')
     activeLoad?.controller.abort(new Error('Network provider scan superseded'))
     const generation = ++loadGeneration
     queryGeneration += 1
     clearInteractiveActions()
-    abortActiveControllers(new Error('Network provider scan superseded'))
+    abortActiveControllers(new Error('Network provider scan superseded'), preserveSignal)
     const ensureCurrentLoad = (): void => {
       if (closed || signal.aborted || generation !== loadGeneration) throw abortReason(signal, 'Network load was superseded')
     }
@@ -796,7 +799,7 @@ export function createLauncherNetworkExtensions(options: LauncherNetworkOptions)
       if (record.handlerKey === HANDLERS.copy) {
         if (entry.kind !== 'copy' || entry.value !== record.argument || settingsDigest(extensionId) !== entry.settingsDigest) throw new Error('Network copy action is stale')
         if (currentActions.get(mapKey) !== entry || entry.generation !== queryGeneration || controller.signal.aborted) throw new Error('Network copy action is stale')
-        await options.copyText(entry.value)
+        await track(Promise.resolve(options.copyText(entry.value, controller.signal)))
         if (controller.signal.aborted || closed) throw new Error('Network copy action is stale')
         return true
       }
@@ -819,26 +822,32 @@ export function createLauncherNetworkExtensions(options: LauncherNetworkOptions)
         if (signal.aborted) throw abortReason(signal, 'Network navigation canceled')
       }, controller.signal, timeoutMs)
       if (!current()) throw new Error('Network URL action is stale')
-      await options.openExternal(url.toString())
+      if (!current()) throw new Error('Network URL action is stale')
+      await track(Promise.resolve(options.openExternal(url.toString(), controller.signal)))
+      if (!current()) throw new Error('Network URL action is stale')
       return true
     } finally {
       activeControllers.delete(controller)
     }
   }
 
+  const waitForIdle = async (): Promise<void> => {
+    // Network transport wrappers are signal-bound; keep owner replacement bounded if a
+    // custom transport ignores its signal.
+    const timer = new Promise<void>(resolve => setTimeout(resolve, 100))
+    await Promise.race([Promise.allSettled([...activeWork, ...activeRawOperations]).then(() => undefined), timer])
+  }
+
   const close = async (): Promise<void> => {
-    if (closed) return
+    if (closed) { await waitForIdle(); return }
     closed = true
     ++queryGeneration; ++loadGeneration
     clearInteractiveActions()
     abortActiveControllers(new Error('TockLauncher network provider is closed'))
     currentActions = new Map()
     providerErrors.clear()
-    // Network transports receive abort signals; uncooperative test/native promises are
-    // abandoned after a small bounded drain and cannot publish because closed is fenced.
-    const timer = new Promise<void>(resolve => setTimeout(resolve, 100))
-    await Promise.race([Promise.allSettled([...activeWork, ...activeRawOperations]).then(() => undefined), timer])
+    await waitForIdle()
   }
 
-  return Object.freeze({ close, executeAction, getLastError, invalidate, loadIndexedItems, searchInstant })
+  return Object.freeze({ close, executeAction, getLastError, invalidate, loadIndexedItems, searchInstant, waitForIdle })
 }

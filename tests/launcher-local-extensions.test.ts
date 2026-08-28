@@ -204,3 +204,21 @@ test('local dynamic results remain bounded and retain complete copy arguments', 
   const item = (await local.searchInstant('anything')).before[0]!
   assert.equal(item.name.length, 512)
 })
+
+test('local window-clear invalidation aborts a consumed copy effect', async () => {
+  let observedSignal: AbortSignal | undefined
+  let release!: () => void
+  const pendingEffect = new Promise<void>(resolve => { release = resolve })
+  const local = createLauncherLocalExtensions({
+    ...options,
+    copyText: async (_text, signal) => { observedSignal = signal; await pendingEffect },
+  })
+  const pending = local.executeAction(action({ argument: 'secret' }))
+  await new Promise<void>(resolve => setImmediate(resolve))
+  local.invalidate('launcher-owner-clear')
+  assert.equal(observedSignal?.aborted, true)
+  release()
+  await assert.rejects(pending, /canceled|closed/u)
+  await local.waitForIdle()
+  await local.close()
+})

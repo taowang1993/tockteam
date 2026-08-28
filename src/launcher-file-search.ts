@@ -33,8 +33,8 @@ const MAX_SCAN_TIMEOUT_MS = 60_000
 
 type FileSearchOptions = Readonly<{
   effects: Readonly<{
-    openPath: (target: string) => Promise<void> | void
-    revealPath: (target: string) => Promise<void> | void
+    openPath: (target: string, signal: AbortSignal) => Promise<void> | void
+    revealPath: (target: string, signal: AbortSignal) => Promise<void> | void
   }>
   enabledExtensionIds: () => readonly string[]
   getSetting: <T>(key: string, fallback: T) => T
@@ -181,10 +181,11 @@ async function runBounded<T>(
 export function createLauncherFileSearchExtensions(options: FileSearchOptions): Readonly<{
   close: () => Promise<void>
   executeAction: (record: LauncherActionRecord) => Promise<boolean>
-  invalidate: () => void
+  invalidate: (reason?: string, preserveSignal?: AbortSignal) => void
   getLastError: () => string | undefined
-  loadIndexedItems: (signal: AbortSignal) => Promise<readonly LauncherInternalResultItem[]>
+  loadIndexedItems: (signal: AbortSignal, preserveSignal?: AbortSignal) => Promise<readonly LauncherInternalResultItem[]>
   searchInstant: (searchTerm: string) => Promise<FileSearchInstantResult>
+  waitForIdle: () => Promise<void>
 }> {
   const scanTimeoutMs = Number.isSafeInteger(options.scanTimeoutMs)
     ? Math.max(1, Math.min(MAX_SCAN_TIMEOUT_MS, options.scanTimeoutMs as number))
@@ -197,6 +198,7 @@ export function createLauncherFileSearchExtensions(options: FileSearchOptions): 
   let activeQuery: Readonly<{ controller: AbortController; generation: number }> | undefined
   const activeScanControllers = new Set<AbortController>()
   const activeValidations = new Set<AbortController>()
+  const activeActions = new Set<AbortController>()
   const activeWork = new Set<Promise<unknown>>()
   let queryGeneration = 0
   let scanGeneration = 0
@@ -220,6 +222,11 @@ export function createLauncherFileSearchExtensions(options: FileSearchOptions): 
   }
   const abortActiveScans = (): void => {
     for (const controller of activeScanControllers) controller.abort(new Error('TockLauncher file search scan was superseded'))
+  }
+  const abortActiveActions = (reason: Error, preserveSignal?: AbortSignal): void => {
+    for (const controller of activeActions) {
+      if (controller.signal !== preserveSignal) controller.abort(reason)
+    }
   }
   const trackWork = <T>(work: Promise<T>): Promise<T> => {
     let tracked!: Promise<T>
@@ -259,12 +266,13 @@ export function createLauncherFileSearchExtensions(options: FileSearchOptions): 
     fileActions = new Set()
     knownFile = new Map()
   }
-  const invalidate = (): void => {
+  const invalidate = (reason = 'TockLauncher file search was invalidated', preserveSignal?: AbortSignal): void => {
     ++scanGeneration
     ++queryGeneration
     clearActions()
     abortActiveScans()
-    activeQuery?.controller.abort(new Error('TockLauncher file search was invalidated'))
+    abortActiveActions(new Error(reason), preserveSignal)
+    activeQuery?.controller.abort(new Error(reason))
     activeQuery = undefined
   }
 
@@ -311,12 +319,13 @@ export function createLauncherFileSearchExtensions(options: FileSearchOptions): 
     })
   }
 
-  const loadIndexedItems = async (signal: AbortSignal): Promise<readonly LauncherInternalResultItem[]> => {
+  const loadIndexedItems = async (signal: AbortSignal, preserveSignal?: AbortSignal): Promise<readonly LauncherInternalResultItem[]> => {
     if (closed) throw new Error('TockLauncher file search is closed')
     const generation = ++scanGeneration
     abortActiveScans()
     activeQuery?.controller.abort(new Error('TockLauncher file search scan superseded'))
     activeQuery = undefined
+    abortActiveActions(new Error('TockLauncher file search scan superseded'), preserveSignal)
     clearActions()
     const simpleActionGenerationAtStart = simpleActionGeneration
     const fileActionGenerationAtStart = fileActionGeneration
@@ -475,6 +484,7 @@ export function createLauncherFileSearchExtensions(options: FileSearchOptions): 
     if (current === undefined || current.entry.path !== target || current.entry.identity === undefined) throw new Error('File-search action is not from the current main-owned result set')
     const validationController = new AbortController()
     activeValidations.add(validationController)
+    activeActions.add(validationController)
     const validationWork = trackWork(Promise.resolve().then(() => options.scanners.validatePath({
       expectedKind: current.entry.type,
       homePath: options.homePath,
@@ -497,22 +507,29 @@ export function createLauncherFileSearchExtensions(options: FileSearchOptions): 
         throw new Error('File-search action target failed immediate revalidation')
       }
     }
-    let valid = false
-    valid = await runBounded(
-      () => validationWork,
-      validationController.signal,
-      ACTION_VALIDATION_TIMEOUT_MS,
-      'File-search action validation timed out',
-      () => validationController.abort(new Error('File-search action validation timed out')),
-    )
-    assertActionIsCurrent()
-    if (!valid) throw new Error('File-search action target failed immediate revalidation')
-    // Keep this final membership check adjacent to the native effect. The
-    // revalidation is identity-based, but the result/action map is revocable.
-    assertActionIsCurrent()
-    if (record.handlerKey === HANDLERS.open) await options.effects.openPath(target)
-    else await options.effects.revealPath(target)
-    return true
+    try {
+      let valid = false
+      valid = await runBounded(
+        () => validationWork,
+        validationController.signal,
+        ACTION_VALIDATION_TIMEOUT_MS,
+        'File-search action validation timed out',
+        () => validationController.abort(new Error('File-search action validation timed out')),
+      )
+      assertActionIsCurrent()
+      if (!valid) throw new Error('File-search action target failed immediate revalidation')
+      // Keep this final membership check adjacent to the native effect. The
+      // revalidation is identity-based, but the result/action map is revocable.
+      assertActionIsCurrent()
+      const effect = record.handlerKey === HANDLERS.open
+        ? options.effects.openPath(target, validationController.signal)
+        : options.effects.revealPath(target, validationController.signal)
+      await trackWork(Promise.resolve(effect))
+      assertActionIsCurrent()
+      return true
+    } finally {
+      activeActions.delete(validationController)
+    }
   }
 
   const close = async (): Promise<void> => {
@@ -525,10 +542,11 @@ export function createLauncherFileSearchExtensions(options: FileSearchOptions): 
     activeQuery?.controller.abort(new Error('TockLauncher file search is closed'))
     activeQuery = undefined
     abortActiveScans()
+    abortActiveActions(new Error('TockLauncher file search is closed'))
     clearActions()
     // ponytail: bounded drain keeps uncooperative native validation from holding shutdown forever.
     await waitForActiveWorkBounded()
   }
 
-  return Object.freeze({ close, executeAction, getLastError: providerErrorStatus, invalidate, loadIndexedItems, searchInstant })
+  return Object.freeze({ close, executeAction, getLastError: providerErrorStatus, invalidate, loadIndexedItems, searchInstant, waitForIdle: waitForActiveWorkBounded })
 }

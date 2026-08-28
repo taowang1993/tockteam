@@ -240,3 +240,27 @@ test('network provider rejects superseded and closed requests without publishing
   assert.deepEqual(await first, { before: [], after: [] })
   assert.deepEqual(await second, { before: [], after: [] })
 })
+
+test('network window-clear invalidation aborts a consumed copy effect', async () => {
+  let observedSignal: AbortSignal | undefined
+  let release!: () => void
+  const pendingEffect = new Promise<void>(resolve => { release = resolve })
+  const provider = createLauncherNetworkExtensions({
+    copyText: async (_text, signal) => { observedSignal = signal; await pendingEffect },
+    enabledExtensionIds: () => ['DeeplTranslator'],
+    fetch: async () => response(JSON.stringify({ translations: [{ text: 'translated' }] })),
+    getSetting: settings,
+    openExternal: () => undefined,
+    resolveAddresses: publicResolver,
+  })
+  const result = (await provider.searchInstant(`${LAUNCHER_DEEPL_QUERY_PREFIX} hello`)).before[0]
+  assert.ok(result)
+  const pending = provider.executeAction(record(result!))
+  await new Promise<void>(resolve => setImmediate(resolve))
+  provider.invalidate('launcher-owner-clear')
+  assert.equal(observedSignal?.aborted, true)
+  release()
+  await assert.rejects(pending, /stale|canceled|current/u)
+  await provider.waitForIdle()
+  await provider.close()
+})

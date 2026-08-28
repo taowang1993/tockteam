@@ -106,13 +106,13 @@ export type LauncherDiscoveryScanners = Readonly<Record<
 >>
 
 export type LauncherDiscoveryEffects = Readonly<{
-  confirmOpenApplicationAsAdministrator: (application: Readonly<{ name: string; target: string }>) => Promise<boolean>
-  copyText: (text: string) => Promise<void> | void
-  launchExecutable: (executable: string, args: readonly string[]) => Promise<void> | void
-  openApplication: (target: string) => Promise<void> | void
-  openApplicationAsAdministrator: (target: string) => Promise<void> | void
-  openExternal: (url: string) => Promise<void> | void
-  revealPath: (target: string) => Promise<void> | void
+  confirmOpenApplicationAsAdministrator: (application: Readonly<{ name: string; target: string }>, signal: AbortSignal) => Promise<boolean>
+  copyText: (text: string, signal: AbortSignal) => Promise<void> | void
+  launchExecutable: (executable: string, args: readonly string[], signal: AbortSignal) => Promise<void> | void
+  openApplication: (target: string, signal: AbortSignal) => Promise<void> | void
+  openApplicationAsAdministrator: (target: string, signal: AbortSignal) => Promise<void> | void
+  openExternal: (url: string, signal: AbortSignal) => Promise<void> | void
+  revealPath: (target: string, signal: AbortSignal) => Promise<void> | void
 }>
 
 export type LauncherDiscoveryIdentity = Readonly<{ dev: string; ino: string }>
@@ -257,9 +257,12 @@ async function withTimeout<T>(operation: Promise<T>, signal: AbortSignal, timeou
 }
 
 export function createLauncherDiscoveryExtensions(options: LauncherDiscoveryOptions): Readonly<{
+  close: () => Promise<void>
   executeAction: (record: LauncherActionRecord) => Promise<boolean>
-  loadIndexedItems: (signal: AbortSignal) => Promise<readonly LauncherInternalResultItem[]>
+  invalidate: (reason?: string, preserveSignal?: AbortSignal) => void
+  loadIndexedItems: (signal: AbortSignal, preserveSignal?: AbortSignal) => Promise<readonly LauncherInternalResultItem[]>
   searchInstant: (searchTerm: string) => Promise<Readonly<{ after: readonly LauncherInternalResultItem[]; before: readonly LauncherInternalResultItem[] }>>
+  waitForIdle: () => Promise<void>
 }> {
   const environment = options.environment ?? process.env
   const defaults = LAUNCHER_DISCOVERY_DEFAULTS(options.platform, options.homePath, options.appDataPath, environment)
@@ -275,7 +278,42 @@ export function createLauncherDiscoveryExtensions(options: LauncherDiscoveryOpti
   let knownVscode = new Map<string, Readonly<{ command: string; entry: Extract<LauncherDiscoveryEntry, { kind: 'vscode' }>; executableIdentity: LauncherDiscoveryIdentity | undefined; identity: LauncherDiscoveryIdentity | undefined }>>()
   let scanGeneration = 0
   let instantGeneration = 0
+  let closed = false
+  const activeControllers = new Set<AbortController>()
+  const activeWork = new Set<Promise<unknown>>()
   const resolveExecutable = options.resolveExecutable ?? ((command, platform, values) => resolveLauncherExecutable(command, platform, values))
+
+  const track = <T>(work: Promise<T>): Promise<T> => {
+    let tracked!: Promise<T>
+    tracked = work.then(value => { activeWork.delete(tracked); return value }, reason => { activeWork.delete(tracked); throw reason })
+    activeWork.add(tracked)
+    return tracked
+  }
+  const abortAll = (reason: Error, preserveSignal?: AbortSignal): void => {
+    for (const controller of activeControllers) {
+      if (controller.signal !== preserveSignal) controller.abort(reason)
+    }
+  }
+  const clearState = (): void => {
+    knownActionArguments = new Set()
+    knownAdministratorActions = new Map()
+    knownApplications = new Map()
+    knownBookmarks = new Map()
+    knownReveals = new Map()
+    knownJetBrains = new Map()
+    knownVscode = new Map()
+    vscodeRecents = Object.freeze([])
+  }
+  const invalidate = (reason = 'TockLauncher discovery provider was invalidated', preserveSignal?: AbortSignal): void => {
+    ++scanGeneration
+    ++instantGeneration
+    clearState()
+    abortAll(new Error(reason), preserveSignal)
+  }
+  const waitForIdle = async (): Promise<void> => {
+    const timer = new Promise<void>(resolve => setTimeout(resolve, 100))
+    await Promise.race([Promise.allSettled([...activeWork]).then(() => undefined), timer])
+  }
 
   const context = (signal: AbortSignal): LauncherDiscoveryScanContext => Object.freeze({
     appDataPath: options.appDataPath, defaults, environment, getSetting: options.getSetting,
@@ -297,11 +335,13 @@ export function createLauncherDiscoveryExtensions(options: LauncherDiscoveryOpti
 
   const scan = async (extensionId: LauncherDiscoveryExtensionId, parentSignal: AbortSignal): Promise<readonly LauncherDiscoveryEntry[]> => {
     const controller = new AbortController()
+    activeControllers.add(controller)
     const abortFromParent = () => controller.abort(parentSignal.reason instanceof Error ? parentSignal.reason : new Error('TockLauncher discovery scan canceled'))
     if (parentSignal.aborted) abortFromParent()
     else parentSignal.addEventListener('abort', abortFromParent, { once: true })
     const timeout = setTimeout(() => controller.abort(new Error(`${extensionId} discovery scan timed out after ${scanTimeoutMs}ms`)), scanTimeoutMs)
     try {
+      if (closed) throw new Error('TockLauncher discovery provider is closed')
       if (controller.signal.aborted) throw controller.signal.reason instanceof Error ? controller.signal.reason : new Error('TockLauncher discovery scan canceled')
       const operation = options.scanners[extensionId](context(controller.signal))
       return await new Promise<readonly LauncherDiscoveryEntry[]>((resolve, reject) => {
@@ -313,15 +353,18 @@ export function createLauncherDiscoveryExtensions(options: LauncherDiscoveryOpti
     } finally {
       clearTimeout(timeout)
       parentSignal.removeEventListener('abort', abortFromParent)
+      activeControllers.delete(controller)
     }
   }
 
-  const loadIndexedItems = async (signal: AbortSignal): Promise<readonly LauncherInternalResultItem[]> => {
+  const loadIndexedItems = async (signal: AbortSignal, preserveSignal?: AbortSignal): Promise<readonly LauncherInternalResultItem[]> => {
     const generation = ++scanGeneration
+    if (preserveSignal?.aborted) throw preserveSignal.reason instanceof Error ? preserveSignal.reason : new Error('TockLauncher discovery scan canceled')
     const ids = LAUNCHER_DISCOVERY_EXTENSION_IDS.filter(id => enabled().has(id))
+    if (closed) throw new Error('TockLauncher discovery provider is closed')
     const settled = await Promise.allSettled(ids.map(async id => {
       if (id === 'BrowserBookmarks' && options.platform === 'Linux') throw new Error('BrowserBookmarks is unsupported on Linux')
-      return await scan(id, signal)
+      return await track(scan(id, signal))
     }))
     for (const [index, result] of settled.entries()) {
       if (result.status === 'rejected') options.onProviderError?.(ids[index]!, result.reason instanceof Error ? result.reason : new Error('Discovery provider failed'))
@@ -451,116 +494,146 @@ export function createLauncherDiscoveryExtensions(options: LauncherDiscoveryOpti
   const searchInstant = async (searchTerm: string) => {
     const generation = ++instantGeneration
     const scanAtStart = scanGeneration
+    const controller = new AbortController()
+    activeControllers.add(controller)
     const empty = () => {
-      if (generation === instantGeneration && scanAtStart === scanGeneration) replaceVscodeActions(new Map())
+      if (!closed && generation === instantGeneration && scanAtStart === scanGeneration && !controller.signal.aborted) replaceVscodeActions(new Map())
       return Object.freeze({ after: Object.freeze([]), before: Object.freeze([]) })
     }
-    if (!enabled().has('VSCode')) return empty()
-    const prefixValue = options.getSetting('extension[VSCode].prefix', defaults.VSCode.prefix)
-    const prefix = bounded(prefixValue, 64) ? prefixValue.trim() : defaults.VSCode.prefix
-    if (prefix.length > 0 && !searchTerm.startsWith(`${prefix} `)) return empty()
-    const term = (prefix.length > 0 ? searchTerm.slice(prefix.length + 1) : searchTerm).trim().toLocaleLowerCase('en-US')
-    if (/^(?:\/|~|[A-Za-z]:[\\/])/u.test(term)) return empty()
-    const showPathValue = options.getSetting('extension[VSCode].showPath', defaults.VSCode.showPath)
-    const showPath = showPathValue === true
-    const parsedExecutable = parseVSCodeCommand(options.getSetting('extension[VSCode].command', defaults.VSCode.command), defaults.VSCode.command)
-    let executable: string | undefined
-    try { executable = await withTimeout(resolveExecutable(parsedExecutable, options.platform, environment), new AbortController().signal, mappingTimeoutMs) }
-    catch { executable = undefined }
-    if (executable === undefined || !isConcreteVSCodeExecutable(executable)) return empty()
-    const mappingSignal = new AbortController().signal
-    const executableIdentity = await captureIdentity(executable, mappingSignal)
-    if (executableIdentity === undefined) return empty()
-    const mapped = await Promise.all(vscodeRecents.filter(entry => term.length === 0 || `${entry.label ?? ''} ${entry.path} ${entry.uri}`.toLocaleLowerCase('en-US').includes(term)).slice(0, MAX_ITEMS_PER_EXTENSION).map(async entry => {
-      const id = entry.id.length <= 512 ? entry.id : `vscode:${createHash('sha256').update(entry.id).digest('hex')}`
-      const identity = entry.uri.startsWith('file:') ? await captureIdentity(entry.path, mappingSignal) : undefined
-      if (entry.uri.startsWith('file:') && identity === undefined) return undefined
-      const item = Object.freeze({
-        defaultAction: action(HANDLERS.launch, `Open ${entry.fileType} in VSCode`, { args: [entry.commandArg, entry.uri], executable, kind: 'executable' }),
-        description: entry.fileType, details: entry.path, id, imageKey: entry.commandArg === '--file-uri' ? 'vscode-file' : 'vscode',
-        name: `${entry.label ?? path.basename(entry.path)}${showPath ? ` (${entry.path})` : ''}`.slice(0, 512), sourceExtension: 'VSCode',
-      })
-      return Object.freeze({ identity, item, argument: item.defaultAction.argument, command: parsedExecutable, entry })
-    }))
-    if (generation !== instantGeneration || scanAtStart !== scanGeneration) return empty()
-    const next = new Map<string, Readonly<{ command: string; entry: Extract<LauncherDiscoveryEntry, { kind: 'vscode' }>; executableIdentity: LauncherDiscoveryIdentity | undefined; identity: LauncherDiscoveryIdentity | undefined }>>()
-    const items: LauncherInternalResultItem[] = []
-    for (const value of mapped) {
-      if (value === undefined) continue
-      next.set(value.argument, Object.freeze({ command: value.command, entry: value.entry, executableIdentity, identity: value.identity }))
-      items.push(value.item)
+    try {
+      if (closed || controller.signal.aborted) return empty()
+      if (!enabled().has('VSCode')) return empty()
+      const prefixValue = options.getSetting('extension[VSCode].prefix', defaults.VSCode.prefix)
+      const prefix = bounded(prefixValue, 64) ? prefixValue.trim() : defaults.VSCode.prefix
+      if (prefix.length > 0 && !searchTerm.startsWith(`${prefix} `)) return empty()
+      const term = (prefix.length > 0 ? searchTerm.slice(prefix.length + 1) : searchTerm).trim().toLocaleLowerCase('en-US')
+      if (/^(?:\/|~|[A-Za-z]:[\\/])/u.test(term)) return empty()
+      const showPathValue = options.getSetting('extension[VSCode].showPath', defaults.VSCode.showPath)
+      const showPath = showPathValue === true
+      const parsedExecutable = parseVSCodeCommand(options.getSetting('extension[VSCode].command', defaults.VSCode.command), defaults.VSCode.command)
+      let executable: string | undefined
+      try { executable = await track(withTimeout(resolveExecutable(parsedExecutable, options.platform, environment), controller.signal, mappingTimeoutMs)) }
+      catch { executable = undefined }
+      if (closed || controller.signal.aborted || generation !== instantGeneration || scanAtStart !== scanGeneration || executable === undefined || !isConcreteVSCodeExecutable(executable)) return empty()
+      const executableIdentity = await captureIdentity(executable, controller.signal)
+      if (closed || controller.signal.aborted || executableIdentity === undefined) return empty()
+      const mapped = await Promise.all(vscodeRecents.filter(entry => term.length === 0 || `${entry.label ?? ''} ${entry.path} ${entry.uri}`.toLocaleLowerCase('en-US').includes(term)).slice(0, MAX_ITEMS_PER_EXTENSION).map(async entry => {
+        const id = entry.id.length <= 512 ? entry.id : `vscode:${createHash('sha256').update(entry.id).digest('hex')}`
+        const identity = entry.uri.startsWith('file:') ? await captureIdentity(entry.path, controller.signal) : undefined
+        if (entry.uri.startsWith('file:') && identity === undefined) return undefined
+        const item = Object.freeze({
+          defaultAction: action(HANDLERS.launch, `Open ${entry.fileType} in VSCode`, { args: [entry.commandArg, entry.uri], executable, kind: 'executable' }),
+          description: entry.fileType, details: entry.path, id, imageKey: entry.commandArg === '--file-uri' ? 'vscode-file' : 'vscode',
+          name: `${entry.label ?? path.basename(entry.path)}${showPath ? ` (${entry.path})` : ''}`.slice(0, 512), sourceExtension: 'VSCode',
+        })
+        return Object.freeze({ identity, item, argument: item.defaultAction.argument, command: parsedExecutable, entry })
+      }))
+      if (closed || controller.signal.aborted || generation !== instantGeneration || scanAtStart !== scanGeneration) return empty()
+      const next = new Map<string, Readonly<{ command: string; entry: Extract<LauncherDiscoveryEntry, { kind: 'vscode' }>; executableIdentity: LauncherDiscoveryIdentity | undefined; identity: LauncherDiscoveryIdentity | undefined }>>()
+      const items: LauncherInternalResultItem[] = []
+      for (const value of mapped) {
+        if (value === undefined) continue
+        next.set(value.argument, Object.freeze({ command: value.command, entry: value.entry, executableIdentity, identity: value.identity }))
+        items.push(value.item)
+      }
+      replaceVscodeActions(next)
+      return Object.freeze({ after: Object.freeze(items), before: Object.freeze([]) })
+    } finally {
+      activeControllers.delete(controller)
     }
-    replaceVscodeActions(next)
-    return Object.freeze({ after: Object.freeze(items), before: Object.freeze([]) })
   }
 
   const executeAction = async (record: LauncherActionRecord): Promise<boolean> => {
     if (!(Object.values(HANDLERS) as readonly string[]).includes(record.handlerKey)) return false
     if (!LAUNCHER_DISCOVERY_EXTENSION_IDS.includes(record.sourceExtension as LauncherDiscoveryExtensionId)) throw new Error('Invalid discovery action source')
     if (!knownActionArguments.has(record.argument)) throw new Error('Discovery action is not from the current main-owned scan')
-    const value = parseArgument(record.argument)
-    if (record.handlerKey === HANDLERS.copy) {
-      if (value.kind !== 'text' || !bounded(value.text)) throw new Error('Invalid copy action')
-      await options.effects.copyText(value.text); return true
+    const controller = new AbortController()
+    const scanGenerationAtStart = scanGeneration
+    activeControllers.add(controller)
+    const ensureCurrent = (): void => {
+      if (closed || controller.signal.aborted || scanGeneration !== scanGenerationAtStart || !knownActionArguments.has(record.argument)) throw controller.signal.reason instanceof Error ? controller.signal.reason : new Error('Discovery action was canceled')
     }
-    if (record.handlerKey === HANDLERS.openApplicationAsAdministrator) {
-      const current = knownAdministratorActions.get(record.argument)
-      const target = value.kind === 'application-administrator' && bounded(value.target) ? value.target : undefined
-      if (options.platform !== 'Windows' || record.sourceExtension !== 'ApplicationSearch' || record.requiresConfirmation !== true || target === undefined || current === undefined || current.target !== target || !isApplicationTarget(target) || isWindowsStore(target)) throw new Error('Invalid application administrator action policy')
-      if (current.identity === undefined) throw revalidationError('Application')
-      if (options.revalidate?.application !== undefined && !await options.revalidate.application(target, current.entry, current.identity)) throw revalidationError('Application')
-      if (await options.effects.confirmOpenApplicationAsAdministrator({ name: current.name, target })) {
-        if (options.revalidate?.application !== undefined && !await options.revalidate.application(target, current.entry, current.identity)) throw revalidationError('Application')
-        await options.effects.openApplicationAsAdministrator(target)
+    const awaitEffect = async <T>(work: Promise<T> | T): Promise<T> => {
+      ensureCurrent()
+      const result = await track(Promise.resolve(work))
+      ensureCurrent()
+      return result
+    }
+    try {
+      ensureCurrent()
+      const value = parseArgument(record.argument)
+      if (record.handlerKey === HANDLERS.copy) {
+        if (value.kind !== 'text' || !bounded(value.text)) throw new Error('Invalid copy action')
+        await awaitEffect(options.effects.copyText(value.text, controller.signal)); return true
       }
+      if (record.handlerKey === HANDLERS.openApplicationAsAdministrator) {
+        const current = knownAdministratorActions.get(record.argument)
+        const target = value.kind === 'application-administrator' && bounded(value.target) ? value.target : undefined
+        if (options.platform !== 'Windows' || record.sourceExtension !== 'ApplicationSearch' || record.requiresConfirmation !== true || target === undefined || current === undefined || current.target !== target || !isApplicationTarget(target) || isWindowsStore(target)) throw new Error('Invalid application administrator action policy')
+        if (current.identity === undefined) throw revalidationError('Application')
+        if (options.revalidate?.application !== undefined && !await awaitEffect(options.revalidate.application(target, current.entry, current.identity))) throw revalidationError('Application')
+        if (await awaitEffect(options.effects.confirmOpenApplicationAsAdministrator({ name: current.name, target }, controller.signal))) {
+          if (options.revalidate?.application !== undefined && !await awaitEffect(options.revalidate.application(target, current.entry, current.identity))) throw revalidationError('Application')
+          await awaitEffect(options.effects.openApplicationAsAdministrator(target, controller.signal))
+        }
+        return true
+      }
+      if (record.handlerKey === HANDLERS.openApplication) {
+        if (record.sourceExtension !== 'ApplicationSearch' || value.kind !== 'application' || !bounded(value.target) || !isApplicationTarget(value.target)) throw new Error('Invalid application action')
+        const current = knownApplications.get(record.argument)
+        if (current === undefined || current.entry.path !== value.target) throw new Error('Application action is not from the current main-owned scan')
+        if (!isWindowsStore(value.target) && current.identity === undefined) throw revalidationError('Application')
+        if (options.revalidate?.application !== undefined && !await awaitEffect(options.revalidate.application(value.target, current.entry, current.identity))) throw revalidationError('Application')
+        await awaitEffect(options.effects.openApplication(value.target, controller.signal)); return true
+      }
+      if (record.handlerKey === HANDLERS.openUrl) {
+        if (record.sourceExtension !== 'BrowserBookmarks' || value.kind !== 'url' || !bounded(value.url) || !validHttpUrl(value.url)) throw new Error('Invalid bookmark action')
+        const current = knownBookmarks.get(record.argument)
+        if (current === undefined || current.entry.url !== value.url) throw new Error('Bookmark action is not from the current main-owned scan')
+        if (options.revalidate?.bookmark !== undefined && !await awaitEffect(options.revalidate.bookmark(value.url, current.entry))) throw revalidationError('Bookmark')
+        await awaitEffect(options.effects.openExternal(value.url, controller.signal)); return true
+      }
+      if (record.handlerKey === HANDLERS.reveal) {
+        if (record.sourceExtension !== 'ApplicationSearch' || value.kind !== 'path' || !bounded(value.path) || !isAbsolute(value.path)) throw new Error('Invalid reveal action')
+        const current = knownReveals.get(record.argument)
+        if (current === undefined || current.entry.path !== value.path) throw new Error('Reveal action is not from the current main-owned scan')
+        if (current.identity === undefined) throw revalidationError('Reveal')
+        if (options.revalidate?.reveal !== undefined && !await awaitEffect(options.revalidate.reveal(value.path, current.entry, current.identity))) throw revalidationError('Reveal')
+        await awaitEffect(options.effects.revealPath(value.path, controller.signal)); return true
+      }
+      if ((record.sourceExtension !== 'JetBrainsToolbox' && record.sourceExtension !== 'VSCode') || value.kind !== 'executable' || !bounded(value.executable) || !Array.isArray(value.args) || value.args.length < 1 || value.args.length > 4 || value.args.some(argument => !bounded(argument))) throw new Error('Invalid IDE launch action')
+      if (record.sourceExtension === 'JetBrainsToolbox') {
+        if (!isAbsolute(value.executable) || value.args.length !== 1 || !isAbsolute(value.args[0]!)) throw new Error('Invalid JetBrains launch action')
+        const current = knownJetBrains.get(record.argument)
+        if (current === undefined || current.entry.executable !== value.executable || current.entry.projectPath !== value.args[0]) throw new Error('JetBrains action is not from the current main-owned scan')
+        if (current.executableIdentity === undefined || current.projectIdentity === undefined) throw revalidationError('JetBrains')
+        if (options.revalidate?.jetbrains !== undefined && !await awaitEffect(options.revalidate.jetbrains({ executable: value.executable, projectPath: value.args[0]!, entry: current.entry, executableIdentity: current.executableIdentity, projectIdentity: current.projectIdentity }))) throw revalidationError('JetBrains')
+      } else {
+        if (!isConcreteVSCodeExecutable(value.executable) || (value.args[0] !== '--file-uri' && value.args[0] !== '--folder-uri') || !bounded(value.args[1])) throw new Error('Invalid VS Code launch action')
+        const current = knownVscode.get(record.argument)
+        if (current === undefined || current.entry.uri !== value.args[1] || current.entry.commandArg !== value.args[0]) throw new Error('VS Code action is not from the current main-owned scan')
+        if (current.executableIdentity === undefined || (current.entry.uri.startsWith('file:') && current.identity === undefined)) throw revalidationError('VS Code')
+        let resolvedExecutable: string | undefined
+        try { resolvedExecutable = await awaitEffect(withTimeout(resolveExecutable(current.command, options.platform, environment), controller.signal, mappingTimeoutMs)) }
+        catch { resolvedExecutable = undefined }
+        if (resolvedExecutable !== value.executable) throw revalidationError('VS Code executable')
+        if (options.revalidate?.vscode !== undefined && !await awaitEffect(options.revalidate.vscode({ executable: value.executable, uri: value.args[1]!, entry: current.entry, executableIdentity: current.executableIdentity, identity: current.identity }))) throw revalidationError('VS Code')
+      }
+      await awaitEffect(options.effects.launchExecutable(value.executable, value.args as string[], controller.signal))
       return true
+    } finally {
+      activeControllers.delete(controller)
     }
-    if (record.handlerKey === HANDLERS.openApplication) {
-      if (record.sourceExtension !== 'ApplicationSearch' || value.kind !== 'application' || !bounded(value.target) || !isApplicationTarget(value.target)) throw new Error('Invalid application action')
-      const current = knownApplications.get(record.argument)
-      if (current === undefined || current.entry.path !== value.target) throw new Error('Application action is not from the current main-owned scan')
-      if (!isWindowsStore(value.target) && current.identity === undefined) throw revalidationError('Application')
-      if (options.revalidate?.application !== undefined && !await options.revalidate.application(value.target, current.entry, current.identity)) throw revalidationError('Application')
-      await options.effects.openApplication(value.target); return true
-    }
-    if (record.handlerKey === HANDLERS.openUrl) {
-      if (record.sourceExtension !== 'BrowserBookmarks' || value.kind !== 'url' || !bounded(value.url) || !validHttpUrl(value.url)) throw new Error('Invalid bookmark action')
-      const current = knownBookmarks.get(record.argument)
-      if (current === undefined || current.entry.url !== value.url) throw new Error('Bookmark action is not from the current main-owned scan')
-      if (options.revalidate?.bookmark !== undefined && !await options.revalidate.bookmark(value.url, current.entry)) throw revalidationError('Bookmark')
-      await options.effects.openExternal(value.url); return true
-    }
-    if (record.handlerKey === HANDLERS.reveal) {
-      if (record.sourceExtension !== 'ApplicationSearch' || value.kind !== 'path' || !bounded(value.path) || !isAbsolute(value.path)) throw new Error('Invalid reveal action')
-      const current = knownReveals.get(record.argument)
-      if (current === undefined || current.entry.path !== value.path) throw new Error('Reveal action is not from the current main-owned scan')
-      if (current.identity === undefined) throw revalidationError('Reveal')
-      if (options.revalidate?.reveal !== undefined && !await options.revalidate.reveal(value.path, current.entry, current.identity)) throw revalidationError('Reveal')
-      await options.effects.revealPath(value.path); return true
-    }
-    if ((record.sourceExtension !== 'JetBrainsToolbox' && record.sourceExtension !== 'VSCode') || value.kind !== 'executable' || !bounded(value.executable) || !Array.isArray(value.args) || value.args.length < 1 || value.args.length > 4 || value.args.some(argument => !bounded(argument))) throw new Error('Invalid IDE launch action')
-    if (record.sourceExtension === 'JetBrainsToolbox') {
-      if (!isAbsolute(value.executable) || value.args.length !== 1 || !isAbsolute(value.args[0]!)) throw new Error('Invalid JetBrains launch action')
-      const current = knownJetBrains.get(record.argument)
-      if (current === undefined || current.entry.executable !== value.executable || current.entry.projectPath !== value.args[0]) throw new Error('JetBrains action is not from the current main-owned scan')
-      if (current.executableIdentity === undefined || current.projectIdentity === undefined) throw revalidationError('JetBrains')
-      if (options.revalidate?.jetbrains !== undefined && !await options.revalidate.jetbrains({ executable: value.executable, projectPath: value.args[0]!, entry: current.entry, executableIdentity: current.executableIdentity, projectIdentity: current.projectIdentity })) throw revalidationError('JetBrains')
-    } else {
-      if (!isConcreteVSCodeExecutable(value.executable) || (value.args[0] !== '--file-uri' && value.args[0] !== '--folder-uri') || !bounded(value.args[1])) throw new Error('Invalid VS Code launch action')
-      const current = knownVscode.get(record.argument)
-      if (current === undefined || current.entry.uri !== value.args[1] || current.entry.commandArg !== value.args[0]) throw new Error('VS Code action is not from the current main-owned scan')
-      if (current.executableIdentity === undefined || (current.entry.uri.startsWith('file:') && current.identity === undefined)) throw revalidationError('VS Code')
-      let resolvedExecutable: string | undefined
-      try { resolvedExecutable = await withTimeout(resolveExecutable(current.command, options.platform, environment), new AbortController().signal, mappingTimeoutMs) }
-      catch { resolvedExecutable = undefined }
-      if (resolvedExecutable !== value.executable) throw revalidationError('VS Code executable')
-      if (options.revalidate?.vscode !== undefined && !await options.revalidate.vscode({ executable: value.executable, uri: value.args[1]!, entry: current.entry, executableIdentity: current.executableIdentity, identity: current.identity })) throw revalidationError('VS Code')
-    }
-    await options.effects.launchExecutable(value.executable, value.args as string[])
-    return true
   }
 
-  return Object.freeze({ executeAction, loadIndexedItems, searchInstant })
+  const close = async (): Promise<void> => {
+    if (closed) { await waitForIdle(); return }
+    closed = true
+    invalidate('TockLauncher discovery provider is closed')
+    await waitForIdle()
+  }
+
+  return Object.freeze({ close, executeAction, invalidate, loadIndexedItems, searchInstant, waitForIdle })
 }
 
 export function launcherDiscoveryImageKeyForBrowser(browser: string): string { return BROWSER_IMAGE_KEYS[browser] ?? 'browser-bookmarks' }

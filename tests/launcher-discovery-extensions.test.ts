@@ -267,3 +267,31 @@ test('Windows applications expose confirmed elevation and store IDs omit reveal'
   assert.deepEqual(item?.additionalActions?.map(action => action.description), ['Copy file path to clipboard'])
   assert.equal(confirmed, 0); assert.equal(elevated, 0)
 })
+
+test('discovery window-clear invalidation aborts a consumed external effect', async () => {
+  let observedSignal: AbortSignal | undefined
+  let release!: () => void
+  const pendingEffect = new Promise<void>(resolve => { release = resolve })
+  const provider = createLauncherDiscoveryExtensions({
+    ...baseOptions,
+    enabledExtensionIds: () => ['BrowserBookmarks'],
+    effects: {
+      confirmOpenApplicationAsAdministrator: async () => false,
+      copyText: () => undefined,
+      launchExecutable: () => undefined,
+      openApplication: () => undefined,
+      openApplicationAsAdministrator: () => undefined,
+      openExternal: async (_url, signal) => { observedSignal = signal; await pendingEffect },
+      revealPath: () => undefined,
+    },
+  })
+  const [item] = await provider.loadIndexedItems(new AbortController().signal)
+  const pending = provider.executeAction(record(item!))
+  await new Promise<void>(resolve => setImmediate(resolve))
+  provider.invalidate('launcher-owner-clear')
+  assert.equal(observedSignal?.aborted, true)
+  release()
+  await assert.rejects(pending, /canceled|current|invalidated|owner-clear/u)
+  await provider.waitForIdle()
+  await provider.close()
+})

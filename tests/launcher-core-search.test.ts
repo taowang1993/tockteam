@@ -280,6 +280,27 @@ test('core flush waits for accepted rescans and close fences new work', async ()
   await assert.rejects(core.search('', options), /closed/u)
 })
 
+test('core parent cancellation fences a delayed rescan commit', async () => {
+  let release!: (items: readonly LauncherInternalResultItem[]) => void
+  let loads = 0
+  const core = createLauncherCoreSearch({
+    initialIndexedItems: [item('old', 'Old')],
+    loadIndexedItems: async () => {
+      loads += 1
+      if (loads === 1) return [item('old', 'Old')]
+      return await new Promise(resolve => { release = resolve })
+    },
+  })
+  await core.search('', { ...options, maxSearchResultItems: 50 })
+  const controller = new AbortController()
+  const pending = core.rescan(controller.signal)
+  while (release === undefined) await new Promise<void>(resolve => setImmediate(resolve))
+  controller.abort(new Error('owner cleared'))
+  release([item('new', 'New')])
+  await pending
+  assert.deepEqual((await core.search('', { ...options, maxSearchResultItems: 50 })).after.map(value => value.id), ['old'])
+})
+
 test('core search rejects slow instant results from a superseded index generation', async () => {
   let releaseInstant: (() => void) | undefined
   const instantReady = new Promise<void>(resolve => { releaseInstant = resolve })

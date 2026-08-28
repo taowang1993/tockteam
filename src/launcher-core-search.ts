@@ -40,7 +40,7 @@ export type LauncherCoreSearchOptions = Readonly<{
   initialFavoriteItemIds?: readonly string[]
   initialIndexedItems?: readonly LauncherInternalResultItem[]
   getIndexedError?: () => string | undefined
-  loadIndexedItems: (signal: AbortSignal) => Promise<readonly LauncherInternalResultItem[]>
+  loadIndexedItems: (signal: AbortSignal, preserveSignal?: AbortSignal) => Promise<readonly LauncherInternalResultItem[]>
   persistIndex?: (items: readonly LauncherInternalResultItem[]) => Promise<void>
   persistSettings?: (values: Readonly<Record<string, unknown>>) => Promise<void>
   platform?: LauncherCorePlatform
@@ -104,11 +104,12 @@ export function createLauncherCoreSearch(options: LauncherCoreSearchOptions): Re
   close: () => Promise<void>
   executeAction: (record: LauncherActionRecord) => Promise<boolean>
   flush: () => Promise<void>
+  invalidate: (reason?: string, preserveSignal?: AbortSignal) => void
   replacePersistentSettings: (settings: Readonly<{
     excludedItemIds: readonly string[]
     favoriteItemIds: readonly string[]
   }>) => void
-  rescan: () => Promise<LauncherCoreStatus>
+  rescan: (signal?: AbortSignal, preserveSignal?: AbortSignal) => Promise<LauncherCoreStatus>
   search: (searchTerm: string, searchOptions: LauncherSearchOptions) => Promise<LauncherCoreSearchResult>
 }> {
   const commandModifier = options.platform === 'macOS' ? 'Cmd' : 'Ctrl'
@@ -148,22 +149,26 @@ export function createLauncherCoreSearch(options: LauncherCoreSearchOptions): Re
     return operation
   }
 
-  const rescan = async (): Promise<LauncherCoreStatus> => {
+  const rescan = async (parentSignal?: AbortSignal, preserveSignal?: AbortSignal): Promise<LauncherCoreStatus> => {
     knownItemIds.clear()
     activeRescan?.controller.abort(new Error('TockLauncher rescan was superseded'))
     const controller = new AbortController()
+    const abortFromParent = (): void => { controller.abort(parentSignal?.reason instanceof Error ? parentSignal.reason : new Error('TockLauncher rescan was canceled')) }
+    if (parentSignal?.aborted) abortFromParent()
+    else parentSignal?.addEventListener('abort', abortFromParent, { once: true })
     const token = Object.freeze({})
     activeRescan = Object.freeze({ controller, token })
     rescanStatus = 'scanning'
     try {
-      const loaded = await options.loadIndexedItems(controller.signal)
-      if (activeRescan?.token !== token) return status()
+      if (controller.signal.aborted) throw controller.signal.reason
+      const loaded = await options.loadIndexedItems(controller.signal, preserveSignal)
+      if (activeRescan?.token !== token || controller.signal.aborted) return status()
       const nextItems = Object.freeze([...loaded])
       const indexedError = options.getIndexedError?.()
       indexedItems = nextItems
       indexGeneration += 1
       if (options.persistIndex !== undefined) await queueIndexPersistence(nextItems)
-      if (activeRescan?.token !== token) return status()
+      if (activeRescan?.token !== token || controller.signal.aborted) return status()
       indexLoaded = true
       hasValidatedIndex = true
       lastError = indexedError
@@ -181,6 +186,7 @@ export function createLauncherCoreSearch(options: LauncherCoreSearchOptions): Re
       rescanStatus = 'error'
       await options.appendLog?.('ERROR', lastError)
     } finally {
+      parentSignal?.removeEventListener('abort', abortFromParent)
       if (activeRescan?.token === token) activeRescan = undefined
     }
     return status()
@@ -298,6 +304,13 @@ export function createLauncherCoreSearch(options: LauncherCoreSearchOptions): Re
     return true
   }
 
+  const invalidate = (reason = 'TockLauncher core search was invalidated', _preserveSignal?: AbortSignal): void => {
+    ++indexGeneration
+    latestSearchToken = undefined
+    knownItemIds.clear()
+    activeRescan?.controller.abort(new Error(reason))
+  }
+
   const replacePersistentSettings = (settings: Readonly<{
     excludedItemIds: readonly string[]
     favoriteItemIds: readonly string[]
@@ -327,8 +340,7 @@ export function createLauncherCoreSearch(options: LauncherCoreSearchOptions): Re
   const close = async (): Promise<void> => {
     if (closed) { await flush(); return }
     closed = true
-    latestSearchToken = undefined
-    activeRescan?.controller.abort(new Error('TockLauncher core search is closed'))
+    invalidate('TockLauncher core search is closed')
     await flush()
   }
 
@@ -336,8 +348,9 @@ export function createLauncherCoreSearch(options: LauncherCoreSearchOptions): Re
     close,
     executeAction: (record: LauncherActionRecord) => track(async () => await executeAction(record)),
     flush,
+    invalidate,
     replacePersistentSettings,
-    rescan: () => track(rescan),
+    rescan: (signal?: AbortSignal, preserveSignal?: AbortSignal) => track(async () => await rescan(signal, preserveSignal)),
     search: (searchTerm: string, searchOptions: LauncherSearchOptions) => track(async () => await search(searchTerm, searchOptions)),
   })
 }

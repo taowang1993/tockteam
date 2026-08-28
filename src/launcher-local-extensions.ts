@@ -25,7 +25,7 @@ type InstantResult = Readonly<{ after: readonly LauncherInternalResultItem[]; be
 type SearchOverride = (searchTerm: string) => InstantResult
 
 type LocalExtensionOptions = Readonly<{
-  copyText: (text: string) => Promise<void> | void
+  copyText: (text: string, signal: AbortSignal) => Promise<void> | void
   enabledExtensionIds: () => readonly string[]
   getSetting: <T>(key: string, fallback: T) => T
   onProviderError?: (extensionId: LauncherLocalExtensionId, error: unknown) => void
@@ -271,11 +271,37 @@ function uuidReformat(uuid: string, format: Readonly<{ braces: boolean; hyphens:
 }
 
 export function createLauncherLocalExtensions(options: LocalExtensionOptions): Readonly<{
+  close: () => Promise<void>
   executeAction: (record: LauncherActionRecord) => Promise<boolean>
+  invalidate: (reason?: string, preserveSignal?: AbortSignal) => void
   loadIndexedItems: () => Promise<readonly LauncherInternalResultItem[]>
   searchInstant: (searchTerm: string) => Promise<InstantResult>
+  waitForIdle: () => Promise<void>
 }> {
   const get = <T>(id: LauncherLocalExtensionId, key: string, fallback: T): T => setting(options, id, key, fallback)
+  let closed = false
+  let generation = 0
+  const activeControllers = new Set<AbortController>()
+  const activeWork = new Set<Promise<unknown>>()
+  const track = <T>(work: Promise<T>): Promise<T> => {
+    let tracked!: Promise<T>
+    tracked = work.then(value => { activeWork.delete(tracked); return value }, reason => { activeWork.delete(tracked); throw reason })
+    activeWork.add(tracked)
+    return tracked
+  }
+  const abortAll = (reason: Error, preserveSignal?: AbortSignal): void => {
+    for (const controller of activeControllers) {
+      if (controller.signal !== preserveSignal) controller.abort(reason)
+    }
+  }
+  const invalidate = (reason = 'TockLauncher local provider was invalidated', preserveSignal?: AbortSignal): void => {
+    ++generation
+    abortAll(new Error(reason), preserveSignal)
+  }
+  const waitForIdle = async (): Promise<void> => {
+    const timer = new Promise<void>(resolve => setTimeout(resolve, 100))
+    await Promise.race([Promise.allSettled([...activeWork]).then(() => undefined), timer])
+  }
   const enabled = () => new Set(options.enabledExtensionIds().filter(localExtension))
   const searchers: Record<LauncherLocalExtensionId, SearchOverride> = {
     Base64Conversion: searchTerm => {
@@ -294,6 +320,7 @@ export function createLauncherLocalExtensions(options: LocalExtensionOptions): R
   }
 
     const loadIndexedItems = async (): Promise<readonly LauncherInternalResultItem[]> => {
+    if (closed) throw new Error('TockLauncher local provider is closed')
     const catalog: ReadonlyArray<Readonly<{ description: string; extensionId: LauncherLocalExtensionId; name: string }>> = [
       { description: 'Encode or decode Base64', extensionId: 'Base64Conversion', name: 'Base64 Conversion' },
       { description: 'Format rows of text', extensionId: 'RowlandTextEditor', name: 'Rowland Text Editor' },
@@ -310,9 +337,46 @@ export function createLauncherLocalExtensions(options: LocalExtensionOptions): R
   }
 
   const present = (item: LauncherInternalResultItem): LauncherInternalResultItem => Object.freeze({ ...item, name: item.name.slice(0, 512) })
-  const searchInstant = async (term: string): Promise<InstantResult> => { const before: LauncherInternalResultItem[] = []; const after: LauncherInternalResultItem[] = []; const active = enabled(); for (const id of LAUNCHER_LOCAL_EXTENSION_IDS) { if (!active.has(id)) continue; try { const result = (options.searchOverrides?.[id] ?? searchers[id])(term); before.push(...result.before.map(present)); after.push(...result.after.map(present)) } catch (error) { options.onProviderError?.(id, error) } } return Object.freeze({ before: Object.freeze(before), after: Object.freeze(after) }) }
-  const executeAction = async (record: LauncherActionRecord): Promise<boolean> => { if (record.handlerKey === LAUNCHER_LOCAL_ACTION_HANDLERS.copy) { if (!localExtension(record.sourceExtension)) throw new Error('Invalid local extension action'); await options.copyText(record.argument); return true } if (record.handlerKey === LAUNCHER_LOCAL_ACTION_HANDLERS.open) { if (!localExtension(record.argument) || record.argument !== record.sourceExtension) throw new Error('Invalid local extension action'); return true } return false }
-  return Object.freeze({ executeAction, loadIndexedItems, searchInstant })
+  const searchInstant = async (term: string): Promise<InstantResult> => {
+    if (closed) return emptyInstantResult()
+    const before: LauncherInternalResultItem[] = []
+    const after: LauncherInternalResultItem[] = []
+    const active = enabled()
+    for (const id of LAUNCHER_LOCAL_EXTENSION_IDS) {
+      if (!active.has(id) || closed) continue
+      try {
+        const result = (options.searchOverrides?.[id] ?? searchers[id])(term)
+        before.push(...result.before.map(present)); after.push(...result.after.map(present))
+      } catch (error) { options.onProviderError?.(id, error) }
+    }
+    return Object.freeze({ before: Object.freeze(before), after: Object.freeze(after) })
+  }
+  const executeAction = async (record: LauncherActionRecord): Promise<boolean> => {
+    if (closed) throw new Error('TockLauncher local provider is closed')
+    if (record.handlerKey === LAUNCHER_LOCAL_ACTION_HANDLERS.copy) {
+      if (!localExtension(record.sourceExtension)) throw new Error('Invalid local extension action')
+      const controller = new AbortController()
+      const generationAtStart = generation
+      activeControllers.add(controller)
+      try {
+        await track(Promise.resolve(options.copyText(record.argument, controller.signal)))
+        if (closed || controller.signal.aborted || generation !== generationAtStart) throw new Error('TockLauncher local action was canceled')
+        return true
+      } finally { activeControllers.delete(controller) }
+    }
+    if (record.handlerKey === LAUNCHER_LOCAL_ACTION_HANDLERS.open) {
+      if (!localExtension(record.argument) || record.argument !== record.sourceExtension) throw new Error('Invalid local extension action')
+      return true
+    }
+    return false
+  }
+  const close = async (): Promise<void> => {
+    if (closed) { await waitForIdle(); return }
+    closed = true
+    invalidate('TockLauncher local provider is closed')
+    await waitForIdle()
+  }
+  return Object.freeze({ close, executeAction, invalidate, loadIndexedItems, searchInstant, waitForIdle })
 }
 
 export { LAUNCHER_LOCAL_EXTENSION_IDS as LAUNCHER_LOCAL_IDS, LAUNCHER_LOCAL_EXTENSION_IMAGE_KEYS as LOCAL_IMAGE_KEYS }
