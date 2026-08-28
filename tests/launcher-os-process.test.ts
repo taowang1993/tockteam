@@ -22,11 +22,13 @@ test('Control Panel records reject command injection and parse bounded scalar/ar
   assert.deepEqual(parseWindowsControlPanelItems(JSON.stringify({ CanonicalName: 'Microsoft.System', Name: 'System' })), [{ canonicalName: 'Microsoft.System', name: 'System' }])
   assert.deepEqual(parseWindowsControlPanelItems(JSON.stringify([
     { CanonicalName: 'Microsoft.System', Name: 'System' },
-    { CanonicalName: 'Microsoft.System', Name: 'duplicate' },
+    { CanonicalName: 'microsoft.system', Name: 'duplicate' },
+    { CanonicalName: 'Microsoft.NetworkAndSharingCenter', Name: 'ignored', IconBase64: 'data:image/png;base64,AAAA' },
     { CanonicalName: 'Microsoft.System;calc', Name: 'bad' },
     { CanonicalName: 'Microsoft.NetworkAndSharingCenter', Name: 'Network' },
   ])), [
     { canonicalName: 'Microsoft.System', name: 'System' },
     { canonicalName: 'Microsoft.NetworkAndSharingCenter', name: 'Network' },
   ])
+  assert.throws(() => parseWindowsControlPanelItems('1'), /invalid/i)
 })

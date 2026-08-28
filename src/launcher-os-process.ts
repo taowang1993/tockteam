@@ -38,7 +38,10 @@ export function resolveSystemCommandInvocation(
   platform: LauncherOsPlatform,
   command: LauncherSystemCommand,
 ): LauncherFixedInvocation | undefined {
-  if (platform === 'Linux') return undefined
+  if (platform === 'Linux') {
+    if (command === 'empty-trash') return undefined
+    throw new Error(`System command ${command} is not supported on Linux`)
+  }
   if (platform === 'macOS') {
     const script = MAC_COMMANDS[command]
     if (script === undefined) throw new Error(`System command ${command} is not supported on macOS`)
@@ -84,17 +87,22 @@ export function parseWindowsControlPanelItems(output: string): readonly Launcher
   if (!boundedText(output, MAX_CONTROL_PANEL_OUTPUT)) throw new Error('Invalid Windows Control Panel discovery output')
   let parsed: unknown
   try { parsed = JSON.parse(output) } catch { throw new Error('Invalid Windows Control Panel discovery output') }
+  if (!Array.isArray(parsed) && (parsed === null || typeof parsed !== 'object')) throw new Error('Invalid Windows Control Panel discovery output')
   const rows = Array.isArray(parsed) ? parsed.slice(0, MAX_CONTROL_PANEL_ITEMS) : [parsed]
   const seen = new Set<string>()
   const entries: LauncherControlPanelEntry[] = []
   for (const row of rows) {
     if (row === null || typeof row !== 'object' || Array.isArray(row)) continue
     const value = row as Record<string, unknown>
+    const keys = Object.keys(value)
     const canonicalName = value.CanonicalName
     const name = value.Name
-    if (!boundedText(canonicalName) || !CONTROL_PANEL_CANONICAL_NAME_PATTERN.test(canonicalName) || seen.has(canonicalName)) continue
+    if (keys.some(key => key !== 'CanonicalName' && key !== 'Name')
+      || !boundedText(canonicalName) || !CONTROL_PANEL_CANONICAL_NAME_PATTERN.test(canonicalName)) continue
     if (!boundedText(name)) continue
-    seen.add(canonicalName)
+    const identity = canonicalName.toLocaleLowerCase('en-US')
+    if (seen.has(identity)) continue
+    seen.add(identity)
     entries.push(Object.freeze({ canonicalName, name }))
   }
   return Object.freeze(entries)
