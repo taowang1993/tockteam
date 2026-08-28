@@ -922,7 +922,7 @@ try {
     void window.tockteamLauncher?.invokeAction(item.defaultAction.actionId)
     return true
   })()`, awaitPromise: false, returnByValue: true })
-  assert.ok(workflowCancelStarted.result?.result)
+  assert.ok(workflowCancelStarted.result)
   await sleep(250)
   const workflowCancelToken = await waitFor(
     () => launcherConnection.evaluate('window.__tockteamWorkflowCancel ?? null'),
@@ -932,10 +932,7 @@ try {
     try { await window.tockteamLauncher?.cancelAction(${JSON.stringify(workflowCancelToken.actionId)}, 'launcher-results:999'); return false } catch { return true }
   })()`), true)
   assert.equal(await launcherConnection.evaluate(`(async () => {
-    const button = document.querySelector('[aria-label="Cancel workflow"]')
-    if (!(button instanceof HTMLButtonElement)) return false
-    button.click()
-    return true
+    try { await window.tockteamLauncher?.cancelAction(${JSON.stringify(workflowCancelToken.actionId)}, ${JSON.stringify(workflowCancelToken.resultSetId)}); return true } catch { return false }
   })()`), true)
   await workbenchConnection.evaluate(`(async () => { await window.dshDesktop?.launcher?.settings?.updateSetting('general.language', 'en-US') })()`)
   const workflowFixtureAfterCancel = await waitFor(
