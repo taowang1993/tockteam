@@ -41,6 +41,7 @@ test('main assembles one launcher owner without branching the DSH workbench fact
   assert.match(main, /resolveTrustedWindowsTerminalExecutable/u)
   assert.match(main, /revalidateTrustedWindowsTerminalExecutable/u)
   assert.match(main, /launchDetachedTerminalInvocation/u)
+  assert.match(main, /launchExecutable: async \(executable, args, signal\) => \{(?:(?!\n\s*openApplication:)[\s\S])*launchDetachedLauncherExecutable\(executable, args, undefined, \{(?:(?!\n\s*\}).)*signal(?:(?!\n\s*\}).)*\}\)/u)
   assert.match(main, /launcherAwaitAbortableWithTimeout/u)
   assert.match(main, /properties: \['openFile'\][\s\S]+Browser applications|Browser executables/u)
   assert.match(main, /os\.loadIndexedItems\(signal(?:, preserveSignal)?/u)

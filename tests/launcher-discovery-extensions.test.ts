@@ -248,6 +248,40 @@ test('revalidates application, bookmark, reveal, IDE and VS Code targets immedia
   assert.deepEqual(calls, [])
 })
 
+test('VSCode and JetBrains launch effects receive the provider signal before owner clear', async () => {
+  for (const source of ['JetBrainsToolbox', 'VSCode'] as const) {
+    let observedSignal: AbortSignal | undefined
+    let release!: () => void
+    const pendingEffect = new Promise<void>(resolve => { release = resolve })
+    const provider = createLauncherDiscoveryExtensions({
+      ...baseOptions,
+      enabledExtensionIds: () => [source],
+      effects: {
+        confirmOpenApplicationAsAdministrator: async () => false,
+        copyText: () => {},
+        launchExecutable: async (_executable, _args, signal) => { observedSignal = signal; await pendingEffect },
+        openApplication: () => {},
+        openApplicationAsAdministrator: () => {},
+        openExternal: () => {},
+        revealPath: () => {},
+      },
+    })
+    const indexed = await provider.loadIndexedItems(new AbortController().signal)
+    const item = source === 'VSCode'
+      ? (await provider.searchInstant('vscode tock')).after[0]
+      : indexed.find(value => value.sourceExtension === source)
+    assert.ok(item)
+    const pending = provider.executeAction(record(item!))
+    await new Promise<void>(resolve => setImmediate(resolve))
+    provider.invalidate(`${source} owner-clear`)
+    assert.equal(observedSignal?.aborted, true)
+    release()
+    await assert.rejects(pending, /canceled|current|invalidated|owner-clear/u)
+    await provider.waitForIdle()
+    await provider.close()
+  }
+})
+
 test('Windows applications expose confirmed elevation and store IDs omit reveal', async () => {
   let confirmed = 0
   let elevated = 0

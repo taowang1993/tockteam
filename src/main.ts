@@ -1484,7 +1484,7 @@ function initializeLauncher(): void {
       },
       launchExecutable: async (executable, args, signal) => {
         if (signal.aborted) throw launcherAbortError(signal)
-        await launchDetachedLauncherExecutable(executable, args)
+        await launchDetachedLauncherExecutable(executable, args, undefined, { signal, timeoutMs: 15_000 })
         if (signal.aborted) throw launcherAbortError(signal)
       },
       openApplication: async (target, signal) => {
