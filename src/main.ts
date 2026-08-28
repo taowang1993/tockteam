@@ -2765,10 +2765,14 @@ function requestSecureQuit(_reason: 'native-quit' | 'tray' | 'launcher-command-q
 
 async function reconcileLauncherAfterRelaunchFailure(reason: string): Promise<void> {
   if (quitting) return
-  launcherPersistentSetsSync?.()
-  await launcherLifecycle?.sync()
-  await waitForLauncherProvidersIdleBounded()
-  await launcherRescan?.(undefined, undefined, `${reason}-recovery`)
+  try {
+    launcherPersistentSetsSync?.()
+    await launcherLifecycle?.sync()
+    await waitForLauncherProvidersIdleBounded()
+    await launcherRescan?.(undefined, undefined, `${reason}-recovery`)
+  } finally {
+    if (!quitting) launcherSettingsOperations.reopenMutations()
+  }
 }
 
 async function queueSecureRelaunch(reason: 'launcher-settings-import' | 'launcher-settings-reset'): Promise<void> {

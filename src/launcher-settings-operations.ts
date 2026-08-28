@@ -5,6 +5,7 @@ export interface LauncherSettingsOperationOptions {
 
 export interface LauncherSettingsOperations {
   close(): Promise<void>
+  reopenMutations(): void
   run<T>(operation: () => Promise<T>, options?: LauncherSettingsOperationOptions): Promise<T>
 }
 
@@ -36,5 +37,10 @@ export function createLauncherSettingsOperations(options: Readonly<{
     await tail
   }
 
-  return Object.freeze({ close, run })
+  const reopenMutations = (): void => {
+    if (closed) return
+    mutationsBlocked = false
+  }
+
+  return Object.freeze({ close, reopenMutations, run })
 }

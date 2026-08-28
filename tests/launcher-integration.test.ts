@@ -68,6 +68,7 @@ test('main assembles one launcher owner without branching the DSH workbench fact
   assert.doesNotMatch(main, /async function selectExternalLauncherSettings(?:(?!\nasync function ).)*queueSecureRelaunch/u)
   assert.match(main, /attemptSecureRelaunchWithRecovery/u)
   assert.match(main, /reconcileLauncherAfterRelaunchFailure/u)
+  assert.match(main, /reconcileLauncherAfterRelaunchFailure[\s\S]+launcherSettingsOperations\.reopenMutations\(\)/u)
   assert.match(main, /runtimeUrl === undefined\) return false/u)
   assert.match(main, /createLauncherWorkbenchRouteDelivery/u)
   assert.match(main, /workbenchRouteDelivery\.markUnready/u)

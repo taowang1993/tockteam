@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { createLauncherSettingsOperations } from '../src/launcher-settings-operations.ts'
+import { attemptSecureRelaunchWithRecovery } from '../src/launcher-lifecycle.ts'
 import { LAUNCHER_CORE_ACTION_HANDLERS, createLauncherCoreSearch } from '../src/launcher-core-search.ts'
 import type { LauncherInternalResultItem } from '../src/launcher-actions.ts'
 
@@ -69,6 +70,31 @@ test('canceled settings replacement leaves later mutations available', async () 
     mutation: true,
   })
   assert.equal(await operations.run(async () => 1, { mutation: true }), 1)
+})
+
+test('failed secure relaunch recovery reopens the settings mutation gate', async () => {
+  const operations = createLauncherSettingsOperations({ isUnavailable: () => false })
+  const persisted: string[] = []
+  await operations.run(async () => { persisted.push('replacement') }, {
+    blockMutationsAfterSuccess: true,
+    mutation: true,
+  })
+  await assert.rejects(operations.run(async () => { persisted.push('blocked') }, { mutation: true }), /mutations are closed/u)
+
+  let recoveries = 0
+  const relaunched = await attemptSecureRelaunchWithRecovery({
+    reconcile: async () => {
+      recoveries += 1
+      operations.reopenMutations()
+    },
+    relaunch: () => { throw new Error('relaunch unavailable') },
+    report: () => {},
+    requestQuit: () => {},
+  })
+  assert.equal(relaunched, false)
+  assert.equal(recoveries, 1)
+  await operations.run(async () => { persisted.push('ordinary') }, { mutation: true })
+  assert.deepEqual(persisted, ['replacement', 'ordinary'])
 })
 
 test('settings operation close drains accepted work and rejects new work', async () => {
