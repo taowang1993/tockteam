@@ -28,6 +28,22 @@ import type { LocaleMessages, LocaleService } from '../plugins/shared/i18n.ts'
 const MESSAGES = {
   en: {
     about: 'A focused launcher over the TockTeam Desktop workbench with bounded local, discovery, file, and network providers.',
+    sectionAbout: 'About and Contract',
+    sectionAppearance: 'Appearance and Input',
+    sectionBrowser: 'Browser and Shortcuts',
+    sectionDesktop: 'Desktop Lifecycle',
+    sectionDiscovery: 'Discovery Providers',
+    sectionExtensions: 'Extensions',
+    sectionFile: 'File Search',
+    sectionKeyboard: 'Keyboard and Mouse',
+    sectionLocal: 'Local Transformation Extensions',
+    sectionNetwork: 'Network Extensions',
+    sectionSearch: 'Search and History',
+    sectionSecurity: 'Security',
+    sectionStorage: 'Storage and Privacy',
+    sectionTerminal: 'Terminal Launcher',
+    sectionUpdates: 'Updates',
+    sectionWorkflow: 'Workflows',
     badge: 'Ueli-compatible contract',
     description: 'A focused launcher over the TockTeam Desktop workbench with bounded local, discovery, file, and network providers.',
     ready: 'TockLauncher settings are ready.',
@@ -38,6 +54,22 @@ const MESSAGES = {
   },
   zh: {
     about: '基于 TockTeam Desktop 工作台的专注启动器，提供受限的本地、发现、文件和网络提供方。',
+    sectionAbout: '关于与合约',
+    sectionAppearance: '外观与输入',
+    sectionBrowser: '浏览器与快捷键',
+    sectionDesktop: '桌面生命周期',
+    sectionDiscovery: '发现提供方',
+    sectionExtensions: '扩展',
+    sectionFile: '文件搜索',
+    sectionKeyboard: '键盘与鼠标',
+    sectionLocal: '本地转换扩展',
+    sectionNetwork: '网络扩展',
+    sectionSearch: '搜索与历史',
+    sectionSecurity: '安全',
+    sectionStorage: '存储与隐私',
+    sectionTerminal: '终端启动器',
+    sectionUpdates: '更新',
+    sectionWorkflow: '工作流',
     badge: '兼容 Ueli 合约',
     description: '基于 TockTeam Desktop 工作台的专注启动器，提供受限的本地、发现、文件和网络提供方。',
     ready: 'TockLauncher 设置已就绪。',
@@ -46,7 +78,7 @@ const MESSAGES = {
     title: 'TockLauncher',
     unavailable: 'TockLauncher 设置仅在 TockTeam Desktop 中可用。',
   },
-} satisfies LocaleMessages<'about' | 'badge' | 'description' | 'ready' | 'saving' | 'saved' | 'title' | 'unavailable'>
+} satisfies LocaleMessages<'about' | 'badge' | 'description' | 'ready' | 'saving' | 'saved' | 'sectionAbout' | 'sectionAppearance' | 'sectionBrowser' | 'sectionDesktop' | 'sectionDiscovery' | 'sectionExtensions' | 'sectionFile' | 'sectionKeyboard' | 'sectionLocal' | 'sectionNetwork' | 'sectionSearch' | 'sectionSecurity' | 'sectionStorage' | 'sectionTerminal' | 'sectionUpdates' | 'sectionWorkflow' | 'title' | 'unavailable'>
 
 interface SettingsSectionProps {
   close: () => void
@@ -88,8 +120,14 @@ function Field({ title, description, children }: Readonly<{ title: string; descr
   )
 }
 
+function sectionId(title: string): string {
+  let hash = 0
+  for (const character of title) hash = (hash * 31 + character.codePointAt(0)!) >>> 0
+  return `tocklauncher-section-${hash.toString(36)}`
+}
+
 function SectionCard({ icon, title, description, children, testId }: Readonly<{ icon: ReactNode; title: string; description: string; children: ReactNode; testId?: string }>): ReactNode {
-  const headingId = `tocklauncher-section-${title.toLocaleLowerCase('en-US').replaceAll(/[^a-z0-9]+/gu, '-')}`
+  const headingId = sectionId(title)
   return (
     <Card aria-labelledby={headingId} data-testid={testId} role="region">
       <CardHeader>
@@ -188,6 +226,7 @@ function LauncherSettingsPage({ close: _close, locale }: SettingsSectionProps): 
   const state = useMemo(() => snapshot ? readPersistedLauncherState(snapshot, LAUNCHER_COMPOSITION.extensionIds) : null, [snapshot])
   const enabled = useMemo(() => new Set(state?.enabledExtensionIds ?? []), [state?.enabledExtensionIds])
   const rendererIsLinux = typeof navigator !== 'undefined' && !/Macintosh|Mac OS|Windows/iu.test(`${navigator.platform} ${navigator.userAgent}`)
+  const rendererPlatform = rendererIsLinux ? 'Linux' as const : /Windows/iu.test(`${navigator.platform} ${navigator.userAgent}`) ? 'Windows' as const : 'macOS' as const
 
   const save = useCallback((key: string, value: unknown): Promise<boolean> => {
     if (!settings) return Promise.resolve(false)
@@ -195,8 +234,9 @@ function LauncherSettingsPage({ close: _close, locale }: SettingsSectionProps): 
     setBusy(true)
     const isSimpleFileSearchFolders = key === 'extension[SimpleFileSearch].folders'
     const draftRevision = simpleFileSearchDraftRevision.current
-    pendingValues.current.set(key, value)
-    if (!LAUNCHER_SENSITIVE_SETTING_KEYS.includes(key as never) && !isSimpleFileSearchFolders) {
+    const trackPendingValue = !LAUNCHER_SENSITIVE_SETTING_KEYS.includes(key as never)
+    if (trackPendingValue) pendingValues.current.set(key, value)
+    if (trackPendingValue && !isSimpleFileSearchFolders) {
       setSnapshot(previous => previous === null ? previous : Object.freeze({
         ...previous,
         values: Object.freeze({ ...previous.values, [key]: value }),
@@ -284,7 +324,7 @@ function LauncherSettingsPage({ close: _close, locale }: SettingsSectionProps): 
         <Badge variant="secondary">Ueli-compatible contract</Badge>
       </div>
 
-      <SectionCard icon={<MonitorCog aria-hidden="true" className="size-4" />} title="Search and History" description="Tune the matching surface without exposing launcher internals.">
+      <SectionCard icon={<MonitorCog aria-hidden="true" className="size-4" />} title={t('sectionSearch')} description="Tune the matching surface without exposing launcher internals.">
         <Field title="Search engine" description="The selected matcher is applied to the next search.">
           <NativeSelect aria-label="Search engine" size="sm" value={state.preferences.searchEngineId} disabled={busy} onChange={event => { void save('searchEngine.id', event.target.value) }}>
             <NativeSelectOption value="fuzzysort">fuzzysort</NativeSelectOption>
@@ -306,14 +346,15 @@ function LauncherSettingsPage({ close: _close, locale }: SettingsSectionProps): 
         <Field title="Saved searches" description="Clear persisted history without changing provider settings.">
           <Button aria-label="Clear search history" size="sm" variant="outline" disabled={busy || state.history.length === 0} onClick={clearHistory}><Trash2 aria-hidden="true" />Clear History</Button>
         </Field>
-        <LauncherSurfaceSettingsSection busy={busy} platform={rendererIsLinux ? 'Linux' : /Windows/iu.test(`${navigator.platform} ${navigator.userAgent}`) ? 'Windows' : 'macOS'} save={save} section="search" snapshot={snapshot} />
+        <details className="min-w-0 rounded-md border border-border/60 px-3 py-2"><summary className="cursor-pointer text-sm font-medium">Recent search entries</summary>{state.history.length === 0 ? <p className="mt-2 text-xs text-muted-foreground">No Recent Searches</p> : <ul className="mt-2 max-h-32 min-w-0 list-disc overflow-auto pl-5 text-xs text-muted-foreground">{state.history.map(query => <li key={query} className="min-w-0 break-words" title={query}>{query}</li>)}</ul>}</details>
+        <LauncherSurfaceSettingsSection busy={busy} platform={rendererPlatform} save={save} section="search" snapshot={snapshot} />
       </SectionCard>
 
-      <SectionCard icon={<Palette aria-hidden="true" className="size-4" />} title="Appearance and Input" description="Search presentation follows the shared TockTeam appearance owner and remains keyboard accessible.">
-        <LauncherSurfaceSettingsSection busy={busy} platform={rendererIsLinux ? 'Linux' : /Windows/iu.test(`${navigator.platform} ${navigator.userAgent}`) ? 'Windows' : 'macOS'} save={save} section="appearance" snapshot={snapshot} />
+      <SectionCard icon={<Palette aria-hidden="true" className="size-4" />} title={t('sectionAppearance')} description="Search presentation follows the shared TockTeam appearance owner and remains keyboard accessible.">
+        <LauncherSurfaceSettingsSection busy={busy} platform={rendererPlatform} save={save} section="appearance" snapshot={snapshot} />
       </SectionCard>
 
-      <SectionCard icon={<MonitorCog aria-hidden="true" className="size-4" />} title="Desktop Lifecycle" description="Window and shell behavior is applied by Electron main. Launch on Start remains in its existing TockTeam Preferences owner.">
+      <SectionCard icon={<MonitorCog aria-hidden="true" className="size-4" />} title={t('sectionDesktop')} description="Window and shell behavior is applied by Electron main. Launch on Start remains in its existing TockTeam Preferences owner.">
         <Field title="Appearance source" description={`Compatibility mode is ${state.preferences.themeSource}; active mode and skin follow the DSH TockTeam Appearance owner.`}><Badge variant="outline">Follows TockTeam Appearance</Badge></Field>
         <Field title="Launch on Start" description="Uses the single TockTeam login-item owner; it is not duplicated in launcher settings.">
           <Switch aria-label="Launch on Start" checked={launchOnStart === true} disabled={busy || launchOnStart === null} onCheckedChange={checked => { setBusy(true); void bridge.launchOnStart.set(checked).then(value => { setLaunchOnStart(value); setStatus('Launch on Start saved.') }).catch(() => setStatus('Launch on Start could not be saved.')).finally(() => setBusy(false)) }} />
@@ -325,18 +366,18 @@ function LauncherSettingsPage({ close: _close, locale }: SettingsSectionProps): 
         <Field title="Show on all workspaces"><Switch aria-label="Show on all workspaces" checked={state.preferences.visibleOnAllWorkspaces} disabled={busy} onCheckedChange={checked => { void save('window.visibleOnAllWorkspaces', checked) }} /></Field>
         <Field title="Show tray icon"><Switch aria-label="Show tray icon" checked={state.preferences.showTrayIcon} disabled={busy} onCheckedChange={checked => { void save('general.tray.showIcon', checked) }} /></Field>
         <Field title="Show Dock icon"><Switch aria-label="Show Dock icon" checked={state.preferences.showDockIcon} disabled={busy} onCheckedChange={checked => { void save('appearance.showAppIconInDock', checked) }} /></Field>
-        <LauncherSurfaceSettingsSection busy={busy} platform={rendererIsLinux ? 'Linux' : /Windows/iu.test(`${navigator.platform} ${navigator.userAgent}`) ? 'Windows' : 'macOS'} save={save} section="window" snapshot={snapshot} />
+        <LauncherSurfaceSettingsSection busy={busy} platform={rendererPlatform} save={save} section="window" snapshot={snapshot} />
       </SectionCard>
 
-      <SectionCard icon={<Keyboard aria-hidden="true" className="size-4" />} title="Keyboard and Mouse" description="Choose selection behavior without exposing paths or other authority.">
-        <LauncherSurfaceSettingsSection busy={busy} platform={rendererIsLinux ? 'Linux' : /Windows/iu.test(`${navigator.platform} ${navigator.userAgent}`) ? 'Windows' : 'macOS'} save={save} section="keyboard" snapshot={snapshot} />
+      <SectionCard icon={<Keyboard aria-hidden="true" className="size-4" />} title={t('sectionKeyboard')} description="Choose selection behavior without exposing paths or other authority.">
+        <LauncherSurfaceSettingsSection busy={busy} platform={rendererPlatform} save={save} section="keyboard" snapshot={snapshot} />
       </SectionCard>
 
-      <SectionCard icon={<Globe2 aria-hidden="true" className="size-4" />} title="Browser and Shortcuts" description="Browser grants and global shortcut ownership remain in Electron main.">
-        <LauncherSurfaceSettingsSection busy={busy} platform={rendererIsLinux ? 'Linux' : /Windows/iu.test(`${navigator.platform} ${navigator.userAgent}`) ? 'Windows' : 'macOS'} save={save} section="browser" snapshot={snapshot} />
+      <SectionCard icon={<Globe2 aria-hidden="true" className="size-4" />} title={t('sectionBrowser')} description="Browser grants and global shortcut ownership remain in Electron main.">
+        <LauncherSurfaceSettingsSection busy={busy} platform={rendererPlatform} save={save} section="browser" snapshot={snapshot} />
       </SectionCard>
 
-      <SectionCard icon={<ShieldCheck aria-hidden="true" className="size-4" />} title="Extensions" description="Enablement is serialized through main before the next scan. Provider controls remain with their owning slices." testId="tocklauncher-extension-toggles">
+      <SectionCard icon={<ShieldCheck aria-hidden="true" className="size-4" />} title={t('sectionExtensions')} description="Enablement is serialized through main before the next scan. Provider controls remain with their owning slices." testId="tocklauncher-extension-toggles">
         <div className="grid min-w-0 grid-cols-1 gap-x-6 sm:grid-cols-2">
           {LAUNCHER_COMPOSITION.extensionIds.map(extensionId => (
             <Field key={extensionId} title={extensionId}>
@@ -346,31 +387,31 @@ function LauncherSettingsPage({ close: _close, locale }: SettingsSectionProps): 
         </div>
       </SectionCard>
 
-      <SectionCard icon={<MonitorCog aria-hidden="true" className="size-4" />} title="Local Transformation Extensions" description="Configure the seven local transformation providers without exposing renderer authority.">
+      <SectionCard icon={<MonitorCog aria-hidden="true" className="size-4" />} title={t('sectionLocal')} description="Configure the seven local transformation providers without exposing renderer authority.">
         <LauncherLocalSettings busy={busy} save={save} snapshot={snapshot} />
       </SectionCard>
 
-      <SectionCard icon={<Search aria-hidden="true" className="size-4" />} title="Discovery Providers" description="Configure bounded applications, bookmarks, JetBrains projects, and VS Code recents.">
+      <SectionCard icon={<Search aria-hidden="true" className="size-4" />} title={t('sectionDiscovery')} description="Configure bounded applications, bookmarks, JetBrains projects, and VS Code recents.">
         <LauncherDiscoverySettings busy={busy} save={save} snapshot={snapshot} />
       </SectionCard>
 
-      <SectionCard icon={<Search aria-hidden="true" className="size-4" />} title="File Search" description="Configure bounded indexed and home-contained file search providers.">
+      <SectionCard icon={<Search aria-hidden="true" className="size-4" />} title={t('sectionFile')} description="Configure bounded indexed and home-contained file search providers.">
         <LauncherFileSearchSettings busy={busy} draftFolders={simpleFileSearchDraft} onDraftFoldersChange={updateSimpleFileSearchDraft} save={save} snapshot={snapshot} />
       </SectionCard>
 
-      <SectionCard icon={<MonitorCog aria-hidden="true" className="size-4" />} title="Terminal Launcher" description="Configure the finite native terminal catalog. Commands always require main-process approval.">
+      <SectionCard icon={<MonitorCog aria-hidden="true" className="size-4" />} title={t('sectionTerminal')} description="Configure the finite native terminal catalog. Commands always require main-process approval.">
         <LauncherTerminalSettings busy={busy} save={save} snapshot={snapshot} />
       </SectionCard>
 
-      <SectionCard icon={<ShieldCheck aria-hidden="true" className="size-4" />} title="Workflows" description="Compose a bounded ordered sequence of exact native actions. Commands always use a fixed shell policy and trusted Desktop home.">
+      <SectionCard icon={<ShieldCheck aria-hidden="true" className="size-4" />} title={t('sectionWorkflow')} description="Compose a bounded ordered sequence of exact native actions. Commands always use a fixed shell policy and trusted Desktop home.">
         <LauncherWorkflowSettings key={workflowSnapshotRevision} busy={busy} save={save} snapshot={snapshot} />
       </SectionCard>
 
-      <SectionCard icon={<Globe2 aria-hidden="true" className="size-4" />} title="Network Extensions" description="Configure fixed, bounded network providers without exposing renderer network authority.">
+      <SectionCard icon={<Globe2 aria-hidden="true" className="size-4" />} title={t('sectionNetwork')} description="Configure fixed, bounded network providers without exposing renderer network authority.">
         <LauncherNetworkSettings busy={busy} save={save} snapshot={snapshot} />
       </SectionCard>
 
-      <SectionCard icon={<Database aria-hidden="true" className="size-4" />} title="Storage and Privacy" description="Managed files and external grants are owned by Electron main; no filesystem path crosses this page.">
+      <SectionCard icon={<Database aria-hidden="true" className="size-4" />} title={t('sectionStorage')} description="Managed files and external grants are owned by Electron main; no filesystem path crosses this page.">
         <Field title="Settings source" description={statusLabel(snapshot)}><Badge variant={snapshot.settingsSource === 'external' ? 'default' : 'secondary'}>{snapshot.settingsSource === 'external' ? 'External' : 'Managed'}</Badge></Field>
         <Field title="External write capability" description="Unsupported platforms stay readable and revocable but reject writes before touching the file."><Badge variant={snapshot.externalWriteAvailable === false ? 'outline' : 'secondary'}>{snapshot.externalWriteAvailable === false ? 'Read-only' : 'Available'}</Badge></Field>
         <Field title="Recovery" description={snapshot.recoveredArtifacts?.length ? `Recovered: ${snapshot.recoveredArtifacts.join(', ')}.` : 'Each settings, index, and log artifact has an independent managed backup.'}><Badge variant={snapshot.recoveredArtifacts?.length ? 'default' : 'secondary'}>{snapshot.recoveredArtifacts?.length ? 'Recovered' : 'Healthy'}</Badge></Field>
@@ -399,7 +440,7 @@ function LauncherSettingsPage({ close: _close, locale }: SettingsSectionProps): 
         </Field>
       </SectionCard>
 
-      <SectionCard icon={<KeyRound aria-hidden="true" className="size-4" />} title="Security" description="Secrets are write-only. A missing or unavailable key is never represented by ciphertext or an error payload.">
+      <SectionCard icon={<KeyRound aria-hidden="true" className="size-4" />} title={t('sectionSecurity')} description="Secrets are write-only. A missing or unavailable key is never represented by ciphertext or an error payload.">
         <Field title="DeepL API key" description="Enter a new key to encrypt it with the operating system secure-storage backend.">
           <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">
             <Label htmlFor="tocklauncher-deepl-key" className="sr-only">DeepL API key</Label>
@@ -410,19 +451,19 @@ function LauncherSettingsPage({ close: _close, locale }: SettingsSectionProps): 
         <Alert role="status" aria-live="polite"><ShieldCheck aria-hidden="true" /><AlertTitle>Protected secret</AlertTitle><AlertDescription>{snapshot.missingSensitiveKeys.includes('extension[DeeplTranslator].apiKey') ? 'No usable DeepL key is stored.' : 'A usable DeepL key is stored with secure storage.'}</AlertDescription></Alert>
       </SectionCard>
 
-      <SectionCard icon={<RefreshCw aria-hidden="true" className="size-4" />} title="Updates" description="Automatic updates remain owned by the existing Electron updater state machine.">
+      <SectionCard icon={<RefreshCw aria-hidden="true" className="size-4" />} title={t('sectionUpdates')} description="Automatic updates remain owned by the existing Electron updater state machine.">
         {updater ? <>
           <Field title="Update status" description={updater.message ?? `Current version ${updater.currentVersion}`}><Badge variant={updater.status === 'error' ? 'destructive' : 'secondary'}>{updater.status}</Badge></Field>
           <Field title="Update actions"><div className="flex flex-wrap gap-2"><Button size="sm" variant="outline" disabled={busy || !updater.canRetry} onClick={() => { void changeUpdater(() => bridge.appUpdate.check(), 'Check') }}><RefreshCw aria-hidden="true" />Check</Button><Button size="sm" variant="outline" disabled={busy || updater.status !== 'available'} onClick={() => { void changeUpdater(() => bridge.appUpdate.download(), 'Download') }}>Download</Button><Button size="sm" variant="outline" disabled={busy || updater.status !== 'downloaded'} onClick={() => { void changeUpdater(() => bridge.appUpdate.install(), 'Install') }}>Install</Button></div></Field>
         </> : <p className="text-sm text-muted-foreground">Updater state is unavailable.</p>}
       </SectionCard>
 
-      <SectionCard icon={<Check aria-hidden="true" className="size-4" />} title="About and Contract" description="Compatibility inventory is explicit even while provider slices are staged.">
+      <SectionCard icon={<Check aria-hidden="true" className="size-4" />} title={t('sectionAbout')} description="Compatibility inventory is explicit even while provider slices are staged.">
         <Field title="Catalog coverage" description="The settings catalog is generated from the pinned Ueli parity manifest."><Badge variant="secondary">{LAUNCHER_SETTING_CATALOG_COUNT} rows · 102 runtime keys</Badge></Field>
         <Field title="Appearance ownership" description="The compatibility appearance.themeSource value is retained, but the active mode and skin follow the DSH TockTeam Appearance owner."><Badge variant="outline">Follows TockTeam Appearance</Badge></Field>
         <Field title="Browser grant" description="Custom-browser identity is status-only here; selection and revocation are native operations."><Badge variant="secondary">{snapshot.customBrowserStatus ?? 'none'}</Badge></Field>
         <Field title="Diagnostics" description="Bounded launcher diagnostics are retained without secret or path material."><span className="max-w-full truncate text-xs text-muted-foreground">{snapshot.logs.at(-1) ?? 'No launcher diagnostics.'}</span></Field>
-        <LauncherSurfaceSettingsSection busy={busy} platform={rendererIsLinux ? 'Linux' : /Windows/iu.test(`${navigator.platform} ${navigator.userAgent}`) ? 'Windows' : 'macOS'} save={save} section="compatibility" snapshot={snapshot} />
+        <LauncherSurfaceSettingsSection busy={busy} platform={rendererPlatform} save={save} section="compatibility" snapshot={snapshot} />
       </SectionCard>
 
       <p aria-live="polite" className="px-1 text-sm text-muted-foreground" role="status">{status}</p>

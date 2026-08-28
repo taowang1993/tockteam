@@ -178,7 +178,8 @@ function isLauncherProviderId(value: unknown): value is (typeof LAUNCHER_COMPOSI
 
 export function parseLauncherProviderStatus(value: unknown): LauncherProviderStatus {
   if (!isRecord(value)
-    || !hasExactKeys(value, Object.keys(value))
+    || Object.keys(value).length < 2
+    || Object.keys(value).length > 3
     || Object.keys(value).some(key => !['extensionId', 'state', 'messageKey'].includes(key))
     || !isLauncherProviderId(value.extensionId)
     || (value.state !== 'ready' && value.state !== 'disabled' && value.state !== 'unsupported' && value.state !== 'unavailable')

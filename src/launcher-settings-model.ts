@@ -1,6 +1,6 @@
 import type { LauncherSearchOptions } from './launcher-core-search.ts'
 import type { LauncherSettingsSnapshot } from './launcher-settings-contract.ts'
-import { LAUNCHER_COMPOSITION } from './launcher-contract.ts'
+import { LAUNCHER_COMPOSITION, normalizeLauncherLocale } from './launcher-contract.ts'
 import { LAUNCHER_INTERNAL_SETTING_KEYS, LAUNCHER_MAIN_OWNED_SETTING_KEYS, LAUNCHER_RUNTIME_SETTING_KEYS } from './launcher-setting-keys.ts'
 import { launcherSettingCatalogEntry } from './launcher-setting-catalog.ts'
 
@@ -84,9 +84,9 @@ export function readPersistedLauncherState(snapshot: LauncherSettingsSnapshot, a
     historyEnabled: value(snapshot, 'general.searchHistory.enabled', false, bool),
     historyLimit: Math.min(100, Math.max(1, value(snapshot, 'general.searchHistory.limit', 10, finiteNumber))),
     hideWindowOn: Object.freeze([...value(snapshot, 'window.hideWindowOn', Object.freeze(['blur', 'afterInvocation'] as const), hideWindowOn)]),
-    language: value(snapshot, 'general.language', 'en-US', text),
+    language: normalizeLauncherLocale(value(snapshot, 'general.language', 'en-US', text)),
     maxSearchResultItems: Math.min(200, Math.max(1, value(snapshot, 'searchEngine.maxResultLength', 50, finiteNumber))),
-    placeholder: value(snapshot, 'appearance.searchBarPlaceholderText', 'Search TockTeam', text),
+    placeholder: value(snapshot, 'appearance.searchBarPlaceholderText', 'Search TockTeam', text).slice(0, 512),
     preserveUserInput: value(snapshot, 'general.preserveUserInput', true, bool),
     searchBarAppearance: value(snapshot, 'appearance.searchBarAppearance', 'auto', searchAppearance),
     searchBarSize: value(snapshot, 'appearance.searchBarSize', 'large', searchSize),

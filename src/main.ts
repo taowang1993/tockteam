@@ -1478,7 +1478,6 @@ function launcherSurfaceSettings(): import('./launcher-contract.ts').LauncherSur
     ...(platform !== 'Windows' ? ['WindowsControlPanel'] : []),
   ])
   const providerErrors = new Set<string>([
-    ...(launcherDiscovery === undefined ? [] : []),
     ...(launcherFileSearch?.getLastError() !== undefined ? ['FileSearch', 'SimpleFileSearch'] : []),
     ...(launcherNetwork?.getLastError() !== undefined ? ['CurrencyConversion', 'CustomWebSearch', 'DeeplTranslator', 'WebSearch'] : []),
     ...(launcherOs?.getLastError() !== undefined ? ['AppearanceSwitcher', 'SystemCommands', 'SystemSettings', 'UeliCommand', 'WindowsControlPanel'] : []),
