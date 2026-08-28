@@ -188,7 +188,7 @@ async function readGrant(filePath: string): Promise<Grant | undefined> {
     if (!afterRead.isFile() || afterRead.size > BigInt(MAX_GRANT_BYTES) || !identityMatches(afterRead, before)) throw new Error('Custom browser grant file grew while it was read')
     const parsed = parseGrant(JSON.parse(content) as unknown)
     const after = await lstat(filePath, { bigint: true })
-    if (after.isSymbolicLink() || !identityMatches(after, before)) throw new Error('Custom browser grant file changed')
+    if (after.isSymbolicLink() || after.size > BigInt(MAX_GRANT_BYTES) || !identityMatches(after, before)) throw new Error('Custom browser grant file changed')
     return parsed
   } finally { await handle.close() }
 }
