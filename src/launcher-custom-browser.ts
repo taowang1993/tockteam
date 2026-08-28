@@ -183,7 +183,10 @@ async function readGrant(filePath: string): Promise<Grant | undefined> {
   try {
     const stats = await handle.stat({ bigint: true })
     if (!stats.isFile() || stats.size > BigInt(MAX_GRANT_BYTES) || !identityMatches(stats, before)) throw new Error('Custom browser grant file is invalid')
-    const parsed = parseGrant(JSON.parse(await readLauncherBoundedUtf8(handle)) as unknown)
+    const content = await readLauncherBoundedUtf8(handle)
+    const afterRead = await handle.stat({ bigint: true })
+    if (!afterRead.isFile() || afterRead.size > BigInt(MAX_GRANT_BYTES) || !identityMatches(afterRead, before)) throw new Error('Custom browser grant file grew while it was read')
+    const parsed = parseGrant(JSON.parse(content) as unknown)
     const after = await lstat(filePath, { bigint: true })
     if (after.isSymbolicLink() || !identityMatches(after, before)) throw new Error('Custom browser grant file changed')
     return parsed
@@ -328,11 +331,11 @@ export class LauncherCustomBrowserController {
         else throw error
       }
       await rm(path.join(directory, path.basename(this.#grantPath)), { force: true })
+      this.#grant = undefined
+      this.#status = 'none'
       try { await syncGrantDirectory(this.options.syncDirectory ?? (async target => await syncDirectory(target, this.options.platform)), directory, this.options.platform) } catch (error) {
         if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
       }
-      this.#grant = undefined
-      this.#status = 'none'
       this.options.afterGrantMutation?.('revoke')
       throwIfAborted(operationSignal)
     }, signal)
