@@ -344,6 +344,24 @@ test('load invalidation during raw-operation wait cannot register or publish sta
   await network.close()
 })
 
+test('load close during raw-operation wait cannot register or publish stale work', async () => {
+  let releaseFetch!: () => void
+  const network = createLauncherNetworkExtensions({
+    copyText: () => undefined, enabledExtensionIds: () => ['WebSearch'],
+    fetch: async () => await new Promise<Response>(resolve => { releaseFetch = () => resolve(response(JSON.stringify(['term', []]))) }),
+    getSetting: baseSettings, openExternal: () => undefined, resolveAddresses: publicResolver,
+  })
+  const pendingSearch = network.searchInstant(`${LAUNCHER_WEB_SEARCH_QUERY_PREFIX} waiting-close`)
+  await new Promise<void>(resolve => setImmediate(resolve))
+  const pendingLoad = network.loadIndexedItems(new AbortController().signal)
+  await new Promise<void>(resolve => setImmediate(resolve))
+  const closing = network.close()
+  releaseFetch()
+  await assert.rejects(pendingLoad, /closed|superseded|canceled/u)
+  await closing
+  assert.deepEqual(await pendingSearch, { before: [], after: [] })
+})
+
 test('currency refresh owns and aborts its raw operation', async () => {
   let fetchSignal!: AbortSignal
   const network = createLauncherNetworkExtensions({
