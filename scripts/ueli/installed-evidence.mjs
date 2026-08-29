@@ -6,10 +6,12 @@ import { existsSync, readFileSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { inspectInstalledReport } from '../check-installed-report.mjs'
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url))
 const defaultRepoRoot = path.resolve(scriptDir, '../..')
 const PLATFORMS = Object.freeze(['macOS', 'Windows', 'Linux'])
+const REPORT_PLATFORM_BY_CATALOG_PLATFORM = Object.freeze({ macOS: 'darwin', Windows: 'win32', Linux: 'linux' })
 const STATES = Object.freeze(['local-verified', 'partially-verified', 'workflow-required', 'unverified', 'not-applicable'])
 export const REQUIRED_INSTALLED_EVIDENCE_ROWS = Object.freeze([
   'macOS:artifact-build',
@@ -73,6 +75,8 @@ function validateCheckedInEvidence(failures, row) {
     && reference.endsWith('.json')
     && !reference.includes('..')
   failure(failures, checkedInPath, `verified row evidence is not checked in: ${String(row.id)}`)
+  const expectedPlatform = REPORT_PLATFORM_BY_CATALOG_PLATFORM[row.platform]
+  failure(failures, evidence?.platform === expectedPlatform, `verified row evidence platform does not match its row: ${String(row.id)}`)
   if (!checkedInPath) return
   const reportPath = path.resolve(defaultRepoRoot, reference)
   failure(failures, existsSync(reportPath), `verified row evidence report is missing: ${String(row.id)}`)
@@ -83,6 +87,14 @@ function validateCheckedInEvidence(failures, row) {
   failure(failures, report?.sourceCommit === evidence.commit, `verified row report commit differs: ${String(row.id)}`)
   failure(failures, report?.version === evidence.version, `verified row report version differs: ${String(row.id)}`)
   failure(failures, report?.appId === evidence.identity, `verified row report identity differs: ${String(row.id)}`)
+  const reportResult = inspectInstalledReport(report, {
+    appId: evidence.identity,
+    commit: evidence.commit,
+    platform: expectedPlatform,
+    productName: 'TockTeam Desktop',
+    version: evidence.version,
+  })
+  failure(failures, reportResult.failures.length === 0, `verified row report failed full ${String(row.platform)} validation: ${reportResult.failures.join('; ')}`)
   const reportHash = createHash('sha256').update(readFileSync(reportPath)).digest('hex')
   failure(failures, reportHash === evidence.reportSha256, `verified row report hash differs: ${String(row.id)}`)
 }

@@ -579,7 +579,8 @@ export async function inspectExtraResources(asarPath) {
     let entries
     try { entries = await readdir(rootPath, { withFileTypes: true }) } catch { return }
     for (const entry of entries) {
-      if (++checkedEntries > 4_096) return
+      if (checkedEntries >= 4_096) return
+      checkedEntries += 1
       const childRelative = relative === '' ? entry.name : `${relative}/${entry.name}`
       assert.doesNotMatch(childRelative, /vendor[/\\]ueli(?:[/\\]|$)/iu, 'extra resources contain vendor/ueli source')
       if (entry.isDirectory() && !entry.isSymbolicLink()) await visit(join(rootPath, entry.name), childRelative, depth + 1)

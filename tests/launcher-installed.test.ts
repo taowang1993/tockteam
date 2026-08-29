@@ -133,9 +133,10 @@ test('extra-resource inspection is bounded and never follows symlink cycles', as
     await mkdir(join(rootPath, 'lib', 'tockteam'), { recursive: true })
     await mkdir(join(rootPath, 'bin'), { recursive: true })
     for (const file of ['tockteam-desktop.png', 'lib/tockteam/cli.js', 'lib/tockteam/package.json', 'bin/tockteam', 'bin/tockteam.cmd']) await writeFile(join(rootPath, file), '')
+    for (let index = 0; index < 4_100; index += 1) await writeFile(join(rootPath, `bounded-${String(index)}`), '')
     await symlink(rootPath, join(rootPath, 'dsh-runtime', 'cycle'))
     const result = await inspectExtraResources(join(rootPath, 'app.asar'))
-    assert.ok(result.checkedEntries <= 4096)
+    assert.equal(result.checkedEntries, 4096)
     assert.deepEqual(result.vendorScan, { scope: 'bounded-no-follow', maxDepth: 2, maxEntries: 4096, checkedEntries: result.checkedEntries, forbiddenSourceFound: false })
   } finally {
     await rm(rootPath, { recursive: true, force: true })
@@ -183,7 +184,7 @@ test('installed evidence catalog owns the exact platform rows and rejects fabric
   assert.ok(shortcut)
   shortcut.state = 'local-verified'
   shortcut.evidence = { kind: 'checked-in-report', platform: 'darwin-arm64', commit: 'a'.repeat(40), version: '0.1.14', identity: 'ai.deepseek.tockteam-desktop', result: 'passed', reference: 'scripts/ueli/evidence/fabricated.json', reportSha256: 'b'.repeat(64) }
-  assert.ok(inspectInstalledEvidenceCatalog(fabricated).failures.length > 0)
+  assert.ok(inspectInstalledEvidenceCatalog(fabricated).failures.some(failure => failure.includes('platform')))
 })
 
 test('installed report validation requires complete platform lifecycle evidence', () => {
@@ -209,6 +210,28 @@ test('installed report validation requires complete platform lifecycle evidence'
   const linuxReport = { ...report, platform: 'linux', installed: { deb: { artifact: '/tmp/TockTeam-Desktop.deb', installRoot: '/tmp/deb-root', package: linuxPackage, renderer: linuxRenderer, reinstall: { package: linuxPackage, settings: { restored: 0.6, runtimeReady: 'ready' } }, secondInstance: { singleInstance: true, permissions: 'renderer-permission-denied' }, rollback: { state: 'workflow-required' }, uninstall: 'dpkg-purge-passed' }, appImage: { artifact: '/tmp/TockTeam-Desktop.AppImage', installRoot: '/tmp/appimage-root', package: { ...linuxPackage, appPath: '/tmp/appimage-root/resources/app.asar' }, renderer: { security: { appPath: '/tmp/appimage-root/resources/app.asar' }, launcher: { notificationPermission: 'denied' } }, runtime: { runtimeReady: true }, secondInstance: { singleInstance: true, permissions: 'renderer-permission-denied' } } } }
   assert.equal(inspectInstalledReport(linuxReport, { ...expected, platform: 'linux' }).failures.length, 0)
   assert.ok(inspectInstalledReport({ ...linuxReport, installed: { ...linuxReport.installed, appImage: undefined } }, { ...expected, platform: 'linux' }).failures.length > 0)
+  const macRoot = '/tmp/Applications/TockTeam Desktop.app'
+  const macPackage = { ...packageInventory, appPath: `${macRoot}/Contents/Resources/app.asar` }
+  const macReport = {
+    ...report,
+    platform: 'darwin',
+    installed: {
+      installRoot: macRoot,
+      package: macPackage,
+      renderer: { security: { appPath: macPackage.appPath }, launcher: { notificationPermission: 'denied' } },
+      identity: { appId: expected.appId, productName: expected.productName, version: expected.version, asarPath: macPackage.appPath, signature: 'adhoc', resources: true },
+      reinstallSettings: { package: macPackage, identity: { appId: expected.appId, productName: expected.productName, version: expected.version, asarPath: macPackage.appPath, signature: 'adhoc', resources: true }, settings: { restored: 0.6, runtimeReady: 'ready' }, version: expected.version },
+      rollback: { preservedAsarSha256: 'c'.repeat(64), validationFailureRecovered: true },
+      provider: { controlPanel: 'unsupported', destructiveEffects: 'not-invoked', providerCount: 24, terminal: 'unsupported' },
+      secondInstance: { singleInstance: true, permissions: 'renderer-permission-denied' },
+      processTreesGone: true,
+      temporaryInstallRemoved: true,
+    },
+  }
+  assert.equal(inspectInstalledReport(macReport, { ...expected, platform: 'darwin' }).failures.length, 0)
+  assert.ok(inspectInstalledReport({ ...macReport, installed: { ...macReport.installed, package: { ...macPackage, vendorScan: undefined } } }, { ...expected, platform: 'darwin' }).failures.length > 0)
+  assert.ok(inspectInstalledReport({ ...macReport, installed: { ...macReport.installed, provider: undefined } }, { ...expected, platform: 'darwin' }).failures.length > 0)
+  assert.ok(inspectInstalledReport({ ...macReport, installed: { ...macReport.installed, reinstallSettings: { ...macReport.installed.reinstallSettings, package: { ...macPackage, version: '0.0.0' } } } }, { ...expected, platform: 'darwin' }).failures.length > 0)
 })
 
 test('release and platform workflows retain ordered package and installed gates', () => {

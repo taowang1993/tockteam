@@ -22,7 +22,7 @@ function contained(rootPath, candidatePath) {
   return child === '' || (!child.startsWith('..') && !isAbsolute(child) && !child.includes(':'))
 }
 
-function inspectPackage(failures, packageInventory, renderer, installRoot, expected) {
+function inspectPackageInventory(failures, packageInventory, installRoot, expected) {
   failure(failures, object(packageInventory), 'post-install package inventory is missing')
   if (!object(packageInventory)) return
   failure(failures, packageInventory.version === expected.version, 'post-install package version differs from the report')
@@ -37,17 +37,22 @@ function inspectPackage(failures, packageInventory, renderer, installRoot, expec
   const vendorScan = packageInventory.vendorScan
   failure(failures, object(vendorScan), 'post-install vendor scan is missing')
   failure(failures, vendorScan?.scope === 'bounded-no-follow', 'post-install vendor scan scope is not bounded-no-follow')
-  failure(failures, Number.isSafeInteger(vendorScan?.checkedEntries), 'post-install vendor scan entry count is missing')
-  failure(failures, vendorScan?.maxDepth === 2 && vendorScan?.maxEntries === 4_096, 'post-install vendor scan bounds differ')
+  failure(failures, Number.isSafeInteger(vendorScan?.maxEntries) && vendorScan.maxEntries === 4_096, 'post-install vendor scan maxEntries is invalid')
+  failure(failures, Number.isSafeInteger(vendorScan?.checkedEntries) && vendorScan.checkedEntries >= 0 && vendorScan.checkedEntries <= (vendorScan.maxEntries ?? -1), 'post-install vendor scan entry count is invalid')
+  failure(failures, Number.isSafeInteger(vendorScan?.maxDepth) && vendorScan.maxDepth === 2, 'post-install vendor scan maxDepth is invalid')
   failure(failures, vendorScan?.forbiddenSourceFound === false && vendorScan?.launcherSourceAbsent === true, 'post-install vendor scan did not prove its declared bounded scope')
+}
+
+function inspectPackage(failures, packageInventory, renderer, installRoot, expected) {
+  inspectPackageInventory(failures, packageInventory, installRoot, expected)
   failure(failures, object(renderer), 'post-install renderer evidence is missing')
-  failure(failures, renderer?.security?.appPath === packageInventory.appPath, 'installed renderer security path does not match the inspected app.asar')
+  failure(failures, renderer?.security?.appPath === packageInventory?.appPath, 'installed renderer security path does not match the inspected app.asar')
   failure(failures, renderer?.launcher?.notificationPermission === 'denied', 'installed renderer permission evidence is missing')
 }
 
-function inspectSettings(failures, settings) {
+function inspectSettings(failures, settings, installRoot, expected) {
   failure(failures, object(settings), 'installed settings-reinstall evidence is missing')
-  failure(failures, settings?.package?.version !== undefined && settings.package.appId === 'ai.deepseek.tockteam-desktop' && settings.package.productName === 'TockTeam Desktop', 'installed settings-reinstall package evidence is incomplete')
+  inspectPackageInventory(failures, settings?.package, installRoot, expected)
   failure(failures, settings?.settings?.restored !== undefined, 'installed settings-reinstall value is missing')
   failure(failures, settings?.settings?.runtimeReady === 'ready', 'installed settings-reinstall runtime was not ready')
 }
@@ -76,10 +81,29 @@ export function inspectInstalledReport(report, expected) {
       failure(failures, installed.portableArchive?.format === 'zip' && /\.zip$/iu.test(installed.portableArchive?.path ?? ''), 'Windows portable archive evidence is missing')
       failure(failures, installed.portableArchive?.version === expected.version, 'Windows portable archive version differs')
       inspectPackage(failures, installed.package, installed.renderer, installed.installRoot, expected)
-      inspectSettings(failures, installed.reinstall)
+      inspectSettings(failures, installed.reinstall, installed.installRoot, expected)
       inspectSecondInstance(failures, installed.secondInstance)
       failure(failures, installed.rollback?.validationFailureRecovered === true && /^[0-9a-f]{64}$/u.test(installed.rollback?.preservedAsarSha256 ?? ''), 'Windows portable rollback evidence is missing')
       failure(failures, installed.cleanup?.installRootRemoved === true, 'Windows portable install cleanup did not pass')
+    }
+  } else if (expected.platform === 'darwin') {
+    const installed = report?.installed
+    failure(failures, object(installed), 'macOS installed lifecycle evidence is missing')
+    if (object(installed)) {
+      inspectPackage(failures, installed.package, installed.renderer, installed.installRoot, expected)
+      const identity = installed.identity
+      failure(failures, object(identity), 'macOS installed identity evidence is missing')
+      failure(failures, identity?.appId === expected.appId && identity?.productName === expected.productName && identity?.version === expected.version, 'macOS installed identity differs from the report')
+      failure(failures, identity?.asarPath === installed.package?.appPath && identity?.signature === 'adhoc' && identity?.resources === true, 'macOS installed signature/resource evidence is missing')
+      inspectSettings(failures, installed.reinstallSettings, installed.installRoot, expected)
+      const reinstallIdentity = installed.reinstallSettings?.identity
+      failure(failures, object(reinstallIdentity), 'macOS reinstall identity evidence is missing')
+      failure(failures, reinstallIdentity?.appId === expected.appId && reinstallIdentity?.productName === expected.productName && reinstallIdentity?.version === expected.version && reinstallIdentity?.asarPath === installed.reinstallSettings?.package?.appPath && reinstallIdentity?.signature === 'adhoc' && reinstallIdentity?.resources === true, 'macOS reinstall identity differs from the report')
+      failure(failures, installed.rollback?.validationFailureRecovered === true && /^[0-9a-f]{64}$/u.test(installed.rollback?.preservedAsarSha256 ?? ''), 'macOS rollback evidence is missing')
+      failure(failures, installed.provider?.providerCount === 24 && installed.provider?.controlPanel === 'unsupported' && installed.provider?.terminal === 'unsupported' && installed.provider?.destructiveEffects === 'not-invoked', 'macOS provider evidence is incomplete')
+      inspectSecondInstance(failures, installed.secondInstance)
+      failure(failures, installed.processTreesGone === true, 'macOS process-tree cleanup did not pass')
+      failure(failures, installed.temporaryInstallRemoved === true, 'macOS temporary install cleanup did not pass')
     }
   } else if (expected.platform === 'linux') {
     const installed = report?.installed
@@ -91,7 +115,7 @@ export function inspectInstalledReport(report, expected) {
       if (object(deb)) {
         failure(failures, /\.deb$/iu.test(deb.artifact ?? ''), 'Linux deb artifact evidence is missing')
         inspectPackage(failures, deb.package, deb.renderer, deb.installRoot, expected)
-        inspectSettings(failures, deb.reinstall)
+        inspectSettings(failures, deb.reinstall, deb.installRoot, expected)
         inspectSecondInstance(failures, deb.secondInstance)
         failure(failures, deb.uninstall === 'dpkg-purge-passed', 'Linux deb purge evidence is missing')
         failure(failures, deb.rollback?.state === 'workflow-required', 'Linux deb rollback must remain explicitly workflow-required')
