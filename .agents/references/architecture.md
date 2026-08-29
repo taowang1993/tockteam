@@ -96,14 +96,16 @@ same transaction and risk approval and cannot bypass the Loader.
 
 The installed smoke supports a disposable macOS app and a Windows portable
 archive built from the supported directory artifact, plus real Debian/AppImage
-lanes on Ubuntu. Current post-fix evidence has not been captured, so every
-installed-evidence catalog row remains workflow-required. The smoke requires
-exact identity/version/resources, renderer security, lifecycle and cleanup
-reports before a row can be promoted. Vendor results are explicitly bounded
-no-follow scans, not global source-absence proof. No workflow configuration
-counts as a passing run or publication claim; signing, notarization, and public
-distribution remain unproven. Any future local macOS row must be labeled
-unsigned/internal macOS evidence and backed by a checked-in report. Windows and Linux installed evidence is workflow-required and not yet executed.
+lanes on Ubuntu. The checked-in macOS arm64 report records unsigned/internal macOS
+ad-hoc evidence at a pinned source commit: identity, resources, security,
+actions, settings/reinstall, rollback, and cleanup rows are local-verified;
+notices/vendor scanning and provider catalog are partially verified; the
+shortcut row remains workflow-required because no actual shortcut path was
+exercised. The smoke requires exact identity/version/resources, renderer
+security, lifecycle and cleanup reports before a row can be promoted. Vendor
+results are explicitly bounded no-follow scans, not global source-absence proof.
+No workflow configuration counts as a passing run or publication claim;
+signing, notarization, and public distribution remain unproven. Windows and Linux installed evidence is workflow-required and not yet executed.
 
 ## Security boundaries
 

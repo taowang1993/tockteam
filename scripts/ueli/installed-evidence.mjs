@@ -71,7 +71,7 @@ function validateCheckedInEvidence(failures, row) {
   failure(failures, evidence?.identity === 'ai.deepseek.tockteam-desktop', `verified row evidence identity drifted: ${String(row.id)}`)
   const reference = evidence?.reference
   const checkedInPath = typeof reference === 'string'
-    && reference.startsWith('scripts/ueli/evidence/')
+    && reference.startsWith('.beads/reports/')
     && reference.endsWith('.json')
     && !reference.includes('..')
   failure(failures, checkedInPath, `verified row evidence is not checked in: ${String(row.id)}`)

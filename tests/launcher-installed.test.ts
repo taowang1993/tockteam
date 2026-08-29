@@ -198,11 +198,24 @@ test('installed evidence catalog owns the exact platform rows and rejects fabric
   ]
   assert.deepEqual(catalog.rows.map(row => row.id), expectedIds)
   assert.equal(catalog.rows.length, 27)
+  const localMacRows = new Set([
+    'macOS:artifact-build', 'macOS:identity-and-resources', 'macOS:ad-hoc-signature',
+    'macOS:security-and-workbench', 'macOS:launcher-action', 'macOS:settings-session-compatibility',
+    'macOS:reinstall-settings', 'macOS:rollback', 'macOS:permissions-and-cleanup',
+  ])
+  const partialMacRows = new Set(['macOS:notices-and-bounded-vendor-scan', 'macOS:provider-catalog'])
   for (const row of catalog.rows) {
     assert.ok(row.id && row.platform && row.owner && row.state)
     if (row.required) assert.notEqual(row.owner, 'unowned')
-    assert.equal(row.state, 'workflow-required')
-    assert.equal(row.evidence, null)
+    const expectedState = localMacRows.has(row.id) ? 'local-verified' : partialMacRows.has(row.id) ? 'partially-verified' : 'workflow-required'
+    assert.equal(row.state, expectedState)
+    if (expectedState === 'workflow-required') assert.equal(row.evidence, null)
+    else {
+      assert.equal(row.evidence?.platform, 'darwin')
+      assert.equal(row.evidence?.commit, 'afe16ea4f22c102014a943c8c3267e0fe564e36d')
+      assert.equal(row.evidence?.reportSha256, '2ae01ad484522ae2b1c63feb04e106b9e2279083dcdb5a2d5e5dbd19ccecfe84')
+      assert.equal(row.evidence?.reference, '.beads/reports/tocklauncher-installed-macos-arm64.json')
+    }
   }
   assert.deepEqual(new Set(catalog.rows.map(row => row.platform)), new Set(['macOS', 'Windows', 'Linux']))
   assert.deepEqual(inspectInstalledEvidenceCatalog({ ...catalog, rows: catalog.rows.slice(1) }).failures.filter(failure => failure.includes('required installed evidence row is missing')), ['required installed evidence row is missing: macOS:artifact-build'])
@@ -219,8 +232,12 @@ test('installed evidence catalog owns the exact platform rows and rejects fabric
   const shortcut = fabricated.rows.find(row => row.id === 'macOS:shortcut-second-instance')
   assert.ok(shortcut)
   shortcut.state = 'local-verified'
-  shortcut.evidence = { kind: 'checked-in-report', platform: 'darwin-arm64', commit: 'a'.repeat(40), version: '0.1.14', identity: 'ai.deepseek.tockteam-desktop', result: 'passed', reference: 'scripts/ueli/evidence/fabricated.json', reportSha256: 'b'.repeat(64) }
-  assert.ok(inspectInstalledEvidenceCatalog(fabricated).failures.some(failure => failure.includes('platform')))
+  shortcut.evidence = { kind: 'checked-in-report', platform: 'darwin', commit: 'a'.repeat(40), version: '0.1.14', identity: 'ai.deepseek.tockteam-desktop', result: 'passed', reference: '.beads/reports/fabricated.json', reportSha256: 'b'.repeat(64) }
+  assert.ok(inspectInstalledEvidenceCatalog(fabricated).failures.some(failure => failure.includes('report is missing')))
+  const traversal = structuredClone(catalog)
+  const promoted = traversal.rows.find(row => row.id === 'macOS:artifact-build')!
+  promoted.evidence!.reference = '.beads/reports/../package.json'
+  assert.ok(inspectInstalledEvidenceCatalog(traversal).failures.some(failure => failure.includes('not checked in')))
 })
 
 test('installed report validation requires complete platform lifecycle evidence', () => {

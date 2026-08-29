@@ -183,11 +183,11 @@ pnpm test:launcher:installed
 
 This command builds a fresh product and exercises the disposable macOS,
 Windows portable-archive, Debian, and AppImage lanes when run on their supported
-hosts. Current post-fix evidence has not been captured, so catalog rows remain
-workflow-required. Any future local macOS proof is unsigned/internal ad-hoc
-evidence only, not signed, notarized, or public distribution evidence. Vendor
-results are bounded no-follow scans, not global source-absence proof; upgrade and
-installer rollback claims require their own reports.
+hosts. The checked-in macOS arm64 report records unsigned/internal ad-hoc proof
+for the identity, resources, security, actions, settings/reinstall, rollback,
+and cleanup rows. Notices/vendor scanning and provider catalog are only
+partially verified, and the shortcut row remains workflow-required because no
+actual shortcut path was exercised. Windows and Linux installed evidence is workflow-required and not yet executed. The macOS proof is not signed, notarized, or public distribution evidence. Vendor results are bounded no-follow scans, not global source-absence proof; upgrade and installer rollback claims require their own reports.
 
 ## Data and troubleshooting
 
