@@ -1,3 +1,7 @@
+export function canonicalPath(candidatePath: string): Promise<string | undefined>
+
+export function pathContained(rootPath: string, candidatePath: string): Promise<boolean>
+
 export function withSmokeEnvironment<T>(operation: () => T | Promise<T>, disposableRoot?: string): Promise<T>
 
 export function smokeEnvironment(overrides?: NodeJS.ProcessEnv, disposableRoot?: string): NodeJS.ProcessEnv

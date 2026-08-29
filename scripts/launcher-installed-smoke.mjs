@@ -11,6 +11,7 @@ import { fileURLToPath } from 'node:url'
 import { promisify } from 'node:util'
 import { build } from 'electron-builder'
 import {
+  canonicalPath,
   freePort,
   launchPackaged,
   packagedBuilderConfig,
@@ -165,6 +166,8 @@ async function inspectMacBundle(appPath) {
   assert.equal((await stat(executable)).isFile(), true)
   const asarPath = join(appPath, 'Contents', 'Resources', 'app.asar')
   assert.equal((await stat(asarPath)).isFile(), true)
+  const canonicalAsarPath = await canonicalPath(asarPath)
+  assert.ok(canonicalAsarPath !== undefined, 'installed macOS app.asar could not be canonicalized')
   const plistPath = join(appPath, 'Contents', 'Info.plist')
   const plist = await execFileAsync('/usr/bin/plutil', ['-convert', 'json', '-o', '-', plistPath])
   const metadata = JSON.parse(plist.stdout)
@@ -175,7 +178,7 @@ async function inspectMacBundle(appPath) {
   assert.match(signatureText, /Signature=adhoc/u, 'local installed evidence must be ad-hoc, not public signing evidence')
   return Object.freeze({
     appId: metadata.CFBundleIdentifier,
-    asarPath,
+    asarPath: canonicalAsarPath,
     executable,
     signature: 'adhoc',
     resources: true,

@@ -10,7 +10,9 @@ import {
 } from '../scripts/ueli/installed-evidence.mjs'
 import { inspectInstalledReport } from '../scripts/check-installed-report.mjs'
 import {
+  canonicalPath,
   inspectExtraResources,
+  pathContained,
   selectCdpDescriptor,
   smokeEnvironment,
   windowsCdpListenerOwned,
@@ -113,6 +115,32 @@ test('launched smoke environments use disposable user roots and bounded tools', 
     ? [join(process.env.SystemRoot ?? 'C:\\Windows', 'System32'), process.env.SystemRoot ?? 'C:\\Windows', join(process.env.SystemRoot ?? 'C:\\Windows', 'System32', 'Wbem')]
     : ['/usr/local/bin', '/usr/bin', '/bin', '/usr/sbin', '/sbin']
   for (const directory of systemDirectories) assert.ok(pathEntries.includes(directory))
+})
+
+test('canonical path helpers resolve aliases and fail closed for invalid paths', async () => {
+  const rootPath = await mkdtemp(join(tmpdir(), 'tockteam-canonical-path-'))
+  try {
+    const actualRoot = join(rootPath, 'real')
+    const actualApp = join(actualRoot, 'Contents', 'Resources', 'app.asar')
+    await mkdir(join(actualRoot, 'Contents', 'Resources'), { recursive: true })
+    await writeFile(actualApp, '')
+    const actualCanonical = await canonicalPath(actualApp)
+    assert.ok(actualCanonical)
+    assert.equal(await pathContained(actualRoot, actualApp), true)
+    assert.equal(await canonicalPath(''), undefined)
+    assert.equal(await pathContained('', actualApp), false)
+    if (process.platform !== 'win32') {
+      const aliasRoot = join(rootPath, 'alias')
+      await symlink(actualRoot, aliasRoot, 'dir')
+      const aliasApp = join(aliasRoot, 'Contents', 'Resources', 'app.asar')
+      assert.equal(await canonicalPath(aliasApp), actualCanonical)
+      assert.equal(await pathContained(aliasRoot, aliasApp), true)
+      assert.equal(await pathContained(aliasRoot, join(rootPath, 'outside', 'app.asar')), false)
+    }
+    if (process.platform === 'darwin') assert.equal(await canonicalPath('/var'), await canonicalPath('/private/var'))
+  } finally {
+    await rm(rootPath, { recursive: true, force: true })
+  }
 })
 
 test('package smoke is hermetic and verifies resources plus process ownership', () => {

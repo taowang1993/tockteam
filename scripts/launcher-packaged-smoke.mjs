@@ -6,12 +6,15 @@ import { createServer } from 'node:net'
 import { spawn as spawnProcess, spawnSync } from 'node:child_process'
 import { cp, lstat, open, mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { dirname, isAbsolute, join, relative, resolve } from 'node:path'
+import { dirname, isAbsolute, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createRequire } from 'node:module'
 import { Arch, DIR_TARGET, Platform, build } from 'electron-builder'
 import { stopChildProcess } from './process-cleanup.mjs'
 import { LAUNCHER_CSP, LAUNCHER_SESSION_PARTITION } from '../src/launcher-security.ts'
+import { canonicalPath, pathContained } from './path-identity.mjs'
+
+export { canonicalPath, pathContained }
 
 const require = createRequire(import.meta.url)
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
@@ -598,12 +601,12 @@ export async function inspectExtraResources(asarPath) {
 export async function inspectPackage(outputDir, target, options = {}) {
   const executable = options.executable ?? await findPackagedExecutable(outputDir, target)
   assert.equal((await stat(executable)).isFile(), true)
-  const relativeExecutablePath = relative(resolve(outputDir), resolve(executable))
-  assert.ok(relativeExecutablePath === '' || (!relativeExecutablePath.startsWith('..') && !relativeExecutablePath.includes(':')), 'packaged executable escaped the selected artifact root')
+  assert.equal(await pathContained(outputDir, executable), true, 'packaged executable escaped the selected artifact root')
   const asarPath = await findAsar(outputDir)
   assert.ok(asarPath, 'packaged app.asar was not found')
-  const relativeAsarPath = relative(resolve(outputDir), resolve(asarPath))
-  assert.ok(relativeAsarPath === '' || (!relativeAsarPath.startsWith('..') && !relativeAsarPath.includes(':')), 'packaged app.asar escaped the selected artifact root')
+  assert.equal(await pathContained(outputDir, asarPath), true, 'packaged app.asar escaped the selected artifact root')
+  const canonicalAsarPath = await canonicalPath(asarPath)
+  assert.ok(canonicalAsarPath !== undefined, 'packaged app.asar could not be canonicalized')
   const asar = await readAsarHeader(asarPath)
   const files = listAsarFiles(asar.header).sort()
   const packageText = await readAsarText(asarPath, asar, 'package.json')
@@ -632,7 +635,7 @@ export async function inspectPackage(outputDir, target, options = {}) {
   assert.match(nodeVersion.stdout.trim(), /^v(?:2[4-9]|[3-9][0-9])\./u, 'staged Node runtime does not satisfy Node >=24')
   return Object.freeze({
     appId: contract.identity.appId,
-    appPath: asarPath,
+    appPath: canonicalAsarPath,
     version: packedManifest.version,
     appPathUsesAsar: true,
     assetCount: files.filter(file => file.startsWith('dist/launcher-assets/')).length,
@@ -751,11 +754,11 @@ export async function runRendererSmoke(workbench, launcher, inventory, userData,
     value => value?.sessionMatches === true && value?.launcherSessionPartition === LAUNCHER_SESSION_PARTITION,
   )
   assert.equal(securityEvidence.appPathUsesAsar, true)
-  assert.equal(resolve(securityEvidence.appPath), resolve(inventory.appPath), 'security evidence must identify the inspected installed app.asar')
-  if (expectedInstallRoot !== undefined) {
-    const relativeAppPath = relative(resolve(expectedInstallRoot), resolve(inventory.appPath))
-    assert.ok(relativeAppPath === '' || (!relativeAppPath.startsWith('..') && !relativeAppPath.includes(':')), 'installed app.asar escaped the selected install root')
-  }
+  const [securityAppPath, inventoryAppPath] = await Promise.all([canonicalPath(securityEvidence.appPath), canonicalPath(inventory.appPath)])
+  assert.ok(securityAppPath !== undefined && inventoryAppPath !== undefined, 'security and inventory app.asar paths must be canonicalizable')
+  assert.equal(securityAppPath, inventoryAppPath, 'security evidence must identify the inspected installed app.asar')
+  const canonicalSecurityEvidence = Object.freeze({ ...securityEvidence, appPath: inventoryAppPath })
+  if (expectedInstallRoot !== undefined) assert.equal(await pathContained(expectedInstallRoot, inventory.appPath), true, 'installed app.asar escaped the selected install root')
   const launcherFacts = await launcher.evaluate(`(async () => {
     const permission = await navigator.permissions.query({ name: 'notifications' })
     return {
@@ -847,7 +850,7 @@ export async function runRendererSmoke(workbench, launcher, inventory, userData,
   return Object.freeze({
     launcher: launcherFacts,
     runtimeArchitecture,
-    security: securityEvidence,
+    security: canonicalSecurityEvidence,
     search: searchResult,
     settingsRoundTrip: { restored: originalFuzziness, changed: roundTripValue },
     workbench: survivingWorkbench,

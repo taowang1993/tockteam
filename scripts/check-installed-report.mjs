@@ -2,8 +2,9 @@
 
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
-import { dirname, isAbsolute, join, relative, resolve } from 'node:path'
+import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { pathContainedSync } from './path-identity.mjs'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const EXPECTED_ROOTS = Object.freeze(['dsh-runtime', 'node-runtime', 'tockteam-desktop.png', 'lib/tockteam/cli.js', 'lib/tockteam/package.json', 'bin/tockteam', 'bin/tockteam.cmd'])
@@ -16,12 +17,6 @@ function object(value) {
   return value !== null && typeof value === 'object'
 }
 
-function contained(rootPath, candidatePath) {
-  if (typeof rootPath !== 'string' || typeof candidatePath !== 'string') return false
-  const child = relative(resolve(rootPath), resolve(candidatePath))
-  return child === '' || (!child.startsWith('..') && !isAbsolute(child) && !child.includes(':'))
-}
-
 function inspectPackageInventory(failures, packageInventory, installRoot, expected) {
   failure(failures, object(packageInventory), 'post-install package inventory is missing')
   if (!object(packageInventory)) return
@@ -32,7 +27,7 @@ function inspectPackageInventory(failures, packageInventory, installRoot, expect
   failure(failures, packageInventory.assetsVerified === true, 'post-install launcher asset hashes were not verified')
   failure(failures, packageInventory.noticesVerified === true, 'post-install notices were not verified')
   failure(failures, packageInventory.appPathUsesAsar === true && /(?:^|[\\/])app\.asar$/u.test(packageInventory.appPath ?? ''), 'post-install package ASAR identity is missing')
-  failure(failures, contained(installRoot, packageInventory.appPath), 'post-install app.asar escaped its install root')
+  failure(failures, pathContainedSync(installRoot, packageInventory.appPath), 'post-install app.asar escaped its install root')
   failure(failures, JSON.stringify(packageInventory.extraResources?.roots) === JSON.stringify(EXPECTED_ROOTS), 'post-install extra-resource roots differ from the exact contract')
   const vendorScan = packageInventory.vendorScan
   failure(failures, object(vendorScan), 'post-install vendor scan is missing')
