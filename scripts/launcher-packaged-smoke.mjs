@@ -76,11 +76,12 @@ const smokeOverrideKeys = Object.freeze([
 const disposableEnvironmentKeys = Object.freeze(['HOME', 'USERPROFILE', 'APPDATA', 'LOCALAPPDATA', 'XDG_CONFIG_HOME', 'XDG_CACHE_HOME', 'XDG_DATA_HOME', 'XDG_DATA_DIRS', 'XDG_STATE_HOME', 'TMPDIR', 'TEMP', 'TMP', 'PATH'])
 
 function trustedPath() {
+  const nodeDirectory = dirname(resolve(process.execPath))
   if (process.platform === 'win32') {
     const systemRoot = process.env.SystemRoot ?? 'C:\\Windows'
-    return [join(systemRoot, 'System32'), systemRoot, join(systemRoot, 'System32', 'Wbem')].join(';')
+    return [...new Set([nodeDirectory, join(systemRoot, 'System32'), systemRoot, join(systemRoot, 'System32', 'Wbem')])].join(';')
   }
-  return ['/usr/local/bin', '/usr/bin', '/bin', '/usr/sbin', '/sbin'].join(':')
+  return [...new Set([nodeDirectory, '/usr/local/bin', '/usr/bin', '/bin', '/usr/sbin', '/sbin'])].join(':')
 }
 
 export function smokeEnvironment(overrides = {}, disposableRoot = undefined) {

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { mkdir, mkdtemp, rm, stat, symlink, writeFile } from 'node:fs/promises'
 import { readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join, resolve } from 'node:path'
+import { basename, dirname, join, resolve } from 'node:path'
 import { test } from 'node:test'
 import {
   inspectInstalledEvidenceCatalog,
@@ -104,7 +104,15 @@ test('launched smoke environments use disposable user roots and bounded tools', 
   assert.equal(environment.TMPDIR, '/tmp/tockteam-smoke-root/tmp')
   assert.equal(environment.TEMP, '/tmp/tockteam-smoke-root/tmp')
   assert.equal(environment.TMP, '/tmp/tockteam-smoke-root/tmp')
-  assert.equal(environment.PATH, ['/usr/local/bin', '/usr/bin', '/bin', '/usr/sbin', '/sbin'].join(':'))
+  const pathSeparator = process.platform === 'win32' ? ';' : ':'
+  const pathEntries = environment.PATH?.split(pathSeparator) ?? []
+  const nodeDirectory = dirname(process.execPath)
+  assert.ok(pathEntries.some(directory => join(directory, basename(process.execPath)) === process.execPath))
+  assert.equal(pathEntries.filter(directory => directory === nodeDirectory).length, 1)
+  const systemDirectories = process.platform === 'win32'
+    ? [join(process.env.SystemRoot ?? 'C:\\Windows', 'System32'), process.env.SystemRoot ?? 'C:\\Windows', join(process.env.SystemRoot ?? 'C:\\Windows', 'System32', 'Wbem')]
+    : ['/usr/local/bin', '/usr/bin', '/bin', '/usr/sbin', '/sbin']
+  for (const directory of systemDirectories) assert.ok(pathEntries.includes(directory))
 })
 
 test('package smoke is hermetic and verifies resources plus process ownership', () => {
