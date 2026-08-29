@@ -6,8 +6,7 @@ import { resolveProductVersion } from '../src/version.ts'
 import { ensureElectronInstalled } from './electron-runtime.mjs'
 import {
   windowsPortableArchiveArgs,
-  writeWindowsPortableManifest,
-  writeWindowsPortableMarker,
+  writeWindowsPortableArchiveMetadata,
 } from './windows-portable-archive.mjs'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
@@ -45,20 +44,22 @@ if (result.error !== undefined) throw result.error
 if (result.status !== 0) process.exit(result.status ?? 1)
 
 // Archive only the finite manifest so staged runtime junctions/symlinks are
-// preserved as entries without recursive traversal. Windows' System32
-// bsdtar handles tar.gz and retains those link entries for the portable app.
+// preserved as entries without recursive traversal. The archive marker carries
+// link metadata; archive installation restores those links before launch.
 const outputDir = join(root, 'release')
 const systemRoot = process.env.SystemRoot?.trim()
 if (systemRoot === undefined || !isAbsolute(systemRoot)) throw new Error('Windows SystemRoot must be an absolute path')
 const tar = join(systemRoot, 'System32', 'tar.exe')
 if (!existsSync(tar)) throw new Error(`Windows bsdtar is missing: ${tar}`)
-await writeWindowsPortableMarker(outputDir, {
+const manifestPath = join(outputDir, 'tockteam-portable-manifest.txt')
+await writeWindowsPortableArchiveMetadata(outputDir, {
   appId: packageJson.build?.appId,
   productName: packageJson.productName,
   version,
+}, manifestPath, {
+  runtimeRoot: join(root, '.stage', 'dsh-runtime'),
+  packagedRuntimeRoot: join(outputDir, 'win-unpacked', 'resources', 'dsh-runtime'),
 })
-const manifestPath = join(outputDir, 'tockteam-portable-manifest.txt')
-await writeWindowsPortableManifest(outputDir, manifestPath)
 const archive = join(outputDir, `TockTeam-Desktop-${version}-x64.tar.gz`)
 const archiveResult = spawnSync(tar, windowsPortableArchiveArgs({ archive, outputDir, manifestPath }), {
   cwd: outputDir,

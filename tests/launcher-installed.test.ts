@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { EventEmitter } from 'node:events'
 import { mkdir, mkdtemp, readFile, rm, stat, symlink, writeFile } from 'node:fs/promises'
 import { readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -20,9 +21,10 @@ import {
   selectWindowsGitPath,
   smokeEnvironment,
   trustedPathEntries,
+  waitForPackagedState,
   windowsCdpListenerOwned,
 } from '../scripts/launcher-packaged-smoke.mjs'
-import { replaceWindowsPortableArchive } from '../scripts/install-windows.mjs'
+import { replaceWindowsPortableArchive, restoreWindowsPortableRuntimeLinks, validateWindowsPortableRoot } from '../scripts/install-windows.mjs'
 import {
   assertPackageParity,
   installerBuildPlan,
@@ -32,6 +34,7 @@ import {
   normalizePortableManifestPath,
   PORTABLE_MANIFEST_MAX_ENTRIES,
   windowsPortableArchiveArgs,
+  writeWindowsPortableArchiveMetadata,
   writeWindowsPortableManifest,
   writeWindowsPortableMarker,
 } from '../scripts/windows-portable-archive.mjs'
@@ -42,6 +45,7 @@ const packageJson = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'))
 }
 const packagedSmoke = readFileSync(join(root, 'scripts', 'launcher-packaged-smoke.mjs'), 'utf8')
 const installedSmoke = readFileSync(join(root, 'scripts', 'launcher-installed-smoke.mjs'), 'utf8')
+const mainSource = readFileSync(join(root, 'src', 'main.ts'), 'utf8')
 const buildWindows = readFileSync(join(root, 'scripts', 'build-windows.mjs'), 'utf8')
 const cleanup = readFileSync(join(root, 'scripts', 'process-cleanup.mjs'), 'utf8')
 const releaseWorkflow = readFileSync(join(root, '.github', 'workflows', 'release.yml'), 'utf8').replace(/\r\n?/gu, '\n')
@@ -67,11 +71,12 @@ test('TockTeam exposes an executable installed-artifact smoke and audit', () => 
   assert.match(installedSmoke, /DSH_SOURCE/u)
   assert.match(installedSmoke, /electronVersion/u)
   assert.match(installedSmoke, /portableArchive|replaceWindowsPortableArchive/u)
+  assert.match(installedSmoke, /writeWindowsPortableArchiveMetadata/u)
+  assert.match(mainSource, /process\.stderr\.write/u)
   assert.match(installedSmoke, /tar\.exe/u)
   assert.match(installedSmoke, /tar\.gz/u)
   assert.match(buildWindows, /windows-portable-archive\.mjs/u)
-  assert.match(buildWindows, /writeWindowsPortableMarker/u)
-  assert.match(buildWindows, /writeWindowsPortableManifest/u)
+  assert.match(buildWindows, /writeWindowsPortableArchiveMetadata/u)
   assert.match(buildWindows, /windowsPortableArchiveArgs/u)
   assert.match(buildWindows, /tar\.gz/u)
   assert.doesNotMatch(buildWindows, /win-unpacked['"],?\s*\)/u)
@@ -105,8 +110,8 @@ test('installed smoke selects only the loopback descriptor and atomically replac
     const extractArchive = async (_source: string, pending: string) => {
       assert.equal((await stat(pending)).isDirectory(), true)
       extracted.push(pending)
-      await mkdir(join(pending, 'win-unpacked'), { recursive: true })
-      await writeFile(join(pending, '.tockteam-portable.json'), '{"version":"0.1.14"}')
+      await mkdir(join(pending, 'win-unpacked', 'resources', 'dsh-runtime'), { recursive: true })
+      await writeFile(join(pending, '.tockteam-portable.json'), '{"schemaVersion":1,"appId":"ai.deepseek.tockteam-desktop","productName":"TockTeam Desktop","version":"0.1.14","runtimeLinks":[]}')
       await writeFile(join(pending, 'win-unpacked', 'TockTeam Desktop.exe'), '')
     }
     const validateInstall = async (path: string) => {
@@ -148,15 +153,99 @@ test('packaged smoke resolves Windows git safely and prepares fresh workspaces i
   }), undefined)
 })
 
+test('Windows portable archive restores relocated runtime links and rejects malicious metadata', async () => {
+  const rootPath = await mkdtemp(join(tmpdir(), 'tockteam-portable-runtime-links-'))
+  try {
+    const outputDir = join(rootPath, 'archive')
+    const sourceRuntime = join(rootPath, 'stage', 'dsh-runtime')
+    const runtime = join(outputDir, 'win-unpacked', 'resources', 'dsh-runtime')
+    const appBoot = join(runtime, 'workspace', 'packages', 'boot', 'app-boot')
+    const appBootLink = join(runtime, 'node_modules', '@deepseek-ai', 'dsh-app-boot')
+    const fileTarget = join(runtime, 'workspace', 'tools', 'fixture.js')
+    const fileLink = join(runtime, 'node_modules', '.bin', 'fixture.js')
+    await mkdir(join(sourceRuntime, 'node_modules', '@deepseek-ai'), { recursive: true })
+    await mkdir(join(sourceRuntime, 'workspace', 'packages', 'boot', 'app-boot', 'lib'), { recursive: true })
+    await symlink('../../workspace/packages/boot/app-boot', join(sourceRuntime, 'node_modules', '@deepseek-ai', 'dsh-app-boot'), 'dir')
+    await mkdir(join(sourceRuntime, 'node_modules', '.bin'), { recursive: true })
+    await mkdir(join(sourceRuntime, 'workspace', 'tools'), { recursive: true })
+    await writeFile(join(sourceRuntime, 'workspace', 'packages', 'boot', 'app-boot', 'package.json'), '{}')
+    await writeFile(join(sourceRuntime, 'workspace', 'packages', 'boot', 'app-boot', 'lib', 'index.js'), 'export default true')
+    await writeFile(join(sourceRuntime, 'workspace', 'tools', 'fixture.js'), 'fixture')
+    await symlink('../../workspace/tools/fixture.js', join(sourceRuntime, 'node_modules', '.bin', 'fixture.js'), 'file')
+    await mkdir(join(runtime, 'node_modules', '@deepseek-ai'), { recursive: true })
+    await mkdir(appBootLink, { recursive: true })
+    await mkdir(join(appBoot, 'lib'), { recursive: true })
+    await mkdir(join(runtime, 'node_modules', '.bin'), { recursive: true })
+    await writeFile(fileLink, '')
+    await writeFile(join(appBoot, 'package.json'), '{}')
+    await writeFile(join(appBoot, 'lib', 'index.js'), 'export default true')
+    await mkdir(join(runtime, 'workspace', 'tools'), { recursive: true })
+    await writeFile(fileTarget, 'fixture')
+    await mkdir(join(outputDir, 'win-unpacked'), { recursive: true })
+    await writeFile(join(outputDir, 'win-unpacked', 'TockTeam Desktop.exe'), '')
+    const metadataPath = join(outputDir, 'tockteam-portable-manifest.txt')
+    const archiveMetadata = await writeWindowsPortableArchiveMetadata(outputDir, {
+      appId: 'ai.deepseek.tockteam-desktop',
+      productName: 'TockTeam Desktop',
+      version: '0.1.14',
+    }, metadataPath, { runtimeRoot: sourceRuntime, packagedRuntimeRoot: runtime })
+    const marker = JSON.parse(await readFile(archiveMetadata.markerPath, 'utf8'))
+    assert.deepEqual(marker.runtimeLinks, [
+      { path: 'node_modules/.bin/fixture.js', target: 'workspace/tools/fixture.js', kind: 'file' },
+      { path: 'node_modules/@deepseek-ai/dsh-app-boot', target: 'workspace/packages/boot/app-boot', kind: 'dir' },
+    ])
+    await restoreWindowsPortableRuntimeLinks(outputDir, {
+      createDirectoryLink: async (target, path) => await symlink(target, path, process.platform === 'win32' ? 'junction' : 'dir'),
+    })
+    assert.deepEqual(JSON.parse(await readFile(join(appBootLink, 'package.json'), 'utf8')), {})
+    assert.equal(await readFile(join(appBootLink, 'lib', 'index.js'), 'utf8'), 'export default true')
+    assert.equal(await readFile(fileLink, 'utf8'), 'fixture')
+    await validateWindowsPortableRoot(outputDir, { appId: 'ai.deepseek.tockteam-desktop', productName: 'TockTeam Desktop', version: '0.1.14' })
+    await writeFile(archiveMetadata.markerPath, JSON.stringify({ ...marker, runtimeLinks: [{ path: '../escape', target: 'workspace/tools/fixture.js', kind: 'file' }] }))
+    await assert.rejects(restoreWindowsPortableRuntimeLinks(outputDir, {
+      createDirectoryLink: async (target, path) => await symlink(target, path, 'dir'),
+    }), /relative/u)
+  } finally {
+    await rm(rootPath, { recursive: true, force: true })
+  }
+})
+
+test('packaged smoke reports child exit while polling CDP', async () => {
+  const child = new EventEmitter() as EventEmitter & { exitCode: number | null; signalCode: NodeJS.Signals | null }
+  child.exitCode = null
+  child.signalCode = null
+  const pending = waitForPackagedState(
+    async () => { throw new Error('CDP fetch failed for http://127.0.0.1:32123/json/list') },
+    () => false,
+    child,
+    {
+      command: '/tmp/TockTeam Desktop',
+      args: ['--remote-debugging-port=32123'],
+      timeout: 10_000,
+      output: () => ({ stdout: 'stdout-tail', stderr: 'stderr-tail' }),
+    },
+  )
+  setTimeout(() => child.emit('exit', 7, null), 10)
+  await assert.rejects(pending, error => {
+    assert.match(String(error), /TockTeam Desktop/u)
+    assert.match(String(error), /code=7/u)
+    assert.match(String(error), /stdout-tail/u)
+    assert.match(String(error), /stderr-tail/u)
+    assert.match(String(error), /32123\/json\/list/u)
+    return true
+  })
+})
+
 test('Windows portable manifests are finite and skip symlink cycles', { skip: process.platform === 'win32' }, async () => {
   const rootPath = await mkdtemp(join(tmpdir(), 'tockteam-portable-manifest-'))
   try {
     const outputDir = join(rootPath, 'output')
     const resources = join(outputDir, 'win-unpacked', 'resources')
     await mkdir(resources, { recursive: true })
+    await mkdir(join(resources, 'dsh-runtime'), { recursive: true })
     await writeFile(join(resources, 'app.asar'), 'payload')
     const markerPath = await writeWindowsPortableMarker(outputDir, { appId: 'ai.deepseek.tockteam-desktop', productName: 'TockTeam Desktop', version: '0.1.14' })
-    assert.deepEqual(JSON.parse(await readFile(markerPath, 'utf8')), { schemaVersion: 1, appId: 'ai.deepseek.tockteam-desktop', productName: 'TockTeam Desktop', version: '0.1.14' })
+    assert.deepEqual(JSON.parse(await readFile(markerPath, 'utf8')), { schemaVersion: 1, appId: 'ai.deepseek.tockteam-desktop', productName: 'TockTeam Desktop', version: '0.1.14', runtimeLinks: [] })
     await symlink(outputDir, join(resources, 'cycle'), 'dir')
     const manifestPath = join(rootPath, 'portable-manifest.txt')
     const entries = await writeWindowsPortableManifest(outputDir, manifestPath)
@@ -468,7 +557,7 @@ test('release and platform workflows retain ordered package and installed gates'
   assert.match(installedWorkflow, /tockteam-installed-launcher-gate-\$\{\{ github\.run_id \}\}\.json/u)
   assert.match(installedWorkflow, /test:launcher:installed/u)
   assert.match(installedWorkflow, /check-installed-report\.mjs/u)
-  assert.match(installedWorkflow, /portable tar\.gz/u)
+  assert.match(installedWorkflow, /portable archive \(tar\.gz\)/u)
   assert.doesNotMatch(installedWorkflow, /NSIS artifact/u)
   assert.match(installedWorkflow, /test:ueli-baseline/u)
   assert.match(installedWorkflow, /audit:ueli-baseline/u)

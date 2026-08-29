@@ -28,16 +28,14 @@ import { replaceMacBundle, validateMacBundle } from './install-mac.mjs'
 import { replaceWindowsPortableArchive, validateWindowsPortableRoot } from './install-windows.mjs'
 import {
   windowsPortableArchiveArgs,
-  writeWindowsPortableManifest,
-  writeWindowsPortableMarker,
+  writeWindowsPortableArchiveMetadata,
 } from './windows-portable-archive.mjs'
 export {
   PORTABLE_MANIFEST_MAX_ENTRIES,
   WINDOWS_PORTABLE_MARKER,
   normalizePortableManifestPath,
   windowsPortableArchiveArgs,
-  writeWindowsPortableManifest,
-  writeWindowsPortableMarker,
+  writeWindowsPortableArchiveMetadata,
 } from './windows-portable-archive.mjs'
 import { assertOwnedProcessGone } from './process-cleanup.mjs'
 
@@ -440,10 +438,12 @@ async function runMacInstalledSmoke(artifact) {
 async function buildPortableArchive(artifact) {
   const installerDir = join(artifact.rootPath, 'installer')
   await mkdir(installerDir, { recursive: true })
-  const markerPath = await writeWindowsPortableMarker(artifact.outputDir, { appId: contract.identity.appId, productName: contract.identity.productName, version: packageJson.version })
   const archive = join(installerDir, `TockTeam-Desktop-${packageJson.version}-x64.tar.gz`)
   const manifestPath = join(installerDir, 'tockteam-portable-manifest.txt')
-  await writeWindowsPortableManifest(artifact.outputDir, manifestPath)
+  const { markerPath } = await writeWindowsPortableArchiveMetadata(artifact.outputDir, { appId: contract.identity.appId, productName: contract.identity.productName, version: packageJson.version }, manifestPath, {
+    runtimeRoot: join(root, '.stage', 'dsh-runtime'),
+    packagedRuntimeRoot: join(artifact.outputDir, 'win-unpacked', 'resources', 'dsh-runtime'),
+  })
   await runProcess(trustedWindowsTool('tar.exe'), windowsPortableArchiveArgs({ archive, outputDir: artifact.outputDir, manifestPath }), { cwd: artifact.outputDir, disposableRoot: artifact.rootPath })
   return Object.freeze({ archive, installerDir, markerPath })
 }

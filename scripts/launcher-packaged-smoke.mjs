@@ -254,9 +254,76 @@ export async function waitFor(fetcher, predicate, timeout = smokeTimeoutMs) {
   throw new Error(`Timed out waiting for packaged TockTeam state: ${last instanceof Error ? last.message : JSON.stringify(last)}`)
 }
 
+function diagnosticText(value) {
+  if (value instanceof Error) return value.stack ?? value.message
+  return String(value ?? '')
+}
+
+export function formatPackagedProcessFailure({ command, args = [], code = null, signal = null, error = undefined, stdout = '', stderr = '', lastFetchError = undefined }) {
+  const processState = error === undefined ? `exit code=${String(code)}, signal=${String(signal)}` : `spawn error=${diagnosticText(error)}`
+  return new Error([
+    `Packaged TockTeam process failed: ${[command, ...args].join(' ')} (${processState})`,
+    `Last CDP fetch: ${diagnosticText(lastFetchError)}`,
+    `stdout (tail):\n${String(stdout).slice(-16_000)}`,
+    `stderr (tail):\n${String(stderr).slice(-16_000)}`,
+  ].join('\n'))
+}
+
+export async function waitForPackagedState(fetcher, predicate, child, { command, args = [], timeout = smokeTimeoutMs, output = () => ({}) } = {}) {
+  const lastFetchError = { value: undefined }
+  let finished = false
+  let onError
+  let onExit
+  const processFailure = new Promise((_, reject) => {
+    const fail = details => {
+      const captured = output() ?? {}
+      reject(formatPackagedProcessFailure({
+        command,
+        args,
+        ...details,
+        stdout: captured.stdout,
+        stderr: captured.stderr,
+        lastFetchError: lastFetchError.value,
+      }))
+    }
+    onError = error => fail({ error })
+    onExit = (code, signal) => fail({ code, signal })
+    child.once('error', onError)
+    child.once('exit', onExit)
+    if (child.exitCode !== null || child.signalCode !== null) queueMicrotask(() => onExit(child.exitCode, child.signalCode))
+  })
+  const polling = (async () => {
+    const deadline = Date.now() + timeout
+    while (!finished && Date.now() < deadline) {
+      try {
+        const value = await fetcher()
+        if (predicate(value)) return value
+      } catch (error) {
+        lastFetchError.value = error
+      }
+      await sleep(250)
+    }
+    if (finished) return undefined
+    throw new Error(`Timed out waiting for packaged TockTeam state. Last CDP fetch: ${diagnosticText(lastFetchError.value)}`)
+  })()
+  try {
+    return await Promise.race([polling, processFailure])
+  } finally {
+    finished = true
+    child.removeListener('error', onError)
+    child.removeListener('exit', onExit)
+  }
+}
+
 async function listPages(port) {
-  const response = await fetch(`http://127.0.0.1:${String(port)}/json/list`)
-  if (!response.ok) throw new Error(`Packaged DevTools page listing failed: ${response.status}`)
+  const url = `http://127.0.0.1:${String(port)}/json/list`
+  let response
+  try {
+    response = await fetch(url)
+  } catch (error) {
+    throw new Error(`CDP page listing fetch failed for ${url}: ${diagnosticText(error)}`, { cause: error })
+  }
+  if (!response.ok) throw new Error(`Packaged DevTools page listing failed: ${response.status} (${url})`)
   return await response.json()
 }
 
@@ -755,29 +822,31 @@ export async function launchPackaged(executable, userData, port, extraArgs = [],
   const childFlag = launchOptions.flag ?? smokeFlag
   const childEnvironment = launchOptions.env ?? { TOCKTEAM_PACKAGED_SMOKE: '1' }
   await prepareSmokeEnvironmentRoots(userData)
-  const child = spawnProcess(executable, [
+  const childArgs = [
     ...extraArgs,
     `--remote-debugging-address=127.0.0.1`,
     `--remote-debugging-port=${String(port)}`,
     `--user-data-dir=${userData}`,
     childFlag,
     '--toggle',
-  ], {
+  ]
+  const child = spawnProcess(executable, childArgs, {
     cwd: root,
     detached: true,
     env: smokeEnvironment(childEnvironment, userData),
     stdio: ['ignore', 'pipe', 'pipe'],
   })
-  let output = ''
+  let stdout = ''
+  let stderr = ''
   const debug = process.env.TOCKTEAM_VERBOSE_PACKAGED_SMOKE === '1'
   child.stdout?.on('data', chunk => {
     const value = String(chunk)
-    output = `${output}${value}`.slice(-16_000)
+    stdout = `${stdout}${value}`.slice(-16_000)
     if (debug) process.stderr.write(`[packaged-app stdout] ${value}`)
   })
   child.stderr?.on('data', chunk => {
     const value = String(chunk)
-    output = `${output}${value}`.slice(-16_000)
+    stderr = `${stderr}${value}`.slice(-16_000)
     if (debug) process.stderr.write(`[packaged-app stderr] ${value}`)
   })
   try {
@@ -786,7 +855,12 @@ export async function launchPackaged(executable, userData, port, extraArgs = [],
       if (debug) console.error(`[packaged-smoke] ${name}`)
       return await operation()
     }
-    const workbenchPages = await step('wait for TockCoder', () => waitFor(() => listPages(port), pages => selectCdpDescriptor(pages, 'TockCoder', port) !== undefined))
+    const workbenchPages = await step('wait for TockCoder', () => waitForPackagedState(
+      () => listPages(port),
+      pages => selectCdpDescriptor(pages, 'TockCoder', port) !== undefined,
+      child,
+      { command: executable, args: childArgs, output: () => ({ stdout, stderr }) },
+    ))
     assertCdpProcess(child, port)
     const workbenchDescriptor = selectCdpDescriptor(workbenchPages, 'TockCoder', port)
     assert.ok(workbenchDescriptor?.webSocketDebuggerUrl, 'TockCoder CDP page is missing its loopback debugger endpoint')
@@ -800,11 +874,12 @@ export async function launchPackaged(executable, userData, port, extraArgs = [],
     const launcher = await step('connect to TockLauncher', () => CdpPage.connect(launcherDescriptor.webSocketDebuggerUrl))
     await step('wait for launcher ready', () => waitFor(() => launcher.evaluate('document.documentElement.dataset.launcherReady'), ready => ready === 'true'))
     await step('wait for launcher visible', () => waitFor(() => workbench.evaluate('(async () => (await window.dshDesktop?.launcher?.getState())?.visible)()'), visible => visible === true))
-    return Object.freeze({ child, launcher, workbench, output: () => output })
+    return Object.freeze({ child, launcher, workbench, output: () => `${stdout}\n${stderr}` })
   } catch (error) {
     await stopPackagedChild(child)
     let desktopLogTail = ''
     try { desktopLogTail = (await readFile(join(userData, 'logs', 'desktop.log'), 'utf8')).slice(-16_000) } catch { /* the app may fail before logging starts */ }
+    const output = `${stdout}\n${stderr}`
     const diagnostics = desktopLogTail === '' ? output : `${output}\n[desktop.log tail]\n${desktopLogTail}`
     throw new Error(`${error instanceof Error ? error.message : String(error)}\n${diagnostics}`)
   }

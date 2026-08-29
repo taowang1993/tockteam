@@ -2,8 +2,7 @@ export {
   PORTABLE_MANIFEST_MAX_ENTRIES,
   WINDOWS_PORTABLE_MARKER,
   normalizePortableManifestPath,
-  writeWindowsPortableManifest,
-  writeWindowsPortableMarker,
+  writeWindowsPortableArchiveMetadata,
   windowsPortableArchiveArgs,
 } from './windows-portable-archive.mjs'
 

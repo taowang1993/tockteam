@@ -1,5 +1,13 @@
 export const WINDOWS_PORTABLE_MARKER: string
 
+export function restoreWindowsPortableRuntimeLinks(
+  rootPath: string,
+  options?: Readonly<{
+    createDirectoryLink?: (target: string, path: string) => void | Promise<void>
+    copyFile?: (target: string, path: string) => void | Promise<void>
+  }>,
+): Promise<Readonly<{ count: number; runtimeRoot: string }>>
+
 export function validateWindowsPortableRoot(
   rootPath: string,
   expected: Readonly<{ appId: string; productName: string; version: string }>,

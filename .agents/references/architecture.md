@@ -95,8 +95,9 @@ same transaction and risk approval and cannot bypass the Loader.
 ## Installed TockLauncher evidence
 
 The installed smoke supports a disposable macOS app and a Windows portable
-`.tar.gz` archive built from the supported directory artifact, plus real Debian/AppImage
-lanes on Ubuntu. The checked-in macOS arm64 report records unsigned/internal macOS
+`.tar.gz` archive built from the supported directory artifact; Windows archive
+installation restores its bounded runtime-link manifest as junctions before the
+atomic swap. It also supports real Debian/AppImage lanes on Ubuntu. The checked-in macOS arm64 report records unsigned/internal macOS
 ad-hoc evidence at a pinned source commit: identity, resources, security,
 actions, settings/reinstall, rollback, and cleanup rows are local-verified;
 notices/vendor scanning and provider catalog are partially verified; the

@@ -52,8 +52,11 @@ sudo apt install ./TockTeam-Desktop-*.deb
 
 Windows artifacts are not currently published in GitHub Releases. The
 `pnpm run dist:win` command remains available for source builds and emits a
-finite `TockTeam-Desktop-*-x64.tar.gz` portable archive. Extract it with the
-Windows `tar.exe` utility and launch `win-unpacked/TockTeam Desktop.exe`.
+finite `TockTeam-Desktop-*-x64.tar.gz` portable archive. The archive includes a
+bounded runtime-link manifest; TockTeam's archive-install path restores those
+links as Windows junctions before validation and swap. Raw `tar.exe` extraction
+followed by launching `win-unpacked/TockTeam Desktop.exe` is not a supported
+installation path.
 
 ## Install Web-only
 

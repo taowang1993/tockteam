@@ -3898,6 +3898,7 @@ async function bootstrap(): Promise<void> {
 
 void bootstrap().catch(async (error: unknown) => {
   const detail = error instanceof Error ? error.stack ?? error.message : String(error)
+  try { process.stderr.write(`[desktop] ${detail}\n`) } catch { /* stderr may be unavailable during shutdown */ }
   appendLog('desktop', detail)
   if (app.isReady()) await showSplash({ error: true, message: 'TockTeam Desktop 启动失败。', detail })
   else {

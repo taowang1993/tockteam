@@ -43,6 +43,17 @@ export function selectCdpDescriptor<T extends Readonly<{ title?: string; webSock
 
 export function windowsCdpListenerOwned(output: string, pid: number, port: number): boolean
 
+export function formatPackagedProcessFailure(options: Readonly<{
+  command: string
+  args?: readonly string[]
+  code?: number | null
+  signal?: NodeJS.Signals | null
+  error?: unknown
+  stdout?: string
+  stderr?: string
+  lastFetchError?: unknown
+}>): Error
+
 export function inspectExtraResources(asarPath: string): Promise<Readonly<{
   checkedEntries: number
   roots: readonly string[]
@@ -66,3 +77,15 @@ export function runRendererSmoke(...args: readonly unknown[]): Promise<any>
 export function stopPackagedChild(child: any): Promise<void>
 
 export function waitFor<T>(fetcher: () => T | Promise<T>, predicate: (value: T) => boolean, timeout?: number): Promise<T>
+
+export function waitForPackagedState<T>(
+  fetcher: () => T | Promise<T>,
+  predicate: (value: T) => boolean,
+  child: { once: Function; removeListener: Function; exitCode: number | null; signalCode: NodeJS.Signals | null },
+  options: Readonly<{
+    command: string
+    args?: readonly string[]
+    timeout?: number
+    output?: () => Readonly<{ stdout?: string; stderr?: string }>
+  }>,
+): Promise<T>
