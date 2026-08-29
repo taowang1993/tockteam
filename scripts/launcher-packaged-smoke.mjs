@@ -358,9 +358,11 @@ export async function findPackagedExecutable(outputDir, target) {
     if (binary === undefined) throw new Error('Packaged macOS executable was not found')
     return join(appRoot, 'Contents', 'MacOS', binary.name)
   }
-  const executableName = target.key === 'win' ? `${contract.identity.executableName}.exe` : contract.identity.executableName
-  const executable = await findFile(outputDir, entry => entry.name.toLowerCase() === executableName.toLowerCase())
-  if (executable === undefined) throw new Error(`Packaged executable ${executableName} was not found below ${outputDir}`)
+  const executableNames = target.key === 'win'
+    ? [`${contract.identity.executableName}.exe`, `${packageJson.productName}.exe`]
+    : [contract.identity.executableName]
+  const executable = await findFile(outputDir, entry => executableNames.some(name => entry.name.toLowerCase() === name.toLowerCase()))
+  if (executable === undefined) throw new Error(`Packaged executable ${executableNames.join(' or ')} was not found below ${outputDir}`)
   return executable
 }
 

@@ -1,5 +1,6 @@
 {
   "schemaVersion": 1,
+  "installedEvidenceCatalog": "scripts/ueli/installed-evidence-catalog.json",
   "identity": {
     "packageName": "@tockteam/desktop",
     "productName": "TockTeam Desktop",

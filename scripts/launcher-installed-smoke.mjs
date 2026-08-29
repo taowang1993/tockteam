@@ -281,6 +281,10 @@ async function runMacInstalledSmoke(artifact) {
   const afterRollback = await hashFile(join(destination, 'Contents', 'Resources', 'app.asar'))
   assert.equal(afterRollback, beforeRollback)
   assert.equal(existsSync(join(applicationsRoot, '.TockTeam Desktop.app.install.lock')), false)
+  await rm(destination, { recursive: true, force: true })
+  await rm(backupDirectory, { recursive: true, force: true })
+  const temporaryInstallRemoved = !existsSync(destination)
+  assert.equal(temporaryInstallRemoved, true)
   return Object.freeze({
     classification: 'unsigned/internal macOS evidence (ad-hoc signed for local execution); not notarized or public distribution',
     identity,
@@ -301,6 +305,7 @@ async function runMacInstalledSmoke(artifact) {
     reinstall: { backup: reinstall.backup !== undefined, identity: reinstalledIdentity, settings: restored },
     rollback: { preservedAsarSha256: afterRollback, validationFailureRecovered: true },
     provider: first.platform,
+    temporaryInstallRemoved,
   })
 }
 
@@ -317,6 +322,7 @@ async function runNonMacInstalledSmoke(artifact) {
     assert.ok(executable, 'installed Windows executable is missing')
     const smoke = await installedSession(executable, artifact.userData, artifact.inventory, artifact.target)
     await runProcess(join(installDir, 'Uninstall TockTeam Desktop.exe'), ['/S']).catch(() => {})
+    await rm(installDir, { recursive: true, force: true })
     report.installed = { executable, provider: smoke.platform }
   } else {
     const deb = await findFile(installerDir, entry => entry.name.endsWith('.deb'))
@@ -328,10 +334,11 @@ async function runNonMacInstalledSmoke(artifact) {
     assert.ok(debExecutable, 'installed Linux deb executable is missing')
     const debSmoke = await installedSession(debExecutable, artifact.userData, artifact.inventory, artifact.target, { args: ['--no-sandbox'] })
     const appImageSmoke = await installedSession(appImage, artifact.userData, artifact.inventory, artifact.target, { args: ['--appimage-extract-and-run', '--no-sandbox'] })
+    await rm(installDir, { recursive: true, force: true })
     report.installed = {
       appImage: { provider: appImageSmoke.platform },
       deb: { executable: debExecutable, provider: debSmoke.platform },
-      uninstall: 'disposable dpkg-deb extraction removed with smoke root',
+      uninstall: 'disposable dpkg-deb extraction removed after smoke',
     }
   }
   return Object.freeze(report)
@@ -365,7 +372,7 @@ async function main() {
     ...evidence,
     cleanup: {
       smokeRootRemoved: process.env.TOCKTEAM_KEEP_INSTALLED_SMOKE === '1' ? false : !existsSync(smokeRoot),
-      temporaryInstallRemoved: true,
+      temporaryInstallRemoved: evidence?.temporaryInstallRemoved ?? true,
     },
   })
   await mkdir(dirname(reportPath), { recursive: true })
