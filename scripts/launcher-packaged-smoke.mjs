@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import assert from 'node:assert/strict'
+import { createHash } from 'node:crypto'
 import { createServer } from 'node:net'
 import { spawn as spawnProcess, spawnSync } from 'node:child_process'
 import { cp, open, mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises'
@@ -42,11 +43,41 @@ const launcherApiKeys = Object.freeze([
   'search',
 ])
 
+const smokeOverrideKeys = Object.freeze([
+  'TOCKTEAM_RESOURCES_ROOT',
+  'TOCKTEAM_WEB_ROOT',
+  'TOCKTEAM_SOURCE_ROOT',
+  'TOCKTEAM_DESKTOP_APP',
+  'TOCKTEAM_TUI_ROOT',
+  'TOCKTEAM_TUI_HOME',
+  'TOCKTEAM_WEB_HOME',
+  'TOCKTEAM_WEB_HOST',
+  'TOCKTEAM_WEB_PORT',
+  'TOCKTEAM_WEB_OPEN',
+  'TOCKTEAM_TUI_CWD',
+  'TOCKTEAM_TUI_SESSION_ID',
+  'DSH_SOURCE',
+  'DSH_HOME',
+  'DSH_DESKTOP_APP_DATA',
+  'DSH_DESKTOP_PROFILE',
+  'DSH_DESKTOP_VERSION',
+  'DSH_DESKTOP_NODE_VERSION',
+  'DSH_DESKTOP_NODE_PLATFORM',
+  'DSH_DESKTOP_NODE_ARCH',
+])
+
+function smokeEnvironment(overrides = {}) {
+  const environment = { ...process.env, ...overrides }
+  for (const key of smokeOverrideKeys) delete environment[key]
+  delete environment.ELECTRON_RUN_AS_NODE
+  return environment
+}
+
 function sleep(milliseconds) {
   return new Promise(resolvePromise => setTimeout(resolvePromise, milliseconds))
 }
 
-async function freePort() {
+export async function freePort() {
   const server = createServer()
   await new Promise((resolvePromise, reject) => {
     server.once('error', reject)
@@ -216,15 +247,26 @@ async function clearStartupDialogs(page) {
 }
 
 function run(command, args, options = {}) {
-  const spawnOptions = { cwd: root, stdio: 'inherit', ...options }
-  // Windows exposes pnpm through a .cmd shim; the fixed build arguments are safe for cmd.exe.
-  if (process.platform === 'win32' && command.toLowerCase().endsWith('.cmd')) spawnOptions.shell = true
+  const spawnOptions = {
+    cwd: root,
+    stdio: 'inherit',
+    env: smokeEnvironment(),
+    ...options,
+    env: smokeEnvironment(options.env ?? {}),
+  }
   const result = spawnSync(command, args, spawnOptions)
   if (result.error !== undefined) throw result.error
   if (result.status !== 0) throw new Error(`${command} ${args.join(' ')} failed with status ${String(result.status)}`)
 }
 
-function currentTarget() {
+function runPnpm(args, options = {}) {
+  // Invoke the pinned JS CLI through Node on every host. In particular, do not
+  // route a temporary path through cmd.exe on Windows.
+  const cli = join(root, 'node_modules', 'pnpm', 'bin', 'pnpm.cjs')
+  run(process.execPath, [cli, ...args], options)
+}
+
+export function currentTarget() {
   const platform = process.platform === 'darwin'
     ? { builder: Platform.MAC, key: 'mac', label: 'macOS' }
     : process.platform === 'win32'
@@ -238,7 +280,7 @@ function currentTarget() {
   return Object.freeze({ ...platform, architecture })
 }
 
-function packagedBuilderConfig(outputDir, target, appDir) {
+export function packagedBuilderConfig(outputDir, target, appDir) {
   const platformConfig = packageJson.build?.[target.key] ?? {}
   const extraResources = (packageJson.build?.extraResources ?? []).map(resource => ({
     ...resource,
@@ -263,8 +305,7 @@ function packagedBuilderConfig(outputDir, target, appDir) {
   }
 }
 
-async function createPackageInput(appDir) {
-  const pnpm = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm'
+export async function createPackageInput(appDir) {
   const deploySource = join(dirname(appDir), 'deploy-source')
   await mkdir(deploySource, { recursive: true })
   await cp(join(root, 'dist'), join(deploySource, 'dist'), { recursive: true })
@@ -279,7 +320,7 @@ async function createPackageInput(appDir) {
   await writeFile(join(deploySource, 'package.json'), `${JSON.stringify(appManifest, null, 2)}\n`, 'utf8')
   await cp(join(root, 'pnpm-lock.yaml'), join(deploySource, 'pnpm-lock.yaml'))
   await writeFile(join(deploySource, 'pnpm-workspace.yaml'), 'packages:\n  - .\n', 'utf8')
-  run(pnpm, ['--filter', '.', 'deploy', '--prod', '--legacy', appDir], { cwd: deploySource })
+  runPnpm(['--filter', '.', 'deploy', '--prod', '--legacy', appDir], { cwd: deploySource })
   for (const file of ['preload.cjs', 'splash.html']) {
     await cp(join(root, 'dist', file), join(appDir, 'dist', file))
   }
@@ -307,7 +348,7 @@ async function findAsar(rootPath, depth = 0) {
   return undefined
 }
 
-async function findPackagedExecutable(outputDir, target) {
+export async function findPackagedExecutable(outputDir, target) {
   if (target.key === 'mac') {
     const appRoot = await findDirectory(outputDir, entry => entry.name.endsWith('.app'))
     if (appRoot === undefined) throw new Error(`Packaged macOS app was not found below ${outputDir}`)
@@ -388,7 +429,7 @@ function asarEntry(header, path) {
   return current
 }
 
-async function readAsarText(asarPath, asar, path) {
+async function readAsarBuffer(asarPath, asar, path) {
   const entry = asarEntry(asar.header, path)
   if (entry === undefined || typeof entry !== 'object' || entry.files !== undefined || entry.link !== undefined) throw new Error(`ASAR file is missing: ${path}`)
   const offset = Number(entry.offset)
@@ -399,13 +440,28 @@ async function readAsarText(asarPath, asar, path) {
     const content = Buffer.alloc(size)
     const read = await handle.read(content, 0, size, 8 + asar.headerSize + offset)
     if (read.bytesRead !== size) throw new Error(`Unable to read ASAR file: ${path}`)
-    return content.toString('utf8')
+    return content
   } finally {
     await handle.close()
   }
 }
 
-function assertArchiveInventory(files, asarText, asarPath) {
+async function readAsarText(asarPath, asar, path) {
+  return (await readAsarBuffer(asarPath, asar, path)).toString('utf8')
+}
+
+function sha256(value) {
+  return createHash('sha256').update(value).digest('hex')
+}
+
+function assertNoticeRows(asarText) {
+  for (const notice of contract.foundation.launcherNotices) {
+    assert.ok(asarText.includes(notice.license), `ASAR notice is missing ${notice.id} license`)
+    assert.ok(asarText.includes(notice.attribution), `ASAR notice is missing ${notice.id} attribution`)
+  }
+}
+
+async function assertArchiveInventory(files, asar, asarText, asarPath) {
   const fileSet = new Set(files)
   for (const expected of contract.resources.builderFiles) {
     if (expected.endsWith('/**')) {
@@ -418,14 +474,41 @@ function assertArchiveInventory(files, asarText, asarPath) {
   assert.equal(launcherAssets.length, expectedAssets.length, 'ASAR launcher asset count drifted')
   assert.deepEqual([...launcherAssets].sort(), [...expectedAssets].sort(), 'ASAR launcher asset inventory drifted')
   assert.equal(expectedAssets.length, 65, 'launcher asset contract must remain exactly 65 assets')
-  assert.ok(asarText.includes('Ueli'), 'ASAR third-party notice does not contain Ueli attribution')
-  assert.ok(asarText.includes('OpenMoji'), 'ASAR third-party notice does not contain OpenMoji attribution')
+  assertNoticeRows(asarText)
+  for (const asset of contract.foundation.launcherAssets) {
+    const content = await readAsarBuffer(asarPath, asar, asset.path)
+    assert.equal(sha256(content), asset.sha256, `ASAR launcher asset hash drifted: ${asset.path}`)
+  }
   assert.doesNotMatch(files.join('\n'), /vendor[/\\]ueli/iu, 'ASAR contains vendor/ueli source')
   assert.doesNotMatch(asarText, /vendor[/\\]ueli/iu, 'ASAR metadata contains vendor/ueli source')
   return Object.freeze({ assetCount: launcherAssets.length, asarPath, fileCount: files.length, vendorSourceShipped: false })
 }
 
-async function inspectPackage(outputDir, target) {
+async function listResourceFiles(rootPath, relative = '', result = [], depth = 0) {
+  if (depth > 10 || result.length > 20_000) throw new Error('packaged extra-resource tree is too large')
+  let entries
+  try {
+    entries = await readdir(rootPath, { withFileTypes: true })
+  } catch {
+    return result
+  }
+  for (const entry of entries) {
+    const relativePath = relative === '' ? entry.name : `${relative}/${entry.name}`
+    const absolutePath = join(rootPath, entry.name)
+    if (entry.isDirectory()) await listResourceFiles(absolutePath, relativePath, result, depth + 1)
+    else if (entry.isFile()) result.push(relativePath)
+  }
+  return result
+}
+
+async function inspectExtraResources(asarPath) {
+  const resourcesRoot = dirname(asarPath)
+  const files = (await listResourceFiles(resourcesRoot)).filter(file => file !== 'app.asar').sort()
+  assert.doesNotMatch(files.join('\n'), /vendor[/\\]ueli/iu, 'extra resources contain vendor/ueli source')
+  return Object.freeze({ fileCount: files.length, vendorSourceShipped: false })
+}
+
+export async function inspectPackage(outputDir, target) {
   const executable = await findPackagedExecutable(outputDir, target)
   assert.equal((await stat(executable)).isFile(), true)
   const asarPath = await findAsar(outputDir)
@@ -442,7 +525,9 @@ async function inspectPackage(outputDir, target) {
   assert.equal(packageJson.build?.asar, true)
   assert.equal(packageJson.build?.linux?.executableName, contract.identity.executableName)
   assert.equal(packedManifest.build, undefined)
-  assertArchiveInventory(files, await readAsarText(asarPath, asar, 'THIRD_PARTY_NOTICES.md'), asarPath)
+  const noticeText = await readAsarText(asarPath, asar, 'THIRD_PARTY_NOTICES.md')
+  const archiveInventory = await assertArchiveInventory(files, asar, noticeText, asarPath)
+  const extraResources = await inspectExtraResources(asarPath)
   if (target.key === 'mac') {
     const appRoot = asarPath.slice(0, asarPath.indexOf('.app/') + 4)
     const infoPlist = await readFile(join(appRoot, 'Contents', 'Info.plist'), 'utf8')
@@ -462,23 +547,22 @@ async function inspectPackage(outputDir, target) {
     electron: { architecture: process.arch, version: electronPackage.version },
     node: { architecture: process.arch, version: nodeVersion.stdout.trim() },
     productName: contract.identity.productName,
-    vendorSourceShipped: false,
+    vendorSourceShipped: archiveInventory.vendorSourceShipped && extraResources.vendorSourceShipped,
+    extraResources,
   })
 }
 
-function smokeEnvironment() {
-  const environment = { ...process.env, TOCKTEAM_PACKAGED_SMOKE: '1' }
-  delete environment.ELECTRON_RUN_AS_NODE
-  for (const key of Object.keys(environment)) if (/^TOCKTEAM_.*(?:FIXTURE|SMOKE_USER_DATA|SMOKE_OUTPUT)/u.test(key)) delete environment[key]
-  environment.TOCKTEAM_PACKAGED_SMOKE = '1'
-  return environment
-}
-
-async function launchPackaged(executable, userData, port) {
-  const child = spawnProcess(executable, [`--remote-debugging-port=${String(port)}`, `--user-data-dir=${userData}`, smokeFlag, '--toggle'], {
+export async function launchPackaged(executable, userData, port) {
+  const child = spawnProcess(executable, [
+    `--remote-debugging-address=127.0.0.1`,
+    `--remote-debugging-port=${String(port)}`,
+    `--user-data-dir=${userData}`,
+    smokeFlag,
+    '--toggle',
+  ], {
     cwd: root,
     detached: true,
-    env: smokeEnvironment(),
+    env: smokeEnvironment({ TOCKTEAM_PACKAGED_SMOKE: '1' }),
     stdio: ['ignore', 'pipe', 'pipe'],
   })
   let output = ''
@@ -500,6 +584,8 @@ async function launchPackaged(executable, userData, port) {
       return await operation()
     }
     const workbenchPages = await step('wait for TockCoder', () => waitFor(() => listPages(port), pages => pages.some(page => page.title === 'TockCoder')))
+    assertCdpEndpoint(workbenchPages, port)
+    assertCdpProcess(child, port)
     const workbenchDescriptor = workbenchPages.find(page => page.title === 'TockCoder')
     assert.ok(workbenchDescriptor?.webSocketDebuggerUrl, 'TockCoder CDP page is missing its debugger endpoint')
     const workbench = await step('connect to TockCoder', () => CdpPage.connect(workbenchDescriptor.webSocketDebuggerUrl))
@@ -507,6 +593,7 @@ async function launchPackaged(executable, userData, port) {
     await step('wait for runtime ready', () => waitFor(() => workbench.evaluate('(async () => (await window.dshDesktop?.getRuntimeSnapshot())?.status)()'), status => status === 'ready', 120_000))
     await step('mark and show launcher', () => workbench.evaluate(`(async () => { window.__tockteamPackagedSmoke = { href: location.href, marker: 'workbench-alive' }; return await window.dshDesktop?.launcher?.show() })()`))
     const launcherPages = await step('wait for TockLauncher', () => waitFor(() => listPages(port), pages => pages.some(page => page.title === 'TockLauncher')))
+    assertCdpEndpoint(launcherPages, port)
     const launcherDescriptor = launcherPages.find(page => page.title === 'TockLauncher')
     assert.ok(launcherDescriptor?.webSocketDebuggerUrl, 'TockLauncher CDP page is missing its debugger endpoint')
     const launcher = await step('connect to TockLauncher', () => CdpPage.connect(launcherDescriptor.webSocketDebuggerUrl))
@@ -519,15 +606,24 @@ async function launchPackaged(executable, userData, port) {
   }
 }
 
-async function stopPackagedChild(child) {
-  if (child.exitCode !== null || child.signalCode !== null) return
-  if (process.platform !== 'win32' && child.pid !== undefined) {
-    try { process.kill(-child.pid, 'SIGTERM') } catch { /* process already exited */ }
-  }
+function assertCdpEndpoint(pages, port) {
+  const expectedPrefix = `ws://127.0.0.1:${String(port)}/devtools/`
+  assert.ok(pages.some(page => typeof page.webSocketDebuggerUrl === 'string' && page.webSocketDebuggerUrl.startsWith(expectedPrefix)), 'CDP target is not bound to the smoke loopback endpoint')
+}
+
+function assertCdpProcess(child, port) {
+  if (process.platform === 'win32' || !Number.isSafeInteger(child.pid)) return
+  const result = spawnSync('ps', ['-p', String(child.pid), '-o', 'command='], { encoding: 'utf8' })
+  assert.equal(result.status, 0, 'packaged smoke process is no longer observable')
+  assert.match(result.stdout, /--remote-debugging-address=127\.0\.0\.1[ =]/u, 'packaged smoke did not bind CDP to loopback')
+  assert.match(result.stdout, new RegExp(`--remote-debugging-port=${String(port)}(?:\\s|$)`), 'packaged smoke CDP port is not owned by the launched process')
+}
+
+export async function stopPackagedChild(child) {
   await stopChildProcess(child)
 }
 
-async function runRendererSmoke(workbench, launcher, inventory, userData) {
+export async function runRendererSmoke(workbench, launcher, inventory, userData) {
   const securityEvidence = await waitFor(
     () => readFile(join(userData, 'launcher', 'packaged-smoke-security.json'), 'utf8').then(value => JSON.parse(value)).catch(() => null),
     value => value?.sessionMatches === true && value?.launcherSessionPartition === LAUNCHER_SESSION_PARTITION,
@@ -631,21 +727,16 @@ async function runRendererSmoke(workbench, launcher, inventory, userData) {
   })
 }
 
-async function main() {
-  const target = currentTarget()
-  const smokeRoot = await mkdtemp(join(tmpdir(), 'tockteam-launcher-packaged-'))
-  const appDir = join(smokeRoot, 'app-input')
-  const outputDir = join(smokeRoot, 'package')
-  const userData = join(smokeRoot, 'user-data')
-  let child
-  let launcher
-  let workbench
+export async function preparePackagedArtifact({ target = currentTarget(), smokeRoot = undefined } = {}) {
+  const ownsRoot = smokeRoot === undefined
+  const rootPath = smokeRoot ?? await mkdtemp(join(tmpdir(), 'tockteam-launcher-packaged-'))
+  const appDir = join(rootPath, 'app-input')
+  const outputDir = join(rootPath, 'package')
   try {
-    const pnpm = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm'
-    run(pnpm, ['run', 'build:tocktutor'])
-    run(pnpm, ['run', 'build'])
-    run(pnpm, ['run', 'build:dsh'])
-    run(pnpm, ['run', 'stage:dsh'])
+    runPnpm(['run', 'build:tocktutor'])
+    runPnpm(['run', 'build'])
+    runPnpm(['run', 'build:dsh'])
+    runPnpm(['run', 'stage:dsh'])
     run(process.execPath, [join(root, 'scripts/ueli/check-package-feasibility.mjs')])
     await createPackageInput(appDir)
     await mkdir(outputDir, { recursive: true })
@@ -655,6 +746,20 @@ async function main() {
       config: { ...packagedBuilderConfig(outputDir, target, appDir), electronVersion: electronPackage.version },
     })
     const inventory = await inspectPackage(outputDir, target)
+    return Object.freeze({ appDir, inventory, outputDir, rootPath, target, userData: join(rootPath, 'user-data') })
+  } catch (error) {
+    if (ownsRoot) await rm(rootPath, { recursive: true, force: true })
+    throw error
+  }
+}
+
+export async function main() {
+  const artifact = await preparePackagedArtifact()
+  const { inventory, rootPath: smokeRoot, target, userData } = artifact
+  let child
+  let launcher
+  let workbench
+  try {
     const port = await freePort()
     const launched = await launchPackaged(inventory.executable, userData, port)
     child = launched.child
