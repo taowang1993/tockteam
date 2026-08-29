@@ -29,7 +29,7 @@ const catalog = JSON.parse(readFileSync(join(root, 'scripts', 'ueli', 'installed
   schemaVersion: number
   issue: string
   publication: Record<string, boolean>
-  rows: Array<{ id: string; platform: string; owner: string; required: boolean; state: string; evidence?: string }>
+  rows: Array<{ id: string; platform: string; owner: string; required: boolean; state: string; evidence?: Record<string, string> | null }>
 }
 
 test('TockTeam exposes an executable installed-artifact smoke and audit', () => {
@@ -59,7 +59,7 @@ test('installed smoke selects only the loopback descriptor and root NSIS artifac
     { title: 'Other', webSocketDebuggerUrl: 'ws://127.0.0.1:1234/devtools/page/right-port' },
     { title: 'TockCoder', webSocketDebuggerUrl: 'ws://127.0.0.1:1234/devtools/page/right-title' },
   ]
-  assert.equal(selectCdpDescriptor(pages, 'TockCoder', 1234)?.webSocketDebuggerUrl, pages[2].webSocketDebuggerUrl)
+  assert.equal(selectCdpDescriptor(pages, 'TockCoder', 1234)?.webSocketDebuggerUrl, pages[2]!.webSocketDebuggerUrl)
   assert.equal(selectCdpDescriptor(pages, 'TockCoder', 7777), undefined)
   const rootPath = await mkdtemp(join(tmpdir(), 'tockteam-nsis-artifact-'))
   try {
@@ -143,13 +143,14 @@ test('installed evidence catalog owns the exact platform rows and rejects fabric
   assert.deepEqual(new Set(catalog.rows.map(row => row.platform)), new Set(['macOS', 'Windows', 'Linux']))
   assert.deepEqual(inspectInstalledEvidenceCatalog({ ...catalog, rows: catalog.rows.slice(1) }).failures.filter(failure => failure.includes('required installed evidence row is missing')), ['required installed evidence row is missing: macOS:artifact-build'])
   const invalidOwner = structuredClone(catalog)
-  invalidOwner.rows[0].owner = 'reports/fabricated.md'
+  invalidOwner.rows[0]!.owner = 'reports/fabricated.md'
   assert.ok(inspectInstalledEvidenceCatalog(invalidOwner).failures.some(failure => failure.includes('owner is not an approved source')))
   const swappedOwner = structuredClone(catalog)
-  swappedOwner.rows.find(row => row.id === 'Windows:nsis-install').owner = 'scripts/launcher-installed-smoke.mjs'
+  swappedOwner.rows.find(row => row.id === 'Windows:nsis-install')!.owner = 'scripts/launcher-installed-smoke.mjs'
   assert.ok(inspectInstalledEvidenceCatalog(swappedOwner).failures.some(failure => failure.includes('owner is incorrect')))
   const fabricated = structuredClone(catalog)
   const shortcut = fabricated.rows.find(row => row.id === 'macOS:shortcut-second-instance')
+  assert.ok(shortcut)
   shortcut.state = 'local-verified'
   shortcut.evidence = { kind: 'local-run', platform: 'darwin-arm64', commit: 'a'.repeat(40), version: '0.1.14', identity: 'ai.deepseek.tockteam-desktop', result: 'passed', reference: '/tmp/fabricated.json' }
   assert.ok(inspectInstalledEvidenceCatalog(fabricated).failures.some(failure => failure.includes('must remain workflow-required')))
