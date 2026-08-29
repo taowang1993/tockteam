@@ -87,6 +87,7 @@ test('installed smoke selects only the loopback descriptor and atomically replac
     await writeFile(archive, 'portable archive')
     const extracted = []
     const extractArchive = async (_source: string, pending: string) => {
+      assert.equal((await stat(pending)).isDirectory(), true)
       extracted.push(pending)
       await mkdir(join(pending, 'win-unpacked'), { recursive: true })
       await writeFile(join(pending, '.tockteam-portable.json'), '{"version":"0.1.14"}')

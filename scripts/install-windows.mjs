@@ -55,6 +55,7 @@ export async function replaceWindowsPortableArchive(options) {
     throw error
   }
   try {
+    await mkdir(pending)
     await extractArchive(archive, pending)
     await validateInstall(pending)
     await mkdir(backupDirectory, { recursive: true })

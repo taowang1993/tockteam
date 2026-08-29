@@ -425,16 +425,17 @@ export function currentTarget() {
 }
 
 export function packagedBuilderConfig(outputDir, target, appDir) {
-  const platformConfig = packageJson.build?.[target.key] ?? {}
-  const builderExtraResources = packageJson.build?.extraResources ?? []
+  const buildConfig = structuredClone(packageJson.build ?? {})
+  const platformConfig = buildConfig[target.key] ?? {}
+  const builderExtraResources = buildConfig.extraResources ?? []
   const extraResources = builderExtraResources.map(resource => ({
     ...resource,
     from: resolve(root, resource.from),
   }))
   return {
-    ...packageJson.build,
+    ...buildConfig,
     asar: true,
-    directories: { ...packageJson.build?.directories, app: appDir, output: outputDir },
+    directories: { ...buildConfig.directories, app: appDir, output: outputDir },
     extraResources,
     [target.key]: {
       ...platformConfig,
@@ -442,7 +443,7 @@ export function packagedBuilderConfig(outputDir, target, appDir) {
       target: ['dir'],
       ...(target.key === 'mac' ? { identity: null } : {}),
     },
-    ...(packageJson.build?.afterPack === undefined ? {} : { afterPack: resolve(root, packageJson.build.afterPack) }),
+    ...(buildConfig.afterPack === undefined ? {} : { afterPack: resolve(root, buildConfig.afterPack) }),
     npmRebuild: false,
     nodeGypRebuild: false,
     buildDependenciesFromSource: false,

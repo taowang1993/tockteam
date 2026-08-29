@@ -62,6 +62,25 @@ test('programmatic electron-builder config leaves publishing unset', () => {
   assert.equal(config.publish, undefined)
 })
 
+test('packaged builder configs isolate nested mutations from later builds and source metadata', () => {
+  const target = currentTarget() as { key: string }
+  const sourceBuild = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).build
+  const first = packagedBuilderConfig('/tmp/tockteam-output-one', target, '/tmp/tockteam-app-one')
+  const firstPlatform = first[target.key] as { target: string[] }
+  firstPlatform.target.push('mutated')
+  firstPlatform.target = null as never
+  const firstResources = first.extraResources as Array<{ filter?: string[] }>
+  assert.ok(Array.isArray(firstResources[0]?.filter))
+  firstResources[0]!.filter!.push('mutated')
+  firstResources[0]!.filter = null as never
+
+  const second = packagedBuilderConfig('/tmp/tockteam-output-two', target, '/tmp/tockteam-app-two')
+  const secondPlatform = second[target.key] as { target: string[] }
+  assert.deepEqual(secondPlatform.target, ['dir'])
+  assert.deepEqual((second.extraResources as Array<{ filter?: string[] }>)[0]?.filter, sourceBuild.extraResources[0].filter)
+  assert.deepEqual(JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).build, sourceBuild)
+})
+
 test('packaged smoke is actual TockTeam ASAR execution, not a source fixture', () => {
   assert.match(packagedSmoke, /electron-builder/u)
   assert.match(packagedSmoke, /app\.asar/u)
