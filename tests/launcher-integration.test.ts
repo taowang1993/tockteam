@@ -71,6 +71,7 @@ test('main assembles one launcher owner without branching the DSH workbench fact
   assert.match(main, /const launcherNetworkFixtureEnabled = !app\.isPackaged && process\.env\.TOCKTEAM_NETWORK_FIXTURE === '1'/u)
   assert.doesNotMatch(main, /launcherNetworkFixtureEnabled = process\.env\.TOCKTEAM_NETWORK_FIXTURE/u)
   assert.match(main, /const launcherPackagedSmokeEnabled = app\.isPackaged[\s\S]+TOCKTEAM_PACKAGED_SMOKE/u)
+  assert.match(main, /appDataPath: launcherPackagedSmokeEnabled \? app\.getPath\('userData'\) : app\.getPath\('appData'\)/u)
   assert.match(main, /if \(launcherPackagedSmokeEnabled\) return false/u)
   assert.match(main, /writeLauncherPackagedSmokeSecurity/u)
   assert.match(main, /launcherCoreFlush = async \(\) => \{[\s\S]+discovery\.close\(\)[\s\S]+fileSearch\.close\(\)[\s\S]+network\.close\(\)[\s\S]+os\.close\(\)[\s\S]+local\.close\(\)[\s\S]+await coreSearch\.close\(\)/u)

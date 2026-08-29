@@ -90,9 +90,8 @@ jobs:
           name: tocklauncher-installed-windows-x64-${{ github.run_id }}
           compression-level: 0
           path: |
-            ${{ runner.temp }}/tockteam-installed-launcher-smoke-*/installer/**
-            ${{ runner.temp }}/tockteam-installed-launcher-smoke-*/report/**
-            ${{ runner.temp }}/tockteam-installed-launcher-smoke-*.json
+            ${{ runner.temp }}/tockteam-installed-launcher-smoke-*/installer/*.zip
+            ${{ runner.temp }}/tockteam-installed-launcher-smoke-${{ github.run_id }}.json
             ${{ runner.temp }}/tockteam-installed-launcher-gate-${{ github.run_id }}.json
           if-no-files-found: error
 
@@ -176,8 +175,8 @@ jobs:
           name: tocklauncher-installed-linux-x64-${{ github.run_id }}
           compression-level: 0
           path: |
-            ${{ runner.temp }}/tockteam-installed-launcher-smoke-*/installer/**
-            ${{ runner.temp }}/tockteam-installed-launcher-smoke-*/report/**
-            ${{ runner.temp }}/tockteam-installed-launcher-smoke-*.json
+            ${{ runner.temp }}/tockteam-installed-launcher-smoke-*/installer/*.deb
+            ${{ runner.temp }}/tockteam-installed-launcher-smoke-*/installer/*.AppImage
+            ${{ runner.temp }}/tockteam-installed-launcher-smoke-${{ github.run_id }}.json
             ${{ runner.temp }}/tockteam-installed-launcher-gate-${{ github.run_id }}.json
           if-no-files-found: error

@@ -159,6 +159,21 @@ export function inspectInstalledEvidenceWorkflow(workflow) {
     failure(failures, /id:\s*installed-smoke/u.test(section), `${job} must identify the installed smoke step`)
     failure(failures, /id:\s*report-check/u.test(section), `${job} must identify the report-check step`)
     failure(failures, /compression-level:\s*0/u.test(section), `${job} evidence upload must disable artifact compression`)
+    const installerGlobs = job === 'windows-x64'
+      ? ['${{ runner.temp }}/tockteam-installed-launcher-smoke-*/installer/*.zip']
+      : [
+          '${{ runner.temp }}/tockteam-installed-launcher-smoke-*/installer/*.deb',
+          '${{ runner.temp }}/tockteam-installed-launcher-smoke-*/installer/*.AppImage',
+        ]
+    const reportPath = '${{ runner.temp }}/tockteam-installed-launcher-smoke-${{ github.run_id }}.json'
+    const gatePath = '${{ runner.temp }}/tockteam-installed-launcher-gate-${{ github.run_id }}.json'
+    const pathStart = section.indexOf('          path: |')
+    const pathEnd = section.indexOf('          if-no-files-found:', pathStart)
+    const pathLines = pathStart >= 0 && pathEnd >= pathStart
+      ? section.slice(pathStart, pathEnd).split('\n').slice(1).map(line => line.trim()).filter(Boolean)
+      : []
+    const expectedPaths = [...installerGlobs, reportPath, gatePath]
+    failure(failures, JSON.stringify(pathLines) === JSON.stringify(expectedPaths), `${job} upload paths must contain only distributable files, report JSON, and gate log`)
   }
   failure(failures, /check-installed-report\.mjs/u.test(text), 'installed evidence workflow must verify the actual installed report')
   failure(failures, /Record installed gate outcomes/u.test(text), 'installed evidence workflow must record deterministic gate outcomes')

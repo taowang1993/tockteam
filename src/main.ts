@@ -1654,7 +1654,7 @@ function initializeLauncher(): void {
       VSCode: async () => [{ commandArg: '--folder-uri' as const, fileType: 'Folder', id: 'fixture-vscode', kind: 'vscode' as const, label: 'TockTeam Fixture VS Code', path: join(launcherDiscoveryFixtureRoot, 'VSCode', 'project'), uri: 'vscode-remote://fixture/tockteam' }],
     })
   const discovery = createLauncherDiscoveryExtensions({
-    appDataPath: app.getPath('appData'),
+    appDataPath: launcherPackagedSmokeEnabled ? app.getPath('userData') : app.getPath('appData'),
     effects: {
       confirmOpenApplicationAsAdministrator: async ({ name, target }, signal) => {
         if (signal.aborted) throw launcherAbortError(signal)

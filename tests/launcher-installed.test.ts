@@ -64,7 +64,8 @@ test('TockTeam exposes an executable installed-artifact smoke and audit', () => 
   assert.match(installedSmoke, /dpkg-query/u)
   assert.match(installedSmoke, /\/usr\/bin\/dpkg/u)
   assert.match(installedSmoke, /--install/u)
-  assert.match(installedSmoke, /--purge/u)
+  assert.match(installedSmoke, /finally \{\s*const purgeFailure = await dpkg\(\['--purge', packageName\]\)/u)
+  assert.doesNotMatch(installedSmoke, /--root=|--admindir=|deb-root|isolated dpkg/u)
   assert.match(installedSmoke, /post-install|inspectPackage/u)
   assert.doesNotMatch(installedSmoke, /\bnsis\b/iu)
   assert.match(installedSmoke, /detached:\s*(?:true|process\.platform)/u)
@@ -372,9 +373,9 @@ test('installed report validation requires complete platform lifecycle evidence'
   assert.ok(inspectInstalledReport({ ...report, result: 'failed' }, expected).failures.length > 0)
   assert.ok(inspectInstalledReport({ ...report, installed: { ...report.installed, reinstall: undefined } }, expected).failures.length > 0)
   assert.ok(inspectInstalledReport({ ...report, installed: { ...report.installed, package: { ...packageInventory, vendorScan: undefined } } }, expected).failures.length > 0)
-  const linuxPackage = { ...packageInventory, appPath: '/tmp/deb-root/opt/TockTeam Desktop/resources/app.asar' }
+  const linuxPackage = { ...packageInventory, appPath: '/opt/TockTeam Desktop/resources/app.asar' }
   const linuxRenderer = { security: { appPath: linuxPackage.appPath }, launcher: { notificationPermission: 'denied' } }
-  const linuxReport = { ...report, platform: 'linux', installed: { deb: { artifact: '/tmp/TockTeam-Desktop.deb', installRoot: '/tmp/deb-root', package: linuxPackage, renderer: linuxRenderer, reinstall: { package: linuxPackage, settings: { restored: 0.6, runtimeReady: 'ready' } }, secondInstance: { singleInstance: true, permissions: 'renderer-permission-denied' }, rollback: { state: 'workflow-required' }, uninstall: 'dpkg-purge-passed' }, appImage: { artifact: '/tmp/TockTeam-Desktop.AppImage', installRoot: '/tmp/appimage-root', package: { ...linuxPackage, appPath: '/tmp/appimage-root/resources/app.asar' }, renderer: { security: { appPath: '/tmp/appimage-root/resources/app.asar' }, launcher: { notificationPermission: 'denied' } }, runtime: { runtimeReady: true }, secondInstance: { singleInstance: true, permissions: 'renderer-permission-denied' } } } }
+  const linuxReport = { ...report, platform: 'linux', installed: { deb: { artifact: '/tmp/TockTeam-Desktop.deb', installRoot: '/opt/TockTeam Desktop', package: linuxPackage, renderer: linuxRenderer, reinstall: { package: linuxPackage, settings: { restored: 0.6, runtimeReady: 'ready' } }, secondInstance: { singleInstance: true, permissions: 'renderer-permission-denied' }, rollback: { state: 'workflow-required' }, uninstall: 'dpkg-purge-passed' }, appImage: { artifact: '/tmp/TockTeam-Desktop.AppImage', installRoot: '/tmp/appimage-root', package: { ...linuxPackage, appPath: '/tmp/appimage-root/resources/app.asar' }, renderer: { security: { appPath: '/tmp/appimage-root/resources/app.asar' }, launcher: { notificationPermission: 'denied' } }, runtime: { runtimeReady: true }, secondInstance: { singleInstance: true, permissions: 'renderer-permission-denied' } } } }
   assert.equal(inspectInstalledReport(linuxReport, { ...expected, platform: 'linux' }).failures.length, 0)
   assert.ok(inspectInstalledReport({ ...linuxReport, installed: { ...linuxReport.installed, appImage: undefined } }, { ...expected, platform: 'linux' }).failures.length > 0)
   const macRoot = '/tmp/Applications/TockTeam Desktop.app'
@@ -418,6 +419,16 @@ test('release and platform workflows retain ordered package and installed gates'
     assert.match(section, /fetch-tags: true/u)
     assert.match(section, /submodules: recursive/u)
     assert.match(section, /compression-level: 0/u)
+    if (job === 'windows-x64') assert.match(section, /tockteam-installed-launcher-smoke-\*\/installer\/\*\.zip/u)
+    else {
+      assert.match(section, /tockteam-installed-launcher-smoke-\*\/installer\/\*\.deb/u)
+      assert.match(section, /tockteam-installed-launcher-smoke-\*\/installer\/\*\.AppImage/u)
+    }
+    assert.match(section, /tockteam-installed-launcher-smoke-\$\{\{ github\.run_id \}\}\.json/u)
+    assert.match(section, /tockteam-installed-launcher-gate-\$\{\{ github\.run_id \}\}\.json/u)
+    assert.doesNotMatch(section, /installer\/\*\*/u)
+    assert.doesNotMatch(section, /report\/\*\*/u)
+    assert.doesNotMatch(section, /tockteam-installed-launcher-smoke-\*\.json/u)
   }
   assert.match(installedWorkflow, /id: ueli-gates/u)
   assert.match(installedWorkflow, /id: installed-smoke/u)
@@ -445,4 +456,6 @@ test('release and platform workflows retain ordered package and installed gates'
   assert.ok(inspectInstalledEvidenceWorkflow(missingSubmodules).failures.some(failure => failure.includes('recursive submodules')))
   const compressedUpload = installedWorkflow.replaceAll('compression-level: 0', 'compression-level: 6')
   assert.ok(inspectInstalledEvidenceWorkflow(compressedUpload).failures.some(failure => failure.includes('disable artifact compression')))
+  const unpackedUpload = installedWorkflow.replaceAll('/installer/*.zip', '/installer/**').replaceAll('/installer/*.deb', '/installer/**').replaceAll('/installer/*.AppImage', '/installer/**')
+  assert.ok(inspectInstalledEvidenceWorkflow(unpackedUpload).failures.some(failure => failure.includes('only distributable files')))
 })

@@ -16,6 +16,7 @@ import {
   launchPackaged,
   packagedBuilderConfig,
   preparePackagedArtifact,
+  prepareSmokeEnvironmentRoots,
   withSmokeEnvironment,
   runRendererSmoke,
   inspectPackage,
@@ -136,9 +137,10 @@ function smokeEnvironment(overrides = {}, disposableRoot = undefined) {
   return environment
 }
 
-function runProcess(command, args, options = {}) {
+async function runProcess(command, args, options = {}) {
   const { disposableRoot, ...spawnOptions } = options
-  return new Promise((resolvePromise, reject) => {
+  if (disposableRoot !== undefined) await prepareSmokeEnvironmentRoots(disposableRoot)
+  return await new Promise((resolvePromise, reject) => {
     const child = spawn(command, args, {
       cwd: root,
       stdio: ['ignore', 'pipe', 'pipe'],
@@ -532,34 +534,49 @@ async function runNonMacInstalledSmoke(artifact) {
     assert.ok(deb && appImage)
     const packageName = (await runProcess('/usr/bin/dpkg-deb', ['-f', deb, 'Package'], { disposableRoot: artifact.rootPath })).stdout.trim()
     const packageVersion = (await runProcess('/usr/bin/dpkg-deb', ['-f', deb, 'Version'], { disposableRoot: artifact.rootPath })).stdout.trim()
-    const installDir = join(artifact.rootPath, 'deb-root')
-    const adminDir = join(installDir, 'var', 'lib', 'dpkg')
-    await mkdir(adminDir, { recursive: true })
-    await writeFile(join(adminDir, 'status'), '', 'utf8')
-    const dpkg = async args => await runProcess('/usr/bin/sudo', ['-n', '/usr/bin/dpkg', `--root=${installDir}`, `--admindir=${adminDir}`, `--instdir=${installDir}`, ...args], { disposableRoot: artifact.rootPath })
-    const dpkgQuery = async args => await runProcess('/usr/bin/sudo', ['-n', '/usr/bin/dpkg-query', `--admindir=${adminDir}`, ...args], { disposableRoot: artifact.rootPath })
-    const installedVersion = async () => (await dpkgQuery(['--showformat=${Version}', '--show', packageName])).stdout.trim()
-    const installedStatus = async () => (await dpkgQuery(['--showformat=${Status}', '--show', packageName])).stdout.trim()
-    await dpkg(['--install', deb])
-    assert.equal(await installedStatus(), 'install ok installed', 'isolated dpkg package is not configured')
-    assert.equal(await installedVersion(), packageVersion, 'isolated dpkg registration/version mismatch')
-    const installedInventory = await inspectPackage(installDir, artifact.target)
-    assert.ok(installedInventory.executable.includes('/opt/') || installedInventory.executable.includes('\\\\opt\\\\'), 'deb executable did not come from the installed /opt payload')
-    assertPackageParity(artifact.inventory, installedInventory)
-    const debSmoke = await installedSession(installedInventory.executable, artifact.userData, installedInventory, artifact.target, { args: ['--no-sandbox'], installRoot: installDir })
-    const persistedValue = debSmoke.renderer.settingsRoundTrip.changed
-    await debSmoke.launched.workbench.evaluate(`(async () => await window.dshDesktop?.launcher?.settings?.updateSetting('searchEngine.fuzziness', ${String(persistedValue)}))()`)
-    const debProcessTreesGone = await closeInstalledSession(debSmoke, installedInventory.executable, installDir)
-    await dpkg(['--install', deb])
-    assert.equal(await installedStatus(), 'install ok installed', 'isolated dpkg reinstall is not configured')
-    assert.equal(await installedVersion(), packageVersion, 'isolated dpkg reinstall/version mismatch')
-    const reinstalledInventory = await inspectPackage(installDir, artifact.target)
-    assertPackageParity(artifact.inventory, reinstalledInventory)
-    const debReinstall = await readPersistedSetting(reinstalledInventory.executable, artifact.userData, artifact.target, 'searchEngine.fuzziness', persistedValue, installDir)
-    await dpkg(['--purge', packageName])
-    await assert.rejects(installedVersion(), /failed with status/u)
-    await runProcess('/usr/bin/sudo', ['-n', '/bin/rm', '-rf', '--', installDir], { disposableRoot: artifact.rootPath })
-    assert.equal(existsSync(installDir), false, 'isolated dpkg cleanup did not remove its root')
+    const installRoot = join('/opt', contract.identity.productName)
+    assert.equal(existsSync(installRoot), false, 'Linux deb install root already exists on the disposable runner')
+    const dpkg = async args => await runProcess('/usr/bin/sudo', ['-n', '/usr/bin/dpkg', ...args], { disposableRoot: artifact.rootPath })
+    const dpkgQuery = async args => await runProcess('/usr/bin/dpkg-query', args, { disposableRoot: artifact.rootPath })
+    const queryInstalledField = async field => {
+      try { return (await dpkgQuery([`--showformat=${field}`, '--show', packageName])).stdout.trim() } catch { return undefined }
+    }
+    const installedVersion = async () => await queryInstalledField('${Version}')
+    const installedStatus = async () => await queryInstalledField('${Status}')
+    assert.equal(await installedStatus(), undefined, 'Linux deb package is already registered on the disposable runner')
+    let installedInventory
+    let debSmoke
+    let persistedValue
+    let debProcessTreesGone
+    let reinstalledInventory
+    let debReinstall
+    let debFailure
+    try {
+      await dpkg(['--install', deb])
+      assert.equal(await installedStatus(), 'install ok installed', 'Linux deb package is not configured')
+      assert.equal(await installedVersion(), packageVersion, 'Linux deb package registration/version mismatch')
+      installedInventory = await inspectPackage(installRoot, artifact.target)
+      assert.ok(installedInventory.executable.includes('/opt/') || installedInventory.executable.includes('\\\\opt\\\\'), 'deb executable did not come from the installed /opt payload')
+      assertPackageParity(artifact.inventory, installedInventory)
+      debSmoke = await installedSession(installedInventory.executable, artifact.userData, installedInventory, artifact.target, { args: ['--no-sandbox'], installRoot })
+      persistedValue = debSmoke.renderer.settingsRoundTrip.changed
+      await debSmoke.launched.workbench.evaluate(`(async () => await window.dshDesktop?.launcher?.settings?.updateSetting('searchEngine.fuzziness', ${String(persistedValue)}))()`)
+      debProcessTreesGone = await closeInstalledSession(debSmoke, installedInventory.executable, installRoot)
+      await dpkg(['--install', deb])
+      assert.equal(await installedStatus(), 'install ok installed', 'Linux deb reinstall is not configured')
+      assert.equal(await installedVersion(), packageVersion, 'Linux deb reinstall/version mismatch')
+      reinstalledInventory = await inspectPackage(installRoot, artifact.target)
+      assertPackageParity(artifact.inventory, reinstalledInventory)
+      debReinstall = await readPersistedSetting(reinstalledInventory.executable, artifact.userData, artifact.target, 'searchEngine.fuzziness', persistedValue, installRoot)
+    } catch (error) {
+      debFailure = error
+    } finally {
+      const purgeFailure = await dpkg(['--purge', packageName]).catch(error => error)
+      if (debFailure === undefined && purgeFailure !== undefined) debFailure = purgeFailure
+    }
+    if (debFailure !== undefined) throw debFailure
+    assert.equal(await installedStatus(), undefined, 'Linux deb package remained in the runner dpkg database after purge')
+    assert.equal(existsSync(installRoot), false, 'Linux deb purge did not remove the installed /opt payload')
 
     const appImageRoot = join(artifact.rootPath, 'appimage')
     await mkdir(appImageRoot, { recursive: true })
@@ -571,7 +588,7 @@ async function runNonMacInstalledSmoke(artifact) {
     const appImageProcessTreesGone = await closeInstalledSession(appImageSmoke, appImageInventory.executable, extractedRoot)
     report.installed = {
       appImage: { artifact: appImage, installRoot: extractedRoot, package: appImageInventory, renderer: appImageSmoke.renderer, provider: appImageSmoke.platform, secondInstance: appImageSmoke.secondInstance, runtime: { runtimeReady: true } },
-      deb: { artifact: deb, installRoot: installDir, package: installedInventory, renderer: debSmoke.renderer, provider: debSmoke.platform, secondInstance: debSmoke.secondInstance, reinstall: { package: reinstalledInventory, settings: debReinstall }, rollback: { state: 'workflow-required', reason: 'dpkg has no atomic rollback transaction' }, uninstall: 'dpkg-purge-passed' },
+      deb: { artifact: deb, installRoot, package: installedInventory, renderer: debSmoke.renderer, provider: debSmoke.platform, secondInstance: debSmoke.secondInstance, reinstall: { package: reinstalledInventory, settings: debReinstall }, rollback: { state: 'workflow-required', reason: 'dpkg has no atomic rollback transaction' }, uninstall: 'dpkg-purge-passed' },
       processTreesGone: debProcessTreesGone && debReinstall.processTreesGone === true && appImageProcessTreesGone,
     }
     report.temporaryInstallRemoved = true
