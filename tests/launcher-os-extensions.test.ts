@@ -88,6 +88,16 @@ test('OS provider confirms privileged effects and rejects stale/tampered actions
   provider.invalidate()
 })
 
+test('Ueli command catalog reflects hotkey setting after an immediate provider rescan', async () => {
+  const { provider, setHotkey } = harness('macOS', ['UeliCommand'])
+  let items = await provider.loadIndexedItems()
+  assert.equal(items.find(item => item.id === 'ueliCommand:toggleHotkey')?.name, 'Disable hotkey')
+  setHotkey(false)
+  provider.invalidate()
+  items = await provider.loadIndexedItems()
+  assert.equal(items.find(item => item.id === 'ueliCommand:toggleHotkey')?.name, 'Enable hotkey')
+})
+
 test('OS provider delegates Ueli commands and revokes actions on invalidation', async () => {
   const { provider, effects } = harness('Linux', ['UeliCommand'])
   const items = await provider.loadIndexedItems()

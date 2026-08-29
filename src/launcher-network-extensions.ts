@@ -493,6 +493,7 @@ export function createLauncherNetworkExtensions(options: LauncherNetworkOptions)
     }
     return undefined
   }
+  const providerErrorStatus = (extensionId: LauncherNetworkExtensionId): string | undefined => providerErrors.get(extensionId)
   const getProviderErrors = (): ReadonlyMap<LauncherNetworkExtensionId, string> => new Map(providerErrors)
   const report = (extensionId: LauncherNetworkExtensionId, reason?: unknown): void => {
     const message = providerErrorMessage(extensionId, reason)
@@ -702,7 +703,7 @@ export function createLauncherNetworkExtensions(options: LauncherNetworkOptions)
     if (closed) return emptyResult()
     const generation = ++queryGeneration
     clearInteractiveActions()
-    if (!await waitForRawOperations() || closed || generation !== queryGeneration) return emptyResult(getLastError())
+    if (!await waitForRawOperations() || closed || generation !== queryGeneration) return emptyResult()
     const controller = new AbortController()
     activeInteractive = Object.freeze({ controller, generation })
     activeControllers.add(controller)
@@ -710,12 +711,18 @@ export function createLauncherNetworkExtensions(options: LauncherNetworkOptions)
     const before: LauncherInternalResultItem[] = []
     const after: LauncherInternalResultItem[] = []
     const ids = enabled()
+    const directExtensionId = typeof searchTerm === 'string' && searchTerm.startsWith(LAUNCHER_DEEPL_QUERY_PREFIX)
+      ? 'DeeplTranslator' as const
+      : typeof searchTerm === 'string' && searchTerm.startsWith(LAUNCHER_WEB_SEARCH_QUERY_PREFIX)
+        ? 'WebSearch' as const
+        : undefined
+    let queryError: string | undefined
     try {
-      if (typeof searchTerm !== 'string' || /[\0\r\n]/u.test(searchTerm)) return emptyResult(getLastError())
-      if (searchTerm.startsWith(LAUNCHER_DEEPL_QUERY_PREFIX) || searchTerm.startsWith(LAUNCHER_WEB_SEARCH_QUERY_PREFIX)) {
-        const prefix = searchTerm.startsWith(LAUNCHER_DEEPL_QUERY_PREFIX) ? LAUNCHER_DEEPL_QUERY_PREFIX : LAUNCHER_WEB_SEARCH_QUERY_PREFIX
-        if (searchTerm.length > prefix.length + LAUNCHER_NETWORK_TOOL_INPUT_LENGTH) return emptyResult(getLastError())
-      } else if (searchTerm.length > 512) return emptyResult(getLastError())
+      if (typeof searchTerm !== 'string' || /[\0\r\n]/u.test(searchTerm)) return emptyResult()
+      if (directExtensionId !== undefined) {
+        const prefix = directExtensionId === 'DeeplTranslator' ? LAUNCHER_DEEPL_QUERY_PREFIX : LAUNCHER_WEB_SEARCH_QUERY_PREFIX
+        if (searchTerm.length > prefix.length + LAUNCHER_NETWORK_TOOL_INPUT_LENGTH) return emptyResult()
+      } else if (searchTerm.length > 512) return emptyResult()
       const currencyDigest = settingsDigest('CurrencyConversion')
       if (ids.has('CurrencyConversion')) before.push(...currencyResult(options, searchTerm, rates, nextActions, generation, currencyDigest))
       if (ids.has('CustomWebSearch')) {
@@ -727,7 +734,10 @@ export function createLauncherNetworkExtensions(options: LauncherNetworkOptions)
           try {
             after.push(mapCustomResult(engine, query, customSearchUrl(engine, query), nextActions, generation, digest))
             clearError('CustomWebSearch')
-          } catch (reason) { report('CustomWebSearch', reason) }
+          } catch (reason) {
+            report('CustomWebSearch', reason)
+            queryError = providerErrorStatus('CustomWebSearch')
+          }
         }
       }
       const isDeepL = searchTerm.startsWith(LAUNCHER_DEEPL_QUERY_PREFIX)
@@ -739,12 +749,15 @@ export function createLauncherNetworkExtensions(options: LauncherNetworkOptions)
           const term = searchTerm.trim()
           after.push(mapWebResult('WebSearch', `Search "${term}"`, web.engine, `Search ${web.engine}`, webSearchUrl(web.engine, term, web.locale), term, web.engine, web.locale, nextActions, generation, digest, `search-${web.engine}`))
           clearError('WebSearch')
-        } catch (reason) { report('WebSearch', reason) }
+        } catch (reason) {
+          report('WebSearch', reason)
+          queryError = providerErrorStatus('WebSearch')
+        }
       }
       if (isDeepL || isWeb) {
         const extensionId = isDeepL ? 'DeeplTranslator' as const : 'WebSearch' as const
         const term = searchTerm.slice((isDeepL ? LAUNCHER_DEEPL_QUERY_PREFIX : LAUNCHER_WEB_SEARCH_QUERY_PREFIX).length).trim()
-        if (!ids.has(extensionId) || !safeQuery(term)) return emptyResult(getLastError())
+        if (!ids.has(extensionId) || !safeQuery(term)) return emptyResult()
         const results = extensionId === 'DeeplTranslator'
           ? await translate(term, controller.signal)
           : await webSuggestions(term, controller.signal, nextActions, generation)
@@ -765,13 +778,12 @@ export function createLauncherNetworkExtensions(options: LauncherNetworkOptions)
       if (closed || activeInteractive?.controller !== controller || activeInteractive.generation !== generation || generation !== queryGeneration || controller.signal.aborted) return emptyResult()
       // Replace private action state only after the complete current query is accepted.
       currentActions = nextActions
-      const lastError = getLastError()
-      return Object.freeze({ before: Object.freeze(before), after: Object.freeze(after), ...(lastError === undefined ? null : { lastError }) })
+      return Object.freeze({ before: Object.freeze(before), after: Object.freeze(after), ...(queryError === undefined ? null : { lastError: queryError }) })
     } catch (reason) {
       if (closed || activeInteractive?.controller !== controller || activeInteractive.generation !== generation || generation !== queryGeneration || controller.signal.aborted) return emptyResult()
-      const extensionId = searchTerm.startsWith(LAUNCHER_DEEPL_QUERY_PREFIX) ? 'DeeplTranslator' : 'WebSearch'
-      report(extensionId, reason)
-      return emptyResult(getLastError())
+      if (directExtensionId === undefined) return emptyResult(queryError)
+      report(directExtensionId, reason)
+      return emptyResult(providerErrorStatus(directExtensionId))
     } finally {
       activeControllers.delete(controller)
       if (activeInteractive?.controller === controller) activeInteractive = undefined

@@ -68,6 +68,7 @@ export type LauncherActionStoreOptions = Readonly<{
   maxActions?: number
   now?: () => number
   ttlMs?: number
+  ttlMsForSource?: (sourceExtension: string) => number | undefined
 }>
 
 export class LauncherActionExpiredError extends Error {
@@ -120,6 +121,7 @@ export class LauncherActionStore {
   private readonly maxActions: number
   private readonly now: () => number
   private readonly ttlMs: number
+  private readonly ttlMsForSource: ((sourceExtension: string) => number | undefined) | undefined
   private nextResultSet = 1
 
   constructor(options: LauncherActionStoreOptions) {
@@ -129,6 +131,7 @@ export class LauncherActionStore {
     this.maxActions = options.maxActions ?? DEFAULT_MAX_ACTIONS
     this.now = options.now ?? Date.now
     this.ttlMs = options.ttlMs ?? DEFAULT_ACTION_TTL_MS
+    this.ttlMsForSource = options.ttlMsForSource
     if (!Number.isSafeInteger(this.maxActions) || this.maxActions < 1) {
       throw new Error('TockLauncher action capacity must be a positive integer')
     }
@@ -323,10 +326,12 @@ export class LauncherActionStore {
     if (!ACTION_ID_PATTERN.test(actionId) || this.actions.has(actionId) || stagedActions.has(actionId)) {
       throw new Error('TockLauncher action ID generator returned an invalid or duplicate ID')
     }
+    const ttlMs = this.ttlMsForSource?.(sourceExtension) ?? this.ttlMs
+    if (!Number.isSafeInteger(ttlMs) || ttlMs < 1) throw new Error('TockLauncher action TTL must be a positive integer')
     const record = Object.freeze({
       actionId,
       argument: action.argument,
-      expiresAt: this.now() + this.ttlMs,
+      expiresAt: this.now() + ttlMs,
       handlerKey: action.handlerKey,
       hideWindowAfterInvocation: action.hideWindowAfterInvocation === true,
       owner: Object.freeze({ ...owner }),

@@ -45,6 +45,23 @@ test('launcher actions are opaque, owner-bound, expiring, replaced, and single-u
   assert.equal(executed, 1)
 })
 
+test('source-specific action TTLs keep deterministic fixture expiry scoped to one provider', async () => {
+  let now = 1_000
+  const store = new LauncherActionStore({
+    createId: (() => { let next = 0; return () => `source-ttl-${next++}` })(),
+    execute: async () => undefined,
+    now: () => now,
+    ttlMsForSource: source => source === 'Workflow' ? 50 : undefined,
+  })
+  const owner = { role: 'launcher' as const, webContentsId: 41 }
+  const published = store.publish({ items: [{ ...item('workflow'), sourceExtension: 'Workflow' }, item('ordinary')], owner })
+  const workflow = published.items[0]!
+  const ordinary = published.items[1]!
+  now = 1_051
+  await assert.rejects(store.invoke({ actionId: workflow.defaultAction.actionId, owner }), error => error instanceof LauncherActionExpiredError)
+  await store.invoke({ actionId: ordinary.defaultAction.actionId, owner })
+})
+
 test('explicit cancellation is owner- and result-set-bound and single-use', async () => {
   let release!: () => void
   let canceled = 0

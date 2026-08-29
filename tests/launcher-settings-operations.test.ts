@@ -102,6 +102,7 @@ test('presentation settings skip provider rescans while provider settings retain
   assert.equal(launcherSettingRequiresProviderRescan('searchEngine.fuzziness'), false)
   assert.equal(launcherSettingRequiresProviderRescan('appearance.searchBarSize'), false)
   assert.equal(launcherSettingRequiresProviderRescan('window.alwaysOnTop'), false)
+  assert.equal(launcherSettingRequiresProviderRescan('general.hotkey.enabled'), true)
   assert.equal(launcherSettingRequiresProviderRescan('extension[ApplicationSearch].macOsFolders'), true)
   assert.equal(launcherSettingRequiresProviderRescan('extensions.enabledExtensionIds'), true)
 })

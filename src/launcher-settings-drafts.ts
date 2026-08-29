@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { launcherDraftValueEquals } from './launcher-settings-draft-value.ts'
 
+export { launcherDraftValueEquals }
 export type LauncherDraftUpdate<T> = T | ((current: T) => T)
 
 /** Keep an active edit stable while adopting clean values from a newer main snapshot. */
-export function useLauncherDraft<T>(value: T, equals: (left: T, right: T) => boolean = Object.is): readonly [T, (next: LauncherDraftUpdate<T>) => void] {
+export function useLauncherDraft<T>(value: T, equals: (left: T, right: T) => boolean = launcherDraftValueEquals): readonly [T, (next: LauncherDraftUpdate<T>) => void] {
   const equalsRef = useRef(equals)
   equalsRef.current = equals
   const draftRef = useRef(value)

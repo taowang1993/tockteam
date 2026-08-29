@@ -233,15 +233,15 @@ test('DeepL preserves bounded multiline translation text and copies it through i
   assert.equal(copied, text)
 })
 
-test('empty search stays bounded while retaining provider status', async () => {
+test('empty search stays bounded without leaking unrelated provider status', async () => {
   const network = provider(async () => { throw new Error('offline') })
   const failed = await network.searchInstant(`${LAUNCHER_WEB_SEARCH_QUERY_PREFIX} hello`)
   assert.equal(failed.lastError, 'Web Search is unavailable.')
   const empty = await network.searchInstant('')
-  assert.deepEqual(empty, { before: [], after: [], lastError: 'Web Search is unavailable.' })
+  assert.deepEqual(empty, { before: [], after: [] })
 })
 
-test('successful custom search clears only its provider error and preserves other provider status', async () => {
+test('successful custom search does not expose a sibling Web Search error', async () => {
   const getSetting = <T>(key: string, fallback: T): T => key === 'extension[CustomWebSearch].customSearchEngines'
     ? [{ encodeSearchTerm: true, id: 'custom', name: 'Example', prefix: 'x', url: 'https://example.com/search?q={{query}}' }] as T
     : baseSettings(key, fallback)
@@ -249,7 +249,7 @@ test('successful custom search clears only its provider error and preserves othe
   const failed = await network.searchInstant(`${LAUNCHER_WEB_SEARCH_QUERY_PREFIX} hello`)
   assert.equal(failed.lastError, 'Web Search is unavailable.')
   const custom = await network.searchInstant('x hello')
-  assert.equal(custom.lastError, 'Web Search is unavailable.')
+  assert.equal(custom.lastError, undefined)
   assert.equal(network.getLastError(), 'Web Search is unavailable.')
 })
 
@@ -319,7 +319,7 @@ test('ignored-abort fetch is not replaced unboundedly and close remains bounded'
   const first = await network.searchInstant(`${LAUNCHER_WEB_SEARCH_QUERY_PREFIX} first`)
   assert.equal(first.lastError, 'Web Search is unavailable.')
   const second = await network.searchInstant(`${LAUNCHER_WEB_SEARCH_QUERY_PREFIX} second`)
-  assert.equal(second.lastError, 'Web Search is unavailable.')
+  assert.equal(second.lastError, undefined)
   assert.equal(calls, 1)
   const started = Date.now()
   await network.close()

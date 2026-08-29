@@ -61,8 +61,27 @@ test('Simple File Search isolates a broken root and reports bounded provider sta
   assert.equal(indexed[0]?.name, 'readme.md')
   assert.match(errors.join('\n'), /SimpleFileSearch/u)
   const status = await provider.searchInstant('ordinary launcher term')
-  assert.equal(status.lastError, 'Simple File Search is unavailable. Check configured roots.')
-  assert.doesNotMatch(status.lastError!, /permission|home|missing/u)
+  assert.equal(status.lastError, undefined)
+})
+
+test('FileSearch query status ignores a stale Simple File Search scan error', async () => {
+  const provider = createLauncherFileSearchExtensions({
+    effects: { openPath: () => undefined, revealPath: () => undefined },
+    enabledExtensionIds: () => ['FileSearch', 'SimpleFileSearch'],
+    getSetting: <T>(key: string, fallback: T): T => key === 'extension[SimpleFileSearch].folders'
+      ? [{ id: 'broken', path: '/home/max/missing', recursive: true, searchFor: 'files' as const }] as T
+      : fallback,
+    homePath: '/home/max', platform: 'macOS',
+    scanners: {
+      queryFileSearch: async () => [{ path: '/home/max/report.txt', type: 'file', identity: { dev: '1', ino: '2' } }],
+      scanSimpleFolder: async () => { throw new Error('simple scan unavailable') },
+      validatePath: async () => true,
+    },
+  })
+  await provider.loadIndexedItems(new AbortController().signal)
+  const result = await provider.searchInstant(`${LAUNCHER_FILE_SEARCH_QUERY_PREFIX} report`)
+  assert.equal(result.after[0]?.name, 'report.txt')
+  assert.equal(result.lastError, undefined)
 })
 
 test('file providers index bounded simple results and query the exact prefixed FileSearch surface', async () => {

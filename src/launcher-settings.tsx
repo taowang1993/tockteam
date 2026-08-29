@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Check, Database, Globe2, KeyRound, Keyboard, Palette, RefreshCw, RotateCcw, Search, ShieldCheck, Trash2, Upload, Download, MonitorCog } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@tockteam/ui/alert'
 import { Badge } from '@tockteam/ui/badge'
@@ -169,6 +169,7 @@ function LauncherSettingsPage({ close: _close, locale }: SettingsSectionProps): 
   const [updater, setUpdater] = useState<UpdaterState | null>(null)
   const [simpleFileSearchDraft, setSimpleFileSearchDraft] = useState<readonly LauncherSimpleFileSearchDraft[] | null>(null)
   const simpleFileSearchDraftRevision = useRef(0)
+  const settingsOwnershipRef = useRef<string | undefined>(undefined)
   const writeTail = useRef<Promise<void> | undefined>(undefined)
   const updateSimpleFileSearchDraft = useCallback((folders: readonly LauncherSimpleFileSearchDraft[]): void => {
     simpleFileSearchDraftRevision.current += 1
@@ -182,6 +183,9 @@ function LauncherSettingsPage({ close: _close, locale }: SettingsSectionProps): 
   const reload = useCallback(async (): Promise<LauncherSettingsSnapshot | null> => {
     if (!settings) return null
     const next = await settings.getSnapshot()
+    const ownership = `${next.settingsSource}:${next.externalGrantStatus}`
+    if (settingsOwnershipRef.current !== undefined && settingsOwnershipRef.current !== ownership) clearSimpleFileSearchDraft()
+    settingsOwnershipRef.current = ownership
     const serializedWorkflow = launcherWorkflowSnapshotToken(next)
     if (serializedWorkflow !== workflowSnapshotValue.current) {
       workflowSnapshotValue.current = serializedWorkflow
@@ -190,7 +194,7 @@ function LauncherSettingsPage({ close: _close, locale }: SettingsSectionProps): 
     const dirtyValues = pendingValues.current
     setSnapshot(mergeLauncherDirtyValues(next, dirtyValues))
     return next
-  }, [settings])
+  }, [clearSimpleFileSearchDraft, settings])
 
   useEffect(() => {
     if (!settings) return
@@ -208,6 +212,19 @@ function LauncherSettingsPage({ close: _close, locale }: SettingsSectionProps): 
     }
     requestAnimationFrame(() => dialog?.querySelector<HTMLButtonElement>('[data-testid="tocklauncher-reset-cancel"]')?.focus())
   }, [resetPending])
+
+  useLayoutEffect(() => {
+    const onEscape = (event: KeyboardEvent): void => {
+      if (event.key !== 'Escape') return
+      const dialog = document.querySelector<HTMLDialogElement>('[data-testid="tocklauncher-reset-dialog"][open], [data-testid="tocklauncher-workflow-delete-dialog"][open]')
+      if (dialog === null) return
+      event.preventDefault()
+      event.stopImmediatePropagation()
+      dialog.querySelector<HTMLButtonElement>('[data-testid="tocklauncher-reset-cancel"], [data-testid="tockteam-workflow-delete-cancel"]')?.click()
+    }
+    window.addEventListener('keydown', onEscape, true)
+    return () => window.removeEventListener('keydown', onEscape, true)
+  }, [])
 
   useEffect(() => {
     if (!bridge) return
@@ -434,7 +451,7 @@ function LauncherSettingsPage({ close: _close, locale }: SettingsSectionProps): 
             <Button size="sm" variant="outline" disabled={busy} onClick={() => { void operation('Import', settings.importSettings, true, true) }}><Upload aria-hidden="true" />{launcherFixedText('Import')}</Button>
             <Button size="sm" variant="outline" disabled={busy} onClick={() => { void operation('Export', settings.exportSettings, false) }}><Download aria-hidden="true" />{launcherFixedText('Export')}</Button>
             <Button size="sm" variant="outline" disabled={busy} onClick={() => { void operation('External selection', settings.selectExternalSettings, true, true) }}>{launcherFixedText('Choose external file')}</Button>
-            <Button size="sm" variant="outline" disabled={busy || snapshot.externalGrantStatus === 'none'} onClick={() => { void operation('External revocation', settings.revokeExternalSettings) }}>{launcherFixedText('Revoke external file')}</Button>
+            <Button size="sm" variant="outline" disabled={busy || snapshot.externalGrantStatus === 'none'} onClick={() => { void operation('External revocation', settings.revokeExternalSettings, true, true) }}>{launcherFixedText('Revoke external file')}</Button>
           </div>
         </Field>
         <Field title="Custom browser" description={rendererIsLinux ? 'Linux always uses the system browser; custom browser selection is unavailable.' : 'The native browser grant is status-only in the renderer; the selected target never crosses this page.'}>
@@ -444,8 +461,8 @@ function LauncherSettingsPage({ close: _close, locale }: SettingsSectionProps): 
           </div>
         </Field>
         <Field title="Reset TockLauncher settings" description="Clears overrides, favorites, exclusions, history, and the custom-browser grant, then securely relaunches Desktop.">
-          <Button ref={resetTriggerRef} size="sm" variant="outline" disabled={busy} onClick={() => setResetPending(true)}><RotateCcw aria-hidden="true" />{launcherFixedText('Reset')}</Button>
-          <dialog ref={resetDialogRef} aria-describedby="tocklauncher-reset-description" aria-labelledby="tocklauncher-reset-title" aria-modal="true" className="rounded-lg border border-border bg-background p-4 text-foreground shadow-xl" data-testid="tocklauncher-reset-dialog" onCancel={event => { event.preventDefault(); setResetPending(false); requestAnimationFrame(() => resetTriggerRef.current?.focus()) }} onKeyDown={event => { if (event.key !== 'Escape') return; event.preventDefault(); setResetPending(false); requestAnimationFrame(() => resetTriggerRef.current?.focus()) }}>
+          <Button data-testid="tocklauncher-reset-trigger" ref={resetTriggerRef} size="sm" variant="outline" disabled={busy} onClick={() => setResetPending(true)}><RotateCcw aria-hidden="true" />{launcherFixedText('Reset')}</Button>
+          <dialog ref={resetDialogRef} aria-describedby="tocklauncher-reset-description" aria-labelledby="tocklauncher-reset-title" aria-modal="true" className="rounded-lg border border-border bg-background p-4 text-foreground shadow-xl" data-testid="tocklauncher-reset-dialog" onCancel={event => { event.preventDefault(); event.stopPropagation(); setResetPending(false); requestAnimationFrame(() => resetTriggerRef.current?.focus()) }} onKeyDownCapture={event => { if (event.key !== 'Escape') return; event.preventDefault(); event.stopPropagation(); setResetPending(false); requestAnimationFrame(() => resetTriggerRef.current?.focus()) }} onKeyDown={event => { if (event.key !== 'Escape') return; event.preventDefault(); event.stopPropagation(); setResetPending(false); requestAnimationFrame(() => resetTriggerRef.current?.focus()) }}>
             <h3 id="tocklauncher-reset-title" className="text-base font-semibold">{launcherFixedText('Reset TockLauncher settings?')}</h3>
             <p id="tocklauncher-reset-description" className="mt-2 max-w-md text-sm text-muted-foreground">{launcherFixedText('This clears launcher overrides, favorites, exclusions, history, and the custom-browser grant.')}</p>
             <div className="mt-4 flex justify-end gap-2"><Button data-testid="tocklauncher-reset-cancel" type="button" variant="outline" disabled={busy} onClick={() => { setResetPending(false); requestAnimationFrame(() => resetTriggerRef.current?.focus()) }}>{launcherFixedText('Cancel')}</Button><Button type="button" variant="destructive" disabled={busy} onClick={() => { setResetPending(false); void operation('Reset', settings.resetSettings, true, true, resetTriggerRef.current ?? undefined) }}><Trash2 aria-hidden="true" />{launcherFixedText('Confirm reset')}</Button></div>

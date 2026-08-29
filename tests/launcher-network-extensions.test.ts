@@ -49,6 +49,28 @@ test('network provider creates static DeepL/Web Search rows and isolates currenc
   assert.deepEqual([...provider.getProviderErrors().keys()], ['CurrencyConversion'])
 })
 
+test('network query status is scoped to the queried provider when a sibling currency provider is stale', async () => {
+  const provider = createLauncherNetworkExtensions({
+    copyText: () => undefined,
+    enabledExtensionIds: () => ['CurrencyConversion', 'DeeplTranslator', 'WebSearch'],
+    fetch: async url => {
+      if (url.includes('@fawazahmed0/currency-api')) throw new Error('currency offline')
+      if (url === 'https://api-free.deepl.com/v2/translate') return response(JSON.stringify({ translations: [{ text: 'translated' }] }))
+      return response(JSON.stringify(['term', ['suggestion']]))
+    },
+    getSetting: settings,
+    openExternal: () => undefined,
+    resolveAddresses: publicResolver,
+  })
+  await provider.loadIndexedItems(new AbortController().signal)
+  const web = await provider.searchInstant(`${LAUNCHER_WEB_SEARCH_QUERY_PREFIX} hello`)
+  assert.equal(web.after.some(item => item.name === 'suggestion'), true)
+  assert.equal(web.lastError, undefined)
+  const deepL = await provider.searchInstant(`${LAUNCHER_DEEPL_QUERY_PREFIX} hello`)
+  assert.equal(deepL.before[0]?.name, 'translated')
+  assert.equal(deepL.lastError, undefined)
+})
+
 test('network provider uses exact DeepL request and keeps translation action main-owned', async () => {
   let request: { url: string; init: RequestInit | undefined } | undefined
   const provider = createLauncherNetworkExtensions({

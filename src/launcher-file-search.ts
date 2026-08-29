@@ -211,11 +211,10 @@ export function createLauncherFileSearchExtensions(options: FileSearchOptions): 
   const providerErrorMessage = (extensionId: LauncherFileSearchExtensionId): string => extensionId === 'FileSearch'
     ? 'File Search is unavailable. Check the native provider configuration.'
     : 'Simple File Search is unavailable. Check configured roots.'
-  const providerErrorStatus = (): string | undefined => providerErrors.has('FileSearch')
-    ? providerErrorMessage('FileSearch')
-    : providerErrors.has('SimpleFileSearch')
-      ? providerErrorMessage('SimpleFileSearch')
-      : undefined
+  const providerErrorStatus = (extensionId: LauncherFileSearchExtensionId): string | undefined => providerErrors.has(extensionId)
+    ? providerErrorMessage(extensionId)
+    : undefined
+  const getLastError = (): string | undefined => providerErrorStatus('FileSearch') ?? providerErrorStatus('SimpleFileSearch')
   const getProviderErrors = (): ReadonlyMap<LauncherFileSearchExtensionId, string> => new Map(
     [...providerErrors].map(extensionId => [extensionId, providerErrorMessage(extensionId)] as const),
   )
@@ -426,12 +425,12 @@ export function createLauncherFileSearchExtensions(options: FileSearchOptions): 
       || searchTerm.length > (searchTerm.startsWith(LAUNCHER_FILE_SEARCH_QUERY_PREFIX)
         ? LAUNCHER_FILE_SEARCH_QUERY_PREFIX.length + 512
         : 512)
-      || !enabled().has('FileSearch') || !searchTerm.startsWith(LAUNCHER_FILE_SEARCH_QUERY_PREFIX)) return emptySearch(providerErrorStatus())
+      || !enabled().has('FileSearch') || !searchTerm.startsWith(LAUNCHER_FILE_SEARCH_QUERY_PREFIX)) return emptySearch()
     const queryTerm = searchTerm.slice(LAUNCHER_FILE_SEARCH_QUERY_PREFIX.length).trim()
     if (queryTerm.length === 0 || queryTerm.length > 512 || /[\0\r\n]/u.test(queryTerm)) return emptySearch()
     if (options.platform === 'Linux') {
       reportProviderError('FileSearch', new Error('File Search is unsupported on Linux'))
-      return emptySearch(providerErrorStatus())
+      return emptySearch(providerErrorStatus('FileSearch'))
     }
     clearProviderError('FileSearch')
     const controller = new AbortController()
@@ -462,12 +461,12 @@ export function createLauncherFileSearchExtensions(options: FileSearchOptions): 
       }
       if (closed || generation !== queryGeneration || activeQuery?.controller !== controller) return emptySearch()
       fileActions = nextActions; knownFile = nextKnown
-      const lastError = providerErrorStatus()
+      const lastError = providerErrorStatus('FileSearch')
       return Object.freeze({ after: Object.freeze(items), before: Object.freeze([]), ...(lastError === undefined ? null : { lastError }) })
     } catch (reason) {
       if (activeQuery?.controller !== controller || generation !== queryGeneration || closed) return emptySearch()
       reportProviderError('FileSearch', reason)
-      return emptySearch(providerErrorStatus())
+      return emptySearch(providerErrorStatus('FileSearch'))
     } finally {
       if (activeQuery?.controller === controller) activeQuery = undefined
     }
@@ -555,5 +554,5 @@ export function createLauncherFileSearchExtensions(options: FileSearchOptions): 
     await waitForActiveWorkBounded()
   }
 
-  return Object.freeze({ close, executeAction, getLastError: providerErrorStatus, getProviderErrors, invalidate, loadIndexedItems, searchInstant, waitForIdle: waitForActiveWorkBounded })
+  return Object.freeze({ close, executeAction, getLastError, getProviderErrors, invalidate, loadIndexedItems, searchInstant, waitForIdle: waitForActiveWorkBounded })
 }

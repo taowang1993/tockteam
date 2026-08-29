@@ -194,6 +194,15 @@ const launcherNetworkFixtureEnabled = !app.isPackaged && process.env.TOCKTEAM_NE
 const launcherOsFixtureEnabled = !app.isPackaged && process.env.TOCKTEAM_OS_FIXTURE === '1'
 const launcherTerminalFixtureEnabled = !app.isPackaged && process.env.TOCKTEAM_TERMINAL_FIXTURE === '1'
 const launcherWorkflowFixtureEnabled = !app.isPackaged && process.env.TOCKTEAM_WORKFLOW_FIXTURE === '1'
+const configuredLauncherWorkflowFixtureActionTtlMs = !app.isPackaged && process.env.TOCKTEAM_WORKFLOW_ACTION_TTL_MS !== undefined
+  ? Number(process.env.TOCKTEAM_WORKFLOW_ACTION_TTL_MS)
+  : undefined
+const launcherWorkflowFixtureActionTtlMs = configuredLauncherWorkflowFixtureActionTtlMs !== undefined
+  && Number.isSafeInteger(configuredLauncherWorkflowFixtureActionTtlMs)
+  && configuredLauncherWorkflowFixtureActionTtlMs > 0
+  && configuredLauncherWorkflowFixtureActionTtlMs <= 60_000
+  ? configuredLauncherWorkflowFixtureActionTtlMs
+  : undefined
 const launcherWorkflowFixtureSlowHistoryEnabled = launcherWorkflowFixtureEnabled && process.env.TOCKTEAM_WORKFLOW_SLOW_HISTORY === '1'
 const launcherBrowserFixtureEnabled = !app.isPackaged && process.env.TOCKTEAM_BROWSER_FIXTURE === '1'
 const launcherDiscoveryFixtureRoot = !app.isPackaged ? process.env.TOCKTEAM_DISCOVERY_FIXTURE_ROOT : undefined
@@ -2103,10 +2112,6 @@ function initializeLauncher(): void {
     initialFavoriteItemIds: repository.getSetting('favorites', []),
     initialIndexedItems: repository.readIndex(),
     appendLog: async (_level, message) => { await repository.appendLog('ERROR', message) },
-    getIndexedError: () => {
-      const errors = [network.getLastError(), fileSearch.getLastError(), os.getLastError(), workflow.getLastError()].filter((value): value is string => value !== undefined)
-      return errors.length === 0 ? undefined : errors.slice(0, 3).join(' ')
-    },
     loadIndexedItems: async (signal, preserveSignal) => {
       const result = await createTockTeamDestinationResults('')
       return [...result.before, ...result.after, ...await local.loadIndexedItems(), ...await discovery.loadIndexedItems(signal, preserveSignal), ...await fileSearch.loadIndexedItems(signal, preserveSignal), ...await network.loadIndexedItems(signal, preserveSignal), ...await os.loadIndexedItems(signal, preserveSignal), ...await terminal.loadIndexedItems(signal, preserveSignal), ...await workflow.loadIndexedItems(signal, preserveSignal)]
@@ -2137,6 +2142,7 @@ function initializeLauncher(): void {
   })
   let controller: LauncherOverlayController | undefined
   const actions = new LauncherActionStore({
+    ...(launcherWorkflowFixtureActionTtlMs === undefined ? {} : { ttlMsForSource: sourceExtension => sourceExtension === 'Workflow' ? launcherWorkflowFixtureActionTtlMs : undefined }),
     cancel: async record => await workflow.cancelAction(record),
     execute: async record => {
       if (await coreSearch.executeAction(record)) return

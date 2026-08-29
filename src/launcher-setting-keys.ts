@@ -39,9 +39,10 @@ export function isLauncherRuntimeSettingKey(value: unknown): value is LauncherRu
   return typeof value === 'string' && (LAUNCHER_RUNTIME_SETTING_KEYS as readonly string[]).includes(value)
 }
 
-/** Presentation and lifecycle settings do not require provider rescans. */
+/** Settings that change indexed catalogs or provider actions require a rescan. */
 export function launcherSettingRequiresProviderRescan(key: string): boolean {
   return key === 'extensions.enabledExtensionIds'
+    || key === 'general.hotkey.enabled'
     || key === 'favorites'
     || key === 'searchEngine.excludedItems'
     || key.startsWith('extension[')
