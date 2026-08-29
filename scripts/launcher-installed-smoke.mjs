@@ -379,15 +379,7 @@ async function runMacInstalledSmoke(artifact) {
   return Object.freeze({
     classification: 'unsigned/internal macOS evidence (ad-hoc signed for local execution); not notarized or public distribution',
     identity,
-    package: {
-      appId: installedInventory.appId,
-      appPath: installedInventory.appPath,
-      assetCount: installedInventory.assetCount,
-      extraResources: installedInventory.extraResources,
-      productName: installedInventory.productName,
-      version: installedInventory.version,
-      vendorScan: installedInventory.vendorScan,
-    },
+    package: installedInventory,
     renderer: {
       launcher: first.renderer.launcher,
       runtimeArchitecture: first.renderer.runtimeArchitecture,
