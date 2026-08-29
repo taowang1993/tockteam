@@ -150,7 +150,7 @@ async function buildInstallerTargets(artifact, target, formats) {
         electronVersion: electronPackage.version,
         [target.key]: { ...baseConfig[target.key], target: [format] },
       },
-    }))
+    }), artifact.rootPath)
   }
   return outputDir
 }

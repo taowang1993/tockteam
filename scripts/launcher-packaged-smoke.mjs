@@ -73,6 +73,7 @@ const smokeOverrideKeys = Object.freeze([
   'NODE_OPTIONS',
   'NODE_PATH',
 ])
+const disposableEnvironmentKeys = Object.freeze(['HOME', 'USERPROFILE', 'APPDATA', 'LOCALAPPDATA', 'XDG_CONFIG_HOME', 'XDG_CACHE_HOME', 'XDG_DATA_HOME', 'XDG_DATA_DIRS', 'XDG_STATE_HOME', 'TMPDIR', 'TEMP', 'TMP', 'PATH'])
 
 function trustedPath() {
   if (process.platform === 'win32') {
@@ -106,9 +107,18 @@ export function smokeEnvironment(overrides = {}, disposableRoot = undefined) {
   return environment
 }
 
-export async function withSmokeEnvironment(operation) {
-  const previous = new Map(smokeOverrideKeys.map(key => [key, process.env[key]]))
+export async function withSmokeEnvironment(operation, disposableRoot = undefined) {
+  const keys = disposableRoot === undefined ? smokeOverrideKeys : [...smokeOverrideKeys, ...disposableEnvironmentKeys]
+  const previous = new Map(keys.map(key => [key, process.env[key]]))
+  const bounded = disposableRoot === undefined ? undefined : smokeEnvironment({}, disposableRoot)
   for (const key of smokeOverrideKeys) delete process.env[key]
+  if (bounded !== undefined) {
+    for (const key of disposableEnvironmentKeys) {
+      const value = bounded[key]
+      if (value === undefined) delete process.env[key]
+      else process.env[key] = value
+    }
+  }
   try {
     return await operation()
   } finally {
@@ -859,7 +869,7 @@ export async function preparePackagedArtifact({ target = currentTarget(), smokeR
       projectDir: appDir,
       targets: target.builder.createTarget(DIR_TARGET, target.architecture),
       config: { ...packagedBuilderConfig(outputDir, target, appDir), electronVersion: electronPackage.version },
-    }))
+    }), rootPath)
     const inventory = await inspectPackage(outputDir, target)
     return Object.freeze({ appDir, inventory, outputDir, rootPath, target, userData: join(rootPath, 'user-data') })
   } catch (error) {

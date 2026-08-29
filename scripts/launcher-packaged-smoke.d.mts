@@ -1,4 +1,4 @@
-export function withSmokeEnvironment<T>(operation: () => T | Promise<T>): Promise<T>
+export function withSmokeEnvironment<T>(operation: () => T | Promise<T>, disposableRoot?: string): Promise<T>
 
 export function smokeEnvironment(overrides?: NodeJS.ProcessEnv, disposableRoot?: string): NodeJS.ProcessEnv
 

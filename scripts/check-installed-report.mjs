@@ -47,7 +47,7 @@ function inspectPackage(failures, packageInventory, renderer, installRoot, expec
 
 function inspectSettings(failures, settings) {
   failure(failures, object(settings), 'installed settings-reinstall evidence is missing')
-  failure(failures, settings?.package?.version !== undefined, 'installed settings-reinstall package evidence is missing')
+  failure(failures, settings?.package?.version !== undefined && settings.package.appId === 'ai.deepseek.tockteam-desktop' && settings.package.productName === 'TockTeam Desktop', 'installed settings-reinstall package evidence is incomplete')
   failure(failures, settings?.settings?.restored !== undefined, 'installed settings-reinstall value is missing')
   failure(failures, settings?.settings?.runtimeReady === 'ready', 'installed settings-reinstall runtime was not ready')
 }
