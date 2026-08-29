@@ -190,6 +190,10 @@ const PRODUCT_VERSION = resolveProductVersion(join(currentDir, '..'))
 const splashPath = join(currentDir, 'splash.html')
 const preloadPath = join(currentDir, 'preload.cjs')
 const launcherHtmlPath = join(currentDir, 'launcher.html')
+// Package smoke may fail closed for secure storage because ad-hoc CI bundle identities can block macOS Keychain prompts.
+const launcherPackagedSmokeEnabled = app.isPackaged
+  && process.argv.includes('--tockteam-launcher-packaged-smoke')
+  && process.env.TOCKTEAM_PACKAGED_SMOKE === '1'
 const launcherNetworkFixtureEnabled = !app.isPackaged && process.env.TOCKTEAM_NETWORK_FIXTURE === '1'
 const launcherOsFixtureEnabled = !app.isPackaged && process.env.TOCKTEAM_OS_FIXTURE === '1'
 const launcherTerminalFixtureEnabled = !app.isPackaged && process.env.TOCKTEAM_TERMINAL_FIXTURE === '1'
@@ -1317,6 +1321,7 @@ function launcherDefaultContext(): Readonly<{
 }
 
 function launcherSecureStorageAvailable(): boolean {
+  if (launcherPackagedSmokeEnabled) return false
   try {
     if (!safeStorage.isEncryptionAvailable()) return false
     if (process.platform === 'linux') {
@@ -1554,6 +1559,18 @@ function syncLauncherPersistentSets(core: Readonly<{ replacePersistentSettings: 
   })
 }
 
+function writeLauncherPackagedSmokeSecurity(window: BrowserWindow, launcherSession: Session): void {
+  if (!launcherPackagedSmokeEnabled) return
+  const filePath = join(app.getPath('userData'), 'launcher', 'packaged-smoke-security.json')
+  mkdirSync(dirname(filePath), { mode: 0o700, recursive: true })
+  writeFileSync(filePath, JSON.stringify({
+    appPath: app.getAppPath(),
+    appPathUsesAsar: app.getAppPath().endsWith('app.asar'),
+    launcherSessionPartition: window.webContents.session === launcherSession ? LAUNCHER_SESSION_PARTITION : 'unexpected',
+    sessionMatches: window.webContents.session === launcherSession,
+  }), { encoding: 'utf8', mode: 0o600 })
+}
+
 function createLauncherWindow(args: Readonly<{
   launcherSession: Session
   urlPolicy: LauncherUrlPolicy
@@ -1581,6 +1598,7 @@ function createLauncherWindow(args: Readonly<{
     window.destroy()
     throw new Error('TockLauncher window was created with an unexpected session')
   }
+  writeLauncherPackagedSmokeSecurity(window, args.launcherSession)
   window.removeMenu()
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
   window.webContents.on('will-attach-webview', event => { event.preventDefault() })
