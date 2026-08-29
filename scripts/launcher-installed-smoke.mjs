@@ -383,23 +383,25 @@ async function runMacInstalledSmoke(artifact) {
   assert.equal(temporaryInstallRemoved, true)
   return Object.freeze({
     classification: 'unsigned/internal macOS evidence (ad-hoc signed for local execution); not notarized or public distribution',
-    identity,
-    installRoot: destination,
-    package: installedInventory,
-    renderer: {
-      launcher: first.renderer.launcher,
-      runtimeArchitecture: first.renderer.runtimeArchitecture,
-      search: first.renderer.search,
-      security: first.renderer.security,
-      settingsRoundTrip: first.renderer.settingsRoundTrip,
-      workbench: first.renderer.workbench,
+    installed: {
+      identity,
+      installRoot: destination,
+      package: installedInventory,
+      renderer: {
+        launcher: first.renderer.launcher,
+        runtimeArchitecture: first.renderer.runtimeArchitecture,
+        search: first.renderer.search,
+        security: first.renderer.security,
+        settingsRoundTrip: first.renderer.settingsRoundTrip,
+        workbench: first.renderer.workbench,
+      },
+      reinstallSettings: { backup: reinstall.backup !== undefined, identity: reinstalledIdentity, package: reinstalledInventory, settings: restored, version: reinstalledInventory.version },
+      rollback: { preservedAsarSha256: afterRollback, validationFailureRecovered: true },
+      provider: first.platform,
+      secondInstance: first.secondInstance,
+      processTreesGone: firstProcessTreesGone && restored.processTreesGone === true,
+      temporaryInstallRemoved,
     },
-    reinstallSettings: { backup: reinstall.backup !== undefined, identity: reinstalledIdentity, package: reinstalledInventory, settings: restored, version: reinstalledInventory.version },
-    rollback: { preservedAsarSha256: afterRollback, validationFailureRecovered: true },
-    provider: first.platform,
-    secondInstance: first.secondInstance,
-    processTreesGone: firstProcessTreesGone && restored.processTreesGone === true,
-    temporaryInstallRemoved,
   })
 }
 
@@ -547,9 +549,9 @@ async function main() {
   const finalEvidence = Object.freeze({
     ...evidence,
     cleanup: {
-      processTreesGone: evidence?.processTreesGone === true,
+      processTreesGone: evidence?.processTreesGone === true || evidence?.installed?.processTreesGone === true,
       smokeRootRemoved: process.env.TOCKTEAM_KEEP_INSTALLED_SMOKE === '1' ? false : !existsSync(smokeRoot),
-      temporaryInstallRemoved: evidence?.temporaryInstallRemoved ?? true,
+      temporaryInstallRemoved: evidence?.temporaryInstallRemoved === true || evidence?.installed?.temporaryInstallRemoved === true,
     },
   })
   await mkdir(dirname(reportPath), { recursive: true })

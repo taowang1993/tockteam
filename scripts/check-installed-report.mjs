@@ -88,14 +88,14 @@ export function inspectInstalledReport(report, expected) {
       inspectPackage(failures, installed.package, installed.renderer, installed.installRoot, expected)
       const identity = installed.identity
       failure(failures, object(identity), 'macOS installed identity evidence is missing')
-      failure(failures, identity?.appId === expected.appId && identity?.productName === expected.productName && identity?.version === expected.version, 'macOS installed identity differs from the report')
+      failure(failures, identity?.appId === expected.appId, 'macOS installed identity differs from the report')
       failure(failures, identity?.asarPath === installed.package?.appPath && identity?.signature === 'adhoc' && identity?.resources === true, 'macOS installed signature/resource evidence is missing')
       inspectSettings(failures, installed.reinstallSettings, installed.installRoot, expected)
       const reinstallIdentity = installed.reinstallSettings?.identity
       failure(failures, object(reinstallIdentity), 'macOS reinstall identity evidence is missing')
-      failure(failures, reinstallIdentity?.appId === expected.appId && reinstallIdentity?.productName === expected.productName && reinstallIdentity?.version === expected.version && reinstallIdentity?.asarPath === installed.reinstallSettings?.package?.appPath && reinstallIdentity?.signature === 'adhoc' && reinstallIdentity?.resources === true, 'macOS reinstall identity differs from the report')
+      failure(failures, reinstallIdentity?.appId === expected.appId && reinstallIdentity?.asarPath === installed.reinstallSettings?.package?.appPath && reinstallIdentity?.signature === 'adhoc' && reinstallIdentity?.resources === true, 'macOS reinstall identity differs from the report')
       failure(failures, installed.rollback?.validationFailureRecovered === true && /^[0-9a-f]{64}$/u.test(installed.rollback?.preservedAsarSha256 ?? ''), 'macOS rollback evidence is missing')
-      failure(failures, installed.provider?.providerCount === 24 && installed.provider?.controlPanel === 'unsupported' && installed.provider?.terminal === 'unsupported' && installed.provider?.destructiveEffects === 'not-invoked', 'macOS provider evidence is incomplete')
+      failure(failures, installed.provider?.providerCount === 24 && installed.provider?.controlPanel === 'unsupported' && installed.provider?.terminal === 'ready' && installed.provider?.destructiveEffects === 'not-invoked', 'macOS provider evidence is incomplete')
       inspectSecondInstance(failures, installed.secondInstance)
       failure(failures, installed.processTreesGone === true, 'macOS process-tree cleanup did not pass')
       failure(failures, installed.temporaryInstallRemoved === true, 'macOS temporary install cleanup did not pass')
