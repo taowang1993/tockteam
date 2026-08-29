@@ -8,6 +8,7 @@ import {
   inspectInstalledEvidenceCatalog,
   inspectInstalledEvidenceWorkflow,
 } from '../scripts/ueli/installed-evidence.mjs'
+import { inspectInstalledReport } from '../scripts/check-installed-report.mjs'
 import {
   inspectExtraResources,
   findNsisInstaller,
@@ -44,6 +45,10 @@ test('TockTeam exposes an executable installed-artifact smoke and audit', () => 
   assert.match(installedSmoke, /DSH_SOURCE/u)
   assert.match(installedSmoke, /electronVersion/u)
   assert.match(installedSmoke, /dpkg-query/u)
+  assert.match(installedSmoke, /\/usr\/bin\/dpkg/u)
+  assert.match(installedSmoke, /--unpack/u)
+  assert.match(installedSmoke, /--purge/u)
+  assert.match(installedSmoke, /post-install|inspectPackage/u)
   assert.match(installedSmoke, /Uninstall TockTeam Desktop\.exe/u)
   assert.match(installedSmoke, /detached:\s*(?:true|process\.platform)/u)
 })
@@ -124,7 +129,7 @@ test('installed evidence catalog owns the exact platform rows and rejects fabric
     'Windows:notices-and-bounded-vendor-scan', 'Windows:control-panel-terminal-elevation',
     'Windows:reinstall-rollback-cleanup', 'Windows:shortcut-second-instance-permissions',
     'Linux:deb-install', 'Linux:appimage-install', 'Linux:identity-resources-notices',
-    'Linux:no-vendor-source', 'Linux:security-action-settings', 'Linux:file-search-custom-browser',
+    'Linux:notices-and-bounded-vendor-scan', 'Linux:security-action-settings', 'Linux:file-search-custom-browser',
     'Linux:reinstall-rollback-cleanup', 'Linux:shortcut-second-instance-permissions',
   ]
   assert.deepEqual(catalog.rows.map(row => row.id), expectedIds)
@@ -136,11 +141,27 @@ test('installed evidence catalog owns the exact platform rows and rejects fabric
   }
   assert.deepEqual(new Set(catalog.rows.map(row => row.platform)), new Set(['macOS', 'Windows', 'Linux']))
   assert.deepEqual(inspectInstalledEvidenceCatalog({ ...catalog, rows: catalog.rows.slice(1) }).failures.filter(failure => failure.includes('required installed evidence row is missing')), ['required installed evidence row is missing: macOS:artifact-build'])
+  const invalidOwner = structuredClone(catalog)
+  invalidOwner.rows[0].owner = 'reports/fabricated.md'
+  assert.ok(inspectInstalledEvidenceCatalog(invalidOwner).failures.some(failure => failure.includes('owner is not an approved source')))
   const fabricated = structuredClone(catalog)
   const shortcut = fabricated.rows.find(row => row.id === 'macOS:shortcut-second-instance')
   shortcut.state = 'local-verified'
   shortcut.evidence = { kind: 'local-run', platform: 'darwin-arm64', commit: 'a'.repeat(40), version: '0.1.14', identity: 'ai.deepseek.tockteam-desktop', result: 'passed', reference: '/tmp/fabricated.json' }
   assert.ok(inspectInstalledEvidenceCatalog(fabricated).failures.some(failure => failure.includes('must remain workflow-required')))
+})
+
+test('installed report validation requires package identity, version, and a passing result', () => {
+  const report = {
+    version: '0.1.14',
+    appId: 'ai.deepseek.tockteam-desktop',
+    productName: 'TockTeam Desktop',
+    platform: 'win32',
+    installed: { package: { version: '0.1.14', appId: 'ai.deepseek.tockteam-desktop', productName: 'TockTeam Desktop', assetCount: 65, vendorSourceShipped: false } },
+  }
+  assert.equal(inspectInstalledReport(report, { platform: 'win32', version: '0.1.14' }).failures.length, 0)
+  assert.ok(inspectInstalledReport({ ...report, version: '0.1.13' }, { platform: 'win32', version: '0.1.14' }).failures.length > 0)
+  assert.ok(inspectInstalledReport({ ...report, installed: undefined }, { platform: 'win32', version: '0.1.14' }).failures.length > 0)
 })
 
 test('release and platform workflows retain ordered package and installed gates', () => {
@@ -152,6 +173,15 @@ test('release and platform workflows retain ordered package and installed gates'
   assert.match(installedWorkflow, /runs-on: windows-latest/u)
   assert.match(installedWorkflow, /runs-on: ubuntu-24\.04/u)
   assert.match(installedWorkflow, /test:launcher:installed/u)
+  assert.match(installedWorkflow, /check-installed-report\.mjs/u)
+  assert.match(installedWorkflow, /test:ueli-baseline/u)
+  assert.match(installedWorkflow, /audit:ueli-baseline/u)
+  assert.match(installedWorkflow, /test:ueli-launcher-parity/u)
+  assert.match(installedWorkflow, /audit:ueli-launcher-parity/u)
+  assert.match(installedWorkflow, /test:ueli-package-feasibility/u)
+  assert.match(installedWorkflow, /audit:ueli-package-feasibility/u)
+  assert.match(installedWorkflow, /scripts\/stage-dsh\.mjs/u)
+  assert.match(installedWorkflow, /scripts\/build-dsh\.mjs/u)
   assert.match(installedWorkflow, /upload-artifact/u)
   assert.equal(inspectInstalledEvidenceWorkflow(installedWorkflow).failures.length, 0)
   const mutatedWorkflow = installedWorkflow.replaceAll('pnpm test:launcher:installed', 'pnpm test:launcher:packaged')

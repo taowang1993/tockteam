@@ -32,7 +32,7 @@ export const REQUIRED_INSTALLED_EVIDENCE_ROWS = Object.freeze([
   'Linux:deb-install',
   'Linux:appimage-install',
   'Linux:identity-resources-notices',
-  'Linux:no-vendor-source',
+  'Linux:notices-and-bounded-vendor-scan',
   'Linux:security-action-settings',
   'Linux:file-search-custom-browser',
   'Linux:reinstall-rollback-cleanup',
@@ -53,6 +53,10 @@ const LOCAL_VERIFIED_ROWS = new Set([
 const PARTIAL_VERIFIED_ROWS = new Set([
   'macOS:notices-and-bounded-vendor-scan',
   'macOS:provider-catalog',
+])
+const ALLOWED_OWNERS = new Set([
+  'scripts/launcher-installed-smoke.mjs',
+  '.github/workflows/tocklauncher-installed.yml',
 ])
 const LOCAL_EVIDENCE = Object.freeze({
   kind: 'local-run',
@@ -90,7 +94,7 @@ export function inspectInstalledEvidenceCatalog(catalog) {
     failure(failures, typeof row.id === 'string' && row.id.length > 0, 'installed evidence row id is missing')
     failure(failures, PLATFORMS.includes(row.platform), `installed evidence row has an unknown platform: ${String(row.platform)}`)
     failure(failures, row.required === true, `installed evidence row is not required: ${String(row.id)}`)
-    failure(failures, typeof row.owner === 'string' && row.owner.length > 0 && row.owner !== 'unowned', `installed evidence row is unowned: ${String(row.id)}`)
+    failure(failures, typeof row.owner === 'string' && ALLOWED_OWNERS.has(row.owner), `installed evidence row owner is not an approved source: ${String(row.id)}`)
     failure(failures, STATES.includes(row.state), `installed evidence row has an unknown state: ${String(row.id)}`)
     if (LOCAL_VERIFIED_ROWS.has(row.id)) failure(failures, row.state === 'local-verified', `local evidence row must remain local-verified: ${String(row.id)}`)
     else if (PARTIAL_VERIFIED_ROWS.has(row.id)) failure(failures, row.state === 'partially-verified', `partial evidence row must remain partially-verified: ${String(row.id)}`)

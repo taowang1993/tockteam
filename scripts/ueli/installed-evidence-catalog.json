@@ -37,7 +37,7 @@
     { "id": "Linux:deb-install", "platform": "Linux", "required": true, "owner": ".github/workflows/tocklauncher-installed.yml", "state": "workflow-required", "evidence": null },
     { "id": "Linux:appimage-install", "platform": "Linux", "required": true, "owner": ".github/workflows/tocklauncher-installed.yml", "state": "workflow-required", "evidence": null },
     { "id": "Linux:identity-resources-notices", "platform": "Linux", "required": true, "owner": "scripts/launcher-installed-smoke.mjs", "state": "workflow-required", "evidence": null },
-    { "id": "Linux:no-vendor-source", "platform": "Linux", "required": true, "owner": "scripts/launcher-installed-smoke.mjs", "state": "workflow-required", "evidence": null },
+    { "id": "Linux:notices-and-bounded-vendor-scan", "platform": "Linux", "required": true, "owner": "scripts/launcher-installed-smoke.mjs", "state": "workflow-required", "evidence": null },
     { "id": "Linux:security-action-settings", "platform": "Linux", "required": true, "owner": "scripts/launcher-installed-smoke.mjs", "state": "workflow-required", "evidence": null },
     { "id": "Linux:file-search-custom-browser", "platform": "Linux", "required": true, "owner": "scripts/launcher-installed-smoke.mjs", "state": "workflow-required", "evidence": null },
     { "id": "Linux:reinstall-rollback-cleanup", "platform": "Linux", "required": true, "owner": "scripts/launcher-installed-smoke.mjs", "state": "workflow-required", "evidence": null },

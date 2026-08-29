@@ -6,6 +6,11 @@ on:
     paths:
       - ".github/workflows/tocklauncher-installed.yml"
       - "scripts/launcher-*.mjs"
+      - "scripts/build-*.mjs"
+      - "scripts/stage-*.mjs"
+      - "scripts/build-dsh.mjs"
+      - "scripts/stage-dsh.mjs"
+      - "scripts/check-installed-report.mjs"
       - "scripts/install-mac.mjs"
       - "scripts/process-cleanup.mjs"
       - "scripts/ueli/desktop-release-contract.json"
@@ -51,6 +56,16 @@ jobs:
         shell: bash
         run: node scripts/check-release-version.mjs --tag "v$(node -p \"require('./package.json').version\")"
 
+      - name: Run Ueli parity and package gates
+        shell: bash
+        run: |
+          pnpm test:ueli-baseline
+          pnpm audit:ueli-baseline
+          pnpm test:ueli-launcher-parity
+          pnpm audit:ueli-launcher-parity
+          pnpm test:ueli-package-feasibility
+          pnpm audit:ueli-package-feasibility
+
       - name: Build and install the disposable NSIS artifact
         shell: bash
         env:
@@ -58,6 +73,12 @@ jobs:
           TOCKTEAM_INSTALLED_SMOKE_TEMP_ROOT: ${{ runner.temp }}
           TOCKTEAM_INSTALLED_SMOKE_REPORT: ${{ runner.temp }}/tockteam-installed-launcher-smoke-${{ github.run_id }}.json
         run: pnpm test:launcher:installed
+
+      - name: Verify the installed report identity and version
+        shell: bash
+        env:
+          REPORT: ${{ runner.temp }}/tockteam-installed-launcher-smoke-${{ github.run_id }}.json
+        run: node scripts/check-installed-report.mjs "$REPORT"
 
       - name: Upload Windows installed evidence
         if: always()
@@ -107,6 +128,16 @@ jobs:
         shell: bash
         run: node scripts/check-release-version.mjs --tag "v$(node -p \"require('./package.json').version\")"
 
+      - name: Run Ueli parity and package gates
+        shell: bash
+        run: |
+          pnpm test:ueli-baseline
+          pnpm audit:ueli-baseline
+          pnpm test:ueli-launcher-parity
+          pnpm audit:ueli-launcher-parity
+          pnpm test:ueli-package-feasibility
+          pnpm audit:ueli-package-feasibility
+
       - name: Build and install disposable deb/AppImage artifacts
         shell: bash
         env:
@@ -114,6 +145,12 @@ jobs:
           TOCKTEAM_INSTALLED_SMOKE_TEMP_ROOT: ${{ runner.temp }}
           TOCKTEAM_INSTALLED_SMOKE_REPORT: ${{ runner.temp }}/tockteam-installed-launcher-smoke-${{ github.run_id }}.json
         run: xvfb-run -a pnpm test:launcher:installed
+
+      - name: Verify the installed report identity and version
+        shell: bash
+        env:
+          REPORT: ${{ runner.temp }}/tockteam-installed-launcher-smoke-${{ github.run_id }}.json
+        run: node scripts/check-installed-report.mjs "$REPORT"
 
       - name: Upload Linux installed evidence
         if: always()
