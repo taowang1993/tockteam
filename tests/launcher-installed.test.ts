@@ -145,6 +145,9 @@ test('installed evidence catalog owns the exact platform rows and rejects fabric
   const invalidOwner = structuredClone(catalog)
   invalidOwner.rows[0].owner = 'reports/fabricated.md'
   assert.ok(inspectInstalledEvidenceCatalog(invalidOwner).failures.some(failure => failure.includes('owner is not an approved source')))
+  const swappedOwner = structuredClone(catalog)
+  swappedOwner.rows.find(row => row.id === 'Windows:nsis-install').owner = 'scripts/launcher-installed-smoke.mjs'
+  assert.ok(inspectInstalledEvidenceCatalog(swappedOwner).failures.some(failure => failure.includes('owner is incorrect')))
   const fabricated = structuredClone(catalog)
   const shortcut = fabricated.rows.find(row => row.id === 'macOS:shortcut-second-instance')
   shortcut.state = 'local-verified'
@@ -158,7 +161,7 @@ test('installed report validation requires package identity, version, and a pass
     appId: 'ai.deepseek.tockteam-desktop',
     productName: 'TockTeam Desktop',
     platform: 'win32',
-    installed: { package: { version: '0.1.14', appId: 'ai.deepseek.tockteam-desktop', productName: 'TockTeam Desktop', assetCount: 65, vendorSourceShipped: false } },
+    installed: { package: { version: '0.1.14', appId: 'ai.deepseek.tockteam-desktop', productName: 'TockTeam Desktop', assetCount: 65, vendorSourceShipped: false, appPathUsesAsar: true, appPath: '/tmp/install/resources/app.asar', extraResources: { roots: ['dsh-runtime', 'node-runtime', 'tockteam-desktop.png', 'lib/tockteam/cli.js', 'lib/tockteam/package.json', 'bin/tockteam', 'bin/tockteam.cmd'] } }, renderer: { security: { appPath: '/tmp/install/resources/app.asar' }, launcher: { notificationPermission: 'denied' } } },
   }
   assert.equal(inspectInstalledReport(report, { platform: 'win32', version: '0.1.14' }).failures.length, 0)
   assert.ok(inspectInstalledReport({ ...report, version: '0.1.13' }, { platform: 'win32', version: '0.1.14' }).failures.length > 0)

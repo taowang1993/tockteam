@@ -437,6 +437,7 @@ async function runNonMacInstalledSmoke(artifact) {
       artifact: installer,
       executable,
       package: installedInventory,
+      renderer: smoke.renderer,
       provider: smoke.platform,
       secondInstance: smoke.secondInstance,
       reinstall: { package: reinstalledInventory, settings: reinstall },
@@ -483,7 +484,7 @@ async function runNonMacInstalledSmoke(artifact) {
     const appImageSmoke = await runAppImageSmoke(appImage, join(artifact.userData, 'appimage'))
     report.installed = {
       appImage: { package: appImageInventory, runtime: appImageSmoke },
-      deb: { package: installedInventory, provider: debSmoke.platform, secondInstance: debSmoke.secondInstance, reinstall: { package: reinstalledInventory, settings: debReinstall }, rollback: { state: 'workflow-required', reason: 'dpkg has no atomic rollback transaction' }, uninstall: 'dpkg-purge-passed' },
+      deb: { package: installedInventory, renderer: debSmoke.renderer, provider: debSmoke.platform, secondInstance: debSmoke.secondInstance, reinstall: { package: reinstalledInventory, settings: debReinstall }, rollback: { state: 'workflow-required', reason: 'dpkg has no atomic rollback transaction' }, uninstall: 'dpkg-purge-passed' },
     }
   }
   return Object.freeze(report)

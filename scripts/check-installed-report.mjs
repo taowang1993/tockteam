@@ -27,8 +27,17 @@ export function inspectInstalledReport(report, expected) {
       failure(failures, packageInventory.appId === 'ai.deepseek.tockteam-desktop', 'post-install package identity is missing')
       failure(failures, packageInventory.productName === 'TockTeam Desktop', 'post-install package product identity is missing')
       failure(failures, packageInventory.assetCount === 65, 'post-install launcher asset inventory is incomplete')
+      failure(failures, packageInventory.appPathUsesAsar === true && /(?:^|[\\\\/])app\.asar$/u.test(packageInventory.appPath ?? ''), 'post-install package ASAR identity is missing')
       failure(failures, packageInventory.vendorSourceShipped === false, 'post-install package vendor-source contract is not closed')
+      failure(failures, Array.isArray(packageInventory.extraResources?.roots)
+        && packageInventory.extraResources.roots.length === 7
+        && packageInventory.extraResources.roots.includes('dsh-runtime')
+        && packageInventory.extraResources.roots.includes('node-runtime'), 'post-install extra-resource contract is incomplete')
     }
+    const renderer = report?.installed?.renderer ?? report?.installed?.deb?.renderer
+    const packageInventory = packages[0]
+    failure(failures, renderer?.security?.appPath === packageInventory?.appPath, 'installed renderer security path does not match the inspected app.asar')
+    failure(failures, renderer?.launcher?.notificationPermission === 'denied', 'installed renderer permission evidence is missing')
   }
   return Object.freeze({ failures: Object.freeze(failures) })
 }
