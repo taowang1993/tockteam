@@ -47,6 +47,10 @@ const smokeOverrideKeys = Object.freeze([
   'TOCKTEAM_RESOURCES_ROOT',
   'TOCKTEAM_WEB_ROOT',
   'TOCKTEAM_SOURCE_ROOT',
+  'TOCKTEAM_SURFACES',
+  'TOCKTEAM_MARKETPLACE_CATALOG',
+  'TOCKTEAM_MARKETPLACE_AGENT_URL',
+  'TOCKTEAM_MARKETPLACE_AGENT_TOKEN',
   'TOCKTEAM_DESKTOP_APP',
   'TOCKTEAM_TUI_ROOT',
   'TOCKTEAM_TUI_HOME',
@@ -58,6 +62,8 @@ const smokeOverrideKeys = Object.freeze([
   'TOCKTEAM_TUI_SESSION_ID',
   'DSH_SOURCE',
   'DSH_HOME',
+  'DSH_DESKTOP_GH_PATH',
+  'DSH_DESKTOP_SIGN_IDENTITY',
   'DSH_DESKTOP_APP_DATA',
   'DSH_DESKTOP_PROFILE',
   'DSH_DESKTOP_VERSION',
@@ -71,6 +77,19 @@ function smokeEnvironment(overrides = {}) {
   for (const key of smokeOverrideKeys) delete environment[key]
   delete environment.ELECTRON_RUN_AS_NODE
   return environment
+}
+
+export async function withSmokeEnvironment(operation) {
+  const previous = new Map(smokeOverrideKeys.map(key => [key, process.env[key]]))
+  for (const key of smokeOverrideKeys) delete process.env[key]
+  try {
+    return await operation()
+  } finally {
+    for (const [key, value] of previous) {
+      if (value === undefined) delete process.env[key]
+      else process.env[key] = value
+    }
+  }
 }
 
 function sleep(milliseconds) {
@@ -341,7 +360,7 @@ async function findAsar(rootPath, depth = 0) {
   for (const entry of entries) {
     const path = join(rootPath, entry.name)
     if (entry.isFile() && entry.name === 'app.asar') return path
-    if (entry.isDirectory()) {
+    if (entry.isDirectory() && !entry.isSymbolicLink()) {
       const result = await findAsar(path, depth + 1)
       if (result !== undefined) return result
     }
@@ -371,7 +390,7 @@ async function findDirectory(rootPath, predicate, depth = 0) {
   let entries
   try { entries = await readdir(rootPath, { withFileTypes: true }) } catch { return undefined }
   for (const entry of entries) {
-    if (!entry.isDirectory()) continue
+    if (!entry.isDirectory() || entry.isSymbolicLink()) continue
     const path = join(rootPath, entry.name)
     if (predicate(entry)) return path
     const result = await findDirectory(path, predicate, depth + 1)
@@ -387,7 +406,7 @@ async function findFile(rootPath, predicate, depth = 0) {
   for (const entry of entries) {
     const path = join(rootPath, entry.name)
     if (entry.isFile() && predicate(entry)) return path
-    if (entry.isDirectory()) {
+    if (entry.isDirectory() && !entry.isSymbolicLink()) {
       const result = await findFile(path, predicate, depth + 1)
       if (result !== undefined) return result
     }
@@ -762,11 +781,11 @@ export async function preparePackagedArtifact({ target = currentTarget(), smokeR
     run(process.execPath, [join(root, 'scripts/ueli/check-package-feasibility.mjs')])
     await createPackageInput(appDir)
     await mkdir(outputDir, { recursive: true })
-    await build({
+    await withSmokeEnvironment(async () => await build({
       projectDir: appDir,
       targets: target.builder.createTarget(DIR_TARGET, target.architecture),
       config: { ...packagedBuilderConfig(outputDir, target, appDir), electronVersion: electronPackage.version },
-    })
+    }))
     const inventory = await inspectPackage(outputDir, target)
     return Object.freeze({ appDir, inventory, outputDir, rootPath, target, userData: join(rootPath, 'user-data') })
   } catch (error) {

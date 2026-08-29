@@ -12,6 +12,7 @@ const STATES = Object.freeze(['local-verified', 'partially-verified', 'workflow-
 export const REQUIRED_INSTALLED_EVIDENCE_ROWS = Object.freeze([
   'macOS:artifact-build',
   'macOS:identity-and-resources',
+  'macOS:notices-and-no-vendor-source',
   'macOS:ad-hoc-signature',
   'macOS:security-and-workbench',
   'macOS:launcher-action',
@@ -20,17 +21,22 @@ export const REQUIRED_INSTALLED_EVIDENCE_ROWS = Object.freeze([
   'macOS:rollback',
   'macOS:provider-catalog',
   'macOS:permissions-and-cleanup',
+  'macOS:shortcut-second-instance',
   'Windows:nsis-install',
   'Windows:identity-resources-notices',
   'Windows:security-action-settings',
+  'Windows:notices-and-no-vendor-source',
   'Windows:control-panel-terminal-elevation',
   'Windows:reinstall-rollback-cleanup',
+  'Windows:shortcut-second-instance-permissions',
   'Linux:deb-install',
   'Linux:appimage-install',
   'Linux:identity-resources-notices',
+  'Linux:no-vendor-source',
   'Linux:security-action-settings',
   'Linux:file-search-custom-browser',
   'Linux:reinstall-rollback-cleanup',
+  'Linux:shortcut-second-instance-permissions',
 ])
 const PUBLICATION_KEYS = Object.freeze(['installedArtifact', 'signed', 'notarized', 'publicDistribution'])
 

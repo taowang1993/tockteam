@@ -16,6 +16,7 @@ import {
   launchPackaged,
   packagedBuilderConfig,
   preparePackagedArtifact,
+  withSmokeEnvironment,
   runRendererSmoke,
   stopPackagedChild,
 } from './launcher-packaged-smoke.mjs'
@@ -24,13 +25,17 @@ import { replaceMacBundle, validateMacBundle } from './install-mac.mjs'
 const execFileAsync = promisify(execFile)
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const contract = JSON.parse(await readFile(join(root, 'scripts/ueli/desktop-release-contract.json'), 'utf8'))
+const packageJson = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'))
 const smokeFlag = '--tockteam-launcher-installed-smoke'
 const smokeMarker = 'TOCKTEAM_INSTALLED_SMOKE '
-const smokeTimeoutMs = 120_000
 const smokeOverrideKeys = Object.freeze([
   'TOCKTEAM_RESOURCES_ROOT',
   'TOCKTEAM_WEB_ROOT',
   'TOCKTEAM_SOURCE_ROOT',
+  'TOCKTEAM_SURFACES',
+  'TOCKTEAM_MARKETPLACE_CATALOG',
+  'TOCKTEAM_MARKETPLACE_AGENT_URL',
+  'TOCKTEAM_MARKETPLACE_AGENT_TOKEN',
   'TOCKTEAM_DESKTOP_APP',
   'TOCKTEAM_TUI_ROOT',
   'TOCKTEAM_TUI_HOME',
@@ -42,6 +47,8 @@ const smokeOverrideKeys = Object.freeze([
   'TOCKTEAM_TUI_SESSION_ID',
   'DSH_SOURCE',
   'DSH_HOME',
+  'DSH_DESKTOP_GH_PATH',
+  'DSH_DESKTOP_SIGN_IDENTITY',
   'DSH_DESKTOP_APP_DATA',
   'DSH_DESKTOP_PROFILE',
   'DSH_DESKTOP_VERSION',
@@ -55,10 +62,6 @@ function smokeEnvironment(overrides = {}) {
   for (const key of smokeOverrideKeys) delete environment[key]
   delete environment.ELECTRON_RUN_AS_NODE
   return environment
-}
-
-function sleep(milliseconds) {
-  return new Promise(resolvePromise => setTimeout(resolvePromise, milliseconds))
 }
 
 function runProcess(command, args, options = {}) {
@@ -95,7 +98,7 @@ async function findFile(rootPath, predicate, depth = 0) {
   for (const entry of entries) {
     const absolutePath = join(rootPath, entry.name)
     if (entry.isFile() && predicate(entry)) return absolutePath
-    if (entry.isDirectory()) {
+    if (entry.isDirectory() && !entry.isSymbolicLink()) {
       const found = await findFile(absolutePath, predicate, depth + 1)
       if (found !== undefined) return found
     }
@@ -106,18 +109,16 @@ async function findFile(rootPath, predicate, depth = 0) {
 async function buildInstallerTargets(artifact, target, formats) {
   const outputDir = join(artifact.rootPath, 'installer')
   await mkdir(outputDir, { recursive: true })
+  const baseConfig = packagedBuilderConfig(outputDir, target, artifact.appDir)
   for (const format of formats) {
-    await build({
+    await withSmokeEnvironment(async () => await build({
       projectDir: artifact.appDir,
       targets: target.builder.createTarget(format, target.architecture),
       config: {
-        ...packagedBuilderConfig(outputDir, target, artifact.appDir),
-        [target.key]: {
-          ...packagedBuilderConfig(outputDir, target, artifact.appDir)[target.key],
-          target: [format],
-        },
+        ...baseConfig,
+        [target.key]: { ...baseConfig[target.key], target: [format] },
       },
-    })
+    }))
   }
   return outputDir
 }
@@ -166,6 +167,12 @@ async function installedSession(executable, userData, inventory, target, options
     await stopPackagedChild(launched.child)
     throw error
   }
+}
+
+async function closeInstalledSession(session) {
+  session.launched.launcher.close()
+  session.launched.workbench.close()
+  await stopPackagedChild(session.launched.child)
 }
 
 async function readPersistedSetting(executable, userData, target, key, expected) {
@@ -254,9 +261,7 @@ async function runMacInstalledSmoke(artifact) {
   const first = await installedSession(destination + '/Contents/MacOS/TockTeam Desktop', artifact.userData, artifact.inventory, artifact.target)
   const persistedValue = first.renderer.settingsRoundTrip.changed
   await first.launched.workbench.evaluate(`(async () => await window.dshDesktop?.launcher?.settings?.updateSetting('searchEngine.fuzziness', ${String(persistedValue)}))()`)
-  first.launched.launcher.close()
-  first.launched.workbench.close()
-  await stopPackagedChild(first.launched.child)
+  await closeInstalledSession(first)
 
   const reinstall = await install()
   const reinstalledIdentity = await inspectMacBundle(destination)
@@ -321,9 +326,14 @@ async function runNonMacInstalledSmoke(artifact) {
     const executable = await findFile(installDir, entry => entry.name.toLowerCase() === 'tockteam desktop.exe')
     assert.ok(executable, 'installed Windows executable is missing')
     const smoke = await installedSession(executable, artifact.userData, artifact.inventory, artifact.target)
+    const persistedValue = smoke.renderer.settingsRoundTrip.changed
+    await smoke.launched.workbench.evaluate(`(async () => await window.dshDesktop?.launcher?.settings?.updateSetting('searchEngine.fuzziness', ${String(persistedValue)}))()`)
+    await closeInstalledSession(smoke)
+    await runProcess(installer, ['/S', `/D=${installDir}`])
+    const reinstall = await readPersistedSetting(executable, artifact.userData, artifact.target, 'searchEngine.fuzziness', persistedValue)
     await runProcess(join(installDir, 'Uninstall TockTeam Desktop.exe'), ['/S']).catch(() => {})
     await rm(installDir, { recursive: true, force: true })
-    report.installed = { executable, provider: smoke.platform }
+    report.installed = { executable, provider: smoke.platform, reinstall: { settings: reinstall } }
   } else {
     const deb = await findFile(installerDir, entry => entry.name.endsWith('.deb'))
     const appImage = await findFile(installerDir, entry => entry.name.endsWith('.AppImage'))
@@ -333,11 +343,20 @@ async function runNonMacInstalledSmoke(artifact) {
     const debExecutable = await findFile(installDir, entry => entry.name === contract.identity.executableName)
     assert.ok(debExecutable, 'installed Linux deb executable is missing')
     const debSmoke = await installedSession(debExecutable, artifact.userData, artifact.inventory, artifact.target, { args: ['--no-sandbox'] })
+    const persistedValue = debSmoke.renderer.settingsRoundTrip.changed
+    await debSmoke.launched.workbench.evaluate(`(async () => await window.dshDesktop?.launcher?.settings?.updateSetting('searchEngine.fuzziness', ${String(persistedValue)}))()`)
+    await closeInstalledSession(debSmoke)
+    await rm(installDir, { recursive: true, force: true })
+    await runProcess('dpkg-deb', ['--extract', deb, installDir])
+    const reinstallExecutable = await findFile(installDir, entry => entry.name === contract.identity.executableName)
+    assert.ok(reinstallExecutable)
+    const debReinstall = await readPersistedSetting(reinstallExecutable, artifact.userData, artifact.target, 'searchEngine.fuzziness', persistedValue)
     const appImageSmoke = await installedSession(appImage, artifact.userData, artifact.inventory, artifact.target, { args: ['--appimage-extract-and-run', '--no-sandbox'] })
+    await closeInstalledSession(appImageSmoke)
     await rm(installDir, { recursive: true, force: true })
     report.installed = {
       appImage: { provider: appImageSmoke.platform },
-      deb: { executable: debExecutable, provider: debSmoke.platform },
+      deb: { executable: debExecutable, provider: debSmoke.platform, reinstall: { settings: debReinstall } },
       uninstall: 'disposable dpkg-deb extraction removed after smoke',
     }
   }
@@ -360,6 +379,7 @@ async function main() {
       ...evidence,
       appId: contract.identity.appId,
       architecture: process.arch,
+      version: packageJson.version,
       platform: process.platform,
       productName: contract.identity.productName,
     })

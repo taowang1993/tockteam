@@ -17,6 +17,7 @@
   "rows": [
     { "id": "macOS:artifact-build", "platform": "macOS", "required": true, "owner": "scripts/launcher-installed-smoke.mjs", "state": "local-verified", "evidence": "local-mac-installed-smoke" },
     { "id": "macOS:identity-and-resources", "platform": "macOS", "required": true, "owner": "scripts/launcher-installed-smoke.mjs", "state": "local-verified", "evidence": "local-mac-installed-smoke" },
+    { "id": "macOS:notices-and-no-vendor-source", "platform": "macOS", "required": true, "owner": "scripts/launcher-installed-smoke.mjs", "state": "local-verified", "evidence": "local-mac-installed-smoke" },
     { "id": "macOS:ad-hoc-signature", "platform": "macOS", "required": true, "owner": "scripts/launcher-installed-smoke.mjs", "state": "local-verified", "evidence": "local-mac-installed-smoke" },
     { "id": "macOS:security-and-workbench", "platform": "macOS", "required": true, "owner": "scripts/launcher-installed-smoke.mjs", "state": "local-verified", "evidence": "local-mac-installed-smoke" },
     { "id": "macOS:launcher-action", "platform": "macOS", "required": true, "owner": "scripts/launcher-installed-smoke.mjs", "state": "local-verified", "evidence": "local-mac-installed-smoke" },
@@ -25,16 +26,21 @@
     { "id": "macOS:rollback", "platform": "macOS", "required": true, "owner": "scripts/launcher-installed-smoke.mjs", "state": "local-verified", "evidence": "local-mac-installed-smoke" },
     { "id": "macOS:provider-catalog", "platform": "macOS", "required": true, "owner": "scripts/launcher-installed-smoke.mjs", "state": "partially-verified", "evidence": "local-mac-installed-smoke" },
     { "id": "macOS:permissions-and-cleanup", "platform": "macOS", "required": true, "owner": "scripts/launcher-installed-smoke.mjs", "state": "local-verified", "evidence": "local-mac-installed-smoke" },
+    { "id": "macOS:shortcut-second-instance", "platform": "macOS", "required": true, "owner": "scripts/launcher-installed-smoke.mjs", "state": "workflow-required", "evidence": null },
     { "id": "Windows:nsis-install", "platform": "Windows", "required": true, "owner": ".github/workflows/tocklauncher-installed.yml", "state": "workflow-required", "evidence": null },
     { "id": "Windows:identity-resources-notices", "platform": "Windows", "required": true, "owner": "scripts/launcher-installed-smoke.mjs", "state": "workflow-required", "evidence": null },
     { "id": "Windows:security-action-settings", "platform": "Windows", "required": true, "owner": "scripts/launcher-installed-smoke.mjs", "state": "workflow-required", "evidence": null },
+    { "id": "Windows:notices-and-no-vendor-source", "platform": "Windows", "required": true, "owner": "scripts/launcher-installed-smoke.mjs", "state": "workflow-required", "evidence": null },
     { "id": "Windows:control-panel-terminal-elevation", "platform": "Windows", "required": true, "owner": "scripts/launcher-installed-smoke.mjs", "state": "workflow-required", "evidence": null },
     { "id": "Windows:reinstall-rollback-cleanup", "platform": "Windows", "required": true, "owner": "scripts/launcher-installed-smoke.mjs", "state": "workflow-required", "evidence": null },
+    { "id": "Windows:shortcut-second-instance-permissions", "platform": "Windows", "required": true, "owner": "scripts/launcher-installed-smoke.mjs", "state": "workflow-required", "evidence": null },
     { "id": "Linux:deb-install", "platform": "Linux", "required": true, "owner": ".github/workflows/tocklauncher-installed.yml", "state": "workflow-required", "evidence": null },
     { "id": "Linux:appimage-install", "platform": "Linux", "required": true, "owner": ".github/workflows/tocklauncher-installed.yml", "state": "workflow-required", "evidence": null },
     { "id": "Linux:identity-resources-notices", "platform": "Linux", "required": true, "owner": "scripts/launcher-installed-smoke.mjs", "state": "workflow-required", "evidence": null },
+    { "id": "Linux:no-vendor-source", "platform": "Linux", "required": true, "owner": "scripts/launcher-installed-smoke.mjs", "state": "workflow-required", "evidence": null },
     { "id": "Linux:security-action-settings", "platform": "Linux", "required": true, "owner": "scripts/launcher-installed-smoke.mjs", "state": "workflow-required", "evidence": null },
     { "id": "Linux:file-search-custom-browser", "platform": "Linux", "required": true, "owner": "scripts/launcher-installed-smoke.mjs", "state": "workflow-required", "evidence": null },
-    { "id": "Linux:reinstall-rollback-cleanup", "platform": "Linux", "required": true, "owner": "scripts/launcher-installed-smoke.mjs", "state": "workflow-required", "evidence": null }
+    { "id": "Linux:reinstall-rollback-cleanup", "platform": "Linux", "required": true, "owner": "scripts/launcher-installed-smoke.mjs", "state": "workflow-required", "evidence": null },
+    { "id": "Linux:shortcut-second-instance-permissions", "platform": "Linux", "required": true, "owner": "scripts/launcher-installed-smoke.mjs", "state": "workflow-required", "evidence": null }
   ]
 }
