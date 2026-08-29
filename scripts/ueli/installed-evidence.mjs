@@ -98,7 +98,7 @@ export function inspectInstalledEvidenceDocs({ architecture, usage }) {
   failure(failures, /Windows and Linux[^\n]*(?:not yet executed|unexecuted|workflow-required)/iu.test(combined), 'architecture/usage must say Windows/Linux evidence is not executed')
   failure(failures, /notarized/iu.test(combined), 'architecture/usage must distinguish notarized evidence')
   failure(failures, /public distribution/iu.test(combined), 'architecture/usage must distinguish public distribution evidence')
-  for (const line of usageText.split(/\r?\n/u)) {
+  for (const line of `${architectureText}\n${usageText}`.split(/\r?\n/u)) {
     if (!/(?:Windows|Linux)/u.test(line) || !/(?:published|verified|passed)/iu.test(line)) continue
     failure(failures, /\b(?:not|never|unproven|unverified|workflow-required)\b/iu.test(line), `usage makes an unsupported platform claim: ${line}`)
   }

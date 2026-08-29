@@ -57,6 +57,9 @@ jobs:
       - name: Audit launcher package feasibility
         run: pnpm audit:ueli-package-feasibility
 
+      - name: Audit installed evidence catalog and claims
+        run: pnpm audit:installed-evidence
+
   launcher-package-smoke:
     name: Gate release on packaged TockLauncher smoke
     needs: validate

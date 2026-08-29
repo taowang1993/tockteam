@@ -49,6 +49,7 @@ test('package smoke is hermetic and verifies resources plus process ownership', 
   assert.match(packagedSmoke, /4_096/u)
   assert.doesNotMatch(packagedSmoke, /500_000/u)
   assert.match(packagedSmoke, /remote-debugging-address=127\.0\.0\.1/u)
+  assert.match(packagedSmoke, /productJson\.productName|packageJson\.productName/u)
   assert.match(packagedSmoke, /stopChildProcess/u)
   assert.doesNotMatch(packagedSmoke, /spawnOptions\.shell\s*=\s*true/u)
   assert.match(cleanup, /taskkill/iu)

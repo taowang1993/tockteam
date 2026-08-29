@@ -11,7 +11,6 @@ import { fileURLToPath } from 'node:url'
 import { promisify } from 'node:util'
 import { build } from 'electron-builder'
 import {
-  currentTarget,
   freePort,
   launchPackaged,
   packagedBuilderConfig,

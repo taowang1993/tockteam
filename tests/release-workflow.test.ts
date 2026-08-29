@@ -67,6 +67,7 @@ test('tagged releases validate the package version and launcher audits before pa
     'pnpm audit:ueli-launcher-parity',
     'pnpm test:ueli-package-feasibility',
     'pnpm audit:ueli-package-feasibility',
+    'pnpm audit:installed-evidence',
   ]) assert.match(validate, new RegExp(command.replaceAll('.', '\\.'), 'u'))
   assert.ok(workflow.indexOf('  validate:') < workflow.indexOf('  package:'))
   assert.ok(workflow.indexOf(validateTag) < workflow.indexOf('  package:'))
