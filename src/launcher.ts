@@ -1049,12 +1049,17 @@ async function bootstrap(): Promise<void> {
     else if (surfaceSettings.hideWindowOn.includes('escapePressed')) void bridge.dismiss().catch(() => undefined)
   })
   document.addEventListener('pointerdown', event => {
-    if (activeLocalTool !== undefined) {
+    const target = event.target
+    const insideToolMenu = target instanceof Element
+      && activeLocalTool !== undefined
+      && activeLocalTool.contains(target)
+      && target.closest('[role="menu"], [aria-haspopup="menu"]') !== null
+    if (activeLocalTool !== undefined && !insideToolMenu) {
       activeLocalTool.dispatchEvent(new Event('tockteam-launcher-close-tool-menu'))
     }
-    if (!(event.target instanceof Element)) return
-    if (historyOpen && event.target.closest('#launcher-history, #launcher-history-toggle') === null) closeHistory()
-    if (actionMenuOpen && event.target.closest('#launcher-details') === null) closeActionMenu()
+    if (!(target instanceof Element)) return
+    if (historyOpen && target.closest('#launcher-history, #launcher-history-toggle') === null) closeHistory()
+    if (actionMenuOpen && target.closest('#launcher-details') === null) closeActionMenu()
   })
   bridge.onLocale(locale => {
     surfaceSettings = Object.freeze({ ...surfaceSettings, locale })

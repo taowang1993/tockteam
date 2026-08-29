@@ -158,6 +158,7 @@ export function createLauncherNetworkExtensionTool(options: Readonly<{
               : event.key === 'Home' ? 0 : event.key === 'End' ? menuButtons.length - 1 : undefined
           if (event.key === 'Escape' || event.key === 'Tab') {
             event.preventDefault()
+            event.stopPropagation()
             menu.hidden = true
             toggle.setAttribute('aria-expanded', 'false')
             if (openMenu?.menu === menu) openMenu = undefined
@@ -238,6 +239,7 @@ export function createLauncherNetworkExtensionTool(options: Readonly<{
     const keyboardEvent = event as KeyboardEvent
     if (keyboardEvent.key === 'Escape') {
       keyboardEvent.preventDefault()
+      keyboardEvent.stopPropagation()
       options.onClose()
     } else if (keyboardEvent.key === 'ArrowDown') {
       const first = list.querySelector<HTMLButtonElement>('button')

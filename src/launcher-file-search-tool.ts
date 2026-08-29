@@ -86,7 +86,7 @@ export function createLauncherFileSearchTool(options: Readonly<{
             : event.key === 'ArrowUp'
               ? (Math.max(current, 0) - 1 + menuButtons.length) % menuButtons.length
               : event.key === 'Home' ? 0 : event.key === 'End' ? menuButtons.length - 1 : undefined
-          if (event.key === 'Escape' || event.key === 'Tab') { event.preventDefault(); closeMenu(); return }
+          if (event.key === 'Escape' || event.key === 'Tab') { event.preventDefault(); event.stopPropagation(); closeMenu(); return }
           if (next !== undefined) { event.preventDefault(); menuButtons[next]?.focus() }
         })
         content.append(toggle); row.append(content, menu)
@@ -143,6 +143,7 @@ export function createLauncherFileSearchTool(options: Readonly<{
   input.addEventListener('keydown', event => {
     if (event.key === 'Escape') {
       event.preventDefault()
+      event.stopPropagation()
       options.onClose()
     } else if (event.key === 'ArrowDown') {
       const first = list.querySelector<HTMLButtonElement>('button')

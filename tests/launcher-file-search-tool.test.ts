@@ -68,6 +68,11 @@ test('File Search exposes keyboard-first results and semantic list items', () =>
   assert.match(source, /event\.key === 'Tab'/u)
 })
 
+test('File Search consumes Escape at the menu and tool-input layers', () => {
+  assert.match(source, /if \(event\.key === 'Escape' \|\| event\.key === 'Tab'\) \{[\s\S]{0,100}event\.stopPropagation\(\)/u)
+  assert.match(source, /if \(event\.key === 'Escape'\) \{[\s\S]{0,80}event\.stopPropagation\(\)[\s\S]{0,80}options\.onClose\(\)/u)
+})
+
 test('non-hiding reveal rerender restores keyboard focus to the live action menu', async () => {
   const item: LauncherPublicResultItem = {
     additionalActions: [{ actionId: 'launcher-action:reveal', description: 'Show in Finder', hideWindowAfterInvocation: false }],

@@ -76,6 +76,11 @@ test('launcher menus expose normalized shortcuts and focusable empty history', (
   assert.match(launcherSource, /historyOpen = false[\s\S]{0,160}historyPanel\.hidden = true/u)
 })
 
+test('document pointer dismissal preserves tool menu pointer activation', () => {
+  assert.match(launcherSource, /const insideToolMenu = target instanceof Element[\s\S]{0,240}target\.closest\('\[role="menu"\], \[aria-haspopup="menu"\]'\) !== null/u)
+  assert.match(launcherSource, /if \(activeLocalTool !== undefined && !insideToolMenu\) \{[\s\S]{0,120}tockteam-launcher-close-tool-menu/u)
+})
+
 test('action-menu activation closes the history menu', () => {
   assert.match(launcherSource, /if \(!actionMenuOpen\) \{[\s\S]{0,240}historyOpen = false/u)
   assert.match(launcherSource, /historyPanel\.hidden = true[\s\S]{0,120}historyToggle\.setAttribute\('aria-expanded', 'false'\)/u)

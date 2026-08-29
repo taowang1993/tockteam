@@ -22,6 +22,11 @@ test('network tools use only typed prefixes, bounded input, opaque actions, and 
   assert.doesNotMatch(tool, /window\.open|fetch\(|shell\.|node:/u)
 })
 
+test('network tools consume Escape at the menu and tool-input layers', () => {
+  assert.match(tool, /if \(event\.key === 'Escape' \|\| event\.key === 'Tab'\) \{[\s\S]{0,110}event\.stopPropagation\(\)/u)
+  assert.match(tool, /if \(keyboardEvent\.key === 'Escape'\) \{[\s\S]{0,80}keyboardEvent\.stopPropagation\(\)[\s\S]{0,80}options\.onClose\(\)/u)
+})
+
 test('network settings expose all nine settings without hydrating the DeepL key', () => {
   for (const key of [
     'extension[CurrencyConversion].currencies', 'extension[CurrencyConversion].defaultTargetCurrency',

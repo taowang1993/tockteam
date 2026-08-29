@@ -1349,6 +1349,10 @@ try {
       && JSON.stringify(marker?.order ?? []) === JSON.stringify(process.platform === 'linux' ? ['OpenFile', 'OpenUrl', 'ExecuteCommand'] : ['OpenFile', 'OpenUrl', 'OpenTerminal', 'ExecuteCommand']),
   )
   assert.equal(workflowFixtureAfterCancel.forbiddenEffects, 0)
+  await workbenchConnection.evaluate(`(async () => {
+    await window.dshDesktop?.launcher?.settings?.updateSetting('window.hideWindowOn', ['blur', 'afterInvocation', 'escapePressed'])
+  })()`)
+  await showLauncherFromWorkbench(workbenchConnection)
 
   const networkStaticFacts = await launcherConnection.evaluate(`(async () => {
     const result = await window.tockteamLauncher?.search('', { fuzziness: 0, maxSearchResultItems: 200, searchEngineId: 'fuzzysort' })
@@ -1430,8 +1434,14 @@ try {
     () => launcherConnection.evaluate('document.querySelector(\'[aria-label="Web Search results"]\')?.textContent?.includes("fixture latest") ?? false'),
     found => found === true,
   )
-  assert.equal(await launcherConnection.clickSelector('[aria-label="Close Web Search tool"]'), true)
-  await waitFor(() => launcherConnection.evaluate('document.querySelector(\'[aria-label="Web Search tool"]\') === null && document.activeElement?.id === "launcher-search"'), restored => restored === true)
+  assert.equal(await launcherConnection.clickSelector('[aria-label="Search term"]'), true)
+  await launcherConnection.pressKey('Escape')
+  await waitFor(() => launcherConnection.evaluate(`({
+    closed: document.querySelector('[aria-label="Web Search tool"]') === null,
+    launcherVisible: document.body.dataset.launcherReady === 'true',
+    focused: document.activeElement?.id === 'launcher-search',
+  })`), state => state.closed && state.launcherVisible && state.focused)
+  assert.equal((await workbenchConnection.evaluate('window.dshDesktop?.launcher?.getState()'))?.visible, true)
 
   await launcherConnection.evaluate(`(() => {
     const input = document.getElementById('launcher-search')
@@ -1721,6 +1731,29 @@ try {
   assert.equal(await launcherConnection.evaluate('document.querySelector("[aria-label=\\"File Search Tool\\"]") !== null'), true)
   assert.equal(await launcherConnection.clickSelector('[data-file-search-result-id]'), true)
   await waitFor(() => launcherConnection.evaluate('document.querySelector("[data-file-search-result-id]")?.getAttribute("aria-expanded") === "true"'), open => open === true)
+  const fileSearchMenuItemClicked = await launcherConnection.clickSelector('[aria-label^="Show in Finder"]')
+  assert.equal(fileSearchMenuItemClicked, true)
+  await waitFor(
+    () => launcherConnection.evaluate(`({
+      menuOpen: document.querySelector('[data-file-search-result-id]')?.getAttribute('aria-expanded') === 'true',
+      toolOpen: document.querySelector('[aria-label="File Search Tool"]') !== null,
+      focusedToggle: document.activeElement?.getAttribute('data-file-search-result-id') !== null,
+    })`),
+    state => state.menuOpen === false && state.toolOpen && state.focusedToggle,
+  )
+  assert.equal(await launcherConnection.clickSelector('[data-file-search-result-id]'), true)
+  await waitFor(() => launcherConnection.evaluate('document.querySelector("[data-file-search-result-id]")?.getAttribute("aria-expanded") === "true"'), open => open === true)
+  await launcherConnection.pressKey('Escape')
+  await waitFor(
+    () => launcherConnection.evaluate(`({
+      menuOpen: document.querySelector('[data-file-search-result-id]')?.getAttribute('aria-expanded') === 'true',
+      toolOpen: document.querySelector('[aria-label="File Search Tool"]') !== null,
+      focusedToggle: document.activeElement?.getAttribute('data-file-search-result-id') !== null,
+    })`),
+    state => state.menuOpen === false && state.toolOpen && state.focusedToggle,
+  )
+  assert.equal(await launcherConnection.clickSelector('[data-file-search-result-id]'), true)
+  await waitFor(() => launcherConnection.evaluate('document.querySelector("[data-file-search-result-id]")?.getAttribute("aria-expanded") === "true"'), open => open === true)
   await launcherConnection.clickAt(2, 2)
   await waitFor(() => launcherConnection.evaluate('document.querySelector("[data-file-search-result-id]")?.getAttribute("aria-expanded") === "false" && document.activeElement?.getAttribute("data-file-search-result-id") !== null'), closed => closed === true)
   assert.equal(await launcherConnection.clickSelector('[aria-label="Close File Search Tool"]'), true)
@@ -1965,6 +1998,9 @@ try {
     visible => visible === false,
   )
 
+  await workbenchConnection.evaluate(`(async () => {
+    await window.dshDesktop?.launcher?.settings?.updateSetting('window.hideWindowOn', ['blur', 'afterInvocation'])
+  })()`)
   const resetShow = await showLauncherFromWorkbench(workbenchConnection)
   assert.equal(resetShow?.visible, true)
   await waitFor(
