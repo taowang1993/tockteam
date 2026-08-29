@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdir, mkdtemp, rm, stat, symlink, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, rm, stat, symlink, writeFile } from 'node:fs/promises'
 import { readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { basename, dirname, join, resolve } from 'node:path'
@@ -21,7 +21,12 @@ import {
   trustedPathEntries,
   windowsCdpListenerOwned,
 } from '../scripts/launcher-packaged-smoke.mjs'
-import { replaceWindowsPortableArchive } from '../scripts/install-windows.mjs'
+import { replaceWindowsPortableArchive, WINDOWS_PORTABLE_MARKER } from '../scripts/install-windows.mjs'
+import {
+  normalizePortableManifestPath,
+  windowsPortableArchiveArgs,
+  writeWindowsPortableManifest,
+} from '../scripts/launcher-installed-smoke.mjs'
 
 const root = join(import.meta.dirname, '..')
 const packageJson = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')) as {
@@ -122,6 +127,41 @@ test('packaged smoke resolves Windows git safely and prepares fresh workspaces i
     fallbackPaths: ['relative\\git.exe'],
     isFile: () => true,
   }), undefined)
+})
+
+test('Windows portable manifests are finite and skip symlink cycles', { skip: process.platform === 'win32' }, async () => {
+  const rootPath = await mkdtemp(join(tmpdir(), 'tockteam-portable-manifest-'))
+  try {
+    const outputDir = join(rootPath, 'output')
+    const resources = join(outputDir, 'win-unpacked', 'resources')
+    await mkdir(resources, { recursive: true })
+    await writeFile(join(resources, 'app.asar'), 'payload')
+    await writeFile(join(outputDir, WINDOWS_PORTABLE_MARKER), '{}\n')
+    await symlink(outputDir, join(resources, 'cycle'), 'dir')
+    const manifestPath = join(rootPath, 'portable-manifest.txt')
+    const entries = await writeWindowsPortableManifest(outputDir, manifestPath)
+    const manifest = await readFile(manifestPath, 'utf8')
+    assert.ok(entries.includes('win-unpacked'))
+    assert.ok(entries.includes('win-unpacked/resources/app.asar'))
+    assert.ok(entries.includes(WINDOWS_PORTABLE_MARKER))
+    assert.doesNotMatch(manifest, /cycle/u)
+    assert.throws(() => normalizePortableManifestPath('../escape'), /relative/u)
+    assert.throws(() => normalizePortableManifestPath('C:\\escape'), /relative/u)
+    assert.throws(() => normalizePortableManifestPath('win-unpacked/bad\nname'), /newline/u)
+  } finally {
+    await rm(rootPath, { recursive: true, force: true })
+  }
+})
+
+test('Windows portable archive uses a bounded relative manifest', () => {
+  assert.deepEqual(windowsPortableArchiveArgs({
+    archive: 'C:\\tmp\\portable.zip',
+    outputDir: 'C:\\tmp\\output',
+    manifestPath: 'C:\\tmp\\portable-manifest.txt',
+  }), [
+    '-a', '-c', '-f', 'C:\\tmp\\portable.zip',
+    '--no-recursion', '-C', 'C:\\tmp\\output', '-T', 'C:\\tmp\\portable-manifest.txt',
+  ])
 })
 
 test('launched smoke environments use disposable user roots and bounded tools', () => {

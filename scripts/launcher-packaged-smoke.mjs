@@ -443,7 +443,6 @@ export function packagedBuilderConfig(outputDir, target, appDir) {
       ...(target.key === 'mac' ? { identity: null } : {}),
     },
     ...(packageJson.build?.afterPack === undefined ? {} : { afterPack: resolve(root, packageJson.build.afterPack) }),
-    publish: 'never',
     npmRebuild: false,
     nodeGypRebuild: false,
     buildDependenciesFromSource: false,

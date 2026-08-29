@@ -19,6 +19,10 @@ export function trustedPathEntries(options?: Readonly<{
   gitExecutable?: string
 }>): readonly string[]
 
+export function currentTarget(): unknown
+
+export function packagedBuilderConfig(outputDir: string, target: unknown, appDir: string): Record<string, unknown>
+
 export function canonicalPath(candidatePath: string): Promise<string | undefined>
 
 export function pathContained(rootPath: string, candidatePath: string): Promise<boolean>

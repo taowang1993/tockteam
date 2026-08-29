@@ -11,6 +11,7 @@ import { LAUNCHER_OS_ASSETS } from '../src/launcher-os-assets.ts'
 import { LAUNCHER_TERMINAL_ASSETS } from '../src/launcher-terminal-assets.ts'
 import { LAUNCHER_WORKFLOW_ASSETS } from '../src/launcher-workflow-assets.ts'
 import { LAUNCHER_CSP } from '../src/launcher-security.ts'
+import { currentTarget, packagedBuilderConfig } from '../scripts/launcher-packaged-smoke.mjs'
 
 const root = join(import.meta.dirname, '..')
 const packageJson = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')) as {
@@ -53,6 +54,12 @@ test('package contract admits the complete launcher resource inventory', () => {
     65,
   )
   assert.equal(contract.foundation.launcherNotices.length, 4)
+})
+
+test('programmatic electron-builder config leaves publishing unset', () => {
+  const config = packagedBuilderConfig('/tmp/tockteam-output', currentTarget(), '/tmp/tockteam-app')
+  assert.equal(Object.hasOwn(config, 'publish'), false)
+  assert.equal(config.publish, undefined)
 })
 
 test('packaged smoke is actual TockTeam ASAR execution, not a source fixture', () => {
