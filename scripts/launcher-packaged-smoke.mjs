@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 
 import assert from 'node:assert/strict'
+import { statSync } from 'node:fs'
 import { createHash } from 'node:crypto'
 import { createServer } from 'node:net'
 import { spawn as spawnProcess, spawnSync } from 'node:child_process'
 import { cp, lstat, open, mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { dirname, isAbsolute, join, resolve } from 'node:path'
+import { dirname, isAbsolute, join, resolve, win32 } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createRequire } from 'node:module'
 import { Arch, DIR_TARGET, Platform, build } from 'electron-builder'
@@ -31,6 +32,63 @@ const electronPackage = require(join(root, 'node_modules/electron/package.json')
 const smokeFlag = '--tockteam-launcher-packaged-smoke'
 const smokeMarker = 'TOCKTEAM_PACKAGED_SMOKE '
 const smokeTimeoutMs = 120_000
+
+/** Parse only absolute Windows paths emitted by `where.exe`; this is pure so it can be regression-tested off-host. */
+export function parseWindowsGitPaths(output) {
+  return Object.freeze([...new Set(String(output ?? '').split(/\r?\n/u)
+    .map(line => line.trim())
+    .filter(line => win32.isAbsolute(line)))])
+}
+
+export function selectWindowsGitPath({ whereOutput = '', fallbackPaths = [], isFile = candidate => {
+  try { return statSync(candidate).isFile() } catch { return false }
+} } = {}) {
+  const candidates = [
+    ...parseWindowsGitPaths(whereOutput),
+    ...(Array.isArray(fallbackPaths) ? fallbackPaths : []),
+  ]
+  for (const candidate of candidates) {
+    const normalized = typeof candidate === 'string' ? candidate.trim() : ''
+    if (!win32.isAbsolute(normalized)) continue
+    try {
+      if (isFile(normalized)) return normalized
+    } catch {
+      // An unreadable candidate is not trusted.
+    }
+  }
+  return undefined
+}
+
+function githubGitToolPaths(environment) {
+  const roots = [environment.ProgramW6432, environment.ProgramFiles, environment['ProgramFiles(x86)']]
+    .filter(rootPath => typeof rootPath === 'string' && win32.isAbsolute(rootPath))
+  const localAppData = environment.LOCALAPPDATA
+  if (typeof localAppData === 'string' && win32.isAbsolute(localAppData)) roots.push(win32.join(localAppData, 'Programs'))
+  return roots.flatMap(rootPath => [
+    win32.join(rootPath, 'Git', 'cmd', 'git.exe'),
+    win32.join(rootPath, 'Git', 'bin', 'git.exe'),
+  ])
+}
+
+function resolveWindowsGitExecutable(environment = process.env) {
+  const configuredRoot = typeof environment.SystemRoot === 'string' ? environment.SystemRoot.trim() : ''
+  const systemRoot = win32.isAbsolute(configuredRoot) ? configuredRoot : 'C:\\Windows'
+  const where = win32.join(systemRoot, 'System32', 'where.exe')
+  const result = spawnSync(where, ['git'], {
+    cwd: root,
+    encoding: 'utf8',
+    env: { ...environment },
+    windowsHide: true,
+  })
+  const selected = selectWindowsGitPath({
+    whereOutput: result.error === undefined ? result.stdout : '',
+    fallbackPaths: githubGitToolPaths(environment),
+  })
+  if (selected === undefined) throw new Error('Windows packaged smoke could not resolve a validated git executable')
+  return selected
+}
+
+const trustedWindowsGitPath = process.platform === 'win32' ? resolveWindowsGitExecutable() : undefined
 const launcherApiKeys = Object.freeze([
   'cancelAction',
   'dismiss',
@@ -82,7 +140,8 @@ function trustedPath() {
   const nodeDirectory = dirname(resolve(process.execPath))
   if (process.platform === 'win32') {
     const systemRoot = process.env.SystemRoot ?? 'C:\\Windows'
-    return [...new Set([nodeDirectory, join(systemRoot, 'System32'), systemRoot, join(systemRoot, 'System32', 'Wbem')])].join(';')
+    const gitDirectory = trustedWindowsGitPath === undefined ? [] : [win32.dirname(trustedWindowsGitPath)]
+    return [...new Set([nodeDirectory, ...gitDirectory, join(systemRoot, 'System32'), systemRoot, join(systemRoot, 'System32', 'Wbem')])].join(';')
   }
   return [...new Set([nodeDirectory, '/usr/local/bin', '/usr/bin', '/bin', '/usr/sbin', '/sbin'])].join(':')
 }
@@ -324,6 +383,14 @@ function runPnpm(args, options = {}) {
   const cli = join(root, 'node_modules', 'pnpm', 'bin', 'pnpm.cjs')
   run(process.execPath, [cli, ...args], options)
 }
+
+export const PACKAGED_PREPARATION_PLAN = Object.freeze([
+  Object.freeze({ name: 'root-build', args: Object.freeze(['run', 'build']) }),
+  Object.freeze({ name: 'dsh-build', args: Object.freeze(['run', 'build:dsh']) }),
+  Object.freeze({ name: 'tocktutor-install', args: Object.freeze(['-C', 'plugins/tocktutor', 'install', '--frozen-lockfile']) }),
+  Object.freeze({ name: 'tocktutor-build', args: Object.freeze(['run', 'build:tocktutor']) }),
+  Object.freeze({ name: 'runtime-stage', args: Object.freeze(['run', 'stage:dsh']) }),
+])
 
 export function currentTarget() {
   const platform = process.platform === 'darwin'
@@ -863,10 +930,9 @@ export async function preparePackagedArtifact({ target = currentTarget(), smokeR
   const appDir = join(rootPath, 'app-input')
   const outputDir = join(rootPath, 'package')
   try {
-    runPnpm(['run', 'build:tocktutor'], { disposableRoot: rootPath })
-    runPnpm(['run', 'build'], { disposableRoot: rootPath })
-    runPnpm(['run', 'build:dsh'], { disposableRoot: rootPath })
-    runPnpm(['run', 'stage:dsh'], { disposableRoot: rootPath })
+    for (const step of PACKAGED_PREPARATION_PLAN) {
+      runPnpm(step.args, { disposableRoot: rootPath })
+    }
     run(process.execPath, [join(root, 'scripts/ueli/check-package-feasibility.mjs')], { disposableRoot: rootPath })
     await createPackageInput(appDir)
     await mkdir(outputDir, { recursive: true })

@@ -1,3 +1,16 @@
+export const PACKAGED_PREPARATION_PLAN: readonly Readonly<{
+  name: string
+  args: readonly string[]
+}>[]
+
+export function parseWindowsGitPaths(output: string): readonly string[]
+
+export function selectWindowsGitPath(options?: Readonly<{
+  whereOutput?: string
+  fallbackPaths?: readonly string[]
+  isFile?: (candidate: string) => boolean
+}>): string | undefined
+
 export function canonicalPath(candidatePath: string): Promise<string | undefined>
 
 export function pathContained(rootPath: string, candidatePath: string): Promise<boolean>

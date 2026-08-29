@@ -10,10 +10,13 @@ import {
 } from '../scripts/ueli/installed-evidence.mjs'
 import { inspectInstalledReport } from '../scripts/check-installed-report.mjs'
 import {
+  PACKAGED_PREPARATION_PLAN,
   canonicalPath,
   inspectExtraResources,
+  parseWindowsGitPaths,
   pathContained,
   selectCdpDescriptor,
+  selectWindowsGitPath,
   smokeEnvironment,
   windowsCdpListenerOwned,
 } from '../scripts/launcher-packaged-smoke.mjs'
@@ -93,6 +96,31 @@ test('installed smoke selects only the loopback descriptor and atomically replac
   } finally {
     await rm(rootPath, { recursive: true, force: true })
   }
+})
+
+test('packaged smoke resolves Windows git safely and prepares fresh workspaces in dependency order', () => {
+  assert.deepEqual(
+    PACKAGED_PREPARATION_PLAN.map(step => [step.name, ...step.args]),
+    [
+      ['root-build', 'run', 'build'],
+      ['dsh-build', 'run', 'build:dsh'],
+      ['tocktutor-install', '-C', 'plugins/tocktutor', 'install', '--frozen-lockfile'],
+      ['tocktutor-build', 'run', 'build:tocktutor'],
+      ['runtime-stage', 'run', 'stage:dsh'],
+    ],
+  )
+  const parsed = parseWindowsGitPaths('INFO: ignored\r\nrelative\\git.exe\nC:\\Program Files\\Git\\cmd\\git.EXE\r\nD:/Git/cmd/git.exe\n')
+  assert.deepEqual(parsed, ['C:\\Program Files\\Git\\cmd\\git.EXE', 'D:/Git/cmd/git.exe'])
+  assert.equal(selectWindowsGitPath({
+    whereOutput: 'C:\\untrusted\\git.exe\r\n',
+    fallbackPaths: ['C:\\Program Files\\Git\\cmd\\git.exe'],
+    isFile: candidate => candidate === 'C:\\Program Files\\Git\\cmd\\git.exe',
+  }), 'C:\\Program Files\\Git\\cmd\\git.exe')
+  assert.equal(selectWindowsGitPath({
+    whereOutput: 'relative\\git.exe\n',
+    fallbackPaths: ['relative\\git.exe'],
+    isFile: () => true,
+  }), undefined)
 })
 
 test('launched smoke environments use disposable user roots and bounded tools', () => {
