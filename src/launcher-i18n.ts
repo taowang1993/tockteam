@@ -435,6 +435,8 @@ const FIXED_ZH: Readonly<Record<string, string>> = Object.freeze({
   'Recovered': '已恢复',
   'Healthy': '正常',
   'none': '无',
+  'active': '已启用',
+  'revoked': '已撤销',
   'Custom browser': '自定义浏览器',
   'Custom browser selection complete.': '自定义浏览器选择完成。',
   'Custom browser revocation complete.': '自定义浏览器撤销完成。',

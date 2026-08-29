@@ -34,6 +34,8 @@ const SETTINGS_STRINGS = [
   'Save key',
   'Current version',
   'Value is invalid.',
+  'active',
+  'revoked',
 ] as const
 
 test('settings strings have Chinese translations instead of English fallback text', () => {
@@ -44,4 +46,6 @@ test('settings strings have Chinese translations instead of English fallback tex
   assert.match(settingsPage, /launcherFixedText\('Current version'\)/u)
   assert.equal(settingsPage.includes('>Save key<'), false)
   assert.equal(settingsPage.includes('>Follows TockTeam Appearance<'), false)
+  assert.equal(launcherFixedText('active', 'zh-CN'), '已启用')
+  assert.equal(launcherFixedText('revoked', 'zh-CN'), '已撤销')
 })

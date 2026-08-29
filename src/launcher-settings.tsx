@@ -24,6 +24,7 @@ import { mergeLauncherDirtyValues, readPersistedLauncherState } from './launcher
 import { useLauncherDraft } from './launcher-settings-drafts.ts'
 import { LAUNCHER_SETTING_CATALOG_COUNT } from './launcher-setting-catalog.ts'
 import { launcherSettingRequiresProviderRescan } from './launcher-setting-keys.ts'
+import { createLauncherSettingsWriteQueue } from './launcher-settings-write-queue.ts'
 import { localeTag } from '../plugins/shared/i18n.ts'
 import { useTranslate } from '../plugins/shared/use-i18n.ts'
 import type { LocaleMessages, LocaleService } from '../plugins/shared/i18n.ts'
@@ -170,7 +171,6 @@ function LauncherSettingsPage({ close: _close, locale }: SettingsSectionProps): 
   const [simpleFileSearchDraft, setSimpleFileSearchDraft] = useState<readonly LauncherSimpleFileSearchDraft[] | null>(null)
   const simpleFileSearchDraftRevision = useRef(0)
   const settingsOwnershipRef = useRef<string | undefined>(undefined)
-  const writeTail = useRef<Promise<void> | undefined>(undefined)
   const updateSimpleFileSearchDraft = useCallback((folders: readonly LauncherSimpleFileSearchDraft[]): void => {
     simpleFileSearchDraftRevision.current += 1
     setSimpleFileSearchDraft(Object.freeze([...folders]))
@@ -195,6 +195,14 @@ function LauncherSettingsPage({ close: _close, locale }: SettingsSectionProps): 
     setSnapshot(mergeLauncherDirtyValues(next, dirtyValues))
     return next
   }, [clearSimpleFileSearchDraft, settings])
+  const writeQueue = useMemo(() => settings === undefined ? null : createLauncherSettingsWriteQueue({
+    getOwnershipToken: () => settingsOwnershipRef.current,
+    updateSetting: async (key, value) => { await settings.updateSetting(key, value) },
+    reload: async () => { await reload() },
+    clearPendingValue: (key, value, onlyIfCurrent) => {
+      if (!onlyIfCurrent || Object.is(pendingValues.current.get(key), value)) pendingValues.current.delete(key)
+    },
+  }), [reload, settings])
 
   useEffect(() => {
     if (!settings) return
@@ -246,7 +254,7 @@ function LauncherSettingsPage({ close: _close, locale }: SettingsSectionProps): 
   const rendererPlatform = rendererIsLinux ? 'Linux' as const : /Windows/iu.test(`${navigator.platform} ${navigator.userAgent}`) ? 'Windows' as const : 'macOS' as const
 
   const save = useCallback((key: string, value: unknown): Promise<boolean> => {
-    if (!settings) return Promise.resolve(false)
+    if (!settings || writeQueue === null) return Promise.resolve(false)
     const requiresProviderRescan = launcherSettingRequiresProviderRescan(key)
     if (requiresProviderRescan) {
       activeSaves.current += 1
@@ -263,13 +271,13 @@ function LauncherSettingsPage({ close: _close, locale }: SettingsSectionProps): 
         values: Object.freeze({ ...previous.values, [key]: value }),
       }))
     }
-    const operation = (writeTail.current ?? Promise.resolve()).catch(() => undefined).then(async () => {
-      await settings.updateSetting(key, value)
-      await reload()
-    })
-    writeTail.current = operation.then(() => undefined, () => undefined)
-    return operation.then(() => {
+    const operation = writeQueue.enqueue(key, value)
+    return operation.then(saved => {
       if (pendingValues.current.get(key) === value) pendingValues.current.delete(key)
+      if (!saved) {
+        setStatus(launcherFixedText('TockLauncher settings could not be saved.'))
+        return false
+      }
       if (isSimpleFileSearchFolders && simpleFileSearchDraftRevision.current === draftRevision) {
         setSimpleFileSearchDraft(value as readonly LauncherSimpleFileSearchDraft[])
       }
@@ -277,7 +285,7 @@ function LauncherSettingsPage({ close: _close, locale }: SettingsSectionProps): 
       return true
     }, () => {
       if (pendingValues.current.get(key) === value) pendingValues.current.delete(key)
-      void reload().catch(() => {})
+      if (!isSimpleFileSearchFolders) void reload().catch(() => {})
       setStatus(launcherFixedText('TockLauncher settings could not be saved.'))
       return false
     }).finally(() => {
@@ -286,7 +294,7 @@ function LauncherSettingsPage({ close: _close, locale }: SettingsSectionProps): 
         if (activeSaves.current === 0) setBusy(false)
       }
     })
-  }, [reload, settings])
+  }, [reload, settings, writeQueue])
 
   const clearHistory = useCallback((): void => {
     void save('general.searchHistory.history', [])
@@ -307,7 +315,7 @@ function LauncherSettingsPage({ close: _close, locale }: SettingsSectionProps): 
     setBusy(true)
     setStatus(`${launcherFixedText(label)}…`)
     try {
-      await writeTail.current?.catch(() => undefined)
+      await writeQueue?.waitForIdle()
       const result = await action()
       if (result.canceled) setStatus(`${launcherFixedText(label)} ${launcherFixedText('canceled.')}`)
       else {
@@ -322,7 +330,7 @@ function LauncherSettingsPage({ close: _close, locale }: SettingsSectionProps): 
       if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => requestAnimationFrame(restoreFocus))
       else setTimeout(restoreFocus, 0)
     }
-  }, [clearSimpleFileSearchDraft, reload])
+  }, [clearSimpleFileSearchDraft, reload, writeQueue])
 
   if (!bridge || !settings) return <p className="text-sm text-muted-foreground">{t('unavailable')}</p>
   if (snapshot === null || state === null) return <p aria-live="polite" className="text-sm text-muted-foreground" role="status">{status}</p>
