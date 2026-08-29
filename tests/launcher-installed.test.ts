@@ -2,6 +2,10 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { test } from 'node:test'
+import {
+  inspectInstalledEvidenceCatalog,
+  inspectInstalledEvidenceWorkflow,
+} from '../scripts/ueli/installed-evidence.mjs'
 
 const root = join(import.meta.dirname, '..')
 const packageJson = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')) as {
@@ -53,10 +57,11 @@ test('installed evidence catalog owns every required platform row without public
     if (row.state === 'local-verified') assert.ok(row.evidence)
   }
   assert.deepEqual(new Set(catalog.rows.map(row => row.platform)), new Set(['macOS', 'Windows', 'Linux']))
+  assert.deepEqual(inspectInstalledEvidenceCatalog({ ...catalog, rows: catalog.rows.slice(1) }).failures.filter(failure => failure.includes('required installed evidence row is missing')), ['required installed evidence row is missing: macOS:artifact-build'])
 })
 
 test('release and platform workflows retain ordered package and installed gates', () => {
-  assert.match(releaseWorkflow, /name: launcher-package-smoke/u)
+  assert.match(releaseWorkflow, /launcher-package-smoke:/u)
   assert.match(releaseWorkflow, /needs: validate/u)
   assert.match(releaseWorkflow, /publish:[\s\S]*needs:\s*\[?package,?\s*launcher-package-smoke/u)
   assert.match(installedWorkflow, /workflow_dispatch:/u)
@@ -65,4 +70,7 @@ test('release and platform workflows retain ordered package and installed gates'
   assert.match(installedWorkflow, /runs-on: ubuntu-24\.04/u)
   assert.match(installedWorkflow, /test:launcher:installed/u)
   assert.match(installedWorkflow, /upload-artifact/u)
+  assert.equal(inspectInstalledEvidenceWorkflow(installedWorkflow).failures.length, 0)
+  const mutatedWorkflow = installedWorkflow.replaceAll('pnpm test:launcher:installed', 'pnpm test:launcher:packaged')
+  assert.ok(inspectInstalledEvidenceWorkflow(mutatedWorkflow).failures.some(failure => failure.includes('execute installed smoke')))
 })

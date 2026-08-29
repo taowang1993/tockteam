@@ -57,7 +57,9 @@ test('macOS packages retain the production signing hook', () => {
 test('tagged releases validate the package version and launcher audits before packaging', () => {
   const workflow = readFileSync(join(root, '.github', 'workflows', 'release.yml'), 'utf8').replace(/\r\n?/g, '\n')
   assert.match(workflow, /name: Validate release contract/u)
-  assert.match(workflow, /node scripts\/check-release-version\.mjs --tag "\$GITHUB_REF_NAME"/u)
+  const validate = workflow.slice(workflow.indexOf('  validate:'), workflow.indexOf('  launcher-package-smoke:'))
+  const validateTag = 'node scripts/check-release-version.mjs --tag "$GITHUB_REF_NAME"'
+  assert.match(validate, /node scripts\/check-release-version\.mjs --tag "\$GITHUB_REF_NAME"/u)
   for (const command of [
     'pnpm test:ueli-baseline',
     'pnpm audit:ueli-baseline',
@@ -65,10 +67,14 @@ test('tagged releases validate the package version and launcher audits before pa
     'pnpm audit:ueli-launcher-parity',
     'pnpm test:ueli-package-feasibility',
     'pnpm audit:ueli-package-feasibility',
-  ]) assert.match(workflow, new RegExp(command.replaceAll('.', '\\.'), 'u'))
+  ]) assert.match(validate, new RegExp(command.replaceAll('.', '\\.'), 'u'))
+  assert.ok(workflow.indexOf('  validate:') < workflow.indexOf('  package:'))
+  assert.ok(workflow.indexOf(validateTag) < workflow.indexOf('  package:'))
   assert.match(workflow, /package:\n    needs: validate/u)
+  assert.match(workflow, /launcher-package-smoke:\n    name: Gate release on packaged TockLauncher smoke/u)
+  assert.match(workflow, /launcher-package-smoke:[\s\S]*run: pnpm test:launcher:packaged/u)
   assert.match(workflow, /node scripts\/check-release-version\.mjs --tag "\$GITHUB_REF_NAME" --artifact dist\/release-package\.json/u)
-  assert.match(workflow, /publish:\n    name:[\s\S]*needs: package/u)
+  assert.match(workflow, /publish:\n    name:[\s\S]*needs: \[package, launcher-package-smoke\]/u)
 })
 
 test('tagged releases build and upload both TUI archive formats', () => {

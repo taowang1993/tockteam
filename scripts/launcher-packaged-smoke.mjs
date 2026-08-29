@@ -282,7 +282,8 @@ export function currentTarget() {
 
 export function packagedBuilderConfig(outputDir, target, appDir) {
   const platformConfig = packageJson.build?.[target.key] ?? {}
-  const extraResources = (packageJson.build?.extraResources ?? []).map(resource => ({
+  const builderExtraResources = packageJson.build?.extraResources ?? []
+  const extraResources = builderExtraResources.map(resource => ({
     ...resource,
     from: resolve(root, resource.from),
   }))
@@ -552,8 +553,9 @@ export async function inspectPackage(outputDir, target) {
   })
 }
 
-export async function launchPackaged(executable, userData, port) {
+export async function launchPackaged(executable, userData, port, extraArgs = []) {
   const child = spawnProcess(executable, [
+    ...extraArgs,
     `--remote-debugging-address=127.0.0.1`,
     `--remote-debugging-port=${String(port)}`,
     `--user-data-dir=${userData}`,

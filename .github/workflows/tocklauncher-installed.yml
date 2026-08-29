@@ -1,0 +1,119 @@
+name: TockLauncher Installed Evidence
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - ".github/workflows/tocklauncher-installed.yml"
+      - "scripts/launcher-*.mjs"
+      - "scripts/install-mac.mjs"
+      - "scripts/process-cleanup.mjs"
+      - "scripts/ueli/desktop-release-contract.json"
+      - "scripts/ueli/installed-evidence*"
+      - "src/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "assets/**"
+      - "plugins/**"
+
+permissions:
+  contents: read
+
+jobs:
+  windows-x64:
+    name: Windows x64 installed NSIS TockLauncher evidence
+    runs-on: windows-latest
+    timeout-minutes: 180
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          submodules: recursive
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
+        with:
+          version: 11.21.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24
+          architecture: x64
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build and install the disposable NSIS artifact
+        shell: bash
+        env:
+          TOCKTEAM_KEEP_INSTALLED_SMOKE: "1"
+          TOCKTEAM_INSTALLED_SMOKE_TEMP_ROOT: ${{ runner.temp }}
+          TOCKTEAM_INSTALLED_SMOKE_REPORT: ${{ runner.temp }}/tockteam-installed-launcher-smoke-${{ github.run_id }}.json
+        run: pnpm test:launcher:installed
+
+      - name: Upload Windows installed evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: tocklauncher-installed-windows-x64-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/tockteam-installed-launcher-smoke-*/installer/**
+            ${{ runner.temp }}/tockteam-installed-launcher-smoke-*/report/**
+            ${{ runner.temp }}/tockteam-installed-launcher-smoke-*.json
+          if-no-files-found: error
+
+  linux-x64:
+    name: Linux x64 installed deb and AppImage TockLauncher evidence
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          submodules: recursive
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
+        with:
+          version: 11.21.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24
+          architecture: x64
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install Electron display dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y xvfb libnss3 libasound2t64 libgtk-3-0 libgbm1 libxss1 libatk-bridge2.0-0 libatspi2.0-0 libnotify4 libsecret-1-0
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build and install disposable deb/AppImage artifacts
+        shell: bash
+        env:
+          TOCKTEAM_KEEP_INSTALLED_SMOKE: "1"
+          TOCKTEAM_INSTALLED_SMOKE_TEMP_ROOT: ${{ runner.temp }}
+          TOCKTEAM_INSTALLED_SMOKE_REPORT: ${{ runner.temp }}/tockteam-installed-launcher-smoke-${{ github.run_id }}.json
+        run: xvfb-run -a pnpm test:launcher:installed
+
+      - name: Upload Linux installed evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: tocklauncher-installed-linux-x64-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/tockteam-installed-launcher-smoke-*/installer/**
+            ${{ runner.temp }}/tockteam-installed-launcher-smoke-*/report/**
+            ${{ runner.temp }}/tockteam-installed-launcher-smoke-*.json
+          if-no-files-found: error

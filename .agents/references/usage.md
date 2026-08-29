@@ -175,6 +175,19 @@ pnpm run dist:web       # Web-only lightweight distribution
 pnpm run dist:tui       # TUI-only terminal distribution
 ```
 
+Installed launcher evidence:
+
+```sh
+pnpm test:launcher:installed
+```
+
+On macOS this command builds a fresh product, copies the app atomically into a
+disposable Applications-like directory, and verifies the installed launcher,
+reinstall, settings/session compatibility, rollback, and cleanup. The result is
+unsigned/internal ad-hoc evidence only: it is not signed, notarized, or public distribution evidence. Windows
+and Linux workflows are configured but not yet executed; their catalog rows stay
+workflow-required until hosted-run artifacts exist.
+
 ## Data and troubleshooting
 
 Desktop retains the existing internal data directory to preserve state across

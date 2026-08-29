@@ -92,6 +92,18 @@ the source and commit before entering an isolated preview. Only explicit
 application changes the current Profile. Agent-initiated installs use the
 same transaction and risk approval and cannot bypass the Loader.
 
+## Installed TockLauncher evidence
+
+The current executable evidence is an unsigned/internal macOS arm64 package and
+installed-app smoke on the current host. It verifies the TockTeam identity,
+ad-hoc signature, ASAR/resources, launcher security boundary, workbench action,
+settings/session compatibility, reinstall, rollback, and cleanup. This is not
+signed, notarized, or public distribution evidence.
+
+Windows and Linux installed evidence is workflow-required and not yet executed.
+The platform catalog therefore keeps those rows unverified; configured GitHub
+workflows do not count as a passing run or as a publication claim.
+
 ## Security boundaries
 
 - Web binds to loopback by default; LAN exposure requires trusted authorities.

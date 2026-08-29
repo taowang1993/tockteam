@@ -92,6 +92,8 @@
     "test:ueli-package-feasibility": "node --test tests/ueli-package-feasibility.test.ts",
     "test:launcher:electron": "pnpm run build:tocktutor && pnpm run build && node scripts/stage-dsh.mjs --quick && node scripts/launcher-electron-smoke.mjs",
     "test:launcher:packaged": "node scripts/launcher-packaged-smoke.mjs --tockteam-launcher-packaged-smoke",
+    "test:launcher:installed": "node scripts/launcher-installed-smoke.mjs --tockteam-launcher-installed-smoke",
+    "audit:installed-evidence": "node scripts/ueli/installed-evidence.mjs",
     "audit:ueli-package-feasibility": "node scripts/ueli/check-package-feasibility.mjs",
     "build:tocktutor": "pnpm -C plugins/tocktutor run build && node scripts/tocktutor-build-manifest.mjs --write",
     "build:dsh": "node scripts/build-dsh.mjs",
