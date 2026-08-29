@@ -84,6 +84,31 @@ test('external settings accepts regular files, preserves replacement, and fails 
   } finally { await rm(userDataPath, { recursive: true, force: true }) }
 })
 
+test('external folder grant drift falls back to managed folders before later writes', async () => {
+  const userDataPath = await root()
+  try {
+    const external = path.join(userDataPath, 'external.json')
+    const managedFolders = [{ id: 'root', path: '/managed/root', recursive: true, searchFor: 'filesAndFolders' as const }]
+    const externalFolders = [{ id: 'root', path: '/external/root', recursive: true, searchFor: 'filesAndFolders' as const }]
+    const repository = await LauncherPersistenceRepository.open({ externalWriteAvailable: true, secretCodec: codec, secureStorageAvailable: true, userDataPath })
+    await repository.updateSetting('extension[SimpleFileSearch].folders', managedFolders)
+    await writeFile(external, JSON.stringify({ 'extension[SimpleFileSearch].folders': externalFolders }), { mode: 0o600 })
+    await repository.grantExternalSettingsFile(external)
+    assert.deepEqual(repository.snapshot().values['extension[SimpleFileSearch].folders'], externalFolders)
+    const replacement = `${external}.replacement`
+    await writeFile(replacement, JSON.stringify({ 'extension[SimpleFileSearch].folders': externalFolders }), { mode: 0o600 })
+    await rm(external)
+    await rename(replacement, external)
+    await assert.rejects(repository.updateSetting('general.language', 'fr-FR'), /changed or was revoked/u)
+    assert.equal(repository.snapshot().settingsSource, 'managed')
+    assert.equal(repository.snapshot().externalGrantStatus, 'revoked')
+    assert.deepEqual(repository.snapshot().values['extension[SimpleFileSearch].folders'], managedFolders)
+    await repository.updateSetting('general.language', 'zh-CN')
+    assert.deepEqual(repository.snapshot().values['extension[SimpleFileSearch].folders'], managedFolders)
+    await repository.close()
+  } finally { await rm(userDataPath, { recursive: true, force: true }) }
+})
+
 test('history records serialize and disabled history rejects injected or imported queries', async () => {
   const userDataPath = await root()
   try {

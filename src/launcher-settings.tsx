@@ -16,7 +16,7 @@ import { LauncherNetworkSettings } from './launcher-network-settings.tsx'
 import { LauncherTerminalSettings } from './launcher-terminal-settings.tsx'
 import { LauncherWorkflowSettings } from './launcher-workflow-settings.tsx'
 import { LauncherSurfaceSettingsSection } from './launcher-surface-settings.tsx'
-import { launcherFixedText } from './launcher-i18n.ts'
+import { launcherCountText, launcherFixedText } from './launcher-i18n.ts'
 import { launcherWorkflowSnapshotToken } from './launcher-workflow-contract.ts'
 import type { DesktopBridge } from './contracts.ts'
 import { LAUNCHER_SENSITIVE_SETTING_KEYS, type LauncherSettingsSnapshot } from './launcher-settings-contract.ts'
@@ -277,7 +277,7 @@ function LauncherSettingsPage({ close: _close, locale }: SettingsSectionProps): 
       return true
     }, () => {
       if (pendingValues.current.get(key) === value) pendingValues.current.delete(key)
-      if (!isSimpleFileSearchFolders) void reload().catch(() => {})
+      void reload().catch(() => {})
       setStatus(launcherFixedText('TockLauncher settings could not be saved.'))
       return false
     }).finally(() => {
@@ -364,7 +364,7 @@ function LauncherSettingsPage({ close: _close, locale }: SettingsSectionProps): 
         <Field title="Search history" description="History is stored in the Desktop-owned launcher repository.">
           <Switch aria-label={launcherFixedText('Enable search history')} checked={state.preferences.historyEnabled} disabled={busy} onCheckedChange={checked => { void save('general.searchHistory.enabled', checked) }} />
         </Field>
-        <Field title="History limit" description={`${state.history.length} saved searches currently visible to TockLauncher.`}>
+        <Field title="History limit" description={launcherCountText(localeTag(locale), 'savedSearches', state.history.length, `${state.history.length} saved searches currently visible to TockLauncher.`)}>
           <Input aria-label={launcherFixedText('History limit')} className="w-24" type="number" min="1" max="100" disabled={busy} value={state.preferences.historyLimit} onChange={event => { const value = Math.min(100, Math.max(1, Number(event.target.value) || 10)); void save('general.searchHistory.limit', value) }} />
         </Field>
         <Field title="Saved searches" description="Clear persisted history without changing provider settings.">
@@ -379,7 +379,7 @@ function LauncherSettingsPage({ close: _close, locale }: SettingsSectionProps): 
       </SectionCard>
 
       <SectionCard icon={<MonitorCog aria-hidden="true" className="size-4" />} title={t('sectionDesktop')} description="Window and shell behavior is applied by Electron main. Launch on Start remains in its existing TockTeam Preferences owner.">
-        <Field title="Appearance source" description={`Compatibility mode is ${state.preferences.themeSource}; active mode and skin follow the DSH TockTeam Appearance owner.`}><Badge variant="outline">{launcherFixedText('Follows TockTeam Appearance')}</Badge></Field>
+        <Field title="Appearance source" description={`${launcherFixedText('Compatibility mode is')} ${launcherFixedText(state.preferences.themeSource)}; ${launcherFixedText('active mode and skin follow the DSH TockTeam Appearance owner.')}`}><Badge variant="outline">{launcherFixedText('Follows TockTeam Appearance')}</Badge></Field>
         <Field title="Launch on Start" description="Uses the single TockTeam login-item owner; it is not duplicated in launcher settings.">
           <Switch aria-label={launcherFixedText('Launch on Start')} checked={launchOnStart === true} disabled={busy || launchOnStart === null} onCheckedChange={checked => { setBusy(true); void bridge.launchOnStart.set(checked).then(value => { setLaunchOnStart(value); setStatus(launcherFixedText('Launch on Start saved.')) }).catch(() => setStatus(launcherFixedText('Launch on Start could not be saved.'))).finally(() => setBusy(false)) }} />
         </Field>
@@ -401,7 +401,7 @@ function LauncherSettingsPage({ close: _close, locale }: SettingsSectionProps): 
         <LauncherSurfaceSettingsSection busy={busy} platform={rendererPlatform} save={save} section="browser" snapshot={snapshot} />
         <Field title="Language" description="The DSH locale service owns launcher language selection.">
           <NativeSelect aria-label={launcherFixedText('Language')} size="sm" disabled={busy} value={locale.getSnapshot().active} onChange={event => { if (event.target.value === 'en' || event.target.value === 'zh') locale.setLocale(event.target.value) }}>
-            <NativeSelectOption value="en">English</NativeSelectOption>
+            <NativeSelectOption value="en">{launcherFixedText('English')}</NativeSelectOption>
             <NativeSelectOption value="zh">简体中文</NativeSelectOption>
           </NativeSelect>
         </Field>
@@ -444,7 +444,7 @@ function LauncherSettingsPage({ close: _close, locale }: SettingsSectionProps): 
       <SectionCard icon={<Database aria-hidden="true" className="size-4" />} title={t('sectionStorage')} description="Managed files and external grants are owned by Electron main; no filesystem path crosses this page.">
         <Field title="Settings source" description={launcherFixedText(statusLabel(snapshot))}><Badge variant={snapshot.settingsSource === 'external' ? 'default' : 'secondary'}>{launcherFixedText(snapshot.settingsSource === 'external' ? 'External' : 'Managed')}</Badge></Field>
         <Field title="External write capability" description="Unsupported platforms stay readable and revocable but reject writes before touching the file."><Badge variant={snapshot.externalWriteAvailable === false ? 'outline' : 'secondary'}>{launcherFixedText(snapshot.externalWriteAvailable === false ? 'Read-only' : 'Available')}</Badge></Field>
-        <Field title="Recovery" description={snapshot.recoveredArtifacts?.length ? `Recovered: ${snapshot.recoveredArtifacts.join(', ')}.` : 'Each settings, index, and log artifact has an independent managed backup.'}><Badge variant={snapshot.recoveredArtifacts?.length ? 'default' : 'secondary'}>{launcherFixedText(snapshot.recoveredArtifacts?.length ? 'Recovered' : 'Healthy')}</Badge></Field>
+        <Field title="Recovery" description={snapshot.recoveredArtifacts?.length ? `${launcherFixedText('Recovered artifacts')}: ${snapshot.recoveredArtifacts.join(', ')}.` : launcherFixedText('Each settings, index, and log artifact has an independent managed backup.')}><Badge variant={snapshot.recoveredArtifacts?.length ? 'default' : 'secondary'}>{launcherFixedText(snapshot.recoveredArtifacts?.length ? 'Recovered' : 'Healthy')}</Badge></Field>
         <Field title="Secure storage" description="Sensitive values are encrypted in Electron main and are never hydrated into this renderer."><Badge variant={snapshot.secureStorageAvailable === false ? 'outline' : 'secondary'}>{launcherFixedText(snapshot.secureStorageAvailable === false ? 'Unavailable' : 'Available')}</Badge></Field>
         <Field title="Settings files">
           <div className="flex flex-wrap justify-end gap-2">
@@ -475,7 +475,7 @@ function LauncherSettingsPage({ close: _close, locale }: SettingsSectionProps): 
           <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">
             <Label htmlFor="tocklauncher-deepl-key" className="sr-only">{launcherFixedText('DeepL API key')}</Label>
             <Input id="tocklauncher-deepl-key" aria-label={launcherFixedText('DeepL API key')} autoComplete="new-password" className="w-full max-w-sm min-w-0" maxLength={8192} type="password" value={secret} disabled={busy || snapshot.secureStorageAvailable === false} onChange={event => setSecret(event.target.value)} />
-            <Button size="sm" variant="outline" disabled={busy || secret.length === 0 || snapshot.secureStorageAvailable === false} onClick={() => { const value = secret; void save('extension[DeeplTranslator].apiKey', value).then(saved => { if (saved) setSecret('') }) }}>Save key</Button>
+            <Button size="sm" variant="outline" disabled={busy || secret.length === 0 || snapshot.secureStorageAvailable === false} onClick={() => { const value = secret; void save('extension[DeeplTranslator].apiKey', value).then(saved => { if (saved) setSecret('') }) }}>{launcherFixedText('Save key')}</Button>
           </div>
         </Field>
         <Alert role="status" aria-live="polite"><ShieldCheck aria-hidden="true" /><AlertTitle>{launcherFixedText('Protected secret')}</AlertTitle><AlertDescription>{snapshot.missingSensitiveKeys.includes('extension[DeeplTranslator].apiKey') ? launcherFixedText('No usable DeepL key is stored.') : launcherFixedText('A usable DeepL key is stored with secure storage.')}</AlertDescription></Alert>
@@ -483,14 +483,14 @@ function LauncherSettingsPage({ close: _close, locale }: SettingsSectionProps): 
 
       <SectionCard icon={<RefreshCw aria-hidden="true" className="size-4" />} title={t('sectionUpdates')} description="Automatic updates remain owned by the existing Electron updater state machine.">
         {updater ? <>
-          <Field title="Update status" description={updater.message ?? `Current version ${updater.currentVersion}`}><Badge variant={updater.status === 'error' ? 'destructive' : 'secondary'}>{updater.status}</Badge></Field>
+          <Field title="Update status" description={updater.message === null ? `${launcherFixedText('Current version')} ${updater.currentVersion}` : launcherFixedText(updater.message)}><Badge variant={updater.status === 'error' ? 'destructive' : 'secondary'}>{launcherFixedText(updater.status)}</Badge></Field>
           <Field title="Update actions"><div className="flex flex-wrap gap-2"><Button size="sm" variant="outline" disabled={busy || !updater.canRetry} onClick={() => { void changeUpdater(() => bridge.appUpdate.check(), 'Check') }}><RefreshCw aria-hidden="true" />{launcherFixedText('Check')}</Button><Button size="sm" variant="outline" disabled={busy || updater.status !== 'available'} onClick={() => { void changeUpdater(() => bridge.appUpdate.download(), 'Download') }}>{launcherFixedText('Download')}</Button><Button size="sm" variant="outline" disabled={busy || updater.status !== 'downloaded'} onClick={() => { void changeUpdater(() => bridge.appUpdate.install(), 'Install') }}>{launcherFixedText('Install')}</Button></div></Field>
         </> : <p className="text-sm text-muted-foreground">{launcherFixedText('Updater state is unavailable.')}</p>}
       </SectionCard>
 
       <SectionCard icon={<Check aria-hidden="true" className="size-4" />} title={t('sectionAbout')} description="Compatibility inventory is explicit even while provider slices are staged.">
-        <Field title="Catalog coverage" description="The settings catalog is generated from the pinned Ueli parity manifest."><Badge variant="secondary">{LAUNCHER_SETTING_CATALOG_COUNT} rows · 102 runtime keys</Badge></Field>
-        <Field title="Appearance ownership" description="The compatibility appearance.themeSource value is retained, but the active mode and skin follow the DSH TockTeam Appearance owner."><Badge variant="outline">Follows TockTeam Appearance</Badge></Field>
+        <Field title="Catalog coverage" description="The settings catalog is generated from the pinned Ueli parity manifest."><Badge variant="secondary">{launcherCountText(localeTag(locale), 'catalogRows', LAUNCHER_SETTING_CATALOG_COUNT, `${LAUNCHER_SETTING_CATALOG_COUNT} rows · 102 runtime keys`)}</Badge></Field>
+        <Field title="Appearance ownership" description={launcherFixedText('The compatibility appearance.themeSource value is retained, but the active mode and skin follow the DSH TockTeam Appearance owner.')}><Badge variant="outline">{launcherFixedText('Follows TockTeam Appearance')}</Badge></Field>
         <Field title="Browser grant" description="Custom-browser identity is status-only here; selection and revocation are native operations."><Badge variant="secondary">{launcherFixedText(snapshot.customBrowserStatus ?? 'none')}</Badge></Field>
         <Field title="Diagnostics" description="Bounded launcher diagnostics are retained without secret or path material."><span className="max-w-full truncate text-xs text-muted-foreground">{snapshot.logs.at(-1) ?? launcherFixedText('No launcher diagnostics.')}</span></Field>
         <LauncherSurfaceSettingsSection busy={busy} platform={rendererPlatform} save={save} section="compatibility" snapshot={snapshot} />
