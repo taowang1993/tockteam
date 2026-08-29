@@ -12,6 +12,7 @@ import {
   inspectExtraResources,
   findNsisInstaller,
   selectCdpDescriptor,
+  smokeEnvironment,
 } from '../scripts/launcher-packaged-smoke.mjs'
 
 const root = join(import.meta.dirname, '..')
@@ -64,6 +65,16 @@ test('installed smoke selects only the loopback descriptor and root NSIS artifac
   } finally {
     await rm(rootPath, { recursive: true, force: true })
   }
+})
+
+test('launched smoke environments use disposable user roots and bounded tools', () => {
+  const environment = smokeEnvironment({ NODE_OPTIONS: '--require=evil', NODE_PATH: '/tmp/evil', PATH: '/tmp/evil' }, '/tmp/tockteam-smoke-root')
+  assert.equal(environment.NODE_OPTIONS, undefined)
+  assert.equal(environment.NODE_PATH, undefined)
+  assert.equal(environment.HOME, '/tmp/tockteam-smoke-root/home')
+  assert.equal(environment.USERPROFILE, '/tmp/tockteam-smoke-root/home')
+  assert.equal(environment.XDG_CONFIG_HOME, '/tmp/tockteam-smoke-root/xdg/config')
+  assert.equal(environment.PATH, ['/usr/local/bin', '/usr/bin', '/bin', '/usr/sbin', '/sbin'].join(':'))
 })
 
 test('package smoke is hermetic and verifies resources plus process ownership', () => {

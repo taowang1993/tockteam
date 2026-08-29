@@ -131,7 +131,7 @@ export async function freePort() {
   return port
 }
 
-async function waitFor(fetcher, predicate, timeout = smokeTimeoutMs) {
+export async function waitFor(fetcher, predicate, timeout = smokeTimeoutMs) {
   const deadline = Date.now() + timeout
   let last
   while (Date.now() < deadline) {
