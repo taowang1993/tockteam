@@ -251,15 +251,80 @@ export async function waitFor(fetcher, predicate, timeout = smokeTimeoutMs) {
     }
     await sleep(250)
   }
-  throw new Error(`Timed out waiting for packaged TockTeam state: ${last instanceof Error ? last.message : JSON.stringify(last)}`)
-}
-
-function diagnosticText(value) {
-  if (value instanceof Error) return value.stack ?? value.message
-  return String(value ?? '')
+  throw new Error(`Timed out waiting for packaged TockTeam state: ${diagnosticText(last)}`)
 }
 
 const PACKAGED_DIAGNOSTICS_MAX_BYTES = 16_000
+const DIAGNOSTIC_ERROR_MAX_DEPTH = 8
+const DIAGNOSTIC_ERROR_MAX_NODES = 64
+const DIAGNOSTIC_ERROR_MESSAGE_MAX_BYTES = 512
+const DIAGNOSTIC_ERROR_STACK_MAX_BYTES = 4_000
+
+function diagnosticValue(value, limit = DIAGNOSTIC_ERROR_MESSAGE_MAX_BYTES) {
+  if (typeof value === 'string') return value.slice(0, limit)
+  if (value === null) return 'null'
+  if (value === undefined) return 'undefined'
+  if (typeof value === 'number' || typeof value === 'boolean' || typeof value === 'bigint') return String(value).slice(0, limit)
+  try { return Object.prototype.toString.call(value).slice(0, limit) } catch { return '[unavailable]' }
+}
+
+export function formatDiagnosticError(value) {
+  const seen = new WeakSet()
+  const chunks = []
+  let length = 0
+  let nodeCount = 0
+  const append = text => {
+    if (length >= PACKAGED_DIAGNOSTICS_MAX_BYTES) return
+    const remaining = PACKAGED_DIAGNOSTICS_MAX_BYTES - length
+    const chunk = String(text).slice(0, remaining)
+    chunks.push(chunk)
+    length += chunk.length
+  }
+  const visit = (current, label, depth) => {
+    if (depth > DIAGNOSTIC_ERROR_MAX_DEPTH) {
+      append(`${label}: [diagnostic depth limit reached]\n`)
+      return
+    }
+    if (nodeCount >= DIAGNOSTIC_ERROR_MAX_NODES) {
+      append(`${label}: [diagnostic node limit reached]\n`)
+      return
+    }
+    nodeCount += 1
+    if (current !== null && (typeof current === 'object' || typeof current === 'function')) {
+      if (seen.has(current)) {
+        append(`${label}: [diagnostic cycle]\n`)
+        return
+      }
+      seen.add(current)
+    }
+    const isError = current instanceof Error
+    const name = isError ? diagnosticValue(current.name || 'Error') : 'non-error'
+    const message = isError ? diagnosticValue(current.message) : diagnosticValue(current, depth === 0 ? PACKAGED_DIAGNOSTICS_MAX_BYTES : DIAGNOSTIC_ERROR_MESSAGE_MAX_BYTES)
+    append(`${label}: ${name}: ${message}\n`)
+    if (isError && depth === 0) {
+      const stack = diagnosticValue(current.stack, DIAGNOSTIC_ERROR_STACK_MAX_BYTES)
+      if (stack !== 'undefined' && stack !== '') append(`${label}.stack:\n${stack}\n`)
+    }
+    if (current instanceof AggregateError) {
+      const errors = Array.isArray(current.errors) ? current.errors : []
+      for (const [index, error] of errors.entries()) {
+        if (nodeCount >= DIAGNOSTIC_ERROR_MAX_NODES) {
+          append(`${label}.errors: [diagnostic node limit reached]\n`)
+          break
+        }
+        visit(error, `${label}.errors[${String(index)}]`, depth + 1)
+      }
+    }
+    if (isError && 'cause' in current) visit(current.cause, `${label}.cause`, depth + 1)
+  }
+  visit(value, 'error', 0)
+  return chunks.join('')
+}
+
+function diagnosticText(value) {
+  if (value instanceof Error) return formatDiagnosticError(value)
+  return diagnosticValue(value, PACKAGED_DIAGNOSTICS_MAX_BYTES)
+}
 
 function diagnosticTail(value) {
   const text = String(value ?? '')
@@ -295,8 +360,11 @@ export async function collectPackagedProcessDiagnostics({ child, command, args =
   ]
   if (process.platform === 'linux' && pid !== null) {
     const procRoot = `/proc/${String(pid)}`
+    const procStatus = await readDiagnosticFile(`${procRoot}/status`)
+    const coreDumping = procStatus.split('\n').find(line => line.startsWith('CoreDumping:')) ?? 'CoreDumping: unavailable'
     lines.push(`[packaged /proc cmdline] ${procRoot}/cmdline\n${await readDiagnosticFile(`${procRoot}/cmdline`, true)}`)
-    lines.push(`[packaged /proc status] ${procRoot}/status\n${await readDiagnosticFile(`${procRoot}/status`)}`)
+    lines.push(`[packaged /proc CoreDumping] ${coreDumping}`)
+    lines.push(`[packaged /proc status] ${procRoot}/status\n${procStatus}`)
     lines.push(`[packaged /proc wchan] ${procRoot}/wchan\n${await readDiagnosticFile(`${procRoot}/wchan`)}`)
   }
   if (typeof userData === 'string' && userData !== '') {
@@ -1170,8 +1238,12 @@ export async function main() {
 const isDirectInvocation = process.argv[1] !== undefined
   && resolve(process.argv[1]) === fileURLToPath(import.meta.url)
 if (isDirectInvocation) {
-  if (process.argv.includes(smokeFlag)) await main()
-  else {
+  if (process.argv.includes(smokeFlag)) {
+    await main().catch(error => {
+      console.error(formatDiagnosticError(error))
+      process.exitCode = 1
+    })
+  } else {
     console.error(`This package smoke requires ${smokeFlag}`)
     process.exitCode = 2
   }

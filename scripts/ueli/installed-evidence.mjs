@@ -168,15 +168,40 @@ export function inspectInstalledEvidenceWorkflow(workflow) {
     const reportPath = '${{ runner.temp }}/tockteam-installed-launcher-smoke-${{ github.run_id }}.json'
     const gatePath = '${{ runner.temp }}/tockteam-installed-launcher-gate-${{ github.run_id }}.json'
     const diagnosticsPath = '${{ runner.temp }}/tockteam-installed-launcher-diagnostics-${{ github.run_id }}.json'
-    const pathStart = section.indexOf('          path: |')
-    const pathEnd = section.indexOf('          if-no-files-found:', pathStart)
-    const pathLines = pathStart >= 0 && pathEnd >= pathStart
-      ? section.slice(pathStart, pathEnd).split('\n').slice(1).map(line => line.trim()).filter(Boolean)
-      : []
+    const uploadPathLines = uploadSection => {
+      const pathStart = uploadSection.indexOf('          path:')
+      const pathEnd = uploadSection.indexOf('          if-no-files-found:', pathStart)
+      if (pathStart < 0 || pathEnd < pathStart) return []
+      const lines = uploadSection.slice(pathStart, pathEnd).split('\n').map(line => line.trim()).filter(Boolean)
+      const inlinePath = lines[0]?.replace(/^path:\s*/u, '').trim()
+      return inlinePath !== undefined && inlinePath !== '' && inlinePath !== '|' ? [inlinePath] : lines.slice(1)
+    }
+    const evidenceUploadStart = section.indexOf(`      - name: Upload ${job === 'windows-x64' ? 'Windows' : 'Linux'} installed evidence`)
+    const evidenceUploadEnd = evidenceUploadStart >= 0 ? section.indexOf('      - name: ', evidenceUploadStart + 1) : -1
+    const evidenceUploadSection = evidenceUploadStart >= 0
+      ? section.slice(evidenceUploadStart, evidenceUploadEnd >= evidenceUploadStart ? evidenceUploadEnd : undefined)
+      : ''
+    const pathLines = uploadPathLines(evidenceUploadSection)
     const expectedPaths = [...installerGlobs, reportPath, gatePath]
     failure(failures, JSON.stringify(pathLines) === JSON.stringify(expectedPaths), `${job} upload paths must contain only distributable files, report JSON, and gate log`)
     failure(failures, section.includes(`TOCKTEAM_INSTALLED_SMOKE_DIAGNOSTICS: ${diagnosticsPath}`), `${job} must write diagnostics to the exact run path`)
-    failure(failures, new RegExp(`Upload ${job === 'windows-x64' ? 'Windows' : 'Linux'} installed smoke diagnostics[\\s\\S]+if:\\s*always\\(\\)\\s*&&\\s*steps\\.installed-smoke\\.outcome == 'failure'[\\s\\S]+path:\\s*\\$\\{\\{ runner\\.temp \\}\\}/tockteam-installed-launcher-diagnostics-\\$\\{\\{ github\\.run_id \\}\\}\\.json`, 'u').test(section), `${job} must upload exact failure diagnostics only after installed smoke fails`)
+    const diagnosticsUploadStart = section.indexOf(`      - name: Upload ${job === 'windows-x64' ? 'Windows' : 'Linux'} installed smoke diagnostics`)
+    const diagnosticsUploadEnd = diagnosticsUploadStart >= 0 ? section.indexOf('      - name: ', diagnosticsUploadStart + 1) : -1
+    const diagnosticsSection = diagnosticsUploadStart >= 0
+      ? section.slice(diagnosticsUploadStart, diagnosticsUploadEnd >= diagnosticsUploadStart ? diagnosticsUploadEnd : undefined)
+      : ''
+    const diagnosticsPathLines = uploadPathLines(diagnosticsSection)
+    const expectedDiagnosticsPaths = job === 'linux-x64' ? [diagnosticsPath, '${{ runner.temp }}/tockteam-installed-kernel-diagnostics-${{ github.run_id }}.txt'] : [diagnosticsPath]
+    failure(failures, JSON.stringify(diagnosticsPathLines) === JSON.stringify(expectedDiagnosticsPaths), `${job} must upload exact failure diagnostics paths`)
+    failure(failures, /if:\s*always\(\)\s*&&\s*steps\.installed-smoke\.outcome == 'failure'/u.test(diagnosticsSection), `${job} must upload failure diagnostics only after installed smoke fails`)
+    if (job === 'linux-x64') {
+      const kernelDiagnosticsPath = '${{ runner.temp }}/tockteam-installed-kernel-diagnostics-${{ github.run_id }}.txt'
+      failure(failures, /ulimit -c 0[\s\S]*pnpm test:launcher:installed/u.test(section), `${job} must disable core dumps before installed smoke`)
+      failure(failures, section.includes(kernelDiagnosticsPath), `${job} must write kernel diagnostics to the exact run path`)
+      failure(failures, /sudo -n \/usr\/bin\/dmesg[\s\S]*tail -n 200/u.test(section), `${job} must capture a bounded dmesg tail`)
+      failure(failures, /sudo -n \/usr\/bin\/journalctl -k[\s\S]*tail -n 200/u.test(section), `${job} must record a bounded journalctl fallback`)
+      failure(failures, new RegExp(`Upload Linux installed smoke diagnostics[\\s\\S]+path:\\s*\\|[\\s\\S]+tockteam-installed-launcher-diagnostics-\\$\\{\\{ github\\.run_id \\}\\}\\.json[\\s\\S]+tockteam-installed-kernel-diagnostics-\\$\\{\\{ github\\.run_id \\}\\}\\.txt`, 'u').test(section), `${job} must upload kernel diagnostics alongside smoke diagnostics`)
+    }
   }
   failure(failures, /check-installed-report\.mjs/u.test(text), 'installed evidence workflow must verify the actual installed report')
   failure(failures, /Record installed gate outcomes/u.test(text), 'installed evidence workflow must record deterministic gate outcomes')

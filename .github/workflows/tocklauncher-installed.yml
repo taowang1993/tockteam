@@ -149,7 +149,9 @@ jobs:
           TOCKTEAM_INSTALLED_SMOKE_TEMP_ROOT: ${{ runner.temp }}
           TOCKTEAM_INSTALLED_SMOKE_REPORT: ${{ runner.temp }}/tockteam-installed-launcher-smoke-${{ github.run_id }}.json
           TOCKTEAM_INSTALLED_SMOKE_DIAGNOSTICS: ${{ runner.temp }}/tockteam-installed-launcher-diagnostics-${{ github.run_id }}.json
-        run: xvfb-run -a pnpm test:launcher:installed
+        run: |
+          ulimit -c 0
+          exec xvfb-run -a pnpm test:launcher:installed
 
       - name: Verify the installed report identity and version
         id: report-check
@@ -169,13 +171,39 @@ jobs:
         run: |
           printf '{\n  "ueliGates": "%s",\n  "installedSmoke": "%s",\n  "reportCheck": "%s"\n}\n' "$UELI_OUTCOME" "$SMOKE_OUTCOME" "$REPORT_OUTCOME" > "$GATE_LOG"
 
+      - name: Capture Linux kernel crash diagnostics
+        if: always() && steps.installed-smoke.outcome == 'failure'
+        shell: bash
+        env:
+          KERNEL_DIAGNOSTICS: ${{ runner.temp }}/tockteam-installed-kernel-diagnostics-${{ github.run_id }}.txt
+        run: |
+          set +e
+          {
+            printf '%s\n' 'TockTeam Linux installed smoke kernel diagnostics'
+            printf '%s\n' '[dmesg tail]'
+            sudo -n /usr/bin/dmesg 2>&1 | tail -n 200
+            dmesg_status=${PIPESTATUS[0]}
+            if [ "$dmesg_status" -ne 0 ]; then
+              printf '[dmesg unavailable; exit=%s]\n' "$dmesg_status"
+              printf '%s\n' '[journalctl -k tail]'
+              sudo -n /usr/bin/journalctl -k --no-pager 2>&1 | tail -n 200
+              journalctl_status=${PIPESTATUS[0]}
+              if [ "$journalctl_status" -ne 0 ]; then
+                printf '[journalctl unavailable; exit=%s]\n' "$journalctl_status"
+              fi
+            fi
+          } > "$KERNEL_DIAGNOSTICS" 2>&1
+          test -f "$KERNEL_DIAGNOSTICS"
+
       - name: Upload Linux installed smoke diagnostics
         if: always() && steps.installed-smoke.outcome == 'failure'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: tocklauncher-installed-linux-x64-diagnostics-${{ github.run_id }}
           compression-level: 0
-          path: ${{ runner.temp }}/tockteam-installed-launcher-diagnostics-${{ github.run_id }}.json
+          path: |
+            ${{ runner.temp }}/tockteam-installed-launcher-diagnostics-${{ github.run_id }}.json
+            ${{ runner.temp }}/tockteam-installed-kernel-diagnostics-${{ github.run_id }}.txt
           if-no-files-found: error
 
       - name: Upload Linux installed evidence

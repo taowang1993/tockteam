@@ -13,6 +13,7 @@ import { build } from 'electron-builder'
 import {
   canonicalPath,
   freePort,
+  formatDiagnosticError,
   launchPackaged,
   packagedBuilderConfig,
   preparePackagedArtifact,
@@ -185,10 +186,6 @@ async function hashFile(path) {
 
 const INSTALLED_DIAGNOSTICS_MAX_BYTES = 16_000
 
-function errorDetail(error) {
-  return error instanceof Error ? error.stack ?? error.message : String(error)
-}
-
 export async function writeInstalledSmokeDiagnostics(path, { platform, version, sourceCommit = null, error }) {
   const diagnostics = {
     schemaVersion: 1,
@@ -197,7 +194,7 @@ export async function writeInstalledSmokeDiagnostics(path, { platform, version, 
     architecture: process.arch,
     version,
     sourceCommit: /^[0-9a-f]{40}$/u.test(sourceCommit ?? '') ? sourceCommit : null,
-    errorTail: errorDetail(error).slice(-INSTALLED_DIAGNOSTICS_MAX_BYTES),
+    errorTail: formatDiagnosticError(error).slice(-INSTALLED_DIAGNOSTICS_MAX_BYTES),
   }
   const diagnosticsPath = resolve(path)
   await mkdir(dirname(diagnosticsPath), { recursive: true })
@@ -518,6 +515,26 @@ async function buildPortableArchive(artifact) {
   return Object.freeze({ archive, installerDir, markerPath, sha256: await hashFile(archive) })
 }
 
+async function runLinuxAppImageSmoke(appImage, artifact) {
+  const appImageRoot = join(artifact.rootPath, 'appimage')
+  await mkdir(appImageRoot, { recursive: true })
+  await runProcess(appImage, ['--appimage-extract'], { cwd: appImageRoot, disposableRoot: artifact.rootPath })
+  const extractedRoot = join(appImageRoot, 'squashfs-root')
+  const appImageInventory = await inspectPackage(extractedRoot, artifact.target)
+  assertPackageParity(artifact.inventory, appImageInventory)
+  const appImageSmoke = await installedSession(appImageInventory.executable, join(artifact.userData, 'appimage'), appImageInventory, artifact.target, { args: ['--no-sandbox'], installRoot: extractedRoot })
+  await withInstalledSession(appImageSmoke, async () => {}, session => closeInstalledSession(session, appImageInventory.executable, extractedRoot))
+  return Object.freeze({
+    artifact: appImage,
+    installRoot: extractedRoot,
+    package: appImageInventory,
+    renderer: appImageSmoke.renderer,
+    provider: appImageSmoke.platform,
+    secondInstance: appImageSmoke.secondInstance,
+    runtime: { runtimeReady: true },
+  })
+}
+
 async function runNonMacInstalledSmoke(artifact) {
   if (artifact.target.key === 'win') {
     const portable = await buildPortableArchive(artifact)
@@ -571,6 +588,7 @@ async function runNonMacInstalledSmoke(artifact) {
     const deb = await findFile(installerDir, entry => entry.name.endsWith('.deb'))
     const appImage = await findFile(installerDir, entry => entry.name.endsWith('.AppImage'))
     assert.ok(deb && appImage)
+    const appImageEvidence = await runLinuxAppImageSmoke(appImage, artifact)
     const packageName = (await runProcess('/usr/bin/dpkg-deb', ['-f', deb, 'Package'], { disposableRoot: artifact.rootPath })).stdout.trim()
     const packageVersion = (await runProcess('/usr/bin/dpkg-deb', ['-f', deb, 'Version'], { disposableRoot: artifact.rootPath })).stdout.trim()
     const installRoot = join('/opt', contract.identity.productName)
@@ -619,17 +637,9 @@ async function runNonMacInstalledSmoke(artifact) {
     assert.equal(await installedStatus(), undefined, 'Linux deb package remained in the runner dpkg database after purge')
     assert.equal(existsSync(installRoot), false, 'Linux deb purge did not remove the installed /opt payload')
 
-    const appImageRoot = join(artifact.rootPath, 'appimage')
-    await mkdir(appImageRoot, { recursive: true })
-    await runProcess(appImage, ['--appimage-extract'], { cwd: appImageRoot, disposableRoot: artifact.rootPath })
-    const extractedRoot = join(appImageRoot, 'squashfs-root')
-    const appImageInventory = await inspectPackage(extractedRoot, artifact.target)
-    assertPackageParity(artifact.inventory, appImageInventory)
-    const appImageSmoke = await installedSession(appImageInventory.executable, join(artifact.userData, 'appimage'), appImageInventory, artifact.target, { args: ['--no-sandbox'], installRoot: extractedRoot })
-    await withInstalledSession(appImageSmoke, async () => {}, session => closeInstalledSession(session, appImageInventory.executable, extractedRoot))
     const appImageProcessTreesGone = true
     report.installed = {
-      appImage: { artifact: appImage, installRoot: extractedRoot, package: appImageInventory, renderer: appImageSmoke.renderer, provider: appImageSmoke.platform, secondInstance: appImageSmoke.secondInstance, runtime: { runtimeReady: true } },
+      appImage: appImageEvidence,
       deb: { artifact: deb, installRoot, package: installedInventory, renderer: debSmoke.renderer, provider: debSmoke.platform, secondInstance: debSmoke.secondInstance, reinstall: { package: reinstalledInventory, settings: debReinstall }, rollback: { state: 'workflow-required', reason: 'dpkg has no atomic rollback transaction' }, uninstall: 'dpkg-purge-passed' },
       processTreesGone: debProcessTreesGone && debReinstall.processTreesGone === true && appImageProcessTreesGone,
     }
@@ -698,8 +708,12 @@ async function main() {
 const isDirectInvocation = process.argv[1] !== undefined
   && resolve(process.argv[1]) === fileURLToPath(import.meta.url)
 if (isDirectInvocation) {
-  if (process.argv.includes(smokeFlag)) await main()
-  else {
+  if (process.argv.includes(smokeFlag)) {
+    await main().catch(error => {
+      console.error(formatDiagnosticError(error))
+      process.exitCode = 1
+    })
+  } else {
     console.error(`This installed smoke requires ${smokeFlag}`)
     process.exitCode = 2
   }

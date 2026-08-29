@@ -43,6 +43,8 @@ export function selectCdpDescriptor<T extends Readonly<{ title?: string; webSock
 
 export function windowsCdpListenerOwned(output: string, pid: number, port: number): boolean
 
+export function formatDiagnosticError(value: unknown): string
+
 export function collectPackagedProcessDiagnostics(options?: Readonly<{
   child?: Readonly<{ pid?: number; exitCode?: number | null; signalCode?: NodeJS.Signals | null }>
   command?: string

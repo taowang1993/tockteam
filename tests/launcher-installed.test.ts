@@ -87,6 +87,7 @@ test('TockTeam exposes an executable installed-artifact smoke and audit', () => 
   assert.match(installedSmoke, /writeInstalledSmokeDiagnostics/u)
   assert.match(installedSmoke, /withInstalledSession/u)
   assert.match(installedSmoke, /--enable-logging=stderr/u)
+  assert.ok(installedSmoke.indexOf('const appImageEvidence = await runLinuxAppImageSmoke(appImage, artifact)') < installedSmoke.indexOf("await dpkg(['--install', deb])"))
   assert.match(installedSmoke, /sha256/u)
   assert.match(mainSource, /process\.stderr\.write/u)
   assert.match(installWindows, /process\.platform !== 'win32'/u)
@@ -223,23 +224,42 @@ test('installed session cleanup preserves primary and cleanup failures', async (
   assert.equal(cleaned, true)
 })
 
-test('failed installed smoke diagnostics are bounded and never a passed report', async () => {
+test('failed installed smoke diagnostics are bounded and retain nested assertion and cleanup errors', async () => {
   const rootPath = await mkdtemp(join(tmpdir(), 'tockteam-installed-diagnostics-'))
   try {
     const path = join(rootPath, 'diagnostics.json')
+    const cause = new Error('root launch cause')
+    const aggregate = new AggregateError([
+      new Error('renderer assertion failed'),
+      new Error('cleanup process remained'),
+    ], 'installed session assertion and cleanup both failed', { cause })
+    cause.cause = aggregate
     await writeInstalledSmokeDiagnostics(path, {
       platform: 'linux',
       version: '0.1.14',
       sourceCommit: 'a'.repeat(40),
-      error: 'x'.repeat(20_000),
+      error: aggregate,
     })
     const diagnostics = JSON.parse(await readFile(path, 'utf8'))
     assert.equal(diagnostics.result, 'failed')
     assert.equal(diagnostics.platform, 'linux')
     assert.equal(diagnostics.version, '0.1.14')
     assert.equal(diagnostics.sourceCommit, 'a'.repeat(40))
-    assert.equal(diagnostics.errorTail.length, 16_000)
+    assert.match(diagnostics.errorTail, /renderer assertion failed/u)
+    assert.match(diagnostics.errorTail, /cleanup process remained/u)
+    assert.match(diagnostics.errorTail, /root launch cause/u)
+    assert.match(diagnostics.errorTail, /diagnostic cycle/u)
+    assert.ok(diagnostics.errorTail.length <= 16_000)
     assert.equal(diagnostics.passed, undefined)
+
+    await writeInstalledSmokeDiagnostics(path, {
+      platform: 'linux',
+      version: '0.1.14',
+      sourceCommit: 'a'.repeat(40),
+      error: 'x'.repeat(20_000),
+    })
+    const bounded = JSON.parse(await readFile(path, 'utf8'))
+    assert.equal(bounded.errorTail.length, 16_000)
   } finally {
     await rm(rootPath, { recursive: true, force: true })
   }
@@ -423,6 +443,7 @@ test('packaged smoke live timeout includes launch args and process state before 
       if (process.platform === 'linux') {
         assert.match(String(error), /\/proc\/\d+\/cmdline/u)
         assert.match(String(error), /\/proc\/\d+\/status/u)
+        assert.match(String(error), /CoreDumping:/u)
         assert.match(String(error), /\/proc\/\d+\/wchan/u)
         assert.doesNotMatch(String(error), /\0/u)
       }
@@ -746,6 +767,11 @@ test('release and platform workflows retain ordered package and installed gates'
     else {
       assert.match(section, /tockteam-installed-launcher-smoke-\*\/installer\/\*\.deb/u)
       assert.match(section, /tockteam-installed-launcher-smoke-\*\/installer\/\*\.AppImage/u)
+      assert.match(section, /ulimit -c 0[\s\S]*xvfb-run -a pnpm test:launcher:installed/u)
+      assert.match(section, /tockteam-installed-kernel-diagnostics-\$\{\{ github\.run_id \}\}\.txt/u)
+      assert.match(section, /sudo -n \/usr\/bin\/dmesg/u)
+      assert.match(section, /sudo -n \/usr\/bin\/journalctl/u)
+      assert.match(section, /tail -n 200/u)
     }
     assert.match(section, /tockteam-installed-launcher-smoke-\$\{\{ github\.run_id \}\}\.json/u)
     assert.match(section, /tockteam-installed-launcher-gate-\$\{\{ github\.run_id \}\}\.json/u)
