@@ -66,7 +66,7 @@ test('installed smoke selects only the loopback descriptor and root NSIS artifac
     await mkdir(join(rootPath, 'win-unpacked'), { recursive: true })
     await writeFile(join(rootPath, 'win-unpacked', 'TockTeam Desktop.exe'), '')
     await writeFile(join(rootPath, 'TockTeam-Desktop-0.1.14-x64.exe'), '')
-    assert.equal(await findNsisInstaller(rootPath), join(rootPath, 'TockTeam-Desktop-0.1.14-x64.exe'))
+    assert.equal(await findNsisInstaller(rootPath, 1), join(rootPath, 'TockTeam-Desktop-0.1.14-x64.exe'))
   } finally {
     await rm(rootPath, { recursive: true, force: true })
   }
@@ -97,6 +97,7 @@ test('package smoke is hermetic and verifies resources plus process ownership', 
   assert.doesNotMatch(packagedSmoke, /spawnOptions\.shell\s*=\s*true/u)
   assert.match(cleanup, /taskkill/iu)
   assert.match(cleanup, /process\.kill\(-/u)
+  assert.match(cleanup, /assertProcessTreeGone/u)
 })
 
 test('extra-resource inspection is bounded and never follows symlink cycles', async () => {

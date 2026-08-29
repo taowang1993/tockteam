@@ -262,11 +262,16 @@ async function runPlatformOutcomeSmoke(workbench, launcher, target) {
     : []
   const enabled = [...new Set([...original, ...extraIds])]
   await workbench.evaluate(`(async () => await window.dshDesktop?.launcher?.settings?.updateSetting('extensions.enabledExtensionIds', ${JSON.stringify(enabled)}))()`)
+  const expectedStates = target.key === 'win'
+    ? { WindowsControlPanel: 'ready', TerminalLauncher: 'ready' }
+    : target.key === 'linux'
+      ? { BrowserBookmarks: 'unsupported', FileSearch: 'unsupported', TerminalLauncher: 'unsupported' }
+      : { WindowsControlPanel: 'unsupported' }
   const settings = await waitFor(
     () => launcher.evaluate('(async () => await window.tockteamLauncher?.getSurfaceSettings())()'),
     value => Array.isArray(value?.providerStatuses)
       && value.providerStatuses.length === 24
-      && value.providerStatuses.some(status => status.extensionId === extraIds[0]),
+      && Object.entries(expectedStates).every(([id, state]) => value.providerStatuses.some(status => status.extensionId === id && status.state === state)),
     10_000,
   )
   const statuses = Object.fromEntries(settings.providerStatuses.map(status => [status.extensionId, status.state]))
@@ -284,7 +289,12 @@ async function runPlatformOutcomeSmoke(workbench, launcher, target) {
   }
   assert.equal(statuses.WindowsControlPanel, 'ready')
   assert.equal(statuses.TerminalLauncher, 'ready')
-  return Object.freeze({ controlPanel: statuses.WindowsControlPanel, destructiveEffects: 'not-invoked', providerCount: settings.providerStatuses.length, terminal: statuses.TerminalLauncher })
+  const terminalAction = await launcher.evaluate(`(async () => {
+    const response = await window.tockteamLauncher?.search('>', { fuzziness: 0.5, maxSearchResultItems: 50, searchEngineId: 'fuzzysort' })
+    return [...(response?.before ?? []), ...(response?.after ?? [])].find(item => item.sourceExtension === 'TerminalLauncher')?.defaultAction ?? null
+  })()`)
+  assert.equal(terminalAction?.requiresConfirmation, true, 'Windows terminal actions must require elevation confirmation')
+  return Object.freeze({ controlPanel: statuses.WindowsControlPanel, destructiveEffects: 'not-invoked', elevation: 'confirmation-required-not-invoked', providerCount: settings.providerStatuses.length, terminal: statuses.TerminalLauncher })
 }
 
 async function runMacInstalledSmoke(artifact) {
@@ -430,6 +440,7 @@ async function runNonMacInstalledSmoke(artifact) {
       provider: smoke.platform,
       secondInstance: smoke.secondInstance,
       reinstall: { package: reinstalledInventory, settings: reinstall },
+      rollback: { state: 'workflow-required', reason: 'NSIS has no atomic rollback transaction' },
       uninstall: 'nsis-uninstaller-passed',
     }
   } else {
@@ -472,7 +483,7 @@ async function runNonMacInstalledSmoke(artifact) {
     const appImageSmoke = await runAppImageSmoke(appImage, join(artifact.userData, 'appimage'))
     report.installed = {
       appImage: { package: appImageInventory, runtime: appImageSmoke },
-      deb: { package: installedInventory, provider: debSmoke.platform, secondInstance: debSmoke.secondInstance, reinstall: { package: reinstalledInventory, settings: debReinstall }, uninstall: 'dpkg-purge-passed' },
+      deb: { package: installedInventory, provider: debSmoke.platform, secondInstance: debSmoke.secondInstance, reinstall: { package: reinstalledInventory, settings: debReinstall }, rollback: { state: 'workflow-required', reason: 'dpkg has no atomic rollback transaction' }, uninstall: 'dpkg-purge-passed' },
     }
   }
   return Object.freeze(report)
