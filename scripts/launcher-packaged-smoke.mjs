@@ -554,18 +554,20 @@ export async function inspectPackage(outputDir, target) {
   })
 }
 
-export async function launchPackaged(executable, userData, port, extraArgs = []) {
+export async function launchPackaged(executable, userData, port, extraArgs = [], launchOptions = {}) {
+  const childFlag = launchOptions.flag ?? smokeFlag
+  const childEnvironment = launchOptions.env ?? { TOCKTEAM_PACKAGED_SMOKE: '1' }
   const child = spawnProcess(executable, [
     ...extraArgs,
     `--remote-debugging-address=127.0.0.1`,
     `--remote-debugging-port=${String(port)}`,
     `--user-data-dir=${userData}`,
-    smokeFlag,
+    childFlag,
     '--toggle',
   ], {
     cwd: root,
     detached: true,
-    env: smokeEnvironment({ TOCKTEAM_PACKAGED_SMOKE: '1' }),
+    env: smokeEnvironment(childEnvironment),
     stdio: ['ignore', 'pipe', 'pipe'],
   })
   let output = ''

@@ -190,10 +190,16 @@ const PRODUCT_VERSION = resolveProductVersion(join(currentDir, '..'))
 const splashPath = join(currentDir, 'splash.html')
 const preloadPath = join(currentDir, 'preload.cjs')
 const launcherHtmlPath = join(currentDir, 'launcher.html')
-// Package smoke may fail closed for secure storage because ad-hoc CI bundle identities can block macOS Keychain prompts.
+// Package/installed evidence may fail closed for secure storage because ad-hoc
+// CI bundle identities can block macOS Keychain prompts. Both flags are
+// explicit test-only controls and require a packaged app.
 const launcherPackagedSmokeEnabled = app.isPackaged
-  && process.argv.includes('--tockteam-launcher-packaged-smoke')
-  && process.env.TOCKTEAM_PACKAGED_SMOKE === '1'
+  && (
+    process.argv.includes('--tockteam-launcher-packaged-smoke')
+      && process.env.TOCKTEAM_PACKAGED_SMOKE === '1'
+    || process.argv.includes('--tockteam-launcher-installed-smoke')
+      && process.env.TOCKTEAM_INSTALLED_SMOKE === '1'
+  )
 const launcherNetworkFixtureEnabled = !app.isPackaged && process.env.TOCKTEAM_NETWORK_FIXTURE === '1'
 const launcherOsFixtureEnabled = !app.isPackaged && process.env.TOCKTEAM_OS_FIXTURE === '1'
 const launcherTerminalFixtureEnabled = !app.isPackaged && process.env.TOCKTEAM_TERMINAL_FIXTURE === '1'

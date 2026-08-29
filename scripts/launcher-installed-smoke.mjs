@@ -122,7 +122,13 @@ async function inspectMacBundle(appPath) {
 
 async function installedSession(executable, userData, inventory, target, options = {}) {
   const port = await freePort()
-  const launched = await launchPackaged(executable, userData, port, options.args ?? [])
+  const launched = await launchPackaged(
+    executable,
+    userData,
+    port,
+    options.args ?? [],
+    { flag: smokeFlag, env: { TOCKTEAM_INSTALLED_SMOKE: '1' } },
+  )
   try {
     const renderer = await runRendererSmoke(launched.workbench, launched.launcher, inventory, userData)
     const platform = await runPlatformOutcomeSmoke(launched.workbench, launched.launcher, target)
@@ -135,7 +141,13 @@ async function installedSession(executable, userData, inventory, target, options
 
 async function readPersistedSetting(executable, userData, target, key, expected) {
   const port = await freePort()
-  const launched = await launchPackaged(executable, userData, port, target.key === 'linux' ? ['--no-sandbox'] : [])
+  const launched = await launchPackaged(
+    executable,
+    userData,
+    port,
+    target.key === 'linux' ? ['--no-sandbox'] : [],
+    { flag: smokeFlag, env: { TOCKTEAM_INSTALLED_SMOKE: '1' } },
+  )
   try {
     const value = await launched.workbench.evaluate(`(async () => (await window.dshDesktop?.launcher?.settings?.getSnapshot())?.values?.[${JSON.stringify(key)}] ?? null)()`)
     assert.deepEqual(value, expected)
@@ -151,7 +163,9 @@ async function readPersistedSetting(executable, userData, target, key, expected)
 async function runPlatformOutcomeSmoke(workbench, launcher, target) {
   const extraIds = target.key === 'win'
     ? ['WindowsControlPanel', 'TerminalLauncher']
-    : ['BrowserBookmarks', 'FileSearch', 'TerminalLauncher']
+    : target.key === 'linux'
+      ? ['BrowserBookmarks', 'FileSearch', 'TerminalLauncher']
+      : ['WindowsControlPanel', 'TerminalLauncher']
   const snapshot = await workbench.evaluate(`(async () => await window.dshDesktop?.launcher?.settings?.getSnapshot())()`)
   const original = Array.isArray(snapshot?.values?.['extensions.enabledExtensionIds'])
     ? snapshot.values['extensions.enabledExtensionIds']
@@ -160,16 +174,21 @@ async function runPlatformOutcomeSmoke(workbench, launcher, target) {
   await workbench.evaluate(`(async () => await window.dshDesktop?.launcher?.settings?.updateSetting('extensions.enabledExtensionIds', ${JSON.stringify(enabled)}))()`)
   const settings = await launcher.evaluate('(async () => await window.tockteamLauncher?.getSurfaceSettings())()')
   const statuses = Object.fromEntries(settings.providerStatuses.map(status => [status.extensionId, status.state]))
+  assert.equal(settings.providerStatuses.length, 24, 'installed launcher provider catalog is incomplete')
   if (target.key === 'linux') {
     assert.equal(statuses.FileSearch, 'unsupported')
     assert.equal(statuses.TerminalLauncher, 'unsupported')
     assert.equal(statuses.BrowserBookmarks, 'unsupported')
     assert.equal(snapshot.customBrowserStatus ?? 'none', 'none')
-    return Object.freeze({ customBrowser: 'system-browser-only', fileSearch: statuses.FileSearch, terminal: statuses.TerminalLauncher })
+    return Object.freeze({ customBrowser: 'system-browser-only', fileSearch: statuses.FileSearch, providerCount: settings.providerStatuses.length, terminal: statuses.TerminalLauncher })
+  }
+  if (target.key === 'mac') {
+    assert.equal(statuses.WindowsControlPanel, 'unsupported')
+    return Object.freeze({ controlPanel: statuses.WindowsControlPanel, destructiveEffects: 'not-invoked', providerCount: settings.providerStatuses.length, terminal: statuses.TerminalLauncher })
   }
   assert.notEqual(statuses.WindowsControlPanel, 'unsupported')
   assert.notEqual(statuses.TerminalLauncher, 'unsupported')
-  return Object.freeze({ controlPanel: statuses.WindowsControlPanel, terminal: statuses.TerminalLauncher, destructiveEffects: 'not-invoked' })
+  return Object.freeze({ controlPanel: statuses.WindowsControlPanel, destructiveEffects: 'not-invoked', providerCount: settings.providerStatuses.length, terminal: statuses.TerminalLauncher })
 }
 
 async function runMacInstalledSmoke(artifact) {
@@ -234,8 +253,22 @@ async function runMacInstalledSmoke(artifact) {
   assert.equal(afterRollback, beforeRollback)
   assert.equal(existsSync(join(applicationsRoot, '.TockTeam Desktop.app.install.lock')), false)
   return Object.freeze({
-    classification: 'unsigned/internal macOS evidence; not signed, notarized, or public',
+    classification: 'unsigned/internal macOS evidence (ad-hoc signed for local execution); not notarized or public distribution',
     identity,
+    package: {
+      appPath: artifact.inventory.appPath,
+      assetCount: artifact.inventory.assetCount,
+      extraResources: artifact.inventory.extraResources,
+      vendorSourceShipped: artifact.inventory.vendorSourceShipped,
+    },
+    renderer: {
+      launcher: first.renderer.launcher,
+      runtimeArchitecture: first.renderer.runtimeArchitecture,
+      search: first.renderer.search,
+      security: first.renderer.security,
+      settingsRoundTrip: first.renderer.settingsRoundTrip,
+      workbench: first.renderer.workbench,
+    },
     reinstall: { backup: reinstall.backup !== undefined, identity: reinstalledIdentity, settings: restored },
     rollback: { preservedAsarSha256: afterRollback, validationFailureRecovered: true },
     provider: first.platform,
