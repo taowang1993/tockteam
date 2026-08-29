@@ -94,7 +94,7 @@ licensed; source: <https://github.com/oliverschwendener/ueli>.
 Copyright (c) 2023 Oliver Schwendener.
 
 The assets `linux-applications.png` and `linux-generic-app-icon.png` by GNOME Project
-(<http://www.gnome.org>) are licensed under CC BY-SA 3.0
+(<https://www.gnome.org>) are licensed under CC BY-SA 3.0
 (<https://creativecommons.org/licenses/by-sa/3.0/>).
 
 The Custom Web Search icon is designed by OpenMoji (<https://openmoji.org/>) and

@@ -424,6 +424,7 @@ function listAsarFiles(header, prefix = '', result = []) {
 function asarEntry(header, path) {
   let current = header.files
   for (const part of path.split('/')) {
+    if (current !== null && typeof current === 'object' && current.files !== undefined && !(part in current)) current = current.files
     if (current === null || typeof current !== 'object' || !(part in current)) return undefined
     current = current[part]
   }
@@ -486,7 +487,7 @@ async function assertArchiveInventory(files, asar, asarText, asarPath) {
 }
 
 async function listResourceFiles(rootPath, relative = '', result = [], depth = 0) {
-  if (depth > 10 || result.length > 20_000) throw new Error('packaged extra-resource tree is too large')
+  if (depth > 24 || result.length > 500_000) throw new Error('packaged extra-resource tree is too large')
   let entries
   try {
     entries = await readdir(rootPath, { withFileTypes: true })
@@ -795,8 +796,12 @@ export async function main() {
   }
 }
 
-if (process.argv.includes(smokeFlag)) await main()
-else {
-  console.error(`This package smoke requires ${smokeFlag}`)
-  process.exitCode = 2
+const isDirectInvocation = process.argv[1] !== undefined
+  && resolve(process.argv[1]) === fileURLToPath(import.meta.url)
+if (isDirectInvocation) {
+  if (process.argv.includes(smokeFlag)) await main()
+  else {
+    console.error(`This package smoke requires ${smokeFlag}`)
+    process.exitCode = 2
+  }
 }

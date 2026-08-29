@@ -173,8 +173,14 @@ async function runPlatformOutcomeSmoke(workbench, launcher, target) {
 }
 
 async function runMacInstalledSmoke(artifact) {
+  // electron-builder's package input and staged node_modules are large. They
+  // are no longer needed once the actual app bundle exists, so remove them
+  // before copying the bundle into the disposable Applications-like root.
+  await rm(artifact.appDir, { recursive: true, force: true })
+  await rm(join(dirname(artifact.appDir), 'deploy-source'), { recursive: true, force: true })
   const sourceApp = artifact.inventory.executable.split('/Contents/MacOS/')[0]
   const applicationsRoot = join(artifact.rootPath, 'Applications')
+  await mkdir(applicationsRoot, { recursive: true })
   const destination = join(applicationsRoot, 'TockTeam Desktop.app')
   const backupDirectory = join(artifact.rootPath, 'Trash')
   const copyBundle = async (from, to) => {
