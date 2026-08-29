@@ -5,11 +5,10 @@ import { createServer } from 'node:net'
 import { spawn as spawnProcess, spawnSync } from 'node:child_process'
 import { cp, open, mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { dirname, join, relative, resolve } from 'node:path'
+import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createRequire } from 'node:module'
 import { Arch, DIR_TARGET, Platform, build } from 'electron-builder'
-import { ensureElectronInstalled } from './electron-runtime.mjs'
 import { stopChildProcess } from './process-cleanup.mjs'
 import { LAUNCHER_CSP, LAUNCHER_SESSION_PARTITION } from '../src/launcher-security.ts'
 
@@ -217,7 +216,10 @@ async function clearStartupDialogs(page) {
 }
 
 function run(command, args, options = {}) {
-  const result = spawnSync(command, args, { cwd: root, stdio: 'inherit', ...options })
+  const spawnOptions = { cwd: root, stdio: 'inherit', ...options }
+  // Windows exposes pnpm through a .cmd shim; the fixed build arguments are safe for cmd.exe.
+  if (process.platform === 'win32' && command.toLowerCase().endsWith('.cmd')) spawnOptions.shell = true
+  const result = spawnSync(command, args, spawnOptions)
   if (result.error !== undefined) throw result.error
   if (result.status !== 0) throw new Error(`${command} ${args.join(' ')} failed with status ${String(result.status)}`)
 }
