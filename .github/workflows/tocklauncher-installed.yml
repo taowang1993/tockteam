@@ -47,6 +47,10 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Verify package version contract
+        shell: bash
+        run: node scripts/check-release-version.mjs --tag "v$(node -p \"require('./package.json').version\")"
+
       - name: Build and install the disposable NSIS artifact
         shell: bash
         env:
@@ -98,6 +102,10 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Verify package version contract
+        shell: bash
+        run: node scripts/check-release-version.mjs --tag "v$(node -p \"require('./package.json').version\")"
 
       - name: Build and install disposable deb/AppImage artifacts
         shell: bash

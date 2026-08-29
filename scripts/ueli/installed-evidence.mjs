@@ -77,6 +77,7 @@ export function inspectInstalledEvidenceWorkflow(workflow) {
   failure(failures, /runs-on: windows-latest/u.test(text), 'installed evidence workflow must include Windows x64')
   failure(failures, /runs-on: ubuntu-24\.04/u.test(text), 'installed evidence workflow must include Linux x64')
   failure(failures, /pnpm test:launcher:installed/u.test(text), 'installed evidence workflow must execute installed smoke')
+  failure(failures, /check-release-version\.mjs --tag/u.test(text), 'installed evidence workflow must verify package version')
   failure(failures, /upload-artifact/u.test(text), 'installed evidence workflow must upload evidence')
   for (const action of text.matchAll(/^\s*uses:\s*([^\s#]+)/gmu)) failure(failures, /@[0-9a-f]{40}$/u.test(action[1]), `installed evidence workflow action is not immutable: ${action[1]}`)
   return Object.freeze({ failures })
