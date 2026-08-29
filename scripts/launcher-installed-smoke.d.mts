@@ -8,6 +8,22 @@ export {
 
 export function assertPackageParity(expected: Record<string, any>, actual: Record<string, any>): void
 
+export function withInstalledSession<T>(
+  session: unknown,
+  operation: (session: unknown) => T | Promise<T>,
+  cleanup: (session: unknown) => void | Promise<void>,
+): Promise<T>
+
+export function writeInstalledSmokeDiagnostics(
+  path: string,
+  options: Readonly<{
+    platform: string
+    version: string
+    sourceCommit?: string | null
+    error: unknown
+  }>,
+): Promise<string>
+
 export function installerBuildPlan(
   target: Readonly<{ key: string }>,
   formats: readonly string[],

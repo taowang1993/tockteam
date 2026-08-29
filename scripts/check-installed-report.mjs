@@ -57,6 +57,20 @@ function inspectSecondInstance(failures, secondInstance) {
   failure(failures, secondInstance?.permissions === 'renderer-permission-denied', 'installed permission evidence is missing')
 }
 
+function inspectWindowsProvider(failures, provider) {
+  const expected = {
+    controlPanel: 'ready',
+    destructiveEffects: 'not-invoked',
+    elevation: 'confirmation-required-not-invoked',
+    providerCount: 24,
+    terminal: 'ready',
+  }
+  failure(failures, object(provider), 'Windows provider evidence is missing')
+  if (!object(provider)) return
+  failure(failures, Object.keys(provider).sort().join(',') === Object.keys(expected).sort().join(','), 'Windows provider evidence shape differs from the exact contract')
+  for (const [key, value] of Object.entries(expected)) failure(failures, provider[key] === value, `Windows provider evidence differs for ${key}`)
+}
+
 export function inspectInstalledReport(report, expected) {
   const failures = []
   failure(failures, object(report), 'installed report is not an object')
@@ -75,7 +89,9 @@ export function inspectInstalledReport(report, expected) {
     if (object(installed)) {
       failure(failures, installed.portableArchive?.format === 'tar.gz' && /\.tar\.gz$/iu.test(installed.portableArchive?.path ?? ''), 'Windows portable archive evidence is missing')
       failure(failures, installed.portableArchive?.version === expected.version, 'Windows portable archive version differs')
+      failure(failures, /^[0-9a-f]{64}$/u.test(installed.portableArchive?.sha256 ?? ''), 'Windows portable archive hash is missing or invalid')
       inspectPackage(failures, installed.package, installed.renderer, installed.installRoot, expected)
+      inspectWindowsProvider(failures, installed.provider)
       inspectSettings(failures, installed.reinstall, installed.installRoot, expected)
       inspectSecondInstance(failures, installed.secondInstance)
       failure(failures, installed.rollback?.validationFailureRecovered === true && /^[0-9a-f]{64}$/u.test(installed.rollback?.preservedAsarSha256 ?? ''), 'Windows portable rollback evidence is missing')

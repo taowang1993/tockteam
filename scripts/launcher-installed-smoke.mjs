@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
 import { execFile, spawn } from 'node:child_process'
-import { existsSync } from 'node:fs'
+import { createReadStream, existsSync } from 'node:fs'
 import { mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, isAbsolute, join, resolve } from 'node:path'
@@ -178,7 +178,43 @@ async function buildInstallerTargets(artifact, target, formats) {
 }
 
 async function hashFile(path) {
-  return createHash('sha256').update(await readFile(path)).digest('hex')
+  const hash = createHash('sha256')
+  for await (const chunk of createReadStream(path)) hash.update(chunk)
+  return hash.digest('hex')
+}
+
+const INSTALLED_DIAGNOSTICS_MAX_BYTES = 16_000
+
+function errorDetail(error) {
+  return error instanceof Error ? error.stack ?? error.message : String(error)
+}
+
+export async function writeInstalledSmokeDiagnostics(path, { platform, version, sourceCommit = null, error }) {
+  const diagnostics = {
+    schemaVersion: 1,
+    result: 'failed',
+    platform,
+    architecture: process.arch,
+    version,
+    sourceCommit: /^[0-9a-f]{40}$/u.test(sourceCommit ?? '') ? sourceCommit : null,
+    errorTail: errorDetail(error).slice(-INSTALLED_DIAGNOSTICS_MAX_BYTES),
+  }
+  const diagnosticsPath = resolve(path)
+  await mkdir(dirname(diagnosticsPath), { recursive: true })
+  await writeFile(diagnosticsPath, `${JSON.stringify(diagnostics, null, 2)}\n`, 'utf8')
+  return diagnosticsPath
+}
+
+async function installedSmokeSourceCommit() {
+  const configuredCommit = process.env.GITHUB_SHA?.trim()
+  if (/^[0-9a-f]{40}$/u.test(configuredCommit ?? '')) return configuredCommit
+  try {
+    const git = process.platform === 'win32' ? 'git.exe' : '/usr/bin/git'
+    const sourceCommit = (await execFileAsync(git, ['rev-parse', 'HEAD'])).stdout.trim()
+    return /^[0-9a-f]{40}$/u.test(sourceCommit) ? sourceCommit : null
+  } catch {
+    return null
+  }
 }
 
 async function inspectMacBundle(appPath) {
@@ -221,17 +257,43 @@ async function installedSession(executable, userData, inventory, target, options
     const secondInstance = await runSecondInstanceSmoke(executable, userData, launched.workbench, launched.launcher, options.args ?? [])
     return Object.freeze({ platform, renderer, secondInstance, launched })
   } catch (error) {
-    await stopPackagedChild(launched.child)
+    try {
+      await closeInstalledSession({ launched }, executable, options.installRoot)
+    } catch (cleanupError) {
+      throw new AggregateError([error, cleanupError], 'installed session assertion and cleanup both failed')
+    }
     throw error
   }
 }
 
 async function closeInstalledSession(session, executable = undefined, installRoot = undefined) {
-  session.launched.launcher.close()
-  session.launched.workbench.close()
-  await stopPackagedChild(session.launched.child)
-  if (executable !== undefined) await assertOwnedProcessGone(executable, 20, installRoot)
+  const errors = []
+  try { session.launched.launcher.close() } catch (error) { errors.push(error) }
+  try { session.launched.workbench.close() } catch (error) { errors.push(error) }
+  try { await stopPackagedChild(session.launched.child) } catch (error) { errors.push(error) }
+  if (executable !== undefined) {
+    try { await assertOwnedProcessGone(executable, 20, installRoot) } catch (error) { errors.push(error) }
+  }
+  if (errors.length === 1) throw errors[0]
+  if (errors.length > 1) throw new AggregateError(errors, 'installed session cleanup failed')
   return true
+}
+
+export async function withInstalledSession(session, operation, cleanup) {
+  let primaryError
+  try {
+    return await operation(session)
+  } catch (error) {
+    primaryError = error
+    throw error
+  } finally {
+    try {
+      await cleanup(session)
+    } catch (cleanupError) {
+      if (primaryError !== undefined) throw new AggregateError([primaryError, cleanupError], 'installed session assertion and cleanup both failed')
+      throw cleanupError
+    }
+  }
 }
 
 async function runSecondInstanceSmoke(executable, userData, workbench, launcher, extraArgs = []) {
@@ -246,13 +308,22 @@ async function runSecondInstanceSmoke(executable, userData, workbench, launcher,
     stdio: 'ignore',
     env: smokeEnvironment({ TOCKTEAM_INSTALLED_SMOKE: '1' }, userData),
   })
+  let primaryError
   try {
     await waitFor(() => workbench.evaluate('(async () => (await window.dshDesktop?.launcher?.getState())?.visible)()'), visible => visible === true, 10_000)
     await launcher.evaluate('(async () => await window.tockteamLauncher?.dismiss())()')
     await waitFor(() => workbench.evaluate('(async () => (await window.dshDesktop?.launcher?.getState())?.visible)()'), visible => visible === false, 10_000)
     return Object.freeze({ singleInstance: true, permissions: 'renderer-permission-denied' })
+  } catch (error) {
+    primaryError = error
+    throw error
   } finally {
-    await stopPackagedChild(second)
+    try {
+      await stopPackagedChild(second)
+    } catch (cleanupError) {
+      if (primaryError !== undefined) throw new AggregateError([primaryError, cleanupError], 'second-instance assertion and cleanup both failed')
+      throw cleanupError
+    }
   }
 }
 
@@ -283,17 +354,12 @@ async function readPersistedSetting(executable, userData, target, key, expected,
     target.key === 'linux' ? ['--no-sandbox'] : [],
     { flag: smokeFlag, env: { TOCKTEAM_INSTALLED_SMOKE: '1' } },
   )
-  try {
-    const value = await launched.workbench.evaluate(`(async () => (await window.dshDesktop?.launcher?.settings?.getSnapshot())?.values?.[${JSON.stringify(key)}] ?? null)()`)
+  return await withInstalledSession({ launched }, async session => {
+    const value = await session.launched.workbench.evaluate(`(async () => (await window.dshDesktop?.launcher?.settings?.getSnapshot())?.values?.[${JSON.stringify(key)}] ?? null)()`)
     assert.deepEqual(value, expected)
-    await launched.launcher.evaluate('(async () => await window.tockteamLauncher?.dismiss())()')
-    return Object.freeze({ processTreesGone: true, restored: value, runtimeReady: await launched.workbench.evaluate('(async () => (await window.dshDesktop?.getRuntimeSnapshot())?.status)()') })
-  } finally {
-    launched.launcher.close()
-    launched.workbench.close()
-    await stopPackagedChild(launched.child)
-    await assertOwnedProcessGone(executable, 20, installRoot)
-  }
+    await session.launched.launcher.evaluate('(async () => await window.tockteamLauncher?.dismiss())()')
+    return Object.freeze({ processTreesGone: true, restored: value, runtimeReady: await session.launched.workbench.evaluate('(async () => (await window.dshDesktop?.getRuntimeSnapshot())?.status)()') })
+  }, session => closeInstalledSession(session, executable, installRoot))
 }
 
 async function runPlatformOutcomeSmoke(workbench, launcher, target) {
@@ -377,9 +443,12 @@ async function runMacInstalledSmoke(artifact) {
   const installedInventory = await inspectPackage(destination, artifact.target, { executable: identity.executable })
   assertPackageParity(artifact.inventory, installedInventory)
   const first = await installedSession(destination + '/Contents/MacOS/TockTeam Desktop', artifact.userData, installedInventory, artifact.target, { installRoot: destination })
-  const persistedValue = first.renderer.settingsRoundTrip.changed
-  await first.launched.workbench.evaluate(`(async () => await window.dshDesktop?.launcher?.settings?.updateSetting('searchEngine.fuzziness', ${String(persistedValue)}))()`)
-  const firstProcessTreesGone = await closeInstalledSession(first, destination + '/Contents/MacOS/TockTeam Desktop', destination)
+  const persistedValue = await withInstalledSession(first, async session => {
+    const value = session.renderer.settingsRoundTrip.changed
+    await session.launched.workbench.evaluate(`(async () => await window.dshDesktop?.launcher?.settings?.updateSetting('searchEngine.fuzziness', ${String(value)}))()`)
+    return value
+  }, session => closeInstalledSession(session, destination + '/Contents/MacOS/TockTeam Desktop', destination))
+  const firstProcessTreesGone = true
 
   const reinstall = await install()
   const reinstalledIdentity = await inspectMacBundle(destination)
@@ -445,7 +514,7 @@ async function buildPortableArchive(artifact) {
     packagedRuntimeRoot: join(artifact.outputDir, 'win-unpacked', 'resources', 'dsh-runtime'),
   })
   await runProcess(trustedWindowsTool('tar.exe'), windowsPortableArchiveArgs({ archive, outputDir: artifact.outputDir, manifestPath }), { cwd: artifact.outputDir, disposableRoot: artifact.rootPath })
-  return Object.freeze({ archive, installerDir, markerPath })
+  return Object.freeze({ archive, installerDir, markerPath, sha256: await hashFile(archive) })
 }
 
 async function runNonMacInstalledSmoke(artifact) {
@@ -462,9 +531,12 @@ async function runNonMacInstalledSmoke(artifact) {
     const installedInventory = await inspectPackage(installDir, artifact.target, { executable })
     assertPackageParity(artifact.inventory, installedInventory)
     const smoke = await installedSession(executable, artifact.userData, installedInventory, artifact.target, { installRoot: installDir })
-    const persistedValue = smoke.renderer.settingsRoundTrip.changed
-    await smoke.launched.workbench.evaluate(`(async () => await window.dshDesktop?.launcher?.settings?.updateSetting('searchEngine.fuzziness', ${String(persistedValue)}))()`)
-    const firstProcessTreesGone = await closeInstalledSession(smoke, executable, installDir)
+    const persistedValue = await withInstalledSession(smoke, async session => {
+      const value = session.renderer.settingsRoundTrip.changed
+      await session.launched.workbench.evaluate(`(async () => await window.dshDesktop?.launcher?.settings?.updateSetting('searchEngine.fuzziness', ${String(value)}))()`)
+      return value
+    }, session => closeInstalledSession(session, executable, installDir))
+    const firstProcessTreesGone = true
     await replaceWindowsPortableArchive({ archive: portable.archive, destination: installDir, backupDirectory, extractArchive, validateInstall })
     const reinstalledInventory = await inspectPackage(installDir, artifact.target, { executable })
     assertPackageParity(artifact.inventory, reinstalledInventory)
@@ -477,7 +549,7 @@ async function runNonMacInstalledSmoke(artifact) {
     await rm(backupDirectory, { recursive: true, force: true })
     assert.equal(existsSync(installDir), false)
     report.installed = {
-      portableArchive: { path: portable.archive, format: 'tar.gz', version: packageJson.version },
+      portableArchive: { path: portable.archive, format: 'tar.gz', version: packageJson.version, sha256: portable.sha256 },
       installRoot: installDir,
       package: installedInventory,
       renderer: smoke.renderer,
@@ -525,9 +597,11 @@ async function runNonMacInstalledSmoke(artifact) {
       assert.ok(installedInventory.executable.includes('/opt/') || installedInventory.executable.includes('\\\\opt\\\\'), 'deb executable did not come from the installed /opt payload')
       assertPackageParity(artifact.inventory, installedInventory)
       debSmoke = await installedSession(installedInventory.executable, artifact.userData, installedInventory, artifact.target, { args: ['--no-sandbox'], installRoot })
-      persistedValue = debSmoke.renderer.settingsRoundTrip.changed
-      await debSmoke.launched.workbench.evaluate(`(async () => await window.dshDesktop?.launcher?.settings?.updateSetting('searchEngine.fuzziness', ${String(persistedValue)}))()`)
-      debProcessTreesGone = await closeInstalledSession(debSmoke, installedInventory.executable, installRoot)
+      await withInstalledSession(debSmoke, async session => {
+        persistedValue = session.renderer.settingsRoundTrip.changed
+        await session.launched.workbench.evaluate(`(async () => await window.dshDesktop?.launcher?.settings?.updateSetting('searchEngine.fuzziness', ${String(persistedValue)}))()`)
+      }, session => closeInstalledSession(session, installedInventory.executable, installRoot))
+      debProcessTreesGone = true
       await dpkg(['--install', deb])
       assert.equal(await installedStatus(), 'install ok installed', 'Linux deb reinstall is not configured')
       assert.equal(await installedVersion(), packageVersion, 'Linux deb reinstall/version mismatch')
@@ -551,7 +625,8 @@ async function runNonMacInstalledSmoke(artifact) {
     const appImageInventory = await inspectPackage(extractedRoot, artifact.target)
     assertPackageParity(artifact.inventory, appImageInventory)
     const appImageSmoke = await installedSession(appImageInventory.executable, join(artifact.userData, 'appimage'), appImageInventory, artifact.target, { args: ['--no-sandbox'], installRoot: extractedRoot })
-    const appImageProcessTreesGone = await closeInstalledSession(appImageSmoke, appImageInventory.executable, extractedRoot)
+    await withInstalledSession(appImageSmoke, async () => {}, session => closeInstalledSession(session, appImageInventory.executable, extractedRoot))
+    const appImageProcessTreesGone = true
     report.installed = {
       appImage: { artifact: appImage, installRoot: extractedRoot, package: appImageInventory, renderer: appImageSmoke.renderer, provider: appImageSmoke.platform, secondInstance: appImageSmoke.secondInstance, runtime: { runtimeReady: true } },
       deb: { artifact: deb, installRoot, package: installedInventory, renderer: debSmoke.renderer, provider: debSmoke.platform, secondInstance: debSmoke.secondInstance, reinstall: { package: reinstalledInventory, settings: debReinstall }, rollback: { state: 'workflow-required', reason: 'dpkg has no atomic rollback transaction' }, uninstall: 'dpkg-purge-passed' },
@@ -568,17 +643,15 @@ async function main() {
   await mkdir(parent, { recursive: true })
   const smokeRoot = await mkdtemp(join(parent, 'tockteam-installed-launcher-smoke-'))
   const reportPath = process.env.TOCKTEAM_INSTALLED_SMOKE_REPORT?.trim() || join(parent, `tockteam-installed-smoke-${String(process.pid)}.json`)
+  const diagnosticsPath = process.env.TOCKTEAM_INSTALLED_SMOKE_DIAGNOSTICS?.trim() || join(parent, `tockteam-installed-smoke-${String(process.pid)}-diagnostics.json`)
   let evidence
   try {
     const artifact = await preparePackagedArtifact({ smokeRoot })
     evidence = process.platform === 'darwin'
       ? await runMacInstalledSmoke(artifact)
       : await runNonMacInstalledSmoke(artifact)
-    const configuredCommit = process.env.GITHUB_SHA?.trim()
-    const sourceCommit = /^[0-9a-f]{40}$/u.test(configuredCommit ?? '')
-      ? configuredCommit
-      : (await execFileAsync(process.platform === 'win32' ? 'git.exe' : '/usr/bin/git', ['rev-parse', 'HEAD'])).stdout.trim()
-    assert.match(sourceCommit, /^[0-9a-f]{40}$/u, 'installed evidence source commit must be immutable')
+    const sourceCommit = await installedSmokeSourceCommit()
+    assert.match(sourceCommit ?? '', /^[0-9a-f]{40}$/u, 'installed evidence source commit must be immutable')
     evidence = Object.freeze({
       ...evidence,
       appId: contract.identity.appId,
@@ -589,6 +662,19 @@ async function main() {
       result: 'passed',
       sourceCommit,
     })
+  } catch (error) {
+    const sourceCommit = await installedSmokeSourceCommit()
+    try {
+      await writeInstalledSmokeDiagnostics(diagnosticsPath, {
+        platform: process.platform,
+        version: packageJson.version,
+        sourceCommit,
+        error,
+      })
+    } catch (diagnosticsError) {
+      throw new AggregateError([error, diagnosticsError], 'installed smoke failed and diagnostics could not be written')
+    }
+    throw error
   } finally {
     const keepArtifacts = process.env.TOCKTEAM_KEEP_INSTALLED_SMOKE === '1'
     if (!keepArtifacts) await rm(smokeRoot, { recursive: true, force: true })

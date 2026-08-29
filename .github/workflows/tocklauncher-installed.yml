@@ -53,6 +53,7 @@ jobs:
           TOCKTEAM_KEEP_INSTALLED_SMOKE: "1"
           TOCKTEAM_INSTALLED_SMOKE_TEMP_ROOT: ${{ runner.temp }}
           TOCKTEAM_INSTALLED_SMOKE_REPORT: ${{ runner.temp }}/tockteam-installed-launcher-smoke-${{ github.run_id }}.json
+          TOCKTEAM_INSTALLED_SMOKE_DIAGNOSTICS: ${{ runner.temp }}/tockteam-installed-launcher-diagnostics-${{ github.run_id }}.json
         run: pnpm test:launcher:installed
 
       - name: Verify the installed report identity and version
@@ -72,6 +73,15 @@ jobs:
           REPORT_OUTCOME: ${{ steps.report-check.outcome }}
         run: |
           printf '{\n  "ueliGates": "%s",\n  "installedSmoke": "%s",\n  "reportCheck": "%s"\n}\n' "$UELI_OUTCOME" "$SMOKE_OUTCOME" "$REPORT_OUTCOME" > "$GATE_LOG"
+
+      - name: Upload Windows installed smoke diagnostics
+        if: steps.installed-smoke.outcome == 'failure'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: tocklauncher-installed-windows-x64-diagnostics-${{ github.run_id }}
+          compression-level: 0
+          path: ${{ runner.temp }}/tockteam-installed-launcher-diagnostics-${{ github.run_id }}.json
+          if-no-files-found: error
 
       - name: Upload Windows installed evidence
         if: always()
@@ -138,6 +148,7 @@ jobs:
           TOCKTEAM_KEEP_INSTALLED_SMOKE: "1"
           TOCKTEAM_INSTALLED_SMOKE_TEMP_ROOT: ${{ runner.temp }}
           TOCKTEAM_INSTALLED_SMOKE_REPORT: ${{ runner.temp }}/tockteam-installed-launcher-smoke-${{ github.run_id }}.json
+          TOCKTEAM_INSTALLED_SMOKE_DIAGNOSTICS: ${{ runner.temp }}/tockteam-installed-launcher-diagnostics-${{ github.run_id }}.json
         run: xvfb-run -a pnpm test:launcher:installed
 
       - name: Verify the installed report identity and version
@@ -157,6 +168,15 @@ jobs:
           REPORT_OUTCOME: ${{ steps.report-check.outcome }}
         run: |
           printf '{\n  "ueliGates": "%s",\n  "installedSmoke": "%s",\n  "reportCheck": "%s"\n}\n' "$UELI_OUTCOME" "$SMOKE_OUTCOME" "$REPORT_OUTCOME" > "$GATE_LOG"
+
+      - name: Upload Linux installed smoke diagnostics
+        if: steps.installed-smoke.outcome == 'failure'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: tocklauncher-installed-linux-x64-diagnostics-${{ github.run_id }}
+          compression-level: 0
+          path: ${{ runner.temp }}/tockteam-installed-launcher-diagnostics-${{ github.run_id }}.json
+          if-no-files-found: error
 
       - name: Upload Linux installed evidence
         if: always()

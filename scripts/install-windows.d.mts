@@ -1,5 +1,20 @@
 export const WINDOWS_PORTABLE_MARKER: string
 
+export function defaultWindowsInstallDestination(environment?: NodeJS.ProcessEnv): string
+
+export function parseWindowsInstallArgs(
+  args: readonly unknown[],
+  environment?: NodeJS.ProcessEnv,
+): Readonly<{ archive: string; destination: string }>
+
+export function windowsPortableExtractArgs(archive: string, pending: string): readonly string[]
+
+export function installWindowsPortableArchive(options?: Readonly<{
+  archive: string
+  destination?: string
+  environment?: NodeJS.ProcessEnv
+}>): Promise<Readonly<{ backup?: string; destination: string }>>
+
 export function restoreWindowsPortableRuntimeLinks(
   rootPath: string,
   options?: Readonly<{
