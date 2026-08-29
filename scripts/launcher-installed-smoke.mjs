@@ -27,6 +27,35 @@ const contract = JSON.parse(await readFile(join(root, 'scripts/ueli/desktop-rele
 const smokeFlag = '--tockteam-launcher-installed-smoke'
 const smokeMarker = 'TOCKTEAM_INSTALLED_SMOKE '
 const smokeTimeoutMs = 120_000
+const smokeOverrideKeys = Object.freeze([
+  'TOCKTEAM_RESOURCES_ROOT',
+  'TOCKTEAM_WEB_ROOT',
+  'TOCKTEAM_SOURCE_ROOT',
+  'TOCKTEAM_DESKTOP_APP',
+  'TOCKTEAM_TUI_ROOT',
+  'TOCKTEAM_TUI_HOME',
+  'TOCKTEAM_WEB_HOME',
+  'TOCKTEAM_WEB_HOST',
+  'TOCKTEAM_WEB_PORT',
+  'TOCKTEAM_WEB_OPEN',
+  'TOCKTEAM_TUI_CWD',
+  'TOCKTEAM_TUI_SESSION_ID',
+  'DSH_SOURCE',
+  'DSH_HOME',
+  'DSH_DESKTOP_APP_DATA',
+  'DSH_DESKTOP_PROFILE',
+  'DSH_DESKTOP_VERSION',
+  'DSH_DESKTOP_NODE_VERSION',
+  'DSH_DESKTOP_NODE_PLATFORM',
+  'DSH_DESKTOP_NODE_ARCH',
+])
+
+function smokeEnvironment(overrides = {}) {
+  const environment = { ...process.env, ...overrides }
+  for (const key of smokeOverrideKeys) delete environment[key]
+  delete environment.ELECTRON_RUN_AS_NODE
+  return environment
+}
 
 function sleep(milliseconds) {
   return new Promise(resolvePromise => setTimeout(resolvePromise, milliseconds))
@@ -36,9 +65,9 @@ function runProcess(command, args, options = {}) {
   return new Promise((resolvePromise, reject) => {
     const child = spawn(command, args, {
       cwd: root,
-      env: { ...process.env, ...options.env },
       stdio: ['ignore', 'pipe', 'pipe'],
       ...options,
+      env: smokeEnvironment(options.env ?? {}),
     })
     let stdout = ''
     let stderr = ''

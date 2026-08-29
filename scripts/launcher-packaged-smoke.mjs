@@ -4,7 +4,7 @@ import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
 import { createServer } from 'node:net'
 import { spawn as spawnProcess, spawnSync } from 'node:child_process'
-import { cp, open, mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises'
+import { cp, lstat, open, mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -486,28 +486,43 @@ async function assertArchiveInventory(files, asar, asarText, asarPath) {
   return Object.freeze({ assetCount: launcherAssets.length, asarPath, fileCount: files.length, vendorSourceShipped: false })
 }
 
-async function listResourceFiles(rootPath, relative = '', result = [], depth = 0) {
-  if (depth > 24 || result.length > 500_000) throw new Error('packaged extra-resource tree is too large')
-  let entries
-  try {
-    entries = await readdir(rootPath, { withFileTypes: true })
-  } catch {
-    return result
-  }
-  for (const entry of entries) {
-    const relativePath = relative === '' ? entry.name : `${relative}/${entry.name}`
-    const absolutePath = join(rootPath, entry.name)
-    if (entry.isDirectory()) await listResourceFiles(absolutePath, relativePath, result, depth + 1)
-    else if (entry.isFile()) result.push(relativePath)
-  }
-  return result
-}
-
 async function inspectExtraResources(asarPath) {
   const resourcesRoot = dirname(asarPath)
-  const files = (await listResourceFiles(resourcesRoot)).filter(file => file !== 'app.asar').sort()
-  assert.doesNotMatch(files.join('\n'), /vendor[/\\]ueli/iu, 'extra resources contain vendor/ueli source')
-  return Object.freeze({ fileCount: files.length, vendorSourceShipped: false })
+  const resourcePaths = []
+  for (const resource of packageJson.build?.extraResources ?? []) {
+    assert.equal(typeof resource.from, 'string')
+    assert.doesNotMatch(resource.from, /vendor[/\\]ueli/iu, 'extra-resource source references vendor/ueli')
+    const destination = typeof resource.to === 'string' ? resource.to : resource.from
+    assert.doesNotMatch(destination, /vendor[/\\]ueli/iu, 'extra-resource destination references vendor/ueli')
+    if (resource.from === '.stage') {
+      for (const rootName of ['dsh-runtime', 'node-runtime']) resourcePaths.push(join(destination === '.' ? '' : destination, rootName))
+    } else if (resource.from === 'bin') {
+      for (const file of resource.filter ?? []) resourcePaths.push(join(destination, file))
+    } else resourcePaths.push(destination)
+  }
+  for (const relativePath of resourcePaths) {
+    const absolutePath = join(resourcesRoot, relativePath)
+    const metadata = await lstat(absolutePath)
+    assert.equal(metadata.isSymbolicLink(), false, `extra resource is a symlink: ${relativePath}`)
+    assert.equal(metadata.isFile() || metadata.isDirectory(), true, `extra resource is missing: ${relativePath}`)
+  }
+  // The resource contract names the roots above. Check only a bounded path
+  // prefix for a forbidden source segment; do not recursively hash or traverse
+  // the generated DSH dependency graph.
+  let checkedEntries = 0
+  const visit = async (rootPath, relative = '', depth = 0) => {
+    if (depth > 2 || checkedEntries >= 4_096) return
+    let entries
+    try { entries = await readdir(rootPath, { withFileTypes: true }) } catch { return }
+    for (const entry of entries) {
+      if (++checkedEntries > 4_096) return
+      const childRelative = relative === '' ? entry.name : `${relative}/${entry.name}`
+      assert.doesNotMatch(childRelative, /vendor[/\\]ueli(?:[/\\]|$)/iu, 'extra resources contain vendor/ueli source')
+      if (entry.isDirectory() && !entry.isSymbolicLink()) await visit(join(rootPath, entry.name), childRelative, depth + 1)
+    }
+  }
+  await visit(resourcesRoot)
+  return Object.freeze({ checkedEntries, roots: Object.freeze(resourcePaths), vendorSourceShipped: false })
 }
 
 export async function inspectPackage(outputDir, target) {

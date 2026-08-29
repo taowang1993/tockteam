@@ -32,6 +32,8 @@ test('TockTeam exposes an executable installed-artifact smoke and audit', () => 
   assert.match(installedSmoke, /unsigned|notarized/iu)
   assert.match(installedSmoke, /cp.*-cR/u)
   assert.match(installedSmoke, /ENOSPC/u)
+  assert.match(installedSmoke, /TOCKTEAM_RESOURCES_ROOT/u)
+  assert.match(installedSmoke, /DSH_SOURCE/u)
 })
 
 test('package smoke is hermetic and verifies resources plus process ownership', () => {
@@ -40,6 +42,9 @@ test('package smoke is hermetic and verifies resources plus process ownership', 
   }
   assert.match(packagedSmoke, /sha256/iu)
   assert.match(packagedSmoke, /builderExtraResources/u)
+  assert.match(packagedSmoke, /lstat/u)
+  assert.match(packagedSmoke, /4_096/u)
+  assert.doesNotMatch(packagedSmoke, /500_000/u)
   assert.match(packagedSmoke, /remote-debugging-address=127\.0\.0\.1/u)
   assert.match(packagedSmoke, /stopChildProcess/u)
   assert.doesNotMatch(packagedSmoke, /spawnOptions\.shell\s*=\s*true/u)
