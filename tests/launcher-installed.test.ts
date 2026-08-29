@@ -30,6 +30,8 @@ test('TockTeam exposes an executable installed-artifact smoke and audit', () => 
   assert.match(installedSmoke, /TOCKTEAM_INSTALLED_SMOKE/u)
   assert.match(installedSmoke, /rollback|reinstall/iu)
   assert.match(installedSmoke, /unsigned|notarized/iu)
+  assert.match(installedSmoke, /cp.*-cR/u)
+  assert.match(installedSmoke, /ENOSPC/u)
 })
 
 test('package smoke is hermetic and verifies resources plus process ownership', () => {

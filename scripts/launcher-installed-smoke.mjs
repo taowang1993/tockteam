@@ -184,7 +184,16 @@ async function runMacInstalledSmoke(artifact) {
   const destination = join(applicationsRoot, 'TockTeam Desktop.app')
   const backupDirectory = join(artifact.rootPath, 'Trash')
   const copyBundle = async (from, to) => {
-    await execFileAsync('/usr/bin/ditto', [from, to])
+    // APFS clone copy keeps the atomic pending-bundle replacement semantics
+    // without requiring a second 2.5 GiB physical runtime copy. Fall back only
+    // when the host filesystem cannot clone; never hide ENOSPC.
+    try {
+      await execFileAsync('/bin/cp', ['-cR', from, to])
+    } catch (error) {
+      const detail = `${error?.message ?? ''} ${error?.stderr ?? ''}`
+      if (!/(?:clone|illegal option|operation not supported|not supported)/iu.test(detail)) throw error
+      await execFileAsync('/usr/bin/ditto', [from, to])
+    }
   }
   const install = async () => await replaceMacBundle({
     source: sourceApp,
