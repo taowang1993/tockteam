@@ -894,7 +894,7 @@ export async function main() {
       security: renderer.security,
       settingsRoundTrip: renderer.settingsRoundTrip,
       search: renderer.search,
-      vendorSourceShipped: inventory.vendorSourceShipped,
+      vendorScan: inventory.vendorScan,
       workbench: renderer.workbench,
     })
     console.log(`${smokeMarker}${JSON.stringify(evidence)}`)

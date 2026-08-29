@@ -136,6 +136,7 @@ test('extra-resource inspection is bounded and never follows symlink cycles', as
     await symlink(rootPath, join(rootPath, 'dsh-runtime', 'cycle'))
     const result = await inspectExtraResources(join(rootPath, 'app.asar'))
     assert.ok(result.checkedEntries <= 4096)
+    assert.deepEqual(result.vendorScan, { scope: 'bounded-no-follow', maxDepth: 2, maxEntries: 4096, checkedEntries: result.checkedEntries, forbiddenSourceFound: false })
   } finally {
     await rm(rootPath, { recursive: true, force: true })
   }
