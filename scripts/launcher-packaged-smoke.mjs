@@ -6,7 +6,7 @@ import { createServer } from 'node:net'
 import { spawn as spawnProcess, spawnSync } from 'node:child_process'
 import { cp, lstat, open, mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { dirname, join, resolve } from 'node:path'
+import { dirname, join, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createRequire } from 'node:module'
 import { Arch, DIR_TARGET, Platform, build } from 'electron-builder'
@@ -70,12 +70,35 @@ const smokeOverrideKeys = Object.freeze([
   'DSH_DESKTOP_NODE_VERSION',
   'DSH_DESKTOP_NODE_PLATFORM',
   'DSH_DESKTOP_NODE_ARCH',
+  'NODE_OPTIONS',
+  'NODE_PATH',
 ])
 
-function smokeEnvironment(overrides = {}) {
+function trustedPath() {
+  if (process.platform === 'win32') {
+    const systemRoot = process.env.SystemRoot ?? 'C:\\Windows'
+    return [join(systemRoot, 'System32'), systemRoot, join(systemRoot, 'System32', 'Wbem')].join(';')
+  }
+  return ['/usr/local/bin', '/usr/bin', '/bin', '/usr/sbin', '/sbin'].join(':')
+}
+
+export function smokeEnvironment(overrides = {}, disposableRoot = undefined) {
   const environment = { ...process.env, ...overrides }
   for (const key of smokeOverrideKeys) delete environment[key]
   delete environment.ELECTRON_RUN_AS_NODE
+  if (disposableRoot !== undefined) {
+    const rootPath = resolve(disposableRoot)
+    const home = join(rootPath, 'home')
+    environment.HOME = home
+    environment.USERPROFILE = home
+    environment.APPDATA = join(rootPath, 'appdata', 'roaming')
+    environment.LOCALAPPDATA = join(rootPath, 'appdata', 'local')
+    environment.XDG_CONFIG_HOME = join(rootPath, 'xdg', 'config')
+    environment.XDG_CACHE_HOME = join(rootPath, 'xdg', 'cache')
+    environment.XDG_DATA_HOME = join(rootPath, 'xdg', 'data')
+    environment.XDG_STATE_HOME = join(rootPath, 'xdg', 'state')
+    environment.PATH = trustedPath()
+  }
   return environment
 }
 
@@ -368,6 +391,21 @@ async function findAsar(rootPath, depth = 0) {
   return undefined
 }
 
+export async function findNsisInstaller(installerDir, architecture = 'x64') {
+  const pattern = packageJson.build?.artifactName ?? `${contract.identity.productName}-${packageJson.version}-${String(architecture)}.exe`
+  const expectedName = pattern
+    .replaceAll('${version}', packageJson.version)
+    .replaceAll('${arch}', String(architecture))
+    .replaceAll('${productName}', contract.identity.productName)
+    .replaceAll('${ext}', 'exe')
+  const installer = join(resolve(installerDir), expectedName)
+  const metadata = await stat(installer).catch(() => undefined)
+  assert.ok(metadata?.isFile(), `root NSIS setup artifact is missing: ${expectedName}`)
+  assert.match(expectedName, /\.exe$/iu)
+  assert.doesNotMatch(installer, /[\\/]win-unpacked[\\/]/iu, 'NSIS installer must not be selected from win-unpacked')
+  return installer
+}
+
 export async function findPackagedExecutable(outputDir, target) {
   if (target.key === 'mac') {
     const appRoot = await findDirectory(outputDir, entry => entry.name.endsWith('.app'))
@@ -546,11 +584,15 @@ export async function inspectExtraResources(asarPath) {
   return Object.freeze({ checkedEntries, roots: Object.freeze(resourcePaths), vendorSourceShipped: false })
 }
 
-export async function inspectPackage(outputDir, target) {
-  const executable = await findPackagedExecutable(outputDir, target)
+export async function inspectPackage(outputDir, target, options = {}) {
+  const executable = options.executable ?? await findPackagedExecutable(outputDir, target)
   assert.equal((await stat(executable)).isFile(), true)
+  const relativeExecutablePath = relative(resolve(outputDir), resolve(executable))
+  assert.ok(relativeExecutablePath === '' || (!relativeExecutablePath.startsWith('..') && !relativeExecutablePath.includes(':')), 'packaged executable escaped the selected artifact root')
   const asarPath = await findAsar(outputDir)
   assert.ok(asarPath, 'packaged app.asar was not found')
+  const relativeAsarPath = relative(resolve(outputDir), resolve(asarPath))
+  assert.ok(relativeAsarPath === '' || (!relativeAsarPath.startsWith('..') && !relativeAsarPath.includes(':')), 'packaged app.asar escaped the selected artifact root')
   const asar = await readAsarHeader(asarPath)
   const files = listAsarFiles(asar.header).sort()
   const packageText = await readAsarText(asarPath, asar, 'package.json')
@@ -558,6 +600,7 @@ export async function inspectPackage(outputDir, target) {
   assert.equal(packedManifest.name, contract.identity.packageName)
   assert.equal(packedManifest.productName, contract.identity.productName)
   assert.equal(packedManifest.desktopName, contract.identity.desktopName)
+  assert.equal(packedManifest.version, packageJson.version, 'packed application version drifted')
   assert.equal(packageJson.build?.appId, contract.identity.appId)
   assert.equal(packageJson.build?.productName, contract.identity.productName)
   assert.equal(packageJson.build?.asar, true)
@@ -572,13 +615,14 @@ export async function inspectPackage(outputDir, target) {
     assert.match(infoPlist, new RegExp(contract.identity.appId.replaceAll('.', '\\.'), 'u'))
     assert.match(infoPlist, new RegExp(contract.identity.productName.replaceAll(' ', '\\s+'), 'u'))
   }
-  const stagedNode = join(root, '.stage', 'node-runtime', process.platform === 'win32' ? 'node.exe' : join('bin', 'node'))
-  const nodeVersion = spawnSync(stagedNode, ['--version'], { encoding: 'utf8' })
-  assert.equal(nodeVersion.status, 0, `staged Node runtime must execute for ${process.platform}-${process.arch}`)
+  const bundledNode = join(dirname(asarPath), 'node-runtime', process.platform === 'win32' ? 'node.exe' : join('bin', 'node'))
+  const nodeVersion = spawnSync(bundledNode, ['--version'], { encoding: 'utf8' })
+  assert.equal(nodeVersion.status, 0, `bundled Node runtime must execute for ${process.platform}-${process.arch}`)
   assert.match(nodeVersion.stdout.trim(), /^v(?:2[4-9]|[3-9][0-9])\./u, 'staged Node runtime does not satisfy Node >=24')
   return Object.freeze({
     appId: contract.identity.appId,
     appPath: asarPath,
+    version: packedManifest.version,
     appPathUsesAsar: true,
     assetCount: files.filter(file => file.startsWith('dist/launcher-assets/')).length,
     executable,
@@ -603,7 +647,7 @@ export async function launchPackaged(executable, userData, port, extraArgs = [],
   ], {
     cwd: root,
     detached: true,
-    env: smokeEnvironment(childEnvironment),
+    env: smokeEnvironment(childEnvironment, userData),
     stdio: ['ignore', 'pipe', 'pipe'],
   })
   let output = ''
@@ -624,19 +668,17 @@ export async function launchPackaged(executable, userData, port, extraArgs = [],
       if (debug) console.error(`[packaged-smoke] ${name}`)
       return await operation()
     }
-    const workbenchPages = await step('wait for TockCoder', () => waitFor(() => listPages(port), pages => pages.some(page => page.title === 'TockCoder')))
-    assertCdpEndpoint(workbenchPages, port)
+    const workbenchPages = await step('wait for TockCoder', () => waitFor(() => listPages(port), pages => selectCdpDescriptor(pages, 'TockCoder', port) !== undefined))
     assertCdpProcess(child, port)
-    const workbenchDescriptor = workbenchPages.find(page => page.title === 'TockCoder')
-    assert.ok(workbenchDescriptor?.webSocketDebuggerUrl, 'TockCoder CDP page is missing its debugger endpoint')
+    const workbenchDescriptor = selectCdpDescriptor(workbenchPages, 'TockCoder', port)
+    assert.ok(workbenchDescriptor?.webSocketDebuggerUrl, 'TockCoder CDP page is missing its loopback debugger endpoint')
     const workbench = await step('connect to TockCoder', () => CdpPage.connect(workbenchDescriptor.webSocketDebuggerUrl))
     await step('clear startup dialogs', () => clearStartupDialogs(workbench))
     await step('wait for runtime ready', () => waitFor(() => workbench.evaluate('(async () => (await window.dshDesktop?.getRuntimeSnapshot())?.status)()'), status => status === 'ready', 120_000))
     await step('mark and show launcher', () => workbench.evaluate(`(async () => { window.__tockteamPackagedSmoke = { href: location.href, marker: 'workbench-alive' }; return await window.dshDesktop?.launcher?.show() })()`))
-    const launcherPages = await step('wait for TockLauncher', () => waitFor(() => listPages(port), pages => pages.some(page => page.title === 'TockLauncher')))
-    assertCdpEndpoint(launcherPages, port)
-    const launcherDescriptor = launcherPages.find(page => page.title === 'TockLauncher')
-    assert.ok(launcherDescriptor?.webSocketDebuggerUrl, 'TockLauncher CDP page is missing its debugger endpoint')
+    const launcherPages = await step('wait for TockLauncher', () => waitFor(() => listPages(port), pages => selectCdpDescriptor(pages, 'TockLauncher', port) !== undefined))
+    const launcherDescriptor = selectCdpDescriptor(launcherPages, 'TockLauncher', port)
+    assert.ok(launcherDescriptor?.webSocketDebuggerUrl, 'TockLauncher CDP page is missing its loopback debugger endpoint')
     const launcher = await step('connect to TockLauncher', () => CdpPage.connect(launcherDescriptor.webSocketDebuggerUrl))
     await step('wait for launcher ready', () => waitFor(() => launcher.evaluate('document.documentElement.dataset.launcherReady'), ready => ready === 'true'))
     await step('wait for launcher visible', () => waitFor(() => workbench.evaluate('(async () => (await window.dshDesktop?.launcher?.getState())?.visible)()'), visible => visible === true))
@@ -647,14 +689,32 @@ export async function launchPackaged(executable, userData, port, extraArgs = [],
   }
 }
 
-function assertCdpEndpoint(pages, port) {
+export function selectCdpDescriptor(pages, title, port) {
   const expectedPrefix = `ws://127.0.0.1:${String(port)}/devtools/`
-  assert.ok(pages.some(page => typeof page.webSocketDebuggerUrl === 'string' && page.webSocketDebuggerUrl.startsWith(expectedPrefix)), 'CDP target is not bound to the smoke loopback endpoint')
+  return pages.find(page => page?.title === title
+    && typeof page.webSocketDebuggerUrl === 'string'
+    && page.webSocketDebuggerUrl.startsWith(expectedPrefix))
+}
+
+function trustedWindowsTool(name) {
+  const systemRoot = process.env.SystemRoot ?? 'C:\\Windows'
+  return join(systemRoot, 'System32', name)
 }
 
 function assertCdpProcess(child, port) {
-  if (process.platform === 'win32' || !Number.isSafeInteger(child.pid)) return
-  const result = spawnSync('ps', ['-p', String(child.pid), '-o', 'command='], { encoding: 'utf8' })
+  if (!Number.isSafeInteger(child.pid)) throw new Error('packaged smoke process has no observable PID')
+  if (process.platform === 'win32') {
+    const result = spawnSync(trustedWindowsTool('netstat.exe'), ['-ano', '-p', 'tcp'], { encoding: 'utf8', windowsHide: true })
+    assert.equal(result.status, 0, 'Windows netstat could not inspect the packaged smoke listener')
+    const listener = result.stdout.split(/\r?\n/u).some(line => {
+      const fields = line.trim().split(/\s+/u)
+      return fields[0] === 'TCP' && fields[1] === `127.0.0.1:${String(port)}` && fields[3] === 'LISTENING' && fields[4] === String(child.pid)
+    })
+    assert.match(result.stdout, listener, 'packaged smoke CDP listener is not owned by the launched Windows process')
+    return
+  }
+  const ps = process.platform === 'darwin' ? '/bin/ps' : '/usr/bin/ps'
+  const result = spawnSync(ps, ['-p', String(child.pid), '-o', 'command='], { encoding: 'utf8' })
   assert.equal(result.status, 0, 'packaged smoke process is no longer observable')
   assert.match(result.stdout, /--remote-debugging-address=127\.0\.0\.1[ =]/u, 'packaged smoke did not bind CDP to loopback')
   assert.match(result.stdout, new RegExp(`--remote-debugging-port=${String(port)}(?:\\s|$)`), 'packaged smoke CDP port is not owned by the launched process')
@@ -664,12 +724,17 @@ export async function stopPackagedChild(child) {
   await stopChildProcess(child)
 }
 
-export async function runRendererSmoke(workbench, launcher, inventory, userData) {
+export async function runRendererSmoke(workbench, launcher, inventory, userData, expectedInstallRoot = undefined) {
   const securityEvidence = await waitFor(
     () => readFile(join(userData, 'launcher', 'packaged-smoke-security.json'), 'utf8').then(value => JSON.parse(value)).catch(() => null),
     value => value?.sessionMatches === true && value?.launcherSessionPartition === LAUNCHER_SESSION_PARTITION,
   )
   assert.equal(securityEvidence.appPathUsesAsar, true)
+  assert.equal(resolve(securityEvidence.appPath), resolve(inventory.appPath), 'security evidence must identify the inspected installed app.asar')
+  if (expectedInstallRoot !== undefined) {
+    const relativeAppPath = relative(resolve(expectedInstallRoot), resolve(inventory.appPath))
+    assert.ok(relativeAppPath === '' || (!relativeAppPath.startsWith('..') && !relativeAppPath.includes(':')), 'installed app.asar escaped the selected install root')
+  }
   const launcherFacts = await launcher.evaluate(`(async () => {
     const permission = await navigator.permissions.query({ name: 'notifications' })
     return {

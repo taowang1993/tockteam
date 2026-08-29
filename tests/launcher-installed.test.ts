@@ -8,7 +8,11 @@ import {
   inspectInstalledEvidenceCatalog,
   inspectInstalledEvidenceWorkflow,
 } from '../scripts/ueli/installed-evidence.mjs'
-import { inspectExtraResources } from '../scripts/launcher-packaged-smoke.mjs'
+import {
+  inspectExtraResources,
+  findNsisInstaller,
+  selectCdpDescriptor,
+} from '../scripts/launcher-packaged-smoke.mjs'
 
 const root = join(import.meta.dirname, '..')
 const packageJson = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')) as {
@@ -37,6 +41,29 @@ test('TockTeam exposes an executable installed-artifact smoke and audit', () => 
   assert.match(installedSmoke, /ENOSPC/u)
   assert.match(installedSmoke, /TOCKTEAM_RESOURCES_ROOT/u)
   assert.match(installedSmoke, /DSH_SOURCE/u)
+  assert.match(installedSmoke, /electronVersion/u)
+  assert.match(installedSmoke, /dpkg-query/u)
+  assert.match(installedSmoke, /Uninstall TockTeam Desktop\.exe/u)
+  assert.match(installedSmoke, /detached:\s*(?:true|process\.platform)/u)
+})
+
+test('installed smoke selects only the loopback descriptor and root NSIS artifact', async () => {
+  const pages = [
+    { title: 'TockCoder', webSocketDebuggerUrl: 'ws://127.0.0.1:9999/devtools/page/wrong-port' },
+    { title: 'Other', webSocketDebuggerUrl: 'ws://127.0.0.1:1234/devtools/page/right-port' },
+    { title: 'TockCoder', webSocketDebuggerUrl: 'ws://127.0.0.1:1234/devtools/page/right-title' },
+  ]
+  assert.equal(selectCdpDescriptor(pages, 'TockCoder', 1234)?.webSocketDebuggerUrl, pages[2].webSocketDebuggerUrl)
+  assert.equal(selectCdpDescriptor(pages, 'TockCoder', 7777), undefined)
+  const rootPath = await mkdtemp(join(tmpdir(), 'tockteam-nsis-artifact-'))
+  try {
+    await mkdir(join(rootPath, 'win-unpacked'), { recursive: true })
+    await writeFile(join(rootPath, 'win-unpacked', 'TockTeam Desktop.exe'), '')
+    await writeFile(join(rootPath, 'TockTeam-Desktop-0.1.14-x64.exe'), '')
+    assert.equal(await findNsisInstaller(rootPath), join(rootPath, 'TockTeam-Desktop-0.1.14-x64.exe'))
+  } finally {
+    await rm(rootPath, { recursive: true, force: true })
+  }
 })
 
 test('package smoke is hermetic and verifies resources plus process ownership', () => {
@@ -72,19 +99,37 @@ test('extra-resource inspection is bounded and never follows symlink cycles', as
   }
 })
 
-test('installed evidence catalog owns every required platform row without publication claims', () => {
+test('installed evidence catalog owns the exact platform rows and rejects fabricated local proof', () => {
   assert.equal(catalog.schemaVersion, 1)
   assert.equal(catalog.issue, 'tockteam-tl.15')
   assert.deepEqual(Object.keys(catalog.publication).sort(), ['installedArtifact', 'notarized', 'publicDistribution', 'signed'])
   assert.deepEqual(Object.values(catalog.publication), [false, false, false, false])
-  assert.ok(catalog.rows.length >= 12)
+  const expectedIds = [
+    'macOS:artifact-build', 'macOS:identity-and-resources', 'macOS:notices-and-bounded-vendor-scan',
+    'macOS:ad-hoc-signature', 'macOS:security-and-workbench', 'macOS:launcher-action',
+    'macOS:settings-session-compatibility', 'macOS:reinstall-settings', 'macOS:rollback',
+    'macOS:provider-catalog', 'macOS:permissions-and-cleanup', 'macOS:shortcut-second-instance',
+    'Windows:nsis-install', 'Windows:identity-resources-notices', 'Windows:security-action-settings',
+    'Windows:notices-and-bounded-vendor-scan', 'Windows:control-panel-terminal-elevation',
+    'Windows:reinstall-rollback-cleanup', 'Windows:shortcut-second-instance-permissions',
+    'Linux:deb-install', 'Linux:appimage-install', 'Linux:identity-resources-notices',
+    'Linux:no-vendor-source', 'Linux:security-action-settings', 'Linux:file-search-custom-browser',
+    'Linux:reinstall-rollback-cleanup', 'Linux:shortcut-second-instance-permissions',
+  ]
+  assert.deepEqual(catalog.rows.map(row => row.id), expectedIds)
+  assert.equal(catalog.rows.length, 27)
   for (const row of catalog.rows) {
     assert.ok(row.id && row.platform && row.owner && row.state)
     if (row.required) assert.notEqual(row.owner, 'unowned')
-    if (row.state === 'local-verified') assert.ok(row.evidence)
+    if (row.state === 'local-verified' || row.state === 'partially-verified') assert.equal(typeof row.evidence, 'object')
   }
   assert.deepEqual(new Set(catalog.rows.map(row => row.platform)), new Set(['macOS', 'Windows', 'Linux']))
   assert.deepEqual(inspectInstalledEvidenceCatalog({ ...catalog, rows: catalog.rows.slice(1) }).failures.filter(failure => failure.includes('required installed evidence row is missing')), ['required installed evidence row is missing: macOS:artifact-build'])
+  const fabricated = structuredClone(catalog)
+  const shortcut = fabricated.rows.find(row => row.id === 'macOS:shortcut-second-instance')
+  shortcut.state = 'local-verified'
+  shortcut.evidence = { kind: 'local-run', platform: 'darwin-arm64', commit: 'a'.repeat(40), version: '0.1.14', identity: 'ai.deepseek.tockteam-desktop', result: 'passed', reference: '/tmp/fabricated.json' }
+  assert.ok(inspectInstalledEvidenceCatalog(fabricated).failures.some(failure => failure.includes('must remain workflow-required')))
 })
 
 test('release and platform workflows retain ordered package and installed gates', () => {

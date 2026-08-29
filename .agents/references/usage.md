@@ -183,9 +183,11 @@ pnpm test:launcher:installed
 
 On macOS this command builds a fresh product, copies the app atomically into a
 disposable Applications-like directory, and verifies the installed launcher,
-reinstall, settings/session compatibility, rollback, and cleanup. The result is
-unsigned/internal ad-hoc evidence only: it is not signed, notarized, or public distribution evidence. Windows
-and Linux workflows are configured but not yet executed; their catalog rows stay
+reinstall-settings, settings/session compatibility, rollback, and cleanup. The
+vendor check is exact launcher source absence plus a bounded extra-resource scan;
+it is not an upgrade proof. The result is unsigned/internal ad-hoc evidence only:
+it is not signed, notarized, or public distribution evidence. Windows and Linux
+workflows are configured but not yet executed; their catalog rows stay
 workflow-required until hosted-run artifacts exist.
 
 ## Data and troubleshooting

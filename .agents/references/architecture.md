@@ -97,8 +97,10 @@ same transaction and risk approval and cannot bypass the Loader.
 The current executable evidence is an unsigned/internal macOS arm64 package and
 installed-app smoke on the current host. It verifies the TockTeam identity,
 ad-hoc signature, ASAR/resources, launcher security boundary, workbench action,
-settings/session compatibility, reinstall, rollback, and cleanup. This is not
-signed, notarized, or public distribution evidence.
+settings/session compatibility, reinstall-settings, rollback, and cleanup. The
+vendor check is limited to exact launcher source absence plus a bounded
+extra-resource scan. This is not signed, notarized, or public distribution
+evidence, and it is not an upgrade proof.
 
 Windows and Linux installed evidence is workflow-required and not yet executed.
 The platform catalog therefore keeps those rows unverified; configured GitHub

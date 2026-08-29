@@ -12,12 +12,12 @@ const STATES = Object.freeze(['local-verified', 'partially-verified', 'workflow-
 export const REQUIRED_INSTALLED_EVIDENCE_ROWS = Object.freeze([
   'macOS:artifact-build',
   'macOS:identity-and-resources',
-  'macOS:notices-and-no-vendor-source',
+  'macOS:notices-and-bounded-vendor-scan',
   'macOS:ad-hoc-signature',
   'macOS:security-and-workbench',
   'macOS:launcher-action',
   'macOS:settings-session-compatibility',
-  'macOS:reinstall-upgrade',
+  'macOS:reinstall-settings',
   'macOS:rollback',
   'macOS:provider-catalog',
   'macOS:permissions-and-cleanup',
@@ -25,7 +25,7 @@ export const REQUIRED_INSTALLED_EVIDENCE_ROWS = Object.freeze([
   'Windows:nsis-install',
   'Windows:identity-resources-notices',
   'Windows:security-action-settings',
-  'Windows:notices-and-no-vendor-source',
+  'Windows:notices-and-bounded-vendor-scan',
   'Windows:control-panel-terminal-elevation',
   'Windows:reinstall-rollback-cleanup',
   'Windows:shortcut-second-instance-permissions',
@@ -39,6 +39,30 @@ export const REQUIRED_INSTALLED_EVIDENCE_ROWS = Object.freeze([
   'Linux:shortcut-second-instance-permissions',
 ])
 const PUBLICATION_KEYS = Object.freeze(['installedArtifact', 'signed', 'notarized', 'publicDistribution'])
+const LOCAL_VERIFIED_ROWS = new Set([
+  'macOS:artifact-build',
+  'macOS:identity-and-resources',
+  'macOS:ad-hoc-signature',
+  'macOS:security-and-workbench',
+  'macOS:launcher-action',
+  'macOS:settings-session-compatibility',
+  'macOS:reinstall-settings',
+  'macOS:rollback',
+  'macOS:permissions-and-cleanup',
+])
+const PARTIAL_VERIFIED_ROWS = new Set([
+  'macOS:notices-and-bounded-vendor-scan',
+  'macOS:provider-catalog',
+])
+const LOCAL_EVIDENCE = Object.freeze({
+  kind: 'local-run',
+  platform: 'darwin-arm64',
+  commit: '98166c8b0351ab8dad255cef8de500b4215bc6e0',
+  version: '0.1.14',
+  identity: 'ai.deepseek.tockteam-desktop',
+  result: 'passed',
+  reference: '/tmp/tl15-installed-mac.json',
+})
 
 function failure(failures, condition, message) {
   if (!condition) failures.push(message)
@@ -68,9 +92,26 @@ export function inspectInstalledEvidenceCatalog(catalog) {
     failure(failures, row.required === true, `installed evidence row is not required: ${String(row.id)}`)
     failure(failures, typeof row.owner === 'string' && row.owner.length > 0 && row.owner !== 'unowned', `installed evidence row is unowned: ${String(row.id)}`)
     failure(failures, STATES.includes(row.state), `installed evidence row has an unknown state: ${String(row.id)}`)
-    if (row.state === 'local-verified' || row.state === 'partially-verified') failure(failures, typeof row.evidence === 'string' && row.evidence.length > 0, `verified row has no evidence reference: ${String(row.id)}`)
+    if (LOCAL_VERIFIED_ROWS.has(row.id)) failure(failures, row.state === 'local-verified', `local evidence row must remain local-verified: ${String(row.id)}`)
+    else if (PARTIAL_VERIFIED_ROWS.has(row.id)) failure(failures, row.state === 'partially-verified', `partial evidence row must remain partially-verified: ${String(row.id)}`)
+    else failure(failures, row.state === 'workflow-required', `unexecuted evidence row must remain workflow-required: ${String(row.id)}`)
+    if (row.state === 'local-verified' || row.state === 'partially-verified') {
+      const evidence = row.evidence
+      failure(failures, evidence !== null && typeof evidence === 'object', `verified row has no evidence provenance: ${String(row.id)}`)
+      for (const key of ['kind', 'platform', 'commit', 'version', 'identity', 'result', 'reference']) {
+        failure(failures, typeof evidence?.[key] === 'string' && evidence[key].length > 0, `verified row evidence is missing ${key}: ${String(row.id)}`)
+      }
+      failure(failures, evidence?.kind === 'local-run', `verified row evidence kind is not local-run: ${String(row.id)}`)
+      failure(failures, /^[0-9a-f]{40}$/u.test(evidence?.commit ?? ''), `verified row evidence commit is not immutable: ${String(row.id)}`)
+      failure(failures, evidence?.result === 'passed', `verified row evidence did not pass: ${String(row.id)}`)
+      failure(failures, evidence?.identity === 'ai.deepseek.tockteam-desktop', `verified row evidence identity drifted: ${String(row.id)}`)
+      failure(failures, evidence?.version === '0.1.14', `verified row evidence version drifted: ${String(row.id)}`)
+      failure(failures, evidence?.platform === 'darwin-arm64', `verified row evidence platform drifted: ${String(row.id)}`)
+    } else failure(failures, row.evidence === null || row.evidence === undefined, `unexecuted evidence row must not claim evidence: ${String(row.id)}`)
   }
+  failure(failures, rows.length === REQUIRED_INSTALLED_EVIDENCE_ROWS.length, `installed evidence catalog must contain exactly ${String(REQUIRED_INSTALLED_EVIDENCE_ROWS.length)} rows`)
   for (const id of REQUIRED_INSTALLED_EVIDENCE_ROWS) failure(failures, byId.has(id), `required installed evidence row is missing: ${id}`)
+  for (const id of byId.keys()) failure(failures, REQUIRED_INSTALLED_EVIDENCE_ROWS.includes(id), `installed evidence catalog contains an unapproved row: ${id}`)
   for (const platform of PLATFORMS) failure(failures, rows.some(row => row?.platform === platform), `installed evidence has no ${platform} rows`)
   return Object.freeze({ failures, summary: Object.freeze({ rows: rows.length, platforms: PLATFORMS, verified: rows.filter(row => row?.state === 'local-verified').length }) })
 }

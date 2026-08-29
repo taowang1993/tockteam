@@ -17,7 +17,11 @@ import {
   preparePackagedArtifact,
   withSmokeEnvironment,
   runRendererSmoke,
+  inspectPackage,
+  findNsisInstaller,
   stopPackagedChild,
+  smokeEnvironment as packagedSmokeEnvironment,
+  waitFor,
 } from './launcher-packaged-smoke.mjs'
 import { replaceMacBundle, validateMacBundle } from './install-mac.mjs'
 
@@ -25,6 +29,7 @@ const execFileAsync = promisify(execFile)
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const contract = JSON.parse(await readFile(join(root, 'scripts/ueli/desktop-release-contract.json'), 'utf8'))
 const packageJson = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'))
+const electronPackage = JSON.parse(await readFile(join(root, 'node_modules/electron/package.json'), 'utf8'))
 const smokeFlag = '--tockteam-launcher-installed-smoke'
 const smokeMarker = 'TOCKTEAM_INSTALLED_SMOKE '
 const smokeOverrideKeys = Object.freeze([
@@ -54,22 +59,26 @@ const smokeOverrideKeys = Object.freeze([
   'DSH_DESKTOP_NODE_VERSION',
   'DSH_DESKTOP_NODE_PLATFORM',
   'DSH_DESKTOP_NODE_ARCH',
+  'NODE_OPTIONS',
+  'NODE_PATH',
 ])
 
-function smokeEnvironment(overrides = {}) {
-  const environment = { ...process.env, ...overrides }
+function smokeEnvironment(overrides = {}, disposableRoot = undefined) {
+  const environment = packagedSmokeEnvironment(overrides, disposableRoot)
   for (const key of smokeOverrideKeys) delete environment[key]
   delete environment.ELECTRON_RUN_AS_NODE
   return environment
 }
 
 function runProcess(command, args, options = {}) {
+  const { disposableRoot, ...spawnOptions } = options
   return new Promise((resolvePromise, reject) => {
     const child = spawn(command, args, {
       cwd: root,
       stdio: ['ignore', 'pipe', 'pipe'],
-      ...options,
-      env: smokeEnvironment(options.env ?? {}),
+      detached: process.platform !== 'win32',
+      ...spawnOptions,
+      env: smokeEnvironment(spawnOptions.env ?? {}, disposableRoot),
     })
     let stdout = ''
     let stderr = ''
@@ -89,11 +98,13 @@ function runProcess(command, args, options = {}) {
     child.stderr?.on('data', chunk => { stderr += String(chunk) })
     child.once('error', error => finish(() => reject(error)))
     child.once('close', code => finish(() => {
-      if (code !== 0) {
-        reject(new Error(`${command} ${args.join(' ')} failed with status ${String(code)}.\n${stdout}\n${stderr}`))
-        return
-      }
-      resolvePromise({ stdout, stderr })
+      void stopPackagedChild(child).then(() => {
+        if (code !== 0) {
+          reject(new Error(`${command} ${args.join(' ')} failed with status ${String(code)}.\n${stdout}\n${stderr}`))
+          return
+        }
+        resolvePromise({ stdout, stderr })
+      }).catch(reject)
     }))
   })
 }
@@ -127,6 +138,7 @@ async function buildInstallerTargets(artifact, target, formats) {
       targets: target.builder.createTarget(format, target.architecture),
       config: {
         ...baseConfig,
+        electronVersion: electronPackage.version,
         [target.key]: { ...baseConfig[target.key], target: [format] },
       },
     }))
@@ -171,9 +183,10 @@ async function installedSession(executable, userData, inventory, target, options
     { flag: smokeFlag, env: { TOCKTEAM_INSTALLED_SMOKE: '1' } },
   )
   try {
-    const renderer = await runRendererSmoke(launched.workbench, launched.launcher, inventory, userData)
+    const renderer = await runRendererSmoke(launched.workbench, launched.launcher, inventory, userData, options.installRoot)
     const platform = await runPlatformOutcomeSmoke(launched.workbench, launched.launcher, target)
-    return Object.freeze({ platform, renderer, launched })
+    const secondInstance = await runSecondInstanceSmoke(executable, userData, launched.workbench, launched.launcher)
+    return Object.freeze({ platform, renderer, secondInstance, launched })
   } catch (error) {
     await stopPackagedChild(launched.child)
     throw error
@@ -184,6 +197,36 @@ async function closeInstalledSession(session) {
   session.launched.launcher.close()
   session.launched.workbench.close()
   await stopPackagedChild(session.launched.child)
+}
+
+async function runSecondInstanceSmoke(executable, userData, workbench, launcher) {
+  const second = spawn(executable, [
+    `--user-data-dir=${userData}`,
+    '--toggle',
+    smokeFlag,
+  ], {
+    cwd: root,
+    detached: process.platform !== 'win32',
+    stdio: 'ignore',
+    env: smokeEnvironment({ TOCKTEAM_INSTALLED_SMOKE: '1' }, userData),
+  })
+  try {
+    await waitFor(() => workbench.evaluate('(async () => (await window.dshDesktop?.launcher?.getState())?.visible)()'), visible => visible === true, 10_000)
+    await launcher.evaluate('(async () => await window.tockteamLauncher?.dismiss())()')
+    await waitFor(() => workbench.evaluate('(async () => (await window.dshDesktop?.launcher?.getState())?.visible)()'), visible => visible === false, 10_000)
+    return Object.freeze({ singleInstance: true, permissions: 'renderer-permission-denied' })
+  } finally {
+    await stopPackagedChild(second)
+  }
+}
+
+function assertPackageParity(expected, actual) {
+  assert.equal(actual.appId, expected.appId, 'installed app identity drifted')
+  assert.equal(actual.productName, expected.productName, 'installed product name drifted')
+  assert.equal(actual.version, expected.version, 'installed package version drifted')
+  assert.equal(actual.assetCount, expected.assetCount, 'installed launcher asset count drifted')
+  assert.equal(actual.vendorSourceShipped, expected.vendorSourceShipped, 'installed vendor-source contract drifted')
+  assert.deepEqual(actual.extraResources.roots, expected.extraResources.roots, 'installed extra-resource roots drifted')
 }
 
 async function readPersistedSetting(executable, userData, target, key, expected) {
@@ -219,7 +262,13 @@ async function runPlatformOutcomeSmoke(workbench, launcher, target) {
     : []
   const enabled = [...new Set([...original, ...extraIds])]
   await workbench.evaluate(`(async () => await window.dshDesktop?.launcher?.settings?.updateSetting('extensions.enabledExtensionIds', ${JSON.stringify(enabled)}))()`)
-  const settings = await launcher.evaluate('(async () => await window.tockteamLauncher?.getSurfaceSettings())()')
+  const settings = await waitFor(
+    () => launcher.evaluate('(async () => await window.tockteamLauncher?.getSurfaceSettings())()'),
+    value => Array.isArray(value?.providerStatuses)
+      && value.providerStatuses.length === 24
+      && value.providerStatuses.some(status => status.extensionId === extraIds[0]),
+    10_000,
+  )
   const statuses = Object.fromEntries(settings.providerStatuses.map(status => [status.extensionId, status.state]))
   assert.equal(settings.providerStatuses.length, 24, 'installed launcher provider catalog is incomplete')
   if (target.key === 'linux') {
@@ -233,8 +282,8 @@ async function runPlatformOutcomeSmoke(workbench, launcher, target) {
     assert.equal(statuses.WindowsControlPanel, 'unsupported')
     return Object.freeze({ controlPanel: statuses.WindowsControlPanel, destructiveEffects: 'not-invoked', providerCount: settings.providerStatuses.length, terminal: statuses.TerminalLauncher })
   }
-  assert.notEqual(statuses.WindowsControlPanel, 'unsupported')
-  assert.notEqual(statuses.TerminalLauncher, 'unsupported')
+  assert.equal(statuses.WindowsControlPanel, 'ready')
+  assert.equal(statuses.TerminalLauncher, 'ready')
   return Object.freeze({ controlPanel: statuses.WindowsControlPanel, destructiveEffects: 'not-invoked', providerCount: settings.providerStatuses.length, terminal: statuses.TerminalLauncher })
 }
 
@@ -269,13 +318,17 @@ async function runMacInstalledSmoke(artifact) {
   })
   await install()
   const identity = await inspectMacBundle(destination)
-  const first = await installedSession(destination + '/Contents/MacOS/TockTeam Desktop', artifact.userData, artifact.inventory, artifact.target)
+  const installedInventory = await inspectPackage(destination, artifact.target, { executable: identity.executable })
+  assertPackageParity(artifact.inventory, installedInventory)
+  const first = await installedSession(destination + '/Contents/MacOS/TockTeam Desktop', artifact.userData, installedInventory, artifact.target, { installRoot: destination })
   const persistedValue = first.renderer.settingsRoundTrip.changed
   await first.launched.workbench.evaluate(`(async () => await window.dshDesktop?.launcher?.settings?.updateSetting('searchEngine.fuzziness', ${String(persistedValue)}))()`)
   await closeInstalledSession(first)
 
   const reinstall = await install()
   const reinstalledIdentity = await inspectMacBundle(destination)
+  const reinstalledInventory = await inspectPackage(destination, artifact.target, { executable: reinstalledIdentity.executable })
+  assertPackageParity(artifact.inventory, reinstalledInventory)
   const restored = await readPersistedSetting(
     destination + '/Contents/MacOS/TockTeam Desktop',
     artifact.userData,
@@ -283,7 +336,7 @@ async function runMacInstalledSmoke(artifact) {
     'searchEngine.fuzziness',
     persistedValue,
   )
-  const beforeRollback = await hashFile(identity.asarPath.replace(sourceApp, destination))
+  const beforeRollback = await hashFile(identity.asarPath)
   await assert.rejects(replaceMacBundle({
     source: sourceApp,
     destination,
@@ -318,11 +371,32 @@ async function runMacInstalledSmoke(artifact) {
       settingsRoundTrip: first.renderer.settingsRoundTrip,
       workbench: first.renderer.workbench,
     },
-    reinstall: { backup: reinstall.backup !== undefined, identity: reinstalledIdentity, settings: restored },
+    reinstallSettings: { backup: reinstall.backup !== undefined, identity: reinstalledIdentity, settings: restored, version: reinstalledInventory.version },
     rollback: { preservedAsarSha256: afterRollback, validationFailureRecovered: true },
     provider: first.platform,
+    secondInstance: first.secondInstance,
     temporaryInstallRemoved,
   })
+}
+
+async function runAppImageSmoke(appImage, userData) {
+  const port = await freePort()
+  const launched = await launchPackaged(
+    appImage,
+    userData,
+    port,
+    ['--appimage-extract-and-run', '--no-sandbox'],
+    { flag: smokeFlag, env: { TOCKTEAM_INSTALLED_SMOKE: '1' } },
+  )
+  try {
+    const title = await launched.launcher.evaluate('document.title')
+    assert.equal(title, 'TockLauncher')
+    return Object.freeze({ runtimeReady: await launched.workbench.evaluate('(async () => (await window.dshDesktop?.getRuntimeSnapshot())?.status)()'), launcherTitle: title })
+  } finally {
+    launched.launcher.close()
+    launched.workbench.close()
+    await stopPackagedChild(launched.child)
+  }
 }
 
 async function runNonMacInstalledSmoke(artifact) {
@@ -330,45 +404,75 @@ async function runNonMacInstalledSmoke(artifact) {
   const installerDir = await buildInstallerTargets(artifact, artifact.target, formats)
   const report = { installerDir, formats }
   if (artifact.target.key === 'win') {
-    const installer = await findFile(installerDir, entry => entry.name.endsWith('.exe'))
-    assert.ok(installer)
+    const installer = await findNsisInstaller(installerDir, artifact.target.architecture)
     const installDir = join(artifact.rootPath, 'installed')
-    await runProcess(installer, ['/S', `/D=${installDir}`])
-    const executable = await findFile(installDir, entry => entry.name.toLowerCase() === 'tockteam desktop.exe')
-    assert.ok(executable, 'installed Windows executable is missing')
-    const smoke = await installedSession(executable, artifact.userData, artifact.inventory, artifact.target)
+    await runProcess(installer, ['/S', `/D=${installDir}`], { disposableRoot: artifact.rootPath })
+    const executable = join(installDir, `${contract.identity.productName}.exe`)
+    assert.equal((await stat(executable)).isFile(), true, 'installed Windows executable is missing')
+    const installedInventory = await inspectPackage(installDir, artifact.target, { executable })
+    assertPackageParity(artifact.inventory, installedInventory)
+    const smoke = await installedSession(executable, artifact.userData, installedInventory, artifact.target, { installRoot: installDir })
     const persistedValue = smoke.renderer.settingsRoundTrip.changed
     await smoke.launched.workbench.evaluate(`(async () => await window.dshDesktop?.launcher?.settings?.updateSetting('searchEngine.fuzziness', ${String(persistedValue)}))()`)
     await closeInstalledSession(smoke)
-    await runProcess(installer, ['/S', `/D=${installDir}`])
+    await runProcess(installer, ['/S', `/D=${installDir}`], { disposableRoot: artifact.rootPath })
+    const reinstalledInventory = await inspectPackage(installDir, artifact.target, { executable })
+    assertPackageParity(artifact.inventory, reinstalledInventory)
     const reinstall = await readPersistedSetting(executable, artifact.userData, artifact.target, 'searchEngine.fuzziness', persistedValue)
-    await runProcess(join(installDir, 'Uninstall TockTeam Desktop.exe'), ['/S']).catch(() => {})
-    await rm(installDir, { recursive: true, force: true })
-    report.installed = { executable, provider: smoke.platform, reinstall: { settings: reinstall } }
+    const uninstaller = join(installDir, 'Uninstall TockTeam Desktop.exe')
+    assert.equal((await stat(uninstaller)).isFile(), true, 'installed Windows uninstaller is missing')
+    await runProcess(uninstaller, ['/S'], { disposableRoot: artifact.rootPath })
+    assert.equal(existsSync(installDir), false, 'Windows uninstaller did not remove the installed artifact')
+    report.installed = {
+      artifact: installer,
+      executable,
+      package: installedInventory,
+      provider: smoke.platform,
+      secondInstance: smoke.secondInstance,
+      reinstall: { package: reinstalledInventory, settings: reinstall },
+      uninstall: 'nsis-uninstaller-passed',
+    }
   } else {
     const deb = await findFile(installerDir, entry => entry.name.endsWith('.deb'))
     const appImage = await findFile(installerDir, entry => entry.name.endsWith('.AppImage'))
     assert.ok(deb && appImage)
+    const packageName = (await runProcess('/usr/bin/dpkg-deb', ['-f', deb, 'Package'], { disposableRoot: artifact.rootPath })).stdout.trim()
+    const packageVersion = (await runProcess('/usr/bin/dpkg-deb', ['-f', deb, 'Version'], { disposableRoot: artifact.rootPath })).stdout.trim()
     const installDir = join(artifact.rootPath, 'deb-root')
-    await runProcess('dpkg-deb', ['--extract', deb, installDir])
-    const debExecutable = await findFile(installDir, entry => entry.name === contract.identity.executableName)
-    assert.ok(debExecutable, 'installed Linux deb executable is missing')
-    const debSmoke = await installedSession(debExecutable, artifact.userData, artifact.inventory, artifact.target, { args: ['--no-sandbox'] })
+    const adminDir = join(installDir, 'var', 'lib', 'dpkg')
+    await mkdir(adminDir, { recursive: true })
+    await writeFile(join(adminDir, 'status'), '', 'utf8')
+    const dpkg = async args => await runProcess('/usr/bin/sudo', ['-n', '/usr/bin/dpkg', `--root=${installDir}`, `--admindir=${adminDir}`, `--instdir=${installDir}`, ...args], { disposableRoot: artifact.rootPath })
+    const dpkgQuery = async args => await runProcess('/usr/bin/sudo', ['-n', '/usr/bin/dpkg-query', `--admindir=${adminDir}`, ...args], { disposableRoot: artifact.rootPath })
+    const installedVersion = async () => (await dpkgQuery(['--showformat=${Version}', '--show', packageName])).stdout.trim()
+    await dpkg(['--unpack', deb])
+    assert.equal(await installedVersion(), packageVersion, 'isolated dpkg registration/version mismatch')
+    const installedInventory = await inspectPackage(installDir, artifact.target)
+    assertPackageParity(artifact.inventory, installedInventory)
+    const debSmoke = await installedSession(installedInventory.executable, artifact.userData, installedInventory, artifact.target, { args: ['--no-sandbox'], installRoot: installDir })
     const persistedValue = debSmoke.renderer.settingsRoundTrip.changed
     await debSmoke.launched.workbench.evaluate(`(async () => await window.dshDesktop?.launcher?.settings?.updateSetting('searchEngine.fuzziness', ${String(persistedValue)}))()`)
     await closeInstalledSession(debSmoke)
+    await dpkg(['--unpack', deb])
+    assert.equal(await installedVersion(), packageVersion, 'isolated dpkg reinstall/version mismatch')
+    const reinstalledInventory = await inspectPackage(installDir, artifact.target)
+    assertPackageParity(artifact.inventory, reinstalledInventory)
+    const debReinstall = await readPersistedSetting(reinstalledInventory.executable, artifact.userData, artifact.target, 'searchEngine.fuzziness', persistedValue)
+    await dpkg(['--purge', packageName])
+    await assert.rejects(installedVersion(), /failed with status/u)
     await rm(installDir, { recursive: true, force: true })
-    await runProcess('dpkg-deb', ['--extract', deb, installDir])
-    const reinstallExecutable = await findFile(installDir, entry => entry.name === contract.identity.executableName)
-    assert.ok(reinstallExecutable)
-    const debReinstall = await readPersistedSetting(reinstallExecutable, artifact.userData, artifact.target, 'searchEngine.fuzziness', persistedValue)
-    const appImageSmoke = await installedSession(appImage, artifact.userData, artifact.inventory, artifact.target, { args: ['--appimage-extract-and-run', '--no-sandbox'] })
-    await closeInstalledSession(appImageSmoke)
-    await rm(installDir, { recursive: true, force: true })
+    assert.equal(existsSync(installDir), false, 'isolated dpkg cleanup did not remove its root')
+
+    const appImageRoot = join(artifact.rootPath, 'appimage')
+    await mkdir(appImageRoot, { recursive: true })
+    await runProcess(appImage, ['--appimage-extract'], { cwd: appImageRoot, disposableRoot: artifact.rootPath })
+    const extractedRoot = join(appImageRoot, 'squashfs-root')
+    const appImageInventory = await inspectPackage(extractedRoot, artifact.target)
+    assertPackageParity(artifact.inventory, appImageInventory)
+    const appImageSmoke = await runAppImageSmoke(appImage, join(artifact.userData, 'appimage'))
     report.installed = {
-      appImage: { provider: appImageSmoke.platform },
-      deb: { executable: debExecutable, provider: debSmoke.platform, reinstall: { settings: debReinstall } },
-      uninstall: 'disposable dpkg-deb extraction removed after smoke',
+      appImage: { package: appImageInventory, runtime: appImageSmoke },
+      deb: { package: installedInventory, provider: debSmoke.platform, secondInstance: debSmoke.secondInstance, reinstall: { package: reinstalledInventory, settings: debReinstall }, uninstall: 'dpkg-purge-passed' },
     }
   }
   return Object.freeze(report)
