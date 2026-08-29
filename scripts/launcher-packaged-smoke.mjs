@@ -392,10 +392,11 @@ async function findAsar(rootPath, depth = 0) {
 }
 
 export async function findNsisInstaller(installerDir, architecture = 'x64') {
-  const pattern = packageJson.build?.artifactName ?? `${contract.identity.productName}-${packageJson.version}-${String(architecture)}.exe`
+  const architectureName = architecture === Arch.x64 ? 'x64' : architecture === Arch.arm64 ? 'arm64' : String(architecture)
+  const pattern = packageJson.build?.artifactName ?? `${contract.identity.productName}-${packageJson.version}-${architectureName}.exe`
   const expectedName = pattern
     .replaceAll('${version}', packageJson.version)
-    .replaceAll('${arch}', String(architecture))
+    .replaceAll('${arch}', architectureName)
     .replaceAll('${productName}', contract.identity.productName)
     .replaceAll('${ext}', 'exe')
   const installer = join(resolve(installerDir), expectedName)

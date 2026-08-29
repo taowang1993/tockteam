@@ -58,6 +58,11 @@ const ALLOWED_OWNERS = new Set([
   'scripts/launcher-installed-smoke.mjs',
   '.github/workflows/tocklauncher-installed.yml',
 ])
+const WORKFLOW_OWNER_ROWS = new Set([
+  'Windows:nsis-install',
+  'Linux:deb-install',
+  'Linux:appimage-install',
+])
 const LOCAL_EVIDENCE = Object.freeze({
   kind: 'local-run',
   platform: 'darwin-arm64',
@@ -95,6 +100,8 @@ export function inspectInstalledEvidenceCatalog(catalog) {
     failure(failures, PLATFORMS.includes(row.platform), `installed evidence row has an unknown platform: ${String(row.platform)}`)
     failure(failures, row.required === true, `installed evidence row is not required: ${String(row.id)}`)
     failure(failures, typeof row.owner === 'string' && ALLOWED_OWNERS.has(row.owner), `installed evidence row owner is not an approved source: ${String(row.id)}`)
+    const expectedOwner = WORKFLOW_OWNER_ROWS.has(row.id) ? '.github/workflows/tocklauncher-installed.yml' : 'scripts/launcher-installed-smoke.mjs'
+    failure(failures, row.owner === expectedOwner, `installed evidence row owner is incorrect: ${String(row.id)}`)
     failure(failures, STATES.includes(row.state), `installed evidence row has an unknown state: ${String(row.id)}`)
     if (LOCAL_VERIFIED_ROWS.has(row.id)) failure(failures, row.state === 'local-verified', `local evidence row must remain local-verified: ${String(row.id)}`)
     else if (PARTIAL_VERIFIED_ROWS.has(row.id)) failure(failures, row.state === 'partially-verified', `partial evidence row must remain partially-verified: ${String(row.id)}`)
