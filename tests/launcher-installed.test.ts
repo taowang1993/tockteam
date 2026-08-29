@@ -18,6 +18,7 @@ import {
   selectCdpDescriptor,
   selectWindowsGitPath,
   smokeEnvironment,
+  trustedPathEntries,
   windowsCdpListenerOwned,
 } from '../scripts/launcher-packaged-smoke.mjs'
 import { replaceWindowsPortableArchive } from '../scripts/install-windows.mjs'
@@ -139,10 +140,23 @@ test('launched smoke environments use disposable user roots and bounded tools', 
   const nodeDirectory = dirname(process.execPath)
   assert.ok(pathEntries.some(directory => join(directory, basename(process.execPath)) === process.execPath))
   assert.equal(pathEntries.filter(directory => directory === nodeDirectory).length, 1)
+  const localBin = join(root, 'node_modules', '.bin')
+  assert.ok(pathEntries.includes(localBin))
+  assert.equal(pathEntries.filter(directory => directory === localBin).length, 1)
+  const systemRoot = process.env.SystemRoot ?? 'C:\\Windows'
   const systemDirectories = process.platform === 'win32'
-    ? [join(process.env.SystemRoot ?? 'C:\\Windows', 'System32'), process.env.SystemRoot ?? 'C:\\Windows', join(process.env.SystemRoot ?? 'C:\\Windows', 'System32', 'Wbem')]
+    ? [join(systemRoot, 'System32'), systemRoot, join(systemRoot, 'System32', 'Wbem'), join(systemRoot, 'System32', 'WindowsPowerShell', 'v1.0')]
     : ['/usr/local/bin', '/usr/bin', '/bin', '/usr/sbin', '/sbin']
   for (const directory of systemDirectories) assert.ok(pathEntries.includes(directory))
+  const simulatedWindows = trustedPathEntries({
+    platform: 'win32',
+    nodeDirectory: 'C:\\Node',
+    repositoryRoot: 'C:\\repo',
+    systemRoot: 'C:\\Windows',
+    gitExecutable: 'C:\\Program Files\\Git\\cmd\\git.exe',
+  })
+  assert.equal(simulatedWindows.filter(directory => directory === 'C:\\repo\\node_modules\\.bin').length, 1)
+  assert.equal(simulatedWindows.filter(directory => directory === 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0').length, 1)
 })
 
 test('canonical path helpers resolve aliases and fail closed for invalid paths', async () => {

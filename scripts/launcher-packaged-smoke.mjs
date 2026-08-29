@@ -136,14 +136,32 @@ const smokeOverrideKeys = Object.freeze([
 ])
 const disposableEnvironmentKeys = Object.freeze(['HOME', 'USERPROFILE', 'APPDATA', 'LOCALAPPDATA', 'XDG_CONFIG_HOME', 'XDG_CACHE_HOME', 'XDG_DATA_HOME', 'XDG_DATA_DIRS', 'XDG_STATE_HOME', 'TMPDIR', 'TEMP', 'TMP', 'PATH'])
 
-function trustedPath() {
-  const nodeDirectory = dirname(resolve(process.execPath))
-  if (process.platform === 'win32') {
-    const systemRoot = process.env.SystemRoot ?? 'C:\\Windows'
-    const gitDirectory = trustedWindowsGitPath === undefined ? [] : [win32.dirname(trustedWindowsGitPath)]
-    return [...new Set([nodeDirectory, ...gitDirectory, join(systemRoot, 'System32'), systemRoot, join(systemRoot, 'System32', 'Wbem')])].join(';')
+export function trustedPathEntries({
+  platform = process.platform,
+  nodeDirectory = dirname(resolve(process.execPath)),
+  repositoryRoot = root,
+  systemRoot = process.env.SystemRoot ?? 'C:\\Windows',
+  gitExecutable = trustedWindowsGitPath,
+} = {}) {
+  const pathJoin = platform === 'win32' ? win32.join : join
+  const localBin = pathJoin(repositoryRoot, 'node_modules', '.bin')
+  if (platform === 'win32') {
+    const gitDirectory = gitExecutable === undefined ? [] : [win32.dirname(gitExecutable)]
+    return Object.freeze([...new Set([
+      nodeDirectory,
+      localBin,
+      ...gitDirectory,
+      win32.join(systemRoot, 'System32'),
+      systemRoot,
+      win32.join(systemRoot, 'System32', 'Wbem'),
+      win32.join(systemRoot, 'System32', 'WindowsPowerShell', 'v1.0'),
+    ])])
   }
-  return [...new Set([nodeDirectory, '/usr/local/bin', '/usr/bin', '/bin', '/usr/sbin', '/sbin'])].join(':')
+  return Object.freeze([...new Set([nodeDirectory, localBin, '/usr/local/bin', '/usr/bin', '/bin', '/usr/sbin', '/sbin'])])
+}
+
+function trustedPath() {
+  return trustedPathEntries().join(process.platform === 'win32' ? ';' : ':')
 }
 
 export function smokeEnvironment(overrides = {}, disposableRoot = undefined) {

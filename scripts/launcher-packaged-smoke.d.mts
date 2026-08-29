@@ -11,6 +11,14 @@ export function selectWindowsGitPath(options?: Readonly<{
   isFile?: (candidate: string) => boolean
 }>): string | undefined
 
+export function trustedPathEntries(options?: Readonly<{
+  platform?: NodeJS.Platform
+  nodeDirectory?: string
+  repositoryRoot?: string
+  systemRoot?: string
+  gitExecutable?: string
+}>): readonly string[]
+
 export function canonicalPath(candidatePath: string): Promise<string | undefined>
 
 export function pathContained(rootPath: string, candidatePath: string): Promise<boolean>
