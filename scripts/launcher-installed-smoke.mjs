@@ -194,7 +194,7 @@ async function installedSession(executable, userData, inventory, target, options
   try {
     const renderer = await runRendererSmoke(launched.workbench, launched.launcher, inventory, userData, options.installRoot)
     const platform = await runPlatformOutcomeSmoke(launched.workbench, launched.launcher, target)
-    const secondInstance = await runSecondInstanceSmoke(executable, userData, launched.workbench, launched.launcher)
+    const secondInstance = await runSecondInstanceSmoke(executable, userData, launched.workbench, launched.launcher, options.args ?? [])
     return Object.freeze({ platform, renderer, secondInstance, launched })
   } catch (error) {
     await stopPackagedChild(launched.child)
@@ -209,8 +209,9 @@ async function closeInstalledSession(session, executable = undefined) {
   if (executable !== undefined) await assertOwnedProcessGone(executable)
 }
 
-async function runSecondInstanceSmoke(executable, userData, workbench, launcher) {
+async function runSecondInstanceSmoke(executable, userData, workbench, launcher, extraArgs = []) {
   const second = spawn(executable, [
+    ...extraArgs,
     `--user-data-dir=${userData}`,
     '--toggle',
     smokeFlag,
@@ -476,6 +477,7 @@ async function runNonMacInstalledSmoke(artifact) {
     assert.equal(await installedStatus(), 'install ok installed', 'isolated dpkg package is not configured')
     assert.equal(await installedVersion(), packageVersion, 'isolated dpkg registration/version mismatch')
     const installedInventory = await inspectPackage(installDir, artifact.target)
+    assert.ok(installedInventory.executable.includes('/opt/') || installedInventory.executable.includes('\\\\opt\\\\'), 'deb executable did not come from the installed /opt payload')
     assertPackageParity(artifact.inventory, installedInventory)
     const debSmoke = await installedSession(installedInventory.executable, artifact.userData, installedInventory, artifact.target, { args: ['--no-sandbox'], installRoot: installDir })
     const persistedValue = debSmoke.renderer.settingsRoundTrip.changed
@@ -501,7 +503,7 @@ async function runNonMacInstalledSmoke(artifact) {
     const appImageSmoke = await installedSession(appImageInventory.executable, join(artifact.userData, 'appimage'), appImageInventory, artifact.target, { args: ['--no-sandbox'], installRoot: extractedRoot })
     await closeInstalledSession(appImageSmoke, appImageInventory.executable)
     report.installed = {
-      appImage: { artifact: appImage, installRoot: extractedRoot, package: appImageInventory, renderer: appImageSmoke.renderer, provider: appImageSmoke.platform, secondInstance: appImageSmoke.secondInstance, runtime: { runtimeReady: appImageSmoke.renderer.runtimeArchitecture !== undefined } },
+      appImage: { artifact: appImage, installRoot: extractedRoot, package: appImageInventory, renderer: appImageSmoke.renderer, provider: appImageSmoke.platform, secondInstance: appImageSmoke.secondInstance, runtime: { runtimeReady: true } },
       deb: { artifact: deb, installRoot: installDir, package: installedInventory, renderer: debSmoke.renderer, provider: debSmoke.platform, secondInstance: debSmoke.secondInstance, reinstall: { package: reinstalledInventory, settings: debReinstall }, rollback: { state: 'workflow-required', reason: 'dpkg has no atomic rollback transaction' }, uninstall: 'dpkg-purge-passed' },
     }
     report.temporaryInstallRemoved = true

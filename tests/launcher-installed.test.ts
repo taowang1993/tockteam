@@ -204,6 +204,11 @@ test('installed report validation requires complete platform lifecycle evidence'
   assert.ok(inspectInstalledReport({ ...report, result: 'failed' }, expected).failures.length > 0)
   assert.ok(inspectInstalledReport({ ...report, installed: { ...report.installed, reinstall: undefined } }, expected).failures.length > 0)
   assert.ok(inspectInstalledReport({ ...report, installed: { ...report.installed, package: { ...packageInventory, vendorScan: undefined } } }, expected).failures.length > 0)
+  const linuxPackage = { ...packageInventory, appPath: '/tmp/deb-root/opt/TockTeam Desktop/resources/app.asar' }
+  const linuxRenderer = { security: { appPath: linuxPackage.appPath }, launcher: { notificationPermission: 'denied' } }
+  const linuxReport = { ...report, platform: 'linux', installed: { deb: { artifact: '/tmp/TockTeam-Desktop.deb', installRoot: '/tmp/deb-root', package: linuxPackage, renderer: linuxRenderer, reinstall: { package: linuxPackage, settings: { restored: 0.6, runtimeReady: 'ready' } }, secondInstance: { singleInstance: true, permissions: 'renderer-permission-denied' }, rollback: { state: 'workflow-required' }, uninstall: 'dpkg-purge-passed' }, appImage: { artifact: '/tmp/TockTeam-Desktop.AppImage', installRoot: '/tmp/appimage-root', package: { ...linuxPackage, appPath: '/tmp/appimage-root/resources/app.asar' }, renderer: { security: { appPath: '/tmp/appimage-root/resources/app.asar' }, launcher: { notificationPermission: 'denied' } }, runtime: { runtimeReady: true }, secondInstance: { singleInstance: true, permissions: 'renderer-permission-denied' } } } }
+  assert.equal(inspectInstalledReport(linuxReport, { ...expected, platform: 'linux' }).failures.length, 0)
+  assert.ok(inspectInstalledReport({ ...linuxReport, installed: { ...linuxReport.installed, appImage: undefined } }, { ...expected, platform: 'linux' }).failures.length > 0)
 })
 
 test('release and platform workflows retain ordered package and installed gates', () => {
@@ -216,6 +221,8 @@ test('release and platform workflows retain ordered package and installed gates'
   assert.match(installedWorkflow, /runs-on: ubuntu-24\.04/u)
   assert.match(installedWorkflow, /test:launcher:installed/u)
   assert.match(installedWorkflow, /check-installed-report\.mjs/u)
+  assert.match(installedWorkflow, /portable-archive/u)
+  assert.doesNotMatch(installedWorkflow, /NSIS artifact/u)
   assert.match(installedWorkflow, /test:ueli-baseline/u)
   assert.match(installedWorkflow, /audit:ueli-baseline/u)
   assert.match(installedWorkflow, /test:ueli-launcher-parity/u)
