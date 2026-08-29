@@ -486,7 +486,7 @@ async function assertArchiveInventory(files, asar, asarText, asarPath) {
   return Object.freeze({ assetCount: launcherAssets.length, asarPath, fileCount: files.length, vendorSourceShipped: false })
 }
 
-async function inspectExtraResources(asarPath) {
+export async function inspectExtraResources(asarPath) {
   const resourcesRoot = dirname(asarPath)
   const resourcePaths = []
   for (const resource of packageJson.build?.extraResources ?? []) {

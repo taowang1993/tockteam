@@ -1,11 +1,14 @@
 import assert from 'node:assert/strict'
+import { mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises'
 import { readFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
 import {
   inspectInstalledEvidenceCatalog,
   inspectInstalledEvidenceWorkflow,
 } from '../scripts/ueli/installed-evidence.mjs'
+import { inspectExtraResources } from '../scripts/launcher-packaged-smoke.mjs'
 
 const root = join(import.meta.dirname, '..')
 const packageJson = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')) as {
@@ -50,6 +53,22 @@ test('package smoke is hermetic and verifies resources plus process ownership', 
   assert.doesNotMatch(packagedSmoke, /spawnOptions\.shell\s*=\s*true/u)
   assert.match(cleanup, /taskkill/iu)
   assert.match(cleanup, /process\.kill\(-/u)
+})
+
+test('extra-resource inspection is bounded and never follows symlink cycles', async () => {
+  const rootPath = await mkdtemp(join(tmpdir(), 'tockteam-extra-resource-limit-'))
+  try {
+    await mkdir(join(rootPath, 'dsh-runtime'), { recursive: true })
+    await mkdir(join(rootPath, 'node-runtime'), { recursive: true })
+    await mkdir(join(rootPath, 'lib', 'tockteam'), { recursive: true })
+    await mkdir(join(rootPath, 'bin'), { recursive: true })
+    for (const file of ['tockteam-desktop.png', 'lib/tockteam/cli.js', 'lib/tockteam/package.json', 'bin/tockteam', 'bin/tockteam.cmd']) await writeFile(join(rootPath, file), '')
+    await symlink(rootPath, join(rootPath, 'dsh-runtime', 'cycle'))
+    const result = await inspectExtraResources(join(rootPath, 'app.asar'))
+    assert.ok(result.checkedEntries <= 4096)
+  } finally {
+    await rm(rootPath, { recursive: true, force: true })
+  }
 })
 
 test('installed evidence catalog owns every required platform row without publication claims', () => {
