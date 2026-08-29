@@ -15,6 +15,7 @@ import { currentTarget, packagedBuilderConfig } from '../scripts/launcher-packag
 
 const root = join(import.meta.dirname, '..')
 const packageJson = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')) as {
+  homepage?: string
   dependencies?: Record<string, string>
   build?: { asar?: boolean; files?: unknown; extraResources?: unknown }
 }
@@ -26,6 +27,11 @@ const contract = JSON.parse(readFileSync(join(root, 'scripts/ueli/desktop-releas
 }
 
 const packagedSmoke = readFileSync(join(root, 'scripts/launcher-packaged-smoke.mjs'), 'utf8')
+
+test('package metadata exposes the canonical homepage for packaged inputs', () => {
+  assert.equal(packageJson.homepage, 'https://github.com/taowang1993/tockteam')
+  assert.match(packagedSmoke, /const appManifest = \{ \.\.\.packageJson \}/u)
+})
 
 test('package contract admits the complete launcher resource inventory', () => {
   assert.equal(packageJson.build?.asar, true)

@@ -164,25 +164,37 @@ function trustedPath() {
   return trustedPathEntries().join(process.platform === 'win32' ? ';' : ':')
 }
 
+function disposableEnvironmentPaths(disposableRoot) {
+  const rootPath = resolve(disposableRoot)
+  return Object.freeze({
+    HOME: join(rootPath, 'home'),
+    USERPROFILE: join(rootPath, 'home'),
+    APPDATA: join(rootPath, 'appdata', 'roaming'),
+    LOCALAPPDATA: join(rootPath, 'appdata', 'local'),
+    XDG_CONFIG_HOME: join(rootPath, 'xdg', 'config'),
+    XDG_CACHE_HOME: join(rootPath, 'xdg', 'cache'),
+    XDG_DATA_HOME: join(rootPath, 'xdg', 'data'),
+    XDG_STATE_HOME: join(rootPath, 'xdg', 'state'),
+    XDG_DATA_DIRS: join(rootPath, 'xdg', 'data-dirs'),
+    TMPDIR: join(rootPath, 'tmp'),
+    TEMP: join(rootPath, 'tmp'),
+    TMP: join(rootPath, 'tmp'),
+  })
+}
+
+export async function prepareSmokeEnvironmentRoots(disposableRoot) {
+  const paths = disposableEnvironmentPaths(disposableRoot)
+  const roots = Object.freeze([...new Set(Object.values(paths))])
+  await Promise.all(roots.map(path => mkdir(path, { recursive: true })))
+  return roots
+}
+
 export function smokeEnvironment(overrides = {}, disposableRoot = undefined) {
   const environment = { ...process.env, ...overrides }
   for (const key of smokeOverrideKeys) delete environment[key]
   delete environment.ELECTRON_RUN_AS_NODE
   if (disposableRoot !== undefined) {
-    const rootPath = resolve(disposableRoot)
-    const home = join(rootPath, 'home')
-    environment.HOME = home
-    environment.USERPROFILE = home
-    environment.APPDATA = join(rootPath, 'appdata', 'roaming')
-    environment.LOCALAPPDATA = join(rootPath, 'appdata', 'local')
-    environment.XDG_CONFIG_HOME = join(rootPath, 'xdg', 'config')
-    environment.XDG_CACHE_HOME = join(rootPath, 'xdg', 'cache')
-    environment.XDG_DATA_HOME = join(rootPath, 'xdg', 'data')
-    environment.XDG_STATE_HOME = join(rootPath, 'xdg', 'state')
-    environment.XDG_DATA_DIRS = join(rootPath, 'xdg', 'data-dirs')
-    environment.TMPDIR = join(rootPath, 'tmp')
-    environment.TEMP = join(rootPath, 'tmp')
-    environment.TMP = join(rootPath, 'tmp')
+    Object.assign(environment, disposableEnvironmentPaths(disposableRoot))
     environment.PATH = trustedPath()
   }
   return environment
@@ -192,6 +204,7 @@ export async function withSmokeEnvironment(operation, disposableRoot = undefined
   const keys = disposableRoot === undefined ? smokeOverrideKeys : [...smokeOverrideKeys, ...disposableEnvironmentKeys]
   const previous = new Map(keys.map(key => [key, process.env[key]]))
   const bounded = disposableRoot === undefined ? undefined : smokeEnvironment({}, disposableRoot)
+  if (disposableRoot !== undefined) await prepareSmokeEnvironmentRoots(disposableRoot)
   for (const key of smokeOverrideKeys) delete process.env[key]
   if (bounded !== undefined) {
     for (const key of disposableEnvironmentKeys) {
@@ -741,6 +754,7 @@ export async function inspectPackage(outputDir, target, options = {}) {
 export async function launchPackaged(executable, userData, port, extraArgs = [], launchOptions = {}) {
   const childFlag = launchOptions.flag ?? smokeFlag
   const childEnvironment = launchOptions.env ?? { TOCKTEAM_PACKAGED_SMOKE: '1' }
+  await prepareSmokeEnvironmentRoots(userData)
   const child = spawnProcess(executable, [
     ...extraArgs,
     `--remote-debugging-address=127.0.0.1`,

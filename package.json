@@ -3,6 +3,7 @@
   "productName": "TockTeam Desktop",
   "version": "0.1.14",
   "description": "TockTeam: installable Desktop, Web, and TUI surfaces over its DSH runtime",
+  "homepage": "https://github.com/taowang1993/tockteam",
   "author": "dsh-external",
   "desktopName": "tockteam-desktop.desktop",
   "private": true,

@@ -15,6 +15,7 @@ import {
   inspectExtraResources,
   parseWindowsGitPaths,
   pathContained,
+  prepareSmokeEnvironmentRoots,
   selectCdpDescriptor,
   selectWindowsGitPath,
   smokeEnvironment,
@@ -214,6 +215,22 @@ test('launched smoke environments use disposable user roots and bounded tools', 
   assert.equal(simulatedWindows.filter(directory => directory === 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0').length, 1)
 })
 
+test('packaged smoke creates every disposable environment root before a launch', async () => {
+  const rootPath = await mkdtemp(join(tmpdir(), 'tockteam-smoke-roots-'))
+  const disposableRoot = join(rootPath, 'nested', 'smoke')
+  try {
+    const expected = smokeEnvironment({}, disposableRoot)
+    const created = await prepareSmokeEnvironmentRoots(disposableRoot)
+    const configured = ['HOME', 'USERPROFILE', 'APPDATA', 'LOCALAPPDATA', 'XDG_CONFIG_HOME', 'XDG_CACHE_HOME', 'XDG_DATA_HOME', 'XDG_STATE_HOME', 'XDG_DATA_DIRS', 'TMPDIR', 'TEMP', 'TMP']
+      .map(key => expected[key])
+      .filter((path): path is string => path !== undefined)
+    assert.deepEqual(new Set(created), new Set(configured))
+    for (const path of created) assert.equal((await stat(path)).isDirectory(), true)
+  } finally {
+    await rm(rootPath, { recursive: true, force: true })
+  }
+})
+
 test('canonical path helpers resolve aliases and fail closed for invalid paths', async () => {
   const rootPath = await mkdtemp(join(tmpdir(), 'tockteam-canonical-path-'))
   try {
@@ -400,6 +417,7 @@ test('release and platform workflows retain ordered package and installed gates'
     assert.match(section, /fetch-depth: 0/u)
     assert.match(section, /fetch-tags: true/u)
     assert.match(section, /submodules: recursive/u)
+    assert.match(section, /compression-level: 0/u)
   }
   assert.match(installedWorkflow, /id: ueli-gates/u)
   assert.match(installedWorkflow, /id: installed-smoke/u)
@@ -425,4 +443,6 @@ test('release and platform workflows retain ordered package and installed gates'
   assert.ok(inspectInstalledEvidenceWorkflow(missingHistory).failures.some(failure => failure.includes('full checkout history')))
   const missingSubmodules = installedWorkflow.replaceAll('submodules: recursive', 'submodules: false')
   assert.ok(inspectInstalledEvidenceWorkflow(missingSubmodules).failures.some(failure => failure.includes('recursive submodules')))
+  const compressedUpload = installedWorkflow.replaceAll('compression-level: 0', 'compression-level: 6')
+  assert.ok(inspectInstalledEvidenceWorkflow(compressedUpload).failures.some(failure => failure.includes('disable artifact compression')))
 })

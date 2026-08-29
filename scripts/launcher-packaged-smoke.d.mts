@@ -31,6 +31,8 @@ export function withSmokeEnvironment<T>(operation: () => T | Promise<T>, disposa
 
 export function smokeEnvironment(overrides?: NodeJS.ProcessEnv, disposableRoot?: string): NodeJS.ProcessEnv
 
+export function prepareSmokeEnvironmentRoots(disposableRoot: string): Promise<readonly string[]>
+
 export function freePort(): Promise<number>
 
 export function selectCdpDescriptor<T extends Readonly<{ title?: string; webSocketDebuggerUrl?: string }>>(

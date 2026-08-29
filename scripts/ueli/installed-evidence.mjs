@@ -158,6 +158,7 @@ export function inspectInstalledEvidenceWorkflow(workflow) {
     failure(failures, /id:\s*ueli-gates/u.test(section), `${job} must identify the Ueli gate step`)
     failure(failures, /id:\s*installed-smoke/u.test(section), `${job} must identify the installed smoke step`)
     failure(failures, /id:\s*report-check/u.test(section), `${job} must identify the report-check step`)
+    failure(failures, /compression-level:\s*0/u.test(section), `${job} evidence upload must disable artifact compression`)
   }
   failure(failures, /check-installed-report\.mjs/u.test(text), 'installed evidence workflow must verify the actual installed report')
   failure(failures, /Record installed gate outcomes/u.test(text), 'installed evidence workflow must record deterministic gate outcomes')
