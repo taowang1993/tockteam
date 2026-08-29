@@ -94,17 +94,16 @@ same transaction and risk approval and cannot bypass the Loader.
 
 ## Installed TockLauncher evidence
 
-The current executable evidence is an unsigned/internal macOS arm64 package and
-installed-app smoke on the current host. It verifies the TockTeam identity,
-ad-hoc signature, ASAR/resources, launcher security boundary, workbench action,
-settings/session compatibility, reinstall-settings, rollback, and cleanup. The
-vendor check is limited to exact launcher source absence plus a bounded
-extra-resource scan. This is not signed, notarized, or public distribution
-evidence, and it is not an upgrade proof.
-
-Windows and Linux installed evidence is workflow-required and not yet executed.
-The platform catalog therefore keeps those rows unverified; configured GitHub
-workflows do not count as a passing run or as a publication claim.
+The installed smoke supports a disposable macOS app and a Windows portable
+archive built from the supported directory artifact, plus real Debian/AppImage
+lanes on Ubuntu. Current post-fix evidence has not been captured, so every
+installed-evidence catalog row remains workflow-required. The smoke requires
+exact identity/version/resources, renderer security, lifecycle and cleanup
+reports before a row can be promoted. Vendor results are explicitly bounded
+no-follow scans, not global source-absence proof. No workflow configuration
+counts as a passing run or publication claim; signing, notarization, and public
+distribution remain unproven. Any future local macOS row must be labeled
+unsigned/internal macOS evidence and backed by a checked-in report. Windows and Linux installed evidence is workflow-required and not yet executed.
 
 ## Security boundaries
 

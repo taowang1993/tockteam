@@ -10,12 +10,18 @@ export function selectCdpDescriptor<T extends Readonly<{ title?: string; webSock
   port: number,
 ): T | undefined
 
-export function findNsisInstaller(installerDir: string, architecture?: number | string): Promise<string>
+export function windowsCdpListenerOwned(output: string, pid: number, port: number): boolean
 
 export function inspectExtraResources(asarPath: string): Promise<Readonly<{
   checkedEntries: number
   roots: readonly string[]
-  vendorSourceShipped: boolean
+  vendorScan: Readonly<{
+    scope: 'bounded-no-follow'
+    maxDepth: number
+    maxEntries: number
+    checkedEntries: number
+    forbiddenSourceFound: boolean
+  }>
 }>>
 
 export function inspectPackage(outputDir: string, target: unknown, options?: Readonly<{ executable?: string }>): Promise<unknown>

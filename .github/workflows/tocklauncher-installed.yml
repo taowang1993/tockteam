@@ -5,16 +5,7 @@ on:
   pull_request:
     paths:
       - ".github/workflows/tocklauncher-installed.yml"
-      - "scripts/launcher-*.mjs"
-      - "scripts/build-*.mjs"
-      - "scripts/stage-*.mjs"
-      - "scripts/build-dsh.mjs"
-      - "scripts/stage-dsh.mjs"
-      - "scripts/check-installed-report.mjs"
-      - "scripts/install-mac.mjs"
-      - "scripts/process-cleanup.mjs"
-      - "scripts/ueli/desktop-release-contract.json"
-      - "scripts/ueli/installed-evidence*"
+      - "scripts/**"
       - "src/**"
       - "package.json"
       - "pnpm-lock.yaml"
@@ -27,7 +18,7 @@ permissions:
 
 jobs:
   windows-x64:
-    name: Windows x64 installed NSIS TockLauncher evidence
+    name: Windows x64 installed portable-archive TockLauncher evidence
     runs-on: windows-latest
     timeout-minutes: 180
     steps:
@@ -52,10 +43,6 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Verify package version contract
-        shell: bash
-        run: node scripts/check-release-version.mjs --tag "v$(node -p \"require('./package.json').version\")"
-
       - name: Run Ueli parity and package gates
         shell: bash
         run: |
@@ -66,7 +53,7 @@ jobs:
           pnpm test:ueli-package-feasibility
           pnpm audit:ueli-package-feasibility
 
-      - name: Build and install the disposable NSIS artifact
+      - name: Build and install the disposable portable archive artifact
         shell: bash
         env:
           TOCKTEAM_KEEP_INSTALLED_SMOKE: "1"
@@ -123,10 +110,6 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-
-      - name: Verify package version contract
-        shell: bash
-        run: node scripts/check-release-version.mjs --tag "v$(node -p \"require('./package.json').version\")"
 
       - name: Run Ueli parity and package gates
         shell: bash

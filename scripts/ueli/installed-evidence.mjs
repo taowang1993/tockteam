@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 
 import assert from 'node:assert/strict'
+import { createHash } from 'node:crypto'
+import { existsSync, readFileSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -22,7 +24,7 @@ export const REQUIRED_INSTALLED_EVIDENCE_ROWS = Object.freeze([
   'macOS:provider-catalog',
   'macOS:permissions-and-cleanup',
   'macOS:shortcut-second-instance',
-  'Windows:nsis-install',
+  'Windows:portable-archive-install',
   'Windows:identity-resources-notices',
   'Windows:security-action-settings',
   'Windows:notices-and-bounded-vendor-scan',
@@ -39,42 +41,50 @@ export const REQUIRED_INSTALLED_EVIDENCE_ROWS = Object.freeze([
   'Linux:shortcut-second-instance-permissions',
 ])
 const PUBLICATION_KEYS = Object.freeze(['installedArtifact', 'signed', 'notarized', 'publicDistribution'])
-const LOCAL_VERIFIED_ROWS = new Set([
-  'macOS:artifact-build',
-  'macOS:identity-and-resources',
-  'macOS:ad-hoc-signature',
-  'macOS:security-and-workbench',
-  'macOS:launcher-action',
-  'macOS:settings-session-compatibility',
-  'macOS:reinstall-settings',
-  'macOS:rollback',
-  'macOS:permissions-and-cleanup',
-])
-const PARTIAL_VERIFIED_ROWS = new Set([
-  'macOS:notices-and-bounded-vendor-scan',
-  'macOS:provider-catalog',
-])
+const EXPECTED_PLATFORM_BY_ID = Object.freeze(Object.fromEntries(REQUIRED_INSTALLED_EVIDENCE_ROWS.map(id => [id, id.slice(0, id.indexOf(':'))])))
 const ALLOWED_OWNERS = new Set([
   'scripts/launcher-installed-smoke.mjs',
   '.github/workflows/tocklauncher-installed.yml',
 ])
 const WORKFLOW_OWNER_ROWS = new Set([
-  'Windows:nsis-install',
+  'Windows:portable-archive-install',
   'Linux:deb-install',
   'Linux:appimage-install',
 ])
-const LOCAL_EVIDENCE = Object.freeze({
-  kind: 'local-run',
-  platform: 'darwin-arm64',
-  commit: '98166c8b0351ab8dad255cef8de500b4215bc6e0',
-  version: '0.1.14',
-  identity: 'ai.deepseek.tockteam-desktop',
-  result: 'passed',
-  reference: '/tmp/tl15-installed-mac.json',
-})
 
 function failure(failures, condition, message) {
   if (!condition) failures.push(message)
+}
+
+function validateCheckedInEvidence(failures, row) {
+  const evidence = row.evidence
+  failure(failures, evidence !== null && typeof evidence === 'object', `verified row has no evidence provenance: ${String(row.id)}`)
+  for (const key of ['kind', 'platform', 'commit', 'version', 'identity', 'result', 'reference', 'reportSha256']) {
+    failure(failures, typeof evidence?.[key] === 'string' && evidence[key].length > 0, `verified row evidence is missing ${key}: ${String(row.id)}`)
+  }
+  failure(failures, evidence?.kind === 'checked-in-report', `verified row evidence kind is not checked-in-report: ${String(row.id)}`)
+  failure(failures, /^[0-9a-f]{40}$/u.test(evidence?.commit ?? ''), `verified row evidence commit is not immutable: ${String(row.id)}`)
+  failure(failures, /^[0-9a-f]{64}$/u.test(evidence?.reportSha256 ?? ''), `verified row evidence report hash is not immutable: ${String(row.id)}`)
+  failure(failures, evidence?.result === 'passed', `verified row evidence did not pass: ${String(row.id)}`)
+  failure(failures, evidence?.identity === 'ai.deepseek.tockteam-desktop', `verified row evidence identity drifted: ${String(row.id)}`)
+  const reference = evidence?.reference
+  const checkedInPath = typeof reference === 'string'
+    && reference.startsWith('scripts/ueli/evidence/')
+    && reference.endsWith('.json')
+    && !reference.includes('..')
+  failure(failures, checkedInPath, `verified row evidence is not checked in: ${String(row.id)}`)
+  if (!checkedInPath) return
+  const reportPath = path.resolve(defaultRepoRoot, reference)
+  failure(failures, existsSync(reportPath), `verified row evidence report is missing: ${String(row.id)}`)
+  if (!existsSync(reportPath)) return
+  let report
+  try { report = JSON.parse(readFileSync(reportPath, 'utf8')) } catch { report = undefined }
+  failure(failures, report?.result === 'passed', `verified row report did not pass: ${String(row.id)}`)
+  failure(failures, report?.sourceCommit === evidence.commit, `verified row report commit differs: ${String(row.id)}`)
+  failure(failures, report?.version === evidence.version, `verified row report version differs: ${String(row.id)}`)
+  failure(failures, report?.appId === evidence.identity, `verified row report identity differs: ${String(row.id)}`)
+  const reportHash = createHash('sha256').update(readFileSync(reportPath)).digest('hex')
+  failure(failures, reportHash === evidence.reportSha256, `verified row report hash differs: ${String(row.id)}`)
 }
 
 export function inspectInstalledEvidenceCatalog(catalog) {
@@ -98,27 +108,17 @@ export function inspectInstalledEvidenceCatalog(catalog) {
     }
     failure(failures, typeof row.id === 'string' && row.id.length > 0, 'installed evidence row id is missing')
     failure(failures, PLATFORMS.includes(row.platform), `installed evidence row has an unknown platform: ${String(row.platform)}`)
+    failure(failures, row.platform === EXPECTED_PLATFORM_BY_ID[row.id], `installed evidence row platform does not match its ID: ${String(row.id)}`)
     failure(failures, row.required === true, `installed evidence row is not required: ${String(row.id)}`)
     failure(failures, typeof row.owner === 'string' && ALLOWED_OWNERS.has(row.owner), `installed evidence row owner is not an approved source: ${String(row.id)}`)
     const expectedOwner = WORKFLOW_OWNER_ROWS.has(row.id) ? '.github/workflows/tocklauncher-installed.yml' : 'scripts/launcher-installed-smoke.mjs'
     failure(failures, row.owner === expectedOwner, `installed evidence row owner is incorrect: ${String(row.id)}`)
     failure(failures, STATES.includes(row.state), `installed evidence row has an unknown state: ${String(row.id)}`)
-    if (LOCAL_VERIFIED_ROWS.has(row.id)) failure(failures, row.state === 'local-verified', `local evidence row must remain local-verified: ${String(row.id)}`)
-    else if (PARTIAL_VERIFIED_ROWS.has(row.id)) failure(failures, row.state === 'partially-verified', `partial evidence row must remain partially-verified: ${String(row.id)}`)
-    else failure(failures, row.state === 'workflow-required', `unexecuted evidence row must remain workflow-required: ${String(row.id)}`)
-    if (row.state === 'local-verified' || row.state === 'partially-verified') {
-      const evidence = row.evidence
-      failure(failures, evidence !== null && typeof evidence === 'object', `verified row has no evidence provenance: ${String(row.id)}`)
-      for (const key of ['kind', 'platform', 'commit', 'version', 'identity', 'result', 'reference']) {
-        failure(failures, typeof evidence?.[key] === 'string' && evidence[key].length > 0, `verified row evidence is missing ${key}: ${String(row.id)}`)
-      }
-      failure(failures, evidence?.kind === 'local-run', `verified row evidence kind is not local-run: ${String(row.id)}`)
-      failure(failures, /^[0-9a-f]{40}$/u.test(evidence?.commit ?? ''), `verified row evidence commit is not immutable: ${String(row.id)}`)
-      failure(failures, evidence?.result === 'passed', `verified row evidence did not pass: ${String(row.id)}`)
-      failure(failures, evidence?.identity === 'ai.deepseek.tockteam-desktop', `verified row evidence identity drifted: ${String(row.id)}`)
-      failure(failures, evidence?.version === '0.1.14', `verified row evidence version drifted: ${String(row.id)}`)
-      failure(failures, evidence?.platform === 'darwin-arm64', `verified row evidence platform drifted: ${String(row.id)}`)
-    } else failure(failures, row.evidence === null || row.evidence === undefined, `unexecuted evidence row must not claim evidence: ${String(row.id)}`)
+    if (row.state === 'local-verified' || row.state === 'partially-verified') validateCheckedInEvidence(failures, row)
+    else {
+      failure(failures, row.state === 'workflow-required', `unexecuted evidence row must remain workflow-required: ${String(row.id)}`)
+      failure(failures, row.evidence === null || row.evidence === undefined, `unexecuted evidence row must not claim evidence: ${String(row.id)}`)
+    }
   }
   failure(failures, rows.length === REQUIRED_INSTALLED_EVIDENCE_ROWS.length, `installed evidence catalog must contain exactly ${String(REQUIRED_INSTALLED_EVIDENCE_ROWS.length)} rows`)
   for (const id of REQUIRED_INSTALLED_EVIDENCE_ROWS) failure(failures, byId.has(id), `required installed evidence row is missing: ${id}`)
@@ -135,7 +135,7 @@ export function inspectInstalledEvidenceWorkflow(workflow) {
   failure(failures, /runs-on: windows-latest/u.test(text), 'installed evidence workflow must include Windows x64')
   failure(failures, /runs-on: ubuntu-24\.04/u.test(text), 'installed evidence workflow must include Linux x64')
   failure(failures, /pnpm test:launcher:installed/u.test(text), 'installed evidence workflow must execute installed smoke')
-  failure(failures, /check-release-version\.mjs --tag/u.test(text), 'installed evidence workflow must verify package version')
+  failure(failures, /check-installed-report\.mjs/u.test(text), 'installed evidence workflow must verify the actual installed report')
   failure(failures, /upload-artifact/u.test(text), 'installed evidence workflow must upload evidence')
   for (const action of text.matchAll(/^\s*uses:\s*([^\s#]+)/gmu)) failure(failures, /@[0-9a-f]{40}$/u.test(action[1]), `installed evidence workflow action is not immutable: ${action[1]}`)
   return Object.freeze({ failures })
@@ -178,7 +178,7 @@ export async function main() {
     process.exitCode = 1
     return
   }
-  console.log(`TockTeam installed evidence contract passed: ${catalogResult.summary.rows} rows; macOS proof is local-only; Windows/Linux remain workflow-required.`)
+  console.log(`TockTeam installed evidence contract passed: ${catalogResult.summary.rows} rows; checked-in reports are required before platform proof is promoted.`)
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

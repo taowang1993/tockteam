@@ -6,7 +6,7 @@ import { createServer } from 'node:net'
 import { spawn as spawnProcess, spawnSync } from 'node:child_process'
 import { cp, lstat, open, mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { dirname, join, relative, resolve } from 'node:path'
+import { dirname, isAbsolute, join, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createRequire } from 'node:module'
 import { Arch, DIR_TARGET, Platform, build } from 'electron-builder'
@@ -97,6 +97,10 @@ export function smokeEnvironment(overrides = {}, disposableRoot = undefined) {
     environment.XDG_CACHE_HOME = join(rootPath, 'xdg', 'cache')
     environment.XDG_DATA_HOME = join(rootPath, 'xdg', 'data')
     environment.XDG_STATE_HOME = join(rootPath, 'xdg', 'state')
+    environment.XDG_DATA_DIRS = join(rootPath, 'xdg', 'data-dirs')
+    environment.TMPDIR = join(rootPath, 'tmp')
+    environment.TEMP = join(rootPath, 'tmp')
+    environment.TMP = join(rootPath, 'tmp')
     environment.PATH = trustedPath()
   }
   return environment
@@ -289,14 +293,13 @@ async function clearStartupDialogs(page) {
 }
 
 function run(command, args, options = {}) {
-  const spawnOptions = {
+  const { disposableRoot, ...spawnOptions } = options
+  const result = spawnSync(command, args, {
     cwd: root,
     stdio: 'inherit',
-    env: smokeEnvironment(),
-    ...options,
-    env: smokeEnvironment(options.env ?? {}),
-  }
-  const result = spawnSync(command, args, spawnOptions)
+    ...spawnOptions,
+    env: smokeEnvironment(spawnOptions.env ?? {}, disposableRoot),
+  })
   if (result.error !== undefined) throw result.error
   if (result.status !== 0) throw new Error(`${command} ${args.join(' ')} failed with status ${String(result.status)}`)
 }
@@ -363,7 +366,7 @@ export async function createPackageInput(appDir) {
   await writeFile(join(deploySource, 'package.json'), `${JSON.stringify(appManifest, null, 2)}\n`, 'utf8')
   await cp(join(root, 'pnpm-lock.yaml'), join(deploySource, 'pnpm-lock.yaml'))
   await writeFile(join(deploySource, 'pnpm-workspace.yaml'), 'packages:\n  - .\n', 'utf8')
-  runPnpm(['--filter', '.', 'deploy', '--prod', '--legacy', appDir], { cwd: deploySource })
+  runPnpm(['--filter', '.', 'deploy', '--prod', '--legacy', appDir], { cwd: deploySource, disposableRoot: dirname(appDir) })
   for (const file of ['preload.cjs', 'splash.html']) {
     await cp(join(root, 'dist', file), join(appDir, 'dist', file))
   }
@@ -389,22 +392,6 @@ async function findAsar(rootPath, depth = 0) {
     }
   }
   return undefined
-}
-
-export async function findNsisInstaller(installerDir, architecture = 'x64') {
-  const architectureName = architecture === Arch.x64 ? 'x64' : architecture === Arch.arm64 ? 'arm64' : String(architecture)
-  const pattern = packageJson.build?.artifactName ?? `${contract.identity.productName}-${packageJson.version}-${architectureName}.exe`
-  const expectedName = pattern
-    .replaceAll('${version}', packageJson.version)
-    .replaceAll('${arch}', architectureName)
-    .replaceAll('${productName}', contract.identity.productName)
-    .replaceAll('${ext}', 'exe')
-  const installer = join(resolve(installerDir), expectedName)
-  const metadata = await stat(installer).catch(() => undefined)
-  assert.ok(metadata?.isFile(), `root NSIS setup artifact is missing: ${expectedName}`)
-  assert.match(expectedName, /\.exe$/iu)
-  assert.doesNotMatch(installer, /[\\/]win-unpacked[\\/]/iu, 'NSIS installer must not be selected from win-unpacked')
-  return installer
 }
 
 export async function findPackagedExecutable(outputDir, target) {
@@ -543,7 +530,14 @@ async function assertArchiveInventory(files, asar, asarText, asarPath) {
   }
   assert.doesNotMatch(files.join('\n'), /vendor[/\\]ueli/iu, 'ASAR contains vendor/ueli source')
   assert.doesNotMatch(asarText, /vendor[/\\]ueli/iu, 'ASAR metadata contains vendor/ueli source')
-  return Object.freeze({ assetCount: launcherAssets.length, asarPath, fileCount: files.length, vendorSourceShipped: false })
+  return Object.freeze({
+    assetCount: launcherAssets.length,
+    asarPath,
+    fileCount: files.length,
+    assetsVerified: true,
+    noticesVerified: true,
+    launcherSourceScan: Object.freeze({ scope: 'exact-asar-files', forbiddenSourceFound: false }),
+  })
 }
 
 export async function inspectExtraResources(asarPath) {
@@ -582,7 +576,11 @@ export async function inspectExtraResources(asarPath) {
     }
   }
   await visit(resourcesRoot)
-  return Object.freeze({ checkedEntries, roots: Object.freeze(resourcePaths), vendorSourceShipped: false })
+  return Object.freeze({
+    checkedEntries,
+    roots: Object.freeze(resourcePaths),
+    vendorScan: Object.freeze({ scope: 'bounded-no-follow', maxDepth: 2, maxEntries: 4_096, checkedEntries, forbiddenSourceFound: false }),
+  })
 }
 
 export async function inspectPackage(outputDir, target, options = {}) {
@@ -630,7 +628,12 @@ export async function inspectPackage(outputDir, target, options = {}) {
     electron: { architecture: process.arch, version: electronPackage.version },
     node: { architecture: process.arch, version: nodeVersion.stdout.trim() },
     productName: contract.identity.productName,
-    vendorSourceShipped: archiveInventory.vendorSourceShipped && extraResources.vendorSourceShipped,
+    assetsVerified: archiveInventory.assetsVerified,
+    noticesVerified: archiveInventory.noticesVerified,
+    vendorScan: Object.freeze({
+      ...extraResources.vendorScan,
+      launcherSourceAbsent: archiveInventory.launcherSourceScan.forbiddenSourceFound === false,
+    }),
     extraResources,
   })
 }
@@ -698,8 +701,16 @@ export function selectCdpDescriptor(pages, title, port) {
 }
 
 function trustedWindowsTool(name) {
-  const systemRoot = process.env.SystemRoot ?? 'C:\\Windows'
+  const systemRoot = process.env.SystemRoot?.trim()
+  assert.ok(typeof systemRoot === 'string' && isAbsolute(systemRoot), 'Windows SystemRoot must be an absolute path')
   return join(systemRoot, 'System32', name)
+}
+
+export function windowsCdpListenerOwned(output, pid, port) {
+  return String(output).split(/\r?\n/u).some(line => {
+    const fields = line.trim().split(/\s+/u)
+    return fields[0] === 'TCP' && fields[1] === `127.0.0.1:${String(port)}` && fields[3] === 'LISTENING' && fields[4] === String(pid)
+  })
 }
 
 function assertCdpProcess(child, port) {
@@ -707,11 +718,8 @@ function assertCdpProcess(child, port) {
   if (process.platform === 'win32') {
     const result = spawnSync(trustedWindowsTool('netstat.exe'), ['-ano', '-p', 'tcp'], { encoding: 'utf8', windowsHide: true })
     assert.equal(result.status, 0, 'Windows netstat could not inspect the packaged smoke listener')
-    const listener = result.stdout.split(/\r?\n/u).some(line => {
-      const fields = line.trim().split(/\s+/u)
-      return fields[0] === 'TCP' && fields[1] === `127.0.0.1:${String(port)}` && fields[3] === 'LISTENING' && fields[4] === String(child.pid)
-    })
-    assert.match(result.stdout, listener, 'packaged smoke CDP listener is not owned by the launched Windows process')
+    const listener = windowsCdpListenerOwned(result.stdout, child.pid, port)
+    assert.equal(listener, true, 'packaged smoke CDP listener is not owned by the launched Windows process')
     return
   }
   const ps = process.platform === 'darwin' ? '/bin/ps' : '/usr/bin/ps'
@@ -840,11 +848,11 @@ export async function preparePackagedArtifact({ target = currentTarget(), smokeR
   const appDir = join(rootPath, 'app-input')
   const outputDir = join(rootPath, 'package')
   try {
-    runPnpm(['run', 'build:tocktutor'])
-    runPnpm(['run', 'build'])
-    runPnpm(['run', 'build:dsh'])
-    runPnpm(['run', 'stage:dsh'])
-    run(process.execPath, [join(root, 'scripts/ueli/check-package-feasibility.mjs')])
+    runPnpm(['run', 'build:tocktutor'], { disposableRoot: rootPath })
+    runPnpm(['run', 'build'], { disposableRoot: rootPath })
+    runPnpm(['run', 'build:dsh'], { disposableRoot: rootPath })
+    runPnpm(['run', 'stage:dsh'], { disposableRoot: rootPath })
+    run(process.execPath, [join(root, 'scripts/ueli/check-package-feasibility.mjs')], { disposableRoot: rootPath })
     await createPackageInput(appDir)
     await mkdir(outputDir, { recursive: true })
     await withSmokeEnvironment(async () => await build({

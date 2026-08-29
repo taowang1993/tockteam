@@ -1,4 +1,5 @@
 import { execFile } from 'node:child_process'
+import { isAbsolute, join } from 'node:path'
 import { promisify } from 'node:util'
 
 const execFileAsync = promisify(execFile)
@@ -11,8 +12,9 @@ function delay(milliseconds) {
 }
 
 function trustedWindowsTool(name) {
-  const systemRoot = process.env.SystemRoot ?? 'C:\\Windows'
-  return `${systemRoot}\\System32\\${name}`
+  const systemRoot = process.env.SystemRoot?.trim()
+  if (typeof systemRoot !== 'string' || !isAbsolute(systemRoot)) throw new Error('Windows SystemRoot must be an absolute path')
+  return join(systemRoot, 'System32', name)
 }
 
 async function signalProcessTree(child, force = false) {
@@ -32,6 +34,21 @@ async function signalProcessTree(child, force = false) {
   try {
     if (child.exitCode === null && child.signalCode === null) child.kill(force ? 'SIGKILL' : 'SIGTERM')
   } catch { /* already stopped */ }
+}
+
+export async function assertOwnedProcessGone(executablePath, attempts = 20) {
+  if (process.platform !== 'win32') return
+  const systemRoot = process.env.SystemRoot?.trim()
+  if (typeof systemRoot !== 'string' || !isAbsolute(systemRoot)) throw new Error('Windows SystemRoot must be an absolute path')
+  const powershell = join(systemRoot, 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe')
+  const target = String(executablePath).replaceAll("'", "''")
+  const script = `$target = '${target}'; $found = @(Get-CimInstance Win32_Process | Where-Object { $_.ExecutablePath -eq $target -or ($_.CommandLine -ne $null -and $_.CommandLine -like ('*' + $target + '*')) }); if ($found.Count -gt 0) { $found | ConvertTo-Json -Compress }`
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    const result = await execFileAsync(powershell, ['-NoProfile', '-NonInteractive', '-Command', script], { windowsHide: true }).catch(error => { throw new Error(`unable to inspect Windows process ownership: ${error.message}`) })
+    if (result.stdout.trim() === '') return
+    await new Promise(resolve => setTimeout(resolve, 100))
+  }
+  throw new Error(`processes owned by ${String(executablePath)} did not stop`)
 }
 
 export async function assertProcessTreeGone(child, attempts = 20) {
