@@ -34,7 +34,7 @@ const packageJson = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'
 const electronPackage = JSON.parse(await readFile(join(root, 'node_modules/electron/package.json'), 'utf8'))
 const smokeFlag = '--tockteam-launcher-installed-smoke'
 const smokeMarker = 'TOCKTEAM_INSTALLED_SMOKE '
-const PORTABLE_MANIFEST_MAX_ENTRIES = 100_000
+export const PORTABLE_MANIFEST_MAX_ENTRIES = 500_000
 
 export function normalizePortableManifestPath(candidate) {
   if (typeof candidate !== 'string' || candidate === '') throw new Error('portable manifest paths must be non-empty relative paths')
@@ -47,21 +47,25 @@ export function normalizePortableManifestPath(candidate) {
   return normalized
 }
 
-export async function writeWindowsPortableManifest(outputDir, manifestPath) {
+export async function writeWindowsPortableManifest(outputDir, manifestPath, { maxEntries = PORTABLE_MANIFEST_MAX_ENTRIES } = {}) {
+  assert(Number.isSafeInteger(maxEntries) && maxEntries > 0, 'portable manifest entry cap must be a positive safe integer')
   const outputRoot = resolve(outputDir)
   const entries = []
   const seen = new Set()
   const add = path => {
     const entry = normalizePortableManifestPath(relative(outputRoot, path))
     if (seen.has(entry)) return
-    if (entries.length >= PORTABLE_MANIFEST_MAX_ENTRIES) throw new Error(`portable manifest exceeds ${String(PORTABLE_MANIFEST_MAX_ENTRIES)} entries`)
+    if (entries.length >= maxEntries) throw new Error(`portable manifest exceeds ${String(maxEntries)} entries`)
     seen.add(entry)
     entries.push(entry)
   }
   const walk = async path => {
     const entry = normalizePortableManifestPath(relative(outputRoot, path))
     const metadata = await lstat(path)
-    if (metadata.isSymbolicLink()) return
+    if (metadata.isSymbolicLink()) {
+      add(path)
+      return
+    }
     if (metadata.isDirectory()) {
       add(path)
       const children = await readdir(path, { withFileTypes: true })
@@ -190,21 +194,28 @@ async function findFile(rootPath, predicate, depth = 0) {
   return undefined
 }
 
+export function installerBuildPlan(target, formats, baseConfig) {
+  const targetFormats = [...formats]
+  return {
+    formats: targetFormats,
+    config: {
+      ...baseConfig,
+      electronVersion: electronPackage.version,
+      [target.key]: { ...baseConfig[target.key], target: targetFormats },
+    },
+  }
+}
+
 async function buildInstallerTargets(artifact, target, formats) {
   const outputDir = join(artifact.rootPath, 'installer')
   await mkdir(outputDir, { recursive: true })
   const baseConfig = packagedBuilderConfig(outputDir, target, artifact.appDir)
-  for (const format of formats) {
-    await withSmokeEnvironment(async () => await build({
-      projectDir: artifact.appDir,
-      targets: target.builder.createTarget(format, target.architecture),
-      config: {
-        ...baseConfig,
-        electronVersion: electronPackage.version,
-        [target.key]: { ...baseConfig[target.key], target: [format] },
-      },
-    }), artifact.rootPath)
-  }
+  const plan = installerBuildPlan(target, formats, baseConfig)
+  await withSmokeEnvironment(async () => await build({
+    projectDir: artifact.appDir,
+    targets: target.builder.createTarget(plan.formats, target.architecture),
+    config: plan.config,
+  }), artifact.rootPath)
   return outputDir
 }
 

@@ -23,7 +23,9 @@ import {
 } from '../scripts/launcher-packaged-smoke.mjs'
 import { replaceWindowsPortableArchive, WINDOWS_PORTABLE_MARKER } from '../scripts/install-windows.mjs'
 import {
+  installerBuildPlan,
   normalizePortableManifestPath,
+  PORTABLE_MANIFEST_MAX_ENTRIES,
   windowsPortableArchiveArgs,
   writeWindowsPortableManifest,
 } from '../scripts/launcher-installed-smoke.mjs'
@@ -144,13 +146,25 @@ test('Windows portable manifests are finite and skip symlink cycles', { skip: pr
     assert.ok(entries.includes('win-unpacked'))
     assert.ok(entries.includes('win-unpacked/resources/app.asar'))
     assert.ok(entries.includes(WINDOWS_PORTABLE_MARKER))
-    assert.doesNotMatch(manifest, /cycle/u)
+    assert.equal(entries.filter(entry => entry === 'win-unpacked/resources/cycle').length, 1)
+    assert.equal(manifest.split('\n').filter(entry => entry === 'win-unpacked/resources/cycle').length, 1)
     assert.throws(() => normalizePortableManifestPath('../escape'), /relative/u)
     assert.throws(() => normalizePortableManifestPath('C:\\escape'), /relative/u)
     assert.throws(() => normalizePortableManifestPath('win-unpacked/bad\nname'), /newline/u)
+    assert.equal(PORTABLE_MANIFEST_MAX_ENTRIES, 500_000)
+    await assert.rejects(writeWindowsPortableManifest(outputDir, manifestPath, { maxEntries: 2 }), /exceeds 2 entries/u)
   } finally {
     await rm(rootPath, { recursive: true, force: true })
   }
+})
+
+test('Windows installer uses one multi-format build plan without publishing', () => {
+  const target = { key: 'linux' }
+  const plan = installerBuildPlan(target, ['deb', 'AppImage'], { linux: { target: ['dir'] } })
+  assert.deepEqual(plan.formats, ['deb', 'AppImage'])
+  assert.deepEqual(plan.config.linux.target, ['deb', 'AppImage'])
+  assert.equal(Object.hasOwn(plan.config, 'publish'), false)
+  assert.equal(plan.config.electronVersion.length > 0, true)
 })
 
 test('Windows portable archive uses a bounded relative manifest', () => {
