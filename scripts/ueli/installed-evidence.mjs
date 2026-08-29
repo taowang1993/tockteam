@@ -147,7 +147,21 @@ export function inspectInstalledEvidenceWorkflow(workflow) {
   failure(failures, /runs-on: windows-latest/u.test(text), 'installed evidence workflow must include Windows x64')
   failure(failures, /runs-on: ubuntu-24\.04/u.test(text), 'installed evidence workflow must include Linux x64')
   failure(failures, /pnpm test:launcher:installed/u.test(text), 'installed evidence workflow must execute installed smoke')
+  for (const [index, job] of ['windows-x64', 'linux-x64'].entries()) {
+    const start = text.indexOf(`  ${job}:`)
+    const end = index === 1 ? text.length : text.indexOf('  linux-x64:', start)
+    const section = start >= 0 && end >= start ? text.slice(start, end) : ''
+    failure(failures, /actions\/checkout@[0-9a-f]{40}/u.test(section), `${job} checkout action is missing`)
+    failure(failures, /fetch-depth:\s*0/u.test(section), `${job} checkout must fetch full checkout history`)
+    failure(failures, /fetch-tags:\s*true/u.test(section), `${job} checkout must fetch tags`)
+    failure(failures, /submodules:\s*recursive/u.test(section), `${job} checkout must fetch recursive submodules`)
+    failure(failures, /id:\s*ueli-gates/u.test(section), `${job} must identify the Ueli gate step`)
+    failure(failures, /id:\s*installed-smoke/u.test(section), `${job} must identify the installed smoke step`)
+    failure(failures, /id:\s*report-check/u.test(section), `${job} must identify the report-check step`)
+  }
   failure(failures, /check-installed-report\.mjs/u.test(text), 'installed evidence workflow must verify the actual installed report')
+  failure(failures, /Record installed gate outcomes/u.test(text), 'installed evidence workflow must record deterministic gate outcomes')
+  failure(failures, /tockteam-installed-launcher-gate-\$\{\{ github\.run_id \}\}\.json/u.test(text), 'installed evidence workflow must upload deterministic gate outcomes')
   failure(failures, /upload-artifact/u.test(text), 'installed evidence workflow must upload evidence')
   for (const action of text.matchAll(/^\s*uses:\s*([^\s#]+)/gmu)) failure(failures, /@[0-9a-f]{40}$/u.test(action[1]), `installed evidence workflow action is not immutable: ${action[1]}`)
   return Object.freeze({ failures })

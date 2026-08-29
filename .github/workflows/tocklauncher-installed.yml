@@ -25,6 +25,8 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
+          fetch-depth: 0
+          fetch-tags: true
           submodules: recursive
 
       - name: Set up pnpm
@@ -44,6 +46,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Run Ueli parity and package gates
+        id: ueli-gates
         shell: bash
         run: |
           pnpm test:ueli-baseline
@@ -54,6 +57,7 @@ jobs:
           pnpm audit:ueli-package-feasibility
 
       - name: Build and install the disposable portable archive artifact
+        id: installed-smoke
         shell: bash
         env:
           TOCKTEAM_KEEP_INSTALLED_SMOKE: "1"
@@ -62,10 +66,22 @@ jobs:
         run: pnpm test:launcher:installed
 
       - name: Verify the installed report identity and version
+        id: report-check
         shell: bash
         env:
           REPORT: ${{ runner.temp }}/tockteam-installed-launcher-smoke-${{ github.run_id }}.json
         run: node scripts/check-installed-report.mjs "$REPORT"
+
+      - name: Record installed gate outcomes
+        if: always()
+        shell: bash
+        env:
+          GATE_LOG: ${{ runner.temp }}/tockteam-installed-launcher-gate-${{ github.run_id }}.json
+          UELI_OUTCOME: ${{ steps.ueli-gates.outcome }}
+          SMOKE_OUTCOME: ${{ steps.installed-smoke.outcome }}
+          REPORT_OUTCOME: ${{ steps.report-check.outcome }}
+        run: |
+          printf '{\n  "ueliGates": "%s",\n  "installedSmoke": "%s",\n  "reportCheck": "%s"\n}\n' "$UELI_OUTCOME" "$SMOKE_OUTCOME" "$REPORT_OUTCOME" > "$GATE_LOG"
 
       - name: Upload Windows installed evidence
         if: always()
@@ -76,6 +92,7 @@ jobs:
             ${{ runner.temp }}/tockteam-installed-launcher-smoke-*/installer/**
             ${{ runner.temp }}/tockteam-installed-launcher-smoke-*/report/**
             ${{ runner.temp }}/tockteam-installed-launcher-smoke-*.json
+            ${{ runner.temp }}/tockteam-installed-launcher-gate-${{ github.run_id }}.json
           if-no-files-found: error
 
   linux-x64:
@@ -86,6 +103,8 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
+          fetch-depth: 0
+          fetch-tags: true
           submodules: recursive
 
       - name: Set up pnpm
@@ -112,6 +131,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Run Ueli parity and package gates
+        id: ueli-gates
         shell: bash
         run: |
           pnpm test:ueli-baseline
@@ -122,6 +142,7 @@ jobs:
           pnpm audit:ueli-package-feasibility
 
       - name: Build and install disposable deb/AppImage artifacts
+        id: installed-smoke
         shell: bash
         env:
           TOCKTEAM_KEEP_INSTALLED_SMOKE: "1"
@@ -130,10 +151,22 @@ jobs:
         run: xvfb-run -a pnpm test:launcher:installed
 
       - name: Verify the installed report identity and version
+        id: report-check
         shell: bash
         env:
           REPORT: ${{ runner.temp }}/tockteam-installed-launcher-smoke-${{ github.run_id }}.json
         run: node scripts/check-installed-report.mjs "$REPORT"
+
+      - name: Record installed gate outcomes
+        if: always()
+        shell: bash
+        env:
+          GATE_LOG: ${{ runner.temp }}/tockteam-installed-launcher-gate-${{ github.run_id }}.json
+          UELI_OUTCOME: ${{ steps.ueli-gates.outcome }}
+          SMOKE_OUTCOME: ${{ steps.installed-smoke.outcome }}
+          REPORT_OUTCOME: ${{ steps.report-check.outcome }}
+        run: |
+          printf '{\n  "ueliGates": "%s",\n  "installedSmoke": "%s",\n  "reportCheck": "%s"\n}\n' "$UELI_OUTCOME" "$SMOKE_OUTCOME" "$REPORT_OUTCOME" > "$GATE_LOG"
 
       - name: Upload Linux installed evidence
         if: always()
@@ -144,4 +177,5 @@ jobs:
             ${{ runner.temp }}/tockteam-installed-launcher-smoke-*/installer/**
             ${{ runner.temp }}/tockteam-installed-launcher-smoke-*/report/**
             ${{ runner.temp }}/tockteam-installed-launcher-smoke-*.json
+            ${{ runner.temp }}/tockteam-installed-launcher-gate-${{ github.run_id }}.json
           if-no-files-found: error
