@@ -194,7 +194,7 @@ const launcherNetworkFixtureEnabled = !app.isPackaged && process.env.TOCKTEAM_NE
 const launcherOsFixtureEnabled = !app.isPackaged && process.env.TOCKTEAM_OS_FIXTURE === '1'
 const launcherTerminalFixtureEnabled = !app.isPackaged && process.env.TOCKTEAM_TERMINAL_FIXTURE === '1'
 const launcherWorkflowFixtureEnabled = !app.isPackaged && process.env.TOCKTEAM_WORKFLOW_FIXTURE === '1'
-const configuredLauncherWorkflowFixtureActionTtlMs = !app.isPackaged && process.env.TOCKTEAM_WORKFLOW_ACTION_TTL_MS !== undefined
+const configuredLauncherWorkflowFixtureActionTtlMs = launcherWorkflowFixtureEnabled && process.env.TOCKTEAM_WORKFLOW_ACTION_TTL_MS !== undefined
   ? Number(process.env.TOCKTEAM_WORKFLOW_ACTION_TTL_MS)
   : undefined
 const launcherWorkflowFixtureActionTtlMs = configuredLauncherWorkflowFixtureActionTtlMs !== undefined
