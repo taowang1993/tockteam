@@ -73,16 +73,28 @@ function runProcess(command, args, options = {}) {
     })
     let stdout = ''
     let stderr = ''
+    let finished = false
+    const timeout = setTimeout(() => {
+      if (finished) return
+      finished = true
+      void stopPackagedChild(child).finally(() => reject(new Error(`${command} timed out after 180000ms`)))
+    }, 180_000)
+    const finish = callback => {
+      if (finished) return
+      finished = true
+      clearTimeout(timeout)
+      callback()
+    }
     child.stdout?.on('data', chunk => { stdout += String(chunk) })
     child.stderr?.on('data', chunk => { stderr += String(chunk) })
-    child.once('error', reject)
-    child.once('close', code => {
+    child.once('error', error => finish(() => reject(error)))
+    child.once('close', code => finish(() => {
       if (code !== 0) {
         reject(new Error(`${command} ${args.join(' ')} failed with status ${String(code)}.\n${stdout}\n${stderr}`))
         return
       }
       resolvePromise({ stdout, stderr })
-    })
+    }))
   })
 }
 
