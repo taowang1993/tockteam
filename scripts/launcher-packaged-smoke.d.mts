@@ -43,6 +43,15 @@ export function selectCdpDescriptor<T extends Readonly<{ title?: string; webSock
 
 export function windowsCdpListenerOwned(output: string, pid: number, port: number): boolean
 
+export function collectPackagedProcessDiagnostics(options?: Readonly<{
+  child?: Readonly<{ pid?: number; exitCode?: number | null; signalCode?: NodeJS.Signals | null }>
+  command?: string
+  args?: readonly unknown[]
+  userData?: string
+  stdout?: string
+  stderr?: string
+}>): Promise<string>
+
 export function formatPackagedProcessFailure(options: Readonly<{
   command: string
   args?: readonly string[]
@@ -87,5 +96,6 @@ export function waitForPackagedState<T>(
     args?: readonly string[]
     timeout?: number
     output?: () => Readonly<{ stdout?: string; stderr?: string }>
+    diagnostics?: () => string | Promise<string>
   }>,
 ): Promise<T>

@@ -98,7 +98,22 @@ async function readPortableMarker(rootPath) {
   return marker
 }
 
-async function validateRuntimeLinks(rootPath, marker, roots) {
+async function regularAncestorReal(rootPath, candidate, label) {
+  const resolvedRoot = resolve(rootPath)
+  const resolvedCandidate = resolve(candidate)
+  const candidateRelative = relative(resolvedRoot, resolvedCandidate)
+  assert.equal(pathWithin(resolvedRoot, resolvedCandidate), true, `${label} escapes extracted root`)
+  let current = resolvedRoot
+  for (const segment of candidateRelative === '' ? [] : candidateRelative.split(sep)) {
+    current = join(current, segment)
+    const entry = await lstat(current)
+    assert.equal(entry.isSymbolicLink(), false, `${label} contains a symbolic-link ancestor`)
+    if (current !== resolvedCandidate) assert.equal(entry.isDirectory(), true, `${label} contains a non-directory ancestor`)
+  }
+  return await realpath(resolvedCandidate)
+}
+
+async function validateRuntimeLinks(rootPath, marker, roots, { allowStaleLinks = false } = {}) {
   const runtimeRoot = roots.runtimeRoot
   const canonicalRoot = roots.canonicalRuntimeRoot
   const entries = []
@@ -115,30 +130,38 @@ async function validateRuntimeLinks(rootPath, marker, roots) {
     const targetPath = resolve(runtimeRoot, ...target.split('/'))
     assert.equal(portablePathContained(runtimeRoot, linkPath), true, `portable runtime-link path escapes runtime root: ${path}`)
     assert.equal(portablePathContained(runtimeRoot, targetPath), true, `portable runtime-link target escapes runtime root: ${path}`)
-    const parentReal = await realpath(dirname(linkPath))
-    assert.equal(pathWithin(canonicalRoot, parentReal), true, `portable runtime-link parent escapes runtime root: ${path}`)
-    const targetParentReal = await realpath(dirname(targetPath))
-    assert.equal(pathWithin(canonicalRoot, targetParentReal), true, `portable runtime-link target ancestor escapes runtime root: ${path}`)
-    const targetReal = await realpath(targetPath)
-    assert.equal(targetReal !== canonicalRoot && pathWithin(canonicalRoot, targetReal), true, `portable runtime-link target creates a runtime-root cycle: ${path}`)
-    assert.equal(pathWithin(targetReal, parentReal), false, `portable runtime-link target is an ancestor of its link: ${path}`)
-    const targetStats = await stat(targetPath)
-    assert.equal(raw.kind === 'dir' ? targetStats.isDirectory() : targetStats.isFile(), true, `portable runtime-link target kind differs: ${path}`)
-    const linkStats = await lstat(linkPath)
-    if (linkStats.isSymbolicLink()) {
-      assert.equal(await realpath(linkPath), targetReal, `portable runtime-link placeholder target differs: ${path}`)
-    } else if (raw.kind === 'dir') {
-      assert.equal(linkStats.isDirectory(), true, `portable runtime-link directory placeholder is invalid: ${path}`)
-      assert.equal((await readdir(linkPath)).length, 0, `portable runtime-link directory placeholder is nonempty: ${path}`)
-    } else {
-      assert.equal(linkStats.isFile(), true, `portable runtime-link file placeholder is invalid: ${path}`)
-      assert.equal(linkStats.size, 0, `portable runtime-link file placeholder is nonempty: ${path}`)
-    }
     entries.push(Object.freeze({ path, target, kind: raw.kind, linkPath, targetPath }))
   }
   entries.sort((left, right) => left.path.localeCompare(right.path))
   for (let index = 1; index < entries.length; index += 1) {
     if (entries[index].path.startsWith(`${entries[index - 1].path}/`)) throw new Error(`portable runtime-link paths overlap: ${entries[index - 1].path}`)
+  }
+  for (const entry of entries) {
+    const parentReal = await regularAncestorReal(runtimeRoot, dirname(entry.linkPath), `portable runtime-link parent: ${entry.path}`)
+    assert.equal(pathWithin(canonicalRoot, parentReal), true, `portable runtime-link parent escapes runtime root: ${entry.path}`)
+    const targetParentReal = await regularAncestorReal(runtimeRoot, dirname(entry.targetPath), `portable runtime-link target ancestor: ${entry.path}`)
+    assert.equal(pathWithin(canonicalRoot, targetParentReal), true, `portable runtime-link target ancestor escapes runtime root: ${entry.path}`)
+    const targetReal = await realpath(entry.targetPath)
+    assert.equal(targetReal !== canonicalRoot && pathWithin(canonicalRoot, targetReal), true, `portable runtime-link target creates a runtime-root cycle: ${entry.path}`)
+    assert.equal(pathWithin(targetReal, parentReal), false, `portable runtime-link target is an ancestor of its link: ${entry.path}`)
+    const targetStats = await stat(entry.targetPath)
+    assert.equal(entry.kind === 'dir' ? targetStats.isDirectory() : targetStats.isFile(), true, `portable runtime-link target kind differs: ${entry.path}`)
+    const linkStats = await lstat(entry.linkPath)
+    if (linkStats.isSymbolicLink()) {
+      let linkedReal
+      try {
+        linkedReal = await realpath(entry.linkPath)
+      } catch (error) {
+        if (!allowStaleLinks || error?.code !== 'ENOENT') throw error
+      }
+      if (linkedReal !== undefined) assert.equal(linkedReal, targetReal, `portable runtime-link placeholder target differs: ${entry.path}`)
+    } else if (entry.kind === 'dir') {
+      assert.equal(linkStats.isDirectory(), true, `portable runtime-link directory placeholder is invalid: ${entry.path}`)
+      assert.equal((await readdir(entry.linkPath)).length, 0, `portable runtime-link directory placeholder is nonempty: ${entry.path}`)
+    } else {
+      assert.equal(linkStats.isFile(), true, `portable runtime-link file placeholder is invalid: ${entry.path}`)
+      assert.equal(linkStats.size, 0, `portable runtime-link file placeholder is nonempty: ${entry.path}`)
+    }
   }
   return entries
 }
@@ -146,10 +169,13 @@ async function validateRuntimeLinks(rootPath, marker, roots) {
 export async function restoreWindowsPortableRuntimeLinks(rootPath, options = {}) {
   const marker = await readPortableMarker(rootPath)
   const roots = await extractedRoots(rootPath)
-  const entries = await validateRuntimeLinks(rootPath, marker, roots)
+  const entries = await validateRuntimeLinks(rootPath, marker, roots, { allowStaleLinks: true })
   const createDirectoryLink = options.createDirectoryLink ?? ((target, path) => symlink(target, path, 'junction'))
   const copyRegularFile = options.copyFile ?? ((target, path) => copyFile(target, path))
-  for (const entry of entries) await rm(entry.linkPath, { recursive: true, force: true })
+  for (const entry of entries) {
+    const linkStats = await lstat(entry.linkPath)
+    await rm(entry.linkPath, { recursive: !linkStats.isSymbolicLink(), force: true })
+  }
   const byPath = new Map(entries.map(entry => [entry.path, entry]))
   const state = new Map()
   const restore = async entry => {
@@ -276,6 +302,7 @@ export async function replaceWindowsPortableArchive(options) {
     try {
       await rename(pending, destination)
       promoted = true
+      await restoreWindowsPortableRuntimeLinks(destination)
       await validateInstall(destination)
     } catch (error) {
       try {

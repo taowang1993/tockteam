@@ -75,7 +75,7 @@ jobs:
           printf '{\n  "ueliGates": "%s",\n  "installedSmoke": "%s",\n  "reportCheck": "%s"\n}\n' "$UELI_OUTCOME" "$SMOKE_OUTCOME" "$REPORT_OUTCOME" > "$GATE_LOG"
 
       - name: Upload Windows installed smoke diagnostics
-        if: steps.installed-smoke.outcome == 'failure'
+        if: always() && steps.installed-smoke.outcome == 'failure'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: tocklauncher-installed-windows-x64-diagnostics-${{ github.run_id }}
@@ -170,7 +170,7 @@ jobs:
           printf '{\n  "ueliGates": "%s",\n  "installedSmoke": "%s",\n  "reportCheck": "%s"\n}\n' "$UELI_OUTCOME" "$SMOKE_OUTCOME" "$REPORT_OUTCOME" > "$GATE_LOG"
 
       - name: Upload Linux installed smoke diagnostics
-        if: steps.installed-smoke.outcome == 'failure'
+        if: always() && steps.installed-smoke.outcome == 'failure'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: tocklauncher-installed-linux-x64-diagnostics-${{ github.run_id }}

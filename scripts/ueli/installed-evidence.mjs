@@ -176,7 +176,7 @@ export function inspectInstalledEvidenceWorkflow(workflow) {
     const expectedPaths = [...installerGlobs, reportPath, gatePath]
     failure(failures, JSON.stringify(pathLines) === JSON.stringify(expectedPaths), `${job} upload paths must contain only distributable files, report JSON, and gate log`)
     failure(failures, section.includes(`TOCKTEAM_INSTALLED_SMOKE_DIAGNOSTICS: ${diagnosticsPath}`), `${job} must write diagnostics to the exact run path`)
-    failure(failures, new RegExp(`Upload ${job === 'windows-x64' ? 'Windows' : 'Linux'} installed smoke diagnostics[\\s\\S]+if: steps\\.installed-smoke\\.outcome == 'failure'[\\s\\S]+path:\\s*\\$\\{\\{ runner\\.temp \\}\\}/tockteam-installed-launcher-diagnostics-\\$\\{\\{ github\\.run_id \\}\\}\\.json`, 'u').test(section), `${job} must upload exact failure diagnostics only after installed smoke fails`)
+    failure(failures, new RegExp(`Upload ${job === 'windows-x64' ? 'Windows' : 'Linux'} installed smoke diagnostics[\\s\\S]+if:\\s*always\\(\\)\\s*&&\\s*steps\\.installed-smoke\\.outcome == 'failure'[\\s\\S]+path:\\s*\\$\\{\\{ runner\\.temp \\}\\}/tockteam-installed-launcher-diagnostics-\\$\\{\\{ github\\.run_id \\}\\}\\.json`, 'u').test(section), `${job} must upload exact failure diagnostics only after installed smoke fails`)
   }
   failure(failures, /check-installed-report\.mjs/u.test(text), 'installed evidence workflow must verify the actual installed report')
   failure(failures, /Record installed gate outcomes/u.test(text), 'installed evidence workflow must record deterministic gate outcomes')

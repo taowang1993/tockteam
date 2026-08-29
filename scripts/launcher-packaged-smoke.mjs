@@ -259,6 +259,53 @@ function diagnosticText(value) {
   return String(value ?? '')
 }
 
+const PACKAGED_DIAGNOSTICS_MAX_BYTES = 16_000
+
+function diagnosticTail(value) {
+  const text = String(value ?? '')
+  return text === '' ? '(empty)' : text.slice(-PACKAGED_DIAGNOSTICS_MAX_BYTES)
+}
+
+async function readDiagnosticFile(path, normalizeNul = false) {
+  try {
+    const value = await readFile(path, 'utf8')
+    return diagnosticTail(normalizeNul ? value.replaceAll('\0', '\n') : value)
+  } catch (error) {
+    return `[unavailable: ${error?.code ?? diagnosticText(error)}]`
+  }
+}
+
+function processIsAlive(child, pid) {
+  if (!Number.isSafeInteger(pid) || pid <= 0 || child?.exitCode !== null || child?.signalCode !== null) return false
+  try {
+    process.kill(pid, 0)
+    return true
+  } catch (error) {
+    return error?.code === 'EPERM'
+  }
+}
+
+export async function collectPackagedProcessDiagnostics({ child, command, args = [], userData, stdout = '', stderr = '' } = {}) {
+  const pid = Number.isSafeInteger(child?.pid) && child.pid > 0 ? child.pid : null
+  const lines = [
+    `[packaged process] command=${String(command ?? '')} args=${JSON.stringify(Array.isArray(args) ? args.map(value => String(value)) : [])}`,
+    `[packaged process] pid=${String(pid)} alive=${String(processIsAlive(child, pid))} exitCode=${String(child?.exitCode ?? null)} signal=${String(child?.signalCode ?? null)}`,
+    `[packaged stdout tail]\n${diagnosticTail(stdout)}`,
+    `[packaged stderr tail]\n${diagnosticTail(stderr)}`,
+  ]
+  if (process.platform === 'linux' && pid !== null) {
+    const procRoot = `/proc/${String(pid)}`
+    lines.push(`[packaged /proc cmdline] ${procRoot}/cmdline\n${await readDiagnosticFile(`${procRoot}/cmdline`, true)}`)
+    lines.push(`[packaged /proc status] ${procRoot}/status\n${await readDiagnosticFile(`${procRoot}/status`)}`)
+    lines.push(`[packaged /proc wchan] ${procRoot}/wchan\n${await readDiagnosticFile(`${procRoot}/wchan`)}`)
+  }
+  if (typeof userData === 'string' && userData !== '') {
+    const desktopLog = join(userData, 'logs', 'desktop.log')
+    lines.push(`[packaged desktop.log tail] ${desktopLog}\n${await readDiagnosticFile(desktopLog)}`)
+  }
+  return lines.join('\n')
+}
+
 export function formatPackagedProcessFailure({ command, args = [], code = null, signal = null, error = undefined, stdout = '', stderr = '', lastFetchError = undefined }) {
   const processState = error === undefined ? `exit code=${String(code)}, signal=${String(signal)}` : `spawn error=${diagnosticText(error)}`
   return new Error([
@@ -269,7 +316,7 @@ export function formatPackagedProcessFailure({ command, args = [], code = null, 
   ].join('\n'))
 }
 
-export async function waitForPackagedState(fetcher, predicate, child, { command, args = [], timeout = smokeTimeoutMs, output = () => ({}) } = {}) {
+export async function waitForPackagedState(fetcher, predicate, child, { command, args = [], timeout = smokeTimeoutMs, output = () => ({}), diagnostics = undefined } = {}) {
   const lastFetchError = { value: undefined }
   let finished = false
   let onError
@@ -304,7 +351,15 @@ export async function waitForPackagedState(fetcher, predicate, child, { command,
       await sleep(250)
     }
     if (finished) return undefined
-    throw new Error(`Timed out waiting for packaged TockTeam state. Last CDP fetch: ${diagnosticText(lastFetchError.value)}`)
+    const timeoutError = `Timed out waiting for packaged TockTeam state. Last CDP fetch: ${diagnosticText(lastFetchError.value)}`
+    if (typeof diagnostics !== 'function') throw new Error(timeoutError)
+    let processDiagnostics
+    try {
+      processDiagnostics = await diagnostics()
+    } catch (error) {
+      processDiagnostics = `[packaged diagnostics unavailable: ${diagnosticText(error)}]`
+    }
+    throw new Error(`${timeoutError}\n${processDiagnostics}`)
   })()
   try {
     return await Promise.race([polling, processFailure])
@@ -859,7 +914,12 @@ export async function launchPackaged(executable, userData, port, extraArgs = [],
       () => listPages(port),
       pages => selectCdpDescriptor(pages, 'TockCoder', port) !== undefined,
       child,
-      { command: executable, args: childArgs, output: () => ({ stdout, stderr }) },
+      {
+        command: executable,
+        args: childArgs,
+        output: () => ({ stdout, stderr }),
+        diagnostics: () => collectPackagedProcessDiagnostics({ child, command: executable, args: childArgs, userData, stdout, stderr }),
+      },
     ))
     assertCdpProcess(child, port)
     const workbenchDescriptor = selectCdpDescriptor(workbenchPages, 'TockCoder', port)
@@ -876,12 +936,20 @@ export async function launchPackaged(executable, userData, port, extraArgs = [],
     await step('wait for launcher visible', () => waitFor(() => workbench.evaluate('(async () => (await window.dshDesktop?.launcher?.getState())?.visible)()'), visible => visible === true))
     return Object.freeze({ child, launcher, workbench, output: () => `${stdout}\n${stderr}` })
   } catch (error) {
-    await stopPackagedChild(child)
-    let desktopLogTail = ''
-    try { desktopLogTail = (await readFile(join(userData, 'logs', 'desktop.log'), 'utf8')).slice(-16_000) } catch { /* the app may fail before logging starts */ }
-    const output = `${stdout}\n${stderr}`
-    const diagnostics = desktopLogTail === '' ? output : `${output}\n[desktop.log tail]\n${desktopLogTail}`
-    throw new Error(`${error instanceof Error ? error.message : String(error)}\n${diagnostics}`)
+    // Capture process state and logs before termination; early Electron failures can leave no desktop log.
+    let processDiagnostics
+    try {
+      processDiagnostics = await collectPackagedProcessDiagnostics({ child, command: executable, args: childArgs, userData, stdout, stderr })
+    } catch (diagnosticsError) {
+      processDiagnostics = `[packaged diagnostics unavailable: ${diagnosticText(diagnosticsError)}]`
+    }
+    const failure = new Error(`${error instanceof Error ? error.message : String(error)}\n${processDiagnostics}`)
+    try {
+      await stopPackagedChild(child)
+    } catch (cleanupError) {
+      throw new AggregateError([failure, cleanupError], 'packaged smoke failed and cleanup failed')
+    }
+    throw failure
   }
 }
 

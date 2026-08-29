@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { EventEmitter } from 'node:events'
-import { mkdir, mkdtemp, readFile, rm, stat, symlink, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, readlink, rm, stat, symlink, writeFile } from 'node:fs/promises'
 import { readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { basename, dirname, join, resolve } from 'node:path'
@@ -13,6 +13,7 @@ import { inspectInstalledReport } from '../scripts/check-installed-report.mjs'
 import {
   PACKAGED_PREPARATION_PLAN,
   canonicalPath,
+  collectPackagedProcessDiagnostics,
   inspectExtraResources,
   parseWindowsGitPaths,
   pathContained,
@@ -85,6 +86,7 @@ test('TockTeam exposes an executable installed-artifact smoke and audit', () => 
   assert.match(installedSmoke, /writeWindowsPortableArchiveMetadata/u)
   assert.match(installedSmoke, /writeInstalledSmokeDiagnostics/u)
   assert.match(installedSmoke, /withInstalledSession/u)
+  assert.match(installedSmoke, /--enable-logging=stderr/u)
   assert.match(installedSmoke, /sha256/u)
   assert.match(mainSource, /process\.stderr\.write/u)
   assert.match(installWindows, /process\.platform !== 'win32'/u)
@@ -268,6 +270,44 @@ test('packaged smoke resolves Windows git safely and prepares fresh workspaces i
   }), undefined)
 })
 
+test('Windows portable replacement recreates absolute runtime links after promotion', async () => {
+  const rootPath = await mkdtemp(join(tmpdir(), 'tockteam-portable-relocation-'))
+  try {
+    const archive = join(rootPath, 'portable.tar.gz')
+    const destination = join(rootPath, 'installed')
+    const backupDirectory = join(rootPath, 'backups')
+    await writeFile(archive, 'portable archive')
+    const expected = { appId: 'ai.deepseek.tockteam-desktop', productName: 'TockTeam Desktop', version: '0.1.14' }
+    const extractArchive = async (_source: string, pending: string) => {
+      const runtime = join(pending, 'win-unpacked', 'resources', 'dsh-runtime')
+      const target = join(runtime, 'workspace', 'packages', 'boot', 'app-boot')
+      await mkdir(join(target, 'lib'), { recursive: true })
+      await mkdir(join(runtime, 'node_modules', '@deepseek-ai', 'dsh-app-boot'), { recursive: true })
+      await writeFile(join(target, 'package.json'), '{}')
+      await writeFile(join(target, 'lib', 'index.js'), 'export default true')
+      await writeFile(join(pending, 'win-unpacked', 'TockTeam Desktop.exe'), '')
+      await writeFile(join(pending, WINDOWS_PORTABLE_MARKER), JSON.stringify({
+        schemaVersion: 1,
+        ...expected,
+        runtimeLinks: [{ path: 'node_modules/@deepseek-ai/dsh-app-boot', target: 'workspace/packages/boot/app-boot', kind: 'dir' }],
+      }))
+    }
+    await replaceWindowsPortableArchive({
+      archive,
+      destination,
+      backupDirectory,
+      extractArchive,
+      validateInstall: async path => { await validateWindowsPortableRoot(path, expected) },
+    })
+    const link = join(destination, 'win-unpacked', 'resources', 'dsh-runtime', 'node_modules', '@deepseek-ai', 'dsh-app-boot')
+    const target = join(destination, 'win-unpacked', 'resources', 'dsh-runtime', 'workspace', 'packages', 'boot', 'app-boot')
+    assert.equal(await readlink(link), target)
+    assert.equal(await readFile(join(link, 'lib', 'index.js'), 'utf8'), 'export default true')
+  } finally {
+    await rm(rootPath, { recursive: true, force: true })
+  }
+})
+
 test('Windows portable archive restores relocated runtime links and rejects malicious metadata', async () => {
   const rootPath = await mkdtemp(join(tmpdir(), 'tockteam-portable-runtime-links-'))
   try {
@@ -349,6 +389,48 @@ test('packaged smoke reports child exit while polling CDP', async () => {
     assert.match(String(error), /32123\/json\/list/u)
     return true
   })
+})
+
+test('packaged smoke live timeout includes launch args and process state before cleanup', async () => {
+  const rootPath = await mkdtemp(join(tmpdir(), 'tockteam-packaged-diagnostics-'))
+  try {
+    await mkdir(join(rootPath, 'logs'), { recursive: true })
+    await writeFile(join(rootPath, 'logs', 'desktop.log'), 'desktop log tail')
+    const child = new EventEmitter() as EventEmitter & { pid: number; exitCode: number | null; signalCode: NodeJS.Signals | null }
+    child.pid = process.pid
+    child.exitCode = null
+    child.signalCode = null
+    const args = ['--remote-debugging-port=32123', `--user-data-dir=${rootPath}`]
+    const pending = waitForPackagedState(
+      async () => { throw new Error('CDP fetch failed for http://127.0.0.1:32123/json/list') },
+      () => false,
+      child,
+      {
+        command: '/tmp/TockTeam Desktop',
+        args,
+        timeout: 1,
+        output: () => ({ stdout: 'stdout-tail', stderr: 'stderr-tail' }),
+        diagnostics: () => collectPackagedProcessDiagnostics({ child, command: '/tmp/TockTeam Desktop', args, userData: rootPath, stdout: 'stdout-tail', stderr: 'stderr-tail' }),
+      },
+    )
+    await assert.rejects(pending, error => {
+      assert.match(String(error), /--remote-debugging-port=32123/u)
+      assert.match(String(error), /pid=\d+/u)
+      assert.match(String(error), /alive=true/u)
+      assert.match(String(error), /stdout-tail/u)
+      assert.match(String(error), /stderr-tail/u)
+      assert.match(String(error), /desktop log tail/u)
+      if (process.platform === 'linux') {
+        assert.match(String(error), /\/proc\/\d+\/cmdline/u)
+        assert.match(String(error), /\/proc\/\d+\/status/u)
+        assert.match(String(error), /\/proc\/\d+\/wchan/u)
+        assert.doesNotMatch(String(error), /\0/u)
+      }
+      return true
+    })
+  } finally {
+    await rm(rootPath, { recursive: true, force: true })
+  }
 })
 
 test('Windows portable manifests are finite and skip symlink cycles', { skip: process.platform === 'win32' }, async () => {
@@ -659,6 +741,7 @@ test('release and platform workflows retain ordered package and installed gates'
     assert.match(section, /fetch-tags: true/u)
     assert.match(section, /submodules: recursive/u)
     assert.match(section, /compression-level: 0/u)
+    assert.match(section, /if: always\(\) && steps\.installed-smoke\.outcome == 'failure'/u)
     if (job === 'windows-x64') assert.match(section, /tockteam-installed-launcher-smoke-\*\/installer\/\*\.tar\.gz/u)
     else {
       assert.match(section, /tockteam-installed-launcher-smoke-\*\/installer\/\*\.deb/u)

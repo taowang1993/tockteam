@@ -244,17 +244,18 @@ async function inspectMacBundle(appPath) {
 
 async function installedSession(executable, userData, inventory, target, options = {}) {
   const port = await freePort()
+  const smokeArgs = ['--enable-logging=stderr', ...(options.args ?? [])]
   const launched = await launchPackaged(
     executable,
     userData,
     port,
-    options.args ?? [],
+    smokeArgs,
     { flag: smokeFlag, env: { TOCKTEAM_INSTALLED_SMOKE: '1' } },
   )
   try {
     const renderer = await runRendererSmoke(launched.workbench, launched.launcher, inventory, userData, options.installRoot)
     const platform = await runPlatformOutcomeSmoke(launched.workbench, launched.launcher, target)
-    const secondInstance = await runSecondInstanceSmoke(executable, userData, launched.workbench, launched.launcher, options.args ?? [])
+    const secondInstance = await runSecondInstanceSmoke(executable, userData, launched.workbench, launched.launcher, smokeArgs)
     return Object.freeze({ platform, renderer, secondInstance, launched })
   } catch (error) {
     try {
