@@ -3,8 +3,9 @@ import { randomBytes } from 'node:crypto'
 import { access, mkdir, readFile, rename, rm, stat } from 'node:fs/promises'
 import { constants } from 'node:fs'
 import { basename, dirname, join, resolve } from 'node:path'
+import { WINDOWS_PORTABLE_MARKER } from './windows-portable-archive.mjs'
 
-export const WINDOWS_PORTABLE_MARKER = '.tockteam-portable.json'
+export { WINDOWS_PORTABLE_MARKER }
 
 async function exists(path) {
   try {
@@ -30,6 +31,7 @@ export async function validateWindowsPortableRoot(rootPath, expected) {
   assert.equal(marker.schemaVersion, 1)
   assert.equal(marker.version, expected.version)
   assert.equal(marker.appId, expected.appId)
+  assert.equal(marker.productName, expected.productName)
   const executable = join(rootPath, 'win-unpacked', `${expected.productName}.exe`)
   assert.equal((await stat(executable)).isFile(), true, 'portable TockTeam executable is missing')
   return Object.freeze({ marker, executable })

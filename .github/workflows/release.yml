@@ -119,11 +119,9 @@ jobs:
             dist_script: dist:linux
             node_platform: linux
             node_arch: x64
-          # Windows is build-verified in the CI matrix, but the pinned DSH
-          # runtime is not portable on Windows yet: pnpm's junction-based
-          # workspace layout contains cycles that packaging tools follow
-          # until Windows path limits fail. Re-add this job once staging
-          # produces a junction-free runtime on Windows.
+          # Windows packaging remains outside this release matrix; dist:win
+          # emits the supported finite tar.gz portable archive through
+          # scripts/build-windows.mjs on a Windows runner.
     env:
       CSC_IDENTITY_AUTO_DISCOVERY: 'false'
       DSH_DESKTOP_NODE_ARCH: ${{ matrix.node_arch }}

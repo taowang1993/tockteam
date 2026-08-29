@@ -803,7 +803,10 @@ export async function launchPackaged(executable, userData, port, extraArgs = [],
     return Object.freeze({ child, launcher, workbench, output: () => output })
   } catch (error) {
     await stopPackagedChild(child)
-    throw new Error(`${error instanceof Error ? error.message : String(error)}\n${output}`)
+    let desktopLogTail = ''
+    try { desktopLogTail = (await readFile(join(userData, 'logs', 'desktop.log'), 'utf8')).slice(-16_000) } catch { /* the app may fail before logging starts */ }
+    const diagnostics = desktopLogTail === '' ? output : `${output}\n[desktop.log tail]\n${desktopLogTail}`
+    throw new Error(`${error instanceof Error ? error.message : String(error)}\n${diagnostics}`)
   }
 }
 

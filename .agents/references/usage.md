@@ -51,7 +51,9 @@ sudo apt install ./TockTeam-Desktop-*.deb
 ### Windows
 
 Windows artifacts are not currently published in GitHub Releases. The
-`pnpm run dist:win` command remains available for source builds.
+`pnpm run dist:win` command remains available for source builds and emits a
+finite `TockTeam-Desktop-*-x64.tar.gz` portable archive. Extract it with the
+Windows `tar.exe` utility and launch `win-unpacked/TockTeam Desktop.exe`.
 
 ## Install Web-only
 
@@ -182,7 +184,7 @@ pnpm test:launcher:installed
 ```
 
 This command builds a fresh product and exercises the disposable macOS,
-Windows portable-archive, Debian, and AppImage lanes when run on their supported
+Windows portable tar.gz archive, Debian, and AppImage lanes when run on their supported
 hosts. The checked-in macOS arm64 report records unsigned/internal ad-hoc proof
 for the identity, resources, security, actions, settings/reinstall, rollback,
 and cleanup rows. Notices/vendor scanning and provider catalog are only

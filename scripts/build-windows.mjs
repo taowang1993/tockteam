@@ -1,12 +1,18 @@
 import { spawnSync } from 'node:child_process'
-import { existsSync } from 'node:fs'
-import { dirname, join } from 'node:path'
+import { existsSync, readFileSync } from 'node:fs'
+import { dirname, isAbsolute, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { resolveProductVersion } from '../src/version.ts'
 import { ensureElectronInstalled } from './electron-runtime.mjs'
+import {
+  windowsPortableArchiveArgs,
+  writeWindowsPortableManifest,
+  writeWindowsPortableMarker,
+} from './windows-portable-archive.mjs'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const version = resolveProductVersion(root)
+const packageJson = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'))
 const requestedArch = process.argv[2]
 const arch = requestedArch ?? { arm64: 'arm64', x64: 'x64' }[process.arch] ?? process.arch
 if (arch !== 'x64') {
@@ -38,15 +44,27 @@ const result = spawnSync(process.execPath, [
 if (result.error !== undefined) throw result.error
 if (result.status !== 0) process.exit(result.status ?? 1)
 
-// electron-builder's NSIS/zip targets crash on the size of the bundled DSH
-// runtime; the unpacked app is already complete, so zip it with the system
-// bsdtar, which streams instead of materializing one giant argument string.
-const archive = join(root, 'release', `TockTeam-Desktop-${version}-x64.zip`)
-const zip = spawnSync('tar', ['-a', '-cf', archive, 'win-unpacked'], {
-  cwd: join(root, 'release'),
+// Archive only the finite manifest so staged runtime junctions/symlinks are
+// preserved as entries without recursive traversal. Windows' System32
+// bsdtar handles tar.gz and retains those link entries for the portable app.
+const outputDir = join(root, 'release')
+const systemRoot = process.env.SystemRoot?.trim()
+if (systemRoot === undefined || !isAbsolute(systemRoot)) throw new Error('Windows SystemRoot must be an absolute path')
+const tar = join(systemRoot, 'System32', 'tar.exe')
+if (!existsSync(tar)) throw new Error(`Windows bsdtar is missing: ${tar}`)
+await writeWindowsPortableMarker(outputDir, {
+  appId: packageJson.build?.appId,
+  productName: packageJson.productName,
+  version,
+})
+const manifestPath = join(outputDir, 'tockteam-portable-manifest.txt')
+await writeWindowsPortableManifest(outputDir, manifestPath)
+const archive = join(outputDir, `TockTeam-Desktop-${version}-x64.tar.gz`)
+const archiveResult = spawnSync(tar, windowsPortableArchiveArgs({ archive, outputDir, manifestPath }), {
+  cwd: outputDir,
   stdio: 'inherit',
 })
-if (zip.error !== undefined) throw zip.error
-if (zip.status !== 0) process.exit(zip.status ?? 1)
+if (archiveResult.error !== undefined) throw archiveResult.error
+if (archiveResult.status !== 0) process.exit(archiveResult.status ?? 1)
 if (!existsSync(archive)) throw new Error(`Windows archive was not produced: ${archive}`)
 console.log(`Packaged TockTeam Desktop ${version}: ${archive}`)

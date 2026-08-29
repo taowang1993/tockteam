@@ -1,12 +1,13 @@
-export const PORTABLE_MANIFEST_MAX_ENTRIES: 500000
+export {
+  PORTABLE_MANIFEST_MAX_ENTRIES,
+  WINDOWS_PORTABLE_MARKER,
+  normalizePortableManifestPath,
+  writeWindowsPortableManifest,
+  writeWindowsPortableMarker,
+  windowsPortableArchiveArgs,
+} from './windows-portable-archive.mjs'
 
-export function normalizePortableManifestPath(candidate: string): string
-
-export function writeWindowsPortableManifest(
-  outputDir: string,
-  manifestPath: string,
-  options?: Readonly<{ maxEntries?: number }>,
-): Promise<readonly string[]>
+export function assertPackageParity(expected: Record<string, any>, actual: Record<string, any>): void
 
 export function installerBuildPlan(
   target: Readonly<{ key: string }>,

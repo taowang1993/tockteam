@@ -4,9 +4,9 @@ import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
 import { execFile, spawn } from 'node:child_process'
 import { existsSync } from 'node:fs'
-import { lstat, mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { dirname, isAbsolute, join, relative, resolve } from 'node:path'
+import { dirname, isAbsolute, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { promisify } from 'node:util'
 import { build } from 'electron-builder'
@@ -25,7 +25,20 @@ import {
   waitFor,
 } from './launcher-packaged-smoke.mjs'
 import { replaceMacBundle, validateMacBundle } from './install-mac.mjs'
-import { replaceWindowsPortableArchive, validateWindowsPortableRoot, WINDOWS_PORTABLE_MARKER } from './install-windows.mjs'
+import { replaceWindowsPortableArchive, validateWindowsPortableRoot } from './install-windows.mjs'
+import {
+  windowsPortableArchiveArgs,
+  writeWindowsPortableManifest,
+  writeWindowsPortableMarker,
+} from './windows-portable-archive.mjs'
+export {
+  PORTABLE_MANIFEST_MAX_ENTRIES,
+  WINDOWS_PORTABLE_MARKER,
+  normalizePortableManifestPath,
+  windowsPortableArchiveArgs,
+  writeWindowsPortableManifest,
+  writeWindowsPortableMarker,
+} from './windows-portable-archive.mjs'
 import { assertOwnedProcessGone } from './process-cleanup.mjs'
 
 const execFileAsync = promisify(execFile)
@@ -35,61 +48,6 @@ const packageJson = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'
 const electronPackage = JSON.parse(await readFile(join(root, 'node_modules/electron/package.json'), 'utf8'))
 const smokeFlag = '--tockteam-launcher-installed-smoke'
 const smokeMarker = 'TOCKTEAM_INSTALLED_SMOKE '
-export const PORTABLE_MANIFEST_MAX_ENTRIES = 500_000
-
-export function normalizePortableManifestPath(candidate) {
-  if (typeof candidate !== 'string' || candidate === '') throw new Error('portable manifest paths must be non-empty relative paths')
-  if (candidate.includes('\0') || candidate.includes('\n') || candidate.includes('\r')) throw new Error('portable manifest paths cannot contain newlines or NUL bytes')
-  const normalized = candidate.replaceAll('\\', '/')
-  const segments = normalized.split('/')
-  if (normalized.startsWith('/') || /^[A-Za-z]:/u.test(normalized) || segments.some(segment => segment === '' || segment === '.' || segment === '..')) {
-    throw new Error(`portable manifest path must be relative: ${candidate}`)
-  }
-  return normalized
-}
-
-export async function writeWindowsPortableManifest(outputDir, manifestPath, { maxEntries = PORTABLE_MANIFEST_MAX_ENTRIES } = {}) {
-  assert(Number.isSafeInteger(maxEntries) && maxEntries > 0, 'portable manifest entry cap must be a positive safe integer')
-  const outputRoot = resolve(outputDir)
-  const entries = []
-  const seen = new Set()
-  const add = path => {
-    const entry = normalizePortableManifestPath(relative(outputRoot, path))
-    if (seen.has(entry)) return
-    if (entries.length >= maxEntries) throw new Error(`portable manifest exceeds ${String(maxEntries)} entries`)
-    seen.add(entry)
-    entries.push(entry)
-  }
-  const walk = async path => {
-    const entry = normalizePortableManifestPath(relative(outputRoot, path))
-    const metadata = await lstat(path)
-    if (metadata.isSymbolicLink()) {
-      add(path)
-      return
-    }
-    if (metadata.isDirectory()) {
-      add(path)
-      const children = await readdir(path, { withFileTypes: true })
-      children.sort((left, right) => left.name.localeCompare(right.name))
-      for (const child of children) await walk(join(path, child.name))
-    } else if (metadata.isFile()) {
-      add(path)
-    } else {
-      throw new Error(`portable manifest cannot archive unsupported entry: ${entry}`)
-    }
-  }
-  await walk(join(outputRoot, 'win-unpacked'))
-  const markerPath = join(outputRoot, WINDOWS_PORTABLE_MARKER)
-  const marker = await lstat(markerPath)
-  if (!marker.isFile() || marker.isSymbolicLink()) throw new Error('portable marker must be a regular file')
-  add(markerPath)
-  await writeFile(manifestPath, `${entries.join('\n')}\n`, 'utf8')
-  return Object.freeze(entries)
-}
-
-export function windowsPortableArchiveArgs({ archive, outputDir, manifestPath }) {
-  return Object.freeze(['-a', '-c', '-f', archive, '--no-recursion', '-C', outputDir, '-T', manifestPath])
-}
 
 function trustedWindowsTool(name) {
   const systemRoot = process.env.SystemRoot?.trim()
@@ -300,12 +258,21 @@ async function runSecondInstanceSmoke(executable, userData, workbench, launcher,
   }
 }
 
-function assertPackageParity(expected, actual) {
+export function assertPackageParity(expected, actual) {
   assert.equal(actual.appId, expected.appId, 'installed app identity drifted')
   assert.equal(actual.productName, expected.productName, 'installed product name drifted')
   assert.equal(actual.version, expected.version, 'installed package version drifted')
   assert.equal(actual.assetCount, expected.assetCount, 'installed launcher asset count drifted')
-  assert.deepEqual(actual.vendorScan, expected.vendorScan, 'installed vendor-scan contract drifted')
+  const expectedVendorScan = expected.vendorScan
+  const actualVendorScan = actual.vendorScan
+  assert.ok(expectedVendorScan !== null && typeof expectedVendorScan === 'object', 'expected vendor-scan contract is missing')
+  assert.ok(actualVendorScan !== null && typeof actualVendorScan === 'object', 'installed vendor-scan contract is missing')
+  for (const key of ['scope', 'maxDepth', 'maxEntries', 'forbiddenSourceFound', 'launcherSourceAbsent']) {
+    assert.deepEqual(actualVendorScan[key], expectedVendorScan[key], `installed vendor-scan invariant drifted: ${key}`)
+  }
+  for (const [label, scan] of [['expected', expectedVendorScan], ['installed', actualVendorScan]]) {
+    assert.ok(Number.isSafeInteger(scan.checkedEntries) && scan.checkedEntries >= 0 && scan.checkedEntries <= scan.maxEntries, `${label} vendor-scan count is outside its bound`)
+  }
   assert.deepEqual(actual.extraResources.roots, expected.extraResources.roots, 'installed extra-resource roots drifted')
 }
 
@@ -473,9 +440,8 @@ async function runMacInstalledSmoke(artifact) {
 async function buildPortableArchive(artifact) {
   const installerDir = join(artifact.rootPath, 'installer')
   await mkdir(installerDir, { recursive: true })
-  const markerPath = join(artifact.outputDir, WINDOWS_PORTABLE_MARKER)
-  await writeFile(markerPath, `${JSON.stringify({ schemaVersion: 1, appId: contract.identity.appId, productName: contract.identity.productName, version: packageJson.version })}\n`, 'utf8')
-  const archive = join(installerDir, `TockTeam-Desktop-${packageJson.version}-x64.zip`)
+  const markerPath = await writeWindowsPortableMarker(artifact.outputDir, { appId: contract.identity.appId, productName: contract.identity.productName, version: packageJson.version })
+  const archive = join(installerDir, `TockTeam-Desktop-${packageJson.version}-x64.tar.gz`)
   const manifestPath = join(installerDir, 'tockteam-portable-manifest.txt')
   await writeWindowsPortableManifest(artifact.outputDir, manifestPath)
   await runProcess(trustedWindowsTool('tar.exe'), windowsPortableArchiveArgs({ archive, outputDir: artifact.outputDir, manifestPath }), { cwd: artifact.outputDir, disposableRoot: artifact.rootPath })
@@ -485,7 +451,7 @@ async function buildPortableArchive(artifact) {
 async function runNonMacInstalledSmoke(artifact) {
   if (artifact.target.key === 'win') {
     const portable = await buildPortableArchive(artifact)
-    const report = { installerDir: portable.installerDir, formats: ['zip'] }
+    const report = { installerDir: portable.installerDir, formats: ['tar.gz'] }
     const installDir = join(artifact.rootPath, 'portable-installed')
     const backupDirectory = join(artifact.rootPath, 'portable-backup')
     const expected = { appId: contract.identity.appId, productName: contract.identity.productName, version: packageJson.version }
@@ -511,7 +477,7 @@ async function runNonMacInstalledSmoke(artifact) {
     await rm(backupDirectory, { recursive: true, force: true })
     assert.equal(existsSync(installDir), false)
     report.installed = {
-      portableArchive: { path: portable.archive, format: 'zip', version: packageJson.version },
+      portableArchive: { path: portable.archive, format: 'tar.gz', version: packageJson.version },
       installRoot: installDir,
       package: installedInventory,
       renderer: smoke.renderer,

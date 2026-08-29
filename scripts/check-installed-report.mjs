@@ -73,7 +73,7 @@ export function inspectInstalledReport(report, expected) {
     const installed = report?.installed
     failure(failures, object(installed), 'Windows installed lifecycle evidence is missing')
     if (object(installed)) {
-      failure(failures, installed.portableArchive?.format === 'zip' && /\.zip$/iu.test(installed.portableArchive?.path ?? ''), 'Windows portable archive evidence is missing')
+      failure(failures, installed.portableArchive?.format === 'tar.gz' && /\.tar\.gz$/iu.test(installed.portableArchive?.path ?? ''), 'Windows portable archive evidence is missing')
       failure(failures, installed.portableArchive?.version === expected.version, 'Windows portable archive version differs')
       inspectPackage(failures, installed.package, installed.renderer, installed.installRoot, expected)
       inspectSettings(failures, installed.reinstall, installed.installRoot, expected)

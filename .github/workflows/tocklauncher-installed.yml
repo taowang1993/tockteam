@@ -18,7 +18,7 @@ permissions:
 
 jobs:
   windows-x64:
-    name: Windows x64 installed portable-archive TockLauncher evidence
+    name: Windows x64 installed portable tar.gz TockLauncher evidence
     runs-on: windows-latest
     timeout-minutes: 180
     steps:
@@ -56,7 +56,7 @@ jobs:
           pnpm test:ueli-package-feasibility
           pnpm audit:ueli-package-feasibility
 
-      - name: Build and install the disposable portable archive artifact
+      - name: Build and install the disposable portable tar.gz artifact
         id: installed-smoke
         shell: bash
         env:
@@ -90,7 +90,7 @@ jobs:
           name: tocklauncher-installed-windows-x64-${{ github.run_id }}
           compression-level: 0
           path: |
-            ${{ runner.temp }}/tockteam-installed-launcher-smoke-*/installer/*.zip
+            ${{ runner.temp }}/tockteam-installed-launcher-smoke-*/installer/*.tar.gz
             ${{ runner.temp }}/tockteam-installed-launcher-smoke-${{ github.run_id }}.json
             ${{ runner.temp }}/tockteam-installed-launcher-gate-${{ github.run_id }}.json
           if-no-files-found: error

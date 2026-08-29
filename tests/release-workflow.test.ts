@@ -92,6 +92,8 @@ test('tagged releases build and upload both TUI archive formats', () => {
   assert.match(workflow, /run: node scripts\/build-tui\.mjs/)
   assert.match(workflow, /release\/tockteam-tui-\*\.tar\.gz/)
   assert.match(workflow, /release\/tockteam-tui-\*\.zip/)
+  assert.match(workflow, /Windows packaging remains outside this release matrix[\s\S]+finite tar\.gz portable archive/u)
+  assert.match(readFileSync(join(root, 'scripts', 'build-windows.mjs'), 'utf8'), /windows-portable-archive\.mjs[\s\S]+TockTeam-Desktop-\$\{version\}-x64\.tar\.gz/u)
   assert.match(workflow, /fetch-depth: 0/)
   assert.match(workflow, /fetch-tags: true/)
 })

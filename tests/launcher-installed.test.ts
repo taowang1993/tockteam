@@ -22,14 +22,19 @@ import {
   trustedPathEntries,
   windowsCdpListenerOwned,
 } from '../scripts/launcher-packaged-smoke.mjs'
-import { replaceWindowsPortableArchive, WINDOWS_PORTABLE_MARKER } from '../scripts/install-windows.mjs'
+import { replaceWindowsPortableArchive } from '../scripts/install-windows.mjs'
 import {
+  assertPackageParity,
   installerBuildPlan,
+} from '../scripts/launcher-installed-smoke.mjs'
+import {
+  WINDOWS_PORTABLE_MARKER,
   normalizePortableManifestPath,
   PORTABLE_MANIFEST_MAX_ENTRIES,
   windowsPortableArchiveArgs,
   writeWindowsPortableManifest,
-} from '../scripts/launcher-installed-smoke.mjs'
+  writeWindowsPortableMarker,
+} from '../scripts/windows-portable-archive.mjs'
 
 const root = join(import.meta.dirname, '..')
 const packageJson = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')) as {
@@ -37,6 +42,7 @@ const packageJson = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'))
 }
 const packagedSmoke = readFileSync(join(root, 'scripts', 'launcher-packaged-smoke.mjs'), 'utf8')
 const installedSmoke = readFileSync(join(root, 'scripts', 'launcher-installed-smoke.mjs'), 'utf8')
+const buildWindows = readFileSync(join(root, 'scripts', 'build-windows.mjs'), 'utf8')
 const cleanup = readFileSync(join(root, 'scripts', 'process-cleanup.mjs'), 'utf8')
 const releaseWorkflow = readFileSync(join(root, '.github', 'workflows', 'release.yml'), 'utf8').replace(/\r\n?/gu, '\n')
 const installedWorkflow = readFileSync(join(root, '.github', 'workflows', 'tocklauncher-installed.yml'), 'utf8').replace(/\r\n?/gu, '\n')
@@ -50,6 +56,7 @@ const catalog = JSON.parse(readFileSync(join(root, 'scripts', 'ueli', 'installed
 test('TockTeam exposes an executable installed-artifact smoke and audit', () => {
   assert.equal(typeof packageJson.scripts?.['test:launcher:installed'], 'string')
   assert.equal(typeof packageJson.scripts?.['audit:installed-evidence'], 'string')
+  assert.match(packagedSmoke, /desktop\.log/u)
   assert.match(installedSmoke, /replaceMacBundle/u)
   assert.match(installedSmoke, /TOCKTEAM_INSTALLED_SMOKE/u)
   assert.match(installedSmoke, /rollback|reinstall/iu)
@@ -61,6 +68,13 @@ test('TockTeam exposes an executable installed-artifact smoke and audit', () => 
   assert.match(installedSmoke, /electronVersion/u)
   assert.match(installedSmoke, /portableArchive|replaceWindowsPortableArchive/u)
   assert.match(installedSmoke, /tar\.exe/u)
+  assert.match(installedSmoke, /tar\.gz/u)
+  assert.match(buildWindows, /windows-portable-archive\.mjs/u)
+  assert.match(buildWindows, /writeWindowsPortableMarker/u)
+  assert.match(buildWindows, /writeWindowsPortableManifest/u)
+  assert.match(buildWindows, /windowsPortableArchiveArgs/u)
+  assert.match(buildWindows, /tar\.gz/u)
+  assert.doesNotMatch(buildWindows, /win-unpacked['"],?\s*\)/u)
   assert.match(installedSmoke, /dpkg-query/u)
   assert.match(installedSmoke, /\/usr\/bin\/dpkg/u)
   assert.match(installedSmoke, /--install/u)
@@ -83,7 +97,7 @@ test('installed smoke selects only the loopback descriptor and atomically replac
   assert.equal(windowsCdpListenerOwned('  TCP    127.0.0.1:1234    0.0.0.0:0    LISTENING    41\n', 42, 1234), false)
   const rootPath = await mkdtemp(join(tmpdir(), 'tockteam-portable-artifact-'))
   try {
-    const archive = join(rootPath, 'TockTeam-Desktop-0.1.14-x64.zip')
+    const archive = join(rootPath, 'TockTeam-Desktop-0.1.14-x64.tar.gz')
     const destination = join(rootPath, 'installed')
     const backupDirectory = join(rootPath, 'backup')
     await writeFile(archive, 'portable archive')
@@ -141,7 +155,8 @@ test('Windows portable manifests are finite and skip symlink cycles', { skip: pr
     const resources = join(outputDir, 'win-unpacked', 'resources')
     await mkdir(resources, { recursive: true })
     await writeFile(join(resources, 'app.asar'), 'payload')
-    await writeFile(join(outputDir, WINDOWS_PORTABLE_MARKER), '{}\n')
+    const markerPath = await writeWindowsPortableMarker(outputDir, { appId: 'ai.deepseek.tockteam-desktop', productName: 'TockTeam Desktop', version: '0.1.14' })
+    assert.deepEqual(JSON.parse(await readFile(markerPath, 'utf8')), { schemaVersion: 1, appId: 'ai.deepseek.tockteam-desktop', productName: 'TockTeam Desktop', version: '0.1.14' })
     await symlink(outputDir, join(resources, 'cycle'), 'dir')
     const manifestPath = join(rootPath, 'portable-manifest.txt')
     const entries = await writeWindowsPortableManifest(outputDir, manifestPath)
@@ -170,13 +185,29 @@ test('Windows installer uses one multi-format build plan without publishing', ()
   assert.equal(plan.config.electronVersion.length > 0, true)
 })
 
+test('installed parity allows bounded observational vendor-scan count differences', () => {
+  const expected = {
+    appId: 'ai.deepseek.tockteam-desktop',
+    productName: 'TockTeam Desktop',
+    version: '0.1.14',
+    assetCount: 65,
+    vendorScan: { scope: 'bounded-no-follow', maxDepth: 2, maxEntries: 4_096, checkedEntries: 58, forbiddenSourceFound: false, launcherSourceAbsent: true },
+    extraResources: { roots: [] },
+  }
+  const installed = { ...expected, vendorScan: { ...expected.vendorScan, checkedEntries: 59 } }
+  assert.doesNotThrow(() => assertPackageParity(expected, installed))
+  assert.throws(() => assertPackageParity({ ...expected, vendorScan: { ...expected.vendorScan, checkedEntries: 4_097 } }, installed), /expected vendor-scan count/u)
+  assert.throws(() => assertPackageParity(expected, { ...installed, vendorScan: { ...installed.vendorScan, checkedEntries: 4_097 } }), /installed vendor-scan count/u)
+  assert.throws(() => assertPackageParity(expected, { ...installed, vendorScan: { ...installed.vendorScan, scope: 'unbounded' } }), /vendor-scan invariant drifted: scope/u)
+})
+
 test('Windows portable archive uses a bounded relative manifest', () => {
   assert.deepEqual(windowsPortableArchiveArgs({
-    archive: 'C:\\tmp\\portable.zip',
+    archive: 'C:\\tmp\\portable.tar.gz',
     outputDir: 'C:\\tmp\\output',
     manifestPath: 'C:\\tmp\\portable-manifest.txt',
   }), [
-    '-a', '-c', '-f', 'C:\\tmp\\portable.zip',
+    '-a', '-c', '-f', 'C:\\tmp\\portable.tar.gz',
     '--no-recursion', '-C', 'C:\\tmp\\output', '-T', 'C:\\tmp\\portable-manifest.txt',
   ])
 })
@@ -364,7 +395,7 @@ test('installed report validation requires complete platform lifecycle evidence'
     result: 'passed', sourceCommit: 'a'.repeat(40), version: '0.1.14', appId: 'ai.deepseek.tockteam-desktop', productName: 'TockTeam Desktop', platform: 'win32',
     cleanup: { temporaryInstallRemoved: true, processTreesGone: true },
     installed: {
-      portableArchive: { path: '/tmp/TockTeam-Desktop-0.1.14-x64.zip', format: 'zip', version: '0.1.14' }, installRoot: '/tmp/install', package: packageInventory, renderer,
+      portableArchive: { path: '/tmp/TockTeam-Desktop-0.1.14-x64.tar.gz', format: 'tar.gz', version: '0.1.14' }, installRoot: '/tmp/install', package: packageInventory, renderer,
       reinstall: { package: packageInventory, settings: { restored: 0.6, runtimeReady: 'ready' } }, secondInstance: { singleInstance: true, permissions: 'renderer-permission-denied' }, rollback: { preservedAsarSha256: 'b'.repeat(64), validationFailureRecovered: true }, cleanup: { installRootRemoved: true },
     },
   }
@@ -419,7 +450,7 @@ test('release and platform workflows retain ordered package and installed gates'
     assert.match(section, /fetch-tags: true/u)
     assert.match(section, /submodules: recursive/u)
     assert.match(section, /compression-level: 0/u)
-    if (job === 'windows-x64') assert.match(section, /tockteam-installed-launcher-smoke-\*\/installer\/\*\.zip/u)
+    if (job === 'windows-x64') assert.match(section, /tockteam-installed-launcher-smoke-\*\/installer\/\*\.tar\.gz/u)
     else {
       assert.match(section, /tockteam-installed-launcher-smoke-\*\/installer\/\*\.deb/u)
       assert.match(section, /tockteam-installed-launcher-smoke-\*\/installer\/\*\.AppImage/u)
@@ -437,7 +468,7 @@ test('release and platform workflows retain ordered package and installed gates'
   assert.match(installedWorkflow, /tockteam-installed-launcher-gate-\$\{\{ github\.run_id \}\}\.json/u)
   assert.match(installedWorkflow, /test:launcher:installed/u)
   assert.match(installedWorkflow, /check-installed-report\.mjs/u)
-  assert.match(installedWorkflow, /portable-archive/u)
+  assert.match(installedWorkflow, /portable tar\.gz/u)
   assert.doesNotMatch(installedWorkflow, /NSIS artifact/u)
   assert.match(installedWorkflow, /test:ueli-baseline/u)
   assert.match(installedWorkflow, /audit:ueli-baseline/u)
@@ -456,6 +487,6 @@ test('release and platform workflows retain ordered package and installed gates'
   assert.ok(inspectInstalledEvidenceWorkflow(missingSubmodules).failures.some(failure => failure.includes('recursive submodules')))
   const compressedUpload = installedWorkflow.replaceAll('compression-level: 0', 'compression-level: 6')
   assert.ok(inspectInstalledEvidenceWorkflow(compressedUpload).failures.some(failure => failure.includes('disable artifact compression')))
-  const unpackedUpload = installedWorkflow.replaceAll('/installer/*.zip', '/installer/**').replaceAll('/installer/*.deb', '/installer/**').replaceAll('/installer/*.AppImage', '/installer/**')
+  const unpackedUpload = installedWorkflow.replaceAll('/installer/*.tar.gz', '/installer/**').replaceAll('/installer/*.deb', '/installer/**').replaceAll('/installer/*.AppImage', '/installer/**')
   assert.ok(inspectInstalledEvidenceWorkflow(unpackedUpload).failures.some(failure => failure.includes('only distributable files')))
 })

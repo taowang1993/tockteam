@@ -160,7 +160,7 @@ export function inspectInstalledEvidenceWorkflow(workflow) {
     failure(failures, /id:\s*report-check/u.test(section), `${job} must identify the report-check step`)
     failure(failures, /compression-level:\s*0/u.test(section), `${job} evidence upload must disable artifact compression`)
     const installerGlobs = job === 'windows-x64'
-      ? ['${{ runner.temp }}/tockteam-installed-launcher-smoke-*/installer/*.zip']
+      ? ['${{ runner.temp }}/tockteam-installed-launcher-smoke-*/installer/*.tar.gz']
       : [
           '${{ runner.temp }}/tockteam-installed-launcher-smoke-*/installer/*.deb',
           '${{ runner.temp }}/tockteam-installed-launcher-smoke-*/installer/*.AppImage',
