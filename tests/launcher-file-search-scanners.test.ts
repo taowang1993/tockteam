@@ -177,11 +177,13 @@ test('Simple File Search applies result, visit, type, and recursive bounds durin
   try {
     await mkdir(join(home, 'root', 'folder-a'), { recursive: true })
     await mkdir(join(home, 'root', 'folder-b'), { recursive: true })
+    await mkdir(join(home, 'folders-only', 'folder-a'), { recursive: true })
+    await mkdir(join(home, 'folders-only', 'folder-b'), { recursive: true })
     await writeFile(join(home, 'root', 'a.txt'), 'a', 'utf8')
     await writeFile(join(home, 'root', 'b.txt'), 'b', 'utf8')
     await writeFile(join(home, 'root', 'folder-a', 'child.txt'), 'child', 'utf8')
     const entries = await scanSimpleFileSearchFolder({
-      folder: { id: 'root', path: join(home, 'root'), recursive: true, searchFor: 'folders' },
+      folder: { id: 'root', path: join(home, 'folders-only'), recursive: true, searchFor: 'folders' },
       homePath: home, maxResults: 1, maxVisitedEntries: 1, signal: signal(),
     })
     assert.equal(entries.length, 1)

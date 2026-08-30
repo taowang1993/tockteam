@@ -1,4 +1,4 @@
-import { O_DIRECTORY, O_NOFOLLOW, O_RDONLY } from 'node:constants'
+import { constants } from 'node:fs'
 import { lstat, open, opendir, realpath, rmdir, unlink } from 'node:fs/promises'
 import type { Dir, Dirent } from 'node:fs'
 import type { FileHandle } from 'node:fs/promises'
@@ -7,6 +7,9 @@ import type { LauncherOsPlatform, LauncherSystemCommand } from './launcher-os-ca
 
 export type LauncherFixedInvocation = Readonly<{ args: readonly string[]; executable: string }>
 
+const O_DIRECTORY = constants.O_DIRECTORY
+const O_NOFOLLOW = constants.O_NOFOLLOW
+const O_RDONLY = constants.O_RDONLY
 const POWERSHELL_PREFIX = Object.freeze(['-NoLogo', '-NoProfile', '-NonInteractive', '-Command'])
 const MAX_CONTROL_PANEL_OUTPUT = 1_048_576
 const MAX_CONTROL_PANEL_ITEMS = 200

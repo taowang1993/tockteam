@@ -3,7 +3,11 @@ import { mkdir, mkdtemp, readFile, readdir, realpath, rename, rm, stat, symlink,
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { test } from 'node:test'
-import { LauncherCustomBrowserController, parseLauncherCustomBrowserArgumentTemplate, readLauncherBoundedUtf8, serializeLauncherCustomBrowserGrant } from '../src/launcher-custom-browser.ts'
+import { LauncherCustomBrowserController as ProductionLauncherCustomBrowserController, parseLauncherCustomBrowserArgumentTemplate, readLauncherBoundedUtf8, serializeLauncherCustomBrowserGrant } from '../src/launcher-custom-browser.ts'
+
+const LauncherCustomBrowserController = Object.freeze({
+  open: async (options: Parameters<typeof ProductionLauncherCustomBrowserController.open>[0]) => await ProductionLauncherCustomBrowserController.open({ ...options, identitySafeEffects: true }),
+})
 
 async function root(): Promise<string> { return await mkdtemp(path.join(tmpdir(), 'tockteam-browser-')) }
 
