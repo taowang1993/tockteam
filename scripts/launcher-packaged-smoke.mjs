@@ -258,6 +258,7 @@ const PACKAGED_DIAGNOSTICS_MAX_BYTES = 16_000
 const DIAGNOSTIC_ERROR_MAX_DEPTH = 8
 const DIAGNOSTIC_ERROR_MAX_NODES = 64
 const DIAGNOSTIC_ERROR_MESSAGE_MAX_BYTES = 512
+const DIAGNOSTIC_ROOT_MESSAGE_MAX_BYTES = 8_000
 const DIAGNOSTIC_ERROR_STACK_MAX_BYTES = 4_000
 
 function diagnosticValue(value, limit = DIAGNOSTIC_ERROR_MESSAGE_MAX_BYTES) {
@@ -299,7 +300,11 @@ export function formatDiagnosticError(value) {
     }
     const isError = current instanceof Error
     const name = isError ? diagnosticValue(current.name || 'Error') : 'non-error'
-    const message = isError ? diagnosticValue(current.message) : diagnosticValue(current, depth === 0 ? PACKAGED_DIAGNOSTICS_MAX_BYTES : DIAGNOSTIC_ERROR_MESSAGE_MAX_BYTES)
+    const messageLimit = isError && depth === 0
+      ? DIAGNOSTIC_ROOT_MESSAGE_MAX_BYTES
+      : depth === 0 ? PACKAGED_DIAGNOSTICS_MAX_BYTES : DIAGNOSTIC_ERROR_MESSAGE_MAX_BYTES
+    const rawMessage = isError ? String(current.message ?? '') : diagnosticValue(current, messageLimit)
+    const message = rawMessage.length > messageLimit ? `[truncated to tail]\n${rawMessage.slice(-messageLimit)}` : rawMessage
     append(`${label}: ${name}: ${message}\n`)
     if (isError && depth === 0) {
       const stack = diagnosticValue(current.stack, DIAGNOSTIC_ERROR_STACK_MAX_BYTES)

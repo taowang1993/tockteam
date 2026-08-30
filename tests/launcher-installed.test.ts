@@ -252,6 +252,18 @@ test('failed installed smoke diagnostics are bounded and retain nested assertion
     assert.ok(diagnostics.errorTail.length <= 16_000)
     assert.equal(diagnostics.passed, undefined)
 
+    const rootTailMarker = '[root diagnostic tail retained]'
+    await writeInstalledSmokeDiagnostics(path, {
+      platform: 'linux',
+      version: '0.1.14',
+      sourceCommit: 'a'.repeat(40),
+      error: new Error(`${'discarded-prefix '.repeat(1_000)}${rootTailMarker}`),
+    })
+    const longRoot = JSON.parse(await readFile(path, 'utf8'))
+    assert.match(longRoot.errorTail, /\[truncated to tail\]/u)
+    assert.match(longRoot.errorTail, /\[root diagnostic tail retained\]/u)
+    assert.ok(longRoot.errorTail.length <= 16_000)
+
     await writeInstalledSmokeDiagnostics(path, {
       platform: 'linux',
       version: '0.1.14',

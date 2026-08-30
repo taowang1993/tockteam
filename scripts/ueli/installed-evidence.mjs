@@ -198,8 +198,8 @@ export function inspectInstalledEvidenceWorkflow(workflow) {
       const kernelDiagnosticsPath = '${{ runner.temp }}/tockteam-installed-kernel-diagnostics-${{ github.run_id }}.txt'
       failure(failures, /ulimit -c 0[\s\S]*pnpm test:launcher:installed/u.test(section), `${job} must disable core dumps before installed smoke`)
       failure(failures, section.includes(kernelDiagnosticsPath), `${job} must write kernel diagnostics to the exact run path`)
-      failure(failures, /sudo -n \/usr\/bin\/dmesg[\s\S]*tail -n 200/u.test(section), `${job} must capture a bounded dmesg tail`)
-      failure(failures, /sudo -n \/usr\/bin\/journalctl -k[\s\S]*tail -n 200/u.test(section), `${job} must record a bounded journalctl fallback`)
+      failure(failures, /\/usr\/bin\/timeout 10s \/usr\/bin\/sudo -n \/usr\/bin\/dmesg[\s\S]*\/usr\/bin\/tail -n 200/u.test(section), `${job} must capture a bounded, time-limited dmesg tail`)
+      failure(failures, /\/usr\/bin\/timeout 10s \/usr\/bin\/sudo -n \/usr\/bin\/journalctl -k --no-pager --lines=200[\s\S]*\/usr\/bin\/tail -n 200/u.test(section), `${job} must record a bounded, time-limited journalctl fallback`)
       failure(failures, new RegExp(`Upload Linux installed smoke diagnostics[\\s\\S]+path:\\s*\\|[\\s\\S]+tockteam-installed-launcher-diagnostics-\\$\\{\\{ github\\.run_id \\}\\}\\.json[\\s\\S]+tockteam-installed-kernel-diagnostics-\\$\\{\\{ github\\.run_id \\}\\}\\.txt`, 'u').test(section), `${job} must upload kernel diagnostics alongside smoke diagnostics`)
     }
   }

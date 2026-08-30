@@ -181,12 +181,12 @@ jobs:
           {
             printf '%s\n' 'TockTeam Linux installed smoke kernel diagnostics'
             printf '%s\n' '[dmesg tail]'
-            sudo -n /usr/bin/dmesg 2>&1 | tail -n 200
+            /usr/bin/timeout 10s /usr/bin/sudo -n /usr/bin/dmesg 2>&1 | /usr/bin/tail -n 200
             dmesg_status=${PIPESTATUS[0]}
             if [ "$dmesg_status" -ne 0 ]; then
               printf '[dmesg unavailable; exit=%s]\n' "$dmesg_status"
               printf '%s\n' '[journalctl -k tail]'
-              sudo -n /usr/bin/journalctl -k --no-pager 2>&1 | tail -n 200
+              /usr/bin/timeout 10s /usr/bin/sudo -n /usr/bin/journalctl -k --no-pager --lines=200 2>&1 | /usr/bin/tail -n 200
               journalctl_status=${PIPESTATUS[0]}
               if [ "$journalctl_status" -ne 0 ]; then
                 printf '[journalctl unavailable; exit=%s]\n' "$journalctl_status"
