@@ -67,6 +67,7 @@ const installedWorkflow = readFileSync(join(root, '.github', 'workflows', 'tockl
 const catalog = JSON.parse(readFileSync(join(root, 'scripts', 'ueli', 'installed-evidence-catalog.json'), 'utf8')) as {
   schemaVersion: number
   issue: string
+  evidenceStates: string[]
   publication: Record<string, boolean>
   rows: Array<{ id: string; platform: string; owner: string; required: boolean; state: string; evidence?: Record<string, string> | null }>
 }
@@ -663,9 +664,10 @@ test('extra-resource inspection is bounded and never follows symlink cycles', as
   }
 })
 
-test('installed evidence catalog owns the exact platform rows and rejects fabricated local proof', () => {
+test('installed evidence catalog owns exact platform rows and immutable hosted proof', () => {
   assert.equal(catalog.schemaVersion, 1)
   assert.equal(catalog.issue, 'tockteam-tl.15')
+  assert.deepEqual(catalog.evidenceStates, ['local-verified', 'hosted-verified', 'partially-verified', 'workflow-required', 'unverified', 'not-applicable'])
   assert.deepEqual(Object.keys(catalog.publication).sort(), ['installedArtifact', 'notarized', 'publicDistribution', 'signed'])
   assert.deepEqual(Object.values(catalog.publication), [false, false, false, false])
   const expectedIds = [
@@ -687,19 +689,29 @@ test('installed evidence catalog owns the exact platform rows and rejects fabric
     'macOS:security-and-workbench', 'macOS:launcher-action', 'macOS:settings-session-compatibility',
     'macOS:reinstall-settings', 'macOS:rollback', 'macOS:permissions-and-cleanup',
   ])
-  const partialMacRows = new Set(['macOS:notices-and-bounded-vendor-scan', 'macOS:provider-catalog'])
+  const hostedRows = new Set([
+    'Windows:portable-archive-install', 'Windows:identity-resources-notices', 'Windows:security-action-settings',
+    'Windows:reinstall-rollback-cleanup', 'Windows:shortcut-second-instance-permissions',
+    'Linux:deb-install', 'Linux:appimage-install', 'Linux:identity-resources-notices',
+    'Linux:security-action-settings', 'Linux:file-search-custom-browser', 'Linux:shortcut-second-instance-permissions',
+  ])
+  const partialRows = new Set([
+    'macOS:notices-and-bounded-vendor-scan', 'macOS:provider-catalog',
+    'Windows:notices-and-bounded-vendor-scan', 'Windows:control-panel-terminal-elevation',
+    'Linux:notices-and-bounded-vendor-scan', 'Linux:reinstall-rollback-cleanup',
+  ])
+  const provenance = {
+    Linux: { platform: 'linux', commit: 'ed39e30187b62111db05bf67f54adfeb28b898bf', reportSha256: 'b9d0ff36c39e3808774773ed70c6675b0bb757f4aff7f8c21a71f3414b0576f8', reference: '.beads/reports/tocklauncher-installed-linux-x64.json' },
+    Windows: { platform: 'win32', commit: 'ed39e30187b62111db05bf67f54adfeb28b898bf', reportSha256: '757ff4168c8fd11850a7e6c52bb4102d49e46155a152ef93fb7b5208243251b6', reference: '.beads/reports/tocklauncher-installed-windows-x64.json' },
+    macOS: { platform: 'darwin', commit: 'afe16ea4f22c102014a943c8c3267e0fe564e36d', reportSha256: '2ae01ad484522ae2b1c63feb04e106b9e2279083dcdb5a2d5e5dbd19ccecfe84', reference: '.beads/reports/tocklauncher-installed-macos-arm64.json' },
+  } as const
   for (const row of catalog.rows) {
     assert.ok(row.id && row.platform && row.owner && row.state)
     if (row.required) assert.notEqual(row.owner, 'unowned')
-    const expectedState = localMacRows.has(row.id) ? 'local-verified' : partialMacRows.has(row.id) ? 'partially-verified' : 'workflow-required'
+    const expectedState = localMacRows.has(row.id) ? 'local-verified' : hostedRows.has(row.id) ? 'hosted-verified' : partialRows.has(row.id) ? 'partially-verified' : 'workflow-required'
     assert.equal(row.state, expectedState)
     if (expectedState === 'workflow-required') assert.equal(row.evidence, null)
-    else {
-      assert.equal(row.evidence?.platform, 'darwin')
-      assert.equal(row.evidence?.commit, 'afe16ea4f22c102014a943c8c3267e0fe564e36d')
-      assert.equal(row.evidence?.reportSha256, '2ae01ad484522ae2b1c63feb04e106b9e2279083dcdb5a2d5e5dbd19ccecfe84')
-      assert.equal(row.evidence?.reference, '.beads/reports/tocklauncher-installed-macos-arm64.json')
-    }
+    else assert.deepEqual({ platform: row.evidence?.platform, commit: row.evidence?.commit, reportSha256: row.evidence?.reportSha256, reference: row.evidence?.reference }, provenance[row.platform as keyof typeof provenance])
   }
   assert.deepEqual(new Set(catalog.rows.map(row => row.platform)), new Set(['macOS', 'Windows', 'Linux']))
   assert.deepEqual(inspectInstalledEvidenceCatalog({ ...catalog, rows: catalog.rows.slice(1) }).failures.filter(failure => failure.includes('required installed evidence row is missing')), ['required installed evidence row is missing: macOS:artifact-build'])
@@ -741,7 +753,9 @@ test('installed report validation requires complete platform lifecycle evidence'
   const expected = { appId: 'ai.deepseek.tockteam-desktop', platform: 'win32', productName: 'TockTeam Desktop', version: '0.1.14' }
   assert.equal(inspectInstalledReport(report, expected).failures.length, 0)
   const windowsRoots = roots.map(root => root.replaceAll('/', '\\'))
-  const windowsSeparatorReport = { ...report, installed: { ...report.installed, package: { ...packageInventory, extraResources: { roots: windowsRoots } }, reinstall: { ...report.installed.reinstall, package: { ...packageInventory, extraResources: { roots: windowsRoots } } } } }
+  const windowsAppPath = 'D:\\a\\_temp\\installed\\TockTeam Desktop\\resources\\app.asar'
+  const windowsPackage = { ...packageInventory, appPath: windowsAppPath, extraResources: { roots: windowsRoots } }
+  const windowsSeparatorReport = { ...report, installed: { ...report.installed, installRoot: 'D:\\a\\_temp\\installed\\TockTeam Desktop', package: windowsPackage, renderer: { ...renderer, security: { appPath: windowsAppPath } }, reinstall: { ...report.installed.reinstall, package: windowsPackage } } }
   assert.equal(inspectInstalledReport(windowsSeparatorReport, expected).failures.length, 0)
   const unavailableControlPanel = { ...report, installed: { ...report.installed, provider: { ...report.installed.provider, controlPanel: 'unavailable' } } }
   assert.equal(inspectInstalledReport(unavailableControlPanel, expected).failures.length, 0)

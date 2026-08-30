@@ -12,7 +12,7 @@ const scriptDir = path.dirname(fileURLToPath(import.meta.url))
 const defaultRepoRoot = path.resolve(scriptDir, '../..')
 const PLATFORMS = Object.freeze(['macOS', 'Windows', 'Linux'])
 const REPORT_PLATFORM_BY_CATALOG_PLATFORM = Object.freeze({ macOS: 'darwin', Windows: 'win32', Linux: 'linux' })
-const STATES = Object.freeze(['local-verified', 'partially-verified', 'workflow-required', 'unverified', 'not-applicable'])
+const STATES = Object.freeze(['local-verified', 'hosted-verified', 'partially-verified', 'workflow-required', 'unverified', 'not-applicable'])
 export const REQUIRED_INSTALLED_EVIDENCE_ROWS = Object.freeze([
   'macOS:artifact-build',
   'macOS:identity-and-resources',
@@ -126,7 +126,7 @@ export function inspectInstalledEvidenceCatalog(catalog) {
     const expectedOwner = WORKFLOW_OWNER_ROWS.has(row.id) ? '.github/workflows/tocklauncher-installed.yml' : 'scripts/launcher-installed-smoke.mjs'
     failure(failures, row.owner === expectedOwner, `installed evidence row owner is incorrect: ${String(row.id)}`)
     failure(failures, STATES.includes(row.state), `installed evidence row has an unknown state: ${String(row.id)}`)
-    if (row.state === 'local-verified' || row.state === 'partially-verified') validateCheckedInEvidence(failures, row)
+    if (row.state === 'local-verified' || row.state === 'hosted-verified' || row.state === 'partially-verified') validateCheckedInEvidence(failures, row)
     else {
       failure(failures, row.state === 'workflow-required', `unexecuted evidence row must remain workflow-required: ${String(row.id)}`)
       failure(failures, row.evidence === null || row.evidence === undefined, `unexecuted evidence row must not claim evidence: ${String(row.id)}`)
@@ -136,7 +136,7 @@ export function inspectInstalledEvidenceCatalog(catalog) {
   for (const id of REQUIRED_INSTALLED_EVIDENCE_ROWS) failure(failures, byId.has(id), `required installed evidence row is missing: ${id}`)
   for (const id of byId.keys()) failure(failures, REQUIRED_INSTALLED_EVIDENCE_ROWS.includes(id), `installed evidence catalog contains an unapproved row: ${id}`)
   for (const platform of PLATFORMS) failure(failures, rows.some(row => row?.platform === platform), `installed evidence has no ${platform} rows`)
-  return Object.freeze({ failures, summary: Object.freeze({ rows: rows.length, platforms: PLATFORMS, verified: rows.filter(row => row?.state === 'local-verified').length }) })
+  return Object.freeze({ failures, summary: Object.freeze({ rows: rows.length, platforms: PLATFORMS, verified: rows.filter(row => row?.state === 'local-verified' || row?.state === 'hosted-verified').length }) })
 }
 
 export function inspectInstalledEvidenceWorkflow(workflow) {
@@ -217,12 +217,14 @@ export function inspectInstalledEvidenceDocs({ architecture, usage }) {
   const usageText = String(usage ?? '')
   const combined = `${architectureText}\n${usageText}`
   failure(failures, /unsigned internal macOS|unsigned\/internal macOS/iu.test(combined), 'architecture/usage must label macOS proof unsigned/internal')
-  failure(failures, /Windows and Linux[^\n]*(?:not yet executed|unexecuted|workflow-required)/iu.test(combined), 'architecture/usage must say Windows/Linux evidence is not executed')
+  failure(failures, /hosted run `33295632276`[\s\S]*(?:Windows[\s\S]*Linux|Linux[\s\S]*Windows)[\s\S]*commit `ed39e301`/iu.test(combined), 'architecture/usage must cite the executed Windows/Linux hosted evidence')
+  failure(failures, /Windows Control Panel[^\n]*unavailable/iu.test(combined), 'architecture/usage must retain the hosted Windows Control Panel limitation')
+  failure(failures, /Linux[^\n]*rollback[^\n]*workflow-required/iu.test(combined), 'architecture/usage must retain the Linux rollback limitation')
   failure(failures, /notarized/iu.test(combined), 'architecture/usage must distinguish notarized evidence')
   failure(failures, /public distribution/iu.test(combined), 'architecture/usage must distinguish public distribution evidence')
   for (const line of `${architectureText}\n${usageText}`.split(/\r?\n/u)) {
-    if (!/(?:Windows|Linux)/u.test(line) || !/(?:published|verified|passed)/iu.test(line)) continue
-    failure(failures, /\b(?:not|never|unproven|unverified|workflow-required)\b/iu.test(line), `usage makes an unsupported platform claim: ${line}`)
+    if (!/(?:Windows|Linux)/u.test(line) || !/published/iu.test(line)) continue
+    failure(failures, /\b(?:not|never|unproven|unverified|workflow-required)\b/iu.test(line), `usage makes an unsupported publication claim: ${line}`)
   }
   return Object.freeze({ failures })
 }

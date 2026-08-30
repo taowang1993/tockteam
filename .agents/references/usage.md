@@ -199,7 +199,14 @@ hosts. The checked-in macOS arm64 report records unsigned/internal ad-hoc proof
 for the identity, resources, security, actions, settings/reinstall, rollback,
 and cleanup rows. Notices/vendor scanning and provider catalog are only
 partially verified, and the shortcut row remains workflow-required because no
-actual shortcut path was exercised. Windows and Linux installed evidence is workflow-required and not yet executed. The macOS proof is not signed, notarized, or public distribution evidence. Vendor results are bounded no-follow scans, not global source-absence proof; upgrade and installer rollback claims require their own reports.
+actual shortcut path was exercised. Hosted run `33295632276` passed the Windows
+portable archive and Linux Debian/AppImage installed smokes at commit
+`ed39e301`; their checked-in reports promote only the rows they exercised.
+Windows Control Panel was unavailable on the hosted image, elevation remained
+confirmation-required and uninvoked, and Linux package rollback remains
+workflow-required. The reports are not signing, notarization, publication, or
+public-distribution evidence. Vendor results are bounded no-follow scans, not
+global source-absence proof; upgrade claims require their own reports.
 
 ## Data and troubleshooting
 

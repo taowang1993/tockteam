@@ -105,8 +105,15 @@ shortcut row remains workflow-required because no actual shortcut path was
 exercised. The smoke requires exact identity/version/resources, renderer
 security, lifecycle and cleanup reports before a row can be promoted. Vendor
 results are explicitly bounded no-follow scans, not global source-absence proof.
-No workflow configuration counts as a passing run or publication claim;
-signing, notarization, and public distribution remain unproven. Windows and Linux installed evidence is workflow-required and not yet executed.
+No workflow configuration alone counts as a passing run or publication claim.
+Checked-in reports from hosted run `33295632276` record passing Windows portable
+archive and Linux Debian/AppImage installed smokes at commit `ed39e301`; the
+artifact, identity, security, settings, reinstall, second-instance, permissions,
+and cleanup rows they exercised are hosted-verified. Windows Control Panel was
+unavailable on the hosted Windows image, Windows elevation remained
+confirmation-required and uninvoked, bounded vendor scans remain partial, and
+Linux package rollback remains workflow-required. Signing, notarization, and
+public distribution remain unproven.
 
 ## Security boundaries
 

@@ -2,7 +2,7 @@
 
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
-import { dirname, join, resolve } from 'node:path'
+import { dirname, join, posix, resolve, win32 } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { pathContainedSync } from './path-identity.mjs'
 
@@ -17,6 +17,14 @@ function object(value) {
   return value !== null && typeof value === 'object'
 }
 
+function reportedPathContained(rootPath, candidatePath, platform) {
+  if (platform === process.platform) return pathContainedSync(rootPath, candidatePath)
+  const path = platform === 'win32' ? win32 : posix
+  if (typeof rootPath !== 'string' || typeof candidatePath !== 'string' || !path.isAbsolute(rootPath) || !path.isAbsolute(candidatePath)) return false
+  const child = path.relative(path.resolve(rootPath), path.resolve(candidatePath))
+  return child === '' || (child !== '..' && !child.startsWith(`..${path.sep}`) && !path.isAbsolute(child))
+}
+
 function inspectPackageInventory(failures, packageInventory, installRoot, expected) {
   failure(failures, object(packageInventory), 'post-install package inventory is missing')
   if (!object(packageInventory)) return
@@ -27,7 +35,7 @@ function inspectPackageInventory(failures, packageInventory, installRoot, expect
   failure(failures, packageInventory.assetsVerified === true, 'post-install launcher asset hashes were not verified')
   failure(failures, packageInventory.noticesVerified === true, 'post-install notices were not verified')
   failure(failures, packageInventory.appPathUsesAsar === true && /(?:^|[\\/])app\.asar$/u.test(packageInventory.appPath ?? ''), 'post-install package ASAR identity is missing')
-  failure(failures, pathContainedSync(installRoot, packageInventory.appPath), 'post-install app.asar escaped its install root')
+  failure(failures, reportedPathContained(installRoot, packageInventory.appPath, expected.platform), 'post-install app.asar escaped its install root')
   const resourceRoots = Array.isArray(packageInventory.extraResources?.roots)
     ? packageInventory.extraResources.roots.map(root => typeof root === 'string' ? root.replaceAll('\\', '/') : root)
     : packageInventory.extraResources?.roots
