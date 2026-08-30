@@ -39,6 +39,9 @@ import {
 import {
   assertPackageParity,
   installerBuildPlan,
+  macApplicationLaunchArgs,
+  macMainProcessPids,
+  recoverDebTransition,
   withInstalledSession,
   writeInstalledSmokeDiagnostics,
 } from '../scripts/launcher-installed-smoke.mjs'
@@ -217,6 +220,31 @@ test('Windows source-build installer parses safe destinations and bounded extrac
   assert.throws(() => parseWindowsInstallArgs([], { LOCALAPPDATA: 'C:\\Users\\tester\\AppData\\Local' }), /usage|archive/u)
   assert.throws(() => parseWindowsInstallArgs([archive, 'relative'], { LOCALAPPDATA: 'C:\\Users\\tester\\AppData\\Local' }), /absolute|destination/u)
   assert.equal(defaultWindowsInstallDestination({ LOCALAPPDATA: 'C:\\Users\\tester\\AppData\\Local' }), 'C:\\Users\\tester\\AppData\\Local\\TockTeam\\Desktop')
+})
+
+test('macOS installed smoke uses Launch Services and observes one persistent app process', () => {
+  const app = '/tmp/Applications/TockTeam Desktop.app'
+  const executable = `${app}/Contents/MacOS/TockTeam Desktop`
+  assert.deepEqual(macApplicationLaunchArgs(app, ['--toggle', '--user-data-dir=/tmp/profile']), [
+    '-n', app, '--args', '--toggle', '--user-data-dir=/tmp/profile',
+  ])
+  assert.deepEqual(macMainProcessPids(`  41 ${executable} --flag\n  42 ${app}/Contents/Frameworks/TockTeam Desktop Helper.app/Contents/MacOS/TockTeam Desktop Helper --type=renderer\n  bad row\n`, executable), [41])
+})
+
+test('Linux deb recovery reinstalls and validates the preserved prior artifact', async () => {
+  const installed: string[] = []
+  const failure = await recoverDebTransition({
+    candidate: '/tmp/candidate.deb',
+    prior: '/tmp/prior.deb',
+    install: async artifact => { installed.push(artifact) },
+    validateCandidate: async () => { throw new Error('controlled candidate validation failure') },
+    validateRecovery: async () => { assert.equal(installed.at(-1), '/tmp/prior.deb') },
+  })
+  assert.match(String(failure), /controlled candidate validation failure/u)
+  assert.deepEqual(installed, ['/tmp/prior.deb', '/tmp/candidate.deb', '/tmp/prior.deb'])
+  await assert.rejects(recoverDebTransition({
+    candidate: '/tmp/candidate.deb', prior: '/tmp/prior.deb', install: async () => {}, validateCandidate: async () => {}, validateRecovery: async () => {},
+  }), /must fail validation/u)
 })
 
 test('installed session cleanup preserves primary and cleanup failures', async () => {
@@ -800,8 +828,20 @@ test('installed report validation requires complete platform lifecycle evidence'
   const linuxPackage = { ...packageInventory, appPath: '/opt/TockTeam Desktop/resources/app.asar' }
   const linuxRenderer = rendererFor(linuxPackage.appPath)
   const appImagePath = '/tmp/appimage-root/resources/app.asar'
-  const linuxReport = { ...report, platform: 'linux', installed: { deb: { artifact: '/tmp/TockTeam-Desktop.deb', installRoot: '/opt/TockTeam Desktop', package: linuxPackage, provider: linuxProvider, renderer: linuxRenderer, reinstall: { package: linuxPackage, settings: { restored: 0.6, runtimeReady: 'ready' } }, secondInstance: { singleInstance: true, permissions: 'renderer-permission-denied' }, rollback: { state: 'workflow-required' }, uninstall: 'dpkg-purge-passed' }, appImage: { artifact: '/tmp/TockTeam-Desktop.AppImage', installRoot: '/tmp/appimage-root', package: { ...linuxPackage, appPath: appImagePath }, provider: linuxProvider, renderer: rendererFor(appImagePath), runtime: { runtimeReady: true }, secondInstance: { singleInstance: true, permissions: 'renderer-permission-denied' } } } }
+  const linuxReport: any = { ...report, platform: 'linux', installed: { deb: { artifact: '/tmp/TockTeam-Desktop.deb', installRoot: '/opt/TockTeam Desktop', package: linuxPackage, provider: linuxProvider, renderer: linuxRenderer, reinstall: { package: linuxPackage, settings: { restored: 0.6, runtimeReady: 'ready' } }, secondInstance: { singleInstance: true, permissions: 'renderer-permission-denied' }, rollback: { state: 'workflow-required' }, uninstall: 'dpkg-purge-passed' }, appImage: { artifact: '/tmp/TockTeam-Desktop.AppImage', installRoot: '/tmp/appimage-root', package: { ...linuxPackage, appPath: appImagePath }, provider: linuxProvider, renderer: rendererFor(appImagePath), runtime: { runtimeReady: true }, secondInstance: { singleInstance: true, permissions: 'renderer-permission-denied' } } } }
   assert.equal(inspectInstalledReport(linuxReport, { ...expected, platform: 'linux' }).failures.length, 0)
+  const recoveredLinuxReport = structuredClone(linuxReport)
+  recoveredLinuxReport.installed.deb.rollback = {
+    atomic: false,
+    mechanism: 'reinstall-preserved-prior-deb',
+    validationFailureRecovered: true,
+    prior: { artifact: '/tmp/prior/TockTeam-Desktop.deb', packageName: 'tockteam-desktop', sha256: 'd'.repeat(64), sourceRun: '33301125258', version: expected.version },
+    recovered: { package: linuxPackage, settings: { restored: 0.6, runtimeReady: 'ready' }, version: expected.version },
+  }
+  assert.equal(inspectInstalledReport(recoveredLinuxReport, { ...expected, platform: 'linux' }).failures.length, 0)
+  const falseAtomicRollback = structuredClone(recoveredLinuxReport)
+  falseAtomicRollback.installed.deb.rollback.atomic = true
+  assert.ok(inspectInstalledReport(falseAtomicRollback, { ...expected, platform: 'linux' }).failures.some(failure => failure.includes('non-atomic')))
   assert.ok(inspectInstalledReport({ ...linuxReport, installed: { ...linuxReport.installed, appImage: undefined } }, { ...expected, platform: 'linux' }).failures.length > 0)
   assert.ok(inspectInstalledReport({ ...linuxReport, installed: { ...linuxReport.installed, deb: { ...linuxReport.installed.deb, provider: undefined } } }, { ...expected, platform: 'linux' }).failures.some(failure => failure.includes('Linux provider')))
   const macRoot = '/tmp/Applications/TockTeam Desktop.app'
@@ -837,6 +877,8 @@ test('release and platform workflows retain ordered package and installed gates'
   assert.match(releaseWorkflow, /needs: validate/u)
   assert.match(releaseWorkflow, /publish:[\s\S]*needs:\s*\[?package,?\s*launcher-package-smoke/u)
   assert.match(installedWorkflow, /workflow_dispatch:/u)
+  assert.match(installedWorkflow, /linux_prior_run_id:/u)
+  assert.match(installedWorkflow, /TOCKTEAM_LINUX_ROLLBACK_DEB/u)
   assert.doesNotMatch(installedWorkflow, /pull_request:/u)
   assert.match(installedWorkflow, /runs-on: windows-latest/u)
   assert.match(installedWorkflow, /runs-on: ubuntu-24\.04/u)

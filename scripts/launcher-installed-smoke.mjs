@@ -252,7 +252,7 @@ async function installedSession(executable, userData, inventory, target, options
   try {
     const renderer = await runRendererSmoke(launched.workbench, launched.launcher, inventory, userData, options.installRoot)
     const platform = await runPlatformOutcomeSmoke(launched.workbench, launched.launcher, target)
-    const secondInstance = await runSecondInstanceSmoke(executable, userData, launched.workbench, launched.launcher, smokeArgs, launched.temporaryRoot)
+    const secondInstance = await runSecondInstanceSmoke(executable, userData, launched.workbench, launched.launcher, smokeArgs, launched.temporaryRoot, options.applicationPath)
     return Object.freeze({ platform, renderer, secondInstance, launched })
   } catch (error) {
     let failure = error
@@ -301,34 +301,79 @@ export async function withInstalledSession(session, operation, cleanup) {
   }
 }
 
-async function runSecondInstanceSmoke(executable, userData, workbench, launcher, extraArgs = [], temporaryRoot = undefined) {
+export function macApplicationLaunchArgs(appPath, args) {
+  assert.ok(isAbsolute(appPath) && appPath.endsWith('.app'), 'macOS application launch requires an absolute app bundle')
+  assert.ok(Array.isArray(args) && args.every(argument => typeof argument === 'string' && !/[\0\r\n]/u.test(argument)), 'macOS application launch arguments are invalid')
+  return Object.freeze(['-n', appPath, '--args', ...args])
+}
+
+export function macMainProcessPids(output, executable) {
+  if (!isAbsolute(executable)) return Object.freeze([])
+  return Object.freeze(String(output).split(/\r?\n/u).flatMap(line => {
+    const match = line.match(/^\s*(\d+)\s+(.+)$/u)
+    const pid = Number(match?.[1])
+    const command = match?.[2]
+    return Number.isSafeInteger(pid) && pid > 0 && (command === executable || command?.startsWith(`${executable} `) === true) ? [pid] : []
+  }))
+}
+
+export async function recoverDebTransition({ candidate, prior, install, validateCandidate, validateRecovery }) {
+  await install(prior)
+  let candidateError
+  try {
+    await install(candidate)
+    await validateCandidate()
+  } catch (error) { candidateError = error }
+  if (candidateError === undefined) throw new Error('candidate transition must fail validation before recovery')
+  try {
+    await install(prior)
+    await validateRecovery()
+  } catch (recoveryError) {
+    throw new AggregateError([candidateError, recoveryError], 'candidate validation and prior-package recovery both failed')
+  }
+  return candidateError
+}
+
+async function runSecondInstanceSmoke(executable, userData, workbench, launcher, extraArgs = [], temporaryRoot = undefined, applicationPath = undefined) {
   const secondArgs = [
     ...extraArgs,
     `--user-data-dir=${userData}`,
     '--toggle',
     smokeFlag,
   ]
-  const second = spawn(executable, secondArgs, {
+  const second = applicationPath === undefined ? spawn(executable, secondArgs, {
     cwd: root,
     detached: process.platform !== 'win32',
     stdio: 'ignore',
     env: smokeEnvironment({ TOCKTEAM_INSTALLED_SMOKE: '1' }, userData, temporaryRoot),
-  })
+  }) : undefined
   let primaryError
   try {
+    if (applicationPath !== undefined) await execFileAsync('/usr/bin/open', macApplicationLaunchArgs(applicationPath, secondArgs))
     await waitFor(() => workbench.evaluate('(async () => (await window.dshDesktop?.launcher?.getState())?.visible)()'), visible => visible === true, 10_000)
+    let applicationLaunch
+    if (applicationPath !== undefined) {
+      const persistentPids = await waitFor(
+        async () => macMainProcessPids((await execFileAsync('/bin/ps', ['-axo', 'pid=,command='])).stdout, executable),
+        pids => pids.length === 1,
+        10_000,
+      )
+      applicationLaunch = Object.freeze({ launchPath: 'macOS Launch Services (/usr/bin/open)', persistentAppProcesses: persistentPids.length, toggleDelivered: true })
+    }
     await launcher.evaluate('(async () => await window.tockteamLauncher?.dismiss())()')
     await waitFor(() => workbench.evaluate('(async () => (await window.dshDesktop?.launcher?.getState())?.visible)()'), visible => visible === false, 10_000)
-    return Object.freeze({ singleInstance: true, permissions: 'renderer-permission-denied' })
+    return Object.freeze({ singleInstance: true, permissions: 'renderer-permission-denied', ...(applicationLaunch ?? {}) })
   } catch (error) {
     primaryError = error
     throw error
   } finally {
-    try {
-      await stopPackagedChild(second)
-    } catch (cleanupError) {
-      if (primaryError !== undefined) throw new AggregateError([primaryError, cleanupError], 'second-instance assertion and cleanup both failed')
-      throw cleanupError
+    if (second !== undefined) {
+      try {
+        await stopPackagedChild(second)
+      } catch (cleanupError) {
+        if (primaryError !== undefined) throw new AggregateError([primaryError, cleanupError], 'second-instance assertion and cleanup both failed')
+        throw cleanupError
+      }
     }
   }
 }
@@ -448,7 +493,7 @@ async function runMacInstalledSmoke(artifact) {
   const identity = await inspectMacBundle(destination)
   const installedInventory = await inspectPackage(destination, artifact.target, { executable: identity.executable })
   assertPackageParity(artifact.inventory, installedInventory)
-  const first = await installedSession(destination + '/Contents/MacOS/TockTeam Desktop', artifact.userData, installedInventory, artifact.target, { installRoot: destination })
+  const first = await installedSession(destination + '/Contents/MacOS/TockTeam Desktop', artifact.userData, installedInventory, artifact.target, { applicationPath: destination, installRoot: destination })
   const persistedValue = await withInstalledSession(first, async session => {
     const value = session.renderer.settingsRoundTrip.changed
     await session.launched.workbench.evaluate(`(async () => await window.dshDesktop?.launcher?.settings?.updateSetting('searchEngine.fuzziness', ${String(value)}))()`)
@@ -609,6 +654,9 @@ async function runNonMacInstalledSmoke(artifact) {
     const installedVersion = async () => await queryInstalledField('${Version}')
     const installedStatus = async () => await queryInstalledField('${Status}')
     assert.equal(await installedStatus(), undefined, 'Linux deb package is already registered on the disposable runner')
+    const configuredPriorDeb = process.env.TOCKTEAM_LINUX_ROLLBACK_DEB?.trim()
+    let rollback = Object.freeze({ state: 'workflow-required', reason: 'a preserved compatible prior deb was not supplied; dpkg has no atomic rollback transaction' })
+    let rollbackProcessTreesGone = true
     let installedInventory
     let debSmoke
     let persistedValue
@@ -617,6 +665,57 @@ async function runNonMacInstalledSmoke(artifact) {
     let debReinstall
     let debFailure
     try {
+      if (configuredPriorDeb !== undefined && configuredPriorDeb !== '') {
+        assert.ok(isAbsolute(configuredPriorDeb) && /\.deb$/iu.test(configuredPriorDeb), 'Linux rollback prior artifact must be an absolute deb path')
+        assert.equal((await stat(configuredPriorDeb)).isFile(), true, 'Linux rollback prior artifact is missing')
+        assert.notEqual(resolve(configuredPriorDeb), resolve(deb), 'Linux rollback prior and candidate artifacts must be distinct files')
+        const priorPackageName = (await runProcess('/usr/bin/dpkg-deb', ['-f', configuredPriorDeb, 'Package'], { disposableRoot: artifact.rootPath })).stdout.trim()
+        const priorVersion = (await runProcess('/usr/bin/dpkg-deb', ['-f', configuredPriorDeb, 'Version'], { disposableRoot: artifact.rootPath })).stdout.trim()
+        const sourceRun = process.env.TOCKTEAM_LINUX_ROLLBACK_SOURCE_RUN?.trim()
+        assert.equal(priorPackageName, packageName, 'Linux rollback prior package identity differs from the candidate')
+        assert.match(sourceRun ?? '', /^\d+$/u, 'Linux rollback prior source run is missing')
+        const priorExpected = Object.freeze({ ...artifact.inventory, version: priorVersion })
+        const rollbackUserData = join(artifact.userData, 'deb-rollback')
+        await dpkg(['--install', configuredPriorDeb])
+        assert.equal(await installedStatus(), 'install ok installed', 'Linux prior deb package is not configured')
+        assert.equal(await installedVersion(), priorVersion, 'Linux prior deb package registration/version mismatch')
+        const priorInventory = await inspectPackage(installRoot, artifact.target)
+        assertPackageParity(priorExpected, priorInventory)
+        const priorSmoke = await installedSession(priorInventory.executable, rollbackUserData, priorInventory, artifact.target, { args: ['--no-sandbox', '--disable-gpu'], installRoot })
+        const rollbackSetting = await withInstalledSession(priorSmoke, async session => {
+          const value = session.renderer.settingsRoundTrip.changed
+          await session.launched.workbench.evaluate(`(async () => await window.dshDesktop?.launcher?.settings?.updateSetting('searchEngine.fuzziness', ${String(value)}))()`)
+          return value
+        }, session => closeInstalledSession(session, priorInventory.executable, installRoot))
+        let recoveredInventory
+        const controlledFailure = await recoverDebTransition({
+          candidate: deb,
+          prior: configuredPriorDeb,
+          install: async packageArtifact => { await dpkg(['--install', packageArtifact]) },
+          validateCandidate: async () => {
+            assert.equal(await installedStatus(), 'install ok installed', 'Linux candidate transition is not configured')
+            assert.equal(await installedVersion(), packageVersion, 'Linux candidate transition version mismatch')
+            assertPackageParity(artifact.inventory, await inspectPackage(installRoot, artifact.target))
+            throw new Error('controlled candidate validation failure after installed package verification')
+          },
+          validateRecovery: async () => {
+            assert.equal(await installedStatus(), 'install ok installed', 'Linux recovered prior package is not configured')
+            assert.equal(await installedVersion(), priorVersion, 'Linux recovered prior package version mismatch')
+            recoveredInventory = await inspectPackage(installRoot, artifact.target)
+            assertPackageParity(priorExpected, recoveredInventory)
+          },
+        })
+        assert.match(String(controlledFailure), /controlled candidate validation failure/u)
+        const recoveredSettings = await readPersistedSetting(recoveredInventory.executable, rollbackUserData, artifact.target, 'searchEngine.fuzziness', rollbackSetting, installRoot)
+        rollbackProcessTreesGone = recoveredSettings.processTreesGone === true
+        rollback = Object.freeze({
+          atomic: false,
+          mechanism: 'reinstall-preserved-prior-deb',
+          validationFailureRecovered: true,
+          prior: Object.freeze({ artifact: configuredPriorDeb, packageName: priorPackageName, sha256: await hashFile(configuredPriorDeb), sourceRun, version: priorVersion }),
+          recovered: Object.freeze({ package: recoveredInventory, settings: recoveredSettings, version: priorVersion }),
+        })
+      }
       await dpkg(['--install', deb])
       assert.equal(await installedStatus(), 'install ok installed', 'Linux deb package is not configured')
       assert.equal(await installedVersion(), packageVersion, 'Linux deb package registration/version mismatch')
@@ -648,8 +747,8 @@ async function runNonMacInstalledSmoke(artifact) {
     const appImageProcessTreesGone = true
     report.installed = {
       appImage: appImageEvidence,
-      deb: { artifact: deb, installRoot, package: installedInventory, renderer: debSmoke.renderer, provider: debSmoke.platform, secondInstance: debSmoke.secondInstance, reinstall: { package: reinstalledInventory, settings: debReinstall }, rollback: { state: 'workflow-required', reason: 'dpkg has no atomic rollback transaction' }, uninstall: 'dpkg-purge-passed' },
-      processTreesGone: debProcessTreesGone && debReinstall.processTreesGone === true && appImageProcessTreesGone,
+      deb: { artifact: deb, installRoot, package: installedInventory, renderer: debSmoke.renderer, provider: debSmoke.platform, secondInstance: debSmoke.secondInstance, reinstall: { package: reinstalledInventory, settings: debReinstall }, rollback, uninstall: 'dpkg-purge-passed' },
+      processTreesGone: rollbackProcessTreesGone && debProcessTreesGone && debReinstall.processTreesGone === true && appImageProcessTreesGone,
     }
     report.temporaryInstallRemoved = true
   }

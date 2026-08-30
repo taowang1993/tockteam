@@ -8,6 +8,18 @@ export {
 
 export function assertPackageParity(expected: Record<string, any>, actual: Record<string, any>): void
 
+export function macApplicationLaunchArgs(appPath: string, args: readonly string[]): readonly string[]
+
+export function macMainProcessPids(output: string, executable: string): readonly number[]
+
+export function recoverDebTransition(options: Readonly<{
+  candidate: string
+  prior: string
+  install: (artifact: string) => void | Promise<void>
+  validateCandidate: () => void | Promise<void>
+  validateRecovery: () => void | Promise<void>
+}>): Promise<unknown>
+
 export function withInstalledSession<T>(
   session: unknown,
   operation: (session: unknown) => T | Promise<T>,

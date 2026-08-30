@@ -2,8 +2,14 @@ name: TockLauncher Installed Evidence
 
 on:
   workflow_dispatch:
+    inputs:
+      linux_prior_run_id:
+        description: Successful prior installed-evidence run containing the preserved compatible deb
+        required: true
+        default: "33301125258"
 
 permissions:
+  actions: read
   contents: read
 
 jobs:
@@ -141,6 +147,19 @@ jobs:
           pnpm test:ueli-package-feasibility
           pnpm audit:ueli-package-feasibility
 
+      - name: Download the preserved prior Linux package
+        id: prior-deb
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PRIOR_DIR: ${{ runner.temp }}/tockteam-linux-prior-${{ inputs.linux_prior_run_id }}
+        run: |
+          set -euo pipefail
+          gh run download "${{ inputs.linux_prior_run_id }}" --repo "${{ github.repository }}" --name "tocklauncher-installed-linux-x64-${{ inputs.linux_prior_run_id }}" --dir "$PRIOR_DIR"
+          mapfile -d '' prior_debs < <(find "$PRIOR_DIR" -type f -name '*.deb' -print0)
+          test "${#prior_debs[@]}" -eq 1
+          printf 'path=%s\n' "${prior_debs[0]}" >> "$GITHUB_OUTPUT"
+
       - name: Build and install disposable deb/AppImage artifacts
         id: installed-smoke
         shell: bash
@@ -149,6 +168,8 @@ jobs:
           TOCKTEAM_INSTALLED_SMOKE_TEMP_ROOT: ${{ runner.temp }}
           TOCKTEAM_INSTALLED_SMOKE_REPORT: ${{ runner.temp }}/tockteam-installed-launcher-smoke-${{ github.run_id }}.json
           TOCKTEAM_INSTALLED_SMOKE_DIAGNOSTICS: ${{ runner.temp }}/tockteam-installed-launcher-diagnostics-${{ github.run_id }}.json
+          TOCKTEAM_LINUX_ROLLBACK_DEB: ${{ steps.prior-deb.outputs.path }}
+          TOCKTEAM_LINUX_ROLLBACK_SOURCE_RUN: ${{ inputs.linux_prior_run_id }}
         run: |
           set -euo pipefail
           original_core_pattern="$(/usr/sbin/sysctl -n kernel.core_pattern)"

@@ -101,6 +101,14 @@ function validateCheckedInEvidence(failures, row) {
     version: evidence.version,
   })
   failure(failures, reportResult.failures.length === 0, `verified row report failed full ${String(row.platform)} validation: ${reportResult.failures.join('; ')}`)
+  if (row.id === 'macOS:shortcut-second-instance') {
+    const launch = report?.installed?.secondInstance
+    failure(failures, launch?.launchPath === 'macOS Launch Services (/usr/bin/open)' && launch?.persistentAppProcesses === 1 && launch?.toggleDelivered === true, 'macOS shortcut row lacks native application-launch evidence')
+  }
+  if (row.id === 'Linux:reinstall-rollback-cleanup' && row.state === 'hosted-verified') {
+    const rollback = report?.installed?.deb?.rollback
+    failure(failures, rollback?.atomic === false && rollback?.mechanism === 'reinstall-preserved-prior-deb' && rollback?.validationFailureRecovered === true, 'Linux rollback row lacks prior-package recovery evidence')
+  }
   const reportHash = createHash('sha256').update(readFileSync(reportPath)).digest('hex')
   failure(failures, reportHash === evidence.reportSha256, `verified row report hash differs: ${String(row.id)}`)
 }
@@ -175,7 +183,7 @@ export function inspectInstalledEvidenceFreshness(catalog, { head = 'HEAD', repo
 export function inspectInstalledEvidenceWorkflow(workflow) {
   const failures = []
   const text = String(workflow ?? '').replace(/\r\n?/gu, '\n')
-  failure(failures, /workflow_dispatch:/u.test(text), 'installed evidence workflow must support manual dispatch')
+  failure(failures, /workflow_dispatch:[\s\S]*linux_prior_run_id:/u.test(text), 'installed evidence workflow must require a preserved Linux prior-package run')
   failure(failures, !/pull_request:/u.test(text), 'installed evidence workflow must not run on every pull request')
   failure(failures, /runs-on: windows-latest/u.test(text), 'installed evidence workflow must include Windows x64')
   failure(failures, /runs-on: ubuntu-24\.04/u.test(text), 'installed evidence workflow must include Linux x64')
@@ -228,6 +236,7 @@ export function inspectInstalledEvidenceWorkflow(workflow) {
     failure(failures, JSON.stringify(diagnosticsPathLines) === JSON.stringify(expectedDiagnosticsPaths), `${job} must upload exact failure diagnostics paths`)
     failure(failures, /if:\s*always\(\)\s*&&\s*steps\.installed-smoke\.outcome == 'failure'/u.test(diagnosticsSection), `${job} must upload failure diagnostics only after installed smoke fails`)
     if (job === 'linux-x64') {
+      failure(failures, /gh run download "\$\{\{ inputs\.linux_prior_run_id \}\}"[\s\S]*TOCKTEAM_LINUX_ROLLBACK_DEB:\s*\$\{\{ steps\.prior-deb\.outputs\.path \}\}/u.test(section), `${job} must download and pass the preserved prior deb to the installed smoke`)
       const kernelDiagnosticsPath = '${{ runner.temp }}/tockteam-installed-kernel-diagnostics-${{ github.run_id }}.txt'
       failure(failures, /original_core_pattern="\$\(\/usr\/sbin\/sysctl -n kernel\.core_pattern\)"[\s\S]*trap restore_core_pattern EXIT[\s\S]*\/usr\/bin\/sudo -n \/usr\/sbin\/sysctl -q -w kernel\.core_pattern=\/tmp\/tockteam-core[\s\S]*ulimit -c 0[\s\S]*pnpm test:launcher:installed/u.test(section), `${job} must disable piped and file core dumps before installed smoke, then restore the runner core pattern`)
       failure(failures, section.includes(kernelDiagnosticsPath), `${job} must write kernel diagnostics to the exact run path`)

@@ -84,6 +84,18 @@ function inspectSecondInstance(failures, secondInstance) {
   failure(failures, secondInstance?.permissions === 'renderer-permission-denied', 'installed permission evidence is missing')
 }
 
+function inspectLinuxRollback(failures, rollback, installRoot, expected) {
+  if (rollback?.state === 'workflow-required') return
+  failure(failures, object(rollback), 'Linux deb rollback evidence is missing')
+  if (!object(rollback)) return
+  failure(failures, rollback.atomic === false && rollback.mechanism === 'reinstall-preserved-prior-deb', 'Linux deb rollback must report the non-atomic prior-package reinstall mechanism')
+  failure(failures, rollback.validationFailureRecovered === true, 'Linux deb rollback did not recover the controlled validation failure')
+  failure(failures, /\.deb$/iu.test(rollback.prior?.artifact ?? '') && /^[0-9a-f]{64}$/u.test(rollback.prior?.sha256 ?? ''), 'Linux prior deb artifact evidence is missing')
+  failure(failures, typeof rollback.prior?.packageName === 'string' && rollback.prior.packageName.length > 0 && typeof rollback.prior?.version === 'string' && rollback.prior.version.length > 0 && /^\d+$/u.test(rollback.prior?.sourceRun ?? ''), 'Linux prior deb identity/version evidence is missing')
+  failure(failures, rollback.recovered?.version === rollback.prior?.version, 'Linux recovered deb version differs from the preserved prior artifact')
+  inspectSettings(failures, rollback.recovered, installRoot, { ...expected, version: rollback.prior?.version })
+}
+
 function inspectLinuxProvider(failures, provider) {
   const expected = { customBrowser: 'system-browser-only', fileSearch: 'unsupported', providerCount: 24, terminal: 'unsupported' }
   failure(failures, object(provider), 'Linux provider evidence is missing')
@@ -167,7 +179,7 @@ export function inspectInstalledReport(report, expected) {
         inspectSettings(failures, deb.reinstall, deb.installRoot, expected)
         inspectSecondInstance(failures, deb.secondInstance)
         failure(failures, deb.uninstall === 'dpkg-purge-passed', 'Linux deb purge evidence is missing')
-        failure(failures, deb.rollback?.state === 'workflow-required', 'Linux deb rollback must remain explicitly workflow-required')
+        inspectLinuxRollback(failures, deb.rollback, deb.installRoot, expected)
       }
       failure(failures, object(appImage), 'Linux AppImage lifecycle evidence is missing')
       if (object(appImage)) {
