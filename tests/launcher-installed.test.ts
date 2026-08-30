@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { createHash } from 'node:crypto'
 import { EventEmitter } from 'node:events'
 import { mkdir, mkdtemp, readFile, readlink, rm, stat, symlink, writeFile } from 'node:fs/promises'
 import { readFileSync } from 'node:fs'
@@ -705,11 +706,13 @@ test('installed evidence catalog owns exact platform rows and immutable hosted p
     'Windows:notices-and-bounded-vendor-scan', 'Windows:control-panel-terminal-elevation',
     'Linux:notices-and-bounded-vendor-scan', 'Linux:reinstall-rollback-cleanup',
   ])
-  const provenance = {
-    Linux: { platform: 'linux', commit: 'ed39e30187b62111db05bf67f54adfeb28b898bf', reportSha256: 'b9d0ff36c39e3808774773ed70c6675b0bb757f4aff7f8c21a71f3414b0576f8', reference: '.beads/reports/tocklauncher-installed-linux-x64.json' },
-    Windows: { platform: 'win32', commit: 'ed39e30187b62111db05bf67f54adfeb28b898bf', reportSha256: '757ff4168c8fd11850a7e6c52bb4102d49e46155a152ef93fb7b5208243251b6', reference: '.beads/reports/tocklauncher-installed-windows-x64.json' },
-    macOS: { platform: 'darwin', commit: 'afe16ea4f22c102014a943c8c3267e0fe564e36d', reportSha256: '2ae01ad484522ae2b1c63feb04e106b9e2279083dcdb5a2d5e5dbd19ccecfe84', reference: '.beads/reports/tocklauncher-installed-macos-arm64.json' },
-  } as const
+  const provenanceFor = (platform: 'Linux' | 'Windows' | 'macOS') => {
+    const reference = `.beads/reports/tocklauncher-installed-${platform === 'Linux' ? 'linux-x64' : platform === 'Windows' ? 'windows-x64' : 'macos-arm64'}.json`
+    const bytes = readFileSync(join(root, reference))
+    const report = JSON.parse(bytes.toString('utf8')) as { platform: string; sourceCommit: string }
+    return { platform: report.platform, commit: report.sourceCommit, reportSha256: createHash('sha256').update(bytes).digest('hex'), reference }
+  }
+  const provenance = { Linux: provenanceFor('Linux'), Windows: provenanceFor('Windows'), macOS: provenanceFor('macOS') }
   for (const row of catalog.rows) {
     assert.ok(row.id && row.platform && row.owner && row.state)
     if (row.required) assert.notEqual(row.owner, 'unowned')
@@ -745,10 +748,12 @@ test('installed evidence freshness rejects runtime drift after a report commit',
   const runGit = (args: readonly string[]) => args[0] === 'merge-base'
     ? { status: 0, stdout: '' }
     : { status: 0, stdout: '.beads/reports/report.json\nscripts/ueli/installed-evidence-catalog.json\nsrc/main.ts\n' }
-  assert.deepEqual(inspectInstalledEvidenceFreshness(catalog, { head: 'HEAD', repoRoot: root, runGit }).failures, ['installed evidence commit has later runtime changes: afe16ea4f22c102014a943c8c3267e0fe564e36d: src/main.ts', 'installed evidence commit has later runtime changes: ed39e30187b62111db05bf67f54adfeb28b898bf: src/main.ts'])
+  const commit = catalog.rows.find(row => row.evidence?.commit)?.evidence?.commit
+  assert.ok(commit)
+  assert.deepEqual(inspectInstalledEvidenceFreshness(catalog, { head: 'HEAD', repoRoot: root, runGit }).failures, [`installed evidence commit has later runtime changes: ${commit}: src/main.ts`])
   const allowedRunGit = (args: readonly string[]) => args[0] === 'merge-base'
     ? { status: 0, stdout: '' }
-    : { status: 0, stdout: '.agents/references/usage.md\n.beads/reports/report.json\nscripts/ueli/installed-evidence-catalog.json\n' }
+    : { status: 0, stdout: '.agents/references/usage.md\n.beads/reports/report.json\nscripts/ueli/installed-evidence-catalog.json\ntests/launcher-installed.test.ts\n' }
   assert.equal(inspectInstalledEvidenceFreshness(catalog, { head: 'HEAD', repoRoot: root, runGit: allowedRunGit }).failures.length, 0)
 })
 
