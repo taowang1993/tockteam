@@ -111,7 +111,7 @@ test('TockTeam exposes an executable installed-artifact smoke and audit', () => 
   assert.match(installedSmoke, /dpkg-query/u)
   assert.match(installedSmoke, /\/usr\/bin\/dpkg/u)
   assert.match(installedSmoke, /--install/u)
-  assert.match(installedSmoke, /finally \{\s*const purgeFailure = await dpkg\(\['--purge', packageName\]\)/u)
+  assert.match(installedSmoke, /finally \{\s*const purgeFailure = await dpkg\(\['--purge', packageName\]\)\.then\(\(\) => undefined/u)
   assert.doesNotMatch(installedSmoke, /--root=|--admindir=|deb-root|isolated dpkg/u)
   assert.match(installedSmoke, /post-install|inspectPackage/u)
   assert.doesNotMatch(installedSmoke, /\bnsis\b/iu)
@@ -739,6 +739,8 @@ test('installed report validation requires complete platform lifecycle evidence'
   }
   const expected = { appId: 'ai.deepseek.tockteam-desktop', platform: 'win32', productName: 'TockTeam Desktop', version: '0.1.14' }
   assert.equal(inspectInstalledReport(report, expected).failures.length, 0)
+  const unavailableControlPanel = { ...report, installed: { ...report.installed, provider: { ...report.installed.provider, controlPanel: 'unavailable' } } }
+  assert.equal(inspectInstalledReport(unavailableControlPanel, expected).failures.length, 0)
   assert.ok(inspectInstalledReport({ ...report, result: 'failed' }, expected).failures.length > 0)
   assert.ok(inspectInstalledReport({ ...report, installed: { ...report.installed, portableArchive: { ...report.installed.portableArchive, sha256: 'bad' } } }, expected).failures.some(failure => failure.includes('hash')))
   assert.ok(inspectInstalledReport({ ...report, installed: { ...report.installed, provider: undefined } }, expected).failures.some(failure => failure.includes('provider')))

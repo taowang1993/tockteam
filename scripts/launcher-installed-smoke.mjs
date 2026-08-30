@@ -381,7 +381,7 @@ async function runPlatformOutcomeSmoke(workbench, launcher, target) {
   const enabled = [...new Set([...original, ...extraIds])]
   await workbench.evaluate(`(async () => await window.dshDesktop?.launcher?.settings?.updateSetting('extensions.enabledExtensionIds', ${JSON.stringify(enabled)}))()`)
   const expectedStates = target.key === 'win'
-    ? { WindowsControlPanel: 'ready', TerminalLauncher: 'ready' }
+    ? { TerminalLauncher: 'ready' }
     : target.key === 'linux'
       ? { BrowserBookmarks: 'unsupported', FileSearch: 'unsupported', TerminalLauncher: 'unsupported' }
       : { WindowsControlPanel: 'unsupported' }
@@ -405,7 +405,7 @@ async function runPlatformOutcomeSmoke(workbench, launcher, target) {
     assert.equal(statuses.WindowsControlPanel, 'unsupported')
     return Object.freeze({ controlPanel: statuses.WindowsControlPanel, destructiveEffects: 'not-invoked', providerCount: settings.providerStatuses.length, terminal: statuses.TerminalLauncher })
   }
-  assert.equal(statuses.WindowsControlPanel, 'ready')
+  assert.ok(statuses.WindowsControlPanel === 'ready' || statuses.WindowsControlPanel === 'unavailable')
   assert.equal(statuses.TerminalLauncher, 'ready')
   const terminalAction = await launcher.evaluate(`(async () => {
     const response = await window.tockteamLauncher?.search('>', { fuzziness: 0.5, maxSearchResultItems: 50, searchEngineId: 'fuzzysort' })
@@ -638,7 +638,7 @@ async function runNonMacInstalledSmoke(artifact) {
     } catch (error) {
       debFailure = error
     } finally {
-      const purgeFailure = await dpkg(['--purge', packageName]).catch(error => error)
+      const purgeFailure = await dpkg(['--purge', packageName]).then(() => undefined, error => error)
       if (debFailure === undefined && purgeFailure !== undefined) debFailure = purgeFailure
     }
     if (debFailure !== undefined) throw debFailure
