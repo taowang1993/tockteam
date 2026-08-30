@@ -70,7 +70,7 @@ async function installPacked(root: string): Promise<{
     '',
   ].join('\n'))
   await execFileAsync('pnpm', [
-    'install', '--offline', '--ignore-scripts', '--no-frozen-lockfile', '--config.engine-strict=false',
+    'install', '--prefer-offline', '--ignore-scripts', '--no-frozen-lockfile', '--config.engine-strict=false',
   ], { cwd: consumerRoot, env: { ...process.env, PNPM_CONFIG_LOGLEVEL: 'warn' } })
   return { artifact, consumerRoot, require: createRequire(join(consumerRoot, 'package.json')) }
 }
