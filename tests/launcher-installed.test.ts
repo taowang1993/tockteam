@@ -740,6 +740,9 @@ test('installed report validation requires complete platform lifecycle evidence'
   }
   const expected = { appId: 'ai.deepseek.tockteam-desktop', platform: 'win32', productName: 'TockTeam Desktop', version: '0.1.14' }
   assert.equal(inspectInstalledReport(report, expected).failures.length, 0)
+  const windowsRoots = roots.map(root => root.replaceAll('/', '\\'))
+  const windowsSeparatorReport = { ...report, installed: { ...report.installed, package: { ...packageInventory, extraResources: { roots: windowsRoots } }, reinstall: { ...report.installed.reinstall, package: { ...packageInventory, extraResources: { roots: windowsRoots } } } } }
+  assert.equal(inspectInstalledReport(windowsSeparatorReport, expected).failures.length, 0)
   const unavailableControlPanel = { ...report, installed: { ...report.installed, provider: { ...report.installed.provider, controlPanel: 'unavailable' } } }
   assert.equal(inspectInstalledReport(unavailableControlPanel, expected).failures.length, 0)
   assert.ok(inspectInstalledReport({ ...report, result: 'failed' }, expected).failures.length > 0)

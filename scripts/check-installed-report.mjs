@@ -28,7 +28,10 @@ function inspectPackageInventory(failures, packageInventory, installRoot, expect
   failure(failures, packageInventory.noticesVerified === true, 'post-install notices were not verified')
   failure(failures, packageInventory.appPathUsesAsar === true && /(?:^|[\\/])app\.asar$/u.test(packageInventory.appPath ?? ''), 'post-install package ASAR identity is missing')
   failure(failures, pathContainedSync(installRoot, packageInventory.appPath), 'post-install app.asar escaped its install root')
-  failure(failures, JSON.stringify(packageInventory.extraResources?.roots) === JSON.stringify(EXPECTED_ROOTS), 'post-install extra-resource roots differ from the exact contract')
+  const resourceRoots = Array.isArray(packageInventory.extraResources?.roots)
+    ? packageInventory.extraResources.roots.map(root => typeof root === 'string' ? root.replaceAll('\\', '/') : root)
+    : packageInventory.extraResources?.roots
+  failure(failures, JSON.stringify(resourceRoots) === JSON.stringify(EXPECTED_ROOTS), 'post-install extra-resource roots differ from the exact contract')
   const vendorScan = packageInventory.vendorScan
   failure(failures, object(vendorScan), 'post-install vendor scan is missing')
   failure(failures, vendorScan?.scope === 'bounded-no-follow', 'post-install vendor scan scope is not bounded-no-follow')
