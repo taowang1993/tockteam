@@ -93,6 +93,7 @@ test('TockTeam exposes an executable installed-artifact smoke and audit', () => 
   assert.match(installedSmoke, /withInstalledSession/u)
   assert.match(installedSmoke, /--enable-logging=stderr/u)
   assert.match(installedSmoke, /--disable-gpu/u, 'Linux installed smoke must avoid hosted-runner GPU initialization')
+  assert.match(installedSmoke, /> echo tockteam-installed-smoke/u, 'Windows terminal policy evidence must use a valid inert command query')
   assert.ok(installedSmoke.indexOf('const appImageEvidence = await runLinuxAppImageSmoke(appImage, artifact)') < installedSmoke.indexOf("await dpkg(['--install', deb])"))
   assert.match(installedSmoke, /sha256/u)
   assert.match(mainSource, /process\.stderr\.write/u)

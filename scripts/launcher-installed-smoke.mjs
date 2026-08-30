@@ -408,7 +408,7 @@ async function runPlatformOutcomeSmoke(workbench, launcher, target) {
   assert.ok(statuses.WindowsControlPanel === 'ready' || statuses.WindowsControlPanel === 'unavailable')
   assert.equal(statuses.TerminalLauncher, 'ready')
   const terminalAction = await launcher.evaluate(`(async () => {
-    const response = await window.tockteamLauncher?.search('>', { fuzziness: 0.5, maxSearchResultItems: 50, searchEngineId: 'fuzzysort' })
+    const response = await window.tockteamLauncher?.search('> echo tockteam-installed-smoke', { fuzziness: 0.5, maxSearchResultItems: 50, searchEngineId: 'fuzzysort' })
     return [...(response?.before ?? []), ...(response?.after ?? [])].find(item => item.sourceExtension === 'TerminalLauncher')?.defaultAction ?? null
   })()`)
   assert.equal(terminalAction?.requiresConfirmation, true, 'Windows terminal actions must require elevation confirmation')
