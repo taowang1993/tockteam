@@ -170,10 +170,19 @@ async function readJson<T>(filePath: string, maxBytes: number, parser: (value: u
   catch (error) { throw new Error('TockLauncher file contents are invalid', { cause: error }) }
 }
 
+function unsupportedWindowsDirectorySync(error: unknown): boolean {
+  if (process.platform !== 'win32') return false
+  const code = (error as NodeJS.ErrnoException).code
+  return code === 'EINVAL' || code === 'ENOTSUP' || code === 'EOPNOTSUPP' || code === 'EBADF' || code === 'EPERM'
+}
+
 async function syncDirectory(directory: string): Promise<void> {
   let handle
-  try { handle = await open(directory, constants.O_RDONLY) } catch { return }
-  try { await handle.sync() } finally { await handle.close() }
+  try { handle = await open(directory, constants.O_RDONLY) }
+  catch (error) { if (unsupportedWindowsDirectorySync(error)) return; throw error }
+  try { await handle.sync() }
+  catch (error) { if (!unsupportedWindowsDirectorySync(error)) throw error }
+  finally { await handle.close() }
 }
 
 /** Managed app-owned atomic file writer. It never follows a temporary symlink. */

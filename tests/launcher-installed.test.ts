@@ -15,7 +15,6 @@ import {
   canonicalPath,
   collectPackagedProcessDiagnostics,
   inspectExtraResources,
-  linuxNoCoreSpawnPlan,
   parseWindowsGitPaths,
   pathContained,
   prepareSmokeEnvironmentRoots,
@@ -93,6 +92,7 @@ test('TockTeam exposes an executable installed-artifact smoke and audit', () => 
   assert.match(installedSmoke, /process\.exit\(1\)/u, 'installed smoke failures must exit before a later report check can mask them')
   assert.match(installedSmoke, /withInstalledSession/u)
   assert.match(installedSmoke, /--enable-logging=stderr/u)
+  assert.match(installedSmoke, /--disable-gpu/u, 'Linux installed smoke must avoid hosted-runner GPU initialization')
   assert.ok(installedSmoke.indexOf('const appImageEvidence = await runLinuxAppImageSmoke(appImage, artifact)') < installedSmoke.indexOf("await dpkg(['--install', deb])"))
   assert.match(installedSmoke, /sha256/u)
   assert.match(mainSource, /process\.stderr\.write/u)
@@ -401,20 +401,6 @@ test('Windows portable archive restores relocated runtime links and rejects mali
   } finally {
     await rm(rootPath, { recursive: true, force: true })
   }
-})
-
-test('Linux installed launches disable kernel core-dump handlers before exec', () => {
-  const plan = linuxNoCoreSpawnPlan('/opt/TockTeam Desktop/tockteam-desktop', ['--no-sandbox'], 'linux')
-  assert.equal(plan.command, '/usr/bin/python3')
-  assert.deepEqual(plan.args.slice(-2), ['/opt/TockTeam Desktop/tockteam-desktop', '--no-sandbox'])
-  const wrapper = plan.args[1] ?? ''
-  assert.match(wrapper, /prctl\(4, 0, 0, 0, 0\)/u)
-  assert.match(wrapper, /os\.execv/u)
-
-  assert.deepEqual(linuxNoCoreSpawnPlan('/Applications/TockTeam Desktop', ['--toggle'], 'darwin'), {
-    command: '/Applications/TockTeam Desktop',
-    args: ['--toggle'],
-  })
 })
 
 test('packaged polling retains bounded structured failure state', async () => {
@@ -806,7 +792,7 @@ test('release and platform workflows retain ordered package and installed gates'
     else {
       assert.match(section, /tockteam-installed-launcher-smoke-\*\/installer\/\*\.deb/u)
       assert.match(section, /tockteam-installed-launcher-smoke-\*\/installer\/\*\.AppImage/u)
-      assert.match(section, /ulimit -c 0[\s\S]*xvfb-run -a pnpm test:launcher:installed/u)
+      assert.match(section, /kernel\.core_pattern[\s\S]*trap restore_core_pattern EXIT[\s\S]*ulimit -c 0[\s\S]*xvfb-run -a pnpm test:launcher:installed/u)
       assert.match(section, /tockteam-installed-kernel-diagnostics-\$\{\{ github\.run_id \}\}\.txt/u)
       assert.match(section, /sudo -n \/usr\/bin\/dmesg/u)
       assert.match(section, /sudo -n \/usr\/bin\/journalctl/u)

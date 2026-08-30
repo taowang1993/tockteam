@@ -196,7 +196,7 @@ export function inspectInstalledEvidenceWorkflow(workflow) {
     failure(failures, /if:\s*always\(\)\s*&&\s*steps\.installed-smoke\.outcome == 'failure'/u.test(diagnosticsSection), `${job} must upload failure diagnostics only after installed smoke fails`)
     if (job === 'linux-x64') {
       const kernelDiagnosticsPath = '${{ runner.temp }}/tockteam-installed-kernel-diagnostics-${{ github.run_id }}.txt'
-      failure(failures, /ulimit -c 0[\s\S]*pnpm test:launcher:installed/u.test(section), `${job} must disable core dumps before installed smoke`)
+      failure(failures, /original_core_pattern="\$\(\/usr\/sbin\/sysctl -n kernel\.core_pattern\)"[\s\S]*trap restore_core_pattern EXIT[\s\S]*\/usr\/bin\/sudo -n \/usr\/sbin\/sysctl -q -w kernel\.core_pattern=core[\s\S]*ulimit -c 0[\s\S]*pnpm test:launcher:installed/u.test(section), `${job} must disable piped and file core dumps before installed smoke, then restore the runner core pattern`)
       failure(failures, section.includes(kernelDiagnosticsPath), `${job} must write kernel diagnostics to the exact run path`)
       failure(failures, /\/usr\/bin\/timeout 10s \/usr\/bin\/sudo -n \/usr\/bin\/dmesg[\s\S]*\/usr\/bin\/tail -n 200/u.test(section), `${job} must capture a bounded, time-limited dmesg tail`)
       failure(failures, /\/usr\/bin\/timeout 10s \/usr\/bin\/sudo -n \/usr\/bin\/journalctl -k --no-pager --lines=200[\s\S]*\/usr\/bin\/tail -n 200/u.test(section), `${job} must record a bounded, time-limited journalctl fallback`)

@@ -15,7 +15,6 @@ import {
   freePort,
   formatDiagnosticError,
   launchPackaged,
-  linuxNoCoreSpawnPlan,
   packagedBuilderConfig,
   preparePackagedArtifact,
   prepareSmokeEnvironmentRoots,
@@ -248,7 +247,7 @@ async function installedSession(executable, userData, inventory, target, options
     userData,
     port,
     smokeArgs,
-    { flag: smokeFlag, env: { TOCKTEAM_INSTALLED_SMOKE: '1' }, preventCoreDump: process.platform === 'linux' },
+    { flag: smokeFlag, env: { TOCKTEAM_INSTALLED_SMOKE: '1' } },
   )
   try {
     const renderer = await runRendererSmoke(launched.workbench, launched.launcher, inventory, userData, options.installRoot)
@@ -309,8 +308,7 @@ async function runSecondInstanceSmoke(executable, userData, workbench, launcher,
     '--toggle',
     smokeFlag,
   ]
-  const spawnPlan = linuxNoCoreSpawnPlan(executable, secondArgs)
-  const second = spawn(spawnPlan.command, spawnPlan.args, {
+  const second = spawn(executable, secondArgs, {
     cwd: root,
     detached: process.platform !== 'win32',
     stdio: 'ignore',
@@ -359,8 +357,8 @@ async function readPersistedSetting(executable, userData, target, key, expected,
     executable,
     userData,
     port,
-    target.key === 'linux' ? ['--no-sandbox'] : [],
-    { flag: smokeFlag, env: { TOCKTEAM_INSTALLED_SMOKE: '1' }, preventCoreDump: process.platform === 'linux' },
+    target.key === 'linux' ? ['--no-sandbox', '--disable-gpu'] : [],
+    { flag: smokeFlag, env: { TOCKTEAM_INSTALLED_SMOKE: '1' } },
   )
   return await withInstalledSession({ launched }, async session => {
     const value = await session.launched.workbench.evaluate(`(async () => (await window.dshDesktop?.launcher?.settings?.getSnapshot())?.values?.[${JSON.stringify(key)}] ?? null)()`)
@@ -532,7 +530,7 @@ async function runLinuxAppImageSmoke(appImage, artifact) {
   const extractedRoot = join(appImageRoot, 'squashfs-root')
   const appImageInventory = await inspectPackage(extractedRoot, artifact.target)
   assertPackageParity(artifact.inventory, appImageInventory)
-  const appImageSmoke = await installedSession(appImageInventory.executable, join(artifact.userData, 'appimage'), appImageInventory, artifact.target, { args: ['--no-sandbox'], installRoot: extractedRoot })
+  const appImageSmoke = await installedSession(appImageInventory.executable, join(artifact.userData, 'appimage'), appImageInventory, artifact.target, { args: ['--no-sandbox', '--disable-gpu'], installRoot: extractedRoot })
   await withInstalledSession(appImageSmoke, async () => {}, session => closeInstalledSession(session, appImageInventory.executable, extractedRoot))
   return Object.freeze({
     artifact: appImage,
@@ -625,7 +623,7 @@ async function runNonMacInstalledSmoke(artifact) {
       installedInventory = await inspectPackage(installRoot, artifact.target)
       assert.ok(installedInventory.executable.includes('/opt/') || installedInventory.executable.includes('\\\\opt\\\\'), 'deb executable did not come from the installed /opt payload')
       assertPackageParity(artifact.inventory, installedInventory)
-      debSmoke = await installedSession(installedInventory.executable, artifact.userData, installedInventory, artifact.target, { args: ['--no-sandbox'], installRoot })
+      debSmoke = await installedSession(installedInventory.executable, artifact.userData, installedInventory, artifact.target, { args: ['--no-sandbox', '--disable-gpu'], installRoot })
       await withInstalledSession(debSmoke, async session => {
         persistedValue = session.renderer.settingsRoundTrip.changed
         await session.launched.workbench.evaluate(`(async () => await window.dshDesktop?.launcher?.settings?.updateSetting('searchEngine.fuzziness', ${String(persistedValue)}))()`)

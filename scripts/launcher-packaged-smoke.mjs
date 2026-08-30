@@ -950,17 +950,6 @@ export async function inspectPackage(outputDir, target, options = {}) {
   })
 }
 
-const disableLinuxCoreDumpScript = `import ctypes, os, sys
-libc = ctypes.CDLL(None, use_errno=True)
-if libc.prctl(4, 0, 0, 0, 0) != 0:
-    raise OSError(ctypes.get_errno(), 'prctl(PR_SET_DUMPABLE) failed')
-os.execv(sys.argv[1], sys.argv[1:])`
-
-export function linuxNoCoreSpawnPlan(command, args, platform = process.platform) {
-  if (platform !== 'linux') return Object.freeze({ command, args: [...args] })
-  return Object.freeze({ command: '/usr/bin/python3', args: ['-c', disableLinuxCoreDumpScript, command, ...args] })
-}
-
 export async function launchPackaged(executable, userData, port, extraArgs = [], launchOptions = {}) {
   const childFlag = launchOptions.flag ?? smokeFlag
   const childEnvironment = launchOptions.env ?? { TOCKTEAM_PACKAGED_SMOKE: '1' }
@@ -973,10 +962,7 @@ export async function launchPackaged(executable, userData, port, extraArgs = [],
     childFlag,
     '--toggle',
   ]
-  const spawnPlan = launchOptions.preventCoreDump === true
-    ? linuxNoCoreSpawnPlan(executable, childArgs)
-    : { command: executable, args: childArgs }
-  const child = spawnProcess(spawnPlan.command, spawnPlan.args, {
+  const child = spawnProcess(executable, childArgs, {
     cwd: root,
     detached: true,
     env: smokeEnvironment(childEnvironment, userData),

@@ -150,8 +150,15 @@ jobs:
           TOCKTEAM_INSTALLED_SMOKE_REPORT: ${{ runner.temp }}/tockteam-installed-launcher-smoke-${{ github.run_id }}.json
           TOCKTEAM_INSTALLED_SMOKE_DIAGNOSTICS: ${{ runner.temp }}/tockteam-installed-launcher-diagnostics-${{ github.run_id }}.json
         run: |
+          set -euo pipefail
+          original_core_pattern="$(/usr/sbin/sysctl -n kernel.core_pattern)"
+          restore_core_pattern() {
+            /usr/bin/sudo -n /usr/sbin/sysctl -q -w "kernel.core_pattern=$original_core_pattern"
+          }
+          trap restore_core_pattern EXIT
+          /usr/bin/sudo -n /usr/sbin/sysctl -q -w kernel.core_pattern=core
           ulimit -c 0
-          exec xvfb-run -a pnpm test:launcher:installed
+          /usr/bin/xvfb-run -a pnpm test:launcher:installed
 
       - name: Verify the installed report identity and version
         id: report-check

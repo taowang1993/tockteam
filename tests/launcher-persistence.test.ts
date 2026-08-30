@@ -1,9 +1,12 @@
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import { mkdir, mkdtemp, readFile, rename, rm, symlink, writeFile, lstat } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { test } from 'node:test'
 import { LauncherPersistenceRepository } from '../src/launcher-persistence.ts'
+
+const persistenceSource = readFileSync(path.join(import.meta.dirname, '..', 'src', 'launcher-persistence.ts'), 'utf8')
 
 const codec = {
   isAvailable: () => true,
@@ -21,6 +24,11 @@ const item = {
   name: 'TockCoder',
   sourceExtension: 'TockTeam',
 }
+
+test('persistence tolerates only unsupported Windows directory fsync after committing the file', () => {
+  assert.match(persistenceSource, /process\.platform !== 'win32'[\s\S]+EPERM/u)
+  assert.match(persistenceSource, /await handle\.sync\(\)/u)
+})
 
 test('persistence survives restart, encrypts secrets, strips index image data, and recovers backups', async () => {
   const userDataPath = await root()
