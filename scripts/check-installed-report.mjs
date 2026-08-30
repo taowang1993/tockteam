@@ -8,6 +8,8 @@ import { pathContainedSync } from './path-identity.mjs'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const EXPECTED_ROOTS = Object.freeze(['dsh-runtime', 'node-runtime', 'tockteam-desktop.png', 'lib/tockteam/cli.js', 'lib/tockteam/package.json', 'bin/tockteam', 'bin/tockteam.cmd'])
+const EXPECTED_LAUNCHER_API_KEYS = Object.freeze(['cancelAction', 'dismiss', 'getLocalExtensionSettings', 'getSurfaceSettings', 'getTheme', 'invokeAction', 'onLocale', 'onTheme', 'openSettings', 'recordSearch', 'rescan', 'search'])
+const EXPECTED_LAUNCHER_CSP = "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'; object-src 'none'"
 
 function failure(failures, condition, message) {
   if (!condition) failures.push(message)
@@ -18,11 +20,15 @@ function object(value) {
 }
 
 function reportedPathContained(rootPath, candidatePath, platform) {
-  if (platform === process.platform) return pathContainedSync(rootPath, candidatePath)
   const path = platform === 'win32' ? win32 : posix
   if (typeof rootPath !== 'string' || typeof candidatePath !== 'string' || !path.isAbsolute(rootPath) || !path.isAbsolute(candidatePath)) return false
-  const child = path.relative(path.resolve(rootPath), path.resolve(candidatePath))
-  return child === '' || (child !== '..' && !child.startsWith(`..${path.sep}`) && !path.isAbsolute(child))
+  const normalize = (value) => {
+    const resolved = path.resolve(value)
+    return platform === 'darwin' && /^\/private\/(?:tmp|var)(?:\/|$)/u.test(resolved) ? resolved.slice('/private'.length) : resolved
+  }
+  const child = path.relative(normalize(rootPath), normalize(candidatePath))
+  const lexical = child === '' || (child !== '..' && !child.startsWith(`..${path.sep}`) && !path.isAbsolute(child))
+  return lexical && (platform !== process.platform || pathContainedSync(rootPath, candidatePath))
 }
 
 function inspectPackageInventory(failures, packageInventory, installRoot, expected) {
@@ -52,8 +58,18 @@ function inspectPackageInventory(failures, packageInventory, installRoot, expect
 function inspectPackage(failures, packageInventory, renderer, installRoot, expected) {
   inspectPackageInventory(failures, packageInventory, installRoot, expected)
   failure(failures, object(renderer), 'post-install renderer evidence is missing')
-  failure(failures, renderer?.security?.appPath === packageInventory?.appPath, 'installed renderer security path does not match the inspected app.asar')
-  failure(failures, renderer?.launcher?.notificationPermission === 'denied', 'installed renderer permission evidence is missing')
+  if (!object(renderer)) return
+  const launcher = renderer.launcher
+  const security = renderer.security
+  failure(failures, security?.appPath === packageInventory?.appPath && security?.appPathUsesAsar === true && security?.launcherSessionPartition === 'persist:tockteam-launcher' && security?.sessionMatches === true, 'installed renderer security evidence is incomplete')
+  failure(failures, JSON.stringify(launcher?.apiKeys) === JSON.stringify(EXPECTED_LAUNCHER_API_KEYS), 'installed renderer bridge differs from the exact contract')
+  failure(failures, launcher?.csp === EXPECTED_LAUNCHER_CSP && launcher?.hasNodeProcess === false && launcher?.hasRequire === false, 'installed renderer security boundary differs from the exact contract')
+  failure(failures, launcher?.notificationPermission === 'denied' && launcher?.ready === 'true' && launcher?.title === 'TockLauncher', 'installed renderer launcher evidence is incomplete')
+  failure(failures, renderer.search?.sourceExtension === 'Base64Conversion', 'installed renderer action evidence is incomplete')
+  failure(failures, renderer.settingsRoundTrip?.changed === 0.6 && renderer.settingsRoundTrip?.restored === 0.5, 'installed renderer settings evidence is incomplete')
+  let workbenchUrl
+  try { workbenchUrl = new URL(renderer.workbench?.href) } catch { workbenchUrl = undefined }
+  failure(failures, workbenchUrl?.protocol === 'http:' && workbenchUrl.hostname === '127.0.0.1' && workbenchUrl.pathname === '/tockcoder' && renderer.workbench?.marker === 'workbench-before-dismiss' && renderer.workbench?.title === 'TockCoder', 'installed renderer workbench evidence is incomplete')
 }
 
 function inspectSettings(failures, settings, installRoot, expected) {
@@ -66,6 +82,13 @@ function inspectSettings(failures, settings, installRoot, expected) {
 function inspectSecondInstance(failures, secondInstance) {
   failure(failures, secondInstance?.singleInstance === true, 'installed second-instance evidence is missing')
   failure(failures, secondInstance?.permissions === 'renderer-permission-denied', 'installed permission evidence is missing')
+}
+
+function inspectLinuxProvider(failures, provider) {
+  const expected = { customBrowser: 'system-browser-only', fileSearch: 'unsupported', providerCount: 24, terminal: 'unsupported' }
+  failure(failures, object(provider), 'Linux provider evidence is missing')
+  if (!object(provider)) return
+  failure(failures, JSON.stringify(provider) === JSON.stringify(expected), 'Linux provider evidence differs from the exact contract')
 }
 
 function inspectWindowsProvider(failures, provider) {
@@ -140,6 +163,7 @@ export function inspectInstalledReport(report, expected) {
       if (object(deb)) {
         failure(failures, /\.deb$/iu.test(deb.artifact ?? ''), 'Linux deb artifact evidence is missing')
         inspectPackage(failures, deb.package, deb.renderer, deb.installRoot, expected)
+        inspectLinuxProvider(failures, deb.provider)
         inspectSettings(failures, deb.reinstall, deb.installRoot, expected)
         inspectSecondInstance(failures, deb.secondInstance)
         failure(failures, deb.uninstall === 'dpkg-purge-passed', 'Linux deb purge evidence is missing')
@@ -149,6 +173,7 @@ export function inspectInstalledReport(report, expected) {
       if (object(appImage)) {
         failure(failures, /\.AppImage$/u.test(appImage.artifact ?? ''), 'Linux AppImage artifact evidence is missing')
         inspectPackage(failures, appImage.package, appImage.renderer, appImage.installRoot, expected)
+        inspectLinuxProvider(failures, appImage.provider)
         failure(failures, appImage.runtime?.runtimeReady === true, 'Linux AppImage runtime evidence is missing')
         inspectSecondInstance(failures, appImage.secondInstance)
       }

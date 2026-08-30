@@ -47,6 +47,10 @@ test('Base64, calculator, colors, password, quick formatter, and UUID search mat
   assert.equal(passwords.length, 5)
   assert.equal(passwords.every(item => item.name.length === 24), true)
   assert.equal((await search('qfj {"answer":42}')).before.find(item => item.sourceExtension === 'QuickFormatter')?.name, '{\n  "answer": 42\n}')
+  const uppercasePrefixes = { 'extension[Base64Conversion].encodePrefix': 'B64E', 'extension[QuickFormatter].command': 'QF' }
+  const uppercaseOptions = { ...options, getSetting: <T>(key: string, fallback: T) => (uppercasePrefixes[key as keyof typeof uppercasePrefixes] ?? fallback) as T }
+  assert.equal((await search('b64e Tockbot', uppercaseOptions)).before[0]?.name, 'VG9ja2JvdA==')
+  assert.equal((await search('qfj {"answer":42}', uppercaseOptions)).before.find(item => item.sourceExtension === 'QuickFormatter')?.name, '{\n  "answer": 42\n}')
   assert.deepEqual((await search('uuid')).before.filter(item => item.sourceExtension === 'UuidGenerator'), [])
 })
 

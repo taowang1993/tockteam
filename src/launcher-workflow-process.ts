@@ -82,7 +82,8 @@ const DEFAULT_TIMEOUT_MS = 15_000
 const HARD_TIMEOUT_MS = 60_000
 const PROCESS_DRAIN_TIMEOUT_MS = 250
 const WINDOWS_KILL_TIMEOUT_MS = 5_000
-const WINDOWS_SYSTEM_EXECUTABLES = new Set(['cmd.exe', 'taskkill.exe'])
+export type LauncherTrustedWindowsSystemExecutable = 'cmd.exe' | 'control.exe' | 'powershell.exe' | 'rundll32.exe' | 'shutdown.exe' | 'taskkill.exe'
+const WINDOWS_SYSTEM_EXECUTABLES = new Set<LauncherTrustedWindowsSystemExecutable>(['cmd.exe', 'control.exe', 'powershell.exe', 'rundll32.exe', 'shutdown.exe', 'taskkill.exe'])
 
 const spawnWorkflowProcess: SpawnWorkflowProcess = (executable, args, options) => {
   const child = spawn(executable, [...args], {
@@ -168,7 +169,7 @@ async function captureWorkflowWindowsExecutable(target: string): Promise<Readonl
 }
 
 export async function resolveTrustedWorkflowWindowsExecutable(
-  executableName: 'cmd.exe' | 'taskkill.exe',
+  executableName: LauncherTrustedWindowsSystemExecutable,
   environment: Readonly<Record<string, string | undefined>>,
   capture: LauncherWorkflowExecutableCapture = captureWorkflowWindowsExecutable,
 ): Promise<Readonly<{ executable: string; identity: LauncherWorkflowExecutableIdentity }>> {

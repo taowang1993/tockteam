@@ -107,6 +107,13 @@ test('Workflow post-spawn errors terminate and wait for the child close event', 
   await assert.rejects(pending, /could not start|failed/u)
 })
 
+test('Workflow Windows process resolves every finite launcher system binary by identity', async () => {
+  for (const executable of ['cmd.exe', 'control.exe', 'powershell.exe', 'rundll32.exe', 'shutdown.exe', 'taskkill.exe'] as const) {
+    const trusted = await resolveTrustedWorkflowWindowsExecutable(executable, { SystemRoot: 'C:\\Windows' }, async target => ({ canonicalPath: target, identity: { dev: '1', ino: '2' } }))
+    assert.equal(trusted.executable, `C:\\Windows\\System32\\${executable}`)
+  }
+})
+
 test('Workflow Windows process rejects non-canonical system binaries before spawn', async () => {
   await assert.rejects(
     resolveTrustedWorkflowWindowsExecutable('cmd.exe', { SystemRoot: 'C:\\Windows' }, async target => ({ canonicalPath: `${target}\\..\\evil.exe`, identity: { dev: '1', ino: '2' } })),

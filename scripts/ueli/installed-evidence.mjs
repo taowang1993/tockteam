@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import assert from 'node:assert/strict'
+import { spawnSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { existsSync, readFileSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
@@ -47,6 +48,11 @@ const EXPECTED_PLATFORM_BY_ID = Object.freeze(Object.fromEntries(REQUIRED_INSTAL
 const ALLOWED_OWNERS = new Set([
   'scripts/launcher-installed-smoke.mjs',
   '.github/workflows/tocklauncher-installed.yml',
+])
+const ALLOWED_POST_EVIDENCE_PATHS = new Set([
+  '.agents/references/architecture.md',
+  '.agents/references/usage.md',
+  'scripts/ueli/installed-evidence-catalog.json',
 ])
 const WORKFLOW_OWNER_ROWS = new Set([
   'Windows:portable-archive-install',
@@ -137,6 +143,33 @@ export function inspectInstalledEvidenceCatalog(catalog) {
   for (const id of byId.keys()) failure(failures, REQUIRED_INSTALLED_EVIDENCE_ROWS.includes(id), `installed evidence catalog contains an unapproved row: ${id}`)
   for (const platform of PLATFORMS) failure(failures, rows.some(row => row?.platform === platform), `installed evidence has no ${platform} rows`)
   return Object.freeze({ failures, summary: Object.freeze({ rows: rows.length, platforms: PLATFORMS, verified: rows.filter(row => row?.state === 'local-verified' || row?.state === 'hosted-verified').length }) })
+}
+
+function defaultRunGit(args, repoRoot) {
+  const result = spawnSync('git', ['--no-replace-objects', '-C', repoRoot, ...args], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] })
+  return { status: result.status, stdout: result.stdout ?? '' }
+}
+
+export function inspectInstalledEvidenceFreshness(catalog, { head = 'HEAD', repoRoot = defaultRepoRoot, runGit = defaultRunGit } = {}) {
+  const failures = []
+  const commits = [...new Set((Array.isArray(catalog?.rows) ? catalog.rows : []).map(row => row?.evidence?.commit).filter(commit => /^[0-9a-f]{40}$/u.test(commit ?? '')))]
+  for (const commit of commits) {
+    const ancestor = runGit(['merge-base', '--is-ancestor', commit, head], repoRoot)
+    if (ancestor.status !== 0) {
+      failures.push(`installed evidence commit is not an ancestor of ${head}: ${commit}`)
+      continue
+    }
+    const diff = runGit(['diff', '--name-only', `${commit}..${head}`], repoRoot)
+    if (diff.status !== 0) {
+      failures.push(`installed evidence freshness diff failed: ${commit}`)
+      continue
+    }
+    const changed = String(diff.stdout).split(/\r?\n/u).filter(Boolean)
+      .filter(file => !file.startsWith('.beads/reports/') && !ALLOWED_POST_EVIDENCE_PATHS.has(file))
+      .sort()
+    if (changed.length > 0) failures.push(`installed evidence commit has later runtime changes: ${commit}: ${changed.join(', ')}`)
+  }
+  return Object.freeze({ failures: Object.freeze(failures) })
 }
 
 export function inspectInstalledEvidenceWorkflow(workflow) {
@@ -243,8 +276,9 @@ export async function main() {
   const inputs = await loadInstalledEvidenceInputs()
   const catalogResult = inspectInstalledEvidenceCatalog(inputs.catalog)
   const docsResult = inspectInstalledEvidenceDocs(inputs)
+  const freshnessResult = inspectInstalledEvidenceFreshness(inputs.catalog)
   const workflowResult = inspectInstalledEvidenceWorkflow(inputs.workflow)
-  const failures = [...catalogResult.failures, ...docsResult.failures, ...workflowResult.failures]
+  const failures = [...catalogResult.failures, ...docsResult.failures, ...freshnessResult.failures, ...workflowResult.failures]
   if (failures.length > 0) {
     for (const message of failures) console.error(`- ${message}`)
     process.exitCode = 1

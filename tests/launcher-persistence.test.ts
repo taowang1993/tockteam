@@ -63,6 +63,7 @@ test('persistence survives restart, encrypts secrets, strips index image data, a
 
 test('external settings accepts regular files, preserves replacement, and fails closed on unsupported writes', { skip: process.platform === 'win32' }, async () => {
   const userDataPath = await root()
+  const readonlyUserDataPath = await root()
   try {
     const external = path.join(userDataPath, 'settings.json')
     const link = path.join(userDataPath, 'link.json')
@@ -84,12 +85,12 @@ test('external settings accepts regular files, preserves replacement, and fails 
     assert.equal(repository.snapshot().externalGrantStatus, 'none')
     await repository.close()
 
-    const readonly = await LauncherPersistenceRepository.open({ secureStorageAvailable: true, secretCodec: codec, userDataPath: await root(), externalWriteAvailable: false })
+    const readonly = await LauncherPersistenceRepository.open({ secureStorageAvailable: true, secretCodec: codec, userDataPath: readonlyUserDataPath, externalWriteAvailable: false })
     // The path is readable and grantable; a later mutation fails before opening it for write.
     await readonly.grantExternalSettingsFile(external)
     await assert.rejects(readonly.updateSetting('general.language', 'en-US'), /unavailable|platform/i)
     await readonly.close()
-  } finally { await rm(userDataPath, { recursive: true, force: true }) }
+  } finally { await Promise.all([userDataPath, readonlyUserDataPath].map(path => rm(path, { recursive: true, force: true }))) }
 })
 
 test('external folder grant drift falls back to managed folders before later writes', async () => {

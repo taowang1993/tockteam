@@ -115,6 +115,8 @@ test('settings renderer never inserts sensitive values and preserves focused con
   assert.match(launcherSettings, /pendingValues\.current\.get\(key\) === value\)[\s\S]+pendingValues\.current\.delete\(key\)[\s\S]+void reload\(\)\.catch\(\(\) => \{\}\)/u)
   assert.match(launcherSettings, /createLauncherSettingsWriteQueue[\s\S]+writeQueue\.enqueue/u)
   assert.match(launcherSettings, /writeQueue\?\.waitForIdle\(\)/u)
+  assert.match(launcherSettings, /save\('window\.visibleOnAllWorkspaces', checked\)/u)
+  assert.doesNotMatch(launcherSettings, /window\.visibleOnAll workspaces/u)
   assert.match(launcherDrafts, /useLauncherDraft<string \| number>/u)
   assert.match(launcherDraftValue, /typeof left === 'string' && typeof right === 'number'/u)
   assert.match(launcherSettings, /onDraftFoldersChange/u)

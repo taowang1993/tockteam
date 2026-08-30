@@ -5,6 +5,12 @@ export function inspectInstalledEvidenceCatalog(catalog: unknown): Readonly<{
   summary: Readonly<{ rows: number; platforms: readonly string[]; verified: number }>
 }>
 
+export function inspectInstalledEvidenceFreshness(catalog: unknown, options?: Readonly<{
+  head?: string
+  repoRoot?: string
+  runGit?: (args: readonly string[], repoRoot?: string) => Readonly<{ status: number | null; stdout: string }>
+}>): Readonly<{ failures: readonly string[] }>
+
 export function inspectInstalledEvidenceWorkflow(workflow: string): Readonly<{
   failures: readonly string[]
 }>

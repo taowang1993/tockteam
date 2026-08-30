@@ -7,6 +7,7 @@ import { basename, dirname, join, resolve } from 'node:path'
 import { test } from 'node:test'
 import {
   inspectInstalledEvidenceCatalog,
+  inspectInstalledEvidenceFreshness,
   inspectInstalledEvidenceWorkflow,
 } from '../scripts/ueli/installed-evidence.mjs'
 import { inspectInstalledReport } from '../scripts/check-installed-report.mjs'
@@ -98,6 +99,8 @@ test('TockTeam exposes an executable installed-artifact smoke and audit', () => 
   assert.ok(installedSmoke.indexOf('const appImageEvidence = await runLinuxAppImageSmoke(appImage, artifact)') < installedSmoke.indexOf("await dpkg(['--install', deb])"))
   assert.match(installedSmoke, /sha256/u)
   assert.match(mainSource, /process\.stderr\.write/u)
+  assert.match(mainSource, /resolveTrustedLauncherOsExecutable/u)
+  assert.match(mainSource, /revalidateTrustedWorkflowWindowsExecutable/u)
   assert.match(installWindows, /process\.platform !== 'win32'/u)
   assert.match(installWindows, /System32/u)
   assert.match(installWindows, /windowsPortableExtractArgs/u)
@@ -738,11 +741,30 @@ test('installed evidence catalog owns exact platform rows and immutable hosted p
   assert.ok(inspectInstalledEvidenceCatalog(traversal).failures.some(failure => failure.includes('not checked in')))
 })
 
+test('installed evidence freshness rejects runtime drift after a report commit', () => {
+  const runGit = (args: readonly string[]) => args[0] === 'merge-base'
+    ? { status: 0, stdout: '' }
+    : { status: 0, stdout: '.beads/reports/report.json\nscripts/ueli/installed-evidence-catalog.json\nsrc/main.ts\n' }
+  assert.deepEqual(inspectInstalledEvidenceFreshness(catalog, { head: 'HEAD', repoRoot: root, runGit }).failures, ['installed evidence commit has later runtime changes: afe16ea4f22c102014a943c8c3267e0fe564e36d: src/main.ts', 'installed evidence commit has later runtime changes: ed39e30187b62111db05bf67f54adfeb28b898bf: src/main.ts'])
+  const allowedRunGit = (args: readonly string[]) => args[0] === 'merge-base'
+    ? { status: 0, stdout: '' }
+    : { status: 0, stdout: '.agents/references/usage.md\n.beads/reports/report.json\nscripts/ueli/installed-evidence-catalog.json\n' }
+  assert.equal(inspectInstalledEvidenceFreshness(catalog, { head: 'HEAD', repoRoot: root, runGit: allowedRunGit }).failures.length, 0)
+})
+
 test('installed report validation requires complete platform lifecycle evidence', () => {
   const appPath = '/tmp/install/win-unpacked/resources/app.asar'
   const roots = ['dsh-runtime', 'node-runtime', 'tockteam-desktop.png', 'lib/tockteam/cli.js', 'lib/tockteam/package.json', 'bin/tockteam', 'bin/tockteam.cmd']
   const packageInventory = { version: '0.1.14', appId: 'ai.deepseek.tockteam-desktop', productName: 'TockTeam Desktop', assetCount: 65, assetsVerified: true, noticesVerified: true, appPathUsesAsar: true, appPath, extraResources: { roots }, vendorScan: { scope: 'bounded-no-follow', maxDepth: 2, maxEntries: 4096, checkedEntries: 114, forbiddenSourceFound: false, launcherSourceAbsent: true } }
-  const renderer = { security: { appPath }, launcher: { notificationPermission: 'denied' } }
+  const rendererFor = (rendererAppPath: string) => ({
+    launcher: { apiKeys: ['cancelAction', 'dismiss', 'getLocalExtensionSettings', 'getSurfaceSettings', 'getTheme', 'invokeAction', 'onLocale', 'onTheme', 'openSettings', 'recordSearch', 'rescan', 'search'], csp: "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'; object-src 'none'", hasNodeProcess: false, hasRequire: false, notificationPermission: 'denied', ready: 'true', title: 'TockLauncher' },
+    runtimeArchitecture: 'x64',
+    search: { sourceExtension: 'Base64Conversion' },
+    security: { appPath: rendererAppPath, appPathUsesAsar: true, launcherSessionPartition: 'persist:tockteam-launcher', sessionMatches: true },
+    settingsRoundTrip: { changed: 0.6, restored: 0.5 },
+    workbench: { href: 'http://127.0.0.1:12345/tockcoder', marker: 'workbench-before-dismiss', title: 'TockCoder' },
+  })
+  const renderer = rendererFor(appPath)
   const report = {
     result: 'passed', sourceCommit: 'a'.repeat(40), version: '0.1.14', appId: 'ai.deepseek.tockteam-desktop', productName: 'TockTeam Desktop', platform: 'win32',
     cleanup: { temporaryInstallRemoved: true, processTreesGone: true },
@@ -757,7 +779,7 @@ test('installed report validation requires complete platform lifecycle evidence'
   const windowsRoots = roots.map(root => root.replaceAll('/', '\\'))
   const windowsAppPath = 'D:\\a\\_temp\\installed\\TockTeam Desktop\\resources\\app.asar'
   const windowsPackage = { ...packageInventory, appPath: windowsAppPath, extraResources: { roots: windowsRoots } }
-  const windowsSeparatorReport = { ...report, installed: { ...report.installed, installRoot: 'D:\\a\\_temp\\installed\\TockTeam Desktop', package: windowsPackage, renderer: { ...renderer, security: { appPath: windowsAppPath } }, reinstall: { ...report.installed.reinstall, package: windowsPackage } } }
+  const windowsSeparatorReport = { ...report, installed: { ...report.installed, installRoot: 'D:\\a\\_temp\\installed\\TockTeam Desktop', package: windowsPackage, renderer: { ...renderer, security: { ...renderer.security, appPath: windowsAppPath } }, reinstall: { ...report.installed.reinstall, package: windowsPackage } } }
   assert.equal(inspectInstalledReport(windowsSeparatorReport, expected).failures.length, 0)
   const unavailableControlPanel = { ...report, installed: { ...report.installed, provider: { ...report.installed.provider, controlPanel: 'unavailable' } } }
   assert.equal(inspectInstalledReport(unavailableControlPanel, expected).failures.length, 0)
@@ -768,11 +790,15 @@ test('installed report validation requires complete platform lifecycle evidence'
   assert.ok(inspectInstalledReport({ ...report, installed: { ...report.installed, provider: { ...report.installed.provider, extra: true } } }, expected).failures.some(failure => failure.includes('shape')))
   assert.ok(inspectInstalledReport({ ...report, installed: { ...report.installed, reinstall: undefined } }, expected).failures.length > 0)
   assert.ok(inspectInstalledReport({ ...report, installed: { ...report.installed, package: { ...packageInventory, vendorScan: undefined } } }, expected).failures.length > 0)
+  assert.ok(inspectInstalledReport({ ...report, installed: { ...report.installed, renderer: { ...renderer, launcher: { ...renderer.launcher, hasRequire: true } } } }, expected).failures.some(failure => failure.includes('renderer security')))
+  const linuxProvider = { customBrowser: 'system-browser-only', fileSearch: 'unsupported', providerCount: 24, terminal: 'unsupported' }
   const linuxPackage = { ...packageInventory, appPath: '/opt/TockTeam Desktop/resources/app.asar' }
-  const linuxRenderer = { security: { appPath: linuxPackage.appPath }, launcher: { notificationPermission: 'denied' } }
-  const linuxReport = { ...report, platform: 'linux', installed: { deb: { artifact: '/tmp/TockTeam-Desktop.deb', installRoot: '/opt/TockTeam Desktop', package: linuxPackage, renderer: linuxRenderer, reinstall: { package: linuxPackage, settings: { restored: 0.6, runtimeReady: 'ready' } }, secondInstance: { singleInstance: true, permissions: 'renderer-permission-denied' }, rollback: { state: 'workflow-required' }, uninstall: 'dpkg-purge-passed' }, appImage: { artifact: '/tmp/TockTeam-Desktop.AppImage', installRoot: '/tmp/appimage-root', package: { ...linuxPackage, appPath: '/tmp/appimage-root/resources/app.asar' }, renderer: { security: { appPath: '/tmp/appimage-root/resources/app.asar' }, launcher: { notificationPermission: 'denied' } }, runtime: { runtimeReady: true }, secondInstance: { singleInstance: true, permissions: 'renderer-permission-denied' } } } }
+  const linuxRenderer = rendererFor(linuxPackage.appPath)
+  const appImagePath = '/tmp/appimage-root/resources/app.asar'
+  const linuxReport = { ...report, platform: 'linux', installed: { deb: { artifact: '/tmp/TockTeam-Desktop.deb', installRoot: '/opt/TockTeam Desktop', package: linuxPackage, provider: linuxProvider, renderer: linuxRenderer, reinstall: { package: linuxPackage, settings: { restored: 0.6, runtimeReady: 'ready' } }, secondInstance: { singleInstance: true, permissions: 'renderer-permission-denied' }, rollback: { state: 'workflow-required' }, uninstall: 'dpkg-purge-passed' }, appImage: { artifact: '/tmp/TockTeam-Desktop.AppImage', installRoot: '/tmp/appimage-root', package: { ...linuxPackage, appPath: appImagePath }, provider: linuxProvider, renderer: rendererFor(appImagePath), runtime: { runtimeReady: true }, secondInstance: { singleInstance: true, permissions: 'renderer-permission-denied' } } } }
   assert.equal(inspectInstalledReport(linuxReport, { ...expected, platform: 'linux' }).failures.length, 0)
   assert.ok(inspectInstalledReport({ ...linuxReport, installed: { ...linuxReport.installed, appImage: undefined } }, { ...expected, platform: 'linux' }).failures.length > 0)
+  assert.ok(inspectInstalledReport({ ...linuxReport, installed: { ...linuxReport.installed, deb: { ...linuxReport.installed.deb, provider: undefined } } }, { ...expected, platform: 'linux' }).failures.some(failure => failure.includes('Linux provider')))
   const macRoot = '/tmp/Applications/TockTeam Desktop.app'
   const macPackage = { ...packageInventory, appPath: `${macRoot}/Contents/Resources/app.asar` }
   const macReport = {
@@ -781,7 +807,7 @@ test('installed report validation requires complete platform lifecycle evidence'
     installed: {
       installRoot: macRoot,
       package: macPackage,
-      renderer: { security: { appPath: macPackage.appPath }, launcher: { notificationPermission: 'denied' } },
+      renderer: rendererFor(macPackage.appPath),
       identity: { appId: expected.appId, asarPath: macPackage.appPath, signature: 'adhoc', resources: true },
       reinstallSettings: { package: macPackage, identity: { appId: expected.appId, asarPath: macPackage.appPath, signature: 'adhoc', resources: true }, settings: { restored: 0.6, runtimeReady: 'ready' }, version: expected.version },
       rollback: { preservedAsarSha256: 'c'.repeat(64), validationFailureRecovered: true },
@@ -792,6 +818,10 @@ test('installed report validation requires complete platform lifecycle evidence'
     },
   }
   assert.equal(inspectInstalledReport(macReport, { ...expected, platform: 'darwin' }).failures.length, 0)
+  const aliasedMacPath = '/private/var/folders/test/Applications/TockTeam Desktop.app/Contents/Resources/app.asar'
+  const aliasedMacPackage = { ...macPackage, appPath: aliasedMacPath }
+  const aliasedMacReport = { ...macReport, installed: { ...macReport.installed, installRoot: '/var/folders/test/Applications/TockTeam Desktop.app', package: aliasedMacPackage, renderer: rendererFor(aliasedMacPath), identity: { ...macReport.installed.identity, asarPath: aliasedMacPath }, reinstallSettings: { ...macReport.installed.reinstallSettings, package: aliasedMacPackage, identity: { ...macReport.installed.reinstallSettings.identity, asarPath: aliasedMacPath } } } }
+  assert.equal(inspectInstalledReport(aliasedMacReport, { ...expected, platform: 'darwin' }).failures.length, 0)
   assert.ok(inspectInstalledReport({ ...macReport, installed: { ...macReport.installed, package: { ...macPackage, vendorScan: undefined } } }, { ...expected, platform: 'darwin' }).failures.length > 0)
   assert.ok(inspectInstalledReport({ ...macReport, installed: { ...macReport.installed, provider: undefined } }, { ...expected, platform: 'darwin' }).failures.length > 0)
   assert.ok(inspectInstalledReport({ ...macReport, installed: { ...macReport.installed, reinstallSettings: { ...macReport.installed.reinstallSettings, package: { ...macPackage, version: '0.0.0' } } } }, { ...expected, platform: 'darwin' }).failures.length > 0)

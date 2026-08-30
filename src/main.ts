@@ -98,7 +98,12 @@ import { createLauncherNetworkExtensions } from './launcher-network-extensions.t
 import { createLauncherOsExtensions } from './launcher-os-extensions.ts'
 import { createLauncherTerminal, type LauncherTerminalLaunchRequest, type LauncherTerminalPlatform } from './launcher-terminal.ts'
 import { createLauncherWorkflow, type LauncherWorkflowConfirmation } from './launcher-workflow.ts'
-import { runBoundedWorkflowCommand } from './launcher-workflow-process.ts'
+import {
+  revalidateTrustedWorkflowWindowsExecutable,
+  resolveTrustedWorkflowWindowsExecutable,
+  runBoundedWorkflowCommand,
+  type LauncherTrustedWindowsSystemExecutable,
+} from './launcher-workflow-process.ts'
 import {
   launchDetachedTerminalInvocation,
   resolveTerminalInvocation,
@@ -1998,6 +2003,18 @@ function initializeLauncher(): void {
   const osEnabledExtensionIds = (): readonly string[] => launcherOsFixtureEnabled
     ? [...new Set([...launcherEnabledLocalExtensionIds(), 'AppearanceSwitcher', 'SystemCommands', 'SystemSettings', 'UeliCommand', 'WindowsControlPanel'])]
     : launcherEnabledLocalExtensionIds()
+  const resolveTrustedLauncherOsExecutable = async (executable: string): Promise<string> => {
+    if (platform === 'macOS') {
+      if (executable !== 'osascript') throw new Error('TockLauncher macOS executable is unavailable')
+      return '/usr/bin/osascript'
+    }
+    if (platform !== 'Windows') throw new Error('TockLauncher OS executable is unavailable')
+    const executableName = executable.toLocaleLowerCase('en-US') as LauncherTrustedWindowsSystemExecutable
+    if (!['control.exe', 'powershell.exe', 'rundll32.exe', 'shutdown.exe'].includes(executableName)) throw new Error('TockLauncher Windows executable is unavailable')
+    const trusted = await resolveTrustedWorkflowWindowsExecutable(executableName, process.env)
+    if (!await revalidateTrustedWorkflowWindowsExecutable(trusted)) throw new Error('TockLauncher Windows executable changed')
+    return trusted.executable
+  }
   // Linux Empty Trash stays unpublished: Node has no atomic unlinkat/openat2 seam here.
   const os = createLauncherOsExtensions({
     effects: {
@@ -2052,7 +2069,8 @@ function initializeLauncher(): void {
           }
           const invocation = resolveSystemCommandInvocation(platform, command)
           if (invocation === undefined) throw new Error('System command is unavailable')
-          await execFileAsync(invocation.executable, [...invocation.args], {
+          const executable = await resolveTrustedLauncherOsExecutable(invocation.executable)
+          await execFileAsync(executable, [...invocation.args], {
             maxBuffer: 64 * 1024,
             shell: false,
             signal,
@@ -2076,7 +2094,8 @@ function initializeLauncher(): void {
           if (launcherOsFixtureEnabled) return rejectLauncherOsFixtureEffect(`control-panel:${canonicalName}`)
           if (platform !== 'Windows') throw new Error('Windows Control Panel is unavailable')
           const invocation = resolveWindowsControlPanelInvocation(canonicalName)
-          await execFileAsync(invocation.executable, [...invocation.args], { maxBuffer: 64 * 1024, shell: false, signal, timeout: 15_000, windowsHide: true })
+          const executable = await resolveTrustedLauncherOsExecutable(invocation.executable)
+          await execFileAsync(executable, [...invocation.args], { maxBuffer: 64 * 1024, shell: false, signal, timeout: 15_000, windowsHide: true })
         } catch { throw new Error('TockLauncher Control Panel action failed') }
       },
       openSystemSetting: async (target, signal) => {
@@ -2103,7 +2122,8 @@ function initializeLauncher(): void {
           if (signal.aborted) throw launcherAbortError(signal)
           if (launcherOsFixtureEnabled) return rejectLauncherOsFixtureEffect('appearance')
           const invocation = resolveAppearanceInvocation(platform, nativeTheme.shouldUseDarkColors)
-          await execFileAsync(invocation.executable, [...invocation.args], { maxBuffer: 64 * 1024, shell: false, signal, timeout: 15_000, ...(platform === 'Windows' ? { windowsHide: true } : {}) })
+          const executable = await resolveTrustedLauncherOsExecutable(invocation.executable)
+          await execFileAsync(executable, [...invocation.args], { maxBuffer: 64 * 1024, shell: false, signal, timeout: 15_000, ...(platform === 'Windows' ? { windowsHide: true } : {}) })
         } catch { throw new Error('TockLauncher appearance action failed') }
       },
     },
@@ -2121,7 +2141,8 @@ function initializeLauncher(): void {
       if (launcherOsFixtureEnabled) return [{ canonicalName: 'Fixture.System', name: 'Fixture Control Panel' }]
       if (platform !== 'Windows') return []
       const invocation = resolveWindowsControlPanelScanInvocation()
-      const result = await execFileAsync(invocation.executable, [...invocation.args], {
+      const executable = await resolveTrustedLauncherOsExecutable(invocation.executable)
+      const result = await execFileAsync(executable, [...invocation.args], {
         encoding: 'utf8',
         maxBuffer: 1_048_576,
         shell: false,
