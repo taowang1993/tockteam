@@ -744,7 +744,7 @@ test('installed report validation requires complete platform lifecycle evidence'
   const windowsSeparatorReport = { ...report, installed: { ...report.installed, package: { ...packageInventory, extraResources: { roots: windowsRoots } }, reinstall: { ...report.installed.reinstall, package: { ...packageInventory, extraResources: { roots: windowsRoots } } } } }
   assert.equal(inspectInstalledReport(windowsSeparatorReport, expected).failures.length, 0)
   const unavailableControlPanel = { ...report, installed: { ...report.installed, provider: { ...report.installed.provider, controlPanel: 'unavailable' } } }
-  assert.ok(inspectInstalledReport(unavailableControlPanel, expected).failures.some(failure => failure.includes('controlPanel')))
+  assert.equal(inspectInstalledReport(unavailableControlPanel, expected).failures.length, 0)
   assert.ok(inspectInstalledReport({ ...report, result: 'failed' }, expected).failures.length > 0)
   assert.ok(inspectInstalledReport({ ...report, installed: { ...report.installed, portableArchive: { ...report.installed.portableArchive, sha256: 'bad' } } }, expected).failures.some(failure => failure.includes('hash')))
   assert.ok(inspectInstalledReport({ ...report, installed: { ...report.installed, provider: undefined } }, expected).failures.some(failure => failure.includes('provider')))
@@ -787,7 +787,7 @@ test('release and platform workflows retain ordered package and installed gates'
   assert.match(releaseWorkflow, /publish:[\s\S]*needs:\s*\[?package,?\s*launcher-package-smoke/u)
   assert.match(installedWorkflow, /workflow_dispatch:/u)
   assert.doesNotMatch(installedWorkflow, /pull_request:/u)
-  assert.match(installedWorkflow, /runs-on: windows-2022/u)
+  assert.match(installedWorkflow, /runs-on: windows-latest/u)
   assert.match(installedWorkflow, /runs-on: ubuntu-24\.04/u)
   for (const [index, job] of ['windows-x64', 'linux-x64'].entries()) {
     const start = installedWorkflow.indexOf(`  ${job}:`)

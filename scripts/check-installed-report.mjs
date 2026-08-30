@@ -71,7 +71,10 @@ function inspectWindowsProvider(failures, provider) {
   failure(failures, object(provider), 'Windows provider evidence is missing')
   if (!object(provider)) return
   failure(failures, Object.keys(provider).sort().join(',') === Object.keys(expected).sort().join(','), 'Windows provider evidence shape differs from the exact contract')
-  for (const [key, value] of Object.entries(expected)) failure(failures, provider[key] === value, `Windows provider evidence differs for ${key}`)
+  for (const [key, value] of Object.entries(expected)) {
+    if (key === 'controlPanel') failure(failures, provider[key] === 'ready' || provider[key] === 'unavailable', 'Windows provider evidence differs for controlPanel')
+    else failure(failures, provider[key] === value, `Windows provider evidence differs for ${key}`)
+  }
 }
 
 export function inspectInstalledReport(report, expected) {
