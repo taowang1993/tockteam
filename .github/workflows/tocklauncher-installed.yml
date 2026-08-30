@@ -156,7 +156,7 @@ jobs:
             /usr/bin/sudo -n /usr/sbin/sysctl -q -w "kernel.core_pattern=$original_core_pattern"
           }
           trap restore_core_pattern EXIT
-          /usr/bin/sudo -n /usr/sbin/sysctl -q -w kernel.core_pattern=core
+          /usr/bin/sudo -n /usr/sbin/sysctl -q -w kernel.core_pattern=/tmp/tockteam-core
           ulimit -c 0
           /usr/bin/xvfb-run -a pnpm test:launcher:installed
 

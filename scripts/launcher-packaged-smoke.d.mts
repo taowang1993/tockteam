@@ -29,9 +29,9 @@ export function pathContained(rootPath: string, candidatePath: string): Promise<
 
 export function withSmokeEnvironment<T>(operation: () => T | Promise<T>, disposableRoot?: string): Promise<T>
 
-export function smokeEnvironment(overrides?: NodeJS.ProcessEnv, disposableRoot?: string): NodeJS.ProcessEnv
+export function smokeEnvironment(overrides?: NodeJS.ProcessEnv, disposableRoot?: string, temporaryRoot?: string): NodeJS.ProcessEnv
 
-export function prepareSmokeEnvironmentRoots(disposableRoot: string): Promise<readonly string[]>
+export function prepareSmokeEnvironmentRoots(disposableRoot: string, temporaryRoot?: string): Promise<readonly string[]>
 
 export function freePort(): Promise<number>
 

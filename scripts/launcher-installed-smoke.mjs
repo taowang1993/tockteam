@@ -252,7 +252,7 @@ async function installedSession(executable, userData, inventory, target, options
   try {
     const renderer = await runRendererSmoke(launched.workbench, launched.launcher, inventory, userData, options.installRoot)
     const platform = await runPlatformOutcomeSmoke(launched.workbench, launched.launcher, target)
-    const secondInstance = await runSecondInstanceSmoke(executable, userData, launched.workbench, launched.launcher, smokeArgs)
+    const secondInstance = await runSecondInstanceSmoke(executable, userData, launched.workbench, launched.launcher, smokeArgs, launched.temporaryRoot)
     return Object.freeze({ platform, renderer, secondInstance, launched })
   } catch (error) {
     let failure = error
@@ -301,7 +301,7 @@ export async function withInstalledSession(session, operation, cleanup) {
   }
 }
 
-async function runSecondInstanceSmoke(executable, userData, workbench, launcher, extraArgs = []) {
+async function runSecondInstanceSmoke(executable, userData, workbench, launcher, extraArgs = [], temporaryRoot = undefined) {
   const secondArgs = [
     ...extraArgs,
     `--user-data-dir=${userData}`,
@@ -312,7 +312,7 @@ async function runSecondInstanceSmoke(executable, userData, workbench, launcher,
     cwd: root,
     detached: process.platform !== 'win32',
     stdio: 'ignore',
-    env: smokeEnvironment({ TOCKTEAM_INSTALLED_SMOKE: '1' }, userData),
+    env: smokeEnvironment({ TOCKTEAM_INSTALLED_SMOKE: '1' }, userData, temporaryRoot),
   })
   let primaryError
   try {

@@ -178,8 +178,7 @@ export function createLauncherOsExtensions(options: LauncherOsOptions): Readonly
   const report = (id: LauncherOsExtensionId, reason: unknown): void => {
     const message = id === 'WindowsControlPanel' ? 'Windows Control Panel is unavailable.' : `${id} is unavailable.`
     providerErrors.set(id, message)
-    options.onProviderError?.(id, new Error(message))
-    void reason
+    options.onProviderError?.(id, reason instanceof Error ? reason : new Error(message))
   }
   const clearError = (id: LauncherOsExtensionId): void => { providerErrors.delete(id) }
   const clearState = (): void => {

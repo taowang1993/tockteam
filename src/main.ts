@@ -2112,7 +2112,8 @@ function initializeLauncher(): void {
     getSetting: (key, fallback) => repository.getSetting(key, fallback),
     isAppearanceOverridden: () => tockTutorPreviousThemeSource !== undefined,
     onProviderError: (extensionId, error) => {
-      appendLog('desktop', `TockLauncher provider ${extensionId} failed: ${error.name}`)
+      const detail = launcherPackagedSmokeEnabled ? error.stack ?? error.message : error.name
+      appendLog('desktop', `TockLauncher provider ${extensionId} failed: ${detail}`)
     },
     platform,
     includeControlPanelFixture: launcherOsFixtureEnabled,

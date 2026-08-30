@@ -253,6 +253,29 @@ test('OS provider keeps a mocked Control Panel action inert on non-Windows hosts
   assert.equal(opened, 0)
 })
 
+test('OS provider keeps renderer status generic while reporting the trusted native failure', async () => {
+  const nativeFailure = new Error('native Control Panel scan failed')
+  let reported: Error | undefined
+  const provider = createLauncherOsExtensions({
+    effects: {
+      confirmPrivilegedAction: async () => true,
+      invokeSystemCommand: async () => undefined,
+      invokeUeliCommand: async () => undefined,
+      openControlPanelItem: async () => undefined,
+      openSystemSetting: async () => undefined,
+      toggleAppearance: async () => undefined,
+    },
+    enabledExtensionIds: () => ['WindowsControlPanel'],
+    getSetting: (_key, fallback) => fallback,
+    onProviderError: (_id, error) => { reported = error },
+    platform: 'Windows',
+    scanControlPanelItems: async () => { throw nativeFailure },
+  })
+  await provider.loadIndexedItems()
+  assert.match(provider.getProviderErrors().get('WindowsControlPanel') ?? '', /unavailable/u)
+  assert.equal(reported, nativeFailure)
+})
+
 test('OS provider rejects appearance effects while host projection is overridden', async () => {
   const effects: LauncherOsEffects = {
     confirmPrivilegedAction: async () => true,

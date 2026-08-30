@@ -22,6 +22,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const packageJson = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'))
 const contract = JSON.parse(await readFile(join(root, 'scripts/ueli/desktop-release-contract.json'), 'utf8'))
 const mainSource = await readFile(join(root, 'src/main.ts'), 'utf8')
+const packagedChildTempRoots = new WeakMap()
 // The actual product gates every development fixture with app.isPackaged; this runner never enables one.
 assert.match(mainSource, /\bapp\.isPackaged\b/u)
 assert.match(mainSource, /launcherPackagedSmokeEnabled/u)
@@ -164,8 +165,9 @@ function trustedPath() {
   return trustedPathEntries().join(process.platform === 'win32' ? ';' : ':')
 }
 
-function disposableEnvironmentPaths(disposableRoot) {
+function disposableEnvironmentPaths(disposableRoot, temporaryRoot = undefined) {
   const rootPath = resolve(disposableRoot)
+  const temporaryPath = temporaryRoot === undefined ? join(rootPath, 'tmp') : resolve(temporaryRoot)
   return Object.freeze({
     HOME: join(rootPath, 'home'),
     USERPROFILE: join(rootPath, 'home'),
@@ -176,25 +178,25 @@ function disposableEnvironmentPaths(disposableRoot) {
     XDG_DATA_HOME: join(rootPath, 'xdg', 'data'),
     XDG_STATE_HOME: join(rootPath, 'xdg', 'state'),
     XDG_DATA_DIRS: join(rootPath, 'xdg', 'data-dirs'),
-    TMPDIR: join(rootPath, 'tmp'),
-    TEMP: join(rootPath, 'tmp'),
-    TMP: join(rootPath, 'tmp'),
+    TMPDIR: temporaryPath,
+    TEMP: temporaryPath,
+    TMP: temporaryPath,
   })
 }
 
-export async function prepareSmokeEnvironmentRoots(disposableRoot) {
-  const paths = disposableEnvironmentPaths(disposableRoot)
+export async function prepareSmokeEnvironmentRoots(disposableRoot, temporaryRoot = undefined) {
+  const paths = disposableEnvironmentPaths(disposableRoot, temporaryRoot)
   const roots = Object.freeze([...new Set(Object.values(paths))])
   await Promise.all(roots.map(path => mkdir(path, { recursive: true })))
   return roots
 }
 
-export function smokeEnvironment(overrides = {}, disposableRoot = undefined) {
+export function smokeEnvironment(overrides = {}, disposableRoot = undefined, temporaryRoot = undefined) {
   const environment = { ...process.env, ...overrides }
   for (const key of smokeOverrideKeys) delete environment[key]
   delete environment.ELECTRON_RUN_AS_NODE
   if (disposableRoot !== undefined) {
-    Object.assign(environment, disposableEnvironmentPaths(disposableRoot))
+    Object.assign(environment, disposableEnvironmentPaths(disposableRoot, temporaryRoot))
     environment.PATH = trustedPath()
   }
   return environment
@@ -953,7 +955,8 @@ export async function inspectPackage(outputDir, target, options = {}) {
 export async function launchPackaged(executable, userData, port, extraArgs = [], launchOptions = {}) {
   const childFlag = launchOptions.flag ?? smokeFlag
   const childEnvironment = launchOptions.env ?? { TOCKTEAM_PACKAGED_SMOKE: '1' }
-  await prepareSmokeEnvironmentRoots(userData)
+  const temporaryRoot = process.platform === 'linux' ? await mkdtemp(join(tmpdir(), 'tt-')) : undefined
+  await prepareSmokeEnvironmentRoots(userData, temporaryRoot)
   const childArgs = [
     ...extraArgs,
     `--remote-debugging-address=127.0.0.1`,
@@ -962,12 +965,19 @@ export async function launchPackaged(executable, userData, port, extraArgs = [],
     childFlag,
     '--toggle',
   ]
-  const child = spawnProcess(executable, childArgs, {
-    cwd: root,
-    detached: true,
-    env: smokeEnvironment(childEnvironment, userData),
-    stdio: ['ignore', 'pipe', 'pipe'],
-  })
+  let child
+  try {
+    child = spawnProcess(executable, childArgs, {
+      cwd: root,
+      detached: true,
+      env: smokeEnvironment(childEnvironment, userData, temporaryRoot),
+      stdio: ['ignore', 'pipe', 'pipe'],
+    })
+  } catch (error) {
+    if (temporaryRoot !== undefined) await rm(temporaryRoot, { recursive: true, force: true })
+    throw error
+  }
+  if (temporaryRoot !== undefined) packagedChildTempRoots.set(child, temporaryRoot)
   let stdout = ''
   let stderr = ''
   const debug = process.env.TOCKTEAM_VERBOSE_PACKAGED_SMOKE === '1'
@@ -1015,6 +1025,7 @@ export async function launchPackaged(executable, userData, port, extraArgs = [],
       child,
       diagnostics: () => collectPackagedProcessDiagnostics({ child, command: executable, args: childArgs, userData, stdout, stderr }),
       launcher,
+      temporaryRoot,
       workbench,
       output: () => `${stdout}\n${stderr}`,
     })
@@ -1073,7 +1084,12 @@ function assertCdpProcess(child, port) {
 }
 
 export async function stopPackagedChild(child) {
-  await stopChildProcess(child)
+  const temporaryRoot = packagedChildTempRoots.get(child)
+  try { await stopChildProcess(child) }
+  finally {
+    packagedChildTempRoots.delete(child)
+    if (temporaryRoot !== undefined) await rm(temporaryRoot, { recursive: true, force: true })
+  }
 }
 
 export async function runRendererSmoke(workbench, launcher, inventory, userData, expectedInstallRoot = undefined) {
