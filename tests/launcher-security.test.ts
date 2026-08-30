@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict'
+import { join, resolve } from 'node:path'
 import { test } from 'node:test'
+import { pathToFileURL } from 'node:url'
 import {
   LAUNCHER_CSP,
   LAUNCHER_SESSION_PARTITION,
@@ -9,8 +11,9 @@ import {
   createLauncherWebPreferences,
 } from '../src/launcher-security.ts'
 
-const launcherPath = '/tmp/tockteam-dist/launcher.html'
-const entryUrl = new URL(`file://${launcherPath}`).href
+const electronDir = resolve('/tmp/tockteam-dist')
+const launcherPath = join(electronDir, 'launcher.html')
+const entryUrl = pathToFileURL(launcherPath).href
 
 function sender(overrides: Record<string, unknown> = {}) {
   const frame = { url: entryUrl }
@@ -36,14 +39,14 @@ function event(overrides: Record<string, unknown> = {}) {
 
 test('launcher preferences and permissions are isolated and deny all capabilities', () => {
   const preferences = createLauncherWebPreferences({
-    electronDir: '/tmp/tockteam-dist',
+    electronDir,
     role: 'launcher',
   })
   assert.deepEqual(preferences, {
     contextIsolation: true,
     nodeIntegration: false,
     partition: LAUNCHER_SESSION_PARTITION,
-    preload: '/tmp/tockteam-dist/launcher-preload.cjs',
+    preload: join(electronDir, 'launcher-preload.cjs'),
     sandbox: true,
     webSecurity: true,
   })

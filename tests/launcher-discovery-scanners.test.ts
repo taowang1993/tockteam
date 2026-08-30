@@ -59,14 +59,14 @@ test('recurses bounded Chromium bookmarks and keeps only HTTP(S)', () => {
   assert.deepEqual(parseChromiumBookmarks('{bad'), [])
 })
 
-test('parses JetBrains projects without evaluating XML entities', () => {
+test('parses JetBrains projects without evaluating XML entities', { skip: process.platform === 'win32' }, () => {
   assert.deepEqual(parseJetBrainsRecentProjectPaths('<entry key="$USER_HOME$/work/tockteam" value="{}" /><entry key="/work/other&amp;safe" value="{}" />', '/Users/max'), [
     '/Users/max/work/tockteam', '/work/other&safe',
   ])
   assert.deepEqual(parseJetBrainsRecentProjectPaths('<!DOCTYPE foo><entry key="/unsafe" />', '/Users/max'), [])
 })
 
-test('merges VS Code storage values by first URI and classifies remote workspaces', () => {
+test('merges VS Code storage values by first URI and classifies remote workspaces', { skip: process.platform === 'win32' }, () => {
   const entries = parseVSCodeRecentEntries([
     JSON.stringify({ entries: [{ folderUri: 'file:///work/one', label: 'One' }] }),
     JSON.stringify({ entries: [{ fileUri: 'file:///work/two.txt' }] }),

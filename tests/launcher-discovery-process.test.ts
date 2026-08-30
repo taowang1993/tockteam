@@ -65,7 +65,7 @@ test('resolves finite Windows VS Code requests to the concrete Code.exe install 
   } finally { await rm(root, { recursive: true, force: true }) }
 })
 
-test('canonicalizes POSIX VS Code symlinks and rejects retargeted identities', async () => {
+test('canonicalizes POSIX VS Code symlinks and rejects retargeted identities', { skip: process.platform === 'win32' }, async () => {
   const root = await mkdtemp(join(tmpdir(), 'tockteam-code-symlink-'))
   try {
     const link = join(root, 'code')

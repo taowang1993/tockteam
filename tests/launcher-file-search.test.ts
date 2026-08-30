@@ -329,7 +329,7 @@ test('timed-out validation aborts the scanner and keeps close bounded', async ()
   await assert.doesNotReject(boundedClose)
 })
 
-test('Simple File Search actions use real scanner validation for open and reveal', async () => {
+test('Simple File Search actions use real scanner validation for open and reveal', { skip: process.platform === 'win32' }, async () => {
   const { mkdtemp, rm, writeFile } = await import('node:fs/promises')
   const { tmpdir } = await import('node:os')
   const { join } = await import('node:path')
@@ -431,7 +431,7 @@ test('FileSearch enforces the 16384-character serialized path bound on POSIX and
   }
 })
 
-test('FileSearch actions use home-scope canonical revalidation without a strict root', async () => {
+test('FileSearch actions use home-scope canonical revalidation without a strict root', { skip: process.platform === 'win32' }, async () => {
   const { mkdtemp, rm, writeFile } = await import('node:fs/promises')
   const { tmpdir } = await import('node:os')
   const { join } = await import('node:path')

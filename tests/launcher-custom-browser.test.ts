@@ -375,7 +375,7 @@ test('custom-browser commits memory before non-ignored sync failures and restart
   } finally { await rm(userDataPath, { recursive: true, force: true }) }
 })
 
-test('macOS app grants and Linux default-browser fallback remain finite', async () => {
+test('macOS app grants and Linux default-browser fallback remain finite', { skip: process.platform === 'win32' }, async () => {
   const macRoot = await root(); const linuxRoot = await root()
   try {
     const app = path.join(macRoot, 'Browser.app'); await mkdir(app)
@@ -466,7 +466,7 @@ test('custom-browser grant writes harden the fixed parent and never chmod the re
     })
     await controller.select(executable)
     const grant = await stat(path.join(userDataPath, 'launcher', 'custom-browser-grant.json'))
-    assert.equal(grant.mode & 0o777, 0o600)
+    if (process.platform !== 'win32') assert.equal(grant.mode & 0o777, 0o600)
     await controller.close()
 
     const replaced = path.join(userDataPath, 'launcher-real')

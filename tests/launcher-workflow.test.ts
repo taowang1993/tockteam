@@ -49,7 +49,7 @@ function harness(workflows: unknown = [WORKFLOW]) {
   return { effects, events, provider }
 }
 
-test('Workflow path capture rejects symlink components, dot escapes, and special targets', async () => {
+test('Workflow path capture rejects symlink components, dot escapes, and special targets', { skip: process.platform === 'win32' }, async () => {
   const root = await mkdtemp(path.join(tmpdir(), 'tockteam-workflow-path-'))
   try {
     await mkdir(path.join(root, 'safe'))

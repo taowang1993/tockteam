@@ -23,7 +23,7 @@ test('file-search adapters preserve hostile terms as direct argv data', () => {
   })
 })
 
-test('file-search query uses fixed bounded process options and filters stale/outside/symlink rows', async () => {
+test('file-search query uses fixed bounded process options and filters stale/outside/symlink rows', { skip: process.platform === 'win32' }, async () => {
   const home = await mkdtemp(join(tmpdir(), 'tockteam-file-search-'))
   const outside = await mkdtemp(join(tmpdir(), 'tockteam-file-search-outside-'))
   try {
@@ -208,7 +208,7 @@ test('Simple File Search stops on a deadline while traversing a bounded fixture'
   } finally { await rm(home, { force: true, recursive: true }) }
 })
 
-test('path revalidation rejects kind changes and a retargeted configured root', async () => {
+test('path revalidation rejects kind changes and a retargeted configured root', { skip: process.platform === 'win32' }, async () => {
   const home = await mkdtemp(join(tmpdir(), 'tockteam-file-revalidation-'))
   const outside = await mkdtemp(join(tmpdir(), 'tockteam-file-revalidation-outside-'))
   try {

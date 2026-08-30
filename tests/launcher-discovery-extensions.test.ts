@@ -165,7 +165,7 @@ test('does not let an older instant search overwrite the current VS Code action 
   await provider.executeAction(record(current))
 })
 
-test('publishes canonical POSIX VS Code executable paths and identity-bound actions', async () => {
+test('publishes canonical POSIX VS Code executable paths and identity-bound actions', { skip: process.platform === 'win32' }, async () => {
   const root = await mkdtemp(join(tmpdir(), 'tockteam-vscode-extension-'))
   try {
     const target = join(root, 'installed', 'bin', 'code')

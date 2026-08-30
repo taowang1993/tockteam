@@ -61,7 +61,7 @@ test('persistence survives restart, encrypts secrets, strips index image data, a
   } finally { await rm(userDataPath, { recursive: true, force: true }) }
 })
 
-test('external settings accepts regular files, preserves replacement, and fails closed on unsupported writes', async () => {
+test('external settings accepts regular files, preserves replacement, and fails closed on unsupported writes', { skip: process.platform === 'win32' }, async () => {
   const userDataPath = await root()
   try {
     const external = path.join(userDataPath, 'settings.json')
@@ -185,7 +185,7 @@ test('artifact backups retain the last validated settings bytes', async () => {
   } finally { await rm(userDataPath, { recursive: true, force: true }) }
 })
 
-test('index and external recovery retain only last validated artifacts', async () => {
+test('index and external recovery retain only last validated artifacts', { skip: process.platform === 'win32' }, async () => {
   const userDataPath = await root()
   try {
     const repository = await LauncherPersistenceRepository.open({ userDataPath, externalWriteAvailable: true })

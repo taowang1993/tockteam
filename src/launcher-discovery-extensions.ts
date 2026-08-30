@@ -40,13 +40,13 @@ export function LAUNCHER_DISCOVERY_DEFAULTS(
 ): LauncherDiscoveryDefaults {
   const linuxDirs = (environment.XDG_DATA_DIRS || '/usr/local/share:/usr/share')
     .split(':')
-    .filter(dir => path.isAbsolute(dir) && dir.length <= 4_000 && !/[\0\r\n]/u.test(dir))
+    .filter(dir => path.posix.isAbsolute(dir) && dir.length <= 4_000 && !/[\0\r\n]/u.test(dir))
     .slice(0, 32)
   return Object.freeze({
     ApplicationSearch: Object.freeze({
       includeWindowsStoreApps: true,
-      linuxFolders: Object.freeze(linuxDirs.map(dir => path.join(dir, 'applications'))),
-      macOsFolders: Object.freeze(['/System/Applications', '/System/Library/CoreServices', '/Applications', path.join(homePath, 'Applications')]),
+      linuxFolders: Object.freeze(linuxDirs.map(dir => path.posix.join(dir, 'applications'))),
+      macOsFolders: Object.freeze(['/System/Applications', '/System/Library/CoreServices', '/Applications', path.posix.join(homePath, 'Applications')]),
       mdfindFilterOption: "kMDItemKind=='Application'",
       windowsFileExtensions: Object.freeze(['lnk']),
       windowsFolders: Object.freeze([

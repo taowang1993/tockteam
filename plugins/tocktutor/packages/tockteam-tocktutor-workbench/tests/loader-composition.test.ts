@@ -77,20 +77,21 @@ async function installFreshPackage(root: string): Promise<{
     'autoInstallPeers: false',
     'overrides:',
     `  '@tockteam/ui': file:${uiArtifact}`,
+    "  'vue': 3.5.41",
     '',
   ].join('\n'))
   try {
     await execFileAsync('pnpm', [
       'install',
-      '--offline',
+      '--prefer-offline',
       '--ignore-scripts',
       '--no-frozen-lockfile',
       '--config.engine-strict=false',
     ], { cwd: consumerRoot, env: process.env })
   } catch (error) {
     const output = error instanceof Error
-      ? `${'stdout' in error ? String(error.stdout) : ''}\n${'stderr' in error ? String(error.stderr) : ''}`.trim()
-      : ''
+      ? `${error.message}\n${'stdout' in error ? String(error.stdout) : ''}\n${'stderr' in error ? String(error.stderr) : ''}`.trim()
+      : String(error)
     throw new Error(`Packed consumer install failed.\n${output}`, { cause: error })
   }
   return {
