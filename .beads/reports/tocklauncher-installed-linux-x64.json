@@ -1,20 +1,20 @@
 {
-  "installerDir": "/home/runner/work/_temp/tockteam-installed-launcher-smoke-Sg3MwJ/installer",
+  "installerDir": "/home/runner/work/_temp/tockteam-installed-launcher-smoke-Le0dGE/installer",
   "formats": [
     "deb",
     "AppImage"
   ],
   "installed": {
     "appImage": {
-      "artifact": "/home/runner/work/_temp/tockteam-installed-launcher-smoke-Sg3MwJ/installer/TockTeam-Desktop-0.1.14-x86_64.AppImage",
-      "installRoot": "/home/runner/work/_temp/tockteam-installed-launcher-smoke-Sg3MwJ/appimage/squashfs-root",
+      "artifact": "/home/runner/work/_temp/tockteam-installed-launcher-smoke-Le0dGE/installer/TockTeam-Desktop-0.1.14-x86_64.AppImage",
+      "installRoot": "/home/runner/work/_temp/tockteam-installed-launcher-smoke-Le0dGE/appimage/squashfs-root",
       "package": {
         "appId": "ai.deepseek.tockteam-desktop",
-        "appPath": "/home/runner/work/_temp/tockteam-installed-launcher-smoke-Sg3MwJ/appimage/squashfs-root/resources/app.asar",
+        "appPath": "/home/runner/work/_temp/tockteam-installed-launcher-smoke-Le0dGE/appimage/squashfs-root/resources/app.asar",
         "version": "0.1.14",
         "appPathUsesAsar": true,
         "assetCount": 65,
-        "executable": "/home/runner/work/_temp/tockteam-installed-launcher-smoke-Sg3MwJ/appimage/squashfs-root/tockteam-desktop",
+        "executable": "/home/runner/work/_temp/tockteam-installed-launcher-smoke-Le0dGE/appimage/squashfs-root/tockteam-desktop",
         "electron": {
           "architecture": "x64",
           "version": "42.3.0"
@@ -71,7 +71,7 @@
             "search"
           ],
           "csp": "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'; object-src 'none'",
-          "href": "file:///home/runner/work/_temp/tockteam-installed-launcher-smoke-Sg3MwJ/appimage/squashfs-root/resources/app.asar/dist/launcher.html",
+          "href": "file:///home/runner/work/_temp/tockteam-installed-launcher-smoke-Le0dGE/appimage/squashfs-root/resources/app.asar/dist/launcher.html",
           "hasNodeProcess": false,
           "hasRequire": false,
           "notificationPermission": "denied",
@@ -80,13 +80,13 @@
         },
         "runtimeArchitecture": "x64",
         "security": {
-          "appPath": "/home/runner/work/_temp/tockteam-installed-launcher-smoke-Sg3MwJ/appimage/squashfs-root/resources/app.asar",
+          "appPath": "/home/runner/work/_temp/tockteam-installed-launcher-smoke-Le0dGE/appimage/squashfs-root/resources/app.asar",
           "appPathUsesAsar": true,
           "launcherSessionPartition": "persist:tockteam-launcher",
           "sessionMatches": true
         },
         "search": {
-          "actionId": "launcher-action:a5e80f2a-110e-477b-99ba-4ed6c14f711b",
+          "actionId": "launcher-action:6265eee3-eebe-4042-bd2b-f2f9d0b154d5",
           "id": "ueli-local:Base64Conversion",
           "sourceExtension": "Base64Conversion"
         },
@@ -95,7 +95,7 @@
           "changed": 0.6
         },
         "workbench": {
-          "href": "http://127.0.0.1:42935/tockcoder",
+          "href": "http://127.0.0.1:33247/tockcoder",
           "marker": "workbench-before-dismiss",
           "title": "TockCoder"
         }
@@ -115,7 +115,7 @@
       }
     },
     "deb": {
-      "artifact": "/home/runner/work/_temp/tockteam-installed-launcher-smoke-Sg3MwJ/installer/TockTeam-Desktop-0.1.14-amd64.deb",
+      "artifact": "/home/runner/work/_temp/tockteam-installed-launcher-smoke-Le0dGE/installer/TockTeam-Desktop-0.1.14-amd64.deb",
       "installRoot": "/opt/TockTeam Desktop",
       "package": {
         "appId": "ai.deepseek.tockteam-desktop",
@@ -195,7 +195,7 @@
           "sessionMatches": true
         },
         "search": {
-          "actionId": "launcher-action:445f71bd-20ba-40fb-b085-8d89ab3fa54d",
+          "actionId": "launcher-action:6af3226f-7eb8-4e97-9d6e-c569c6f7fca4",
           "id": "ueli-local:Base64Conversion",
           "sourceExtension": "Base64Conversion"
         },
@@ -204,7 +204,7 @@
           "changed": 0.6
         },
         "workbench": {
-          "href": "http://127.0.0.1:45479/tockcoder",
+          "href": "http://127.0.0.1:46813/tockcoder",
           "marker": "workbench-before-dismiss",
           "title": "TockCoder"
         }
@@ -287,7 +287,7 @@
   "platform": "linux",
   "productName": "TockTeam Desktop",
   "result": "passed",
-  "sourceCommit": "ed39e30187b62111db05bf67f54adfeb28b898bf",
+  "sourceCommit": "455db8ca432432f29803ac80a9ab40be7537b191",
   "cleanup": {
     "processTreesGone": true,
     "smokeRootRemoved": false,

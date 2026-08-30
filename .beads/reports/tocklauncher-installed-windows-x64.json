@@ -1,23 +1,23 @@
 {
-  "installerDir": "D:\\a\\_temp\\tockteam-installed-launcher-smoke-xzG51k\\installer",
+  "installerDir": "D:\\a\\_temp\\tockteam-installed-launcher-smoke-ShDddh\\installer",
   "formats": [
     "tar.gz"
   ],
   "installed": {
     "portableArchive": {
-      "path": "D:\\a\\_temp\\tockteam-installed-launcher-smoke-xzG51k\\installer\\TockTeam-Desktop-0.1.14-x64.tar.gz",
+      "path": "D:\\a\\_temp\\tockteam-installed-launcher-smoke-ShDddh\\installer\\TockTeam-Desktop-0.1.14-x64.tar.gz",
       "format": "tar.gz",
       "version": "0.1.14",
-      "sha256": "779d0434f7905fe71b5506faa920fdf88870cc8398f465332ad6ae87a395345a"
+      "sha256": "7380e5671577251d6cf92aa650e49dd934b4497b25aed63b9e2e7f83546d2005"
     },
-    "installRoot": "D:\\a\\_temp\\tockteam-installed-launcher-smoke-xzG51k\\portable-installed",
+    "installRoot": "D:\\a\\_temp\\tockteam-installed-launcher-smoke-ShDddh\\portable-installed",
     "package": {
       "appId": "ai.deepseek.tockteam-desktop",
-      "appPath": "D:\\a\\_temp\\tockteam-installed-launcher-smoke-xzG51k\\portable-installed\\win-unpacked\\resources\\app.asar",
+      "appPath": "D:\\a\\_temp\\tockteam-installed-launcher-smoke-ShDddh\\portable-installed\\win-unpacked\\resources\\app.asar",
       "version": "0.1.14",
       "appPathUsesAsar": true,
       "assetCount": 65,
-      "executable": "D:\\a\\_temp\\tockteam-installed-launcher-smoke-xzG51k\\portable-installed\\win-unpacked\\TockTeam Desktop.exe",
+      "executable": "D:\\a\\_temp\\tockteam-installed-launcher-smoke-ShDddh\\portable-installed\\win-unpacked\\TockTeam Desktop.exe",
       "electron": {
         "architecture": "x64",
         "version": "42.3.0"
@@ -74,7 +74,7 @@
           "search"
         ],
         "csp": "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'; object-src 'none'",
-        "href": "file:///D:/a/_temp/tockteam-installed-launcher-smoke-xzG51k/portable-installed/win-unpacked/resources/app.asar/dist/launcher.html",
+        "href": "file:///D:/a/_temp/tockteam-installed-launcher-smoke-ShDddh/portable-installed/win-unpacked/resources/app.asar/dist/launcher.html",
         "hasNodeProcess": false,
         "hasRequire": false,
         "notificationPermission": "denied",
@@ -83,13 +83,13 @@
       },
       "runtimeArchitecture": "x64",
       "security": {
-        "appPath": "D:\\a\\_temp\\tockteam-installed-launcher-smoke-xzG51k\\portable-installed\\win-unpacked\\resources\\app.asar",
+        "appPath": "D:\\a\\_temp\\tockteam-installed-launcher-smoke-ShDddh\\portable-installed\\win-unpacked\\resources\\app.asar",
         "appPathUsesAsar": true,
         "launcherSessionPartition": "persist:tockteam-launcher",
         "sessionMatches": true
       },
       "search": {
-        "actionId": "launcher-action:2e06c684-40e1-4ed6-9730-d1d185aa8ac6",
+        "actionId": "launcher-action:a453137c-37f5-4607-8b48-55110ca93c36",
         "id": "ueli-local:Base64Conversion",
         "sourceExtension": "Base64Conversion"
       },
@@ -98,7 +98,7 @@
         "changed": 0.6
       },
       "workbench": {
-        "href": "http://127.0.0.1:56547/tockcoder",
+        "href": "http://127.0.0.1:57412/tockcoder",
         "marker": "workbench-before-dismiss",
         "title": "TockCoder"
       }
@@ -117,11 +117,11 @@
     "reinstall": {
       "package": {
         "appId": "ai.deepseek.tockteam-desktop",
-        "appPath": "D:\\a\\_temp\\tockteam-installed-launcher-smoke-xzG51k\\portable-installed\\win-unpacked\\resources\\app.asar",
+        "appPath": "D:\\a\\_temp\\tockteam-installed-launcher-smoke-ShDddh\\portable-installed\\win-unpacked\\resources\\app.asar",
         "version": "0.1.14",
         "appPathUsesAsar": true,
         "assetCount": 65,
-        "executable": "D:\\a\\_temp\\tockteam-installed-launcher-smoke-xzG51k\\portable-installed\\win-unpacked\\TockTeam Desktop.exe",
+        "executable": "D:\\a\\_temp\\tockteam-installed-launcher-smoke-ShDddh\\portable-installed\\win-unpacked\\TockTeam Desktop.exe",
         "electron": {
           "architecture": "x64",
           "version": "42.3.0"
@@ -168,7 +168,7 @@
       }
     },
     "rollback": {
-      "preservedAsarSha256": "facbd296040d9388301a93ffab98bfcd4b64efe990934e631e137b59a6c7dca0",
+      "preservedAsarSha256": "1c660c71daa736512551bf0e3eb30e2f8636c7be968a8a7e9b55151589097fc9",
       "validationFailureRecovered": true
     },
     "cleanup": {
@@ -183,7 +183,7 @@
   "platform": "win32",
   "productName": "TockTeam Desktop",
   "result": "passed",
-  "sourceCommit": "ed39e30187b62111db05bf67f54adfeb28b898bf",
+  "sourceCommit": "455db8ca432432f29803ac80a9ab40be7537b191",
   "cleanup": {
     "processTreesGone": true,
     "smokeRootRemoved": false,

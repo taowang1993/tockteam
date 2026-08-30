@@ -201,8 +201,9 @@ and cleanup rows. Notices/vendor scanning and provider catalog are only
 partially verified, and the shortcut row remains workflow-required because no
 actual shortcut path was exercised. Hosted run `33295632276` passed the Windows
 portable archive and Linux Debian/AppImage installed smokes at commit
-`ed39e301`; their checked-in reports promote only the rows they exercised.
-Windows Control Panel was unavailable on the hosted image, elevation remained
+`ed39e301`; run `33301125258` refreshed the checked-in reports at commit
+`455db8ca`. The reports promote only the rows they exercised. Windows Control Panel
+was unavailable on the hosted image, elevation remained
 confirmation-required and uninvoked, and Linux package rollback remains
 workflow-required. The reports are not signing, notarization, publication, or
 public-distribution evidence. Vendor results are bounded no-follow scans, not
