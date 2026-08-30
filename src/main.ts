@@ -1378,6 +1378,7 @@ async function runLauncherMutation<T>(
     if (rescan && !quitting) await launcherRescan?.(undefined, undefined, reason)
     return result
   } catch (error) {
+    if (launcherPackagedSmokeEnabled) appendLog('desktop', `TockLauncher ${reason} failed: ${error instanceof Error ? error.stack ?? error.message : String(error)}`)
     if (invalidate && !quitting && !signal.aborted) {
       invalidateAllLauncherProviders(`${reason}-rollback`)
       try { await launcherRescan?.() } catch { /* retain the original mutation error */ }

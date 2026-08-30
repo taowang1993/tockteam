@@ -6,6 +6,8 @@ export function windowsProcessTreePids(snapshot: readonly { pid: number; parentP
 
 export function windowsTasklistPids(output: string): ReadonlySet<number>
 
+export function windowsOwnedProcessQuery(executablePath: string, additionalPath?: string): string
+
 export function stopChildProcess(
   child: ChildProcess,
   graceMs?: number,

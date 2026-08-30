@@ -15,6 +15,7 @@ import {
   freePort,
   formatDiagnosticError,
   launchPackaged,
+  linuxNoCoreSpawnPlan,
   packagedBuilderConfig,
   preparePackagedArtifact,
   prepareSmokeEnvironmentRoots,
@@ -247,7 +248,7 @@ async function installedSession(executable, userData, inventory, target, options
     userData,
     port,
     smokeArgs,
-    { flag: smokeFlag, env: { TOCKTEAM_INSTALLED_SMOKE: '1' } },
+    { flag: smokeFlag, env: { TOCKTEAM_INSTALLED_SMOKE: '1' }, preventCoreDump: process.platform === 'linux' },
   )
   try {
     const renderer = await runRendererSmoke(launched.workbench, launched.launcher, inventory, userData, options.installRoot)
@@ -255,12 +256,19 @@ async function installedSession(executable, userData, inventory, target, options
     const secondInstance = await runSecondInstanceSmoke(executable, userData, launched.workbench, launched.launcher, smokeArgs)
     return Object.freeze({ platform, renderer, secondInstance, launched })
   } catch (error) {
+    let failure = error
+    try {
+      const diagnostics = await launched.diagnostics()
+      failure = new Error(`${error instanceof Error ? error.message : String(error)}\n${diagnostics}`, { cause: error })
+    } catch (diagnosticsError) {
+      failure = new AggregateError([error, diagnosticsError], 'installed session assertion failed and process diagnostics were unavailable')
+    }
     try {
       await closeInstalledSession({ launched }, executable, options.installRoot)
     } catch (cleanupError) {
-      throw new AggregateError([error, cleanupError], 'installed session assertion and cleanup both failed')
+      throw new AggregateError([failure, cleanupError], 'installed session assertion and cleanup both failed')
     }
-    throw error
+    throw failure
   }
 }
 
@@ -295,12 +303,14 @@ export async function withInstalledSession(session, operation, cleanup) {
 }
 
 async function runSecondInstanceSmoke(executable, userData, workbench, launcher, extraArgs = []) {
-  const second = spawn(executable, [
+  const secondArgs = [
     ...extraArgs,
     `--user-data-dir=${userData}`,
     '--toggle',
     smokeFlag,
-  ], {
+  ]
+  const spawnPlan = linuxNoCoreSpawnPlan(executable, secondArgs)
+  const second = spawn(spawnPlan.command, spawnPlan.args, {
     cwd: root,
     detached: process.platform !== 'win32',
     stdio: 'ignore',
@@ -350,7 +360,7 @@ async function readPersistedSetting(executable, userData, target, key, expected,
     userData,
     port,
     target.key === 'linux' ? ['--no-sandbox'] : [],
-    { flag: smokeFlag, env: { TOCKTEAM_INSTALLED_SMOKE: '1' } },
+    { flag: smokeFlag, env: { TOCKTEAM_INSTALLED_SMOKE: '1' }, preventCoreDump: process.platform === 'linux' },
   )
   return await withInstalledSession({ launched }, async session => {
     const value = await session.launched.workbench.evaluate(`(async () => (await window.dshDesktop?.launcher?.settings?.getSnapshot())?.values?.[${JSON.stringify(key)}] ?? null)()`)
@@ -711,7 +721,7 @@ if (isDirectInvocation) {
   if (process.argv.includes(smokeFlag)) {
     await main().catch(error => {
       console.error(formatDiagnosticError(error))
-      process.exitCode = 1
+      process.exit(1)
     })
   } else {
     console.error(`This installed smoke requires ${smokeFlag}`)

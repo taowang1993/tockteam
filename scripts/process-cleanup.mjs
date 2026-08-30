@@ -58,7 +58,7 @@ export function windowsTasklistPids(output) {
 
 async function snapshotWindowsProcessTree(rootPid) {
   const powershell = trustedWindowsTool('WindowsPowerShell\\v1.0\\powershell.exe')
-  const script = 'Get-CimInstance Win32_Process | Select-Object ProcessId,ParentProcessId | ConvertTo-Json -Compress'
+  const script = "$ErrorActionPreference = 'Stop'; Get-CimInstance Win32_Process | Select-Object ProcessId,ParentProcessId | ConvertTo-Json -Compress"
   const result = await execFileAsync(powershell, ['-NoProfile', '-NonInteractive', '-Command', script], { windowsHide: true })
   return windowsProcessTreePids(parseWindowsProcessSnapshot(result.stdout), rootPid)
 }
@@ -82,13 +82,17 @@ async function signalProcessTree(child, force = false) {
   } catch { /* already stopped */ }
 }
 
+export function windowsOwnedProcessQuery(executablePath, additionalPath = undefined) {
+  const targets = [executablePath, additionalPath].filter(value => value !== undefined).map(value => `'${String(value).replaceAll("'", "''")}'`).join(', ')
+  return `$ErrorActionPreference = 'Stop'; $targets = @(${targets}); $found = @(Get-CimInstance Win32_Process | Where-Object { $process = $_; $process.ProcessId -ne $PID -and ($targets | Where-Object { $process.ExecutablePath -eq $_ -or ($process.CommandLine -ne $null -and $process.CommandLine -like ('*' + $_ + '*')) }) }); if ($found.Count -gt 0) { $found | ConvertTo-Json -Compress }`
+}
+
 export async function assertOwnedProcessGone(executablePath, attempts = 20, additionalPath = undefined) {
   if (process.platform !== 'win32') return
   const systemRoot = process.env.SystemRoot?.trim()
   if (typeof systemRoot !== 'string' || !isAbsolute(systemRoot)) throw new Error('Windows SystemRoot must be an absolute path')
   const powershell = join(systemRoot, 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe')
-  const targets = [executablePath, additionalPath].filter(value => value !== undefined).map(value => `'${String(value).replaceAll("'", "''")}'`).join(', ')
-  const script = `$targets = @(${targets}); $found = @(Get-CimInstance Win32_Process | Where-Object { $process = $_; $targets | Where-Object { $process.ExecutablePath -eq $_ -or ($process.CommandLine -ne $null -and $process.CommandLine -like ('*' + $_ + '*')) } }); if ($found.Count -gt 0) { $found | ConvertTo-Json -Compress }`
+  const script = windowsOwnedProcessQuery(executablePath, additionalPath)
   for (let attempt = 0; attempt < attempts; attempt += 1) {
     const result = await execFileAsync(powershell, ['-NoProfile', '-NonInteractive', '-Command', script], { windowsHide: true }).catch(error => { throw new Error(`unable to inspect Windows process ownership: ${error.message}`) })
     if (result.stdout.trim() === '') return
@@ -103,7 +107,7 @@ export async function assertProcessTreeGone(child, attempts = 20, treePids = und
   if (process.platform === 'win32') {
     const expectedPids = treePids ?? await snapshotWindowsProcessTree(pid)
     for (let attempt = 0; attempt < attempts; attempt += 1) {
-      const result = await execFileAsync(trustedWindowsTool('tasklist.exe'), ['/FO', 'CSV', '/NH'], { windowsHide: true }).catch(() => ({ stdout: '' }))
+      const result = await execFileAsync(trustedWindowsTool('tasklist.exe'), ['/FO', 'CSV', '/NH'], { windowsHide: true })
       const livePids = windowsTasklistPids(result.stdout)
       if (expectedPids.every(expectedPid => !livePids.has(expectedPid))) return
       await new Promise(resolve => setTimeout(resolve, 100))

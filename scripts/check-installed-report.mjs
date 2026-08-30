@@ -158,8 +158,7 @@ export async function main() {
   })
   if (result.failures.length > 0) {
     for (const message of result.failures) console.error(`- ${message}`)
-    process.exitCode = 1
-    return
+    process.exit(1)
   }
   console.log(`Installed report contract passed: ${report.platform} ${report.version} ${report.appId}`)
 }
@@ -168,6 +167,6 @@ if (process.argv[1] !== undefined && resolve(process.argv[1]) === fileURLToPath(
   main().catch(error => {
     assert(error instanceof Error)
     console.error(error.message)
-    process.exitCode = 1
+    process.exit(1)
   })
 }

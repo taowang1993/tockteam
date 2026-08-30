@@ -15,6 +15,7 @@ import {
   canonicalPath,
   collectPackagedProcessDiagnostics,
   inspectExtraResources,
+  linuxNoCoreSpawnPlan,
   parseWindowsGitPaths,
   pathContained,
   prepareSmokeEnvironmentRoots,
@@ -22,6 +23,7 @@ import {
   selectWindowsGitPath,
   smokeEnvironment,
   trustedPathEntries,
+  waitFor,
   waitForPackagedState,
   windowsCdpListenerOwned,
 } from '../scripts/launcher-packaged-smoke.mjs'
@@ -55,6 +57,7 @@ const packageJson = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'))
 }
 const packagedSmoke = readFileSync(join(root, 'scripts', 'launcher-packaged-smoke.mjs'), 'utf8')
 const installedSmoke = readFileSync(join(root, 'scripts', 'launcher-installed-smoke.mjs'), 'utf8')
+const installedReportCheck = readFileSync(join(root, 'scripts', 'check-installed-report.mjs'), 'utf8')
 const mainSource = readFileSync(join(root, 'src', 'main.ts'), 'utf8')
 const installWindows = readFileSync(join(root, 'scripts', 'install-windows.mjs'), 'utf8')
 const usageReference = readFileSync(join(root, '.agents', 'references', 'usage.md'), 'utf8')
@@ -73,6 +76,8 @@ test('TockTeam exposes an executable installed-artifact smoke and audit', () => 
   assert.equal(typeof packageJson.scripts?.['test:launcher:installed'], 'string')
   assert.equal(typeof packageJson.scripts?.['audit:installed-evidence'], 'string')
   assert.match(packagedSmoke, /desktop\.log/u)
+  assert.match(packagedSmoke, /process\.exit\(1\)/u, 'packaged smoke failures must fail their release step')
+  assert.match(installedReportCheck, /process\.exit\(1\)/u, 'invalid installed reports must fail their workflow step')
   assert.match(installedSmoke, /replaceMacBundle/u)
   assert.match(installedSmoke, /TOCKTEAM_INSTALLED_SMOKE/u)
   assert.match(installedSmoke, /rollback|reinstall/iu)
@@ -85,6 +90,7 @@ test('TockTeam exposes an executable installed-artifact smoke and audit', () => 
   assert.match(installedSmoke, /portableArchive|replaceWindowsPortableArchive/u)
   assert.match(installedSmoke, /writeWindowsPortableArchiveMetadata/u)
   assert.match(installedSmoke, /writeInstalledSmokeDiagnostics/u)
+  assert.match(installedSmoke, /process\.exit\(1\)/u, 'installed smoke failures must exit before a later report check can mask them')
   assert.match(installedSmoke, /withInstalledSession/u)
   assert.match(installedSmoke, /--enable-logging=stderr/u)
   assert.ok(installedSmoke.indexOf('const appImageEvidence = await runLinuxAppImageSmoke(appImage, artifact)') < installedSmoke.indexOf("await dpkg(['--install', deb])"))
@@ -395,6 +401,27 @@ test('Windows portable archive restores relocated runtime links and rejects mali
   } finally {
     await rm(rootPath, { recursive: true, force: true })
   }
+})
+
+test('Linux installed launches disable kernel core-dump handlers before exec', () => {
+  const plan = linuxNoCoreSpawnPlan('/opt/TockTeam Desktop/tockteam-desktop', ['--no-sandbox'], 'linux')
+  assert.equal(plan.command, '/usr/bin/python3')
+  assert.deepEqual(plan.args.slice(-2), ['/opt/TockTeam Desktop/tockteam-desktop', '--no-sandbox'])
+  const wrapper = plan.args[1] ?? ''
+  assert.match(wrapper, /prctl\(4, 0, 0, 0, 0\)/u)
+  assert.match(wrapper, /os\.execv/u)
+
+  assert.deepEqual(linuxNoCoreSpawnPlan('/Applications/TockTeam Desktop', ['--toggle'], 'darwin'), {
+    command: '/Applications/TockTeam Desktop',
+    args: ['--toggle'],
+  })
+})
+
+test('packaged polling retains bounded structured failure state', async () => {
+  await assert.rejects(
+    waitFor(async () => ({ providerStatuses: [{ extensionId: 'WindowsControlPanel', state: 'failed' }] }), () => false, 10),
+    /WindowsControlPanel.*failed/u,
+  )
 })
 
 test('packaged smoke reports child exit while polling CDP', async () => {

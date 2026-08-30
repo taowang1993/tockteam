@@ -266,6 +266,10 @@ function diagnosticValue(value, limit = DIAGNOSTIC_ERROR_MESSAGE_MAX_BYTES) {
   if (value === null) return 'null'
   if (value === undefined) return 'undefined'
   if (typeof value === 'number' || typeof value === 'boolean' || typeof value === 'bigint') return String(value).slice(0, limit)
+  try {
+    const encoded = JSON.stringify(value)
+    if (encoded !== undefined) return encoded.slice(0, limit)
+  } catch { /* use the bounded type label below */ }
   try { return Object.prototype.toString.call(value).slice(0, limit) } catch { return '[unavailable]' }
 }
 
@@ -946,6 +950,17 @@ export async function inspectPackage(outputDir, target, options = {}) {
   })
 }
 
+const disableLinuxCoreDumpScript = `import ctypes, os, sys
+libc = ctypes.CDLL(None, use_errno=True)
+if libc.prctl(4, 0, 0, 0, 0) != 0:
+    raise OSError(ctypes.get_errno(), 'prctl(PR_SET_DUMPABLE) failed')
+os.execv(sys.argv[1], sys.argv[1:])`
+
+export function linuxNoCoreSpawnPlan(command, args, platform = process.platform) {
+  if (platform !== 'linux') return Object.freeze({ command, args: [...args] })
+  return Object.freeze({ command: '/usr/bin/python3', args: ['-c', disableLinuxCoreDumpScript, command, ...args] })
+}
+
 export async function launchPackaged(executable, userData, port, extraArgs = [], launchOptions = {}) {
   const childFlag = launchOptions.flag ?? smokeFlag
   const childEnvironment = launchOptions.env ?? { TOCKTEAM_PACKAGED_SMOKE: '1' }
@@ -958,7 +973,10 @@ export async function launchPackaged(executable, userData, port, extraArgs = [],
     childFlag,
     '--toggle',
   ]
-  const child = spawnProcess(executable, childArgs, {
+  const spawnPlan = launchOptions.preventCoreDump === true
+    ? linuxNoCoreSpawnPlan(executable, childArgs)
+    : { command: executable, args: childArgs }
+  const child = spawnProcess(spawnPlan.command, spawnPlan.args, {
     cwd: root,
     detached: true,
     env: smokeEnvironment(childEnvironment, userData),
@@ -1007,7 +1025,13 @@ export async function launchPackaged(executable, userData, port, extraArgs = [],
     const launcher = await step('connect to TockLauncher', () => CdpPage.connect(launcherDescriptor.webSocketDebuggerUrl))
     await step('wait for launcher ready', () => waitFor(() => launcher.evaluate('document.documentElement.dataset.launcherReady'), ready => ready === 'true'))
     await step('wait for launcher visible', () => waitFor(() => workbench.evaluate('(async () => (await window.dshDesktop?.launcher?.getState())?.visible)()'), visible => visible === true))
-    return Object.freeze({ child, launcher, workbench, output: () => `${stdout}\n${stderr}` })
+    return Object.freeze({
+      child,
+      diagnostics: () => collectPackagedProcessDiagnostics({ child, command: executable, args: childArgs, userData, stdout, stderr }),
+      launcher,
+      workbench,
+      output: () => `${stdout}\n${stderr}`,
+    })
   } catch (error) {
     // Capture process state and logs before termination; early Electron failures can leave no desktop log.
     let processDiagnostics
@@ -1117,7 +1141,13 @@ export async function runRendererSmoke(workbench, launcher, inventory, userData,
     ? beforeSettings.values['extensions.enabledExtensionIds']
     : ['ApplicationSearch', 'UeliCommand']
   const enabled = [...new Set([...originalEnabled, 'Base64Conversion'])]
-  await workbench.evaluate(`(async () => await window.dshDesktop?.launcher?.settings?.updateSetting('extensions.enabledExtensionIds', ${JSON.stringify(enabled)}))()`)
+  try {
+    await workbench.evaluate(`(async () => await window.dshDesktop?.launcher?.settings?.updateSetting('extensions.enabledExtensionIds', ${JSON.stringify(enabled)}))()`)
+  } catch (error) {
+    const actual = await workbench.evaluate('(async () => (await window.dshDesktop?.launcher?.settings?.getSnapshot())?.values?.["extensions.enabledExtensionIds"] ?? null)()').catch(() => 'unavailable')
+    const providerStatuses = await launcher.evaluate('(async () => (await window.tockteamLauncher?.getSurfaceSettings())?.providerStatuses?.map(({ extensionId, state }) => ({ extensionId, state })) ?? null)()').catch(() => 'unavailable')
+    throw new Error(`TockLauncher enabled-extension update failed: requested=${JSON.stringify(enabled)} actual=${JSON.stringify(actual)} providerStatuses=${JSON.stringify(providerStatuses)}`, { cause: error })
+  }
   const enabledSnapshot = await waitFor(
     () => workbench.evaluate('(async () => (await window.dshDesktop?.launcher?.settings?.getSnapshot())?.values?.["extensions.enabledExtensionIds"] ?? null)()'),
     value => Array.isArray(value) && value.includes('Base64Conversion'),
@@ -1246,7 +1276,7 @@ if (isDirectInvocation) {
   if (process.argv.includes(smokeFlag)) {
     await main().catch(error => {
       console.error(formatDiagnosticError(error))
-      process.exitCode = 1
+      process.exit(1)
     })
   } else {
     console.error(`This package smoke requires ${smokeFlag}`)

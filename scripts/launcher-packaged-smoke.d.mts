@@ -81,6 +81,11 @@ export function inspectPackage(outputDir: string, target: unknown, options?: Rea
 
 export function preparePackagedArtifact(options?: unknown): Promise<unknown>
 
+export function linuxNoCoreSpawnPlan(command: string, args: readonly string[], platform?: NodeJS.Platform): Readonly<{
+  command: string
+  args: readonly string[]
+}>
+
 export function launchPackaged(...args: readonly unknown[]): Promise<any>
 
 export function runRendererSmoke(...args: readonly unknown[]): Promise<any>
