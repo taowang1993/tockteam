@@ -9,7 +9,7 @@ permissions:
 jobs:
   windows-x64:
     name: Windows x64 installed portable archive (tar.gz) TockLauncher evidence
-    runs-on: windows-latest
+    runs-on: windows-2022
     timeout-minutes: 180
     steps:
       - name: Check out repository

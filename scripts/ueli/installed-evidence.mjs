@@ -144,7 +144,7 @@ export function inspectInstalledEvidenceWorkflow(workflow) {
   const text = String(workflow ?? '').replace(/\r\n?/gu, '\n')
   failure(failures, /workflow_dispatch:/u.test(text), 'installed evidence workflow must support manual dispatch')
   failure(failures, !/pull_request:/u.test(text), 'installed evidence workflow must not run on every pull request')
-  failure(failures, /runs-on: windows-latest/u.test(text), 'installed evidence workflow must include Windows x64')
+  failure(failures, /runs-on: windows-2022/u.test(text), 'installed evidence workflow must include the stable Windows x64 host')
   failure(failures, /runs-on: ubuntu-24\.04/u.test(text), 'installed evidence workflow must include Linux x64')
   failure(failures, /pnpm test:launcher:installed/u.test(text), 'installed evidence workflow must execute installed smoke')
   for (const [index, job] of ['windows-x64', 'linux-x64'].entries()) {

@@ -381,7 +381,7 @@ async function runPlatformOutcomeSmoke(workbench, launcher, target) {
   const enabled = [...new Set([...original, ...extraIds])]
   await workbench.evaluate(`(async () => await window.dshDesktop?.launcher?.settings?.updateSetting('extensions.enabledExtensionIds', ${JSON.stringify(enabled)}))()`)
   const expectedStates = target.key === 'win'
-    ? { TerminalLauncher: 'ready' }
+    ? { WindowsControlPanel: 'ready', TerminalLauncher: 'ready' }
     : target.key === 'linux'
       ? { BrowserBookmarks: 'unsupported', FileSearch: 'unsupported', TerminalLauncher: 'unsupported' }
       : { WindowsControlPanel: 'unsupported' }
@@ -405,7 +405,7 @@ async function runPlatformOutcomeSmoke(workbench, launcher, target) {
     assert.equal(statuses.WindowsControlPanel, 'unsupported')
     return Object.freeze({ controlPanel: statuses.WindowsControlPanel, destructiveEffects: 'not-invoked', providerCount: settings.providerStatuses.length, terminal: statuses.TerminalLauncher })
   }
-  assert.ok(statuses.WindowsControlPanel === 'ready' || statuses.WindowsControlPanel === 'unavailable')
+  assert.equal(statuses.WindowsControlPanel, 'ready')
   assert.equal(statuses.TerminalLauncher, 'ready')
   const terminalAction = await launcher.evaluate(`(async () => {
     const response = await window.tockteamLauncher?.search('> echo tockteam-installed-smoke', { fuzziness: 0.5, maxSearchResultItems: 50, searchEngineId: 'fuzzysort' })
